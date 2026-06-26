@@ -125,7 +125,6 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kDrawCutoutEdgeToEdge);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kEnableCanvas2DLayers);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kEnsureExistingRendererAlive);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kFedCm);
-CONTENT_EXPORT BASE_DECLARE_FEATURE(kFedCmEmbedderCheck);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kEmailVerificationProtocol);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kEnforceDedicatedWorkerSameOriginCheck);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kEnforceSharedWorkerSameOriginCheck);
@@ -159,6 +158,7 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE_PARAM(bool,
                                           kInitialWebUIUseSeparateProcess);
 CONTENT_EXPORT BASE_DECLARE_FEATURE_PARAM(bool,
                                           kInitialWebUIHighStreamPriority);
+CONTENT_EXPORT BASE_DECLARE_FEATURE_PARAM(bool, kInitialWebUIWithoutSpellCheck);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kInitialWebUISyncNavStartToCommit);
 CONTENT_EXPORT BASE_DECLARE_FEATURE_PARAM(std::string,
                                           kIgnoreDuplicateNavsOrigins);
@@ -400,10 +400,6 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kWebauthnDisabledOnAuto);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kEnableExclusiveAccessManager);
 #endif
 
-#if BUILDFLAG(IS_ANDROID)
-CONTENT_EXPORT BASE_DECLARE_FEATURE(kKeyboardLockApiOnAndroid);
-#endif  // BUILDFLAG(IS_ANDROID)
-
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kIOThreadInteractiveThreadType);
 
 // Number of days to "store" IPH guardrails for navigation captured app launches
@@ -414,8 +410,6 @@ CONTENT_EXPORT extern const base::FeatureParam<int>
 // Enables user link capturing on all desktop platforms.
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kPwaNavigationCapturing);
 enum class CapturingState {
-  kDefaultOn = 0,
-  kDefaultOff = 1,
   kReimplDefaultOn = 2,
   kReimplDefaultOff = 3,
   kReimplOnViaClientMode = 4,

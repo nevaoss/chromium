@@ -10,6 +10,7 @@
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_split.h"
+#include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/sequenced_task_runner.h"
 #include "build/build_config.h"
@@ -27,7 +28,6 @@
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/public/service/glic_instance_coordinator.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/toasts/api/toast_id.h"
@@ -129,6 +129,29 @@ void PostUpdateNudgeLabel(
                                 std::move(invoke_glic)));
 }
 
+mojom::AdditionalContextPtr CreateAdditionalContext(
+    content::WebContents* web_contents,
+    const std::u16string& selected_text) {
+  auto context = mojom::AdditionalContext::New();
+  context->source = mojom::AdditionalContextSource::kTextSelection;
+  std::vector<mojom::AdditionalContextPartPtr> parts;
+  if (!selected_text.empty()) {
+    auto context_data = mojom::ContextData::New();
+    context_data->mime_type = kSelectionMimeType;
+    std::string utf8_text = base::UTF16ToUTF8(selected_text);
+    context_data->data =
+        mojo_base::BigBuffer(base::as_bytes(base::span(utf8_text)));
+    parts.push_back(
+        mojom::AdditionalContextPart::NewData(std::move(context_data)));
+  }
+  if (auto* tab_interface =
+          tabs::TabInterface::MaybeGetFromContents(web_contents)) {
+    context->tab_id = tab_interface->GetHandle().raw_value();
+  }
+  context->parts = std::move(parts);
+  return context;
+}
+
 }  // namespace
 
 GlicSelectionObserver::GlicSelectionObserver(content::WebContents* web_contents)
@@ -140,7 +163,7 @@ GlicSelectionObserver::GlicSelectionObserver(content::WebContents* web_contents)
   if (glic_keyed_service_) {
     panel_state_subscription_ =
         glic_keyed_service_->instance_coordinator().AddGlobalShowHideCallback(
-            base::BindRepeating(&GlicSelectionObserver::OnPanelStateChanged,
+            base::BindRepeating(&GlicSelectionObserver::OnGlobalPanelShowHide,
                                 weak_ptr_factory_.GetWeakPtr()));
   }
 
@@ -348,11 +371,26 @@ void GlicSelectionObserver::OnTextSelectionChanged(
 
   bounds_retry_count_ = 0;
 
-  if (selected_text.length() < kMinSelectionLength ||
-      selected_text.length() > kMaxSelectionLength) {
+  std::u16string_view trimmed_text =
+      base::TrimWhitespace(selected_text, base::TRIM_ALL);
+
+  size_t non_whitespace_count = 0;
+  bool exceeds_minimum_selection_length = false;
+  for (char16_t c : trimmed_text) {
+    if (!base::IsUnicodeWhitespace(c)) {
+      non_whitespace_count++;
+    }
+    if (non_whitespace_count == kMinSelectionLength) {
+      exceeds_minimum_selection_length = true;
+      break;
+    }
+  }
+
+  if (!exceeds_minimum_selection_length ||
+      trimmed_text.length() > kMaxSelectionLength) {
     pending_selection_text_ = std::u16string();
   } else {
-    pending_selection_text_ = std::u16string(selected_text);
+    pending_selection_text_ = std::u16string(trimmed_text);
   }
   if (render_frame_host) {
     last_selection_frame_token_ = render_frame_host->GetGlobalFrameToken();
@@ -441,26 +479,11 @@ void GlicSelectionObserver::InvokeGlicFromSelectionAffordance(
         Profile* profile =
             Profile::FromBrowserContext(web_contents->GetBrowserContext());
         if (auto* glic_keyed_service = GlicKeyedService::Get(profile)) {
-          auto context = mojom::AdditionalContext::New();
-          context->source = mojom::AdditionalContextSource::kTextSelection;
-          std::vector<mojom::AdditionalContextPartPtr> parts;
-
-          {
-            auto context_data = mojom::ContextData::New();
-            context_data->mime_type = kSelectionMimeType;
-            std::string utf8_text = base::UTF16ToUTF8(selected_text);
-            context_data->data =
-                mojo_base::BigBuffer(base::as_bytes(base::span(utf8_text)));
-            parts.push_back(
-                mojom::AdditionalContextPart::NewData(std::move(context_data)));
-          }
-
-          context->parts = std::move(parts);
-
           GlicInvokeOptions options(glic::Target(tab_interface),
                                     mojom::InvocationSource::kNudge);
-          options.additional_context = std::move(context);
-
+          options.additional_context = AdditionalTabContext(
+              CreateAdditionalContext(web_contents.get(), selected_text),
+              content::GlobalRenderFrameHostId(), PolicyCheck::kNone);
           glic_keyed_service->Invoke(std::move(options));
         }
       }
@@ -493,11 +516,10 @@ void GlicSelectionObserver::UpdateSelectionState(
 
     if (has_sent_selection_context_ && glic_keyed_service_) {
       if (glic_keyed_service_->GetInstanceForTab(tab_interface)) {
-        auto context = mojom::AdditionalContext::New();
-        context->source = mojom::AdditionalContextSource::kTextSelection;
-        context->parts = std::vector<mojom::AdditionalContextPartPtr>();
-        glic_keyed_service_->SendAdditionalContext(tab_interface->GetHandle(),
-                                                   std::move(context));
+        // TODO(b/508916357): Use the invoke API.
+        glic_keyed_service_->SendAdditionalContext(
+            tab_interface->GetHandle(),
+            CreateAdditionalContext(web_contents(), u""));
       }
       has_sent_selection_context_ = false;
     }
@@ -521,24 +543,10 @@ void GlicSelectionObserver::UpdateSelectionState(
           views::Widget::ClosedReason::kLostFocus);
     }
 
-    auto context = mojom::AdditionalContext::New();
-    context->source = mojom::AdditionalContextSource::kTextSelection;
-    std::vector<mojom::AdditionalContextPartPtr> parts;
-
-    {
-      auto context_data = mojom::ContextData::New();
-      context_data->mime_type = kSelectionMimeType;
-      std::string utf8_text = base::UTF16ToUTF8(selected_text);
-      context_data->data =
-          mojo_base::BigBuffer(base::as_bytes(base::span(utf8_text)));
-      parts.push_back(
-          mojom::AdditionalContextPart::NewData(std::move(context_data)));
-    }
-
-    context->parts = std::move(parts);
-
-    glic_keyed_service_->SendAdditionalContext(tab_interface->GetHandle(),
-                                               std::move(context));
+    // TODO(b/508916357): Use the invoke API.
+    glic_keyed_service_->SendAdditionalContext(
+        tab_interface->GetHandle(),
+        CreateAdditionalContext(web_contents(), selected_text));
     has_sent_selection_context_ = true;
   } else {
     if (!features::kGlicSelectionPromptUpdatesOnly.Get()) {
@@ -771,47 +779,11 @@ void GlicSelectionObserver::CopyLinkToHighlight(
   }
 }
 
-void GlicSelectionObserver::OnPanelStateChanged() {
+void GlicSelectionObserver::OnGlobalPanelShowHide() {
   if (last_selected_text_.empty()) {
     return;
   }
 
-  auto* tab_interface =
-      tabs::TabInterface::MaybeGetFromContents(web_contents());
-  if (!tab_interface || !glic_keyed_service_) {
-    return;
-  }
-
-  auto* bwi = tab_interface->GetBrowserWindowInterface();
-  if (!bwi) {
-    return;
-  }
-
-  bool panel_showing = glic_keyed_service_->IsPanelShowingForBrowser(*bwi);
-
-  auto* instance = glic_keyed_service_->GetInstanceForTab(tab_interface);
-  if (!instance || !panel_showing) {
-    host_observation_.Reset();
-    UpdateSelectionState(last_selected_text_);
-    return;
-  }
-
-  if (instance->host().IsWebClientConnected()) {
-    host_observation_.Reset();
-    UpdateSelectionState(last_selected_text_);
-  } else {
-    if (!host_observation_.IsObservingSource(&instance->host())) {
-      host_observation_.Reset();
-      host_observation_.Observe(&instance->host());
-    }
-  }
-}
-
-void GlicSelectionObserver::WebClientConnected() {
-  host_observation_.Reset();
-  if (last_selected_text_.empty()) {
-    return;
-  }
   UpdateSelectionState(last_selected_text_);
 }
 

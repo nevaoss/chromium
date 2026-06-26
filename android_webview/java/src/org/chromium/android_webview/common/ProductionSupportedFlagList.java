@@ -248,9 +248,6 @@ public final class ProductionSupportedFlagList {
                 AutofillFeatures.AUTOFILL_ACCEPT_DOM_MUTATION_AFTER_AUTOFILL_SUBMISSION,
                 "Accepts DOM_MUTATION_AFTER_AUTOFILL submissions detected on password forms."),
         Flag.baseFeature(
-                AutofillFeatures.AUTOFILL_ADDRESS_IMPROVE_BUILDING_NUMBER_REGEX,
-                "Enables building number regex improvement."),
-        Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_BETTER_LOCAL_HEURISTIC_PLACEHOLDER_SUPPORT,
                 "Treats placeholders as a separate signal for Autofill local heuristics"),
         Flag.baseFeature(
@@ -405,9 +402,6 @@ public final class ProductionSupportedFlagList {
                 AwFeatures.WEBVIEW_USE_METRICS_UPLOAD_SERVICE_ONLY_SDK_RUNTIME,
                 "Upload UMA metrics logs through MetricsUploadService not via GMS-core"
                         + " directly when running within the SDK Runtime."),
-        Flag.baseFeature(
-                AwFeatures.ANDROID_METRICS_ASYNC_METRIC_LOGGING,
-                "Initiate metric uploading on a background thread."),
         Flag.baseFeature(
                 BlinkFeatures.SET_INTERVAL_WITHOUT_CLAMP,
                 "Enables faster setInterval(,0) by removing the 1 ms clamping."),
@@ -715,6 +709,9 @@ public final class ProductionSupportedFlagList {
                 "Controls if back/forward cache is enabled. Note that it's also possible"
                         + " to enable BFCache through AwSettings as well. If either of"
                         + " the flag / setting is enabled, BFCache will be enabled"),
+        Flag.baseFeature(
+                AwSwitches.WEBVIEW_STATIC_METHODS_NOT_TRIGGER_STARTUP,
+                "When enabled, static methods in SharedStatics do not trigger startup."),
         Flag.baseFeature(
                 ContentFeatures.ACCESSIBILITY_EXTENDED_SELECTION,
                 "Register, un-register Accessibility extended selection."),
@@ -1145,9 +1142,6 @@ public final class ProductionSupportedFlagList {
                 AwSwitches.WEBVIEW_OPT_IN_TO_GMS_BIND_SERVICE_OPTIMIZATION,
                 "Opt-in WebView to GMSCore's bindService optimizations"),
         Flag.baseFeature(
-                AwSwitches.WEBVIEW_DEFER_STARTUP_GMS_CALLS,
-                "Defers GMS calls to after Chromium startup."),
-        Flag.baseFeature(
                 AwFeatures.WEBVIEW_MOVE_WORK_TO_PROVIDER_INIT,
                 " Moves some of the work that is being run during `startChromium` to be done"
                     + " beforehand during WebView provider initialization. This is expected to"
@@ -1404,6 +1398,10 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 ContentFeatures.PREFETCH_REQUEST_STATUS_LISTENER_ASYNC,
                 "Make PrefetchRequestStatusListener notifications async."),
+        Flag.baseFeature(AwFeatures.WEBVIEW_NAVIGATE, "Enables the WebView navigate method"),
+        Flag.baseFeature(
+                AwFeatures.WEBVIEW_ENABLE_DNS_PLATFORM,
+                "Enables the resolution of hostnames via platform DNS APIs in WebView."),
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.
     };

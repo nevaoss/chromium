@@ -143,10 +143,6 @@ function addPrivacyChildRoutes(r: Partial<SettingsRoutes>) {
         r.SITE_SETTINGS.createChild('webApplications');
   }
   if (loadTimeData.getBoolean('enableLocalNetworkAccessSetting')) {
-    r.SITE_SETTINGS_LOCAL_NETWORK_ACCESS =
-        r.SITE_SETTINGS.createChild('localNetworkAccess');
-  }
-  if (loadTimeData.getBoolean('enableLocalNetworkAccessSplitPermissions')) {
     r.SITE_SETTINGS_LOCAL_NETWORK = r.SITE_SETTINGS.createChild('localNetwork');
     r.SITE_SETTINGS_LOOPBACK_NETWORK =
         r.SITE_SETTINGS.createChild('loopbackNetwork');
@@ -195,7 +191,7 @@ function createRoutes(): SettingsRoutes {
 
   if (visibility.ai !== false && loadTimeData.getBoolean('showAiPage')) {
     r.AI = r.BASIC.createSection(
-        '/ai', 'ai', loadTimeData.getString('aiInnovationsPageTitle'));
+        '/ai', 'ai', loadTimeData.getString('aiPageTitle'));
     if (loadTimeData.getBoolean('enableAiModeSearchSetting')) {
       r.AI_MODE_SEARCH = r.AI.createChild('/ai/aiModeSearch');
     }

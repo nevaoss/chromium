@@ -570,17 +570,25 @@ class BottomSheetControllerImpl implements ManagedBottomSheetController, ScrimCo
         boolean shouldSwapContent =
                 mBottomSheet.getCurrentSheetContent() != null
                         && canBottomSheetSwitchContent(content);
+        boolean isCobrowse = content.getPriority() == BottomSheetContent.ContentPriority.COBROWSE;
 
         // Always add the content to the queue, it will be handled after the sheet closes if
         // necessary. If already hidden, |showNextContent| will handle the request.
         mContentQueue.add(content);
 
+        // TODO(crbug.com/505050661): Remove COBROWSE condition once modes is implemented.
         if (mBottomSheet.getCurrentSheetContent() == null && !mSuppressionTokens.hasTokens()) {
             showNextContent(animate);
             return true;
         } else if (shouldSwapContent) {
-            mIsSuppressingCurrentContent = true;
-            mContentQueue.add(mBottomSheet.getCurrentSheetContent());
+            // If bottomSheet is CoBrowse we should close the previous sheet (instead of adding it
+            // back to the queue). There should never be 2 bottomSheets with coBrowse as
+            // TabBottomSheetManager ensures that we always close the previous coBrowse
+            // bottomSheet before ever showing a new one.
+            if (!isCobrowse) {
+                mIsSuppressingCurrentContent = true;
+                mContentQueue.add(mBottomSheet.getCurrentSheetContent());
+            }
             if (!mSuppressionTokens.hasTokens()) {
                 mBottomSheet.setSheetState(SheetState.HIDDEN, animate);
                 return true;
@@ -629,12 +637,17 @@ class BottomSheetControllerImpl implements ManagedBottomSheetController, ScrimCo
 
     @Override
     public void expandSheet() {
+        expandSheet(true);
+    }
+
+    @Override
+    public void expandSheet(boolean animate) {
         if (mBottomSheet == null || mSuppressionTokens.hasTokens() || mBottomSheet.isHiding()) {
             return;
         }
 
         if (mBottomSheet.getCurrentSheetContent() == null) return;
-        mBottomSheet.setSheetState(SheetState.HALF, true);
+        mBottomSheet.setSheetState(SheetState.HALF, animate);
     }
 
     @Override
@@ -652,6 +665,7 @@ class BottomSheetControllerImpl implements ManagedBottomSheetController, ScrimCo
     /**
      * Show the next {@link BottomSheetContent} if it is available and peek the sheet. If no content
      * is available the sheet's content is set to null.
+     *
      * @param animate Whether the sheet should animate opened.
      */
     private void showNextContent(boolean animate) {
@@ -791,6 +805,9 @@ class BottomSheetControllerImpl implements ManagedBottomSheetController, ScrimCo
      */
     private boolean canBottomSheetSwitchContent(BottomSheetContent nextContent) {
         BottomSheetContent currentContent = assumeNonNull(mBottomSheet).getCurrentSheetContent();
+        if (nextContent.getPriority() == BottomSheetContent.ContentPriority.COBROWSE) {
+            return true;
+        }
         if (nextContent.getPriority() < assumeNonNull(currentContent).getPriority()
                 && !mBottomSheet.isSheetOpen()) {
             return true;

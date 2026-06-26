@@ -18,11 +18,11 @@ import '//resources/cr_components/localized_link/localized_link.js';
 import '//resources/cr_components/search/animated_glow.js';
 import '//resources/cr_elements/cr_icon_button/cr_icon_button.js';
 
+import type {SearchAnimatedGlowElement} from '//resources/cr_components/search/animated_glow.js';
 import {ComposeboxContextAddedMethod, GlowAnimationState} from '//resources/cr_components/search/constants.js';
 import {DragAndDropHandler} from '//resources/cr_components/search/drag_drop_handler.js';
 import type {DragAndDropHost} from '//resources/cr_components/search/drag_drop_host.js';
 import {EventTracker} from '//resources/js/event_tracker.js';
-import {loadTimeData} from '//resources/js/load_time_data.js';
 import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
 import type {AutocompleteResult, FileAttachment, PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote, SearchContext, TabAttachment, TabInfo} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
@@ -30,7 +30,7 @@ import {ModelMode} from '//resources/mojo/components/omnibox/composebox/composeb
 import type {UnguessableToken} from '//resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
 
 import {ComposeboxFile, ContextualSearchInputStateDeletionType, FILE_VALIDATION_ERRORS_MAP, getLoadTimeBoolean, ProcessFilesError, recordBoolean, recordContextAdditionMethod, recordEnumerationValue, recordUserAction, TabUploadOrigin} from './common.js';
-import type {ComposeboxState, TabUpload} from './common.js';
+import type {ComposeboxState, DriveUpload, TabUpload} from './common.js';
 import {getCss} from './composebox.css.js';
 import {getHtml} from './composebox.html.js';
 import type {PageHandlerRemote} from './composebox.mojom-webui.js';
@@ -70,9 +70,11 @@ export interface ComposeboxElement {
     fileInputs: ComposeboxFileInputsElement,
     matches: ComposeboxDropdownElement,
     errorScrim: ErrorScrimElement,
+    animatedSearchElement: SearchAnimatedGlowElement,
   };
 }
 
+// LINT.IfChange
 export class ComposeboxElement extends ComposeboxEmbedderMixin
 (CrLitElement) implements DragAndDropHost {
   static get is() {
@@ -134,15 +136,29 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
         reflect: true,
       },
       isFollowupQuery: {type: Boolean},
+      energyEffectEnabled: {
+        type: Boolean,
+        reflect: true,
+      },
       energyEffectAnimationEnabled: {
         type: Boolean,
         reflect: true,
       },
+      isZeroState: {
+        type: Boolean,
+        reflect: true,
+      },
+      enableFileHint: {type: Boolean},
+      inputPlaceholderOverride: {type: String},
     };
   }
 
+  accessor energyEffectEnabled: boolean = false;
   accessor energyEffectAnimationEnabled: boolean = false;
+  accessor isZeroState: boolean = false;
   accessor isFollowupQuery: boolean = false;
+  accessor enableFileHint: boolean = false;
+  accessor inputPlaceholderOverride: string = '';
   accessor suggestionActivityEnabled: boolean = true;
   accessor disableCaretColorAnimation: boolean = false;
   accessor disableComposeboxAnimation: boolean = false;
@@ -179,7 +195,7 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
   private searchboxHandler_: SearchboxPageHandlerRemote;
   private eventTracker_: EventTracker = new EventTracker();
   private resizeObservers_: ResizeObserver[] = [];
-  protected shouldShowDivider_(): boolean {
+  override shouldShowDivider(): boolean {
     // TODO(crbug.com/476175193): Remove `entrypointName` condition.
     if (this.entrypointName === 'Omnibox' &&
         this.searchboxLayoutMode === 'TallBottomContext' &&
@@ -187,9 +203,7 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
       return false;
     }
 
-    return this.showDropdown &&
-        (this.showFileCarousel || this.shouldShowSubmitButton() ||
-         this.inToolMode);
+    return super.shouldShowDivider();
   }
 
   override computeSubmitEnabled(): boolean {
@@ -312,6 +326,10 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
       this.isOmniboxInCompactMode_ = this.entrypointName === 'Omnibox' &&
           this.searchboxLayoutMode === 'Compact';
     }
+    if (changedProperties.has('inputPlaceholderOverride') ||
+        changedProperties.has('enableFileHint')) {
+      this.updateInputPlaceholder();
+    }
   }
 
   override updated(changedProperties: PropertyValues<this>) {
@@ -375,6 +393,7 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
     this.expanding_ = expanding;
   }
 
+  // TODO(crbug.com/508287630): Branch logic to Omnibox embedder.
   protected async updateState_(state: ComposeboxState) {
     if (!this.inputState) {
       const inputStateResponse = await this.searchboxHandler_.getInputState();
@@ -399,8 +418,9 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
     if (this.showZps && files.length === 0) {
       this.queryAutocomplete(/* clearMatches= */ false);
     }
-    if (files.length > 0) {
+    if (files.length > 0 || state.error !== undefined) {
       const dataTransfer = new DataTransfer();
+      const driveUploads: DriveUpload[] = [];
       for (const file of files) {
         if ('tabId' in file) {
           // If the composebox is being initialized with tab context from the
@@ -421,11 +441,16 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
             replaceAutoActiveTabToken: false,
             origin: file.origin,
           } as TabUpload);
+        } else if ('mimeType' in file) {
+          driveUploads.push(file);
         } else {
           dataTransfer.items.add(file.file);
         }
       }
       this.processFiles(dataTransfer.files);
+      if (driveUploads.length > 0 || state.error !== undefined) {
+        this.addDriveUploads(driveUploads, state.error);
+      }
     }
     if (mode !== ToolMode.kUnspecified) {
       this.handleToolClick(mode);
@@ -734,15 +759,11 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
   }
 
   protected onSubmitClick_(e: MouseEvent) {
-    this.submitQuery(e);
-  }
-
-  protected onRecordingStopped_(e: CustomEvent<string>) {
-    const newTranscript = e.detail;
-    if (newTranscript && newTranscript.trim().length > 0) {
-      this.input = newTranscript;
+    if (this.hasFiles() ||
+        this.inputState?.activeTool !== ToolMode.kUnspecified) {
+      this.pageHandler_.notifyComposeboxQuerySubmittedWithContext();
     }
-    this.voiceSearchEndCleanup();
+    this.submitQuery(e);
   }
 
   protected onLinkClicked_(e: CustomEvent<{ event: Event }>) {
@@ -819,41 +840,7 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
       }
     }
 
-    if (this.inputState) {
-      if (this.inputState.activeTool !== ToolMode.kUnspecified) {
-        const config = this.inputState.toolConfigs.find(
-            c => c.tool === this.inputState!.activeTool);
-        if (config?.hintText) {
-          this.inputPlaceholder = config.hintText;
-          return;
-        }
-      }
-
-      if (this.inputState.activeModel !== ModelMode.kUnspecified) {
-        const config = this.inputState.modelConfigs.find(
-            c => c.model === this.inputState!.activeModel);
-        if (config?.hintText) {
-          this.inputPlaceholder = config.hintText;
-          return;
-        }
-      }
-
-      if (this.inputState.hintText) {
-        this.inputPlaceholder = this.inputState.hintText;
-        return;
-      }
-    }
-
-    if (this.inputState?.activeTool === ToolMode.kDeepSearch) {
-      this.inputPlaceholder =
-          loadTimeData.getString('composeDeepSearchPlaceholder');
-    } else if (this.inputState?.activeTool === ToolMode.kImageGen) {
-      this.inputPlaceholder =
-          loadTimeData.getString('composeCreateImagePlaceholder');
-    } else {
-      this.inputPlaceholder =
-          loadTimeData.getString('searchboxComposePlaceholder');
-    }
+    super.updateInputPlaceholder();
   }
 
   protected onComposeboxFocusin_(e: FocusEvent) {
@@ -927,6 +914,7 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
 
   override submitCleanup() {
     this.clearAutocompleteMatches();
+    this.resetSmartComposeStats();
     // Update states after submitting:
     this.animationState = GlowAnimationState.SUBMITTING;
 
@@ -1002,42 +990,22 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
     this.smartComposeInlineHint = this.result.smartComposeInlineHint?.trim() ?
         this.result.smartComposeInlineHint :
         '';
+    if (this.smartComposeInlineHint) {
+      this.smartComposeStats.shownCount++;
+      this.smartComposeStats.shownLength += this.smartComposeInlineHint.length;
+    }
   }
 
 
-  // TODO(crbug.com/486706573): Refactor this function and move the common logic
+  // TODO(crbug.com/486706573): common logic is moved
   // to the mixin class. Move embedder specific logic to the embedder class.
   override clearAllInputs(
       querySubmitted: boolean, shouldBlockAutoSuggestedTabs: boolean) {
-    this.clearInput();
+    // Reset side-panel specific suggested tab context URL/Title pointers
     this.automaticActiveTab = null;
     this.pendingAutomaticActiveTabUrl_ = '';
     this.pendingAutomaticActiveTabTitle_ = '';
-    // Let `querySubmit` handle clearing files if the tool mode is a tool mode
-    // that should be cleared after submitting. For all other general
-    // clearing, clear input here.
-    if (!querySubmitted) {
-      this.resetModes();
-    }
-    const undeletableFiles =
-        Array.from(this.files.values()).filter(file => !file.isDeletable);
-    if (undeletableFiles.length !== this.files.size) {
-      this.files = new Map(undeletableFiles.map(file => [file.uuid, file]));
-      this.addedTabsIds = new Map(undeletableFiles.filter(file => file.tabId)
-                                      .map(file => [file.tabId!, file.uuid]));
-    }
-    // Reset files in set to match remaining files in carousel.
-    this.pendingUploads = new Set([...this.files.keys()]);
-    this.smartComposeInlineHint = '';
-    if (!querySubmitted) {
-      // If the query was submitted, the searchbox handler will clear its own
-      // uploaded file state when the query submission is handled.
-      this.searchboxHandler_.clearFiles(shouldBlockAutoSuggestedTabs);
-    }
-    this.fileUploadsComplete = this.pendingUploads.size === 0;
-    if (this.inVoiceSearchMode) {
-      this.voiceSearchEndCleanup();
-    }
+    super.clearAllInputs(querySubmitted, shouldBlockAutoSuggestedTabs);
   }
 
   protected shouldDisableFileInputs_() {
@@ -1098,6 +1066,7 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
     this.updateAutoSuggestedTabContext_(tab);
   }
 }
+// LINT.ThenChange(//ui/webui/resources/cr_components/composebox/Componentization.md)
 
 declare global {
   interface HTMLElementTagNameMap {

@@ -46,6 +46,7 @@
 #include "chrome/browser/autofill/autofill_optimization_guide_decider_factory.h"
 #include "chrome/browser/autofill/merchant_promo_code_manager_factory.h"
 #include "chrome/browser/autofill/ml_log_router_factory.h"
+#include "chrome/browser/autofill/one_time_token_service_factory.h"
 #include "chrome/browser/autofill/personal_data_manager_factory.h"
 #include "chrome/browser/autofill/valuables_data_manager_factory.h"
 #include "chrome/browser/autofill/wallet_pass_access_manager_factory.h"
@@ -135,7 +136,6 @@
 #include "chrome/browser/media/webrtc/webrtc_event_log_manager_keyed_service_factory.h"
 #include "chrome/browser/metrics/profile_metrics_service_factory.h"
 #include "chrome/browser/metrics/variations/google_groups_manager_factory.h"
-#include "chrome/browser/multistep_filter/core/multistep_filter_service_factory.h"
 #include "chrome/browser/navigation_predictor/navigation_predictor_keyed_service_factory.h"
 #include "chrome/browser/navigation_predictor/preloading_model_keyed_service_factory.h"
 #include "chrome/browser/navigation_predictor/search_engine_preconnector.h"
@@ -179,6 +179,7 @@
 #include "chrome/browser/permissions/prediction_service/prediction_model_handler_provider_factory.h"
 #include "chrome/browser/permissions/prediction_service/prediction_service_factory.h"
 #include "chrome/browser/persisted_state_db/session_proto_db_factory.h"
+#include "chrome/browser/personal_context/personal_context_service_factory.h"
 #include "chrome/browser/plugins/plugin_prefs_factory.h"
 #include "chrome/browser/plus_addresses/plus_address_service_factory.h"
 #include "chrome/browser/plus_addresses/plus_address_setting_service_factory.h"
@@ -258,6 +259,9 @@
 #include "chrome/browser/ui/safety_hub/notification_permission_review_service_factory.h"
 #include "chrome/browser/ui/safety_hub/revoked_permissions_os_notification_display_manager_factory.h"
 #include "chrome/browser/ui/safety_hub/revoked_permissions_service_factory.h"
+#if BUILDFLAG(IS_WIN)
+#include "chrome/browser/ui/search_promotion/search_promotion_manager_factory.h"
+#endif
 #include "chrome/browser/ui/signin/dice_migration_service_factory.h"
 #include "chrome/browser/ui/tabs/pinned_tab_service_factory.h"
 #include "chrome/browser/ui/toolbar/pinned_toolbar/pinned_toolbar_actions_model_factory.h"
@@ -469,6 +473,8 @@
 #endif
 
 #if !BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/multistep_filter/core/multistep_filter_log_router_factory.h"
+#include "chrome/browser/multistep_filter/core/multistep_filter_service_factory.h"
 #include "chrome/browser/password_manager/factories/startup_passwords_import_service_factory.h"  // nogncheck (Desktop only)
 #include "chrome/browser/webauthn/passkey_unlock_manager_factory.h"
 #include "device/fido/public/features.h"
@@ -765,6 +771,7 @@ void ChromeBrowserMainExtraPartsProfiles::
   autofill::AutofillOptimizationGuideDeciderFactory::GetInstance();
   autofill::MerchantPromoCodeManagerFactory::GetInstance();
   autofill::MlLogRouterFactory::GetInstance();
+  autofill::OneTimeTokenServiceFactory::GetInstance();
   autofill::PersonalDataManagerFactory::GetInstance();
   autofill::ValuablesDataManagerFactory::GetInstance();
   autofill::WalletPassAccessManagerFactory::GetInstance();
@@ -1125,12 +1132,8 @@ void ChromeBrowserMainExtraPartsProfiles::
   ProfileMetricsServiceFactory::GetInstance();
 #if !BUILDFLAG(IS_ANDROID)
   MicrosoftAuthServiceFactory::GetInstance();
-#endif
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
-    BUILDFLAG(IS_CHROMEOS)
+  multistep_filter::MultistepFilterLogRouterFactory::GetInstance();
   multistep_filter::MultistepFilterServiceFactory::GetInstance();
-#endif
-#if !BUILDFLAG(IS_ANDROID)
   web_app::IsolatedWebAppsWindowOpenPermissionServiceFactory::GetInstance();
   web_app::IwaPermissionsPolicyCacheFactory::GetInstance();
 #endif
@@ -1240,6 +1243,9 @@ void ChromeBrowserMainExtraPartsProfiles::
   PermissionDecisionAutoBlockerFactory::GetInstance();
 #if !BUILDFLAG(IS_ANDROID)
   PersistentRendererPrefsManagerFactory::GetInstance();
+#endif
+  PersonalContextServiceFactory::GetInstance();
+#if !BUILDFLAG(IS_ANDROID)
   PinnedTabServiceFactory::GetInstance();
   PinnedToolbarActionsModelFactory::GetInstance();
 #endif
@@ -1369,6 +1375,9 @@ void ChromeBrowserMainExtraPartsProfiles::
   search_engines::SearchEngineChoiceServiceFactory::GetInstance();
 #if !BUILDFLAG(IS_ANDROID)
   SearchEngineChoiceDialogServiceFactory::GetInstance();
+#endif
+#if BUILDFLAG(IS_WIN)
+  SearchPromotionManagerFactory::GetInstance();
 #endif
 #if BUILDFLAG(IS_ANDROID)
   SearchPermissionsService::Factory::GetInstance();

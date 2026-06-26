@@ -222,18 +222,12 @@ BASE_FEATURE_PARAM(int,
 BASE_FEATURE(kWebAuthnDoNotAlwaysTerminateStateMachineDuringIdentityChange,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Enabled by default in M143. Remove in or after M146.
-BASE_FEATURE(kWebAuthenticationWindowsHints, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Enabled by default in M144. Remove in or after M147.
 BASE_FEATURE(kWebAuthnEnableRefreshingStateOfGpmEnclaveController,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enabled by default in M146. Remove in or after M149.
 BASE_FEATURE(kWebAuthnHmacSecretMcExtension, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Not yet enabled by default.
-BASE_FEATURE(kFedCmInAuthenticator, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enabled by default in M149. Remove in or after M152.
 COMPONENT_EXPORT(FIDO_PUBLIC)

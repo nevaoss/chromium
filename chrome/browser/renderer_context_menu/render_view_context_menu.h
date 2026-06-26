@@ -109,7 +109,6 @@ class RenderViewContextMenu
  public:
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kExitFullscreenMenuItem);
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kComposeMenuItem);
-  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kGlicCloseMenuItem);
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kGlicReloadMenuItem);
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kGlicArchiveConversationMenuItem);
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kGlicShareImageMenuItem);
@@ -419,6 +418,12 @@ class RenderViewContextMenu
   void PluginActionAt(const gfx::Point& location,
                       blink::mojom::PluginActionType plugin_action);
   void OpenTextQueryInLens();
+
+  // Returns the WebContents used for data control policy checks. This usually
+  // returns the source WebContents, but if the context menu is shown in a
+  // Reading Mode side panel or immersive view, it returns the WebContents of
+  // the original page being distilled.
+  content::WebContents* GetWebContentsForDataControls() const;
 
   // Returns a list of registered ProtocolHandlers that can handle the clicked
   // on URL.

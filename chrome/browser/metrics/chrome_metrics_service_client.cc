@@ -479,9 +479,9 @@ class ChromeComponentMetricsProviderDelegate
 };
 
 #if BUILDFLAG(IS_CHROMEOS)
-// TODO(crbug.com/40214482): Remove this and use ChangeMetricsReportingState()
-// once crash no longer depends on GoogleUpdateSettings and per-user is
-// available outside of Ash.
+// TODO(crbug.com/40214482): Remove this and use
+// metrics::ChangeMetricsReportingState() once crash no longer depends on
+// GoogleUpdateSettings and per-user is available outside of Ash.
 void UpdateMetricsServicesForPerUser(bool enabled) {
   // Set the local state pref because a lot of services read directly from this
   // pref to obtain metrics consent.
@@ -706,7 +706,7 @@ ChromeMetricsServiceClient::GetCustomUploadInterval() const {
 }
 
 bool ChromeMetricsServiceClient::IsReportingPolicyManaged() {
-  return IsMetricsReportingPolicyManaged();
+  return metrics::IsMetricsReportingPolicyManaged();
 }
 
 metrics::EnableMetricsDefault
@@ -992,15 +992,6 @@ void ChromeMetricsServiceClient::RegisterMetricsServiceProviders() {
 
   metrics_service_->RegisterMetricsProvider(
       std::make_unique<syncer::PassphraseTypeMetricsProvider>(
-          syncer::PassphraseTypeMetricsProvider::HistogramVersion::kV2,
-          base::BindRepeating(&SyncServiceFactory::GetAllSyncServices)));
-  metrics_service_->RegisterMetricsProvider(
-      std::make_unique<syncer::PassphraseTypeMetricsProvider>(
-          syncer::PassphraseTypeMetricsProvider::HistogramVersion::kV4,
-          base::BindRepeating(&SyncServiceFactory::GetAllSyncServices)));
-  metrics_service_->RegisterMetricsProvider(
-      std::make_unique<syncer::PassphraseTypeMetricsProvider>(
-          syncer::PassphraseTypeMetricsProvider::HistogramVersion::kV5,
           base::BindRepeating(&SyncServiceFactory::GetAllSyncServices)));
 
   metrics_service_->RegisterMetricsProvider(

@@ -5,8 +5,9 @@
 import 'chrome://resources/cr_components/composebox/composebox.js';
 
 import type {ComposeboxElement} from 'chrome://resources/cr_components/composebox/composebox.js';
-import {ComposeboxProxyImpl} from 'chrome://resources/cr_components/composebox/composebox_proxy.js';
 import {PageCallbackRouter, PageHandlerRemote} from 'chrome://resources/cr_components/composebox/composebox.mojom-webui.js';
+import type {ComposeboxInputElement} from 'chrome://resources/cr_components/composebox/composebox_input.js';
+import {ComposeboxProxyImpl} from 'chrome://resources/cr_components/composebox/composebox_proxy.js';
 import type {ContextualEntrypointAndMenuElement} from 'chrome://resources/cr_components/composebox/contextual_entrypoint_and_menu.js';
 import {createAutocompleteResultForTesting, createSearchMatchForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
@@ -51,12 +52,14 @@ suite('ComposeboxTest', () => {
       composeboxCancelButtonTitle: 'Cancel',
       voiceSearchButtonLabel: 'Voice search',
       lensSearchButtonLabel: 'Lens search',
+      lensSearchHint: 'Lens search',
       suggestionActivityLink: '<a>Activity</a>',
       composeboxSubmitButtonTitle: 'Submit',
       composeboxSmartComposeTabTitle: 'Tab',
       voiceListening: 'Listening',
       voiceDetails: 'Details',
       voiceClose: 'Close',
+      voiceStop: 'Stop',
       dismissButton: 'Dismiss',
       composeboxDragAndDropHint: 'Hint',
       removeSuggestion: 'Remove',
@@ -271,6 +274,24 @@ suite('ComposeboxTest', () => {
     assertEquals(null, composebox.result);
     assertEquals('', composebox.lastQueriedInput);
   });
+
+  test(
+      'smartComposeEnabled forwards from <cr-composebox> to <cr-composebox-input>',
+      async () => {
+        loadTimeData.overrideValues({composeboxSmartComposeEnabled: true});
+
+        document.body.innerHTML = window.trustedTypes!.emptyHTML;
+        const fresh = document.createElement('cr-composebox');
+        document.body.appendChild(fresh);
+        await fresh.updateComplete;
+
+        const input = fresh.shadowRoot.querySelector<ComposeboxInputElement>(
+            'cr-composebox-input');
+        assertTrue(!!input);
+        await input.updateComplete;
+
+        assertTrue(input.hasAttribute('smart-compose-enabled'));
+      });
 });
 
 suite('composeboxSharedMountAutoRepostionDefault', () => {
@@ -319,6 +340,7 @@ suite('composeboxSharedMountAutoRepostionDefault', () => {
       composeboxCancelButtonTitle: 'Cancel',
       voiceSearchButtonLabel: 'Voice search',
       lensSearchButtonLabel: 'Lens search',
+      lensSearchHint: 'Lens search',
       suggestionActivityLink: '<a>Activity</a>',
       composeboxSubmitButtonTitle: 'Submit',
       composeboxSmartComposeTabTitle: 'Tab',

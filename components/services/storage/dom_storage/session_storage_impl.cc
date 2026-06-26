@@ -26,6 +26,7 @@
 #include "components/services/storage/dom_storage/async_dom_storage_database.h"
 #include "components/services/storage/dom_storage/dom_storage_constants.h"
 #include "components/services/storage/dom_storage/dom_storage_database.h"
+#include "components/services/storage/dom_storage/features.h"
 #include "components/services/storage/dom_storage/session_storage_area_impl.h"
 #include "mojo/public/cpp/bindings/callback_helpers.h"
 #include "mojo/public/cpp/bindings/self_owned_receiver.h"
@@ -387,12 +388,11 @@ void SessionStorageImpl::ShutDown() {
     // Flush any uncommitted data.
     for (const auto& it : data_maps_) {
       auto* area = it.second->storage_area();
-      LOCAL_HISTOGRAM_BOOLEAN(
-          "SessionStorageContext.ShutDown.MaybeDroppedChanges",
-          area->has_pending_load_tasks());
+      base::UmaHistogramBoolean("Storage.SessionStorage.ShutdownDroppedChanges",
+                                area->has_pending_load_read_write_tasks());
       area->ScheduleImmediateCommit();
-      // TODO(dmurph): Monitor the above histogram, and if dropping changes is
-      // common then handle that here.
+      // TODO(crbug.com/503422295): Monitor the above histogram, and if dropping
+      // changes is common then handle that here.
       area->CancelAllPendingRequests();
     }
   }
@@ -487,13 +487,16 @@ bool SessionStorageImpl::OnMemoryDump(
       base::StringPrintf("site_storage/sessionstorage/0x%" PRIXPTR,
                          reinterpret_cast<uintptr_t>(this));
 
-  // Account for leveldb memory usage, which actually lives in the file service.
+  // Account for database memory usage, which actually lives in the file
+  // service.
   auto* global_dump = pmd->CreateSharedGlobalAllocatorDump(memory_dump_id_);
-  // The size of the leveldb dump will be added by the leveldb service.
-  auto* leveldb_mad = pmd->CreateAllocatorDump(context_name + "/leveldb");
+  // The size of the database dump will be added by the database service.
+  auto* db_mad = pmd->CreateAllocatorDump(
+      context_name +
+      (ShouldUseSqliteBackend(in_memory_) ? "/sqlite" : "/leveldb"));
   // Specifies that the current context is responsible for keeping memory alive.
   int kImportance = 2;
-  pmd->AddOwnershipEdge(leveldb_mad->guid(), global_dump->guid(), kImportance);
+  pmd->AddOwnershipEdge(db_mad->guid(), global_dump->guid(), kImportance);
 
   if (args.level_of_detail ==
       base::trace_event::MemoryDumpLevelOfDetail::kBackground) {
@@ -533,6 +536,24 @@ void SessionStorageImpl::FlushAreaForTesting(
   if (it == namespaces_.end())
     return;
   it->second->FlushStorageKeyForTesting(storage_key);
+}
+
+void SessionStorageImpl::PutValueForTesting(
+    const std::string& namespace_id,
+    const blink::StorageKey& storage_key,
+    const std::vector<uint8_t>& key,
+    const std::vector<uint8_t>& value,
+    base::OnceCallback<void(bool)> callback) {
+  if (connection_state_ != CONNECTION_FINISHED) {
+    return;
+  }
+
+  const auto& it = namespaces_.find(namespace_id);
+  if (it == namespaces_.end()) {
+    return;
+  }
+
+  it->second->PutValueForTesting(storage_key, key, value, std::move(callback));
 }
 
 void SessionStorageImpl::SetDatabaseOpenCallbackForTesting(

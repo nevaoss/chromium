@@ -155,8 +155,20 @@ BASE_DECLARE_FEATURE(kForcedAppRelaunchOnPlaceholderUpdate);
 COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kGeoLanguage);
 
 COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kGlicActor);
+
+// Enables comparison of AnnotatedPageContent. This is potentially expensive for
+// large pages and is gated for performance monitoring.
+COMPONENT_EXPORT(CHROME_FEATURES)
+BASE_DECLARE_FEATURE(kGlicActorApcComparison);
+
+// The sampling rate to log metrics for APC comparison, default to 0.1.
+COMPONENT_EXPORT(CHROME_FEATURES)
+extern const base::FeatureParam<double> kGlicActorApcComparisonSamplingRate;
+
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicExperimentalTriggering);
+COMPONENT_EXPORT(CHROME_FEATURES)
+BASE_DECLARE_FEATURE(kGlicExperimentalTriggeringOptInBypass);
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<base::TimeDelta> kGlicActorPageToolTimeout;
 COMPONENT_EXPORT(CHROME_FEATURES)
@@ -546,9 +558,6 @@ COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicRecordMemoryFootprintMetrics);
 
 COMPONENT_EXPORT(CHROME_FEATURES)
-BASE_DECLARE_FEATURE(kGlicRegionSelectionNew);
-
-COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicRegionSelectionLine);
 
 COMPONENT_EXPORT(CHROME_FEATURES)
@@ -599,11 +608,6 @@ COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<std::string> kGlicCaaLinkText;
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<std::string> kGlicCaaGuestRedirectPatterns;
-
-COMPONENT_EXPORT(CHROME_FEATURES)
-BASE_DECLARE_FEATURE(kGlicButtonAltLabel);
-COMPONENT_EXPORT(CHROME_FEATURES)
-extern const base::FeatureParam<int> kGlicButtonAltLabelVariant;
 
 COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kGlicDaisyChainNewTabs);
 
@@ -812,6 +816,9 @@ extern const base::FeatureParam<base::TimeDelta>
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<std::string>
     kHappinessTrackingSurveysForSecurityPageTriggerId;
+COMPONENT_EXPORT(CHROME_FEATURES)
+extern const base::FeatureParam<bool>
+    kHappinessTrackingSurveysForSecurityPageRequireInteraction;
 #endif
 
 COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kHttpsFirstBalancedMode);
@@ -836,6 +843,8 @@ COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<std::string> kIndigoGenerateUrl;
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<std::string> kIndigoStatusUrl;
+COMPONENT_EXPORT(CHROME_FEATURES)
+extern const base::FeatureParam<std::string> kIndigoOnboardingUrl;
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<std::string> kIndigoScopes;
 

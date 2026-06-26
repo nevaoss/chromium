@@ -61,6 +61,7 @@
 #include "components/password_manager/core/browser/features/password_features.h"
 #include "components/password_manager/core/browser/password_form.h"
 #include "components/password_manager/core/browser/password_form_manager.h"
+#include "components/password_manager/core/browser/password_store/password_form_converters.h"
 #include "components/password_manager/core/browser/password_store/test_password_store.h"
 #include "components/password_manager/core/common/password_manager_pref_names.h"
 #include "components/password_manager/core/common/password_manager_ui.h"
@@ -562,7 +563,7 @@ IN_PROC_BROWSER_TEST_F(PasswordChangeBrowserTest, OldPasswordIsUpdated) {
       GetDefaultPasswordStore(browser()->profile());
   password_manager::PasswordForm form = CreatePasswordForm(
       WebContents()->GetLastCommittedURL(), u"test", u"pa$$word");
-  password_store->AddLogin(form);
+  password_store->AddLogin(password_manager::FromPasswordForm(form));
   WaitForPasswordStore();
 
   SetChangePasswordUrl("/password/update_form_empty_fields.html");
@@ -1575,8 +1576,6 @@ IN_PROC_BROWSER_TEST_F(PasswordChangeBrowserTestUserInterventionEnabled,
   EXPECT_TRUE(base::test::RunUntil(
       [&delegate_weak_ptr]() { return !delegate_weak_ptr; }));
 
-  // TODO(crbug.com/474035152): Update the enum for user intervention when the
-  // proto is synced.
   VerifyUniqueQualityLog(
       /*login_check_status=*/QualityStatus::
           PasswordChangeQuality_StepQuality_SubmissionStatus_ACTION_SUCCESS,
@@ -1588,7 +1587,7 @@ IN_PROC_BROWSER_TEST_F(PasswordChangeBrowserTestUserInterventionEnabled,
           PasswordChangeQuality_StepQuality_SubmissionStatus_ACTION_SUCCESS,
       /*verify_submission_status=*/
       QualityStatus::
-          PasswordChangeQuality_StepQuality_SubmissionStatus_FAILURE_STATUS,
+          PasswordChangeQuality_StepQuality_SubmissionStatus_USER_INTERVENTION_NEEDED,
       /*final_status=*/
       FinalModelStatus::FINAL_MODEL_STATUS_FAILURE);
 }
@@ -1604,7 +1603,7 @@ IN_PROC_BROWSER_TEST_F(PasswordChangeBrowserTestUserInterventionEnabled,
       GetDefaultPasswordStore(browser()->profile());
   password_manager::PasswordForm form = CreatePasswordForm(
       WebContents()->GetLastCommittedURL(), u"test", u"old_pa$$word");
-  password_store->AddLogin(form);
+  password_store->AddLogin(password_manager::FromPasswordForm(form));
   WaitForPasswordStore();
 
   // Start the Password Change Flow.
@@ -1650,7 +1649,7 @@ IN_PROC_BROWSER_TEST_F(PasswordChangeBrowserTestUserInterventionEnabled,
           PasswordChangeQuality_StepQuality_SubmissionStatus_ACTION_SUCCESS,
       /*verify_submission_status=*/
       QualityStatus::
-          PasswordChangeQuality_StepQuality_SubmissionStatus_FAILURE_STATUS,
+          PasswordChangeQuality_StepQuality_SubmissionStatus_USER_INTERVENTION_NEEDED,
       /*final_status=*/
       FinalModelStatus::FINAL_MODEL_STATUS_FAILURE);
 }

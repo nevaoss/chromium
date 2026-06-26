@@ -387,7 +387,7 @@ void ContextualTasksUiService::OnOAuthTokenReceived(
 void ContextualTasksUiService::ShowOauthErrorDialogForWebContents(
     base::WeakPtr<content::WebContents> web_contents) {
   content::WebUI* webui = web_contents->GetWebUI();
-  if (webui && webui->GetController()) {
+  if (webui && webui->GetController() && webui->GetController()->GetType()) {
     auto* ui_controller = webui->GetController()->GetAs<ContextualTasksUI>();
     if (ui_controller) {
       ui_controller->ShowOauthErrorDialog();
@@ -1476,10 +1476,11 @@ void ContextualTasksUiService::OnTaskChanged(
 }
 
 void ContextualTasksUiService::OnWebUIReady(
+    BrowserWindowInterface* browser_window_interface,
     const base::Uuid& task_id,
     content::WebContents* web_contents) {
   if (delegate_) {
-    delegate_->OnWebUIReady(task_id, web_contents);
+    delegate_->OnWebUIReady(browser_window_interface, task_id, web_contents);
   }
 }
 
@@ -1488,6 +1489,37 @@ void ContextualTasksUiService::OnWebUIDestroyed(
     const std::optional<base::Uuid>& task_id) {
   if (delegate_) {
     delegate_->OnWebUIDestroyed(browser_window_interface, task_id);
+  }
+}
+
+void ContextualTasksUiService::TurnOnSmartTabSharing(
+    BrowserWindowInterface* browser) {
+  if (!browser || browser->GetProfile() != profile_) {
+    return;
+  }
+
+  // Check side panel.
+  auto* controller = ContextualTasksPanelController::From(browser);
+  if (controller && controller->IsPanelOpenForContextualTask()) {
+    content::WebContents* web_contents = controller->GetActiveWebContents();
+    if (auto* web_ui_interface = GetWebUiInterface(web_contents)) {
+      if (web_ui_interface->GetPageRemote().is_bound()) {
+        web_ui_interface->GetPageRemote()->TurnOnSmartTabSharing();
+      }
+    }
+  }
+
+  // Check all tabs.
+  TabListInterface* tab_list = TabListInterface::From(browser);
+  if (tab_list) {
+    for (int i = 0; i < tab_list->GetTabCount(); ++i) {
+      content::WebContents* web_contents = tab_list->GetTab(i)->GetContents();
+      if (auto* web_ui_interface = GetWebUiInterface(web_contents)) {
+        if (web_ui_interface->GetPageRemote().is_bound()) {
+          web_ui_interface->GetPageRemote()->TurnOnSmartTabSharing();
+        }
+      }
+    }
   }
 }
 

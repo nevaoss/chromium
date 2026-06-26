@@ -7,6 +7,9 @@ package org.chromium.chrome.browser.ui.side_ui;
 import static android.view.View.MeasureSpec.EXACTLY;
 import static android.view.View.MeasureSpec.makeMeasureSpec;
 
+import static org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiSpecs.EMPTY_SIDE_UI_SPECS;
+
+import android.app.Activity;
 import android.transition.Transition;
 import android.transition.TransitionListenerAdapter;
 import android.transition.TransitionManager;
@@ -19,13 +22,13 @@ import android.view.ViewParent;
 import android.view.ViewStub;
 
 import androidx.annotation.Px;
+import androidx.window.layout.WindowMetricsCalculator;
 
 import org.chromium.base.Callback;
 import org.chromium.base.ObserverList;
 import org.chromium.base.supplier.NonNullObservableSupplier;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
-import org.chromium.build.annotations.RequiresNonNull;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.ui.base.ViewUtils;
 import org.chromium.ui.interpolators.Interpolators;
@@ -33,8 +36,9 @@ import org.chromium.ui.interpolators.Interpolators;
 /** Implementation of {@link SideUiCoordinator}. */
 @NullMarked
 final class SideUiCoordinatorImpl implements SideUiCoordinator {
-    // TODO(crbug.com/491606333): Update placeholder animation duration.
-    private static final long TRANSITION_DURATION_MS = 0L;
+    private static final long TRANSITION_DURATION_MS = 350L;
+
+    private final Activity mParentActivity;
 
     private final ViewGroup mAnchorContainerParent;
     private final ViewGroup mStartAnchorContainer;
@@ -55,6 +59,7 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator {
     /**
      * Constructor for a {@link SideUiCoordinatorImpl}.
      *
+     * @param parentActivity The {@link Activity} containing all Side UIs.
      * @param anchorContainerParent The {@link ViewGroup} that is the parent for the side UI
      *     containers.
      * @param startAnchorContainerStub The {@link ViewStub} for the start-anchored container.
@@ -62,11 +67,14 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator {
      * @param topMarginSupplier The supplier for the Side UI's top margin.
      */
     /* package */ SideUiCoordinatorImpl(
+            Activity parentActivity,
             ViewGroup anchorContainerParent,
             ViewStub startAnchorContainerStub,
             ViewStub endAnchorContainerStub,
             NonNullObservableSupplier<Integer> topMarginSupplier) {
+        mParentActivity = parentActivity;
         mAnchorContainerParent = anchorContainerParent;
+
         // TODO(crbug.com/485309827): Account for the height of Side UI. Specifically, show beneath
         //  the tab strip when it is visible.
         mStartAnchorContainer = (ViewGroup) startAnchorContainerStub.inflate();
@@ -107,11 +115,14 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator {
                         || ChromeFeatureList.sEnableAndroidSidePanelDisableAnimations.getValue();
 
         // 2. Determine containers' widths and the upcoming SideUiSpecs.
-        // TODO(crbug.com/478306743): Loop through the registered SideUiContainers and call
-        //  SideUiContainer#determineContainerWidth to determine all of the containers' accepted
-        //  widths, rather than just implicitly accepting the requested width. Determine the
-        //  upcoming SideUiSpecs based on the accepted widths.
-        @Px int acceptedWidth = properties.mWidth;
+        // Currently we only have one side UI container, so "availableWidth" is the same as
+        // "windowWidth".
+        // TODO(crbug.com/478338737): Update to account for multiple side containers.
+        @Px int windowWidth = getWindowWidth();
+        @Px
+        int acceptedWidth =
+                mSideUiContainer.determineContainerWidth(
+                        properties.mWidth, /* availableWidth= */ windowWidth, windowWidth);
         SideUiSpecs newSideUiSpecs =
                 new SideUiSpecs(
                         properties.mAnchorSide == AnchorSide.START ? acceptedWidth : 0,
@@ -120,11 +131,12 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator {
         // 3. If animating, notify observers of the upcoming SideUiSpecs from the previous step and
         // gather their Transitions into a TransitionSet.
         @Nullable TransitionSet transitionSet =
-                suppressAnimations ? null : collectTransitions(newSideUiSpecs);
+                suppressAnimations
+                        ? null
+                        : collectTransitions(newSideUiSpecs, properties.mAnchorSide);
 
         // 4. Commit the new SideUiSpecs.
-        // TODO(crbug.com/478338737): Track accepted widths for all of the registered containers.
-        commitNewSideUiSpecs(newSideUiSpecs, transitionSet, properties.mAnchorSide, acceptedWidth);
+        commitNewSideUiSpecs(newSideUiSpecs, transitionSet, properties.mAnchorSide);
     }
 
     @Override
@@ -182,45 +194,68 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator {
      * returns a TransitionSet that plays all the Transitions together.
      *
      * @param sideUiSpecs The new SideUiSpecs representing the state for the end of the Transition.
+     * @param anchorSide The side to which the side container is anchored.
      */
-    private TransitionSet collectTransitions(SideUiSpecs sideUiSpecs) {
+    // TODO(crbug.com/510059861): Add tests for transition animations.
+    private TransitionSet collectTransitions(SideUiSpecs sideUiSpecs, @AnchorSide int anchorSide) {
         assert mSideUiContainer != null;
 
         TransitionSet transitionSet =
                 new TransitionSet()
                         .setDuration(TRANSITION_DURATION_MS)
                         .setOrdering(TransitionSet.ORDERING_TOGETHER)
-                        // TODO(crbug.com/491606333): Update placeholder interpolator.
-                        .setInterpolator(Interpolators.STANDARD_INTERPOLATOR);
+                        .setInterpolator(Interpolators.STANDARD_ACCELERATE);
 
         // Add transitions for the side UI container.
+        // TODO(crbug.com/478338737): Update to account for multiple side containers.
+        if (anchorSide == AnchorSide.START) {
+            transitionSet.addTransition(
+                    SideUiContainerTransition.createContainerTransition(
+                            mSideUiContainer, AnchorSide.START, sideUiSpecs.mStartContainerWidth));
+        } else {
+            transitionSet.addTransition(
+                    SideUiContainerTransition.createContainerTransition(
+                            mSideUiContainer, AnchorSide.END, sideUiSpecs.mEndContainerWidth));
+        }
 
         for (SideUiObserver observer : mSideUiObservers) {
-            transitionSet.addTransition(observer.onPreSideUiSpecsChange(sideUiSpecs));
+            @Nullable Transition observerTransition = observer.onPreSideUiSpecsChange(sideUiSpecs);
+            if (observerTransition != null) {
+                transitionSet.addTransition(observerTransition);
+            }
         }
 
         return transitionSet;
     }
 
     /**
-     * Commits a {@link SideUiContainer}'s requested update. Currently, statically resizes and
-     * attaches/detaches as necessary. As per the inline TODO, this will eventually support
-     * dynamic/animated resizes, where we'll instead kick off animators to handle the resizes.
+     * Commits the newly calculated {@link SideUiSpecs} for {@link SideUiContainer}s.
+     *
+     * <p>This method will perform static resizing or animated resizing, depending on the presence
+     * of the given {@code transitionSet}.
      *
      * @param sideUiSpecs The new {@link SideUiSpecs}.
      * @param transitionSet The {@link TransitionSet} directing the animation for the update. If
      *     null, then no animation is happening for the update.
      * @param anchorSide The requesting container's desired {@link AnchorSide}.
-     * @param acceptedWidth The requesting container's accepted width in px.
      */
-    @RequiresNonNull("mSideUiContainer")
-    @SuppressWarnings("UnusedVariable")
     private void commitNewSideUiSpecs(
             SideUiSpecs sideUiSpecs,
             @Nullable TransitionSet transitionSet,
-            @AnchorSide int anchorSide,
-            @Px int acceptedWidth) {
+            @AnchorSide int anchorSide) {
         assert mSideUiContainer != null;
+
+        // TODO(crbug.com/478338737): Update to account for multiple SideUiContainers.
+        assert sideUiSpecs.mStartContainerWidth == EMPTY_SIDE_UI_SPECS.mStartContainerWidth
+                        || sideUiSpecs.mEndContainerWidth == EMPTY_SIDE_UI_SPECS.mEndContainerWidth
+                : "Only one SideUiContainer is supported for now, so SideUiSpecs can't have"
+                        + " specs for more than one container";
+
+        @Px
+        int sideUiWidth =
+                anchorSide == AnchorSide.START
+                        ? sideUiSpecs.mStartContainerWidth
+                        : sideUiSpecs.mEndContainerWidth;
 
         // End any existing transitions still in progress.
         TransitionManager.endTransitions(getRootView());
@@ -232,8 +267,8 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator {
             // delayed
             // until after the Transition is finished.
             attachSideUiContainerView(mSideUiContainer.getView(), anchorSide);
-            if (acceptedWidth != 0) {
-                mSideUiContainer.setWidth(acceptedWidth);
+            if (sideUiWidth != 0) {
+                mSideUiContainer.setWidth(sideUiWidth);
             }
 
             // TODO(crbug.com/478338737): Update to account for multiple side containers, and move
@@ -243,7 +278,7 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator {
                         @Override
                         public void onTransitionEnd(Transition transition) {
                             // Detach and close the container after the transition is complete.
-                            if (acceptedWidth == 0) {
+                            if (sideUiWidth == 0) {
                                 assert mSideUiContainer != null;
                                 detachSideUiContainerView(mSideUiContainer.getView());
                                 mSideUiContainer.setWidth(0);
@@ -258,15 +293,18 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator {
             // like setting a View's translation, is not enough alone.
             ViewUtils.triggerSynchronousMeasureAndLayout(mAnchorContainerParent);
             TransitionManager.beginDelayedTransition(getRootView(), transitionSet);
-
-            // Trigger transitions for the side containers.
+            SideUiContainerTransition.triggerContainerTransition(
+                    mSideUiContainer, anchorSide, sideUiWidth);
         } else {
-            if (acceptedWidth != 0) {
+            // Reset the side UI container to clear any leftover state from previous Transitions.
+            SideUiContainerTransition.resetContainer(mSideUiContainer);
+
+            if (sideUiWidth != 0) {
                 attachSideUiContainerView(mSideUiContainer.getView(), anchorSide);
             } else {
                 detachSideUiContainerView(mSideUiContainer.getView());
             }
-            mSideUiContainer.setWidth(acceptedWidth);
+            mSideUiContainer.setWidth(sideUiWidth);
         }
 
         // Observers should be notified immediately, regardless of whether a Transition animation
@@ -374,6 +412,13 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator {
                 ((MarginLayoutParams) mEndAnchorContainer.getLayoutParams());
         endLayoutParams.topMargin = tabStripBottomPx;
         mEndAnchorContainer.setLayoutParams(endLayoutParams);
+    }
+
+    private @Px int getWindowWidth() {
+        return WindowMetricsCalculator.getOrCreate()
+                .computeCurrentWindowMetrics(mParentActivity)
+                .getBounds()
+                .width();
     }
 
     // Test Support

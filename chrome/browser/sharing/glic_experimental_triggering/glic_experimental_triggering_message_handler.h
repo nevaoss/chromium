@@ -16,6 +16,7 @@
 #include "mojo/public/cpp/bindings/unique_receiver_set.h"
 
 namespace glic {
+class GlicExperimentalOptInController;
 class GlicInstance;
 class GlicKeyedService;
 }  // namespace glic
@@ -52,18 +53,36 @@ class GlicExperimentalTriggeringMessageHandler : public SharingMessageHandler {
       std::optional<int64_t> last_seen_sequence_number,
       base::WeakPtr<glic::GlicInstance> instance);
 
+  void ProcessDeviceOptInRequest(
+      components_sharing_message::SharingMessage message,
+      tabs::TabInterface* active_tab,
+      DoneCallback done_callback);
+
   void ProcessStopActionRequest(
       components_sharing_message::SharingMessage message,
       tabs::TabInterface* active_tab,
       glic::GlicKeyedService* glic_service,
       DoneCallback done_callback);
 
+  // Checks if experimental triggering is allowed for the profile. If NOT
+  // allowed, handles the rejection by logging metrics, sending a FAILED
+  // response back to the server (if FCM is configured), invoking the
+  // `done_callback`, and returning true to indicate the message has been fully
+  // handled. If allowed, returns false to indicate that normal handling should
+  // proceed.
+  bool HandleUnavailableExperimentalTriggering(
+      glic::GlicKeyedService* glic_service,
+      const components_sharing_message::SharingMessage& message,
+      SharingMessageHandler::DoneCallback& done_callback);
+
   const raw_ptr<Profile> profile_;
 
   const raw_ptr<SharingMessageSender> message_sender_;
   mojo::UniqueReceiverSet<glic::mojom::ExperimentalTriggeringUpdatesHandler>
       listeners_;
-
+#if !BUILDFLAG(IS_ANDROID)
+  std::unique_ptr<glic::GlicExperimentalOptInController> opt_in_controller_;
+#endif
   base::WeakPtrFactory<GlicExperimentalTriggeringMessageHandler>
       weak_ptr_factory_{this};
 };

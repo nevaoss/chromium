@@ -107,8 +107,8 @@ public class CoBrowseViews {
      */
     public void attachPeekView(View peekView) {
         ViewGroup peekContainer = mContainerView.findViewById(R.id.actor_control_container);
+        peekContainer.removeAllViews();
         detachFromParent(peekView);
-        assert peekContainer.getChildCount() == 0;
         mPeekView = peekView;
         peekContainer.addView(mPeekView);
     }
@@ -140,6 +140,10 @@ public class CoBrowseViews {
                 detachFromParent(newView);
                 webUiContainer.addView(newView);
             }
+        }
+        if (webContents != null) {
+            webContents.getEventForwarder().setCurrentTouchOffsetX(0.0f);
+            webContents.getEventForwarder().setCurrentTouchOffsetY(0.0f);
         }
     }
 

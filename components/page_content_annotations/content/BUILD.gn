@@ -24,6 +24,7 @@ source_set("content") {
     "//components/feature_engagement/public",
     "//components/feature_engagement/public:feature_constants",
     "//components/optimization_guide/content/browser",
+    "//components/page_content_annotations/content/browser",
     "//components/paint_preview/browser",
     "//components/paint_preview/common",
     "//components/paint_preview/common/mojom",
@@ -120,6 +121,7 @@ source_set("unit_tests") {
     "//components/page_content_annotations/core:features",
     "//components/passage_embeddings/core:passage_embeddings_types",
     "//content/test:test_support",
+    "//pdf:buildflags",
     "//testing/gmock",
     "//testing/gtest",
   ]

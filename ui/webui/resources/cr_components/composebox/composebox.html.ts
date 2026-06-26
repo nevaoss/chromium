@@ -12,7 +12,7 @@ export function getHtml(this: ComposeboxElement) {
   // clang-format off
   return html`<!--_html_template_start_-->
   ${!this.disableComposeboxAnimation ? html`
-    <search-animated-glow
+    <search-animated-glow id="animatedSearchElement"
         animation-state="${this.animationState}"
         .inVoiceSearchMode="${this.inVoiceSearchMode}"
         .entrypointName="${this.entrypointName}"
@@ -20,6 +20,7 @@ export function getHtml(this: ComposeboxElement) {
         .transcript="${this.transcript}"
         .receivedSpeech="${this.receivedSpeech}"
         .energyEffectAnimationEnabled="${this.energyEffectAnimationEnabled}"
+        .isZeroState="${this.isZeroState}"
         exportparts="composebox-background">
     </search-animated-glow>
   ` : ''}
@@ -99,7 +100,7 @@ export function getHtml(this: ComposeboxElement) {
               </cr-composebox-submit>
               ` : ''}
             </div>
-            ${this.shouldShowDivider_() ? html`
+            ${this.shouldShowDivider() ? html`
             <div class="carousel-divider" part="carousel-divider"></div>
             ` : ''}
             <cr-composebox-dropdown
@@ -173,9 +174,9 @@ export function getHtml(this: ComposeboxElement) {
         @voice-search-error="${this.onVoiceSearchError}"
         @transcript-update="${this.onTranscriptUpdate}"
         @speech-received="${this.onSpeechReceived}"
-        @recording-stopped="${this.onRecordingStopped_}"
+        @recording-stopped="${this.onRecordingStopped}"
         .submitButtonIconType="${this.submitButtonIconType}"
-        exportparts="voice-close-button">
+        exportparts="voice-close-button, voice-details-link, voice-stop-button, voice-submit-button">
     </cr-composebox-voice-search>
   ` : ''}
   ${this.shouldShowSuggestionActivityLink_()

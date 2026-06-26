@@ -20,6 +20,7 @@
 #import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_ui_element.h"
 #import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_ui_updater.h"
 #import "ios/chrome/browser/intelligence/bwg/metrics/gemini_metrics.h"
+#import "ios/chrome/browser/intelligence/bwg/model/gemini_browser_agent.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_service.h"
 #import "ios/chrome/browser/intelligence/bwg/utils/gemini_constants.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
@@ -36,6 +37,7 @@
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_list.h"
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_list_observer_bridge.h"
 #import "ios/chrome/browser/shared/public/commands/bwg_commands.h"
+#import "ios/chrome/browser/shared/public/commands/fullscreen_commands.h"
 #import "ios/chrome/browser/shared/public/commands/lens_commands.h"
 #import "ios/chrome/browser/shared/public/commands/open_lens_input_selection_command.h"
 #import "ios/chrome/browser/shared/public/commands/open_new_tab_command.h"
@@ -59,6 +61,9 @@
                               ToolbarButtonMenuFactoryDelegate,
                               WebStateListObserving>
 
+// Called when the Gemini floaty invocation state changes.
+- (void)geminiFloatyInvokedChanged:(BOOL)isInvoked;
+
 // The web state list currently observed by this mediator.
 @property(nonatomic, assign) WebStateList* currentWebStateList;
 
@@ -66,6 +71,23 @@
 @property(nonatomic, assign) const TabGroup* currentTabGroup;
 
 @end
+
+namespace {
+
+// Bridge for GeminiBrowserAgent::Observer.
+class GeminiBrowserAgentObserverBridge : public GeminiBrowserAgent::Observer {
+ public:
+  GeminiBrowserAgentObserverBridge(AppBarMediator* mediator)
+      : mediator_(mediator) {}
+  void OnFloatyInvokedChanged(bool is_invoked) override {
+    [mediator_ geminiFloatyInvokedChanged:is_invoked];
+  }
+
+ private:
+  __weak AppBarMediator* mediator_;
+};
+
+}  // namespace
 
 @implementation AppBarMediator {
   std::unique_ptr<WebStateListObserverBridge> _observerBridge;
@@ -84,6 +106,8 @@
   raw_ptr<PrefService> _prefService;
   raw_ptr<AuthenticationService> _authenticationService;
   raw_ptr<GeminiService> _geminiService;
+  raw_ptr<GeminiBrowserAgent> _geminiBrowserAgent;
+  std::unique_ptr<GeminiBrowserAgentObserverBridge> _geminiObserver;
   raw_ptr<UrlLoadingBrowserAgent> _URLLoader;
   raw_ptr<TemplateURLService> _templateURLService;
   // Observer for the TemplateURLService.
@@ -114,6 +138,7 @@
               authenticationService:
                   (AuthenticationService*)authenticationService
                       geminiService:(GeminiService*)geminiService
+                 geminiBrowserAgent:(GeminiBrowserAgent*)geminiBrowserAgent
                           URLLoader:(UrlLoadingBrowserAgent*)URLLoader
                        tabGridState:(TabGridState*)tabGridState
                      incognitoState:(IncognitoState*)incognitoState {
@@ -138,6 +163,12 @@
     _authenticationService = authenticationService;
 
     _geminiService = geminiService;
+    _geminiBrowserAgent = geminiBrowserAgent;
+    if (_geminiBrowserAgent) {
+      _geminiObserver =
+          std::make_unique<GeminiBrowserAgentObserverBridge>(self);
+      _geminiBrowserAgent->AddObserver(_geminiObserver.get());
+    }
 
     _tabGridState = tabGridState;
     [_tabGridState addObserver:self];
@@ -269,6 +300,8 @@
   _incognitoFullscreenController = nullptr;
   _regularFullscreenBrowserAgent = nullptr;
   _incognitoFullscreenBrowserAgent = nullptr;
+  _regularFullscreenHandler = nil;
+  _incognitoFullscreenHandler = nil;
   [_tabGridState removeObserver:self];
   [_incognitoState removeObserver:self];
   _observerBridge.reset();
@@ -279,6 +312,11 @@
   _templateURLService = nullptr;
   _authenticationService = nullptr;
   _geminiService = nullptr;
+  if (_geminiBrowserAgent && _geminiObserver) {
+    _geminiBrowserAgent->RemoveObserver(_geminiObserver.get());
+  }
+  _geminiBrowserAgent = nullptr;
+  _geminiObserver.reset();
   _URLLoader = nullptr;
   _incognitoState = nil;
   _tabGridState = nil;
@@ -361,13 +399,23 @@
   _currentPage = _tabGridState.currentPage;
   self.currentTabGroup = _tabGridState.visibleTabGroup;
 
-  FullscreenController* fullscreenController =
-      _incognitoState.incognitoContentVisible ? _incognitoFullscreenController
-                                              : _regularFullscreenController;
+  if (IsFullscreenRefactoringEnabled()) {
+    id<FullscreenCommands> fullscreenHandler =
+        _incognitoState.incognitoContentVisible
+            ? self.incognitoFullscreenHandler
+            : self.regularFullscreenHandler;
+    [fullscreenHandler
+        exitFullscreenWithTrigger:FullscreenModeTransitionTrigger::kForcedByCode
+                         animated:YES];
+  } else {
+    FullscreenController* fullscreenController =
+        _incognitoState.incognitoContentVisible ? _incognitoFullscreenController
+                                                : _regularFullscreenController;
 
-  if (fullscreenController && fullscreenController->GetProgress() < 1.0) {
-    fullscreenController->ExitFullscreen(
-        FullscreenModeTransitionTrigger::kForcedByCode);
+    if (fullscreenController && fullscreenController->GetProgress() < 1.0) {
+      fullscreenController->ExitFullscreen(
+          FullscreenModeTransitionTrigger::kForcedByCode);
+    }
   }
   [self updateConsumer];
 }
@@ -628,7 +676,14 @@
     state = AppBarAssistantButtonState::kAIM;
   }
 
-  [self.consumer setAssistantButtonState:state];
+  BOOL highlighted =
+      _geminiBrowserAgent && _geminiBrowserAgent->is_floaty_invoked();
+  [self.consumer setAssistantButtonState:state highlighted:highlighted];
+}
+
+// Called when the Gemini floaty invocation state changes.
+- (void)geminiFloatyInvokedChanged:(BOOL)isInvoked {
+  [self updateAssistantButton];
 }
 
 // Updates for `incognito` being visible.

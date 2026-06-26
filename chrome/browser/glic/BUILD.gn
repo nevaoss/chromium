@@ -63,9 +63,8 @@ source_set("glic") {
     "public/glic_passkeys.h",
     "public/glic_side_panel_coordinator.cc",
     "public/glic_side_panel_coordinator.h",
-    "service/glic_instance_helper.cc",
     "service/glic_instance_helper.h",
-    "service/metrics/glic_instance_helper_metrics.h",
+    "service/glic_ui_types.h",
     "service/metrics/metrics_types.cc",
     "service/metrics/metrics_types.h",
   ]
@@ -113,6 +112,7 @@ source_set("glic") {
     # TODO(b/470059315): Make these work on Android, or move them to the
     # desktop-only section.
     sources += [
+      "gemini_experimental_triggering_settings_policy_handler.h",
       "glic_selection_observer.h",
       "host/context/glic_focused_tab_manager.h",
       "public/widget/glic_side_panel_coordinator_impl.h",
@@ -168,22 +168,26 @@ if (is_android) {
   }
 
   android_library("public_java") {
+    resources_package = "org.chromium.chrome.browser.glic"
     sources = [
       "public/android/java/src/org/chromium/chrome/browser/glic/GlicEnabling.java",
       "public/android/java/src/org/chromium/chrome/browser/glic/GlicKeyedService.java",
       "public/android/java/src/org/chromium/chrome/browser/glic/GlicKeyedServiceFactory.java",
       "public/android/java/src/org/chromium/chrome/browser/glic/GlicKeyedServiceHandler.java",
+      "public/android/java/src/org/chromium/chrome/browser/glic/GlicUiHelper.java",
     ]
     deps = [
       "//base:log_java",
       "//base:resetters_java",
       "//base:supplier_java",
       "//chrome/browser/flags:java",
+      "//chrome/browser/glic/android:java_resources",
       "//chrome/browser/glic/android:jni_headers_java",
       "//chrome/browser/profiles/android:java",
       "//chrome/browser/tab:java",
       "//chrome/browser/ui/browser_window/public/android:java",
       "//components/cached_flags:java",
+      "//third_party/android_deps:com_airbnb_android_lottie_java",
       "//third_party/jni_zero:jni_zero_java",
     ]
     srcjar_deps = [ ":glic_pref_names_srcjar" ]
@@ -192,6 +196,33 @@ if (is_android) {
 
 source_set("enum") {
   sources = [ "glic_enums.h" ]
+}
+
+source_set("glic_metrics") {
+  sources = [
+    "service/glic_state_tracker.cc",
+    "service/glic_state_tracker.h",
+    "service/metrics/glic_instance_coordinator_metrics.cc",
+    "service/metrics/glic_instance_coordinator_metrics.h",
+    "service/metrics/glic_instance_helper_metrics.cc",
+    "service/metrics/glic_instance_helper_metrics.h",
+    "service/metrics/glic_instance_metrics.cc",
+    "service/metrics/glic_instance_metrics.h",
+    "service/metrics/glic_metrics_session_manager.cc",
+    "service/metrics/glic_metrics_session_manager.h",
+  ]
+  deps = [
+    ":enum",
+    ":glic",
+    ":mojo_bindings",
+    "//base",
+    "//chrome/browser/glic/public:features",
+    "//components/metrics",
+    "//components/prefs",
+    "//components/skills/public",
+    "//content/public/browser",
+    "//services/metrics/public/cpp:ukm_builders",
+  ]
 }
 
 # TODO(b/430371855): This is the better target for resources only needed
@@ -277,24 +308,15 @@ source_set("impl") {
     "public/glic_keyed_service_factory.cc",
     "service/glic_instance_coordinator_impl.cc",
     "service/glic_instance_coordinator_impl.h",
+    "service/glic_instance_helper.cc",
     "service/glic_instance_impl.cc",
     "service/glic_instance_impl.h",
     "service/glic_invoke_handler.cc",
     "service/glic_invoke_handler.h",
     "service/glic_invoke_task.cc",
     "service/glic_invoke_task.h",
-    "service/glic_state_tracker.cc",
-    "service/glic_state_tracker.h",
     "service/glic_ui_embedder.h",
     "service/glic_ui_types.cc",
-    "service/glic_ui_types.h",
-    "service/metrics/glic_instance_coordinator_metrics.cc",
-    "service/metrics/glic_instance_coordinator_metrics.h",
-    "service/metrics/glic_instance_helper_metrics.cc",
-    "service/metrics/glic_instance_metrics.cc",
-    "service/metrics/glic_instance_metrics.h",
-    "service/metrics/glic_metrics_session_manager.cc",
-    "service/metrics/glic_metrics_session_manager.h",
     "suggestions/caching_zero_state_suggestions_manager.cc",
     "suggestions/caching_zero_state_suggestions_manager.h",
     "widget/browser_conditions.cc",
@@ -303,9 +325,13 @@ source_set("impl") {
     "widget/conversions.h",
   ]
 
-  public_deps = [ "//chrome/browser:browser_public_dependencies" ]
+  public_deps = [
+    "//chrome/browser:browser_public_dependencies",
+    "//chrome/browser/actor",
+  ]
   deps = [
     ":glic",
+    ":glic_metrics",
     "//chrome/browser:browser_process",
     "//chrome/browser:global_features",
     "//chrome/browser/actor",
@@ -383,6 +409,9 @@ source_set("impl") {
       "experimental_opt_in/glic_experimental_opt_in_controller.h",
       "experimental_opt_in/glic_experimental_opt_in_dialog_view.cc",
       "experimental_opt_in/glic_experimental_opt_in_dialog_view.h",
+      "experimental_opt_in/glic_experimental_opt_in_ui.cc",
+      "experimental_opt_in/glic_experimental_opt_in_ui.h",
+      "gemini_experimental_triggering_settings_policy_handler.cc",
       "glic_selection_observer.cc",
       "glic_settings_util_desktop.cc",
       "host/context/glic_focused_browser_manager_impl.cc",
@@ -391,12 +420,8 @@ source_set("impl") {
       "host/context/glic_focused_tab_manager.h",
       "host/context/glic_screenshot_capturer.cc",
       "host/context/glic_screenshot_capturer.h",
-      "host/glic_region_capture_controller.cc",
-      "host/glic_region_capture_controller.h",
       "widget/glic_floating_ui.cc",
       "widget/glic_floating_ui.h",
-      "widget/glic_inactive_floating_ui.cc",
-      "widget/glic_inactive_floating_ui.h",
       "widget/glic_inactive_side_panel_ui.cc",
       "widget/glic_inactive_side_panel_ui.h",
       "widget/glic_side_panel_coordinator_impl.cc",
@@ -418,6 +443,7 @@ source_set("impl") {
       "//chrome/browser/actor/ui",
       "//chrome/browser/glic/selection",
       "//chrome/browser/lens/region_search",
+      "//chrome/browser/resources/glic/experimental_opt_in:resources",
       "//chrome/browser/themes",
       "//chrome/browser/ui:browser_tab_strip",
       "//chrome/browser/ui/browser_window",
@@ -443,8 +469,6 @@ source_set("impl") {
       "glic_settings_util_android.cc",
       "widget/glic_floating_ui_android.cc",
       "widget/glic_floating_ui_android.h",
-      "widget/glic_inactive_floating_ui_android.cc",
-      "widget/glic_inactive_floating_ui_android.h",
       "widget/glic_inactive_side_panel_ui_android.cc",
       "widget/glic_inactive_side_panel_ui_android.h",
       "widget/glic_side_panel_coordinator_android.cc",
@@ -457,7 +481,6 @@ source_set("impl") {
       ":actor_types_for_migration",
       "//chrome/browser/context_sharing/tab_bottom_sheet/android",
       "//chrome/browser/glic/android",
-      "//chrome/browser/glic/android:jni_bridges",
       "//chrome/browser/ui/side_panel",
       "//chrome/browser/ui/side_panel:side_panel_ui_provider",
       "//chrome/browser/ui/side_panel/android",
@@ -558,6 +581,7 @@ source_set("unit_tests") {
   ]
   deps = [
     ":glic",
+    ":glic_metrics",
     ":impl",
     "//base/test:test_support",
     "//chrome/browser/background/glic",
@@ -641,9 +665,11 @@ source_set("browser_tests") {
 
   deps = [
     ":glic",
+    ":glic_metrics",
     ":impl",
     "//chrome/app:command_ids",
     "//chrome/browser:browser_features",
+    "//chrome/browser/actor",
     "//chrome/browser/background/glic",
     "//chrome/browser/glic/actor",
     "//chrome/browser/glic/actor:test_support",
@@ -655,6 +681,7 @@ source_set("browser_tests") {
     "//chrome/browser/skills",
     "//chrome/browser/skills:public",
     "//chrome/browser/tab_list",
+    "//chrome/browser/ui/navigator",
     "//chrome/common:chrome_features",
     "//chrome/test:test_support",
     "//components/favicon/content",
@@ -686,7 +713,6 @@ source_set("browser_tests") {
       "host/glic_api_browsertest.cc",
       "host/glic_permission_enforcement_browsertest.cc",
       "host/guest_util_browsertest.cc",
-      "host/new_glic_api_alt_browsertest.cc",
       "public/glic_enabling_browsertest.cc",
       "widget/application_hotkey_delegate_browsertest.cc",
       "widget/glic_side_panel_coordinator_browsertest.cc",
@@ -698,7 +724,6 @@ source_set("browser_tests") {
       "//base/test:test_support",
       "//chrome/browser:browser_process",
       "//chrome/browser:global_features",
-      "//chrome/browser/actor",
       "//chrome/browser/actor:test_support",
       "//chrome/browser/actor/ui",
       "//chrome/browser/actor/ui:test_support",
@@ -769,6 +794,7 @@ if (!is_android) {
     testonly = true
     defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
     sources = [
+      "glic_selection_observer_interactive_uitest.cc",
       "glic_settings_util_interactive_uitest.cc",
       "glic_user_status_interactive_uitest.cc",
       "host/glic_actor_attempt_form_filling_interactive_ui_test.cc",
@@ -810,6 +836,7 @@ if (!is_android) {
 
     deps = [
       ":glic",
+      ":glic_metrics",
       ":impl",
       "//chrome/browser:global_features",
       "//chrome/browser/actor",

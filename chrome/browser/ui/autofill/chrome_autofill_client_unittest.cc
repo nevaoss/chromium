@@ -74,12 +74,22 @@
 #include "chrome/browser/ui/android/autofill/autofill_save_card_delegate_android.h"
 #include "components/autofill/core/browser/payments/autofill_save_card_ui_info.h"
 #else
+#include "chrome/browser/account_settings/account_setting_service_factory.h"
+#include "chrome/browser/glic/glic_profile_manager.h"
+#include "chrome/browser/glic/host/glic.mojom.h"
+#include "chrome/browser/glic/public/glic_enabling.h"
+#include "chrome/browser/glic/public/glic_invoke_options.h"
+#include "chrome/browser/glic/public/glic_keyed_service.h"
+#include "chrome/browser/glic/public/glic_keyed_service_factory.h"
+#include "chrome/browser/glic/test_support/mock_glic_keyed_service.h"
+#include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/ui/autofill/autofill_field_promo_controller.h"
 #include "chrome/browser/ui/autofill/payments/save_card_bubble_controller_impl.h"
 #include "chrome/browser/ui/hats/hats_service_factory.h"
 #include "chrome/browser/ui/hats/mock_hats_service.h"
 #include "chrome/test/base/browser_with_test_window_test.h"
 #include "chrome/test/base/test_browser_window.h"
+#include "chrome/test/base/testing_browser_process.h"
 #endif
 
 namespace autofill {
@@ -96,6 +106,7 @@ using ::testing::Ge;
 using ::testing::InSequence;
 using ::testing::Le;
 using ::testing::Pair;
+using ::testing::Property;
 using ::testing::Ref;
 using ::testing::Return;
 using ::testing::ReturnRef;
@@ -653,6 +664,11 @@ class ChromeAutofillClientTestWithWindow : public BrowserWithTestWindowTest {
     AddTab(browser(), chrome::ChromeUINewTabURLAsGURL());
   }
 
+  void TearDown() override {
+    glic::GlicEnabling::SetBypassEnablementChecksForTesting(false);
+    BrowserWithTestWindowTest::TearDown();
+  }
+
   MockBrowserUserEducationInterface* user_education() {
     return static_cast<MockBrowserUserEducationInterface*>(
         BrowserUserEducationInterface::From(browser()));
@@ -666,10 +682,33 @@ class ChromeAutofillClientTestWithWindow : public BrowserWithTestWindowTest {
     return test_autofill_client_injector_[web_contents()];
   }
 
+  glic::MockGlicKeyedService* SetUpMockGlicKeyedService() {
+    glic::GlicEnabling::SetBypassEnablementChecksForTesting(true);
+    glic::GlicKeyedServiceFactory::GetInstance()->SetTestingFactory(
+        profile(),
+        base::BindRepeating(
+            [](glic::GlicProfileManager* glic_profile_manager,
+               content::BrowserContext* context)
+                -> std::unique_ptr<KeyedService> {
+              Profile* profile = Profile::FromBrowserContext(context);
+              return std::make_unique<glic::MockGlicKeyedService>(
+                  context, IdentityManagerFactory::GetForProfile(profile),
+                  TestingBrowserProcess::GetGlobal()->profile_manager(),
+                  glic_profile_manager,
+                  /*contextual_cueing_service=*/nullptr,
+                  /*actor_keyed_service=*/nullptr);
+            },
+            &glic_profile_manager_));
+    return static_cast<glic::MockGlicKeyedService*>(
+        glic::GlicKeyedServiceFactory::GetGlicKeyedService(profile(),
+                                                           /*create=*/true));
+  }
+
  private:
   TestAutofillClientInjector<TestChromeAutofillClient>
       test_autofill_client_injector_;
   ui::UserDataFactory::ScopedOverride user_ed_override_;
+  glic::GlicProfileManager glic_profile_manager_;
 };
 
 TEST_F(ChromeAutofillClientTestWithWindow, AutofillFieldIPH_NotifyFeatureUsed) {
@@ -678,6 +717,25 @@ TEST_F(ChromeAutofillClientTestWithWindow, AutofillFieldIPH_NotifyFeatureUsed) {
                   Ref(feature_engagement::kIPHAutofillAiOptInFeature),
                   FeaturePromoFeatureUsedAction::kClosePromoIfPresent));
   client()->NotifyIphFeatureUsed(AutofillClient::IphFeature::kAutofillAi);
+}
+
+// Tests that `OpenGeminiInSidebar` invokes Glic with the correct options and
+// prompt.
+TEST_F(ChromeAutofillClientTestWithWindow, OpenGeminiInSidebar) {
+  glic::MockGlicKeyedService* mock_glic_service = SetUpMockGlicKeyedService();
+  ASSERT_TRUE(mock_glic_service);
+
+  // We expect that the glic service is invoked with kAutofill as the invocation
+  // source and containing the correct prompt.
+  EXPECT_CALL(
+      *mock_glic_service,
+      Invoke(AllOf(Property(&glic::GlicInvokeOptions::GetInvocationSource,
+                            glic::mojom::InvocationSource::kAutofill),
+                   Field(&glic::GlicInvokeOptions::prompts,
+                         testing::ElementsAre("test prompt")))))
+      .WillOnce(testing::Return(base::WeakPtr<glic::GlicInstance>()));
+
+  client()->OpenGeminiInSidebar(u"test prompt");
 }
 #endif
 

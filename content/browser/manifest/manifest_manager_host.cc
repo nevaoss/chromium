@@ -66,7 +66,9 @@ std::optional<std::string> MaybeGetBadMessageStringForManifest(
     }
 
     if (!document_origin.IsSameOriginWith(manifest.start_url)) {
-      return "Manifest start_url must be same-origin with the document.";
+      return base::StrCat({"Manifest start_url (" + manifest.start_url.spec() +
+                           ") must be same-origin with the document (" +
+                           document_origin.Serialize() + ")."});
     }
 
     if (!document_origin.IsSameOriginWith(manifest.id)) {
@@ -127,6 +129,17 @@ std::optional<std::string> MaybeGetBadMessageStringForManifest(
             base::StartsWith(shortcut.url.path(), manifest.scope.path(),
                              base::CompareCase::SENSITIVE))) {
         return "Manifest shortcut urls must be within scope.";
+      }
+    }
+
+    for (const auto& icon : manifest.icons) {
+      if (!icon.src.is_valid()) {
+        return "Manifest icon urls must be valid.";
+      }
+      if (!icon.src.SchemeIsHTTPOrHTTPS() && !icon.src.SchemeIs("data") &&
+          !icon.src.SchemeIs(document_origin.scheme())) {
+        return "Manifest icon urls must be http, https, data, or match the "
+               "document scheme.";
       }
     }
   }

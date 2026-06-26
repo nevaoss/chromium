@@ -53,10 +53,10 @@
 #include "chrome/browser/ui/cookie_controls/roll_back_mode_b_infobar_controller.h"
 #include "chrome/browser/ui/lens/lens_overlay_controller.h"
 #include "chrome/browser/ui/lens/lens_search_controller.h"
+#include "chrome/browser/ui/page_action/action_ids.h"
+#include "chrome/browser/ui/page_action/page_action_controller.h"
 #include "chrome/browser/ui/page_action/page_action_icon_type.h"
-#include "chrome/browser/ui/page_actions/action_ids.h"
-#include "chrome/browser/ui/page_actions/page_action_controller.h"
-#include "chrome/browser/ui/page_actions/page_action_properties_provider.h"
+#include "chrome/browser/ui/page_action/page_action_properties_provider.h"
 #include "chrome/browser/ui/performance_controls/memory_saver_chip_controller.h"
 #include "chrome/browser/ui/performance_controls/memory_saver_chip_tab_helper.h"
 #include "chrome/browser/ui/performance_controls/tab_resource_usage_tab_helper.h"
@@ -107,6 +107,11 @@
 #include "chrome/browser/ui/views/location_bar/record_replay_page_action_controller.h"
 #include "chrome/browser/wallet/chrome_walletable_pass_client.h"
 #include "components/record_replay/core/common/record_replay_features.h"
+#endif
+
+#if BUILDFLAG(IS_WIN)
+#include "chrome/browser/ui/search_promotion/search_promotion_navigation_observer.h"
+#include "components/feature_engagement/public/feature_constants.h"
 #endif
 #include "chrome/browser/glic/browser_ui/glic_tab_indicator_helper.h"
 #include "chrome/browser/glic/glic_selection_observer.h"
@@ -365,7 +370,7 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
           GetUserDataFactory().CreateInstance<glic::SelectionOverlayController>(
               tab, &tab, profile->GetPrefs());
 
-      if (base::FeatureList::IsEnabled(features::kGlicSelectionPrompt)) {
+      if (glic::GlicEnabling::IsSelectionPromptEnabledForProfile(profile)) {
         glic_selection_observer_ =
             std::make_unique<glic::GlicSelectionObserver>(tab.GetContents());
       }
@@ -499,6 +504,15 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
     contextual_tasks_tab_visit_tracker_ =
         std::make_unique<contextual_tasks::ContextualTasksTabVisitTracker>(
             tab.GetContents());
+  }
+#endif
+
+#if BUILDFLAG(IS_WIN)
+  if (base::FeatureList::IsEnabled(
+          feature_engagement::kIPHSearchPromotionFeature)) {
+    search_promotion_navigation_observer_ =
+        GetUserDataFactory().CreateInstance<SearchPromotionNavigationObserver>(
+            tab, tab);
   }
 #endif
 

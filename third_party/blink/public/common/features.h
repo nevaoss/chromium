@@ -107,6 +107,10 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kAndroidSpellcheckFullApiBlink);
 // If enabled, the platform in the User-Agent metadata for Android desktop will
 // be "Android" instead of "Linux".
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kAndroidDesktopUAPlatform);
+
+// If enabled, the user agent platform will be ChromeOS instead of Linux for
+// desktop Android devices, when kAndroidDesktopUAPlatform is disabled.
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kAndroidDesktopUASpoofAsChromeOS);
 #endif
 
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
@@ -1873,8 +1877,6 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kStreamlineRendererInit);
 
 // Subsample a very chatty UKM metric.
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kSubSampleWindowProxyUsageMetrics);
-
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kSupportOpeningDraggedLinksInSameTab);
 
 // When enabled, task state traces are emitted for microtasks when the
 // "task_attribution" trace category is enabled.

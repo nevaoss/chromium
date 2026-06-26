@@ -43,6 +43,7 @@
 #import "components/enterprise/buildflags/buildflags.h"
 #import "components/enterprise/client_certificates/core/features.h"
 #import "components/enterprise/connectors/core/features.h"
+#import "components/enterprise/data_controls/core/browser/features.h"
 #import "components/feature_engagement/public/feature_constants.h"
 #import "components/feature_engagement/public/feature_list.h"
 #import "components/feed/feed_feature_list.h"
@@ -1361,12 +1362,16 @@ const FeatureEntry::FeatureParam kAfterEditForExplainGeminiEditMenu[] = {
     {kExplainGeminiEditMenuParams, "1"}};
 const FeatureEntry::FeatureParam kAfterSearchForExplainGeminiEditMenu[] = {
     {kExplainGeminiEditMenuParams, "2"}};
+const FeatureEntry::FeatureParam kAdjacentForExplainGeminiEditMenu[] = {
+    {kExplainGeminiEditMenuParams, "3"}};
 
 const FeatureEntry::FeatureVariation kPositionForExplainGeminiEditMenu[] = {
     {"Explain Gemini shows up after Edit", kAfterEditForExplainGeminiEditMenu,
      nullptr},
     {"Explain Gemini shows up after Search with Google",
-     kAfterSearchForExplainGeminiEditMenu, nullptr}};
+     kAfterSearchForExplainGeminiEditMenu, nullptr},
+    {"Explain Gemini shows up adjacent to Search with Google",
+     kAdjacentForExplainGeminiEditMenu, nullptr}};
 
 const FeatureEntry::FeatureParam kPageActionMenuIconSparkles1[] = {
     {kPageActionMenuIconParams, "1"}};
@@ -1497,10 +1502,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(
          autofill::features::debug::kAutofillShowTypePredictions)},
-    {"ntp-background-customization",
-     flag_descriptions::kNTPBackgroundCustomizationName,
-     flag_descriptions::kNTPBackgroundCustomizationDescription,
-     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kNTPBackgroundCustomization)},
     {"ntp-header-use-transforms-for-animations",
      flag_descriptions::kNTPHeaderUseTransformsForAnimationsName,
      flag_descriptions::kNTPHeaderUseTransformsForAnimationsDescription,
@@ -2921,6 +2922,13 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kIOSMiniMapUniversalLinkCounterfactualDescription,
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kIOSMiniMapUniversalLinkCounterfactual)},
+    {"ios-how-to-chrome", flag_descriptions::kIOSHowToChromeName,
+     flag_descriptions::kIOSHowToChromeDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kIOSHowToChrome)},
+    {"data-controls-search-with",
+     flag_descriptions::kDataControlsSearchWithName,
+     flag_descriptions::kDataControlsSearchWithDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(data_controls::kDataControlsSearchWith)},
 });
 
 bool SkipConditionalFeatureEntry(const flags_ui::FeatureEntry& entry) {

@@ -142,9 +142,6 @@ public class OmniboxFeatures {
     private static final CachedFlag sOmniboxMultimodalInput =
             newFlag(OmniboxFeatureList.OMNIBOX_MULTIMODAL_INPUT, FeatureState.ENABLED_IN_TEST);
 
-    public static final BooleanCachedFeatureParam sShowDedicatedModeButton =
-            newBooleanParam(sOmniboxMultimodalInput, "show_dedicated_mode_button", false);
-
     public static final BooleanCachedFeatureParam sCompactFusebox =
             newBooleanParam(sOmniboxMultimodalInput, "compact_fusebox", false);
 
@@ -153,9 +150,6 @@ public class OmniboxFeatures {
 
     public static final BooleanCachedFeatureParam sRedirectComposeplateButton =
             newBooleanParam(sOmniboxMultimodalInput, "redirect_composeplate_button", true);
-
-    public static final BooleanCachedFeatureParam sEnableAllFileTypes =
-            newBooleanParam(sOmniboxMultimodalInput, "all_file_types", false);
 
     /** A necessary but not sufficient condition to show the current tab button. */
     public static final BooleanCachedFeatureParam sAllowCurrentTab =
@@ -175,6 +169,9 @@ public class OmniboxFeatures {
     public static final BooleanCachedFeatureParam sUseAskHintForNtp =
             newBooleanParam(sOmniboxMultimodalInput, "use_ask_hint_for_ntp", false);
 
+    public static final BooleanCachedFeatureParam sShowNtpPlusButton =
+            newBooleanParam(sOmniboxMultimodalInput, "show_ntp_plus_button", false);
+
     public static final CachedFlag sAndroidDesktopAimGate =
             newFlag(OmniboxFeatureList.ANDROID_DESKTOP_AIM_GATE, FeatureState.ENABLED_IN_TEST);
 
@@ -183,9 +180,6 @@ public class OmniboxFeatures {
 
     public static final BooleanCachedFeatureParam sWrapAutocompleteText =
             newBooleanParam(sOmniboxMultimodalInput, "wrap_autocomplete_text", false);
-
-    public static final CachedFlag sAndroidHubSearchTabGroups =
-            newFlag(OmniboxFeatureList.ANDROID_HUB_SEARCH_TAB_GROUPS, FeatureState.ENABLED_IN_PROD);
 
     public static final CachedFlag sOmniboxImprovementForLFF =
             newFlag(OmniboxFeatureList.OMNIBOX_IMPROVEMENT_FOR_LFF, FeatureState.ENABLED_IN_PROD);
@@ -253,15 +247,6 @@ public class OmniboxFeatures {
     // suggestions on SearchActivity.
     public static final BooleanCachedFeatureParam sJumpStartOmniboxCoverRecentlyVisitedPage =
             newBooleanParam(sJumpStartOmnibox, "jump_start_cover_recently_visited_page", false);
-
-    // This parameter enables the hub search entrypoints on the tab groups pane.
-    public static final BooleanCachedFeatureParam sAndroidHubSearchEnableOnTabGroupsPane =
-            newBooleanParam(sAndroidHubSearchTabGroups, "enable_hub_search_tab_groups_pane", true);
-
-    // This parameter enables the tab group string on the hub search box entrypoint.
-    public static final BooleanCachedFeatureParam sAndroidHubSearchEnableTabGroupStrings =
-            newBooleanParam(
-                    sAndroidHubSearchTabGroups, "enable_hub_search_tab_group_strings", false);
 
     // This parameter enables showing the switch-to-tab chip on large form factors.
     public static final BooleanCachedFeatureParam sOmniboxImprovementForLFFSwitchToTabChip =

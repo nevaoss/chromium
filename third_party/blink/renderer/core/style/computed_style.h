@@ -981,6 +981,12 @@ class ComputedStyle final : public ComputedStyleBase {
   }
 
   bool IsCaretColorAuto() const { return CaretColor().IsAutoColor(); }
+  bool IsCaretTextColorAuto() const {
+    return CaretColor().TextColor().IsAutoColor();
+  }
+  // Returns the resolved the second value of caret-color for the color of
+  // the text that under block caret shape or nullopt if the value is 'auto'.
+  CORE_EXPORT std::optional<blink::Color> ResolvedCaretTextColor() const;
 
   // accent-color
   // An empty optional means the accent-color is 'auto'
@@ -2872,11 +2878,6 @@ class ComputedStyle final : public ComputedStyleBase {
     return PhysicalToLogical<EBorderStyle>(
         GetWritingDirection(), BorderTopStyle(), BorderRightStyle(),
         BorderBottomStyle(), BorderLeftStyle());
-  }
-
-  PhysicalToLogical<const Length&> PhysicalBoundsToLogical() const {
-    return PhysicalToLogical<const Length&>(GetWritingDirection(), Top(),
-                                            Right(), Bottom(), Left());
   }
 
   static Difference ComputeDifferenceIgnoringInheritedFirstLineStyle(

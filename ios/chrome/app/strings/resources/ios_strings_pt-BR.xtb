@@ -160,6 +160,7 @@
 <translation id="1524563461097350801">Agora não</translation>
 <translation id="1531038290222364269">Mostrar guias</translation>
 <translation id="1536390784834419204">Traduzir página</translation>
+<translation id="1539535193627863227">Nenhuma senha ou chave de acesso foi encontrada para este site</translation>
 <translation id="1540800554400757039">Endereço 1</translation>
 <translation id="154312949627292154">Abra as guias recebidas dos seus outros dispositivos na tela de bloqueio.</translation>
 <translation id="1545749641540134597">Ler QR code</translation>
@@ -201,6 +202,7 @@
 <translation id="1657011748321897393">O compartilhamento falhou porque não há conexão de rede.</translation>
 <translation id="1668001730617725852">Abrir em um novo grupo de guias</translation>
 <translation id="1670861525135254448">Salvar veículo</translation>
+<translation id="1671568970992212376">Salve suas fotos no Google Fotos para acessar quando quiser.</translation>
 <translation id="1674504678466460478"><ph name="SOURCE_LANGUAGE" /> para <ph name="TARGET_LANGUAGE" /></translation>
 <translation id="1678855624321223424">De acordo com as políticas da sua organização, este arquivo pode conter informações sensíveis</translation>
 <translation id="168389590065701766">Agora você pode abrir o Google Lens na barra de endereço e pesquisar qualquer coisa que vê</translation>
@@ -441,7 +443,6 @@
 <translation id="2493269659028026145">Bloquear imediatamente com o <ph name="BIOMETRIC_AUTHENITCATION_TYPE" /></translation>
 <translation id="2496180316473517155">Histórico de navegação</translation>
 <translation id="2496626742194544812">Ir para a primeira guia</translation>
-<translation id="2497852260688568942">A sincronização foi desativada pelo administrador</translation>
 <translation id="2499505845365628575">Você pode conferir todo seu histórico de navegação do <ph name="HISTORY_BUTTON_ACCESSIBILITY_LABEL" />.</translation>
 <translation id="2511117522375201202">Você tem <ph name="NUMBER_OF_PASSWORDS" /> senhas comprometidas que podem colocar sua segurança em risco.</translation>
 <translation id="2513103768503127042">Seus grupos de guias vão aparecer aqui</translation>
@@ -566,6 +567,7 @@
 <translation id="2969979262385602596">Falha durante o login. Tente novamente mais tarde.</translation>
 <translation id="2975761176769946178">É obrigatório informar um URL</translation>
 <translation id="297667759942911166">Colaborar em grupos de guias</translation>
+<translation id="298696743524648170">Para usar o Gemini no Chrome, faça login no navegador com sua Conta do Google</translation>
 <translation id="2987670534697681860">Confirme sua identidade para ter acesso a todas as suas senhas neste dispositivo</translation>
 <translation id="2989523299700148168">Visitados recentemente</translation>
 <translation id="2989805286512600854">Abrir em uma nova guia</translation>
@@ -598,6 +600,7 @@
 <translation id="3106258548858559536">Desativar Modo de leitura</translation>
 <translation id="3106690631878101882">Ocultar opção "Traduzir"</translation>
 <translation id="310900540163454140">Excluir a senha de <ph name="WEBSITE" />?</translation>
+<translation id="3109724472072898302">Recolhido</translation>
 <translation id="3112556859945124369">Marcar...</translation>
 <translation id="3116695032231023709">Salvar documento de identidade</translation>
 <translation id="3119874402040566234">Sua conta será desconectada e os dados de navegação serão excluídos</translation>
@@ -619,6 +622,7 @@
 <translation id="31652791196570636">Dispensar</translation>
 <translation id="3167868116600277716">Feed do Discover</translation>
 <translation id="3169472444629675720">Discover</translation>
+<translation id="3172755898799085680">O Gemini não está disponível nesta página</translation>
 <translation id="3174662312949010067">Você também pode usar as senhas salvas em outros dispositivos.</translation>
 <translation id="3177338796769255211">Faça login para ter acesso a favoritos e muito mais em todos os seus dispositivos</translation>
 <translation id="3181954750937456830">Navegação segura: protege você e seu dispositivo de sites perigosos</translation>
@@ -642,6 +646,7 @@
 <translation id="3245744387817103524">Não foi possível salvar a mudança.</translation>
 <translation id="3254806613790954367">Mostra a última guia aberta em todos os dispositivos</translation>
 <translation id="325717987950204592">Toque em "Privacidade e segurança"</translation>
+<translation id="3259451381796379533">Esta conta não funciona com o Gemini. Faça login com outra Conta do Google.</translation>
 <translation id="3265736395246760288">Faça login mais rápido em qualquer dispositivo sincronizado.</translation>
 <translation id="3272527697863656322">Cancelar</translation>
 <translation id="3273510436356991673">Personalize sua tela inicial</translation>
@@ -993,6 +998,7 @@
 <translation id="4552042254369397518">Copiando…</translation>
 <translation id="4553044860350038560">Mais chaves de acesso</translation>
 <translation id="4564893319561643483">Ocultar "<ph name="TITLE" />"</translation>
+<translation id="456502772933839252">Compartilhando <ph name="PAGE_TITLE" /></translation>
 <translation id="4565377596337484307">Ocultar senha</translation>
 <translation id="4568230126482344545">Ocultar guias recentes</translation>
 <translation id="4578835633387306383">Ativar…</translation>
@@ -1077,7 +1083,6 @@
 <translation id="4824480232751123840">Volume</translation>
 <translation id="4824497107140370669">{count,plural, =0{{domain}}=1{{domain} e mais 1}one{{domain} e mais {count} outra}other{{domain} e mais {count} outras}}</translation>
 <translation id="4826588772550366629">a câmera e o microfone</translation>
-<translation id="4828431027673677473">Produtos com base nos seus interesses</translation>
 <translation id="4829420936835028285">Editar grupo de guias</translation>
 <translation id="4833786495304741580">Envia automaticamente estatísticas de uso e relatórios de erros para o Google.</translation>
 <translation id="483689884442613745">Salvar…</translation>
@@ -1781,6 +1786,7 @@ A "Transição" também deve ser ativada na seção "Geral" das configurações.
 <translation id="7186568385131859684">Controle como o histórico de navegação é usado com seus outros dados nos Serviços do Google</translation>
 <translation id="719133302483559673">Gerencie seus interesses e suas preferências.</translation>
 <translation id="7191382490098297347">Imagem do rolo da câmera</translation>
+<translation id="7203150201908454328">Expandido</translation>
 <translation id="7203496777391039568">A privacidade e segurança dos dados da sua organização ficam garantidas</translation>
 <translation id="720399613139435155">Falha na tradução</translation>
 <translation id="7204922488054642675">Notícias personalizadas</translation>
@@ -1865,6 +1871,7 @@ A "Transição" também deve ser ativada na seção "Geral" das configurações.
 <translation id="7498234416455752244">Continuar editando</translation>
 <translation id="7500244509706269886">Preencher formulário automaticamente</translation>
 <translation id="750493650310597496">0 selecionados</translation>
+<translation id="7505402981231763928">Você precisa fazer login para usar o Gemini</translation>
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">Para bloquear suas guias anônimas, configure o Touch ID, o Face ID ou uma senha.</translation>
 <translation id="750886945254958667">Mantenha este grupo para adicionar guias mais tarde ou saia dele se não quiser mais ter acesso</translation>
@@ -1997,6 +2004,7 @@ A "Transição" também deve ser ativada na seção "Geral" das configurações.
 <translation id="7938254975914653459">FaceTime</translation>
 <translation id="7939856641500914040">Excluir dados de navegação…</translation>
 <translation id="7941578031639087549">{count,plural, =1{Página adicionada à lista de leitura na sua conta ({email})}one{{count} página adicionada à lista de leitura na sua conta ({email})}other{{count} páginas adicionadas à lista de leitura na sua conta ({email})}}</translation>
+<translation id="7948579849190819732">Guia atual</translation>
 <translation id="7952353944614086413">Seus grupos e guias abertos</translation>
 <translation id="7952670906562503188">Você está prestes a excluir {passkey_count} chaves de acesso e a lista de sites e apps em que escolheu nunca salvar informações de login. As contas que você criou em sites e apps não serão excluídas.</translation>
 <translation id="7958575506592576831">Informações de segurança da página</translation>
@@ -2106,7 +2114,6 @@ A "Transição" também deve ser ativada na seção "Geral" das configurações.
 <translation id="828291969289324795">{count,plural, =1{Adicionar guia ao novo grupo}one{Adicionar guia ao novo grupo}other{Adicionar guias ao novo grupo}}</translation>
 <translation id="8283172974887967105">Definir…</translation>
 <translation id="8289930144142009940">Notificações de <ph name="FEATURE_NAME" /> desativadas</translation>
-<translation id="8290077367744012649">Monitorar preços nas suas guias</translation>
 <translation id="8292893224181644074">Download concluído</translation>
 <translation id="8299417921174340354">Para usar senhas, defina uma no dispositivo primeiro.</translation>
 <translation id="8307481894409578819">Não foi possível fazer upload deste arquivo</translation>

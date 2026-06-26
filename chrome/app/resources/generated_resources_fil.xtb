@@ -1733,6 +1733,7 @@ Puwede mong pamahalaan ang mga setting ng account na ito sa pamamagitan ng pag-i
 <translation id="2164131635608782358"><ph name="FIRST_SWITCH" />, <ph name="SECOND_SWITCH" />, <ph name="THIRD_SWITCH" />, at 1 pang switch</translation>
 <translation id="2165177462441582039">Piliin kung gaano katagal iha-highlight ang bawat item</translation>
 <translation id="2166369534954157698">The quick brown fox jumps over the lazy dog</translation>
+<translation id="2168036794078614559">Naipadala ang ulat</translation>
 <translation id="2169062631698640254">Mag-sign in pa rin</translation>
 <translation id="2173302385160625112">Suriin ang iyong koneksyon sa internet</translation>
 <translation id="2173801458090845390">Magdagdag ng requisition ID sa device na ito</translation>
@@ -3178,7 +3179,7 @@ Inaatasan ka ng <ph name="DOMAIN" /> na panatilihing nakalagay ang iyong smart c
 <translation id="3152356229013609796">Tingnan, i-dismiss, at sagutin ang mga notification ng iyong telepono</translation>
 <translation id="3152545926232662879">Binalewala:</translation>
 <translation id="3152596030350326139">Ipakita ang mga tab nang pahalang</translation>
-<translation id="3154754096046236400">Personal context</translation>
+<translation id="3154754096046236400">Personal na konteksto</translation>
 <translation id="3155163173539279776">Muling ilunsad ang Chromium</translation>
 <translation id="3155394504825881014">I-convert ang Grupo ng Tab sa Folder ng Bookmark</translation>
 <translation id="3156511682997763015">I-forward nang 10 segundo</translation>
@@ -3448,7 +3449,6 @@ Inaatasan ka ng <ph name="DOMAIN" /> na panatilihing nakalagay ang iyong smart c
 <translation id="3347086966102161372">K&amp;opyahin ang address ng larawan</translation>
 <translation id="3348038390189153836">Natuklasan ang natatanggal na device</translation>
 <translation id="3348973040180736882">Pag-decompress</translation>
-<translation id="3349610303043713601">Mag-browse gamit ang AI</translation>
 <translation id="3349933790966648062">Footprint ng Memory</translation>
 <translation id="3351472127384196879">Magdagdag o magtakda ng mga button sa iyong pen</translation>
 <translation id="3353786022389205125">I-on ang "Ipakita ang lock screen kapag nag-wake mula sa sleep" at subukan ulit</translation>
@@ -6838,6 +6838,7 @@ Puwede kang magtalaga ng maraming switch sa pagkilos na ito.</translation>
 <translation id="5712153969432126546">Paminsan-minsan, nagpa-publish ang mga site ng mga PDF, tulad ng mga dokumento, kontrata, at form</translation>
 <translation id="571222594670061844">Puwedeng magpakita ang mga site ng mga prompt sa pag-sign in mula sa mga serbisyo ng pagkakakilanlan</translation>
 <translation id="5713158217420111469">Nakakonekta sa <ph name="DEVICE" /></translation>
+<translation id="5713988532993992900">Baliktad</translation>
 <translation id="5714100381896040477">Limitahan ang paggalaw sa screen</translation>
 <translation id="5719854774000914513">Puwedeng hilingin ng mga site na kumonekta sa mga HID device</translation>
 <translation id="5720729194423017301">Mga shortcut para sa mga site at search engine</translation>
@@ -7299,6 +7300,7 @@ Puwede kang magtalaga ng maraming switch sa pagkilos na ito.</translation>
 <translation id="604388835206766544">Hindi na-parse ang configuration</translation>
 <translation id="6043994281159824495">Mag-sign out ngayon</translation>
 <translation id="6045114302329202345">Pangunahing button ng TrackPoint</translation>
+<translation id="6045425183320109397">Ni</translation>
 <translation id="6047632800149092791">Hindi gumagana ang pag-sync. Subukang mag-sign out at mag-sign in ulit.</translation>
 <translation id="6048747414605857443">Pumili at mag-customize ng mga boses ng text-to-speech para sa ChromeVox at Select-to-speak</translation>
 <translation id="6050189528197190982">Grayscale</translation>
@@ -8706,7 +8708,6 @@ May # ka pang nakompromisong password. Inirerekomenda ng Google Password Manager
 <translation id="701020165009334820">Puwede kang mag-download ng mga Android app at laro sa pamamagitan ng Play Store.</translation>
 <translation id="701080569351381435">View Source</translation>
 <translation id="7012430956470647760">Parental controls para sa mga app</translation>
-<translation id="7013762323294215682">Mase-save ang passkey na ito sa iyong password manager. Magagamit ng sinumang may access dito ang passkey na ito.</translation>
 <translation id="7014174261166285193">Nabigo ang pag-install.</translation>
 <translation id="7014480873681694324">Alisin ang Highlight</translation>
 <translation id="7014741021609395734">Antas ng pag-zoom</translation>
@@ -8754,6 +8755,7 @@ May # ka pang nakompromisong password. Inirerekomenda ng Google Password Manager
 <translation id="7044606776288350625">I-sync ang data</translation>
 <translation id="7050037487872780845">Invalid na configuration ng hotspot</translation>
 <translation id="7051222203795962489">{COUNT,plural, =1{Na-save ang password sa iyong Google Account na <ph name="USER_EMAIL" />}one{Na-save ang mga password sa iyong Google Account na <ph name="USER_EMAIL" />}other{Na-save ang mga password sa iyong Google Account na <ph name="USER_EMAIL" />}}</translation>
+<translation id="7051728324516005763">AI sa Chrome</translation>
 <translation id="7052762602787632571">&amp;I-delete ang data mula sa pag-browse...</translation>
 <translation id="705352103640172578">Talon</translation>
 <translation id="7053983685419859001">I-block</translation>
@@ -11799,7 +11801,6 @@ Inaatasan ka ng <ph name="DOMAIN" /> na panatilihing nakalagay ang iyong smart c
 <translation id="9120800848981545750">I-download ang Chrome para sa iOS para ma-access ang iyong mga tab, bookmark, at password sa telepono mo.</translation>
 <translation id="9121814364785106365">Binuksan bilang na-pin na tab</translation>
 <translation id="9122099953033442610">{MULTI_GROUP_TAB_COUNT,plural, =0{Isara ang Tab ang I-delete ang Grupo?}=1{Isara ang Mga Tab at I-delete ang Grupo?}one{Isara ang Mga Tab at I-delete ang Mga Grupo?}other{Isara ang Mga Tab at I-delete ang Mga Grupo?}}</translation>
-<translation id="9122788874051694311">I-save ang passkey na ito sa labas ng Incognito?</translation>
 <translation id="9123287046453017203">Hindi up to date ang iyong device</translation>
 <translation id="9125910124977405374">Alisin ang <ph name="LANGUAGE_NAME" /> sa mga awtomatikong isinasaling wika</translation>
 <translation id="9125912770834459638">Hindi Ka Pinapayagan ng Iyong Organisasyon na Mag-sign in</translation>

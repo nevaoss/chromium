@@ -1721,6 +1721,7 @@ Oʻz qurilmangizda Family Link ilovasini oʻrnatib, bu hisob sozlamalarini boshq
 <translation id="2164131635608782358"><ph name="FIRST_SWITCH" />, <ph name="SECOND_SWITCH" />, <ph name="THIRD_SWITCH" /> va yana 1 ta kalit tugma</translation>
 <translation id="2165177462441582039">Har bir element qancha vaqt ajratib turilishini tanlang</translation>
 <translation id="2166369534954157698">Chaqqon malla tulki yalqov itning ustidan sakrab o‘tdi</translation>
+<translation id="2168036794078614559">Hisobot yuborildi</translation>
 <translation id="2169062631698640254">Tizimga baribir kirish</translation>
 <translation id="2173302385160625112">Internet aloqasini tekshiring</translation>
 <translation id="2173801458090845390">Qurilmaga identifikator so‘rovini qo‘shish</translation>
@@ -3434,7 +3435,6 @@ Oʻz qurilmangizda Family Link ilovasini oʻrnatib, bu hisob sozlamalarini boshq
 <translation id="3347086966102161372">Tasvirning URL manzilini nusxalash</translation>
 <translation id="3348038390189153836">Xotira qurilmasi aniqlandi</translation>
 <translation id="3348973040180736882">Arxivdan chiqarilmqoda</translation>
-<translation id="3349610303043713601">AI bilan kezish</translation>
 <translation id="3349933790966648062">Xotira sarfi</translation>
 <translation id="3351472127384196879">Pero tugmalarini kiritish yoki belgilash</translation>
 <translation id="3353786022389205125">“Qurilma uyqu rejimidan chiqarilishida ekran qulfi koʻrsatilsin” funksiyasini yoqing va qayta urining</translation>
@@ -6823,6 +6823,7 @@ Bu amal uchun bir nechta kalit tugma belgilash mumkin.</translation>
 <translation id="5712153969432126546">Baʼzan saytlar hujjatlar, shartnomalar va shakllarni PDF formatda chop etadi.</translation>
 <translation id="571222594670061844">Saytlar shaxsni tasdiqlash xizmatlariga kirish oynalarini chiqarishi mumkin</translation>
 <translation id="5713158217420111469"><ph name="DEVICE" /> qurilmasiga ulangan</translation>
+<translation id="5713988532993992900">Teskari</translation>
 <translation id="5714100381896040477">Ekrandagi harakatlarni cheklash</translation>
 <translation id="5719854774000914513">Saytlar HID qurilmalarga ulanishga ruxsat soʻray oladi</translation>
 <translation id="5720729194423017301">Saytlar va qidiruv tizimlari uchun tezkor tugmalar</translation>
@@ -7284,6 +7285,7 @@ Ochiq eksponenta (<ph name="PUBLIC_EXPONENT_NUM_BITS" /> bit):
 <translation id="604388835206766544">Konfiguratsiya tahlil qilinmadi</translation>
 <translation id="6043994281159824495">Chiqish</translation>
 <translation id="6045114302329202345">Asosiy TrackPoint tugmasi</translation>
+<translation id="6045425183320109397">Muallif:</translation>
 <translation id="6047632800149092791">Sinxronizatsiya ishlamayapti. Profilingizdan chiqing va qaytadan urining.</translation>
 <translation id="6048747414605857443">ChromeVox va Teginib tinglash funksiyalari uchun nutq sintezatori ovozini tanlash va moslash</translation>
 <translation id="6050189528197190982">Kulrang tuslari</translation>
@@ -8689,7 +8691,6 @@ Yana # ta oshkor qilingan parollaringiz bor. Google Parollar menejeri ularni hoz
 <translation id="701020165009334820">Play Market orqali Android ilovalari va oʻyinlarini yuklab olish mumkin.</translation>
 <translation id="701080569351381435">Sahifa kodini ko‘rish</translation>
 <translation id="7012430956470647760">Ilovalar uchun ota-ona nazorati</translation>
-<translation id="7013762323294215682">Bu kalit parollar menejeriga saqlanadi. Unga kirish huquqiga ega boʻlganlar bu kalitdan foydalanishi mumkin.</translation>
 <translation id="7014174261166285193">O‘rnatish amali bajarilmadi.</translation>
 <translation id="7014480873681694324">Belgilovni olib tashlash</translation>
 <translation id="7014741021609395734">Masshtab</translation>
@@ -8736,6 +8737,7 @@ Yana # ta oshkor qilingan parollaringiz bor. Google Parollar menejeri ularni hoz
 <translation id="7044606776288350625">Maʼlumotlarni sinxronlash</translation>
 <translation id="7050037487872780845">Hotspot konfiguratsiyasi xato</translation>
 <translation id="7051222203795962489">{COUNT,plural, =1{Parol Google hisobingizga (<ph name="USER_EMAIL" />) saqlandi}other{Parollar Google hisobingizga (<ph name="USER_EMAIL" />) saqlandi}}</translation>
+<translation id="7051728324516005763">Chrome ichida AI</translation>
 <translation id="7052762602787632571">Brauzer maʼlumotlarini oʻchirish...</translation>
 <translation id="705352103640172578">Sharshara</translation>
 <translation id="7053983685419859001">Taqiqlash</translation>
@@ -11778,7 +11780,6 @@ Bu axborotga oʻrnatilgan dasturlar, fayllar, brauzer, qurilmadagi operatsion ti
 <translation id="9120800848981545750">Varaq, bukmark va parollaringizni telefonda ochish uchun iOS uchun Chrome yuklab oling.</translation>
 <translation id="9121814364785106365">Qadalgan ichki oyna sifatida ochish</translation>
 <translation id="9122099953033442610">{MULTI_GROUP_TAB_COUNT,plural, =0{Varaq yopilib, guruh oʻchirilsinmi?}=1{Varaqlar yopilib, guruh oʻchirilsinmi?}other{Varaqlar yopilib, guruhlar oʻchirilsinmi?}}</translation>
-<translation id="9122788874051694311">Bu kalit Inkognito rejimidan tashqarida saqlansinmi?</translation>
 <translation id="9123287046453017203">Qurilmangiz dasturi eskirdi</translation>
 <translation id="9125910124977405374"><ph name="LANGUAGE_NAME" /> tiliga avtomatik tarjima qilinmasin</translation>
 <translation id="9125912770834459638">Tashkilotingiz Chrome hisobiga kirishni taqiqlagan</translation>

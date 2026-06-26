@@ -43,6 +43,7 @@
 #include "ui/base/l10n/l10n_util.h"
 #include "url/gurl.h"
 #include "v8/include/v8-context.h"
+#include "v8/include/v8-microtask-queue.h"
 
 namespace {
 
@@ -576,6 +577,20 @@ TEST_F(ReadAnythingAppControllerTest, OnReadingModeHidden_ResetsWordsHeard) {
 
   EXPECT_EQ(0, model().words_heard());
   EXPECT_CALL(page_handler_, AckReadingModeHidden());
+}
+
+TEST_F(ReadAnythingAppControllerTest, OnDistilled_Screen2x_LogsMetric) {
+  base::HistogramTester histogram_tester;
+  const int word_count = 100;
+  // Ensure we are using Screen2x.
+  model().set_current_content_distillation_method(
+      ReadAnythingAppModel::DistillationMethod::kScreen2x);
+  controller().OnDistilled(word_count);
+
+  histogram_tester.ExpectUniqueSample(
+      "Accessibility.ReadAnything.WordsDistilledOnNewPage", word_count, 1);
+  histogram_tester.ExpectTotalCount(
+      "Accessibility.ReadAnything.WordsDistilledByReadability", 0);
 }
 
 TEST_F(ReadAnythingAppControllerTest,
@@ -4906,6 +4921,8 @@ TEST_F(ReadAnythingAppControllerReadabilityTest,
 
   histogram_tester.ExpectUniqueSample(
       "Accessibility.ReadAnything.WordsDistilledByReadability", word_count, 1);
+  histogram_tester.ExpectUniqueSample(
+      "Accessibility.ReadAnything.WordsDistilledOnNewPage", word_count, 1);
 }
 
 TEST_F(ReadAnythingAppControllerReadabilityTest,
@@ -5164,8 +5181,8 @@ TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
 
 TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
        OnRenderedTextBlocksAvailable_UpdatesModel) {
-  std::vector<std::string> blocks = {"The quick brown fox", "jumps over",
-                                     "the lazy dog"};
+  std::vector<std::u16string> blocks = {u"The quick brown fox", u"jumps over",
+                                        u"the lazy dog"};
 
   // Simulate the call from the WebUI.
   controller().OnRenderedTextBlocksAvailable(blocks);
@@ -5177,7 +5194,7 @@ TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
 TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
        UpdateContent_ResetsReadabilitySelectTextState) {
   // Dirty the model state with data from a previous distillation.
-  model().set_readability_text_blocks({"stale block 1", "stale block 2"});
+  model().set_readability_text_blocks({u"stale block 1", u"stale block 2"});
   model().set_should_map_rendered_text_to_tree_for_readability(true);
 
   // 3. Call UpdateContent
@@ -5204,7 +5221,7 @@ TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
   controller().OnReadabilityDistillationStateChanged(
       read_anything::mojom::ReadAnythingDistillationState::
           kDistillationWithContent);
-  controller().OnRenderedTextBlocksAvailable({"block1", "block2"});
+  controller().OnRenderedTextBlocksAvailable({u"block1", u"block2"});
 
   // Verify that the flag is set to true (waiting for the tree).
   // The mapping couldn't run because the tree is missing.
@@ -5251,8 +5268,34 @@ TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
   controller().OnReadabilityDistillationStateChanged(
       read_anything::mojom::ReadAnythingDistillationState::
           kDistillationWithContent);
-  controller().OnRenderedTextBlocksAvailable({"block1", "block2"});
+  controller().OnRenderedTextBlocksAvailable({u"block1", u"block2"});
 
   // Verify that the mapping was triggered and the flag was reset to false.
   EXPECT_FALSE(model().should_map_rendered_text_to_tree_for_readability());
+}
+
+TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
+       GetAXMapping_ValidIndex) {
+  ui::AXNodeData node;
+  node.id = 2;
+  node.role = ax::mojom::Role::kStaticText;
+  node.SetName("Hello world");
+  SendUpdateWithNodes({std::move(node)});
+
+  controller().OnRenderedTextBlocksAvailable({u"Hello world"});
+
+  v8::Isolate* isolate = GetMainFrame()->GetAgentGroupScheduler()->Isolate();
+  v8::HandleScope handle_scope(isolate);
+  v8::Local<v8::Context> context = GetMainFrame()->MainWorldScriptContext();
+  v8::Context::Scope context_scope(context);
+
+  v8::MicrotasksScope microtasks_scope(
+      isolate, context->GetMicrotaskQueue(),
+      v8::MicrotasksScope::kDoNotRunMicrotasks);
+
+  v8::Local<v8::Value> result = controller().GetAXMapping(0);
+
+  ASSERT_TRUE(result->IsArray());
+  v8::Local<v8::Array> array = result.As<v8::Array>();
+  EXPECT_EQ(array->Length(), 1u);
 }

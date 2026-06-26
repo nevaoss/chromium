@@ -162,16 +162,17 @@ public class UserEducationHelper {
             assert !accessibilityString.isEmpty();
 
             mTextBubble =
-                    new TextBubble(
-                            mActivity,
-                            anchorView,
-                            contentString,
-                            accessibilityString,
-                            !iphCommand.removeArrow,
-                            viewRectProvider != null
-                                    ? viewRectProvider
-                                    : assumeNonNull(rectProvider),
-                            ChromeAccessibilityUtil.get().isAccessibilityEnabled());
+                    new TextBubble.Builder(
+                                    mActivity,
+                                    anchorView,
+                                    viewRectProvider != null
+                                            ? viewRectProvider
+                                            : assumeNonNull(rectProvider),
+                                    contentString,
+                                    accessibilityString,
+                                    ChromeAccessibilityUtil.get().isAccessibilityEnabled())
+                            .setShowArrow(!iphCommand.removeArrow)
+                            .build();
             mTextBubble.setPreferredVerticalOrientation(iphCommand.preferredVerticalOrientation);
             mTextBubble.setPreferredHorizontalOrientation(
                     iphCommand.preferredHorizontalOrientation);

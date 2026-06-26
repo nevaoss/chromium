@@ -100,6 +100,7 @@ import org.chromium.chrome.browser.bookmarks.BookmarkManagerOpenerImpl;
 import org.chromium.chrome.browser.bookmarks.BookmarkModel;
 import org.chromium.chrome.browser.bookmarks.PowerBookmarkUtils;
 import org.chromium.chrome.browser.bookmarks.TabBookmarker;
+import org.chromium.chrome.browser.bookmarks.bar.BookmarkBarUtils;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
 import org.chromium.chrome.browser.compositor.CompositorViewHolder;
 import org.chromium.chrome.browser.compositor.layouts.Layout;
@@ -860,12 +861,6 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
             ControlContainer controlContainer =
                     (ControlContainer) findViewById(R.id.control_container);
 
-            if (controlContainer == null) {
-                // omnibox_results_container_stub anchors off of control_container, and will
-                // crash during layout if control_container doesn't exist.
-                UiUtils.removeViewFromParent(findViewById(R.id.omnibox_results_container_stub));
-            }
-
             // Inflate the correct toolbar layout for the device.
             int toolbarLayoutId = getToolbarLayoutId();
             if (toolbarLayoutId != ActivityUtils.NO_RESOURCE_ID && controlContainer != null) {
@@ -940,7 +935,6 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                 incognito -> incognito ? tabCreators.second : tabCreators.first);
 
         OfflinePageUtils.observeTabModelSelector(this, tabModelSelector);
-        if (mTabModelSelectorTabObserver != null) mTabModelSelectorTabObserver.destroy();
 
         mTabModelSelectorTabObserver =
                 new TabModelSelectorTabObserver(tabModelSelector) {
@@ -1128,10 +1122,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
             // TODO(crbug.com/491791326): Handle multiple profiles for mobile.
             Profile profile = tabModelSelector.getCurrentModel().getProfile();
             assert profile != null;
-            chromeAndroidTask.addFeature(
-                    new ChromeAndroidTaskFeatureKey(
-                            ExtensionWindowControllerBridge.class, profile, activityWindowAndroid),
-                    ExtensionWindowControllerBridgeFactory::create);
+            addWindowingFeatures(chromeAndroidTask, profile, activityWindowAndroid);
 
             // 5. Make the ChromeAndroidTask available via OneshotSupplier.
             mChromeAndroidTaskSupplier.set(chromeAndroidTask);
@@ -1141,6 +1132,20 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     /** Returns an {@link OneshotSupplier} for {@link ChromeAndroidTask}. */
     protected final OneshotSupplier<ChromeAndroidTask> getChromeAndroidTaskSupplier() {
         return mChromeAndroidTaskSupplier;
+    }
+
+    /**
+     * Adds windowing {@link ChromeAndroidTaskFeature}s to this activity's {@link
+     * ChromeAndroidTask}.
+     */
+    protected void addWindowingFeatures(
+            ChromeAndroidTask chromeAndroidTask,
+            Profile profile,
+            ActivityWindowAndroid activityWindowAndroid) {
+        chromeAndroidTask.addFeature(
+                new ChromeAndroidTaskFeatureKey(
+                        ExtensionWindowControllerBridge.class, profile, activityWindowAndroid),
+                ExtensionWindowControllerBridgeFactory::create);
     }
 
     @Override
@@ -1604,6 +1609,10 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         if (mFullscreenVideoPictureInPictureController != null) {
             Log.i(TAG, "onNewIntentWithNative: exiting picture in picture if needed");
             mFullscreenVideoPictureInPictureController.onFrameworkExitedPictureInPicture();
+        }
+
+        if (mActorPipController != null) {
+            mActorPipController.onNewIntent(intent);
         }
 
         super.onNewIntentWithNative(intent);
@@ -2852,6 +2861,13 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
             return false;
         }
 
+        if (id == R.id.toggle_bookmarks_bar_menu_id) {
+            BookmarkBarUtils.toggleUserPrefsShowBookmarksBar(
+                    currentTab.getProfile(), /* fromKeyboardShortcut= */ false);
+            RecordUserAction.record("MobileMenuToggleBookmarksBar");
+            return true;
+        }
+
         if (id == R.id.back_menu_id) {
             if (currentTab.canGoBack()) {
                 currentTab.goBack();
@@ -2872,11 +2888,15 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
             return false;
         }
 
-        if (id == R.id.bookmark_this_page_id) {
+        if (id == R.id.bookmark_this_page_id || id == R.id.bookmark_this_page_menu_id) {
             mTabBookmarkerSupplier.get().addOrEditBookmark(currentTab);
             TrackerFactory.getTrackerForProfile(currentTab.getProfile())
                     .notifyEvent(EventConstants.APP_MENU_BOOKMARK_STAR_ICON_PRESSED);
-            RecordUserAction.record("MobileMenuAddToBookmarks");
+            if (id == R.id.bookmark_this_page_id) {
+                RecordUserAction.record("MobileMenuAddToBookmarks");
+            } else {
+                RecordUserAction.record("MobileMenuBookmarkThisPage");
+            }
             return true;
         }
 
@@ -2936,6 +2956,8 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                             getEphemeralTabCoordinatorSupplier(),
                             getTabCreator(currentTab.isIncognito()));
             pageInfo.show(currentTab, ChromePageInfoHighlight.noHighlight());
+            TrackerFactory.getTrackerForProfile(currentTab.getProfile())
+                    .notifyEvent(EventConstants.SITE_CONTROLS_MENU_ITEM_CLICKED);
             return true;
         }
 

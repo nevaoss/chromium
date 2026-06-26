@@ -7014,6 +7014,11 @@ void GLES2DecoderImpl::DoSampleCoverage(GLclampf value, GLboolean invert) {
 // Assumes framebuffer is complete.
 void GLES2DecoderImpl::ClearUnclearedAttachments(
     GLenum target, Framebuffer* framebuffer) {
+  bool rasterizer_discard_enabled = state_.enable_flags.rasterizer_discard;
+  if (rasterizer_discard_enabled) {
+    state_.SetDeviceCapabilityState(GL_RASTERIZER_DISCARD, false);
+  }
+
   // Clear textures that we can't use glClear first. These textures will be
   // marked as cleared after the call and no longer be part of the following
   // code.
@@ -7097,6 +7102,10 @@ void GLES2DecoderImpl::ClearUnclearedAttachments(
 
   framebuffer_manager()->MarkAttachmentsAsCleared(
       framebuffer, renderbuffer_manager(), texture_manager());
+
+  if (rasterizer_discard_enabled) {
+    state_.SetDeviceCapabilityState(GL_RASTERIZER_DISCARD, true);
+  }
 }
 
 void GLES2DecoderImpl::RestoreClearState() {
@@ -14719,6 +14728,12 @@ error::Error GLES2DecoderImpl::HandleRequestExtensionCHROMIUM(
   }
   if (feature_str.contains("GL_OES_fbo_render_mipmap ")) {
     feature_info_->EnableOESFboRenderMipmap();
+  }
+  if (feature_str.contains("GL_ANGLE_compressed_texture_etc ")) {
+    feature_info_->EnableWebGLCompressedTextureETC();
+  }
+  if (feature_str.contains("GL_OES_compressed_ETC1_RGB8_texture ")) {
+    feature_info_->EnableWebGLCompressedTextureETC1();
   }
 
   UpdateCapabilities();

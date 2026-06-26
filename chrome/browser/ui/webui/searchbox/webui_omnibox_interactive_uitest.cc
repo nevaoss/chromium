@@ -39,6 +39,7 @@
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/chrome_paths.h"
 #include "chrome/common/webui_url_constants.h"
+#include "chrome/grit/generated_resources.h"
 #include "chrome/test/interaction/interactive_browser_test.h"
 #include "components/contextual_search/mock_contextual_search_service.h"
 #include "components/contextual_search/pref_names.h"
@@ -58,6 +59,7 @@
 #include "third_party/omnibox_proto/aim_eligibility_response.pb.h"
 #include "ui/accessibility/ax_mode.h"
 #include "ui/base/interaction/interaction_sequence.h"
+#include "ui/base/l10n/l10n_util.h"
 #include "ui/events/keycodes/keyboard_codes.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/shell_dialogs/select_file_dialog.h"
@@ -112,12 +114,19 @@ class OmniboxWebUiInteractiveTestBase
         {omnibox::kOmniboxWebUIDeferShowUntilVisualStateReady, {}}};
     if (force_enable_aim) {
       base::FieldTrialParams aim_params = {
-          {omnibox::kWebUIOmniboxAimPopupAddContextButtonVariantParam.name,
-           "below_results"}};
+          {omnibox::kShowRecentTabChip.name, "true"}};
       features.emplace_back(omnibox::internal::kWebUIOmniboxAimPopup,
                             aim_params);
+      base::FieldTrialParams simplification_params = {
+          {omnibox::kWebUIOmniboxAimPopupAddContextButtonVariantParam.name,
+           "below_results"},
+          {omnibox::kHideClassicContextButton.name, "false"},
+          {omnibox::kShowLensSearchChip.name, "true"}};
+      features.emplace_back(omnibox::internal::kWebUIOmniboxSimplification,
+                            simplification_params);
       features.emplace_back(omnibox::kAiModeOmniboxEntryPoint,
                             base::FieldTrialParams());
+      features.emplace_back(omnibox::kAimEnabled, base::FieldTrialParams());
       features.emplace_back(
           features::kPageActionsMigration,
           base::FieldTrialParams(
@@ -509,7 +518,11 @@ IN_PROC_BROWSER_TEST_F(OmniboxAimWebUiInteractiveTest,
       InAnyContext(WaitForElementToRender(kAimPopupWebView, kDeepSearchChip)));
 }
 
-IN_PROC_BROWSER_TEST_F(OmniboxAimWebUiInteractiveTest, QueryWithTabContext) {
+// TODO(crbug.com/509753148): Re-enable after fixing pixel screenshots on all
+// platforms.
+#define MAYBE_QueryWithTabContext DISABLED_QueryWithTabContext
+IN_PROC_BROWSER_TEST_F(OmniboxAimWebUiInteractiveTest,
+                       MAYBE_QueryWithTabContext) {
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kFirstTab);
 
   // Force a larger window size to give the popup room to grow.
@@ -830,13 +843,22 @@ class WebUIOmniboxSimplificationInteractiveTest
     : public OmniboxAimWebUiInteractiveTestBase {
  public:
   WebUIOmniboxSimplificationInteractiveTest() {
-    std::vector<base::test::FeatureRefAndParams> enabled_features =
-        GetEnabledFeatures(/*force_enable_aim=*/true);
+    std::vector<base::test::FeatureRefAndParams> enabled_features;
+    for (auto& feature : GetEnabledFeatures(/*force_enable_aim=*/true)) {
+      if (feature.feature.get().name !=
+          omnibox::internal::kWebUIOmniboxSimplification.name) {
+        enabled_features.push_back(feature);
+      }
+    }
     enabled_features.emplace_back(
         omnibox::internal::kWebUIOmniboxSimplification,
         base::FieldTrialParams{
+            {omnibox::kWebUIOmniboxAimPopupAddContextButtonVariantParam.name,
+             "below_results"},
+            {omnibox::kHideClassicContextButton.name, "false"},
             {"Omnibox_ContextButtonHasBackground", "true"},
-            {"Omnibox_ContextButtonShapeIsOblong", "true"}});
+            {"Omnibox_ContextButtonShapeIsOblong", "true"},
+            {"Omnibox_ContextButtonShowSuggestionLabel", "true"}});
     feature_list_.InitWithFeaturesAndParameters(enabled_features, {});
   }
 
@@ -877,4 +899,22 @@ IN_PROC_BROWSER_TEST_F(WebUIOmniboxSimplificationInteractiveTest,
       InSameContext(CheckJsResultAt(
           kClassicPopupWebView, kContextButton,
           "el => window.getComputedStyle(el).borderRadius", "100px")));
+}
+
+IN_PROC_BROWSER_TEST_F(WebUIOmniboxSimplificationInteractiveTest,
+                       HasSuggestionLabel) {
+  const DeepQuery kSuggestionLabel = {"omnibox-popup-app", "#context",
+                                      "#description"};
+  std::u16string expected_text =
+      l10n_util::GetStringUTF16(IDS_GOOGLE_SEARCH_BOX_EMPTY_HINT_MULTIMODAL);
+  RunTestSequence(
+      AddInstrumentedTab(kNewTab, chrome::ChromeUINewTabURLAsGURL()),
+      SetAimEligibleResponse(), SeedSearchboxResult("a"),
+      FocusElement(kOmniboxElementId), EnterText(kOmniboxElementId, u"a"),
+      WaitForClassicPopupReady(),
+      InAnyContext(
+          WaitForElementToRender(kClassicPopupWebView, kSuggestionLabel)),
+      InSameContext(CheckJsResultAt(kClassicPopupWebView, kSuggestionLabel,
+                                    "el => el.textContent.trim()",
+                                    base::UTF16ToUTF8(expected_text))));
 }

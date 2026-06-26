@@ -5,7 +5,9 @@
 package org.chromium.chrome.browser.theme;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -27,9 +29,11 @@ import org.mockito.junit.MockitoRule;
 
 import org.chromium.base.ContextUtils;
 import org.chromium.base.test.BaseRobolectricTestRunner;
+import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.chrome.browser.browser_controls.BottomControlsStacker;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider.ControlsPosition;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.tabmodel.IncognitoStateProvider;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
 import org.chromium.components.browser_ui.styles.SemanticColorUtils;
@@ -124,5 +128,47 @@ public class BottomUiThemeColorProviderTest {
         assertEquals(mIncognitoBackgroundColorWithTopToolbar, mColorProvider.getThemeColor());
         assertEquals(mIncognitoTintWithTopToolbar, mColorProvider.getTint());
         verify(mBottomControlsStacker, times(3)).notifyBackgroundColor(Color.RED);
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.ANDROID_BOTTOM_BAR)
+    public void testBottomBarEnabled_NoNotification() {
+        mColorProvider.onControlsPositionChanged(ControlsPosition.BOTTOM);
+        verify(mBottomControlsStacker, never()).notifyBackgroundColor(anyInt());
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.ANDROID_BOTTOM_BAR)
+    public void testBottomBarEnabled() {
+        int expectedColor = Color.GREEN;
+        doReturn(expectedColor).when(mBottomControlsStacker).getBackgroundColor();
+
+        // Trigger update
+        mColorProvider.onIncognitoStateChanged(false);
+
+        assertEquals(expectedColor, mColorProvider.getThemeColor());
+        assertEquals(mPrimaryTintWithTopToolbar, mColorProvider.getTint());
+
+        mColorProvider.onIncognitoStateChanged(true);
+        assertEquals(expectedColor, mColorProvider.getThemeColor());
+        assertEquals(mIncognitoTintWithTopToolbar, mColorProvider.getTint());
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.ANDROID_BOTTOM_BAR)
+    public void testOnBottomControlsBackgroundColorChanged() {
+        int initialColor = Color.GREEN;
+        int newColor = Color.BLUE;
+        doReturn(initialColor).when(mBottomControlsStacker).getBackgroundColor();
+
+        mColorProvider.onIncognitoStateChanged(false);
+        assertEquals(initialColor, mColorProvider.getThemeColor());
+
+        doReturn(newColor).when(mBottomControlsStacker).getBackgroundColor();
+        // The parameter to onBottomControlsBackgroundColorChanged is ignored in the implementation
+        // when bottom bar is enabled, it reads from mBottomControlsStacker.
+        mColorProvider.onBottomControlsBackgroundColorChanged(Color.YELLOW);
+
+        assertEquals(newColor, mColorProvider.getThemeColor());
     }
 }

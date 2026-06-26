@@ -1732,6 +1732,7 @@ Anda boleh mengurus tetapan akaun ini dengan memasang apl Family Link pada peran
 <translation id="2164131635608782358"><ph name="FIRST_SWITCH" />, <ph name="SECOND_SWITCH" />, <ph name="THIRD_SWITCH" /> dan 1 lagi suis</translation>
 <translation id="2165177462441582039">Pilih tempoh serlahan dipaparkan pada setiap item</translation>
 <translation id="2166369534954157698">The quick brown fox jumps over the lazy dog</translation>
+<translation id="2168036794078614559">Laporan dihantar</translation>
 <translation id="2169062631698640254">Log masuk juga</translation>
 <translation id="2173302385160625112">Periksa sambungan Internet anda</translation>
 <translation id="2173801458090845390">Tambahkan ID permintaan pada peranti ini</translation>
@@ -3447,7 +3448,6 @@ Anda boleh mengurus tetapan akaun ini dengan memasang apl Family Link pada peran
 <translation id="3347086966102161372">S&amp;alin alamat imej</translation>
 <translation id="3348038390189153836">Peranti boleh tanggal dikesan</translation>
 <translation id="3348973040180736882">Menyahmampatkan</translation>
-<translation id="3349610303043713601">Semak imbas dengan AI</translation>
 <translation id="3349933790966648062">Jejak Memori</translation>
 <translation id="3351472127384196879">Tambahkan atau cari butang pada pen anda</translation>
 <translation id="3353786022389205125">Hidupkan "Tunjukkan skrin kunci apabila bangkit daripada tidur" dan cuba lagi</translation>
@@ -6837,6 +6837,7 @@ Anda boleh menetapkan berbilang suis kepada tindakan ini.</translation>
 <translation id="5712153969432126546">Kadangkala laman menerbitkan PDF, seperti dokumen, kontrak dan borang</translation>
 <translation id="571222594670061844">Laman boleh menunjukkan gesaan log masuk daripada perkhidmatan identiti</translation>
 <translation id="5713158217420111469">Disambungkan kepada <ph name="DEVICE" /></translation>
+<translation id="5713988532993992900">Terbalik</translation>
 <translation id="5714100381896040477">Hadkan pergerakan pada skrin</translation>
 <translation id="5719854774000914513">Tapak boleh meminta untuk menyambung kepada peranti HID</translation>
 <translation id="5720729194423017301">Pintasan untuk laman dan enjin carian</translation>
@@ -7298,6 +7299,7 @@ Anda boleh menetapkan berbilang suis kepada tindakan ini.</translation>
 <translation id="604388835206766544">Gagal menghuraikan konfigurasi</translation>
 <translation id="6043994281159824495">Log keluar sekarang</translation>
 <translation id="6045114302329202345">Butang TrackPoint utama</translation>
+<translation id="6045425183320109397">Oleh</translation>
 <translation id="6047632800149092791">Penyegerakan tidak berfungsi. Cuba log keluar dan log masuk semula.</translation>
 <translation id="6048747414605857443">Pilih dan sesuaikan suara teks kepada pertuturan untuk ChromeVox dan Pilih untuk bercakap</translation>
 <translation id="6050189528197190982">Skala Kelabu</translation>
@@ -8703,7 +8705,6 @@ Anda mempunyai # lagi kata laluan yang terjejas. Google Password Manager mengesy
 <translation id="701020165009334820">Anda boleh memuat turun apl dan permainan Android melalui Play Store.</translation>
 <translation id="701080569351381435">Lihat Sumber</translation>
 <translation id="7012430956470647760">Kawalan ibu bapa untuk apl</translation>
-<translation id="7013762323294215682">Kunci laluan akan disimpan pada Password Manager anda. Sesiapa sahaja yang boleh mengakses Password Manager anda akan dapat menggunakan kunci laluan ini.</translation>
 <translation id="7014174261166285193">Gagal pemasangan.</translation>
 <translation id="7014480873681694324">Alih Keluar Serlahan</translation>
 <translation id="7014741021609395734">Tahap zum</translation>
@@ -8751,6 +8752,7 @@ Anda mempunyai # lagi kata laluan yang terjejas. Google Password Manager mengesy
 <translation id="7044606776288350625">Segerakkan data</translation>
 <translation id="7050037487872780845">Konfigurasi tempat liputan tidak sah</translation>
 <translation id="7051222203795962489">{COUNT,plural, =1{Kata laluan disimpan dalam Google Account anda, <ph name="USER_EMAIL" />}other{Kata laluan disimpan dalam Google Account anda, <ph name="USER_EMAIL" />}}</translation>
+<translation id="7051728324516005763">AI dalam Chrome</translation>
 <translation id="7052762602787632571">&amp;Padamkan data semakan imbas...</translation>
 <translation id="705352103640172578">Air terjun</translation>
 <translation id="7053983685419859001">Sekat</translation>
@@ -11794,7 +11796,6 @@ Maklumat ini termasuk maklumat tentang perisian yang dipasang, fail, penyemak im
 <translation id="9120800848981545750">Muat turun Chrome untuk iOS untuk mengakses tab, penanda halaman dan kata laluan anda pada telefon anda.</translation>
 <translation id="9121814364785106365">Buka sebagai tab dipin</translation>
 <translation id="9122099953033442610">{MULTI_GROUP_TAB_COUNT,plural, =0{Tutup Tab dan Padamkan Kumpulan?}=1{Tutup Tab dan Padamkan Kumpulan?}other{Tutup Tab dan Padamkan Kumpulan?}}</translation>
-<translation id="9122788874051694311">Simpan kunci laluan ini di luar Inkognito?</translation>
 <translation id="9123287046453017203">Peranti anda tidak di kemas kini</translation>
 <translation id="9125910124977405374">Alih keluar <ph name="LANGUAGE_NAME" /> daripada bahasa yang diterjemah secara automatik</translation>
 <translation id="9125912770834459638">Organisasi Anda Tidak Membenarkan Anda Log Masuk</translation>

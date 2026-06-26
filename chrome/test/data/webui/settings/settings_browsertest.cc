@@ -464,6 +464,10 @@ IN_PROC_BROWSER_TEST_F(SettingsTest, GlicLoginPermissionsPage) {
   RunTest("settings/glic_login_permissions_page_test.js", "mocha.run()");
 }
 
+IN_PROC_BROWSER_TEST_F(SettingsTest, WebuiRefresh2026) {
+  RunTest("settings/settings_ui_test.js", "runMochaSuite('WebuiRefresh2026')");
+}
+
 class SettingsGlicSubpageLearnMoreTest : public SettingsBrowserTest {
  public:
   SettingsGlicSubpageLearnMoreTest() {
@@ -1526,12 +1530,6 @@ IN_PROC_BROWSER_TEST_F(
           "CompletionFragmentPrivacySandboxRestrictedWithNoticeEnabled')");
 }
 
-IN_PROC_BROWSER_TEST_F(SettingsPrivacyGuideTest,
-                       CompletionFragmentWithAdTopicsCard) {
-  RunTest("settings/privacy_guide_completion_fragment_test.js",
-          "runMochaSuite('CompletionFragmentWithAdTopicsCard')");
-}
-
 // TODO(crbug.com/410848707): Re-enable this test
 #if BUILDFLAG(IS_MAC)
 #define MAYBE_AdTopicsFragment DISABLED_AdTopicsFragment
@@ -1795,12 +1793,6 @@ IN_PROC_BROWSER_TEST_F(SettingsPrivacySandboxPageTest,
           "runMochaSuite('TopicsSubpageAdTopicsContentParity')");
 }
 
-IN_PROC_BROWSER_TEST_F(SettingsPrivacySandboxPageTest,
-                       TopicsSubpageAdTopicsContentParityDisabled) {
-  RunTest("settings/privacy_sandbox_page_test.js",
-          "runMochaSuite('TopicsSubpageAdTopicsContentParityDisabled')");
-}
-
 using SettingsRouteTest = SettingsBrowserTest;
 
 IN_PROC_BROWSER_TEST_F(SettingsRouteTest, Basic) {
@@ -1866,6 +1858,12 @@ IN_PROC_BROWSER_TEST_F(SettingsSecurityPageTest, Main) {
 
 IN_PROC_BROWSER_TEST_F(SettingsSecurityPageTest, FlagsDisabled) {
   RunTest("settings/security_page_test.js", "runMochaSuite('FlagsDisabled')");
+}
+
+IN_PROC_BROWSER_TEST_F(SettingsSecurityPageTest,
+                       SecurityPageHappinessTrackingSurveys) {
+  RunTest("settings/security_page_test.js",
+          "runMochaSuite('SecurityPageHappinessTrackingSurveys')");
 }
 
 IN_PROC_BROWSER_TEST_F(SettingsSecurityPageTest, JavascriptOptimizer) {
@@ -1957,7 +1955,8 @@ class SettingsSiteDetailsTest : public SettingsBrowserTest {};
 
 // Disabling on debug due to flaky timeout on Win7 Tests (dbg)(1) bot.
 // https://crbug.com/41378604 - later for other platforms in crbug.com/40106090.
-#if !defined(NDEBUG)
+// TODO(https://crbug.com/510377224): Re-enable test on windows
+#if !defined(NDEBUG) || BUILDFLAG(IS_WIN)
 #define MAYBE_SiteDetails DISABLED_SiteDetails
 #else
 #define MAYBE_SiteDetails SiteDetails

@@ -9,8 +9,13 @@
 
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
+#include "base/metrics/histogram_functions.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/time/time.h"
+#include "chrome/browser/actor/actor_keyed_service.h"
+#include "chrome/browser/actor/actor_task.h"
+#include "chrome/browser/glic/experimental_opt_in/glic_experimental_opt_in_controller.h"
+#include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_invoke_options.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
@@ -204,6 +209,54 @@ tabs::TabInterface* GlicExperimentalTriggeringMessageHandler::GetActiveTab()
   return browser ? TabListInterface::From(browser)->GetActiveTab() : nullptr;
 }
 
+bool GlicExperimentalTriggeringMessageHandler::
+    HandleUnavailableExperimentalTriggering(
+        glic::GlicKeyedService* glic_service,
+        const components_sharing_message::SharingMessage& message,
+        SharingMessageHandler::DoneCallback& done_callback) {
+  auto state = glic_service->enabling().GetExperimentalTriggeringState();
+  base::UmaHistogramEnumeration(
+      "Glic.ExperimentalTriggering.StateOnActuationRequest", state);
+
+  if (state == syncer::DeviceInfo::GlicExperimentalTriggeringState::kReady) {
+    return false;
+  }
+
+  DLOG(WARNING) << "Rejecting remote request: Glic not opted-in for "
+                   "experimental triggering.";
+  if (message.has_server_channel_configuration() && message_sender_) {
+    components_sharing_message::SharingMessage response_message;
+    auto* triggering_response =
+        response_message.mutable_glic_experimental_triggering();
+    auto* response = triggering_response->mutable_response();
+    auto* task_update = response->mutable_task_update();
+
+    task_update->set_state(
+        components_sharing_message::GlicExperimentalTriggering::
+            ExperimentalTriggeringResponse::TaskUpdate::FAILED);
+    task_update->set_data_type(
+        components_sharing_message::GlicExperimentalTriggering::
+            ExperimentalTriggeringResponse::TaskUpdate::ERROR_MESSAGE);
+    task_update->set_data("User is not opted in to experimental triggering.");
+
+    message_sender_->SendMessageToServerTarget(
+        message.server_channel_configuration(), kUpdateMessageTimeout,
+        std::move(response_message), SharingMessageSender::DelegateType::kFCM,
+        base::BindOnce(
+            [](SharingSendMessageResult result,
+               std::unique_ptr<components_sharing_message::ResponseMessage>
+                   response) {
+              if (result != SharingSendMessageResult::kSuccessful) {
+                DLOG(WARNING) << "Failed to send rejection response to server. "
+                                 "Result: "
+                              << static_cast<int>(result);
+              }
+            }));
+  }
+  std::move(done_callback).Run(nullptr);
+  return true;
+}
+
 // TODO(b/505825633): Refine ResponseMessage errors for experimental triggering.
 void GlicExperimentalTriggeringMessageHandler::OnMessage(
     components_sharing_message::SharingMessage message,
@@ -221,9 +274,16 @@ void GlicExperimentalTriggeringMessageHandler::OnMessage(
     return;
   }
 
-  if (request.has_request() && request.request().has_device_opt_in_request()) {
-    // TODO (qinmin): Show the device opt-in UI.
+  if (!request.has_request()) {
+    DLOG(WARNING) << "Received GlicExperimentalTriggering message with no "
+                     "request payload.";
     std::move(done_callback).Run(nullptr);
+    return;
+  }
+
+  if (request.request().has_device_opt_in_request()) {
+    ProcessDeviceOptInRequest(std::move(message), active_tab,
+                              std::move(done_callback));
     return;
   }
 
@@ -232,13 +292,6 @@ void GlicExperimentalTriggeringMessageHandler::OnMessage(
                                                          /*create=*/false);
   CHECK(glic_service);
 
-  if (!request.has_request()) {
-    DLOG(WARNING) << "Received GlicExperimentalTriggering message with no "
-                     "request payload.";
-    std::move(done_callback).Run(nullptr);
-    return;
-  }
-
   if (request.request().has_stop_actuation_request()) {
     ProcessStopActionRequest(std::move(message), active_tab, glic_service,
                              std::move(done_callback));
@@ -246,6 +299,11 @@ void GlicExperimentalTriggeringMessageHandler::OnMessage(
   }
 
   if (request.request().has_trigger_actuation_request()) {
+    if (HandleUnavailableExperimentalTriggering(glic_service, message,
+                                                done_callback)) {
+      return;
+    }
+
     auto options = CreateInvokeOptions(request, active_tab);
     if (message.has_server_channel_configuration()) {
       std::optional<int64_t> last_seen_sequence_number;
@@ -294,6 +352,22 @@ void GlicExperimentalTriggeringMessageHandler::OnClientConnectedForUpdates(
                  std::move(listener_receiver));
 }
 
+void GlicExperimentalTriggeringMessageHandler::ProcessDeviceOptInRequest(
+    components_sharing_message::SharingMessage message,
+    tabs::TabInterface* active_tab,
+    DoneCallback done_callback) {
+#if !BUILDFLAG(IS_ANDROID)
+  if (!opt_in_controller_) {
+    opt_in_controller_ =
+        std::make_unique<glic::GlicExperimentalOptInController>(profile_);
+  }
+
+  opt_in_controller_->ShowDialog(active_tab->GetContents());
+#endif
+
+  std::move(done_callback).Run(nullptr);
+}
+
 void GlicExperimentalTriggeringMessageHandler::ProcessStopActionRequest(
     components_sharing_message::SharingMessage message,
     tabs::TabInterface* active_tab,
@@ -317,10 +391,9 @@ void GlicExperimentalTriggeringMessageHandler::ProcessStopActionRequest(
     if (!base::StringToInt(request.task_metadata().task_id(), &task_id_int)) {
       DLOG(WARNING) << "Invalid task ID format: "
                     << request.task_metadata().task_id();
-    } else {
-      instance->host().instance_delegate().StopActorTask(
-          actor::TaskId(task_id_int),
-          glic::mojom::ActorTaskStopReason::kStoppedByUser);
+    } else if (auto* actor_service = actor::ActorKeyedService::Get(profile_)) {
+      actor_service->StopTask(actor::TaskId(task_id_int),
+                              actor::ActorTask::StoppedReason::kStoppedByUser);
       stopped = true;
     }
   }

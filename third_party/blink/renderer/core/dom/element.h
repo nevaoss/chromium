@@ -649,6 +649,7 @@ class CORE_EXPORT Element : public ContainerNode {
   }
   void removeAttributeNS(const AtomicString& namespace_uri,
                          const AtomicString& local_name);
+  void RemoveAllAttributes();
 
   Attr* DetachAttribute(wtf_size_t index);
 
@@ -799,13 +800,23 @@ class CORE_EXPORT Element : public ContainerNode {
     const AttributeModificationReason reason;
   };
 
-  // |attributeChanged| is called whenever an attribute is added, changed or
+  // |AttributeChanged| is called whenever an attribute is added, changed or
   // removed. It handles very common attributes such as id, class, name, style,
   // and slot.
   //
   // While the owner document is parsed, this function is called after all
   // attributes in a start tag were added to the element.
+  //
+  // Most callers should use AttributeChangedWithInvalidations() instead,
+  // which additionally performs cache invalidation and change propagation.
+  // Direct calls to AttributeChanged() should be reserved for batch
+  // operations (e.g., ParserSetAttributes) that handle invalidation
+  // separately.
   virtual void AttributeChanged(const AttributeModificationParams&);
+
+  // Calls AttributeChanged() and additionally increments the DOM tree version,
+  // invalidates node list caches in ancestors, and notifies accessibility.
+  void AttributeChangedWithInvalidations(const AttributeModificationParams&);
 
   // |ParseAttribute()| is called by |AttributeChanged()|. If an element
   // implementation needs to check an attribute update, override this function.
@@ -2379,9 +2390,9 @@ class CORE_EXPORT Element : public ContainerNode {
   }
 
   void AttachSucceedingPseudoElements(AttachContext& context) {
-    AttachPseudoElement(kPseudoIdPickerIcon, context);
-    AttachPseudoElement(kPseudoIdExpandIcon, context);
     AttachPseudoElement(kPseudoIdAfter, context);
+    AttachPseudoElement(kPseudoIdExpandIcon, context);
+    AttachPseudoElement(kPseudoIdPickerIcon, context);
     AttachPseudoElement(kPseudoIdInterestButton, context);
     AttachDocumentElementSucceedingPseudoElements(context);
     AttachPseudoElement(kPseudoIdBackdrop, context);
@@ -2417,9 +2428,9 @@ class CORE_EXPORT Element : public ContainerNode {
   }
 
   void DetachSucceedingPseudoElements(bool performing_reattach) {
-    DetachPseudoElement(kPseudoIdPickerIcon, performing_reattach);
-    DetachPseudoElement(kPseudoIdExpandIcon, performing_reattach);
     DetachPseudoElement(kPseudoIdAfter, performing_reattach);
+    DetachPseudoElement(kPseudoIdExpandIcon, performing_reattach);
+    DetachPseudoElement(kPseudoIdPickerIcon, performing_reattach);
     DetachPseudoElement(kPseudoIdInterestButton, performing_reattach);
     DetachPseudoElement(kPseudoIdScrollButtonBlockStart, performing_reattach);
     DetachPseudoElement(kPseudoIdScrollButtonInlineStart, performing_reattach);
@@ -2583,7 +2594,6 @@ class CORE_EXPORT Element : public ContainerNode {
                                   ExceptionState& exception_state);
 
   void RemoveAttrNodeList();
-  void DetachAllAttrNodesFromElement();
   void DetachAttrNodeFromElementWithValue(Attr*, const AtomicString& value);
   void DetachAttrNodeAtIndex(Attr*, wtf_size_t index);
 

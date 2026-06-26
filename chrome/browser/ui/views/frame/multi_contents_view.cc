@@ -97,7 +97,8 @@ MultiContentsView::MultiContentsView(
       AddChildView(std::make_unique<MultiContentsDropTargetView>());
   drop_target_controller_ =
       std::make_unique<MultiContentsViewDropTargetController>(
-          *drop_target_view_, *delegate_, g_browser_process->local_state());
+          *drop_target_view_, *delegate_, g_browser_process->local_state(),
+          browser_view_->browser()->tab_strip_model());
 
   contents_separators_.top_separator =
       AddChildView(ContentsSeparator::CreateLayerBasedContentsSeparator());
@@ -357,6 +358,13 @@ void MultiContentsView::SetTargetContentBounds(
   target_content_bounds_ = target_content_bounds;
 
   InvalidateLayout(/*avoid_propagate_during_layout=*/true);
+}
+
+void MultiContentsView::SetIsAnimatingContent(bool is_animating) {
+  for (auto* contents_container_view : contents_container_views_) {
+    contents_container_view->contents_view()->SetIsAnimatingBounds(
+        is_animating);
+  }
 }
 
 std::vector<views::View*> MultiContentsView::GetAccessiblePanes() {

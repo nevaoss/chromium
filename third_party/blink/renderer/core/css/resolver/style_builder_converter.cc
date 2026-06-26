@@ -77,6 +77,7 @@
 #include "third_party/blink/renderer/core/css/properties/css_parsing_utils.h"
 #include "third_party/blink/renderer/core/css/resolver/filter_operation_resolver.h"
 #include "third_party/blink/renderer/core/css/resolver/transform_builder.h"
+#include "third_party/blink/renderer/core/css/style_caret_color.h"
 #include "third_party/blink/renderer/core/css/style_color.h"
 #include "third_party/blink/renderer/core/css/style_engine.h"
 #include "third_party/blink/renderer/core/css/style_sheet_contents.h"
@@ -378,7 +379,7 @@ ClipPathOperation* StyleBuilderConverter::ConvertClipPath(
           geometry_box_value ? geometry_box_value->ConvertTo<GeometryBox>()
                              : GeometryBox::kBorderBox;
       return MakeGarbageCollected<ShapeClipPathOperation>(
-          BasicShapeForValue(state, shape_value), geometry_box);
+          *BasicShapeForValue(state, shape_value), geometry_box);
     }
     UseCounter::Count(state.GetDocument(), WebFeature::kClipPathGeometryBox);
     auto& geometry_box_value = To<CSSIdentifierValue>(list->First());
@@ -2761,7 +2762,7 @@ ShapeValue* StyleBuilderConverter::ConvertShapeValue(StyleResolverState& state,
   }
 
   if (shape) {
-    return MakeGarbageCollected<ShapeValue>(shape, css_box);
+    return MakeGarbageCollected<ShapeValue>(*shape, css_box);
   }
 
   DCHECK_NE(css_box, CSSBoxType::kMissing);
@@ -3066,6 +3067,20 @@ StyleAutoColor StyleBuilderConverter::ConvertStyleAutoColor(
     }
   }
   return StyleAutoColor(ConvertStyleColor(state, value, for_visited_link));
+}
+
+StyleCaretColor StyleBuilderConverter::ConvertStyleCaretColor(
+    StyleResolverState& state,
+    const CSSValue& value,
+    bool for_visited_link) {
+  if (const auto* list = DynamicTo<CSSValueList>(value)) {
+    DCHECK_EQ(list->length(), 2u);
+    return StyleCaretColor(
+        ConvertStyleAutoColor(state, list->Item(0), for_visited_link),
+        ConvertStyleAutoColor(state, list->Item(1), for_visited_link));
+  }
+  return StyleCaretColor(ConvertStyleAutoColor(state, value, for_visited_link),
+                         StyleAutoColor::AutoColor());
 }
 
 SVGPaint StyleBuilderConverter::ConvertSVGPaint(StyleResolverState& state,
@@ -3429,7 +3444,7 @@ OffsetPathOperation* ConvertOffsetPathValueToOperation(
         coord_box);
   }
   return MakeGarbageCollected<ShapeOffsetPathOperation>(
-      BasicShapeForValue(state, value), coord_box);
+      *BasicShapeForValue(state, value), coord_box);
 }
 
 }  // namespace

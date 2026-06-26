@@ -263,7 +263,7 @@ void SetRuntimeFeaturesFromChromiumFeatures() {
           {wf::EnableWebAuthenticationAmbient,
            raw_ref(device::kWebAuthnAmbientSignin)},
           {wf::EnableWebAuthenticationImmediateGet,
-           raw_ref(device::kWebAuthnImmediateGet), kSetOnlyIfOverridden},
+           raw_ref(device::kWebAuthnImmediateGet), kDefault},
           {wf::EnableWebBluetooth, raw_ref(features::kWebBluetooth),
            kSetOnlyIfOverridden},
           {wf::EnableWebBluetoothGetDevices,
@@ -399,10 +399,7 @@ void SetRuntimeFeaturesFromChromiumFeatures() {
                        kExperimentalWebMachineLearningNeuralNetwork),
            kSetOnlyIfOverridden},
           {"LocalNetworkAccessPermissionPolicy",
-           raw_ref(network::features::kLocalNetworkAccessChecks)},
-          {"LocalNetworkAccessSplitPermissions",
-           raw_ref(
-               network::features::kLocalNetworkAccessChecksSplitPermissions)}};
+           raw_ref(network::features::kLocalNetworkAccessChecks)}};
   for (const auto& mapping : runtimeFeatureNameToChromiumFeatureMapping) {
     SetRuntimeFeatureFromChromiumFeature(
         *mapping.chromium_feature, mapping.option, [&mapping](bool enabled) {

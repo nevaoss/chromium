@@ -76,10 +76,6 @@ class KeyboardAccessoryIphUtils {
             case FeatureConstants.KEYBOARD_ACCESSORY_EXTERNAL_ACCOUNT_PROFILE_FEATURE:
                 // Noop as the event is triggered in native AutofillKeyboardAccessoryControllerImpl.
                 return;
-            case FeatureConstants.KEYBOARD_ACCESSORY_PLUS_ADDRESS_CREATE_SUGGESTION:
-                tracker.notifyEvent(
-                        EventConstants.KEYBOARD_ACCESSORY_PLUS_ADDRESS_CREATE_SUGGESTION);
-                return;
         }
         assert false : "No filling event emitted for feature: " + feature;
     }
@@ -195,24 +191,26 @@ class KeyboardAccessoryIphUtils {
         // If the help text is provided, then use it directly to generate the text bubble.
         if (helpText != null && !helpText.isEmpty()) {
             helpBubble =
-                    new TextBubble(
-                            context,
-                            rootView,
-                            helpText,
-                            helpText,
-                            /* showArrow= */ true,
-                            rectProvider,
-                            ChromeAccessibilityUtil.get().isAccessibilityEnabled());
+                    new TextBubble.Builder(
+                                    context,
+                                    rootView,
+                                    rectProvider,
+                                    helpText,
+                                    helpText,
+                                    ChromeAccessibilityUtil.get().isAccessibilityEnabled())
+                            .setShowArrow(true)
+                            .build();
         } else {
             @StringRes int helpTextResourceId = getHelpTextForFeature(feature);
             helpBubble =
-                    new TextBubble(
-                            context,
-                            rootView,
-                            helpTextResourceId,
-                            helpTextResourceId,
-                            rectProvider,
-                            ChromeAccessibilityUtil.get().isAccessibilityEnabled());
+                    new TextBubble.Builder(
+                                    context,
+                                    rootView,
+                                    rectProvider,
+                                    helpTextResourceId,
+                                    helpTextResourceId,
+                                    ChromeAccessibilityUtil.get().isAccessibilityEnabled())
+                            .build();
         }
         helpBubble.setDismissOnTouchInteraction(true);
         helpBubble.addOnDismissListener(
@@ -249,8 +247,6 @@ class KeyboardAccessoryIphUtils {
                 return R.string.autofill_iph_external_account_profile_suggestion;
             case FeatureConstants.KEYBOARD_ACCESSORY_VIRTUAL_CARD_CVC_FILL_FEATURE:
                 return R.string.iph_keyboard_accessory_virtual_card_cvc_fill_feature;
-            case FeatureConstants.KEYBOARD_ACCESSORY_PLUS_ADDRESS_CREATE_SUGGESTION:
-                return R.string.plus_address_create_suggestion_iph_android;
             case FeatureConstants.KEYBOARD_ACCESSORY_ENABLE_LOYALTY_CARDS_FEATURE:
                 return R.string.iph_keyboard_accessory_enable_loyalty_cards;
             case FeatureConstants.KEYBOARD_ACCESSORY_ACCOUNT_NAME_EMAIL_SUGGESTION_FEATURE:

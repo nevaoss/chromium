@@ -400,6 +400,7 @@ ci/mac-arm64-dbg
 ci/mac-arm64-libfuzzer-asan-rel-tests
 ci/mac-arm64-on-arm64-rel
 ci/mac-arm64-rel
+ci/mac-no-initial-webui-rel
 ci/mac-official
 ci/mac-rel-cft
 ci/mac-swangle-chromium-x64
@@ -691,7 +692,6 @@ try/mac-no-initial-webui-rel
 try/mac-official
 try/mac-rel
 try/mac-rel-cft
-try/mac-skia-alt-arm64-blink-rel
 try/mac-swangle-chromium-try-x64
 try/mac-updater-try-builder-dbg
 try/mac-updater-try-builder-rel

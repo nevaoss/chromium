@@ -190,7 +190,7 @@ public class ExtensionsMenuMediatorTest {
         assertTrue(mActionModels.isEmpty());
         verify(mMenuPropertyModel).set(ExtensionsMenuProperties.IS_ZERO_STATE, true);
         verify(mMenuPropertyModel)
-                .set(ExtensionsMenuProperties.SITE_SETTINGS_TOGGLE_VISIBLE, false);
+                .set(ExtensionsMenuProperties.SITE_SETTINGS_CONTAINER_VISIBLE, false);
         verify(mMenuPropertyModel).set(ExtensionsMenuProperties.DISCOVER_EXTENSIONS_VISIBLE, false);
         verify(mOnReadyRunnable).run();
     }
@@ -472,7 +472,7 @@ public class ExtensionsMenuMediatorTest {
         assertEquals(0, mActionModels.size());
         verify(mMenuPropertyModel).set(ExtensionsMenuProperties.IS_ZERO_STATE, true);
         verify(mMenuPropertyModel)
-                .set(ExtensionsMenuProperties.SITE_SETTINGS_TOGGLE_VISIBLE, false);
+                .set(ExtensionsMenuProperties.SITE_SETTINGS_CONTAINER_VISIBLE, false);
         verify(mMenuPropertyModel).set(ExtensionsMenuProperties.DISCOVER_EXTENSIONS_VISIBLE, false);
     }
 
@@ -663,6 +663,8 @@ public class ExtensionsMenuMediatorTest {
                 .thenReturn(siteSettingsStateOn);
         mMenuMediator.updateSiteSettingsToggle();
 
+        verify(mMenuPropertyModel)
+                .set(ExtensionsMenuProperties.SITE_SETTINGS_CONTAINER_VISIBLE, true);
         verify(mMenuPropertyModel).set(ExtensionsMenuProperties.SITE_SETTINGS_TOGGLE_VISIBLE, true);
         verify(mMenuPropertyModel).set(ExtensionsMenuProperties.SITE_SETTINGS_TOGGLE_CHECKED, true);
         verify(mMenuPropertyModel).set(ExtensionsMenuProperties.SITE_SETTINGS_LABEL, "test_label");
@@ -681,6 +683,8 @@ public class ExtensionsMenuMediatorTest {
                 .thenReturn(siteSettingsStateOff);
         mMenuMediator.updateSiteSettingsToggle();
 
+        verify(mMenuPropertyModel)
+                .set(ExtensionsMenuProperties.SITE_SETTINGS_CONTAINER_VISIBLE, true);
         verify(mMenuPropertyModel).set(ExtensionsMenuProperties.SITE_SETTINGS_TOGGLE_VISIBLE, true);
         verify(mMenuPropertyModel)
                 .set(ExtensionsMenuProperties.SITE_SETTINGS_TOGGLE_CHECKED, false);
@@ -701,6 +705,8 @@ public class ExtensionsMenuMediatorTest {
                 .thenReturn(siteSettingsStateHidden);
         mMenuMediator.updateSiteSettingsToggle();
 
+        verify(mMenuPropertyModel)
+                .set(ExtensionsMenuProperties.SITE_SETTINGS_CONTAINER_VISIBLE, true);
         verify(mMenuPropertyModel)
                 .set(ExtensionsMenuProperties.SITE_SETTINGS_TOGGLE_VISIBLE, false);
         verify(mMenuPropertyModel)
@@ -1071,6 +1077,9 @@ public class ExtensionsMenuMediatorTest {
         assertEquals(
                 "Always on all sites. Select to change site permissions",
                 model.get(ExtensionsMenuItemProperties.SITE_PERMISSIONS_BUTTON_ACCESSIBLE_NAME));
+        assertEquals(
+                "Change site permissions",
+                model.get(ExtensionsMenuItemProperties.SITE_PERMISSIONS_BUTTON_TOOLTIP));
 
         // Update the item to have an enabled site permissions button.
         sitePermissionsButtonState =

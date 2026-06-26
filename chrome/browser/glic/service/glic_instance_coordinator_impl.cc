@@ -35,7 +35,6 @@
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_commands.h"
-#include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/common/chrome_features.h"
 #include "components/prefs/pref_service.h"
@@ -251,8 +250,7 @@ void GlicInstanceCoordinatorImpl::Toggle(
     BrowserWindowInterface* browser,
     bool prevent_close,
     mojom::InvocationSource source,
-    std::optional<std::string> deprecated_prompt_suggestion,
-    std::optional<std::string> deprecated_conversation_id) {
+    std::optional<std::string> deprecated_prompt_suggestion) {
   if (!browser) {
     if (!GlicEnabling::IsLiveAndFloatyEnabledByFlags()) {
 #if !BUILDFLAG(IS_ANDROID)
@@ -264,14 +262,12 @@ void GlicInstanceCoordinatorImpl::Toggle(
         return;
       }
     } else {
-      CHECK(!deprecated_conversation_id || deprecated_conversation_id->empty());
       ToggleFloaty(prevent_close, source, deprecated_prompt_suggestion);
       return;
     }
   }
 
-  ToggleSidePanel(browser, prevent_close, source, deprecated_prompt_suggestion,
-                  deprecated_conversation_id);
+  ToggleSidePanel(browser, prevent_close, source, deprecated_prompt_suggestion);
 }
 
 void GlicInstanceCoordinatorImpl::EnsurePreload() {
@@ -659,8 +655,7 @@ void GlicInstanceCoordinatorImpl::ToggleSidePanel(
     BrowserWindowInterface* browser,
     bool prevent_close,
     mojom::InvocationSource source,
-    std::optional<std::string> prompt_suggestion,
-    std::optional<std::string> conversation_id) {
+    std::optional<std::string> prompt_suggestion) {
   auto* tab = TabListInterface::From(browser)->GetActiveTab();
   if (!tab) {
     LOG(ERROR) << "Active tab is null";
@@ -673,16 +668,7 @@ void GlicInstanceCoordinatorImpl::ToggleSidePanel(
 
   GlicInstanceImpl* instance = nullptr;
 
-  if (base::FeatureList::IsEnabled(features::kGlicWebContinuity) &&
-      conversation_id && !conversation_id->empty()) {
-    instance = GetInstanceImplForConversationId(*conversation_id);
-    if (!instance) {
-      instance = CreateGlicInstance();
-      auto info = mojom::ConversationInfo::New();
-      info->conversation_id = *conversation_id;
-      instance->RegisterConversation(std::move(info), base::DoNothing());
-    }
-  } else if (source == glic::mojom::InvocationSource::kSharedImage) {
+  if (source == glic::mojom::InvocationSource::kSharedImage) {
     // kSharedImage currently requires a new instance.
     instance = CreateGlicInstance();
   } else {
@@ -724,6 +710,13 @@ void GlicInstanceCoordinatorImpl::SwitchConversation(
   ShowOptions mutable_options = options;
   mutable_options.focus_on_show = source_instance.HasFocus();
   mutable_options.reinitialize_if_already_active = true;
+
+  // TODO(b/510405771): Remove animation suppression once bottom sheet hide is
+  // cancelable.
+  if (auto* side_panel_options = std::get_if<SidePanelShowOptions>(
+          &mutable_options.embedder_options)) {
+    side_panel_options->suppress_opening_animation = true;
+  }
 
   GlicInstanceImpl* target_instance = nullptr;
   if (!info->conversation_id.empty()) {
@@ -875,6 +868,8 @@ void GlicInstanceCoordinatorImpl::OnTabEvent(const GlicTabEvent& event) {
   MaybeDaisyChainNewTab(*creation_event);
 
   MaybeDaisyChainFromLinkClick(*creation_event);
+
+  MaybeDaisyChainFromBookmark(*creation_event);
 }
 
 void GlicInstanceCoordinatorImpl::MaybeDaisyChainFromLinkClick(
@@ -893,7 +888,28 @@ void GlicInstanceCoordinatorImpl::MaybeDaisyChainFromLinkClick(
     return;
   }
 
-  instance->MaybeDaisyChainToTab(event.opener, event.new_tab);
+  instance->MaybeDaisyChainToTab(event.opener, event.new_tab,
+                                 DaisyChainSource::kTabContents);
+}
+
+void GlicInstanceCoordinatorImpl::MaybeDaisyChainFromBookmark(
+    const TabCreationEvent& event) {
+  if (!base::FeatureList::IsEnabled(features::kGlicDaisyChainViaCoordinator)) {
+    return;
+  }
+
+  if (event.creation_type != TabCreationType::kFromBookmark || !event.old_tab ||
+      !event.new_tab) {
+    return;
+  }
+
+  auto* instance = GetInstanceImplForTab(event.old_tab);
+  if (!instance) {
+    return;
+  }
+
+  instance->MaybeDaisyChainToTab(event.old_tab, event.new_tab,
+                                 DaisyChainSource::kBookmark);
 }
 
 void GlicInstanceCoordinatorImpl::MaybeDaisyChainNewTab(
@@ -1054,7 +1070,8 @@ void GlicInstanceCoordinatorImpl::RestoreTab(
       side_panel_options.prefer_peek = true;
       bound_instance->Show(ShowOptions{side_panel_options});
     } else {
-      bound_instance->BindTabWithoutShowing(tab, /*pin_on_bind=*/false);
+      bound_instance->BindTabWithoutShowing(tab, GlicPinTrigger::kUnknown,
+                                            /*pin_on_bind=*/false);
     }
   }
 
