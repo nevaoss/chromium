@@ -319,26 +319,12 @@ void TextTrack::InvalidateTrackIndex() {
 }
 
 bool TextTrack::IsRendered() const {
-<<<<<<< HEAD
-  if (::features::IsTextBasedAudioDescriptionEnabled()) {
-    return mode_ == TextTrackMode::kShowing &&
-           (IsVisualKind() || IsSpokenKind());
-  }
-=======
->>>>>>> f4f4e524ad4eae1ab6064bb6c78900e1ff7a2098
   return mode_ == TextTrackMode::kShowing && IsVisualKind();
 }
 
 bool TextTrack::CanBeRendered() const {
   // A track can be displayed when it's of kind captions, subtitles, or
   // descriptions and hasn't failed to load.
-<<<<<<< HEAD
-  if (::features::IsTextBasedAudioDescriptionEnabled()) {
-    return GetReadinessState() != kFailedToLoad &&
-           (IsVisualKind() || IsSpokenKind());
-  }
-=======
->>>>>>> f4f4e524ad4eae1ab6064bb6c78900e1ff7a2098
   return GetReadinessState() != kFailedToLoad && IsVisualKind();
 }
 

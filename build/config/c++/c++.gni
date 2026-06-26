@@ -53,10 +53,6 @@ declare_args() {
   # Apple platforms provide the intrinsics from a different library, and the
   # implementations in compiler-rt are outdated, so avoid building them in this
   # case.
-<<<<<<< HEAD
-  # NOTE(neva): Please remove this after libatomic can support GCC compiler.
-  use_llvm_libatomic = !is_apple && is_clang
-=======
   use_llvm_libatomic = !is_apple
 
   # Unified modules controls whether we unify sysroot, libc++, and builtins
@@ -66,7 +62,6 @@ declare_args() {
 
 if (enable_strict_deps) {
   assert(use_unified_system_module, "strict deps requires unified modules")
->>>>>>> f4f4e524ad4eae1ab6064bb6c78900e1ff7a2098
 }
 
 use_custom_libcxx =
