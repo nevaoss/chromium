@@ -146,7 +146,7 @@ TEST_F(VulkanImageTest, RejectUndersizedDmaBuf) {
   const uint64_t size = static_cast<uint64_t>(stride) * image_size.height();
 
   gfx::NativePixmapHandle native_pixmap_handle;
-  native_pixmap_handle.modifier = 0;  // Linear tiling
+  native_pixmap_handle.modifier = gfx::NativePixmapHandle::kNoModifier;
   native_pixmap_handle.planes.emplace_back(stride, 0, size,
                                            base::ScopedFD(dup(fd)));
 

@@ -14,8 +14,10 @@
 #include "base/memory/raw_ptr.h"
 #include "base/scoped_observation.h"
 #include "base/types/expected.h"
+#include "base/values.h"
 #include "chrome/browser/glic/glic_enums.h"
 #include "chrome/browser/glic/glic_user_status_fetcher.h"
+#include "chrome/browser/glic/host/glic.mojom.h"
 #include "chrome/browser/glic/public/features.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
 #include "components/prefs/pref_change_registrar.h"
@@ -92,12 +94,15 @@ class GlicGlobalEnabling {
   std::optional<bool> country_enablement_;
 };
 
+// LINT.IfChange(RequiredExperimentalOptIn)
 enum class RequiredExperimentalOptIn {
-  kGlic,
-  kActuation,
-  kExperimental,
-  kNotNeeded,
+  kGlic = 0,
+  kActuation = 1,
+  kExperimental = 2,
+  kNotNeeded = 3,
+  kMaxValue = kNotNeeded,
 };
+// LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicRequiredExperimentalOptIn)
 
 // This class provides a central location for checking if Glic is enabled. It
 // allows for future expansion to include other ways the feature may be disabled
@@ -209,6 +214,11 @@ class GlicEnabling final : public signin::IdentityManager::Observer,
   // Returns true if Glic is enabled for the profile, the feature is enabled,
   // and the account is non-enterprise (or for Glic dev).
   static bool IsShareImageEnabledForProfile(Profile* profile);
+
+  // Returns the Gemini Enterprise settings, taking into account command line
+  // overrides.
+  static std::optional<glic::mojom::GeminiEnterpriseSettings>
+  GetGeminiEnterpriseSettings(Profile* profile);
 
   // Whether the live mode and floaty window are enabled by flags.
   static bool IsLiveAndFloatyEnabledByFlags();
@@ -418,6 +428,12 @@ class GlicEnabling final : public signin::IdentityManager::Observer,
   // Returns true if the user enabled actuation on web pref is at its default
   // value.
   bool IsUserEnabledActuationOnWebDefault() const;
+  // Returns true if the experimental triggering enabled pref is at its default
+  // value.
+  bool IsExperimentalTriggeringEnabledDefault() const;
+  // Returns true if the experimental triggering enabled pref is user
+  // controlled.
+  bool IsExperimentalTriggeringUserControlled() const;
   // Sets whether user enabled actuation on web.
   void SetUserEnabledActuationOnWeb(bool enabled);
 

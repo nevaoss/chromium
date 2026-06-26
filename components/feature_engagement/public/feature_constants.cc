@@ -131,9 +131,6 @@ BASE_FEATURE(kIPHMemorySaverModeFeature,
 BASE_FEATURE(kIPHLiveCaptionFeature,
              "IPH_LiveCaption",
              base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHMerchantTrustFeature,
-             "IPH_MerchantTrust",
-             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHLensOverlayFeature,
              "IPH_LensOverlay",
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -339,8 +336,8 @@ BASE_FEATURE(kIPHAdaptiveButtonInTopToolbarCustomizationAddToBookmarksFeature,
 BASE_FEATURE(kIPHAdaptiveButtonInTopToolbarCustomizationReadAloudFeature,
              "IPH_AdaptiveButtonInTopToolbarCustomization_ReadAloud",
              base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHAdaptiveButtonInTopToolbarCustomizationGlicFeature,
-             "IPH_AdaptiveButtonInTopToolbarCustomization_Glic",
+BASE_FEATURE(kIPHAdaptiveButtonPinGlicToolbarButtonFeature,
+             "IPH_AdaptiveButtonPinGlicToolbarButton",
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHAdaptiveButtonInTopToolbarCustomizationPageSummaryWebFeature,
              "IPH_AdaptiveButtonInTopToolbarCustomization_PageSummary_Web",

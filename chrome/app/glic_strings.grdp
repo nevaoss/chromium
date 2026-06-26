@@ -63,6 +63,9 @@
   <message name="IDS_GLIC_OFFLINE_NOTICE_ACTION_BUTTON" desc="This is the button label text for the offline notice.">
     Try again
   </message>
+  <message name="IDS_GLIC_EXPERIMENTAL_OPT_IN_OFFLINE_NOTICE_MESSAGE" desc="Message shown when the experimental opt-in dialog fails to load due to network issues.">
+    Check your internet connection and try again
+  </message>
   <message name="IDS_GLIC_UNRESPONSIVE_MESSAGE" desc="This is the message that appears overlaying the floaty window for a few seconds if the Gemini backend becomes unresponsive.">
     Gemini is refreshing...
   </message>
@@ -137,9 +140,6 @@
   </message>
   <message name="IDS_SETTINGS_GLIC_BUTTON_TOGGLE" desc="Name of the toggle that controls whether the Gemini icon is shown in the tabstrip.">
     Show Gemini at the top of the browser
-  </message>
-  <message name="IDS_SETTINGS_GLIC_OS_WIDGET_TOGGLE_SHORTCUTS_ONLY" desc="Name of the toggle that controls whether gemini keyboard shortcuts are enabled.">
-    Turn on Gemini keyboard shortcut
   </message>
   <message name="IDS_SETTINGS_GLIC_KEYBOARD_SHORTCUT" desc="Name of the keyboard shortcut setting.">
     Keyboard shortcut
@@ -282,23 +282,26 @@
   <!-- TODO(crbug.com/397187800): The following Glic experimental triggering strings are temporary
        and will be finalized and replaced next week. This also includes finalizing the links for
        "Learn more about Gemini Spark" and "unexpected actions". -->
-  <message name="IDS_SETTINGS_GLIC_EXPERIMENTAL_TRIGGERING_TOGGLE" desc="Label for the Gemini experimental triggering setting" translateable="false">
-    Let Gemini Spark use Chrome auto browse on this device
+  <message name="IDS_SETTINGS_GLIC_EXPERIMENTAL_TRIGGERING_TOGGLE" desc="Label for the Gemini experimental triggering setting">
+    Let Gemini Spark browse on this device
   </message>
-  <message name="IDS_SETTINGS_GLIC_EXPERIMENTAL_TRIGGERING_SUB_LABEL" desc="Sublabel explaining Gemini Spark feature." translateable="false">
-    If your device is on, Gemini Agent can use Chrome auto browse to complete tasks for you on this device. <ph name="LINK_BEGIN">&lt;a href="#"&gt;</ph>Learn more about Gemini Spark<ph name="LINK_END">&lt;/a&gt;</ph>
+  <message name="IDS_SETTINGS_GLIC_EXPERIMENTAL_TRIGGERING_SUB_LABEL" desc="Sublabel explaining Gemini Spark feature.">
+    Gemini Spark can use Chrome auto browse on this device to interact with sites and complete tasks on your behalf. <ph name="LINK_BEGIN">&lt;a href="#"&gt;</ph>Learn more<ph name="LINK_END">&lt;/a&gt;</ph>
   </message>
-  <message name="IDS_SETTINGS_GLIC_EXPERIMENTAL_TRIGGERING_WHEN_ON_1" desc="Bullet point explaining what happens when Gemini Spark is enabled." translateable="false">
-    Gemini Spark can use Chrome auto browse to interact with sites and complete tasks on your behalf. It can only use Chrome on this device if the device is awake and Chrome is running.
+  <message name="IDS_SETTINGS_GLIC_EXPERIMENTAL_TRIGGERING_WHEN_ON_1" desc="Bullet point explaining what happens when Gemini Spark is enabled.">
+    Gemini Spark can only use auto browse on this device if the device is awake and Chrome is running.
   </message>
-  <message name="IDS_SETTINGS_GLIC_EXPERIMENTAL_TRIGGERING_WHEN_ON_2" desc="Bullet point explaining notifications when Gemini Spark is enabled." translateable="false">
-    Spark will decide which actions to take based on the tasks you start from the Gemini Spark dashboard.
+  <message name="IDS_SETTINGS_GLIC_EXPERIMENTAL_TRIGGERING_WHEN_ON_2" desc="Bullet point explaining notifications when Gemini Spark is enabled.">
+    Gemini Spark will decide which actions to take based on the tasks you start or update.
   </message>
-  <message name="IDS_SETTINGS_GLIC_EXPERIMENTAL_TRIGGERING_CONSIDER_1" desc="Bullet point explaining what to consider when enabling Gemini Spark." translateable="false">
-    To get things done more efficiently, Spark will have access to logged in sites and cookie data. Anybody with access to your Spark dashboard could access your Chrome browser.
+  <message name="IDS_SETTINGS_GLIC_EXPERIMENTAL_TRIGGERING_CONSIDER_1" desc="Bullet point explaining site access when enabling Gemini Spark.">
+    Gemini Spark will have access to the same sites as you, including the sites you’re signed in to. It will share necessary info with third parties, which could include personal info you might find sensitive.
   </message>
-  <message name="IDS_SETTINGS_GLIC_EXPERIMENTAL_TRIGGERING_CONSIDER_2" desc="Bullet point explaining user responsibility for Gemini Spark." translateable="false">
-    Gemini Spark is experimental and may make mistakes and <ph name="LINK_BEGIN">&lt;a href="#"&gt;</ph>unexpected actions<ph name="LINK_END">&lt;/a&gt;</ph>, like purchases.
+  <message name="IDS_SETTINGS_GLIC_EXPERIMENTAL_TRIGGERING_CONSIDER_2" desc="Bullet point explaining access risk when enabling Gemini Spark.">
+    Anybody with access to your Gemini Spark agent could control your Chrome browser.
+  </message>
+  <message name="IDS_SETTINGS_GLIC_EXPERIMENTAL_TRIGGERING_CONSIDER_3" desc="Bullet point explaining user responsibility and risks for Gemini Spark.">
+    Gemini Spark is experimental and may do things like share your info or make purchases without asking. <ph name="LINK_BEGIN">&lt;a href="$1" target="_blank"&gt;</ph>Review the risks<ph name="LINK_END">&lt;/a&gt;</ph>.
   </message>
   <message name="IDS_SETTINGS_GLIC_PERMISSIONS_CHROME_WEB_ACTUATION_TOGGLE" desc="Title for the Gemini feature introduction screen" formatter_data="android_java">
     Let Chrome browse for you
@@ -385,7 +388,7 @@
   </message>
 
   <!-- Glic Window -->
-  <message name="IDS_GLIC_INACTIVE_VIEW_CARD_TEXT" desc="Text displayed on the card when the Gemini conversation is in Floaty and the side panel is blurred.">
+  <message name="IDS_GLIC_INACTIVE_VIEW_CARD_TEXT" desc="Text displayed on the card when the Gemini conversation is in Floaty and the side panel is blurred." formatter_data="android_java">
     Your Gemini conversation is in another window. Click anywhere on this side panel to move it here.
   </message>
   <message name="IDS_GLIC_WINDOW_TITLE" desc="Accessible title for the Gemini Window." is_accessibility_with_no_ui="true">
@@ -510,5 +513,17 @@
   </message>
   <message name="IDS_GLIC_GET_HELP" desc="Link or button label text to open help documentation.">
     Get help
+  </message>
+  <message name="IDS_GLIC_CHAT_HIDDEN_TITLE" desc="Title of the snackbar message shown when Glic chat is hidden due to window resizing.">
+    Chat hidden
+  </message>
+  <message name="IDS_GLIC_CHAT_HIDDEN_DESCRIPTION" desc="Subtitle description of the snackbar message shown when Glic chat is hidden due to window resizing.">
+    Increase window size to resume chat
+  </message>
+  <message name="IDS_GLIC_TASK_PAUSED_TITLE" desc="Title of the snackbar message shown when a Glic task is paused due to window resizing.">
+    Task paused
+  </message>
+  <message name="IDS_GLIC_TASK_PAUSED_DESCRIPTION" desc="Subtitle description of the snackbar message shown when a Glic task is paused due to window resizing.">
+    Increase window size to resume task
   </message>
 </grit-part>

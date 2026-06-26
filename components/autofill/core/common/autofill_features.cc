@@ -119,6 +119,14 @@ BASE_FEATURE_PARAM(std::string,
                    "field_types",
                    "");
 
+// This parameter controls whether Autofill on typing suggestions should be
+// displayed only on unclassified fields.
+BASE_FEATURE_PARAM(bool,
+                   kAutofillOnTypingAllowOnlyOnUnclassifiedFields,
+                   &kAutofillAddressSuggestionsOnTyping,
+                   "allow_only_on_unclassified_fields",
+                   false);
+
 // Feature flag to controls whether Autofill on typing suggestions will have a
 // strike database.
 BASE_FEATURE(kAutofillAddressSuggestionsOnTypingHasStrikeDatabase,
@@ -331,6 +339,10 @@ BASE_FEATURE(kAutofillAiWalletFlightReservation,
              IS_AUTOFILL_AI_PLATFORM ? base::FEATURE_ENABLED_BY_DEFAULT
                                      : base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Enables the 2026 Autofill AI Wallet Pass Branding Updates.
+BASE_FEATURE(kAutofillAiWalletPassBranding2026,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // If enabled, AutofillAi supports private passes entities from Google Wallet.
 BASE_FEATURE(kAutofillAiWalletPrivatePasses, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -357,6 +369,9 @@ BASE_FEATURE(kAutofillAiWithDataSchema,
 // value which was modified.
 BASE_FEATURE(kAutofillAllowFillingModifiedInitialValues,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// When enabled, the ambient autofill experience is enabled in Chrome.
+BASE_FEATURE(kAutofillAmbientAutofill, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled, on Android desktop, the Autofill keyboard accessory will have a
 // new behavior and design.
@@ -412,11 +427,6 @@ BASE_FEATURE(kAutofillAtMemoryInactivityNudge,
 // TODO(crbug.com/320965828): Remove when launched.
 BASE_FEATURE(kAutofillBetterLocalHeuristicPlaceholderSupport,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-// If enabled, our `FormEventLogger` will start emitting events for fields
-// annotated with an unrecognized HTML "autocomplete" attribute.
-BASE_FEATURE(kAutofillConsiderAutocompleteUnrecognizedFieldsInMetrics,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Same as `kAutofillAddressUserPerceptionSurvey` but for credit card forms.
 BASE_FEATURE(kAutofillCreditCardUserPerceptionSurvey,
@@ -580,10 +590,6 @@ BASE_FEATURE(kAutofillEnableNonAffiliatedLoyaltyCardsFilling,
 // When enabled, Autofill will use heuristics to identify OTP fields.
 BASE_FEATURE(kAutofillEnableOneTimeCodeHeuristics,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Kill switch for saving entities to wallet from settings.
-BASE_FEATURE(kAutofillEnableSaveToWalletFromSettings,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_ANDROID)
 // Controls if Chrome Autofill UI surfaces ignore touch events if something is
@@ -806,12 +812,6 @@ BASE_FEATURE(kAutofillNewRegexForPhoneCountryCode,
 // TODO(crbug.com/409962888): Remove once launched.
 BASE_FEATURE(kAutofillNewSuggestionGeneration,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-// When enabled, cache form updates will happen in place instead of creating a
-// new form and moving it back to the cache, which reduces the number of members
-// that are copied.
-// TODO(crbug.com/456719060): Remove once launched.
-BASE_FEATURE(kAutofillOptimizeCacheUpdates, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, `IsNormalizedNameVariantOf()` uses a linear-time greedy
 // algorithm instead of an exponential one that generates all name variants.
@@ -1067,7 +1067,6 @@ BASE_FEATURE(kManageTravelPerceptionSurvey, base::FEATURE_DISABLED_BY_DEFAULT);
 // settings page.
 BASE_FEATURE(kManageYourSavedInfoPerceptionSurvey,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
 
 // If enabled, an entry point to AtMemory will be shown at the bottom of the
 // Autocomplete dialogs.

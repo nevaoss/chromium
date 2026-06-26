@@ -33,6 +33,7 @@ struct OptimizationGuideModelExecutionResult;
 }  // namespace optimization_guide
 
 namespace page_actions {
+class PageActionController;
 class PageActionObserver;
 }  // namespace page_actions
 
@@ -47,6 +48,7 @@ class SyncService;
 namespace contextual_cueing {
 
 class ContextualCueingService;
+struct CueTabMetrics;
 
 class ContextualCueingController
     : public page_content_annotations::PageContentAnnotationsService::
@@ -87,7 +89,7 @@ class ContextualCueingController
   void OnCueInteraction(ContextualCueingInteraction interaction_type,
                         CueTargetType cue_type,
                         const std::string& cuj,
-                        CueActionData data);
+                        CueActionData action);
 
  private:
   // Initiates a model execution request to MES for the current window state.
@@ -117,15 +119,25 @@ class ContextualCueingController
   // is no active tab.
   ukm::SourceId GetActiveTabSourceId() const;
 
+  std::pair<std::vector<tabs::TabHandle>, CueTabMetrics> GetTabsToShow(
+      const optimization_guide::proto::ContextualCue& cue);
+
   void ShowCue(CueTargetType cue_type,
                const CueTarget& target,
-               optimization_guide::proto::ContextualCueingResponse response);
+               const optimization_guide::proto::ContextualCue& cue);
+#if !BUILDFLAG(IS_ANDROID)
+  void MaybeShowTabList(
+      page_actions::PageActionController* page_action_controller,
+      const std::vector<tabs::TabHandle>& tabs_to_show);
+#endif
   void OnCueClicked(CueTargetType cue_type,
                     std::string cuj,
-                    CueActionData data,
+                    CueActionData action,
                     actions::ActionItem*,
                     actions::ActionInvocationContext);
   void OnCueHidden();
+  void OnCueFormFactorShown(CueFormFactor form_factor);
+  void OnCueFormFactorHidden(CueFormFactor form_factor);
 
   void OnSidePanelShown();
 
@@ -150,6 +162,7 @@ class ContextualCueingController
   absl::flat_hash_map<CueTargetType, std::unique_ptr<CueTarget>> cue_targets_;
   base::CallbackListSubscription side_panel_shown_subscription_;
   base::TimeTicks cue_shown_time_;
+  base::TimeTicks cue_hidden_time_;
 
 #if !BUILDFLAG(IS_ANDROID)
   std::unique_ptr<page_actions::PageActionObserver> page_action_observer_;

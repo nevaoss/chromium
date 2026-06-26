@@ -1201,18 +1201,17 @@ class FakeEmbedder : public passage_embeddings::TestEmbedder {
   ~FakeEmbedder() override = default;
 
   // passage_embeddings::TestEmbedder:
-  passage_embeddings::Embedder::TaskId ComputePassagesEmbeddings(
+  passage_embeddings::Embedder::Job ComputePassagesEmbeddings(
       passage_embeddings::PassagePriority priority,
       std::vector<std::string> passages,
       ComputePassagesEmbeddingsCallback callback) override {
     if (status_ == passage_embeddings::ComputeEmbeddingsStatus::kSuccess) {
-      passage_embeddings::TestEmbedder::ComputePassagesEmbeddings(
+      return passage_embeddings::TestEmbedder::ComputePassagesEmbeddings(
           priority, passages, std::move(callback));
-      return 0;
     }
 
-    std::move(callback).Run(passages, {}, 0, status_);
-    return 0;
+    std::move(callback).Run(passages, {}, 1, status_);
+    return passage_embeddings::Embedder::Job(GetWeakPtr(), 1);
   }
 
   void set_status(passage_embeddings::ComputeEmbeddingsStatus status) {
@@ -2557,8 +2556,14 @@ IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionPdfTest,
   }
 }
 
+// TODO(crbug.com/517335503): Re-enable this test on ChromeOS.
+#if BUILDFLAG(IS_CHROMEOS)
+#define MAYBE_TwoPDFPageLoads DISABLED_TwoPDFPageLoads
+#else
+#define MAYBE_TwoPDFPageLoads TwoPDFPageLoads
+#endif
 IN_PROC_BROWSER_TEST_P(PageContentAnnotationsServiceContentExtractionPdfTest,
-                       TwoPDFPageLoads) {
+                       MAYBE_TwoPDFPageLoads) {
   base::HistogramTester histogram_tester;
 
   // Set up the observer for page content and PDF text extraction.

@@ -22,6 +22,8 @@ import org.chromium.chrome.browser.ChromeTabbedActivity;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.layouts.LayoutType;
 import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.chrome.browser.tab.SendTabToSelfTabCardLabelData;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.components.messages.MessageBannerProperties;
 import org.chromium.components.messages.MessageDispatcher;
 import org.chromium.components.messages.MessageDispatcherProvider;
@@ -112,6 +114,17 @@ public class SendTabToSelfAndroidBridge {
                                 targetDeviceName);
                 Toast.makeText(appContext, throttledMessage, Toast.LENGTH_SHORT).show();
                 break;
+            case SendTabToSelfResult.FAILURE_NO_INTERNET_CONNECTION:
+            case SendTabToSelfResult.FAILURE_COMMIT_TIMEOUT:
+                String noInternetMessage =
+                        appContext.getString(R.string.send_tab_to_self_post_send_no_internet_toast);
+                Toast.makeText(appContext, noInternetMessage, Toast.LENGTH_SHORT).show();
+                break;
+            default:
+                String failureMessage =
+                        appContext.getString(R.string.send_tab_to_self_post_send_failure_toast);
+                Toast.makeText(appContext, failureMessage, Toast.LENGTH_SHORT).show();
+                break;
         }
     }
 
@@ -150,6 +163,23 @@ public class SendTabToSelfAndroidBridge {
     public static @Nullable @EntryPointDisplayReason Integer getEntryPointDisplayReason(
             Profile profile, String url) {
         return SendTabToSelfAndroidBridgeJni.get().getEntryPointDisplayReason(profile, url);
+    }
+
+    /**
+     * Attaches SendTabToSelfTabCardLabelData to a Tab to indicate which device sent it.
+     *
+     * @param tab The Tab to attach the user data to.
+     * @param senderDeviceName The name of the device that sent the tab.
+     */
+    @CalledByNative
+    public static void attachTabLabel(Tab tab, String senderDeviceName) {
+        if (tab == null || senderDeviceName == null || senderDeviceName.isEmpty()) return;
+
+        tab.getUserDataHost()
+                .setUserData(
+                        SendTabToSelfTabCardLabelData.class,
+                        new SendTabToSelfTabCardLabelData(
+                                tab, senderDeviceName, System.currentTimeMillis()));
     }
 
     @CalledByNative

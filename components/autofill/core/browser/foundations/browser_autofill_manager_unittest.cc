@@ -33,6 +33,7 @@
 #include "base/strings/stringprintf.h"
 #include "base/strings/to_string.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/test/bind.h"
 #include "base/test/gmock_callback_support.h"
 #include "base/test/gmock_move_support.h"
 #include "base/test/metrics/histogram_tester.h"
@@ -41,6 +42,7 @@
 #include "base/test/task_environment.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
+#include "components/accessibility_annotator/core/mock_accessibility_query_service.h"
 #include "components/autofill/core/browser/autofill_field.h"
 #include "components/autofill/core/browser/autofill_format_string.h"
 #include "components/autofill/core/browser/crowdsourcing/mock_autofill_crowdsourcing_manager.h"
@@ -1894,331 +1896,7 @@ TEST_F(BrowserAutofillManagerTest,
                                         {suggestions[0], suggestions[1]});
 }
 
-#if BUILDFLAG(IS_IOS)
-// Tests that no loyalty card suggestions are shown on iOS.
-TEST_F(BrowserAutofillManagerTest, GetSuggestions_LoyaltyCardsEmpty) {
-  autofill_client().set_last_committed_primary_main_frame_url(
-      GURL("https://www.domain.example/"));
 
-  FormData form =
-      test::GetFormData({.fields = {{.role = LOYALTY_MEMBERSHIP_ID}}});
-  form.set_main_frame_origin(
-      url::Origin::Create(GURL("https://example.test/")));
-
-  FormsSeen({form});
-  OnAskForValuesToFill(form, form.fields()[0]);
-  FormSubmitted(form);
-
-  EXPECT_FALSE(external_delegate()->on_suggestions_returned_seen());
-}
-
-// Tests that when both email and loyalty card suggestions are available, no
-// loyalty card suggestions are shown on iOS.
-TEST_F(BrowserAutofillManagerTest, GetSuggestions_EmailAndLoyaltyCards) {
-  autofill_client().set_last_committed_primary_main_frame_url(
-      GURL("https://www.domain.example/"));
-
-  FormData form_data =
-      test::GetFormData({.fields = {{.role = EMAIL_OR_LOYALTY_MEMBERSHIP_ID},
-                                    {.role = PASSWORD}}});
-  auto form_structure = std::make_unique<FormStructure>(form_data);
-  test_api(*form_structure)
-      .SetFieldTypes({EMAIL_OR_LOYALTY_MEMBERSHIP_ID, PASSWORD},
-                     {EMAIL_OR_LOYALTY_MEMBERSHIP_ID, PASSWORD});
-  test_api(autofill_manager()).AddSeenFormStructure(std::move(form_structure));
-
-  FormsSeen({form_data});
-  OnAskForValuesToFill(form_data, form_data.fields()[0]);
-  external_delegate()->CheckSuggestions(
-      form_data.fields()[0].global_id(),
-      {Suggestion(u"buddy@gmail.com", u"", Suggestion::Icon::kEmail,
-                  SuggestionType::kAddressEntry),
-       Suggestion(u"theking@gmail.com", u"", Suggestion::Icon::kEmail,
-                  SuggestionType::kAddressEntry),
-       Suggestion(SuggestionType::kSeparator),
-       CreateManageAddressesSuggestion()});
-}
-#endif  // BUILDFLAG(IS_IOS)
-
-#if !BUILDFLAG(IS_IOS)
-class BrowserAutofillManagerTestValuables : public BrowserAutofillManagerTest {
- public:
-  void SetUp() override {
-    BrowserAutofillManagerTest::SetUp();
-    std::unique_ptr<ValuablesTable> valuables_table =
-        std::make_unique<ValuablesTable>();
-    valuables_table_ = valuables_table.get();
-
-    web_data_service_helper_ =
-        std::make_unique<AutofillWebDataServiceTestHelper>(
-            std::move(valuables_table));
-    autofill_client().set_valuables_data_manager(
-        std::make_unique<ValuablesDataManager>(
-            web_data_service_helper_->autofill_webdata_service(),
-            autofill_client().GetPrefs(),
-            /*image_fetcher=*/nullptr));
-    web_data_service_helper_->WaitUntilIdle();
-  }
-
-  void SetLoyaltyCards(const std::vector<LoyaltyCard>& loyalty_cards) {
-    valuables_table_.get()->SetLoyaltyCards(loyalty_cards);
-    test_api(valuables_data()).LoadLoyaltyCards();
-    WaitUntilWebDataServiceHelperIdle();
-  }
-
-  ValuablesDataManager& valuables_data() {
-    return *autofill_client().GetValuablesDataManager();
-  }
-
-  void WaitUntilWebDataServiceHelperIdle() const {
-    web_data_service_helper_->WaitUntilIdle();
-  }
-
- private:
-  std::unique_ptr<AutofillWebDataServiceTestHelper> web_data_service_helper_;
-  // Owned by `web_data_service_helper_`.
-  raw_ptr<ValuablesTable> valuables_table_;
-};
-
-TEST_F(BrowserAutofillManagerTestValuables, GetSuggestions_LoyaltyCards) {
-  SetLoyaltyCards({test::CreateLoyaltyCard()});
-  autofill_client().set_last_committed_primary_main_frame_url(
-      GURL("https://www.domain.example/"));
-
-  FormData form =
-      test::GetFormData({.fields = {{.role = LOYALTY_MEMBERSHIP_ID}}});
-  form.set_main_frame_origin(
-      url::Origin::Create(GURL("https://example.test/")));
-
-  FormsSeen({form});
-  OnAskForValuesToFill(form, form.fields()[0]);
-  // This ensures that the event loggers are notified about suggestions shown.
-  external_delegate()->OnSuggestionsShown(external_delegate()->suggestions());
-  FormSubmitted(form);
-
-  external_delegate()->CheckSuggestions(
-      form.fields()[0].global_id(),
-      {Suggestion(u"1234", u"Deutsche Bahn", Suggestion::Icon::kNoIcon,
-                  SuggestionType::kLoyaltyCardEntry),
-       Suggestion(SuggestionType::kSeparator),
-       Suggestion(l10n_util::GetStringUTF16(IDS_AUTOFILL_MANAGE_LOYALTY_CARDS),
-                  u"", Suggestion::Icon::kSettings,
-                  SuggestionType::kManageLoyaltyCard)});
-
-  // Make sure key metrics are logged.
-  base::HistogramTester histogram_tester;
-  autofill_client().GetAutofillDriverFactory().Reset(autofill_driver());
-  histogram_tester.ExpectBucketCount(
-      "Autofill.KeyMetrics.FillingReadiness.LoyaltyCard", 1, 1);
-  histogram_tester.ExpectBucketCount(
-      "Autofill.KeyMetrics.FillingAcceptance.LoyaltyCard", 0, 1);
-  histogram_tester.ExpectTotalCount(
-      "Autofill.KeyMetrics.FillingCorrectness.LoyaltyCard", 0);
-  histogram_tester.ExpectBucketCount(
-      "Autofill.KeyMetrics.FillingAssistance.LoyaltyCard", 0, 1);
-
-  using Ukm = UkmAutofillKeyMetricsType;
-  EXPECT_THAT(
-      GetUkmEvents(*autofill_client().GetUkmRecorder(), Ukm::kEntryName),
-      UkmEventsAre({{{Ukm::kFillingReadinessName, 1},
-                     {Ukm::kFillingAcceptanceName, 0},
-                     {Ukm::kFillingAssistanceName, 0},
-                     {Ukm::kAutofillFillsName, 0},
-                     {Ukm::kFormElementUserModificationsName, 0},
-                     {Ukm::kFormTypesName,
-                      AutofillMetrics::FormTypesToBitVector(
-                          {FormTypeNameForLogging::kLoyaltyCardForm})}}}));
-  EXPECT_THAT(autofill_metrics::GetEventUrls(
-                  *autofill_client().GetUkmRecorder(), Ukm::kEntryName),
-              Each(form.main_frame_origin().GetURL()));
-}
-
-// Tests that when both email and loyalty card suggestions are available, they
-// are shown in the correct order.
-TEST_F(BrowserAutofillManagerTestValuables,
-       GetSuggestions_EmailAndLoyaltyCards) {
-  SetLoyaltyCards({test::CreateLoyaltyCard()});
-  autofill_client().set_last_committed_primary_main_frame_url(
-      GURL("https://www.domain.example/"));
-
-  FormData form_data =
-      test::GetFormData({.fields = {{.role = EMAIL_OR_LOYALTY_MEMBERSHIP_ID},
-                                    {.role = PASSWORD}}});
-  auto form_structure = std::make_unique<FormStructure>(form_data);
-  const RegexPredictions regex_predictions = DetermineRegexTypes(
-      GeoIpCountryCode(""), LanguageCode(""), form_structure->ToFormData(),
-      nullptr, /*ignore_small_forms=*/true);
-  regex_predictions.ApplyTo(form_structure->fields());
-  form_structure->RationalizeAndAssignSections(GeoIpCountryCode(""),
-                                               LanguageCode(""), nullptr);
-
-  test_api(*form_structure)
-      .SetFieldTypes({EMAIL_OR_LOYALTY_MEMBERSHIP_ID, PASSWORD},
-                     {EMAIL_OR_LOYALTY_MEMBERSHIP_ID, PASSWORD});
-  test_api(autofill_manager()).AddSeenFormStructure(std::move(form_structure));
-
-  FormsSeen({form_data});
-  // TTF bottom sheet should not be shown when address suggestions are
-  // available.
-  EXPECT_CALL(touch_to_fill_delegate(), TryToShowTouchToFill).Times(0);
-  OnAskForValuesToFill(form_data, form_data.fields()[0]);
-
-#if BUILDFLAG(IS_ANDROID)
-  external_delegate()->CheckSuggestions(
-      form_data.fields()[0].global_id(),
-      {Suggestion(u"buddy@gmail.com", u"", Suggestion::Icon::kEmail,
-                  SuggestionType::kAddressEntry),
-       Suggestion(u"theking@gmail.com", u"", Suggestion::Icon::kEmail,
-                  SuggestionType::kAddressEntry),
-       Suggestion(SuggestionType::kSeparator),
-       CreateManageAddressesSuggestion(),
-       Suggestion(u"1234", u"Deutsche Bahn", Suggestion::Icon::kNoIcon,
-                  SuggestionType::kLoyaltyCardEntry)});
-#else
-  Suggestion loyalty_cards_submenu = Suggestion(
-      l10n_util::GetStringUTF16(IDS_AUTOFILL_LOYALTY_CARDS_SUBMENU_TITLE), u"",
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-      Suggestion::Icon::kGoogleWalletMonochrome,
-#else
-      Suggestion::Icon::kNoIcon,
-#endif
-      SuggestionType::kAllLoyaltyCardsEntry);
-  loyalty_cards_submenu.acceptability =
-      Suggestion::Acceptability::kUnacceptable;
-  loyalty_cards_submenu.children = {
-      Suggestion(u"1234", u"Deutsche Bahn", Suggestion::Icon::kNoIcon,
-                 SuggestionType::kLoyaltyCardEntry),
-      Suggestion(SuggestionType::kSeparator),
-      Suggestion(l10n_util::GetStringUTF16(IDS_AUTOFILL_MANAGE_LOYALTY_CARDS),
-                 u"", Suggestion::Icon::kSettings,
-                 SuggestionType::kManageLoyaltyCard),
-  };
-
-  external_delegate()->CheckSuggestions(
-      form_data.fields()[0].global_id(),
-      {Suggestion(u"buddy@gmail.com", u"", Suggestion::Icon::kEmail,
-                  SuggestionType::kAddressEntry),
-       Suggestion(u"theking@gmail.com", u"", Suggestion::Icon::kEmail,
-                  SuggestionType::kAddressEntry),
-       Suggestion(SuggestionType::kSeparator), loyalty_cards_submenu,
-       Suggestion(SuggestionType::kSeparator),
-       CreateManageAddressesSuggestion()});
-#endif  // BUILDFLAG(IS_ANDROID)
-}
-
-// Tests that when only loyalty card suggestions are available, they are shown
-// without a submenu.
-TEST_F(BrowserAutofillManagerTestValuables,
-       GetSuggestions_EmailAndLoyaltyCards_NoEmails) {
-  SetLoyaltyCards({test::CreateLoyaltyCard()});
-  autofill_client().set_last_committed_primary_main_frame_url(
-      GURL("https://www.domain.example/"));
-  personal_data().test_address_data_manager().ClearProfiles();
-
-  FormData form_data =
-      test::GetFormData({.fields = {{.role = EMAIL_OR_LOYALTY_MEMBERSHIP_ID},
-                                    {.role = PASSWORD}}});
-  auto form_structure = std::make_unique<FormStructure>(form_data);
-  const RegexPredictions regex_predictions = DetermineRegexTypes(
-      GeoIpCountryCode(""), LanguageCode(""), form_structure->ToFormData(),
-      nullptr, /*ignore_small_forms=*/true);
-  regex_predictions.ApplyTo(form_structure->fields());
-  form_structure->RationalizeAndAssignSections(GeoIpCountryCode(""),
-                                               LanguageCode(""), nullptr);
-
-  test_api(*form_structure)
-      .SetFieldTypes({EMAIL_OR_LOYALTY_MEMBERSHIP_ID, PASSWORD},
-                     {EMAIL_OR_LOYALTY_MEMBERSHIP_ID, PASSWORD});
-  test_api(autofill_manager()).AddSeenFormStructure(std::move(form_structure));
-
-  FormsSeen({form_data});
-  OnAskForValuesToFill(form_data, form_data.fields()[0]);
-
-  external_delegate()->CheckSuggestions(
-      form_data.fields()[0].global_id(),
-      {Suggestion(u"1234", u"Deutsche Bahn", Suggestion::Icon::kNoIcon,
-                  SuggestionType::kLoyaltyCardEntry),
-       Suggestion(SuggestionType::kSeparator),
-       Suggestion(l10n_util::GetStringUTF16(IDS_AUTOFILL_MANAGE_LOYALTY_CARDS),
-                  u"", Suggestion::Icon::kSettings,
-                  SuggestionType::kManageLoyaltyCard)});
-}
-
-// Tests that acceptance metric for EMAIL_OR_LOYALTY_MEMBERSHIP_ID field is
-// reported when an email suggestion is selected.
-TEST_F(BrowserAutofillManagerTestValuables,
-       GetSuggestions_EmailAndLoyaltyCardsMetric_EmailSuggestionSelected) {
-  SetLoyaltyCards({test::CreateLoyaltyCard()});
-  autofill_client().set_last_committed_primary_main_frame_url(
-      GURL("https://www.domain.example/"));
-
-  FormData form_data =
-      test::GetFormData({.fields = {{.role = EMAIL_OR_LOYALTY_MEMBERSHIP_ID},
-                                    {.role = PASSWORD}}});
-  FormsSeen({form_data});
-  OnAskForValuesToFill(form_data, form_data.fields()[0]);
-
-  ASSERT_FALSE(external_delegate()->suggestions().empty());
-  EXPECT_EQ(external_delegate()->suggestions().front().type,
-            SuggestionType::kAddressEntry);
-
-  base::HistogramTester histogram_tester;
-
-  external_delegate()->DidAcceptSuggestion(
-      external_delegate()->suggestions().front(), {});
-
-  histogram_tester.ExpectUniqueSample(
-      "Autofill.LoyaltyCard.EmailOrLoyaltyCardAcceptance",
-      autofill_metrics::AutofillEmailOrLoyaltyCardAcceptanceMetricValue::
-          kEmailSelected,
-      1);
-}
-
-// Tests that acceptance metric for EMAIL_OR_LOYALTY_MEMBERSHIP_ID field is
-// reported when a loyalty card suggestion is selected.
-TEST_F(
-    BrowserAutofillManagerTestValuables,
-    GetSuggestions_EmailAndLoyaltyCardsMetric_LoyaltyCardSuggestionSelected) {
-
-  SetLoyaltyCards({test::CreateLoyaltyCard()});
-
-  FormData form_data =
-      test::GetFormData({.fields = {{.role = EMAIL_OR_LOYALTY_MEMBERSHIP_ID},
-                                    {.role = PASSWORD}}});
-  FormsSeen({form_data});
-  OnAskForValuesToFill(form_data, form_data.fields()[0]);
-  base::HistogramTester histogram_tester;
-
-  external_delegate()->DidAcceptSuggestion(
-      Suggestion(u"1234", u"Deutsche Bahn", Suggestion::Icon::kNoIcon,
-                 SuggestionType::kLoyaltyCardEntry),
-      {});
-
-  histogram_tester.ExpectUniqueSample(
-      "Autofill.LoyaltyCard.EmailOrLoyaltyCardAcceptance",
-      autofill_metrics::AutofillEmailOrLoyaltyCardAcceptanceMetricValue::
-          kLoyaltyCardSelected,
-      1);
-}
-
-// Test that we correctly update the used loyalty card.
-TEST_F(BrowserAutofillManagerTestValuables,
-       LogAndRecordLoyaltyCardFill_UpdateLoyaltyCard) {
-  FormData form =
-      test::GetFormData({.fields = {{.role = LOYALTY_MEMBERSHIP_ID}}});
-  FormsSeen({form});
-  LoyaltyCard loyalty_card = test::CreateLoyaltyCard();
-  SetLoyaltyCards({loyalty_card});
-
-  autofill_manager().LogAndRecordLoyaltyCardFill(loyalty_card, form.global_id(),
-                                                 form.fields()[0].global_id());
-  WaitUntilWebDataServiceHelperIdle();
-
-  ASSERT_EQ(valuables_data().GetLoyaltyCards().size(), 1u);
-  EXPECT_EQ(ValuableMetadata(loyalty_card.id(), base::Time::Now(), 1),
-            valuables_data().GetLoyaltyCards()[0].metadata());
-}
-#endif
 
 class BrowserAutofillManagerTestForMetadataCardSuggestions
     : public BrowserAutofillManagerTest,
@@ -6250,6 +5928,70 @@ TEST_F(BrowserAutofillManagerTest,
   autofill_manager().DidShowSuggestions(
       {Suggestion(SuggestionType::kAddressEntry)}, form.global_id(),
       form.fields()[0].global_id(), {});
+}
+
+// Tests that even if the context is secure and the `FormStructure` is missing,
+// the underlying `FormData` is still evaluated for being safe enough for
+// filling SPIIs.
+TEST_F(BrowserAutofillManagerTest, DidShowSuggestions_FormNonSecureAction) {
+  // Ensure that the client context is secure.
+  autofill_client().set_last_committed_primary_main_frame_url(
+      GURL("https://example.com"));
+  ASSERT_TRUE(autofill_client().IsContextSecure());
+
+  auto mock_query_service = std::make_unique<testing::NiceMock<
+      accessibility_annotator::MockAccessibilityQueryService>>();
+  accessibility_annotator::MockAccessibilityQueryService*
+      mock_query_service_ptr = mock_query_service.get();
+  autofill_client().set_accessibility_query_service(
+      std::move(mock_query_service));
+
+  // Create a form that submits to an insecure HTTP action.
+  FormData insecure_form;
+  insecure_form.set_name(u"InsecureForm");
+  insecure_form.set_url(GURL("https://example.com/form.html"));
+  insecure_form.set_action(GURL("http://attacker.com/search"));
+  test_api(insecure_form)
+      .Append(CreateTestFormField("Search", "search", "",
+                                  FormControlType::kInputText));
+
+  OnAskForValuesToFill(insecure_form, insecure_form.fields()[0]);
+
+  std::vector<Suggestion> updated_suggestions;
+  auto update_callback = base::BindLambdaForTesting(
+      [&](std::vector<Suggestion> suggestions,
+          AutofillSuggestionTriggerSource trigger_source) {
+        updated_suggestions = std::move(suggestions);
+      });
+  autofill_manager().DidShowSuggestions(
+      {Suggestion(SuggestionType::kAddressEntry)}, insecure_form.global_id(),
+      test::MakeFieldGlobalId(), update_callback,
+      AutofillSuggestionTriggerSource::kAtMemory);
+
+  // Submit search query. This should invoke Query on mock query service.
+  base::RepeatingCallback<void(accessibility_annotator::MemorySearchResults)>
+      search_callback;
+  EXPECT_CALL(*mock_query_service_ptr,
+              Query(std::u16string_view(u"query"), _, _))
+      .WillOnce(testing::SaveArg<2>(&search_callback));
+  autofill_manager().GetAtMemoryManager().OnSearchSubmitted(u"query");
+  ASSERT_FALSE(search_callback.is_null());
+
+  // Prepare search results containing a SPII entry.
+  std::vector<accessibility_annotator::MemorySearchResult> entries;
+  entries.emplace_back(accessibility_annotator::EntryType::kPassportNumber,
+                       u"Passport", u"123456789");
+  accessibility_annotator::MemorySearchResults results(
+      accessibility_annotator::MemorySearchStatus::kFinalResponseSuccess,
+      std::move(entries));
+
+  // Send search results. Since the context should be insecure (due to insecure
+  // fallback action), the SPII entry must be filtered out, leaving no
+  // suggestions.
+  search_callback.Run(std::move(results));
+  ASSERT_EQ(updated_suggestions.size(), 1u);
+  EXPECT_EQ(updated_suggestions[0].main_text.value,
+            l10n_util::GetStringUTF16(IDS_AUTOFILL_AT_MEMORY_NO_DATA));
 }
 
 TEST_F(BrowserAutofillManagerTest, PageLanguageGetsCorrectlySet) {

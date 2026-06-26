@@ -91,7 +91,7 @@ int GetLayoutConstant(LayoutConstant constant) {
     case LayoutConstant::kTabAlertIndicatorIconWidth:
       return touch_ui ? 12 : 16;
     case LayoutConstant::kTabCloseButtonSize:
-      return touch_ui ? 24 : 16;
+      return touch_ui ? 24 : (features::IsRoundedIconsEnabled() ? 14 : 16);
     case LayoutConstant::kTabHeight:
       return 34 + GetLayoutConstant(LayoutConstant::kTabstripToolbarOverlap);
     case LayoutConstant::kTabStripHeight:
@@ -150,10 +150,8 @@ int GetLayoutConstant(LayoutConstant constant) {
       return 8;
     case LayoutConstant::kVerticalTabStripComboButtonIconSize:
       return 18;
-    case LayoutConstant::kVerticalTabStripTopContainerButtonIconSize:
+    case LayoutConstant::kVerticalTabStripButtonIconSize:
       return 20;
-    case LayoutConstant::kVerticalTabStripNewTabButtonIconSize:
-      return features::IsRoundedIconsEnabled() ? 18 : 20;
     case LayoutConstant::kVerticalTabStripTopButtonPadding:
       return 4;
     case LayoutConstant::kVerticalTabStripFlatEdgeButtonPadding:

@@ -38,6 +38,7 @@
 #include "chrome/browser/autofill/merchant_promo_code_manager_factory.h"
 #include "chrome/browser/autofill/ml_log_router_factory.h"
 #include "chrome/browser/autofill/one_time_token_service_factory.h"
+#include "chrome/browser/autofill/personal_context_access_manager_factory.h"
 #include "chrome/browser/autofill/personal_data_manager_factory.h"
 #include "chrome/browser/autofill/valuables_data_manager_factory.h"
 #include "chrome/browser/autofill/wallet_pass_access_manager_factory.h"
@@ -375,9 +376,9 @@
 #include "chrome/browser/prefs/persistent_renderer_prefs_manager_factory.h"
 #include "chrome/browser/private_ai/private_ai_service_factory.h"
 #include "chrome/browser/profile_resetter/reset_report_uploader_factory.h"
-#include "chrome/browser/record_replay/recording_data_manager_factory.h"
 #include "chrome/browser/record_replay/task_parameters_extractor_factory.h"
 #include "chrome/browser/record_replay/task_service_factory.h"
+#include "chrome/browser/record_replay/task_store_factory.h"
 #include "chrome/browser/screen_ai/screen_ai_service_router_factory.h"
 #include "chrome/browser/search/instant_service_factory.h"
 #include "chrome/browser/search_engine_choice/search_engine_choice_dialog_service_factory.h"
@@ -777,6 +778,7 @@ void ChromeBrowserMainExtraPartsProfiles::
   autofill::MerchantPromoCodeManagerFactory::GetInstance();
   autofill::MlLogRouterFactory::GetInstance();
   autofill::OneTimeTokenServiceFactory::GetInstance();
+  autofill::PersonalContextAccessManagerFactory::GetInstance();
   autofill::PersonalDataManagerFactory::GetInstance();
   autofill::ValuablesDataManagerFactory::GetInstance();
   autofill::WalletPassAccessManagerFactory::GetInstance();
@@ -794,7 +796,7 @@ void ChromeBrowserMainExtraPartsProfiles::
 #if !BUILDFLAG(IS_ANDROID)
   badging::BadgeManagerFactory::GetInstance();
 #endif
-#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+#if BUILDFLAG(ENABLE_DICE_SUPPORT) || BUILDFLAG(IS_CHROMEOS)
   BatchUploadServiceFactory::GetInstance();
 #endif
   BitmapFetcherServiceFactory::GetInstance();
@@ -1332,7 +1334,7 @@ void ChromeBrowserMainExtraPartsProfiles::
 #endif
   ReadingListModelFactory::GetInstance();
 #if !BUILDFLAG(IS_ANDROID)
-  record_replay::RecordingDataManagerFactory::GetInstance();
+  record_replay::TaskStoreFactory::GetInstance();
   record_replay::TaskParametersExtractorFactory::GetInstance();
   record_replay::TaskServiceFactory::GetInstance();
 #endif

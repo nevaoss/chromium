@@ -217,6 +217,9 @@ class AutofillManager
     virtual void OnSuggestionsHidden(AutofillManager& manager,
                                      SuggestionHidingReason reason) {}
 
+    virtual void OnEmailVerificationTokenShared(AutofillManager& manager,
+                                                FieldGlobalId field_id) {}
+
     // Fired when an autofill of `filling_payload` is previewed or filled.
     // This is not fired for single-field operations (see
     // OnFillOrPreviewField()). `filled_field_ids` represents the IDs of the
@@ -313,6 +316,8 @@ class AutofillManager
 
   // Invoked when the suggestions are actually hidden.
   virtual void OnSuggestionsHidden(SuggestionHidingReason reason);
+
+  virtual void OnEmailVerificationTokenShared(FieldGlobalId field_id);
 
   // Routes calls from external components to FormFiller::FillOrPreviewField.
   // Virtual for testing.
@@ -579,7 +584,6 @@ class AutofillManager
   // in that case).
   void UpdateFormCache(base::span<const FormData> forms,
                        base::optional_ref<const AsyncContext> context,
-                       FormStructure::RetrieveFromCacheReason reason,
                        bool preserve_signatures);
 
   std::unique_ptr<autofill_metrics::FormInteractionsUkmLogger>

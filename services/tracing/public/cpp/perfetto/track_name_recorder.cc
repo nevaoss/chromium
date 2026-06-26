@@ -11,11 +11,11 @@
 #include "base/rand_util.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/time/time.h"
-#include "base/trace_event/trace_log.h"
 #include "base/tracing/protos/chrome_enums.pbzero.h"
 #include "build/build_config.h"
 #include "services/tracing/public/cpp/perfetto/trace_string_lookup.h"
 #include "third_party/perfetto/include/perfetto/tracing/internal/track_event_internal.h"
+#include "third_party/perfetto/include/perfetto/tracing/platform.h"
 #include "third_party/perfetto/protos/perfetto/trace/track_event/chrome_process_descriptor.gen.h"
 #include "third_party/perfetto/protos/perfetto/trace/track_event/chrome_thread_descriptor.gen.h"
 #include "third_party/perfetto/protos/perfetto/trace/track_event/process_descriptor.gen.h"
@@ -46,19 +46,23 @@ void FillThreadTrack(const perfetto::ThreadTrack& track, const char* name) {
   using perfetto::protos::gen::ChromeThreadDescriptor;
 
   auto desc = track.Serialize();
-  desc.mutable_thread()->set_pid(static_cast<int>(
-      base::trace_event::TraceLog::GetInstance()->process_id()));
+  desc.mutable_thread()->set_pid(perfetto::Platform::GetCurrentProcessId());
   desc.mutable_thread()->set_thread_name(name);
   pbzero_enums::ThreadType thread_type = GetThreadType(name);
   if (thread_type != pbzero_enums::THREAD_UNSPECIFIED) {
     desc.mutable_chrome_thread()->set_thread_type(
         static_cast<int32_t>(thread_type));
   }
+<<<<<<< HEAD
   // TODO(neva): Remove this after webOS supports set_is_sandboxed_tid().
 #if (BUILDFLAG(IS_LINUX) && !BUILDFLAG(IS_WEBOS)) || BUILDFLAG(IS_CHROMEOS) || \
     BUILDFLAG(IS_AIX)
   if (base::GetCurrentProcId() !=
       base::trace_event::TraceLog::GetInstance()->process_id()) {
+=======
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_AIX)
+  if (base::GetCurrentProcId() != perfetto::Platform::GetCurrentProcessId()) {
+>>>>>>> f542126b8c1b3e80104b26bb05ec830bd1206f29
     desc.mutable_chrome_thread()->set_is_sandboxed_tid(true);
   }
 #endif  // (BUILDFLAG(IS_LINUX) && !BUILDFLAG(IS_WEBOS)) ||
@@ -118,12 +122,12 @@ void TrackNameRecorder::SetProcessTrackDescriptor(
 
   auto process_track = perfetto::ProcessTrack::Current();
   base::TrackEvent::SetTrackDescriptor(
-      process_track,
-      GenerateProcessTrackDescriptor(
-          process_track, process_name, process_type,
-          base::trace_event::TraceLog::GetInstance()->process_id(),
-          process_start_timestamp_, process_labels(), crash_trace_id,
-          host_package_name));
+      process_track, GenerateProcessTrackDescriptor(
+                         process_track, process_name, process_type,
+                         static_cast<base::ProcessId>(
+                             perfetto::Platform::GetCurrentProcessId()),
+                         process_start_timestamp_, process_labels(),
+                         crash_trace_id, host_package_name));
 }
 
 // static

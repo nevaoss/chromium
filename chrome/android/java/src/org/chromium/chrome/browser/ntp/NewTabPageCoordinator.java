@@ -35,6 +35,7 @@ import org.chromium.build.annotations.Initializer;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
+import org.chromium.chrome.browser.back_press.BackPressManager;
 import org.chromium.chrome.browser.composeplate.ComposeplateCoordinator;
 import org.chromium.chrome.browser.composeplate.ComposeplateMetricsUtils;
 import org.chromium.chrome.browser.composeplate.ComposeplateUtils;
@@ -136,9 +137,11 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
     private final Boolean mIsTablet;
     private final Supplier<Integer> mTabStripHeightSupplier;
     private final SearchEngineUtils mSearchEngineUtils;
+    private final BackPressManager mBackPressManager;
     private final int mNtpSearchBoxTransitionStartOffset;
     private final int mNtpSearchBoxTopMarginWithoutLogo;
     private final boolean mEnableLogs;
+    private final int mSearchBoxMaxWidth;
 
     private @Nullable LogoCoordinator mLogoCoordinator;
     private @Nullable NtpSearchBox mNtpSearchBox;
@@ -219,6 +222,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
      *     the page.
      * @param activity The activity that currently owns the new tab page
      * @param newTabPageLayout The new tab page layout.
+     * @param tab The {@link Tab} that contains this new tab page.
      * @param tabModelSelector {@link TabModelSelector} object.
      * @param moduleRegistrySupplier Supplier for the {@link ModuleRegistry}.
      * @param profile The {@link Profile} associated with the NTP. *
@@ -230,6 +234,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
      * @param isTablet {@code true} if the NTP surface is in tablet mode.
      * @param tabStripHeightSupplier Supplier of the tab strip height.
      * @param homeSurfaceTracker Used to decide whether we are the home surface.
+     * @param backPressManager Manages back press dispatching.
      */
     public NewTabPageCoordinator(
             NewTabPageManager manager,
@@ -246,7 +251,9 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
             SnackbarManager snackbarManager,
             boolean isTablet,
             Supplier<Integer> tabStripHeightSupplier,
-            @Nullable HomeSurfaceTracker homeSurfaceTracker) {
+            @Nullable HomeSurfaceTracker homeSurfaceTracker,
+            BackPressManager backPressManager) {
+        mBackPressManager = backPressManager;
         mManager = manager;
         mActivity = activity;
         mNewTabPageLayout = newTabPageLayout;
@@ -269,6 +276,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
                 resources.getDimensionPixelSize(R.dimen.ntp_search_box_top_margin_if_no_logo);
         mNtpSearchBoxTransitionStartOffset =
                 resources.getDimensionPixelSize(R.dimen.ntp_search_box_transition_start_offset);
+        mSearchBoxMaxWidth = resources.getDimensionPixelSize(R.dimen.ntp_search_box_max_width);
 
         mEnableLogs = ChromeFeatureList.sNewTabPageCustomizationV2EnableLogs.getValue();
 
@@ -353,7 +361,8 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
                         mProfile.isOffTheRecord(),
                         mWindowAndroid,
                         mManager,
-                        mProfile);
+                        mProfile,
+                        mBackPressManager);
         mModel.set(NewTabPageLayoutProperties.SEARCH_BOX_VIEW, mNtpSearchBox.getView());
 
         updateSearchBoxTwoSideMargin();
@@ -1200,7 +1209,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
                                 mSnackbarManager);
         mNtpCustomizationCoordinator.showBottomSheet();
         NtpCustomizationUtils.setThemeTipBottomSheetShownTimestampToSharedPreference(
-                TimeUtils.uptimeMillis());
+                TimeUtils.currentTimeMillis());
     }
 
     // ModuleDelegateHost implementation
@@ -1357,9 +1366,9 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
 
     /** Makes the Search Box and Logo as wide as Most Visited. */
     private void unifyElementWidths(int width) {
-        int searchBoxWidth = width - mSearchBoxTwoSideMargin;
+        int boundedSearchBoxWidth = Math.min(width - mSearchBoxTwoSideMargin, mSearchBoxMaxWidth);
         if (mNtpSearchBox != null) {
-            mNtpSearchBox.setLayoutWidth(searchBoxWidth);
+            mNtpSearchBox.setLayoutWidth(boundedSearchBoxWidth);
         }
 
         if (mLogoCoordinator != null) {
@@ -1367,7 +1376,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         }
 
         if (mComposeplateCoordinator != null) {
-            mComposeplateCoordinator.setLayoutWidth(searchBoxWidth);
+            mComposeplateCoordinator.setLayoutWidth(boundedSearchBoxWidth);
         }
 
         mContextMenuStartPosition = null;

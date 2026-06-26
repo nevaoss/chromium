@@ -10,6 +10,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
@@ -111,6 +112,7 @@ public class TabBottomSheetCoordinatorTest {
     @Mock private WindowAndroid mWindowAndroid;
     @Mock private KeyboardVisibilityDelegate mKeyboardDelegate;
     @Mock private TabBottomSheetWebUi mMockWebUi;
+    @Mock private TabBottomSheetContentProvider mMockContentProvider;
 
     @Captor private ArgumentCaptor<TabBottomSheetContent> mBottomSheetContentArgumentCaptor;
     @Captor private ArgumentCaptor<BottomSheetObserver> mBottomSheetObserverArgumentCaptor;
@@ -145,18 +147,39 @@ public class TabBottomSheetCoordinatorTest {
         View webUiView = new View(mContext);
         when(mMockWebUi.getWebUiView()).thenReturn(webUiView);
 
+        doAnswer(
+                        invocation -> {
+                            View view = invocation.getArgument(0);
+                            float heightRatio = invocation.getArgument(1);
+                            int bgColor = invocation.getArgument(2);
+                            int peekViewHeight = invocation.getArgument(3);
+                            int actorControlContainerId = invocation.getArgument(4);
+                            int emptyPlaceholderContainerId = invocation.getArgument(5);
+                            return new TestTabBottomSheetContent(
+                                    view,
+                                    heightRatio,
+                                    bgColor,
+                                    peekViewHeight,
+                                    actorControlContainerId,
+                                    emptyPlaceholderContainerId);
+                        })
+                .when(mMockContentProvider)
+                .create(any(View.class), anyFloat(), anyInt(), anyInt(), anyInt(), anyInt());
+
         mCoBrowseViews =
                 spy(
                         new CoBrowseViews(
                                 containerViewSpy,
                                 TabBottomSheetClientType.UNKNOWN,
+                                CoBrowseContainerType.BOTTOM_SHEET,
                                 mMockWebUi,
                                 null,
-                                0));
+                                0,
+                                mMockContentProvider));
         mView = containerViewSpy;
         assertNotNull(
-                "actor_control_container should be found in CoBrowseViews",
-                mView.findViewById(R.id.actor_control_container));
+                "peek_view_container should be found in CoBrowseViews",
+                mView.findViewById(R.id.peek_view_container));
         when(mWindowAndroid.getKeyboardDelegate()).thenReturn(mKeyboardDelegate);
         when(mWindowAndroid.getModalDialogManager()).thenReturn(mMockModalDialogManager);
 
@@ -804,7 +827,14 @@ public class TabBottomSheetCoordinatorTest {
     public void testMetrics_Glic_CurrentStateAndTransitions() {
         // Re-create coordinator with GLIC client type
         mCoBrowseViews =
-                new CoBrowseViews(mView, TabBottomSheetClientType.GLIC, mMockWebUi, null, 0);
+                new CoBrowseViews(
+                        mView,
+                        TabBottomSheetClientType.GLIC,
+                        CoBrowseContainerType.BOTTOM_SHEET,
+                        mMockWebUi,
+                        null,
+                        0,
+                        mMockContentProvider);
         mCoordinator =
                 new TabBottomSheetCoordinator(
                         mContext,
@@ -867,7 +897,13 @@ public class TabBottomSheetCoordinatorTest {
         // Re-create coordinator with CONTEXTUAL_TASKS client type
         mCoBrowseViews =
                 new CoBrowseViews(
-                        mView, TabBottomSheetClientType.CONTEXTUAL_TASKS, mMockWebUi, null, 0);
+                        mView,
+                        TabBottomSheetClientType.CONTEXTUAL_TASKS,
+                        CoBrowseContainerType.BOTTOM_SHEET,
+                        mMockWebUi,
+                        null,
+                        0,
+                        mMockContentProvider);
         mCoordinator =
                 new TabBottomSheetCoordinator(
                         mContext,

@@ -4,6 +4,7 @@
 
 #include "content/browser/webid/delegation/email_verification_request.h"
 
+#include "base/barrier_closure.h"
 #include "base/base64url.h"
 #include "base/json/json_reader.h"
 #include "base/json/json_writer.h"
@@ -12,7 +13,7 @@
 #include "base/time/time.h"
 #include "content/browser/renderer_host/render_frame_host_impl.h"
 #include "content/browser/webid/delegation/email_verifier_network_request_manager.h"
-#include "content/browser/webid/delegation/evp_metrics.h"
+#include "content/browser/webid/delegation/evt_verifier.h"
 #include "content/browser/webid/delegation/jwt_signer.h"
 #include "content/browser/webid/delegation/sd_jwt.h"
 #include "content/browser/webid/mappers.h"
@@ -26,6 +27,8 @@
 #include "net/base/schemeful_site.h"
 #include "third_party/blink/public/mojom/devtools/inspector_issue.mojom.h"
 #include "url/origin.h"
+
+using blink::mojom::EmailVerificationRequestResult;
 
 namespace content::webid {
 
@@ -64,17 +67,17 @@ EmailVerificationRequest::EmailVerificationRequest(
                 return request->network_manager_.get();
               },
               this)),
-          render_frame_host.GetSafeRef()) {}
+          render_frame_host) {}
 
 EmailVerificationRequest::EmailVerificationRequest(
     std::unique_ptr<EmailVerifierNetworkRequestManager> network_manager,
     std::unique_ptr<IdpNetworkRequestManager> idp_network_manager,
     std::unique_ptr<DnsRequest> dns_request,
-    base::SafeRef<RenderFrameHost> render_frame_host)
+    RenderFrameHostImpl& render_frame_host)
     : dns_request_(std::move(dns_request)),
       network_manager_(std::move(network_manager)),
       idp_network_manager_(std::move(idp_network_manager)),
-      render_frame_host_(render_frame_host) {}
+      render_frame_host_(render_frame_host.GetWeakPtr()) {}
 
 EmailVerificationRequest::~EmailVerificationRequest() = default;
 
@@ -95,6 +98,10 @@ sdjwt::Jwt EmailVerificationRequest::CreateRequestToken(
 
   sdjwt::Payload payload;
   payload.email = email;
+  // TODO(crbug.com/380367784): check if `render_frame_host_` isn't an
+  // opaque origin, or any other validation that might be
+  // necessary.
+  CHECK(render_frame_host_);
   payload.aud = render_frame_host_->GetLastCommittedOrigin().Serialize();
   payload.exp = expiration;
   payload.iat = now;
@@ -109,17 +116,23 @@ sdjwt::Jwt EmailVerificationRequest::CreateRequestToken(
 // The email verification process starts once the user
 // goes through Step 1 and 2 described here:
 //
-// https://github.com/dickhardt/email-verification-protocol?tab=readme-ov-file#3-token-request
-void EmailVerificationRequest::Send(
+// https://github.com/dickhardt/email-verification-protocol#3-token-request
+
+void EmailVerificationRequest::CheckIfVerifiable(
     const std::string& email,
-    const std::string& nonce,
-    EmailVerifier::OnEmailVerifiedCallback callback) {
+    EmailVerifier::IsVerifiableCallback callback) {
+  if (!render_frame_host_) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+
   if (render_frame_host_->GetLastCommittedOrigin().opaque() ||
       render_frame_host_->IsNestedWithinFencedFrame() ||
       !IsSameOriginWithAncestors(render_frame_host_->GetLastCommittedOrigin(),
-                                 &(*render_frame_host_))) {
-    CompleteRequest(std::move(callback), std::nullopt,
-                    EmailVerificationRequestResult::kRpOriginIsOpaque);
+                                 render_frame_host_.get())) {
+    CompleteIsVerifiableRequest(
+        std::move(callback), std::nullopt,
+        EmailVerificationRequestResult::kRpOriginIsOpaque);
     return;
   }
 
@@ -130,43 +143,49 @@ void EmailVerificationRequest::Send(
 
   std::optional<std::string> domain = GetDomainFromEmail(email);
   if (!domain) {
-    CompleteRequest(std::move(callback), std::nullopt,
-                    EmailVerificationRequestResult::kInvalidEmail);
+    CompleteIsVerifiableRequest(std::move(callback), std::nullopt,
+                                EmailVerificationRequestResult::kInvalidEmail);
     return;
   }
   std::string hostname = "_email-verification." + *domain;
 
   dns_request_->SendRequest(
       hostname, base::BindOnce(&EmailVerificationRequest::OnDnsRequestComplete,
-                               weak_ptr_factory_.GetWeakPtr(), email, nonce,
+                               weak_ptr_factory_.GetWeakPtr(), email,
                                std::move(callback)));
 }
 
 void EmailVerificationRequest::OnDnsRequestComplete(
     const std::string& email,
-    const std::string& nonce,
-    EmailVerifier::OnEmailVerifiedCallback callback,
+    EmailVerifier::IsVerifiableCallback callback,
     const std::optional<std::vector<std::string>>& text_records) {
+  if (!render_frame_host_) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
   // Step 3.2: when the DNS response is received, the browser
   // parses the TXT record to extract the issuer's origin.
   if (!text_records || text_records->size() != 1) {
-    CompleteRequest(std::move(callback), std::nullopt,
-                    EmailVerificationRequestResult::kDnsFetchFailed);
+    CompleteIsVerifiableRequest(
+        std::move(callback), std::nullopt,
+        EmailVerificationRequestResult::kDnsFetchFailed);
     return;
   }
 
   const std::string& record = (*text_records)[0];
   static constexpr char kIssPrefix[] = "iss=";
   if (!base::StartsWith(record, kIssPrefix, base::CompareCase::SENSITIVE)) {
-    CompleteRequest(std::move(callback), std::nullopt,
-                    EmailVerificationRequestResult::kDnsInvalidRecord);
+    CompleteIsVerifiableRequest(
+        std::move(callback), std::nullopt,
+        EmailVerificationRequestResult::kDnsInvalidRecord);
     return;
   }
 
   std::string iss = record.substr(sizeof(kIssPrefix) - 1);
   if (iss.empty()) {
-    CompleteRequest(std::move(callback), std::nullopt,
-                    EmailVerificationRequestResult::kDnsInvalidRecord);
+    CompleteIsVerifiableRequest(
+        std::move(callback), std::nullopt,
+        EmailVerificationRequestResult::kDnsInvalidRecord);
     return;
   }
 
@@ -178,10 +197,10 @@ void EmailVerificationRequest::OnDnsRequestComplete(
   // Create a barrier closure that will run OnAccountStatusFetched when called
   // twice.
   base::RepeatingClosure barrier = base::BarrierClosure(
-      2, base::BindOnce(&EmailVerificationRequest::OnAccountStatusFetched,
-                        weak_ptr_factory_.GetWeakPtr(), well_known, accounts,
-                        url::Origin::Create(issuer), email, nonce,
-                        std::move(callback)));
+      2,
+      base::BindOnce(&EmailVerificationRequest::OnAccountStatusFetched,
+                     weak_ptr_factory_.GetWeakPtr(), well_known, accounts,
+                     url::Origin::Create(issuer), email, std::move(callback)));
 
   // --- Task 1: Fetch .well-known/email-verification ---
   network_manager_->FetchWellKnown(
@@ -226,7 +245,8 @@ void EmailVerificationRequest::OnEmailVerificationWellKnownFetched(
     EmailVerifierNetworkRequestManager::WellKnown fetched_well_known) {
   if (status.parse_status != ParseStatus::kSuccess) {
     well_known->data = base::unexpected(
-        WellKnownParseStatusToEvpRequestStatus(status.parse_status));
+        EmailVerificationWellKnownParseStatusToEvpRequestStatus(
+            status.parse_status));
   } else {
     well_known->data = std::move(fetched_well_known);
   }
@@ -278,7 +298,7 @@ void EmailVerificationRequest::OnAccountsResponseReceived(
     IdpNetworkRequestManager::AccountsResponse response) {
   if (status.parse_status != ParseStatus::kSuccess) {
     accounts->data = base::unexpected(
-        WellKnownParseStatusToEvpRequestStatus(status.parse_status));
+        AccountsListParseStatusToEvpRequestStatus(status.parse_status));
   } else {
     accounts->data = std::move(response.accounts);
   }
@@ -290,30 +310,30 @@ void EmailVerificationRequest::OnAccountStatusFetched(
     scoped_refptr<AccountsOrError> accounts,
     const url::Origin& issuer_origin,
     const std::string& email,
-    const std::string& nonce,
-    EmailVerifier::OnEmailVerifiedCallback callback) {
+    EmailVerifier::IsVerifiableCallback callback) {
   if (!well_known->data.has_value()) {
-    CompleteRequest(std::move(callback), std::nullopt,
-                    well_known->data.error());
+    CompleteIsVerifiableRequest(std::move(callback), std::nullopt,
+                                well_known->data.error());
     return;
   }
 
   if (!accounts->data.has_value()) {
-    CompleteRequest(std::move(callback), std::nullopt, accounts->data.error());
+    CompleteIsVerifiableRequest(std::move(callback), std::nullopt,
+                                accounts->data.error());
     return;
   }
 
   // Step 3.3: when the .well-known/email-verification file is fetched,
   // the browser checks that the issuance_endpoint is present.
   if (well_known->data->issuance_endpoint.is_empty()) {
-    CompleteRequest(
+    CompleteIsVerifiableRequest(
         std::move(callback), std::nullopt,
         EmailVerificationRequestResult::kWellKnownMissingIssuanceEndpoint);
     return;
   }
 
   if (!issuer_origin.IsSameOriginWith(well_known->data->issuance_endpoint)) {
-    CompleteRequest(
+    CompleteIsVerifiableRequest(
         std::move(callback), std::nullopt,
         EmailVerificationRequestResult::kWellKnownIssuanceEndpointCrossOrigin);
     return;
@@ -328,18 +348,37 @@ void EmailVerificationRequest::OnAccountStatusFetched(
   }
 
   if (!email_matched) {
-    CompleteRequest(std::move(callback), std::nullopt,
-                    EmailVerificationRequestResult::kUserLoggedOut);
+    CompleteIsVerifiableRequest(std::move(callback), std::nullopt,
+                                EmailVerificationRequestResult::kUserLoggedOut);
     return;
   }
 
+  EmailVerifier::Result result;
+  result.email = email;
+  result.issuer_site = net::SchemefulSite(issuer_origin.GetURL());
+  result.issuance_endpoint = well_known->data->issuance_endpoint;
+  result.jwks_uri = well_known->data->jwks_uri;
+  result.signing_alg_values_supported =
+      well_known->data->signing_alg_values_supported;
+
+  CompleteIsVerifiableRequest(std::move(callback), std::move(result),
+                              EmailVerificationRequestResult::kSuccess);
+}
+
+void EmailVerificationRequest::Verify(
+    const EmailVerifier::Result& result,
+    const std::string& nonce,
+    EmailVerifier::OnEmailVerifiedCallback callback) {
+  if (!render_frame_host_) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
   // Both conditions are met! Proceed to create token and send request.
 
   // TODO(crbug.com/380367784): understand and document why RSA was
   // preferred over ECDSA here.
   std::unique_ptr<crypto::keypair::PrivateKey> private_key;
-  for (const auto& supported_alg :
-       well_known->data->signing_alg_values_supported) {
+  for (const auto& supported_alg : result.signing_alg_values_supported) {
     if (supported_alg == "EdDSA") {
       private_key = std::make_unique<crypto::keypair::PrivateKey>(
           crypto::keypair::PrivateKey::GenerateEd25519());
@@ -358,7 +397,7 @@ void EmailVerificationRequest::OnAccountStatusFetched(
   }
 
   if (!private_key) {
-    CompleteRequest(
+    CompleteVerifyRequest(
         std::move(callback), std::nullopt,
         EmailVerificationRequestResult::kWellKnownUnsupportedSigningAlgorithm);
     return;
@@ -367,7 +406,7 @@ void EmailVerificationRequest::OnAccountStatusFetched(
   std::optional<sdjwt::Jwk> public_key = sdjwt::ExportPublicKey(*private_key);
   CHECK(public_key);
 
-  sdjwt::Jwt jwt = CreateRequestToken(email, *public_key);
+  sdjwt::Jwt jwt = CreateRequestToken(result.email, *public_key);
 
   auto signer = sdjwt::CreateJwtSigner(*private_key);
   CHECK(jwt.Sign(std::move(signer)));
@@ -375,56 +414,110 @@ void EmailVerificationRequest::OnAccountStatusFetched(
   auto request_token = jwt.Serialize();
   CHECK(!request_token->empty());
 
+  // Create shared objects to hold the results
+  auto token = base::MakeRefCounted<TokenResultOrError>();
+  auto jwks = base::MakeRefCounted<JwksResultOrError>();
+
+  // Create BarrierClosure to wait for both requests.
+  auto done_closure = base::BarrierClosure(
+      2, base::BindOnce(&EmailVerificationRequest::OnTokenAndKeysFetchComplete,
+                        weak_ptr_factory_.GetWeakPtr(), token, jwks,
+                        url::Origin::Create(result.issuance_endpoint), nonce,
+                        std::move(private_key), result.email,
+                        std::move(callback)));
+
   // Step 3.5: finally, the browser sends a POST request to the
   // issuance_endpoint with the request_token as a form parameter.
   network_manager_->SendTokenRequest(
-      well_known->data->issuance_endpoint,
-      "request_token=" + request_token.value(),
-      base::BindOnce(&EmailVerificationRequest::OnTokenRequestComplete,
-                     weak_ptr_factory_.GetWeakPtr(), nonce, issuer_origin,
-                     std::move(private_key), std::move(callback)));
+      result.issuance_endpoint, "request_token=" + request_token.value(),
+      base::BindOnce(
+          [](scoped_refptr<TokenResultOrError> token,
+             base::RepeatingClosure closure, FetchStatus status,
+             EmailVerifierNetworkRequestManager::TokenResult result) {
+            if (status.parse_status == ParseStatus::kSuccess) {
+              token->data = std::move(result);
+            } else {
+              token->data = base::unexpected(
+                  TokenParseStatusToEvpRequestStatus(status.parse_status));
+            }
+            closure.Run();
+          },
+          token, done_closure));
+
+  // Start JWKS Fetch.
+  network_manager_->DownloadAndParseUncredentialedUrl(
+      result.jwks_uri,
+      base::BindOnce(
+          [](scoped_refptr<JwksResultOrError> jwks,
+             base::RepeatingClosure closure, FetchStatus status,
+             data_decoder::DataDecoder::ValueOrError result) {
+            if (status.parse_status != ParseStatus::kSuccess) {
+              jwks->data = base::unexpected(
+                  EmailVerificationRequestResult::kJwksHttpNotFound);
+            } else if (!result.has_value() || !result->is_dict()) {
+              jwks->data = base::unexpected(
+                  EmailVerificationRequestResult::kJwksInvalidResponse);
+            } else {
+              jwks->data = std::move(*result);
+            }
+            closure.Run();
+          },
+          jwks, done_closure));
 }
 
-void EmailVerificationRequest::OnTokenRequestComplete(
-    const std::string& nonce,
+void EmailVerificationRequest::OnTokenAndKeysFetchComplete(
+    scoped_refptr<TokenResultOrError> token,
+    scoped_refptr<JwksResultOrError> jwks,
     const url::Origin& issuer,
+    const std::string& nonce,
     std::unique_ptr<crypto::keypair::PrivateKey> private_key,
-    EmailVerifier::OnEmailVerifiedCallback callback,
-    FetchStatus token_status,
-    EmailVerifierNetworkRequestManager::TokenResult&& result) {
+    const std::string& email,
+    EmailVerifier::OnEmailVerifiedCallback callback) {
+  if (!render_frame_host_) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
   // Step 5: Token Presentation
 
-  if (token_status.parse_status != ParseStatus::kSuccess) {
-    CompleteRequest(
+  // Check results.
+  if (!token->data.has_value()) {
+    CompleteVerifyRequest(std::move(callback), std::nullopt,
+                          token->data.error());
+    return;
+  }
+
+  if (!token->data.value().token || !token->data.value().token->is_string()) {
+    CompleteVerifyRequest(
         std::move(callback), std::nullopt,
-        TokenParseStatusToEvpRequestStatus(token_status.parse_status));
+        EmailVerificationRequestResult::kTokenInvalidResponse);
     return;
   }
 
-  if (!result.token || !result.token->is_string()) {
-    CompleteRequest(std::move(callback), std::nullopt,
-                    EmailVerificationRequestResult::kTokenInvalidResponse);
-    return;
-  }
-
-  auto token = sdjwt::SdJwt::Parse(result.token->GetString());
+  auto parsed_token =
+      sdjwt::SdJwt::Parse(token->data.value().token->GetString());
 
   // Step 5.1: The browser parses and verifies if the SD-JWT
   // is valid.
   // TODO: check if all of the necessary fields of the SD-JWT
   // are present and valid.
 
-  if (!token) {
-    CompleteRequest(std::move(callback), std::nullopt,
-                    EmailVerificationRequestResult::kTokenMalformedSdJwt);
+  if (!parsed_token) {
+    CompleteVerifyRequest(std::move(callback), std::nullopt,
+                          EmailVerificationRequestResult::kTokenMalformedSdJwt);
     return;
   }
 
-  auto sd_jwt = sdjwt::SdJwt::From(*token);
+  if (!jwks->data.has_value()) {
+    CompleteVerifyRequest(std::move(callback), std::nullopt,
+                          jwks->data.error());
+    return;
+  }
+
+  auto sd_jwt = sdjwt::SdJwt::From(*parsed_token);
 
   if (!sd_jwt) {
-    CompleteRequest(std::move(callback), std::nullopt,
-                    EmailVerificationRequestResult::kTokenInvalidSdJwt);
+    CompleteVerifyRequest(std::move(callback), std::nullopt,
+                          EmailVerificationRequestResult::kTokenInvalidSdJwt);
     return;
   }
 
@@ -434,17 +527,22 @@ void EmailVerificationRequest::OnTokenRequestComplete(
   sdjwt::SdJwtKb sd_jwt_kb;
   sd_jwt_kb.sd_jwt = *sd_jwt;
 
+  std::optional<sdjwt::Jwk> holder_pub_key =
+      sdjwt::ExportPublicKey(*private_key);
+  CHECK(holder_pub_key);
+
   sdjwt::Header header;
-  header.alg = "RS256";
+  header.alg = holder_pub_key->alg;
   header.typ = "kb+jwt";
 
   sdjwt::Payload payload;
+  CHECK(render_frame_host_);
   payload.aud = render_frame_host_->GetLastCommittedOrigin().Serialize();
   payload.nonce = nonce;
   payload.iat = base::Time::Now();
 
   std::string sd_jwt_sha256 =
-      crypto::SHA256HashString(result.token->GetString());
+      crypto::SHA256HashString(token->data.value().token->GetString());
   std::string sd_hash;
   base::Base64UrlEncode(sd_jwt_sha256,
                         base::Base64UrlEncodePolicy::OMIT_PADDING, &sd_hash);
@@ -457,27 +555,60 @@ void EmailVerificationRequest::OnTokenRequestComplete(
   auto signer = sdjwt::CreateJwtSigner(*private_key);
 
   if (!kb_jwt.Sign(std::move(signer))) {
-    CompleteRequest(std::move(callback), std::nullopt,
-                    EmailVerificationRequestResult::kKeyBindingSigningFailed);
+    CompleteVerifyRequest(
+        std::move(callback), std::nullopt,
+        EmailVerificationRequestResult::kKeyBindingSigningFailed);
     return;
   }
 
   sd_jwt_kb.kb_jwt = kb_jwt;
 
-  // Step 5.3: the browser notifies the page that
-  // the SD-JWT+KB is ready.
+  std::string result = sd_jwt_kb.Serialize();
 
-  CompleteRequest(std::move(callback),
-                  EmailVerifier::Result{sd_jwt_kb.Serialize(),
-                                        net::SchemefulSite(issuer.GetURL())},
-                  EmailVerificationRequestResult::kSuccess);
+  EvtVerifier::Verify(
+      result, issuer, std::move(jwks->data.value().GetDict()),
+      render_frame_host_->GetLastCommittedOrigin(), email, nonce,
+      *holder_pub_key,
+      base::BindOnce(
+          [](base::WeakPtr<EmailVerificationRequest> request, std::string token,
+             const url::Origin& issuer,
+             EmailVerifier::OnEmailVerifiedCallback callback,
+             EvtVerifier::Result result) {
+            if (!request) {
+              std::move(callback).Run(std::nullopt);
+              return;
+            }
+            if (result == EvtVerifier::Result::kVerified) {
+              // Step 5.3: the browser notifies the page that
+              // the SD-JWT+KB is ready.
+              request->CompleteVerifyRequest(
+                  std::move(callback), token,
+                  blink::mojom::EmailVerificationRequestResult::kSuccess);
+            } else {
+              request->CompleteVerifyRequest(
+                  std::move(callback), std::nullopt,
+                  VerificationResultToEvpRequestStatus(result));
+            }
+          },
+          weak_ptr_factory_.GetWeakPtr(), result, issuer, std::move(callback)));
 }
 
-void EmailVerificationRequest::CompleteRequest(
-    EmailVerifier::OnEmailVerifiedCallback callback,
+void EmailVerificationRequest::CompleteIsVerifiableRequest(
+    EmailVerifier::IsVerifiableCallback callback,
     std::optional<EmailVerifier::Result> response,
-    EmailVerificationRequestResult status) {
-  RecordEvpRequestStatus(status);
+    blink::mojom::EmailVerificationRequestResult status) {
+  base::UmaHistogramEnumeration("Blink.Evp.Status.IsVerifiable", status);
+  if (status != EmailVerificationRequestResult::kSuccess) {
+    AddDevToolsIssue(status);
+  }
+  std::move(callback).Run(std::move(response));
+}
+
+void EmailVerificationRequest::CompleteVerifyRequest(
+    EmailVerifier::OnEmailVerifiedCallback callback,
+    std::optional<std::string> response,
+    blink::mojom::EmailVerificationRequestResult status) {
+  base::UmaHistogramEnumeration("Blink.Evp.Status.Verify", status);
   if (status != EmailVerificationRequestResult::kSuccess) {
     AddDevToolsIssue(status);
   }
@@ -487,6 +618,10 @@ void EmailVerificationRequest::CompleteRequest(
 void EmailVerificationRequest::AddDevToolsIssue(
     EmailVerificationRequestResult status) {
   DCHECK_NE(status, EmailVerificationRequestResult::kSuccess);
+
+  if (!render_frame_host_) {
+    return;
+  }
 
   auto details = blink::mojom::InspectorIssueDetails::New();
   auto email_verification_request_details =

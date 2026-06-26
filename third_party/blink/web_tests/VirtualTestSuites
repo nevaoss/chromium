@@ -1057,25 +1057,6 @@
     "expires": "Aug 1, 2026"
   },
   {
-    "prefix": "enable-purpose-prefetch-header",
-    "owners": [
-      "stevenwei@microsoft.com"
-    ],
-    "platforms": [
-      "Mac",
-      "Win",
-      "Linux"
-    ],
-    "bases": [
-      "http/tests/misc/prefetch-purpose.html"
-    ],
-    "exclusive_tests": "ALL",
-    "args": [
-      "--disable-features=RemovePurposeHeaderForPrefetch"
-    ],
-    "expires": "Aug 1, 2026"
-  },
-  {
     "prefix": "enable-system-cursor-size-for-svg",
     "owners": [
       "gerchiko@microsoft.com"
@@ -1363,7 +1344,7 @@
       "--test-third-party-cookie-phaseout",
       "--use-related-website-set={\"primary\":\"https://firstparty.test\",\"associatedSites\":[\"https://cookie.test\"]}"
     ],
-    "expires": "Jun 1, 2026",
+    "expires": "Jan 1, 2027",
     "owners": [
       "chrome-first-party-sets@chromium.org"
     ]
@@ -2733,6 +2714,21 @@
     ],
     "args": [
       "--enable-features=Prerender2FallbackPrefetchSpecRules:kPrerender2FallbackPrefetchSchedulerPolicy/NotUse"
+    ],
+    "owners": [
+      "kenoss@chromium.org"
+    ],
+    "expires": "Jan 1, 2027"
+  },
+  {
+    "prefix": "prefetch-cancel-unrelated-prefetch",
+    "platforms": [
+      "Linux"
+    ],
+    "bases": ["external/wpt/speculation-rules", "http/tests/inspector-protocol"],
+    "exclusive_tests": [],
+    "args": [
+      "--enable-features=PrefetchCancelUnrelatedPrefetch"
     ],
     "owners": [
       "kenoss@chromium.org"

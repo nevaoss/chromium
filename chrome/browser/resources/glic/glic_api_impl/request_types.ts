@@ -3,11 +3,17 @@
 // found in the LICENSE file.
 
 import type {WebClientInitialState} from '../glic.mojom-webui.js';
-import type {AdditionalContext, AdditionalContextPart, AnnotatedPageData, CaptureRegionErrorReason, CaptureRegionParams, CaptureRegionResult, ChromeVersion, ClientCapabilities, ClientErrorDialogType, ConversationInfo, CreateSkillRequest, ErrorReasonTypes, ErrorWithReason, ExperimentalTriggeringUpdate, FocusedTabDataHasFocus, FocusedTabDataHasNoFocus, FormFactor, GetPinCandidatesOptions, HostCapability, InvokeOptions, MetricUserInputReactionType, MicrophoneStatus, OnResponseStoppedDetails, OpenPanelInfo, OpenSettingsOptions, PageMetadata, PanelOpeningData, PanelState, PdfDocumentData, PinCandidate, PinTabsOptions, Platform, ResumeActorTaskResult, Screenshot, ScrollToParams, Skill, SkillPreview, SkillsWebClientEvent, TabContextOptions, TabContextResult, TabData, UnpinTabsOptions, UpdateSkillRequest, UserProfileInfo, WebClientMode, ZeroStateSuggestions, ZeroStateSuggestionsOptions, ZeroStateSuggestionsV2} from '../glic_api/glic_api.js';
+import type {AdditionalContext, AdditionalContextPart, GeminiEnterpriseSettings, AnnotatedPageData, CaptureRegionErrorReason, CaptureRegionParams, CaptureRegionResult, ChromeVersion, ClientCapabilities, ClientErrorDialogType, ConversationInfo, CounterAbuseVerdict, CreateSkillRequest, ErrorReasonTypes, ErrorWithReason, ExperimentalTriggeringUpdate, FocusedTabDataHasFocus, FocusedTabDataHasNoFocus, FormFactor, GetPinCandidatesOptions, HostCapability, InvokeOptions, MetricUserInputReactionType, MicrophoneStatus, OnResponseStoppedDetails, OpenPanelInfo, OpenSettingsOptions, PageMetadata, PanelOpeningData, PanelState, PdfDocumentData, PinCandidate, PinTabsOptions, Platform, ResumeActorTaskResult, Screenshot, ScrollToParams, Skill, SkillPreview, SkillsWebClientEvent, TabContextOptions, TabContextResult, TabData, UnpinTabsOptions, UpdateSkillRequest, UserProfileInfo, WebClientMode, ZeroStateSuggestions, ZeroStateSuggestionsOptions, ZeroStateSuggestionsV2} from '../glic_api/glic_api.js';
 
 import type {ActorClient, ActorHost} from './actor/actor_types.js';
 import type {CheckStructuredClonable, ReplaceProperties, ValidateRequestMap} from './transport/messaging.js';
 import {assertNever} from './transport/messaging.js';
+import type {ErrorCodec, PendingReceiver, PendingRemote, TransferableException} from './transport/post_message_transport.js';
+
+export type {
+  ActorClient,
+  ActorHost,
+};
 
 /*
 This file defines messages sent over postMessage in-between the Glic WebUI
@@ -27,6 +33,8 @@ export declare interface WebClientHost {
     },
     response: {
       initialState: WebClientInitialStatePrivate,
+      actorRemote?: PendingRemote<ActorHost>,
+      actorReceiver?: PendingReceiver<ActorClient>,
     },
     backgroundAllowed: true,
   };
@@ -37,7 +45,7 @@ export declare interface WebClientHost {
       success: boolean,
       // Exception present if initialize() returns a rejected promise (success
       // is false).
-      exception?: TransferableException,
+      exception?: GlicException,
     },
     backgroundAllowed: true,
   };
@@ -478,6 +486,13 @@ export declare interface WebClientHost {
     },
     backgroundAllowed: true,
   };
+  glicBrowserProcessCounterAbuseVerdict: {
+    request: {
+      tabId: string,
+      verdict: CounterAbuseVerdict,
+    },
+    backgroundAllowed: true,
+  };
   glicBrowserSubscribeToZoomLevel: {
     backgroundAllowed: true,
   };
@@ -513,6 +528,12 @@ export declare interface WebClient {
   glicWebClientCanAttachStateChanged: {
     request: {
       canAttach: boolean,
+    },
+    backgroundAllowed: true,
+  };
+  glicWebClientNotifyGeminiEnterpriseSettingsChanged: {
+    request: {
+      settings: GeminiEnterpriseSettings | undefined,
     },
     backgroundAllowed: true,
   };
@@ -839,6 +860,7 @@ const RECORDED_REQUEST_IDS = {
   UnsubscribeFromZoomLevel: 97,
   OnExperimentalTriggeringUpdate: 98,
   OnOptinImpression: 99,
+  ProcessCounterAbuseVerdict: 100,
 } as const satisfies HostRequestEnumNamesType;
 // LINT.ThenChange(
 //  //tools/metrics/histograms/metadata/glic/histograms.xml:ApiRequestType,
@@ -876,23 +898,6 @@ export type AllRequestTypes = {
   [K in keyof(HostRequestTypes&WebClientRequestTypes)]:
       (HostRequestTypes&WebClientRequestTypes)[K]
 };
-// All request types which do not provide a return.
-export type AllRequestTypesWithoutReturn = {
-  [K in keyof AllRequestTypes as
-       RequestResponseType<K> extends void ? K : never]: AllRequestTypes[K]
-};
-export type AllRequestTypesWithReturn = {
-  [K in keyof AllRequestTypes as
-       RequestResponseType<K> extends void ? never : K]: AllRequestTypes[K]
-};
-
-export type RequestRequestType<T extends keyof AllRequestTypes> =
-    'request' extends keyof AllRequestTypes[T] ? AllRequestTypes[T]['request'] :
-                                                 undefined;
-export type RequestResponseType<T extends keyof AllRequestTypes> =
-    'response' extends keyof AllRequestTypes[T] ?
-    AllRequestTypes[T]['response'] :
-    void;
 
 assertNever<CheckStructuredClonable<HostRequestTypes>>();
 assertNever<CheckStructuredClonable<WebClientRequestTypes>>();
@@ -1014,6 +1019,7 @@ export declare interface AdditionalContextPartPrivate extends
   annotatedPageData?: AnnotatedPageDataPrivate;
   pdf?: PdfDocumentDataPrivate;
   data?: {mimeType: string, data: ArrayBuffer};
+  filename?: string;
   tabContext?: TabContextResultPrivate;
 }
 
@@ -1049,16 +1055,14 @@ export interface ErrorWithReasonDetails {
 }
 
 // Exception information that can be passed across postMessage.
-export interface TransferableException {
-  // An error that occurred during processing the request.
-  exception: Error;
+export interface GlicException extends TransferableException {
   // This may be set to indicate that the exception is a ErrorWithReason
   // exception.
   exceptionReason?: ErrorWithReasonDetails;
 }
 
 // Constructs an exception from a TransferableException.
-export function exceptionFromTransferable(e: TransferableException): Error|
+export function exceptionFromTransferable(e: GlicException): Error|
     AnyErrorWithReasonType {
   // Error types are serializable, but they do not serialize all members.
   // If exceptionReason is provided, we use it to reconstruct a
@@ -1074,7 +1078,7 @@ export function exceptionFromTransferable(e: TransferableException): Error|
 }
 
 // Transform an Error into a TransferableException.
-export function newTransferableException(e: Error): TransferableException {
+export function newTransferableException(e: Error): GlicException {
   let exceptionReason = undefined;
   const maybeWithReason = e as Partial<AnyErrorWithReasonType>;
   if (maybeWithReason.reasonType !== undefined &&
@@ -1086,3 +1090,8 @@ export function newTransferableException(e: Error): TransferableException {
   }
   return {exception: e, exceptionReason};
 }
+
+export const ERROR_CODEC: ErrorCodec = {
+  serialize: newTransferableException,
+  deserialize: exceptionFromTransferable,
+};

@@ -64,6 +64,7 @@
 #include "components/saved_tab_groups/public/pref_names.h"
 #include "components/search_engines/default_search_manager.h"
 #include "components/signin/public/base/signin_pref_names.h"
+#include "components/skills/public/skills_prefs.h"
 #include "components/spellcheck/browser/pref_names.h"
 #include "components/supervised_user/core/common/pref_names.h"
 #include "components/themes/pref_names.h"
@@ -219,6 +220,8 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
       settings_api::PrefType::kBoolean;
   (*s_allowlist)[autofill::prefs::kAutofillEmailVerificationEnabled] =
       settings_api::PrefType::kBoolean;
+  (*s_allowlist)[autofill::prefs::kAutofillEmailVerificationState] =
+      settings_api::PrefType::kDictionary;
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_CHROMEOS)
   (*s_allowlist)[autofill::prefs::kAutofillPaymentMethodsMandatoryReauth] =
       settings_api::PrefType::kBoolean;
@@ -437,6 +440,8 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
       settings_api::PrefType::kBoolean;
   (*s_allowlist)[::kGeneratedHttpsFirstModePref] =
       settings_api::PrefType::kNumber;
+  (*s_allowlist)[::prefs::kHttpsFirstModeBundleToastQueued] =
+      settings_api::PrefType::kBoolean;
   (*s_allowlist)[::prefs::kSecuritySettingsBundle] =
       settings_api::PrefType::kNumber;
   (*s_allowlist)[::safe_browsing::kGeneratedSecuritySettingsBundlePref] =
@@ -1332,6 +1337,9 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
   (*s_allowlist)[optimization_guide::prefs::GetSettingEnabledPrefName(
       optimization_guide::UserVisibleFeatureKey::kContextualCueing)] =
       settings_api::PrefType::kNumber;
+
+  (*s_allowlist)[skills::prefs::kChromeSkillsEnabled] =
+      settings_api::PrefType::kBoolean;
 
   // AI enterprise prefs
   (*s_allowlist)[optimization_guide::prefs::kComposeEnterprisePolicyAllowed] =

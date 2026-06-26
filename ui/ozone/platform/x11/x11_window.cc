@@ -1333,7 +1333,11 @@ void X11Window::SetOverrideRedirect(bool override_redirect) {
       .override_redirect = x11::Bool32(override_redirect),
   });
   if (remap) {
+    auto weak_this = weak_ptr_factory_.GetWeakPtr();
     Map();
+    if (!weak_this) {
+      return;
+    }
     // We cannot regrab the pointer now since unmapping/mapping
     // happens asynchronously.  We must wait until the window is
     // mapped to issue a grab request.
@@ -2441,7 +2445,12 @@ void X11Window::OnWindowMapped() {
   // Some WMs only respect maximize hints after the window has been mapped.
   // Check whether we need to re-do a maximization.
   if (should_maximize_after_map_) {
+    // Maximize() may synchronously delete `this` via OnBoundsChanged().
+    auto weak_this = weak_ptr_factory_.GetWeakPtr();
     Maximize();
+    if (!weak_this) {
+      return;
+    }
     should_maximize_after_map_ = false;
   }
   if (should_grab_pointer_after_map_) {

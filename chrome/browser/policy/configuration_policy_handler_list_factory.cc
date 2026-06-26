@@ -733,7 +733,13 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
   { key::kShowHomeButton,
     prefs::kShowHomeButton,
     base::Value::Type::BOOLEAN },
+  { key::kUserFeedbackAllowed,
+    prefs::kUserFeedbackAllowed,
+    base::Value::Type::BOOLEAN },
 #if !BUILDFLAG(IS_ANDROID)
+  { key::kRestrictYouTubeCookiesDeletion,
+    prefs::kRestrictYouTubeCookiesDeletion,
+    base::Value::Type::BOOLEAN },
   { key::kInsecureContentAllowedForUrls,
     prefs::kManagedInsecureContentAllowedForUrls,
     base::Value::Type::LIST },
@@ -886,9 +892,6 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
     base::Value::Type::BOOLEAN },
   { key::kTaskManagerEndProcessEnabled,
     prefs::kTaskManagerEndProcessEnabled,
-    base::Value::Type::BOOLEAN },
-  { key::kUserFeedbackAllowed,
-    prefs::kUserFeedbackAllowed,
     base::Value::Type::BOOLEAN },
   { key::kVideoCaptureAllowed,
     prefs::kVideoCaptureAllowed,
@@ -3656,7 +3659,8 @@ std::unique_ptr<ConfigurationPolicyHandlerList> BuildHandlerList(
       key::kGeminiActOnWebBlockedForURLs,
       glic::prefs::kGlicActuationOnWebBlockedForURLs));
 
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
+    BUILDFLAG(IS_CHROMEOS)
   handlers->AddHandler(std::make_unique<SimpleSchemaValidatingPolicyHandler>(
       key::kGeminiEnterpriseSettings, glic::prefs::kGlicGeminiEnterpriseSettings,
       chrome_schema, SCHEMA_ALLOW_UNKNOWN,

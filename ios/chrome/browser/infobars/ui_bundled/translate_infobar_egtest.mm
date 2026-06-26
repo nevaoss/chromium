@@ -315,11 +315,6 @@ class TestResponseProvider {
     config.features_disabled.push_back(kProactiveSuggestionsFramework);
   }
 
-  // TODO(crbug.com/514608938): Fix test for Chrome Next.
-  if ([self isRunningTest:@selector
-            (testTranslateBadgeWithReaderModeBadgeSupport)]) {
-    config.features_disabled.push_back(kChromeNextIa);
-  }
   return config;
 }
 
@@ -1631,11 +1626,15 @@ class TestResponseProvider {
   GREYAssertTrue([self selectTranslateButton],
                  @"Could not tap on Translate banner action button");
 
+  id<GREYMatcher> translateAcceptedAccessibilityIdentifier =
+      grey_allOf(grey_accessibilityID(
+                     kBadgeButtonTranslateAcceptedAccessibilityIdentifier),
+                 grey_sufficientlyVisible(), nil);
+
   // Check that the translate badge is visible and accepted.
   [ChromeEarlGrey
       waitForUIElementToAppearWithMatcher:
-          grey_accessibilityID(
-              kBadgeButtonTranslateAcceptedAccessibilityIdentifier)
+          translateAcceptedAccessibilityIdentifier
                                   timeout:kWaitForUIElement3xTimeout];
 
   // Open Reader Mode.
@@ -1651,8 +1650,7 @@ class TestResponseProvider {
   // Check that the translate badge is visible and accepted.
   [ChromeEarlGrey
       waitForUIElementToAppearWithMatcher:
-          grey_accessibilityID(
-              kBadgeButtonTranslateAcceptedAccessibilityIdentifier)
+          translateAcceptedAccessibilityIdentifier
                                   timeout:kWaitForUIElement3xTimeout];
 
   // Close Reader Mode.
@@ -1666,8 +1664,7 @@ class TestResponseProvider {
   // Check that the translate badge is visible and accepted.
   [ChromeEarlGrey
       waitForUIElementToAppearWithMatcher:
-          grey_accessibilityID(
-              kBadgeButtonTranslateAcceptedAccessibilityIdentifier)
+          translateAcceptedAccessibilityIdentifier
                                   timeout:kWaitForUIElement3xTimeout];
 }
 

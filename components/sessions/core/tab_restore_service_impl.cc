@@ -176,6 +176,18 @@ void RemoveEntryByID(
         }
       }
     }
+    // If this entry is a split, look through its tabs.
+    if (entry.type == tab_restore::Type::SPLIT) {
+      auto& split = static_cast<tab_restore::Split&>(entry);
+      for (auto it = split.tabs.begin(); it != split.tabs.end(); ++it) {
+        const tab_restore::Tab& tab = **it;
+        // Erase it if it's our target.
+        if (tab.id == id) {
+          split.tabs.erase(it);
+          return;
+        }
+      }
+    }
   }
 }
 
@@ -1025,9 +1037,8 @@ void TabRestoreServiceImpl::PersistenceDelegate::ScheduleCommandsForTab(
         tab.split_visual_data.value_or(split_tabs::SplitTabVisualData());
     pickle.WriteDouble(visual_data.split_ratio());
     pickle.WriteInt(static_cast<int>(visual_data.split_layout()));
-    std::unique_ptr<SessionCommand> command(
-        new SessionCommand(kCommandSetTabSplitData, pickle));
-    command_storage_manager_->ScheduleCommand(std::move(command));
+    command_storage_manager_->ScheduleCommand(
+        std::make_unique<SessionCommand>(kCommandSetTabSplitData, pickle));
   }
 
   if (!tab.extension_app_id.empty()) {

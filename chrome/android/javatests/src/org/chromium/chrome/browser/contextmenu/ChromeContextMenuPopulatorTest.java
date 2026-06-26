@@ -100,12 +100,11 @@ import org.chromium.components.embedder_support.contextmenu.ContextMenuParams;
 import org.chromium.components.embedder_support.util.EmbedderSupportFeatures;
 import org.chromium.components.externalauth.ExternalAuthUtils;
 import org.chromium.components.search_engines.TemplateUrlService;
-import org.chromium.components.signin.base.CoreAccountInfo;
 import org.chromium.components.signin.identitymanager.IdentityManager;
+import org.chromium.components.signin.test.util.TestAccounts;
 import org.chromium.content_public.browser.RenderFrameHost;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.content_public.browser.test.NativeLibraryTestUtils;
-import org.chromium.google_apis.gaia.GaiaId;
 import org.chromium.ui.listmenu.ListItemType;
 import org.chromium.ui.listmenu.ListMenuItemProperties;
 import org.chromium.ui.listmenu.MenuModelBridge;
@@ -124,10 +123,7 @@ import java.util.List;
 @RunWith(ParameterizedRunner.class)
 @UseRunnerDelegate(BaseJUnit4RunnerDelegate.class)
 @Batch(Batch.UNIT_TESTS)
-@DisableFeatures({
-    ChromeFeatureList.CONTEXT_MENU_TRANSLATE_WITH_GOOGLE_LENS,
-    ChromeFeatureList.LENS_OVERLAY_ANDROID
-})
+@DisableFeatures({ChromeFeatureList.LENS_OVERLAY_ANDROID})
 public class ChromeContextMenuPopulatorTest {
     private static final String DATA_URL = "data:encodedstringblahblah";
     private static final String PAGE_URL = "http://www.blah.com/page_url";
@@ -2251,12 +2247,7 @@ public class ChromeContextMenuPopulatorTest {
     @SmallTest
     @UiThreadTest
     public void testGetLensIntentParams() {
-        final String testEmail = "test@gmail.com";
-        when(mIdentityManager.getPrimaryAccountInfo())
-                .thenReturn(
-                        CoreAccountInfo.createFromEmailAndGaiaId(
-                                testEmail, new GaiaId("test-gaia-id")));
-
+        when(mIdentityManager.getPrimaryAccountInfo()).thenReturn(TestAccounts.ACCOUNT1);
         ContextMenuParams params =
                 new ContextMenuParams(
                         0,
@@ -2308,7 +2299,7 @@ public class ChromeContextMenuPopulatorTest {
                 lensIntentParams.getPageUrl());
         assertEquals(
                 "Lens intent parameters has incorrect account name.",
-                testEmail,
+                TestAccounts.ACCOUNT1.getEmail(),
                 lensIntentParams.getAccountName());
 
         // Test Incognito.

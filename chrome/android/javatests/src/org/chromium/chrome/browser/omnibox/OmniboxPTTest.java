@@ -64,7 +64,7 @@ public class OmniboxPTTest {
 
     @LargeTest
     @Test
-    @DisableIf.Device(DeviceFormFactor.DESKTOP_FREEFORM) // crbug.com/511288411
+    @DisableIf.Device(DeviceFormFactor.DESKTOP) // crbug.com/511288411
     public void testOpenTypeDelete_fromWebPage() {
         var omniboxAndKeyboard = mBlankPage.openOmnibox(sFakeSuggestions);
 
@@ -75,7 +75,7 @@ public class OmniboxPTTest {
 
     @LargeTest
     @Test
-    @DisableIf.Device(DeviceFormFactor.DESKTOP_FREEFORM) // crbug.com/511288411
+    @DisableIf.Device(DeviceFormFactor.DESKTOP) // crbug.com/511288411
     public void testOpenTypeDelete_fromNtp() {
         RegularNewTabPageStation ntp = mBlankPage.openNewTabFast();
         var omnibox = ntp.openOmnibox(sFakeSuggestions);

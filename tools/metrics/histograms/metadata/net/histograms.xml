@@ -2448,16 +2448,6 @@ chromium-metrics-reviews@google.com.
   </token>
 </histogram>
 
-<histogram name="Net.DNS.CanaryDomainService.SecureDns.Result"
-    enum="CanaryDomainResult" expires_after="2027-01-31">
-  <owner>bcb@chromium.org</owner>
-  <owner>src/net/OWNERS</owner>
-  <summary>
-    Records the result of a canary domain probe used to determine whether Secure
-    DNS is allowed.
-  </summary>
-</histogram>
-
 <histogram name="Net.DNS.DnsConfig.AdditionalDnsQueryTypesEnabled"
     enum="BooleanEnabled" expires_after="2025-02-10">
   <owner>horo@chromium.org</owner>
@@ -4227,6 +4217,18 @@ chromium-metrics-reviews@google.com.
     <variant name="Preconnect"/>
     <variant name="Request"/>
   </token>
+</histogram>
+
+<histogram name="Net.HttpTimeToFirstByte.ServerPadding" units="ms"
+    expires_after="2026-11-15">
+  <owner>davidben@chromium.org</owner>
+  <owner>hchao@chromium.org</owner>
+  <owner>chrome-secure-web-and-net@chromium.org</owner>
+  <summary>
+    Time from when an HTTP request is issued to when the first byte is
+    processed, if the response was not cached and the connection used the Server
+    Padding extension.
+  </summary>
 </histogram>
 
 <histogram name="Net.HttpTimeToFirstByte.TLS13.Google" units="ms"
@@ -6742,6 +6744,16 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Net.QuicSession.RequestBlockedByPreFreeze"
+    enum="BooleanBlocked" expires_after="2027-05-19">
+  <owner>yfriedman@chromium.org</owner>
+  <owner>src/net/quic/OWNERS</owner>
+  <summary>
+    Records whether a request to RequestSession was blocked because the app was
+    pre-frozen. Logged for every RequestSession call on Android.
+  </summary>
+</histogram>
+
 <histogram name="Net.QuicSession.RetryAfterWriteErrorCount2" units="retries"
     expires_after="2024-06-02">
   <owner>dschinazi@chromium.org</owner>
@@ -8393,6 +8405,54 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Net.SqlDiskCache.Backend.IdleEventIncrementalVacuum.Result"
+    enum="SqlDiskCacheStoreError" expires_after="2026-09-30">
+  <owner>horo@chromium.org</owner>
+  <owner>src/net/OWNERS</owner>
+  <summary>
+    Records the result of the incremental vacuum attempt of the SQL-based disk
+    cache backend. This helps track the frequency of different failures and
+    aborts.
+  </summary>
+</histogram>
+
+<histogram
+    name="Net.SqlDiskCache.Backend.IdleEventIncrementalVacuum.{ResultType}Pages"
+    units="pages" expires_after="2026-09-30">
+  <owner>horo@chromium.org</owner>
+  <owner>src/net/OWNERS</owner>
+  <summary>
+    Measures the number of pages vacuumed during an incremental vacuum attempt
+    of the SQL-based disk cache backend. This metric is recorded immediately
+    after the incremental vacuum attempt {ResultType}. It helps diagnose
+    performance regressions.
+  </summary>
+  <token key="ResultType">
+    <variant name="Abort" summary="aborted"/>
+    <variant name="Failure" summary="failed"/>
+    <variant name="Success" summary="succeeded"/>
+  </token>
+</histogram>
+
+<histogram
+    name="Net.SqlDiskCache.Backend.IdleEventIncrementalVacuum.{ResultType}Time"
+    units="microseconds" expires_after="2026-09-30">
+  <owner>horo@chromium.org</owner>
+  <owner>src/net/OWNERS</owner>
+  <summary>
+    Measures the time taken to run the incremental vacuum of the SQL-based disk
+    cache backend. This metric is recorded immediately after the incremental
+    vacuum attempt {ResultType}. It helps diagnose performance regressions. The
+    histogram is not reported on Windows machines without high resolution
+    clocks.
+  </summary>
+  <token key="ResultType">
+    <variant name="Abort" summary="aborted"/>
+    <variant name="Failure" summary="failed"/>
+    <variant name="Success" summary="succeeded"/>
+  </token>
+</histogram>
+
 <histogram name="Net.SqlDiskCache.Backend.IndexMismatch"
     enum="SqlDiskCacheIndexMismatchLocation" expires_after="2026-09-27">
   <owner>horo@chromium.org</owner>
@@ -8821,6 +8881,17 @@ chromium-metrics-reviews@google.com.
 
   <owner>agl@chromium.org</owner>
   <summary>Time from when the Connect() starts until it completes.</summary>
+</histogram>
+
+<histogram name="Net.SSL_Connection_Latency_ServerPadding" units="ms"
+    expires_after="2026-11-15">
+  <owner>davidben@chromium.org</owner>
+  <owner>hchao@chromium.org</owner>
+  <owner>chrome-secure-web-and-net@chromium.org</owner>
+  <summary>
+    Time from when the Connect() starts until it completes. Recorded for
+    successful connections to servers that used the Server Padding extension.
+  </summary>
 </histogram>
 
 <histogram name="Net.SSL_Connection_Latency_TrustAnchorIDs" units="ms"

@@ -187,8 +187,6 @@ BASE_FEATURE(kForcedAppRelaunchOnPlaceholderUpdate,
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
-
-
 // Controls whether the actor component of Glic is enabled.
 #if BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kGlicActor, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -460,14 +458,17 @@ BASE_FEATURE(kGlicSupportLinks, base::FEATURE_ENABLED_BY_DEFAULT);
 
 const base::FeatureParam<std::string> kGlicLocationMismatchHelpUrl{
     &kGlicSupportLinks, "location_mismatch_help_url",
-    "https://support.google.com/gemini/answer/16283624#gic_access"};
+    "https://support.google.com/gemini/answer/17117411#gic_access"};
 
 const base::FeatureParam<std::string> kGlicIneligibleAccountHelpUrl{
     &kGlicSupportLinks, "ineligible_account_help_url",
-    "https://support.google.com/gemini/answer/16283624#gic_access"};
+    "https://support.google.com/gemini/answer/17117411#gic_access"};
 
 const base::FeatureParam<int> kGlicMinRequiredRamMb{
     &kGlic, "glic-min-required-ram-mb", 0};
+
+const base::FeatureParam<bool> kGlicAdaptiveToolbarAutoPin{
+    &kGlic, "adaptive-toolbar-auto-pin", true};
 
 // Controls whether the Glic feature is always detached.
 BASE_FEATURE(kGlicDetached, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -536,10 +537,6 @@ const base::FeatureParam<std::string> kGlicDefaultHotkey{
 BASE_FEATURE(kGlicURLConfig, base::FEATURE_ENABLED_BY_DEFAULT);
 const base::FeatureParam<std::string> kGlicGuestURL{
     &kGlicURLConfig, "glic-guest-url", "https://gemini.google.com/glic"};
-
-#if BUILDFLAG(IS_CHROMEOS)
-BASE_FEATURE(kGlicShowStatusTrayIcon, base::FEATURE_ENABLED_BY_DEFAULT);
-#endif
 
 BASE_FEATURE_PARAM(std::string,
                    kGlicUserStatusUrl,
@@ -662,7 +659,12 @@ BASE_FEATURE_PARAM(std::string,
                    kGlicExperimentalTriggeringLearnMoreURL,
                    &kGlicLearnMoreURLConfig,
                    "glic-experimental-triggering-toggle-learn-more-url",
-                   "https://gemini.google/overview/agent/spark/");
+                   "https://support.google.com/chrome?p=gemini_spark");
+BASE_FEATURE_PARAM(std::string,
+                   kGlicExperimentalTriggeringSafetyURL,
+                   &kGlicLearnMoreURLConfig,
+                   "glic-experimental-triggering-toggle-safety-url",
+                   "https://support.google.com/chrome?p=gemini_spark_safety");
 BASE_FEATURE_PARAM(
     std::string,
     kGlicWebActuationToggleConsiderSafelyURL,
@@ -1158,6 +1160,9 @@ BASE_FEATURE(kHttpsFirstModeForAdvancedProtectionUsers,
              "HttpsOnlyModeForAdvancedProtectionUsers",
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kHttpsFirstModeDefaultSettingPairsWithEsb,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Enables HTTPS-First Mode for engaged sites. No-op if HttpsFirstModeV2 or
 // HTTPS-Upgrades is disabled.
 BASE_FEATURE(kHttpsFirstModeV2ForEngagedSites,
@@ -1174,7 +1179,7 @@ BASE_FEATURE(kHttpsUpgrades, base::FEATURE_ENABLED_BY_DEFAULT);
 // Omnibox) that are upgraded to HTTPS will not fallback to HTTP if the HTTPS
 // navigation fails due to a timeout.
 BASE_FEATURE(kHttpsUpgradesTypedSchemelessNavigationNoTimeoutFallback,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 const base::FeatureParam<base::TimeDelta> kHttpsUpgradesFallbackDelay{
     &kHttpsUpgrades, "fallback-delay", base::Seconds(3)};
@@ -1890,6 +1895,10 @@ const base::FeatureParam<int> kSmartRestartLockScreenDisruptionThreshold{
 
 const base::FeatureParam<base::TimeDelta> kSmartRestartLockScreenDelay{
     &kSmartRestartLockScreen, "lock_restart_delay", base::Minutes(5)};
+
+// A feature to record the difference in the number of tabs and windows between
+// the last session and the current session on restart.
+BASE_FEATURE(kRecordTabWindowDiffOnRestart, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
 }  // namespace features

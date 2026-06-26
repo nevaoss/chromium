@@ -38,6 +38,33 @@ class ApiTests extends ApiTestFixtureBase {
 
   async testHibernateAllOnMemoryPressure() {}
 
+  async testGeminiEnterpriseSettings() {
+    assertDefined(this.host.getGeminiEnterpriseSettings);
+    const settingsObservable = this.host.getGeminiEnterpriseSettings();
+    const settings = settingsObservable.getCurrentValue();
+    assertDefined(settings);
+    assertEquals(settings.projectId, 'switch-project');
+    assertEquals(settings.appId, 'switch-engine');
+    assertEquals(settings.location, 'switch-location');
+  }
+
+  async testGeminiEnterpriseSettingsPolicy() {
+    assertDefined(this.host.getGeminiEnterpriseSettings);
+    const settingsObservable = this.host.getGeminiEnterpriseSettings();
+    const settings = settingsObservable.getCurrentValue();
+    assertDefined(settings);
+    assertEquals(settings.projectId, 'policy-project');
+    assertEquals(settings.appId, 'policy-engine');
+    assertEquals(settings.location, 'policy-location');
+  }
+
+  async testGeminiEnterpriseSettingsDisabled() {
+    assertDefined(this.host.getGeminiEnterpriseSettings);
+    const settingsObservable = this.host.getGeminiEnterpriseSettings();
+    const settings = settingsObservable.getCurrentValue();
+    assertUndefined(settings);
+  }
+
   async testCancelActions() {
     assertDefined(this.host.cancelActions);
     const taskId: number = this.testParams;
@@ -809,6 +836,17 @@ class ApiTests extends ApiTestFixtureBase {
     const result = await this.host.getContextForActorFromTab?.(
         focusedTab.hasFocus.tabData.tabId, {});
     assertDefined(result);
+  }
+
+  async testGetContextForActorFromTabWithRestrictedUrl() {
+    await this.host.setTabContextPermissionState(true);
+    assertDefined(this.host.getFocusedTabStateV2);
+    const focusedTab = await this.host.getFocusedTabStateV2().getCurrentValue();
+    assertDefined(focusedTab?.hasNoFocus?.tabFocusCandidateData?.tabId);
+    const tabId = focusedTab.hasNoFocus.tabFocusCandidateData.tabId;
+    await assertRejects(this.host.getContextForActorFromTab!(tabId, {}), {
+      withErrorMessage: 'tabContext failed: permission denied',
+    });
   }
 
   // TODO(crbug.com/422544382): add test for getContextForActorFromTab for the

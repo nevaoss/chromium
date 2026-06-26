@@ -90,7 +90,7 @@ GlicInstanceCoordinatorImpl::GlicInstanceCoordinatorImpl(
           FROM_HERE,
           base::MemoryPressureListenerTag::kGlicKeyedService,
           this),
-      metrics_(this),
+      metrics_(this, profile->GetPrefs()),
       web_contents_warming_pool_(
           std::make_unique<GlicWebContentsWarmingPool>(profile)),
       active_instance_sharing_manager_(
@@ -268,6 +268,20 @@ GlicInstance* GlicInstanceCoordinatorImpl::GetInstanceForTab(
   return GetInstanceImplForTab(tab);
 }
 
+GlicInstance* GlicInstanceCoordinatorImpl::GetInstanceWithGlicWebContents(
+    content::WebContents* glic_web_contents) const {
+  if (!glic_web_contents) {
+    return nullptr;
+  }
+  for (const auto& [id, instance] : instances_) {
+    if (instance->host().IsWebContentPresentAndMatches(
+            glic_web_contents->GetPrimaryMainFrame())) {
+      return instance.get();
+    }
+  }
+  return nullptr;
+}
+
 void GlicInstanceCoordinatorImpl::CreateNewConversationForTabs(
     const std::vector<tabs::TabInterface*>& tabs) {
   if (tabs.empty()) {
@@ -320,7 +334,9 @@ void GlicInstanceCoordinatorImpl::Shutdown() {
   for (auto& [instance_id, instance] : instances_) {
     instance->Shutdown();
   }
-  web_contents_warming_pool_->Clear();
+  web_contents_warming_pool_->Clear(
+      GlicWebContentsWarmingPool::ClearReason::kShutdown);
+  hotkey_manager_.reset();
 }
 
 void GlicInstanceCoordinatorImpl::Close(const CloseOptions& options) {
@@ -401,6 +417,9 @@ base::WeakPtr<GlicInstance> GlicInstanceCoordinatorImpl::InvokeInternal(
                            conv_id.conversation_id, conv_id.turn_id);
                      },
                      [&](NewConversation) { return CreateGlicInstance(); },
+                     [&](const InstanceId& id) {
+                       return GetInstanceImplFor(id);
+                     },
                      [&](DefaultConversation) {
                        return GetOrCreateGlicInstanceImplForTab(tab);
                      }},
@@ -1026,7 +1045,8 @@ void GlicInstanceCoordinatorImpl::OnMemoryPressure(
     return;
   }
 
-  web_contents_warming_pool_->Clear();
+  web_contents_warming_pool_->Clear(
+      GlicWebContentsWarmingPool::ClearReason::kMemoryPressure);
 
   for (auto& [_, instance] : instances_) {
     if (instance->IsShowing() || instance->IsActuating() ||

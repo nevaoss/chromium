@@ -66,6 +66,7 @@ import org.chromium.components.search_engines.TemplateUrlService.TemplateUrlServ
 import org.chromium.components.security_state.ConnectionSecurityLevel;
 import org.chromium.content_public.browser.BrowserContextHandle;
 import org.chromium.content_public.browser.WebContents;
+import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.url.GURL;
@@ -496,6 +497,7 @@ public class StatusMediator
         TemplateUrlService templateUrlService = mTemplateUrlServiceSupplier.get();
         return isNtpVisible()
                 && !mUrlHasFocus
+                && !DeviceFormFactor.isNonMultiDisplayContextOnTablet(mContext)
                 && FuseboxFeatureUtils.shouldShowNtpPlusButton(
                         mContext, profile, templateUrlService);
     }
@@ -564,9 +566,6 @@ public class StatusMediator
             mPermissionStatusHandler.reset(/* shouldDismissNativePrompt= */ false);
             tintRes = mNavigationIconTintRes;
             iconRes = R.drawable.search_spark_black_24dp;
-            // TODO(crbug.com/497047954): remove the click listener when Fusebox reparenting is
-            // done.
-            clickListener = mFuseboxOnPlusButtonClicked;
             descRes = R.string.accessibility_omnibox_open_context_popup;
             doubleTapDescriptionRes = Resources.ID_NULL;
         } else if (mFuseboxStateSupplier.get() == FuseboxState.COMPACT

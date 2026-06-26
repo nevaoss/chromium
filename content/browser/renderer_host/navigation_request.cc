@@ -8631,12 +8631,13 @@ void NavigationRequest::Resume(NavigationThrottle* resuming_throttle) {
       CHECK(response_body_callback_);
       response_body_watcher_.reset();
       base::WeakPtr<NavigationRequest> this_ptr(weak_factory_.GetWeakPtr());
+      std::string throttle_name = resuming_throttle->GetNameForLogging();
       std::move(response_body_callback_).Run(std::string());
       if (this_ptr.WasInvalidated()) {
         // TODO(https://crbug.com/411238078): Replace the debug code with a
         // comment once we ensure that this is the root cause.
         SCOPED_CRASH_KEY_STRING32("Bug411238078", "throttle",
-                                  resuming_throttle->GetNameForLogging());
+                                  throttle_name.c_str());
         base::debug::DumpWithoutCrashing();
         return;
       }
@@ -9630,7 +9631,7 @@ void NavigationRequest::WriteIntoTrace(
   ctx->set_navigation_id(navigation_id_);
   ctx->set_has_committed(HasCommitted());
   ctx->set_is_error_page(IsErrorPage());
-  ctx.Set(TraceProto::kFrameTreeNode, frame_tree_node_);
+  ctx.Set(TraceProto::kFrameTreeNode, frame_tree_node());
   if (state_ >= WILL_PROCESS_RESPONSE)
     ctx.Set(TraceProto::kRenderFrameHost, GetRenderFrameHost());
 

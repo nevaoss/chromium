@@ -154,7 +154,6 @@ public class TabBottomSheetCoordinator {
     private boolean mIsShowingTabBottomSheet;
     private boolean mExpectingLayoutChange;
     private boolean mInitialContainerSizeChanged;
-    private boolean mCanNotBeSuppressed;
     private @Nullable KeyboardVisibilityListener mKeyboardVisibilityListener;
     private @Nullable ModalDialogManager mObservedModalDialogManager;
     private @Nullable ModalDialogManagerObserver mModalDialogManagerObserver;
@@ -214,13 +213,18 @@ public class TabBottomSheetCoordinator {
         mContentView = mCoBrowseViews.getView();
         mContentView.setOutlineProvider(mOutlineProvider);
         mContentView.setClipToOutline(true);
+        TabBottomSheetContentProvider provider = mCoBrowseViews.getContentProvider();
+        assert provider != null : "TabBottomSheetContentProvider must not be null";
         mSheetContent =
-                new TabBottomSheetContent(
+                provider.create(
                         mContentView,
                         FULL_HEIGHT_RATIO,
                         mCoBrowseViews.getBackgroundColor(),
-                        mCoBrowseViews.getClientType(),
-                        () -> mCanNotBeSuppressed);
+                        mContentView
+                                .getResources()
+                                .getDimensionPixelSize(R.dimen.tab_bottom_sheet_peek_height_total),
+                        R.id.peek_view_container,
+                        R.id.empty_placeholder_container);
         mViewBinder =
                 PropertyModelChangeProcessor.create(
                         mModel, mContentView, TabBottomSheetViewBinder::bind);
@@ -323,10 +327,6 @@ public class TabBottomSheetCoordinator {
         } else {
             mBottomSheetController.collapseSheet(/* animate= */ true);
         }
-    }
-
-    void setCanNotBeSuppressed(boolean canNotBeSuppressed) {
-        mCanNotBeSuppressed = canNotBeSuppressed;
     }
 
     void closeBottomSheet(boolean animate) {

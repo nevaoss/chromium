@@ -183,13 +183,26 @@ public class PdfCoordinator
                     @Override
                     public void onViewDetachedFromWindow(View view) {}
                 });
-        relocateMisplacedFragmentViews();
-        mFragmentContainerViewId = R.id.pdf_fragment_container;
+        boolean reuseFragment = PdfUtils.isReuseFragmentEnabled();
+        if (reuseFragment) {
+            relocateMisplacedFragmentViews();
+            mFragmentContainerViewId = R.id.pdf_fragment_container;
+        } else {
+            View fragmentContainerView = mView.findViewById(R.id.pdf_fragment_container);
+            mFragmentContainerViewId = View.generateViewId();
+            fragmentContainerView.setId(mFragmentContainerViewId);
+        }
         mFragmentManager = ((FragmentActivity) activity).getSupportFragmentManager();
         Fragment fragment = mFragmentManager.findFragmentByTag(mTabId);
         if (fragment != null) {
-            mChromePdfViewerFragment = (ChromePdfViewerFragment) fragment;
-        } else {
+            if (reuseFragment) {
+                mChromePdfViewerFragment = (ChromePdfViewerFragment) fragment;
+            } else {
+                mFragmentManager.beginTransaction().remove(fragment).commitAllowingStateLoss();
+            }
+        }
+
+        if (mChromePdfViewerFragment == null) {
             mChromePdfViewerFragment = new ChromePdfViewerFragment(this);
             mChromePdfViewerFragment.setViewTag(mTabId);
             // Start pdf library initialization. This prepares pdf resources ahead of time, so that
@@ -734,6 +747,11 @@ public class PdfCoordinator
     @Override
     public void loadPdfSelectionCoordinator(PdfView pdfView) {
         mPdfSelectionCoordinator = new PdfSelectionCoordinator(mActivity, pdfView);
+        if (mToolbarCoordinator != null) {
+            pdfView.setFocusable(true);
+            pdfView.setFocusableInTouchMode(true);
+            pdfView.setOnKeyListener(mToolbarCoordinator);
+        }
     }
 
     @Override
@@ -788,6 +806,7 @@ public class PdfCoordinator
                     if (fragmentContainerView != null
                             && fragmentContainerView.getVisibility() != View.VISIBLE) {
                         fragmentContainerView.setVisibility(View.VISIBLE);
+                        pdfView.requestFocus();
                     }
                     return;
                 }
@@ -803,5 +822,15 @@ public class PdfCoordinator
         mChromePdfViewerFragment.setPagesPerRow(twoPagesPerRowEnabled);
         mChromePdfViewerFragment.zoomTo(zoomLevel);
         mChromePdfViewerFragment.scrollToPage(currentPageIndex);
+    }
+
+    @Override
+    public void download() {
+        // TODO(crbug.com/501138999): Implement download action
+    }
+
+    @Override
+    public void rotate() {
+        // TODO(crbug.com/501138999): Implement rotate action
     }
 }

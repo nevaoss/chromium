@@ -35,7 +35,7 @@ try_.defaults.set(
     siso_output_local_strategy = "greedy",
     siso_project = siso.project.DEFAULT_UNTRUSTED,
     siso_remote_jobs = siso.remote_jobs.HIGH_JOBS_FOR_CQ,
-    siso_remote_linking = True,
+    siso_remote_linking = False,
 )
 
 targets.builder_defaults.set(
@@ -607,6 +607,18 @@ try_.builder(
         ],
     ),
     contact_team_email = "clank-engprod@google.com",
+    properties = {
+        # The format of these properties is defined at archive/properties.proto
+        "$build/archive": {
+            "source_side_spec_path": [
+                "src",
+                "infra",
+                "archive_config",
+                "android-archive-rel.json",
+            ],
+            "verify_paths_only": True,
+        },
+    },
 )
 
 try_.builder(

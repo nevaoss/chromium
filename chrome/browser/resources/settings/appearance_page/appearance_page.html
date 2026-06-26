@@ -256,6 +256,8 @@
                   label="[[item.label]]"
                   menu-options="[[sidePanelAlignmentOptions_]]"
                   data-entry-id$="[[item.id]]"
+                  pref="[[prefs.side_panel.is_right_aligned]]"
+                  no-set-pref
                   value="[[getOverrideValue_(
                     item.id, prefs.side_panel.alignment_overrides.value,
                     prefs.side_panel.is_right_aligned.value)]]"

@@ -8,6 +8,7 @@
 #include "base/check_deref.h"
 #include "base/feature_list.h"
 #include "base/functional/callback_helpers.h"
+#include "base/logging.h"
 #include "base/memory/raw_ref.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/string_split.h"
@@ -676,6 +677,10 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
                      contextual_tasks::ContextualTasksContextService::
                          GetIsSmartTabSharingEnabled(profile));
 
+  source->AddBoolean(
+      "enableContextManagementInComposebox",
+      base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox));
+
   AddZeroStateStrings(source, profile);
   contextual_tasks_service_observation_.Observe(contextual_tasks_service_);
 
@@ -741,6 +746,13 @@ const std::optional<base::Uuid>& ContextualTasksUI::GetTaskId() {
 }
 
 void ContextualTasksUI::SetTaskId(std::optional<base::Uuid> id) {
+  // Only clear restored tabs if the task has changed or no id exists.
+  if (base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox) &&
+      ((id.has_value() && task_id_.has_value() &&
+        id.value() != task_id_.value()) ||
+       !id.has_value())) {
+    OnRestoredTabsFetched({});
+  }
   task_id_ = id;
   // Initialize input state once task id is available.
   if (composebox_handler_) {
@@ -827,7 +839,7 @@ bool ContextualTasksUI::IsInitComplete() {
 }
 
 void ContextualTasksUI::OnInitComplete() {
-  if (task_id_) {
+  if (task_id_ && ui_service_) {
     ui_service_->OnWebUIReady(GetBrowser(), *task_id_,
                               web_ui()->GetWebContents());
   }
@@ -975,8 +987,6 @@ ContextualTasksUI::GetOrCreateContextualSessionHandle() {
       task_id_.has_value() ? helper->GetSessionForTask(task_id_.value())
                            : helper->session_handle();
   if (existing_session) {
-    existing_session->GetMetricsRecorder()->UpdateContextualSearchSource(
-        contextual_search::ContextualSearchSource::kContextualTasks);
     return existing_session;
   }
 
@@ -1067,7 +1077,6 @@ void ContextualTasksUI::SetComposeboxHandlerForTesting(  // IN-TEST
 void ContextualTasksUI::MoveTaskUiToNewTab() {
   auto* browser = GetBrowser();
   if (!task_id_.has_value()) {
-    LOG(ERROR) << "Attempted to open in new tab with no valid task ID.";
     return;
   }
 
@@ -1603,7 +1612,11 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
         webui_thread_id && webui_thread_id.value() != url_thread_id;
 
     bool should_create_new_task =
-        pending_task_title_mismatch || is_new_conversation || is_thread_switch;
+        (pending_task_title_mismatch || is_new_conversation ||
+         is_thread_switch) &&
+        (!base::FeatureList::IsEnabled(
+             omnibox::kContextManagementInComposebox) ||
+         !task_info_delegate_->GetTaskId().has_value());
 
     if (should_create_new_task) {
       OMNIBOX_LOG("nav_trace") << "ContextualTasks navigation trace: "
@@ -1614,6 +1627,7 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
       task_info_delegate_->SetTaskId(task.GetTaskId());
     }
   }
+
   task_info_delegate_->SetThreadId(url_thread_id);
   auto new_task_id = task_info_delegate_->GetTaskId();
   // Replace state if old task id and new task id is the same, otherwise push
@@ -1761,6 +1775,14 @@ void ContextualTasksUI::UpdateExpandButtonEnabled(bool enabled) {
     page_->SetExpandButtonEnabled(enabled);
   }
 #endif
+}
+
+void ContextualTasksUI::OnRestoredTabsFetched(
+    std::vector<searchbox::mojom::TabInfoPtr> tabs) {
+  if (composebox_handler_ &&
+      base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox)) {
+    composebox_handler_->SetAimThreadRestoredTabs(std::move(tabs));
+  }
 }
 
 #if !BUILDFLAG(IS_ANDROID)

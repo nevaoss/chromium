@@ -137,13 +137,6 @@ bool TestRenderWidgetHostView::IsShowing() {
   return is_showing_;
 }
 
-void TestRenderWidgetHostView::WasUnOccluded() {
-  // Can't be unoccluded unless the page is visible.
-  page_visibility_ = PageVisibilityState::kVisible;
-  OnShowWithPageVisibility(page_visibility_);
-  is_occluded_ = false;
-}
-
 void TestRenderWidgetHostView::WasOccluded() {
   if (!host()->IsHidden()) {
     host()->WasHidden();
@@ -175,8 +168,16 @@ void TestRenderWidgetHostView::Destroy() {
   delete this;
 }
 
+void TestRenderWidgetHostView::SetSize(const gfx::Size& size) {
+  bounds_.set_size(size);
+}
+
+void TestRenderWidgetHostView::SetBounds(const gfx::Rect& rect) {
+  bounds_ = rect;
+}
+
 gfx::Rect TestRenderWidgetHostView::GetViewBounds() {
-  return gfx::Rect();
+  return bounds_;
 }
 
 #if BUILDFLAG(IS_MAC)

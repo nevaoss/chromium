@@ -12,6 +12,7 @@
 <translation id="1035113036584565771">Promocja powiadomień o wskazówkach zamknięta</translation>
 <translation id="1036348656032585052">Wyłącz</translation>
 <translation id="1045899828449635435">Wyczyścić też dane z tych stron?</translation>
+<translation id="1049461303780085993">Wypróbuj Gemini w Chrome, aby otrzymywać odpowiedzi, najważniejsze wnioski i inne dane</translation>
 <translation id="1049743911850919806">Incognito</translation>
 <translation id="1052842760770519282">Niektóre hasła są niedostępne</translation>
 <translation id="1057623954802068161">Przewiń na górę strony</translation>
@@ -196,7 +197,6 @@ Twoje zaszyfrowane dane może odczytać tylko osoba znająca hasło wielowyrazow
 <translation id="1877073879466606884">Profil, na którym jesteś zalogowany(-a), jest profilem zarządzanym. Administrator może zdalnie wprowadzać zmiany w ustawieniach profilu, analizować informacje o przeglądarce za pomocą raportów i wykonywać inne niezbędne zadania.</translation>
 <translation id="1879904908408734349">Plansza dolna logowania jest zamknięta</translation>
 <translation id="1883903952484604915">Moje pliki</translation>
-<translation id="1889626070177134359">Sugerowane elementy na liście powyżej: <ph name="SUGGESTIONS_COUNT" />.</translation>
 <translation id="189358972401248634">Inne języki</translation>
 <translation id="1899175549411605574">Plansza dolna ze statystykami dotyczącymi cen</translation>
 <translation id="1900260903084164610">Przechodząc dalej, akceptujesz <ph name="BEGIN_TOS_LINK" />Warunki korzystania z usługi<ph name="END_TOS_LINK" />.</translation>
@@ -256,6 +256,7 @@ Twoje zaszyfrowane dane może odczytać tylko osoba znająca hasło wielowyrazow
 <translation id="2138632817776076519"><ph name="TAB_TITLE" />, wybrana karta nagrywania</translation>
 <translation id="2141396931810938595">Na podstawie wykorzystania</translation>
 <translation id="2145315049852051678">Chrome regularnie sprawdza, czy przeglądarka ma możliwie najbezpieczniejsze ustawienia. Jeśli coś trzeba będzie sprawdzić, powiadomimy Cię.</translation>
+<translation id="2149968176347646218">Połączenie nie jest bezpieczne</translation>
 <translation id="2149973817440762519">Edytuj zakładkę</translation>
 <translation id="2163089732491971196">Wpisz hasło wielowyrazowe, aby móc zapisywać dane z Chrome na koncie Google i ich używać</translation>
 <translation id="2166228530126694506">Wersja <ph name="VERSION_NUMBER" /></translation>
@@ -298,6 +299,7 @@ Twoje zaszyfrowane dane może odczytać tylko osoba znająca hasło wielowyrazow
 <translation id="2318045970523081853">Kliknij, by zadzwonić</translation>
 <translation id="232137538351753795">Aby wrócić, przesuń palcem od lewej krawędzi</translation>
 <translation id="2323763861024343754">Dane witryn:</translation>
+<translation id="2327445548174191329">Z urządzenia <ph name="DEVICE_NAME" /></translation>
 <translation id="2328474416100889417">Wszyscy natychmiast utracą dostęp do grupy kart „<ph name="GROUP_NAME" />”, a wszystkie linki z zaproszeniami zostaną wyłączone</translation>
 <translation id="2330186936255788117">Więcej zakładek</translation>
 <translation id="2332515770639153015">Włączono Ulepszone Bezpieczne przeglądanie</translation>
@@ -835,6 +837,7 @@ Na stronie <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" /> n
 <translation id="4595237294768457124">Otwórz stronę nowej karty</translation>
 <translation id="4595276580892809760">Załącz obrazy z galerii</translation>
 <translation id="4595805675102978678">Błąd konta Google</translation>
+<translation id="4599585406846903742">Widok jednej strony</translation>
 <translation id="4601095002996233687">Szczegółowe skanowanie w poszukiwaniu podejrzanych pobranych plików.</translation>
 <translation id="4606559747793337066">Gdy witryna lub aplikacja prosi o prywatne wstępne wczytanie linków z jej strony, Chrome szyfruje i wstępnie wczytuje strony przy użyciu serwerów Google, ale bez plików cookie. Pozwala to na ukrycie Twojej tożsamości przed wstępnie wczytywaną witryną.</translation>
 <translation id="4616150815774728855">Otwórz <ph name="WEBAPK_NAME" /></translation>
@@ -1089,6 +1092,7 @@ Na stronie <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" /> n
 <translation id="569536719314091526">Możesz przetłumaczyć tę stronę na dowolny język, używając przycisku Więcej opcji</translation>
 <translation id="5696597120588531049">Chrome pomaga chronić Cię przed naruszeniami bezpieczeństwa danych, niebezpiecznymi stronami internetowymi i innymi zagrożeniami</translation>
 <translation id="5698878456427040674">Sprawdź, czy wybrane konto jest obsługiwane.</translation>
+<translation id="5700415746238689851">Otwórz Gemini</translation>
 <translation id="5709213329446699338"><ph name="SITE" /> chce się połączyć z portem szeregowym</translation>
 <translation id="5715150588940290235">Usunąć zapisane kody zabezpieczające?</translation>
 <translation id="572328651809341494">Ostatnie karty</translation>
@@ -1327,6 +1331,7 @@ Na przykład niektóre strony mogą na nie zareagować, wyświetlając reklamy b
 <translation id="6595046016124923392">Obrazy są wysyłane do Google, żebyśmy mogli dostarczać Ci lepsze opisy.</translation>
 <translation id="6602173570135186741">Autouzupełnianie i hasła</translation>
 <translation id="661266467055912436">Zwiększa bezpieczeństwo Twoje i pozostałych użytkowników internetu.</translation>
+<translation id="6615455863669487791">Pokaż mi</translation>
 <translation id="6621391692573306628">Aby wysłać tę kartę na inne urządzenie, na obu urządzeniach zaloguj się w Chrome</translation>
 <translation id="6627583120233659107">Edytuj folder</translation>
 <translation id="6633067410344541938">Odblokuj tryb incognito</translation>
@@ -1770,6 +1775,7 @@ Aby zmienić to ustawienie, <ph name="BEGIN_LINK" />wyczyść dane Chrome na swo
 <translation id="8271267069224406035">Zgłoś spam</translation>
 <translation id="8277710303010772444">Rozpocznij wyszukiwanie</translation>
 <translation id="8279945625179116733">Zabezpieczona przez <ph name="APP_NAME" /></translation>
+<translation id="8280797717392145626">Odebrane linki</translation>
 <translation id="8281886186245836920">Pomiń</translation>
 <translation id="8282297628636750033">Stosuj ciemny motyw witryn tam, gdzie to możliwe</translation>
 <translation id="8282950411412455249">Otwórz ustawienia zabezpieczeń</translation>
@@ -1905,6 +1911,7 @@ Aby zmienić to ustawienie, <ph name="BEGIN_LINK" />wyczyść dane Chrome na swo
 <translation id="8863714995118816041">Witryna <ph name="SITE_NAME" /> ponownie ma uprawnienia</translation>
 <translation id="8865415417596392024">Dane z Chrome na Twoim koncie</translation>
 <translation id="8872506776304248286">Otwórz w aplikacji</translation>
+<translation id="8880275451109933094">Widok dwóch stron</translation>
 <translation id="8890668505403261809">Wyszukaj na kartach incognito</translation>
 <translation id="8892234476517513962">Jesteś już zalogowany(-a)</translation>
 <translation id="8894890673032951011"><ph name="TAB_TITLE" />, wybrana karta incognito nagrywania</translation>

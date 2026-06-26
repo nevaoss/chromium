@@ -46,6 +46,7 @@
 <translation id="1147031633655575115">Inloggad som <ph name="USER" /></translation>
 <translation id="1149401351239820326">Utgångsmånad</translation>
 <translation id="1150989369772528668">Kalender</translation>
+<translation id="1161444134753003495">Logga in</translation>
 <translation id="1161663161838091892">Synkronisera flikar och historik för att fortsätta</translation>
 <translation id="1162834932051545794">{count,plural, =1{{count} kreditkort}other{{count} kreditkort}}</translation>
 <translation id="1164891049599601209">Har angetts på en bedräglig webbplats</translation>
@@ -168,6 +169,7 @@
 <translation id="1554043146674176775">Inaktivera AI-läge</translation>
 <translation id="1554477036522844996">Nytt fönster</translation>
 <translation id="1558391695376153246">Stäng inkognitoflikar</translation>
+<translation id="1560153516220021659">Knapp för komprimerat sekundärt verktygsfält</translation>
 <translation id="1565371473877914088">Ny inkognitoflik</translation>
 <translation id="1567960978791353852">Visa läsläget</translation>
 <translation id="1571780780926010134">Inkognitoflikar</translation>
@@ -175,6 +177,7 @@
 <translation id="1580783302095112590">E-post skickades.</translation>
 <translation id="1582732959743469162">Den pågående nedladdningen avbryts.</translation>
 <translation id="1594034544529347967">Börjar</translation>
+<translation id="1598485494295307681">Lyssnar</translation>
 <translation id="1598751033135758830">Öppna i appen …</translation>
 <translation id="1600571977391127696">Visst innehåll kanske inte är lämpligt för alla.</translation>
 <translation id="1601560923496285236">Verkställ</translation>
@@ -538,6 +541,7 @@
 <translation id="2829172210806130158">Sök på skärmen</translation>
 <translation id="2831109159746537587">Testa att ringa in eller trycka på bilden för att söka</translation>
 <translation id="2834399722155632105">3. Tryck på Lösenordsalternativ</translation>
+<translation id="2834418947367581526">Hej! Jag heter Gemini. Snart startar vi Live så att du kan ställa frågor om sidan du är på bara genom att prata. Ta gärna en titt på den här viktiga informationen innan vi börjar.</translation>
 <translation id="2834956026595107950"><ph name="TITLE" />, <ph name="STATE" />, <ph name="URL" /></translation>
 <translation id="2841013758207633010">Tid</translation>
 <translation id="284581348330507117">Skapa unika lösenord</translation>
@@ -690,6 +694,7 @@
 <translation id="3447332786336558089">När du har loggat ut stängs flikarna och kontodata som inte har sparats raderas från enheten. Detta kan omfatta lösenord, historik med mera.</translation>
 <translation id="3449029510150690417">Skapa en ny flikgrupp genom att ge den ett namn och en färg</translation>
 <translation id="345348365500626747">Adress hittades</translation>
+<translation id="3459644598174926977">Använd Gemini Live för att ställa frågor om en sida, brainstorma högt och diskutera fram och tillbaka.</translation>
 <translation id="3464194322481586217">Det gick inte att bevaka priset.</translation>
 <translation id="3469117812148449995">Alternativ för att spara lösenord</translation>
 <translation id="3472469028191701821">Öppnas i en ny flik</translation>
@@ -824,6 +829,7 @@
 <translation id="3931215329146376310">{count,plural, =1{Nytt lösenord för den här webbplatsen}other{Nya lösenord för den här webbplatsen}}</translation>
 <translation id="3933372629914873850">Du loggar in på <ph name="URL" /></translation>
 <translation id="3934905113567851655">Nyp för att ändra storlek</translation>
+<translation id="393732545649378031">Konto</translation>
 <translation id="3940195383040445971">Bevaka priser på flikar</translation>
 <translation id="3941941395924123592">{COUNT,plural, =1{Stäng {COUNT} flik}other{Stäng {COUNT} flikar}}</translation>
 <translation id="3946483119107054883">Ladda ned till CSV</translation>
@@ -1127,6 +1133,7 @@
 <translation id="4941089862236492464">Det gick inte att dela objektet.</translation>
 <translation id="4944543191714094452">Hitta på sida …</translation>
 <translation id="4945756290001680296">Åtkomst till lösenordsinställningar</translation>
+<translation id="4946307855175300628">Svarar</translation>
 <translation id="4949302115427722371">Hantera inställningar …</translation>
 <translation id="4958444002117714549">Expandera lista</translation>
 <translation id="496392417432935267">Har öppnats någon annanstans</translation>
@@ -1474,6 +1481,7 @@ Du måste även aktivera Handoff i avsnittet Allmänt i inställningarna och sam
 <translation id="6140948187512243695">Visa detaljerad information</translation>
 <translation id="6144589619057374135">Öppna ${url} i inkognitoläget</translation>
 <translation id="6146563240635539929">Videor</translation>
+<translation id="6148392728478209113">Använder du fortfarande Live? Tryck på Live-knappen för att fortsätta prata med Gemini.</translation>
 <translation id="6151006591088192882">Lås upp inkognitoflikar med <ph name="BIOMETRIC_AUTHENITCATION_TYPE" /></translation>
 <translation id="6152340033632117531">Inaktivera</translation>
 <translation id="6152406514676263192">Synkronisera för att se det mest relevanta innehållet baserat på dina intressen.</translation>
@@ -1547,6 +1555,7 @@ Du måste även aktivera Handoff i avsnittet Allmänt i inställningarna och sam
 <translation id="6355820183143562453">Dölj kortet Prisbevakning</translation>
 <translation id="6355820205320395730">Svaga lösenord är lätta att lista ut. Använd alltid starka lösenord. <ph name="BEGIN_LINK" />Här hittar du fler säkerhetstips.<ph name="END_LINK" /></translation>
 <translation id="6357455205205567365">Logga in om du vill få tillgång till dina grejer, till exempel lösenord, bokmärken med mera.</translation>
+<translation id="6364268785720100355">Logga in om du vill ha dina lösenord med mera på alla dina enheter.</translation>
 <translation id="6368038301482806847">Välj en sökmotor i listan.</translation>
 <translation id="6368102751067608420">Så här raderar du all lösenordshanteringsdata</translation>
 <translation id="6372558618707314581">Öppna valfri sida</translation>
@@ -1676,6 +1685,7 @@ Du måste även aktivera Handoff i avsnittet Allmänt i inställningarna och sam
 <translation id="6736243959894955139">Adress</translation>
 <translation id="6746338529702829275">Granska din kontodata</translation>
 <translation id="6750456911389438250">{count,plural, =1{{count} historikobjekt har importerats}other{{count} historikobjekt har importerats}}</translation>
+<translation id="6751817018972413719">{count,plural, =1{{count} alternativ för användaruppgifter visas ovanför tangentbordet.}other{{count} alternativ för användaruppgifter visas ovanför tangentbordet.}}</translation>
 <translation id="6755200887046212842">Hantera konton</translation>
 <translation id="6757899787818440812">Medelhögt</translation>
 <translation id="6759709389246683070">Du kan trycka länge på den här fliken för att ställa in en påminnelse om att besöka den senare</translation>
@@ -2227,6 +2237,7 @@ Du måste även aktivera Handoff i avsnittet Allmänt i inställningarna och sam
 <translation id="8643403533759285912">Radera grupp</translation>
 <translation id="8647280737650867362">Det gick inte att avsluta prisbevakningen.</translation>
 <translation id="8654802032646794042">Avbryt</translation>
+<translation id="8659875081143553823">Ett ögonblick</translation>
 <translation id="8660600697590740984">Sök efter kopierad bild med Lens</translation>
 <translation id="866266761389616183">Åh, nej!</translation>
 <translation id="8663764600409216912">Du använder lösenord som verkar svåra att lista ut</translation>

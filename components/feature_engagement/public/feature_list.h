@@ -70,8 +70,8 @@ DEFINE_VARIATION_PARAM(
 DEFINE_VARIATION_PARAM(
     kIPHAdaptiveButtonInTopToolbarCustomizationReadAloudFeature,
     "IPH_AdaptiveButtonInTopToolbarCustomization_ReadAloud");
-DEFINE_VARIATION_PARAM(kIPHAdaptiveButtonInTopToolbarCustomizationGlicFeature,
-                       "IPH_AdaptiveButtonInTopToolbarCustomization_Glic");
+DEFINE_VARIATION_PARAM(kIPHAdaptiveButtonPinGlicToolbarButtonFeature,
+                       "IPH_AdaptiveButtonPinGlicToolbarButton");
 DEFINE_VARIATION_PARAM(
     kIPHAdaptiveButtonInTopToolbarCustomizationPageSummaryWebFeature,
     "IPH_AdaptiveButtonInTopToolbarCustomization_PageSummary_Web");
@@ -433,7 +433,6 @@ DEFINE_VARIATION_PARAM(kIPHLensOverlayFeature, "IPH_LensOverlay");
 DEFINE_VARIATION_PARAM(kIPHLensOverlayTranslateButtonFeature,
                        "IPH_LensOverlayTranslateButton");
 DEFINE_VARIATION_PARAM(kIPHLiveCaptionFeature, "IPH_LiveCaption");
-DEFINE_VARIATION_PARAM(kIPHMerchantTrustFeature, "IPH_MerchantTrust");
 DEFINE_VARIATION_PARAM(kIPHPasswordsSavePrimingPromoFeature,
                        "IPH_PasswordsSavePrimingPromo");
 DEFINE_VARIATION_PARAM(kIPHPasswordsSaveRecoveryPromoFeature,
@@ -628,6 +627,7 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHAdaptiveButtonInTopToolbarCustomizationShareFeature),
         VARIATION_ENTRY(kIPHAdaptiveButtonInTopToolbarCustomizationTranslateFeature),
         VARIATION_ENTRY(kIPHAdaptiveButtonInTopToolbarCustomizationVoiceSearchFeature),
+        VARIATION_ENTRY(kIPHAdaptiveButtonPinGlicToolbarButtonFeature),
         VARIATION_ENTRY(kIPHAndroidBottomBarGlic),
         VARIATION_ENTRY(kIPHAndroidBottomBarNewTab),
         VARIATION_ENTRY(kIPHAndroidTabDeclutter),
@@ -835,7 +835,6 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHHistorySearchFeature),
         VARIATION_ENTRY(kIPHLiveCaptionFeature),
         VARIATION_ENTRY(kIPHMemorySaverModeFeature),
-        VARIATION_ENTRY(kIPHMerchantTrustFeature),
         VARIATION_ENTRY(kIPHPasswordManagerShortcutFeature),
         VARIATION_ENTRY(kIPHPasswordSharingFeature),
         VARIATION_ENTRY(kIPHPasswordsManagementBubbleAfterSaveFeature),

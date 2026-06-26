@@ -7,11 +7,10 @@
 
 #include "cc/tiles/image_decode_cache_utils.h"
 
-#include "base/byte_count.h"
+#include "base/byte_size.h"
 #include "build/build_config.h"
 
 #if !BUILDFLAG(IS_ANDROID)
-#include "base/byte_size.h"
 #include "base/system/sys_info.h"
 #endif
 
@@ -26,18 +25,18 @@ namespace cc {
 // static
 size_t ImageDecodeCacheUtils::GetWorkingSetBytesForImageDecode(
     bool for_renderer) {
-  base::ByteCount decoded_image_working_set_budget = base::MiB(128);
+  base::ByteSize decoded_image_working_set_budget = base::MiBU(128);
 #if !BUILDFLAG(IS_ANDROID)
   if (for_renderer) {
     const bool using_low_memory_policy = base::SysInfo::IsLowEndDevice();
     // If there's over 4GB of RAM, increase the working set size to 256MB for
     // both gpu and software.
-    constexpr base::ByteCount kImageDecodeMemoryThreshold = base::GiB(4);
+    constexpr base::ByteSize kImageDecodeMemoryThreshold = base::GiBU(4);
     if (using_low_memory_policy) {
-      decoded_image_working_set_budget = base::MiB(32);
-    } else if (base::SysInfo::AmountOfTotalPhysicalMemory()
-                   .AsDeprecatedByteCount() >= kImageDecodeMemoryThreshold) {
-      decoded_image_working_set_budget = base::MiB(256);
+      decoded_image_working_set_budget = base::MiBU(32);
+    } else if (base::SysInfo::AmountOfTotalPhysicalMemory() >=
+               kImageDecodeMemoryThreshold) {
+      decoded_image_working_set_budget = base::MiBU(256);
     }
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
     const base::CommandLine& cmd = *base::CommandLine::ForCurrentProcess();
@@ -56,7 +55,7 @@ size_t ImageDecodeCacheUtils::GetWorkingSetBytesForImageDecode(
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
   }
 #endif  // !BUILDFLAG(IS_ANDROID)
-  return decoded_image_working_set_budget.InBytesUnsigned();
+  return decoded_image_working_set_budget.InBytes();
 }
 
 }  // namespace cc

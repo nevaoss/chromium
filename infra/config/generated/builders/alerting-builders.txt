@@ -371,6 +371,7 @@ ci/linux-chromeos-rel
 ci/linux-crossbench
 ci/linux-extended-tracing-rel
 ci/linux-gcc-rel
+ci/linux-no-initial-webui-rel
 ci/linux-oi-rel
 ci/linux-presubmit
 ci/linux-rel-cft
@@ -623,6 +624,7 @@ try/linux-cast-x64-rel
 try/linux-centipede-asan-rel
 try/linux-cfm-rel
 try/linux-chromeos-asan-rel
+try/linux-chromeos-clobber-rel
 try/linux-chromeos-compile-dbg
 try/linux-chromeos-dbg
 try/linux-chromeos-rel
@@ -659,7 +661,6 @@ try/linux-utr-tester
 try/linux-v4l2-codec-rel
 try/linux-wayland-mutter-rel
 try/linux-wayland-weston-rel
-try/linux-webium-product-rel
 try/linux-win-cross-rel
 try/linux-x64-centipede-asan-rel-tests
 try/linux-x64-libfuzzer-asan-dbg-tests
@@ -752,3 +753,4 @@ try/win32-official
 try/win_chromium_compile_dbg_ng
 try/win_chromium_compile_rel_ng
 try/win_chromium_x64_rel_ng
+try/windows-no-initial-webui-rel

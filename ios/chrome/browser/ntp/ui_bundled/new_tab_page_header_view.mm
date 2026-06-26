@@ -14,6 +14,7 @@
 #import "components/omnibox/common/omnibox_features.h"
 #import "components/prefs/pref_service.h"
 #import "components/strings/grit/components_strings.h"
+#import "ios/chrome/browser/bubble/public/in_product_help_type.h"
 #import "ios/chrome/browser/content_suggestions/public/ntp_home_constants.h"
 #import "ios/chrome/browser/content_suggestions/ui/content_suggestions_collection_utils.h"
 #import "ios/chrome/browser/lens/ui_bundled/lens_availability.h"
@@ -28,6 +29,7 @@
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_header_commands.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_header_constants.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_image_background_trait.h"
+#import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_mutator.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_shortcuts_handler.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_trait.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_utils.h"
@@ -37,6 +39,7 @@
 #import "ios/chrome/browser/omnibox/ui/omnibox_container_view.h"
 #import "ios/chrome/browser/omnibox/ui/omnibox_text_field_ios.h"
 #import "ios/chrome/browser/shared/model/profile/features.h"
+#import "ios/chrome/browser/shared/public/commands/help_commands.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/browser/shared/ui/elements/extended_touch_target_button.h"
 #import "ios/chrome/browser/shared/ui/elements/gradient/gradient_view.h"
@@ -48,6 +51,7 @@
 #import "ios/chrome/browser/start_surface/ui_bundled/start_surface_features.h"
 #import "ios/chrome/browser/toolbar/legacy/ui_bundled/buttons/legacy_toolbar_button_factory.h"
 #import "ios/chrome/browser/toolbar/legacy/ui_bundled/buttons/toolbar_configuration.h"
+#import "ios/chrome/browser/toolbar/legacy/ui_bundled/public/fakebox_focuser.h"
 #import "ios/chrome/browser/toolbar/legacy/ui_bundled/public/toolbar_constants.h"
 #import "ios/chrome/browser/toolbar/legacy/ui_bundled/public/toolbar_utils.h"
 #import "ios/chrome/browser/toolbar/tab_group/ui/tab_group_indicator_constants.h"
@@ -244,6 +248,7 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
 
 @property(nonatomic, strong) NSLayoutConstraint* hintLabelLeadingConstraint;
 @property(nonatomic, strong) NSLayoutConstraint* hintLabelTrailingConstraint;
+
 // View used to add on-touch highlight to the fake omnibox.
 @property(nonatomic, strong) UIView* fakeLocationBarHighlightView;
 // View used to simulate the top toolbar when the header is stuck to the top of
@@ -263,11 +268,17 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
 @property(nonatomic, strong) NSLayoutConstraint* headerViewHeightConstraint;
 @property(nonatomic, assign) SearchEngineLogoState searchEngineLogoState;
 
+@property(nonatomic, assign) BOOL voiceSearchIsEnabled;
+@property(nonatomic, copy) NSString* defaultSearchEngineName;
+
 @end
 
 @implementation NewTabPageHeaderView {
   CGFloat _lastAnimationPercent;
   BOOL _useNewBadgeForLensButton;
+  BOOL _useNewBadgeForCustomizationMenu;
+  BOOL _didNotifyLensBadgeDisplay;
+  BOOL _didNotifyCustomizationBadgeDisplay;
   BOOL _lensButtonWithNewBadgeTapped;
   // The current scale of the transform for the hint label. 1 if not currently
   //  scaled.
@@ -309,6 +320,9 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
   // YES if there is an identity account error to show.
   BOOL _hasAccountError;
 
+  // YES if Google is the default search engine.
+  BOOL _isGoogleDefaultSearchEngine;
+
   // Identity disc constraints.
   NSLayoutConstraint* _identityDiscWidthConstraint;
   NSLayoutConstraint* _identityDiscHeightConstraint;
@@ -318,12 +332,14 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
 
 #pragma mark - Public
 
-- (instancetype)initWithUseNewBadgeForLensButton:
-    (BOOL)useNewBadgeForLensButton {
+- (instancetype)initWithUseNewBadgeForLensButton:(BOOL)useNewBadgeForLensButton
+                 useNewBadgeForCustomizationMenu:
+                     (BOOL)useNewBadgeForCustomizationMenu {
   self = [super initWithFrame:CGRectZero];
   if (self) {
     self.clipsToBounds = YES;
     _useNewBadgeForLensButton = useNewBadgeForLensButton;
+    _useNewBadgeForCustomizationMenu = useNewBadgeForCustomizationMenu;
     _lastAnimationPercent = 0;
     _currentHintLabelScale = 1;
 
@@ -393,21 +409,26 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
 }
 
 - (void)setPlaceholderText:(NSString*)placeholderText {
-  if (_placeholderText == placeholderText) {
+  if ([self.searchHintLabel.text isEqualToString:placeholderText]) {
     return;
   }
-  _placeholderText = placeholderText;
   [self.omnibox.textInput setDefaultPlaceholderText:placeholderText];
   self.searchHintLabel.text = placeholderText;
+  self.accessibilityButton.accessibilityLabel = placeholderText;
 }
 
-- (void)setOmniboxPositionIsBottom:(BOOL)isBottomOmnibox {
-  CHECK(IsBottomOmniboxAvailable());
-  CHECK(IsChromeNextIaEnabled());
-  _isBottomOmnibox = isBottomOmnibox;
+- (void)updatePlaceholderText {
+  NSString* placeholderText = [self placeholderText];
+  self.placeholderText = placeholderText;
+}
 
-  if (IsSplitToolbarMode(self)) {
-    [self resetSplitToolbarResizing];
+- (NSString*)placeholderText {
+  if (IsAIOmniboxAskPlaceholderEnabled() && _isGoogleDefaultSearchEngine) {
+    return l10n_util::GetNSStringF(IDS_OMNIBOX_EMPTY_ASK_HINT_WITH_DSE_NAME,
+                                   self.defaultSearchEngineName.cr_UTF16String);
+  } else {
+    return l10n_util::GetNSStringF(IDS_OMNIBOX_EMPTY_HINT_WITH_DSE_NAME,
+                                   self.defaultSearchEngineName.cr_UTF16String);
   }
 }
 
@@ -418,15 +439,7 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
 
   _isGoogleDefaultSearchEngine = isGoogleDefaultSearchEngine;
 
-  [self removeAllFakeboxButtonsFromStack];
-  [self removeLeadingView];
-
-  [self addFakeboxButtonsToStack];
-
-  if (self.fakeOmniboxContainer) {
-    [self addLeadingViewToSearchField:self.fakeOmniboxContainer];
-    [self setFakeboxColorsWithProgress:_lastAnimationPercent];
-  }
+  [self refreshFakeboxContent];
 }
 
 - (void)setupSubviews {
@@ -434,6 +447,10 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
   [self setupFakeTapView];
   [self setupIdentityDisc];
   [self addSeparatorToSearchField:self.fakeOmniboxContainer];
+  [self addCustomizationMenu];
+  if (IsChromeNextIaEnabled()) {
+    [self addToolsMenuIfNeeded];
+  }
 }
 
 - (void)setupIdentityDisc {
@@ -750,11 +767,6 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
         constraintEqualToAnchor:self.searchHintLabel.centerYAnchor
                        constant:leadingViewYOffset]
   ]];
-}
-
-- (void)setDefaultSearchEngineLogo:(UIImage*)logo {
-  _dseLogo = logo;
-  _logoView.image = logo;
 }
 
 // Updates button styling for the current trait collection.
@@ -1311,14 +1323,6 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
   return [_buttonStack snapshotViewAfterScreenUpdates:NO];
 }
 
-- (void)setAIMAllowed:(BOOL)allowed {
-  _isAIMAllowed = allowed;
-}
-
-- (void)setFuseboxEligible:(BOOL)eligible {
-  _fuseboxEligible = eligible;
-}
-
 - (BOOL)shouldShowPlusButton {
   return IsPlusButtonInFakeboxEnabled() && _isAIMAllowed && _fuseboxEligible;
 }
@@ -1380,6 +1384,95 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
   return _fakeLocationBar;
 }
 
+#pragma mark - NewTabPageHeaderConsumer
+
+- (void)setOmniboxInBottomPosition:(BOOL)isBottomOmnibox {
+  CHECK(IsBottomOmniboxAvailable());
+  CHECK(IsChromeNextIaEnabled());
+  _isBottomOmnibox = isBottomOmnibox;
+
+  if (IsSplitToolbarMode(self)) {
+    [self resetSplitToolbarResizing];
+  }
+  [self.delegate didChangeOmniboxPosition:self];
+}
+
+- (void)setVoiceSearchIsEnabled:(BOOL)voiceSearchIsEnabled {
+  if (_voiceSearchIsEnabled == voiceSearchIsEnabled) {
+    return;
+  }
+  _voiceSearchIsEnabled = voiceSearchIsEnabled;
+  self.voiceSearchButton.enabled = voiceSearchIsEnabled;
+  self.voiceSearchButton.isAccessibilityElement = voiceSearchIsEnabled;
+  [self layoutIfNeeded];
+}
+
+- (void)setDefaultSearchEngineName:(NSString*)defaultSearchEngineName {
+  if (_defaultSearchEngineName == defaultSearchEngineName) {
+    return;
+  }
+  _defaultSearchEngineName = defaultSearchEngineName;
+  [self updatePlaceholderText];
+}
+
+- (void)setSearchEngineLogoMediator:
+    (SearchEngineLogoMediator*)searchEngineLogoMediator {
+  if (_searchEngineLogoMediator) {
+    [_searchEngineLogoMediator.view removeFromSuperview];
+  }
+  _searchEngineLogoMediator = searchEngineLogoMediator;
+  if (_searchEngineLogoMediator) {
+    _searchEngineLogoMediator.consumer = self;
+    [self insertSubview:_searchEngineLogoMediator.view
+           belowSubview:self.toolBarView];
+    _searchEngineLogoMediator.view.translatesAutoresizingMaskIntoConstraints =
+        NO;
+    _searchEngineLogoMediator.view.accessibilityIdentifier =
+        ntp_home::NTPLogoAccessibilityID();
+    [self addConstraintsForLogoView:_searchEngineLogoMediator.view
+                        fakeOmnibox:self.fakeOmniboxContainer
+                      andHeaderView:self];
+    [self applyBackgroundTheme];
+  }
+}
+
+- (void)updateADPBadgeWithErrorFound:(BOOL)hasAccountError
+                                name:(NSString*)name
+                               email:(NSString*)email {
+  if (hasAccountError == _hasAccountError) {
+    return;
+  }
+
+  _hasAccountError = hasAccountError;
+  if (_hasAccountError) {
+    [self setIdentityDiscErrorBadge];
+  } else {
+    [self removeIdentityDiscErrorBadge];
+  }
+  [self updateIdentityDiscAccessibilityLabelWithName:name email:email];
+}
+
+- (void)setDefaultSearchEngineImage:(UIImage*)image {
+  _dseLogo = image;
+  _logoView.image = image;
+}
+
+- (void)setAIMAllowed:(BOOL)allowed {
+  if (_isAIMAllowed == allowed) {
+    return;
+  }
+  _isAIMAllowed = allowed;
+  [self refreshFakeboxContent];
+}
+
+- (void)setFuseboxEligible:(BOOL)eligible {
+  if (_fuseboxEligible == eligible) {
+    return;
+  }
+  _fuseboxEligible = eligible;
+  [self refreshFakeboxContent];
+}
+
 #pragma mark - Setters
 
 // Sets tabgroupIndicatorView.
@@ -1408,28 +1501,93 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
   [self updateTabGroupIndicatorAvailabilityWithOffset:0];
 }
 
-- (void)setSearchEngineLogoMediator:
-    (SearchEngineLogoMediator*)searchEngineLogoMediator {
-  if (_searchEngineLogoMediator) {
-    [_searchEngineLogoMediator.view removeFromSuperview];
+#pragma mark - Private
+
+// Creates the Home customization menu and adds it to the header view.
+- (void)addCustomizationMenu {
+  UIButton* customizationMenuButton =
+      [[ExtendedTouchTargetButton alloc] initWithFrame:CGRectZero];
+
+  if (!IsNTPBackgroundCustomizationEnabled()) {
+    UIImage* icon = DefaultSymbolTemplateWithPointSize(
+        kPencilSymbol, ntp_home::kNTPMenuButtonIconSize);
+    [customizationMenuButton setImage:icon forState:UIControlStateNormal];
+    customizationMenuButton.backgroundColor =
+        [self defaultButtonBackgroundColor];
+
+    UIColor* tintColor = [UIColor colorNamed:kBlue600Color];
+    customizationMenuButton.tintColor = tintColor;
+
+    customizationMenuButton.layer.cornerRadius =
+        ntp_home::kNTPMenuButtonCornerRadius;
+    customizationMenuButton.clipsToBounds = YES;
   }
-  _searchEngineLogoMediator = searchEngineLogoMediator;
-  if (_searchEngineLogoMediator) {
-    _searchEngineLogoMediator.consumer = self;
-    [self insertSubview:_searchEngineLogoMediator.view
-           belowSubview:self.toolBarView];
-    _searchEngineLogoMediator.view.translatesAutoresizingMaskIntoConstraints =
-        NO;
-    _searchEngineLogoMediator.view.accessibilityIdentifier =
-        ntp_home::NTPLogoAccessibilityID();
-    [self addConstraintsForLogoView:_searchEngineLogoMediator.view
-                        fakeOmnibox:self.fakeOmniboxContainer
-                      andHeaderView:self];
-    [self applyBackgroundTheme];
-  }
+
+  customizationMenuButton.accessibilityIdentifier =
+      kNTPCustomizationMenuButtonIdentifier;
+  customizationMenuButton.accessibilityLabel =
+      l10n_util::GetNSString(IDS_IOS_HOME_CUSTOMIZATION_ACCESSIBILITY_LABEL);
+
+  [customizationMenuButton addTarget:self.commandHandler
+                              action:@selector(customizationMenuWasTapped:)
+                    forControlEvents:UIControlEventTouchUpInside];
+
+  [self setCustomizationMenuButton:customizationMenuButton
+                      withNewBadge:_useNewBadgeForCustomizationMenu];
 }
 
-#pragma mark - Private
+// Creates the Tools menu and adds it to the header view (iPhone only)
+- (void)addToolsMenuIfNeeded {
+  CHECK(IsChromeNextIaEnabled());
+
+  // If the App Bar is not available (iPad), the Tools menu should not be added
+  // to the header view.
+  if (CanShowTabStrip(self)) {
+    return;
+  }
+
+  UIButton* toolsMenuButton =
+      [[ExtendedTouchTargetButton alloc] initWithFrame:CGRectZero];
+
+  if (!IsNTPBackgroundCustomizationEnabled()) {
+    UIImage* icon = DefaultSymbolTemplateWithPointSize(
+        kEllipsisSymbol, ntp_home::kNTPMenuButtonIconSize);
+    [toolsMenuButton setImage:icon forState:UIControlStateNormal];
+    toolsMenuButton.backgroundColor = [self defaultButtonBackgroundColor];
+
+    UIColor* tintColor = [UIColor colorNamed:kBlue600Color];
+    toolsMenuButton.tintColor = tintColor;
+    toolsMenuButton.layer.cornerRadius = ntp_home::kNTPMenuButtonCornerRadius;
+    toolsMenuButton.clipsToBounds = YES;
+  }
+
+  toolsMenuButton.accessibilityIdentifier = kNTPToolsMenuButtonIdentifier;
+  toolsMenuButton.accessibilityLabel =
+      l10n_util::GetNSString(IDS_IOS_TOOLS_MENU);
+
+  [toolsMenuButton addTarget:self.commandHandler
+                      action:@selector(toolsMenuWasTapped:)
+            forControlEvents:UIControlEventTouchUpInside];
+
+  self.toolsMenuButton = toolsMenuButton;
+}
+
+// Refreshes the content of the fakebox.
+- (void)refreshFakeboxContent {
+  if (!self.fakeOmniboxContainer) {
+    return;
+  }
+
+  [self removeAllFakeboxButtonsFromStack];
+  [self removeLeadingView];
+
+  [self addFakeboxButtonsToStack];
+
+  if (self.fakeOmniboxContainer) {
+    [self addLeadingViewToSearchField:self.fakeOmniboxContainer];
+    [self setFakeboxColorsWithProgress:_lastAnimationPercent];
+  }
+}
 
 // Handles the creation of the plus button.
 - (void)createPlusButton {
@@ -1509,12 +1667,14 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
   // Voice search.
   self.voiceSearchButton =
       [ExtendedTouchTargetButton buttonWithType:UIButtonTypeSystem];
+  self.voiceSearchButton.enabled = NO;
+  self.voiceSearchButton.isAccessibilityElement = NO;
   [_buttonStack addArrangedSubview:self.voiceSearchButton];
 
   // Lens.
   const BOOL useLens =
       lens_availability::CheckAndLogAvailabilityForLensEntryPoint(
-          LensEntrypoint::NewTabPage, self.isGoogleDefaultSearchEngine);
+          LensEntrypoint::NewTabPage, _isGoogleDefaultSearchEngine);
   if (useLens) {
     [self addVoiceAndLensDivider];
     self.lensButton =
@@ -1799,6 +1959,11 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
               self.traitCollection.userInterfaceStyle);
     }
   }
+
+  if (IsChromeNextIaEnabled()) {
+    [self resetSplitToolbarResizing];
+    [self addToolsMenuIfNeeded];
+  }
 }
 
 - (void)dealloc {
@@ -2070,22 +2235,6 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
 
   self.isSignedIn = YES;
 
-  [self updateIdentityDiscAccessibilityLabelWithName:name email:email];
-}
-
-- (void)updateADPBadgeWithErrorFound:(BOOL)hasAccountError
-                                name:(NSString*)name
-                               email:(NSString*)email {
-  if (hasAccountError == _hasAccountError) {
-    return;
-  }
-
-  _hasAccountError = hasAccountError;
-  if (_hasAccountError) {
-    [self setIdentityDiscErrorBadge];
-  } else {
-    [self removeIdentityDiscErrorBadge];
-  }
   [self updateIdentityDiscAccessibilityLabelWithName:name email:email];
 }
 
@@ -2433,6 +2582,63 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
                    : [[UIColor colorNamed:kSolidWhiteColor]
                          colorWithAlphaComponent:0.75];
       }];
+}
+
+- (UIView*)fakeOmniboxView {
+  if (IsComposeboxIOSEnabled()) {
+    return self.fakeOmniboxContainer;
+  }
+  return self.fakeLocationBar;
+}
+
+- (CGFloat)pinnedOffsetY {
+  CGFloat offsetY =
+      self.headerHeight - content_suggestions::FakeToolbarHeight();
+  if ([self.delegate shouldPinFakeOmnibox]) {
+    offsetY -= self.headerHeight;
+  }
+  return AlignValueToPixel(offsetY);
+}
+
+- (void)didAppear {
+  [self maybeShowSwitchAccountsIPH];
+
+  if (self.lensButton && _useNewBadgeForLensButton &&
+      !_didNotifyLensBadgeDisplay) {
+    [self.mutator notifyLensBadgeDisplayed];
+    _didNotifyLensBadgeDisplay = YES;
+  }
+  if (self.customizationMenuButton && _useNewBadgeForCustomizationMenu &&
+      !_didNotifyCustomizationBadgeDisplay) {
+    [self.mutator notifyCustomizationBadgeDisplayed];
+    _didNotifyCustomizationBadgeDisplay = YES;
+  }
+}
+
+- (void)focusAccessibilityOnOmnibox {
+  UIAccessibilityPostNotification(UIAccessibilityScreenChangedNotification,
+                                  self.fakeOmniboxContainer);
+}
+
+- (void)maybeShowSwitchAccountsIPH {
+  if (!self.isSignedIn) {
+    return;
+  }
+  [self.helpHandler
+      presentInProductHelpWithType:
+          InProductHelpType::kSwitchAccountsWithNTPAccountParticleDisc];
+}
+
+- (void)completeHeaderFakeOmniboxFocusAnimationWithFinalPosition:
+    (UIViewAnimatingPosition)finalPosition {
+  if (finalPosition == UIViewAnimatingPositionEnd) {
+    [self.fakeboxFocuserHandler onFakeboxAnimationComplete];
+  }
+}
+
+- (void)omniboxDidEndEditing {
+  [self.omnibox.textInput setText:@""];
+  [self updateFakeboxDisplay];
 }
 
 @end

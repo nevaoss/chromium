@@ -12,6 +12,7 @@
 <translation id="1035113036584565771">تبلیغ اعلان نکات بسته است</translation>
 <translation id="1036348656032585052">خاموش کردن</translation>
 <translation id="1045899828449635435">داده‌های این سایت‌ها نیز پاک شود؟</translation>
+<translation id="1049461303780085993">‏برای دریافت پاسخ، نکته‌های کلیدی، و موارد دیگر، «Gemini در Chrome» را امتحان کنید</translation>
 <translation id="1049743911850919806">ناشناس</translation>
 <translation id="1052842760770519282">برخی‌از گذرواژه‌هایتان دردسترس نیست</translation>
 <translation id="1057623954802068161">پیمایش به بالای صفحه</translation>
@@ -196,7 +197,6 @@
 <translation id="1877073879466606884">نمایه‌ای که با آن به سیستم وارد شده‌اید نمایه مدیریت‌شده است. سرپرست شما می‌تواند تنظیمات نمایه‌تان را از دور تغییر دهد، اطلاعات مربوط به مرورگر را ازطریق گزارش گرفتن تجزیه‌وتحلیل کند، و دیگر اقدامات ضروری را انجام دهد.</translation>
 <translation id="1879904908408734349">برگ زیرین ورود به سیستم بسته شده است</translation>
 <translation id="1883903952484604915">فایل‌های من</translation>
-<translation id="1889626070177134359">‫<ph name="SUGGESTIONS_COUNT" /> مورد پیشنهادی در فهرست بالا.</translation>
 <translation id="189358972401248634">زبان‌های دیگر</translation>
 <translation id="1899175549411605574">برگ زیرین اطلاعات آماری قیمت</translation>
 <translation id="1900260903084164610">درصورت ادامه دادن، موافقتتان را با <ph name="BEGIN_TOS_LINK" />شرایط خدمات<ph name="END_TOS_LINK" /> اعلام می‌کنید.</translation>
@@ -256,6 +256,7 @@
 <translation id="2138632817776076519">‫<ph name="TAB_TITLE" />، زبانه ضبط انتخابی</translation>
 <translation id="2141396931810938595">براساس میزان استفاده شما</translation>
 <translation id="2145315049852051678">‏‫Chrome به‌طور منظم بررسی می‌کند تا مطمئن شود مرورگرتان ایمن‌ترین تنظیمات را دارد. اگر موردی به بازبینی نیاز داشته باشد، به شما اطلاع خواهیم داد.</translation>
+<translation id="2149968176347646218">اتصال ایمن نیست</translation>
 <translation id="2149973817440762519">ویرایش نشانک</translation>
 <translation id="2163089732491971196">‏برای ذخیره و استفاده کردن از داده‌های Chrome در «حساب Google» خود، گذرعبارت خود را وارد کنید</translation>
 <translation id="2166228530126694506">نسخه <ph name="VERSION_NUMBER" /></translation>
@@ -298,6 +299,7 @@
 <translation id="2318045970523081853">برای برقراری تماس، تک‌ضرب بزنید.</translation>
 <translation id="232137538351753795">برای برگشتن، از لبه راست تند بکشید</translation>
 <translation id="2323763861024343754">فضای ذخیره‌سازی سایت</translation>
+<translation id="2327445548174191329">از <ph name="DEVICE_NAME" /></translation>
 <translation id="2328474416100889417">همه دسترسی به گروه زبانه «<ph name="GROUP_NAME" />» را فوراً ازدست می‌دهند و همه پیوندهای دعوت غیرفعال می‌شود</translation>
 <translation id="2330186936255788117">نشانک‌های بیشتر</translation>
 <translation id="2332515770639153015">«مرور ایمن پیشرفته» روشن است</translation>
@@ -676,6 +678,7 @@
 <translation id="3943322906274039960">‫<ph name="TAB_TITLE" />، زبانه سنجاق‌شده تصویردرتصویر</translation>
 <translation id="3950820424414687140">ورود به سیستم</translation>
 <translation id="395377504920307820">استفاده بدون حساب</translation>
+<translation id="3955353672249727801">صفحه‌ها به «فهرست خواندن» افزوده شدند</translation>
 <translation id="396192773038029076">{NUM_IN_PROGRESS,plural, =1{‏وقتی آماده شدید، Chrome صفحه را بار می‌کند}one{‏وقتی آماده شدید، Chrome صفحه‌ها را بار می‌کند}other{‏وقتی آماده شدید، Chrome صفحه‌ها را بار می‌کند}}</translation>
 <translation id="3969142555815019568">‏Chrome نمی‌تواند گذرواژه‌هایتان را بررسی کند</translation>
 <translation id="3969863827134279083">حرکت به بالا</translation>
@@ -835,6 +838,7 @@
 <translation id="4595237294768457124">صفحه «زبانه جدید» را باز کنید</translation>
 <translation id="4595276580892809760">پیوست کردن تصاویر از گالری</translation>
 <translation id="4595805675102978678">‏خطای «حساب Google»</translation>
+<translation id="4599585406846903742">نمای تک‌صفحه‌ای</translation>
 <translation id="4601095002996233687">اسکن‌های عمیق برای شناسایی بارگیری‌های مشکوک.</translation>
 <translation id="4606559747793337066">‏وقتی سایت یا برنامه‌ای درخواست می‌کند پیوندها به‌طور خصوصی در صفحه آن پیش‌بارگیری شوند، Chrome صفحات را بدون کوکی‌ها ازطریق سرورهای Google رمزگذاری و پیش‌بارگیری می‌کند. با این کار هویت شما از سایت پیش‌بارگیری‌شده پنهان می‌شود.</translation>
 <translation id="4616150815774728855">باز کردن <ph name="WEBAPK_NAME" /></translation>
@@ -944,7 +948,7 @@
 <translation id="5011311129201317034">‫<ph name="SITE" /> می‌خواهد مرتبط شود</translation>
 <translation id="5012016139642806466">گذرواژه‌ها و موارد دیگر را در همه دستگاه‌ها دریافت کنید</translation>
 <translation id="5012253429094023177">به‌نظر می‌رسد <ph name="BEGIN_BOLD1" /><ph name="PROVIDER1" /><ph name="END_BOLD1" /> و <ph name="BEGIN_BOLD2" /><ph name="PROVIDER2" /><ph name="END_BOLD2" /> مرتبط باشند. پیش‌از استفاده از گذرواژه‌تان، مطمئن شوید به <ph name="BEGIN_BOLD3" /><ph name="PROVIDER2" /><ph name="END_BOLD3" /> اعتماد دارید.</translation>
-<translation id="5016205925109358554">Serif</translation>
+<translation id="5016205925109358554">سریف</translation>
 <translation id="5017529052065664584">۱۵ دقیقه اخیر</translation>
 <translation id="5032430150487044192">رمزینه پاسخ‌سریع ایجاد نمی‌شود</translation>
 <translation id="5035846135112863536">برای دریافت اطلاعات بیشتر از <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" />، «جزئیات بیشتر» در زیر را انتخاب کنید.</translation>
@@ -1089,6 +1093,7 @@
 <translation id="569536719314091526">با استفاده از دکمه «گزینه‌های بیشتر»، این صفحه را به زبان‌های دیگر ترجمه کنید</translation>
 <translation id="5696597120588531049">‏Chrome می‌تواند به محافظت از شما دربرابر نقض داده، وب‌سایت‌های غیرایمن، و موارد دیگر کمک کند</translation>
 <translation id="5698878456427040674">بررسی کنید از حساب انتخاب‌شده پشتیبانی می‌شود.</translation>
+<translation id="5700415746238689851">‏باز کردن Gemini</translation>
 <translation id="5709213329446699338">‫<ph name="SITE" /> می‌خواهد به درگاه سریالی متصل شود</translation>
 <translation id="5715150588940290235">کدهای امنیتی ذخیره‌شده حذف شود؟</translation>
 <translation id="572328651809341494">زبانه‌های اخیر</translation>
@@ -1327,6 +1332,7 @@
 <translation id="6595046016124923392">‏تصاویر به Google ارسال می‌شوند تا توضیحات برایتان بهبود یابند.</translation>
 <translation id="6602173570135186741">تکمیل خودکار و گذرواژه‌ها</translation>
 <translation id="661266467055912436">امنیت را برای شما و همه کاربران دیگر وب بهبود می‌بخشد.</translation>
+<translation id="6615455863669487791">نشانم داده شود</translation>
 <translation id="6621391692573306628">‏برای ارسال این زبانه به دستگاهی دیگر، در هردو دستگاه به سیستم Chrome وارد شوید</translation>
 <translation id="6627583120233659107">ویرایش پوشه</translation>
 <translation id="6633067410344541938">باز کردن قفل «حالت ناشناس»</translation>
@@ -1770,6 +1776,7 @@
 <translation id="8271267069224406035">گزارش هرزنامه</translation>
 <translation id="8277710303010772444">شروع جستجو</translation>
 <translation id="8279945625179116733">تأمین امنیت با <ph name="APP_NAME" /></translation>
+<translation id="8280797717392145626">پیوندها دریافت شدند</translation>
 <translation id="8281886186245836920">رد شدن</translation>
 <translation id="8282297628636750033">استفاده از زمینه تاریک برای سایت‌ها، هرگاه ممکن باشد</translation>
 <translation id="8282950411412455249">رفتن به «تنظیمات ایمنی»</translation>
@@ -1905,6 +1912,7 @@
 <translation id="8863714995118816041">اجازه‌ها دوباره به <ph name="SITE_NAME" /> اعطا شد</translation>
 <translation id="8865415417596392024">‏داده‌های Chrome در حساب شما</translation>
 <translation id="8872506776304248286">باز کردن در برنامه</translation>
+<translation id="8880275451109933094">نمای دوصفحه‌ای</translation>
 <translation id="8890668505403261809">جستجوی زبانه‌های ناشناس</translation>
 <translation id="8892234476517513962">قبلاً به سیستم وارد شده‌اید</translation>
 <translation id="8894890673032951011">‫<ph name="TAB_TITLE" />، زبانه ناشناس ضبط انتخابی</translation>
