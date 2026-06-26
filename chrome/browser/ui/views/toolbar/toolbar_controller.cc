@@ -250,12 +250,12 @@ ToolbarController::GetDefaultResponsiveElements(Browser* browser) {
               &(features::IsRoundedIconsEnabled() ? kSplitSceneIcon
                                                   : kSplitSceneOldIcon),
               kToolbarSplitTabsToolbarButtonElementId},
-          /*is_section_end=*/false),
+          /*is_section_end=*/true),
       ToolbarController::ResponsiveElementInfo(
           ToolbarController::ElementIdInfo{
               ContextualTasksButton::kContextualTasksToolbarButton,
               IDS_OVERFLOW_MENU_ITEM_TEXT_CONTEXTUAL_TASKS,
-              &kDockToRightSparkIcon,
+              &kDockToRightSparkCustomIcon,
               ContextualTasksButton::kContextualTasksToolbarButton},
           /*is_section_end=*/false),
   };
@@ -323,16 +323,34 @@ ToolbarController::GetDefaultResponsiveElements(Browser* browser) {
                                      : kUserAccountAvatarRefreshOldIcon)),
                kToolbarAvatarButtonElementId, kToolbarAvatarBubbleElementId),
            /*is_section_end=*/false)});
+
+  if (base::FeatureList::IsEnabled(features::kToolbarGlicButtonResizing)) {
+    elements.emplace_back(
+        ToolbarController::ElementIdInfo(
+            kGlicButtonElementId, IDS_GLIC_BUTTON_ENTRYPOINT_ASK_GEMINI_LABEL,
+            nullptr, kGlicButtonElementId),
+        /*is_section_end=*/false);
+  }
+
   return elements;
 }
 
 std::vector<ui::ElementIdentifier>
 ToolbarController::GetDefaultOverflowOrder() {
-  return std::vector<ui::ElementIdentifier>(
-      {kToolbarMediaButtonElementId, kToolbarBatterySaverButtonElementId,
-       kToolbarHomeButtonElementId, kToolbarForwardButtonElementId,
-       kToolbarAvatarButtonElementId, kToolbarSplitTabsToolbarButtonElementId,
-       ContextualTasksButton::kContextualTasksToolbarButton});
+  std::vector<ui::ElementIdentifier> order = {
+      kToolbarMediaButtonElementId,
+      kToolbarBatterySaverButtonElementId,
+      kToolbarHomeButtonElementId,
+      kToolbarForwardButtonElementId,
+      kToolbarAvatarButtonElementId,
+      kToolbarSplitTabsToolbarButtonElementId,
+      ContextualTasksButton::kContextualTasksToolbarButton};
+  if (base::FeatureList::IsEnabled(features::kToolbarGlicButtonResizing)) {
+    const auto it =
+        std::find(order.begin(), order.end(), kToolbarAvatarButtonElementId);
+    order.insert(it, kGlicButtonElementId);
+  }
+  return order;
 }
 
 // Every activate identifier should have an action name in order to emit
@@ -809,7 +827,7 @@ void ToolbarController::ActionItemChanged(actions::ActionItem* action_item) {
     return;
   }
 
-  std::optional<int> command_id = std::nullopt;
+  std::optional<int> command_id;
   for (size_t i = 0; i < responsive_elements_.size(); ++i) {
     const auto& element = responsive_elements_[i];
     if (std::holds_alternative<actions::ActionId>(element.overflow_id)) {

@@ -69,6 +69,10 @@
 #include "chrome/browser/ui/views/user_education/impl/browser_user_education_context.h"
 #include "chrome/browser/ui/views/user_education/ios_promo_bubble_view.h"
 #include "chrome/browser/ui/views/web_apps/web_app_install_dialog_delegate.h"
+#if BUILDFLAG(IS_WIN)
+#include "chrome/browser/ui/search_promotion/search_promotion_manager.h"
+#include "chrome/browser/ui/search_promotion/search_promotion_manager_factory.h"
+#endif
 #include "chrome/browser/ui/webui/customize_buttons/customize_buttons_handler.h"
 #include "chrome/browser/ui/webui/new_tab_page/new_tab_page_ui.h"
 #include "chrome/browser/ui/webui/password_manager/password_manager_ui.h"
@@ -100,6 +104,7 @@
 #include "components/plus_addresses/core/common/features.h"
 #include "components/safe_browsing/core/common/safebrowsing_referral_methods.h"
 #include "components/saved_tab_groups/public/features.h"
+#include "components/send_tab_to_self/features.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/strings/grit/privacy_sandbox_strings.h"
 #include "components/supervised_user/core/common/supervised_user_constants.h"
@@ -1203,6 +1208,20 @@ void MaybeRegisterChromeFeaturePromos(
                        "Triggered to educate users about the keyboard shortcut "
                        "for Reading Mode.")));
 
+  // kIPHReadingModePresentationModeFeature:
+  registry.RegisterFeature(std::move(
+      user_education::FeaturePromoSpecification::CreateForToastPromo(
+          feature_engagement::kIPHReadingModePresentationModeFeature,
+          kReadAnythingSettingsButtonElementId,
+          IDS_READING_MODE_PRESENTATION_MODE_IPH_BODY,
+          IDS_READING_MODE_PRESENTATION_MODE_IPH_SCREENREADER,
+          user_education::FeaturePromoSpecification::AcceleratorInfo())
+          .SetBubbleArrow(user_education::HelpBubbleArrow::kTopRight)
+          .SetInAnyContext(true)
+          .SetMetadata(150, "martinglopez@google.com",
+                       "Triggered to educate users about switching from "
+                       "immersive mode to side panel mode in Reading Mode.")));
+
   // kIPHReadingModeSidePanelFeature:
   registry.RegisterFeature(std::move(
       FeaturePromoSpecification::CreateForSnoozePromo(
@@ -1944,6 +1963,59 @@ void MaybeRegisterChromeFeaturePromos(
           .SetMetadata(148, "charlesmeng@chromium.org",
                        "Triggered when the vertical tabs is enabled and the "
                        "user has not enabled expand on hover before.")));
+
+#if BUILDFLAG(IS_WIN)
+  // kIPHSearchPromotionFeature:
+  // Query the Finch experiment arm at registration time to decide which
+  // localized strings (Arm A or Arm B) should populate this promo bubble.
+  //
+  // TODO(b/467255671): Re-evaluate tracking feature usage to suppress
+  // the promo once experiments are complete. Similarly if launch
+  // occurs the values may need changing to re-show.
+  std::string arm_str = feature_engagement::kSearchPromotionArm.Get();
+
+  int body_id = IDS_SEARCH_PROMOTION_IPH_BODY_ARM_A;
+  int cta_id = IDS_SEARCH_PROMOTION_IPH_CTA_ARM_A;
+  int dismiss_id = IDS_SEARCH_PROMOTION_IPH_DISMISS_ARM_A;
+  int title_id = IDS_SEARCH_PROMOTION_IPH_TITLE_ARM_A;
+
+  if (arm_str == feature_engagement::kSearchPromotionArmB) {
+    body_id = IDS_SEARCH_PROMOTION_IPH_BODY_ARM_B;
+    cta_id = IDS_SEARCH_PROMOTION_IPH_CTA_ARM_B;
+    dismiss_id = IDS_SEARCH_PROMOTION_IPH_DISMISS_ARM_B;
+    title_id = IDS_SEARCH_PROMOTION_IPH_TITLE_ARM_B;
+  }
+
+  // Register the Search Promotion IPH as a custom action promo. The bubble
+  // anchors to the App Menu (three dots) button on the main browser toolbar.
+  registry.RegisterFeature(std::move(
+      FeaturePromoSpecification::CreateForCustomAction(
+          feature_engagement::kIPHSearchPromotionFeature,
+          kToolbarAppMenuButtonElementId, body_id, cta_id,
+          base::BindRepeating(
+              [](ContextPtr ctx,
+                 user_education::FeaturePromoHandle /*promo_handle*/) {
+                Browser* browser = GetBrowser(ctx);
+                if (browser) {
+                  // Delegate execution to the active SearchPromotionManager
+                  // service to trigger the relevant promotion action
+                  // corresponding to the Finch arm.
+                  SearchPromotionManager* manager =
+                      SearchPromotionManagerFactory::GetForProfile(
+                          browser->profile());
+                  if (manager) {
+                    manager->OnPromoAccepted();
+                  }
+                }
+              }))
+          .SetBubbleTitleText(title_id)
+          .SetCustomActionIsDefault(true)
+          .SetCustomActionDismissText(dismiss_id)
+          .SetBubbleArrow(HelpBubbleArrow::kTopRight)
+          .SetMetadata(150, "qlucyk@chromium.org",
+                       "Triggered when user performs Google searches and is "
+                       "eligible for the promo.")));
+#endif  // BUILDFLAG(IS_WIN)
 }
 
 void MaybeRegisterChromeFeaturePromos(
@@ -2395,6 +2467,12 @@ void MaybeRegisterChromeNewBadges(user_education::NewBadgeRegistry& registry) {
                                "Show the new badge in the system context menu "
                                "to toggle the horizontal tab strip "
                                "to be a vertical tab strip")));
+
+  registry.RegisterFeature(user_education::NewBadgeSpecification(
+      send_tab_to_self::kSendTabToSelfEnhancedDesktopUI,
+      user_education::Metadata(
+          151, "mtatarski@google.com",
+          "Show the new badge on Send to Your Devices context menu items.")));
 }
 
 std::unique_ptr<user_education::FeaturePromoControllerImpl>

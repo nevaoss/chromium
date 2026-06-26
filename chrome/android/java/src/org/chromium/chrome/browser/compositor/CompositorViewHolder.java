@@ -41,7 +41,6 @@ import android.view.Window;
 import android.view.accessibility.AccessibilityEvent;
 import android.widget.FrameLayout;
 
-import androidx.annotation.Px;
 import androidx.annotation.VisibleForTesting;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -105,7 +104,6 @@ import org.chromium.ui.animation.transition.IntegerValueTransition;
 import org.chromium.ui.base.ApplicationViewportInsetTracker;
 import org.chromium.ui.base.EventForwarder;
 import org.chromium.ui.base.EventOffsetHandler;
-import org.chromium.ui.base.LocalizationUtils;
 import org.chromium.ui.base.SPenSupport;
 import org.chromium.ui.base.ViewUtils;
 import org.chromium.ui.base.ViewportInsets;
@@ -197,8 +195,6 @@ public class CompositorViewHolder extends FrameLayout
     private @Nullable SideUiStateProvider mSideUiStateProvider;
     @VisibleForTesting @Nullable View mAccessibilityView;
     private @Nullable CompositorAccessibilityProvider mNodeProvider;
-
-    private boolean mIsAnimating;
 
     /** The toolbar control container. */
     private @Nullable ControlContainer mControlContainer;
@@ -430,9 +426,7 @@ public class CompositorViewHolder extends FrameLayout
     @Override
     public @Nullable PointerIcon onResolvePointerIcon(MotionEvent event, int pointerIndex) {
 
-        if (mView != null
-                && mView.getVisibility() == View.VISIBLE
-                && ChromeFeatureList.sAndroidBookmarkBarFastFollow.isEnabled()) {
+        if (mView != null && mView.getVisibility() == View.VISIBLE) {
 
             // Delegate to standard Android behavior (View Group). This internally loops through the
             // children of the CompositorViewHolder and calculates the correct offsets.
@@ -1151,13 +1145,15 @@ public class CompositorViewHolder extends FrameLayout
 
         // The view size takes into account side-anchored UI whose width should be subtracted from
         // the view if they are visible, therefore shrinking the Blink-side view size.
+        //
+        // Note that a non-null widthOverride already considered side-anchored UI (see callers of
+        // this method), so we only need to consider side-anchored UI when widthOverride is null.
         int horizontalViewportInsets = 0;
-        if (!mIsAnimating
-                && AndroidSidePanelEnabledFn.isEnabled()
-                && mSideUiStateProvider != null) {
+        if (AndroidSidePanelEnabledFn.isEnabled()
+                && mSideUiStateProvider != null
+                && widthOverride == null) {
             SideUiSpecs sideUiSpecs = mSideUiStateProvider.getCurrentSideUiSpecs();
-            horizontalViewportInsets =
-                    sideUiSpecs.mStartContainerWidth + sideUiSpecs.mEndContainerWidth;
+            horizontalViewportInsets = sideUiSpecs.leftWidth() + sideUiSpecs.rightWidth();
         }
 
         // The view size takes into account of the browser controls whose height should be
@@ -1423,7 +1419,7 @@ public class CompositorViewHolder extends FrameLayout
         if (webContents == null) return null;
 
         Point viewportSize = getViewportSize();
-        int sideUiTotalWidth = sideUiSpecs.mStartContainerWidth + sideUiSpecs.mEndContainerWidth;
+        int sideUiTotalWidth = sideUiSpecs.leftWidth() + sideUiSpecs.rightWidth();
         int startWidth = ViewUtils.dpToPx(mActivity, webContents.getWidth());
         int targetWidth = viewportSize.x - sideUiTotalWidth;
 
@@ -1455,7 +1451,6 @@ public class CompositorViewHolder extends FrameLayout
 
     @Override
     public void onTransitionBegun(SideUiSpecs sideUiSpecs) {
-        mIsAnimating = true;
         // Trigger changes to Java Views, but delay any direct changes to composited views until
         // #onSideUiSpecsChanged().
         repositionTabViewForSideUi(sideUiSpecs);
@@ -1463,21 +1458,17 @@ public class CompositorViewHolder extends FrameLayout
 
     @Override
     public void onTransitionEnded(SideUiSpecs sideUiSpecs) {
-        mIsAnimating = false;
         onSideUiSpecsChanged(sideUiSpecs);
     }
 
     @Override
     public void onSideUiSpecsChanged(SideUiSpecs sideUiSpecs) {
-        updateWebContentsSize(getCurrentTab());
+        int sideUiTotalWidth = sideUiSpecs.leftWidth() + sideUiSpecs.rightWidth();
+        int webContentsWidth = getViewportSize().x - sideUiTotalWidth;
+        updateWebContentsSize(getCurrentTab(), webContentsWidth);
 
         // TODO(crbug.com/514774842): Account for offset X for animations.
-        @Px
-        int contentOffsetX =
-                LocalizationUtils.isLayoutRtl()
-                        ? sideUiSpecs.mEndContainerWidth
-                        : sideUiSpecs.mStartContainerWidth;
-        mLayoutManager.setContentOffsetX(contentOffsetX);
+        mLayoutManager.setContentOffsetX(sideUiSpecs.leftWidth());
 
         repositionTabViewForSideUi(sideUiSpecs);
         onViewportChanged();
@@ -1511,8 +1502,8 @@ public class CompositorViewHolder extends FrameLayout
         // TODO(b/496307238): verify if need to explicitly trigger repositionTabViewForSideUi again
         // after layout params are set.
         if (layoutParams == null) return;
-        layoutParams.setMarginStart(sideUiSpecs.mStartContainerWidth);
-        layoutParams.setMarginEnd(sideUiSpecs.mEndContainerWidth);
+        layoutParams.leftMargin = sideUiSpecs.leftWidth();
+        layoutParams.rightMargin = sideUiSpecs.rightWidth();
         mView.setLayoutParams(layoutParams);
     }
 
@@ -1632,16 +1623,8 @@ public class CompositorViewHolder extends FrameLayout
     private void adjustRectForSideUi(RectF outRect) {
         if (mSideUiStateProvider != null) {
             SideUiSpecs sideUiSpecs = mSideUiStateProvider.getCurrentSideUiSpecs();
-            int leftOffset =
-                    LocalizationUtils.isLayoutRtl()
-                            ? sideUiSpecs.mEndContainerWidth
-                            : sideUiSpecs.mStartContainerWidth;
-            int rightOffset =
-                    LocalizationUtils.isLayoutRtl()
-                            ? sideUiSpecs.mStartContainerWidth
-                            : sideUiSpecs.mEndContainerWidth;
-            outRect.left += leftOffset;
-            outRect.right -= rightOffset;
+            outRect.left += sideUiSpecs.leftWidth();
+            outRect.right -= sideUiSpecs.rightWidth();
         }
     }
 

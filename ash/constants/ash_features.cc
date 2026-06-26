@@ -216,7 +216,7 @@ constexpr base::FeatureParam<std::string> kBocaGeminiUrl{
 // The URL to use for Gemini guided learning in Boca.
 constexpr base::FeatureParam<std::string> kBocaGeminiGuidedLearningUrl{
     &kBocaGeminiIntegration, "BocaGeminiGuidedLearningUrl",
-    "https://gemini.google.com/guided-learning"};
+    "https://gemini.google.com/classtools"};
 
 // Enables or disables Boca network restriction for Boca on ChromeOS.
 BASE_FEATURE(kBocaNetworkRestriction, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -704,12 +704,6 @@ const base::FeatureParam<std::string> kFastPairPwaCompanionDeviceIds{
 
 // Enables the "Saved Devices" Fast Pair page in scenario in Bluetooth Settings.
 BASE_FEATURE(kFastPairSavedDevices, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables the "Saved Devices" Fast Pair strict interpretation of opt-in status,
-// meaning that a user's preferences determine if retroactive pairing and
-// subsequent pairing scenarios are enabled.
-BASE_FEATURE(kFastPairSavedDevicesStrictOptIn,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled, allows the creation of up to 16 desks (default is 8). This flag
 // is intended to be controlled by the feature management module.
@@ -1199,12 +1193,6 @@ BASE_FEATURE(kLocalFactorsPasswordComplexity, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables local authentication controller with PIN support.
 BASE_FEATURE(kLocalAuthenticationWithPin, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables cross device supported reports within the feedback tool.
-// (This feature is only available for dogfooders)
-BASE_FEATURE(kLinkCrossDeviceDogfoodFeedback,
-             "LinkCrossDeviceDogFoodFeedback",
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables nearby-internals logs to be automatically saved to disk and attached
 // to feedback reports.
@@ -1837,7 +1825,7 @@ BASE_FEATURE(kUseAndroidStagingSmds, base::FEATURE_DISABLED_BY_DEFAULT);
 // This feature toggles which dhcpcd version is used for IPv4 provisioning.
 // If it is enabled, dhcpcd10 will be used, otherwise the legacy dhcpcd7 will be
 // used. Note that IPv6 (DHCPv6-PD) always uses dhcpcd10.
-BASE_FEATURE(kUseDHCPCD10, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kUseDHCPCD10, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // If enabled, the new `TokenHandleStoreImpl` will be used instead of
 // `TokenHandleUtil`.
@@ -2601,10 +2589,6 @@ bool IsFastPairSavedDevicesEnabled() {
   return base::FeatureList::IsEnabled(kFastPairSavedDevices);
 }
 
-bool IsFastPairSavedDevicesStrictOptInEnabled() {
-  return base::FeatureList::IsEnabled(kFastPairSavedDevicesStrictOptIn);
-}
-
 bool IsFilesLocalImageSearchEnabled() {
   return base::FeatureList::IsEnabled(kFilesLocalImageSearch);
 }
@@ -2812,10 +2796,6 @@ bool IsLauncherContinueSectionWithRecentsEnabled() {
   return base::FeatureList::IsEnabled(kLauncherContinueSectionWithRecents) ||
          base::FeatureList::IsEnabled(
              kLauncherContinueSectionWithRecentsRollout);
-}
-
-bool IsLinkCrossDeviceDogfoodFeedbackEnabled() {
-  return base::FeatureList::IsEnabled(kLinkCrossDeviceDogfoodFeedback);
 }
 
 bool IsLinkCrossDeviceInternalsEnabled() {

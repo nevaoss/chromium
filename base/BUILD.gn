@@ -118,12 +118,9 @@ if (is_fuchsia) {
 
 _build_date_header = "$target_gen_dir/generated_build_date.h"
 
-# mold does not support PROVIDE_HIDDEN.
-# https://github.com/rui314/mold/issues/1055
-_enable_code_ordering =
-    is_android && !is_component_build && linker_path == "" &&
-    (current_cpu == "arm" || current_cpu == "arm64" || current_cpu == "x86" ||
-     current_cpu == "x64")
+_enable_code_ordering = is_android && !is_component_build &&
+                        (current_cpu == "arm" || current_cpu == "arm64" ||
+                         current_cpu == "x86" || current_cpu == "x64")
 
 if (is_win) {
   # This is in a separate config so the flags can be applied to dependents.
@@ -355,7 +352,6 @@ component("base") {
     "files/file_error_or.h",
     "files/file_path.cc",
     "files/file_path.h",
-    "files/file_tracing.cc",
     "files/file_tracing.h",
     "files/memory_mapped_file.cc",
     "files/memory_mapped_file.h",
@@ -3124,6 +3120,8 @@ component("i18n") {
     ":base",
     "//base/i18n:base_i18n_export",
     "//base/i18n:language_code",
+    "//base/i18n:time_formatting_types",
+    "//base/i18n/icubridge",
     "//third_party/ced",
     "//third_party/icu",
   ]
@@ -4012,6 +4010,7 @@ test("base_unittests") {
     ":rust_sequences_unittests",
     ":sanitizer_buildflags",
     "//base/allocator:buildflags",
+    "//base/i18n/icubridge:unittests",
     "//base/logging/rust_logger:unittests",
     "//base/numerics:unittests",
     "//base/test:proto_test_support",
@@ -5045,6 +5044,7 @@ if (is_android) {
       ":promise_java",
       ":resetters_java",
       ":screen_state_receiver_java",
+      ":split_compat_java",
       ":stream_util_java",
       ":supplier_java",
       ":sys_utils_java",
@@ -5161,6 +5161,14 @@ if (is_android) {
       ":wrapped_class_loader_java",
       "//third_party/androidx:androidx_annotation_annotation_java",
       "//third_party/jni_zero:jni_zero_java",
+    ]
+  }
+
+  android_library("split_compat_java") {
+    sources = [ "android/java/src/org/chromium/base/SplitCompatService.java" ]
+    deps = [
+      ":bundle_utils_java",
+      "//third_party/androidx:androidx_annotation_annotation_java",
     ]
   }
 
@@ -5939,6 +5947,7 @@ if (is_android) {
       "test/android/javatests/src/org/chromium/base/test/util/SkipCheck.java",
       "test/android/javatests/src/org/chromium/base/test/util/TestAnimations.java",
       "test/android/javatests/src/org/chromium/base/test/util/TestFileUtil.java",
+      "test/android/javatests/src/org/chromium/base/test/util/TestLocale.java",
       "test/android/javatests/src/org/chromium/base/test/util/TestThreadUtils.java",
       "test/android/javatests/src/org/chromium/base/test/util/TimeoutTimer.java",
       "test/android/javatests/src/org/chromium/base/test/util/UserActionTester.java",

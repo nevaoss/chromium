@@ -127,20 +127,29 @@ const int kMaxNumberOfAttemptsAtTypingTextInOmnibox = 3;
 
 @implementation ChromeEarlGreyUIImpl
 
-- (void)openToolsMenu {
-  // TODO(crbug.com/41271107): Add logic to ensure the app is in the correct
-  // state, for example DCHECK if no tabs are displayed.
-  [ChromeEarlGrey waitForUIElementToAppearWithMatcher:
-                      grey_allOf(chrome_test_util::ToolsMenuButton(),
-                                 grey_sufficientlyVisible(), nil)];
+// Helper to open the tools menu using the given `buttonMatcher`.
+- (void)openToolsMenuWithMatcher:(id<GREYMatcher>)buttonMatcher {
+  [ChromeEarlGrey
+      waitForUIElementToAppearWithMatcher:grey_allOf(buttonMatcher,
+                                                     grey_sufficientlyVisible(),
+                                                     nil)];
   [[[EarlGrey
-      selectElementWithMatcher:grey_allOf(chrome_test_util::ToolsMenuButton(),
+      selectElementWithMatcher:grey_allOf(buttonMatcher,
                                           grey_sufficientlyVisible(), nil)]
          usingSearchAction:grey_swipeSlowInDirection(kGREYDirectionDown)
       onElementWithMatcher:chrome_test_util::WebStateScrollViewMatcher()]
       performAction:grey_tap()];
-  // TODO(crbug.com/41271101): Add webViewScrollView matcher so we don't have
-  // to always find it.
+}
+
+- (void)openToolsMenu {
+  // TODO(crbug.com/41271107): Add logic to ensure the app is in the correct
+  // state, for example DCHECK if no tabs are displayed.
+  if ([ChromeEarlGrey isChromeNextEnabled] && ![ChromeEarlGrey isIPadIdiom] &&
+      ![ChromeEarlGrey isIncognitoMode] && [ChromeEarlGrey isCurrentTabNTP]) {
+    [self openToolsMenuWithMatcher:chrome_test_util::ToolsMenuNTPButton()];
+  } else {
+    [self openToolsMenuWithMatcher:chrome_test_util::ToolsMenuButton()];
+  }
 }
 
 - (void)closeToolsMenu {
@@ -420,6 +429,20 @@ const int kMaxNumberOfAttemptsAtTypingTextInOmnibox = 3;
 }
 
 - (void)openShareMenu {
+  NSError* error = nil;
+  // In ChromeNext IA, the share button may be hidden on the toolbar in portrait
+  // mode and moved to the overflow menu. Check if it's visible on the toolbar
+  // first, and if not, fall back to opening the tools menu and tapping the
+  // share action there.
+  [[EarlGrey selectElementWithMatcher:chrome_test_util::TabShareButton()]
+      assertWithMatcher:grey_sufficientlyVisible()
+                  error:&error];
+  if (error) {
+    [self openToolsMenu];
+    [self tapToolsMenuAction:chrome_test_util::ButtonWithAccessibilityLabelId(
+                                 IDS_IOS_TOOLS_MENU_SHARE_THIS_PAGE)];
+    return;
+  }
   [[EarlGrey selectElementWithMatcher:chrome_test_util::TabShareButton()]
       performAction:grey_tap()];
 }

@@ -696,9 +696,6 @@ public class WebViewChromiumAwInit {
         addBrowserProcessStartTasksToQueue(
                 preBrowserProcessStartTasks, postBrowserProcessStartTasks);
 
-        // This has to be done after variations are initialized, so components could
-        // be registered or not depending on the variations flags.
-        postBrowserProcessStartTasks.addLast(AwBrowserProcess::loadComponents);
         postBrowserProcessStartTasks.addLast(
                 () -> {
                     AwBrowserProcess.initializeMetricsLogUploader();
@@ -820,7 +817,10 @@ public class WebViewChromiumAwInit {
     // Run the next startup task following BrowserProcess init.
     private void runImmediateTaskAfterBrowserProcessInit() {
         // TODO(crbug.com/332706093): See if this can be moved before loading native.
-        AwClassPreloader.preloadClasses();
+        if (!WebViewCachedFlags.get()
+                .isCachedFeatureEnabled(AwFeatures.WEBVIEW_BACKGROUND_CLASS_PRELOADING)) {
+            AwClassPreloader.preloadClasses();
+        }
 
         AwBrowserProcess.doNetworkInitializations(ContextUtils.getApplicationContext());
     }

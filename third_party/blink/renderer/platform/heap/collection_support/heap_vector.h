@@ -170,15 +170,22 @@ using HeapVector = BasicHeapVector<internal::HeapCollectionType::kDisallowNew,
 // TODO(neva): Remove this when Neva build environment support below line.
 #if !(defined(__GNUC__) && !defined(__clang__))
 static_assert(IsDisallowNew<HeapVector<int>>);
+<<<<<<< HEAD
 #endif
+=======
+#if !BUILDFLAG(ENABLE_HEAP_VECTOR_ACTIVE_ITERATOR_CHECKS)
+>>>>>>> 9f10ff608e777ae58b19aa9b863fed00e87aeb1a
 ASSERT_SIZE(Vector<int>, HeapVector<int>);
+#endif
 
 // GCed version of Vector for referring to GarbageCollected objects.
 template <typename T, wtf_size_t inlineCapacity = 0>
 using GCedHeapVector =
     BasicHeapVector<internal::HeapCollectionType::kGCed, T, inlineCapacity>;
 static_assert(!IsDisallowNew<GCedHeapVector<int>>);
+#if !BUILDFLAG(ENABLE_HEAP_VECTOR_ACTIVE_ITERATOR_CHECKS)
 ASSERT_SIZE(Vector<int>, GCedHeapVector<int>);
+#endif
 
 template <typename T>
 struct VectorTraits<Member<T>> : VectorTraitsBase<Member<T>> {

@@ -9,6 +9,7 @@
 #include "chrome/browser/ui/views/toolbar/toolbar_button.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_glic_constants.h"
 #include "ui/base/metadata/metadata_header_macros.h"
+#include "ui/gfx/geometry/rect.h"
 #include "ui/views/layout/layout_types.h"
 
 class BrowserFrameView;
@@ -48,12 +49,14 @@ class ToolbarGlicButton : public GlicButton<ToolbarButton> {
   void ResetSplitButtonCornerStyling() override;
   void SetLeftRightCornerRadii(int left, int right) override;
   float GetCornerRadiusFor(ToolbarButton::Edge edge) const override;
+  int GetRoundedCornerRadius() const override;
   int GetSplitRoundedEdgeRadius() override;
   int GetIconSize() const override;
   ui::ColorId GetBackgroundColor();
 
   void Collapse() override;
   void Expand() override;
+  void OnBoundsChanged(const gfx::Rect& previous_bounds) override;
 
   bool GetIsShowingNudge() const override;
 

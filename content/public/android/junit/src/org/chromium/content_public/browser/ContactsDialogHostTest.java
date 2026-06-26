@@ -6,7 +6,6 @@ package org.chromium.content_public.browser;
 
 import androidx.test.filters.SmallTest;
 
-import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
@@ -23,12 +22,10 @@ public class ContactsDialogHostTest {
 
     @Test
     @SmallTest
-    public void testContactsDialogHostIgnoresDoubleCalls() {
+    public void testContactsDialogHostIgnoresDuplicateActions() {
         WebContents mockWebContents = Mockito.mock(WebContents.class);
         long nativePtr = 1234;
         ContactsDialogHost host = ContactsDialogHost.create(mockWebContents, nativePtr);
-
-        Assert.assertEquals(nativePtr, host.getNativeContactsProviderAndroidForTesting());
 
         ContactsDialogHost.Natives mockJni = Mockito.mock(ContactsDialogHost.Natives.class);
         ContactsDialogHostJni.setInstanceForTesting(mockJni);
@@ -40,20 +37,16 @@ public class ContactsDialogHostTest {
                 /* propertiesSiteRequested= */ 0,
                 /* propertiesUserRejected= */ 0);
 
-        Assert.assertEquals(0, host.getNativeContactsProviderAndroidForTesting());
-
+        // endContactsList should be called once.
         Mockito.verify(mockJni, Mockito.times(1)).endContactsList(nativePtr, 0, 0);
 
+        // Simulate a duplicate call and check that endContactsList is not called a second time.
         host.onContactsPickerUserAction(
                 ContactsPickerListener.ContactsPickerAction.CANCEL,
                 /* contacts= */ null,
                 /* percentageShared= */ 0,
                 /* propertiesSiteRequested= */ 0,
                 /* propertiesUserRejected= */ 0);
-
-        Assert.assertEquals(0, host.getNativeContactsProviderAndroidForTesting());
-
         Mockito.verify(mockJni, Mockito.times(1)).endContactsList(nativePtr, 0, 0);
-        Mockito.verifyNoMoreInteractions(mockJni);
     }
 }

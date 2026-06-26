@@ -57,6 +57,7 @@ import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.gsa.GSAUtils;
 import org.chromium.chrome.browser.lens.LensController;
 import org.chromium.chrome.browser.lens.LensEntryPoint;
+import org.chromium.chrome.browser.lens.LensIdentityUtils;
 import org.chromium.chrome.browser.lens.LensIntentParams;
 import org.chromium.chrome.browser.lens.LensMetrics;
 import org.chromium.chrome.browser.locale.LocaleManager;
@@ -903,6 +904,10 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
                             intent.putExtra(
                                     CustomTabsIntent.EXTRA_CONTEXT_IMAGE_ALT_TEXT,
                                     getTitleOrGuessIfNotPresent());
+                            mItemDelegate.getPageTitle();
+                            intent.putExtra(
+                                    CustomTabsIntent.EXTRA_CONTEXT_PAGE_TITLE,
+                                    mItemDelegate.getPageTitle());
 
                             intent.setData(Uri.parse(mItemDelegate.getPageUrl().getSpec()));
 
@@ -1383,6 +1388,7 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
                 .withImageTitleOrAltText(mParams.getTitleText())
                 .withSrcUrl(mParams.getSrcUrl().getValidSpecOrEmpty())
                 .withPageUrl(mParams.getPageUrl().getValidSpecOrEmpty())
+                .withAccountName(LensIdentityUtils.getAccountName(getProfile()))
                 .build();
     }
 

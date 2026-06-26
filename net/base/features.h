@@ -12,6 +12,7 @@
 
 #include "base/feature_list.h"
 #include "base/metrics/field_trial_params.h"
+#include "base/task/task_traits.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
 #include "crypto/crypto_buildflags.h"
@@ -589,6 +590,9 @@ NET_EXPORT BASE_DECLARE_FEATURE_PARAM(bool,
 // The size of in-memory cache of SQLite database. 0 invokes SQLite's default.
 // See https://sqlite.org/pragma.html#pragma_cache_size for more details.
 NET_EXPORT BASE_DECLARE_FEATURE_PARAM(int, kSqlDiskCacheCacheSize);
+// Whether to use consolidated in memory index.
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(bool,
+                                      kSqlDiskCacheConsolidatedInMemoryIndex);
 #endif  // ENABLE_DISK_CACHE_SQL_BACKEND
 
 // If enabled, ignore Strict-Transport-Security for [*.]localhost hosts.
@@ -706,9 +710,19 @@ NET_EXPORT BASE_DECLARE_FEATURE_PARAM(double,
 // no impact if `kTcpSocketPoolLimitRandomization` is disabled.
 NET_EXPORT BASE_DECLARE_FEATURE(kTcpSocketPoolLimitRandomizationForProxy);
 
-// These parameters control whether the Network Service Task Scheduler is used
-// for specific classes.
+// When enabled, Net Task Scheduler is enabled on the network thread.
 NET_EXPORT BASE_DECLARE_FEATURE(kNetTaskScheduler);
+
+// When enabled, Net Task Scheduler supports per-net::RequestPriority task
+// queues for each RequestPriority variant.
+//
+// TODO(crbug.com/450428442): Rename this to kNetPerPriorityTaskQueues once the
+// active Finch study referencing "NetworkServicePerPriorityTaskQueues"
+// finishes.
+NET_EXPORT BASE_DECLARE_FEATURE(kNetworkServicePerPriorityTaskQueues);
+
+// These parameters control whether the Net Task Scheduler is used
+// for specific classes.
 NET_EXPORT BASE_DECLARE_FEATURE_PARAM(bool,
                                       kNetTaskSchedulerHttpProxyConnectJob);
 NET_EXPORT BASE_DECLARE_FEATURE_PARAM(bool,
@@ -727,6 +741,22 @@ NET_EXPORT BASE_DECLARE_FEATURE(kNetTaskScheduler2);
 NET_EXPORT BASE_DECLARE_FEATURE_PARAM(bool, kNetTaskSchedulerHttpCache);
 NET_EXPORT BASE_DECLARE_FEATURE_PARAM(bool,
                                       kNetTaskSchedulerHttpCacheTransaction);
+
+// When enabled, allows unit tests inheriting from net::WithTaskEnvironment to
+// instantiate and utilize the NetTaskScheduler. Disabling this acts as a global
+// kill-switch to bypass the NetTaskScheduler across all tests.
+//
+// TODO(crbug.com/463794414): Remove this flag after we confirm the tests under
+// the scheduler are sufficiently stable.
+NET_EXPORT BASE_DECLARE_FEATURE(kNetTaskSchedulerInTests);
+
+// When enabled, forces the NetTaskScheduler to be enabled in tests, even for
+// test suites that explicitly bypass it. This is used for manual and automated
+// verification of scheduler-induced test crash profiles.
+//
+// TODO(crbug.com/463794414): Remove this flag after we confirm the tests under
+// the scheduler are sufficiently stable.
+NET_EXPORT BASE_DECLARE_FEATURE(kNetTaskSchedulerForceEnableInTests);
 
 // If enabled, we will add an additional delay to the main job in
 // HttpStreamFactoryJobController.
@@ -869,6 +899,15 @@ NET_EXPORT BASE_DECLARE_FEATURE(kCookieParseRejectEmptyNameAmbiguous);
 NET_EXPORT BASE_DECLARE_FEATURE(kEnablePrivateVerificationTokens);
 
 NET_EXPORT bool IsDnsPlatformSupported();
+
+// If enabled, load the NoVarySearchCache persisted data on a different
+// threadpool sequence than used for journalling.
+NET_EXPORT BASE_DECLARE_FEATURE(kNoVarySearchCacheLoadOnSeparateTaskRunner);
+
+// The priority to load the persisted data with. 0 => BEST_EFFORT,
+// 1 => USER_VISIBLE, 2 => USER_BLOCKING.
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(base::TaskPriority,
+                                      kNoVarySearchCacheLoadTaskRunnerPriority);
 
 }  // namespace net::features
 

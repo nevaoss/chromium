@@ -72,7 +72,7 @@ const base::flat_map<const gfx::VectorIcon*, IconInfo>& KnownIcons() {
           {{&kCodeIcon}, {"webui-toolbar:code", IconType::kIconSet}},
           {{&kManageSearchIcon},
            {"webui-toolbar:manage_search", IconType::kIconSet}},
-          {{&kDockToRightSparkIcon},
+          {{&kDockToRightSparkCustomIcon},
            {"webui-toolbar:dock_to_right_spark", IconType::kIconSet}},
           {{&kInfoIcon}, {"webui-toolbar:info", IconType::kIconSet}},
           {{&kEditIcon}, {"webui-toolbar:edit", IconType::kIconSet}},
@@ -158,7 +158,7 @@ const base::flat_map<const gfx::VectorIcon*, IconInfo>& KnownIcons() {
            {"pinned-toolbar-action:DevTools", IconType::kIconSet}},
           {{&kTabSearchTabStripOldIcon},
            {"pinned-toolbar-action:TabSearch", IconType::kIconSet}},
-          {{&kDockToRightSparkIcon},
+          {{&kDockToRightSparkCustomIcon},
            {"pinned-toolbar-action:SidePanelShowContextualTasks",
             IconType::kIconSet}},
           {{&vector_icons::kImageSearchOldIcon},
@@ -186,6 +186,8 @@ const base::flat_map<const gfx::VectorIcon*, IconInfo>& KnownIcons() {
            {"internal-icons:google_lens_monochrome_logo", IconType::kIconSet}},
           {{&vector_icons::kPageInsightsIcon},
            {"internal-icons:page_insights", IconType::kIconSet}},
+          {{&vector_icons::kGoogleGLogoMonochromeIcon},
+           {"internal-icons:google_g_logo_monochrome", IconType::kIconSet}},
 #endif
 
       });
@@ -221,6 +223,7 @@ class IconTable::ProviderImpl : public toolbar_ui_api::IconHandle::Provider {
   void Detach() { icon_table_ = nullptr; }
 
   toolbar_ui_api::mojom::IconUpdatePtr ToMojom(float scale_factor) {
+    std::optional<SkColor> color;
     if (need_rasterize_) {
       // The downside of lazy rasterization like this is that a lot may
       // happen at once; but it will also not be done until it's needed and
@@ -230,10 +233,13 @@ class IconTable::ProviderImpl : public toolbar_ui_api::IconHandle::Provider {
             image_model_->Rasterize(icon_table_->delegate_->GetColorProvider()),
             scale_factor);
       }
+    } else if (image_model_ && image_model_->IsVectorIcon()) {
+      ui::ColorVariant color_variant = image_model_->GetVectorIcon().color();
+      color = color_variant.ResolveToSkColor(
+          icon_table_->delegate_->GetColorProvider());
     }
-
-    return toolbar_ui_api::mojom::IconUpdate::New(handle_id_.value(),
-                                                  name_or_url_, icon_type_);
+    return toolbar_ui_api::mojom::IconUpdate::New(
+        handle_id_.value(), name_or_url_, icon_type_, color);
   }
 
   const std::optional<ui::ImageModel>& MaybeImageModel() {
@@ -255,7 +261,7 @@ class IconTable::ProviderImpl : public toolbar_ui_api::IconHandle::Provider {
 
   std::optional<ui::ImageModel> image_model_;
   // Set if `image_model_` got rendered to `name_or_url_`.
-  std::optional<float> rasterized_scale_ = std::nullopt;
+  std::optional<float> rasterized_scale_;
 };
 
 class IconTable::IconTableFetcherImpl
@@ -388,7 +394,8 @@ IconTable::TakePendingUpdates() {
       // The icon got deleted on the C++ end since last update; let the JS end
       // know it can free up memory, too.
       updates.push_back(toolbar_ui_api::mojom::IconUpdate::New(
-          id.value(), std::nullopt, IconType::kMaskUrl));
+          id.value(), std::nullopt, IconType::kMaskUrl,
+          /*color=*/std::nullopt));
     }
   }
 

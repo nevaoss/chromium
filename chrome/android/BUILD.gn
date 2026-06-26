@@ -725,6 +725,7 @@ if (_is_default_toolchain) {
       "//components/paint_preview/player/android:java",
       "//components/password_manager/core/browser:password_manager_java_enums",
       "//components/payments/content/android:java",
+      "//components/payments/content/android:service_impl_java",
       "//components/payments/content/android:service_java",
       "//components/payments/content/android/spc:java",
       "//components/payments/content/android/ui:java",
@@ -852,6 +853,7 @@ if (_is_default_toolchain) {
       "//ui/android:ui_no_recycler_view_java",
       "//ui/base/ime/mojom:mojom_java",
       "//ui/base/mojom:mojom_java",
+      "//ui/color:ui_color_android_java",
       "//ui/edge_to_edge:java",
       "//ui/gfx/geometry/mojom:mojom_java",
       "//ui/native_theme:os_settings_provider_android_bridge_java",
@@ -1392,6 +1394,7 @@ if (_is_default_toolchain) {
       "//components/feature_engagement/public:public_java",
       "//components/payments/content/android:java",
       "//components/payments/content/android:java_resources",
+      "//components/payments/content/android:service_impl_java",
       "//components/payments/content/android:service_java",
       "//components/payments/content/android/ui:java",
       "//components/payments/content/android/ui:payments_java_test_support",
@@ -2068,6 +2071,10 @@ if (_is_default_toolchain) {
     # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
     # enable the diagnostic by removing this line.
     configs += [ "//build/config/compiler:no_exit_time_destructors" ]
+
+    if (is_android) {
+      deps += [ "//chrome/browser/android" ]
+    }
   }
 
   chrome_public_apk_or_module_tmpl("chrome_public_apk") {
@@ -2956,6 +2963,7 @@ if (_is_default_toolchain) {
       "../browser/share/android/java/src/org/chromium/chrome/browser/share/send_tab_to_self/SendTabToSelfMetricsRecorder.java",
       "../browser/share/android/java/src/org/chromium/chrome/browser/share/send_tab_to_self/TargetDeviceInfo.java",
       "java/src/org/chromium/chrome/browser/DevToolsServer.java",
+      "java/src/org/chromium/chrome/browser/ExternalIntentUrlChecker.java",
       "java/src/org/chromium/chrome/browser/IntentHandler.java",
       "java/src/org/chromium/chrome/browser/KeyboardShortcuts.java",
       "java/src/org/chromium/chrome/browser/PlayServicesVersionInfo.java",
@@ -3182,6 +3190,10 @@ if (_is_default_toolchain) {
       "//components/variations",
       "//url",
     ]
+
+    if (is_android) {
+      deps += [ "//chrome/browser/android" ]
+    }
   }
 
   # This is a list of all base module jni headers. New features should add their

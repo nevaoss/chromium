@@ -873,12 +873,12 @@ void ContextualTasksUiService::InitializeTaskInSidePanel(
 }
 
 void ContextualTasksUiService::OnNonThreadNavigationInTab(
-    const GURL& url,
+    content::OpenURLParams url_params,
     base::WeakPtr<tabs::TabInterface> tab) {
   OMNIBOX_LOG("nav_trace")
       << "ContextualTasks navigation trace: OnNonThreadNavigationInTab "
          "called for URL: "
-      << url;
+      << url_params.url;
   if (!tab || !tab->GetContents()) {
     OMNIBOX_LOG("nav_trace")
         << "ContextualTasks navigation trace: OnNonThreadNavigationInTab "
@@ -886,7 +886,7 @@ void ContextualTasksUiService::OnNonThreadNavigationInTab(
     return;
   }
 
-  content::NavigationController::LoadURLParams params(url);
+  content::NavigationController::LoadURLParams params(url_params);
   params.transition_type = ::ui::PAGE_TRANSITION_AUTO_TOPLEVEL;
   tab->GetContents()->GetController().LoadURLWithParams(params);
 }
@@ -965,9 +965,9 @@ void ContextualTasksUiService::StartAccessTokenFetch() {
       signin::AccessTokenFetcher::Mode::kWaitUntilRefreshTokenAvailable);
 }
 
-void ContextualTasksUiService::OnShareUrlNavigation(const GURL& url) {
+void ContextualTasksUiService::OpenUrlInNewTab(const GURL& url) {
   OMNIBOX_LOG("nav_trace")
-      << "ContextualTasks navigation trace: OnShareUrlNavigation called "
+      << "ContextualTasks navigation trace: OpenUrlInNewTab called "
          "for URL: "
       << url;
   NavigateParams params(profile_, url, ui::PAGE_TRANSITION_AUTO_TOPLEVEL);
@@ -1187,15 +1187,20 @@ bool ContextualTasksUiService::HandleNavigationImpl(
   // unless it is the embedded page.
   if ((is_from_embedded_page || is_forward_link_navigation) &&
       IsContextualTasksUrl(source_contents->GetLastCommittedURL())) {
-    if (IsShareUrl(url_params.url)) {
+    // If aim is telling the browser what to do with links, the share case
+    // doesn't explicitly need to be handled. If aim doesn't communicate this,
+    // handle share links specifically to avoid ambiguity with other special-
+    // case, host-based navigation.
+    if (!base::FeatureList::IsEnabled(kAimTriggeredThreadLinks) &&
+        IsShareUrl(url_params.url)) {
       OMNIBOX_LOG("nav_trace")
           << "ContextualTasks navigation trace: HandleNavigationImpl "
-             "posting OnShareUrlNavigation";
+             "posting OpenUrlInNewTab";
       // Since the web content will no longer be hosted in the side panel, make
       // sure to remove the param that makes the page render for it.
       base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
           FROM_HERE,
-          base::BindOnce(&ContextualTasksUiService::OnShareUrlNavigation,
+          base::BindOnce(&ContextualTasksUiService::OpenUrlInNewTab,
                          weak_ptr_factory_.GetWeakPtr(),
                          lens::RemoveSidePanelURLParameters(url_params.url)));
       return true;
@@ -1243,7 +1248,7 @@ bool ContextualTasksUiService::HandleNavigationImpl(
               FROM_HERE,
               base::BindOnce(
                   &ContextualTasksUiService::OnNonThreadNavigationInTab,
-                  weak_ptr_factory_.GetWeakPtr(), url_params.url,
+                  weak_ptr_factory_.GetWeakPtr(), std::move(url_params),
                   tab->GetWeakPtr()));
           return true;
         } else {
@@ -1316,18 +1321,60 @@ bool ContextualTasksUiService::HandleNavigationImpl(
       return false;
     }
 
-    OMNIBOX_LOG("nav_trace")
-        << "ContextualTasks navigation trace: HandleNavigationImpl "
-           "posting OnThreadLinkClicked";
-    // This needs to be posted in case the called method triggers a navigation
-    // in the same WebContents, invalidating the nav handle used up the chain.
-    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE,
-        base::BindOnce(&ContextualTasksUiService::OnThreadLinkClicked,
-                       weak_ptr_factory_.GetWeakPtr(), url_params.url, task_id,
-                       tab ? tab->GetWeakPtr() : nullptr,
-                       browser ? browser->GetWeakPtr() : nullptr));
-    return true;
+    if (base::FeatureList::IsEnabled(kAimTriggeredThreadLinks)) {
+      if (is_forward_link_navigation) {
+        base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+            FROM_HERE,
+            base::BindOnce(&ContextualTasksUiService::OnThreadLinkClicked,
+                           weak_ptr_factory_.GetWeakPtr(), url_params.url,
+                           task_id, tab ? tab->GetWeakPtr() : nullptr,
+                           browser ? browser->GetWeakPtr() : nullptr));
+        return true;
+      }
+
+      if (!is_to_new_tab) {
+        if (tab) {
+          // Links from the embedded page that would need to navigate the tab
+          // need special treatment so they navigate the tab rather than the
+          // embedded page.
+          OMNIBOX_LOG("nav_trace")
+              << "ContextualTasks navigation trace: HandleNavigationImpl "
+                 "posting OnNonThreadNavigationInTab";
+          base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+              FROM_HERE,
+              base::BindOnce(
+                  &ContextualTasksUiService::OnNonThreadNavigationInTab,
+                  weak_ptr_factory_.GetWeakPtr(), std::move(url_params),
+                  tab->GetWeakPtr()));
+        } else {
+          // In-tab links from within the side panel shouldn't navigate the side
+          // panel. Some lans cases can, but that is handled earlier in this
+          // method. For this case open a new tab instead.
+          base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+              FROM_HERE,
+              base::BindOnce(&ContextualTasksUiService::OpenUrlInNewTab,
+                             weak_ptr_factory_.GetWeakPtr(), url_params.url));
+        }
+        return true;
+      } else {
+        // Allow links in the embedded page to use default behavior if it's to a
+        // new tab.
+        return false;
+      }
+    } else {
+      OMNIBOX_LOG("nav_trace")
+          << "ContextualTasks navigation trace: HandleNavigationImpl "
+             "posting OnThreadLinkClicked";
+      // This needs to be posted in case the called method triggers a navigation
+      // in the same WebContents, invalidating the nav handle used up the chain.
+      base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+          FROM_HERE,
+          base::BindOnce(&ContextualTasksUiService::OnThreadLinkClicked,
+                         weak_ptr_factory_.GetWeakPtr(), url_params.url,
+                         task_id, tab ? tab->GetWeakPtr() : nullptr,
+                         browser ? browser->GetWeakPtr() : nullptr));
+      return true;
+    }
   }
 
   // Navigations to the AI URL in the topmost frame should always be
@@ -1473,16 +1520,12 @@ ContextualTasksUiService::GetInitialEntryPointForTask(
 }
 void ContextualTasksUiService::OpenFeedbackUi(BrowserWindowInterface* browser,
                                               const GURL& page_url) {
-  if (delegate_) {
-    delegate_->OpenFeedbackUi(browser, page_url);
-  }
+  delegate_->OpenFeedbackUi(browser, page_url);
 }
 
 void ContextualTasksUiService::ShowUndoSnackbar(
     BrowserWindowInterface* browser_window_interface) {
-  if (delegate_) {
-    delegate_->ShowUndoSnackbar(browser_window_interface);
-  }
+  delegate_->ShowUndoSnackbar(browser_window_interface);
 }
 
 GURL ContextualTasksUiService::GetContextualTaskUrlForTask(
@@ -1677,10 +1720,7 @@ void ContextualTasksUiService::OnTaskChanged(
     return;
   }
 
-  if (delegate_) {
-    delegate_->OnTaskChanged(browser_window_interface, old_task_id,
-                             new_task_id);
-  }
+  delegate_->OnTaskChanged(browser_window_interface, old_task_id, new_task_id);
 
   ContextualTasksPanelController* controller =
       ContextualTasksPanelController::From(browser_window_interface);
@@ -1735,17 +1775,13 @@ void ContextualTasksUiService::OnWebUIReady(
     BrowserWindowInterface* browser_window_interface,
     const base::Uuid& task_id,
     content::WebContents* web_contents) {
-  if (delegate_) {
-    delegate_->OnWebUIReady(browser_window_interface, task_id, web_contents);
-  }
+  delegate_->OnWebUIReady(browser_window_interface, task_id, web_contents);
 }
 
 void ContextualTasksUiService::OnWebUIDestroyed(
     BrowserWindowInterface* browser_window_interface,
     const std::optional<base::Uuid>& task_id) {
-  if (delegate_) {
-    delegate_->OnWebUIDestroyed(browser_window_interface, task_id);
-  }
+  delegate_->OnWebUIDestroyed(browser_window_interface, task_id);
 }
 
 void ContextualTasksUiService::TurnOnSmartTabSharing(

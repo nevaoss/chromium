@@ -2094,6 +2094,7 @@ Chrome 政策的優先順序高於這項政策，例如擴充功能是否列在 
 
 如果未設定這項政策，系統預設會停用隱私保護畫面，但使用者可以自行變更。</translation>
 <translation id="2413899611035194909">顯示登入畫面系統匣選單的無障礙選項</translation>
+<translation id="2414712434655365347">針對特定網址模式設定 HTTP 標頭插入功能</translation>
 <translation id="2415715982424988916">探索 (自 91 版起開始支援)</translation>
 <translation id="2420958105721932612">指定應用程式的安裝方式。AVAILABLE：應用程式不會自動安裝，但使用者可自行安裝。如未指定這項政策，系統會預設採用這個值。FORCE_INSTALLED：系統會自動安裝應用程式，使用者無法解除安裝。BLOCKED：應用程式遭到封鎖且無法安裝。如果是依據先前的政策安裝該應用程式，系統會將其解除安裝。</translation>
 <translation id="2421400544595297401">不允許無關聯使用者使用 Android 應用程式</translation>
@@ -2818,6 +2819,13 @@ PAC 樣式的字串：
 <translation id="2866726566162790531">允許所有 HTTP 驗證機制的來源清單</translation>
 <translation id="2868756546751652023">允許使用者使用即時網路共用功能</translation>
 <translation id="286898786908566256">允許使用者將電話號碼從 Chrome 傳送到自己的 Android 裝置</translation>
+<translation id="287087426320717057">這項政策控管所有韌體更新類型的啟動權限，
+
+      如果設為啟用或未設定，使用者 (例如裝置擁有者) 將可啟動韌體更新；
+
+      如果設為停用，則所有使用者都無法套用韌體更新。
+
+      這項韌體更新政策適用於 <ph name="PRODUCT_OS_FLEX_NAME" /> 裝置的外部周邊裝置及內部元件，不會影響 <ph name="PRODUCT_OS_NAME" /> 裝置的內部元件韌體更新。</translation>
 <translation id="2872098849906555324">停用 Google 雲端硬碟同步功能</translation>
 <translation id="2872189563975139803">企業設定檔區隔設定</translation>
 <translation id="2872961005593481000">關閉</translation>
@@ -3366,7 +3374,6 @@ ClearCrossSiteCrossBrowsingContextGroupWindowName 變化版本會控制是否要
 <translation id="3229163415739929305">如果將這項政策設為啟用或不設定，系統會啟用網頁載入中繼資料擷取功能和強化瀏覽體驗的機器學習模型。
       如果將這項政策設為停用，則可能會造成部分功能無法正常運作。</translation>
 <translation id="3231311173895401135">允許瀏覽器決定是否支援</translation>
-<translation id="3231684792162319504">不允許 Gemini 實驗功能觸發機制。</translation>
 <translation id="3231837273069128027">你可以透過這項政策來設定 <ph name="TPM_FIRMWARE_UPDATE_TPM" /> 韌體更新的可用性和行為。
 
       指定 JSON 屬性中的個別設定：
@@ -5064,7 +5071,6 @@ Protected Audience API 已淘汰，因此這項政策已在 <ph name="PRODUCT_NA
 <translation id="4435032708588431506">允許 QUIC</translation>
 <translation id="443665821428652897">瀏覽器關閉時清除網站資料 (已淘汰)</translation>
 <translation id="4436941175475497595">停用列印預覽</translation>
-<translation id="4436992815485865052">允許 Gemini 實驗功能觸發機制。</translation>
 <translation id="4439336120285389675">指定要暫時重新啟用的已淘汰網路平台功能清單。
 
       這項政策可讓管理員在限定時間內重新啟用已淘汰的網路平台功能。系統會使用字串標記辨識功能，並根據這項政策在清單中指定的標記重新啟用對應的功能。
@@ -6438,7 +6444,6 @@ Attribution Reporting API 已淘汰，因此這項政策已在 <ph name="PRODUCT
 <translation id="5255790642269910630">如果設定這項政策，政策值變更後的首次連線以及每次重新啟動時，裝置螢幕都會旋轉到指定方向。使用者可在登入後前往設定頁面變更螢幕旋轉設定，但裝置重新啟動後就會恢復成設定值。這項政策適用於主要螢幕和次要螢幕。
 
 如果未設定，預設值為 0 度，使用者可自行變更。在這種情況下，系統不會在重新啟動時重新套用預設值。</translation>
-<translation id="5256792633540454282">控管 Gemini 實驗功能觸發機制</translation>
 <translation id="5257395339965216304">代管的應用程式資料</translation>
 <translation id="5258445772095084618">允許無關聯使用者透過虛擬機器執行 Linux 應用程式</translation>
 <translation id="5258651513421638932">允許隔離應用程式連線到智慧卡</translation>
@@ -7411,7 +7416,6 @@ Microsoft SharePoint 和 OneDrive 資訊卡需要額外的管理員設定。想�
 
       這項政策已遭淘汰，請改用 <ph name="PRINTERS_BULK_BLOCKLIST" />。</translation>
 <translation id="591088232153082363">根據電池用量模式自動調整充電方式。</translation>
-<translation id="5911656389795271430">這是實驗功能政策。</translation>
 <translation id="5913506885872855604">你可以將某些內部位址範圍視為「公開」，因此不會受到 <ph name="LOCAL_NETWORK_ACCES" /> 檢查。反之，如果某些公開位址範圍可能用於內部，你可以將其視為「本機」，讓 <ph name="LOCAL_NETWORK_ACCESS" /> 檢查保護這些位址範圍。
 
 IP 位址空間覆寫有兩種形式：
@@ -7835,6 +7839,25 @@ IP 位址空間覆寫有兩種形式：
 <translation id="624219423122512710">閒置的瀏覽器動作</translation>
 <translation id="6244061205361004687">允許使用者手動中斷連線或修改 VPN</translation>
 <translation id="6244210204546589761">起始時開啟的網址</translation>
+<translation id="6245828368576563662">這項政策可讓你定義規則清單，將自訂 HTTP 標頭插入符合特定網址模式的網頁要求。這項政策設定的標頭優先順序高於要求中原有的標頭，也高於使用者或擴充功能所做的修改。
+
+這項政策的常見用途是插入自訂標頭 (例如 <ph name="EXAMPLE_HEADER_NAME" />)，強制執行租戶存取控管機制。
+
+這項政策接受規則清單。每項規則都包含：
+
+* <ph name="PATTERNS_KEY" />：要比對的網址模式清單。請參閱網址模式的格式設定說明 (https://support.google.com/chrome/a?p=url_blocklist_filter_format)。
+
+* <ph name="HEADERS_KEY" />：要插入的標頭物件清單，每個物件包含：
+
+  * <ph name="HEADER_NAME_KEY" />：要插入的標頭名稱。
+
+  * <ph name="HEADER_VALUE_KEY" />：要插入的標頭值。
+
+如果多項規則符合要求，系統會套用所有相符規則中的標頭。如有多個同名標頭，系統會套用網址模式最明確的標頭。如果網址模式的明確程度相同，系統會套用清單中最後一個標頭。
+
+標頭名稱必須符合 RFC 2616 (https://www.rfc-editor.org/rfc/rfc2616) 規定。標頭值不得含有 NUL、CR 或 LF 符號。個別標頭的大小不得超過 8 KB。系統會忽略無效的標頭和網址模式。
+
+在這項政策中，所有規則的網址模式數量上限不得超過 500 個，每項規則最多可有 20 個標頭。如果超過上述門檻，系統將忽略多出來的網址模式和標頭。</translation>
 <translation id="624595269193747921">是否僅限在特定一組印表機中搜尋相符的印表機。</translation>
 <translation id="6246290059248303618">顯示由區域網路中其他裝置啟動的 <ph name="PRODUCT_NAME" /> 工作階段媒體控制項</translation>
 <translation id="6247316685259031374">這項政策可控管音訊程序的沙箱機制。
@@ -9141,12 +9164,6 @@ Origin-Agent-Cluster HTTP 標頭會控制文件要在 origin-keyed 代理程式�
           如果不設定這項政策，檔案櫃預設會顯示在畫面底部，且使用者可以變更檔案櫃的位置。</translation>
 <translation id="7039815268521168329">在初始設定期間顯示 Google 助理 Voice Match 流程</translation>
 <translation id="7040229947030068419">範例值：</translation>
-<translation id="7044626519138840387">遠端桌面用戶端應用程式來源清單，這些來源可執行來自遠端主機瀏覽工作階段的 WebAuthn API 要求。
-
-這項政策中設定的來源都能向依賴方 ID (RP ID) 提出 WebAuthn 要求。一般來說，系統並不允許來源提出這類要求。
-
-這項政策只允許有效的 HTTPS 來源，而且不支援萬用字元。
-系統會忽略無效的項目。</translation>
 <translation id="7044883996351280650">控制 Android 備份與還原服務</translation>
 <translation id="7045221780834308118">如果將這項政策設為啟用，第三方網頁應用程式將可使用 Desk API 控管 <ph name="PRODUCT_OS_NAME" /> 桌面；如果不設定或停用，就無法使用 <ph name="DESK_API_NAME" />。只有在已註冊的裝置上，這項政策才會生效。</translation>
 <translation id="7046113122884041950">不允許使用 Smart Lock</translation>

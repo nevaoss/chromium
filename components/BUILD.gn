@@ -405,7 +405,7 @@ test("components_unittests") {
     deps += [
       "//components/enterprise:unit_tests",
       "//components/enterprise/common:unit_tests",
-      "//components/enterprise/connectors/core:cloud_content_scanning_unittests",
+      "//components/enterprise/connectors/core:cloud_content_scanning_unit_tests",
       "//components/enterprise/connectors/core:unit_tests",
       "//components/enterprise/data_protection:unit_tests",
       "//components/enterprise/isolated_mode:unit_tests",
@@ -473,7 +473,6 @@ test("components_unittests") {
 
   if (use_blink) {
     deps += [
-      "//components/accessibility_annotator/first_run:unit_tests",
       "//components/autofill/content/browser:unit_tests",
       "//components/autofill/core/common/mojom:unit_tests",
       "//components/browsing_data/content:unit_tests",
@@ -551,6 +550,7 @@ test("components_unittests") {
       "//components/performance_manager:unit_tests",
       "//components/performance_manager/scenario_api:unit_tests",
       "//components/permissions:unit_tests",
+      "//components/personal_context/first_run:unit_tests",
       "//components/policy/content:unit_tests",
       "//components/push_messaging:unit_tests",
       "//components/record_replay/content/browser:unit_tests",
@@ -634,9 +634,7 @@ test("components_unittests") {
       "//components/autofill/content/renderer:unit_tests",
       "//components/background_sync:unit_tests",
       "//components/blocked_content:unit_tests",
-      "//components/browser_apis/browser_controls:unit_tests",
-      "//components/browser_apis/tab_strip:unit_tests",
-      "//components/browser_apis/ui_controllers/toolbar:unit_tests",
+      "//components/browser_apis:unit_tests",
       "//components/content_settings/browser/ui:unit_tests",
       "//components/headless/test:unit_tests",
       "//components/media_router/browser:unit_tests",
@@ -688,8 +686,6 @@ test("components_unittests") {
       "//components/cdm/browser:unit_tests",
       "//components/collaboration/internal:comments_native_java_unittests_java",
       "//components/collaboration/internal:messaging_native_java_unittests_java",
-      "//components/component_updater/android:embedded_component_loader_java",
-      "//components/component_updater/android:embedded_component_loader_unittests",
       "//components/crash/android:java",
       "//components/crash/android:unit_tests",
       "//components/credential_management:unit_tests",

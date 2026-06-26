@@ -272,6 +272,7 @@ public class LocationBarMediatorTest {
 
         mUrlBarData = UrlBarData.create(null, "text", 0, 0, "text");
         lenient().doReturn(true).when(mSearchEngineUtils).shouldShowSearchEngineLogo();
+        lenient().doReturn(true).when(mSearchEngineUtils).isDefaultSearchEngineGoogle();
         SearchEngineUtils.setInstanceForTesting(mSearchEngineUtils);
         lenient().doReturn(mUrlBarData).when(mLocationBarDataProvider).getUrlBarData();
         lenient()
@@ -1589,6 +1590,46 @@ public class LocationBarMediatorTest {
     }
 
     @Test
+    public void testSetUrlFocusChangeInProgress_accessibilityWorkaroundPreservesSession() {
+        mMediator.addUrlFocusChangeListener(mUrlCoordinator);
+        mMediator.setUrlFocusChangeInProgress(true);
+        mMediator.onFinishNativeInitialization();
+        mProfileSupplier.set(mProfile);
+
+        ChromeAccessibilityUtil.get().setAccessibilityEnabledForTesting(true);
+        mMediator.beginInput(
+                new AutocompleteInput()
+                        .setUserText("text")
+                        .setFocusReason(OmniboxFocusReason.FAKE_BOX_TAP));
+        mMediator.onUrlFocusChange(true);
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
+
+        doAnswer(
+                        invocation -> {
+                            mMediator.onUrlFocusChange(false);
+                            return null;
+                        })
+                .when(mUrlCoordinator)
+                .clearFocus();
+
+        doAnswer(
+                        invocation -> {
+                            mMediator.onUrlFocusChange(true);
+                            return null;
+                        })
+                .when(mUrlCoordinator)
+                .requestFocus();
+
+        reset(mAutocompleteCoordinator);
+
+        mMediator.setUrlFocusChangeInProgress(false);
+
+        verify(mUrlCoordinator).clearFocus();
+        verify(mUrlCoordinator, times(2)).requestFocus();
+        verify(mAutocompleteCoordinator, never()).endInput();
+    }
+
+    @Test
     public void testMicUpdatedAfterEventTriggered() {
         mMediator.onVoiceAvailabilityImpacted();
         verify(mLocationBarLayout, atLeast(1)).setMicButtonVisibility(false);
@@ -2674,6 +2715,28 @@ public class LocationBarMediatorTest {
         mMediator.onSearchBoxHintTextChanged();
 
         verify(mUrlCoordinator, never()).setUrlBarHintText(any());
+    }
+
+    @Test
+    public void testOnSearchBoxHintTextChanged_SiteSearchActive_HidesHintText() {
+        mProfileSupplier.set(mProfile);
+        mMediator.onFinishNativeInitialization();
+        RobolectricUtil.runAllBackgroundAndUi();
+
+        // Begin input to set mCurrentInput.
+        var input = mSessionState.getAutocompleteInput();
+        mMediator.beginInput(input);
+
+        // Set site search data.
+        input.setSiteSearchData(new SiteSearchData("keyword", "Search keyword"));
+
+        // Verify hint text is set to empty.
+        verify(mUrlCoordinator).setUrlBarHintText(eq(""));
+
+        // Triggering it again should also set it to empty.
+        clearInvocations(mUrlCoordinator);
+        mMediator.onSearchBoxHintTextChanged();
+        verify(mUrlCoordinator).setUrlBarHintText(eq(""));
     }
 
     @Test

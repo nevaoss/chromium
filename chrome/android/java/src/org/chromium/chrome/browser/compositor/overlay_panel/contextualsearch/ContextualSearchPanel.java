@@ -131,7 +131,7 @@ public class ContextualSearchPanel extends OverlayPanel implements SideUiObserve
     private boolean mHasContentBeenTouched;
 
     /** The compositor layer used for drawing the panel. */
-    private final ContextualSearchSceneLayer mSceneLayer;
+    private ContextualSearchSceneLayer mSceneLayer;
 
     /**
      * A ScrimManager for adjusting the Status Bar's brightness when a scrim is present (when the
@@ -373,9 +373,18 @@ public class ContextualSearchPanel extends OverlayPanel implements SideUiObserve
 
     @Override
     public void onSideUiSpecsChanged(SideUiSpecs sideUiSpecs) {
+        int startMargin =
+                LocalizationUtils.isLayoutRtl()
+                        ? sideUiSpecs.rightWidth()
+                        : sideUiSpecs.leftWidth();
+        int endMargin =
+                LocalizationUtils.isLayoutRtl()
+                        ? sideUiSpecs.leftWidth()
+                        : sideUiSpecs.rightWidth();
+
         setLayoutMargins(
-                sideUiSpecs.mStartContainerWidth * mPxToDp,
-                sideUiSpecs.mEndContainerWidth * mPxToDp);
+                /* layoutMarginStart= */ startMargin * mPxToDp,
+                /* layoutMarginEnd= */ endMargin * mPxToDp);
         resizePanelContentView();
     }
 
@@ -455,10 +464,15 @@ public class ContextualSearchPanel extends OverlayPanel implements SideUiObserve
     }
 
     @Override
+    @SuppressWarnings("NullAway")
     public void destroy() {
         if (mSideUiStateProvider != null) {
             mSideUiStateProvider.removeObserver(this);
             mSideUiStateProvider = null;
+        }
+        if (mSceneLayer != null) {
+            mSceneLayer.destroy();
+            mSceneLayer = null;
         }
         super.destroy();
     }

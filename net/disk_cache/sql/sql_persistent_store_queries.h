@@ -128,7 +128,8 @@ inline constexpr const char kDoomEntry_MarkDoomedResources[] =
     "SET "
         "doomed=1 "
     "WHERE "
-        "res_id=? AND "  // 0
+        "res_id=? AND "      // 0
+        "cache_key=? AND "   // 1
         "doomed=0 "
     "RETURNING "
         "bytes_usage";       // 0
@@ -190,7 +191,8 @@ inline constexpr const char kUpdateEntryLastUsedByKey_UpdateResourceLastUsed[] =
     "WHERE "
         "cache_key_hash=? AND " // 1
         "cache_key=? AND "      // 2
-        "doomed=0";
+        "doomed=0 "
+    "RETURNING res_id";
 // clang-format on
 
 inline constexpr const char kInsertIntoResources[] =
@@ -343,7 +345,9 @@ inline constexpr const char kWriteEntryData_UpdateResource[] =
         "res_id=? "                   // 2
     "RETURNING "
         "body_end,"                   // 0
-        "doomed";                     // 1
+        "doomed,"                     // 1
+        "bytes_usage,"                // 2
+        "last_used";                  // 3
 // clang-format on
 
 inline constexpr const char kTrimOverlappingBlobs_DeleteContained[] =

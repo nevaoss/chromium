@@ -106,6 +106,7 @@
 #include "chrome/browser/ui/views/user_education/browser_help_bubble.h"
 #include "components/omnibox/browser/searchbox.mojom-forward.h"
 #include "components/zoom/zoom_controller.h"  // nogncheck
+#include "ui/webui/tracked_element/tracked_element_handler_document_singleton.h"
 #endif
 
 #if !BUILDFLAG(ENABLE_EXTENSIONS_CORE)
@@ -677,6 +678,12 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
 
   AddZeroStateStrings(source, profile);
   contextual_tasks_service_observation_.Observe(contextual_tasks_service_);
+
+#if !BUILDFLAG(IS_ANDROID)
+  ui::TrackedElementHandlerDocumentSingleton::Register(
+      this,
+      std::vector<ui::ElementIdentifier>{kSmartTabSharingMenuItemElementId});
+#endif
 }
 
 ContextualTasksUI::~ContextualTasksUI() {
@@ -735,7 +742,6 @@ const std::optional<base::Uuid>& ContextualTasksUI::GetTaskId() {
 
 void ContextualTasksUI::SetTaskId(std::optional<base::Uuid> id) {
   task_id_ = id;
-  PushTaskDetailsToPage();
   // Initialize input state once task id is available.
   if (composebox_handler_) {
     composebox_handler_->InitializeInputStateModel();
@@ -748,7 +754,6 @@ const std::optional<std::string>& ContextualTasksUI::GetThreadId() {
 
 void ContextualTasksUI::SetThreadId(std::optional<std::string> id) {
   thread_id_ = id;
-  PushTaskDetailsToPage();
 }
 
 const std::optional<std::string>& ContextualTasksUI::GetThreadTitle() {
@@ -762,19 +767,9 @@ void ContextualTasksUI::SetThreadTitle(std::optional<std::string> title) {
   }
 }
 
-void ContextualTasksUI::SetAimUrl(const GURL& url) {
-  if (page_) {
-    page_->SetAimUrl(url);
-  }
-#if !BUILDFLAG(IS_ANDROID)
-  tracked_zoom_host_ = url.host();
-  UpdateZoom();
-#endif
-}
-
-void ContextualTasksUI::UpdateModelModeFromUrl(const GURL& url) {
+void ContextualTasksUI::UpdateStateFromUrl(const GURL& url) {
   if (composebox_handler_) {
-    composebox_handler_->UpdateModelFromUrl(url);
+    composebox_handler_->UpdateStateFromUrl(url);
   }
 }
 
@@ -912,9 +907,11 @@ void ContextualTasksUI::CreateHelpBubbleHandler(
     mojo::PendingRemote<help_bubble::mojom::HelpBubbleClient> client,
     mojo::PendingReceiver<help_bubble::mojom::HelpBubbleHandler> handler) {
   help_bubble_handler_ = std::make_unique<user_education::HelpBubbleHandler>(
-      std::move(handler), std::move(client), this,
-      std::vector<ui::ElementIdentifier>{kSmartTabSharingMenuItemElementId});
+      std::move(handler), std::move(client),
+      ui::TrackedElementHandlerDocumentSingleton::GetOrCreate(
+          web_ui()->GetRenderFrameHost()));
 }
+
 #endif
 
 bool ContextualTasksUIConfig::IsWebUIEnabled(
@@ -1353,8 +1350,15 @@ bool ContextualTasksUI::IsActiveTabContextSuggestionShowing() const {
          auto_suggestion_manager_->GetCurrentSuggestion() != nullptr;
 }
 
-void ContextualTasksUI::PushTaskDetailsToPage() {
-  page_->SetTaskDetails(task_id_.value_or(base::Uuid()));
+void ContextualTasksUI::PushTaskDetailsToPage(std::optional<base::Uuid> id,
+                                              const GURL& url,
+                                              bool replace_navigation_entry) {
+  page_->SetTaskDetails(id.value_or(base::Uuid()), url,
+                        replace_navigation_entry);
+#if !BUILDFLAG(IS_ANDROID)
+  tracked_zoom_host_ = url.host();
+  UpdateZoom();
+#endif
 }
 
 bool ContextualTasksUI::CanExpandToFullTab() const {
@@ -1441,7 +1445,6 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
           << url;
   bool is_ai_page = ui_service_->IsAiUrl(url);
   task_info_delegate_->SetIsAiPage(is_ai_page);
-  task_info_delegate_->SetAimUrl(url);
 
 #if BUILDFLAG(IS_ANDROID)
   // On Android, the toolbar needs to be explicitly notified to refresh its
@@ -1459,10 +1462,7 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
   }
   task_info_delegate_->SetInNlm(in_nlm);
 
-  if (base::FeatureList::IsEnabled(
-          contextual_tasks::kContextualTasksUpdateModelOnNavigation)) {
-    task_info_delegate_->UpdateModelModeFromUrl(url);
-  }
+  task_info_delegate_->UpdateStateFromUrl(url);
 
   OMNIBOX_LOG("embedded_page_nav") << navigation_handle->GetURL().spec();
 
@@ -1494,6 +1494,7 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
     UpdateDarkModePreferenceFromUrl(web_contents(), url);
   }
   bool is_url_changed = false;
+  bool last_committed_url_was_empty = last_committed_url_.is_empty();
   if (!ContextualTasksUI::AreUrlsEqual(
           url, last_committed_url_)) {
     last_committed_url_ = url;
@@ -1529,6 +1530,11 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
     base::Uuid new_task_id = task.GetTaskId();
     task_info_delegate_->SetTaskId(new_task_id);
     task_info_delegate_->SetThreadId(std::nullopt);
+    // Replace state if last committed URL was empty (i.e. the page is
+    // reloaded), otherwise push new state.
+    task_info_delegate_->PushTaskDetailsToPage(
+        new_task_id, url,
+        /*replace_navigation_entry=*/last_committed_url_was_empty);
     task_info_delegate_->SetThreadTitle(std::nullopt);
 
     task_info_delegate_->PrepareForTaskChange();
@@ -1541,9 +1547,7 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
   }
 
   std::string query_value;
-  if (net::GetValueForKeyInQuery(url, "q", &query_value)) {
-    task_info_delegate_->SetThreadTitle(query_value);
-  }
+  net::GetValueForKeyInQuery(url, "q", &query_value);
 
   std::string url_thread_id;
   if (!net::GetValueForKeyInQuery(url, "mtid", &url_thread_id)) {
@@ -1611,6 +1615,18 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
     }
   }
   task_info_delegate_->SetThreadId(url_thread_id);
+  auto new_task_id = task_info_delegate_->GetTaskId();
+  // Replace state if old task id and new task id is the same, otherwise push
+  // new state. This is to make sure navigation stack works when switching
+  // between tasks.
+  bool replace_navigation_entry = (old_task_id == new_task_id);
+  task_info_delegate_->PushTaskDetailsToPage(new_task_id, url,
+                                             replace_navigation_entry);
+
+  // Update title after navigation to make sure the current navigation updates.
+  if (!query_value.empty()) {
+    task_info_delegate_->SetThreadTitle(query_value);
+  }
 
   std::optional<std::string> mstk;
   std::string url_param_mstk;

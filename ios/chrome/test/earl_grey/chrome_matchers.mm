@@ -275,6 +275,10 @@ id<GREYMatcher> ToolsMenuButton() {
   return [ChromeMatchersAppInterface toolsMenuButton];
 }
 
+id<GREYMatcher> ToolsMenuNTPButton() {
+  return [ChromeMatchersAppInterface toolsMenuNTPButton];
+}
+
 id<GREYMatcher> NewTabButton() {
   return [ChromeMatchersAppInterface openNewTabButton];
 }
@@ -293,6 +297,11 @@ id<GREYMatcher> TabShareButton() {
 
 id<GREYMatcher> ShowTabsButton() {
   return [ChromeMatchersAppInterface showTabsButton];
+}
+
+id<GREYMatcher> ShowTabsButtonWithCount(NSString* count) {
+  return grey_allOf(grey_descendant(grey_accessibilityLabel(count)),
+                    ShowTabsButton(), nil);
 }
 
 id<GREYMatcher> BlueDotOnShowTabsButton() {

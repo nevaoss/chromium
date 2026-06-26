@@ -4,17 +4,28 @@
 
 package org.chromium.chrome.browser.pdf;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.app.Activity;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.PopupWindow;
 import android.widget.TextView;
 
 import androidx.test.ext.junit.rules.ActivityScenarioRule;
 
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -26,6 +37,7 @@ import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.ui.base.TestActivity;
+import org.chromium.ui.widget.UiWidgetFactory;
 
 @RunWith(BaseRobolectricTestRunner.class)
 @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
@@ -40,11 +52,22 @@ public class PdfToolbarCoordinatorUnitTest {
     private View mPdfPageView;
     private PdfToolbarCoordinator mPdfToolbarCoordinator;
     private AutoCloseable mCloseableMocks;
+    private UiWidgetFactory mMockUiWidgetFactory;
+    private PopupWindow mSpyPopupWindow;
 
     @Before
     public void setUp() {
         mCloseableMocks = MockitoAnnotations.openMocks(this);
         mActivityScenarioRule.getScenario().onActivity(activity -> mActivity = activity);
+
+        mMockUiWidgetFactory = mock(UiWidgetFactory.class);
+        mSpyPopupWindow = spy(new PopupWindow(mActivity));
+        UiWidgetFactory.setInstance(mMockUiWidgetFactory);
+        when(mMockUiWidgetFactory.createPopupWindow(any())).thenReturn(mSpyPopupWindow);
+        doNothing()
+                .when(mSpyPopupWindow)
+                .showAtLocation(any(View.class), anyInt(), anyInt(), anyInt());
+
         mPdfPageView = LayoutInflater.from(mActivity).inflate(R.layout.pdf_page, null);
         mPdfToolbarCoordinator = new PdfToolbarCoordinator(mPdfPageView, mDelegate);
         mPdfToolbarCoordinator.onDocumentLoaded(100, "test_title.pdf");
@@ -55,22 +78,53 @@ public class PdfToolbarCoordinatorUnitTest {
     @After
     public void tearDown() throws Exception {
         mCloseableMocks.close();
+        UiWidgetFactory.setInstance(null);
     }
 
     @Test
-    public void testPageIncrease() {
-        // Default current page is 99 (1-indexed)
-        View pageIncreaseButton = mPdfPageView.findViewById(R.id.page_increase_button);
-        pageIncreaseButton.performClick();
-        verify(mDelegate).navigateToPage(99);
+    public void testPageNumberEdit() {
+        // Default current page is 99 (1-indexed), total is 100
+        EditText currentPage = mPdfPageView.findViewById(R.id.current_page);
+
+        // Request focus to enable editing
+        assertTrue(currentPage.requestFocus());
+        assertTrue(currentPage.isFocused());
+
+        // Simulate typing valid page and submitting
+        currentPage.setText("50");
+        currentPage.onEditorAction(android.view.inputmethod.EditorInfo.IME_ACTION_GO);
+
+        // Should navigate to 0-indexed page 49
+        verify(mDelegate).navigateToPage(49);
+
+        // Verify it loses focus
+        assertFalse(currentPage.isFocused());
     }
 
     @Test
-    public void testPageDecrease() {
-        // Default current page is 99 (1-indexed)
-        View pageDecreaseButton = mPdfPageView.findViewById(R.id.page_decrease_button);
-        pageDecreaseButton.performClick();
-        verify(mDelegate).navigateToPage(97);
+    public void testPageNumberEdit_invalid() {
+        EditText currentPage = mPdfPageView.findViewById(R.id.current_page);
+
+        // Out of bounds high
+        assertTrue(currentPage.requestFocus());
+        assertTrue(currentPage.isFocused());
+        currentPage.setText("101");
+        currentPage.onEditorAction(android.view.inputmethod.EditorInfo.IME_ACTION_GO);
+        // Should NOT navigate to 100
+        verify(mDelegate, org.mockito.Mockito.never()).navigateToPage(100);
+        // Should revert to 99
+        assertEquals("99", currentPage.getText().toString());
+        assertFalse(currentPage.isFocused());
+
+        // Out of bounds low
+        assertTrue(currentPage.requestFocus());
+        assertTrue(currentPage.isFocused());
+        currentPage.setText("0");
+        currentPage.onEditorAction(android.view.inputmethod.EditorInfo.IME_ACTION_GO);
+        verify(mDelegate, org.mockito.Mockito.never()).navigateToPage(-1);
+        // Should revert to 99
+        assertEquals("99", currentPage.getText().toString());
+        assertFalse(currentPage.isFocused());
     }
 
     @Test
@@ -81,12 +135,12 @@ public class PdfToolbarCoordinatorUnitTest {
         TextView pageCount = mPdfPageView.findViewById(R.id.page_count);
         TextView zoomValue = mPdfPageView.findViewById(R.id.zoom_value);
         // Current page is firstVisiblePage + 1
-        Assert.assertEquals(
+        assertEquals(
                 "6 / 100",
                 currentPage.getText().toString()
                         + pageCountDivider.getText().toString()
                         + pageCount.getText().toString());
-        Assert.assertEquals("100%", zoomValue.getText().toString());
+        assertEquals("100%", zoomValue.getText().toString());
     }
 
     @Test
@@ -94,11 +148,11 @@ public class PdfToolbarCoordinatorUnitTest {
         // Input is 0-indexed (page 0), output should be 1-indexed ("1")
         mPdfToolbarCoordinator.onViewportChanged(0, 1);
         TextView currentPage = mPdfPageView.findViewById(R.id.current_page);
-        Assert.assertEquals("1", currentPage.getText().toString());
+        assertEquals("1", currentPage.getText().toString());
 
         // Input is 0-indexed (page 5), output should be 1-indexed ("6")
         mPdfToolbarCoordinator.onViewportChanged(5, 1);
-        Assert.assertEquals("6", currentPage.getText().toString());
+        assertEquals("6", currentPage.getText().toString());
     }
 
     @Test
@@ -106,13 +160,13 @@ public class PdfToolbarCoordinatorUnitTest {
         TextView currentPage = mPdfPageView.findViewById(R.id.current_page);
         TextView pageCountDivider = mPdfPageView.findViewById(R.id.page_count_divider);
         TextView pageCount = mPdfPageView.findViewById(R.id.page_count);
-        Assert.assertEquals(
+        assertEquals(
                 "99 / 100",
                 currentPage.getText().toString()
                         + pageCountDivider.getText().toString()
                         + pageCount.getText().toString());
         TextView zoomValue = mPdfPageView.findViewById(R.id.zoom_value);
-        Assert.assertEquals("100%", zoomValue.getText().toString());
+        assertEquals("100%", zoomValue.getText().toString());
     }
 
     // Regression test: onViewportChanged with a zoom value just below 5.0
@@ -137,10 +191,10 @@ public class PdfToolbarCoordinatorUnitTest {
         TextView currentPage = mPdfPageView.findViewById(R.id.current_page);
         TextView pageCount = mPdfPageView.findViewById(R.id.page_count);
         // Current page remains 99 (default), total page count becomes 50
-        Assert.assertEquals("99", currentPage.getText().toString());
-        Assert.assertEquals("50", pageCount.getText().toString());
+        assertEquals("99", currentPage.getText().toString());
+        assertEquals("50", pageCount.getText().toString());
         TextView title = mPdfPageView.findViewById(R.id.pdf_title);
-        Assert.assertEquals("test_title.pdf", title.getText().toString());
+        assertEquals("test_title.pdf", title.getText().toString());
     }
 
     @Test
@@ -158,16 +212,57 @@ public class PdfToolbarCoordinatorUnitTest {
     }
 
     @Test
-    public void testTwoPagesPerRowToggle() {
-        // Default current page is 99 (1-indexed) and zoom level is 1.0f
-        View twoPageButton = mPdfPageView.findViewById(R.id.two_page_button);
+    public void testTwoPagesPerRowToggle_viaMenu_toggleBehavior() {
+        // 1. Initial State: Single Page View is active (TWO_PAGES_PER_ROW_ACTIVE = false)
+        // Click more menu button
+        View moreMenuButton = mPdfPageView.findViewById(R.id.more_menu_button);
+        org.junit.Assert.assertNotNull("More menu button should not be null", moreMenuButton);
+        moreMenuButton.performClick();
 
-        // Initial state: click toggles two pages per row to active (true)
-        twoPageButton.performClick();
+        // Get content view
+        View contentView = mSpyPopupWindow.getContentView();
+        org.junit.Assert.assertNotNull("Popup content view should not be null", contentView);
+        android.widget.ListView listView = contentView.findViewById(R.id.menu_list);
+        org.junit.Assert.assertNotNull("List view should be found", listView);
+
+        // Verify first item is "Two-page view" and has NO checkmark
+        View itemView = listView.getAdapter().getView(0, null, listView);
+        TextView textView = itemView.findViewById(R.id.menu_item_text);
+        assertEquals(
+                mActivity.getString(R.string.pdf_two_page_view), textView.getText().toString());
+        ImageView endIcon = itemView.findViewById(R.id.menu_item_end_icon);
+        assertTrue(endIcon.getVisibility() == View.GONE || endIcon.getDrawable() == null);
+
+        // Click "Two-page view" -> toggles to true
+        itemView.performClick();
         verify(mDelegate).toggleTwoPagesPerRow(true, 1.0f, 98);
+        verify(mSpyPopupWindow).dismiss();
 
-        // Second click: click toggles two pages per row to inactive (false)
-        twoPageButton.performClick();
+        // 2. Second State: Two Page View is active (TWO_PAGES_PER_ROW_ACTIVE = true)
+        // Reset the spy for the next popup window creation
+        mSpyPopupWindow = spy(new PopupWindow(mActivity));
+        when(mMockUiWidgetFactory.createPopupWindow(any())).thenReturn(mSpyPopupWindow);
+        doNothing()
+                .when(mSpyPopupWindow)
+                .showAtLocation(any(View.class), anyInt(), anyInt(), anyInt());
+
+        // Click more menu button again
+        moreMenuButton.performClick();
+
+        contentView = mSpyPopupWindow.getContentView();
+        listView = contentView.findViewById(R.id.menu_list);
+
+        // Verify first item is now "Single page view" and has NO checkmark
+        itemView = listView.getAdapter().getView(0, null, listView);
+        textView = itemView.findViewById(R.id.menu_item_text);
+        assertEquals(
+                mActivity.getString(R.string.pdf_single_page_view), textView.getText().toString());
+        endIcon = itemView.findViewById(R.id.menu_item_end_icon);
+        assertTrue(endIcon.getVisibility() == View.GONE || endIcon.getDrawable() == null);
+
+        // Click "Single page view" -> toggles to false
+        itemView.performClick();
         verify(mDelegate).toggleTwoPagesPerRow(false, 1.0f, 98);
+        verify(mSpyPopupWindow).dismiss();
     }
 }

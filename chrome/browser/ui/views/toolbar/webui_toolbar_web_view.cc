@@ -32,6 +32,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/desktop_browser_window_capabilities.h"
+#include "chrome/browser/ui/extensions/extensions_container.h"
 #include "chrome/browser/ui/layout_constants.h"
 #include "chrome/browser/ui/tabs/split_tab_util.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
@@ -47,6 +48,7 @@
 #include "chrome/browser/ui/waap/initial_webui_window_metrics_manager.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
 #include "chrome/browser/ui/webui/webui_toolbar/adapters/navigation_controls_state_fetcher_impl.h"
+#include "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/common/webui_url_constants.h"
@@ -72,6 +74,7 @@
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/mojom/menu_source_type.mojom.h"
+#include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
 #include "ui/gfx/geometry/point.h"
 #include "ui/gfx/geometry/rect_conversions.h"
 #include "ui/gfx/geometry/rect_f.h"
@@ -159,7 +162,7 @@ class WebUIToolbarInternalWebView : public views::WebView {
   }
 
   std::optional<GURL> ConsumeDroppedUrl(const gfx::PointF& point) {
-    std::optional<GURL> url = std::nullopt;
+    std::optional<GURL> url;
     if (cached_dragged_file_position_.has_value() &&
         point == *cached_dragged_file_position_ &&
         cached_dragged_file_path_.has_value()) {
@@ -217,9 +220,14 @@ WebUIToolbarWebView::WebUIToolbarWebView(
       toolbar_ui_api::mojom::LhsChipsState::New(
           toolbar_ui_api::mojom::SecurityChipState::New(
               toolbar_ui_api::IconHandle(),
-              toolbar_ui_api::mojom::SecurityLevel::kNone, std::u16string(),
+              toolbar_ui_api::mojom::SecurityLevel::kNone,
+              /*text=*/std::u16string(),
+              toolbar_ui_api::mojom::SecurityChipAccessibilityState::New(
+                  /*label=*/std::u16string(),
+                  /*description=*/std::u16string()),
               /*is_clickable=*/false, /*is_text_dangerous=*/false,
               /*is_visible=*/true),
+          /*activity_indicators=*/
           std::vector<toolbar_ui_api::mojom::ContentSettingImageStatePtr>(),
           /*permission_dashboard=*/nullptr);
   last_queued_state_.layout_constants_version = 0;
@@ -275,8 +283,16 @@ WebUIToolbarWebView::~WebUIToolbarWebView() = default;
 void WebUIToolbarWebView::AddedToWidget() {
   CHECK(web_view_);
 
+  if (initialization_state_ == InitializationState::kInitialized) {
+    // Skips everything if already fully initialized.
+    return;
+  }
+
   // If initialization has already started or completed, do not run it again.
   if (initialization_state_ != InitializationState::kUninitialized) {
+    // For preloaded views, initialization_state_ is kPending. Apply deadline
+    // here which is after LoadURL has finished in InitialWebUIManager.
+    ApplyInitialSurfaceSyncDeadline();
     return;
   }
 
@@ -284,17 +300,9 @@ void WebUIToolbarWebView::AddedToWidget() {
 
   if (!is_preloaded_) {
     web_view_->LoadInitialURL(GURL(chrome::kChromeUIWebUIToolbarURL));
-
-    if (base::FeatureList::IsEnabled(
-            blink::features::kInitialWebUISurfaceSync)) {
-      // Apply specified deadline to toolbar and main content views.
-      size_t frames_param =
-          blink::features::kInitialWebUISurfaceSyncDeadlineInFrames.Get();
-      uint32_t frames = frames_param == std::numeric_limits<size_t>::max()
-                            ? std::numeric_limits<uint32_t>::max()
-                            : base::checked_cast<uint32_t>(frames_param);
-      SetSurfaceSyncDeadline(frames);
-    }
+    // Apply deadline immediately after LoadInitialURL call for non-preloaded
+    // views.
+    ApplyInitialSurfaceSyncDeadline();
   }
 
   // Initialize the split tabs control early to determine its initial visibility
@@ -314,6 +322,19 @@ void WebUIToolbarWebView::AddedToWidget() {
     pinned_toolbar_actions_.Init();
   }
 
+  if (features::IsWebUIExtensionsContainerEnabled()) {
+    extensions_container_ = std::make_unique<WebUIToolbarExtensionsContainer>(
+        *browser_, GetWidget(), web_contents()->GetWeakPtr());
+    // Register `extensions_container_` as the `ExtensionsContainer` for
+    // `browser_`.
+    scoped_extensions_container_user_data_ =
+        std::make_unique<ui::ScopedUnownedUserData<ExtensionsContainer>>(
+            browser_->GetUnownedUserDataHost(), *extensions_container_);
+    active_tab_subscription_ =
+        browser_->RegisterActiveTabDidChange(base::BindRepeating(
+            &WebUIToolbarWebView::OnActiveTabChanged, base::Unretained(this)));
+  }
+
   // Do NOT call GetWebUIToolbarUI() here as it may be null.
   // The reload_control_ will be initialized once the WebUI is ready.
 }
@@ -321,6 +342,16 @@ void WebUIToolbarWebView::AddedToWidget() {
 void WebUIToolbarWebView::OnThemeChanged() {
   views::View::OnThemeChanged();
   avatar_control_.UpdateIcon();
+  if (location_bar_) {
+    location_bar_->OnThemeChanged();
+  }
+  if (features::IsWebUIPinnedToolbarActionsEnabled()) {
+    pinned_toolbar_actions_.OnThemeChanged();
+  }
+  if (extensions_container_) {
+    // Icons may need re-rendering.
+    extensions_container_->NotifyOfAllActions();
+  }
 }
 
 gfx::Size WebUIToolbarWebView::CalculatePreferredSize(
@@ -743,6 +774,17 @@ void WebUIToolbarWebView::SetSurfaceSyncDeadline(
   }
 }
 
+void WebUIToolbarWebView::ApplyInitialSurfaceSyncDeadline() {
+  if (base::FeatureList::IsEnabled(blink::features::kInitialWebUISurfaceSync)) {
+    size_t frames_param =
+        blink::features::kInitialWebUISurfaceSyncDeadlineInFrames.Get();
+    uint32_t frames = frames_param == std::numeric_limits<size_t>::max()
+                          ? std::numeric_limits<uint32_t>::max()
+                          : base::checked_cast<uint32_t>(frames_param);
+    SetSurfaceSyncDeadline(frames);
+  }
+}
+
 void WebUIToolbarWebView::SetDidFirstNonEmptyPaintCallbackForTesting(
     base::OnceClosure callback) {
   if (callback.is_null()) {
@@ -932,6 +974,15 @@ void WebUIToolbarWebView::OnAvatarControlStateChanged(
 void WebUIToolbarWebView::OnTouchUiChanged() {
   ++last_queued_state_.layout_constants_version;
   PostPushNavigationState();
+}
+
+void WebUIToolbarWebView::OnActiveTabChanged(
+    BrowserWindowInterface* browser_interface) {
+  if (extensions_container_) {
+    // State of extensions depends on what's active --- e.g. some may be
+    // disabled on some URLs.
+    extensions_container_->NotifyOfAllActions();
+  }
 }
 
 void WebUIToolbarWebView::PostPushNavigationState() {

@@ -13,6 +13,7 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/extensions/extensions_container.h"
 #include "chrome/browser/ui/interaction/browser_elements.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/frame/browser_widget.h"
@@ -28,6 +29,7 @@
 #include "chrome/browser/ui/webui/webui_toolbar/toolbar_ui_service.h"
 #include "chrome/browser/ui/webui/webui_toolbar/utils/split_tabs_utils.h"
 #include "chrome/browser/ui/webui/webui_toolbar/utils/toolbar_button_utils.h"
+#include "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.h"
 #include "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_layout_css_helper.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/webui_url_constants.h"
@@ -43,7 +45,7 @@
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_data_source.h"
 #include "ui/views/widget/widget.h"
-#include "ui/webui/tracked_element/tracked_element_handler.h"
+#include "ui/webui/tracked_element/tracked_element_handler_document_singleton.h"
 #include "ui/webui/webui_util.h"
 
 WebUIToolbarUI::WebUIToolbarUI(content::WebUI* web_ui)
@@ -103,6 +105,12 @@ WebUIToolbarUI::WebUIToolbarUI(content::WebUI* web_ui)
 
   // Handles chrome.send() calls that records non-timestamp histograms.
   web_ui->AddMessageHandler(std::make_unique<MetricsHandler>());
+
+  if (browser) {
+    ui::TrackedElementHandlerDocumentSingleton::Register(
+        this, GetKnownElementIdentifiers(),
+        BrowserElements::From(browser)->GetContext());
+  }
 }
 
 WEB_UI_CONTROLLER_TYPE_IMPL(WebUIToolbarUI)
@@ -141,18 +149,9 @@ void WebUIToolbarUI::BindInterface(
 }
 
 void WebUIToolbarUI::BindInterface(
-    mojo::PendingReceiver<tracked_element::mojom::TrackedElementHandler>
-        receiver) {
-  BrowserWindowInterface* browser_interface =
-      webui::GetBrowserWindowInterface(web_ui()->GetWebContents());
-  if (browser_interface) {
-    ui::ElementContext element_context =
-        BrowserElements::From(browser_interface)->GetContext();
-
-    tracked_element_handler_ = std::make_unique<ui::TrackedElementHandler>(
-        web_ui()->GetWebContents(), std::move(receiver), element_context,
-        GetKnownElementIdentifiers());
-  }
+    mojo::PendingReceiver<extensions_bar::mojom::PageHandlerFactory> receiver) {
+  extensions_bar_page_factory_receiver_.reset();
+  extensions_bar_page_factory_receiver_.Bind(std::move(receiver));
 }
 
 void WebUIToolbarUI::BindInterface(
@@ -259,8 +258,21 @@ void WebUIToolbarUI::CreateHelpBubbleHandler(
     mojo::PendingRemote<help_bubble::mojom::HelpBubbleClient> client,
     mojo::PendingReceiver<help_bubble::mojom::HelpBubbleHandler> handler) {
   help_bubble_handler_ = std::make_unique<user_education::HelpBubbleHandler>(
-      std::move(handler), std::move(client), this,
-      GetKnownElementIdentifiers());
+      std::move(handler), std::move(client),
+      ui::TrackedElementHandlerDocumentSingleton::GetOrCreate(
+          web_ui()->GetRenderFrameHost()));
+}
+
+void WebUIToolbarUI::CreatePageHandler(
+    mojo::PendingRemote<extensions_bar::mojom::Page> page,
+    mojo::PendingReceiver<extensions_bar::mojom::PageHandler> receiver) {
+  BrowserWindowInterface* browser_interface =
+      webui::GetBrowserWindowInterface(web_ui()->GetWebContents());
+  if (browser_interface) {
+    static_cast<WebUIToolbarExtensionsContainer*>(
+        ExtensionsContainer::From(*browser_interface))
+        ->Bind(std::move(page), std::move(receiver));
+  }
 }
 
 const std::vector<ui::ElementIdentifier>

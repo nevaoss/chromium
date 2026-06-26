@@ -363,11 +363,11 @@ class MockPasswordManagerClient : public StubPasswordManagerClient {
 class MockPasswordManagerDriver : public StubPasswordManagerDriver {
  public:
   MockPasswordManagerDriver() {
-    ON_CALL(*this, GetId()).WillByDefault(Return(0));
+    ON_CALL(*this, GetId()).WillByDefault(Return(DriverId(1)));
     ON_CALL(*this, IsInPrimaryMainFrame()).WillByDefault(Return(true));
   }
 
-  MOCK_METHOD(int, GetId, (), (const, override));
+  MOCK_METHOD(DriverId, GetId, (), (const, override));
   MOCK_METHOD(void,
               FormEligibleForGenerationFound,
               (const autofill::PasswordFormGenerationData&),
@@ -849,6 +849,20 @@ class PasswordManagerTestBase : public testing::Test {
 
   void OnPasswordFormSubmitted(const FormData& form_data) {
     manager()->OnPasswordFormSubmitted(&driver_, form_data);
+  }
+
+  void SetAffiliatedAndGroupedRealms(
+      const PasswordFormDigest& observed_form,
+      const std::vector<std::string>& affiliated_realms,
+      const std::vector<std::string>& grouped_realms = {},
+      bool repeatedly = false) {
+#if BUILDFLAG(IS_ANDROID)
+    store_->SetAffiliatedAndGroupedRealms(observed_form.signon_realm,
+                                          affiliated_realms, grouped_realms);
+#else
+    mock_match_helper_->ExpectCallToGetAffiliatedAndGrouped(
+        observed_form, affiliated_realms, grouped_realms, repeatedly);
+#endif
   }
 
   const GURL test_form_url_{"https://www.google.com/a/LoginAuth"};
@@ -2580,7 +2594,7 @@ TEST_P(PasswordManagerTest, HashSavedOnGaiaFormWithSkipSavePassword) {
 
   EXPECT_CALL(client_, PromptUserToSaveOrUpdatePassword).Times(0);
 
-  EXPECT_CALL(reuse_manager_, MaybeSavePasswordHash(_, _));
+  EXPECT_CALL(reuse_manager_, MaybeSavePasswordHash(_, _, _));
 
   OnPasswordFormSubmitted(form_data);
   observed.clear();
@@ -2675,7 +2689,7 @@ TEST_P(PasswordManagerTest, SyncCredentialsNotDroppedIfUpToDate) {
       .WillByDefault(Return(true));
   ON_CALL(*client_.GetStoreResultFilter(), IsSyncAccountEmail(_))
       .WillByDefault(Return(true));
-  EXPECT_CALL(reuse_manager_, MaybeSavePasswordHash(_, _));
+  EXPECT_CALL(reuse_manager_, MaybeSavePasswordHash(_, _, _));
 
   manager()->OnPasswordFormSubmitted(&driver_, form.form_data);
 
@@ -3493,8 +3507,8 @@ TEST_P(PasswordManagerTest, AutofillingOfAffiliatedCredentials) {
   EXPECT_CALL(driver_, PropagateFillDataOnParsingCompletion)
       .WillRepeatedly(SaveArg<0>(&form_data));
   store_->AddLogin(password_manager::FromPasswordForm(android_form));
-  mock_match_helper_->ExpectCallToGetAffiliatedAndGrouped(
-      PasswordFormDigest(observed_form), {android_form.signon_realm});
+  SetAffiliatedAndGroupedRealms(PasswordFormDigest(observed_form),
+                                {android_form.signon_realm});
   manager()->OnPasswordFormsParsed(&driver_, observed_forms);
   manager()->OnPasswordFormsRendered(&driver_, observed_forms);
   task_environment_.RunUntilIdle();
@@ -3555,8 +3569,8 @@ TEST_P(PasswordManagerTest, UpdatePasswordOfAffiliatedCredential) {
 
   EXPECT_CALL(driver_, PropagateFillDataOnParsingCompletion);
   store_->AddLogin(password_manager::FromPasswordForm(android_form));
-  mock_match_helper_->ExpectCallToGetAffiliatedAndGrouped(
-      PasswordFormDigest(observed_form), {android_form.signon_realm});
+  SetAffiliatedAndGroupedRealms(PasswordFormDigest(observed_form),
+                                {android_form.signon_realm});
   manager()->OnPasswordFormsParsed(&driver_, observed_forms);
   manager()->OnPasswordFormsRendered(&driver_, observed_forms);
   task_environment_.RunUntilIdle();
@@ -3809,7 +3823,7 @@ TEST_P(PasswordManagerTest, SaveSyncPasswordHashOnChangePasswordPage) {
       .WillByDefault(Return(true));
   ON_CALL(*client_.GetStoreResultFilter(), IsSyncAccountEmail(_))
       .WillByDefault(Return(true));
-  EXPECT_CALL(reuse_manager_, MaybeSavePasswordHash(_, _));
+  EXPECT_CALL(reuse_manager_, MaybeSavePasswordHash(_, _, _));
 
   client_.FilterAllResultsForSaving();
   OnPasswordFormSubmitted(form_data);
@@ -3862,7 +3876,7 @@ TEST_P(PasswordManagerTest, SaveOtherGaiaPasswordHashOnChangePasswordPage) {
 
   ON_CALL(*client_.GetStoreResultFilter(), ShouldSaveGaiaPasswordHash(_))
       .WillByDefault(Return(true));
-  EXPECT_CALL(reuse_manager_, MaybeSavePasswordHash(_, _));
+  EXPECT_CALL(reuse_manager_, MaybeSavePasswordHash(_, _, _));
 
   client_.FilterAllResultsForSaving();
   OnPasswordFormSubmitted(form_data);
@@ -3892,7 +3906,7 @@ TEST_P(PasswordManagerTest, SaveEnterprisePasswordHash) {
       .WillByDefault(Return(true));
   ON_CALL(*client_.GetStoreResultFilter(), IsSyncAccountEmail(_))
       .WillByDefault(Return(false));
-  EXPECT_CALL(reuse_manager_, MaybeSavePasswordHash(_, _));
+  EXPECT_CALL(reuse_manager_, MaybeSavePasswordHash(_, _, _));
   client_.FilterAllResultsForSaving();
   OnPasswordFormSubmitted(form_data);
 
@@ -5611,7 +5625,7 @@ TEST_P(PasswordManagerTest, FormSubmittedOnPrimaryMainFrame) {
   MockPasswordManagerDriver iframe_driver;
   EXPECT_CALL(iframe_driver, IsInPrimaryMainFrame())
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(iframe_driver, GetId()).WillRepeatedly(Return(123));
+  EXPECT_CALL(iframe_driver, GetId()).WillRepeatedly(Return(DriverId(123)));
   EXPECT_CALL(client_, PromptUserToSaveOrUpdatePassword).Times(0);
   manager()->OnPasswordFormsRendered(&iframe_driver, {} /* observed */);
   task_environment_.RunUntilIdle();
@@ -5630,7 +5644,7 @@ TEST_P(PasswordManagerTest, FormSubmittedOnIFrame) {
   // Submit |form| on an iframe.
   MockPasswordManagerDriver iframe_driver;
   ON_CALL(iframe_driver, IsInPrimaryMainFrame()).WillByDefault(Return(false));
-  ON_CALL(iframe_driver, GetId()).WillByDefault(Return(123));
+  ON_CALL(iframe_driver, GetId()).WillByDefault(Return(DriverId(123)));
   manager()->OnPasswordFormsParsed(&iframe_driver, {form_data});
   manager()->OnPasswordFormSubmitted(&iframe_driver, form_data);
   task_environment_.RunUntilIdle();
@@ -5639,7 +5653,8 @@ TEST_P(PasswordManagerTest, FormSubmittedOnIFrame) {
   MockPasswordManagerDriver another_iframe_driver;
   EXPECT_CALL(another_iframe_driver, IsInPrimaryMainFrame())
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(another_iframe_driver, GetId()).WillRepeatedly(Return(456));
+  EXPECT_CALL(another_iframe_driver, GetId())
+      .WillRepeatedly(Return(DriverId(456)));
   EXPECT_CALL(client_, PromptUserToSaveOrUpdatePassword).Times(0);
   manager()->OnPasswordFormsRendered(&another_iframe_driver, {} /* observed */);
   task_environment_.RunUntilIdle();
@@ -5660,7 +5675,7 @@ TEST_P(PasswordManagerTest, FormSubmittedOnIFramePrimaryMainFrameLoaded) {
   // Simulate a form submission on an iframe.
   MockPasswordManagerDriver iframe_driver;
   ON_CALL(iframe_driver, IsInPrimaryMainFrame()).WillByDefault(Return(false));
-  ON_CALL(iframe_driver, GetId()).WillByDefault(Return(123));
+  ON_CALL(iframe_driver, GetId()).WillByDefault(Return(DriverId(123)));
   manager()->OnPasswordFormsParsed(&iframe_driver, {form_data});
   manager()->OnPasswordFormSubmitted(&iframe_driver, form_data);
   task_environment_.RunUntilIdle();
@@ -5830,7 +5845,7 @@ TEST_P(PasswordManagerTest, NoAutomaticPromptOnGroupedMatchSave) {
       .set_value(saved_match.password_value);
 
   // `saved_match` credential will be considered as a grouped match.
-  mock_match_helper_->ExpectCallToGetAffiliatedAndGrouped(
+  SetAffiliatedAndGroupedRealms(
       PasswordFormDigest(password_form),
       /*affiliated_realms=*/{password_form.signon_realm},
       /*grouped_realms=*/{saved_match.signon_realm, password_form.signon_realm},

@@ -71,6 +71,10 @@ public class PrivacyPreferencesManagerImpl implements PrivacyPreferencesManager 
 
         mNativeInitialized = true;
 
+        mPrefs.writeBoolean(
+                ChromePreferenceKeys.PRIVACY_SHOULD_USE_METRICS_CHOICE_RESTRUCTURE,
+                shouldUseMetricsChoiceRestructure());
+
         createPolicyServiceObserver();
     }
 
@@ -230,8 +234,8 @@ public class PrivacyPreferencesManagerImpl implements PrivacyPreferencesManager 
         return getCrashUploadPermittedSupplier();
     }
 
-    public boolean shouldUseMetricsConsentRestructure() {
-        return PrivacyPreferencesManagerImplJni.get().shouldUseMetricsConsentRestructure();
+    public boolean shouldUseMetricsChoiceRestructure() {
+        return PrivacyPreferencesManagerImplJni.get().shouldUseMetricsChoiceRestructure();
     }
 
     @NativeMethods
@@ -242,6 +246,6 @@ public class PrivacyPreferencesManagerImpl implements PrivacyPreferencesManager 
 
         boolean isMetricsReportingDisabledByPolicy();
 
-        boolean shouldUseMetricsConsentRestructure();
+        boolean shouldUseMetricsChoiceRestructure();
     }
 }

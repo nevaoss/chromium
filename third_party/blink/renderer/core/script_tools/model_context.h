@@ -53,6 +53,8 @@ class DeclarativeWebMCPTool : public GarbageCollectedMixin {
 
   virtual String ToolDescription() const = 0;
 
+  virtual String ToolTitle() const = 0;
+
   // Returns the input json-schema associated with the tool.
   virtual String ComputeInputSchema() = 0;
 
@@ -120,7 +122,7 @@ class CORE_EXPORT ModelContext : public EventTarget,
   DEFINE_WRAPPERTYPEINFO();
 
  public:
-  ModelContext(Document& document, scoped_refptr<base::SingleThreadTaskRunner>);
+  ModelContext(Document& document);
 
   DEFINE_ATTRIBUTE_EVENT_LISTENER(toolchange, kToolchange)
 

@@ -35,6 +35,11 @@ export enum VoiceSearchAction {
   QUERY_SUBMITTED = 1,
 }
 
+export enum SubmitButtonIconType {
+  FORWARD = 'forward',
+  UPWARD = 'upward',
+}
+
 const PERMISSION_PROMPT_CSS_CLASS = 'embedded-permission-prompt-showing';
 
 type Constructor<T> = new (...args: any[]) => T;
@@ -73,6 +78,7 @@ export const ComposeboxEmbedderMixin =
             smartTabSharingActive: {type: Boolean},
             shouldShowGhostFiles: {type: Boolean},
             showMenuOnClick: {type: Boolean},
+            submitButtonIconType: {type: String},
             isCanvasQuerySubmitted: {type: Boolean},
             canSubmitFilesAndInput: {
               type: Boolean,
@@ -218,6 +224,8 @@ export const ComposeboxEmbedderMixin =
             loadTimeData.getString('searchboxComposePlaceholder');
         accessor inputState: InputState|null = null;
         accessor inToolMode: boolean = false;
+        accessor submitButtonIconType: SubmitButtonIconType =
+            SubmitButtonIconType.UPWARD;
         // Indicates if voice search overlay is open. Does not indicate if it
         // is 'listening'. This is because there might be an error scrim showing
         // (see `hasVoiceSearchError`), making voice search not 'listening'.
@@ -429,6 +437,9 @@ export const ComposeboxEmbedderMixin =
               // focus leaves the match.
               this.input = this.lastQueriedInput;
             }
+          }
+          if (changedPrivateProperties.has('files')) {
+            this.dispatchEvent(new CustomEvent('on-context-files-changed'));
           }
           if (changedPrivateProperties.has('smartComposeInlineHint')) {
             if (this.smartComposeAnnounceTimeout_ !== null) {
@@ -1786,6 +1797,7 @@ export const ComposeboxEmbedderMixin =
                   iconName: null,
                   supportsUnimodal: true,
                   thumbnailUrl: file.thumbnailUrl ?? null,
+                  iconUrl: file.iconUrl ?? null,
                 });
             composeboxFiles.set(file.token, attachment);
 
@@ -2000,6 +2012,21 @@ export const ComposeboxEmbedderMixin =
         async refreshTabSuggestions() {
           const {tabs} = await this.getSearchboxHandler().getRecentTabs();
           this.recentTabId = tabs[0]?.tabId ?? null;
+
+          const openTabIds = new Set(tabs.map(t => t.tabId));
+          // Gather UUIDs in a temporary array to prevent modifying `this.files`
+          // mid-iteration, since `deleteFile()` replaces the Map reference.
+          const uuidsToDelete: UnguessableToken[] = [];
+
+          this.files.forEach((file, uuid) => {
+            if (file.tabId && !openTabIds.has(file.tabId)) {
+              uuidsToDelete.push(uuid);
+            }
+          });
+          uuidsToDelete.forEach(uuid => {
+            this.deleteFile(uuid, /*fromUserAction=*/ false);
+          });
+
           if (!this.contextMenuOpened) {
             this.tabSuggestions = [...tabs];
             return;
@@ -2161,6 +2188,16 @@ export const ComposeboxEmbedderMixin =
           return this.searchboxNextEnabled && this.submitEnabled;
         }
 
+        shouldDisableFileInputs(): boolean {
+          return !this.contextMenuEnabled || !this.showMenuOnClick;
+        }
+
+        computeCancelButtonTitle(): string {
+          return this.input.trim().length > 0 || this.files.size > 0 ?
+              this.i18n('composeboxCancelButtonTitleInput') :
+              this.i18n('composeboxCancelButtonTitle');
+        }
+
         computeShowDropdown() {
           // Don't show dropdown if there's multiple files.
           if (this.files.size > 1) {
@@ -2276,6 +2313,7 @@ export interface ComposeboxEmbedderMixinInterface extends
   smartComposeStats: SmartComposeStats;
   state: ComposeboxState|null;
   submitEnabled: boolean;
+  submitButtonIconType: SubmitButtonIconType;
   tabSuggestions: TabInfo[];
   transcript: string;
   uploadButtonDisabled: boolean;
@@ -2422,4 +2460,6 @@ export interface ComposeboxEmbedderMixinInterface extends
   shouldShowDivider(): boolean;
   shouldShowSubmitButton(): boolean;
   computeShowDropdown(): boolean;
+  shouldDisableFileInputs(): boolean;
+  computeCancelButtonTitle(): string;
 }

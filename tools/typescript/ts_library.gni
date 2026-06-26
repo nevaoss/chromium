@@ -3,8 +3,11 @@
 # found in the LICENSE file.
 
 import("//third_party/node/node.gni")
-import("//third_party/typescript/tsgo.gni")
 import("//ui/webui/webui_features.gni")
+
+if (use_typescript_go) {
+  import("//third_party/typescript/tsgo.gni")
+}
 
 template("ts_library") {
   node(target_name) {

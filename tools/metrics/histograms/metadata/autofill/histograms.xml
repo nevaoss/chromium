@@ -2176,6 +2176,17 @@ Called by update_autofill_enums.py. This is a manual comment.-->
   </summary>
 </histogram>
 
+<histogram name="Autofill.AtMemory.Funnel.SuggestionFilled" enum="Boolean"
+    expires_after="2027-03-09">
+  <owner>sygiet@google.com</owner>
+  <owner>chrome-autofill-alerts@google.com</owner>
+  <summary>
+    Records whether a suggestion was filled after accepting the @memory
+    suggestion. Recorded after the popup is hidden and all fetching and
+    authentication calls finished.
+  </summary>
+</histogram>
+
 <histogram
     name="Autofill.Autocomplete.NotOff.EditedAutofilledFieldAtSubmission2{AutofillFormType}"
     enum="AutofilledFieldUserEditingStatus" expires_after="2027-04-12">
@@ -2331,7 +2342,7 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 </histogram>
 
 <histogram name="Autofill.AutofillAi.ModelCache.InitSuccess" enum="Boolean"
-    expires_after="2026-09-06">
+    expires_after="2026-11-22">
   <owner>jkeitel@google.com</owner>
   <owner>schwering@google.com</owner>
   <owner>chrome-autofill-alerts@google.com</owner>
@@ -4981,7 +4992,7 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 </histogram>
 
 <histogram name="Autofill.iOS.FormActivity.SendRatio" units="%"
-    expires_after="2026-09-20">
+    expires_after="2026-11-22">
   <owner>vincb@google.com</owner>
   <owner>eic@google.com</owner>
   <owner>bling-transactions@google.com</owner>
@@ -5527,7 +5538,8 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 </histogram>
 
 <histogram name="Autofill.Message.{MessageType}.{Event}" enum="BooleanShown"
-    expires_after="2026-06-01">
+    expires_after="2027-05-01">
+  <owner>tchudakov@google.com</owner>
   <owner>darwinyang@google.com</owner>
   <owner>chrome-payments-eng@google.com</owner>
   <summary>
@@ -5590,7 +5602,7 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 </histogram>
 
 <histogram name="Autofill.NumberOfFieldsPerAutofill" units="count"
-    expires_after="2026-09-20">
+    expires_after="2026-11-22">
   <owner>schwering@google.com</owner>
   <owner>chrome-autofill-alerts@google.com</owner>
   <summary>
@@ -5711,6 +5723,16 @@ Called by update_autofill_enums.py. This is a manual comment.-->
   <summary>
     Records the duration of the OAuth token fetch for the Gmail OTP backend.
     Recorded when the access token fetch completes.
+  </summary>
+</histogram>
+
+<histogram name="Autofill.OneTimeTokens.Backend.Gmail.ErrorCode"
+    enum="GmailOneTimeTokensBackendErrorCode" expires_after="2027-05-01">
+  <owner>koerber@google.com</owner>
+  <owner>src/components/one_time_tokens/OWNERS</owner>
+  <summary>
+    Records the error encountered while attempting to retrieve Gmail one time
+    tokens. Recorded when a retrieval attempt fails.
   </summary>
 </histogram>
 
@@ -6396,7 +6418,7 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 </histogram>
 
 <histogram name="Autofill.PopupHidingReason"
-    enum="AutofillSuggestionHidingReason" expires_after="2026-11-15">
+    enum="AutofillSuggestionHidingReason" expires_after="2026-11-22">
   <owner>koerber@google.com</owner>
   <owner>mamir@chromium.org</owner>
   <summary>
@@ -7130,7 +7152,7 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 </histogram>
 
 <histogram name="Autofill.ResetAutofillPrefToChrome" enum="Boolean"
-    expires_after="2026-09-20">
+    expires_after="2026-11-22">
   <owner>friedrichh@chromium.org</owner>
   <owner>chrome-autofill-alerts@google.com</owner>
   <summary>
@@ -8674,7 +8696,7 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 </histogram>
 
 <histogram name="Autofill.Timing.AddressRewriter.Rewrite" units="ms"
-    expires_after="2026-09-20">
+    expires_after="2026-11-22">
   <owner>picarella@google.com</owner>
   <owner>mmaryia@google.com</owner>
   <owner>chrome-autofill-alerts@google.com</owner>
@@ -9978,11 +10000,12 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 
 <histogram name="Autofill.YourSavedInfoSettingsPage.CategoryLinkClick"
     enum="YourSavedInfoDataCategory" expires_after="2026-10-28">
-  <owner>ireneuszszulc@google.com</owner>
+  <owner>mikhe@google.com</owner>
   <owner>chrome-autofill-alerts@google.com</owner>
   <summary>
     Records clicks on data categories in the 'Your saved info' settings page.
-    Emitted on every click on such a data category. Recorded on Desktop only.
+    Emitted on every click on such a data category. Recorded on Desktop and
+    Android.
   </summary>
 </histogram>
 
@@ -10015,13 +10038,14 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 
 <histogram name="Autofill.YourSavedInfoSettingsPage.VisitReferrer"
     enum="AutofillSettingsReferrer" expires_after="2026-10-28">
-  <owner>ireneuszszulc@google.com</owner>
+  <owner>mikhe@google.com</owner>
   <owner>chrome-autofill-alerts@google.com</owner>
   <summary>
     Records the entry point (referrer) every time the user visits the 'Your
     saved info' settings page from a tracked entry point. This metric is emitted
     on navigation to the page, with the enum values distinguishing the entry
-    points (different ways of reaching the page). Only applicable on Desktop.
+    points (different ways of reaching the page). Recorded on Desktop and
+    Android.
   </summary>
 </histogram>
 

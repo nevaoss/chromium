@@ -220,6 +220,9 @@ id<GREYMatcher> LocationViewEmpty();
 // Returns a matcher for Tools menu button.
 id<GREYMatcher> ToolsMenuButton();
 
+// Returns a matcher for the Tools menu button on the NTP.
+id<GREYMatcher> ToolsMenuNTPButton();
+
 // Returns a matcher for the New Tab button, which can be long-pressed for a
 // menu.
 id<GREYMatcher> NewTabButton();
@@ -238,6 +241,9 @@ id<GREYMatcher> TabShareButton();
 // DO NOT use this matcher to open the tab grid. Instead use one of the helpers:
 // `[ChromeEarlGrey  showTabSwitcher]` or `[ChromeEarlGreyUI openTabGrid]`.
 id<GREYMatcher> ShowTabsButton();
+
+// Returns a matcher for the Show Tabs button with a specific count.
+id<GREYMatcher> ShowTabsButtonWithCount(NSString* count);
 
 // Returns a matcher for the blue dot on the show tabs button.
 id<GREYMatcher> BlueDotOnShowTabsButton();

@@ -92,7 +92,7 @@ void ContinueGenerateMHTMLParts(
                                       *output->MutableData());
     }
   }
-  std::move(callback).Run(WebThreadSafeData(output));
+  std::move(callback).Run(WebThreadSafeData(std::move(output)));
 }
 
 }  // namespace
@@ -113,7 +113,7 @@ WebThreadSafeData WebFrameSerializer::GenerateMHTMLHeader(
   MHTMLArchive::GenerateMHTMLHeader(
       boundary, document->Url(), document->title(),
       document->SuggestedMIMEType(), base::Time::Now(), *buffer->MutableData());
-  return WebThreadSafeData(buffer);
+  return WebThreadSafeData(std::move(buffer));
 }
 
 void WebFrameSerializer::GenerateMHTMLParts(

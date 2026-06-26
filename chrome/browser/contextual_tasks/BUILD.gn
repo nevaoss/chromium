@@ -356,6 +356,7 @@ source_set("ui_impl") {
     "//chrome/browser/ui/navigator",
     "//chrome/browser/ui/select_file_policy",
     "//chrome/browser/ui/tabs:tabs_public",
+    "//chrome/browser/ui/webui:plural_string_handler",
     "//chrome/browser/ui/webui:webui_util",
     "//chrome/browser/ui/webui/sanitized_image:sanitized_image_source",
     "//components/application_locale_storage",
@@ -377,6 +378,7 @@ source_set("ui_impl") {
     "//net",
     "//pdf:buildflags",
     "//ui/webui:buildflags",
+    "//ui/webui/tracked_element",
   ]
 
   if (is_android) {
@@ -644,6 +646,7 @@ source_set("interactive_ui_tests") {
   deps = [
     ":contextual_tasks",
     ":impl",
+    ":test_support",
     "//base",
     "//base/test:test_support",
     "//chrome/browser/tab_list",
@@ -654,6 +657,8 @@ source_set("interactive_ui_tests") {
     "//testing/gmock",
     "//testing/gtest",
   ]
+
+  public_deps = [ "//components/omnibox/common:features" ]
 
   if (enable_dice_support) {
     sources += [ "search_ai_mode_promo_tab_helper_interactive_uitest.cc" ]

@@ -13,7 +13,6 @@
 #include "chrome/browser/context_sharing/tab_bottom_sheet/android/co_browse_views_bridge.h"
 #include "chrome/browser/context_sharing/tab_bottom_sheet/android/tab_bottom_sheet_bridge.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
-#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/web_contents.h"
 
@@ -32,10 +31,9 @@ GlicSidePanelCoordinatorAndroid::GlicSidePanelCoordinatorAndroid(
       base::BindRepeating(&GlicSidePanelCoordinatorAndroid::OnTabWillDetach,
                           base::Unretained(this)));
 
-  browser_observation_.Observe(GlobalBrowserCollection::GetInstance());
-
   views_bridge_ = std::make_unique<context_sharing::CoBrowseViewsBridge>(
-      *tab, context_sharing::TabBottomSheetClientType::kGlic);
+      *tab, context_sharing::TabBottomSheetClientType::kGlic,
+      context_sharing::CoBrowseContainerType::kBottomSheet);
   tab_bottom_sheet_bridge_ =
       std::make_unique<context_sharing::TabBottomSheetBridge>(this, tab);
 }
@@ -52,7 +50,7 @@ void GlicSidePanelCoordinatorAndroid::Show(const ShowOptions& options) {
     return;
   }
 
-  views_bridge_->SetWebContents(web_contents_.get());
+  views_bridge_->SetWebContents(web_contents_.get(), /*request_focus=*/false);
   bool shown = tab_bottom_sheet_bridge_->Show(
       views_bridge_->GetCoBrowseViews(),
       /*animate=*/!options.suppress_animations,
@@ -81,7 +79,7 @@ void GlicSidePanelCoordinatorAndroid::SetWebContents(
   } else {
     web_contents_.reset();
   }
-  views_bridge_->SetWebContents(web_contents);
+  views_bridge_->SetWebContents(web_contents, /*request_focus=*/false);
 }
 
 void GlicSidePanelCoordinatorAndroid::Close(const CloseOptions& options) {
@@ -95,6 +93,11 @@ void GlicSidePanelCoordinatorAndroid::Close(const CloseOptions& options) {
   }
 
   tab_bottom_sheet_bridge_->Close(/* animate= */ !options.suppress_animations);
+}
+
+void GlicSidePanelCoordinatorAndroid::SuppressBottomSheetForTesting(  // IN-TEST
+    bool suppress) {
+  tab_bottom_sheet_bridge_->SuppressBottomSheetForTesting(suppress);  // IN-TEST
 }
 
 bool GlicSidePanelCoordinatorAndroid::IsShowing() const {
@@ -165,30 +168,6 @@ void GlicSidePanelCoordinatorAndroid::OnTabWillDetach(
       SetState(State::kBackgrounded);
       tab_bottom_sheet_bridge_->Close(/* animate= */ false);
     }
-  }
-}
-
-void GlicSidePanelCoordinatorAndroid::OnBrowserActivated(
-    BrowserWindowInterface* browser) {
-  if (state_ == State::kClosed) {
-    return;
-  }
-  if (tab_->GetBrowserWindowInterface() == browser) {
-    ShowOptions options;
-    options.suppress_animations = true;
-    options.initial_state = ShowOptions::InitialState::kPeeked;
-    Show(options);
-  }
-}
-
-void GlicSidePanelCoordinatorAndroid::OnBrowserDeactivated(
-    BrowserWindowInterface* browser) {
-  if (state_ == State::kClosed) {
-    return;
-  }
-  if (tab_->GetBrowserWindowInterface() == browser) {
-    SetState(State::kBackgrounded);
-    tab_bottom_sheet_bridge_->Close(/*animate=*/false);
   }
 }
 

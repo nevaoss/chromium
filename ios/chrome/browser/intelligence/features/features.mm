@@ -388,6 +388,12 @@ bool IsGeminiUpdatedEligibilityEnabled() {
   return base::FeatureList::IsEnabled(kGeminiUpdatedEligibility);
 }
 
+BASE_FEATURE(kGeminiUpdatedConsent, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsGeminiUpdatedConsentEnabled() {
+  return base::FeatureList::IsEnabled(kGeminiUpdatedConsent);
+}
+
 BASE_FEATURE(kGeminiImageRemixTool, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsGeminiImageRemixToolEnabled() {
@@ -567,6 +573,17 @@ BASE_FEATURE_PARAM(base::TimeDelta,
                    &kActorTools,
                    base::Seconds(10));
 
+// These mirrors the Desktop equivalents at:
+// https://source.chromium.org/chromium/chromium/src/+/main:components/page_content_annotations/core/page_content_annotations_features.cc;l=152-157;drc=17a4f936106fad40f48b69820687df64ff45b77c
+BASE_FEATURE_PARAM(base::TimeDelta,
+                   kActorPageStabilityTimeout,
+                   &kActorTools,
+                   base::Seconds(4));
+BASE_FEATURE_PARAM(base::TimeDelta,
+                   kActorPageStabilityMinWait,
+                   &kActorTools,
+                   base::Seconds(1));
+
 bool IsActorEnabled() {
   return base::FeatureList::IsEnabled(kActorTools);
 }
@@ -581,6 +598,16 @@ base::TimeDelta GetActorObservationDelayTimeout() {
   // TODO(crbug.com/498991756): remove when the feature is launched.
   CHECK(IsPageStabilityEnabled());
   return kObservationDelayTimeout.Get();
+}
+
+base::TimeDelta GetActorPageStabilityMinWait() {
+  CHECK(IsPageStabilityEnabled());
+  return kActorPageStabilityMinWait.Get();
+}
+
+base::TimeDelta GetActorPageStabilityTimeout() {
+  CHECK(IsPageStabilityEnabled());
+  return kActorPageStabilityTimeout.Get();
 }
 
 bool IsToolDisabled(optimization_guide::proto::Action::ActionCase tool) {

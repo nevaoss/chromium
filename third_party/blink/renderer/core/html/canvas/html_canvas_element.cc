@@ -631,7 +631,7 @@ CanvasRenderingContext* HTMLCanvasElement::GetCanvasRenderingContextInternal(
   if (!IsRenderingContext2D())
     SetNeedsCompositingUpdate();
 
-  is_opaque_ = SkAlphaTypeIsOpaque(GetRenderingContextAlphaType());
+  is_opaque_ = IsOpaque();
   if (cc_layer_) {
     cc_layer_->SetContentsOpaque(is_opaque_);
     cc_layer_->SetBlendBackgroundColor(!is_opaque_);
@@ -1054,8 +1054,7 @@ void HTMLCanvasElement::NotifyListenersCanvasChanged() {
             IsGpuMemoryBufferReadbackFromTextureEnabled());
   }
 
-  const bool context_color_is_opaque =
-      context_ && SkAlphaTypeIsOpaque(context_->GetAlphaType());
+  const bool context_color_is_opaque = IsOpaque();
 
   for (CanvasDrawListener* listener : listeners_) {
     if (!listener->NeedsNewFrame())
@@ -1207,7 +1206,7 @@ void HTMLCanvasElement::PaintInternal(GraphicsContext& context,
     // `FlushRecording` might be a no-op if a flush already happened before.
     // Fortunately, the last flush recording was kept by the context.
     const std::optional<cc::PaintRecord>& last_recording =
-        RenderingContext()->GetLastRecordingForCanvas2D();
+        RenderingContext()->GetLastRecording();
     if (last_recording.has_value() &&
         filter_quality_ != cc::PaintFlags::FilterQuality::kNone) {
       context.Canvas()->save();
@@ -1958,7 +1957,7 @@ void HTMLCanvasElement::SetOffscreenCanvasResource(
 }
 
 bool HTMLCanvasElement::IsOpaque() const {
-  return context_ && !context_->CreationAttributes().alpha;
+  return RenderingContext() && RenderingContext()->IsOpaque();
 }
 
 bool HTMLCanvasElement::CreateLayer() {

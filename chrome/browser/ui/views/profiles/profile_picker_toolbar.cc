@@ -4,6 +4,7 @@
 
 #include "chrome/browser/ui/views/profiles/profile_picker_toolbar.h"
 
+#include <memory>
 #include <optional>
 #include <utility>
 
@@ -39,14 +40,41 @@ namespace {
 constexpr gfx::Insets kToolbarPadding =
     gfx::Insets(8).set_left(16).set_right(16);
 
-class SimpleBackButton : public ToolbarButton {
-  METADATA_HEADER(SimpleBackButton, ToolbarButton)
+class ProfilePickerToolbarButton : public ToolbarButton {
+  METADATA_HEADER(ProfilePickerToolbarButton, ToolbarButton)
 
  public:
-  explicit SimpleBackButton(PressedCallback callback)
+  explicit ProfilePickerToolbarButton(PressedCallback callback)
       : ToolbarButton(std::move(callback)) {
     SetTriggerableEventFlags(ui::EF_LEFT_MOUSE_BUTTON |
                              ui::EF_MIDDLE_MOUSE_BUTTON);
+    // Unlike usual toolbar buttons, these should be focusable to make them
+    // consistent with other screens of the flow where the button is part of the
+    // page.
+    SetFocusBehavior(FocusBehavior::ALWAYS);
+
+    // Ensure the button's layer is a non-opaque so it shows through the
+    // transparent background.
+    SetPaintToLayer();
+    CHECK_DEREF(layer()).SetFillsBoundsOpaquely(false);
+  }
+
+  ProfilePickerToolbarButton(const ProfilePickerToolbarButton&) = delete;
+  ProfilePickerToolbarButton& operator=(const ProfilePickerToolbarButton&) =
+      delete;
+
+  ~ProfilePickerToolbarButton() override = default;
+};
+
+BEGIN_METADATA(ProfilePickerToolbarButton)
+END_METADATA
+
+class SignInBackButton : public ProfilePickerToolbarButton {
+  METADATA_HEADER(SignInBackButton, ProfilePickerToolbarButton)
+
+ public:
+  explicit SignInBackButton(PressedCallback callback)
+      : ProfilePickerToolbarButton(std::move(callback)) {
     SetVectorIcons(features::IsRoundedIconsEnabled()
                        ? vector_icons::kArrowBackIcon
                        : vector_icons::kBackArrowOldIcon,
@@ -54,34 +82,26 @@ class SimpleBackButton : public ToolbarButton {
                                                      : kBackArrowTouchOldIcon);
     SetTooltipText(l10n_util::GetStringUTF16(
         IDS_PROFILE_PICKER_BACK_BUTTON_SIGN_IN_LABEL));
-    // Unlike toolbar buttons, this one should be focusable to make it
-    // consistent with other screens of the flow where the back button is part
-    // of the page.
-    SetFocusBehavior(FocusBehavior::ALWAYS);
   }
-  SimpleBackButton(const SimpleBackButton&) = delete;
-  SimpleBackButton& operator=(const SimpleBackButton&) = delete;
-  ~SimpleBackButton() override = default;
+
+  SignInBackButton(const SignInBackButton&) = delete;
+  SignInBackButton& operator=(const SignInBackButton&) = delete;
+
+  ~SignInBackButton() override = default;
 };
 
-BEGIN_METADATA(SimpleBackButton)
+BEGIN_METADATA(SignInBackButton)
 END_METADATA
 
-class DontSignInButton : public ToolbarButton {
-  METADATA_HEADER(DontSignInButton, ToolbarButton)
+class DontSignInButton : public ProfilePickerToolbarButton {
+  METADATA_HEADER(DontSignInButton, ProfilePickerToolbarButton)
 
  public:
   explicit DontSignInButton(PressedCallback callback)
-      : ToolbarButton(std::move(callback)) {
-    SetTriggerableEventFlags(ui::EF_LEFT_MOUSE_BUTTON |
-                             ui::EF_MIDDLE_MOUSE_BUTTON);
+      : ProfilePickerToolbarButton(std::move(callback)) {
     SetHighlight(l10n_util::GetStringUTF16(
                      IDS_FRE_NATIVE_TOOLBAR_DONT_SIGN_IN_BUTTON_LABEL),
                  SK_ColorTRANSPARENT);
-    // Unlike usual toolbar buttons, this one should be focusable to make it
-    // consistent with the first screen of the flow where the "Don't sign in"
-    // button is part of the page.
-    SetFocusBehavior(FocusBehavior::ALWAYS);
     SetHorizontalAlignment(gfx::ALIGN_CENTER);
     SetProperty(views::kElementIdentifierKey,
                 kProfilePickerToolbarDontSignInButtonElementId);
@@ -120,6 +140,29 @@ END_METADATA
 
 }  // namespace
 
+ProfilePickerToolbar::Builder::Builder(base::RepeatingClosure on_back_callback)
+    : on_back_callback_(std::move(on_back_callback)) {}
+
+ProfilePickerToolbar::Builder::~Builder() = default;
+
+ProfilePickerToolbar::Builder&
+ProfilePickerToolbar::Builder::WithDontSignInButton(
+    base::RepeatingClosure on_dont_sign_in_callback) {
+  on_dont_sign_in_callback_ = std::move(on_dont_sign_in_callback);
+  return *this;
+}
+
+std::unique_ptr<ProfilePickerToolbar> ProfilePickerToolbar::Builder::Build() {
+  auto toolbar = base::WrapUnique(new ProfilePickerToolbar());
+  toolbar->AddBackButton(on_back_callback_);
+  if (!on_dont_sign_in_callback_.is_null()) {
+    // Add a spacer to push the subsequent button to the other side.
+    toolbar->AddSpacer();
+    toolbar->AddDontSignInButton(on_dont_sign_in_callback_);
+  }
+  return toolbar;
+}
+
 ProfilePickerToolbar::ProfilePickerToolbar() {
   SetLayoutManager(std::make_unique<views::FlexLayout>())
       ->SetOrientation(views::LayoutOrientation::kHorizontal)
@@ -132,45 +175,66 @@ ProfilePickerToolbar::ProfilePickerToolbar() {
               views::FlexSpecification(views::MinimumFlexSizeRule::kPreferred,
                                        views::MaximumFlexSizeRule::kUnbounded)
                   .WithWeight(1));
+
+  // Set the background to transparent to inherit the color from the underlying
+  // WebUI / WebView.
+  SetBackground(views::CreateSolidBackground(SK_ColorTRANSPARENT));
 }
 
 ProfilePickerToolbar::~ProfilePickerToolbar() = default;
 
-void ProfilePickerToolbar::BuildToolbar(
-    base::RepeatingClosure on_back_callback,
+void ProfilePickerToolbar::AddSpacer() {
+  auto spacer = std::make_unique<views::View>();
+  spacer->SetProperty(
+      views::kFlexBehaviorKey,
+      views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToZero,
+                               views::MaximumFlexSizeRule::kUnbounded)
+          .WithWeight(1));
+  AddChildView(std::move(spacer));
+}
+
+void ProfilePickerToolbar::AddBackButton(
+    base::RepeatingClosure on_back_callback) {
+  CHECK(sign_in_back_button_ == nullptr);
+  CHECK(!on_back_callback.is_null());
+  sign_in_back_button_ = AddChildView(
+      std::make_unique<SignInBackButton>(std::move(on_back_callback)));
+  sign_in_back_button_->SetVisible(false);
+}
+
+void ProfilePickerToolbar::AddDontSignInButton(
     base::RepeatingClosure on_dont_sign_in_callback) {
-  DCHECK(children().empty());
-  // Create the toolbar back button.
-  auto back_button =
-      std::make_unique<SimpleBackButton>(std::move(on_back_callback));
-  AddChildView(std::move(back_button));
+  CHECK(dont_sign_in_button_ == nullptr);
+  CHECK(!on_dont_sign_in_callback.is_null());
+  dont_sign_in_button_ = AddChildView(
+      std::make_unique<DontSignInButton>(std::move(on_dont_sign_in_callback)));
+  dont_sign_in_button_->SetVisible(false);
+}
 
-  // Only build the spacer and the button if the callback is valid.
-  if (!on_dont_sign_in_callback.is_null()) {
-    // Push the "Don't sign in" button to the right.
-    auto spacer = std::make_unique<views::View>();
-    spacer->SetProperty(
-        views::kFlexBehaviorKey,
-        views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToZero,
-                                 views::MaximumFlexSizeRule::kUnbounded)
-            .WithWeight(1));
-    AddChildView(std::move(spacer));
-    dont_sign_in_button_ = AddChildView(std::make_unique<DontSignInButton>(
-        std::move(on_dont_sign_in_callback)));
+void ProfilePickerToolbar::SetSigninButtonsVisible(bool visible) {
+  SetBackButtonVisible(visible);
+  SetDontSignInButtonVisible(visible);
+}
+
+bool ProfilePickerToolbar::AreSigninButtonsVisibleForTesting() const {
+  if (!GetVisible()) {
+    // If the toolbar itself is not visible, then no buttons are visible.
+    return false;
   }
-
-  // Set the background to transparent to inherit the color from sign-in page.
-  SetBackground(views::CreateSolidBackground(SK_ColorTRANSPARENT));
-  // Ensure toolbar is drawn on top of the WebView. Mark it as non-opaque to let
-  // the web content show through the transparent background.
-  SetPaintToLayer();
-  CHECK_DEREF(layer()).SetFillsBoundsOpaquely(false);
+  return CHECK_DEREF(sign_in_back_button_).GetVisible() ||
+         (dont_sign_in_button_ && dont_sign_in_button_->GetVisible());
 }
 
 void ProfilePickerToolbar::SetDontSignInButtonVisible(bool visible) {
   if (dont_sign_in_button_) {
     dont_sign_in_button_->SetVisible(visible);
   }
+}
+
+void ProfilePickerToolbar::SetBackButtonVisible(bool visible) {
+  // The back button should always be created.
+  CHECK(sign_in_back_button_);
+  sign_in_back_button_->SetVisible(visible);
 }
 
 BEGIN_METADATA(ProfilePickerToolbar)

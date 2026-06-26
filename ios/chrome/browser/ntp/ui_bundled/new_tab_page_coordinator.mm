@@ -46,7 +46,6 @@
 #import "ios/chrome/browser/authentication/ui_bundled/signin/signin_utils.h"
 #import "ios/chrome/browser/bubble/ui_bundled/bubble_view_controller_presenter.h"
 #import "ios/chrome/browser/composebox/coordinator/composebox_availability.h"
-#import "ios/chrome/browser/composebox/menu/coordinator/composebox_menu_coordinator.h"
 #import "ios/chrome/browser/content_suggestions/coordinator/content_suggestions_coordinator.h"
 #import "ios/chrome/browser/content_suggestions/coordinator/content_suggestions_delegate.h"
 #import "ios/chrome/browser/content_suggestions/coordinator/content_suggestions_mediator.h"
@@ -90,6 +89,7 @@
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_delegate.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_feature.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_header_commands.h"
+#import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_header_view.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_header_view_controller.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_mediator.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_shortcuts_handler.h"
@@ -160,7 +160,6 @@
 
 @interface NewTabPageCoordinator () <AccountMenuCoordinatorDelegate,
                                      AuthenticationServiceObserving,
-                                     ComposeboxMenuCoordinatorDelegate,
                                      ContentSuggestionsDelegate,
                                      DiscoverFeedObserverBridgeDelegate,
                                      DiscoverFeedPreviewDelegate,
@@ -304,8 +303,6 @@
   SearchEngineLogoMediator* _searchEngineLogoMediator;
   // The Safari data import used by the content suggestions.
   SafariDataImportExportCoordinator* _safariDataImportExportCoordinator;
-  // The coordinator showing the multimodal composebox menu.
-  ComposeboxMenuCoordinator* _composeboxMenuCoordinator;
 }
 
 // Synthesize NewTabPageConfiguring properties.
@@ -366,6 +363,17 @@
 
   [self initializeServices];
   [self initializeNTPComponents];
+
+  [self configureHeaderViewController];
+  [self configureNTPMediator];
+  if ([self.NTPMediator isFeedHeaderVisible]) {
+    [self configureFeedAndHeader];
+  }
+  [self configureContentSuggestionsCoordinator];
+  self.feedMetricsRecorder.NTPActionsDelegate = self;
+  [self configureNTPViewController];
+  [self configureTabGroupIndicator];
+
   [self startObservers];
 
   ProfileState* profileState = sceneState.profileState;
@@ -383,16 +391,6 @@
       supervised_user::IsPrimaryAccountSubjectToParentalControls(
           _identityManager);
   [self updateFeedWithIsSupervisedUser:(capability == signin::Tribool::kTrue)];
-
-  [self configureNTPMediator];
-  if ([self.NTPMediator isFeedHeaderVisible]) {
-    [self configureFeedAndHeader];
-  }
-  [self configureHeaderViewController];
-  [self configureContentSuggestionsCoordinator];
-  self.feedMetricsRecorder.NTPActionsDelegate = self;
-  [self configureNTPViewController];
-  [self configureTabGroupIndicator];
 
   if (IsNTPBackgroundCustomizationEnabled()) {
     // Ensure the initial background is applied after all components have been
@@ -702,9 +700,8 @@
       IsIncognitoModeDisabled(self.prefService);
   self.headerViewController =
       [componentFactory headerViewControllerForProfile:self.profile];
-  self.NTPMediator =
-      [componentFactory NTPMediatorForBrowser:browser
-                     identityDiscImageUpdater:self.headerViewController];
+  self.NTPMediator = [componentFactory NTPMediatorForBrowser:browser
+                                    identityDiscImageUpdater:nil];
   self.NTPViewController.mutator = self.NTPMediator;
   self.contentSuggestionsCoordinator =
       [componentFactory contentSuggestionsCoordinatorForBrowser:browser];
@@ -766,6 +763,7 @@
 
   headerViewController.commandHandler = self;
   headerViewController.delegate = self.NTPViewController;
+  self.NTPViewController.headerViewController = headerViewController;
   headerViewController.layoutGuideCenter =
       LayoutGuideCenterForBrowser(self.browser);
   headerViewController.toolbarDelegate = self.toolbarDelegate;
@@ -798,6 +796,8 @@
   PlaceholderService* placeholderService =
       ios::PlaceholderServiceFactory::GetForProfile(self.profile);
   NTPMediator.placeholderService = placeholderService;
+  NTPMediator.imageUpdater =
+      (NewTabPageHeaderView*)self.headerViewController.view;
 
   [NTPMediator setUp];
 }
@@ -831,8 +831,6 @@
       self.feedWrapperViewController;
   self.NTPViewController.overscrollDelegate = self;
   self.NTPViewController.NTPContentDelegate = self;
-
-  self.NTPViewController.headerViewController = self.headerViewController;
 
   [self configureMainViewControllerUsing:self.NTPViewController];
   self.NTPViewController.feedMetricsRecorder = self.feedMetricsRecorder;
@@ -1549,14 +1547,6 @@
   [self stopAccountMenuCoordinator];
 }
 
-#pragma mark - ComposeboxMenuCoordinatorDelegate
-
-- (void)composeboxMenuCoordinatorDidDismissMenu:
-    (ComposeboxMenuCoordinator*)composeboxMenuCoordinator {
-  [_composeboxMenuCoordinator stop];
-  _composeboxMenuCoordinator = nil;
-}
-
 #pragma mark - Private
 
 // Opens the AIM web page.
@@ -1995,21 +1985,8 @@
       !_aimEligibilityService->IsFuseboxEligible()) {
     [self openAIMWeb];
   }
-
-  if (IsComposeboxPlusButtonBottomSheet()) {
-    [_composeboxMenuCoordinator stop];
-    _composeboxMenuCoordinator = [[ComposeboxMenuCoordinator alloc]
-        initWithBaseViewController:self.viewController
-                           browser:self.browser
-                        entrypoint:ComposeboxEntrypoint::kNTPPlusButton];
-    _composeboxMenuCoordinator.delegate = self;
-    [_composeboxMenuCoordinator start];
-  } else if (MaybeShowComposebox(self.browser,
-                                 ComposeboxEntrypoint::kNTPPlusButton)) {
-    return;
-  } else {
-    [self openAIMWeb];
-  }
+  [HandlerForProtocol(self.browser->GetCommandDispatcher(),
+                      BrowserCoordinatorCommands) showMultimodalActionsMenu];
 }
 
 #pragma mark - TabGridStateObserver

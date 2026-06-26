@@ -885,7 +885,7 @@ PLATFORM_INFO = {
     },
     'android-brya-kano-i5-8gb-perf': {
         'description': 'Brya SKU kano_12th_Gen_IntelR_CoreTM_i5_1235U_8GB',
-        'num_shards': 4,
+        'num_shards': 2,
         'platform_os': 'android',
         'is_fyi': False
     },
@@ -926,21 +926,9 @@ PLATFORM_INFO = {
         'platform_os': 'android',
         'is_fyi': False
     },
-    'android-pixel6-perf': {
-        'description': 'Android U',
-        'num_shards': 14,
-        'platform_os': 'android',
-        'is_fyi': False
-    },
     'android-pixel6-perf-pgo': {
         'description': 'Android U',
         'num_shards': 8,
-        'platform_os': 'android',
-        'is_fyi': False
-    },
-    'android-pixel6-pro-perf': {
-        'description': 'Android T',
-        'num_shards': 10,
         'platform_os': 'android',
         'is_fyi': False
     },

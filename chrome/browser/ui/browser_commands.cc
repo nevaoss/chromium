@@ -23,6 +23,7 @@
 #include "base/metrics/user_metrics.h"
 #include "base/strings/escape.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/time/time.h"
 #include "base/trace_event/trace_event.h"
 #include "build/build_config.h"
 #include "chrome/app/chrome_command_ids.h"
@@ -42,6 +43,7 @@
 #include "chrome/browser/prefs/incognito_mode_prefs.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/reading_list/reading_list_model_factory.h"
+#include "chrome/browser/resource_coordinator/tab_lifecycle_unit_external.h"
 #include "chrome/browser/search/search.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/send_tab_to_self/send_tab_to_self_util.h"
@@ -108,6 +110,7 @@
 #include "chrome/browser/ui/tabs/split_tab_util.h"
 #include "chrome/browser/ui/tabs/tab_enums.h"
 #include "chrome/browser/ui/tabs/tab_group_model.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_user_gesture_details.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/ui_features.h"
@@ -466,6 +469,65 @@ Browser* CreateNewBrowser(Browser* browser, bool user_gesture) {
   return Browser::Create(params);
 }
 
+struct MruTabResult {
+  raw_ptr<BrowserWindowInterface> browser;
+  int index;
+};
+
+std::optional<MruTabResult> GetGlobalMruTab(
+    BrowserCollection* collection,
+    BrowserWindowInterface* active_browser) {
+  BrowserWindowInterface* mru_browser = nullptr;
+  int mru_idx = -1;
+  base::Time max_time = base::Time::Min();
+
+  collection->ForEach(
+      [&](BrowserWindowInterface* b) {
+        TabStripModel* model = b->GetTabStripModel();
+        int i = 0;
+        for (auto it = model->begin(); it != model->end(); ++it, ++i) {
+          if (b == active_browser && i == model->active_index()) {
+            continue;
+          }
+          content::WebContents* contents = (*it)->GetContents();
+          auto* lifecycle_unit =
+              resource_coordinator::TabLifecycleUnitExternal::FromWebContents(
+                  contents);
+          if (!lifecycle_unit) {
+            continue;
+          }
+          base::Time last_active = lifecycle_unit->GetLastFocusedTime();
+          if (last_active > max_time) {
+            max_time = last_active;
+            mru_browser = b;
+            mru_idx = i;
+          }
+        }
+        return true;
+      },
+      BrowserCollection::Order::kActivation);
+
+  if (mru_browser) {
+    return MruTabResult{mru_browser, mru_idx};
+  }
+  return std::nullopt;
+}
+
+void ActivateTab(TabStripModel* model,
+                 int index,
+                 TabStripUserGestureDetails gesture_detail) {
+  std::optional<tab_groups::TabGroupId> group_id =
+      model->GetTabGroupForTab(index);
+  if (group_id.has_value() && model->IsGroupCollapsed(group_id.value())) {
+    TabGroup* group = model->group_model()->GetTabGroup(group_id.value());
+    tab_groups::TabGroupVisualData new_visual_data(
+        group->visual_data()->title(), group->visual_data()->color(),
+        /*is_collapsed=*/false);
+    model->ChangeTabGroupVisuals(group_id.value(), std::move(new_visual_data));
+  }
+  model->ActivateTabAt(index, gesture_detail);
+}
+
 }  // namespace
 
 using base::UserMetricsAction;
@@ -482,9 +544,12 @@ namespace {
 #if BUILDFLAG(ENABLE_EXTENSIONS)
 const extensions::Extension* GetExtensionForBrowser(
     BrowserWindowInterface* browser) {
+  auto* controller = web_app::AppBrowserController::From(browser);
+  if (!controller) {
+    return nullptr;
+  }
   return extensions::ExtensionRegistry::Get(browser->GetProfile())
-      ->GetExtensionById(web_app::GetAppIdFromApplicationName(
-                             browser->GetBrowserForMigrationOnly()->app_name()),
+      ->GetExtensionById(controller->app_id(),
                          extensions::ExtensionRegistry::EVERYTHING);
 }
 #endif
@@ -1139,7 +1204,7 @@ content::WebContents& NewTab(BrowserWindowInterface* browser,
 
   if (browser->GetBrowserForMigrationOnly()->SupportsWindowFeature(
           Browser::WindowFeature::kFeatureTabStrip)) {
-    std::optional<tab_groups::TabGroupId> group_id = std::nullopt;
+    std::optional<tab_groups::TabGroupId> group_id;
 
     if (features::IsNewTabAddsToActiveGroupEnabled()) {
       const int index = browser->GetTabStripModel()->active_index();
@@ -1272,6 +1337,22 @@ bool CanResetZoom(content::WebContents* contents) {
 void SelectNextTab(BrowserWindowInterface* browser,
                    TabStripUserGestureDetails gesture_detail) {
   base::RecordAction(UserMetricsAction("SelectNextTab"));
+
+  if (base::FeatureList::IsEnabled(features::kCtrlTabMru) &&
+      browser->GetProfile()->GetPrefs()->GetBoolean(prefs::kCtrlTabMru)) {
+    auto mru_result = GetGlobalMruTab(
+        ProfileBrowserCollection::GetForProfile(browser->GetProfile()),
+        browser);
+    if (mru_result) {
+      if (mru_result->browser != browser) {
+        mru_result->browser->GetWindow()->Activate();
+      }
+      ActivateTab(mru_result->browser->GetTabStripModel(), mru_result->index,
+                  gesture_detail);
+      return;
+    }
+  }
+
   browser->GetTabStripModel()->SelectNextTab(gesture_detail);
 }
 
@@ -1655,7 +1736,7 @@ void AddNewTabToRecentGroup(BrowserWindowInterface* browser) {
     return;
   }
 
-  std::optional<tab_groups::TabGroupId> group_id = std::nullopt;
+  std::optional<tab_groups::TabGroupId> group_id;
 
   // Add the new tab to the most recently active group.
   TabGroupModel* tab_group_model = tab_strip_model->group_model();

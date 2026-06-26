@@ -67,6 +67,7 @@
 #include "components/autofill/core/common/autofill_prefs.h"
 #include "components/autofill/core/common/credit_card_number_validation.h"
 #include "components/autofill/core/common/dense_set.h"
+#include "components/facilitated_payments/core/features/features.h"
 #include "components/prefs/pref_service.h"
 #include "components/signin/public/base/consent_level.h"
 #include "components/signin/public/identity_manager/account_info.h"
@@ -494,6 +495,12 @@ void PaymentsDataManager::OnWebDataServiceRequestDone(
   }
 
   NotifyObservers();
+
+  std::vector<base::OnceClosure> callbacks =
+      std::exchange(refresh_complete_callbacks_, {});
+  for (base::OnceClosure& callback : callbacks) {
+    std::move(callback).Run();
+  }
 }
 
 bool PaymentsDataManager::ShouldShowBnplSettings() const {
@@ -885,6 +892,15 @@ base::span<const Ewallet> PaymentsDataManager::GetEwalletAccounts() const {
     return {};
   }
   return ewallet_accounts_;
+}
+
+base::span<const Ewallet> PaymentsDataManager::GetEwalletCreationOptions()
+    const {
+  if (!IsAutofillPaymentMethodsEnabled() ||
+      !AreEwalletCreationOptionsSupported()) {
+    return {};
+  }
+  return ewallet_creation_options_;
 }
 
 PaymentsCustomerData* PaymentsDataManager::GetPaymentsCustomerData() const {
@@ -1630,6 +1646,7 @@ void PaymentsDataManager::ClearAllServerDataForTesting() {
   ewallet_accounts_.clear();
   linked_bnpl_issuers_.clear();
   unlinked_bnpl_issuers_.clear();
+  ewallet_creation_options_.clear();
 }
 
 bool PaymentsDataManager::SaveCardLocallyIfNew(
@@ -1767,8 +1784,17 @@ bool PaymentsDataManager::ShouldSuggestServerPaymentMethods() const {
   return sync_service_->GetActiveDataTypes().Has(syncer::AUTOFILL_WALLET_DATA);
 }
 
-base::WeakPtr<const PaymentsDataManager> PaymentsDataManager::GetWeakPtr()
-    const {
+void PaymentsDataManager::AddCallbackAfterRefreshCompleted(
+    base::OnceClosure callback) {
+  if (!HasPendingPaymentQueries()) {
+    std::move(callback).Run();
+    return;
+  }
+
+  refresh_complete_callbacks_.push_back(std::move(callback));
+}
+
+base::WeakPtr<PaymentsDataManager> PaymentsDataManager::GetWeakPtr() {
   return weak_ptr_factory_.GetWeakPtr();
 }
 
@@ -2066,6 +2092,15 @@ bool PaymentsDataManager::AreEwalletAccountsSupported() const {
 #endif  // BUILDFLAG(IS_ANDROID)
 }
 
+bool PaymentsDataManager::AreEwalletCreationOptionsSupported() const {
+#if BUILDFLAG(IS_ANDROID)
+  return base::FeatureList::IsEnabled(
+      ::payments::facilitated::kEnableEwalletNewAccountLinking);
+#else
+  return false;
+#endif  // BUILDFLAG(IS_ANDROID)
+}
+
 bool PaymentsDataManager::AreBnplIssuersSupported() const {
   return app_locale_ == "en-US" &&
          (GetCountryCodeForExperimentGroup() == "US" ||
@@ -2082,9 +2117,9 @@ bool PaymentsDataManager::ArePaymentInstrumentsSupported() const {
 }
 
 bool PaymentsDataManager::ArePaymentInstrumentCreationOptionsSupported() const {
-  // Currently only BNPL issuers are using the payment instrument creation
-  // option proto for read from table.
-  return AreBnplIssuersSupported();
+  // Currently only BNPL issuers and eWallet creation options are using the
+  // payment instrument creation option proto for read from table.
+  return AreBnplIssuersSupported() || AreEwalletCreationOptionsSupported();
 }
 
 void PaymentsDataManager::OnAutofillPaymentsCardBenefitsPrefChange() {
@@ -2304,6 +2339,7 @@ void PaymentsDataManager::OnPaymentInstrumentCreationOptionsRefreshed(
         payment_instrument_creation_options) {
   // Clear all payment instrument creation options.
   unlinked_bnpl_issuers_.clear();
+  ewallet_creation_options_.clear();
 
   for (const sync_pb::PaymentInstrumentCreationOption&
            payment_instrument_creation_option :
@@ -2311,6 +2347,9 @@ void PaymentsDataManager::OnPaymentInstrumentCreationOptionsRefreshed(
     if (AreBnplIssuersSupported()) {
       CacheIfBnplPaymentInstrumentCreationOption(
           payment_instrument_creation_option);
+    }
+    if (AreEwalletCreationOptionsSupported()) {
+      CacheIfEwalletCreationOption(payment_instrument_creation_option);
     }
   }
 }
@@ -2365,6 +2404,42 @@ void PaymentsDataManager::CacheIfBnplPaymentInstrumentCreationOption(
   unlinked_bnpl_issuers_.emplace_back(
       std::nullopt, ConvertToBnplIssuerIdEnum(bnpl_issuer.issuer_id()),
       std::move(eligible_price_ranges));
+}
+
+// If `payment_instrument_creation_option` contains eWallet options, constructs
+// and caches an Ewallet object representing the unlinked creation option.
+// Fields specific to linked accounts (e.g., instrument ID, nickname) are
+// initialized with placeholder values.
+void PaymentsDataManager::CacheIfEwalletCreationOption(
+    const sync_pb::PaymentInstrumentCreationOption&
+        payment_instrument_creation_option) {
+  if (!payment_instrument_creation_option.has_ewallet_creation_option()) {
+    return;
+  }
+
+  const sync_pb::EwalletCreationOption& ewallet_creation_option =
+      payment_instrument_creation_option.ewallet_creation_option();
+
+  std::u16string ewallet_issuer_display_name =
+      base::UTF8ToUTF16(ewallet_creation_option.issuer_display_name());
+  if (std::ranges::contains(ewallet_creation_options_,
+                            ewallet_issuer_display_name,
+                            &Ewallet::ewallet_name)) {
+    return;
+  }
+
+  std::vector<std::u16string> supported_payment_link_uris = base::ToVector(
+      ewallet_creation_option.supported_payment_link_uris(),
+      [](const std::string& uri) { return base::UTF8ToUTF16(uri); });
+
+  ewallet_creation_options_.emplace_back(0,       // instrument_id = 0
+                                         u"",     // nickname
+                                         GURL(),  // display_icon_url
+                                         ewallet_issuer_display_name,
+                                         u"",  // account_display_name
+                                         supported_payment_link_uris,
+                                         false  // is_fido_enrolled
+  );
 }
 
 bool PaymentsDataManager::HasEligibleCurrencyPriceRangeForBnplIssuer(

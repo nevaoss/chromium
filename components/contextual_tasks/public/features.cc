@@ -39,6 +39,10 @@ BASE_FEATURE(kEnableContextualTasksPinButtonInToolbar,
 // Enables relevant context determination for contextual tasks.
 BASE_FEATURE(kContextualTasksContext, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Enables whether the option to enable smart tab sharing by default is enabled.
+BASE_FEATURE(kContextualTasksContextSmartTabSharingDefaultOnAvailability,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Enables integration with the server side context library.
 BASE_FEATURE(kContextualTasksContextLibrary, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -101,9 +105,6 @@ BASE_FEATURE(kContextualTasksHideMenuOnAiPage,
 BASE_FEATURE(kContextualTasksHideCloseButtonInVerticalTabs,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kContextualTasksUpdateModelOnNavigation,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kContextualTasksVideoCitations, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kContextualTasksPdfCitations, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -132,10 +133,7 @@ BASE_FEATURE(kContextualTasksJavaFusebox, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kContextualTasksOverrideShowBottomSheetOnLargeScreen,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-bool GetIsContextualTasksUpdateModeOnNavigationEnabled() {
-  return base::FeatureList::IsEnabled(kContextualTasksUpdateModelOnNavigation);
-}
-
+BASE_FEATURE(kAimTriggeredThreadLinks, base::FEATURE_DISABLED_BY_DEFAULT);
 bool GetIsContextualTasksPdfCitationsEnabled() {
   return base::FeatureList::IsEnabled(kContextualTasksPdfCitations);
 }
@@ -186,6 +184,16 @@ const base::FeatureParam<double> kTabSelectionScoreThreshold{
 const base::FeatureParam<double> kContentVisibilityThreshold{
     &kContextualTasksContext,
     "ContextualTasksContextContentVisibilityThreshold", 0.7};
+
+const base::FeatureParam<bool> kEnablePreviousTabFallback(
+    &kContextualTasksContext,
+    "ContextualTasksEnablePreviousTabFallback",
+    true);
+
+const base::FeatureParam<base::TimeDelta> kPreviousTabRecencyThreshold(
+    &kContextualTasksContext,
+    "ContextualTasksPreviousTabRecencyThreshold",
+    base::Seconds(30));
 
 const base::FeatureParam<std::string> kQueryEmbeddingTask{
     &kContextualTasksContext, "ContextualTasksContextQueryEmbeddingTask", ""};

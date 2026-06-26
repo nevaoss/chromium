@@ -102,8 +102,8 @@ GlicInstanceCoordinatorImpl::GlicInstanceCoordinatorImpl(
   tab_observer_ = GlicTabObserver::Create(
       profile_, base::BindRepeating(&GlicInstanceCoordinatorImpl::OnTabEvent,
                                     weak_ptr_factory_.GetWeakPtr()));
-  hotkey_manager_ = std::make_unique<InstanceIndependentHotkeyManager>(this);
-
+  hotkey_manager_ =
+      std::make_unique<InstanceIndependentHotkeyManager>(this, profile_);
   metrics_.StartPeriodicMemoryMetricsRecording();
 }
 
@@ -290,11 +290,9 @@ void GlicInstanceCoordinatorImpl::ShowInstanceForTabs(
   ShowInstanceForTabs(target_instance, tabs, GlicPinTrigger::kContextMenu);
 }
 
-void GlicInstanceCoordinatorImpl::Toggle(
-    BrowserWindowInterface* browser,
-    bool prevent_close,
-    mojom::InvocationSource source,
-    std::optional<std::string> deprecated_prompt_suggestion) {
+void GlicInstanceCoordinatorImpl::Toggle(BrowserWindowInterface* browser,
+                                         bool prevent_close,
+                                         mojom::InvocationSource source) {
   if (!browser) {
     if (!GlicEnabling::IsLiveAndFloatyEnabledByFlags()) {
 #if !BUILDFLAG(IS_ANDROID)
@@ -306,12 +304,12 @@ void GlicInstanceCoordinatorImpl::Toggle(
         return;
       }
     } else {
-      ToggleFloaty(prevent_close, source, deprecated_prompt_suggestion);
+      ToggleFloaty(prevent_close, source);
       return;
     }
   }
 
-  ToggleSidePanel(browser, prevent_close, source, deprecated_prompt_suggestion);
+  ToggleSidePanel(browser, prevent_close, source);
 }
 
 void GlicInstanceCoordinatorImpl::EnsurePreload() {
@@ -709,19 +707,17 @@ GlicInstanceCoordinatorImpl::GetOrCreateInstanceImplForFloaty() {
 
 void GlicInstanceCoordinatorImpl::ToggleFloaty(
     bool prevent_close,
-    glic::mojom::InvocationSource source,
-    std::optional<std::string> prompt_suggestion) {
+    glic::mojom::InvocationSource source) {
   CHECK(GlicEnabling::IsLiveAndFloatyEnabledByFlags());
   GetOrCreateInstanceImplForFloaty()->Toggle(
       ShowOptions::ForFloating(/*source_tab=*/tabs::TabHandle::Null()),
-      prevent_close, source, prompt_suggestion);
+      prevent_close, source);
 }
 
 void GlicInstanceCoordinatorImpl::ToggleSidePanel(
     BrowserWindowInterface* browser,
     bool prevent_close,
-    mojom::InvocationSource source,
-    std::optional<std::string> prompt_suggestion) {
+    mojom::InvocationSource source) {
   auto* tab = TabListInterface::From(browser)->GetActiveTab();
   if (!tab) {
     LOG(ERROR) << "Active tab is null";
@@ -746,8 +742,7 @@ void GlicInstanceCoordinatorImpl::ToggleSidePanel(
   ShowOptions options = ShowOptions::ForSidePanel(
       *tab, GlicPinTrigger::kInstanceCreation, source);
 
-  instance->Toggle(std::move(options), prevent_close, source,
-                   prompt_suggestion);
+  instance->Toggle(std::move(options), prevent_close, source);
 }
 
 void GlicInstanceCoordinatorImpl::RemoveInstance(GlicInstanceImpl* instance) {
@@ -784,13 +779,6 @@ void GlicInstanceCoordinatorImpl::SwitchConversation(
   mutable_options.focus_on_show = source_instance.HasFocus();
   mutable_options.reinitialize_if_already_active = true;
 
-  // TODO(b/510405771): Remove animation suppression once bottom sheet hide is
-  // cancelable.
-  if (auto* side_panel_options = std::get_if<SidePanelShowOptions>(
-          &mutable_options.embedder_options)) {
-    side_panel_options->suppress_opening_animation = true;
-  }
-
   GlicInstanceImpl* target_instance = nullptr;
   if (!info->conversation_id.empty()) {
     target_instance = GetInstanceImplForConversationId(info->conversation_id);
@@ -805,6 +793,24 @@ void GlicInstanceCoordinatorImpl::SwitchConversation(
   }
 
   CHECK(target_instance);
+
+  if (auto* side_panel_options = std::get_if<SidePanelShowOptions>(
+          &mutable_options.embedder_options)) {
+    // TODO(b/510405771): Remove animation suppression once bottom sheet hide is
+    // cancelable.
+    side_panel_options->suppress_opening_animation = true;
+    side_panel_options->pin_trigger = GlicPinTrigger::kConversationChange;
+    if (target_instance == &source_instance) {
+      // If we are reusing the current instance in-place (as an optimization),
+      // BindTab is not called again, so we must manually overwrite all
+      // currently pinned tabs' pin triggers to kConversationChange to make the
+      // pin trigger correct.
+      for (auto* tab : target_instance->sharing_manager().GetPinnedTabs()) {
+        target_instance->sharing_manager().SetPinTrigger(
+            tab->GetHandle(), GlicPinTrigger::kConversationChange);
+      }
+    }
+  }
 
   metrics_.RecordSwitchConversationTarget(
       !info->conversation_id.empty()

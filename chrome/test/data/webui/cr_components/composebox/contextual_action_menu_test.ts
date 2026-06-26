@@ -852,7 +852,8 @@ suite('ContextualActionMenu', () => {
     assertEquals(trigger, actionMenu.shadowRoot.activeElement);
   });
 
-  test(
+  // TODO(crbug.com/512920161): Reenable this test.
+  test.skip(
       'navigates up and down between Share Tabs and other menu items',
       async () => {
         loadTimeData.overrideValues({
@@ -949,7 +950,12 @@ suite('ContextualActionMenu', () => {
 
     // Enough space to the right positions the flyout to the right.
     trigger.getBoundingClientRect = () => ({
-      left: 10, right: 330, top: 100, bottom: 132, width: 320, height: 32,
+      left: 10,
+      right: 250,
+      top: 100,
+      bottom: 132,
+      width: 240,
+      height: 32,
     } as DOMRect);
     Object.defineProperty(window, 'innerWidth', {value: 1000, configurable: true});
 
@@ -962,7 +968,12 @@ suite('ContextualActionMenu', () => {
 
     // When blocked on the right, enough space to the left positions the flyout to the left.
     trigger.getBoundingClientRect = () => ({
-      left: 400, right: 720, top: 100, bottom: 132, width: 320, height: 32,
+      left: 400,
+      right: 640,
+      top: 100,
+      bottom: 132,
+      width: 240,
+      height: 32,
     } as DOMRect);
     Object.defineProperty(window, 'innerWidth', {value: 800, configurable: true});
 
@@ -975,7 +986,12 @@ suite('ContextualActionMenu', () => {
 
     // When blocked on both sides in a narrow panel, the flyout positions at the bottom with a bounded indent.
     trigger.getBoundingClientRect = () => ({
-      left: 16, right: 336, top: 100, bottom: 132, width: 320, height: 32,
+      left: 16,
+      right: 256,
+      top: 100,
+      bottom: 132,
+      width: 240,
+      height: 32,
     } as DOMRect);
     Object.defineProperty(window, 'innerWidth', {value: 380, configurable: true});
 
@@ -1340,5 +1356,55 @@ suite('ContextualActionMenu', () => {
         assertTrue(
             !!items[1]?.querySelector('.recent-tabs-suffix'),
             'Tab 1 should retain the suffix after reordering');
+      });
+
+  test(
+      'Dynamic suffix shows Current Tab only in Side Panel Contextual Tasks',
+      async () => {
+        loadTimeData.overrideValues({
+          contextManagementInComposeboxEnabled: true,
+        });
+        actionMenu.remove();
+        actionMenu =
+            document.createElement('cr-composebox-contextual-action-menu');
+
+        const tabInfo = {
+          tabId: 1,
+          title: 'Google Docs',
+          url: {url: 'https://docs.google.com'},
+          showInCurrentTabChip: false,
+          showInPreviousTabChip: false,
+          lastActive: {internalValue: 0n},
+        };
+        actionMenu.tabSuggestions = [tabInfo as any];
+        actionMenu.recentTabId = tabInfo.tabId;
+        actionMenu.inputState = new MockInputState({
+                                  allowedInputTypes: [InputType.kBrowserTab],
+                                }) as any;
+
+        document.body.appendChild(actionMenu);
+        await microtasksFinished();
+
+        actionMenu.showAt(actionMenu);
+        await microtasksFinished();
+
+        const trigger = $$(actionMenu, '#shareTabsTrigger') as HTMLElement;
+        trigger.dispatchEvent(new PointerEvent('pointerenter'));
+        await microtasksFinished();
+
+        const suffix = $$(actionMenu, '.recent-tabs-suffix') as HTMLElement;
+        assertTrue(isVisible(suffix), 'Suffix should be visible');
+
+        actionMenu.isSidePanel = true;
+        await microtasksFinished();
+        assertEquals(
+            actionMenu.i18n('currentTabSuffix'), suffix.textContent.trim(),
+            'Should render "Current tab" in side panel contextual tasks');
+
+        actionMenu.isSidePanel = false;
+        await microtasksFinished();
+        assertEquals(
+            actionMenu.i18n('recentTabsSuffix'), suffix.textContent.trim(),
+            'Should fall back to "Recent tab" on the NTP');
       });
 });

@@ -17,6 +17,7 @@
 #include "components/personal_context/core/personal_context_debug_features.h"
 #include "components/personal_context/core/personal_context_features.h"
 #include "components/personal_context/core/personal_context_prefs.h"
+#include "components/personal_context/core/personal_context_types.h"
 #include "components/prefs/pref_service.h"
 #include "components/signin/public/identity_manager/account_info.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
@@ -153,13 +154,19 @@ const base::flat_set<int32_t>& GetPersonalContextEligibleTiers() {
   return true;
 }
 
-// Checks whether miscellaneous "other" requirements (e.g. Geo-IP)
+// Checks whether miscellaneous "other" requirements (e.g. Geo-IP, locale)
 // are satisfied.
 [[nodiscard]] bool SatisfiesMiscellaneousRequirements(
     GeoIpCountryCode country_code,
+    std::string_view locale,
     std::string* debug_message = nullptr) {
   if (country_code != GeoIpCountryCode("US")) {
     MaybeOutputReason(debug_message, "Unsupported GeoIp.");
+    return false;
+  }
+
+  if (locale != "en-US") {
+    MaybeOutputReason(debug_message, "Unsupported locale.");
     return false;
   }
 
@@ -177,9 +184,10 @@ const base::flat_set<int32_t>& GetPersonalContextEligibleTiers() {
     return kDisabledNotEligible;
   }
 
-  if (pref_service->GetBoolean(prefs::kShouldShowPersonalContextFirstRunInfo)) {
-    MaybeOutputReason(debug_message, "Info not yet acknowledged.");
-    return kDisabledPendingInfo;
+  if (pref_service->GetBoolean(
+          prefs::kPersonalContextInAutofillNoticeShouldBeShown)) {
+    MaybeOutputReason(debug_message, "Notice not yet acknowledged.");
+    return kDisabledShouldShowNotice;
   }
 
   return kEnabled;
@@ -192,12 +200,14 @@ PersonalContextEnablementServiceImpl::PersonalContextEnablementServiceImpl(
     subscription_eligibility::SubscriptionEligibilityService*
         subscription_eligibility_service,
     PrefService* pref_service,
-    GeoIpCountryCode country_code)
+    GeoIpCountryCode country_code,
+    std::string locale)
     : account_settings_service_(account_settings_service),
       identity_manager_(identity_manager),
       subscription_eligibility_service_(subscription_eligibility_service),
       pref_service_(pref_service),
-      country_code_(std::move(country_code)) {
+      country_code_(std::move(country_code)),
+      locale_(std::move(locale)) {
   if (account_settings_service_) {
     account_settings_observation_.Observe(account_settings_service_);
   }
@@ -211,7 +221,7 @@ PersonalContextEnablementServiceImpl::PersonalContextEnablementServiceImpl(
   if (pref_service_) {
     pref_registrar_.Init(pref_service_);
     pref_registrar_.Add(
-        prefs::kShouldShowPersonalContextFirstRunInfo,
+        prefs::kPersonalContextInAutofillNoticeShouldBeShown,
         base::BindRepeating(
             &PersonalContextEnablementServiceImpl::UpdateEnablementState,
             base::Unretained(this)));
@@ -256,12 +266,18 @@ PersonalContextEnablementServiceImpl::ComputeEnablementState() {
     return kDisabledNotEligible;
   }
 
-  if (!SatisfiesOptInRequirements(account_settings_service_.get())) {
+  if (!SatisfiesMiscellaneousRequirements(country_code_, locale_)) {
     return kDisabledNotEligible;
   }
 
-  if (!SatisfiesMiscellaneousRequirements(country_code_)) {
+  if (!account_settings_service_) {
     return kDisabledNotEligible;
+  }
+
+  if (!SatisfiesOptInRequirements(account_settings_service_.get())) {
+    return personal_context::features::IsPersonalContextFirstRunOptInEnabled()
+               ? kDisabledNeedsOptIn
+               : kDisabledNotEligible;
   }
 
   return SatisfiesPreferenceRequirements(pref_service_.get());
@@ -282,7 +298,8 @@ void PersonalContextEnablementServiceImpl::OnPrimaryAccountChanged(
   if (event_details.GetEventTypeFor(signin::ConsentLevel::kSignin) ==
       signin::PrimaryAccountChangeEvent::Type::kCleared) {
     if (pref_service_) {
-      pref_service_->ClearPref(prefs::kShouldShowPersonalContextFirstRunInfo);
+      pref_service_->ClearPref(
+          prefs::kPersonalContextInAutofillNoticeShouldBeShown);
     }
   }
   UpdateEnablementState();

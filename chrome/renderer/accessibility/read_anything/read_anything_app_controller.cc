@@ -820,6 +820,11 @@ void ReadAnythingAppController::OnActiveAXTreeIDChanged(
   dom_distiller_title_.clear();
   dom_distiller_content_html_.clear();
 
+  // Reset mapping state for the new page. Since no readability distillation is
+  // displayed yet, the mapping algorithm is not yet in progress.
+  model_.set_is_readability_mapping_in_progress(false);
+  model_.set_has_logged_early_selection(false);
+
   // Reset the distillation method for the new page. Every navigation
   // starts with the flag-determined distillation method before potentially
   // falling back to Screen2x if needed. If the new page is a PDF, the
@@ -1534,7 +1539,9 @@ gin::ObjectTemplateBuilder ReadAnythingAppController::GetObjectTemplateBuilder(
                  &ReadAnythingAppController::OnSpeechEngineStalled)
       .SetMethod("onRenderedTextBlocksAvailable",
                  &ReadAnythingAppController::OnRenderedTextBlocksAvailable)
-      .SetMethod("getAxMapping", &ReadAnythingAppController::GetAXMapping);
+      .SetMethod("getAxMapping", &ReadAnythingAppController::GetAXMapping)
+      .SetMethod("attemptLogEarlySelection",
+                 &ReadAnythingAppController::AttemptLogEarlySelection);
 }
 
 ui::AXNodeID ReadAnythingAppController::RootId() const {
@@ -3026,6 +3033,7 @@ void ReadAnythingAppController::UpdateContent(const std::string& title,
     // not trigger a false positive when rendered text is not ready.
     model_.set_readability_text_blocks({});
     model_.set_should_map_rendered_text_to_tree_for_readability(false);
+    model_.set_is_readability_mapping_in_progress(true);
   }
   ExecuteJavaScript("chrome.readingMode.updateContent();");
 
@@ -3066,6 +3074,16 @@ void ReadAnythingAppController::ApplyAccessibilityUpdatesForReadability(
     ExecuteJavaScript("chrome.readingMode.onAnchorsReadyForReadability();");
   }
 
+  // If there's been a selection on the main page, the selection should be
+  // processed so that Immersive can open to the correctly selected text.
+  if (IsReadabilitySelectTextEnabled() &&
+      model_.requires_post_process_selection()) {
+    // TODO: crbug.com/505770261- Once general select-to-distill is enabled
+    // this should be re-evaluated to prevent switching distillation modes
+    // before the selection mapping is ready.
+    PostProcessSelection();
+  }
+
   // Check if we should perform text mapping for readability text selection.
   MaybeMapRenderedTextToTree();
 }
@@ -3093,6 +3111,7 @@ void ReadAnythingAppController::MaybeMapRenderedTextToTree() {
   }
 
   if (model_.MapRenderedTextToTree(model_.readability_text_blocks())) {
+    model_.set_is_readability_mapping_in_progress(false);
     ExecuteJavaScript("chrome.readingMode.onRenderedTextMappingReady();");
   }
 }
@@ -3128,11 +3147,26 @@ v8::Local<v8::Value> ReadAnythingAppController::GetAXMapping(int index) {
     segment_dict.Set("axNodeId", segment.id);
     segment_dict.Set("start", segment.start);
     segment_dict.Set("end", segment.end);
-
+    segment_dict.Set("axNodeOffset", segment.ax_node_offset);
     v8_segments->Set(context, static_cast<uint32_t>(i), segment_obj).Check();
   }
 
   return handle_scope.Escape(v8_segments);
+}
+
+void ReadAnythingAppController::AttemptLogEarlySelection(bool from_side_panel) {
+  if (model_.has_logged_early_selection() ||
+      !model_.is_readability_mapping_in_progress() ||
+      !IsReadabilitySelectTextEnabled()) {
+    return;
+  }
+  model_.set_has_logged_early_selection(true);
+
+  base::UmaHistogramEnumeration(
+      ReadAnythingAppModel::kEarlySelectionHistogramName,
+      from_side_panel
+          ? ReadAnythingAppModel::EarlySelection::kSidePanelSelection
+          : ReadAnythingAppModel::EarlySelection::kMainPanelSelection);
 }
 
 bool ReadAnythingAppController::IsHidden() const {

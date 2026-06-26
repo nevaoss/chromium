@@ -142,14 +142,13 @@ class GlicInstanceCoordinatorImpl
   // sources are user initiated.
   void Toggle(BrowserWindowInterface* browser,
               bool prevent_close,
-              mojom::InvocationSource source,
-              std::optional<std::string> deprecated_prompt_suggestion) override;
+              mojom::InvocationSource source) override;
   void EnsurePreload() override;
   // Shuts down all hosts. Only call it before destruction of the instance
   // coordinator.
   void Shutdown() override;
   void Close(const CloseOptions& options) override;
-  base::WeakPtr<GlicInstance> Invoke(GlicInvokeOptions options);
+  base::WeakPtr<GlicInstance> Invoke(GlicInvokeOptions options) override;
   base::WeakPtr<GlicInstance> InvokeWithAutoSubmit(
       InvokeWithAutoSubmitPasskey auto_submit_passkey,
       GlicInvokeOptions options);
@@ -230,13 +229,10 @@ class GlicInstanceCoordinatorImpl
                            const std::vector<tabs::TabInterface*>& tabs,
                            GlicPinTrigger pin_trigger);
 
-  void ToggleFloaty(bool prevent_close,
-                    glic::mojom::InvocationSource source,
-                    std::optional<std::string> prompt_suggestion);
+  void ToggleFloaty(bool prevent_close, glic::mojom::InvocationSource source);
   void ToggleSidePanel(BrowserWindowInterface* browser,
                        bool prevent_close,
-                       glic::mojom::InvocationSource source,
-                       std::optional<std::string> prompt_suggestion);
+                       glic::mojom::InvocationSource source);
 
   void CloseFloaty(const CloseOptions& options = {});
 

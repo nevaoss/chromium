@@ -86,7 +86,7 @@ void ContextualTasksPanelHostAndroid::SetWebContents(
 
   web_contents_->SetDelegate(this);
   if (auto* bridge = GetOrCreateBridge()) {
-    views_bridge_->SetWebContents(web_contents);
+    views_bridge_->SetWebContents(web_contents, /*request_focus=*/true);
     if (is_open_) {
       bridge->Show(views_bridge_->GetCoBrowseViews(), /*animate=*/false,
                    /*starts_expanded=*/true);
@@ -125,7 +125,8 @@ ContextualTasksPanelHostAndroid::GetOrCreateBridge() {
     }
     views_bridge_ = std::make_unique<context_sharing::CoBrowseViewsBridge>(
         *tab_android,
-        context_sharing::TabBottomSheetClientType::kContextualTasks);
+        context_sharing::TabBottomSheetClientType::kContextualTasks,
+        context_sharing::CoBrowseContainerType::kBottomSheet);
     tab_bottom_sheet_bridge_ =
         std::make_unique<context_sharing::TabBottomSheetBridge>(this,
                                                                 tab_android);

@@ -16,9 +16,11 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_side_panel_coordinator.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_types.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_window_tracker.h"
 #include "chrome/browser/contextual_tasks/mock_contextual_tasks_panel_host.h"
 #include "chrome/browser/contextual_tasks/mock_contextual_tasks_ui_service_delegate.h"
+#include "chrome/browser/contextual_tasks/site_exclusion_detail.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/tab_list/mock_tab_list_interface.h"
 #include "chrome/browser/ui/browser_window/test/mock_browser_window_interface.h"
@@ -28,6 +30,7 @@
 #include "components/contextual_tasks/public/contextual_tasks_service.h"
 #include "components/contextual_tasks/public/features.h"
 #include "components/contextual_tasks/public/mock_contextual_tasks_service.h"
+#include "components/contextual_tasks/public/prefs.h"
 #include "components/omnibox/browser/mock_aim_eligibility_service.h"
 #include "components/prefs/testing_pref_service.h"
 #include "components/search_engines/search_terms_data.h"
@@ -39,6 +42,7 @@
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/signin/public/identity_manager/identity_test_environment.h"
 #include "components/signin/public/identity_manager/identity_test_utils.h"
+#include "components/sync_preferences/testing_pref_service_syncable.h"
 #include "components/tabs/public/mock_tab_interface.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
@@ -133,7 +137,7 @@ class MockUiServiceForUrlIntercept : public ContextualTasksUiService {
       AimEligibilityService* aim_eligibility_service)
       : ContextualTasksUiService(
             profile,
-            /*delegate=*/nullptr,
+            std::make_unique<NiceMock<MockContextualTasksUiServiceDelegate>>(),
             contextual_tasks_service,
             /*identity_manager=*/nullptr,
             aim_eligibility_service,
@@ -169,14 +173,14 @@ class MockUiServiceForUrlIntercept : public ContextualTasksUiService {
               (override));
   MOCK_METHOD(void,
               OnNonThreadNavigationInTab,
-              (const GURL& url, base::WeakPtr<tabs::TabInterface> tab),
+              (content::OpenURLParams url_params,
+               base::WeakPtr<tabs::TabInterface> tab),
               (override));
   MOCK_METHOD(void,
               OnSearchResultsNavigationInSidePanel,
               (content::OpenURLParams url_params,
                ContextualTasksUIInterface* web_ui_interface),
               (override));
-  MOCK_METHOD(void, OnShareUrlNavigation, (const GURL& url), (override));
   MOCK_METHOD(bool, IsUrlForPrimaryAccount, (const GURL& url), (override));
   MOCK_METHOD(bool, IsSignedInToBrowserWithValidCredentials, (), (override));
   MOCK_METHOD(void,
@@ -184,6 +188,7 @@ class MockUiServiceForUrlIntercept : public ContextualTasksUiService {
               (const GURL& url,
                base::WeakPtr<content::WebContents> web_contents),
               (override));
+  MOCK_METHOD(void, OpenUrlInNewTab, (const GURL& url), (override));
 
   // Make the impl method public for this test.
   bool HandleNavigationImpl(content::OpenURLParams url_params,
@@ -256,8 +261,10 @@ class ContextualTasksUiServiceTest : public content::RenderViewHostTestHarness {
     // Create a real service for testing non-mocked methods like GetAccessToken.
     // We pass the IdentityManager from the test environment.
     real_service_ = std::make_unique<ContextualTasksUiService>(
-        profile_.get(), /*delegate=*/nullptr, contextual_tasks_service_.get(),
-        identity_test_env_->identity_manager(), aim_eligibility_service_.get(),
+        profile_.get(),
+        std::make_unique<NiceMock<MockContextualTasksUiServiceDelegate>>(),
+        contextual_tasks_service_.get(), identity_test_env_->identity_manager(),
+        aim_eligibility_service_.get(),
         std::make_unique<ContextualTasksEligibilityManager>(
             profile_->GetPrefs(), identity_test_env_->identity_manager(),
             aim_eligibility_service_.get()),
@@ -680,7 +687,13 @@ TEST_F(ContextualTasksUiServiceTest,
   run_loop.Run();
 }
 
+// A link from the embedded page should be intercepted so that it navigates the
+// current tab by default. Initiating cobrowse now requires a message from the
+// embedded page.
 TEST_F(ContextualTasksUiServiceTest, LinkFromWebUiIntercepted) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(kAimTriggeredThreadLinks);
+
   GURL navigated_url(kTestUrl);
   GURL host_web_content_url(chrome::kChromeUIContextualTasksURL);
 
@@ -689,13 +702,17 @@ TEST_F(ContextualTasksUiServiceTest, LinkFromWebUiIntercepted) {
   content::WebContentsTester::For(web_contents.get())
       ->SetLastCommittedURL(host_web_content_url);
 
+  tabs::MockTabInterface tab;
+  ON_CALL(tab, GetContents).WillByDefault(Return(web_contents.get()));
+
   base::RunLoop run_loop;
-  EXPECT_CALL(*service_for_nav_, OnThreadLinkClicked(navigated_url, _, _, _))
+  EXPECT_CALL(*service_for_nav_,
+              OnNonThreadNavigationInTab(OpenURLParamsHasUrl(navigated_url), _))
       .WillOnce(testing::InvokeWithoutArgs(&run_loop, &base::RunLoop::Quit));
   EXPECT_CALL(*service_for_nav_, OnNavigationToAiPageIntercepted(_, _, _))
       .Times(0);
-  EXPECT_TRUE(service_for_nav_->HandleNavigation(
-      CreateOpenUrlParams(navigated_url, true), web_contents.get(),
+  EXPECT_TRUE(service_for_nav_->HandleNavigationImpl(
+      CreateOpenUrlParams(navigated_url, true), web_contents.get(), &tab,
       /*is_from_embedded_page=*/true, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
   run_loop.Run();
@@ -1144,7 +1161,8 @@ TEST_F(ContextualTasksUiServiceTest, SearchResultsNavigation_ViewedInTab) {
 
   base::RunLoop run_loop;
   EXPECT_CALL(*service_for_nav_, OnThreadLinkClicked(_, _, _, _)).Times(0);
-  EXPECT_CALL(*service_for_nav_, OnNonThreadNavigationInTab(navigated_url, _))
+  EXPECT_CALL(*service_for_nav_,
+              OnNonThreadNavigationInTab(OpenURLParamsHasUrl(navigated_url), _))
       .WillOnce(testing::InvokeWithoutArgs(&run_loop, &base::RunLoop::Quit));
   EXPECT_CALL(*service_for_nav_, OnNavigationToAiPageIntercepted(_, _, _))
       .Times(0);
@@ -1174,7 +1192,8 @@ TEST_F(ContextualTasksUiServiceTest,
   ON_CALL(tab, GetContents).WillByDefault(Return(web_contents.get()));
 
   EXPECT_CALL(*service_for_nav_, OnThreadLinkClicked(_, _, _, _)).Times(0);
-  EXPECT_CALL(*service_for_nav_, OnNonThreadNavigationInTab(navigated_url, _))
+  EXPECT_CALL(*service_for_nav_,
+              OnNonThreadNavigationInTab(OpenURLParamsHasUrl(navigated_url), _))
       .Times(1);
   EXPECT_CALL(*service_for_nav_, OnNavigationToAiPageIntercepted(_, _, _))
       .Times(0);
@@ -1205,7 +1224,8 @@ TEST_F(ContextualTasksUiServiceTest, AllowedHostNavigation_ViewedInTab) {
   ON_CALL(tab, GetContents).WillByDefault(Return(web_contents.get()));
 
   EXPECT_CALL(*service_for_nav_, OnThreadLinkClicked(_, _, _, _)).Times(0);
-  EXPECT_CALL(*service_for_nav_, OnNonThreadNavigationInTab(navigated_url, _))
+  EXPECT_CALL(*service_for_nav_,
+              OnNonThreadNavigationInTab(OpenURLParamsHasUrl(navigated_url), _))
       .Times(1);
   EXPECT_CALL(*service_for_nav_, OnNavigationToAiPageIntercepted(_, _, _))
       .Times(0);
@@ -1258,6 +1278,9 @@ TEST_F(ContextualTasksUiServiceTest, Navigation_ToNewTab_Allowed) {
 // Any other link that isn't AI or an allowed host should be treated as a thread
 // link when viewed in a tab.
 TEST_F(ContextualTasksUiServiceTest, Navigation_ViewedInTab) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(kAimTriggeredThreadLinks);
+
   GURL navigated_url("https://example.com");
   GURL host_web_content_url(chrome::kChromeUIContextualTasksURL);
 
@@ -1271,13 +1294,47 @@ TEST_F(ContextualTasksUiServiceTest, Navigation_ViewedInTab) {
   tabs::MockTabInterface tab;
   ON_CALL(tab, GetContents).WillByDefault(Return(web_contents.get()));
 
-  EXPECT_CALL(*service_for_nav_, OnThreadLinkClicked(navigated_url, _, _, _))
+  EXPECT_CALL(*service_for_nav_,
+              OnNonThreadNavigationInTab(OpenURLParamsHasUrl(navigated_url), _))
       .Times(1);
-  EXPECT_CALL(*service_for_nav_, OnNonThreadNavigationInTab(_, _)).Times(0);
   EXPECT_CALL(*service_for_nav_, OnNavigationToAiPageIntercepted(_, _, _))
       .Times(0);
   EXPECT_TRUE(service_for_nav_->HandleNavigationImpl(
       CreateOpenUrlParams(navigated_url, true), web_contents.get(), &tab,
+      /*is_from_embedded_page=*/true,
+      /*from_can_create_window=*/false, /*is_same_site_or_from_ui=*/true));
+
+  base::RunLoop run_loop;
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, run_loop.QuitClosure());
+  run_loop.Run();
+}
+
+// A link that is clicked from the side panel and doesn't specify opening in a
+// new tab should open in a new tab anyway to avoid navigating the side panel.
+// This case represents a likely bug in the embedded page.
+TEST_F(ContextualTasksUiServiceTest, Navigation_ViewedInSidePanel) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(kAimTriggeredThreadLinks);
+
+  GURL navigated_url("https://example.com");
+  GURL host_web_content_url(chrome::kChromeUIContextualTasksURL);
+
+  ON_CALL(*aim_eligibility_service_, HasAimUrlParams(_))
+      .WillByDefault(Return(false));
+
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+  content::WebContentsTester::For(web_contents.get())
+      ->SetLastCommittedURL(host_web_content_url);
+  tabs::MockTabInterface tab;
+  ON_CALL(tab, GetContents).WillByDefault(Return(web_contents.get()));
+
+  EXPECT_CALL(*service_for_nav_, OpenUrlInNewTab(navigated_url)).Times(1);
+  EXPECT_CALL(*service_for_nav_, OnNavigationToAiPageIntercepted(_, _, _))
+      .Times(0);
+  EXPECT_TRUE(service_for_nav_->HandleNavigationImpl(
+      CreateOpenUrlParams(navigated_url, true), web_contents.get(), nullptr,
       /*is_from_embedded_page=*/true,
       /*from_can_create_window=*/false, /*is_same_site_or_from_ui=*/true));
 
@@ -1318,6 +1375,9 @@ TEST_F(ContextualTasksUiServiceTest,
 // intercepted but open in a new tab.
 TEST_F(ContextualTasksUiServiceTest,
        LabsNavigation_Intercepted_NotViewedInSidePanel) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndDisableFeature(kAimTriggeredThreadLinks);
+
   GURL navigated_url(kLabsUrl);
   GURL host_web_content_url(chrome::kChromeUIContextualTasksURL);
 
@@ -1517,6 +1577,9 @@ TEST_F(ContextualTasksUiServiceTest,
 }
 
 TEST_F(ContextualTasksUiServiceTest, SrpHomepage_Intercepted) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndDisableFeature(kAimTriggeredThreadLinks);
+
   GURL navigated_url(kSrpHomepage);
   GURL host_web_content_url(chrome::kChromeUIContextualTasksURL);
 
@@ -1590,6 +1653,9 @@ TEST_F(ContextualTasksUiServiceTest, AimHomepage_InSidePanel_Intercepted) {
 }
 
 TEST_F(ContextualTasksUiServiceTest, SrpShoppingMode_InSidePanel_Intercepted) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndDisableFeature(kAimTriggeredThreadLinks);
+
   GURL navigated_url(kSrpShopping);
   GURL host_web_content_url(chrome::kChromeUIContextualTasksURL);
 
@@ -1751,6 +1817,9 @@ TEST_F(ContextualTasksUiServiceTest, GetDefaultAiPageUrl_HasSourceIdAndCcb) {
 }
 
 TEST_F(ContextualTasksUiServiceTest, ShareUrl_FromEmbeddedPage_Intercepted) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndDisableFeature(kAimTriggeredThreadLinks);
+
   GURL navigated_url(
       "https://google.com/"
       "search?q=https%3A%2F%2Fshare.google%2Faimode&gsc=2");
@@ -1762,10 +1831,10 @@ TEST_F(ContextualTasksUiServiceTest, ShareUrl_FromEmbeddedPage_Intercepted) {
       ->SetLastCommittedURL(host_web_content_url);
 
   base::RunLoop run_loop;
-  EXPECT_CALL(*service_for_nav_,
-              OnShareUrlNavigation(
-                  GURL("https://google.com/"
-                       "search?q=https%3A%2F%2Fshare.google%2Faimode")))
+  EXPECT_CALL(
+      *service_for_nav_,
+      OpenUrlInNewTab(GURL("https://google.com/"
+                           "search?q=https%3A%2F%2Fshare.google%2Faimode")))
       .WillOnce(testing::InvokeWithoutArgs(&run_loop, &base::RunLoop::Quit));
   EXPECT_TRUE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(navigated_url, true), web_contents.get(),
@@ -1844,7 +1913,8 @@ TEST_F(ContextualTasksUiServiceTest, SignOutNavigation_OpenedInTab) {
 
   base::RunLoop run_loop;
   EXPECT_CALL(*service_for_nav_, OnThreadLinkClicked(_, _, _, _)).Times(0);
-  EXPECT_CALL(*service_for_nav_, OnNonThreadNavigationInTab(navigated_url, _))
+  EXPECT_CALL(*service_for_nav_,
+              OnNonThreadNavigationInTab(OpenURLParamsHasUrl(navigated_url), _))
       .WillOnce(testing::InvokeWithoutArgs(&run_loop, &base::RunLoop::Quit));
   EXPECT_CALL(*service_for_nav_, OnNavigationToAiPageIntercepted(_, _, _))
       .Times(0);
@@ -2325,6 +2395,28 @@ TEST_F(ContextualTasksUiServiceTest, CloseTrackedWindow_ClosesTab) {
   }));
 
   EXPECT_EQ(0U, service_for_nav_->window_trackers_for_testing().size());
+}
+
+TEST_F(ContextualTasksUiServiceTest, IsValidUrlForSuggestedTab) {
+  SiteExclusionDetail site_exclusion_detail;
+
+  // HTTP / HTTPS urls are valid
+  EXPECT_TRUE(IsValidUrlForSuggestedTab(GURL("http://example.com"),
+                                        profile_.get(), site_exclusion_detail));
+  EXPECT_TRUE(IsValidUrlForSuggestedTab(GURL("https://example.com"),
+                                        profile_.get(), site_exclusion_detail));
+
+  // File urls are valid
+  EXPECT_TRUE(IsValidUrlForSuggestedTab(GURL("file:///tmp/mock_file.html"),
+                                        profile_.get(), site_exclusion_detail));
+
+  // NTP urls are invalid
+  EXPECT_FALSE(IsValidUrlForSuggestedTab(
+      GURL("chrome://newtab"), profile_.get(), site_exclusion_detail));
+
+  // Internal about:blank urls are invalid
+  EXPECT_FALSE(IsValidUrlForSuggestedTab(GURL("about:blank"), profile_.get(),
+                                         site_exclusion_detail));
 }
 
 }  // namespace contextual_tasks

@@ -5,20 +5,31 @@
 #include "components/record_replay/core/browser/task_service.h"
 
 #include "base/functional/bind.h"
+#include "base/functional/callback_helpers.h"
 #include "components/record_replay/core/browser/recording.pb.h"
 #include "components/record_replay/core/browser/recording_data_manager.h"
 #include "components/record_replay/core/browser/task_definition.pb.h"
+#include "components/record_replay/core/browser/task_observer.h"
 #include "url/gurl.h"
 
 namespace record_replay {
 
-TaskService::TaskService(RecordingDataManager* recording_data_manager)
-    : recording_data_manager_(recording_data_manager) {}
+TaskService::TaskService(RecordingDataManager* recording_data_manager,
+                         TaskParametersExtractor* task_parameters_extractor)
+    : recording_data_manager_(recording_data_manager),
+      task_parameters_extractor_(task_parameters_extractor) {}
 
 TaskService::~TaskService() = default;
 
 void TaskService::OnURLVisited(const GURL& visited_url) {
   if (!recording_data_manager_) {
+    return;
+  }
+
+  // If there is already an observer, we don't need to get task definitions and
+  // create a new one as we only support one task at a time.
+  if (observer_) {
+    observer_->OnURLVisited(visited_url);
     return;
   }
 
@@ -30,13 +41,25 @@ void TaskService::OnURLVisited(const GURL& visited_url) {
 
 void TaskService::OnTaskDefinitionsRetrieved(
     const GURL& visited_url,
-    std::vector<std::pair<int64_t, TaskDefinition>> task_definitions) {
-  // TODO(crbug.com/514303197): Check whether or not to start observing a task,
-  // and create a TaskObserver if necessary.
+    std::vector<TaskDefinition> task_definitions) {
+  for (const TaskDefinition& definition : task_definitions) {
+    if (definition.url() == visited_url.spec()) {
+      observer_ = std::make_unique<TaskObserver>(
+          definition,
+          base::BindRepeating(&TaskService::OnTaskCompleted,
+                              weak_ptr_factory_.GetWeakPtr()),
+          task_parameters_extractor_);
+      observer_->StartObserving(visited_url);
+      observer_->OnURLVisited(visited_url);
+    }
+  }
 }
 
-void TaskService::OnTaskCompleted(const TaskDefinition& definition) {
-  // TODO(crbug.com/514303497): Handle landing on a task-end URL.
+void TaskService::OnTaskCompleted(const TaskObservation& observation) {
+  recording_data_manager_->SaveTaskDefinition(
+      /*task_definition_id=*/std::nullopt, observation.definition(),
+      base::DoNothing());
+  observer_.reset();
 }
 
 void TaskService::OnExecutionAccepted(const TaskDefinition& definition,

@@ -1307,11 +1307,10 @@
       }
     },
     {
-      name: "ComputePressureOwnContributionEstimate",
-      status: {
-        "Android": "",
-        "default": "experimental",
-      }
+      // If enabled, allow concurrent animations via native paint worklets to
+      // run on the compositor thread.
+      name: "ConcurrentNativePaintWorklets",
+      status: "experimental",
     },
     {
       // When enabled, providing developers control over the resources loaded
@@ -2009,10 +2008,6 @@
     {
       // crbug.com/434361099
       name: "CssTextIndent",
-      status: "stable",
-    },
-    {
-      name: "CssTextIndentAsPrimitive",
       status: "stable",
     },
     {
@@ -2772,6 +2767,13 @@
       status: "stable",
     },
     {
+      // Consumes user activation when showing a picker via input.click() for
+      // file and color inputs to match input.showPicker() and avoid issues
+      // with multiple pickers trying to open at the same time.
+      name: "FileColorPickerConsumeActivation",
+      status: "stable",
+    },
+    {
       // Also enabled when blink::features::kFileHandlingAPI is overridden
       // on the command line (or via chrome://flags).
       name: "FileHandling",
@@ -2784,6 +2786,12 @@
       depends_on: ["FileHandling"],
       status: {"Android": "test", "default": "experimental"},
       base_feature: "none",
+    },
+    {
+      // For <input type=file>, fires change event when same file is chosen
+      // again, and retains files when cancel is pressed.
+      name: "FilePickerEventsFix",
+      status: "stable",
     },
     {
       name: "FileSystem",
@@ -3222,6 +3230,10 @@
     },
     {
       name: "GetUserMediaEchoCancellationModes",
+      status: "stable",
+    },
+    {
+      name: "GraphemeClusterBoundsCheck",
       status: "stable",
     },
     {
@@ -4133,6 +4145,11 @@
       status: "stable",
     },
     {
+      //See crbug.com/512385682
+      name: "OffsetMappingReuseFullWidthSpaceFix",
+      status: "stable",
+    },
+    {
       // Kill switch for a fix to offset-path transform invalidation for
       // https://crbug.com/463409688.
       name: "OffsetPathTransformUpdateFix",
@@ -4345,6 +4362,10 @@
     },
     {
       name: "PageSwapEvent",
+      status: "stable",
+    },
+    {
+      name: "PaintCaretAfterInnerEditorPaint",
       status: "stable",
     },
     {
@@ -4889,7 +4910,7 @@
     },
     {
       name: "RequestIsReloadNavigation",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "RequestMainFrameAfterFirstVideoFrame",
@@ -5138,6 +5159,10 @@
       status: "stable",
     },
     {
+      name: "ScrollPerformanceTiming",
+      status: "test",
+    },
+    {
       // Separate flag for crbug.com/1426506 (getCurrentTime API change) which
       // is expected to land after the initial launch of ScrollTimeline.
       name: "ScrollTimelineCurrentTime",
@@ -5315,6 +5340,10 @@
       public: true,
       status: "stable",
       base_feature: "none",
+    },
+    {
+      name: "SendEarlyLastBeginMainFrame",
+      status: "stable",
     },
     {
       // SlotChange signal is sent after node insertion is complete,
@@ -5631,6 +5660,13 @@
       // Kill switch for falsifying IsStacked() for non-stacked
       // stacking contexts. https://crbug.com/40208685
       name: "StackingContextIsNotStacked",
+      status: "stable",
+    },
+    {
+      // Kill switch for sending ImageChanged() to newly added
+      // observers while a stale cached image is revalidating.
+      // https://crbug.com/40757070
+      name: "StaleImageNaturalSizeDuringRevalidation",
       status: "stable",
     },
     {
@@ -6536,6 +6572,12 @@
       name: "WebAuthenticationCmtgKey",
       status: "experimental",
     },
+    {
+      name: "WebAuthenticationCrossDeviceFallbackUrl",
+      status: {"Android": "", "default": "experimental"},
+      base_feature: "none",
+      public: true,
+    },
     // Enables `uiMode` enumeration field in CredentialRequestOptions struct.
     // and `get()` requests with `uiMode: 'immediate'`.
     // See https://github.com/w3c/webauthn/issues/2228.
@@ -6792,6 +6834,10 @@
         "ChromeOS": "experimental",
         "default": "",
       },
+    },
+    {
+      name: "WebSpeechUnspokenPunctuation",
+      status: "experimental",
     },
     {
       name: "WebTransportApplicationProtocol",

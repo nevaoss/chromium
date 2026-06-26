@@ -414,6 +414,7 @@
 #include "services/network/public/mojom/network_service.mojom.h"
 #include "services/network/public/mojom/url_loader_factory.mojom.h"
 #include "services/network/public/mojom/web_transport.mojom.h"
+#include "third_party/blink/public/common/chrome_debug_urls.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/loader/url_loader_throttle.h"
 #include "third_party/blink/public/common/mime_util/mime_util.h"
@@ -1613,6 +1614,10 @@ void ChromeContentBrowserClient::RegisterProfilePrefs(
       true);
 
   registry->RegisterBooleanPref(
+      policy::policy_prefs::kRestrictBackgroundFetchFromServiceWorkerEnabled,
+      true);
+
+  registry->RegisterBooleanPref(
       policy::policy_prefs::kForcePermissionPolicyUnloadDefaultEnabled, false);
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
@@ -2455,6 +2460,18 @@ ChromeContentBrowserClient::GetBaselinePermissionsPolicyForIsolatedApp(
 #endif
 }
 
+void ChromeContentBrowserClient::EnsureRequiredHeadersForIsolatedApp(
+    content::BrowserContext* browser_context,
+    const GURL& url,
+    network::mojom::URLResponseHead* response_head,
+    const std::optional<content::FrameTreeNodeId>& frame_tree_node) {
+#if !BUILDFLAG(IS_ANDROID)
+  ChromeContentBrowserClientIsolatedWebAppsPart::
+      EnsureRequiredHeadersForIsolatedApp(browser_context, url, response_head,
+                                          frame_tree_node);
+#endif
+}
+
 bool ChromeContentBrowserClient::ShouldTryToUseExistingProcessHost(
     content::BrowserContext* browser_context,
     const GURL& url) {
@@ -2917,6 +2934,20 @@ void ChromeContentBrowserClient::AppendExtraCommandLineSwitches(
             blink::switches::kXSLTEnabledPolicy,
             prefs->GetBoolean(policy::policy_prefs::kXSLTEnabled) ? "true"
                                                                   : "false");
+      }
+
+      if (prefs
+              ->FindPreference(
+                  policy::policy_prefs::
+                      kRestrictBackgroundFetchFromServiceWorkerEnabled)
+              ->IsManaged()) {
+        command_line->AppendSwitchASCII(
+            blink::switches::kRestrictBackgroundFetchFromServiceWorker,
+            prefs->GetBoolean(
+                policy::policy_prefs::
+                    kRestrictBackgroundFetchFromServiceWorkerEnabled)
+                ? "true"
+                : "false");
       }
 
       if (!prefs->GetBoolean(prefs::kPartitionedBlobUrlUsage)) {
@@ -6220,6 +6251,49 @@ ChromeContentBrowserClient::CreateNonNetworkNavigationURLLoaderFactory(
   return {};
 }
 
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+namespace {
+// Components of chrome that are implemented as extensions are allowed to use
+// chrome://resources/ URLs in workers.
+bool ExtensionWorkerHasAccessToChromeResources(
+    const extensions::Extension* extension) {
+  return extension && extension->is_extension() &&
+         Manifest::IsComponentLocation(extension->location());
+}
+
+void AddChromeSchemeFactoriesForWorker(
+    content::BrowserContext* browser_context,
+    const std::optional<url::Origin>& request_initiator,
+    ChromeContentBrowserClient::NonNetworkURLLoaderFactoryMap* factories) {
+  if (!base::FeatureList::IsEnabled(
+          extensions_features::kComponentExtensionAllowWorkerChromeResources)) {
+    return;
+  }
+
+  if (!request_initiator.has_value()) {
+    return;
+  }
+
+  extensions::ExtensionRegistry* registry = extensions::ExtensionRegistry::Get(
+      Profile::FromBrowserContext(browser_context));
+  DCHECK(registry);
+  const extensions::Extension* extension =
+      registry->enabled_extensions().GetExtensionOrAppByURL(
+          request_initiator->GetURL());
+
+  // Support for chrome:// scheme if appropriate for workers.
+  if (ExtensionWorkerHasAccessToChromeResources(extension)) {
+    std::vector<std::string> allowed_webui_hosts = {
+        content::kChromeUIResourcesHost};
+    factories->emplace(content::kChromeUIScheme,
+                       content::CreateWebUIURLLoaderFactoryForWorker(
+                           browser_context, content::kChromeUIScheme,
+                           std::move(allowed_webui_hosts)));
+  }
+}
+}  // namespace
+#endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+
 void ChromeContentBrowserClient::
     RegisterNonNetworkWorkerMainResourceURLLoaderFactories(
         content::BrowserContext* browser_context,
@@ -6447,17 +6521,14 @@ void InitializeFileURLLoaderFactoryForExtension(
   // gets approval from ChildProcessSecurityPolicy. Keep this logic in sync with
   // ExtensionWebContentsObserver::RenderFrameCreated.
   Manifest::Type type = extension->GetType();
-  if ((type == Manifest::TYPE_EXTENSION ||
-       type == Manifest::TYPE_LEGACY_PACKAGED_APP) &&
+  if ((type == Manifest::Type::kExtension ||
+       type == Manifest::Type::kLegacyPackagedApp) &&
       extensions::util::AllowFileAccess(extension->id(), browser_context)) {
     factories->emplace(
         url::kFileScheme,
         SpecialAccessFileURLLoaderFactory::Create(render_process_id));
   }
 }
-#endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
-
-#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 void AddChromeSchemeFactories(
     int render_process_id,
     content::RenderFrameHost* frame_host,
@@ -6620,6 +6691,9 @@ void ChromeContentBrowserClient::
   if (web_contents) {
     AddChromeSchemeFactories(render_process_id, frame_host, web_contents,
                              extension, factories);
+  } else {
+    AddChromeSchemeFactoriesForWorker(browser_context, request_initiator_origin,
+                                      factories);
   }
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 }
@@ -8024,6 +8098,25 @@ void ChromeContentBrowserClient::
   }
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS)
+
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+  if (base::FeatureList::IsEnabled(
+          extensions_features::kComponentExtensionAllowWorkerChromeResources) &&
+      script_url.SchemeIs(extensions::kExtensionScheme)) {
+    content::RenderProcessHost* process =
+        content::RenderProcessHost::FromID(child_id);
+    extensions::ExtensionRegistry* registry =
+        extensions::ExtensionRegistry::Get(
+            Profile::FromBrowserContext(process->GetBrowserContext()));
+    const extensions::Extension* extension =
+        registry->enabled_extensions().GetExtensionOrAppByURL(script_url);
+    if (ExtensionWorkerHasAccessToChromeResources(extension)) {
+      auto* policy = content::ChildProcessSecurityPolicy::GetInstance();
+      policy->GrantRequestOrigin(
+          child_id, url::Origin::Create(GURL(blink::kChromeUIResourcesURL)));
+    }
+  }
+#endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 }
 
 content::ContentBrowserClient::LocalNetworkAccessRequestPolicyOverride

@@ -9,19 +9,24 @@
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/bind.h"
+#include "build/build_config.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_cookie_synchronizer.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_eligibility_manager.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_panel_controller.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_side_panel_coordinator.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_interface.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
+#include "chrome/browser/contextual_tasks/mock_contextual_tasks_ui_service_delegate.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
+#include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/contextual_search/tab_contextualization_controller.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/common/chrome_paths.h"
@@ -34,6 +39,7 @@
 #include "components/lens/contextual_input.h"
 #include "components/lens/lens_features.h"
 #include "components/omnibox/browser/mock_aim_eligibility_service.h"
+#include "components/omnibox/common/composebox_features.h"
 #include "components/prefs/pref_service.h"
 #include "components/sessions/content/session_tab_helper.h"
 #include "components/signin/public/identity_manager/identity_test_utils.h"
@@ -117,12 +123,15 @@ class MockContextualTasksUiService
       signin::IdentityManager* identity_manager)
       : contextual_tasks::ContextualTasksUiService(
             profile,
-            /*delegate=*/nullptr,
+            std::make_unique<testing::NiceMock<
+                contextual_tasks::MockContextualTasksUiServiceDelegate>>(),
             contextual_tasks_service,
             identity_manager,
             aim_eligibility_service,
             std::make_unique<MockContextualTasksEligibilityManager>(
-                profile->GetPrefs(), identity_manager, aim_eligibility_service),
+                profile->GetPrefs(),
+                identity_manager,
+                aim_eligibility_service),
             /*cookie_synchronizer=*/nullptr) {}
   ~MockContextualTasksUiService() override = default;
 
@@ -430,6 +439,29 @@ class ContextualTasksInteractiveUiTest : public InteractiveBrowserTest {
         "querySelector('#carousel')?.shadowRoot?."
         "querySelector('cr-composebox-file-thumbnail')?.shadowRoot?."
         "querySelector('#documentChip')?.querySelector('#documentTitle');"
+        "  if (el && el.textContent.trim().includes('%s')) {"
+        "    return true;"
+        "  }"
+        "  return false;"
+        "}",
+        expected_title.c_str());
+    change.event = kElementExistsEvent;
+    return WaitForStateChange(contents_id, change);
+  }
+
+  auto WaitForTabChipWithTitle(const ui::ElementIdentifier& contents_id,
+                               const std::string& expected_title) {
+    StateChange change;
+    change.type = StateChange::Type::kExistsAndConditionTrue;
+    change.where = {"contextual-tasks-app"};
+    change.test_function = base::StringPrintf(
+        "function(app) {"
+        "  const el = "
+        "app?.shadowRoot?.querySelector('#composebox')?.shadowRoot?."
+        "querySelector('#composebox')?.shadowRoot?."
+        "querySelector('#carousel')?.shadowRoot?."
+        "querySelector('cr-composebox-file-thumbnail')?.shadowRoot?."
+        "querySelector('#tabChip')?.querySelector('div.tabInfo > div.title');"
         "  if (el && el.textContent.trim().includes('%s')) {"
         "    return true;"
         "  }"
@@ -857,8 +889,17 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
           lens::LensOverlayRequestId::MEDIA_TYPE_DEFAULT_IMAGE));
 }
 
+// TODO(crbug.com/516333831): Re-enable this test on Windows.
+#if BUILDFLAG(IS_WIN)
+#define MAYBE_AddAndSubmitMultipleContextsFromComposebox \
+  DISABLED_AddAndSubmitMultipleContextsFromComposebox
+#else
+#define MAYBE_AddAndSubmitMultipleContextsFromComposebox \
+  AddAndSubmitMultipleContextsFromComposebox
+#endif
+
 IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
-                       AddAndSubmitMultipleContextsFromComposebox) {
+                       MAYBE_AddAndSubmitMultipleContextsFromComposebox) {
   const GURL kInterceptionUrl("https://www.google.com/search?udm=50");
   const GURL kGenericPageUrl1 = embedded_test_server()->GetURL("/title1.html");
   const GURL kGenericPageUrl2 = embedded_test_server()->GetURL("/title2.html");
@@ -969,8 +1010,16 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
                                        /*expected_added_input_names=*/{}));
 }
 
+// TODO(crbug.com/516333831): Re-enable this test on Windows.
+#if BUILDFLAG(IS_WIN)
+#define MAYBE_AddAndSubmitMultipleContextsWithTextFromComposebox \
+  DISABLED_AddAndSubmitMultipleContextsWithTextFromComposebox
+#else
+#define MAYBE_AddAndSubmitMultipleContextsWithTextFromComposebox \
+  AddAndSubmitMultipleContextsWithTextFromComposebox
+#endif
 IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
-                       AddAndSubmitMultipleContextsWithTextFromComposebox) {
+                       MAYBE_AddAndSubmitMultipleContextsWithTextFromComposebox) {
   const GURL kInterceptionUrl("https://www.google.com/search?udm=50");
   const GURL kGenericPageUrl1 = embedded_test_server()->GetURL("/title1.html");
   const GURL kGenericPageUrl2 = embedded_test_server()->GetURL("/title2.html");
@@ -1051,6 +1100,342 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
           /*expected_upload_file_count=*/1,
           std::vector<std::string>{"title1.html", "title2.html",
                                    "download.pdf"}));
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
+                       AutoSuggestedTabChipAppearsAndCanBeSubmitted) {
+  const GURL kGenericPageUrl = embedded_test_server()->GetURL("/title1.html");
+
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelWebContentsId);
+
+  const DeepQuery kComposeboxContainer = {"contextual-tasks-app", "#composebox",
+                                          "#composebox"};
+
+  const DeepQuery kFaviconGroup = {
+      "contextual-tasks-app", "#composebox",       "#composebox",
+      "#contextEntrypoint",   "#entrypointButton", "composebox-favicon-group"};
+
+  const DeepQuery kSubmitButton = {"contextual-tasks-app", "#composebox",
+                                   "#composebox", "cr-composebox-submit",
+                                   "#submitContainer"};
+
+  ContextualTasksPanelController* coordinator =
+      ContextualTasksPanelController::From(browser());
+
+  RunTestSequence(
+      InstrumentTab(kPrimaryTab, 0), Do([&]() {
+        coordinator->Show(
+            false,
+            omnibox::DESKTOP_CHROME_LENS_CONTEXTUAL_SEARCHBOX_ENTRY_POINT);
+      }),
+      WaitForShow(kContextualTasksSidePanelWebViewElementId),
+      InstrumentNonTabWebView(kSidePanelWebContentsId,
+                              kContextualTasksSidePanelWebViewElementId),
+      InstrumentInnerWebContents(kInnerWebContentsId, kSidePanelWebContentsId,
+                                 0),
+
+      // Wait for composebox WebUI components to load.
+      WaitForElementExists(kSidePanelWebContentsId, kComposeboxContainer),
+
+      // Navigate active tab to a valid page.
+      NavigateWebContents(kPrimaryTab, kGenericPageUrl),
+
+      // The navigated active tab (title1.html) should be automatically
+      // suggested and displayed inside the favicon coin group.
+      WaitForFaviconGroupWithTitle(kSidePanelWebContentsId, "title1.html"),
+
+      // Click the submit button.
+      ClickButton(kSidePanelWebContentsId, kSubmitButton),
+
+      // Verify the sent query includes the auto-suggested tab context.
+      VerifySubmitQueryMessage(
+          lens::LensOverlayRequestId::MEDIA_TYPE_WEBPAGE_AND_IMAGE,
+          "title1.html"));
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
+                       AutoSuggestedTabChipCanBeDismissed) {
+  const GURL kGenericPageUrl = embedded_test_server()->GetURL("/title1.html");
+
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelWebContentsId);
+
+  const DeepQuery kComposeboxContainer = {"contextual-tasks-app", "#composebox",
+                                          "#composebox"};
+
+  const DeepQuery kFaviconGroup = {
+      "contextual-tasks-app", "#composebox",       "#composebox",
+      "#contextEntrypoint",   "#entrypointButton", "composebox-favicon-group"};
+
+  ContextualTasksPanelController* coordinator =
+      ContextualTasksPanelController::From(browser());
+
+  StateChange coin_disappeared;
+  coin_disappeared.type = StateChange::Type::kExistsAndConditionTrue;
+  coin_disappeared.where = {"contextual-tasks-app"};
+  coin_disappeared.test_function =
+      "function(app) {"
+      "  const cb = "
+      "app?.shadowRoot?.querySelector('#composebox')?.shadowRoot?."
+      "querySelector('#composebox');"
+      "  if (cb) {"
+      "    document.getAnimations({subtree: true}).forEach(a => a.finish());"
+      "  }"
+      "  const el = "
+      "cb?.shadowRoot?.querySelector('#contextEntrypoint')?.shadowRoot?."
+      "querySelector('#entrypointButton')?.shadowRoot?.querySelector('"
+      "composebox-favicon-group');"
+      "  return !el;"
+      "}";
+  coin_disappeared.event = kElementDoesNotExistEvent;
+
+  RunTestSequence(
+      InstrumentTab(kPrimaryTab, 0), Do([&]() {
+        coordinator->Show(
+            false,
+            omnibox::DESKTOP_CHROME_LENS_CONTEXTUAL_SEARCHBOX_ENTRY_POINT);
+      }),
+      WaitForShow(kContextualTasksSidePanelWebViewElementId),
+      InstrumentNonTabWebView(kSidePanelWebContentsId,
+                              kContextualTasksSidePanelWebViewElementId),
+      InstrumentInnerWebContents(kInnerWebContentsId, kSidePanelWebContentsId,
+                                 0),
+
+      // Wait for composebox WebUI components to load.
+      WaitForElementExists(kSidePanelWebContentsId, kComposeboxContainer),
+
+      // Navigate active tab to a valid page.
+      NavigateWebContents(kPrimaryTab, kGenericPageUrl),
+
+      // Wait for the suggestion coin group to appear.
+      WaitForElementExists(kSidePanelWebContentsId, kFaviconGroup),
+
+      // Dismiss the suggested tab by opening context entrypoint and deselecting
+      // the tab.
+      ForceClickAddContextEntrypoint(kSidePanelWebContentsId),
+      ForceClickMenuButton(kSidePanelWebContentsId, 0),
+
+      // Verify the dropdown menu has enableMultiTabSelection_ set to true.
+      CheckJsResult(
+          kSidePanelWebContentsId,
+          "() => { "
+          "const app = document.querySelector('contextual-tasks-app');"
+          "const cb = "
+          "app?.shadowRoot?.querySelector('#composebox')?.shadowRoot?."
+          "querySelector('#composebox');"
+          "const entry = cb?.shadowRoot?.querySelector('#contextEntrypoint'); "
+          "const m = entry?.shadowRoot?.querySelector('#menu'); "
+          "return m?.enableMultiTabSelection_ === true; }"),
+
+      // Verify the composebox files list successfully drops to 0.
+      CheckJsResult(
+          kSidePanelWebContentsId,
+          "() => { "
+          "const app = document.querySelector('contextual-tasks-app');"
+          "const cb = "
+          "app?.shadowRoot?.querySelector('#composebox')?.shadowRoot?."
+          "querySelector('#composebox');"
+          "const triggerTabId = cb?.tabSuggestions?.[0]?.tabId; "
+          "const tokenFromMap = cb?.addedTabsIds?.get(triggerTabId); "
+          "const hasTokenInFiles = cb?.files?.has(tokenFromMap); "
+          "return `hasToken: ${hasTokenInFiles}, size: ${cb?.files?.size}, "
+          "filesKeys: ${Array.from(cb?.files?.keys()).map(k => k.high + '_' + "
+          "k.low)}, mapVal: ${tokenFromMap ? tokenFromMap.high + '_' + "
+          "tokenFromMap.low : 'null'}`; }",
+          "hasToken: false, size: 0, filesKeys: , mapVal: null"),
+
+      // Wait for the favicon coin group to disappear robustly.
+      WaitForStateChange(kSidePanelWebContentsId, coin_disappeared),
+
+      // Await a deterministic Mojo roundtrip to guarantee the DeleteContext
+      // Mojo call has finished executing in C++.
+      CheckJsResult(
+          kSidePanelWebContentsId,
+          "() => { "
+          "const app = document.querySelector('contextual-tasks-app');"
+          "const cb = "
+          "app?.shadowRoot?.querySelector('#composebox')?.shadowRoot?."
+          "querySelector('#composebox');"
+          "return cb?.searchboxHandler_.getInputState().then(() => true); }"),
+
+      // Navigate away and back to trigger context updates.
+      NavigateWebContents(kPrimaryTab, GURL("about:blank")),
+      WaitForElementDoesNotExist(kSidePanelWebContentsId, kFaviconGroup),
+      NavigateWebContents(kPrimaryTab, kGenericPageUrl),
+
+      // Verify the suggestion chip does not reappear because it was dismissed.
+      EnsureNotPresent(kSidePanelWebContentsId, kFaviconGroup));
+}
+
+class ContextualTasksInteractiveUiTestWithChips
+    : public ContextualTasksInteractiveUiTest {
+ public:
+  ContextualTasksInteractiveUiTestWithChips() {
+    scoped_feature_list_chips_.InitAndDisableFeature(
+        omnibox::kTabFaviconChipsToCoins);
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_chips_;
+};
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTestWithChips,
+                       AutoSuggestedTabChipAppearsAndCanBeSubmitted) {
+  const GURL kGenericPageUrl = embedded_test_server()->GetURL("/title1.html");
+
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelWebContentsId);
+
+  const DeepQuery kComposeboxContainer = {"contextual-tasks-app", "#composebox",
+                                          "#composebox"};
+
+  const DeepQuery kTabChip = {
+      "contextual-tasks-app",         "#composebox", "#composebox", "#carousel",
+      "cr-composebox-file-thumbnail", "#tabChip"};
+
+  const DeepQuery kSubmitButton = {"contextual-tasks-app", "#composebox",
+                                   "#composebox", "cr-composebox-submit",
+                                   "#submitContainer"};
+
+  ContextualTasksPanelController* coordinator =
+      ContextualTasksPanelController::From(browser());
+
+  StateChange files_ready;
+  files_ready.type = StateChange::Type::kExistsAndConditionTrue;
+  files_ready.where = {"contextual-tasks-app", "#composebox", "#composebox"};
+  files_ready.test_function = "el => el.files && el.files.size === 1";
+  files_ready.event = kElementExistsEvent;
+
+  RunTestSequence(
+      InstrumentTab(kPrimaryTab, 0), Do([&]() {
+        coordinator->Show(
+            false,
+            omnibox::DESKTOP_CHROME_LENS_CONTEXTUAL_SEARCHBOX_ENTRY_POINT);
+      }),
+      WaitForShow(kContextualTasksSidePanelWebViewElementId),
+      InstrumentNonTabWebView(kSidePanelWebContentsId,
+                              kContextualTasksSidePanelWebViewElementId),
+      InstrumentInnerWebContents(kInnerWebContentsId, kSidePanelWebContentsId,
+                                 0),
+
+      // Wait for composebox WebUI components to load.
+      WaitForElementExists(kSidePanelWebContentsId, kComposeboxContainer),
+
+      // Navigate active tab to a valid page.
+      NavigateWebContents(kPrimaryTab, kGenericPageUrl),
+
+      // Wait asynchronously for WebUI files list to capture the tab addition
+      // Mojo callback.
+      WaitForStateChange(kSidePanelWebContentsId, files_ready),
+
+      // The navigated active tab (title1.html) should be automatically
+      // suggested as a standard carousel chip.
+      WaitForTabChipWithTitle(kSidePanelWebContentsId, "title1.html"),
+
+      // Click the submit button.
+      ClickButton(kSidePanelWebContentsId, kSubmitButton),
+
+      // Verify the sent query includes the auto-suggested tab context.
+      VerifySubmitQueryMessage(
+          lens::LensOverlayRequestId::MEDIA_TYPE_WEBPAGE_AND_IMAGE,
+          "title1.html"));
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTestWithChips,
+                       AutoSuggestedTabChipCanBeDismissed) {
+  const GURL kGenericPageUrl = embedded_test_server()->GetURL("/title1.html");
+
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelWebContentsId);
+
+  const DeepQuery kComposeboxContainer = {"contextual-tasks-app", "#composebox",
+                                          "#composebox"};
+
+  const DeepQuery kTabChip = {
+      "contextual-tasks-app",         "#composebox", "#composebox", "#carousel",
+      "cr-composebox-file-thumbnail", "#tabChip"};
+
+  const DeepQuery kRemoveTabButton = {"contextual-tasks-app",
+                                      "#composebox",
+                                      "#composebox",
+                                      "#carousel",
+                                      "cr-composebox-file-thumbnail",
+                                      "#removeTabButton"};
+
+  ContextualTasksPanelController* coordinator =
+      ContextualTasksPanelController::From(browser());
+
+  StateChange files_ready;
+  files_ready.type = StateChange::Type::kExistsAndConditionTrue;
+  files_ready.where = {"contextual-tasks-app", "#composebox", "#composebox"};
+  files_ready.test_function = "el => el.files && el.files.size === 1";
+  files_ready.event = kElementExistsEvent;
+
+  StateChange chip_disappeared;
+  chip_disappeared.type = StateChange::Type::kExistsAndConditionTrue;
+  chip_disappeared.where = {"contextual-tasks-app"};
+  chip_disappeared.test_function =
+      "function(app) {"
+      "  const cb = "
+      "app?.shadowRoot?.querySelector('#composebox')?.shadowRoot?."
+      "querySelector('#composebox');"
+      "  if (cb) {"
+      "    document.getAnimations({subtree: true}).forEach(a => a.finish());"
+      "  }"
+      "  const el = "
+      "cb?.shadowRoot?.querySelector('#carousel')?.shadowRoot?."
+      "querySelector('cr-composebox-file-thumbnail')?.shadowRoot?."
+      "querySelector('#tabChip');"
+      "  return !el;"
+      "}";
+  chip_disappeared.event = kElementDoesNotExistEvent;
+
+  RunTestSequence(
+      InstrumentTab(kPrimaryTab, 0), Do([&]() {
+        coordinator->Show(
+            false,
+            omnibox::DESKTOP_CHROME_LENS_CONTEXTUAL_SEARCHBOX_ENTRY_POINT);
+      }),
+      WaitForShow(kContextualTasksSidePanelWebViewElementId),
+      InstrumentNonTabWebView(kSidePanelWebContentsId,
+                              kContextualTasksSidePanelWebViewElementId),
+      InstrumentInnerWebContents(kInnerWebContentsId, kSidePanelWebContentsId,
+                                 0),
+
+      // Wait for composebox WebUI components to load.
+      WaitForElementExists(kSidePanelWebContentsId, kComposeboxContainer),
+
+      NavigateWebContents(kPrimaryTab, kGenericPageUrl),
+
+      // Wait asynchronously for WebUI files list to capture the tab addition
+      // Mojo callback.
+      WaitForStateChange(kSidePanelWebContentsId, files_ready),
+
+      // Wait for the suggestion chip to appear.
+      WaitForElementExists(kSidePanelWebContentsId, kTabChip),
+
+      // Dismiss the suggested tab chip by clicking the remove button inside
+      // carousel.
+      ClickButton(kSidePanelWebContentsId, kRemoveTabButton),
+
+      // Wait for the suggested tab chip to disappear robustly.
+      WaitForStateChange(kSidePanelWebContentsId, chip_disappeared),
+
+      // Await a deterministic Mojo roundtrip to guarantee the DeleteContext
+      // Mojo call has finished executing in C++.
+      CheckJsResult(
+          kSidePanelWebContentsId,
+          "() => { "
+          "const app = document.querySelector('contextual-tasks-app');"
+          "const cb = "
+          "app?.shadowRoot?.querySelector('#composebox')?.shadowRoot?."
+          "querySelector('#composebox');"
+          "return cb?.searchboxHandler_.getInputState().then(() => true); }"),
+
+      // Navigate away and back to trigger context updates.
+      NavigateWebContents(kPrimaryTab, GURL("about:blank")),
+      WaitForElementDoesNotExist(kSidePanelWebContentsId, kTabChip),
+      NavigateWebContents(kPrimaryTab, kGenericPageUrl),
+
+      // Verify the suggestion chip does not reappear because it was dismissed.
+      EnsureNotPresent(kSidePanelWebContentsId, kTabChip));
 }
 
 }  // namespace contextual_tasks

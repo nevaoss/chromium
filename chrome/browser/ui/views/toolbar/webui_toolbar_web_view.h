@@ -38,6 +38,13 @@ class BrowserWindowInterface;
 class WebUILocationBar;
 class WebUIToolbarUI;
 class WebUIToolbarInternalWebView;
+class ExtensionsContainer;
+class WebUIToolbarExtensionsContainer;
+
+namespace ui {
+template <typename T>
+class ScopedUnownedUserData;
+}
 
 namespace views {
 class WebView;
@@ -287,9 +294,13 @@ class WebUIToolbarWebView
   // the toolbar and the active main content's RenderWidgetHostView.
   void SetSurfaceSyncDeadline(std::optional<uint32_t> deadline_in_frames);
 
+  // Resolves the initial deadline from features and applies it if enabled.
+  void ApplyInitialSurfaceSyncDeadline();
+
   WebUIToolbarUI* GetWebUIToolbarUI();
 
   void OnTouchUiChanged();
+  void OnActiveTabChanged(BrowserWindowInterface* browser_interface);
   void PostPushNavigationState();
   void PushNavigationState();
   toolbar_ui_api::mojom::BackForwardControlStatePtr GetBackForwardState() const;
@@ -323,6 +334,10 @@ class WebUIToolbarWebView
   // This is null if WebUILocationBar is off, or the window is in one of the
   // modes (e.g. popup) that don't use it yet.
   std::unique_ptr<WebUILocationBar> location_bar_;
+  std::unique_ptr<WebUIToolbarExtensionsContainer> extensions_container_;
+  std::unique_ptr<ui::ScopedUnownedUserData<ExtensionsContainer>>
+      scoped_extensions_container_user_data_;
+  base::CallbackListSubscription active_tab_subscription_;
   WebUIBackForwardControl back_control_;
   WebUIBackForwardControl forward_control_;
   WebUIPinnedToolbarActions pinned_toolbar_actions_;

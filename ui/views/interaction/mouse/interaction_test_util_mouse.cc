@@ -438,10 +438,26 @@ void InteractionTestUtilMouse::PerformNextGesture(const GestureParams& params,
 
   MouseGesture gesture = std::move(gestures.front());
   gestures.pop_front();
+  const bool is_last_gesture = gestures.empty();
 
-  base::OnceClosure step_complete = base::BindOnce(
+  // If the gestures should be executed asynchronously, then the next gesture
+  // will be sent immediately after sending the current one. Therefore,
+  // defer `on_complete_` until all gestures have been sent.
+  //
+  // TODO(crbug.com/40249472): The `force_async` should eventually be removed
+  // altogether. The current blocker is the "click" gesture. Specifically, on
+  // MacOS 12 and earlier, which uses Carbon rather than Cocoa, the mouse down
+  // and up events must be close together to be considered a "click"; otherwise
+  // context menus will be prematurely dismissed for right-clicks. Executing
+  // the inputs sequentially (i.e. with `force_async = false`) incurs too
+  // long of a delay.
+  base::OnceClosure perform_next_gesture = base::BindOnce(
       &InteractionTestUtilMouse::PerformNextGesture,
       weak_ptr_factory_.GetWeakPtr(), params, std::move(gestures));
+  base::OnceClosure step_complete = base::DoNothing();
+  if (!params.force_async || is_last_gesture) {
+    step_complete = std::move(perform_next_gesture);
+  }
 
   if (MouseButtonGesture* const button =
           std::get_if<MouseButtonGesture>(&gesture)) {
@@ -510,6 +526,12 @@ void InteractionTestUtilMouse::PerformNextGesture(const GestureParams& params,
       CancelAllGestures();
       return;
     }
+  }
+
+  // Run the next gesture if it hasn't been passed as a callback to the
+  // gesture that was just performed (i.e. for async gestures).
+  if (perform_next_gesture) {
+    PostTask(std::move(perform_next_gesture));
   }
 }
 

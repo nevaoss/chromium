@@ -117,7 +117,7 @@
     {
         "name": "browser",
         "group": "androidx.browser",
-        "version": "1.10.0"
+        "version": "1.11.0-SNAPSHOT"
     },
     {
         "name": "app",
@@ -1807,12 +1807,12 @@
     {
         "name": "wire-runtime",
         "group": "com.squareup.wire",
-        "version": "6.0.0"
+        "version": "6.4.0"
     },
     {
         "name": "wire-runtime-jvm",
         "group": "com.squareup.wire",
-        "version": "6.0.0"
+        "version": "6.4.0"
     },
     {
         "name": "javapoet",
@@ -2127,17 +2127,17 @@
     {
         "name": "asm",
         "group": "org.ow2.asm",
-        "version": "9.10"
+        "version": "9.10.1"
     },
     {
         "name": "asm-commons",
         "group": "org.ow2.asm",
-        "version": "9.10"
+        "version": "9.10.1"
     },
     {
         "name": "asm-tree",
         "group": "org.ow2.asm",
-        "version": "9.10"
+        "version": "9.10.1"
     },
     {
         "name": "reactive-streams",

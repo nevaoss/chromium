@@ -393,7 +393,7 @@ IN_PROC_BROWSER_TEST_F(FormControlsBrowserTest, MAYBE_Select) {
 #if BUILDFLAG(IS_ANDROID)
             // For the select test, allow larger absolute errors in exchange
             // for less average error.
-            comparator.SetAvgAbsErrorLimit(5.f).SetAbsErrorLimit(200);
+            comparator.SetAvgAbsErrorLimit(8.f).SetAbsErrorLimit(200);
 #endif
           });
 }

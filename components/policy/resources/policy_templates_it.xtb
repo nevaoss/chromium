@@ -2195,6 +2195,7 @@ Se questa policy viene impostata, l'utente non potrà sostituire il valore.
 
 Se questa policy non viene impostata, la Schermata sulla privacy verrà inizialmente disattivata, ma potrà essere controllata dall'utente.</translation>
 <translation id="2413899611035194909">Mostra opzioni di accessibilità nel menu della barra delle applicazioni della schermata di accesso</translation>
+<translation id="2414712434655365347">Configura l'inserimento di intestazioni HTTP per pattern URL specifici</translation>
 <translation id="2415715982424988916">Esplora (supportata dalla versione 91)</translation>
 <translation id="2420958105721932612">Consente di specificare la modalità di installazione di un'app. AVAILABLE: l'app non viene installata automaticamente, ma può essere installata dall'utente. Si tratta del comportamento predefinito se questa policy non viene specificata. FORCE_INSTALLED: l'app viene installata automaticamente e l'utente non può disinstallarla. BLOCKED: l'app è bloccata e non può essere installata. Se l'app è stata installata in base a una policy precedente, verrà disinstallata.</translation>
 <translation id="2421400544595297401">Non consentire a utenti non affiliati di utilizzare app per Android</translation>
@@ -2933,6 +2934,13 @@ Questa policy può essere impostata soltanto come policy relativa agli utenti cl
 <translation id="2866726566162790531">Elenco delle origini che consentono tutte le autenticazioni HTTP</translation>
 <translation id="2868756546751652023">Consenti agli utenti di utilizzare il tethering istantaneo</translation>
 <translation id="286898786908566256">Consenti agli utenti di inviare numeri di telefono da Chrome al loro dispositivo Android</translation>
+<translation id="287087426320717057">Questa policy consente agli utenti di avviare qualsiasi tipo di aggiornamento firmware.
+
+      Se la policy viene attivata o se non viene configurata, gli utenti (ad es. il proprietario del dispositivo) possono avviare aggiornamenti firmware.
+
+      Se la policy viene disattivata, gli utenti non possono applicare gli aggiornamenti firmware.
+
+      Questa policy si applica al firmware per gli aggiornamenti firmware delle periferiche esterne e dei componenti interni per i dispositivi <ph name="PRODUCT_OS_FLEX_NAME" />. Questa policy non influisce sugli aggiornamenti firmware dei componenti interni per i dispositivi <ph name="PRODUCT_OS_NAME" />.</translation>
 <translation id="2872098849906555324">Disattiva la sincronizzazione Google Drive</translation>
 <translation id="2872189563975139803">Impostazioni di separazione dei profili aziendali</translation>
 <translation id="2872961005593481000">Spegni</translation>
@@ -3521,7 +3529,6 @@ Se non viene configurata, verrà utilizzato il nuovo comportamento, esattamente 
 <translation id="3229163415739929305">Se la policy viene impostata su Attivata o se non viene configurata, viene attivato il recupero dei metadati di caricamento delle pagine e dei modelli di machine learning che migliorano l'esperienza di navigazione.
       Se la policy viene impostata su Disattivata, il comportamento di alcune funzionalità potrebbe non essere corretto.</translation>
 <translation id="3231311173895401135">Lascia che sia il browser a decidere in merito al supporto</translation>
-<translation id="3231684792162319504">Non consentire l'attivazione sperimentale di Gemini.</translation>
 <translation id="3231837273069128027">La configurazione della policy consente di impostare disponibilità e comportamento degli aggiornamenti del firmware <ph name="TPM_FIRMWARE_UPDATE_TPM" />.
 
       Specifica le singole impostazioni nelle proprietà JSON:
@@ -5269,7 +5276,6 @@ Se la policy viene configurata, gli utenti non possono modificarla in <ph name="
 <translation id="4435032708588431506">Consenti QUIC</translation>
 <translation id="443665821428652897">Cancella i dati del sito alla chiusura del browser (obsoleta)</translation>
 <translation id="4436941175475497595">Disattiva anteprima di stampa</translation>
-<translation id="4436992815485865052">Consenti l'attivazione sperimentale di Gemini.</translation>
 <translation id="4439336120285389675">Consente di specificare un elenco di funzioni ritirate della piattaforma web da riattivare temporaneamente.
 
       Questa norma consente agli amministratori di riattivare funzioni ritirate della piattaforma web per un periodo di tempo limitato. Le funzioni sono identificate da un tag string e le funzioni corrispondenti ai tag inclusi nell'elenco specificato tramite questa norma verranno riattivate.
@@ -6688,7 +6694,6 @@ Nota: questa funzionalità non è ancora disponibile per tutti gli utenti, quind
 <translation id="5255790642269910630">La configurazione della policy comporta la rotazione di ogni display nell'orientamento specificato a ogni riavvio e la prima volta che viene eseguita la connessione del display dopo la modifica del valore della policy. Gli utenti possono modificare la rotazione del display tramite la pagina delle impostazioni dopo aver eseguito l'accesso, ma la rotazione tornerà allo stato precedente al riavvio successivo. Questa policy si applica ai display primari e secondari.
 
 Se non viene configurata, il valore predefinito è 0 e gli utenti sono liberi di modificarlo. In questo caso, il valore predefinito non viene applicato nuovamente al riavvio.</translation>
-<translation id="5256792633540454282">Controlla l'attivazione sperimentale di Gemini</translation>
 <translation id="5257395339965216304">Dati app ospitate</translation>
 <translation id="5258445772095084618">Consenti agli utenti non affiliati di usare le macchine virtuali necessarie per supportare le app Linux</translation>
 <translation id="5258651513421638932">Consenti la connessione della smart card da parte delle app isolate</translation>
@@ -7694,7 +7699,6 @@ Su <ph name="MAC_OS_NAME" />, questa policy è disponibile soltanto per le istan
 
       Questa policy è deprecata. Usa la policy <ph name="PRINTERS_BULK_BLOCKLIST" />.</translation>
 <translation id="591088232153082363">Ricarica adattiva della batteria sulla base dei pattern di utilizzo batteria.</translation>
-<translation id="5911656389795271430">Questa è una policy sperimentale.</translation>
 <translation id="5913506885872855604">Questa può essere utilizzata per trattare determinati intervalli di indirizzi interni come "pubblici" e quindi non soggetti a controlli di <ph name="LOCAL_NETWORK_ACCES" />. Al contrario, può essere utilizzata per trattare determinati intervalli di indirizzi pubblici che potrebbero essere utilizzati internamente come "locali", in modo che siano protetti dai controlli di <ph name="LOCAL_NETWORK_ACCESS" />.
 
 Gli override dello spazio di indirizzi IP hanno due forme:
@@ -8131,6 +8135,25 @@ Dalla versione 114 in poi, questa policy è facoltativa se viene configurata la 
 <translation id="624219423122512710">Azioni per browser inattivo</translation>
 <translation id="6244061205361004687">Consenti all'utente di disconnettere o modificare manualmente una VPN</translation>
 <translation id="6244210204546589761">Pagine da aprire all'avvio</translation>
+<translation id="6245828368576563662">Questa policy consente di definire un elenco di regole per inserire intestazioni HTTP personalizzate nelle richieste web che corrispondono a pattern URL specifici. Le intestazioni impostate da questa policy hanno la precedenza su quelle inizialmente presenti nella richiesta, nonché sulle modifiche tentate dagli utenti o dalle estensioni.
+
+Un caso d'uso comune per questa policy è l'applicazione dei controlli di accesso dei tenant mediante l'inserimento di intestazioni personalizzate (ad es. <ph name="EXAMPLE_HEADER_NAME" />).
+
+La policy accetta un elenco di regole. Ogni regola contiene:
+
+* <ph name="PATTERNS_KEY" />: un elenco di pattern URL da abbinare. Scopri come formattare un pattern URL (https://support.google.com/chrome/a?p=url_blocklist_filter_format).
+
+* <ph name="HEADERS_KEY" />: un elenco di oggetti che rappresentano le intestazioni da inserire, ognuno dei quali contiene:
+
+  * <ph name="HEADER_NAME_KEY" />: il nome dell'intestazione da inserire.
+
+  * <ph name="HEADER_VALUE_KEY" />: il valore dell'intestazione da inserire.
+
+Se più regole corrispondono a una richiesta, verranno applicate le intestazioni di tutte le regole corrispondenti. Se sono presenti più intestazioni con lo stesso nome, verrà applicata quella con il pattern URL più specifico. Se i pattern hanno la stessa specificità, verrà applicato quello che compare per ultimo nell'elenco.
+
+I nomi delle intestazioni devono essere conformi a RFC 2616 (https://www.rfc-editor.org/rfc/rfc2616). I valori delle intestazioni non devono contenere simboli NUL, CR o LF. Le singole intestazioni non devono superare gli 8 kB. Le intestazioni e i pattern URL non validi verranno ignorati.
+
+Questa policy è limitata a un totale di 500 pattern URL in tutte le regole. Ogni regola può contenere al massimo 20 intestazioni. I pattern e le intestazioni che superano queste soglie verranno ignorati.</translation>
 <translation id="624595269193747921">Consente di stabilire se limitare o meno la ricerca della stampante corrispondente a un insieme specifico di stampanti.</translation>
 <translation id="6246290059248303618">Mostra i controlli multimediali per le sessioni <ph name="PRODUCT_NAME" /> avviate da altri dispositivi sulla rete locale</translation>
 <translation id="6247316685259031374">Questa policy consente di controllare la sandbox del processo audio.
@@ -9528,14 +9551,6 @@ l'ottimizzazione di JavaScript viene attivata per il sito.</translation>
       Se la policy non viene impostata, la barra delle app verrà posizionata per impostazione predefinita nella parte inferiore dello schermo, ma l'utente potrà cambiare la posizione.</translation>
 <translation id="7039815268521168329">Mostrare il flusso Voice Match dell'Assistente Google durante la configurazione iniziale</translation>
 <translation id="7040229947030068419">Valore di esempio:</translation>
-<translation id="7044626519138840387">Un elenco di origini di app client Remote Desktop che potrebbero eseguire le richieste
-API WebAuthn provenienti da una sessione di navigazione su un host remoto.
-
-Qualsiasi origine configurata in questa policy può inviare richieste WebAuthn per ID
-Relying Party (ID RP) che normalmente non sarebbe autorizzata a richiedere.
-
-Sono consentite solo origini HTTPS valide. I caratteri jolly non sono supportati.
-Le voci non valide vengono ignorate.</translation>
 <translation id="7044883996351280650">Controlla il servizio backup e ripristino di Android</translation>
 <translation id="7045221780834308118">Se la policy viene impostata su Enabled, le applicazioni web di terze parti possono usare l'API Desk per controllare le scrivanie di <ph name="PRODUCT_OS_NAME" />. Se la policy non viene configurata o se viene disattivata, <ph name="DESK_API_NAME" /> non sarà disponibile. La policy verrà applicata soltanto sui dispositivi registrati.</translation>
 <translation id="7046113122884041950">Non consentire Smart Lock</translation>

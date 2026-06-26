@@ -4,9 +4,9 @@
 
 #include "chrome/browser/ui/webui/accessibility_annotator_internals/personal_context_internals_page_handler.h"
 
-#include "chrome/browser/accessibility_annotator/first_run/personal_context_first_run_service_factory.h"
+#include "chrome/browser/personal_context/first_run/personal_context_first_run_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
-#include "components/accessibility_annotator/first_run/personal_context_first_run_service.h"
+#include "components/personal_context/first_run/personal_context_first_run_service.h"
 
 PersonalContextInternalsPageHandler::PersonalContextInternalsPageHandler(
     mojo::PendingReceiver<
@@ -31,13 +31,12 @@ void PersonalContextInternalsPageHandler::TriggerFirstRun(
 
   service->MaybeTriggerFirstRun(
       web_contents_,
-      accessibility_annotator::FirstRunInvocationSource::kAutoTriggerPromo,
+      personal_context::FirstRunInvocationSource::kAutoTriggerPromo,
       base::BindOnce(
           [](TriggerFirstRunCallback callback,
-             accessibility_annotator::FirstRunTriggerResult result) {
+             personal_context::FirstRunTriggerResult result) {
             std::move(callback).Run(
-                result ==
-                accessibility_annotator::FirstRunTriggerResult::kSuccess);
+                result == personal_context::FirstRunTriggerResult::kSuccess);
           },
           std::move(callback)));
 }

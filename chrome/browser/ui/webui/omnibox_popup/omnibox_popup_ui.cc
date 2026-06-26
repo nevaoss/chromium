@@ -164,7 +164,10 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
   source->AddBoolean(
       "contextManagementInComposeboxEnabled",
       base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox));
-  source->AddBoolean("tabFaviconChipsToCoinsEnabled", false);
+  source->AddBoolean(
+      "tabFaviconChipsToCoinsEnabled",
+      base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox) &&
+          base::FeatureList::IsEnabled(omnibox::kTabFaviconChipsToCoins));
   auto searchbox_layout_mode = AddContextButtonVariantToSearchboxLayoutMode(
       omnibox::kWebUIOmniboxAimPopupAddContextButtonVariantParam.Get());
   source->AddString("searchboxLayoutMode", searchbox_layout_mode);
@@ -240,8 +243,8 @@ void OmniboxPopupUI::BindInterface(
 void OmniboxPopupUI::CreatePageHandler(
     mojo::PendingRemote<omnibox_popup::mojom::Page> page,
     mojo::PendingReceiver<omnibox_popup::mojom::PageHandler> receiver) {
-  popup_handler_ = std::make_unique<OmniboxPopupHandler>(std::move(receiver),
-                                                         std::move(page));
+  popup_handler_ = std::make_unique<OmniboxPopupHandler>(
+      std::move(receiver), std::move(page), web_ui()->GetWebContents());
   popup_handler_->set_embedder(embedder());
 }
 

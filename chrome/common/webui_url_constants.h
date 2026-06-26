@@ -481,6 +481,13 @@ inline constexpr char kChromeUIWhatsNewHost[] = "whats-new";
 inline constexpr char kChromeUIWhatsNewURL[] = "chrome://whats-new/";
 #endif
 
+#if BUILDFLAG(IS_WIN)
+inline constexpr char kChromeUIDefaultBrowserVisualGuidedSetterURL[] =
+    "chrome://default-browser";
+inline constexpr char kChromeUIDefaultBrowserVisualGuidedSetterHost[] =
+    "default-browser";
+#endif
+
 #if BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_MAC) && !BUILDFLAG(IS_ANDROID)
 inline constexpr char kChromeUILinuxProxyConfigHost[] = "linux-proxy-config";
 #endif
@@ -558,6 +565,7 @@ inline constexpr char kChromeUITabStripInternalsURL[] =
 // AutocompleteProvider.
 
 inline constexpr char kAccessibilitySubPage[] = "accessibility";
+inline constexpr char kAccountSubPage[] = "account";
 inline constexpr char kAddressesSubPage[] = "addresses";
 inline constexpr char kAdPrivacySubPage[] = "adPrivacy";
 inline constexpr char kAllSitesSettingsSubpage[] = "content/all";

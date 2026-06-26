@@ -25,6 +25,8 @@ import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.incognito.IncognitoUtils;
+import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.PersistedInstanceType;
+import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
 import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
 import org.chromium.chrome.browser.profiles.Profile;
@@ -64,11 +66,29 @@ public class LauncherShortcutActivity extends Activity {
 
     private static @Nullable String sLabelForTesting;
 
+    private boolean mIsProcessingIntent;
+
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        mIsProcessingIntent = false;
+        handleIntent(getIntent());
+    }
 
-        Intent intent = getIntent();
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleIntent(intent);
+    }
+
+    private void handleIntent(Intent intent) {
+
+        // Guard: Drop incoming duplicate intents if we are already handling a routing pipeline.
+        if (mIsProcessingIntent || isFinishing()) {
+            return;
+        }
+
         String intentAction = intent.getAction();
         assumeNonNull(intentAction);
 
@@ -80,6 +100,8 @@ public class LauncherShortcutActivity extends Activity {
             finish();
             return;
         }
+
+        mIsProcessingIntent = true;
 
         Intent newIntent = getChromeLauncherActivityIntent(this, intentAction);
         // Retain FLAG_ACTIVITY_MULTIPLE_TASK in the intent if present, to support multi-instance
@@ -222,10 +244,21 @@ public class LauncherShortcutActivity extends Activity {
         Intent newIntent;
         if (launcherShortcutIntentAction.equals(ACTION_OPEN_NEW_TAB)
                 || launcherShortcutIntentAction.equals(ACTION_OPEN_NEW_INCOGNITO_TAB)) {
-            newIntent =
-                    IntentHandler.createTrustedOpenNewTabIntent(
-                            context,
-                            launcherShortcutIntentAction.equals(ACTION_OPEN_NEW_INCOGNITO_TAB));
+            boolean isIncognito =
+                    launcherShortcutIntentAction.equals(ACTION_OPEN_NEW_INCOGNITO_TAB);
+            if (!isIncognito && IncognitoUtils.shouldOpenIncognitoAsWindow()) {
+                int regularCount =
+                        MultiWindowUtils.getInstanceCount(
+                                PersistedInstanceType.ACTIVE | PersistedInstanceType.REGULAR);
+                int incognitoCount =
+                        MultiWindowUtils.getInstanceCount(
+                                PersistedInstanceType.ACTIVE
+                                        | PersistedInstanceType.OFF_THE_RECORD);
+                if (regularCount == 0 && incognitoCount > 0) {
+                    isIncognito = true;
+                }
+            }
+            newIntent = IntentHandler.createTrustedOpenNewTabIntent(context, isIncognito);
         } else {
             newIntent =
                     IntentHandler.createTrustedOpenNewWindowIntent(

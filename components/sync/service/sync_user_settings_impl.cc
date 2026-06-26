@@ -17,7 +17,7 @@
 #include "components/sync/base/features.h"
 #include "components/sync/base/passphrase_enums.h"
 #include "components/sync/base/user_selectable_type.h"
-#include "components/sync/engine/nigori/nigori.h"
+#include "components/sync/nigori/nigori.h"
 #include "components/sync/service/sync_prefs.h"
 #include "components/sync/service/sync_service_crypto.h"
 #include "components/version_info/version_info.h"
@@ -299,6 +299,10 @@ bool SyncUserSettingsImpl::IsTrustedVaultKeyRequired() const {
   return crypto_->IsTrustedVaultKeyRequired();
 }
 
+bool SyncUserSettingsImpl::IsKeystoreKeyRequiredForTesting() const {
+  return crypto_->IsKeystoreKeyRequired();
+}
+
 bool SyncUserSettingsImpl::IsTrustedVaultKeyRequiredForPreferredDataTypes()
     const {
   return IsEncryptedDatatypePreferred() && crypto_->IsTrustedVaultKeyRequired();
@@ -366,7 +370,7 @@ DataTypeSet SyncUserSettingsImpl::GetPreferredDataTypes() const {
   // though they're technically not registered.
   types.PutAll(ControlTypes());
 
-  static_assert(64 == GetNumDataTypes(),
+  static_assert(63 == GetNumDataTypes(),
                 "If adding a new sync data type, update the list below below if"
                 " you want to disable the new data type for local sync, aka"
                 " roaming profiles on Windows.");
@@ -404,7 +408,6 @@ DataTypeSet SyncUserSettingsImpl::GetPreferredDataTypes() const {
     types.Remove(SKILL);
     types.Remove(GEMINI_THREAD);
     types.Remove(THEMES_IOS);
-    types.Remove(ACCESSIBILITY_ANNOTATION);
     types.Remove(THEMES_ANDROID);
   }
   return types;

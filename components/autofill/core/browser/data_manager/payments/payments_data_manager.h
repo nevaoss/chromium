@@ -271,6 +271,10 @@ class PaymentsDataManager : public AutofillWebDataServiceObserverOnUISequence,
   // The returned span may be invalidated asynchronously.
   base::span<const BnplIssuer> GetUnlinkedBnplIssuers() const;
 
+  // Returns the eWallet creation options.
+  // The returned span may be invalidated asynchronously.
+  base::span<const Ewallet> GetEwalletCreationOptions() const;
+
   // Returns all BNPL issuers, both linked and unlinked.
   virtual std::vector<BnplIssuer> GetBnplIssuers() const;
 
@@ -546,7 +550,11 @@ class PaymentsDataManager : public AutofillWebDataServiceObserverOnUISequence,
   // user.
   virtual bool ShouldSuggestServerPaymentMethods() const;
 
-  base::WeakPtr<const PaymentsDataManager> GetWeakPtr() const;
+  // Adds a callback that gets executed immediately if no `Refresh()` operation
+  // is active, or otherwise once a pending `Refresh()` operation is completed.
+  void AddCallbackAfterRefreshCompleted(base::OnceClosure callback);
+
+  base::WeakPtr<PaymentsDataManager> GetWeakPtr();
 
  protected:
   friend class PaymentsDataManagerTestApi;
@@ -624,6 +632,9 @@ class PaymentsDataManager : public AutofillWebDataServiceObserverOnUISequence,
 
   // Cached versions of the unlinked buy-now-pay-later issuers.
   std::vector<BnplIssuer> unlinked_bnpl_issuers_;
+
+  // Cached versions of the eWallet creation options.
+  std::vector<Ewallet> ewallet_creation_options_;
 
   // Cached version of the CreditCardCloudTokenData obtained from the database.
   std::vector<std::unique_ptr<CreditCardCloudTokenData>>
@@ -703,6 +714,9 @@ class PaymentsDataManager : public AutofillWebDataServiceObserverOnUISequence,
   // Whether eWallet accounts are supported for the platform OS.
   bool AreEwalletAccountsSupported() const;
 
+  // Whether eWallet creation options are supported for the platform OS.
+  bool AreEwalletCreationOptionsSupported() const;
+
   // Whether buy-now-pay-later issuers are supported for the platform OS.
   // Checks if the user's locale is supported for BNPL, and if the BNPL feature
   // is enabled.
@@ -768,6 +782,13 @@ class PaymentsDataManager : public AutofillWebDataServiceObserverOnUISequence,
       const sync_pb::PaymentInstrumentCreationOption&
           payment_instrument_creation_option);
 
+  // Checks whether a payment instrument creation option contains eWallet
+  // options. If it does, it caches relevant information in
+  // `ewallet_creation_options_`.
+  void CacheIfEwalletCreationOption(
+      const sync_pb::PaymentInstrumentCreationOption&
+          payment_instrument_creation_option);
+
   // Checks whether at least one eligible price range specifies `currency_code`
   // as the currency.
   bool HasEligibleCurrencyPriceRangeForBnplIssuer(
@@ -809,6 +830,8 @@ class PaymentsDataManager : public AutofillWebDataServiceObserverOnUISequence,
 
   // Whether sync should be considered on in a test.
   bool is_syncing_for_test_ = false;
+
+  std::vector<base::OnceClosure> refresh_complete_callbacks_;
 
   base::WeakPtrFactory<PaymentsDataManager> weak_ptr_factory_{this};
 };

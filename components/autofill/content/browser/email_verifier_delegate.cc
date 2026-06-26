@@ -7,7 +7,10 @@
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/functional/function_ref.h"
+#include "base/json/values_util.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/task/single_thread_task_runner.h"
+#include "base/values.h"
 #include "components/autofill/content/browser/content_autofill_client.h"
 #include "components/autofill/content/browser/content_autofill_driver.h"
 #include "components/autofill/content/browser/renderer_forms_from_browser_form.h"
@@ -16,10 +19,17 @@
 #include "components/autofill/core/browser/form_structure.h"
 #include "components/autofill/core/browser/foundations/autofill_client.h"
 #include "components/autofill/core/browser/foundations/browser_autofill_manager.h"
+#include "components/autofill/core/browser/strike_databases/email_verification_strike_database.h"
+#include "components/autofill/core/common/autofill_prefs.h"
+#include "components/prefs/pref_service.h"
+#include "components/prefs/scoped_user_pref_update.h"
+#include "components/strike_database/history_clearable_strike_database.h"
+#include "components/strike_database/strike_database.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/runtime_feature_state/runtime_feature_state_document_data.h"
 #include "content/public/browser/webid/email_verifier.h"
 #include "content/public/common/content_features.h"
+#include "net/base/schemeful_site.h"
 
 namespace autofill {
 
@@ -34,12 +44,31 @@ content::webid::EmailVerifier* GetOrCreateEmailVerifier(
     return nullptr;
   }
 
-  // EmailVerificationProtocol is enabled by default in the browser process,
-  // but must also be enabled on the blink side (e.g. via Origin Trial token).
+  std::optional<bool> overridden_state =
+      base::FeatureList::GetStateIfOverridden(
+          ::features::kEmailVerificationProtocol);
+  if (overridden_state == std::make_optional(false)) {
+    // If the flag is overridden to be disabled (e.g. via Finch), respect that.
+    return nullptr;
+  }
+
+  if (overridden_state == std::make_optional(true)) {
+    // If the flag is overridden to enabled, we enable no matter what the
+    // OT status is.
+    return content::webid::EmailVerifier::GetOrCreateForFrame(rfh);
+  }
+
+  // In the non-overridden experiment state, EVT is enabled if the feature
+  // is enabled globally (via the default state) and the web site opts in
+  // via Origin trial token.
+  bool globally_enabled =
+      base::FeatureList::IsEnabled(::features::kEmailVerificationProtocol);
   content::RuntimeFeatureStateDocumentData* document_data =
       content::RuntimeFeatureStateDocumentData::GetForCurrentDocument(rfh);
-  if (!document_data || !document_data->runtime_feature_state_read_context()
-                             .IsEmailVerificationProtocolEnabled()) {
+  bool enabled_for_page =
+      document_data && document_data->runtime_feature_state_read_context()
+                           .IsEmailVerificationProtocolEnabled();
+  if (!globally_enabled || !enabled_for_page) {
     return nullptr;
   }
 
@@ -54,6 +83,50 @@ const AutofillField* FindField(
         return predicate(*field);
       });
   return iter != std::ranges::end(fields) ? iter->get() : nullptr;
+}
+
+void OnEmailVerificationDecision(base::WeakPtr<AutofillManager> manager,
+                                 FieldGlobalId email_field_id,
+                                 std::string email_utf8,
+                                 FieldGlobalId token_field_id,
+                                 std::string token,
+                                 net::SchemefulSite issuer,
+                                 bool confirmed) {
+  if (!manager) {
+    return;
+  }
+
+  PrefService* prefs = manager->client().GetPrefs();
+  if (prefs && confirmed) {
+    // Remember that the user allows this email address.
+    ScopedDictPrefUpdate update(prefs, prefs::kAutofillEmailVerificationState);
+    base::DictValue email_dict;
+    if (const auto* existing =
+            prefs->GetDict(prefs::kAutofillEmailVerificationState)
+                .FindDict(email_utf8)) {
+      email_dict = existing->Clone();
+    }
+    email_dict.Set("allowed", true);
+    email_dict.Set("issuer_site", issuer.Serialize());
+    email_dict.Set("timestamp", base::TimeToValue(base::Time::Now()));
+    update->Set(email_utf8, std::move(email_dict));
+
+    manager->driver().SendEmailVerificationToken(email_field_id, email_utf8,
+                                                 token_field_id, token);
+  }
+  // We update the strike database whether the user declined or not.
+  // If declined: Add a strike
+  // If accepted: Clear previous strikes.
+  if (manager->client().GetStrikeDatabase()) {
+    EmailVerificationStrikeDatabase strike_db(
+        manager->client().GetStrikeDatabase());
+    if (confirmed) {
+      strike_db.ClearStrikes(
+          EmailVerificationStrikeDatabase::GetId(email_utf8));
+    } else {
+      strike_db.AddStrike(EmailVerificationStrikeDatabase::GetId(email_utf8));
+    }
+  }
 }
 
 }  // namespace
@@ -75,19 +148,15 @@ void EmailVerifierDelegate::OnFillOrPreviewForm(
     return;
   }
 
-  if (action_persistence != mojom::ActionPersistence::kFill) {
-    return;
-  }
+  const PrefService* prefs = manager.client().GetPrefs();
 
   const AutofillProfile* const* profile =
       std::get_if<const AutofillProfile*>(&filling_payload);
-
-  if (!profile) {
-    return;
-  }
-
   const FormStructure* form = manager.FindCachedFormById(form_id);
-  if (!form) {
+
+  if (!prefs || !prefs->GetBoolean(prefs::kAutofillEmailVerificationEnabled) ||
+      action_persistence != mojom::ActionPersistence::kFill || !profile ||
+      !form) {
     return;
   }
 
@@ -101,53 +170,121 @@ void EmailVerifierDelegate::OnFillOrPreviewForm(
     return;
   }
 
-  const std::vector<std::unique_ptr<AutofillField>>& fields = form->fields();
-  const AutofillField* challenge_field =
-      FindField(fields, [&](const AutofillField& field) {
-        return field.parsed_autocomplete() &&
-               field.parsed_autocomplete()->email_verification_token &&
-               !field.challenge().empty() &&
-               field.host_form_id() == triggering_email_field->host_form_id();
-      });
+  // TODO(crbug.com/446288895): Currently, when filling a form, the browser
+  // notifies observers via `OnFillOrPreviewForm()` **before** it sends the fill
+  // request to the renderer and **before** it updates its own cache with the
+  // newly filled values. Because of this timing, if we try to read
+  // `email_field->value()` inside the callback, we will get the old value
+  // (before filling), not the new email address. So, we extract it manually
+  // from the profile instead.
+  // We should introduce `OnFilledOrPreviewedForm` and move the notification to
+  // a later stage (specifically after the renderer confirms the fill and the
+  // browser updates its cache) so we can use the `email_field->value()`
+  // instead.
+  std::u16string email = (*profile)->GetRawInfo(EMAIL_ADDRESS);
+  TriggerVerification(manager, *form, *triggering_email_field, email);
+}
 
-  if (!challenge_field) {
+void EmailVerifierDelegate::OnFillOrPreviewField(
+    AutofillManager& manager,
+    FormGlobalId form_id,
+    FieldGlobalId field_id,
+    mojom::ActionPersistence action_persistence,
+    const std::u16string& value,
+    std::optional<FieldType> field_type_used) {
+  if (!base::FeatureList::IsEnabled(::features::kEmailVerificationProtocol)) {
     return;
   }
 
-  content::webid::EmailVerifier* verifier = GetOrCreateEmailVerifier(
-      manager.client(), triggering_email_field->host_frame());
+  if (action_persistence != mojom::ActionPersistence::kFill) {
+    return;
+  }
+
+  const FormStructure* form = manager.FindCachedFormById(form_id);
+  if (!form) {
+    return;
+  }
+
+  const AutofillField* triggering_email_field = form->GetFieldById(field_id);
+  if (!triggering_email_field || field_type_used != EMAIL_ADDRESS) {
+    return;
+  }
+
+  TriggerVerification(manager, *form, *triggering_email_field, value);
+}
+
+void EmailVerifierDelegate::TriggerVerification(
+    AutofillManager& manager,
+    const FormStructure& form,
+    const AutofillField& email_field,
+    const std::u16string& email_value) {
+  const std::vector<std::unique_ptr<AutofillField>>& fields = form.fields();
+  const AutofillField* nonce_field =
+      FindField(fields, [&](const AutofillField& field) {
+        return field.parsed_autocomplete() &&
+               field.parsed_autocomplete()->email_verification_token &&
+               !field.nonce().empty() &&
+               field.host_form_id() == email_field.host_form_id();
+      });
+
+  if (!nonce_field) {
+    return;
+  }
+
+  content::webid::EmailVerifier* verifier =
+      GetOrCreateEmailVerifier(manager.client(), email_field.host_frame());
   if (!verifier) {
     return;
   }
 
-  // TODO(crbug.com/446288895): Currently, when filling a form, the browser
-  // notifies observers via OnFillOrPreviewForm() **before** it sends the fill
-  // request to the renderer and **before** it updates its own cache with the
-  // newly filled values. Because of this timing, if we try to read
-  // email_field->value() inside the callback, we will get the old value
-  // (before filling), not the new email address. So, we extract it manually
-  // from the profile instead.
-  // We should introduce OnFilledOrPreviewedForm and move the notification to a
-  // later stage (specifically after the renderer confirms the fill and the
-  // browser updates its cache) so we can use the email_field->value() instead.
-  std::u16string email = (*profile)->GetRawInfo(EMAIL_ADDRESS);
+  std::string email_utf8 = base::UTF16ToUTF8(email_value);
+
+  if (manager.client().GetStrikeDatabase()) {
+    EmailVerificationStrikeDatabase strike_db(
+        manager.client().GetStrikeDatabase());
+    if (strike_db.ShouldBlockFeature(
+            EmailVerificationStrikeDatabase::GetId(email_utf8))) {
+      return;
+    }
+  }
+
+  PrefService* prefs = manager.client().GetPrefs();
+  bool already_allowed = false;
+  if (prefs) {
+    const auto& state = prefs->GetDict(prefs::kAutofillEmailVerificationState);
+    const auto* email_data = state.FindDict(email_utf8);
+    already_allowed =
+        email_data && email_data->FindBool("allowed").value_or(false);
+  }
 
   verifier->Verify(
-      base::UTF16ToUTF8(email), base::UTF16ToUTF8(challenge_field->challenge()),
+      email_utf8, base::UTF16ToUTF8(nonce_field->nonce()),
       base::BindOnce(
-          [](base::WeakPtr<AutofillManager> manager,
-             FieldGlobalId email_field_id, const std::string& email,
-             FieldGlobalId token_field_id,
-             std::optional<std::string> presentation_token) {
-            if (!manager || !presentation_token) {
+          [](bool already_allowed, base::WeakPtr<AutofillManager> manager,
+             FieldGlobalId email_field_id, FieldGlobalId nonce_field_id,
+             gfx::RectF email_field_bounds, std::u16string email,
+             std::optional<content::webid::EmailVerifier::Result> result) {
+            if (!manager || !result) {
               return;
             }
 
-            manager->driver().SendEmailVerificationToken(
-                email_field_id, email, token_field_id, *presentation_token);
+            std::string email_utf8 = base::UTF16ToUTF8(email);
+            if (already_allowed) {
+              manager->driver().SendEmailVerificationToken(
+                  email_field_id, email_utf8, nonce_field_id,
+                  result->verification);
+              return;
+            }
+
+            manager->client().ShowEmailVerificationPopup(
+                email_field_bounds, result->issuer_site, email,
+                base::BindOnce(&OnEmailVerificationDecision, manager,
+                               email_field_id, email_utf8, nonce_field_id,
+                               std::move(result->verification),
+                               result->issuer_site));
           },
-          manager.GetWeakPtr(), triggering_email_field->global_id(),
-          base::UTF16ToUTF8(email), challenge_field->global_id()));
+          already_allowed, manager.GetWeakPtr(), email_field.global_id(),
+          nonce_field->global_id(), email_field.bounds(), email_value));
 }
 
 }  // namespace autofill

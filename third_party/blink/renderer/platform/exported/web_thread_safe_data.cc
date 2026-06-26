@@ -54,7 +54,8 @@ size_t WebThreadSafeData::size() const {
 }
 
 const char* WebThreadSafeData::data() const {
-  return private_.IsNull() ? nullptr : private_->data();
+  return private_.IsNull() ? nullptr
+                           : reinterpret_cast<const char*>(private_->data());
 }
 
 WebThreadSafeData::iterator WebThreadSafeData::begin() const {
@@ -69,9 +70,6 @@ WebThreadSafeData::iterator WebThreadSafeData::end() const {
 }
 
 WebThreadSafeData::WebThreadSafeData(scoped_refptr<RawData> data)
-    : private_(std::move(data)) {}
-
-WebThreadSafeData::WebThreadSafeData(scoped_refptr<RawData>&& data)
     : private_(std::move(data)) {}
 
 WebThreadSafeData::WebThreadSafeData(const WebThreadSafeData& other) {

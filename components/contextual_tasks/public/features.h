@@ -17,6 +17,8 @@ BASE_DECLARE_FEATURE(kContextualTasks);
 BASE_DECLARE_FEATURE(kContextualTasksExtraOauthScopes);
 BASE_DECLARE_FEATURE(kEnableContextualTasksPinButtonInToolbar);
 BASE_DECLARE_FEATURE(kContextualTasksContext);
+BASE_DECLARE_FEATURE(
+    kContextualTasksContextSmartTabSharingDefaultOnAvailability);
 BASE_DECLARE_FEATURE(kContextualTasksContextLibrary);
 BASE_DECLARE_FEATURE(kContextualTasksContextLogging);
 BASE_DECLARE_FEATURE(kContextualTasksShowOnboardingTooltip);
@@ -72,9 +74,6 @@ BASE_DECLARE_FEATURE(kContextualTasksHideMenuOnAiPage);
 // Enables hiding the close button when in vertical tabs or immersive mode.
 BASE_DECLARE_FEATURE(kContextualTasksHideCloseButtonInVerticalTabs);
 
-// Enables updating the model from URL parameters on every inner navigation.
-BASE_DECLARE_FEATURE(kContextualTasksUpdateModelOnNavigation);
-
 // Enables intercepting YouTube links with timestamps to seek video instead of
 // navigating.
 BASE_DECLARE_FEATURE(kContextualTasksVideoCitations);
@@ -100,8 +99,9 @@ BASE_DECLARE_FEATURE(kContextualTasksJavaFusebox);
 // Enables overriding side panel to show Bottom Sheet on demand.
 BASE_DECLARE_FEATURE(kContextualTasksOverrideShowBottomSheetOnLargeScreen);
 
-bool GetIsContextualTasksUpdateModeOnNavigationEnabled();
-
+// When enabled, AIM must send the browser a message to initiate the cobrowse
+// experience for link clicks.
+BASE_DECLARE_FEATURE(kAimTriggeredThreadLinks);
 bool GetIsContextualTasksPdfCitationsEnabled();
 
 bool GetIsContextualTasksLazyFetchClusterInfoEnabled();
@@ -128,6 +128,12 @@ extern const base::FeatureParam<bool> kDeduplicateRelevantTabsByUrl;
 extern const base::FeatureParam<double> kTabSelectionScoreThreshold;
 // Minimum score required for a tab to be considered visible.
 extern const base::FeatureParam<double> kContentVisibilityThreshold;
+
+// Whether to use the immediately previous visited tab as the active tab signal
+// fallback.
+extern const base::FeatureParam<bool> kEnablePreviousTabFallback;
+// Recency threshold for using the previous visited tab as active tab signal.
+extern const base::FeatureParam<base::TimeDelta> kPreviousTabRecencyThreshold;
 
 // Whether Smart Tab Sharing is enabled for the ContextualTasksContext feature.
 extern const base::FeatureParam<bool> kContextualTasksContextSmartTabSharing;

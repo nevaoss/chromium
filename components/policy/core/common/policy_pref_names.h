@@ -51,6 +51,10 @@ inline constexpr char kEnterpriseMDMManagementWindows[] =
 // Integer pref that stores the Mac enterprise MDM management authority.
 inline constexpr char kEnterpriseMDMManagementMac[] =
     "management.platform.enterprise_mdm_mac";
+#elif BUILDFLAG(IS_ANDROID)
+// Integer pref that stores the Android enterprise MDM/ownership management authority.
+inline constexpr char kEnterpriseMDMManagementAndroid[] =
+    "management.platform.enterprise_mdm_android";
 #endif
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
@@ -201,6 +205,11 @@ inline constexpr char kXSLTEnabled[] = "policy.xslt_enabled";
 // was deprecated and replaced by :state(foo).
 inline constexpr char kCSSCustomStateDeprecatedSyntaxEnabled[] =
     "policy.css_custom_state_deprecated_syntax_enabled";
+
+// A boolean pref indicating whether the background fetch restriction is enabled
+// when called from a service worker context.
+inline constexpr char kRestrictBackgroundFetchFromServiceWorkerEnabled[] =
+    "policy.restrict_background_fetch_from_service_worker_enabled";
 
 // A boolean pref indicating whether the new HTML parser for the <select>
 // element is enabled. When enabled, the HTML parser allows more tags to be used

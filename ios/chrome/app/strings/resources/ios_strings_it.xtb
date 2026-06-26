@@ -81,7 +81,6 @@
 <translation id="1275718070701477396">Selezionato</translation>
 <translation id="1279024913354609713">Non consentire</translation>
 <translation id="1285320974508926690">Non tradurre mai questo sito</translation>
-<translation id="1287229685519872919">Dati di Google Workspace</translation>
 <translation id="1291506870746876680">Le autorizzazioni del sito <ph name="BEGIN_BOLD" />"<ph name="SITE_NAME" />"<ph name="END_BOLD" /> verranno disattivate quando uscirai dal sito.</translation>
 <translation id="1293491796138057740">Le tue informazioni vengono salvate in Google Wallet per <ph name="USER_EMAIL" />. Puoi usarle in tutti i prodotti Google per compilare i moduli più velocemente.</translation>
 <translation id="1293556467332435079">File</translation>
@@ -168,7 +167,6 @@
 <translation id="1547610699249301703">Condividi le password</translation>
 <translation id="1554043146674176775">Disattiva AI Mode</translation>
 <translation id="1554477036522844996">Nuova finestra</translation>
-<translation id="1554605811306591212">Si applicano i nostri <ph name="TERMS" />, <ph name="KOREAN_LOCATION_TERMS" /> e <ph name="PRIVACY_NOTICE" />. Gemini è un'AI e può commettere errori, anche in merito a persone.</translation>
 <translation id="1558391695376153246">Chiudi schede in incognito</translation>
 <translation id="1565371473877914088">Nuova scheda Incognito</translation>
 <translation id="1567960978791353852">Mostra modalità Lettura</translation>
@@ -330,6 +328,7 @@
 <translation id="2078437078822043850">Puoi scorrere verso destra per navigare in incognito.</translation>
 <translation id="2079545284768500474">Annulla</translation>
 <translation id="2085876078937250610">Salva…</translation>
+<translation id="2089180529062519164">Attiva il microfono</translation>
 <translation id="2096239473850415494">Download non riuscito</translation>
 <translation id="2096716221239095980">Elimina tutti i dati</translation>
 <translation id="2104436223719117661">Ricerche di tendenza</translation>
@@ -374,6 +373,7 @@
 <translation id="2251686759395008410">Menu → Cronologia</translation>
 <translation id="2252378061043785266">Non mostrare mai questo sito</translation>
 <translation id="2252749852083403809">Salvataggio in Drive per <ph name="USER_EMAIL" /> in corso…</translation>
+<translation id="225614027745146050">Ti diamo il benvenuto</translation>
 <translation id="2256933947031277845">La tua organizzazione ti consente di accedere solo con determinati account.</translation>
 <translation id="2257567812274161158">La sincronizzazione non funziona.</translation>
 <translation id="2258326562203545455">{count,plural, =1{Puoi salvare il preferito nel tuo Account Google {email}.}other{Puoi salvare i preferiti nel tuo Account Google {email}.}}</translation>
@@ -434,7 +434,6 @@
 <translation id="2468444275314013497">Il tuo browser è protetto</translation>
 <translation id="2473876017985765807">Hai già salvato una password per <ph name="WEBSITE" /></translation>
 <translation id="247430852844518481">Puoi impostare un promemoria per tornare a questa pagina più tardi</translation>
-<translation id="2478246185006364308">Termini Google</translation>
 <translation id="2479148705183875116">Vai a Impostazioni</translation>
 <translation id="2482878487686419369">Notifiche</translation>
 <translation id="2484459871750294497">Come faccio ad attivare questa funzionalità?</translation>
@@ -827,7 +826,6 @@
 <translation id="3941941395924123592">{COUNT,plural, =1{Chiudi {COUNT} scheda}other{Chiudi {COUNT} schede}}</translation>
 <translation id="3946483119107054883">Scarica in formato CSV</translation>
 <translation id="3948600256434252210">Puoi scorrere verso destra per navigare in incognito.</translation>
-<translation id="3949712484278252781">Le tue conversazioni con Gemini e i tuoi <ph name="GOOGLE_WORKSPACE_DATA" /> non saranno esaminati da revisori umani né usati per migliorare i modelli di AI generativa.</translation>
 <translation id="3950479158728806902">Crea automaticamente una passkey per accedere più velocemente</translation>
 <translation id="3950820424414687140">Accedi</translation>
 <translation id="395377504920307820">Utilizza senza un account</translation>
@@ -848,7 +846,6 @@
 <translation id="3994911892367422121">OK</translation>
 <translation id="3995521777587992544">Barra di avanzamento del caricamento delle pagine. Percentuale di caricamento: <ph name="EMAIL" />.</translation>
 <translation id="3997522473364371632">La condivisione della password è stata disattivata dall'amministratore.</translation>
-<translation id="4000707564769984863">Guarda: <ph name="WATCH_LINK" /></translation>
 <translation id="4002066346123236978">Titolo</translation>
 <translation id="4004204301268239848">Le password vengono salvate nel tuo Account Google affinché tu possa usarle su qualsiasi dispositivo.</translation>
 <translation id="4007463141047732631">Modifica gruppo</translation>
@@ -879,7 +876,6 @@
 <translation id="4129768137228347731">Salvare <ph name="ENTITY_TYPE" />?</translation>
 <translation id="4133139945030148655">Hai già completato la configurazione</translation>
 <translation id="4133265950310064865">Protezione avanzata</translation>
-<translation id="4142372594294312814">5 cose da sapere sull'AI generativa</translation>
 <translation id="4145507240503767005"><ph name="SEARCH_ENGINE_NAME" />, <ph name="SEARCH_ENGINE_DOMAIN" /></translation>
 <translation id="4147897805161313378">Google Foto</translation>
 <translation id="4148023517926189160">Questo sito web richiede il download di un file e la relativa aggiunta al tuo calendario.</translation>
@@ -961,7 +957,6 @@
 <translation id="441218095371040430">Usa la tastiera</translation>
 <translation id="4415276339145661267">Gestisci il tuo Account Google</translation>
 <translation id="4416582610654027550">Digita un URL valido</translation>
-<translation id="441868831736628555">Informativa sulla privacy</translation>
 <translation id="4420409367264901497">Modifica il preferito</translation>
 <translation id="4425365312778464779">Questo account è gestito</translation>
 <translation id="443008484043213881">Strumenti</translation>
@@ -1241,7 +1236,6 @@
 <translation id="5329451663851195956">Puoi trascinare verso il basso per aggiornare.</translation>
 <translation id="5336910966955551309">Tocca e tieni premuto per fissare i tuoi siti preferiti</translation>
 <translation id="5338512273860059533">Accesso in corso…</translation>
-<translation id="5340148832014094861">Si applicano i <ph name="GOOGLE_TERMS" /> e l‘<ph name="GEMINI_APPS_PRIVACY" />. Gemini è un'AI e può commettere errori, anche in merito a persone.</translation>
 <translation id="5343472494710226394">Notizie, sport e contenuti basati sui tuoi interessi.</translation>
 <translation id="5352128922772839949">Salva file</translation>
 <translation id="5355191726083956201">Protezione avanzata è attiva</translation>
@@ -1513,6 +1507,7 @@ La funzione Handoff deve anche essere attivata nella sezione Generali di Imposta
 <translation id="6241132809279377987">Sblocca più funzionalità per il tuo iPhone con le app Google</translation>
 <translation id="6247557882553405851">Gestore delle password di Google</translation>
 <translation id="6251835855431997163">Compilazione automatica <ph name="VALUE" /></translation>
+<translation id="6253686838150111720">Accedi a <ph name="URL" /></translation>
 <translation id="6254066287920239840">Apri i link all'interno dell'app invece che nel browser.</translation>
 <translation id="6259928806013786178">Impossibile attivare la modalità Lettura</translation>
 <translation id="6268773951964630964">Cerca l'immagine copiata</translation>
@@ -1532,7 +1527,6 @@ La funzione Handoff deve anche essere attivata nella sezione Generali di Imposta
 <translation id="6327249202318869726">Gemini è disattivato per il tuo account. Contatta l'amministratore per ulteriori informazioni.</translation>
 <translation id="6331836477476466332">Un browser più sicuro e potente per te</translation>
 <translation id="6337234675334993532">Crittografia</translation>
-<translation id="6337313937331295309">Informativa sulla privacy delle app Gemini</translation>
 <translation id="633809752005859102">Si è verificato un problema. Stiamo cercando una soluzione.</translation>
 <translation id="6339793034470834130">Per usare l'inspector web, collegati a Safari sul computer utilizzando un cavo e accedi all'iPhone dal menu Sviluppo. Puoi attivare il menu Sviluppo nella sezione Avanzate delle impostazioni di Safari sul tuo computer.</translation>
 <translation id="6340285871011301182">Traduzione parziale non disponibile.</translation>
@@ -1812,7 +1806,6 @@ La funzione Handoff deve anche essere attivata nella sezione Generali di Imposta
 <translation id="7261217796641151584">Condividi gruppo</translation>
 <translation id="7266578100016339897">In questo modo, è più semplice organizzarsi. Puoi modificare questa opzione nelle impostazioni in qualsiasi momento.</translation>
 <translation id="7272437679830969316">Impossibile verificare la tua identità. Password non copiata.</translation>
-<translation id="7275307913765547631">Termini per la posizione coreani</translation>
 <translation id="728025568708172005">Avvia il tour</translation>
 <translation id="7280980607183752256">Impossibile importare questo file</translation>
 <translation id="7282197670900591579">Tema cedro</translation>
@@ -1870,6 +1863,7 @@ La funzione Handoff deve anche essere attivata nella sezione Generali di Imposta
 <translation id="7468373585447318060">Tieni sotto controllo i cali di prezzo di tutti i prodotti che monitori.</translation>
 <translation id="746872191028309255">Acquista ciò che vedi con la fotocamera o la galleria fotografica.</translation>
 <translation id="7471557245617580330">Crea nuova scheda</translation>
+<translation id="7473555040328423550">Aggiungi scheda</translation>
 <translation id="7476548258282096076">Questa scheda mostra i siti che visiti di più.</translation>
 <translation id="7484645889979462775">Mai per questo sito</translation>
 <translation id="7486006552035434095">Mantieni sincronizzati i tuoi dispositivi</translation>
@@ -1887,7 +1881,6 @@ La funzione Handoff deve anche essere attivata nella sezione Generali di Imposta
 <translation id="7512909159512473473">Inserisci passphrase…</translation>
 <translation id="7514365320538308">Scarica</translation>
 <translation id="7514530647142300459">Continua a usare le password nel tuo Account Google <ph name="EMAIL" /></translation>
-<translation id="7522587739845660862">Informazioni sulla tua posizione</translation>
 <translation id="7522948500476882302">Quando scarichi un file, scegli di eliminarlo automaticamente dopo 1 mese</translation>
 <translation id="7524055474074101597">Accedi alle tue password e ad altro ancora nelle app.</translation>
 <translation id="7525067979554623046">Crea</translation>
@@ -1904,7 +1897,6 @@ La funzione Handoff deve anche essere attivata nella sezione Generali di Imposta
 <translation id="7582666837709186351">Traduci con la fotocamera il testo nelle foto o nell'ambiente circostante.</translation>
 <translation id="7582857256643797524">Questa impostazione è attiva sul tuo dispositivo</translation>
 <translation id="7583004045319035904">Utilizza <ph name="BIOMETRIC_AUTHENITCATION_TYPE" /> per sbloccare le schede Incognito.</translation>
-<translation id="7588149553568293500">Scopri di più sulle opzioni a tua disposizione.</translation>
 <translation id="7596103009408415410">{COUNT,plural, =1{Chiudere {COUNT} scheda non attiva?}other{Chiudere {COUNT} schede non attive?}}</translation>
 <translation id="7598439272585186139">Ottieni maggiore sicurezza</translation>
 <translation id="7600965453749440009">Non tradurre mai <ph name="LANGUAGE" /></translation>
@@ -2030,7 +2022,6 @@ La funzione Handoff deve anche essere attivata nella sezione Generali di Imposta
 <translation id="7996239959906074962">Configura…</translation>
 <translation id="800361585186029508">Consente di aprire gli URL inseriti in Google Chrome.</translation>
 <translation id="8005666035647241369">In Gestore delle password di Google su questo dispositivo</translation>
-<translation id="8006265839264939135">Termini</translation>
 <translation id="8010488806779226127">Esplora le funzionalità che possono aiutarti a fare di più mentre navighi</translation>
 <translation id="8011489434346330032">Inspector web</translation>
 <translation id="8014007212279733632">Verifica la tua identità per la compilazione automatica di informazioni sensibili</translation>
@@ -2128,6 +2119,7 @@ La funzione Handoff deve anche essere attivata nella sezione Generali di Imposta
 <translation id="8319282042900445670">Promemoria impostato per le ore <ph name="TIME" /> del giorno <ph name="DATE" /></translation>
 <translation id="8320212361750431956">Attività recente</translation>
 <translation id="8325455175867928593">Nascondi "Recensioni basate sui tuoi interessi"</translation>
+<translation id="8333459276976141586">Live userà il microfono. Tocca il pulsante Live per attivare il microfono. Per disattivare il microfono, tocca il pulsante di interruzione o chiudi Gemini.</translation>
 <translation id="833647236762414178">Crea, salva e gestisci le tue password e passkey in modo da poter accedere facilmente ai siti e alle app. <ph name="BEGIN_LINK" />Scopri di più<ph name="END_LINK" /></translation>
 <translation id="8343993175958086504">Esegui il backup dei tuoi dati e usali su qualsiasi dispositivo.</translation>
 <translation id="8345328955902001853">{count,plural, =1{Completa 1 altra attività per salire di livello}other{Completa {count} altre attività per salire di livello}}</translation>
@@ -2204,6 +2196,7 @@ La funzione Handoff deve anche essere attivata nella sezione Generali di Imposta
 <translation id="8571019948162152515">Eliminare "<ph name="FILENAME" />"?</translation>
 <translation id="8571213806525832805">Ultime 4 settimane</translation>
 <translation id="8577056989960190117">Compila automaticamente l'anno di scadenza <ph name="YEAR" /></translation>
+<translation id="8582026929965253036">Usa Live con Gemini</translation>
 <translation id="8587001564479545614">Crea PIN di recupero</translation>
 <translation id="8588404856427128947">Non attiva</translation>
 <translation id="8590286732816598906">Gruppo di schede, <ph name="GROUP_TITLE" />, Menu.</translation>
@@ -2278,6 +2271,7 @@ La funzione Handoff deve anche essere attivata nella sezione Generali di Imposta
 <translation id="8803526663383843427">Quando attiva</translation>
 <translation id="8803639129939845298">Sicuro</translation>
 <translation id="8813277370772331957">Ricordamelo dopo</translation>
+<translation id="8814308045751067027">Per usare Live, consenti a Chrome l'accesso al microfono nelle Impostazioni</translation>
 <translation id="8814719628147284151">Continua</translation>
 <translation id="881559332211266856">Aggiorna Redress Number</translation>
 <translation id="8817524703470045896">Monitora i prezzi e ricevi avvisi quando il prezzo cala su qualsiasi sito</translation>
@@ -2353,7 +2347,6 @@ La funzione Handoff deve anche essere attivata nella sezione Generali di Imposta
 <translation id="9066097352053395362">Nascondi Modifica preferito</translation>
 <translation id="9070824521421603770">Il tuo account verrà disconnesso e le schede verranno chiuse</translation>
 <translation id="9072837124205571418">Gruppi di schede da tutti i dispositivi</translation>
-<translation id="9075970015528364598">Le chat vengono esaminate e utilizzate per migliorare Google AI. Nella tua attività vengono memorizzate anche le <ph name="LEARN_ABOUT_CHOICES" /> <ph name="INFO_ABOUT_LOCATION" />.</translation>
 <translation id="9081058212938299310">Aggiornare la password per <ph name="USERNAME" />?</translation>
 <translation id="9083838294503912307">Attiva la sincronizzazione per sincronizzare e personalizzare tutti i dispositivi.</translation>
 <translation id="9084367296493549256">{count,plural, =1{Hai {count} password inefficace che potrebbe mettere a rischio la tua sicurezza. Sistemala subito per rimanere al sicuro.}other{Hai {count} password inefficaci che potrebbero mettere a rischio la tua sicurezza. Sistemale subito per rimanere al sicuro.}}</translation>

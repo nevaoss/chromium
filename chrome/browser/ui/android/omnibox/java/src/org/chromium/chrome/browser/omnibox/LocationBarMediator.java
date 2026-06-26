@@ -262,6 +262,7 @@ class LocationBarMediator
     private final BooleanSupplier mIsToolbarMicEnabledSupplier;
     // Tracks if the location bar is laid out in a focused state due to an ntp scroll.
     private boolean mIsLocationBarFocusedFromNtpScroll;
+    private boolean mAccessibilityFocusWorkaroundInProgress;
     private @BrandedColorScheme int mBrandedColorScheme = BrandedColorScheme.APP_DEFAULT;
     // TODO(https://crbug.com/481357849): Remove this.
     private boolean mHasEverUpdatedBrandedColorScheme;
@@ -276,6 +277,8 @@ class LocationBarMediator
     private @Nullable FuseboxAttachmentModelList mFuseboxAttachmentModelList;
     private final Callback<@AutocompleteRequestType Integer> mAutocompleteRequestTypeObserver =
             this::onAutocompleteRequestTypeChanged;
+    private final Callback<AutocompleteInput.@Nullable SiteSearchData> mSiteSearchDataObserver =
+            (siteSearchData) -> onSearchBoxHintTextChanged();
     private @Nullable Callback<Boolean> mOnSpecializedFuseboxModeActivatedCallback;
 
     private final ButtonToolbarWidthConsumer mBookmarkButtonToolbarWidthConsumer;
@@ -455,6 +458,9 @@ class LocationBarMediator
     }
 
     /*package */ void onUrlFocusChange(boolean hasFocus) {
+        if (mAccessibilityFocusWorkaroundInProgress) {
+            return;
+        }
         if (!hasFocus) {
             mPreviousLensButtonVisible = null;
         }
@@ -1132,8 +1138,10 @@ class LocationBarMediator
                     && mUrlHasFocus
                     && ChromeAccessibilityUtil.get().isAccessibilityEnabled()) {
                 // TODO(crbug.com/475620206): likely an old workaround, consider removing.
+                mAccessibilityFocusWorkaroundInProgress = true;
                 mUrlCoordinator.clearFocus();
-                requestUrlFocus();
+                mUrlCoordinator.requestFocus();
+                mAccessibilityFocusWorkaroundInProgress = false;
                 // Existing text (e.g. if the user pasted via the fakebox) from the fake box
                 // should be restored after toggling the focus.
                 if (mCurrentInput != null && !mCurrentInput.getUserText().isEmpty()) {
@@ -1195,6 +1203,7 @@ class LocationBarMediator
         // If we're switching tab (active -> active), just reanchor observer.
         if (mCurrentInput != null) {
             mCurrentInput.getRequestTypeSupplier().removeObserver(mAutocompleteRequestTypeObserver);
+            mCurrentInput.getSiteSearchDataSupplier().removeObserver(mSiteSearchDataObserver);
         }
         // To avoid the async gap between now and on activate, null out here as well.
         setAttachmentModelList(null);
@@ -1231,6 +1240,9 @@ class LocationBarMediator
         mCurrentInput
                 .getRequestTypeSupplier()
                 .addSyncObserverAndCallIfNonNull(mAutocompleteRequestTypeObserver);
+        mCurrentInput
+                .getSiteSearchDataSupplier()
+                .addSyncObserverAndCallIfNonNull(mSiteSearchDataObserver);
 
         UrlBarData data = getUrlBarDataForCurrentInput(mCurrentInput);
         mUrlCoordinator.setUrlBarData(
@@ -1293,6 +1305,7 @@ class LocationBarMediator
 
         if (mScrimHandler != null) mScrimHandler.setVisibility(false);
         mCurrentInput.getRequestTypeSupplier().removeObserver(mAutocompleteRequestTypeObserver);
+        mCurrentInput.getSiteSearchDataSupplier().removeObserver(mSiteSearchDataObserver);
         FuseboxSessionState state = FuseboxSessionState.from(mLocationBarDataProvider);
         if (state != null) {
             state.deactivate();
@@ -2715,6 +2728,11 @@ class LocationBarMediator
         // SearchEngineUtils) is available.
         if (mSearchEngineUtils == null) return;
         if (mEmbedderUiOverrides.isEmbedderControlledHint()) return;
+
+        if (mCurrentInput != null && mCurrentInput.getSiteSearchData() != null) {
+            mUrlCoordinator.setUrlBarHintText("");
+            return;
+        }
 
         @AutocompleteRequestType
         int requestType =

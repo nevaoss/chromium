@@ -6,6 +6,7 @@ import("//build/buildflag_header.gni")
 import("//build/compiled_action.gni")
 import("//build/config/chrome_build.gni")
 import("//build/config/features.gni")
+import("//build/config/python.gni")
 import("//components/optimization_guide/features.gni")
 import("//testing/libfuzzer/fuzzer_test.gni")
 import("//third_party/protobuf/proto_library.gni")
@@ -88,7 +89,7 @@ action("regex_patterns_inl_h") {
          rebase_path(outputs, root_build_dir)
 }
 
-action("entity_schema_enums_and_functions") {
+action_with_pydeps("entity_schema_enums_and_functions") {
   visibility = [ ":*" ]
 
   sources = [ "data_model/autofill_ai/entity_schema.json" ]
@@ -724,6 +725,7 @@ static_library("browser") {
     "strike_databases/autofill_ai/autofill_ai_save_strike_database_by_host.cc",
     "strike_databases/autofill_ai/autofill_ai_save_strike_database_by_host.h",
     "strike_databases/autofill_ai/autofill_ai_update_strike_database.h",
+    "strike_databases/email_verification_strike_database.h",
     "strike_databases/payments/credit_card_save_strike_database.cc",
     "strike_databases/payments/credit_card_save_strike_database.h",
     "strike_databases/payments/cvc_storage_strike_database.cc",
@@ -1043,6 +1045,7 @@ static_library("browser") {
     "//components/autofill/core/common:credit_card_number_validation",
     "//components/consent_auditor",
     "//components/device_reauth",
+    "//components/facilitated_payments/core/features",
     "//components/feature_engagement",
     "//components/google/core/common",
     "//components/history/core/browser",
@@ -1890,6 +1893,7 @@ source_set("unit_tests") {
     "//components/consent_auditor:test_support",
     "//components/device_reauth",
     "//components/device_reauth:test_support",
+    "//components/facilitated_payments/core/features",
     "//components/feature_engagement",
     "//components/history/core/browser",
     "//components/image_fetcher/core",

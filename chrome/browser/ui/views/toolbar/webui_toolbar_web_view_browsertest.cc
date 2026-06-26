@@ -133,6 +133,8 @@
 #include "ui/views/view_utils.h"
 #include "ui/views/widget/any_widget_observer.h"
 #include "ui/views/widget/widget.h"
+#include "ui/webui/tracked_element/tracked_element_handler.h"
+#include "ui/webui/tracked_element/tracked_element_handler_document_singleton.h"
 
 namespace {
 constexpr int kNumMaxRecoveryTime = 2;
@@ -439,6 +441,7 @@ class WebUIToolbarWebViewPixelBrowserTest : public InProcessBrowserTest {
          features::kWebUISplitTabsButton, features::kWebUIBackForwardButton,
          features::kWebUIHomeButton, features::kWebUIPinnedToolbarActions,
          tabs::kHorizontalTabStripComboButton, features::kWebUILocationBar,
+         features::kWebUIExtensionsContainer,
          features::kSkipIPCChannelPausingForNonGuests,
          features::kWebUIInProcessResourceLoadingV2,
          features::kInitialWebUISyncNavStartToCommit},
@@ -1151,8 +1154,14 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest,
 // Either button, if clicked, triggers a navigation, but neither button should
 // treat this as a click. Since this test moves the pointer horizontally and
 // does so instantly, it should not trigger the long press logic.
+// TODO(crbug.com/514610392): Flaky on Mac 13.
+#if BUILDFLAG(IS_MAC)
+#define MAYBE_PointerDownOnOneUpOnAnother DISABLED_PointerDownOnOneUpOnAnother
+#else
+#define MAYBE_PointerDownOnOneUpOnAnother PointerDownOnOneUpOnAnother
+#endif
 IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest,
-                       PointerDownOnOneUpOnAnother) {
+                       MAYBE_PointerDownOnOneUpOnAnother) {
   WebUIToolbarWebView* webui_toolbar_view = SetUpAndPinHomeButton(browser());
   views::WebView* web_view = webui_toolbar_view->GetWebViewForTesting();
 
@@ -1406,13 +1415,14 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewRaceTest,
               return;
             }
             auto* rfh = weak_wc->GetPrimaryMainFrame();
-            auto* web_ui = rfh ? rfh->GetWebUI() : nullptr;
-            auto* ui = web_ui ? web_ui->GetController()->GetAs<WebUIToolbarUI>()
-                              : nullptr;
-            if (ui) {
+            if (rfh) {
               mojo::PendingRemote<tracked_element::mojom::TrackedElementHandler>
                   remote;
-              ui->BindInterface(remote.InitWithNewPipeAndPassReceiver());
+              auto handler =
+                  ui::TrackedElementHandlerDocumentSingleton::GetOrCreate(rfh);
+              if (handler) {
+                handler->BindInterface(remote.InitWithNewPipeAndPassReceiver());
+              }
             }
           },
           webui_contents->GetWeakPtr()));
@@ -1655,6 +1665,7 @@ class WebUIToolbarWebViewBrowserTest : public InProcessBrowserTest {
       : WebUIToolbarWebViewBrowserTest(
             {features::kInitialWebUI, features::kWebUIReloadButton,
              features::kWebUISplitTabsButton, features::kWebUIHomeButton,
+             features::kWebUIExtensionsContainer,
              features::kSkipIPCChannelPausingForNonGuests,
              features::kWebUIInProcessResourceLoadingV2,
              features::kInitialWebUISyncNavStartToCommit},
@@ -2877,6 +2888,14 @@ class WebUIPinnedToolbarActionsBrowserTest
       SetPinnableProperty(mapping.first, true);
     }
     model_ = PinnedToolbarActionsModel::Get(browser()->profile());
+    WebUIToolbarWebView* webui_toolbar_view = GetWebUIToolbarWebView(browser());
+    // cast to get to the non-const variant.
+    static_cast<views::View*>(webui_toolbar_view)
+        ->GetColorProvider()
+        ->SetColorForTesting(ui::kColorIcon, SK_ColorYELLOW);
+    static_cast<views::View*>(webui_toolbar_view)
+        ->GetColorProvider()
+        ->SetColorForTesting(ui::kColorMenuIcon, SK_ColorMAGENTA);
   }
 
   void TearDownOnMainThread() override {
@@ -3205,9 +3224,12 @@ IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest, RouteMediaIcons) {
               EvalJsOnPinnedButton(
                   web_contents, mojom_action,
                   "return btn?.getAttribute('iron-icon') || '(null)'"));
-    EXPECT_EQ("(null)", EvalJsOnPinnedButton(
-                            web_contents, mojom_action,
-                            "return btn?.getAttribute('style') || '(null)'"));
+
+    // And the color.
+    EXPECT_EQ(
+        "--cr-icon-button-fill-color: rgba(255, 0, 255, 1.00);",
+        EvalJsOnPinnedButton(web_contents, mojom_action,
+                             "return btn?.getAttribute('style') || '(null)'"));
 
     UnpinAction(kActionRouteMedia, mojom_action);
   }
@@ -3233,7 +3255,8 @@ IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest,
                               kShowPasswordsBubbleOrPage,
                           "return btn?.getAttribute('iron-icon') || '(null)'"));
   EXPECT_EQ(
-      "--cr-icon-image: url(rhs_icons/password_manager.svg)",
+      "--cr-icon-image: url(rhs_icons/password_manager.svg);"
+      "--cr-icon-button-fill-color: rgba(255, 255, 0, 1.00);",
       EvalJsOnPinnedButton(web_contents,
                            toolbar_ui_api::mojom::PinnedToolbarAction::
                                kShowPasswordsBubbleOrPage,

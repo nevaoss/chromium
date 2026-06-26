@@ -442,6 +442,7 @@ base::DictValue SearchboxHandler::GetWebUIDataSourceDict(
       {"addTab", IDS_NTP_COMPOSEBOX_TAB_PICKER_ADD_TABS_TITLE},
       {"shareTabs", IDS_COMPOSE_ADD_TABS},
       {"recentTabsSuffix", IDS_NTP_COMPOSEBOX_RECENT_TAB_SUFFIX},
+      {"currentTabSuffix", IDS_COMPOSE_CURRENT_TAB},
       {"sharingTabsWithGoogle", IDS_COMPOSE_SHARING_TABS_WITH_GOOGLE},
       {"dismissButton", IDS_NTP_DISMISS},
       {"searchboxComposeButtonText", IDS_NTP_COMPOSE_ENTRYPOINT},
@@ -652,23 +653,23 @@ std::string SearchboxHandler::AutocompleteIconToResourceName(
                                ? omnibox::kOfflineDinoIcon.name
                                : omnibox::kDinoCr2023OldIcon.name)) {
     return kDinoIconResourceName;
-  } else if (icon.name == omnibox::kDriveDocsIcon.name) {
+  } else if (icon.name == omnibox::kDriveDocsCustomIcon.name) {
     return kDriveDocsIconResourceName;
-  } else if (icon.name == omnibox::kDriveFolderIcon.name) {
+  } else if (icon.name == omnibox::kDriveFolderCustomIcon.name) {
     return kDriveFolderIconResourceName;
-  } else if (icon.name == omnibox::kDriveFormsIcon.name) {
+  } else if (icon.name == omnibox::kDriveFormsCustomIcon.name) {
     return kDriveFormIconResourceName;
-  } else if (icon.name == omnibox::kDriveImageIcon.name) {
+  } else if (icon.name == omnibox::kDriveImageCustomIcon.name) {
     return kDriveImageIconResourceName;
-  } else if (icon.name == omnibox::kDriveLogoIcon.name) {
+  } else if (icon.name == omnibox::kDriveLogoCustomIcon.name) {
     return kDriveLogoIconResourceName;
-  } else if (icon.name == omnibox::kDrivePdfIcon.name) {
+  } else if (icon.name == omnibox::kDrivePdfCustomIcon.name) {
     return kDrivePdfIconResourceName;
-  } else if (icon.name == omnibox::kDriveSheetsIcon.name) {
+  } else if (icon.name == omnibox::kDriveSheetsCustomIcon.name) {
     return kDriveSheetsIconResourceName;
-  } else if (icon.name == omnibox::kDriveSlidesIcon.name) {
+  } else if (icon.name == omnibox::kDriveSlidesCustomIcon.name) {
     return kDriveSlidesIconResourceName;
-  } else if (icon.name == omnibox::kDriveVideoIcon.name) {
+  } else if (icon.name == omnibox::kDriveVideoCustomIcon.name) {
     return kDriveVideoIconResourceName;
   } else if (icon.name == (features::IsRoundedIconsEnabled()
                                ? omnibox::kDomainIcon.name
@@ -702,7 +703,7 @@ std::string SearchboxHandler::AutocompleteIconToResourceName(
                                ? omnibox::kChromeProductIcon.name
                                : omnibox::kProductChromeRefreshOldIcon.name)) {
     return kPedalsIconResourceName;
-  } else if (icon.name == omnibox::kReplyRotated180Icon.name) {
+  } else if (icon.name == omnibox::kReplyRotated180CustomIcon.name) {
     return searchbox_internal::kReplyRotated180IconResourceName;
   } else if (icon.name == (features::IsRoundedIconsEnabled()
                                ? omnibox::kSearchSparkIcon.name

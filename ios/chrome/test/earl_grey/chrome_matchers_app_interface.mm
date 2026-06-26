@@ -5,6 +5,7 @@
 #import "ios/chrome/test/earl_grey/chrome_matchers_app_interface.h"
 
 #import "base/apple/foundation_util.h"
+#import "base/check.h"
 #import "base/ios/ios_util.h"
 #import "base/strings/string_number_conversions.h"
 #import "base/strings/sys_string_conversions.h"
@@ -529,21 +530,41 @@ UIWindow* WindowWithAccessibilityIdentifier(NSString* accessibility_id) {
 }
 
 + (id<GREYMatcher>)forwardButton {
+  if (IsChromeNextIaEnabled()) {
+    return grey_allOf(grey_accessibilityID(kToolbarForwardButtonIdentifier),
+                      grey_sufficientlyVisible(), nil);
+  }
   return [ChromeMatchersAppInterface
       buttonWithAccessibilityLabelID:(IDS_ACCNAME_FORWARD)];
 }
 
 + (id<GREYMatcher>)backButton {
+  if (IsChromeNextIaEnabled()) {
+    return grey_allOf(grey_accessibilityID(kToolbarBackButtonIdentifier),
+                      grey_sufficientlyVisible(), nil);
+  }
   return [ChromeMatchersAppInterface
       buttonWithAccessibilityLabelID:(IDS_ACCNAME_BACK)];
 }
 
 + (id<GREYMatcher>)reloadButton {
+  if (IsChromeNextIaEnabled()) {
+    if (!IsIPad()) {
+      return grey_allOf(grey_accessibilityID(kToolsMenuReload),
+                        grey_sufficientlyVisible(), nil);
+    }
+    return grey_allOf(grey_accessibilityID(kToolbarReloadButtonIdentifier),
+                      grey_sufficientlyVisible(), nil);
+  }
   return [ChromeMatchersAppInterface
       buttonWithAccessibilityLabelID:(IDS_IOS_ACCNAME_RELOAD)];
 }
 
 + (id<GREYMatcher>)stopButton {
+  if (IsChromeNextIaEnabled()) {
+    return grey_allOf(grey_accessibilityID(kToolbarStopButtonIdentifier),
+                      grey_sufficientlyVisible(), nil);
+  }
   return [ChromeMatchersAppInterface
       buttonWithAccessibilityLabelID:(IDS_IOS_ACCNAME_STOP)];
 }
@@ -581,9 +602,8 @@ UIWindow* WindowWithAccessibilityIdentifier(NSString* accessibility_id) {
 }
 
 + (id<GREYMatcher>)pageSecurityInfoIndicator {
-  return grey_allOf(
-      grey_accessibilityLabel(@"Page security info"),
-      grey_ancestor(grey_kindOfClass([LocationBarSteadyView class])), nil);
+  return grey_allOf(grey_accessibilityLabel(@"Page security info"),
+                    grey_ancestor([self defocusedLocationView]), nil);
 }
 
 + (id<GREYMatcher>)omniboxText:(NSString*)text {
@@ -671,12 +691,25 @@ UIWindow* WindowWithAccessibilityIdentifier(NSString* accessibility_id) {
 }
 
 + (id<GREYMatcher>)toolsMenuButton {
-  return grey_allOf(
-      grey_accessibilityID(kLegacyToolbarToolsMenuButtonIdentifier),
-      grey_sufficientlyVisible(), nil);
+  NSString* toolsMenuID = IsChromeNextIaEnabled()
+                              ? kToolbarToolsMenuButtonIdentifier
+                              : kLegacyToolbarToolsMenuButtonIdentifier;
+  return grey_allOf(grey_accessibilityID(toolsMenuID),
+                    grey_sufficientlyVisible(), nil);
+}
+
++ (id<GREYMatcher>)toolsMenuNTPButton {
+  CHECK(IsChromeNextIaEnabled());
+  return grey_allOf(grey_accessibilityID(kNTPToolsMenuButtonIdentifier),
+                    grey_accessibilityTrait(UIAccessibilityTraitButton),
+                    grey_sufficientlyVisible(), nil);
 }
 
 + (id<GREYMatcher>)openNewTabButton {
+  if (IsChromeNextIaEnabled()) {
+    return grey_allOf(grey_accessibilityID(kAppBarNewTabButtonIdentifier),
+                      grey_sufficientlyVisible(), nil);
+  }
   return grey_allOf(
       [ChromeMatchersAppInterface
           buttonWithAccessibilityLabelID:(IDS_IOS_TOOLBAR_OPEN_NEW_TAB)],
@@ -706,8 +739,11 @@ UIWindow* WindowWithAccessibilityIdentifier(NSString* accessibility_id) {
 }
 
 + (id<GREYMatcher>)tabShareButton {
+  NSString* shareID = IsChromeNextIaEnabled()
+                          ? kToolbarShareButtonIdentifier
+                          : kLegacyToolbarShareButtonIdentifier;
   return grey_allOf(
-      grey_anyOf(grey_accessibilityID(kLegacyToolbarShareButtonIdentifier),
+      grey_anyOf(grey_accessibilityID(shareID),
                  grey_accessibilityID(kOmniboxShareButtonIdentifier), nil),
       grey_sufficientlyVisible(), nil);
 }
@@ -1414,6 +1450,9 @@ UIWindow* WindowWithAccessibilityIdentifier(NSString* accessibility_id) {
 }
 
 + (id<GREYMatcher>)tabGridDoneButton {
+  if (IsChromeNextIaEnabled() && !IsIPad()) {
+    return [self showTabsButton];
+  }
   return grey_allOf(grey_accessibilityID(kTabGridDoneButtonIdentifier),
                     grey_sufficientlyVisible(), nil);
 }

@@ -489,6 +489,7 @@ chromium-metrics-reviews@google.com.
   <int value="89" label="UMA_ACTOR"/>
   <int value="90" label="UMA_GLIC"/>
   <int value="91" label="UMA_TIPS_OPT_IN"/>
+  <int value="92" label="UMA_NTP_THEME_TIP"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/ui/messages/android/java/src/org/chromium/chrome/browser/ui/messages/snackbar/Snackbar.java:SnackbarIdentifier) -->
@@ -917,6 +918,7 @@ chromium-metrics-reviews@google.com.
   <int value="459058510" label="chrome://status-area-internals/"/>
   <int value="460232055" label="chrome://lens-search-bubble/"/>
   <int value="461287992" label="chrome://help/"/>
+  <int value="502364118" label="chrome://default-browser/"/>
   <int value="507734656" label="chrome://profile-customization/"/>
   <int value="519565566" label="chrome://personal-context-internals/"/>
   <int value="520299179" label="chrome://media-engagement/"/>

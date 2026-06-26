@@ -2143,6 +2143,7 @@ IPv4 地址的前缀为 0010；IPv6 地址的前缀为 0020。对于双栈网络
 
 如果您未设置此政策，那么隐私保护屏最初会处于停用状态，但用户可以控制该功能。</translation>
 <translation id="2413899611035194909">在登录屏幕的系统任务栏菜单中显示无障碍选项</translation>
+<translation id="2414712434655365347">为特定网址格式配置 HTTP 标头注入</translation>
 <translation id="2415715982424988916">探索（自 91 版起受支持）</translation>
 <translation id="2420958105721932612">指定相应应用的安装方式。AVAILABLE：系统不会自动安装该应用，但用户可以安装它。如果您未指定此政策，该选项即是默认设置。FORCE_INSTALLED：系统会自动安装该应用，而且用户无法卸载它。BLOCKED：该应用已被屏蔽且无法安装。如果已根据先前的政策安装了该应用，系统会卸载它。</translation>
 <translation id="2421400544595297401">不允许独立用户使用 Android 应用</translation>
@@ -2867,6 +2868,7 @@ PAC 样式的字符串：
 <translation id="2853757230661166968">允许应用捕获和覆盖默认系统快捷键。</translation>
 <translation id="285480231336205327">启用高反差模式</translation>
 <translation id="285627849510728211">设定日间高级电池充电模式配置</translation>
+<translation id="2856348870384508185">停用 Chrome 建议</translation>
 <translation id="2856932965866813330">允许与其他用户共享用户凭证</translation>
 <translation id="28600673996840076">允许使用 Google 个人资料图片或本地图片自定义用户头像图片。</translation>
 <translation id="2864207379891420023">配置扩展程序安装许可名单</translation>
@@ -2875,6 +2877,13 @@ PAC 样式的字符串：
 <translation id="2866726566162790531">允许所有 HTTP 身份验证的来源列表</translation>
 <translation id="2868756546751652023">允许用户使用“即时网络共享”功能</translation>
 <translation id="286898786908566256">允许用户将电话号码从 Chrome 发送到 Android 设备</translation>
+<translation id="287087426320717057">此政策允许用户启动任何类型的固件更新。
+
+      如果此政策已启用或未设置，设备所有者等用户便能启动固件更新。
+
+      如果此政策已停用，所有用户都将无法应用固件更新。
+
+      此政策适用于 <ph name="PRODUCT_OS_FLEX_NAME" /> 设备的外围设备固件更新和内部组件固件更新。<ph name="PRODUCT_OS_NAME" /> 设备的内部组件固件更新不受此政策的影响。</translation>
 <translation id="2872098849906555324">停用 Google 云端硬盘同步功能</translation>
 <translation id="2872189563975139803">企业资料分离设置</translation>
 <translation id="2872961005593481000">关机</translation>
@@ -3441,7 +3450,6 @@ ClearCrossSiteCrossBrowsingContextGroupWindowName 变体可控制是否为顶层
 <translation id="322359555555487980">确定变体在 <ph name="PRODUCT_OS_NAME" />中的可用情况</translation>
 <translation id="3229163415739929305">如果此政策已启用或未设置，系统会启用页面加载元数据提取功能和用以提升浏览体验的机器学习模型。如果此政策已停用，可能会导致某些功能无法正常运行。</translation>
 <translation id="3231311173895401135">让浏览器决定是否支持</translation>
-<translation id="3231684792162319504">禁止采用 Gemini 实验性触发机制。</translation>
 <translation id="3231837273069128027">通过设置此政策，您可以配置 <ph name="TPM_FIRMWARE_UPDATE_TPM" /> 固件更新的可用性和行为。
 
       请在 JSON 属性中指定各项设置：
@@ -5158,7 +5166,6 @@ ServiceWorkerAutoPreload 功能会在 ServiceWorker 引导过程开始的同时�
 <translation id="4435032708588431506">允许使用 QUIC</translation>
 <translation id="443665821428652897">在浏览器关闭时清除网站数据（已弃用）</translation>
 <translation id="4436941175475497595">停用打印预览</translation>
-<translation id="4436992815485865052">允许采用 Gemini 实验性触发机制。</translation>
 <translation id="4439336120285389675">指定要临时重新启用的已弃用网络平台功能的列表。
 
       通过此政策，管理员可以使已弃用的网络平台功能在限定的时间内重新发挥功效。这些功能用字符串标记进行标识，与通过此政策指定的列表中包含的标记对应的功能将被重新启用。
@@ -5752,6 +5759,13 @@ JavaScript 优化政策的例外情况仅在网站级别 (eTLD+1) 上强制执�
 <translation id="4789450349513792856">禁止这些网站显示弹出式窗口</translation>
 <translation id="4790391579868456557">在搜索中使用必需 Cookie 和非必需 Cookie。</translation>
 <translation id="4790588245699320140">允许 Google 助理访问屏幕上的内容</translation>
+<translation id="4797001637482545491">此设置允许 Chrome 在适当的时候推荐 AI 功能。
+
+0/未设置 = 为用户启用 Chrome 建议。
+
+1 = 为用户停用 Chrome 建议。
+
+如需了解详情，请参阅这篇帮助中心文章：https://support.google.com/chrome/a?p=chrome_suggestions</translation>
 <translation id="4799820756794591883">TLS 1.3 Early Data 是 TLS 1.3 的扩展，用于在 TLS 握手时同时发送 HTTP 请求。
 
       如果此政策未配置，<ph name="PRODUCT_NAME" /> 将会遵循 TLS 1.3 Early Data 的默认分阶段发布流程。
@@ -6543,7 +6557,6 @@ JavaScript 优化政策的例外情况仅在网站级别 (eTLD+1) 上强制执�
 <translation id="5255790642269910630">如果此政策已设置，那么每当重新启动时或在此政策的值更改后首次连接时，每个显示屏都会旋转到指定方向。用户可在登录后通过“设置”页面更改显示屏旋转角度，但下次重新启动时显示屏仍会恢复为更改前的设置。此政策适用于主要显示屏和次要显示屏。
 
 如果此政策未设置，默认值便是 0 度，但用户可以随意更改此值。如果用户更改了默认值，显示屏在重启时将不会重新应用此值。</translation>
-<translation id="5256792633540454282">控制 Gemini 实验性触发机制</translation>
 <translation id="5257395339965216304">托管的应用数据</translation>
 <translation id="5258445772095084618">允许独立用户使用所需的虚拟机来支持 Linux 应用</translation>
 <translation id="5258651513421638932">允许独立式应用连接智能卡</translation>
@@ -7531,7 +7544,6 @@ Microsoft SharePoint 和 OneDrive 卡片需要由管理员进行额外配置。�
 
       此政策已被弃用，请改用 <ph name="PRINTERS_BULK_BLOCKLIST" />。</translation>
 <translation id="591088232153082363">基于电池使用模式自动调节电池充电速率。</translation>
-<translation id="5911656389795271430">这是一项实验性政策。</translation>
 <translation id="5913506885872855604">设置此政策即可将某些内部地址范围视为“公开”，使之无需接受<ph name="LOCAL_NETWORK_ACCES" />检查。反之，如果某些公开地址范围可能用于内部，则可以将其视为“本地”，以便通过<ph name="LOCAL_NETWORK_ACCESS" />检查予以保护。
 
 IP 地址空间覆盖有两种形式：
@@ -7961,6 +7973,26 @@ IP 地址空间覆盖有两种形式：
 <translation id="624219423122512710">浏览器闲置时运行的操作</translation>
 <translation id="6244061205361004687">允许用户手动断开或修改 VPN</translation>
 <translation id="6244210204546589761">启动时打开的网址</translation>
+<translation id="6244263962918757383">Chrome 建议设置</translation>
+<translation id="6245828368576563662">此政策支持定义一系列规则，以便将自定义 HTTP 标头注入与特定网址格式匹配的 Web 请求中。此政策设置的标头优先于请求中最初存在的标头，以及用户或扩展程序尝试进行的修改。
+
+此政策的常见使用场景是通过注入自定义标头（例如 <ph name="EXAMPLE_HEADER_NAME" />）来强制执行租户访问权限控制。
+
+此政策接受规则列表。每条规则都包含：
+
+* <ph name="PATTERNS_KEY" />：要匹配的网址格式列表。了解如何设置网址格式 (https://support.google.com/chrome/a?p=url_blocklist_filter_format)。
+
+* <ph name="HEADERS_KEY" />：表示要注入的标头的对象列表，每个对象包含：
+
+  * <ph name="HEADER_NAME_KEY" />：要注入的标头的名称。
+
+  * <ph name="HEADER_VALUE_KEY" />：要注入的标头的值。
+
+如果有多条规则与请求匹配，系统将应用所有匹配规则中的标头。如果多个标头同名，系统将应用网址格式最具体的标头。如果网址格式的具体程度相同，系统将应用列表中最后出现的标头。
+
+标头名称必须符合 RFC 2616 ( https://www.rfc-editor.org/rfc/rfc2616 )。标头值不得包含 NUL、CR 或 LF 符号。单个标头的大小不得超过 8KB。系统会忽略无效的标头和网址格式。
+
+此政策中所有规则的网址格式总数限制为 500 个。每条规则最多可包含 20 个标头。超出这些阈值的格式和标头将被忽略。</translation>
 <translation id="624595269193747921">是否要将相符打印机的搜索范围限定为一组特定的打印机。</translation>
 <translation id="6246290059248303618">显示由本地网络中的其他设备启动的 <ph name="PRODUCT_NAME" /> 会话的媒体控件</translation>
 <translation id="6247316685259031374">此政策用于控制音频进程是否会采用沙盒机制。
@@ -9302,12 +9334,6 @@ JavaScript 优化政策的例外情况仅在网站级别 (eTLD+1) 上强制执�
       如果未设置此政策，工具栏将默认放置在屏幕底部，但用户可以更改工具栏的位置。</translation>
 <translation id="7039815268521168329">在初始设置期间显示 Google 助理 Voice Match 流程</translation>
 <translation id="7040229947030068419">值示例：</translation>
-<translation id="7044626519138840387">这是一个远程桌面客户端应用的源列表，这些应用可执行来自远程主机浏览会话的 WebAuthn API 请求。
-
-此政策中配置的任何源都可以针对依赖方 ID (RP ID) 发出 WebAuthn 请求。通常，系统不允许源发出此类请求。
-
-仅允许使用有效的 HTTPS 源。不支持通配符。
-系统会忽略所有无效条目。</translation>
 <translation id="7044883996351280650">控制 Android 备份和恢复服务</translation>
 <translation id="7045221780834308118">如果已启用此政策，第三方 Web 应用将能使用 Desk API 来控制 <ph name="PRODUCT_OS_NAME" /> 桌面。如果未设置或已停用此政策，<ph name="DESK_API_NAME" /> 将不可用。此政策仅适用于已注册的设备。</translation>
 <translation id="7046113122884041950">不允许使用 Smart Lock</translation>
@@ -11424,6 +11450,7 @@ Gemini 只能在部分国家/地区启用，并且仅支持部分语言。设置
 
       如果设置了此政策，系统便会酌情删除旧快照以遵守此限制。如果此政策设为 0，系统将不会创建任何快照</translation>
 <translation id="8446679541472571487">在用户登录期间显示 AI 介绍界面</translation>
+<translation id="8451205236854734195">允许 Chrome 提供建议</translation>
 <translation id="8451988835943702790">使用“新标签页”作为主页</translation>
 <translation id="8452787853105404870">向 Google 发送硬件数据，协助改进 ChromeOS Flex</translation>
 <translation id="8453218444172088993">为您的用户停用 <ph name="PRIVACY_SANDBOX_NAME" /> 广告主题设置。</translation>

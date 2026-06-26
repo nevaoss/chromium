@@ -74,17 +74,19 @@ class PersonalContextEnablementServiceImplTest : public testing::Test {
     identity_test_env_.UpdateAccountInfoForAccount(builder.Build());
   }
 
-  void CreateService(const std::string& country_code) {
+  void CreateService(const std::string& country_code,
+                     const std::string& locale = "en-US") {
     service_ = std::make_unique<PersonalContextEnablementServiceImpl>(
         &mock_account_settings_service_, identity_test_env_.identity_manager(),
         subscription_eligibility_service_.get(), &pref_service_,
-        GeoIpCountryCode(base::ToUpperASCII(country_code)));
+        GeoIpCountryCode(base::ToUpperASCII(country_code)), locale);
   }
 
   void SetPrefs() {
     personal_context::prefs::RegisterProfilePrefs(pref_service_.registry());
     pref_service_.SetBoolean(
-        personal_context::prefs::kShouldShowPersonalContextFirstRunInfo, false);
+        personal_context::prefs::kPersonalContextInAutofillNoticeShouldBeShown,
+        false);
     subscription_eligibility::prefs::RegisterProfilePrefs(
         pref_service_.registry());
     pref_service_.SetInteger(
@@ -129,7 +131,7 @@ TEST_F(PersonalContextEnablementServiceImplTest, ForcedEnablementState) {
         features::debug::kPersonalContextForceEnablementState,
         {{"state", "1"}});
     EXPECT_EQ(service().GetEnablementState(),
-              PersonalContextEnablementState::kDisabledPendingInfo);
+              PersonalContextEnablementState::kDisabledShouldShowNotice);
   }
 
   {
@@ -138,7 +140,7 @@ TEST_F(PersonalContextEnablementServiceImplTest, ForcedEnablementState) {
         features::debug::kPersonalContextForceEnablementState,
         {{"state", "2"}});
     EXPECT_EQ(service().GetEnablementState(),
-              PersonalContextEnablementState::kDisabledPendingSetup);
+              PersonalContextEnablementState::kDisabledNeedsOptIn);
   }
 
   {
@@ -183,14 +185,15 @@ TEST_F(PersonalContextEnablementServiceImplTest, EnabledWhenAllFeaturesAreOn) {
             PersonalContextEnablementState::kEnabled);
 }
 
-// Verifies that the state correctly transitions to `kDisabledPendingInfo` when
-// the user hasn't acknowledged the introductory info yet.
+// Verifies that the state correctly transitions to `kDisabledShouldShowNotice`
+// when the user hasn't acknowledged the introductory notice yet.
 TEST_F(PersonalContextEnablementServiceImplTest,
-       DisabledPendingInfoWhenInfoNotAcknowledged) {
+       DisabledShouldShowNoticeWhenNoticeNotAcknowledged) {
   pref_service_.SetBoolean(
-      personal_context::prefs::kShouldShowPersonalContextFirstRunInfo, true);
+      personal_context::prefs::kPersonalContextInAutofillNoticeShouldBeShown,
+      true);
   EXPECT_EQ(service().GetEnablementState(),
-            PersonalContextEnablementState::kDisabledPendingInfo);
+            PersonalContextEnablementState::kDisabledShouldShowNotice);
 }
 
 #if !BUILDFLAG(IS_CHROMEOS)  // Signing out does not work on ChromeOS.
@@ -202,13 +205,14 @@ TEST_F(PersonalContextEnablementServiceImplTest, DisabledWhenSignedOut) {
 }
 
 // Verifies that the onboarding preference is reset when the user signs out,
-// ensuring they see the info again if they sign back in.
+// ensuring they see the notice again if they sign back in.
 TEST_F(PersonalContextEnablementServiceImplTest, ClearsPrefOnSignout) {
   pref_service_.SetBoolean(
-      personal_context::prefs::kShouldShowPersonalContextFirstRunInfo, false);
+      personal_context::prefs::kPersonalContextInAutofillNoticeShouldBeShown,
+      false);
   identity_test_env_.ClearPrimaryAccount();
   EXPECT_TRUE(pref_service_.GetBoolean(
-      personal_context::prefs::kShouldShowPersonalContextFirstRunInfo));
+      personal_context::prefs::kPersonalContextInAutofillNoticeShouldBeShown));
 }
 #endif  // !BUILDFLAG(IS_CHROMEOS)
 
@@ -245,7 +249,7 @@ TEST_F(PersonalContextEnablementServiceImplTest,
   service_ = std::make_unique<PersonalContextEnablementServiceImpl>(
       nullptr, identity_test_env_.identity_manager(),
       subscription_eligibility_service_.get(), &pref_service_,
-      GeoIpCountryCode("US"));
+      GeoIpCountryCode("US"), "en-US");
 
   EXPECT_EQ(service().GetEnablementState(),
             PersonalContextEnablementState::kDisabledNotEligible);
@@ -342,18 +346,20 @@ TEST_F(PersonalContextEnablementServiceImplTest,
   ASSERT_EQ(service().GetEnablementState(),
             PersonalContextEnablementState::kEnabled);
 
-  // Trigger a change to kDisabledPendingInfo by setting a pref.
+  // Trigger a change to `kDisabledShouldShowNotice` by setting a pref.
   EXPECT_CALL(observer,
               OnEnablementStateChanged(
-                  PersonalContextEnablementState::kDisabledPendingInfo));
+                  PersonalContextEnablementState::kDisabledShouldShowNotice));
   pref_service_.SetBoolean(
-      personal_context::prefs::kShouldShowPersonalContextFirstRunInfo, true);
+      personal_context::prefs::kPersonalContextInAutofillNoticeShouldBeShown,
+      true);
 
   // Trigger a change back to kEnabled.
   EXPECT_CALL(observer, OnEnablementStateChanged(
                             PersonalContextEnablementState::kEnabled));
   pref_service_.SetBoolean(
-      personal_context::prefs::kShouldShowPersonalContextFirstRunInfo, false);
+      personal_context::prefs::kPersonalContextInAutofillNoticeShouldBeShown,
+      false);
 
   service().RemoveObserver(&observer);
 }
@@ -403,6 +409,78 @@ TEST_F(PersonalContextEnablementServiceImplTest,
             PersonalContextEnablementState::kEnabled);
 }
 
+TEST_F(PersonalContextEnablementServiceImplTest,
+       DisabledWhenAccountSettingsServiceNotAvailableAndOptInEnabled) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeatures(
+      /*enabled_features=*/{features::kPersonalContext,
+                            features::kPersonalContextFirstRun,
+                            features::kPersonalContextFirstRunOptIn},
+      /*disabled_features=*/{});
+
+  service_ = std::make_unique<PersonalContextEnablementServiceImpl>(
+      nullptr, identity_test_env_.identity_manager(),
+      subscription_eligibility_service_.get(), &pref_service_,
+      GeoIpCountryCode("US"), "en-US");
+
+  EXPECT_EQ(service().GetEnablementState(),
+            PersonalContextEnablementState::kDisabledNotEligible);
+}
+
+TEST_F(PersonalContextEnablementServiceImplTest,
+       NeedsOptInWhenAccountOptedOutOfContextAndOptInEnabled) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeatures(
+      /*enabled_features=*/{features::kPersonalContext,
+                            features::kPersonalContextFirstRun,
+                            features::kPersonalContextFirstRunOptIn},
+      /*disabled_features=*/{});
+
+  PersonalContextEnablementServiceImplTestApi(&service())
+      .ComputeEnablementState();
+
+  EXPECT_CALL(mock_account_settings_service_,
+              GetBoolean(AccountSettingWithName(
+                  account_settings::kAccountSettingContext.name)))
+      .WillOnce(Return(false));
+
+  service().OnAccountSettingDataUpdated(
+      account_settings::kAccountSettingContext.name);
+  EXPECT_EQ(service().GetEnablementState(),
+            PersonalContextEnablementState::kDisabledNeedsOptIn);
+}
+
+TEST_F(PersonalContextEnablementServiceImplTest,
+       NeedsOptInWhenNoContextSourcesEnabledAndOptInEnabled) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeatures(
+      /*enabled_features=*/{features::kPersonalContext,
+                            features::kPersonalContextFirstRun,
+                            features::kPersonalContextFirstRunOptIn},
+      /*disabled_features=*/{});
+
+  PersonalContextEnablementServiceImplTestApi(&service())
+      .ComputeEnablementState();
+
+  EXPECT_CALL(mock_account_settings_service_,
+              GetBoolean(AccountSettingWithName(
+                  account_settings::kAccountSettingContext.name)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(mock_account_settings_service_,
+              GetBoolean(AccountSettingWithName(
+                  account_settings::kAccountSettingContextWorkspace.name)))
+      .WillOnce(Return(false));
+  EXPECT_CALL(mock_account_settings_service_,
+              GetBoolean(AccountSettingWithName(
+                  account_settings::kAccountSettingContextPhotos.name)))
+      .WillOnce(Return(false));
+
+  service().OnAccountSettingDataUpdated(
+      account_settings::kAccountSettingContext.name);
+  EXPECT_EQ(service().GetEnablementState(),
+            PersonalContextEnablementState::kDisabledNeedsOptIn);
+}
+
 class PersonalContextEnablementServiceImplGeolocationTest
     : public PersonalContextEnablementServiceImplTest,
       public testing::WithParamInterface<
@@ -424,6 +502,30 @@ INSTANTIATE_TEST_SUITE_P(
 TEST_P(PersonalContextEnablementServiceImplGeolocationTest,
        CheckCountryEnablement) {
   CreateService(std::get<0>(GetParam()));
+  EXPECT_EQ(service().GetEnablementState(), std::get<1>(GetParam()));
+}
+
+class PersonalContextEnablementServiceImplLocaleTest
+    : public PersonalContextEnablementServiceImplTest,
+      public testing::WithParamInterface<
+          std::tuple<std::string, PersonalContextEnablementState>> {};
+
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    PersonalContextEnablementServiceImplLocaleTest,
+    testing::Values(
+        std::make_tuple(/*locale=*/"fr-FR",
+                        PersonalContextEnablementState::kDisabledNotEligible),
+        std::make_tuple(/*locale=*/"de-DE",
+                        PersonalContextEnablementState::kDisabledNotEligible),
+        std::make_tuple(/*locale=*/"en-US",
+                        PersonalContextEnablementState::kEnabled),
+        std::make_tuple(/*locale=*/"en-GB",
+                        PersonalContextEnablementState::kDisabledNotEligible)));
+
+// Verifies that the service is only enabled for the en-US locale.
+TEST_P(PersonalContextEnablementServiceImplLocaleTest, CheckLocaleEnablement) {
+  CreateService("us", std::get<0>(GetParam()));
   EXPECT_EQ(service().GetEnablementState(), std::get<1>(GetParam()));
 }
 

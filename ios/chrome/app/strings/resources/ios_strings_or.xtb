@@ -81,7 +81,6 @@
 <translation id="1275718070701477396">ଚୟନ କରାଯାଇଛି</translation>
 <translation id="1279024913354609713">ଅନୁମତି ଦିଅନ୍ତୁ ନାହିଁ</translation>
 <translation id="1285320974508926690">ଏହି ସାଇଟ୍‍କୁ କଦାପି ଅନୁବାଦ କରନ୍ତୁ ନାହିଁ</translation>
-<translation id="1287229685519872919">Google Workspace ଡାଟା</translation>
 <translation id="1291506870746876680">ଆପଣ ଏହି ସାଇଟକୁ ଛାଡ଼ିବା ସମୟରେ <ph name="BEGIN_BOLD" />"<ph name="SITE_NAME" />"<ph name="END_BOLD" /> ଅନୁମତିଗୁଡ଼ିକ ବନ୍ଦରେ ରିସେଟ ହେବ।</translation>
 <translation id="1293491796138057740">ଆପଣଙ୍କ ସୂଚନାକୁ <ph name="USER_EMAIL" /> ପାଇଁ Google Walletରେ ସେଭ କରାଯାଇଛି। ଫର୍ମଗୁଡ଼ିକୁ ଶୀଘ୍ର ପୂରଣ କରିବା ପାଇଁ ଆପଣ ଏହାକୁ ସମଗ୍ର Google ପ୍ରଡକ୍ଟରେ ବ୍ୟବହାର କରିପାରିବେ।</translation>
 <translation id="1293556467332435079">Files</translation>
@@ -168,7 +167,6 @@
 <translation id="1547610699249301703">ପାସୱାର୍ଡଗୁଡ଼ିକୁ ସେୟାର କରନ୍ତୁ</translation>
 <translation id="1554043146674176775">AI ମୋଡକୁ ବନ୍ଦ କରନ୍ତୁ</translation>
 <translation id="1554477036522844996">ନୂଆ ୱିଣ୍ଡୋ</translation>
-<translation id="1554605811306591212">ଆମର <ph name="TERMS" />, <ph name="KOREAN_LOCATION_TERMS" /> ଏବଂ <ph name="PRIVACY_NOTICE" /> ଲାଗୁ ହୁଏ। Gemini ହେଉଛି AI ଏବଂ ଏହା ଭୁଲ କରିପାରେ, ଯେଉଁଥିରେ ଲୋକମାନଙ୍କ ବିଷୟରେ ସୂଚନା ଅନ୍ତର୍ଭୁକ୍ତ ଅଟେ।</translation>
 <translation id="1558391695376153246">ଇନକଗ୍ନିଟୋ ଟାବଗୁଡ଼ିକ ବନ୍ଦ କର</translation>
 <translation id="1565371473877914088">ନୂଆ ଇନକଗ୍ନିଟୋ ଟାବ</translation>
 <translation id="1567960978791353852">ରିଡିଂ ମୋଡ ଦେଖାନ୍ତୁ</translation>
@@ -330,6 +328,7 @@
 <translation id="2078437078822043850">ଇନକଗ୍ନିଟୋରେ ବ୍ରାଉଜ କରିବାକୁ ଆପଣ ଡାହାଣକୁ ସ୍ୱାଇପ କରିପାରିବେ।</translation>
 <translation id="2079545284768500474">ଅନଡୁ କରନ୍ତୁ</translation>
 <translation id="2085876078937250610">ସେଭ୍ କରନ୍ତୁ…</translation>
+<translation id="2089180529062519164">ମାଇକ୍ରୋଫୋନ ଚାଲୁ କରନ୍ତୁ</translation>
 <translation id="2096239473850415494">ଡାଉନଲୋଡ କରାଯାଇପାରିଲା ନାହିଁ</translation>
 <translation id="2096716221239095980">ସମସ୍ତ ଡାଟାକୁ ଡିଲିଟ କରନ୍ତୁ</translation>
 <translation id="2104436223719117661">ଟ୍ରେଣ୍ଡିଂ ସର୍ଚ୍ଚ</translation>
@@ -374,6 +373,7 @@
 <translation id="2251686759395008410">ମେନୁ → ଇତିହାସ</translation>
 <translation id="2252378061043785266">ଏହି ସାଇଟକୁ କେବେ ବି ଦେଖାନ୍ତୁ ନାହିଁ</translation>
 <translation id="2252749852083403809"><ph name="USER_EMAIL" /> ପାଇଁ Driveରେ ସେଭ କରାଯାଉଛି।</translation>
+<translation id="225614027745146050">ସ୍ଵାଗତ</translation>
 <translation id="2256933947031277845">ଆପଣଙ୍କ ସଂସ୍ଥା ଆପଣଙ୍କୁ କେବଳ ନିର୍ଦ୍ଦିଷ୍ଟ କିଛି ଆକାଉଣ୍ଟ ମାଧ୍ୟମରେ ସାଇନ ଇନ କରିବାକୁ ଅନୁମତି ଦିଏ।</translation>
 <translation id="2257567812274161158">ସିଙ୍କ୍ କାମ କରୁନାହିଁ।</translation>
 <translation id="2258326562203545455">{count,plural, =1{ଆପଣ ଆପଣଙ୍କ Google ଆକାଉଣ୍ଟ, {email}ରେ ଆପଣଙ୍କ ବୁକମାର୍କକୁ ସେଭ କରିପାରିବେ।}other{ଆପଣ ଆପଣଙ୍କ Google ଆକାଉଣ୍ଟ, {email}ରେ ଆପଣଙ୍କ ବୁକମାର୍କଗୁଡ଼ିକୁ ସେଭ କରିପାରିବେ।}}</translation>
@@ -434,7 +434,6 @@
 <translation id="2468444275314013497">ଆପଣଙ୍କ ବ୍ରାଉଜର ଠିକ ଲାଗୁଛି</translation>
 <translation id="2473876017985765807">ଆପଣ <ph name="WEBSITE" /> ପାଇଁ ପୂର୍ବରୁ ଏକ ପାସୱାର୍ଡ ସେଭ କରିଛନ୍ତି</translation>
 <translation id="247430852844518481">ପରେ ଏହି ପୃଷ୍ଠାକୁ ପୁଣି ଭିଜିଟ କରିବା ପାଇଁ ଆପଣ ଏକ ରିମାଇଣ୍ଡର ସେଟ କରିପାରିବେ</translation>
-<translation id="2478246185006364308">Google ସେବାର ସର୍ତ୍ତାବଳୀ</translation>
 <translation id="2479148705183875116">ସେଟିଂସକୁ ଯାଆନ୍ତୁ</translation>
 <translation id="2482878487686419369">ବିଜ୍ଞପ୍ତି</translation>
 <translation id="2484459871750294497">ମୁଁ ଏହି ଫିଚରକୁ କିପରି ସକ୍ଷମ କରିବି?</translation>
@@ -827,7 +826,6 @@
 <translation id="3941941395924123592">{COUNT,plural, =1{{COUNT} ଟାବ ବନ୍ଦ କରନ୍ତୁ}other{{COUNT} ଟାବ ବନ୍ଦ କରନ୍ତୁ}}</translation>
 <translation id="3946483119107054883">CSVରେ ଡାଉନଲୋଡ କରନ୍ତୁ</translation>
 <translation id="3948600256434252210">ଇନକଗ୍ନିଟୋରେ ବ୍ରାଉଜ କରିବାକୁ ଆପଣ ଡାହାଣକୁ ସ୍ୱାଇପ କରିପାରିବେ।</translation>
-<translation id="3949712484278252781">Gemini ସହ ଆପଣଙ୍କ ବାର୍ତ୍ତାଳାପ କିମ୍ବା ଆପଣଙ୍କ <ph name="GOOGLE_WORKSPACE_DATA" /> ମାନବ ରିଭ୍ୟୁଅରମାନଙ୍କ ଦ୍ୱାରା ରିଭ୍ୟୁ କରାଯିବ ନାହିଁ କିମ୍ବା ଜେନେରେଟିଭ AI ମଡେଲଗୁଡ଼ିକୁ ଉନ୍ନତ କରିବା ପାଇଁ ବ୍ୟବହାର କରାଯିବ ନାହିଁ।</translation>
 <translation id="3950479158728806902">ଶୀଘ୍ର ସାଇନ ଇନ କରିବାକୁ ସ୍ୱତଃ ଏକ ପାସକୀ ତିଆରି କରନ୍ତୁ</translation>
 <translation id="3950820424414687140">ସାଇନ୍ ଇନ୍ କରନ୍ତୁ</translation>
 <translation id="395377504920307820">କୌଣସି ଆକାଉଣ୍ଟ ବିନା ବ୍ୟବହାର କରନ୍ତୁ</translation>
@@ -848,7 +846,6 @@
 <translation id="3994911892367422121">ବୁଝିଗଲି</translation>
 <translation id="3995521777587992544">ପୃଷ୍ଠା ଲୋଡ୍ କରିବାର ପ୍ରୋଗ୍ରେସ୍ ବାର୍, <ph name="EMAIL" /> ଲୋଡ୍ କରାଯାଇଛି।</translation>
 <translation id="3997522473364371632">ଆପଣଙ୍କ ଆଡମିନିଷ୍ଟ୍ରେଟରଙ୍କ ଦ୍ୱାରା ପାସୱାର୍ଡ ସେୟାରିଂକୁ ଅକ୍ଷମ କରାଯାଇଛି।</translation>
-<translation id="4000707564769984863">ଦେଖନ୍ତୁ: <ph name="WATCH_LINK" /></translation>
 <translation id="4002066346123236978">ଆଖ୍ୟା</translation>
 <translation id="4004204301268239848">ପାସ୍‌ୱର୍ଡଗୁଡ଼ିକ ଆପଣଙ୍କର Google ଆକାଉଣ୍ଟରେ ସେଭ୍ କରାଯାଇଛି, ତେଣୁ ଆପଣ ତାହାକୁ ଯେକୌଣସି ଡିଭାଇସ୍‌ରେ ବ୍ୟବହାର କରିପାରିବେ।</translation>
 <translation id="4007463141047732631">ଗ୍ରୁପକୁ ଏଡିଟ କରନ୍ତୁ</translation>
@@ -879,7 +876,6 @@
 <translation id="4129768137228347731"><ph name="ENTITY_TYPE" /> ସେଭ କରିବେ?</translation>
 <translation id="4133139945030148655">ଆପଣ ସମ୍ପୂର୍ଣ୍ଣ ଭାବେ ପ୍ରସ୍ତୁତ ଅଛନ୍ତି</translation>
 <translation id="4133265950310064865">ଉନ୍ନତ ସୁରକ୍ଷା</translation>
-<translation id="4142372594294312814">ଜେନେରେଟିଭ AI ପାଇଁ ନିଶ୍ଚିତ ଭାବରେ ଜାଣିବା 5 ବିଷୟ</translation>
 <translation id="4145507240503767005"><ph name="SEARCH_ENGINE_NAME" />, <ph name="SEARCH_ENGINE_DOMAIN" /></translation>
 <translation id="4147897805161313378">Google Photos</translation>
 <translation id="4148023517926189160">ଏହି ୱେବସାଇଟ ଏକ ଫାଇଲକୁ ଡାଉନଲୋଡ କରି ଏହାକୁ ଆପଣଙ୍କ କ୍ୟାଲେଣ୍ଡରରେ ଯୋଗ କରିବା ପାଇଁ ଚାହେଁ।</translation>
@@ -961,7 +957,6 @@
 <translation id="441218095371040430">କୀବୋର୍ଡ ବ୍ୟବହାର କରନ୍ତୁ</translation>
 <translation id="4415276339145661267">ଆପଣଙ୍କର Google ଆକାଉଣ୍ଟ ପରିଚାଳନା କରନ୍ତୁ</translation>
 <translation id="4416582610654027550">ଏକ ଵୈଧ URL ଟାଇପ୍‌ କରନ୍ତୁ</translation>
-<translation id="441868831736628555">ଗୋପନୀୟତା ବିଜ୍ଞପ୍ତି</translation>
 <translation id="4420409367264901497">ବୁକମାର୍କକୁ ଏଡିଟ କରନ୍ତୁ</translation>
 <translation id="4425365312778464779">ଏହି ଆକାଉଣ୍ଟଟି ପରିଚାଳିତ ହେଉଛି</translation>
 <translation id="443008484043213881">ଉପକରଣଗୁଡିକ</translation>
@@ -1241,7 +1236,6 @@
 <translation id="5329451663851195956">ରିଫ୍ରେସ କରିବାକୁ ଆପଣ ତଳକୁ ଟାଣିପାରିବେ।</translation>
 <translation id="5336910966955551309">ଆପଣଙ୍କ ପସନ୍ଦର ସାଇଟଗୁଡ଼ିକୁ ପିନ କରିବା ପାଇଁ ଟାପ କରି ଧରି ରଖନ୍ତୁ</translation>
 <translation id="5338512273860059533">ସାଇନ-ଇନ ଚାଲିଛି।</translation>
-<translation id="5340148832014094861"><ph name="GOOGLE_TERMS" /> ଏବଂ <ph name="GEMINI_APPS_PRIVACY" /> ଲାଗୁ ହୁଏ। Gemini ହେଉଛି AI ଏବଂ ଏହା ଭୁଲ କରିପାରେ, ଯେଉଁଥିରେ ଲୋକମାନଙ୍କ ବିଷୟରେ ସୂଚନା ଅନ୍ତର୍ଭୁକ୍ତ ଅଟେ।</translation>
 <translation id="5343472494710226394">ଆପଣଙ୍କ ରୁଚି ଆଧାରରେ ନ୍ୟୁଜ, ସ୍ପୋର୍ଟ୍ସ ଏବଂ ବିଷୟବସ୍ତୁ।</translation>
 <translation id="5352128922772839949">ଫାଇଲ ସେଭ କରନ୍ତୁ</translation>
 <translation id="5355191726083956201">ଉନ୍ନତ ସୁରକ୍ଷା ଚାଲୁ ଅଛି</translation>
@@ -1513,6 +1507,7 @@ Handoff, ନିଶ୍ଚିତ ରୂପେ ସେଟିଂସ୍‍ର ସା�
 <translation id="6241132809279377987">Google ଆପ୍ସ ମାଧ୍ୟମରେ ଆପଣଙ୍କ iPhone ପାଇଁ ଅଧିକ ଫିଚର ଅନଲକ କରନ୍ତୁ</translation>
 <translation id="6247557882553405851">Google Password Manager</translation>
 <translation id="6251835855431997163"><ph name="VALUE" />କୁ ଅଟୋଫିଲ କରନ୍ତୁ</translation>
+<translation id="6253686838150111720"><ph name="URL" />ରେ ସାଇନ ଇନ କରନ୍ତୁ</translation>
 <translation id="6254066287920239840">ଲିଙ୍କ୍‌ଗୁଡ଼ିକୁ ବ୍ରାଉଜର୍ ପରିବର୍ତ୍ତେ ଆପ୍‌‌ରେ ଖୋଲନ୍ତୁ।</translation>
 <translation id="6259928806013786178">ରିଡିଂ ମୋଡ ବିଫଳ ହୋଇଛି</translation>
 <translation id="6268773951964630964">କପି କରାଯାଇଥିବା ଇମେଜ ସର୍ଚ୍ଚ କରନ୍ତୁ</translation>
@@ -1532,7 +1527,6 @@ Handoff, ନିଶ୍ଚିତ ରୂପେ ସେଟିଂସ୍‍ର ସା�
 <translation id="6327249202318869726">ଆପଣଙ୍କ ଆକାଉଣ୍ଟ ପାଇଁ Geminiକୁ ବନ୍ଦ କରାଯାଇଛି। ଅଧିକ ସୂଚନା ପାଇଁ ଆପଣଙ୍କର ଆଡମିନ ସହ କଣ୍ଟାକ୍ଟ କରନ୍ତୁ।</translation>
 <translation id="6331836477476466332">ଆପଣଙ୍କ ପାଇଁ ଏକ ସୁରକ୍ଷିତ, ଅଧିକ ଶକ୍ତିଶାଳୀ ବ୍ରାଉଜର</translation>
 <translation id="6337234675334993532">ଏନକ୍ରିପ୍ସନ୍</translation>
-<translation id="6337313937331295309">Gemini ଆପ୍ସ ଗୋପନୀୟତା ନୋଟିସ</translation>
 <translation id="633809752005859102">ପ୍ରକୃତରେ କିଛି ଭୁଲ୍ ହୋଇଗଲା। ଆମେ ତାହା ଉପରେ କାମ କରିବୁ।</translation>
 <translation id="6339793034470834130">ୱେବ ଇନ୍ସପେକ୍ଟର ବ୍ୟବହାର କରିବାକୁ ଏକ କେବୁଲ ବ୍ୟବହାର କରି ଆପଣଙ୍କ କମ୍ପ୍ୟୁଟରରେ Safari ସହ କନେକ୍ଟ କରନ୍ତୁ ଏବଂ ଡେଭେଲପ ମେନୁରୁ ଆପଣଙ୍କ iPhoneକୁ ଆକ୍ସେସ କରନ୍ତୁ। ଆପଣ ଆପଣଙ୍କ କମ୍ପ୍ୟୁଟରରେ Safari ସେଟିଂସର ଆଡଭାନ୍ସଡ ବିଭାଗରେ ଡେଭେଲପ ମେନୁକୁ ସକ୍ଷମ କରିପାରିବେ।</translation>
 <translation id="6340285871011301182">ଆଂଶିକ ଅନୁବାଦ ଉପଲବ୍ଧ ନାହିଁ।</translation>
@@ -1812,7 +1806,6 @@ Handoff, ନିଶ୍ଚିତ ରୂପେ ସେଟିଂସ୍‍ର ସା�
 <translation id="7261217796641151584">ଗୋଷ୍ଠୀ ସେୟାର କରନ୍ତୁ</translation>
 <translation id="7266578100016339897">ଏହା ଆପଣଙ୍କୁ ବ୍ୟବସ୍ଥିତ ରହିବାରେ ସାହାଯ୍ୟ କରେ। ଆପଣ ଯେ କୌଣସି ସମୟରେ ସେଟିଂସରେ ଏହାକୁ ପରିବର୍ତ୍ତନ କରିପାରିବେ।</translation>
 <translation id="7272437679830969316">ଆପଣଙ୍କର ପରିଚୟ ଯାଞ୍ଚ କରିପାରିବ ନାହିଁ। ପାସ୍‍ୱର୍ଡ କପି ହୋ‍ଇନାହିଁ।</translation>
-<translation id="7275307913765547631">କୋରିଆନ ଲୋକେସନ ସର୍ତ୍ତାବଳୀ</translation>
 <translation id="728025568708172005">ମୋତେ ଅଧିକ ଦେଖାନ୍ତୁ</translation>
 <translation id="7280980607183752256">ଏହି ଫାଇଲକୁ ଇମ୍ପୋର୍ଟ କରାଯାଇପାରିବ ନାହିଁ</translation>
 <translation id="7282197670900591579">ସାଇଟ୍ରନ ଥିମ</translation>
@@ -1870,6 +1863,7 @@ Handoff, ନିଶ୍ଚିତ ରୂପେ ସେଟିଂସ୍‍ର ସା�
 <translation id="7468373585447318060">ଆପଣ ଟ୍ରାକ କରୁଥିବା ସମସ୍ତ ପ୍ରଡକ୍ଟର ମୂଲ୍ୟ ହ୍ରାସ ବିଷୟରେ ଜାଣନ୍ତୁ।</translation>
 <translation id="746872191028309255">ଆପଣଙ୍କ କେମେରା ମାଧ୍ୟମରେ କିମ୍ବା ଫଟୋ ଗେଲେରୀରେ ଆପଣ ଯାହା ଦେଖନ୍ତି, ତାହା କିଣେ।</translation>
 <translation id="7471557245617580330">ନୂଆ ଟାବ ତିଆରି କରନ୍ତୁ</translation>
+<translation id="7473555040328423550">ଟାବ ଯୋଗ କରନ୍ତୁ</translation>
 <translation id="7476548258282096076">ଏହି କାର୍ଡ ଆପଣ ଅଧିକ ଭିଜିଟ କରିଥିବା ସାଇଟଗୁଡ଼ିକୁ ଦେଖାଏ।</translation>
 <translation id="7484645889979462775">ଏହି ସାଇଟ୍ ପାଇଁ କଦାପି ନୁହେଁ</translation>
 <translation id="7486006552035434095">ଆପଣଙ୍କ ଡିଭାଇସଗୁଡ଼ିକୁ ସିଙ୍କରେ ରଖନ୍ତୁ</translation>
@@ -1887,7 +1881,6 @@ Handoff, ନିଶ୍ଚିତ ରୂପେ ସେଟିଂସ୍‍ର ସା�
 <translation id="7512909159512473473">ପାସଫ୍ରେଜ ଲେଖନ୍ତୁ…</translation>
 <translation id="7514365320538308">ଡାଉନ୍‌‌ଲୋଡ୍‌ କରନ୍ତୁ</translation>
 <translation id="7514530647142300459">ଆପଣଙ୍କ Google ଆକାଉଣ୍ଟ <ph name="EMAIL" />ରେ ପାସୱାର୍ଡଗୁଡ଼ିକୁ ବ୍ୟବହାର କରିବା ଜାରି ରଖନ୍ତୁ</translation>
-<translation id="7522587739845660862">ଆପଣଙ୍କ ଲୋକେସନ ବିଷୟରେ ସୂଚନା</translation>
 <translation id="7522948500476882302">ଆପଣ କୌଣସି ଫାଇଲକୁ ଡାଉନଲୋଡ କରିବା ସମୟରେ 1 ମାସରେ ଏହା ସ୍ୱତଃ ଡିଲିଟ ହେବାକୁ ବାଛନ୍ତୁ</translation>
 <translation id="7524055474074101597">ସମଗ୍ର ଆପ୍ସରେ ଆପଣଙ୍କ ପାସୱାର୍ଡ ଏବଂ ଆହୁରି ଅନେକ କିଛି ଆକ୍ସେସ କରନ୍ତୁ।</translation>
 <translation id="7525067979554623046">ତିଆରି କରନ୍ତୁ</translation>
@@ -1904,7 +1897,6 @@ Handoff, ନିଶ୍ଚିତ ରୂପେ ସେଟିଂସ୍‍ର ସା�
 <translation id="7582666837709186351">ଆପଣଙ୍କ କେମେରା ମାଧ୍ୟମରେ ଆପଣଙ୍କର ଫଟୋ କିମ୍ବା ଆପଣଙ୍କ ପରିପାର୍ଶ୍ୱରେ ଥିବା ଟେକ୍ସଟକୁ ଅନୁବାଦ କରେ।</translation>
 <translation id="7582857256643797524">ଆପଣଙ୍କ ଡିଭାଇସରେ ଏହି ସେଟିଂକୁ ସକ୍ଷମ କରାଯାଇଛି</translation>
 <translation id="7583004045319035904">ଆପଣଙ୍କର ଇନକଗ୍ନିଟୋ ଟାବଗୁଡ଼ିକୁ ଅନଲକ୍ କରିବା ପାଇଁ <ph name="BIOMETRIC_AUTHENITCATION_TYPE" />କୁ ବ୍ୟବହାର କରନ୍ତୁ।</translation>
-<translation id="7588149553568293500">ଆପଣଙ୍କ ପସନ୍ଦଗୁଡ଼ିକ ବିଷୟରେ ଜାଣନ୍ତୁ।</translation>
 <translation id="7596103009408415410">{COUNT,plural, =1{{COUNT} ନିଷ୍କ୍ରିୟ ଟାବକୁ ବନ୍ଦ କରିବେ?}other{{COUNT} ନିଷ୍କ୍ରିୟ ଟାବକୁ ବନ୍ଦ କରିବେ?}}</translation>
 <translation id="7598439272585186139">ଅଧିକ ସୁରକ୍ଷା ପାଆନ୍ତୁ</translation>
 <translation id="7600965453749440009"><ph name="LANGUAGE" /> ଆଦୌ ଅନୁବାଦ କରନ୍ତୁ ନାହିଁ</translation>
@@ -2030,7 +2022,6 @@ Handoff, ନିଶ୍ଚିତ ରୂପେ ସେଟିଂସ୍‍ର ସା�
 <translation id="7996239959906074962">ସେଟ ଅପ କରନ୍ତୁ…</translation>
 <translation id="800361585186029508">ଇନପୁଟ୍ କରାଯାଇଥିବା URLଗୁଡ଼ିକୁ Google Chromeରେ ଖୋଲା ଯାଇଥାଏ।</translation>
 <translation id="8005666035647241369">ଏହି ଡିଭାଇସରେ ଥିବା Google ପାସୱାର୍ଡ ମ୍ୟାନେଜରରେ</translation>
-<translation id="8006265839264939135">ସର୍ତ୍ତାବଳୀ</translation>
 <translation id="8010488806779226127">ଆପଣ ବ୍ରାଉଜ କରିବା ସମୟରେ ଆହୁରି ଅନେକ କିଛି କରିବାରେ ସାହାଯ୍ୟ କରୁଥିବା ଫିଚରଗୁଡ଼ିକୁ ଏକ୍ସପ୍ଲୋର କରନ୍ତୁ</translation>
 <translation id="8011489434346330032">ୱେବ ଇନ୍ସପେକ୍ଟର</translation>
 <translation id="8014007212279733632">ସମ୍ବେଦନଶୀଳ ସୂଚନାକୁ ଅଟୋଫିଲ କରିବା ପାଇଁ ଏହା ଆପଣ ବୋଲି ଯାଞ୍ଚ କରନ୍ତୁ</translation>
@@ -2128,6 +2119,7 @@ Handoff, ନିଶ୍ଚିତ ରୂପେ ସେଟିଂସ୍‍ର ସା�
 <translation id="8319282042900445670"><ph name="TIME" />, <ph name="DATE" /> ପାଇଁ ରିମାଇଣ୍ଡର ସେଟ କରାଯାଇଛି</translation>
 <translation id="8320212361750431956">ବର୍ତ୍ତମାନର କାର୍ଯ୍ୟକଳାପ</translation>
 <translation id="8325455175867928593">"ଆପଣଙ୍କ ରୁଚି ଉପରେ ଆଧାରିତ ସମୀକ୍ଷା" ଲୁଚାନ୍ତୁ</translation>
+<translation id="8333459276976141586">ଲାଇଭ ଆପଣଙ୍କ ମାଇକ୍ରୋଫୋନକୁ ବ୍ୟବହାର କରିବ। ଲାଇଭ ବଟନରେ ଟାପ କରିବା ଫଳରେ ଏହା ମାଇକକୁ ଚାଲୁ କରେ। ମାଇକ ବନ୍ଦ କରିବାକୁ, ବନ୍ଦ କରନ୍ତୁ ବଟନରେ ଟାପ କରନ୍ତୁ କିମ୍ବା Gemini ବନ୍ଦ କରନ୍ତୁ।</translation>
 <translation id="833647236762414178">ସାଇଟ ଏବଂ ଆପ୍ସରେ ସହଜରେ ସାଇନ ଇନ କରିବାକୁ ଆପଣଙ୍କ ପାସୱାର୍ଡ ଏବଂ ପାସକୀଗୁଡ଼ିକ ତିଆରି କରନ୍ତୁ। <ph name="BEGIN_LINK" />ଅଧିକ ଜାଣନ୍ତୁ<ph name="END_LINK" /></translation>
 <translation id="8343993175958086504">ଆପଣଙ୍କ ଷ୍ଟଫର ବେକଅପ ନେଇ ଯେ କୌଣସି ଡିଭାଇସରେ ଏହାକୁ ବ୍ୟବହାର କରନ୍ତୁ।</translation>
 <translation id="8345328955902001853">{count,plural, =1{ଲେଭେଲ ଅପ କରିବାକୁ 1 ଅଧିକ ଟାସ୍କ ସମ୍ପୂର୍ଣ୍ଣ କରନ୍ତୁ}other{ଲେଭେଲ ଅପ କରିବାକୁ {count} ଅଧିକ ଟାସ୍କ ସମ୍ପୂର୍ଣ୍ଣ କରନ୍ତୁ}}</translation>
@@ -2204,6 +2196,7 @@ Handoff, ନିଶ୍ଚିତ ରୂପେ ସେଟିଂସ୍‍ର ସା�
 <translation id="8571019948162152515">"<ph name="FILENAME" />"କୁ ଡିଲିଟ କରିବେ?</translation>
 <translation id="8571213806525832805">ବିଗତ 4 ସପ୍ତାହ</translation>
 <translation id="8577056989960190117">ମିଆଦ ଶେଷ ହେଉଥିବା ବର୍ଷ <ph name="YEAR" />କୁ ଅଟୋଫିଲ କରନ୍ତୁ</translation>
+<translation id="8582026929965253036">Gemini ସହ ଲାଇଭ ହୁଅନ୍ତୁ</translation>
 <translation id="8587001564479545614">ଏକ ରିକଭରି PIN ତିଆରି କରନ୍ତୁ</translation>
 <translation id="8588404856427128947">ବନ୍ଦ ଅଛି</translation>
 <translation id="8590286732816598906">ଟାବ ଗ୍ରୁପ, <ph name="GROUP_TITLE" />, ମେନୁ।</translation>
@@ -2278,6 +2271,7 @@ Handoff, ନିଶ୍ଚିତ ରୂପେ ସେଟିଂସ୍‍ର ସା�
 <translation id="8803526663383843427">ଯେତେବେଳେ ଏହା ଚାଲୁ ଥାଏ</translation>
 <translation id="8803639129939845298">ସୁରକ୍ଷିତ ଅଛି</translation>
 <translation id="8813277370772331957">ମୋତେ ପରେ ରିମାଇଣ୍ଡ କରନ୍ତୁ</translation>
+<translation id="8814308045751067027">ଲାଇଭ ବ୍ୟବହାର କରିବା ପାଇଁ, ସେଟିଂସରେ ଆପଣଙ୍କ ମାଇକ୍ରୋଫୋନକୁ Chrome ଆକ୍ସେସ ଦିଅନ୍ତୁ</translation>
 <translation id="8814719628147284151">ଜାରି ରଖନ୍ତୁ</translation>
 <translation id="881559332211266856">ରିଡ୍ରେସ ନମ୍ବର ଅପଡେଟ କରନ୍ତୁ</translation>
 <translation id="8817524703470045896">ମୂଲ୍ୟଗୁଡ଼ିକୁ ଟ୍ରାକ କରନ୍ତୁ ଏବଂ କୌଣସି ସାଇଟରେ ମୂଲ୍ୟ ହ୍ରାସ ପାଇଲେ ଆଲର୍ଟଗୁଡ଼ିକ ପାଆନ୍ତୁ</translation>
@@ -2353,7 +2347,6 @@ Handoff, ନିଶ୍ଚିତ ରୂପେ ସେଟିଂସ୍‍ର ସା�
 <translation id="9066097352053395362">'ବୁକମାର୍କକୁ ଏଡିଟ କରନ୍ତୁ'କୁ ଲୁଚାନ୍ତୁ</translation>
 <translation id="9070824521421603770">ଆପଣ ସାଇନ ଆଉଟ ହୋଇଯିବେ ଏବଂ ଟାବଗୁଡ଼ିକ ବନ୍ଦ ହୋଇଯିବ</translation>
 <translation id="9072837124205571418">ସମସ୍ତ ଡିଭାଇସରୁ ଟାବ ଗ୍ରୁପ</translation>
-<translation id="9075970015528364598">Google AIକୁ ଉନ୍ନତ କରିବା ପାଇଁ ଚାଟଗୁଡ଼ିକୁ ରିଭ୍ୟୁ ଏବଂ ବ୍ୟବହାର କରାଯାଏ। ଆପଣଙ୍କ କାର୍ଯ୍ୟକଳାପ ସହ <ph name="LEARN_ABOUT_CHOICES" /> <ph name="INFO_ABOUT_LOCATION" /> ମଧ୍ୟ ଷ୍ଟୋର କରାଯାଏ।</translation>
 <translation id="9081058212938299310"><ph name="USERNAME" /> ପାଇଁ ପାସ୍‍ୱାର୍ଡକୁ ଅପ୍‌ଡେଟ୍ କରିବେ କି?</translation>
 <translation id="9083838294503912307">ସମସ୍ତ ଡିଭାଇସ୍‌ଗୁଡ଼ିକରେ ସିଙ୍କ୍ ଏବଂ ବ୍ୟକ୍ତିଗତକୃତ କରିବାକୁ, ସିଙ୍କ୍ ଚାଲୁ କରନ୍ତୁ।</translation>
 <translation id="9084367296493549256">{count,plural, =1{ଆପଣଙ୍କ ପାଖରେ {count} ଦୁର୍ବଳ ପାସୱାର୍ଡ ଅଛି ଯାହା ଆପଣଙ୍କ ସୁରକ୍ଷାକୁ ବିପଦରେ ପକାଇପାରେ। ସୁରକ୍ଷିତ ରହିବା ପାଇଁ ବର୍ତ୍ତମାନ ଏହାକୁ ଠିକ କରନ୍ତୁ।}other{ଆପଣଙ୍କ ପାଖରେ {count} ଦୁର୍ବଳ ପାସୱାର୍ଡ ଅଛି ଯାହା ଆପଣଙ୍କ ସୁରକ୍ଷାକୁ ବିପଦରେ ପକାଇପାରେ। ସୁରକ୍ଷିତ ରହିବା ପାଇଁ ବର୍ତ୍ତମାନ ସେଗୁଡ଼ିକୁ ଠିକ କରନ୍ତୁ।}}</translation>

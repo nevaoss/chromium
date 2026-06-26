@@ -55,6 +55,10 @@ chromium-metrics-reviews@google.com.
   <variant name="IPH_AddToHomescreenTextBubble"
       summary="(obsolete) educating users about adding website shortcuts to
                their home screen (using a text bubble)"/>
+  <variant name="IPH_AndroidBottomBarGlic"
+      summary="Describes the GLIC button added in the bottom bar."/>
+  <variant name="IPH_AndroidBottomBarNewTab"
+      summary="Describes the new tab button moved down in the bottom bar."/>
   <variant name="IPH_AndroidTabDeclutter"
       summary="Shows how to access tabs which have been archived."/>
   <variant name="IPH_AppRatingPrompt" summary="App Rating Prompt action"/>
@@ -460,7 +464,7 @@ chromium-metrics-reviews@google.com.
                browse in incognito"/>
   <variant name="IPH_iOSTabGroupsDesktop"
       summary="showing the tab groups promo on desktop"/>
-  <variant name="IPH_iOSWelcomeBackFeature"
+  <variant name="IPH_iOSWelcomeBack"
       summary="shows returning users features they may be interested in"/>
   <variant name="IPH_KeyboardAccessoryAddressFilling"
       summary="address autofill suggestions"/>
@@ -582,6 +586,8 @@ chromium-metrics-reviews@google.com.
       summary="promotes the keyboard shortcut for reading mode"/>
   <variant name="IPH_ReadingModePageActionLabel"
       summary="promotes the new omnibox entrypoint for reading mode"/>
+  <variant name="IPH_ReadingModePresentationMode"
+      summary="promotes the view switching feature in Reading Mode"/>
   <variant name="IPH_ReadingModeSidePanel"
       summary="promotes use of reading mode in the side panel"/>
   <variant name="IPH_ReadLaterAppMenuBookmarks" summary="read later app menu"/>

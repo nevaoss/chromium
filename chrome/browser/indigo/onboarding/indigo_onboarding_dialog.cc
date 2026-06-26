@@ -22,9 +22,12 @@
 #include "content/public/browser/web_contents_user_data.h"
 #include "ui/base/mojom/dialog_button.mojom.h"
 #include "ui/base/ui_base_types.h"
+#include "ui/gfx/geometry/rounded_corners_f.h"
 #include "ui/gfx/geometry/size.h"
+#include "ui/views/controls/native/native_view_host.h"
 #include "ui/views/controls/webview/unhandled_keyboard_event_handler.h"
 #include "ui/views/controls/webview/webview.h"
+#include "ui/views/layout/layout_provider.h"
 #include "ui/views/view_class_properties.h"
 #include "ui/views/widget/widget.h"
 #include "ui/views/window/dialog_delegate.h"
@@ -53,8 +56,8 @@ class OnboardingDialogTracker
 
 WEB_CONTENTS_USER_DATA_KEY_IMPL(OnboardingDialogTracker);
 
-constexpr gfx::Size kMinSize{480, 360};
-constexpr gfx::Size kMaxSize{480, 600};
+constexpr gfx::Size kMinSize{448, 100};
+constexpr gfx::Size kMaxSize{448, 960};
 
 class OnboardingWebView : public views::WebView {
  public:
@@ -179,7 +182,7 @@ IndigoOnboardingDialog::IndigoOnboardingDialog(
   delegate_ = std::make_unique<views::DialogDelegate>();
   delegate_->SetContentsView(std::move(web_view));
   delegate_->SetButtons(static_cast<int>(ui::mojom::DialogButton::kNone));
-  delegate_->SetShowCloseButton(true);
+  delegate_->SetShowCloseButton(false);
   delegate_->SetModalType(ui::mojom::ModalType::kChild);
   delegate_->SetOwnershipOfNewWidget(
       views::Widget::InitParams::CLIENT_OWNS_WIDGET);
@@ -188,6 +191,14 @@ IndigoOnboardingDialog::IndigoOnboardingDialog(
   widget_ = tab_dialog_manager->CreateTabScopedDialog(delegate_.get());
   widget_->MakeCloseSynchronous(base::BindOnce(
       &IndigoOnboardingDialog::OnWidgetClosed, base::Unretained(this)));
+
+  // Request rounded corners. See WebUIBubbleDialogView and
+  // SearchEngineChoiceDialogView for similar examples.
+  views::WebView* web_view_ptr =
+      static_cast<views::WebView*>(delegate_->GetContentsView());
+  web_view_ptr->holder()->SetCornerRadii(
+      gfx::RoundedCornersF(views::LayoutProvider::Get()->GetCornerRadiusMetric(
+          views::ShapeContextTokens::kDialogRadius)));
 
   auto params = std::make_unique<tabs::TabDialogManager::Params>();
   tab_dialog_manager->ShowDialog(widget_.get(), std::move(params));

@@ -26,7 +26,6 @@
 #include "chrome/browser/glic/public/glic_invoke_options.h"
 #include "chrome/browser/glic/public/glic_passkeys.h"
 #include "chrome/common/actor.mojom-forward.h"
-#include "chrome/common/actor/task_id.h"
 #include "chrome/common/actor_webui.mojom-forward.h"
 #include "components/autofill/core/browser/integrators/actor/actor_form_filling_types.h"
 #include "components/keyed_service/core/keyed_service.h"
@@ -102,10 +101,6 @@ class GlicKeyedService : public KeyedService, public base::SupportsUserData {
   // Browser.
   // TODO(b:448888544): remove `prevent_close` in favor of a Show method.
 
-  virtual void ToggleUI(BrowserWindowInterface* bwi,
-                        bool prevent_close,
-                        mojom::InvocationSource source,
-                        std::optional<std::string> prompt_suggestion);
   virtual void ToggleUI(BrowserWindowInterface* bwi,
                         bool prevent_close,
                         mojom::InvocationSource source);
@@ -252,15 +247,7 @@ class GlicKeyedService : public KeyedService, public base::SupportsUserData {
           GetZeroStateSuggestionsForFocusedTabCallback callback,
       std::vector<std::string> returned_suggestions);
 
-  // Shared implementation for ToggleUI.
-  void ToggleUIInternal(BrowserWindowInterface* bwi,
-                        bool prevent_close,
-                        mojom::InvocationSource source,
-                        std::optional<std::string> prompt_suggestion);
-
-  bool MaybeInvoke(BrowserWindowInterface* bwi,
-                   mojom::InvocationSource source,
-                   const std::optional<std::string>& prompt_suggestion);
+  bool MaybeInvoke(BrowserWindowInterface* bwi, mojom::InvocationSource source);
 
   void InitializeAfterConstruction();
 

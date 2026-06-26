@@ -564,13 +564,6 @@ BASE_FEATURE_PARAM(bool,
                    "without_spellcheck",
                    true);
 
-// If enabled, the initial WebUI language detection initialization is skipped.
-BASE_FEATURE_PARAM(bool,
-                   kInitialWebUIWithoutLanguageDetection,
-                   &features::kInitialWebUI,
-                   "without_language_detection",
-                   false);
-
 // Whether initial WebUI navigations should synchronously go from navigation
 // start to commit, by doing e.g. in-renderer body loading.
 BASE_FEATURE(kInitialWebUISyncNavStartToCommit,
@@ -735,7 +728,10 @@ BASE_FEATURE(kPeriodicBackgroundSync, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Allow starting prefetch request from off the main thread. Please see
 // crbug.com/452389538 for more details.
-BASE_FEATURE(kPrefetchOffTheMainThread, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kPrefetchOffTheMainThread, base::FEATURE_ENABLED_BY_DEFAULT);
+const base::FeatureParam<bool>
+    kPrefetchOffTheMainThreadUpdateMissingHeaderCache{
+        &kPrefetchOffTheMainThread, "update_missing_header_cache", true};
 
 // Use code paths for prefetch/prerender integration.
 // See also `kPrerender2FallbackPrefetchSpecRules`.
