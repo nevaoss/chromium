@@ -326,16 +326,12 @@ class VIEWS_EXPORT View : public ui::LayerDelegate,
     friend class ::ash::ArcNotificationContentView;
     friend class ::exo::ShellSurfaceBase;
     friend class ::eye_dropper::EyeDropperView;
-<<<<<<< HEAD
-    friend class SubmenuView;
     // TODO(neva): Remove when OwnedByClientPassKey() is not in use in
     // neva_app_runtime.
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
     friend class neva_app_runtime::WebAppWindow;
     friend class neva_app_runtime::PageView;
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
-=======
->>>>>>> 06942485b8753eb50f0a5324c6e1329f955634c8
     FRIEND_TEST_ALL_PREFIXES(WebViewUnitTest, CrashedOverlayView);
 
     OwnedByClientPassKey() = default;
