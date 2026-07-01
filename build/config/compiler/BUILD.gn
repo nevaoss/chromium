@@ -582,27 +582,19 @@ config("compiler") {
   if (is_clang) {
     # Flags for diagnostics.
     cflags += [ "-fcolor-diagnostics" ]
-<<<<<<< HEAD
-    if (!is_win) {
-      cflags += [ "-fdiagnostics-show-inlining-chain" ]
-      # TODO(neva): Disable diagnostics-show-inlining-chain flag,
-      # if we are using ICECC
-      # (clang_use_chrome_plugins is set to false for ICECC builds).
-      if (!clang_use_chrome_plugins) {
-        cflags -= [ "-fdiagnostics-show-inlining-chain" ]
-      }
-    } else {
-      # Combine after https://github.com/llvm/llvm-project/pull/192241
-      cflags += [ "/clang:-fdiagnostics-show-inlining-chain" ]
-=======
     if (!is_wasm) {
       if (!is_win) {
         cflags += [ "-fdiagnostics-show-inlining-chain" ]
+        # TODO(neva): Disable diagnostics-show-inlining-chain flag,
+        # if we are using ICECC
+        # (clang_use_chrome_plugins is set to false for ICECC builds).
+        if (!clang_use_chrome_plugins) {
+          cflags -= [ "-fdiagnostics-show-inlining-chain" ]
+        }
       } else {
         # Combine after https://github.com/llvm/llvm-project/pull/192241
         cflags += [ "/clang:-fdiagnostics-show-inlining-chain" ]
       }
->>>>>>> 151.0.7888.0~1
     }
     if (diagnostics_print_source_range_info && !is_win) {
       cflags += [ "-fdiagnostics-print-source-range-info" ]
