@@ -58,6 +58,13 @@ class ExtensionFunctionRegistry {
   bool OverrideFunctionForTesting(const std::string& name,
                                   ExtensionFunctionFactory factory);
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  // Allows overriding of specific functions for Neva.  Functions must be
+  // previously registered.  Returns true if successful.
+  bool OverrideFunctionForNeva(const std::string& name,
+                               ExtensionFunctionFactory factory);
+#endif
+
   // Factory method for the ExtensionFunction registered as 'name'.
   scoped_refptr<ExtensionFunction> NewFunction(const std::string& name);
 

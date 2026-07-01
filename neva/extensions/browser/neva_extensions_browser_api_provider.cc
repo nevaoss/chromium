@@ -18,6 +18,7 @@
 
 #include "extensions/browser/extension_function_registry.h"
 #include "neva/extensions/browser/api/generated_api_registration.h"
+#include "neva/extensions/browser/api/scripting/scripting_api.h"
 
 namespace neva {
 
@@ -26,6 +27,19 @@ NevaExtensionsBrowserAPIProvider::~NevaExtensionsBrowserAPIProvider() = default;
 
 void NevaExtensionsBrowserAPIProvider::RegisterExtensionFunctions(
     ExtensionFunctionRegistry* registry) {
+  // Register Neva extensions API.
+  registry->OverrideFunctionForNeva(
+      ScriptingExecuteScriptFunction::static_function_name(),
+      &NewExtensionFunction<ScriptingExecuteScriptFunction>);
+
+  registry->OverrideFunctionForNeva(
+      ScriptingInsertCSSFunction::static_function_name(),
+      &NewExtensionFunction<ScriptingInsertCSSFunction>);
+
+  registry->OverrideFunctionForNeva(
+      ScriptingRegisterContentScriptsFunction::static_function_name(),
+      &NewExtensionFunction<ScriptingRegisterContentScriptsFunction>);
+
   // Preferences.
   // registry->RegisterFunction<GetPreferenceFunction>();
   // registry->RegisterFunction<SetPreferenceFunction>();
