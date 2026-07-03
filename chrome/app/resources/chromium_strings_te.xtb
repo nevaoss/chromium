@@ -20,6 +20,7 @@
 <ph name="EXTENSION_NAME" /></translation>
 <translation id="1184145431117212167">మీ Windows వెర్షన్‌ సపోర్ట్ చేయనందున ఇన్‌స్టాలేషన్ విఫలమైంది.</translation>
 <translation id="1185134272377778587">Chromium గురించి</translation>
+<translation id="1186645291482254714">మీ ఫోన్‌లో Chromiumతో ధర ట్రాకింగ్ అలర్ట్‌లను పొందండి</translation>
 <translation id="1203500561924088507">ఇన్‌స్టాల్ చేసినందుకు ధన్యవాదాలు. <ph name="BUNDLE_NAME" />‌ను ఉపయోగించడానికి ముందు మీరు బ్రౌజర్‌ను తప్పకుండా రీస్టార్ట్ చేయాలి.</translation>
 <translation id="1232234696885483911">మీరు ఇమేజ్ సెర్చ్‌ను తెరిచినప్పుడు, PDFలతో సహా పేజీ టైటిల్, URL, కంటెంట్ ఆటోమేటిక్‌గా సర్వర్‌కు పంపబడతాయి. <ph name="LEARN_MORE" /></translation>
 <translation id="123265588161106468">మీరు సైన్ ఇన్ చేసినప్పుడు, Chromiumలో మీ Google ఖాతా నుండి సేవ్ చేసిన మీ పాస్‌వర్డ్‌లు, మరిన్నింటిని ఉపయోగించవచ్చు. దీన్ని మార్చడానికి, “Chromiumలో మీ ఖాతా”కు వెళ్లండి.</translation>
@@ -50,7 +51,6 @@
 <translation id="154404805518949443">Chromiumకు సైన్ ఇన్ చేయండి</translation>
 <translation id="1547469039832541117">హైలైట్ అయిన టాస్క్‌ను ముగిస్తుంది.</translation>
 <translation id="1553461853655228091">మీ పరిసరాల 3D మ్యాప్‌ను క్రియేట్ చేయడానికి Chromiumకు మీ కెమెరాను యాక్సెస్ చేసే అనుమతి కావాలి</translation>
-<translation id="1555494096857516577">{NUM_EXTENSIONS,plural, =1{ఈ ఎక్స్‌టెన్షన్ ఇకపై సపోర్ట్ చేయదు. మీరు దాన్ని తీసివేయవలసిందిగా Chromium సిఫార్సు చేస్తోంది.}other{ఈ ఎక్స్‌టెన్షన్‌లు ఇకపై సపోర్ట్ చేయబడవు. మీరు వాటిని తీసివేయవలసిందిగా Chromium సిఫార్సు చేస్తోంది.}}</translation>
 <translation id="1562320819937089394">Chromiumను పిన్ చేయండి</translation>
 <translation id="1574377791422810894">Chromium భద్రతా టూల్స్</translation>
 <translation id="1594928384848033697">Chromium మీ Password Manager డేటాను తొలగించాలనుకుంటోంది. దీన్ని అనుమతించడానికి మీ Windows పాస్‌వర్డ్‌ను టైప్ చేయండి.</translation>

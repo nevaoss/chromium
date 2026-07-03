@@ -16,10 +16,12 @@
 #include "base/test/bind.h"
 #include "base/test/gmock_expected_support.h"
 #include "base/test/gmock_move_support.h"
+#include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "base/test/test_future.h"
 #include "components/unexportable_keys/background_task_origin.h"
 #include "components/unexportable_keys/background_task_priority.h"
+#include "components/unexportable_keys/features.h"
 #include "components/unexportable_keys/ref_counted_unexportable_key.h"
 #include "components/unexportable_keys/service_error.h"
 #include "components/unexportable_keys/unexportable_key_id.h"
@@ -37,12 +39,14 @@ namespace unexportable_keys {
 using ::base::test::ErrorIs;
 using ::base::test::ValueIs;
 using ::testing::AtLeast;
+using ::testing::Contains;
 using ::testing::ElementsAre;
 using ::testing::ElementsAreArray;
 using ::testing::Eq;
 using ::testing::Invoke;
 using ::testing::IsEmpty;
 using ::testing::NiceMock;
+using ::testing::Ref;
 using ::testing::Return;
 using ::testing::SizeIs;
 
@@ -162,8 +166,7 @@ TEST_F(UnexportableKeyServiceImplTest, GenerateKey) {
   // Verify that we can get info about the generated key.
   EXPECT_OK(service().GetSubjectPublicKeyInfo(key_id));
   EXPECT_OK(service().GetWrappedKey(key_id));
-  EXPECT_THAT(kAcceptableAlgorithms,
-              testing::Contains(service().GetAlgorithm(key_id)));
+  EXPECT_THAT(kAcceptableAlgorithms, Contains(service().GetAlgorithm(key_id)));
 }
 
 TEST_F(UnexportableKeyServiceImplTest, GenerateKeyMultiplePendingRequests) {
@@ -821,6 +824,295 @@ TEST_F(UnexportableKeyServiceImplTest, SignWithRetry) {
   EXPECT_OK(sign_future.Get());
 }
 
+TEST_F(UnexportableKeyServiceImplTest, GenerateAttestationKey) {
+  base::test::TestFuture<ServiceErrorOr<UnexportableAttestationKeyId>> future;
+  service().GenerateAttestationKeySlowlyAsync(
+      kAcceptableAlgorithms, kTaskPriority, future.GetCallback());
+  EXPECT_FALSE(future.IsReady());
+  RunBackgroundTasks();
+  EXPECT_TRUE(future.IsReady());
+  ASSERT_OK_AND_ASSIGN(UnexportableAttestationKeyId key_id, future.Get());
+
+  // Verify that we can get info about the generated key.
+  EXPECT_OK(service().GetSubjectPublicKeyInfo(key_id));
+  EXPECT_OK(service().GetWrappedKey(key_id));
+  EXPECT_THAT(kAcceptableAlgorithms, Contains(service().GetAlgorithm(key_id)));
+}
+
+TEST_F(UnexportableKeyServiceImplTest, FromWrappedAttestationKey) {
+  // 1. Generate an attestation key.
+  base::test::TestFuture<ServiceErrorOr<UnexportableAttestationKeyId>>
+      generate_future;
+  service().GenerateAttestationKeySlowlyAsync(
+      kAcceptableAlgorithms, kTaskPriority, generate_future.GetCallback());
+  RunBackgroundTasks();
+  ASSERT_OK_AND_ASSIGN(UnexportableAttestationKeyId key_id,
+                       generate_future.Get());
+
+  std::vector<uint8_t> wrapped_key = *service().GetWrappedKey(key_id);
+
+  // 2. Reset service and reconstruct from wrapped key.
+  ResetService();
+
+  base::test::TestFuture<ServiceErrorOr<UnexportableAttestationKeyId>>
+      from_wrapped_future;
+  service().FromWrappedAttestationKeySlowlyAsync(
+      wrapped_key, kTaskPriority, from_wrapped_future.GetCallback());
+  EXPECT_FALSE(from_wrapped_future.IsReady());
+  RunBackgroundTasks();
+  EXPECT_TRUE(from_wrapped_future.IsReady());
+  ASSERT_OK_AND_ASSIGN(UnexportableAttestationKeyId loaded_key_id,
+                       from_wrapped_future.Get());
+
+  // Verify that the reconstructed key has the same wrapped key.
+  EXPECT_THAT(service().GetWrappedKey(loaded_key_id), ValueIs(wrapped_key));
+}
+
+TEST_F(UnexportableKeyServiceImplTest, Certify) {
+  // 1. Generate attestation key and signing key.
+  base::test::TestFuture<ServiceErrorOr<UnexportableAttestationKeyId>>
+      generate_attestation_future;
+  service().GenerateAttestationKeySlowlyAsync(
+      kAcceptableAlgorithms, kTaskPriority,
+      generate_attestation_future.GetCallback());
+  base::test::TestFuture<ServiceErrorOr<UnexportableSigningKeyId>>
+      generate_signing_future;
+  service().GenerateSigningKeySlowlyAsync(
+      kAcceptableAlgorithms, kTaskPriority,
+      generate_signing_future.GetCallback());
+
+  RunBackgroundTasks();
+  ASSERT_OK_AND_ASSIGN(UnexportableAttestationKeyId attestation_key_id,
+                       generate_attestation_future.Get());
+  ASSERT_OK_AND_ASSIGN(UnexportableSigningKeyId signing_key_id,
+                       generate_signing_future.Get());
+
+  // 2. Certify.
+  std::vector<uint8_t> challenge = {7, 8, 9};
+  base::test::TestFuture<ServiceErrorOr<crypto::AttestationStatement>>
+      certify_future;
+  service().CertifySlowlyAsync(attestation_key_id, signing_key_id, challenge,
+                               kTaskPriority, certify_future.GetCallback());
+  EXPECT_FALSE(certify_future.IsReady());
+  RunBackgroundTasks();
+  EXPECT_TRUE(certify_future.IsReady());
+  ASSERT_OK_AND_ASSIGN(crypto::AttestationStatement result,
+                       certify_future.Get());
+  EXPECT_EQ(result.format, crypto::AttestationStatement::kTpm);
+  EXPECT_FALSE(result.statement.empty());
+  EXPECT_FALSE(result.signature.empty());
+}
+
+TEST_F(UnexportableKeyServiceImplTest, CertifyAttestationKeyNotFound) {
+  // Generate a valid signing key first.
+  base::test::TestFuture<ServiceErrorOr<UnexportableSigningKeyId>>
+      generate_signing_future;
+  service().GenerateSigningKeySlowlyAsync(
+      kAcceptableAlgorithms, kTaskPriority,
+      generate_signing_future.GetCallback());
+  RunBackgroundTasks();
+  ASSERT_OK_AND_ASSIGN(UnexportableSigningKeyId signing_key_id,
+                       generate_signing_future.Get());
+
+  // Make up a random attestation key ID.
+  UnexportableAttestationKeyId fake_attestation_key_id;
+
+  base::test::TestFuture<ServiceErrorOr<crypto::AttestationStatement>>
+      certify_future;
+  std::vector<uint8_t> challenge = {7, 8, 9};
+  service().CertifySlowlyAsync(fake_attestation_key_id, signing_key_id,
+                               challenge, kTaskPriority,
+                               certify_future.GetCallback());
+  EXPECT_TRUE(certify_future.IsReady());
+  EXPECT_THAT(certify_future.Get(), ErrorIs(ServiceError::kKeyNotFound));
+}
+
+TEST_F(UnexportableKeyServiceImplTest, CertifySigningKeyNotFound) {
+  // Generate a valid attestation key first.
+  base::test::TestFuture<ServiceErrorOr<UnexportableAttestationKeyId>>
+      generate_attestation_future;
+  service().GenerateAttestationKeySlowlyAsync(
+      kAcceptableAlgorithms, kTaskPriority,
+      generate_attestation_future.GetCallback());
+  RunBackgroundTasks();
+  ASSERT_OK_AND_ASSIGN(UnexportableAttestationKeyId attestation_key_id,
+                       generate_attestation_future.Get());
+
+  // Make up a random signing key ID.
+  UnexportableSigningKeyId fake_signing_key_id;
+
+  base::test::TestFuture<ServiceErrorOr<crypto::AttestationStatement>>
+      certify_future;
+  std::vector<uint8_t> challenge = {7, 8, 9};
+  service().CertifySlowlyAsync(attestation_key_id, fake_signing_key_id,
+                               challenge, kTaskPriority,
+                               certify_future.GetCallback());
+  EXPECT_TRUE(certify_future.IsReady());
+  EXPECT_THAT(certify_future.Get(), ErrorIs(ServiceError::kKeyNotFound));
+}
+
+TEST_F(UnexportableKeyServiceImplTest, CertifyTypeMismatch) {
+  // Generate a valid attestation key, and a valid signing key.
+  base::test::TestFuture<ServiceErrorOr<UnexportableAttestationKeyId>>
+      generate_attestation_future;
+  service().GenerateAttestationKeySlowlyAsync(
+      kAcceptableAlgorithms, kTaskPriority,
+      generate_attestation_future.GetCallback());
+  base::test::TestFuture<ServiceErrorOr<UnexportableSigningKeyId>>
+      generate_signing_future;
+  service().GenerateSigningKeySlowlyAsync(
+      kAcceptableAlgorithms, kTaskPriority,
+      generate_signing_future.GetCallback());
+
+  RunBackgroundTasks();
+  ASSERT_OK_AND_ASSIGN(UnexportableAttestationKeyId attestation_key_id,
+                       generate_attestation_future.Get());
+  ASSERT_OK_AND_ASSIGN(UnexportableSigningKeyId signing_key_id,
+                       generate_signing_future.Get());
+
+  UnexportableAttestationKeyId swapped_attestation_key_id(signing_key_id);
+  UnexportableSigningKeyId swapped_signing_key_id(attestation_key_id);
+
+  base::test::TestFuture<ServiceErrorOr<crypto::AttestationStatement>>
+      certify_future;
+  std::vector<uint8_t> challenge = {7, 8, 9};
+  service().CertifySlowlyAsync(swapped_attestation_key_id,
+                               swapped_signing_key_id, challenge, kTaskPriority,
+                               certify_future.GetCallback());
+  EXPECT_TRUE(certify_future.IsReady());
+  EXPECT_THAT(certify_future.Get(), ErrorIs(ServiceError::kKeyNotFound));
+}
+
+TEST_F(UnexportableKeyServiceImplTest, CertifyFailed) {
+  auto& scoped_provider = SwitchToMockKeyProvider();
+
+  auto mock_attestation_key =
+      std::make_unique<crypto::MockUnexportableAttestationKey>();
+  crypto::MockUnexportableAttestationKey* raw_attestation_key =
+      mock_attestation_key.get();
+  std::vector<uint8_t> attestation_wrapped_key = {1, 2, 3};
+  ON_CALL(*mock_attestation_key, GetWrappedKey)
+      .WillByDefault(Return(attestation_wrapped_key));
+  ON_CALL(*mock_attestation_key, Algorithm)
+      .WillByDefault(Return(crypto::SignatureVerifier::ECDSA_SHA256));
+
+  auto mock_signing_key =
+      std::make_unique<crypto::MockUnexportableSigningKey>();
+  crypto::MockUnexportableSigningKey* raw_signing_key = mock_signing_key.get();
+  std::vector<uint8_t> signing_wrapped_key = {4, 5, 6};
+  ON_CALL(*mock_signing_key, GetWrappedKey)
+      .WillByDefault(Return(signing_wrapped_key));
+  ON_CALL(*mock_signing_key, Algorithm)
+      .WillByDefault(Return(crypto::SignatureVerifier::ECDSA_SHA256));
+
+  scoped_provider.AddNextGeneratedAttestationKey(
+      std::move(mock_attestation_key));
+  scoped_provider.AddNextGeneratedSigningKey(std::move(mock_signing_key));
+
+  // Generate keys.
+  base::test::TestFuture<ServiceErrorOr<UnexportableAttestationKeyId>>
+      generate_attestation_future;
+  service().GenerateAttestationKeySlowlyAsync(
+      kAcceptableAlgorithms, kTaskPriority,
+      generate_attestation_future.GetCallback());
+  base::test::TestFuture<ServiceErrorOr<UnexportableSigningKeyId>>
+      generate_signing_future;
+  service().GenerateSigningKeySlowlyAsync(
+      kAcceptableAlgorithms, kTaskPriority,
+      generate_signing_future.GetCallback());
+
+  RunBackgroundTasks();
+  ASSERT_OK_AND_ASSIGN(UnexportableAttestationKeyId attestation_key_id,
+                       generate_attestation_future.Get());
+  ASSERT_OK_AND_ASSIGN(UnexportableSigningKeyId signing_key_id,
+                       generate_signing_future.Get());
+
+  // CertifySlowly returns std::nullopt (failed).
+  std::vector<uint8_t> challenge = {7, 8, 9};
+  EXPECT_CALL(*raw_attestation_key,
+              CertifySlowly(Ref(*raw_signing_key), ElementsAreArray(challenge)))
+      .WillRepeatedly(Return(std::nullopt));
+
+  base::test::TestFuture<ServiceErrorOr<crypto::AttestationStatement>>
+      certify_future;
+  service().CertifySlowlyAsync(attestation_key_id, signing_key_id, challenge,
+                               kTaskPriority, certify_future.GetCallback());
+  EXPECT_FALSE(certify_future.IsReady());
+  RunBackgroundTasks();
+  EXPECT_TRUE(certify_future.IsReady());
+  EXPECT_THAT(certify_future.Get(), ErrorIs(ServiceError::kCryptoApiFailed));
+}
+
+TEST_F(UnexportableKeyServiceImplTest, CertifyWithRetry) {
+  auto& scoped_provider = SwitchToMockKeyProvider();
+
+  auto mock_attestation_key =
+      std::make_unique<crypto::MockUnexportableAttestationKey>();
+  crypto::MockUnexportableAttestationKey* raw_attestation_key =
+      mock_attestation_key.get();
+  std::vector<uint8_t> attestation_wrapped_key = {1, 2, 3};
+  ON_CALL(*mock_attestation_key, GetWrappedKey)
+      .WillByDefault(Return(attestation_wrapped_key));
+  ON_CALL(*mock_attestation_key, Algorithm)
+      .WillByDefault(Return(crypto::SignatureVerifier::ECDSA_SHA256));
+
+  auto mock_signing_key =
+      std::make_unique<crypto::MockUnexportableSigningKey>();
+  crypto::MockUnexportableSigningKey* raw_signing_key = mock_signing_key.get();
+  std::vector<uint8_t> signing_wrapped_key = {4, 5, 6};
+  ON_CALL(*mock_signing_key, GetWrappedKey)
+      .WillByDefault(Return(signing_wrapped_key));
+  ON_CALL(*mock_signing_key, Algorithm)
+      .WillByDefault(Return(crypto::SignatureVerifier::ECDSA_SHA256));
+
+  scoped_provider.AddNextGeneratedAttestationKey(
+      std::move(mock_attestation_key));
+  scoped_provider.AddNextGeneratedSigningKey(std::move(mock_signing_key));
+
+  // Generate keys.
+  base::test::TestFuture<ServiceErrorOr<UnexportableAttestationKeyId>>
+      generate_attestation_future;
+  service().GenerateAttestationKeySlowlyAsync(
+      kAcceptableAlgorithms, kTaskPriority,
+      generate_attestation_future.GetCallback());
+  base::test::TestFuture<ServiceErrorOr<UnexportableSigningKeyId>>
+      generate_signing_future;
+  service().GenerateSigningKeySlowlyAsync(
+      kAcceptableAlgorithms, kTaskPriority,
+      generate_signing_future.GetCallback());
+
+  RunBackgroundTasks();
+  ASSERT_OK_AND_ASSIGN(UnexportableAttestationKeyId attestation_key_id,
+                       generate_attestation_future.Get());
+  ASSERT_OK_AND_ASSIGN(UnexportableSigningKeyId signing_key_id,
+                       generate_signing_future.Get());
+
+  std::vector<uint8_t> challenge = {7, 8, 9};
+  crypto::AttestationStatement attestation_statement{
+      .format = crypto::AttestationStatement::Format::kTpm,
+      .statement = {0x11, 0x22},
+      .signature = {0xaa, 0xbb},
+  };
+
+  EXPECT_CALL(*raw_attestation_key,
+              CertifySlowly(Ref(*raw_signing_key), ElementsAreArray(challenge)))
+      .WillOnce(Return(std::nullopt))
+      .WillOnce(Return(attestation_statement));
+
+  base::test::TestFuture<ServiceErrorOr<crypto::AttestationStatement>>
+      certify_future;
+  service().CertifySlowlyAsync(attestation_key_id, signing_key_id, challenge,
+                               kTaskPriority, certify_future.GetCallback());
+  EXPECT_FALSE(certify_future.IsReady());
+  RunBackgroundTasks();
+  EXPECT_TRUE(certify_future.IsReady());
+  ASSERT_OK_AND_ASSIGN(crypto::AttestationStatement result,
+                       certify_future.Get());
+  EXPECT_EQ(result.format, attestation_statement.format);
+  EXPECT_EQ(result.statement, attestation_statement.statement);
+  EXPECT_EQ(result.signature, attestation_statement.signature);
+}
+
 TEST_F(UnexportableKeyServiceImplTest, DeleteKeys) {
   crypto::ScopedMockUnexportableKeyProvider& scoped_provider =
       SwitchToMockKeyProvider();
@@ -1196,6 +1488,22 @@ TEST_F(UnexportableKeyServiceImplTest, GetCreationTimeWithStatefulKey) {
   RunBackgroundTasks();
   ASSERT_OK_AND_ASSIGN(UnexportableSigningKeyId key_id, generate_future.Get());
   EXPECT_EQ(service().GetCreationTime(key_id), base::Time::Now());
+}
+
+TEST_F(UnexportableKeyServiceImplTest, SpareKeyPoolEmptyOnInitialization) {
+  base::test::ScopedFeatureList feature_list(
+      kEnableUnexportableKeysSpareKeyPool);
+
+  crypto::ScopedMockUnexportableKeyProvider& scoped_provider =
+      SwitchToMockKeyProvider();
+
+  EXPECT_CALL(scoped_provider.mock(), GenerateSigningKeySlowly)
+      .Times(1);
+
+  base::test::TestFuture<ServiceErrorOr<UnexportableSigningKeyId>> future;
+  service().GenerateSigningKeySlowlyAsync(kAcceptableAlgorithms, kTaskPriority,
+                                          future.GetCallback());
+  RunBackgroundTasks();
 }
 
 }  // namespace unexportable_keys

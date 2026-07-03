@@ -334,7 +334,7 @@ class AutofillAgent : public content::RenderFrameObserver,
         std::is_void_v<T>,
         "Beware that the RenderFrame may become nullptr by OnDestruct() "
         "because AutofillAgent destructs itself asynchronously. Use "
-        "unsafe_render_frame() instead and make test that it is non-nullptr.");
+        "unsafe_render_frame() instead and test that it is non-nullptr.");
   }
 
   // To be called when all forms are irretrievably gone, e.g., when a new

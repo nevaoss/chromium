@@ -278,6 +278,7 @@ class RemoteValidation;
 namespace content {
 
 class AgentSchedulingGroupHost;
+class UnboundedSurfaceWindow;
 class BrowsingContextState;
 class CodeCacheHostImpl;
 class CrossOriginEmbedderPolicyReporter;
@@ -2681,9 +2682,9 @@ class CONTENT_EXPORT RenderFrameHostImpl
       override;
   void UpdateBounds(const gfx::Rect& bounds) override;
 
-  RenderWidgetHostImpl* active_unbounded_widget() const {
-    return active_unbounded_widget_.get();
-  }
+  UnboundedSurfaceWindow* GetUnboundedSurfaceWindowForTesting();
+  RenderWidgetHostViewBase* GetUnboundedSurfaceRootView(
+      RenderWidgetHostViewBase** out_parent_view = nullptr);
 
   RenderFrameHostImpl* active_unbounded_frame() const {
     return active_unbounded_frame_.get();
@@ -4928,7 +4929,6 @@ class CONTENT_EXPORT RenderFrameHostImpl
       unbounded_surface_client_;
   mojo::AssociatedReceiver<blink::mojom::UnboundedSurfaceHost>
       unbounded_surface_host_receiver_{this};
-  base::WeakPtr<RenderWidgetHostImpl> active_unbounded_widget_;
 
   // Holds the cross-document NavigationRequests that are waiting to commit.
   // These are navigations that have passed ReadyToCommit stage and are waiting

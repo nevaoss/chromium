@@ -1556,6 +1556,11 @@ void WebFrameWidgetImpl::UpdateAnimatedImageState(
     if (Element* client = DynamicTo<Element>(
             DOMNodeIds::NodeForId(DOMNodeIdFromCompositorElementId(id)))) {
       if (auto* canvas = DynamicTo<HTMLCanvasElement>(client->parentNode())) {
+        if (auto* layout_object = client->GetLayoutObject()) {
+          // The canvas child element needs to update
+          // animated_image_frame_index_map in paint_property_tree_builder.cc
+          layout_object->SetNeedsPaintPropertyUpdate();
+        }
         if (auto* view = canvas->GetDocument().View()) {
           view->RequestCanvasOnpaint(*canvas, client);
         }
@@ -2212,13 +2217,6 @@ std::unique_ptr<cc::ScopedPauseRendering> WebFrameWidgetImpl::PauseRendering() {
   return widget_base_->LayerTreeHost()->PauseRendering();
 }
 
-void WebFrameWidgetImpl::SetShouldThrottleFrameRate(bool flag) {
-  if (!View()->does_composite() || flag == throttling_frame_rate_) {
-    return;
-  }
-  throttling_frame_rate_ = flag;
-  return widget_base_->LayerTreeHost()->SetShouldThrottleFrameRate(flag);
-}
 
 void WebFrameWidgetImpl::RequestMainFrameOnCompositorAnimation(
     cc::PropertyChangeForcesCommitCriteria criteria,
@@ -2773,6 +2771,9 @@ void WebFrameWidgetImpl::RegisterActiveUnboundedElement(
     mojo::PendingAssociatedRemote<mojom::blink::UnboundedSurfaceHost>
         host_remote) {
   CHECK(RuntimeEnabledFeatures::UnboundedElementEnabled());
+  // TODO(crbug.com/508672616): Add support for unbounded element when
+  // TreesInViz is enabled.
+  CHECK(!base::FeatureList::IsEnabled(::features::kTreesInViz));
   if (auto* state = GetOrCreateUnboundedSurfaceState()) {
     state->active_element_ = element;
 
@@ -2844,6 +2845,14 @@ void WebFrameWidgetImpl::OnDismissed() {
   if (auto* host = LayerTreeHost()) {
     host->DismissUnboundedFrameSink();
   }
+}
+
+void WebFrameWidgetImpl::UpdateUnboundedElementBounds(const gfx::Rect& bounds) {
+  if (!unbounded_surface_state_ ||
+      !unbounded_surface_state_->host_.is_bound()) {
+    return;
+  }
+  unbounded_surface_state_->host_->UpdateBounds(bounds);
 }
 
 void WebFrameWidgetImpl::BeginMainFrame(const viz::BeginFrameArgs& args) {
@@ -3310,11 +3319,6 @@ WebInputEventResult WebFrameWidgetImpl::HandleInputEvent(
     return WebInputEventResult::kNotHandled;
   }
 
-  // Only unthrottle once to avoid repeatedly posting tasks to the cc impl
-  // thread.
-  if (throttling_frame_rate_) {
-    SetShouldThrottleFrameRate(false);
-  }
 
   base::AutoReset<const WebInputEvent*> current_event_change(
       &CurrentInputEvent::current_input_event_, &input_event);

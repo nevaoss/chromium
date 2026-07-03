@@ -141,6 +141,10 @@ DesktopWindowTreeHostWin::~DesktopWindowTreeHostWin() {
   // DestroyCompositor() is called from both places.
   DestroyCompositor();
   DestroyDispatcher();
+
+  if (HWNDMessageHandler* raw_handler = message_handler_.release()) {
+    raw_handler->DestroyHandler();
+  }
 }
 
 // static
@@ -177,7 +181,8 @@ void DesktopWindowTreeHostWin::FinishTouchDrag(gfx::Point screen_point) {
 }
 
 bool DesktopWindowTreeHostWin::IsInNativeMoveResizeLoop() const {
-  return message_handler_ && message_handler_->IsInNativeMoveResizeLoop();
+  return message_handler_ && (message_handler_->IsInNativeMoveResizeLoop() ||
+                              message_handler_->IsInNativeMenuLoop());
 }
 
 // DesktopWindowTreeHostWin, DesktopWindowTreeHost implementation:

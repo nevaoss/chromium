@@ -228,7 +228,7 @@ GLuint XRWebGLTextureArraySwapChain::GetCopyProgram() {
     )";
 
     const GLchar* vert_shader_data = vert_source.c_str();
-    const GLint vert_shader_length = vert_source.length();
+    const GLint vert_shader_length = static_cast<GLint>(vert_source.length());
 
     GLuint vs = gl->CreateShader(GL_VERTEX_SHADER);
     gl->ShaderSource(vs, 1, &vert_shader_data, &vert_shader_length);
@@ -250,7 +250,7 @@ GLuint XRWebGLTextureArraySwapChain::GetCopyProgram() {
     )";
 
     const GLchar* frag_shader_data = frag_source.c_str();
-    const GLint frag_shader_length = frag_source.length();
+    const GLint frag_shader_length = static_cast<GLint>(frag_source.length());
 
     GLuint fs = gl->CreateShader(GL_FRAGMENT_SHADER);
     gl->ShaderSource(fs, 1, &frag_shader_data, &frag_shader_length);

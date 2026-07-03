@@ -286,7 +286,7 @@ TEST_F(CharacterRangeMapperTest, RangeInInputField) {
 }
 
 TEST_F(CharacterRangeMapperTest, RangeInShadowDOM) {
-  const SelectionInDOMTree selection = SetSelectionTextToBody(
+  const SelectionInDomTree selection = SetSelectionTextToBody(
       R"HTML(
       <div id="host">
         <template data-mode="open">
@@ -325,7 +325,7 @@ TEST_F(CharacterRangeMapperTest, RangeInShadowDOM) {
 }
 
 TEST_F(CharacterRangeMapperTest, RangeInShadowDOMAndScopeInLightDOM) {
-  const SelectionInDOMTree selection = SetSelectionTextToBody(
+  const SelectionInDomTree selection = SetSelectionTextToBody(
       R"HTML(
       <div id="host">
         <template data-mode="open">

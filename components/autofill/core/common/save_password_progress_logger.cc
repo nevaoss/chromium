@@ -188,8 +188,22 @@ std::string_view SavePasswordProgressLogger::GetStringFromID(
       return "Decision: ASK the user";
     case SavePasswordProgressLogger::STRING_DECISION_DROP:
       return "Decision: DROP the password";
-    case SavePasswordProgressLogger::STRING_DECISION_SAVE:
-      return "Decision: SAVE the password";
+    case SavePasswordProgressLogger::
+        STRING_DECISION_ATTEMPT_TO_SAVE_WITHOUT_PROMPT:
+      return "Decision: Attempting to SAVE/UPDATE the password without "
+             "prompting the user";
+    case SavePasswordProgressLogger::STRING_DECISION_UPDATE:
+      return "Decision: UPDATE the saved credential with a new password";
+    case SavePasswordProgressLogger::STRING_DECISION_UPDATE_ONLY_METADATA:
+      return "Decision: UPDATE only the metadata of the saved credential "
+             "because the username and password are already stored";
+    case SavePasswordProgressLogger::STRING_DECISION_SAVE_NEW_CREDENTIAL:
+      return "Decision: SAVE the newly created credential";
+    case SavePasswordProgressLogger::STRING_DECISION_AUTO_SAVE:
+      return "Decision: SAVE the credential because the username and password "
+             "are already stored, but for a weakly affiliated domain";
+    case SavePasswordProgressLogger::STRING_NO_PASSWORD_STORE_AVAILABLE:
+      return "No password store available";
     case SavePasswordProgressLogger::STRING_OTHER:
       return "(other)";
     case SavePasswordProgressLogger::STRING_SCHEME_HTML:

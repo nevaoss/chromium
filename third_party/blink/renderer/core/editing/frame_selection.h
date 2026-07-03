@@ -160,8 +160,8 @@ class CORE_EXPORT FrameSelection final
   // layout.
   VisibleSelection ComputeVisibleSelectionInDomTreeDeprecated() const;
 
-  void SetSelection(const SelectionInDOMTree&, const SetSelectionOptions&);
-  void SetSelectionAndEndTyping(const SelectionInDOMTree&);
+  void SetSelection(const SelectionInDomTree&, const SetSelectionOptions&);
+  void SetSelectionAndEndTyping(const SelectionInDomTree&);
   void SelectAll(SetSelectionBy, bool canonicalize_selection = false);
   void SelectAll();
   void SelectSubString(const Element&, int offset, int count);
@@ -173,11 +173,11 @@ class CORE_EXPORT FrameSelection final
   // functions.
   // setSelectionDeprecated() returns true if didSetSelectionDeprecated() should
   // be called.
-  bool SetSelectionDeprecated(const SelectionInDOMTree&,
+  bool SetSelectionDeprecated(const SelectionInDomTree&,
                               const SetSelectionOptions&);
-  void DidSetSelectionDeprecated(const SelectionInDOMTree&,
+  void DidSetSelectionDeprecated(const SelectionInDomTree&,
                                  const SetSelectionOptions&);
-  void SetSelectionForAccessibility(const SelectionInDOMTree&,
+  void SetSelectionForAccessibility(const SelectionInDomTree&,
                                     const SetSelectionOptions&);
 
   // Call this after doing user-triggered selections to make it easy to delete
@@ -224,7 +224,9 @@ class CORE_EXPORT FrameSelection final
 
   void DidChangeFocus();
 
-  const SelectionInDOMTree& GetSelectionInDOMTree() const;
+  const SelectionInDomTree& GetSelectionInDomTree() const;
+  // New code should use GetSelectionInDomTree(). This will be removed soon.
+  const SelectionInDomTree& GetSelectionInDOMTree() const;
   bool IsDirectional() const;
 
   void DidAttachDocument(Document*);
@@ -361,14 +363,14 @@ class CORE_EXPORT FrameSelection final
   void NotifyEventHandlerForSelectionChange();
   void NotifyDisplayLockForSelectionChange(
       Document& document,
-      const SelectionInDOMTree& old_selection,
-      const SelectionInDOMTree& new_selection);
+      const SelectionInDomTree& old_selection,
+      const SelectionInDomTree& new_selection);
 
   void FocusedOrActiveStateChanged();
 
   GranularityStrategy* GetGranularityStrategy();
 
-  void MoveRangeSelectionInternal(const SelectionInDOMTree&, TextGranularity);
+  void MoveRangeSelectionInternal(const SelectionInDomTree&, TextGranularity);
 
   // Returns the range corresponding to a |text_granularity| selection around
   // the caret. Returns a null range if the selection failed, either because

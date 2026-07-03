@@ -62,9 +62,9 @@ import org.chromium.chrome.browser.ntp_customization.NtpCustomizationCoordinator
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationCoordinatorFactory;
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationUtils;
 import org.chromium.chrome.browser.ntp_customization.theme.NtpCustomizationPromoManager;
-import org.chromium.chrome.browser.omnibox.SearchEngineUtils;
-import org.chromium.chrome.browser.omnibox.SearchEngineUtils.SearchBoxHintTextObserver;
-import org.chromium.chrome.browser.omnibox.SearchEngineUtils.SearchEngineIconObserver;
+import org.chromium.chrome.browser.omnibox.SearchEngineService;
+import org.chromium.chrome.browser.omnibox.SearchEngineService.SearchEngineIconObserver;
+import org.chromium.chrome.browser.omnibox.SearchEngineService.SearchEngineNameObserver;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.setup_list.SetupListManager;
 import org.chromium.chrome.browser.setup_list.SetupListModuleUtils;
@@ -98,6 +98,7 @@ import org.chromium.components.signin.SigninFeatures;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.ui.base.ActivityResultTracker;
 import org.chromium.ui.base.MimeTypeUtils;
+import org.chromium.ui.base.ViewUtils;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.modaldialog.ModalDialogManager;
 import org.chromium.ui.modelutil.PropertyModel;
@@ -136,7 +137,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
     private final SnackbarManager mSnackbarManager;
     private final Boolean mIsTablet;
     private final Supplier<Integer> mTabStripHeightSupplier;
-    private final SearchEngineUtils mSearchEngineUtils;
+    private final SearchEngineService mSearchEngineService;
     private final BackPressManager mBackPressManager;
     private final int mNtpSearchBoxTransitionStartOffset;
     private final int mNtpSearchBoxTopMarginWithoutLogo;
@@ -151,8 +152,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
     private @Nullable DisplayStyleObserver mDisplayStyleObserver;
     private CallbackController mCallbackController = new CallbackController();
     private @Nullable SearchEngineIconObserver mSearchEngineIconObserver;
-    private @Nullable SearchBoxHintTextObserver mSearchBoxHintTextObserver;
-
+    private @Nullable SearchEngineNameObserver mSearchEngineNameObserver;
     private @Nullable HomeModulesCoordinator mHomeModulesCoordinator;
     private @Nullable ViewGroup mHomeModulesContainer;
     private SetupListManager.@Nullable Observer mSetupListObserver;
@@ -161,7 +161,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
 
     /**
      * Whether the tiles shown in the layout have finished loading. With {@link #mHasShownView},
-     * it's one of the 2 flags used to track initialisation progress.
+     * it's one of the 2 flags used to track initialization progress.
      */
     private boolean mTilesLoaded;
 
@@ -269,7 +269,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         mSnackbarManager = snackbarManager;
         mIsTablet = isTablet;
         mTabStripHeightSupplier = tabStripHeightSupplier;
-        mSearchEngineUtils = SearchEngineUtils.getForProfile(mProfile);
+        mSearchEngineService = SearchEngineService.getForProfile(mProfile);
 
         Resources resources = mActivity.getResources();
         mNtpSearchBoxTopMarginWithoutLogo =
@@ -373,7 +373,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
 
         mSearchEngineIconObserver =
                 (newIcon) -> assumeNonNull(mNtpSearchBox).setSearchEngineIcon(newIcon);
-        mSearchEngineUtils.addIconObserver(mSearchEngineIconObserver);
+        mSearchEngineService.addIconObserver(mSearchEngineIconObserver);
         setSearchBoxTextAppearance();
 
         initializeSearchBoxTextView();
@@ -400,8 +400,8 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         }
 
         // Initialize Searchbox observers
-        mSearchBoxHintTextObserver = this::onSearchBoxHintTextChanged;
-        mSearchEngineUtils.addSearchBoxHintTextObserver(mSearchBoxHintTextObserver);
+        mSearchEngineNameObserver = this::onSearchBoxHintTextChanged;
+        mSearchEngineService.addSearchEngineNameObserver(mSearchEngineNameObserver);
 
         mInitialized = true;
 
@@ -486,7 +486,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
     public void onSearchBoxHintTextChanged() {
         if (mNtpSearchBox != null) {
             mNtpSearchBox.setSearchBoxHintText(
-                    mSearchEngineUtils.getOmniboxHintText(
+                    mSearchEngineService.getOmniboxHintText(
                             AutocompleteRequestType.SEARCH, /* fuseboxSessionState= */ null));
         }
     }
@@ -979,10 +979,6 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
 
     // NewTabPageLayout.Delegate implementations.
     public void onMeasure(int width) {
-        if (mIsTablet && mMostVisitedTilesCoordinator != null) {
-            mMostVisitedTilesCoordinator.calculateTabletMvtWidth(width);
-        }
-
         unifyElementWidths(width);
     }
 
@@ -1298,13 +1294,13 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
 
         mMostRecentTabSupplier.set(null);
 
-        if (mSearchBoxHintTextObserver != null) {
-            mSearchEngineUtils.removeSearchBoxHintTextObserver(mSearchBoxHintTextObserver);
-            mSearchBoxHintTextObserver = null;
+        if (mSearchEngineNameObserver != null) {
+            mSearchEngineService.removeSearchEngineNameObserver(mSearchEngineNameObserver);
+            mSearchEngineNameObserver = null;
         }
 
         if (mSearchEngineIconObserver != null) {
-            mSearchEngineUtils.removeIconObserver(mSearchEngineIconObserver);
+            mSearchEngineService.removeIconObserver(mSearchEngineIconObserver);
             mSearchEngineIconObserver = null;
         }
 
@@ -1375,7 +1371,11 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         }
     }
 
-    /** Makes the Search Box and Logo as wide as Most Visited. */
+    /**
+     * Unifies the widths of the elements on the New Tab Page. The Search Box, Composeplate, and
+     * Most Visited Tiles are capped at a maximum width, while the Logo always receives the full
+     * width.
+     */
     private void unifyElementWidths(int width) {
         int boundedSearchBoxWidth = Math.min(width - mSearchBoxTwoSideMargin, mSearchBoxMaxWidth);
         if (mNtpSearchBox != null) {
@@ -1388,6 +1388,10 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
 
         if (mComposeplateCoordinator != null) {
             mComposeplateCoordinator.setLayoutWidth(boundedSearchBoxWidth);
+        }
+
+        if (mMostVisitedTilesCoordinator != null) {
+            mMostVisitedTilesCoordinator.updateMvtWidth(boundedSearchBoxWidth);
         }
 
         mContextMenuStartPosition = null;
@@ -1407,14 +1411,18 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         return mSnapshotSingleTabCardChanged;
     }
 
+    public int getSearchBoxTwoSideMarginForTesting() {
+        return mSearchBoxTwoSideMargin;
+    }
+
     private void onDisplayStyleChanged(UiConfig.DisplayStyle newDisplayStyle) {
         if (!mIsTablet) return;
 
         updateDoodleOnTablet();
-        if (mMostVisitedTilesCoordinator != null) {
-            mMostVisitedTilesCoordinator.updateMvtOnTablet();
-        }
         updateSearchBoxTwoSideMargin();
+        // Request a layout pass to trigger onMeasure(), which acts as the single source of
+        // truth to calculate and uniformly apply the bounded widths to all NTP elements.
+        ViewUtils.requestLayout(mNewTabPageLayout, "NewTabPageCoordinator.onDisplayStyleChanged");
     }
 
     /**

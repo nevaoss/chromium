@@ -2500,15 +2500,16 @@ bool BrowserView::IsWindowControlsOverlayEnabled() const {
 }
 
 void BrowserView::UpdateWindowControlsOverlayEnabled() {
-  UpdateWindowControlsOverlayToggleVisible();
+  UpdateWindowControlsOverlayAvailable();
 
-  // If the toggle is not visible, we can assume that Window Controls Overlay
-  // is not enabled.
-  // TODO(crbug.com/515812858): Rename
-  // `should_show_window_controls_overlay_toggle_`.
+  // Window Controls Overlay (WCO) is enabled when it is available in the window
+  // and declared in the app manifest. Additionally, if the
+  // `kDesktopPWAsWindowControlsOverlayWithNoToggle` feature flag is disabled,
+  // the user must also enable WCO via the toggle; otherwise, no further user
+  // action is required. See `UpdateWindowControlsOverlayAvailable()` for the
+  // conditions under which WCO is available.
   auto* const app_controller = web_app::AppBrowserController::From(browser());
-  bool enabled = should_show_window_controls_overlay_toggle_ &&
-                 app_controller &&
+  bool enabled = is_window_controls_overlay_available_ && app_controller &&
                  app_controller->IsWindowControlsOverlayEnabled();
 
   if (enabled == window_controls_overlay_enabled_) {
@@ -2558,17 +2559,17 @@ void BrowserView::UpdateWindowControlsOverlayEnabled() {
 #endif
 }
 
-void BrowserView::UpdateWindowControlsOverlayToggleVisible() {
-  bool should_show = AppUsesWindowControlsOverlay();
+void BrowserView::UpdateWindowControlsOverlayAvailable() {
+  bool available = AppUsesWindowControlsOverlay();
 
   if ((toolbar_ && toolbar_->custom_tab_bar() &&
        toolbar_->custom_tab_bar()->GetVisible()) ||
       (infobar_container_ && infobar_container_->GetVisible())) {
-    should_show = false;
+    available = false;
   }
 
   if (ImmersiveModeController::From(browser())->IsEnabled()) {
-    should_show = false;
+    available = false;
   }
 
 #if BUILDFLAG(IS_MAC)
@@ -2578,19 +2579,19 @@ void BrowserView::UpdateWindowControlsOverlayToggleVisible() {
   // Disable WCO when in fullscreen, because this space is inaccessible to
   // WebContents. https://crbug.com/41431787.
   if (browser_widget_ && IsFullscreen()) {
-    should_show = false;
+    available = false;
   }
 #endif
 
-  if (should_show == should_show_window_controls_overlay_toggle_) {
+  if (available == is_window_controls_overlay_available_) {
     return;
   }
 
   DCHECK(AppUsesWindowControlsOverlay());
-  should_show_window_controls_overlay_toggle_ = should_show;
+  is_window_controls_overlay_available_ = available;
 
   if (web_app_frame_toolbar()) {
-    web_app_frame_toolbar()->SetWindowControlsOverlayToggleVisible(should_show);
+    web_app_frame_toolbar()->SetWindowControlsOverlayToggleVisible(available);
   }
 }
 
@@ -3577,7 +3578,8 @@ bool BrowserView::CanActivate() const {
 
 std::u16string BrowserView::GetWindowTitle() const {
   std::u16string title =
-      browser_->GetWindowTitleForCurrentTab(true /* include_app_name */);
+      WindowMetadataController::From(browser_.get())
+          ->GetWindowTitleForCurrentTab(true /* include_app_name */);
 #if BUILDFLAG(IS_MAC)
   bool any_tab_playing_audio = false;
   bool any_tab_playing_muted_audio = false;
@@ -3620,7 +3622,8 @@ std::u16string BrowserView::GetAccessibleWindowTitleForChannelAndProfile(
         tabs::GetAccessibleTabLabel(browser_->tab_strip_model()->GetActiveTab(),
                                     /*is_for_tab=*/false);
   } else {
-    title = browser_->GetWindowTitleForCurrentTab(false /* include_app_name */);
+    title = WindowMetadataController::From(browser_.get())
+                ->GetWindowTitleForCurrentTab(false /* include_app_name */);
   }
 
   // Add the name of the browser, unless this is an app window.
@@ -3697,12 +3700,26 @@ BrowserView::GetNativeViewHostsForTopControlsSlide() {
 void BrowserView::ReparentTopContainerForStartOfImmersive() {
   top_container()->SetPaintToLayer();
   top_container()->layer()->SetFillsBoundsOpaquely(false);
-  top_container()->SetProperty(views::kViewDoesNotLayOutChildren, false);
 
   ReparentTabStripAndWebAppViewsToTopContainer(
       TabStripAndWebAppViewsReparentedState::kImmersiveMode);
 
   CHECK(overlay_view_tracker_);
+
+  // Note: while `BrowserViewLayout` is responsible for positioning controls in
+  // the top container, these controls can still internally invalidate. When the
+  // top container is not in the browser view, invalidations are not propagated
+  // up to the browser view, and the layout is not triggered.
+  //
+  // Therefore, let the top container lay itself out when it is not parented to
+  // the browser view.
+  //
+  // A more correct solution would be to let invalidations in the top container
+  // transfer over to the browser. See https://crbug.com/520458975 for analysis.
+  if (!Contains(overlay_view_tracker_.view())) {
+    top_container()->SetProperty(views::kViewDoesNotLayOutChildren, false);
+  }
+
   overlay_view_tracker_.view()->AddChildView(top_container());
 
   overlay_view_tracker_.view()->SetVisible(true);
@@ -3726,6 +3743,10 @@ void BrowserView::ReparentTopContainerForEndOfImmersive() {
       TabStripAndWebAppViewsReparentedState::kImmersiveMode);
 
   EnsureFocusOrder();
+
+  // See comment in `ReparentTopContainerForStartOfImmersive()`; this isn't
+  // strictly necessary on all platforms but doesn't break anything either as
+  // this is the default state.
   top_container()->SetProperty(views::kViewDoesNotLayOutChildren, true);
 }
 
@@ -5654,7 +5675,7 @@ void BrowserView::UpdateAcceleratorMetrics(const ui::Accelerator& accelerator,
   }
 
   if (command_id == IDC_FULLSCREEN) {
-    if (browser_->window()->IsFullscreen()) {
+    if (browser_->GetWindow()->IsFullscreen()) {
       base::RecordAction(base::UserMetricsAction("ExitFullscreen_Accelerator"));
     } else {
       base::RecordAction(

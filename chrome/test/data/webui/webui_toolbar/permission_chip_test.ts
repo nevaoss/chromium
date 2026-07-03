@@ -47,6 +47,12 @@ class TestToolbarUiHandler extends TestBrowserProxy implements
   showAvatarMenu() {
     return new Promise<never>(() => {});
   }
+  setAvatarButtonHovered(_hovered: boolean) {
+    return new Promise<never>(() => {});
+  }
+  setAvatarButtonFocused(_focused: boolean) {
+    return new Promise<never>(() => {});
+  }
 
   onLhsChipMousePressed(id: LhsChipIdentifier) {
     this.methodCalled('onLhsChipMousePressed', id);

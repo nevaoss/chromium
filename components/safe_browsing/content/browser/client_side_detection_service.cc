@@ -9,7 +9,6 @@
 
 #include "base/callback_list.h"
 #include "base/compiler_specific.h"
-#include "base/containers/queue.h"
 #include "base/files/file.h"
 #include "base/files/file_path.h"
 #include "base/functional/bind.h"
@@ -207,10 +206,6 @@ bool ClientSideDetectionService::IsPrivateIPAddress(
   return !address.IsPubliclyRoutable();
 }
 
-bool ClientSideDetectionService::IsLocalResource(
-    const net::IPAddress& address) const {
-  return !address.IsValid();
-}
 
 void ClientSideDetectionService::OnURLLoaderComplete(
     network::SimpleURLLoader* url_loader,

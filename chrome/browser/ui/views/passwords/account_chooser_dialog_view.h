@@ -35,6 +35,7 @@ class AccountChooserDialogView : public views::DialogDelegate,
 
   // DialogDelegate:
   bool Accept() override;
+  bool ShouldAllowKeyEventsDuringInputProtection() const override;
 
  private:
   std::u16string GetWindowTitle() const override;
@@ -44,7 +45,8 @@ class AccountChooserDialogView : public views::DialogDelegate,
   // Sets up the child views.
   void InitWindow();
 
-  void CredentialsItemPressed(const password_manager::PasswordForm* form);
+  void CredentialsItemPressed(const password_manager::PasswordForm* form,
+                              const ui::Event& event);
 
   // A weak pointer to the controller.
   raw_ptr<CredentialManagerDialogController, AcrossTasksDanglingUntriaged>

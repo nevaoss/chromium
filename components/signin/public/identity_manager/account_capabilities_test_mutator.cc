@@ -11,10 +11,15 @@
 #include "build/build_config.h"
 #include "components/signin/internal/identity_manager/account_capabilities_constants.h"
 #include "components/signin/public/base/signin_switches.h"
+#include "components/signin/public/identity_manager/account_info.h"
 
 AccountCapabilitiesTestMutator::AccountCapabilitiesTestMutator(
     AccountCapabilities* capabilities)
     : capabilities_(capabilities) {}
+
+AccountCapabilitiesTestMutator::AccountCapabilitiesTestMutator(
+    AccountInfo* account_info)
+    : capabilities_(&account_info->capabilities) {}
 
 // static
 base::span<const std::string_view>
@@ -228,6 +233,12 @@ void AccountCapabilitiesTestMutator::set_must_skip_apple_age_range_in_chrome(
       ->capabilities_map_[kMustSkipAppleAgeRangeInChromeCapabilityName] = value;
 }
 #endif
+
+void AccountCapabilitiesTestMutator::
+    set_supports_wallet_private_passes_in_autofill(bool value) {
+  capabilities_->capabilities_map_
+      [kSupportsWalletPrivatePassesInAutofillCapabilityName] = value;
+}
 
 // keep-sorted end
 

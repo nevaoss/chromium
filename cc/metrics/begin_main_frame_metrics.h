@@ -13,16 +13,25 @@ namespace cc {
 // Reason that a BeginMainFrame was triggered. Used for metrics only,
 // specifically: |Compositing.BeginMainFrame.BMFReason*|.
 enum class BeginMainFrameReason {
+  // Catch-all bucket for anything unclassified.
   kOther = 0,
-  kRAF = 1,
-  kServiceScriptedAnimations = 2,
+  // ServiceScriptedAnimations almost always occurs as a result of RAF, so
+  // these two can be grouped together.
+  kRAFOrServiceScriptedAnimations = 1,
+  kRAF = kRAFOrServiceScriptedAnimations,
+  kServiceScriptedAnimations = kRAFOrServiceScriptedAnimations,
+  kVideoFrameCallback = 2,
   kCSSAnimation = 3,
-  kStyleInvalidation = 4,
+  // These three are relatively infrequent, so group them all together for now.
+  kStylePaintOrLayoutInvalidation = 4,
+  kStyleInvalidation = kStylePaintOrLayoutInvalidation,
+  kPaintInvalidation = kStylePaintOrLayoutInvalidation,
+  kLayoutInvalidation = kStylePaintOrLayoutInvalidation,
   kScroll = 5,
   kInput = 6,
-  kPaintInvalidation = 7,
-  kLayoutInvalidation = 8,
-  kMaxValue = kLayoutInvalidation,
+  kMainThreadScroll = 7,
+  kOOPIF = 8,
+  kMaxValue = kOOPIF,
 };
 
 inline constexpr size_t BeginMainFrameReasonSize =

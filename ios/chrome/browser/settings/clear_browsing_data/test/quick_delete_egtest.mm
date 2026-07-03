@@ -846,7 +846,13 @@ NSString* CapitalizeFirstLetter(NSString* string) {
 // Tests that tabs are shown as a possible type to be deleted on the browsing
 // data row when tabs are selected as a data type for deletion. It also tests
 // that the tabs get closed when the deletion of tabs is selected.
+// TODO(crbug.com/521777875): Test fails on iPhone simulator.
 - (void)testTabsForDeletion {
+#if TARGET_OS_SIMULATOR
+  if (![ChromeEarlGrey isIPadIdiom]) {
+    EARL_GREY_TEST_DISABLED(@"Disabled on iPhone simulator.");
+  }
+#endif
   // Set pref to close tabs.
   [ChromeEarlGrey setBoolValue:YES
                    forUserPref:browsing_data::prefs::kCloseTabs];

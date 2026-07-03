@@ -25,6 +25,7 @@
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_view_state_change_handler.h"
 #import "ios/chrome/browser/intelligence/bwg/utils/gemini_constants.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_activation_level.h"
+#import "ios/chrome/browser/shared/coordinator/scene/state/tab_grid_state_observer.h"
 #import "ios/chrome/browser/shared/model/browser/browser_observer.h"
 #import "ios/chrome/browser/shared/model/browser/browser_user_data.h"
 #import "ios/chrome/browser/tabs/model/tabs_dependency_installer.h"
@@ -52,6 +53,7 @@ class ScopedFullscreenDisabler;
 @class GeminiSceneStateObserver;
 @class GeminiSuggestionHandler;
 @class GeminiActuationHandler;
+@class TabGridStateObserverBridge;
 
 @protocol BWGGatewayProtocol;
 @protocol FullscreenCommands;
@@ -65,6 +67,7 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
                            public TabsDependencyInstaller,
                            public BrowserObserver,
                            public signin::IdentityManager::Observer,
+                           public TabGridStateObserver,
                            public GeminiViewStateChangeHandlerTarget {
  public:
   // Observer interface for GeminiBrowserAgent.
@@ -91,9 +94,6 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
 
   // Returns true if Gemini is available for the active web state.
   bool IsGeminiAvailableForActiveWebState() const;
-
-  // Returns true if Gemini Chat mode is available for the active web state.
-  bool IsGeminiChatAvailableForActiveWebState() const;
 
   // Returns true if Gemini Live mode is currently active.
   bool IsInGeminiLiveMode() const;
@@ -226,6 +226,10 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
   void DidUpdateObscuredInsetRange(FullscreenBrowserAgent* agent) override;
   void WillShutDown(FullscreenBrowserAgent* agent) override;
 
+  // TabGridStateObserver:
+  void WillEnterTabGrid() override;
+  void WillExitTabGrid() override;
+
   // Returns true if the user has completed the FRE.
   bool HasCompletedFirstRun();
 
@@ -296,9 +300,6 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
 
   // Returns true if the keyboard update should be ignored.
   bool ShouldIgnoreKeyboardUpdate() const;
-
-  // Returns true if the current page is eligible for standard Gemini Chat mode.
-  bool IsChatEligiblePage() const;
 
   // Recalculates and updates the Gemini Live mode UI elements.
   void UpdateLiveModeUI();
@@ -380,6 +381,9 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
 
   // Observer for scene state activation changes.
   __strong GeminiSceneStateObserver* scene_state_observer_ = nil;
+
+  // Bridge to observe TabGridState.
+  __strong TabGridStateObserverBridge* tab_grid_state_observer_bridge_ = nil;
 
   // Observer for scroll events.
   __strong GeminiScrollObserver* scroll_observer_ = nullptr;

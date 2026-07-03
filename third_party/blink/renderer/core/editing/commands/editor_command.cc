@@ -236,7 +236,7 @@ GCedStaticRangeVector* RangesFromCurrentSelectionOrExtendCaret(
 
   frame.GetDocument()->UpdateStyleAndLayout(DocumentUpdateReason::kEditing);
   SelectionModifier selection_modifier(
-      frame, frame.Selection().GetSelectionInDOMTree());
+      frame, frame.Selection().GetSelectionInDomTree());
   selection_modifier.SetSelectionIsDirectional(
       frame.Selection().IsDirectional());
   if (selection_modifier.Selection().IsCaret()) {
@@ -318,7 +318,7 @@ static bool ExecuteApplyParagraphStyle(LocalFrame& frame,
 
 bool ExpandSelectionToGranularity(LocalFrame& frame,
                                   TextGranularity granularity) {
-  const SelectionInDOMTree& selection = ExpandWithGranularity(
+  const SelectionInDomTree& selection = ExpandWithGranularity(
       frame.Selection().ComputeVisibleSelectionInDomTree().AsSelection(),
       granularity);
   const EphemeralRange& new_range = NormalizeRange(selection);
@@ -329,7 +329,7 @@ bool ExpandSelectionToGranularity(LocalFrame& frame,
     return false;
   }
   frame.Selection().SetSelection(
-      SelectionInDOMTree::Builder().SetBaseAndExtent(new_range).Build(),
+      SelectionInDomTree::Builder().SetBaseAndExtent(new_range).Build(),
       SetSelectionOptions::Builder().SetShouldCloseTyping(true).Build());
   return true;
 }
@@ -622,7 +622,7 @@ static bool ExecuteDeleteToMark(LocalFrame& frame,
       frame.GetEditor().Mark().ToNormalizedEphemeralRange();
   if (mark.IsNotNull()) {
     frame.Selection().SetSelection(
-        SelectionInDOMTree::Builder()
+        SelectionInDomTree::Builder()
             .SetBaseAndExtent(
                 UnionEphemeralRanges(mark, frame.GetEditor().SelectedRange()))
             .Build(),
@@ -919,7 +919,7 @@ static bool ExecuteSelectToMark(LocalFrame& frame,
     return false;
   }
   frame.Selection().SetSelection(
-      SelectionInDOMTree::Builder()
+      SelectionInDomTree::Builder()
           .SetBaseAndExtent(UnionEphemeralRanges(mark, selection))
           .Build(),
       SetSelectionOptions::Builder().SetShouldCloseTyping(true).Build());
@@ -1022,8 +1022,8 @@ static bool ExecuteTranspose(LocalFrame& frame,
       StrCat({StringView(new_text, new_text.length() - 1, 1),
               StringView(new_text, 0, 1)});
 
-  const SelectionInDOMTree& new_selection =
-      SelectionInDOMTree::Builder().SetBaseAndExtent(new_range).Build();
+  const SelectionInDomTree& new_selection =
+      SelectionInDomTree::Builder().SetBaseAndExtent(new_range).Build();
 
   // Select the two characters.
   if (CreateVisibleSelection(new_selection) !=
@@ -1220,7 +1220,7 @@ static bool EnabledInEditableText(LocalFrame& frame,
       !frame.Selection().SelectionHasFocus()) {
     return false;
   }
-  const SelectionInDOMTree selection =
+  const SelectionInDomTree selection =
       frame.GetEditor().SelectionForCommand(event);
   return RootEditableElementOf(
       CreateVisiblePosition(selection.Anchor()).DeepEquivalent());

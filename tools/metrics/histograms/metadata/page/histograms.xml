@@ -74,6 +74,19 @@ chromium-metrics-reviews@google.com.
   <variant name="1000ms"/>
 </variants>
 
+<variants name="GWSFontLoadingMilestone">
+  <variant name="AFTEnd"
+      summary="up to the Above the Fold End (AFTEnd) performance mark.
+               Recorded when the AFTEnd mark is observed"/>
+  <variant name="Complete"
+      summary="during the lifetime of the page. Recorded when the page load
+               is completed (e.g., on navigation, tab closure, or
+               backgrounding)"/>
+  <variant name="FCP"
+      summary="up to First Contentful Paint (FCP). Recorded when FCP is
+               reached"/>
+</variants>
+
 <variants name="HiddenSuffix">
   <variant name="" summary="never hidden during the navigation"/>
   <variant name=".TabWasHiddenAtStartLaterShown"
@@ -499,7 +512,6 @@ chromium-metrics-reviews@google.com.
   <variant name=".print-management"/>
   <variant name=".privacy-sandbox-base-dialog"/>
   <variant name=".privacy-sandbox-dialog"/>
-  <variant name=".privacy-sandbox-internals"/>
   <variant name=".private-aggregation-internals"/>
   <variant name=".private-ai-internals"/>
   <variant name=".process-internals"/>
@@ -535,6 +547,7 @@ chromium-metrics-reviews@google.com.
   <variant name=".signin-email-confirmation"/>
   <variant name=".signin-error"/>
   <variant name=".signin-internals"/>
+  <variant name=".signin-qrcode-bar"/>
   <variant name=".signout-confirmation"/>
   <variant name=".site-engagement"/>
   <variant name=".skills"/>
@@ -823,7 +836,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Clients.Ads.AdClick.EtldPlusOneHistoryQueryCount2"
-    units="count" expires_after="2026-10-01">
+    units="count" expires_after="2026-12-06">
   <owner>zhouzj@google.com</owner>
   <owner>kurtosis-team@google.com</owner>
   <summary>
@@ -848,7 +861,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Clients.Ads.AdPaintTiming.TopFrameNavigationToFirstAdFirstContentfulPaint"
-    units="ms" expires_after="2026-10-01">
+    units="ms" expires_after="2026-12-06">
   <owner>jkarlin@chromium.org</owner>
   <owner>alexmt@chromium.org</owner>
   <owner>chrome-analysis-team@google.com</owner>
@@ -861,7 +874,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Clients.Ads.AdPaintTiming.TopFrameNavigationToFirstAdFirstContentfulPaintAfterNoAuction"
-    units="ms" expires_after="2026-10-01">
+    units="ms" expires_after="2026-12-06">
   <owner>abigailkatcoff@chromium.org</owner>
   <owner>chrome-analysis-team@google.com</owner>
   <summary>
@@ -890,7 +903,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Clients.Ads.AdPaintTiming.TopFrameNavigationToFirstAdFirstContentfulPaintAfter{Result}{AuctionType}Auction"
-    units="ms" expires_after="2026-10-01">
+    units="ms" expires_after="2026-12-06">
   <owner>abigailkatcoff@chromium.org</owner>
   <owner>chrome-analysis-team@google.com</owner>
   <summary>
@@ -915,7 +928,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Clients.Ads.AllPages.NonAdNetworkBytes" units="KB"
-    expires_after="2026-10-01">
+    expires_after="2026-12-06">
   <owner>alexmt@chromium.org</owner>
   <owner>chrome-ads-histograms@google.com</owner>
   <summary>
@@ -928,7 +941,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Clients.Ads.AllPages.PercentNetworkBytesAds"
-    units="%" expires_after="2026-10-01">
+    units="%" expires_after="2026-12-06">
   <owner>alexmt@chromium.org</owner>
   <owner>chrome-ads-histograms@google.com</owner>
   <summary>
@@ -941,7 +954,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Clients.Ads.AllPages.PercentTotalBytesAds" units="%"
-    expires_after="2026-10-01">
+    expires_after="2026-12-06">
   <owner>alexmt@chromium.org</owner>
   <owner>chrome-ads-histograms@google.com</owner>
   <summary>
@@ -954,7 +967,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Clients.Ads.AverageViewportAdCountX100" units="count"
-    expires_after="2026-10-01">
+    expires_after="2026-12-06">
   <owner>yaoxia@chromium.org</owner>
   <owner>jkarlin@chromium.org</owner>
   <owner>chrome-ads-histograms@google.com</owner>
@@ -967,7 +980,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Clients.Ads.AverageViewportAdDensity" units="%"
-    expires_after="2026-10-01">
+    expires_after="2026-12-06">
   <owner>yaoxia@chromium.org</owner>
   <owner>jkarlin@chromium.org</owner>
   <owner>chrome-ads-histograms@google.com</owner>
@@ -984,7 +997,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Clients.Ads.HeavyAds.DisallowedByBlocklist"
-    enum="BooleanBlocked" expires_after="2026-10-01">
+    enum="BooleanBlocked" expires_after="2026-12-06">
   <owner>jkarlin@chromium.org</owner>
   <owner>chrome-ads-histograms@google.com</owner>
   <summary>
@@ -995,7 +1008,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Clients.Ads.HeavyAds.NetworkBytesAtFrameUnload"
-    units="bytes" expires_after="2026-10-01">
+    units="bytes" expires_after="2026-12-06">
   <owner>alexmt@chromium.org</owner>
   <owner>chrome-ads-histograms@google.com</owner>
   <summary>
@@ -1007,7 +1020,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Clients.Ads.Resources.Bytes.Ads2" units="KB"
-    expires_after="2026-10-01">
+    expires_after="2026-12-06">
   <owner>jkarlin@chromium.org</owner>
   <owner>chrome-ads-histograms@google.com</owner>
   <summary>
@@ -1607,7 +1620,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Clients.GoogleSearch.AdvertisedAltSvcState{QuicAvailability}{IncognitoSuffix}"
-    enum="AdvertisedAltSvcState" expires_after="2026-10-04">
+    enum="AdvertisedAltSvcState" expires_after="2026-12-06">
   <owner>bashi@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
@@ -1928,27 +1941,27 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram
-    name="PageLoad.Clients.GoogleSearch.FontLoading.FallbackCount.Complete"
+    name="PageLoad.Clients.GoogleSearch.FontLoading.FallbackCount.{GWSFontLoadingMilestone}"
     units="count" expires_after="2027-06-01">
   <owner>suzukikeita@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
     The number of times a system fallback font was used for character rendering
-    during the lifetime of a Google Search page load. Recorded when the page
-    load is completed (e.g., on navigation, tab closure, or backgrounding).
+    for a Google Search page load, {GWSFontLoadingMilestone}.
   </summary>
+  <token key="GWSFontLoadingMilestone" variants="GWSFontLoadingMilestone"/>
 </histogram>
 
 <histogram
-    name="PageLoad.Clients.GoogleSearch.FontLoading.FallbackDuration.FCP"
+    name="PageLoad.Clients.GoogleSearch.FontLoading.FallbackDuration.{GWSFontLoadingMilestone}"
     units="ms" expires_after="2027-06-01">
   <owner>suzukikeita@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
     The cumulative duration spent in system fallback font loading for character
-    rendering up to First Contentful Paint (FCP) for a Google Search page load.
-    Recorded when FCP is reached.
+    rendering for a Google Search page load, {GWSFontLoadingMilestone}.
   </summary>
+  <token key="GWSFontLoadingMilestone" variants="GWSFontLoadingMilestone"/>
 </histogram>
 
 <histogram
@@ -2006,7 +2019,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Clients.GoogleSearch.HttpNetworkSessionQuicEnabled"
-    enum="Boolean" expires_after="2026-10-04">
+    enum="Boolean" expires_after="2026-12-06">
   <owner>bashi@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
@@ -2677,7 +2690,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Clients.GoogleSearch.Prerender.HostReused{IncognitoSuffix}"
-    enum="Boolean" expires_after="2026-10-04">
+    enum="Boolean" expires_after="2026-12-06">
   <owner>suzukikeita@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
@@ -2717,7 +2730,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Clients.GoogleSearch.SessionSource{ConnectionProtocolType}"
-    enum="NetworkSessionSource" expires_after="2026-10-04">
+    enum="NetworkSessionSource" expires_after="2026-12-06">
   <owner>bashi@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
@@ -3921,7 +3934,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.CommittedPageIsDseSerp" enum="Boolean"
-    expires_after="2026-10-04">
+    expires_after="2026-12-06">
   <owner>anunoy@chromium.org</owner>
   <summary>
     For each page load, records whether the page is a search results page from
@@ -4416,7 +4429,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.InteractiveTiming.INPOffset" units="offset"
-    expires_after="2026-10-04">
+    expires_after="2026-12-06">
   <owner>sullivan@chromium.org</owner>
   <owner>speed-metrics-dev@chromium.org</owner>
   <summary>

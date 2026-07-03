@@ -58,6 +58,7 @@
 #include "net/dns/mock_host_resolver.h"
 #include "net/test/embedded_test_server/controllable_http_response.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
+#include "net/test/embedded_test_server/expectation_handler.h"
 #include "net/test/embedded_test_server/request_handler_util.h"
 #include "pdf/buildflags.h"
 #include "services/metrics/public/cpp/metrics_utils.h"
@@ -2000,14 +2001,25 @@ IN_PROC_BROWSER_TEST_F(AdsPageLoadMetricsObserverResourceBrowserTest,
   base::HistogramTester histogram_tester;
   ukm::TestAutoSetUkmRecorder ukm_recorder;
 
-  auto main_html_response =
-      std::make_unique<net::test_server::ControllableHttpResponse>(
-          embedded_test_server(), "/mock_page.html",
-          true /*relative_url_is_prefix*/);
-  auto ad_script_response =
-      std::make_unique<net::test_server::ControllableHttpResponse>(
-          embedded_test_server(), "/ad_script.js",
-          true /*relative_url_is_prefix*/);
+  const std::string main_html_body =
+      std::string(
+          "<html><body></body><script src=\"ad_script.js\"></script></html>") +
+      std::string(1024, ' ');
+  const std::string ad_script_body = std::string(R"(
+        navigator.bluetooth.requestDevice().catch(e => {});
+        navigator.geolocation.getCurrentPosition(() => {});
+        navigator.mediaDevices.getUserMedia({video: true});
+        navigator.mediaDevices.getDisplayMedia().catch(() => {});
+        navigator.mediaDevices.getUserMedia({audio: true});
+        navigator.serial.requestPort().catch(() => {});
+        navigator.usb.requestDevice({ filters: [] }).catch(() => {});
+  )") + std::string(5000, ' ');
+
+  net::test_server::ExpectationHandler handler(embedded_test_server());
+  handler.OnRequest("/mock_page.html", /*is_prefix=*/true)
+      .RespondWith("text/html; charset=utf-8", main_html_body);
+  handler.OnRequest("/ad_script.js", /*is_prefix=*/true)
+      .RespondWith("text/html; charset=utf-8", ad_script_body);
 
   ASSERT_TRUE(embedded_test_server()->Start());
 
@@ -2019,28 +2031,6 @@ IN_PROC_BROWSER_TEST_F(AdsPageLoadMetricsObserverResourceBrowserTest,
                              WindowOpenDisposition::CURRENT_TAB,
                              ui::PAGE_TRANSITION_TYPED, false),
       /*navigation_handle_callback=*/{});
-
-  main_html_response->WaitForRequest();
-  main_html_response->Send(page_load_metrics::kHttpOkResponseHeader);
-  main_html_response->Send(
-      "<html><body></body><script src=\"ad_script.js\"></script></html>");
-  main_html_response->Send(std::string(1024, ' '));
-  main_html_response->Done();
-
-  ad_script_response->WaitForRequest();
-  ad_script_response->Send(page_load_metrics::kHttpOkResponseHeader);
-  // Get ad script to use a bunch of privacy sensitive features.
-  ad_script_response->Send(R"(
-        navigator.bluetooth.requestDevice().catch(e => {});
-        navigator.geolocation.getCurrentPosition(() => {});
-        navigator.mediaDevices.getUserMedia({video: true});
-        navigator.mediaDevices.getDisplayMedia().catch(() => {});
-        navigator.mediaDevices.getUserMedia({audio: true});
-        navigator.serial.requestPort().catch(() => {});
-        navigator.usb.requestDevice({ filters: [] }).catch(() => {});
-  )");
-  ad_script_response->Send(std::string(5000, ' '));
-  ad_script_response->Done();
 
   waiter->AddMinimumNetworkBytesExpectation(base::ByteCount(5000));
 
@@ -3172,37 +3162,16 @@ IN_PROC_BROWSER_TEST_P(AdsPageLoadMetricsObserverSurfaceBrowserTest,
   SetRulesetWithRules(
       {subresource_filter::testing::CreateSuffixRule("ad_script.js")});
 
-  auto main_html_response =
-      std::make_unique<net::test_server::ControllableHttpResponse>(
-          embedded_test_server(), "/mock_page.html",
-          /*relative_url_is_prefix=*/true);
+  net::test_server::ExpectationHandler main_html_handler(
+      embedded_test_server());
+  main_html_handler.OnRequest("/mock_page.html", /*is_prefix=*/true)
+      .RespondWith(
+          "text/html; charset=utf-8",
+          "<html><body></body><script src=\"ad_script.js\"></script></html>");
 
-  auto ad_script_response =
-      std::make_unique<net::test_server::ControllableHttpResponse>(
-          embedded_test_server(), "/ad_script.js",
-          /*relative_url_is_prefix=*/true);
-
-  auto image_response =
-      std::make_unique<net::test_server::ControllableHttpResponse>(
-          embedded_test_server(), "/image.gif",
-          /*relative_url_is_prefix=*/true);
-
-  ASSERT_TRUE(embedded_test_server()->Start());
-
-  auto waiter = CreateAdsPageLoadMetricsTestWaiter();
-
-  browser()->OpenURL(
-      content::OpenURLParams(embedded_test_server()->GetURL("/mock_page.html"),
-                             content::Referrer(),
-                             WindowOpenDisposition::CURRENT_TAB,
-                             ui::PAGE_TRANSITION_TYPED, false),
-      /*navigation_handle_callback=*/{});
-
-  main_html_response->WaitForRequest();
-  main_html_response->Send(page_load_metrics::kHttpOkResponseHeader);
-  main_html_response->Send(
-      "<html><body></body><script src=\"ad_script.js\"></script></html>");
-  main_html_response->Done();
+  net::test_server::ExpectationHandler image_handler(embedded_test_server());
+  image_handler.OnRequest("/image.gif", /*is_prefix=*/true)
+      .RespondWith("text/html; charset=utf-8", "");
 
   const char* script_format = std::get<0>(GetParam()).script;
   const bool lambda = std::get<1>(GetParam());
@@ -3224,14 +3193,21 @@ IN_PROC_BROWSER_TEST_P(AdsPageLoadMetricsObserverSurfaceBrowserTest,
                                               /*offsets=*/nullptr);
   }
 
-  ad_script_response->WaitForRequest();
-  ad_script_response->Send(page_load_metrics::kHttpOkResponseHeader);
-  ad_script_response->Send(script);
-  ad_script_response->Done();
+  net::test_server::ExpectationHandler ad_script_handler(
+      embedded_test_server());
+  ad_script_handler.OnRequest("/ad_script.js", /*is_prefix=*/true)
+      .RespondWith("text/html; charset=utf-8", script);
 
-  image_response->WaitForRequest();
-  image_response->Send(page_load_metrics::kHttpOkResponseHeader);
-  image_response->Done();
+  ASSERT_TRUE(embedded_test_server()->Start());
+
+  auto waiter = CreateAdsPageLoadMetricsTestWaiter();
+
+  browser()->OpenURL(
+      content::OpenURLParams(embedded_test_server()->GetURL("/mock_page.html"),
+                             content::Referrer(),
+                             WindowOpenDisposition::CURRENT_TAB,
+                             ui::PAGE_TRANSITION_TYPED, false),
+      /*navigation_handle_callback=*/{});
 
   // Two subresources should have been reported as ads.
   waiter->AddMinimumAdResourceExpectation(2);
@@ -3361,7 +3337,7 @@ class DevToolsAdsTest : public AdsPageLoadMetricsObserverBrowserTest,
 // Tests that when ad frames are added to a page, the ad metrics are properly
 // calculated and returned via the Ads.getAdMetrics command.
 IN_PROC_BROWSER_TEST_F(DevToolsAdsTest, GetAdMetrics) {
-  browser()->window()->SetBounds(gfx::Rect(0, 0, 800, 600));
+  browser()->GetWindow()->SetBounds(gfx::Rect(0, 0, 800, 600));
 
   SetRulesetWithRules(
       {subresource_filter::testing::CreateSuffixRule(
@@ -3440,7 +3416,7 @@ IN_PROC_BROWSER_TEST_F(DevToolsAdsTest, GetAdMetrics) {
 // navigating away from an existing page. Validates that we are checking the new
 // APLMO.
 IN_PROC_BROWSER_TEST_F(DevToolsAdsTest, GetAdMetrics_PageNavigated) {
-  browser()->window()->SetBounds(gfx::Rect(0, 0, 800, 600));
+  browser()->GetWindow()->SetBounds(gfx::Rect(0, 0, 800, 600));
 
   SetRulesetWithRules(
       {subresource_filter::testing::CreateSuffixRule(

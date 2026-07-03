@@ -39,7 +39,7 @@ class MockGlicInstance : public GlicInstance {
               (override));
   MOCK_METHOD(bool, IsShowing, (), (const, override));
   MOCK_METHOD(gfx::Size, GetPanelSize, (), (override));
-  MOCK_METHOD(std::optional<Target>, GetInvokeTarget, (), (override));
+  MOCK_METHOD(Target, GetInvokeTarget, (Target::Surface), (override));
   MOCK_METHOD(const InstanceId&, id, (), (const, override));
   MOCK_METHOD(std::optional<std::string>,
               conversation_id,
@@ -55,6 +55,8 @@ class MockGlicInstance : public GlicInstance {
   MOCK_METHOD(GlicActorTaskManager*, GetActorTaskManager, (), (override));
   MOCK_METHOD(bool, IsActuating, (), (const, override));
   MOCK_METHOD(void, CancelTask, (), (override));
+
+  MOCK_METHOD(GlicSharingManager*, GetSharingManager, (), (override));
 
   MOCK_METHOD(void,
               GetExperimentalTriggeringUpdates,

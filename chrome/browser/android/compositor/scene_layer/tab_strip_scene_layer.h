@@ -18,6 +18,7 @@
 
 namespace cc::slim {
 class Layer;
+class NinePatchLayer;
 class SolidColorLayer;
 class UIResourceLayer;
 }  // namespace cc::slim
@@ -72,7 +73,11 @@ class TabStripSceneLayer : public SceneLayer {
                            float scrim_opacity,
                            float left_padding,
                            float right_padding,
-                           float top_padding);
+                           float top_padding,
+                           float divider_y,
+                           bool should_show_divider,
+                           int32_t divider_resource_id,
+                           int32_t divider_tint);
 
   void UpdateNewTabButton(JNIEnv* env,
                           int32_t resource_id,
@@ -104,6 +109,7 @@ class TabStripSceneLayer : public SceneLayer {
                         bool is_keyboard_focused,
                         int32_t keyboard_focus_ring_resource_id,
                         int32_t keyboard_focus_ring_color,
+                        float keyboard_focus_ring_offset,
                         int32_t text_texture_id,
                         float button_start_padding,
                         float icon_text_padding,
@@ -133,6 +139,7 @@ class TabStripSceneLayer : public SceneLayer {
                              bool is_keyboard_focused,
                              int32_t keyboard_focus_ring_resource_id,
                              int32_t keyboard_focus_ring_color,
+                             float keyboard_focus_ring_offset,
                              int32_t text_texture_id,
                              float button_start_padding,
                              float icon_text_padding,
@@ -275,7 +282,7 @@ class TabStripSceneLayer : public SceneLayer {
       scoped_refptr<cc::slim::SolidColorLayer> background_layer,
       scoped_refptr<cc::slim::UIResourceLayer> icon_layer,
       scoped_refptr<cc::slim::UIResourceLayer> text_layer,
-      scoped_refptr<cc::slim::UIResourceLayer> focus_ring_layer,
+      scoped_refptr<cc::slim::NinePatchLayer> focus_ring_layer,
       int32_t resource_id,
       float x,
       float y,
@@ -289,6 +296,8 @@ class TabStripSceneLayer : public SceneLayer {
       bool is_keyboard_focused,
       int32_t keyboard_focus_ring_resource_id,
       int32_t keyboard_focus_ring_color,
+      float keyboard_focus_ring_offset,
+      bool should_flip_keyboard_focus_ring,
       int32_t text_texture_id,
       float button_start_padding,
       float icon_text_padding,
@@ -315,6 +324,7 @@ class TabStripSceneLayer : public SceneLayer {
   // fading.
   scoped_refptr<cc::slim::SolidColorLayer> left_padding_layer_;
   scoped_refptr<cc::slim::SolidColorLayer> right_padding_layer_;
+  scoped_refptr<cc::slim::UIResourceLayer> window_controls_divider_;
 
   scoped_refptr<cc::slim::Layer> glic_button_container_;
   scoped_refptr<cc::slim::UIResourceLayer> glic_button_;
@@ -323,13 +333,13 @@ class TabStripSceneLayer : public SceneLayer {
   scoped_refptr<cc::slim::UIResourceLayer> glic_dismiss_nudge_button_;
   scoped_refptr<cc::slim::UIResourceLayer>
       glic_dismiss_nudge_button_keyboard_focus_ring_;
-  scoped_refptr<cc::slim::UIResourceLayer> glic_button_keyboard_focus_ring_;
+  scoped_refptr<cc::slim::NinePatchLayer> glic_button_keyboard_focus_ring_;
 
   scoped_refptr<cc::slim::Layer> glic_actor_button_container_;
   scoped_refptr<cc::slim::UIResourceLayer> glic_actor_button_;
   scoped_refptr<cc::slim::SolidColorLayer> glic_actor_button_background_;
   scoped_refptr<cc::slim::UIResourceLayer> glic_actor_button_text_;
-  scoped_refptr<cc::slim::UIResourceLayer>
+  scoped_refptr<cc::slim::NinePatchLayer>
       glic_actor_button_keyboard_focus_ring_;
 
   scoped_refptr<cc::slim::UIResourceLayer> model_selector_button_;

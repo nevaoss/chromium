@@ -28,6 +28,7 @@ import android.os.Handler;
 import android.transition.ChangeBounds;
 import android.transition.Transition;
 import android.transition.TransitionSet;
+import android.util.ArrayMap;
 import android.util.AttributeSet;
 import android.util.Size;
 import android.view.DragAndDropPermissions;
@@ -121,6 +122,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 /**
@@ -192,10 +195,13 @@ public class CompositorViewHolder extends FrameLayout
 
     private TabModelSelector mTabModelSelector;
     private @Nullable BrowserControlsManager mBrowserControlsManager;
-    private @Nullable OneshotSupplier<SideUiStateProvider> mSideUiStateProviderSupplier;
-    private @Nullable SideUiStateProvider mSideUiStateProvider;
     @VisibleForTesting @Nullable View mAccessibilityView;
     private @Nullable CompositorAccessibilityProvider mNodeProvider;
+
+    // State for SideUI.
+    private @Nullable OneshotSupplier<SideUiStateProvider> mSideUiStateProviderSupplier;
+    private @Nullable SideUiStateProvider mSideUiStateProvider;
+    private @Nullable Runnable mResetClipToPaddingRunnable;
 
     /** The toolbar control container. */
     private @Nullable ControlContainer mControlContainer;
@@ -1224,6 +1230,7 @@ public class CompositorViewHolder extends FrameLayout
                     MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY));
             view.layout(0, 0, view.getMeasuredWidth(), view.getMeasuredHeight());
             webContents.setSize(webContentsWidth, webContentsHeight);
+
             requestRender();
         }
     }
@@ -1273,9 +1280,32 @@ public class CompositorViewHolder extends FrameLayout
     @Override
     public void onSurfaceResized(int width, int height) {
         View view = getContentView();
-        WebContents webContents = getWebContents();
-        if (view == null || webContents == null) return;
-        onPhysicalBackingSizeChanged(webContents, width, height);
+        WebContents activeWebContents = getWebContents();
+        if (view == null || activeWebContents == null) return;
+        onPhysicalBackingSizeChanged(activeWebContents, width, height);
+
+        // Background tabs skip physical surface updates to save resources.
+        // However, if a tab is being captured (e.g., screen sharing), it actively
+        // draws frames. We must sync its physical size here to prevent the video
+        // capture stream from freezing due to a frame containment failure.
+        syncBackgroundCapturedTabsPhysicalSize(activeWebContents, width, height);
+    }
+
+    private void syncBackgroundCapturedTabsPhysicalSize(
+            WebContents activeWebContents, int width, int height) {
+        if (mTabModelSelector == null) return;
+
+        for (TabModel tabModel : mTabModelSelector.getModels()) {
+            for (Tab tab : tabModel) {
+                if (tab == null) continue;
+                WebContents tabWebContents = tab.getWebContents();
+                if (tabWebContents != null
+                        && tabWebContents != activeWebContents
+                        && tabWebContents.isBeingCaptured()) {
+                    onPhysicalBackingSizeChanged(tabWebContents, width, height);
+                }
+            }
+        }
     }
 
     private void onPhysicalBackingSizeChanged(WebContents webContents, int width, int height) {
@@ -1459,11 +1489,19 @@ public class CompositorViewHolder extends FrameLayout
         // Trigger changes to Java Views, but delay any direct changes to composited views until
         // #onSideUiSpecsChanged().
         repositionTabViewForSideUi(sideUiSpecs);
+        // Padding will not be animated by the Transition as doing so would request a layout on
+        // every frame. Instead, padding is allowed to remain at its final state during a
+        // Transition. Disable clipToPadding to prevent clipping during the Transition. This will
+        // be reset on Transition end.
+        // TODO(crbug.com/521963994): Investigate alternatives, as this would still cause jank if a
+        //  native page relies on padding clipping.
+        disableClipToPaddingForCurrentTab();
     }
 
     @Override
     public void onTransitionEnded(SideUiSpecs sideUiSpecs) {
         onSideUiSpecsChanged(sideUiSpecs);
+        resetClipToPadding();
     }
 
     @Override
@@ -1511,6 +1549,38 @@ public class CompositorViewHolder extends FrameLayout
         layoutParams.leftMargin = sideUiSpecs.getWidth(AnchorSide.LEFT);
         layoutParams.rightMargin = sideUiSpecs.getWidth(AnchorSide.RIGHT);
         mView.setLayoutParams(layoutParams);
+    }
+
+    /** Calls {@code #setClipToPadding(false)} for the current tab's View subtree. */
+    private void disableClipToPaddingForCurrentTab() {
+        if (mView == null) return;
+        if (mResetClipToPaddingRunnable != null) resetClipToPadding();
+
+        Map<ViewGroup, Boolean> initialClipToPadding = new ArrayMap<>();
+        Collection<View> descendants = new ArrayList<>();
+
+        ViewUtils.getAllDescendants(mView, descendants, emptySet());
+        for (View view : descendants) {
+            if (view instanceof ViewGroup viewGroup) {
+                initialClipToPadding.put(viewGroup, viewGroup.getClipToPadding());
+                viewGroup.setClipToPadding(false);
+            }
+        }
+
+        mResetClipToPaddingRunnable =
+                () -> {
+                    for (Entry<ViewGroup, Boolean> entry : initialClipToPadding.entrySet()) {
+                        entry.getKey().setClipToPadding(entry.getValue());
+                    }
+                };
+    }
+
+    /** Runs then nulls the reset runnable from {@link #disableClipToPaddingForCurrentTab()}. */
+    private void resetClipToPadding() {
+        if (mResetClipToPaddingRunnable == null) return;
+
+        mResetClipToPaddingRunnable.run();
+        mResetClipToPaddingRunnable = null;
     }
 
     // View.OnHierarchyChangeListener implementation

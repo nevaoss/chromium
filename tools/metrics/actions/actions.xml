@@ -232,6 +232,8 @@ should be able to be added at any place in this file.
       summary="For AddToHomescreen IPH feature."/>
   <variant name="_AddToHomescreenTextBubble"
       summary="For AddToHomescreen IPH feature using text bubble (obsolete)."/>
+  <variant name="_AimActivationHint"
+      summary="A hint to activate AI Mode on Android Desktop via keystrokes."/>
   <variant name="_AndroidBottomBarGlic"
       summary="Describes the GLIC button added in the bottom bar."/>
   <variant name="_AndroidBottomBarNewTab"
@@ -287,6 +289,8 @@ should be able to be added at any place in this file.
       summary="For BadgedTranslateManualTrigger feature."/>
   <variant name="_BatterySaverMode" summary="For BatterySaverMode feature."/>
   <variant name="_Bookmark" summary="For Bookmark feature."/>
+  <variant name="_BookmarkBarSimplified"
+      summary="For bookmark bar simplified auto-hide toast."/>
   <variant name="_BookmarksBar"
       summary="For Bookmarks Bar feature. (obsolete)"/>
   <variant name="_BottomToolbarTip" summary="For BottomToolbarTip feature."/>
@@ -16860,6 +16864,15 @@ should be able to be added at any place in this file.
   <description>Please enter the description of this user action.</description>
 </action>
 
+<action name="Indigo.ErrorToast.Retry.Click">
+  <owner>jbroman@chromium.org</owner>
+  <owner>adithyas@chromium.org</owner>
+  <owner>baranerf@google.com</owner>
+  <description>
+    User clicked the Indigo try again button from the invocation error toast.
+  </description>
+</action>
+
 <action name="Indigo.Onboarding.Complete">
   <owner>jbroman@chromium.org</owner>
   <owner>adithyas@chromium.org</owner>
@@ -16872,6 +16885,15 @@ should be able to be added at any place in this file.
   <owner>adithyas@chromium.org</owner>
   <owner>baranerf@google.com</owner>
   <description>User triggered the onboarding process.</description>
+</action>
+
+<action name="Indigo.PageAction.AnchoredMessage.Click">
+  <owner>jbroman@chromium.org</owner>
+  <owner>adithyas@chromium.org</owner>
+  <owner>baranerf@google.com</owner>
+  <description>
+    User clicked the Indigo page action from an anchored message.
+  </description>
 </action>
 
 <action name="Indigo.PageAction.Click">
@@ -16894,6 +16916,15 @@ should be able to be added at any place in this file.
   <owner>baranerf@google.com</owner>
   <description>
     The indigo page action was displayed as an anchored message.
+  </description>
+</action>
+
+<action name="Indigo.PageAction.SuggestionChip.Click">
+  <owner>jbroman@chromium.org</owner>
+  <owner>adithyas@chromium.org</owner>
+  <owner>baranerf@google.com</owner>
+  <description>
+    User clicked the Indigo page action from a suggestion chip.
   </description>
 </action>
 
@@ -38165,6 +38196,15 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="PasswordManager.PasswordDropdownSelected.PasskeyQrCode">
+  <owner>derinel@google.com</owner>
+  <owner>markusheintz@google.com</owner>
+  <description>
+    Recorded when the user selected a passkey QR code entry in the password
+    dropdown.
+  </description>
+</action>
+
 <action name="PasswordManager.PasswordDropdownSelected.Password">
   <owner>derinel@google.com</owner>
   <owner>markusheintz@google.com</owner>
@@ -44116,7 +44156,7 @@ should be able to be added at any place in this file.
   <owner>kmilka@chromium.org</owner>
   <owner>src/components/send_tab_to_self/OWNERS</owner>
   <description>
-    The &quot;Send to your devices&quot; option was selected in the sharing hub.
+    The &quot;Send to your device&quot; option was selected in the sharing hub.
   </description>
 </action>
 

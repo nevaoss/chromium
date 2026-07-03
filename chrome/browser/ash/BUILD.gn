@@ -112,7 +112,6 @@ source_set("unit_tests") {
     "//chrome/browser/ash/certs:unit_tests",
     "//chrome/browser/ash/child_accounts:unit_tests",
     "//chrome/browser/ash/concierge_helper:unit_tests",
-    "//chrome/browser/ash/crosapi:unit_tests",
     "//chrome/browser/ash/crostini:unit_tests",
     "//chrome/browser/ash/cryptauth:unit_tests",
     "//chrome/browser/ash/customization:unit_tests",

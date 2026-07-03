@@ -134,7 +134,7 @@
 #include "media/audio/audio_manager.h"
 #include "media/base/localized_strings.h"
 #include "net/base/data_url.h"
-#include "net/base/net_module.h"
+#include "net/base/module/net_module.h"
 #include "pdf/buildflags.h"
 #include "rlz/buildflags/buildflags.h"
 #include "services/network/public/cpp/network_switches.h"

@@ -42,6 +42,7 @@
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/layout/list/layout_list_item.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 
 namespace blink {
 
@@ -153,9 +154,15 @@ void BreakBlockquoteCommand::DoApply(EditingState* editing_state) {
     if (editing_state->IsAborted())
       return;
     SetEndingSelection(SelectionForUndoStep::From(
-        SelectionInDOMTree::Builder()
+        SelectionInDomTree::Builder()
             .Collapse(Position::BeforeNode(*break_element))
             .Build()));
+    if (RuntimeEnabledFeatures::EditingUseDomPositionApiEnabled()) {
+      SetEndingDomSelection(SelectionForUndoStep::From(
+          SelectionInDomTree::Builder()
+              .Collapse(Position::BeforeNode(*break_element))
+              .Build()));
+    }
     RebalanceWhitespace();
     return;
   }
@@ -171,9 +178,15 @@ void BreakBlockquoteCommand::DoApply(EditingState* editing_state) {
   // need to break the quote.
   if (is_last_vis_pos_in_node) {
     SetEndingSelection(SelectionForUndoStep::From(
-        SelectionInDOMTree::Builder()
+        SelectionInDomTree::Builder()
             .Collapse(Position::BeforeNode(*break_element))
             .Build()));
+    if (RuntimeEnabledFeatures::EditingUseDomPositionApiEnabled()) {
+      SetEndingDomSelection(SelectionForUndoStep::From(
+          SelectionInDomTree::Builder()
+              .Collapse(Position::BeforeNode(*break_element))
+              .Build()));
+    }
     RebalanceWhitespace();
     return;
   }
@@ -215,9 +228,15 @@ void BreakBlockquoteCommand::DoApply(EditingState* editing_state) {
   // If there's nothing inside topBlockquote to move, we're finished.
   if (!start_node->IsDescendantOf(top_blockquote)) {
     SetEndingSelection(SelectionForUndoStep::From(
-        SelectionInDOMTree::Builder()
+        SelectionInDomTree::Builder()
             .Collapse(FirstPositionInOrBeforeNode(*start_node))
             .Build()));
+    if (RuntimeEnabledFeatures::EditingUseDomPositionApiEnabled()) {
+      SetEndingDomSelection(SelectionForUndoStep::From(
+          SelectionInDomTree::Builder()
+              .Collapse(FirstPositionInOrBeforeNode(*start_node))
+              .Build()));
+    }
     return;
   }
 
@@ -299,9 +318,15 @@ void BreakBlockquoteCommand::DoApply(EditingState* editing_state) {
 
   // Put the selection right before the break.
   SetEndingSelection(SelectionForUndoStep::From(
-      SelectionInDOMTree::Builder()
+      SelectionInDomTree::Builder()
           .Collapse(Position::BeforeNode(*break_element))
           .Build()));
+  if (RuntimeEnabledFeatures::EditingUseDomPositionApiEnabled()) {
+    SetEndingDomSelection(SelectionForUndoStep::From(
+        SelectionInDomTree::Builder()
+            .Collapse(Position::BeforeNode(*break_element))
+            .Build()));
+  }
   RebalanceWhitespace();
 }
 

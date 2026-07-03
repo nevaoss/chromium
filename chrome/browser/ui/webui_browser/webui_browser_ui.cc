@@ -5,11 +5,14 @@
 #include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
 
 #include "base/notimplemented.h"
+#include "chrome/browser/bookmarks/bookmark_model_factory.h"
 #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/bookmarks/bookmark_bar_controller.h"
+#include "chrome/browser/ui/bookmarks/bookmarks_service_feature.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/interaction/browser_elements.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/side_panel/side_panel_entry_id.h"
@@ -196,6 +199,21 @@ void WebUIBrowserUI::CreatePageHandler(
       Profile::FromWebUI(web_ui()), web_contents,
       base::BindRepeating(&WebUIBrowserUI::GetOrCreateContextualSessionHandle,
                           base::Unretained(this)));
+}
+
+void WebUIBrowserUI::BindInterface(
+    mojo::PendingReceiver<bookmarks_api::mojom::BookmarksService> receiver) {
+  WebUIBrowserWindow* window =
+      WebUIBrowserWindow::FromWebShellWebContents(web_ui()->GetWebContents());
+  if (window) {
+    BrowserWindowInterface* browser_window = window->browser();
+    if (browser_window) {
+      auto* feature = browser_window->GetFeatures().bookmarks_service_feature();
+      if (feature) {
+        feature->Accept(std::move(receiver));
+      }
+    }
+  }
 }
 
 void WebUIBrowserUI::BindInterface(

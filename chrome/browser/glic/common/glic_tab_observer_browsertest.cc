@@ -203,7 +203,13 @@ class GlicTabObserverBrowserTest : public PlatformBrowserTest {
   base::test::ScopedFeatureList feature_list_;
 };
 
-IN_PROC_BROWSER_TEST_F(GlicTabObserverBrowserTest, ObservesTabCreation) {
+// TODO(crbug.com/516031786): Flaky on Android.
+#if BUILDFLAG(IS_ANDROID)
+#define MAYBE_ObservesTabCreation DISABLED_ObservesTabCreation
+#else
+#define MAYBE_ObservesTabCreation ObservesTabCreation
+#endif
+IN_PROC_BROWSER_TEST_F(GlicTabObserverBrowserTest, MAYBE_ObservesTabCreation) {
 #if BUILDFLAG(IS_ANDROID)
   // TODO(b/477918431): Flaky on non-desktop Android.
   if (!base::android::device_info::is_desktop()) {
@@ -284,7 +290,13 @@ IN_PROC_BROWSER_TEST_F(GlicTabObserverBrowserTest,
 }
 #endif
 
-IN_PROC_BROWSER_TEST_F(GlicTabObserverBrowserTest, ObservesTabMutation) {
+// TODO(crbug.com/516026887): Flaky on Android.
+#if BUILDFLAG(IS_ANDROID)
+#define MAYBE_ObservesTabMutation DISABLED_ObservesTabMutation
+#else
+#define MAYBE_ObservesTabMutation ObservesTabMutation
+#endif
+IN_PROC_BROWSER_TEST_F(GlicTabObserverBrowserTest, MAYBE_ObservesTabMutation) {
   GlicTabEventCollector collector(GetProfile());
 
   // Create a tab so we can close it.
@@ -313,7 +325,13 @@ IN_PROC_BROWSER_TEST_F(GlicTabObserverBrowserTest, ObservesTabMutation) {
   EXPECT_TRUE(found_mutation);
 }
 
-IN_PROC_BROWSER_TEST_F(GlicTabObserverBrowserTest, ObservesTabMove) {
+// TODO(crbug.com/516069299): Flaky on Android.
+#if BUILDFLAG(IS_ANDROID)
+#define MAYBE_ObservesTabMove DISABLED_ObservesTabMove
+#else
+#define MAYBE_ObservesTabMove ObservesTabMove
+#endif
+IN_PROC_BROWSER_TEST_F(GlicTabObserverBrowserTest, MAYBE_ObservesTabMove) {
   GlicTabEventCollector collector(GetProfile());
 
   // Create two tabs so we can move one.
@@ -400,7 +418,14 @@ IN_PROC_BROWSER_TEST_F(GlicTabObserverBrowserTest,
 }
 #endif
 
-IN_PROC_BROWSER_TEST_F(GlicTabObserverBrowserTest, ObservesTabNavigation) {
+// TODO(crbug.com/516144911): Flaky on Android.
+#if BUILDFLAG(IS_ANDROID)
+#define MAYBE_ObservesTabNavigation DISABLED_ObservesTabNavigation
+#else
+#define MAYBE_ObservesTabNavigation ObservesTabNavigation
+#endif
+IN_PROC_BROWSER_TEST_F(GlicTabObserverBrowserTest,
+                       MAYBE_ObservesTabNavigation) {
   GlicTabEventCollector collector(GetProfile());
 
   // Create and activate a tab to ensure we have a valid active tab to navigate.
@@ -415,7 +440,14 @@ IN_PROC_BROWSER_TEST_F(GlicTabObserverBrowserTest, ObservesTabNavigation) {
   collector.WaitForMutation();
 }
 
-IN_PROC_BROWSER_TEST_F(GlicTabObserverBrowserTest, ObservesTabActivation) {
+// TODO(crbug.com/516060936): Flaky on Android.
+#if BUILDFLAG(IS_ANDROID)
+#define MAYBE_ObservesTabActivation DISABLED_ObservesTabActivation
+#else
+#define MAYBE_ObservesTabActivation ObservesTabActivation
+#endif
+IN_PROC_BROWSER_TEST_F(GlicTabObserverBrowserTest,
+                       MAYBE_ObservesTabActivation) {
   GlicTabEventCollector collector(GetProfile());
   tabs::TabInterface* initial_tab = GetTabListInterface()->GetActiveTab();
 
@@ -435,7 +467,13 @@ IN_PROC_BROWSER_TEST_F(GlicTabObserverBrowserTest, ObservesTabActivation) {
   EXPECT_EQ(activation->old_active_tab.get(), second_tab);
 }
 
-IN_PROC_BROWSER_TEST_F(GlicTabObserverBrowserTest, LinkClickTracking) {
+// TODO(crbug.com/516028815): Flaky on Android.
+#if BUILDFLAG(IS_ANDROID)
+#define MAYBE_LinkClickTracking DISABLED_LinkClickTracking
+#else
+#define MAYBE_LinkClickTracking LinkClickTracking
+#endif
+IN_PROC_BROWSER_TEST_F(GlicTabObserverBrowserTest, MAYBE_LinkClickTracking) {
   GlicTabEventCollector collector(GetProfile());
 
   // 1. Get initial tab
@@ -456,7 +494,14 @@ IN_PROC_BROWSER_TEST_F(GlicTabObserverBrowserTest, LinkClickTracking) {
   EXPECT_EQ(creation->creation_type, TabCreationType::kFromLink);
 }
 
-IN_PROC_BROWSER_TEST_F(GlicTabObserverBrowserTest, LinkClickNewWindowTracking) {
+// TODO(crbug.com/516024818): Flaky on Android.
+#if BUILDFLAG(IS_ANDROID)
+#define MAYBE_LinkClickNewWindowTracking DISABLED_LinkClickNewWindowTracking
+#else
+#define MAYBE_LinkClickNewWindowTracking LinkClickNewWindowTracking
+#endif
+IN_PROC_BROWSER_TEST_F(GlicTabObserverBrowserTest,
+                       MAYBE_LinkClickNewWindowTracking) {
   GlicTabEventCollector collector(GetProfile());
 
   // 1. Get initial tab

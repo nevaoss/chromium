@@ -693,6 +693,9 @@ bool IsFullscreenNextIAEnabled() {
 - (void)openNewTabFromOriginPoint:(CGPoint)originPoint
                      focusOmnibox:(BOOL)focusOmnibox
                     inheritOpener:(BOOL)inheritOpener {
+  if (self.inNewTabAnimation) {
+    return;
+  }
   const BOOL offTheRecord = _isOffTheRecord;
   ProceduralBlock oldForegroundTabWasAddedCompletionBlock =
       self.foregroundTabWasAddedCompletionBlock;
@@ -1156,6 +1159,17 @@ bool IsFullscreenNextIAEnabled() {
 
   crash_keys::SetCurrentOrientation(GetInterfaceOrientation(),
                                     [[UIDevice currentDevice] orientation]);
+
+  if (!IsFullscreenNextIAEnabled()) {
+    __weak BrowserViewController* weakSelf = self;
+    [coordinator
+        animateAlongsideTransition:^(
+            id<UIViewControllerTransitionCoordinatorContext>) {
+          [weakSelf animateTransition];
+          [weakSelf invalidateFullscreenInsets];
+        }
+                        completion:nil];
+  }
 }
 
 - (void)invalidateFullscreenInsets {
@@ -2955,10 +2969,18 @@ bool IsFullscreenNextIAEnabled() {
 }
 
 - (CGFloat)headerHeightForSideSwipe {
+  UIView* primaryToolbarView =
+      self.toolbarCoordinator.primaryToolbarViewController.view;
+  if (IsChromeNextIaEnabled() && primaryToolbarView.alpha == 0.0) {
+    // When Chrome Next is enabled, the toolbar on the NTP is hidden by
+    // setting its alpha to 0.0 instead of setting hidden to YES.
+    return 0;
+  }
+
   // If the toolbar is hidden, only inset the side swipe navigation view by
   // `safeAreaInsets.top`.  Otherwise insetting by `self.headerHeight` would
   // show a grey strip where the toolbar would normally be.
-  if (self.toolbarCoordinator.primaryToolbarViewController.view.hidden) {
+  if (primaryToolbarView.hidden) {
     return self.rootSafeAreaInsets.top;
   }
   return self.headerHeight;
@@ -3083,6 +3105,7 @@ bool IsFullscreenNextIAEnabled() {
     return;
   }
 
+  [self.sceneHandler hideAssistant];
   [self.geminiHandler
       hideFloatyIfInvokedAnimated:NO
                        fromSource:gemini::FloatyUpdateSource::Overlay];
@@ -3097,6 +3120,7 @@ bool IsFullscreenNextIAEnabled() {
 - (void)lensOverlayWillDisappear {
   [_sideSwipeCoordinator setEnabled:YES];
   _lensOverlayVisible = NO;
+  [self.sceneHandler revealAssistant];
   self.contentArea.accessibilityElementsHidden = self.contentAreaObstructed;
 }
 

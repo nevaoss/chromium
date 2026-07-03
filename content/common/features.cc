@@ -195,6 +195,11 @@ BASE_FEATURE(kDocumentIsolationPolicyWithoutSiteIsolation,
 // Enable document policy negotiation mechanism.
 BASE_FEATURE(kDocumentPolicyNegotiation, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// When enabled `EditContext::updateSelection` calls from async selectionchange
+// handlers sync the selection to the browser.
+// See https://crbug.com/516839844
+BASE_FEATURE(kEditContextSelectionSync, base::FEATURE_ENABLED_BY_DEFAULT);
+
 // When enabled, the renderer is killed if a renderer process provides
 // an Origin header on a navigation request.
 BASE_FEATURE(kKillOnUnexpectedOriginHeader, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -639,6 +644,13 @@ BASE_FEATURE(kPreferWarmRendererProcess, base::FEATURE_DISABLED_BY_DEFAULT);
 // only prerendered frames for main-frame navigations.
 BASE_FEATURE(kReusePrerenderingProcessForMainFrames,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Allows a reload to replace the initial navigation entry if it is
+// the first navigation to commit. This fixes the case where a browser-initiated
+// reload occurs before the first navigation has committed, resulting in
+// discarding the pending entry and remaining on the about:blank page. See
+// https://crbug.com/324117294.
+BASE_FEATURE(kReplaceInitialEntryForReload, base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_ANDROID)
 // If enabled, then orientation lock won't claim to work on anything but phone

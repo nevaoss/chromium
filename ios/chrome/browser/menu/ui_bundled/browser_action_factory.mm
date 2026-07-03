@@ -8,7 +8,6 @@
 #import "components/open_from_clipboard/clipboard_recent_content.h"
 #import "components/prefs/pref_service.h"
 #import "components/search_engines/template_url_service.h"
-#import "ios/chrome/browser/cobrowse/model/cobrowse_context.h"
 #import "ios/chrome/browser/intelligence/bwg/utils/gemini_constants.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/menu/ui_bundled/action_factory+protected.h"
@@ -34,6 +33,7 @@
 #import "ios/chrome/browser/url_loading/model/url_loading_browser_agent.h"
 #import "ios/chrome/browser/url_loading/model/url_loading_params.h"
 #import "ios/chrome/grit/ios_strings.h"
+#import "ios/web/public/ui/context_menu_params.h"
 #import "ui/base/l10n/l10n_util_mac.h"
 #import "url/gurl.h"
 
@@ -278,13 +278,17 @@
 - (UIAction*)actionToSaveToPhotosWithImageURL:(const GURL&)imageURL
                                      referrer:(const web::Referrer&)referrer
                                      webState:(web::WebState*)webState
+                                       params:
+                                           (const web::ContextMenuParams&)params
                                         block:(ProceduralBlock)block {
   __weak id<SaveToPhotosCommands> handler = HandlerForProtocol(
       self.browser->GetCommandDispatcher(), SaveToPhotosCommands);
-  SaveImageToPhotosCommand* command =
-      [[SaveImageToPhotosCommand alloc] initWithImageURL:imageURL
-                                                referrer:referrer
-                                                webState:webState];
+  SaveImageToPhotosCommand* command = [[SaveImageToPhotosCommand alloc]
+      initWithImageURL:imageURL
+              referrer:referrer
+              webState:webState
+               frameID:params.frame_id
+           frameOrigin:params.frame_security_origin];
 
 #if BUILDFLAG(IOS_USE_BRANDED_ASSETS)
   UIImage* image =
@@ -505,19 +509,6 @@
                           type:MenuActionType::AIPrototyping
                          block:^{
                            [handler openAIMenu];
-                         }];
-}
-
-- (UIAction*)actionToOpenAIMode {
-  CHECK(IsAIMCobrowseDebugEntrypointEnabled());
-  id<SceneCommands> handler =
-      HandlerForProtocol(self.browser->GetCommandDispatcher(), SceneCommands);
-  return [self actionWithTitle:@"Open AIM prototype"
-                         image:DefaultSymbolWithPointSize(
-                                   kSparklesSymbol, kSymbolActionPointSize)
-                          type:MenuActionType::AIPrototyping
-                         block:^{
-                           [handler showAssistant];
                          }];
 }
 

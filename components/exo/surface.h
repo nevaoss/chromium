@@ -774,7 +774,7 @@ class Surface final : public ui::PropertyHandler {
   raw_ptr<SurfaceDelegate> delegate_ = nullptr;
 
   // Surface observer list. Surface does not own the observers.
-  base::ObserverList<SurfaceObserver, true>::Unchecked observers_;
+  base::ObserverList<SurfaceObserver, true> observers_;
 
   std::unique_ptr<ash::OutputProtectionDelegate> output_protection_;
 

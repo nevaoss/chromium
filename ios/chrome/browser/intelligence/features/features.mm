@@ -23,6 +23,7 @@
 #import "components/variations/service/variations_service_utils.h"
 #import "ios/chrome/browser/intelligence/actor/tools/utils/actor_tool_utils.h"
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
+#import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/browser/tabs/model/inactive_tabs/features.h"
 
 BASE_FEATURE(kEnhancedCalendar, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -468,6 +469,15 @@ bool IsGeminiLiveEnabled() {
   return base::FeatureList::IsEnabled(kGeminiLive);
 }
 
+BASE_FEATURE(kGeminiLiveDormantReasons, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsGeminiLiveDormantReasonsEnabled() {
+  if (!IsGeminiLiveEnabled()) {
+    return false;
+  }
+  return base::FeatureList::IsEnabled(kGeminiLiveDormantReasons);
+}
+
 BASE_FEATURE(kGeminiCopresence, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsGeminiCopresenceEnabled() {
@@ -731,7 +741,7 @@ bool IsGeminiActorEnabled() {
   return base::FeatureList::IsEnabled(kGeminiActor);
 }
 
-BASE_FEATURE(kGeminiRichAPCExtraction, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGeminiRichAPCExtraction, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsGeminiRichAPCExtractionEnabled() {
   if (!IsPageActionMenuEnabled() ||
@@ -785,7 +795,7 @@ bool IsPersistTabContextRichExtractionEnabled() {
   return base::FeatureList::IsEnabled(kPersistTabContextRichExtraction);
 }
 
-BASE_FEATURE(kPageContextIPCOptimization, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kPageContextIPCOptimization, base::FEATURE_ENABLED_BY_DEFAULT);
 
 const char kPageContextIPCOptimizationActionableParam[] = "enable_actionable";
 
@@ -847,6 +857,15 @@ bool IsGeneralizedGeminiEntryFlowEnabled() {
   return base::FeatureList::IsEnabled(kGeneralizedGeminiEntryFlow);
 }
 
+BASE_FEATURE(kGeminiLuminous, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsGeminiLuminousEnabled() {
+  if (!IsPageActionMenuEnabled()) {
+    return false;
+  }
+  return base::FeatureList::IsEnabled(kGeminiLuminous);
+}
+
 #pragma mark - Debugging Features
 
 const char kBWGPromoConsentParams[] = "BWGPromoConsentVariations";
@@ -900,8 +919,9 @@ bool IsActorServiceLoggingEnabled() {
   return base::FeatureList::IsEnabled(kActorServiceLogging);
 }
 
-BASE_FEATURE(kIOSBottomSheetMigration, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIOSGeminiBottomSheetMigration, base::FEATURE_DISABLED_BY_DEFAULT);
 
-bool IsIOSBottomSheetMigrationEnabled() {
-  return base::FeatureList::IsEnabled(kIOSBottomSheetMigration);
+bool IsIOSGeminiBottomSheetMigrationEnabled() {
+  return IsGeminiCopresenceEnabled() && IsAssistantContainerEnabled() &&
+         base::FeatureList::IsEnabled(kIOSGeminiBottomSheetMigration);
 }

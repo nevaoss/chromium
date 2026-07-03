@@ -25,6 +25,7 @@
 #include "components/favicon/core/test/mock_favicon_service.h"
 #include "components/sync/base/client_tag_hash.h"
 #include "components/sync/base/features.h"
+#include "components/sync/base/server_defined_unique_tags.h"
 #include "components/sync/base/unique_position.h"
 #include "components/sync/engine/data_type_activation_response.h"
 #include "components/sync/model/data_type_activation_request.h"
@@ -61,9 +62,6 @@ using testing::UnorderedElementsAre;
 
 using syncer::ModelError;
 
-const char kBookmarkBarTag[] = "bookmark_bar";
-const char kOtherBookmarksTag[] = "other_bookmarks";
-const char kMobileBookmarksTag[] = "synced_bookmarks";
 const char kBookmarkBarId[] = "bookmark_bar_id";
 const char kOtherBookmarksId[] = "other_bookmarks_id";
 const char kMobileBookmarksId[] = "mobile_bookmarks_id";
@@ -208,15 +206,15 @@ syncer::UpdateResponseDataList CreateUpdateResponseDataListForPermanentNodes() {
   // Add update for the permanent folders.
   updates.push_back(
       CreateUpdateResponseData({kBookmarkBarId, std::string(), std::string(),
-                                kBookmarksRootId, kBookmarkBarTag},
+                                kBookmarksRootId, syncer::kBookmarkBarTag},
                                kRandomPosition, /*response_version=*/0));
   updates.push_back(
       CreateUpdateResponseData({kOtherBookmarksId, std::string(), std::string(),
-                                kBookmarksRootId, kOtherBookmarksTag},
+                                kBookmarksRootId, syncer::kOtherBookmarksTag},
                                kRandomPosition, /*response_version=*/0));
   updates.push_back(CreateUpdateResponseData(
       {kMobileBookmarksId, std::string(), std::string(), kBookmarksRootId,
-       kMobileBookmarksTag},
+       syncer::kSyncedBookmarksTag},
       kRandomPosition, /*response_version=*/0));
 
   return updates;
@@ -780,6 +778,40 @@ TEST_F(BookmarkDataTypeProcessorTest, ShouldApplyGcDirectiveWithLocalDeletion) {
   // the server (not present in updates during GC directive).
   EXPECT_EQ(processor()->GetTrackerForTest()->GetEntityForSyncId(server_id),
             nullptr);
+}
+
+TEST_F(BookmarkDataTypeProcessorTest,
+       ShouldDeleteSyncedBookmarksUponClearMetadata) {
+  const std::string kTitle = "title";
+  const GURL kUrl("https://www.url.com");
+
+  const bookmarks::BookmarkNode* bookmark_bar =
+      bookmark_model()->bookmark_bar_node();
+
+  // Create a synced node.
+  const bookmarks::BookmarkNode* node = bookmark_model()->AddURL(
+      bookmark_bar, /*index=*/0, base::UTF8ToUTF16(kTitle), kUrl);
+
+  SimulateModelReadyToSyncWithInitialSyncDone();
+  SimulateOnSyncStarting();
+  SimulateConnectSync();
+
+  const SyncedBookmarkTrackerEntity* entity =
+      processor()->GetTrackerForTest()->GetEntityForBookmarkNode(node);
+  ASSERT_THAT(entity, NotNull());
+  ASSERT_FALSE(entity->IsUnsynced());
+
+  // Process an update with a GC directive (clear_metadata).
+  // The update list is empty.
+  syncer::UpdateResponseDataList updates;
+  sync_pb::GarbageCollectionDirective garbage_collection_directive;
+  garbage_collection_directive.set_clear_metadata(true);
+
+  processor()->OnUpdateReceived(CreateDataTypeState(), std::move(updates),
+                                garbage_collection_directive);
+
+  EXPECT_TRUE(
+      bookmark_model()->underlying_model()->GetNodesByURL(kUrl).empty());
 }
 
 TEST_F(

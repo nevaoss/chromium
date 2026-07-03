@@ -298,8 +298,10 @@ public class PaymentRequestService
          * @return The validation error result.
          */
         default @SecurePaymentConfirmationRequestValidationError int
-                validateSecurePaymentConfirmationRequest(SecurePaymentConfirmationRequest request) {
-            return PaymentValidator.validateSecurePaymentConfirmationRequest(request);
+                validateSecurePaymentConfirmationRequest(
+                        SecurePaymentConfirmationRequest request, Origin initiatorOrigin) {
+            return PaymentValidator.validateSecurePaymentConfirmationRequest(
+                    request, initiatorOrigin);
         }
 
         /**
@@ -541,14 +543,26 @@ public class PaymentRequestService
                     PaymentErrorReason.INVALID_DATA_FROM_RENDERER);
             return false;
         }
-        if (methodData.containsKey(MethodStrings.SECURE_PAYMENT_CONFIRMATION)
-                && validateSecurePaymentConfirmationRequest(methodData, options)
-                        != SecurePaymentConfirmationRequestValidationError.OK) {
-            mJourneyLogger.setAborted(AbortReason.INVALID_DATA_FROM_RENDERER);
-            disconnectFromClientWithDebugMessage(
-                    ErrorStrings.INVALID_PAYMENT_METHODS_OR_DATA,
-                    PaymentErrorReason.INVALID_DATA_FROM_RENDERER);
-            return false;
+        if (methodData.containsKey(MethodStrings.SECURE_PAYMENT_CONFIRMATION)) {
+            @SecurePaymentConfirmationRequestValidationError
+            int validationResult = validateSecurePaymentConfirmationRequest(methodData, options);
+            if (validationResult != SecurePaymentConfirmationRequestValidationError.OK) {
+                mJourneyLogger.setAborted(AbortReason.INVALID_DATA_FROM_RENDERER);
+
+                if (validationResult
+                        == SecurePaymentConfirmationRequestValidationError
+                                .WEB_AUTHN_EXTENSIONS_NOT_SUPPORTED) {
+                    disconnectFromClientWithDebugMessage(
+                            ErrorStrings.INVALID_PAYMENT_METHODS_OR_DATA,
+                            PaymentErrorReason.NOT_SUPPORTED);
+                } else {
+                    disconnectFromClientWithDebugMessage(
+                            ErrorStrings.INVALID_PAYMENT_METHODS_OR_DATA,
+                            PaymentErrorReason.INVALID_DATA_FROM_RENDERER);
+                }
+
+                return false;
+            }
         }
         methodData = Collections.unmodifiableMap(methodData);
 
@@ -627,7 +641,7 @@ public class PaymentRequestService
 
         // Delegate to the native implementation for final validation.
         return mDelegate.validateSecurePaymentConfirmationRequest(
-                spcMethodData.securePaymentConfirmation);
+                spcMethodData.securePaymentConfirmation, mPaymentRequestSecurityOrigin);
     }
 
     private void startPaymentAppService() {
@@ -674,8 +688,20 @@ public class PaymentRequestService
         }
 
         PaymentApp invokedPaymentApp = showingPaymentRequest.mInvokedPaymentApp;
-        assert invokedPaymentApp != null;
-        assert invokedPaymentApp.getPaymentAppType() == PaymentAppType.SERVICE_WORKER_APP;
+        if (invokedPaymentApp == null
+                || invokedPaymentApp.getPaymentAppType() != PaymentAppType.SERVICE_WORKER_APP) {
+            return null;
+        }
+
+        // Ensure that this request is for the same origin as the invoked payment app,
+        // to prevent a compromised renderer for one payment app from hijacking the UI of
+        // a different payment app.
+        Origin appOrigin = Origin.create(new GURL(invokedPaymentApp.getIdentifier()));
+        Origin windowOrigin = Origin.create(url);
+        if (!appOrigin.equals(windowOrigin)) {
+            return null;
+        }
+
         assumeNonNull(showingPaymentRequest.mBrowserPaymentRequest);
         return showingPaymentRequest.mBrowserPaymentRequest.openPaymentHandlerWindow(
                 url, invokedPaymentApp.getUkmSourceId());

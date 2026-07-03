@@ -15,5 +15,12 @@ include_rules = [
   "+services/network/public/mojom",
   "+third_party/blink/public/common",
   "+ui/base",
+  "+ui/events/keycodes/dom",
   "+ui/gfx",
 ]
+
+specific_include_rules = {
+  ".*unittest\\.cc": [
+    "+content/public/test",
+  ],
+}

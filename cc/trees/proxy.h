@@ -97,7 +97,6 @@ class CC_EXPORT Proxy {
 
   virtual bool CommitRequested() const = 0;
 
-  virtual void SetShouldThrottleFrameRate(bool flag) = 0;
   virtual void SetRequestHighFramerate(bool flag) {}
 
   // Must be called before using the proxy.

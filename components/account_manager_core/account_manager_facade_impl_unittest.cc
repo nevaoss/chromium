@@ -179,10 +179,6 @@ class FakeAccountManager : public crosapi::mojom::AccountManager {
         account_manager::ToMojoAccountUpsertionResult(*upsertion_result_));
   }
 
-  void ShowManageAccountsSettings() override {
-    show_manage_accounts_settings_calls_++;
-  }
-
   void SetMockAccessTokenFetcher(
       std::unique_ptr<MockAccessTokenFetcher> mock_access_token_fetcher) {
     access_token_fetcher_ = std::move(mock_access_token_fetcher);
@@ -257,16 +253,11 @@ class FakeAccountManager : public crosapi::mojom::AccountManager {
     return show_reauth_account_dialog_calls_;
   }
 
-  int show_manage_accounts_settings_calls() const {
-    return show_manage_accounts_settings_calls_;
-  }
-
  private:
   int show_add_account_dialog_calls_ = 0;
   std::optional<account_manager::AccountAdditionOptions>
       show_add_account_dialog_options_;
   int show_reauth_account_dialog_calls_ = 0;
-  int show_manage_accounts_settings_calls_ = 0;
   std::vector<Account> accounts_;
   std::map<AccountKey, GoogleServiceAuthError> persistent_errors_;
   std::unique_ptr<AccountUpsertionResult> upsertion_result_;
@@ -628,15 +619,6 @@ TEST_F(AccountManagerFacadeImplTest, ShowReauthAccountDialogUMA) {
   // Check that UMA stats were sent.
   tester.ExpectUniqueSample(kAccountAdditionSourceHistogramName,
                             /*sample=*/source, /*expected_count=*/1);
-}
-
-TEST_F(AccountManagerFacadeImplTest, ShowManageAccountsSettingsCallsMojo) {
-  std::unique_ptr<AccountManagerFacadeImpl> account_manager_facade =
-      CreateFacade();
-  EXPECT_EQ(0, account_manager().show_manage_accounts_settings_calls());
-  account_manager_facade->ShowManageAccountsSettings();
-  account_manager_facade->FlushMojoForTesting();
-  EXPECT_EQ(1, account_manager().show_manage_accounts_settings_calls());
 }
 
 TEST_F(AccountManagerFacadeImplTest,

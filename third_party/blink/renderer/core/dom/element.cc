@@ -1944,11 +1944,11 @@ bool Element::InterestGained(Element* target, InterestState state) {
     if (existing_invoker == this) {
       // Case 1.
       auto* invoker_data = GetInvokerData();
-      CHECK(!invoker_data->HasInterestGainedTask());
       if (state == InterestState::kExplicitInterest) {
         DCHECK_NE(invoker_data->GetInterestState(), InterestState::kNoInterest);
         ChangeInterestState(target, state);
       }
+      CHECK(!invoker_data->HasInterestGainedTask());
       invoker_data->CancelInterestLostTask();
       return false;
     } else {
@@ -4496,6 +4496,7 @@ void Element::RemovedFrom(ContainerNode& insertion_point) {
       if (ElementAnimations* element_animations =
               data->GetElementAnimations()) {
         element_animations->CssAnimations().Cancel();
+        element_animations->CssImageAnimations().Clear();
       }
     }
 
@@ -4537,7 +4538,7 @@ void Element::RemovedFrom(ContainerNode& insertion_point) {
   // We do this outside of the OverscrollCommandTargets check since we could,
   // for instance, remove the element's id first and then remove it from the
   // DOM.
-  LeaveOverscrollContainer();
+  DetachOverscroll();
 
   // Remove all of the overscroll areas from this tracker.
   if (auto* tracker = GetOverscrollAreaTracker()) {
@@ -4724,7 +4725,7 @@ void Element::DetachLayoutTree(bool performing_reattach) {
 
   if (ElementRareDataVector* data = RareData()) {
     if (!performing_reattach) {
-      LeaveOverscrollContainer();
+      DetachOverscroll();
       data->ClearPseudoElements();
       data->ClearContainerQueryData();
       data->ClearOutOfFlowData();
@@ -4739,6 +4740,7 @@ void Element::DetachLayoutTree(bool performing_reattach) {
       if (!performing_reattach) {
         DocumentLifecycle::DetachScope will_detach(GetDocument().Lifecycle());
         element_animations->CssAnimations().Cancel();
+        element_animations->CssImageAnimations().Clear();
         element_animations->SetAnimationStyleChange(false);
       }
       element_animations->RestartAnimationOnCompositor();
@@ -5568,7 +5570,7 @@ StyleRecalcChange Element::RecalcOwnStyle(
   if (GetOverscrollContainer() &&
       (!new_style || !new_style->IsInternalOverscrollPositionAuto() ||
        GetOverscrollContainer() != style_recalc_context.overscroll_container)) {
-    LeaveOverscrollContainer();
+    DetachOverscroll();
     // We may need to remove this element's ::-internal-overscroll-area-parent.
     child_change =
         child_change.EnsureAtLeast(StyleRecalcChange::kUpdatePseudoElements);
@@ -5598,6 +5600,7 @@ StyleRecalcChange Element::RecalcOwnStyle(
         // cancel itself in this case.
         if (base_is_display_none) {
           element_animations->CssAnimations().Cancel();
+          element_animations->CssImageAnimations().Clear();
         }
       }
       data = data->SetContainerQueryEvaluator(nullptr);
@@ -8547,11 +8550,11 @@ void Element::UpdateSelectionOnFocus(
     frame->Selection().SetSelection(
         RuntimeEnabledFeatures::RemoveVisibleSelectionInDOMSelectionEnabled()
             ? CreateVisibleSelection(
-                  SelectionInDOMTree::Builder()
+                  SelectionInDomTree::Builder()
                       .Collapse(FirstPositionInOrBeforeNode(*this))
                       .Build())
                   .AsSelection()
-            : SelectionInDOMTree::Builder()
+            : SelectionInDomTree::Builder()
                   .Collapse(FirstPositionInOrBeforeNode(*this))
                   .Build(),
         SetSelectionOptions::Builder()
@@ -10947,14 +10950,6 @@ Element* Element::GetStyledPseudoElement(
     return nullptr;
   }
 
-  if (!RuntimeEnabledFeatures::ScopedViewTransitionsEnabled()) {
-    // The transition pseudos can currently only exist on the document element
-    // unless scoped view transitions are enabled.
-    if (!IsDocumentElement()) {
-      return nullptr;
-    }
-  }
-
   // This traverses the pseudo-element hierarchy generated in
   // UpdateTransitionPseudoElements to query nested ::view-transition-group
   // ::view-transition-image-pair and
@@ -12679,6 +12674,7 @@ void Element::ChangeInterestState(Element* target, InterestState new_state) {
       DCHECK_EQ(invoker_data->ActiveInterestTarget(), target);
     }
     invoker_data->SetInterestState(new_state);
+    invoker_data->CancelInterestGainedTask();
   }
   PseudoStateChanged(CSSSelector::kPseudoInterestSource);
   if (target) {
@@ -14019,7 +14015,7 @@ void Element::ClearOverscrollContainer() {
   }
 }
 
-void Element::LeaveOverscrollContainer() {
+void Element::DetachOverscroll() {
   if (auto* container = GetOverscrollContainer()) {
     auto* tracker = container->GetOverscrollAreaTracker();
     CHECK(tracker);

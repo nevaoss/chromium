@@ -285,7 +285,6 @@ class DevToolsSession : public protocol::FrontendChannel,
   // any of the waiting for response messages have been handled.
   // |session_state_cookie_| is nullptr before first attach.
   blink::mojom::DevToolsSessionStatePtr session_state_cookie_;
-  std::string script_to_evaluate_on_load_;
 
   base::flat_map<std::string, raw_ptr<DevToolsSession, CtnExperimental>>
       child_sessions_;

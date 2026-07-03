@@ -98,10 +98,18 @@ UIImage* CustomAppBarSymbol(NSString* symbol_name) {
                                        AppBarSymbolConfiguration());
 }
 
-// Returns the font size for the assistant button.
-UIFont* AssistantButtonFontSize(UITraitCollection* traitCollection) {
-  return PreferredFontForTextStyle(UIFontTextStyleCaption2, UIFontWeightMedium,
-                                   std::nullopt);
+// Returns the font size for the buttons.
+UIFont* ButtonFontSize(UITraitCollection* traitCollection) {
+  UIContentSizeCategory category = ContentSizeCategoryWithMaxCategory(
+      traitCollection.preferredContentSizeCategory,
+      UIContentSizeCategoryExtraExtraLarge);
+  UITraitCollection* cappedTraits = [UITraitCollection
+      traitCollectionWithPreferredContentSizeCategory:category];
+  UIFontDescriptor* descriptor = [UIFontDescriptor
+      preferredFontDescriptorWithTextStyle:UIFontTextStyleCaption2
+             compatibleWithTraitCollection:cappedTraits];
+  return [UIFont systemFontOfSize:descriptor.pointSize
+                           weight:UIFontWeightMedium];
 }
 
 // Returns the alpha for the button based on its enabled and highlighted state.
@@ -182,15 +190,13 @@ CGFloat ButtonHighlightAlpha(UIButton* button) {
   UIStackView* _stackView;
   // Constraints for vertical positioning of the stack view.
   NSLayoutConstraint* _stackViewBottomConstraint;
+  NSLayoutConstraint* _stackViewLeadingConstraint;
+  NSLayoutConstraint* _stackViewTrailingConstraint;
   // Spacers to for button layout in landscape.
   UIView* _leadingSpacer;
   UIView* _trailingSpacer;
   // The button currently being previewed by a context menu.
   __weak UIButton* _previewedButton;
-}
-
-- (void)dealloc {
-  [_layoutState removeObserver:self];
 }
 
 - (void)setLayoutState:(LayoutState*)layoutState {
@@ -261,13 +267,20 @@ CGFloat ButtonHighlightAlpha(UIButton* button) {
     _trailingSpacer.hidden = NO;
     _stackViewBottomConstraint.constant =
         -(kAppBarHeight - kAppBarHeightLandscape);
+    _stackViewLeadingConstraint.constant = 0;
+    _stackViewTrailingConstraint.constant = 0;
   } else {
     _stackView.distribution = UIStackViewDistributionFillEqually;
     [NSLayoutConstraint deactivateConstraints:_buttonWidthConstraints];
     _leadingSpacer.hidden = YES;
     _trailingSpacer.hidden = YES;
     _stackViewBottomConstraint.constant = 0;
+    _stackViewLeadingConstraint.constant = kStackViewHorizontalMargin;
+    _stackViewTrailingConstraint.constant = -kStackViewHorizontalMargin;
   }
+  [self setNeedsUpdateConfiguration:_assistantButton animationDuration:0];
+  [self setNeedsUpdateConfiguration:_openNewTabButton animationDuration:0];
+  [self setNeedsUpdateConfiguration:_tabGridButton animationDuration:0];
   [_stackView setNeedsLayout];
   [_stackView layoutIfNeeded];
 }
@@ -368,6 +381,12 @@ CGFloat ButtonHighlightAlpha(UIButton* button) {
 
   _stackViewBottomConstraint =
       [_stackView.bottomAnchor constraintEqualToAnchor:view.bottomAnchor];
+  _stackViewLeadingConstraint = [_stackView.leadingAnchor
+      constraintEqualToAnchor:view.leadingAnchor
+                     constant:kStackViewHorizontalMargin];
+  _stackViewTrailingConstraint = [_stackView.trailingAnchor
+      constraintEqualToAnchor:view.trailingAnchor
+                     constant:-kStackViewHorizontalMargin];
 
   [NSLayoutConstraint activateConstraints:@[
     [_backgroundView.leadingAnchor constraintEqualToAnchor:view.leadingAnchor],
@@ -376,13 +395,9 @@ CGFloat ButtonHighlightAlpha(UIButton* button) {
     [_backgroundView.bottomAnchor constraintEqualToAnchor:view.bottomAnchor],
     [_backgroundView.topAnchor constraintEqualToAnchor:view.topAnchor
                                               constant:-kAppBarCornerRadius],
-    [_stackView.leadingAnchor
-        constraintEqualToAnchor:view.leadingAnchor
-                       constant:kStackViewHorizontalMargin],
+    _stackViewLeadingConstraint,
     [_stackView.topAnchor constraintEqualToAnchor:view.topAnchor],
-    [_stackView.trailingAnchor
-        constraintEqualToAnchor:view.trailingAnchor
-                       constant:-kStackViewHorizontalMargin],
+    _stackViewTrailingConstraint,
     _stackViewBottomConstraint,
     [view.heightAnchor constraintEqualToConstant:kAppBarHeight],
   ]];
@@ -543,7 +558,7 @@ CGFloat ButtonHighlightAlpha(UIButton* button) {
     return fullTitle;
   }
   CGSize size = [fullTitle sizeWithAttributes:@{
-    NSFontAttributeName : AssistantButtonFontSize(self.traitCollection)
+    NSFontAttributeName : ButtonFontSize(self.traitCollection)
   }];
 
   CGFloat availableWidthForButton;
@@ -564,6 +579,9 @@ CGFloat ButtonHighlightAlpha(UIButton* button) {
 
 // Returns the title for the assistant button based on current state and size.
 - (NSString*)assistantButtonTitleForCurrentState {
+  if (_isRotated) {
+    return nil;
+  }
   switch (_assistantButtonState) {
     case AppBarAssistantButtonState::kAsk:
       return [self
@@ -572,6 +590,12 @@ CGFloat ButtonHighlightAlpha(UIButton* button) {
                     truncatedTitle:l10n_util::GetNSString(IDS_IOS_APP_BAR_ASK)];
     case AppBarAssistantButtonState::kAIM:
       return l10n_util::GetNSString(IDS_OMNIBOX_AI_MODE_SCOPE_PLACEHOLDER_TEXT);
+    case AppBarAssistantButtonState::kLens:
+      return [self
+          buttonTitleWithFullTitle:l10n_util::GetNSString(
+                                       IDS_IOS_LENS_PRODUCT_NAME)
+                    truncatedTitle:l10n_util::GetNSString(
+                                       IDS_IOS_LENS_PRODUCT_NAME_TRUNCATED)];
     case AppBarAssistantButtonState::kAccount:
       return _signedIn ? l10n_util::GetNSString(IDS_IOS_APP_BAR_ACCOUNT)
                        : l10n_util::GetNSString(IDS_IOS_APP_BAR_SIGN_IN);
@@ -588,11 +612,15 @@ CGFloat ButtonHighlightAlpha(UIButton* button) {
     UIButtonConfiguration* configuration = _assistantButton.configuration;
     configuration.title = title;
     _assistantButton.configuration = configuration;
+    [_assistantButton sizeToFit];
   }
 }
 
 // Returns the title for the Tab Grid button based on size.
 - (NSString*)tabGridButtonTitleForCurrentState {
+  if (_isRotated) {
+    return nil;
+  }
   return [self
       buttonTitleWithFullTitle:l10n_util::GetNSString(IDS_IOS_APP_BAR_ALL_TABS)
                 truncatedTitle:l10n_util::GetNSString(IDS_IOS_APP_BAR_TABS)];
@@ -608,11 +636,15 @@ CGFloat ButtonHighlightAlpha(UIButton* button) {
     UIButtonConfiguration* configuration = _tabGridButton.configuration;
     configuration.title = title;
     _tabGridButton.configuration = configuration;
+    [_tabGridButton sizeToFit];
   }
 }
 
 // Returns the title for the Open New Tab button based on size.
 - (NSString*)openNewTabButtonTitleForCurrentState {
+  if (_isRotated) {
+    return nil;
+  }
   return [self
       buttonTitleWithFullTitle:l10n_util::GetNSString(
                                    IDS_IOS_TOOLS_MENU_NEW_TAB)
@@ -629,6 +661,7 @@ CGFloat ButtonHighlightAlpha(UIButton* button) {
     UIButtonConfiguration* configuration = _openNewTabButton.configuration;
     configuration.title = title;
     _openNewTabButton.configuration = configuration;
+    [_openNewTabButton sizeToFit];
   }
 }
 
@@ -650,6 +683,9 @@ CGFloat ButtonHighlightAlpha(UIButton* button) {
       break;
     case AppBarAssistantButtonState::kAIM:
       image = CustomAppBarSymbol(kMagnifyingglassSparkSymbol);
+      break;
+    case AppBarAssistantButtonState::kLens:
+      image = CustomAppBarSymbol(kCameraLensSymbol);
       break;
     case AppBarAssistantButtonState::kAccount:
       image =
@@ -757,12 +793,6 @@ CGFloat ButtonHighlightAlpha(UIButton* button) {
   // Text fades on highlight/disabled AND scroll.
   CGFloat targetAlpha = (button == _previewedButton) ? 1.0 : _buttonsTitleAlpha;
   CGFloat textAlpha = highlightAlpha * targetAlpha;
-
-  if (self.layoutState.appBarPosition == AppBarPosition::kLeft ||
-      self.layoutState.appBarPosition == AppBarPosition::kRight) {
-    // Even if the button is highlighted, the text should be hidden.
-    textAlpha = 0;
-  }
 
   button.titleLabel.alpha = textAlpha;
 }
@@ -948,6 +978,7 @@ CGFloat ButtonHighlightAlpha(UIButton* button) {
       [UIButtonConfiguration plainButtonConfiguration];
   UIButton* button = [UIButton buttonWithConfiguration:configuration
                                          primaryAction:nil];
+  button.accessibilityTraits = UIAccessibilityTraitButton;
   configuration = button.configuration;
   configuration.imagePlacement = NSDirectionalRectEdgeTop;
   configuration.imagePadding = kButtonImagePadding;
@@ -959,7 +990,9 @@ CGFloat ButtonHighlightAlpha(UIButton* button) {
           NSDictionary<NSAttributedStringKey, id>* textAttributes) {
     NSMutableDictionary* mutableAttributes = [textAttributes mutableCopy];
     mutableAttributes[NSFontAttributeName] =
-        AssistantButtonFontSize(self.traitCollection);
+        ButtonFontSize(self.traitCollection);
+    mutableAttributes[NSForegroundColorAttributeName] =
+        ButtonsForegroundColor();
     return mutableAttributes;
   };
 
@@ -1050,7 +1083,12 @@ CGFloat ButtonHighlightAlpha(UIButton* button) {
                                          replaceOffUpTransition]];
   _tabGridButton.accessibilityLabel = l10n_util::GetNSString(
       shouldShowTabGroupSymbol ? IDS_IOS_TOOLBAR_SHOW_TAB_GROUP
-                               : IDS_IOS_TOOLBAR_SHOW_TABS);
+                               : IDS_IOS_APP_BAR_ALL_TABS);
+  if (_isTabGridVisible) {
+    _tabGridButton.accessibilityTraits |= UIAccessibilityTraitSelected;
+  } else {
+    _tabGridButton.accessibilityTraits &= ~UIAccessibilityTraitSelected;
+  }
   if (shouldShowTabGroupSymbol) {
     [NSLayoutConstraint
         deactivateConstraints:_tabGridButtonNormalStateConstraints];

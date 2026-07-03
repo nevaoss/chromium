@@ -327,12 +327,16 @@ apiBridge.registerCustomHook(function(api) {
 
     try {
       chromeTest.log(`( RUN      ) ${testName(currentTest)}`);
+      // Notify this script context (if it's listening) that the test started.
       if (chromeTest.onTestStarted) {
         chromeTest.onTestStarted.dispatch({testName: testName(currentTest)});
       }
+      // Notify other renderer script contexts that the test started.
+      chromeTest.notifyTestStarted(testName(currentTest));
       bindingUtil.setExceptionHandler(function(message, e) {
         if (e !== kFailureException) {
-          chromeTest.fail(`uncaught exception: ${message}`);
+          chromeTest.fail(
+              `Exception running ${testName(currentTest)}: ${message}`);
         }
       });
       const result = $Function.call(currentTest);
@@ -347,7 +351,7 @@ apiBridge.registerCustomHook(function(api) {
   // Helper function to get around the fact that function names in javascript
   // are read-only, and you can't assign one to anonymous functions.
   function testName(test) {
-    return test ? (test.name || test.generatedName) : '(no test)';
+    return (test && (test.name || test.generatedName)) || '(no test)';
   }
 
   function testDone() {
@@ -434,10 +438,12 @@ apiBridge.registerCustomHook(function(api) {
     // really fancy, there may be more sophisticated ways of doing this.
     Error.captureStackTrace(stack, failHandler);
 
-    const assertionDescription = message || 'FAIL (no message)';
+    const assertionDescription = message || 'Assertion FAIL';
     const fullMessage = `${assertionDescription} \n ${stack.stack}`;
 
     console.log(`[FAIL] ${testName(currentTest)}: ${fullMessage}`);
+    // Notify this script context (if it's listening) that the test finished and
+    // failed.
     if (chromeTest.onTestFinished) {
       chromeTest.onTestFinished.dispatch({
         testName: testName(currentTest),
@@ -447,6 +453,11 @@ apiBridge.registerCustomHook(function(api) {
         message: fullMessage
       });
     }
+    // Notify other renderer script contexts that the test finished and failed.
+    chromeTest.notifyTestFinished(
+        testName(currentTest), /* result= */ false,
+        /* remainingTests= */ chromeTest.tests.length, assertionDescription,
+        /* message= */ fullMessage);
     testsFailed++;
     testDone();
 
@@ -463,14 +474,23 @@ apiBridge.registerCustomHook(function(api) {
         '`assertPromiseRejects(...).then(...).`.');
     console.log(`[SUCCESS] ${testName(currentTest)}`);
     chromeTest.log('(  SUCCESS )');
+    // Notify this script context (if it's listening) that the test finished and
+    // succeeded.
     if (chromeTest.onTestFinished) {
       chromeTest.onTestFinished.dispatch({
         testName: testName(currentTest),
         result: true,
         remainingTests: chromeTest.tests.length,
-        assertionDescription: 'Test succeeded'
+        assertionDescription: `${testName(currentTest)} PASS`
       });
     }
+    // Notify other renderer script contexts that the test finished and
+    // succeeded.
+    chromeTest.notifyTestFinished(
+        testName(currentTest), /* result= */ true,
+        /* remainingTests= */ chromeTest.tests.length,
+        /* assertionDescription= */ `${testName(currentTest)} PASS`,
+        /* message= */ '');
     testDone();
   });
 

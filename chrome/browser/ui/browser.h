@@ -387,8 +387,7 @@ class Browser : public TabStripModelObserver,
   const CreateParams& create_params() const { return create_params_; }
   Type type() const { return type_; }
   const std::string& app_name() const { return app_name_; }
-  // TODO(crbug.com/496674143): Remove once callsites migrated to
-  // WindowMetadataController::From().
+  // Deprecated: Use WindowMetadataController::From()->user_title() instead.
   const std::string& user_title() const;
   std::optional<bool> is_vertical_tabs_initially_collapsed() const {
     return initial_vertical_tab_strip_collapsed_;
@@ -461,11 +460,8 @@ class Browser : public TabStripModelObserver,
 
   GURL GetNewTabURL() const;
 
-  // TODO(crbug.com/496674143): Remove once callsites migrated to
-  // WindowMetadataController::From().
-  // Gets the title of the window based on the selected tab's title.
-  // Disables additional formatting when |include_app_name| is false or if the
-  // window is an app window.
+  // Deprecated: Use
+  // WindowMetadataController::From()->GetWindowTitleForCurrentTab instead.
   std::u16string GetWindowTitleForCurrentTab(bool include_app_name) const;
 
   // OnBeforeUnload handling //////////////////////////////////////////////////
@@ -673,8 +669,8 @@ class Browser : public TabStripModelObserver,
   // Called each time the browser window is shown.
   void OnWindowDidShow();
 
-  // TODO(crbug.com/496674143): Remove once callsites migrated to
-  // WindowMetadataController::From().
+  // Deprecated: Use
+  // WindowMetadataController::From()->SetWindowUserTitle instead.
   // Sets the browser's user title. Setting it to an empty string clears it.
   void SetWindowUserTitle(const std::string& user_title);
 

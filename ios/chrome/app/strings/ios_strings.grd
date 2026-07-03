@@ -1720,6 +1720,9 @@
       <message name="IDS_IOS_COMPOSEBOX_DELETE_ATTACHMENT_ACCESSIBILITY_CUSTOM_ACTION" desc="The name of the custom accessibility action for that deletes a previously added attachment from the list of attachments in the AIM Composebox. [iOS only].">
         Delete attachment
       </message>
+      <message name="IDS_IOS_COMPOSEBOX_DRIVE_ACTION" desc="The contextual menu option for opening the Drive file picker. [iOS only].">
+        Drive
+      </message>
       <message name="IDS_IOS_COMPOSEBOX_FILES_ACTION" desc="The contextual menu option for opening the file picker. [iOS only].">
         Files
       </message>
@@ -3370,6 +3373,9 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       <message name="IDS_IOS_GEMINI_LIVE_CONTINUE_SESSION_SNACKBAR" desc="Snackbar message shown to ask if the user wants to continue their Gemini Live session.">
         Are you still using Live? Tap the Live button to keep talking to Gemini
       </message>
+      <message name="IDS_IOS_GEMINI_LIVE_GENERAL_DORMANT_SNACKBAR" desc="Snackbar message shown when a Gemini Live session is dormant, listing potential reasons/solutions.">
+        Something went wrong. Check your internet connection, increase your volume, or try again.
+      </message>
       <message name="IDS_IOS_GEMINI_LIVE_INTRO_TTS" desc="The intro text spoken by TTS when the user enters a Gemini Live session.">
         Hi, I'm Gemini. We're about to go live, where you can ask questions about the page you're on just by talking. But before we get started, take a quick look at this important information.
       </message>
@@ -4341,6 +4347,9 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       <message name="IDS_IOS_LENS_PRODUCT_NAME" desc="The brand name of Google Lens that will appear in menu titles as a single string.">
         Google Lens
       </message>
+      <message name="IDS_IOS_LENS_PRODUCT_NAME_TRUNCATED" desc="The brand name of Google Lens that will appear in menu titles as a single string, truncated.">
+        Lens
+      </message>
       <message name="IDS_IOS_LENS_PROMO_INSTRUCTIONS_STEP1" desc="The text for step 1 in the Lens Promo instructions view.">
         Go to your homepage or keyboard
       </message>
@@ -4657,9 +4666,6 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       </message>
       <message name="IDS_IOS_MANUAL_FALLBACK_PASSWORD_CHIP_ACCESSIBILITY_LABEL" desc="Accessibility label for the password chip button displayed in the password manual fallback screen and that's allowing the user to autofill their password on a specific form field.">
         Autofill the password
-      </message>
-      <message name="IDS_IOS_MANUAL_FALLBACK_PASSWORD_SUBTEXT" desc="The subtext for a password credential in the manual fallback menu, indicating it is a password.">
-        Password
       </message>
       <message name="IDS_IOS_MANUAL_FALLBACK_PAYMENT_CELL_INDEX" desc="Accessibility label for the payment method suggestions in the manual fallback view to indicate the position of the payment method suggestion in the list of payment method suggestions.">
         {count, plural,
@@ -5723,6 +5729,9 @@ Handoff must also be enabled in the General section of Settings, and your device
       </message>
       <message name="IDS_IOS_PASSWORD_SHARING_TITLE" desc="Title of the password sharing bottom sheet view. [iOS only]">
         Share Password
+      </message>
+      <message name="IDS_IOS_PASSWORD_SUBTEXT" desc="The subtext indicating a credential is a traditional password.">
+        Password
       </message>
       <message name="IDS_IOS_PAYMENT_BOTTOM_SHEET_CARD_DESCRIPTION" desc="The (accessibility) credit card description from the network of the card and last 4 digits of the card number.">
         <ph name="NETWORK_NAME">$1<ex>Visa</ex></ph> ending in <ph name="LAST_FOUR_DIGITS">$2<ex>1234</ex></ph>
@@ -7216,6 +7225,12 @@ Handoff must also be enabled in the General section of Settings, and your device
       <message name="IDS_IOS_SETTINGS_PASSWORD_WAS_NOT_COPIED_MESSAGE" desc="Message informing the user that the password was not copied because the authentication failed. This is shown alone in an infobar at the bottom of the screen after the user tries to reauthenticate with Touch ID or PIN to copy the password and fails. [Length: one line]">
         Can't verify your identity. Password not copied.
       </message>
+      <message name="IDS_IOS_SETTINGS_PAY_OVER_TIME" desc="Title of the settings entry and subpage to view and configure Buy Now Pay Later payment providers. [iOS only]">
+        Pay Over Time
+      </message>
+      <message name="IDS_IOS_SETTINGS_PAY_OVER_TIME_SUBTITLE" desc="Subtitle of the switch toggle on the Pay Over Time settings page, which allows displaying BNPL choices during checkout. [iOS only]">
+        Show pay over time options at checkout
+      </message>
       <message name="IDS_IOS_SETTINGS_PRIVACY_TITLE" desc="Title for the Privacy and Security preferences.">
         Privacy and security
       </message>
@@ -7535,9 +7550,6 @@ Handoff must also be enabled in the General section of Settings, and your device
       </message>
       <message name="IDS_IOS_SHARE_MENU_REQUEST_MOBILE_SITE" desc="Text label to the Request Mobile Site action in the extension menu that request the mobile version of the current page. [iOS only]" meaning="Action from the displayed menu after the user tap on the share button.">
         Request Mobile Site
-      </message>
-      <message name="IDS_IOS_SHARE_MENU_SEND_TAB_TO_SELF_ACTION" desc="Text label to the Send Tab To Self action in the extension menu that sends the current tab to the user's other devices. [iOS only]" meaning="Action from the displayed menu after the user tap on the share button.">
-        Send to Your Devices
       </message>
       <message name="IDS_IOS_SHARE_MESSAGES_COMPLETE" desc="Message shown when message share has been sent. [Length: Unknown. Keep it short.] [iOS only]">
         Message sent.

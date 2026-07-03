@@ -14,6 +14,7 @@ class LocationBar;
 class OmniboxController;
 class OmniboxView;
 class OmniboxPopupPresenterDelegate;
+class OmniboxPopupHandler;
 
 class OmniboxPopupViewFullWebUI : public OmniboxPopupViewWebUI {
  public:
@@ -45,6 +46,9 @@ class OmniboxPopupViewFullWebUI : public OmniboxPopupViewWebUI {
   // state is set to `kFull`. Enforces the order of operations to minimize
   // text flickers.
   void UpdatePopupStateAndContent(OmniboxPopupState state);
+
+  // Gets the OmniboxPopupHandler associated with this view's WebUI.
+  OmniboxPopupHandler* GetPopupHandler();
 
   // Caches the last text string sent to the WebUI to avoid redundant IPCs.
   // Null after a state reset (e.g., tab switch).

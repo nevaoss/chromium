@@ -911,13 +911,13 @@ void OpenXrRenderLoop::SubmitFrame(int16_t frame_index,
 void OpenXrRenderLoop::SubmitFrameDrawnIntoTexture(
     int16_t frame_index,
     std::vector<device::mojom::XRLayerUpdatePtr> layer_updates,
-    const std::vector<gpu::SyncToken>& camera_sync_tokens,
+    gpu::SharedImageExportResult camera_export_multi_result,
     base::TimeDelta time_waited) {
   TRACE_EVENT_BEGIN("xr", "OpenXrRenderLoop::WaitSyncToken",
                     perfetto::Track(frame_index));
   DVLOG(3) << __func__ << " frame_index=" << frame_index;
 
-  if (!camera_sync_tokens.empty()) {
+  if (camera_export_multi_result.HasData()) {
     presentation_receiver_.ReportBadMessage(
         "Received unexpected camera sync tokens.");
     return;
@@ -929,18 +929,10 @@ void OpenXrRenderLoop::SubmitFrameDrawnIntoTexture(
     layer_ids.push_back(layer->layer_id);
   }
 
-  std::vector<scoped_refptr<gpu::ClientSharedImage>> shared_images =
-      graphics_binding_->GetSharedImages(layer_ids);
-
   std::vector<gpu::SyncToken> combined_sync_tokens;
-  combined_sync_tokens.reserve(layer_updates.size() +
-                               camera_sync_tokens.size());
-  for (auto& layer : layer_updates) {
-    combined_sync_tokens.push_back(layer->sync_token);
-  }
-  for (auto& camera_sync_token : camera_sync_tokens) {
-    combined_sync_tokens.push_back(camera_sync_token);
-  }
+  std::vector<scoped_refptr<gpu::ClientSharedImage>> shared_images =
+      graphics_binding_->EndSharedImagesExport(std::move(layer_updates),
+                                               combined_sync_tokens);
 
   gpu::ClientSharedImage::CreateGpuFenceForSyncTokens(
       std::move(shared_images), std::move(combined_sync_tokens),

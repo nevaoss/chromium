@@ -27,6 +27,14 @@ void OmniboxPopupHandler::CloseUI() {
   }
 }
 
+void OmniboxPopupHandler::OnSelectionChanged(
+    omnibox_popup::mojom::OmniboxInputStatePtr state) {
+  if (state->sequence_number < current_sequence_number_) {
+    return;
+  }
+  latest_selection_ = state->selection;
+}
+
 void OmniboxPopupHandler::OnShow() {
   page_->OnShow();
 }
@@ -35,6 +43,13 @@ void OmniboxPopupHandler::OnContextMenuClosed() {
   page_->OnContextMenuClosed();
 }
 
-void OmniboxPopupHandler::SetInputText(const std::string& text) {
-  page_->SetInputText(text);
+void OmniboxPopupHandler::SetInputState(const std::string& text,
+                                        const gfx::Range& selection) {
+  latest_selection_ = selection;
+  current_sequence_number_++;
+  auto state = omnibox_popup::mojom::OmniboxInputState::New();
+  state->text = text;
+  state->selection = selection;
+  state->sequence_number = current_sequence_number_;
+  page_->SetInputState(std::move(state));
 }

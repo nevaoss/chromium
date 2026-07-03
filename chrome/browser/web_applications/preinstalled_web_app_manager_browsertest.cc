@@ -29,6 +29,7 @@
 #include "chrome/browser/apps/app_service/app_service_proxy_factory.h"
 #include "chrome/browser/apps/intent_helper/preferred_apps_test_util.h"
 #include "chrome/browser/apps/link_capturing/link_capturing_feature_test_support.h"
+#include "chrome/browser/extensions/chrome_app_deprecation.h"
 #include "chrome/browser/extensions/extension_browsertest.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
@@ -650,7 +651,8 @@ IN_PROC_BROWSER_TEST_F(PreinstalledWebAppManagerBrowserTest,
   base::AutoReset<bool> bypass_offline_manifest_requirement =
       PreinstalledWebAppManager::BypassOfflineManifestRequirementForTesting();
   ASSERT_TRUE(embedded_test_server()->Start());
-  profile()->GetPrefs()->SetString(prefs::kPreinstalledApps, "install");
+  // This uses an "extensions" pref for historical reasons.
+  profile()->GetPrefs()->SetString(prefs::kPreinstalledExtensions, "install");
 
   constexpr char kAppConfigTemplate[] =
       R"({
@@ -669,7 +671,8 @@ IN_PROC_BROWSER_TEST_F(PreinstalledWebAppManagerBrowserTest,
   base::AutoReset<bool> bypass_offline_manifest_requirement =
       PreinstalledWebAppManager::BypassOfflineManifestRequirementForTesting();
   ASSERT_TRUE(embedded_test_server()->Start());
-  profile()->GetPrefs()->SetString(prefs::kPreinstalledApps, "noinstall");
+  // This uses an "extensions" pref for historical reasons.
+  profile()->GetPrefs()->SetString(prefs::kPreinstalledExtensions, "noinstall");
 
   constexpr char kAppConfigTemplate[] =
       R"({

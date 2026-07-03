@@ -185,6 +185,10 @@ void GeminiTabHelper::CancelPageContextGeneration() {
 void GeminiTabHelper::ExecuteZeroStateSuggestions(
     base::OnceCallback<void(NSArray<NSString*>*)> callback) {
   CHECK(IsZeroStateSuggestionsEnabled());
+  if (!gemini_contextual_eligibility_) {
+    std::move(callback).Run(nil);
+    return;
+  }
   zero_state_suggestions_service_->FetchZeroStateSuggestions(
       std::move(callback));
 }
@@ -462,6 +466,9 @@ void GeminiTabHelper::DidStartNavigation(
     NotifyPageContextUpdated(web_state_);
   }
 
+  // Reset gemini eligibility. The eligibility is decided by the optimization
+  // guide with GLIC_ZERO_STATE_SUGGESTIONS.
+  gemini_contextual_eligibility_ = false;
   if (IsZeroStateSuggestionsEnabled()) {
     zero_state_suggestions_service_->ClearCachedSuggestions();
   }
@@ -796,15 +803,14 @@ void GeminiTabHelper::OnGeminiEligibilityDecision(
     return;
   }
 
-  const bool eligible = ComputeGeminiEligibility(decision, metadata);
-  if (IsZeroStateSuggestionsEnabled()) {
-    zero_state_suggestions_service_->SetCanApply(eligible);
-  }
+  gemini_contextual_eligibility_ = ComputeGeminiEligibility(decision, metadata);
 
   ProfileIOS* profile =
       ProfileIOS::FromBrowserState(web_state_->GetBrowserState());
 
-  if (eligible &&
+  // Use the page's contextual suggestions eligibility as a proxy to ensure that
+  // the Image Remix feature is only shown on a safe, eligible subset of pages.
+  if (gemini_contextual_eligibility_ &&
       gemini::IsFeatureAvailable(gemini::Feature::kImageRemix, profile) &&
       user_enabled_request_metadata &&
       feature_engagement::TrackerFactory::GetForProfile(profile)

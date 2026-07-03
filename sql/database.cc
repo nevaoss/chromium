@@ -1008,8 +1008,8 @@ std::string Database::CollectCorruptionInfo() {
   // If the file cannot be accessed it is unlikely that an integrity check will
   // turn up actionable information.
   const base::FilePath db_path = DbPath();
-  std::optional<int64_t> db_size = GetFileSize(db_path);
-  if (db_size && *db_size < 0) {
+  std::optional<int64_t> db_size = base::GetFileSize(db_path);
+  if (!db_size.has_value() || *db_size < 0) {
     return std::string();
   }
 
@@ -2714,6 +2714,13 @@ std::string Database::GetDiagnosticInfo(int sqlite_error_code,
   }
 
   return result;
+}
+
+bool Database::ReportMemoryUsage(base::trace_event::ProcessMemoryDump* pmd,
+                                 const std::string& dump_name) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return memory_dump_provider_ &&
+         memory_dump_provider_->ReportMemoryUsage(pmd, dump_name);
 }
 
 bool Database::FullIntegrityCheck(std::vector<std::string>* messages) {

@@ -100,6 +100,10 @@
 #include "ui/webui/buildflags.h"
 #include "ui/webui/webui_util.h"
 
+#if BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/flags/android/chrome_feature_list.h"
+#endif
+
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/lens/lens_search_controller.h"
@@ -120,6 +124,18 @@
 #endif
 
 namespace {
+
+bool IsUserFeedbackAllowed(Profile* profile) {
+  bool is_user_feedback_allowed = true;
+#if BUILDFLAG(IS_ANDROID)
+  if (base::FeatureList::IsEnabled(
+          chrome::android::kUserFeedbackAllowedPolicy)) {
+    is_user_feedback_allowed =
+        profile->GetPrefs()->GetBoolean(prefs::kUserFeedbackAllowed);
+  }
+#endif
+  return is_user_feedback_allowed;
+}
 
 // A method to add eligibility booleans for context menu items that are shown
 // based on AIM eligibility.
@@ -501,6 +517,9 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
       contextual_tasks::kContextualTasksNextboxMaxFileSize.Get());
   // Enable typed suggest.
   source->AddBoolean("composeboxShowTypedSuggest", false);
+  source->AddBoolean("useContextualTasksComposeboxFork",
+                     base::FeatureList::IsEnabled(
+                         contextual_tasks::kContextualTasksComposeboxFork));
   // Disable ZPS.
   source->AddBoolean(
       "composeboxShowZps",
@@ -581,6 +600,7 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
       contextual_tasks::GetIsContextualTasksWindowTrackingEnabled());
   source->AddBoolean("supportsLensButtonInComposebox", !BUILDFLAG(IS_ANDROID));
   source->AddBoolean("isSystemVoiceSearchEnabled", BUILDFLAG(IS_ANDROID));
+  source->AddBoolean("isUserFeedbackAllowed", IsUserFeedbackAllowed(profile));
   source->AddBoolean("enableComposeboxJumpFix",
                      contextual_tasks::GetEnableComposeboxJumpFix());
   source->AddBoolean("roundedClipPathEnabled",

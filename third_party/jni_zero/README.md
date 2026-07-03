@@ -399,6 +399,17 @@ There are two ways to have native methods be found by Java:
 but (1) is sometimes required (e.g. when OS bugs prevent `dlsym()` from
 working). Both ways are supported.
 
+### JNI Registration for Precompiled Libraries (e.g., AARs)
+
+When integrating third-party libraries (distributed as AARs/Jars) that contain
+JNI, you might need to manually register their native methods. E.g. this is
+required if the native code lives in the app's "base" split, while the Java code
+lives in a non-base split.
+
+JNI Zero provides the `gen-register-natives` command to scan precompiled `.jar`
+files (extracted from AARs), find all `native` methods using `javap`, and
+generate a C++ header with a custom `RegisterNatives` function.
+
 ### Exposing Java Methods
 
 JNI Zero ships with R8 configs that disable renaming of symbols that use

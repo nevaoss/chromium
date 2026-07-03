@@ -67,7 +67,6 @@ class COMPONENT_EXPORT(ACCOUNT_MANAGER_CORE) AccountManagerFacadeImpl
       const std::string& email,
       base::OnceCallback<void(const account_manager::AccountUpsertionResult&
                                   result)> callback) override;
-  void ShowManageAccountsSettings() override;
   std::unique_ptr<OAuth2AccessTokenFetcher> CreateAccessTokenFetcher(
       const AccountKey& account,
       OAuth2AccessTokenConsumer* consumer) override;
@@ -105,8 +104,6 @@ class COMPONENT_EXPORT(ACCOUNT_MANAGER_CORE) AccountManagerFacadeImpl
       ShowAddAccountDialogSetsCorrectOptionsForAdditionFromArc);
   FRIEND_TEST_ALL_PREFIXES(AccountManagerFacadeImplTest,
                            ShowReauthAccountDialogUMA);
-  FRIEND_TEST_ALL_PREFIXES(AccountManagerFacadeImplTest,
-                           ShowManageAccountsSettingsCallsMojo);
   FRIEND_TEST_ALL_PREFIXES(AccountManagerFacadeImplTest,
                            InitializationStatusIsCorrectlySet);
   FRIEND_TEST_ALL_PREFIXES(

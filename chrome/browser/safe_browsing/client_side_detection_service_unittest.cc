@@ -35,13 +35,10 @@
 #include "components/optimization_guide/core/delivery/test_optimization_guide_model_provider.h"
 #include "components/prefs/pref_service.h"
 #include "components/safe_browsing/core/common/features.h"
-#include "components/safe_browsing/core/common/proto/client_model.pb.h"
 #include "components/safe_browsing/core/common/proto/csd.pb.h"
 #include "components/safe_browsing/core/common/safe_browsing_prefs.h"
 #include "components/safe_browsing/core/common/safebrowsing_constants.h"
-#include "components/variations/variations_associated_data.h"
 #include "content/public/test/browser_task_environment.h"
-#include "crypto/sha2.h"
 #include "net/http/http_status_code.h"
 #include "services/network/public/cpp/weak_wrapper_shared_url_loader_factory.h"
 #include "services/network/public/mojom/url_response_head.mojom.h"
@@ -653,23 +650,6 @@ TEST_P(ClientSideDetectionServiceTest, IsPrivateIPAddress) {
 
   EXPECT_TRUE(address.AssignFromIPLiteral("::ffff:23c5:281b"));
   EXPECT_FALSE(csd_service_->IsPrivateIPAddress(address));
-}
-
-TEST_P(ClientSideDetectionServiceTest, IsLocalResource) {
-  csd_service_ = std::make_unique<ClientSideDetectionService>(
-      std::make_unique<ChromeClientSideDetectionServiceDelegate>(profile_),
-      model_observer_tracker_.get());
-
-  net::IPAddress address;
-  EXPECT_TRUE(csd_service_->IsLocalResource(address));
-
-  // Create an IP address of invalid length
-  uint8_t addr[5] = {0xFE, 0xDC, 0xBA, 0x98};
-  address = net::IPAddress(addr);
-  EXPECT_TRUE(csd_service_->IsLocalResource(address));
-
-  EXPECT_TRUE(address.AssignFromIPLiteral("1.2.3.4"));
-  EXPECT_FALSE(csd_service_->IsLocalResource(address));
 }
 
 TEST_P(ClientSideDetectionServiceTest, TestModelFollowsPrefs) {

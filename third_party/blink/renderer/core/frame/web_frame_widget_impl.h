@@ -526,6 +526,7 @@ class CORE_EXPORT WebFrameWidgetImpl
           client_receiver,
       mojo::PendingAssociatedRemote<mojom::blink::UnboundedSurfaceHost>
           host_remote);
+  void UpdateUnboundedElementBounds(const gfx::Rect& bounds);
 
   // mojom::blink::FrameWidgetInputHandler overrides:
   void HandleStylusWritingGestureAction(
@@ -601,7 +602,6 @@ class CORE_EXPORT WebFrameWidgetImpl
   // Immediately stop deferring commits.
   void StopDeferringCommits();
 
-  void SetShouldThrottleFrameRate(bool flag);
 
   void RequestMainFrameOnCompositorAnimation(
       cc::PropertyChangeForcesCommitCriteria criteria,
@@ -1416,7 +1416,6 @@ class CORE_EXPORT WebFrameWidgetImpl
 
   std::optional<float> browser_controls_top_height_override_;
 
-  bool throttling_frame_rate_ = false;
 };
 
 }  // namespace blink

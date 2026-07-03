@@ -416,6 +416,9 @@ class AutofillClient {
   // notice.
   virtual bool ShouldShowPersonalContextAutofillNotice() const;
 
+  // Marks the Personal Context notice as acknowledged.
+  virtual void MarkPersonalContextInAutofillNoticeAsAcknowledged();
+
   // Gets the AutocompleteHistoryManager instance associated with the client.
   virtual AutocompleteHistoryManager* GetAutocompleteHistoryManager() = 0;
 
@@ -437,6 +440,7 @@ class AutofillClient {
   // Returns the `PersonalContextAccessManager` instance associated with the
   // client. Returns `nullptr` if `kAutofillAmbientAutofill` is not enabled.
   virtual PersonalContextAccessManager* GetPersonalContextAccessManager();
+  const PersonalContextAccessManager* GetPersonalContextAccessManager() const;
 
   // Returns the per-profile `AutofillAiModelCache`. Returns `nullptr` if the
   // `kAutofillAiServerModel` is not enabled.

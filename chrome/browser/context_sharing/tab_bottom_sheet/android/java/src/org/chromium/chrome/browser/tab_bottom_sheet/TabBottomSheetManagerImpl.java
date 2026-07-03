@@ -12,6 +12,7 @@ import org.chromium.base.Callback;
 import org.chromium.base.CallbackController;
 import org.chromium.base.ResettersForTesting;
 import org.chromium.base.supplier.MonotonicObservableSupplier;
+import org.chromium.base.supplier.NonNullObservableSupplier;
 import org.chromium.base.supplier.NullableObservableSupplier;
 import org.chromium.base.supplier.OneshotSupplier;
 import org.chromium.build.annotations.NullMarked;
@@ -109,6 +110,18 @@ public class TabBottomSheetManagerImpl implements TabBottomSheetManager {
     private boolean mIsSuppressedByReadAloud;
     private boolean mIsSuppressedByIncognito;
     private boolean mIsSuppressedByAutofill;
+    private boolean mIsSuppressedByOmniboxFocus;
+
+    private final NonNullObservableSupplier<Boolean> mOmniboxFocusStateSupplier;
+    private final Callback<Boolean> mOmniboxFocusObserver =
+            (hasFocus) -> {
+                mIsSuppressedByOmniboxFocus = hasFocus;
+                if (hasFocus) {
+                    maybeCloseBottomSheet();
+                } else {
+                    maybeShowBottomSheet();
+                }
+            };
 
     private final TabModelSelectorObserver mTabModelSelectorObserver =
             new TabModelSelectorObserver() {
@@ -173,6 +186,8 @@ public class TabBottomSheetManagerImpl implements TabBottomSheetManager {
     private final Callback<Boolean> mIsAccessoryRequestedObserver =
             this::onAccessoryRequestedChanged;
 
+    private final Runnable mOnBackPressed = () -> tryToCloseBottomSheet(/* animate= */ true);
+
     /**
      * Constructor.
      *
@@ -183,18 +198,22 @@ public class TabBottomSheetManagerImpl implements TabBottomSheetManager {
      *     state.
      * @param touchEventProvider The {@link TouchEventProvider} used to observe touch events on the
      *     tab behind the bottom sheet.
+     * @param omniboxFocusStateSupplier The {@link NonNullObservableSupplier} for the omnibox focus
+     *     state.
      */
     public TabBottomSheetManagerImpl(
             Context context,
             WindowAndroid windowAndroid,
             BottomSheetController bottomSheetController,
             OneshotSupplier<LayoutStateProvider> layoutStateProviderOneShotSupplier,
-            TouchEventProvider touchEventProvider) {
+            TouchEventProvider touchEventProvider,
+            NonNullObservableSupplier<Boolean> omniboxFocusStateSupplier) {
         mContext = context;
         mWindowAndroid = windowAndroid;
         mBottomSheetController = bottomSheetController;
         mLayoutStateProviderOneShotSupplier = layoutStateProviderOneShotSupplier;
         mTouchEventProvider = touchEventProvider;
+        mOmniboxFocusStateSupplier = omniboxFocusStateSupplier;
 
         mLayoutStateProviderOneShotSupplier.onAvailable(
                 mCallbackController.makeCancelable(
@@ -219,6 +238,8 @@ public class TabBottomSheetManagerImpl implements TabBottomSheetManager {
             mManualFillingComponentSupplier.addSyncObserverAndPostIfNonNull(
                     mFillingComponentObserver);
         }
+
+        mOmniboxFocusStateSupplier.addSyncObserverAndPostIfNonNull(mOmniboxFocusObserver);
 
         TabBottomSheetUtils.attachManagerToWindow(windowAndroid, this);
     }
@@ -249,7 +270,8 @@ public class TabBottomSheetManagerImpl implements TabBottomSheetManager {
                         mBottomSheetController,
                         mTouchEventProvider,
                         coBrowseViews,
-                        mSheetEventsCallback);
+                        mSheetEventsCallback,
+                        mOnBackPressed);
         if (mPeekView != null) {
             mTabBottomSheetCoordinator.attachPeekView(mPeekView);
         }
@@ -258,7 +280,8 @@ public class TabBottomSheetManagerImpl implements TabBottomSheetManager {
                 || mIsSuppressedOnToolbarSwipe
                 || mIsSuppressedByReadAloud
                 || mIsSuppressedByIncognito
-                || mIsSuppressedByAutofill) {
+                || mIsSuppressedByAutofill
+                || mIsSuppressedByOmniboxFocus) {
             // We are currently suppressed, save this sheet to be shown when suppression ends.
             mNativeInterfaceDelegate = nativeInterfaceDelegate;
             if (mIsSuppressedByReadAloud && mReadAloudStopPlaybackCallback != null) {
@@ -360,6 +383,7 @@ public class TabBottomSheetManagerImpl implements TabBottomSheetManager {
 
     @Override
     public void destroy() {
+        mOmniboxFocusStateSupplier.removeObserver(mOmniboxFocusObserver);
         if (mActivePlaybackTabSupplier != null) {
             mActivePlaybackTabSupplier.removeObserver(mActivePlaybackTabObserver);
             mActivePlaybackTabSupplier = null;
@@ -442,7 +466,8 @@ public class TabBottomSheetManagerImpl implements TabBottomSheetManager {
                 && !mIsSuppressedOnToolbarSwipe
                 && !mIsSuppressedByReadAloud
                 && !mIsSuppressedByIncognito
-                && !mIsSuppressedByAutofill) {
+                && !mIsSuppressedByAutofill
+                && !mIsSuppressedByOmniboxFocus) {
 
             if (mTabBottomSheetCoordinator != null && mNativeInterfaceDelegate != null) {
                 if (!mTabBottomSheetCoordinator.tryToShowBottomSheet(

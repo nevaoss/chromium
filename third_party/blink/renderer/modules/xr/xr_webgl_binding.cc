@@ -155,9 +155,10 @@ XRWebGLSwapChain* XRWebGLBinding::CreateColorSwapchain(
     // If a texture-array was requested, create a texture array wrapper for the
     // side-by-side swap chain.
     // TODO(crbug.com/359418629): Remove once array SharedImages are available.
-    const size_t layers = final_layout == V8XRLayerLayout::Enum::kStereo
-                              ? session()->array_texture_layers()
-                              : 1;
+    const uint32_t layers =
+        final_layout == V8XRLayerLayout::Enum::kStereo
+            ? base::checked_cast<uint32_t>(session()->array_texture_layers())
+            : 1u;
     color_swap_chain = MakeGarbageCollected<XRWebGLTextureArraySwapChain>(
         color_swap_chain, layers, clear_on_access);
   }

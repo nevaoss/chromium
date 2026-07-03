@@ -73,6 +73,7 @@ suite('ContextualTasksComposeboxFilesTest', () => {
     mockTimer = new MockTimer();
 
     loadTimeData.overrideValues({
+      useContextualTasksComposeboxFork: false,
       contextualMenuUsePecApi: false,
       composeboxSmartTabSharingVisible: false,
       enableComposeboxJumpFix: false,
@@ -117,6 +118,7 @@ suite('ContextualTasksComposeboxFilesTest', () => {
           chipLabel: 'Canvas',
           hintText: 'Canvas hint',
           aimUrlParams: [{paramKey: 'rc', paramValue: '1'}],
+          menuTooltip: '',
         }],
       },
     }));

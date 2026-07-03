@@ -17,6 +17,7 @@
 #include "chrome/browser/glic/host/glic_web_contents_warming_pool.h"
 #include "chrome/browser/glic/host/host.h"
 #include "chrome/browser/glic/host/webui_contents_container.h"
+#include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
@@ -46,6 +47,7 @@
 #include "components/favicon/content/content_favicon_driver.h"
 #include "components/favicon/core/favicon_driver.h"
 #include "components/favicon/core/favicon_driver_observer.h"
+#include "components/optimization_guide/content/browser/page_content_proto_provider.h"
 #include "components/policy/core/common/management/scoped_management_service_override_for_testing.h"
 #include "components/policy/core/common/mock_configuration_policy_provider.h"
 #include "components/policy/core/common/policy_map.h"
@@ -84,11 +86,6 @@
 #if BUILDFLAG(IS_ANDROID)
 #include "base/android/device_info.h"
 #include "chrome/browser/flags/android/chrome_feature_list.h"
-#endif
-
-// These are newly failing in test setup on desktop android.
-#if BUILDFLAG(IS_DESKTOP_ANDROID)
-#define DISABLE_ALL_TESTS
 #endif
 
 #if defined(ADDRESS_SANITIZER) || defined(THREAD_SANITIZER) || \
@@ -154,6 +151,7 @@ std::vector<std::string> GetTestSuiteNames() {
       "NewGlicApiTestWithWebActuationSettingDisabled",
       "NewGlicApiTestWithWebActuationSettingEnabled",
       "NewGlicApiTestWithProcessCounterAbuseVerdictDisabled",
+      "GlicApiScrollToTest",
 #if !BUILDFLAG(IS_ANDROID)
       "NewGlicApiTestWithSkills",
       "NewGlicApiTestWithNewTabDaisyChain",
@@ -750,6 +748,53 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTest,
   EXPECT_EQ(GetTabListInterface()->GetTabCount(), 1);
 }
 
+class GlicApiScrollToTest : public NewGlicApiTest {
+ protected:
+  TestResult<std::string> GetDocumentId() {
+    content::RenderFrameHost* rfh = GetTabListInterface()
+                                        ->GetActiveTab()
+                                        ->GetContents()
+                                        ->GetPrimaryMainFrame();
+    std::optional<std::string> document_id =
+        optimization_guide::DocumentIdentifierUserData::GetDocumentIdentifier(
+            rfh->GetGlobalFrameToken());
+    if (!document_id.has_value()) {
+      return base::unexpected("No document ID found");
+    }
+    return base::ok(document_id.value());
+  }
+};
+
+IN_PROC_BROWSER_TEST_P(GlicApiScrollToTest, testScrollToFindsText) {
+  ASSERT_OK(OpenGlicForActiveTab());
+  ASSERT_OK_AND_ASSIGN(std::string document_id, GetDocumentId());
+  ExecuteJsTest({.params = base::Value(
+                     base::DictValue().Set("documentId", document_id))});
+}
+
+IN_PROC_BROWSER_TEST_P(GlicApiScrollToTest,
+                       testScrollToFindsTextNoTabContextPermission) {
+  ASSERT_OK(OpenGlicForActiveTab());
+  ASSERT_OK_AND_ASSIGN(std::string document_id, GetDocumentId());
+  ExecuteJsTest({.params = base::Value(
+                     base::DictValue().Set("documentId", document_id))});
+}
+
+IN_PROC_BROWSER_TEST_P(GlicApiScrollToTest, testScrollToFailsWhenInactive) {
+  ASSERT_OK(OpenGlicForActiveTab());
+  PreventDeletionOnClose();
+  ASSERT_OK_AND_ASSIGN(std::string document_id, GetDocumentId());
+  ExecuteJsTest({.params = base::Value(
+                     base::DictValue().Set("documentId", document_id))});
+}
+
+IN_PROC_BROWSER_TEST_P(GlicApiScrollToTest, testScrollToNoMatchFound) {
+  ASSERT_OK(OpenGlicForActiveTab());
+  ASSERT_OK_AND_ASSIGN(std::string document_id, GetDocumentId());
+  ExecuteJsTest({.params = base::Value(
+                     base::DictValue().Set("documentId", document_id))});
+}
+
 IN_PROC_BROWSER_TEST_P(NewGlicApiTest, MAYBE_testCreateTabInBackground) {
   ASSERT_OK(OpenGlicForActiveTab());
   EXPECT_EQ(GetTabListInterface()->GetTabCount(), 1);
@@ -882,7 +927,8 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testEnableDragResize) {
 #endif
 
 #if !BUILDFLAG(IS_ANDROID)
-IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testDisableDragResize) {
+// TODO(crbug.com/520824542): Fix flaky test.
+IN_PROC_BROWSER_TEST_P(NewGlicApiTest, DISABLED_testDisableDragResize) {
   ASSERT_OK(OpenGlicForActiveTabAndDetach());
   ASSERT_OK(WaitUntilCanResize(true));
   ExecuteJsTest();
@@ -1027,9 +1073,18 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testShowClientErrorDialog) {
   histogram_tester.ExpectUniqueSample("Glic.Api.Client.ErrorDialogShown",
                                       /*kDisabledByOrganization*/ 1, 1);
 
-  // Verify that the pref was reset.
-  ASSERT_TRUE(base::test::RunUntil(
-      [&]() { return service()->GetAuthController().NeedsSyncForTesting(); }));
+  if (base::FeatureList::IsEnabled(features::kGlicCookieSyncOnError) &&
+      base::FeatureList::IsEnabled(features::kGlicCookieSyncOnTokenChange)) {
+    // Sync will happen automatically if kGlicCookieSyncOnError is enabled.
+    ASSERT_TRUE(base::test::RunUntil([&]() {
+      return !service()->GetAuthController().NeedsSyncForTesting();
+    }));
+  } else {
+    // Verify that the pref was set to true.
+    ASSERT_TRUE(base::test::RunUntil([&]() {
+      return service()->GetAuthController().NeedsSyncForTesting();
+    }));
+  }
 }
 
 IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testReportClientTransientError) {
@@ -1045,9 +1100,18 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testReportClientTransientError) {
   histogram_tester.ExpectUniqueSample("Glic.Api.Client.TransientError",
                                       /*kUnauthenticated*/ 16, 1);
 
-  // Verify that the pref was set to true.
-  ASSERT_TRUE(base::test::RunUntil(
-      [&]() { return service()->GetAuthController().NeedsSyncForTesting(); }));
+  if (base::FeatureList::IsEnabled(features::kGlicCookieSyncOnError) &&
+      base::FeatureList::IsEnabled(features::kGlicCookieSyncOnTokenChange)) {
+    // Sync will happen automatically if kGlicCookieSyncOnError is enabled.
+    ASSERT_TRUE(base::test::RunUntil([&]() {
+      return !service()->GetAuthController().NeedsSyncForTesting();
+    }));
+  } else {
+    // Verify that the pref was set to true.
+    ASSERT_TRUE(base::test::RunUntil([&]() {
+      return service()->GetAuthController().NeedsSyncForTesting();
+    }));
+  }
 }
 
 IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testLoadWhileWindowClosed) {
@@ -1363,7 +1427,7 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithPixelOutput,
   GetTabListInterface()->OpenTab(GetTestUrl("page2.html"), -1);
 
   ASSERT_OK(OpenGlicForActiveTab());
-  GetOnlyGlicInstance()->sharing_manager().PinTabs(
+  GetOnlyGlicInstance()->GetSharingManagerInternal().PinTabs(
       {GetTabListInterface()->GetTab(0)->GetHandle(),
        GetTabListInterface()->GetTab(1)->GetHandle()});
   ExecuteJsTest();
@@ -1377,7 +1441,7 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithPixelOutput,
   GetTabListInterface()->OpenTab(GetTestUrl("page2.html"), -1);
 
   ASSERT_OK(OpenGlicForActiveTab());
-  GetOnlyGlicInstance()->sharing_manager().PinTabs(
+  GetOnlyGlicInstance()->GetSharingManagerInternal().PinTabs(
       {GetTabListInterface()->GetTab(0)->GetHandle(),
        GetTabListInterface()->GetTab(1)->GetHandle()});
   ExecuteJsTest();
@@ -1398,7 +1462,7 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithPixelOutput, testFaviconIsRemoved) {
 IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithPixelOutput,
                        testFaviconIsOmittedWithClientCapabilities) {
   ASSERT_OK(OpenGlicForActiveTab());
-  GetOnlyGlicInstance()->sharing_manager().PinTabs(
+  GetOnlyGlicInstance()->GetSharingManagerInternal().PinTabs(
       {GetTabListInterface()->GetActiveTab()->GetHandle()});
   ExecuteJsTest();
 }
@@ -1626,7 +1690,7 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTest, MAYBE_testGetPageMetadataTabDestroyed) {
   ASSERT_OK(OpenGlicForActiveTab());
 
   // Pin both tabs.
-  GetOnlyGlicInstance()->sharing_manager().PinTabs(
+  GetOnlyGlicInstance()->GetSharingManagerInternal().PinTabs(
       {GetTabListInterface()->GetTab(0)->GetHandle(),
        GetTabListInterface()->GetTab(1)->GetHandle()});
 
@@ -1779,7 +1843,7 @@ class NewGlicApiTestWithGeminiActOnWebPolicy : public NewGlicApiTest {
     AccountInfo account_info = identity_test_env_->MakePrimaryAccountAvailable(
         "foo@bar.com", signin::ConsentLevel::kSync);
 
-    AccountCapabilitiesTestMutator mutator(&account_info.capabilities);
+    AccountCapabilitiesTestMutator mutator(&account_info);
     mutator.set_can_use_model_execution_features(true);
     identity_test_env_->UpdateAccountInfoForAccount(account_info);
     identity_test_env_->SimulateSuccessfulFetchOfAccountInfo(
@@ -2099,6 +2163,10 @@ INSTANTIATE_TEST_SUITE_P(,
                          NewGlicApiTestWithProcessCounterAbuseVerdictDisabled,
                          DefaultTestParamSet(),
                          &WithTestParams::PrintTestVariant);
+INSTANTIATE_TEST_SUITE_P(,
+                         GlicApiScrollToTest,
+                         DefaultTestParamSet(),
+                         &WithTestParams::PrintTestVariant);
 
 // TODO(b/520114620): Skills are not supported yet on Android.
 #if !BUILDFLAG(IS_ANDROID)
@@ -2133,6 +2201,7 @@ GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(
     NewGlicApiTestWithProcessCounterAbuseVerdictDisabled);
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(NewGlicApiTestForNoWebUiLoader);
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(GlicApiScrollToTest);
 #if !BUILDFLAG(IS_ANDROID)
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(NewGlicApiTestWithSkills);
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(

@@ -174,6 +174,7 @@ suite('ContextualTasksComposeboxMiscInputsTest', () => {
     metrics = fakeMetricsPrivate();
 
     loadTimeData.overrideValues({
+      useContextualTasksComposeboxFork: false,
       contextualMenuUsePecApi: false,
       composeboxSmartTabSharingVisible: false,
       composeboxShowTypedSuggest: true,

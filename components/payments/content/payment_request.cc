@@ -32,6 +32,7 @@
 #include "components/payments/core/payment_details_validation.h"
 #include "components/payments/core/payment_prefs.h"
 #include "components/payments/core/payment_request_delegate.h"
+#include "components/payments/core/payment_request_metrics.h"
 #include "components/payments/core/payments_experimental_features.h"
 #include "components/payments/core/payments_validators.h"
 #include "components/payments/core/url_util.h"
@@ -76,7 +77,8 @@ mojom::PaymentAddressPtr RedactShippingAddress(
 SecurePaymentConfirmationRequestValidationError
 ValidateSecurePaymentConfirmationRequest(
     const std::vector<mojom::PaymentMethodDataPtr>& method_data,
-    const mojom::PaymentOptionsPtr& options) {
+    const mojom::PaymentOptionsPtr& options,
+    const url::Origin& initiator_origin) {
   CHECK_GT(method_data.size(), 0u);
 
   if (!base::FeatureList::IsEnabled(::features::kSecurePaymentConfirmation)) {
@@ -115,8 +117,44 @@ ValidateSecurePaymentConfirmationRequest(
   }
 
   return IsValidSecurePaymentConfirmationRequest(
-      method_data_entry->secure_payment_confirmation);
+      method_data_entry->secure_payment_confirmation, initiator_origin);
 }
+
+// Helper to map JourneyLogger::AbortReason to aborted PaymentRequestOutcomes.
+PaymentRequestOutcome MapAbortReasonToOutcome(
+    JourneyLogger::AbortReason reason) {
+  switch (reason) {
+    case JourneyLogger::ABORT_REASON_ABORTED_BY_USER:
+      return PaymentRequestOutcome::kAbortedByUser;
+    case JourneyLogger::ABORT_REASON_ABORTED_BY_MERCHANT:
+      return PaymentRequestOutcome::kAbortedByMerchant;
+    case JourneyLogger::ABORT_REASON_INVALID_DATA_FROM_RENDERER:
+      return PaymentRequestOutcome::kAbortedInvalidDataFromRenderer;
+    case JourneyLogger::ABORT_REASON_MOJO_CONNECTION_ERROR:
+      return PaymentRequestOutcome::kAbortedMojoConnectionError;
+    case JourneyLogger::ABORT_REASON_MOJO_RENDERER_CLOSING:
+      return PaymentRequestOutcome::kAbortedMojoRendererClosing;
+    case JourneyLogger::ABORT_REASON_INSTRUMENT_DETAILS_ERROR:
+      return PaymentRequestOutcome::kAbortedInstrumentDetailsError;
+    case JourneyLogger::ABORT_REASON_NO_MATCHING_PAYMENT_METHOD:
+      return PaymentRequestOutcome::kAbortedNoMatchingPaymentMethod;
+    case JourneyLogger::ABORT_REASON_NO_SUPPORTED_PAYMENT_METHOD:
+      return PaymentRequestOutcome::kAbortedNoSupportedPaymentMethod;
+    case JourneyLogger::ABORT_REASON_OTHER:
+      return PaymentRequestOutcome::kAbortedOther;
+    case JourneyLogger::ABORT_REASON_USER_NAVIGATION:
+      return PaymentRequestOutcome::kAbortedUserNavigation;
+    case JourneyLogger::ABORT_REASON_MERCHANT_NAVIGATION:
+      return PaymentRequestOutcome::kAbortedMerchantNavigation;
+    case JourneyLogger::ABORT_REASON_USER_OPTED_OUT:
+      return PaymentRequestOutcome::kAbortedUserOptedOut;
+    case JourneyLogger::ABORT_REASON_INTERNAL_ERROR:
+      return PaymentRequestOutcome::kAbortedInternalError;
+    case JourneyLogger::ABORT_REASON_MAX:
+      return PaymentRequestOutcome::kAbortedOther;
+  }
+}
+
 }  // namespace
 
 PaymentRequest::PaymentRequest(
@@ -237,14 +275,30 @@ void PaymentRequest::Init(
                datum->supported_method == methods::kSecurePaymentConfirmation;
       })) {
     SecurePaymentConfirmationRequestValidationError validation_result =
-        ValidateSecurePaymentConfirmationRequest(method_data, options);
+        ValidateSecurePaymentConfirmationRequest(method_data, options,
+                                                 frame_security_origin_);
     if (validation_result !=
         SecurePaymentConfirmationRequestValidationError::kOk) {
       std::string error_message =
           SecurePaymentConfirmationRequestValidationErrorToString(
               validation_result);
       log_.Error(error_message);
-      mojo::ReportBadMessage(error_message);
+
+      // The renderer cannot check whether WebAuthn extensions are allowed or
+      // not, as it doesn't know whether the page origin can claim the
+      // relying party ID. For that case we return an error.
+      //
+      // All other failures indicate an invalid request. In that case we
+      // report it as a bad message and mojo will kill the renderer.
+      if (validation_result == SecurePaymentConfirmationRequestValidationError::
+                                   kWebAuthnExtensionsNotSupported) {
+        client_->OnError(mojom::PaymentErrorReason::NOT_SUPPORTED,
+                         error_message);
+      } else {
+        mojo::ReportBadMessage("Invalid SecurePaymentConfirmationRequest: " +
+                               error_message);
+      }
+
       ResetAndDeleteThis();
       return;
     }
@@ -370,6 +424,9 @@ void PaymentRequest::Show(bool wait_for_updated_details,
     log_.Error(errors::kAnotherUiShowing);
     DCHECK(!has_recorded_completion_);
     has_recorded_completion_ = true;
+    base::UmaHistogramEnumeration(
+        "PaymentRequest.Outcome",
+        PaymentRequestOutcome::kNotShownAlreadyShowing);
     journey_logger_.SetNotShown();
     client_->OnError(mojom::PaymentErrorReason::ALREADY_SHOWING,
                      errors::kAnotherUiShowing);
@@ -391,6 +448,9 @@ void PaymentRequest::Show(bool wait_for_updated_details,
       log_.Error(errors::kCannotShowWithoutUserActivation);
       DCHECK(!has_recorded_completion_);
       has_recorded_completion_ = true;
+      base::UmaHistogramEnumeration(
+          "PaymentRequest.Outcome",
+          PaymentRequestOutcome::kNotShownUserActivationRequired);
       journey_logger_.SetNotShown();
       client_->OnError(mojom::PaymentErrorReason::USER_ACTIVATION_REQUIRED,
                        errors::kCannotShowWithoutUserActivation);
@@ -409,6 +469,9 @@ void PaymentRequest::Show(bool wait_for_updated_details,
     log_.Error(errors::kCannotShowInBackgroundTab);
     DCHECK(!has_recorded_completion_);
     has_recorded_completion_ = true;
+    base::UmaHistogramEnumeration(
+        "PaymentRequest.Outcome",
+        PaymentRequestOutcome::kNotShownBackgroundTab);
     journey_logger_.SetNotShown();
     client_->OnError(mojom::PaymentErrorReason::USER_CANCEL,
                      errors::kCannotShowInBackgroundTab);
@@ -614,6 +677,8 @@ void PaymentRequest::Complete(mojom::PaymentComplete result) {
     DCHECK(!has_recorded_completion_);
     journey_logger_.SetCompleted();
     has_recorded_completion_ = true;
+    base::UmaHistogramEnumeration("PaymentRequest.Outcome",
+                                  PaymentRequestOutcome::kSuccess);
     DCHECK(spec_->details().total);
 
     delegate_->GetPrefService()->SetBoolean(kPaymentsFirstTransactionCompleted,
@@ -768,6 +833,9 @@ void PaymentRequest::AreRequestedMethodsSupportedCallback(
             << "): requested method not supported.";
     DCHECK(!has_recorded_completion_);
     has_recorded_completion_ = true;
+    base::UmaHistogramEnumeration(
+        "PaymentRequest.Outcome",
+        PaymentRequestOutcome::kNotShownNoSupportedPaymentMethod);
     journey_logger_.SetNotShown();
     client_->OnError(mojom::PaymentErrorReason::NOT_SUPPORTED,
                      GetNotSupportedErrorMessage(
@@ -1124,6 +1192,8 @@ void PaymentRequest::RecordFirstAbortReason(
     JourneyLogger::AbortReason abort_reason) {
   if (!has_recorded_completion_) {
     has_recorded_completion_ = true;
+    base::UmaHistogramEnumeration("PaymentRequest.Outcome",
+                                  MapAbortReasonToOutcome(abort_reason));
     journey_logger_.SetAborted(abort_reason);
   }
 }

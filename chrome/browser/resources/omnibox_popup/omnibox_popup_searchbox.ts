@@ -19,7 +19,7 @@ import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
 import type {AutocompleteResult, PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerInterface as SearchboxPageHandlerInterface} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 
 import {browserProxyFactory} from './omnibox_popup.mojom-webui.js';
-import type {PageCallbackRouter as PopupPageCallbackRouter, PageHandlerInterface as PopupPageHandlerInterface} from './omnibox_popup.mojom-webui.js';
+import type {OmniboxInputState, PageCallbackRouter as PopupPageCallbackRouter, PageHandlerInterface as PopupPageHandlerInterface} from './omnibox_popup.mojom-webui.js';
 import {getCss} from './omnibox_popup_searchbox.css.js';
 import {getHtml} from './omnibox_popup_searchbox.html.js';
 
@@ -115,6 +115,8 @@ export class OmniboxPopupSearchboxElement extends
   private popupPageHandler_: PopupPageHandlerInterface;
   private listenerIds_: number[] = [];
   private popupListenerIds_: number[] = [];
+  // Sequence number of the current content state received from C++.
+  private currentSequenceNum_: number = 0;
 
   constructor() {
     super();
@@ -135,8 +137,8 @@ export class OmniboxPopupSearchboxElement extends
           this.onAutocompleteResultChanged.bind(this)),
     ];
     this.popupListenerIds_ = [
-      this.popupCallbackRouter_.setInputText.addListener(
-          (input: string) => this.$.input.setInputText(input)),
+      this.popupCallbackRouter_.setInputState.addListener(
+          this.onSetInputState_.bind(this)),
     ];
 
     this.eventTracker_.add(this, 'escape-searchbox', () => {
@@ -144,6 +146,8 @@ export class OmniboxPopupSearchboxElement extends
         this.popupPageHandler_.closeUI();
       }
     });
+    this.eventTracker_.add(
+        document, 'selectionchange', this.onSelectionChanged_.bind(this));
   }
 
   override disconnectedCallback() {
@@ -154,6 +158,7 @@ export class OmniboxPopupSearchboxElement extends
     this.popupListenerIds_.forEach(
         id => this.popupCallbackRouter_.removeListener(id));
     this.popupListenerIds_ = [];
+    this.eventTracker_.removeAll();
   }
 
   override willUpdate(changedProperties: PropertyValues<this>) {
@@ -270,6 +275,32 @@ export class OmniboxPopupSearchboxElement extends
       return;
     }
     super.onInputFocusChanged(e);
+  }
+
+  /**
+   * Reports selection changes back to C++.
+   */
+  private onSelectionChanged_() {
+    const input = this.$.input.inputElement;
+    if (this.shadowRoot.activeElement !== this.$.input) {
+      return;
+    }
+    this.popupPageHandler_.onSelectionChanged({
+      text: input.value,
+      selection:
+          {start: input.selectionStart || 0, end: input.selectionEnd || 0},
+      sequenceNumber: this.currentSequenceNum_,
+    });
+  }
+
+  /**
+   * Sets the input text and applies selection range synchronously regardless of
+   * focus.
+   */
+  private onSetInputState_(state: OmniboxInputState) {
+    this.$.input.setInputText(state.text);
+    this.currentSequenceNum_ = state.sequenceNumber;
+    this.$.input.setSelectionRange(state.selection.start, state.selection.end);
   }
 
   protected onInputFocusin_() {

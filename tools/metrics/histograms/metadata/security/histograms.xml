@@ -496,6 +496,31 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Security.HttpsFirstMode.SettingEnabledAtStartupDetailed"
+    enum="HttpsFirstModeStartupState" expires_after="2027-06-01">
+  <owner>zackhan@chromium.org</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    The detailed status of the HTTPS-First Mode setting at startup. This
+    distinguishes between different reasons why Balanced Mode might be enabled
+    (explicit user choice, typically secure heuristic, ESB pairing, or
+    auto-enable). Recorded once per profile startup.
+  </summary>
+</histogram>
+
+<histogram name="Security.HttpsFirstMode.SettingImplicitlyChanged"
+    enum="HttpsFirstModeImplicitStateChange" expires_after="2027-06-01">
+  <owner>zackhan@chromium.org</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    Records implicit changes to the HTTPS-First Mode setting. This is logged
+    when HFM Balanced Mode is automatically enabled or disabled as a side-effect
+    of the user changing their Safe Browsing setting (e.g. enabling/disabling
+    Enhanced Safe Browsing), provided the user has not manually customized their
+    HFM settings.
+  </summary>
+</histogram>
+
 <histogram
     name="Security.HttpsFirstModeWithEngagementHeuristic.AccumulatedHostCount"
     units="hostnames" expires_after="2026-09-06">
@@ -551,6 +576,18 @@ chromium-metrics-reviews@google.com.
     Records whether the HTTPS-First Mode got enabled or disabled on a site due
     to its HTTP and HTTPS site engagement scores. Only recorded if the enabled
     state changes. Recorded even for sites allowlisted to load over HTTP.
+  </summary>
+</histogram>
+
+<histogram name="Security.HttpsFirstModeWithEsbPairing.NavigationEvent"
+    enum="HttpsFirstModeNavigationEvent" expires_after="2027-06-01">
+  <owner>zackhan@chromium.org</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    Records navigation events (upgrade attempts, successes, failures) for
+    navigations where HTTPS-First Mode was enabled specifically because the user
+    has Enhanced Safe Browsing enabled and has not manually customized their HFM
+    settings.
   </summary>
 </histogram>
 
@@ -1059,7 +1096,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="SiteIsolation.BrowsingInstanceCount" units="units"
-    expires_after="2026-06-21">
+    expires_after="2027-06-21">
   <owner>alexmos@chromium.org</owner>
   <owner>creis@chromium.org</owner>
   <summary>
@@ -1228,7 +1265,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="SiteIsolation.OutOfProcessInnerFrameTrees" units="frame trees"
-    expires_after="2026-07-21">
+    expires_after="2027-07-21">
   <owner>alexmos@chromium.org</owner>
   <owner>creis@chromium.org</owner>
   <owner>lukasza@chromium.org</owner>
@@ -1262,7 +1299,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="SiteIsolation.ProxyCountPerBrowsingInstance" units="units"
-    expires_after="2026-07-09">
+    expires_after="2027-07-09">
   <owner>alexmos@chromium.org</owner>
   <owner>creis@chromium.org</owner>
   <owner>lukasza@chromium.org</owner>
@@ -1314,7 +1351,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="SiteIsolation.SavedOAuthSites.Size" units="origins"
-    expires_after="2026-06-28">
+    expires_after="2026-07-28">
   <owner>alexmos@chromium.org</owner>
   <owner>creis@chromium.org</owner>
   <owner>lukasza@chromium.org</owner>

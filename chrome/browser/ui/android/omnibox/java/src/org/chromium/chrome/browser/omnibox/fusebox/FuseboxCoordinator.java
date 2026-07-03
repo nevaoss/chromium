@@ -68,6 +68,7 @@ import java.util.function.Supplier;
 /** Coordinator for the Fusebox component. */
 @NullMarked
 public class FuseboxCoordinator implements TemplateUrlServiceObserver {
+
     @IntDef({FuseboxState.DISABLED, FuseboxState.COMPACT, FuseboxState.EXPANDED})
     @Retention(RetentionPolicy.SOURCE)
     @Target(ElementType.TYPE_USE)
@@ -114,6 +115,8 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
                     ObservableSuppliers.createNonNull(FuseboxLayoutMode.TOOLBAR);
     private final SettableNonNullObservableSupplier<@PopupState Integer> mPopupStateSupplier =
             ObservableSuppliers.createNonNull(PopupState.HIDDEN);
+    private final SettableNonNullObservableSupplier<Boolean> mActivationChipVisibilitySupplier =
+            ObservableSuppliers.createNonNull(false);
     private final SnackbarManager mSnackbarManager;
     private @Nullable ViewportRectProvider mViewportRectProvider;
     private @Nullable FuseboxMetrics mMetrics;
@@ -130,6 +133,9 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
     private @Nullable Callback<Boolean> mOnInteractionCompletedCallback;
     private @Nullable Runnable mOnFirstPickerInteractionCanceledCallback;
     private final NullableObservableSupplier<GURL> mExactMatchUrlSupplier;
+    private final Runnable mOnActivationChipClickedWithQuery;
+    private final Runnable mClearUrlBarTextCallback;
+    private final Supplier<String> mUrlBarTextSupplier;
 
     /**
      * Creates a new instance of {@link FuseboxCoordinator}.
@@ -143,6 +149,9 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
      * @param scrimAnchorViewSupplier Supplier for the view to anchor the scrim to.
      * @param backPressManager The back press manager to register the back press handler.
      * @param exactMatchUrlSupplier The supplier of the exact match URL.
+     * @param onActivationChipClickedWithQuery Runnable for activation chip when there is a query.
+     * @param clearUrlBarTextRunnable Callback to clear the URL bar text.
+     * @param urlBarTextSupplier Supplier for the current URL bar text
      */
     public FuseboxCoordinator(
             Context context,
@@ -153,7 +162,10 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
             SnackbarManager snackbarManager,
             Supplier<@Nullable View> scrimAnchorViewSupplier,
             BackPressManager backPressManager,
-            NullableObservableSupplier<GURL> exactMatchUrlSupplier) {
+            NullableObservableSupplier<GURL> exactMatchUrlSupplier,
+            Runnable onActivationChipClickedWithQuery,
+            Runnable clearUrlBarTextRunnable,
+            Supplier<String> urlBarTextSupplier) {
         mActivity = assumeNonNull(ContextUtils.activityFromContext(context));
         mWindowAndroid = windowAndroid;
         mParent = parent;
@@ -166,6 +178,9 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
         mFuseboxLayoutModeSupplier.set(getFuseboxLayoutMode());
         mBackPressManager = backPressManager;
         mExactMatchUrlSupplier = exactMatchUrlSupplier;
+        mOnActivationChipClickedWithQuery = onActivationChipClickedWithQuery;
+        mClearUrlBarTextCallback = clearUrlBarTextRunnable;
+        mUrlBarTextSupplier = urlBarTextSupplier;
 
         if (!OmniboxFeatures.isMultimodalInputEnabled(context)
                 || parent.findViewById(R.id.fusebox_request_type) == null) {
@@ -205,7 +220,7 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
         ViewRectProvider floatingViewRectProvider;
         if (getFuseboxLayoutMode() == FuseboxLayoutMode.SUGGESTIONS_POPOVER) {
             // Popover never uses StatusView to show plus button, so this is safe here.
-            View plusButton = mParent.findViewById(R.id.location_bar_attachments_add);
+            View plusButton = mParent.findViewById(R.id.fusebox_plus_button);
             floatingViewRectProvider = new ViewRectProvider(plusButton);
         } else {
             // Instead of anchoring on the plus button or status view, anchor on the parent and then
@@ -284,7 +299,11 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
                         mScrimAnchorViewSupplier,
                         mBackPressManager,
                         mOnFirstPickerInteractionCanceledCallback,
-                        mExactMatchUrlSupplier);
+                        mExactMatchUrlSupplier,
+                        mActivationChipVisibilitySupplier,
+                        mOnActivationChipClickedWithQuery,
+                        mClearUrlBarTextCallback,
+                        mUrlBarTextSupplier);
         mMediator.onContextualTaskFocusChanged(mHasContextualTasksFocus);
         if (mLastBrandedColorScheme != null) {
             mMediator.updateVisualsForState(mLastBrandedColorScheme);
@@ -406,6 +425,28 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
         }
     }
 
+    /** Returns a supplier that is notified of visibility changes of the activation chip. */
+    public NonNullObservableSupplier<Boolean> getActivationChipVisibilitySupplier() {
+        return mActivationChipVisibilitySupplier;
+    }
+
+    /** Signal that the keyboard selection state of the activation chip has changed. */
+    public void onActivationChipSelectionChanged(boolean selected) {
+        if (mMediator == null) return;
+        mMediator.onActivationChipSelectionChanged(selected);
+    }
+
+    /**
+     * Signal that the activation chip has been activated in a way that should trigger a click, e.g.
+     * pressing enter while selected.
+     */
+    public void onActivationChipClicked() {
+        if (mMediator == null || mModel == null) {
+            return;
+        }
+        mModel.get(FuseboxProperties.ACTIVATION_CHIP_CLICKED).run();
+    }
+
     // TemplateUrlServiceObserver
     @Override
     public void onTemplateURLServiceChanged() {
@@ -437,9 +478,9 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
 
     @VisibleForTesting
     void onContextPopupDismissed() {
-        if (mViewHolder == null || mViewHolder.addButton == null) return;
-        mViewHolder.addButton.requestFocus();
-        mViewHolder.addButton.sendAccessibilityEvent(AccessibilityEvent.TYPE_VIEW_FOCUSED);
+        if (mViewHolder == null || mViewHolder.plusButton == null) return;
+        mViewHolder.plusButton.requestFocus();
+        mViewHolder.plusButton.sendAccessibilityEvent(AccessibilityEvent.TYPE_VIEW_FOCUSED);
         if (mOnInteractionCompletedCallback != null) {
             mOnInteractionCompletedCallback.onResult(
                     mMediator != null && mMediator.wasActionTaken());
@@ -516,7 +557,7 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
 
     private @FuseboxLayoutMode int getFuseboxLayoutMode() {
         return OmniboxCapabilities.isDesktopPlatform()
-                        && OmniboxFeatures.isMultimodalInputEnabled(mActivity)
+                        && OmniboxFeatures.sAndroidDesktopAimGate.isEnabled()
                 ? FuseboxLayoutMode.SUGGESTIONS_POPOVER
                 : FuseboxLayoutMode.TOOLBAR;
     }

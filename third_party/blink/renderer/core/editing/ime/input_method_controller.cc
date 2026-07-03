@@ -228,7 +228,7 @@ int CalculateAfterDeletionLengthsInCodePoints(const String& text,
 }
 
 Element* RootEditableElementOfSelection(const FrameSelection& frame_selection) {
-  const SelectionInDOMTree& selection = frame_selection.GetSelectionInDOMTree();
+  const SelectionInDomTree& selection = frame_selection.GetSelectionInDomTree();
   if (selection.IsNone())
     return nullptr;
   // To avoid update layout, we attempt to get root editable element from
@@ -626,7 +626,7 @@ void InputMethodController::SelectComposition() const {
   // SetShouldClearTypingStyle(true), which will cause problems applying
   // formatting during composition. See https://crbug.com/803278.
   GetFrame().Selection().SetSelection(
-      SelectionInDOMTree::Builder().SetBaseAndExtent(range).Build(),
+      SelectionInDomTree::Builder().SetBaseAndExtent(range).Build(),
       SetSelectionOptions());
 
   if (widget) {
@@ -691,11 +691,11 @@ bool InputMethodController::FinishComposingText(
         EphemeralRangeForOffsets(old_offsets);
     if (old_selection_range.IsNull())
       return false;
-    const SelectionInDOMTree& selection =
-        is_forward_selection ? SelectionInDOMTree::Builder()
+    const SelectionInDomTree& selection =
+        is_forward_selection ? SelectionInDomTree::Builder()
                                    .SetAsForwardSelection(old_selection_range)
                                    .Build()
-                             : SelectionInDOMTree::Builder()
+                             : SelectionInDomTree::Builder()
                                    .SetAsBackwardSelection(old_selection_range)
                                    .Build();
     GetFrame().Selection().SetSelection(
@@ -1144,7 +1144,7 @@ void InputMethodController::SetComposition(
   // the stack could end up not corresponding to the TypingCommand. Make sure we
   // don't crash in these cases (it's unclear what the composition range should
   // be set to in these cases, so we don't worry too much about that).
-  SelectionInDOMTree selection;
+  SelectionInDomTree selection;
   if (GetEditor().GetUndoStack().CanUndo()) {
     const UndoStep* undo_step = *GetEditor().GetUndoStack().UndoSteps().begin();
     const SelectionForUndoStep& undo_selection = undo_step->EndingSelection();
@@ -1217,7 +1217,7 @@ void InputMethodController::SetComposition(
         CompositionEphemeralRange(), Color::kTransparent,
         ui::mojom::ImeTextSpanThickness::kThin,
         ui::mojom::ImeTextSpanUnderlineStyle::kSolid, Color::kTransparent,
-        LayoutTheme::GetTheme().PlatformDefaultCompositionBackgroundColor());
+        LayoutTheme::PlatformDefaultCompositionBackgroundColor());
     return;
   }
 
@@ -1368,7 +1368,7 @@ bool InputMethodController::SetSelectionOffsets(
     return false;
 
   GetFrame().Selection().SetSelection(
-      SelectionInDOMTree::Builder().SetBaseAndExtent(range).Build(),
+      SelectionInDomTree::Builder().SetBaseAndExtent(range).Build(),
       SetSelectionOptions::Builder()
           .SetShouldCloseTyping(typing_continuation == TypingContinuation::kEnd)
           .SetShouldShowHandle(show_handle)
@@ -1477,8 +1477,8 @@ bool InputMethodController::DeleteSelection() {
 }
 
 bool InputMethodController::DeleteSelectionWithoutAdjustment() {
-  const SelectionInDOMTree& selection_in_dom_tree =
-      GetFrame().Selection().GetSelectionInDOMTree();
+  const SelectionInDomTree& selection_in_dom_tree =
+      GetFrame().Selection().GetSelectionInDomTree();
   if (selection_in_dom_tree.IsCaret())
     return true;
 

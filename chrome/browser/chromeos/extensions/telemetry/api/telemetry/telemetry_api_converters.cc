@@ -5,13 +5,16 @@
 #include "chrome/browser/chromeos/extensions/telemetry/api/telemetry/telemetry_api_converters.h"
 
 #include <inttypes.h>
+#include <unistd.h>
 
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "base/check_op.h"
 #include "base/notreached.h"
+#include "base/time/time.h"
 #include "chrome/common/chromeos/extensions/api/telemetry.h"
 #include "chromeos/crosapi/mojom/probe_service.mojom.h"
 #include "chromeos/services/network_config/public/mojom/network_types.mojom.h"
@@ -23,6 +26,12 @@ namespace {
 
 namespace cx_telem = ::chromeos::api::os_telemetry;
 namespace crosapi = ::crosapi::mojom;
+
+uint64_t UserHz() {
+  const long user_hz = sysconf(_SC_CLK_TCK);
+  CHECK_GE(user_hz, 0);
+  return user_hz;
+}
 
 }  // namespace
 
@@ -88,42 +97,36 @@ cx_telem::AudioInfo UncheckedConvertPtr(
 }
 
 cx_telem::CpuCStateInfo UncheckedConvertPtr(
-    crosapi::ProbeCpuCStateInfoPtr input) {
+    ash::cros_healthd::mojom::CpuCStateInfoPtr input) {
   cx_telem::CpuCStateInfo result;
   result.name = input->name;
-  if (input->time_in_state_since_last_boot_us) {
-    result.time_in_state_since_last_boot_us =
-        input->time_in_state_since_last_boot_us->value;
-  }
+  result.time_in_state_since_last_boot_us =
+      input->time_in_state_since_last_boot_us;
   return result;
 }
 
 cx_telem::LogicalCpuInfo UncheckedConvertPtr(
-    crosapi::ProbeLogicalCpuInfoPtr input) {
+    ash::cros_healthd::mojom::LogicalCpuInfoPtr input) {
+  const auto user_hz = UserHz();
+  CHECK_GT(user_hz, 0u);
+
   cx_telem::LogicalCpuInfo result;
-  if (input->max_clock_speed_khz) {
-    result.max_clock_speed_khz = input->max_clock_speed_khz->value;
-  }
-  if (input->scaling_max_frequency_khz) {
-    result.scaling_max_frequency_khz = input->scaling_max_frequency_khz->value;
-  }
-  if (input->scaling_current_frequency_khz) {
-    result.scaling_current_frequency_khz =
-        input->scaling_current_frequency_khz->value;
-  }
-  if (input->idle_time_ms) {
-    result.idle_time_ms = input->idle_time_ms->value;
-  }
+
+  result.max_clock_speed_khz = input->max_clock_speed_khz;
+  result.scaling_max_frequency_khz = input->scaling_max_frequency_khz;
+  result.scaling_current_frequency_khz = input->scaling_current_frequency_khz;
+  result.idle_time_ms =
+      input->idle_time_user_hz * base::Time::kMillisecondsPerSecond / user_hz;
+
   result.c_states =
       ConvertPtrVector<cx_telem::CpuCStateInfo>(std::move(input->c_states));
-  if (input->core_id) {
-    result.core_id = input->core_id->value;
-  }
+  result.core_id = input->core_id;
+
   return result;
 }
 
 cx_telem::PhysicalCpuInfo UncheckedConvertPtr(
-    crosapi::ProbePhysicalCpuInfoPtr input) {
+    ash::cros_healthd::mojom::PhysicalCpuInfoPtr input) {
   cx_telem::PhysicalCpuInfo result;
   result.model_name = input->model_name;
   result.logical_cpus = ConvertPtrVector<cx_telem::LogicalCpuInfo>(
@@ -494,15 +497,16 @@ cx_telem::ThermalSensorInfo UncheckedConvertPtr(
 
 }  // namespace unchecked
 
-cx_telem::CpuArchitectureEnum Convert(crosapi::ProbeCpuArchitectureEnum input) {
+cx_telem::CpuArchitectureEnum Convert(
+    ash::cros_healthd::mojom::CpuArchitectureEnum input) {
   switch (input) {
-    case crosapi::ProbeCpuArchitectureEnum::kUnknown:
+    case ash::cros_healthd::mojom::CpuArchitectureEnum::kUnknown:
       return cx_telem::CpuArchitectureEnum::kUnknown;
-    case crosapi::ProbeCpuArchitectureEnum::kX86_64:
+    case ash::cros_healthd::mojom::CpuArchitectureEnum::kX86_64:
       return cx_telem::CpuArchitectureEnum::kX86_64;
-    case crosapi::ProbeCpuArchitectureEnum::kAArch64:
+    case ash::cros_healthd::mojom::CpuArchitectureEnum::kAArch64:
       return cx_telem::CpuArchitectureEnum::kAarch64;
-    case crosapi::ProbeCpuArchitectureEnum::kArmv7l:
+    case ash::cros_healthd::mojom::CpuArchitectureEnum::kArmv7l:
       return cx_telem::CpuArchitectureEnum::kArmv7l;
   }
   NOTREACHED();

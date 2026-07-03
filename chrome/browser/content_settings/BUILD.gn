@@ -214,6 +214,7 @@ source_set("content_settings_util_impl") {
     deps += [
       "//chrome/browser/ui/location_bar",
       "//chrome/browser/ui/tabs:tab_strip",
+      "//chrome/browser/ui/views/picture_in_picture",
     ]
   }
 }

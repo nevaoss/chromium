@@ -17,6 +17,13 @@ interface HTMLUserMediaElement : HTMLElement {
   attribute EventHandler onerror;
 
   static boolean isTypeSupported(DOMString type);
-};
 
-HTMLUserMediaElement includes InPagePermissionMixin;
+  [MeasureAs=CapabilityElementIsValid] readonly attribute boolean isValid;
+  [MeasureAs=CapabilityElementInvalidReason] readonly attribute DOMString invalidReason;
+  [MeasureAs=CapabilityElementInitialPermissionStatus] readonly attribute PermissionState initialPermissionStatus;
+  [MeasureAs=CapabilityElementPermissionStatus] readonly attribute PermissionState permissionStatus;
+
+  [MeasureAs=CapabilityElementOnPromptAction] attribute EventHandler onpromptaction;
+  [MeasureAs=CapabilityElementOnPromptDismiss] attribute EventHandler onpromptdismiss;
+  [MeasureAs=CapabilityElementOnValidationStatusChange] attribute EventHandler onvalidationstatuschange;
+};

@@ -14,6 +14,7 @@
 #include "chrome/browser/actor/ui/actor_ui_window_controller.h"
 #include "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble_controller.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
+#include "chrome/browser/bookmarks/bookmark_model_factory.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/collaboration/collaboration_service_factory.h"
 #include "chrome/browser/commerce/shopping_service_factory.h"
@@ -45,6 +46,7 @@
 #include "chrome/browser/ui/ai_overlay_dialog/ai_overlay_dialog_controller.h"
 #include "chrome/browser/ui/animation/browser_animation_controller.h"
 #include "chrome/browser/ui/bookmarks/bookmark_bar_controller.h"
+#include "chrome/browser/ui/bookmarks/bookmarks_service_feature.h"
 #include "chrome/browser/ui/breadcrumb_manager_browser_agent.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_actions.h"
@@ -92,6 +94,7 @@
 #include "chrome/browser/ui/tabs/saved_tab_groups/shared_tab_group_feedback_controller.h"
 #include "chrome/browser/ui/tabs/split_tab_highlight_controller.h"
 #include "chrome/browser/ui/tabs/split_view_iph_controller.h"
+#include "chrome/browser/ui/tabs/tab_drag_api/desktop_tab_drag_impl/tab_drag_window_adapter_impl.h"
 #include "chrome/browser/ui/tabs/tab_drag_api/tab_drag_service_feature.h"
 #include "chrome/browser/ui/tabs/tab_group_deletion_dialog_controller.h"
 #include "chrome/browser/ui/tabs/tab_list_bridge.h"
@@ -410,12 +413,19 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
       std::make_unique<tabs_api::tab_strip_model::TabStripModelInjector>(
           browser, tab_strip_model_));
 
-  tab_drag_service_feature_ = std::make_unique<TabDragServiceFeature>();
+  auto adapter = std::make_unique<TabDragWindowAdapterImpl>(browser);
+  tab_drag_service_feature_ =
+      std::make_unique<TabDragServiceFeature>(std::move(adapter));
 
   tab_strip_ui_controller_ =
       std::make_unique<tabs_api::TabStripUIControllerImpl>(
           std::make_unique<tabs_api::TabStripUIControllerInjectorImpl>(
               browser, tab_strip_model_));
+
+  if (auto* model = BookmarkModelFactory::GetForBrowserContext(profile)) {
+    bookmarks_service_feature_ =
+        std::make_unique<BookmarksServiceFeature>(model);
+  }
 
   memory_saver_bubble_controller_ =
       std::make_unique<memory_saver::MemorySaverBubbleController>(browser);

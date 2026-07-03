@@ -138,6 +138,15 @@ public class AwContentRestrictionManagerBridge {
                     }
                     callback.onResult(false);
                 });
+
+        // Close the request body file descriptor soon after it has been sent to the platform.
+        if (requestBody != null) {
+            try {
+                requestBody.close();
+            } catch (IOException e) {
+                Log.e(TAG, e);
+            }
+        }
     }
 
     @CalledByNative

@@ -21,15 +21,18 @@ namespace {
 
 // Finds the LayoutObject of the anchor element given by position-anchor.
 const LayoutObject* PositionAnchorObject(const LayoutBox& box) {
-  const StylePositionAnchor& position_anchor = box.StyleRef().PositionAnchor();
+  const DefaultAnchorData default_anchor_data =
+      box.StyleRef().GetDefaultAnchorData();
   using Type = StylePositionAnchor::Type;
-  switch (position_anchor.GetType()) {
+  switch (default_anchor_data.GetType()) {
     case Type::kNone:
       return nullptr;
     case Type::kAuto:
       return box.AcceptableImplicitAnchor();
     case Type::kName:
-      return box.FindTargetAnchor(position_anchor.GetName());
+      return box.FindTargetAnchor(default_anchor_data.GetName());
+    case Type::kNormal:
+      NOTREACHED();
   }
 }
 

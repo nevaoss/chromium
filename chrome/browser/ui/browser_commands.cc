@@ -134,6 +134,7 @@
 #include "components/bookmarks/browser/bookmark_model.h"
 #include "components/bookmarks/browser/bookmark_node.h"
 #include "components/bookmarks/browser/bookmark_utils.h"
+#include "components/bookmarks/common/bookmark_bar_visibility_state.h"
 #include "components/bookmarks/common/bookmark_pref_names.h"
 #include "components/browsing_data/content/browsing_data_helper.h"
 #include "components/commerce/core/commerce_utils.h"
@@ -701,6 +702,25 @@ bool PrintPreviewShowing(const BrowserWindowInterface* browser) {
 #endif
 }
 #endif  // BUILDFLAG(ENABLE_BASIC_PRINT_DIALOG)
+
+// Helper function for tab grouping commands.
+// Returns a vector of indices of ungrouped, non-pinned tabs.
+std::vector<int> GetUngroupedTabIndices(BrowserWindowInterface* browser) {
+  TabStripModel* tab_strip_model = browser->GetTabStripModel();
+  std::vector<int> indices;
+  if (!tab_strip_model->SupportsTabGroups()) {
+    return indices;
+  }
+
+  int i = 0;
+  for (const tabs::TabInterface* t : *tab_strip_model) {
+    if (!t->GetGroup() && !t->IsPinned()) {
+      indices.push_back(i);
+    }
+    ++i;
+  }
+  return indices;
+}
 
 }  // namespace
 
@@ -1701,24 +1721,17 @@ void FocusPreviousTabGroup(BrowserWindowInterface* browser) {
   }
 }
 
+bool CanGroupAllUngroupedTabs(BrowserWindowInterface* browser) {
+  return !GetUngroupedTabIndices(browser).empty();
+}
+
 bool GroupAllUngroupedTabs(BrowserWindowInterface* browser) {
+  std::vector<int> indices = GetUngroupedTabIndices(browser);
+  if (indices.empty()) {
+    return false;
+  }
+
   TabStripModel* tab_strip_model = browser->GetTabStripModel();
-  if (!tab_strip_model->SupportsTabGroups()) {
-    return false;
-  }
-
-  int i = 0;
-  std::vector<int> indices;
-  for (const tabs::TabInterface* t : *tab_strip_model) {
-    if (!t->GetGroup() && !t->IsPinned()) {
-      indices.push_back(i);
-    }
-    ++i;
-  }
-  if (indices.size() == 0) {
-    return false;
-  }
-
   tab_groups::TabGroupId group = tab_strip_model->AddToNewGroup(indices);
   tab_strip_model->OpenTabGroupEditor(group);
   return true;
@@ -2468,6 +2481,27 @@ void OpenReportUnsafeSiteDialog(BrowserWindowInterface* browser) {
 void ToggleBookmarkBar(BrowserWindowInterface* browser) {
   base::RecordAction(UserMetricsAction("ShowBookmarksBar"));
   ToggleBookmarkBarWhenVisible(browser->GetProfile());
+}
+
+void SetBookmarkBarVisibilityState(
+    BrowserWindowInterface* browser,
+    bookmarks::BookmarkBarVisibilityState state) {
+  browser->GetProfile()->GetPrefs()->SetInteger(
+      bookmarks::prefs::kBookmarkBarVisibilityState, static_cast<int>(state));
+}
+
+void ToggleShowAppsShortcutInBookmarkBar(BrowserWindowInterface* browser) {
+  bool pref_enabled = browser->GetProfile()->GetPrefs()->GetBoolean(
+      bookmarks::prefs::kShowAppsShortcutInBookmarkBar);
+  browser->GetProfile()->GetPrefs()->SetBoolean(
+      bookmarks::prefs::kShowAppsShortcutInBookmarkBar, !pref_enabled);
+}
+
+void ToggleShowTabGroupsInBookmarkBar(BrowserWindowInterface* browser) {
+  bool pref_enabled = browser->GetProfile()->GetPrefs()->GetBoolean(
+      bookmarks::prefs::kShowTabGroupsInBookmarkBar);
+  browser->GetProfile()->GetPrefs()->SetBoolean(
+      bookmarks::prefs::kShowTabGroupsInBookmarkBar, !pref_enabled);
 }
 
 void ToggleShowFullURLs(BrowserWindowInterface* browser) {

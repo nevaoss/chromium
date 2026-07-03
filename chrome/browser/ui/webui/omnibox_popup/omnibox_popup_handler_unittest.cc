@@ -63,11 +63,26 @@ TEST_F(OmniboxPopupHandlerTest, ShowContextMenu) {
   EXPECT_TRUE(embedder_->context_menu_shown());
 }
 
-TEST_F(OmniboxPopupHandlerTest, SetInputText) {
+TEST_F(OmniboxPopupHandlerTest, SetInputState) {
   std::string test_text = "test input";
-  EXPECT_CALL(page_, SetInputText(test_text));
-  handler_->SetInputText(test_text);
+  gfx::Range test_selection(1, 5);
+  EXPECT_CALL(page_, SetInputState(testing::_))
+      .WillOnce([&](omnibox_popup::mojom::OmniboxInputStatePtr state) {
+        EXPECT_EQ(state->text, test_text);
+        EXPECT_EQ(state->selection, test_selection);
+      });
+  handler_->SetInputState(test_text, test_selection);
   page_.FlushForTesting();
+}
+
+TEST_F(OmniboxPopupHandlerTest, OnSelectionChanged) {
+  gfx::Range test_selection(1, 5);
+  auto state = omnibox_popup::mojom::OmniboxInputState::New();
+  state->text = "test input";
+  state->selection = test_selection;
+  state->sequence_number = 0;
+  handler_->OnSelectionChanged(std::move(state));
+  EXPECT_EQ(handler_->latest_selection(), test_selection);
 }
 
 }  // namespace

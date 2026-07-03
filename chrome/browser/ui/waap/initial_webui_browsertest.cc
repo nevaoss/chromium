@@ -695,12 +695,12 @@ IN_PROC_BROWSER_TEST_F(InitialWebUINavigationBrowserTest,
   }
 
   // Show the window which should be shown minimized, and verify it.
-  new_browser->window()->Show();
-  EXPECT_TRUE(new_browser->window()->IsMinimized());
+  new_browser->GetWindow()->Show();
+  EXPECT_TRUE(new_browser->GetWindow()->IsMinimized());
 
   // Restore (open) the window.
-  new_browser->window()->Restore();
-  EXPECT_FALSE(new_browser->window()->IsMinimized());
+  new_browser->GetWindow()->Restore();
+  EXPECT_FALSE(new_browser->GetWindow()->IsMinimized());
 
   // Simulate presentation and paint events (which now happen after the window
   // is opened).
@@ -732,8 +732,8 @@ IN_PROC_BROWSER_TEST_F(InitialWebUINavigationBrowserTest,
   // Enable session restore and minimize the current window.
   SessionStartupPref pref(SessionStartupPref::LAST);
   SessionStartupPref::SetStartupPref(profile, pref);
-  browser()->window()->Minimize();
-  EXPECT_TRUE(browser()->window()->IsMinimized());
+  browser()->GetWindow()->Minimize();
+  EXPECT_TRUE(browser()->GetWindow()->IsMinimized());
 
   // Keep the profile and process alive when we close the window.
   auto keep_alive = std::make_unique<ScopedKeepAlive>(
@@ -757,11 +757,11 @@ IN_PROC_BROWSER_TEST_F(InitialWebUINavigationBrowserTest,
   ASSERT_TRUE(restored_browser);
 
   // Verify the restored window is minimized.
-  EXPECT_TRUE(restored_browser->window()->IsMinimized());
+  EXPECT_TRUE(restored_browser->GetWindow()->IsMinimized());
 
   // Restore (open) the window.
-  restored_browser->window()->Restore();
-  EXPECT_FALSE(restored_browser->window()->IsMinimized());
+  restored_browser->GetWindow()->Restore();
+  EXPECT_FALSE(restored_browser->GetWindow()->IsMinimized());
 
   // Simulate paint events (which now happen after the window is opened).
   if (auto* manager =

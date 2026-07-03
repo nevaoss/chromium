@@ -110,6 +110,7 @@ bool TouchToFillController::Show(
   // If the render frame host has been destroyed already, the url will be empty
   // in which case Show() should never be called.
   CHECK(!url.is_empty());
+  url::Origin origin = ttf_delegate_->GetFrameOrigin();
 
   switch (GetResponsibleDisplayTarget(credentials_)) {
     case DisplayTarget::kNone:
@@ -127,7 +128,7 @@ bool TouchToFillController::Show(
         no_passkeys_bridge_ = std::make_unique<NoPasskeysBottomSheetBridge>();
       }
       no_passkeys_bridge_->Show(
-          GetNativeView()->GetWindowAndroid(), url::Origin::Create(url).host(),
+          GetNativeView()->GetWindowAndroid(), origin.host(),
           base::BindOnce(&TouchToFillController::OnDismiss,
                          weak_ptr_factory_.GetWeakPtr()),
           base::BindOnce(&TouchToFillController::OnHybridSignInSelected,
@@ -169,8 +170,7 @@ bool TouchToFillController::Show(
 
       return view_->Show(url,
                          TouchToFillView::IsOriginSecure(
-                             network::IsOriginPotentiallyTrustworthy(
-                                 url::Origin::Create(url))),
+                             network::IsOriginPotentiallyTrustworthy(origin)),
                          *sorted_credentials, flags);
   }
 }
@@ -182,7 +182,7 @@ void TouchToFillController::OnCredentialSelected(
   if (credential.match_type() ==
       password_manager_util::GetLoginMatchType::kGrouped) {
     std::string current_origin =
-        GetDisplayOrigin(url::Origin::Create(ttf_delegate_->GetFrameUrl()));
+        GetDisplayOrigin(ttf_delegate_->GetFrameOrigin());
     // Use `cred->display_name()` instead of origin here to correctly display
     // credentials saved for android apps.
     grouped_credential_sheet_controller_->ShowAcknowledgeSheet(
@@ -206,10 +206,11 @@ void TouchToFillController::OnCredentialSelected(
     password_manager::metrics_util::LogFillSuggestionGroupedMatchAccepted(
         /*grouped_match_accepted=*/false);
   }
-  // Unretained is safe here because TouchToFillController owns the delegate.
+  // A WeakPtr is necessary because the delegate may trigger this callback
+  // during or after the destruction of this controller.
   ttf_delegate_->OnCredentialSelected(
       credential, base::BindOnce(&TouchToFillController::ActionCompleted,
-                                 base::Unretained(this)));
+                                 weak_ptr_factory_.GetWeakPtr()));
 }
 
 void TouchToFillController::OnAcknowledgementBeforeFillingReceived(
@@ -222,8 +223,8 @@ void TouchToFillController::OnAcknowledgementBeforeFillingReceived(
 
   switch (dismiss_reason) {
     case AcknowledgeGroupedCredentialSheetBridge::DismissReason::kAccept:
-      // Unretained is safe here because TouchToFillController owns the
-      // delegate.
+      // A WeakPtr is necessary because the delegate may trigger this callback
+      // during or after the destruction of this controller.
       ttf_delegate_->OnCredentialSelected(
           credential, base::BindOnce(&TouchToFillController::ActionCompleted,
                                      weak_ptr_factory_.GetWeakPtr()));
@@ -241,24 +242,28 @@ void TouchToFillController::OnAcknowledgementBeforeFillingReceived(
 void TouchToFillController::OnPasskeyCredentialSelected(
     const PasskeyCredential& credential) {
   view_.reset();
-  // Unretained is safe here because TouchToFillController owns the delegate.
+  // A WeakPtr is necessary because the delegate may trigger this callback
+  // during or after the destruction of this controller.
   ttf_delegate_->OnPasskeyCredentialSelected(
       credential, base::BindOnce(&TouchToFillController::ActionCompleted,
-                                 base::Unretained(this)));
+                                 weak_ptr_factory_.GetWeakPtr()));
 }
 
 void TouchToFillController::OnManagePasswordsSelected(bool passkeys_shown) {
   view_.reset();
-  // Unretained is safe here because TouchToFillController owns the delegate.
+  // A WeakPtr is necessary because the delegate may trigger this callback
+  // during or after the destruction of this controller.
   ttf_delegate_->OnManagePasswordsSelected(
       passkeys_shown, base::BindOnce(&TouchToFillController::ActionCompleted,
-                                     base::Unretained(this)));
+                                     weak_ptr_factory_.GetWeakPtr()));
 }
 
 void TouchToFillController::OnHybridSignInSelected() {
   view_.reset();
+  // A WeakPtr is necessary because the delegate may trigger this callback
+  // during or after the destruction of this controller.
   ttf_delegate_->OnHybridSignInSelected(base::BindOnce(
-      &TouchToFillController::ActionCompleted, base::Unretained(this)));
+      &TouchToFillController::ActionCompleted, weak_ptr_factory_.GetWeakPtr()));
 }
 
 void TouchToFillController::OnShowCredManSelected() {
@@ -271,9 +276,10 @@ void TouchToFillController::OnCredManUiClosed(bool success) {
   if (!ttf_delegate_) {
     return;
   }
-  // Unretained is safe here because TouchToFillController owns the delegate.
+  // A WeakPtr is necessary because the delegate may trigger this callback
+  // during or after the destruction of this controller.
   ttf_delegate_->OnCredManDismissed(base::BindOnce(
-      &TouchToFillController::ActionCompleted, base::Unretained(this)));
+      &TouchToFillController::ActionCompleted, weak_ptr_factory_.GetWeakPtr()));
 }
 
 void TouchToFillController::OnDismiss() {
@@ -284,9 +290,10 @@ void TouchToFillController::OnDismiss() {
     // PasswordSuggestionBottomSheetV2 is launched
     return;
   }
-  // Unretained is safe here because TouchToFillController owns the delegate.
+  // A WeakPtr is necessary because the delegate may trigger this callback
+  // during or after the destruction of this controller.
   ttf_delegate_->OnDismiss(base::BindOnce(
-      &TouchToFillController::ActionCompleted, base::Unretained(this)));
+      &TouchToFillController::ActionCompleted, weak_ptr_factory_.GetWeakPtr()));
 }
 
 Profile* TouchToFillController::GetProfile() {

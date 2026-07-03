@@ -261,6 +261,9 @@ LayoutUnit AlignContentOffset(
 
 // Returns the margin on the baseline side of `item` for baseline alignment
 // calculations.
+//
+// TODO(almaher): We need to incorporate `StartExtraMargin`/`EndExtraMargin`
+// for subgrid baseline scenarios.
 LayoutUnit GetBaselineSideMargin(const GridItemData& item,
                                  const BoxStrut& margins,
                                  GridTrackSizingDirection track_direction) {
@@ -308,9 +311,14 @@ LayoutUnit GridLanesLayoutAlgorithm::CalculateItemInlineContribution(
   const auto& item_node = grid_lanes_item.node;
   auto MinMaxSizesFunc = [&](SizeType type) -> MinMaxSizesResult {
     if (grid_lanes_item.IsSubgrid()) {
-      return To<GridNode>(item_node).ComputeSubgridMinMaxSizes(
-          sizing_subtree.SubgridSizingSubtree(grid_lanes_item),
-          space_for_measure);
+      const GridSizingSubtree& subgrid_sizing_subtree =
+          sizing_subtree.SubgridSizingSubtree(grid_lanes_item);
+      if (subgrid_sizing_subtree.LayoutData().IsSubgridWithStandaloneAxis(
+              kForColumns)) {
+        return To<GridNode>(item_node).ComputeSubgridMinMaxSizes(
+            subgrid_sizing_subtree, space_for_measure);
+      }
+      return MinMaxSizesResult();
     }
     return item_node.ComputeMinMaxSizes(item_node.Style().GetWritingMode(),
                                         type, space_for_measure);
@@ -706,8 +714,6 @@ void GridLanesLayoutAlgorithm::RunGridLanesPlacementPhase(
                      : containing_grid_area.offset.inline_offset =
                            final_start_offset_in_stacking_axis;
 
-      // TODO(celestepan): Account for extra margins from sub-grid items.
-      //
       // Adjust item's position in the track based on style. We only want offset
       // applied to the grid axis at the moment.
       //
@@ -1063,6 +1069,7 @@ void GridLanesLayoutAlgorithm::MeasureVirtualGridLanesItems(
   const auto grid_axis_direction = Style().GridLanesTrackSizingDirection();
   const bool is_for_columns = grid_axis_direction == kForColumns;
   auto& layout_data = sizing_subtree.LayoutData();
+  const auto writing_mode = GetConstraintSpace().GetWritingMode();
 
   for (const Member<GridLanesItemGroup>& group :
        sizing_subtree.GetVirtualItemGroups()) {
@@ -1094,21 +1101,50 @@ void GridLanesLayoutAlgorithm::MeasureVirtualGridLanesItems(
       const SubgriddedItemData subgridded_item =
           item_data.is_subgridded_to_parent_grid
               ? sizing_subtree.LookupSubgriddedItemData(item_data)
-              : SubgriddedItemData(item_data, &layout_data,
-                                   GetConstraintSpace().GetWritingMode());
+              : SubgriddedItemData(item_data, &layout_data, writing_mode);
       const auto space = CreateConstraintSpaceForMeasure(subgridded_item);
       const ComputedStyle& item_style = item_node.Style();
 
       const bool use_item_inline_contribution =
           is_for_columns == item_data.is_parallel_with_root_grid;
 
-      // TODO(almaher): Subgrids have extra margin to handle unique gap sizes.
-      // This requires access to the subgrid track collection, where that extra
-      // margin is accumulated.
+      // For subgridded items, account for that subgrid's accumulated start/end
+      // extra margins and gutter-size delta. The surrounding subgrid is treated
+      // as empty in the grid-lanes' subgridded axis, so its contribution shows
+      // up here on its subgridded items to ensure tracks can accommodate the
+      // subgrid's contribution accumulated along with its item contributions.
+      //
+      // For items with definite placement, apply the surrounding subgrid's
+      // edge extra margins at its known start/end set indices. For auto-placed
+      // subgridded items, the placement isn't known yet, so apply the
+      // largest possible per-track contribution to all tracks.
+      LayoutUnit subgrid_extra_margin;
+      if (item_data.is_subgridded_to_parent_grid) {
+        const auto& parent_subgrid_track_collection =
+            is_for_columns ? subgridded_item.Columns(writing_mode)
+                           : subgridded_item.Rows(writing_mode);
+        if (item_data.is_auto_placed) {
+          subgrid_extra_margin = LargestAutoPlacedSubgridContribution(
+              parent_subgrid_track_collection.StartExtraMargin(),
+              parent_subgrid_track_collection.EndExtraMargin(),
+              parent_subgrid_track_collection.AccumulatedGutterSizeDelta(),
+              parent_subgrid_track_collection.GetSetCount());
+        } else {
+          const auto& [begin_set_index, end_set_index] =
+              subgridded_item->SetIndices(
+                  parent_subgrid_track_collection.Direction());
+          subgrid_extra_margin =
+              parent_subgrid_track_collection.StartExtraMargin(
+                  begin_set_index) +
+              parent_subgrid_track_collection.EndExtraMargin(end_set_index);
+        }
+      }
+
       const BoxStrut margins =
           ComputeMarginsFor(space, item_style, GetConstraintSpace());
       const LayoutUnit margin_sum =
-          is_for_columns ? margins.InlineSum() : margins.BlockSum();
+          (is_for_columns ? margins.InlineSum() : margins.BlockSum()) +
+          subgrid_extra_margin;
 
       MinMaxSizes min_max_contribution;
       LayoutUnit baseline_shim;
@@ -1129,8 +1165,14 @@ void GridLanesLayoutAlgorithm::MeasureVirtualGridLanesItems(
         // the correct contribution from this item.
         auto MinMaxSizesFunc = [&](SizeType type) -> MinMaxSizesResult {
           if (item_data.IsSubgrid()) {
-            return To<GridNode>(item_node).ComputeSubgridMinMaxSizes(
-                sizing_subtree.SubgridSizingSubtree(item_data), space);
+            const GridSizingSubtree& subgrid_sizing_subtree =
+                sizing_subtree.SubgridSizingSubtree(item_data);
+            if (subgrid_sizing_subtree.LayoutData().IsSubgridWithStandaloneAxis(
+                    kForColumns)) {
+              return To<GridNode>(item_node).ComputeSubgridMinMaxSizes(
+                  subgrid_sizing_subtree, space);
+            }
+            return MinMaxSizesResult();
           }
           return item_node.ComputeMinMaxSizes(item_style.GetWritingMode(), type,
                                               space);
@@ -1216,6 +1258,7 @@ void GridLanesLayoutAlgorithm::MeasureVirtualGridLanesItems(
       // Add the margin sum to all contribution sizes.
       auto AdjustItemContribution = [&](LayoutUnit& contribution_size) {
         contribution_size += margin_sum;
+        contribution_size.ClampNegativeToZero();
       };
       AdjustItemContribution(min_max_contribution.min_size);
       AdjustItemContribution(min_max_contribution.max_size);

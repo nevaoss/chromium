@@ -269,6 +269,7 @@
 <translation id="1407135791313364759">เปิดทั้งหมด</translation>
 <translation id="1408696301184924537">หากต้องการป้อน IBAN นี้โดยอัตโนมัติในครั้งถัดไป ให้บันทึกไว้ในบัญชี Google</translation>
 <translation id="1408787208417187241">เย็บด้วยลวดเย็บกระดาษด้านบน 3 ครั้ง</translation>
+<translation id="1410306713026702438"><ph name="SUGGESTION_TITLE" />, <ph name="SUGGESTION_DESCRIPTION" /> <ph name="SUGGESTION_TYPE" /> <ph name="MATCH_POSITION" /> จาก <ph name="NUM_MATCHES_IN_GROUP" /> ในกลุ่ม <ph name="GROUP_HEADER" /></translation>
 <translation id="1410365862999780287">คนอื่นๆ ที่ใช้อุปกรณ์นี้จะไม่เห็นกิจกรรมของคุณ คุณจึงท่องเว็บได้แบบส่วนตัวมากขึ้น โหมดนี้จะไม่เปลี่ยนแปลงวิธีเก็บรวบรวมข้อมูลโดยเว็บไซต์ที่คุณเข้าชมและบริการที่เว็บไซต์เหล่านั้นใช้ รวมถึง Google ด้วย ระบบจะบันทึกรายการที่ดาวน์โหลด บุ๊กมาร์ก และเรื่องรออ่านไว้</translation>
 <translation id="1410941016594047814">Envelope Invite</translation>
 <translation id="1413235258620101697">ระบบจะเข้ารหัส CVC ของบัตรนี้และบันทึกไว้ใน Google Wallet เพื่อการชำระเงินที่เร็วขึ้น</translation>
@@ -660,6 +661,7 @@
 <translation id="2045871135676061132">Envelope Personal</translation>
 <translation id="2046951263634619614">ร้านหนังสือ</translation>
 <translation id="2048261947532620704">กำลังแปลหน้าเว็บ</translation>
+<translation id="2055016614992422886">การสนทนา</translation>
 <translation id="2059166748188874810">เทศบาล</translation>
 <translation id="2059202684901022309">22 x 34 นิ้ว</translation>
 <translation id="2064568741209980952">สินเชื่อและการกู้ยืม</translation>
@@ -1387,6 +1389,7 @@
 <translation id="3158539265159265653">ดิสก์</translation>
 <translation id="3162070126914310576">ลงทะเบียนอุปกรณ์นี้ไม่ได้ในตอนนี้เนื่องจากหน่วยขององค์กรถึงขีดจำกัดการลงทะเบียนเริ่มต้นแล้ว โปรดติดต่อผู้ดูแลระบบเพื่อขอความช่วยเหลือ</translation>
 <translation id="3162559335345991374">Wi-Fi ที่คุณใช้อาจต้องการให้คุณไปที่หน้าการเข้าสู่ระบบ</translation>
+<translation id="316542773973815724">การนำทาง</translation>
 <translation id="316638481603975524">สามารถขอติดตั้งเว็บแอปได้</translation>
 <translation id="3166788340998560642">Chrome จะเสนอให้บันทึกลงใน <ph name="IDS_AUTOFILL_GOOGLE_WALLET_TITLE" /> เมื่อคุณใช้งานในครั้งถัดไป</translation>
 <translation id="3168744840365648658">อุปกรณ์วิทยุ</translation>
@@ -3555,6 +3558,7 @@
 <translation id="6550245281449521513">ไม่อนุญาตให้ล็อกเมาส์</translation>
 <translation id="6551737294564628267"><ph name="ATTRIBUTE_NAME" /> ใหม่</translation>
 <translation id="6552566579578780089">การชำระเงิน</translation>
+<translation id="6553777254569586547"><ph name="SUGGESTION_TITLE" /> <ph name="SUGGESTION_TYPE" /> <ph name="MATCH_POSITION" /> จาก <ph name="NUM_MATCHES_IN_GROUP" /> ในกลุ่ม <ph name="GROUP_HEADER" /></translation>
 <translation id="6554732001434021288">เข้าชมล่าสุด <ph name="NUM_DAYS" /> วันที่ผ่านมา</translation>
 <translation id="6556866813142980365">ทำซ้ำ</translation>
 <translation id="6557715786897013164">14 x 17 นิ้ว</translation>
@@ -3758,7 +3762,6 @@
 <translation id="6893057134494550310">ฟอยล์เคลือบ</translation>
 <translation id="6893204630281237373">หากต้องการปิดแอปการชำระเงินใน Chrome ให้ไปที่<ph name="BEGIN_LINK1" />การตั้งค่าการชำระเงิน<ph name="END_LINK1" /></translation>
 <translation id="6895330447102777224">บัตรของคุณได้รับการยืนยันแล้ว</translation>
-<translation id="6895573608763679343"><ph name="SUGGESTION_TITLE" />, <ph name="SUGGESTION_DESCRIPTION" />, <ph name="MATCH_POSITION" /> จาก <ph name="NUM_MATCHES_IN_GROUP" /> ในกลุ่ม <ph name="GROUP_HEADER" /></translation>
 <translation id="6896758677409633944">คัดลอก</translation>
 <translation id="6897140037006041989">User agent</translation>
 <translation id="6898699227549475383">องค์กร (O)</translation>
@@ -4122,7 +4125,6 @@
 <translation id="7450577240311017924">ปุ่มจัดการการซิงค์ เปิดใช้งานเพื่อจัดการข้อมูลที่คุณซิงค์ในการตั้งค่า Chrome</translation>
 <translation id="7451311239929941790"><ph name="BEGIN_LINK" />ดูข้อมูลเพิ่มเติม<ph name="END_LINK" />เกี่ยวกับปัญหานี้</translation>
 <translation id="745208957946308667">เกมไดโนเสาร์ กด Space เพื่อเล่น</translation>
-<translation id="74521886886364465"><ph name="SUGGESTION_TITLE" />, <ph name="MATCH_POSITION" /> จาก <ph name="NUM_MATCHES_IN_GROUP" /> ในกลุ่ม <ph name="GROUP_HEADER" /></translation>
 <translation id="7453032093368223821">จัดการข้อมูลอื่นๆ</translation>
 <translation id="7453849010505253492">เซิร์ฟเวอร์นี้พิสูจน์ไม่ได้ว่าเป็น <ph name="DOMAIN" /> เนื่องจากใช้ใบรับรองความปลอดภัยที่ Chrome หรือการกำหนดค่าระบบของคุณไม่เชื่อถือสำหรับการเข้ารหัสการเข้าชมเว็บ สาเหตุอาจเกิดจากการกำหนดค่าผิดหรือผู้โจมตีขัดขวางการเชื่อมต่อของคุณ <ph name="BEGIN_VIEW_CERTIFICATE_LINK" />ดูใบรับรอง<ph name="END_VIEW_CERTIFICATE_LINK" /></translation>
 <translation id="7454377933424667109">บัญชีระบบคลาวด์</translation>

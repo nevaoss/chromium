@@ -7,6 +7,8 @@
 #include <memory>
 
 #include "ash/constants/ash_features.h"
+#include "ash/constants/ash_pref_names.h"
+#include "ash/constants/chrome_pref_names.h"
 #include "ash/webui/media_app_ui/url_constants.h"
 #include "base/functional/bind.h"
 #include "base/version.h"
@@ -19,7 +21,6 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
-#include "chrome/common/pref_names.h"
 #include "chromeos/ash/components/channel/channel_info.h"
 #include "chromeos/ash/components/specialized_features/feature_access_checker.h"
 #include "chromeos/components/mahi/public/cpp/mahi_manager.h"
@@ -64,7 +65,7 @@ bool PhotosIntegrationSupported(const apps::AppUpdate& update) {
 }
 
 bool IsLensInGalleryEnabled(Profile* profile, PrefService* pref_service) {
-  if (!pref_service->GetBoolean(prefs::kMediaAppLensEnabled)) {
+  if (!pref_service->GetBoolean(ash::prefs::kMediaAppLensEnabled)) {
     return false;
   }
 
@@ -81,7 +82,7 @@ ChromeMediaAppGuestUIDelegate::ChromeMediaAppGuestUIDelegate() = default;
 
 void ChromeMediaAppGuestUIDelegate::RegisterProfilePrefs(
     PrefRegistrySimple* registry) {
-  registry->RegisterBooleanPref(prefs::kMediaAppLensEnabled, true);
+  registry->RegisterBooleanPref(ash::prefs::kMediaAppLensEnabled, true);
 }
 
 void ChromeMediaAppGuestUIDelegate::PopulateLoadTimeData(
@@ -119,8 +120,9 @@ void ChromeMediaAppGuestUIDelegate::PopulateLoadTimeData(
 
   source->AddBoolean("lensInGallery",
                      IsLensInGalleryEnabled(profile, pref_service));
-  source->AddBoolean("pdfReadonly",
-                     !pref_service->GetBoolean(prefs::kPdfAnnotationsEnabled));
+  source->AddBoolean(
+      "pdfReadonly",
+      !pref_service->GetBoolean(ash::chrome_prefs::kPdfAnnotationsEnabled));
   version_info::Channel channel = ash::GetChannel();
   source->AddBoolean("colorThemes", true);
   source->AddBoolean("photosAvailableForImage", photos_integration_supported);

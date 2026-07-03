@@ -22,6 +22,7 @@
 <ph name="EXTENSION_NAME" /></translation>
 <translation id="1184145431117212167">‏انسٹالیشن ناکام ہوگئی کیونکہ Windows کا آپ کا ورژن تعاون یافتہ نہیں ہے۔</translation>
 <translation id="1185134272377778587">‏Chromium کے بارے میں</translation>
+<translation id="1186645291482254714">‏اپنے فون پر Chromium کے ساتھ قیمت کی ٹریکنگ کے الرٹس حاصل کریں</translation>
 <translation id="1203500561924088507">انسٹال کرنے کا شکریہ۔ آپ کو <ph name="BUNDLE_NAME" /> استعمال کرنے سے پہلے اپنا براؤزر لازمی طور سے ری اسٹارٹ کرنا چاہیے۔</translation>
 <translation id="1232234696885483911">‏جب آپ تصاویر کا استعمال کر کے تلاش کھولتے ہیں تو صفحہ کا عنوان، URL اور مواد بشمول PDFs خودکار طور پر سرور کو بھیجے جائیں گے۔ <ph name="LEARN_MORE" /></translation>
 <translation id="123265588161106468">‏جب آپ سائن ان ہوتے ہیں، آپ Chromium میں اپنے Google اکاؤنٹ سے اپنے پاس ورڈز وغیرہ استعمال کر سکتے ہیں۔ اسے تبدیل کرنے کے لیے، "Chromium میں آپ کا اکاؤنٹ" پر جائیں۔</translation>
@@ -51,7 +52,6 @@
 <translation id="154404805518949443">‏‫Chromium میں سائن ان کریں</translation>
 <translation id="1547469039832541117">نمایاں کردہ ٹاسک کو بند کرتا ہے۔</translation>
 <translation id="1553461853655228091">‏پنے اطراف کا 3D نقشہ تخلیق کرنے کی خاطر Chromium کو آپ کے کیمرے تک رسائی کی اجازت درکار ہے</translation>
-<translation id="1555494096857516577">{NUM_EXTENSIONS,plural, =1{‏یہ ایکسٹینشن اب مزید تعاون یافتہ نہیں ہے۔ ‫Chromium تجویز کرتا ہے کہ آپ اسے ہٹا دیں}other{‏یہ ایکسٹینشنز اب مزید تعاون یافتہ نہیں ہیں۔ ‫Chromium تجویز کرتا ہے کہ آپ انہیں ہٹا دیں۔}}</translation>
 <translation id="1562320819937089394">‏‫Chromium کو پن کریں</translation>
 <translation id="1574377791422810894">‏Chromium کے سیفٹی ٹولز</translation>
 <translation id="1594928384848033697">‏‫Chromium آپ کا پاس ورڈ مینیجر ڈیٹا حذف کرنا چاہتا ہے۔ اس کی اجازت دینے کے لیے اپنا Windows پاس ورڈ ٹائپ کریں۔</translation>

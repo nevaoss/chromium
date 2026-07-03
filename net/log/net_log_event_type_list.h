@@ -1011,6 +1011,8 @@ EVENT_TYPE(TCP_CONNECT_JOB_CREATE_SECOND_CONNECTOR)
 //     "selected_trust_anchor_ids_for_retry": <Optional: comma-separated trust
 //                                             anchor IDs sent in the TLS
 //                                             ClientHello on retry>,
+//     "requested_server_padding": <Optional: Amount of server padding
+//                                  requested>,
 //   }
 EVENT_TYPE(SSL_CONNECT_JOB_SSL_CONNECT)
 
@@ -2954,6 +2956,12 @@ EVENT_TYPE(QUIC_SESSION_CRYPTO_FRAME_SENT)
 //    "offset": <The offset of the CRYPTO frame>
 //  }
 EVENT_TYPE(QUIC_SESSION_CRYPTO_FRAME_RECEIVED)
+
+// Session completed the Crypto Handshake
+//  {
+//    "received_server_padding": <Whether server padding was received>,
+//  }
+EVENT_TYPE(QUIC_SESSION_CRYPTO_HANDSHAKE_COMPLETE)
 
 // Session sent a STOP_SENDING frame.
 //  {

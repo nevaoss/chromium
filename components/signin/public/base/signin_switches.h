@@ -379,22 +379,6 @@ extern const base::FeatureParam<base::TimeDelta>
     kPolicyDisclaimerRegistrationRetryDelay;
 #endif
 
-#if BUILDFLAG(IS_IOS)
-// Feature flag controlling whether the MustFetchAppleAgeRangeInChrome account
-// capability should be used to determine whether the client must fetch Apple's
-// age range.
-COMPONENT_EXPORT(SIGNIN_SWITCHES)
-BASE_DECLARE_FEATURE(kEnforceMustFetchAppleAgeRangeInChromeCapability);
-#endif
-
-#if BUILDFLAG(IS_IOS)
-// Feature flag controlling whether the MustSkipAppleAgeRangeInChrome account
-// capability should be used to determine whether the client must skip Apple's
-// age range check.
-COMPONENT_EXPORT(SIGNIN_SWITCHES)
-BASE_DECLARE_FEATURE(kEnforceMustSkipAppleAgeRangeInChromeCapability);
-#endif
-
 // Feature flag to fetch AccountInfo (UserInfo & Capabilities) on restart.
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kFetchAccountInfoOnRestart);
@@ -527,6 +511,10 @@ BASE_DECLARE_FEATURE(kIgnoreInvalidGrantError);
 #endif
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
+// Controls the MagiChrome sign-in banner.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kMagiChromeSignInBanner);
+
 // Controls experiments for MagiChrome (e.g. Gaia sign-in URL parameters).
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kMagiChromeSignInExperimentsBatch1);
@@ -582,6 +570,10 @@ BASE_DECLARE_FEATURE(kProfilesReordering);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kReadContextualAccountCapabilities);
 #endif
+
+// Enables fetching the capability of the same name on all platforms.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kReadSupportsWalletPrivatePassesInAutofillCapability);
 
 #if !BUILDFLAG(IS_ANDROID)
 // Kill switch for Device Management Service OAuth scope.

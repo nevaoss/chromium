@@ -15,6 +15,7 @@ import android.text.TextUtils;
 import android.util.SparseArray;
 import android.view.View;
 
+import androidx.annotation.DrawableRes;
 import androidx.annotation.IdRes;
 import androidx.annotation.IntDef;
 import androidx.annotation.StringRes;
@@ -71,6 +72,10 @@ import org.chromium.chrome.browser.open_in_app.OpenInAppMenuItemProvider;
 import org.chromium.chrome.browser.preferences.Pref;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.readaloud.ReadAloudController;
+import org.chromium.chrome.browser.recent_tabs.ForeignSessionHelper;
+import org.chromium.chrome.browser.recent_tabs.ForeignSessionHelper.ForeignSession;
+import org.chromium.chrome.browser.recent_tabs.ForeignSessionHelper.ForeignSessionTab;
+import org.chromium.chrome.browser.recent_tabs.ForeignSessionHelper.ForeignSessionWindow;
 import org.chromium.chrome.browser.share.ShareUtils;
 import org.chromium.chrome.browser.supervised_user.SupervisedUserServiceBridge;
 import org.chromium.chrome.browser.tab.Tab;
@@ -105,6 +110,7 @@ import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.components.image_fetcher.ImageFetcherConfig;
 import org.chromium.components.image_fetcher.ImageFetcherFactory;
+import org.chromium.components.sync_device_info.FormFactor;
 import org.chromium.components.tab_groups.TabGroupColorId;
 import org.chromium.components.tab_groups.TabGroupColorPickerUtils;
 import org.chromium.components.user_prefs.UserPrefs;
@@ -172,6 +178,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
     private final FaviconHelper.DefaultFaviconHelper mDefaultFaviconHelper;
     private final RoundedIconGenerator mRoundedIconGenerator;
     private final Supplier<RecentlyClosedEntriesManager> mRecentlyClosedEntriesManagerSupplier;
+    private @Nullable ForeignSessionHelper mForeignSessionHelper;
 
     public TabbedAppMenuPropertiesDelegate(
             Context context,
@@ -243,6 +250,17 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
         return mFaviconHelper;
     }
 
+    private ForeignSessionHelper getForeignSessionHelper() {
+        if (mForeignSessionHelper == null) {
+            mForeignSessionHelper = new ForeignSessionHelper(getProfileFromTabModel());
+        }
+        return mForeignSessionHelper;
+    }
+
+    void setForeignSessionHelperForTesting(ForeignSessionHelper helper) {
+        mForeignSessionHelper = helper;
+    }
+
     @Override
     public void destroy() {
         super.destroy();
@@ -253,6 +271,10 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
         if (mFaviconHelper != null) {
             mFaviconHelper.destroy();
             mFaviconHelper = null;
+        }
+        if (mForeignSessionHelper != null) {
+            mForeignSessionHelper.destroy();
+            mForeignSessionHelper = null;
         }
     }
 
@@ -543,7 +565,8 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
         modelList.add(buildSettingsItem());
 
         // NTP Customizations
-        if (shouldShowNtpCustomizations(currentTab)) {
+        if (!ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU)
+                && shouldShowNtpCustomizations(currentTab)) {
             modelList.add(buildNtpCustomizationsItem(currentTab));
         }
 
@@ -1036,6 +1059,18 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                         submenuItems.addAll(recentEntries);
                     }
 
+                    List<ListItem> foreignSessions = new ArrayList<>();
+                    for (ForeignSession session : getForeignSessionHelper().getForeignSessions()) {
+                        foreignSessions.add(buildForeignSessionSubmenuItem(session));
+                    }
+                    if (!foreignSessions.isEmpty()) {
+                        submenuItems.add(
+                                new ListItem(
+                                        AppMenuHandler.AppMenuItemType.DIVIDER,
+                                        buildModelForDivider(R.id.divider_line_id)));
+                        submenuItems.addAll(foreignSessions);
+                    }
+
                     return submenuItems;
                 };
 
@@ -1089,6 +1124,75 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
             // TODO(crbug.com/509065810): Support other bulk closures.
         }
         return items;
+    }
+
+    private ListItem buildForeignSessionSubmenuItem(ForeignSession session) {
+        Supplier<List<ListItem>> submenuItemsSupplier =
+                () -> {
+                    List<ListItem> submenuItems = new ArrayList<>();
+                    for (ForeignSessionWindow window : session.windows) {
+                        // TODO(crbug.com/509065811): Limit the number of tabs displayed.
+                        for (ForeignSessionTab tab : window.tabs) {
+                            submenuItems.add(buildForeignSessionTabMenuItem(session, tab));
+                        }
+                    }
+                    if (submenuItems.isEmpty()) {
+                        submenuItems.add(
+                                new ListItem(
+                                        AppMenuHandler.AppMenuItemType.EMPTY,
+                                        new PropertyModel.Builder(AppMenuItemProperties.ALL_KEYS)
+                                                .with(AppMenuItemProperties.ENABLED, false)
+                                                .build()));
+                    }
+                    return submenuItems;
+                };
+
+        PropertyModel model =
+                buildModelForMenuItemWithSubmenu(
+                        R.id.recent_entry_menu_item,
+                        session.name,
+                        shouldShowIconBeforeItem()
+                                ? getIconForFormFactor(session.formFactor)
+                                : Resources.ID_NULL,
+                        submenuItemsSupplier);
+
+        return new ListItem(AppMenuHandler.AppMenuItemType.MENU_ITEM_WITH_SUBMENU, model);
+    }
+
+    private @DrawableRes int getIconForFormFactor(@FormFactor int formFactor) {
+        switch (formFactor) {
+            case FormFactor.DESKTOP:
+                return R.drawable.ic_desktop_windows;
+            case FormFactor.PHONE:
+                return R.drawable.smartphone_black_24dp;
+            case FormFactor.TABLET:
+                return R.drawable.tablet_black_24dp;
+            default:
+                return R.drawable.devices_black_24dp;
+        }
+    }
+
+    private ListItem buildForeignSessionTabMenuItem(ForeignSession session, ForeignSessionTab tab) {
+        PropertyModel model =
+                new PropertyModel.Builder(AppMenuRecentEntryItemProperties.ALL_KEYS)
+                        .with(
+                                AppMenuItemProperties.MENU_ITEM_ID,
+                                R.id.recent_entry_foreign_tab_menu_item)
+                        .with(AppMenuItemProperties.TITLE, tab.title)
+                        .with(
+                                AppMenuItemProperties.ICON_SUPPLIER,
+                                createIconSupplierForTab(
+                                        /* faviconUrl= */ tab.url,
+                                        /* tabGroupId= */ null,
+                                        /* isOffTheRecord= */ false,
+                                        /* cachedFavicon= */ null,
+                                        /* fallbackToHost= */ false))
+                        .with(AppMenuItemProperties.ICON_NO_TINT, true)
+                        .with(AppMenuItemProperties.ENABLED, true)
+                        .with(AppMenuRecentEntryItemProperties.FOREIGN_SESSION_TAB, tab)
+                        .with(AppMenuRecentEntryItemProperties.FOREIGN_SESSION_TAG, session.tag)
+                        .build();
+        return new ListItem(AppMenuHandler.AppMenuItemType.RECENT_ENTRY, model);
     }
 
     private String getRecentEntrySubmenuTitle(@Nullable String title, int tabCount) {
@@ -1300,6 +1404,9 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                     submenuItems.add(buildReadingListItem());
 
                     BookmarkModel bookmarkModel = mBookmarkModelSupplier.get();
+
+                    // TODO(crbug.com/521223427): Implement dynamic updates so that we don't
+                    // have to rely on timing to load the {@link BookmarkModel}.
                     if (bookmarkModel != null && bookmarkModel.isBookmarkModelLoaded()) {
                         List<ListItem> bookmarksBarItems =
                                 getBookmarkItemList(
@@ -1829,11 +1936,15 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
             return true;
         }
 
-        if (shouldShowDevToolsItem(currentTab)) {
+        if (shouldShowNameWindowItem()) {
             return true;
         }
 
-        if (shouldShowNameWindowItem()) {
+        if (shouldShowNtpCustomizations(currentTab)) {
+            return true;
+        }
+
+        if (shouldShowDevToolsItem(currentTab)) {
             return true;
         }
 
@@ -1856,12 +1967,16 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
             submenuItems.add(buildTaskManagerItem());
         }
 
-        if (shouldShowDevToolsItem(currentTab)) {
-            submenuItems.add(buildDevToolsItem(currentTab));
-        }
-
         if (shouldShowNameWindowItem()) {
             submenuItems.add(buildNameWindowItem());
+        }
+
+        if (shouldShowNtpCustomizations(currentTab)) {
+            submenuItems.add(buildNtpCustomizationsItem(currentTab));
+        }
+
+        if (shouldShowDevToolsItem(currentTab)) {
+            submenuItems.add(buildDevToolsItem(currentTab));
         }
 
         if (shouldShowTabLayoutToggleItem()) {
@@ -1932,8 +2047,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
             return false;
         }
 
-        return (DomDistillerFeatures.showAlwaysOnEntryPoint()
-                || DomDistillerFeatures.sReaderModeDistillInApp.isEnabled());
+        return DomDistillerFeatures.sReaderModeDistillInApp.isEnabled();
     }
 
     @Contract("null -> false")
@@ -2375,6 +2489,20 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
             updateHelper.unregisterObserver(assumeNonNull(mUpdateStateChangeObserver));
             mUpdateMenuItemVisible = false;
             mUpdateStateChangeObserver = null;
+        }
+    }
+
+    @Override
+    public void onMenuShown() {
+        super.onMenuShown();
+
+        if (ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU)) {
+            // TODO(crbug.com/521223427): Implement dynamic updates so that we don't
+            // have to rely on timing to load the {@link BookmarkModel}.
+            BookmarkModel bookmarkModel = mBookmarkModelSupplier.get();
+            if (bookmarkModel != null && !bookmarkModel.isBookmarkModelLoaded()) {
+                bookmarkModel.finishLoadingBookmarkModel(() -> {});
+            }
         }
     }
 

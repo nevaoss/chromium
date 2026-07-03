@@ -323,7 +323,7 @@ def _CreateHeader(jni_mode, jni_objs, boundary_proxy_natives, gen_jni_class,
 
   preamble, epilogue = header_common.header_preamble(
       jni_generator.GetScriptName(),
-      gen_jni_class,
+      java_class=gen_jni_class,
       system_includes=['iterator'],  # For std::size().
       user_includes=user_includes,
       header_guard=header_guard)
@@ -379,8 +379,12 @@ extern const int64_t kJniZeroHash{module_name}Priority = {priority_hash}LL;
             register_natives.non_proxy_register_function(sb, jni_obj)
 
     with sb.section('Main Register Function.'):
-      register_natives.main_register_function(sb, jni_objs, args.namespace,
-                                              gen_jni_class)
+      register_natives.main_register_function(
+          sb,
+          jni_objs,
+          args.namespace,
+          gen_jni_class,
+          register_natives_name=args.register_natives_name)
   sb(epilogue)
   return sb.to_string()
 

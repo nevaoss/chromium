@@ -151,6 +151,21 @@ using DocumentElementSetMap =
 
 namespace {
 
+// When a media element that is actively playing is moved to a new document,
+// restore playback after the (frame-resource-releasing) load algorithm runs,
+// instead of leaving the element paused. A document move is not a pause trigger
+// per the HTML spec, so resuming matches the behavior of Firefox/Safari.
+//
+// This is a kill-switch for that resumption. Blink drives the resume through
+// PlayInternal(), which dispatches events and runs internal steps (the play
+// event, autoplay-policy notifications, play promise handling and
+// UpdatePlayState()) that the spec does not prescribe for a document move and
+// that may diverge from what other engines do. Should that turn out to cause
+// interoperability problems in the field, disabling this flag falls back to the
+// legacy behavior of staying paused after the move.
+BASE_FEATURE(kResumePlaybackOnCrossDocumentMove,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 // When enabled, CSS media queries are supported in <source> elements.
 BASE_FEATURE(kVideoSourceMediaQuerySupport, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -703,9 +718,24 @@ void HTMLMediaElement::AttachToNewFrame() {
   // we still destroy the player to release old-frame references.
   switch (network_state_) {
     case kNetworkLoading:
-    case kNetworkIdle:
+    case kNetworkIdle: {
+      // The spec does not require running the load algorithm on a
+      // cross-document move, but we do so to release the frame-specific Mojo
+      // resources held by WebMediaPlayerImpl. The load algorithm sets paused_
+      // to true at step 4.6 and rejects pending play promises; since a document
+      // move is not a pause trigger per the spec, restore the pre-move playing
+      // state via PlayInternal() so that pseudo-class invalidations, play-event
+      // scheduling, autoplay-policy notifications and the final
+      // UpdatePlayState() all run, keeping paused_, playing_ and the
+      // WebMediaPlayer consistent.
+      const bool was_playing = !paused_;
       InvokeLoadAlgorithm();
+      if (was_playing &&
+          base::FeatureList::IsEnabled(kResumePlaybackOnCrossDocumentMove)) {
+        PlayInternal();
+      }
       break;
+    }
     case kNetworkEmpty:
     case kNetworkNoSource:
       ResetMediaPlayerAndMediaSource();
@@ -873,6 +903,7 @@ Node::InsertionNotificationRequest HTMLMediaElement::InsertedInto(
   if (insertion_point.isConnected()) {
     if (auto* frame = insertion_point.GetDocument().GetFrame()) {
       frame->AddVisibilityObserver(this);
+      is_frame_hidden_ = frame->IsHiddenForMediaPlayback();
     }
     // Cancel any pending removed-from-document timer: the element has been
     // (re-)inserted into a document, so it should not be paused by that timer.
@@ -4994,8 +5025,12 @@ void HTMLMediaElement::RejectPlayPromisesInternal(DOMExceptionCode code,
 }
 
 void HTMLMediaElement::OnRemovedFromDocumentTimerFired(TimerBase*) {
-  if (InActiveDocument())
+  // Do not pause if the element is still connected to a document (e.g. it was
+  // moved to a different document such as an iframe). Only pause when the
+  // element has been fully detached from any document.
+  if (isConnected()) {
     return;
+  }
 
   // Video should not pause when playing in Picture-in-Picture and subsequently
   // removed from the Document.

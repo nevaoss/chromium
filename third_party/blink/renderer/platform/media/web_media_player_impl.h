@@ -206,7 +206,7 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
   void Paint(cc::PaintCanvas* canvas,
              const gfx::Rect& rect,
              const cc::PaintFlags& flags,
-             bool force_pixel_readback) override;
+             bool acquire_texture_backing) override;
   scoped_refptr<media::VideoFrame> GetCurrentFrameThenUpdate() override;
   std::optional<media::VideoFrame::ID> CurrentFrameId() const override;
   media::PaintCanvasVideoRenderer* GetPaintCanvasVideoRenderer() override;

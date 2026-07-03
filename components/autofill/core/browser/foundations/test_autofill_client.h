@@ -516,6 +516,12 @@ class TestAutofillClientTemplate : public T {
   void set_should_show_personal_context_autofill_notice(bool should_show) {
     should_show_personal_context_autofill_notice_ = should_show;
   }
+  void MarkPersonalContextInAutofillNoticeAsAcknowledged() override {
+    is_personal_context_notice_acknowledged_ = true;
+  }
+  bool is_personal_context_notice_acknowledged() const {
+    return is_personal_context_notice_acknowledged_;
+  }
 
   void SetAutofillProfileEnabled(bool autofill_profile_enabled) {
     autofill_profile_enabled_ = autofill_profile_enabled;
@@ -558,7 +564,7 @@ class TestAutofillClientTemplate : public T {
         GetIdentityManager()->GetPrimaryAccountInfo(
             signin::ConsentLevel::kSignin));
     CHECK(!account_info.account_id.empty());
-    AccountCapabilitiesTestMutator(&account_info.capabilities)
+    AccountCapabilitiesTestMutator(&account_info)
         .set_can_use_model_execution_features(can_use_model_execution);
     signin::UpdateAccountInfoForAccount(GetIdentityManager(), account_info);
   }
@@ -817,6 +823,7 @@ class TestAutofillClientTemplate : public T {
   bool is_tab_in_actor_mode_ = false;
 
   bool should_show_personal_context_autofill_notice_ = false;
+  bool is_personal_context_notice_acknowledged_ = false;
 
   SuggestionHidingReason popup_hidden_reason_;
 

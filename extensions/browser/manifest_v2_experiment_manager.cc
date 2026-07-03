@@ -20,11 +20,9 @@
 #include "extensions/browser/extension_system.h"
 #include "extensions/browser/extension_system_provider.h"
 #include "extensions/browser/extensions_browser_client.h"
-#include "extensions/browser/pref_names.h"
 #include "extensions/browser/pref_types.h"
 #include "extensions/buildflags/buildflags.h"
 #include "extensions/common/extension.h"
-#include "extensions/common/extension_features.h"
 
 static_assert(BUILDFLAG(ENABLE_EXTENSIONS_CORE));
 
@@ -58,12 +56,6 @@ const char* GetHistogramManifestLocation(mojom::ManifestLocation location) {
       NOTREACHED();
   }
 }
-
-// Stores a bit for whether the extension has been disabled as part of the
-// MV2 deprecation.
-constexpr PrefMap kMV2DeprecationDidDisablePref = {
-    "mv2_deprecation_did_disable", PrefType::kBool,
-    PrefScope::kExtensionSpecific};
 
 class ManifestV2ExperimentManagerFactory
     : public BrowserContextKeyedServiceFactory {
@@ -132,23 +124,6 @@ bool ShouldDisableLegacyExtensions() {
   return true;
 }
 
-// Returns true if unpacked extensions should be blocked.
-// This is true only for cases where MV2 extensions are fully unsupported.
-bool ShouldBlockUnpackedExtensions() {
-  if (!ShouldDisableLegacyExtensions()) {
-    return false;
-  }
-
-  // If the developer has flipped the explicit flag to allow legacy MV2
-  // extensions, we allow the unpacked extension to be loaded.
-  if (base::FeatureList::IsEnabled(
-          extensions_features::kAllowLegacyMV2Extensions)) {
-    return false;
-  }
-
-  return true;
-}
-
 }  // namespace
 
 ManifestV2ExperimentManager::ManifestV2ExperimentManager(
@@ -191,13 +166,6 @@ bool ManifestV2ExperimentManager::ShouldBlockExtensionInstallation(
     return false;
   }
 
-  // Unpacked extensions are special-cased (since developers need to be able to
-  // continue supporting them). Check if unpacked extensions are blocked.
-  if (Manifest::IsUnpackedLocation(manifest_location) &&
-      !ShouldBlockUnpackedExtensions()) {
-    return false;
-  }
-
   // Otherwise, if the extension is affected by the deprecation, it should be
   // blocked.
   return impact_checker_.IsExtensionAffected(manifest_version, manifest_type,
@@ -207,13 +175,6 @@ bool ManifestV2ExperimentManager::ShouldBlockExtensionInstallation(
 bool ManifestV2ExperimentManager::ShouldBlockExtensionEnable(
     const Extension& extension) {
   if (!ShouldDisableLegacyExtensions()) {
-    return false;
-  }
-
-  // Block unpacked extension enablement only if unpacked extensions are
-  // blocked.
-  if (Manifest::IsUnpackedLocation(extension.location()) &&
-      !ShouldBlockUnpackedExtensions()) {
     return false;
   }
 
@@ -243,16 +204,6 @@ void ManifestV2ExperimentManager::OnExtensionSystemReady() {
   DisableAffectedExtensions();
 
   EmitMetricsForProfileReady();
-
-  is_manager_ready_ = true;
-  on_manager_ready_callback_list_.Notify();
-}
-
-base::CallbackListSubscription
-ManifestV2ExperimentManager::RegisterOnManagerReadyCallback(
-    base::RepeatingClosure callback) {
-  CHECK(!is_manager_ready_);
-  return on_manager_ready_callback_list_.Add(std::move(callback));
 }
 
 void ManifestV2ExperimentManager::DisableAffectedExtensions() {
@@ -264,19 +215,9 @@ void ManifestV2ExperimentManager::DisableAffectedExtensions() {
       ExtensionRegistry::Get(browser_context_);
   std::set<scoped_refptr<const Extension>> extensions_to_disable;
 
-  // Whether unpacked extensions are exempt from being disabled.
-  // Note that this is distinct from `ShouldBlockUnpackedExtensions()`, since
-  // unpacked extensions are only blocked in "unsupported" phase, but they may
-  // be *disabled* in other phases.
-  bool unpacked_extensions_are_exempt = base::FeatureList::IsEnabled(
-      extensions_features::kAllowLegacyMV2Extensions);
+  // Disable all applicable MV2 extensions.
   for (const auto& extension : extension_registry->enabled_extensions()) {
     if (!impact_checker_.IsExtensionAffected(*extension)) {
-      continue;
-    }
-
-    if (Manifest::IsUnpackedLocation(extension->location()) &&
-        unpacked_extensions_are_exempt) {
       continue;
     }
 
@@ -288,8 +229,6 @@ void ManifestV2ExperimentManager::DisableAffectedExtensions() {
     registrar->DisableExtension(
         extension->id(),
         {disable_reason::DISABLE_UNSUPPORTED_MANIFEST_VERSION});
-    extension_prefs()->SetBooleanPref(extension->id(),
-                                      kMV2DeprecationDidDisablePref, true);
   }
 }
 
@@ -325,11 +264,6 @@ void ManifestV2ExperimentManager::MaybeReEnableExtension(
     return;
   }
 
-  // Remove the bit that the extension was disabled by the MV2 deprecation,
-  // since it no longer is. This also ensures we don't count it as user-
-  // re-enabled, if it gets re-enabled below.
-  extension_prefs()->SetBooleanPref(extension.id(),
-                                    kMV2DeprecationDidDisablePref, false);
   // Remove the disable reason (possibly re-enabling the extension).
   ExtensionRegistrar::Get(browser_context_)
       ->RemoveDisableReasonAndMaybeEnable(
@@ -361,10 +295,6 @@ void ManifestV2ExperimentManager::EmitMetricsForProfileReady() {
 
     if (extension.GetType() != Manifest::Type::kExtension &&
         extension.GetType() != Manifest::Type::kLoginScreenExtension) {
-      return;
-    }
-
-    if (Manifest::IsComponentLocation(extension.location())) {
       return;
     }
 

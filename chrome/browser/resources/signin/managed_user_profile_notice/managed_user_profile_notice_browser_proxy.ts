@@ -33,6 +33,7 @@ export enum ScreenType {
   ENTERPRISE_OIDC = 4,
   PROFILE_PICKER = 5,
   FIRST_RUN = 6,
+  DEVICE_SIGNALS_DISCLAIMER = 7,
 }
 // LINT.ThenChange(//chrome/browser/ui/webui/signin/managed_user_profile_notice_ui.h:ScreenType)
 

@@ -77,7 +77,6 @@
 <translation id="1269129608791067105">Тарихты осы жерден табасыз.</translation>
 <translation id="1273937721055267968"><ph name="DOMAIN" /> доменін бөгеу</translation>
 <translation id="1280921956537356716">Кеңестер туралы хабарландыруларды қосу</translation>
-<translation id="1283039547216852943">Жаю үшін түртіңіз</translation>
 <translation id="1289129165308566697">Басқа құрылғыларда тарихыңызды көріңіз</translation>
 <translation id="129553762522093515">Жақында жабылған</translation>
 <translation id="1298077576058087471">Деректер трафигін 60%-ға дейін үнемдеңіз, бүгінгінің жаңалықтарын оқыңыз.</translation>
@@ -245,6 +244,7 @@ Chrome тәжірибесін жақсарту үшін деректерді қ�
 <translation id="2082238445998314030"><ph name="TOTAL_RESULTS" /> ішінен <ph name="RESULT_NUMBER" /> нәтиже</translation>
 <translation id="2091863218454846791">Шағын көрініс таңдалды</translation>
 <translation id="2093731487903423814">соңғы 15 минут</translation>
+<translation id="2094298041331405438">Барлық инкогнито терезесін жабу үшін осы жерді түртіңіз.</translation>
 <translation id="2096577711562668473">Автотолтыру қызметін өзгерту қажет пе?</translation>
 <translation id="2109384632594340939">профиль суреті</translation>
 <translation id="2111511281910874386">Бетке өту</translation>
@@ -506,6 +506,7 @@ Chrome тәжірибесін жақсарту үшін деректерді қ�
 <translation id="3114507951000454849">Бүгінгінің жаңалықтарын оқыңыз <ph name="NEWS_ICON" /></translation>
 <translation id="3122883569442693641">Қосымша мәліметтер</translation>
 <translation id="3123734510202723619">Хабарландырулар</translation>
+<translation id="3132267803114336523">Барлық инкогнито терезесін жабу үшін инкогнито индикаторын түртіңіз.</translation>
 <translation id="3134385238404760368">Соңғы қойындылар жоқ</translation>
 <translation id="3135655388926735587">"Соңғы қойындылар" түймесін түртіңіз.</translation>
 <translation id="314939179385989105">Chrome браузерінің негізгі беті</translation>
@@ -614,6 +615,7 @@ Chrome тәжірибесін жақсарту үшін деректерді қ�
 <translation id="3635073343384702370">Құпия сөздер сақталған кезде, Chrome оларды тексере алады.</translation>
 <translation id="3636940436873918441">Таңдаулы тілдер</translation>
 <translation id="3637744895182738742">Құпия фразаны ұмытып қалған болсаңыз немесе осы параметрді өзгерту керек болса, <ph name="BEGIN_LINK" />аккаунтыңыздағы Chrome деректерін жойыңыз<ph name="END_LINK" />.</translation>
+<translation id="3649090831059057090"><ph name="WINDOW_TITLE" /> – <ph name="TAB_COUNT" /></translation>
 <translation id="3653111872753786013"><ph name="WEBSITE_TITLE" />: <ph name="WEBSITE_URL" /></translation>
 <translation id="3674208116086565128">Google қолданбасының негізгі бетіне өту</translation>
 <translation id="368329460027487650">Аккаунттан шыққансыз. Аккаунтқа кіру опцияларын ашады.</translation>
@@ -638,6 +640,7 @@ Chrome тәжірибесін жақсарту үшін деректерді қ�
 <translation id="3739899004075612870"><ph name="PRODUCT_NAME" /> қолданбасында бетбелгі қойылды</translation>
 <translation id="3740290940447881599">Бұл сайттың сенімді екеніне көз жеткізіңіз.</translation>
 <translation id="3740525748616366977">Бұл құрылғыда дауыспен іздеу мүмкін емес.</translation>
+<translation id="3756823472711156529">Топты қалпына келтіру</translation>
 <translation id="3763110477555836428">Нақты мәліметтеріңізді қорғау үшін осы картамен төлеу кезінде виртуалдық карта нөмірі толтырылады. Google Wallet-те реттеңіз. <ph name="BEGIN_LINK1" />Виртуалдық карталар туралы толық ақпарат алыңыз.<ph name="END_LINK1" /></translation>
 <translation id="376561056759077985">Кейбір деректер әлі сақталмады</translation>
 <translation id="3770620323585347665">Терезеге ат беру</translation>
@@ -1159,7 +1162,6 @@ Google аккаунтының шолу тарихы басқа Google қызме
 <translation id="59577092665511740">Аккаунтты таңдаңыз.</translation>
 <translation id="5958275228015807058">"Жүктеп алулар" ішінен файлдар мен беттерді табыңыз</translation>
 <translation id="5962499136121615854">{NUM_REVOKED_PERMISSIONS,plural, =1{Chrome сіз жақында кірмеген сайттың сізге хабарландыру жіберуін тоқтатты.}other{Chrome сіз жақында кірмеген сайттардың сізге хабарландыру жіберуін тоқтатты.}}</translation>
-<translation id="5962718611393537961">Жию үшін түртіңіз</translation>
 <translation id="5964869237734432770">Сурет сипаттамаларын алмау</translation>
 <translation id="5972844218283131174">Барлық таңдаудан бас тарту</translation>
 <translation id="5975083100439434680">Кішірейту</translation>

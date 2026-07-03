@@ -324,6 +324,7 @@ class DummyFrameOwner final : public GarbageCollected<DummyFrameOwner>,
   void DispatchLoad() override {}
   void NaturalSizingInfoChanged() override {}
   void ClearLastNaturalSizingInfo() override {}
+  void ClearAllNaturalSizingInfo() override {}
   void SetNeedsOcclusionTracking(bool) override {}
   AtomicString BrowsingContextContainerName() const override {
     return AtomicString();
@@ -1585,7 +1586,7 @@ void WebLocalFrameImpl::SelectRange(
   const bool selection_not_set_focus =
       selection_set_focus_behavior == kSelectionDoNotSetFocus;
   selection.SetSelection(
-      SelectionInDOMTree::Builder()
+      SelectionInDomTree::Builder()
           .SetBaseAndExtent(range)
           .SetAffinity(TextAffinity::kDefault)
           .Build(),

@@ -37,13 +37,13 @@
 #include "components/autofill/core/browser/integrators/autofill_ai/autofill_ai_wallet_utils.h"
 #include "components/autofill/core/browser/integrators/autofill_ai/management_utils.h"
 #include "components/autofill/core/browser/integrators/autofill_ai/metrics/autofill_ai_metrics.h"
+#include "components/autofill/core/browser/integrators/personal_context/personal_context_autofill_util.h"
 #include "components/autofill/core/browser/network/autofill_ai/wallet_pass_access_manager.h"
 #include "components/autofill/core/browser/permissions/autofill_ai/autofill_ai_permission_utils.h"
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/autofill/core/common/autofill_prefs.h"
 #include "components/consent_auditor/consent_auditor.h"
 #include "components/personal_context/core/personal_context_enablement_service.h"
-#include "components/personal_context/core/personal_context_features.h"
 #include "components/personal_context/core/personal_context_types.h"
 #include "components/personal_context/core/url_constants.h"
 #include "components/wallet/core/common/wallet_features.h"
@@ -87,8 +87,7 @@ static jboolean JNI_EntityDataManager_IsPersonalContextSettingVisible(
     Profile* profile) {
   CHECK(profile);
 
-  if (!base::FeatureList::IsEnabled(
-          personal_context::features::kPersonalContext)) {
+  if (!AreAutofillPersonalContextFeaturesSupported()) {
     return false;
   }
 

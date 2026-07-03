@@ -6459,7 +6459,7 @@ void AXObjectCacheImpl::HandleEditableTextContentChanged(Node* node) {
 }
 
 void AXObjectCacheImpl::HandleDeletionOrInsertionInTextField(
-    const SelectionInDOMTree& changed_selection,
+    const SelectionInDomTree& changed_selection,
     bool is_deletion) {
   Position start_pos = changed_selection.ComputeStartPosition();
   Position end_pos = changed_selection.ComputeEndPosition();

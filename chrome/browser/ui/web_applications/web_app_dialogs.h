@@ -124,6 +124,42 @@ void ShowWebAppFileLaunchDialog(const std::vector<base::FilePath>& file_paths,
 // Sets an override title for the Create Shortcut confirmation view.
 void SetOverrideTitleForTesting(const char* title_to_use);
 
+enum class InstallDialogTestResponse {
+  kNone,
+  kDeny,
+  kAcceptAndLaunch,
+  kAcceptNoLaunch,
+};
+
+base::AutoReset<InstallDialogTestResponse>
+SetPwaInstallationAutoRespondForTesting(InstallDialogTestResponse response);
+
+InstallDialogTestResponse GetPwaInstallationDialogAutoResponseForTesting();
+
+enum class InstallDialogDeactivateAction {
+  kClose,
+  kKeepOpen,
+};
+
+base::AutoReset<InstallDialogDeactivateAction>
+SetPwaInstallationDialogDeactivateActionForTesting(
+    InstallDialogDeactivateAction action);
+
+InstallDialogDeactivateAction
+GetPwaInstallationDialogDeactivateActionForTesting();
+
+enum class CreateShortcutDialogCheckState {
+  kDefault,
+  kChecked,
+  kUnchecked,
+};
+
+base::AutoReset<CreateShortcutDialogCheckState>
+SetCreateShortcutDialogCheckStateForTesting(
+    CreateShortcutDialogCheckState state);
+
+CreateShortcutDialogCheckState GetCreateShortcutDialogCheckStateForTesting();
+
 // Describes the state of in-product-help being shown to the user.
 enum class PwaInProductHelpState {
   // The in-product-help bubble was shown.

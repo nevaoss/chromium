@@ -55,7 +55,6 @@ class RoundedOmniboxResultsFrame : public views::View {
   void SetCutoutVisibility(bool visible);
 
   static constexpr int kDefaultElevation = 16;
-  void SetElevation(int elevation);
 
   // views::View:
   void Layout(PassKey) override;
@@ -66,6 +65,8 @@ class RoundedOmniboxResultsFrame : public views::View {
 #endif  // !USE_AURA
 
  private:
+  void SetElevation(int elevation);
+
   gfx::Insets GetContentInsets();
 
   raw_ptr<views::View> top_background_ = nullptr;

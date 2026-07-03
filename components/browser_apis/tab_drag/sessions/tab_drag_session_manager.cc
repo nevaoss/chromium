@@ -6,9 +6,12 @@
 
 #include "base/check.h"
 #include "base/functional/bind.h"
+#include "base/memory/raw_ptr.h"
 #include "base/task/sequenced_task_runner.h"
 #include "components/browser_apis/tab_drag/adapters/tab_drag_platform_provider.h"
 #include "components/browser_apis/tab_drag/adapters/tab_drag_session_input_adapter.h"
+#include "components/browser_apis/tab_drag/adapters/tab_drag_window_adapter.h"
+#include "components/browser_apis/tab_drag/sessions/tab_drag_event_router.h"
 #include "components/browser_apis/tab_drag/sessions/tab_drag_session.h"
 #include "mojo/public/mojom/base/error.mojom.h"
 
@@ -16,7 +19,8 @@ namespace tabs_api {
 
 TabDragSessionManager::TabDragSessionManager(
     std::unique_ptr<TabDragPlatformProvider> platform_provider)
-    : platform_provider_(std::move(platform_provider)) {
+    : platform_provider_(std::move(platform_provider)),
+      event_router_(std::make_unique<TabDragEventRouter>()) {
   CHECK(platform_provider_);
 }
 
@@ -39,9 +43,10 @@ TabDragSessionManager::StartDrag(
 
   auto session = std::make_unique<TabDragSession>(
       source_tab_ids, start_point,
-      platform_provider_->tab_drag_session_input_adapter(),
+      platform_provider_->tab_drag_session_input_adapter(), event_router_.get(),
       base::BindOnce(&TabDragSessionManager::OnSessionEnded,
                      weak_factory_.GetWeakPtr()));
+
   auto start_result = session->Start();
   if (!start_result.has_value()) {
     return base::unexpected(std::move(start_result.error()));
@@ -49,12 +54,6 @@ TabDragSessionManager::StartDrag(
 
   active_session_ = std::move(session);
   return std::monostate();
-}
-
-void TabDragSessionManager::CancelDrag() {
-  if (active_session_) {
-    active_session_->Cancel();
-  }
 }
 
 void TabDragSessionManager::OnSessionEnded() {
@@ -70,7 +69,9 @@ void TabDragSessionManager::OnSessionEnded() {
 }
 
 void TabDragSessionManager::DestroyActiveSession() {
-  active_session_.reset();
+  if (active_session_) {
+    active_session_.reset();
+  }
 }
 
 }  // namespace tabs_api

@@ -25,8 +25,11 @@ const CGFloat kHeaderActionSymbolPointSize = 17.0;
 // The leading and trailing padding of the header view.
 const UIEdgeInsets kHorizontalPadding = {.left = 22.0, .right = 16.0};
 const CGFloat kTitleLeadingPadding = 18.0;
+const CGFloat kTitleLeadingTrailingPadding = 10.0;
 const CGFloat kButtonSize = 40.0;
 const CGFloat kStackViewMargin = 5.0;
+// The size of the logo view.
+const CGFloat kLogoSize = 32.0;
 
 // The padding between the close button and the header actions.
 const CGFloat kHeaderInnerPadding = 10;
@@ -80,8 +83,8 @@ UIButtonConfiguration* CreateHeaderButtonConfiguration(UIImage* image) {
   self = [super init];
   if (self) {
     [self setUpLogoView];
-    [self setUpTitleLabel];
     [self setUpCloseButton];
+    [self setUpTitleLabel];
     [self setUpBackButton];
     [self setUpHeaderActionsView];
   }
@@ -129,13 +132,15 @@ UIButtonConfiguration* CreateHeaderButtonConfiguration(UIImage* image) {
   _titleLabel.font =
       PreferredFontForTextStyle(UIFontTextStyleHeadline, UIFontWeightSemibold);
   _titleLabel.isAccessibilityElement = YES;
-  _titleLabel.adjustsFontSizeToFitWidth = YES;
   [self addSubview:_titleLabel];
 
   [NSLayoutConstraint activateConstraints:@[
     [_titleLabel.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
     [_titleLabel.leadingAnchor constraintEqualToAnchor:_logoView.trailingAnchor
                                               constant:kTitleLeadingPadding],
+    [_titleLabel.trailingAnchor
+        constraintEqualToAnchor:_closeButton.leadingAnchor
+                       constant:-kTitleLeadingTrailingPadding],
   ]];
 }
 
@@ -196,12 +201,14 @@ UIButtonConfiguration* CreateHeaderButtonConfiguration(UIImage* image) {
 - (void)setUpLogoView {
   _logoView = [[UIImageView alloc] initWithImage:[self iconImage]];
   _logoView.translatesAutoresizingMaskIntoConstraints = NO;
+  _logoView.contentMode = UIViewContentModeScaleAspectFit;
   [self addSubview:_logoView];
   [NSLayoutConstraint activateConstraints:@[
     [_logoView.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
     [_logoView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor
                                             constant:kHorizontalPadding.left],
   ]];
+  AddSizeConstraints(_logoView, CGSizeMake(kLogoSize, kLogoSize));
 }
 
 // Creates the new thread button in header.
@@ -212,9 +219,11 @@ UIButtonConfiguration* CreateHeaderButtonConfiguration(UIImage* image) {
       kSquareAndPencilSymbol, kHeaderActionSymbolPointSize);
   config.baseForegroundColor = [UIColor colorNamed:kTextPrimaryColor];
 
-  // TODO(crbug.com/493128413): Implement action.
   UIButton* button = [UIButton buttonWithConfiguration:config
                                          primaryAction:nil];
+  [button addTarget:self
+                action:@selector(didTapStartNewThread)
+      forControlEvents:UIControlEventTouchUpInside];
   button.translatesAutoresizingMaskIntoConstraints = NO;
 
   [NSLayoutConstraint activateConstraints:@[
@@ -250,6 +259,18 @@ UIButtonConfiguration* CreateHeaderButtonConfiguration(UIImage* image) {
                   [weakSelf didTapHistoryButton];
                 }];
     [actions addObject:historyAction];
+  }
+
+  if (experimental_flags::IsOmniboxDebuggingEnabled()) {
+    __weak __typeof(self) weakSelf = self;
+    UIAction* showLogsAction = [UIAction
+        actionWithTitle:@"AIM SRP Logs"
+                  image:DefaultSymbolWithPointSize(@"binoculars.circle", 16)
+             identifier:nil
+                handler:^(UIAction* action) {
+                  [weakSelf didTapShowLogsButton];
+                }];
+    [actions addObject:showLogsAction];
   }
 
   button.menu = [UIMenu menuWithTitle:@"" children:actions];
@@ -336,8 +357,16 @@ UIButtonConfiguration* CreateHeaderButtonConfiguration(UIImage* image) {
   [self.actionHandler didTapHistory];
 }
 
+- (void)didTapShowLogsButton {
+  [self.delegate assistantAIMHeaderViewDidRequestSRPLogs:self];
+}
+
 - (void)didTapBackButton {
   [self.delegate assistantAIMHeaderViewDidTapBack:self];
+}
+
+- (void)didTapStartNewThread {
+  [self.actionHandler didTapStartNewThread];
 }
 
 @end

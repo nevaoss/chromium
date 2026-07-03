@@ -2,6 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+if (is_android) {
+  import("//third_party/jni_zero/jni_zero.gni")
+}
+
 config("public_config") {
   include_dirs = [ "//third_party/ink/src" ]
 }
@@ -92,20 +96,6 @@ source_set("ink") {
     "src/ink/rendering/skia/common_internal/sksl_common_shader_helper_functions.h",
     "src/ink/rendering/skia/common_internal/sksl_fragment_shader_helper_functions.h",
     "src/ink/rendering/skia/common_internal/sksl_vertex_shader_helper_functions.h",
-    "src/ink/rendering/skia/native/internal/create_mesh_specification.cc",
-    "src/ink/rendering/skia/native/internal/create_mesh_specification.h",
-    "src/ink/rendering/skia/native/internal/mesh_drawable.cc",
-    "src/ink/rendering/skia/native/internal/mesh_drawable.h",
-    "src/ink/rendering/skia/native/internal/mesh_specification_cache.cc",
-    "src/ink/rendering/skia/native/internal/mesh_specification_cache.h",
-    "src/ink/rendering/skia/native/internal/mesh_uniform_data.cc",
-    "src/ink/rendering/skia/native/internal/mesh_uniform_data.h",
-    "src/ink/rendering/skia/native/internal/path_drawable.cc",
-    "src/ink/rendering/skia/native/internal/path_drawable.h",
-    "src/ink/rendering/skia/native/internal/shader_cache.cc",
-    "src/ink/rendering/skia/native/internal/shader_cache.h",
-    "src/ink/rendering/skia/native/skia_renderer.cc",
-    "src/ink/rendering/skia/native/skia_renderer.h",
     "src/ink/strokes/in_progress_stroke.cc",
     "src/ink/strokes/in_progress_stroke.h",
     "src/ink/strokes/input/internal/stroke_input_validation_helpers.cc",
@@ -189,10 +179,7 @@ source_set("ink") {
   configs -= [ "//build/config/compiler:chromium_code" ]
   configs += [ "//build/config/compiler:no_chromium_code" ]
 
-  public_deps = [
-    "//skia",
-    "//third_party/abseil-cpp:absl",
-  ]
+  public_deps = [ "//third_party/abseil-cpp:absl" ]
 
   deps = [ "//third_party/libtess2" ]
 
@@ -282,19 +269,46 @@ source_set("ink") {
       "src/ink/jni/internal/status_native.h",
       "src/ink/rendering/android/internal/jni/canvas_mesh_renderer_jni.cc",
       "src/ink/strokes/internal/jni/in_progress_stroke_jni.cc",
-      "src/ink/strokes/internal/jni/in_progress_stroke_jni_helper.cc",
-      "src/ink/strokes/internal/jni/in_progress_stroke_jni_helper.h",
+      "src/ink/strokes/internal/jni/in_progress_stroke_native.cc",
+      "src/ink/strokes/internal/jni/in_progress_stroke_native.h",
+      "src/ink/strokes/internal/jni/in_progress_stroke_native_helper.cc",
+      "src/ink/strokes/internal/jni/in_progress_stroke_native_helper.h",
       "src/ink/strokes/internal/jni/stroke_input_batch_jni.cc",
       "src/ink/strokes/internal/jni/stroke_input_batch_native.cc",
       "src/ink/strokes/internal/jni/stroke_input_batch_native.h",
       "src/ink/strokes/internal/jni/stroke_input_batch_native_helper.h",
       "src/ink/strokes/internal/jni/stroke_input_jni_helper.cc",
       "src/ink/strokes/internal/jni/stroke_input_jni_helper.h",
-      "src/ink/strokes/internal/jni/stroke_input_native_helper.cc",
-      "src/ink/strokes/internal/jni/stroke_input_native_helper.h",
       "src/ink/strokes/internal/jni/stroke_jni.cc",
-      "src/ink/strokes/internal/jni/stroke_jni_helper.h",
+      "src/ink/strokes/internal/jni/stroke_native.cc",
+      "src/ink/strokes/internal/jni/stroke_native.h",
+      "src/ink/strokes/internal/jni/stroke_native_helper.h",
     ]
+
+    deps += [
+      ":ink_jni_registration",
+      "//third_party/androidx/local_modifications/ink:ink_native",
+    ]
+
+    configs += [ ":ink_jni_registration_version_script" ]
+  } else {
+    sources += [
+      "src/ink/rendering/skia/native/internal/create_mesh_specification.cc",
+      "src/ink/rendering/skia/native/internal/create_mesh_specification.h",
+      "src/ink/rendering/skia/native/internal/mesh_drawable.cc",
+      "src/ink/rendering/skia/native/internal/mesh_drawable.h",
+      "src/ink/rendering/skia/native/internal/mesh_specification_cache.cc",
+      "src/ink/rendering/skia/native/internal/mesh_specification_cache.h",
+      "src/ink/rendering/skia/native/internal/mesh_uniform_data.cc",
+      "src/ink/rendering/skia/native/internal/mesh_uniform_data.h",
+      "src/ink/rendering/skia/native/internal/path_drawable.cc",
+      "src/ink/rendering/skia/native/internal/path_drawable.h",
+      "src/ink/rendering/skia/native/internal/shader_cache.cc",
+      "src/ink/rendering/skia/native/internal/shader_cache.h",
+      "src/ink/rendering/skia/native/skia_renderer.cc",
+      "src/ink/rendering/skia/native/skia_renderer.h",
+    ]
+    public_deps += [ "//skia" ]
   }
 }
 
@@ -400,4 +414,45 @@ source_set("types_test_support") {
     "//testing/gmock",
     "//third_party/abseil-cpp:absl",
   ]
+}
+
+if (is_android) {
+  _ink_aar_targets = [
+    "//third_party/androidx:androidx_ink_ink_brush_android_java",
+    "//third_party/androidx:androidx_ink_ink_geometry_android_java",
+    "//third_party/androidx:androidx_ink_ink_nativeloader_android_java",
+    "//third_party/androidx:androidx_ink_ink_rendering_android_java",
+    "//third_party/androidx:androidx_ink_ink_strokes_android_java",
+  ]
+
+  _ink_jar_files = []
+  _ink_aar_deps = []
+  foreach(_target, _ink_aar_targets) {
+    _out_dir = get_label_info(_target, "target_out_dir")
+    _name = get_label_info(_target, "name")
+    _ink_jar_files += [ "${_out_dir}/${_name}/classes.jar" ]
+    _name_without_java = string_replace(_name, "_java", "_J")
+    _unpack_target = "${_name_without_java}__unpack_aar"
+    _ink_aar_deps += [ get_label_info(_target, "dir") + ":" + _unpack_target ]
+  }
+
+  # The following classes are excluded from JNI registration because their C++
+  # sources are not included (because they are not needed for PDF Viewer):
+  _ink_class_blocklist = [
+    "androidx.ink.geometry.BoxAccumulatorNative",
+    "androidx.ink.geometry.IntersectionNative",
+    "androidx.ink.strokes.MeshCreationNative",
+  ]
+
+  # Ink uses implicit registration, but this does not work when the native code
+  # is include in libchrome.so (loaded by the "base" split), and the Java code
+  # lives in the "on_demand" module.
+  # To fix this, we generated RegisterNatives() calls.
+  generate_jar_jni_registration("ink_jni_registration") {
+    jar_files = _ink_jar_files
+    class_blocklist = _ink_class_blocklist
+    generate_linker_version_script = true
+    register_natives_name = "Ink_RegisterNatives"
+    deps = _ink_aar_deps
+  }
 }

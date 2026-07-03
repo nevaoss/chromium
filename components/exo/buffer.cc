@@ -164,20 +164,20 @@ class Buffer::Texture : public viz::ContextLostObserver {
 
  private:
   void DestroyResources();
+  static uintptr_t GetBufferIdHelper(gfx::GpuMemoryBufferHandle* handle);
   void ReleaseWhenQueryResultIsAvailable(base::OnceClosure callback);
   void Released();
   void ScheduleWaitForRelease(base::TimeDelta delay);
   void WaitForRelease();
   const void* GetBufferId() const;
 
-  // Note that the owning reference to this pointers is ::Buffer which can be
-  // destroyed before it when ::Buffer::Texture is destroyed via
-  // ::Buffer::Texture::ReleaseSharedImage(). This causes pointer to dangle. But
-  // this pointer is safe to dangle as we never access it during
-  // ::Buffer::Texture destructor and is also never accessed after the owning
-  // object ::Buffer is destroyed.
-  const raw_ptr<gfx::GpuMemoryBufferHandle, DisableDanglingPtrDetection>
-      gpu_memory_buffer_handle_;
+  // Stores the address of the GpuMemoryBufferHandle as a stable identifier
+  // for tracing. We store this as a uintptr_t rather than a raw_ptr to avoid
+  // dangling pointer detection issues, as the owning ::Buffer can be
+  // destroyed before the ::Buffer::Texture is destroyed (e.g. during
+  // ReleaseSharedImage). This identifier is only used for tracing and is
+  // never dereferenced.
+  const uintptr_t buffer_id_;
   const gfx::Size size_;
   scoped_refptr<viz::RasterContextProvider> context_provider_;
   const unsigned query_type_;
@@ -191,11 +191,19 @@ class Buffer::Texture : public viz::ContextLostObserver {
   base::WeakPtrFactory<Texture> weak_ptr_factory_{this};
 };
 
+// static
+uintptr_t Buffer::Texture::GetBufferIdHelper(
+    gfx::GpuMemoryBufferHandle* handle) {
+  CHECK(handle);
+  CHECK(!handle->is_null());
+  return reinterpret_cast<uintptr_t>(handle);
+}
+
 Buffer::Texture::Texture(
     scoped_refptr<viz::RasterContextProvider> context_provider,
     const gfx::Size& size,
     gfx::ColorSpace color_space)
-    : gpu_memory_buffer_handle_(nullptr),
+    : buffer_id_(0),
       size_(size),
       context_provider_(std::move(context_provider)),
       query_type_(GL_COMMANDS_COMPLETED_CHROMIUM) {
@@ -229,13 +237,11 @@ Buffer::Texture::Texture(
     unsigned query_type,
     base::TimeDelta wait_for_release_delay,
     bool is_overlay_candidate)
-    : gpu_memory_buffer_handle_(gpu_memory_buffer_handle),
+    : buffer_id_(GetBufferIdHelper(gpu_memory_buffer_handle)),
       size_(size),
       context_provider_(std::move(context_provider)),
       query_type_(query_type),
       wait_for_release_delay_(wait_for_release_delay) {
-  CHECK(!gpu_memory_buffer_handle_->is_null());
-
   gpu::SharedImageInterface* sii = context_provider_->SharedImageInterface();
 
   // These SharedImages are used over the raster interface as both the source
@@ -253,7 +259,7 @@ Buffer::Texture::Texture(
 
   shared_image_ = sii->CreateSharedImage(
       {format, size_, color_space, usage, gpu::kExoTextureLabelPrefix},
-      gpu_memory_buffer_handle_->Clone());
+      gpu_memory_buffer_handle->Clone());
   CHECK(shared_image_);
   sync_token_ = shared_image_->creation_sync_token();
   if (query_type_ != 0) {
@@ -391,7 +397,7 @@ void Buffer::Texture::DestroyResources() {
 void Buffer::Texture::ReleaseWhenQueryResultIsAvailable(
     base::OnceClosure callback) {
   DCHECK(context_provider_);
-  DCHECK(release_callback_.is_null());
+  CHECK(release_callback_.is_null());
   release_callback_ = std::move(callback);
   wait_for_release_time_ = base::TimeTicks::Now() + wait_for_release_delay_;
   ScheduleWaitForRelease(wait_for_release_delay_);
@@ -451,7 +457,7 @@ void Buffer::Texture::WaitForRelease() {
 }
 
 const void* Buffer::Texture::GetBufferId() const {
-  return static_cast<const void*>(gpu_memory_buffer_handle_);
+  return reinterpret_cast<const void*>(buffer_id_);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -483,7 +489,9 @@ Buffer::Buffer(gfx::GpuMemoryBufferHandle gpu_memory_buffer_handle,
       use_zero_copy_(use_zero_copy),
       is_overlay_candidate_(is_overlay_candidate),
       y_invert_(y_invert),
-      wait_for_release_delay_(base::Milliseconds(kWaitForReleaseDelayMs)) {}
+      wait_for_release_delay_(base::Milliseconds(kWaitForReleaseDelayMs)) {
+  CHECK(use_zero_copy_ || query_type_ != 0);
+}
 
 Buffer::~Buffer() = default;
 
@@ -566,7 +574,7 @@ std::optional<viz::TransferableResource> Buffer::ProduceTransferableResource(
     ProtectedNativePixmapQueryDelegate* protected_native_pixmap_query) {
   TRACE_EVENT1("exo", "Buffer::ProduceTransferableResource", "buffer_id",
                GetBufferId());
-  DCHECK(attach_count_);
+  CHECK(attach_count_);
 
   // If textures are lost, destroy them to ensure that we create new ones
   // below.
@@ -714,7 +722,7 @@ void Buffer::OnAttach() {
 }
 
 void Buffer::OnDetach() {
-  DCHECK_GT(attach_count_, 0u);
+  CHECK_GT(attach_count_, 0u);
   TRACE_EVENT2("exo", "Buffer::OnAttach", "buffer_id", GetBufferId(), "count",
                attach_count_);
   --attach_count_;

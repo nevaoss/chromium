@@ -346,6 +346,13 @@ BASE_FEATURE(kAutofillAiWalletPassBranding2026,
 // If enabled, AutofillAi supports private passes entities from Google Wallet.
 BASE_FEATURE(kAutofillAiWalletPrivatePasses, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// When enabled, account-related eligibility criteria (minor status, location)
+// are determined based on a capability, rather than approximated through
+// signals that were readily available in Chrome prior to the Autofill-specific
+// capability (e.g., using geo-location).
+BASE_FEATURE(kAutofillAiWalletPrivatePassesCapability,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // If enabled, Wallet private pass entries in settings link to their pass
 // details page rather than the generic pass overview page.
 BASE_FEATURE(kAutofillAiWalletPrivatePassesDeepLink,
@@ -368,7 +375,7 @@ BASE_FEATURE(kAutofillAiWithDataSchema,
 // When enabled, autofill will fill not skip filling fields that had an initial
 // value which was modified.
 BASE_FEATURE(kAutofillAllowFillingModifiedInitialValues,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, the ambient autofill experience is enabled in Chrome.
 BASE_FEATURE(kAutofillAmbientAutofill, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -667,10 +674,6 @@ BASE_FEATURE(kAutofillFixFormEquality, base::FEATURE_ENABLED_BY_DEFAULT);
 // deduplication so that it ignores submissions that PWM doesn't act upon.
 // TODO(crbug.com/40281981): Remove when launched.
 BASE_FEATURE(kAutofillFixFormTracking, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables the new implementation of `FormFieldData::is_autofilled`.
-// TODO(crbug.com/393114125): Remove when launched.
-BASE_FEATURE(kAutofillFixIsAutofilled, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, the rewriter uses updated rewrite rules.
 // TODO(crbug.com/445863287): Cleanup when launched.

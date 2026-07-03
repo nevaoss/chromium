@@ -50,7 +50,8 @@ class ManagedUserProfileNoticeUI : public content::WebUIController {
     kEnterpriseAccountCreation,
     kEnterpriseOIDC,
     kProfilePicker,
-    kFirstRun
+    kFirstRun,
+    kDeviceSignalsDisclaimer
   };
   // LINT.ThenChange(//chrome/browser/resources/signin/managed_user_profile_notice/managed_user_profile_notice_browser_proxy.ts:ScreenType)
 

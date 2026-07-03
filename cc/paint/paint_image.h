@@ -43,6 +43,7 @@ struct FrameMetadata;
 class PaintImageGenerator;
 class PaintWorkletInput;
 class TextureBacking;
+class TextureBackingContext;
 
 enum class ImageType {
   kPNG,
@@ -151,6 +152,12 @@ class CC_PAINT_EXPORT PaintImage {
  public:
   using Id = int;
   using AnimationSequenceId = uint32_t;
+  enum class AnimationSyncSequence : AnimationSequenceId {
+    // All instances of the image animation together on a shared timeline.
+    kShared = 0,
+    // This instance drives its own independent image animation timeline.
+    kOwn = 1,
+  };
 
   // A ContentId is used to identify the content for which images which can be
   // lazily generated (generator/record backed images). As opposed to Id, which
@@ -294,6 +301,9 @@ class CC_PAINT_EXPORT PaintImage {
 
   // Returned mailbox must not outlive this PaintImage.
   gpu::Mailbox GetMailbox() const;
+
+  void BindTextureBacking(scoped_refptr<TextureBackingContext>) const;
+  void UnbindTextureBacking() const;
 
   Id stable_id() const { return id_; }
   Id sync_animation_target_id() const { return sync_animation_target_id_; }
@@ -502,7 +512,7 @@ class CC_PAINT_EXPORT PaintImage {
 
 // Lookup table to get the animation frame to be used for rasterization.
 class CC_PAINT_EXPORT AnimatedImageFrameIndexMap
-    : public base::RefCounted<AnimatedImageFrameIndexMap>,
+    : public base::RefCountedThreadSafe<AnimatedImageFrameIndexMap>,
       public base::flat_map<PaintImage::Id, size_t> {
  public:
   AnimatedImageFrameIndexMap();
@@ -511,7 +521,7 @@ class CC_PAINT_EXPORT AnimatedImageFrameIndexMap
       const std::vector<std::pair<PaintImage::Id, size_t>>& entries);
 
  private:
-  friend class base::RefCounted<AnimatedImageFrameIndexMap>;
+  friend class base::RefCountedThreadSafe<AnimatedImageFrameIndexMap>;
   ~AnimatedImageFrameIndexMap();
 };
 

@@ -145,8 +145,12 @@ VisibleSelectionInFlatTree FrameSelection::ComputeVisibleSelectionInFlatTree()
   return selection_editor_->ComputeVisibleSelectionInFlatTree();
 }
 
-const SelectionInDOMTree& FrameSelection::GetSelectionInDOMTree() const {
+const SelectionInDomTree& FrameSelection::GetSelectionInDomTree() const {
   return selection_editor_->GetSelectionInDOMTree();
+}
+
+const SelectionInDomTree& FrameSelection::GetSelectionInDOMTree() const {
+  return GetSelectionInDomTree();
 }
 
 Element* FrameSelection::RootEditableElementOrDocumentElement() const {
@@ -180,8 +184,8 @@ VisibleSelection FrameSelection::ComputeVisibleSelectionInDomTreeDeprecated()
     const {
   // TODO(editing-dev): Hoist UpdateStyleAndLayout
   // to caller. See http://crbug.com/590369 for more details.
-  Position anchor = GetSelectionInDOMTree().Anchor();
-  Position focus = GetSelectionInDOMTree().Focus();
+  Position anchor = GetSelectionInDomTree().Anchor();
+  Position focus = GetSelectionInDomTree().Focus();
   std::optional<DisplayLockUtilities::ScopedForcedUpdate> force_locks;
   if (anchor != focus && anchor.ComputeContainerNode() &&
       focus.ComputeContainerNode()) {
@@ -206,7 +210,7 @@ void FrameSelection::MoveCaretSelection(const gfx::Point& point) {
 
   const VisiblePosition position = CreateVisiblePosition(
       PositionForContentsPointRespectingEditingBoundary(point, GetFrame()));
-  SelectionInDOMTree::Builder builder;
+  SelectionInDomTree::Builder builder;
   if (position.IsNotNull())
     builder.Collapse(position.ToPositionWithAffinity());
   SetSelection(builder.Build(), SetSelectionOptions::Builder()
@@ -218,7 +222,7 @@ void FrameSelection::MoveCaretSelection(const gfx::Point& point) {
                                     .Build());
 }
 
-void FrameSelection::SetSelection(const SelectionInDOMTree& selection,
+void FrameSelection::SetSelection(const SelectionInDomTree& selection,
                                   const SetSelectionOptions& data) {
   TRACE_EVENT0("blink", "FrameSelection::SetSelection");
   if (SetSelectionDeprecated(selection, data))
@@ -226,14 +230,14 @@ void FrameSelection::SetSelection(const SelectionInDOMTree& selection,
 }
 
 void FrameSelection::SetSelectionAndEndTyping(
-    const SelectionInDOMTree& selection) {
+    const SelectionInDomTree& selection) {
   SetSelection(selection, SetSelectionOptions::Builder()
                               .SetShouldCloseTyping(true)
                               .SetShouldClearTypingStyle(true)
                               .Build());
 }
 
-static void AssertUserSelection(const SelectionInDOMTree& selection,
+static void AssertUserSelection(const SelectionInDomTree& selection,
                                 const SetSelectionOptions& options) {
 // User's selection start/end should have same editability.
 #if DCHECK_IS_ON()
@@ -247,7 +251,7 @@ static void AssertUserSelection(const SelectionInDOMTree& selection,
 }
 
 bool FrameSelection::SetSelectionDeprecated(
-    const SelectionInDOMTree& new_selection,
+    const SelectionInDomTree& new_selection,
     const SetSelectionOptions& passed_options) {
   SetSelectionOptions::Builder options_builder(passed_options);
   if (ShouldAlwaysUseDirectionalSelection(frame_)) {
@@ -267,7 +271,7 @@ bool FrameSelection::SetSelectionDeprecated(
   if (options.ShouldClearTypingStyle())
     frame_->GetEditor().ClearTypingStyle();
 
-  const SelectionInDOMTree old_selection_in_dom_tree =
+  const SelectionInDomTree old_selection_in_dom_tree =
       selection_editor_->GetSelectionInDOMTree();
   const bool is_changed = old_selection_in_dom_tree != new_selection;
   const bool should_show_handle = options.ShouldShowHandle();
@@ -292,7 +296,7 @@ bool FrameSelection::SetSelectionDeprecated(
 }
 
 void FrameSelection::DidSetSelectionDeprecated(
-    const SelectionInDOMTree& new_selection,
+    const SelectionInDomTree& new_selection,
     const SetSelectionOptions& options) {
   Document& current_document = GetDocument();
   const SetSelectionBy set_selection_by = options.GetSetSelectionBy();
@@ -373,7 +377,7 @@ void FrameSelection::DidSetSelectionDeprecated(
   // https://w3c.github.io/selection-api/#selectionchange-event
   if (RuntimeEnabledFeatures::DispatchSelectionchangeEventPerElementEnabled()) {
     TextControlElement* text_control =
-        EnclosingTextControl(GetSelectionInDOMTree().Anchor());
+        EnclosingTextControl(GetSelectionInDomTree().Anchor());
     if (text_control && !text_control->IsInShadowTree()) {
       text_control->ScheduleSelectionchangeEvent();
     } else {
@@ -392,7 +396,7 @@ void FrameSelection::DidSetSelectionDeprecated(
 }
 
 void FrameSelection::SetSelectionForAccessibility(
-    const SelectionInDOMTree& selection,
+    const SelectionInDomTree& selection,
     const SetSelectionOptions& options) {
   ClearDocumentCachedRange();
 
@@ -495,7 +499,7 @@ bool FrameSelection::Modify(SelectionModifyAlteration alter,
                             SelectionModifyDirection direction,
                             TextGranularity granularity,
                             SetSelectionBy set_selection_by) {
-  SelectionModifier selection_modifier(*GetFrame(), GetSelectionInDOMTree(),
+  SelectionModifier selection_modifier(*GetFrame(), GetSelectionInDomTree(),
                                        x_pos_for_vertical_arrow_navigation_);
   selection_modifier.SetSelectionIsDirectional(IsDirectional());
   const bool modified =
@@ -574,7 +578,7 @@ void FrameSelection::Clear() {
   granularity_ = TextGranularity::kCharacter;
   if (granularity_strategy_)
     granularity_strategy_->Clear();
-  SetSelectionAndEndTyping(SelectionInDOMTree());
+  SetSelectionAndEndTyping(SelectionInDomTree());
   is_handle_visible_ = false;
   is_directional_ = ShouldAlwaysUseDirectionalSelection(frame_);
 }
@@ -680,8 +684,9 @@ bool FrameSelection::IsHidden() const {
     return true;
 
   // The selection doesn't have focus, so hide everything but range selections.
-  if (!GetSelectionInDOMTree().IsRange())
+  if (!GetSelectionInDomTree().IsRange()) {
     return true;
+  }
 
   // Here we know we have an unfocused range selection. Let's say that
   // selection resides inside a text control. Since the selection doesn't have
@@ -758,8 +763,9 @@ CaretShape FrameSelection::GetCaretShape() const {
 
 bool FrameSelection::ComputeAbsoluteBounds(gfx::Rect& anchor,
                                            gfx::Rect& focus) const {
-  if (!IsAvailable() || GetSelectionInDOMTree().IsNone())
+  if (!IsAvailable() || GetSelectionInDomTree().IsNone()) {
     return false;
+  }
 
   // TODO(editing-dev): The use of UpdateStyleAndLayout
   // needs to be audited.  See http://crbug.com/590369 for more details.
@@ -837,8 +843,9 @@ void FrameSelection::SelectFrameElementInParentIfFullySelected() {
 
   // Check if the selection contains the entire frame contents; if not, then
   // there is nothing to do.
-  if (!GetSelectionInDOMTree().IsRange())
+  if (!GetSelectionInDomTree().IsRange()) {
     return;
+  }
 
   // TODO(editing-dev): The use of UpdateStyleAndLayout
   // needs to be audited.  See http://crbug.com/590369 for more details.
@@ -883,7 +890,7 @@ void FrameSelection::SelectFrameElementInParentIfFullySelected() {
       owner_element->GetDocument() != parent_local_frame->GetDocument())
     return;
   parent_local_frame->Selection().SetSelection(
-      SelectionInDOMTree::Builder()
+      SelectionInDomTree::Builder()
           .SetBaseAndExtent(Position::BeforeNode(*owner_element),
                             Position::AfterNode(*owner_element))
           .Build(),
@@ -954,8 +961,8 @@ void FrameSelection::SelectAll(SetSelectionBy set_selection_by,
       return;
   }
 
-  const SelectionInDOMTree& dom_selection =
-      SelectionInDOMTree::Builder().SelectAllChildren(*root).Build();
+  const SelectionInDomTree& dom_selection =
+      SelectionInDomTree::Builder().SelectAllChildren(*root).Build();
   if (canonicalize_selection) {
     GetDocument().UpdateStyleAndLayout(DocumentUpdateReason::kEditing);
   }
@@ -1004,7 +1011,7 @@ void FrameSelection::SelectSubString(const Element& element,
   // known when |start| and |end| are null. Once we get a such case, we check
   // null for |start| and |end|.
   SetSelectionAndEndTyping(
-      SelectionInDOMTree::Builder()
+      SelectionInDomTree::Builder()
           .SetBaseAndExtent(start.DeepEquivalent(), end.DeepEquivalent())
           .SetAffinity(start.Affinity())
           .Build());
@@ -1014,7 +1021,7 @@ void FrameSelection::NotifyAccessibilityForSelectionChange() {
   AXObjectCache* cache = GetDocument().ExistingAXObjectCache();
   if (!cache)
     return;
-  Node* anchor = GetSelectionInDOMTree().Focus().ComputeContainerNode();
+  Node* anchor = GetSelectionInDomTree().Focus().ComputeContainerNode();
   if (anchor) {
     cache->SelectionChanged(anchor);
   } else {
@@ -1035,8 +1042,8 @@ void FrameSelection::NotifyEventHandlerForSelectionChange() {
 
 void FrameSelection::NotifyDisplayLockForSelectionChange(
     Document& document,
-    const SelectionInDOMTree& old_selection,
-    const SelectionInDOMTree& new_selection) {
+    const SelectionInDomTree& old_selection,
+    const SelectionInDomTree& new_selection) {
   if (DisplayLockUtilities::NeedsSelectionChangedUpdate(document) ||
       (!old_selection.IsNone() && old_selection.GetDocument() != document &&
        DisplayLockUtilities::NeedsSelectionChangedUpdate(
@@ -1116,7 +1123,7 @@ void FrameSelection::UpdateAppearance() {
 void FrameSelection::NotifyTextControlOfSelectionChange(
     SetSelectionBy set_selection_by) {
   TextControlElement* text_control =
-      EnclosingTextControl(GetSelectionInDOMTree().Anchor());
+      EnclosingTextControl(GetSelectionInDomTree().Anchor());
   if (!text_control)
     return;
   text_control->SelectionChanged(set_selection_by == SetSelectionBy::kUser);
@@ -1161,7 +1168,7 @@ void FrameSelection::SetFocusedNodeIfNeeded() {
 }
 
 static EphemeralRangeInFlatTree ComputeRangeForSerialization(
-    const SelectionInDOMTree& selection_in_dom_tree) {
+    const SelectionInDomTree& selection_in_dom_tree) {
   const SelectionInFlatTree& selection =
       ConvertToSelectionInFlatTree(selection_in_dom_tree);
   // TODO(crbug.com/1019152): Once we know the root cause of having
@@ -1184,7 +1191,7 @@ static EphemeralRangeInFlatTree ComputeRangeForSerialization(
 static String ExtractSelectedText(const FrameSelection& selection,
                                   TextIteratorBehavior behavior) {
   const EphemeralRangeInFlatTree& range =
-      ComputeRangeForSerialization(selection.GetSelectionInDOMTree());
+      ComputeRangeForSerialization(selection.GetSelectionInDomTree());
   // We remove '\0' characters because they are not visibly rendered to the
   // user.
   return PlainText(range, behavior).Replace(0, "");
@@ -1192,7 +1199,7 @@ static String ExtractSelectedText(const FrameSelection& selection,
 
 String FrameSelection::SelectedHTMLForClipboard() const {
   const EphemeralRangeInFlatTree& range =
-      ComputeRangeForSerialization(GetSelectionInDOMTree());
+      ComputeRangeForSerialization(GetSelectionInDomTree());
   return CreateMarkup(range.StartPosition(), range.EndPosition(),
                       CreateMarkupOptions::Builder()
                           .SetShouldAnnotateForInterchange(true)
@@ -1312,7 +1319,7 @@ void FrameSelection::SetSelectionFromNone() {
     return;
   if (HTMLBodyElement* body =
           Traversal<HTMLBodyElement>::FirstChild(*document_element)) {
-    SetSelection(SelectionInDOMTree::Builder()
+    SetSelection(SelectionInDomTree::Builder()
                      .Collapse(FirstPositionInOrBeforeNode(*body))
                      .Build(),
                  SetSelectionOptions());
@@ -1370,7 +1377,7 @@ bool FrameSelection::SelectAroundCaret(
   }
 
   SetSelection(
-      SelectionInDOMTree::Builder()
+      SelectionInDomTree::Builder()
           .Collapse(selection_range.StartPosition())
           .Extend(selection_range.EndPosition())
           .Build(),
@@ -1428,7 +1435,7 @@ void FrameSelection::MoveRangeSelectionExtent(
   }
 
   SetSelection(
-      SelectionInDOMTree::Builder(
+      SelectionInDomTree::Builder(
           GetGranularityStrategy()->UpdateExtent(contents_point, frame_))
           .Build(),
       SetSelectionOptions::Builder()
@@ -1450,7 +1457,7 @@ void FrameSelection::MoveRangeSelection(const gfx::Point& base_point,
       CreateVisiblePosition(PositionForContentsPointRespectingEditingBoundary(
           extent_point, GetFrame()));
   MoveRangeSelectionInternal(
-      SelectionInDOMTree::Builder()
+      SelectionInDomTree::Builder()
           .SetBaseAndExtentDeprecated(base_position.DeepEquivalent(),
                                       extent_position.DeepEquivalent())
           .SetAffinity(base_position.Affinity())
@@ -1459,12 +1466,12 @@ void FrameSelection::MoveRangeSelection(const gfx::Point& base_point,
 }
 
 void FrameSelection::MoveRangeSelectionInternal(
-    const SelectionInDOMTree& new_selection,
+    const SelectionInDomTree& new_selection,
     TextGranularity granularity) {
   if (new_selection.IsNone())
     return;
 
-  const SelectionInDOMTree& selection =
+  const SelectionInDomTree& selection =
       ExpandWithGranularity(new_selection, granularity);
   if (selection.IsNone())
     return;

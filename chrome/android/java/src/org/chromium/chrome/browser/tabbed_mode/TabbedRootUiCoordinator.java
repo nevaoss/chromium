@@ -113,8 +113,10 @@ import org.chromium.chrome.browser.glic.GlicKeyedService.GlicInvocationSource;
 import org.chromium.chrome.browser.glic.GlicKeyedServiceHandler;
 import org.chromium.chrome.browser.glic.GlicMetrics;
 import org.chromium.chrome.browser.glic.GlicNavigationUtils;
+import org.chromium.chrome.browser.glic.GlicPrefNames;
 import org.chromium.chrome.browser.glic.GlicPromoCoordinator;
 import org.chromium.chrome.browser.glic.GlicUiCoordinator;
+import org.chromium.chrome.browser.glic.GlicUtils;
 import org.chromium.chrome.browser.history.HistoryManagerUtils;
 import org.chromium.chrome.browser.hub.HubManager;
 import org.chromium.chrome.browser.incognito.reauth.IncognitoReauthCoordinatorFactory;
@@ -153,6 +155,7 @@ import org.chromium.chrome.browser.open_in_app.TabbedOpenInAppEntryPoint;
 import org.chromium.chrome.browser.pdf.PdfPageIphController;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
 import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
+import org.chromium.chrome.browser.preferences.PrefServiceUtil;
 import org.chromium.chrome.browser.privacy.settings.PrivacySettings;
 import org.chromium.chrome.browser.privacy_sandbox.PrivacySandbox3pcdRollbackMessageController;
 import org.chromium.chrome.browser.profiles.Profile;
@@ -162,6 +165,7 @@ import org.chromium.chrome.browser.readaloud.ReadAloudIphController;
 import org.chromium.chrome.browser.readaloud.ReadAloudMetrics.ReasonForStoppingPlayback;
 import org.chromium.chrome.browser.safe_browsing.AdvancedProtectionCoordinator;
 import org.chromium.chrome.browser.search_engines.choice_screen.ChoiceDialogCoordinator;
+import org.chromium.chrome.browser.selection.ChromeSelectionDropdownMenuDelegate;
 import org.chromium.chrome.browser.share.ShareDelegate;
 import org.chromium.chrome.browser.share.link_to_text.LinkToTextIphController;
 import org.chromium.chrome.browser.signin.SigninAndHistorySyncActivityLauncherImpl;
@@ -201,6 +205,7 @@ import org.chromium.chrome.browser.tasks.tab_management.TabGroupListFaviconResol
 import org.chromium.chrome.browser.tasks.tab_management.TabUiUtils;
 import org.chromium.chrome.browser.tasks.tab_management.UndoGroupSnackbarController;
 import org.chromium.chrome.browser.tasks.tab_management.vertical_tabs.VerticalTabListCoordinator;
+import org.chromium.chrome.browser.tasks.tab_management.vertical_tabs.VerticalTabsActionDelegate;
 import org.chromium.chrome.browser.tasks.tab_management.vertical_tabs.VerticalTabsSideUiCoordinator;
 import org.chromium.chrome.browser.toolbar.ToolbarButtonInProductHelpController;
 import org.chromium.chrome.browser.toolbar.ToolbarFeatures;
@@ -261,6 +266,7 @@ import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.components.feature_engagement.EventConstants;
 import org.chromium.components.feature_engagement.FeatureConstants;
 import org.chromium.components.feature_engagement.Tracker;
+import org.chromium.components.prefs.PrefChangeRegistrar;
 import org.chromium.components.signin.AccountManagerFacadeProvider;
 import org.chromium.components.signin.base.AccountInfo;
 import org.chromium.components.signin.identitymanager.IdentityManager;
@@ -300,6 +306,11 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
     private static final String TAG = "TabbedRootUiCoord";
     private static boolean sDisableTopControlsAnimationForTesting;
     private final RootUiTabObserver mRootUiTabObserver;
+    private final SettableNonNullObservableSupplier<Boolean> mIsVerticalTabsActiveSupplier =
+            ObservableSuppliers.createNonNull(false);
+    private final SettableNonNullObservableSupplier<Boolean> mIsGlicPinnedSupplier =
+            ObservableSuppliers.createNonNull(false);
+    private @Nullable PrefChangeRegistrar mPrefChangeRegistrar;
     private @Nullable TabbedSystemUiCoordinator mSystemUiCoordinator;
     private @Nullable TabGroupSyncController mTabGroupSyncController;
     private final OneshotSupplierImpl<TabGroupUiActionHandler> mTabGroupUiActionHandlerSupplier =
@@ -374,6 +385,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
     private @Nullable GlicUiCoordinator mGlicUiCoordinator;
     private @Nullable ForcedSigninController mForcedSigninController;
     private @Nullable VerticalTabsSideUiCoordinator mVerticalTabsSideUiCoordinator;
+    private final VerticalTabsActionDelegate mVerticalTabsActionDelegate;
 
     // Activity tab observer that updates the current tab used by various UI components.
     private class RootUiTabObserver extends ActivityTabTabObserver {
@@ -477,6 +489,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
      * @param bookmarkManagerOpenerSupplier Supplies {@link BookmarkManagerOpener}.
      * @param xrSpaceModeObservableSupplier Supplies current XR space mode status. True for XR full
      *     space mode, false otherwise.
+     * @param verticalTabsActionDelegate Delegate to handle actions from the vertical tabs UI.
      */
     public TabbedRootUiCoordinator(
             AppCompatActivity activity,
@@ -532,7 +545,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             MonotonicObservableSupplier<BookmarkManagerOpener> bookmarkManagerOpenerSupplier,
             NonNullObservableSupplier<Boolean> xrSpaceModeObservableSupplier,
             OneshotSupplier<ChromeInactivityTracker> inactivityTrackerSupplier,
-            @Nullable BottomBarHostManager bottomBarHostManager) {
+            @Nullable BottomBarHostManager bottomBarHostManager,
+            VerticalTabsActionDelegate verticalTabsActionDelegate) {
         super(
                 activity,
                 onOmniboxFocusChangedListener,
@@ -631,6 +645,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         mSystemBarColorHelperSupplier = systemBarColorHelperSupplier;
         mManualFillingComponentSupplier = manualFillingComponentSupplier;
         mInactivityTrackerSupplier = inactivityTrackerSupplier;
+        mVerticalTabsActionDelegate = verticalTabsActionDelegate;
 
         DataSharingTabGroupsDelegate dataSharingTabGroupsDelegate =
                 createDataSharingTabGroupsDelegate();
@@ -1274,7 +1289,9 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                 (MonotonicObservableSupplier<Integer>) mTabStripVisibilitySupplier,
                 (preventClose, invocationSource) -> toggleGlic(preventClose, invocationSource),
                 mChromeAndroidTaskSupplier,
-                mBrowserControlsManager);
+                mBrowserControlsManager,
+                mIsVerticalTabsActiveSupplier,
+                mIsGlicPinnedSupplier);
     }
 
     @Override
@@ -1880,7 +1897,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                             mWindowAndroid,
                             mActivityLifecycleDispatcher,
                             mSnackbarManagerSupplier.asNonNull().get(),
-                            contextMenuPopulatorFactory);
+                            contextMenuPopulatorFactory,
+                            new ChromeSelectionDropdownMenuDelegate());
         }
         if (TabBottomSheetUtils.isTabBottomSheetEnabled()) {
             mTabBottomSheetManager =
@@ -1889,7 +1907,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                             mWindowAndroid,
                             assertNonNull(getBottomSheetController()),
                             mLayoutStateProviderOneShotSupplier,
-                            SupplierUtils.asNonNull(mCompositorViewHolderSupplier).get());
+                            SupplierUtils.asNonNull(mCompositorViewHolderSupplier).get(),
+                            getOmniboxFocusStateSupplier());
             Callback<ReadAloudController> callback =
                     mCallbackController.makeCancelable(
                             (ReadAloudController readAloudController) -> {
@@ -2172,7 +2191,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                             new VerticalTabListCoordinator(
                                     mActivity,
                                     assumeNonNull(mTabModelSelectorSupplier.get()),
-                                    assumeNonNull(mProfileSupplier.get())));
+                                    assumeNonNull(mProfileSupplier.get()),
+                                    mVerticalTabsActionDelegate));
             mSideUiCoordinator.registerSideUiContainer(mVerticalTabsSideUiCoordinator);
         }
         mSideUiStateProviderSupplier.set(mSideUiCoordinator);
@@ -2182,18 +2202,36 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         mSecondaryUiContainerMarginAdjuster = new ViewMarginAdjusterForSideUi(secondaryUiContainer);
         mSideUiCoordinator.addObserver(mSecondaryUiContainerMarginAdjuster);
 
-        // Restore the user's saved tab layout preference upon browser cold launch.
         if (VerticalTabUtils.isVerticalTabsEligible(mActivity)) {
+            // Restore the user's saved tab layout preference upon browser cold launch.
             boolean useVerticalLayoutOnLaunch =
                     ChromeSharedPreferences.getInstance()
                             .readBoolean(ChromePreferenceKeys.VERTICAL_TABS_ENABLED, false);
 
+            mIsVerticalTabsActiveSupplier.set(useVerticalLayoutOnLaunch);
             if (useVerticalLayoutOnLaunch) {
                 var transitionCoordinator =
                         assumeNonNull(mToolbarManager).getTabStripTransitionCoordinator();
                 assumeNonNull(transitionCoordinator).suppressTabStrip(true);
                 assumeNonNull(mVerticalTabsSideUiCoordinator).setVisible(true);
             }
+
+            // Set up vertical tabs + pinned Glic visibility interaction.
+            Profile profile = currentlySelectedProfile;
+            if (profile != null && GlicEnabling.isEnabledForProfile(profile)) {
+                mIsGlicPinnedSupplier.set(GlicUtils.isButtonPinnedToTabStrip(profile));
+                mPrefChangeRegistrar = PrefServiceUtil.createFor(profile);
+                mPrefChangeRegistrar.addObserver(
+                        GlicPrefNames.GLIC_PINNED_TO_TABSTRIP,
+                        () ->
+                                mIsGlicPinnedSupplier.set(
+                                        GlicUtils.isButtonPinnedToTabStrip(profile)));
+            }
+
+            var toolbar =
+                    assumeNonNull(getToolbarManagerSupplier().get()).getTopToolbarCoordinator();
+            toolbar.observeGlicVerticalTabs(
+                    mIsVerticalTabsActiveSupplier, mIsGlicPinnedSupplier, mIncognitoStateProvider);
         }
     }
 
@@ -2212,6 +2250,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
 
         assumeNonNull(transitionCoordinator).suppressTabStrip(shouldShowVerticalTabs);
         assumeNonNull(mVerticalTabsSideUiCoordinator).setVisible(shouldShowVerticalTabs);
+        mIsVerticalTabsActiveSupplier.set(shouldShowVerticalTabs);
     }
 
     private void destroySideUi() {
@@ -2243,6 +2282,15 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
 
             mSideUiCoordinator.destroy();
             mSideUiCoordinator = null;
+        }
+
+        if (mVerticalTabsSideUiCoordinator != null) {
+            mVerticalTabsSideUiCoordinator.destroy();
+            mVerticalTabsSideUiCoordinator = null;
+        }
+        if (mPrefChangeRegistrar != null) {
+            mPrefChangeRegistrar.destroy();
+            mPrefChangeRegistrar = null;
         }
     }
 

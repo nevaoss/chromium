@@ -1821,6 +1821,7 @@ NavigationRequest::NavigationRequest(
       embedder_shared_storage_context_(embedder_shared_storage_context),
       has_ad_auction_headers_attribute_(frame_tree_node->ad_auction_headers()),
       request_method_(common_params_->method),
+      original_url_(common_params_->url),
       prerender_host_id_(
           GetPrerenderHostRegistry().GetPrerenderHostIdForNavigation(this)),
       network_restrictions_id_(std::nullopt) {
@@ -1833,6 +1834,7 @@ NavigationRequest::NavigationRequest(
         !common_params_->initiator_base_url->is_empty());
   CHECK(!blink::IsRendererDebugURL(common_params_->url));
   CHECK(common_params_->method == "POST" || !common_params_->post_data);
+  CHECK_EQ(common_params_->url, original_url_);
   if (base::FeatureList::IsEnabled(
           features::kSanitizeOriginalUrlDuringNavigation)) {
     CHECK_EQ(common_params_->url.DeprecatedGetOriginAsURL(),
@@ -1840,9 +1842,17 @@ NavigationRequest::NavigationRequest(
   } else {
     CHECK_EQ(common_params_->url, commit_params_->original_url);
   }
-  // Navigations can't be a replacement and a reload at the same time.
+  // Navigations generally can't be both a replacement and a reload, except
+  // when reloading on the initial entry before it has been replaced by the
+  // first real navigation.
+  NavigationEntryImpl* last_committed_entry =
+      frame_tree_node_->navigator().controller().GetLastCommittedEntry();
+  bool is_initial_nav_entry = frame_tree_node_->IsMainFrame() &&
+                              last_committed_entry &&
+                              last_committed_entry->IsInitialEntry();
   CHECK(!common_params_->should_replace_current_entry ||
-        !NavigationTypeUtils::IsReload(common_params_->navigation_type));
+        !NavigationTypeUtils::IsReload(common_params_->navigation_type) ||
+        is_initial_nav_entry);
   CHECK(IsInOutermostMainFrame() ||
         common_params_->base_url_for_data_url.is_empty());
 #if BUILDFLAG(IS_ANDROID)
@@ -2899,6 +2909,7 @@ void NavigationRequest::OnFencedFrameURLMappingComplete(
   const GURL& mapped_url_value =
       properties->mapped_url()->GetValueIgnoringVisibility();
   common_params_->url = mapped_url_value;
+  original_url_ = mapped_url_value;
   if (base::FeatureList::IsEnabled(
           features::kSanitizeOriginalUrlDuringNavigation)) {
     // It is safe to convert GURL to an Origin and back in the code below
@@ -2953,8 +2964,7 @@ void NavigationRequest::BeginNavigationImpl() {
 
   if (!GetContentClient()->browser()->ShouldOverrideUrlLoading(
           frame_tree_node_->frame_tree_node_id(),
-          commit_params_->is_browser_initiated, commit_params_->original_url,
-          commit_params_->original_method,
+          commit_params_->is_browser_initiated, original_url_, request_method_,
           common_params_->has_possibly_filtered_user_gesture, false,
           frame_tree_node_->IsOutermostMainFrame(),
           frame_tree_node_->frame_tree().is_prerendering(),
@@ -4865,6 +4875,33 @@ void NavigationRequest::OnResponseStarted(
   SetState(WILL_PROCESS_RESPONSE);
   response_head_ = std::move(response_head);
   response_body_ = std::move(response_body);
+
+  // If the navigation is activating a prefetched response, and the response
+  // contains a valid same-origin activation beacon endpoint, we record it to
+  // send the beacon when the navigation commits.
+  // We must ensure this is actually a prefetch activation (not a normal network
+  // request that happened to return the header) by checking `is_prefetched`.
+  // `was_in_prefetch_cache` and `kNavigationalPrefetch` are browser-controlled
+  // flags set by the prefetch serving loaders, so they are safe from server
+  // spoofing. Prerender commits are excluded here because the page is not yet
+  // presented to the user; the beacon should be sent when the prerender is
+  // activated.
+  if (base::FeatureList::IsEnabled(features::kPrefetchActivationBeacon) &&
+      !IsInPrerenderedMainFrame() && response_head_->parsed_headers &&
+      response_head_->parsed_headers->prefetch_activation_beacon_endpoint
+          .has_value()) {
+    const GURL& endpoint =
+        *response_head_->parsed_headers->prefetch_activation_beacon_endpoint;
+    bool is_prefetched =
+        response_head_->was_in_prefetch_cache ||
+        response_head_->navigation_delivery_type ==
+            network::mojom::NavigationDeliveryType::kNavigationalPrefetch;
+    if (is_prefetched && endpoint.is_valid() &&
+        url::Origin::Create(endpoint).IsSameOriginWith(
+            url::Origin::Create(GetURL()))) {
+      activation_beacon_url_ = endpoint;
+    }
+  }
   ssl_info_ = response_head_->ssl_info;
   auth_challenge_info_ = response_head_->auth_challenge_info;
   BrowserContext* browser_context =
@@ -5910,7 +5947,6 @@ void NavigationRequest::OnStartChecksComplete(
 
   // TODO(clamy): Avoid cloning the navigation params and create the
   // ResourceRequest directly here.
-  std::vector<std::unique_ptr<NavigationLoaderInterceptor>> interceptor;
 
   auto loader_type = NavigationURLLoader::LoaderType::kRegular;
   network::mojom::URLResponseHeadPtr cached_response_head = nullptr;
@@ -6000,8 +6036,7 @@ void NavigationRequest::OnStartChecksComplete(
       static_cast<StoragePartitionImpl*>(partition)
           ->CreateURLLoaderNetworkObserverForNavigationRequest(*this),
       NetworkServiceDevToolsObserver::MakeSelfOwned(frame_tree_node_),
-      CreateDeviceBoundSessionObserver(), std::move(cached_response_head),
-      std::move(interceptor));
+      CreateDeviceBoundSessionObserver(), std::move(cached_response_head));
   CHECK(!HasRenderFrameHost());
 
   // If needed, perform an early RenderFrameHost swap after notifying observers
@@ -6172,9 +6207,8 @@ void NavigationRequest::AddResourceTimingEntryForFailedSubframeNavigation(
   GetParentFrame()->AddResourceTimingEntryForFailedSubframeNavigation(
       frame_tree_node(), common_params().navigation_start,
       commit_params().navigation_timing->redirect_end, completion_time,
-      commit_params().original_url, common_params().url,
-      std::move(response_head), allow_response_details,
-      std::move(resource_lengths));
+      original_url_, common_params().url, std::move(response_head),
+      allow_response_details, std::move(resource_lengths));
 }
 
 void NavigationRequest::OnRedirectChecksComplete(
@@ -7816,9 +7850,8 @@ bool NavigationRequest::IsAllowedByCSPDirective(
     url = common_params_->url;
   }
   network::CSPCheckResult result = context->IsAllowedByCsp(
-      policies, directive, url, commit_params_->original_url,
-      has_followed_redirect, common_params_->source_location, disposition,
-      is_opaque_fenced_frame);
+      policies, directive, url, original_url_, has_followed_redirect,
+      common_params_->source_location, disposition, is_opaque_fenced_frame);
   if (result.WouldBlockIfWildcardDoesNotMatchWs()) {
     GetContentClient()->browser()->LogWebFeatureForCurrentPage(
         GetParentFrame(),
@@ -7971,6 +8004,7 @@ net::Error NavigationRequest::CheckContentSecurityPolicy(
       } else {
         commit_params_->original_url = common_params_->url;
       }
+      original_url_ = common_params_->url;
     }
   }
 

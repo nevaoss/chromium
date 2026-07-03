@@ -616,13 +616,14 @@ const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
        {IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE, 164},
        {IDC_CONTENT_CONTEXT_DICTATION, 165},
        {IDC_CONTENT_CONTEXT_ADD_LINK_TO_READING_LIST, 166},
+       {IDC_SPELLCHECK_REMOVE_FROM_DICTIONARY, 167},
        // To add new items:
        //   - Add one more line above this comment block, using the UMA value
        //     from the line below this comment block.
        //   - Increment the UMA value in that latter line.
        //   - Add the new item to the RenderViewContextMenuItem enum in
        //     tools/metrics/histograms/metadata/ui/enums.xml.
-       {0, 167}});
+       {0, 168}});
   // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:RenderViewContextMenuItem)
 
   // LINT.IfChange(ContextMenuOptionDesktop)
@@ -661,13 +662,14 @@ const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
        {IDC_CONTENT_CONTEXT_SEARCHWEBFORNEWTAB, 29},
        {IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW, 31},
        {IDC_CONTENT_CONTEXT_GLICSHAREIMAGE, 32},
+       {IDC_SPELLCHECK_REMOVE_FROM_DICTIONARY, 33},
        // To add new items:
        //   - Add one more line above this comment block, using the UMA value
        //     from the line below this comment block.
        //   - Increment the UMA value in that latter line.
        //   - Add the new item to the ContextMenuOptionDesktop enum in
-       //     tools/metrics/histograms/metadata/enums.xml.
-       {0, 32}});
+       //     tools/metrics/histograms/metadata/ui/enums.xml.
+       {0, 33}});
   // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:ContextMenuOptionDesktop)
 
   return *(type == UmaEnumIdLookupType::GeneralEnumId ? kGeneralMap
@@ -1362,7 +1364,7 @@ void RenderViewContextMenu::InitMenu() {
 #if !BUILDFLAG(IS_CHROMEOS)
   if (content_type_->SupportsGroup(
           ContextMenuContentType::ITEM_GROUP_PARTIAL_TRANSLATE) &&
-      !use_simplified_menu_for_text_selection &&
+      !features::IsMenuSimplificationEnabled() &&
       search::DefaultSearchProviderIsGoogle(GetProfile()) &&
       CanTranslate(/*menu_logging=*/false)) {
     // If the target language isn't supported in partial translation, fall
@@ -2977,7 +2979,7 @@ void RenderViewContextMenu::AppendOtherEditableItems() {
     AppendPrintItem();
     if (CanPartiallyTranslateTargetLanguage()) {
       AppendPartialTranslateItem();
-    } else {
+    } else if (CanTranslate(/*menu_logging=*/false)) {
       AppendTranslateItem();
     }
   }
@@ -3911,14 +3913,22 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
       break;
 
     case IDC_VIEW_SOURCE:
+    case IDC_CONTENT_CONTEXT_VIEWFRAMESOURCE:
+      // The policy on the source_web_contents_ applies; when performing the
+      // action, do it on the appropriate target (the embedder_web_contents_ or
+      // the RenderFrameHost, respectively).
       if (base::FeatureList::IsEnabled(features::kDevToolsShowPolicyDialog) &&
           !DevToolsWindow::AllowDevToolsFor(GetProfile(),
-                                            embedder_web_contents_)) {
+                                            source_web_contents_)) {
 #if !BUILDFLAG(IS_ANDROID)
-        DevToolsPolicyDialog::Show(embedder_web_contents_);
+        DevToolsPolicyDialog::Show(source_web_contents_);
 #endif
       } else {
-        embedder_web_contents_->GetPrimaryMainFrame()->ViewSource();
+        if (id == IDC_VIEW_SOURCE) {
+          embedder_web_contents_->GetPrimaryMainFrame()->ViewSource();
+        } else if (GetRenderFrameHost()) {
+          GetRenderFrameHost()->ViewSource();
+        }
       }
       break;
 
@@ -3948,12 +3958,6 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
 
     case IDC_CONTENT_CONTEXT_RELOADFRAME:
       source_web_contents_->ReloadFocusedFrame();
-      break;
-
-    case IDC_CONTENT_CONTEXT_VIEWFRAMESOURCE:
-      if (GetRenderFrameHost()) {
-        GetRenderFrameHost()->ViewSource();
-      }
       break;
 
     case IDC_CONTENT_CONTEXT_UNDO:
@@ -4538,8 +4542,15 @@ void RenderViewContextMenu::AppendSendTabToSelfItem(bool add_separator) {
     menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
   }
 
+  std::optional<send_tab_to_self::EntryPointDisplayReason> reason =
+      send_tab_to_self::GetEntryPointDisplayReason(embedder_web_contents_);
+  if (!reason) {
+    return;
+  }
+
   if (base::FeatureList::IsEnabled(
-          send_tab_to_self::kSendTabToSelfEnhancedDesktopUI)) {
+          send_tab_to_self::kSendTabToSelfEnhancedDesktopUI) &&
+      *reason == send_tab_to_self::EntryPointDisplayReason::kOfferFeature) {
     send_tab_to_self_submenu_delegate_ =
         std::make_unique<send_tab_to_self::SendTabToSelfContextMenuDelegate>(
             embedder_web_contents_);
@@ -4939,7 +4950,9 @@ void RenderViewContextMenu::ExecCopyImageAt() {
   frame_host->CopyImageAt(params_.x, params_.y);
 
 #if !BUILDFLAG(IS_ANDROID)
-  if (toast_features::IsEnabled(toast_features::kImageCopiedToast)) {
+  if (enterprise_data_protection::IsClipboardCopyAllowedByPolicyForUI(
+          GetWebContentsForDataControls()) &&
+      toast_features::IsEnabled(toast_features::kImageCopiedToast)) {
     auto* const toast_controller = GetToastController();
     if (toast_controller) {
       toast_controller->MaybeShowToast(ToastParams(ToastId::kImageCopied));
@@ -5134,7 +5147,9 @@ void RenderViewContextMenu::ExecCopyVideoFrame() {
       blink::mojom::MediaPlayerActionType::kCopyVideoFrame,
       /*enable=*/true));
 #if !BUILDFLAG(IS_ANDROID)
-  if (toast_features::IsEnabled(toast_features::kVideoFrameCopiedToast)) {
+  if (enterprise_data_protection::IsClipboardCopyAllowedByPolicyForUI(
+          GetWebContentsForDataControls()) &&
+      toast_features::IsEnabled(toast_features::kVideoFrameCopiedToast)) {
     auto* const toast_controller = GetToastController();
     if (toast_controller) {
       toast_controller->MaybeShowToast(ToastParams(ToastId::kVideoFrameCopied));

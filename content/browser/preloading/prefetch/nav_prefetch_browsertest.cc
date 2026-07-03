@@ -835,7 +835,8 @@ IN_PROC_BROWSER_TEST_F(PrefetchActivationBeaconBrowserTest,
 
   URLLoaderInterceptor interceptor(base::BindLambdaForTesting(
       [&](URLLoaderInterceptor::RequestParams* params) {
-        if (params->url_request.url == prefetch_url) {
+        if (params->url_request.url == prefetch_url &&
+            params->url_request.headers.HasHeader("Sec-Purpose")) {
           // Serve prefetch response with header.
           std::string headers =
               "HTTP/1.1 200 OK\r\n"
@@ -888,7 +889,8 @@ IN_PROC_BROWSER_TEST_F(PrefetchActivationBeaconBrowserTest,
 
   URLLoaderInterceptor interceptor(base::BindLambdaForTesting(
       [&](URLLoaderInterceptor::RequestParams* params) {
-        if (params->url_request.url == prefetch_url) {
+        if (params->url_request.url == prefetch_url &&
+            params->url_request.headers.HasHeader("Sec-Purpose")) {
           // Serve prefetch response with cross-origin header.
           std::string headers =
               "HTTP/1.1 200 OK\r\n"

@@ -20,6 +20,7 @@
 #include "components/bookmarks/browser/bookmark_node.h"
 #include "components/sync/base/deletion_origin.h"
 #include "components/sync/base/time.h"
+#include "components/sync/engine/commit_and_get_updates_types.h"
 #include "components/sync/protocol/bookmark_model_metadata.pb.h"
 #include "components/sync/protocol/data_type_state_helper.h"
 #include "components/sync/protocol/entity_specifics.pb.h"
@@ -175,7 +176,7 @@ SyncedBookmarkTracker::GetEntityForBookmarkNode(
   return it != bookmark_node_to_entities_map_.end() ? it->second : nullptr;
 }
 
-const SyncedBookmarkTrackerEntity* SyncedBookmarkTracker::Add(
+const SyncedBookmarkTrackerEntity* SyncedBookmarkTracker::AddInternal(
     const bookmarks::BookmarkNode* bookmark_node,
     const std::string& sync_id,
     int64_t server_version,
@@ -220,6 +221,29 @@ const SyncedBookmarkTrackerEntity* SyncedBookmarkTracker::Add(
   return raw_entity;
 }
 
+const SyncedBookmarkTrackerEntity* SyncedBookmarkTracker::AddLocalCreation(
+    const bookmarks::BookmarkNode* bookmark_node,
+    const std::string& sync_id,
+    base::Time creation_time,
+    const sync_pb::EntitySpecifics& specifics) {
+  const SyncedBookmarkTrackerEntity* entity =
+      AddInternal(bookmark_node, sync_id, syncer::kUncommittedVersion,
+                  creation_time, specifics);
+  AsMutableEntity(entity)->MutableMetadata()->set_sequence_number(1);
+  return entity;
+}
+
+const SyncedBookmarkTrackerEntity* SyncedBookmarkTracker::AddRemote(
+    const bookmarks::BookmarkNode* bookmark_node,
+    const std::string& sync_id,
+    int64_t server_version,
+    base::Time creation_time,
+    const sync_pb::EntitySpecifics& specifics) {
+  CHECK_NE(server_version, syncer::kUncommittedVersion);
+  return AddInternal(bookmark_node, sync_id, server_version, creation_time,
+                     specifics);
+}
+
 void SyncedBookmarkTracker::Update(const SyncedBookmarkTrackerEntity* entity,
                                    int64_t server_version,
                                    base::Time modification_time,
@@ -249,6 +273,19 @@ void SyncedBookmarkTracker::UpdateServerVersion(
       server_version);
 }
 
+void SyncedBookmarkTracker::OverrideServerMetadata(
+    const syncer::ClientTagHash& client_tag_hash,
+    const std::string& sync_id,
+    int64_t server_version) {
+  const SyncedBookmarkTrackerEntity* entity =
+      GetEntityForClientTagHash(client_tag_hash);
+  if (entity) {
+    UpdateSyncIdIfNeeded(entity, sync_id);
+    AsMutableEntity(entity)->MutableMetadata()->set_server_version(
+        server_version);
+  }
+}
+
 void SyncedBookmarkTracker::MarkCommitMayHaveStarted(
     const SyncedBookmarkTrackerEntity* entity) {
   DCHECK(entity);
@@ -269,6 +306,7 @@ void SyncedBookmarkTracker::MarkDeleted(
       syncer::DeletionOrigin::FromLocation(location).ToProto(
           version_info::GetVersionNumber());
   mutable_entity->MutableMetadata()->clear_bookmark_favicon_hash();
+  mutable_entity->MutableMetadata()->clear_specifics_hash();
 
   // Clear all references to the deleted bookmark node.
   bookmark_node_to_entities_map_.erase(mutable_entity->bookmark_node());
@@ -306,7 +344,12 @@ void SyncedBookmarkTracker::IncrementSequenceNumber(
   DCHECK(!entity->bookmark_node() ||
          !entity->bookmark_node()->is_permanent_node());
 
-  AsMutableEntity(entity)->MutableMetadata()->set_sequence_number(
+  SyncedBookmarkTrackerEntity* mutable_entity = AsMutableEntity(entity);
+  if (!entity->IsUnsynced()) {
+    mutable_entity->MutableMetadata()->set_base_specifics_hash(
+        entity->metadata().specifics_hash());
+  }
+  mutable_entity->MutableMetadata()->set_sequence_number(
       entity->metadata().sequence_number() + 1);
 }
 
@@ -687,13 +730,21 @@ void SyncedBookmarkTracker::UpdateUponCommitResponse(
     const SyncedBookmarkTrackerEntity* entity,
     const std::string& sync_id,
     int64_t server_version,
-    int64_t acked_sequence_number) {
+    int64_t acked_sequence_number,
+    const std::string& specifics_hash) {
   DCHECK(entity);
 
   SyncedBookmarkTrackerEntity* mutable_entity = AsMutableEntity(entity);
-  mutable_entity->MutableMetadata()->set_acked_sequence_number(
-      acked_sequence_number);
-  mutable_entity->MutableMetadata()->set_server_version(server_version);
+  sync_pb::EntityMetadata* mutable_metadata = mutable_entity->MutableMetadata();
+  mutable_metadata->set_acked_sequence_number(acked_sequence_number);
+  mutable_metadata->set_server_version(server_version);
+
+  if (!mutable_entity->IsUnsynced()) {
+    mutable_metadata->clear_base_specifics_hash();
+  } else {
+    mutable_metadata->set_base_specifics_hash(specifics_hash);
+  }
+
   // If there are no pending commits, remove tombstones.
   if (!mutable_entity->IsUnsynced() &&
       mutable_entity->metadata().is_deleted()) {

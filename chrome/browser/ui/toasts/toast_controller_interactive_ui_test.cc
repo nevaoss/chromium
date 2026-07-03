@@ -324,7 +324,28 @@ IN_PROC_BROWSER_TEST_F(ToastControllerInteractiveTest,
                   ShowToast(ToastParams(ToastId::kNonMilestoneUpdate)),
                   WaitForShow(toasts::ToastView::kToastViewId),
                   NavigateWebContents(kFirstTab, GetURL()),
-                  EnsurePresent(toasts::ToastView::kToastViewId));
+                  EnsurePresent(toasts::ToastView::kToastViewId),
+                  // Explicitly close the persistent toast to prevent the widget
+                  // from leaking into browser teardown.
+                  Do([this]() {
+                    GetToastController()->GetToastWidgetForTesting()->Close();
+                  }),
+                  WaitForHide(toasts::ToastView::kToastViewId));
+}
+
+IN_PROC_BROWSER_TEST_F(ToastControllerInteractiveTest,
+                       NavigationPersistentToastStaysOnNavigation) {
+  ToastParams params(ToastId::kEmailVerified);
+  params.body_string_replacement_params = {u"dummy"};
+  params.menu_model = std::make_unique<TestMenuModel>(base::DoNothing());
+  RunTestSequence(InstrumentTab(kFirstTab), ShowToast(std::move(params)),
+                  WaitForShow(toasts::ToastView::kToastViewId),
+                  NavigateWebContents(kFirstTab, GetURL()),
+                  CheckShowingToastId(ToastId::kEmailVerified),
+                  // Explicitly fire the close timer to prevent the persistent
+                  // toast widget from leaking into browser teardown.
+                  FireToastCloseTimer(),
+                  WaitForHide(toasts::ToastView::kToastViewId));
 }
 
 // Tests that setting a menu model in `ToastParams` adds a menu button to the

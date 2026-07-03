@@ -453,9 +453,9 @@ BASE_FEATURE(kFedCmWellKnownEndpointValidation,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables subdomain-first discovery for the FedCM well-known file. Fetches
-// https://web-identity.<eTLD+1>/.well-known/web-identity first and falls back
-// to the apex URL on failure (network error, malformed JSON, or provider_urls
-// length > 1).
+// https://web-identity.well-known.<eTLD+1>/.well-known/web-identity first and
+// falls back to the apex URL on failure (network error, malformed JSON, or
+// provider_urls length > 1).
 BASE_FEATURE(kFedCmWebIdentitySubdomain, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables bypassing the well-known file enforcement.
@@ -652,7 +652,7 @@ const char kIsolateOriginsFieldTrialParamName[] = "OriginsList";
 
 #if BUILDFLAG(IS_ANDROID)
 // Enables the ability to specification a renderer that does not use Java.
-BASE_FEATURE(kJavalessRendererExperimentOn, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kJavalessRendererExperimentOn, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 
 // Kill-switch for the tracking of keep-alive requests blocked by client.
@@ -754,6 +754,11 @@ BASE_FEATURE(kOverscrollHistoryNavigation, base::FEATURE_ENABLED_BY_DEFAULT);
 // Whether web apps can run periodic tasks upon network connectivity.
 BASE_FEATURE(kPeriodicBackgroundSync, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// If enabled, activation beacon is sent when a prefetched page is activated.
+// The activation beacon is a beacon that echoes back a server specified token
+// to the server when a prefetched page is activated.
+BASE_FEATURE(kPrefetchActivationBeacon, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Allow starting prefetch request from off the main thread. Please see
 // crbug.com/452389538 for more details.
 BASE_FEATURE(kPrefetchOffTheMainThread, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -788,6 +793,11 @@ BASE_FEATURE_PARAM(bool,
                    &features::kPrerender2ReuseHost,
                    "reuse_search_host",
                    false);
+
+// If enabled, activation beacon is sent when a prerendered page is activated.
+// The activation beacon is a beacon that echoes back a server specified token
+// to the server when a prerendered page is activated.
+BASE_FEATURE(kPrerenderActivationBeacon, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled, the feature allows user to see a preview of their handwriting
 // gestures (Select and Delete gestures).

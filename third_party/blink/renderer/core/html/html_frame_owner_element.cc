@@ -445,6 +445,14 @@ void HTMLFrameOwnerElement::ClearLastNaturalSizingInfo() {
   last_natural_sizing_info_.reset();
 }
 
+void HTMLFrameOwnerElement::ClearAllNaturalSizingInfo() {
+  last_natural_sizing_info_.reset();
+  if (auto* frame_view = DynamicTo<FrameView>(OwnedEmbeddedContentView())) {
+    frame_view->ClearNaturalDimensions();
+  }
+  NaturalSizingInfoChanged();
+}
+
 void HTMLFrameOwnerElement::UpdateContainerPolicy() {
   frame_policy_.container_policy = ConstructContainerPolicy();
   DidChangeContainerPolicy();

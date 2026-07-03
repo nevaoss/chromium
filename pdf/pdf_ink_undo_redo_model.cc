@@ -113,8 +113,7 @@ bool PdfInkUndoRedoModel::Remove(IdType id) {
 
   if (!HasIdInPreviousAddCommands(id)) {
     if (std::holds_alternative<InkStrokeId>(id) ||
-        (std::holds_alternative<InkTextId>(id) &&
-         !loaded_pdf_ink_text_ids_.contains(std::get<InkTextId>(id)))) {
+        std::holds_alternative<InkTextId>(id)) {
       return false;  // Failed invariant 4.
     }
   }
@@ -123,10 +122,6 @@ bool PdfInkUndoRedoModel::Remove(IdType id) {
   return true;
 }
 
-void PdfInkUndoRedoModel::SetLoadedPdfInkTextIds(
-    std::set<InkTextId> loaded_pdf_ink_text_ids) {
-  loaded_pdf_ink_text_ids_ = std::move(loaded_pdf_ink_text_ids);
-}
 
 bool PdfInkUndoRedoModel::Finish() {
   if (!has_started_) {
@@ -145,7 +140,7 @@ bool PdfInkUndoRedoModel::Finish() {
   return true;
 }
 
-std::optional<InkTextId> PdfInkUndoRedoModel::GetUndoInkTextId() const {
+std::optional<TextId> PdfInkUndoRedoModel::GetUndoTextId() const {
   if (commands_stack_.empty() || stack_position_ == 0) {
     return std::nullopt;
   }
@@ -156,11 +151,13 @@ std::optional<InkTextId> PdfInkUndoRedoModel::GetUndoInkTextId() const {
   }
 
   const IdType& id = *recorded.removes.begin();
-  if (!std::holds_alternative<InkTextId>(id)) {
-    return std::nullopt;
+  if (std::holds_alternative<InkTextId>(id)) {
+    return std::get<InkTextId>(id);
   }
-
-  return std::get<InkTextId>(id);
+  if (std::holds_alternative<InkLoadedTextId>(id)) {
+    return std::get<InkLoadedTextId>(id);
+  }
+  return std::nullopt;
 }
 
 std::optional<InkTextId> PdfInkUndoRedoModel::GetRedoInkTextId() const {
@@ -177,7 +174,6 @@ std::optional<InkTextId> PdfInkUndoRedoModel::GetRedoInkTextId() const {
   if (!std::holds_alternative<InkTextId>(id)) {
     return std::nullopt;
   }
-
   return std::get<InkTextId>(id);
 }
 

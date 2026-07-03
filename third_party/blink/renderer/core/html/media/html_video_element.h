@@ -88,7 +88,7 @@ class CORE_EXPORT HTMLVideoElement final
   void PaintCurrentFrame(cc::PaintCanvas*,
                          const gfx::Rect&,
                          const cc::PaintFlags&,
-                         bool force_pixel_readback) const;
+                         bool acquire_texture_backing) const;
 
   bool HasAvailableVideoFrame() const;
   bool HasReadableVideoFrame() const;

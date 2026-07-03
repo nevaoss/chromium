@@ -158,6 +158,8 @@ class Seat : public aura::client::FocusChangeObserver,
 
   bool was_shutdown() const { return was_shutdown_; }
 
+  base::WeakPtr<Seat> GetWeakPtr();
+
  private:
   class RefCountedScopedClipboardWriter;
 

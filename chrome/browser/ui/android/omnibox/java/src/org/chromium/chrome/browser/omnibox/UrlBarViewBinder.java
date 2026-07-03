@@ -40,7 +40,7 @@ class UrlBarViewBinder {
             if (callback == null && view.getCustomSelectionActionModeCallback() == null) return;
             view.setCustomSelectionActionModeCallback(callback);
         } else if (UrlBarProperties.ALLOW_FOCUS.equals(propertyKey)) {
-            view.setAllowFocus(model.get(UrlBarProperties.ALLOW_FOCUS));
+            updateFocusAttributes(model, view);
         } else if (UrlBarProperties.ALLOW_MULTILINE_INPUT.equals(propertyKey)) {
             view.setAllowMultilineInput(model.get(UrlBarProperties.ALLOW_MULTILINE_INPUT));
         } else if (UrlBarProperties.AUTOCOMPLETE_TEXT.equals(propertyKey)) {
@@ -66,7 +66,7 @@ class UrlBarViewBinder {
                         }
                     });
         } else if (UrlBarProperties.SHOW_CURSOR.equals(propertyKey)) {
-            view.setCursorVisible(model.get(UrlBarProperties.SHOW_CURSOR));
+            updateFocusAttributes(model, view);
         } else if (UrlBarProperties.TEXT_CONTEXT_MENU_DELEGATE.equals(propertyKey)) {
             view.setTextContextMenuDelegate(model.get(UrlBarProperties.TEXT_CONTEXT_MENU_DELEGATE));
         } else if (UrlBarProperties.MANAGE_SEARCH_ENGINES_CALLBACK.equals(propertyKey)) {
@@ -158,6 +158,12 @@ class UrlBarViewBinder {
                 || UrlBarProperties.SHOW_HINT_TEXT.equals(propertyKey)) {
             view.setHint(getHintForModelState(model));
         }
+    }
+
+    private static void updateFocusAttributes(PropertyModel model, UrlBar view) {
+        boolean allowFocus = model.get(UrlBarProperties.ALLOW_FOCUS);
+        view.setAllowFocus(allowFocus);
+        view.setCursorVisible(allowFocus && model.get(UrlBarProperties.SHOW_CURSOR));
     }
 
     private static void updateHighlightColor(UrlBar view, boolean useIncognitoColors) {

@@ -74,6 +74,7 @@ struct FieldDescription {
   std::optional<std::u16string> nonce;
   std::optional<std::u16string> value;
   std::optional<std::u16string> placeholder;
+  std::optional<std::u16string> placeholder_attribute;
   std::optional<std::u16string> aria_label;
   std::optional<std::u16string> aria_description;
   std::optional<uint64_t> max_length;
@@ -89,6 +90,8 @@ struct FieldDescription {
   bool checked = false;
   std::optional<int32_t> form_control_ax_id;
   std::optional<FormFieldData::LabelSource> label_source;
+  std::optional<std::u16string> pattern;
+  std::optional<std::u16string> css_classes;
 };
 
 struct CreateFormFieldData {
@@ -111,6 +114,9 @@ struct FormDescription {
   const std::string url = "https://example.com/form.html";
   const std::string action = "https://example.com/submit.html";
   std::optional<url::Origin> main_frame_origin;
+  std::optional<std::u16string> id_attribute;
+  std::optional<std::u16string> name_attribute;
+  ButtonTitleList button_titles;
 
   static constexpr std::string_view kDefaultTestOrigin =
       "https://example.test/";
@@ -193,6 +199,9 @@ FormFieldData GetFormFieldData(const FieldDescriptionType& description) {
   if (description.placeholder) {
     field_data.set_placeholder(*description.placeholder);
   }
+  if (description.placeholder_attribute) {
+    field_data.set_placeholder_attribute(*description.placeholder_attribute);
+  }
   if (description.aria_label) {
     field_data.set_aria_label(*description.aria_label);
   }
@@ -224,6 +233,12 @@ FormFieldData GetFormFieldData(const FieldDescriptionType& description) {
   if (description.label_source) {
     field_data.set_label_source(*description.label_source);
   }
+  if (description.pattern) {
+    field_data.set_pattern(*description.pattern);
+  }
+  if (description.css_classes) {
+    field_data.set_css_classes(*description.css_classes);
+  }
   CHECK(!description.checked ||
         field_data.form_control_type() == FormControlType::kInputCheckbox ||
         field_data.form_control_type() == FormControlType::kInputRadio)
@@ -239,6 +254,15 @@ FormData GetFormData(const FormDescriptionType& description) {
   form.set_url(GURL(description.url));
   form.set_action(GURL(description.action));
   form.set_name(description.name);
+  if (description.id_attribute) {
+    form.set_id_attribute(*description.id_attribute);
+  }
+  if (description.name_attribute) {
+    form.set_name_attribute(*description.name_attribute);
+  }
+  if (!description.button_titles.empty()) {
+    form.set_button_titles(description.button_titles);
+  }
   form.set_host_frame(description.host_frame.value_or(MakeLocalFrameToken()));
   form.set_renderer_id(description.renderer_id.value_or(MakeFormRendererId()));
   if (description.main_frame_origin) {

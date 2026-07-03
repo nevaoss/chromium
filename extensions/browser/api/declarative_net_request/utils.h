@@ -166,6 +166,9 @@ T CreateString(const flatbuffers::String& str) {
   return T(str.c_str(), str.size());
 }
 
+// Returns true if the given `id` corresponds to a static ruleset.
+bool IsRulesetStatic(const RulesetID& id);
+
 // Returns the number of static rules enabled for the specified
 // `composite_matcher`.
 size_t GetEnabledStaticRuleCount(const CompositeMatcher* composite_matcher);

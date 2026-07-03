@@ -44,6 +44,7 @@ export class OverflowMenuElement extends CrLitElement {
       isPinned: {type: Boolean},
       isPinButtonEnabled: {type: Boolean},
       isAiPage: {type: Boolean},
+      isUserFeedbackAllowed: {type: Boolean},
     };
   }
 
@@ -56,6 +57,8 @@ export class OverflowMenuElement extends CrLitElement {
       loadTimeData.getBoolean('enablePinButton');
   accessor isAiPage: boolean =
       loadTimeData.getBoolean('isAiPage');
+  accessor isUserFeedbackAllowed: boolean =
+      loadTimeData.getBoolean('isUserFeedbackAllowed');
   private browserProxy_: BrowserProxy = BrowserProxyImpl.getInstance();
   private listenerIds_: number[] = [];
 
@@ -104,6 +107,11 @@ export class OverflowMenuElement extends CrLitElement {
   protected onPinClick_() {
     this.close();
     this.isPinned = !this.isPinned;
+    if (this.isPinned) {
+      this.browserProxy_.handler.pinSidePanel();
+    } else {
+      this.browserProxy_.handler.unpinSidePanel();
+    }
     this.fire('pin-click');
   }
 

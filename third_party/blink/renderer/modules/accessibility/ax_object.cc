@@ -8043,7 +8043,7 @@ bool AXObject::RequestReplaceRangesAction(const ui::AXActionData& action_data) {
       return false;
     }
 
-    const SelectionInDOMTree selection = SelectionInDOMTree::Builder()
+    const SelectionInDomTree selection = SelectionInDomTree::Builder()
                                              .Collapse(start_position)
                                              .Extend(end_position)
                                              .Build();

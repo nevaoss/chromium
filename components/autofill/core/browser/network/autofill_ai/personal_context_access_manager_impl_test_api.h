@@ -20,18 +20,7 @@ class PersonalContextAccessManagerImplTestApi {
       PersonalContextAccessManagerImpl* manager)
       : manager_(*manager) {}
 
-  void ResetCacheForType(EntityTypeName type_name) {
-    manager_->ResetCacheForType(type_name);
-  }
-
-  void CachePrefetchedEntities(std::vector<EntityInstance> entities) {
-    absl::flat_hash_map<EntityTypeName, std::vector<EntityInstance>>
-        grouped_entities;
-    for (EntityInstance& entity : entities) {
-      grouped_entities[entity.type().name()].push_back(std::move(entity));
-    }
-    manager_->CachePrefetchedEntities(std::move(grouped_entities));
-  }
+  void ResetCacheForType(EntityType type) { manager_->ResetCacheForType(type); }
 
   void CacheUnmaskedSpiiEntity(EntityInstance entity) {
     manager_->CacheUnmaskedSpiiEntity(std::move(entity));

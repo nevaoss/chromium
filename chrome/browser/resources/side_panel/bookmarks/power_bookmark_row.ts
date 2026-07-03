@@ -117,7 +117,7 @@ export class PowerBookmarkRowElement extends CrLitElement {
     this.addEventListener('focus', this.onFocus_);
     this.isPriceTracked = this.isPriceTracked_();
 
-    const callbackRouter = this.priceTrackingProxy_.getCallbackRouter();
+    const callbackRouter = this.priceTrackingProxy_.callbackRouter;
     this.shoppingListenerIds_.push(
         callbackRouter.priceTrackedForBookmark.addListener(
             (product: BookmarkProductInfo) =>
@@ -133,7 +133,7 @@ export class PowerBookmarkRowElement extends CrLitElement {
   override disconnectedCallback() {
     super.disconnectedCallback();
     this.shoppingListenerIds_.forEach(
-        id => this.priceTrackingProxy_.getCallbackRouter().removeListener(id));
+        id => this.priceTrackingProxy_.callbackRouter.removeListener(id));
   }
 
   private handleBookmarkSubscriptionChange_(

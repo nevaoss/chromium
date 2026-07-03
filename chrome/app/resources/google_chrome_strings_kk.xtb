@@ -96,7 +96,6 @@
 <translation id="1953553007165777902">Жүктеп алынып жатыр… <ph name="MINUTE" /> минут қалды.</translation>
 <translation id="1979600810166324878">iOS жүйесіне арналған Chrome-дағы Күшейтілген Safe Browsing деректеріңізді фондық режимде қорғауға көмектеседі.</translation>
 <translation id="2001586581944147178">Интернет трафигіңізді пайдалана алатын адамдар қандай сайттарға кіретініңізді көрмейтіндей етіңіз. Chrome браузері DNS жүйесіндегі сайттың IP мекенжайын іздеу үшін қауіпсіз байланысты пайдаланады.</translation>
-<translation id="2008942457798486387">{NUM_EXTENSIONS,plural, =1{Бұл кеңейтімге енді қолдау көрсетілмейді. Chrome оны өшіруге кеңес береді.}other{Бұл кеңейтімдерге енді қолдау көрсетілмейді. Chrome оларды өшіруге кеңес береді.}}</translation>
 <translation id="2018528049276128029">Әр профильде бетбелгілер, тарих, құпия сөздер және тағы басқа Chrome ақпараты бар.</translation>
 <translation id="2018879682492276940">Орнатылмады. Қайталап көріңіз.</translation>
 <translation id="2024959665595762054">Google аккаунтында Chrome деректерін пайдалану және сақтау үшін жеке басыңызды растаңыз.</translation>
@@ -192,6 +191,7 @@
 <translation id="2945997411976714835">Орнату қатесі: орнату процесі басталмады.</translation>
 <translation id="2969728957078202736"><ph name="PAGE_TITLE" /> – Желіге кіру – Chrome</translation>
 <translation id="2970681950995291301">Chrome-нан Google аккаунтын өшіру үшін Chrome-нан "Параметрлер" бетінде шығыңыз.</translation>
+<translation id="2976869732253036751">Телефондағы Chrome арқылы бағаны бақылау туралы хабарландырулар алыңыз</translation>
 <translation id="2991167882679440829">Google аккаунтыңызда сақталған құпия сөздеріңіз бен Chrome-дағы басқа деректеріңіз осы құрылғыдан өшіріледі. Оларды Chrome-да қайта пайдалану үшін аккаунтқа қайтадан кіріңіз.</translation>
 <translation id="2994465299455873643">Шифрлау қызметтерін және ескірген <ph name="BROWSER_NAME" /> браузерін қалпына келтірудің қауіпсіз әдісін ұсынады. Бұл қызмет өшірілсе, <ph name="BROWSER_NAME" /> шифрланған деректерге кіру мүмкіндігін жоғалтып, <ph name="BROWSER_NAME" /> өздігінен қалпына келе алмауы мүмкін.</translation>
 <translation id="3003694935412297923">Барлық тапсырма</translation>
@@ -387,6 +387,7 @@
 <translation id="5127558335897923940">Chrome-ды кез келген уақытта жылдам ашу үшін бекітілген күйде қалдырыңыз</translation>
 <translation id="5132929315877954718">Google Chrome браузеріне арналған тамаша қолданбаларды, ойындарды және тақырыптарды табыңыз.</translation>
 <translation id="5139423532931106058">Chrome профилін реттеу</translation>
+<translation id="5152381187352661267">Chrome-дағы дағдылар</translation>
 <translation id="5163087008893166964">Chrome браузеріне қош келдіңіз! Жаңа браузер терезесі ашылды.</translation>
 <translation id="5166439563123238795">Chrome қолыңызды бақылауға рұқсат сұрайды.</translation>
 <translation id="5169778651486082413">Құпия сөздерді телефондағы Chrome-мен пайдаланыңыз</translation>
@@ -402,6 +403,7 @@
 <translation id="5234764350956374838">Жабу</translation>
 <translation id="5239627039202700673">Хабарларда, құжаттарда және басқа қолданбаларда сілтемелерді басып, Chrome браузерін кез келген уақытта пайдаланыңыз.</translation>
 <translation id="5251420635869119124">Қонақтар Chrome қолданбасын ешқандай дерек қалдырмай пайдалана алады.</translation>
+<translation id="5271833978500241046">Оларды Chrome-дағы басқа Gemini функцияларымен бірге пайдаланыңыз.</translation>
 <translation id="5286907366254680517">Анықталды</translation>
 <translation id="5320351714793324716">Егер cookie файлдарына рұқсат берсеңіз, Chrome оларды алдын ала жүктеу кезінде пайдалануы мүмкін.</translation>
 <translation id="5321325624576443340">Google Lens қолжетімді емес. Кейінірек қайталап көріңіз.</translation>
@@ -486,6 +488,7 @@ Google Chrome параметрлеріңізді қалпына келтіре �
 <translation id="6070348360322141662">Қауіпсіздікті күшейту үшін Google Chrome деректеріңізді шифрлайды</translation>
 <translation id="6075300983329039771">Ұйымыңыз (<ph name="MANAGER" />) Chrome-ға кіруді талап етеді</translation>
 <translation id="6113794647360055231">Chrome жақсара түсті</translation>
+<translation id="6116004140911290070">Chrome-да дағдыларды қосу</translation>
 <translation id="6116252277240876590">Бұл тіл Chrome-да мәзірлерді, параметрлерді, ескертулерді және басқа мәтінді көрсету үшін пайдаланылады.</translation>
 <translation id="6127237283587442951">Chrome-ды әдепкісінше пайдалану және бекіту</translation>
 <translation id="6134085236017727171">Микрофонды пайдалану үшін <ph name="BEGIN_LINK" />жүйе параметрлерінде<ph name="END_LINK" /> Chrome-ға рұқсат беріңіз.</translation>
@@ -645,6 +648,7 @@ Google Chrome параметрлеріңізді қалпына келтіре �
 <translation id="7606334485649076285">Google ChromeOS Flex</translation>
 <translation id="7627609214560473136">Деректеріңізді қорғау үшін Chrome-ға сіз соңғы уақытта кірмеген сайттардың рұқсаттарын өшіруге рұқсат беріңіз.</translation>
 <translation id="7629695634924605473">Құпия сөздеріңіз ұрланған жағдайда, Chrome бұл туралы хабарлайды.</translation>
+<translation id="7629898584100520089">Дағдылар сияқты ЖИ инновациялары Google аккаунтыңызға сақталады және Chrome Sync-тен бөлек басқарылады.</translation>
 <translation id="7641148173327520642">Жүйе әкімшісі Google Chrome браузерін <ph name="TARGET_URL_HOSTNAME" /> бетіне кіру кезінде <ph name="ALTERNATIVE_BROWSER_NAME" /> ашылатын етіп конфигурациялады.</translation>
 <translation id="7649070708921625228">Анықтама</translation>
 <translation id="7651907282515937834">Chrome Enterprise логотипі</translation>

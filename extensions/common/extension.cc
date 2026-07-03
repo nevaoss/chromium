@@ -38,7 +38,6 @@
 #include "extensions/common/manifest.h"
 #include "extensions/common/manifest_constants.h"
 #include "extensions/common/manifest_handler.h"
-#include "extensions/common/manifest_handlers/app_urls_info.h"
 // TODO(crbug.com/324534603): Remove this.
 #include "extensions/common/manifest_handlers/description_info.h"
 #include "extensions/common/manifest_handlers/permissions_parser.h"
@@ -646,14 +645,6 @@ bool Extension::InitFromValue(int flags, std::u16string* error) {
 
   extension_origin_ = Extension::CreateOriginFromExtensionId(id());
   extension_url_ = Extension::GetBaseURLFromExtensionId(id());
-
-  // Load App settings. ParseAppURLs at least has to be done before
-  // ParsePermissions(), because the valid permissions depend on what type of
-  // package this is.
-  // TODO(crbug.com/324534603): Change is_app() to is_hosted_app().
-  if (is_app() && !ParseAppURLs(*this, error)) {
-    return false;
-  }
 
   permissions_parser_ = std::make_unique<PermissionsParser>();
   if (!permissions_parser_->Parse(this, error)) {

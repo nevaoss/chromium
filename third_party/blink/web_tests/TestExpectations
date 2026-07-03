@@ -1,4 +1,4 @@
-# tags: [ Android Fuchsia Linux Mac Mac13 Mac13-arm64 Mac14 Mac14-arm64 Mac15 Mac15-arm64 Webview Win Win10.20h2 Win11 Win11-arm64 iOS26-simulator ]
+# tags: [ Android Fuchsia Linux Mac Mac13 Mac13-arm64 Mac14 Mac14-arm64 Mac15 Mac15-arm64 Mac26 Mac26-arm64 Webview Win Win10.20h2 Win11 Win11-arm64 iOS26-simulator ]
 # tags: [ Release Debug ]
 # results: [ Timeout Crash Pass Failure Skip ]
 
@@ -1001,8 +1001,6 @@ crbug.com/1176315 external/wpt/css/css-counter-styles/counter-style-at-rule/symb
 crbug.com/750992 external/wpt/css/css-overflow/margin-block-end-scroll-area-001.html [ Failure ]
 
 # Windows 10 bot upgrade now causes these failures on Windows-10-18363
-crbug.com/1140324 [ Win11 ] external/wpt/css/css-text-decor/text-underline-offset-variable.html [ Failure ]
-crbug.com/1140324 [ Win10.20h2 ] external/wpt/css/css-text-decor/text-underline-offset-variable.html [ Failure ]
 crbug.com/1143005 [ Win10.20h2 ] media/track/track-cue-rendering-vertical.html [ Failure ]
 
 
@@ -1014,30 +1012,6 @@ crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-t
 crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-to-grid-lanes/track-sizing/column-subgrid-with-row-standalone-axis-size-007.html [ Failure ]
 crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-to-grid-lanes/track-sizing/column-subgrid-with-row-standalone-axis-size-008.html [ Failure ]
 crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-to-grid-lanes/track-sizing/column-subgrid-with-row-standalone-axis-size-009.html [ Failure ]
-# Subgrid gap failures.
-crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-to-grid-lanes/gap/column-subgrid-grid-gap-001.html [ Failure ]
-crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-to-grid-lanes/gap/column-subgrid-grid-gap-002.html [ Failure ]
-crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-to-grid-lanes/gap/column-subgrid-grid-gap-004.html [ Failure ]
-crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-to-grid-lanes/gap/column-subgrid-grid-gap-007.html [ Failure ]
-crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-to-grid-lanes/gap/column-subgrid-grid-gap-009.html [ Failure ]
-crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-to-grid-lanes/gap/column-subgrid-grid-gap-012.html [ Failure ]
-crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-to-grid-lanes/gap/column-subgrid-grid-gap-013.html [ Failure ]
-crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-to-grid-lanes/gap/column-subgrid-grid-gap-014.html [ Failure ]
-crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-to-grid-lanes/gap/column-subgrid-grid-gap-larger-002.html [ Failure ]
-crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-to-grid-lanes/gap/row-subgrid-grid-gap-001.html [ Failure ]
-crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-to-grid-lanes/gap/row-subgrid-grid-gap-002.html [ Failure ]
-crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-to-grid-lanes/gap/row-subgrid-grid-gap-004.html [ Failure ]
-crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-to-grid-lanes/gap/row-subgrid-grid-gap-007.html [ Failure ]
-crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-to-grid-lanes/gap/row-subgrid-grid-gap-009.html [ Failure ]
-crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-to-grid-lanes/gap/row-subgrid-grid-gap-012.html [ Failure ]
-crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-to-grid-lanes/gap/row-subgrid-grid-gap-013.html [ Failure ]
-crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-to-grid-lanes/gap/row-subgrid-grid-gap-014.html [ Failure ]
-crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-to-grid-lanes/gap/row-subgrid-grid-gap-larger-001.html [ Failure ]
-crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-to-grid-lanes/gap/row-subgrid-grid-gap-larger-002.html [ Failure ]
-crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-to-grid-lanes/gap/row-subgrid-grid-gap-smaller-001.html [ Failure ]
-# Subgrid gap + writing mode failures.
-crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-to-grid-lanes/gap/column-subgrid-grid-gap-008.html [ Failure ]
-crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-to-grid-lanes/gap/row-subgrid-grid-gap-008.html [ Failure ]
 # Grid Lanes subgrids not yet supported.
 crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-lanes-subgridded-to-grid-lanes/track-sizing/grid-lanes-subgrid-flex.html [ Failure ]
 crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-lanes-subgridded-to-grid-lanes/track-sizing/grid-lanes-subgrid.html [ Failure ]
@@ -1453,7 +1427,7 @@ crbug.com/707210 external/wpt/html/rendering/non-replaced-elements/the-page/body
 
 crbug.com/821455 editing/pasteboard/drag-files-to-editable-element.html [ Failure ]
 
-crbug.com/1505380 [ Mac ] external/wpt/mediacapture-streams/MediaStreamTrack-getCapabilities.https.html [ Failure ]
+crbug.com/1505380 [ Mac ] external/wpt/mediacapture-streams/MediaStreamTrack-getCapabilities.https.html [ Failure Timeout ]
 crbug.com/415952276 [ Mac ] external/wpt/screen-capture/getdisplaymedia-restrictOwnAudio.https.html [ Failure ]
 
 # Ref tests that needs investigation.
@@ -1504,7 +1478,6 @@ crbug.com/1052717 external/wpt/css/css-text/line-break/line-break-loose-hyphens-
 # Not yet investigated
 crbug.com/1404464 external/wpt/css/css-text/bidi/bidi-lines-002.html [ Failure ]
 crbug.com/1404467 external/wpt/css/css-text/letter-spacing/letter-spacing-ligatures-001.html [ Failure ]
-crbug.com/1404467 [ Release Win ] external/wpt/css/css-text/letter-spacing/letter-spacing-ligatures-002.html [ Failure ]
 crbug.com/1404466 external/wpt/css/css-text/line-breaking/line-breaking-022.html [ Failure ]
 crbug.com/1361453 external/wpt/css/css-text/hyphens/i18n/hyphens-i18n-auto-001.html [ Failure ]
 crbug.com/1361453 external/wpt/css/css-text/hyphens/i18n/hyphens-i18n-auto-002.html [ Failure ]
@@ -1639,8 +1612,6 @@ crbug.com/369369569 http/tests/notifications/request-permission-granted.html [ P
 
 crbug.com/41489935 http/tests/permissions/chromium/test-change-event-window.html [ Failure Pass ]
 crbug.com/538717 http/tests/permissions/chromium/test-request-multiple-window.html [ Failure Pass Timeout ]
-crbug.com/538717 http/tests/permissions/chromium/test-request-multiple-worker.html [ Failure Pass Timeout ]
-crbug.com/538717 http/tests/permissions/chromium/test-request-multiple-sharedworker.html [ Failure Pass Timeout ]
 
 crbug.com/399951 http/tests/mime/javascript-mimetype-usecounters.html [ Failure Pass ]
 
@@ -2232,7 +2203,6 @@ external/wpt/webdriver/tests/bidi/browsing_context/capture_screenshot/frame.py [
 crbug.com/324436866 [ Linux ] external/wpt/webdriver/tests/bidi/browsing_context/navigation_started/navigation_started.py [ Failure Timeout ]
 external/wpt/webdriver/tests/bidi/browsing_context/print/invalid.py [ Timeout ]
 external/wpt/webdriver/tests/bidi/browsing_context/user_prompt_opened/user_prompt_opened.py [ Failure Pass Timeout ]
-crbug.com/324436866 external/wpt/webdriver/tests/bidi/browser/remove_user_context/user_context.py [ Failure Pass Timeout ]
 crbug.com/1507773 external/wpt/webdriver/tests/bidi/script/call_function/remote_values.py [ Failure Pass Timeout ]
 crbug.com/411656646 external/wpt/webdriver/tests/classic/close_window/close.py [ Failure ]
 crbug.com/411656646 external/wpt/webdriver/tests/classic/delete_session/delete.py [ Failure ]
@@ -2247,8 +2217,6 @@ crbug.com/1507773 external/wpt/webdriver/tests/classic/is_element_enabled/enable
 crbug.com/1499775 external/wpt/webdriver/tests/bidi/browsing_context/locate_nodes/context.py [ Failure ]
 crbug.com/1499775 [ Linux ] external/wpt/webdriver/tests/bidi/browsing_context/locate_nodes/invalid.py [ Pass Timeout ]
 crbug.com/1499775 external/wpt/webdriver/tests/bidi/input/perform_actions/pointer_mouse_multiclick.py [ Failure Timeout ]
-crbug.com/324436866 external/wpt/webdriver/tests/bidi/browsing_context/print/context.py [ Failure Pass Timeout ]
-crbug.com/324436866 external/wpt/webdriver/tests/classic/get_current_url/file.py [ Failure Pass Timeout ]
 crbug.com/626703 external/wpt/webdriver/tests/bidi/input/set_files/invalid.py [ Failure Timeout ]
 external/wpt/webdriver/tests/bidi/input/set_files/set_files.py [ Timeout ]
 [ Debug ] external/wpt/webdriver/tests/bidi/network/add_intercept/contexts.py [ Failure Pass Timeout ]
@@ -2546,16 +2514,7 @@ crbug.com/626703 external/wpt/preload/preload-resource-match.https.html [ Failur
 crbug.com/1359555 external/wpt/speculation-rules/prerender/workers.https.html [ Failure Timeout ]
 crbug.com/324447993 external/wpt/web-locks/clientids.https.html [ Failure ]
 crbug.com/355428699 external/wpt/scroll-to-text-fragment/find-range-from-text-directive.html [ Failure Pass Timeout ]
-[ Mac14-arm64 ] external/wpt/clear-site-data/clear-cache.https.html [ Failure ]  # Flaky output
-[ Mac14 ] external/wpt/clear-site-data/clear-cache.https.html [ Failure Timeout ]  # Flaky output
-[ Mac15 ] external/wpt/clear-site-data/clear-cache.https.html [ Failure ]  # Flaky output
-[ Mac15-arm64 ] external/wpt/clear-site-data/clear-cache.https.html [ Failure ]  # Flaky output
-[ Win11-arm64 ] external/wpt/clear-site-data/clear-cache.https.html [ Failure ]  # Flaky output
-[ Win10.20h2 ] external/wpt/clear-site-data/clear-cache.https.html [ Failure Timeout ]  # Flaky output
-[ Mac13 ] external/wpt/clear-site-data/clear-cache.https.html [ Failure Timeout ]  # Flaky output
-[ Mac13-arm64 ] external/wpt/clear-site-data/clear-cache.https.html [ Failure ]  # Flaky output
-[ Linux ] external/wpt/clear-site-data/clear-cache.https.html [ Failure Timeout ]  # Flaky output
-[ Win11 ] external/wpt/clear-site-data/clear-cache.https.html [ Failure Timeout ]  # Flaky output
+external/wpt/clear-site-data/clear-cache.https.html [ Failure ]  # Flaky output
 
 # These tests crash due to DCHECKs. Only CQ/debug CI builders enable DCHECKs;
 # `*-blink-rel` builders don't.
@@ -2755,8 +2714,6 @@ crbug.com/507904104 external/wpt/fetch/fetch-later/quota/same-origin-iframe/empt
 crbug.com/507904104 virtual/produce-compile-hints/external/wpt/fetch/fetch-later/quota/cross-origin-iframe/empty-payload.https.window.html [ Failure ]
 crbug.com/507904104 virtual/produce-compile-hints/external/wpt/fetch/fetch-later/quota/same-origin-iframe/empty-payload.https.window.html [ Failure ]
 
-crbug.com/515776375 external/wpt/css/css-anchor-position/position-anchor-normal-001.html [ Failure ]
-
 crbug.com/515750299 external/wpt/css/css-inline/alignment-baseline/alignment-baseline-horizontal-002.html?class=alphabetic [ Failure ]
 crbug.com/515750299 external/wpt/css/css-inline/alignment-baseline/alignment-baseline-horizontal-002.html?class=baseline [ Failure ]
 crbug.com/515750299 external/wpt/css/css-inline/alignment-baseline/alignment-baseline-horizontal-002.html?class=central [ Failure ]
@@ -2794,11 +2751,6 @@ crbug.com/515750299 external/wpt/css/css-inline/alignment-baseline/alignment-bas
 crbug.com/515750299 external/wpt/css/css-inline/alignment-baseline/alignment-baseline-vertical-rl-003.html?class=middle [ Failure ]
 crbug.com/515750299 external/wpt/css/css-inline/alignment-baseline/alignment-baseline-vertical-rl-003.html?class=text-bottom [ Failure ]
 crbug.com/515750299 external/wpt/css/css-inline/alignment-baseline/alignment-baseline-vertical-rl-003.html?class=text-top [ Failure ]
-
-crbug.com/515776380 external/wpt/html/rendering/non-replaced-elements/the-fieldset-and-legend-elements/fieldset-content-box-rule-break.html [ Failure ]
-crbug.com/515776380 external/wpt/html/rendering/non-replaced-elements/the-fieldset-and-legend-elements/fieldset-content-box-rule-inset.html [ Failure ]
-crbug.com/515776380 external/wpt/html/rendering/non-replaced-elements/the-fieldset-and-legend-elements/fieldset-content-box-rule-overlap.html [ Failure ]
-crbug.com/515776380 external/wpt/html/rendering/non-replaced-elements/the-fieldset-and-legend-elements/fieldset-content-box-rule-visibility-items.html [ Failure ]
 
 crbug.com/515679398 external/wpt/mathml/relations/html5-tree/href-click-001.html [ Failure ]
 crbug.com/515679398 external/wpt/mathml/relations/html5-tree/href-click-002.html [ Failure ]
@@ -3207,11 +3159,6 @@ crbug.com/466401982 [ Linux ] external/wpt/css/css-fonts/matching/font-weight-se
 crbug.com/466401982 [ Win ] external/wpt/css/css-fonts/matching/font-weight-search-direction.html [ Failure ]
 crbug.com/466442690 [ Android ] external/wpt/webdriver/tests/bidi/emulation/combined/multiple_emulations.py [ Failure ]
 crbug.com/466442690 external/wpt/webdriver/tests/bidi/emulation/set_screen_settings_override/contexts.py [ Failure ]
-crbug.com/466442690 external/wpt/webdriver/tests/bidi/emulation/set_screen_settings_override/invalid.py [ Failure ]
-crbug.com/466442690 external/wpt/webdriver/tests/bidi/emulation/set_screen_settings_override/screen_area.py [ Failure ]
-crbug.com/466442690 external/wpt/webdriver/tests/bidi/emulation/set_screen_settings_override/user_contexts.py [ Failure ]
-crbug.com/466442690 external/wpt/webdriver/tests/classic/global_privacy_control/get.py [ Failure ]
-crbug.com/466442690 external/wpt/webdriver/tests/classic/global_privacy_control/set.py [ Failure ]
 crbug.com/465457329 [ Android ] external/wpt/webdriver/tests/bidi/emulation/set_timezone_override/user_contexts.py [ Failure ]
 crbug.com/465457329 external/wpt/webdriver/tests/classic/get_all_cookies/get.py [ Failure ]
 crbug.com/465457329 external/wpt/webdriver/tests/classic/get_all_cookies/user_prompts.py [ Failure ]
@@ -3951,14 +3898,11 @@ crbug.com/379008013 [ Win11 ] external/wpt/signed-exchange/reporting/sxg-reporti
 crbug.com/379008013 [ Win11 ] external/wpt/signed-exchange/reporting/sxg-reporting-prefetch-mi_error.tentative.html [ Crash Timeout ]
 crbug.com/379008013 [ Mac15-arm64 ] external/wpt/webrtc-extensions/RTCRtpCorruptionDetection-headerExtensionControl.html [ Timeout ]
 crbug.com/379008013 [ Mac15 ] external/wpt/webrtc-extensions/RTCRtpCorruptionDetection-headerExtensionControl.html [ Timeout ]
-crbug.com/378634716 [ Win10.20h2 ] external/wpt/html/webappapis/system-state-and-capabilities/the-navigator-object/navigatorcookies-cookieenabled-true.html [ Crash Timeout ]
 crbug.com/377942353 [ Win10.20h2 ] external/wpt/signed-exchange/reporting/sxg-reporting-navigation-failed-zero-success-fraction.tentative.html [ Crash Failure Timeout ]
 crbug.com/377942353 [ Mac15 ] external/wpt/webrtc-encoded-transform/tentative/RTCPeerConnection-insertable-streams-video-frames.https.html [ Timeout ]
 crbug.com/379008005 [ Mac14 ] external/wpt/webrtc/protocol/unknown-mediatypes.html [ Timeout ]
 crbug.com/379008005 [ Mac15 ] external/wpt/webrtc/protocol/unknown-mediatypes.html [ Timeout ]
 crbug.com/377942353 [ Win10.20h2 ] virtual/split-http-cache/external/wpt/signed-exchange/reporting/sxg-reporting-navigation-signature_verification_error-downgraded.tentative.html [ Crash Timeout ]
-crbug.com/378750944 [ Win10.20h2 ] external/wpt/html/webappapis/system-state-and-capabilities/the-navigator-object/navigator_user_agent.tentative.html [ Crash Timeout ]
-crbug.com/378750944 [ Win10.20h2 ] external/wpt/html/webappapis/system-state-and-capabilities/the-navigator-object/secure_context.html [ Crash Timeout ]
 crbug.com/378891970 [ Win10.20h2 ] external/wpt/signed-exchange/reporting/sxg-reporting-navigation-cert_parse_error.tentative.html [ Crash Timeout ]
 crbug.com/378891970 [ Win10.20h2 ] virtual/split-http-cache/external/wpt/signed-exchange/reporting/sxg-reporting-navigation-ok-origin-referrer.tentative.html [ Crash ]
 crbug.com/378891966 external/wpt/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_iframe_pdf_viewer.html [ Failure ]
@@ -5652,6 +5596,14 @@ crbug.com/1179461 external/wpt/webxr/depth-sensing/gpu/depth_sensing_gpu_matchDe
 crbug.com/1179461 external/wpt/webxr/depth-sensing/gpu/depth_sensing_gpu_incorrectUsage.https.html [ Failure ]
 crbug.com/1179461 external/wpt/webxr/depth-sensing/gpu/depth_sensing_gpu_staleView.https.html [ Failure ]
 
+# Temporarily disabled to land https://crrev.com/c/7913864
+crbug.com/485140575 http/tests/devtools/console/console-control-characters.js [ Failure Pass ]
+crbug.com/485140575 http/tests/devtools/console/console-eval-syntax-error.js [ Failure Pass ]
+crbug.com/485140575 http/tests/devtools/console/console-linkify-relative-links.js [ Failure Pass ]
+crbug.com/485140575 http/tests/devtools/console/console-log-eval-syntax-error.js [ Failure Pass ]
+crbug.com/485140575 http/tests/devtools/console/console-log-linkify-stack-in-errors.js [ Failure Pass ]
+crbug.com/485140575 http/tests/devtools/console/console-message-contains-async-stack.js [ Failure Pass ]
+crbug.com/485140575 http/tests/devtools/console/console-top-level-await.js [ Failure Pass ]
 
 # Sheriff 2021-03-08
 crbug.com/1092462 [ Linux ] http/tests/media/media-source/mediasource-duration.html [ Failure Pass ]
@@ -5914,7 +5866,6 @@ crbug.com/1210687 external/wpt/html/user-activation/propagation-crossorigin.sub.
 
 # Sheriff 2021-06-03
 crbug.com/1185121 fast/scroll-snap/animate-fling-to-snap-points-1.html [ Failure Pass ]
-crbug.com/1215949 external/wpt/pointerevents/pointerevent_iframe-touch-action-none_touch.html [ Pass Timeout ]
 crbug.com/40770317 http/tests/devtools/bfcache/bfcache-elements-update.js [ Failure Pass ]
 
 # CSS Highlight API painting issues related to general CSS highlight
@@ -6243,15 +6194,6 @@ crbug.com/429365670 external/wpt/css/css-multicol/multicol-nested-column-rule-00
 crbug.com/445971864 external/wpt/css/css-gaps/multicol/multicol-gap-decorations-007.html [ Failure ]
 
 ### End of tests failing with CSSGapDecorations Enabled
-### Tests for CSSGapDecorations disabled
-crbug.com/419066541 virtual/css-gap-decorations-disabled/animations/interpolation/webkit-column-rule-color-interpolation.html [ Pass ]
-crbug.com/419066541 virtual/css-gap-decorations-disabled/animations/interpolation/webkit-column-rule-width-interpolation.html [ Pass ]
-crbug.com/419066541 virtual/css-gap-decorations-disabled/external/wpt/css/css-animations/responsive/column-rule-color-001.html [ Pass ]
-crbug.com/419066541 virtual/css-gap-decorations-disabled/external/wpt/css/css-multicol/animation/column-rule-color-interpolation.html [ Pass ]
-crbug.com/419066541 virtual/css-gap-decorations-disabled/external/wpt/web-animations/animation-model/animation-types/accumulation-per-property-001.html [ Pass ]
-crbug.com/419066541 virtual/css-gap-decorations-disabled/external/wpt/web-animations/animation-model/animation-types/addition-per-property-001.html [ Pass ]
-crbug.com/419066541 virtual/css-gap-decorations-disabled/external/wpt/web-animations/animation-model/animation-types/interpolation-per-property-001.html [ Pass ]
-### End Of tests for CSSGapDecorations disabled
 
 # I think these are just test issues, but at least the scrollbars are related:
 crbug.com/362536387 external/wpt/html/semantics/forms/the-select-element/select-many-options.tentative.html [ Failure ]
@@ -7305,7 +7247,6 @@ crbug.com/1409152 http/tests/forms/color-picker-keyboard-cross-domain.php [ Fail
 crbug.com/1409152 http/tests/forms/date-picker-keyboard-cross-domain.php [ Failure Pass Timeout ]
 
 # Tests failing on windows11-arm64
-crbug.com/1464614 [ Win11-arm64 ] external/wpt/css/css-text-decor/text-underline-offset-variable.html [ Failure ]  # Reftest image failure
 crbug.com/1464614 [ Win11-arm64 ] external/wpt/mediacapture-streams/MediaDevices-enumerateDevices-per-origin-ids.sub.https.html [ Failure Timeout ]
 crbug.com/1464614 [ Win11-arm64 ] http/tests/images/force-reload-image-document.html [ Failure Timeout ]
 crbug.com/1464614 [ Win11-arm64 ] http/tests/images/force-reload.html [ Failure Timeout ]
@@ -7458,9 +7399,7 @@ crbug.com/41496645 [ Linux ] external/wpt/css/css-contain/content-visibility/con
 crbug.com/41490297 external/wpt/speculation-rules/prerender/prerender-while-prerender.https.html [ Failure Pass ]
 
 # Gardener 2024-02-08
-crbug.com/324436866 external/wpt/webdriver/tests/bidi/browsing_context/context_destroyed/context_destroyed.py [ Failure Timeout ]
 crbug.com/324436866 external/wpt/webdriver/tests/bidi/browsing_context/get_tree/frames.py [ Failure Timeout ]
-crbug.com/324436866 [ Debug ] external/wpt/webdriver/tests/bidi/browsing_context/user_prompt_closed/user_prompt_closed.py [ Failure Timeout ]
 crbug.com/324436866 external/wpt/webdriver/tests/bidi/script/evaluate/remote_values.py [ Failure Timeout ]
 crbug.com/324436866 external/wpt/webdriver/tests/bidi/script/get_realms/get_realms.py [ Failure Timeout ]
 crbug.com/324436866 external/wpt/webdriver/tests/bidi/script/realm_created/realm_created.py [ Failure Timeout ]
@@ -7617,7 +7556,6 @@ crbug.com/374090995 [ Mac14-arm64 ] fast/webgl/offscreenCanvas-transferToImageBi
 [ Mac14-arm64 ] fast/webgl/webgl-viewport-parameters-preserved.html [ Timeout ]
 [ Mac14-arm64 ] http/tests/canvas/webgl/origin-clean-conformance.html [ Timeout ]
 [ Mac14-arm64 ] http/tests/devtools/console/console-format-collections.js [ Failure Pass ]
-[ Mac14-arm64 ] http/tests/devtools/console/console-linkify-relative-links.js [ Failure Pass ]
 [ Mac14-arm64 ] http/tests/devtools/csp/csp-inline-warning-contains-stacktrace.js [ Failure ]
 [ Mac14-arm64 ] http/tests/devtools/oopif/oopif-console-preserves-log-on-frame-navigation.js [ Failure ]
 [ Mac14-arm64 ] http/tests/devtools/sxg/sxg-cert-not-found.js [ Failure ]
@@ -7955,6 +7893,177 @@ crbug.com/356930166 [ Mac ] external/wpt/webrtc/RTCSctpTransport-maxMessageSize.
 [ Mac15-arm64 ] virtual/threaded/fast/idleToBlob/OffscreenCanvas-convertToBlob-webgl-main.html [ Timeout ]
 [ Mac15-arm64 ] virtual/threaded/fast/idleToBlob/OffscreenCanvas-convertToBlob-webgl-worker.html [ Timeout ]
 [ Mac15-arm64 ] wpt_internal/webxr/ar/iframe-oopif.sub.https.html [ Timeout ]
+
+# Media/WebRTC-related timeouts on macOS 26
+crbug.com/356930166 [ Mac26 ] external/wpt/content-security-policy/webrtc/webrtc-allowed-default-src-none.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/content-security-policy/webrtc/webrtc-allowed-explicit.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/content-security-policy/webrtc/webrtc-allowed-nopolicy.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/content-security-policy/webrtc/webrtc-blocked-explicit.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/content-security-policy/webrtc/webrtc-blocked-unknown.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/html/dom/usvstring-reflection.https.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/html/semantics/embedded-content/media-elements/ready-states/autoplay-hidden.optional.html [ Failure Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/video-rvfc/request-video-frame-callback-webrtc.https.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webcodecs/videoFrame-metadata-rtpTimestamp.https.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/RTCDataChannel-bufferedAmount.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/RTCDataChannel-iceRestart.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/RTCDataChannel-send-blob-order.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/RTCDataChannel-send.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/RTCDtlsTransport-getRemoteCertificates.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/RTCIceConnectionState-candidate-pair.https.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/RTCPeerConnection-GC.https.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/RTCPeerConnection-addIceCandidate-connectionSetup.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/RTCPeerConnection-capture-video.https.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/RTCPeerConnection-connectionState.https.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/RTCPeerConnection-helper-test.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/RTCPeerConnection-iceConnectionState-disconnected.https.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/RTCPeerConnection-iceConnectionState.https.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/RTCPeerConnection-ondatachannel.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/RTCPeerConnection-onsignalingstatechanged.https.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/RTCPeerConnection-perfect-negotiation.https.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/RTCPeerConnection-remote-track-currentTime.https.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/RTCPeerConnection-restartIce.https.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/RTCPeerConnection-videoDetectorTest.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/RTCRtpSender-getStats.https.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/RTCSctpTransport-events.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/getstats.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/legacy/simplecall_callbacks.optional.https.html [ Timeout Crash ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/no-media-call.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/promises-call.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/receiver-track-live.https.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/transfer-datachannel.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/protocol/additional-codecs.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/protocol/crypto-suite.https.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/protocol/dtls-certificates.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/protocol/dtls-close.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/protocol/dtls-fingerprint-validation.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/protocol/handover-datachannel.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/protocol/ice-state.https.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/protocol/rtp-clockrate.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/protocol/rtp-demuxing.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/protocol/split.https.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/simulcast/basic.https.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/simulcast/h264.https.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/simulcast/screenshare.https.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/simulcast/vp8.https.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/simulcast/vp9-scalability-mode.https.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/simplecall-no-ssrcs.https.html [ Crash ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc/simplecall.https.html [ Crash ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-encoded-transform/RTCRtpScriptTransform-bad-chunk.https.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-encoded-transform/RTCRtpScriptTransform-sender-worker-single-frame.https.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-encoded-transform/script-metadata-transform.https.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-encoded-transform/script-transform-sendKeyFrameRequest.https.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-encoded-transform/script-transform.https.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-encoded-transform/tentative/RTCEncodedAudioFrame-clone.https.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-encoded-transform/tentative/RTCEncodedAudioFrame-constructor.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-encoded-transform/tentative/RTCEncodedAudioFrame-metadata.https.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-encoded-transform/tentative/RTCEncodedAudioFrame-receive-cloned.https.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-encoded-transform/tentative/RTCEncodedAudioFrame-send-incoming.https.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-encoded-transform/tentative/RTCEncodedAudioFrame-serviceworker-failure.https.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-encoded-transform/tentative/RTCEncodedFrame-timestamps.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-encoded-transform/tentative/RTCEncodedVideoFrame-clone.https.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-encoded-transform/tentative/RTCEncodedVideoFrame-constructor.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-encoded-transform/tentative/RTCEncodedVideoFrame-metadata.https.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-encoded-transform/tentative/RTCEncodedVideoFrame-serviceworker-failure.https.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-encoded-transform/tentative/RTCPeerConnection-insertable-streams-audio.https.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-encoded-transform/tentative/RTCPeerConnection-insertable-streams-errors.https.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-encoded-transform/tentative/RTCPeerConnection-insertable-streams-simulcast.https.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-encoded-transform/tentative/RTCPeerConnection-insertable-streams-video-frames.https.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-encoded-transform/tentative/RTCPeerConnection-insertable-streams-worker.https.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-extensions/RTCRtpCorruptionDetection-headerExtensionControl.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-extensions/RTCRtpEncodingParameters-scaleResolutionDownTo.https.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-extensions/RTCRtpSynchronizationSource-captureTimestamp.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-extensions/RTCRtpSynchronizationSource-senderCaptureTimeOffset.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-priority/RTCPeerConnection-ondatachannel.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-stats/getStats-remote-candidate-address.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-stats/getStats-remote-candidate-ufrag.html [ Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-stats/hardware-capability-stats.https.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-stats/supported-stats.https.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-svc/RTCRtpParameters-scalability-av1.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-svc/RTCRtpParameters-scalability-h264.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-svc/RTCRtpParameters-scalability-vp8.html [ Skip Timeout ]
+crbug.com/356930166 [ Mac26 ] external/wpt/webrtc-svc/RTCRtpParameters-scalability-vp9.html [ Skip Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/speech-api/SpeechRecognition-onerror.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/speech-api/SpeechRecognition-onstart-onend.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] virtual/speech-with-unified-autoplay/external/wpt/speech-api/SpeechRecognition-onerror.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] virtual/speech-with-unified-autoplay/external/wpt/speech-api/SpeechRecognition-onstart-onend.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/audio-output/enumerateDevices-permissions-policy.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/audio-output/setSinkId.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/html/semantics/permission-element/usermedia/set-constraints-combinations-camera-microphone.tentative.https.html [ Skip Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/html/semantics/permission-element/usermedia/set-constraints-combinations-microphone.tentative.https.html [ Skip Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/html/semantics/permission-element/usermedia/set-constraints-combinations-null.tentative.https.html [ Skip Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/html/semantics/permission-element/usermedia/usermedia-constraints-descriptors.tentative.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-extensions/MediaStreamTrack-audio-stats.https.html [ Skip Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-image/ImageCapture-creation.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-insertable-streams/legacy/MediaStreamTrackGenerator-audio.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-insertable-streams/tentative/MediaStreamTrackProcessor-audio.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-record/MediaRecorder-bitrate.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-record/MediaRecorder-blob-timecode.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-record/MediaRecorder-creation.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-record/MediaRecorder-disabled-tracks.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-record/MediaRecorder-peerconnection-no-sink.https.html [ Skip Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-record/MediaRecorder-peerconnection.https.html?kinds=* [ Skip Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-streams/GUM-echoCancellation-boolean.https.html [ Skip Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-streams/GUM-echoCancellation-remote-only.https.html [ Skip Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-streams/GUM-non-applicable-constraint.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-streams/GUM-permissions-query.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-streams/MediaDevices-enumerateDevices-per-origin-ids.sub.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-streams/MediaDevices-enumerateDevices-persistent-permission.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-streams/MediaDevices-enumerateDevices-returned-objects.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-streams/MediaDevices-enumerateDevices.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-streams/MediaDevices-getUserMedia.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-streams/MediaStream-MediaElement-preload-none.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-streams/MediaStream-add-audio-track.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-streams/MediaStream-audio-only.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-streams/MediaStream-clone.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-streams/MediaStream-default-permissions-policy.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-streams/MediaStream-finished-add.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-streams/MediaStream-idl.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-streams/MediaStream-removetrack.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-streams/MediaStreamTrack-MediaElement-disabled-audio-is-silence.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-streams/MediaStreamTrack-getSettings.https.html [ Skip Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-streams/MediaStreamTrack-id.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-streams/idlharness.https.window.html [ Skip Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/mediacapture-streams/parallel-capture-requests.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/permissions-policy/reporting/microphone-report-only.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/screen-capture/getdisplaymedia.https.html [ Skip Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/speculation-rules/prerender/restriction-media-microphone.https.html?target_hint=_blank [ Skip Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/speculation-rules/prerender/restriction-media-microphone.https.html?target_hint=_self [ Skip Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/webaudio/the-audio-api/the-audiocontext-interface/audiocontext-sinkid-constructor.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/webaudio/the-audio-api/the-audiocontext-interface/audiocontext-sinkid-setsinkid.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/webaudio/the-audio-api/the-audiocontext-interface/audiocontext-sinkid-state-change.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/webrtc/RTCPeerConnection-addTrack.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/webrtc/RTCRtpEncodingParameters-codec-opus-stereo.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/webrtc/RTCRtpTransceiver-stopping.https.html?rest [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/webrtc/RollbackEvents.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/webrtc/legacy/RTCRtpTransceiver-with-OfferToReceive-options.optional.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/webrtc/legacy/onaddstream.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/webrtc-encoded-transform/RTCRtpScriptTransform-encoded-transform.https.html [ Skip Failure Pass Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/webrtc-encoded-transform/script-audio-transform.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/webrtc-identity/idlharness.https.window.html [ Skip Timeout ]
+crbug.com/519462980 [ Mac26 ] virtual/permission-element/external/wpt/html/semantics/permission-element/usermedia/set-constraints-combinations-camera-microphone.tentative.https.html [ Skip Timeout ]
+crbug.com/519462980 [ Mac26 ] virtual/permission-element/external/wpt/html/semantics/permission-element/usermedia/set-constraints-combinations-microphone.tentative.https.html [ Skip Timeout ]
+crbug.com/519462980 [ Mac26 ] virtual/permission-element/external/wpt/html/semantics/permission-element/usermedia/set-constraints-combinations-null.tentative.https.html [ Skip Timeout ]
+crbug.com/519462980 [ Mac26 ] virtual/permission-element/external/wpt/html/semantics/permission-element/usermedia/usermedia-constraints-descriptors.tentative.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] virtual/select-audio-output/external/wpt/audio-output/enumerateDevices-permissions-policy.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] virtual/select-audio-output/external/wpt/audio-output/setSinkId.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] virtual/unified-autoplay/external/wpt/permissions-policy/reporting/microphone-report-only.https.html [ Timeout ]
+
+# Other macOS 26 timeouts/failures
+crbug.com/519462980 [ Mac26 ] external/wpt/css/css-content/quotes-020.html [ Failure ]
+crbug.com/519462980 [ Mac26 ] external/wpt/css/css-display/display-contents-inline-002.html [ Failure ]
+crbug.com/519462980 [ Mac26 ] external/wpt/css/css-flexbox/overflow-auto-005.html [ Failure ]
+crbug.com/519462980 [ Mac26 ] external/wpt/css/css-position/position-fixed-scroll-nested-fixed.html [ Failure ]
+crbug.com/519462980 [ Mac26 ] external/wpt/css/css-text/text-autospace/text-autospace-004.html [ Failure ]
+crbug.com/519462980 [ Mac26 ] external/wpt/css/css-text-decor/text-emphasis-punctuation-2.html [ Failure ]
+crbug.com/519462980 [ Mac26 ] external/wpt/html/canvas/element/manual/draw-element-image/iframe.tentative.html [ Failure ]
+crbug.com/519462980 [ Mac26 ] external/wpt/fetch/api/abort/serviceworker-intercepted.https.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/page-lifecycle/child-display-none.tentative.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/page-lifecycle/child-out-of-viewport.tentative.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/page-lifecycle/worker-dispay-none.tentative.html [ Timeout ]
+crbug.com/519462980 [ Mac26 ] external/wpt/service-workers/cache-storage/crashtests/cache-response-clone.https.html [ Timeout ]
+
+# Pixel readback from webgl in worker thread offscreen canvas sometimes stalls
+crbug.com/522474881 wpt_internal/webgl/draw-element-image/webgl-video-worker.html [ Failure Pass ]
 
 # 2024-04-10 Flaky Suppressor on ci/mac-osxbeta-rel
 [ Mac14 ] external/wpt/css/css-masking/animations/clip-path-interpolation-shape.html [ Timeout ]
@@ -8409,6 +8518,7 @@ crbug.com/1362106 [ Win ] virtual/media-foundation-for-clear-dcomp/media/media-p
 crbug.com/1362106 [ Win ] virtual/media-foundation-for-clear-dcomp/media/media-playback-while-not-visible-permission-policy-pause-when-hidden-nested.html [ Failure Skip ]
 crbug.com/1362106 [ Win ] virtual/media-foundation-for-clear-dcomp/media/media-playback-while-not-visible-permission-policy-cant-play-if-hidden.html [ Failure Skip Timeout ]
 crbug.com/1362106 [ Win ] virtual/media-foundation-for-clear-dcomp/media/media-playback-while-not-visible-permission-policy-cant-play-if-hidden-nested.html [ Failure Skip Timeout ]
+crbug.com/1362106 [ Win ] virtual/media-foundation-for-clear-dcomp/media/media-playback-while-not-visible-permission-policy-viewport.html [ Failure Skip ]
 
 # Gardener 2024-07-30
 crbug.com/356177815 [ Win11-arm64 ] http/tests/cookies/partitioned-cookies/partitioned-cookies-in-parallel-frames.https.html [ Failure Pass Timeout ]
@@ -8543,7 +8653,6 @@ crbug.com/374661016 external/wpt/webdriver/tests/bidi/browsing_context/capture_s
 # Fail or Crash after enable swiftshader on headless shell
 crbug.com/339041663 external/wpt/css/geometry/DOMMatrix2DInit-validate-fixup.html [ Failure Pass ]
 crbug.com/339041663 [ Linux ] external/wpt/mediacapture-streams/MediaStreamTrack-MediaElement-disabled-video-is-black.https.html [ Failure ]
-crbug.com/339041663 [ Mac ] external/wpt/mediacapture-streams/MediaStreamTrack-MediaElement-disabled-video-is-black.https.html [ Failure ]
 crbug.com/339041663 external/wpt/mediacapture-insertable-streams/legacy/MediaStreamTrackGenerator-video.https.html [ Crash Failure Timeout ]
 crbug.com/339041663 external/wpt/mediacapture-insertable-streams/tentative/VideoTrackGenerator.https.html [ Crash Failure Timeout ]
 # failure from enabling swiftshader on headless shell, combined with a preexisting flaky Crash/Timeout
@@ -9166,8 +9275,6 @@ crbug.com/446167772 [ Linux ] external/wpt/webcodecs/audio-encoder-codec-specifi
 crbug.com/487985494 [ Linux ] webaudio/ScriptProcessor/scriptprocessor-offlineaudiocontext.html [ Pass Timeout ]
 
 # Gardener 2026-03-11
-crbug.com/478186112 external/wpt/pointerevents/pointerevent_attributes.optional.html?touch [ Pass Timeout ]
-crbug.com/478186112 external/wpt/pointerevents/pointerevent_attributes.html?touch [ Pass Timeout ]
 crbug.com/492386032 [ Linux ] external/wpt/html/dom/partial-updates/tentative/template-for-mutation-records.html [ Failure Pass ]
 
 # Flakey on all platforms
@@ -9242,13 +9349,13 @@ crbug.com/466779939 [ Debug Linux ] http/tests/inspector-protocol/tracing/user-m
 
 # Gardener 2026-05-06
 crbug.com/510085315 [ Win ] virtual/fenced-frame-mparch/external/wpt/fenced-frame/history-length-outer-page-navigation-not-reflected-in-fenced-nested-iframe.https.html [ Failure ]
-crbug.com/510103893 [ Linux ] external/wpt/ai/language-model/language-model-create.tentative.https.window.html [ Failure ]
+crbug.com/510103893 [ Linux ] external/wpt/ai/language-model/language-model-create.tentative.https.window.html [ Crash Failure ]
 crbug.com/485661974 [ Linux ] external/wpt/client-hints/critical-ch/request-count.https.window.html [ Failure ]
 crbug.com/485661974 [ Linux ] external/wpt/client-hints/critical-ch/subresource.https.window.html [ Failure ]
 crbug.com/507309053 [ Linux ] virtual/permission-element/external/wpt/html/semantics/permission-element/install/no-focus.tentative.html [ Failure ]
 crbug.com/510128101 [ Win ] fast/forms/color/color-picker-events-change.html [ Failure Pass Timeout ]
 crbug.com/485661974 [ Mac ] external/wpt/client-hints/critical-ch/request-count.multiple.https.window.html [ Failure ]
-crbug.com/485661974 [ Mac ] external/wpt/client-hints/critical-ch/unsafe-method.https.window.html [ Failure ]
+crbug.com/485661974 external/wpt/client-hints/critical-ch/unsafe-method.https.window.html [ Failure Pass ]
 
 # Expected to be flaky while CompositorTimelineTrigger is being implemented.
 crbug.com/451238244 virtual/compositor-timeline-trigger/external/wpt/scroll-animations/animation-trigger/animation-trigger-calc-with-zoom.tentative.html [ Failure Pass ]
@@ -9299,18 +9406,20 @@ crbug.com/513985436 [ Release Win11-arm64 ] virtual/text-antialias/selection/khm
 # TODO(crbug.com/493947412): Failing on all platforms (Linux/Mac/Win). Re-enable once extension WPT infra is implemented.
 crbug.com/493947412 external/wpt/web-extensions/browser.runtime.extension.html [ Failure ]
 
-# WebMCP: Since getTools() without arguments strictly returns same-origin tools,
-# the following cross-origin WPT tests that do not specify fromOrigins now fail.
-crbug.com/485810761 external/wpt/webmcp/imperative/executeTool-caller-navigate-abort.https.html [ Failure ]
-crbug.com/485810761 external/wpt/webmcp/imperative/executeTool-target-detachment.https.html [ Failure ]
-crbug.com/485810761 external/wpt/webmcp/imperative/exposedTo-cross-origin-child.https.html [ Failure ]
-crbug.com/485810761 external/wpt/webmcp/imperative/exposedTo-multiple-children.https.html [ Failure ]
-crbug.com/485810761 external/wpt/webmcp/imperative/exposedTo-window-open.https.html [ Failure ]
-crbug.com/485810761 external/wpt/webmcp/imperative/unregister-during-executeTool.https.html [ Failure ]
+# WebMCP: Flaky WPT tests.
+crbug.com/521896358 external/wpt/webmcp/declarative/getTools-declarative-schema.https.html [ Failure Pass Timeout ]
+crbug.com/521896358 external/wpt/webmcp/imperative/document-domain-enabled.https.html [ Failure Pass ]
 
 # Gardener 2026-06-01
 crbug.com/517759858 [ Win11-arm64 ] external/wpt/webrtc-encoded-transform/tentative/RTCEncodedFrame-timestamps.html [ Failure ]
-crbug.com/453144946 [ Linux ] external/wpt/wasm/core/simd/simd_f64x2_arith.wast.js.html [ Crash Failure Pass Timeout ]
+crbug.com/453144946 [ Linux ] external/wpt/wasm/core/simd/simd_f64x2_arith.wast.js.html [ Crash Failure Pass ]
 
 # Gardener 2026-06-02
 crbug.com/466779984 [ Win10.20h2 ] http/tests/inspector-protocol/network/request-interception.js [ Failure Pass ]
+
+# Gardener 2026-06-08
+crbug.com/521335938 [ Mac ] external/wpt/mediacapture-streams/MediaStreamTrack-MediaElement-disabled-video-is-black.https.html [ Skip Timeout ]
+
+# Gardener 2026-06-10
+crbug.com/504005450 [ Linux ] external/wpt/custom-elements/perform-microtask-checkpoint-before-construction.html [ Failure Pass ]
+crbug.com/522111608 [ Mac ] external/wpt/css/css-sizing/responsive-iframe/responsive-iframe-navigation.html?origin=cross [ Failure ]

@@ -40,8 +40,6 @@ const base::FeatureParam<bool> kGlicSelectionPromptEnablePinning{
     &kGlicSelectionPrompt, "enable_pinning", false};
 const base::FeatureParam<std::string> kGlicSelectionTopCueOnlyList{
     &kGlicSelectionPrompt, "top_cue_only_list", ""};
-const base::FeatureParam<int> kGlicSelectionPromptWidgetMaxTotalDismisses{
-    &kGlicSelectionPrompt, "max_total_dismisses", 10};
 
 BASE_FEATURE(kGlicClearTurnIdOnPanelWillOpen,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -203,4 +201,11 @@ BASE_FEATURE(kGlicNoWebUiLoader, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicGeminiEnterpriseSettingsEnabled,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+BASE_FEATURE(kGlicHotkeyLocalScope,
+#if BUILDFLAG(IS_ANDROID)
+             base::FEATURE_ENABLED_BY_DEFAULT
+#else
+             base::FEATURE_DISABLED_BY_DEFAULT
+#endif
+);
 }  // namespace features

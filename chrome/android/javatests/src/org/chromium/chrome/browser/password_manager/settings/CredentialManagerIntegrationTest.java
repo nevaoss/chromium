@@ -44,6 +44,10 @@ import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
 import org.chromium.chrome.browser.password_manager.CredentialManagerLauncherFactory;
 import org.chromium.chrome.browser.password_manager.FakeCredentialManagerLauncherFactoryImpl;
+import org.chromium.chrome.browser.password_manager.FakePasswordCheckupClientHelperFactoryImpl;
+import org.chromium.chrome.browser.password_manager.FakePasswordManagerBackendSupportHelper;
+import org.chromium.chrome.browser.password_manager.PasswordCheckupClientHelperFactory;
+import org.chromium.chrome.browser.password_manager.PasswordManagerBackendSupportHelper;
 import org.chromium.chrome.browser.safety_check.SafetyCheckSettingsFragment;
 import org.chromium.chrome.browser.settings.MainSettings;
 import org.chromium.chrome.browser.settings.SettingsActivityTestRule;
@@ -91,6 +95,12 @@ public class CredentialManagerIntegrationTest {
     public void setup() throws Exception {
         DeviceInfo.setGmsVersionCodeForTest("250000000");
         CredentialManagerLauncherFactory.setFactoryForTesting(mFakeLauncherFactory);
+        PasswordCheckupClientHelperFactory.setFactoryForTesting(
+                new FakePasswordCheckupClientHelperFactoryImpl());
+        FakePasswordManagerBackendSupportHelper fakeBackendHelper =
+                new FakePasswordManagerBackendSupportHelper();
+        fakeBackendHelper.setBackendPresent(true);
+        PasswordManagerBackendSupportHelper.setInstanceForTesting(fakeBackendHelper);
         mFakeLauncherFactory.setSuccessCallback(mSuccessCallbackHelper::notifyCalled);
         mFakeLauncherFactory.setFailureCallback(mFailureCallbackHelper::notifyCalled);
 

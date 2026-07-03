@@ -285,6 +285,7 @@ static_library("browser") {
     "omnibox_log.h",
     "omnibox_logging_utils.cc",
     "omnibox_logging_utils.h",
+    "omnibox_metrics_constants.h",
     "omnibox_metrics_provider.cc",
     "omnibox_metrics_provider.h",
     "omnibox_navigation_observer.h",

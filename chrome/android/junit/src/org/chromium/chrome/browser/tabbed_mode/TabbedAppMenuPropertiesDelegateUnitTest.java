@@ -113,6 +113,10 @@ import org.chromium.chrome.browser.preferences.Pref;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.profiles.ProfileManager;
 import org.chromium.chrome.browser.readaloud.ReadAloudController;
+import org.chromium.chrome.browser.recent_tabs.ForeignSessionHelper;
+import org.chromium.chrome.browser.recent_tabs.ForeignSessionHelper.ForeignSession;
+import org.chromium.chrome.browser.recent_tabs.ForeignSessionHelper.ForeignSessionTab;
+import org.chromium.chrome.browser.recent_tabs.ForeignSessionHelper.ForeignSessionWindow;
 import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
 import org.chromium.chrome.browser.signin.services.SigninManager;
 import org.chromium.chrome.browser.sync.SyncServiceFactory;
@@ -158,6 +162,7 @@ import org.chromium.components.power_bookmarks.PowerBookmarkMeta;
 import org.chromium.components.prefs.PrefService;
 import org.chromium.components.signin.identitymanager.IdentityManager;
 import org.chromium.components.sync.SyncService;
+import org.chromium.components.sync_device_info.FormFactor;
 import org.chromium.components.tab_groups.TabGroupsFeatureMap;
 import org.chromium.components.user_prefs.UserPrefs;
 import org.chromium.components.user_prefs.UserPrefsJni;
@@ -194,7 +199,6 @@ import java.util.function.BiConsumer;
     ChromeFeatureList.LENS_OVERLAY_ANDROID,
     ChromeFeatureList.TASK_MANAGER_CLANK,
     ContentFeatureList.ANDROID_DEV_TOOLS_FRONTEND,
-    DomDistillerFeatures.READER_MODE_IMPROVEMENTS,
     DomDistillerFeatures.READER_MODE_DISTILL_IN_APP,
     // TODO(crbug.com/504757384): Add test for three dot menu flag.
     ChromeFeatureList.THREE_DOT_MENU_BACK_BUTTON,
@@ -258,6 +262,7 @@ public class TabbedAppMenuPropertiesDelegateUnitTest {
     @Mock private IdentityManager mIdentityManager;
     @Mock private IdentityServicesProvider mIdentityService;
     @Mock private IncognitoUtils.Natives mIncognitoUtilsJniMock;
+    @Mock private ForeignSessionHelper mForeignSessionHelperMock;
     @Mock public WebsitePreferenceBridge.Natives mWebsitePreferenceBridgeJniMock;
     @Mock private IncognitoReauthController mIncognitoReauthControllerMock;
     @Mock private CommerceFeatureUtils.Natives mCommerceFeatureUtilsJniMock;
@@ -441,6 +446,9 @@ public class TabbedAppMenuPropertiesDelegateUnitTest {
                                 mRecentlyClosedEntriesManager);
         RobolectricUtil.runAllBackgroundAndUi();
         mTabbedAppMenuPropertiesDelegate = Mockito.spy(delegate);
+        mTabbedAppMenuPropertiesDelegate.setForeignSessionHelperForTesting(
+                mForeignSessionHelperMock);
+        when(mForeignSessionHelperMock.getForeignSessions()).thenReturn(new ArrayList<>());
 
         MultiWindowTestUtils.resetInstanceInfo();
 
@@ -728,8 +736,9 @@ public class TabbedAppMenuPropertiesDelegateUnitTest {
         expectedItems.addAll(
                 Arrays.asList(
                         item(R.id.divider_line_id),
+                        item(R.id.more_tools_menu_id, item(R.id.ntp_customization_id)),
+                        item(R.id.divider_line_id),
                         item(R.id.preferences_id),
-                        item(R.id.ntp_customization_id),
                         item(
                                 R.id.help_parent_menu_id,
                                 item(R.id.about_chrome_menu_id),
@@ -2453,7 +2462,6 @@ public class TabbedAppMenuPropertiesDelegateUnitTest {
     }
 
     @Test
-    @EnableFeatures(DomDistillerFeatures.READER_MODE_IMPROVEMENTS + ":always_on_entry_point/false")
     public void readerModeEntryPointDisabled() {
         setUpMocksForPageMenu();
         when(mTab.getUrl()).thenReturn(JUnitTestGURLs.EXAMPLE_URL);
@@ -2465,7 +2473,6 @@ public class TabbedAppMenuPropertiesDelegateUnitTest {
     }
 
     @Test
-    @DisableFeatures(DomDistillerFeatures.READER_MODE_IMPROVEMENTS + ":always_on_entry_point/false")
     @EnableFeatures(DomDistillerFeatures.READER_MODE_DISTILL_IN_APP)
     public void readerModeEntryPointEnabledWhenDistillingInApp() {
         setUpMocksForPageMenu();
@@ -2481,7 +2488,7 @@ public class TabbedAppMenuPropertiesDelegateUnitTest {
     }
 
     @Test
-    @EnableFeatures(DomDistillerFeatures.READER_MODE_IMPROVEMENTS + ":always_on_entry_point/true")
+    @EnableFeatures(DomDistillerFeatures.READER_MODE_DISTILL_IN_APP)
     public void readerModeEntryPointEnabled_ShowReadingMode() {
         setUpMocksForPageMenu();
         when(mTab.getUrl()).thenReturn(JUnitTestGURLs.EXAMPLE_URL);
@@ -2499,7 +2506,7 @@ public class TabbedAppMenuPropertiesDelegateUnitTest {
     }
 
     @Test
-    @EnableFeatures(DomDistillerFeatures.READER_MODE_IMPROVEMENTS + ":always_on_entry_point/true")
+    @EnableFeatures(DomDistillerFeatures.READER_MODE_DISTILL_IN_APP)
     public void readerModeEntryPointEnabled_HideReadingMode() {
         setUpMocksForPageMenu();
         when(mTab.getUrl()).thenReturn(JUnitTestGURLs.CHROME_DISTILLER_EXAMPLE_URL);
@@ -2798,7 +2805,15 @@ public class TabbedAppMenuPropertiesDelegateUnitTest {
 
         ModelList modelList = mTabbedAppMenuPropertiesDelegate.getMenuItems();
 
-        ListItem item = findItemById(modelList, R.id.ntp_customization_id);
+        ListItem item;
+        if (ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU)) {
+            List<ListItem> submenu = getSubmenuItems(modelList, R.id.more_tools_menu_id);
+            assertNotNull(submenu);
+            item = findItemById(submenu, R.id.ntp_customization_id);
+        } else {
+            item = findItemById(modelList, R.id.ntp_customization_id);
+        }
+        assertNotNull(item);
         assertTrue(item.model.get(AppMenuItemProperties.ENABLED));
     }
 
@@ -3857,7 +3872,7 @@ public class TabbedAppMenuPropertiesDelegateUnitTest {
 
     @Test
     @EnableFeatures(ChromeFeatureList.GLIC)
-    public void glicItemDisabled_EnterpriseDisallowed() {
+    public void glicItemDisabled_NotEnabled() {
         setUpMocksForPageMenu();
         when(mTab.getUrl()).thenReturn(JUnitTestGURLs.EXAMPLE_URL);
         when(mTab.isIncognito()).thenReturn(false);
@@ -4685,6 +4700,85 @@ public class TabbedAppMenuPropertiesDelegateUnitTest {
                                         item("Tab 2 Title"))));
 
         runHistorySubmenuWithRecentlyClosedGroupTest("", expectedTitles);
+    }
+
+    @Test
+    public void testHistorySubmenu_WithForeignSessions() {
+        setUpMocksForPageMenu();
+
+        List<ForeignSessionTab> tabs = new ArrayList<>();
+        tabs.add(new ForeignSessionTab(JUnitTestGURLs.URL_1, "Tab 1 Title", 0, 0, 10));
+        tabs.add(new ForeignSessionTab(JUnitTestGURLs.URL_2, "Tab 2 Title", 0, 0, 20));
+
+        List<ForeignSessionWindow> windows = new ArrayList<>();
+        windows.add(new ForeignSessionWindow(0, 1, tabs));
+
+        List<ForeignSession> sessions = new ArrayList<>();
+        sessions.add(new ForeignSession("tag1", "Laptop", 0, windows, FormFactor.DESKTOP));
+
+        when(mForeignSessionHelperMock.getForeignSessions()).thenReturn(sessions);
+
+        List<MenuItem> expectedSubmenu =
+                new ArrayList<>(
+                        Arrays.asList(
+                                item(R.id.open_history_menu_id),
+                                item(R.id.recent_tabs_menu_id),
+                                item(R.id.quick_delete_menu_id),
+                                item(R.id.divider_line_id),
+                                item(
+                                        R.id.recent_entry_menu_item,
+                                        item(R.id.recent_entry_foreign_tab_menu_item),
+                                        item(R.id.recent_entry_foreign_tab_menu_item))));
+
+        List<MenuItem> expectedTitles =
+                new ArrayList<>(
+                        Arrays.asList(
+                                item(R.string.menu_history),
+                                item(R.string.menu_recent_tabs),
+                                item(R.string.menu_quick_delete),
+                                item(0),
+                                item("Laptop", item("Tab 1 Title"), item("Tab 2 Title"))));
+
+        List<ListItem> items =
+                findItemById(
+                                mTabbedAppMenuPropertiesDelegate.getMenuItems(),
+                                R.id.history_parent_menu_id)
+                        .model
+                        .get(AppMenuItemWithSubmenuProperties.SUBMENU_PROVIDER)
+                        .get();
+
+        assertMenuTreesAreEqual(
+                items,
+                expectedSubmenu,
+                (item, expectedId) -> {
+                    assertEquals(
+                            "Mismatched item id",
+                            expectedId,
+                            item.model.get(AppMenuItemProperties.MENU_ITEM_ID));
+                });
+
+        assertMenuTitlesAreEqual(items, expectedTitles);
+
+        ListItem laptopSessionItem = items.get(4);
+        List<ListItem> laptopSubmenu =
+                laptopSessionItem
+                        .model
+                        .get(AppMenuItemWithSubmenuProperties.SUBMENU_PROVIDER)
+                        .get();
+
+        ListItem tab1Item = laptopSubmenu.get(0);
+        assertEquals(
+                "tag1", tab1Item.model.get(AppMenuRecentEntryItemProperties.FOREIGN_SESSION_TAG));
+        assertEquals(
+                tabs.get(0),
+                tab1Item.model.get(AppMenuRecentEntryItemProperties.FOREIGN_SESSION_TAB));
+
+        ListItem tab2Item = laptopSubmenu.get(1);
+        assertEquals(
+                "tag1", tab2Item.model.get(AppMenuRecentEntryItemProperties.FOREIGN_SESSION_TAG));
+        assertEquals(
+                tabs.get(1),
+                tab2Item.model.get(AppMenuRecentEntryItemProperties.FOREIGN_SESSION_TAB));
     }
 
     private static MenuItem item(Object id, MenuItem... subItems) {

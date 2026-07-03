@@ -20,6 +20,7 @@
 <ph name="EXTENSION_NAME" /></translation>
 <translation id="1184145431117212167">‏نصب انجام نشد چون از نسخه Windows شما پشتیبانی نمی‌شود.</translation>
 <translation id="1185134272377778587">‏درباره Chromium</translation>
+<translation id="1186645291482254714">‏با Chromium در تلفنتان، هشدارهای پیگیری قیمت را دریافت کنید</translation>
 <translation id="1203500561924088507">بابت نصب از شما سپاس‌گزاریم. قبل‌از استفاده از <ph name="BUNDLE_NAME" />، باید مرورگر را بازراه‌اندازی کنید.</translation>
 <translation id="1232234696885483911">‏وقتی‌که «جستجوی تصویر» را باز می‌کنید، عنوان، نشانی وب، و محتوای صفحه (ازجمله فایل‌های PDF) به‌طور خودکار به سرور ارسال می‌شوند. <ph name="LEARN_MORE" /></translation>
 <translation id="123265588161106468">‏اکنون که به سیستم وارد شده‌اید، می‌توانید از گذرواژه‌ها و سایر داده‌های «حساب Google» خود در Chromium استفاده کنید. برای تغییر دادن این تنظیم، به «حساب شما در Chromium» بروید.</translation>
@@ -50,7 +51,6 @@
 <translation id="154404805518949443">‏ورود به سیستم Chromium</translation>
 <translation id="1547469039832541117">تکلیف برجسته‌شده را به‌پایان می‌رساند.</translation>
 <translation id="1553461853655228091">‏Chromium برای ایجاد نقشه سه‌بعدی محیط شما باید اجازه دسترسی به دوربین داشته باشد</translation>
-<translation id="1555494096857516577">{NUM_EXTENSIONS,plural, =1{‏دیگر از این افزونه پشتیبانی نمی‌شود. ‫Chromium توصیه می‌کند آن را حذف کنید.}one{‏دیگر از این افزونه‌ها پشتیبانی نمی‌شود. ‫Chromium توصیه می‌کند آن‌ها را بردارید.}other{‏دیگر از این افزونه‌ها پشتیبانی نمی‌شود. ‫Chromium توصیه می‌کند آن‌ها را بردارید.}}</translation>
 <translation id="1562320819937089394">‏سنجاق کردن Chromium</translation>
 <translation id="1574377791422810894">‏ابزارهای ایمنی Chromium</translation>
 <translation id="1594928384848033697">‏‫Chromium می‌خواهد داده‌های «مدیر گذرواژه» شما را حذف کند. برای مجاز کردن این کار، گذرواژه Windows خود را تایپ کنید.</translation>
@@ -116,6 +116,7 @@
 <translation id="2236949375853147973">فعالیت‌هایم</translation>
 <translation id="2238130810669087193">‏برای دریافت نشانی‌ها و موارد دیگر در همه دستگاه‌هایتان، به سیستم Chromium وارد شوید. بعداز اینکه به سیستم وارد شدید، این نشانی در «حساب Google» شما ذخیره خواهد شد.</translation>
 <translation id="2241627712206172106">‏اگر رایانه‌ای را به صورت مشترک استفاده می‌کنید، دوستان و خانواده می‌توانند به صورت جداگانه مرور کنند و Chromium را به صورتی که مایلند تنظیم کنند.</translation>
+<translation id="22571759390241347">‏مهارت‌ها در Chromium</translation>
 <translation id="2283803047247799269">این زبانه با «جستجوی تصویر» جستجو شود</translation>
 <translation id="2287771843518581140">{NUM_TABS,plural, =1{‏‫Chromium توصیه می‌کند زبانه‌ای را که باعث کند شدن مرورگرتان شده است موقتاً متوقف کنید}one{‏‫Chromium توصیه می‌کند زبانه‌ای را که باعث کند شدن مرورگرتان شده است موقتاً متوقف کنید}other{‏‫Chromium توصیه می‌کند زبانه‌هایی را که باعث کند شدن مرورگرتان شده است موقتاً متوقف کنید}}</translation>
 <translation id="2307973900865360088">‏نگه داشتن در Dock</translation>
@@ -190,6 +191,7 @@
 <translation id="3003694935412297923">همه تکلیف‌ها</translation>
 <translation id="3012615494352020668">{count,plural, =1{‏قبل‌از اینکه بتوان برخی‌از داده‌ها را در «حساب Google» شما ذخیره کرد و در همه دستگاه‌هایتان استفاده کرد، Chromium باید هویت شما را درستی‌سنجی کند. اگر اکنون از سیستم خارج شوید، این داده (۱ مورد) حذف خواهد شد.}one{‏قبل‌از اینکه بتوان برخی‌از داده‌ها را در «حساب Google» شما ذخیره کرد و در همه دستگاه‌هایتان استفاده کرد، Chromium باید هویت شما را درستی‌سنجی کند. اگر اکنون از سیستم خارج شوید، این داده ({count} مورد) حذف خواهد شد.}other{‏قبل‌از اینکه بتوان برخی‌از داده‌ها را در «حساب Google» شما ذخیره کرد و در همه دستگاه‌هایتان استفاده کرد، Chromium باید هویت شما را درستی‌سنجی کند. اگر اکنون از سیستم خارج شوید، این داده‌ها ({count} مورد) حذف خواهند شد.}}</translation>
 <translation id="3013473503895162900">‏‫<ph name="URL" /> در زبانه جدیدی در Chromium باز می‌شود.</translation>
+<translation id="302551344979399011">‏نوآوری‌های هوشواره مانند مهارت‌ها، در «حساب Google» شما ذخیره شده و جدا از همگام‌سازی Chromium مدیریت می‌شوند</translation>
 <translation id="3032787606318309379">‏افزودن به Chromium…</translation>
 <translation id="3038232873781883849">درانتظار نصب…</translation>
 <translation id="3045032126857188731">زبان ترجمه‌شده: <ph name="LANGUAGE" /></translation>
@@ -372,7 +374,7 @@
 <translation id="5187123684706427865">‏حساب Chromium به اصالت‌سنجی مجدد نیاز دارد</translation>
 <translation id="5231355151045086930">‏خروج از سیستم Chromium</translation>
 <translation id="5234764350956374838">بستن</translation>
-<translation id="5249261924633168472">‏باز کردن پیوند در پنجره حالت &amp;ناشناس Chromium</translation>
+<translation id="5249261924633168472">‏باز کردن پیوند در پنجره حالت «&amp;ناشناس» Chromium</translation>
 <translation id="5254739261293693943">پرسش درباره این ویدیو</translation>
 <translation id="5276305953263010518">‏برای ذخیره کردن گذرواژه‌ها درحرکت، برنامه Chromium را دریافت کنید</translation>
 <translation id="5277894862589591112">‏برای اعمال تغییراتتان، Chromium را راه‌اندازی مجدد کنید</translation>
@@ -380,6 +382,7 @@
 <translation id="5289287148052354622">‏دریافت برنامه Chromium</translation>
 <translation id="5294316920224716406">‏هنگام مرور «درحالت ناشناس»، Chromium قبل‌از اینکه سایت را ازطریق اتصال ناامن بار کند به شما هشدار می‌دهد</translation>
 <translation id="5313228254328109263">‏سرویس داخلی به‌روزرسان Chromium</translation>
+<translation id="5324450571874973775">‏از آن‌ها در کنار دیگر ویژگی‌های Gemini در Chromium استفاده کنید</translation>
 <translation id="5346389065299425353">جستجویتان را با افزودن چند زبانه، فایل، و ابزار عمیق‌تر کنید</translation>
 <translation id="5348677704241861105">‏با «Gemini در Chromium»، خلاصه سریعی از این سند دریافت کنید و سؤال بپرسید</translation>
 <translation id="5352264705793813212">‏Chromium چند توصیه ایمنی برای بررسی پیدا کرد</translation>
@@ -670,6 +673,7 @@ Chromium قادر به بازیابی تنظیمات شما نیست.</translati
 <translation id="8318772038038596122">‏اگر <ph name="TIMEOUT_DURATION" /> از Chromium استفاده نشود، سازمانتان آن را می‌بندد.</translation>
 <translation id="8321888067342493336">ذخیره کردن به‌عنوان تصویر</translation>
 <translation id="8340674089072921962">‏<ph name="USER_EMAIL_ADDRESS" /> قبلاً از Chromium استفاده می‌کرد</translation>
+<translation id="8351551329754447960">‏فعال کردن «مهارت‌ها» در Chromium</translation>
 <translation id="8359544530202147897">‏برای ادامه استفاده از داده‌های Chromium ذخیره‌شده در «حساب Google» خود (<ph name="ACCOUNT_EMAIL" />)،‏ Chromium را به‌روز کنید</translation>
 <translation id="8360718212975266891">‏برای دریافت به‌روزرسانی‌های آتی Chromium، باید Windows 10 یا بالاتر داشته باشید. این رایانه از Windows 8 استفاده می‌کند.</translation>
 <translation id="8362914115861174987">ترجمه به</translation>

@@ -26,6 +26,8 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_EDITING_COMMANDS_COMPOSITE_EDIT_COMMAND_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_EDITING_COMMANDS_COMPOSITE_EDIT_COMMAND_H_
 
+#include <utility>
+
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/css/css_property_names.h"
 #include "third_party/blink/renderer/core/editing/commands/edit_command.h"
@@ -240,6 +242,7 @@ class CORE_EXPORT CompositeEditCommand : public EditCommand {
                                      Element* block_element,
                                      EditingState*);
   void CleanupAfterDeletion(EditingState*, VisiblePosition destination);
+  void CleanupAfterDeletion(EditingState*, const Position& destination);
   void CleanupAfterDeletion(EditingState*);
 
   bool BreakOutOfEmptyListItem(EditingState*);
@@ -260,10 +263,21 @@ class CORE_EXPORT CompositeEditCommand : public EditCommand {
  private:
   bool IsCompositeEditCommand() const final { return true; }
 
+  // Helpers extracted from MoveParagraphs. VP callers compute the inputs
+  // (Position via `.DeepEquivalent()`).
+  std::pair<Position, Position> ComputeNormalizedMoveRange(
+      const Position& start_of_paragraph,
+      const Position& end_of_paragraph);
+  EditingStyle* CaptureStyleInEmptyParagraph(
+      const Position& start_of_paragraph);
+  // Sets the ending selection to the delete range [start, end]. Mirrors into
+  // the raw-DOM lane when EditingUseDomPositionApi is enabled.
+  void SetEndingSelectionToDelete(const Position& start, const Position& end);
+
   SelectionForUndoStep starting_selection_;
   SelectionForUndoStep ending_selection_;
   // Raw-DOM lane mirroring starting_/ending_selection_. Seeded from
-  // FrameSelection::GetSelectionInDOMTree() at command birth (no VP
+  // FrameSelection::GetSelectionInDomTree() at command birth (no VP
   // canonicalization). Updated via SetStartingDomSelection /
   // SetEndingDomSelection. Inherited from parent in SetParent.
   SelectionForUndoStep starting_dom_selection_;

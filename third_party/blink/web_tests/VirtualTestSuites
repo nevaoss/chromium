@@ -589,25 +589,6 @@
     ]
   },
   {
-    "prefix": "css-gap-decorations-disabled",
-    "platforms": ["Linux"],
-    "bases": [
-      "animations/interpolation/webkit-column-rule-color-interpolation.html",
-      "animations/interpolation/webkit-column-rule-width-interpolation.html",
-      "external/wpt/css/css-multicol/animation/column-rule-color-interpolation.html",
-      "external/wpt/css/css-animations/responsive/column-rule-color-001.html",
-      "external/wpt/web-animations/animation-model/animation-types/accumulation-per-property-001.html",
-      "external/wpt/web-animations/animation-model/animation-types/addition-per-property-001.html",
-      "external/wpt/web-animations/animation-model/animation-types/interpolation-per-property-001.html",
-      "external/wpt/css/css-multicol/multicol-nested-column-rule-002.html",
-      "external/wpt/css/css-break/out-of-flow-in-multicolumn-109.html",
-      "external/wpt/css/css-break/out-of-flow-in-multicolumn-098.html",
-      "external/wpt/css/css-break/out-of-flow-in-multicolumn-097.html"],
-    "args": ["--disable-blink-features=CSSGapDecoration"],
-    "expires": "June 1, 2026",
-    "owners": ["samomekarajr@microsoft.com", "almaher@microsoft.com", "javiercon@microsoft.com"]
-  },
-  {
     "prefix": "computed-width-values-depend-on-style-values",
     "platforms": ["Linux"],
     "bases": [
@@ -830,7 +811,7 @@
   {
     "prefix": "dialog-close-when-open-removed-disabled",
     "owners": [
-      "masonf@chromium.org"
+      "jarhar@chromium.org"
     ],
     "platforms": [
       "Linux"
@@ -841,7 +822,7 @@
     "args": [
       "--disable-blink-features=DialogCloseWhenOpenRemoved"
     ],
-    "expires": "Jun 1, 2026"
+    "expires": "Jun 1, 2027"
   },
   {
     "prefix": "direct-sockets",
@@ -2022,7 +2003,7 @@
       "hchao@chromium.org",
       "chrome-secure-web-and-net@chromium.org"
     ],
-    "expires": "June 1, 2026"
+    "expires": "June 1, 2027"
   },
   {
     "prefix": "log-dns-prefetch-and-preconnect",
@@ -3345,20 +3326,6 @@
     "expires": "never"
   },
   {
-    "prefix": "enable-shared-worker-bfcache",
-    "owners": ["annasato@chromium.org"],
-    "platforms": ["Mac", "Win", "Linux"],
-    "bases": [
-      "wpt_internal/shared-worker/back-forward-cache/shared-worker-client-postmessage-transferred-port.window.js",
-      "wpt_internal/shared-worker/back-forward-cache/shared-worker-client-postmessage.window.js"
-    ],
-    "exclusive_tests": "ALL",
-    "args": [
-      "--enable-features=BFCacheWithSharedWorker"
-    ],
-    "expires": "Jun 10, 2026"
-  },
-  {
     "prefix": "symphonia-audio-decoding",
     "owners": [
       "jophba@chromium.org"
@@ -3665,10 +3632,8 @@
       "external/wpt/css/cssom-view/scroll-behavior-smooth-after-hiding-iframe.html",
       "external/wpt/fetch/compression-dictionary/dictionary-fetch-with-link-element.tentative.https.html",
       "external/wpt/fetch/compression-dictionary/dictionary-fetch-with-link-header.tentative.https.html",
-      "external/wpt/html/canvas/element/manual/draw-element-image/animated-gif.tentative.html",
-      "external/wpt/html/canvas/element/manual/draw-element-image/invalidation-during-onpaint.tentative.html",
-      "external/wpt/html/canvas/element/manual/draw-element-image/onpaint-invalidation-crash.tentative.html",
-      "external/wpt/html/canvas/element/manual/draw-element-image/onpaint-outside-invalidation-crash.tentative.html",
+      "external/wpt/html/canvas/element/manual/draw-element-image",
+      "external/wpt/html/canvas/offscreen/manual/draw-element-image",
       "external/wpt/html/canvas/offscreen/manual/convert-to-blob",
       "external/wpt/html/semantics/embedded-content/the-img-element/decode",
       "external/wpt/intersection-observer/animating.html",
@@ -5194,7 +5159,9 @@
     "platforms": ["Linux", "Mac", "Win"],
     "bases": [
       "external/wpt/html/canvas/element/manual/draw-element-image/video.tentative.html",
-      "external/wpt/html/canvas/offscreen/manual/draw-element-image/video-worker.tentative.html"
+      "external/wpt/html/canvas/offscreen/manual/draw-element-image/video-worker.tentative.html",
+      "wpt_internal/webgl/draw-element-image/webgl-video.html",
+      "wpt_internal/webgl/draw-element-image/webgl-video-worker.html"
     ],
     "args": ["--use-gpu-in-tests", "--enable-threaded-compositing"],
     "expires": "never"

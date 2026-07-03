@@ -184,8 +184,8 @@ source_set("web_applications") {
     "isolated_web_apps/update/isolated_web_app_update_apply_task.h",
     "isolated_web_apps/update/isolated_web_app_update_apply_waiter.cc",
     "isolated_web_apps/update/isolated_web_app_update_apply_waiter.h",
-    "isolated_web_apps/update/isolated_web_app_update_discovery_task.cc",
-    "isolated_web_apps/update/isolated_web_app_update_discovery_task.h",
+    "isolated_web_apps/update/isolated_web_app_update_check_and_prepare_task.cc",
+    "isolated_web_apps/update/isolated_web_app_update_check_and_prepare_task.h",
     "isolated_web_apps/update/isolated_web_app_update_manager.cc",
     "isolated_web_apps/update/isolated_web_app_update_manager.h",
     "isolated_web_apps/update_manifest/update_manifest.cc",
@@ -761,11 +761,13 @@ source_set("sub_apps_service") {
   deps = [
     ":web_applications",
     "//base",
+    "//chrome/browser/content_settings:content_settings_factory",
     "//chrome/browser/notifications",
     "//chrome/browser/permissions",
     "//chrome/browser/policy:policy_util",
     "//chrome/browser/profiles:profile",
     "//chrome/common:non_code_constants",
+    "//components/content_settings/core/browser",
     "//components/content_settings/core/common",
     "//components/permissions",
     "//components/webapps/browser",
@@ -883,7 +885,6 @@ source_set("web_applications_test_support") {
   ]
 
   public_deps = [
-    "//chrome/browser/ui:web_app_dialog_test_support",
     "//chrome/browser/web_applications/isolated_web_apps/key_distribution/proto",
     "//components/webapps/common:mojo_bindings",
   ]
@@ -1008,6 +1009,7 @@ source_set("web_applications_unit_tests") {
     "daily_metrics_helper_unittest.cc",
     "external_install_options_unittest.cc",
     "externally_managed_app_manager_unittest.cc",
+    "generated_icon_fix_manager_unittest.cc",
     "icons/icon_masker_unittest.cc",
     "icons/trusted_icon_filter_unittest.cc",
     "isolated_web_apps/commands/check_isolated_web_app_bundle_user_installability_command_unittest.cc",
@@ -1036,7 +1038,7 @@ source_set("web_applications_unit_tests") {
     "isolated_web_apps/test/isolated_web_app_test.cc",
     "isolated_web_apps/test/isolated_web_app_test.h",
     "isolated_web_apps/update/isolated_web_app_update_apply_waiter_unittest.cc",
-    "isolated_web_apps/update/isolated_web_app_update_discovery_task_unittest.cc",
+    "isolated_web_apps/update/isolated_web_app_update_check_and_prepare_task_unittest.cc",
     "isolated_web_apps/update/isolated_web_app_update_manager_unittest.cc",
     "isolated_web_apps/update_manifest/update_manifest_fetcher_unittest.cc",
     "isolated_web_apps/update_manifest/update_manifest_unittest.cc",
@@ -1302,6 +1304,7 @@ source_set("web_applications_browser_tests") {
     "replace_migration_suggested_app_browsertest.cc",
     "sampling_metrics_provider_browsertest.cc",
     "sub_apps/sub_app_update_browsertest.cc",
+    "sub_apps/sub_apps_admin_policy_browsertest.cc",
     "sub_apps/sub_apps_permissions_policy_browsertest.cc",
     "sub_apps/sub_apps_service_impl_browsertest.cc",
     "user_uninstalled_preinstalled_web_app_prefs_browsertest.cc",
@@ -1336,7 +1339,6 @@ source_set("web_applications_browser_tests") {
       "isolated_web_apps/isolated_web_app_device_attributes_browsertest.cc",
       "isolated_web_apps/isolated_web_app_managed_configuration_api_browsertest.cc",
       "isolated_web_apps/policy/isolated_web_app_cache_browsertest.cc",
-      "sub_apps/sub_apps_admin_policy_browsertest.cc",
       "web_app_run_on_os_login_manager_browsertest.cc",
     ]
   }

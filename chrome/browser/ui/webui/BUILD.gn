@@ -128,7 +128,6 @@ source_set("configs") {
       "//chrome/browser/ui/webui/multistep_filter_internals",
       "//chrome/browser/ui/webui/new_tab_footer",
       "//chrome/browser/ui/webui/personal_context",
-      "//chrome/browser/ui/webui/privacy_sandbox:mojo_bindings",
       "//chrome/browser/ui/webui/profile_internals",
       "//chrome/browser/ui/webui/web_app_internals",
       "//chrome/browser/ui/webui/webui_js_error",
@@ -272,10 +271,6 @@ source_set("configs") {
 
   if (!is_chromeos && !is_android) {
     deps += [ "//chrome/browser/ui/webui/intro" ]
-  }
-
-  if (enable_webui_ntp) {
-    deps += [ "//chrome/browser/ui/webui/ntp_microsoft_auth" ]
   }
 }
 

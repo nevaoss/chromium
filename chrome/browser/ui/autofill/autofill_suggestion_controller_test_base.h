@@ -24,7 +24,6 @@
 #include "components/autofill/core/browser/suggestions/suggestion_hiding_reason.h"
 #include "components/autofill/core/browser/ui/autofill_external_delegate.h"
 #include "components/autofill/core/browser/ui/autofill_suggestion_delegate.h"
-#include "components/autofill/core/browser/ui/suggestion_button_action.h"
 #include "components/autofill/core/browser/ui/tabbed_pane_enums.h"
 #include "components/autofill/core/common/autofill_test_utils.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -235,10 +234,6 @@ class AutofillExternalDelegateForPopupTest : public AutofillExternalDelegate {
               DidAcceptSuggestion,
               (const Suggestion&,
                const AutofillSuggestionDelegate::SuggestionMetadata&),
-              (override));
-  MOCK_METHOD(void,
-              DidPerformButtonActionForSuggestion,
-              (const Suggestion&, const SuggestionButtonAction&),
               (override));
   MOCK_METHOD(bool, RemoveSuggestion, (const Suggestion&), (override));
   MOCK_METHOD(void, OnTabSelected, (TabbedPaneTabType), (override));

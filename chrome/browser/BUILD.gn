@@ -488,11 +488,6 @@ if (!is_android) {
     deps = [ "//chrome/browser/ui:tab_modal_confirm_dialog_delegate" ]
   }
 
-  source_set("intent_chip_display_prefs") {
-    public = [ "apps/intent_helper/intent_chip_display_prefs.h" ]
-    deps = [ "//url" ]
-  }
-
   source_set("chrome_process_singleton") {
     public = [
       "chrome_process_singleton.h",
@@ -581,11 +576,6 @@ source_set("process_singleton") {
 }
 
 if (is_chromeos) {
-  source_set("chromeos_disabled_apps_throttle") {
-    public = [ "apps/intent_helper/chromeos_disabled_apps_throttle.h" ]
-    deps = [ "//content/public/browser" ]
-  }
-
   source_set("cloud_identifier_util_ash") {
     public =
         [ "file_system_access/cloud_identifier/cloud_identifier_util_ash.h" ]
@@ -705,6 +695,7 @@ source_set("core") {
     "//chrome/browser/component_updater",
     "//chrome/browser/content_settings",
     "//chrome/browser/content_settings:content_settings_factory",
+    "//chrome/browser/context_hub",
     "//chrome/browser/contextual_cueing",
     "//chrome/browser/contextual_tasks:ui",
     "//chrome/browser/contextual_tasks:ui_impl",
@@ -1155,6 +1146,7 @@ source_set("core") {
       "//chrome/browser/device_api",
       "//chrome/browser/device_api:impl",
       "//chrome/browser/direct_sockets",
+      "//chrome/browser/ui:browser_actions_impl",
       "//chrome/browser/ui/lens",
       "//chrome/browser/ui/tabs/tab_drag_api/desktop_tab_drag_impl",
       "//chrome/browser/ui/waap:waap_utils",
@@ -1469,10 +1461,7 @@ source_set("core") {
   }
 
   if (enable_webui_ntp) {
-    deps += [
-      "//chrome/browser/new_tab_page",
-      "//chrome/browser/ui/webui/ntp_microsoft_auth",
-    ]
+    deps += [ "//chrome/browser/new_tab_page" ]
   }
 
   if ((!is_android && !is_ios) || enable_webui_ntp) {
@@ -1554,8 +1543,8 @@ source_set("core") {
 
   if (is_chromeos) {
     deps += [
-      ":chromeos_disabled_apps_throttle",
       ":cloud_identifier_util_ash",
+      "//chrome/browser/apps/intent_helper:chromeos_disabled_apps_throttle",
     ]
   }
 
@@ -1726,6 +1715,7 @@ static_library("browser") {
     "//chrome/browser/content_settings:content_settings_util",
     "//chrome/browser/content_settings:content_settings_util_impl",
     "//chrome/browser/content_settings:impl",
+    "//chrome/browser/context_hub",
     "//chrome/browser/contextual_cueing",
     "//chrome/browser/contextual_cueing:impl",
     "//chrome/browser/contextual_tasks",
@@ -2663,7 +2653,6 @@ static_library("browser") {
       "//chrome/browser/new_tab_page:impl",
       "//chrome/browser/ui/webui/new_tab_page/action_chips:mojo_bindings",
       "//chrome/browser/ui/webui/new_tab_page/composebox/variations",
-      "//chrome/browser/ui/webui/ntp_microsoft_auth",
     ]
   }
   if ((!is_ios && !is_android) || enable_webui_ntp) {
@@ -2814,7 +2803,6 @@ static_library("browser") {
     ]
 
     sources += [
-      "apps/intent_helper/intent_chip_display_prefs.cc",
       "chrome_browser_interface_binders_webui_parts_desktop.cc",
       "chrome_process_singleton.cc",
       "intranet_redirect_detector.cc",
@@ -2831,7 +2819,6 @@ static_library("browser") {
     #!is_android
     deps += [
       ":chrome_process_singleton",
-      ":intent_chip_display_prefs",
       ":intranet_redirect_detector",
       ":repost_form_warning_controller",
       "//chrome/app:command_ids",
@@ -2848,6 +2835,7 @@ static_library("browser") {
       "//chrome/browser/actor/ui/task_list_bubble:ui",
       "//chrome/browser/apps/app_service",
       "//chrome/browser/apps/app_service/publishers",
+      "//chrome/browser/apps/intent_helper:intent_chip_display_prefs",
       "//chrome/browser/apps/link_capturing",
       "//chrome/browser/badging",
       "//chrome/browser/badging:impl",
@@ -2990,7 +2978,6 @@ static_library("browser") {
       "//chrome/browser/ui/webui/omnibox",
       "//chrome/browser/ui/webui/omnibox/logging:mojo_bindings",
       "//chrome/browser/ui/webui/omnibox_popup/mojom",
-      "//chrome/browser/ui/webui/privacy_sandbox:mojo_bindings",
       "//chrome/browser/ui/webui/searchbox",
       "//chrome/browser/ui/webui/settings",
       "//chrome/browser/ui/webui/settings:impl",
@@ -3332,7 +3319,6 @@ static_library("browser") {
 
   if (is_chromeos) {
     sources += [
-      "apps/intent_helper/chromeos_disabled_apps_throttle.cc",
       "browser_process_platform_part_ash.cc",
       "chrome_browser_interface_binders_webui_parts_chromeos.cc",
       "exo_parts.cc",
@@ -3344,7 +3330,6 @@ static_library("browser") {
     ]
 
     deps += [
-      ":chromeos_disabled_apps_throttle",
       ":cloud_identifier_util_ash",
       "//ash",
       "//ash/constants",
@@ -3425,6 +3410,7 @@ static_library("browser") {
       "//chrome/browser/apps/browser_instance",
       "//chrome/browser/apps/digital_goods",
       "//chrome/browser/apps/digital_goods:impl",
+      "//chrome/browser/apps/intent_helper:chromeos_disabled_apps_throttle",
       "//chrome/browser/ash/accessibility",
       "//chrome/browser/ash/accessibility/live_caption",
       "//chrome/browser/ash/account_manager",
@@ -5397,7 +5383,6 @@ group("browser_generated_files") {
     "//chrome/browser/ui/webui/location_internals:mojo_bindings",
     "//chrome/browser/ui/webui/omnibox:mojo_bindings",
     "//chrome/browser/ui/webui/personal_context_internals:mojo_bindings",
-    "//chrome/browser/ui/webui/privacy_sandbox:mojo_bindings",
     "//chrome/browser/ui/webui/reset_password:mojo_bindings",
     "//chrome/browser/ui/webui/segmentation_internals:mojo_bindings",
     "//chrome/browser/ui/webui/suggest_internals:mojo_bindings",

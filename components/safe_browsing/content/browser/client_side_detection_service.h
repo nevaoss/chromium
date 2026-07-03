@@ -13,15 +13,14 @@
 #ifndef COMPONENTS_SAFE_BROWSING_CONTENT_BROWSER_CLIENT_SIDE_DETECTION_SERVICE_H_
 #define COMPONENTS_SAFE_BROWSING_CONTENT_BROWSER_CLIENT_SIDE_DETECTION_SERVICE_H_
 
+#include <deque>
 #include <map>
 #include <memory>
 #include <optional>
-#include <set>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "base/containers/queue.h"
 #include "base/functional/callback_forward.h"
 #include "base/gtest_prod_util.h"
 #include "base/memory/read_only_shared_memory_region.h"
@@ -136,11 +135,6 @@ class ClientSideDetectionService
   // ClientSideDetectionHost prior to sending the renderer a
   // SafeBrowsingMsg_StartPhishingDetection IPC.
   virtual bool IsPrivateIPAddress(const net::IPAddress& address) const;
-
-  // Returns true if the given IP address does not refer to remote content. For
-  // example, local files and chrome:// pages will create navigations that
-  // return true.
-  virtual bool IsLocalResource(const net::IPAddress& address) const;
 
   // Returns true and sets is_phishing if url is in the cache and valid.
   virtual bool GetValidCachedResult(const GURL& url, bool* is_phishing);

@@ -196,6 +196,15 @@ template("chrome_extra_paks") {
       sources += invoker.additional_paks
     }
 
+    # Consumers (extensions, chrome/browser/{usb,serial}) are not built on
+    # mobile Android.
+    if (!is_android || is_desktop_android) {
+      sources += [
+        "$root_gen_dir/services/device/public/cpp/usb/usb_ids_resources.pak",
+      ]
+      deps += [ "//services/device/public/cpp/usb:usb_ids_resources" ]
+    }
+
     if (enable_extensions_core) {
       sources += [
         "$root_gen_dir/chrome/component_extension_resources.pak",
@@ -268,6 +277,7 @@ template("chrome_extra_paks") {
         "$root_gen_dir/content/browser/tracing/tracing_resources.pak",
         "$root_gen_dir/content/traces_internals_resources.pak",
       ]
+
       deps += [
         "//chrome/browser/actor/resources:browser_resources",
         "//chrome/browser/indigo/resources:browser_resources",

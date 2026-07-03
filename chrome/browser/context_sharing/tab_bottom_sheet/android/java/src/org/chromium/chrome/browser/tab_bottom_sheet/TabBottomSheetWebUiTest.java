@@ -4,8 +4,12 @@
 
 package org.chromium.chrome.browser.tab_bottom_sheet;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentCaptor.captor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -38,16 +42,23 @@ import org.robolectric.shadows.ShadowLooper;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.chrome.R;
+import org.chromium.chrome.browser.intents.BrowserIntentUtils;
+import org.chromium.components.embedder_support.contextmenu.ContextMenuItemDelegate;
 import org.chromium.components.embedder_support.contextmenu.ContextMenuPopulatorFactory;
 import org.chromium.components.embedder_support.view.ContentView;
 import org.chromium.components.thinwebview.ThinWebView;
+import org.chromium.components.thinwebview.ThinWebViewAttachParams;
 import org.chromium.components.thinwebview.ThinWebViewFactory;
+import org.chromium.components.thinwebview.internal.ThinWebViewContextMenuItemDelegate;
 import org.chromium.content_public.browser.WebContents;
+import org.chromium.content_public.browser.selection.SelectionDropdownMenuDelegate;
 import org.chromium.ui.base.EventForwarder;
 import org.chromium.ui.base.ViewAndroidDelegate;
 import org.chromium.ui.base.WindowAndroid;
+import org.chromium.url.GURL;
 
 import java.lang.ref.WeakReference;
+import java.util.function.BiConsumer;
 
 /** Unit tests for {@link TabBottomSheetWebUi}. */
 @RunWith(BaseRobolectricTestRunner.class)
@@ -60,6 +71,7 @@ public class TabBottomSheetWebUiTest {
     @Mock private ThinWebView mThinWebView;
     @Mock private View mView;
     @Mock private ContextMenuPopulatorFactory mContextMenuPopulatorFactory;
+    @Mock private SelectionDropdownMenuDelegate mSelectionDropdownMenuDelegate;
     @Mock private ContentView mMockContentView;
     @Mock private Window mMockWindow;
     @Mock private View mMockDecorView;
@@ -97,6 +109,7 @@ public class TabBottomSheetWebUiTest {
                         containerView,
                         mWindowAndroid,
                         mContextMenuPopulatorFactory,
+                        mSelectionDropdownMenuDelegate,
                         Color.WHITE,
                         mMockContentView);
         TabBottomSheetWebUi.setInTestModeForTesting();
@@ -275,6 +288,208 @@ public class TabBottomSheetWebUiTest {
         verify(focusedView, times(0)).clearFocus();
     }
 
+    @Test
+    public void testSetWebContents_ItemDelegate_BottomSheet() {
+        mWebUi.setWebContents(mWebContents, true);
+        ArgumentCaptor<ContextMenuItemDelegate> captor =
+                ArgumentCaptor.forClass(ContextMenuItemDelegate.class);
+        verify(mContextMenuPopulatorFactory).setItemDelegate(captor.capture());
+
+        ContextMenuItemDelegate delegate = captor.getValue();
+        assertNotNull(delegate);
+        assertTrue(delegate instanceof ThinWebViewContextMenuItemDelegate);
+        assertNull(
+                ((ThinWebViewContextMenuItemDelegate) delegate)
+                        .getIntentTargetClassNameForTesting());
+        assertFalse(delegate.supportsOpenImageInNewTab());
+        assertFalse(delegate.supportsOpenInEphemeralTab());
+        assertFalse(delegate.supportsSaveImage());
+        assertFalse(delegate.supportsSearchByImage());
+        assertFalse(delegate.supportsInspectElement());
+    }
+
+    @Test
+    public void testSetWebContents_ItemDelegate_SidePanel() {
+        ContextMenuPopulatorFactory mockFactory = mock(ContextMenuPopulatorFactory.class);
+        Context context =
+                new ContextThemeWrapper(
+                        ApplicationProvider.getApplicationContext(),
+                        R.style.Theme_BrowserUI_DayNight);
+        View containerView =
+                LayoutInflater.from(context)
+                        .inflate(
+                                org.chromium.chrome.browser.context_sharing.R.layout
+                                        .tab_bottom_sheet,
+                                null);
+        TabBottomSheetWebUi sidePanelWebUi =
+                new TestTabBottomSheetWebUi(
+                        context,
+                        containerView,
+                        mWindowAndroid,
+                        mockFactory,
+                        mSelectionDropdownMenuDelegate,
+                        Color.WHITE,
+                        mMockContentView,
+                        CoBrowseContainerType.SIDE_PANEL);
+        sidePanelWebUi.setWebContents(mWebContents, true);
+
+        ArgumentCaptor<ContextMenuItemDelegate> captor =
+                ArgumentCaptor.forClass(ContextMenuItemDelegate.class);
+        verify(mockFactory).setItemDelegate(captor.capture());
+
+        ContextMenuItemDelegate delegate = captor.getValue();
+        assertNotNull(delegate);
+        assertTrue(delegate instanceof ThinWebViewContextMenuItemDelegate);
+        assertEquals(
+                BrowserIntentUtils.CHROME_LAUNCHER_ACTIVITY_CLASS_NAME,
+                ((ThinWebViewContextMenuItemDelegate) delegate)
+                        .getIntentTargetClassNameForTesting());
+        assertTrue(delegate.supportsOpenImageInNewTab());
+        assertTrue(delegate.supportsOpenInEphemeralTab());
+        assertTrue(delegate.supportsSaveImage());
+        assertTrue(delegate.supportsSearchByImage());
+        assertTrue(delegate.supportsInspectElement());
+    }
+
+    @Test
+    public void testSelectionDropdownWrapper_ignoresFocusClearWhenShowing() {
+        ViewTreeObserver mockViewTreeObserver = mock(ViewTreeObserver.class);
+        when(mMockContentView.getViewTreeObserver()).thenReturn(mockViewTreeObserver);
+
+        mWebUi.setWebContents(mWebContents, true);
+
+        // Capture the wrapped delegate.
+        ArgumentCaptor<ThinWebViewAttachParams> attachParamsCaptor =
+                ArgumentCaptor.forClass(ThinWebViewAttachParams.class);
+        verify(mThinWebView).attachWebContents(any(), any(), attachParamsCaptor.capture());
+        SelectionDropdownMenuDelegate wrappedDelegate =
+                attachParamsCaptor.getValue().selectionDropdownMenuDelegate;
+        assertNotNull(wrappedDelegate);
+
+        // Capture the OnWindowFocusChangeListener.
+        ArgumentCaptor<View.OnAttachStateChangeListener> attachListenerCaptor =
+                ArgumentCaptor.forClass(View.OnAttachStateChangeListener.class);
+        verify(mMockContentView).addOnAttachStateChangeListener(attachListenerCaptor.capture());
+        View.OnAttachStateChangeListener attachListener = attachListenerCaptor.getValue();
+        attachListener.onViewAttachedToWindow(mMockContentView);
+
+        ArgumentCaptor<ViewTreeObserver.OnWindowFocusChangeListener> focusListenerCaptor =
+                ArgumentCaptor.forClass(ViewTreeObserver.OnWindowFocusChangeListener.class);
+        verify(mockViewTreeObserver).addOnWindowFocusChangeListener(focusListenerCaptor.capture());
+        ViewTreeObserver.OnWindowFocusChangeListener focusListener = focusListenerCaptor.getValue();
+
+        // 1. Show the dropdown menu.
+        Runnable dismissCallback = mock(Runnable.class);
+        wrappedDelegate.show(null, null, null, null, dismissCallback, 0, 0);
+
+        // Verify that the delegate's show is called.
+        verify(mSelectionDropdownMenuDelegate)
+                .show(any(), any(), any(), any(), any(), eq(0), eq(0));
+
+        // 2. Trigger window focus loss. Since the dropdown is showing, it should NOT clear focus.
+        Mockito.reset(mMockContentView);
+        focusListener.onWindowFocusChanged(false);
+        ShadowLooper.idleMainLooper();
+        verify(mMockContentView, times(0)).clearFocus();
+
+        // 3. Dismiss the dropdown menu when window does NOT have focus. It should clear focus.
+        when(mMockContentView.hasWindowFocus()).thenReturn(false);
+        wrappedDelegate.dismiss();
+        verify(mSelectionDropdownMenuDelegate).dismiss();
+        verify(mMockContentView, times(1)).clearFocus();
+    }
+
+    @Test
+    public void testSelectionDropdownWrapper_callbackResetsIgnoreClearFocus() {
+        ViewTreeObserver mockViewTreeObserver = mock(ViewTreeObserver.class);
+        when(mMockContentView.getViewTreeObserver()).thenReturn(mockViewTreeObserver);
+
+        mWebUi.setWebContents(mWebContents, true);
+
+        // Capture the wrapped delegate.
+        ArgumentCaptor<ThinWebViewAttachParams> attachParamsCaptor =
+                ArgumentCaptor.forClass(ThinWebViewAttachParams.class);
+        verify(mThinWebView).attachWebContents(any(), any(), attachParamsCaptor.capture());
+        SelectionDropdownMenuDelegate wrappedDelegate =
+                attachParamsCaptor.getValue().selectionDropdownMenuDelegate;
+
+        // Capture the OnWindowFocusChangeListener.
+        ArgumentCaptor<View.OnAttachStateChangeListener> attachListenerCaptor =
+                ArgumentCaptor.forClass(View.OnAttachStateChangeListener.class);
+        verify(mMockContentView).addOnAttachStateChangeListener(attachListenerCaptor.capture());
+        View.OnAttachStateChangeListener attachListener = attachListenerCaptor.getValue();
+        attachListener.onViewAttachedToWindow(mMockContentView);
+
+        ArgumentCaptor<ViewTreeObserver.OnWindowFocusChangeListener> focusListenerCaptor =
+                ArgumentCaptor.forClass(ViewTreeObserver.OnWindowFocusChangeListener.class);
+        verify(mockViewTreeObserver).addOnWindowFocusChangeListener(focusListenerCaptor.capture());
+        ViewTreeObserver.OnWindowFocusChangeListener focusListener = focusListenerCaptor.getValue();
+
+        // 1. Show the dropdown menu.
+        Runnable dismissCallback = mock(Runnable.class);
+        wrappedDelegate.show(null, null, null, null, dismissCallback, 0, 0);
+
+        // Capture the wrapped callback.
+        ArgumentCaptor<Runnable> wrappedCallbackCaptor = ArgumentCaptor.forClass(Runnable.class);
+        verify(mSelectionDropdownMenuDelegate)
+                .show(any(), any(), any(), any(), wrappedCallbackCaptor.capture(), eq(0), eq(0));
+        Runnable wrappedCallback = wrappedCallbackCaptor.getValue();
+
+        // 2. Trigger the callback.
+        wrappedCallback.run();
+        verify(dismissCallback).run();
+
+        // 3. Trigger window focus loss. Since the callback has run, it should clear focus.
+        Mockito.reset(mMockContentView);
+        focusListener.onWindowFocusChanged(false);
+        ShadowLooper.idleMainLooper();
+        verify(mMockContentView, times(1)).clearFocus();
+    }
+
+    @Test
+    public void testSetWebContents_ItemDelegate_EphemeralTabOpener() {
+        ContextMenuPopulatorFactory mockFactory = mock(ContextMenuPopulatorFactory.class);
+        Context context =
+                new ContextThemeWrapper(
+                        ApplicationProvider.getApplicationContext(),
+                        R.style.Theme_BrowserUI_DayNight);
+        View containerView =
+                LayoutInflater.from(context)
+                        .inflate(
+                                org.chromium.chrome.browser.context_sharing.R.layout
+                                        .tab_bottom_sheet,
+                                null);
+        @SuppressWarnings("unchecked")
+        BiConsumer<GURL, String> mockOpener = mock(BiConsumer.class);
+
+        TabBottomSheetWebUi webUi =
+                new TestTabBottomSheetWebUi(
+                        context,
+                        containerView,
+                        mWindowAndroid,
+                        mockFactory,
+                        mSelectionDropdownMenuDelegate,
+                        Color.WHITE,
+                        CoBrowseContainerType.SIDE_PANEL,
+                        mockOpener,
+                        mMockContentView);
+        webUi.setWebContents(mWebContents, true);
+
+        ArgumentCaptor<ContextMenuItemDelegate> captor =
+                ArgumentCaptor.forClass(ContextMenuItemDelegate.class);
+        verify(mockFactory).setItemDelegate(captor.capture());
+
+        ContextMenuItemDelegate delegate = captor.getValue();
+        assertNotNull(delegate);
+        assertTrue(delegate instanceof ThinWebViewContextMenuItemDelegate);
+
+        GURL testUrl = new GURL("https://example.com/image.jpg");
+        String testTitle = "Test Image";
+        delegate.onOpenInEphemeralTab(testUrl, testTitle);
+
+        verify(mockOpener).accept(eq(testUrl), eq(testTitle));
+    }
+
     private static class TestTabBottomSheetWebUi extends TabBottomSheetWebUi {
         private final ContentView mMockContentView;
 
@@ -283,14 +498,60 @@ public class TabBottomSheetWebUiTest {
                 View containerView,
                 WindowAndroid windowAndroid,
                 ContextMenuPopulatorFactory contextMenuPopulatorFactory,
+                SelectionDropdownMenuDelegate selectionDropdownMenuDelegate,
                 int backgroundColor,
+                ContentView mockContentView) {
+            this(
+                    context,
+                    containerView,
+                    windowAndroid,
+                    contextMenuPopulatorFactory,
+                    selectionDropdownMenuDelegate,
+                    backgroundColor,
+                    mockContentView,
+                    CoBrowseContainerType.BOTTOM_SHEET);
+        }
+
+        TestTabBottomSheetWebUi(
+                Context context,
+                View containerView,
+                WindowAndroid windowAndroid,
+                ContextMenuPopulatorFactory contextMenuPopulatorFactory,
+                SelectionDropdownMenuDelegate selectionDropdownMenuDelegate,
+                int backgroundColor,
+                ContentView mockContentView,
+                @CoBrowseContainerType int containerType) {
+            this(
+                    context,
+                    containerView,
+                    windowAndroid,
+                    contextMenuPopulatorFactory,
+                    selectionDropdownMenuDelegate,
+                    backgroundColor,
+                    containerType,
+                    /* ephemeralTabOpener= */ null,
+                    mockContentView);
+        }
+
+        TestTabBottomSheetWebUi(
+                Context context,
+                View containerView,
+                WindowAndroid windowAndroid,
+                ContextMenuPopulatorFactory contextMenuPopulatorFactory,
+                SelectionDropdownMenuDelegate selectionDropdownMenuDelegate,
+                int backgroundColor,
+                @CoBrowseContainerType int containerType,
+                BiConsumer<GURL, String> ephemeralTabOpener,
                 ContentView mockContentView) {
             super(
                     context,
                     containerView,
                     windowAndroid,
                     contextMenuPopulatorFactory,
-                    backgroundColor);
+                    selectionDropdownMenuDelegate,
+                    backgroundColor,
+                    containerType,
+                    ephemeralTabOpener);
             mMockContentView = mockContentView;
         }
 

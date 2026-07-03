@@ -389,6 +389,15 @@ class CONTENT_EXPORT ChildProcessSecurityPolicyImpl
       const GURL& site_url,
       url::Origin* result);
 
+  // A version of GetMatchingProcessIsolatedOrigin that only checks the
+  // list of isolated origins (e.g. command-line or dynamically registered
+  // ones) and bypasses any checks for origin-keyed agent clusters (OAC).
+  bool GetMatchingProcessIsolatedOriginFromLegacyOriginList(
+      const IsolationContext& isolation_context,
+      const url::Origin& origin,
+      const GURL& site_url,
+      url::Origin* result);
+
   // Stores the v8-optimization state for the passed-in `browsing_instance_id`
   // and `process_lock_origin` if the state isn't already cached.
   void AddV8OptimizationDisabledStateForOriginIfNotCached(

@@ -29,6 +29,7 @@
 #include "chrome/browser/ui/views/web_apps/frame_toolbar/web_app_menu_button.h"
 #include "chrome/browser/ui/views/web_apps/frame_toolbar/web_app_toolbar_button_container.h"
 #include "chrome/browser/ui/web_applications/web_app_browsertest_base.h"
+#include "chrome/browser/ui/window_metadata/window_metadata_controller.h"
 #include "chrome/browser/web_applications/web_app_install_info.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "chrome/test/permissions/permission_request_manager_test_api.h"
@@ -92,7 +93,7 @@ class ImmersiveModeControllerChromeosWebAppBrowserTest
             ->controller())
         .SetupForTest();
 
-    browser_->window()->Show();
+    browser_->GetWindow()->Show();
   }
 
   // Returns the bounds of |view| in widget coordinates.
@@ -216,12 +217,12 @@ IN_PROC_BROWSER_TEST_F(ImmersiveModeControllerChromeosWebAppBrowserTest,
   EXPECT_EQ(0, aura_window->GetProperty(aura::client::kTopViewInset));
 
   // Verify that after minimizing, immersive mode is disabled.
-  browser()->window()->Minimize();
-  EXPECT_TRUE(browser()->window()->IsMinimized());
+  browser()->GetWindow()->Minimize();
+  EXPECT_TRUE(browser()->GetWindow()->IsMinimized());
   EXPECT_FALSE(controller()->IsEnabled());
 
   // Verify that after showing the browser, immersive mode is reenabled.
-  browser()->window()->Show();
+  browser()->GetWindow()->Show();
   EXPECT_TRUE(controller()->IsEnabled());
 
   // Verify that immersive mode remains if fullscreen is toggled while in tablet
@@ -421,7 +422,7 @@ IN_PROC_BROWSER_TEST_F(UpdateFullscreenTest, NoImmersiveUI) {
             return true;  // continue iterating (inner lambda)
           }
 
-          if (browser->GetBrowserForMigrationOnly()
+          if (WindowMetadataController::From(browser)
                   ->GetWindowTitleForCurrentTab(
                       /*include_app_name=*/false) != u"Hello") {
             return true;  // continue iterating (inner lambda)

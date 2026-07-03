@@ -92,7 +92,6 @@
 <translation id="1953553007165777902">A transferir… Falta(m) <ph name="MINUTE" /> minuto(s)</translation>
 <translation id="1979600810166324878">Mantenha-se em segurança quando estiver em viagem com a Navegação segura melhorada no Chrome para iOS</translation>
 <translation id="2001586581944147178">Torne mais difícil a visualização dos sites que visita por parte das pessoas com acesso ao seu tráfego da Internet. O Chrome usa uma ligação segura para procurar o endereço IP de um site no DNS (Sistema de Nomes de Domínio).</translation>
-<translation id="2008942457798486387">{NUM_EXTENSIONS,plural, =1{Esta extensão já não é suportada. O Chrome recomenda que a remova.}other{Estas extensões já não são suportadas. O Chrome recomenda que as remova.}}</translation>
 <translation id="2018528049276128029">Cada perfil possui as suas próprias informações do Chrome, como marcadores, histórico, palavras-passe e muito mais.</translation>
 <translation id="2018879682492276940">Falha ao instalar. Tente novamente.</translation>
 <translation id="2024959665595762054">Para usar e guardar dados do Chrome na sua Conta Google, valide a sua identidade</translation>
@@ -188,6 +187,7 @@ Se esta página não estiver a funcionar conforme esperado, experimente permitir
 <translation id="2945997411976714835">Erro de instalação: não foi possível iniciar o processo do instalador.</translation>
 <translation id="2969728957078202736"><ph name="PAGE_TITLE" /> – Início de sessão na rede – Chrome</translation>
 <translation id="2970681950995291301">Para remover a sua Conta Google do Chrome, termine sessão no Chrome na página Definições</translation>
+<translation id="2976869732253036751">Receba alertas de acompanhamento de preço com o Chrome no telemóvel</translation>
 <translation id="2991167882679440829">As suas palavras-passe e outros dados do Chrome que guardou na sua Conta Google vão ser removidos deste dispositivo. Para os usar novamente no Chrome, volte a iniciar sessão.</translation>
 <translation id="2994465299455873643">Oferece serviços de encriptação e uma forma segura de recuperar o <ph name="BROWSER_NAME" /> se ficar desatualizado. Se este serviço estiver desativado, o <ph name="BROWSER_NAME" /> pode perder o acesso aos dados encriptados e o <ph name="BROWSER_NAME" /> pode não conseguir recuperar.</translation>
 <translation id="3003694935412297923">Todas as tarefas</translation>
@@ -384,6 +384,7 @@ Se esta página não estiver a funcionar conforme esperado, experimente permitir
 <translation id="5127558335897923940">Mantenha o Chrome na Dock para aceder rapidamente ao mesmo em qualquer altura</translation>
 <translation id="5132929315877954718">Descubra fantásticas aplicações, jogos, extensões e temas para o Google Chrome.</translation>
 <translation id="5139423532931106058">Personalize o seu perfil do Chrome</translation>
+<translation id="5152381187352661267">Competências no Chrome</translation>
 <translation id="5163087008893166964">Damos-lhe as boas-vindas ao Chrome; nova janela do navegador aberta</translation>
 <translation id="5166439563123238795">O Chrome precisa de autorização para monitorizar as suas mãos</translation>
 <translation id="5169778651486082413">Use as suas palavras-passe com o Chrome no telemóvel</translation>
@@ -397,6 +398,7 @@ Se esta página não estiver a funcionar conforme esperado, experimente permitir
 <translation id="5234764350956374838">Ignorar</translation>
 <translation id="5239627039202700673">Use o Chrome sempre que clicar em links de mensagens, documentos e outras apps</translation>
 <translation id="5251420635869119124">Os convidados podem utilizar o Chrome sem perder qualquer funcionalidade.</translation>
+<translation id="5271833978500241046">Use-as juntamente com outras funcionalidades do Gemini no Chrome</translation>
 <translation id="5286907366254680517">Detetado</translation>
 <translation id="5320351714793324716">Se permitir cookies, o Chrome pode usá-los durante o pré-carregamento</translation>
 <translation id="5321325624576443340">O Google Lens não está disponível. Tente mais tarde.</translation>
@@ -479,6 +481,7 @@ Se esta página não estiver a funcionar conforme esperado, experimente permitir
 <translation id="6070348360322141662">Para uma segurança adicional, o Google Chrome encripta os seus dados</translation>
 <translation id="6075300983329039771">A sua organização, <ph name="MANAGER" />, requer que inicie sessão no Chrome</translation>
 <translation id="6113794647360055231">O Chrome está ainda melhor</translation>
+<translation id="6116004140911290070">Ativar competências no Chrome</translation>
 <translation id="6116252277240876590">Este idioma é usado para apresentar menus, definições, alertas e outro texto no Chrome</translation>
 <translation id="6127237283587442951">Use o Chrome por predefinição e afixe-o</translation>
 <translation id="6134085236017727171">Para usar o microfone, dê acesso ao Chrome nas <ph name="BEGIN_LINK" />definições do sistema<ph name="END_LINK" /></translation>
@@ -638,6 +641,7 @@ Se esta página não estiver a funcionar conforme esperado, experimente permitir
 <translation id="7606334485649076285">Google ChromeOS Flex</translation>
 <translation id="7627609214560473136">Para proteger os seus dados, permita que o Chrome remova as autorizações de sites que não visitou recentemente.</translation>
 <translation id="7629695634924605473">O Chrome indica-lhe se as suas palavras-passe forem comprometidas.</translation>
+<translation id="7629898584100520089">As inovações de IA, como as competências, são guardadas na sua Conta Google e geridas separadamente da Sincronização do Chrome</translation>
 <translation id="7641148173327520642">O administrador do sistema configurou o Google Chrome para abrir o <ph name="ALTERNATIVE_BROWSER_NAME" /> e aceder a <ph name="TARGET_URL_HOSTNAME" />.</translation>
 <translation id="7649070708921625228">Ajuda</translation>
 <translation id="7651907282515937834">Logótipo do Chrome Enterprise</translation>

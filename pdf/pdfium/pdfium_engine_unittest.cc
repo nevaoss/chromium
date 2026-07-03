@@ -90,6 +90,7 @@ using ::testing::InSequence;
 using ::testing::IsEmpty;
 using ::testing::Mock;
 using ::testing::NiceMock;
+using ::testing::Optional;
 using ::testing::Pair;
 using ::testing::Return;
 using ::testing::StrictMock;
@@ -144,10 +145,6 @@ void CheckSavedPdfRenderingIsBlank200x200(PDFiumEngine* engine) {
                     kBlankPngFilePath);
 }
 
-GenerateTextIdCallback CreateInkTextIdGenerator(size_t& next_id) {
-  return base::BindLambdaForTesting(
-      [&next_id]() { return InkTextId(next_id++); });
-}
 #endif  // BUILDFLAG(ENABLE_PDF_INK2)
 
 class MockTestClient : public TestClient {
@@ -721,19 +718,19 @@ TEST_P(PDFiumEngineTest, GetPageSizeInPoints) {
 
   ASSERT_EQ(engine.GetNumberOfPages(), 7);
   EXPECT_THAT(engine.GetPageSizeInPoints(/*page_index=*/0),
-              testing::Optional(gfx::SizeF(612.0f, 792.0f)));
+              Optional(gfx::SizeF(612.0f, 792.0f)));
   EXPECT_THAT(engine.GetPageSizeInPoints(/*page_index=*/1),
-              testing::Optional(gfx::SizeF(595.0f, 842.0f)));
+              Optional(gfx::SizeF(595.0f, 842.0f)));
   EXPECT_THAT(engine.GetPageSizeInPoints(/*page_index=*/2),
-              testing::Optional(gfx::SizeF(200.0f, 200.0f)));
+              Optional(gfx::SizeF(200.0f, 200.0f)));
   EXPECT_THAT(engine.GetPageSizeInPoints(/*page_index=*/3),
-              testing::Optional(gfx::SizeF(1000.0f, 200.0f)));
+              Optional(gfx::SizeF(1000.0f, 200.0f)));
   EXPECT_THAT(engine.GetPageSizeInPoints(/*page_index=*/4),
-              testing::Optional(gfx::SizeF(200.0f, 1000.0f)));
+              Optional(gfx::SizeF(200.0f, 1000.0f)));
   EXPECT_THAT(engine.GetPageSizeInPoints(/*page_index=*/5),
-              testing::Optional(gfx::SizeF(1500.0f, 50.0f)));
+              Optional(gfx::SizeF(1500.0f, 50.0f)));
   EXPECT_THAT(engine.GetPageSizeInPoints(/*page_index=*/6),
-              testing::Optional(gfx::SizeF(50.0f, 1500.0f)));
+              Optional(gfx::SizeF(50.0f, 1500.0f)));
   EXPECT_THAT(engine.GetPageSizeInPoints(/*page_index=*/7), std::nullopt);
 }
 
@@ -3145,7 +3142,7 @@ class PDFiumEngineInkDrawTextTest : public PDFiumTestBase {
     ASSERT_EQ(kInkTextAnnotationIdentifierKey,
               base::UTF16ToUTF8(GetPageObjectMarkName(mark)));
     EXPECT_THAT(GetPageObjectMarkIntParam(mark, "TextboxId"),
-                testing::Optional(expected_textbox_id));
+                Optional(expected_textbox_id));
   }
 };
 
@@ -3655,32 +3652,26 @@ TEST_P(PDFiumEngineInkDrawTextTest, DrawTextSavesMetadata) {
     FPDF_PAGEOBJECTMARK mark = FPDFPageObj_GetMark(obj, 0);
     EXPECT_EQ(kInkTextAnnotationIdentifierKey,
               base::UTF16ToUTF8(GetPageObjectMarkName(mark)));
-    EXPECT_THAT(GetPageObjectMarkIntParam(mark, "TextboxId"),
-                testing::Optional(1));
+    EXPECT_THAT(GetPageObjectMarkIntParam(mark, "TextboxId"), Optional(1));
 
     EXPECT_THAT(GetPageObjectMarkIntParam(mark, "Version"),
-                testing::Optional(kInkTextAnnotationVersion));
+                Optional(kInkTextAnnotationVersion));
     // Bounds are converted from CSS pixels to PDF points.
-    EXPECT_THAT(GetPageObjectMarkFloatParam(mark, "BoundsX"),
-                testing::Optional(15.0f));
-    EXPECT_THAT(GetPageObjectMarkFloatParam(mark, "BoundsY"),
-                testing::Optional(15.0f));
+    EXPECT_THAT(GetPageObjectMarkFloatParam(mark, "BoundsX"), Optional(15.0f));
+    EXPECT_THAT(GetPageObjectMarkFloatParam(mark, "BoundsY"), Optional(15.0f));
     EXPECT_THAT(GetPageObjectMarkFloatParam(mark, "BoundsWidth"),
-                testing::Optional(75.0f));
+                Optional(75.0f));
     EXPECT_THAT(GetPageObjectMarkFloatParam(mark, "BoundsHeight"),
-                testing::Optional(75.0f));
+                Optional(75.0f));
     EXPECT_THAT(GetPageObjectMarkIntParam(mark, "Typeface"),
-                testing::Optional(static_cast<int>(TextTypeface::kSansSerif)));
+                Optional(static_cast<int>(TextTypeface::kSansSerif)));
     EXPECT_THAT(GetPageObjectMarkIntParam(mark, "Alignment"),
-                testing::Optional(static_cast<int>(TextAlignment::kLeft)));
-    EXPECT_THAT(GetPageObjectMarkIntParam(mark, "Orientation"),
-                testing::Optional(0));
-    EXPECT_THAT(GetPageObjectMarkIntParam(mark, "IsBold"),
-                testing::Optional(1));
-    EXPECT_THAT(GetPageObjectMarkIntParam(mark, "IsItalic"),
-                testing::Optional(0));
+                Optional(static_cast<int>(TextAlignment::kLeft)));
+    EXPECT_THAT(GetPageObjectMarkIntParam(mark, "Orientation"), Optional(0));
+    EXPECT_THAT(GetPageObjectMarkIntParam(mark, "IsBold"), Optional(1));
+    EXPECT_THAT(GetPageObjectMarkIntParam(mark, "IsItalic"), Optional(0));
     EXPECT_THAT(GetPageObjectMarkStringParam(mark, "Text"),
-                testing::Optional(std::u16string(kExpectedText16)));
+                Optional(std::u16string(kExpectedText16)));
   }
 }
 
@@ -3730,11 +3721,8 @@ TEST_P(PDFiumEngineInkDrawTextTest, DrawTextSaveAndLoad) {
   ASSERT_TRUE(saved_engine);
 
   // Load text annotations from the reloaded PDF.
-  constexpr size_t kStartId = 100;
-  size_t next_id = kStartId;
   DocumentInkTextBoxesMap document_textboxes =
-      saved_engine->LoadTextAnnotationsFromPdf(
-          CreateInkTextIdGenerator(next_id));
+      saved_engine->LoadTextAnnotationsFromPdf();
   ASSERT_EQ(1u, document_textboxes.size());
 
   auto itr = document_textboxes.find(kPageIndex);
@@ -3742,7 +3730,7 @@ TEST_P(PDFiumEngineInkDrawTextTest, DrawTextSaveAndLoad) {
 
   const auto& page_boxes = itr->second;
   ASSERT_EQ(1u, page_boxes.size());
-  EXPECT_EQ(kStartId, page_boxes[0].ink_text_id.value());
+  EXPECT_EQ(0u, page_boxes[0].ink_loaded_text_id.value());
 
   // Verify the loaded attributes have the exact same bounds and properties
   // as the original drawn annotation.
@@ -3761,9 +3749,8 @@ TEST_P(PDFiumEngineInkDrawTextTest, LoadTextAnnotationsFromPdfMultiPages) {
   ASSERT_TRUE(engine);
   ASSERT_EQ(3, engine->GetNumberOfPages());
 
-  size_t next_id = 0;
   DocumentInkTextBoxesMap document_textboxes =
-      engine->LoadTextAnnotationsFromPdf(CreateInkTextIdGenerator(next_id));
+      engine->LoadTextAnnotationsFromPdf();
   ASSERT_EQ(2u, document_textboxes.size());
 
   // Page 0 and Page 2 have text annotations; Page 1 is empty and should be
@@ -3802,8 +3789,7 @@ TEST_P(PDFiumEngineInkDrawTextTest, DrawTextAvoidsTextboxIdCollisions) {
 
   // Load existing annotations to populate `existing_textbox_ids_`.
   // ink_text_multi_textboxes.pdf has textbox IDs 0 and 42.
-  size_t next_id = 0;
-  engine->LoadTextAnnotationsFromPdf(CreateInkTextIdGenerator(next_id));
+  engine->LoadTextAnnotationsFromPdf();
 
   constexpr int kPageIndex = 0;
   PDFiumPage& page = GetPDFiumPage(*engine, kPageIndex);

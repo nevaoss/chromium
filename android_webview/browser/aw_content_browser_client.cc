@@ -24,6 +24,7 @@
 #include "android_webview/browser/aw_devtools_manager_delegate.h"
 #include "android_webview/browser/aw_feature_list_creator.h"
 #include "android_webview/browser/aw_http_auth_handler.h"
+#include "android_webview/browser/aw_http_cache_manager.h"
 #include "android_webview/browser/aw_origin_matched_header.h"
 #include "android_webview/browser/aw_policy_blocklist_service_factory.h"
 #include "android_webview/browser/aw_settings.h"
@@ -362,13 +363,13 @@ AwContentBrowserClient::CreateBrowserMainParts(bool /* is_integration_test */) {
   return std::make_unique<AwBrowserMainParts>(this);
 }
 
-bool AwContentBrowserClient::IsAnyStartupTaskExperimentEnabled() {
-  return AwBrowserMainParts::isWebViewStartupTasksExperimentEnabled() ||
-         AwBrowserMainParts::isWebViewStartupTasksExperimentEnabledP2() ||
-         AwBrowserMainParts::isStartupTaskYieldToNativeExperimentEnabled() ||
-         startup_tasks_logic_enabled_for_testing_ ||
-         startup_tasks_logic_p2_enabled_for_testing_ ||
-         startup_tasks_yield_to_native_experiment_enabled_for_testing_;
+bool AwContentBrowserClient::ShouldRunStartupTasksAsync() {
+  if (!should_run_startup_tasks_async_.has_value()) {
+    should_run_startup_tasks_async_ =
+        AwBrowserMainParts::runStartupTasksAsync();
+  }
+  return *should_run_startup_tasks_async_ ||
+         run_startup_tasks_async_for_testing_;
 }
 
 void AwContentBrowserClient::PostAfterStartupTask(
@@ -376,7 +377,7 @@ void AwContentBrowserClient::PostAfterStartupTask(
     const scoped_refptr<base::SequencedTaskRunner>& task_runner,
     base::OnceClosure task) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  if (!IsAnyStartupTaskExperimentEnabled()) {
+  if (!ShouldRunStartupTasksAsync()) {
     task_runner->PostTask(from_here, std::move(task));
     return;
   }
@@ -398,8 +399,7 @@ void AwContentBrowserClient::OnStartupComplete() {
   DCHECK(!startup_info_.startup_complete);
 
   startup_info_.startup_complete = true;
-  if (AwBrowserMainParts::isStartupTaskYieldToNativeExperimentEnabled() ||
-      startup_tasks_yield_to_native_experiment_enabled_for_testing_) {
+  if (ShouldRunStartupTasksAsync()) {
     YieldToLooperChecker::GetInstance().SetStartupRunning(false);
   }
 
@@ -418,7 +418,7 @@ void AwContentBrowserClient::OnStartupComplete() {
 
 void AwContentBrowserClient::OnUiTaskRunnerReady(
     base::OnceClosure enable_native_task_execution_callback) {
-  if (!IsAnyStartupTaskExperimentEnabled()) {
+  if (!ShouldRunStartupTasksAsync()) {
     std::move(enable_native_task_execution_callback).Run();
     return;
   }
@@ -426,8 +426,7 @@ void AwContentBrowserClient::OnUiTaskRunnerReady(
   startup_info_.enable_native_task_execution_callback =
       std::move(enable_native_task_execution_callback);
 
-  if (AwBrowserMainParts::isStartupTaskYieldToNativeExperimentEnabled() ||
-      startup_tasks_yield_to_native_experiment_enabled_for_testing_) {
+  if (ShouldRunStartupTasksAsync()) {
     YieldToLooperChecker::GetInstance().SetStartupRunning(true);
   }
 }
@@ -532,11 +531,17 @@ AwContentBrowserClient::GetGeneratedCodeCacheSettings(
   // are two code caches that both use this value, so we pass half the the HTTP
   // cache size limit to keep the total cache usage to roughly 2x the HTTP cache
   // limit.
-  int code_cache_limit = 0.5 * GetHttpCacheSize();
+  int http_cache_quota = GetDefaultHttpCacheSize();
+  if (base::FeatureList::IsEnabled(features::kWebViewHttpCacheQuotaApi) &&
+      features::kWebViewHttpCacheQuotaApiAffectsCodeCache.Get()) {
+    http_cache_quota =
+        browser_context->GetHttpCacheManager()->GetQuotaBytes(/*env=*/nullptr);
+  }
+  int code_cache_limit = 0.5 * http_cache_quota;
   if (base::FeatureList::IsEnabled(
           features::kWebViewCacheSizeLimitDerivedFromAppCacheQuota)) {
-    code_cache_limit = features::kWebViewCodeCacheSizeLimitMultiplier.Get() *
-                       GetHttpCacheSize();
+    code_cache_limit =
+        features::kWebViewCodeCacheSizeLimitMultiplier.Get() * http_cache_quota;
   }
 
   return content::GeneratedCodeCacheSettings(

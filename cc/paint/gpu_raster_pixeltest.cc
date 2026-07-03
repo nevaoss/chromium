@@ -251,7 +251,8 @@ class GpuRasterPixelTest : public testing::Test,
         options.full_raster_rect, options.playback_rect, options.post_translate,
         gfx::Vector2dF(options.post_scale, options.post_scale),
         options.requires_clear, /*raster_inducing_scroll_offsets=*/nullptr,
-        &max_op_size_limit);
+        &max_op_size_limit,
+        base::RepeatingCallback<void(SkCanvas*, uint32_t)>());
     for (const auto& list : options.additional_lists) {
       ri->RasterCHROMIUM(list.get(), &image_provider, options.content_size,
                          options.full_raster_rect, options.playback_rect,
@@ -259,7 +260,8 @@ class GpuRasterPixelTest : public testing::Test,
                          gfx::Vector2dF(options.post_scale, options.post_scale),
                          options.requires_clear,
                          /*raster_inducing_scroll_offsets=*/nullptr,
-                         &max_op_size_limit);
+                         &max_op_size_limit,
+                         base::RepeatingCallback<void(SkCanvas*, uint32_t)>());
     }
     ri->EndRasterCHROMIUM();
 
@@ -1329,6 +1331,8 @@ class TestMailboxBacking : public TextureBacking {
 
   const SkImageInfo& GetSkImageInfo() override { return info_; }
   gpu::Mailbox GetMailbox() const override { return mailbox_; }
+  void Bind(scoped_refptr<TextureBackingContext>) override {}
+  void Unbind() override {}
   sk_sp<SkImage> GetSkImageViaReadback() override { return nullptr; }
   bool readPixels(const SkImageInfo& dstInfo,
                   void* dstPixels,

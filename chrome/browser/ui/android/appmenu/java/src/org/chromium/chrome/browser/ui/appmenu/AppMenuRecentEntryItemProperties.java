@@ -17,7 +17,16 @@ public class AppMenuRecentEntryItemProperties {
     public static final WritableObjectPropertyKey<Object> RECENT_ENTRY =
             new WritableObjectPropertyKey<>("RECENT_ENTRY");
 
-    public static final PropertyKey[] RECENT_ENTRY_KEYS = new PropertyKey[] {RECENT_ENTRY};
+    /** The session tag associated with this item if it is a foreign session. */
+    public static final WritableObjectPropertyKey<String> FOREIGN_SESSION_TAG =
+            new WritableObjectPropertyKey<>("FOREIGN_SESSION_TAG");
+
+    /** The foreign session tab associated with this item if it is a foreign session. */
+    public static final WritableObjectPropertyKey<Object> FOREIGN_SESSION_TAB =
+            new WritableObjectPropertyKey<>("FOREIGN_SESSION_TAB");
+
+    public static final PropertyKey[] RECENT_ENTRY_KEYS =
+            new PropertyKey[] {RECENT_ENTRY, FOREIGN_SESSION_TAG, FOREIGN_SESSION_TAB};
 
     public static final PropertyKey[] ALL_KEYS =
             Arrays.copyOf(

@@ -96,7 +96,6 @@
 <translation id="1953553007165777902">ڈاؤن لوڈ ہو رہی ہے… <ph name="MINUTE" /> منٹ(منٹس) باقی ہے</translation>
 <translation id="1979600810166324878">‏‫iOS کے لیے Chrome پر بہتر کردہ محفوظ براؤزنگ کے ساتھ دوران سفر زیادہ محفوظ رہیں</translation>
 <translation id="2001586581944147178">‏آپ کے انٹرنیٹ ٹریفک تک رسائی والے لوگوں کے لیے یہ دیکھنا مشکل بنائیں کہ آپ کون سی سائٹس ملاحظہ کرتے ہیں۔ Chrome ‏DNS (ڈومین ناموں کے نظام) میں سائٹ کا IP پتہ تلاش کرنے کے لیے ایک محفوظ کنکشن کا استعمال کرتا ہے۔</translation>
-<translation id="2008942457798486387">{NUM_EXTENSIONS,plural, =1{‏یہ ایکسٹینشن اب مزید تعاون یافتہ نہیں ہے۔ ‫Chrome تجویز کرتا ہے کہ آپ اسے ہٹا دیں۔}other{‏یہ ایکسٹینشنز اب مزید تعاون یافتہ نہیں ہیں۔ ‫Chrome تجویز کرتا ہے کہ آپ انہیں ہٹا دیں۔}}</translation>
 <translation id="2018528049276128029">‏ہر پروفائل میں بُک مارکس، سرگزشت اور پاس ورڈز وغیرہ جیسی Chrome کی اپنی ذاتی معلومات ہوتی ہے</translation>
 <translation id="2018879682492276940">انسٹالیشن ناکام ہو گئی۔ دوبارہ کوشش کریں۔</translation>
 <translation id="2024959665595762054">‏اپنے Google اکاؤنٹ میں Chrome ڈیٹا استعمال کرنے اور اسے محفوظ کرنے کیلئے، توثیق کریں کہ یہ آپ ہی ہیں</translation>
@@ -192,6 +191,7 @@
 <translation id="2945997411976714835">انسٹال سے متعلق خرابی: انسٹالر کا عمل شروع ہونے میں ناکام رہا۔</translation>
 <translation id="2969728957078202736">‏<ph name="PAGE_TITLE" /> - نیٹ ورک سائن ان - Chrome</translation>
 <translation id="2970681950995291301">‏اپنے Google اکاؤنٹ کو Chrome سے ہٹانے کے لیے، ترتیبات کے صفحے میں Chrome سے سائن آؤٹ کریں</translation>
+<translation id="2976869732253036751">‏اپنے فون پر Chrome کے ساتھ قیمت کی ٹریکنگ کے الرٹس حاصل کریں</translation>
 <translation id="2991167882679440829">‏آپ کے پاس ورڈز اور دیگر Chrome ڈیٹا جو آپ نے اپنے Google اکاؤنٹ میں محفوظ کیا ہے انہیں اس آلہ سے ہٹا دیا جائے گا۔ انہیں Chrome میں دوبارہ استعمال کرنے کے لیے، دوبارہ سائن ان کریں۔</translation>
 <translation id="2994465299455873643">مرموز کاری کی سروسز اور <ph name="BROWSER_NAME" /> کے پرانے ہونے پر اسے بازیاب کرنے کا محفوظ طریقہ فراہم کرتا ہے۔ اگر یہ سروس غیر فعال کر دی جائے، تو <ph name="BROWSER_NAME" /> مرموز کردہ ڈیٹا تک رسائی سے محروم ہو سکتا ہے اور ممکن ہے <ph name="BROWSER_NAME" /> اپنی بازیافت پر قادر نہ ہو۔</translation>
 <translation id="3003694935412297923">سبھی ٹاسکس</translation>
@@ -387,6 +387,7 @@
 <translation id="5127558335897923940">‏کسی بھی وقت تیزی سے پہنچنے کے لیے Chrome کو اپنے ڈاک میں رکھیں</translation>
 <translation id="5132929315877954718">‏Google Chrome کیلئے زبردست اطلاقات، گیمز، ایکسٹینشنز اور تھیمز کو دریافت کریں۔</translation>
 <translation id="5139423532931106058">‏اپنی Chrome پروفائل کو حسب ضرورت بنائیں</translation>
+<translation id="5152381187352661267">‏‫Chrome میں مہارتیں</translation>
 <translation id="5163087008893166964">‏Chrome میں آپ کا استقبال ہے، براؤزر کی نئی ونڈو کھلی</translation>
 <translation id="5166439563123238795">‏آپ کے ہاتھوں کو ٹریک کرنے کے لیے Chrome کو اجازت درکار ہے</translation>
 <translation id="5169778651486082413">‏اپنے فون پر Chrome کے ساتھ اپنے پاس ورڈز کا استعمال کریں</translation>
@@ -486,6 +487,7 @@ Google Chrome آپ کی ترتیبات کو بازیافت کرنے سے قاص�
 <translation id="6070348360322141662">‏اضافی سیکیورٹی کیلئے، Google Chrome آپ کا ڈیٹا مرموز کر دے گا</translation>
 <translation id="6075300983329039771">‏آپ کی تنظیم، <ph name="MANAGER" />، چاہتی ہے کہ آپ Chrome میں سائن ان کریں</translation>
 <translation id="6113794647360055231">‏Chrome اور بھی بہتر ہوگیا ہے</translation>
+<translation id="6116004140911290070">‏‫Chrome میں مہارتوں کو فعال کریں</translation>
 <translation id="6116252277240876590">‏اس زبان کا استعمال Chrome میں مینوز، ترتیبات، الرٹس اور دیگر ٹیکسٹ ڈسپلے کرنے کے لیے کیا جاتا ہے</translation>
 <translation id="6127237283587442951">‏‫Chrome کو بطور ڈیفالٹ استعمال کریں اور اسے پن کریں</translation>
 <translation id="6134085236017727171">‏اپنا مائیکروفون استعمال کرنے کے لیے، <ph name="BEGIN_LINK" />سسٹم کی ترتیبات<ph name="END_LINK" /> میں Chrome کو رسائی فراہم کریں</translation>
@@ -645,6 +647,7 @@ Google Chrome آپ کی ترتیبات کو بازیافت کرنے سے قاص�
 <translation id="7606334485649076285">Google ChromeOS Flex</translation>
 <translation id="7627609214560473136">‏اپنے ڈیٹا کی حفاظت کے لیے، Chrome کو ان سائٹس سے اجازتیں ہٹانے کی اجازت دیں جنہیں آپ نے حال ہی میں ملاحظہ نہیں کیا ہے۔</translation>
 <translation id="7629695634924605473">‏Chrome آپ کو بتاتا ہے کہ آیا آپ کے پاس ورڈز کے ساتھ کبھی چھیڑ چھاڑ کی گئی ہے</translation>
+<translation id="7629898584100520089">‏AI اختراعات جیسی مہارتیں آپ کے Google اکاؤنٹ میں محفوظ ہوتی ہیں اور ان کا نظم Chrome Sync سے علیحدہ طور پر کیا جاتا ہے</translation>
 <translation id="7641148173327520642">‏آپ کے سسٹم کے منتظم نے <ph name="TARGET_URL_HOSTNAME" /> تک رسائی حاصل کرنے کیلئے Google Chrome کو <ph name="ALTERNATIVE_BROWSER_NAME" /> کھولنے کیلئے کنفیگر کیا ہے۔</translation>
 <translation id="7649070708921625228">مدد</translation>
 <translation id="7651907282515937834">‏Chrome انٹرپرائز کا لوگو</translation>

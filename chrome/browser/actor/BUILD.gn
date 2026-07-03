@@ -482,6 +482,7 @@ source_set("browser_tests") {
       "tools/observation_delay_metrics_browsertest.cc",
       "tools/page_stability_browsertest.cc",
       "tools/page_stability_metrics_browsertest.cc",
+      "tools/page_target_util_browsertest.cc",
       "tools/page_tool_browsertest.cc",
       "tools/script_tool_browsertest.cc",
       "tools/scroll_to_tool_browsertest.cc",
@@ -510,6 +511,7 @@ if (!skip_android_unmigrated_actor_files) {
     defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
     sources = [
       "tools/attempt_login_tool_interactive_ui_test.cc",
+      "tools/click_tool_interactive_ui_test.cc",
       "tools/select_tool_interactive_ui_test.cc",
     ]
     deps = [
@@ -523,6 +525,7 @@ if (!skip_android_unmigrated_actor_files) {
       "//chrome/browser/ui:ui_features",
       "//components/favicon/core/test:test_support",
       "//content/test:browsertest_support",
+      "//pdf:features",
       "//testing/gtest",
       "//ui/base/interaction:test_support",
     ]

@@ -61,110 +61,14 @@
 
 namespace crosapi {
 
-LocalPrinterAsh::LocalPrinterAsh() {
-  auto* profile_manager = g_browser_process->profile_manager();
-  if (profile_manager) {
-    profile_manager_observer_.Observe(profile_manager);
-  }
-}
+LocalPrinterAsh::LocalPrinterAsh() = default;
 
 LocalPrinterAsh::~LocalPrinterAsh() = default;
-
-// static
-mojom::PrintServersConfigPtr LocalPrinterAsh::ConfigToMojom(
-    const ash::PrintServersConfig& config) {
-  mojom::PrintServersConfigPtr ptr = mojom::PrintServersConfig::New();
-  ptr->fetching_mode = config.fetching_mode;
-  for (const ash::PrintServer& server : config.print_servers) {
-    ptr->print_servers.push_back(mojom::PrintServer::New(
-        server.GetId(), server.GetUrl(), server.GetName()));
-  }
-  return ptr;
-}
 
 void LocalPrinterAsh::BindReceiver(
     mojo::PendingReceiver<mojom::LocalPrinter> pending_receiver) {
   receivers_.Add(this, std::move(pending_receiver));
 }
-
-void LocalPrinterAsh::OnProfileAdded(Profile* profile) {
-  if (observers_registered_ || !ash::ProfileHelper::IsPrimaryProfile(profile)) {
-    return;
-  }
-
-  auto* printers_manager_factory =
-      ash::CupsPrintersManagerFactory::GetForBrowserContext(profile);
-  // In unit tests, `printers_manager_factory` can be null.
-  if (!printers_manager_factory) {
-    LOG(ERROR) << "CupsPrintersManagerFactory object not found";
-    return;
-  }
-  observers_registered_ = true;
-  // RemoveObserver() is not called since this object outlasts the
-  // BrowserContextKeyedServices it's observing -
-  // BrowserContextKeyedServices are destroyed in
-  // ChromeBrowserMainParts::PostMainMessageLoopRun() while this object is
-  // destroyed in ~ChromeBrowserMainParts().
-  auto* print_servers_manager =
-      printers_manager_factory->GetPrintServersManager();
-  if (print_servers_manager) {
-    print_servers_manager->AddObserver(this);
-  } else {
-    // This can occur during browser tests.
-    LOG(ERROR) << "PrintServersManager object not found";
-  }
-}
-
-void LocalPrinterAsh::OnProfileManagerDestroying() {
-  profile_manager_observer_.Reset();
-}
-
-void LocalPrinterAsh::OnPrintServersChanged(
-    const ash::PrintServersConfig& config) {
-  for (auto& remote : print_server_remotes_) {
-    remote->OnPrintServersChanged(LocalPrinterAsh::ConfigToMojom(config));
-  }
-}
-
-void LocalPrinterAsh::OnServerPrintersChanged(
-    const std::vector<ash::PrinterDetector::DetectedPrinter>&) {
-  for (auto& remote : print_server_remotes_) {
-    remote->OnServerPrintersChanged();
-  }
-}
-
-void LocalPrinterAsh::GetPrintServersConfig(
-    GetPrintServersConfigCallback callback) {
-  Profile* profile = GetProfile();
-  DCHECK(profile);
-  ash::PrintServersManager* print_servers_manager =
-      ash::CupsPrintersManagerFactory::GetForBrowserContext(profile)
-          ->GetPrintServersManager();
-  std::move(callback).Run(
-      ConfigToMojom(print_servers_manager->GetPrintServersConfig()));
-}
-
-void LocalPrinterAsh::ChoosePrintServers(
-    const std::vector<std::string>& print_server_ids,
-    ChoosePrintServersCallback callback) {
-  Profile* profile = GetProfile();
-  DCHECK(profile);
-  ash::PrintServersManager* print_servers_manager =
-      ash::CupsPrintersManagerFactory::GetForBrowserContext(profile)
-          ->GetPrintServersManager();
-  print_servers_manager->ChoosePrintServer(print_server_ids);
-  std::move(callback).Run();
-}
-
-void LocalPrinterAsh::AddPrintServerObserver(
-    mojo::PendingRemote<mojom::PrintServerObserver> remote,
-    AddPrintServerObserverCallback callback) {
-  print_server_remotes_.Add(std::move(remote));
-  std::move(callback).Run();
-}
-
-
-
 
 void LocalPrinterAsh::GetPrinterTypeDenyList(
     GetPrinterTypeDenyListCallback callback) {

@@ -66,6 +66,16 @@ ParseStatus::Or<scoped_refptr<MediaPlaylist>> MediaPlaylist::Parse(
     return ParseStatusCode::kInvalidUri;
   }
 
+  GURL resolution_uri;
+  if (playlist_uri.SchemeIs("data")) {
+    if (!parent_playlist) {
+      return ParseStatusCode::kInvalidUri;
+    }
+    resolution_uri = parent_playlist->Uri();
+  } else {
+    resolution_uri = playlist_uri;
+  }
+
   SourceLineIterator src_iter{source};
 
   // Parse the first line of the playlist. This must be an M3U tag.
@@ -242,7 +252,7 @@ ParseStatus::Or<scoped_refptr<MediaPlaylist>> MediaPlaylist::Parse(
             encryption_data = nullptr;
           } else {
             auto declared_uri_value = value.uri.value().Str();
-            auto resource_uri = playlist_uri.Resolve(declared_uri_value);
+            auto resource_uri = resolution_uri.Resolve(declared_uri_value);
             if (!resource_uri.is_valid()) {
               return ParseStatusCode::kInvalidUri;
             }
@@ -255,7 +265,7 @@ ParseStatus::Or<scoped_refptr<MediaPlaylist>> MediaPlaylist::Parse(
                   MediaSegment::EncryptionData::KeyLocation::kSafeOrigin;
             } else if (url::Origin::Create(resource_uri)
                            .IsSameOriginWith(
-                               url::Origin::Create(playlist_uri))) {
+                               url::Origin::Create(resolution_uri))) {
               // Same-origin URLs (including resolved path-only URLs) are
               // considered safe as well.
               key_location =
@@ -280,7 +290,7 @@ ParseStatus::Or<scoped_refptr<MediaPlaylist>> MediaPlaylist::Parse(
           auto value = std::move(result).value();
 
           // Resolve the URI against the playlist URI
-          auto resource_uri = playlist_uri.Resolve(value.uri.Str());
+          auto resource_uri = resolution_uri.Resolve(value.uri.Str());
           if (!resource_uri.is_valid()) {
             return ParseStatusCode::kInvalidUri;
           }
@@ -374,8 +384,10 @@ ParseStatus::Or<scoped_refptr<MediaPlaylist>> MediaPlaylist::Parse(
     // `GetNextLineItem` should return either a TagItem (handled above) or a
     // UriItem.
     static_assert(std::variant_size<GetNextLineItemResult>() == 2);
-    auto segment_uri_result = ParseUri(std::get<UriItem>(std::move(item)),
-                                       playlist_uri, common_state, sub_buffer);
+
+    auto segment_uri_result =
+        ParseUri(std::get<UriItem>(std::move(item)), resolution_uri,
+                 common_state, sub_buffer);
     if (!segment_uri_result.has_value()) {
       return std::move(segment_uri_result).error();
     }

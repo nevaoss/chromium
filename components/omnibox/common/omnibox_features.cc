@@ -386,6 +386,13 @@ BASE_FEATURE(kComposeboxDriveContextMenuOption, DISABLED);
 // composebox.
 BASE_FEATURE(kComposeboxDriveContextMenuOptionDisclaimer, DISABLED);
 
+// Whether to force the Google Drive disclaimer to be accepted. This flag is
+// only used for testing purposes since dasher accounts are not allowed to
+// consent via pContext.
+BASE_FEATURE(kForceDriveDisclaimerAccepted,
+             "ForceDriveDisclaimerAccepted",
+             DISABLED);
+
 // Whether the composebox should show a verbatim match for context in
 // zero-suggest.
 BASE_FEATURE(kComposeboxVerbatimMatchZeroSuggest, ENABLED);
@@ -397,8 +404,6 @@ BASE_FEATURE(kDisableComposeboxWarmupRequests, DISABLED);
 BASE_FEATURE(kAimUrlInterceptPassthrough, DISABLED);
 
 BASE_FEATURE(kOmniboxDebugLogs, base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kThinkingModelIconUpdate, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Kill switch - Enables voice search coherence across composeboxes in NTP,
 // cobrowsing, omnibox by default, unless feature param overrides.

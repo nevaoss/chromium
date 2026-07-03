@@ -56,6 +56,8 @@ source_set("impl") {
     "//base",
     "//chrome/android:chrome_jni_headers",
     "//chrome/browser/android:resource_mapper",
+    "//chrome/browser/ui/android/tab_model",
+    "//chrome/browser/ui/autofill",
     "//chrome/browser/ui/autofill/payments",
     "//components/affiliations/core/browser:affiliations",
     "//components/autofill/android:keyboard_suppressor",
@@ -72,7 +74,7 @@ source_set("unit_tests") {
 
   sources = [
     "touch_to_fill_delegate_android_impl_unittest.cc",
-    "touch_to_fill_payment_method_controller_unittest.cc",
+    "touch_to_fill_payment_method_controller_impl_unittest.cc",
     "touch_to_fill_payment_method_quality_metrics_unittest.cc",
   ]
 
@@ -81,6 +83,7 @@ source_set("unit_tests") {
     ":public",
     "//base",
     "//base/test:test_support",
+    "//chrome/browser/ui/android/tab_model:test_support",
     "//chrome/browser/ui/autofill/payments",
     "//chrome/test:test_support",
     "//components/autofill/content/browser",

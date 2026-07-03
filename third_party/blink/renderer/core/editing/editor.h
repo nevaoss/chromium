@@ -163,7 +163,7 @@ class CORE_EXPORT Editor final : public GarbageCollected<Editor> {
 
   void Clear();
 
-  SelectionInDOMTree SelectionForCommand(Event*);
+  SelectionInDomTree SelectionForCommand(Event*);
 
   KillRing& GetKillRing() const { return *kill_ring_; }
 

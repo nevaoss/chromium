@@ -183,6 +183,7 @@ public class TabGroupListBottomSheetCoordinator {
 
     /** Permanently cleans up this component. */
     public void destroy() {
+        mMediator.destroy();
         mSimpleRecyclerViewAdapter.destroy();
         mTabListFaviconProvider.destroy();
     }

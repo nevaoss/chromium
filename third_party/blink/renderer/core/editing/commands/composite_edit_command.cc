@@ -128,7 +128,7 @@ CompositeEditCommand::CompositeEditCommand(Document& document,
   // Migrated commands read this via StartingDomSelection() /
   // EndingDomSelection() to see the selection as the user authored it.
   starting_dom_selection_ =
-      SelectionForUndoStep::From(frame_selection.GetSelectionInDOMTree());
+      SelectionForUndoStep::From(frame_selection.GetSelectionInDomTree());
   ending_dom_selection_ = starting_dom_selection_;
 }
 
@@ -1208,9 +1208,13 @@ void CompositeEditCommand::PushAnchorElementDown(Element* anchor_node,
   DCHECK(anchor_node->IsLink()) << anchor_node;
 
   const VisibleSelection& visible_selection = CreateVisibleSelection(
-      SelectionInDOMTree::Builder().SelectAllChildren(*anchor_node).Build());
+      SelectionInDomTree::Builder().SelectAllChildren(*anchor_node).Build());
   SetEndingSelection(
       SelectionForUndoStep::From(visible_selection.AsSelection()));
+  if (RuntimeEnabledFeatures::EditingUseDomPositionApiEnabled()) {
+    SetEndingDomSelection(
+        SelectionForUndoStep::From(visible_selection.AsSelection()));
+  }
   ApplyStyledElement(anchor_node, editing_state);
   if (editing_state->IsAborted())
     return;
@@ -1323,7 +1327,11 @@ void CompositeEditCommand::CloneParagraphUnderNewElement(
 // empty or unrendered parents).
 
 void CompositeEditCommand::CleanupAfterDeletion(EditingState* editing_state) {
-  CleanupAfterDeletion(editing_state, VisiblePosition());
+  if (RuntimeEnabledFeatures::EditingUseDomPositionApiEnabled()) {
+    CleanupAfterDeletion(editing_state, Position());
+  } else {
+    CleanupAfterDeletion(editing_state, VisiblePosition());
+  }
 }
 
 void CompositeEditCommand::CleanupAfterDeletion(EditingState* editing_state,
@@ -1375,6 +1383,63 @@ void CompositeEditCommand::CleanupAfterDeletion(EditingState* editing_state,
   }
 }
 
+void CompositeEditCommand::CleanupAfterDeletion(EditingState* editing_state,
+                                                const Position& destination) {
+  GetDocument().UpdateStyleAndLayout(DocumentUpdateReason::kEditing);
+
+  const VisiblePosition caret_after_delete =
+      EndingVisibleSelection().VisibleStart();
+  const Position caret_position = caret_after_delete.DeepEquivalent();
+  Node* destination_node = destination.AnchorNode();
+  if (caret_position != destination && IsStartOfParagraph(caret_after_delete) &&
+      IsEndOfParagraph(caret_after_delete)) {
+    // Note: We want the rightmost candidate.
+    Position position = MostForwardCaretPosition(caret_position);
+    if (position.IsNull()) {
+      return;
+    }
+    Node* node = position.AnchorNode();
+    if (!node) {
+      return;
+    }
+
+    // InsertListCommandTest.CleanupNodeSameAsDestinationNode reaches here.
+    ABORT_EDITING_COMMAND_IF(destination_node == node);
+    // Bail if we'd remove an ancestor of our destination.
+    if (destination_node && destination_node->IsDescendantOf(node)) {
+      return;
+    }
+
+    // Normally deletion will leave a br as a placeholder.
+    if (IsA<HTMLBRElement>(*node)) {
+      RemoveNodeAndPruneAncestors(node, editing_state, destination_node);
+
+      // If the selection to move was empty and in an empty block that
+      // doesn't require a placeholder to prop itself open (like a bordered
+      // div or an li), remove it during the move (the list removal code
+      // expects this behavior).
+    } else if (IsEnclosingBlock(node)) {
+      // If caret position after deletion and destination position coincides,
+      // node should not be removed.
+      if (!RendersInDifferentPosition(position, destination)) {
+        Prune(node, editing_state, destination_node);
+        return;
+      }
+      RemoveNodeAndPruneAncestors(node, editing_state, destination_node);
+    } else if (LineBreakExistsAtPosition(position)) {
+      // There is a preserved '\n' at caretAfterDelete.
+      // We can safely assume this is a text node.
+      auto* text_node = To<Text>(node);
+      if (text_node->length() == 1) {
+        RemoveNodeAndPruneAncestors(node, editing_state, destination_node);
+      } else {
+        DeleteTextFromNode(text_node, position.ComputeOffsetInContainerNode(),
+                           1);
+      }
+    }
+  }
+}
+
 // This is a version of moveParagraph that preserves style by keeping the
 // original markup. It is currently used only by IndentOutdentCommand but it is
 // meant to be used in the future by several other commands such as InsertList
@@ -1418,7 +1483,11 @@ void CompositeEditCommand::MoveParagraphWithClones(
                                 editing_state);
 
   SetEndingSelection(SelectionForUndoStep::From(
-      SelectionInDOMTree::Builder().Collapse(start).Extend(end).Build()));
+      SelectionInDomTree::Builder().Collapse(start).Extend(end).Build()));
+  if (RuntimeEnabledFeatures::EditingUseDomPositionApiEnabled()) {
+    SetEndingDomSelection(SelectionForUndoStep::From(
+        SelectionInDomTree::Builder().Collapse(start).Extend(end).Build()));
+  }
   if (!DeleteSelection(
           editing_state,
           DeleteSelectionOptions::Builder().SetSanitizeMarkup(true).Build()))
@@ -1476,6 +1545,57 @@ void CompositeEditCommand::MoveParagraph(
   MoveParagraphs(start_of_paragraph_to_move, end_of_paragraph_to_move,
                  destination, editing_state, should_preserve_selection,
                  should_preserve_style, constraining_ancestor);
+}
+
+std::pair<Position, Position> CompositeEditCommand::ComputeNormalizedMoveRange(
+    const Position& start_of_paragraph,
+    const Position& end_of_paragraph) {
+  DCHECK_LE(start_of_paragraph, end_of_paragraph);
+
+  // We upstream() the end and downstream() the start so that we don't include
+  // collapsed whitespace in the move. When we paste a fragment, spaces after
+  // the end and before the start are treated as though they were rendered.
+  Position start = MostForwardCaretPosition(start_of_paragraph);
+  Position end = MostBackwardCaretPosition(end_of_paragraph);
+  if (RuntimeEnabledFeatures::
+          AvoidNormalizingVisiblePositionsWhenStartEqualsEndEnabled() &&
+      start_of_paragraph == end_of_paragraph) {
+    start = start_of_paragraph;
+    end = end_of_paragraph;
+  }
+  if (end < start) {
+    end = start;
+  }
+  return {start, end};
+}
+
+EditingStyle* CompositeEditCommand::CaptureStyleInEmptyParagraph(
+    const Position& start_of_paragraph) {
+  // An empty paragraph can have style too (e.g. <div><b><br></b></div>). The
+  // caller must only invoke this when the paragraph is empty and style
+  // preservation is requested; non-empty paragraphs carry their style via the
+  // copied fragment.
+  auto* style = MakeGarbageCollected<EditingStyle>(start_of_paragraph);
+  style->MergeTypingStyle(&GetDocument());
+  // The moved paragraph should assume the block style of the destination.
+  style->RemoveBlockProperties(GetDocument().GetExecutionContext());
+  return style;
+}
+
+void CompositeEditCommand::SetEndingSelectionToDelete(const Position& start,
+                                                      const Position& end) {
+  const SelectionInDomTree selection_to_delete =
+      SelectionInDomTree::Builder().Collapse(start).Extend(end).Build();
+  const SelectionForUndoStep undo_step =
+      RuntimeEnabledFeatures::
+              RemoveSelectionCanonicalizationInMoveParagraphEnabled()
+          ? SelectionForUndoStep::From(selection_to_delete)
+          : SelectionForUndoStep::From(
+                CreateVisibleSelection(selection_to_delete).AsSelection());
+  SetEndingSelection(undo_step);
+  if (RuntimeEnabledFeatures::EditingUseDomPositionApiEnabled()) {
+    SetEndingDomSelection(undo_step);
+  }
 }
 
 void CompositeEditCommand::MoveParagraphs(
@@ -1567,30 +1687,21 @@ void CompositeEditCommand::MoveParagraphs(
           NextPositionOf(end_of_paragraph_to_move, kCannotCrossEditingBoundary)
               .DeepEquivalent());
 
-  const Position& start_candidate = start_of_paragraph_to_move.DeepEquivalent();
-  const Position& end_candidate = end_of_paragraph_to_move.DeepEquivalent();
-  DCHECK_LE(start_candidate, end_candidate);
+  // Empty-paragraph check uses the unnormalized DeepEquivalents on purpose;
+  // it is not equivalent to `start == end` after caret normalization below.
+  const Position start_of_paragraph =
+      start_of_paragraph_to_move.DeepEquivalent();
+  const Position end_of_paragraph = end_of_paragraph_to_move.DeepEquivalent();
+  const bool is_empty_paragraph = start_of_paragraph == end_of_paragraph;
 
-  // We upstream() the end and downstream() the start so that we don't include
-  // collapsed whitespace in the move. When we paste a fragment, spaces after
-  // the end and before the start are treated as though they were rendered.
-  Position start = MostForwardCaretPosition(start_candidate);
-  Position end = MostBackwardCaretPosition(end_candidate);
-  if (RuntimeEnabledFeatures::
-          AvoidNormalizingVisiblePositionsWhenStartEqualsEndEnabled() &&
-      start_candidate == end_candidate) {
-    start = start_candidate;
-    end = end_candidate;
-  }
-  if (end < start)
-    end = start;
+  auto [start, end] =
+      ComputeNormalizedMoveRange(start_of_paragraph, end_of_paragraph);
 
   // FIXME: This is an inefficient way to preserve style on nodes in the
   // paragraph to move. It shouldn't matter though, since moved paragraphs will
   // usually be quite small.
   DocumentFragment* fragment = nullptr;
-  if (start_of_paragraph_to_move.DeepEquivalent() !=
-      end_of_paragraph_to_move.DeepEquivalent()) {
+  if (!is_empty_paragraph) {
     const String paragraphs_markup = CreateMarkup(
         start.ParentAnchoredEquivalent(), end.ParentAnchoredEquivalent(),
         CreateMarkupOptions::Builder()
@@ -1601,42 +1712,22 @@ void CompositeEditCommand::MoveParagraphs(
         GetDocument(), paragraphs_markup, 0, paragraphs_markup.length(), "");
   }
 
-  // A non-empty paragraph's style is moved when we copy and move it.  We don't
-  // move anything if we're given an empty paragraph, but an empty paragraph can
-  // have style too, <div><b><br></b></div> for example.  Save it so that we can
-  // preserve it later.
-  EditingStyle* style_in_empty_paragraph = nullptr;
-  if (start_of_paragraph_to_move.DeepEquivalent() ==
-          end_of_paragraph_to_move.DeepEquivalent() &&
-      should_preserve_style == kPreserveStyle) {
-    style_in_empty_paragraph = MakeGarbageCollected<EditingStyle>(
-        start_of_paragraph_to_move.DeepEquivalent());
-    style_in_empty_paragraph->MergeTypingStyle(&GetDocument());
-    // The moved paragraph should assume the block style of the destination.
-    style_in_empty_paragraph->RemoveBlockProperties(
-        GetDocument().GetExecutionContext());
-  }
+  EditingStyle* style_in_empty_paragraph =
+      (is_empty_paragraph && should_preserve_style == kPreserveStyle)
+          ? CaptureStyleInEmptyParagraph(start_of_paragraph)
+          : nullptr;
 
   // FIXME (5098931): We should add a new insert action
   // "WebViewInsertActionMoved" and call shouldInsertFragment here.
 
   DCHECK(!GetDocument().NeedsLayoutTreeUpdate());
 
-  if (RuntimeEnabledFeatures::
-          RemoveSelectionCanonicalizationInMoveParagraphEnabled()) {
-    SetEndingSelection(SelectionForUndoStep::From(
-        SelectionInDOMTree::Builder().Collapse(start).Extend(end).Build()));
-  } else {
-    const VisibleSelection& selection_to_delete = CreateVisibleSelection(
-        SelectionInDOMTree::Builder().Collapse(start).Extend(end).Build());
-    SetEndingSelection(
-        SelectionForUndoStep::From(selection_to_delete.AsSelection()));
-  }
+  SetEndingSelectionToDelete(start, end);
 
   if (RuntimeEnabledFeatures::
           PartialCompletionNotAllowedInMoveParagraphsEnabled()) {
     const VisibleSelection& destination_selection = CreateVisibleSelection(
-        SelectionInDOMTree::Builder()
+        SelectionInDomTree::Builder()
             .Collapse(destination.ToPositionWithAffinity())
             .Build());
     if (!destination_selection.RootEditableElement() ||
@@ -1651,7 +1742,11 @@ void CompositeEditCommand::MoveParagraphs(
   }
 
   DCHECK(destination.DeepEquivalent().IsConnected()) << destination;
-  CleanupAfterDeletion(editing_state, destination);
+  if (RuntimeEnabledFeatures::EditingUseDomPositionApiEnabled()) {
+    CleanupAfterDeletion(editing_state, destination.DeepEquivalent());
+  } else {
+    CleanupAfterDeletion(editing_state, destination);
+  }
   if (editing_state->IsAborted())
     return;
   DCHECK(destination.DeepEquivalent().IsConnected()) << destination;
@@ -1698,7 +1793,7 @@ void CompositeEditCommand::MoveParagraphs(
         TextIteratorBehavior::AllVisiblePositionsRangeLengthBehavior());
   }
   const VisibleSelection& destination_selection =
-      CreateVisibleSelection(SelectionInDOMTree::Builder()
+      CreateVisibleSelection(SelectionInDomTree::Builder()
                                  .Collapse(destination.ToPositionWithAffinity())
                                  .Build());
   if (EndingSelection().IsNone()) {
@@ -1708,6 +1803,10 @@ void CompositeEditCommand::MoveParagraphs(
   }
   SetEndingSelection(
       SelectionForUndoStep::From(destination_selection.AsSelection()));
+  if (RuntimeEnabledFeatures::EditingUseDomPositionApiEnabled()) {
+    SetEndingDomSelection(
+        SelectionForUndoStep::From(destination_selection.AsSelection()));
+  }
   ReplaceSelectionCommand::CommandOptions options =
       ReplaceSelectionCommand::kSelectReplacement |
       ReplaceSelectionCommand::kMovingParagraph;
@@ -1758,12 +1857,16 @@ void CompositeEditCommand::MoveParagraphs(
   if (end_range.IsNull())
     return;
   const VisibleSelection& visible_selection =
-      CreateVisibleSelection(SelectionInDOMTree::Builder()
+      CreateVisibleSelection(SelectionInDomTree::Builder()
                                  .Collapse(start_range.StartPosition())
                                  .Extend(end_range.StartPosition())
                                  .Build());
   SetEndingSelection(
       SelectionForUndoStep::From(visible_selection.AsSelection()));
+  if (RuntimeEnabledFeatures::EditingUseDomPositionApiEnabled()) {
+    SetEndingDomSelection(
+        SelectionForUndoStep::From(visible_selection.AsSelection()));
+  }
 }
 
 // FIXME: Send an appropriate shouldDeleteRange call.
@@ -1878,9 +1981,15 @@ bool CompositeEditCommand::BreakOutOfEmptyListItem(
     return false;
 
   SetEndingSelection(SelectionForUndoStep::From(
-      SelectionInDOMTree::Builder()
+      SelectionInDomTree::Builder()
           .Collapse(Position::FirstPositionInNode(*new_block))
           .Build()));
+  if (RuntimeEnabledFeatures::EditingUseDomPositionApiEnabled()) {
+    SetEndingDomSelection(SelectionForUndoStep::From(
+        SelectionInDomTree::Builder()
+            .Collapse(Position::FirstPositionInNode(*new_block))
+            .Build()));
+  }
 
   style->PrepareToApplyAt(EndingSelection().Start());
   if (!style->IsEmpty()) {
@@ -1939,10 +2048,16 @@ bool CompositeEditCommand::BreakOutOfEmptyMailBlockquotedParagraph(
       return false;
     GetDocument().UpdateStyleAndLayout(DocumentUpdateReason::kEditing);
   }
-  SetEndingSelection(SelectionForUndoStep::From(
-      SelectionInDOMTree::Builder()
-          .Collapse(at_br.ToPositionWithAffinity())
-          .Build()));
+  SetEndingSelection(
+      SelectionForUndoStep::From(SelectionInDomTree::Builder()
+                                     .Collapse(at_br.ToPositionWithAffinity())
+                                     .Build()));
+  if (RuntimeEnabledFeatures::EditingUseDomPositionApiEnabled()) {
+    SetEndingDomSelection(
+        SelectionForUndoStep::From(SelectionInDomTree::Builder()
+                                       .Collapse(at_br.ToPositionWithAffinity())
+                                       .Build()));
+  }
 
   // If this is an empty paragraph there must be a line break here.
   if (!LineBreakExistsAtVisiblePosition(caret))
@@ -2219,7 +2334,7 @@ void CompositeEditCommand::AppliedEditing() {
       TextDataForInputEvent(), IsComposingFromCommand(this),
       data_transfer_.Get());
 
-  const SelectionInDOMTree& new_selection =
+  const SelectionInDomTree& new_selection =
       CorrectedSelectionAfterCommand(EndingSelection(), &GetDocument());
 
   // Don't clear the typing style with this selection change. We do those things
@@ -2246,6 +2361,10 @@ void CompositeEditCommand::AppliedEditing() {
     }
     last_edit_command->EnsureUndoStep()->SetEndingSelection(
         EnsureUndoStep()->EndingSelection());
+    if (RuntimeEnabledFeatures::EditingUseDomPositionApiEnabled()) {
+      last_edit_command->EnsureUndoStep()->SetEndingDomSelection(
+          EnsureUndoStep()->EndingDomSelection());
+    }
     last_edit_command->GetUndoStep()->SetSelectionIsDirectional(
         GetUndoStep()->SelectionIsDirectional());
     editor.GetUndoStack().DidSetEndingSelection(

@@ -101,6 +101,7 @@
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/frame/deprecation/deprecation.h"
 #include "third_party/blink/renderer/core/frame/frame_console.h"
+#include "third_party/blink/renderer/core/frame/frame_owner.h"
 #include "third_party/blink/renderer/core/frame/intervention.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
@@ -2960,6 +2961,20 @@ void DocumentLoader::CommitNavigation() {
 
   LocalDOMWindow* previous_window = frame_->DomWindow();
   InitializeWindow(owner_document);
+
+  // If the navigation is cross-origin, clear the natural size.
+  if (RuntimeEnabledFeatures::ResponsiveIframesEnabled() && frame_->Owner()) {
+    if (const OldDocumentInfoForCommit* info =
+            ScopedOldDocumentInfoForCommitCapturer::CurrentInfo();
+        info && info->old_document_origin) {
+      const SecurityOrigin* old_origin = info->old_document_origin.get();
+      const SecurityOrigin* new_origin =
+          frame_->DomWindow()->GetSecurityOrigin();
+      if (!old_origin->IsSameOriginWith(new_origin)) {
+        frame_->Owner()->ClearAllNaturalSizingInfo();
+      }
+    }
+  }
 
   frame_->DomWindow()
       ->GetRuntimeFeatureStateOverrideContext()

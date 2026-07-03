@@ -76,7 +76,7 @@ class GlicInstanceImpl : public GlicInstance,
   class InstanceCoordinatorDelegate {
    public:
     virtual ~InstanceCoordinatorDelegate() = default;
-    virtual void RemoveInstance(GlicInstanceImpl* instance) = 0;
+    virtual void RemoveInstance(InstanceId id) = 0;
     // Called by an instance when its visibility state changes.
     virtual void OnInstanceVisibilityChanged(GlicInstanceImpl* instance,
                                              bool is_showing) = 0;
@@ -125,7 +125,7 @@ class GlicInstanceImpl : public GlicInstance,
   GlicUiEmbedder* GetActiveEmbedder();
 
   // GlicSharingManagerProvider implementation.
-  GlicSharingManager& sharing_manager() override;
+  GlicSharingManagerInternal& GetSharingManagerInternal() override;
   GlicPinCandidateProvider& pin_candidate_provider() override;
 
   void NotifyInstanceActivationChanged(bool is_active);
@@ -148,7 +148,7 @@ class GlicInstanceImpl : public GlicInstance,
   // GlicInstance implementation.
   bool IsShowing() const override;
   gfx::Size GetPanelSize() override;
-  std::optional<Target> GetInvokeTarget() override;
+  Target GetInvokeTarget(Target::Surface fallback_surface) override;
   bool IsActive() override;
 
   bool HasActiveEmbedder() const;
@@ -200,6 +200,7 @@ class GlicInstanceImpl : public GlicInstance,
       base::RepeatingCallback<void(const mojom::ConversationInfo&)> callback);
   void CancelTask() override;
   GlicActorTaskManager* GetActorTaskManager() override;
+  GlicSharingManager* GetSharingManager() override;
 
   // Called exactly once, right before the instance is destroyed.
   using DestructionCallback = base::OnceCallback<void(GlicInstance*)>;
@@ -340,6 +341,15 @@ class GlicInstanceImpl : public GlicInstance,
 
   void MaybeActivateForegroundEmbedder();
   void MaybeRemoveBlankInstanceOnClose();
+
+  // Checks if the instance is ready to be removed (i.e. it has no embedders
+  // and no remaining pinned tabs). If so, posts a task to the
+  // coordinator delegate to destroy this instance asynchronously.
+  void MaybeRemoveInstance();
+  // Executes the asynchronous removal of this instance. Should not be called
+  // directly; call MaybeRemoveInstance() instead.
+  void ExecuteRemoveInstance();
+  bool CanBeRemoved();
   EmbedderEntry& BindTab(tabs::TabInterface* tab,
                          GlicPinTrigger pin_trigger,
                          bool pin_on_bind);

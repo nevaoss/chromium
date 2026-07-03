@@ -238,9 +238,6 @@ class PLATFORM_EXPORT CanvasResourceSharedImage final : public CanvasResource {
   void PrepareForWebGPUDummyMailbox();
 
  private:
-  friend class Canvas2DResourceProviderSharedImage;
-  friend class CanvasNon2DResourceProviderSharedImage;
-
   base::WeakPtr<WebGraphicsContext3DProviderWrapper> ContextProviderWrapper()
       const override;
   void VerifySyncToken() override;

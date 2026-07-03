@@ -5,6 +5,7 @@
 #include "chrome/browser/chromeos/extensions/telemetry/api/telemetry/telemetry_api_converters.h"
 
 #include <inttypes.h>
+#include <unistd.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -13,6 +14,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/check_op.h"
 #include "chrome/common/chromeos/extensions/api/telemetry.h"
 #include "chromeos/crosapi/mojom/nullable_primitives.mojom.h"
 #include "chromeos/crosapi/mojom/probe_service.mojom.h"
@@ -26,6 +28,12 @@ namespace {
 
 namespace cx_telem = ::chromeos::api::os_telemetry;
 namespace crosapi = ::crosapi::mojom;
+
+uint64_t UserHz() {
+  const long user_hz = sysconf(_SC_CLK_TCK);
+  CHECK_GE(user_hz, 0);
+  return user_hz;
+}
 
 }  // namespace
 
@@ -194,21 +202,21 @@ TEST(TelemetryApiConverters, AudioInfo) {
 
 TEST(TelemetryApiConverters, CpuArchitectureEnum) {
   EXPECT_EQ(cx_telem::CpuArchitectureEnum::kUnknown,
-            Convert(crosapi::ProbeCpuArchitectureEnum::kUnknown));
+            Convert(ash::cros_healthd::mojom::CpuArchitectureEnum::kUnknown));
   EXPECT_EQ(cx_telem::CpuArchitectureEnum::kX86_64,
-            Convert(crosapi::ProbeCpuArchitectureEnum::kX86_64));
+            Convert(ash::cros_healthd::mojom::CpuArchitectureEnum::kX86_64));
   EXPECT_EQ(cx_telem::CpuArchitectureEnum::kAarch64,
-            Convert(crosapi::ProbeCpuArchitectureEnum::kAArch64));
+            Convert(ash::cros_healthd::mojom::CpuArchitectureEnum::kAArch64));
   EXPECT_EQ(cx_telem::CpuArchitectureEnum::kArmv7l,
-            Convert(crosapi::ProbeCpuArchitectureEnum::kArmv7l));
+            Convert(ash::cros_healthd::mojom::CpuArchitectureEnum::kArmv7l));
 }
 
 TEST(TelemetryApiConverters, CpuCStateInfo) {
   constexpr char kName[] = "C0";
   constexpr uint64_t kTimeInStateSinceLastBootUs = 123456;
 
-  auto input = crosapi::ProbeCpuCStateInfo::New(
-      kName, crosapi::UInt64Value::New(kTimeInStateSinceLastBootUs));
+  auto input = ash::cros_healthd::mojom::CpuCStateInfo::New(
+      kName, kTimeInStateSinceLastBootUs);
 
   auto result = ConvertPtr(std::move(input));
   ASSERT_TRUE(result.name);
@@ -223,22 +231,24 @@ TEST(TelemetryApiConverters, LogicalCpuInfo) {
   constexpr char kCpuCStateName[] = "C1";
   constexpr uint64_t kCpuCStateTime = (1 << 27) + 50000;
 
-  std::vector<crosapi::ProbeCpuCStateInfoPtr> expected_c_states;
-  expected_c_states.push_back(crosapi::ProbeCpuCStateInfo::New(
-      kCpuCStateName, crosapi::UInt64Value::New(kCpuCStateTime)));
+  std::vector<ash::cros_healthd::mojom::CpuCStateInfoPtr> expected_c_states;
+  expected_c_states.push_back(ash::cros_healthd::mojom::CpuCStateInfo::New(
+      kCpuCStateName, kCpuCStateTime));
 
   constexpr uint32_t kMaxClockSpeedKhz = (1 << 30) + 10000;
   constexpr uint32_t kScalingMaxFrequencyKhz = (1 << 30) + 20000;
   constexpr uint32_t kScalingCurrentFrequencyKhz = (1 << 29) + 30000;
-  constexpr uint64_t kIdleTime = (1ULL << 52) + 40000;
+  constexpr uint64_t kIdleTime = ((1ULL << 42) + 40000) * 1000;
   constexpr uint32_t kCoreId = 200;
 
-  auto input = crosapi::ProbeLogicalCpuInfo::New(
-      crosapi::UInt32Value::New(kMaxClockSpeedKhz),
-      crosapi::UInt32Value::New(kScalingMaxFrequencyKhz),
-      crosapi::UInt32Value::New(kScalingCurrentFrequencyKhz),
-      crosapi::UInt64Value::New(kIdleTime), std::move(expected_c_states),
-      crosapi::UInt32Value::New(kCoreId));
+  const auto user_hz = UserHz();
+  ASSERT_GT(user_hz, 0u);
+  auto input = ash::cros_healthd::mojom::LogicalCpuInfo::New(
+      kMaxClockSpeedKhz, kScalingMaxFrequencyKhz, kScalingCurrentFrequencyKhz,
+      /*user_time_user_hz=*/0ULL,
+      /*system_time_user_hz=*/0ULL,
+      /*idle_time_user_hz=*/kIdleTime * user_hz / 1000,
+      std::move(expected_c_states), kCoreId);
 
   auto result = ConvertPtr(std::move(input));
   ASSERT_TRUE(result.max_clock_speed_khz);
@@ -272,28 +282,30 @@ TEST(TelemetryApiConverters, PhysicalCpuInfo) {
   constexpr char kCpuCStateName[] = "C2";
   constexpr uint64_t kCpuCStateTime = (1 << 27) + 90000;
 
-  std::vector<crosapi::ProbeCpuCStateInfoPtr> expected_c_states;
-  expected_c_states.push_back(crosapi::ProbeCpuCStateInfo::New(
-      kCpuCStateName, crosapi::UInt64Value::New(kCpuCStateTime)));
+  std::vector<ash::cros_healthd::mojom::CpuCStateInfoPtr> expected_c_states;
+  expected_c_states.push_back(ash::cros_healthd::mojom::CpuCStateInfo::New(
+      kCpuCStateName, kCpuCStateTime));
 
   constexpr uint32_t kMaxClockSpeedKhz = (1 << 30) + 80000;
   constexpr uint32_t kScalingMaxFrequencyKhz = (1 << 30) + 70000;
   constexpr uint32_t kScalingCurrentFrequencyKhz = (1 << 29) + 60000;
-  constexpr uint64_t kIdleTime = (1ULL << 52) + 50000;
+  constexpr uint64_t kIdleTime = ((1ULL << 42) + 50000) * 1000;
   constexpr uint32_t kCoreId = 200;
 
-  std::vector<crosapi::ProbeLogicalCpuInfoPtr> logical_cpus;
-  logical_cpus.push_back(crosapi::ProbeLogicalCpuInfo::New(
-      crosapi::UInt32Value::New(kMaxClockSpeedKhz),
-      crosapi::UInt32Value::New(kScalingMaxFrequencyKhz),
-      crosapi::UInt32Value::New(kScalingCurrentFrequencyKhz),
-      crosapi::UInt64Value::New(kIdleTime), std::move(expected_c_states),
-      crosapi::UInt32Value::New(kCoreId)));
+  const auto user_hz = UserHz();
+  ASSERT_GT(user_hz, 0u);
+  std::vector<ash::cros_healthd::mojom::LogicalCpuInfoPtr> logical_cpus;
+  logical_cpus.push_back(ash::cros_healthd::mojom::LogicalCpuInfo::New(
+      kMaxClockSpeedKhz, kScalingMaxFrequencyKhz, kScalingCurrentFrequencyKhz,
+      /*user_time_user_hz=*/0ULL,
+      /*system_time_user_hz=*/0ULL,
+      /*idle_time_user_hz=*/kIdleTime * user_hz / 1000,
+      std::move(expected_c_states), kCoreId));
 
   constexpr char kModelName[] = "i9";
 
-  auto input =
-      crosapi::ProbePhysicalCpuInfo::New(kModelName, std::move(logical_cpus));
+  auto input = ash::cros_healthd::mojom::PhysicalCpuInfo::New(
+      kModelName, std::move(logical_cpus));
 
   auto result = ConvertPtr(std::move(input));
   ASSERT_TRUE(result.model_name);

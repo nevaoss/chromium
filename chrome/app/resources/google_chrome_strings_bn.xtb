@@ -94,7 +94,6 @@
 <translation id="1953553007165777902">ডাউনলোড হচ্ছে... <ph name="MINUTE" /> মিনিট বাকি আছে</translation>
 <translation id="1979600810166324878">iOS-এর জন্য Chrome-এ উন্নত Safe Browsing সুবিধার সাহায্যে যেতে যেতে সুরক্ষিত থাকুন</translation>
 <translation id="2001586581944147178">আপনি যে ইন্টারনেট ট্রাফিক ব্যবহার করছেন, সেটির অ্যাক্সেস থাকা লোকজনেরা যাতে আপনি কোন কোন সাইট দেখেন তা দেখতে না পারেন তার ব্যবস্থা করুন। Chrome সুরক্ষিত কানেকশন ব্যবহার করে ডিএনএস (ডোমেন নেম সিস্টেম)-এ কোনও সাইটের IP অ্যাড্রেস দেখে।</translation>
-<translation id="2008942457798486387">{NUM_EXTENSIONS,plural, =1{এই এক্সটেনশন আর কাজ করবে না। Chrome আপনাকে এটি সরিয়ে দেওয়ার সাজেশন দেয়।}one{এইসব এক্সটেনশন আর কাজ করবে না। Chrome আপনাকে এটি সরিয়ে দেওয়ার সাজেশন দেয়।}other{এইসব এক্সটেনশন আর কাজ করবে না। Chrome আপনাকে এটি সরিয়ে দেওয়ার সাজেশন দেয়।}}</translation>
 <translation id="2018528049276128029">প্রতিটি প্রোফাইলে বুকমার্ক, ইতিহাস, পাসওয়ার্ড ও আরও অনেক কিছুর মতো তার নিজস্ব Chrome তথ্য আছে</translation>
 <translation id="2018879682492276940">ইনস্টল করা যায়নি। আবার চেষ্টা করুন।</translation>
 <translation id="2024959665595762054">আপনার Google অ্যাকাউন্টে Chrome ডেটা ব্যবহার এবং সেভ করতে, নিজের পরিচয় যাচাই করুন</translation>
@@ -190,6 +189,7 @@
 <translation id="2945997411976714835">ইনস্টল সংক্রান্ত সমস্যা: ইনস্টলার প্রসেস শুরু করা যায়নি।</translation>
 <translation id="2969728957078202736"><ph name="PAGE_TITLE" /> - নেটওয়ার্ক সাইন-ইন - Chrome</translation>
 <translation id="2970681950995291301">Chrome থেকে আপনার Google অ্যাকাউন্ট সরিয়ে দিতে, সেটিংস পৃষ্ঠায় গিয়ে Chrome থেকে সাইন-আউট করুন</translation>
+<translation id="2976869732253036751">আপনার ফোনে Chrome-এর মাধ্যমে দাম ট্র্যাক করা সংক্রান্ত সতর্কতা পান</translation>
 <translation id="2991167882679440829">আপনার Google অ্যাকাউন্টে সেভ করেছেন এমন পাসওয়ার্ড ও Chrome-এর অন্যান্য ডেটা এই ডিভাইস থেকে সরানো হবে। Chrome-এ সেগুলি পুনরায় ব্যবহার করতে, আবার সাইন-ইন করুন।</translation>
 <translation id="2994465299455873643"><ph name="BROWSER_NAME" /> ব্রাউজার পুরনো হয়ে গেলে এটি এনক্রিপশন পরিষেবা প্রদান করে এবং সুরক্ষিতভাবে ফিরিয়ে আনার সুবিধাও দেয়। এই পরিষেবা বন্ধ থাকলে, <ph name="BROWSER_NAME" /> ব্রাউজারের এনক্রিপ্ট করা ডেটাতে অ্যাক্সেস নাও থাকতে পারে এবং <ph name="BROWSER_NAME" /> নিজেকে ঠিক নাও করতে পারে।</translation>
 <translation id="3003694935412297923">সব টাস্ক</translation>
@@ -386,6 +386,7 @@
 <translation id="5127558335897923940">যেকোনও সময় দ্রুত অ্যাক্সেসের জন্য নিজের 'ডক'-এ Chrome রাখুন</translation>
 <translation id="5132929315877954718">Google Chrome-এর দুর্দান্ত অ্যাপ্লিকেশান, গেম, এক্সটেনশান এবং থিম আবিষ্কার করুন৷</translation>
 <translation id="5139423532931106058">আপনার Chrome প্রোফাইল কাস্টমাইজ করুন</translation>
+<translation id="5152381187352661267">Chrome-এ স্কিল</translation>
 <translation id="5163087008893166964">Chrome-এ স্বাগতম; নতুন ব্রাউজার উইন্ডো খোলা হয়েছে</translation>
 <translation id="5166439563123238795">আপনার হাত ট্র্যাক করতে Chrome-এর অনুমতি প্রয়োজন</translation>
 <translation id="5169778651486082413">আপনার ফোনে Chrome-এর সাথে পাসওয়ার্ড ব্যবহার করুন</translation>
@@ -483,6 +484,7 @@
 <translation id="6070348360322141662">অতিরিক্ত নিরাপত্তার জন্য, Google Chrome আপনার ডেটা এনক্রিপ্ট করবে</translation>
 <translation id="6075300983329039771">আপনার সংস্থা, <ph name="MANAGER" />-এর প্রয়োজন অনুযায়ী, আপনাকে Chrome-এ সাইন-ইন করতে হবে</translation>
 <translation id="6113794647360055231">Chrome আরও ভাল হয়ে উঠেছে</translation>
+<translation id="6116004140911290070">Chrome-এ স্কিল চালু করুন</translation>
 <translation id="6116252277240876590">Chrome-এ মেনু, সেটিংস, অ্যালার্ট ও অন্যান্য টেক্সট দেখানোর জন্য এই ভাষা ব্যবহার করা হবে</translation>
 <translation id="6127237283587442951">ডিফল্ট হিসেবে Chrome ব্যবহার করুন এবং এটি পিন করুন</translation>
 <translation id="6134085236017727171">আপনার মাইক্রোফোন ব্যবহার করতে, Chrome-কে <ph name="BEGIN_LINK" />সিস্টেম সেটিংস<ph name="END_LINK" /> অ্যাক্সেস করতে দিন</translation>
@@ -642,6 +644,7 @@
 <translation id="7606334485649076285">Google ChromeOS Flex</translation>
 <translation id="7627609214560473136">আপনার ডেটা সুরক্ষিত রাখতে, আপনি সম্প্রতি ভিজিট করেননি এমন সাইট থেকে Chrome-কে অনুমতি সরাতে দিন।</translation>
 <translation id="7629695634924605473">আপনার পাসওয়ার্ড কখনও চুরি হলে তা Chrome আপনাকে জানিয়ে দেবে</translation>
+<translation id="7629898584100520089">স্কিলের মতো AI উদ্ভাবন আপনার Google অ্যাকাউন্টে সেভ করা হয় এবং Chrome সিঙ্ক থেকে আলাদাভাবে ম্যানেজ করা হয়</translation>
 <translation id="7641148173327520642"><ph name="TARGET_URL_HOSTNAME" /> অ্যাক্সেস করতে <ph name="ALTERNATIVE_BROWSER_NAME" /> ব্যবহার করার জন্য আপনার সিস্টেম অ্যাডমিনিস্ট্রেটর Google Chrome কনফিগার করেছে।</translation>
 <translation id="7649070708921625228">সহায়তা</translation>
 <translation id="7651907282515937834">Chrome এন্টারপ্রাইজ লোগো</translation>

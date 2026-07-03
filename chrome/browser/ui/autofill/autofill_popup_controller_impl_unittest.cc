@@ -19,7 +19,6 @@
 #include "components/autofill/core/browser/suggestions/suggestion_hiding_reason.h"
 #include "components/autofill/core/browser/suggestions/suggestion_type.h"
 #include "components/autofill/core/browser/ui/popup_interaction.h"
-#include "components/autofill/core/browser/ui/suggestion_button_action.h"
 #include "components/autofill/core/common/aliases.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -424,16 +423,6 @@ TEST_F(AutofillPopupControllerImplTest, EventsAreDelegatedToChildrenAndView) {
   EXPECT_CALL(*client().popup_view(), HandleKeyPressEvent).Times(1);
   EXPECT_FALSE(
       client().suggestion_controller(manager()).HandleKeyPressEvent(event));
-}
-
-// Tests that the controller forwards calls to perform a button action (such as
-// clicking a close button on a suggestion) to its delegate.
-TEST_F(AutofillPopupControllerImplTest, ButtonActionsAreSentToDelegate) {
-  ShowSuggestions(manager(), {SuggestionType::kComposeResumeNudge});
-  EXPECT_CALL(manager().external_delegate(),
-              DidPerformButtonActionForSuggestion);
-  client().suggestion_controller(manager()).PerformButtonActionForSuggestion(
-      0, SuggestionButtonAction());
 }
 
 // The second popup is also the second "sub_popup_level". This test asserts that

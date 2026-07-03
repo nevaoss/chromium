@@ -148,6 +148,9 @@ const base::FeatureParam<bool> kCsdImageEmbeddingMatchWithIntelligentScan{
 
 BASE_FEATURE(kClientSideDetectionKillswitch, base::FEATURE_DISABLED_BY_DEFAULT);
 
+BASE_FEATURE(kClientSideDetectionLocalResourceCheckFix,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kClientSideDetectionNewObservers,
              base::FEATURE_DISABLED_BY_DEFAULT);
 constexpr base::FeatureParam<double> kCsdClassificationDelay{
@@ -351,6 +354,18 @@ BASE_FEATURE(kMigrateEnhancedSbUserToEnhancedBundle,
 
 BASE_FEATURE(kMigrateToBlockV8OptimizerOnUnfamiliarSites,
              base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE_PARAM(
+    int,
+    kMigrateToBlockV8OptimizerOnUnfamiliarSitesMinSiteEngagementScore,
+    &kMigrateToBlockV8OptimizerOnUnfamiliarSites,
+    "min_site_engagement_score",
+    10);
+BASE_FEATURE_PARAM(
+    base::TimeDelta,
+    kMigrateToBlockV8OptimizerOnUnfamiliarSitesMinAgeOfInitialVisit,
+    &kMigrateToBlockV8OptimizerOnUnfamiliarSites,
+    "min_age_of_initial_visit",
+    base::Hours(24));
 
 BASE_FEATURE(kMovePasswordLeakDetectionToggleIos,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -455,6 +470,7 @@ base::ListValue GetFeatureStatusList() {
       &kClientSideDetectionForcedLlamaRedirectChainKillswitch,
       &kClientSideDetectionImageEmbeddingMatch,
       &kClientSideDetectionKillswitch,
+      &kClientSideDetectionLocalResourceCheckFix,
       &kClientSideDetectionRedirectChainKillswitch,
       &kCreateNotificationsAcceptedClientSafeBrowsingReports,
       &kDelayedWarnings,

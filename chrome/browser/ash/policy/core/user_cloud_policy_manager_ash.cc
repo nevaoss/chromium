@@ -841,6 +841,10 @@ UserCloudPolicyManagerAsh::GetReportSchedulerForTesting() {
   return report_scheduler_.get();
 }
 
+CloudPolicyStore* UserCloudPolicyManagerAsh::extension_install_store() {
+  return CloudPolicyManager::extension_install_store();
+}
+
 // static
 void UserCloudPolicyManagerAsh::EnsureFactoryBuilt() {
   UserCloudPolicyManagerAshNotifierFactory::GetInstance();

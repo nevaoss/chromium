@@ -48,6 +48,7 @@
 namespace blink {
 
 class Document;
+class SVGImageAnimationsToReset;
 class Element;
 class ExternalSVGResourceImageContent;
 class IsolatedSVGDocumentHost;
@@ -147,6 +148,14 @@ class CORE_EXPORT SVGImage final : public Image {
   bool IsSizeAvailable() override;
 
  private:
+  enum class AnimationState : uint8_t {
+    kUnknown,
+    kUnknownRewindPending,
+    kNotAnimated,
+    kAnimated,
+    kAnimatedRewindPending,
+  };
+
   // Accesses |document_host_|.
   friend class SVGImageChromeClient;
   // Forwards calls to the various *ForContainer methods and other parts of
@@ -257,6 +266,9 @@ class CORE_EXPORT SVGImage final : public Image {
   void NotifyAsyncLoadCompleted();
 
   LocalFrame* GetFrame() const;
+  bool DetectAnimatedContent() const;
+  bool HasPendingTimelineRewind() const;
+  void UpdateCachedAnimationState();
   SVGSVGElement* RootElement() const;
   LayoutSVGRoot* LayoutRoot() const;
 
@@ -265,9 +277,11 @@ class CORE_EXPORT SVGImage final : public Image {
   Persistent<SVGImageChromeClient> chrome_client_;
   Persistent<IsolatedSVGDocumentHost> document_host_;
   Persistent<AgentGroupScheduler> agent_group_scheduler_;
+  Persistent<SVGImageAnimationsToReset> css_animations_to_reset_;
 
   PhysicalSize intrinsic_size_;
   bool has_pending_timeline_rewind_;
+  mutable AnimationState animation_state_ = AnimationState::kUnknown;
 
   int data_change_count_ = 0;
   base::TimeDelta data_change_elapsed_time_;
@@ -282,6 +296,17 @@ class CORE_EXPORT SVGImage final : public Image {
   FRIEND_TEST_ALL_PREFIXES(SVGImageTest, SetSizeOnVisualViewport);
   FRIEND_TEST_ALL_PREFIXES(SVGImageTest, IsSizeAvailable);
   FRIEND_TEST_ALL_PREFIXES(SVGImageTest, DisablesSMILEvents);
+  FRIEND_TEST_ALL_PREFIXES(SVGImageTest,
+                           ResetAnimationRewindsRunningFiniteCssAnimation);
+  FRIEND_TEST_ALL_PREFIXES(SVGImageTest,
+                           FinishedFiniteCssAnimationStillMaybeAnimated);
+  FRIEND_TEST_ALL_PREFIXES(SVGImageTest,
+                           ResetAnimationPreservesPausedFiniteCssAnimation);
+  FRIEND_TEST_ALL_PREFIXES(
+      SVGImageTest,
+      ResetAnimationRestoresPlaybackForFinishedFiniteCssAnimation);
+  FRIEND_TEST_ALL_PREFIXES(SVGImageSimTest,
+                           CachedFiniteCssAnimationResetWhileDetached);
 };
 
 template <>

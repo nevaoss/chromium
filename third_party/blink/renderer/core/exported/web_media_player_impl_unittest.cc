@@ -749,11 +749,6 @@ class WebMediaPlayerImplTest
   bool ShouldCancelUponDefer() const {
     auto* ds = wmpi_->demuxer_manager_->GetDataSourceForTesting();
     CHECK_NE(ds, nullptr);
-    CHECK_NE(ds->GetAsCrossOriginDataSource(), nullptr);
-    // Right now, the only implementation of DataSource that WMPI can get
-    // which returns non-null from GetAsCrossOriginDataSource is
-    // MultiBufferDataSource, so the CHECKs above allow us to be safe casting
-    // this here.
     // TODO(crbug.com/40243452): Can we add |cancel_on_defer_for_testing| to
     // CrossOriginDataSource? We can't do a |GetAsMultiBufferDataSource| since
     // MBDS is in blink, and we can't import that into media.
@@ -764,7 +759,6 @@ class WebMediaPlayerImplTest
   bool IsDataSourceMarkedAsPlaying() const {
     auto* ds = wmpi_->demuxer_manager_->GetDataSourceForTesting();
     CHECK_NE(ds, nullptr);
-    CHECK_NE(ds->GetAsCrossOriginDataSource(), nullptr);
     // See comment in |ShouldCancelUponDefer|.
     return static_cast<const MultiBufferDataSource*>(ds)->media_has_played();
   }

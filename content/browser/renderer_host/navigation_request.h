@@ -1530,6 +1530,8 @@ class CONTENT_EXPORT NavigationRequest
 
   bool is_ad_tagged() const { return is_ad_tagged_; }
 
+  const GURL& original_url() const { return original_url_; }
+
   // Called when the browser process is about to process beforeunload handlers
   // for this navigation, including sending an IPC to the renderer process to
   // run beforeunload handlers when necessary.
@@ -1840,10 +1842,6 @@ class CONTENT_EXPORT NavigationRequest
 
   void set_before_unload_execution_mode(BeforeUnloadExecutionMode mode) {
     before_unload_execution_mode_ = mode;
-  }
-
-  void set_activation_beacon_url(const GURL& url) {
-    activation_beacon_url_ = url;
   }
 
  private:
@@ -3602,6 +3600,12 @@ class CONTENT_EXPORT NavigationRequest
 
   // The initial request method of the request, before any redirects.
   std::string request_method_;
+
+  // The original request URL for this navigation, before any redirects and
+  // after any mapping steps and HTTPS upgrades. Used for internal browser
+  // checks to avoid using sanitized versions sent to the renderer in
+  // `commit_params`.
+  GURL original_url_;
 
   // Set to true if `this` started as a same-document navigation but couldn't
   // commit, and was restarted as a cross-document navigation. See

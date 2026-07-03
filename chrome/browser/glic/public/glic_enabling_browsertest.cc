@@ -135,7 +135,7 @@ class GlicEnablingWithSeparateAccountCapabilityTest : public GlicEnablingTest {
         identity_manager->FindExtendedAccountInfoByAccountId(
             identity_manager->GetPrimaryAccountId(
                 signin::ConsentLevel::kSignin));
-    AccountCapabilitiesTestMutator mutator(&primary_account.capabilities);
+    AccountCapabilitiesTestMutator mutator(&primary_account);
     mutator.set_can_use_model_execution_features(capability_value);
     signin::UpdateAccountInfoForAccount(identity_manager, primary_account);
   }

@@ -2259,6 +2259,7 @@ const char kChromeAppStoreUrl[] =
 
   UIView* originView =
       [_layoutGuideCenter referencedViewUnderName:kToolsMenuGuide];
+  [self.sharingCoordinator stop];
   self.sharingCoordinator =
       [[SharingCoordinator alloc] initWithBaseViewController:self.viewController
                                                      browser:self.browser
@@ -2274,6 +2275,7 @@ const char kChromeAppStoreUrl[] =
                           additionalText:command.selectedText
                                 scenario:SharingScenario::SharedHighlight];
 
+  [self.sharingCoordinator stop];
   self.sharingCoordinator = [[SharingCoordinator alloc]
       initWithBaseViewController:self.viewController
                          browser:self.browser
@@ -2289,6 +2291,7 @@ const char kChromeAppStoreUrl[] =
             title:command.title
          scenario:SharingScenario::ShareInWebContextMenu];
 
+  [self.sharingCoordinator stop];
   self.sharingCoordinator = [[SharingCoordinator alloc]
       initWithBaseViewController:self.viewController
                          browser:self.browser
@@ -3512,7 +3515,8 @@ const char kChromeAppStoreUrl[] =
   _driveFilePickerCoordinator = [[RootDriveFilePickerCoordinator alloc]
       initWithBaseViewController:self.viewController
                          browser:self.browser
-                        webState:activeWebState];
+                        webState:activeWebState
+                   forComposebox:NO];
   [_driveFilePickerCoordinator start];
 }
 
@@ -3525,6 +3529,37 @@ const char kChromeAppStoreUrl[] =
     (id<SystemIdentity>)selectedIdentity {
   CHECK(selectedIdentity);
   [_driveFilePickerCoordinator setSelectedIdentity:selectedIdentity];
+}
+
+- (void)showDriveFilePickerWithComposeboxDelegate:
+            (id<ComposeboxPickerPresenterDelegate>)delegate
+                               baseViewController:
+                                   (UIViewController*)baseViewController {
+  // In the context of the compose box the user should not have been offered to
+  // use the drive if they are not signed-in.
+  CHECK(AuthenticationServiceFactory::GetForProfile(self.profile)
+            ->HasPrimaryIdentity());
+  // The user should not have been offered to use the drive if they are in
+  // incognito.
+  CHECK_EQ(self.browser->type(), Browser::Type::kRegular);
+
+  if (!base::FeatureList::IsEnabled(kIOSChooseFromDrive)) {
+    return;
+  }
+  // If there is a coordinator, stop it before showing it again.
+  [self hideDriveFilePicker];
+  web::WebState* activeWebState = self.activeWebState;
+  if (!activeWebState || activeWebState->IsBeingDestroyed()) {
+    return;
+  }
+
+  _driveFilePickerCoordinator = [[RootDriveFilePickerCoordinator alloc]
+      initWithBaseViewController:baseViewController
+                         browser:self.browser
+                        webState:activeWebState
+                   forComposebox:YES];
+  _driveFilePickerCoordinator.composeboxDelegate = delegate;
+  [_driveFilePickerCoordinator start];
 }
 
 #pragma mark - EnhancedCalendarCommands
@@ -3861,8 +3896,8 @@ const char kChromeAppStoreUrl[] =
   }
 }
 
-- (void)startGeminiFREWithCompletion:(void (^)(BOOL success))completion
-                      fromEntryPoint:(gemini::EntryPoint)entryPoint {
+- (void)startGeminiFirstRunWithCompletion:(void (^)(BOOL success))completion
+                           fromEntryPoint:(gemini::EntryPoint)entryPoint {
   __weak BrowserCoordinator* weakSelf = self;
   ProceduralBlock startCoordinatorBlock = ^{
     [weakSelf startGeminiFirstRunCoordinatorWithCompletion:completion
@@ -3885,7 +3920,7 @@ const char kChromeAppStoreUrl[] =
       initWithBaseViewController:self.viewController
                          browser:self.browser
                   fromEntryPoint:entryPoint
-                         FREType:GeminiFREType::kNewUser
+                    firstRunType:GeminiFirstRunType::kNewUser
                completionHandler:completion];
   [_geminiFirstRunCoordinator start];
 }
@@ -4578,7 +4613,9 @@ const char kChromeAppStoreUrl[] =
                          browser:self.browser
                         imageURL:command.imageURL
                         referrer:command.referrer
-                        webState:command.webState.get()];
+                        webState:command.webState.get()
+                         frameID:command.frameID
+                     frameOrigin:command.frameOrigin];
   [self.saveToPhotosCoordinator start];
 }
 

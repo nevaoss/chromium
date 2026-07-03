@@ -87,11 +87,17 @@ void InsertTextCommand::SetEndingSelectionWithoutValidation(
   // We could have inserted a part of composed character sequence,
   // so we are basically treating ending selection as a range to avoid
   // validation. <http://bugs.webkit.org/show_bug.cgi?id=15781>
-  SetEndingSelection(SelectionForUndoStep::From(
-      SelectionInDOMTree::Builder()
-          .Collapse(start_position)
-          .Extend(end_position)
-          .Build()));
+  SetEndingSelection(SelectionForUndoStep::From(SelectionInDomTree::Builder()
+                                                    .Collapse(start_position)
+                                                    .Extend(end_position)
+                                                    .Build()));
+  if (RuntimeEnabledFeatures::EditingUseDomPositionApiEnabled()) {
+    SetEndingDomSelection(
+        SelectionForUndoStep::From(SelectionInDomTree::Builder()
+                                       .Collapse(start_position)
+                                       .Extend(end_position)
+                                       .Build()));
+  }
 }
 
 // This avoids the expense of a full fledged delete operation, and avoids a
@@ -141,11 +147,17 @@ bool InsertTextCommand::PerformTrivialReplace(const String& text) {
   SetEndingSelectionWithoutValidation(relocatable_start->GetPosition(),
                                       end_position);
   SetEndingSelection(SelectionForUndoStep::From(
-      SelectionInDOMTree::Builder()
+      SelectionInDomTree::Builder()
           .Collapse(RuntimeEnabledFeatures::EditingUseDomPositionApiEnabled()
                         ? EndingSelection().End()
                         : EndingVisibleSelection().End())
           .Build()));
+  if (RuntimeEnabledFeatures::EditingUseDomPositionApiEnabled()) {
+    SetEndingDomSelection(
+        SelectionForUndoStep::From(SelectionInDomTree::Builder()
+                                       .Collapse(EndingVisibleSelection().End())
+                                       .Build()));
+  }
   return true;
 }
 
@@ -336,7 +348,7 @@ void InsertTextCommand::DoApply(EditingState* editing_state) {
     selection_end = selection.End();
   }
 
-  SelectionInDOMTree::Builder builder;
+  SelectionInDomTree::Builder builder;
   if (RuntimeEnabledFeatures::CaretWithTextAffinityUpstreamEnabled() &&
       text_ == " " && !IsRichlyEditablePosition(start_position)) {
     builder.SetAffinity(TextAffinity::kUpstreamIfPossible);
@@ -347,6 +359,9 @@ void InsertTextCommand::DoApply(EditingState* editing_state) {
     builder.Collapse(selection_end);
   }
   SetEndingSelection(SelectionForUndoStep::From(builder.Build()));
+  if (RuntimeEnabledFeatures::EditingUseDomPositionApiEnabled()) {
+    SetEndingDomSelection(SelectionForUndoStep::From(builder.Build()));
+  }
 }
 
 Position InsertTextCommand::InsertTab(const Position& pos,

@@ -187,8 +187,8 @@ enum class PixFlowExitedReason {
 };
 // LINT.ThenChange(/tools/metrics/histograms/metadata/facilitated_payments/enums.xml:FacilitatedPayments.PixFlowExitedReason)
 
-// LINT.IfChange(PixAccountLinkingFlowExitedReason)
-enum class PixAccountLinkingFlowExitedReason {
+// LINT.IfChange(AccountLinkingFlowExitedReason)
+enum class AccountLinkingFlowExitedReason {
   kScreenNotShown = 0,
   kScreenClosedNotByUser = 1,
   kScreenClosedByUser = 2,
@@ -202,9 +202,13 @@ enum class PixAccountLinkingFlowExitedReason {
   kUserSwitchedWebsite = 10,
   kMaxStrikes = 11,
   kRequiredDelayNotPassed = 12,
-  kMaxValue = kRequiredDelayNotPassed
+  kClientTokenNotAvailable = 13,
+  kNetworkInterfaceUnavailable = 14,
+  kGetDetailsFailed = 15,
+  kNotEligiblePerPaymentsBackend = 16,
+  kMaxValue = kNotEligiblePerPaymentsBackend
 };
-// LINT.ThenChange(/tools/metrics/histograms/metadata/facilitated_payments/enums.xml:FacilitatedPayments.Pix.AccountLinking.FlowExitedReason)
+// LINT.ThenChange(/tools/metrics/histograms/metadata/facilitated_payments/enums.xml:FacilitatedPayments.AccountLinking.FlowExitedReason)
 
 // This contains a subset of the variants in the Rust `PixQrCodeResult` enum, as
 // some values are not interesting for metrics, e.g. they'd be too noisy/spammy.
@@ -277,7 +281,8 @@ void LogPixIframeIsSameOriginAsMainFrame(bool is_same_origin);
 
 // Log when a given payment link in a certain page for an eWallet push payment
 // flow is detected.
-void LogPaymentLinkDetected(ukm::SourceId ukm_source_id);
+void LogPaymentLinkDetected(ukm::SourceId ukm_source_id,
+                            PaymentLinkValidator::Scheme scheme);
 
 // Log when a valid payment link is detected and the user is eligible for the
 // eWallet New Account Linking (NAL) onboarding flow (meaning they have no
@@ -482,15 +487,22 @@ void LogPixAccountLinkingPromptShown();
 // Logs that the Pix account linking prompt was accepted by user.
 void LogPixAccountLinkingPromptAccepted();
 
+// Logs the result and latency of the client token fetch during account linking.
+void LogAccountLinkingGetClientTokenResultAndLatency(
+    std::string_view fop_suffix,
+    bool result,
+    base::TimeDelta duration);
+
 // Logs the result and latency for GetDetailsForCreatePaymentInstrument
-// endpoint.
-void LogGetDetailsForCreatePaymentInstrumentResultAndLatency(
+// endpoint during account linking.
+void LogAccountLinkingGetDetailsForCreatePaymentInstrumentResultAndLatency(
+    std::string_view fop_suffix,
     bool is_eligible,
     base::TimeDelta latency);
 
-// Log the reason for the Pix account linking flow was exited early.
-void LogPixAccountLinkingFlowExitedReason(
-    PixAccountLinkingFlowExitedReason reason);
+// Log the reason for the account linking flow was exited early.
+void LogAccountLinkingFlowExitedReason(std::string_view fop_suffix,
+                                       AccountLinkingFlowExitedReason reason);
 
 }  // namespace payments::facilitated
 

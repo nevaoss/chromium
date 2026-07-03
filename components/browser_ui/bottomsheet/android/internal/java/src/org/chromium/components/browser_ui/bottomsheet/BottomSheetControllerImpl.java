@@ -350,6 +350,7 @@ class BottomSheetControllerImpl implements ManagedBottomSheetController {
     public void setBottomControlsOffset(int bottomControlsOffset) {
         if (mBottomControlsOffset == bottomControlsOffset) return;
         mBottomControlsOffset = bottomControlsOffset;
+        if (mBottomSheet != null) mBottomSheet.setBottomControlsOffset(bottomControlsOffset);
         adjustBottomSheetZAxis(mScrimVisible);
     }
 
@@ -718,6 +719,11 @@ class BottomSheetControllerImpl implements ManagedBottomSheetController {
     @Override
     public boolean isAnchoredToBottomControls() {
         return mIsAnchoredToBottomControls;
+    }
+
+    @Override
+    public @Px int getContainerBottomMargin() {
+        return mBottomSheet != null ? mBottomSheet.getContainerBottomMargin() : 0;
     }
 
     @Override

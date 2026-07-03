@@ -3094,7 +3094,7 @@ void Internals::forceReload(bool bypass_cache) {
 }
 
 StaticSelection* Internals::getDragCaret() {
-  SelectionInDOMTree::Builder builder;
+  SelectionInDomTree::Builder builder;
   if (GetFrame()) {
     const DragCaret& caret = GetFrame()->GetPage()->GetDragCaret();
     const PositionWithAffinity& position = caret.CaretPosition();

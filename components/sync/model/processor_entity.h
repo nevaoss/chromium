@@ -104,6 +104,11 @@ class ProcessorEntity {
       sync_pb::EntitySpecifics trimmed_specifics,
       std::optional<sync_pb::UniquePosition> unique_position);
 
+  // Overrides the server ID and version. Crucial for handling server-initiated
+  // metadata resets (migration) where we want to force apply updates.
+  void OverrideServerMetadata(const std::string& server_id,
+                              int64_t server_version);
+
   // Applies a local change to this item.
   void RecordLocalUpdate(
       std::unique_ptr<EntityData> data,

@@ -380,7 +380,6 @@ class CC_EXPORT SchedulerStateMachine {
     waiting_for_scroll_event_ = waiting_for_scroll_event;
   }
 
-  void SetShouldThrottleFrameRate(bool flag);
   void SetRequestHighFramerate(bool flag);
 
  protected:
@@ -542,7 +541,6 @@ class CC_EXPORT SchedulerStateMachine {
   // scroll events to arrive.
   bool waiting_for_scroll_event_ = false;
 
-  bool throttle_frame_rate_ = false;
   uint64_t high_framerate_requests_count_ = 0;
 };
 

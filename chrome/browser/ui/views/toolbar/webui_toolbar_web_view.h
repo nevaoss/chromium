@@ -201,6 +201,8 @@ class WebUIToolbarWebView
   base::expected<std::monostate, mojo_base::mojom::ErrorPtr> OnOmniboxAction(
       toolbar_ui_api::mojom::OmniboxActionPtr action) override;
   void ShowAvatarMenu() override;
+  void SetAvatarButtonHovered(bool hovered) override;
+  void SetAvatarButtonFocused(bool focused) override;
 
   // BrowserControlsService::BrowserControlsServiceDelegate:
   void PermitLaunchUrl() override;

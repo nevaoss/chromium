@@ -70,10 +70,6 @@
 #include "chrome/browser/component_updater/smart_dim_component_installer.h"
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
-#if BUILDFLAG(ENABLE_MEDIA_FOUNDATION_WIDEVINE_CDM)
-#include "chrome/browser/component_updater/media_foundation_widevine_cdm_component_installer.h"
-#endif
-
 #if BUILDFLAG(ENABLE_ON_DEVICE_TRANSLATION)
 #include "chrome/browser/component_updater/translate_kit_component_installer.h"
 #include "chrome/browser/component_updater/translate_kit_language_pack_component_installer.h"
@@ -138,10 +134,6 @@ void RegisterComponentsForUpdate() {
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
   RegisterRecoveryImprovedComponent(cus, g_browser_process->local_state());
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
-
-#if BUILDFLAG(ENABLE_MEDIA_FOUNDATION_WIDEVINE_CDM)
-  RegisterMediaFoundationWidevineCdmComponent(cus);
-#endif
 
 #if BUILDFLAG(ENABLE_WIDEVINE_CDM_COMPONENT)
   RegisterWidevineCdmComponent(cus);

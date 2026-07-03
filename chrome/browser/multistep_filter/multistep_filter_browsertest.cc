@@ -380,7 +380,8 @@ IN_PROC_BROWSER_TEST_F(MultistepFilterBrowserTest,
   auto* ui_controller = multistep_filter::FilterUiController::From(active_tab);
   ASSERT_TRUE(ui_controller);
 
-  ui_controller->ExecuteCommand(internal::kSettingsCommand, 0);
+  multistep_filter::test_api(*ui_controller)
+      .ExecuteCommand(multistep_filter::internal::kSettingsCommand, 0);
 
   ASSERT_TRUE(base::test::RunUntil([&]() {
     return browser()->tab_strip_model()->GetActiveWebContents()->GetURL() ==

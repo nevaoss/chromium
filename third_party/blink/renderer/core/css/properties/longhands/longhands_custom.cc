@@ -220,8 +220,8 @@ const CSSValue* PositionAnchor::ParseSingleValue(
     const CSSParserContext& context,
     CSSParserLocalContext& local_context) const {
   if (CSSValue* value =
-          css_parsing_utils::ConsumeIdent<CSSValueID::kNone, CSSValueID::kAuto>(
-              stream)) {
+          css_parsing_utils::ConsumeIdent<CSSValueID::kAuto, CSSValueID::kNone,
+                                          CSSValueID::kNormal>(stream)) {
     return value;
   }
   return css_parsing_utils::ConsumeDashedIdent(stream, context, local_context);
@@ -242,6 +242,8 @@ const CSSValue* PositionAnchor::CSSValueFromComputedStyleInternal(
     case Type::kName:
       return MakeGarbageCollected<CSSCustomIdentValue>(
           position_anchor.GetName());
+    case Type::kNormal:
+      return CSSIdentifierValue::Create(CSSValueID::kNormal);
   }
 }
 
@@ -4431,7 +4433,11 @@ const blink::Color FloodColor::ColorIncludingFallback(
   if (style.ShouldForceColor(flood_color)) {
     return style.GetInternalForcedCurrentColor(is_current_color);
   }
-  return style.ResolvedColor(flood_color, is_current_color);
+  blink::Color current_color = visited_link
+                                   ? style.GetInternalVisitedCurrentColor()
+                                   : style.GetCurrentColor();
+  return flood_color.Resolve(current_color, style.UsedColorScheme(),
+                             is_current_color);
 }
 
 const CSSValue* FloodColor::CSSValueFromComputedStyleInternal(
@@ -5453,38 +5459,19 @@ const CSSValue* PositionArea::CSSValueFromComputedStyleInternal(
   return ComputedStyleUtils::ValueForPositionArea(style.GetPositionArea());
 }
 
-namespace {
-
-void ComputeAnchorEdgeOffsetsForPositionArea(
-    StyleResolverState& state,
-    blink::PositionArea position_area) {
-  if (AnchorEvaluator* evaluator =
-          state.CssToLengthConversionData().GetAnchorEvaluator()) {
-    state.SetPositionAreaOffsets(evaluator->ComputePositionAreaOffsetsForLayout(
-        state.StyleBuilder().PositionAnchor(), position_area));
-  }
-  state.StyleBuilder().SetHasAnchorFunctions();
+void PositionArea::ApplyInitial(StyleResolverState& state) const {
+  state.SetPositionArea(ComputedStyleInitialValues::InitialPositionArea());
 }
 
-}  // namespace
+void PositionArea::ApplyInherit(StyleResolverState& state) const {
+  state.SetPositionArea(state.ParentStyle()->GetPositionArea());
+}
 
 void PositionArea::ApplyValue(StyleResolverState& state,
                               const CSSValue& value,
                               ValueModeFlags) const {
-  blink::PositionArea position_area =
-      StyleBuilderConverter::ConvertPositionArea(state, value);
-  state.StyleBuilder().SetPositionArea(position_area);
-  if (!position_area.IsNone()) {
-    ComputeAnchorEdgeOffsetsForPositionArea(state, position_area);
-  }
-}
-
-void PositionArea::ApplyInherit(StyleResolverState& state) const {
-  blink::PositionArea position_area = state.ParentStyle()->GetPositionArea();
-  state.StyleBuilder().SetPositionArea(position_area);
-  if (!position_area.IsNone()) {
-    ComputeAnchorEdgeOffsetsForPositionArea(state, position_area);
-  }
+  state.SetPositionArea(
+      StyleBuilderConverter::ConvertPositionArea(state, value));
 }
 
 const CSSValue* InsetBlockEnd::ParseSingleValue(
@@ -6366,7 +6353,11 @@ const blink::Color LightingColor::ColorIncludingFallback(
   if (style.ShouldForceColor(lighting_color)) {
     return style.GetInternalForcedCurrentColor(is_current_color);
   }
-  return style.ResolvedColor(lighting_color, is_current_color);
+  blink::Color current_color = visited_link
+                                   ? style.GetInternalVisitedCurrentColor()
+                                   : style.GetCurrentColor();
+  return lighting_color.Resolve(current_color, style.UsedColorScheme(),
+                                is_current_color);
 }
 
 const CSSValue* LightingColor::CSSValueFromComputedStyleInternal(
@@ -9427,7 +9418,11 @@ const blink::Color StopColor::ColorIncludingFallback(
   if (style.ShouldForceColor(stop_color)) {
     return style.GetInternalForcedCurrentColor(is_current_color);
   }
-  return style.ResolvedColor(stop_color, is_current_color);
+  blink::Color current_color = visited_link
+                                   ? style.GetInternalVisitedCurrentColor()
+                                   : style.GetCurrentColor();
+  return stop_color.Resolve(current_color, style.UsedColorScheme(),
+                            is_current_color);
 }
 
 const CSSValue* StopColor::CSSValueFromComputedStyleInternal(
@@ -11577,7 +11572,11 @@ const blink::Color WebkitTapHighlightColor::ColorIncludingFallback(
                ? style.GetInternalForcedVisitedCurrentColor(is_current_color)
                : style.GetInternalForcedCurrentColor(is_current_color);
   }
-  return style.ResolvedColor(style.TapHighlightColor(), is_current_color);
+  blink::Color current_color = visited_link
+                                   ? style.GetInternalVisitedCurrentColor()
+                                   : style.GetCurrentColor();
+  return highlight_color.Resolve(current_color, style.UsedColorScheme(),
+                                 is_current_color);
 }
 
 const CSSValue* WebkitTapHighlightColor::CSSValueFromComputedStyleInternal(

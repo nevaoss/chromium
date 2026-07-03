@@ -7378,8 +7378,6 @@ bool Document::IsValidElementLocalName(const StringView& local_name) {
 
 enum QualifiedNameStatus {
   kQNValid,
-  kQNMultipleColons,
-  kQNInvalidStartChar,
   kQNInvalidChar,
   kQNEmptyPrefix,
   kQNEmptyLocalName
@@ -7397,14 +7395,20 @@ struct ParseQualifiedNameResult {
 
 namespace {
 // https://github.com/whatwg/dom/pull/1079
+// https://github.com/whatwg/dom/pull/1455
 template <typename CharType>
 ParseQualifiedNameResult ParseQualifiedNameInternal(
     base::span<const CharType> characters,
     AtomicString& out_prefix,
     AtomicString& out_local_name,
     Document::QualifiedNameParsingMode parsing_mode) {
-  // Do a first pass to look for the colon. Otherwise, we don't know which
-  // parsing rules to apply to the text we are iterating.
+  // When SplitQualifiedNameOnFirstColon is enabled, the first colon splits the
+  // qualified name into a prefix and a local name; any later colons are part of
+  // the local name, per the DOM "validate and extract" algorithm.
+  // If the runtime flag is disabled and a second colon exists, the local name
+  // is instead the substring between the first two colons.
+  const bool split_on_first_colon =
+      RuntimeEnabledFeatures::SplitQualifiedNameOnFirstColonEnabled();
   std::optional<size_t> colon_index;
   std::optional<size_t> second_colon_index;
   for (size_t i = 0; i < characters.size(); i++) {
@@ -7412,8 +7416,10 @@ ParseQualifiedNameResult ParseQualifiedNameInternal(
       if (colon_index) {
         second_colon_index = i;
         break;
-      } else {
-        colon_index = i;
+      }
+      colon_index = i;
+      if (split_on_first_colon) {
+        break;
       }
     }
   }
@@ -7484,13 +7490,7 @@ bool Document::ParseQualifiedName(const AtomicString& qualified_name,
   message.Append(qualified_name);
   message.Append("') ");
 
-  if (return_value.status == kQNMultipleColons) {
-    message.Append("contains multiple colons.");
-  } else if (return_value.status == kQNInvalidStartChar) {
-    message.Append("contains the invalid name-start character '");
-    message.Append(return_value.character);
-    message.Append("'.");
-  } else if (return_value.status == kQNInvalidChar) {
+  if (return_value.status == kQNInvalidChar) {
     message.Append("contains the invalid character '");
     message.Append(return_value.character);
     message.Append("'.");
@@ -7898,13 +7898,6 @@ void Document::OnLargestContentfulPaintUpdated() {
 void Document::OnPrepareToStopParsing() {
   if (render_blocking_resource_manager_) {
     render_blocking_resource_manager_->ClearPendingParsingElements();
-    if (GetFrame() && GetFrame()->IsLocalRoot() && GetFrame()->GetPage() &&
-        GetFrame()->IsAttached()) {
-      // The frame rate will be implicitly throttled during initialization
-      // if the feature is enabled so unthrottle here.
-      GetFrame()->GetPage()->GetChromeClient().SetShouldThrottleFrameRate(
-          false, *GetFrame());
-    }
   }
   MaybeExecuteDelayedAsyncScripts(
       MilestoneForDelayedAsyncScript::kFinishedParsing);
@@ -9553,11 +9546,25 @@ bool Document::IsSlotAssignmentDirty() const {
 bool Document::IsFocusAllowed(FocusTrigger trigger,
                               const LocalFrame& initiator_frame) const {
   LocalFrame* frame = GetFrame();
-  if (!frame || frame->IsMainFrame() ||
-      LocalFrame::HasTransientUserActivation(frame)) {
+  if (!frame) {
     // 'autofocus' runs Element::focus asynchronously at which point the
     // document might not have a frame (see https://crbug.com/960224).
     return true;
+  }
+
+  const bool blocking_focus_feature_flag_enabled =
+      RuntimeEnabledFeatures::BlockingFocusWithoutUserActivationEnabled(
+          GetExecutionContext());
+  if (blocking_focus_feature_flag_enabled) {
+    // Check activation on the focus initiator, not the target frame. Otherwise
+    // a restricted frame could focus an activated target and bypass the policy.
+    if (LocalFrame::HasTransientUserActivation(&initiator_frame)) {
+      return true;
+    }
+  } else {
+    if (frame->IsMainFrame() || LocalFrame::HasTransientUserActivation(frame)) {
+      return true;
+    }
   }
 
   // Allow focus during prerendering to match same-origin behavior.
@@ -9580,8 +9587,7 @@ bool Document::IsFocusAllowed(FocusTrigger trigger,
   CountUse(uma_type);
 
   // All logic below is part of the BlockingFocusWithoutUserActivation feature.
-  if (!RuntimeEnabledFeatures::BlockingFocusWithoutUserActivationEnabled(
-          GetExecutionContext())) {
+  if (!blocking_focus_feature_flag_enabled) {
     return true;
   }
 
@@ -10071,10 +10077,6 @@ void Document::OnLocalRootWidgetCreated() {
   base::UmaHistogramBoolean(
       "Blink.ThrottleFrameRate.AllowedBySecurity.DocumentInitialization",
       allowed_by_security);
-  if (allowed_by_security) {
-    GetFrame()->GetPage()->GetChromeClient().SetShouldThrottleFrameRate(
-        true, *GetFrame());
-  }
 }
 
 void Document::ProcessScheduledShadowTreeCreationsNow() {
@@ -10126,10 +10128,6 @@ void Document::UpdateRenderFrameRate() {
   bool allowed_by_security = CanThrottleFrameRate();
   base::UmaHistogramBoolean("Blink.ThrottleFrameRate.AllowedBySecurity.API",
                             allowed_by_security);
-  if (allowed_by_security) {
-    GetFrame()->GetPage()->GetChromeClient().SetShouldThrottleFrameRate(
-        has_frame_rate_blocking_expect_link_elements_, *GetFrame());
-  }
 }
 
 // static

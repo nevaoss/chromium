@@ -122,6 +122,7 @@ base::span<const TaskManagerView::FilterTab> GetTabDefinitions() {
 TaskManagerView::~TaskManagerView() {
   // Delete child views now, while our table model still exists.
   tabs_ = nullptr;  // Destroyed by `container` below.
+  tab_table_ = nullptr;
   RemoveAllChildViews();
 
   // When the view is destroyed, the lifecycle of the Task Manager is complete.
@@ -380,10 +381,7 @@ void TaskManagerView::SearchBarOnInputChanged(std::u16string_view query) {
 }
 
 TaskManagerView::TaskManagerView(StartAction start_action)
-    : tab_table_(nullptr),
-      tab_table_parent_(nullptr),
-      table_config_(GetTableConfigs()),
-      is_always_on_top_(false) {
+    : table_config_(GetTableConfigs()), is_always_on_top_(false) {
   task_manager::RecordNewOpenEvent(start_action);
   set_use_custom_frame(false);
   SetHasWindowSizeControls(true);
@@ -700,14 +698,14 @@ void TaskManagerView::Init() {
   }
 
   // Add Process List (a.k.a Scroll View)
-  tab_table_parent_ = AddChildView(
+  auto* tab_table_parent = AddChildView(
       CreateProcessView(std::move(tab_table), table_config_.table_has_border,
                         table_config_.layout_refresh));
 
   if (table_config_.scroll_view_rounded) {
-    tab_table_parent_->SetPaintToLayer(ui::LAYER_TEXTURED);
+    tab_table_parent->SetPaintToLayer(ui::LAYER_TEXTURED);
 
-    ui::Layer* scroll_view_layer = tab_table_parent_->layer();
+    ui::Layer* scroll_view_layer = tab_table_parent->layer();
     scroll_view_layer->SetRoundedCornerRadius(
         gfx::RoundedCornersF(corner_radius));
     scroll_view_layer->SetIsFastRoundedCorner(true);

@@ -78,7 +78,10 @@ import {SubmitButtonIconType} from '//resources/cr_components/composebox/compose
               @close-composebox="${this.onCloseComposebox_}"
               @voice-search-action="${this.onComposeVoiceSearchAction_}"
               .submitButtonIconType="${SubmitButtonIconType.FORWARD}"
-              .clearAllInputsWhenSubmittingQuery="${true}">
+              .clearAllInputsWhenSubmittingQuery="${true}"
+              .closeOnEscape="${false}"
+              .energyEffectEnabled="${this.energyEffectEnabled_}"
+              .energyEffectAnimationEnabled="${this.energyEffectAnimationEnabled_}">
           </ntp-composebox>
         ` : html`
           <cr-composebox id="composebox"
@@ -112,9 +115,8 @@ import {SubmitButtonIconType} from '//resources/cr_components/composebox/compose
       </ntp-lens-upload-dialog>
     ` : ''}
   </div>
-  ${this.lazyRender_
-    && this.ntpNextFeaturesEnabled_
-    && (!this.ntpNextDisablementEnabled_ || this.isActionChipsVisible_) ? html`
+  ${this.lazyRender_ && this.ntpNextFeaturesEnabled_
+  && this.isActionChipsVisible_ ? html`
     <ntp-action-chips
         ?show-background="${this.showActionChipsBackground_()}"
         @action-chip-click="${this.onActionChipClick_}"

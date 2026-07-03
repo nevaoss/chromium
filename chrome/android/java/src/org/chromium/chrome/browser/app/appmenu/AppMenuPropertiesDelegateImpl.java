@@ -61,6 +61,7 @@ import org.chromium.chrome.browser.ntp.SessionRecentlyClosedEntry;
 import org.chromium.chrome.browser.open_in_app.OpenInAppMenuItemProvider;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.readaloud.ReadAloudController;
+import org.chromium.chrome.browser.recent_tabs.ForeignSessionHelper.ForeignSessionTab;
 import org.chromium.chrome.browser.share.ShareHelper;
 import org.chromium.chrome.browser.sync.settings.SyncSettingsUtils;
 import org.chromium.chrome.browser.tab.Tab;
@@ -125,6 +126,8 @@ public abstract class AppMenuPropertiesDelegateImpl implements AppMenuProperties
     public static final String TAB_ID_BUNDLE_KEY = "TabId";
     public static final String RECENT_ENTRY_SESSION_ID_BUNDLE_KEY = "RecentEntrySessionId";
     public static final String RECENT_ENTRY_INSTANCE_ID_BUNDLE_KEY = "RecentEntryInstanceId";
+    public static final String RECENT_ENTRY_SESSION_TAG_BUNDLE_KEY = "RecentEntrySessionTag";
+    public static final String RECENT_ENTRY_TAB_ID_BUNDLE_KEY = "RecentEntryTabId";
 
     private static @Nullable Boolean sItemBookmarkedForTesting;
 
@@ -940,7 +943,23 @@ public abstract class AppMenuPropertiesDelegateImpl implements AppMenuProperties
             bundle.putInt(TAB_ID_BUNDLE_KEY, model.get(AppMenuTabItemProperties.TAB_ID));
             return bundle;
         }
-        if (model.containsKey(AppMenuRecentEntryItemProperties.RECENT_ENTRY)) {
+        if (model.containsKey(AppMenuRecentEntryItemProperties.FOREIGN_SESSION_TAB)
+                && model.get(AppMenuRecentEntryItemProperties.FOREIGN_SESSION_TAB) != null) {
+            ForeignSessionTab tab =
+                    (ForeignSessionTab)
+                            model.get(AppMenuRecentEntryItemProperties.FOREIGN_SESSION_TAB);
+            assert tab != null;
+
+            String sessionTag = model.get(AppMenuRecentEntryItemProperties.FOREIGN_SESSION_TAG);
+            assert sessionTag != null;
+
+            Bundle bundle = new Bundle();
+            bundle.putString(RECENT_ENTRY_SESSION_TAG_BUNDLE_KEY, sessionTag);
+            bundle.putInt(RECENT_ENTRY_TAB_ID_BUNDLE_KEY, tab.id);
+            return bundle;
+        }
+        if (model.containsKey(AppMenuRecentEntryItemProperties.RECENT_ENTRY)
+                && model.get(AppMenuRecentEntryItemProperties.RECENT_ENTRY) != null) {
             RecentlyClosedEntry entry =
                     (RecentlyClosedEntry) model.get(AppMenuRecentEntryItemProperties.RECENT_ENTRY);
             assert entry != null;

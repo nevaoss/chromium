@@ -36,10 +36,14 @@ class OmniboxPopupFullPresenter : public OmniboxPopupPresenterBase,
   std::optional<base::TimeDelta> ShouldDeferUntilVisualStateReady()
       const override;
   bool ShouldDetachWebContentsOnHide() const override;
-  bool ShouldUseWebContentHeight() const override;
 
  protected:
   // OmniboxPopupPresenterBase:
+  std::unique_ptr<RoundedOmniboxResultsFrame> CreateResultsFrame(
+      std::unique_ptr<views::View> contents,
+      LocationBar* location_bar,
+      bool forward_mouse_events) override;
+  void SynchronizePopupBounds() override;
   void WidgetDestroyed() override;
 
  private:

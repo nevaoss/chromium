@@ -47,6 +47,7 @@
 #include "chrome/browser/task_manager/web_contents_tags.h"
 #include "chrome/browser/themes/theme_service_factory.h"
 #include "chrome/browser/ui/autofill/bubble_manager.h"
+#include "chrome/browser/ui/autofill/payments/omnibox_autofill_bubble_controller.h"
 #include "chrome/browser/ui/autofill/payments/omnibox_autofill_page_action_controller.h"
 #include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -438,6 +439,10 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
     omnibox_autofill_page_action_controller_ =
         std::make_unique<autofill::OmniboxAutofillPageActionController>(
             tab, *page_action_controller_);
+    omnibox_autofill_bubble_controller_ =
+        GetUserDataFactory()
+            .CreateInstance<autofill::OmniboxAutofillBubbleController>(
+                tab, tab, tab.GetContents());
   }
 
   customize_chrome_side_panel_controller_ =
@@ -700,6 +705,14 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
   if (glic_selection_observer_) {
     glic_selection_observer_ =
         std::make_unique<glic::GlicSelectionObserver>(new_contents);
+  }
+
+  if (omnibox_autofill_bubble_controller_) {
+    omnibox_autofill_bubble_controller_.reset();
+    omnibox_autofill_bubble_controller_ =
+        GetUserDataFactory()
+            .CreateInstance<autofill::OmniboxAutofillBubbleController>(
+                *tab, *tab, new_contents);
   }
 }
 

@@ -139,8 +139,8 @@ static const size_t kMaxTooltipLength = 1024;
 std::unique_ptr<ui::TouchSelectionController> CreateSelectionController(
     ui::TouchSelectionControllerClient* client,
     bool has_view_tree) {
-  DCHECK(client);
-  DCHECK(has_view_tree);
+  CHECK(client, base::NotFatalUntil::M152);
+  CHECK(has_view_tree, base::NotFatalUntil::M152);
   ui::TouchSelectionController::Config config;
   config.max_tap_duration =
       base::Milliseconds(gfx::ViewConfiguration::GetLongPressTimeoutInMs());
@@ -760,8 +760,8 @@ RenderWidgetHostViewAndroid::~RenderWidgetHostViewAndroid() {
   UpdateNativeViewTree(/*parent_native_view=*/nullptr,
                        /*parent_layer=*/nullptr);
   view_.set_event_handler(nullptr);
-  DCHECK(!ime_adapter_android_);
-  DCHECK(!delegated_frame_host_);
+  CHECK(!ime_adapter_android_, base::NotFatalUntil::M152);
+  CHECK(!delegated_frame_host_, base::NotFatalUntil::M152);
   if (obj_) {
     Java_RenderWidgetHostViewImpl_clearNativePtr(
         base::android::AttachCurrentThread(), obj_);
@@ -1250,7 +1250,8 @@ bool RenderWidgetHostViewAndroid::IsSurfaceAvailableForCopy() {
 void RenderWidgetHostViewAndroid::ShowWithVisibility(
     PageVisibilityState page_visibility) {
   TRACE_EVENT0("content", "RenderWidgetHostViewAndroid::ShowWithVisibility");
-  DCHECK_NE(page_visibility, PageVisibilityState::kHidden);
+  CHECK_NE(page_visibility, PageVisibilityState::kHidden,
+           base::NotFatalUntil::M152);
   Visibility next_view_visibility = view_visibility_;
   if (page_visibility == PageVisibilityState::kVisible) {
     next_view_visibility = Visibility::VISIBLE;
@@ -1391,7 +1392,7 @@ void RenderWidgetHostViewAndroid::OnUpdateTextInputStateCalled(
   if (!ime_adapter_android_)
     return;
 
-  DCHECK_EQ(text_input_manager_, text_input_manager);
+  CHECK_EQ(text_input_manager_, text_input_manager, base::NotFatalUntil::M152);
   if (GetTextInputManager()->GetActiveWidget()) {
     ime_adapter_android_->UpdateState(
         *GetTextInputManager()->GetTextInputState());
@@ -1405,7 +1406,7 @@ void RenderWidgetHostViewAndroid::OnUpdateTextInputStateCalled(
 void RenderWidgetHostViewAndroid::OnImeCancelComposition(
     TextInputManager* text_input_manager,
     RenderWidgetHostViewBase* updated_view) {
-  DCHECK_EQ(text_input_manager_, text_input_manager);
+  CHECK_EQ(text_input_manager_, text_input_manager, base::NotFatalUntil::M152);
   if (ime_adapter_android_)
     ime_adapter_android_->CancelComposition();
 }
@@ -1413,7 +1414,7 @@ void RenderWidgetHostViewAndroid::OnImeCancelComposition(
 void RenderWidgetHostViewAndroid::OnTextSelectionChanged(
     TextInputManager* text_input_manager,
     RenderWidgetHostViewBase* updated_view) {
-  DCHECK_EQ(text_input_manager_, text_input_manager);
+  CHECK_EQ(text_input_manager_, text_input_manager, base::NotFatalUntil::M152);
 
   if (!selection_popup_controller_)
     return;
@@ -1906,7 +1907,8 @@ void RenderWidgetHostViewAndroid::UpdateFrameSinkIdRegistration() {
 }
 
 void RenderWidgetHostViewAndroid::UpdateBackgroundColor() {
-  DCHECK(RenderWidgetHostViewBase::GetBackgroundColor());
+  CHECK(RenderWidgetHostViewBase::GetBackgroundColor(),
+        base::NotFatalUntil::M152);
 
   SkColor color = *RenderWidgetHostViewBase::GetBackgroundColor();
   view_.OnBackgroundColorChanged(color);
@@ -2095,7 +2097,7 @@ void RenderWidgetHostViewAndroid::ResetSynchronousCompositor() {
 }
 
 void RenderWidgetHostViewAndroid::OnOverscrollRefreshHandlerAvailable() {
-  DCHECK(!overscroll_controller_);
+  CHECK(!overscroll_controller_, base::NotFatalUntil::M152);
   CreateOverscrollControllerIfPossible();
 }
 
@@ -2125,8 +2127,8 @@ void RenderWidgetHostViewAndroid::SetNeedsAnimate() {
     return;
   }
 
-  DCHECK(view_.GetWindowAndroid());
-  DCHECK(using_browser_compositor_);
+  CHECK(view_.GetWindowAndroid(), base::NotFatalUntil::M152);
+  CHECK(using_browser_compositor_, base::NotFatalUntil::M152);
   view_.GetWindowAndroid()->SetNeedsAnimate();
 }
 
@@ -2153,7 +2155,7 @@ void RenderWidgetHostViewAndroid::OnSelectionEvent(
     ui::SelectionEventType event) {
   if (!selection_popup_controller_)
     return;
-  DCHECK(touch_selection_controller_);
+  CHECK(touch_selection_controller_, base::NotFatalUntil::M152);
   // If a selection drag has started, it has taken over the active touch
   // sequence. Immediately cancel gesture detection and any downstream touch
   // listeners (e.g., web content) to communicate this transfer.
@@ -2237,7 +2239,7 @@ void RenderWidgetHostViewAndroid::SynchronousCopyContents(
   // TODO(crbug.com/41305903): [BUG] Current implementation does not support
   // read-back of regions that do not originate at (0,0).
   const gfx::Size& input_size_in_pixel = src_subrect_in_pixel.size();
-  DCHECK(!input_size_in_pixel.IsEmpty());
+  CHECK(!input_size_in_pixel.IsEmpty(), base::NotFatalUntil::M152);
 
   gfx::Size output_size_in_pixel;
   if (dst_size_in_pixel.IsEmpty())
@@ -2276,7 +2278,7 @@ void RenderWidgetHostViewAndroid::UpdateTouchSelectionController(
   if (!touch_selection_controller_)
     return;
 
-  DCHECK(touch_selection_controller_client_manager_);
+  CHECK(touch_selection_controller_client_manager_, base::NotFatalUntil::M152);
   touch_selection_controller_client_manager_->UpdateClientSelectionBounds(
       selection.start, selection.end, this, nullptr);
   OnUpdateScopedSelectionHandles();
@@ -2405,13 +2407,15 @@ void RenderWidgetHostViewAndroid::TryUpdateVisibilities(
     case Visibility::VISIBLE:
       // A visible view must have a visible page. It cannot be hidden or
       // hidden-but-painting.
-      DCHECK_EQ(new_page_visibility, PageVisibilityState::kVisible);
+      CHECK_EQ(new_page_visibility, PageVisibilityState::kVisible,
+               base::NotFatalUntil::M152);
       break;
     case Visibility::HIDDEN:
     case Visibility::OCCLUDED:
       // A hidden or occluded view cannot have a visible page. It must be hidden
       // or hidden-but-painting.
-      DCHECK_NE(new_page_visibility, PageVisibilityState::kVisible);
+      CHECK_NE(new_page_visibility, PageVisibilityState::kVisible,
+               base::NotFatalUntil::M152);
       break;
   }
 #endif
@@ -2473,7 +2477,7 @@ void RenderWidgetHostViewAndroid::HideInternal() {
   }
 
   if (stop_observing_root_window) {
-    DCHECK(view_visibility_ != Visibility::VISIBLE);
+    CHECK(view_visibility_ != Visibility::VISIBLE, base::NotFatalUntil::M152);
     StopObservingRootWindow();
   }
 
@@ -2490,9 +2494,9 @@ void RenderWidgetHostViewAndroid::HideInternal() {
 }
 
 void RenderWidgetHostViewAndroid::StartObservingRootWindow() {
-  DCHECK(view_.parent());
-  DCHECK(view_.GetWindowAndroid());
-  DCHECK(VisibilityNeedsDrawing());
+  CHECK(view_.parent(), base::NotFatalUntil::M152);
+  CHECK(view_.GetWindowAndroid(), base::NotFatalUntil::M152);
+  CHECK(VisibilityNeedsDrawing(), base::NotFatalUntil::M152);
   if (observing_root_window_)
     return;
 
@@ -2511,7 +2515,7 @@ void RenderWidgetHostViewAndroid::StartObservingRootWindow() {
 
 void RenderWidgetHostViewAndroid::StopObservingRootWindow() {
   if (!(view_.GetWindowAndroid())) {
-    DCHECK(!observing_root_window_);
+    CHECK(!observing_root_window_, base::NotFatalUntil::M152);
     return;
   }
 
@@ -2982,8 +2986,9 @@ void RenderWidgetHostViewAndroid::UpdateNativeViewTree(
   bool has_view_tree = view_.parent() != nullptr;
 
   // Allows same parent view to be set again.
-  DCHECK(!will_build_tree || !has_view_tree ||
-         parent_native_view == view_.parent());
+  CHECK(!will_build_tree || !has_view_tree ||
+            parent_native_view == view_.parent(),
+        base::NotFatalUntil::M152);
 
   StopObservingRootWindow();
 
@@ -3194,7 +3199,7 @@ void RenderWidgetHostViewAndroid::OnRootWindowVisibilityChanged(bool visible) {
   TRACE_EVENT1("browser",
                "RenderWidgetHostViewAndroid::OnRootWindowVisibilityChanged",
                "visible", visible);
-  DCHECK(observing_root_window_);
+  CHECK(observing_root_window_, base::NotFatalUntil::M152);
 
   // Don't early out if visibility hasn't changed and visible. This is necessary
   // as OnDetachedFromWindow() sets |is_window_visible_| to true, so that this
@@ -3215,7 +3220,7 @@ void RenderWidgetHostViewAndroid::OnAttachedToWindow() {
   if (VisibilityNeedsDrawing()) {
     StartObservingRootWindow();
   }
-  DCHECK(view_.GetWindowAndroid());
+  CHECK(view_.GetWindowAndroid(), base::NotFatalUntil::M152);
   if (view_.GetWindowAndroid()->GetCompositor())
     OnAttachCompositor();
 }
@@ -3229,7 +3234,7 @@ void RenderWidgetHostViewAndroid::OnDetachedFromWindow() {
 }
 
 void RenderWidgetHostViewAndroid::OnAttachCompositor() {
-  DCHECK(view_.parent());
+  CHECK(view_.parent(), base::NotFatalUntil::M152);
   CreateOverscrollControllerIfPossible();
   if (observing_root_window_ && using_browser_compositor_) {
     ui::WindowAndroidCompositor* compositor =
@@ -3239,7 +3244,7 @@ void RenderWidgetHostViewAndroid::OnAttachCompositor() {
 }
 
 void RenderWidgetHostViewAndroid::OnDetachCompositor() {
-  DCHECK(view_.parent());
+  CHECK(view_.parent(), base::NotFatalUntil::M152);
   overscroll_controller_.reset();
   if (using_browser_compositor_)
     delegated_frame_host_->DetachFromCompositor();
@@ -3253,14 +3258,14 @@ void RenderWidgetHostViewAndroid::OnAnimate(base::TimeTicks begin_frame_time) {
 
 void RenderWidgetHostViewAndroid::OnActivityStopped() {
   TRACE_EVENT0("browser", "RenderWidgetHostViewAndroid::OnActivityStopped");
-  DCHECK(observing_root_window_);
+  CHECK(observing_root_window_, base::NotFatalUntil::M152);
   is_window_activity_started_ = false;
   UpdateVisibility();
 }
 
 void RenderWidgetHostViewAndroid::OnActivityStarted() {
   TRACE_EVENT0("browser", "RenderWidgetHostViewAndroid::OnActivityStarted");
-  DCHECK(observing_root_window_);
+  CHECK(observing_root_window_, base::NotFatalUntil::M152);
   is_window_activity_started_ = true;
   UpdateVisibility();
 }
@@ -3375,8 +3380,9 @@ void RenderWidgetHostViewAndroid::SetOverscrollControllerForTesting(
 
 void RenderWidgetHostViewAndroid::TakeFallbackContentFrom(
     RenderWidgetHostView* view) {
-  DCHECK(!static_cast<RenderWidgetHostViewBase*>(view)
-              ->IsRenderWidgetHostViewChildFrame());
+  CHECK(!static_cast<RenderWidgetHostViewBase*>(view)
+             ->IsRenderWidgetHostViewChildFrame(),
+        base::NotFatalUntil::M152);
   CopyBackgroundColorIfPresentFrom(*view);
 
   RenderWidgetHostViewAndroid* view_android =
@@ -3863,7 +3869,7 @@ void RenderWidgetHostViewAndroid::EndRotationBatching() {
   // OnPhysicalBackingSizeChanged which would re-trigger rotation if we were
   // still tracking `fullscreen_rotation_`. crbug.com/1302964
   fullscreen_rotation_ = false;
-  DCHECK(!rotation_metrics_.empty());
+  CHECK(!rotation_metrics_.empty(), base::NotFatalUntil::M152);
   TRACE_EVENT_END(
       "viz", /* RenderWidgetHostViewAndroid::RotationBegin */
       perfetto::NamedTrack("RenderWidgetHostViewAndroid",
@@ -3876,7 +3882,7 @@ void RenderWidgetHostViewAndroid::EndRotationBatching() {
 }
 
 void RenderWidgetHostViewAndroid::BeginRotationEmbed() {
-  DCHECK(!rotation_metrics_.empty());
+  CHECK(!rotation_metrics_.empty(), base::NotFatalUntil::M152);
   rotation_metrics_.back().second =
       local_surface_id_allocator_.GetCurrentLocalSurfaceId();
 

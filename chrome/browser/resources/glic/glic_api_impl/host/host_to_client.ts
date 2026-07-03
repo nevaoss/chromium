@@ -34,7 +34,7 @@ export class WebClientImpl implements WebClientInterface {
     const id = this.host.addExperimentalTriggeringUpdatesHandler(handler);
     try {
       const result = await this.sender.requestWithResponse(
-          'glicWebClientGetExperimentalTriggeringUpdates', {
+          'getExperimentalTriggeringUpdates', {
             observationId: id,
           });
       if (!result.success) {
@@ -54,7 +54,7 @@ export class WebClientImpl implements WebClientInterface {
     let result;
     try {
       result = await this.sender.requestWithResponse(
-          'glicWebClientNotifyPanelWillOpen',
+          'notifyPanelWillOpen',
           {panelOpeningData: panelOpeningDataToClient(panelOpeningData)});
     } finally {
       this.host.setWaitingOnPanelWillOpen(false);
@@ -91,8 +91,7 @@ export class WebClientImpl implements WebClientInterface {
 
   async processNotifyPanelWasClosed(): Promise<void> {
     this.host.panelOpenStateChanged(PanelOpenState.CLOSED);
-    return this.sender.requestWithResponse(
-        'glicWebClientNotifyPanelWasClosed', undefined);
+    return this.sender.requestWithResponse('notifyPanelWasClosed', undefined);
   }
   notifyPanelWasClosed(): Promise<void> {
     return this.processNotifyPanelWasClosed();
@@ -101,97 +100,87 @@ export class WebClientImpl implements WebClientInterface {
   invoke(options: InvokeOptionsMojo): Promise<void> {
     const extras = new ResponseExtras();
     return this.sender.requestWithResponse(
-        'glicWebClientInvoke', {
+        'invoke', {
           options: invokeOptionsToClient(options, extras),
         },
         extras.transfers);
   }
 
   notifyPanelStateChange(panelState: PanelStateMojo) {
-    this.sender.requestNoResponse('glicWebClientPanelStateChanged', {
+    this.sender.requestNoResponse('panelStateChanged', {
       panelState: panelStateToClient(panelState),
     });
   }
 
   notifyPanelCanAttachChange(canAttach: boolean) {
-    this.sender.requestNoResponse(
-        'glicWebClientCanAttachStateChanged', {canAttach});
+    this.sender.requestNoResponse('canAttachStateChanged', {canAttach});
   }
 
   notifyGeminiEnterpriseSettingsChanged(
       settings: GeminiEnterpriseSettingsMojo|null): void {
-    this.sender.requestNoResponse(
-        'glicWebClientNotifyGeminiEnterpriseSettingsChanged', {
-          settings: settings || undefined,
-        });
+    this.sender.requestNoResponse('notifyGeminiEnterpriseSettingsChanged', {
+      settings: settings || undefined,
+    });
   }
 
   notifyMicrophonePermissionStateChanged(enabled: boolean): void {
-    this.sender.requestNoResponse(
-        'glicWebClientNotifyMicrophonePermissionStateChanged', {
-          enabled: enabled,
-        });
+    this.sender.requestNoResponse('notifyMicrophonePermissionStateChanged', {
+      enabled: enabled,
+    });
   }
 
   stopMicrophone(): Promise<void> {
-    return this.sender.requestWithResponse(
-        'glicWebClientStopMicrophone', undefined);
+    return this.sender.requestWithResponse('stopMicrophone', undefined);
   }
 
   notifyLocationPermissionStateChanged(enabled: boolean): void {
-    this.sender.requestNoResponse(
-        'glicWebClientNotifyLocationPermissionStateChanged', {
-          enabled: enabled,
-        });
+    this.sender.requestNoResponse('notifyLocationPermissionStateChanged', {
+      enabled: enabled,
+    });
   }
 
   notifyTabContextPermissionStateChanged(enabled: boolean): void {
-    this.sender.requestNoResponse(
-        'glicWebClientNotifyTabContextPermissionStateChanged', {
-          enabled: enabled,
-        });
+    this.sender.requestNoResponse('notifyTabContextPermissionStateChanged', {
+      enabled: enabled,
+    });
   }
 
   notifyOsLocationPermissionStateChanged(enabled: boolean): void {
-    this.sender.requestNoResponse(
-        'glicWebClientNotifyOsLocationPermissionStateChanged', {
-          enabled: enabled,
-        });
+    this.sender.requestNoResponse('notifyOsLocationPermissionStateChanged', {
+      enabled: enabled,
+    });
   }
 
   notifyClosedCaptioningSettingChanged(enabled: boolean): void {
-    this.sender.requestNoResponse(
-        'glicWebClientNotifyClosedCaptioningSettingChanged', {
-          enabled: enabled,
-        });
+    this.sender.requestNoResponse('notifyClosedCaptioningSettingChanged', {
+      enabled: enabled,
+    });
   }
 
   notifyDefaultTabContextPermissionStateChanged(enabled: boolean) {
     this.sender.requestNoResponse(
-        'glicWebClientNotifyDefaultTabContextPermissionStateChanged', {
+        'notifyDefaultTabContextPermissionStateChanged', {
           enabled: enabled,
         });
   }
 
   notifyActuationOnWebSettingChanged(enabled: boolean): void {
-    this.sender.requestNoResponse(
-        'glicWebClientNotifyActuationOnWebSettingChanged', {
-          enabled: enabled,
-        });
+    this.sender.requestNoResponse('notifyActuationOnWebSettingChanged', {
+      enabled: enabled,
+    });
   }
 
   notifyFocusedTabChanged(focusedTabData: (FocusedTabDataMojo)): void {
     const extras = new ResponseExtras();
     this.sender.sendLatestWhenActive(
-        'glicWebClientNotifyFocusedTabChanged', {
+        'notifyFocusedTabChanged', {
           focusedTabDataPrivate: focusedTabDataToClient(focusedTabData, extras),
         },
         extras.transfers);
   }
 
   notifyPanelActiveChange(panelActive: boolean): void {
-    this.sender.requestNoResponse(
-        'glicWebClientNotifyPanelActiveChanged', {panelActive});
+    this.sender.requestNoResponse('notifyPanelActiveChanged', {panelActive});
     this.host.panelIsActive = panelActive;
     this.host.updateSenderActive();
   }
@@ -201,13 +190,11 @@ export class WebClientImpl implements WebClientInterface {
   }
 
   notifyManualResizeChanged(resizing: boolean): void {
-    this.sender.requestNoResponse(
-        'glicWebClientNotifyManualResizeChanged', {resizing});
+    this.sender.requestNoResponse('notifyManualResizeChanged', {resizing});
   }
 
   notifyBrowserIsOpenChanged(browserIsOpen: boolean): void {
-    this.sender.requestNoResponse(
-        'glicWebClientBrowserIsOpenChanged', {browserIsOpen});
+    this.sender.requestNoResponse('browserIsOpenChanged', {browserIsOpen});
   }
 
   notifyInstanceActivationChanged(instanceIsActive: boolean): void {
@@ -217,14 +204,13 @@ export class WebClientImpl implements WebClientInterface {
   }
 
   notifyOsHotkeyStateChanged(hotkey: string): void {
-    this.sender.requestNoResponse(
-        'glicWebClientNotifyOsHotkeyStateChanged', {hotkey});
+    this.sender.requestNoResponse('notifyOsHotkeyStateChanged', {hotkey});
   }
 
   notifyPinnedTabsChanged(tabData: TabDataMojo[]): void {
     const extras = new ResponseExtras();
     this.sender.sendLatestWhenActive(
-        'glicWebClientNotifyPinnedTabsChanged',
+        'notifyPinnedTabsChanged',
         {tabData: tabData.map((x) => tabDataToClient(x, extras))},
         extras.transfers);
   }
@@ -232,39 +218,37 @@ export class WebClientImpl implements WebClientInterface {
   notifyPinnedTabDataChanged(tabData: TabDataMojo): void {
     const extras = new ResponseExtras();
     this.sender.sendLatestWhenActive(
-        'glicWebClientNotifyPinnedTabDataChanged',
+        'notifyPinnedTabDataChanged',
         {tabData: tabDataToClient(tabData, extras)}, extras.transfers,
         // Cache only one entry per tab ID.
         `${tabData.tabId}`);
   }
 
   notifySkillPreviewsChanged(skillPreviews: SkillPreviewMojo[]): void {
-    this.sender.sendLatestWhenActive(
-        'glicWebClientNotifySkillPreviewsChanged', {
-          skillPreviews: skillPreviews.map(s => ({
-                                             ...s,
-                                             source: enumToClient(s.source),
-                                             isContextual: false,
-                                           })),
-        });
+    this.sender.sendLatestWhenActive('notifySkillPreviewsChanged', {
+      skillPreviews: skillPreviews.map(s => ({
+                                         ...s,
+                                         source: enumToClient(s.source),
+                                         isContextual: false,
+                                       })),
+    });
   }
 
   notifyContextualSkillPreviewsChanged(skillPreviews: SkillPreviewMojo[]):
       void {
-    this.sender.sendLatestWhenActive(
-        'glicWebClientNotifyContextualSkillPreviewsChanged', {
-          contextualSkillPreviews:
-              skillPreviews.map(s => ({
-                                  ...s,
-                                  source: enumToClient(s.source),
-                                  isContextual: true,
-                                })),
-        });
+    this.sender.sendLatestWhenActive('notifyContextualSkillPreviewsChanged', {
+      contextualSkillPreviews:
+          skillPreviews.map(s => ({
+                              ...s,
+                              source: enumToClient(s.source),
+                              isContextual: true,
+                            })),
+    });
   }
 
   notifySkillPreviewChanged(skillPreview: SkillPreviewMojo): void {
     this.sender.sendLatestWhenActive(
-        'glicWebClientNotifySkillPreviewChanged', {
+        'notifySkillPreviewChanged', {
           skillPreview: {
             ...skillPreview,
             source: enumToClient(skillPreview.source),
@@ -276,7 +260,7 @@ export class WebClientImpl implements WebClientInterface {
   }
 
   notifySkillDeleted(skillId: string): void {
-    this.sender.sendWhenActive('glicWebClientNotifySkillDeleted', {
+    this.sender.sendWhenActive('notifySkillDeleted', {
       skillId,
     });
   }
@@ -284,17 +268,16 @@ export class WebClientImpl implements WebClientInterface {
   notifyZeroStateSuggestionsChanged(
       suggestions: ZeroStateSuggestionsV2Mojo,
       options: ZeroStateSuggestionsOptionsMojo): void {
-    this.sender.sendLatestWhenActive(
-        'glicWebClientZeroStateSuggestionsChanged', {
-          suggestions: zeroStateSuggestionsToClient(suggestions),
-          options: options,
-        });
+    this.sender.sendLatestWhenActive('zeroStateSuggestionsChanged', {
+      suggestions: zeroStateSuggestionsToClient(suggestions),
+      options: options,
+    });
   }
 
   notifyPageMetadataChanged(tabId: number, metadata: PageMetadataMojo|null):
       void {
     this.sender.sendLatestWhenActive(
-        'glicWebClientPageMetadataChanged', {
+        'pageMetadataChanged', {
           tabId: idToClient(tabId),
           pageMetadata: pageMetadataToClient(metadata),
         },
@@ -305,23 +288,20 @@ export class WebClientImpl implements WebClientInterface {
     const extras = new ResponseExtras();
     const clientContext = additionalContextToClient(context, extras);
     this.sender.sendWhenActive(
-        'glicWebClientNotifyAdditionalContext', {context: clientContext},
-        extras.transfers);
+        'notifyAdditionalContext', {context: clientContext}, extras.transfers);
   }
 
   notifyActOnWebCapabilityChanged(canActOnWeb: boolean): void {
     this.sender.requestNoResponse(
-        'glicWebClientNotifyActOnWebCapabilityChanged', {canActOnWeb});
+        'notifyActOnWebCapabilityChanged', {canActOnWeb});
   }
 
   notifyOnboardingCompletedChanged(completed: boolean): void {
-    this.sender.requestNoResponse(
-        'glicWebClientOnboardingCompletedChanged', {completed});
+    this.sender.requestNoResponse('onboardingCompletedChanged', {completed});
   }
 
   notifyActorTaskListRowClicked(taskId: number): void {
-    this.sender.requestNoResponse(
-        'glicWebClientNotifyActorTaskListRowClicked', {taskId});
+    this.sender.requestNoResponse('notifyActorTaskListRowClicked', {taskId});
   }
 }
 
@@ -331,15 +311,14 @@ export class ActorClientImpl implements ActorClientInterface {
   notifyActorTaskStateChanged(taskId: number, state: ActorTaskStateMojo): void {
     const clientState = enumToClient(state);
     this.sender.requestNoResponse(
-        'glicWebClientNotifyActorTaskStateChanged',
-        {taskId, state: clientState});
+        'notifyActorTaskStateChanged', {taskId, state: clientState});
   }
 
   async requestToShowCredentialSelectionDialog(
       request: SelectCredentialDialogRequestMojo):
       Promise<{response: SelectCredentialDialogResponseMojo}> {
     const clientResponse = await this.sender.requestWithResponse(
-        'glicWebClientRequestToShowDialog',
+        'requestToShowDialog',
         {request: selectCredentialDialogRequestToClient(request)});
     return {
       response: selectCredentialDialogResponseToMojo(clientResponse.response),
@@ -350,7 +329,7 @@ export class ActorClientImpl implements ActorClientInterface {
       request: UserConfirmationDialogRequestMojo):
       Promise<{response: UserConfirmationDialogResponseMojo}> {
     const clientResponse = await this.sender.requestWithResponse(
-        'glicWebClientRequestToShowConfirmationDialog',
+        'requestToShowConfirmationDialog',
         {request: userConfirmationDialogRequestToClient(request)});
     return {
       response: userConfirmationDialogResponseToMojo(clientResponse.response),
@@ -360,7 +339,7 @@ export class ActorClientImpl implements ActorClientInterface {
   async requestToConfirmNavigation(request: NavigationConfirmationRequestMojo):
       Promise<{response: NavigationConfirmationResponseMojo}> {
     const clientResponse = await this.sender.requestWithResponse(
-        'glicWebClientRequestToConfirmNavigation',
+        'requestToConfirmNavigation',
         {request: navigationConfirmationRequestToClient(request)});
     return {
       response: navigationConfirmationResponseToMojo(clientResponse.response),
@@ -371,7 +350,7 @@ export class ActorClientImpl implements ActorClientInterface {
       request: SelectAutofillSuggestionsDialogRequestMojo):
       Promise<{response: SelectAutofillSuggestionsDialogResponseMojo}> {
     const clientResponse = await this.sender.requestWithResponse(
-        'glicWebClientRequestToShowAutofillSuggestionsDialog',
+        'requestToShowAutofillSuggestionsDialog',
         {request: selectAutofillSuggestionsDialogRequestToClient(request)});
     return {
       response: selectAutofillSuggestionsDialogResponseToMojo(

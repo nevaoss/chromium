@@ -202,7 +202,7 @@ public class LocationBarMediatorTest {
     @Mock private WindowAndroid mWindowAndroid;
     @Mock private ObjectAnimator mUrlAnimator;
     @Mock private View mRootView;
-    @Mock private SearchEngineUtils mSearchEngineUtils;
+    @Mock private SearchEngineService mSearchEngineService;
     @Mock private AutocompleteLoadCallback mAutocompleteLoadCallback;
     @Mock private LoadUrlParams mLoadUrlParams;
     @Mock private LoadUrlResult mLoadUrlResult;
@@ -279,9 +279,9 @@ public class LocationBarMediatorTest {
         MultiInstanceOrchestratorFactory.setInstanceForTesting(mMultiInstanceOrchestrator);
 
         mUrlBarData = UrlBarData.create(null, "text", 0, 0, "text");
-        lenient().doReturn(true).when(mSearchEngineUtils).shouldShowSearchEngineLogo();
-        lenient().doReturn(true).when(mSearchEngineUtils).isDefaultSearchEngineGoogle();
-        SearchEngineUtils.setInstanceForTesting(mSearchEngineUtils);
+        lenient().doReturn(true).when(mSearchEngineService).shouldShowSearchEngineLogo();
+        lenient().doReturn(true).when(mSearchEngineService).isDefaultSearchEngineGoogle();
+        SearchEngineService.setInstanceForTesting(mSearchEngineService);
         lenient().doReturn(mUrlBarData).when(mLocationBarDataProvider).getUrlBarData();
         lenient()
                 .doReturn(ChromeColors.getDefaultThemeColor(mContext, /* isIncognito= */ false))
@@ -843,6 +843,7 @@ public class LocationBarMediatorTest {
 
         verify(mView).requestFocus();
         verify(mAutocompleteCoordinator).endInput();
+        verify(mUrlCoordinator).endInput();
     }
 
     public void testLoadUrlWithAutocompleteLoadCallback_base() {
@@ -1217,6 +1218,7 @@ public class LocationBarMediatorTest {
             assertTrue(mMediator.handleEscPress());
             verify(mAutocompleteCoordinator).stopAutocomplete();
             verify(mAutocompleteCoordinator, never()).endInput();
+            verify(mUrlCoordinator, never()).endInput();
         }
 
         {
@@ -1227,6 +1229,7 @@ public class LocationBarMediatorTest {
             verify(mLocationBarLayout).setDeleteButtonVisibility(false);
             assertEquals(input.getUserText(), input.getInitialUserText());
             verify(mAutocompleteCoordinator, never()).endInput();
+            verify(mUrlCoordinator, never()).endInput();
         }
 
         {
@@ -1234,6 +1237,7 @@ public class LocationBarMediatorTest {
             // canceled.
             assertTrue(mMediator.handleEscPress());
             verify(mAutocompleteCoordinator).endInput();
+            verify(mUrlCoordinator).endInput();
         }
 
         {
@@ -1357,6 +1361,9 @@ public class LocationBarMediatorTest {
 
     @Test
     public void testSetUrl() {
+        mProfileSupplier.set(mProfile);
+        mMediator.onFinishNativeInitialization();
+
         var url = JUnitTestGURLs.BLUE_1;
         UrlBarData urlBarData = UrlBarData.forUrl(url);
         mMediator.setUrl(url, urlBarData);
@@ -1364,6 +1371,7 @@ public class LocationBarMediatorTest {
         // Assume that the URL bar is now focused without focus animations.
         doReturn(true).when(mUrlCoordinator).hasFocus();
         mMediator.setIsUrlBarFocusedWithoutAnimationsForTesting(true);
+        mMediator.beginOrResumeInput(/* activateNewSession= */ true);
         mMediator.setUrl(url, urlBarData);
 
         // Verify that setUrl() never clears focus when the URL bar is focused without animations.
@@ -1420,6 +1428,7 @@ public class LocationBarMediatorTest {
                 ArgumentCaptor.forClass(FuseboxSessionState.class);
         verify(mFuseboxCoordinator).beginInput(captor.capture());
         verify(mStatusCoordinator).beginInput(captor.getValue());
+        verify(mUrlCoordinator).beginInput();
 
         assertEquals(
                 OmniboxFocusReason.NTP_AI_MODE,
@@ -1440,6 +1449,7 @@ public class LocationBarMediatorTest {
         ArgumentCaptor<FuseboxSessionState> captor =
                 ArgumentCaptor.forClass(FuseboxSessionState.class);
         verify(mAutocompleteCoordinator).beginInput(captor.capture());
+        verify(mUrlCoordinator).beginInput();
         assertEquals("pastedText", captor.getValue().getAutocompleteInput().getUserText());
     }
 
@@ -1568,6 +1578,7 @@ public class LocationBarMediatorTest {
         assertFalse(mTabletMediator.isUrlBarFocused());
         verify(mStatusCoordinator).setShouldAnimateIconChanges(false);
         verify(mStatusCoordinator).endInput();
+        verify(mUrlCoordinator).endInput();
         verify(mUrlCoordinator).onUrlFocusChange(false);
         verify(mUrlCoordinator, atLeastOnce())
                 .setUrlBarData(
@@ -2516,6 +2527,25 @@ public class LocationBarMediatorTest {
 
     @Test
     @EnableFeatures(OmniboxFeatureList.OMNIBOX_MULTIMODAL_INPUT)
+    public void testUpdateButtonVisibility_suggestionsPopover_withQuery() {
+        OmniboxCapabilities.setHasDesktopExperienceForTesting(true);
+        mProfileSupplier.set(mProfile);
+        mTabletMediator.onFinishNativeInitialization();
+        mTabletMediator.setVoiceRecognitionHandlerForTesting(mVoiceRecognitionHandler);
+        mFuseboxLayoutModeSupplier.set(FuseboxLayoutMode.SUGGESTIONS_POPOVER);
+        doReturn(true).when(mVoiceRecognitionHandler).isVoiceSearchEnabled();
+
+        mSessionState.getAutocompleteInput().setRequestType(AutocompleteRequestType.AI_MODE);
+        doReturn("text").when(mUrlCoordinator).getTextWithAutocomplete();
+        mTabletMediator.onUrlFocusChange(/* hasFocus= */ true);
+
+        clearInvocations(mLocationBarTablet);
+        updateTabletWidthConsumers(mTabletMediator);
+        verify(mLocationBarTablet).setMicButtonVisibility(/* shouldShow= */ true);
+    }
+
+    @Test
+    @EnableFeatures(OmniboxFeatureList.OMNIBOX_MULTIMODAL_INPUT)
     public void testUpdateButtonVisibility_ImageGenMode_noQuery_showMic() {
         mMediator.onFinishNativeInitialization();
         mProfileSupplier.set(mProfile);
@@ -2759,34 +2789,34 @@ public class LocationBarMediatorTest {
     }
 
     @Test
-    public void testOnSearchBoxHintTextChanged_UpdatesHintText() {
+    public void testOnSearchEngineName_UpdatesHintText() {
         mProfileSupplier.set(mProfile);
         mMediator.onFinishNativeInitialization();
         RobolectricUtil.runAllBackgroundAndUi();
 
         doReturn("search engine hint text")
-                .when(mSearchEngineUtils)
+                .when(mSearchEngineService)
                 .getOmniboxHintText(anyInt(), any());
 
-        mMediator.onSearchBoxHintTextChanged();
+        mMediator.updateUrlBarHintText();
 
         verify(mUrlCoordinator).setUrlBarHintText(eq("search engine hint text"));
 
         mMediator.onUrlFocusChange(false);
         doReturn("search engine hint text unfocused")
-                .when(mSearchEngineUtils)
+                .when(mSearchEngineService)
                 .getOmniboxHintText(anyInt(), any());
     }
 
     @Test
-    public void testOnSearchBoxHintTextChanged_EmbedderControlledHint_DoesNotUpdateHintText() {
+    public void testOnSearchEngineName_EmbedderControlledHint_DoesNotUpdateHintText() {
         mUiOverrides.setEmbedderControlledHint(true);
 
         mProfileSupplier.set(mProfile);
         mMediator.onFinishNativeInitialization();
         RobolectricUtil.runAllBackgroundAndUi();
 
-        mMediator.onSearchBoxHintTextChanged();
+        mMediator.updateUrlBarHintText();
 
         verify(mUrlCoordinator, never()).setUrlBarHintText(any());
     }
@@ -2809,7 +2839,7 @@ public class LocationBarMediatorTest {
 
         // Triggering it again should also set it to empty.
         clearInvocations(mUrlCoordinator);
-        mMediator.onSearchBoxHintTextChanged();
+        mMediator.updateUrlBarHintText();
         verify(mUrlCoordinator).setUrlBarHintText(eq(""));
     }
 
@@ -2821,11 +2851,11 @@ public class LocationBarMediatorTest {
 
         String searchHint = "search or something";
         doReturn(searchHint)
-                .when(mSearchEngineUtils)
+                .when(mSearchEngineService)
                 .getOmniboxHintText(eq(AutocompleteRequestType.SEARCH), any());
         String aiHint = "ai or something";
         doReturn(aiHint)
-                .when(mSearchEngineUtils)
+                .when(mSearchEngineService)
                 .getOmniboxHintText(eq(AutocompleteRequestType.AI_MODE), any());
 
         mMediator.onUrlFocusChange(/* hasFocus= */ true);

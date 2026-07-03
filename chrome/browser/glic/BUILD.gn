@@ -55,6 +55,7 @@ source_set("glic") {
     "public/glic_enabling.h",
     "public/glic_instance.cc",
     "public/glic_instance.h",
+    "public/glic_instance_id.h",
     "public/glic_instance_metrics_backwards_compatibility.h",
     "public/glic_invoke_options.h",
     "public/glic_keyed_service.h",
@@ -792,9 +793,16 @@ source_set("browser_tests") {
       "host/glic_webui_browsertest.cc",
       "host/guest_util_browsertest.cc",
       "public/glic_enabling_browsertest.cc",
+      "suggestions/contextual_cueing_service_browsertest.cc",
+      "suggestions/glic_cue_target_browsertest.cc",
+      "suggestions/zero_state_suggestions_browsertest.cc",
       "widget/glic_side_panel_coordinator_browsertest.cc",
       "widget/panel_visibility_dependent_hotkey_manager_browsertest.cc",
     ]
+
+    if (!is_mac && enterprise_cloud_content_analysis) {
+      sources += [ "host/glic_drag_and_drop_browsertest.cc" ]
+    }
 
     deps += [
       ":glic",
@@ -807,6 +815,7 @@ source_set("browser_tests") {
       "//chrome/browser/actor:test_support",
       "//chrome/browser/actor/ui",
       "//chrome/browser/actor/ui:test_support",
+      "//chrome/browser/autocomplete:aim_eligibility_service",
       "//chrome/browser/enterprise/connectors/test:test_support",
       "//chrome/browser/extensions",
       "//chrome/browser/glic/browser_ui:browser_tests",
@@ -814,8 +823,10 @@ source_set("browser_tests") {
       "//chrome/browser/glic/common:browser_tests",
       "//chrome/browser/glic/selection",
       "//chrome/browser/glic/selection:browser_tests",
+      "//chrome/browser/glic/suggestions:impl",
       "//chrome/browser/glic/suggestions:test_support",
       "//chrome/browser/glic/test_support",
+      "//chrome/browser/optimization_guide:test_support",
       "//chrome/browser/permissions:test_support",
       "//chrome/browser/policy:test_support",
       "//chrome/browser/prefs",
@@ -913,12 +924,9 @@ if (!is_android) {
       "host/glic_focus_interactive_uitest.cc",
       "host/glic_ui_interactive_uitest.cc",
       "service/metrics/glic_instance_metrics_ui_test.cc",
+      "suggestions/contextual_cueing_helper_interactive_uitest.cc",
       "widget/glic_instance_coordinator_interactive_uitest.cc",
     ]
-
-    if (!is_mac && enterprise_cloud_content_analysis) {
-      sources += [ "host/glic_drag_and_drop_interactive_uitest.cc" ]
-    }
 
     # ChromeOS disallows multi profile. So, ProfileManager is not supported.
     # See also crbug.com/450679848.
@@ -937,6 +945,7 @@ if (!is_android) {
       "//chrome/browser/autofill/actor:test_support",
       "//chrome/browser/background/glic",
       "//chrome/browser/compose",
+      "//chrome/browser/contextual_tasks:ui",
       "//chrome/browser/devtools:test_support",
       "//chrome/browser/download:test_support",
       "//chrome/browser/enterprise/connectors/test:test_support",

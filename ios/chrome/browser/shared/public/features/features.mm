@@ -66,7 +66,7 @@ BASE_FEATURE(kSharedHighlightingIOS, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kIOSBrowserEditMenuMetrics, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kIOSCustomFileUploadMenu, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIOSCustomFileUploadMenu, base::FEATURE_ENABLED_BY_DEFAULT);
 
 const char kIOSDockingPromoV2VariationParam[] =
     "IOSDockingPromoV2VariationParam";
@@ -233,6 +233,12 @@ DownloadListUIType CurrentDownloadListUIType() {
 }
 
 BASE_FEATURE(kDownloadList, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kDownloadListPagination, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsDownloadListPaginationEnabled() {
+  return base::FeatureList::IsEnabled(kDownloadListPagination);
+}
 
 const char kEnableServerDrivenBackgroundRefreshSchedule[] =
     "EnableServerDrivenBackgroundRefreshSchedule";
@@ -1125,13 +1131,6 @@ BASE_FEATURE(kDisableComposeboxFromAIMNTP, base::FEATURE_ENABLED_BY_DEFAULT);
 bool IsDisableComposeboxFromAIMNTPEnabled() {
   return base::FeatureList::IsEnabled(kDisableComposeboxFromAIMNTP);
 }
-
-BASE_FEATURE(kAIMCobrowseDebugEntrypoint, base::FEATURE_DISABLED_BY_DEFAULT);
-
-bool IsAIMCobrowseDebugEntrypointEnabled() {
-  return base::FeatureList::IsEnabled(kAIMCobrowseDebugEntrypoint);
-}
-
 const char kAIMCobrowseHeaderParam[] = "kNTPMIAEntrypointParam";
 const char kAIMCobrowseHeaderParamOptionA[] = "kAIMCobrowseHeaderParamOptionA";
 const char kAIMCobrowseHeaderParamOptionB[] = "kAIMCobrowseHeaderParamOptionB";

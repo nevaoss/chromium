@@ -72,6 +72,7 @@ source_set("unit_tests") {
     "//ash:test_support",
     "//base",
     "//chrome/browser/ui",
+    "//chrome/browser/ui/views:layout_provider",
     "//chrome/test:test_support_unit",
     "//chromeos/ash/experiences/arc",
     "//chromeos/ash/experiences/arc/vm_data_migration",

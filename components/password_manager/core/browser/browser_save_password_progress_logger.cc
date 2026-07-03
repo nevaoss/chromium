@@ -215,6 +215,22 @@ std::string GetFormDataFieldsAndModelPredictionsLogString(
   return result;
 }
 
+std::string StoreToString(PasswordForm::Store store) {
+  std::vector<std::string_view> stores;
+  if (static_cast<int>(store) &
+      static_cast<int>(PasswordForm::Store::kProfileStore)) {
+    stores.push_back("Profile Store");
+  }
+  if (static_cast<int>(store) &
+      static_cast<int>(PasswordForm::Store::kAccountStore)) {
+    stores.push_back("Account Store");
+  }
+  if (stores.empty()) {
+    return "Not Set";
+  }
+  return base::JoinString(stores, ", ");
+}
+
 }  // namespace
 
 BrowserSavePasswordProgressLogger::BrowserSavePasswordProgressLogger(
@@ -404,6 +420,13 @@ std::string BrowserSavePasswordProgressLogger::FormStructureToFieldsLogString(
 void BrowserSavePasswordProgressLogger::LogString(StringID label,
                                                   const std::string& s) {
   LogValue(label, base::Value(s));
+}
+
+void BrowserSavePasswordProgressLogger::LogPasswordSaveAndUpdate(
+    StringID label,
+    PasswordForm::Store store) {
+  LogString(STRING_MESSAGE, base::StrCat({GetStringFromID(label), " on ",
+                                          StoreToString(store)}));
 }
 
 void BrowserSavePasswordProgressLogger::LogSuccessfulSubmissionIndicatorEvent(

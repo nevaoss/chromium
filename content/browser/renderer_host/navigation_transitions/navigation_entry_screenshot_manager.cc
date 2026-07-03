@@ -28,7 +28,7 @@ NavigationEntryScreenshotManager::NavigationEntryScreenshotManager()
       tick_clock_(base::DefaultTickClock::GetInstance()),
       cleanup_delay_(
           NavigationTransitionConfig::GetCleanupDelayForInvisibleCaches()) {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  CHECK_CURRENTLY_ON(content::BrowserThread::UI, base::NotFatalUntil::M152);
   max_cache_size_in_bytes_ =
       NavigationTransitionConfig::ComputeCacheSizeInBytes();
   if (auto* screen = display::Screen::Get()) {
@@ -128,7 +128,7 @@ bool NavigationEntryScreenshotManager::IsEmpty() const {
 }
 
 void NavigationEntryScreenshotManager::RecalculateCacheSize() {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+  CHECK_CURRENTLY_ON(content::BrowserThread::UI, base::NotFatalUntil::M152);
   // Recalculate the max cache size based on the size of the new primary screen.
   // Keep the maximum size calculated from all screens that were ever added.
   max_cache_size_in_bytes_ =

@@ -582,7 +582,7 @@ class GlicApiTestWithGeminiActOnWebPolicy : public GlicApiTestWithOneTab {
     AccountInfo account_info = identity_test_env_->MakePrimaryAccountAvailable(
         std::string(email), signin::ConsentLevel::kSignin);
 
-    AccountCapabilitiesTestMutator mutator(&account_info.capabilities);
+    AccountCapabilitiesTestMutator mutator(&account_info);
     mutator.set_can_use_model_execution_features(true);
     mutator.set_is_subject_to_enterprise_features(!host_domain.empty());
 
@@ -726,9 +726,7 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestGeminiEnterpriseSettingsPolicyUnset,
   ExecuteJsTest();
 }
 
-// TODO(crbug.com/486793948): Fix and re-enable or remove the test.
-IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab,
-                       DISABLED_testDefaultInvocationSource) {
+IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, testDefaultInvocationSource) {
   RunTestSequence(CloseGlic(), WaitForGlicClose(),
                   ToggleGlicWindowFromSource(
                       GlicWindowMode::kAttached, kGlicButtonElementId,
@@ -1343,7 +1341,7 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testPanelActiveWithMicrophone) {
   // Activating the other tab should take focus away from Floaty. Floaty should
   // still remain active.
   browser()->tab_strip_model()->ActivateTabAt(1);
-  browser()->window()->Activate();
+  browser()->GetWindow()->Activate();
 
   EXPECT_TRUE(GetGlicInstance()->IsActive());
 
@@ -1353,7 +1351,7 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testPanelActiveWithMicrophone) {
   // considered active.
   GetHost()->OnMicrophoneStatusChanged(mojom::MicrophoneStatus::kNotListening);
   browser()->tab_strip_model()->ActivateTabAt(1);
-  browser()->window()->Activate();
+  browser()->GetWindow()->Activate();
 
   ASSERT_TRUE(
       base::test::RunUntil([&]() { return !GetGlicInstance()->IsActive(); }));
@@ -1853,34 +1851,6 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, DISABLED_testMetrics) {
   histogram_tester->ExpectTotalCount("Glic.TabContext.UploadTime", 1);
 }
 
-IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, testScrollToFindsText) {
-  // TODO(b/446757683): GlicAnnotationManager doesn't work for multi-instance.
-  SKIP_TEST_FOR_MULTI_INSTANCE();
-  ExecuteJsTest({.params = base::Value(base::DictValue().Set(
-                     "documentId", GetDocumentIdForTab(kFirstTab)))});
-}
-
-IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab,
-                       testScrollToFindsTextNoTabContextPermission) {
-  // TODO(b/446757683): GlicAnnotationManager doesn't work for multi-instance.
-  SKIP_TEST_FOR_MULTI_INSTANCE();
-  ExecuteJsTest({.params = base::Value(base::DictValue().Set(
-                     "documentId", GetDocumentIdForTab(kFirstTab)))});
-}
-
-IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, testScrollToFailsWhenInactive) {
-  // TODO(b/446757683): GlicAnnotationManager doesn't work for multi-instance.
-  SKIP_TEST_FOR_MULTI_INSTANCE();
-  ExecuteJsTest({.params = base::Value(base::DictValue().Set(
-                     "documentId", GetDocumentIdForTab(kFirstTab)))});
-}
-
-IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, testScrollToNoMatchFound) {
-  // TODO(b/446757683): GlicAnnotationManager doesn't work for multi-instance.
-  SKIP_TEST_FOR_MULTI_INSTANCE();
-  ExecuteJsTest({.params = base::Value(base::DictValue().Set(
-                     "documentId", GetDocumentIdForTab(kFirstTab)))});
-}
 
 IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, testSetSyntheticExperimentState) {
   ExecuteJsTest();
@@ -2571,7 +2541,7 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab,
   ExecuteJsTest({.params = base::Value(can_fetch_screenshot)});
 
   browser()->tab_strip_model()->SelectPreviousTab();
-  browser()->window()->Minimize();
+  browser()->GetWindow()->Minimize();
 
   ContinueJsTest();
 }
@@ -2721,7 +2691,7 @@ IN_PROC_BROWSER_TEST_P(MAYBE_GlicApiTestWithOneTabMoreDebounceDelay,
 
 IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, testGetPinCandidatesSingleTab) {
   // In multi-instance mode, the tab is automatically pinned. Unpin it now.
-  GetGlicInstanceImpl()->sharing_manager().UnpinAllTabs();
+  GetGlicInstanceImpl()->GetSharingManagerInternal().UnpinAllTabs();
   ExecuteJsTest();
 }
 

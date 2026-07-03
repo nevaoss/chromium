@@ -108,4 +108,10 @@ interface ToolbarUIService {
 
   // Shows the avatar menu bubble.
   ShowAvatarMenu() => result<mojo_base.mojom.Empty, mojo_base.mojom.Error>;
+
+  // Notifies the browser of the hover state of the avatar button.
+  SetAvatarButtonHovered(bool hovered) => result<mojo_base.mojom.Empty, mojo_base.mojom.Error>;
+
+  // Notifies the browser of the focus state of the avatar button.
+  SetAvatarButtonFocused(bool focused) => result<mojo_base.mojom.Empty, mojo_base.mojom.Error>;
 };

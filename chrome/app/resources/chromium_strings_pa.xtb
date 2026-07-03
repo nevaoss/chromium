@@ -22,6 +22,7 @@
 <ph name="EXTENSION_NAME" /></translation>
 <translation id="1184145431117212167">Windows ਦਾ ਤੁਹਾਡਾ ਵਰਜਨ ਸਮਰਥਿਤ ਨਾ ਹੋਣ ਕਰਕੇ ਸਥਾਪਨਾ ਅਸਫਲ ਰਹੀ।</translation>
 <translation id="1185134272377778587">Chromium ਬਾਰੇ</translation>
+<translation id="1186645291482254714">ਆਪਣੇ ਫ਼ੋਨ 'ਤੇ Chromium ਨਾਲ ਕੀਮਤ ਸੰਬੰਧੀ ਟਰੈਕਿੰਗ ਅਲਰਟ ਪ੍ਰਾਪਤ ਕਰੋ</translation>
 <translation id="1203500561924088507">ਸਥਾਪਨਾ ਕਰਨ ਲਈ ਧੰਨਵਾਦ। <ph name="BUNDLE_NAME" /> ਦੀ ਵਰਤੋਂ ਕਰਨ ਤੋਂ ਪਹਿਲਾਂ ਤੁਹਾਡੇ ਵੱਲੋਂ ਆਪਣੇ ਬ੍ਰਾਊਜ਼ਰ ਨੂੰ ਮੁੜ-ਸ਼ੁਰੂ ਕਰਨਾ ਲਾਜ਼ਮੀ ਹੈ।</translation>
 <translation id="1232234696885483911">ਜਦੋਂ ਤੁਸੀਂ 'ਚਿੱਤਰ ਖੋਜ' ਵਿਸ਼ੇਸ਼ਤਾ ਖੋਲ੍ਹਦੇ ਹੋ, ਤਾਂ ਪੰਨਾ ਸਿਰਲੇਖ, URL ਅਤੇ ਸਮੱਗਰੀ ਸਰਵਰ ਨੂੰ ਸਵੈਚਲਿਤ ਤੌਰ 'ਤੇ ਭੇਜੀ ਜਾਵੇਗੀ, ਇਸ ਵਿੱਚ PDF ਵੀ ਸ਼ਾਮਲ ਹੈ। <ph name="LEARN_MORE" /></translation>
 <translation id="123265588161106468">ਜਦੋਂ ਤੁਸੀਂ ਸਾਈਨ-ਇਨ ਹੁੰਦੇ ਹੋ, ਤਾਂ ਤੁਸੀਂ Chromium ਵਿੱਚ ਆਪਣੇ Google ਖਾਤੇ ਤੋਂ ਆਪਣੇ ਪਾਸਵਰਡ ਅਤੇ ਹੋਰ ਬਹੁਤ ਕੁਝ ਦੀ ਵਰਤੋਂ ਕਰ ਸਕਦੇ ਹੋ। ਇਸਨੂੰ ਬਦਲਣ ਲਈ, “Chromium ਵਿੱਚ ਤੁਹਾਡਾ ਖਾਤਾ” 'ਤੇ ਜਾਓ।</translation>
@@ -52,7 +53,6 @@
 <translation id="154404805518949443">Chromium ਵਿੱਚ ਸਾਈਨ-ਇਨ ਕਰੋ</translation>
 <translation id="1547469039832541117">ਉਜਾਗਰ ਕੀਤੇ ਕਾਰਜ ਨੂੰ ਸਮਾਪਤ ਕਰਦਾ ਹੈ।</translation>
 <translation id="1553461853655228091">Chromium ਨੂੰ ਤੁਹਾਡੇ ਆਲੇ-ਦੁਆਲੇ ਦਾ 3D ਨਕਸ਼ਾ ਬਣਾਉਣ ਵਾਸਤੇ ਤੁਹਾਡੇ ਕੈਮਰੇ ਤੱਕ ਪਹੁੰਚ ਕਰਨ ਲਈ ਇਜਾਜ਼ਤ ਦੀ ਲੋੜ ਹੈ</translation>
-<translation id="1555494096857516577">{NUM_EXTENSIONS,plural, =1{ਇਹ ਐਕਸਟੈਂਸ਼ਨ ਹੁਣ ਸਮਰਥਿਤ ਨਹੀਂ ਹੈ। Chromium ਸਿਫ਼ਾਰਸ਼ ਕਰਦਾ ਹੈ ਕਿ ਤੁਸੀਂ ਇਸਨੂੰ ਹਟਾ ਦਿਓ।}one{ਇਹ ਐਕਸਟੈਂਸ਼ਨ ਹੁਣ ਸਮਰਥਿਤ ਨਹੀਂ ਹੈ। Chromium ਸਿਫ਼ਾਰਸ਼ ਕਰਦਾ ਹੈ ਕਿ ਤੁਸੀਂ ਇਸਨੂੰ ਹਟਾ ਦਿਓ।}other{ਇਹ ਐਕਸਟੈਂਸ਼ਨਾਂ ਹੁਣ ਸਮਰਥਿਤ ਨਹੀਂ ਹਨ। Chromium ਸਿਫ਼ਾਰਸ਼ ਕਰਦਾ ਹੈ ਕਿ ਤੁਸੀਂ ਇਨ੍ਹਾਂ ਨੂੰ ਹਟਾ ਦਿਓ।}}</translation>
 <translation id="1562320819937089394">Chromium ਨੂੰ ਪਿੰਨ ਕਰੋ</translation>
 <translation id="1574377791422810894">Chromium ਦੇ ਸੁਰੱਖਿਆ ਸੰਬੰਧੀ ਟੂਲ</translation>
 <translation id="1594928384848033697">Chromium ਤੁਹਾਡੇ Password Manager ਡਾਟੇ ਨੂੰ ਮਿਟਾਉਣਾ ਚਾਹੁੰਦਾ ਹੈ। ਇਸਦੀ ਆਗਿਆ ਦੇਣ ਲਈ ਆਪਣਾ Windows ਪਾਸਵਰਡ ਟਾਈਪ ਕਰੋ।</translation>

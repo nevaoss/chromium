@@ -96,6 +96,12 @@ class AutofillPopupControllerImpl : public AutofillPopupController,
   std::optional<UiSessionId> GetUiSessionId() const override;
   void SetKeepPopupOpenForTesting(bool keep_popup_open_for_testing) override;
   void UpdateDataListValues(base::span<const SelectOption> options) override;
+  bool MayRecycle(
+      base::WeakPtr<AutofillSuggestionDelegate> delegate,
+      content::WebContents* web_contents,
+      AutofillSuggestionTriggerSource trigger_source) const override;
+  void Recycle(PopupControllerCommon controller_common,
+               int32_t form_control_ax_id) override;
   bool IsViewVisibilityAcceptingThresholdEnabled() const override;
   bool IsSearching() const override;
 
@@ -108,9 +114,6 @@ class AutofillPopupControllerImpl : public AutofillPopupController,
       AutoselectFirstSuggestion autoselect_first_suggestion) override;
   void HideSubPopup() override;
   bool ShouldIgnoreMouseObservedOutsideItemBoundsCheck() const override;
-  void PerformButtonActionForSuggestion(
-      int index,
-      const SuggestionButtonAction& button_action) override;
   const std::vector<std::optional<SuggestionFilterMatch>>&
   GetSuggestionFilterMatches() const override;
   void SetFilter(std::optional<SuggestionFilter> filter,

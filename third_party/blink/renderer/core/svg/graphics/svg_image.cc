@@ -27,11 +27,12 @@
 
 #include "third_party/blink/renderer/core/svg/graphics/svg_image.h"
 
+#include "base/check.h"
 #include "base/memory/scoped_refptr.h"
 #include "third_party/blink/renderer/core/animation/document_animations.h"
 #include "third_party/blink/renderer/core/animation/document_timeline.h"
+#include "third_party/blink/renderer/core/dom/element_traversal.h"
 #include "third_party/blink/renderer/core/dom/flat_tree_traversal.h"
-#include "third_party/blink/renderer/core/dom/node_traversal.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
@@ -483,6 +484,10 @@ std::optional<PaintRecord> SVGImage::PaintRecordForCurrentFrame(
 
   view->UpdateAllLifecyclePhases(DocumentUpdateReason::kSVGImage);
 
+  if (RuntimeEnabledFeatures::SvgImageAnimationResetEnabled()) {
+    UpdateCachedAnimationState();
+  }
+
   return view->GetPaintRecord(cull_rect);
 }
 
@@ -533,21 +538,74 @@ void SVGImage::DrawInternal(const DrawInfo& draw_info,
 }
 
 void SVGImage::ScheduleTimelineRewind() {
-  has_pending_timeline_rewind_ = true;
+  if (RuntimeEnabledFeatures::SvgImageAnimationResetEnabled()) {
+    switch (animation_state_) {
+      case AnimationState::kAnimated:
+        animation_state_ = AnimationState::kAnimatedRewindPending;
+        break;
+      case AnimationState::kAnimatedRewindPending:
+        break;
+      case AnimationState::kUnknown:
+        animation_state_ = AnimationState::kUnknownRewindPending;
+        break;
+      case AnimationState::kUnknownRewindPending:
+      case AnimationState::kNotAnimated:
+        break;
+    }
+  } else {
+    has_pending_timeline_rewind_ = true;
+  }
 }
 
 void SVGImage::FlushPendingTimelineRewind() {
-  if (!has_pending_timeline_rewind_)
-    return;
-  if (SVGSVGElement* root_element = RootElement())
-    root_element->setCurrentTime(0);
-  has_pending_timeline_rewind_ = false;
+  if (RuntimeEnabledFeatures::SvgImageAnimationResetEnabled()) {
+    if (!HasPendingTimelineRewind()) {
+      return;
+    }
+    if (SVGSVGElement* root_element = RootElement()) {
+      if (!css_animations_to_reset_) {
+        css_animations_to_reset_ =
+            MakeGarbageCollected<SVGImageAnimationsToReset>();
+      }
+      // Rewinding the SVG timeline alone is not enough for CSS animations: this
+      // draw's lifecycle update can advance running CSS animations before the
+      // reset frame is sampled, so pause and resume them around the reset.
+      root_element->setCurrentTime(0);
+      root_element->GetDocument()
+          .GetDocumentAnimations()
+          .PrepareAnimationsForSVGImageReset(*css_animations_to_reset_);
+    }
+    switch (animation_state_) {
+      case AnimationState::kUnknownRewindPending:
+        animation_state_ = AnimationState::kUnknown;
+        break;
+      case AnimationState::kAnimatedRewindPending:
+        animation_state_ = AnimationState::kAnimated;
+        break;
+      case AnimationState::kUnknown:
+      case AnimationState::kNotAnimated:
+      case AnimationState::kAnimated:
+        NOTREACHED();
+    }
+  } else {
+    if (!has_pending_timeline_rewind_) {
+      return;
+    }
+    if (SVGSVGElement* root_element = RootElement()) {
+      root_element->setCurrentTime(0);
+    }
+    has_pending_timeline_rewind_ = false;
+  }
 }
 
 void SVGImage::StartAnimation() {
   SVGSVGElement* root_element = RootElement();
   if (!root_element)
     return;
+  if (RuntimeEnabledFeatures::SvgImageAnimationResetEnabled() &&
+      css_animations_to_reset_) {
+    css_animations_to_reset_.Release()->Resume();
+  }
   chrome_client_->ResumeAnimation();
   if (root_element->animationsPaused())
     root_element->unpauseAnimations();
@@ -563,11 +621,23 @@ void SVGImage::StopAnimation() {
 
 void SVGImage::ResetAnimation() {
   SVGSVGElement* root_element = RootElement();
-  if (!root_element)
+  if (!root_element) {
     return;
+  }
+
+  if (RuntimeEnabledFeatures::SvgImageAnimationResetEnabled()) {
+    ScheduleTimelineRewind();
+    if (!HasPendingTimelineRewind()) {
+      return;
+    }
+  }
+
   chrome_client_->SuspendAnimation();
   root_element->pauseAnimations();
-  ScheduleTimelineRewind();
+
+  if (!RuntimeEnabledFeatures::SvgImageAnimationResetEnabled()) {
+    ScheduleTimelineRewind();
+  }
 }
 
 void SVGImage::RestoreAnimation() {
@@ -581,12 +651,46 @@ void SVGImage::RestoreAnimation() {
   StartAnimation();
 }
 
-bool SVGImage::MaybeAnimated() {
+bool SVGImage::DetectAnimatedContent() const {
+  CHECK(RuntimeEnabledFeatures::SvgImageAnimationResetEnabled());
   SVGSVGElement* root_element = RootElement();
-  if (!root_element)
-    return false;
-  const Document& document = root_element->GetDocument();
-  return HasSmilAnimations(document) || document.Timeline().HasPendingUpdates();
+  if (root_element) {
+    const Document& document = root_element->GetDocument();
+    if (HasSmilAnimations(document) || root_element->HasAnimations()) {
+      return true;
+    }
+    for (Element& element : ElementTraversal::DescendantsOf(*root_element)) {
+      if (element.HasAnimations()) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+bool SVGImage::MaybeAnimated() {
+  if (RuntimeEnabledFeatures::SvgImageAnimationResetEnabled()) {
+    switch (animation_state_) {
+      case AnimationState::kAnimated:
+      case AnimationState::kAnimatedRewindPending:
+        return true;
+      case AnimationState::kNotAnimated:
+        return false;
+      case AnimationState::kUnknown:
+      case AnimationState::kUnknownRewindPending:
+        break;
+    }
+
+    return DetectAnimatedContent();
+  } else {
+    SVGSVGElement* root_element = RootElement();
+    if (!root_element) {
+      return false;
+    }
+    const Document& document = root_element->GetDocument();
+    return HasSmilAnimations(document) ||
+           document.Timeline().HasPendingUpdates();
+  }
 }
 
 bool SVGImage::HasSVGForeignObject() const {
@@ -640,6 +744,9 @@ void SVGImage::ServiceAnimations(
   // analysis of whether animations should be composited.
   frame->GetDocument()->GetDocumentAnimations().UpdateAnimations(
       DocumentLifecycle::kLayoutClean, nullptr, false);
+  if (RuntimeEnabledFeatures::SvgImageAnimationResetEnabled()) {
+    UpdateCachedAnimationState();
+  }
 }
 
 void SVGImage::AdvanceAnimationForTesting() {
@@ -718,6 +825,34 @@ void SVGImage::UpdateLifecycleForUse(
 void SVGImage::NotifyAsyncLoadCompleted() {
   if (GetImageObserver())
     GetImageObserver()->AsyncLoadCompleted(this);
+}
+
+bool SVGImage::HasPendingTimelineRewind() const {
+  CHECK(RuntimeEnabledFeatures::SvgImageAnimationResetEnabled());
+  return animation_state_ == AnimationState::kUnknownRewindPending ||
+         animation_state_ == AnimationState::kAnimatedRewindPending;
+}
+
+void SVGImage::UpdateCachedAnimationState() {
+  CHECK(RuntimeEnabledFeatures::SvgImageAnimationResetEnabled());
+  switch (animation_state_) {
+    case AnimationState::kAnimated:
+    case AnimationState::kAnimatedRewindPending:
+    case AnimationState::kNotAnimated:
+      return;
+    case AnimationState::kUnknown:
+    case AnimationState::kUnknownRewindPending:
+      break;
+  }
+
+  if (DetectAnimatedContent()) {
+    animation_state_ = animation_state_ == AnimationState::kUnknownRewindPending
+                           ? AnimationState::kAnimatedRewindPending
+                           : AnimationState::kAnimated;
+    return;
+  }
+
+  animation_state_ = AnimationState::kNotAnimated;
 }
 
 Image::SizeAvailability SVGImage::DataChanged(bool all_data_received) {

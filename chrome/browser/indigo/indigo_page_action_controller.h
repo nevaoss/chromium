@@ -28,9 +28,7 @@ class OptimizationGuideDecider;
 class OptimizationMetadata;
 }  // namespace optimization_guide
 
-namespace page_actions {
-class PageActionController;
-}  // namespace page_actions
+#include "chrome/browser/ui/page_action/page_action_controller.h"
 
 namespace tabs {
 class TabInterface;
@@ -77,6 +75,12 @@ enum class OnboardingDisposition {
   kReplacePhoto,
 };
 
+enum class EntryPoint {
+  kSuggestionChip = 0,
+  kAnchoredMessage = 1,
+  kErrorToast = 2,
+};
+
 // Manages the Indigo page action and its various entry points, ensuring they
 // are correctly displayed.
 class IndigoPageActionController : public tabs::ContentsObservingTabFeature,
@@ -101,7 +105,7 @@ class IndigoPageActionController : public tabs::ContentsObservingTabFeature,
   // it does not exist.
   static IndigoPageActionController* From(tabs::TabInterface* tab);
 
-  void InvokeAction();
+  void InvokeAction(EntryPoint entry_point);
 
   // Resets all image replacements and hides the toolbar.
   void Reset(ResetType reset_type);
@@ -198,6 +202,9 @@ class IndigoPageActionController : public tabs::ContentsObservingTabFeature,
 
   // Hides the toolbar if it is currently shown.
   void DestroyToolbar();
+
+  // Shows the page action anchored message and notifies IndigoService.
+  void ShowAnchoredMessage(page_actions::PageActionPriorityCategory priority);
 
   // `page_action_controller_` is owned by the same `TabFeatures` that owns
   // `this`. Since `page_action_controller_` is initialized before `this` and

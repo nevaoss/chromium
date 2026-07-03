@@ -568,8 +568,19 @@ function processFormMutationsStandard(
       }
     }
   }
-  const messagesToSend: object[] =
-      [removedFormMessage, addedFormMessage].filter(v => !!v).map(v => v!);
+  let messagesToSend: object[];
+  if (isAutofillOptimizationFormSearchEnabled()) {
+    messagesToSend = [];
+    if (removedFormMessage) {
+      messagesToSend.push(removedFormMessage);
+    }
+    if (addedFormMessage) {
+      messagesToSend.push(addedFormMessage);
+    }
+  } else {
+    messagesToSend =
+        [removedFormMessage, addedFormMessage].filter(v => !!v).map(v => v!);
+  }
   if (messagesToSend.length > 0 &&
       !sendFormMutationMessagesAfterDelay(messagesToSend, delay, true)) {
     // Count the messages that couldn't be scheduled as dropped.
@@ -717,8 +728,13 @@ function processFormMutationsOptimized(
   formControlCount = newFormControlCount;
 
   // Send the messages
-  const messagesToSend: object[] =
-      [removedFormMessage, addedFormMessage].filter(v => !!v).map(v => v!);
+  const messagesToSend: object[] = [];
+  if (removedFormMessage) {
+    messagesToSend.push(removedFormMessage);
+  }
+  if (addedFormMessage) {
+    messagesToSend.push(addedFormMessage);
+  }
   if (messagesToSend.length > 0 &&
       !sendFormMutationMessagesAfterDelay(messagesToSend, delay, true)) {
     formMsgBatchMetadata.dropCount += messagesToSend.length;

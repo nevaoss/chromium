@@ -125,7 +125,7 @@ namespace {
 
 constexpr int kExperimentalTriggeringVersion = 1;
 
-signin::Tribool CanUseGeminiInChrome(AccountCapabilities& capabilities) {
+signin::Tribool CanUseGeminiInChrome(const AccountCapabilities& capabilities) {
   return capabilities.can_use_gemini_in_chrome();
 }
 
@@ -521,7 +521,8 @@ GlicEnabling::ProfileEnablement GlicEnabling::EnablementForProfile(
     // Not having a primary account is considered not fully signed in if the
     // kGlicShowForSignedOut feature is enabled. Otherwise, it is ineligible.
     if (primary_account.IsEmpty()) {
-      if (base::FeatureList::IsEnabled(features::kGlicShowForSignedOut)) {
+      if (base::FeatureList::IsEnabled(features::kGlicShowForSignedOut) &&
+          !WasPreviouslyNotAllowed(profile)) {
         result.primary_account_needs_signed_in = true;
       } else {
         result.primary_account_is_capable = false;
@@ -541,12 +542,14 @@ GlicEnabling::ProfileEnablement GlicEnabling::EnablementForProfile(
       // kGlicEligibilitySeparateAccountCapability feature, also remove the
       // fallback to can_use_model_execution_features().
       signin::Tribool capability_value =
-          primary_account.capabilities.can_use_model_execution_features();
+          primary_account.GetAccountCapabilities()
+              .can_use_model_execution_features();
       if (base::FeatureList::IsEnabled(
               switches::kGlicEligibilitySeparateAccountCapability) &&
-          (CanUseGeminiInChrome(primary_account.capabilities) !=
+          (CanUseGeminiInChrome(primary_account.GetAccountCapabilities()) !=
            signin::Tribool::kUnknown)) {
-        capability_value = CanUseGeminiInChrome(primary_account.capabilities);
+        capability_value =
+            CanUseGeminiInChrome(primary_account.GetAccountCapabilities());
       }
       result.primary_account_is_capable =
           (capability_value == signin::Tribool::kTrue);
@@ -557,12 +560,14 @@ GlicEnabling::ProfileEnablement GlicEnabling::EnablementForProfile(
       base::FieldTrial* field_trial = base::FeatureList::GetFieldTrial(
           switches::kGlicEligibilitySeparateAccountCapability);
       if (field_trial &&
-          (CanUseGeminiInChrome(primary_account.capabilities) !=
+          (CanUseGeminiInChrome(primary_account.GetAccountCapabilities()) !=
            signin::Tribool::kUnknown) &&
-          (primary_account.capabilities.can_use_model_execution_features() !=
+          (primary_account.GetAccountCapabilities()
+               .can_use_model_execution_features() !=
            signin::Tribool::kUnknown) &&
-          (CanUseGeminiInChrome(primary_account.capabilities) !=
-           primary_account.capabilities.can_use_model_execution_features())) {
+          (CanUseGeminiInChrome(primary_account.GetAccountCapabilities()) !=
+           primary_account.GetAccountCapabilities()
+               .can_use_model_execution_features())) {
         g_browser_process->GetFeatures()
             ->glic_synthetic_trial_manager()
             ->SetSyntheticExperimentState(
@@ -571,12 +576,12 @@ GlicEnabling::ProfileEnablement GlicEnabling::EnablementForProfile(
       }
 
       result.live_allowed =
-          primary_account.capabilities.can_use_model_execution_features() ==
-          signin::Tribool::kTrue;
+          primary_account.GetAccountCapabilities()
+              .can_use_model_execution_features() == signin::Tribool::kTrue;
 
       result.share_image_allowed =
-          primary_account.capabilities.can_use_model_execution_features() ==
-          signin::Tribool::kTrue;
+          primary_account.GetAccountCapabilities()
+              .can_use_model_execution_features() == signin::Tribool::kTrue;
     }
   }
 
@@ -767,6 +772,12 @@ void GlicEnabling::RecordProfileIneligibilityMetricsAtStartup(
 // static
 bool GlicEnabling::IsEnabledForProfile(Profile* profile) {
   return EnablementForProfile(profile).IsEnabled();
+}
+
+// static
+bool GlicEnabling::WasPreviouslyNotAllowed(Profile* profile) {
+  return profile &&
+         profile->GetPrefs()->GetBoolean(prefs::kGlicPreviouslyNotAllowed);
 }
 
 // static
@@ -1389,7 +1400,7 @@ void GlicEnabling::OnPrimaryAccountChanged(
   if (event_details.GetEventTypeFor(signin::ConsentLevel::kSignin) ==
       signin::PrimaryAccountChangeEvent::Type::kCleared) {
     SetCompletedFre(prefs::FreStatus::kNotStarted);
-    profile_->GetPrefs()->ClearPref(prefs::kGlicActuationOnWeb);
+    profile_->GetPrefs()->ClearPref(prefs::kGlicUserEnabledActuationOnWeb);
     profile_->GetPrefs()->ClearPref(prefs::kGlicGeolocationEnabled);
   }
 #endif
@@ -1435,6 +1446,16 @@ void GlicEnabling::OnErrorStateOfRefreshTokenUpdatedForAccount(
 }
 
 void GlicEnabling::UpdateEnabledStatus() {
+  if (IsAllowed()) {
+    profile_->GetPrefs()->SetBoolean(prefs::kGlicPreviouslyNotAllowed, false);
+  } else {
+    signin::IdentityManager* identity_manager =
+        IdentityManagerFactory::GetForProfile(profile_);
+    if (identity_manager &&
+        identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin)) {
+      profile_->GetPrefs()->SetBoolean(prefs::kGlicPreviouslyNotAllowed, true);
+    }
+  }
   if (ProfileAttributesEntry* entry =
           profile_attributes_storage_->GetProfileAttributesWithPath(
               profile_->GetPath())) {

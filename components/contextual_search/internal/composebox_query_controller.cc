@@ -155,6 +155,21 @@ bool IsUnresolvedUrlUpload(const contextual_search::FileInfo& file_info) {
          file_info.input_data->parsed_url.has_value();
 }
 
+bool ShouldEmitFileToAddedInputs(const contextual_search::FileInfo& file_info) {
+  if (!lens::features::IsLensOnlySendAaiForModalityChipsEnabled()) {
+    return true;
+  }
+  if (lens::features::IsLensOnlySendAaiExcludeRawAndDriveFilesEnabled()) {
+    bool is_drive =
+        file_info.input_data && file_info.input_data->drive_id.has_value();
+    bool is_raw = file_info.request_id.has_value() &&
+                  file_info.request_id->media_type() ==
+                      lens::LensOverlayRequestId::MEDIA_TYPE_RAW_FILE;
+    return is_drive || is_raw;
+  }
+  return false;
+}
+
 // The maximum number of times to retry fetching cluster info.
 constexpr int kMaxClusterInfoRetries = 3;
 
@@ -553,7 +568,7 @@ lens::AddedInputs ComposeboxQueryController::CreateAddedInputs(
       // Process modality chips.
       added_inputs.add_added_inputs()->CopyFrom(
           file_info->input_data->modality_chip_props->added_input());
-    } else if (!lens::features::IsLensOnlySendAaiForModalityChipsEnabled()) {
+    } else if (ShouldEmitFileToAddedInputs(*file_info)) {
       if (IsUnresolvedUrlUpload(*file_info)) {
         lens::AimThumbnail* thumbnail = added_inputs.add_turn_title_thumbnail();
         thumbnail->set_title(file_info->input_data->parsed_url.value());
@@ -1146,13 +1161,19 @@ void ComposeboxQueryController::StartFileUploadFlow(
     current_file_info.request_id->set_is_implicit_upload(
         current_file_info.is_implicit_upload);
   } else if (current_file_info.input_data->drive_id.has_value()) {
+    request_id_generator_.SetContextId(RandInt64());
+    request_id_generator_.SetHasChromeTabData(false);
+    request_id_generator_.SetIsImplicitUpload(false);
+    request_id_generator_.SetDriveId(current_file_info.input_data->drive_id);
     current_file_info.request_id = *request_id_generator_.GetNextRequestId(
-        base_update_mode, current_file_info.mime_type_string.value(),
+        lens::RequestIdUpdateMode::kMultiContextUploadRequest,
+        current_file_info.mime_type_string.value(),
         lens::LensOverlayRequestId::MEDIA_TYPE_UNRESOLVED);
   } else if (IsUnresolvedUrlUpload(current_file_info)) {
     request_id_generator_.SetContextId(RandInt64());
     request_id_generator_.SetHasChromeTabData(false);
     request_id_generator_.SetIsImplicitUpload(true);
+    request_id_generator_.SetDriveId(std::nullopt);
     current_file_info.request_id = *request_id_generator_.GetNextRequestId(
         lens::RequestIdUpdateMode::kMultiContextUploadRequest,
         lens::LensOverlayRequestId::MEDIA_TYPE_UNRESOLVED_URL);
@@ -1167,6 +1188,7 @@ void ComposeboxQueryController::StartFileUploadFlow(
         current_file_info.tab_session_id.has_value());
     request_id_generator_.SetIsImplicitUpload(
         current_file_info.is_implicit_upload);
+    request_id_generator_.SetDriveId(std::nullopt);
     if (current_file_info.mime_type != lens::MimeType::kImage &&
         !has_viewport_screenshot &&
         current_file_info.mime_type_string.has_value() &&

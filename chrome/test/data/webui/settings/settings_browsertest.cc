@@ -606,7 +606,7 @@ class SettingsGlicSubPageTestBase : public SettingsBrowserTest {
             identity_manager->GetPrimaryAccountId(
                 signin::ConsentLevel::kSignin));
 
-    AccountCapabilitiesTestMutator mutator(&primary_account.capabilities);
+    AccountCapabilitiesTestMutator mutator(&primary_account);
     mutator.set_can_use_model_execution_features(true);
 
     signin::UpdateAccountInfoForAccount(identity_manager, primary_account);

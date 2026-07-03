@@ -566,7 +566,7 @@ class FirstRunInteractiveUiBaseTest
                          .SetHostedDomain("chromium.org")
                          .Build();
     }
-    AccountCapabilitiesTestMutator mutator(&account_info.capabilities);
+    AccountCapabilitiesTestMutator mutator(&account_info);
     mutator.set_is_subject_to_enterprise_features(account_email ==
                                                   kTestEnterpriseEmail);
 

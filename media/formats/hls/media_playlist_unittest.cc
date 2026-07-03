@@ -1667,4 +1667,37 @@ TEST(HlsMediaPlaylistTest, XKeyTagAppliesToSegments) {
   builder.ExpectOk();
 }
 
+TEST(HlsMediaPlaylistTest, DataUriManifest) {
+  // A data URI manifest without a parent playlist should fail to parse.
+  {
+    MediaPlaylistTestBuilder builder;
+    builder.SetUri(GURL("data:text/mpegurl;base64,YWJjZA=="));
+    builder.AppendLine("#EXTM3U");
+    builder.AppendLine("#EXT-X-TARGETDURATION:10");
+    builder.AppendLine("#EXTINF:9.2,");
+    builder.AppendLine("video.ts");
+    builder.ExpectError(ParseStatusCode::kInvalidUri);
+  }
+
+  // A data URI manifest with a parent playlist should succeed to parse.
+  // The resource URIs (video.ts) should be resolved against the parent
+  // playlist's URI.
+  {
+    auto parent = CreateMultivariantPlaylist(
+        {"#EXTM3U"}, GURL("http://localhost/multi_playlist.m3u8"));
+
+    MediaPlaylistTestBuilder builder;
+    builder.SetParent(parent.get());
+    builder.SetUri(GURL("data:text/mpegurl;base64,YWJjZA=="));
+    builder.AppendLine("#EXTM3U");
+    builder.AppendLine("#EXT-X-TARGETDURATION:10");
+    builder.AppendLine("#EXTINF:9.2,");
+    builder.AppendLine("video.ts");
+    builder.ExpectPlaylist(HasTargetDuration, base::Seconds(10));
+    builder.ExpectAdditionalSegment();
+    builder.ExpectSegment(HasUri, GURL("http://localhost/video.ts"));
+    builder.ExpectOk();
+  }
+}
+
 }  // namespace media::hls

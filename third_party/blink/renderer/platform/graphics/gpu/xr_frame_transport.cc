@@ -92,7 +92,7 @@ bool XRFrameTransport::FrameSubmit(
     device::mojom::blink::XRPresentationProvider* vr_presentation_provider,
     XRFrameTransportDelegate* delegate,
     Vector<XRLayerUpdate> layers,
-    Vector<gpu::SyncToken> camera_sync_tokens,
+    gpu::SharedImageExportResult camera_export_result,
     int16_t vr_frame_id) {
   DCHECK(transport_options_);
   CHECK(delegate);
@@ -182,19 +182,19 @@ bool XRFrameTransport::FrameSubmit(
       auto mojom_layer_update = device::mojom::blink::XRLayerUpdate::New();
       mojom_layer_update->layer_id = layer.layer_id;
       if (layer.current_frame_image) {
-        mojom_layer_update->sync_token = layer.current_frame_image->sync_token;
-        delegate->VerifySyncToken(mojom_layer_update->sync_token);
+        delegate->VerifySyncToken(layer.current_frame_image->sync_token);
+        mojom_layer_update->shared_image_export_result =
+            layer.current_frame_image->shared_image->EndImport(
+                layer.current_frame_image->sync_token);
       } else {
-        mojom_layer_update->sync_token = gpu::SyncToken();
+        mojom_layer_update->shared_image_export_result =
+            gpu::SharedImageExportResult::CreateEmptyResult();
       }
       mojom_layer_updates.push_back(std::move(mojom_layer_update));
     }
-    for (auto& camera_sync_token : camera_sync_tokens) {
-      delegate->VerifySyncToken(camera_sync_token);
-    }
     vr_presentation_provider->SubmitFrameDrawnIntoTexture(
         vr_frame_id, std::move(mojom_layer_updates),
-        std::move(camera_sync_tokens), frame_wait_time_);
+        std::move(camera_export_result), frame_wait_time_);
   } else {
     NOTREACHED() << "Unimplemented frame transport method";
   }

@@ -336,8 +336,8 @@ GlicKeyedService& Host::glic_service() {
   return *GlicKeyedService::Get(profile_);
 }
 
-GlicSharingManager& Host::sharing_manager() {
-  return sharing_manager_provider_->sharing_manager();
+GlicSharingManagerInternal& Host::GetSharingManagerInternal() {
+  return sharing_manager_provider_->GetSharingManagerInternal();
 }
 
 GlicPinCandidateProvider& Host::pin_candidate_provider() {

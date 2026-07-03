@@ -37,7 +37,7 @@ TEST_F(ReplaceSelectionCommandTest, pastingEmptySpan) {
 
   LocalFrame* frame = GetDocument().GetFrame();
   frame->Selection().SetSelection(
-      SelectionInDOMTree::Builder()
+      SelectionInDomTree::Builder()
           .Collapse(Position(GetDocument().body(), 0))
           .Build(),
       SetSelectionOptions());
@@ -70,7 +70,7 @@ TEST_F(ReplaceSelectionCommandTest, pasteSpanInText) {
   Element* b_element = QuerySelector("b");
   LocalFrame* frame = GetDocument().GetFrame();
   frame->Selection().SetSelection(
-      SelectionInDOMTree::Builder()
+      SelectionInDomTree::Builder()
           .Collapse(Position(b_element->firstChild(), 1))
           .Build(),
       SetSelectionOptions());
@@ -154,7 +154,7 @@ TEST_F(ReplaceSelectionCommandTest, TableAndImages) {
   Element* tbody = QuerySelector("tbody");
   tbody->AppendChild(GetDocument().CreateRawElement(html_names::kImgTag));
   Selection().SetSelection(
-      SelectionInDOMTree::Builder().Collapse(Position(tbody, 1)).Build(),
+      SelectionInDomTree::Builder().Collapse(Position(tbody, 1)).Build(),
       SetSelectionOptions());
 
   DocumentFragment* fragment = GetDocument().createDocumentFragment();
@@ -321,7 +321,7 @@ TEST_F(ReplaceSelectionCommandTest,
 
   // Place the caret in the middle of "text" (between "te" and "xt").
   doc.GetFrame()->Selection().SetSelection(
-      SelectionInDOMTree::Builder()
+      SelectionInDomTree::Builder()
           .Collapse(Position(inner->firstChild(), 2))
           .Build(),
       SetSelectionOptions());
@@ -361,7 +361,7 @@ TEST_F(ReplaceSelectionCommandTest,
 
   // Place the caret in the middle of "text" (between "te" and "xt").
   doc.GetFrame()->Selection().SetSelection(
-      SelectionInDOMTree::Builder()
+      SelectionInDomTree::Builder()
           .Collapse(Position(inner->firstChild(), 2))
           .Build(),
       SetSelectionOptions());
@@ -397,7 +397,7 @@ TEST_F(ReplaceSelectionCommandTest,
 
   // Place the caret in the middle of "text" (between "te" and "xt").
   doc.GetFrame()->Selection().SetSelection(
-      SelectionInDOMTree::Builder()
+      SelectionInDomTree::Builder()
           .Collapse(Position(inner->firstChild(), 2))
           .Build(),
       SetSelectionOptions());

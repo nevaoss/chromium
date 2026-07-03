@@ -35,16 +35,34 @@ std::u16string FormatDate(const personal_context::proto::Date& date) {
                                               date.month(), date.day()));
 }
 
-std::u16string FormatTimestamp(
-    const personal_context::proto::Timestamp& timestamp) {
-  if (timestamp.seconds() == 0) {
+base::Time FormatDateTimeAsTime(
+    const personal_context::proto::DateTime& datetime) {
+  base::Time::Exploded exploded = {
+      .year = datetime.year(),
+      .month = datetime.month(),
+      .day_of_month = datetime.day(),
+      .hour = datetime.hours(),
+      .minute = datetime.minutes(),
+      .second = datetime.seconds(),
+      .millisecond = datetime.nanos() / 1000000,
+  };
+  base::Time time;
+  if (!base::Time::FromUTCExploded(exploded, &time)) {
+    return base::Time();
+  }
+  if (datetime.has_utc_offset()) {
+    time -= base::Seconds(datetime.utc_offset().seconds());
+  }
+  return time;
+}
+
+std::u16string FormatDateTimeAsDate(
+    const personal_context::proto::DateTime& datetime) {
+  if (datetime.year() <= 0 || datetime.month() <= 0 || datetime.day() <= 0) {
     return u"";
   }
-  base::Time time = base::Time::FromSecondsSinceUnixEpoch(timestamp.seconds());
-  base::Time::Exploded exploded;
-  time.UTCExplode(&exploded);
   return base::UTF8ToUTF16(base::StringPrintf(
-      "%04d-%02d-%02d", exploded.year, exploded.month, exploded.day_of_month));
+      "%04d-%02d-%02d", datetime.year(), datetime.month(), datetime.day()));
 }
 
 void AddAttribute(AttributeTypeName type,
@@ -168,10 +186,11 @@ EntityInstance PersonalContextFlightReservationToEntityInstance(
   std::string frecency_override = "";
   if (flight.has_departure_time()) {
     AddAttribute(kFlightReservationDepartureDate,
-                 FormatTimestamp(flight.departure_time()), attributes);
-    base::Time departure_time = base::Time::FromSecondsSinceUnixEpoch(
-        flight.departure_time().seconds());
-    frecency_override = base::TimeFormatAsIso8601(departure_time);
+                 FormatDateTimeAsDate(flight.departure_time()), attributes);
+    base::Time departure_time = FormatDateTimeAsTime(flight.departure_time());
+    if (!departure_time.is_null()) {
+      frecency_override = base::TimeFormatAsIso8601(departure_time);
+    }
   }
 
   return CreateEntityInstance(EntityTypeName::kFlightReservation,
@@ -203,8 +222,8 @@ EntityInstance PersonalContextOrderToEntityInstance(
   AddStringAttribute(kOrderAccount, order.account(), attributes);
   AddStringAttribute(kOrderMerchantName, order.merchant_name(), attributes);
   AddStringAttribute(kOrderMerchantDomain, order.merchant_domain(), attributes);
-  if (order.has_order_time()) {
-    AddAttribute(kOrderDate, FormatTimestamp(order.order_time()), attributes);
+  if (order.has_order_date()) {
+    AddAttribute(kOrderDate, FormatDate(order.order_date()), attributes);
   }
   if (order.product_names_size() > 0) {
     std::vector<std::string> products(order.product_names().begin(),
@@ -224,10 +243,9 @@ EntityInstance PersonalContextShipmentToEntityInstance(
   AddStringAttribute(kShipmentCarrierName, shipment.carrier_name(), attributes);
   AddStringAttribute(kShipmentCarrierDomain, shipment.carrier_domain(),
                      attributes);
-  if (shipment.has_estimated_delivery_time()) {
+  if (shipment.has_estimated_delivery_date()) {
     AddAttribute(kShipmentEstimatedDeliveryDate,
-                 FormatTimestamp(shipment.estimated_delivery_time()),
-                 attributes);
+                 FormatDate(shipment.estimated_delivery_date()), attributes);
   }
   if (shipment.associated_order_ids_size() > 0) {
     std::vector<std::string> order_ids(shipment.associated_order_ids().begin(),

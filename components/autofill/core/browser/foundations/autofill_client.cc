@@ -124,6 +124,8 @@ bool AutofillClient::ShouldShowPersonalContextAutofillNotice() const {
   return false;
 }
 
+void AutofillClient::MarkPersonalContextInAutofillNoticeAsAcknowledged() {}
+
 AutofillComposeDelegate* AutofillClient::GetComposeDelegate() {
   return nullptr;
 }
@@ -163,6 +165,11 @@ AutofillAiManager* AutofillClient::GetAutofillAiManager() {
 PersonalContextAccessManager*
 AutofillClient::GetPersonalContextAccessManager() {
   return nullptr;
+}
+
+const PersonalContextAccessManager*
+AutofillClient::GetPersonalContextAccessManager() const {
+  return const_cast<AutofillClient*>(this)->GetPersonalContextAccessManager();
 }
 
 AutofillAiModelCache* AutofillClient::GetAutofillAiModelCache() {

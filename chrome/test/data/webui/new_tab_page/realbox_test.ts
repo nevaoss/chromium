@@ -9,6 +9,7 @@ import {BrowserProxyImpl, MetricsReporterImpl, SearchboxBrowserProxy} from 'chro
 import {ContextType} from 'chrome://resources/cr_components/composebox/common.js';
 import type {ComposeboxState, DriveUpload, FileUpload, TabUpload} from 'chrome://resources/cr_components/composebox/common.js';
 import type {ContextualEntrypointAndMenuElement} from 'chrome://resources/cr_components/composebox/contextual_entrypoint_and_menu.js';
+import type {SearchAnimatedGlowElement} from 'chrome://resources/cr_components/search/animated_glow.js';
 import {createAutocompleteResultForTesting, createSearchMatchForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {PageMetricsCallbackRouter} from 'chrome://resources/js/metrics_reporter.mojom-webui.js';
@@ -31,6 +32,7 @@ const SAMPLE_INPUT_STATE = new MockInputState({
       chipLabel: '',
       hintText: '',
       aimUrlParams: [],
+      menuTooltip: '',
     },
     {
       tool: ToolMode.kImageGen,
@@ -39,6 +41,7 @@ const SAMPLE_INPUT_STATE = new MockInputState({
       chipLabel: '',
       hintText: '',
       aimUrlParams: [],
+      menuTooltip: '',
     },
   ],
   toolsSectionConfig: {header: ''},
@@ -49,12 +52,14 @@ const SAMPLE_INPUT_STATE = new MockInputState({
       menuLabel: 'Gemini Regular',
       hintText: '',
       aimUrlParams: [],
+      menuTooltip: '',
     },
     {
       model: ModelMode.kGeminiPro,
       menuLabel: 'Gemini Pro',
       hintText: '',
       aimUrlParams: [],
+      menuTooltip: '',
     },
   ],
   modelSectionConfig: {header: ''},
@@ -977,4 +982,12 @@ suite('NewTabPageRealboxNextTest', () => {
         const args = testProxy.handler.getArgs('submitQuery')[0];
         assertEquals('', args.queryText);
       });
+
+  test('sets darkThemeColorsEnabled as false on search-animated-glow', () => {
+    const animatedGlow =
+        realbox.shadowRoot.querySelector<SearchAnimatedGlowElement>(
+            'search-animated-glow');
+    assertTrue(!!animatedGlow);
+    assertFalse(animatedGlow.darkThemeColorsEnabled);
+  });
 });

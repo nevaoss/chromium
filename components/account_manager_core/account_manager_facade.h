@@ -96,9 +96,6 @@ class COMPONENT_EXPORT(ACCOUNT_MANAGER_CORE) AccountManagerFacade {
       base::OnceCallback<void(const AccountUpsertionResult& result)>
           callback) = 0;
 
-  // Launches OS Settings > Accounts.
-  virtual void ShowManageAccountsSettings() = 0;
-
   // Creates an access token fetcher for `account`.
   // Currently, `account` must be a Gaia account.
   // The returned object should not outlive `AccountManagerFacade` itself.

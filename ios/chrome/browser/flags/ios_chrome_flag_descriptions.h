@@ -24,11 +24,6 @@ inline constexpr char kAIHubNewBadgeName[] = "AI Hub New Badge";
 inline constexpr char kAIHubNewBadgeDescription[] =
     "Enables showing a new badge on the AI Hub button in the toolbar.";
 
-inline constexpr char kAIMCobrowseDebugEntrypointName[] =
-    "AIM Cobrowse debug entrypoint";
-inline constexpr char kAIMCobrowseDebugEntrypointDescription[] =
-    "Enables the AIM Cobrowse debug entrypoint feature.";
-
 inline constexpr char kAIMEligibilityRefreshNTPModulesName[] =
     "AIMEligibilityRefreshNTPModules";
 inline constexpr char kAIMEligibilityRefreshNTPModulesDescription[] =
@@ -231,12 +226,6 @@ inline constexpr char kAutofillEnableBottomSheetScanCardAndFillName[] =
 inline constexpr char kAutofillEnableBottomSheetScanCardAndFillDescription[] =
     "When enabled, offers a card scanning BottomSheet and allows users to "
     "save and autofill credit cards in autofill forms.";
-
-inline constexpr char kAutofillEnableCardInfoRuntimeRetrievalName[] =
-    "Enable retrieval of card info(with CVC) from issuer for enrolled cards";
-inline constexpr char kAutofillEnableCardInfoRuntimeRetrievalDescription[] =
-    "When enabled, runtime retrieval of CVC along with card number and expiry "
-    "from issuer for enrolled cards will be enabled during form fill.";
 
 inline constexpr char kAutofillEnableGradientGoogleLogosName[] =
     "Enable gradient-style GPay and Wallet logos";
@@ -624,6 +613,14 @@ inline constexpr char kDownloadListDescription[] =
     "Controls the UI type for the download list. When enabled, allows "
     "switching between default and custom UI implementations.";
 
+inline constexpr char kDownloadListPaginationName[] =
+    "Enable iOS Download List Pagination";
+inline constexpr char kDownloadListPaginationDescription[] =
+    "Switches the iOS download list service layer to a paginated, "
+    "keyset-cursor-backed reader with an active-records-only in-memory cache "
+    "instead of loading the full table at startup. Reduces memory and "
+    "startup work for users with very large download histories.";
+
 inline constexpr char kDownloadServiceForegroundSessionName[] =
     "Download service foreground download";
 inline constexpr char kDownloadServiceForegroundSessionDescription[] =
@@ -831,8 +828,18 @@ inline constexpr char kGeminiImageRemixToolName[] = "Gemini Image Remix Tool";
 inline constexpr char kGeminiImageRemixToolDescription[] =
     "Enables the image remix tool in the Gemini floaty.";
 
+inline constexpr char kGeminiLiveDormantReasonsName[] =
+    "Gemini Live Dormant Reasons";
+inline constexpr char kGeminiLiveDormantReasonsDescription[] =
+    "Enables dormant reasons (i.e., reasons to switch to chat) for Gemini Live "
+    "session.";
+
 inline constexpr char kGeminiLiveName[] = "GeminiLive";
 inline constexpr char kGeminiLiveDescription[] = "Enables Gemini Live.";
+
+inline constexpr char kGeminiLuminousName[] = "Gemini Luminous";
+inline constexpr char kGeminiLuminousDescription[] =
+    "Enables Gemini Luminous UI.";
 
 inline constexpr char kGeminiMapsRichUIName[] = "Gemini Maps Rich UI";
 inline constexpr char kGeminiMapsRichUIDescription[] =
@@ -909,11 +916,6 @@ inline constexpr char kIOSBackendPromoServiceIntegrationName[] =
 inline constexpr char kIOSBackendPromoServiceIntegrationDescription[] =
     "Enables Backend Promo Service integration.";
 
-inline constexpr char kIOSBottomSheetMigrationName[] =
-    "iOS Bottom Sheet Migration";
-inline constexpr char kIOSBottomSheetMigrationDescription[] =
-    "Enables the iOS bottom sheet migration.";
-
 inline constexpr char kIOSBrowserEditMenuMetricsName[] =
     "Browser edit menu metrics";
 inline constexpr char kIOSBrowserEditMenuMetricsDescription[] =
@@ -979,6 +981,13 @@ inline constexpr char kIOSExpandedTipsName[] = "Expanded Tips Notifications";
 inline constexpr char kIOSExpandedTipsDescription[] =
     "Enables a feature that adds several new Tips Notifications that can be "
     "sent.";
+
+inline constexpr char kIOSGeminiBottomSheetMigrationName[] =
+    "iOS Gemini Bottom Sheet Migration";
+inline constexpr char kIOSGeminiBottomSheetMigrationDescription[] =
+    "Enables presenting the Gemini Floaty embedded in a bottom sheet instead"
+    " of a overlay view. This feature requires both 'Gemini Copresence'"
+    " and 'Assistant Container' features to be enabled.";
 
 inline constexpr char kIOSKeyboardAccessoryDefaultViewName[] =
     "Default Input Accessory View";
@@ -1576,6 +1585,11 @@ inline constexpr char kPageToolsFeatureUnavailabilityName[] =
     "PageToolsFeatureUnavailability";
 inline constexpr char kPageToolsFeatureUnavailabilityDescription[] =
     "Enables the PageToolsFeatureUnavailability feature.";
+
+inline constexpr char kPasswordManagerActorLoginName[] =
+    "Password Manager Actor Login";
+inline constexpr char kPasswordManagerActorLoginDescription[] =
+    "Enables logging in on websites using actor tools.";
 
 inline constexpr char kPasswordRemovalFromDeleteBrowsingDataName[] =
     "Removal of Passwords from Quick Delete Browsing Data";

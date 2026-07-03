@@ -272,8 +272,8 @@ void ManagedUserProfileNoticeUI::Initialize(
         create_param) {
   auto* profile = Profile::FromWebUI(web_ui());
   bool is_school_account =
-      create_param->account_info.capabilities.can_use_edu_features() ==
-      signin::Tribool::kTrue;
+      create_param->account_info.GetAccountCapabilities()
+          .can_use_edu_features() == signin::Tribool::kTrue;
   base::DictValue update_data;
   std::string domain =
       enterprise_util::GetDomainFromEmail(create_param->account_info.email);
@@ -330,6 +330,7 @@ void ManagedUserProfileNoticeUI::Initialize(
 
     update_data.Set("showLinkDataCheckbox", false);
   }
+
   if (create_param->account_info.IsManaged() == signin::Tribool::kTrue) {
     update_data.Set(
         "profileDisclosureSubtitle",
@@ -428,6 +429,36 @@ void ManagedUserProfileNoticeUI::Initialize(
               IDS_ENTERPRISE_WELCOME_PROFILE_DISCLOSURE_KNOWN_DOMAIN_SUBTITLE,
               base::UTF8ToUTF16(domain)));
     }
+  }
+
+  if (type ==
+      ManagedUserProfileNoticeUI::ScreenType::kDeviceSignalsDisclaimer) {
+    update_data.Set("isModalDialog", true);
+    update_data.Set("initialState",
+                    ManagedUserProfileNoticeHandler::State::kDisclosure);
+
+    update_data.Set("profileDisclosureTitle",
+                    l10n_util::GetStringUTF16(
+                        IDS_ENTERPRISE_DEVICE_SIGNALS_DISCLAIMER_TITLE));
+    update_data.Set("profileDisclosureSubtitle",
+                    l10n_util::GetStringUTF16(
+                        IDS_ENTERPRISE_DEVICE_SIGNALS_DISCLAIMER_SUBTITLE));
+    update_data.Set(
+        "profileInformationDetails",
+        l10n_util::GetStringUTF16(
+            IDS_ENTERPRISE_DEVICE_SIGNALS_DISCLAIMER_PROFILE_INFORMATION_DETAILS));
+    update_data.Set(
+        "deviceInformationDetails",
+        l10n_util::GetStringUTF16(
+            IDS_ENTERPRISE_DEVICE_SIGNALS_DISCLAIMER_DEVICE_INFORMATION_DETAILS));
+    update_data.Set(
+        "continueLabel",
+        l10n_util::GetStringUTF16(
+            IDS_ENTERPRISE_DEVICE_SIGNALS_DISCLAIMER_CONTINUE_BUTTON_LABEL));
+    update_data.Set(
+        "cancelLabel",
+        l10n_util::GetStringUTF16(
+            IDS_ENTERPRISE_DEVICE_SIGNALS_DISCLAIMER_CANCEL_BUTTON_LABEL));
   }
 
   // Change the text so that the "(Recommended)" label is not shown when the

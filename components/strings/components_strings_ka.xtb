@@ -269,6 +269,7 @@
 <translation id="1407135791313364759">ყველას გახსნა</translation>
 <translation id="1408696301184924537">მომავალში ამ IBAN-ის ავტომატურად შესავსებად შეინახეთ ის თქვენს Google ანგარიშში</translation>
 <translation id="1408787208417187241">სამმაგად დასტეპლერება ზემოთ</translation>
+<translation id="1410306713026702438"><ph name="SUGGESTION_TITLE" />, <ph name="SUGGESTION_DESCRIPTION" />. <ph name="SUGGESTION_TYPE" />. <ph name="NUM_MATCHES_IN_GROUP" />-დან <ph name="MATCH_POSITION" /> ჯგუფში „<ph name="GROUP_HEADER" />“.</translation>
 <translation id="1410365862999780287">ამ მოწყობილობის სხვა მომხმარებლები არ დაინახავენ თქვენს აქტივობას, ამიტომ ვების დათვალიერება უფრო კონფიდენციალურად შეგიძლიათ. ეს მოქმედება არ ცვლის იმას, თუ რა წესით გროვდება მონაცემები თქვენ მიერ მონახულებული ვებსაიტებისა და მათ მიერ გამოყენებული სერვისების, მათ შორის, Google-ის, მიერ. ჩამოტვირთული ფაილები, სანიშნეები და საკითხავი სიის ერთეულები შეინახება.</translation>
 <translation id="1410941016594047814">კონვერტი Invite</translation>
 <translation id="1413235258620101697">უფრო სწრაფი ანგარიშსწორების მიზნით, ამ ბარათის დადასტურების კოდი (CVC) დაიშიფრება და შეინახება Google საფულეში</translation>
@@ -300,6 +301,7 @@
 <translation id="1445896388055045436">ბარათის ხელმისაწვდომი უპირატესობებისა და ჯილდოების ჩვენება შეკვეთის გაფორმებისას. მოქმედებს გამცემის პირობები.</translation>
 <translation id="1447067628680007684">(x86_64)</translation>
 <translation id="1448166547804028941">„<ph name="DATA_CONTROLS_FIRST_KEY_SET" />“ გასაღებები ვერ განისაზღვრება იმ ლექსიკონში, რომელშიც „<ph name="DATA_CONTROLS_SECOND_KEY_SET" />“ გასაღებებია</translation>
+<translation id="1449251255954293933">კომპენსაციის ნომრის შენახვა Google საფულეში</translation>
 <translation id="1455413310270022028">საშლელი</translation>
 <translation id="1457992721081300557">{NUM_REVIEWS,plural, =0{0 მიმოხილვის ნახვა}=1{1 მიმოხილვის ნახვა}other{#-ვე მიმოხილვის ნახვა}}</translation>
 <translation id="1458059624921545588">ხალხი და საზოგადოება</translation>
@@ -660,6 +662,7 @@
 <translation id="2045871135676061132">კონვერტი Personal</translation>
 <translation id="2046951263634619614">წიგნების საცალო გაყიდვა</translation>
 <translation id="2048261947532620704">მიმდინარეობს გვერდის თარგმნა</translation>
+<translation id="2055016614992422886">საუბარი</translation>
 <translation id="2059166748188874810">მუნიციპალიტეტი</translation>
 <translation id="2059202684901022309">22 x 34 დუიმი</translation>
 <translation id="2064568741209980952">კრედიტის გაცემა და ფულის გასესხება</translation>
@@ -1155,6 +1158,7 @@
 <translation id="2782088940970074970">ავტომობილების დაქირავება</translation>
 <translation id="278436560439594386">საყოფაცხოვრებო ტექნიკა</translation>
 <translation id="2784474685437057136">B5 Extra</translation>
+<translation id="2784795832957740711">პაროლები • წვდომის გასაღებები</translation>
 <translation id="2784949926578158345">კავშირი გაწყვეტილია.</translation>
 <translation id="2786008859124691917">ველოსიპედები და აქსესუარები</translation>
 <translation id="2792012897584536778">ამ მოწყობილობის ადმინისტრატორებმა დააყენეს უსაფრთხოების სერტიფიკატები, რომელთა მეშვეობითაც შეუძლიათ თქვენ მიერ მონახულებული ვებსაიტების კონტენტის ნახვა.</translation>
@@ -1387,6 +1391,7 @@
 <translation id="3158539265159265653">დისკი</translation>
 <translation id="3162070126914310576">ამ მოწყობილობის ახლა რეგისტრაცია შეუძლებელია, რადგან თქვენმა ორგანიზაციულმა დანაყოფმა მიაღწია საწყისი რეგისტრაციის ლიმიტს. დახმარებისთვის დაუკავშირდით თქვენს ადმინისტრატორს.</translation>
 <translation id="3162559335345991374">Wi-Fi-მ, რომელსაც თქვენ იყენებთ, შეიძლება მოითხოვოს თქვენი სტუმრობა მის ავტორიზაციის გვერდზე.</translation>
+<translation id="316542773973815724">ნავიგაცია</translation>
 <translation id="316638481603975524">შეიძლება ითხოვოს ვებ-აპების ინსტალაცია</translation>
 <translation id="3166788340998560642">Chrome შემოგთავაზებთ მის <ph name="IDS_AUTOFILL_GOOGLE_WALLET_TITLE" />-ში შენახვას, როცა მას შემდეგ ჯერზე გამოიყენებთ.</translation>
 <translation id="3168744840365648658">რადიოაღჭურვილობა</translation>
@@ -2304,6 +2309,7 @@
 <translation id="46128681529823442">საფეხბურთო აღჭურვილობა</translation>
 <translation id="4612904677925722054">ეს საიტი შეიძლება შეიცავდეს ზრდასრულთა კონტენტს. მშობელმა ან მეურვემ უნდა დაადასტუროს, რომ ამ ვებსაიტის მონახულება შეგიძლიათ.</translation>
 <translation id="4619564267100705184">ვინაობის დადასტურება</translation>
+<translation id="4619669610757527494">მართვის მოწმობის შენახვა Google საფულეში</translation>
 <translation id="4622292761762557753">მაინც გადაცემა</translation>
 <translation id="4622647778991854660">დაუშვით შეტყობინებების მიღება შეტყობინებათა ცენტრში. გახსენით <ph name="LINK" />.</translation>
 <translation id="4623894491222334521">პირადობის დამადასტურებელი დოკუმენტები</translation>
@@ -2833,6 +2839,7 @@
 <translation id="543656192084990644">მოძრაობის სენსორები დაუშვებელია</translation>
 <translation id="5441409130426352029"><ph name="ATTRIBUTE_VALUE" />, იყო <ph name="PREVIOUS_VALUE" /></translation>
 <translation id="5443468954631487277">უკუმიმდევრობა ნაბეჭდი მხარით აღმა</translation>
+<translation id="5447103258548475868">პასპორტის შენახვა Google საფულეში</translation>
 <translation id="5447235695608032700">მიეცით საშუალება <ph name="SITE" />-ს, გამოიყენოს მის მიერ თქვენ შესახებ შენახული ინფორმაცია</translation>
 <translation id="5447973833955560753">აღდგენის პაროლი</translation>
 <translation id="5451331376824595378">Chrome-ის მიერ უსაფრთხოებასთან დაკავშირებული მოვლენების ალმით მონიშვნის შემთხვევაში, მოვლენების შესაბამისი მონაცემები გაეგზავნება თქვენს ადმინისტრატორს. აღნიშნული შეიძლება მოიცავდეს თქვენ მიერ Chrome-ში მონახულებული გვერდების URL-ებს, ფაილების სახელებს ან მეტამონაცემებს, IP მისამართებს, ბრაუზერებისა და ჩანართების ავარიულად გათიშვას, ასევე, მომხმარებლის სახელს, რომელსაც ვებზე დაფუძნებულ აპლიკაციებში, თქვენს მოწყობილობაში და Chrome-ში შესასვლელად იყენებთ და იმ გვერდების URL-ებს, რომლებიდანაც მონაცემები დააკოპირეთ.</translation>
@@ -3556,6 +3563,7 @@
 <translation id="6550245281449521513">მაუსის ჩაკეტვა არაა დაშვებული</translation>
 <translation id="6551737294564628267"><ph name="ATTRIBUTE_NAME" />, ახალი</translation>
 <translation id="6552566579578780089">გადახდები</translation>
+<translation id="6553777254569586547"><ph name="SUGGESTION_TITLE" />. <ph name="SUGGESTION_TYPE" />. <ph name="NUM_MATCHES_IN_GROUP" />-დან <ph name="MATCH_POSITION" /> ჯგუფში „<ph name="GROUP_HEADER" />“.</translation>
 <translation id="6554732001434021288">ბოლო ვიზიტი იყო <ph name="NUM_DAYS" /> დღის წინ</translation>
 <translation id="6556866813142980365">გამეორება</translation>
 <translation id="6557715786897013164">14 x 17 დუიმი</translation>
@@ -3759,7 +3767,6 @@
 <translation id="6893057134494550310">სალამინაციო აფსკი</translation>
 <translation id="6893204630281237373">Chrome-ში გადახდის აპის გამოსართავად გახსენით თქვენი <ph name="BEGIN_LINK1" />გადახდის პარამეტრები<ph name="END_LINK1" /></translation>
 <translation id="6895330447102777224">თქვენი ბარათი დადასტურდა</translation>
-<translation id="6895573608763679343"><ph name="SUGGESTION_TITLE" />, <ph name="SUGGESTION_DESCRIPTION" />, <ph name="MATCH_POSITION" /> <ph name="NUM_MATCHES_IN_GROUP" />-დან ჯგუფში <ph name="GROUP_HEADER" />.</translation>
 <translation id="6896758677409633944">კოპირება</translation>
 <translation id="6897140037006041989">მომხმარებლის აგენტი</translation>
 <translation id="6898699227549475383">ორგანიზაცია (O)</translation>
@@ -4122,7 +4129,6 @@
 <translation id="7450577240311017924">სინქრონიზაციის მართვის ღილაკი, თქვენ მიერ სინქრონიზებული ინფორმაციის Chrome-ის პარამეტრებიდან სამართავად გაააქტიურეთ ის</translation>
 <translation id="7451311239929941790"><ph name="BEGIN_LINK" />შეიტყოთ მეტი<ph name="END_LINK" /> ამ პრობლემის შესახებ.</translation>
 <translation id="745208957946308667">დინოზავრის თამაში, დააჭირეთ შორისის კლავიშს და ითამაშეთ</translation>
-<translation id="74521886886364465"><ph name="SUGGESTION_TITLE" />, <ph name="MATCH_POSITION" /> <ph name="NUM_MATCHES_IN_GROUP" />-დან ჯგუფში <ph name="GROUP_HEADER" />.</translation>
 <translation id="7453032093368223821">სხვა მონაცემების მართვა</translation>
 <translation id="7453849010505253492">ეს სერვერი ვერ ამტკიცებს, რომ ის არის <ph name="DOMAIN" />, რადგან ის იყენებს უსაფრთხოების სერტიფიკატს, რომელსაც არ ენდობა Chrome ან თქვენი სისტემის კონფიგურაცია ვებ-ტრაფიკის დაშიფვრისთვის. ეს შეიძლება გამოწვეული იყოს არასწორი კონფიგურაციით ან თავდამსხმელის მიერ თქვენი კავშირის ხელში ჩაგდებით. <ph name="BEGIN_VIEW_CERTIFICATE_LINK" />სერტიფიკატის ნახვა<ph name="END_VIEW_CERTIFICATE_LINK" /></translation>
 <translation id="7454377933424667109">ღრუბლოვანი ანგარიში</translation>
@@ -4211,7 +4217,7 @@
 <translation id="7569490014721427265">გოლფი</translation>
 <translation id="7569952961197462199">ამოიშალოს საკრედიტო ბარათი Chrome-იდან?</translation>
 <translation id="7569983096843329377">შავი</translation>
-<translation id="7570862164055912832">კომპენსაციის ნომრები</translation>
+<translation id="7570862164055912832">Redress-ის ნომრები</translation>
 <translation id="7571813784389228510">Google-ის ხელოვნური ინტელექტის რეჟიმი</translation>
 <translation id="7574998639136359461">ზამთრის სპორტის სახეობები აღჭურვილობა</translation>
 <translation id="7575207903026901870">შემოთავაზების ამოშლის ღილაკი, ამ შემოთავაზების ამოსაშლელად დააჭირეთ კლავიშს „Enter“</translation>
@@ -4234,6 +4240,7 @@
 <translation id="7599089013883397081">ჩამოტვირთვის დრო ამოიწურა</translation>
 <translation id="7602868996817972616">ჰკითხეთ Google-ს ამ გვერდის შესახებ</translation>
 <translation id="7606123685356405076">Gemini 3 მოდელი</translation>
+<translation id="760632772920590778">ავტომობილის შენახვა Google საფულეში</translation>
 <translation id="7610193165460212391">მნიშვნელობა დიაპაზონის გარეთაა <ph name="VALUE" />.</translation>
 <translation id="761261689936461781">სქელი</translation>
 <translation id="7613889955535752492">მოქმ.: <ph name="EXPIRATION_MONTH" />/<ph name="EXPIRATION_YEAR" /></translation>
@@ -4263,6 +4270,7 @@
 <translation id="7647206758853451655">ბეჭდვის ხარისხი</translation>
 <translation id="7648133459447652947">იმისათვის, რომ აჩვენოთ თქვენი კურსორი, გადართოთ აპები, გადატვირთოთ გვერდი ან დაბრუნდეთ უკან</translation>
 <translation id="7648527891719919697">ეს საიტი დაბლოკილი დარჩება, რადგან თქვენ დამატებითი დაცვა ჩართეთ <ph name="BEGIN_ANDROID_SETTINGS_LINK" />Android პარამეტრებიდან<ph name="END_ANDROID_SETTINGS_LINK" />. <ph name="BEGIN_LEARN_MORE_LINK" />შეიტყვეთ მეტი ამ გაფრთხილების შესახებ<ph name="END_LEARN_MORE_LINK" /></translation>
+<translation id="7648900539798595789">აღიარებული მგზავრის ნომრის შენახვა Google საფულეში</translation>
 <translation id="7648992873808071793">ამ მოწყობილობაში ფაილების შენახვა</translation>
 <translation id="7649070708921625228">დახმარება</translation>
 <translation id="7650141368285545431">წვდომის გასაღების გამოყენება სხვა მოწყობილობიდან</translation>
@@ -4355,6 +4363,7 @@
 <translation id="7773005668374414287">იგივე მიმდევრობა ნაბეჭდი მხარით აღმა</translation>
 <translation id="7779418012194492374"><ph name="DEVICE_NAME" />-ის წვდომის გაუქმება</translation>
 <translation id="7781829728241885113">გუშინ</translation>
+<translation id="7782228658217918863">პირადობის მოწმობის შენახვა Google საფულეში</translation>
 <translation id="7782465647372057580">ანგარიშის ინფორმაცია დაშიფრულია და ცალკე ინახება</translation>
 <translation id="7785471469930192436">გაეცანით თქვენი საძიებო სისტემის ინსტრუქციას იმის თაობაზე, როგორ წაშალოთ თქვენი ძიების ისტორია, თუ ეს შესაძლებელია</translation>
 <translation id="7785790577395078482">ეს ტაბლეტი</translation>

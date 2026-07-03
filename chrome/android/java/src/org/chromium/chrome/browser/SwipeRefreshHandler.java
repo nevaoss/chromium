@@ -20,8 +20,6 @@ import androidx.annotation.ColorInt;
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.TraceEvent;
 import org.chromium.base.metrics.RecordUserAction;
-import org.chromium.base.task.PostTask;
-import org.chromium.base.task.TaskTraits;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
@@ -180,10 +178,14 @@ public class SwipeRefreshHandler extends TabWebContentsUserData
                 () -> {
                     assumeNonNull(mSwipeRefreshLayout);
                     cancelStopRefreshingRunnable();
-                    PostTask.postDelayedTask(
-                            TaskTraits.UI_DEFAULT,
-                            getStopRefreshingRunnable(),
-                            MAX_REFRESH_ANIMATION_DURATION_MS);
+                    // Posted via the UI thread Handler (rather than PostTask) so that
+                    // cancelStopRefreshingRunnable() can actually remove the pending task
+                    // via Handler.removeCallbacks; otherwise the delayed runnable lingers
+                    // in the MessageQueue and retains this handler (and its container
+                    // Activity) until it fires.
+                    ThreadUtils.getUiThreadHandler()
+                            .postDelayed(
+                                    getStopRefreshingRunnable(), MAX_REFRESH_ANIMATION_DURATION_MS);
                     if (mAccessibilityRefreshString == null) {
                         int resId = R.string.accessibility_swipe_refresh;
                         mAccessibilityRefreshString = context.getString(resId);
@@ -203,7 +205,9 @@ public class SwipeRefreshHandler extends TabWebContentsUserData
                                 mDetachRefreshLayoutRunnable = null;
                                 detachSwipeRefreshLayoutIfNecessary();
                             };
-                    PostTask.postTask(TaskTraits.UI_DEFAULT, mDetachRefreshLayoutRunnable);
+                    // Posted via the UI thread Handler (rather than PostTask) so that
+                    // cancelDetachLayoutRunnable() can actually remove the pending task.
+                    ThreadUtils.getUiThreadHandler().post(mDetachRefreshLayoutRunnable);
                 });
     }
 
@@ -228,6 +232,10 @@ public class SwipeRefreshHandler extends TabWebContentsUserData
 
     @Override
     public void destroyInternal() {
+        // Cancel any pending posted runnables so they do not linger in the UI thread
+        // MessageQueue and retain this handler (and its Activity) after the tab is gone.
+        cancelStopRefreshingRunnable();
+        cancelDetachLayoutRunnable();
         if (mSwipeRefreshLayout != null) {
             mSwipeRefreshLayout.setOnRefreshListener(null);
             mSwipeRefreshLayout.setOnResetListener(null);

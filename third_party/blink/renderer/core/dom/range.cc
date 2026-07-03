@@ -1830,7 +1830,7 @@ void Range::UpdateSelectionIfAddedToSelection() {
       break;
   }
 
-  selection.SetSelection(SelectionInDOMTree::Builder()
+  selection.SetSelection(SelectionInDomTree::Builder()
                              .Collapse(start_position)
                              .Extend(end_position)
                              .Build(),

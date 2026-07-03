@@ -33,10 +33,14 @@ const MENU_WIDTH_PX = 190;
 
 const SHARE_TABS_MENU_WIDTH_PX = 240;
 const SHARE_TABS_FLYOUT_CLOSE_DELAY_MS = 300;
+const SHARE_TABS_FLYOUT_GAP_PX = 0;
 
 const ALIGNMENT_THRESHOLD_PX = 160;
 const VIEWPORT_BUFFER_PX = 16;
 const MIN_MENU_HEIGHT_PX = 100;
+
+// Gap between tab shared menu and context menu in px.
+const MENU_GAP = 0;
 
 export interface ContextualActionMenuElement {
   $: {
@@ -151,12 +155,6 @@ export class ContextualActionMenuElement extends
   protected get supportedModels_(): Map<ModelMode, {
     icon: string,
   }> {
-    const thinkingIcon =
-        (loadTimeData.getBoolean('thinkingModelIconUpdate') &&
-         this.inputState &&
-         this.inputState.allowedModels.includes(ModelMode.kGeminiProNoGenUi)) ?
-        'composebox:astrophotographyMode' :
-        'composebox:thinkingModel';
     return new Map([
       [
         ModelMode.kGeminiRegular,
@@ -173,7 +171,7 @@ export class ContextualActionMenuElement extends
       [
         ModelMode.kGeminiPro,
         {
-          icon: thinkingIcon,
+          icon: 'composebox:thinkingModel',
         },
       ],
       [
@@ -183,6 +181,11 @@ export class ContextualActionMenuElement extends
         },
       ],
     ]);
+  }
+
+  override connectedCallback() {
+    super.connectedCallback();
+    this.setAttribute('style', `--menu-gap: ${MENU_GAP}px;`);
   }
 
   override disconnectedCallback() {
@@ -199,6 +202,11 @@ export class ContextualActionMenuElement extends
         this.updateSharingTabsText_();
       }
       this.manageShareTabsInitialFocus_(changedProperties);
+    }
+
+    if (changedProperties.has('tabSuggestions') ||
+        changedProperties.has('inputState')) {
+      this.updateScrollable_();
     }
   }
   get open(): boolean {
@@ -264,6 +272,7 @@ export class ContextualActionMenuElement extends
     if (this.contextManagementInComposeboxEnabled_) {
       this.updateSharingTabsText_();
     }
+    this.updateScrollable_();
   }
 
   private manageShareTabsInitialFocus_(
@@ -322,7 +331,20 @@ export class ContextualActionMenuElement extends
   }
 
   protected isToolDisabled_(tool: ToolMode): boolean {
+    if (this.uploadButtonDisabled) {
+      return true;
+    }
+    if (this.isToolActive_(tool)) {
+      return false;
+    }
     return this.isItemDisabled_(tool, this.inputState?.disabledTools);
+  }
+
+  protected isToolActive_(tool: ToolMode): boolean {
+    if (!this.inputState) {
+      return false;
+    }
+    return this.inputState.activeTool === tool;
   }
 
   protected isModelAllowed_(model: ModelMode): boolean {
@@ -593,6 +615,7 @@ export class ContextualActionMenuElement extends
     this.scheduleCloseTimer_();
   }
 
+  // For entering the tab submenu through the tab button.
   protected onShareTabsRowKeydown_(e: KeyboardEvent) {
     if (e.key === 'ArrowRight' || e.key === 'Enter' || e.key === ' ') {
       if (!this.hasTabSuggestions_) {
@@ -605,7 +628,7 @@ export class ContextualActionMenuElement extends
 
       this.updateComplete.then(() => {
         const firstTabItem = this.shadowRoot.querySelector<HTMLElement>(
-            '.share-tabs-flyout button.dropdown-item');
+            '.share-tabs-flyout button.dropdown-item:not([disabled])');
         if (firstTabItem) {
           firstTabItem.focus();
         }
@@ -613,6 +636,7 @@ export class ContextualActionMenuElement extends
     }
   }
 
+  // For navigating the tab submenu once in the submenu.
   protected onShareTabsFlyoutKeydown_(e: KeyboardEvent) {
     if (e.key === 'ArrowLeft' || e.key === 'Escape') {
       e.preventDefault();
@@ -624,6 +648,37 @@ export class ContextualActionMenuElement extends
       if (row) {
         row.focus();
       }
+      return;
+    }
+
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      const flyout =
+          this.shadowRoot.querySelector<HTMLElement>('.share-tabs-flyout');
+      if (!flyout) {
+        return;
+      }
+      const items = Array.from(flyout.querySelectorAll<HTMLElement>(
+          'button.dropdown-item:not([disabled])'));
+      if (items.length === 0) {
+        return;
+      }
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const focused = this.shadowRoot.activeElement as HTMLElement;
+      const index = items.indexOf(focused);
+
+      const next = e.key === 'ArrowDown';
+      const numOptions = items.length;
+      let nextIndex;
+      if (index === -1) {
+        nextIndex = next ? 0 : numOptions - 1;
+      } else {
+        const delta = next ? 1 : -1;
+        nextIndex = (numOptions + index + delta) % numOptions;
+      }
+      items[nextIndex]!.focus();
     }
   }
 
@@ -641,27 +696,32 @@ export class ContextualActionMenuElement extends
       const flyoutWidth = flyout.offsetWidth || 320;
       const viewportWidth = window.innerWidth;
 
-      if (triggerRect.right + flyoutWidth + 4 <= viewportWidth) {
+      flyout.style.top = `${triggerRect.top}px`;
+
+      // If the flyout fits in the window when on the right, put it on the
+      // right:
+      if (flyoutWidth + SHARE_TABS_FLYOUT_GAP_PX <=
+            // Space remaining to right of right part of button:
+          viewportWidth - triggerRect.right) {
+
         this.shareTabsFlyoutPosition_ = 'right';
-        flyout.style.left = '';
+        flyout.style.left = `${triggerRect.right + SHARE_TABS_FLYOUT_GAP_PX}px`;
         flyout.style.right = '';
-      } else if (triggerRect.left >= flyoutWidth + 4) {
+      } else if (triggerRect.left >= flyoutWidth + SHARE_TABS_FLYOUT_GAP_PX) {
+        // Otherwise, if the space on the left (x=0 to the x=left edge of the
+        // button) is enough for the flyout and gap:
         this.shareTabsFlyoutPosition_ = 'left';
-        flyout.style.left = '';
+        flyout.style.left =
+            `${triggerRect.left - flyoutWidth - SHARE_TABS_FLYOUT_GAP_PX}px`;
         flyout.style.right = '';
       } else {
         this.shareTabsFlyoutPosition_ = 'bottom';
+        flyout.style.top = `${triggerRect.bottom + SHARE_TABS_FLYOUT_GAP_PX}px`;
         const rtl = getComputedStyle(this).direction === 'rtl';
         if (rtl) {
-          const maxRight = triggerRect.right - flyoutWidth - 12;
-          const boundedRight = Math.max(0, Math.min(110, maxRight));
-          flyout.style.right = `${boundedRight}px`;
-          flyout.style.left = 'auto';
+          flyout.style.left = `${triggerRect.right - flyoutWidth}px`;
         } else {
-          const maxLeft = viewportWidth - triggerRect.left - flyoutWidth - 12;
-          const boundedLeft = Math.max(0, Math.min(110, maxLeft));
-          flyout.style.left = `${boundedLeft}px`;
-          flyout.style.right = 'auto';
+          flyout.style.left = `${triggerRect.left}px`;
         }
       }
     });
@@ -690,6 +750,14 @@ export class ContextualActionMenuElement extends
     this.pointerOverTrigger_ = false;
     this.pointerOverFlyout_ = false;
     this.shareTabsFlyoutOpen_ = false;
+  }
+
+  private updateScrollable_() {
+    this.updateComplete.then(() => {
+      const dialog = this.$.menu.getDialog();
+      const isScrollable = dialog.scrollHeight > dialog.offsetHeight;
+      this.$.menu.toggleAttribute('scrollable', isScrollable);
+    });
   }
 
   protected onTabPointerenter_(e: Event) {

@@ -57,6 +57,8 @@
 #import "ios/chrome/browser/shared/coordinator/scene/scene_state_observer.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/incognito_state.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/layout_state.h"
+#import "ios/chrome/browser/shared/coordinator/scene/state/tab_grid_state.h"
+#import "ios/chrome/browser/shared/coordinator/scene/state/tab_grid_state_observer_bridge.h"
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
 #import "ios/chrome/browser/shared/model/browser/browser.h"
 #import "ios/chrome/browser/shared/model/browser/browser_list.h"
@@ -101,7 +103,7 @@ const CGFloat kFloatyIntrinsicPaddingCorrection = 8.0;
 // TODO(crbug.com/512576285): Confirm offset value with UI.
 // TODO(crbug.com/513881624): Get the actual floaty height separately, if
 // possible, so this constant can just represent the offset.
-const CGFloat kDormantSnackbarOffsetFromFloaty = 100.0;
+const CGFloat kDormantSnackbarOffsetFromFloaty = 110.0;
 
 // Used for forcing fullscreen progress value.
 const CGFloat kFullscreenEnabled = 0.0;
@@ -125,7 +127,7 @@ const double kFullscreenDisablerTimeoutSeconds = 3.0;
 // presentation.
 const double kViewTransitionTime = 0.8;
 
-// Block accepted by -startGeminiFREWithCompletion:
+// Block accepted by -startGeminiFirstRunWithCompletion:
 using BlockWithSuccess = void (^)(BOOL success);
 
 // Returns a BlockWithSuccess that call `closure` if called with YES.
@@ -307,6 +309,11 @@ GeminiBrowserAgent::GeminiBrowserAgent(Browser* browser)
       scene_state_observer_ =
           [[GeminiSceneStateObserver alloc] initWithBrowserAgent:this
                                                       sceneState:scene_state];
+      if (IsChromeNextIaEnabled()) {
+        tab_grid_state_observer_bridge_ =
+            [[TabGridStateObserverBridge alloc] initWithObserver:this];
+        [scene_state.tabGridState addObserver:tab_grid_state_observer_bridge_];
+      }
     }
 
     scroll_observer_ = [[GeminiScrollObserver alloc]
@@ -355,6 +362,12 @@ GeminiBrowserAgent::~GeminiBrowserAgent() {
   [scene_state_observer_ disconnect];
   scene_state_observer_ = nil;
 
+  if (tab_grid_state_observer_bridge_ && browser_) {
+    SceneState* scene_state = browser_->GetSceneState();
+    [scene_state.tabGridState removeObserver:tab_grid_state_observer_bridge_];
+  }
+  tab_grid_state_observer_bridge_ = nil;
+
   web::WebState* active_web_state =
       browser_->GetWebStateList()->GetActiveWebState();
   if (active_web_state) {
@@ -402,12 +415,6 @@ bool GeminiBrowserAgent::IsGeminiAvailableForActiveWebState() const {
       browser_->GetWebStateList()->GetActiveWebState();
   GeminiTabHelper* tab_helper = GetActiveTabHelper(active_web_state);
   return tab_helper && tab_helper->IsGeminiAvailableForWebState();
-}
-
-bool GeminiBrowserAgent::IsGeminiChatAvailableForActiveWebState() const {
-  web::WebState* web_state = browser_->GetWebStateList()->GetActiveWebState();
-  GeminiTabHelper* tab_helper = GetActiveTabHelper(web_state);
-  return tab_helper && tab_helper->IsGeminiChatAvailableForWebState();
 }
 
 bool GeminiBrowserAgent::IsInGeminiLiveMode() const {
@@ -483,6 +490,10 @@ void GeminiBrowserAgent::OnKeyboardStateChanged(bool is_visible) {
   }
 
   is_keyboard_visible_ = is_visible;
+  if (IsGeminiLiveEnabled()) {
+    ios::provider::SetLiveCaptionsNumberOfLines(is_visible ? 1 : -1);
+  }
+
   if (is_visible) {
     // If the floaty is expanded but not thinking or temporarily hidden, the
     // floaty should not be hidden on keyboard updates. However, focusing the
@@ -507,6 +518,15 @@ void GeminiBrowserAgent::OnKeyboardStateChanged(bool is_visible) {
     ShowFloatyIfInvoked(/*animated=*/false,
                         gemini::FloatyUpdateSource::Keyboard);
     is_hidden_by_keyboard_ = false;
+  } else {
+    bool is_visible_and_expanded =
+        is_floaty_invoked_ && !is_floaty_temporarily_hidden_ &&
+        last_shown_view_state_ == ios::provider::GeminiViewState::kExpanded;
+
+    if (IsFullscreenRefactoringEnabled() && is_visible_and_expanded) {
+      ios::provider::UpdateOverlayOffsetWithOpacity(GetFloatyOffset(),
+                                                    GetFloatyProgress());
+    }
   }
 }
 
@@ -551,9 +571,11 @@ void GeminiBrowserAgent::ShowLiveSessionDormantSnackbar() {
 
   id<SnackbarCommands> snackbar_handler =
       HandlerForProtocol(browser_->GetCommandDispatcher(), SnackbarCommands);
+
   SnackbarMessage* message = [[SnackbarMessage alloc]
       initWithTitle:l10n_util::GetNSString(
-                        IDS_IOS_GEMINI_LIVE_CONTINUE_SESSION_SNACKBAR)];
+                        IDS_IOS_GEMINI_LIVE_GENERAL_DORMANT_SNACKBAR)];
+
   base::WeakPtr<GeminiBrowserAgent> weak_self = weak_factory_.GetWeakPtr();
   message.completionHandler = ^(BOOL completed) {
     if (weak_self) {
@@ -611,9 +633,9 @@ void GeminiBrowserAgent::StartGeminiFlow(UIViewController* base_view_controller,
       base_view_controller, startup_state, /*first_run_shown=*/true);
 
   [gemini_commands_handler
-      startGeminiFREWithCompletion:BlockRunningClosureIfSuccess(
-                                       std::move(present_floaty_closure))
-                    fromEntryPoint:entry_point];
+      startGeminiFirstRunWithCompletion:BlockRunningClosureIfSuccess(
+                                            std::move(present_floaty_closure))
+                         fromEntryPoint:entry_point];
 }
 
 bool GeminiBrowserAgent::HasCompletedFirstRun() {
@@ -649,12 +671,23 @@ void GeminiBrowserAgent::UpdateGeminiLiveIconVisibility() {
 
 CGFloat GeminiBrowserAgent::GetFloatyOffset() {
   CHECK(IsFullscreenInitialized());
-  CGFloat max_bottom_inset =
-      IsFullscreenRefactoringEnabled()
-          ? FullscreenBrowserAgent::FromBrowser(browser_)->max_insets().bottom
-          : fullscreen_controller_->GetMaxViewportInsets().bottom;
+
+  CGFloat max_bottom_inset = 0;
 
   SceneState* scene_state = browser_->GetSceneState();
+  if (IsChromeNextIaEnabled() && scene_state &&
+      scene_state.tabGridState.tabGridVisible) {
+    if (scene_state.layoutState.appBarPosition == AppBarPosition::kBottom) {
+      max_bottom_inset = kAppBarHeight;
+    } else {
+      max_bottom_inset = 0;
+    }
+  } else {
+    max_bottom_inset =
+        IsFullscreenRefactoringEnabled()
+            ? FullscreenBrowserAgent::FromBrowser(browser_)->max_insets().bottom
+            : fullscreen_controller_->GetMaxViewportInsets().bottom;
+  }
 
   if (!IsFullscreenRefactoringEnabled() && IsChromeNextIaEnabled()) {
     // The legacy FullscreenController is unaware of the App Bar's height.
@@ -837,8 +870,9 @@ void GeminiBrowserAgent::PresentFloaty(UIViewController* base_view_controller,
         &GeminiBrowserAgent::InvokeFloaty, weak_factory_.GetWeakPtr(), config));
   }
 
-  base::UmaHistogramLongTimes(first_run_shown ? kStartupTimeWithFREHistogram
-                                              : kStartupTimeNoFREHistogram,
+  base::UmaHistogramLongTimes(first_run_shown
+                                  ? kStartupTimeWithFirstRunHistogram
+                                  : kStartupTimeNoFirstRunHistogram,
                               base::TimeTicks::Now() - start_time);
 
   // Request full page context generation, which will update the floaty once
@@ -1336,20 +1370,24 @@ bool GeminiBrowserAgent::ShouldIgnoreKeyboardUpdate() const {
          (is_expanded_not_thinking || is_floaty_temporarily_hidden_);
 }
 
-bool GeminiBrowserAgent::IsChatEligiblePage() const {
-  return IsGeminiChatAvailableForActiveWebState();
-}
-
 void GeminiBrowserAgent::UpdateLiveModeUI() {
   if (!IsInGeminiLiveMode()) {
     return;
   }
-  ios::provider::SetLiveStopButtonHidden(!IsChatEligiblePage());
+  web::WebState* active_web_state =
+      browser_->GetWebStateList()->GetActiveWebState();
+  GeminiTabHelper* tab_helper = GetActiveTabHelper(active_web_state);
+  bool is_eligible =
+      tab_helper && tab_helper->IsGeminiChatAvailableForWebState();
+  ios::provider::SetLiveStopButtonHidden(!is_eligible);
 }
 
 bool GeminiBrowserAgent::UpdateLiveModeUIAndMaybeContext() {
   UpdateLiveModeUI();
-  if (IsChatEligiblePage()) {
+  web::WebState* active_web_state =
+      browser_->GetWebStateList()->GetActiveWebState();
+  GeminiTabHelper* tab_helper = GetActiveTabHelper(active_web_state);
+  if (tab_helper && tab_helper->IsGeminiChatAvailableForWebState()) {
     UpdateFloatyWithPartialPageContext();
     RequestPageContextGeneration();
     return true;
@@ -1405,6 +1443,21 @@ void GeminiBrowserAgent::WillShutDown(FullscreenBrowserAgent* agent) {
   fullscreen_observation_.Reset();
 }
 
+#pragma mark - TabGridStateObserver
+
+void GeminiBrowserAgent::WillEnterTabGrid() {
+  if (IsFullscreenInitialized()) {
+    ios::provider::UpdateOverlayOffsetWithOpacity(GetFloatyOffset(), 1.0);
+  }
+}
+
+void GeminiBrowserAgent::WillExitTabGrid() {
+  if (IsFullscreenInitialized()) {
+    ios::provider::UpdateOverlayOffsetWithOpacity(GetFloatyOffset(),
+                                                  GetFloatyProgress());
+  }
+}
+
 #pragma mark - Private
 
 void GeminiBrowserAgent::RequestPageContextGeneration() {
@@ -1428,7 +1481,39 @@ void GeminiBrowserAgent::PropagatePageContextToProvider(
   if (!is_floaty_invoked_) {
     return;
   }
-  ApplyUserPrefsToPageContext(gemini_page_context);
+
+  web::WebState* active_web_state =
+      browser_->GetWebStateList()->GetActiveWebState();
+  GeminiTabHelper* tab_helper = GetActiveTabHelper(active_web_state);
+  bool is_eligible =
+      tab_helper && tab_helper->IsGeminiChatAvailableForWebState();
+
+  // Handle programmatic blocking/detachment for ineligible or hidden pages.
+  if (!is_eligible) {
+    gemini_page_context.geminiPageContextComputationState =
+        ios::provider::GeminiPageContextComputationState::kBlocked;
+    gemini_page_context.geminiPageContextAttachmentState =
+        ios::provider::GetCurrentPageContextAttachmentState();
+    gemini_page_context.uniquePageContext = nullptr;
+  } else {
+    // Apply user settings.
+    ApplyUserPrefsToPageContext(gemini_page_context);
+
+    // Persists manual detachment across navigations. If the user explicitly
+    // detached the context via the paperclip UI, respect that choice over the
+    // default attached state. Skip for Gemini Live where the paperclip UI
+    // is absent and context streams continuously.
+    if (IsGeminiCopresenceEnabled() &&
+        gemini_page_context.geminiPageContextAttachmentState ==
+            ios::provider::GeminiPageContextAttachmentState::kAttached &&
+        ios::provider::GetCurrentPageContextAttachmentState() ==
+            ios::provider::GeminiPageContextAttachmentState::kDetached &&
+        !IsInGeminiLiveMode()) {
+      gemini_page_context.geminiPageContextAttachmentState =
+          ios::provider::GeminiPageContextAttachmentState::kDetached;
+    }
+  }
+
   ios::provider::UpdatePageContext(gemini_page_context);
 }
 
@@ -1559,26 +1644,10 @@ void GeminiBrowserAgent::ResetFullscreenDisabler() {
 
 void GeminiBrowserAgent::ApplyUserPrefsToPageContext(
     GeminiPageContext* gemini_page_context) {
-  if (!IsChatEligiblePage()) {
-    gemini_page_context.geminiPageContextComputationState =
-        ios::provider::GeminiPageContextComputationState::kBlocked;
-    gemini_page_context.geminiPageContextAttachmentState =
-        ios::provider::GeminiPageContextAttachmentState::kDetached;
-    gemini_page_context.uniquePageContext = nullptr;
-    return;
-  }
-
-  // Disable the page context attachment state based on user prefs.
   PrefService* pref_service = browser_->GetProfile()->GetPrefs();
   if (!pref_service->GetBoolean(prefs::kIOSBWGPageContentSetting)) {
     gemini_page_context.geminiPageContextAttachmentState =
         ios::provider::GeminiPageContextAttachmentState::kUserDisabled;
-  } else if (IsGeminiCopresenceEnabled() && is_floaty_invoked_ &&
-             ios::provider::GetCurrentPageContextAttachmentState() ==
-                 ios::provider::GeminiPageContextAttachmentState::kDetached &&
-             !IsInGeminiLiveMode()) {
-    gemini_page_context.geminiPageContextAttachmentState =
-        ios::provider::GeminiPageContextAttachmentState::kDetached;
   } else {
     // If page context is not disabled by the user, page context is always
     // available and should be attached. Note page context is only partially

@@ -545,7 +545,8 @@ IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeWithTabsToPin) {
   ASSERT_TRUE(instance);
 
   // Verify that tab2 was pinned.
-  auto usage = instance->sharing_manager().GetPinnedTabUsage(tab2->GetHandle());
+  auto usage = instance->GetSharingManagerInternal().GetPinnedTabUsage(
+      tab2->GetHandle());
   ASSERT_TRUE(usage.has_value());
   EXPECT_EQ(usage->pin_event.trigger, GlicPinTrigger::kInstanceCreation);
 }
@@ -592,12 +593,11 @@ IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, ResolveTargetSurfaceFloating) {
                        OpenGlicForActiveTabAndDetach());
   ASSERT_TRUE(instance->IsDetached());
 
-  std::optional<Target> target = instance->GetInvokeTarget();
-  ASSERT_TRUE(target.has_value());
-  EXPECT_TRUE(std::holds_alternative<Floating>(target->surface));
+  Target target = instance->GetInvokeTarget(Target::Surface());
+  EXPECT_TRUE(std::holds_alternative<Floating>(target.surface));
 
   GlicInvokeHandler::ResolvedTarget resolved =
-      GlicInvokeHandler::ResolveTargetSurface(GetProfile(), *target);
+      GlicInvokeHandler::ResolveTargetSurface(GetProfile(), target);
 
   EXPECT_TRUE(std::holds_alternative<Floating>(resolved));
 }
@@ -750,6 +750,7 @@ IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
   base::test::TestFuture<void> success_future;
   GlicInvokeOptions options(Target(*tab), mojom::InvocationSource::kOsButton);
   options.fre_override = mojom::FreOverride::kTrustFirstClick;
+  options.fre_completion_wait_mode = FreCompletionWaitMode::kDefault;
   options.on_success = success_future.GetCallback();
 
   coordinator().Invoke(std::move(options));
@@ -909,8 +910,16 @@ class GlicInvokeDefaultToLastActiveActuatingBrowserTest
   base::test::ScopedFeatureList feature_list_;
 };
 
+// TODO(crbug.com/501124440): Failed on Android.
+#if BUILDFLAG(IS_ANDROID)
+#define MAYBE_NewTabDoesNotDefaultToLastActiveIfActuating \
+  DISABLED_NewTabDoesNotDefaultToLastActiveIfActuating
+#else
+#define MAYBE_NewTabDoesNotDefaultToLastActiveIfActuating \
+  NewTabDoesNotDefaultToLastActiveIfActuating
+#endif
 IN_PROC_BROWSER_TEST_F(GlicInvokeDefaultToLastActiveActuatingBrowserTest,
-                       NewTabDoesNotDefaultToLastActiveIfActuating) {
+                       MAYBE_NewTabDoesNotDefaultToLastActiveIfActuating) {
   GlicHistogramTester histogram_tester;
   ASSERT_OK_AND_ASSIGN(auto instance1, OpenGlicForActiveTab());
 

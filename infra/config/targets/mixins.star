@@ -1152,6 +1152,18 @@ targets.mixin(
 )
 
 targets.mixin(
+    name = "ios_runtime_cache_27_0",
+    swarming = targets.swarming(
+        named_caches = [
+            swarming.cache(
+                name = "runtime_ios_27_0",
+                path = "Runtime-ios-27.0",
+            ),
+        ],
+    ),
+)
+
+targets.mixin(
     name = "tvos_runtime_cache_26_0",
     swarming = targets.swarming(
         named_caches = [
@@ -1390,7 +1402,9 @@ targets.mixin(
     swarming = targets.swarming(
         dimensions = {
             "cpu": "arm64",  # fallback on bare metal if no VMs are available
-            "os": "Mac-15",
+            # TODO(crbug.com/521856600): Remove OR when Mac-26 once upgrade
+            # process is complete and CQ migrates to mac26-arm64-rel-tests.
+            "os": "Mac-15|Mac-26",
         },
         optional_dimensions = {
             30: {
@@ -1505,7 +1519,9 @@ targets.mixin(
     swarming = targets.swarming(
         dimensions = {
             "cpu": "arm64",
-            "os": "Mac-15",
+            # TODO(crbug.com/521856600): Remove OR when Mac-26 once upgrade
+            # process is complete and CQ migrates to mac26-arm64-rel-tests.
+            "os": "Mac-15|Mac-26",
         },
     ),
 )
@@ -2291,15 +2307,15 @@ targets.mixin(
 )
 
 targets.mixin(
-    name = "xcode_26_beta",
+    name = "xcode_27_beta",
     args = [
         "--xcode-build-version",
-        "17f42",
+        "27a5194q",
     ],
     swarming = targets.swarming(
         named_caches = [
             swarming.cache(
-                name = "xcode_ios_17f42",
+                name = "xcode_ios_27a5194q",
                 path = "Xcode.app",
             ),
         ],

@@ -94,7 +94,6 @@
 <translation id="1953553007165777902">جارٍ التنزيل… عدد الدقائق المتبقّية: <ph name="MINUTE" /></translation>
 <translation id="1979600810166324878">‏يمكنك الحفاظ على أمانك أثناء التنقّل باستخدام ميزة "الحماية المحسّنة للتصفّح الآمن" في Chrome على أجهزة iOS</translation>
 <translation id="2001586581944147178">‏يمكنك جعل الاطّلاع على المواقع الإلكترونية التي تزورها أكثر صعوبة على الجهات التي يمكنها الوصول إلى حركة مرور بياناتك على الإنترنت. يستخدم Chrome اتصالاً آمنًا للبحث عن عنوان IP الخاص بأي موقع إلكتروني في نظام أسماء النطاقات (DNS).</translation>
-<translation id="2008942457798486387">{NUM_EXTENSIONS,plural, =1{‏لم تعُد هذه الإضافة متوافقة. ينصح المتصفّح Chrome بإزالتها.}zero{‏لم تعُد هذه الإضافات متوافقة. ينصح المتصفّح Chrome بإزالتها.}two{‏لم تعُد هاتان الإضافتان متوافقتين. ينصح المتصفّح Chrome بإزالتهما.}few{‏لم تعُد هذه الإضافات متوافقة. ينصح المتصفّح Chrome بإزالتها.}many{‏لم تعُد هذه الإضافات متوافقة. ينصح المتصفّح Chrome بإزالتها.}other{‏لم تعُد هذه الإضافات متوافقة. ينصح المتصفّح Chrome بإزالتها.}}</translation>
 <translation id="2018528049276128029">‏يحتفظ كل ملف شخصي بالمعلومات الخاصة به على Chrome، مثل الإشارات المرجعية والسجلّ وكلمات المرور وغير ذلك.</translation>
 <translation id="2018879682492276940">تعذّر التثبيت. يُرجى إعادة المحاولة.</translation>
 <translation id="2024959665595762054">‏يجب إثبات هويتك لاستخدام بيانات Chrome وحفظها في حسابك على Google</translation>
@@ -190,6 +189,7 @@
 <translation id="2945997411976714835">خطأ في التثبيت: تعذّر بدء عملية التثبيت.</translation>
 <translation id="2969728957078202736">‏<ph name="PAGE_TITLE" /> - Chrome - تسجيل الدخول إلى الشبكة</translation>
 <translation id="2970681950995291301">‏لإزالة حسابك على Google من Chrome، يجب تسجيل الخروج من Chrome في صفحة "الإعدادات"</translation>
+<translation id="2976869732253036751">‏تلقّي تنبيهات ميزة "تتبُّع الأسعار" باستخدام Chrome على هاتفك</translation>
 <translation id="2991167882679440829">‏ستتم إزالة كلمات المرور وبيانات Chrome الأخرى التي تم حفظها في حسابك على Google من هذا الجهاز. ولاستخدامها مرة أخرى في Chrome، عليك تسجيل الدخول مجددًا.</translation>
 <translation id="2994465299455873643">توفِّر هذه الخدمة خدمات تشفير وطريقة آمنة لترقية <ph name="BROWSER_NAME" /> عندما يصبح قديمًا. وفي حال إيقاف هذه الخدمة، قد يفقد <ph name="BROWSER_NAME" /> إمكانية الوصول إلى البيانات المشفّرة، وقد يتعذّر على <ph name="BROWSER_NAME" /> إجراء الترقية.</translation>
 <translation id="3003694935412297923">كل المهام</translation>
@@ -386,6 +386,7 @@
 <translation id="5127558335897923940">‏يمكنك الاحتفاظ بمتصفِّح Chrome في شريط التطبيقات (Dock) للوصول إليه بسرعة في أي وقت</translation>
 <translation id="5132929315877954718">‏يمكنك اكتشاف تطبيقات، وألعاب، وإضافات، ومظاهر رائعة لمتصفح Google Chrome.</translation>
 <translation id="5139423532931106058">‏تخصيص ملفك الشخصي في Chrome</translation>
+<translation id="5152381187352661267">‏"المهارات" في Chrome</translation>
 <translation id="5163087008893166964">‏مرحبًا بك في Chrome. تم فتح نافذة متصفّح جديدة.</translation>
 <translation id="5166439563123238795">‏يحتاج Chrome إلى إذن لتتبُّع حركات يديك</translation>
 <translation id="5169778651486082413">‏بتنزيل Chrome، يمكنك استخدام كلمات المرور الخاصة بك على هاتفك</translation>
@@ -483,6 +484,7 @@
 <translation id="6070348360322141662">‏لمزيد من الأمان، سيشفِّر Google Chrome بياناتك</translation>
 <translation id="6075300983329039771">‏تطلُب المؤسسة (<ph name="MANAGER" />) منك تسجيل الدخول إلى Chrome</translation>
 <translation id="6113794647360055231">‏Chrome أصبح أفضل</translation>
+<translation id="6116004140911290070">‏تفعيل "المهارات" في Chrome</translation>
 <translation id="6116252277240876590">‏تُستخدم هذه اللغة لعرض القوائم والإعدادات والتنبيهات والنصوص الأخرى في Chrome</translation>
 <translation id="6127237283587442951">‏استخدام Chrome كمتصفّح تلقائي وتثبيته</translation>
 <translation id="6134085236017727171">‏لاستخدام الميكروفون، يجب منح Chrome إذن الوصول في <ph name="BEGIN_LINK" />إعدادات النظام<ph name="END_LINK" /></translation>
@@ -642,6 +644,7 @@
 <translation id="7606334485649076285">‏نظام التشغيل ChromeOS Flex من Google</translation>
 <translation id="7627609214560473136">‏لحماية بياناتك، يمكنك السماح لمتصفِّح Chrome بإزالة الأذونات من المواقع الإلكترونية التي لم تتم زيارتها مؤخرًا.</translation>
 <translation id="7629695634924605473">‏يتم إعلامك من خلال Chrome في حال تم اختراق كلمات المرور في أي وقت.</translation>
+<translation id="7629898584100520089">‏يتم حفظ ابتكارات الذكاء الاصطناعي، مثل المهارات، في حسابك على Google وإدارتها بشكل منفصل عن ميزة "مزامنة Chrome"</translation>
 <translation id="7641148173327520642">‏ضَبَط مشرف النظام Google Chrome لفتح <ph name="ALTERNATIVE_BROWSER_NAME" /> للوصول إلى <ph name="TARGET_URL_HOSTNAME" />.</translation>
 <translation id="7649070708921625228">مساعدة</translation>
 <translation id="7651907282515937834">‏شعار Chrome Enterprise</translation>

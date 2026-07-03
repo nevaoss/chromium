@@ -61,7 +61,6 @@ class MockAccountManagerFacade : public account_manager::AccountManagerFacade {
                const std::string&,
                base::OnceCallback<void(const AccountUpsertionResult& result)>),
               (override));
-  MOCK_METHOD(void, ShowManageAccountsSettings, (), (override));
   MOCK_METHOD(void,
               ReportAuthError,
               (const AccountKey&, const GoogleServiceAuthError&),

@@ -204,6 +204,25 @@ public class TabGroupListBottomSheetMediatorUnitTest {
     }
 
     @Test
+    public void testBottomSheetObserver_onSheetClosed_ignoredBeforeShown() {
+        when(mDelegate.requestShowContent())
+                .thenAnswer(
+                        invocation -> {
+                            verify(mBottomSheetController)
+                                    .addObserver(mBottomSheetObserverCaptor.capture());
+                            mBottomSheetObserverCaptor
+                                    .getValue()
+                                    .onSheetClosed(StateChangeReason.BACK_PRESS);
+                            return true;
+                        });
+
+        mMediator.requestShowContent(Arrays.asList(mTab1, mTab2));
+
+        verify(mBottomSheetController, never()).removeObserver(any());
+        assertFalse(mModelList.isEmpty());
+    }
+
+    @Test
     public void testBottomSheetObserver_onSheetStateChanged() {
         when(mDelegate.requestShowContent()).thenReturn(true);
         mMediator.requestShowContent(Arrays.asList(mTab1, mTab2));

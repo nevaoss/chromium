@@ -94,6 +94,10 @@ class FuseboxProperties {
     public static final WritableObjectPropertyKey<Runnable> ACTIVATION_CHIP_CLICKED =
             new WritableObjectPropertyKey<>();
 
+    /** Whether the activation chip should be selected. */
+    public static final WritableBooleanPropertyKey ACTIVATION_CHIP_SELECTED =
+            new WritableBooleanPropertyKey();
+
     /** Whether the activation chip should be visible. */
     public static final WritableBooleanPropertyKey ACTIVATION_CHIP_VISIBLE =
             new WritableBooleanPropertyKey();
@@ -102,17 +106,9 @@ class FuseboxProperties {
     public static final WritableObjectPropertyKey<SimpleRecyclerViewAdapter> ADAPTER =
             new WritableObjectPropertyKey<>();
 
-    /** Whether the add button is visible. */
-    public static final WritableBooleanPropertyKey ADD_BUTTON_VISIBLE =
-            new WritableBooleanPropertyKey();
-
     /** Whether the attachments RecyclerView is visible. */
     public static final WritableBooleanPropertyKey ATTACHMENTS_VISIBLE =
             new WritableBooleanPropertyKey();
-
-    /** Action to perform when the user clicks the Add button. */
-    public static final WritableObjectPropertyKey<Runnable> BUTTON_ADD_CLICKED =
-            new WritableObjectPropertyKey<>();
 
     /** The variant of {@link BrandedColorScheme} to apply to the UI elements. */
     public static final WritableObjectPropertyKey<@BrandedColorScheme Integer> COLOR_SCHEME =
@@ -125,6 +121,14 @@ class FuseboxProperties {
     /** The state of the UI of the fusebox should currently be in. */
     public static final WritableObjectPropertyKey<@FuseboxState Integer> FUSEBOX_STATE =
             new WritableObjectPropertyKey<>();
+
+    /** Action to perform when the user clicks the Plus button. */
+    public static final WritableObjectPropertyKey<Runnable> PLUS_BUTTON_CLICKED =
+            new WritableObjectPropertyKey<>();
+
+    /** Whether the plus button is visible. */
+    public static final WritableBooleanPropertyKey PLUS_BUTTON_VISIBLE =
+            new WritableBooleanPropertyKey();
 
     /** Action to perform when the user clicks the Camera button in the popup. */
     public static final WritableObjectPropertyKey<Runnable> POPUP_ATTACH_CAMERA_CLICKED =
@@ -267,14 +271,15 @@ class FuseboxProperties {
     public static final PropertyKey[] ALL_KEYS = {
         // go/keep-sorted start
         ACTIVATION_CHIP_CLICKED,
+        ACTIVATION_CHIP_SELECTED,
         ACTIVATION_CHIP_VISIBLE,
         ADAPTER,
-        ADD_BUTTON_VISIBLE,
         ATTACHMENTS_VISIBLE,
-        BUTTON_ADD_CLICKED,
         COLOR_SCHEME,
         FUSEBOX_LAYOUT_MODE,
         FUSEBOX_STATE,
+        PLUS_BUTTON_CLICKED,
+        PLUS_BUTTON_VISIBLE,
         POPUP_ATTACH_CAMERA_CLICKED,
         POPUP_ATTACH_CAMERA_ENABLED,
         POPUP_ATTACH_CAMERA_VISIBLE,

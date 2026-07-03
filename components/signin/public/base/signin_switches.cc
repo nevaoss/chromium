@@ -476,16 +476,6 @@ const base::FeatureParam<base::TimeDelta>
         base::Hours(8)};
 #endif
 
-#if BUILDFLAG(IS_IOS)
-BASE_FEATURE(kEnforceMustFetchAppleAgeRangeInChromeCapability,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-#endif
-
-#if BUILDFLAG(IS_IOS)
-BASE_FEATURE(kEnforceMustSkipAppleAgeRangeInChromeCapability,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-#endif
-
 BASE_FEATURE(kFetchAccountInfoOnRestart, base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
@@ -568,6 +558,8 @@ BASE_FEATURE(kIgnoreInvalidGrantError, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
+BASE_FEATURE(kMagiChromeSignInBanner, base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kMagiChromeSignInExperimentsBatch1,
              base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
@@ -607,6 +599,9 @@ BASE_FEATURE(kProfilesReordering, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kReadContextualAccountCapabilities,
              base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
+
+BASE_FEATURE(kReadSupportsWalletPrivatePassesInAutofillCapability,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if !BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kRestrictDeviceManagementServiceOAuthScope,

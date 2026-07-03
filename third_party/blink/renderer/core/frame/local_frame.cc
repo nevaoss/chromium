@@ -2398,25 +2398,7 @@ LocalFrame::LazyLoadImageSetting LocalFrame::GetLazyLoadImageSetting() const {
     return LocalFrame::LazyLoadImageSetting::kDisabled;
   }
 
-  if (GetDocument()->IsPageVisible()) {
-    return LocalFrame::LazyLoadImageSetting::kEnabledExplicit;
-  }
-
-  if (base::FeatureList::IsEnabled(
-          features::kEnableLazyLoadImageForInvisiblePage)) {
-    switch (features::kEnableLazyLoadImageForInvisiblePageTypeParam.Get()) {
-      case features::EnableLazyLoadImageForInvisiblePageType::kAllInvisiblePage:
-        return LocalFrame::LazyLoadImageSetting::kEnabledExplicit;
-      case features::EnableLazyLoadImageForInvisiblePageType::kPrerenderPage:
-        if (GetDocument()->IsPrerendering()) {
-          return LocalFrame::LazyLoadImageSetting::kEnabledExplicit;
-        }
-        return LocalFrame::LazyLoadImageSetting::kDisabled;
-    }
-  }
-  // Disable lazyload for backgrounded pages including NoStatePrefetch and
-  // Prerender.
-  return LocalFrame::LazyLoadImageSetting::kDisabled;
+  return LocalFrame::LazyLoadImageSetting::kEnabledExplicit;
 }
 
 scoped_refptr<network::SharedURLLoaderFactory>
@@ -2899,7 +2881,7 @@ void LocalFrame::NotifyUserActivation(
 }
 
 // static
-bool LocalFrame::HasTransientUserActivation(LocalFrame* frame) {
+bool LocalFrame::HasTransientUserActivation(const LocalFrame* frame) {
   return frame && frame->Frame::HasTransientUserActivation();
 }
 
@@ -2950,7 +2932,9 @@ void LocalFrame::SetHadUserInteraction(bool had_user_interaction) {
   DomWindow()->closewatcher_stack()->SetHadUserInteraction(
       had_user_interaction);
 
-  GetFrameScheduler()->SetHadUserActivation(had_user_interaction);
+  if (auto* scheduler = GetFrameScheduler()) {
+    scheduler->SetHadUserActivation(had_user_interaction);
+  }
 }
 
 namespace {
@@ -3040,19 +3024,18 @@ void LocalFrame::ForciblyPurgeV8Memory() {
 }
 
 void LocalFrame::OnPageLifecycleStateUpdated() {
-  if (frozen_ != GetPage()->Frozen()) {
-    frozen_ = GetPage()->Frozen();
-    if (frozen_) {
-      DidFreeze();
-    } else {
-      DidResume();
-    }
-    // The event handlers might have detached the frame.
+  bool should_freeze = (frozen_ != GetPage()->Frozen()) && GetPage()->Frozen();
+  bool should_resume = (frozen_ != GetPage()->Frozen()) && !GetPage()->Frozen();
+  // Freeze handlers should run before the execution context is frozen.
+  if (should_freeze) {
+    frozen_ = true;
+    DidFreeze();
+    // Event handlers might have detached the frame.
     if (!IsAttached())
       return;
   }
-  SetContextPaused(GetPage()->Paused());
 
+  SetContextPaused(GetPage()->Paused());
   mojom::blink::FrameLifecycleState frame_lifecycle_state =
       mojom::blink::FrameLifecycleState::kRunning;
   if (GetPage()->Paused()) {
@@ -3062,6 +3045,16 @@ void LocalFrame::OnPageLifecycleStateUpdated() {
   }
 
   DomWindow()->SetLifecycleState(frame_lifecycle_state);
+
+  // Resume handlers should run after the execution context resumes.
+  if (should_resume) {
+    frozen_ = false;
+    DidResume();
+    // Event handlers might have detached the frame.
+    if (!IsAttached()) {
+      return;
+    }
+  }
 }
 
 void LocalFrame::SetContextPaused(bool is_paused) {
@@ -3298,7 +3291,13 @@ LoaderFreezeMode LocalFrame::GetLoaderFreezeMode() {
 void LocalFrame::DidFreeze() {
   TRACE_EVENT0("blink", "LocalFrame::DidFreeze");
   DCHECK(IsAttached());
+
+  // Ensure that the document is not in the frozen state when running the freeze
+  // event.
+  DCHECK_NE(DomWindow()->ContextPauseState(),
+            mojom::blink::FrameLifecycleState::kFrozen);
   GetDocument()->DispatchFreezeEvent();
+
   if (evict_cached_session_storage_on_freeze_or_unload_) {
     // Evicts the cached data of Session Storage to avoid reusing old data in
     // the cache after the session storage has been modified by another renderer
@@ -3338,6 +3337,10 @@ void LocalFrame::DidResume() {
   GetDocument()->Fetcher()->SetDefersLoading(LoaderFreezeMode::kNone);
   Loader().SetDefersLoading(LoaderFreezeMode::kNone);
 
+  // Ensure that the document is not in the frozen state when running the resume
+  // event.
+  DCHECK_NE(DomWindow()->ContextPauseState(),
+            mojom::blink::FrameLifecycleState::kFrozen);
   GetDocument()->DispatchEvent(*Event::Create(event_type_names::kResume));
   // TODO(fmeawad): Move the following logic to the page once we have a
   // PageResourceCoordinator in Blink

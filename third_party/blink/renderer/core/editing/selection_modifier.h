@@ -47,9 +47,9 @@ class CORE_EXPORT SelectionModifier {
  public:
   // |frame| is used for providing settings.
   SelectionModifier(const LocalFrame& /* frame */,
-                    const SelectionInDOMTree&,
+                    const SelectionInDomTree&,
                     LayoutUnit);
-  SelectionModifier(const LocalFrame&, const SelectionInDOMTree&);
+  SelectionModifier(const LocalFrame&, const SelectionInDomTree&);
   SelectionModifier(const SelectionModifier&) = delete;
   SelectionModifier& operator=(const SelectionModifier&) = delete;
 

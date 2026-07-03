@@ -187,6 +187,16 @@ web::WebState* WebStateDelegateBrowserAgent::CreateNewWebState(
     return nullptr;
   }
 
+  // Under certain circumstances, it is possible for this callback to be
+  // called while the WebState has been removed from the WebStateList but
+  // before the delegate could be updated. See crbug.com/520318841 for
+  // details. In that case, the request to create a new WebState is
+  // silently dropped.
+  int index = web_state_list_->GetIndexOfWebState(source);
+  if (index == WebStateList::kInvalidIndex) {
+    return nullptr;
+  }
+
   // Check if requested web state is a popup and block it if necessary.
   if (!initiated_by_user) {
     auto* helper = BlockedPopupTabHelper::FromWebState(source);

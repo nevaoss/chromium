@@ -676,10 +676,23 @@ WebFrameLoadType NavigationTypeToLoadType(
     bool should_replace_current_entry) {
   switch (navigation_type) {
     case blink::mojom::NavigationType::RELOAD:
-      return WebFrameLoadType::kReload;
-
     case blink::mojom::NavigationType::RELOAD_BYPASSING_CACHE:
-      return WebFrameLoadType::kReloadBypassingCache;
+      // When should_replace_current_entry is set for a reload (e.g., reloading
+      // before the initial entry has been replaced), use kReplaceCurrentItem
+      // so the initial entry is properly replaced. For shift-reload, this
+      // trades off Blink's subresource cache-bypass behavior (which keys off
+      // kReloadBypassingCache) in favor of correct history-entry behavior;
+      // the main resource still bypasses the cache because the browser-side
+      // request uses NavigationType::RELOAD_BYPASSING_CACHE.
+      // TODO(crbug.com/519762182): Consider treating reload-before-initial-
+      // entry-replacement as a new navigation (DIFFERENT_DOCUMENT) rather
+      // than a reload because the document never actually loaded.
+      if (should_replace_current_entry) {
+        return WebFrameLoadType::kReplaceCurrentItem;
+      }
+      return navigation_type == blink::mojom::NavigationType::RELOAD
+                 ? WebFrameLoadType::kReload
+                 : WebFrameLoadType::kReloadBypassingCache;
 
     case blink::mojom::NavigationType::HISTORY_SAME_DOCUMENT:
     case blink::mojom::NavigationType::HISTORY_DIFFERENT_DOCUMENT:
@@ -812,17 +825,27 @@ class MHTMLHandleWriterDelegate {
   void WriteContents(std::vector<WebThreadSafeData> mhtml_contents) {
     // MHTMLHandleWriter::WriteContents calls MHTMLHandleWriter::Finish
     // eventually.
+    if (!handle_) {
+      return;
+    }
+    MHTMLHandleWriter* raw_handle = handle_.get();
     base::ThreadPool::PostTask(
         FROM_HERE, {base::MayBlock()},
-        base::BindOnce(&MHTMLHandleWriter::WriteContents, std::move(handle_),
+        base::BindOnce(&MHTMLHandleWriter::WriteContents,
+                       base::Unretained(raw_handle), std::move(handle_),
                        std::move(mhtml_contents)));
   }
 
   // Within the context of the delegate, only for premature write finish.
   void Finish(mojom::MhtmlSaveStatus save_status) {
-    base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()},
-                               base::BindOnce(&MHTMLHandleWriter::Finish,
-                                              std::move(handle_), save_status));
+    if (!handle_) {
+      return;
+    }
+    MHTMLHandleWriter* raw_handle = handle_.get();
+    base::ThreadPool::PostTask(
+        FROM_HERE, {base::MayBlock()},
+        base::BindOnce(&MHTMLHandleWriter::Finish, base::Unretained(raw_handle),
+                       std::move(handle_), save_status));
   }
 
  private:
@@ -4463,8 +4486,18 @@ void RenderFrameImpl::DidChangeSelection(bool is_empty_selection,
   }
 #endif
   if (!GetLocalRootWebFrameWidget()->HandlingInputEvent() &&
-      !GetLocalRootWebFrameWidget()->HandlingSelectRange())
-    return;
+      !GetLocalRootWebFrameWidget()->HandlingSelectRange()) {
+    // `EditContext::updateSelection` can be invoked from async event handlers
+    // (e.g. selectionchange) outside of an input-event scope. We must still
+    // propagate selection to the browser.
+    const bool is_editcontext_active =
+        frame_->GetInputMethodController() &&
+        frame_->GetInputMethodController()->IsEditContextActive() &&
+        base::FeatureList::IsEnabled(features::kEditContextSelectionSync);
+    if (!is_editcontext_active) {
+      return;
+    }
+  }
 
   if (is_empty_selection)
     selection_text_.clear();

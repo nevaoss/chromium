@@ -75,7 +75,7 @@ class OsTelemetryGetCpuInfoFunction : public TelemetryApiFunctionBase {
   // BaseTelemetryExtensionApiGuardFunction:
   void RunIfAllowed() override;
 
-  void OnResult(crosapi::mojom::ProbeTelemetryInfoPtr ptr);
+  void OnResult(ash::cros_healthd::mojom::TelemetryInfoPtr ptr);
 };
 
 class OsTelemetryGetDisplayInfoFunction : public TelemetryApiFunctionBase {

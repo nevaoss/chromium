@@ -105,7 +105,7 @@ class GeminiFirstRunCoordinatorTest : public PlatformTest {
         initWithBaseViewController:base_view_controller_
                            browser:browser_.get()
                     fromEntryPoint:entryPoint
-                           FREType:GeminiFREType::kNewUser
+                      firstRunType:GeminiFirstRunType::kNewUser
                  completionHandler:nil];
     [coordinator_ start];
     // Wait for the view controller to be presented.

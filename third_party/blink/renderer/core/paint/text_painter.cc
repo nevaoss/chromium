@@ -516,20 +516,22 @@ void TextPainter::SetEmphasisMark(const AtomicString& emphasis_mark,
   if (!font_data || emphasis_mark.IsNull()) {
     emphasis_mark_offset_ = 0;
   } else if (emphasis_line_side == LineLogicalSide::kOver) {
-    emphasis_mark_offset_ = -font_data->GetFontMetrics().Ascent() -
-                            font_.EmphasisMarkDescent(emphasis_mark);
+    LayoutUnit offset = -font_data->GetFontMetrics().FixedAscent() -
+                        font_.EmphasisMarkDescent(emphasis_mark);
     if (RuntimeEnabledFeatures::TextEmphasisWithRubyEnabled() && text_item &&
         text_item->HasOverAnnotation()) {
-      emphasis_mark_offset_ -= text_item->AnnotationMetrics().ascent.Ceil();
+      offset -= text_item->AnnotationMetrics().ascent;
     }
+    emphasis_mark_offset_ = offset.Floor();
   } else {
     DCHECK(emphasis_line_side == LineLogicalSide::kUnder);
-    emphasis_mark_offset_ = font_data->GetFontMetrics().Descent() +
-                            font_.EmphasisMarkAscent(emphasis_mark);
+    LayoutUnit offset = font_data->GetFontMetrics().FixedDescent() +
+                        font_.EmphasisMarkAscent(emphasis_mark);
     if (RuntimeEnabledFeatures::TextEmphasisWithRubyEnabled() && text_item &&
         text_item->HasUnderAnnotation()) {
-      emphasis_mark_offset_ += text_item->AnnotationMetrics().descent.Ceil();
+      offset += text_item->AnnotationMetrics().descent;
     }
+    emphasis_mark_offset_ = offset.Ceil();
   }
 }
 

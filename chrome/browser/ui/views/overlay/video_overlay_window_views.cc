@@ -46,6 +46,7 @@
 #include "chrome/grit/generated_resources.h"
 #include "components/global_media_controls/public/format_duration.h"
 #include "components/vector_icons/vector_icons.h"
+#include "content/public/browser/immersive_playback_options.h"
 #include "content/public/browser/media_session.h"
 #include "content/public/browser/picture_in_picture_window_controller.h"
 #include "content/public/browser/render_frame_host.h"
@@ -60,8 +61,6 @@
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/mojom/ui_base_types.mojom-shared.h"
 #include "ui/base/ui_base_features.h"
-#include "ui/color/color_provider_key.h"
-#include "ui/color/system_theme.h"
 #include "ui/compositor/compositor.h"
 #include "ui/compositor/layer.h"
 #include "ui/display/display.h"
@@ -2027,7 +2026,7 @@ void VideoOverlayWindowViews::SetPlaybackControlsVisibility(bool is_visible) {
 }
 
 void VideoOverlayWindowViews::SetImmersiveVideoOptions(
-    blink::mojom::ImmersiveOptionsPtr options) {
+    const content::ImmersiveOptions& options) {
   NOTREACHED();
 }
 
@@ -2078,24 +2077,6 @@ void VideoOverlayWindowViews::OnGestureEvent(ui::GestureEvent* event) {
 
   // Otherwise, just use default gesture event handling.
   views::Widget::OnGestureEvent(event);
-}
-
-// Video Picture-in-Picture windows only support dark mode, and child views
-// like the Live Caption dialog must follow this as well. Under High Contrast
-// mode, the system theme might override colors to light or high contrast colors
-// which makes the PiP window and the dialog illegible. We override this method
-// to bypass High Contrast mode, forcing the widget and its children to resolve
-// colors using the default dark theme.
-ui::ColorProviderKey VideoOverlayWindowViews::GetColorProviderKey() const {
-  auto key = views::Widget::GetColorProviderKey();
-  if (key.contrast_mode != ui::ColorProviderKey::ContrastMode::kHigh) {
-    return key;
-  }
-
-  key.contrast_mode = ui::ColorProviderKey::ContrastMode::kNormal;
-  key.color_mode = ui::ColorProviderKey::ColorMode::kDark;
-  key.system_theme = ui::SystemTheme::kDefault;
-  return key;
 }
 
 gfx::Rect VideoOverlayWindowViews::GetBackToTabControlsBounds() {

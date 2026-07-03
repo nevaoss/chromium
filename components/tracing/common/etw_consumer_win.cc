@@ -130,6 +130,7 @@ void EtwConsumer::WillClearIncrementalState() {
 void EtwConsumer::ResetEmittedState() {
   interned_callstacks_.ResetEmittedState();
   interned_frames_.ResetEmittedState();
+  FinalizePreviousData();
   auto trace_packet = trace_writer_->NewTracePacket();
   trace_packet->set_sequence_flags(
       perfetto::protos::pbzero::TracePacket::SEQ_INCREMENTAL_STATE_CLEARED);
@@ -231,9 +232,7 @@ void EtwConsumer::ProcessEventRecord(EVENT_RECORD* event_record) {
 bool EtwConsumer::ProcessBuffer(EVENT_TRACE_LOGFILE* buffer) {
   auto* const self = reinterpret_cast<EtwConsumer*>(buffer->Context);
   DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
-  self->etw_events_ = nullptr;
-  // Release the handle to finalize the previous message.
-  self->packet_handle_ = {};
+  self->FinalizePreviousData();
   return true;  // Continue processing events.
 }
 
@@ -469,8 +468,8 @@ void EtwConsumer::HandleStackWalkEvent(const EVENT_HEADER& header,
     return;
   }
 
-  // This call stack hasn't been seen before in this trace. Finalize previous
-  // data and start a new packet with interned data.
+  // This call stack hasn't been seen before in this trace. Start a new packet
+  // with interned data.
   StartNewPacket(qpc_timestamp);
   perfetto::protos::pbzero::InternedData* interned_data =
       packet_handle_->set_interned_data();
@@ -1230,15 +1229,19 @@ bool EtwConsumer::CalculateDiskIoEventInclusionAndThreadId(
   return false;
 }
 
+void EtwConsumer::FinalizePreviousData() {
+  etw_events_ = nullptr;
+  packet_handle_ = {};
+}
+
 void EtwConsumer::StartNewPacket(uint64_t qpc_timestamp) {
-  // Resetting the `packet_handle_` finalizes previous data.
+  FinalizePreviousData();
   packet_handle_ = trace_writer_->NewTracePacket();
   packet_handle_->set_timestamp(GetTimestampNanoseconds(qpc_timestamp));
   // `StackWalk` events require incremental state.
   packet_handle_->set_sequence_flags(
       perfetto::protos::pbzero::perfetto_pbzero_enum_TracePacket::
           SEQ_NEEDS_INCREMENTAL_STATE);
-  etw_events_ = nullptr;
 }
 
 }  // namespace tracing

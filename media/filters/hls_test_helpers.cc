@@ -89,10 +89,11 @@ FileHlsDataSourceStreamFactory::CreateStream(
 MockDataSourceFactory::~MockDataSourceFactory() = default;
 MockDataSourceFactory::MockDataSourceFactory() = default;
 
-void MockDataSourceFactory::Create(const GURL& uri,
-                                   DataSource::CacheMode cache_mode,
-                                   DataSource::EncodingMode encoding_mode,
-                                   DataSource::DataSourceCb cb) {
+void MockDataSourceFactory::Create(
+    const GURL& uri,
+    DataSource::CacheMode cache_mode,
+    DataSource::EncodingMode encoding_mode,
+    base::OnceCallback<void(std::unique_ptr<CrossOriginDataSource>)> cb) {
   MockCreate(uri, cache_mode, encoding_mode);
   if (!next_mock_) {
     PregenerateNextMock();

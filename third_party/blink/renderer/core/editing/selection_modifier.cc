@@ -136,7 +136,7 @@ bool SelectionModifier::ShouldAlwaysUseDirectionalSelection(
 
 SelectionModifier::SelectionModifier(
     const LocalFrame& frame,
-    const SelectionInDOMTree& selection,
+    const SelectionInDomTree& selection,
     LayoutUnit x_pos_for_vertical_arrow_navigation)
     : frame_(&frame),
       current_selection_(ConvertToSelectionInFlatTree(selection)),
@@ -144,7 +144,7 @@ SelectionModifier::SelectionModifier(
           x_pos_for_vertical_arrow_navigation) {}
 
 SelectionModifier::SelectionModifier(const LocalFrame& frame,
-                                     const SelectionInDOMTree& selection)
+                                     const SelectionInDomTree& selection)
     : SelectionModifier(frame, selection, NoXPosForVerticalArrowNavigation()) {}
 
 VisibleSelection SelectionModifier::Selection() const {

@@ -52,7 +52,7 @@ class PersonalContextAccessManager : public KeyedService {
 
   // Returns true if all entities of the given `type_name` have been cached and
   // the cache has not expired.
-  virtual bool IsTypeCached(EntityTypeName type_name) const = 0;
+  virtual bool IsTypeCached(EntityType type) const = 0;
 };
 
 }  // namespace autofill

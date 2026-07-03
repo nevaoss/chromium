@@ -777,6 +777,18 @@ BASE_FEATURE(kVaapiOnNvidiaGPUs,
 #endif
 );
 
+// Ensures that the VAAPI context has been created before performing encrypted
+// slice header parsing on ChromeOS VAAPI systems.
+// TODO(b/520117896): remove the feature when a workaround can be found in the
+// H264VaapiDecoderDelegate.
+BASE_FEATURE(kVaapiEarlyPPSParsingForCENCv1,
+#if BUILDFLAG(IS_CHROMEOS) && BUILDFLAG(USE_VAAPI)
+             base::FEATURE_ENABLED_BY_DEFAULT
+#else
+             base::FEATURE_DISABLED_BY_DEFAULT
+#endif
+);
+
 // Enable VA-API hardware low power encoder for all codecs on intel Gen9x gpu.
 BASE_FEATURE(kVaapiLowPowerEncoderGen9x, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -819,6 +831,9 @@ BASE_FEATURE(kVideoBlitColorAccuracy,
 
 // A video encoder is allowed to drop a frame in cast mirroring.
 BASE_FEATURE(kCastVideoEncoderFrameDrop, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Gated behind feature flag to allow safe rollback of zero-copy capture.
+BASE_FEATURE(kZeroCopyDesktopCapture, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables optimizations to flush() and configure() in the WebCodecs' audio and
 // video decoder implementations. Kill-switch to be removed after M145 stable.
@@ -943,16 +958,6 @@ BASE_FEATURE(kFailUrlProvisionFetcherForTesting,
 // Apply this to Android and ChromeOS as well where hardware secure decryption
 // is already available.
 BASE_FEATURE(kHardwareSecureDecryption, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// By default, a codec is not supported for hardware secure decryption if it
-// does not support clear lead. This option forces the support for testing.
-const base::FeatureParam<bool> kHardwareSecureDecryptionForceSupportClearLead{
-    &kHardwareSecureDecryption, "force_support_clear_lead", false};
-
-// Same as `kHardwareSecureDecryption` above, but only enable experimental
-// sub key systems. Which sub key system is experimental is key system specific.
-BASE_FEATURE(kHardwareSecureDecryptionExperiment,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Allows automatically disabling hardware secure Content Decryption Module
 // (CDM) after failures or crashes to fallback to software secure CDMs. If this
@@ -1567,6 +1572,10 @@ BASE_FEATURE(kCastStreamingVp9, base::FEATURE_ENABLED_BY_DEFAULT);
 #if BUILDFLAG(IS_MAC)
 // Controls whether hardware H264 is default enabled on macOS.
 BASE_FEATURE(kCastStreamingMacHardwareH264, base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Forces H264 baseline profile for Cast Streaming on macOS to avoid frame
+// reordering issues with Apple Silicon hardware encoders.
+BASE_FEATURE(kCastMacForceBaselineProfile, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 
 #if BUILDFLAG(IS_WIN)
@@ -1862,8 +1871,7 @@ bool IsDedicatedMediaServiceThreadEnabled(gl::ANGLEImplementation impl) {
 }
 
 bool IsHardwareSecureDecryptionEnabled() {
-  return base::FeatureList::IsEnabled(kHardwareSecureDecryption) ||
-         base::FeatureList::IsEnabled(kHardwareSecureDecryptionExperiment);
+  return base::FeatureList::IsEnabled(kHardwareSecureDecryption);
 }
 
 bool IsLiveTranslateEnabled() {

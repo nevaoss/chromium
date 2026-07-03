@@ -86,7 +86,7 @@ IN_PROC_BROWSER_TEST_F(AppControllerInteractiveUITest, DeleteEphemeralProfile) {
   // This should not crash.
   [[NSNotificationCenter defaultCenter]
       postNotificationName:NSWindowDidBecomeMainNotification
-                    object:browser2->window()
+                    object:browser2->GetWindow()
                                ->GetNativeWindow()
                                .GetNativeNSWindow()];
   ASSERT_EQ(&profile2, app_controller.lastProfileIfLoaded);

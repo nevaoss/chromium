@@ -646,6 +646,9 @@ bool ShouldBindNetworkContextDirectReceiver() {
          base::FeatureList::IsEnabled(features::kNetworkContextDirectReceiver);
 }
 
+BASE_FEATURE(kCreateNetworkContextNonBlocking,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kDelayInitialDohProbeTimeout, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE_PARAM(base::TimeDelta,

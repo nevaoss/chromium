@@ -322,29 +322,6 @@ try_.builder(
 )
 
 try_.builder(
-    name = "mac12-arm64-rel",
-    branch_selector = branches.selector.MAC_BRANCHES,
-    mirrors = [
-        "ci/mac-arm64-rel",
-        "ci/mac12-arm64-rel-tests",
-    ],
-    gn_args = gn_args.config(
-        configs = [
-            "arm64",
-            "gpu_tests",
-            "release_try_builder",
-            "remoteexec",
-            "no_symbols",
-            "mac",
-        ],
-    ),
-    builderless = True,
-    cores = None,
-    cpu = cpu.ARM64,
-    main_list_view = "try",
-)
-
-try_.builder(
     name = "mac13-arm64-rel",
     branch_selector = branches.selector.MAC_BRANCHES,
     mirrors = [
@@ -424,25 +401,6 @@ try_.compilator_builder(
     # TODO (crbug.com/1245171): Revert when root issue is fixed
     grace_period = 4 * time.minute,
     main_list_view = "try",
-)
-
-try_.builder(
-    name = "mac12-tests",
-    branch_selector = branches.selector.MAC_BRANCHES,
-    mirrors = [
-        "ci/Mac Builder",
-        "ci/Mac12 Tests",
-    ],
-    gn_args = gn_args.config(
-        configs = [
-            "ci/Mac Builder",
-            "release_try_builder",
-            "remoteexec",
-            "x64",
-        ],
-    ),
-    cores = None,
-    cpu = cpu.ARM64,
 )
 
 try_.builder(
@@ -878,36 +836,36 @@ ios_builder(
 )
 
 ios_builder(
-    name = "ios18-beta-simulator",
+    name = "ios26-beta-simulator",
     mirrors = [
-        "ci/ios18-beta-simulator",
+        "ci/ios26-beta-simulator",
     ],
-    gn_args = "ci/ios18-beta-simulator",
+    gn_args = "ci/ios26-beta-simulator",
     cpu = cpu.ARM64,
     siso_remote_jobs = siso.remote_jobs.LOW_JOBS_FOR_CQ,
 )
 
 ios_builder(
-    name = "ios26-beta-simulator",
-    mirrors = ["ci/ios26-beta-simulator"],
-    gn_args = "ci/ios26-beta-simulator",
+    name = "ios27-beta-simulator",
+    mirrors = ["ci/ios27-beta-simulator"],
+    gn_args = "ci/ios27-beta-simulator",
     cpu = cpu.ARM64,
 )
 
 ios_builder(
-    name = "ios18-sdk-simulator",
+    name = "ios26-sdk-simulator",
     mirrors = [
-        "ci/ios18-sdk-simulator",
+        "ci/ios26-sdk-simulator",
     ],
-    gn_args = "ci/ios18-sdk-simulator",
+    gn_args = "ci/ios26-sdk-simulator",
     cpu = cpu.ARM64,
     xcode = xcode.xcode_beta,
 )
 
 ios_builder(
-    name = "ios26-sdk-simulator",
-    mirrors = ["ci/ios26-sdk-simulator"],
-    gn_args = "ci/ios26-sdk-simulator",
+    name = "ios27-sdk-simulator",
+    mirrors = ["ci/ios27-sdk-simulator"],
+    gn_args = "ci/ios27-sdk-simulator",
     cpu = cpu.ARM64,
     xcode = xcode.xcode_beta,
 )

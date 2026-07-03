@@ -147,6 +147,7 @@
 #include "third_party/blink/renderer/core/loader/frame_loader.h"
 #include "third_party/blink/renderer/core/loader/interactive_detector.h"
 #include "third_party/blink/renderer/core/loader/no_state_prefetch_client.h"
+#include "third_party/blink/renderer/core/navigation_api/navigation_api.h"
 #include "third_party/blink/renderer/core/page/chrome_client_impl.h"
 #include "third_party/blink/renderer/core/page/context_menu_controller.h"
 #include "third_party/blink/renderer/core/page/context_menu_provider.h"
@@ -1755,6 +1756,12 @@ void WebView::ApplyWebPreferences(const web_pref::WebPreferences& prefs,
 
 #if BUILDFLAG(IS_ANDROID)
   settings->SetAllowCustomScrollbarInMainFrame(false);
+
+  if (RuntimeEnabledFeatures::WebViewEnvReorderFixEnabled()) {
+    settings->SetScaleAllFontsIfNoMetaTextScaleTag(
+        prefs.scale_all_fonts_if_no_meta_text_scale_tag);
+  }
+
   settings->SetAccessibilityFontScaleFactor(prefs.font_scale_factor);
   settings->SetAccessibilityFontWeightAdjustment(prefs.font_weight_adjustment);
   settings->SetAccessibilityTextSizeContrastFactor(
@@ -1765,8 +1772,12 @@ void WebView::ApplyWebPreferences(const web_pref::WebPreferences& prefs,
   settings->SetSupportDeprecatedTargetDensityDPI(
       prefs.support_deprecated_target_density_dpi);
   settings->SetWideViewportQuirkEnabled(prefs.wide_viewport_quirk);
-  settings->SetScaleAllFontsIfNoMetaTextScaleTag(
-      prefs.scale_all_fonts_if_no_meta_text_scale_tag);
+
+  if (!RuntimeEnabledFeatures::WebViewEnvReorderFixEnabled()) {
+    settings->SetScaleAllFontsIfNoMetaTextScaleTag(
+        prefs.scale_all_fonts_if_no_meta_text_scale_tag);
+  }
+
   settings->SetUseWideViewport(prefs.use_wide_viewport);
   settings->SetForceZeroLayoutHeight(prefs.force_zero_layout_height);
   settings->SetViewportMetaMergeContentQuirk(
@@ -1981,7 +1992,7 @@ void WebViewImpl::SetPageFocus(bool enable) {
           // caret back to the beginning of the text.
           Position position(element, 0);
           focused_frame->Selection().SetSelection(
-              SelectionInDOMTree::Builder().Collapse(position).Build(),
+              SelectionInDomTree::Builder().Collapse(position).Build(),
               SetSelectionOptions());
         }
       }
@@ -2586,6 +2597,11 @@ void WebViewImpl::SetPageLifecycleStateInternal(
     DCHECK(dispatching_pageshow);
     DCHECK(page_restore_params);
 
+    // Flush restore-related callbacks on NavigationAPI. This should come after
+    // `SetPageFrozen()` so callbacks run after the execution context resumes,
+    // and before dispatching pageshow.
+    FlushRestoreCallbacks();
+
     DispatchPersistedPageshow(page_restore_params->navigation_start);
 
     // TODO(https://crbug.com/427130212): Consider moving this to happen earlier
@@ -2794,6 +2810,21 @@ void WebViewImpl::DispatchPersistedPageshow(base::TimeTicks navigation_start) {
 
         performance->AddBackForwardCacheRestoration(
             navigation_start, pageshow_start_time, pageshow_end_time);
+      }
+    }
+  }
+}
+
+void WebViewImpl::FlushRestoreCallbacks() {
+  // Traverse the frames and flush callbacks, such as invoking restore callback
+  // and adding dispose callback via posttask.
+  for (Frame* frame = GetPage()->MainFrame(); frame;
+       frame = frame->Tree().TraverseNext()) {
+    if (auto* local_frame = DynamicTo<LocalFrame>(frame)) {
+      if (LocalDOMWindow* window = local_frame->DomWindow()) {
+        if (NavigationApi* navigation = window->navigation()) {
+          navigation->FlushRestoreCallbacks();
+        }
       }
     }
   }

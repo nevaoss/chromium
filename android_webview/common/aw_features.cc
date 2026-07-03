@@ -151,15 +151,6 @@ BASE_FEATURE(kWebViewHyperlinkContextMenu, base::FEATURE_DISABLED_BY_DEFAULT);
 // enabled.
 BASE_FEATURE(kWebViewRenderDocument, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// When enabled, webview chromium initialization uses the startup tasks logic
-// where it runs the startup tasks asynchronously if startup is triggered from a
-// background thread. Otherwise runs startup synchronously.
-// Also caches any chromium startup exception and rethrows it if startup is
-// retried without a restart.
-// Note: WebViewUseStartupTasksLogicP2 and kWebViewStartupTasksYieldToNative
-// also enable the same behaviour as this flag.
-BASE_FEATURE(kWebViewUseStartupTasksLogic, base::FEATURE_DISABLED_BY_DEFAULT);
-
 // When enabled, records histograms relating to app's cache size.
 BASE_FEATURE(kWebViewRecordAppCacheHistograms,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -191,21 +182,6 @@ const base::FeatureParam<int> kWebViewCacheSizeLimitMaximum{
 const base::FeatureParam<double> kWebViewCodeCacheSizeLimitMultiplier{
     &kWebViewCacheSizeLimitDerivedFromAppCacheQuota,
     "WebViewCodeCacheSizeLimitMultiplier", 0.5};
-
-
-// Enables phase 2 of using startup tasks logic for webview chromium
-// initialization which also starts browser process asynchronously, when
-// starting webview asynchronously.
-// Note: This also enables the same behaviour as WebViewUseStartupTasksLogic and
-// WebViewStartupTasksYieldToNative with minor differences.
-BASE_FEATURE(kWebViewUseStartupTasksLogicP2, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables running native startup tasks asynchronously if WebView startup is
-// asynchronous.
-// Note:This also enables the same behaviour as WebViewUseStartupTasksLogic and
-// WebViewUseStartupTasksLogicP2, with minor additions.
-BASE_FEATURE(kWebViewStartupTasksYieldToNative,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Reduce when the app's copy of the finch seed expires. This makes WebView more
 // aggressive in requesting a new copy of its finch seed.
@@ -330,4 +306,56 @@ BASE_FEATURE(kWebViewRemoveInstantAppSupport,
 
 // Kill switch for the WebView Navigate method.
 BASE_FEATURE(kWebViewNavigate, base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Kill switch for WebSettings setShouldDownloadFavicons method.
+BASE_FEATURE(kWebViewSetDownloadFaviconsEnabled,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Partial kill switch for the HTTP Cache Quota API.
+//
+// When enabled, HTTP Cache quota can be configured by the WebView embedder.
+// When disabled, the setters are no-ops and defaults are restored.
+//
+// Note that getters still function regardless of whether this feature is
+// enabled, though they may not reflect any embedder configured values.
+BASE_FEATURE(kWebViewHttpCacheQuotaApi, base::FEATURE_ENABLED_BY_DEFAULT);
+
+// When enabled, the quota for the Default profile may be configured.
+const base::FeatureParam<bool> kWebViewHttpCacheQuotaApiAllowForDefaultProfile{
+    &kWebViewHttpCacheQuotaApi, "AllowForDefaultProfile", true};
+
+// When enabled, the quota for a profile may be shrunk below the default quota.
+const base::FeatureParam<bool> kWebViewHttpCacheQuotaApiAllowShrinking{
+    &kWebViewHttpCacheQuotaApi, "AllowShrinking", true};
+
+// When enabled, quota changes are propagated to the network service at runtime,
+// without having to wait for an app restart.
+const base::FeatureParam<bool> kWebViewHttpCacheQuotaApiRuntimeUpdate{
+    &kWebViewHttpCacheQuotaApi, "RuntimeUpdate", true};
+
+// The minimum cache quota size that clamps any default or embedder-supplied
+// value. MUST be >= 1, and < 2**31.
+const base::FeatureParam<int> kWebViewHttpCacheQuotaApiMinimum{
+    &kWebViewHttpCacheQuotaApi, "Minimum", 5 * 1024 * 1024};
+
+// The maximum cache quota size that clamps any default or embedder-supplied
+// value. MUST be >= Minimum.
+//
+// 320MiB is chosen as the default because it mirrors the upper limits used in
+// both android_webview's and net's default quota logic, and greater values
+// haven't previously been tested in WebView.
+const base::FeatureParam<int> kWebViewHttpCacheQuotaApiMaximum{
+    &kWebViewHttpCacheQuotaApi, "Maximum", 320 * 1024 * 1024};
+
+// When enabled, the code cache quota is derived from the embedder-supplied HTTP
+// cache quota. When disabled, it is instead derived from the default HTTP cache
+// quota size.
+const base::FeatureParam<bool> kWebViewHttpCacheQuotaApiAffectsCodeCache{
+    &kWebViewHttpCacheQuotaApi, "AffectsCodeCache", true};
+
+// When enabled, using the cache quota API will initialize the cache backend if
+// it has not already been initialized. This may trigger evictions more readily.
+const base::FeatureParam<bool> kWebViewHttpCacheQuotaApiForceBackendInit{
+    &kWebViewHttpCacheQuotaApi, "ForceBackendInit", true};
+
 }  // namespace android_webview::features

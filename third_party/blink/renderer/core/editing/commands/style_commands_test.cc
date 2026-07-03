@@ -45,7 +45,7 @@ TEST_F(StyleCommandsTest, StrikethroughToggleAfterDeletingContent) {
   ASSERT_TRUE(div);
 
   // Select the 'E' text.
-  Selection().SetSelection(SelectionInDOMTree::Builder()
+  Selection().SetSelection(SelectionInDomTree::Builder()
                                .Collapse(Position(div->firstChild(), 0))
                                .Extend(Position(div->firstChild(), 1))
                                .Build(),
@@ -68,7 +68,7 @@ TEST_F(StyleCommandsTest, StrikethroughToggleAfterDeletingContent) {
 
   // Select all content in the div.
   Selection().SetSelection(
-      SelectionInDOMTree::Builder().SelectAllChildren(*div).Build(),
+      SelectionInDomTree::Builder().SelectAllChildren(*div).Build(),
       SetSelectionOptions());
 
   // Delete the content.
@@ -102,7 +102,7 @@ TEST_F(StyleCommandsTest, StrikethroughToggleInEmptyContentEditable) {
 
   // Select the 'E' text.
   Selection().SetSelection(
-      SelectionInDOMTree::Builder().SelectAllChildren(*div).Build(),
+      SelectionInDomTree::Builder().SelectAllChildren(*div).Build(),
       SetSelectionOptions());
 
   // Apply strikethrough.

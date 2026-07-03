@@ -507,12 +507,10 @@ ContextImplOrt::CreateTensorImpl(
   const OrtApi* ort_api = PlatformFunctions::GetInstance()->ort_api();
 
   OrtAllocator* allocator = nullptr;
-  bool can_access_on_cpu = true;
-  // Use the device allocator if it's present and should be used. Otherwise, use
-  // the default allocator which is CPU based and non-arena.
-  if (device_allocator_ && device_allocator_->ShouldUse(tensor_info)) {
+  // Use the device allocator if it's present. Otherwise, use the default
+  // allocator which is CPU based and non-arena.
+  if (device_allocator_) {
     allocator = device_allocator_->get();
-    can_access_on_cpu = device_allocator_->CanAccessOnCPU();
   } else {
     // `GetAllocatorWithDefaultOptions()` always returns the same pointer to the
     // same default allocator and its returned value should NOT be freed.
@@ -543,7 +541,7 @@ ContextImplOrt::CreateTensorImpl(
 
   return base::MakeRefCounted<TensorImplOrt>(
       std::move(receiver), *this, std::move(tensor_info), size,
-      std::move(tensor), can_access_on_cpu, device_allocator_);
+      std::move(tensor), device_allocator_);
 }
 
 base::expected<scoped_refptr<WebNNTensorImpl>, mojom::ErrorPtr>

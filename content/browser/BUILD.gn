@@ -1551,6 +1551,8 @@ source_set("browser") {
     "network_context_client_base_impl.cc",
     "network_context_client_base_impl.h",
     "network_sandbox_grant_result.h",
+    "network_sandbox_grant_result_helper.cc",
+    "network_sandbox_grant_result_helper.h",
     "network_service_client.cc",
     "network_service_client.h",
     "network_service_instance_impl.cc",
@@ -2118,6 +2120,7 @@ source_set("browser") {
     "renderer_host/transient_allow_popup.h",
     "renderer_host/transient_focus_source_user_activation.cc",
     "renderer_host/transient_focus_source_user_activation.h",
+    "renderer_host/unbounded_surface_window.h",
     "renderer_host/view_transition_commit_deferring_condition.cc",
     "renderer_host/view_transition_commit_deferring_condition.h",
     "renderer_host/view_transition_opt_in_state.cc",
@@ -2514,10 +2517,10 @@ source_set("browser") {
     "webid/navigation_interceptor.h",
     "webid/network_request_manager.cc",
     "webid/network_request_manager.h",
+    "webid/request.cc",
+    "webid/request.h",
     "webid/request_page_data.cc",
     "webid/request_page_data.h",
-    "webid/request_service.cc",
-    "webid/request_service.h",
     "webid/url_computations.cc",
     "webid/url_computations.h",
     "webid/user_info_request.cc",
@@ -2958,6 +2961,8 @@ source_set("browser") {
       "renderer_host/text_input_client_mac.mm",
       "renderer_host/text_input_host_impl.h",
       "renderer_host/text_input_host_impl.mm",
+      "renderer_host/unbounded_surface_window_mac.h",
+      "renderer_host/unbounded_surface_window_mac.mm",
       "sandbox_parameters_mac.h",
       "sandbox_parameters_mac.mm",
       "sandbox_support_impl.h",
@@ -3144,8 +3149,10 @@ source_set("browser") {
         "//sandbox/mac:seatbelt",
         "//sandbox/mac:seatbelt_extension",
       ]
-      frameworks += [ "CoreMedia.framework" ]
-      weak_frameworks = [ "ScreenCaptureKit.framework" ]  # macOS 12.3
+      frameworks += [
+        "CoreMedia.framework",
+        "ScreenCaptureKit.framework",
+      ]
     }
     if (is_chromeos) {
       sources += [

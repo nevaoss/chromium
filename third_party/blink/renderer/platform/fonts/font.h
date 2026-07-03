@@ -134,9 +134,9 @@ class PLATFORM_EXPORT Font : public GarbageCollected<Font> {
   }
   LayoutUnit TabWidth(const TabSize&, LayoutUnit position) const;
 
-  int EmphasisMarkAscent(const AtomicString&) const;
-  int EmphasisMarkDescent(const AtomicString&) const;
-  int EmphasisMarkHeight(const AtomicString&) const;
+  LayoutUnit EmphasisMarkAscent(const AtomicString&) const;
+  LayoutUnit EmphasisMarkDescent(const AtomicString&) const;
+  LayoutUnit EmphasisMarkHeight(const AtomicString&) const;
 
   // The inter-script spacing by the CSS `text-autospace` property.
   // https://drafts.csswg.org/css-text-4/#inter-script-spacing

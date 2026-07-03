@@ -385,10 +385,6 @@ class CC_EXPORT LayerTreeHost : public MutatorHostDelegate {
   // Notification that the proxy started or stopped deferring commits.
   void OnDeferCommitsChanged(bool defer_status, PaintHoldingReason reason);
 
-  // Several clients may call this independently. In this case, there is
-  // internal reference counting so that the the state is only exited when the
-  // last client removes its request.
-  void SetShouldThrottleFrameRate(bool flag);
   std::unique_ptr<ScopedRequestHighFramerate> RequestHighFramerate();
 
   // Returns whether there are any outstanding ScopedDeferMainFrameUpdate,

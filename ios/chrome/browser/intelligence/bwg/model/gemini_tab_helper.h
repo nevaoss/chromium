@@ -285,6 +285,11 @@ class GeminiTabHelper : public web::WebStateObserver,
   std::unique_ptr<ai::ZeroStateSuggestionsService>
       zero_state_suggestions_service_;
 
+  // Whether Gemini contextual features (such as zero-state suggestions and
+  // Image Remix) are eligible to be shown on the current page, based on the
+  // optimization guide decision.
+  bool gemini_contextual_eligibility_ = false;
+
   // Callback to be run when the page has finished loading.
   base::RepeatingClosure page_loaded_callback_;
 

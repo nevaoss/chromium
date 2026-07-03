@@ -18,8 +18,6 @@
 #include "components/signin/public/identity_manager/account_capabilities_test_mutator.h"
 #include "components/signin/public/identity_manager/identity_test_environment.h"
 #include "components/signin/public/identity_manager/identity_test_utils.h"
-#include "components/subscription_eligibility/subscription_eligibility_prefs.h"
-#include "components/subscription_eligibility/subscription_eligibility_service.h"
 #include "components/sync_preferences/testing_pref_service_syncable.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -44,11 +42,6 @@ class MockPersonalContextEnablementServiceObserver
 class PersonalContextEnablementServiceImplTest : public testing::Test {
  public:
   PersonalContextEnablementServiceImplTest() {
-    scoped_feature_list_.InitWithFeatures(
-        /*enabled_features=*/{features::kPersonalContext,
-                              features::kPersonalContextFirstRun},
-        /*disabled_features=*/{});
-
     SetPrefs();
     CreateService("us");
     SignIn("test@gmail.com");
@@ -78,8 +71,8 @@ class PersonalContextEnablementServiceImplTest : public testing::Test {
                      const std::string& locale = "en-US") {
     service_ = std::make_unique<PersonalContextEnablementServiceImpl>(
         &mock_account_settings_service_, identity_test_env_.identity_manager(),
-        subscription_eligibility_service_.get(), &pref_service_,
-        GeoIpCountryCode(base::ToUpperASCII(country_code)), locale);
+        &pref_service_, GeoIpCountryCode(base::ToUpperASCII(country_code)),
+        locale);
   }
 
   void SetPrefs() {
@@ -90,14 +83,6 @@ class PersonalContextEnablementServiceImplTest : public testing::Test {
     pref_service_.SetBoolean(
         personal_context::prefs::kPersonalContextInAutofillSettingsToggleStatus,
         true);
-    subscription_eligibility::prefs::RegisterProfilePrefs(
-        pref_service_.registry());
-    pref_service_.SetInteger(
-        subscription_eligibility::prefs::kAiSubscriptionTier, 1);
-    subscription_eligibility_service_ = std::make_unique<
-        subscription_eligibility::SubscriptionEligibilityService>(
-        &pref_service_);
-
     // Enable all by default to satisfy requirements.
     ON_CALL(mock_account_settings_service_, GetBoolean(testing::_))
         .WillByDefault(Return(true));
@@ -109,8 +94,6 @@ class PersonalContextEnablementServiceImplTest : public testing::Test {
   signin::IdentityTestEnvironment identity_test_env_;
   base::test::ScopedFeatureList scoped_feature_list_;
   sync_preferences::TestingPrefServiceSyncable pref_service_;
-  std::unique_ptr<subscription_eligibility::SubscriptionEligibilityService>
-      subscription_eligibility_service_;
   testing::NiceMock<account_settings::MockAccountSettingService>
       mock_account_settings_service_;
   std::unique_ptr<PersonalContextEnablementServiceImpl> service_;
@@ -164,31 +147,6 @@ TEST_F(PersonalContextEnablementServiceImplTest, ForcedEnablementState) {
     EXPECT_EQ(service().GetEnablementState(),
               PersonalContextEnablementState::kEnabled);
   }
-}
-
-// Verifies that the service is disabled when all related feature flags are off.
-TEST_F(PersonalContextEnablementServiceImplTest, DisabledWhenFeaturesAreOff) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitWithFeatures(
-      /*enabled_features=*/{},
-      /*disabled_features=*/{features::kPersonalContext,
-                             features::kPersonalContextFirstRun});
-
-  EXPECT_EQ(PersonalContextEnablementServiceImplTestApi(&service())
-                .ComputeEnablementState(),
-            PersonalContextEnablementState::kDisabledNotEligible);
-}
-
-// Verifies that the main feature flag (kPersonalContext) is a hard requirement.
-TEST_F(PersonalContextEnablementServiceImplTest, DisabledWhenMainFeatureIsOff) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitWithFeatures(
-      /*enabled_features=*/{features::kPersonalContextFirstRun},
-      /*disabled_features=*/{features::kPersonalContext});
-
-  EXPECT_EQ(PersonalContextEnablementServiceImplTestApi(&service())
-                .ComputeEnablementState(),
-            PersonalContextEnablementState::kDisabledNotEligible);
 }
 
 // Verifies that the service is enabled when all feature flags and other
@@ -290,23 +248,14 @@ TEST_F(PersonalContextEnablementServiceImplTest, DisabledWhenManaged) {
             PersonalContextEnablementState::kDisabledNotEligible);
 }
 
-// Verifies that the service is disabled if the user's AI subscription tier
-// is not eligible.
-TEST_F(PersonalContextEnablementServiceImplTest, DisabledWhenTierNotEligible) {
-  pref_service_.SetInteger(subscription_eligibility::prefs::kAiSubscriptionTier,
-                           3);
 
-  EXPECT_EQ(service().GetEnablementState(),
-            PersonalContextEnablementState::kDisabledNotEligible);
-}
 
 // Verifies that the service fails safe (disabled) if the required
 // `AccountSettingService` is missing.
 TEST_F(PersonalContextEnablementServiceImplTest,
        DisabledWhenAccountSettingsServiceNotAvailable) {
   service_ = std::make_unique<PersonalContextEnablementServiceImpl>(
-      nullptr, identity_test_env_.identity_manager(),
-      subscription_eligibility_service_.get(), &pref_service_,
+      nullptr, identity_test_env_.identity_manager(), &pref_service_,
       GeoIpCountryCode("US"), "en-US");
 
   EXPECT_EQ(service().GetEnablementState(),
@@ -469,16 +418,11 @@ TEST_F(PersonalContextEnablementServiceImplTest,
 
 TEST_F(PersonalContextEnablementServiceImplTest,
        DisabledWhenAccountSettingsServiceNotAvailableAndOptInEnabled) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitWithFeatures(
-      /*enabled_features=*/{features::kPersonalContext,
-                            features::kPersonalContextFirstRun,
-                            features::kPersonalContextFirstRunOptIn},
-      /*disabled_features=*/{});
+  base::test::ScopedFeatureList feature_list{
+      features::kPersonalContextFirstRunOptIn};
 
   service_ = std::make_unique<PersonalContextEnablementServiceImpl>(
-      nullptr, identity_test_env_.identity_manager(),
-      subscription_eligibility_service_.get(), &pref_service_,
+      nullptr, identity_test_env_.identity_manager(), &pref_service_,
       GeoIpCountryCode("US"), "en-US");
 
   EXPECT_EQ(service().GetEnablementState(),
@@ -487,12 +431,8 @@ TEST_F(PersonalContextEnablementServiceImplTest,
 
 TEST_F(PersonalContextEnablementServiceImplTest,
        NeedsOptInWhenAccountOptedOutOfContextAndOptInEnabled) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitWithFeatures(
-      /*enabled_features=*/{features::kPersonalContext,
-                            features::kPersonalContextFirstRun,
-                            features::kPersonalContextFirstRunOptIn},
-      /*disabled_features=*/{});
+  base::test::ScopedFeatureList feature_list{
+      features::kPersonalContextFirstRunOptIn};
 
   PersonalContextEnablementServiceImplTestApi(&service())
       .ComputeEnablementState();
@@ -510,12 +450,8 @@ TEST_F(PersonalContextEnablementServiceImplTest,
 
 TEST_F(PersonalContextEnablementServiceImplTest,
        NeedsOptInWhenNoContextSourcesEnabledAndOptInEnabled) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitWithFeatures(
-      /*enabled_features=*/{features::kPersonalContext,
-                            features::kPersonalContextFirstRun,
-                            features::kPersonalContextFirstRunOptIn},
-      /*disabled_features=*/{});
+  base::test::ScopedFeatureList feature_list{
+      features::kPersonalContextFirstRunOptIn};
 
   PersonalContextEnablementServiceImplTestApi(&service())
       .ComputeEnablementState();

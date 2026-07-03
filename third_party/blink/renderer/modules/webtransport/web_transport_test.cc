@@ -164,10 +164,12 @@ class MockWebTransport : public network::mojom::blink::WebTransport {
                void(base::span<const uint8_t> data,
                     base::OnceCallback<void(bool)> callback));
 
-  MOCK_METHOD3(CreateStream,
-               void(mojo::ScopedDataPipeConsumerHandle readable,
-                    mojo::ScopedDataPipeProducerHandle writable,
-                    base::OnceCallback<void(bool, uint32_t)> callback));
+  MOCK_METHOD4(
+      CreateStream,
+      void(mojo::ScopedDataPipeConsumerHandle readable,
+           mojo::ScopedDataPipeProducerHandle writable,
+           network::mojom::blink::WebTransportStreamPriorityPtr priority,
+           base::OnceCallback<void(bool, uint32_t)> callback));
 
   MOCK_METHOD1(
       AcceptBidirectionalStream,
@@ -313,8 +315,9 @@ class WebTransportTest : public ::testing::Test {
 
   WritableStream* CreateSendStreamSuccessfully(const V8TestingScope& scope,
                                                WebTransport* web_transport) {
-    EXPECT_CALL(*mock_web_transport_, CreateStream(_, _, _))
+    EXPECT_CALL(*mock_web_transport_, CreateStream(_, _, _, _))
         .WillOnce([this](mojo::ScopedDataPipeConsumerHandle handle, Unused,
+                         Unused,
                          base::OnceCallback<void(bool, uint32_t)> callback) {
           send_stream_consumer_handle_ = std::move(handle);
           std::move(callback).Run(true, next_stream_id_++);
@@ -1353,15 +1356,19 @@ TEST_F(WebTransportTest, ResettingMaxBufferedDatagramsClearsQueue) {
   web_transport->datagrams()->setIncomingMaxBufferedDatagrams(
       kMaxBufferedDatagrams);
 
+  // The server sends datagrams before the page starts reading.
   for (uint32_t i = 0; i < kMaxBufferedDatagrams; ++i) {
-    const std::array<uint8_t, 1> chunk = {'A'};
+    const std::array<uint8_t, 1> chunk = {static_cast<uint8_t>('0' + i)};
     client_remote_->OnDatagramReceived(chunk);
   }
 
-  // Make sure that the calls have run.
+  // Process the receive tasks so the datagrams are buffered before the limit
+  // changes.
   test::RunPendingTasks();
 
   constexpr uint32_t kNoBufferedDatagrams = 0;
+  // The page asks for a zero-sized queue. The setter clamps that to 1, so the
+  // queue is trimmed to one datagram instead of being emptied.
   web_transport->datagrams()->setIncomingMaxBufferedDatagrams(
       kNoBufferedDatagrams);
 
@@ -1370,16 +1377,25 @@ TEST_F(WebTransportTest, ResettingMaxBufferedDatagramsClearsQueue) {
   auto* reader =
       readable->GetDefaultReaderForTesting(script_state, ASSERT_NO_EXCEPTION);
 
-  auto result = reader->read(script_state, ASSERT_NO_EXCEPTION);
+  auto result1 = reader->read(script_state, ASSERT_NO_EXCEPTION);
+  auto result2 = reader->read(script_state, ASSERT_NO_EXCEPTION);
 
-  ScriptPromiseTester tester(script_state, result);
+  ScriptPromiseTester tester1(script_state, result1);
+  ScriptPromiseTester tester2(script_state, result2);
+  tester1.WaitUntilSettled();
 
-  // Give the promise an opportunity to settle.
+  // If trimming kept more than one datagram, this read would complete.
   test::RunPendingTasks();
 
-  // The queue should be empty, so read() should not have completed.
-  EXPECT_FALSE(tester.IsFulfilled());
-  EXPECT_FALSE(tester.IsRejected());
+  // The first read gets the latest datagram retained after trimming.
+  EXPECT_TRUE(tester1.IsFulfilled());
+  EXPECT_THAT(GetValueAsVector(script_state, tester1.Value()),
+              ElementsAre('0' + kMaxBufferedDatagrams - 1));
+
+  // The retained datagram has already been consumed, so this read is still
+  // waiting for a future datagram.
+  EXPECT_FALSE(tester2.IsFulfilled());
+  EXPECT_FALSE(tester2.IsRejected());
 }
 
 TEST_F(WebTransportTest,
@@ -1498,8 +1514,8 @@ TEST_F(WebTransportTest, CreateSendStream) {
 
   EXPECT_CALL(*mock_web_transport_,
               CreateStream(Truly(ValidConsumerHandle),
-                           Not(Truly(ValidProducerHandle)), _))
-      .WillOnce([](Unused, Unused,
+                           Not(Truly(ValidProducerHandle)), _, _))
+      .WillOnce([](Unused, Unused, Unused,
                    base::OnceCallback<void(bool, uint32_t)> callback) {
         std::move(callback).Run(true, 0);
       });
@@ -1537,8 +1553,8 @@ TEST_F(WebTransportTest, CreateSendStreamFailure) {
   auto* web_transport =
       CreateAndConnectSuccessfully(scope, "https://example.com");
 
-  EXPECT_CALL(*mock_web_transport_, CreateStream(_, _, _))
-      .WillOnce([](Unused, Unused,
+  EXPECT_CALL(*mock_web_transport_, CreateStream(_, _, _, _))
+      .WillOnce([](Unused, Unused, Unused,
                    base::OnceCallback<void(bool, uint32_t)> callback) {
         std::move(callback).Run(false, 0);
       });
@@ -1888,8 +1904,8 @@ TEST_F(WebTransportTest, CreateSendStreamAbortedByClose) {
       CreateAndConnectSuccessfully(scope, "https://example.com");
 
   base::OnceCallback<void(bool, uint32_t)> create_stream_callback;
-  EXPECT_CALL(*mock_web_transport_, CreateStream(_, _, _))
-      .WillOnce([&](Unused, Unused,
+  EXPECT_CALL(*mock_web_transport_, CreateStream(_, _, _, _))
+      .WillOnce([&](Unused, Unused, Unused,
                     base::OnceCallback<void(bool, uint32_t)> callback) {
         create_stream_callback = std::move(callback);
       });
@@ -2013,9 +2029,10 @@ TEST_F(WebTransportTest, CreateBidirectionalStream) {
   auto* web_transport =
       CreateAndConnectSuccessfully(scope, "https://example.com");
 
-  EXPECT_CALL(*mock_web_transport_, CreateStream(Truly(ValidConsumerHandle),
-                                                 Truly(ValidProducerHandle), _))
-      .WillOnce([](Unused, Unused,
+  EXPECT_CALL(*mock_web_transport_,
+              CreateStream(Truly(ValidConsumerHandle),
+                           Truly(ValidProducerHandle), _, _))
+      .WillOnce([](Unused, Unused, Unused,
                    base::OnceCallback<void(bool, uint32_t)> callback) {
         std::move(callback).Run(true, 0);
       });
@@ -2174,10 +2191,11 @@ TEST_F(WebTransportTest, ReceivedResetStream) {
 
   mojo::ScopedDataPipeConsumerHandle readable;
   mojo::ScopedDataPipeProducerHandle writable;
-  EXPECT_CALL(*mock_web_transport_, CreateStream(Truly(ValidConsumerHandle),
-                                                 Truly(ValidProducerHandle), _))
+  EXPECT_CALL(*mock_web_transport_,
+              CreateStream(Truly(ValidConsumerHandle),
+                           Truly(ValidProducerHandle), _, _))
       .WillOnce([&](mojo::ScopedDataPipeConsumerHandle readable_handle,
-                    mojo::ScopedDataPipeProducerHandle writable_handle,
+                    mojo::ScopedDataPipeProducerHandle writable_handle, Unused,
                     base::OnceCallback<void(bool, uint32_t)> callback) {
         readable = std::move(readable_handle);
         writable = std::move(writable_handle);
@@ -2222,10 +2240,11 @@ TEST_F(WebTransportTest, ReceivedStopSending) {
 
   mojo::ScopedDataPipeConsumerHandle readable;
   mojo::ScopedDataPipeProducerHandle writable;
-  EXPECT_CALL(*mock_web_transport_, CreateStream(Truly(ValidConsumerHandle),
-                                                 Truly(ValidProducerHandle), _))
+  EXPECT_CALL(*mock_web_transport_,
+              CreateStream(Truly(ValidConsumerHandle),
+                           Truly(ValidProducerHandle), _, _))
       .WillOnce([&](mojo::ScopedDataPipeConsumerHandle readable_handle,
-                    mojo::ScopedDataPipeProducerHandle writable_handle,
+                    mojo::ScopedDataPipeProducerHandle writable_handle, Unused,
                     base::OnceCallback<void(bool, uint32_t)> callback) {
         readable = std::move(readable_handle);
         writable = std::move(writable_handle);
@@ -2266,11 +2285,11 @@ TEST_F(WebTransportTest, CreateSendGroup) {
 
   auto* group1 = web_transport->createSendGroup(ASSERT_NO_EXCEPTION);
   ASSERT_TRUE(group1);
-  EXPECT_EQ(group1->group_id(), 0u);
+  EXPECT_EQ(group1->group_id(), 1u);
 
   auto* group2 = web_transport->createSendGroup(ASSERT_NO_EXCEPTION);
   ASSERT_TRUE(group2);
-  EXPECT_EQ(group2->group_id(), 1u);
+  EXPECT_EQ(group2->group_id(), 2u);
 
   // Each call should return a distinct object with a unique ID.
   EXPECT_NE(group1, group2);
@@ -2288,7 +2307,7 @@ TEST_F(WebTransportTest, CreateSendGroupBeforeConnection) {
   // since group creation is purely client-side bookkeeping.
   auto* group = web_transport->createSendGroup(ASSERT_NO_EXCEPTION);
   ASSERT_TRUE(group);
-  EXPECT_EQ(group->group_id(), 0u);
+  EXPECT_EQ(group->group_id(), 1u);
 }
 
 TEST_F(WebTransportTest, SendGroupGetStatsReturnsZeroedStats) {
@@ -2345,10 +2364,11 @@ TEST_F(WebTransportTest, CreateSendGroupAfterClose) {
   // is purely client-side bookkeeping with no network interaction.
   auto* group = web_transport->createSendGroup(ASSERT_NO_EXCEPTION);
   ASSERT_TRUE(group);
-  EXPECT_EQ(group->group_id(), 0u);
+  EXPECT_EQ(group->group_id(), 1u);
 }
 
 TEST_F(WebTransportTest, CreateSendGroupOverflow) {
+  ScopedWebTransportSendGroupForTest scoped_feature(true);
   V8TestingScope scope;
   auto* web_transport =
       CreateAndConnectSuccessfully(scope, "https://example.com");
@@ -2361,7 +2381,6 @@ TEST_F(WebTransportTest, CreateSendGroupOverflow) {
   auto* group = web_transport->createSendGroup(exception_state);
   EXPECT_FALSE(group);
   EXPECT_TRUE(exception_state.HadException());
-  EXPECT_EQ(exception_state.CodeAs<ESErrorType>(), ESErrorType::kRangeError);
 }
 
 TEST_F(WebTransportTest, CreateUnidirectionalStreamReturnsSendStream) {
@@ -2372,8 +2391,8 @@ TEST_F(WebTransportTest, CreateUnidirectionalStreamReturnsSendStream) {
 
   EXPECT_CALL(*mock_web_transport_,
               CreateStream(Truly(ValidConsumerHandle),
-                           Not(Truly(ValidProducerHandle)), _))
-      .WillOnce([](Unused, Unused,
+                           Not(Truly(ValidProducerHandle)), _, _))
+      .WillOnce([](Unused, Unused, Unused,
                    base::OnceCallback<void(bool, uint32_t)> callback) {
         std::move(callback).Run(true, 0);
       });
@@ -2407,8 +2426,8 @@ TEST_F(WebTransportTest, SendStreamSetSendGroup) {
 
   EXPECT_CALL(*mock_web_transport_,
               CreateStream(Truly(ValidConsumerHandle),
-                           Not(Truly(ValidProducerHandle)), _))
-      .WillOnce([](Unused, Unused,
+                           Not(Truly(ValidProducerHandle)), _, _))
+      .WillOnce([](Unused, Unused, Unused,
                    base::OnceCallback<void(bool, uint32_t)> callback) {
         std::move(callback).Run(true, 0);
       });
@@ -2446,8 +2465,8 @@ TEST_F(WebTransportTest, SendStreamSetSendGroupCrossTransportThrows) {
 
   EXPECT_CALL(*mock_web_transport_,
               CreateStream(Truly(ValidConsumerHandle),
-                           Not(Truly(ValidProducerHandle)), _))
-      .WillOnce([](Unused, Unused,
+                           Not(Truly(ValidProducerHandle)), _, _))
+      .WillOnce([](Unused, Unused, Unused,
                    base::OnceCallback<void(bool, uint32_t)> callback) {
         std::move(callback).Run(true, 0);
       });
@@ -2491,8 +2510,8 @@ TEST_F(WebTransportTest, SendStreamSetSendOrder) {
 
   EXPECT_CALL(*mock_web_transport_,
               CreateStream(Truly(ValidConsumerHandle),
-                           Not(Truly(ValidProducerHandle)), _))
-      .WillOnce([](Unused, Unused,
+                           Not(Truly(ValidProducerHandle)), _, _))
+      .WillOnce([](Unused, Unused, Unused,
                    base::OnceCallback<void(bool, uint32_t)> callback) {
         std::move(callback).Run(true, 0);
       });
@@ -2525,8 +2544,8 @@ TEST_F(WebTransportTest, SendStreamGetStats) {
 
   EXPECT_CALL(*mock_web_transport_,
               CreateStream(Truly(ValidConsumerHandle),
-                           Not(Truly(ValidProducerHandle)), _))
-      .WillOnce([](Unused, Unused,
+                           Not(Truly(ValidProducerHandle)), _, _))
+      .WillOnce([](Unused, Unused, Unused,
                    base::OnceCallback<void(bool, uint32_t)> callback) {
         std::move(callback).Run(true, 0);
       });
@@ -2585,9 +2604,10 @@ TEST_F(WebTransportTest, BidirectionalStreamWritableIsSendStream) {
   auto* web_transport =
       CreateAndConnectSuccessfully(scope, "https://example.com");
 
-  EXPECT_CALL(*mock_web_transport_, CreateStream(Truly(ValidConsumerHandle),
-                                                 Truly(ValidProducerHandle), _))
-      .WillOnce([](Unused, Unused,
+  EXPECT_CALL(*mock_web_transport_,
+              CreateStream(Truly(ValidConsumerHandle),
+                           Truly(ValidProducerHandle), _, _))
+      .WillOnce([](Unused, Unused, Unused,
                    base::OnceCallback<void(bool, uint32_t)> callback) {
         std::move(callback).Run(true, 0);
       });
@@ -2623,8 +2643,8 @@ TEST_F(WebTransportTest, CreateSendStreamFlagOffReturnsSendStream) {
 
   EXPECT_CALL(*mock_web_transport_,
               CreateStream(Truly(ValidConsumerHandle),
-                           Not(Truly(ValidProducerHandle)), _))
-      .WillOnce([](Unused, Unused,
+                           Not(Truly(ValidProducerHandle)), _, _))
+      .WillOnce([](Unused, Unused, Unused,
                    base::OnceCallback<void(bool, uint32_t)> callback) {
         std::move(callback).Run(true, 0);
       });
@@ -2653,9 +2673,10 @@ TEST_F(WebTransportTest, BidirectionalStreamFlagOffWritableIsNotSendStream) {
   auto* web_transport =
       CreateAndConnectSuccessfully(scope, "https://example.com");
 
-  EXPECT_CALL(*mock_web_transport_, CreateStream(Truly(ValidConsumerHandle),
-                                                 Truly(ValidProducerHandle), _))
-      .WillOnce([](Unused, Unused,
+  EXPECT_CALL(*mock_web_transport_,
+              CreateStream(Truly(ValidConsumerHandle),
+                           Truly(ValidProducerHandle), _, _))
+      .WillOnce([](Unused, Unused, Unused,
                    base::OnceCallback<void(bool, uint32_t)> callback) {
         std::move(callback).Run(true, 0);
       });
@@ -2697,11 +2718,16 @@ TEST_F(WebTransportTest, CreateUnidirectionalStreamWithSendGroupOption) {
   options->setSendGroup(group);
   options->setSendOrder(42);
 
-  EXPECT_CALL(*mock_web_transport_, CreateStream(_, _, _))
-      .WillOnce([](mojo::ScopedDataPipeConsumerHandle, Unused,
-                   base::OnceCallback<void(bool, uint32_t)> callback) {
-        std::move(callback).Run(true, 0);
-      });
+  EXPECT_CALL(*mock_web_transport_, CreateStream(_, _, _, _))
+      .WillOnce(
+          [](Unused, Unused,
+             network::mojom::blink::WebTransportStreamPriorityPtr priority,
+             base::OnceCallback<void(bool, uint32_t)> callback) {
+            ASSERT_TRUE(priority);
+            EXPECT_EQ(priority->send_group_id, std::optional<uint32_t>(1));
+            EXPECT_EQ(priority->send_order, 42);
+            std::move(callback).Run(true, 0);
+          });
 
   auto send_stream_promise = web_transport->createUnidirectionalStream(
       script_state, options, ASSERT_NO_EXCEPTION);
@@ -2729,11 +2755,16 @@ TEST_F(WebTransportTest, CreateUnidirectionalStreamWithSendOrderOnly) {
   auto* options = MakeGarbageCollected<WebTransportSendStreamOptions>();
   options->setSendOrder(99);
 
-  EXPECT_CALL(*mock_web_transport_, CreateStream(_, _, _))
-      .WillOnce([](mojo::ScopedDataPipeConsumerHandle, Unused,
-                   base::OnceCallback<void(bool, uint32_t)> callback) {
-        std::move(callback).Run(true, 0);
-      });
+  EXPECT_CALL(*mock_web_transport_, CreateStream(_, _, _, _))
+      .WillOnce(
+          [](Unused, Unused,
+             network::mojom::blink::WebTransportStreamPriorityPtr priority,
+             base::OnceCallback<void(bool, uint32_t)> callback) {
+            ASSERT_TRUE(priority);
+            EXPECT_FALSE(priority->send_group_id.has_value());  // No group.
+            EXPECT_EQ(priority->send_order, 99);
+            std::move(callback).Run(true, 0);
+          });
 
   auto send_stream_promise = web_transport->createUnidirectionalStream(
       script_state, options, ASSERT_NO_EXCEPTION);
@@ -2765,12 +2796,16 @@ TEST_F(WebTransportTest, CreateBidirectionalStreamWithSendGroupOption) {
   options->setSendGroup(group);
   options->setSendOrder(7);
 
-  EXPECT_CALL(*mock_web_transport_, CreateStream(_, _, _))
-      .WillOnce([](mojo::ScopedDataPipeConsumerHandle,
-                   mojo::ScopedDataPipeProducerHandle,
-                   base::OnceCallback<void(bool, uint32_t)> callback) {
-        std::move(callback).Run(true, 0);
-      });
+  EXPECT_CALL(*mock_web_transport_, CreateStream(_, _, _, _))
+      .WillOnce(
+          [](Unused, Unused,
+             network::mojom::blink::WebTransportStreamPriorityPtr priority,
+             base::OnceCallback<void(bool, uint32_t)> callback) {
+            ASSERT_TRUE(priority);
+            EXPECT_EQ(priority->send_group_id, std::optional<uint32_t>(1));
+            EXPECT_EQ(priority->send_order, 7);
+            std::move(callback).Run(true, 0);
+          });
 
   auto bidirectional_stream_promise = web_transport->createBidirectionalStream(
       script_state, options, ASSERT_NO_EXCEPTION);
@@ -2828,11 +2863,16 @@ TEST_F(WebTransportTest, CreateUnidirectionalStreamWithEmptyOptions) {
   // Pass default-constructed options — should behave identically to nullptr.
   auto* options = MakeGarbageCollected<WebTransportSendStreamOptions>();
 
-  EXPECT_CALL(*mock_web_transport_, CreateStream(_, _, _))
-      .WillOnce([](mojo::ScopedDataPipeConsumerHandle, Unused,
-                   base::OnceCallback<void(bool, uint32_t)> callback) {
-        std::move(callback).Run(true, 0);
-      });
+  EXPECT_CALL(*mock_web_transport_, CreateStream(_, _, _, _))
+      .WillOnce(
+          [](Unused, Unused,
+             network::mojom::blink::WebTransportStreamPriorityPtr priority,
+             base::OnceCallback<void(bool, uint32_t)> callback) {
+            // Default options: no group, send_order 0 — priority should be
+            // null.
+            EXPECT_FALSE(priority);
+            std::move(callback).Run(true, 0);
+          });
 
   auto send_stream_promise = web_transport->createUnidirectionalStream(
       script_state, options, ASSERT_NO_EXCEPTION);
@@ -2862,11 +2902,17 @@ TEST_F(WebTransportTest, CreateUnidirectionalStreamWithExplicitNullGroup) {
   options->setSendGroup(nullptr);
   options->setSendOrder(5);
 
-  EXPECT_CALL(*mock_web_transport_, CreateStream(_, _, _))
-      .WillOnce([](mojo::ScopedDataPipeConsumerHandle, Unused,
-                   base::OnceCallback<void(bool, uint32_t)> callback) {
-        std::move(callback).Run(true, 0);
-      });
+  EXPECT_CALL(*mock_web_transport_, CreateStream(_, _, _, _))
+      .WillOnce(
+          [](Unused, Unused,
+             network::mojom::blink::WebTransportStreamPriorityPtr priority,
+             base::OnceCallback<void(bool, uint32_t)> callback) {
+            // Null group + non-zero send_order → priority should be present.
+            ASSERT_TRUE(priority);
+            EXPECT_FALSE(priority->send_group_id.has_value());  // No group.
+            EXPECT_EQ(priority->send_order, 5);
+            std::move(callback).Run(true, 0);
+          });
 
   auto send_stream_promise = web_transport->createUnidirectionalStream(
       script_state, options, ASSERT_NO_EXCEPTION);
@@ -2897,11 +2943,18 @@ TEST_F(WebTransportTest, CreateUnidirectionalStreamWithOptionsFlagOff) {
   auto* options = MakeGarbageCollected<WebTransportSendStreamOptions>();
   options->setSendOrder(10);
 
-  EXPECT_CALL(*mock_web_transport_, CreateStream(_, _, _))
-      .WillOnce([](mojo::ScopedDataPipeConsumerHandle, Unused,
-                   base::OnceCallback<void(bool, uint32_t)> callback) {
-        std::move(callback).Run(true, 0);
-      });
+  EXPECT_CALL(*mock_web_transport_, CreateStream(_, _, _, _))
+      .WillOnce(
+          [](Unused, Unused,
+             network::mojom::blink::WebTransportStreamPriorityPtr priority,
+             base::OnceCallback<void(bool, uint32_t)> callback) {
+            // send_order is non-zero, so priority should be present even with
+            // the SendGroup feature flag off.
+            ASSERT_TRUE(priority);
+            EXPECT_FALSE(priority->send_group_id.has_value());  // No group.
+            EXPECT_EQ(priority->send_order, 10);
+            std::move(callback).Run(true, 0);
+          });
 
   auto send_stream_promise = web_transport->createUnidirectionalStream(
       script_state, options, ASSERT_NO_EXCEPTION);
@@ -3112,9 +3165,10 @@ TEST_F(WebTransportTest, BidirectionalStreamReadableIsReceiveStream) {
   auto* web_transport =
       CreateAndConnectSuccessfully(scope, "https://example.com");
 
-  EXPECT_CALL(*mock_web_transport_, CreateStream(Truly(ValidConsumerHandle),
-                                                 Truly(ValidProducerHandle), _))
-      .WillOnce([](Unused, Unused,
+  EXPECT_CALL(*mock_web_transport_,
+              CreateStream(Truly(ValidConsumerHandle),
+                           Truly(ValidProducerHandle), _, _))
+      .WillOnce([](Unused, Unused, Unused,
                    base::OnceCallback<void(bool, uint32_t)> callback) {
         std::move(callback).Run(true, 0);
       });
@@ -3143,9 +3197,10 @@ TEST_F(WebTransportTest, BidirectionalStreamFlagOffReadableIsLegacyReceive) {
   auto* web_transport =
       CreateAndConnectSuccessfully(scope, "https://example.com");
 
-  EXPECT_CALL(*mock_web_transport_, CreateStream(Truly(ValidConsumerHandle),
-                                                 Truly(ValidProducerHandle), _))
-      .WillOnce([](Unused, Unused,
+  EXPECT_CALL(*mock_web_transport_,
+              CreateStream(Truly(ValidConsumerHandle),
+                           Truly(ValidProducerHandle), _, _))
+      .WillOnce([](Unused, Unused, Unused,
                    base::OnceCallback<void(bool, uint32_t)> callback) {
         std::move(callback).Run(true, 0);
       });

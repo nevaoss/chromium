@@ -4,12 +4,14 @@
 
 #include "chrome/browser/contextual_tasks/android/contextual_tasks_panel_host_android.h"
 
+#include <utility>
+
 #include "base/android/jni_android.h"
 #include "base/android/scoped_java_ref.h"
 #include "chrome/browser/android/tab_android.h"
 #include "chrome/browser/context_sharing/tab_bottom_sheet/android/co_browse_views_bridge.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_panel_host.h"
-#include "chrome/browser/contextual_tasks/jni_headers/ContextualTaskBottomSheetContentProvider_jni.h"
+#include "chrome/browser/contextual_tasks/jni_headers/ContextualTaskBottomSheetComponentProvider_jni.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "content/public/browser/web_contents.h"
@@ -21,7 +23,9 @@ ContextualTasksPanelHostAndroid::ContextualTasksPanelHostAndroid(
     BrowserWindowInterface* browser_window)
     : browser_window_(browser_window) {}
 
-ContextualTasksPanelHostAndroid::~ContextualTasksPanelHostAndroid() = default;
+ContextualTasksPanelHostAndroid::~ContextualTasksPanelHostAndroid() {
+  SetWebContents(nullptr);
+}
 
 void ContextualTasksPanelHostAndroid::AddObserver(
     ContextualTasksPanelHost::Observer* observer) {
@@ -81,7 +85,9 @@ void ContextualTasksPanelHostAndroid::SetWebContents(
     return;
   }
 
-  web_contents_ = web_contents;
+  if (content::WebContents* prev = std::exchange(web_contents_, web_contents)) {
+    prev->SetDelegate(nullptr);
+  }
 
   if (!web_contents_) {
     return;
@@ -153,7 +159,7 @@ TabAndroid* ContextualTasksPanelHostAndroid::GetTabAndroid() const {
 base::android::ScopedJavaLocalRef<jobject>
 ContextualTasksPanelHostAndroid::CreateBottomSheetContentProvider() {
   JNIEnv* env = base::android::AttachCurrentThread();
-  return Java_ContextualTaskBottomSheetContentProvider_createProvider(env);
+  return Java_ContextualTaskBottomSheetComponentProvider_createProvider(env);
 }
 
 }  // namespace contextual_tasks

@@ -16,11 +16,13 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.app.Activity;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.test.filters.SmallTest;
@@ -46,11 +48,14 @@ import org.chromium.chrome.browser.commerce.ShoppingServiceFactory;
 import org.chromium.chrome.browser.commerce.ShoppingServiceFactoryJni;
 import org.chromium.chrome.browser.data_sharing.DataSharingServiceFactory;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.chrome.browser.hub.PaneId;
 import org.chromium.chrome.browser.price_tracking.PriceTrackingFeatures;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.TabLaunchType;
 import org.chromium.chrome.browser.tab.TabSelectionType;
 import org.chromium.chrome.browser.tab_group_sync.TabGroupSyncServiceFactory;
+import org.chromium.chrome.browser.tabmodel.TabCreator;
 import org.chromium.chrome.browser.tabmodel.TabGroupObserver;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
@@ -87,6 +92,7 @@ public class VerticalTabListCoordinatorUnitTest {
 
     @Mock private TabModelSelector mTabModelSelector;
     @Mock private TabModel mTabModel;
+    @Mock private TabCreator mTabCreator;
     @Mock private Profile mProfile;
     @Mock private FaviconHelper.Natives mFaviconHelperJniMock;
     @Mock private TabGroupSyncService mTabGroupSyncService;
@@ -95,6 +101,7 @@ public class VerticalTabListCoordinatorUnitTest {
     @Mock private ShoppingService mShoppingService;
     @Mock private ShoppingServiceFactory.Natives mShoppingServiceFactoryJniMock;
     @Captor private ArgumentCaptor<TabModelSelectorObserver> mSelectorObserverCaptor;
+    @Mock private VerticalTabsActionDelegate mVerticalTabsActionDelegate;
 
     private Activity mActivity;
     private final SettableMonotonicObservableSupplier<TabModel> mCurrentTabModelSupplier =
@@ -125,6 +132,7 @@ public class VerticalTabListCoordinatorUnitTest {
         when(mTabModel.getProfile()).thenReturn(mProfile);
         when(mProfile.getOriginalProfile()).thenReturn(mProfile);
         when(mTabModel.isTabModelRestored()).thenReturn(true);
+        when(mTabModel.getTabCreator()).thenReturn(mTabCreator);
         when(mTabModel.iterator()).thenReturn(java.util.Collections.emptyIterator());
         when(mTabModelSelector.isTabStateInitialized()).thenReturn(true);
 
@@ -151,7 +159,9 @@ public class VerticalTabListCoordinatorUnitTest {
     @SmallTest
     public void testConstructor() {
         doNothing().when(mTabModelSelector).addObserver(mSelectorObserverCaptor.capture());
-        mCoordinator = new VerticalTabListCoordinator(mActivity, mTabModelSelector, mProfile);
+        mCoordinator =
+                new VerticalTabListCoordinator(
+                        mActivity, mTabModelSelector, mProfile, mVerticalTabsActionDelegate);
         assertNotNull(mCoordinator.getView());
 
         ViewGroup view = (ViewGroup) mCoordinator.getView();
@@ -171,7 +181,9 @@ public class VerticalTabListCoordinatorUnitTest {
     @SmallTest
     public void testDestroy() {
         doNothing().when(mTabModelSelector).addObserver(mSelectorObserverCaptor.capture());
-        mCoordinator = new VerticalTabListCoordinator(mActivity, mTabModelSelector, mProfile);
+        mCoordinator =
+                new VerticalTabListCoordinator(
+                        mActivity, mTabModelSelector, mProfile, mVerticalTabsActionDelegate);
 
         TabModelSelectorObserver observer = mSelectorObserverCaptor.getValue();
         assertNotNull(observer);
@@ -183,7 +195,9 @@ public class VerticalTabListCoordinatorUnitTest {
     @Test
     @SmallTest
     public void testDestroy_RemovesSupplierObserver() {
-        mCoordinator = new VerticalTabListCoordinator(mActivity, mTabModelSelector, mProfile);
+        mCoordinator =
+                new VerticalTabListCoordinator(
+                        mActivity, mTabModelSelector, mProfile, mVerticalTabsActionDelegate);
         TabListRecyclerView recycler =
                 mCoordinator.getView().findViewById(R.id.tab_list_recycler_view);
         SimpleRecyclerViewAdapter adapter = (SimpleRecyclerViewAdapter) recycler.getAdapter();
@@ -203,7 +217,9 @@ public class VerticalTabListCoordinatorUnitTest {
     @Test
     @SmallTest
     public void testAdapterInterceptionAndSpanLookup() {
-        mCoordinator = new VerticalTabListCoordinator(mActivity, mTabModelSelector, mProfile);
+        mCoordinator =
+                new VerticalTabListCoordinator(
+                        mActivity, mTabModelSelector, mProfile, mVerticalTabsActionDelegate);
         TabListRecyclerView recycler =
                 mCoordinator.getView().findViewById(R.id.tab_list_recycler_view);
         SimpleRecyclerViewAdapter adapter = (SimpleRecyclerViewAdapter) recycler.getAdapter();
@@ -260,7 +276,9 @@ public class VerticalTabListCoordinatorUnitTest {
                 .when(mTabModel)
                 .setTabGroupCollapsed(any(Token.class), anyBoolean(), anyBoolean());
 
-        mCoordinator = new VerticalTabListCoordinator(mActivity, mTabModelSelector, mProfile);
+        mCoordinator =
+                new VerticalTabListCoordinator(
+                        mActivity, mTabModelSelector, mProfile, mVerticalTabsActionDelegate);
         TabListRecyclerView recycler =
                 mCoordinator.getView().findViewById(R.id.tab_list_recycler_view);
         SimpleRecyclerViewAdapter adapter = (SimpleRecyclerViewAdapter) recycler.getAdapter();
@@ -306,7 +324,9 @@ public class VerticalTabListCoordinatorUnitTest {
                 .when(mTabModel)
                 .setTabGroupCollapsed(any(Token.class), anyBoolean(), anyBoolean());
 
-        mCoordinator = new VerticalTabListCoordinator(mActivity, mTabModelSelector, mProfile);
+        mCoordinator =
+                new VerticalTabListCoordinator(
+                        mActivity, mTabModelSelector, mProfile, mVerticalTabsActionDelegate);
         TabListRecyclerView recycler =
                 mCoordinator.getView().findViewById(R.id.tab_list_recycler_view);
         SimpleRecyclerViewAdapter adapter = (SimpleRecyclerViewAdapter) recycler.getAdapter();
@@ -331,7 +351,9 @@ public class VerticalTabListCoordinatorUnitTest {
         when(mTabModel.getRepresentativeTabList()).thenReturn(List.of(tab456));
         when(mTabModel.isTabInTabGroup(tab456)).thenReturn(false);
 
-        mCoordinator = new VerticalTabListCoordinator(mActivity, mTabModelSelector, mProfile);
+        mCoordinator =
+                new VerticalTabListCoordinator(
+                        mActivity, mTabModelSelector, mProfile, mVerticalTabsActionDelegate);
         TabListRecyclerView recycler =
                 mCoordinator.getView().findViewById(R.id.tab_list_recycler_view);
         SimpleRecyclerViewAdapter adapter = (SimpleRecyclerViewAdapter) recycler.getAdapter();
@@ -354,7 +376,9 @@ public class VerticalTabListCoordinatorUnitTest {
         when(mTabModel.isTabInTabGroup(tab456)).thenReturn(false);
         when(mTabModel.iterator()).thenReturn(List.of(tab456).iterator());
 
-        mCoordinator = new VerticalTabListCoordinator(mActivity, mTabModelSelector, mProfile);
+        mCoordinator =
+                new VerticalTabListCoordinator(
+                        mActivity, mTabModelSelector, mProfile, mVerticalTabsActionDelegate);
         TabListRecyclerView recycler =
                 mCoordinator.getView().findViewById(R.id.tab_list_recycler_view);
         SimpleRecyclerViewAdapter adapter = (SimpleRecyclerViewAdapter) recycler.getAdapter();
@@ -372,7 +396,9 @@ public class VerticalTabListCoordinatorUnitTest {
     @Test
     @SmallTest
     public void testTabModelSwap_ResetsTabs() {
-        mCoordinator = new VerticalTabListCoordinator(mActivity, mTabModelSelector, mProfile);
+        mCoordinator =
+                new VerticalTabListCoordinator(
+                        mActivity, mTabModelSelector, mProfile, mVerticalTabsActionDelegate);
         TabListRecyclerView recycler =
                 mCoordinator.getView().findViewById(R.id.tab_list_recycler_view);
         SimpleRecyclerViewAdapter adapter = (SimpleRecyclerViewAdapter) recycler.getAdapter();
@@ -391,5 +417,55 @@ public class VerticalTabListCoordinatorUnitTest {
         assertEquals(789, adapter.getModelList().get(0).model.get(TabProperties.TAB_ID));
     }
 
-    // TODO(crbug.com/518001737): Add tests for footer's new tab button
+    @Test
+    @SmallTest
+    public void testGridButtonClick() {
+        mCoordinator =
+                new VerticalTabListCoordinator(
+                        mActivity, mTabModelSelector, mProfile, mVerticalTabsActionDelegate);
+        ImageButton gridButton = mCoordinator.getView().findViewById(R.id.grid_button);
+        assertNotNull(gridButton);
+        gridButton.performClick();
+        verify(mVerticalTabsActionDelegate).openHubPane(PaneId.TAB_GROUPS);
+    }
+
+    @Test
+    @SmallTest
+    public void testTabSearchButtonClick() {
+        mCoordinator =
+                new VerticalTabListCoordinator(
+                        mActivity, mTabModelSelector, mProfile, mVerticalTabsActionDelegate);
+        ImageButton tabSearchButton = mCoordinator.getView().findViewById(R.id.tab_search_button);
+        assertNotNull(tabSearchButton);
+        tabSearchButton.performClick();
+        verify(mVerticalTabsActionDelegate).openHubPane(PaneId.TAB_SWITCHER);
+    }
+
+    @Test
+    @SmallTest
+    public void testNewTabButtonClick() {
+        when(mTabModel.isIncognitoBranded()).thenReturn(false);
+        mCoordinator =
+                new VerticalTabListCoordinator(
+                        mActivity, mTabModelSelector, mProfile, mVerticalTabsActionDelegate);
+        ImageButton newTabButton = mCoordinator.getView().findViewById(R.id.new_tab_button);
+        assertNotNull(newTabButton);
+        newTabButton.performClick();
+        verify(mTabModel).commitAllTabClosures();
+        verify(mTabCreator).launchNtp(TabLaunchType.FROM_CHROME_UI);
+    }
+
+    @Test
+    @SmallTest
+    public void testNewTabButtonClick_Incognito() {
+        when(mTabModel.isIncognitoBranded()).thenReturn(true);
+        mCoordinator =
+                new VerticalTabListCoordinator(
+                        mActivity, mTabModelSelector, mProfile, mVerticalTabsActionDelegate);
+        ImageButton newTabButton = mCoordinator.getView().findViewById(R.id.new_tab_button);
+        assertNotNull(newTabButton);
+        newTabButton.performClick();
+        verify(mTabModel, never()).commitAllTabClosures();
+        verify(mTabCreator).launchNtp(TabLaunchType.FROM_CHROME_UI);
+    }
 }

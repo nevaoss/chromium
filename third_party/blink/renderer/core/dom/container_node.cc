@@ -2051,7 +2051,10 @@ void ContainerNode::prependHTML(const String& html,
                                 SetHTMLOptions* options,
                                 ExceptionState& exception_state) {
   CHECK(IsElementNode() || IsShadowRoot());
-  InsertHTMLBefore(firstChild(), html,
+  InsertHTMLBefore(IsA<HTMLTemplateElement>(this)
+                       ? To<HTMLTemplateElement>(this)->content()->firstChild()
+                       : firstChild(),
+                   html,
                    FragmentParserConfig::ForContainer(
                        this, Sanitizer::Mode::kSafe,
                        IsElementNode() ? trusted_types_names::kElement
@@ -2069,11 +2072,16 @@ void ContainerNode::prependHTMLUnsafe(
       IsElementNode() ? trusted_types_names::kElement
                       : trusted_types_names::kShadowRoot,
       trusted_types_names::kPrependHTMLUnsafe);
-  InsertHTMLBefore(firstChild(),
-                   TrustedTypesCheckForHTML(
-                       html, GetExecutionContext(), config.interface_name,
-                       config.property_name, exception_state),
-                   config, FragmentParserOptions::From(options),
+  String html_string = TrustedTypesCheckForHTML(
+      html, GetExecutionContext(), config.interface_name, config.property_name,
+      exception_state);
+  if (exception_state.HadException()) {
+    return;
+  }
+  InsertHTMLBefore(IsA<HTMLTemplateElement>(this)
+                       ? To<HTMLTemplateElement>(this)->content()->firstChild()
+                       : firstChild(),
+                   html_string, config, FragmentParserOptions::From(options),
                    exception_state);
 }
 
@@ -2087,7 +2095,11 @@ void ContainerNode::InsertHTMLBefore(Node* ref_child,
   }
   if (DocumentFragment* fragment =
           ParseHTMLFragment(html, config, options, exception_state)) {
-    InsertBefore(fragment, ref_child);
+    ContainerNode* container = this;
+    if (auto* template_element = DynamicTo<HTMLTemplateElement>(this)) {
+      container = template_element->content();
+    }
+    container->InsertBefore(fragment, ref_child, exception_state);
   }
 }
 void ContainerNode::ReplaceChildWithHTML(Node* ref_child,
@@ -2100,7 +2112,11 @@ void ContainerNode::ReplaceChildWithHTML(Node* ref_child,
   }
   if (DocumentFragment* fragment =
           ParseHTMLFragment(html, config, options, exception_state)) {
-    ReplaceChild(fragment, ref_child);
+    ContainerNode* container = this;
+    if (auto* template_element = DynamicTo<HTMLTemplateElement>(this)) {
+      container = template_element->content();
+    }
+    container->ReplaceChild(fragment, ref_child, exception_state);
   }
 }
 

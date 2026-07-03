@@ -15,6 +15,7 @@
 #include "base/barrier_closure.h"
 #include "base/base64.h"
 #include "base/build_time.h"
+#include "base/byte_size.h"
 #include "base/callback_list.h"
 #include "base/check.h"
 #include "base/check_op.h"
@@ -682,6 +683,19 @@ bool IsIncognitoFromParams(const mojom::NetworkContextParams& params) {
   // potential nullptr dereference if we just checked that
   // `params_->file_paths->http_cache_directory' existed.
   return !params.file_paths || !params.file_paths->http_cache_directory;
+}
+
+void RemoveInvalidationFilterCallback(
+    base::WeakPtr<NetworkContext> context,
+    net::HttpCache::InvalidationFilter filter) {
+  if (!context) {
+    return;
+  }
+  net::HttpCache* cache =
+      context->url_request_context()->http_transaction_factory()->GetCache();
+  if (cache) {
+    cache->RemoveInvalidationFilter(filter);
+  }
 }
 
 }  // namespace
@@ -1448,9 +1462,31 @@ void NetworkContext::ClearHttpCache(base::Time start_time,
                                     base::Time end_time,
                                     mojom::ClearDataFilterPtr filter,
                                     ClearHttpCacheCallback callback) {
-  if (base::FeatureList::IsEnabled(net::features::kLogicalClearHttpCache)) {
+  ClearHttpCacheInternal(start_time, end_time, std::move(filter),
+                         ClearHttpCacheMode::kPhysical, std::move(callback));
+}
+
+void NetworkContext::ClearHttpCacheLogically(
+    base::Time start_time,
+    base::Time end_time,
+    mojom::ClearDataFilterPtr filter,
+    ClearHttpCacheLogicallyCallback callback) {
+  ClearHttpCacheInternal(start_time, end_time, std::move(filter),
+                         ClearHttpCacheMode::kLogical, std::move(callback));
+}
+
+void NetworkContext::ClearHttpCacheInternal(base::Time start_time,
+                                            base::Time end_time,
+                                            mojom::ClearDataFilterPtr filter,
+                                            ClearHttpCacheMode mode,
+                                            base::OnceClosure callback) {
+  base::UmaHistogramEnumeration("NetworkService.ClearHttpCacheMode", mode);
+
+  if (mode == ClearHttpCacheMode::kLogical &&
+      base::FeatureList::IsEnabled(net::features::kLogicalClearHttpCache)) {
     net::HttpCache* cache =
         url_request_context_->http_transaction_factory()->GetCache();
+    net::HttpCache::InvalidationFilter filter_for_callback;
     if (cache) {
       // Step 1: Add a logical filter to the HttpCache. This is near-instant
       // and ensures that subsequent requests won't see invalidated data.
@@ -1469,19 +1505,33 @@ void NetworkContext::ClearHttpCache(base::Time start_time,
       } else {
         invalidation_filter.filter_type = net::UrlFilterType::kFalseIfMatches;
       }
+      filter_for_callback = invalidation_filter;
+
       cache->AddInvalidationFilter(std::move(invalidation_filter));
+      if (callback) {
+        std::move(callback).Run();
+      }
+    } else {
+      if (callback) {
+        std::move(callback).Run();
+      }
     }
 
-    // Step 2: Trigger the slow physical cleanup in the background. We use a
-    // no-op callback because the logical invalidation already satisfies
-    // the consistency requirements of the caller.
+    // Step 2: Trigger the slow physical cleanup in the background.
+    // When it completes, we remove the logical filter since the data is
+    // physically gone.
+    auto logical_cleanup_done_callback = base::BindOnce(
+        &RemoveInvalidationFilterCallback, weak_factory_.GetWeakPtr(),
+        std::move(filter_for_callback));
+
     http_cache_data_removers_.push_back(HttpCacheDataRemover::CreateAndStart(
         url_request_context_, std::move(filter), start_time, end_time,
         base::BindOnce(&NetworkContext::OnHttpCacheCleared,
-                       base::Unretained(this), base::DoNothing())));
+                       base::Unretained(this),
+                       std::move(logical_cleanup_done_callback))));
 
-    // Step 3: Respond to the caller immediately.
-    std::move(callback).Run();
+    // Step 3: Respond to the caller immediately is omitted because we wait for
+    // persistence.
     return;
   }
 
@@ -2298,6 +2348,19 @@ void NetworkContext::NotifyExternalCacheHit(const GURL& url,
   cache->OnExternalCacheHit(url, http_method, key, include_credentials);
 }
 
+#if BUILDFLAG(IS_ANDROID)
+void NetworkContext::SetHttpCacheMaxSize(base::ByteSize http_cache_max_size,
+                                         bool force_initialization) {
+  // Note: we do not update params_->http_cache_max_size.
+  net::HttpCache* cache =
+      url_request_context_->http_transaction_factory()->GetCache();
+  if (!cache) {
+    return;
+  }
+  cache->SetMaxBytes(http_cache_max_size, force_initialization);
+}
+#endif  // BUILDFLAG(IS_ANDROID)
+
 void NetworkContext::SetCorsOriginAccessListsForOrigin(
     const url::Origin& source_origin,
     std::vector<mojom::CorsOriginPatternPtr> allow_patterns,
@@ -2943,6 +3006,10 @@ URLRequestContextOwner NetworkContext::MakeURLRequestContext(
         cache_params.no_vary_search_path =
             params_->file_paths->no_vary_search_directory->path();
       }
+      if (params_->file_paths->logical_invalidation_directory) {
+        cache_params.logical_invalidation_path =
+            params_->file_paths->logical_invalidation_directory->path();
+      }
       cache_params.type = network_session_configurator::ChooseCacheType();
 
       if (params_->http_cache_file_operations_factory) {
@@ -3333,7 +3400,7 @@ NetworkContext::MakeSessionCleanupCookieStore() const {
   return base::MakeRefCounted<SessionCleanupCookieStore>(sqlite_store);
 }
 
-void NetworkContext::OnHttpCacheCleared(ClearHttpCacheCallback callback,
+void NetworkContext::OnHttpCacheCleared(base::OnceClosure callback,
                                         HttpCacheDataRemover* remover) {
   bool removed = false;
   for (auto iter = http_cache_data_removers_.begin();

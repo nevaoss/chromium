@@ -77,7 +77,6 @@
 <translation id="1269129608791067105">Здесь будет история браузера</translation>
 <translation id="1273937721055267968">Заблокировать сайт <ph name="DOMAIN" /></translation>
 <translation id="1280921956537356716">Включить уведомления</translation>
-<translation id="1283039547216852943">Нажмите, чтобы развернуть</translation>
 <translation id="1289129165308566697">Доступ к истории на других устройствах</translation>
 <translation id="129553762522093515">Недавно закрытые</translation>
 <translation id="1298077576058087471">Экономьте до 60 % трафика и читайте ежедневные новости.</translation>
@@ -245,6 +244,7 @@
 <translation id="2082238445998314030">Результат <ph name="RESULT_NUMBER" />, всего <ph name="TOTAL_RESULTS" /></translation>
 <translation id="2091863218454846791">Включен компактный вид</translation>
 <translation id="2093731487903423814">за последние 15 минут</translation>
+<translation id="2094298041331405438">Нажмите здесь, чтобы закрыть все окна в режиме инкогнито</translation>
 <translation id="2096577711562668473">Заменить сервис автозаполнения?</translation>
 <translation id="2109384632594340939">фото профиля</translation>
 <translation id="2111511281910874386">Перейти на страницу</translation>
@@ -506,6 +506,7 @@
 <translation id="3114507951000454849">Будьте в курсе новостей <ph name="NEWS_ICON" /></translation>
 <translation id="3122883569442693641">Подробнее</translation>
 <translation id="3123734510202723619">Оповещения</translation>
+<translation id="3132267803114336523">Чтобы закрыть все окна в режиме инкогнито, нажмите на значок этого режима</translation>
 <translation id="3134385238404760368">Нет недавних вкладок</translation>
 <translation id="3135655388926735587">Выберите "Недавние вкладки".</translation>
 <translation id="314939179385989105">Главная страница Chrome</translation>
@@ -614,6 +615,7 @@
 <translation id="3635073343384702370">Чтобы браузер Chrome мог проверять пароли, сохраните их</translation>
 <translation id="3636940436873918441">Предпочитаемые языки</translation>
 <translation id="3637744895182738742">Если вы забыли кодовую фразу или хотите ее изменить, <ph name="BEGIN_LINK" />удалите данные Chrome из аккаунта<ph name="END_LINK" />.</translation>
+<translation id="3649090831059057090"><ph name="WINDOW_TITLE" />, <ph name="TAB_COUNT" /></translation>
 <translation id="3653111872753786013"><ph name="WEBSITE_TITLE" /> (<ph name="WEBSITE_URL" />)</translation>
 <translation id="3674208116086565128">Открыть главную страницу приложения Google</translation>
 <translation id="368329460027487650">Выполнен выход. Открывает окно с вариантами входа.</translation>
@@ -638,6 +640,7 @@
 <translation id="3739899004075612870"><ph name="PRODUCT_NAME" />: добавлена закладка</translation>
 <translation id="3740290940447881599">Убедитесь, что доверяете этому сайту.</translation>
 <translation id="3740525748616366977">Голосовой поиск недоступен на этом устройстве.</translation>
+<translation id="3756823472711156529">Восстановить группу</translation>
 <translation id="3763110477555836428">При оплате этой картой будет указан номер виртуальной. Это поможет защитить настоящие реквизиты. Изменить настройки можно в Google Кошельке. Подробнее <ph name="BEGIN_LINK1" />о виртуальных картах<ph name="END_LINK1" />…</translation>
 <translation id="376561056759077985">Некоторые данные ещё не сохранены</translation>
 <translation id="3770620323585347665">Добавить название окна</translation>
@@ -1159,7 +1162,6 @@
 <translation id="59577092665511740">Выбор аккаунта.</translation>
 <translation id="5958275228015807058">Файлы и страницы, которые вы скачали, находятся в разделе "Скачанные файлы".</translation>
 <translation id="5962499136121615854">{NUM_REVOKED_PERMISSIONS,plural, =1{Chrome заблокировал отправку уведомлений с сайта, который вы давно не посещали.}one{Chrome заблокировал отправку уведомлений с сайтов, которые вы давно не посещали.}few{Chrome заблокировал отправку уведомлений с сайтов, которые вы давно не посещали.}many{Chrome заблокировал отправку уведомлений с сайтов, которые вы давно не посещали.}other{Chrome заблокировал отправку уведомлений с сайтов, которые вы давно не посещали.}}</translation>
-<translation id="5962718611393537961">Нажмите, чтобы свернуть</translation>
 <translation id="5964869237734432770">Не генерировать описания</translation>
 <translation id="5972844218283131174">Отменить выбор</translation>
 <translation id="5975083100439434680">Уменьшить</translation>

@@ -235,8 +235,7 @@ class CdmRegistryImplTest : public testing::Test {
 
   void SelectHardwareSecureDecryption(bool enabled) {
     const std::vector<base::test::FeatureRef> kHardwareSecureFeatures = {
-        media::kHardwareSecureDecryption,
-        media::kHardwareSecureDecryptionExperiment};
+        media::kHardwareSecureDecryption};
     const std::vector<base::test::FeatureRef> kNoFeatures = {};
 
     auto enabled_features = enabled ? kHardwareSecureFeatures : kNoFeatures;

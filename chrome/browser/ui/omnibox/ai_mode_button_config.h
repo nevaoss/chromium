@@ -21,7 +21,7 @@ struct AiModeButtonConfig {
   // Text show when hovering over button.
   std::u16string tooltip;
 
-  // TODO(crbug.com/510389207): Wire in `favicon_url`, `navigation_url`, &
+  // TODO(crbug.com/510389207): Wire in `navigation_url` &
   //   `navigation_url_empty`.
 
   // Icon shown in button.
@@ -42,12 +42,18 @@ struct AiModeButtonConfig {
   // Omnibox placeholder text conditionally shown when the omnibox is focused
   // and empty.
   std::u16string placeholder_text;
+
+  // Returns true if the config is valid.
+  bool IsValid() const;
 };
 
 // Returns the currently selected AI button configuration.
 // TODO(crbug.com/510389207): Use a observe or callback API so consumers of the
 //   config are updated when the config changes.
 const AiModeButtonConfig& GetCurrentAiModeButtonConfig();
+
+// Sets the current config for testing. Pass nullptr to reset.
+void SetCurrentAiModeButtonConfigForTesting(const AiModeButtonConfig* config);
 
 }  // namespace ai_mode_button_config
 

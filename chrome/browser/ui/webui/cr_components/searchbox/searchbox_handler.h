@@ -15,7 +15,7 @@
 #include "base/scoped_observation.h"
 #include "base/time/time.h"
 #include "base/values.h"
-#include "chrome/browser/ui/views/permissions/embedded_permission_prompt_observer.h"
+#include "chrome/browser/ui/views/permissions/permission_prompt_observer.h"
 #include "components/contextual_search/contextual_search_types.h"
 #include "components/contextual_search/pref_names.h"
 #include "components/omnibox/browser/autocomplete_controller.h"
@@ -57,13 +57,14 @@ class Size;
 
 class SearchboxHandler : public searchbox::mojom::PageHandler,
                          public AutocompleteController::Observer,
-                         public EmbeddedPermissionPromptObserver::Observer {
+                         public PermissionPromptObserver::Observer {
  public:
   class Delegate {
    public:
     virtual void OnEmbeddedPermissionDialogChanged(
         bool is_showing,
         const gfx::Size& prompt_size) = 0;
+    virtual OmniboxController* GetOmniboxController();
   };
 
   SearchboxHandler(const SearchboxHandler&) = delete;
@@ -104,9 +105,9 @@ class SearchboxHandler : public searchbox::mojom::PageHandler,
   void OnResultChanged(AutocompleteController* controller,
                        bool default_match_changed) override;
 
-  // EmbeddedPermissionPromptObserver::Observer:
-  void OnEmbeddedPermissionPromptChanged(bool is_showing,
-                                         const gfx::Size& prompt_size) override;
+  // PermissionPromptObserver::Observer:
+  void OnPermissionPromptChanged(bool is_showing,
+                                 const gfx::Size& prompt_size) override;
 
   // searchbox::mojom::PageHandler:
   void OnFocusChanged(bool focused) override;
@@ -175,8 +176,8 @@ class SearchboxHandler : public searchbox::mojom::PageHandler,
   void SetActiveModelMode(omnibox::ModelMode model) override {}
   void RecordModelSelectionAction(omnibox::ModelMode model) override {}
   void ActivateMetricsFunnel(const std::string& funnel_name) override {}
-  void ShouldShowDriveDisclaimer(
-      ShouldShowDriveDisclaimerCallback callback) override;
+  void GetDriveDisclaimerStatus(
+      GetDriveDisclaimerStatusCallback callback) override;
   void OnDriveDisclaimerAccepted() override;
   void OnDriveUploadClicked(OnDriveUploadClickedCallback callback) override;
   void GetPageClassification(GetPageClassificationCallback callback) override;

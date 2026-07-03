@@ -55,6 +55,8 @@ class WebUIBrowserWindow : public BrowserWindow,
   // Returns the WebUIBrowserWindow for a BrowserWindowInterface. If browser
   // does not use WebUIBrowserWindow, returns nullptr.
   static WebUIBrowserWindow* FromBrowser(BrowserWindowInterface* browser);
+  static const WebUIBrowserWindow* FromBrowser(
+      const BrowserWindowInterface* browser);
 
   // Returns the WebUIBrowserWindow for the given `window`.
   static WebUIBrowserWindow* FromNativeWindow(gfx::NativeWindow window);

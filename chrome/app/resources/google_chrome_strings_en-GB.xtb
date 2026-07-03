@@ -96,7 +96,6 @@ Some features may be unavailable and changes to preferences won't be saved.</tra
 <translation id="1953553007165777902">Downloading… <ph name="MINUTE" /> minute(s) remaining</translation>
 <translation id="1979600810166324878">Stay safer on the go with Enhanced Safe Browsing on Chrome for iOS</translation>
 <translation id="2001586581944147178">Make it harder for people with access to your Internet traffic to see which sites you visit. Chrome uses a secure connection to look up a site's IP address in the DNS (Domain Name System).</translation>
-<translation id="2008942457798486387">{NUM_EXTENSIONS,plural, =1{This extension is no longer supported. Chrome recommends that you remove it.}other{These extensions are no longer supported. Chrome recommends that you remove them.}}</translation>
 <translation id="2018528049276128029">Each profile holds its own Chrome info, like bookmarks, history, passwords and more</translation>
 <translation id="2018879682492276940">Installation failed. Please try again.</translation>
 <translation id="2024959665595762054">To use and save Chrome data in your Google Account, verify that it's you</translation>
@@ -192,6 +191,7 @@ If this page isn't working as expected, try allowing optimisation.</translation>
 <translation id="2945997411976714835">Install error: The installer process failed to start.</translation>
 <translation id="2969728957078202736"><ph name="PAGE_TITLE" /> – Network sign-in – Chrome</translation>
 <translation id="2970681950995291301">To remove your Google Account from Chrome, sign out of Chrome in the Settings page</translation>
+<translation id="2976869732253036751">Get price tracking alerts with Chrome on your phone</translation>
 <translation id="2991167882679440829">Your passwords and other Chrome data that you saved in your Google Account will be removed from this device. To use them again in Chrome, sign back in.</translation>
 <translation id="2994465299455873643">Provides encryption services and a secure way for recovering <ph name="BROWSER_NAME" /> if it gets out of date. If this service is disabled, <ph name="BROWSER_NAME" /> may lose access to encrypted data, and <ph name="BROWSER_NAME" /> may not be able to recover itself.</translation>
 <translation id="3003694935412297923">All tasks</translation>
@@ -388,6 +388,7 @@ If this page isn't working as expected, try allowing optimisation.</translation>
 <translation id="5127558335897923940">Keep Chrome in your Dock to get to it quickly at any time</translation>
 <translation id="5132929315877954718">Discover great apps, games, extensions and themes for Google Chrome.</translation>
 <translation id="5139423532931106058">Customise your Chrome profile</translation>
+<translation id="5152381187352661267">Skills in Chrome</translation>
 <translation id="5163087008893166964">Welcome to Chrome; new browser window opened</translation>
 <translation id="5166439563123238795">Chrome needs permission to track your hands</translation>
 <translation id="5169778651486082413">Use your passwords with Chrome on your phone</translation>
@@ -487,6 +488,7 @@ Google Chrome is unable to recover your settings.</translation>
 <translation id="6070348360322141662">For added security, Google Chrome will encrypt your data</translation>
 <translation id="6075300983329039771">Your organisation, <ph name="MANAGER" />, requires you to sign in to Chrome</translation>
 <translation id="6113794647360055231">Chrome just got better</translation>
+<translation id="6116004140911290070">Enable skills in Chrome</translation>
 <translation id="6116252277240876590">This language is used to display menus, settings, alerts and other text in Chrome</translation>
 <translation id="6127237283587442951">Use Chrome by default and get it pinned</translation>
 <translation id="6134085236017727171">To use your microphone, give Chrome access in <ph name="BEGIN_LINK" />system settings<ph name="END_LINK" /></translation>
@@ -646,6 +648,7 @@ Google Chrome is unable to recover your settings.</translation>
 <translation id="7606334485649076285">Google Chrome OS Flex</translation>
 <translation id="7627609214560473136">To protect your data, let Chrome remove permissions from sites that you haven't visited recently.</translation>
 <translation id="7629695634924605473">Chrome lets you know if your passwords are ever compromised</translation>
+<translation id="7629898584100520089">AI innovations like skills are saved to your Google Account and managed separately from Chrome Sync</translation>
 <translation id="7641148173327520642">Your system administrator has configured Google Chrome to open <ph name="ALTERNATIVE_BROWSER_NAME" /> to access <ph name="TARGET_URL_HOSTNAME" />.</translation>
 <translation id="7649070708921625228">Help</translation>
 <translation id="7651907282515937834">Chrome Enterprise logo</translation>

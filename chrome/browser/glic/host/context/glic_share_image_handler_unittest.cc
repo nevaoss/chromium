@@ -244,9 +244,7 @@ TEST_F(GlicShareImageHandlerTest, SawNavigationDidNotCompleteOnboarding) {
 
   histogram_tester_.ExpectBucketCount(
       "Glic.TabContext.ShareImageResult",
-      static_cast<int>(
-          ShareImageResult::kFailedSawNavigationDidNotCompleteOnboarding),
-      1);
+      static_cast<int>(ShareImageResult::kFailedSawNavigation), 1);
 }
 
 TEST_F(GlicShareImageHandlerTest, OnInvokeErrorUnknown) {
@@ -305,9 +303,7 @@ TEST_F(GlicShareImageHandlerTest, OnInvokeErrorTimeoutNotConsented) {
   OnInvokeError(GlicInvokeError::kTimeout);
   histogram_tester_.ExpectBucketCount(
       "Glic.TabContext.ShareImageResult",
-      static_cast<int>(
-          ShareImageResult::kFailedTimedOutDidNotCompleteOnboarding),
-      1);
+      static_cast<int>(ShareImageResult::kFailedTimedOut), 1);
 }
 
 TEST_F(GlicShareImageHandlerTest, OnInvokeErrorInvalidTab) {

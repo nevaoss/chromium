@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "base/byte_count.h"
@@ -103,7 +104,8 @@ class ManifestAssetManager : public UsageTracker::Observer {
   std::vector<mojom::BrokerAssetInfoPtr> GetBrokerAssets() const;
 
   // Returns a list of models for the broker state info.
-  std::vector<mojom::BrokerModelInfoPtr> GetBrokerModels() const;
+  std::vector<std::pair<mojom::BrokerModelInfoPtr, base::FilePath>>
+  GetBrokerModels() const;
 
   // Returns whether the component installation is valid.
   static bool VerifyInstallation(const base::FilePath& install_dir,
@@ -121,6 +123,9 @@ class ManifestAssetManager : public UsageTracker::Observer {
   void InstallerRegistered(const std::string& public_key,
                            const std::string& version,
                            bool is_already_installed);
+
+  // Uninstalls all models and clears active/background download requirements.
+  void UninstallModels();
 
  private:
   enum class ComponentState {
@@ -251,6 +256,7 @@ class ManifestAssetManager : public UsageTracker::Observer {
   void NotifyFactory(const std::string& public_key,
                      const ComponentContext& context);
 
+  const raw_ref<PrefService> local_state_;
   const raw_ref<UsageTracker> usage_tracker_;
   const raw_ref<Delegate> delegate_;
   raw_ptr<component_updater::ComponentUpdateService> component_update_service_;

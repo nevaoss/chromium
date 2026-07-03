@@ -269,6 +269,7 @@
 <translation id="1407135791313364759">Открыть все</translation>
 <translation id="1408696301184924537">Чтобы в следующий раз этот код IBAN подставился автоматически, сохраните его в аккаунте Google.</translation>
 <translation id="1408787208417187241">Три скобы сверху</translation>
+<translation id="1410306713026702438"><ph name="SUGGESTION_TITLE" />, <ph name="SUGGESTION_DESCRIPTION" />. <ph name="SUGGESTION_TYPE" />. <ph name="MATCH_POSITION" /> из <ph name="NUM_MATCHES_IN_GROUP" /> в группе "<ph name="GROUP_HEADER" />".</translation>
 <translation id="1410365862999780287">Другие пользователи этого устройства не увидят, что вы делали, поэтому вы можете пользоваться браузером с большей приватностью. Сайты, которые вы посещаете, и используемые ими сервисы, в том числе продукты Google, продолжат собирать данные как прежде. Новые закладки, скачанные файлы и страницы в списке для чтения будут сохранены.</translation>
 <translation id="1410941016594047814">Конверт Invite</translation>
 <translation id="1413235258620101697">CVC-код этой карты будет зашифрован и сохранен в Google Кошельке, чтобы вы могли оплачивать покупки быстрее.</translation>
@@ -660,6 +661,7 @@
 <translation id="2045871135676061132">Конверт Personal</translation>
 <translation id="2046951263634619614">Книжные магазины</translation>
 <translation id="2048261947532620704">Перевод страницы…</translation>
+<translation id="2055016614992422886">Чат</translation>
 <translation id="2059166748188874810">Муниципалитет</translation>
 <translation id="2059202684901022309">22 x 34 дюйма</translation>
 <translation id="2064568741209980952">Кредиты и займы</translation>
@@ -1387,6 +1389,7 @@
 <translation id="3158539265159265653">Диск</translation>
 <translation id="3162070126914310576">Сейчас это устройство нельзя зарегистрировать, так как ваше организационное подразделение достигло начального лимита на регистрацию. Обратитесь за помощью к администратору.</translation>
 <translation id="3162559335345991374">Возможно, вам нужно перейти на страницу входа сети Wi-Fi.</translation>
+<translation id="316542773973815724">Навигация</translation>
 <translation id="316638481603975524">Может запрашивать разрешение на установку веб-приложений</translation>
 <translation id="3166788340998560642">Chrome предложит сохранить их в сервисе "<ph name="IDS_AUTOFILL_GOOGLE_WALLET_TITLE" />", когда вы в следующий раз укажете эти сведения.</translation>
 <translation id="3168744840365648658">Радиотехника</translation>
@@ -3555,6 +3558,7 @@
 <translation id="6550245281449521513">Блокировка мыши запрещена</translation>
 <translation id="6551737294564628267"><ph name="ATTRIBUTE_NAME" />, новый атрибут</translation>
 <translation id="6552566579578780089">Способы оплаты</translation>
+<translation id="6553777254569586547"><ph name="SUGGESTION_TITLE" />. <ph name="SUGGESTION_TYPE" />. <ph name="MATCH_POSITION" /> из <ph name="NUM_MATCHES_IN_GROUP" /> в группе "<ph name="GROUP_HEADER" />".</translation>
 <translation id="6554732001434021288">Последнее посещение: <ph name="NUM_DAYS" /> дн. назад</translation>
 <translation id="6556866813142980365">Повторить</translation>
 <translation id="6557715786897013164">14 x 17 дюймов</translation>
@@ -3758,7 +3762,6 @@
 <translation id="6893057134494550310">Пленка для ламинирования</translation>
 <translation id="6893204630281237373">Чтобы отключить платежное приложение в Chrome, откройте <ph name="BEGIN_LINK1" />платежные настройки<ph name="END_LINK1" />.</translation>
 <translation id="6895330447102777224">Ваша карта подтверждена</translation>
-<translation id="6895573608763679343"><ph name="SUGGESTION_TITLE" />, <ph name="SUGGESTION_DESCRIPTION" />, <ph name="MATCH_POSITION" /> из <ph name="NUM_MATCHES_IN_GROUP" /> в группе "<ph name="GROUP_HEADER" />".</translation>
 <translation id="6896758677409633944">Скопировать</translation>
 <translation id="6897140037006041989">User Agent</translation>
 <translation id="6898699227549475383">Организация (O)</translation>
@@ -4122,7 +4125,6 @@
 <translation id="7450577240311017924">Кнопка "Настройки синхронизации". Нажмите ее, чтобы задать параметры синхронизации в настройках Chrome.</translation>
 <translation id="7451311239929941790"><ph name="BEGIN_LINK" />Узнайте больше<ph name="END_LINK" /> об этой проблеме.</translation>
 <translation id="745208957946308667">Игра Chrome Dino. Чтобы начать, нажмите Пробел.</translation>
-<translation id="74521886886364465"><ph name="SUGGESTION_TITLE" />, <ph name="MATCH_POSITION" /> из <ph name="NUM_MATCHES_IN_GROUP" /> в группе "<ph name="GROUP_HEADER" />".</translation>
 <translation id="7453032093368223821">Изменить другие данные</translation>
 <translation id="7453849010505253492">Мы не смогли убедиться в подлинности сервера <ph name="DOMAIN" />, так как браузер Chrome или система шифрования веб-трафика считает предоставленный им сертификат безопасности ненадежным. Возможно, сервер настроен неправильно или кто-то пытается перехватить ваши данные. <ph name="BEGIN_VIEW_CERTIFICATE_LINK" />Показать сертификат<ph name="END_VIEW_CERTIFICATE_LINK" /></translation>
 <translation id="7454377933424667109">Аккаунт Google Cloud</translation>
@@ -4584,7 +4586,7 @@
 <translation id="8163866351304776260">Четыре отверстия слева</translation>
 <translation id="8164078261547504572">Хотите получать электронные письма о снижении цен?</translation>
 <translation id="8169175551046720804">Ключи <ph name="DATA_CONTROLS_KEYS" /> невозможно добавить в тот же словарь.</translation>
-<translation id="8174047975335711832">Сведения об устройстве</translation>
+<translation id="8174047975335711832">Информация об устройстве</translation>
 <translation id="8175053171643471349">Настроить карты постоянного клиента</translation>
 <translation id="8175796834047840627">Chrome предлагает вам сохранить карты в аккаунте Google, поскольку вы вошли в систему. Этот параметр можно изменить в разделе настроек.</translation>
 <translation id="8176440868214972690">Администратор устройства отправил на следующие веб-сайты некоторые данные, такие как настройки и правила.</translation>

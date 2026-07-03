@@ -53,6 +53,18 @@ class FilterUiControllerTestApi {
     controller_->OnFaviconAvailable(suggestion, result);
   }
 
+  bool IsCommandIdChecked(int command_id) const {
+    return controller_->IsCommandIdChecked(command_id);
+  }
+
+  bool IsCommandIdEnabled(int command_id) const {
+    return controller_->IsCommandIdEnabled(command_id);
+  }
+
+  void ExecuteCommand(int command_id, int event_flags) {
+    controller_->ExecuteCommand(command_id, event_flags);
+  }
+
  private:
   const base::raw_ref<FilterUiController> controller_;
 };

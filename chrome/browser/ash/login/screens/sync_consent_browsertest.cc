@@ -299,7 +299,7 @@ class SyncConsentTest : public OobeBaseTest {
     AccountInfo account_info =
         identity_manager->FindExtendedAccountInfoByGaiaId(
             GaiaId(test::kTestGaiaId));
-    AccountCapabilitiesTestMutator mutator(&account_info.capabilities);
+    AccountCapabilitiesTestMutator mutator(&account_info);
     mutator.set_can_show_history_sync_opt_ins_without_minor_mode_restrictions(
         !is_minor_user);
     signin::UpdateAccountInfoForAccount(identity_manager, account_info);

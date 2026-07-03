@@ -140,8 +140,10 @@ FileSystemFileInfosToDragItemFileSystemFilePtr(
     storage::FileSystemURL file_system_url =
         file_system_access_manager->context()->CrackURLInFirstPartyContext(
             file_system_file.url);
-    DCHECK(file_system_url.type() != storage::kFileSystemTypePersistent);
-    DCHECK(file_system_url.type() != storage::kFileSystemTypeTemporary);
+    CHECK(file_system_url.type() != storage::kFileSystemTypePersistent,
+          base::NotFatalUntil::M152);
+    CHECK(file_system_url.type() != storage::kFileSystemTypeTemporary,
+          base::NotFatalUntil::M152);
 
     std::string uuid = base::Uuid::GenerateRandomV4().AsLowercaseString();
 
@@ -190,7 +192,7 @@ blink::mojom::DragDataPtr DropDataToDragData(
     int child_id,
     scoped_refptr<ChromeBlobStorageContext> chrome_blob_storage_context) {
   // These fields are currently unused when dragging into Blink.
-  DCHECK(!drop_data.download_metadata.has_value());
+  CHECK(!drop_data.download_metadata.has_value(), base::NotFatalUntil::M152);
 
   std::vector<blink::mojom::DragItemPtr> items;
   if (drop_data.text) {
@@ -344,7 +346,7 @@ blink::mojom::DragDataPtr DropMetaDataToDragData(
 
 DropData DragDataToDropData(const blink::mojom::DragData& drag_data) {
   // This field should be empty when dragging from the renderer.
-  DCHECK(!drag_data.file_system_id);
+  CHECK(!drag_data.file_system_id, base::NotFatalUntil::M152);
 
   DropData result;
   if (drag_data.source_effect_allowed.has_value()) {
@@ -425,7 +427,8 @@ DropData DragDataToDropData(const blink::mojom::DragData& drag_data) {
         const blink::mojom::DragItemFileSystemFilePtr& file_system_file_item =
             item->get_file_system_file();
         // This field should be empty when dragging from the renderer.
-        DCHECK(!file_system_file_item->file_system_id);
+        CHECK(!file_system_file_item->file_system_id,
+              base::NotFatalUntil::M152);
 
         DropData::FileSystemFileInfo info;
         info.url = file_system_file_item->url;

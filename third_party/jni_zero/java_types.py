@@ -76,6 +76,11 @@ _DEFAULT_VALUE_BY_PRIMITIVE_TYPE = {
 PRIMITIVES = frozenset(_DEFAULT_VALUE_BY_PRIMITIVE_TYPE)
 
 
+def SetUseJniPrimitiveTypes():
+  """Use jint rather than int32_t."""
+  CPP_UNDERLYING_TYPE_BY_JAVA_TYPE = CPP_TYPE_BY_JAVA_TYPE
+
+
 @dataclasses.dataclass(frozen=True, order=True)
 class JavaClass:
   """Represents a reference type."""

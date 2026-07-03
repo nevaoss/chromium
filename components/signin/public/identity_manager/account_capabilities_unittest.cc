@@ -162,7 +162,7 @@ TEST_F(AccountCapabilitiesTest, CanSignInToChrome) {
 
 TEST_F(AccountCapabilitiesTest, MustFetchAppleAgeRangeInChrome) {
   base::test::ScopedFeatureList feature_list{
-      switches::kEnforceMustFetchAppleAgeRangeInChromeCapability};
+      switches::kBuildExternalPrivacyContext};
   AccountCapabilities capabilities;
   EXPECT_EQ(capabilities.must_fetch_apple_age_range_in_chrome(),
             signin::Tribool::kUnknown);
@@ -179,7 +179,7 @@ TEST_F(AccountCapabilitiesTest, MustFetchAppleAgeRangeInChrome) {
 
 TEST_F(AccountCapabilitiesTest, MustSkipAppleAgeRangeInChrome) {
   base::test::ScopedFeatureList feature_list{
-      switches::kEnforceMustSkipAppleAgeRangeInChromeCapability};
+      switches::kBuildExternalPrivacyContext};
   AccountCapabilities capabilities;
   EXPECT_EQ(capabilities.must_skip_apple_age_range_in_chrome(),
             signin::Tribool::kUnknown);
@@ -449,6 +449,21 @@ TEST_F(AccountCapabilitiesTest,
       capabilities
           .is_subject_to_chrome_privacy_sandbox_restricted_measurement_notice(),
       signin::Tribool::kFalse);
+}
+
+TEST_F(AccountCapabilitiesTest, SupportsWalletPrivatePassesInAutofill) {
+  AccountCapabilities capabilities;
+  EXPECT_EQ(capabilities.supports_wallet_private_passes_in_autofill(),
+            signin::Tribool::kUnknown);
+
+  AccountCapabilitiesTestMutator mutator(&capabilities);
+  mutator.set_supports_wallet_private_passes_in_autofill(true);
+  EXPECT_EQ(capabilities.supports_wallet_private_passes_in_autofill(),
+            signin::Tribool::kTrue);
+
+  mutator.set_supports_wallet_private_passes_in_autofill(false);
+  EXPECT_EQ(capabilities.supports_wallet_private_passes_in_autofill(),
+            signin::Tribool::kFalse);
 }
 
 TEST_F(AccountCapabilitiesTest, AreAnyCapabilitiesKnown_Empty) {

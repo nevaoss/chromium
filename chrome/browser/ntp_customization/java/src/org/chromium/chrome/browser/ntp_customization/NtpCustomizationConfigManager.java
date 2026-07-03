@@ -301,16 +301,21 @@ public class NtpCustomizationConfigManager {
      */
     public void onBackgroundDataChanged(Context context, NtpBackgroundDataBase backgroundData) {
         // TODO(https://crbug.com/488439751): handles the rest background data types.
+        boolean saveUserSelectedBackgroundType = false;
         if (backgroundData instanceof NtpBackgroundDataColor ntpBackgroundDataColor) {
             if (ntpBackgroundDataColor.getThemeColorId() == NtpThemeColorId.DEFAULT) {
                 onBackgroundReset();
             } else {
-                onBackgroundColorChanged(context, ntpBackgroundDataColor.getNtpThemeColorInfo());
+                onBackgroundColorChanged(context, backgroundData);
+                saveUserSelectedBackgroundType = true;
             }
-        } else if (backgroundData
-                instanceof NtpBackgroundDataCustomizedColor ntpBackgroundDataCustomizedColor) {
-            onBackgroundColorChanged(
-                    context, ntpBackgroundDataCustomizedColor.getNtpThemeColorFromHexInfo());
+        } else if (backgroundData.getBackgroundType() == NtpBackgroundType.COLOR_FROM_HEX) {
+            onBackgroundColorChanged(context, backgroundData);
+            saveUserSelectedBackgroundType = true;
+        }
+
+        if (saveUserSelectedBackgroundType) {
+            maybeSaveUserSelectedBackgroundTypeToSharedPreference(context, backgroundData);
         }
     }
 
@@ -397,9 +402,13 @@ public class NtpCustomizationConfigManager {
      * default color: delete the color key from the SharedPreference.
      *
      * @param context : The current Activity context.
-     * @param colorInfo : The new NTP's background color.
+     * @param backgroundData : The selected NTP background theme data.
      */
-    public void onBackgroundColorChanged(Context context, NtpThemeColorInfo colorInfo) {
+    private void onBackgroundColorChanged(Context context, NtpBackgroundDataBase backgroundData) {
+        NtpThemeColorInfo colorInfo =
+                NtpThemeColorUtils.getNtpThemeColorInfoFromNtpBackgroundData(backgroundData);
+        if (colorInfo == null) return;
+
         @NtpBackgroundType
         int backgroundType =
                 colorInfo instanceof NtpThemeColorFromHexInfo
@@ -416,16 +425,10 @@ public class NtpCustomizationConfigManager {
         @NtpBackgroundType int oldType = mBackgroundType;
         mBackgroundType = backgroundType;
         NtpCustomizationUtils.setNtpBackgroundTypeToSharedPreference(mBackgroundType);
-        boolean saveUserSelectedBackgroundType = false;
+
+        mNtpBackgroundData = backgroundData;
 
         if (mBackgroundType == NtpBackgroundType.CHROME_COLOR) {
-            mNtpBackgroundData =
-                    new NtpBackgroundDataColor(
-                            PlatformType.ANDROID_LOCAL,
-                            NtpCustomizationUtils
-                                    .getIsChromeColorDailyRefreshEnabledFromSharedPreference(),
-                            colorInfo);
-
             cleanupImageInfoAndNotifyBackgroundColorChangeImpl(context, oldType);
 
             NtpCustomizationUtils.setNtpThemeColorIdToSharedPreference(assumeNonNull(colorInfo).id);
@@ -434,22 +437,12 @@ public class NtpCustomizationConfigManager {
                     TimeUtils.currentTimeMillis(),
                     mBackgroundType,
                     /* customBackgroundInfo= */ null);
-            saveUserSelectedBackgroundType = true;
         }
 
         if (colorInfo instanceof NtpThemeColorFromHexInfo colorFromHexInfo) {
-            mNtpBackgroundData =
-                    new NtpBackgroundDataCustomizedColor(
-                            PlatformType.ANDROID_LOCAL, colorFromHexInfo);
-
             cleanupImageInfoAndNotifyBackgroundColorChangeImpl(context, oldType);
 
             NtpCustomizationUtils.saveThemeColorFromHexInfoToSharedPreference(colorFromHexInfo);
-            saveUserSelectedBackgroundType = true;
-        }
-
-        if (saveUserSelectedBackgroundType) {
-            maybeSaveUserSelectedBackgroundTypeToSharedPreference(context, mNtpBackgroundData);
         }
     }
 

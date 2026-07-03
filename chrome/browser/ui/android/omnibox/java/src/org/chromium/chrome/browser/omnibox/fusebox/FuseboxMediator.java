@@ -21,6 +21,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.SystemClock;
 import android.provider.MediaStore;
+import android.text.TextUtils;
 import android.view.View;
 
 import androidx.annotation.VisibleForTesting;
@@ -122,6 +123,10 @@ import java.util.function.Supplier;
             ObservableSuppliers.createNonNull(false);
     private final NullableObservableSupplier<GURL> mExactMatchUrlSupplier;
     private final Callback<@Nullable GURL> mOnExactMatchUrlChanged = this::onExactMatchUrlChanged;
+    private final SettableNonNullObservableSupplier<Boolean> mActivationChipVisibilitySupplier;
+    private final Runnable mOnActivationChipClickedWithQuery;
+    private final Runnable mClearUrlBarTextRunnable;
+    private final Supplier<String> mUrlBarTextSupplier;
 
     private boolean mIsTextWrapping;
     private boolean mHasContextualTasksFocus;
@@ -162,7 +167,11 @@ import java.util.function.Supplier;
             Supplier<@Nullable View> scrimAnchorViewSupplier,
             BackPressManager backPressManager,
             @Nullable Runnable onFirstPickerInteractionCanceledCallback,
-            NullableObservableSupplier<GURL> exactMatchUrlSupplier) {
+            NullableObservableSupplier<GURL> exactMatchUrlSupplier,
+            SettableNonNullObservableSupplier<Boolean> activationChipVisibilitySupplier,
+            Runnable onActivationChipClickedWithQuery,
+            Runnable clearUrlBarTextRunnable,
+            Supplier<String> urlBarTextSupplier) {
         mContext = context;
         mWindowAndroid = windowAndroid;
         mPermissionDelegate = windowAndroid;
@@ -179,6 +188,10 @@ import java.util.function.Supplier;
         mOnFirstPickerInteractionCanceledCallback = onFirstPickerInteractionCanceledCallback;
         mExactMatchUrlSupplier = exactMatchUrlSupplier;
         mExactMatchUrlSupplier.addSyncObserver(mOnExactMatchUrlChanged);
+        mActivationChipVisibilitySupplier = activationChipVisibilitySupplier;
+        mOnActivationChipClickedWithQuery = onActivationChipClickedWithQuery;
+        mClearUrlBarTextRunnable = clearUrlBarTextRunnable;
+        mUrlBarTextSupplier = urlBarTextSupplier;
 
         // Create the upload failed snackbar.
         mAttachmentUploadFailedSnackbar =
@@ -188,7 +201,7 @@ import java.util.function.Supplier;
                         Snackbar.TYPE_NOTIFICATION,
                         Snackbar.UMA_FUSEBOX_UPLOAD_FAILED);
 
-        mModel.set(FuseboxProperties.BUTTON_ADD_CLICKED, this::onPlusButtonClicked);
+        mModel.set(FuseboxProperties.PLUS_BUTTON_CLICKED, this::onPlusButtonClicked);
         mModel.set(FuseboxProperties.REQUEST_TYPE_BUTTON_CLICKED, this::onRequestTypeButtonClicked);
         mModel.set(FuseboxProperties.ACTIVATION_CHIP_CLICKED, this::onActivationChipClicked);
 
@@ -503,7 +516,7 @@ import java.util.function.Supplier;
         }
         mFuseboxStateSupplier.set(targetState);
         mModel.set(FuseboxProperties.FUSEBOX_STATE, targetState);
-        mModel.set(FuseboxProperties.ADD_BUTTON_VISIBLE, targetState == FuseboxState.EXPANDED);
+        mModel.set(FuseboxProperties.PLUS_BUTTON_VISIBLE, targetState == FuseboxState.EXPANDED);
         mModel.set(FuseboxProperties.REQUEST_TYPE_BUTTON_VISIBLE, showRequestTypeButton);
     }
 
@@ -994,6 +1007,11 @@ import java.util.function.Supplier;
                         && mInput.getSiteSearchData() == null
                         && (mExactMatchUrlSupplier.get() == null);
         mModel.set(FuseboxProperties.ACTIVATION_CHIP_VISIBLE, showActivationChip);
+        mActivationChipVisibilitySupplier.set(showActivationChip);
+    }
+
+    void onActivationChipSelectionChanged(boolean selected) {
+        mModel.set(FuseboxProperties.ACTIVATION_CHIP_SELECTED, selected);
     }
 
     private void updatePopupButtonEnabledStates() {
@@ -1183,10 +1201,24 @@ import java.util.function.Supplier;
                 /* errorId= */ android.R.string.cancel);
     }
 
-    private void onActivationChipClicked() {
+    void onActivationChipClicked() {
         if (!isInInputSession()) return;
         mInput.setAutocompleteState(AutocompleteState.ENABLED);
+
+        // TODO(https://crbug.com/520528598): Remove current text supplier once AutocompleteInput
+        // has uncommitted text, and use that instead.
+        String currentUrlBarText = mUrlBarTextSupplier.get();
+        String initialUserText = mInput.getInitialUserText();
         activateAiMode(AutocompleteRequestType.AI_MODE, AiModeActivationSource.DEDICATED_BUTTON);
+        if (TextUtils.isEmpty(currentUrlBarText)
+                || TextUtils.equals(currentUrlBarText, initialUserText)) {
+            mClearUrlBarTextRunnable.run();
+        } else {
+            // TODO(https://crbug.com/520528598): Call commit on the AutocompleteInput and then
+            // reimplement this runnable to navigate via the current input state, instead of reading
+            // from the views.
+            mOnActivationChipClickedWithQuery.run();
+        }
     }
 
     @VisibleForTesting

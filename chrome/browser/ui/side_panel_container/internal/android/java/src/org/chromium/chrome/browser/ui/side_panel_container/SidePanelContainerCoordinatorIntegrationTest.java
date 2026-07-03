@@ -81,6 +81,9 @@ public class SidePanelContainerCoordinatorIntegrationTest {
         ChromeTabUtils.waitForTabPageLoaded(mResponsivePageStation.getTab(), responsivePageUrl);
 
         mOnAnimationFinishedCallbackMock = result -> {};
+
+        var coordinator = getSidePanelContainerCoordinator();
+        coordinator.clearSidePanelCoordinatorAndroidForTesting();
     }
 
     @Test

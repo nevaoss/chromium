@@ -195,6 +195,9 @@ class UserCloudPolicyManagerAsh
   // Return the ReportScheduler used to report usage data to the server.
   enterprise_reporting::ReportScheduler* GetReportSchedulerForTesting();
 
+  // Return the CloudPolicyStore used to store extension install policy.
+  CloudPolicyStore* extension_install_store();
+
   static void EnsureFactoryBuilt();
 
  protected:

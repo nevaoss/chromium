@@ -964,7 +964,7 @@ TEST_F(VisibleUnitsLineTest, InSameLineSkippingEmptyEditableDiv) {
 }
 
 TEST_F(VisibleUnitsLineTest, InSameLineWithMixedEditability) {
-  SelectionInDOMTree selection =
+  SelectionInDomTree selection =
       SetSelectionTextToBody("<span contenteditable>f^oo</span>b|ar");
 
   PositionWithAffinity position1(selection.Anchor());
@@ -1002,7 +1002,7 @@ TEST_F(VisibleUnitsLineTest, InSameLineWithSoftLineWrap) {
   // Note: "contenteditable" adds
   //    line-break: after-white-space;
   //    overflow-wrap: break-word;
-  const SelectionInDOMTree& selection =
+  const SelectionInDomTree& selection =
       SetSelectionTextToBody("<p contenteditable id=t>abc |xyz</p>");
   EXPECT_FALSE(InSameLine(
       PositionWithAffinity(selection.Anchor(), TextAffinity::kUpstream),
@@ -1014,7 +1014,7 @@ TEST_F(VisibleUnitsLineTest, InSameLineWithZeroWidthSpace) {
   InsertStyleElement(
       "p { font: 10px/1 Ahem; }"
       "p { width: 4ch; }");
-  const SelectionInDOMTree& selection =
+  const SelectionInDomTree& selection =
       SetSelectionTextToBody("<p id=t>abcd^\u200B|wxyz</p>");
 
   const Position& after_zws = selection.Focus();

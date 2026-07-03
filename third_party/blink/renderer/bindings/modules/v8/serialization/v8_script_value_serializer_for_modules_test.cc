@@ -369,7 +369,8 @@ T SubtleCryptoSync(V8TestingScope& scope, PMF func, Args&&... args) {
                 *out = result;
                 std::move(quit_closure).Run();
               },
-              Unretained(&result), run_loop.QuitClosure())),
+              blink::subtle::UnretainedException(&result),
+              run_loop.QuitClosure())),
       scheduler::GetSingleThreadTaskRunnerForTesting());
   // The promise may resolve synchronously.
   scope.PerformMicrotaskCheckpoint();
@@ -409,7 +410,7 @@ std::vector<uint8_t> SyncEncrypt(V8TestingScope& scope,
                                  const WebCryptoAlgorithm& algorithm,
                                  const WebCryptoKey& key,
                                  std::vector<unsigned char> data) {
-  return SubtleCryptoSync<std::vector<uint8_t>, IDLAny>(
+  return SubtleCryptoSync<std::vector<uint8_t>, DOMArrayBuffer>(
       scope, &WebCrypto::Encrypt, algorithm, key, data);
 }
 
@@ -417,7 +418,7 @@ std::vector<uint8_t> SyncDecrypt(V8TestingScope& scope,
                                  const WebCryptoAlgorithm& algorithm,
                                  const WebCryptoKey& key,
                                  std::vector<unsigned char> data) {
-  return SubtleCryptoSync<std::vector<uint8_t>, IDLAny>(
+  return SubtleCryptoSync<std::vector<uint8_t>, DOMArrayBuffer>(
       scope, &WebCrypto::Decrypt, algorithm, key, data);
 }
 
@@ -425,7 +426,7 @@ std::vector<uint8_t> SyncSign(V8TestingScope& scope,
                               const WebCryptoAlgorithm& algorithm,
                               const WebCryptoKey& key,
                               std::vector<unsigned char> message) {
-  return SubtleCryptoSync<std::vector<uint8_t>, IDLAny>(
+  return SubtleCryptoSync<std::vector<uint8_t>, DOMArrayBuffer>(
       scope, &WebCrypto::Sign, algorithm, key, message);
 }
 

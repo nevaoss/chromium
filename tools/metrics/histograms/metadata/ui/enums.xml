@@ -78,6 +78,7 @@ chromium-metrics-reviews@google.com.
   <int value="29" label="Search web for... in new tab"/>
   <int value="31" label="Open link in split view"/>
   <int value="32" label="Create image with Gemini in Chrome"/>
+  <int value="33" label="Remove from dictionary"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/renderer_context_menu/render_view_context_menu.cc:ContextMenuOptionDesktop) -->
@@ -367,6 +368,7 @@ chromium-metrics-reviews@google.com.
   <int value="164" label="IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE"/>
   <int value="165" label="IDC_CONTENT_CONTEXT_DICTATION"/>
   <int value="166" label="IDC_CONTENT_CONTEXT_ADD_LINK_TO_READING_LIST"/>
+  <int value="167" label="IDC_SPELLCHECK_REMOVE_FROM_DICTIONARY"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/renderer_context_menu/render_view_context_menu.cc:RenderViewContextMenuItem) -->
@@ -906,6 +908,7 @@ chromium-metrics-reviews@google.com.
   <int value="275260142" label="chrome://eoc-internals/"/>
   <int value="296428820" label="chrome-untrusted://lens-overlay/"/>
   <int value="325375649" label="chrome://settings-frame/"/>
+  <int value="354948668" label="chrome://signin-qrcode-bar/"/>
   <int value="361250371" label="chrome://nearby/"/>
   <int value="361621847" label="chrome://make-metro/"/>
   <int value="372516928" label="chrome://histograms/"/>
@@ -1061,7 +1064,6 @@ chromium-metrics-reviews@google.com.
   <int value="1846714330" label="chrome://sanitize/"/>
   <int value="1878438412" label="chrome://tabs-from-other-devices.top-chrome/"/>
   <int value="1887784693" label="chrome://policy/"/>
-  <int value="1906728906" label="chrome://privacy-sandbox-internals/"/>
   <int value="1914132589" label="chrome-untrusted://boca-app/"/>
   <int value="1918190389" label="chrome-untrusted://projector-annotator/"/>
   <int value="1926101309" label="chrome://cryptohome/"/>

@@ -136,6 +136,10 @@ export class PowerBookmarksContextMenuElement extends CrLitElement {
   }
 
   protected getMenuItemsForBookmarks_(): MenuItem[] {
+    if (this.bookmarks_.length === 0) {
+      return [];
+    }
+    const firstBookmark = this.bookmarks_[0]!;
     // TODO(crbug.com/40262319): Factor in URLs not available in incognito.
     let bookmarkCount = 0;
     // Filter out undefined bookmarks which might exist temporarily as the
@@ -166,7 +170,7 @@ export class PowerBookmarksContextMenuElement extends CrLitElement {
       },
     ];
 
-    if (bookmarkCount === 1 && this.bookmarks_[0].url) {
+    if (bookmarkCount === 1 && firstBookmark.url) {
       menuItems.push({
         id: MenuItemId.OPEN_SPLIT_VIEW,
         label: loadTimeData.getString('menuOpenSplitView'),
@@ -186,7 +190,7 @@ export class PowerBookmarksContextMenuElement extends CrLitElement {
       });
     }
 
-    if (this.bookmarks_.length !== 1 || !this.bookmarks_[0].url) {
+    if (this.bookmarks_.length !== 1 || !firstBookmark.url) {
       menuItems.push({
         id: MenuItemId.OPEN_NEW_TAB_GROUP,
         label: bookmarkCount < 2 ?
@@ -211,14 +215,13 @@ export class PowerBookmarksContextMenuElement extends CrLitElement {
           },
       );
       return menuItems;
-    } else if (
-        this.bookmarks_[0].id === loadTimeData.getString('bookmarksBarId')) {
+    } else if (firstBookmark.id === loadTimeData.getString('bookmarksBarId')) {
       return menuItems;
     }
 
-    if (this.bookmarks_.length === 1 && !this.bookmarks_[0].url &&
+    if (this.bookmarks_.length === 1 && !firstBookmark.url &&
         loadTimeData.getBoolean('menuSimplification')) {
-      const folder = this.bookmarks_[0];
+      const folder = firstBookmark;
       const bookmarkCount = folder.children ?
           folder.children.filter(child => !!child.url).length :
           0;
@@ -285,33 +288,29 @@ export class PowerBookmarksContextMenuElement extends CrLitElement {
       return revisedItems;
     }
 
-    if (this.bookmarks_[0].url ||
-        this.bookmarks_[0].parentId ===
-            loadTimeData.getString('bookmarksBarId') ||
-        this.bookmarks_[0].parentId ===
-            loadTimeData.getString('otherBookmarksId') ||
-        this.bookmarks_[0].parentId ===
+    if (firstBookmark.url ||
+        firstBookmark.parentId === loadTimeData.getString('bookmarksBarId') ||
+        firstBookmark.parentId === loadTimeData.getString('otherBookmarksId') ||
+        firstBookmark.parentId ===
             loadTimeData.getString('mobileBookmarksId')) {
       menuItems.push({id: MenuItemId.DIVIDER});
     }
 
-    if (this.bookmarks_[0].url) {
+    if (firstBookmark.url) {
       menuItems.push({
         id: MenuItemId.EDIT,
         label: loadTimeData.getString('menuEdit'),
       });
     }
 
-    if (this.bookmarks_[0].parentId ===
-        loadTimeData.getString('bookmarksBarId')) {
+    if (firstBookmark.parentId === loadTimeData.getString('bookmarksBarId')) {
       menuItems.push({
         id: MenuItemId.REMOVE_FROM_BOOKMARKS_BAR,
         label: loadTimeData.getString('menuMoveToAllBookmarks'),
       });
     } else if (
-        this.bookmarks_[0].parentId ===
-            loadTimeData.getString('otherBookmarksId') ||
-        this.bookmarks_[0].parentId ===
+        firstBookmark.parentId === loadTimeData.getString('otherBookmarksId') ||
+        firstBookmark.parentId ===
             loadTimeData.getString('mobileBookmarksId')) {
       menuItems.push({
         id: MenuItemId.ADD_TO_BOOKMARKS_BAR,
@@ -333,7 +332,7 @@ export class PowerBookmarksContextMenuElement extends CrLitElement {
 
     menuItems.push({id: MenuItemId.DIVIDER});
 
-    if (!this.bookmarks_[0].url) {
+    if (!firstBookmark.url) {
       menuItems.push(
           {
             id: MenuItemId.RENAME,
@@ -410,7 +409,7 @@ export class PowerBookmarksContextMenuElement extends CrLitElement {
           this.dispatchDisabledFeatureEvent_();
         } else {
           this.bookmarksApi_.contextMenuAddToBookmarksBar(
-              this.bookmarks_[0].id, ActionSource.kBookmark);
+              this.bookmarks_[0]!.id, ActionSource.kBookmark);
         }
         break;
       case MenuItemId.REMOVE_FROM_BOOKMARKS_BAR:
@@ -419,7 +418,7 @@ export class PowerBookmarksContextMenuElement extends CrLitElement {
           this.dispatchDisabledFeatureEvent_();
         } else {
           this.bookmarksApi_.contextMenuRemoveFromBookmarksBar(
-              this.bookmarks_[0].id, ActionSource.kBookmark);
+              this.bookmarks_[0]!.id, ActionSource.kBookmark);
         }
         break;
       case MenuItemId.TRACK_PRICE:
@@ -428,13 +427,13 @@ export class PowerBookmarksContextMenuElement extends CrLitElement {
           this.dispatchDisabledFeatureEvent_();
         } else {
           if (this.priceTracked_) {
-            this.priceTrackingProxy_.untrackPriceForBookmark(
-                BigInt(this.bookmarks_[0].id));
+            this.priceTrackingProxy_.handler.untrackPriceForBookmark(
+                BigInt(this.bookmarks_[0]!.id));
             chrome.metricsPrivate.recordUserAction(
                 'Commerce.PriceTracking.SidePanel.Untrack.ContextMenu');
           } else {
-            this.priceTrackingProxy_.trackPriceForBookmark(
-                BigInt(this.bookmarks_[0].id));
+            this.priceTrackingProxy_.handler.trackPriceForBookmark(
+                BigInt(this.bookmarks_[0]!.id));
             chrome.metricsPrivate.recordUserAction(
                 'Commerce.PriceTracking.SidePanel.Track.ContextMenu');
           }
@@ -448,7 +447,7 @@ export class PowerBookmarksContextMenuElement extends CrLitElement {
         if (editingDisabledByPolicy(this.bookmarks_)) {
           this.dispatchDisabledFeatureEvent_();
         } else {
-          this.fire('rename-clicked', {id: this.bookmarks_[0].id});
+          this.fire('rename-clicked', {id: this.bookmarks_[0]!.id});
         }
         break;
       case MenuItemId.DELETE:

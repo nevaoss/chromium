@@ -8,12 +8,22 @@
 #include "build/build_config.h"
 #include "chrome/grit/branded_strings.h"
 #include "components/search_engines/search_engine_type.h"
+#include "components/search_engines/search_terms_data.h"
+#include "components/search_engines/template_url.h"
 #include "components/strings/grit/components_strings.h"
 #include "ui/base/l10n/l10n_util.h"
+#include "url/gurl.h"
 
 namespace ai_mode_button_config {
 
+namespace {
+const AiModeButtonConfig* g_test_config = nullptr;
+}  // namespace
+
 const AiModeButtonConfig& GetCurrentAiModeButtonConfig() {
+  if (g_test_config) {
+    return *g_test_config;
+  }
   static const base::NoDestructor<AiModeButtonConfig>
       kDefaultAiModeButtonConfig{
           {SearchEngineType::SEARCH_ENGINE_GOOGLE,
@@ -30,6 +40,36 @@ const AiModeButtonConfig& GetCurrentAiModeButtonConfig() {
 #endif
            l10n_util::GetStringUTF16(IDS_ACC_AI_MODE_PLACEHOLDER_TEXT)}};
   return *kDefaultAiModeButtonConfig;
+}
+
+bool AiModeButtonConfig::IsValid() const {
+  if (id == SearchEngineType::SEARCH_ENGINE_GOOGLE) {
+    return true;
+  }
+
+  if (text.empty()) {
+    return false;
+  }
+
+  if (!GURL(navigation_url).is_valid() ||
+      !GURL(navigation_url_empty).is_valid() || !GURL(favicon_url).is_valid()) {
+    return false;
+  }
+
+  TemplateURLData turl_data;
+  turl_data.SetURL(navigation_url);
+  TemplateURL turl(turl_data);
+  SearchTermsData search_terms_data;
+  if (!turl.url_ref().IsValid(search_terms_data) ||
+      !turl.url_ref().SupportsReplacement(search_terms_data)) {
+    return false;
+  }
+
+  return true;
+}
+
+void SetCurrentAiModeButtonConfigForTesting(const AiModeButtonConfig* config) {
+  g_test_config = config;
 }
 
 }  // namespace ai_mode_button_config

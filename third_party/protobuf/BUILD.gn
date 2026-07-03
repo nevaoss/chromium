@@ -575,6 +575,10 @@ proto_wkt("any_proto") {
   full_target_visibility = [
     # libprotobuf-mutator uses the full version of any.proto internally.
     "//third_party/libprotobuf-mutator",
+
+    # only used in fuzzing builds.
+    "//net/third_party/quiche:blind_sign_auth_proto",
+    "//net/third_party/quiche:blind_sign_auth_test_support",
   ]
 }
 

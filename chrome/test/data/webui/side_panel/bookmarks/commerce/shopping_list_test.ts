@@ -9,7 +9,7 @@ import {ActionSource} from 'chrome://bookmarks-side-panel.top-chrome/bookmarks.m
 import {BookmarksApiProxyImpl} from 'chrome://bookmarks-side-panel.top-chrome/bookmarks_api_proxy.js';
 import type {ShoppingListElement} from 'chrome://bookmarks-side-panel.top-chrome/commerce/shopping_list.js';
 import {ACTION_BUTTON_TRACK_IMAGE, ACTION_BUTTON_UNTRACK_IMAGE, LOCAL_STORAGE_EXPAND_STATUS_KEY} from 'chrome://bookmarks-side-panel.top-chrome/commerce/shopping_list.js';
-import {PageCallbackRouter} from 'chrome://resources/cr_components/commerce/price_tracking.mojom-webui.js';
+import {PageCallbackRouter, PriceTrackingHandlerRemote} from 'chrome://resources/cr_components/commerce/price_tracking.mojom-webui.js';
 import type {PageRemote} from 'chrome://resources/cr_components/commerce/price_tracking.mojom-webui.js';
 import {PriceTrackingBrowserProxyImpl} from 'chrome://resources/cr_components/commerce/price_tracking_browser_proxy.js';
 import type {BookmarkProductInfo} from 'chrome://resources/cr_components/commerce/shared.mojom-webui.js';
@@ -25,7 +25,7 @@ import {TestBookmarksApiProxy} from '../test_bookmarks_api_proxy.js';
 suite('SidePanelShoppingListTest', () => {
   let shoppingList: ShoppingListElement;
   let bookmarksApi: TestBookmarksApiProxy;
-  const priceTrackingProxy = TestMock.fromClass(PriceTrackingBrowserProxyImpl);
+  const priceTrackingHandler = TestMock.fromClass(PriceTrackingHandlerRemote);
   let callbackRouterRemote: PageRemote;
   let metrics: MetricsTracker;
 
@@ -135,11 +135,13 @@ suite('SidePanelShoppingListTest', () => {
     bookmarksApi = new TestBookmarksApiProxy();
     BookmarksApiProxyImpl.setInstance(bookmarksApi);
 
-    priceTrackingProxy.reset();
+    priceTrackingHandler.reset();
     const callbackRouter = new PageCallbackRouter();
-    priceTrackingProxy.setResultFor('getCallbackRouter', callbackRouter);
     callbackRouterRemote = callbackRouter.$.bindNewPipeAndPassRemote();
-    PriceTrackingBrowserProxyImpl.setInstance(priceTrackingProxy);
+    PriceTrackingBrowserProxyImpl.setInstance({
+      handler: priceTrackingHandler,
+      callbackRouter: callbackRouter,
+    });
 
     shoppingList = document.createElement('shopping-list');
     shoppingList.productInfos = products.slice();
@@ -280,7 +282,7 @@ suite('SidePanelShoppingListTest', () => {
             '.action-button');
     assertTrue(!!actionButton);
     actionButton.click();
-    let id = await priceTrackingProxy.whenCalled('untrackPriceForBookmark');
+    let id = await priceTrackingHandler.whenCalled('untrackPriceForBookmark');
     assertEquals(id, products[0]!.bookmarkId);
     checkActionButtonStatus(actionButton, false);
     assertEquals(
@@ -290,7 +292,7 @@ suite('SidePanelShoppingListTest', () => {
         metrics.count('Commerce.PriceTracking.SidePanel.Untrack.BellButton'));
 
     actionButton.click();
-    id = await priceTrackingProxy.whenCalled('trackPriceForBookmark');
+    id = await priceTrackingHandler.whenCalled('trackPriceForBookmark');
     assertEquals(id, products[0]!.bookmarkId);
     checkActionButtonStatus(actionButton, true);
     assertEquals(
@@ -347,7 +349,7 @@ suite('SidePanelShoppingListTest', () => {
             '.action-button');
     assertTrue(!!actionButtonA);
     actionButtonA.click();
-    const id = await priceTrackingProxy.whenCalled('untrackPriceForBookmark');
+    const id = await priceTrackingHandler.whenCalled('untrackPriceForBookmark');
     assertEquals(id, products[0]!.bookmarkId);
     checkActionButtonStatus(actionButtonA, false);
 
@@ -402,7 +404,7 @@ suite('SidePanelShoppingListTest', () => {
         getProductElements(shoppingList)[0]!.querySelector('cr-icon-button');
     assertTrue(!!actionButton);
     actionButton.click();
-    const id = await priceTrackingProxy.whenCalled('untrackPriceForBookmark');
+    const id = await priceTrackingHandler.whenCalled('untrackPriceForBookmark');
     assertEquals(id, products[0]!.bookmarkId);
     checkActionButtonStatus(actionButton, false);
 
@@ -425,7 +427,7 @@ suite('SidePanelShoppingListTest', () => {
 
     assertTrue(shoppingList.$.errorToast.open);
     shoppingList.$.errorToast.querySelector('cr-button')!.click();
-    let id = await priceTrackingProxy.whenCalled('trackPriceForBookmark');
+    let id = await priceTrackingHandler.whenCalled('trackPriceForBookmark');
     assertEquals(id, products[0]!.bookmarkId);
     assertFalse(shoppingList.$.errorToast.open);
 
@@ -434,7 +436,7 @@ suite('SidePanelShoppingListTest', () => {
 
     assertTrue(shoppingList.$.errorToast.open);
     shoppingList.$.errorToast.querySelector('cr-button')!.click();
-    id = await priceTrackingProxy.whenCalled('untrackPriceForBookmark');
+    id = await priceTrackingHandler.whenCalled('untrackPriceForBookmark');
     assertEquals(id, products[1]!.bookmarkId);
     assertFalse(shoppingList.$.errorToast.open);
   });

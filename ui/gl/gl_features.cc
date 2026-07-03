@@ -111,6 +111,7 @@ BASE_FEATURE(kDefaultPassthroughCommandDecoder,
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(ENABLE_VALIDATING_COMMAND_DECODER)
 
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_CHROMEOS)
 // Controls whether the GPU process falls back to software if GLES3 is not
 // supported.
 BASE_FEATURE(kFallbackToSWIfGLES3NotSupported,
@@ -119,9 +120,10 @@ BASE_FEATURE(kFallbackToSWIfGLES3NotSupported,
              // Windows for D3D9 users that are still on ES 2. Enable once
              // crbug.com/40874754 is fixed, deprecating D3D9 usage.
              base::FEATURE_DISABLED_BY_DEFAULT);
-#else
+#else   // BUILDFLAG(IS_CHROMEOS)
              base::FEATURE_ENABLED_BY_DEFAULT);
-#endif
+#endif  // BUILDFLAG(IS_WIN)
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_CHROMEOS)
 
 #if BUILDFLAG(IS_WIN)
 // If true, VsyncThreadWin will use the compositor clock
@@ -279,8 +281,10 @@ bool ShouldFallbackToSWIfGLES3NotSupported() {
           ash::switches::kRevenBranding) &&
       base::FeatureList::IsEnabled(kFallbackToSWIfGLES3NotSupported);
   return is_enabled;
-#else   // !BUILDFLAG(IS_CHROMEOS)
+#elif BUILDFLAG(IS_WIN)
   return base::FeatureList::IsEnabled(kFallbackToSWIfGLES3NotSupported);
+#else   // BUILDFLAG(IS_CHROMEOS)
+  return true;
 #endif  // BUILDFLAG(IS_CHROMEOS)
 }
 

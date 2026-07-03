@@ -78,7 +78,6 @@ include_rules = [
   "+chrome/common/chrome_paths.h",
   "+chrome/common/chrome_switches.h",
   "+chrome/common/extensions",
-  "+chrome/common/pref_names.h",
   "+chrome/test/base",
 
   # Dependencies outside of //chrome:
@@ -87,6 +86,7 @@ include_rules = [
   "+ash/strings",
   "+components/app_constants",
   "+components/app_icon_loader",
+  "+components/constrained_window",
   "+components/services/app_service/public",
 ]
 

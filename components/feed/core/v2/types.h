@@ -15,7 +15,7 @@
 #include "base/types/id_type.h"
 #include "base/values.h"
 #include "components/feed/core/proto/v2/store.pb.h"
-// #include "components/feed/core/proto/v2/wire/chrome_fulfillment_info.pb.h"
+#include "components/feed/core/proto/v2/wire/chrome_fulfillment_info.pb.h"
 #include "components/feed/core/proto/v2/wire/client_info.pb.h"
 #include "components/feed/core/proto/v2/wire/info_card.pb.h"
 #include "components/feed/core/proto/v2/wire/reliability_logging_enums.pb.h"
@@ -60,6 +60,7 @@ struct RequestMetadata {
   std::string country;
   DisplayMetrics display_metrics{};
   bool notice_card_acknowledged = false;
+  bool is_user_feedback_disabled = false;
   TabGroupEnabledState tab_group_enabled_state = TabGroupEnabledState::kNone;
   std::vector<feedwire::InfoCardTrackingState> info_card_tracking_states;
   feedwire::ChromeSignInStatus::SignInStatus sign_in_status =

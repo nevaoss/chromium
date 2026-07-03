@@ -383,6 +383,10 @@ class CONTENT_EXPORT RenderWidgetHostViewChildFrame
       const gfx::Size& tolerance_screen_distance_in_dips);
 #endif  // BUILDFLAG(IS_WIN)
 
+  // A queue for `IntrinsicSizingInfo` sent from the child renderer before the
+  // frame connector is set.
+  blink::mojom::IntrinsicSizingInfoPtr pending_sizing_info_;
+
   base::WeakPtrFactory<RenderWidgetHostViewChildFrame> weak_factory_{this};
 };
 

@@ -12,6 +12,7 @@
 #import "ios/chrome/browser/assistant/ui/assistant_container_layout_utils.h"
 #import "ios/chrome/browser/assistant/ui/assistant_container_view_controller.h"
 #import "ios/chrome/browser/cobrowse/coordinator/assistant_aim_mediator.h"
+#import "ios/chrome/browser/cobrowse/debugger/aim_srp_debugger_breadcrumbs_view_controller.h"
 #import "ios/chrome/browser/cobrowse/model/cobrowse_browser_agent.h"
 #import "ios/chrome/browser/cobrowse/model/cobrowse_context.h"
 #import "ios/chrome/browser/cobrowse/model/ios_contextual_tasks_service_factory.h"
@@ -39,7 +40,7 @@
 @interface AssistantAIMCoordinator () <AssistantAIMViewControllerDelegate,
                                        AssistantContainerDelegate,
                                        AssistantAIMMediatorDelegate,
-                                       TabGridStateObserver>
+                                       TabGridStateObserving>
 
 // Returns whether the tab grid is currently visible.
 - (BOOL)isTabGridVisible;
@@ -102,13 +103,6 @@ class AssistantAIMUIStateProvider
                                          AssistantContainerCommands);
 
   web::WebState::CreateParams params(self.browser->GetProfile());
-  CobrowseContext* context = agent ? agent->GetCobrowseContext() : nil;
-  if (!context) {
-    context = [CobrowseContext defaultContext];
-    if (agent) {
-      agent->SetCobrowseContext(context);
-    }
-  }
   contextual_tasks::ContextualTasksService* contextualTasksService = nullptr;
   if (IsCobrowseAimHistoryEnabled()) {
     contextualTasksService = IOSContextualTasksServiceFactory::GetForProfile(
@@ -120,7 +114,7 @@ class AssistantAIMUIStateProvider
 
   _mediator = [[AssistantAIMMediator alloc]
             initWithWebState:std::move(webState)
-                     context:context
+        cobrowseBrowserAgent:agent
             containerHandler:_containerHandler
       contextualTasksService:contextualTasksService
                    URLLoader:UrlLoadingBrowserAgent::FromBrowser(self.browser)];
@@ -212,7 +206,7 @@ class AssistantAIMUIStateProvider
   return self.browser->GetSceneState().tabGridState.tabGridVisible;
 }
 
-#pragma mark - TabGridStateObserver
+#pragma mark - TabGridStateObserving
 
 - (void)willEnterTabGrid {
   [self setVisible:NO];
@@ -331,6 +325,10 @@ class AssistantAIMUIStateProvider
   [self dismissKeyboard];
 }
 
+- (void)assistantAIMMediatorDidStartNewThread:(AssistantAIMMediator*)mediator {
+  [self dismissKeyboard];
+}
+
 - (BOOL)assistantContainer:(AssistantContainerViewController*)container
      shouldPauseScrollView:(UIScrollView*)scrollView
                 forGesture:(UIGestureRecognizer*)otherGesture {
@@ -340,6 +338,20 @@ class AssistantAIMUIStateProvider
   return [_viewController shouldPauseScrollView:scrollView
                                      forGesture:otherGesture
                               isInLargestDetent:isInLargestDetent];
+}
+
+#pragma mark - AssistantAIMViewControllerDelegate
+
+- (void)assistantAIMViewControllerDidRequestSRPLogs:
+    (AssistantAIMViewController*)viewController {
+  NSArray<AimSRPDebuggerEvent*>* events = _mediator.debugEvents;
+  AimSRPDebuggerBreadcrumbsViewController* logsVC =
+      [[AimSRPDebuggerBreadcrumbsViewController alloc] initWithEvents:events];
+  UINavigationController* navController =
+      [[UINavigationController alloc] initWithRootViewController:logsVC];
+  [_viewController presentViewController:navController
+                                animated:YES
+                              completion:nil];
 }
 
 @end

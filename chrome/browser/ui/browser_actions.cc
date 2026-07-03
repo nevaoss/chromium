@@ -15,6 +15,7 @@
 #include "base/functional/callback_helpers.h"
 #include "base/metrics/user_metrics.h"
 #include "base/metrics/user_metrics_action.h"
+#include "base/notreached.h"
 #include "build/branding_buildflags.h"
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/app/vector_icons/vector_icons.h"
@@ -38,6 +39,7 @@
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/indigo/resources/grit/indigo_strings.h"
 #include "chrome/browser/multistep_filter/ui/filter_ui_controller.h"
+#include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/actions/actions_util.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/actions/chrome_actions.h"
@@ -46,6 +48,7 @@
 #include "chrome/browser/ui/autofill/autofill_bubble_base.h"
 #include "chrome/browser/ui/autofill/payments/filled_card_information_bubble_controller_impl.h"
 #include "chrome/browser/ui/autofill/payments/mandatory_reauth_bubble_controller_impl.h"
+#include "chrome/browser/ui/autofill/payments/omnibox_autofill_bubble_controller.h"
 #include "chrome/browser/ui/autofill/payments/omnibox_autofill_page_action_controller.h"
 #include "chrome/browser/ui/autofill/payments/save_payment_icon_controller.h"
 #include "chrome/browser/ui/autofill/payments/virtual_card_enroll_bubble_controller_impl.h"
@@ -65,6 +68,7 @@
 #include "chrome/browser/ui/lens/lens_overlay_entry_point_controller.h"
 #include "chrome/browser/ui/lens/lens_string_utils.h"
 #include "chrome/browser/ui/omnibox/ai_mode_page_action_controller.h"
+#include "chrome/browser/ui/page_action/page_action_controller.h"
 #include "chrome/browser/ui/page_action/page_action_triggers.h"
 #include "chrome/browser/ui/passwords/manage_passwords_ui_controller.h"
 #include "chrome/browser/ui/passwords/passwords_model_delegate.h"
@@ -475,12 +479,15 @@ void BrowserActions::InitializeSidePanelActions() {
             .SetTooltipText(l10n_util::GetStringUTF16(
                 IDS_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_TITLE))
             .SetImage(ui::ImageModel::FromVectorIcon(
-                kDockToRightSparkCustomIcon, ui::kColorIcon))
+                features::IsRoundedIconsEnabled()
+                    ? omnibox::kSearchSparkIcon
+                    : omnibox::kSearchSparkOldIcon,
+                ui::kColorIcon))
             .SetProperty(
                 actions::kActionItemPinnableKey,
                 static_cast<
                     std::underlying_type_t<actions::ActionPinnableState>>(
-                    actions::ActionPinnableState::kNotPinnable))
+                    actions::ActionPinnableState::kPinnable))
             .Build());
   }
 
@@ -1750,7 +1757,20 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
                 auto* controller =
                     indigo::IndigoPageActionController::From(tab);
                 if (controller) {
-                  controller->InvokeAction();
+                  auto entry_point = [&]() {
+                    auto raw_entry_point =
+                        static_cast<page_actions::PageActionEntryPoint>(
+                            context.GetProperty(
+                                page_actions::kPageActionEntryPointKey));
+                    switch (raw_entry_point) {
+                      case page_actions::PageActionEntryPoint::kSuggestionChip:
+                        return indigo::EntryPoint::kSuggestionChip;
+                      case page_actions::PageActionEntryPoint::kAnchoredMessage:
+                        return indigo::EntryPoint::kAnchoredMessage;
+                    }
+                    NOTREACHED();
+                  }();
+                  controller->InvokeAction(entry_point);
                 }
               },
               bwi))
@@ -1832,8 +1852,15 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
                   if (!tab) {
                     return;
                   }
-                  // TODO(crbug.com/490215251): Set the callback to display the
-                  // Autofill bubble.
+
+                  // Show the payment method suggestion list after the user
+                  // clicks the "Autofill payment" chip displayed on the
+                  // omnibox.
+                  if (auto* controller =
+                          autofill::OmniboxAutofillBubbleController::From(
+                              *tab)) {
+                    controller->QueueOrShowBubble(/*force_show=*/true);
+                  }
                 },
                 bwi))
             .SetActionId(kActionAutofillPayment)

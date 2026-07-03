@@ -1,0 +1,38 @@
+// Copyright 2026 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+module bookmarks_api.mojom;
+
+import "mojo/public/mojom/base/error.mojom";
+import "url/mojom/url.mojom";
+
+// Represents a node in the bookmarks hierarchy.
+union BookmarkNode {
+  Url url;
+  Folder folder;
+};
+
+// Represents a url node.
+struct Url {
+  int64 id;
+  string title;
+  url.mojom.Url url;
+};
+
+// Represents a bookmark node.
+struct Folder {
+  int64 id;
+  string title;
+  array<BookmarkNode> children;
+};
+
+// Service for interacting with bookmark resources.
+[GenerateDirectReturnStub]
+interface BookmarksService {
+  // Gets the root bookmark node (which contains all folders/bookmarks).
+  GetBookmarks() => result<BookmarkNode, mojo_base.mojom.Error>;
+
+  // Get a specific bookmark node by ID.
+  GetBookmark(int64 id) => result<BookmarkNode, mojo_base.mojom.Error>;
+};

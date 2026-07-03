@@ -1542,7 +1542,7 @@
     {
         "name": "error_prone_annotations",
         "group": "com.google.errorprone",
-        "version": "2.49.0"
+        "version": "2.50.0"
     },
     {
         "name": "firebase-annotations",
@@ -1812,12 +1812,12 @@
     {
         "name": "grpc-api",
         "group": "io.grpc",
-        "version": "1.81.0"
+        "version": "1.82.0"
     },
     {
         "name": "grpc-stub",
         "group": "io.grpc",
-        "version": "1.81.0"
+        "version": "1.82.0"
     },
     {
         "name": "rxandroid",

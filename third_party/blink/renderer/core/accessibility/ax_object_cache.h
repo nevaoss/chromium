@@ -140,7 +140,7 @@ class CORE_EXPORT AXObjectCache : public GarbageCollected<AXObjectCache> {
   virtual void HandleInitialFocus() = 0;
   virtual void HandleEditableTextContentChanged(Node*) = 0;
   virtual void HandleDeletionOrInsertionInTextField(
-      const SelectionInDOMTree& changed_selection,
+      const SelectionInDomTree& changed_selection,
       bool is_deletion) = 0;
   virtual void HandleTextMarkerDataAdded(Node* start, Node* end) = 0;
   virtual void HandleTextFormControlChanged(Node*) = 0;

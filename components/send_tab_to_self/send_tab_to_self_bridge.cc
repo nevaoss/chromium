@@ -31,6 +31,7 @@
 #include "components/send_tab_to_self/proto/send_tab_to_self.pb.h"
 #include "components/send_tab_to_self/proto_conversions.h"
 #include "components/send_tab_to_self/send_tab_to_self_commit_tracker.h"
+#include "components/send_tab_to_self/send_tab_to_self_entry.h"
 #include "components/send_tab_to_self/target_device_info.h"
 #include "components/sync/base/client_tag_hash.h"
 #include "components/sync/base/data_type.h"
@@ -177,8 +178,14 @@ std::optional<syncer::ModelError> SendTabToSelfBridge::MergeFullSyncData(
     std::unique_ptr<syncer::MetadataChangeList> metadata_change_list,
     syncer::EntityChangeList entity_data) {
   DCHECK(entries_.empty());
-  return ApplyIncrementalSyncChanges(std::move(metadata_change_list),
-                                     std::move(entity_data));
+  std::optional<syncer::ModelError> error = ApplyIncrementalSyncChanges(
+      std::move(metadata_change_list), std::move(entity_data));
+  if (IsReady()) {
+    for (auto& observer : observers_) {
+      observer.OnModelReady();
+    }
+  }
+  return error;
 }
 
 std::optional<syncer::ModelError>
@@ -329,9 +336,10 @@ std::string SendTabToSelfBridge::GetStorageKey(
 bool SendTabToSelfBridge::IsEntityDataValid(
     const syncer::EntityData& entity_data) const {
   CHECK(entity_data.specifics.has_send_tab_to_self());
-  sync_pb::SendTabToSelfSpecifics specifics =
+  const sync_pb::SendTabToSelfSpecifics& specifics =
       entity_data.specifics.send_tab_to_self();
-  return !specifics.guid().empty() && GURL(specifics.url()).is_valid();
+  return !specifics.guid().empty() &&
+         SendTabToSelfEntry::IsValidUrl(GURL(specifics.url()));
 }
 
 sync_pb::EntitySpecifics
@@ -425,7 +433,7 @@ const SendTabToSelfEntry* SendTabToSelfBridge::SendEntry(
     return nullptr;
   }
 
-  if (!url.is_valid()) {
+  if (!SendTabToSelfEntry::IsValidUrl(url)) {
     std::move(commit_confirmation).Run(SendTabToSelfResult::kFailureInvalidUrl);
     return nullptr;
   }
@@ -743,8 +751,10 @@ void SendTabToSelfBridge::OnReadAllMetadata(
   }
   change_processor()->ModelReadyToSync(std::move(metadata_batch));
 
-  for (auto& observer : observers_) {
-    observer.OnModelReady();
+  if (IsReady()) {
+    for (auto& observer : observers_) {
+      observer.OnModelReady();
+    }
   }
 
   DoGarbageCollection();

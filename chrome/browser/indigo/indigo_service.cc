@@ -201,7 +201,7 @@ LocalEligibility IndigoService::ComputeLocalEligibility() const {
 
   AccountInfo info =
       identity_manager_->FindExtendedAccountInfoByAccountId(account_id);
-  if (info.capabilities.can_use_model_execution_features() !=
+  if (info.GetAccountCapabilities().can_use_model_execution_features() !=
       signin::Tribool::kTrue) {
     return LocalEligibility::kMissingCapabilities;
   }

@@ -137,8 +137,19 @@ function countEditableElements_(elements) {
  *     empty if no match.
  */
 function getUnownedIframes() {
-  return Array.from(getIframeElements(document))
-      .filter(e => !e.closest('form'));
+  if (fillUtil.isAutofillOptimizationFormSearchEnabled()) {
+    const iframes = getIframeElements(document);
+    const result = [];
+    for (const iframe of iframes) {
+      if (!iframe.closest('form')) {
+        result.push(iframe);
+      }
+    }
+    return result;
+  } else {
+    return Array.from(getIframeElements(document))
+        .filter(e => !e.closest('form'));
+  }
 }
 
 /**

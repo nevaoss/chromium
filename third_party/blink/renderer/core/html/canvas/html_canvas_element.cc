@@ -1218,7 +1218,12 @@ void HTMLCanvasElement::PaintInternal(GraphicsContext& context,
   // Note: Test coverage for this is assured by manual (non-automated)
   // web test printing/manual/canvas2d-vector-text.html
   // That test should be run manually against CLs that touch this code.
-  if (IsPrinting() && IsRenderingContext2D()) {
+
+  // TODO(paint-dev): We disable this code path for html-in-canvas because
+  // it's difficult to handle texture-backed PaintImage's correctly. This
+  // could be fixed, but it's unclear whether it's worth the effort to
+  // enable vector scaling of content while printing.
+  if (IsPrinting() && IsRenderingContext2D() && !layoutSubtree()) {
     RenderingContext()->FlushCanvas(FlushReason::kPrinting);
     // `FlushRecording` might be a no-op if a flush already happened before.
     // Fortunately, the last flush recording was kept by the context.
@@ -1273,17 +1278,6 @@ void HTMLCanvasElement::PaintInternal(GraphicsContext& context,
 
 bool HTMLCanvasElement::IsPrinting() const {
   return GetDocument().BeforePrintingOrPrinting();
-}
-
-scoped_refptr<const cc::AnimatedImageFrameIndexMap>
-HTMLCanvasElement::GetAnimatedImageFrameIndexes() const {
-  if (layoutSubtree() &&
-      RuntimeEnabledFeatures::CanvasDrawElementEnabled(GetExecutionContext())) {
-    if (auto* view = GetDocument().View()) {
-      return view->GetAnimatedImageFrameIndexes();
-    }
-  }
-  return CanvasRenderingContextHost::GetAnimatedImageFrameIndexes();
 }
 
 UkmParameters HTMLCanvasElement::GetUkmParameters() {

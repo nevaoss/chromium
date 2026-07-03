@@ -24,16 +24,8 @@
 #include "crypto/signature_verifier.h"
 #include "crypto/unexportable_key.h"
 #include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
-#include "third_party/abseil-cpp/absl/container/hash_container_defaults.h"
 
 namespace unexportable_keys {
-
-template <typename KeyIdType>
-class MaybePendingUnexportableKeyId;
-using MaybePendingUnexportableSigningKeyId =
-    MaybePendingUnexportableKeyId<UnexportableSigningKeyId>;
-using MaybePendingUnexportableAttestationKeyId =
-    MaybePendingUnexportableKeyId<UnexportableAttestationKeyId>;
 
 class UnexportableKeyTaskManager;
 
@@ -99,6 +91,13 @@ class COMPONENT_EXPORT(UNEXPORTABLE_KEYS) UnexportableKeyServiceImpl
       BackgroundTaskPriority priority,
       base::OnceCallback<void(ServiceErrorOr<std::vector<uint8_t>>)> callback)
       override;
+  void CertifySlowlyAsync(
+      UnexportableAttestationKeyId attestation_key_id,
+      UnexportableSigningKeyId signing_key_id,
+      base::span<const uint8_t> challenge,
+      BackgroundTaskPriority priority,
+      base::OnceCallback<void(ServiceErrorOr<crypto::AttestationStatement>)>
+          callback) override;
   void DeleteKeysSlowlyAsync(
       base::span<const UnexportableKeyId> key_ids,
       BackgroundTaskPriority priority,
@@ -117,40 +116,18 @@ class COMPONENT_EXPORT(UNEXPORTABLE_KEYS) UnexportableKeyServiceImpl
       UnexportableKeyId key_id) const override;
 
  private:
-  using WrappedKeyAndTag = std::pair<std::vector<uint8_t>, std::string>;
-  using WrappedKeyAndTagView =
-      std::pair<base::span<const uint8_t>, std::string_view>;
-
-  // Hasher object that allows lookups with `WrappedKeyAndTagView` using
-  // `WrappedKeyAndTag` as a key.
-  struct WrappedKeyAndTagViewHash
-      : absl::DefaultHashContainerHash<WrappedKeyAndTagView> {
-    using is_transparent = void;
-  };
-
-  template <typename MaybePendingKeyIdType>
-  using WrappedKeyAndTagMap = absl::flat_hash_map<WrappedKeyAndTag,
-                                                  MaybePendingKeyIdType,
-                                                  WrappedKeyAndTagViewHash,
-                                                  std::ranges::equal_to>;
-
-  using WrappedSigningKeyAndTagMap =
-      WrappedKeyAndTagMap<MaybePendingUnexportableSigningKeyId>;
-  using WrappedAttestationKeyAndTagMap =
-      WrappedKeyAndTagMap<MaybePendingUnexportableAttestationKeyId>;
-  using SigningKeyIdMap =
-      absl::flat_hash_map<UnexportableSigningKeyId,
-                          scoped_refptr<RefCountedUnexportableSigningKey>>;
-  using AttestationKeyIdMap =
-      absl::flat_hash_map<UnexportableAttestationKeyId,
-                          scoped_refptr<RefCountedUnexportableAttestationKey>>;
   using AllKeysForGarbageCollectionMap =
       absl::flat_hash_map<UnexportableKeyId,
                           scoped_refptr<RefCountedUnexportableKey>>;
 
-  // Convenience method to create a `WrappedKeyAndTag` from a
-  // `WrappedKeyAndTagView`.
-  static WrappedKeyAndTag Materialize(WrappedKeyAndTagView view);
+  // Repositories storing and managing the lifetime of loaded unexportable
+  // signing and attestation keys, respectively.
+  template <typename RefCountedKeyType>
+  class KeyRepository;
+
+  using SigningKeyRepository = KeyRepository<RefCountedUnexportableSigningKey>;
+  using AttestationKeyRepository =
+      KeyRepository<RefCountedUnexportableAttestationKey>;
 
   // Returns a pointer to the unexportable key with the given ID, or an error
   // if it is not found. The returned pointer is guaranteed to be non-null on
@@ -172,17 +149,6 @@ class COMPONENT_EXPORT(UNEXPORTABLE_KEYS) UnexportableKeyServiceImpl
   OnGetAllKeysForGarbageCollectionSlowlyImpl(
       ServiceErrorOr<std::vector<scoped_refptr<RefCountedUnexportableKey>>>
           keys_or_error);
-
-  // Callback for `GenerateSigningKeySlowlyAsync()`.
-  ServiceErrorOr<UnexportableSigningKeyId> OnSigningKeyGeneratedImpl(
-      ServiceErrorOr<scoped_refptr<RefCountedUnexportableSigningKey>>
-          key_or_error);
-
-  // Callback for `FromWrappedSigningKeySlowlyAsync()`.
-  void OnKeyCreatedFromWrappedKeyAndTag(
-      WrappedKeyAndTag wrapped_key_and_tag,
-      ServiceErrorOr<scoped_refptr<RefCountedUnexportableSigningKey>>
-          key_or_error);
 
   // Generic trampoline that runs the callback only if the WeakPtr used to bind
   // this method is still valid. In case it is not, the callback is run with
@@ -206,32 +172,39 @@ class COMPONENT_EXPORT(UNEXPORTABLE_KEYS) UnexportableKeyServiceImpl
         },
         weak_ptr_factory_.GetWeakPtr(), std::move(callback), std::move(proj));
   }
+  // Hardware-backed key generation via Windows TPM incurs significant latency
+  // (~1s). The in-memory spare key pool mitigates this bottleneck. Other
+  // platforms do not require this optimization.
+  // Returns a spare signing key from the pool if available.
+  scoped_refptr<RefCountedUnexportableSigningKey> PopSpareSigningKey(
+      base::span<const crypto::SignatureVerifier::SignatureAlgorithm>
+          acceptable_algorithms);
 
+  // Posts a task to replenish the spare signing key pool.
+  void ReplenishSpareSigningKeyPoolAsync(
+      base::span<const crypto::SignatureVerifier::SignatureAlgorithm>
+          acceptable_algorithms);
   const raw_ref<UnexportableKeyTaskManager, DanglingUntriaged> task_manager_;
   const BackgroundTaskOrigin task_origin_;
 
   const crypto::UnexportableKeyProvider::Config config_;
 
-  // Helps mapping multiple `FromWrappedSigningKeySlowlyAsync()` requests with
-  // the same (wrapped key, tag) pair into the same key ID.
-  WrappedSigningKeyAndTagMap signing_key_id_by_wrapped_key_and_tag_;
-
-  // Helps mapping multiple `FromWrappedAttestationKeySlowlyAsync()` requests
-  // with the same (wrapped key, tag) pair into the same key ID.
-  WrappedAttestationKeyAndTagMap attestation_key_id_by_wrapped_key_and_tag_;
-
-  // Stores unexportable signing keys that were created during the current
-  // session.
-  SigningKeyIdMap signing_key_by_key_id_;
-
-  // Stores unexportable attestation keys that were created during the current
-  // session.
-  AttestationKeyIdMap attestation_key_by_key_id_;
+  // Use the Pimpl (Pointer to IMPLementation) pattern to hide helper
+  // KeyRepository template declaration details from the header file.
+  const std::unique_ptr<SigningKeyRepository> signing_keys_;
+  const std::unique_ptr<AttestationKeyRepository> attestation_keys_;
 
   // Stores all unexportable keys for garbage collection purposes. This map is
-  // disjoint from `key_by_key_id_` and will be overwritten on each call to
-  // `GetAllKeysForGarbageCollection`.
+  // disjoint from maps inside `signing_keys_` and `attestation_keys_`, and will
+  // be overwritten on each call to `GetAllKeysForGarbageCollection`.
   AllKeysForGarbageCollectionMap all_gc_keys_by_key_id_;
+
+  // Maps a signature algorithm to a queue of pre-generated, ready-to-use
+  // signing keys.
+  absl::flat_hash_map<
+      crypto::SignatureVerifier::SignatureAlgorithm,
+      std::vector<scoped_refptr<RefCountedUnexportableSigningKey>>>
+      spare_signing_keys_pool_;
 
   base::WeakPtrFactory<UnexportableKeyServiceImpl> weak_ptr_factory_{this};
 };

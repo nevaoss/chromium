@@ -57,6 +57,11 @@ bool SyncedBookmarkTrackerEntity::IsUnsyncedLocalCreation() const {
          IsUnsynced();
 }
 
+bool SyncedBookmarkTrackerEntity::IsVersionAlreadyKnown(
+    int64_t update_version) const {
+  return metadata_.server_version() >= update_version;
+}
+
 bool SyncedBookmarkTrackerEntity::MatchesData(
     const syncer::EntityData& data) const {
   if (metadata_.is_deleted() || data.is_deleted()) {
@@ -64,6 +69,17 @@ bool SyncedBookmarkTrackerEntity::MatchesData(
     return metadata_.is_deleted() == data.is_deleted();
   }
   return MatchesSpecificsHash(data.specifics);
+}
+
+bool SyncedBookmarkTrackerEntity::MatchesBaseData(
+    const syncer::EntityData& data) const {
+  DCHECK(IsUnsynced());
+  if (data.is_deleted() || metadata_.base_specifics_hash().empty()) {
+    return false;
+  }
+  std::string hash;
+  HashSpecifics(data.specifics, &hash);
+  return hash == metadata_.base_specifics_hash();
 }
 
 bool SyncedBookmarkTrackerEntity::MatchesSpecificsHash(

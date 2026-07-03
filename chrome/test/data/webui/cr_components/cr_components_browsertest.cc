@@ -16,11 +16,12 @@
 
 typedef WebUIMochaBrowserTest CrComponentsTest;
 
-#if !BUILDFLAG(IS_ANDROID)
 IN_PROC_BROWSER_TEST_F(CrComponentsTest, ColorChangeListener) {
+  set_test_loader_host(chrome::kChromeUIExtensionsHost);
   RunTest("cr_components/color_change_listener_test.js", "mocha.run()");
 }
 
+#if !BUILDFLAG(IS_ANDROID)
 IN_PROC_BROWSER_TEST_F(CrComponentsTest, CustomizeColorSchemeMode) {
   set_test_loader_host(chrome::kChromeUICustomizeChromeSidePanelHost);
   RunTest("cr_components/customize_color_scheme_mode_test.js", "mocha.run()");
@@ -323,9 +324,14 @@ IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest, RecentTabChip) {
 }
 #endif
 
-// TODO(crbug.com/508867284): Flaky on Win/Linux/Chrome OS.
+// TODO(crbug.com/508867284): Re-enable when fixed on ChromeOS.
+#if BUILDFLAG(IS_CHROMEOS)
+#define MAYBE_ComposeboxVoiceSearch DISABLED_ComposeboxVoiceSearch
+#else
+#define MAYBE_ComposeboxVoiceSearch ComposeboxVoiceSearch
+#endif
 IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest,
-                       DISABLED_ComposeboxVoiceSearch) {
+                       MAYBE_ComposeboxVoiceSearch) {
   RunTest("cr_components/composebox/composebox_voice_search_test.js",
           "mocha.run()");
 }

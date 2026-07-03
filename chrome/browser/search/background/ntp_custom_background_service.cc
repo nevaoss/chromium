@@ -12,7 +12,6 @@
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
 #include "base/metrics/histogram_macros.h"
-#include "base/observer_list.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/task/thread_pool.h"
@@ -34,7 +33,6 @@
 #include "components/prefs/pref_service.h"
 #include "components/search/ntp_features.h"
 #include "components/themes/ntp_custom_background_service_constants.h"
-#include "components/themes/ntp_custom_background_service_observer.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/storage_partition.h"
 #include "net/http/http_status_code.h"
@@ -163,7 +161,9 @@ void NtpCustomBackgroundService::ResetProfilePrefs(Profile* profile) {
 NtpCustomBackgroundService::NtpCustomBackgroundService(Profile* profile)
     : NtpCustomBackgroundServiceBase(
           profile->GetPrefs(),
-          NtpBackgroundServiceFactory::GetForProfile(profile)),
+          NtpBackgroundServiceFactory::GetForProfile(profile),
+          prefs::kNtpCustomBackgroundDict,
+          prefs::kNtpCustomBackgroundLocalToDevice),
       profile_(profile),
       clock_(base::DefaultClock::GetInstance()),
       background_updated_timestamp_(base::TimeTicks::Now()) {
@@ -187,9 +187,6 @@ NtpCustomBackgroundService::~NtpCustomBackgroundService() {
   }
 }
 
-void NtpCustomBackgroundService::OnCollectionInfoAvailable() {}
-
-void NtpCustomBackgroundService::OnCollectionImagesAvailable() {}
 
 void NtpCustomBackgroundService::OnNextCollectionImageAvailable() {
   auto image = background_service_->next_image();
@@ -229,11 +226,6 @@ void NtpCustomBackgroundService::UpdateBackgroundFromSync() {
   NotifyAboutBackgrounds();
 }
 
-void NtpCustomBackgroundService::ResetCustomBackgroundInfo() {
-  SetCustomBackgroundInfo(GURL(), GURL(), std::string(), std::string(), GURL(),
-                          std::string());
-}
-
 void NtpCustomBackgroundService::SetCustomBackgroundInfo(
     const GURL& background_url,
     const GURL& thumbnail_url,
@@ -246,46 +238,23 @@ void NtpCustomBackgroundService::SetCustomBackgroundInfo(
     return;
   }
 
-  bool is_backdrop_collection =
-      background_service_ &&
-      background_service_->IsValidBackdropCollection(collection_id);
   bool is_backdrop_url =
       background_service_ &&
       background_service_->IsValidBackdropUrl(background_url);
 
-  bool need_forced_refresh =
-      pref_service_->GetBoolean(prefs::kNtpCustomBackgroundLocalToDevice) &&
-      pref_service_->FindPreference(prefs::kNtpCustomBackgroundDict)
-          ->IsDefaultValue();
   RemoveLocalBackgroundImageCopy(profile_);
-  pref_service_->SetBoolean(prefs::kNtpCustomBackgroundLocalToDevice, false);
   pref_service_->ClearPref(prefs::kNtpCustomBackgroundLocalToDeviceId);
 
   background_updated_timestamp_ = base::TimeTicks::Now();
 
-  if (!background_url.is_valid() && !collection_id.empty() &&
-      is_backdrop_collection) {
-    background_service_->FetchNextCollectionImage(collection_id, std::nullopt);
-  } else if (background_url.is_valid() && is_backdrop_url) {
-    if (thumbnail_url.is_valid()) {
-      FetchCustomBackgroundAndExtractBackgroundColor(background_url,
-                                                     thumbnail_url);
-    }
-    base::DictValue background_info = GetBackgroundInfoAsDict(
-        background_url, attribution_line_1, attribution_line_2, action_url,
-        collection_id, std::nullopt, std::nullopt);
-    pref_service_->SetDict(prefs::kNtpCustomBackgroundDict,
-                           std::move(background_info));
-  } else {
-    pref_service_->ClearPref(prefs::kNtpCustomBackgroundDict);
-
-    // If this device was using a local image and did not have a non-local
-    // background saved, UpdateBackgroundFromSync will not fire. Therefore, we
-    // need to force a refresh here.
-    if (need_forced_refresh) {
-      NotifyAboutBackgrounds();
-    }
+  if (background_url.is_valid() && is_backdrop_url &&
+      thumbnail_url.is_valid()) {
+    FetchCustomBackgroundAndExtractBackgroundColor(background_url, thumbnail_url);
   }
+
+  NtpCustomBackgroundServiceBase::SetCustomBackgroundInfo(
+      background_url, thumbnail_url, attribution_line_1, attribution_line_2,
+      action_url, collection_id);
 }
 
 void NtpCustomBackgroundService::UpdateLocalCustomBackgroundPrefsWithColor(
@@ -601,19 +570,6 @@ void NtpCustomBackgroundService::ForceRefreshBackground() {
   std::string resume_token =
       background_info.Find(kNtpCustomBackgroundResumeToken)->GetString();
   background_service_->FetchNextCollectionImage(collection_id, resume_token);
-}
-
-bool NtpCustomBackgroundService::IsCustomBackgroundPrefValid() {
-  DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-  const base::DictValue& background_info =
-      pref_service_->GetDict(prefs::kNtpCustomBackgroundDict);
-
-  const base::Value* background_url =
-      background_info.Find(kNtpCustomBackgroundURL);
-  if (!background_url)
-    return false;
-
-  return GURL(background_url->GetString()).is_valid();
 }
 
 void NtpCustomBackgroundService::UpdateCustomBackgroundPrefsWithColor(

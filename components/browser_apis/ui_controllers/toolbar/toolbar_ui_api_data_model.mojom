@@ -234,7 +234,26 @@ struct AppMenuControlState {
   int32 trailing_margin;
 };
 
+enum AvatarToolbarButtonState {
+  kGuestSession,
+  kIncognitoProfile,
+  kExplicitTextShowing,
+  kOnSignin,
+  kShowIdentityName,
+  kSigninPending,
+  kSyncPaused,
+  kUpgradeClientError,
+  kPassphraseError,
+  kBookmarksLimitExceeded,
+  kSyncError,
+  kPasskeysLockedError,
+  kPromo,
+  kManagement,
+  kNormal,
+};
+
 struct AvatarControlState {
+  AvatarToolbarButtonState state;
   string icon_url;
   mojo_base.mojom.String16 text;
   mojo_base.mojom.String16 tooltip;
@@ -594,4 +613,3 @@ enum FocusRequestTarget {
   // Focus the location bar and activate the default search provider keyword.
   kSearch,
 };
-

@@ -32,6 +32,7 @@ source_set("scene_state_header") {
     "scene_controller.h",
     "scene_delegate.h",
     "scene_state.h",
+    "scene_state_prefs.h",
     "scene_ui_provider.h",
   ]
   public_deps = [
@@ -84,6 +85,7 @@ source_set("scene") {
     "scene_controller.mm",
     "scene_delegate.mm",
     "scene_state.mm",
+    "scene_state_prefs.mm",
   ]
 
   deps = [

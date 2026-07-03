@@ -55,7 +55,6 @@
 #include "chrome/browser/notifications/notification_display_service_impl.h"
 #include "chrome/browser/notifications/notifier_state_tracker.h"
 #include "chrome/browser/notifications/platform_notification_service_impl.h"
-#include "chrome/browser/notifications/scheduler/public/tips_prefs.h"
 #include "chrome/browser/permissions/quiet_notification_permission_ui_state.h"
 #include "chrome/browser/platform_experience/prefs.h"
 #include "chrome/browser/prefs/chrome_pref_service_factory.h"
@@ -83,6 +82,7 @@
 #include "chrome/browser/signin/signin_promo_util.h"
 #include "chrome/browser/ssl/ssl_config_service_manager.h"
 #include "chrome/browser/themes/theme_service.h"
+#include "chrome/browser/tips/core/tips_prefs.h"
 #include "chrome/browser/tracing/chrome_tracing_delegate.h"
 #include "chrome/browser/ui/browser_ui_prefs.h"
 #include "chrome/browser/ui/network_profile_bubble.h"
@@ -240,7 +240,7 @@
 #include "chrome/browser/extensions/commands/command_service.h"
 #include "chrome/browser/extensions/extension_url_overrides.h"
 #include "chrome/browser/extensions/extension_util.h"
-#include "chrome/browser/extensions/preinstalled_apps.h"
+#include "chrome/browser/extensions/preinstalled_extensions.h"
 #include "chrome/browser/ui/webui/extensions/extensions_ui_prefs.h"
 #include "extensions/browser/api/runtime/runtime_api.h"
 #include "extensions/browser/extension_prefs.h"
@@ -978,6 +978,10 @@ inline constexpr char kDeleteCookiesBasic[] =
 inline constexpr char kLastClearBrowsingDataTab[] =
     "browser.last_clear_browsing_data_tab";
 
+// Deprecated 06/2026.
+constexpr char kGlicSelectionWidgetDismissCount[] =
+    "glic.selection_widget_dismiss_count";
+
 // Register local state used only for migration (clearing or moving to a new
 // key).
 void RegisterLocalStatePrefsForMigration(PrefRegistrySimple* registry) {
@@ -1312,6 +1316,7 @@ void RegisterProfilePrefsForMigration(
   registry->RegisterBooleanPref(kDeleteCacheBasic, true);
   registry->RegisterBooleanPref(kDeleteCookiesBasic, true);
   registry->RegisterIntegerPref(kLastClearBrowsingDataTab, 0);
+  registry->RegisterIntegerPref(kGlicSelectionWidgetDismissCount, 0);
 }
 
 }  // namespace
@@ -2042,7 +2047,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
 #endif
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE) && !BUILDFLAG(IS_CHROMEOS)
-  preinstalled_apps::RegisterProfilePrefs(registry);
+  preinstalled_extensions::RegisterProfilePrefs(registry);
 #endif
 
 #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS)
@@ -2580,6 +2585,9 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
   profile_prefs->ClearPref(kDeleteCacheBasic);
   profile_prefs->ClearPref(kDeleteCookiesBasic);
   profile_prefs->ClearPref(kLastClearBrowsingDataTab);
+
+  // Added 06/2026.
+  profile_prefs->ClearPref(kGlicSelectionWidgetDismissCount);
 
   // Please don't delete the following line. It is used by PRESUBMIT.py.
   // END_MIGRATE_OBSOLETE_PROFILE_PREFS

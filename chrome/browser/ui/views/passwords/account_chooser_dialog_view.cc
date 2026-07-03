@@ -28,6 +28,7 @@
 #include "ui/base/mojom/dialog_button.mojom.h"
 #include "ui/base/mojom/ui_base_types.mojom-shared.h"
 #include "ui/base/resource/resource_bundle.h"
+#include "ui/events/event.h"
 #include "ui/gfx/geometry/insets.h"
 #include "ui/strings/grit/ui_strings.h"
 #include "ui/views/border.h"
@@ -39,6 +40,7 @@
 #include "ui/views/layout/layout_provider.h"
 #include "ui/views/style/typography.h"
 #include "ui/views/widget/widget.h"
+#include "ui/views/window/dialog_client_view.h"
 
 AccountChooserDialogView::AccountChooserDialogView(
     CredentialManagerDialogController* controller,
@@ -116,6 +118,11 @@ bool AccountChooserDialogView::Accept() {
   return false;
 }
 
+bool AccountChooserDialogView::ShouldAllowKeyEventsDuringInputProtection()
+    const {
+  return false;
+}
+
 void AccountChooserDialogView::InitWindow() {
   auto contents_view = std::make_unique<views::View>();
   contents_view->SetLayoutManager(std::make_unique<views::FillLayout>());
@@ -151,7 +158,14 @@ void AccountChooserDialogView::InitWindow() {
 }
 
 void AccountChooserDialogView::CredentialsItemPressed(
-    const password_manager::PasswordForm* form) {
+    const password_manager::PasswordForm* form,
+    const ui::Event& event) {
+  if (GetDialogClientView() &&
+      GetDialogClientView()->IsPossiblyUnintendedInteraction(
+          event, /*allow_key_events=*/
+          ShouldAllowKeyEventsDuringInputProtection())) {
+    return;
+  }
   // On Mac the button click event may be dispatched after the dialog was
   // hidden. Thus, the controller can be null.
   if (controller_) {

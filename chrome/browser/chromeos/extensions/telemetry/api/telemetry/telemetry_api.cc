@@ -127,14 +127,13 @@ void OsTelemetryGetNonRemovableBlockDevicesInfoFunction::OnResult(
 // OsTelemetryGetCpuInfoFunction -----------------------------------------------
 
 void OsTelemetryGetCpuInfoFunction::RunIfAllowed() {
-  auto cb = base::BindOnce(&OsTelemetryGetCpuInfoFunction::OnResult, this);
-
-  GetRemoteService()->ProbeTelemetryInfo({crosapi::ProbeCategoryEnum::kCpu},
-                                         std::move(cb));
+  GetService().ProbeTelemetryInfo(
+      {ash::cros_healthd::mojom::ProbeCategoryEnum::kCpu},
+      base::BindOnce(&OsTelemetryGetCpuInfoFunction::OnResult, this));
 }
 
 void OsTelemetryGetCpuInfoFunction::OnResult(
-    crosapi::ProbeTelemetryInfoPtr ptr) {
+    ash::cros_healthd::mojom::TelemetryInfoPtr ptr) {
   if (!ptr || !ptr->cpu_result || !ptr->cpu_result->is_cpu_info()) {
     Respond(Error("API internal error"));
     return;
@@ -143,9 +142,7 @@ void OsTelemetryGetCpuInfoFunction::OnResult(
   const auto& cpu_info = ptr->cpu_result->get_cpu_info();
 
   cx_telem::CpuInfo result;
-  if (cpu_info->num_total_threads) {
-    result.num_total_threads = cpu_info->num_total_threads->value;
-  }
+  result.num_total_threads = cpu_info->num_total_threads;
   result.architecture = converters::telemetry::Convert(cpu_info->architecture);
   result.physical_cpus =
       converters::telemetry::ConvertPtrVector<cx_telem::PhysicalCpuInfo>(

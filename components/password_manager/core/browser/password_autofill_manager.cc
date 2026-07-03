@@ -330,9 +330,16 @@ void PasswordAutofillManager::DidAcceptSuggestion(
           std::move(last_popup_open_args_).suggestions, suggestion));
       break;
     case autofill::SuggestionType::kWebauthnSignInWithAnotherDevice:
-    case autofill::SuggestionType::kWebauthnPasskeyQrCode:
       metrics_util::LogPasswordSuggestionSelected(
           PasswordDropdownSelectedOption::kWebAuthnSignInWithAnotherDevice,
+          password_client_->IsOffTheRecord());
+      password_client_
+          ->GetWebAuthnCredentialsDelegateForDriver(password_manager_driver_)
+          ->LaunchSecurityKeyOrHybridFlow();
+      break;
+    case autofill::SuggestionType::kWebauthnPasskeyQrCode:
+      metrics_util::LogPasswordSuggestionSelected(
+          PasswordDropdownSelectedOption::kWebAuthnPasskeyQrCode,
           password_client_->IsOffTheRecord());
       password_client_
           ->GetWebAuthnCredentialsDelegateForDriver(password_manager_driver_)
@@ -374,9 +381,28 @@ void PasswordAutofillManager::DidAcceptSuggestion(
       auto payload =
           suggestion
               .GetPayload<autofill::Suggestion::PasswordSuggestionDetails>();
-      OnPasswordCredentialSuggestionAccepted(
+      auto fill_backup_callback =
           base::BindOnce(&PasswordAutofillManager::FillBackupSuggestion,
-                         weak_ptr_factory_.GetWeakPtr(), payload));
+                         weak_ptr_factory_.GetWeakPtr(), payload);
+      if (payload.is_cross_domain) {
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_CHROMEOS) || \
+    BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_ANDROID)
+        cross_domain_confirmation_controller_ =
+            password_client_->ShowCrossDomainConfirmationPopup(
+                last_popup_open_args_.element_bounds,
+                last_popup_open_args_.text_direction,
+                password_manager_driver_->GetLastCommittedURL(),
+                password_manager_util::GetHumanReadableRealm(
+                    payload.signon_realm.value_or(std::string())),
+                /*show_warning_text=*/true,
+                base::BindOnce(&PasswordAutofillManager::
+                                   OnPasswordCredentialSuggestionAccepted,
+                               weak_ptr_factory_.GetWeakPtr(),
+                               std::move(fill_backup_callback)));
+#endif
+      } else {
+        OnPasswordCredentialSuggestionAccepted(std::move(fill_backup_callback));
+      }
       break;
     }
     case autofill::SuggestionType::kTroubleSigningInEntry: {
@@ -444,13 +470,6 @@ void PasswordAutofillManager::DidAcceptSuggestion(
         autofill::SuggestionHidingReason::kAcceptSuggestion,
         GetMainFillingProduct());
   }
-}
-
-void PasswordAutofillManager::DidPerformButtonActionForSuggestion(
-    const Suggestion&,
-    const autofill::SuggestionButtonAction&) {
-  // Button actions do currently not exist for password entries.
-  NOTREACHED();
 }
 
 bool PasswordAutofillManager::RemoveSuggestion(const Suggestion& suggestion) {
@@ -723,13 +742,17 @@ bool PasswordAutofillManager::ShowPopup(
         autofill::AutofillSuggestionTriggerSource::kPasswordManager,
         /*form_control_ax_id=*/0, autofill::PopupAnchorType::kField);
   }
-  autofill_client_->ShowAutofillSuggestions(last_popup_open_args_,
-                                            weak_ptr_factory_.GetWeakPtr());
+  last_session_id_ = autofill_client_->ShowAutofillSuggestions(
+      last_popup_open_args_, weak_ptr_factory_.GetWeakPtr());
   return true;
 }
 
 void PasswordAutofillManager::UpdatePopup(std::vector<Suggestion> suggestions) {
   if (!password_manager_driver_->CanShowAutofillUi()) {
+    return;
+  }
+  if (last_session_id_ !=
+      autofill_client_->GetSessionIdForCurrentAutofillSuggestions()) {
     return;
   }
   if (!ContainsOtherThanManagePasswords(suggestions)) {
@@ -929,10 +952,12 @@ std::vector<autofill::Suggestion> PasswordAutofillManager::GetSuggestions(
   if (proactive_recovery_login) {
     CHECK(proactive_recovery_login->backup_password_value);
 
-    const auto suggestion_details = Suggestion::PasswordSuggestionDetails(
+    auto suggestion_details = Suggestion::PasswordSuggestionDetails(
         proactive_recovery_login->username_value,
         proactive_recovery_login->password_value,
-        proactive_recovery_login->backup_password_value.value());
+        proactive_recovery_login->backup_password_value.value(),
+        proactive_recovery_login->realm,
+        proactive_recovery_login->is_grouped_affiliation);
     return suggestion_generator_.GetProactiveRecoverySuggestions(
         suggestion_details);
   }

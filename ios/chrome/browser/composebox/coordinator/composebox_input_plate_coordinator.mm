@@ -39,6 +39,7 @@
 #import "ios/chrome/browser/composebox/public/composebox_theme.h"
 #import "ios/chrome/browser/composebox/public/features.h"
 #import "ios/chrome/browser/composebox/shared/coordinator/composebox_attachment_diff.h"
+#import "ios/chrome/browser/composebox/shared/coordinator/composebox_picker_drive_result.h"
 #import "ios/chrome/browser/composebox/shared/coordinator/composebox_picker_presenter.h"
 #import "ios/chrome/browser/composebox/shared/metrics/composebox_metrics_recorder.h"
 #import "ios/chrome/browser/composebox/shared/ui/composebox_snackbar_presenter.h"
@@ -482,6 +483,17 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
   [_pickerPresenter presentFilePicker];
 }
 
+- (void)composeboxViewControllerDidTapDriveButton:
+    (ComposeboxInputPlateViewController*)composeboxViewController {
+  // TODO(crbug.com/515377633): Record the Drive attachment metric.
+  if (![_mediator canAddMoreAttachments]) {
+    [self showMaxAttachmentSnackbarError];
+    return;
+  }
+
+  [_pickerPresenter presentDriveFilePicker];
+}
+
 - (void)composeboxViewControllerDidTapAttachTabsButton:
     (ComposeboxInputPlateViewController*)viewController {
   if (![_mediator canAddMoreAttachments]) {
@@ -827,6 +839,19 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
 
   [_mediator attachSelectedTabsWithWebStateIDs:selectedWebStateIDs
                              cachedWebStateIDs:cachedWebStateIDs];
+}
+
+- (void)composeboxPickerPresenter:(ComposeboxPickerPresenter*)presenter
+                didPickDriveItems:
+                    (NSArray<ComposeboxPickerDriveResult*>*)results {
+  if (results.count == 0) {
+    return;
+  }
+  for (ComposeboxPickerDriveResult* result in results) {
+    [_mediator processDriveFileWithIdentifier:result.identifier
+                                         name:result.fileName
+                                     mimeType:result.mimeType];
+  }
 }
 
 #pragma mark - ComposeboxPickerPresenterDataSource

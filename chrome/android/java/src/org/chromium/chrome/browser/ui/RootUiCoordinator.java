@@ -368,7 +368,7 @@ public class RootUiCoordinator
      */
     private @Nullable ToolbarThemeColorProvider mAdjustedToolbarThemeColorProvider;
 
-    private IncognitoStateProvider mIncognitoStateProvider;
+    protected IncognitoStateProvider mIncognitoStateProvider;
 
     private final @Nullable Callback<Boolean> mOnOmniboxFocusChangedListener;
     protected @Nullable ToolbarManager mToolbarManager;
@@ -2849,6 +2849,11 @@ public class RootUiCoordinator
     /** Returns a supplier of the share delegate. */
     public MonotonicObservableSupplier<ShareDelegate> getShareDelegateSupplier() {
         return mShareDelegateSupplier;
+    }
+
+    /** Returns the supplier of the omnibox focus state. */
+    public NonNullObservableSupplier<Boolean> getOmniboxFocusStateSupplier() {
+        return mOmniboxFocusStateSupplier;
     }
 
     public @Nullable ExclusiveAccessManager getExclusiveAccessManager() {

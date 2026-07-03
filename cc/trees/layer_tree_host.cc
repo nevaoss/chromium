@@ -794,9 +794,6 @@ void LayerTreeHost::OnDeferCommitsChanged(bool defer_status,
   client_->OnDeferCommitsChanged(defer_status, reason);
 }
 
-void LayerTreeHost::SetShouldThrottleFrameRate(bool flag) {
-  proxy_->SetShouldThrottleFrameRate(flag);
-}
 
 ScopedRequestHighFramerate::ScopedRequestHighFramerate(LayerTreeHost* host)
     : host_(host->weak_ptr_factory_.GetWeakPtr()) {
@@ -1302,9 +1299,9 @@ void LayerTreeHost::UpdateBrowserControlsState(
 void LayerTreeHost::AnimateLayers(base::TimeTicks monotonic_time) {
   std::unique_ptr<MutatorEvents> events = mutator_host()->CreateEvents();
 
-  if (mutator_host()->TickAnimations(monotonic_time,
-                                     property_trees()->scroll_tree(), true,
-                                     events.get())) {
+  AnimationTickResult tick_result = mutator_host()->TickAnimations(
+      monotonic_time, property_trees()->scroll_tree(), true, events.get());
+  if (tick_result.animated) {
     mutator_host()->UpdateAnimationState(true, events.get());
   }
 

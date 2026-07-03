@@ -85,6 +85,7 @@
 #include "chrome/browser/ui/waap/initial_web_ui_manager.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/browser/ui/web_applications/test/web_app_browsertest_util.h"
+#include "chrome/browser/ui/window_metadata/window_metadata_controller.h"
 #include "chrome/browser/web_applications/model/display_override.h"
 #include "chrome/browser/web_applications/mojom/user_display_mode.mojom.h"
 #include "chrome/browser/web_applications/test/os_integration_test_override_impl.h"
@@ -642,7 +643,7 @@ IN_PROC_BROWSER_TEST_F(SessionRestoreTest, NoSessionRestoreNewWindowChromeOS) {
 
   Browser* incognito_browser = CreateIncognitoBrowser();
   chrome::AddTabAt(incognito_browser, GURL(), -1, true);
-  incognito_browser->window()->Show();
+  incognito_browser->GetWindow()->Show();
 
   // Close the normal browser. After this we only have the incognito window
   // open.
@@ -665,9 +666,9 @@ IN_PROC_BROWSER_TEST_F(SessionRestoreTest, NoSessionRestoreNewWindowChromeOS) {
 IN_PROC_BROWSER_TEST_F(SessionRestoreTest, MaximizedApps) {
   const char* app_name = "TestApp";
   Browser* app_browser = CreateBrowserForApp(app_name, browser()->profile());
-  app_browser->window()->Maximize();
-  app_browser->window()->Show();
-  EXPECT_TRUE(app_browser->window()->IsMaximized());
+  app_browser->GetWindow()->Maximize();
+  app_browser->GetWindow()->Show();
+  EXPECT_TRUE(app_browser->GetWindow()->IsMaximized());
   EXPECT_TRUE(app_browser->is_type_app());
 
   // Close the normal browser. After this we only have the app_browser window.
@@ -678,7 +679,7 @@ IN_PROC_BROWSER_TEST_F(SessionRestoreTest, MaximizedApps) {
   Browser* new_browser = ui_test_utils::WaitForBrowserToOpen();
 
   ASSERT_TRUE(new_browser);
-  EXPECT_TRUE(app_browser->window()->IsMaximized());
+  EXPECT_TRUE(app_browser->GetWindow()->IsMaximized());
   EXPECT_TRUE(app_browser->is_type_app());
 }
 #endif  // BUILDFLAG(IS_CHROMEOS)
@@ -742,7 +743,7 @@ IN_PROC_BROWSER_TEST_F(SessionRestoreTest,
       TabRestoreServiceFactory::GetForProfile(browser()->profile());
   service->ClearEntries();
 
-  browser()->window()->Close();
+  browser()->GetWindow()->Close();
 
   // Expect a window with three tabs.
   ASSERT_EQ(1U, service->entries().size());
@@ -814,7 +815,7 @@ IN_PROC_BROWSER_TEST_F(SessionRestoreTest, IncognitotoNonIncognito) {
   // Create a new incognito window.
   Browser* incognito_browser = CreateIncognitoBrowser();
   chrome::AddTabAt(incognito_browser, GURL(), -1, true);
-  incognito_browser->window()->Show();
+  incognito_browser->GetWindow()->Show();
 
   // Close the normal browser. After this we only have the incognito window
   // open.
@@ -1971,8 +1972,10 @@ IN_PROC_BROWSER_TEST_F(SessionRestoreTest, RestoreWindowUserTitle) {
 
   // Set a custom user title to this second browser window.
   const std::string custom_user_title = "Window 2";
-  browser2->SetWindowUserTitle(custom_user_title);
-  ASSERT_EQ(custom_user_title, browser2->user_title());
+  WindowMetadataController::From(browser2)->SetWindowUserTitle(
+      custom_user_title);
+  ASSERT_EQ(custom_user_title,
+            WindowMetadataController::From(browser2)->user_title());
 
   // Simulate an exit by shutting down the session service. If we don't do this
   // the window close is treated as though the user closed the window and won't
@@ -1993,11 +1996,12 @@ IN_PROC_BROWSER_TEST_F(SessionRestoreTest, RestoreWindowUserTitle) {
 
   // The user title should be empty for first window as it did not have a
   // custom title.
-  EXPECT_TRUE(new_browser1->GetBrowserForMigrationOnly()->user_title().empty());
+  EXPECT_TRUE(
+      WindowMetadataController::From(new_browser1)->user_title().empty());
 
   // The user title for second window should be restored.
   EXPECT_EQ(custom_user_title,
-            new_browser2->GetBrowserForMigrationOnly()->user_title());
+            WindowMetadataController::From(new_browser2)->user_title());
 }
 
 // Make sure after a restore the number of processes matches that of the number

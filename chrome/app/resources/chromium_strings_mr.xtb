@@ -52,7 +52,6 @@
 <translation id="154404805518949443">Chromium मध्ये साइन इन करा</translation>
 <translation id="1547469039832541117">हायलाइट केलेली टास्क संपवते.</translation>
 <translation id="1553461853655228091">तुमच्या आसपासचा 3D नकाशा तयार करण्यासाठी Chromium ला तुमचा कॅमेरा अ‍ॅक्सेस करण्याची परवानगी हवी आहे</translation>
-<translation id="1555494096857516577">{NUM_EXTENSIONS,plural, =1{या एक्स्टेंशनला यापुढे सपोर्ट नाही. तुम्ही ते काढून टाकावे अशी शिफारस Chromium करते.}other{या एक्स्टेंशनना यापुढे सपोर्ट नाही. तुम्ही ती काढून टाकावी अशी शिफारस Chromium करते.}}</translation>
 <translation id="1562320819937089394">Chromium पिन करा</translation>
 <translation id="1574377791422810894">Chromium ची सुरक्षितता टूल</translation>
 <translation id="1594928384848033697">Chromium ला तुमचा Password Manager डेटा हटवायचा आहे. याला अनुमती देण्यासाठी तुमचा Windows पासवर्ड टाइप करा.</translation>
@@ -118,6 +117,7 @@
 <translation id="2236949375853147973">माझी अ‍ॅक्टिव्हिटी</translation>
 <translation id="2238130810669087193">तुमच्या सर्व डिव्हाइसवर तुमचे पत्ते आणि आणखी बऱ्याच गोष्टी मिळवण्यासाठी, Chromium मध्ये साइन इन करा. तुम्ही साइन इन केल्यावर हा पत्ता तुमच्या Google खाते मध्ये सेव्ह केला जाईल.</translation>
 <translation id="2241627712206172106">तुम्ही कॉंप्युटर शेअर केल्यास, मित्र आणि कुटुंब स्वतंत्रपणे ब्राउझ करू शकतात आणि त्यांना पाहिजे तसे Chromium सेट अप करू शकतात.</translation>
+<translation id="22571759390241347">Chromium मधील कौशल्ये</translation>
 <translation id="2283803047247799269">इमेज शोध वापरून या टॅबमध्ये शोधा</translation>
 <translation id="2287771843518581140">{NUM_TABS,plural, =1{Chromium तुमच्या ब्राउझरचा वेग कमी करणारा टॅब थांबवण्याची शिफारस करते}other{Chromium तुमच्या ब्राउझरचा वेग कमी करणारे टॅब थांबवण्याची शिफारशी करते}}</translation>
 <translation id="2307973900865360088">डॉक मध्ये ठेवा</translation>
@@ -192,6 +192,7 @@
 <translation id="3003694935412297923">सर्व टास्क</translation>
 <translation id="3012615494352020668">{count,plural, =1{तुमच्या Google खाते मध्ये काही डेटा सेव्ह करता येण्यापूर्वी आणि तो तुमच्या सर्व डिव्हाइसवर वापरता येण्यापूर्वी, Chromium ला ते तुम्हीच असल्याची पडताळणी करावी लागेल. तुम्ही आताच साइन आउट केल्यास, हा डेटा (१ आयटम) हटवला जाईल.}other{तुमच्या Google खाते मध्ये काही डेटा सेव्ह करता येण्यापूर्वी आणि तो तुमच्या सर्व डिव्हाइसवर वापरता येण्यापूर्वी, Chromium ला ते तुम्हीच असल्याची पडताळणी करावी लागेल. तुम्ही आता साइन आउट केल्यास, हा डेटा ({count} आयटम) हटवला जाईल.}}</translation>
 <translation id="3013473503895162900">Chromium मध्ये नवीन टॅबमध्ये <ph name="URL" />उघडा.</translation>
+<translation id="302551344979399011">कौशल्यांसारखे AI प्रयोग तुमच्या Google खात्यावर सेव्ह केले जातात आणि Chromium सिंकपासून स्वतंत्रपणे व्यवस्थापित केले जातात.</translation>
 <translation id="3032787606318309379">Chromium वर जोडत आहे...</translation>
 <translation id="3038232873781883849">इंस्टॉल करण्यासाठी प्रतीक्षा करत आहे...</translation>
 <translation id="3045032126857188731">भाषांतराची भाषा: <ph name="LANGUAGE" /></translation>
@@ -383,6 +384,7 @@
 <translation id="5289287148052354622">Chromium अ‍ॅप मिळवा</translation>
 <translation id="5294316920224716406">गुप्त मोडमध्ये ब्राउझ करताना, असुरक्षित कनेक्शन वापरून साइट लोड करण्यापूर्वी Chromium तुम्हाला चेतावणी देईल</translation>
 <translation id="5313228254328109263">Chromium Updater अंतर्गत सेवा</translation>
+<translation id="5324450571874973775">Chromium मधील Gemini च्या इतर वैशिष्ट्यांसोबत ती वापरा</translation>
 <translation id="5346389065299425353">एकाहून अधिक टॅब, फाइल आणि टूल जोडून आणखी सखोलपणे शोध घ्या</translation>
 <translation id="5348677704241861105">Chromium मधील Gemini च्या मदतीने या दस्तऐवजाचे त्वरित अवलोकन करा आणि प्रश्न विचारा</translation>
 <translation id="5352264705793813212">Chromium ला तुम्ही पुनरावलोकन करणे आवश्यक आहे अशा काही सुरक्षा शिफारशी आढळल्या आहेत</translation>
@@ -674,6 +676,7 @@ Chromium तुमची सेटिंग्ज रिकव्हर कर�
 <translation id="8318772038038596122"><ph name="TIMEOUT_DURATION" /> कालावधीसाठी Chromium वापरले जात नाही, तेव्हा तुमची संस्था ते बंद करते.</translation>
 <translation id="8321888067342493336">इमेज म्हणून सेव्ह करा</translation>
 <translation id="8340674089072921962"><ph name="USER_EMAIL_ADDRESS" /> पूर्वी Chromium वापरत होते</translation>
+<translation id="8351551329754447960">Chromium मध्ये कौशल्ये सुरू करा</translation>
 <translation id="8359544530202147897">तुमच्या <ph name="ACCOUNT_EMAIL" /> Google खाते मध्ये Chromium डेटा वापरणे कायम ठेवण्यासाठी Chromium अपडेट करा</translation>
 <translation id="8360718212975266891">भविष्यातील Chromium अपडेट मिळवण्यासाठी, तुमच्याकडे Windows 10 किंवा त्यापुढील आवृत्ती असणे आवश्यक आहे. हा कॉंप्युटर Windows 8 वापरत आहे.</translation>
 <translation id="8362914115861174987">यामध्ये भाषांतर करा</translation>

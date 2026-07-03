@@ -65,7 +65,7 @@ class IndigoServiceTest : public testing::Test {
   void MakeAccountAvailableAndCapable() {
     AccountInfo info = identity_test_env_.MakePrimaryAccountAvailable(
         "test@example.com", signin::ConsentLevel::kSignin);
-    AccountCapabilitiesTestMutator mutator(&info.capabilities);
+    AccountCapabilitiesTestMutator mutator(&info);
     mutator.set_can_use_model_execution_features(true);
     identity_test_env_.UpdateAccountInfoForAccount(info);
   }
@@ -146,7 +146,7 @@ TEST_F(IndigoServiceTest, CapabilitiesDisable) {
 
   AccountInfo info = identity_test_env_.MakePrimaryAccountAvailable(
       "test@example.com", signin::ConsentLevel::kSignin);
-  AccountCapabilitiesTestMutator mutator(&info.capabilities);
+  AccountCapabilitiesTestMutator mutator(&info);
   mutator.set_can_use_model_execution_features(false);
   identity_test_env_.UpdateAccountInfoForAccount(info);
 

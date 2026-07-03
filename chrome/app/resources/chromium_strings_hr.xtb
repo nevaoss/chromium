@@ -20,6 +20,7 @@
 <ph name="EXTENSION_NAME" /></translation>
 <translation id="1184145431117212167">Instaliranje nije uspjelo jer vaša verzija Windowsa nije podržana.</translation>
 <translation id="1185134272377778587">O pregledniku Chromium</translation>
+<translation id="1186645291482254714">Primajte upozorenja o praćenju cijena uz Chromium na telefonu</translation>
 <translation id="1203500561924088507">Zahvaljujemo što ste izvršili instaliranje. Da biste mogli koristiti <ph name="BUNDLE_NAME" />, morate ponovno pokrenuti preglednik.</translation>
 <translation id="1232234696885483911">Kad otvorite pretraživanje slika, naslov, URL i sadržaj stranice, uključujući PDF-ove, automatski će se poslati poslužitelju. <ph name="LEARN_MORE" /></translation>
 <translation id="123265588161106468">Dok ste prijavljeni, možete koristiti svoje zaporke i još mnogo toga sa svojeg Google računa u Chromiumu. Da biste to promijenili, idite na Vaš račun u Chromiumu.</translation>
@@ -50,7 +51,6 @@
 <translation id="154404805518949443">Prijava na Chromium</translation>
 <translation id="1547469039832541117">Završava istaknut zadatak.</translation>
 <translation id="1553461853655228091">Chromium treba dopuštenje za pristup kameri radi izrade 3D karte vašeg okruženja</translation>
-<translation id="1555494096857516577">{NUM_EXTENSIONS,plural, =1{Ovo proširenje više nije podržano. Chromium preporučuje da ga uklonite.}one{Ova proširenja više nisu podržana. Chromium preporučuje da ih uklonite.}few{Ova proširenja više nisu podržana. Chromium preporučuje da ih uklonite.}other{Ova proširenja više nisu podržana. Chromium preporučuje da ih uklonite.}}</translation>
 <translation id="1562320819937089394">Prikvači Chromium</translation>
 <translation id="1574377791422810894">Chromiumovi sigurnosni alati</translation>
 <translation id="1594928384848033697">Chromium želi izbrisati vaše podatke Upravitelja zaporki. Upišite svoju zaporku za Windows da biste to dopustili.</translation>

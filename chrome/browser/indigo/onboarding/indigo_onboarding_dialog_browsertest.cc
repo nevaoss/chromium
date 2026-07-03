@@ -9,6 +9,7 @@
 #include "base/test/bind.h"
 #include "base/test/scoped_feature_list.h"
 #include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/tabs/public/tab_dialog_manager.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/common/chrome_features.h"
@@ -254,6 +255,25 @@ IN_PROC_BROWSER_TEST_F(IndigoOnboardingDialogBrowserTest, CrossRfhNavigation) {
       WaitForHide(IndigoOnboardingDialog::kWebViewId),
       Check([&]() { return WasDialogClosed(); }),
       Check([&]() { return last_result_.acknowledge_chrome_disclaimer; }));
+}
+
+// TODO(crbug.com/522357329): Fix flaky test.
+#if BUILDFLAG(IS_WIN)
+#define MAYBE_CloseOnTabReload DISABLED_CloseOnTabReload
+#else
+#define MAYBE_CloseOnTabReload CloseOnTabReload
+#endif
+IN_PROC_BROWSER_TEST_F(IndigoOnboardingDialogBrowserTest,
+                       MAYBE_CloseOnTabReload) {
+  tabs::TabInterface* tab = browser()->GetActiveTabInterface();
+  ASSERT_TRUE(tab);
+
+  const GURL example_url("https://www.example.com/");
+  RunTestSequence(Do([&]() { OpenDialog(*tab, example_url); }),
+                  WaitForShow(IndigoOnboardingDialog::kWebViewId),
+                  PressButton(kReloadButtonElementId),
+                  WaitForHide(IndigoOnboardingDialog::kWebViewId),
+                  Check([&]() { return WasDialogClosed(); }));
 }
 
 }  // namespace

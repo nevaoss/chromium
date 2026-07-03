@@ -1900,6 +1900,8 @@ generated_enumeration_sources_in_modules = [
   "$root_gen_dir/third_party/blink/renderer/bindings/modules/v8/v8_rtc_ice_transport_policy.h",
   "$root_gen_dir/third_party/blink/renderer/bindings/modules/v8/v8_rtc_ice_transport_state.cc",
   "$root_gen_dir/third_party/blink/renderer/bindings/modules/v8/v8_rtc_ice_transport_state.h",
+  "$root_gen_dir/third_party/blink/renderer/bindings/modules/v8/v8_rtc_rtp_header_encryption_policy.cc",
+  "$root_gen_dir/third_party/blink/renderer/bindings/modules/v8/v8_rtc_rtp_header_encryption_policy.h",
   "$root_gen_dir/third_party/blink/renderer/bindings/modules/v8/v8_rtc_network_type.cc",
   "$root_gen_dir/third_party/blink/renderer/bindings/modules/v8/v8_rtc_network_type.h",
   "$root_gen_dir/third_party/blink/renderer/bindings/modules/v8/v8_rtc_peer_connection_state.cc",

@@ -68,6 +68,7 @@ final class SidePanelContainerCoordinatorImpl
         ThreadUtils.assertOnUiThread();
         mSidePanelCoordinatorAndroid = sidePanelCoordinatorAndroid;
         mSideUiCoordinator.registerSideUiContainer(this);
+        mSidePanelCoordinatorAndroid.init();
     }
 
     @Override
@@ -126,6 +127,13 @@ final class SidePanelContainerCoordinatorImpl
     @Override
     public View getView() {
         log(TAG, "getView");
+        ThreadUtils.assertOnUiThread();
+        return mContainerView;
+    }
+
+    @Override
+    public View getViewForTesting() {
+        log(TAG, "getViewForTesting");
         ThreadUtils.assertOnUiThread();
         return mContainerView;
     }
@@ -196,8 +204,9 @@ final class SidePanelContainerCoordinatorImpl
 
     @Override
     public void onWindowResized(boolean canShowSideUi) {
-        assert mSidePanelCoordinatorAndroid != null;
-        mSidePanelCoordinatorAndroid.onWindowResized(canShowSideUi);
+        if (mSidePanelCoordinatorAndroid != null) {
+            mSidePanelCoordinatorAndroid.onWindowResized(canShowSideUi);
+        }
     }
 
     /**
@@ -224,5 +233,12 @@ final class SidePanelContainerCoordinatorImpl
 
         // 4. Return 0 if available space can't accommodate the minimum side panel width.
         return 0;
+    }
+
+    /**
+     * Prevents calls to native code in pure-Java tests.
+     */
+    void clearSidePanelCoordinatorAndroidForTesting() {
+        mSidePanelCoordinatorAndroid = null;
     }
 }

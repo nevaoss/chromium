@@ -34,6 +34,7 @@
 #include "content/public/browser/clipboard_types.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
+#include "content/public/browser/web_contents_delegate.h"
 #include "content/public/common/drop_data.h"
 #include "ui/base/clipboard/clipboard.h"
 #include "ui/base/clipboard/clipboard_buffer.h"
@@ -775,7 +776,7 @@ void PasteIfAllowedByPolicy(
                  data_controls::kEnableClipboardDataControlsAndroid)) {
     // Call PasteIfAllowedByDataControls directly as
     // DataTransferPolicyController::PasteIfAllowed contains logic that isn't
-    // relevant to Clank.
+    // relevant to Android.
     PasteIfAllowedByDataControls(source, destination, metadata,
                                  std::move(clipboard_paste_data),
                                  std::move(callback));
@@ -884,7 +885,7 @@ void IsClipboardCopyAllowedByPolicy(
 
 #if !BUILDFLAG(IS_ANDROID)
   // IsUrlAllowedToCopy checks a deprecated CopyPreventionSettings that isn't
-  // applicable on Clank.
+  // applicable on Android.
   std::u16string replacement_data;
   ClipboardRestrictionService* service =
       ClipboardRestrictionServiceFactory::GetInstance()->GetForBrowserContext(
@@ -916,7 +917,7 @@ bool IsCopyPolicyCheckRequired(const content::ClipboardEndpoint& source,
   }
 #else
   // IsUrlAllowedToCopy checks a deprecated CopyPreventionSettings that isn't
-  // applicable on Clank.
+  // applicable on Android.
   std::u16string replacement_data;
   ClipboardRestrictionService* service =
       ClipboardRestrictionServiceFactory::GetInstance()->GetForBrowserContext(
@@ -1233,6 +1234,45 @@ void ShouldAllowSearchWith(content::WebContents* web_contents,
   }
 }
 
+bool IsClipboardCopyAllowedByPolicyForUI(content::WebContents* web_contents) {
+  auto source = GetValidURLEndpoint(web_contents);
+  if (!source || SkipDataControlOrContentAnalysisChecks(*source)) {
+    return true;
+  }
+
+  auto url = GetUrlFromEndpoint(*source);
+
+#if !BUILDFLAG(IS_ANDROID)
+  // IsUrlAllowedToCopy checks a deprecated CopyPreventionSettings that isn't
+  // applicable on Android.
+  ClipboardRestrictionService* restriction_service =
+      ClipboardRestrictionServiceFactory::GetInstance()->GetForBrowserContext(
+          source->browser_context());
+  if (restriction_service &&
+      !restriction_service->IsUrlAllowedToCopy(url, /*data_size_in_bytes=*/0,
+                                               nullptr)) {
+    return false;
+  }
+#endif  // !BUILDFLAG(IS_ANDROID)
+
+  auto* service = data_controls::ChromeRulesServiceFactory::GetInstance()
+                      ->GetForBrowserContext(source->browser_context());
+
+  auto source_only_verdict = service->GetCopyRestrictedBySourceVerdict(url);
+  if (source_only_verdict.level() == data_controls::Rule::Level::kBlock ||
+      source_only_verdict.level() == data_controls::Rule::Level::kWarn) {
+    return false;
+  }
+
+  auto os_clipboard_verdict = service->GetCopyToOSClipboardVerdict(url);
+  if (os_clipboard_verdict.level() == data_controls::Rule::Level::kBlock ||
+      os_clipboard_verdict.level() == data_controls::Rule::Level::kWarn) {
+    return false;
+  }
+
+  return true;
+}
+
 void CopyTextToClipboard(content::RenderFrameHost* rfh,
                          const std::u16string& text) {
   if (!rfh) {
@@ -1295,14 +1335,21 @@ void PasteFromGeminiIfAllowedByPolicy(content::RenderFrameHost* destination,
       auto verdict = rules_service->GetPasteFromGeminiInChromeVerdict(
           GetSourceURL(destination));
       auto* factory = GetDialogFactory();
+      auto* web_contents =
+          content::WebContents::FromRenderFrameHost(destination);
 
       switch (verdict.level()) {
         case data_controls::Rule::Level::kBlock:
           MaybeReportDataControlsPasteFromGemini(destination, verdict,
                                                  data.size());
           if (factory) {
+            // TODO(crbug.com/473047343): Add browsertests to validate surfacing
+            // works.
+            if (web_contents && web_contents->GetDelegate()) {
+              web_contents->GetDelegate()->ActivateContents(web_contents);
+            }
             factory->ShowDialogIfNeeded(
-                content::WebContents::FromRenderFrameHost(destination),
+                web_contents,
                 data_controls::DataControlsDialog::Type::kClipboardPasteBlock);
           }
           std::move(callback).Run(false);
@@ -1311,8 +1358,13 @@ void PasteFromGeminiIfAllowedByPolicy(content::RenderFrameHost* destination,
           MaybeReportDataControlsPasteFromGemini(destination, verdict,
                                                  data.size());
           if (factory) {
+            // TODO(crbug.com/473047343): Add browsertests to validate surfacing
+            // works.
+            if (web_contents && web_contents->GetDelegate()) {
+              web_contents->GetDelegate()->ActivateContents(web_contents);
+            }
             factory->ShowDialogIfNeeded(
-                content::WebContents::FromRenderFrameHost(destination),
+                web_contents,
                 data_controls::DataControlsDialog::Type::kClipboardPasteWarn,
                 base::BindOnce(
                     [](content::GlobalRenderFrameHostId rfh_id,

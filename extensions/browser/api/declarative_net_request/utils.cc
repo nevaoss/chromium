@@ -471,6 +471,10 @@ ScopedRuleLimitOverride CreateScopedDisabledStaticRuleLimitOverrideForTesting(
   return base::AutoReset<int>(&g_disabled_static_rule_limit_for_testing, limit);
 }
 
+bool IsRulesetStatic(const RulesetID& id) {
+  return id != kDynamicRulesetID && id != kSessionRulesetID;
+}
+
 size_t GetEnabledStaticRuleCount(const CompositeMatcher* composite_matcher) {
   if (!composite_matcher) {
     return 0;
@@ -479,7 +483,7 @@ size_t GetEnabledStaticRuleCount(const CompositeMatcher* composite_matcher) {
   size_t enabled_static_rule_count = 0;
   for (const std::unique_ptr<RulesetMatcher>& matcher :
        composite_matcher->matchers()) {
-    if (matcher->id() == kDynamicRulesetID) {
+    if (!IsRulesetStatic(matcher->id())) {
       continue;
     }
 

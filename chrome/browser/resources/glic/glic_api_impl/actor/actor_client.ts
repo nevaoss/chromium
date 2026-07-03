@@ -17,12 +17,12 @@ export class ActorWebClientMessageHandler implements
     MessageHandlerInterface<ActorClient> {
   constructor(private host: GlicBrowserHostImpl) {}
 
-  glicWebClientNotifyActorTaskStateChanged(
-      payload: {taskId: number, state: ActorTaskState}): void {
+  notifyActorTaskStateChanged(payload: {taskId: number, state: ActorTaskState}):
+      void {
     this.host.setActorTaskState(payload.taskId, payload.state);
   }
 
-  async glicWebClientRequestToShowDialog(payload: {
+  async requestToShowDialog(payload: {
     request: SelectCredentialDialogRequestPrivate,
   }): Promise<{response: SelectCredentialDialogResponsePrivate}> {
     const request = payload.request;
@@ -75,7 +75,7 @@ export class ActorWebClientMessageHandler implements
     });
   }
 
-  glicWebClientRequestToShowConfirmationDialog(payload: {
+  requestToShowConfirmationDialog(payload: {
     request: UserConfirmationDialogRequestPrivate,
   }): Promise<{response: UserConfirmationDialogResponsePrivate}> {
     return new Promise(resolve => {
@@ -103,7 +103,7 @@ export class ActorWebClientMessageHandler implements
     });
   }
 
-  glicWebClientRequestToConfirmNavigation(payload: {
+  requestToConfirmNavigation(payload: {
     request: NavigationConfirmationRequestPrivate,
   }): Promise<{response: NavigationConfirmationResponsePrivate}> {
     return new Promise(resolve => {
@@ -130,7 +130,7 @@ export class ActorWebClientMessageHandler implements
     });
   }
 
-  async glicWebClientRequestToShowAutofillSuggestionsDialog(payload: {
+  async requestToShowAutofillSuggestionsDialog(payload: {
     request: SelectAutofillSuggestionsDialogRequestPrivate,
   }): Promise<{response: SelectAutofillSuggestionsDialogResponsePrivate}> {
     const request = payload.request;
@@ -196,42 +196,39 @@ export class GlicBrowserHostJournalImpl implements GlicBrowserHostJournal {
       asyncEventId: number, taskId: number, event: string,
       details: string): void {
     this.sender.requestNoResponse(
-        'glicBrowserLogBeginAsyncEvent',
-        {asyncEventId, taskId, event, details});
+        'logBeginAsyncEvent', {asyncEventId, taskId, event, details});
   }
 
   clear(): void {
-    this.sender.requestNoResponse('glicBrowserJournalClear', undefined);
+    this.sender.requestNoResponse('journalClear', undefined);
   }
 
   endAsyncEvent(asyncEventId: number, details: string): void {
-    this.sender.requestNoResponse(
-        'glicBrowserLogEndAsyncEvent', {asyncEventId, details});
+    this.sender.requestNoResponse('logEndAsyncEvent', {asyncEventId, details});
   }
 
   instantEvent(taskId: number, event: string, details: string): void {
-    this.sender.requestNoResponse(
-        'glicBrowserLogInstantEvent', {taskId, event, details});
+    this.sender.requestNoResponse('logInstantEvent', {taskId, event, details});
   }
 
   async snapshot(clear: boolean): Promise<Journal> {
-    const snapshotResult = await this.sender.requestWithResponse(
-        'glicBrowserJournalSnapshot', {clear});
+    const snapshotResult =
+        await this.sender.requestWithResponse('journalSnapshot', {clear});
     return snapshotResult.journal;
   }
 
   start(maxBytes: number, captureScreenshots: boolean): void {
     this.sender.requestNoResponse(
-        'glicBrowserJournalStart', {maxBytes, captureScreenshots});
+        'journalStart', {maxBytes, captureScreenshots});
   }
 
   stop(): void {
-    this.sender.requestNoResponse('glicBrowserJournalStop', undefined);
+    this.sender.requestNoResponse('journalStop', undefined);
   }
 
   recordFeedback(positive: boolean, reason: string) {
     this.sender.requestNoResponse(
-        'glicBrowserJournalRecordFeedback',
+        'journalRecordFeedback',
         {positive, reason},
     );
   }

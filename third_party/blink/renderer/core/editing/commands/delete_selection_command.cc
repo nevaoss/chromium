@@ -202,7 +202,7 @@ void DeleteSelectionCommand::SetStartingSelectionOnSmartDelete(
   VisiblePosition new_base = CreateVisiblePosition(is_base_first ? start : end);
   VisiblePosition new_extent =
       CreateVisiblePosition(is_base_first ? end : start);
-  SelectionInDOMTree::Builder builder;
+  SelectionInDomTree::Builder builder;
   builder.SetAffinity(new_base.Affinity())
       .SetBaseAndExtentDeprecated(new_base.DeepEquivalent(),
                                   new_extent.DeepEquivalent());
@@ -210,6 +210,10 @@ void DeleteSelectionCommand::SetStartingSelectionOnSmartDelete(
       CreateVisibleSelection(builder.Build());
   SetStartingSelection(
       SelectionForUndoStep::From(visible_selection.AsSelection()));
+  if (RuntimeEnabledFeatures::EditingUseDomPositionApiEnabled()) {
+    SetStartingDomSelection(
+        SelectionForUndoStep::From(visible_selection.AsSelection()));
+  }
 }
 
 // This assumes that it starts in editable content.
@@ -893,7 +897,7 @@ void DeleteSelectionCommand::HandleGeneralDelete(EditingState* editing_state) {
                                       GetDocument()
                                           .GetFrame()
                                           ->Selection()
-                                          .GetSelectionInDOMTree()
+                                          .GetSelectionInDomTree()
                                           .Focus()) <= 0) {
             // `downstream_end_` in FrameSelection(Use FrameSelection because
             // we need non-visual selection), the node be fully selected.
@@ -1338,7 +1342,7 @@ void DeleteSelectionCommand::DoApply(EditingState* editing_state) {
   if (br_result) {
     CalculateTypingStyleAfterDelete();
     GetDocument().UpdateStyleAndLayout(DocumentUpdateReason::kEditing);
-    SelectionInDOMTree::Builder builder;
+    SelectionInDomTree::Builder builder;
     builder.SetAffinity(affinity);
     if (ending_position_.IsNotNull())
       builder.Collapse(ending_position_);
@@ -1346,6 +1350,10 @@ void DeleteSelectionCommand::DoApply(EditingState* editing_state) {
         CreateVisibleSelection(builder.Build());
     SetEndingSelection(
         SelectionForUndoStep::From(visible_selection.AsSelection()));
+    if (RuntimeEnabledFeatures::EditingUseDomPositionApiEnabled()) {
+      SetEndingDomSelection(
+          SelectionForUndoStep::From(visible_selection.AsSelection()));
+    }
     ClearTransientState();
     RebalanceWhitespace();
     return;
@@ -1408,7 +1416,7 @@ void DeleteSelectionCommand::DoApply(EditingState* editing_state) {
 
   GetDocument().UpdateStyleAndLayout(DocumentUpdateReason::kEditing);
 
-  SelectionInDOMTree::Builder builder;
+  SelectionInDomTree::Builder builder;
   builder.SetAffinity(affinity);
   if (ending_position_.IsNotNull())
     builder.Collapse(ending_position_);
@@ -1416,6 +1424,10 @@ void DeleteSelectionCommand::DoApply(EditingState* editing_state) {
       CreateVisibleSelection(builder.Build());
   SetEndingSelection(
       SelectionForUndoStep::From(visible_selection.AsSelection()));
+  if (RuntimeEnabledFeatures::EditingUseDomPositionApiEnabled()) {
+    SetEndingDomSelection(
+        SelectionForUndoStep::From(visible_selection.AsSelection()));
+  }
 
   if (relocatable_reference_position->GetPosition().IsNull()) {
     ClearTransientState();

@@ -91,6 +91,7 @@
 #include "components/zoom/zoom_controller.h"
 #include "content/public/browser/ax_inspect_factory.h"
 #include "content/public/browser/javascript_dialog_manager.h"
+#include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/render_widget_host.h"
@@ -1427,7 +1428,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewRaceTest,
   // 4. Initiate browser closure.
   // This synchronously calls Browser::OnWindowClosing() which nulls the
   // BrowserWindowInterface reference and posts SynchronouslyDestroyBrowser.
-  new_browser->window()->Close();
+  new_browser->GetWindow()->Close();
 
   // 5. Queue BindInterface manually.
   // This mimics the Mojo request from the renderer arriving after the BWI is
@@ -1485,7 +1486,9 @@ class WebUIToolbarLifecycleBrowserTest : public InProcessBrowserTest {
       // Prewarm state
       enabled_features.push_back(
           {features::kWebUIReloadButton,
-           {{"WebUIReloadButtonPrewarmWebUI", prewarm ? "true" : "false"}}});
+           {{"WebUIReloadButtonPrewarmWebUI", prewarm ? "true" : "false"},
+            {"WebUIReloadButtonPrewarmWebUIPreNavigate",
+             prewarm ? "true" : "false"}}});
     }
 
     // Disable standard PreloadTopChromeWebUI for the default window to prevent
@@ -1562,7 +1565,7 @@ class WebUIToolbarLifecycleBrowserTest : public InProcessBrowserTest {
     std::unique_ptr<TestBrowserElements> browser_elements;
   };
 
- private:
+ protected:
   base::test::ScopedFeatureList feature_list_;
 };
 
@@ -1726,6 +1729,87 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarLifecycleNonPrewarmedBrowserTest,
   widget->CloseNow();
 }
 
+class WebUIToolbarLifecyclePrewarmedDeferredBrowserTest
+    : public WebUIToolbarLifecycleBrowserTest {
+ public:
+  WebUIToolbarLifecyclePrewarmedDeferredBrowserTest() = default;
+  ~WebUIToolbarLifecyclePrewarmedDeferredBrowserTest() override = default;
+
+ protected:
+  void SetUp() override {
+    std::vector<base::test::FeatureRefAndParams> enabled_features;
+    std::vector<base::test::FeatureRef> disabled_features;
+
+    // Base features
+    enabled_features.push_back(
+        {features::kWebUIInProcessResourceLoadingV2, {}});
+    enabled_features.push_back(
+        {features::kSkipIPCChannelPausingForNonGuests, {}});
+
+    enabled_features.push_back({features::kInitialWebUI, {}});
+    enabled_features.push_back({features::kWebUIAvatarButton, {}});
+    enabled_features.push_back(
+        {features::kWebUIReloadButton,
+         {{"WebUIReloadButtonPrewarmWebUI", "true"},
+          {"WebUIReloadButtonPrewarmWebUIPreNavigate", "false"}}});
+
+    // Disable standard PreloadTopChromeWebUI for the default window to prevent
+    // startup crashes.
+    disabled_features.push_back(features::kPreloadTopChromeWebUI);
+
+    feature_list_.InitWithFeaturesAndParameters(enabled_features,
+                                                disabled_features);
+    WebUIToolbarLifecycleBrowserTest::SetUp();
+  }
+};
+
+IN_PROC_BROWSER_TEST_F(WebUIToolbarLifecyclePrewarmedDeferredBrowserTest,
+                       DeferredLoad) {
+  LifecycleTestSetup setup(browser());
+
+  // Set up navigation observer for the toolbar WebUI.
+  content::TestNavigationObserver observer(
+      (GURL(chrome::kChromeUIWebUIToolbarURL)));
+  observer.StartWatchingNewWebContents();
+
+  // Create the InitialWebUIManager.
+  auto manager = std::make_unique<InitialWebUIManager>(&setup.mock_browser);
+
+  // Verify that the prewarmed WebContents exists but has NOT started
+  // navigation.
+  content::WebContents* prewarmed_contents =
+      manager->GetToolbarContentsForTesting();
+  ASSERT_TRUE(prewarmed_contents);
+  EXPECT_FALSE(prewarmed_contents->IsLoading());
+  content::NavigationEntry* entry =
+      prewarmed_contents->GetController().GetLastCommittedEntry();
+  ASSERT_TRUE(entry);
+  EXPECT_TRUE(entry->IsInitialEntry());
+  EXPECT_EQ(entry->GetURL(), GURL());
+
+  // Construct the WebUIToolbarWebView. It should consume the prewarmed
+  // contents.
+  auto toolbar_view = std::make_unique<WebUIToolbarWebView>(
+      &setup.mock_browser, browser()->command_controller(),
+      /*location_bar=*/nullptr);
+
+  // Add it to a widget. This should trigger the deferred navigation.
+  auto widget = std::make_unique<views::Widget>();
+  views::Widget::InitParams widget_params(
+      views::Widget::InitParams::CLIENT_OWNS_WIDGET,
+      views::Widget::InitParams::TYPE_WINDOW);
+  widget_params.context = browser()->window()->GetNativeWindow();
+  widget_params.bounds = gfx::Rect(0, 0, 100, 100);
+  widget->Init(std::move(widget_params));
+  widget->GetContentsView()->AddChildView(std::move(toolbar_view));
+
+  // Wait for the deferred navigation to complete.
+  observer.Wait();
+  EXPECT_TRUE(observer.last_navigation_succeeded());
+
+  widget->CloseNow();
+}
+
 // Verify that the crash is recovered by reloading the page until it hits the
 // limit set in `WebUIReloadButtonMaxCrashRecoveryTimes`, after that it will
 // remain crashed.
@@ -1869,7 +1953,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewStabilityTest,
 
   // Close the window. This should trigger the beforeunload dialog and set the
   // browser into the "attempting to close" state.
-  browser()->window()->Close();
+  browser()->GetWindow()->Close();
 
   // Verify the browser is attempting to close.
   EXPECT_TRUE(browser()->capabilities()->IsAttemptingToCloseBrowser());
@@ -4164,7 +4248,9 @@ IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest,
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
   expected_icon = "internal-icons:google_lens_monochrome_logo";
 #else
-  expected_icon = "pinned-toolbar-action:SidePanelShowLensOverlayResults";
+  expected_icon = features::IsRoundedIconsEnabled()
+                      ? "webui-toolbar:vector_icons_search"
+                      : "pinned-toolbar-action:SidePanelShowLensOverlayResults";
 #endif
 
   // Verify iron-icon attribute in WebUI.

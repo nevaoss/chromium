@@ -54,7 +54,7 @@
 #include "chrome/browser/web_applications/isolated_web_apps/test/isolated_web_app_test_update_server.h"
 #include "chrome/browser/web_applications/isolated_web_apps/test/key_distribution/test_utils.h"
 #include "chrome/browser/web_applications/isolated_web_apps/test/policy_test_utils.h"
-#include "chrome/browser/web_applications/isolated_web_apps/update/isolated_web_app_update_discovery_task.h"
+#include "chrome/browser/web_applications/isolated_web_apps/update/isolated_web_app_update_check_and_prepare_task.h"
 #include "chrome/browser/web_applications/test/web_app_icon_test_utils.h"
 #include "chrome/browser/web_applications/test/web_app_test_observers.h"
 #include "chrome/browser/web_applications/test/web_app_test_utils.h"
@@ -111,8 +111,8 @@ using ::testing::NotNull;
 using ::testing::Optional;
 using ::testing::VariantWith;
 
-using UpdateDiscoveryTaskFuture =
-    base::test::TestFuture<IsolatedWebAppUpdateDiscoveryTask::CompletionStatus>;
+using UpdateDiscoveryTaskFuture = base::test::TestFuture<
+    IsolatedWebAppUpdateCheckAndPrepareTask::CompletionStatus>;
 
 const web_package::SignedWebBundleId kWebBundleId1 =
     test::GetDefaultEd25519WebBundleId();
@@ -692,7 +692,7 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
   EXPECT_THAT(provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
               Eq(1ul));
   EXPECT_THAT(initial_update_future.Take(),
-              ErrorIs(IsolatedWebAppUpdateDiscoveryTask::Error::
+              ErrorIs(IsolatedWebAppUpdateCheckAndPrepareTask::Error::
                           kPinnedVersionNotFoundInUpdateManifest));
 }
 
@@ -796,7 +796,7 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
         provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
         Eq(1ul));
     EXPECT_THAT(initial_update_future.Take(),
-                ErrorIs(IsolatedWebAppUpdateDiscoveryTask::Error::
+                ErrorIs(IsolatedWebAppUpdateCheckAndPrepareTask::Error::
                             kPinnedVersionNotFoundInUpdateManifest));
   }
 
@@ -828,7 +828,7 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
         provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
         Eq(1ul));
     EXPECT_THAT(second_update_future.Take(),
-                ValueIs(IsolatedWebAppUpdateDiscoveryTask::Success::
+                ValueIs(IsolatedWebAppUpdateCheckAndPrepareTask::Success::
                             kPinnedVersionUpdateFoundAndSavedInDatabase));
 
     manifest_updated_observer.Wait();
@@ -1040,7 +1040,7 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
         provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
         Eq(1ul));
     EXPECT_THAT(future.Take(),
-                ErrorIs(IsolatedWebAppUpdateDiscoveryTask::Error::
+                ErrorIs(IsolatedWebAppUpdateCheckAndPrepareTask::Error::
                             kPinnedVersionNotFoundInUpdateManifest));
   }
 
@@ -1115,7 +1115,7 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
   EXPECT_THAT(provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
               Eq(1ul));
   EXPECT_THAT(future.Take(),
-              ValueIs(IsolatedWebAppUpdateDiscoveryTask::Success::
+              ValueIs(IsolatedWebAppUpdateCheckAndPrepareTask::Success::
                           kUpdateFoundAndSavedInDatabase));
 
   manifest_updated_observer.Wait();
@@ -1237,7 +1237,7 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerUserInstallBrowserTest,
   EXPECT_THAT(provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
               Eq(1ul));
   EXPECT_THAT(future.Take(),
-              ValueIs(IsolatedWebAppUpdateDiscoveryTask::Success::
+              ValueIs(IsolatedWebAppUpdateCheckAndPrepareTask::Success::
                           kUpdateFoundAndSavedInDatabase));
 
   manifest_updated_observer.Wait();
@@ -1290,7 +1290,8 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
               Eq(1ul));
   EXPECT_THAT(
       future.Take(),
-      ValueIs(IsolatedWebAppUpdateDiscoveryTask::Success::kNoUpdateFound));
+      ValueIs(
+          IsolatedWebAppUpdateCheckAndPrepareTask::Success::kNoUpdateFound));
 
   EXPECT_THAT(GetIsolatedWebApp(GetAppId()),
               test::IwaIs(Eq("app-3.0.4"),
@@ -1339,7 +1340,8 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
               Eq(1ul));
   EXPECT_THAT(
       future.Take(),
-      ValueIs(IsolatedWebAppUpdateDiscoveryTask::Success::kNoUpdateFound));
+      ValueIs(
+          IsolatedWebAppUpdateCheckAndPrepareTask::Success::kNoUpdateFound));
 
   EXPECT_THAT(GetIsolatedWebApp(GetAppId()),
               test::IwaIs(Eq("app-3.0.4"),
@@ -1442,7 +1444,7 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManifestBrowserTest,
 
   // Use base::test::TestFuture to get the result from the callback.
   base::test::TestFuture<
-      web_app::IsolatedWebAppUpdateDiscoveryTask::CompletionStatus>
+      web_app::IsolatedWebAppUpdateCheckAndPrepareTask::CompletionStatus>
       future;
   // Correctly initialize UpdateDiscoveryTaskResultWaiter.
   web_app::UpdateDiscoveryTaskResultWaiter waiter(provider(), GetAppId(),
@@ -1452,13 +1454,13 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManifestBrowserTest,
               ::testing::Eq(1ul));
 
   // Wait for the update discovery task to complete via the future.
-  web_app::IsolatedWebAppUpdateDiscoveryTask::CompletionStatus status =
+  web_app::IsolatedWebAppUpdateCheckAndPrepareTask::CompletionStatus status =
       future.Get();
 
   // Check that the task failed as expected.
   ASSERT_FALSE(status.has_value());
-  EXPECT_EQ(status.error(), web_app::IsolatedWebAppUpdateDiscoveryTask::Error::
-                                kUpdateManifestDownloadFailed);
+  EXPECT_EQ(status.error(), web_app::IsolatedWebAppUpdateCheckAndPrepareTask::
+                                Error::kUpdateManifestDownloadFailed);
 
   histogram_tester.ExpectBucketCount("WebApp.Isolated.UpdateSuccess",
                                      /*sample=*/true, /*expected_count=*/0);
@@ -1505,7 +1507,7 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManifestBrowserTest,
 
   // Use base::test::TestFuture to get the result from the callback.
   base::test::TestFuture<
-      web_app::IsolatedWebAppUpdateDiscoveryTask::CompletionStatus>
+      web_app::IsolatedWebAppUpdateCheckAndPrepareTask::CompletionStatus>
       future;
   // Correctly initialize UpdateDiscoveryTaskResultWaiter.
   web_app::UpdateDiscoveryTaskResultWaiter waiter(provider(), GetAppId(),
@@ -1515,13 +1517,13 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManifestBrowserTest,
               ::testing::Eq(1ul));
 
   // Wait for the update discovery task to complete via the future.
-  web_app::IsolatedWebAppUpdateDiscoveryTask::CompletionStatus status =
+  web_app::IsolatedWebAppUpdateCheckAndPrepareTask::CompletionStatus status =
       future.Get();
 
   // Check that the task failed as expected.
   ASSERT_FALSE(status.has_value());
-  EXPECT_EQ(status.error(), web_app::IsolatedWebAppUpdateDiscoveryTask::Error::
-                                kUpdateManifestDownloadFailed);
+  EXPECT_EQ(status.error(), web_app::IsolatedWebAppUpdateCheckAndPrepareTask::
+                                Error::kUpdateManifestDownloadFailed);
 
   histogram_tester.ExpectBucketCount("WebApp.Isolated.UpdateSuccess",
                                      /*sample=*/true, /*expected_count=*/0);
@@ -1899,7 +1901,7 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerWithKeyRotationBrowserTest,
     content::TitleWatcher title_watcher(web_contents, u"1.0.0");
     EXPECT_EQ(title_watcher.WaitAndGetTitle(), u"1.0.0");
     ui_test_utils::BrowserDestroyedObserver observer(app_browser);
-    app_browser->window()->Close();
+    app_browser->GetWindow()->Close();
     observer.Wait();
   }
 
@@ -1920,7 +1922,7 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerWithKeyRotationBrowserTest,
                 HasSubstr("This application is missing or damaged"));
 
     ui_test_utils::BrowserDestroyedObserver observer(app_browser);
-    app_browser->window()->Close();
+    app_browser->GetWindow()->Close();
     observer.Wait();
   }
 
@@ -2010,7 +2012,7 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerWithKeyRotationBrowserTest,
 
   // Close the browser.
   ui_test_utils::BrowserDestroyedObserver observer(app_browser);
-  app_browser->window()->Close();
+  app_browser->GetWindow()->Close();
   observer.Wait();
 
   // Now an attempt to open the app should display the "missing or damaged"
@@ -2133,7 +2135,7 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerWithKeyRotationBrowserTest,
     content::TitleWatcher title_watcher(web_contents, u"1.0.0");
     EXPECT_EQ(title_watcher.WaitAndGetTitle(), u"1.0.0");
     ui_test_utils::BrowserDestroyedObserver observer(app_browser);
-    app_browser->window()->Close();
+    app_browser->GetWindow()->Close();
     observer.Wait();
   }
 

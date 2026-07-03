@@ -45,7 +45,6 @@ class FakeProxy : public Proxy {
   void StopDeferringCommits() override {}
   bool IsDeferringCommits() const override;
   bool CommitRequested() const override;
-  void SetShouldThrottleFrameRate(bool flag) override {}
   void Start() override {}
   void Stop() override {}
   void QueueImageDecode(int request_id,

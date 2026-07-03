@@ -173,34 +173,32 @@ std::optional<T> CheckAndReturnOptionalRustAndCppResults(
 // Used internally only. These bit positions have no relationship to any
 // underlying OS and can be changed to accommodate finer-grained permissions.
 enum ChildProcessSecurityPermissions {
-  READ_FILE_PERMISSION             = 1 << 0,
-  WRITE_FILE_PERMISSION            = 1 << 1,
-  CREATE_NEW_FILE_PERMISSION       = 1 << 2,
+  READ_FILE_PERMISSION = 1 << 0,
+  WRITE_FILE_PERMISSION = 1 << 1,
+  CREATE_NEW_FILE_PERMISSION = 1 << 2,
   CREATE_OVERWRITE_FILE_PERMISSION = 1 << 3,
-  DELETE_FILE_PERMISSION           = 1 << 4,
+  DELETE_FILE_PERMISSION = 1 << 4,
 
   // Used by Media Galleries API
-  COPY_INTO_FILE_PERMISSION        = 1 << 5,
+  COPY_INTO_FILE_PERMISSION = 1 << 5,
 };
 
 // Used internally only. Bitmasks that are actually used by the Grant* and Can*
 // methods. These contain one or more ChildProcessSecurityPermissions.
 enum ChildProcessSecurityGrants {
-  READ_FILE_GRANT              = READ_FILE_PERMISSION,
-  WRITE_FILE_GRANT             = WRITE_FILE_PERMISSION,
+  READ_FILE_GRANT = READ_FILE_PERMISSION,
+  WRITE_FILE_GRANT = WRITE_FILE_PERMISSION,
 
-  CREATE_NEW_FILE_GRANT        = CREATE_NEW_FILE_PERMISSION |
-                                 COPY_INTO_FILE_PERMISSION,
+  CREATE_NEW_FILE_GRANT =
+      CREATE_NEW_FILE_PERMISSION | COPY_INTO_FILE_PERMISSION,
 
-  CREATE_READ_WRITE_FILE_GRANT = CREATE_NEW_FILE_PERMISSION |
-                                 CREATE_OVERWRITE_FILE_PERMISSION |
-                                 READ_FILE_PERMISSION |
-                                 WRITE_FILE_PERMISSION |
-                                 COPY_INTO_FILE_PERMISSION |
-                                 DELETE_FILE_PERMISSION,
+  CREATE_READ_WRITE_FILE_GRANT =
+      CREATE_NEW_FILE_PERMISSION | CREATE_OVERWRITE_FILE_PERMISSION |
+      READ_FILE_PERMISSION | WRITE_FILE_PERMISSION | COPY_INTO_FILE_PERMISSION |
+      DELETE_FILE_PERMISSION,
 
-  COPY_INTO_FILE_GRANT         = COPY_INTO_FILE_PERMISSION,
-  DELETE_FILE_GRANT            = DELETE_FILE_PERMISSION,
+  COPY_INTO_FILE_GRANT = COPY_INTO_FILE_PERMISSION,
+  DELETE_FILE_GRANT = DELETE_FILE_PERMISSION,
 };
 
 // https://crbug.com/646278 Valid blob URLs should contain canonically
@@ -3082,18 +3080,6 @@ bool ChildProcessSecurityPolicyImpl::GetMatchingProcessIsolatedOrigin(
   CHECK_CURRENTLY_ON(BrowserThread::UI);
 
   *result = url::Origin();
-  base::AutoLock isolated_origins_lock(isolated_origins_lock_);
-
-  // If |isolation_context| does not specify a BrowsingInstance ID (which should
-  // only happen in tests), then assume that we want to retrieve the latest
-  // applicable information; i.e., return the latest matching isolated origins
-  // that would apply to future BrowsingInstances.  Using
-  // NextBrowsingInstanceId() will match all available IsolatedOriginEntries.
-  BrowsingInstanceId browsing_instance_id(
-      isolation_context.browsing_instance_id());
-  if (browsing_instance_id.is_null()) {
-    browsing_instance_id = SiteInstanceImpl::NextBrowsingInstanceId();
-  }
 
   // Check the opt-in isolation status of |origin| in |isolation_context|.
   // Note that while IsolatedOrigins considers any sub-origin of an isolated
@@ -3112,19 +3098,44 @@ bool ChildProcessSecurityPolicyImpl::GetMatchingProcessIsolatedOrigin(
   // case a SiteInstanceGroup will allow a logical group of SiteInstances that
   // live same-process.
   if (SiteIsolationPolicy::IsProcessIsolationForOriginAgentClusterEnabled()) {
-    OriginAgentClusterIsolationState oac_isolation_state_request =
+    OriginAgentClusterIsolationState oac_isolation_state =
         requests_origin_keyed_process
             ? OriginAgentClusterIsolationState::CreateForOriginAgentCluster(
                   true /* has_oac_request */,
                   true /* requires_origin_keyed_process */)
             : OriginAgentClusterIsolationState::CreateNonIsolatedByDefault();
-    OriginAgentClusterIsolationState oac_isolation_state_result =
-        DetermineOriginAgentClusterIsolation(isolation_context, origin,
-                                             oac_isolation_state_request);
-    if (oac_isolation_state_result.requires_origin_keyed_process()) {
+    oac_isolation_state = DetermineOriginAgentClusterIsolation(
+        isolation_context, origin, oac_isolation_state);
+    if (oac_isolation_state.requires_origin_keyed_process()) {
       *result = origin;
       return true;
     }
+  }
+
+  return GetMatchingProcessIsolatedOriginFromLegacyOriginList(
+      isolation_context, origin, site_url, result);
+}
+
+bool ChildProcessSecurityPolicyImpl::
+    GetMatchingProcessIsolatedOriginFromLegacyOriginList(
+        const IsolationContext& isolation_context,
+        const url::Origin& origin,
+        const GURL& site_url,
+        url::Origin* result) {
+  CHECK_CURRENTLY_ON(BrowserThread::UI);
+
+  *result = url::Origin();
+  base::AutoLock isolated_origins_lock(isolated_origins_lock_);
+
+  // If |isolation_context| does not specify a BrowsingInstance ID (which should
+  // only happen in tests), then assume that we want to retrieve the latest
+  // applicable information; i.e., return the latest matching isolated origins
+  // that would apply to future BrowsingInstances.  Using
+  // NextBrowsingInstanceId() will match all available IsolatedOriginEntries.
+  BrowsingInstanceId browsing_instance_id(
+      isolation_context.browsing_instance_id());
+  if (browsing_instance_id.is_null()) {
+    browsing_instance_id = SiteInstanceImpl::NextBrowsingInstanceId();
   }
 
   // Look up the list of origins corresponding to |origin|'s site.

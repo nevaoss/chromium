@@ -458,6 +458,7 @@ ContextualSearchboxHandler::~ContextualSearchboxHandler() {
   if (context_controller_) {
     context_controller_->RemoveObserver(this);
   }
+
   // Ensure any selected tabs are cleared when shutting down.
   if (base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox)) {
     if (auto* active_task_context_provider = GetActiveTaskContextProvider()) {
@@ -1169,6 +1170,20 @@ void ContextualSearchboxHandler::RecordTabAddedMetric(
 
   metrics_recorder->RecordTabAddedMetrics(has_duplicate_title, recency_ranking,
                                           is_tab_suggestion_chip);
+
+  if (is_tab_suggestion_chip) {
+    metrics_recorder->RecordAttachmentButtonUsed(
+        contextual_search::ContextualSearchAttachmentButtonType::kSuggestedTab);
+  } else {
+    tabs::TabInterface* active_tab = tab_list->GetActiveTab();
+    if (active_tab == tab) {
+      metrics_recorder->RecordAttachmentButtonUsed(
+          contextual_search::ContextualSearchAttachmentButtonType::kCurrentTab);
+    } else {
+      metrics_recorder->RecordAttachmentButtonUsed(
+          contextual_search::ContextualSearchAttachmentButtonType::kRecentTab);
+    }
+  }
 #endif  // !BUILDFLAG(IS_ANDROID)
 }
 
@@ -1348,16 +1363,19 @@ void ContextualSearchboxHandler::SetSmartComposeStats(
   }
 }
 
-void ContextualSearchboxHandler::ShouldShowDriveDisclaimer(
-    ShouldShowDriveDisclaimerCallback callback) {
+void ContextualSearchboxHandler::GetDriveDisclaimerStatus(
+    GetDriveDisclaimerStatusCallback callback) {
   if (!base::FeatureList::IsEnabled(
           omnibox::kComposeboxDriveContextMenuOption)) {
-    std::move(callback).Run(false);
+    std::move(callback).Run(
+        searchbox::mojom::DriveDisclaimerStatus::kRestricted);
     return;
   }
   bool accepted = profile_->GetPrefs()->GetBoolean(
       contextual_search::kDriveDisclaimerAccepted);
-  std::move(callback).Run(!accepted);
+  std::move(callback).Run(
+      accepted ? searchbox::mojom::DriveDisclaimerStatus::kAccepted
+               : searchbox::mojom::DriveDisclaimerStatus::kNotAccepted);
 }
 
 void ContextualSearchboxHandler::OnDriveDisclaimerAccepted() {

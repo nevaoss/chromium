@@ -710,15 +710,13 @@ bool LayerTreeHostImpl::CanDraw() const {
     return false;
   }
 
-  // TODO(boliu): Make draws without layers work and move this below
-  // |resourceless_software_draw_| check. Tracked in crbug.com/264967.
+  if (resourceless_software_draw_) {
+    return true;
+  }
+
   if (active_tree_->LayerListIsEmpty()) {
     TRACE_EVENT_INSTANT("cc", "LayerTreeHostImpl::CanDraw no root layer");
     return false;
-  }
-
-  if (resourceless_software_draw_) {
-    return true;
   }
 
   // Do not draw while evicted. Await the activation of a tree containing a
@@ -993,8 +991,17 @@ DrawResult LayerTreeHostImpl::CalculateRenderPasses(FrameData* frame,
                                                     bool expects_to_draw) {
   DCHECK(frame->render_passes.empty());
   DCHECK(CanDraw());
-  DCHECK(!active_tree_->LayerListIsEmpty());
   DCHECK(!expects_to_draw || settings_.trees_in_viz_in_viz_process);
+
+  if (active_tree_->LayerListIsEmpty()) {
+    // If there are no layers, we still need at least one render pass to draw.
+    auto pass = viz::CompositorRenderPass::Create();
+    gfx::Rect viewport_rect = active_tree_->GetDeviceViewport();
+    pass->SetNew(viz::CompositorRenderPassId{1}, viewport_rect, viewport_rect,
+                 gfx::Transform());
+    frame->render_passes.push_back(std::move(pass));
+    return DrawResult::kSuccess;
+  }
 
   // For now, we use damage tracking to compute a global scissor. To do this, we
   // must compute all damage tracking before drawing anything, so that we know
@@ -5136,12 +5143,10 @@ bool LayerTreeHostImpl::AnimateLayers(base::TimeTicks monotonic_time,
   const ScrollTree& scroll_tree =
       is_active_tree ? active_tree_->property_trees()->scroll_tree()
                      : pending_tree_->property_trees()->scroll_tree();
-  const bool animated = mutator_host_->TickAnimations(
+  const AnimationTickResult tick_result = mutator_host_->TickAnimations(
       monotonic_time, scroll_tree, is_active_tree, mutator_events_.get());
 
-  if (animated) {
-    // TODO(crbug.com/40667010): If only scroll animations present, schedule a
-    // frame only if scroll changes.
+  if (tick_result.needs_next_frame) {
     SetNeedsOneBeginImplFrame();
     frame_trackers_.StartSequence(
         FrameSequenceTrackerType::kCompositorAnimation);
@@ -5168,7 +5173,7 @@ bool LayerTreeHostImpl::AnimateLayers(base::TimeTicks monotonic_time,
         FrameSequenceTrackerType::kCompositorNativeAnimation);
   }
 
-  if (animated && mutator_host_->HasViewTransition()) {
+  if (tick_result.needs_next_frame && mutator_host_->HasViewTransition()) {
     frame_trackers_.StartSequence(
         FrameSequenceTrackerType::kSETCompositorAnimation);
   } else {
@@ -5176,7 +5181,7 @@ bool LayerTreeHostImpl::AnimateLayers(base::TimeTicks monotonic_time,
         FrameSequenceTrackerType::kSETCompositorAnimation);
   }
 
-  return animated;
+  return tick_result.animated;
 }
 
 void LayerTreeHostImpl::UpdateAnimationState(bool start_ready_animations) {

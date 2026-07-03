@@ -192,7 +192,7 @@ class GeminiTabHelperTest : public PlatformTest {
   void SimulateGeminiEligibilityDecisionReceived(
       const GURL& url,
       const optimization_guide::OptimizationMetadata& metadata) {
-    tab_helper_->zero_state_suggestions_service_->SetCanApply(true);
+    tab_helper_->gemini_contextual_eligibility_ = true;
     tab_helper_->current_url_ = url;
     bool user_enabled = profile_->GetPrefs()->GetBoolean(
         unified_consent::prefs::kUrlKeyedAnonymizedDataCollectionEnabled);

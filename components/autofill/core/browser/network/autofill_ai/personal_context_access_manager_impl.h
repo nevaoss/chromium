@@ -5,8 +5,10 @@
 #ifndef COMPONENTS_AUTOFILL_CORE_BROWSER_NETWORK_AUTOFILL_AI_PERSONAL_CONTEXT_ACCESS_MANAGER_IMPL_H_
 #define COMPONENTS_AUTOFILL_CORE_BROWSER_NETWORK_AUTOFILL_AI_PERSONAL_CONTEXT_ACCESS_MANAGER_IMPL_H_
 
+#include <memory>
 #include <vector>
 
+#include "base/containers/flat_map.h"
 #include "base/containers/flat_set.h"
 #include "base/containers/span.h"
 #include "base/memory/raw_ref.h"
@@ -18,6 +20,7 @@
 #include "components/autofill/core/browser/network/autofill_ai/personal_context_access_manager.h"
 #include "components/personal_context/core/personal_context_enablement_service.h"
 #include "components/personal_context/core/personal_context_types.h"
+#include "net/base/backoff_entry.h"
 #include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
 
 namespace personal_context {
@@ -56,7 +59,7 @@ class PersonalContextAccessManagerImpl
   void GetUnmaskedSpiiEntity(const EntityInstance::EntityId& id,
                              GetUnmaskedSpiiEntityCallback callback) override;
   std::vector<EntityInstance> GetCachedEntities() const override;
-  bool IsTypeCached(EntityTypeName type_name) const override;
+  bool IsTypeCached(EntityType type) const override;
 
   // personal_context::PersonalContextEnablementService::Observer:
   void OnEnablementStateChanged(
@@ -65,14 +68,25 @@ class PersonalContextAccessManagerImpl
  private:
   friend class PersonalContextAccessManagerImplTestApi;
 
+  struct RequestState {
+    enum class Status {
+      kPending,
+      kSuccess,
+      kFailure,
+    };
+    Status status = Status::kSuccess;
+    base::TimeTicks last_update_time;
+    std::unique_ptr<net::BackoffEntry> backoff_entry;
+  };
+
   // Clears all caches and invalidates weak pointers.
   void WipeCaches();
 
-  // Resets the cache state for `type_name` by clearing both the prefetched
+  // Resets the cache state for `type` by clearing both the prefetched
   // (masked) entities and the unmasked SPII entities of this type. This ensures
   // that refreshing or invalidating prefetched data also invalidates any
   // corresponding unmasked sensitive data.
-  void ResetCacheForType(EntityTypeName type_name);
+  void ResetCacheForType(EntityType type);
 
   // Handles the asynchronous result of the ambient autofill context fetch.
   void OnPrefetchAmbientAutofillContextComplete(
@@ -82,8 +96,20 @@ class PersonalContextAccessManagerImpl
   // Caches a batch of prefetched `entities` and schedules new invalidations
   // after `kPrefetchedEntitiesCacheTTL`.
   void CachePrefetchedEntities(
-      absl::flat_hash_map<EntityTypeName, std::vector<EntityInstance>>
-          entities);
+      absl::flat_hash_map<EntityType, std::vector<EntityInstance>> entities);
+
+  // Returns true if a network request should be initiated for `type`.
+  // This is true if the type is not cached, its cache TTL has expired, or a
+  // previous fetch failed and is now eligible for a retry.
+  bool ShouldRequestType(EntityType type) const;
+
+  // Evaluates whether enough time has elapsed since the last failure to
+  // attempt fetching the type again, taking backoff delays into account.
+  bool ShouldRetryAfterFailure(const RequestState& state) const;
+
+  // Marks the cache state for `type` as `status`. Updates the timestamp
+  // to start the cache TTL timer and sets the appropriate failure count.
+  void SetTypeStatus(EntityType type, RequestState::Status status);
 
   // Caches an unmasked SPII `entity`, so it can be refilled without an
   // additional network round trip for `kUnmaskedSpiiCacheTTL`.
@@ -127,9 +153,8 @@ class PersonalContextAccessManagerImpl
   base::flat_set<EntityInstance, EntityInstance::CompareByGuid>
       unmasked_spii_cache_;
 
-  // Entity types for which their corresponding prefetched entities are within
-  // their TTL.
-  base::flat_set<EntityTypeName> cached_types_;
+  // Maps entity types to their current cache request/response state.
+  base::flat_map<EntityType, RequestState> cache_state_;
 
   base::ScopedObservation<
       personal_context::PersonalContextEnablementService,

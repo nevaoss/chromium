@@ -2896,8 +2896,8 @@ void AIPageContentAgent::ContentBuilder::AddFrameInteractionInfo(
         *frame_interaction_info.selection;
     selection.selected_text = ReplaceUnpairedSurrogates(frame.SelectedText());
 
-    const SelectionInDOMTree& frame_selection =
-        frame.Selection().GetSelectionInDOMTree();
+    const SelectionInDomTree& frame_selection =
+        frame.Selection().GetSelectionInDomTree();
     const Position& start_position = frame_selection.ComputeStartPosition();
     const Position& end_position = frame_selection.ComputeEndPosition();
     Node* start_node = start_position.ComputeContainerNode();

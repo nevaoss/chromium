@@ -9,6 +9,7 @@
 
 #include "base/feature_list.h"
 #include "base/metrics/field_trial_params.h"
+#include "base/time/time.h"
 #include "base/values.h"
 
 namespace safe_browsing {
@@ -132,6 +133,9 @@ extern const base::FeatureParam<bool>
 // while we fix the root cause. This will also halt the model distribution from
 // OptimizationGuide.
 BASE_DECLARE_FEATURE(kClientSideDetectionKillswitch);
+
+// Tweak the way local resource check is done in CSD preclassification check.
+BASE_DECLARE_FEATURE(kClientSideDetectionLocalResourceCheckFix);
 
 // The observers that trigger the image classification have been tweaked with a
 // more defined page loading state check.
@@ -351,6 +355,12 @@ BASE_DECLARE_FEATURE(kMigrateEnhancedSbUserToEnhancedBundle);
 // and have the kBlockV8OptimizerOnUnfamiliarSitesSetting feature enabled will
 // be eligible for the migration.
 BASE_DECLARE_FEATURE(kMigrateToBlockV8OptimizerOnUnfamiliarSites);
+BASE_DECLARE_FEATURE_PARAM(
+    int,
+    kMigrateToBlockV8OptimizerOnUnfamiliarSitesMinSiteEngagementScore);
+BASE_DECLARE_FEATURE_PARAM(
+    base::TimeDelta,
+    kMigrateToBlockV8OptimizerOnUnfamiliarSitesMinAgeOfInitialVisit);
 
 // When enabled, the Password Leak detection toggle is moved out from under the
 // 'Standard protection' Safe Browsing option to the top-level 'Privacy and

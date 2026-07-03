@@ -44,6 +44,7 @@ source_set("unit_tests") {
     ":impl",
     ":indigo",
     "//chrome/browser/ui",
+    "//chrome/browser/ui/views:layout_provider",
     "//testing/gmock",
     "//testing/gtest",
     "//ui/views",

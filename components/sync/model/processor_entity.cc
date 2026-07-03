@@ -237,6 +237,15 @@ void ProcessorEntity::RecordForcedRemoteUpdate(
                              std::move(unique_position));
 }
 
+void ProcessorEntity::OverrideServerMetadata(const std::string& server_id,
+                                             int64_t server_version) {
+  metadata_.set_server_id(server_id);
+  metadata_.set_server_version(server_version);
+  if (commit_data_) {
+    commit_data_->id = server_id;
+  }
+}
+
 void ProcessorEntity::RecordLocalUpdate(
     std::unique_ptr<EntityData> data,
     sync_pb::EntitySpecifics trimmed_specifics,

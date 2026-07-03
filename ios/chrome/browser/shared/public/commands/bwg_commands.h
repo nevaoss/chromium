@@ -54,11 +54,11 @@ class WebState;
 // Updates the Gemini floaty with a trait collection change.
 - (void)updateFloatyWithTraitCollection:(UITraitCollection*)traitCollection;
 
-// Starts the FRE flow with a completion block.
-- (void)startGeminiFREWithCompletion:(void (^)(BOOL success))completion
-                      fromEntryPoint:(gemini::EntryPoint)entryPoint;
+// Starts the Gemini First Run Experience flow with a completion block.
+- (void)startGeminiFirstRunWithCompletion:(void (^)(BOOL success))completion
+                           fromEntryPoint:(gemini::EntryPoint)entryPoint;
 
-// Starts the Gemini Live First Run Experience (FRE) consent flow.
+// Starts the Gemini Live First Run Experience (FRE) flow.
 - (void)startGeminiLiveFREWithCompletion:(void (^)(BOOL success))completion;
 
 // Presents a Gemini Live microphone authorization alert or Settings prompt.

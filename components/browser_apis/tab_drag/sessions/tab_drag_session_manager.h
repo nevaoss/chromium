@@ -13,11 +13,13 @@
 #include "components/browser_apis/tab_strip/types/node_id.h"
 #include "mojo/public/mojom/base/error.mojom-forward.h"
 #include "ui/gfx/geometry/point.h"
+#include "ui/gfx/native_ui_types.h"
 
 namespace tabs_api {
 
 class TabDragPlatformProvider;
 class TabDragSession;
+class TabDragEventRouter;
 
 // Browser-process-wide manager that owns and coordinates the active
 // TabDragSession. This ensures the session outlives individual window
@@ -35,19 +37,19 @@ class TabDragSessionManager {
       const std::vector<tabs_api::NodeId>& source_tab_ids,
       const gfx::Point& start_point);
 
-  // Cancels the active session if one exists.
-  void CancelDrag();
-
   TabDragSession* active_session() { return active_session_.get(); }
 
   // Callback notified by the active session when it naturally terminates.
   void OnSessionEnded();
+
+  TabDragEventRouter* event_router() { return event_router_.get(); }
 
  private:
   void DestroyActiveSession();
 
   std::unique_ptr<TabDragPlatformProvider> platform_provider_;
   std::unique_ptr<TabDragSession> active_session_;
+  std::unique_ptr<TabDragEventRouter> event_router_;
 
   base::WeakPtrFactory<TabDragSessionManager> weak_factory_{this};
 };

@@ -245,6 +245,10 @@ bool IsGeminiEligibilityAblationEnabled();
 BASE_DECLARE_FEATURE(kGeminiLive);
 bool IsGeminiLiveEnabled();
 
+// Feature flag for Gemini Live Dormant Reasons.
+BASE_DECLARE_FEATURE(kGeminiLiveDormantReasons);
+bool IsGeminiLiveDormantReasonsEnabled();
+
 // Feature flag for Gemini Copresence.
 BASE_DECLARE_FEATURE(kGeminiCopresence);
 bool IsGeminiCopresenceEnabled();
@@ -411,6 +415,12 @@ BASE_DECLARE_FEATURE(kGeneralizedGeminiEntryFlow);
 // Returns true if the generalized Gemini entry flow is enabled.
 bool IsGeneralizedGeminiEntryFlowEnabled();
 
+// Feature flag controlling Gemini Luminous.
+BASE_DECLARE_FEATURE(kGeminiLuminous);
+
+// Returns true if Gemini Luminous is enabled.
+bool IsGeminiLuminousEnabled();
+
 #pragma mark - Debugging Features
 
 // Holds the variations of the BWG Promo Consent flow for debugging.
@@ -442,9 +452,9 @@ BASE_DECLARE_FEATURE(kActorServiceLogging);
 bool IsActorServiceLoggingEnabled();
 
 // Feature flag to enable the iOS bottom sheet migration.
-BASE_DECLARE_FEATURE(kIOSBottomSheetMigration);
+BASE_DECLARE_FEATURE(kIOSGeminiBottomSheetMigration);
 
-// Helper function to check if `kIOSBottomSheetMigration` is enabled.
-bool IsIOSBottomSheetMigrationEnabled();
+// Helper function to check if `kIOSGeminiBottomSheetMigration` is enabled.
+bool IsIOSGeminiBottomSheetMigrationEnabled();
 
 #endif  // IOS_CHROME_BROWSER_INTELLIGENCE_FEATURES_FEATURES_H_

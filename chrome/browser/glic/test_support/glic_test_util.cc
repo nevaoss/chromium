@@ -239,7 +239,7 @@ void SetGlicCapability(Profile* profile, bool enabled) {
           identity_manager->GetPrimaryAccountId(signin::ConsentLevel::kSignin));
   ASSERT_FALSE(primary_account.IsEmpty());
 
-  AccountCapabilitiesTestMutator mutator(&primary_account.capabilities);
+  AccountCapabilitiesTestMutator mutator(&primary_account);
   SetGlicCapability(mutator, enabled);
 
   signin::UpdateAccountInfoForAccount(identity_manager, primary_account);

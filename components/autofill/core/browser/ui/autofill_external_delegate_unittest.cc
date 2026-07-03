@@ -79,7 +79,6 @@
 #include "components/autofill/core/browser/test_utils/autofill_test_utils.h"
 #include "components/autofill/core/browser/test_utils/entity_data_test_utils.h"
 #include "components/autofill/core/browser/test_utils/valuables_data_test_utils.h"
-#include "components/autofill/core/browser/ui/suggestion_button_action.h"
 #include "components/autofill/core/browser/ui/tabbed_pane_enums.h"
 #include "components/autofill/core/browser/webdata/autofill_ai/entity_table.h"
 #include "components/autofill/core/browser/webdata/autofill_webdata_service_test_helper.h"
@@ -326,13 +325,13 @@ class MockBrowserAutofillManager : public TestBrowserAutofillManager {
   MOCK_METHOD(void,
               UndoAutofill,
               (mojom::ActionPersistence action_persistence,
-               const FormData& form,
-               const FormFieldData& trigger_field),
+               const FormGlobalId& form_id,
+               const FieldGlobalId& trigger_field_id),
               (override));
   MOCK_METHOD(void,
               FillOrPreviewForm,
               (mojom::ActionPersistence,
-               const FormData&,
+               const FormGlobalId&,
                const FieldGlobalId&,
                const FillingPayload&,
                AutofillTriggerSource,
@@ -342,8 +341,8 @@ class MockBrowserAutofillManager : public TestBrowserAutofillManager {
               FillOrPreviewField,
               (mojom::ActionPersistence,
                mojom::FieldActionType,
-               const FormData&,
-               const FormFieldData&,
+               const FormGlobalId&,
+               const FieldGlobalId&,
                const std::u16string&,
                FillingProduct,
                std::optional<FieldType>),
@@ -517,12 +516,12 @@ class AutofillExternalDelegateTest : public testing::Test,
     external_delegate().OnSuggestionsShown({});
   }
 
-  Matcher<const FormData&> HasQueriedFormId() {
-    return Property(&FormData::global_id, queried_form().global_id());
+  Matcher<const FormGlobalId&> HasQueriedFormId() {
+    return Eq(queried_form().global_id());
   }
 
-  Matcher<const FormFieldData&> HasQueriedFieldId() {
-    return Property(&FormFieldData::global_id, queried_field().global_id());
+  Matcher<const FieldGlobalId&> HasQueriedFieldId() {
+    return Eq(queried_field().global_id());
   }
 
   Matcher<const FieldGlobalId&> IsQueriedFieldId() {
@@ -3742,6 +3741,14 @@ TEST_F(AutofillExternalDelegateTest, RemoveSuggestion_ServerCard) {
                                Suggestion::Guid(server_card.guid()))));
   EXPECT_TRUE(
       pdm().payments_data_manager().GetCreditCardByGUID(server_card.guid()));
+}
+
+// Tests that the personal context notice is removed and the pref is updated.
+TEST_F(AutofillExternalDelegateTest, RemoveSuggestion_PersonalContextNotice) {
+  EXPECT_FALSE(autofill_client().is_personal_context_notice_acknowledged());
+  EXPECT_TRUE(external_delegate().RemoveSuggestion(
+      Suggestion(SuggestionType::kPersonalContextNotice)));
+  EXPECT_TRUE(autofill_client().is_personal_context_notice_acknowledged());
 }
 
 TEST_F(AutofillExternalDelegateTest, RecordSuggestionTypeOnSuggestionAccepted) {

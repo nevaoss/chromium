@@ -16,7 +16,7 @@
 #include "base/time/time.h"
 #include "chrome/browser/glic/host/glic.mojom.h"
 #include "chrome/browser/glic/public/context/glic_sharing_manager.h"
-#include "chrome/browser/glic/public/glic_instance.h"
+#include "chrome/browser/glic/public/glic_instance_id.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/global_routing_id.h"
 
@@ -185,7 +185,7 @@ enum class GlicInvokeError {
 // LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicInvokeResult,//chrome/browser/glic/host/glic_internals_page_handler.cc:GlicInvokeError)
 
 // Details for invoking Glic with tabs shared. See
-// GlicSharingManager::PinTabs().
+// GlicSharingManagerInternal::PinTabs().
 struct TabSharingOptions {
   TabSharingOptions();
   TabSharingOptions(std::vector<tabs::TabHandle> tabs_to_pin,
@@ -200,6 +200,14 @@ struct TabSharingOptions {
   // Reason for pinning tabs, required to be set to something besides kUnknown
   // if `tabs_to_pin` isn't empty.
   GlicPinTrigger pin_trigger;
+};
+
+// Specifies how to wait for the First Run Experience (FRE) to complete.
+enum class FreCompletionWaitMode {
+  // Whether or not we wait depends on the FRE override.
+  kDefault,
+  // We do not wait for the FRE to complete, regardless of the FRE override.
+  kNever,
 };
 
 // Configuration options for invoking Glic.
@@ -269,6 +277,11 @@ struct GlicInvokeOptions {
   // Defaults to false. If the panel was already open when the invoke was
   // triggered, this flag is ignored.
   bool wait_for_panel_open = false;
+
+  // Specifies how to wait for the First Run Experience (FRE) to complete
+  // before proceeding with the invocation.
+  FreCompletionWaitMode fre_completion_wait_mode =
+      FreCompletionWaitMode::kDefault;
 
   // Browser-specific callback for when the invocation successfully completes.
   // This is called asynchronously.

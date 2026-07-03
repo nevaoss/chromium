@@ -102,6 +102,7 @@ class CORE_EXPORT InlineNode : public LayoutInputNode {
   bool HasFloats() const { return Data().HasFloats(); }
   bool HasInitialLetterBox() const { return Data().has_initial_letter_box_; }
   bool HasRuby() const { return Data().has_ruby_; }
+  bool HasTextEmphasis() const { return Data().HasTextEmphasis(); }
 
   bool IsBlockLevel() { return EnsureData().is_block_level_; }
 

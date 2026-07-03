@@ -410,18 +410,6 @@
       },
     },
     {
-      // Extension access to "AIPromptAPI".
-      name: "AIPromptAPIForExtension",
-      public: true,
-      status: {
-        "Win": "stable",
-        "Mac": "stable",
-        "Linux": "stable",
-        "ChromeOS": "stable",
-        "default": "",
-      },
-    },
-    {
       name: "AIPromptAPIForWorkers",
       public: true,
     },
@@ -627,6 +615,11 @@
       name: "AndroidDownloadableFontsMatching",
       base_feature: "none",
       public: true,
+    },
+    {
+      // https://chromestatus.com/feature/6046278267043840
+      name: "AnimationEventAnimation",
+      status: "experimental",
     },
     {
       // https://chromestatus.com/feature/5083257285378048
@@ -949,16 +942,6 @@
       status: "experimental",
     },
     {
-      name: "BrowserVerifiedUserActivationKeyboard",
-      base_feature: "none",
-      public: true,
-    },
-    {
-      name: "BrowserVerifiedUserActivationMouse",
-      base_feature: "none",
-      public: true,
-    },
-    {
       name: "BufferedBytesConsumerLimitSize",
       status: "stable",
     },
@@ -1122,6 +1105,11 @@
     },
     {
       name: "CheckVisibilityExtraProperties",
+      status: "stable",
+    },
+    {
+      // crbug.com/517429018
+      name: "ClampUnfocusedSelectionCache",
       status: "stable",
     },
     {
@@ -1724,12 +1712,12 @@
     },
     {
       name: "CSSLineClamp",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "CSSLineClampLineBreakingEllipsis",
       depends_on: ["CSSLineClamp"],
-      status: "experimental",
+      status: "stable",
     },
     {
       // Implements `counter-increment` and `counter-set` for the non-<li>
@@ -2218,14 +2206,19 @@
       status: "stable",
     },
     {
-      // This feature makes the <dialog> element close properly when its "open"
-      // attribute is removed. https://github.com/whatwg/html/issues/5802 and
-      // https://github.com/whatwg/html/pull/10124.
+      // crbug.com/520262209: This feature makes the <dialog> element close
+      // properly when its "open" attribute is removed. See
+      //  - https://github.com/whatwg/html/issues/5802
+      //  - https://github.com/whatwg/html/pull/10124
       name: "DialogCloseWhenOpenRemoved",
       status: "experimental",
     },
     {
       name: "DialogNewFocusBehavior",
+      status: "experimental",
+    },
+    {
+      name: "DigitalCredentialsProtocolFilter",
       status: "experimental",
     },
     {
@@ -3943,7 +3936,7 @@
     },
     {
       name: "MediaStreamTrackProcessorStats",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "MediaStreamTrackTransfer",
@@ -4030,6 +4023,12 @@
     // https://crbug.com/331841851
     {
       name: "MoveEndingSelectionToListChild",
+      status: "stable",
+    },
+    {
+      // https://issues.chromium.org/issues/41015847
+      // This will be shipped in M151, and it can be removed in M153.
+      name: "MoveParagraphsPreserveInlineStructure",
       status: "stable",
     },
     {
@@ -4783,6 +4782,11 @@
       }
     },
     {
+      // Used as a kill switch in case the rate limiting causes issues.
+      name: "RateLimitPointerLockRequests",
+      status: "stable",
+    },
+    {
       // Enables support for a 'min' option in ReadableStream BYOBReader.read(),
       // allowing callers to specify the minimum number of bytes to be read into
       // the buffer before resolving the read request.
@@ -5066,6 +5070,10 @@
       status: "stable",
     },
     {
+      name: "RtcRtpHeaderEncryptionPolicy",
+      status: "experimental",
+    },
+    {
       name: "RTCRtpScaleResolutionDownTo",
       status: "stable",
     },
@@ -5122,11 +5130,6 @@
       // https://github.com/whatwg/dom/pull/1341
       name: "ScopedCustomElementRegistry",
       status: "stable",
-    },
-    {
-      // https://github.com/WICG/view-transitions/blob/main/scoped-transitions.md
-      name: "ScopedViewTransitions",
-      status: "stable"
     },
     {
       name: "ScoreLineBreakerAbort",
@@ -5266,6 +5269,10 @@
       public: true,
     },
     {
+      name: "SecurePaymentConfirmationExtensionsDisallowForThirdParties",
+      status: "stable",
+    },
+    {
       name: "SecurePaymentConfirmationOptOut",
       origin_trial_feature_name: "SecurePaymentConfirmationOptOut",
       origin_trial_allows_third_party: true,
@@ -5277,7 +5284,7 @@
       // overlapping browser UI.
       // TODO(https://issues.chromium.org/issues/511869411): Remove this flag
       // after it has been shipped for long enough.
-      // Shipped in M150, safe to remove in M152.
+      // Shipped in M150, changed slightly in M151, safe to remove in M153.
       name: "SelectAnchorInViewport",
       status: "stable",
     },
@@ -5384,6 +5391,11 @@
       // cause text to overlap with the dropdown indicator.
       // https://issues.chromium.org/issues/40805967
       name: "SelectRemoveOverflowHidden",
+      status: "stable",
+    },
+    {
+      // Instead of a manual clip, use overflow:clip in the UA stylesheet.
+      name: "SelectUsesUAClip",
       status: "stable",
     },
     {
@@ -5695,6 +5707,13 @@
       public: true,
     },
     {
+      // Splits a qualified name on its first colon, per the DOM "validate and
+      // extract" algorithm, so any later colons are part of the local name.
+      // See https://crbug.com/490251709
+      name: "SplitQualifiedNameOnFirstColon",
+      status: "experimental",
+    },
+    {
       name: "SplitTextNotCleanupDummySpans",
       status: "stable",
     },
@@ -5845,6 +5864,10 @@
       status: "stable",
     },
     {
+      name: "SvgImageAnimationReset",
+      status: "stable",
+    },
+    {
       name: "SvgInlineRootPixelSnappingScaleAdjustment",
       status: "test",
     },
@@ -5873,12 +5896,12 @@
       status: "stable",
     },
     {
-      name: "SvgSupportMediaFragments",
-      status: "experimental",
+      name: "SvgStyleElementReflectTypeAndMedia",
+      status: "stable",
     },
     {
-      name: "SvgTextPathPathAttribute",
-      status: "stable",
+      name: "SvgSupportMediaFragments",
+      status: "experimental",
     },
     {
       name: "SvgUseNestedResourceDocuments",
@@ -6475,6 +6498,10 @@
       status: "stable",
     },
     {
+      name: "ViewTransitionDOMCallbackAfterCommit",
+      status: "stable",
+    },
+    {
       name: "ViewTransitionHoistBackdropFilterEffect",
       status: "stable",
     },
@@ -6969,6 +6996,10 @@
       public: true,
     },
     {
+      name: "WebViewEnvReorderFix",
+      status: "stable",
+    },
+    {
       name: "WebVTTRegions",
       status: "experimental",
     },
@@ -7075,6 +7106,7 @@
     // https://crbug.com/40704952
     {
       name: "WheelEventMomentum",
+      status: "experimental",
     },
     // If enabled, window.default[Ss]tatus will be supported. This is disabled
     // by default, and is here to allow this behavior to be re-enabled via Finch
@@ -7113,7 +7145,7 @@
       // with its responseXML document.
       // https://crbug.com/466303347
       name: "XMLRustForNonXslt",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "XMLSerializerConsistentDefaultNsDeclMatching",

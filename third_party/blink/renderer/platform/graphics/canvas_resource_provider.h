@@ -108,10 +108,18 @@ class PLATFORM_EXPORT CanvasResourceProvider
     virtual void NotifyGpuContextLost() = 0;
     virtual void InitializeForRecording(cc::PaintCanvas* canvas) const = 0;
     virtual bool IsPrinting() const { return false; }
+    // This is used to apply a map of frame indexes to be used by
+    // PlaybackImageProvider::GetRasterContent. When the delegate is a
+    // CanvasRenderingContextHost, it is treated as an index into an array
+    // of maps, one per ElementImage which has been drawn into the canvas by
+    // a call to drawElementImage(). This is only used by canvas2d; webgl and
+    // webgpu canvases don't need this because they rasterize each ElementImage
+    // as a stand-alone PaintOpBuffer.
     virtual scoped_refptr<const cc::AnimatedImageFrameIndexMap>
-    GetAnimatedImageFrameIndexes() const {
+    GetAnimatedImageFrameIndexes(uint32_t id) const {
       return nullptr;
     }
+    virtual void DidFlush() {}
   };
 
   // These values are persisted to logs. Entries should not be renumbered and
@@ -189,6 +197,14 @@ class PLATFORM_EXPORT CanvasResourceProvider
 
   static void NotifyWillTransfer(cc::PaintImage::ContentId content_id);
 
+  // This is called via a CustomDataRasterCallback when a CustomDataOp is
+  // rasterized. The CustomDataOps are emplaced by drawElementImage() to
+  // ensure the correct frame indexes are used when rasterizing a particular
+  // ElementImage.
+  void ApplyAnimatedImageFrameIndexesForId(SkCanvas* canvas, uint32_t id);
+  void SetAnimatedImageFrameIndexes(
+      scoped_refptr<const cc::AnimatedImageFrameIndexMap>);
+
   constexpr static base::TimeDelta kUnusedResourceExpirationTime =
       base::Seconds(5);
 
@@ -201,11 +217,6 @@ class PLATFORM_EXPORT CanvasResourceProvider
   }
 
  protected:
-  SkSurface* GetSkSurface() const;
-
-  scoped_refptr<UnacceleratedStaticBitmapImage> UnacceleratedSnapshot(
-      ImageOrientation);
-
   explicit CanvasResourceProvider(const ResourceProviderType&);
 
   virtual void RasterRecord(cc::PaintRecord) = 0;
@@ -213,7 +224,6 @@ class PLATFORM_EXPORT CanvasResourceProvider
   CanvasImageProvider* GetOrCreateSWCanvasImageProvider();
 
   ResourceProviderType type_;
-  mutable sk_sp<SkSurface> surface_;  // mutable for lazy init
 
   // Whether the content of the current resource must be transferred to a new
   // resource on CopyOnWrite. True by default, but can be set to false as an
@@ -221,16 +231,10 @@ class PLATFORM_EXPORT CanvasResourceProvider
   // This is only used for Canvas2D.
   bool must_preserve_content_on_copy_on_write_ = true;
 
-  void OnMemoryDump(base::trace_event::ProcessMemoryDump*) override;
-
 
  private:
   friend class FlushForImageListener;
 
-  virtual sk_sp<SkSurface> CreateSkSurface() const = 0;
-
-  size_t ComputeSurfaceSize() const;
-  size_t GetSize() const override;
 
   // Called after the recording was cleared from any draw ops it might have had.
   // Canvas2D-specific, as it is called only when `recorder_` is
@@ -245,13 +249,6 @@ class PLATFORM_EXPORT CanvasResourceProvider
 
   std::unique_ptr<CanvasImageProvider> canvas_image_provider_;
 
-  std::unique_ptr<cc::SkiaPaintCanvas> skia_canvas_;
-
-  const cc::PaintImage::Id snapshot_paint_image_id_;
-  cc::PaintImage::ContentId snapshot_paint_image_content_id_ =
-      cc::PaintImage::kInvalidContentId;
-  uint32_t snapshot_sk_image_id_ = 0u;
-
   bool always_enable_raster_timers_for_testing_ = false;
 
   bool clear_frame_ = true;
@@ -265,7 +262,7 @@ class PLATFORM_EXPORT CanvasResourceProvider
 class PLATFORM_EXPORT Canvas2DResourceProviderBitmap
     : public CanvasResourceProvider {
  public:
-  ~Canvas2DResourceProviderBitmap() override = default;
+  ~Canvas2DResourceProviderBitmap() override;
 
   bool IsValid() const override { return GetSkSurface(); }
   bool IsAccelerated() const override { return false; }
@@ -284,6 +281,11 @@ class PLATFORM_EXPORT Canvas2DResourceProviderBitmap
                    size_t row_bytes,
                    int x,
                    int y) override;
+
+  void RasterRecord(base::FunctionRef<void(cc::PaintCanvas&)>);
+
+  void OnMemoryDump(base::trace_event::ProcessMemoryDump*) override;
+  size_t GetSize() const override;
 
   static std::unique_ptr<CanvasResourceProvider> CreateForTesting(
       gfx::Size size,
@@ -311,6 +313,7 @@ class PLATFORM_EXPORT Canvas2DResourceProviderBitmap
   void InitializeForRecording(cc::PaintCanvas* canvas) const override;
 
  private:
+  friend class CanvasRenderingContext;
   friend class CanvasRenderingContext2D;
   friend class OffscreenCanvasRenderingContext2D;
 
@@ -338,7 +341,8 @@ class PLATFORM_EXPORT Canvas2DResourceProviderBitmap
                                  const gfx::HDRMetadata& hdr_metadata,
                                  Delegate* delegate);
 
-  sk_sp<SkSurface> CreateSkSurface() const override;
+  SkSurface* GetSkSurface() const;
+  sk_sp<SkSurface> CreateSkSurface() const;
 
   gfx::Size size_;
   viz::SharedImageFormat format_;
@@ -349,6 +353,12 @@ class PLATFORM_EXPORT Canvas2DResourceProviderBitmap
   size_t max_recorded_op_bytes_;
   size_t max_pinned_image_bytes_;
   raw_ptr<Delegate> delegate_ = nullptr;
+  mutable sk_sp<SkSurface> surface_;
+  std::unique_ptr<cc::SkiaPaintCanvas> skia_canvas_;
+  const cc::PaintImage::Id snapshot_paint_image_id_;
+  cc::PaintImage::ContentId snapshot_paint_image_content_id_ =
+      cc::PaintImage::kInvalidContentId;
+  uint32_t snapshot_sk_image_id_ = 0u;
 };
 
 // * Subclass of CanvasResourceProvider that is specialized for usage
@@ -470,6 +480,7 @@ class PLATFORM_EXPORT Canvas2DResourceProviderSharedImage
   int NumInflightResourcesForTesting() const { return num_inflight_resources_; }
   base::ByteSize EstimatedSizeInBytes() const override;
   void OnMemoryDump(base::trace_event::ProcessMemoryDump* pmd) override;
+  size_t GetSize() const override;
 
   virtual scoped_refptr<CanvasResource> ProduceCanvasResource(FlushReason);
 
@@ -513,6 +524,11 @@ class PLATFORM_EXPORT Canvas2DResourceProviderSharedImage
 
   ScopedRasterTimer CreateScopedRasterTimer() override;
 
+ protected:
+  scoped_refptr<UnacceleratedStaticBitmapImage> UnacceleratedSnapshot(
+      ImageOrientation);
+  SkSurface* GetSkSurface() const;
+
  private:
   base::WeakPtr<WebGraphicsContext3DProviderWrapper> ContextProviderWrapper()
       const {
@@ -536,7 +552,7 @@ class PLATFORM_EXPORT Canvas2DResourceProviderSharedImage
   void WillDrawUnaccelerated();
   void DisableLineDrawingAsPathsIfNecessary();
 
-  sk_sp<SkSurface> CreateSkSurface() const override;
+  virtual sk_sp<SkSurface> CreateSkSurface() const;
   gpu::raster::RasterInterface* RasterInterface() const;
 
   base::WeakPtr<Canvas2DResourceProviderSharedImage> CreateWeakPtr();
@@ -597,6 +613,12 @@ class PLATFORM_EXPORT Canvas2DResourceProviderSharedImage
   size_t max_recorded_op_bytes_;
   size_t max_pinned_image_bytes_;
   raw_ptr<Delegate> delegate_ = nullptr;
+  mutable sk_sp<SkSurface> surface_;
+  std::unique_ptr<cc::SkiaPaintCanvas> skia_canvas_;
+  const cc::PaintImage::Id snapshot_paint_image_id_;
+  cc::PaintImage::ContentId snapshot_paint_image_content_id_ =
+      cc::PaintImage::kInvalidContentId;
+  uint32_t snapshot_sk_image_id_ = 0u;
 
   base::WeakPtrFactory<Canvas2DResourceProviderSharedImage> weak_ptr_factory_{
       this};
@@ -721,6 +743,10 @@ class PLATFORM_EXPORT CanvasNon2DResourceProviderSharedImage
   CanvasResourceProvider::ResourceProviderType GetType() const {
     return CanvasResourceProvider::kSharedImage;
   }
+
+  CanvasImageProvider* GetOrCreateImageProvider();
+  void SetAnimatedImageFrameIndexes(
+      scoped_refptr<const cc::AnimatedImageFrameIndexMap>);
 
   SkSurface* GetSkSurface() const;
 

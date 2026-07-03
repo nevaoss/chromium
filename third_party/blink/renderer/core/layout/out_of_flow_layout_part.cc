@@ -286,15 +286,17 @@ class OOFCandidateStyleIterator {
     // anchor-center offsets may need to be updated since the layout of the
     // anchor may have changed. anchor-center offsets are computed when a
     // default anchor is present.
-    const StylePositionAnchor& position_anchor = style.PositionAnchor();
+    const DefaultAnchorData default_anchor_data = style.GetDefaultAnchorData();
     using Type = StylePositionAnchor::Type;
-    switch (position_anchor.GetType()) {
+    switch (default_anchor_data.GetType()) {
       case Type::kNone:
         return false;
       case Type::kAuto:
         return static_cast<bool>(element.ImplicitAnchorElement());
       case Type::kName:
         return true;
+      case Type::kNormal:
+        NOTREACHED();
     }
   }
 
@@ -391,9 +393,9 @@ const Element* GetPositionAnchorElement(const BlockNode& node,
     return nullptr;
   }
 
-  const StylePositionAnchor& position_anchor = style.PositionAnchor();
+  const DefaultAnchorData default_anchor_data = style.GetDefaultAnchorData();
   using Type = StylePositionAnchor::Type;
-  switch (position_anchor.GetType()) {
+  switch (default_anchor_data.GetType()) {
     case Type::kNone:
       return nullptr;
     case Type::kAuto:
@@ -416,13 +418,15 @@ const Element* GetPositionAnchorElement(const BlockNode& node,
       if (const PhysicalAnchorReference* reference =
               anchor_map->AnchorReference(
                   anchored_box, actual_containing_block,
-                  ToAnchorScopedName(position_anchor.GetName(),
+                  ToAnchorScopedName(default_anchor_data.GetName(),
                                      anchored_box))) {
         DCHECK(reference->GetLayoutObject());
         return &reference->GetElement();
       }
       return nullptr;
     }
+    case Type::kNormal:
+      NOTREACHED();
   }
 }
 
@@ -2342,7 +2346,7 @@ OutOfFlowLayoutPart::TryCalculateOffset(
   // If we have a valid default anchor, we use the scrollable containing-block:
   // https://drafts.csswg.org/css-position-4/#scrollable-containing-block
   const bool has_default_anchor =
-      anchor_evaluator.DefaultAnchor(candidate_style.PositionAnchor());
+      anchor_evaluator.DefaultAnchor(candidate_style.GetDefaultAnchorData());
 
   const ContainingBlockInfo& container_info = node_info.base_container_info;
   const LogicalRect base_rect = has_default_anchor && container_info.scroll_rect

@@ -51,7 +51,7 @@ chromium-metrics-reviews@google.com.
   <variant name="PlusAddressFallbackFromContextMenu"
       summary="Plus address manual fallback entry point in the context menu."/>
   <variant name="SendTabToSelfEnhancedDesktopUI"
-      summary="Promotion for Send to Your Devices in the tab and webpage
+      summary="Promotion for Send to Your Device in the tab and webpage
                context menus."/>
   <variant name="SideBySide"
       summary="Promotion for Split View in the tab context menu"/>
@@ -306,7 +306,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="UserEducation.MessageNotShown.TimeInQueue" units="ms"
-    expires_after="2026-10-04">
+    expires_after="2026-12-06">
   <owner>dfried@chromium.org</owner>
   <owner>frizzle-team@google.com</owner>
   <summary>

@@ -146,7 +146,7 @@ class GlicActorPolicyCheckerBrowserTestBase : public NonInteractiveGlicTest {
     AccountInfo account_info = identity_test_env_->MakePrimaryAccountAvailable(
         std::string(account->email), signin::ConsentLevel::kSignin);
 
-    AccountCapabilitiesTestMutator mutator(&account_info.capabilities);
+    AccountCapabilitiesTestMutator mutator(&account_info);
     mutator.set_can_use_model_execution_features(true);
     mutator.set_is_subject_to_enterprise_features(
         !account->host_domain.empty());
@@ -278,7 +278,7 @@ class GlicActorPolicyCheckerBrowserTestNonManagedBrowser
     AccountInfo account_info =
         identity_manager_->FindExtendedAccountInfoByAccountId(
             core_account_info.account_id);
-    AccountCapabilitiesTestMutator mutator(&account_info.capabilities);
+    AccountCapabilitiesTestMutator mutator(&account_info);
     mutator.set_can_use_model_execution_features(true);
     identity_test_env_->UpdateAccountInfoForAccount(account_info);
   }
@@ -978,7 +978,7 @@ IN_PROC_BROWSER_TEST_P(GlicActorPolicyCheckerBrowserTestWithManagedAccount,
       identity_manager_->FindExtendedAccountInfoByAccountId(
           core_account_info.account_id);
 
-  AccountCapabilitiesTestMutator mutator(&account_info.capabilities);
+  AccountCapabilitiesTestMutator mutator(&account_info);
   mutator.set_can_use_model_execution_features(false);
   identity_test_env_->UpdateAccountInfoForAccount(account_info);
   EXPECT_FALSE(GetPolicyChecker().CanActOnWeb());
@@ -996,7 +996,7 @@ IN_PROC_BROWSER_TEST_P(GlicActorPolicyCheckerBrowserTestWithManagedAccount,
       identity_manager_->FindExtendedAccountInfoByAccountId(
           core_account_info.account_id);
 
-  AccountCapabilitiesTestMutator mutator(&account_info.capabilities);
+  AccountCapabilitiesTestMutator mutator(&account_info);
   mutator.set_can_use_model_execution_features(true);
   identity_test_env_->UpdateAccountInfoForAccount(account_info);
   EXPECT_TRUE(GetPolicyChecker().CanActOnWeb());

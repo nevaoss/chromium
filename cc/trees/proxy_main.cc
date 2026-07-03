@@ -165,7 +165,7 @@ void ProxyMain::BeginMainFrame(
       UMA_HISTOGRAM_CUSTOM_MICROSECONDS_TIMES(
           "Compositing.BeginMainFrame.TimeUs", timer->Elapsed(),
           base::Microseconds(1), base::Seconds(10), 50);
-      UMA_HISTOGRAM_ENUMERATION("Compositing.BeginMainFrame.BMFReason6",
+      UMA_HISTOGRAM_ENUMERATION("Compositing.BeginMainFrame.BMFReason8",
                                 begin_main_frame_reason.to_ulong(),
                                 num_buckets);
       if (reason == CommitEarlyOutReason::kFinishedNoUpdates) {
@@ -173,7 +173,7 @@ void ProxyMain::BeginMainFrame(
             "Compositing.BeginMainFrame.TimeUs.NoUpdate", timer->Elapsed(),
             base::Microseconds(1), base::Seconds(10), 50);
         UMA_HISTOGRAM_ENUMERATION(
-            "Compositing.BeginMainFrame.BMFReason6.NoUpdate",
+            "Compositing.BeginMainFrame.BMFReason8.NoUpdate",
             begin_main_frame_reason.to_ulong(), num_buckets);
       }
     }
@@ -843,11 +843,6 @@ void ProxyMain::StopDeferringCommits() {
   layer_tree_host_->OnDeferCommitsChanged(false, reason);
 }
 
-void ProxyMain::SetShouldThrottleFrameRate(bool flag) {
-  ImplThreadTaskRunner()->PostTask(
-      FROM_HERE, base::BindOnce(&ProxyImpl::SetShouldThrottleFrameRate,
-                                base::Unretained(proxy_impl_.get()), flag));
-}
 
 void ProxyMain::SetRequestHighFramerate(bool flag) {
   ImplThreadTaskRunner()->PostTask(

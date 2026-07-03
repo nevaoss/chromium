@@ -3,8 +3,12 @@
 // found in the LICENSE file.
 
 
+import type {ContextualTasksAppElement} from 'chrome://contextual-tasks/app.js';
+import type {ContextualTasksComposeboxElement} from 'chrome://contextual-tasks/composebox.js';
 import {BrowserProxyImpl} from 'chrome://contextual-tasks/contextual_tasks_browser_proxy.js';
+import type {ContextualTasksInnerComposeboxElement} from 'chrome://contextual-tasks/contextual_tasks_inner_composebox.js';
 import {createAutocompleteMatch, createAutocompleteResultForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
+import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {type PageHandlerRemote as SearchboxPageHandlerRemote, type PageRemote as SearchboxPageRemote} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {type MockTimer} from 'chrome://webui-test/mock_timer.js';
@@ -224,4 +228,32 @@ export async function createContextualTasksAppElement(
   await microtasksFinished();
 
   return {appElement, proxy};
+}
+
+// The element the wrapper renders as `#composebox`: the legacy shared
+// `<cr-composebox>` (flag-off) or the CT fork (flag-on).
+export type CtInnerComposeboxUnionElement =
+    ContextualTasksComposeboxElement['$']['composebox']|
+    ContextualTasksInnerComposeboxElement;
+
+export interface CtComposeboxAppParts {
+  app: ContextualTasksAppElement;
+  wrapper: ContextualTasksComposeboxElement;
+  innerComposebox: CtInnerComposeboxUnionElement;
+}
+
+/**
+ * Mounts a fresh `<contextual-tasks-app>` and resolves the composebox chain.
+ * Mock proxies must already be installed by the caller. The wrapper reads
+ * `useContextualTasksComposeboxFork` in a field initializer at construction
+ * time, so the override must happen before createElement.
+ */
+export async function createCtComposeboxApp(useFork: boolean):
+    Promise<CtComposeboxAppParts> {
+  loadTimeData.overrideValues({useContextualTasksComposeboxFork: useFork});
+  const app = document.createElement('contextual-tasks-app');
+  document.body.appendChild(app);
+  await microtasksFinished();
+  const wrapper = app.$.composebox;
+  return {app, wrapper, innerComposebox: wrapper.$.composebox};
 }

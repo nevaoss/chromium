@@ -295,7 +295,11 @@ public class TabStripSceneLayerTest {
                         /* scrimOpacity= */ eq(0.3f),
                         eq(leftPadding),
                         eq(rightPadding),
-                        eq(topPadding));
+                        eq(topPadding),
+                        anyFloat(),
+                        anyBoolean(),
+                        anyInt(),
+                        anyInt());
         verify(mTabStripSceneMock).finishBuildingFrame(1L);
     }
 
@@ -705,10 +709,11 @@ public class TabStripSceneLayerTest {
                         anyInt(),
                         anyFloat(),
                         eq(true),
-                        eq(R.drawable.circular_button_keyfocus),
+                        eq(R.drawable.glic_button_keyfocus),
                         eq(
                                 MaterialColors.getColor(
                                         mContext, R.attr.colorPrimary, /* defaultValue= */ 0)),
+                        anyFloat(),
                         anyInt(),
                         anyFloat(),
                         anyFloat(),
@@ -752,10 +757,11 @@ public class TabStripSceneLayerTest {
                         anyInt(),
                         anyFloat(),
                         eq(true),
-                        eq(R.drawable.circular_button_keyfocus),
+                        eq(R.drawable.glic_split_button_keyfocus),
                         eq(
                                 MaterialColors.getColor(
                                         mContext, R.attr.colorPrimary, /* defaultValue= */ 0)),
+                        anyFloat(),
                         anyInt(),
                         anyFloat(),
                         anyFloat(),

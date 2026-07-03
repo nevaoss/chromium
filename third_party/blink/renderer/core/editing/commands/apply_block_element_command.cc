@@ -85,11 +85,14 @@ void ApplyBlockElementCommand::DoApply(EditingState* editing_state) {
     const Position& new_end =
         PreviousPositionOf(visible_end, kCannotCrossEditingBoundary)
             .DeepEquivalent();
-    SelectionInDOMTree::Builder builder;
+    SelectionInDomTree::Builder builder;
     builder.Collapse(visible_start.ToPositionWithAffinity());
     if (new_end.IsNotNull())
       builder.Extend(new_end);
     SetEndingSelection(SelectionForUndoStep::From(builder.Build()));
+    if (RuntimeEnabledFeatures::EditingUseDomPositionApiEnabled()) {
+      SetEndingDomSelection(SelectionForUndoStep::From(builder.Build()));
+    }
     ABORT_EDITING_COMMAND_IF(EndingVisibleSelection().VisibleStart().IsNull());
     ABORT_EDITING_COMMAND_IF(EndingVisibleSelection().VisibleEnd().IsNull());
   }
@@ -135,10 +138,17 @@ void ApplyBlockElementCommand::DoApply(EditingState* editing_state) {
     VisiblePosition end(VisiblePositionForIndex(end_index, end_scope));
     if (start.IsNotNull() && end.IsNotNull()) {
       SetEndingSelection(SelectionForUndoStep::From(
-          SelectionInDOMTree::Builder()
+          SelectionInDomTree::Builder()
               .Collapse(start.ToPositionWithAffinity())
               .Extend(end.DeepEquivalent())
               .Build()));
+      if (RuntimeEnabledFeatures::EditingUseDomPositionApiEnabled()) {
+        SetEndingDomSelection(SelectionForUndoStep::From(
+            SelectionInDomTree::Builder()
+                .Collapse(start.ToPositionWithAffinity())
+                .Extend(end.DeepEquivalent())
+                .Build()));
+      }
     }
   }
 }
@@ -167,9 +177,15 @@ void ApplyBlockElementCommand::FormatSelection(
     if (editing_state->IsAborted())
       return;
     SetEndingSelection(SelectionForUndoStep::From(
-        SelectionInDOMTree::Builder()
+        SelectionInDomTree::Builder()
             .Collapse(Position::BeforeNode(*placeholder))
             .Build()));
+    if (RuntimeEnabledFeatures::EditingUseDomPositionApiEnabled()) {
+      SetEndingDomSelection(SelectionForUndoStep::From(
+          SelectionInDomTree::Builder()
+              .Collapse(Position::BeforeNode(*placeholder))
+              .Build()));
+    }
     return;
   }
 

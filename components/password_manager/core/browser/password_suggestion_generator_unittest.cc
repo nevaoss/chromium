@@ -239,7 +239,8 @@ Suggestion::PasswordSuggestionDetails PasswordAndMetadataToSuggestionDetails(
     const PasswordAndMetadata& credential) {
   return Suggestion::PasswordSuggestionDetails(
       credential.username_value, credential.password_value,
-      credential.backup_password_value.value());
+      credential.backup_password_value.value(), credential.realm,
+      credential.is_grouped_affiliation);
 }
 class MockPasswordManagerClient : public StubPasswordManagerClient {
  public:
@@ -1855,6 +1856,28 @@ TEST_F(PasswordSuggestionGeneratorTest,
                       IDS_PASSWORD_MANAGER_USE_PASSKEY_OTHER_DEVICE),
 #endif  // BUILDFLAG(IS_IOS)
                   Suggestion::Icon::kDevice));
+}
+
+TEST_F(PasswordSuggestionGeneratorTest,
+       GetWebauthnSignInWithAnotherDeviceSuggestion_QrEnabled) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(features::kMagiChromeQrCodeAutofill);
+
+  const std::string kTestQrString = "test_qr_string";
+  ON_CALL(credentials_delegate(), GetCableQrString)
+      .WillByDefault(Return(kTestQrString));
+
+  std::optional<Suggestion> suggestion =
+      generator().GetWebauthnSignInWithAnotherDeviceSuggestion();
+  ASSERT_TRUE(suggestion.has_value());
+  EXPECT_THAT(*suggestion,
+              EqualsSuggestion(SuggestionType::kWebauthnPasskeyQrCode,
+                               l10n_util::GetStringUTF16(
+                                   IDS_PASSWORD_MANAGER_PASSKEY_QR_CODE_TITLE),
+                               Suggestion::Icon::kNoIcon,
+                               autofill::Suggestion::Guid(kTestQrString)));
+  EXPECT_EQ(suggestion->filtration_policy,
+            autofill::Suggestion::FiltrationPolicy::kStatic);
 }
 
 TEST_F(PasswordSuggestionGeneratorTest,

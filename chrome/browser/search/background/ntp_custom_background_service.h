@@ -7,7 +7,6 @@
 
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
-#include "base/observer_list.h"
 #include "base/scoped_observation.h"
 #include "base/time/time.h"
 #include "base/values.h"
@@ -15,13 +14,11 @@
 #include "components/image_fetcher/core/image_fetcher_impl.h"
 #include "components/prefs/pref_change_registrar.h"
 #include "components/themes/ntp_background_service.h"
-#include "components/themes/ntp_background_service_observer.h"
 #include "components/themes/ntp_custom_background_service_base.h"
 #include "services/network/public/cpp/simple_url_loader.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "ui/gfx/color_utils.h"
 
-class NtpCustomBackgroundServiceObserver;
 class NtpCustomBackgroundService;
 class PrefRegistrySimple;
 class PrefService;
@@ -43,8 +40,6 @@ class NtpCustomBackgroundService : public NtpCustomBackgroundServiceBase {
   ~NtpCustomBackgroundService() override;
 
   // NtpBackgroundServiceObserver:
-  void OnCollectionInfoAvailable() override;
-  void OnCollectionImagesAvailable() override;
   void OnNextCollectionImageAvailable() override;
   void OnNtpBackgroundServiceShuttingDown() override;
 
@@ -52,22 +47,14 @@ class NtpCustomBackgroundService : public NtpCustomBackgroundServiceBase {
   // an update of theme info.
   void UpdateBackgroundFromSync();
 
-  // Invoked when the background is reset on the NTP.
-  // Virtual for testing.
-  virtual void ResetCustomBackgroundInfo();
-
-  // Invoked when a custom background is configured on the NTP.
-  // Virtual for testing.
-  virtual void SetCustomBackgroundInfo(const GURL& background_url,
-                                       const GURL& thumbnail_url,
-                                       const std::string& attribution_line_1,
-                                       const std::string& attribution_line_2,
-                                       const GURL& action_url,
-                                       const std::string& collection_id);
-
-  // Invoked when a user selected the "Upload an image" option on the NTP.
-  // Virtual for testing.
-  virtual void SelectLocalBackgroundImage(const base::FilePath& path);
+  // NtpCustomBackgroundServiceBase:
+  void SetCustomBackgroundInfo(const GURL& background_url,
+                               const GURL& thumbnail_url,
+                               const std::string& attribution_line_1,
+                               const std::string& attribution_line_2,
+                               const GURL& action_url,
+                               const std::string& collection_id) override;
+  void SelectLocalBackgroundImage(const base::FilePath& path) override;
 
   // Set bool pref for local background and set id.
   virtual void SetBackgroundToLocalResourceWithId(const base::Token& id,
@@ -122,9 +109,6 @@ class NtpCustomBackgroundService : public NtpCustomBackgroundServiceBase {
   void SetBackgroundToLocalResource();
 
   void ForceRefreshBackground();
-  // Returns false if the custom background pref cannot be parsed, otherwise
-  // returns true.
-  bool IsCustomBackgroundPrefValid();
 
   // Updates custom background prefs with color for the given |image_url|.
   void UpdateCustomBackgroundPrefsWithColor(const GURL& image_url,

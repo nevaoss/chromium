@@ -269,6 +269,7 @@ Kung ayaw mo, iba-block ito ng iyong mga setting ng privacy. Papayagan nito ang 
 <translation id="1407135791313364759">Buksan lahat</translation>
 <translation id="1408696301184924537">Para i-autofill ang IBAN na ito sa susunod, i-save ito sa iyong Google Account</translation>
 <translation id="1408787208417187241">Triple staple top</translation>
+<translation id="1410306713026702438"><ph name="SUGGESTION_TITLE" />, <ph name="SUGGESTION_DESCRIPTION" />. <ph name="SUGGESTION_TYPE" />. <ph name="MATCH_POSITION" /> sa <ph name="NUM_MATCHES_IN_GROUP" /> sa grupong <ph name="GROUP_HEADER" />.</translation>
 <translation id="1410365862999780287">Hindi makikita ng iba pang gumagamit ng device na ito ang iyong aktibidad, kaya mas pribado kang makakapag-browse. Hindi nito babaguhin kung paano kinokolekta ang data ng mga website na binibisita mo at ng mga serbisyong ginagamit ng mga ito, kabilang ang Google. Mase-save ang mga download, bookmark, at item sa listahan ng babasahin.</translation>
 <translation id="1410941016594047814">Envelope Invite</translation>
 <translation id="1413235258620101697">Ie-encrypt at ise-save sa Google Wallet ang CVC ng card na ito para sa mas mabilis na pag-checkout</translation>
@@ -660,6 +661,7 @@ Kung ayaw mo, iba-block ito ng iyong mga setting ng privacy. Papayagan nito ang 
 <translation id="2045871135676061132">Envelope Personal</translation>
 <translation id="2046951263634619614">Mga Retailer ng Libro</translation>
 <translation id="2048261947532620704">Isinasalin ang page</translation>
+<translation id="2055016614992422886">Pag-uusap</translation>
 <translation id="2059166748188874810">Munisipalidad</translation>
 <translation id="2059202684901022309">22 x 34 in</translation>
 <translation id="2064568741209980952">Credit at Pagpapautang</translation>
@@ -1387,6 +1389,7 @@ Para i-hide ang mga opsyon sa pay later, pumunta sa <ph name="BEGIN_LINK" />mga 
 <translation id="3158539265159265653">Disc</translation>
 <translation id="3162070126914310576">Hindi mae-enroll ang device na ito sa ngayon dahil naabot na ng iyong unit ng organisasyon ang inisyal na limitasyon nito sa pag-enroll. Makipag-ugnayan sa iyong administrator para sa tulong.</translation>
 <translation id="3162559335345991374">Maaaring hilingin ng Wi-Fi na ginagamit mo na bisitahin mo ang page nito sa pag-login.</translation>
+<translation id="316542773973815724">Navigation</translation>
 <translation id="316638481603975524">Puwedeng humiling na mag-install ng mga web app</translation>
 <translation id="3166788340998560642">Mag-aalok ang Chrome na i-save ito sa <ph name="IDS_AUTOFILL_GOOGLE_WALLET_TITLE" /> sa susunod na pagkakataong gamitin mo ito.</translation>
 <translation id="3168744840365648658">Kagamitang Pangradyo</translation>
@@ -3556,6 +3559,7 @@ Para i-hide ang mga opsyon sa pay later, pumunta sa <ph name="BEGIN_LINK" />mga 
 <translation id="6550245281449521513">Hindi pinapayagan ang pag-lock ng mouse</translation>
 <translation id="6551737294564628267"><ph name="ATTRIBUTE_NAME" />, bago</translation>
 <translation id="6552566579578780089">Mga Pagbabayad</translation>
+<translation id="6553777254569586547"><ph name="SUGGESTION_TITLE" />. <ph name="SUGGESTION_TYPE" />. <ph name="MATCH_POSITION" /> sa <ph name="NUM_MATCHES_IN_GROUP" /> sa grupong <ph name="GROUP_HEADER" />.</translation>
 <translation id="6554732001434021288">Huling binisita <ph name="NUM_DAYS" /> (na) araw ang nakalipas</translation>
 <translation id="6556866813142980365">Redo</translation>
 <translation id="6557715786897013164">14 x 17 in</translation>
@@ -3759,7 +3763,6 @@ Para i-hide ang mga opsyon sa pay later, pumunta sa <ph name="BEGIN_LINK" />mga 
 <translation id="6893057134494550310">Laminating Foil</translation>
 <translation id="6893204630281237373">Para i-off ang app sa pagbabayad sa Chrome, pumunta sa iyong <ph name="BEGIN_LINK1" />mga setting ng pagbabayad<ph name="END_LINK1" /></translation>
 <translation id="6895330447102777224">Nakumpirma na ang iyong card</translation>
-<translation id="6895573608763679343"><ph name="SUGGESTION_TITLE" />, <ph name="SUGGESTION_DESCRIPTION" />, <ph name="MATCH_POSITION" /> sa <ph name="NUM_MATCHES_IN_GROUP" /> sa grupong <ph name="GROUP_HEADER" />.</translation>
 <translation id="6896758677409633944">Copy</translation>
 <translation id="6897140037006041989">User Agent</translation>
 <translation id="6898699227549475383">Samahan (O)</translation>
@@ -4123,7 +4126,6 @@ Mga karagdagang detalye:
 <translation id="7450577240311017924">Button na Pamahalaan ang pag-sync, i-activate para mapamahalaan kung anong impormasyon ang isi-sync mo sa mga setting ng Chrome</translation>
 <translation id="7451311239929941790"><ph name="BEGIN_LINK" />Matuto pa<ph name="END_LINK" /> tungkol sa problemang ito.</translation>
 <translation id="745208957946308667">Dino game, pindutin ang space para maglaro</translation>
-<translation id="74521886886364465"><ph name="SUGGESTION_TITLE" />, <ph name="MATCH_POSITION" /> sa <ph name="NUM_MATCHES_IN_GROUP" /> sa grupong <ph name="GROUP_HEADER" />.</translation>
 <translation id="7453032093368223821">Pamahalaan ang iba pang data</translation>
 <translation id="7453849010505253492">Hindi mapatunayan ng server na ito na <ph name="DOMAIN" /> ito dahil gumagamit ito ng certificate na panseguridad na hindi pinagkakatiwalaan ng Chrome o ng iyong configuration ng system para sa pag-encrypt ng trapiko sa web. Posibleng sanhi ito ng maling pag-configure, o ng pag-intercept ng isang attacker sa koneksyon mo. <ph name="BEGIN_VIEW_CERTIFICATE_LINK" />Tingnan ang Certificate<ph name="END_VIEW_CERTIFICATE_LINK" /></translation>
 <translation id="7454377933424667109">Cloud account</translation>

@@ -379,7 +379,8 @@ void RemoteFrame::SetCcLayer(scoped_refptr<cc::Layer> layer,
 
   // Schedule an animation so that a new frame is produced with the updated
   // layer, otherwise this local root's visible content may not be up to date.
-  owner->GetDocument().GetFrame()->View()->ScheduleAnimation();
+  owner->GetDocument().GetFrame()->View()->ScheduleAnimation(
+      cc::BeginMainFrameReason::kOOPIF);
 }
 
 SkBitmap* RemoteFrame::GetSadPageBitmap() {

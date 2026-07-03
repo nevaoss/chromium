@@ -181,19 +181,10 @@ AutofillSuggestionController::GetOrCreate(
     PopupControllerCommon controller_common,
     int32_t form_control_ax_id,
     AutofillSuggestionTriggerSource trigger_source) {
-  // All controllers on Desktop derive from `AutofillPopupControllerImpl`.
-  if (AutofillPopupControllerImpl* previous_impl =
-          static_cast<AutofillPopupControllerImpl*>(previous.get());
-      previous_impl && previous_impl->delegate_.get() == delegate.get() &&
-      previous_impl->container_view() == web_contents->GetNativeView() &&
-      previous_impl->GetSuggestionTriggerSource() == trigger_source) {
-    if (previous_impl->self_deletion_weak_ptr_factory_.HasWeakPtrs()) {
-      previous_impl->self_deletion_weak_ptr_factory_.InvalidateWeakPtrs();
-    }
-    previous_impl->controller_common_ = std::move(controller_common);
-    previous_impl->form_control_ax_id_ = form_control_ax_id;
-    previous_impl->ClearState();
-    return previous_impl->GetWeakPtr();
+  if (previous &&
+      previous->MayRecycle(delegate, web_contents, trigger_source)) {
+    previous->Recycle(std::move(controller_common), form_control_ax_id);
+    return previous;
   }
 
   if (previous) {
@@ -205,6 +196,26 @@ AutofillSuggestionController::GetOrCreate(
   return controller->GetWeakPtr();
 }
 #endif
+
+bool AutofillPopupControllerImpl::MayRecycle(
+    base::WeakPtr<AutofillSuggestionDelegate> delegate,
+    content::WebContents* web_contents,
+    AutofillSuggestionTriggerSource trigger_source) const {
+  return delegate_.get() == delegate.get() &&
+         container_view() == web_contents->GetNativeView() &&
+         GetSuggestionTriggerSource() == trigger_source;
+}
+
+void AutofillPopupControllerImpl::Recycle(
+    PopupControllerCommon controller_common,
+    int32_t form_control_ax_id) {
+  if (self_deletion_weak_ptr_factory_.HasWeakPtrs()) {
+    self_deletion_weak_ptr_factory_.InvalidateWeakPtrs();
+  }
+  controller_common_ = std::move(controller_common);
+  form_control_ax_id_ = form_control_ax_id;
+  ClearState();
+}
 
 AutofillPopupControllerImpl::AutofillPopupControllerImpl(
     base::WeakPtr<AutofillSuggestionDelegate> delegate,
@@ -923,14 +934,6 @@ bool AutofillPopupControllerImpl::
     ShouldIgnoreMouseObservedOutsideItemBoundsCheck() const {
   return should_ignore_mouse_observed_outside_item_bounds_check_ ||
          !IsRootPopup();
-}
-
-void AutofillPopupControllerImpl::PerformButtonActionForSuggestion(
-    int index,
-    const SuggestionButtonAction& button_action) {
-  CHECK_LE(base::checked_cast<size_t>(index), GetSuggestions().size());
-  delegate_->DidPerformButtonActionForSuggestion(GetSuggestions()[index],
-                                                 button_action);
 }
 
 const std::vector<

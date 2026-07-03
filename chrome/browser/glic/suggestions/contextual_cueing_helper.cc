@@ -458,7 +458,12 @@ void ContextualCueingHelper::OnCueingDecision(
     return;
   }
 
-  GetGlicNudgeController()->UpdateNudgeLabel(
+  auto* glic_nudge_controller = GetGlicNudgeController();
+  if (!glic_nudge_controller) {
+    return;
+  }
+
+  glic_nudge_controller->UpdateNudgeLabel(
       web_contents(), decision_result->cue_label,
       decision_result->prompt_suggestion.empty()
           ? std::nullopt
@@ -467,7 +472,7 @@ void ContextualCueingHelper::OnCueingDecision(
       /*activity=*/std::nullopt,
       base::BindRepeating(&ContextualCueingService::OnNudgeActivity,
                           contextual_cueing_service_->GetWeakPtr(),
-                          web_contents(), document_available_time,
+                          web_contents()->GetWeakPtr(), document_available_time,
                           decision_result->is_dynamic));
 }
 

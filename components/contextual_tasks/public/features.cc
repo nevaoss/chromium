@@ -97,6 +97,8 @@ BASE_FEATURE(kContextualTasksEnableFileHint, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kContextualTasksComposeboxJumpFix,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kContextualTasksComposeboxFork, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Enables the use of a rounded clip-path for the composebox.
 BASE_FEATURE(kContextualTasksRoundedClipPath, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -142,6 +144,9 @@ BASE_FEATURE(kContextualTasksCookiePrefetch, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAimTriggeredThreadLinks, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kContextualTasksWindowTracking, base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kContextualTasksAiUrlAllowedParamsFilter,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool GetIsContextualTasksPdfCitationsEnabled() {
   return base::FeatureList::IsEnabled(kContextualTasksPdfCitations);
@@ -352,8 +357,9 @@ const base::FeatureParam<bool> kForceGscInTabMode(
 // Version 2.4: Adds ability to hideInput/restoreInput
 // Version 2.5: Support for link click post messages and window.open calls from
 //              AIM.
+// Version 2.6: Add inverted quote and follow up injected input icons.
 const base::FeatureParam<std::string> kContextualTasksUserAgentSuffix{
-    &kContextualTasks, "contextual-tasks-user-agent-suffix", "Cobrowsing/2.5"};
+    &kContextualTasks, "contextual-tasks-user-agent-suffix", "Cobrowsing/2.6"};
 
 const base::FeatureParam<std::string> kContextualTasksOAuthScopes{
     &kContextualTasksExtraOauthScopes, "ContextualTasksOAuthScopes", ""};
@@ -587,6 +593,16 @@ bool GetEnableLensInContextualTasks() {
 
 std::string GetContextualTasksUserAgentSuffix() {
   return kContextualTasksUserAgentSuffix.Get();
+}
+
+const base::FeatureParam<std::string> kContextualTasksAiUrlAllowedParams{
+    &kContextualTasksAiUrlAllowedParamsFilter,
+    "contextual-tasks-ai-url-allowed-params",
+    "q,sxsrf,ei,iflsig,ved,uact,sclient,udm,fbs,aep,ntc,mstk,aioh,csuir,cs"};
+
+std::vector<std::string> GetContextualTasksAiUrlAllowedParams() {
+  return base::SplitString(kContextualTasksAiUrlAllowedParams.Get(), ",",
+                           base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 }
 
 bool ShouldLogContextualTasksContextQuality() {

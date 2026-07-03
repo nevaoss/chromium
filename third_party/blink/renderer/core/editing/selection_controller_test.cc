@@ -177,7 +177,7 @@ TEST_F(SelectionControllerTest, setCaretAtHitTestResultWithNullPosition) {
   SetCaretAtHitTestResult(
       GetFrame().GetEventHandler().HitTestResultAtLocation(location));
 
-  EXPECT_TRUE(Selection().GetSelectionInDOMTree().IsNone());
+  EXPECT_TRUE(Selection().GetSelectionInDomTree().IsNone());
 }
 
 // For http://crbug.com/759971
@@ -220,7 +220,7 @@ TEST_F(SelectionControllerTest,
   // crashing.
 
   // Verify no selection was set.
-  EXPECT_TRUE(Selection().GetSelectionInDOMTree().IsNone());
+  EXPECT_TRUE(Selection().GetSelectionInDomTree().IsNone());
 }
 
 // For http://crbug.com/700368
@@ -256,7 +256,7 @@ TEST_F(SelectionControllerTest,
       GetFrame().GetEventHandler().HitTestResultAtLocation(location);
   ASSERT_EQ("<pre>(1)|\n(2)</pre>",
             GetSelectionTextFromBody(
-                SelectionInDOMTree::Builder()
+                SelectionInDomTree::Builder()
                     .Collapse(GetPositionFromHitTestResult(result))
                     .Build()));
 
@@ -285,7 +285,7 @@ TEST_F(SelectionControllerTest,
       GetFrame().GetEventHandler().HitTestResultAtLocation(location);
   ASSERT_EQ("<pre>ab:|\ncd</pre>",
             GetSelectionTextFromBody(
-                SelectionInDOMTree::Builder()
+                SelectionInDomTree::Builder()
                     .Collapse(GetPositionFromHitTestResult(result))
                     .Build()));
 
@@ -324,7 +324,7 @@ TEST_F(SelectionControllerTest, SelectWordToEndOfLine) {
       MouseEventWithHitTestResults(double_click, location, result));
   ASSERT_EQ("<div>ab|c def<br>ghi</div>",
             GetSelectionTextFromBody(
-                SelectionInDOMTree::Builder()
+                SelectionInDomTree::Builder()
                     .Collapse(GetPositionFromHitTestResult(result))
                     .Build()));
 
@@ -376,7 +376,7 @@ TEST_F(SelectionControllerTest, SelectWordToEndOfTableCell) {
       MouseEventWithHitTestResults(double_click, location, result));
   ASSERT_EQ("<table><tbody><tr><td>fo|o</td><td>bar</td></tr></tbody></table>",
             GetSelectionTextFromBody(
-                SelectionInDOMTree::Builder()
+                SelectionInDomTree::Builder()
                     .Collapse(GetPositionFromHitTestResult(result))
                     .Build()));
   // Select word by mouse

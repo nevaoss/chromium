@@ -30,7 +30,6 @@
 #include "components/feed/core/proto/v2/wire/reliability_logging_enums.pb.h"
 #include "components/feed/core/proto/v2/wire/request.pb.h"
 #include "components/feed/core/proto/v2/wire/there_and_back_again_data.pb.h"
-#include "components/feed/core/proto/v2/wire/web_feeds.pb.h"
 #include "components/feed/core/proto/v2/xsurface.pb.h"
 #include "components/feed/core/shared_prefs/pref_names.h"
 #include "components/feed/core/v2/config.h"
@@ -898,6 +897,7 @@ void FeedApiTest::SetUp() {
   feed::prefs::RegisterFeedSharedProfilePrefs(profile_prefs_.registry());
   feed::RegisterProfilePrefs(profile_prefs_.registry());
   profile_prefs_.registry()->RegisterBooleanPref(::prefs::kSigninAllowed, true);
+  profile_prefs_.registry()->RegisterBooleanPref(kFeedbackAllowedPref, true);
   metrics_reporter_ = std::make_unique<TestMetricsReporter>(&profile_prefs_);
 
   shared_url_loader_factory_ =
@@ -980,6 +980,7 @@ void FeedApiTest::CreateStream(
   chrome_info.version = base::Version({99, 1, 9911, 2});
   chrome_info.is_new_tab_search_engine_url_android_enabled =
       is_new_tab_search_engine_url_android_enabled;
+  chrome_info.user_feedback_allowed_pref_key = kFeedbackAllowedPref;
   stream_ = std::make_unique<FeedStream>(
       &refresh_scheduler_, metrics_reporter_.get(), this, &profile_prefs_,
       &network_, image_fetcher_.get(), store_.get(),

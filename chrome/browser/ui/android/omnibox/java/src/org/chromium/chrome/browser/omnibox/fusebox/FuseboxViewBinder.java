@@ -41,6 +41,7 @@ import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.PopupButton
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.PopupButtonType;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
+import org.chromium.components.browser_ui.widget.RoundedCornerOutlineProvider;
 import org.chromium.components.omnibox.AutocompleteRequestType;
 import org.chromium.components.omnibox.IconResourceIdsProto.IconResourceIds;
 import org.chromium.components.omnibox.ToolModeUtils;
@@ -55,6 +56,13 @@ import java.util.List;
 /** Binds the Fusebox properties to the view and component. */
 @NullMarked
 class FuseboxViewBinder {
+
+    private static final int[][] HOVER_STATES =
+            new int[][] {
+                new int[] {android.R.attr.state_hovered}, new int[] {} // Default, must be last
+            };
+    ;
+
     /**
      * @see PropertyModelChangeProcessor.ViewBinder#bind(Object, Object, Object)
      */
@@ -62,13 +70,13 @@ class FuseboxViewBinder {
         if (propertyKey == FuseboxProperties.ACTIVATION_CHIP_CLICKED) {
             view.activationChip.setOnClickListener(
                     v -> model.get(FuseboxProperties.ACTIVATION_CHIP_CLICKED).run());
+        } else if (propertyKey == FuseboxProperties.ACTIVATION_CHIP_SELECTED) {
+            view.activationChip.setSelected(model.get(FuseboxProperties.ACTIVATION_CHIP_SELECTED));
         } else if (propertyKey == FuseboxProperties.ACTIVATION_CHIP_VISIBLE) {
             updateButtonVisibility(
                     model, FuseboxProperties.ACTIVATION_CHIP_VISIBLE, view.activationChip);
         } else if (propertyKey == FuseboxProperties.ADAPTER) {
             view.attachmentsView.setAdapter(model.get(FuseboxProperties.ADAPTER));
-        } else if (propertyKey == FuseboxProperties.ADD_BUTTON_VISIBLE) {
-            updateAddButton(model, view);
         } else if (propertyKey == FuseboxProperties.ATTACHMENTS_VISIBLE) {
             boolean visible = model.get(FuseboxProperties.ATTACHMENTS_VISIBLE);
             view.attachmentsView.setVisibility(visible ? View.VISIBLE : View.GONE);
@@ -92,14 +100,19 @@ class FuseboxViewBinder {
                     layoutManager.removeAllViews();
                 }
             }
-        } else if (propertyKey == FuseboxProperties.BUTTON_ADD_CLICKED) {
-            view.addButton.setOnClickListener(
-                    v -> model.get(FuseboxProperties.BUTTON_ADD_CLICKED).run());
         } else if (propertyKey == FuseboxProperties.COLOR_SCHEME) {
             updateButtonsVisibilityAndStyling(model, view);
-        } else if (propertyKey == FuseboxProperties.FUSEBOX_STATE
-                || propertyKey == FuseboxProperties.FUSEBOX_LAYOUT_MODE) {
+        } else if (propertyKey == FuseboxProperties.FUSEBOX_STATE) {
             reanchorViewsForCompactFusebox(model, view);
+        } else if (propertyKey == FuseboxProperties.FUSEBOX_LAYOUT_MODE) {
+            reanchorViewsForCompactFusebox(model, view);
+            updatePlusButtonVisuals(model, view);
+        } else if (propertyKey == FuseboxProperties.PLUS_BUTTON_CLICKED) {
+            view.plusButton.setOnClickListener(
+                    v -> model.get(FuseboxProperties.PLUS_BUTTON_CLICKED).run());
+        } else if (propertyKey == FuseboxProperties.PLUS_BUTTON_VISIBLE) {
+            boolean showPlusButton = model.get(FuseboxProperties.PLUS_BUTTON_VISIBLE);
+            view.plusButton.setVisibility(showPlusButton ? View.VISIBLE : View.GONE);
         } else if (propertyKey == FuseboxProperties.POPUP_ATTACH_CAMERA_CLICKED) {
             view.popup.mCameraButton.setOnClickListener(
                     v -> model.get(FuseboxProperties.POPUP_ATTACH_CAMERA_CLICKED).run());
@@ -523,7 +536,7 @@ class FuseboxViewBinder {
 
     private static void updateButtonsVisibilityAndStyling(
             PropertyModel model, FuseboxViewHolder view) {
-        updateAddButton(model, view);
+        updatePlusButtonVisuals(model, view);
         updateNavigateButton(model, view);
         updateRequestTypeButton(model, view);
         updatePopupTheme(model, view);
@@ -535,18 +548,32 @@ class FuseboxViewBinder {
         view.popup.mPopupWindow.setBackgroundDrawable(background);
     }
 
-    private static void updateAddButton(PropertyModel model, FuseboxViewHolder view) {
-        boolean showAddButton = model.get(FuseboxProperties.ADD_BUTTON_VISIBLE);
-        ChromeImageView addButton = view.addButton;
-        addButton.setVisibility(showAddButton ? View.VISIBLE : View.GONE);
-        if (showAddButton) {
-            @BrandedColorScheme int brandedColorScheme = model.get(FuseboxProperties.COLOR_SCHEME);
-            Context context = view.parentView.getContext();
-            addButton.setBackground(
+    private static void updatePlusButtonVisuals(PropertyModel model, FuseboxViewHolder view) {
+        Context context = view.parentView.getContext();
+        ChromeImageView plusButton = view.plusButton;
+        @BrandedColorScheme int brandedColorScheme = model.get(FuseboxProperties.COLOR_SCHEME);
+        plusButton.setImageTintList(
+                OmniboxResourceProvider.getPrimaryIconTintList(context, brandedColorScheme));
+
+        if (model.get(FuseboxProperties.FUSEBOX_LAYOUT_MODE)
+                == FuseboxLayoutMode.SUGGESTIONS_POPOVER) {
+            plusButton.setBackground(
+                    OmniboxResourceProvider.getPopoverPlusButtonBackground(
+                            context, brandedColorScheme));
+            // Null the outline provider in case we were previously in FuseboxLayoutMode.TOOLBAR.
+            // The SUGGESTIONS_POPOVER's drawable implicitly handles corner rounding, while the
+            // TOOLBAR's drawable needs to use the outline provider.
+            plusButton.setOutlineProvider(null);
+        } else {
+            Resources resources = context.getResources();
+            plusButton.setBackground(
                     OmniboxResourceProvider.getSearchBoxIconBackground(
                             context, brandedColorScheme));
-            addButton.setImageTintList(
-                    OmniboxResourceProvider.getPrimaryIconTintList(context, brandedColorScheme));
+            RoundedCornerOutlineProvider outline =
+                    new RoundedCornerOutlineProvider(
+                            resources.getDimensionPixelSize(R.dimen.fusebox_button_corner_radius));
+            outline.setClipPaddedArea(true);
+            plusButton.setOutlineProvider(outline);
         }
     }
 
@@ -612,13 +639,20 @@ class FuseboxViewBinder {
         @ColorInt
         int buttonColor =
                 OmniboxResourceProvider.getColorSurfaceContainerHigh(context, brandedColorScheme);
+        @ColorInt
+        int buttonColorHovered =
+                OmniboxResourceProvider.getColorSurfaceContainerHighest(
+                        context, brandedColorScheme);
+        int[] backgroundColors = new int[] {buttonColorHovered, buttonColor};
+
         ButtonCompat button = viewHolder.activationChip;
-        button.setButtonColor(ColorStateList.valueOf(buttonColor));
+        button.setButtonColor(new ColorStateList(HOVER_STATES, backgroundColors));
 
         @ColorInt
         int colorOnSurface = OmniboxResourceProvider.getColorOnSurface(context, brandedColorScheme);
-        // TODO(pnoland): handle text color, selection, and hover states.
         button.setCompoundDrawableTintList(ColorStateList.valueOf(colorOnSurface));
+        button.setForegroundTintList(ColorStateList.valueOf(colorOnSurface));
+        button.setTextColor(colorOnSurface);
     }
 
     @SuppressLint("SwitchIntDef")
@@ -700,7 +734,7 @@ class FuseboxViewBinder {
         var cs = new ConstraintSet();
         cs.clone(view.parentView);
 
-        int id = view.addButton.getId();
+        int id = view.plusButton.getId();
         cs.clear(id, ConstraintSet.TOP);
         cs.clear(id, ConstraintSet.BOTTOM);
         cs.clear(id, ConstraintSet.BASELINE);

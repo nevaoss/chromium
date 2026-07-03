@@ -55,7 +55,6 @@
 #include "chrome/browser/ui/page_info/page_info_dialog.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/toolbar/app_menu_model.h"
-#include "chrome/browser/ui/views/web_apps/web_app_dialog_test_support.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/browser/ui/web_applications/test/web_app_browsertest_util.h"
 #include "chrome/browser/ui/web_applications/web_app_browsertest_base.h"
@@ -63,6 +62,7 @@
 #include "chrome/browser/ui/web_applications/web_app_launch_utils.h"
 #include "chrome/browser/ui/web_applications/web_app_menu_model.h"
 #include "chrome/browser/ui/web_applications/web_app_ui_utils.h"
+#include "chrome/browser/ui/window_metadata/window_metadata_controller.h"
 #include "chrome/browser/ui/window_sizer/window_sizer.h"
 #include "chrome/browser/web_applications/external_install_options.h"
 #include "chrome/browser/web_applications/model/display_override.h"
@@ -1083,7 +1083,7 @@ IN_PROC_BROWSER_TEST_F(WebAppBrowserTest, PWASizeIsCorrectlyRestored) {
   CloseAndWait(app_browser);
 
   Browser* const new_browser = LaunchWebAppBrowser(app_id);
-  EXPECT_EQ(new_browser->window()->GetBounds(), bounds);
+  EXPECT_EQ(new_browser->GetWindow()->GetBounds(), bounds);
 }
 
 // Tests that using window.open to create a popup window out of scope results in
@@ -1688,9 +1688,9 @@ IN_PROC_BROWSER_TEST_F(WebAppBrowserTest_DetailedInstallDialog,
 IN_PROC_BROWSER_TEST_F(WebAppBrowserTest, SecondWindowSizeMatches) {
   const webapps::AppId app_id = InstallPWA(GURL(kExampleURL));
   Browser* first_browser = LaunchWebAppBrowserAndWait(app_id);
-  const gfx::Size first_size = first_browser->window()->GetBounds().size();
+  const gfx::Size first_size = first_browser->GetWindow()->GetBounds().size();
   Browser* second_browser = LaunchWebAppBrowserAndWait(app_id);
-  const gfx::Size second_size = second_browser->window()->GetBounds().size();
+  const gfx::Size second_size = second_browser->GetWindow()->GetBounds().size();
   constexpr int kTolerance = 50;  // Empirically derived, should be reduced.
   EXPECT_LT(std::abs(first_size.width() - second_size.width()), kTolerance);
   EXPECT_LT(std::abs(first_size.height() - second_size.height()), kTolerance);
@@ -1701,8 +1701,8 @@ IN_PROC_BROWSER_TEST_F(WebAppBrowserTest, SecondWindowOffset) {
   const webapps::AppId app_id = InstallPWA(GURL(kExampleURL));
   Browser* first_browser = LaunchWebAppBrowserAndWait(app_id);
   Browser* second_browser = LaunchWebAppBrowserAndWait(app_id);
-  EXPECT_NE(first_browser->window()->GetBounds().OffsetFromOrigin(),
-            second_browser->window()->GetBounds().OffsetFromOrigin());
+  EXPECT_NE(first_browser->GetWindow()->GetBounds().OffsetFromOrigin(),
+            second_browser->GetWindow()->GetBounds().OffsetFromOrigin());
 }
 
 IN_PROC_BROWSER_TEST_F(WebAppBrowserTest, SetBounds) {
@@ -2258,7 +2258,8 @@ IN_PROC_BROWSER_TEST_F(WebAppBrowserTest_PrefixInTitle, PrefixExistsInTitle) {
 
   // The window title should not repeat "A Web App".
   EXPECT_EQ(u"A Web App - funny cat video",
-            app_browser->GetWindowTitleForCurrentTab(false));
+            WindowMetadataController::From(app_browser)
+                ->GetWindowTitleForCurrentTab(false));
 }
 
 // Ensure that web app windows with blank titles don't display the URL as a
@@ -2278,11 +2279,13 @@ IN_PROC_BROWSER_TEST_F(WebAppBrowserTest_PrefixInTitle,
   content::WebContents* const web_contents =
       app_browser->tab_strip_model()->GetActiveWebContents();
   EXPECT_TRUE(content::WaitForLoadStop(web_contents));
-  EXPECT_EQ(app_title, app_browser->GetWindowTitleForCurrentTab(false));
+  EXPECT_EQ(app_title, WindowMetadataController::From(app_browser)
+                           ->GetWindowTitleForCurrentTab(false));
   NavigateViaLinkClickToURLAndWait(
       app_browser,
       embedded_https_test_server().GetURL("app.site.test", "/simple.html"));
-  EXPECT_EQ(u"A Web App - OK", app_browser->GetWindowTitleForCurrentTab(false));
+  EXPECT_EQ(u"A Web App - OK", WindowMetadataController::From(app_browser)
+                                   ->GetWindowTitleForCurrentTab(false));
 }
 
 // Ensure that web app windows display the app title instead of the page
@@ -2303,14 +2306,15 @@ IN_PROC_BROWSER_TEST_F(WebAppBrowserTest_PrefixInTitle,
   EXPECT_TRUE(content::WaitForLoadStop(web_contents));
 
   // When we are within scope, show the page title.
-  EXPECT_EQ(u"A Web App - Google",
-            app_browser->GetWindowTitleForCurrentTab(false));
+  EXPECT_EQ(u"A Web App - Google", WindowMetadataController::From(app_browser)
+                                       ->GetWindowTitleForCurrentTab(false));
   NavigateViaLinkClickToURLAndWait(
       app_browser,
       embedded_https_test_server().GetURL("app.site.test", "/simple.html"));
 
   // When we are off scope, show the app title.
-  EXPECT_EQ(app_title, app_browser->GetWindowTitleForCurrentTab(false));
+  EXPECT_EQ(app_title, WindowMetadataController::From(app_browser)
+                           ->GetWindowTitleForCurrentTab(false));
 }
 
 // Ensure that web app windows display the app title instead of the page
@@ -2332,7 +2336,8 @@ IN_PROC_BROWSER_TEST_F(WebAppBrowserTest, InScopeHttpUrlsDisplayAppTitle) {
 
   // The page title is "OK" but the page is being served over HTTP, so the app
   // title should be used instead.
-  EXPECT_EQ(app_title, app_browser->GetWindowTitleForCurrentTab(false));
+  EXPECT_EQ(app_title, WindowMetadataController::From(app_browser)
+                           ->GetWindowTitleForCurrentTab(false));
 }
 
 // WebApps should have origin text.
@@ -2431,7 +2436,7 @@ IN_PROC_BROWSER_TEST_F(WebAppBrowserTest, PopupLocationBar) {
       /*user_gesture=*/true);
   Browser* popup_browser =
       web_app::CreateWebAppWindowMaybeWithHomeTab(app_id, params);
-  popup_browser->window()->Show();
+  popup_browser->GetWindow()->Show();
   ui_test_utils::WaitUntilBrowserBecomeActive(popup_browser);
 
   EXPECT_TRUE(popup_browser->CanSupportWindowFeature(
@@ -2816,8 +2821,12 @@ IN_PROC_BROWSER_TEST_F(WebAppBrowserTest_FileHandler, FileAssociation) {
   // Wait for OS hooks and installation to complete.
   webapps::AppId app_id;
   {
-    web_app::test::ScopedAutoAcceptCreateShortcutDialog auto_accept;
-    web_app::test::ScopedAutoCheckChromeOsOpenInWindow auto_check;
+    base::AutoReset<web_app::InstallDialogTestResponse> auto_accept =
+        web_app::SetPwaInstallationAutoRespondForTesting(
+            web_app::InstallDialogTestResponse::kAcceptAndLaunch);
+    base::AutoReset<web_app::CreateShortcutDialogCheckState> auto_check =
+        web_app::SetCreateShortcutDialogCheckStateForTesting(
+            web_app::CreateShortcutDialogCheckState::kChecked);
     base::RunLoop run_loop_install;
     WebAppInstallManagerObserverAdapter observer(profile());
     observer.SetWebAppInstalledWithOsHooksDelegate(
@@ -2897,8 +2906,12 @@ IN_PROC_BROWSER_TEST_F(WebAppBrowserTest_FileHandler,
   // Wait for OS hooks and installation to complete.
   webapps::AppId app_id;
   {
-    web_app::test::ScopedAutoAcceptCreateShortcutDialog auto_accept;
-    web_app::test::ScopedAutoCheckChromeOsOpenInWindow auto_check;
+    base::AutoReset<web_app::InstallDialogTestResponse> auto_accept =
+        web_app::SetPwaInstallationAutoRespondForTesting(
+            web_app::InstallDialogTestResponse::kAcceptAndLaunch);
+    base::AutoReset<web_app::CreateShortcutDialogCheckState> auto_check =
+        web_app::SetCreateShortcutDialogCheckStateForTesting(
+            web_app::CreateShortcutDialogCheckState::kChecked);
     base::RunLoop run_loop_install;
     WebAppInstallManagerObserverAdapter observer(profile());
     observer.SetWebAppInstalledWithOsHooksDelegate(

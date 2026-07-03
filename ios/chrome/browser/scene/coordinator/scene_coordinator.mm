@@ -675,13 +675,17 @@ void OnListFamilyMembersResponse(
     return;
   }
   if (_assistantAIMCoordinator) {
-    [_assistantAIMCoordinator setVisible:YES];
+    [self revealAssistant];
     return;
   }
   _assistantAIMCoordinator = [[AssistantAIMCoordinator alloc]
       initWithBaseViewController:self.activeViewController
                          browser:self.currentBrowser];
   [_assistantAIMCoordinator start];
+}
+
+- (void)revealAssistant {
+  [_assistantAIMCoordinator setVisible:YES];
 }
 
 - (void)hideAssistant {

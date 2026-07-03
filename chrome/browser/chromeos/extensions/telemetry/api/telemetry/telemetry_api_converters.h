@@ -39,13 +39,13 @@ chromeos::api::os_telemetry::AudioInfo UncheckedConvertPtr(
     ash::cros_healthd::mojom::AudioInfoPtr input);
 
 chromeos::api::os_telemetry::CpuCStateInfo UncheckedConvertPtr(
-    crosapi::mojom::ProbeCpuCStateInfoPtr input);
+    ash::cros_healthd::mojom::CpuCStateInfoPtr input);
 
 chromeos::api::os_telemetry::LogicalCpuInfo UncheckedConvertPtr(
-    crosapi::mojom::ProbeLogicalCpuInfoPtr input);
+    ash::cros_healthd::mojom::LogicalCpuInfoPtr input);
 
 chromeos::api::os_telemetry::PhysicalCpuInfo UncheckedConvertPtr(
-    crosapi::mojom::ProbePhysicalCpuInfoPtr input);
+    ash::cros_healthd::mojom::PhysicalCpuInfoPtr input);
 
 // `serial_number` field should be converted iff `has_serial_number_permission`
 // is true.
@@ -116,7 +116,7 @@ chromeos::api::os_telemetry::ThermalSensorInfo UncheckedConvertPtr(
 }  // namespace unchecked
 
 chromeos::api::os_telemetry::CpuArchitectureEnum Convert(
-    crosapi::mojom::ProbeCpuArchitectureEnum input);
+    ash::cros_healthd::mojom::CpuArchitectureEnum input);
 
 chromeos::api::os_telemetry::NetworkState Convert(
     chromeos::network_health::mojom::NetworkState input);

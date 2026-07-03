@@ -119,7 +119,6 @@ class CC_EXPORT ProxyMain : public Proxy {
                              PaintHoldingReason reason) override;
   void StopDeferringCommits() override;
   bool IsDeferringCommits() const override;
-  void SetShouldThrottleFrameRate(bool flag) override;
   void SetRequestHighFramerate(bool flag) override;
   bool CommitRequested() const override;
   void Start() override;

@@ -56,7 +56,7 @@ constexpr int kToolbarPadding = 4;
 constexpr int kToolbarInitialOffset = 20;
 constexpr int kSeparatorHorizontalPadding = 8;
 constexpr int kControlIconSize = 16;
-constexpr int kActionIconSize = 20;
+constexpr int kActionIconSize = 16;
 constexpr int kLabelLeftMargin = 12;
 
 class IndigoOverlayTargeterDelegate : public views::ViewTargeterDelegate {
@@ -288,9 +288,7 @@ std::unique_ptr<views::View> IndigoToolbar::CreateToolbarView() {
                           CreateExpandedButton(
                               l10n_util::GetStringUTF16(
                                   IDS_INDIGO_TOOLBAR_REGENERATE),
-                              features::IsRoundedIconsEnabled()
-                                  ? vector_icons::kRefreshIcon
-                                  : vector_icons::kReloadOldIcon,
+                              vector_icons::kReloadCustomIcon,
                               base::BindRepeating(
                                   &IndigoToolbar::OnRegenerateButtonClicked,
                                   base::Unretained(this))))

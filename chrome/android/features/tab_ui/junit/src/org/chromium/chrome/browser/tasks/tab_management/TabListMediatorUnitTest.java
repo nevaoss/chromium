@@ -99,7 +99,6 @@ import org.chromium.base.CallbackUtils;
 import org.chromium.base.DeviceInfo;
 import org.chromium.base.FeatureOverrides;
 import org.chromium.base.Token;
-import org.chromium.base.UserDataHost;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.shared_preferences.SharedPreferencesManager;
 import org.chromium.base.supplier.ObservableSuppliers;
@@ -134,7 +133,6 @@ import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
 import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
 import org.chromium.chrome.browser.tab.MediaState;
 import org.chromium.chrome.browser.tab.MockTab;
-import org.chromium.chrome.browser.tab.SendTabToSelfTabCardLabelData;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabCreationState;
 import org.chromium.chrome.browser.tab.TabLaunchType;
@@ -226,6 +224,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 /** Tests for {@link TabListMediator}. */
+// TODO(crbug.com/509226293): Fix inconsistent test naming in this file. Tests currently named
+// after TabListMediatorType (e.g. TabGridDialog, TabSwitcher, VerticalTabs) should be renamed
+// to use TabListLayoutType (Flat, Grouped, Nested) for consistency with underlying architecture.
+// Additionally, relocate all scattered private helper methods to the bottom of the file.
 @SuppressWarnings({
     "ArraysAsListWithZeroOrOneArgument",
     "ResultOfMethodCallIgnored",
@@ -1953,146 +1955,6 @@ public class TabListMediatorUnitTest {
     }
 
     @Test
-    public void tabMoveOutOfGroup_Gts_Moved_Tab_Selected_GetsFavicon() {
-        List<Tab> tabs = List.of(mTab1, mTab2);
-        createTabGroup(tabs, TAB_GROUP_ID);
-        mMediator.resetWithListOfTabs(List.of(mTab1), null, false);
-
-        assertThat(mModelList.size(), equalTo(1));
-        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
-
-        // Assume that TabModel is already updated.
-        when(mTabModel.index()).thenReturn(POSITION2);
-        when(mTabModel.getTabAt(POSITION2)).thenReturn(mTab1);
-        mockRepresentativeTabs(mTab2, mTab1);
-        when(mTabModel.isTabInTabGroup(mTab1)).thenReturn(false);
-        when(mTabModel.isTabInTabGroup(mTab2)).thenReturn(true);
-        when(mTab1.getTabGroupId()).thenReturn(null);
-        when(mTab2.getRootId()).thenReturn(TAB2_ID);
-        when(mTabModel.getTabCountForGroup(TAB_GROUP_ID)).thenReturn(1);
-        when(mTabModel.getRelatedTabList(TAB1_ID)).thenReturn(List.of(mTab1));
-        when(mTabModel.getRelatedTabList(TAB2_ID)).thenReturn(List.of(mTab2));
-        when(mTabModel.getTabsInGroup(TAB_GROUP_ID)).thenReturn(List.of(mTab2));
-
-        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(mTab1, POSITION1);
-
-        assertThat(mModelList.size(), equalTo(2));
-        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
-        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo("1 tab"));
-        assertThat(mModelList.get(0).model.get(TabProperties.IS_SELECTED), equalTo(false));
-        assertThat(mModelList.get(1).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
-        assertThat(mModelList.get(1).model.get(TabProperties.TITLE), equalTo(TAB1_TITLE));
-        assertThat(mModelList.get(1).model.get(TabProperties.IS_SELECTED), equalTo(true));
-        assertNotNull(mModelList.get(1).model.get(TabProperties.FAVICON_FETCHER));
-    }
-
-    @Test
-    public void tabMoveOutOfGroup_Gts_Moved_Tab_Selected() {
-        // Assume that two tabs are in the same group before ungroup.
-        List<Tab> tabs = List.of(mTab2);
-        mMediator.resetWithListOfTabs(tabs, null, false);
-
-        assertThat(mModelList.size(), equalTo(1));
-        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
-        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB2_TITLE));
-
-        // Assume that TabModel is already updated.
-        mockRepresentativeTabs(mTab2, mTab1);
-        doReturn(false).when(mTabModel).isTabInTabGroup(mTab1);
-
-        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(mTab1, POSITION1);
-
-        assertThat(mModelList.size(), equalTo(2));
-        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
-        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB2_TITLE));
-        assertThat(mModelList.get(0).model.get(TabProperties.IS_SELECTED), equalTo(false));
-        assertThat(mModelList.get(1).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
-        assertThat(mModelList.get(1).model.get(TabProperties.TITLE), equalTo(TAB1_TITLE));
-        assertThat(mModelList.get(1).model.get(TabProperties.IS_SELECTED), equalTo(true));
-    }
-
-    @Test
-    public void tabMoveOutOfGroup_Gts_Origin_Tab_Selected() {
-        // Assume that two tabs are in the same group before ungroup.
-        List<Tab> tabs = List.of(mTab1);
-        mMediator.resetWithListOfTabs(tabs, null, false);
-
-        assertThat(mModelList.size(), equalTo(1));
-        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
-        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB1_TITLE));
-
-        // Assume that TabModel is already updated.
-        mockRepresentativeTabs(mTab1, mTab2);
-
-        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(mTab2, POSITION1);
-
-        assertThat(mModelList.size(), equalTo(2));
-        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
-        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB1_TITLE));
-        assertThat(mModelList.get(0).model.get(TabProperties.IS_SELECTED), equalTo(true));
-        assertThat(mModelList.get(1).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
-        assertThat(mModelList.get(1).model.get(TabProperties.TITLE), equalTo(TAB2_TITLE));
-        assertThat(mModelList.get(1).model.get(TabProperties.IS_SELECTED), equalTo(false));
-    }
-
-    @Test
-    public void tabMoveOutOfGroup_Gts_LastTab() {
-        // Assume that tab1 is a single tab group that became a single tab.
-        List<Tab> tabs = List.of(mTab1);
-        mMediator.resetWithListOfTabs(tabs, null, false);
-        mockRepresentativeTabs(mTab1);
-        doReturn(tabs).when(mTabModel).getRelatedTabList(TAB1_ID);
-
-        // These properties should get reset.
-        PropertyModel model = mModelList.get(0).model;
-        model.set(TabProperties.TITLE, CUSTOMIZED_DIALOG_TITLE1);
-        model.set(TabProperties.TAB_GROUP_HEADER_ID, TAB_GROUP_ID);
-        model.set(TabProperties.TAB_GROUP_CARD_COLOR, TabGroupColorId.GREY);
-        ThumbnailFetcher fetcher = model.get(TabProperties.THUMBNAIL_FETCHER);
-
-        // Ungroup the single tab, dissolving the group.
-        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(mTab1, POSITION1);
-
-        assertThat(mModelList.size(), equalTo(1));
-        assertThat(model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
-
-        // Verify that group properties are correctly set to null when dissolved.
-        assertNull(model.get(TabProperties.TAB_GROUP_HEADER_ID));
-        assertNull(model.get(TabProperties.TAB_GROUP_CARD_COLOR));
-
-        // Verify title and thumbnail are reset.
-        assertThat(model.get(TabProperties.TITLE), equalTo(TAB1_TITLE));
-        assertNotEquals(fetcher, model.get(TabProperties.THUMBNAIL_FETCHER));
-    }
-
-    @Test
-    public void tabMoveOutOfGroup_Gts_TabAdditionWithSameId() {
-        // Assume that two tabs are in the same group before ungroup.
-        List<Tab> tabs = List.of(mTab1);
-        mMediator.resetWithListOfTabs(tabs, null, false);
-
-        assertThat(mModelList.size(), equalTo(1));
-        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
-        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB1_TITLE));
-
-        // Assume that TabModel is already updated.
-        mockRepresentativeTabs(mTab1, mTab2);
-
-        // The ungroup will add tab1 to the TabListModel at index 0. Note that before this addition,
-        // there is the PropertyModel represents the group with the same id at the same index. The
-        // addition should still take effect in this case.
-        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(mTab1, POSITION2);
-
-        assertThat(mModelList.size(), equalTo(2));
-        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
-        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB1_TITLE));
-        assertThat(mModelList.get(0).model.get(TabProperties.IS_SELECTED), equalTo(true));
-        assertThat(mModelList.get(1).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
-        assertThat(mModelList.get(1).model.get(TabProperties.TITLE), equalTo(TAB2_TITLE));
-        assertThat(mModelList.get(1).model.get(TabProperties.IS_SELECTED), equalTo(false));
-    }
-
-    @Test
     public void testShoppingFetcherActiveForForUngroupedTabs() {
         prepareForPriceDrop();
         resetWithRegularTabs(false);
@@ -2185,97 +2047,9 @@ public class TabListMediatorUnitTest {
     }
 
     @Test
-    public void tabMoveOutOfGroup_Dialog() {
-        setUpTabListMediator(TabListMediatorType.TAB_GRID_DIALOG, TabListMode.GRID);
-
-        // Assume that filter is already updated.
-        mockRepresentativeTabs(mTab2);
-
-        assertThat(mModelList.size(), equalTo(2));
-        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
-        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB1_TITLE));
-        assertThat(mModelList.get(1).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
-        assertThat(mModelList.get(1).model.get(TabProperties.TITLE), equalTo(TAB2_TITLE));
-
-        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(mTab1, POSITION1);
-
-        assertThat(mModelList.size(), equalTo(1));
-        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
-        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB2_TITLE));
-        verify(mTabGridDialogHandler).updateDialogContent(TAB2_ID);
-    }
-
-    @Test
-    public void tabMoveOutOfGroup_Dialog_LastTab() {
-        setUpTabListMediator(TabListMediatorType.TAB_GRID_DIALOG, TabListMode.GRID);
-
-        // Assume that tab1 is a single tab.
-        List<Tab> tabs = List.of(mTab1);
-        mMediator.resetWithListOfTabs(tabs, null, false);
-        mockRepresentativeTabs(mTab1);
-        doReturn(tabs).when(mTabModel).getRelatedTabList(TAB1_ID);
-
-        // Ungroup the single tab.
-        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(mTab1, POSITION1);
-
-        verify(mTabGridDialogHandler).updateDialogContent(Tab.INVALID_TAB_ID);
-    }
-
-    @Test
-    public void tabMoveOutOfGroup_Strip() {
-        setUpTabListMediator(TabListMediatorType.TAB_STRIP, TabListMode.GRID);
-
-        // Assume that filter is already updated.
-
-        assertThat(mModelList.size(), equalTo(2));
-        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
-        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB1_TITLE));
-        assertThat(mModelList.get(1).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
-        assertThat(mModelList.get(1).model.get(TabProperties.TITLE), equalTo(TAB2_TITLE));
-
-        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(mTab1, POSITION2);
-
-        assertThat(mModelList.size(), equalTo(1));
-        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
-        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB2_TITLE));
-        verify(mTabGridDialogHandler, never()).updateDialogContent(anyInt());
-    }
-
-    @Test
-    public void tabMoveOutOfGroup_Strip_Undo() {
-        setUpTabListMediator(TabListMediatorType.TAB_STRIP, TabListMode.GRID);
-
-        // Setup the same as tabMoveOutOfGroup_Strip.
-
-        assertThat(mModelList.size(), equalTo(2));
-        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
-        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB1_TITLE));
-        assertThat(mModelList.get(1).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
-        assertThat(mModelList.get(1).model.get(TabProperties.TITLE), equalTo(TAB2_TITLE));
-
-        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(mTab1, POSITION2);
-
-        assertThat(mModelList.size(), equalTo(1));
-        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
-        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB2_TITLE));
-        verify(mTabGridDialogHandler, never()).updateDialogContent(anyInt());
-
-        // Pretend we grouped tab 1 with tab 2, but the reset already occurred so we are just
-        // showing tab 1. Now we need to make sure that removing tab 1 from the group (which is
-        // already showing) no-ops.
-        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(mTab1, POSITION2);
-
-        assertThat(mModelList.size(), equalTo(1));
-        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
-        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB2_TITLE));
-        verify(mTabGridDialogHandler, never()).updateDialogContent(anyInt());
-    }
-
-    @Test
-    public void tabMovementWithGroup_Forward() {
+    public void testDidMoveTabGroup_GroupedLayout_Forward() {
         // Assume that moveTab in TabModel is finished.
-        doReturn(mTab1).when(mTabModel).getTabAt(POSITION2);
-        doReturn(mTab2).when(mTabModel).getTabAt(POSITION1);
+        mockTabIndexes(mTab2, mTab1);
 
         assertThat(mModelList.size(), equalTo(2));
         assertThat(mModelList.get(1).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
@@ -2289,10 +2063,9 @@ public class TabListMediatorUnitTest {
     }
 
     @Test
-    public void tabMovementWithGroup_Backward() {
+    public void testDidMoveTabGroup_GroupedLayout_Backward() {
         // Assume that moveTab in TabModel is finished.
-        doReturn(mTab1).when(mTabModel).getTabAt(POSITION2);
-        doReturn(mTab2).when(mTabModel).getTabAt(POSITION1);
+        mockTabIndexes(mTab2, mTab1);
 
         assertThat(mModelList.size(), equalTo(2));
         assertThat(mModelList.get(1).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
@@ -2306,12 +2079,125 @@ public class TabListMediatorUnitTest {
     }
 
     @Test
-    public void tabMovementWithinGroup_TabGridDialog_Forward() {
+    public void testDidMoveTabGroup_NestedLayout_Forward() {
+        setUpTabListMediator(TabListMediatorType.VERTICAL_TABS, TabListMode.GRID);
+
+        // Assume that moveTab in TabModel is finished.
+        mockTabIndexes(mTab2, mTab1);
+
+        assertThat(mModelList.size(), equalTo(2));
+        assertThat(mModelList.get(1).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
+        assertThat(mModelList.get(1).model.get(TabProperties.TITLE), equalTo(TAB2_TITLE));
+
+        mTabGroupObserverCaptor.getValue().didMoveTabGroup(mTab2, POSITION2, POSITION1);
+
+        assertThat(mModelList.size(), equalTo(2));
+        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
+        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB2_TITLE));
+    }
+
+    @Test
+    public void testDidMoveTabGroup_NestedLayout_Backward() {
+        setUpTabListMediator(TabListMediatorType.VERTICAL_TABS, TabListMode.GRID);
+
+        // Assume that moveTab in TabModel is finished.
+        mockTabIndexes(mTab2, mTab1);
+
+        assertThat(mModelList.size(), equalTo(2));
+        assertThat(mModelList.get(1).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
+        assertThat(mModelList.get(1).model.get(TabProperties.TITLE), equalTo(TAB2_TITLE));
+
+        mTabGroupObserverCaptor.getValue().didMoveTabGroup(mTab1, POSITION1, POSITION2);
+
+        assertThat(mModelList.size(), equalTo(2));
+        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
+        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB2_TITLE));
+    }
+
+    @Test
+    public void testDidMoveTabGroup_NestedLayout_Group_Forward() {
+        setUpTabListMediator(TabListMediatorType.VERTICAL_TABS, TabListMode.GRID);
+
+        Tab tab3 = prepareTab(TAB3_ID, TAB3_TITLE, TAB3_URL);
+        List<Tab> tabs = List.of(mTab2, tab3);
+        createTabGroup(tabs, TAB_GROUP_ID);
+
+        when(mTabModel.getTabsInGroup(TAB_GROUP_ID)).thenReturn(tabs);
+        when(mTabModel.getTabGroupCollapsed(TAB_GROUP_ID)).thenReturn(false);
+        when(mTabModel.getTabById(TAB2_ID)).thenReturn(mTab2);
+        when(mTabModel.getTabById(TAB3_ID)).thenReturn(tab3);
+
+        mMediator.resetWithListOfTabs(null, null, false);
+        mMediator.resetWithListOfTabs(List.of(mTab1, mTab2), null, false);
+
+        assertThat(mModelList.size(), equalTo(4));
+        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
+        assertThat(mModelList.get(1).type, equalTo(UiType.TAB));
+        assertThat(
+                mModelList.get(1).model.get(TabProperties.TAB_GROUP_HEADER_ID),
+                equalTo(TAB_GROUP_ID));
+        assertThat(mModelList.get(2).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
+        assertThat(mModelList.get(3).model.get(TabProperties.TAB_ID), equalTo(TAB3_ID));
+
+        mockTabIndexes(mTab2, tab3, mTab1);
+
+        mTabGroupObserverCaptor.getValue().didMoveTabGroup(mTab2, 1, 0);
+
+        assertThat(mModelList.size(), equalTo(4));
+        assertThat(mModelList.get(0).type, equalTo(UiType.TAB));
+        assertThat(
+                mModelList.get(0).model.get(TabProperties.TAB_GROUP_HEADER_ID),
+                equalTo(TAB_GROUP_ID));
+        assertThat(mModelList.get(1).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
+        assertThat(mModelList.get(2).model.get(TabProperties.TAB_ID), equalTo(TAB3_ID));
+        assertThat(mModelList.get(3).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
+    }
+
+    @Test
+    public void testDidMoveTabGroup_NestedLayout_Group_Backward() {
+        setUpTabListMediator(TabListMediatorType.VERTICAL_TABS, TabListMode.GRID);
+
+        Tab tab3 = prepareTab(TAB3_ID, TAB3_TITLE, TAB3_URL);
+        List<Tab> tabs = List.of(mTab1, tab3);
+        createTabGroup(tabs, TAB_GROUP_ID);
+
+        when(mTabModel.getTabsInGroup(TAB_GROUP_ID)).thenReturn(tabs);
+        when(mTabModel.getTabGroupCollapsed(TAB_GROUP_ID)).thenReturn(false);
+        when(mTabModel.getTabById(TAB1_ID)).thenReturn(mTab1);
+        when(mTabModel.getTabById(TAB3_ID)).thenReturn(tab3);
+
+        mMediator.resetWithListOfTabs(null, null, false);
+        mMediator.resetWithListOfTabs(List.of(mTab1, mTab2), null, false);
+
+        assertThat(mModelList.size(), equalTo(4));
+        assertThat(mModelList.get(0).type, equalTo(UiType.TAB));
+        assertThat(
+                mModelList.get(0).model.get(TabProperties.TAB_GROUP_HEADER_ID),
+                equalTo(TAB_GROUP_ID));
+        assertThat(mModelList.get(1).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
+        assertThat(mModelList.get(2).model.get(TabProperties.TAB_ID), equalTo(TAB3_ID));
+        assertThat(mModelList.get(3).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
+
+        mockTabIndexes(mTab2, mTab1, tab3);
+
+        mTabGroupObserverCaptor.getValue().didMoveTabGroup(mTab1, 0, 1);
+
+        assertThat(mModelList.size(), equalTo(4));
+        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
+        assertThat(mModelList.get(1).type, equalTo(UiType.TAB));
+        assertThat(
+                mModelList.get(1).model.get(TabProperties.TAB_GROUP_HEADER_ID),
+                equalTo(TAB_GROUP_ID));
+        assertThat(mModelList.get(2).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
+        assertThat(mModelList.get(3).model.get(TabProperties.TAB_ID), equalTo(TAB3_ID));
+    }
+
+    @Test
+    public void tabMovementWithinGroup_FlatLayout_Forward() {
         setUpTabListMediator(TabListMediatorType.TAB_GRID_DIALOG, TabListMode.GRID);
 
         // Assume that moveTab in TabModel is finished.
-        doReturn(mTab1).when(mTabModel).getTabAt(POSITION2);
-        doReturn(mTab2).when(mTabModel).getTabAt(POSITION1);
+        mockTabIndexes(mTab2, mTab1);
         doReturn(TAB_GROUP_ID).when(mTab1).getTabGroupId();
         doReturn(TAB_GROUP_ID).when(mTab2).getTabGroupId();
 
@@ -2327,12 +2213,11 @@ public class TabListMediatorUnitTest {
     }
 
     @Test
-    public void tabMovementWithinGroup_TabGridDialog_Backward() {
+    public void tabMovementWithinGroup_FlatLayout_Backward() {
         setUpTabListMediator(TabListMediatorType.TAB_GRID_DIALOG, TabListMode.GRID);
 
         // Assume that moveTab in TabModel is finished.
-        doReturn(mTab1).when(mTabModel).getTabAt(POSITION2);
-        doReturn(mTab2).when(mTabModel).getTabAt(POSITION1);
+        mockTabIndexes(mTab2, mTab1);
         doReturn(TAB_GROUP_ID).when(mTab1).getTabGroupId();
         doReturn(TAB_GROUP_ID).when(mTab2).getTabGroupId();
 
@@ -2348,7 +2233,7 @@ public class TabListMediatorUnitTest {
     }
 
     @Test
-    public void tabMovementWithinGroup_TabSwitcher_Forward() {
+    public void tabMovementWithinGroup_GroupedLayout_Forward() {
         Tab tab3 = prepareTab(TAB3_ID, TAB3_TITLE, TAB3_URL);
 
         // Setup three tabs with groups (mTab1, mTab2) and tab3.
@@ -2404,7 +2289,7 @@ public class TabListMediatorUnitTest {
     }
 
     @Test
-    public void tabMovementWithinGroup_TabSwitcher_Backward() {
+    public void tabMovementWithinGroup_GroupedLayout_Backward() {
         Tab tab3 = prepareTab(TAB3_ID, TAB3_TITLE, TAB3_URL);
 
         // Setup three tabs with groups (mTab1, mTab2) and tab3.
@@ -2463,7 +2348,7 @@ public class TabListMediatorUnitTest {
     }
 
     @Test
-    public void tabMovementWithinGroup_TabSwitcher_SelectedNotMoved() {
+    public void tabMovementWithinGroup_GroupedLayout_SelectedNotMoved() {
         Tab tab3 = prepareTab(TAB3_ID, TAB3_TITLE, TAB3_URL);
 
         // Setup three tabs grouped together.
@@ -2519,7 +2404,7 @@ public class TabListMediatorUnitTest {
     }
 
     @Test
-    public void tabMovementWithinGroup_TabSwitcher_SelectedMoved() {
+    public void tabMovementWithinGroup_GroupedLayout_SelectedMoved() {
         Tab tab3 = prepareTab(TAB3_ID, TAB3_TITLE, TAB3_URL);
 
         // Setup three tabs grouped together.
@@ -2572,6 +2457,363 @@ public class TabListMediatorUnitTest {
         // TODO(crbug.com/40242432): Make this an assertion.
         // Thumbnail order was: tab1, tab2, tab3. Now: tab1, tab3, tab2.
         assertNotEquals(tab1Fetcher, mModelList.get(0).model.get(TabProperties.THUMBNAIL_FETCHER));
+    }
+
+    @Test
+    public void tabMovementWithinGroup_NestedLayout_Forward() {
+        Tab tab3 = setUpNestedLayoutWithTwoTabGroup(/* isCollapsed= */ false);
+
+        // Assume that moveTab in TabModel is finished.
+        doReturn(mTab1).when(mTabModel).getTabAt(POSITION2);
+        doReturn(tab3).when(mTabModel).getTabAt(POSITION1);
+
+        assertEquals(3, mModelList.size());
+        assertEquals(TAB1_ID, mModelList.get(1).model.get(TabProperties.TAB_ID));
+        assertEquals(TAB3_ID, mModelList.get(2).model.get(TabProperties.TAB_ID));
+
+        mTabGroupObserverCaptor.getValue().didMoveWithinGroup(mTab1, POSITION1, POSITION2);
+
+        assertEquals(3, mModelList.size());
+        assertEquals(TAB3_ID, mModelList.get(1).model.get(TabProperties.TAB_ID));
+        assertEquals(TAB1_ID, mModelList.get(2).model.get(TabProperties.TAB_ID));
+    }
+
+    @Test
+    public void tabMovementWithinGroup_NestedLayout_Backward() {
+        Tab tab3 = setUpNestedLayoutWithTwoTabGroup(/* isCollapsed= */ false);
+
+        // Assume that moveTab in TabModel is finished.
+        doReturn(mTab1).when(mTabModel).getTabAt(POSITION2);
+        doReturn(tab3).when(mTabModel).getTabAt(POSITION1);
+
+        assertEquals(3, mModelList.size());
+        assertEquals(TAB1_ID, mModelList.get(1).model.get(TabProperties.TAB_ID));
+        assertEquals(TAB3_ID, mModelList.get(2).model.get(TabProperties.TAB_ID));
+
+        mTabGroupObserverCaptor.getValue().didMoveWithinGroup(tab3, POSITION2, POSITION1);
+
+        assertEquals(3, mModelList.size());
+        assertEquals(TAB3_ID, mModelList.get(1).model.get(TabProperties.TAB_ID));
+        assertEquals(TAB1_ID, mModelList.get(2).model.get(TabProperties.TAB_ID));
+    }
+
+    @Test
+    public void didMoveTabOutOfGroup_GroupedLayout_Moved_Tab_Selected_GetsFavicon() {
+        List<Tab> tabs = List.of(mTab1, mTab2);
+        createTabGroup(tabs, TAB_GROUP_ID);
+        mMediator.resetWithListOfTabs(List.of(mTab1), null, false);
+
+        assertThat(mModelList.size(), equalTo(1));
+        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
+
+        // Assume that TabModel is already updated.
+        when(mTabModel.index()).thenReturn(POSITION2);
+        when(mTabModel.getTabAt(POSITION2)).thenReturn(mTab1);
+        mockRepresentativeTabs(mTab2, mTab1);
+        when(mTabModel.isTabInTabGroup(mTab1)).thenReturn(false);
+        when(mTabModel.isTabInTabGroup(mTab2)).thenReturn(true);
+        when(mTab1.getTabGroupId()).thenReturn(null);
+        when(mTab2.getRootId()).thenReturn(TAB2_ID);
+        when(mTabModel.getTabCountForGroup(TAB_GROUP_ID)).thenReturn(1);
+        when(mTabModel.getRelatedTabList(TAB1_ID)).thenReturn(List.of(mTab1));
+        when(mTabModel.getRelatedTabList(TAB2_ID)).thenReturn(List.of(mTab2));
+        when(mTabModel.getTabsInGroup(TAB_GROUP_ID)).thenReturn(List.of(mTab2));
+
+        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(mTab1, POSITION1);
+
+        assertThat(mModelList.size(), equalTo(2));
+        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
+        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo("1 tab"));
+        assertThat(mModelList.get(0).model.get(TabProperties.IS_SELECTED), equalTo(false));
+        assertThat(mModelList.get(1).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
+        assertThat(mModelList.get(1).model.get(TabProperties.TITLE), equalTo(TAB1_TITLE));
+        assertThat(mModelList.get(1).model.get(TabProperties.IS_SELECTED), equalTo(true));
+        assertNotNull(mModelList.get(1).model.get(TabProperties.FAVICON_FETCHER));
+    }
+
+    @Test
+    public void didMoveTabOutOfGroup_GroupedLayout_Moved_Tab_Selected() {
+        // Assume that two tabs are in the same group before ungroup.
+        List<Tab> tabs = List.of(mTab2);
+        mMediator.resetWithListOfTabs(tabs, null, false);
+
+        assertThat(mModelList.size(), equalTo(1));
+        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
+        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB2_TITLE));
+
+        // Assume that TabModel is already updated.
+        mockRepresentativeTabs(mTab2, mTab1);
+        doReturn(false).when(mTabModel).isTabInTabGroup(mTab1);
+
+        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(mTab1, POSITION1);
+
+        assertThat(mModelList.size(), equalTo(2));
+        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
+        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB2_TITLE));
+        assertThat(mModelList.get(0).model.get(TabProperties.IS_SELECTED), equalTo(false));
+        assertThat(mModelList.get(1).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
+        assertThat(mModelList.get(1).model.get(TabProperties.TITLE), equalTo(TAB1_TITLE));
+        assertThat(mModelList.get(1).model.get(TabProperties.IS_SELECTED), equalTo(true));
+    }
+
+    @Test
+    public void didMoveTabOutOfGroup_GroupedLayout_Origin_Tab_Selected() {
+        // Assume that two tabs are in the same group before ungroup.
+        List<Tab> tabs = List.of(mTab1);
+        mMediator.resetWithListOfTabs(tabs, null, false);
+
+        assertThat(mModelList.size(), equalTo(1));
+        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
+        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB1_TITLE));
+
+        // Assume that TabModel is already updated.
+        mockRepresentativeTabs(mTab1, mTab2);
+
+        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(mTab2, POSITION1);
+
+        assertThat(mModelList.size(), equalTo(2));
+        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
+        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB1_TITLE));
+        assertThat(mModelList.get(0).model.get(TabProperties.IS_SELECTED), equalTo(true));
+        assertThat(mModelList.get(1).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
+        assertThat(mModelList.get(1).model.get(TabProperties.TITLE), equalTo(TAB2_TITLE));
+        assertThat(mModelList.get(1).model.get(TabProperties.IS_SELECTED), equalTo(false));
+    }
+
+    @Test
+    public void didMoveTabOutOfGroup_GroupedLayout_LastTab() {
+        // Assume that tab1 is a single tab group that became a single tab.
+        List<Tab> tabs = List.of(mTab1);
+        mMediator.resetWithListOfTabs(tabs, null, false);
+        mockRepresentativeTabs(mTab1);
+        doReturn(tabs).when(mTabModel).getRelatedTabList(TAB1_ID);
+
+        // These properties should get reset.
+        PropertyModel model = mModelList.get(0).model;
+        model.set(TabProperties.TITLE, CUSTOMIZED_DIALOG_TITLE1);
+        model.set(TabProperties.TAB_GROUP_HEADER_ID, TAB_GROUP_ID);
+        model.set(TabProperties.TAB_GROUP_CARD_COLOR, TabGroupColorId.GREY);
+        ThumbnailFetcher fetcher = model.get(TabProperties.THUMBNAIL_FETCHER);
+
+        // Ungroup the single tab, dissolving the group.
+        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(mTab1, POSITION1);
+
+        assertThat(mModelList.size(), equalTo(1));
+        assertThat(model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
+
+        // Verify that group properties are correctly set to null when dissolved.
+        assertNull(model.get(TabProperties.TAB_GROUP_HEADER_ID));
+        assertNull(model.get(TabProperties.TAB_GROUP_CARD_COLOR));
+
+        // Verify title and thumbnail are reset.
+        assertThat(model.get(TabProperties.TITLE), equalTo(TAB1_TITLE));
+        assertNotEquals(fetcher, model.get(TabProperties.THUMBNAIL_FETCHER));
+    }
+
+    @Test
+    public void didMoveTabOutOfGroup_GroupedLayout_TabAdditionWithSameId() {
+        // Assume that two tabs are in the same group before ungroup.
+        List<Tab> tabs = List.of(mTab1);
+        mMediator.resetWithListOfTabs(tabs, null, false);
+
+        assertThat(mModelList.size(), equalTo(1));
+        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
+        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB1_TITLE));
+
+        // Assume that TabModel is already updated.
+        mockRepresentativeTabs(mTab1, mTab2);
+
+        // The ungroup will add tab1 to the TabListModel at index 0. Note that before this addition,
+        // there is the PropertyModel represents the group with the same id at the same index. The
+        // addition should still take effect in this case.
+        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(mTab1, POSITION2);
+
+        assertThat(mModelList.size(), equalTo(2));
+        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
+        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB1_TITLE));
+        assertThat(mModelList.get(0).model.get(TabProperties.IS_SELECTED), equalTo(true));
+        assertThat(mModelList.get(1).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
+        assertThat(mModelList.get(1).model.get(TabProperties.TITLE), equalTo(TAB2_TITLE));
+        assertThat(mModelList.get(1).model.get(TabProperties.IS_SELECTED), equalTo(false));
+    }
+
+    @Test
+    public void didMoveTabOutOfGroup_GroupedLayout_UpdatesCards() {
+        // Setup with a single group of two tabs.
+        initAndAssertAllProperties();
+        assertThat(mModelList.size(), equalTo(2));
+        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
+        assertThat(mModelList.get(1).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
+
+        // Pretend the tabs are already grouped.
+        List<Tab> tabs = List.of(mTab1, mTab2);
+        createTabGroup(tabs, TAB_GROUP_ID);
+
+        // Ungroup tab 2 from a group that no longer contains any tabs.
+        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(mTab2, POSITION1);
+
+        // Verify that the model now contains one item, and the empty card was removed.
+        assertThat(mModelList.size(), equalTo(1));
+        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
+    }
+
+    @Test
+    public void didMoveTabOutOfGroup_FlatLayout_Dialog() {
+        setUpTabListMediator(TabListMediatorType.TAB_GRID_DIALOG, TabListMode.GRID);
+
+        // Assume that filter is already updated.
+        mockRepresentativeTabs(mTab2);
+
+        assertThat(mModelList.size(), equalTo(2));
+        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
+        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB1_TITLE));
+        assertThat(mModelList.get(1).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
+        assertThat(mModelList.get(1).model.get(TabProperties.TITLE), equalTo(TAB2_TITLE));
+
+        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(mTab1, POSITION1);
+
+        assertThat(mModelList.size(), equalTo(1));
+        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
+        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB2_TITLE));
+        verify(mTabGridDialogHandler).updateDialogContent(TAB2_ID);
+    }
+
+    @Test
+    public void didMoveTabOutOfGroup_FlatLayout_Dialog_LastTab() {
+        setUpTabListMediator(TabListMediatorType.TAB_GRID_DIALOG, TabListMode.GRID);
+
+        // Assume that tab1 is a single tab.
+        List<Tab> tabs = List.of(mTab1);
+        mMediator.resetWithListOfTabs(tabs, null, false);
+        mockRepresentativeTabs(mTab1);
+        doReturn(tabs).when(mTabModel).getRelatedTabList(TAB1_ID);
+
+        // Ungroup the single tab.
+        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(mTab1, POSITION1);
+
+        verify(mTabGridDialogHandler).updateDialogContent(Tab.INVALID_TAB_ID);
+    }
+
+    @Test
+    public void didMoveTabOutOfGroup_FlatLayout_Strip() {
+        setUpTabListMediator(TabListMediatorType.TAB_STRIP, TabListMode.GRID);
+
+        // Assume that filter is already updated.
+
+        assertThat(mModelList.size(), equalTo(2));
+        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
+        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB1_TITLE));
+        assertThat(mModelList.get(1).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
+        assertThat(mModelList.get(1).model.get(TabProperties.TITLE), equalTo(TAB2_TITLE));
+
+        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(mTab1, POSITION2);
+
+        assertThat(mModelList.size(), equalTo(1));
+        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
+        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB2_TITLE));
+        verify(mTabGridDialogHandler, never()).updateDialogContent(anyInt());
+    }
+
+    @Test
+    public void didMoveTabOutOfGroup_FlatLayout_Strip_Undo() {
+        setUpTabListMediator(TabListMediatorType.TAB_STRIP, TabListMode.GRID);
+
+        // Setup the same as didMoveTabOutOfGroup_FlatLayout_Strip.
+
+        assertThat(mModelList.size(), equalTo(2));
+        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
+        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB1_TITLE));
+        assertThat(mModelList.get(1).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
+        assertThat(mModelList.get(1).model.get(TabProperties.TITLE), equalTo(TAB2_TITLE));
+
+        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(mTab1, POSITION2);
+
+        assertThat(mModelList.size(), equalTo(1));
+        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
+        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB2_TITLE));
+        verify(mTabGridDialogHandler, never()).updateDialogContent(anyInt());
+
+        // Pretend we grouped tab 1 with tab 2, but the reset already occurred so we are just
+        // showing tab 1. Now we need to make sure that removing tab 1 from the group (which is
+        // already showing) no-ops.
+        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(mTab1, POSITION2);
+
+        assertThat(mModelList.size(), equalTo(1));
+        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
+        assertThat(mModelList.get(0).model.get(TabProperties.TITLE), equalTo(TAB2_TITLE));
+        verify(mTabGridDialogHandler, never()).updateDialogContent(anyInt());
+    }
+
+    @Test
+    public void didMoveTabOutOfGroup_NestedLayout() {
+        Tab tab3 = setUpNestedLayoutWithTwoTabGroup(/* isCollapsed= */ false);
+
+        assertEquals(3, mModelList.size());
+        assertEquals(TAB_GROUP_ID, mModelList.get(2).model.get(TabProperties.TAB_GROUP_ID));
+
+        when(tab3.getTabGroupId()).thenReturn(null);
+        mockTabIndexes(mTab1, tab3);
+        mockRepresentativeTabs(mTab1, tab3);
+        when(mTabModel.getTabCountForGroup(TAB_GROUP_ID)).thenReturn(1);
+        when(mTabModel.getTabsInGroup(TAB_GROUP_ID)).thenReturn(List.of(mTab1));
+
+        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(tab3, POSITION1);
+
+        assertEquals(3, mModelList.size());
+
+        assertNull(mModelList.get(2).model.get(TabProperties.TAB_GROUP_ID));
+        assertEquals(TAB3_ID, mModelList.get(2).model.get(TabProperties.TAB_ID));
+        assertNotNull(mModelList.get(2).model.get(TabProperties.TAB_CLICK_LISTENER));
+    }
+
+    @Test
+    public void didMoveTabOutOfGroup_NestedLayout_CollapsedGroup() {
+        Tab tab3 = setUpNestedLayoutWithTwoTabGroup(/* isCollapsed= */ true);
+
+        assertEquals(1, mModelList.size());
+        assertEquals(TAB_GROUP_ID, mModelList.get(0).model.get(TabProperties.TAB_GROUP_HEADER_ID));
+
+        when(tab3.getTabGroupId()).thenReturn(null);
+        mockTabIndexes(mTab1, tab3);
+        mockRepresentativeTabs(mTab1, tab3);
+        when(mTabModel.getTabCountForGroup(TAB_GROUP_ID)).thenReturn(1);
+        when(mTabModel.getTabsInGroup(TAB_GROUP_ID)).thenReturn(List.of(mTab1));
+
+        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(tab3, POSITION1);
+
+        assertEquals(2, mModelList.size());
+        assertNull(mModelList.get(1).model.get(TabProperties.TAB_GROUP_ID));
+        assertEquals(TAB3_ID, mModelList.get(1).model.get(TabProperties.TAB_ID));
+    }
+
+    @Test
+    public void didMoveTabOutOfGroup_CreatesSingleTabGroup() {
+        List<Tab> tabs = List.of(mTab1, mTab2);
+        createTabGroup(tabs, TAB_GROUP_ID);
+
+        mTabGroupObserverCaptor.getValue().didMergeTabToGroup(mTab2, /* isDestinationTab= */ false);
+        assertEquals(1, mModelList.size());
+
+        // Mock that mTab2 is moved out of the group, but immediately put into a new single tab
+        // group.
+        Token newGroupId = new Token(3L, 4L);
+        when(mTabModel.getRelatedTabList(TAB1_ID)).thenReturn(Arrays.asList(mTab1));
+        when(mTabModel.getRelatedTabList(TAB2_ID)).thenReturn(Arrays.asList(mTab2));
+        when(mTabModel.isTabInTabGroup(mTab1)).thenReturn(true);
+        when(mTabModel.isTabInTabGroup(mTab2)).thenReturn(true);
+        when(mTab2.getTabGroupId()).thenReturn(newGroupId);
+        when(mTabModel.getTabCountForGroup(TAB_GROUP_ID)).thenReturn(1);
+        when(mTabModel.getTabCountForGroup(newGroupId)).thenReturn(1);
+        when(mTabModel.tabGroupExists(newGroupId)).thenReturn(true);
+        when(mTabModel.getGroupLastShownTabId(newGroupId)).thenReturn(TAB2_ID);
+        mockRepresentativeTabs(mTab1, mTab2);
+
+        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(mTab2, POSITION1);
+
+        assertEquals(2, mModelList.size());
+        // Verify that mTab2's new card was created as a Tab Group Header card!
+        assertNotNull(mModelList.get(POSITION2).model.get(TabProperties.TAB_GROUP_CARD_COLOR));
+        assertNull(mModelList.get(POSITION2).model.get(TabProperties.TAB_GROUP_ID));
     }
 
     @Test
@@ -3148,36 +3390,6 @@ public class TabListMediatorUnitTest {
     }
 
     @Test
-    public void tabMoveOutOfGroup_CreatesSingleTabGroup() {
-        List<Tab> tabs = List.of(mTab1, mTab2);
-        createTabGroup(tabs, TAB_GROUP_ID);
-
-        mTabGroupObserverCaptor.getValue().didMergeTabToGroup(mTab2, /* isDestinationTab= */ false);
-        assertEquals(1, mModelList.size());
-
-        // Mock that mTab2 is moved out of the group, but immediately put into a new single tab
-        // group.
-        Token newGroupId = new Token(3L, 4L);
-        when(mTabModel.getRelatedTabList(TAB1_ID)).thenReturn(Arrays.asList(mTab1));
-        when(mTabModel.getRelatedTabList(TAB2_ID)).thenReturn(Arrays.asList(mTab2));
-        when(mTabModel.isTabInTabGroup(mTab1)).thenReturn(true);
-        when(mTabModel.isTabInTabGroup(mTab2)).thenReturn(true);
-        when(mTab2.getTabGroupId()).thenReturn(newGroupId);
-        when(mTabModel.getTabCountForGroup(TAB_GROUP_ID)).thenReturn(1);
-        when(mTabModel.getTabCountForGroup(newGroupId)).thenReturn(1);
-        when(mTabModel.tabGroupExists(newGroupId)).thenReturn(true);
-        when(mTabModel.getGroupLastShownTabId(newGroupId)).thenReturn(TAB2_ID);
-        mockRepresentativeTabs(mTab1, mTab2);
-
-        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(mTab2, POSITION1);
-
-        assertEquals(2, mModelList.size());
-        // Verify that mTab2's new card was created as a Tab Group Header card!
-        assertNotNull(mModelList.get(POSITION2).model.get(TabProperties.TAB_GROUP_CARD_COLOR));
-        assertNull(mModelList.get(POSITION2).model.get(TabProperties.TAB_GROUP_ID));
-    }
-
-    @Test
     public void testOnInitializeAccessibilityNodeInfo() {
         // Setup related mocks and initialize needed components.
         AccessibilityNodeInfo accessibilityNodeInfo = mock(AccessibilityNodeInfo.class);
@@ -3634,7 +3846,7 @@ public class TabListMediatorUnitTest {
     }
 
     @Test
-    public void testDidCreateNewGroup() {
+    public void testDidCreateNewGroup_InGroupedLayout() {
         setUpTabListMediator(TabListMediatorType.TAB_SWITCHER, TabListMode.GRID);
 
         createTabGroup(Collections.singletonList(mTab1), TAB_GROUP_ID);
@@ -3654,6 +3866,64 @@ public class TabListMediatorUnitTest {
 
         assertNotNull(mModelList.get(0).model.get(TabProperties.TAB_GROUP_COLOR_VIEW_PROVIDER));
         assertNull(mModelList.get(0).model.get(TabProperties.FAVICON_FETCHER));
+    }
+
+    @Test
+    public void testDidCreateNewGroup_InNestedLayout() {
+        setUpTabListMediator(TabListMediatorType.VERTICAL_TABS, TabListMode.GRID);
+
+        assertEquals(2, mModelList.size());
+        assertEquals(mTab1.getId(), mModelList.get(0).model.get(TabProperties.TAB_ID));
+        assertNull(mModelList.get(0).model.get(TabProperties.TAB_GROUP_COLOR_VIEW_PROVIDER));
+
+        when(mTab1.getTabGroupId()).thenReturn(TAB_GROUP_ID);
+        when(mTabModel.isIncognito()).thenReturn(false);
+        when(mTabModel.getTabGroupColorWithFallback(TAB_GROUP_ID)).thenReturn(COLOR_2);
+        when(mTabModel.getRelatedTabList(mTab1.getId()))
+                .thenReturn(Collections.singletonList(mTab1));
+        when(mTabModel.isTabInTabGroup(mTab1)).thenReturn(true);
+
+        mTabGroupObserverCaptor.getValue().didCreateNewGroup(mTab1, mTabModel);
+
+        // After creating the group, a new Header should be injected.
+        assertEquals(3, mModelList.size());
+        assertEquals(TabProperties.UiType.TAB, mModelList.get(0).type);
+        assertEquals(TAB_GROUP_ID, mModelList.get(0).model.get(TabProperties.TAB_GROUP_HEADER_ID));
+
+        PropertyModel childModel = mModelList.get(1).model;
+        assertEquals(mTab1.getId(), childModel.get(TabProperties.TAB_ID));
+        assertNotNull(childModel.get(TabProperties.TAB_GROUP_COLOR_VIEW_PROVIDER));
+    }
+
+    @Test
+    public void testDidCreateNewGroup_RestoresScrambledTabs_InNestedLayout() {
+        setUpTabListMediator(TabListMediatorType.VERTICAL_TABS, TabListMode.GRID);
+
+        assertEquals(2, mModelList.size());
+        assertEquals(mTab1.getId(), mModelList.get(0).model.get(TabProperties.TAB_ID));
+        assertEquals(mTab2.getId(), mModelList.get(1).model.get(TabProperties.TAB_ID));
+
+        // Simulate merging Tab 2 into Tab 1 (creating a new group).
+        when(mTab1.getTabGroupId()).thenReturn(TAB_GROUP_ID);
+        when(mTab2.getTabGroupId()).thenReturn(TAB_GROUP_ID);
+        when(mTabModel.isIncognito()).thenReturn(false);
+        when(mTabModel.getTabGroupColorWithFallback(TAB_GROUP_ID)).thenReturn(COLOR_2);
+        when(mTabModel.getRelatedTabList(mTab1.getId())).thenReturn(Arrays.asList(mTab1, mTab2));
+        when(mTabModel.isTabInTabGroup(mTab1)).thenReturn(true);
+        when(mTabModel.isTabInTabGroup(mTab2)).thenReturn(true);
+        mTabGroupObserverCaptor.getValue().didMergeTabToGroup(mTab2, /* isDestinationTab= */ false);
+        mTabGroupObserverCaptor.getValue().didCreateNewGroup(mTab1, mTabModel);
+
+        assertEquals(3, mModelList.size());
+
+        assertEquals(TabProperties.UiType.TAB, mModelList.get(0).type);
+        assertEquals(TAB_GROUP_ID, mModelList.get(0).model.get(TabProperties.TAB_GROUP_HEADER_ID));
+
+        assertEquals(mTab1.getId(), mModelList.get(1).model.get(TabProperties.TAB_ID));
+        assertNotNull(mModelList.get(1).model.get(TabProperties.TAB_GROUP_COLOR_VIEW_PROVIDER));
+
+        assertEquals(mTab2.getId(), mModelList.get(2).model.get(TabProperties.TAB_ID));
+        assertNotNull(mModelList.get(2).model.get(TabProperties.TAB_GROUP_COLOR_VIEW_PROVIDER));
     }
 
     @Test
@@ -4253,7 +4523,7 @@ public class TabListMediatorUnitTest {
     }
 
     @Test
-    public void tabClosure_updatesTabGroup_inTabSwitcher() {
+    public void tabClosure_updatesTabGroup_inGroupedLayout() {
         initAndAssertAllProperties();
 
         // Mock that tab1 and tab3 are in the same group and group root id is TAB1_ID.
@@ -4279,7 +4549,7 @@ public class TabListMediatorUnitTest {
     }
 
     @Test
-    public void tabClosure_doesNotUpdateTabGroup_inTabSwitcher_WhenClosing() {
+    public void tabClosure_doesNotUpdateTabGroup_inGroupedLayout_WhenClosing() {
         initAndAssertAllProperties();
 
         // Mock that tab1 and tab3 are in the same group and group root id is TAB1_ID.
@@ -4305,7 +4575,7 @@ public class TabListMediatorUnitTest {
     }
 
     @Test
-    public void tabClosure_ignoresUpdateForTabGroup_outsideTabSwitcher() {
+    public void tabClosure_ignoresUpdateForTabGroup_inFlatLayout() {
         setUpTabListMediator(TabListMediatorType.TAB_GRID_DIALOG, TabListMode.GRID);
         initAndAssertAllProperties();
         TabActionListener actionListenerBeforeUpdate =
@@ -4332,7 +4602,33 @@ public class TabListMediatorUnitTest {
     }
 
     @Test
-    public void tabClosure_resetTabsListForTabGroupUpdate_insideTabSwitcher() {
+    public void tabClosure_updatesTabGroup_inNestedLayout() {
+        setUpTabListMediator(TabListMediatorType.VERTICAL_TABS, TabListMode.GRID);
+        initAndAssertAllProperties();
+
+        // Mock that tab1 and tab3 are in the same group and group root id is TAB1_ID.
+        Tab tab3 = prepareTab(TAB3_ID, TAB3_TITLE, TAB3_URL);
+        List<Tab> tabs = List.of(mTab1, tab3);
+        createTabGroup(tabs, TAB_GROUP_ID);
+
+        mMediator.resetWithListOfTabs(List.of(mTab1, mTab2), null, true);
+
+        doReturn(true).when(mTabModel).tabGroupExists(TAB_GROUP_ID);
+        doReturn(false).when(mTab1).isClosing();
+
+        String titleBefore = mModelList.get(0).model.get(TabProperties.TITLE);
+
+        // Change what the title editor will return after closure.
+        doReturn("1 tab").when(mTabModel).getTabGroupTitle(TAB_GROUP_ID);
+
+        mTabModelObserverCaptor.getValue().didRemoveTabForClosure(tab3);
+
+        String titleAfter = mModelList.get(0).model.get(TabProperties.TITLE);
+        assertThat(titleBefore, not(titleAfter));
+    }
+
+    @Test
+    public void tabClosure_resetTabsListForTabGroupUpdate_inGroupedLayout() {
         initAndAssertAllProperties();
 
         // Mock that tab1 and tab3 are in the same group and group root id is TAB1_ID.
@@ -6157,26 +6453,6 @@ public class TabListMediatorUnitTest {
         assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
     }
 
-    @Test
-    public void tabMoveOutOfGroup_Gts_UpdatesCards() {
-        // Setup with a single group of two tabs.
-        initAndAssertAllProperties();
-        assertThat(mModelList.size(), equalTo(2));
-        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
-        assertThat(mModelList.get(1).model.get(TabProperties.TAB_ID), equalTo(TAB2_ID));
-
-        // Pretend the tabs are already grouped.
-        List<Tab> tabs = List.of(mTab1, mTab2);
-        createTabGroup(tabs, TAB_GROUP_ID);
-
-        // Ungroup tab 2 from a group that no longer contains any tabs.
-        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(mTab2, POSITION1);
-
-        // Verify that the model now contains one item, and the empty card was removed.
-        assertThat(mModelList.size(), equalTo(1));
-        assertThat(mModelList.get(0).model.get(TabProperties.TAB_ID), equalTo(TAB1_ID));
-    }
-
     private void setupSyncedGroup(boolean isShared) {
         SavedTabGroup savedTabGroup = new SavedTabGroup();
         savedTabGroup.title = GROUP_TITLE;
@@ -6207,47 +6483,6 @@ public class TabListMediatorUnitTest {
                 .onPropertyChanged(eq(model), eq(TabProperties.SHOW_THUMBNAIL_SPINNER));
         assertFalse(model.get(TabProperties.SHOW_THUMBNAIL_SPINNER));
         verify(mPropertyObserver).onPropertyChanged(eq(model), eq(TabProperties.THUMBNAIL_FETCHER));
-    }
-
-    @Test
-    public void testTabCardLabelData() {
-        UserDataHost userDataHost = new UserDataHost();
-        userDataHost.setUserData(
-                SendTabToSelfTabCardLabelData.class,
-                new SendTabToSelfTabCardLabelData(
-                        mTab1, "Example Phone", System.currentTimeMillis()));
-        when(mTab1.getUserDataHost()).thenReturn(userDataHost);
-
-        setUpTabListMediator(TabListMediatorType.TAB_SWITCHER, TabListMode.GRID);
-        initAndAssertAllProperties();
-
-        PropertyModel model = mModelList.get(0).model;
-        TabCardLabelData labelData = model.get(TabProperties.TAB_CARD_LABEL_DATA);
-        assertNotNull(labelData);
-    }
-
-    @Test
-    public void testTabCardLabelData_Expired() {
-        UserDataHost userDataHost = new UserDataHost();
-        SendTabToSelfTabCardLabelData data =
-                new SendTabToSelfTabCardLabelData(
-                        mTab1,
-                        "Example Phone",
-                        // Setting an expired timestamp will cause an assertion failure, so that's
-                        // done separately via a setter.
-                        System.currentTimeMillis());
-        data.setAdditionTimestampMsForTesting(
-                System.currentTimeMillis() - 6L * 24 * 60 * 60 * 1000); // 6 days old
-        userDataHost.setUserData(SendTabToSelfTabCardLabelData.class, data);
-        when(mTab1.getUserDataHost()).thenReturn(userDataHost);
-
-        setUpTabListMediator(TabListMediatorType.TAB_SWITCHER, TabListMode.GRID);
-        initAndAssertAllProperties();
-
-        PropertyModel model = mModelList.get(0).model;
-        TabCardLabelData labelData = model.get(TabProperties.TAB_CARD_LABEL_DATA);
-        assertNull(labelData);
-        assertNull(userDataHost.getUserData(SendTabToSelfTabCardLabelData.class));
     }
 
     @Test
@@ -6548,31 +6783,6 @@ public class TabListMediatorUnitTest {
     }
 
     @Test
-    public void testMoveTabOutOfGroup_NestedLayout() {
-        Tab tab3 = setUpNestedLayoutWithTwoTabGroup(/* isCollapsed= */ false);
-
-        assertEquals(3, mModelList.size());
-        assertEquals(TAB_GROUP_ID, mModelList.get(2).model.get(TabProperties.TAB_GROUP_ID));
-
-        // Move tab3 out of the group
-        when(tab3.getTabGroupId()).thenReturn(null);
-        mockTabIndexes(mTab1, tab3);
-        mockRepresentativeTabs(mTab1, tab3);
-        when(mTabModel.getTabCountForGroup(TAB_GROUP_ID)).thenReturn(1);
-        when(mTabModel.getTabsInGroup(TAB_GROUP_ID)).thenReturn(List.of(mTab1));
-
-        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(tab3, POSITION1);
-
-        // size remains 3 (1 header, 1 child, 1 standalone)
-        assertEquals(3, mModelList.size());
-
-        // tab3 should be a top-level tab (no tab_group_id property)
-        assertNull(mModelList.get(2).model.get(TabProperties.TAB_GROUP_ID));
-        assertEquals(TAB3_ID, mModelList.get(2).model.get(TabProperties.TAB_ID));
-        assertNotNull(mModelList.get(2).model.get(TabProperties.TAB_CLICK_LISTENER));
-    }
-
-    @Test
     public void testMergeTabToGroup_NestedLayout() {
         Tab tab3 = setUpNestedLayoutWithTwoTabGroup(/* isCollapsed= */ false);
 
@@ -6606,6 +6816,40 @@ public class TabListMediatorUnitTest {
         assertEquals(TAB_GROUP_ID, mModelList.get(3).model.get(TabProperties.TAB_GROUP_ID));
         assertNotNull(mModelList.get(3).model.get(TabProperties.TAB_CLICK_LISTENER));
         assertNotNull(mModelList.get(3).model.get(TabProperties.CONTENT_DESCRIPTION_TEXT_RESOLVER));
+    }
+
+    @Test
+    public void testMergeTabToGroup_NestedLayout_CollapsedGroup() {
+        Tab tab3 = setUpNestedLayoutWithTwoTabGroup(/* isCollapsed= */ true);
+
+        assertEquals(1, mModelList.size());
+        assertEquals(TAB_GROUP_ID, mModelList.get(0).model.get(TabProperties.TAB_GROUP_HEADER_ID));
+
+        Tab tab4 = prepareTab(TAB4_ID, TAB4_TITLE, TAB4_URL);
+        when(tab4.getTabGroupId()).thenReturn(null);
+
+        mockTabIndexes(mTab1, tab3, tab4);
+        mTabModelObserverCaptor
+                .getValue()
+                .didAddTab(
+                        tab4,
+                        TabLaunchType.FROM_CHROME_UI,
+                        TabCreationState.LIVE_IN_FOREGROUND,
+                        false);
+
+        assertEquals(2, mModelList.size());
+        assertNull(mModelList.get(1).model.get(TabProperties.TAB_GROUP_ID));
+
+        when(tab4.getTabGroupId()).thenReturn(TAB_GROUP_ID);
+        List<Tab> newTabs = List.of(mTab1, tab3, tab4);
+        createTabGroup(newTabs, TAB_GROUP_ID);
+        when(mTabModel.getTabsInGroup(TAB_GROUP_ID)).thenReturn(newTabs);
+
+        mTabGroupObserverCaptor.getValue().didMergeTabToGroup(tab4, /* isDestinationTab= */ false);
+
+        // The merged tab card should be hidden by the collapsed group (removed from UI).
+        assertEquals(1, mModelList.size());
+        assertEquals(TAB_GROUP_ID, mModelList.get(0).model.get(TabProperties.TAB_GROUP_HEADER_ID));
     }
 
     @Test

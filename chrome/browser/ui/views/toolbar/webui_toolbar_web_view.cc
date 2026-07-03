@@ -271,16 +271,25 @@ WebUIToolbarWebView::WebUIToolbarWebView(
   }
   if (pre_created_contents) {
     is_preloaded_ = true;
-    SetInitializationState(InitializationState::kPending);
-    // When preload is not enabled, the `WebUIToolbarUI` init is done in
-    // `WebUIToolbarWebView::DidFinishNavigation()`. Here since the
-    // `WebContents` is pre-created, it might finish navigation before we
-    // install the observer, so we have to manually init the `WebUIToolbarUI`.
-    if (!pre_created_contents->IsLoading() &&
-        pre_created_contents->GetController().GetLastCommittedEntry()) {
-      if (auto* ui =
-              GetWebUIToolbarUIFromWebContents(pre_created_contents.get())) {
-        ui->Init(this);
+    const bool pre_navigate =
+        features::kWebUIReloadButtonPrewarmWebUIPreNavigate.Get() ||
+        base::FeatureList::IsEnabled(
+            features::kWebUIToolbarProcessOverheadExperiment);
+    if (pre_navigate) {
+      // Only set to `kPending` when the navigation is already done. Otherwise
+      // the state remains `kUninitialized` and the navigation will happen in
+      // `WebUIToolbarWebView::AddedToWidget()`.
+      SetInitializationState(InitializationState::kPending);
+      // When preload is not enabled, the `WebUIToolbarUI` init is done in
+      // `WebUIToolbarWebView::DidFinishNavigation()`. Here since the
+      // `WebContents` is pre-created, it might finish navigation before we
+      // install the observer, so we have to manually init the `WebUIToolbarUI`.
+      if (!pre_created_contents->IsLoading() &&
+          pre_created_contents->GetController().GetLastCommittedEntry()) {
+        if (auto* ui =
+                GetWebUIToolbarUIFromWebContents(pre_created_contents.get())) {
+          ui->Init(this);
+        }
       }
     }
     Observe(pre_created_contents.get());
@@ -316,7 +325,6 @@ void WebUIToolbarWebView::AddedToWidget() {
   if (initialization_state_ == InitializationState::kUninitialized) {
     // If the WebUI is in uninitialized state, it must be from the non-preloaded
     // path, we move to the pending state and then load the initial URL.
-    CHECK(!is_preloaded_);
     SetInitializationState(InitializationState::kPending);
     web_view_->LoadInitialURL(GURL(chrome::kChromeUIWebUIToolbarURL));
     ApplyInitialSurfaceSyncDeadline();
@@ -552,6 +560,14 @@ WebUIToolbarWebView::OnOmniboxAction(
 
 void WebUIToolbarWebView::ShowAvatarMenu() {
   avatar_control_.ButtonPressed(/*is_source_accelerator=*/false);
+}
+
+void WebUIToolbarWebView::SetAvatarButtonHovered(bool hovered) {
+  avatar_control_.SetAvatarButtonHovered(hovered);
+}
+
+void WebUIToolbarWebView::SetAvatarButtonFocused(bool focused) {
+  avatar_control_.SetAvatarButtonFocused(focused);
 }
 
 ReloadControl* WebUIToolbarWebView::GetReloadControl() {

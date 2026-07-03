@@ -439,19 +439,6 @@ void AccountManagerFacadeImpl::ShowReauthAccountDialog(
                      weak_factory_.GetWeakPtr(), std::move(callback)));
 }
 
-void AccountManagerFacadeImpl::ShowManageAccountsSettings() {
-  if (!account_manager_remote_ ||
-      remote_version_ <
-          RemoteMinVersions::kShowManageAccountsSettingsMinVersion) {
-    LOG(WARNING) << "Found remote at: " << remote_version_ << ", expected: "
-                 << RemoteMinVersions::kShowManageAccountsSettingsMinVersion
-                 << " for ShowManageAccountsSettings.";
-    return;
-  }
-
-  account_manager_remote_->ShowManageAccountsSettings();
-}
-
 std::unique_ptr<OAuth2AccessTokenFetcher>
 AccountManagerFacadeImpl::CreateAccessTokenFetcher(
     const AccountKey& account,

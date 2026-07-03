@@ -79,7 +79,7 @@ import org.chromium.chrome.browser.ui.signin.SigninAndHistorySyncActivityLaunche
 import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils;
 import org.chromium.chrome.browser.url_constants.UrlConstantResolver;
 import org.chromium.chrome.browser.url_constants.UrlConstantResolverFactory;
-import org.chromium.chrome.tab_ui.R;
+import org.chromium.chrome.R;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetControllerProvider;
 import org.chromium.components.browser_ui.device_lock.DeviceLockActivityLauncher;
@@ -407,7 +407,7 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
             } else if (menuId == R.id.add_tab_to_reading_list_menu_id) {
                 addTabToReadingListItemCallback(tabBookmarkerSupplier, tabs);
             } else if (menuId == R.id.send_to_your_devices_menu_id) {
-                sendToYourDevicesItemCallback(
+                sendTabToYourDevicesItemCallback(
                         tabModel,
                         anchorInfo,
                         windowAndroid,
@@ -576,7 +576,7 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
         }
     }
 
-    private static void sendToYourDevicesItemCallback(
+    private static void sendTabToYourDevicesItemCallback(
             TabModel tabModel,
             AnchorInfo anchorInfo,
             WindowAndroid windowAndroid,
@@ -720,8 +720,8 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
             itemList.add(createAddTabToReadingListItem(anchorInfo));
         }
         if (ChromeFeatureList.sAndroidContextMenuNewActions.isEnabled() && !isIncognito) {
-            if (shouldShowSendToYourDevicesItem(tabs.get(0))) {
-                itemList.add(createSendToYourDevicesItem());
+            if (shouldShowSendTabToSelfMenuItem(tabs.get(0))) {
+                itemList.add(createSendTabToSelfMenuItem());
                 itemList.add(buildMenuDivider(isIncognito));
             }
         }
@@ -999,7 +999,7 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
                 .build();
     }
 
-    private boolean shouldShowSendToYourDevicesItem(Tab tab) {
+    private boolean shouldShowSendTabToSelfMenuItem(Tab tab) {
         GURL url = tab.getUrl();
         if (url == null || url.isEmpty()) return false;
 
@@ -1011,8 +1011,11 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
         return displayReason != null;
     }
 
-    private ListItem createSendToYourDevicesItem() {
-        String title = mActivity.getResources().getString(R.string.send_to_your_devices_menu_item);
+    private ListItem createSendTabToSelfMenuItem() {
+        String title =
+                mActivity
+                        .getResources()
+                        .getString(R.string.send_tab_to_self_context_menu_title);
 
         return new ListItemBuilder()
                 .withTitle(title)

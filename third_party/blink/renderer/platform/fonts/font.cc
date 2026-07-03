@@ -260,31 +260,32 @@ GlyphData Font::GetEmphasisMarkGlyphData(const AtomicString& mark) const {
       .EmphasisMarkGlyphData(font_description_);
 }
 
-int Font::EmphasisMarkAscent(const AtomicString& mark) const {
+LayoutUnit Font::EmphasisMarkAscent(const AtomicString& mark) const {
   const auto mark_glyph_data = GetEmphasisMarkGlyphData(mark);
   const SimpleFontData* mark_font_data = mark_glyph_data.font_data;
   if (!mark_font_data)
-    return 0;
+    return LayoutUnit();
 
-  return mark_font_data->GetFontMetrics().Ascent();
+  return mark_font_data->GetFontMetrics().FixedAscent();
 }
 
-int Font::EmphasisMarkDescent(const AtomicString& mark) const {
+LayoutUnit Font::EmphasisMarkDescent(const AtomicString& mark) const {
   const auto mark_glyph_data = GetEmphasisMarkGlyphData(mark);
   const SimpleFontData* mark_font_data = mark_glyph_data.font_data;
   if (!mark_font_data)
-    return 0;
+    return LayoutUnit();
 
-  return mark_font_data->GetFontMetrics().Descent();
+  return mark_font_data->GetFontMetrics().FixedDescent();
 }
 
-int Font::EmphasisMarkHeight(const AtomicString& mark) const {
+LayoutUnit Font::EmphasisMarkHeight(const AtomicString& mark) const {
   const auto mark_glyph_data = GetEmphasisMarkGlyphData(mark);
   const SimpleFontData* mark_font_data = mark_glyph_data.font_data;
   if (!mark_font_data)
-    return 0;
+    return LayoutUnit();
 
-  return mark_font_data->GetFontMetrics().Height();
+  return LayoutUnit::FromFloatRound(
+      mark_font_data->GetFontMetrics().FloatHeight());
 }
 
 float Font::TextAutoSpaceInlineSize() const {

@@ -76,7 +76,6 @@ include_rules = [
   "+chrome/common/chrome_paths.h",
   "+chrome/common/chrome_switches.h",
   "+chrome/common/extensions",
-  "+chrome/common/pref_names.h",
   "+chrome/grit",
   "+chrome/services/file_util/public/cpp",
   "+chrome/browser/sync/sync_service_factory.h",
@@ -100,5 +99,8 @@ specific_include_rules = {
     "+chrome/browser/web_applications/test",
     "+chrome/test/base",
     "+chrome/test/interaction",
+  ],
+  "file_manager_browsertest_base\\.cc": [
+    "+chrome/common/pref_names.h",
   ],
 }

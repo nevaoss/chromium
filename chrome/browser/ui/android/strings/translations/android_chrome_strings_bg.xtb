@@ -77,7 +77,6 @@
 <translation id="1269129608791067105">Тук ще се показва историята ви</translation>
 <translation id="1273937721055267968">Блокиране на <ph name="DOMAIN" /></translation>
 <translation id="1280921956537356716">Включване на известията със съвети</translation>
-<translation id="1283039547216852943">Докоснете за разгъване</translation>
 <translation id="1289129165308566697">Преглеждайте историята си на други устройства</translation>
 <translation id="129553762522093515">Наскоро затворени</translation>
 <translation id="1298077576058087471">Спестете до 60% данни – прочетете днешните новини</translation>
@@ -245,6 +244,7 @@
 <translation id="2082238445998314030">Резултат <ph name="RESULT_NUMBER" /> от <ph name="TOTAL_RESULTS" /></translation>
 <translation id="2091863218454846791">Показва се компактният изглед</translation>
 <translation id="2093731487903423814">последните 15 минути</translation>
+<translation id="2094298041331405438">Докоснете тук, за да затворите всички прозорци в режим „инкогнито“</translation>
 <translation id="2096577711562668473">Искате ли да промените услугата за автоматично попълване?</translation>
 <translation id="2109384632594340939">снимка на потребителския профил</translation>
 <translation id="2111511281910874386">Към страницата</translation>
@@ -506,6 +506,7 @@
 <translation id="3114507951000454849">Прочетете днешните новини <ph name="NEWS_ICON" /></translation>
 <translation id="3122883569442693641">Още подробности</translation>
 <translation id="3123734510202723619">Съобщения</translation>
+<translation id="3132267803114336523">За да затворите всички прозорци в режим „инкогнито“, докоснете индикатора за този режим</translation>
 <translation id="3134385238404760368">Няма скорошни раздели</translation>
 <translation id="3135655388926735587">Докоснете „Скорошни раздели“</translation>
 <translation id="314939179385989105">Началната страница на Chrome</translation>
@@ -614,6 +615,7 @@
 <translation id="3635073343384702370">Chrome може да проверява паролите ви, когато ги запазите</translation>
 <translation id="3636940436873918441">Предпочитани езици</translation>
 <translation id="3637744895182738742">Ако сте забравили пропуска си или искате да промените тази настройка, <ph name="BEGIN_LINK" />изтрийте данните от Chrome в профила си<ph name="END_LINK" />.</translation>
+<translation id="3649090831059057090"><ph name="WINDOW_TITLE" /> – <ph name="TAB_COUNT" /></translation>
 <translation id="3653111872753786013"><ph name="WEBSITE_TITLE" />: <ph name="WEBSITE_URL" /></translation>
 <translation id="3674208116086565128">Към началната страница на приложението Google</translation>
 <translation id="368329460027487650">Не сте в профила си. Отваря опциите за вход.</translation>
@@ -638,6 +640,7 @@
 <translation id="3739899004075612870">Отметката бе запазена в/ъв <ph name="PRODUCT_NAME" /></translation>
 <translation id="3740290940447881599">Уверете се, че имате доверие на този сайт</translation>
 <translation id="3740525748616366977">На това устройство не може да се търси с глас</translation>
+<translation id="3756823472711156529">Възстановяване на групата</translation>
 <translation id="3763110477555836428">Когато плащате с тази карта, ще бъде попълнен номер на виртуална карта, за да се защитят действителните ви данни. Управлявайте настройките в Google Wallet. <ph name="BEGIN_LINK1" />Научете повече за виртуалните карти<ph name="END_LINK1" /></translation>
 <translation id="376561056759077985">Някои данни още не са запазени</translation>
 <translation id="3770620323585347665">Наименуване на прозорец</translation>
@@ -1159,7 +1162,6 @@
 <translation id="59577092665511740">Изберете профил.</translation>
 <translation id="5958275228015807058">Намерете файловете и страниците си в „Изтегляния“</translation>
 <translation id="5962499136121615854">{NUM_REVOKED_PERMISSIONS,plural, =1{Chrome спря изпращането на известия от сайт, който не сте посещавали наскоро}other{Chrome спря изпращането на известия от сайтовете, които не сте посещавали наскоро}}</translation>
-<translation id="5962718611393537961">Докоснете за свиване</translation>
 <translation id="5964869237734432770">Спиране на описанията</translation>
 <translation id="5972844218283131174">Премахване на избора от всички</translation>
 <translation id="5975083100439434680">Намаляване на мащаба</translation>

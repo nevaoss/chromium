@@ -1,0 +1,4 @@
+{
+  local:
+    Java_org_jni_1zero_SampleForLinker_*;
+};

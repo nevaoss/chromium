@@ -49,6 +49,7 @@ class StubWebTransport final : public network::mojom::blink::WebTransport {
   void CreateStream(
       mojo::ScopedDataPipeConsumerHandle output_consumer,
       mojo::ScopedDataPipeProducerHandle input_producer,
+      network::mojom::blink::WebTransportStreamPriorityPtr priority,
       base::OnceCallback<void(bool, uint32_t)> callback) override {
     NOTREACHED();
   }
@@ -160,11 +161,11 @@ TEST(DatagramDuplexStreamTest, Defaults) {
   EXPECT_FALSE(duplex->outgoingMaxAge().has_value());
   // New attributes and deprecated aliases expose the same default values.
   EXPECT_EQ(duplex->incomingMaxBufferedDatagrams(),
-            kDefaultIncomingMaxBufferedDatagrams);
+            kMinimumMaxBufferedDatagrams);
   EXPECT_EQ(duplex->outgoingMaxBufferedDatagrams(),
             kInitialOutgoingMaxBufferedDatagrams);
   EXPECT_EQ(duplex->incomingHighWaterMark(),
-            static_cast<int32_t>(kDefaultIncomingMaxBufferedDatagrams));
+            static_cast<int32_t>(kMinimumMaxBufferedDatagrams));
   EXPECT_EQ(duplex->outgoingHighWaterMark(),
             static_cast<int32_t>(kInitialOutgoingMaxBufferedDatagrams));
 }
@@ -243,12 +244,19 @@ TEST(DatagramDuplexStreamTest, SetIncomingHighWaterMark) {
 
   duplex->setIncomingHighWaterMark(10);
   EXPECT_EQ(duplex->incomingHighWaterMark(), 10);
+  EXPECT_EQ(duplex->incomingMaxBufferedDatagrams(), 10u);
 
   duplex->setIncomingHighWaterMark(0);
-  EXPECT_EQ(duplex->incomingHighWaterMark(), 0);
+  EXPECT_EQ(duplex->incomingHighWaterMark(),
+            static_cast<int32_t>(kMinimumMaxBufferedDatagrams));
+  EXPECT_EQ(duplex->incomingMaxBufferedDatagrams(),
+            kMinimumMaxBufferedDatagrams);
 
   duplex->setIncomingHighWaterMark(-1);
-  EXPECT_EQ(duplex->incomingHighWaterMark(), 0);
+  EXPECT_EQ(duplex->incomingHighWaterMark(),
+            static_cast<int32_t>(kMinimumMaxBufferedDatagrams));
+  EXPECT_EQ(duplex->incomingMaxBufferedDatagrams(),
+            kMinimumMaxBufferedDatagrams);
 }
 
 TEST(DatagramDuplexStreamTest, SetOutgoingHighWaterMark) {
@@ -258,12 +266,19 @@ TEST(DatagramDuplexStreamTest, SetOutgoingHighWaterMark) {
 
   duplex->setOutgoingHighWaterMark(10);
   EXPECT_EQ(duplex->outgoingHighWaterMark(), 10);
+  EXPECT_EQ(duplex->outgoingMaxBufferedDatagrams(), 10u);
 
   duplex->setOutgoingHighWaterMark(0);
-  EXPECT_EQ(duplex->outgoingHighWaterMark(), 0);
+  EXPECT_EQ(duplex->outgoingHighWaterMark(),
+            static_cast<int32_t>(kMinimumMaxBufferedDatagrams));
+  EXPECT_EQ(duplex->outgoingMaxBufferedDatagrams(),
+            kMinimumMaxBufferedDatagrams);
 
   duplex->setOutgoingHighWaterMark(-1);
-  EXPECT_EQ(duplex->outgoingHighWaterMark(), 0);
+  EXPECT_EQ(duplex->outgoingHighWaterMark(),
+            static_cast<int32_t>(kMinimumMaxBufferedDatagrams));
+  EXPECT_EQ(duplex->outgoingMaxBufferedDatagrams(),
+            kMinimumMaxBufferedDatagrams);
 }
 
 TEST(DatagramDuplexStreamTest, SetIncomingMaxBufferedDatagrams) {
@@ -275,7 +290,8 @@ TEST(DatagramDuplexStreamTest, SetIncomingMaxBufferedDatagrams) {
   EXPECT_EQ(duplex->incomingMaxBufferedDatagrams(), 10u);
 
   duplex->setIncomingMaxBufferedDatagrams(0u);
-  EXPECT_EQ(duplex->incomingMaxBufferedDatagrams(), 0u);
+  EXPECT_EQ(duplex->incomingMaxBufferedDatagrams(),
+            kMinimumMaxBufferedDatagrams);
 }
 
 TEST(DatagramDuplexStreamTest, SetOutgoingMaxBufferedDatagrams) {
@@ -287,7 +303,8 @@ TEST(DatagramDuplexStreamTest, SetOutgoingMaxBufferedDatagrams) {
   EXPECT_EQ(duplex->outgoingMaxBufferedDatagrams(), 10u);
 
   duplex->setOutgoingMaxBufferedDatagrams(0u);
-  EXPECT_EQ(duplex->outgoingMaxBufferedDatagrams(), 0u);
+  EXPECT_EQ(duplex->outgoingMaxBufferedDatagrams(),
+            kMinimumMaxBufferedDatagrams);
 }
 
 TEST(DatagramDuplexStreamTest, OldSetterUpdatesNewGetter) {

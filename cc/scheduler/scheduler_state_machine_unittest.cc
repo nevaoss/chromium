@@ -1265,56 +1265,6 @@ TEST(SchedulerStateMachineTest,
   EXPECT_EQ(begin_main_frame_count, 5);
 }
 
-TEST(SchedulerStateMachineTest, TestProactiveMainFrameThrottling) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitAndEnableFeatureWithParameters(
-      features::kRenderThrottleFrameRate,
-      {{"render-throttled-frame-interval-hz", "30"}});
-  base::TimeDelta throttled_interval =
-      base::Hertz(features::kRenderThrottledFrameIntervalHz.Get());
-
-  SchedulerSettings default_scheduler_settings;
-  StateMachine state(default_scheduler_settings);
-  SET_UP_STATE(state);
-
-  state.FrameIntervalUpdated(base::Hertz(120));
-  state.AdvanceTimeBy(base::Seconds(1280));  // Start at an arbitrary point.
-
-  auto GetFrameCountFor10Intervals = [&state](int interval_hz) {
-    int begin_main_frame_count = 0;
-    for (int i = 0; i < 10; i++) {
-      state.SetNeedsBeginMainFrame(false);
-      begin_main_frame_count +=
-          RunOneFrameAndReturnWhetherMainFrameIsIssued(state) ? 1 : 0;
-      state.AdvanceTimeBy(base::Hertz(120));
-    }
-    return begin_main_frame_count;
-  };
-
-  // Prior to enabling proactive throttling, we are maybe throttled when at
-  // 120fps.
-  int expected_count = 10;
-  base::TimeDelta expected_interval = state.MainFrameThrottledInterval();
-  if (base::FeatureList::IsEnabled(features::kThrottleMainFrameTo60Hz)) {
-    expected_count = 5;
-    EXPECT_GT(expected_interval, base::Hertz(120));
-  } else {
-    EXPECT_EQ(expected_interval, base::TimeDelta());
-  }
-
-  EXPECT_EQ(GetFrameCountFor10Intervals(120), expected_count);
-  EXPECT_EQ(state.MainFrameThrottledInterval(), expected_interval);
-
-  // Throttling after starting the throttle.
-  state.SetShouldThrottleFrameRate(true);
-  EXPECT_EQ(GetFrameCountFor10Intervals(120), 2);
-  EXPECT_EQ(state.MainFrameThrottledInterval(), throttled_interval);
-
-  // Restore the previous behavior.
-  state.SetShouldThrottleFrameRate(false);
-  EXPECT_EQ(GetFrameCountFor10Intervals(120), expected_count);
-  EXPECT_EQ(state.MainFrameThrottledInterval(), expected_interval);
-}
 
 TEST(SchedulerStateMachineTest, TestMainFrameThrottlingIsNotSensitiveToDelays) {
   base::test::ScopedFeatureList scoped_feature_list_{
@@ -3670,13 +3620,15 @@ TEST(SchedulerStateMachineTest, ThrottleDueToConsecutiveNoDamageFrames) {
   StateMachine state(default_scheduler_settings);
   SET_UP_STATE(state);
 
+  state.FrameIntervalUpdated(base::Hertz(60));
+
   // Initially, there's no throttling.
   EXPECT_EQ(base::TimeDelta(), state.MainFrameThrottledInterval());
   EXPECT_FALSE(state.ShouldThrottleSendBeginMainFrame());
 
-  // Simulating 60 consecutive no-update frames.
-  // The threshold for 32ms throttling is 60 consecutive no-update frames.
-  for (int i = 0; i < 60; i++) {
+  // Simulating 90 consecutive no-update frames.
+  // The threshold for throttling is 90 consecutive no-update frames.
+  for (int i = 0; i < 90; i++) {
     state.IssueNextBeginImplFrame();
     state.SetNeedsBeginMainFrame(false);
     EXPECT_ACTION_UPDATE_STATE(
@@ -3690,14 +3642,16 @@ TEST(SchedulerStateMachineTest, ThrottleDueToConsecutiveNoDamageFrames) {
   EXPECT_TRUE(state.ShouldThrottleSendBeginMainFrame());
   EXPECT_ACTION(SchedulerStateMachine::Action::NONE);
 
-  // Advance time by 16ms (less than 32ms). It should still throttle.
+  // Advance time by 16ms (less than throttled interval). It should still
+  // throttle.
   state.AdvanceTimeBy(base::Milliseconds(16));
   state.IssueNextBeginImplFrame();
   EXPECT_TRUE(state.ShouldThrottleSendBeginMainFrame());
   EXPECT_ACTION(SchedulerStateMachine::Action::NONE);
 
   // Advance time by another 16ms (total 32ms since last sent BMF).
-  // It should no longer throttle.
+  // It should no longer throttle as it is larger than throttled interval
+  // (approx 30ms).
   state.AdvanceTimeBy(base::Milliseconds(16));
   state.IssueNextBeginImplFrame();
   EXPECT_FALSE(state.ShouldThrottleSendBeginMainFrame());

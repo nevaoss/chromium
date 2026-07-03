@@ -417,7 +417,7 @@ void RemoteFrameView::SetNeedsOcclusionTracking(bool needs_tracking) {
   if (needs_tracking) {
     if (LocalFrameView* parent_view = ParentLocalRootFrameView()) {
       parent_view->SetIntersectionObservationState(LocalFrameView::kRequired);
-      parent_view->ScheduleAnimation();
+      parent_view->ScheduleAnimation(cc::BeginMainFrameReason::kOOPIF);
     }
   }
 }

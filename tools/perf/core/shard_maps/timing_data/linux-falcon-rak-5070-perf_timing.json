@@ -1,13 +1,5 @@
 [
     {
-        "duration": "180.0",
-        "name": "tint_benchmark/_gtest_"
-    },
-    {
-        "duration": "600.0",
-        "name": "dawn_perf_tests/_gtest_"
-    },
-    {
         "duration": "200.0",
         "name": "base_perftests/_gtest_"
     },
@@ -16,7 +8,15 @@
         "name": "views_perftests/_gtest_"
     },
     {
+        "duration": "180.0",
+        "name": "tint_benchmark/_gtest_"
+    },
+    {
         "duration": "125.0",
         "name": "components_perftests/_gtest_"
+    },
+    {
+        "duration": "600.0",
+        "name": "dawn_perf_tests/_gtest_"
     }
 ]

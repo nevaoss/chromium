@@ -226,8 +226,8 @@ void DevToolsSession::AttachToAgent(blink::mojom::DevToolsAgent* agent,
       receiver_.BindNewEndpointAndPassRemote(),
       session_.BindNewEndpointAndPassReceiver(),
       io_session_.BindNewPipeAndPassReceiver(), session_state_cookie_.Clone(),
-      script_to_evaluate_on_load_, client_->UsesBinaryProtocol(),
-      client_->IsTrusted(), session_id_, IsWaitingForDebuggerOnStart());
+      client_->UsesBinaryProtocol(), client_->IsTrusted(), session_id_,
+      IsWaitingForDebuggerOnStart());
   session_.set_disconnect_handler(base::BindOnce(
       &DevToolsSession::MojoConnectionDestroyed, base::Unretained(this)));
 
@@ -237,8 +237,9 @@ void DevToolsSession::AttachToAgent(blink::mojom::DevToolsAgent* agent,
         blink::mojom::RendererOriginatingSessionState::New();
   }
 
-  // Only use script_to_evaluate_on_load_ once.
-  script_to_evaluate_on_load_.clear();
+  // Only use script_to_evaluate_on_load_once once.
+  session_state_cookie_->browser_originating_session_state
+      ->script_to_evaluate_on_load_once.clear();
 
   // We're attaching to a new agent while suspended; therefore, messages that
   // have been sent previously either need to be terminated or re-sent once we
@@ -706,7 +707,8 @@ void DevToolsSession::RemoveObserver(ChildObserver* obs) {
 
 
 void DevToolsSession::PrepareForReload(std::string script_to_evaluate_on_load) {
-  script_to_evaluate_on_load_ = std::move(script_to_evaluate_on_load);
+  session_state_cookie_->browser_originating_session_state
+      ->script_to_evaluate_on_load_once = std::move(script_to_evaluate_on_load);
   io_session_->UnpauseAndTerminate();
 }
 

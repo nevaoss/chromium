@@ -7,6 +7,7 @@
 #import "base/apple/foundation_util.h"
 #import "base/ios/crb_protocol_observers.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_state.h"
+#import "ios/chrome/browser/shared/coordinator/scene/scene_state_prefs.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/incognito_lock_state.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
 
@@ -35,10 +36,6 @@ NSString* const kIncognitoCurrentKey = @"IncognitoActive";
     _observers = [IncognitoStateObserverList
         observersWithProtocol:@protocol(IncognitoStateObserver)];
     _sceneState = sceneState;
-
-    const BOOL incognitoContentVisible = [base::apple::ObjCCast<NSNumber>(
-        [_sceneState sessionObjectForKey:kIncognitoCurrentKey]) boolValue];
-    self.incognitoContentVisible = incognitoContentVisible;
   }
   return self;
 }
@@ -51,6 +48,18 @@ NSString* const kIncognitoCurrentKey = @"IncognitoActive";
   [_observers removeObserver:observer];
 }
 
+- (void)preferencesDidLoad {
+  const std::optional<bool> value =
+      [_sceneState.prefs boolForKey:kIncognitoCurrentKey];
+
+  if (value.has_value()) {
+    self.incognitoContentVisible = *value;
+  } else {
+    [_sceneState.prefs setBool:_incognitoContentVisible
+                        forKey:kIncognitoCurrentKey];
+  }
+}
+
 - (void)setIncognitoContentVisible:(BOOL)incognitoContentVisible {
   if (_incognitoContentVisible == incognitoContentVisible) {
     return;
@@ -61,8 +70,8 @@ NSString* const kIncognitoCurrentKey = @"IncognitoActive";
   } else {
     [_observers willExitIncognitoForState:self];
   }
-  [self.sceneState setSessionObject:@(incognitoContentVisible)
-                             forKey:kIncognitoCurrentKey];
+  [_sceneState.prefs setBool:_incognitoContentVisible
+                      forKey:kIncognitoCurrentKey];
 }
 
 - (BOOL)isAuthenticationRequired {

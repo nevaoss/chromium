@@ -6,7 +6,6 @@
 
 #include "base/memory/raw_ptr.h"
 #include "base/test/metrics/histogram_tester.h"
-#include "base/test/scoped_feature_list.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/extensions/extension_service_user_test_base.h"
 #include "chrome/browser/profiles/profile.h"
@@ -16,7 +15,6 @@
 #include "extensions/browser/extension_registrar.h"
 #include "extensions/browser/pref_names.h"
 #include "extensions/common/extension_builder.h"
-#include "extensions/common/extension_features.h"
 #include "extensions/common/mojom/manifest.mojom.h"
 
 #if BUILDFLAG(IS_CHROMEOS)
@@ -192,32 +190,6 @@ TEST_F(ManifestV2ExperimentManagerUnitTest,
   }
 }
 
-// A test harness that enables the kAllowLegacyMV2Extensions feature.
-class ManifestV2ExperimentManagerUnitTestWithAllowLegacy
-    : public ManifestV2ExperimentManagerUnitTest {
- public:
-  ManifestV2ExperimentManagerUnitTestWithAllowLegacy() = default;
-  ~ManifestV2ExperimentManagerUnitTestWithAllowLegacy() override = default;
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_{
-      extensions_features::kAllowLegacyMV2Extensions};
-};
-
-// Tests that unpacked extensions *are* installable with the
-// "kAllowLegacyMV2Extensions" flag.
-TEST_F(ManifestV2ExperimentManagerUnitTestWithAllowLegacy,
-       ShouldBlockInstallation_UnpackedExtensionsWithLegacyMV2Extensions) {
-  scoped_refptr<const Extension> extension =
-      ExtensionBuilder("test")
-          .SetManifestVersion(2)
-          .SetLocation(mojom::ManifestLocation::kUnpacked)
-          .Build();
-  EXPECT_FALSE(experiment_manager()->ShouldBlockExtensionInstallation(
-      extension->manifest_version(), extension->GetType(),
-      extension->location()));
-}
-
 // Tests that the proper manifest group is used when emitting metrics for
 // disabled extensions.
 TEST_F(ManifestV2ExperimentManagerUnitTest,
@@ -226,12 +198,14 @@ TEST_F(ManifestV2ExperimentManagerUnitTest,
     mojom::ManifestLocation manifest_location;
     std::string name;
     std::string expected_histogram;
+    ManifestV2ExperimentManager::MV2ExtensionState expected_state =
+        ManifestV2ExperimentManager::MV2ExtensionState::kHardDisabled;
   } test_cases[] = {
       {mojom::ManifestLocation::kInternal, "Internal",
        "Extensions.MV2Deprecation.MV2ExtensionState.Internal"},
-      // Note: component extensions aren't considered in the metrics, so
-      // shouldn't have any emitted histograms.
-      {mojom::ManifestLocation::kComponent, "Component", ""},
+      {mojom::ManifestLocation::kComponent, "Component",
+       "Extensions.MV2Deprecation.MV2ExtensionState.Component",
+       ManifestV2ExperimentManager::MV2ExtensionState::kUnaffected},
       {mojom::ManifestLocation::kExternalPolicy, "Policy",
        "Extensions.MV2Deprecation.MV2ExtensionState.Policy"},
       {mojom::ManifestLocation::kExternalPolicyDownload, "Policy Download",
@@ -276,9 +250,8 @@ TEST_F(ManifestV2ExperimentManagerUnitTest,
     // should have exactly one entry: the extension is hard-disabled.
     for (const char* histogram : histograms) {
       if (test_case.expected_histogram == histogram) {
-        histogram_tester.ExpectBucketCount(
-            histogram,
-            ManifestV2ExperimentManager::MV2ExtensionState::kHardDisabled, 1);
+        histogram_tester.ExpectBucketCount(histogram, test_case.expected_state,
+                                           1);
       } else {
         histogram_tester.ExpectTotalCount(histogram, 0);
       }
