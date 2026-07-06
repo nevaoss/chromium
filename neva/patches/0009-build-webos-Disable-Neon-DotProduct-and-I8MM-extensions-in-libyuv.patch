@@ -128,189 +128,187 @@ index 756f83cb..f90ba45f 100644
  #endif  // !defined(LIBYUV_DISABLE_NEON) && defined(__aarch64__)
  
 diff --git a/source/row_neon64.cc b/source/row_neon64.cc
-index 4eed2df1..4363aaa9 100644
+index f90b4a18..de285248 100644
 --- a/source/row_neon64.cc
 +++ b/source/row_neon64.cc
 @@ -2793,6 +2793,9 @@ void ARGBToUV444MatrixRow_NEON(const uint8_t* src_argb,
-         "v26", "v27", "v28");
+         "v27", "v28");
  }
- 
+
 +// TODO(neva): Remove this when webOS supports Neon DotProduct and I8MM
 +// instructions.
 +#if !defined(OS_WEBOS)
- static void ARGBToUV444MatrixRow_NEON_I8MM(
-     const uint8_t* src_argb,
-     uint8_t* dst_u,
-@@ -2831,6 +2834,7 @@ static void ARGBToUV444MatrixRow_NEON_I8MM(
+ static void ARGBToUV444MatrixRow_NEON_I8MM(const uint8_t* src_argb,
+                                            uint8_t* dst_u,
+                                            uint8_t* dst_v,
+@@ -2830,6 +2833,7 @@ static void ARGBToUV444MatrixRow_NEON_I8MM(const uint8_t* src_argb,
        : "cc", "memory", "v0", "v1", "v2", "v3", "v4", "v5", "v16", "v17",
          "v29");
  }
 +#endif  // !defined(OS_WEBOS)
- 
+
  // RGB to BT601 coefficients
  // UB   0.875 coefficient = 112
-@@ -2848,6 +2852,9 @@ void ARGBToUV444Row_NEON(const uint8_t* src_argb,
-                             &kArgbI601Constants);
+@@ -2846,6 +2850,9 @@ void ARGBToUV444Row_NEON(const uint8_t* src_argb,
+   ARGBToUV444MatrixRow_NEON(src_argb, dst_u, dst_v, width, &kArgbI601Constants);
  }
- 
+
 +// TODO(neva): Remove this when webOS supports Neon DotProduct and I8MM
 +// instructions.
 +#if !defined(OS_WEBOS)
  void ARGBToUV444Row_NEON_I8MM(const uint8_t* src_argb,
                                uint8_t* dst_u,
                                uint8_t* dst_v,
-@@ -2855,6 +2862,7 @@ void ARGBToUV444Row_NEON_I8MM(const uint8_t* src_argb,
+@@ -2853,6 +2860,7 @@ void ARGBToUV444Row_NEON_I8MM(const uint8_t* src_argb,
    ARGBToUV444MatrixRow_NEON_I8MM(src_argb, dst_u, dst_v, width,
                                   &kArgbI601Constants);
  }
 +#endif  // !defined(OS_WEBOS)
- 
+
  void ARGBToUVJ444Row_NEON(const uint8_t* src_argb,
                            uint8_t* dst_u,
-@@ -2864,6 +2872,9 @@ void ARGBToUVJ444Row_NEON(const uint8_t* src_argb,
-                             &kArgbJPEGConstants);
+@@ -2861,6 +2869,9 @@ void ARGBToUVJ444Row_NEON(const uint8_t* src_argb,
+   ARGBToUV444MatrixRow_NEON(src_argb, dst_u, dst_v, width, &kArgbJPEGConstants);
  }
- 
+
 +// TODO(neva): Remove this when webOS supports Neon DotProduct and I8MM
 +// instructions.
 +#if !defined(OS_WEBOS)
  void ARGBToUVJ444Row_NEON_I8MM(const uint8_t* src_argb,
                                 uint8_t* dst_u,
                                 uint8_t* dst_v,
-@@ -2871,6 +2882,7 @@ void ARGBToUVJ444Row_NEON_I8MM(const uint8_t* src_argb,
+@@ -2868,6 +2879,7 @@ void ARGBToUVJ444Row_NEON_I8MM(const uint8_t* src_argb,
    ARGBToUV444MatrixRow_NEON_I8MM(src_argb, dst_u, dst_v, width,
                                   &kArgbJPEGConstants);
  }
 +#endif  // !defined(OS_WEBOS)
- 
+
  #define RGBTOUV_SETUP_REG                                                  \
    "movi       v20.8h, #112          \n" /* UB/VR coefficient  (0.875)   */ \
-@@ -3328,6 +3340,9 @@ void ARGB4444ToUVRow_NEON(const uint8_t* src_argb4444,
+@@ -3329,6 +3341,9 @@ void ARGB4444ToUVRow_NEON(const uint8_t* src_argb4444,
    );
  }
- 
+
 +// TODO(neva): Remove this when webOS supports Neon DotProduct and I8MM
 +// instructions.
 +#if !defined(OS_WEBOS)
  // Process any of ARGB, ABGR, BGRA, RGBA, by adjusting the ArgbConstants layout.
  static void ARGBToUVMatrixRow_NEON_I8MM_Impl(const uint8_t* src,
-                                         int src_stride,
-@@ -3461,6 +3476,7 @@ void ABGRToUVJRow_NEON_I8MM(const uint8_t* src_abgr,
-   ARGBToUVMatrixRow_NEON_I8MM_Impl(src_abgr, src_stride_abgr, dst_u, dst_v, width,
-                               &kAbgrJPEGConstants);
+                                              int src_stride,
+@@ -3462,6 +3477,7 @@ void ABGRToUVJRow_NEON_I8MM(const uint8_t* src_abgr,
+   ARGBToUVMatrixRow_NEON_I8MM_Impl(src_abgr, src_stride_abgr, dst_u, dst_v,
+                                    width, &kAbgrJPEGConstants);
  }
 +#endif  // !defined(OS_WEBOS)
- 
+
  void RGB565ToYRow_NEON(const uint8_t* src_rgb565, uint8_t* dst_y, int width) {
    asm volatile(
-@@ -3597,7 +3613,9 @@ void ARGBToYMatrixRow_NEON(const uint8_t* src_argb,
+@@ -3596,6 +3612,9 @@ void ARGBToYMatrixRow_NEON(const uint8_t* src_argb,
          "v19", "v20", "v21", "v22");
  }
- 
--
+
 +// TODO(neva): Remove this when webOS supports Neon DotProduct and I8MM
 +// instructions.
 +#if !defined(OS_WEBOS)
- void ARGBToYMatrixRow_NEON_DotProd(
-     const uint8_t* src_argb,
-     uint8_t* dst_y,
-@@ -3631,7 +3649,7 @@ void ARGBToYMatrixRow_NEON_DotProd(
-       : "r"(c)             // %3
-       : "cc", "memory", "v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7", "v16", "v17", "v18", "v19");
+ void ARGBToYMatrixRow_NEON_DotProd(const uint8_t* src_argb,
+                                    uint8_t* dst_y,
+                                    int width,
+@@ -3629,6 +3648,7 @@ void ARGBToYMatrixRow_NEON_DotProd(const uint8_t* src_argb,
+       : "cc", "memory", "v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7", "v16",
+         "v17", "v18", "v19");
  }
--
 +#endif  // !defined(OS_WEBOS)
- 
+
  // RGB to JPeg coefficients
- 
-@@ -3651,6 +3669,9 @@ void ABGRToYJRow_NEON(const uint8_t* src_abgr, uint8_t* dst_yj, int width) {
+
+@@ -3648,6 +3668,9 @@ void ABGRToYJRow_NEON(const uint8_t* src_abgr, uint8_t* dst_yj, int width) {
    ARGBToYMatrixRow_NEON(src_abgr, dst_yj, width, &kAbgrJPEGConstants);
  }
- 
+
 +// TODO(neva): Remove this when webOS supports Neon DotProduct and I8MM
 +// instructions.
 +#if !defined(OS_WEBOS)
  void ARGBToYRow_NEON_DotProd(const uint8_t* src_argb,
                               uint8_t* dst_y,
                               int width) {
-@@ -3674,6 +3695,7 @@ void ABGRToYJRow_NEON_DotProd(const uint8_t* src_abgr,
+@@ -3671,6 +3694,7 @@ void ABGRToYJRow_NEON_DotProd(const uint8_t* src_abgr,
                                int width) {
    ARGBToYMatrixRow_NEON_DotProd(src_abgr, dst_yj, width, &kAbgrJPEGConstants);
  }
 +#endif  // !defined(OS_WEBOS)
- 
+
  // RGBA expects first value to be A and ignored, then 3 values to contain RGB.
- 
-@@ -3689,6 +3711,9 @@ void BGRAToYRow_NEON(const uint8_t* src_bgra, uint8_t* dst_y, int width) {
+
+@@ -3686,6 +3710,9 @@ void BGRAToYRow_NEON(const uint8_t* src_bgra, uint8_t* dst_y, int width) {
    ARGBToYMatrixRow_NEON(src_bgra, dst_y, width, &kBgraI601Constants);
  }
- 
+
 +// TODO(neva): Remove this when webOS supports Neon DotProduct and I8MM
 +// instructions.
 +#if !defined(OS_WEBOS)
  void RGBAToYRow_NEON_DotProd(const uint8_t* src_rgba,
                               uint8_t* dst_y,
                               int width) {
-@@ -3706,6 +3731,7 @@ void BGRAToYRow_NEON_DotProd(const uint8_t* src_bgra,
+@@ -3703,6 +3730,7 @@ void BGRAToYRow_NEON_DotProd(const uint8_t* src_bgra,
                               int width) {
    ARGBToYMatrixRow_NEON_DotProd(src_bgra, dst_y, width, &kBgraI601Constants);
  }
 +#endif  // !defined(OS_WEBOS)
- 
+
  void RGBToYMatrixRow_NEON(const uint8_t* src_rgb,
-                                  uint8_t* dst_y,
-@@ -4165,6 +4191,9 @@ static const uvec8 kARGBGrayRowCoeffs = {29, 150, 77, 0};
+                           uint8_t* dst_y,
+@@ -4158,6 +4186,9 @@ static const uvec8 kARGBGrayRowCoeffs = {29, 150, 77, 0};
  static const uvec8 kARGBGrayRowIndices = {0, 0, 0, 19, 2, 2, 2, 23,
                                            4, 4, 4, 27, 6, 6, 6, 31};
- 
+
 +// TODO(neva): Remove this when webOS supports Neon DotProduct and I8MM
 +// instructions.
 +#if !defined(OS_WEBOS)
  void ARGBGrayRow_NEON_DotProd(const uint8_t* src_argb,
                                uint8_t* dst_argb,
                                int width) {
-@@ -4192,6 +4221,7 @@ void ARGBGrayRow_NEON_DotProd(const uint8_t* src_argb,
+@@ -4185,6 +4216,7 @@ void ARGBGrayRow_NEON_DotProd(const uint8_t* src_argb,
          [indices] "r"(&kARGBGrayRowIndices)  // %[indices]
        : "cc", "memory", "v0", "v1", "v2", "v3", "v24", "v25");
  }
 +#endif  // !defined(OS_WEBOS)
- 
+
  // Convert 8 ARGB pixels (32 bytes) to 8 Sepia ARGB pixels.
  //    b = (r * 35 + g * 68 + b * 17) >> 7
-@@ -4238,6 +4268,9 @@ static const uvec8 kARGBSepiaRowCoeffs = {17, 68, 35, 0,  22, 88,
+@@ -4231,6 +4263,9 @@ static const uvec8 kARGBSepiaRowCoeffs = {17, 68, 35, 0,  22, 88,
                                            45, 0,  24, 98, 50, 0};
  static const uvec8 kARGBSepiaRowAlphaIndices = {3, 7, 11, 15, 19, 23, 27, 31};
- 
+
 +// TODO(neva): Remove this when webOS supports Neon DotProduct and I8MM
 +// instructions.
 +#if !defined(OS_WEBOS)
  void ARGBSepiaRow_NEON_DotProd(uint8_t* dst_argb, int width) {
    asm volatile(
        "ld3r        {v20.4s, v21.4s, v22.4s}, [%[coeffs]] \n"
-@@ -4274,6 +4307,7 @@ void ARGBSepiaRow_NEON_DotProd(uint8_t* dst_argb, int width) {
+@@ -4267,6 +4302,7 @@ void ARGBSepiaRow_NEON_DotProd(uint8_t* dst_argb, int width) {
        : "cc", "memory", "v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7", "v20",
          "v21", "v22", "v24", "v25", "v26", "v28", "v29", "v30");
  }
 +#endif  // !defined(OS_WEBOS)
- 
+
  // Tranform 8 ARGB pixels (32 bytes) with color matrix.
  // TODO(fbarchard): Was same as Sepia except matrix is provided.  This function
-@@ -4337,6 +4371,9 @@ void ARGBColorMatrixRow_NEON(const uint8_t* src_argb,
+@@ -4330,6 +4366,9 @@ void ARGBColorMatrixRow_NEON(const uint8_t* src_argb,
          "v17", "v18", "v19", "v22", "v23", "v24", "v25");
  }
- 
+
 +// TODO(neva): Remove this when webOS supports Neon DotProduct and I8MM
 +// instructions.
 +#if !defined(OS_WEBOS)
  void ARGBColorMatrixRow_NEON_I8MM(const uint8_t* src_argb,
                                    uint8_t* dst_argb,
                                    const int8_t* matrix_argb,
-@@ -4392,6 +4429,7 @@ void ARGBColorMatrixRow_NEON_I8MM(const uint8_t* src_argb,
+@@ -4385,6 +4424,7 @@ void ARGBColorMatrixRow_NEON_I8MM(const uint8_t* src_argb,
        : "cc", "memory", "v0", "v1", "v16", "v17", "v18", "v19", "v20", "v21",
          "v22", "v23", "v31");
  }
 +#endif  // !defined(OS_WEBOS)
- 
+
  // Multiply 2 rows of ARGB pixels together, 8 pixels at a time.
  void ARGBMultiplyRow_NEON(const uint8_t* src_argb,
 -- 
