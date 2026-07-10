@@ -4,6 +4,7 @@
 
 #include "third_party/blink/renderer/core/script/value_wrapper_synthetic_module_script.h"
 
+#include <array>
 #include <vector>
 
 #include "third_party/blink/public/common/features.h"
@@ -150,7 +151,7 @@ ValueWrapperSyntheticModuleScript::CreateWithDefaultExport(
     const TextPosition& start_position) {
   v8::Isolate* isolate = settings_object->GetScriptState()->GetIsolate();
   auto export_names =
-      v8::to_array<v8::Local<v8::String>>({V8String(isolate, "default")});
+      std::to_array<v8::Local<v8::String>>({V8String(isolate, "default")});
   v8::Local<v8::Module> v8_synthetic_module = v8::Module::CreateSyntheticModule(
       isolate, V8String(isolate, source_url.GetString()), export_names,
       ValueWrapperSyntheticModuleScript::EvaluationSteps);

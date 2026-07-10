@@ -761,6 +761,10 @@ std::unique_ptr<PopupRowView> CreatePopupRowView(
     case SuggestionType::kMixedFormMessage:
     case SuggestionType::kInsecureContextPaymentDisabledMessage:
       NOTREACHED();
+    case SuggestionType::kWebauthnPasskeyQrCode:
+      return std::make_unique<PopupRowView>(
+          a11y_selection_delegate, selection_delegate, controller, line_number,
+          popup_cell_utils::CreatePasskeyQrCodePopupRowContentView(suggestion));
     case SuggestionType::kPasswordEntry:
     case SuggestionType::kBackupPasswordEntry:
     case SuggestionType::kTroubleSigningInEntry:

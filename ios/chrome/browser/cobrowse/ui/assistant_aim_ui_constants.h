@@ -10,6 +10,19 @@
 // Accessibility identifier for the Assistant AIM close button.
 extern NSString* const kAssistantAIMCloseButtonAccessibilityIdentifier;
 
+// Accessibility identifier for the Assistant AIM context menu button.
+extern NSString* const kAssistantAIMContextMenuButtonAccessibilityIdentifier;
+
+// Accessibility identifiers for the AIM SRP Loaded URL debugger view
+// components.
+extern NSString* const kAIMSRPDebuggerURLViewControllerAccessibilityIdentifier;
+extern NSString* const
+    kAIMSRPDebuggerURLViewControllerCloseButtonAccessibilityIdentifier;
+extern NSString* const
+    kAIMSRPDebuggerURLViewControllerCopyButtonAccessibilityIdentifier;
+extern NSString* const
+    kAIMSRPDebuggerURLViewControllerTextViewAccessibilityIdentifier;
+
 // Duration for sheet detent update animations.
 extern const CGFloat kSheetDetentAnimationDuration;
 

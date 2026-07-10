@@ -34,6 +34,10 @@
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_remote.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
+namespace gfx {
+class Size;
+}
+
 namespace blink {
 
 class AudioContextOptions;
@@ -170,7 +174,8 @@ class MODULES_EXPORT AudioContext final
   void RequestSeekForward(base::TimeDelta seek_time) override {}
   void RequestSeekBackward(base::TimeDelta seek_time) override {}
   void RequestSeekTo(base::TimeDelta seek_time) override {}
-  void RequestEnterPictureInPicture() override {}
+  void RequestEnterPictureInPicture(
+      const std::optional<gfx::Size>& min_size) override {}
   void RequestMute(bool mute) override {}
   void SetVolumeMultiplier(double multiplier) override;
   void SetPersistentState(bool persistent) override {}

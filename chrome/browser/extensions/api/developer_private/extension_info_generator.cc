@@ -46,7 +46,7 @@
 #include "extensions/browser/extension_util.h"
 #include "extensions/browser/icon_util.h"
 #include "extensions/browser/image_loader.h"
-#include "extensions/browser/manifest_v2_experiment_manager.h"
+#include "extensions/browser/manifest_v2_handler.h"
 #include "extensions/browser/path_util.h"
 #include "extensions/browser/permissions/site_permissions_helper.h"
 #include "extensions/browser/shared_module_service.h"
@@ -866,11 +866,10 @@ void ExtensionInfoGenerator::FillExtensionInfo(const Extension& extension,
   }
 
   // MV2 deprecation.
-  ManifestV2ExperimentManager* mv2_experiment_manager =
-      ManifestV2ExperimentManager::Get(profile);
-  CHECK(mv2_experiment_manager);
+  ManifestV2Handler* mv2_handler = ManifestV2Handler::Get(profile);
+  CHECK(mv2_handler);
   info.is_affected_by_mv2_deprecation =
-      mv2_experiment_manager->IsExtensionAffected(extension);
+      mv2_handler->IsExtensionAffected(extension);
   if (info.web_store_url.length() > 0) {
     info.recommendations_url =
         extension_urls::GetNewWebstoreItemRecommendationsUrl(extension.id())

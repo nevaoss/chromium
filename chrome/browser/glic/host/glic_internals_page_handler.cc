@@ -29,7 +29,6 @@
 #include "chrome/browser/glic/public/glic_passkeys.h"
 #include "chrome/browser/glic/service/glic_instance_coordinator_impl.h"
 #include "chrome/browser/glic/suggestions/contextual_cueing_features.h"
-#include "chrome/browser/permissions/system/system_permission_settings.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -249,6 +248,8 @@ std::string ActuationTargetToString(glic::mojom::ActuationTarget target) {
       return "kCurrentTab";
     case glic::mojom::ActuationTarget::kNewTab:
       return "kNewTab";
+    case glic::mojom::ActuationTarget::kTargetSurface:
+      return "kTargetSurface";
   }
   LOG(ERROR) << "Unexpected value for ActuationTarget: "
              << static_cast<int>(target);
@@ -472,12 +473,8 @@ void GlicInternalsPageHandler::GetInternalsDataPayload(
 
   boolean_settings["Microphone Permission Enabled"] =
       pref_service->GetBoolean(prefs::kGlicMicrophoneEnabled);
-  boolean_settings["Location Permission Enabled"] =
-      pref_service->GetBoolean(prefs::kGlicGeolocationEnabled);
   boolean_settings["Tab Context Permission Enabled"] =
       pref_service->GetBoolean(prefs::kGlicTabContextEnabled);
-  boolean_settings["OS Location Permission Enabled"] =
-      system_permission_settings::IsAllowed(ContentSettingsType::GEOLOCATION);
 
   boolean_settings["Zero State Suggestions Enabled"] =
       IsZeroStateSuggestionsEnabled();
@@ -502,8 +499,7 @@ void GlicInternalsPageHandler::GetInternalsDataPayload(
 
   boolean_settings["Get Page Metadata Enabled"] =
       base::FeatureList::IsEnabled(blink::features::kFrameMetadataObserver);
-  boolean_settings["API Activation Gating Enabled"] =
-      base::FeatureList::IsEnabled(features::kGlicApiActivationGating);
+
   boolean_settings["Capture Region Enabled"] =
       base::FeatureList::IsEnabled(features::kGlicCaptureRegion);
   boolean_settings["Can Act on Web"] =
@@ -660,6 +656,9 @@ void GlicInternalsPageHandler::TriggerInvokeFromInternalsAction(
           case GlicInvokeError::kAdditionalContextNoClipboardMetadata:
             error_msg = "No clipboard metadata for context";
             break;
+          case GlicInvokeError::kInstanceNotFound:
+            error_msg = "Instance Not Found";
+            break;
           case GlicInvokeError::kUnknown:
             error_msg = "Unknown Error";
             break;
@@ -719,7 +718,13 @@ void GlicInternalsPageHandler::ShowExperimentalOptIn() {
     return;
   }
 
-  service->opt_in_controller().ShowDialog(webui_contents_, base::DoNothing());
+  content::WebContents* target_contents =
+      base::FeatureList::IsEnabled(
+          features::kGlicExperimentalTriggeringOptInTabFocus)
+          ? service->opt_in_controller().GetOrCreateSuitableWebContents()
+          : webui_contents_.get();
+
+  service->opt_in_controller().ShowDialog(target_contents, base::DoNothing());
 #endif
 }
 

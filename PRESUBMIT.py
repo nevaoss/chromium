@@ -497,6 +497,21 @@ _BANNED_IOS_EGTEST_FUNCTIONS: Sequence[BanRule] = (BanRule(
 
 _BANNED_CPP_FUNCTIONS: Sequence[BanRule] = (
     BanRule(
+        r'/\b(TimeTicks::UnixEpoch|SetSharedUnixEpoch)\b',
+        (
+            'base::TimeTicks::UnixEpoch() and base::TimeTicks::SetSharedUnixEpoch()',
+            'are deprecated and being removed (crbug.com/355423207). TimeTicks can',
+            'be suspended while a process is suspended, so it has no stable relation',
+            'to wall-clock time. Use base::Time instead.',
+        ),
+        True,
+        excluded_paths=(
+            r'base/time/time\.(h|cc)',
+            r'base/allocator/partition_allocator/.*/time/time\.(h|cc)',
+            _THIRD_PARTY_EXCEPT_BLINK,
+        ),
+    ),
+    BanRule(
         '%#0',
         (
             'Zero-padded values that use "#" to add prefixes don\'t exhibit ',

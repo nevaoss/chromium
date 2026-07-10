@@ -79,6 +79,7 @@ static_library("autofill") {
     "//chrome/browser/profiles",
     "//chrome/browser/signin",
     "//chrome/browser/strike_database",
+    "//chrome/browser/subscription_eligibility",
     "//chrome/browser/sync:factories",
     "//chrome/browser/webdata_services",
     "//chrome/common:constants",

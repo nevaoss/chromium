@@ -9,7 +9,6 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.text.TextUtils;
 
-import androidx.annotation.StringRes;
 import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.Callback;
@@ -22,11 +21,8 @@ import org.chromium.base.lifetime.Destroyable;
 import org.chromium.build.BuildConfig;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
-import org.chromium.chrome.browser.contextual_tasks.ContextualTasksUtils;
 import org.chromium.chrome.browser.locale.LocaleManager;
-import org.chromium.chrome.browser.omnibox.fusebox.ComposeboxQueryControllerBridge;
 import org.chromium.chrome.browser.omnibox.status.StatusProperties.StatusIconResource;
-import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
 import org.chromium.chrome.browser.omnibox.suggestions.CachedZeroSuggestionsManager;
 import org.chromium.chrome.browser.omnibox.suggestions.CachedZeroSuggestionsManager.SearchEngineMetadata;
 import org.chromium.chrome.browser.profiles.Profile;
@@ -35,14 +31,9 @@ import org.chromium.chrome.browser.search_engines.SearchEngineType;
 import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
 import org.chromium.chrome.browser.ui.favicon.FaviconHelper;
 import org.chromium.components.browser_ui.util.GlobalDiscardableReferencePool;
-import org.chromium.components.contextual_search.InputState;
 import org.chromium.components.image_fetcher.ImageFetcher;
 import org.chromium.components.image_fetcher.ImageFetcherConfig;
 import org.chromium.components.image_fetcher.ImageFetcherFactory;
-import org.chromium.components.omnibox.AutocompleteRequestType;
-import org.chromium.components.omnibox.OmniboxFeatures;
-import org.chromium.components.omnibox.ToolConfigProto.ToolConfig;
-import org.chromium.components.omnibox.ToolModeUtils;
 import org.chromium.components.search_engines.StarterPackId;
 import org.chromium.components.search_engines.TemplateUrl;
 import org.chromium.components.search_engines.TemplateUrlService;
@@ -198,84 +189,9 @@ public class SearchEngineService implements Destroyable, TemplateUrlServiceObser
         }
     }
 
-    /**
-     * Returns the Omnibox Hint Text appropriate for specific AutocompleteRequestType.
-     *
-     * @param type the type of the AutocompleteRequestType to get the hint text for
-     * @param fuseboxSessionState optional session state to resolve hint text for specific tools.
-     * @return Hint text appropriate for the specific AutocompleteRequestType.
-     */
-    public String getOmniboxHintText(
-            @AutocompleteRequestType int type, @Nullable FuseboxSessionState fuseboxSessionState) {
-        if (fuseboxSessionState != null) {
-            var input = fuseboxSessionState.getAutocompleteInput();
-            if (input != null) {
-                GURL url = input.getPageUrl();
-                String title = input.getPageTitle();
-                if (ContextualTasksUtils.isContextualTasksUrl(url) && !TextUtils.isEmpty(title)) {
-                    return title;
-                }
-            }
-        }
-
-        if (TextUtils.isEmpty(mSearchEngineName)) {
-            return OmniboxResourceProvider.getString(mContext, R.string.omnibox_empty_hint);
-        }
-
-        // TODO(https://crbug.com/492729471): When removing model picker config, do not simply
-        // remove the if check below. Instead rethink how our callers invoke this, and try to
-        // simplify, potentially by removing request type.
-        if (OmniboxFeatures.sShowModelPicker.getValue()) {
-            if (ToolModeUtils.isAimRequest(type)) {
-                String toolHint = getToolHintFromState(type, fuseboxSessionState);
-                if (!TextUtils.isEmpty(toolHint)) {
-                    return toolHint;
-                }
-            }
-        }
-
-        @StringRes
-        int res =
-                switch (type) {
-                    case AutocompleteRequestType.AI_MODE ->
-                            R.string.omnibox_ai_mode_scope_placeholder_text;
-                    case AutocompleteRequestType.IMAGE_GENERATION ->
-                            R.string.omnibox_empty_hint_for_image_generation;
-                    default ->
-                            OmniboxFeatures.sUseAskHintForNtp.getValue()
-                                            && mTemplateUrlService.isDefaultSearchEngineGoogle()
-                                    ? R.string.omnibox_empty_ask_hint_with_dse_name
-                                    : R.string.omnibox_empty_hint_with_dse_name;
-                };
-
-        return OmniboxResourceProvider.getString(mContext, res, mSearchEngineName);
-    }
-
-    /** Returns the current tool's hint or null if none can be found. */
-    private static @Nullable String getToolHintFromState(
-            @AutocompleteRequestType int requestType,
-            @Nullable FuseboxSessionState fuseboxSessionState) {
-        if (fuseboxSessionState == null) return null;
-
-        ComposeboxQueryControllerBridge bridge =
-                fuseboxSessionState.getComposeboxQueryControllerBridge();
-        if (bridge == null) return null;
-
-        InputState inputState = bridge.getInputStateSupplier().get();
-        if (inputState == null) return null;
-
-        // TODO (https://crbug.com/492562651): Passing hasAttachments false here is currently
-        // required to correctly function, as the InputState isn't being updated to change request
-        // type config for image gen when it has attachments. Unclear if this is correct.
-        int activeTool =
-                ToolModeUtils.getToolModeForRequestType(requestType, /* hasAttachments= */ false);
-        for (ToolConfig config : inputState.toolConfigs) {
-            if (config.getToolValue() == activeTool) {
-                return config.getHintText();
-            }
-        }
-
-        return null;
+    /** Returns the default search engine name. */
+    public @Nullable String getSearchEngineName() {
+        return mSearchEngineName;
     }
 
     /** Add observer to be notified whenever the Search Engine Icon changes. */

@@ -230,8 +230,7 @@ class FormFillerTest
                       const absl::flat_hash_map<FieldGlobalId, FieldType>&,
                       const Section&) mutable {
           filled_fields = base::ToVector(data);
-          return base::MakeFlatSet<FieldGlobalId>(filled_fields, {},
-                                                  &FormFieldData::global_id);
+          return base::ToVector(filled_fields, &FormFieldData::global_id);
         })
         .WillRepeatedly({});
     trigger(form);
@@ -303,8 +302,15 @@ class FormFillerTest
       const CreditCard& virtual_card) {
     std::vector<FormFieldData> filled_fields;
     EXPECT_CALL(autofill_driver(), ApplyFormAction)
-        .WillOnce((DoAll(SaveArgElementsTo<2>(&filled_fields),
-                         Return(std::vector<FieldGlobalId>{}))));
+        .WillOnce([&filled_fields](
+                      mojom::FormActionType, mojom::ActionPersistence,
+                      base::span<const FormFieldData> data, const FillId&, bool,
+                      const url::Origin&,
+                      const absl::flat_hash_map<FieldGlobalId, FieldType>&,
+                      const Section&) {
+          filled_fields = base::ToVector(data);
+          return base::ToVector(data, &FormFieldData::global_id);
+        });
     form_filler().FillOrPreviewForm(
         mojom::ActionPersistence::kPreview, &virtual_card,
         *GetFormStructure(form),
@@ -372,10 +378,9 @@ TEST_F(FormFillerTest, SkipPreFilledFields) {
            {.role = ADDRESS_HOME_STATE,
             .value = kSelectedState,
             .form_control_type = FormControlType::kSelectOne,
-            .select_options = {SelectOption{.value = kSelectedState,
-                                            .text = kSelectedState},
-                               SelectOption{.value = kToBeFilledState,
-                                            .text = kToBeFilledState}}},
+            .select_options =
+                {{{.value = kSelectedState, .text = kSelectedState},
+                  {.value = kToBeFilledState, .text = kToBeFilledState}}}},
            // Value initialized with whitespace-only, expect field to be filled.
            {.role = ADDRESS_HOME_COUNTRY, .value = u" "}}});
   FormsSeen({form});
@@ -454,7 +459,8 @@ TEST_F(FormFillerTest, UndoSavesFormFillingDataForAutofillAi) {
            {.server_type = UNKNOWN_TYPE, .heuristic_type = UNKNOWN_TYPE}}});
 
   base::flat_set<FieldGlobalId> safe_filled_fields{
-      form.fields()[0].global_id(), form.fields()[2].global_id()};
+      form.fields()[0].global_id(), form.fields()[1].global_id(),
+      form.fields()[2].global_id()};
   EXPECT_CALL(autofill_driver(), ApplyFormAction)
       .Times(2)
       .WillRepeatedly(Return(safe_filled_fields));
@@ -477,8 +483,15 @@ TEST_F(FormFillerTest, UndoPreviewDoesNotChangeTheCache) {
   AutofillProfile profile = test::GetFullProfile();
 
   EXPECT_CALL(autofill_driver(), ApplyFormAction)
-      .WillRepeatedly(
-          Return(base::flat_set<FieldGlobalId>{autofill_field->global_id()}));
+      .Times(testing::AnyNumber())
+      .WillRepeatedly([](mojom::FormActionType, mojom::ActionPersistence,
+                         base::span<const FormFieldData> fields, const FillId&,
+                         bool, const url::Origin&,
+                         const absl::flat_hash_map<FieldGlobalId, FieldType>&,
+                         const Section&) {
+        return base::flat_set<FieldGlobalId>(
+            base::ToVector(fields, &FormFieldData::global_id));
+      });
 
   form_filler().FillOrPreviewForm(
       mojom::ActionPersistence::kFill, &profile, *GetFormStructure(form),
@@ -821,18 +834,20 @@ TEST_F(FormFillerTest, OnlyCountFilledSelectionBoxesForTypeFillingLimit) {
 
   FormData form = test::GetFormData(
       {.fields = {{.role = NAME_FULL, .autocomplete_attribute = "name"}}});
-  // Add 20 selection boxes that should be fillable since the correct
-  // entry is present.
   for (int i = 0; i < 20; ++i) {
-    test_api(form).Append(
+    FormFieldData field =
         test::CreateTestSelectField("State", "state", "", "address-level1",
-                                    {"AA", "BB", "CA"}, {"AA", "BB", "CA"}));
+                                    {"AA", "BB", "CA"}, {"AA", "BB", "CA"});
+    field.set_origin(form.main_frame_origin());
+    test_api(form).Append(std::move(field));
   }
   // Add 10 other a selection box for the country.
   for (int i = 0; i < 10; ++i) {
-    test_api(form).Append(
+    FormFieldData field =
         test::CreateTestSelectField("Country", "country", "", "country",
-                                    {"DE", "FR", "US"}, {"DE", "FR", "US"}));
+                                    {"DE", "FR", "US"}, {"DE", "FR", "US"});
+    field.set_origin(form.main_frame_origin());
+    test_api(form).Append(std::move(field));
   }
   FormsSeen({form});
 
@@ -1005,9 +1020,13 @@ TEST_F(FormFillerTest, DoNotFillUnfocusableFieldsExceptForSelect) {
                   {.role = ADDRESS_HOME_COUNTRY,
                    .autocomplete_attribute = "country"}}});
   test_api(form).field(-1).set_is_focusable(false);
-  test_api(form).Append(test::CreateTestSelectField(
-      "Country", "country", "", "country", {"CA", "US"},
-      {"Canada", "United States"}, FormControlType::kSelectOne));
+  {
+    FormFieldData field = test::CreateTestSelectField(
+        "Country", "country", "", "country", {"CA", "US"},
+        {"Canada", "United States"}, FormControlType::kSelectOne);
+    field.set_origin(form.main_frame_origin());
+    test_api(form).Append(std::move(field));
+  }
   test_api(form).field(-1).set_is_focusable(false);
   FormsSeen({form});
 
@@ -1513,21 +1532,38 @@ TEST_F(FormFillerTest, FillNonFocusableFields) {
 
   // <input role="presentation"> were considered unfillable in the past but are
   // now fillable.
-  test_api(form).Append(
-      test::CreateTestSelectField("Country", "country", "", "country",
-                                  {"CA", "US"}, {"Canada", "United States"}));
+  {
+    FormFieldData field =
+        test::CreateTestSelectField("Country", "country", "", "country",
+                                    {"CA", "US"}, {"Canada", "United States"});
+    field.set_origin(form.main_frame_origin());
+    test_api(form).Append(std::move(field));
+  }
   test_api(form).field(-1).set_is_focusable(false);
-  test_api(form).Append(
-      test::CreateTestSelectField("State", "state", "", "address-level1",
-                                  {"NY", "CA"}, {"New York", "California"}));
+  {
+    FormFieldData field =
+        test::CreateTestSelectField("State", "state", "", "address-level1",
+                                    {"NY", "CA"}, {"New York", "California"});
+    field.set_origin(form.main_frame_origin());
+    test_api(form).Append(std::move(field));
+  }
   test_api(form).field(-1).set_role(
       FormFieldData::RoleAttribute::kPresentation);
 
-  test_api(form).Append(test::CreateTestFormField("City", "city", "",
-                                                  FormControlType::kInputText));
+  {
+    FormFieldData field = test::CreateTestFormField(
+        "City", "city", "", FormControlType::kInputText);
+    field.set_origin(form.main_frame_origin());
+    test_api(form).Append(std::move(field));
+  }
   test_api(form).field(-1).set_is_focusable(false);
-  test_api(form).Append(test::CreateTestFormField(
-      "Street Address", "address", "", FormControlType::kInputText, "address"));
+  {
+    FormFieldData field =
+        test::CreateTestFormField("Street Address", "address", "",
+                                  FormControlType::kInputText, "address");
+    field.set_origin(form.main_frame_origin());
+    test_api(form).Append(std::move(field));
+  }
   test_api(form).field(-1).set_role(
       FormFieldData::RoleAttribute::kPresentation);
   FormsSeen({form});
@@ -1716,8 +1752,12 @@ TEST_F(FormFillerTest, FormChangesAddField) {
   FormData form = test::GetFormData(
       {.fields = {{.role = NAME_FULL, .autocomplete_attribute = "name"}}});
   FormsSeen({form});
-  test_api(form).Append(test::CreateTestFormField(
-      "email", "email", "", FormControlType::kInputText, "email"));
+  {
+    FormFieldData field = test::CreateTestFormField(
+        "email", "email", "", FormControlType::kInputText, "email");
+    field.set_origin(form.main_frame_origin());
+    test_api(form).Append(std::move(field));
+  }
   FormsSeen({form});
 
   AutofillProfile profile = test::GetFullProfile();
@@ -1936,8 +1976,12 @@ TEST_F(FormFillerTest, Refill_UsesBlockedFields) {
 
   // Append a new field to the form, which will trigger a refill when the form
   // is re-parsed.
-  test_api(form).Append(test::CreateTestFormField(
-      "Full Name", "full name", "", FormControlType::kInputText, "name"));
+  {
+    FormFieldData field = test::CreateTestFormField(
+        "Full Name", "full name", "", FormControlType::kInputText, "name");
+    field.set_origin(form.main_frame_origin());
+    test_api(form).Append(std::move(field));
+  }
 
   // TODO(crbug.com/489280538): Currently the refill will always fill the new
   // field, even if it "shouldn't" (i.e., if the caller that originally set the
@@ -2638,22 +2682,22 @@ TEST_F(FormFillerTest, GlicFillingDoeNotSetIsAutofilled) {
 // multiple options with the same value.
 TEST_F(FormFillerTest, SelectElementWithDuplicateValuesAndDistinctTexts) {
   FormData us_filled_form = test::GetFormData(
-      {.fields = {
-           {.role = NAME_FULL},
-           {.role = PHONE_HOME_COUNTRY_CODE,
-            .form_control_type = FormControlType::kSelectOne,
-            .select_options = {{.value = u"1", .text = u"Canada (+1)"},
-                               {.value = u"1", .text = u"United States (+1)"}}},
-           {.role = PHONE_HOME_CITY_AND_NUMBER_WITHOUT_TRUNK_PREFIX}}});
+      {.fields = {{.role = NAME_FULL},
+                  {.role = PHONE_HOME_COUNTRY_CODE,
+                   .form_control_type = FormControlType::kSelectOne,
+                   .select_options = {{{.value = u"1", .text = u"Canada (+1)"},
+                                       {.value = u"1",
+                                        .text = u"United States (+1)"}}}},
+                  {.role = PHONE_HOME_CITY_AND_NUMBER_WITHOUT_TRUNK_PREFIX}}});
 
   FormData ca_filled_form = test::GetFormData(
-      {.fields = {
-           {.role = NAME_FULL},
-           {.role = PHONE_HOME_COUNTRY_CODE,
-            .form_control_type = FormControlType::kSelectOne,
-            .select_options = {{.value = u"1", .text = u"Canada (+1)"},
-                               {.value = u"1", .text = u"United States (+1)"}}},
-           {.role = PHONE_HOME_CITY_AND_NUMBER_WITHOUT_TRUNK_PREFIX}}});
+      {.fields = {{.role = NAME_FULL},
+                  {.role = PHONE_HOME_COUNTRY_CODE,
+                   .form_control_type = FormControlType::kSelectOne,
+                   .select_options = {{{.value = u"1", .text = u"Canada (+1)"},
+                                       {.value = u"1",
+                                        .text = u"United States (+1)"}}}},
+                  {.role = PHONE_HOME_CITY_AND_NUMBER_WITHOUT_TRUNK_PREFIX}}});
 
   FormsSeen({us_filled_form, ca_filled_form});
 

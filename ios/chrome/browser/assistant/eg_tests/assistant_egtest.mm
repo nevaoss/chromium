@@ -47,6 +47,8 @@ void OpenAssistantFromOmnibox() {
           IDS_IOS_APP_BAR_ASK_GEMINI);
   [[EarlGrey selectElementWithMatcher:askGeminiMatcher]
       performAction:grey_tap()];
+  [ChromeEarlGrey waitForUIElementToDisappearWithMatcher:
+                      grey_kindOfClassName(@"_UIContextMenuContainerView")];
 }
 
 }  // namespace
@@ -140,11 +142,6 @@ void OpenAssistantFromOmnibox() {
 - (void)testOmniboxVisibleInSidePanel {
   if (![ChromeEarlGrey isIPadIdiom]) {
     EARL_GREY_TEST_DISABLED(@"Test only supported on iPad.");
-  }
-
-  // TODO(crbug.com/521688883): Disabled on iOS 18 and below iPad.
-  if (!@available(iOS 26, *)) {
-    EARL_GREY_TEST_DISABLED(@"Disabled on iOS 18- iPad.");
   }
 
   [ChromeEarlGrey loadURL:self.testServer->GetURL("/")];

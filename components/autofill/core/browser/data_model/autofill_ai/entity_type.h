@@ -263,7 +263,7 @@ constexpr std::optional<FieldType> AttributeType::field_type() const {
       return NATIONAL_ID_CARD_EXPIRATION_DATE;
 
     case AttributeTypeName::kOrderAccount:
-      return std::nullopt;
+      return EMAIL_ADDRESS;
     case AttributeTypeName::kOrderDate:
       return ORDER_DATE;
     case AttributeTypeName::kOrderId:

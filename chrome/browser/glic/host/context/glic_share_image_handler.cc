@@ -562,6 +562,9 @@ void GlicShareImageHandler::OnInvokeError(GlicInvokeError error) {
     case GlicInvokeError::kAdditionalContextNoClipboardMetadata:
       ShareComplete(ShareImageResult::kFailedNoClipboardMetadata);
       break;
+    case GlicInvokeError::kInstanceNotFound:
+      ShareComplete(ShareImageResult::kFailedLostInstance);
+      break;
     default:
       ShareComplete(ShareImageResult::kFailedUnknown);
       break;

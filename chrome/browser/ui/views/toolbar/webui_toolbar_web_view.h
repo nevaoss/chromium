@@ -19,6 +19,7 @@
 #include "chrome/browser/ui/views/toolbar/webui_app_menu_control.h"
 #include "chrome/browser/ui/views/toolbar/webui_avatar_toolbar_button.h"
 #include "chrome/browser/ui/views/toolbar/webui_back_forward_control.h"
+#include "chrome/browser/ui/views/toolbar/webui_battery_saver_control.h"
 #include "chrome/browser/ui/views/toolbar/webui_home_control.h"
 #include "chrome/browser/ui/views/toolbar/webui_pinned_toolbar_actions.h"
 #include "chrome/browser/ui/views/toolbar/webui_reload_control.h"
@@ -92,6 +93,7 @@ class WebUIToolbarControlDelegate {
       toolbar_ui_api::mojom::HomeControlStatePtr state) = 0;
   virtual void OnAppMenuControlStateChanged(
       toolbar_ui_api::mojom::AppMenuControlStatePtr state) = 0;
+  virtual void OnBatterySaverControlStateChanged(bool is_showing) = 0;
   virtual void OnOmniboxViewStateChanged(
       toolbar_ui_api::mojom::OmniboxViewStatePtr state) = 0;
   virtual void OnLocationBarFlagsChanged(
@@ -263,6 +265,8 @@ class WebUIToolbarWebView
                            CheckSplitTabsButtonColor);
   FRIEND_TEST_ALL_PREFIXES(WebUIToolbarWebViewPixelBrowserTest,
                            CheckHomeButtonColor);
+  FRIEND_TEST_ALL_PREFIXES(WebUIToolbarWebViewPixelBrowserTest,
+                           CheckBatterySaverButtonShowHide);
   FRIEND_TEST_ALL_PREFIXES(WebUIToolbarWebViewSplitTabsBrowserTest,
                            CheckSplitTabsButtonSourceType);
   FRIEND_TEST_ALL_PREFIXES(WebUIToolbarWebViewSplitTabsBrowserTest,
@@ -299,6 +303,7 @@ class WebUIToolbarWebView
       toolbar_ui_api::mojom::HomeControlStatePtr state) override;
   void OnAppMenuControlStateChanged(
       toolbar_ui_api::mojom::AppMenuControlStatePtr state) override;
+  void OnBatterySaverControlStateChanged(bool is_showing) override;
   void OnOmniboxViewStateChanged(
       toolbar_ui_api::mojom::OmniboxViewStatePtr state) override;
   void OnLocationBarFlagsChanged(
@@ -424,6 +429,7 @@ class WebUIToolbarWebView
   WebUISplitTabsControl split_tabs_control_;
   WebUIHomeControl home_control_;
   WebUIAppMenuControl app_menu_control_;
+  WebUIBatterySaverControl battery_saver_control_;
   WebUIAvatarToolbarButton avatar_control_;
   // This is null if WebUILocationBar is off, or the window is in one of the
   // modes (e.g. popup) that don't use it yet.

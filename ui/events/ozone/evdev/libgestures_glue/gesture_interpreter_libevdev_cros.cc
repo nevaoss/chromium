@@ -179,13 +179,6 @@ void GestureInterpreterLibevdevCros::OnLibEvdevCrosOpen(
       this);
   GestureInterpreterSetCallback(interpreter_, OnGestureReadyHelper, this);
 
-  if (base::FeatureList::IsEnabled(kEnableFastTouchpadClick)) {
-    GesturesProp* property =
-        property_provider_->GetProperty(id_, "Wiggle Button Down Timeout");
-    if (property) {
-      property->SetDoubleValue(std::vector<double>(1, 0.15));
-    }
-  }
 }
 
 void GestureInterpreterLibevdevCros::OnLibEvdevCrosEvent(Evdev* evdev,

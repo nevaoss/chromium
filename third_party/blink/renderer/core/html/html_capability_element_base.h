@@ -401,7 +401,7 @@ class CORE_EXPORT HTMLCapabilityElementBase
       override;
 
   // Callback triggered when permission is decided from browser side.
-  void OnEmbeddedPermissionsDecided(
+  virtual void OnEmbeddedPermissionsDecided(
       mojom::blink::EmbeddedPermissionControlResult result);
 
   // Callback triggered when the `disable_reason_expire_timer_` fires.

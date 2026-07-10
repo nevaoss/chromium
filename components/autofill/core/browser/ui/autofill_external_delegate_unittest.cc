@@ -61,6 +61,7 @@
 #include "components/autofill/core/browser/metrics/log_event.h"
 #include "components/autofill/core/browser/metrics/payments/save_and_fill_metrics.h"
 #include "components/autofill/core/browser/metrics/suggestions_list_metrics.h"
+#include "components/autofill/core/browser/network/autofill_ai/mock_personal_context_access_manager.h"
 #include "components/autofill/core/browser/network/autofill_ai/mock_wallet_pass_access_manager.h"
 #include "components/autofill/core/browser/payments/constants.h"
 #include "components/autofill/core/browser/payments/credit_card_access_manager.h"
@@ -726,12 +727,19 @@ TEST_F(AutofillExternalDelegateTest, AtMemoryUsesCaretAnchorWithValidCaret) {
 
   IssueOnQuery(form, caret_bounds, AutofillSuggestionTriggerSource::kAtMemory);
 
+  const PopupAnchorType expected_anchor_type =
+#if BUILDFLAG(IS_ANDROID)
+      PopupAnchorType::kAtMemoryBottomSheet;
+#else
+      PopupAnchorType::kCaret;
+#endif
+
   EXPECT_CALL(autofill_client(),
               ShowAutofillSuggestions(
                   AllOf(Field(&AutofillClient::PopupOpenArgs::element_bounds,
                               gfx::RectF(caret_bounds)),
                         Field(&AutofillClient::PopupOpenArgs::anchor_type,
-                              PopupAnchorType::kCaret)),
+                              expected_anchor_type)),
                   _));
 
   OnSuggestionsReturned(
@@ -739,9 +747,8 @@ TEST_F(AutofillExternalDelegateTest, AtMemoryUsesCaretAnchorWithValidCaret) {
       {CreateAutofillSuggestion(SuggestionType::kAddressEntry, u"suggestion")});
 }
 
-// Tests that @memory trigger source uses the default field anchor
-// type when caret bounds are empty.
-TEST_F(AutofillExternalDelegateTest, AtMemoryUsesFieldAnchorWithEmptyCaret) {
+// Tests that @memory trigger source uses the bottom sheet anchor type.
+TEST_F(AutofillExternalDelegateTest, AtMemoryUsesBottomSheetAnchor) {
   gfx::RectF field_bounds(0, 0, 100, 20);
   gfx::Rect empty_caret_bounds;
   FormData form = CreateTestFormWithBounds(field_bounds);
@@ -751,7 +758,7 @@ TEST_F(AutofillExternalDelegateTest, AtMemoryUsesFieldAnchorWithEmptyCaret) {
 
   const PopupAnchorType expected_anchor_type =
 #if BUILDFLAG(IS_ANDROID)
-      PopupAnchorType::kKeyboardAccessory;
+      PopupAnchorType::kAtMemoryBottomSheet;
 #else
       PopupAnchorType::kField;
 #endif
@@ -779,12 +786,19 @@ TEST_F(AutofillExternalDelegateTest, AtMemoryContextMenuUsesCaretAnchor) {
   IssueOnQuery(form, caret_bounds,
                AutofillSuggestionTriggerSource::kAtMemoryContextMenu);
 
+  const PopupAnchorType expected_anchor_type =
+#if BUILDFLAG(IS_ANDROID)
+      PopupAnchorType::kAtMemoryBottomSheet;
+#else
+      PopupAnchorType::kCaret;
+#endif
+
   EXPECT_CALL(autofill_client(),
               ShowAutofillSuggestions(
                   AllOf(Field(&AutofillClient::PopupOpenArgs::element_bounds,
                               gfx::RectF(caret_bounds)),
                         Field(&AutofillClient::PopupOpenArgs::anchor_type,
-                              PopupAnchorType::kCaret)),
+                              expected_anchor_type)),
                   _));
 
   OnSuggestionsReturned(
@@ -3073,6 +3087,96 @@ TEST_F(AutofillExternalDelegateWithWalletPrivatePassesTest,
 }
 #endif  // BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_CHROMEOS) ||
         // BUILDFLAG(IS_IOS)
+
+class AutofillExternalDelegateWithAmbientAutofillTest
+    : public AutofillExternalDelegateTest {
+ public:
+  AutofillExternalDelegateWithAmbientAutofillTest() {
+    scoped_feature_list_.InitWithFeatures({features::kAutofillAiWithDataSchema,
+                                           features::kAutofillAmbientAutofill},
+                                          {});
+  }
+
+  void SetUp() override {
+    AutofillExternalDelegateTest::SetUp();
+    personal_context_manager_ =
+        std::make_unique<NiceMock<MockPersonalContextAccessManager>>();
+    autofill_client().set_personal_context_access_manager(
+        personal_context_manager_.get());
+  }
+
+  void TearDown() override {
+    autofill_client().set_personal_context_access_manager(nullptr);
+    AutofillExternalDelegateTest::TearDown();
+  }
+
+  MockPersonalContextAccessManager& personal_context_manager() {
+    return *personal_context_manager_;
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+  std::unique_ptr<MockPersonalContextAccessManager> personal_context_manager_;
+};
+
+// Tests that when accepting a `kFillAutofillAi` suggestion for a masked
+// personal context entity, the entity is fetched and a loading state is shown
+// if it is async.
+TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
+       AutofillAiFillMaskedPersonalContextEntity) {
+  constexpr auto kPassportNumberType =
+      AttributeType(AttributeTypeName::kPassportNumber);
+
+  EntityInstance full_passport = GetPassportEntityInstance(
+      {.record_type = EntityInstance::RecordType::kPersonalContext});
+  EntityInstance masked_passport = MaskEntityInstance(full_passport);
+  ASSERT_NE(
+      full_passport.attribute(kPassportNumberType)->GetCompleteRawInfo(),
+      masked_passport.attribute(kPassportNumberType)->GetCompleteRawInfo());
+  AddOrUpdateEntityInstance(masked_passport);
+
+  IssueOnQuery({.fields = {{.role = PASSPORT_NUMBER}}});
+  Suggestion fill_suggestion(SuggestionType::kFillAutofillAi);
+  fill_suggestion.payload = Suggestion::AutofillAiPayload(
+      masked_passport.guid(), /*requires_server_fetch=*/true);
+  std::vector<Suggestion> suggestions = {fill_suggestion};
+  OnSuggestionsReturned(queried_field().global_id(), suggestions);
+  ON_CALL(autofill_client(), GetAutofillSuggestions)
+      .WillByDefault(Return(suggestions));
+
+  EXPECT_CALL(autofill_client(),
+              ShowAutofillAiFetchFromWalletFailureNotification)
+      .Times(0);
+
+  auto is_loading = Field(&Suggestion::is_loading, Suggestion::IsLoading(true));
+  auto is_unacceptable = Field(&Suggestion::acceptability,
+                               Suggestion::Acceptability::kUnacceptable);
+  EXPECT_CALL(autofill_client(),
+              UpdateAutofillSuggestions(
+                  ElementsAre(AllOf(is_loading, is_unacceptable)),
+                  FillingProduct::kAutofillAi, kDefaultSuggestionTriggerSource,
+                  AutofillSuggestionsIgnoreFocusLoss(true)));
+
+  PersonalContextAccessManager::GetUnmaskedSpiiEntityCallback callback;
+  EXPECT_CALL(personal_context_manager(),
+              GetUnmaskedSpiiEntity(masked_passport.guid(), _))
+      .WillOnce(MoveArg<1>(&callback));
+
+  external_delegate().DidAcceptSuggestion(fill_suggestion, {});
+
+  // Now simulate the async response.
+  EXPECT_CALL(
+      autofill_manager(),
+      FillOrPreviewForm(mojom::ActionPersistence::kFill, HasQueriedFormId(),
+                        IsQueriedFieldId(), HasFillingPayload(full_passport),
+                        DefaultTriggerSource(), _));
+  EXPECT_CALL(autofill_client(),
+              HideSuggestions(SuggestionHidingReason::kAcceptSuggestion,
+                              std::optional(FillingProduct::kAutofillAi)));
+
+  ASSERT_FALSE(callback.is_null());
+  std::move(callback).Run(full_passport);
+}
 
 TEST_F(AutofillExternalDelegateTest,
        ComposeSuggestion_ComposeProactiveNudge_ForwardsCaretBoundsToClient) {

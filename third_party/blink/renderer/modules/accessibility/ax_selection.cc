@@ -137,7 +137,7 @@ AXSelection AXSelection::FromCurrentSelection(
   if (!frame_selection.IsAvailable())
     return {};
 
-  return FromSelection(frame_selection.GetSelectionInDOMTree(), ax_object_cache,
+  return FromSelection(frame_selection.GetSelectionInDomTree(), ax_object_cache,
                        selection_behavior);
 }
 

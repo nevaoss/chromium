@@ -124,6 +124,8 @@ android_library("features_java") {
     "//third_party/android_deps:guava_android_java",
     "//third_party/androidx:androidx_annotation_annotation_java",
     "//third_party/jni_zero:jni_zero_java",
+    "//ui/accessibility:accessibility_features_java",
+    "//ui/accessibility:accessibility_features_native_map_java",
   ]
   srcjar_deps = [ ":features_jni_headers" ]
 }
@@ -286,6 +288,7 @@ robolectric_library("junit") {
     "//third_party/jni_zero:jni_zero_java",
     "//third_party/junit",
     "//third_party/mockito:mockito_java",
+    "//ui/accessibility:accessibility_features_java",
     "//ui/android:ui_java",
     "//ui/android:ui_java_test_support",
     "//url:gurl_java",
@@ -421,5 +424,9 @@ static_library("native") {
     "//components/prefs",
   ]
 
-  public_deps = [ ":features_jni_headers" ]
+  public_deps = [
+    ":features_jni_headers",
+    "//chrome/browser/readaloud",
+    "//chrome/browser/readaloud:impl",
+  ]
 }

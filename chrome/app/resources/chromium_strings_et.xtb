@@ -121,15 +121,6 @@
 <translation id="2287771843518581140">{NUM_TABS,plural, =1{Chromium soovitab teie brauserit aeglustava vahelehe peatada}other{Chromium soovitab teie brauserit aeglustavad vahelehed peatada}}</translation>
 <translation id="2307973900865360088">Hoia dokis</translation>
 <translation id="2313870531055795960">Kontrollib URL-e Chromiumi talletatud ohtlike saitide loendi alusel. Kui sait üritab teie parooli varastada või laadite alla kahjuliku faili, võib Chromium saata URL-id ja lehe sisu osad teenusesse Google'i ohutu sirvimine.</translation>
-<translation id="2332076562712130931">Selle toiminguga kaasneb järgmine.
-          <ph name="LINE_BREAKS" />
-           • Lähtestatakse mõned Chromiumi seaded ja otseteed.
-           <ph name="LINE_BREAK" />
-           • Keelatakse laiendused.
-           <ph name="LINE_BREAK" />
-           • Kustutatakse küpsised ja muud ajutised saidiandmed.
-            <ph name="LINE_BREAKS" />
-           Toiming ei mõjuta järjehoidjaid, ajalugu ega salvestatud paroole.</translation>
 <translation id="2343156876103232566">Numbri saatmiseks siit Android-telefoni logige mõlemas seadmes Chromiumi sisse.</translation>
 <translation id="2356070529366658676">Küsi</translation>
 <translation id="2359808026110333948">Jätka</translation>

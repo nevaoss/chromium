@@ -220,8 +220,7 @@ class TestNetworkContext : public mojom::NetworkContext {
       mojo::PendingRemote<mojom::WebSocketAuthenticationHandler> auth_handler,
       mojo::PendingRemote<mojom::TrustedHeaderClient> header_client,
       const std::optional<base::UnguessableToken>& throttling_profile_id,
-      const std::optional<base::UnguessableToken>& network_restrictions_id)
-      override {}
+      const base::UnguessableToken& network_restrictions_id) override {}
   void CreateWebTransport(
       const GURL& url,
       const url::Origin& origin,
@@ -237,8 +236,7 @@ class TestNetworkContext : public mojom::NetworkContext {
       mojo::PendingRemote<mojom::URLLoaderNetworkServiceObserver>
           url_loader_network_observer,
       mojom::ClientSecurityStatePtr client_security_state,
-      const std::optional<base::UnguessableToken>& network_restrictions_id)
-      override {}
+      const base::UnguessableToken& network_restrictions_id) override {}
   void LookUpProxyForURL(
       const GURL& url,
       const net::NetworkAnonymizationKey& network_anonymization_key,
@@ -307,7 +305,7 @@ class TestNetworkContext : public mojom::NetworkContext {
       const GURL& url,
       mojom::CredentialsMode credentials_mode,
       const net::NetworkAnonymizationKey& network_anonymization_key,
-      const std::optional<base::UnguessableToken>& network_restrictions_id,
+      const base::UnguessableToken& network_restrictions_id,
       const net::MutableNetworkTrafficAnnotationTag& traffic_annotation,
       const std::optional<net::ConnectionKeepAliveConfig>& keepalive_config,
       mojo::PendingRemote<network::mojom::ConnectionChangeObserverClient>

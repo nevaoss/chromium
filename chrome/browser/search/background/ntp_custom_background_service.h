@@ -12,7 +12,6 @@
 #include "base/values.h"
 #include "chrome/browser/search/background/theme_delegate.h"
 #include "components/image_fetcher/core/image_fetcher_impl.h"
-#include "components/prefs/pref_change_registrar.h"
 #include "components/themes/ntp_background_service.h"
 #include "components/themes/ntp_custom_background_service_base.h"
 #include "services/network/public/cpp/simple_url_loader.h"
@@ -39,15 +38,8 @@ class NtpCustomBackgroundService : public NtpCustomBackgroundServiceBase {
   explicit NtpCustomBackgroundService(Profile* profile);
   ~NtpCustomBackgroundService() override;
 
-  // NtpBackgroundServiceObserver:
-  void OnNextCollectionImageAvailable() override;
-  void OnNtpBackgroundServiceShuttingDown() override;
-
-  // Invoked when a background pref update is received via sync, triggering
-  // an update of theme info.
-  void UpdateBackgroundFromSync();
-
   // NtpCustomBackgroundServiceBase:
+  void UpdateBackgroundFromSync() override;
   void SetCustomBackgroundInfo(const GURL& background_url,
                                const GURL& thumbnail_url,
                                const std::string& attribution_line_1,
@@ -55,16 +47,13 @@ class NtpCustomBackgroundService : public NtpCustomBackgroundServiceBase {
                                const GURL& action_url,
                                const std::string& collection_id) override;
   void SelectLocalBackgroundImage(const base::FilePath& path) override;
+  void RefreshBackgroundIfNeeded() override;
+  std::optional<CustomBackground> GetCustomBackground() override;
+  void OnNextCollectionImageAvailable() override;
 
   // Set bool pref for local background and set id.
   virtual void SetBackgroundToLocalResourceWithId(const base::Token& id,
                                                   bool is_inspiration_image);
-
-  // Virtual for testing.
-  virtual void RefreshBackgroundIfNeeded();
-
-  // Virtual for testing.
-  virtual std::optional<CustomBackground> GetCustomBackground();
 
   void SetThemeDelegate(ThemeDelegate* delegate);
   void RemoveThemeDelegate();
@@ -96,6 +85,9 @@ class NtpCustomBackgroundService : public NtpCustomBackgroundServiceBase {
   virtual void VerifyCustomBackgroundImageURL();
 
  protected:
+  // NtpCustomBackgroundServiceBase:
+  std::optional<int> GetNextRefreshTimestamp() const override;
+
   // TODO(crbug.com/40877728): Make private when color extraction is refactored
   // outside of this service.
   // Fetches the image for the given |fetch_url| and extract its main color.
@@ -128,9 +120,6 @@ class NtpCustomBackgroundService : public NtpCustomBackgroundServiceBase {
 
   const raw_ptr<Profile> profile_;
   std::unique_ptr<network::SimpleURLLoader> custom_background_image_url_loader_;
-  PrefChangeRegistrar pref_change_registrar_;
-  base::ScopedObservation<NtpBackgroundService, NtpBackgroundServiceObserver>
-      background_service_observation_{this};
   raw_ptr<base::Clock> clock_;
   base::TimeTicks background_updated_timestamp_;
   raw_ptr<ThemeDelegate> theme_delegate_ = nullptr;

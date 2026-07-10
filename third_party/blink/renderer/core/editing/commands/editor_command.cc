@@ -309,7 +309,7 @@ static bool ExecuteApplyParagraphStyle(LocalFrame& frame,
     case EditorCommandSource::kMenuOrKeyBinding:
       frame.GetEditor().ApplyParagraphStyleToSelection(style, input_type);
       return true;
-    case EditorCommandSource::kDOM:
+    case EditorCommandSource::kDom:
       frame.GetEditor().ApplyParagraphStyle(style, input_type);
       return true;
   }
@@ -453,7 +453,7 @@ static bool ExecuteDelete(LocalFrame& frame,
       PerformDelete(frame);
       return true;
     }
-    case EditorCommandSource::kDOM:
+    case EditorCommandSource::kDom:
       // If the current selection is a caret, delete the preceding character. IE
       // performs forwardDelete, but we currently side with Firefox. Doesn't
       // scroll to make the selection visible, or modify the kill ring (this
@@ -700,7 +700,7 @@ static bool ExecuteForwardDelete(LocalFrame& frame,
       DeleteWithDirection(frame, DeleteDirection::kForward,
                           TextGranularity::kCharacter, false, true);
       return true;
-    case EditorCommandSource::kDOM:
+    case EditorCommandSource::kDom:
       // Doesn't scroll to make the selection visible, or modify the kill ring.
       // ForwardDelete is not implemented in IE or Firefox, so this behavior is
       // only needed for backward compatibility with ourselves, and for
@@ -1136,7 +1136,7 @@ static bool Enabled(LocalFrame&, Event*, EditorCommandSource) {
 static bool EnabledVisibleSelection(LocalFrame& frame,
                                     Event* event,
                                     EditorCommandSource source) {
-  if (source == EditorCommandSource::kDOM &&
+  if (source == EditorCommandSource::kDom &&
       frame.GetInputMethodController().GetActiveEditContext()) {
     return false;
   }
@@ -1160,7 +1160,7 @@ static bool EnabledVisibleSelection(LocalFrame& frame,
 static bool EnabledVisibleSelectionAndMark(LocalFrame& frame,
                                            Event* event,
                                            EditorCommandSource source) {
-  if (source == EditorCommandSource::kDOM &&
+  if (source == EditorCommandSource::kDom &&
       frame.GetInputMethodController().GetActiveEditContext()) {
     return false;
   }
@@ -1183,7 +1183,7 @@ static bool EnabledVisibleSelectionAndMark(LocalFrame& frame,
 static bool EnableCaretInEditableText(LocalFrame& frame,
                                       Event* event,
                                       EditorCommandSource source) {
-  if (source == EditorCommandSource::kDOM &&
+  if (source == EditorCommandSource::kDom &&
       frame.GetInputMethodController().GetActiveEditContext()) {
     return false;
   }
@@ -1203,7 +1203,7 @@ static bool EnabledInEditableText(LocalFrame& frame,
                                   Event* event,
                                   EditorCommandSource source) {
   if (frame.GetInputMethodController().GetActiveEditContext()) {
-    if (source == EditorCommandSource::kDOM) {
+    if (source == EditorCommandSource::kDom) {
       return false;
     } else if (source == EditorCommandSource::kMenuOrKeyBinding) {
       // If there's an active EditContext, always give the EditContext
@@ -1240,7 +1240,7 @@ static bool EnabledDelete(LocalFrame& frame,
     case EditorCommandSource::kMenuOrKeyBinding:
       return frame.Selection().SelectionHasFocus() &&
              frame.GetEditor().CanDelete();
-    case EditorCommandSource::kDOM:
+    case EditorCommandSource::kDom:
       // "Delete" from DOM is like delete/backspace keypress, affects selected
       // range if non-empty, otherwise removes a character
       return EnabledInEditableText(frame, event, source);
@@ -1251,7 +1251,7 @@ static bool EnabledDelete(LocalFrame& frame,
 static bool EnabledInRichlyEditableText(LocalFrame& frame,
                                         Event*,
                                         EditorCommandSource source) {
-  if (source == EditorCommandSource::kDOM &&
+  if (source == EditorCommandSource::kDom &&
       frame.GetInputMethodController().GetActiveEditContext()) {
     return false;
   }
@@ -1270,7 +1270,7 @@ static bool EnabledInRichlyEditableText(LocalFrame& frame,
 static bool EnabledRangeInEditableText(LocalFrame& frame,
                                        Event*,
                                        EditorCommandSource source) {
-  if (source == EditorCommandSource::kDOM &&
+  if (source == EditorCommandSource::kDom &&
       frame.GetInputMethodController().GetActiveEditContext()) {
     return false;
   }
@@ -1288,7 +1288,7 @@ static bool EnabledRangeInEditableText(LocalFrame& frame,
 static bool EnabledRangeInRichlyEditableText(LocalFrame& frame,
                                              Event*,
                                              EditorCommandSource source) {
-  if (source == EditorCommandSource::kDOM &&
+  if (source == EditorCommandSource::kDom &&
       frame.GetInputMethodController().GetActiveEditContext()) {
     return false;
   }
@@ -1324,7 +1324,7 @@ static bool EnabledUndo(LocalFrame& frame, Event*, EditorCommandSource) {
 static bool EnabledUnselect(LocalFrame& frame,
                             Event* event,
                             EditorCommandSource source) {
-  if (source == EditorCommandSource::kDOM &&
+  if (source == EditorCommandSource::kDom &&
       frame.GetInputMethodController().GetActiveEditContext()) {
     return false;
   }
@@ -1342,7 +1342,7 @@ static bool EnabledUnselect(LocalFrame& frame,
 static bool EnabledSelectAll(LocalFrame& frame,
                              Event*,
                              EditorCommandSource source) {
-  if (source == EditorCommandSource::kDOM &&
+  if (source == EditorCommandSource::kDom &&
       frame.GetInputMethodController().GetActiveEditContext()) {
     return false;
   }
@@ -2229,7 +2229,7 @@ bool EditorCommand::IsSupported() const {
   switch (source_) {
     case EditorCommandSource::kMenuOrKeyBinding:
       return true;
-    case EditorCommandSource::kDOM:
+    case EditorCommandSource::kDom:
       return command_->is_supported_from_dom(frame_);
   }
   NOTREACHED();

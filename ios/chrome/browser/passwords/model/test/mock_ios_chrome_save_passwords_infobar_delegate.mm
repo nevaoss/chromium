@@ -10,24 +10,30 @@
 #import "base/strings/sys_string_conversions.h"
 #import "components/password_manager/core/browser/mock_password_form_manager_for_ui.h"
 #import "components/password_manager/core/browser/password_manager_metrics_util.h"
-#import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
 
 namespace {
-std::unique_ptr<password_manager::PasswordFormManagerForUI> CreateFormManager(
+
+using ::testing::Return;
+using ::testing::ReturnRef;
+
+std::unique_ptr<password_manager::MockPasswordFormManagerForUI>
+CreateFormManager(
     password_manager::PasswordForm* form,
-    GURL* url) {
+    GURL* url,
+    password_manager::PasswordFormMetricsRecorder* metrics_recorder) {
   std::unique_ptr<password_manager::MockPasswordFormManagerForUI> form_manager =
       std::make_unique<password_manager::MockPasswordFormManagerForUI>();
   EXPECT_CALL(*form_manager, GetPendingCredentials())
-      .WillRepeatedly(testing::ReturnRef(*form));
-  EXPECT_CALL(*form_manager, GetURL()).WillRepeatedly(testing::ReturnRef(*url));
+      .WillRepeatedly(ReturnRef(*form));
+  EXPECT_CALL(*form_manager, GetURL()).WillRepeatedly(ReturnRef(*url));
   EXPECT_CALL(*form_manager, GetMetricsRecorder())
-      .WillRepeatedly(testing::Return(nullptr));
+      .WillRepeatedly(Return(metrics_recorder));
   EXPECT_CALL(*form_manager, GetCredentialSource())
-      .WillRepeatedly(testing::Return(
+      .WillRepeatedly(Return(
           password_manager::metrics_util::CredentialSourceType::kUnknown));
   return form_manager;
 }
+
 }  // namespace
 
 // static
@@ -36,20 +42,30 @@ MockIOSChromeSavePasswordInfoBarDelegate::Create(
     NSString* username,
     NSString* password,
     const GURL& url,
-    std::optional<std::string> account_to_store_password) {
+    std::optional<std::string> account_to_store_password,
+    password_manager::PasswordFormMetricsRecorder* metrics_recorder) {
   std::unique_ptr<password_manager::PasswordForm> form =
       std::make_unique<password_manager::PasswordForm>();
   form->username_value = base::SysNSStringToUTF16(username);
   form->password_value = base::SysNSStringToUTF16(password);
+  auto url_ptr = std::make_unique<GURL>(url);
+  std::unique_ptr<password_manager::MockPasswordFormManagerForUI> form_manager =
+      CreateFormManager(form.get(), url_ptr.get(), metrics_recorder);
+  password_manager::MockPasswordFormManagerForUI* mock_form_manager_ptr =
+      form_manager.get();
   return base::WrapUnique(new MockIOSChromeSavePasswordInfoBarDelegate(
-      std::move(form), std::make_unique<GURL>(url), account_to_store_password));
+      std::move(form), std::move(url_ptr), account_to_store_password,
+      std::move(form_manager), mock_form_manager_ptr));
 }
 
 MockIOSChromeSavePasswordInfoBarDelegate::
     MockIOSChromeSavePasswordInfoBarDelegate(
         std::unique_ptr<password_manager::PasswordForm> form,
         std::unique_ptr<GURL> url,
-        std::optional<std::string> account_to_store_password)
+        std::optional<std::string> account_to_store_password,
+        std::unique_ptr<password_manager::MockPasswordFormManagerForUI>
+            form_manager,
+        password_manager::MockPasswordFormManagerForUI* mock_form_manager_ptr)
     : IOSChromeSavePasswordInfoBarDelegate(
           account_to_store_password,
           /*password_update=*/false,
@@ -58,14 +74,15 @@ MockIOSChromeSavePasswordInfoBarDelegate::
                     PasswordAccountStorageUserState::kSyncUser
               : password_manager::features_util::
                     PasswordAccountStorageUserState::kSignedOutUser,
-          CreateFormManager(form.get(), url.get()),
+          std::move(form_manager),
           ukm::kInvalidSourceId,
           /*is_replacement=*/false,
-          [[CommandDispatcher alloc] init],
+          /*sync_presenter_handler=*/nil,
           /*profile_store=*/nullptr,
           /*account_store=*/nullptr),
       form_(std::move(form)),
-      url_(std::move(url)) {}
+      url_(std::move(url)),
+      mock_form_manager_(mock_form_manager_ptr) {}
 
 MockIOSChromeSavePasswordInfoBarDelegate::
     ~MockIOSChromeSavePasswordInfoBarDelegate() = default;

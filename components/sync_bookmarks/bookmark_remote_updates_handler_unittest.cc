@@ -123,6 +123,10 @@ sync_pb::BookmarkMetadata CreatePermanentNodeMetadata(
   sync_pb::BookmarkMetadata bookmark_metadata;
   bookmark_metadata.set_id(node->id());
   bookmark_metadata.mutable_metadata()->set_server_id(server_id);
+  bookmark_metadata.mutable_metadata()->set_client_tag_hash(
+      syncer::ClientTagHash::FromUnhashed(syncer::BOOKMARKS,
+                                          node->uuid().AsLowercaseString())
+          .value());
   return bookmark_metadata;
 }
 

@@ -12,6 +12,7 @@
 #include "content/browser/webid/flags.h"
 #include "content/browser/webid/identity_registry.h"
 #include "content/browser/webid/request.h"
+#include "content/browser/webid/request_service.h"
 #include "content/browser/webid/webid_utils.h"
 #include "content/public/browser/content_browser_client.h"
 #include "content/public/browser/navigation_controller.h"
@@ -48,7 +49,8 @@ NavigationInterceptor::NavigationInterceptor(
     : NavigationInterceptor(
           registry,
           base::BindRepeating([](content::RenderFrameHost* rfh) -> Request* {
-            return webid::Request::GetOrCreateForCurrentDocument(rfh);
+            return webid::RequestService::GetOrCreateForCurrentDocument(rfh)
+                ->GetOrCreateActiveRequest();
           })) {}
 
 NavigationInterceptor::NavigationInterceptor(

@@ -60,6 +60,7 @@ class PictureInPictureWindowManager {
   class Observer : public base::CheckedObserver {
    public:
     virtual void OnEnterPictureInPicture() {}
+    virtual void OnExitPictureInPicture() {}
   };
 
   // Returns the singleton instance.
@@ -198,6 +199,7 @@ class PictureInPictureWindowManager {
 
   // Notify observers that picture-in-picture window is created.
   void NotifyObserversOnEnterPictureInPicture();
+  void NotifyObserversOnExitPictureInPicture();
 
 #if !BUILDFLAG(IS_ANDROID)
   // Shows a standalone Document Picture-in-Picture window using a

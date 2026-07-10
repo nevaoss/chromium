@@ -32,6 +32,7 @@
 #include "base/task/single_thread_task_runner.h"
 #include "base/test/bind.h"
 #include "base/test/mock_callback.h"
+#include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/test_future.h"
 #include "base/threading/thread_restrictions.h"
@@ -115,6 +116,10 @@
 #include "components/saved_tab_groups/public/types.h"
 #include "components/sessions/content/content_live_tab.h"
 #include "components/sessions/content/content_test_helper.h"
+#include "components/sessions/core/command_storage_backend.h"
+#include "components/sessions/core/command_storage_features.h"
+#include "components/sessions/core/command_storage_manager.h"
+#include "components/sessions/core/command_storage_manager_test_helper.h"
 #include "components/sessions/core/serialized_navigation_entry_test_helper.h"
 #include "components/sessions/core/session_constants.h"
 #include "components/sessions/core/session_types.h"
@@ -5030,3 +5035,98 @@ IN_PROC_BROWSER_TEST_F(SessionRestoreTest, PinnedAndSplitTabsRestored) {
   EXPECT_EQ(new_browser->GetTabStripModel()->GetSplitForTab(0),
             new_browser->GetTabStripModel()->GetSplitForTab(1));
 }
+
+struct EncryptionTestParams {
+  const char* stage_name;
+};
+
+class SessionRestoreEncryptionTest
+    : public SessionRestoreTest,
+      public testing::WithParamInterface<EncryptionTestParams> {
+ public:
+  SessionRestoreEncryptionTest() {
+    if (std::string_view(GetParam().stage_name) == "clear_only") {
+      scoped_feature_list_.InitAndDisableFeature(
+          sessions::kEncryptSessionStorage);
+    } else {
+      scoped_feature_list_.InitAndEnableFeatureWithParameters(
+          sessions::kEncryptSessionStorage, {{"stage", GetParam().stage_name}});
+    }
+  }
+
+  void AssertCommandStorageBackendFilesExist() {
+    base::ScopedAllowBlockingForTesting allow_blocking;
+    sessions::CommandStorageManager* command_storage_manager =
+        SessionServiceTestHelper(
+            SessionServiceFactory::GetForProfile(browser()->profile()))
+            .command_storage_manager();
+    sessions::CommandStorageManagerTestHelper test_helper(
+        command_storage_manager);
+    command_storage_manager->Save();
+    test_helper.RunMessageLoopUntilBackendDone();
+    sessions::CommandStorageBackend* cleartext_backend =
+        test_helper.GetCleartextBackend();
+    sessions::CommandStorageBackend* encrypted_backend =
+        test_helper.GetEncryptedBackend();
+    if (test_helper.ShouldWriteEncryptedFiles()) {
+      ASSERT_TRUE(encrypted_backend);
+      const base::FilePath path = encrypted_backend->current_path_for_testing();
+      ASSERT_TRUE(base::PathExists(path));
+    } else {
+      ASSERT_FALSE(encrypted_backend);
+    }
+    if (test_helper.ShouldWriteCleartextFiles()) {
+      ASSERT_TRUE(cleartext_backend);
+      const base::FilePath path = cleartext_backend->current_path_for_testing();
+      ASSERT_TRUE(base::PathExists(path));
+    } else {
+      ASSERT_FALSE(cleartext_backend);
+    }
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_P(SessionRestoreEncryptionTest, BasicRestore) {
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GetUrl1()));
+  ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GetUrl2(), WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
+  ASSERT_EQ(2, browser()->tab_strip_model()->count());
+  AssertCommandStorageBackendFilesExist();
+
+  BrowserWindowInterface* restored = QuitBrowserAndRestore(browser());
+  TabStripModel* tab_strip_model = restored->GetTabStripModel();
+  ASSERT_EQ(2, tab_strip_model->count());
+  EXPECT_EQ(GetUrl1(), tab_strip_model->GetWebContentsAt(0)->GetURL());
+  EXPECT_EQ(GetUrl2(), tab_strip_model->GetWebContentsAt(1)->GetURL());
+}
+
+IN_PROC_BROWSER_TEST_P(SessionRestoreEncryptionTest, LargeSessionRestore) {
+  constexpr int kNumTabs = 20;
+  for (int i = 0; i < kNumTabs; ++i) {
+    ui_test_utils::NavigateToURLWithDisposition(
+        browser(), GetUrl1(), WindowOpenDisposition::NEW_FOREGROUND_TAB,
+        ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
+  }
+  int starting_tab_count = browser()->tab_strip_model()->count();
+  EXPECT_EQ(kNumTabs + 1, starting_tab_count);
+  AssertCommandStorageBackendFilesExist();
+
+  BrowserWindowInterface* restored = QuitBrowserAndRestore(browser());
+  TabStripModel* tab_strip_model = restored->GetTabStripModel();
+  EXPECT_EQ(starting_tab_count, tab_strip_model->count());
+  for (int i = 1; i < starting_tab_count; ++i) {
+    EXPECT_EQ(GetUrl1(), tab_strip_model->GetWebContentsAt(i)->GetURL());
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    SessionRestoreEncryptionTest,
+    testing::Values(EncryptionTestParams{"clear_only"},
+                    EncryptionTestParams{"write_both_read_only_clear"}),
+    [](const testing::TestParamInfo<EncryptionTestParams>& info) {
+      return info.param.stage_name;
+    });

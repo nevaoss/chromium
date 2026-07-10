@@ -5,6 +5,7 @@
 #include "components/omnibox/common/omnibox_features.h"
 
 #include "base/feature_list.h"
+#include "build/android_buildflags.h"
 #include "build/build_config.h"
 
 #if BUILDFLAG(IS_ANDROID)
@@ -16,6 +17,7 @@
 namespace omnibox {
 namespace {
 constexpr bool IS_ANDROID = !!BUILDFLAG(IS_ANDROID);
+constexpr bool IS_DESKTOP_ANDROID = !!BUILDFLAG(IS_DESKTOP_ANDROID);
 constexpr bool IS_IOS = !!BUILDFLAG(IS_IOS);
 
 constexpr base::FeatureState DISABLED = base::FEATURE_DISABLED_BY_DEFAULT;
@@ -37,7 +39,7 @@ BASE_FEATURE(kOmniboxRemoveSuggestionsFromClipboard, enable_if(IS_ANDROID));
 // autocomplete_grouper_sections.h) to limit and group (but not sort) matches.
 BASE_FEATURE(kGroupingFrameworkForNonZPS,
              "OmniboxGroupingFrameworkForNonZPS",
-             enable_if(IS_ANDROID));
+             enable_if(IS_ANDROID && !IS_DESKTOP_ANDROID));
 
 // Feature used to cap max zero suggestions shown according to the param
 // OmniboxMaxZeroSuggestMatches. If omitted,
@@ -87,10 +89,19 @@ BASE_FEATURE(kLocalHistoryZeroSuggestBeyondNTP, DISABLED);
 // Enables showing tabs from other devices in zero-prefix suggest.
 BASE_FEATURE(kOmniboxCrossDeviceTabZeroSuggest, DISABLED);
 BASE_FEATURE_PARAM(int,
-                   kOmniboxCrossDeviceTabZeroSuggestMaxAge,
+                   kOmniboxCrossDeviceTabZeroSuggestMaxAgeMinutes,
                    &kOmniboxCrossDeviceTabZeroSuggest,
-                   "max_age_minutes",
                    5);
+BASE_FEATURE_PARAM(
+    int,
+    kOmniboxCrossDeviceTabZeroSuggestDelayedContinuationMaxAgeMinutes,
+    &kOmniboxCrossDeviceTabZeroSuggest,
+    720);
+BASE_FEATURE_PARAM(
+    int,
+    kOmniboxCrossDeviceTabZeroSuggestMaxDelayedContinuationUptimeMinutes,
+    &kOmniboxCrossDeviceTabZeroSuggest,
+    5);
 
 // Enables the use of a request debouncer to throttle the number of ZPS prefetch
 // requests initiated over a given period of time (to help minimize the
@@ -125,9 +136,7 @@ BASE_FEATURE(kOnDeviceTailEnableEnglishModel,
              ENABLED);
 
 // Feature used to fetch document suggestions.
-BASE_FEATURE(kDocumentProvider,
-             "OmniboxDocumentProvider",
-             enable_if(!IS_ANDROID && !IS_IOS));
+BASE_FEATURE(kDocumentProvider, "OmniboxDocumentProvider", enable_if(!IS_IOS));
 
 // If enabled, the authentication requirement for Drive suggestions is based on
 // whether the primary account is available, i.e., the user is signed into
@@ -307,6 +316,9 @@ BASE_FEATURE(kOmniboxAppendInvocationSource, DISABLED);
 // Enable asynchronous Omnibox/Suggest view inflation.
 BASE_FEATURE(kOmniboxAsyncViewInflation, DISABLED);
 
+// Enable asynchronous Fusebox view inflation.
+BASE_FEATURE(kOmniboxFuseboxAsyncInflation, DISABLED);
+
 // Use FusedLocationProvider on Android to fetch device location.
 BASE_FEATURE(kUseFusedLocationProvider, ENABLED);
 
@@ -477,6 +489,7 @@ static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
       &kForceAndroidRealbox,
       &kOmniboxTouchDownTriggerForPrefetch,
       &kOmniboxAsyncViewInflation,
+      &kOmniboxFuseboxAsyncInflation,
       &kRichAutocompletion,
       &kUrlBarWithoutLigatures,
       &kUseFusedLocationProvider,

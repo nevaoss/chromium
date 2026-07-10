@@ -4,11 +4,10 @@
 
 import 'chrome://shopping-insights-side-panel.top-chrome/app.js';
 
-import {PageCallbackRouter, PriceTrackingHandlerRemote} from 'chrome://resources/cr_components/commerce/price_tracking.mojom-webui.js';
-import {PriceTrackingBrowserProxyImpl} from 'chrome://resources/cr_components/commerce/price_tracking_browser_proxy.js';
+import {browserProxyFactory as priceTrackingBrowserProxyFactory, PriceTrackingHandlerRemote} from 'chrome://resources/cr_components/commerce/price_tracking.mojom-webui.js';
 import type {ProductInfo} from 'chrome://resources/cr_components/commerce/shared.mojom-webui.js';
 import type {PriceInsightsInfo} from 'chrome://resources/cr_components/commerce/shopping_service.mojom-webui.js';
-import {PriceInsightsInfo_PriceBucket} from 'chrome://resources/cr_components/commerce/shopping_service.mojom-webui.js';
+import {PriceInsightsInfo_PriceBucket, ShoppingServiceHandlerRemote} from 'chrome://resources/cr_components/commerce/shopping_service.mojom-webui.js';
 import {ShoppingServiceBrowserProxyImpl} from 'chrome://resources/cr_components/commerce/shopping_service_browser_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import type {ShoppingInsightsAppElement} from 'chrome://shopping-insights-side-panel.top-chrome/app.js';
@@ -22,8 +21,7 @@ import {isVisible, microtasksFinished} from 'chrome://webui-test/test_util.js';
 
 suite('ShoppingInsightsAppTest', () => {
   let shoppingInsightsApp: ShoppingInsightsAppElement;
-  const shoppingServiceApi =
-      TestMock.fromClass(ShoppingServiceBrowserProxyImpl);
+  const shoppingServiceApi = TestMock.fromClass(ShoppingServiceHandlerRemote);
   const priceTrackingHandler = TestMock.fromClass(PriceTrackingHandlerRemote);
   const priceInsightsProxy = TestMock.fromClass(PriceInsightsBrowserProxyImpl);
   let metrics: MetricsTracker;
@@ -113,13 +111,14 @@ suite('ShoppingInsightsAppTest', () => {
     shoppingServiceApi.setResultFor(
         'getPriceTrackingStatusForCurrentUrl',
         Promise.resolve({tracked: false}));
-    ShoppingServiceBrowserProxyImpl.setInstance(shoppingServiceApi);
+    ShoppingServiceBrowserProxyImpl.setInstance({
+      handler: shoppingServiceApi,
+    });
 
     priceTrackingHandler.reset();
-    PriceTrackingBrowserProxyImpl.setInstance({
-      handler: priceTrackingHandler,
-      callbackRouter: new PageCallbackRouter(),
-    });
+    const {instance} =
+        priceTrackingBrowserProxyFactory.createForTest(priceTrackingHandler);
+    priceTrackingBrowserProxyFactory.setInstance(instance);
 
     priceInsightsProxy.reset();
     PriceInsightsBrowserProxyImpl.setInstance(priceInsightsProxy);

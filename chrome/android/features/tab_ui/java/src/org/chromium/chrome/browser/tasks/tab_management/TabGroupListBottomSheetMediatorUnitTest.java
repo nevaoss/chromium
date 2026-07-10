@@ -85,6 +85,7 @@ public class TabGroupListBottomSheetMediatorUnitTest {
     @Mock private SavedTabGroupTab mSavedTabGroupTab1;
     @Mock private SavedTabGroupTab mSavedTabGroupTab2;
     @Mock private SavedTabGroupTab mSavedTabGroupTab3;
+    @Mock private BottomSheetContent mBottomSheetContent;
     @Captor private ArgumentCaptor<BottomSheetObserver> mBottomSheetObserverCaptor;
 
     private ModelList mModelList;
@@ -197,6 +198,11 @@ public class TabGroupListBottomSheetMediatorUnitTest {
 
         verify(mBottomSheetController).addObserver(mBottomSheetObserverCaptor.capture());
         BottomSheetObserver observer = mBottomSheetObserverCaptor.getValue();
+
+        // Simulate our content shown.
+        when(mDelegate.isSameContentView(mBottomSheetContent)).thenReturn(true);
+        observer.onSheetContentChanged(mBottomSheetContent);
+
         observer.onSheetClosed(StateChangeReason.BACK_PRESS);
 
         verify(mBottomSheetController).removeObserver(observer);
@@ -223,6 +229,30 @@ public class TabGroupListBottomSheetMediatorUnitTest {
     }
 
     @Test
+    public void testBottomSheetObserver_onOtherSheetClosed() {
+        when(mDelegate.requestShowContent()).thenReturn(true);
+        mMediator.requestShowContent(Arrays.asList(mTab1, mTab2));
+
+        verify(mBottomSheetController).addObserver(mBottomSheetObserverCaptor.capture());
+        BottomSheetObserver observer = mBottomSheetObserverCaptor.getValue();
+
+        // A different bottom sheet was closed to make way for ours. We should
+        // ignore this event and not clear our model list.
+        observer.onSheetClosed(StateChangeReason.BACK_PRESS);
+        verify(mBottomSheetController, never()).removeObserver(observer);
+        assertFalse(mModelList.isEmpty());
+
+        // Our bottom sheet content is now active.
+        when(mDelegate.isSameContentView(mBottomSheetContent)).thenReturn(true);
+        observer.onSheetContentChanged(mBottomSheetContent);
+
+        // Our bottom sheet is closed. We should now clean up and clear the model list.
+        observer.onSheetClosed(StateChangeReason.BACK_PRESS);
+        verify(mBottomSheetController).removeObserver(observer);
+        assertTrue(mModelList.isEmpty());
+    }
+
+    @Test
     public void testBottomSheetObserver_onSheetStateChanged() {
         when(mDelegate.requestShowContent()).thenReturn(true);
         mMediator.requestShowContent(Arrays.asList(mTab1, mTab2));
@@ -242,6 +272,11 @@ public class TabGroupListBottomSheetMediatorUnitTest {
 
         verify(mBottomSheetController).addObserver(mBottomSheetObserverCaptor.capture());
         BottomSheetObserver observer = mBottomSheetObserverCaptor.getValue();
+
+        // Simulate our content shown.
+        when(mDelegate.isSameContentView(mBottomSheetContent)).thenReturn(true);
+        observer.onSheetContentChanged(mBottomSheetContent);
+
         observer.onSheetStateChanged(SheetState.HIDDEN, INTERACTION_COMPLETE);
 
         verify(mBottomSheetController).removeObserver(observer);

@@ -327,6 +327,13 @@ TEST_F(GlicShareImageHandlerTest, OnInvokeErrorInstanceDestroyed) {
       static_cast<int>(ShareImageResult::kFailedLostInstance), 1);
 }
 
+TEST_F(GlicShareImageHandlerTest, OnInvokeErrorInstanceNotFound) {
+  OnInvokeError(GlicInvokeError::kInstanceNotFound);
+  histogram_tester_.ExpectBucketCount(
+      "Glic.TabContext.ShareImageResult",
+      static_cast<int>(ShareImageResult::kFailedLostInstance), 1);
+}
+
 TEST_F(GlicShareImageHandlerTest, OnInvokeErrorAdditionalContextSawNavigation) {
   OnInvokeError(GlicInvokeError::kAdditionalContextSawNavigation);
   histogram_tester_.ExpectBucketCount(

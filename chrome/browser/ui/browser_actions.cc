@@ -16,11 +16,13 @@
 #include "base/metrics/user_metrics.h"
 #include "base/metrics/user_metrics_action.h"
 #include "base/notreached.h"
+#include "base/types/to_address.h"
 #include "build/branding_buildflags.h"
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/contextual_cueing/features.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_side_panel_coordinator.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 #include "chrome/browser/devtools/devtools_window.h"
 #include "chrome/browser/glic/browser_ui/glic_vector_icon_manager.h"
 #include "chrome/browser/glic/host/glic.mojom.h"
@@ -32,7 +34,9 @@
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/sharing_hub/sharing_hub_features.h"
 #include "chrome/browser/ui/accelerator_table.h"
-#include "chrome/browser/ui/omnibox/ai_mode_button_config.h"
+#include "chrome/browser/ui/omnibox/ai_mode_button_service_factory.h"
+#include "components/omnibox/browser/ai_mode_button_config.h"
+#include "components/omnibox/browser/ai_mode_button_service.h"
 #if BUILDFLAG(IS_MAC)
 #include "chrome/browser/global_keyboard_shortcuts_mac.h"
 #endif
@@ -470,14 +474,21 @@ void BrowserActions::InitializeSidePanelActions() {
                   if (!bwi) {
                     return;
                   }
-                  chrome::ToggleContextualTasksSidePanel(bwi);
+                  if (contextual_tasks::
+                          IsContextualTasksPinButtonInToolbarEnabled() &&
+                      contextual_tasks::GetEffectivePinState(
+                          bwi->GetProfile())) {
+                    chrome::ToggleContextualTasksSidePanelZeroState(bwi);
+                  } else {
+                    chrome::ToggleContextualTasksSidePanel(bwi);
+                  }
                 },
                 bwi))
             .SetActionId(kActionSidePanelShowContextualTasks)
             .SetText(l10n_util::GetStringUTF16(
-                IDS_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_TITLE))
+                IDS_CONTEXTUAL_TASKS_CUSTOMIZE_CHROME_LABEL))
             .SetTooltipText(l10n_util::GetStringUTF16(
-                IDS_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_TITLE))
+                IDS_CONTEXTUAL_TASKS_CUSTOMIZE_CHROME_LABEL))
             .SetImage(ui::ImageModel::FromVectorIcon(
                 features::IsRoundedIconsEnabled()
                     ? omnibox::kSearchSparkIcon
@@ -1442,48 +1453,53 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               ui::kColorIcon))
           .Build());
 
-  const auto& ai_config = ai_mode_button_config::GetCurrentAiModeButtonConfig();
-  root_action_item_->AddChild(
-      actions::ActionItem::Builder(
-          base::BindRepeating(
-              [](BrowserWindowInterface* bwi, actions::ActionItem* item,
-                 actions::ActionInvocationContext context) {
-                bool via_keyboard = false;
+  auto* ai_mode_button_service =
+      AiModeButtonServiceFactory::GetForProfile(base::to_address(profile_));
+  if (ai_mode_button_service) {
+    // If `ai_mode_button_service` is null, it will remain null and the button
+    // will not be needed.
+    root_action_item_->AddChild(
+        actions::ActionItem::Builder(
+            base::BindRepeating(
+                [](BrowserWindowInterface* bwi, actions::ActionItem* item,
+                   actions::ActionInvocationContext context) {
+                  bool via_keyboard = false;
 
-                std::underlying_type_t<page_actions::PageActionTrigger>
-                    page_action_trigger = context.GetProperty(
-                        page_actions::kPageActionTriggerKey);
+                  std::underlying_type_t<page_actions::PageActionTrigger>
+                      page_action_trigger = context.GetProperty(
+                          page_actions::kPageActionTriggerKey);
 
-                if ((page_action_trigger !=
-                     page_actions::kInvalidPageActionTrigger) &&
-                    page_action_trigger ==
-                        std::to_underlying(
-                            page_actions::PageActionTrigger::kKeyboard)) {
-                  via_keyboard = true;
-                }
+                  if ((page_action_trigger !=
+                       page_actions::kInvalidPageActionTrigger) &&
+                      page_action_trigger ==
+                          std::to_underlying(
+                              page_actions::PageActionTrigger::kKeyboard)) {
+                    via_keyboard = true;
+                  }
 
-                tabs::TabInterface* active_tab = bwi->GetActiveTabInterface();
-                CHECK(active_tab);
+                  tabs::TabInterface* active_tab = bwi->GetActiveTabInterface();
+                  CHECK(active_tab);
 
-                content::WebContents* web_contents = active_tab->GetContents();
-                CHECK(web_contents);
+                  content::WebContents* web_contents =
+                      active_tab->GetContents();
+                  CHECK(web_contents);
 
-                OmniboxController* omnibox_controller =
-                    search::GetOmniboxController(web_contents);
-                CHECK(omnibox_controller);
+                  OmniboxController* omnibox_controller =
+                      search::GetOmniboxController(web_contents);
+                  CHECK(omnibox_controller);
 
-                omnibox::AiModePageActionController::OpenAiMode(
-                    *omnibox_controller, via_keyboard);
-              },
-              bwi))
-          .SetActionId(kActionAiMode)
-          .SetText(ai_config.text)
-          .SetTooltipText(ai_config.tooltip)
-          .SetImage(ui::ImageModel::FromVectorIcon(
-              features::IsRoundedIconsEnabled() ? omnibox::kSearchSparkIcon
-                                                : omnibox::kSearchSparkOldIcon))
-          .SetProperty(actions::kActionItemPinnableKey, false)
-          .Build());
+                  omnibox::AiModePageActionController::OpenAiMode(
+                      *omnibox_controller, via_keyboard);
+                },
+                bwi))
+            .SetActionId(kActionAiMode)
+            .SetImage(ui::ImageModel::FromVectorIcon(
+                features::IsRoundedIconsEnabled()
+                    ? omnibox::kSearchSparkIcon
+                    : omnibox::kSearchSparkOldIcon))
+            .SetProperty(actions::kActionItemPinnableKey, false)
+            .Build());
+  }
 
   root_action_item_->AddChild(
       actions::ActionItem::Builder(

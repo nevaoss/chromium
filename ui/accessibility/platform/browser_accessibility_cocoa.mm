@@ -1617,10 +1617,10 @@ bool IsAXCustomActionNamesForTestingProjectionEnabled() {
 
   // This method is only for exposing aria-valuetext to VoiceOver if present.
   // Blink places the value of aria-valuetext in
-  // ax::mojom::StringAttribute::kValue for objects that support range values,
-  // i.e., progress bars, sliders and steppers.
+  // ax::mojom::StringAttribute::kAriaValueText for objects that support range
+  // values, i.e., progress bars, sliders and steppers.
   return base::SysUTF8ToNSString(
-      _owner->GetStringAttribute(ax::mojom::StringAttribute::kValue));
+      _owner->GetStringAttribute(ax::mojom::StringAttribute::kAriaValueText));
 }
 
 // LINT.IfChange

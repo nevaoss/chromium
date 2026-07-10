@@ -98,6 +98,12 @@ inline constexpr char kChromeUIContentAnnotatorInternalsURL[] =
 #endif
 inline constexpr char kChromeUIContextHubHost[] = "context-hub";
 inline constexpr char kChromeUIContextHubURL[] = "chrome://context-hub/";
+#if !BUILDFLAG(IS_ANDROID)
+inline constexpr char kChromeUIContextualCueingInternalsHost[] =
+    "contextual-cueing-internals";
+inline constexpr char kChromeUIContextualCueingInternalsURL[] =
+    "chrome://contextual-cueing-internals/";
+#endif
 inline constexpr char kChromeUIContextualTasksHost[] = "contextual-tasks";
 inline constexpr char kChromeUIContextualTasksURL[] =
     "chrome://contextual-tasks/";

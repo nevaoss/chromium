@@ -10,8 +10,6 @@
 #include "base/metrics/field_trial_params.h"
 
 namespace ui {
-COMPONENT_EXPORT(EVENTS_OZONE)
-BASE_DECLARE_FEATURE(kEnableFastTouchpadClick);
 
 COMPONENT_EXPORT(EVENTS_OZONE)
 BASE_DECLARE_FEATURE(kEnableHeatmapPalmDetection);

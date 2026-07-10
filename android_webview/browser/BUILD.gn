@@ -268,11 +268,6 @@ source_set("browser") {
     "//components/content_capture/browser",
     "//components/content_relationship_verification",
     "//components/content_settings/core/browser",
-    "//components/input",
-    "//components/stylus_handwriting/android",
-
-    # Called via JNI in CrashpadMain
-    "//components/crash/android:crashpad_main",
     "//components/crash/content/browser",
     "//components/crash/core/app",
     "//components/embedder_support",
@@ -285,6 +280,7 @@ source_set("browser") {
     "//components/google/core/common",
     "//components/heap_profiling/multi_process",
     "//components/history/core/browser",
+    "//components/input",
     "//components/js_injection/browser",
     "//components/js_injection/common:common_mojom",
     "//components/keyed_service/content",
@@ -331,6 +327,7 @@ source_set("browser") {
     "//components/services/heap_profiling/public/cpp",
     "//components/spellcheck:buildflags",
     "//components/strings:components_strings_grit",
+    "//components/stylus_handwriting/android",
     "//components/tracing:background_tracing_utils",
     "//components/tracing:tracing_config",
     "//components/tracing:tracing_metrics",

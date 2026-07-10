@@ -547,7 +547,7 @@ void TabStripSceneLayer::UpdateGlicButtonInternal(
   ui::Resource* icon_resource;
   if (should_tint) {
     icon_resource =
-        resource_manager_->GetStaticResourceWithTint(resource_id, tint);
+        resource_manager_->GetStaticResourceWithTint(resource_id, tint, true);
   } else {
     icon_resource = resource_manager_->GetResource(
         ui::ANDROID_RESOURCE_TYPE_STATIC, resource_id);
@@ -619,6 +619,7 @@ void TabStripSceneLayer::UpdateGlicButtonInternal(
       text_layer->SetPosition(
           gfx::PointF(std::round(text_x_pos), std::round(text_y_offset)));
       text_layer->SetHideLayerAndSubtree(false);
+      text_layer->SetOpacity(SkColorGetA(tint) * (1.0f / 255.f));
     } else {
       text_layer->SetHideLayerAndSubtree(true);
     }

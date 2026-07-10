@@ -37,9 +37,9 @@ TEST_F(RouteMapTest, ParseAndMatch) {
     ]
   })");
 
-  const Route* route1 = route_map.FindRoute("route1");
+  const Route* route1 = route_map.FindRoute(AtomicString("route1"));
   ASSERT_TRUE(route1);
-  const Route* route2 = route_map.FindRoute("route2");
+  const Route* route2 = route_map.FindRoute(AtomicString("route2"));
   ASSERT_TRUE(route2);
 
   // Nothing should match when there's no active navigation.

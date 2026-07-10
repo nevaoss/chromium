@@ -101,24 +101,6 @@ std::optional<FeatureConfig> CreateNewUserGestureInProductHelpConfig(
 
 std::optional<FeatureConfig> GetClientSideFeatureConfig(
     const base::Feature* feature) {
-#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
-
-  // The IPH bubble for link capturing has a trigger set to ANY so that it
-  // always shows up. The per app specific guardrails are independently stored
-  // under the web_app_prefs.
-  if (kIPHDesktopPWAsLinkCapturingLaunch.name == feature->name) {
-    FeatureConfig config;
-    config.valid = true;
-    config.availability = Comparator(ANY, 0);
-    config.session_rate = Comparator(ANY, 0);
-    config.trigger = EventConfig("desktop_pwa_launch_link_capturing",
-                                 Comparator(ANY, 0), 0, 0);
-    config.used = EventConfig("desktop_pwa_launch_link_capturing_used",
-                              Comparator(ANY, 0), 0, 0);
-    return config;
-  }
-
-#endif  // BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS)
   if (kIPHPasswordsManagementBubbleAfterSaveFeature.name == feature->name) {
@@ -741,10 +723,6 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     config.used = EventConfig("android_bottom_bar_new_tab_used",
                               Comparator(EQUAL, 0), 360, 360);
 
-    // Require that the GLIC IPH has been shown at least once.
-    config.event_configs.insert(
-        EventConfig("android_bottom_bar_glic_trigger",
-                    Comparator(GREATER_THAN_OR_EQUAL, 1), 360, 360));
     return config;
   }
 
@@ -3269,6 +3247,23 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
         EventConfig(events::kIOSGeminiConsentGiven, Comparator(EQUAL, 0),
                     feature_engagement::kMaxStoragePeriod,
                     feature_engagement::kMaxStoragePeriod));
+    return config;
+  }
+
+  if (kIPHiOSGeminiWhatCanGeminiDo.name == feature->name) {
+    FeatureConfig config;
+    config.valid = true;
+    config.availability = Comparator(ANY, 0);
+    config.session_rate = Comparator(ANY, 0);
+    // Limit showing the suggestion to less than 5 times.
+    config.trigger = EventConfig(events::kIOSGeminiWhatCanGeminiDoTriggered,
+                                 Comparator(LESS_THAN, 5),
+                                 feature_engagement::kMaxStoragePeriod,
+                                 feature_engagement::kMaxStoragePeriod);
+    config.used =
+        EventConfig(events::kIOSGeminiWhatCanGeminiDoTapped, Comparator(ANY, 0),
+                    feature_engagement::kMaxStoragePeriod,
+                    feature_engagement::kMaxStoragePeriod);
     return config;
   }
 

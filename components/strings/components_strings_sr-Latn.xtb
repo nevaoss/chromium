@@ -3022,6 +3022,7 @@ Da biste sakrili opcije za kasnije plaćanje, idite u <ph name="BEGIN_LINK" />p
 <translation id="5718601519531438273">Obuhvata informacije kao što su pasoši i vozačke dozvole</translation>
 <translation id="5720705177508910913">Trenutni korisnik</translation>
 <translation id="5720895412771013401">Računari</translation>
+<translation id="5721147290164931316">Skenirajte da biste se prijavili pomoću telefona</translation>
 <translation id="5721367770070844253">{count,plural, =1{{website_1}}=2{{website_1}, {website_2}}=3{{website_1}, {website_2} i još 1}one{{website_1}, {website_2} i još {more_count}}few{{website_1}, {website_2} i još {more_count}}other{{website_1}, {website_2} i još {more_count}}}</translation>
 <translation id="572328651809341494">Nedavno korišćene kartice</translation>
 <translation id="5723873695528696965">kontroliše i reprogramira MIDI uređaje</translation>
@@ -4269,6 +4270,7 @@ Dodatni detalji:
 <translation id="7646681339175747202">Lozinka koju ste upravo koristili je pronađena pri povredi podataka. Google menadžer lozinki preporučuje da odmah promenite lozinku.</translation>
 <translation id="7647206758853451655">Kvalitet štampanja</translation>
 <translation id="7648133459447652947">Da bi se prikazao kursor, promenite aplikaciju, ponovo učitajte stranicu ili se vratite</translation>
+<translation id="764847582138410250">Skenirajte da biste se prijavili pomoću telefona</translation>
 <translation id="7648527891719919697">Ovaj sajt će ostati blokiran jer ste uključili Naprednu zaštitu u <ph name="BEGIN_ANDROID_SETTINGS_LINK" />podešavanjima Android-a<ph name="END_ANDROID_SETTINGS_LINK" />. <ph name="BEGIN_LEARN_MORE_LINK" />Saznajte više o ovom upozorenju<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="7648900539798595789">Sačuvajte broj poznatog putnika u Google novčaniku</translation>
 <translation id="7648992873808071793">skladišti datoteke na ovom uređaju</translation>

@@ -597,7 +597,6 @@ Athugaðu aðgangsorðin þín hvenær sem er í <ph name="GOOGLE_PASSWORD_MANAG
 <translation id="1433478348197382180">Lesstilling</translation>
 <translation id="1433980411933182122">Ræsing</translation>
 <translation id="1434659328474177625"><ph name="ISSUER" /> staðfesti netfangið þitt</translation>
-<translation id="1434696352799406980">Þetta endurstillir í senn ræsisíðuna þína, skammvalssíðuna, leitarvélina og festa flipa. Enn fremur slekkur þessi aðgerð á öllum viðbótum og hreinsar burt tímabundin gögn á borð við fótspor. Bókamerkjunum þínum, ferlinum og vistuðum aðgangsorðum verður ekki eytt.</translation>
 <translation id="1434886155212424586">Heimasíðan er síða nýrra flipa</translation>
 <translation id="1435940442311036198">Nota aðgangslykil í öðru tæki</translation>
 <translation id="1436390408194692385">Gildir í <ph name="TICKET_TIME_LEFT" /></translation>
@@ -2575,6 +2574,7 @@ Annars skaltu skrá þig út núna svo breytingarnar á þessum reikningi taki g
 <translation id="2822551631199737692">Myndavél í notkun</translation>
 <translation id="2822634587701817431">Minnka/stækka</translation>
 <translation id="2824942875887026017"><ph name="IDS_SHORT_PRODUCT_NAME" /> er að nota stillingar staðgengilsþjóns frá kerfisstjóranum þínum</translation>
+<translation id="2825200993288778739">Búðu til eigin færni eða bættu við úr færnisafninu</translation>
 <translation id="282525059261716597">Skipanalína:</translation>
 <translation id="2825758591930162672">Opinber lykill viðfangs</translation>
 <translation id="2826576843404243001">Fáðu viðvörun áður en þú opnar síðu sem styður ekki örugga tengingu. Þú getur ekki breytt þessari stillingu vegna þess að þú ert með kveikt á ítarlegri vernd.</translation>
@@ -3715,7 +3715,6 @@ Annars skaltu skrá þig út núna svo breytingarnar á þessum reikningi taki g
 <translation id="366484203224589850"><ph name="TASK_TITLE" />: Gemini hefur unnið við þetta verkefni í langan tíma og hættir bráðum til að spara hleðslu rafhlöðunnar</translation>
 <translation id="3664911592976620204">{NUM_OTHER_MEMBERS,plural, =0{Taktu þátt í flipahópnum sem <ph name="OWNER_FIRST_NAME" /> er í}=1{Taktu þátt í flipahópnum sem <ph name="OWNER_FIRST_NAME" /> og # til viðbótar eru í}one{Taktu þátt í flipahópnum sem <ph name="OWNER_FIRST_NAME" /> og # til viðbótar eru í}other{Taktu þátt í flipahópnum sem <ph name="OWNER_FIRST_NAME" /> og # til viðbótar eru í}}</translation>
 <translation id="3665301845536101715">Opna í hliðarglugga</translation>
-<translation id="3665589677786828986">Chrome greindi að annað forrit hefur nýlega spillt einhverjum stillingum hjá þér og endurstillti þær því í sjálfgildi.</translation>
 <translation id="3665918214153961651">Skrá hlaðið upp</translation>
 <translation id="3666196264870170605">Villuleitargögn fyrir WiFi-netkort frá Intel</translation>
 <translation id="3666971425390608309">Hlé gert á niðurhali: <ph name="FILE_NAME" /></translation>
@@ -4652,6 +4651,7 @@ Annars skaltu skrá þig út núna svo breytingarnar á þessum reikningi taki g
 <translation id="4321179778687042513">ctrl</translation>
 <translation id="432160826079505197">Sýna <ph name="FILE_NAME" /> í Finder</translation>
 <translation id="4322394346347055525">Loka öðrum flipum</translation>
+<translation id="4322400254469690320">Finndu <ph name="FILENAME" /> í möppunni <ph name="FEATURE_NAME" /></translation>
 <translation id="4324577459193912240">Skrá er ókláruð</translation>
 <translation id="4325433082696797523">Geymslurými og orka</translation>
 <translation id="4325515113816851466">Val foreldra þinna gildir ekki þegar þú hefur skráð þig út</translation>
@@ -5002,7 +5002,6 @@ Annars skaltu skrá þig út núna svo breytingarnar á þessum reikningi taki g
 <translation id="4580596421317071374">Aðgangsorð eru vistuð í <ph name="GOOGLE_PASSWORD_MANAGER" /> í þessu tæki.</translation>
 <translation id="4580939929828762295">Settu öryggið á oddinn með Google-aðgangsorðastjórnun</translation>
 <translation id="4582297591746054421">Vefsvæði fara yfirleitt yfir klippiborðið í leit að eiginleikum, t.d. til að halda sniði textans sem þú afritaðir</translation>
-<translation id="4582563038311694664">Núllstilla allt</translation>
 <translation id="4584094413232466841">Fjarlægja þessar upplýsingar úr sjálfvirkri útfyllingu í Chrome?</translation>
 <translation id="4584770411839426377">Gluggi</translation>
 <translation id="4584836561445313300">Fyrirtækið þitt mun geta séð og stjórnað öllum vefskoðunargögnum sem til eru, eins og aðgangsorðum og fleira</translation>
@@ -6647,6 +6646,7 @@ Notaðu Ctrl + Alt + minnka birtustig til að minnka aðdrátt.</translation>
 <translation id="5826993284769733527">Hálfgagnsætt</translation>
 <translation id="5827266244928330802">Safari</translation>
 <translation id="5827591412833386477">Sýna vefsvæði í sama hópi</translation>
+<translation id="5827835011646404677">Færni er vistuð á Google-reikningnum þínum</translation>
 <translation id="5828181959764767444">Sólsetur</translation>
 <translation id="5828545842856466741">Bæta prófíl við...</translation>
 <translation id="5828633471261496623">Prentar...</translation>
@@ -10090,7 +10090,6 @@ Geymdu lykilskrána á öruggum stað. Þú þarft hana til að búa til nýjar 
 <translation id="8327386430364625757">Stærðfræðileg leturgerð</translation>
 <translation id="8327490658947427005">Ekki þýða val á <ph name="LANGUAGE" /></translation>
 <translation id="8327544198829180337">Loka þessu yfirliti</translation>
-<translation id="8327676037044516220">Heimildir og efnisstillingar</translation>
 <translation id="8328228852664998535">Ef þú heldur áfram verður aðgangsorðunum þínum, aðgangskóðum og öðrum gögnum eytt varanlega úr „<ph name="BRAND" />“. Reikningum sem þú bjóst til fyrir vefsvæði eða forrit verður ekki eytt.</translation>
 <translation id="8328777765163860529">Loka öllu</translation>
 <translation id="8330617762701840933">Listi vefsvæða sem eru framsend á annan vafra.</translation>
@@ -10911,7 +10910,6 @@ Geymdu lykilskrána á öruggum stað. Þú þarft hana til að búa til nýjar 
 <translation id="8925458182817574960">&amp;Stillingar</translation>
 <translation id="8926389886865778422">Ekki spyrja aftur</translation>
 <translation id="8926555406617248399">Flipar faldir</translation>
-<translation id="892706138619340876">Sumar stillingar voru endurstilltar</translation>
 <translation id="8927438609932588163">Leyfa vefsvæðum að vista gögn í tækinu</translation>
 <translation id="8929696694736010839">Aðeins yfirstandandi huliðslota</translation>
 <translation id="8929738682246584251">Kveikt/slökkt á stækkunargleri</translation>
@@ -11220,6 +11218,7 @@ Geymdu lykilskrána á öruggum stað. Þú þarft hana til að búa til nýjar 
 <translation id="9130015405878219958">Ógild stilling slegin inn.</translation>
 <translation id="9130135798965366513"><ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> mun deila <ph name="FIELDS_STRING" /> með þessu vefsvæði til að geta haldið áfram. Sjá <ph name="BEGIN_LINK1" />persónuverndarstefnu<ph name="END_LINK1" /> og <ph name="BEGIN_LINK2" />þjónustuskilmála<ph name="END_LINK2" /> vefsvæðisins.</translation>
 <translation id="9130364135697530260">Innfellt efni á þessu vefsvæði getur notað upplýsingar sem vefsvæði hafa vistað um þig</translation>
+<translation id="9130857050314385402">Flipaheiti og vefslóðir eru sendar til Google þegar þú notar færni</translation>
 <translation id="9131209053278896908">Vefsvæði á bannlista birtast hér</translation>
 <translation id="9131487537093447019">Senda skilaboð til Bluetooth-tækja og taka á móti skilaboðum frá þeim.</translation>
 <translation id="9133568201369135151">Söfnun greiningargagna er lokið. Einhverjar persónuupplýsinganna þinna eru hluti af þessum gögnum.</translation>

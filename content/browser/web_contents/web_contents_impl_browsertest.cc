@@ -5799,7 +5799,8 @@ class SurfaceEmbedConnectorWebContentsBrowserTest
     ~MockSurfaceEmbedConnectorDelegate() = default;
 
     // SurfaceEmbedConnector::Delegate implementation - all no-ops
-    void SetFrameSinkId(const viz::FrameSinkId& frame_sink_id) override {}
+    void SetFrameSinkId(const viz::FrameSinkId& frame_sink_id,
+                        bool allow_paint_holding) override {}
     void UpdateLocalSurfaceIdFromChild(
         const viz::LocalSurfaceId& local_surface_id) override {}
     void DetachedByHost() override {}

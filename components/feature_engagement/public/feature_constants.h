@@ -137,6 +137,7 @@ FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHSidePanelGenericPinnableFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHSidePanelLensOverlayPinnableFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(
     kIPHSidePanelLensOverlayPinnableFollowupFeature);
+FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHSidePanelContextualTasksPinnableFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHSideSearchAutoTriggeringFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHSideSearchPageActionLabelFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHPwaQuietNotificationFeature);
@@ -399,6 +400,9 @@ FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHiOSGeminiFullscreenPromoFeature);
 // FET feature flag that enables omnibox Gemini contextual cue chip.
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHiOSGeminiContextualCueChip);
 
+// FET feature flag that enables "What can Gemini do" suggestion.
+FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHiOSGeminiWhatCanGeminiDo);
+
 // FET feature flag that enables customized sites in the most visited tile.
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHiOSPinMostVisitedSiteFeature);
 
@@ -442,9 +446,14 @@ FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHGoogleOneOfferNotificationFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHLauncherSearchHelpUiFeature);
 #endif
 
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
+    BUILDFLAG(IS_CHROMEOS)
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHDesktopPWAsLinkCapturingLaunch);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHDesktopPWAsLinkCapturingLaunchAppInTab);
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
+        // BUILDFLAG(IS_CHROMEOS)
+
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHSignInBenefitsFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHSignInBenefitsNewSigninFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHSupervisedUserProfileSigninFeature);

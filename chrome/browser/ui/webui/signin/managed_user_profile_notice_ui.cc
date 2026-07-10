@@ -11,6 +11,8 @@
 #include "base/check_is_test.h"
 #include "base/feature_list.h"
 #include "base/functional/callback_helpers.h"
+#include "base/strings/string_number_conversions.h"
+#include "base/strings/to_string.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/values.h"
 #include "build/build_config.h"
@@ -43,15 +45,40 @@
 #include "components/signin/public/identity_manager/tribool.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/sync/base/features.h"
+#include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_data_source.h"
 #include "extensions/browser/extension_registry.h"
+#include "net/base/url_util.h"
 #include "services/network/public/mojom/content_security_policy.mojom.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/base/webui/resource_path.h"
 #include "ui/strings/grit/ui_strings.h"
 #include "ui/webui/webui_util.h"
+
+namespace {
+
+constexpr char kTypeQueryParam[] = "type";
+
+ManagedUserProfileNoticeUI::ScreenType GetScreenTypeFromURL(const GURL& url) {
+  std::string type_str;
+  int type_int = 0;
+  if (net::GetValueForKeyInQuery(url, kTypeQueryParam, &type_str) &&
+      base::StringToInt(type_str, &type_int)) {
+    bool is_type_in_enum_bounds =
+        type_int >= 0 &&
+        type_int <=
+            static_cast<int>(ManagedUserProfileNoticeUI::ScreenType::kMaxValue);
+    if (is_type_in_enum_bounds) {
+      return static_cast<ManagedUserProfileNoticeUI::ScreenType>(type_int);
+    }
+  }
+  // Default to profile picker type as the UI for this type is more generic.
+  return ManagedUserProfileNoticeUI::ScreenType::kProfilePicker;
+}
+
+}  // namespace
 
 ManagedUserProfileNoticeUI::ManagedUserProfileNoticeUI(content::WebUI* web_ui)
     : content::WebUIController(web_ui) {
@@ -231,8 +258,6 @@ ManagedUserProfileNoticeUI::ManagedUserProfileNoticeUI(content::WebUI* web_ui)
   source->AddBoolean("enforcedByPolicy", false);
   source->AddInteger("initialState",
                      ManagedUserProfileNoticeHandler::State::kDisclosure);
-  source->AddInteger(
-      "screenType", static_cast<int>(ScreenType::kProfilePicker));
   source->AddBoolean("usePrimaryAndTonalButtonsForPromos",
                      base::FeatureList::IsEnabled(
                          switches::kUsePrimaryAndTonalButtonsForPromos));
@@ -249,6 +274,16 @@ ManagedUserProfileNoticeUI::ManagedUserProfileNoticeUI(content::WebUI* web_ui)
       CHECK_DEREF(regional_capabilities::RegionalCapabilitiesServiceFactory::
                       GetForProfile(Profile::FromWebUI(web_ui)))
           .IsInSearchEngineChoiceScreenRegion();
+
+  bool is_first_run_desktop_refresh_enabled =
+      switches::IsFirstRunDesktopRefreshEnabled(
+          is_in_search_engine_choice_region);
+  if (is_first_run_desktop_refresh_enabled) {
+    source->AddInteger("screenType",
+                       static_cast<int>(GetScreenTypeFromURL(
+                           web_ui->GetWebContents()->GetVisibleURL())));
+  }
+
   bool is_first_run_desktop_revamp_enabled =
       switches::IsFirstRunDesktopRevampEnabled(
           is_in_search_engine_choice_region);
@@ -261,6 +296,20 @@ ManagedUserProfileNoticeUI::ManagedUserProfileNoticeUI(content::WebUI* web_ui)
         network::mojom::CSPDirectiveName::WorkerSrc,
         "worker-src blob: chrome://resources 'self';");
   }
+}
+
+// static
+GURL ManagedUserProfileNoticeUI::GetURLForType(
+    ManagedUserProfileNoticeUI::ScreenType type) {
+  return net::AppendQueryParameter(
+      GURL(chrome::kChromeUIManagedUserProfileNoticeRefreshURL),
+      kTypeQueryParam, base::ToString(static_cast<int>(type)));
+}
+
+// static
+ManagedUserProfileNoticeUI::ScreenType
+ManagedUserProfileNoticeUI::GetScreenTypeFromURLForTesting(const GURL& url) {
+  return GetScreenTypeFromURL(url);
 }
 
 ManagedUserProfileNoticeUI::~ManagedUserProfileNoticeUI() = default;

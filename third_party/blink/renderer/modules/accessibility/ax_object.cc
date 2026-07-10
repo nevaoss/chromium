@@ -2410,6 +2410,9 @@ void AXObject::SerializeUnignoredAttributes(ui::AXNodeData* node_data,
     TruncateAndAddStringAttribute(node_data,
                                   ax::mojom::blink::StringAttribute::kValue,
                                   GetValueForControl());
+    TruncateAndAddStringAttribute(
+        node_data, ax::mojom::blink::StringAttribute::kAriaValueText,
+        AriaAttribute(html_names::kAriaValuetextAttr));
 
     if (auto* input = DynamicTo<HTMLInputElement>(element)) {
       String type = element->getAttribute(html_names::kTypeAttr);
@@ -3648,6 +3651,10 @@ void AXObject::UpdateCachedAttributeValuesIfNeeded(
       is_changing_inherited_values = true;
     }
     cached_is_ignored_ = is_ignored;
+
+    if (IsCanvas()) {
+      NotifyCanvasIgnoredStateChanged(is_ignored);
+    }
   }
 
   // This depends on cached_is_ignored_ and cached_can_set_focus_attribute_.
@@ -3790,6 +3797,17 @@ void AXObject::UpdateCachedAttributeValuesIfNeeded(
     AXObjectCache().UpdateIncludedNodeCount(this);
   }
 #endif
+}
+
+void AXObject::NotifyCanvasIgnoredStateChanged(bool is_ignored) {
+  if (auto* canvas = DynamicTo<HTMLCanvasElement>(GetNode())) {
+    // PostTask to avoid modifying DOM/Style during the AX lifecycle phase
+    canvas->GetDocument()
+        .GetTaskRunner(TaskType::kInternalDefault)
+        ->PostTask(FROM_HERE,
+                   BindOnce(&HTMLCanvasElement::OnAxObjectIgnoredStateChanged,
+                            WrapWeakPersistent(canvas), is_ignored));
+  }
 }
 
 void AXObject::OnInheritedCachedValuesChanged() {

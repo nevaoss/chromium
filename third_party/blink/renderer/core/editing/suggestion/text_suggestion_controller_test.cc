@@ -240,7 +240,7 @@ TEST_F(TextSuggestionControllerTest,
 }
 
 TEST_F(TextSuggestionControllerTest,
-       ApplyingMisspellingTextSuggestionShouldNotChangeDOM) {
+       ApplyingMisspellingTextSuggestionShouldNotChangeDom) {
   SetBodyContent(
       "<div contenteditable>"
       "<span style='color: rgb(255, 0, 0);'>"

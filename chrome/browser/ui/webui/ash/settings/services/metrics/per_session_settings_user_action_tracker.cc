@@ -70,8 +70,8 @@ bool PerSessionSettingsUserActionTracker::HasUserMetricsConsent() {
   // Metrics consent can be either per-device, ie. the profile that is the owner
   // of the device, or per-user. If no per-user consent is provided, we will use
   // the device settings.
-  if (metrics_service_->GetCurrentUserMetricsConsent().has_value()) {
-    return metrics_service_->GetCurrentUserMetricsConsent().value();
+  if (metrics_service_->GetCurrentUserMetricsChoice().has_value()) {
+    return metrics_service_->GetCurrentUserMetricsChoice().value();
   }
 
   // Return the device setting.

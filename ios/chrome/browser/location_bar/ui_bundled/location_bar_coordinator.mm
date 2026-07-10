@@ -96,6 +96,7 @@
 #import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/browser/shared/ui/util/layout_guide_names.h"
 #import "ios/chrome/browser/shared/ui/util/pasteboard_util.h"
+#import "ios/chrome/browser/shared/ui/util/uikit_ui_util.h"
 #import "ios/chrome/browser/shared/ui/util/util_swift.h"
 #import "ios/chrome/browser/sharing/ui_bundled/sharing_coordinator.h"
 #import "ios/chrome/browser/sharing/ui_bundled/sharing_params.h"
@@ -765,18 +766,11 @@ struct AIHubBadgeActiveWindowsData : public base::SupportsUserData::Data {
   id<BrowserCoordinatorCommands> browserCoordinatorHandler = HandlerForProtocol(
       self.browser->GetCommandDispatcher(), BrowserCoordinatorCommands);
 
-  id<UIContextMenuInteractionAnimating> animator =
-      self.viewController.activeContextMenuAnimator;
-  if (animator) {
-    [animator addCompletion:^{
-      web::GetUIThreadTaskRunner({})->PostTask(
-          FROM_HERE, base::BindOnce(^{
-            [browserCoordinatorHandler showSendTabToSelfUI:url title:title];
-          }));
-    }];
-  } else {
-    [browserCoordinatorHandler showSendTabToSelfUI:url title:title];
-  }
+  ExecuteWhenTransitionsComplete(
+      ^{
+        [browserCoordinatorHandler showSendTabToSelfUI:url title:title];
+      },
+      self.viewController);
 }
 
 - (void)searchCopiedImage {

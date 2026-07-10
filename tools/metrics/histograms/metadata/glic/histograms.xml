@@ -45,6 +45,7 @@ chromium-metrics-reviews@google.com.
   <variant name="GetContextForActorFromTab"/>
   <variant name="GetContextFromFocusedTab"/>
   <variant name="GetContextFromTab"/>
+  <variant name="GetImageBytesFromTab"/>
   <variant name="GetModelQualityClientId"/>
   <variant name="GetOsMicrophonePermissionStatus"/>
   <variant name="GetSkill"/>
@@ -114,8 +115,6 @@ chromium-metrics-reviews@google.com.
   <variant name="UninterruptActorTask"/>
   <variant name="UnpinAllTabs"/>
   <variant name="UnpinTabs"/>
-  <variant name="UnsubscribeFromCaptureRegion"/>
-  <variant name="UnsubscribeFromPinCandidates"/>
   <variant name="UnsubscribeFromZoomLevel"/>
   <variant name="UpdateSkill"/>
   <variant name="WebClientCreated"/>
@@ -282,6 +281,16 @@ chromium-metrics-reviews@google.com.
   <summary>
     Records when the glic web client reports a transient error. These errors may
     be presented to the user, but may not prevent further use of Glic.
+  </summary>
+</histogram>
+
+<histogram name="Glic.Api.GetImageBytesFromTab.Error"
+    enum="GlicGetContextFromTabError" expires_after="2026-11-29">
+  <owner>linnan@chromium.org</owner>
+  <owner>shivanisha@chromium.org</owner>
+  <summary>
+    Records errors that occurred while attempting to retrieve image bytes from
+    an arbitrary tab.
   </summary>
 </histogram>
 

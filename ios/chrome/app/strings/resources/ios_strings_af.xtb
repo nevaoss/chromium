@@ -874,6 +874,7 @@
 <translation id="4021447724486050609">Dateer jou blaaier op</translation>
 <translation id="4021931095789478915">Voeg ${url} by leeslys</translation>
 <translation id="4028871427853484857">Stoor in rekening …</translation>
+<translation id="4036529942385659684">Wys beginbladsy ná tydperk van onaktiwiteit</translation>
 <translation id="4038354071007134711">Geen app op hierdie toestel kan die lêer oopmaak nie.</translation>
 <translation id="4042870976416480368">Soek in bladsy</translation>
 <translation id="4045441967987592849">Heropen</translation>
@@ -911,7 +912,6 @@
 <translation id="417138788035229076">Bestuur groep</translation>
 <translation id="4172051516777682613">Wys altyd</translation>
 <translation id="417273154673973994">{count,plural, =1{1 oortjiegroep is toegemaak en gestoor}other{{count} oortjiegroepe is toegemaak en gestoor}}</translation>
-<translation id="417612446554534067">Stuur na jou toestelle toe</translation>
 <translation id="4180726336228139707">Net op hierdie toestel</translation>
 <translation id="4181841719683918333">Tale</translation>
 <translation id="4183350924949589798">Nog sekuriteit?</translation>
@@ -1135,6 +1135,7 @@
 <translation id="4896467949657706481">Oortjies is toegemaak; jy is afgemeld</translation>
 <translation id="4911042367886397055">Welkom terug, <ph name="USER_NAME" />!</translation>
 <translation id="4913626501929406101">Jy kan veilig ’n kopie van jou wagwoord met iemand in jou gesinsgroep deel. <ph name="BEGIN_LINK" />Kom meer te wete<ph name="END_LINK" /></translation>
+<translation id="4916679969857390442">Lens</translation>
 <translation id="4917025507570489430">Jy kan bestaande blaaierdata gebruik wanneer jy as <ph name="USER_EMAIL" /> aangemeld is. Jou organisasie kan dalk hierdie data bekyk.</translation>
 <translation id="4918086044614829423">Aanvaar</translation>
 <translation id="4930714375720679147">Skakel aan</translation>

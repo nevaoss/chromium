@@ -4662,8 +4662,11 @@ const InlineBreakToken* LineBreaker::CreateBreakToken(
     sub_break_token = block_in_inline_fragment.GetBreakToken();
   }
 
-  bool is_past_first_formatted_line =
+  const bool is_past_first_formatted_line =
       !is_first_formatted_line_ || !line_info.IsEmptyLine();
+
+  const bool is_line_clamp_displaced_line =
+      line_clamp_ellipsis_width_ && line_info.Results().empty();
 
   DCHECK_EQ(line_info.HasForcedBreak(), is_forced_break_);
   unsigned flags =
@@ -4675,9 +4678,38 @@ const InlineBreakToken* LineBreaker::CreateBreakToken(
            : 0) |
       (is_past_first_formatted_line
            ? InlineBreakToken::kIsPastFirstFormattedLine
+           : 0) |
+      (is_line_clamp_displaced_line
+           ? InlineBreakToken::kIsLineClampDisplacedLine
            : 0);
 
-  return InlineBreakToken::Create(node_, current_style_, current_, flags,
+  InlineItemTextIndex next_start = current_;
+  if (line_info.UseFirstLineStyle()) [[unlikely]] {
+    if (const auto& offset_map = node_.FirstLineOffsetMap()) [[unlikely]] {
+      DCHECK(RuntimeEnabledFeatures::FirstLineTextTransformEnabled());
+      // The `::first-line` style has changed the text length.
+      // Adjust `next_start` to the offset for the text without `::first-line`.
+      next_start.text_offset =
+          offset_map->InverseMapOffset(next_start.text_offset);
+      const auto& base_items = node_.ItemsData(false).items;
+      while (next_start.item_index < base_items.size()) {
+        const auto& item = base_items[next_start.item_index];
+        if (item->Length() > 0 && next_start.text_offset >= item->EndOffset()) {
+          ++next_start.item_index;
+        } else if (item->Length() == 0 &&
+                   next_start.text_offset > item->EndOffset()) {
+          ++next_start.item_index;
+        } else {
+          break;
+        }
+      }
+      if (next_start.item_index >= base_items.size()) {
+        return nullptr;
+      }
+    }
+  }
+
+  return InlineBreakToken::Create(node_, current_style_, next_start, flags,
                                   sub_break_token, ruby_break_token_);
 }
 

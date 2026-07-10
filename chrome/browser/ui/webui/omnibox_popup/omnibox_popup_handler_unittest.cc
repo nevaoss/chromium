@@ -66,22 +66,22 @@ TEST_F(OmniboxPopupHandlerTest, ShowContextMenu) {
 TEST_F(OmniboxPopupHandlerTest, SetInputState) {
   std::string test_text = "test input";
   gfx::Range test_selection(1, 5);
+  bool is_double_click = false;
   EXPECT_CALL(page_, SetInputState(testing::_))
       .WillOnce([&](omnibox_popup::mojom::OmniboxInputStatePtr state) {
         EXPECT_EQ(state->text, test_text);
         EXPECT_EQ(state->selection, test_selection);
+        EXPECT_EQ(state->is_double_click, is_double_click);
+        EXPECT_TRUE(state->user_input_in_progress);
       });
-  handler_->SetInputState(test_text, test_selection);
+  handler_->SetInputState(test_text, test_selection,
+                          /*user_input_in_progress=*/true, is_double_click);
   page_.FlushForTesting();
 }
 
 TEST_F(OmniboxPopupHandlerTest, OnSelectionChanged) {
   gfx::Range test_selection(1, 5);
-  auto state = omnibox_popup::mojom::OmniboxInputState::New();
-  state->text = "test input";
-  state->selection = test_selection;
-  state->sequence_number = 0;
-  handler_->OnSelectionChanged(std::move(state));
+  handler_->OnSelectionChanged(test_selection, 0);
   EXPECT_EQ(handler_->latest_selection(), test_selection);
 }
 

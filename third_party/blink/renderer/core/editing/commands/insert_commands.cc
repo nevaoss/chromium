@@ -166,7 +166,7 @@ bool InsertCommands::ExecuteInsertLineBreak(LocalFrame& frame,
       return TargetFrame(frame, event)
           .GetEventHandler()
           .HandleTextInputEvent("\n", event, kTextEventInputLineBreak);
-    case EditorCommandSource::kDOM:
+    case EditorCommandSource::kDom:
       // Doesn't scroll to make the selection visible, or modify the kill ring.
       // InsertLineBreak is not implemented in IE or Firefox, so this behavior
       // is only needed for backward compatibility with ourselves, and for

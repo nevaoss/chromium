@@ -27,6 +27,8 @@
 
 namespace media {
 
+using Error = AudioInputStream::AudioInputCallback::Error;
+
 namespace {
 
 // Used to log errors in `CrasInputStream::Open`.
@@ -301,7 +303,7 @@ void CrasInputStream::Start(AudioInputCallback* callback) {
     DLOG(ERROR) << "Error creating stream params";
     ReportStreamStartResult(
         StreamStartResult::kCallbackStartErrorCreatingStreamParameters);
-    callback_->OnError();
+    callback_->OnError(Error::kStartupFailed);
     callback_ = nullptr;
     return;
   }
@@ -316,7 +318,7 @@ void CrasInputStream::Start(AudioInputCallback* callback) {
     DLOG(WARNING) << "Error setting up stream parameters.";
     ReportStreamStartResult(
         StreamStartResult::kCallbackStartErrorSettingUpStreamParameters);
-    callback_->OnError();
+    callback_->OnError(Error::kStartupFailed);
     callback_ = nullptr;
     libcras_stream_params_destroy(stream_params);
     return;
@@ -344,7 +346,7 @@ void CrasInputStream::Start(AudioInputCallback* callback) {
     DLOG(WARNING) << "Error setting up the channel layout.";
     ReportStreamStartResult(
         StreamStartResult::kCallbackStartErrorSettingUpChannelLayout);
-    callback_->OnError();
+    callback_->OnError(Error::kStartupFailed);
     callback_ = nullptr;
     libcras_stream_params_destroy(stream_params);
     return;
@@ -398,7 +400,7 @@ void CrasInputStream::Start(AudioInputCallback* callback) {
     DLOG(WARNING) << "Failed to add the stream.";
     ReportStreamStartResult(
         StreamStartResult::kCallbackStartFailedAddingStream);
-    callback_->OnError();
+    callback_->OnError(Error::kStartupFailed);
     callback_ = nullptr;
   }
 
@@ -524,7 +526,7 @@ void CrasInputStream::ReadAudio(base::span<const int16_t> source_data,
 void CrasInputStream::NotifyStreamError(int err) {
   ReportNotifyStreamErrors(err);
   if (callback_) {
-    callback_->OnError();
+    callback_->OnError(Error::kRuntimeError);
   }
 }
 

@@ -38,14 +38,11 @@ import org.robolectric.shadow.api.Shadow;
 
 import org.chromium.base.Callback;
 import org.chromium.base.ContextUtils;
-import org.chromium.base.supplier.ObservableSuppliers;
-import org.chromium.base.supplier.SettableNullableObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.chrome.browser.locale.LocaleManager;
 import org.chromium.chrome.browser.locale.LocaleManagerDelegate;
 import org.chromium.chrome.browser.omnibox.SearchEngineService.SearchEngineIconObserver;
 import org.chromium.chrome.browser.omnibox.SearchEngineService.SearchEngineNameObserver;
-import org.chromium.chrome.browser.omnibox.fusebox.ComposeboxQueryControllerBridge;
 import org.chromium.chrome.browser.omnibox.status.StatusProperties.StatusIconResource;
 import org.chromium.chrome.browser.omnibox.suggestions.CachedZeroSuggestionsManager;
 import org.chromium.chrome.browser.omnibox.suggestions.CachedZeroSuggestionsManager.JumpStartContext;
@@ -54,13 +51,7 @@ import org.chromium.chrome.browser.search_engines.SearchEngineType;
 import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
 import org.chromium.chrome.browser.ui.favicon.FaviconHelper;
 import org.chromium.chrome.browser.url_constants.UrlConstantResolver;
-import org.chromium.components.contextual_search.InputState;
 import org.chromium.components.metrics.OmniboxEventProtos.OmniboxEventProto.PageClassification;
-import org.chromium.components.omnibox.AutocompleteInput;
-import org.chromium.components.omnibox.AutocompleteRequestType;
-import org.chromium.components.omnibox.OmniboxFeatures;
-import org.chromium.components.omnibox.ToolConfigProto.ToolConfig;
-import org.chromium.components.omnibox.ToolModeProto.ToolMode;
 import org.chromium.components.search_engines.StarterPackId;
 import org.chromium.components.search_engines.TemplateUrl;
 import org.chromium.components.search_engines.TemplateUrlService;
@@ -84,15 +75,8 @@ public class SearchEngineServiceUnitTest {
     @Mock private Profile mProfile;
     @Mock private SearchEngineNameObserver mHintTextObserver;
     @Mock private SearchEngineIconObserver mEngineIconObserver;
-    @Mock private FuseboxSessionState mFuseboxSessionState;
-    @Mock private AutocompleteInput mAutocompleteInput;
-    @Mock private ComposeboxQueryControllerBridge mComposeboxQueryControllerBridge;
-
     private Context mContext;
     private Bitmap mBitmap;
-
-    private final SettableNullableObservableSupplier<InputState> mInputStateSupplier =
-            ObservableSuppliers.createNullable();
 
     @Before
     public void setUp() {
@@ -114,10 +98,6 @@ public class SearchEngineServiceUnitTest {
                 .getLocalFaviconImageForURL(any(), any(), anyInt(), anyBoolean(), any());
         doReturn(false).when(mLocaleManagerDelegate).needToCheckForSearchEnginePromo();
         LocaleManager.getInstance().setDelegateForTest(mLocaleManagerDelegate);
-
-        doReturn(mAutocompleteInput).when(mFuseboxSessionState).getAutocompleteInput();
-        doReturn(GURL.emptyGURL()).when(mAutocompleteInput).getPageUrl();
-        doReturn("").when(mAutocompleteInput).getPageTitle();
 
         lenient()
                 .doReturn(true)
@@ -141,12 +121,8 @@ public class SearchEngineServiceUnitTest {
         searchEngineService = new SearchEngineService(mProfile, mFaviconHelper);
         assertFalse(searchEngineService.shouldShowSearchEngineLogo());
 
-        // Verify default placeholder text.
+        // Verify observer notified.
         verify(mHintTextObserver).onSearchEngineNameChanged();
-        assertEquals(
-                searchEngineService.getOmniboxHintText(
-                        AutocompleteRequestType.SEARCH, /* fuseboxSessionState= */ null),
-                mContext.getString(R.string.omnibox_empty_hint));
     }
 
     @Test
@@ -286,12 +262,8 @@ public class SearchEngineServiceUnitTest {
             var searchEngineService = new SearchEngineService(mProfile, mFaviconHelper);
             searchEngineService.addSearchEngineNameObserver(mHintTextObserver);
 
-            // Verify updated placeholder text.
+            // Verify observer notified.
             verify(mHintTextObserver).onSearchEngineNameChanged();
-            assertEquals(
-                    "Search Google or type URL",
-                    searchEngineService.getOmniboxHintText(
-                            AutocompleteRequestType.SEARCH, /* fuseboxSessionState= */ null));
             clearInvocations(mHintTextObserver);
 
             // Make an update
@@ -301,7 +273,7 @@ public class SearchEngineServiceUnitTest {
             verifyPersistedSearchEngine("google");
             verifySearchEngineSpecificDataRetainedInCache();
 
-            // Verify updated placeholder text.
+            // Verify observer not notified if engine name didn't change.
             verify(mHintTextObserver, never()).onSearchEngineNameChanged();
         }
 
@@ -321,12 +293,8 @@ public class SearchEngineServiceUnitTest {
             verifyPersistedSearchEngine("engine");
             verifySearchEngineSpecificDataRetainedInCache();
 
-            // Verify updated placeholder text.
+            // Verify observer notified of name change.
             verify(mHintTextObserver).onSearchEngineNameChanged();
-            assertEquals(
-                    "Search Another Engine or type URL",
-                    searchEngineService.getOmniboxHintText(
-                            AutocompleteRequestType.SEARCH, /* fuseboxSessionState= */ null));
         }
 
         clearInvocations(mHintTextObserver);
@@ -345,12 +313,8 @@ public class SearchEngineServiceUnitTest {
             verifyPersistedSearchEngine("engine");
             verifySearchEngineSpecificDataRetainedInCache();
 
-            // Verify default placeholder text.
+            // Verify observer notified.
             verify(mHintTextObserver).onSearchEngineNameChanged();
-            assertEquals(
-                    "Search or type URL",
-                    searchEngineService.getOmniboxHintText(
-                            AutocompleteRequestType.SEARCH, /* fuseboxSessionState= */ null));
         }
 
         clearInvocations(mHintTextObserver);
@@ -366,12 +330,8 @@ public class SearchEngineServiceUnitTest {
             doReturn(null).when(mTemplateUrlService).getDefaultSearchEngineTemplateUrl();
             searchEngineService.onTemplateURLServiceChanged();
 
-            // Verify default placeholder text.
+            // Verify observer notified.
             verify(mHintTextObserver).onSearchEngineNameChanged();
-            assertEquals(
-                    "Search or type URL",
-                    searchEngineService.getOmniboxHintText(
-                            AutocompleteRequestType.SEARCH, /* fuseboxSessionState= */ null));
         }
     }
 
@@ -485,180 +445,6 @@ public class SearchEngineServiceUnitTest {
         assertFalse(searchEngineService.needToCheckForSearchEnginePromo());
 
         verify(mLocaleManagerDelegate, times(1)).needToCheckForSearchEnginePromo();
-    }
-
-    @Test
-    public void testGetOmniboxHintText_ContextualTasks() {
-        SearchEngineService searchEngineService = new SearchEngineService(mProfile, mFaviconHelper);
-        GURL aiUrl = new GURL("chrome://contextual-tasks");
-        String aiTitle = "My AI Page";
-
-        doReturn(mAutocompleteInput).when(mFuseboxSessionState).getAutocompleteInput();
-        doReturn(aiUrl).when(mAutocompleteInput).getPageUrl();
-        doReturn(aiTitle).when(mAutocompleteInput).getPageTitle();
-
-        assertEquals(
-                aiTitle,
-                searchEngineService.getOmniboxHintText(
-                        AutocompleteRequestType.SEARCH, mFuseboxSessionState));
-    }
-
-    @Test
-    public void testGetOmniboxHintText_FuseboxSessionState() {
-        OmniboxFeatures.sShowModelPicker.setForTesting(true);
-        configureSearchEngine("google", "Google");
-        SearchEngineService searchEngineService = new SearchEngineService(mProfile, mFaviconHelper);
-        String searchEngineHint = "Search Google or type URL";
-        String aiModeHint = "Ask anything";
-        String imageGenHint = "Image Gen Tool Hint";
-        String deepSearchHint = "Deep Search Tool Hint";
-        String canvasHint = "Canvas Tool Hint";
-        doReturn(mComposeboxQueryControllerBridge)
-                .when(mFuseboxSessionState)
-                .getComposeboxQueryControllerBridge();
-        doReturn(mInputStateSupplier)
-                .when(mComposeboxQueryControllerBridge)
-                .getInputStateSupplier();
-
-        ToolConfig aiModeConfig =
-                ToolConfig.newBuilder()
-                        .setTool(ToolMode.TOOL_MODE_UNSPECIFIED)
-                        .setHintText(aiModeHint)
-                        .build();
-        ToolConfig imageGenConfig =
-                ToolConfig.newBuilder()
-                        .setTool(ToolMode.TOOL_MODE_IMAGE_GEN)
-                        .setHintText(imageGenHint)
-                        .build();
-        ToolConfig deepSearchConfig =
-                ToolConfig.newBuilder()
-                        .setTool(ToolMode.TOOL_MODE_DEEP_SEARCH)
-                        .setHintText(deepSearchHint)
-                        .build();
-        ToolConfig canvasConfig =
-                ToolConfig.newBuilder()
-                        .setTool(ToolMode.TOOL_MODE_CANVAS)
-                        .setHintText(canvasHint)
-                        .build();
-        byte[][] toolConfigs =
-                new byte[][] {
-                    aiModeConfig.toByteArray(),
-                    imageGenConfig.toByteArray(),
-                    deepSearchConfig.toByteArray(),
-                    canvasConfig.toByteArray()
-                };
-        InputState inputState = new InputState.Builder().withToolConfigs(toolConfigs).build();
-        mInputStateSupplier.set(inputState);
-
-        assertEquals(
-                imageGenHint,
-                searchEngineService.getOmniboxHintText(
-                        AutocompleteRequestType.IMAGE_GENERATION, mFuseboxSessionState));
-
-        assertEquals(
-                deepSearchHint,
-                searchEngineService.getOmniboxHintText(
-                        AutocompleteRequestType.DEEP_SEARCH, mFuseboxSessionState));
-
-        assertEquals(
-                canvasHint,
-                searchEngineService.getOmniboxHintText(
-                        AutocompleteRequestType.CANVAS, mFuseboxSessionState));
-
-        assertEquals(
-                aiModeHint,
-                searchEngineService.getOmniboxHintText(
-                        AutocompleteRequestType.AI_MODE, mFuseboxSessionState));
-
-        OmniboxFeatures.sShowModelPicker.setForTesting(false);
-        assertEquals(
-                searchEngineHint,
-                searchEngineService.getOmniboxHintText(
-                        AutocompleteRequestType.DEEP_SEARCH, mFuseboxSessionState));
-        OmniboxFeatures.sShowModelPicker.setForTesting(true);
-
-        assertEquals(
-                searchEngineHint,
-                searchEngineService.getOmniboxHintText(
-                        AutocompleteRequestType.DEEP_SEARCH, /* fuseboxSessionState= */ null));
-
-        doReturn(null).when(mFuseboxSessionState).getComposeboxQueryControllerBridge();
-        assertEquals(
-                searchEngineHint,
-                searchEngineService.getOmniboxHintText(
-                        AutocompleteRequestType.DEEP_SEARCH, mFuseboxSessionState));
-        doReturn(mComposeboxQueryControllerBridge)
-                .when(mFuseboxSessionState)
-                .getComposeboxQueryControllerBridge();
-
-        mInputStateSupplier.set(null);
-        assertEquals(
-                searchEngineHint,
-                searchEngineService.getOmniboxHintText(
-                        AutocompleteRequestType.DEEP_SEARCH, mFuseboxSessionState));
-
-        InputState emptyHintState = new InputState.Builder().withHintText("").build();
-        mInputStateSupplier.set(emptyHintState);
-        assertEquals(
-                searchEngineHint,
-                searchEngineService.getOmniboxHintText(
-                        AutocompleteRequestType.DEEP_SEARCH, mFuseboxSessionState));
-    }
-
-    @Test
-    public void testGetOmniboxHintText_ModelPickerDisabled() {
-        configureSearchEngine("google", "Google");
-        SearchEngineService searchEngineService = new SearchEngineService(mProfile, mFaviconHelper);
-
-        assertEquals(
-                "Search Google or type URL",
-                searchEngineService.getOmniboxHintText(
-                        AutocompleteRequestType.SEARCH, mFuseboxSessionState));
-
-        assertEquals(
-                "Ask anything",
-                searchEngineService.getOmniboxHintText(
-                        AutocompleteRequestType.AI_MODE, mFuseboxSessionState));
-
-        assertEquals(
-                "Describe your image",
-                searchEngineService.getOmniboxHintText(
-                        AutocompleteRequestType.IMAGE_GENERATION, mFuseboxSessionState));
-    }
-
-    @Test
-    public void testGetOmniboxHintText_UseAskHintForNtp() {
-        SearchEngineService searchEngineService = new SearchEngineService(mProfile, mFaviconHelper);
-
-        // Case 1: Feature disabled
-        OmniboxFeatures.sUseAskHintForNtp.setForTesting(false);
-        configureSearchEngine("google", "Google");
-        searchEngineService.onTemplateURLServiceChanged();
-        assertEquals(
-                "Search Google or type URL",
-                searchEngineService.getOmniboxHintText(
-                        AutocompleteRequestType.SEARCH, /* fuseboxSessionState= */ null));
-
-        // Case 2: Feature enabled, Search Engine is Google
-        OmniboxFeatures.sUseAskHintForNtp.setForTesting(true);
-        configureSearchEngine("google", "Google");
-        searchEngineService.onTemplateURLServiceChanged();
-        assertEquals(
-                "Ask Google or type URL",
-                searchEngineService.getOmniboxHintText(
-                        AutocompleteRequestType.SEARCH, /* fuseboxSessionState= */ null));
-
-        // Case 3: Feature enabled, Search Engine is NOT Google
-        OmniboxFeatures.sUseAskHintForNtp.setForTesting(true);
-        configureSearchEngine("yahoo", "Yahoo");
-        searchEngineService.onTemplateURLServiceChanged();
-        assertEquals(
-                "Search Yahoo or type URL",
-                searchEngineService.getOmniboxHintText(
-                        AutocompleteRequestType.SEARCH, /* fuseboxSessionState= */ null));
-
-        // Reset for testing
-        OmniboxFeatures.sUseAskHintForNtp.setForTesting(false);
     }
 
     @Test

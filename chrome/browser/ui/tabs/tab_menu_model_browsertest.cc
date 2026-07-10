@@ -681,13 +681,4 @@ IN_PROC_BROWSER_TEST_F(TabMenuModelGlicMultiTabTest, TooManyShared) {
   service->instance_coordinator().ShowInstanceForTabs(
       {tab_strip()->GetTabAtIndex(limit)}, instance->id());
   EXPECT_FALSE(sharing_manager().IsTabPinned(TabHandleAtIndex(limit)));
-
-  // No change in the menu when sharing too many.
-  TabMenuModel model(&delegate_,
-                     browser()->GetFeatures().tab_menu_model_delegate(),
-                     tab_strip(), limit);
-  EXPECT_FALSE(model.GetIndexOfCommandId(TabStripModel::CommandGlicStartShare)
-                   .has_value());
-  EXPECT_FALSE(model.GetIndexOfCommandId(TabStripModel::CommandGlicStopShare)
-                   .has_value());
 }

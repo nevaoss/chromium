@@ -597,7 +597,6 @@
 <translation id="1433478348197382180">Reading Mode</translation>
 <translation id="1433980411933182122">স্টার্টআপ</translation>
 <translation id="1434659328474177625"><ph name="ISSUER" /> আপনার ইমেল যাচাই করা হয়েছে</translation>
-<translation id="1434696352799406980">এটি আপনার শুরুর পৃষ্ঠা, নতুন ট্যাব পৃষ্ঠা, সার্চ ইঞ্জিন, এবং পিন হওয়া ট্যাবগুলি আবার সেট করবে। এছাড়াও এটি সব কটি এক্সটেনশন বন্ধ করবে এবং কুকিজের মতো অস্থায়ী ডেটা সাফ করবে। আপনার বুকমার্ক, ইতিহাস এবং সংরক্ষিত পাসওয়ার্ডগুলি সাফ করা হবে না।</translation>
 <translation id="1434886155212424586">হোমপেজ হল নতুন ট্যাব পৃষ্ঠা</translation>
 <translation id="1435940442311036198">অন্য কোনও ডিভাইসে পাসকী ব্যবহার করুন</translation>
 <translation id="1436390408194692385"><ph name="TICKET_TIME_LEFT" /> ব্যবহার করা যাবে</translation>
@@ -2575,6 +2574,7 @@
 <translation id="2822551631199737692">ক্যামেরা ব্যবহার করা হচ্ছে</translation>
 <translation id="2822634587701817431">সঙ্কুচিত / প্রসারিত করুন</translation>
 <translation id="2824942875887026017"><ph name="IDS_SHORT_PRODUCT_NAME" /> আপনার অ্যাডমিনিস্ট্রেটরের প্রক্সি সেটিংস ব্যবহার করছে</translation>
+<translation id="2825200993288778739">নিজে তৈরি করুন অথবা স্কিল লাইব্রেরি থেকে যোগ করুন</translation>
 <translation id="282525059261716597">কমান্ড লাইন:</translation>
 <translation id="2825758591930162672">বিষয়ের সর্বজনীন কী</translation>
 <translation id="2826576843404243001">যেসব সাইটে সুরক্ষিত কানেকশনের সুবিধা কাজ করে না, সেই সব সাইট দেখার আগে সতর্কতা পান। 'উন্নত সুরক্ষা' চালু করেছেন বলে, আপনি এই সেটিং পরিবর্তন করতে পারবেন না।</translation>
@@ -3715,7 +3715,6 @@
 <translation id="366484203224589850"><ph name="TASK_TITLE" />: Gemini এই টাস্কে অনেকক্ষণ ধরে কাজ করছে এবং ব্যাটারি সাশ্রয় করতে শীঘ্রই তা বন্ধ করে দেবে</translation>
 <translation id="3664911592976620204">{NUM_OTHER_MEMBERS,plural, =0{<ph name="OWNER_FIRST_NAME" />-এর সাথে ট্যাব গ্রুপে যোগ দিন}=1{<ph name="OWNER_FIRST_NAME" /> এবং অন্য # জনের সাথে ট্যাব গ্রুপে যোগ দিন}one{<ph name="OWNER_FIRST_NAME" /> এবং অন্য # জনের সাথে ট্যাব গ্রুপে যোগ দিন}other{<ph name="OWNER_FIRST_NAME" /> এবং অন্য # জনের সাথে ট্যাব গ্রুপে যোগ দিন}}</translation>
 <translation id="3665301845536101715">সাইড প্যানেলে খুলুন</translation>
-<translation id="3665589677786828986">Chrome শনাক্ত করেছে যে অন্য কোনো প্রোগ্রাম আপনার কিছু সেটিংয়ের ক্ষতি করেছে এবং সেগুলিকে তাদের মূল ডিফল্টে রিসেট করেছে।</translation>
 <translation id="3665918214153961651">ফাইল আপলোড করা হচ্ছে</translation>
 <translation id="3666196264870170605">Intel ওয়াই ফাই NICs-এর জন্য ডিবাগ সংক্রান্ত ডাম্প</translation>
 <translation id="3666971425390608309">ডাউনলোড পজ করা হয়েছে: <ph name="FILE_NAME" />।</translation>
@@ -4652,6 +4651,7 @@
 <translation id="4321179778687042513">ctrl</translation>
 <translation id="432160826079505197">Finder-এ <ph name="FILE_NAME" /> দেখান</translation>
 <translation id="4322394346347055525">অন্যান্য ট্যাব বন্ধ করুন</translation>
+<translation id="4322400254469690320"><ph name="FEATURE_NAME" /> ফোল্ডারে আপনার <ph name="FILENAME" /> খুঁজুন</translation>
 <translation id="4324577459193912240">ফাইলটি অসম্পূর্ণ</translation>
 <translation id="4325433082696797523">স্টোরেজ ও পাওয়ার</translation>
 <translation id="4325515113816851466">আপনি সাইন-আউট করার পরে আপনার অভিভাবকের পছন্দ প্রযোজ্য হবে না</translation>
@@ -5002,7 +5002,6 @@
 <translation id="4580596421317071374">এই ডিভাইসে পাসওয়ার্ড <ph name="GOOGLE_PASSWORD_MANAGER" />-এ সেভ করা হয়।</translation>
 <translation id="4580939929828762295">Google Password Manager দিয়ে সুরক্ষিত থাকুন</translation>
 <translation id="4582297591746054421">আপনার কপি করা টেক্সটের ফর্ম্যাটিং বজায় রাখার মতো ফিচারের জন্য সাইট সাধারণত ক্লিপবোর্ড পড়ে নেয়</translation>
-<translation id="4582563038311694664">সব সেটিংস রিসেট করুন</translation>
 <translation id="4584094413232466841">Chrome অটোফিল থেকে এই তথ্য সরাতে চান?</translation>
 <translation id="4584770411839426377">উইন্ডো</translation>
 <translation id="4584836561445313300">আগে থেকেই রয়েছে এমন ব্রাউজিং ডেটা, যেমন পাসওয়ার্ডও আরও অনেক তথ্য আপনার সংস্থা দেখতে ও ম্যানেজ করতে পারবে</translation>
@@ -6648,6 +6647,7 @@
 <translation id="5826993284769733527">অর্ধ-স্বচ্ছ</translation>
 <translation id="5827266244928330802">Safari</translation>
 <translation id="5827591412833386477">একই গ্রুপে সাইট দেখান</translation>
+<translation id="5827835011646404677">আপনার Google অ্যাকাউন্টে স্কিল সেভ করা হয়</translation>
 <translation id="5828181959764767444">সূর্যাস্ত</translation>
 <translation id="5828545842856466741">প্রোফাইল যোগ করুন...</translation>
 <translation id="5828633471261496623">মুদ্রন হচ্ছে...</translation>
@@ -10092,7 +10092,6 @@
 <translation id="8327386430364625757">গাণিতিক ফন্ট</translation>
 <translation id="8327490658947427005">বেছে নেওয়া কন্টেন্ট <ph name="LANGUAGE" /> ভাষায় নেই</translation>
 <translation id="8327544198829180337">এই ভিউ বন্ধ করুন</translation>
-<translation id="8327676037044516220">অনুমতি ও কন্টেন্ট সেটিংস</translation>
 <translation id="8328228852664998535">আপনি চালিয়ে গেলে, <ph name="BRAND" /> থেকে আপনার পাসওয়ার্ড, পাসকী এবং অন্যান্য ডেটা স্থায়ীভাবে মুছে দেওয়া হবে। সাইট বা অ্যাপের জন্য আপনার তৈরি করা অ্যাকাউন্ট মুছে দেওয়া হবে না।</translation>
 <translation id="8328777765163860529">সমস্ত বন্ধ করুন</translation>
 <translation id="8330617762701840933">বিকল্প ব্রাউজারে রিডাইরেক্ট করে এমন ওয়েবসাইটগুলির তালিকা।</translation>
@@ -10913,7 +10912,6 @@
 <translation id="8925458182817574960">&amp;সেটিংস</translation>
 <translation id="8926389886865778422">আর জিজ্ঞাসা করবেন না</translation>
 <translation id="8926555406617248399">ট্যাব লুকানো আছে</translation>
-<translation id="892706138619340876">কিছু সেটিংস রিসেট করা হয়েছে</translation>
 <translation id="8927438609932588163">সাইটগুলিকে আপনার ডিভাইসে ডেটা সেভ করার অনুমতি দিন</translation>
 <translation id="8929696694736010839">শুধু বর্তমান ছদ্মবেশী সেশন</translation>
 <translation id="8929738682246584251">ম্যাগনিফায়ার চালু/বন্ধ করা আছে</translation>
@@ -11222,6 +11220,7 @@
 <translation id="9130015405878219958">ভুল মোড দেওয়া হয়েছে৷</translation>
 <translation id="9130135798965366513">চালিয়ে যেতে, <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> এই সাইটের সাথে আপনার <ph name="FIELDS_STRING" /> শেয়ার করবে। এই সাইটের <ph name="BEGIN_LINK1" />গোপনীয়তা নীতি<ph name="END_LINK1" /> ও <ph name="BEGIN_LINK2" />পরিষেবার শর্তাবলী<ph name="END_LINK2" /> দেখুন।</translation>
 <translation id="9130364135697530260">এই সাইটে এম্বেড করা কন্টেন্ট আপনার সম্পর্কে যে তথ্য সেভ করেছে তা নিজে ব্যবহার করতে পারবে</translation>
+<translation id="9130857050314385402">আপনি স্কিল ব্যবহার করলে, ট্যাবের নাম ও URL Google-কে পাঠানো হয়</translation>
 <translation id="9131209053278896908">ব্লক করা সাইট এখানে দেখা যাবে</translation>
 <translation id="9131487537093447019">ব্লুটুথ ডিভাইসগুলি থেকে বার্তা পাঠান ও গ্রহণ করুন।</translation>
 <translation id="9133568201369135151">ডায়াগনস্টিক ডেটা সংগ্রহ করা সম্পূর্ণ হয়েছে। আপনার কিছু ব্যক্তিগত তথ্য এই ডেটায় অন্তর্ভুক্ত করা হয়েছে।</translation>

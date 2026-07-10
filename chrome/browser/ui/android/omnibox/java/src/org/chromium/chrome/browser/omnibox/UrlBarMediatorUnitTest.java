@@ -14,6 +14,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import android.content.ClipData;
@@ -27,11 +28,13 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
 
+import org.chromium.base.Callback;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.DisableFeatures;
@@ -55,6 +58,8 @@ import org.chromium.url.GURL;
 @Config(manifest = Config.NONE)
 public class UrlBarMediatorUnitTest {
     @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
+    @Mock Callback<Boolean> mFocusChangeCallback;
+
     Context mContext;
     PropertyModel mModel;
     UrlBarMediator mMediator;
@@ -69,6 +74,7 @@ public class UrlBarMediatorUnitTest {
                 new UrlBarMediator(
                         ContextUtils.getApplicationContext(),
                         mModel,
+                        mFocusChangeCallback,
                         /* textChangeListener= */ null,
                         /* richTextChangeListener= */ null,
                         /* keyDownListener= */ null) {
@@ -390,7 +396,7 @@ public class UrlBarMediatorUnitTest {
         mMediator.setUrlBarHintText("Hint 1");
         assertTrue(mModel.get(UrlBarProperties.SHOW_HINT_TEXT));
         mMediator.setUrlBarData(baseData, ScrollType.NO_SCROLL, TextSelection.SELECT_END);
-        mMediator.beginInput();
+        mModel.get(UrlBarProperties.FOCUS_CHANGE_CALLBACK).onResult(true);
         mModel.get(UrlBarProperties.TEXT_CHANGE_LISTENER).onResult("");
 
         assertTrue(mModel.get(UrlBarProperties.SHOW_HINT_TEXT));
@@ -400,7 +406,7 @@ public class UrlBarMediatorUnitTest {
         mMediator.setUrlBarData(UrlBarData.EMPTY, ScrollType.NO_SCROLL, TextSelection.SELECT_END);
         assertTrue(mModel.get(UrlBarProperties.SHOW_HINT_TEXT));
 
-        mMediator.endInput();
+        mModel.get(UrlBarProperties.FOCUS_CHANGE_CALLBACK).onResult(false);
         assertTrue(mModel.get(UrlBarProperties.SHOW_HINT_TEXT));
     }
 
@@ -479,6 +485,18 @@ public class UrlBarMediatorUnitTest {
                         UrlBar.ScrollType.SCROLL_TO_TLD,
                         TextSelection.SELECT_END));
         assertTrue(mModel.get(UrlBarProperties.TEXT_STATE).originChanged);
+    }
+
+    @Test
+    public void reparentingDropsFocusChangeEvents() {
+        mMediator.startReparenting();
+        mModel.get(UrlBarProperties.FOCUS_CHANGE_CALLBACK).onResult(true);
+        mModel.get(UrlBarProperties.FOCUS_CHANGE_CALLBACK).onResult(false);
+        verifyNoInteractions(mFocusChangeCallback);
+
+        mMediator.finishReparenting();
+        mModel.get(UrlBarProperties.FOCUS_CHANGE_CALLBACK).onResult(true);
+        verify(mFocusChangeCallback).onResult(true);
     }
 
     @Test

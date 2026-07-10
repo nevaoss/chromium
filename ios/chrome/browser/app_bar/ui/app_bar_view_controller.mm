@@ -18,6 +18,7 @@
 #import "ios/chrome/browser/app_bar/ui/app_bar_view.h"
 #import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_animator.h"
 #import "ios/chrome/browser/intents/model/intents_donation_helper.h"
+#import "ios/chrome/browser/ntp/shared/metrics/home_metrics.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/layout_state.h"
 #import "ios/chrome/browser/shared/public/commands/scene_commands.h"
 #import "ios/chrome/browser/shared/public/commands/tab_grid_commands.h"
@@ -134,6 +135,10 @@ CGFloat ButtonHighlightAlpha(UIButton* button) {
   NSUInteger _tabCount;
   // Whether the Tab Grid is currently visible.
   BOOL _isTabGridVisible;
+  // Whether the NTP is currently visible.
+  BOOL _isNtpVisible;
+  // Whether the NTP is showing the Start Surface.
+  BOOL _isStartSurface;
   // Whether the tab groups page in the tab grid is currently visible.
   BOOL _isTabGroupsPageVisible;
   // Whether a tab group is currently being shown in the tab grid.
@@ -444,6 +449,14 @@ CGFloat ButtonHighlightAlpha(UIButton* button) {
   [self updateAssistantButton];
 }
 
+- (void)setNTPVisible:(BOOL)ntpVisible isStartSurface:(BOOL)isStartSurface {
+  _isStartSurface = isStartSurface;
+  if (ntpVisible == _isNtpVisible) {
+    return;
+  }
+  _isNtpVisible = ntpVisible;
+}
+
 - (void)setInTabGroup:(BOOL)inTabGroup {
   if (_inTabGroup == inTabGroup) {
     return;
@@ -690,7 +703,8 @@ CGFloat ButtonHighlightAlpha(UIButton* button) {
     case AppBarAssistantButtonState::kAccount:
       image =
           _assistantButtonAvatar
-              ? [_assistantButtonAvatar
+              ? [CircularImageFromImage(_assistantButtonAvatar,
+                                        kButtonImageSize)
                     imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal]
               : DefaultAppBarSymbol(kPersonCropCircleSymbol);
       break;
@@ -1167,6 +1181,9 @@ CGFloat ButtonHighlightAlpha(UIButton* button) {
     base::RecordAction(base::UserMetricsAction("MobileTabGridDone"));
     [self.tabGridHandler exitTabGrid];
   } else {
+    if (_isNtpVisible) {
+      RecordHomeAction(IOSHomeActionType::kTabSwitcher, _isStartSurface);
+    }
     base::RecordAction(base::UserMetricsAction("MobileToolbarShowStackView"));
     [self.sceneHandler displayTabGridInMode:TabGridOpeningMode::kDefault];
   }

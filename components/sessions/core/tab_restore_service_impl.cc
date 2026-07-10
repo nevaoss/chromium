@@ -626,6 +626,10 @@ class TabRestoreServiceImpl::PersistenceDelegate
 
   void ScheduleRestoredEntryCommandsForTest(SessionID id);
 
+  CommandStorageManager* command_storage_manager() {
+    return command_storage_manager_.get();
+  }
+
   // Creates a window close command.
   static std::unique_ptr<SessionCommand> CreateWindowCommand(
       SessionID window_id,
@@ -1960,6 +1964,13 @@ void TabRestoreServiceImpl::CreateRestoredEntryCommandForTest(SessionID id) {
   if (persistence_delegate_) {
     persistence_delegate_->ScheduleRestoredEntryCommandsForTest(id);
   }
+}
+
+CommandStorageManager*
+TabRestoreServiceImpl::command_storage_manager_for_testing() {
+  return persistence_delegate_
+             ? persistence_delegate_->command_storage_manager()
+             : nullptr;
 }
 
 }  // namespace sessions

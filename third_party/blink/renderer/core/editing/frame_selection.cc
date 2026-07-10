@@ -97,6 +97,7 @@
 #include "third_party/blink/renderer/core/scroll/scroll_into_view_util.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/graphics/graphics_context.h"
+#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/text/text_direction.h"
 #include "third_party/blink/renderer/platform/text/unicode_utilities.h"
 #include "ui/gfx/geometry/quad_f.h"
@@ -146,11 +147,7 @@ VisibleSelectionInFlatTree FrameSelection::ComputeVisibleSelectionInFlatTree()
 }
 
 const SelectionInDomTree& FrameSelection::GetSelectionInDomTree() const {
-  return selection_editor_->GetSelectionInDOMTree();
-}
-
-const SelectionInDomTree& FrameSelection::GetSelectionInDOMTree() const {
-  return GetSelectionInDomTree();
+  return selection_editor_->GetSelectionInDomTree();
 }
 
 Element* FrameSelection::RootEditableElementOrDocumentElement() const {
@@ -263,6 +260,15 @@ bool FrameSelection::SetSelectionDeprecated(
     granularity_strategy_->Clear();
   granularity_ = options.Granularity();
 
+  // Reset visual bidi movement state on non-keyboard selection changes
+  // (mouse clicks, programmatic, etc.). During Modify(), is_being_modified_
+  // is true and the bidi state is managed by the Modify() method itself.
+  if (RuntimeEnabledFeatures::BidiVisualOrderCaretMovementEnabled() &&
+      !is_being_modified_) {
+    caret_bidi_level_ = std::nullopt;
+    entered_bidi_run_ = false;
+  }
+
   // TODO(yosin): We should move to call |TypingCommand::closeTyping()| to
   // |Editor| class.
   if (options.ShouldCloseTyping())
@@ -272,7 +278,7 @@ bool FrameSelection::SetSelectionDeprecated(
     frame_->GetEditor().ClearTypingStyle();
 
   const SelectionInDomTree old_selection_in_dom_tree =
-      selection_editor_->GetSelectionInDOMTree();
+      selection_editor_->GetSelectionInDomTree();
   const bool is_changed = old_selection_in_dom_tree != new_selection;
   const bool should_show_handle = options.ShouldShowHandle();
   if (!is_changed && is_handle_visible_ == should_show_handle &&
@@ -501,6 +507,10 @@ bool FrameSelection::Modify(SelectionModifyAlteration alter,
                             SetSelectionBy set_selection_by) {
   SelectionModifier selection_modifier(*GetFrame(), GetSelectionInDomTree(),
                                        x_pos_for_vertical_arrow_navigation_);
+  if (RuntimeEnabledFeatures::BidiVisualOrderCaretMovementEnabled()) {
+    selection_modifier.SetCaretBidiLevel(caret_bidi_level_);
+    selection_modifier.SetEnteredBidiRun(entered_bidi_run_);
+  }
   selection_modifier.SetSelectionIsDirectional(IsDirectional());
   const bool modified =
       selection_modifier.Modify(alter, direction, granularity);
@@ -553,13 +563,49 @@ bool FrameSelection::Modify(SelectionModifyAlteration alter,
       alter == SelectionModifyAlteration::kExtend ||
       ShouldAlwaysUseDirectionalSelection(frame_);
 
-  SetSelection(selection_modifier.Selection().AsSelection(),
-               SetSelectionOptions::Builder()
-                   .SetShouldCloseTyping(true)
-                   .SetShouldClearTypingStyle(true)
-                   .SetSetSelectionBy(set_selection_by)
-                   .SetIsDirectional(selection_is_directional)
-                   .Build());
+  SelectionInDomTree selection_to_set =
+      selection_modifier.Selection().AsSelection();
+  if (RuntimeEnabledFeatures::BidiVisualOrderCaretMovementEnabled()) {
+    // Update bidi state and override affinity for correct caret rendering
+    // at bidi boundaries.
+    //
+    // At boundary offsets (where two inline fragments share an offset),
+    // affinity determines which fragment the caret resolves into:
+    //   Downstream → "before" the fragment starting at that offset
+    //   Upstream   → "after" the fragment ending at that offset
+    //
+    // We pick affinity based on bidi level changes:
+    //   - Level transition (entering/exiting a bidi run): use Downstream,
+    //     placing the caret at the start of the new run's fragment.
+    //   - Same level, LTR (even): use Upstream, placing the caret at
+    //     the end edge of the LTR fragment.
+    //   - Same level, RTL (odd): use Downstream, placing the caret at
+    //     the start edge of the RTL fragment.
+    //
+    // For non-boundary offsets, affinity has no effect on resolution.
+    std::optional<UBiDiLevel> prev_bidi_level = caret_bidi_level_;
+    caret_bidi_level_ = selection_modifier.CaretBidiLevel();
+    entered_bidi_run_ = selection_modifier.EnteredBidiRun();
+
+    if (caret_bidi_level_.has_value()) {
+      const bool level_changed = !prev_bidi_level.has_value() ||
+                                 *prev_bidi_level != *caret_bidi_level_;
+      TextAffinity bidi_affinity = TextAffinity::kDownstream;
+      if (!level_changed && !(*caret_bidi_level_ & 1)) {
+        bidi_affinity = TextAffinity::kUpstream;
+      }
+      selection_to_set = SelectionInDomTree::Builder(selection_to_set)
+                             .SetAffinity(bidi_affinity)
+                             .Build();
+    }
+  }
+
+  SetSelection(selection_to_set, SetSelectionOptions::Builder()
+                                     .SetShouldCloseTyping(true)
+                                     .SetShouldClearTypingStyle(true)
+                                     .SetSetSelectionBy(set_selection_by)
+                                     .SetIsDirectional(selection_is_directional)
+                                     .Build());
 
   if (granularity == TextGranularity::kLine ||
       granularity == TextGranularity::kParagraph)

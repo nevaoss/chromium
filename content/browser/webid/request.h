@@ -50,6 +50,7 @@ namespace webid {
 
 class DisconnectRequest;
 class UserInfoRequest;
+class RequestService;
 
 using blink::mojom::IdentityProviderGetParametersPtr;
 using IdentityProviderDataPtr = scoped_refptr<content::IdentityProviderData>;
@@ -60,26 +61,19 @@ using MediationRequirement = ::password_manager::CredentialMediationRequirement;
 using RpMode = blink::mojom::RpMode;
 using TokenError = IdentityCredentialTokenError;
 
-// Request handles mojo connections from the renderer to
-// fulfill WebID-related requests.
-//
-// In practice, it is owned and managed by a RenderFrameHost. It accomplishes
-// that via subclassing DocumentUserData, which observes the lifecycle of a
-// RenderFrameHost and manages its own memory.
+// Request handles mojo connections from the renderer to fulfill a single
+// WebID-related request. It is owned and managed by RequestService.
 class CONTENT_EXPORT Request
-    : public DocumentUserData<Request>,
-      public blink::mojom::FederatedAuthRequest,
+    : public blink::mojom::FederatedAuthRequest,
+      public blink::mojom::FederatedRequest,
       public content::FederatedIdentityPermissionContextDelegate::
           IdpSigninStatusObserver,
       public IdentityRegistryDelegate,
       public webid::AutofillSource {
  public:
-  DOCUMENT_USER_DATA_KEY_DECL();
-
-  explicit Request(RenderFrameHost* rfh);
-
   Request(
       RenderFrameHost* rfh,
+      RequestService* request_service,
       FederatedIdentityApiPermissionContextDelegate* api_permission_delegate,
       FederatedIdentityAutoReauthnPermissionContextDelegate*
           auto_reauthn_permission_delegate,
@@ -91,19 +85,16 @@ class CONTENT_EXPORT Request
 
   ~Request() override;
 
-  // Creates a Request for testing and binds it to the receiver.
-  static Request& CreateForTesting(
-      RenderFrameHost& rfh,
-      FederatedIdentityApiPermissionContextDelegate* api_permission_delegate,
-      FederatedIdentityAutoReauthnPermissionContextDelegate*
-          auto_reauthn_permission_delegate,
-      FederatedIdentityPermissionContextDelegate* permission_delegate,
-      IdentityRegistry* identity_registry,
-      mojo::PendingReceiver<blink::mojom::FederatedAuthRequest>
-          pending_receiver);
+  RenderFrameHost& render_frame_host() const { return *render_frame_host_; }
+
+  const url::Origin& origin() const {
+    return render_frame_host().GetLastCommittedOrigin();
+  }
 
   void BindReceiver(mojo::PendingReceiver<blink::mojom::FederatedAuthRequest>
                         pending_receiver);
+  void BindReceiver(
+      mojo::PendingReceiver<blink::mojom::FederatedRequest> pending_receiver);
 
   void ReportBadMessage(const char* message);
 
@@ -567,6 +558,8 @@ class CONTENT_EXPORT Request
   raw_ptr<FederatedIdentityPermissionContextDelegate> permission_delegate_ =
       nullptr;
   raw_ptr<IdentityRegistry> identity_registry_ = nullptr;
+  raw_ptr<RenderFrameHost> render_frame_host_;
+  raw_ptr<RequestService> request_service_;
 
   // The account that was selected by the user. This is only applicable to the
   // mediation flow.
@@ -661,11 +654,6 @@ class CONTENT_EXPORT Request
   // Type of error URL for metrics and devtools issue purposes.
   std::optional<IdpNetworkRequestManager::FedCmErrorUrlType> error_url_type_;
 
-  // Number of navigator.credentials.get() requests made for metrics purposes.
-  // Requests made when there is a pending FedCM request or for the purpose of
-  // Wallets or multi-IDP are not counted.
-  int num_requests_{0};
-
   // The active flow requires user activation to be kicked off. We'd also need
   // this information along the way. e.g. showing pop-up window when accounts
   // fetch is failed. However, the function `HasTransientUserActivation` may
@@ -706,7 +694,8 @@ class CONTENT_EXPORT Request
   // dismissals triggered by tab closure on Android during the navigation.
   bool in_redirect_to_{false};
 
-  mojo::ReceiverSet<blink::mojom::FederatedAuthRequest> receivers_;
+  mojo::ReceiverSet<blink::mojom::FederatedAuthRequest> auth_request_receivers_;
+  mojo::ReceiverSet<blink::mojom::FederatedRequest> receivers_;
 
   base::WeakPtrFactory<Request> weak_ptr_factory_{this};
 };

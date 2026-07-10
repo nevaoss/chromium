@@ -55,6 +55,7 @@
 #include "third_party/blink/public/mojom/page/draggable_region.mojom.h"
 #include "ui/base/hit_test.h"
 #include "ui/base/interaction/element_tracker.h"
+#include "ui/compositor/compositor.h"
 #include "ui/content_accelerators/accelerator_util.h"
 #include "ui/views/controls/webview/webview.h"
 #include "ui/views/interaction/element_tracker_views.h"
@@ -169,8 +170,10 @@ WebUIBrowserWindow::WebUIBrowserWindow(Browser* browser) : browser_(browser) {
       std::make_unique<WebShellWebContentsUserData>(this));
 
   modal_dialog_host_ = std::make_unique<WebUIBrowserModalDialogHost>(this);
+  icon_table_ = std::make_unique<webui_toolbar::IconTable>(this);
   extensions_container_ = std::make_unique<WebUIToolbarExtensionsContainer>(
-      *browser_, widget_.get(), ui_web_contents->GetWeakPtr());
+      *browser_, widget_.get(), ui_web_contents->GetWeakPtr(),
+      icon_table_.get(), /*push_icon_table_updates=*/true);
   scoped_extensions_container_user_data_ =
       std::make_unique<ui::ScopedUnownedUserData<ExtensionsContainer>>(
           browser_->GetUnownedUserDataHost(), *extensions_container_);
@@ -416,6 +419,12 @@ const ui::ThemeProvider* WebUIBrowserWindow::GetThemeProvider() const {
 const ui::ColorProvider* WebUIBrowserWindow::GetColorProvider() const {
   return ui::ColorProviderManager::Get().GetColorProviderFor(
       GetColorProviderKey());
+}
+
+float WebUIBrowserWindow::GetScaleFactor() const {
+  return web_contents_delegate_->web_contents()
+      ->GetWebUI()
+      ->GetDeviceScaleFactor();
 }
 
 ui::ColorProviderKey::ThemeInitializerSupplier*

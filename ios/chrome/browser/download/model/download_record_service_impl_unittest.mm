@@ -16,6 +16,7 @@
 #import "base/strings/sys_string_conversions.h"
 #import "base/test/bind.h"
 #import "base/test/scoped_feature_list.h"
+#import "base/test/test_future.h"
 #import "ios/chrome/browser/download/model/download_record.h"
 #import "ios/chrome/browser/download/model/download_record_observer.h"
 #import "ios/chrome/browser/shared/model/profile/test/test_profile_ios.h"
@@ -477,4 +478,39 @@ TEST_F(DownloadRecordServiceImplTest, RecordDownloadTwiceWithSameTask) {
 
   EXPECT_EQ(1u, result.size());
   EXPECT_EQ(download_id, result[0].download_id);
+}
+
+// Sanity test for the pagination API: with one persisted record,
+// `GetDownloadsPageAsync` posts a non-empty vector to the calling
+// sequence asynchronously. Locks in the async contract; broader
+// coverage (cursor / filter / ordering) lands in a follow-up CL.
+TEST_F(DownloadRecordServiceImplTest, GetDownloadsPageAsync_AsyncRoundTrip) {
+  std::unique_ptr<web::FakeDownloadTask> task =
+      CreateFakeDownloadTask("page_async_1");
+  RecordDownloadAndValidate(task.get());
+
+  base::test::TestFuture<std::vector<DownloadRecord>> future;
+  DownloadRecordQuery query;
+  service_->GetDownloadsPageAsync(query, future.GetCallback());
+
+  // *Async contract: callback must NOT have fired synchronously.
+  EXPECT_FALSE(future.IsReady());
+
+  // Pumps the calling sequence until the posted callback runs.
+  std::vector<DownloadRecord> page = future.Get();
+  ASSERT_EQ(1u, page.size());
+  EXPECT_EQ("page_async_1", page[0].download_id);
+}
+
+// Mirrors `GetDownloadsPageAsync_AsyncRoundTrip` for the count API.
+TEST_F(DownloadRecordServiceImplTest, GetDownloadsCountAsync_AsyncRoundTrip) {
+  std::unique_ptr<web::FakeDownloadTask> task =
+      CreateFakeDownloadTask("count_async_1");
+  RecordDownloadAndValidate(task.get());
+
+  base::test::TestFuture<size_t> future;
+  service_->GetDownloadsCountAsync(std::nullopt, future.GetCallback());
+
+  EXPECT_FALSE(future.IsReady());  // *Async contract.
+  EXPECT_EQ(size_t{1}, future.Get());
 }

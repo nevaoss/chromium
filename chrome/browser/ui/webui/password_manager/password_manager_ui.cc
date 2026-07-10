@@ -87,9 +87,7 @@ namespace {
 
 std::u16string InsertBrandedPasswordManager(int message_id) {
   return l10n_util::GetStringFUTF16(
-      message_id,
-      l10n_util::GetStringUTF16(
-          IDS_PASSWORD_BUBBLES_PASSWORD_MANAGER_LINK_TEXT_SAVING_ON_DEVICE));
+      message_id, l10n_util::GetStringUTF16(IDS_PASSWORD_MANAGER_BRAND_NAME));
 }
 
 content::WebUIDataSource* CreateAndAddPasswordsUIHTMLSource(
@@ -309,8 +307,7 @@ content::WebUIDataSource* CreateAndAddPasswordsUIHTMLSource(
        IDS_PASSWORD_MANAGER_UI_STORE_PICKER_OPTION_ACCOUNT},
       {"justNow", IDS_PASSWORD_MANAGER_UI_JUST_NOW},
       {"leakedPassword", IDS_PASSWORD_MANAGER_UI_PASSWORD_LEAKED},
-      {"localPasswordManager",
-       IDS_PASSWORD_BUBBLES_PASSWORD_MANAGER_LINK_TEXT_SAVING_ON_DEVICE},
+      {"localPasswordManager", IDS_PASSWORD_MANAGER_BRAND_NAME},
       {"manage", IDS_SETTINGS_MANAGE},
 #if BUILDFLAG(IS_WIN)
       {"managePasskeysLabel", IDS_PASSWORD_MANAGER_UI_MANAGE_PASSKEYS_LABEL},
@@ -406,8 +403,7 @@ content::WebUIDataSource* CreateAndAddPasswordsUIHTMLSource(
       {"passwordManagerString", IDS_PASSWORD_MANAGER_UI_TITLE},
       // Page title, branded. "Google Password Manager" or "Password Manager"
       // depending on the build.
-      {"passwordManagerTitle",
-       IDS_PASSWORD_BUBBLES_PASSWORD_MANAGER_LINK_TEXT_SAVING_ON_DEVICE},
+      {"passwordManagerTitle", IDS_PASSWORD_MANAGER_BRAND_NAME},
       {"passwordNoteCharacterCount",
        IDS_PASSWORD_MANAGER_UI_NOTE_CHARACTER_COUNT},
       {"passwordNoteCharacterCountWarning",
@@ -586,8 +582,7 @@ content::WebUIDataSource* CreateAndAddPasswordsUIHTMLSource(
       base::i18n::MessageFormatter::FormatWithNumberedArgs(
           l10n_util::GetStringUTF16(
               IDS_PASSWORD_MANAGER_UI_AUTH_TIMED_OUT_DESCRIPTION),
-          l10n_util::GetStringUTF16(
-              IDS_PASSWORD_BUBBLES_PASSWORD_MANAGER_LINK_TEXT_SAVING_ON_DEVICE),
+          l10n_util::GetStringUTF16(IDS_PASSWORD_MANAGER_BRAND_NAME),
           password_manager::constants::kPasswordManagerAuthValidity
               .InMinutes()));
 

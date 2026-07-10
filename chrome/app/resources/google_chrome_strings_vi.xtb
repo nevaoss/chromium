@@ -439,15 +439,6 @@ Một số tính năng có thể không khả dụng. Vui lòng chỉ định th
 <translation id="569897634095159764">Không thể kết nối với Internet. Máy chủ proxy yêu cầu xác thực.</translation>
 <translation id="5709557627224531708">Đặt Chrome làm trình duyệt mặc định</translation>
 <translation id="5719246646468301581">Điều khoản dịch vụ bổ sung của Google Chrome và ChromeOS</translation>
-<translation id="5719324992913248873">Hành động này sẽ:
-          <ph name="LINE_BREAKS" />
-           • Đặt lại một số chế độ cài đặt Chrome và lối tắt Chrome
-           <ph name="LINE_BREAK" />
-           • Tắt các tiện ích
-           <ph name="LINE_BREAK" />
-           • Xoá cookie và dữ liệu trang web tạm thời khác
-            <ph name="LINE_BREAKS" />
-           Dấu trang, nhật ký và mật khẩu đã lưu sẽ không bị ảnh hưởng.</translation>
 <translation id="5736850870166430177">Nếu một trang web cố ăn cắp mật khẩu của bạn hoặc nếu bạn tải một tệp gây hại xuống, thì Chrome cũng có thể gửi các URL đến tính năng Duyệt web an toàn, bao gồm cả các đoạn nội dung trên trang</translation>
 <translation id="5756509061973259733">Thiết bị này đã có một hồ sơ trên Chrome sử dụng tài khoản này</translation>
 <translation id="5759947850379142561">Chọn văn bản hoặc hình ảnh bất kỳ mà bạn muốn tìm kiếm bằng Google Ống kính hoặc nhấn phím Escape để thoát khỏi Google Ống kính</translation>

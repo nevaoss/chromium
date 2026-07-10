@@ -5,6 +5,7 @@
 #import "ios/chrome/browser/shared/coordinator/scene/scene_state.h"
 
 #import "base/apple/foundation_util.h"
+#import "base/check_deref.h"
 #import "base/ios/crb_protocol_observers.h"
 #import "base/ios/ios_util.h"
 #import "base/logging.h"
@@ -22,6 +23,7 @@
 #import "ios/chrome/browser/shared/coordinator/scene/state/layout_state.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/scene_ui_blocker_state.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/tab_grid_state.h"
+#import "ios/chrome/browser/shared/model/profile/profile_ios.h"
 #import "ios/chrome/browser/shared/ui/chrome_overlay_window/chrome_overlay_window.h"
 
 @interface SceneStateObserverList : CRBProtocolObservers <SceneStateObserver>
@@ -296,7 +298,6 @@
     didTransitionToInitStage:(ProfileInitStage)nextInitStage
                fromInitStage:(ProfileInitStage)fromInitStage {
   if (nextInitStage >= ProfileInitStage::kProfileLoaded) {
-    [profileState removeObserver:self];
     [self createPrefsIfPossible];
   }
 }
@@ -306,12 +307,29 @@
 // Will create the SceneStatePrefs if the object is ready. Can be called
 // when any condition controlling the creation of the object has changed.
 - (void)createPrefsIfPossible {
-  if (!_scene || _sceneSessionID.empty() ||
+  ProfileIOS* profile = _profileState.profile;
+  if (!_scene || _sceneSessionID.empty() || !profile ||
       _profileState.initStage < ProfileInitStage::kProfileLoaded) {
     return;
   }
 
-  _prefs = [[SceneStatePrefs alloc] initWithSession:_scene.session];
+  // On iPhone, even if the device only supports a single window, the
+  // swipe gesture is sometimes interpreted by iOS as a request to close
+  // the current UIScene instead of a request to terminate the app. This
+  // would cause the app to start with a new UISceneSession on the next
+  // executation, and the data stored there would be lost. Since this is
+  // unexpected, Chrome does not store data in the UISceneSession in that
+  // case, instead storing the data in the NSUserDefaults.
+  UISceneSession* session = nil;
+  if (base::ios::IsMultipleScenesSupported()) {
+    session = _scene.session;
+  }
+
+  [_profileState removeObserver:self];
+  _prefs = [[SceneStatePrefs alloc]
+      initWithSessionIdentifier:_sceneSessionID
+                    profileName:profile->GetProfileName()
+                   sceneSession:session];
   [_incognitoState preferencesDidLoad];
 }
 

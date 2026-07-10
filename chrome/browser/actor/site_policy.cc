@@ -28,7 +28,7 @@
 #include "components/actor/core/actor_util.h"
 #include "components/actor/core/aggregated_journal.h"
 #include "components/actor/core/journal_details_builder.h"
-#include "components/actor/core/origin_checker.h"
+#include "components/actor/core/origin_gating_cache.h"
 #include "components/actor/public/mojom/actor_types.mojom.h"
 #include "components/optimization_guide/core/filters/optimization_hints_component_update_listener.h"
 #include "components/optimization_guide/core/hints/optimization_guide_decision.h"
@@ -134,12 +134,13 @@ void OnOptimizationGuideDecision(
   }
 }
 
-void MayActOnUrlInternal(const GURL& url,
-                         bool allow_insecure_http,
-                         Profile* profile,
-                         base::optional_ref<const OriginChecker> origin_checker,
-                         const EnterprisePolicyChecker& policy_checker,
-                         std::unique_ptr<DecisionWrapper> decision_wrapper) {
+void MayActOnUrlInternal(
+    const GURL& url,
+    bool allow_insecure_http,
+    Profile* profile,
+    base::optional_ref<const OriginGatingCache> origin_gating_cache,
+    const EnterprisePolicyChecker& policy_checker,
+    std::unique_ptr<DecisionWrapper> decision_wrapper) {
   if ((net::IsLocalhost(url) && url.SchemeIsHTTPOrHTTPS()) ||
       url.IsAboutBlank()) {
     decision_wrapper->Accept();
@@ -257,11 +258,11 @@ void MayActOnUrlInternal(const GURL& url,
 
   // Blocklist is checked by `ShouldBlockNavigationUrlForOriginGating` when this
   // feature is enabled, and origins the user allowed the actor to interact with
-  // will be included in the `origin_checker`. If `url`'s origin has not been
-  // confirmed by the user, we apply the optimization guide check.
+  // will be included in the `origin_gating_cache`. If `url`'s origin has not
+  // been confirmed by the user, we apply the optimization guide check.
   if (IsNavigationGatingEnabled() &&
-      (!origin_checker ||
-       origin_checker->IsNavigationConfirmedByUser(url::Origin::Create(url)))) {
+      (!origin_gating_cache || origin_gating_cache->IsNavigationConfirmedByUser(
+                                   url::Origin::Create(url)))) {
     decision_wrapper->Accept();
     return;
   }
@@ -307,7 +308,7 @@ void InitActionBlocklist(Profile* profile) {
 void MayActOnTab(const tabs::TabInterface& tab,
                  AggregatedJournal& journal,
                  TaskId task_id,
-                 const OriginChecker& origin_checker,
+                 const OriginGatingCache& origin_gating_cache,
                  const EnterprisePolicyChecker& policy_checker,
                  DecisionCallbackWithReason callback) {
   content::WebContents& web_contents = *tab.GetContents();
@@ -340,7 +341,7 @@ void MayActOnTab(const tabs::TabInterface& tab,
   MayActOnUrlInternal(
       url, /*allow_insecure_http=*/false,
       Profile::FromBrowserContext(web_contents.GetBrowserContext()),
-      origin_checker, policy_checker, std::move(decision_wrapper));
+      origin_gating_cache, policy_checker, std::move(decision_wrapper));
 }
 
 void MayActOnUrl(const GURL& url,

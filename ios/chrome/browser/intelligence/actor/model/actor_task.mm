@@ -18,7 +18,9 @@
 #import "ios/chrome/browser/intelligence/actor/model/actor_engine.h"
 #import "ios/chrome/browser/intelligence/actor/model/actor_tab_helper.h"
 #import "ios/chrome/browser/intelligence/actor/public/actor_task_updates_observer.h"
+#import "ios/chrome/browser/intelligence/actor/tools/model/actor_tool_factory.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/actor_tool_request.h"
+#import "ios/chrome/browser/intelligence/actor/tools/utils/logging_util.h"
 #import "ios/web/public/web_state.h"
 
 namespace actor {
@@ -52,37 +54,6 @@ std::string ActorTaskStateToString(ActorTaskState state) {
   }
 }
 
-// Logs a task state transition to the journal.
-void LogTaskStateTransition(AggregatedJournal* journal,
-                            ActorTaskId task_id,
-                            ActorTaskState old_state,
-                            ActorTaskState new_state) {
-  CHECK(journal);
-
-  std::vector<mojom::JournalDetailsPtr> details =
-      JournalDetailsBuilder()
-          .Add("current_state", ActorTaskStateToString(old_state))
-          .Add("new_state", ActorTaskStateToString(new_state))
-          .Build();
-
-  journal->Log(GURL(), task_id, "ActorTask::SetState", std::move(details));
-}
-
-// Logs adding a controlled WebState to the journal.
-void LogAddControlledWebState(AggregatedJournal* journal,
-                              ActorTaskId task_id,
-                              web::WebStateID web_state_id) {
-  CHECK(journal);
-
-  std::vector<mojom::JournalDetailsPtr> details =
-      JournalDetailsBuilder()
-          .Add("web_state_id", base::NumberToString(web_state_id.identifier()))
-          .Build();
-
-  journal->Log(GURL::EmptyGURL(), task_id, "ActorTask::AddControlledWebState",
-               std::move(details));
-}
-
 // Returns true if the task state corresponds to an actuating state.
 bool IsActuatingState(ActorTaskState state) {
   switch (state) {
@@ -107,12 +78,12 @@ ActorTask::ActorTask(ActorTaskId task_id,
     : task_id_(task_id),
       title_(title),
       allow_incognito_web_states_(allow_incognito_web_states),
-      journal_(journal) {
+      journal_(journal),
+      tool_factory_(tool_factory) {
   // TODO(crbug.com/504704411): Allow incognito WebStates.
   CHECK(!allow_incognito_web_states_);
-
-  engine_ =
-      std::make_unique<ActorEngine>(task_id_, journal_, this, tool_factory);
+  engine_ = std::make_unique<ActorEngine>(/*execution_updates_delegate=*/this,
+                                          /*tool_delegate=*/this);
   observers_ = static_cast<CRBProtocolObservers<ActorTaskUpdatesObserver>*>(
       [CRBProtocolObservers
           observersWithProtocol:@protocol(ActorTaskUpdatesObserver)]);
@@ -177,8 +148,10 @@ void ActorTask::AddControlledWebState(web::WebState* web_state) {
 
   if (!std::ranges::contains(controlled_web_states_, web_state,
                              &base::WeakPtr<web::WebState>::get)) {
-    LogAddControlledWebState(journal_, task_id_,
-                             web_state->GetUniqueIdentifier());
+    LogJournalEvent(
+        GetJournal(), GURL(), task_id_, "ActorTask::AddControlledWebState",
+        {{"web_state_id", base::NumberToString(
+                              web_state->GetUniqueIdentifier().identifier())}});
     controlled_web_states_.push_back(web_state->GetWeakPtr());
     if (ActorTabHelper* tab_helper = ActorTabHelper::FromWebState(web_state)) {
       const bool is_actuating = IsActuatingState(state_);
@@ -229,6 +202,20 @@ void ActorTask::DidStopLoading(web::WebState* web_state) {
 
 void ActorTask::WebStateDestroyed(web::WebState* web_state) {
   OnWebStateFinishedLoading(web_state);
+}
+
+ActorTaskId ActorTask::GetTaskId() const {
+  return task_id_;
+}
+
+AggregatedJournal& ActorTask::GetJournal() const {
+  CHECK(journal_);
+  return *journal_;
+}
+
+ActorToolFactory& ActorTask::GetToolFactory() const {
+  CHECK(tool_factory_);
+  return *tool_factory_;
 }
 
 void ActorTask::OnWebStateFinishedLoading(web::WebState* web_state) {
@@ -310,7 +297,9 @@ void ActorTask::SetActuatingOnWebStates(bool actuating) {
 }
 
 void ActorTask::SetState(ActorTaskState new_state) {
-  LogTaskStateTransition(journal_, task_id_, state_, new_state);
+  LogJournalEvent(GetJournal(), GURL(), task_id_, "ActorTask::SetState",
+                  {{"current_state", ActorTaskStateToString(state_)},
+                   {"new_state", ActorTaskStateToString(new_state)}});
   ActorTaskState old_state = state_;
   state_ = new_state;
 

@@ -1952,8 +1952,8 @@ bool ChromeContentBrowserClient::ShouldUseProcessPerSite(
   }
 
 #if !BUILDFLAG(IS_ANDROID)
-  if (search::ShouldUseProcessPerSiteForInstantSiteURL(
-          security_principal.GetDeprecatedSiteURL(), profile)) {
+  if (search::ShouldUseProcessPerSiteForSecurityPrincipal(security_principal,
+                                                          profile)) {
     return true;
   }
 #endif
@@ -2371,8 +2371,8 @@ bool ChromeContentBrowserClient::IsSuitableHost(
     bool is_instant_process =
         instant_service->IsInstantProcess(process_host->GetDeprecatedID());
     bool should_be_in_instant_process =
-        search::ShouldAssignURLToInstantRenderer(
-            security_principal.GetDeprecatedSiteURL(), profile);
+        search::ShouldAssignSecurityPrincipalToInstantRenderer(
+            security_principal, profile);
     if (is_instant_process) {
       return should_be_in_instant_process;
     }
@@ -2487,9 +2487,8 @@ void ChromeContentBrowserClient::SiteInstanceGotProcessAndSite(
 #if !BUILDFLAG(IS_ANDROID)
   // Remember the ID of the Instant process to signal the renderer process
   // on startup in |AppendExtraCommandLineSwitches| below.
-  if (search::ShouldAssignURLToInstantRenderer(
-          site_instance->GetSecurityPrincipal().GetDeprecatedSiteURL(),
-          profile)) {
+  if (search::ShouldAssignSecurityPrincipalToInstantRenderer(
+          site_instance->GetSecurityPrincipal(), profile)) {
     InstantService* instant_service =
         InstantServiceFactory::GetForProfile(profile);
     if (instant_service) {
@@ -3078,6 +3077,8 @@ void ChromeContentBrowserClient::AppendExtraCommandLineSwitches(
                                                                 // only.
         extensions::switches::kAllowlistedExtensionID,
         extensions::switches::kExtensionTestApiOnWebPages,  // For tests only.
+        extensions::switches::
+            kExtensionTestApiStandardizedBehavior,  // For tests only.
         extensions::switches::kAppsGalleryURL,
 #endif
         switches::kAllowInsecureLocalhost,
@@ -8198,10 +8199,12 @@ bool ChromeContentBrowserClient::AreV8OptimizationsEnabledForSite(
             content_settings::SettingSource::kUser);
 
   if (default_javascript_optimizer_setting !=
-      JavascriptOptimizerSetting::kBlockedForUnfamiliarSites) {
-    // If site familiarity is turned off, use content settings to set v8
-    // optimization. Use `site_content_setting` to honor exceptions for specific
-    // sites over a default policy that applies to all sites.
+          JavascriptOptimizerSetting::kBlockedForUnfamiliarSites ||
+      site_protection::IsV8OptimizerMigrationDryRun(profile)) {
+    // If site familiarity is turned off or we are in dry-run mode, use content
+    // settings to set v8 optimization. Use `site_content_setting` to honor
+    // exceptions for specific sites over a default policy that applies to all
+    // sites.
     return site_content_setting == CONTENT_SETTING_ALLOW;
   }
 

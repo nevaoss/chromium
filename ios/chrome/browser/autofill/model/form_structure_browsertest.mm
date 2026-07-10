@@ -173,7 +173,7 @@ class FormStructureBrowserTest
   IOSChromeScopedTestingLocalState scoped_testing_local_state_;
   web::ScopedTestingWebClient web_client_;
   web::WebTaskEnvironment task_environment_;
-  autofill::test::AutofillBrowserTestEnvironment autofill_test_environment_;
+  test::AutofillBrowserTestEnvironment autofill_test_environment_;
   std::unique_ptr<TestProfileIOS> profile_;
   std::unique_ptr<web::WebState> web_state_;
   std::unique_ptr<AutofillClient> autofill_client_;

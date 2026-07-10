@@ -13,6 +13,8 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
 #include "chrome/browser/contextual_tasks/mock_contextual_tasks_ui_service_delegate.h"
+#include "chrome/browser/optimization_guide/mock_optimization_guide_keyed_service.h"
+#include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/ui/browser_window/test/mock_browser_window_interface.h"
 #include "chrome/browser/ui/contextual_search/tab_contextualization_controller.h"
 #include "chrome/browser/ui/lens/lens_overlay_controller.h"
@@ -435,7 +437,15 @@ class LensQueryFlowRouterTest : public testing::Test {
   void SetUp() override {
     InitFeatureList();
 
-    profile_ = std::make_unique<TestingProfile>();
+    TestingProfile::Builder profile_builder;
+    profile_builder.AddTestingFactory(
+        OptimizationGuideKeyedServiceFactory::GetInstance(),
+        base::BindRepeating([](content::BrowserContext* context)
+                                -> std::unique_ptr<KeyedService> {
+          return std::make_unique<
+              testing::NiceMock<MockOptimizationGuideKeyedService>>();
+        }));
+    profile_ = profile_builder.Build();
     web_contents_ = content::WebContentsTester::CreateTestWebContents(
         profile_.get(), content::SiteInstance::Create(profile_.get()));
 

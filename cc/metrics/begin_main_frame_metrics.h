@@ -5,6 +5,8 @@
 #ifndef CC_METRICS_BEGIN_MAIN_FRAME_METRICS_H_
 #define CC_METRICS_BEGIN_MAIN_FRAME_METRICS_H_
 
+#include <bitset>
+
 #include "base/time/time.h"
 #include "cc/cc_export.h"
 
@@ -30,8 +32,8 @@ enum class BeginMainFrameReason {
   kScroll = 5,
   kInput = 6,
   kMainThreadScroll = 7,
-  kOOPIF = 8,
-  kMaxValue = kOOPIF,
+  kDelayedTimerFired = 8,
+  kMaxValue = kDelayedTimerFired,
 };
 
 inline constexpr size_t BeginMainFrameReasonSize =
@@ -40,6 +42,8 @@ inline constexpr size_t BeginMainFrameReasonSize =
 // We use this metric in a bitfield. UMA can only record 1000 buckets for a
 // histogram. So, assert that we do not go over this max size.
 static_assert(1 << BeginMainFrameReasonSize < 1000);
+
+using BeginMainFrameReasons = std::bitset<BeginMainFrameReasonSize>;
 
 // Latency timing data for Main Frame lifecycle updates triggered by cc.
 // The data is captured in LocalFrameViewUKMAggregator and passed back through

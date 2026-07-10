@@ -35,6 +35,8 @@ BASE_FEATURE(kApiUserScriptsMultipleWorlds, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kApiOdfsConfigPrivate, base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kApiContextualTasksPrivate, base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kApiGlicPrivate, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kApiEnterpriseReportingPrivateOnDataMaskingRulesTriggered,
@@ -225,8 +227,8 @@ BASE_FEATURE(kEnterpriseExtensionDOMActivityTelemetry,
 BASE_FEATURE(kDebuggerAPIRestrictedToDevMode,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kExtensionBrowserNamespaceAndPolyfillSupport,
-             base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kExtensionBrowserNamespaceOnWebPages,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kAvoidCloneArgsOnExtensionFunctionDispatch,
              base::FEATURE_ENABLED_BY_DEFAULT);

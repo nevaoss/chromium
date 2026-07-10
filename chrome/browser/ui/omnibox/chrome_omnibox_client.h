@@ -19,6 +19,7 @@
 #include "components/omnibox/browser/omnibox_client.h"
 #include "ui/gfx/image/image.h"
 
+class AiModeButtonService;
 class Browser;
 class ChromeAutocompleteSchemeClassifier;
 class GURL;
@@ -66,6 +67,7 @@ class ChromeOmniboxClient final : public OmniboxClient {
   bookmarks::BookmarkModel* GetBookmarkModel() override;
   AutocompleteControllerEmitter* GetAutocompleteControllerEmitter() override;
   TemplateURLService* GetTemplateURLService() override;
+  AiModeButtonService* GetAiModeButtonService() override;
   const AutocompleteSchemeClassifier& GetSchemeClassifier() const override;
   AutocompleteClassifier* GetAutocompleteClassifier() override;
   omnibox::OmniboxPopupCloser* GetOmniboxPopupCloser() override;

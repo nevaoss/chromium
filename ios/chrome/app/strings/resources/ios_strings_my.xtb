@@ -117,6 +117,7 @@
 <translation id="1373120905936431262">Nano Banana ဖြင့် ဆန်းသစ်ရန် ပုံအပ်လုဒ်လုပ်ပါ</translation>
 <translation id="1377508275003315939">စကားဝှက်များ</translation>
 <translation id="1381022135873211423">{count,plural, =1{လိပ်စာ {count} ခု အနက် {position}}other{လိပ်စာ {count} ခုအနက် {position}}}</translation>
+<translation id="13813615483058219">တစ်ခုခု မှားသွားသည်။ အင်တာနက်ချိတ်ဆက်မှုကို စစ်ဆေးပါ။ အသံချဲ့ပါ (သို့) ထပ်စမ်းကြည့်ပါ။</translation>
 <translation id="1383876407941801731">ရှာဖွေမှု</translation>
 <translation id="138618066238211776"><ph name="USER_NAME" /> အဖြစ် ရှေ့ဆက်ရန်</translation>
 <translation id="138692594145659985">ကတ်သိမ်းရန် ရွေးစရာများ</translation>
@@ -874,6 +875,7 @@
 <translation id="4021447724486050609">ဘရောင်ဇာကို အပ်ဒိတ်လုပ်ရန်</translation>
 <translation id="4021931095789478915">ဖတ်ရန် စာရင်းသို့ ${url} ထည့်ရန်</translation>
 <translation id="4028871427853484857">အကောင့်တွင် သိမ်းရန်…</translation>
+<translation id="4036529942385659684">အသုံးမပြုသည့်ကာလကြာပြီးနောက် စတင်သည့်စာမျက်နှာကို ပြပါ</translation>
 <translation id="4038354071007134711">ဤကိရိယာပေါ်ရှိ မည်သည့်အပလီကေးရှင်းမှ ဖိုင်ကိုမဖွင့်နိုင်ပါ။</translation>
 <translation id="4042870976416480368">စာမျက်နှာတွင် ရှာရန်</translation>
 <translation id="4045441967987592849">ပြန်ဖွင့်ရန်</translation>
@@ -911,7 +913,6 @@
 <translation id="417138788035229076">အုပ်စုကို စီမံရန်</translation>
 <translation id="4172051516777682613">အမြဲပြရန်</translation>
 <translation id="417273154673973994">{count,plural, =1{တဘ်အုပ်စု ၁ ခုကို ပိတ်ပြီး သိမ်းလိုက်သည်}other{တဘ်အုပ်စု {count} ခုကို ပိတ်ပြီး သိမ်းလိုက်သည်}}</translation>
-<translation id="417612446554534067">သင့်စက်များသို့ ပို့ရန်</translation>
 <translation id="4180726336228139707">ဤစက်တွင်သာ</translation>
 <translation id="4181841719683918333">ဘာသာစကားများ</translation>
 <translation id="4183350924949589798">နောက်ထပ်လုံခြုံရေး ရယူမလား။</translation>
@@ -1135,6 +1136,7 @@
 <translation id="4896467949657706481">တဘ်များကို ပိတ်ထားသည်။ အကောင့်မှ သင်ထွက်ထားသည်</translation>
 <translation id="4911042367886397055">ပြန်လည်ကြိုဆိုပါသည် <ph name="USER_NAME" /></translation>
 <translation id="4913626501929406101">သင့်မိသားစုအဖွဲ့အတွင်းရှိ တစ်စုံတစ်ဦးနှင့် သင့်စကားဝှက်မိတ္တူကို လုံခြုံစွာ မျှဝေနိုင်သည်။ <ph name="BEGIN_LINK" />ပိုမိုလေ့လာရန်<ph name="END_LINK" /></translation>
+<translation id="4916679969857390442">မှန်ဘီလူး</translation>
 <translation id="4917025507570489430"><ph name="USER_EMAIL" /> အဖြစ် လက်မှတ်ထိုးဝင်ထားသောအခါ လက်ရှိ ဖွင့်ကြည့်ထားသည့်မှတ်တမ်းဒေတာကို သုံးနိုင်သည်။ သင့်အဖွဲ့အစည်းက ဤဒေတာကို ကြည့်နိုင်သည်။</translation>
 <translation id="4918086044614829423">လက်ခံရန်</translation>
 <translation id="4930714375720679147">ဖွင့်ရန်</translation>

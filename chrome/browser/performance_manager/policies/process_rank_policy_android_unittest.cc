@@ -132,7 +132,13 @@ TEST_F(ProcessRankPolicyAndroidTest, FocusedPage) {
             content::ChildProcessImportance::IMPORTANT);
 }
 
-TEST_F(ProcessRankPolicyAndroidTest, FocusedNotVisiblePage) {
+// TODO(crbug.com/523088992): Re-enable this test on Android.
+#if BUILDFLAG(IS_ANDROID)
+#define MAYBE_FocusedNotVisiblePage DISABLED_FocusedNotVisiblePage
+#else
+#define MAYBE_FocusedNotVisiblePage FocusedNotVisiblePage
+#endif  // BUILDFLAG(IS_ANDROID)
+TEST_F(ProcessRankPolicyAndroidTest, MAYBE_FocusedNotVisiblePage) {
   graph_->PassToGraph(std::make_unique<ProcessRankPolicyAndroid>());
   MockPageGraph page_graph = CreateDefaultPage();
   DefaultNavigation(page_graph.page.get());
@@ -724,7 +730,13 @@ TEST_F(ProcessRankPolicyAndroidTest, HadUserEditsPage) {
             content::ChildProcessImportance::NOT_PERCEPTIBLE);
 }
 
-TEST_F(ProcessRankPolicyAndroidTest, NonVisiblePage) {
+// TODO(crbug.com/523088992): Re-enable this test on Android.
+#if BUILDFLAG(IS_ANDROID)
+#define MAYBE_NonVisiblePage DISABLED_NonVisiblePage
+#else
+#define MAYBE_NonVisiblePage NonVisiblePage
+#endif  // BUILDFLAG(IS_ANDROID)
+TEST_F(ProcessRankPolicyAndroidTest, MAYBE_NonVisiblePage) {
   scoped_feature_list_.InitAndEnableFeature(
       chrome::android::kProtectedTabsAndroid);
   graph_->PassToGraph(std::make_unique<ProcessRankPolicyAndroid>());

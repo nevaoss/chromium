@@ -27,7 +27,7 @@ ALWAYS_INLINE static void Conv(const float* source_p,
                                int filter_stride,
                                float* dest_p,
                                int dest_stride,
-                               uint32_t frames_to_process,
+                               size_t frames_to_process,
                                size_t filter_size,
                                const AudioFloatArray* /*prepared_filter*/) {
 #if defined(ARCH_CPU_X86)
@@ -72,7 +72,7 @@ ALWAYS_INLINE static void Vclip(const float* source_p,
                                 const float* high_threshold_p,
                                 float* dest_p,
                                 int dest_stride,
-                                uint32_t frames_to_process) {
+                                size_t frames_to_process) {
   vDSP_vclip(source_p, source_stride, low_threshold_p, high_threshold_p, dest_p,
              dest_stride, frames_to_process);
 }
@@ -80,7 +80,7 @@ ALWAYS_INLINE static void Vclip(const float* source_p,
 ALWAYS_INLINE static void Vmaxmgv(const float* source_p,
                                   int source_stride,
                                   float* max_p,
-                                  uint32_t frames_to_process) {
+                                  size_t frames_to_process) {
   vDSP_maxmgv(source_p, source_stride, max_p, frames_to_process);
 }
 
@@ -101,7 +101,7 @@ ALWAYS_INLINE static void Vsma(const float* source_p,
                                const float* scale,
                                float* dest_p,
                                int dest_stride,
-                               uint32_t frames_to_process) {
+                               size_t frames_to_process) {
   vDSP_vsma(source_p, source_stride, scale, dest_p, dest_stride, dest_p,
             dest_stride, frames_to_process);
 }
@@ -111,7 +111,7 @@ ALWAYS_INLINE static void Vsmul(const float* source_p,
                                 const float* scale,
                                 float* dest_p,
                                 int dest_stride,
-                                uint32_t frames_to_process) {
+                                size_t frames_to_process) {
 #if defined(ARCH_CPU_X86)
   ::vsmul(source_p, source_stride, scale, dest_p, dest_stride,
           frames_to_process);
@@ -126,7 +126,7 @@ ALWAYS_INLINE static void Vsadd(const float* source_p,
                                 const float* addend,
                                 float* dest_p,
                                 int dest_stride,
-                                uint32_t frames_to_process) {
+                                size_t frames_to_process) {
 #if defined(ARCH_CPU_X86)
   ::vsadd(source_p, source_stride, addend, dest_p, dest_stride,
           frames_to_process);
@@ -141,7 +141,7 @@ ALWAYS_INLINE static void Vsadd(const float* source_p,
                                 float addend,
                                 float* dest_p,
                                 int dest_stride,
-                                uint32_t frames_to_process) {
+                                size_t frames_to_process) {
 #if defined(ARCH_CPU_X86)
   ::vsadd(source_p, source_stride, &addend, dest_p, dest_stride,
           frames_to_process);
@@ -154,7 +154,7 @@ ALWAYS_INLINE static void Vsadd(const float* source_p,
 ALWAYS_INLINE static void Vsvesq(const float* source_p,
                                  int source_stride,
                                  float* sum_p,
-                                 uint32_t frames_to_process) {
+                                 size_t frames_to_process) {
   vDSP_svesq(source_p, source_stride, sum_p, frames_to_process);
 }
 
@@ -164,7 +164,7 @@ ALWAYS_INLINE static void Zvmul(const float* real1p,
                                 const float* imag2p,
                                 float* real_dest_p,
                                 float* imag_dest_p,
-                                uint32_t frames_to_process) {
+                                size_t frames_to_process) {
   DSPSplitComplex sc1;
   DSPSplitComplex sc2;
   DSPSplitComplex dest;

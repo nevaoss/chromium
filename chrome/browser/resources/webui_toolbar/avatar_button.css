@@ -4,7 +4,9 @@
 
 /* #css_wrapper_metadata_start
  * #type=style-lit
+ * #import=//resources/cr_elements/cr_hidden_style_lit.css.js
  * #scheme=relative
+ * #include=cr-hidden-style-lit
  * #css_wrapper_metadata_end */
 
 :host {
@@ -12,10 +14,6 @@
   align-self: center;
   /* Enable interpolation between 'max-content' and 0 */
   interpolate-size: allow-keywords;
-}
-
-:host([hidden]) {
-  display: none !important;
 }
 
 #button {

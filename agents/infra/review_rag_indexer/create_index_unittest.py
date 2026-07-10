@@ -78,8 +78,9 @@ class CreateIndexTest(fake_filesystem_unittest.TestCase):
     @mock.patch('create_index._perform_initial_setup')
     @mock.patch('create_index._retrieve_previous_run_info')
     @mock.patch('create_index.local_git_steps.process_local_git_data')
+    @mock.patch('create_index.gerrit_steps.retrieve_comments')
     @mock.patch('create_index.gerrit_steps.retrieve_hashtags')
-    def test_main_success(self, mock_retrieve_hashtags,
+    def test_main_success(self, mock_retrieve_hashtags, mock_retrieve_comments,
                           mock_process_local_git_data, mock_retrieve,
                           mock_setup):
         mock_process_local_git_data.return_value = []
@@ -110,7 +111,8 @@ class CreateIndexTest(fake_filesystem_unittest.TestCase):
         self.assertEqual(called_args.num_network_workers, 20)
 
         mock_process_local_git_data.assert_called_once_with(called_args)
-        mock_retrieve_hashtags.assert_called_once_with(called_args, [])
+        mock_retrieve_hashtags.assert_not_called()
+        mock_retrieve_comments.assert_not_called()
 
     @mock.patch('sys.argv', [
         'create_index.py', '--since', '1 hour ago', '--project', 'proj',
@@ -120,8 +122,10 @@ class CreateIndexTest(fake_filesystem_unittest.TestCase):
     @mock.patch('create_index._retrieve_previous_run_info')
     @mock.patch('create_index.local_git_steps.process_local_git_data')
     @mock.patch('create_index.git_utils.revision_exists')
+    @mock.patch('create_index.gerrit_steps.retrieve_comments')
     @mock.patch('create_index.gerrit_steps.retrieve_hashtags')
     def test_main_success_with_head_git_revision(self, mock_retrieve_hashtags,
+                                                 mock_retrieve_comments,
                                                  mock_revision_exists,
                                                  mock_process_local_git_data,
                                                  mock_retrieve, mock_setup):
@@ -136,7 +140,8 @@ class CreateIndexTest(fake_filesystem_unittest.TestCase):
         called_args = mock_retrieve.call_args[0][0]
         self.assertIsInstance(called_args, create_index.CommonArgs)
         self.assertEqual(called_args.head_git_revision, 'my_head_rev')
-        mock_retrieve_hashtags.assert_called_once_with(called_args, [])
+        mock_retrieve_hashtags.assert_not_called()
+        mock_retrieve_comments.assert_not_called()
 
     @mock.patch('sys.argv', [
         'create_index.py', '--since', '1 hour ago', '--project', 'proj',
@@ -164,8 +169,10 @@ class CreateIndexTest(fake_filesystem_unittest.TestCase):
     @mock.patch('create_index._perform_initial_setup')
     @mock.patch('create_index._retrieve_previous_run_info')
     @mock.patch('create_index.local_git_steps.process_local_git_data')
+    @mock.patch('create_index.gerrit_steps.retrieve_comments')
     @mock.patch('create_index.gerrit_steps.retrieve_hashtags')
     def test_main_success_custom_workers(self, _mock_retrieve_hashtags,
+                                         _mock_retrieve_comments,
                                          mock_process_local_git_data,
                                          mock_retrieve, _mock_setup):
         mock_process_local_git_data.return_value = []
@@ -173,6 +180,33 @@ class CreateIndexTest(fake_filesystem_unittest.TestCase):
 
         called_args = mock_retrieve.call_args[0][0]
         self.assertEqual(called_args.num_network_workers, 42)
+
+    @mock.patch('sys.argv', [
+        'create_index.py', '--since', '1 hour ago', '--project', 'proj',
+        '--repo', 'repo'
+    ])
+    @mock.patch('create_index._perform_initial_setup')
+    @mock.patch('create_index._retrieve_previous_run_info')
+    @mock.patch('create_index.local_git_steps.process_local_git_data')
+    @mock.patch('create_index.gerrit_steps.retrieve_comments')
+    @mock.patch('create_index.gerrit_steps.retrieve_hashtags')
+    def test_main_success_with_cls(self, mock_retrieve_hashtags,
+                                   mock_retrieve_comments,
+                                   mock_process_local_git_data, mock_retrieve,
+                                   mock_setup):
+        fake_cl = mock.Mock()
+        fake_cl.comments = []
+        mock_process_local_git_data.return_value = [fake_cl]
+
+        create_index.main()
+
+        mock_setup.assert_called_once()
+        called_common_args = mock_retrieve.call_args[0][0]
+        mock_process_local_git_data.assert_called_once_with(called_common_args)
+        mock_retrieve_hashtags.assert_called_once_with(called_common_args,
+                                                       [fake_cl])
+        mock_retrieve_comments.assert_called_once_with(called_common_args,
+                                                       [fake_cl])
 
     @mock.patch('sys.argv', [
         'create_index.py', '--since', '1 hour ago', '--project', 'proj',

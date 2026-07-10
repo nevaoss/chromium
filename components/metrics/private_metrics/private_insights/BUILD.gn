@@ -15,6 +15,7 @@ component("private_insights") {
   deps = [
     "//base",
     "//components/keyed_service/core",
+    "//third_party/federated_compute:fl_runner",
   ]
 }
 

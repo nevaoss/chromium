@@ -17,8 +17,8 @@ import './power_bookmarks_add_folder_button.js';
 import './power_bookmarks_list_header.js';
 
 import type {SpEmptyStateElement} from '//bookmarks-side-panel.top-chrome/shared/sp_empty_state.js';
-import type {PriceTrackingBrowserProxy} from '//resources/cr_components/commerce/price_tracking_browser_proxy.js';
-import {PriceTrackingBrowserProxyImpl} from '//resources/cr_components/commerce/price_tracking_browser_proxy.js';
+import type {BrowserProxy as PriceTrackingBrowserProxy} from '//resources/cr_components/commerce/price_tracking.mojom-webui.js';
+import {browserProxyFactory as priceTrackingBrowserProxyFactory} from '//resources/cr_components/commerce/price_tracking.mojom-webui.js';
 import {getInstance as getAnnouncerInstance} from '//resources/cr_elements/cr_a11y_announcer/cr_a11y_announcer.js';
 import type {CrLazyListElement} from '//resources/cr_elements/cr_lazy_list/cr_lazy_list.js';
 import {FocusOutlineManager} from '//resources/js/focus_outline_manager.js';
@@ -175,7 +175,7 @@ export class PowerBookmarksListElement extends CrLitElement implements
   private bookmarksApi_: BookmarksApiProxy =
       BookmarksApiProxyImpl.getInstance();
   private priceTrackingProxy_: PriceTrackingBrowserProxy =
-      PriceTrackingBrowserProxyImpl.getInstance();
+      priceTrackingBrowserProxyFactory.getInstance();
   private bookmarksService_: PowerBookmarksService =
       PowerBookmarksService.getInstance();
   private keyArrowNavigationService_: KeyArrowNavigationService;

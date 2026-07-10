@@ -58,6 +58,7 @@
 #include "url/origin.h"
 
 namespace autofill::payments {
+namespace {
 
 using IssuerId = autofill::BnplIssuer::IssuerId;
 using ::testing::_;
@@ -111,7 +112,7 @@ class MockBrowserAutofillManager : public TestBrowserAutofillManager {
               (),
               (override));
 
-  MOCK_METHOD(payments::AmountExtractionManager&,
+  MOCK_METHOD(AmountExtractionManager&,
               GetAmountExtractionManager,
               (),
               (override));
@@ -181,7 +182,7 @@ class TestPaymentsAutofillClientMock : public TestPaymentsAutofillClient {
   MOCK_METHOD(
       bool,
       OnPurchaseAmountExtracted,
-      (base::span<const payments::BnplIssuerContext> bnpl_issuer_contexts,
+      (base::span<const BnplIssuerContext> bnpl_issuer_contexts,
        std::optional<int64_t> extracted_amount,
        bool is_amount_supported_by_any_issuer,
        const std::optional<std::string>& app_locale,
@@ -2794,8 +2795,8 @@ TEST_F(
               UpdateBnplIssuerUi(_, Eq(test_amount),
                                  /*is_amount_supported_by_any_issuer=*/false,
                                  Optional(Eq(kAppLocale)), _, _))
-      .WillOnce([&](base::span<const payments::BnplIssuerContext> contexts,
-                    auto, auto, auto, auto, auto) {
+      .WillOnce([&](base::span<const BnplIssuerContext> contexts, auto, auto,
+                    auto, auto, auto) {
         issuer_contexts.assign(contexts.begin(), contexts.end());
         return true;
       });
@@ -2965,8 +2966,8 @@ TEST_F(BnplManagerTest,
       OnPurchaseAmountExtracted(_, Eq(extracted_amount),
                                 /*is_amount_supported_by_any_issuer=*/false,
                                 Optional(Eq(kAppLocale)), _, _))
-      .WillOnce([&](base::span<const payments::BnplIssuerContext> contexts,
-                    auto, auto, auto, auto, auto) {
+      .WillOnce([&](base::span<const BnplIssuerContext> contexts, auto, auto,
+                    auto, auto, auto) {
         issuer_contexts.assign(contexts.begin(), contexts.end());
         return true;
       });
@@ -3009,8 +3010,8 @@ TEST_F(BnplManagerTest,
       OnPurchaseAmountExtracted(_, Eq(extracted_amount),
                                 /*is_amount_supported_by_any_issuer=*/true,
                                 Optional(Eq(kAppLocale)), _, _))
-      .WillOnce([&](base::span<const payments::BnplIssuerContext> contexts,
-                    auto, auto, auto, auto, auto) {
+      .WillOnce([&](base::span<const BnplIssuerContext> contexts, auto, auto,
+                    auto, auto, auto) {
         issuer_contexts.assign(contexts.begin(), contexts.end());
         return true;
       });
@@ -3730,4 +3731,5 @@ TEST_F(BnplManagerPayLaterTabTest,
 #endif  // #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS)
 
+}  // namespace
 }  // namespace autofill::payments

@@ -213,8 +213,9 @@ class SubAppUpdateBrowserTest : public IsolatedWebAppBrowserTestHarness {
         IsolatedWebAppUrlInfo::CreateFromSignedWebBundleId(bundle_id).app_id(),
         update_future.GetCallback());
 
-    EXPECT_EQ(
-        1ul, provider().isolated_web_app_update_manager().DiscoverUpdatesNow());
+    EXPECT_EQ(1ul, provider()
+                       .isolated_web_app_update_manager()
+                       .DiscoverAndPrepareUpdatesNow());
     EXPECT_THAT(
         update_future.Take(),
         base::test::ValueIs(IsolatedWebAppUpdateCheckAndPrepareTask::Success::

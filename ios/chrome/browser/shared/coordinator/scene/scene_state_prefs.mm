@@ -5,7 +5,7 @@
 #import "ios/chrome/browser/shared/coordinator/scene/scene_state_prefs.h"
 
 #import "base/apple/foundation_util.h"
-#import "base/ios/ios_util.h"
+#import "base/check.h"
 #import "base/json/values_util.h"
 #import "base/values.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_state.h"
@@ -28,12 +28,20 @@
 // profile, but this has not yet been implemented.
 
 @implementation SceneStatePrefs {
-  UISceneSession* _session;
+  std::string _sessionIdentifier;
+  std::string _profileName;
+  UISceneSession* _sceneSession;
 }
 
-- (instancetype)initWithSession:(UISceneSession*)session {
+- (instancetype)initWithSessionIdentifier:(std::string)sessionIdentifier
+                              profileName:(std::string)profileName
+                             sceneSession:(UISceneSession*)sceneSession {
+  CHECK(!sessionIdentifier.empty());
+  CHECK(!profileName.empty());
   if ((self = [super init])) {
-    _session = session;
+    _sessionIdentifier = std::move(sessionIdentifier);
+    _profileName = std::move(profileName);
+    _sceneSession = sceneSession;
   }
   return self;
 }
@@ -67,8 +75,8 @@
 // Getter for NSObject preference with the given key.
 - (NSObject*)valueForKey:(NSString*)key {
   NSObject* object = nil;
-  if (base::ios::IsMultipleScenesSupported()) {
-    object = [_session.userInfo objectForKey:key];
+  if (_sceneSession) {
+    object = [_sceneSession.userInfo objectForKey:key];
     if (object) {
       [[NSUserDefaults standardUserDefaults] removeObjectForKey:key];
     }
@@ -81,13 +89,13 @@
 
 // Setter for NSObject preference with the given key.
 - (void)setValue:(NSObject*)value forKey:(NSString*)key {
-  if (!base::ios::IsMultipleScenesSupported()) {
-    [[NSUserDefaults standardUserDefaults] setObject:value forKey:key];
-  } else {
+  if (_sceneSession) {
     NSMutableDictionary<NSString*, id>* userInfo =
-        [NSMutableDictionary dictionaryWithDictionary:_session.userInfo];
+        [NSMutableDictionary dictionaryWithDictionary:_sceneSession.userInfo];
     [userInfo setObject:value forKey:key];
-    _session.userInfo = userInfo;
+    _sceneSession.userInfo = userInfo;
+  } else {
+    [[NSUserDefaults standardUserDefaults] setObject:value forKey:key];
   }
 }
 

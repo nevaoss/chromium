@@ -655,11 +655,11 @@ RenderWidgetHostViewAndroid::RenderWidgetHostViewAndroid(
       selection_popup_controller_(nullptr),
       gesture_listener_manager_(nullptr),
       view_(ui::ViewAndroid::LayoutType::kMatchParent),
-      gesture_provider_(
+      gesture_provider_(base::MakeRefCounted<ui::FilteredGestureProvider>(
           ui::GetGestureProviderConfig(
               ui::GestureProviderConfigType::CURRENT_PLATFORM,
               GetUIThreadTaskRunner({BrowserTaskType::kUserInput})),
-          this),
+          this)),
       stylus_text_selector_(this),
       using_browser_compositor_(CompositorImpl::IsInitialized()),
       synchronous_compositor_client_(nullptr),
@@ -757,6 +757,7 @@ RenderWidgetHostViewAndroid::RenderWidgetHostViewAndroid(
 }
 
 RenderWidgetHostViewAndroid::~RenderWidgetHostViewAndroid() {
+  gesture_provider_->Shutdown();
   UpdateNativeViewTree(/*parent_native_view=*/nullptr,
                        /*parent_layer=*/nullptr);
   view_.set_event_handler(nullptr);
@@ -941,7 +942,7 @@ void RenderWidgetHostViewAndroid::OnRenderFrameMetadataChangedBeforeActivation(
     is_transparent = false;
   }
 
-  gesture_provider_.SetDoubleTapSupportForPageEnabled(
+  gesture_provider_->SetDoubleTapSupportForPageEnabled(
       !metadata.is_mobile_optimized);
 
   float dip_scale = view_.GetDipScale();
@@ -1674,8 +1675,15 @@ bool RenderWidgetHostViewAndroid::OnTouchEvent(
     }
   }
 
+  auto weak_this = weak_ptr_factory_.GetWeakPtr();
+  // Keep the gesture provider alive during event dispatch as it can trigger
+  // synchronous view destruction.
+  scoped_refptr<ui::FilteredGestureProvider> protector(gesture_provider_);
   ui::FilteredGestureProvider::TouchHandlingResult result =
-      gesture_provider_.OnTouchEvent(event);
+      protector->OnTouchEvent(event);
+  if (!weak_this) {
+    return false;
+  }
   if (!result.succeeded)
     return false;
 
@@ -1783,12 +1791,12 @@ void RenderWidgetHostViewAndroid::ActivatedOrEvictedFromBackForwardCache() {
 }
 
 void RenderWidgetHostViewAndroid::SetDoubleTapSupportEnabled(bool enabled) {
-  gesture_provider_.SetDoubleTapSupportForPlatformEnabled(enabled);
+  gesture_provider_->SetDoubleTapSupportForPlatformEnabled(enabled);
 }
 
 void RenderWidgetHostViewAndroid::SetMultiTouchZoomSupportEnabled(
     bool enabled) {
-  gesture_provider_.SetMultiTouchZoomSupportEnabled(enabled);
+  gesture_provider_->SetMultiTouchZoomSupportEnabled(enabled);
 }
 
 void RenderWidgetHostViewAndroid::FocusedNodeChanged(
@@ -1952,7 +1960,7 @@ void RenderWidgetHostViewAndroid::CopyFromSurface(
 
 ui::FilteredGestureProvider*
 RenderWidgetHostViewAndroid::GetFilteredGestureProviderForTesting() {
-  return &gesture_provider_;
+  return gesture_provider_.get();
 }
 
 void RenderWidgetHostViewAndroid::CopyFromExactSurface(
@@ -2009,16 +2017,6 @@ void RenderWidgetHostViewAndroid::CopySharedImageFromExactSurface(
   delegated_frame_host_->CopySharedImageFromCompositingSurface(
       std::move(context_provider), src_rect, output_size, std::move(callback),
       /*capture_exact_surface_id=*/true);
-}
-
-void RenderWidgetHostViewAndroid::EnsureSurfaceSynchronizedForWebTest() {
-  ++latest_capture_sequence_number_;
-  SynchronizeVisualProperties(cc::DeadlinePolicy::UseInfiniteDeadline(),
-                              std::nullopt);
-}
-
-uint32_t RenderWidgetHostViewAndroid::GetCaptureSequenceNumber() const {
-  return latest_capture_sequence_number_;
 }
 
 bool RenderWidgetHostViewAndroid::CanSynchronizeVisualProperties() {
@@ -2173,7 +2171,7 @@ void RenderWidgetHostViewAndroid::OnSelectionEvent(
           InputTransferHandlerAndroid::RequestInputBackReason::
               kStartTouchSelectionDragGesture);
     }
-    if (gesture_provider_.GetCurrentDownEvent()) {
+    if (gesture_provider_->GetCurrentDownEvent()) {
       ResetGestureDetection();
     }
   }
@@ -2880,7 +2878,8 @@ void RenderWidgetHostViewAndroid::SendGestureEvent(
   input_helper_->RouteOrForwardGestureEvent(event);
 }
 
-ui::FilteredGestureProvider& RenderWidgetHostViewAndroid::GetGestureProvider() {
+scoped_refptr<ui::FilteredGestureProvider>
+RenderWidgetHostViewAndroid::GetGestureProvider() {
   return gesture_provider_;
 }
 
@@ -3931,7 +3930,7 @@ void RenderWidgetHostViewAndroid::SetTouchpadOverscrollHistoryNavigation(
 }
 
 void RenderWidgetHostViewAndroid::OnUnconfirmedTapConvertedToTap() {
-  gesture_provider_.OnUnconfirmedTapConvertedToTap();
+  gesture_provider_->OnUnconfirmedTapConvertedToTap();
 }
 
 CompositorImpl* RenderWidgetHostViewAndroid::GetCompositorImpl() {

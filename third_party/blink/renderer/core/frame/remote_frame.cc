@@ -379,8 +379,7 @@ void RemoteFrame::SetCcLayer(scoped_refptr<cc::Layer> layer,
 
   // Schedule an animation so that a new frame is produced with the updated
   // layer, otherwise this local root's visible content may not be up to date.
-  owner->GetDocument().GetFrame()->View()->ScheduleAnimation(
-      cc::BeginMainFrameReason::kOOPIF);
+  owner->GetDocument().GetFrame()->View()->ScheduleAnimation();
 }
 
 SkBitmap* RemoteFrame::GetSadPageBitmap() {
@@ -939,12 +938,6 @@ bool RemoteFrame::SynchronizeVisualProperties(
   if (!GetFrameSinkId().is_valid() || remote_process_gone_)
     return false;
 
-  auto capture_sequence_number_changed =
-      (sent_visual_properties_ &&
-       sent_visual_properties_->capture_sequence_number !=
-           pending_visual_properties_.capture_sequence_number)
-          ? ChildFrameCompositingHelper::CaptureSequenceNumberChanged::kYes
-          : ChildFrameCompositingHelper::CaptureSequenceNumberChanged::kNo;
 
   if (view_) {
     pending_visual_properties_.compositor_viewport =
@@ -984,10 +977,7 @@ bool RemoteFrame::SynchronizeVisualProperties(
       sent_visual_properties_->compositor_viewport !=
           pending_visual_properties_.compositor_viewport ||
       sent_visual_properties_->root_widget_viewport_segments !=
-          pending_visual_properties_.root_widget_viewport_segments ||
-      sent_visual_properties_->capture_sequence_number !=
-          pending_visual_properties_.capture_sequence_number;
-
+          pending_visual_properties_.root_widget_viewport_segments;
   if (synchronized_props_changed)
     parent_local_surface_id_allocator_->GenerateId();
   pending_visual_properties_.local_surface_id = GetLocalSurfaceId();
@@ -998,8 +988,7 @@ bool RemoteFrame::SynchronizeVisualProperties(
   DCHECK(surface_id.is_valid());
   DCHECK(!remote_process_gone_);
 
-  compositing_helper_->SetSurfaceId(surface_id, capture_sequence_number_changed,
-                                    allow_paint_holding);
+  compositing_helper_->SetSurfaceId(surface_id, allow_paint_holding);
 
   bool rect_changed = !sent_visual_properties_ ||
                       sent_visual_properties_->rect_in_local_root !=
@@ -1110,11 +1099,6 @@ void RemoteFrame::DidChangeVisibleViewportSize(
   SynchronizeVisualProperties();
 }
 
-void RemoteFrame::UpdateCaptureSequenceNumber(
-    uint32_t capture_sequence_number) {
-  pending_visual_properties_.capture_sequence_number = capture_sequence_number;
-  SynchronizeVisualProperties();
-}
 
 void RemoteFrame::CursorAccessibilityScaleFactorChanged(float scale_factor) {
   pending_visual_properties_.cursor_accessibility_scale_factor = scale_factor;

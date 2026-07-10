@@ -74,6 +74,7 @@
 #include "net/http/http_connection_info.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
+#include "services/network/public/cpp/constants.h"
 #include "services/network/public/cpp/content_security_policy/csp_context.h"
 #include "services/network/public/mojom/blocked_by_response_reason.mojom-shared.h"
 #include "services/network/public/mojom/content_security_policy.mojom.h"
@@ -1767,7 +1768,7 @@ class CONTENT_EXPORT NavigationRequest
       NavigationThrottleEvent event,
       NavigationThrottle::ThrottleCheckResult result);
 
-  const std::optional<base::UnguessableToken>& network_restrictions_id() const {
+  const base::UnguessableToken& network_restrictions_id() const {
     return network_restrictions_id_;
   }
 
@@ -2207,6 +2208,10 @@ class CONTENT_EXPORT NavigationRequest
   // that we can run pagehide and visibilitychange handlers of the old page
   // when we commit the new page.
   void AddOldPageInfoToCommitParamsIfNeeded();
+
+  // Returns the RenderFrameHost that should be attributed for download related
+  // logging (e.g., UseCounters, console messages).
+  RenderFrameHost* GetRenderFrameHostForDownloadLogging();
 
   // Record download related UseCounters when navigation is a download before
   // filtered by download_policy.
@@ -3641,7 +3646,8 @@ class CONTENT_EXPORT NavigationRequest
   // with this navigation. This is also passed to the network service and
   // stored in the DocumentAssociatedData at commit. Only used for
   // cross-document navigations.
-  std::optional<base::UnguessableToken> network_restrictions_id_;
+  base::UnguessableToken network_restrictions_id_ =
+      network::GetNoOpNetworkRestrictionsId();
 
   // Tracks frames in the navigating subtree that are running `beforeunload`
   // handlers asynchronously.

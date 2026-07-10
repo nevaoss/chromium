@@ -20,25 +20,14 @@
 #include "chrome/browser/ui/views/extensions/extension_action_delegate_desktop.h"
 #include "chrome/browser/ui/views/extensions/extensions_menu_coordinator.h"
 #include "chrome/browser/ui/webui/util/image_util.h"
+#include "chrome/browser/ui/webui/webui_toolbar/icon_table.h"
+#include "components/browser_apis/ui_controllers/toolbar/icon_handle.h"
 #include "content/public/browser/web_ui.h"
 #include "ui/base/models/image_model_utils.h"
 #include "ui/base/mojom/menu_source_type.mojom.h"
 #include "ui/views/controls/menu/menu_item_view.h"
 #include "ui/views/controls/menu/menu_model_adapter.h"
 #include "ui/views/controls/menu/menu_runner.h"
-
-namespace {
-
-GURL GetDataUrlForImageModel(ui::ImageModel icon_model,
-                             const ui::ColorProvider* color_provider,
-                             base::WeakPtr<content::WebContents> web_contents) {
-  DCHECK(web_contents);
-  return GURL(webui::EncodePNGAndMakeDataURI(
-      icon_model.Rasterize(color_provider),
-      web_contents ? web_contents->GetWebUI()->GetDeviceScaleFactor() : 1.0f));
-}
-
-}  // namespace
 
 class WebUIToolbarExtensionsContainer::ActionInfo {
  public:
@@ -62,7 +51,7 @@ class WebUIToolbarExtensionsContainer::ActionInfo {
 
   ExtensionActionViewModel* model() { return model_.get(); }
 
-  extensions_bar::mojom::ExtensionActionInfoPtr ToMojo() const {
+  extensions_bar::mojom::ExtensionActionInfoPtr ToMojo() {
     content::WebContents* web_contents =
         browser_->GetTabStripModel()->GetActiveWebContents();
     auto result = extensions_bar::mojom::ExtensionActionInfo::New();
@@ -80,11 +69,13 @@ class WebUIToolbarExtensionsContainer::ActionInfo {
         icon_model = ui::GetDefaultDisabledIconFromImageModel(
             icon_model, extensions_container_->widget_->GetColorProvider());
       }
-      result->data_url_for_icon = GetDataUrlForImageModel(
-          icon_model, extensions_container_->widget_->GetColorProvider(),
-          extensions_container_->web_contents_);
+      icon_handle_ =
+          extensions_container_->icon_table_->RegisterImageModelTryReuse(
+              icon_model, icon_handle_);
+      result->icon = icon_handle_;
     } else {
-      result->data_url_for_icon = GURL("data:,");
+      icon_handle_ = toolbar_ui_api::IconHandle();
+      result->icon = icon_handle_;
     }
     return result;
   }
@@ -94,6 +85,7 @@ class WebUIToolbarExtensionsContainer::ActionInfo {
   const raw_ref<BrowserWindowInterface> browser_;
   std::unique_ptr<ExtensionActionViewModel> model_;
   base::CallbackListSubscription model_subscription_;
+  toolbar_ui_api::IconHandle icon_handle_;
 };
 
 // This is based on ExtensionContextMenuController.
@@ -170,10 +162,14 @@ class WebUIToolbarExtensionsContainer::ContextMenu {
 WebUIToolbarExtensionsContainer::WebUIToolbarExtensionsContainer(
     BrowserWindowInterface& browser,
     views::Widget* widget,
-    base::WeakPtr<content::WebContents> web_contents)
+    base::WeakPtr<content::WebContents> web_contents,
+    webui_toolbar::IconTable* icon_table,
+    bool push_icon_table_updates)
     : browser_(browser),
       widget_(widget),
       web_contents_(web_contents),
+      push_icon_table_updates_(push_icon_table_updates),
+      icon_table_(icon_table),
       model_(*ToolbarActionsModel::Get(browser.GetProfile())),
       extensions_menu_coordinator_(
           std::make_unique<ExtensionsMenuCoordinator>(&browser, this)) {
@@ -321,7 +317,11 @@ void WebUIToolbarExtensionsContainer::OnToolbarActionRemoved(
   actions_[id]->model()->UnregisterCommand();
   actions_.erase(id);
   if (page_) {
-    page_->ActionRemoved(id);
+    std::vector<toolbar_ui_api::mojom::IconUpdatePtr> icon_updates;
+    if (push_icon_table_updates_) {
+      icon_updates = icon_table_->TakePendingUpdates();
+    }
+    page_->ActionRemoved(std::move(icon_updates), id);
   }
 }
 
@@ -341,6 +341,11 @@ void WebUIToolbarExtensionsContainer::Bind(
   receiver_.Bind(std::move(receiver));
   page_.reset();
   page_.Bind(std::move(page));
+  if (push_icon_table_updates_) {
+    page_->ActionsAddedOrUpdated(
+        icon_table_->GetFullState(),
+        std::vector<extensions_bar::mojom::ExtensionActionInfoPtr>());
+  }
   NotifyOfAllActions();
 }
 
@@ -358,7 +363,11 @@ void WebUIToolbarExtensionsContainer::NotifyOfAllActions() {
   for (const auto& [_, action] : actions_) {
     updates.push_back(action->ToMojo());
   }
-  page_->ActionsAddedOrUpdated(std::move(updates));
+  std::vector<toolbar_ui_api::mojom::IconUpdatePtr> icon_updates;
+  if (push_icon_table_updates_) {
+    icon_updates = icon_table_->TakePendingUpdates();
+  }
+  page_->ActionsAddedOrUpdated(std::move(icon_updates), std::move(updates));
 }
 
 void WebUIToolbarExtensionsContainer::NotifyOfOneAction(
@@ -374,7 +383,11 @@ void WebUIToolbarExtensionsContainer::NotifyOfOneAction(
 
   std::vector<extensions_bar::mojom::ExtensionActionInfoPtr> update;
   update.push_back(actions_[id]->ToMojo());
-  page_->ActionsAddedOrUpdated(std::move(update));
+  std::vector<toolbar_ui_api::mojom::IconUpdatePtr> icon_updates;
+  if (push_icon_table_updates_) {
+    icon_updates = icon_table_->TakePendingUpdates();
+  }
+  page_->ActionsAddedOrUpdated(std::move(icon_updates), std::move(update));
 }
 
 ui::TrackedElement*

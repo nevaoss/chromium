@@ -186,7 +186,6 @@ extra_kv = { allow_unsafe = false }
 
 [crate.bitflags.extra_kv]
 allow_unsafe = false
-multiversion_cleanup_bug = "https://crbug.com/428224817"
 
 [crate.bytemuck.extra_kv]
 allow_unsafe = true
@@ -729,6 +728,13 @@ extra_kv = { allow_unsafe = false }
 extra_input_roots = ['../generated', '../data/generated']
 extra_kv = { allow_unsafe = false }
 
+[crate.ref-cast]
+build_script_outputs = [ "private.rs" ]
+extra_kv = { allow_unsafe = true }
+
+[crate.ref-cast-impl]
+extra_kv = { allow_unsafe = false }
+
 [crate.regex]
 group = 'test'
 allow_first_party_usage = false
@@ -795,6 +801,9 @@ extra_kv = { allow_unsafe = false }
 [crate.serial_test_derive]
 extra_kv = { allow_unsafe = false }
 
+[crate.sfv]
+extra_kv = { allow_unsafe = false }
+
 [crate.shared-brotli-patch-decoder]
 extra_kv = { allow_unsafe = true, extra_deps = ["//third_party/brotli:dec"] }
 remove_build_rs = true
@@ -839,11 +848,9 @@ allow_unsafe = false
 
 [crate.strum.extra_kv]
 allow_unsafe = false
-multiversion_cleanup_bug = "https://crbug.com/491518606"
 
 [crate.strum_macros.extra_kv]
 allow_unsafe = false
-multiversion_cleanup_bug = "https://crbug.com/491518606"
 
 [crate.subtle.extra_kv]
 allow_unsafe = false

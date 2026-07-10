@@ -68,6 +68,7 @@ extern const char kCredits[];
 extern const char kCustomDevtoolsFrontend[];
 extern const char kDebugPackedApps[];
 extern const char kDevToolsFlags[];
+extern const char kDevToolsNavigationGatingRules[];
 extern const char kDiagnostics[];
 extern const char kDiagnosticsFormat[];
 extern const char kDiagnosticsRecovery[];

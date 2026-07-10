@@ -8,7 +8,11 @@ import("//neva/neva.gni")
 
 declare_args() {
   # Should ANGLE be linked statically?
+<<<<<<< HEAD
   use_static_angle = is_android || is_ios || is_webos
+=======
+  use_static_angle = is_android || is_ios || is_linux
+>>>>>>> 151.0.7895.0~1
 
   # Should ANGLE use the shared Vulkan loader on Mac?
   shared_libvulkan_on_mac = true

@@ -530,6 +530,8 @@ PasswordCheckDelegate::ConstructInsecureCredentialUiEntry(
   if (change_password_url.has_value()) {
     api_credential.change_password_url = change_password_url->spec();
   }
+  api_credential.is_automatic_password_change_supported = false;
+
   CredentialUIEntry copy(std::move(entry));
   // Weak and reused flags should be cleaned before obtaining id. Otherwise
   // weak or reused flag will be saved to the database whenever credential is

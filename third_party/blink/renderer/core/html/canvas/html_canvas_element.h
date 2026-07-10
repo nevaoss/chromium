@@ -368,7 +368,8 @@ class CORE_EXPORT HTMLCanvasElement final
 
   ElementImage* captureElementImage(Element* element, ExceptionState&);
 
-  void OnAxObjectCreated(bool is_ignored);
+  // Called when AxObject is created or its ignored state is changed.
+  void OnAxObjectIgnoredStateChanged(bool is_ignored);
 
  protected:
   void DidMoveToNewDocument(Document& old_document) override;

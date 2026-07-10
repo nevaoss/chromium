@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <compare>
+#include <optional>
 #include <sstream>
 #include <utility>
 #include <vector>
@@ -20,6 +21,7 @@
 #include "base/memory/ptr_util.h"
 #include "base/notreached.h"
 #include "base/task/single_thread_task_runner.h"
+#include "base/time/time.h"
 #include "components/user_education/common/session/user_education_session_manager.h"
 #include "components/user_education/common/user_education_data.h"
 #include "components/user_education/common/user_education_storage_service.h"
@@ -81,6 +83,23 @@ void ProductMessagingHandleImpl::OnStatusChange(ProductMessageKey key,
   superseded_callback_.Run(key, status);
 }
 
+struct ProductMessagingController::QueueData {
+  QueueData() = default;
+  QueueData(ProductMessageReadyCallback callback_,
+            std::optional<base::TimeTicks> expires_at_)
+      : callback(std::move(callback_)), expires_at(expires_at_) {}
+  QueueData(QueueData&& other) noexcept = default;
+  QueueData& operator=(QueueData&& other) noexcept = default;
+  ~QueueData() = default;
+
+  ProductMessageReadyCallback callback;
+  std::optional<base::TimeTicks> expires_at;
+
+  bool is_expired() const {
+    return expires_at && base::TimeTicks::Now() >= expires_at;
+  }
+};
+
 // ProductMessagingController
 
 ProductMessagingController::ProductMessagingController() = default;
@@ -105,18 +124,33 @@ void ProductMessagingController::Init(
 
 void ProductMessagingController::QueueMessage(
     ProductMessageKey message_key,
-    ProductMessageReadyCallback ready_to_start_callback) {
+    ProductMessageReadyCallback ready_to_start_callback,
+    std::optional<base::TimeDelta> timeout) {
   CHECK(message_key);
   CHECK(!ready_to_start_callback.is_null());
+  const std::optional<base::TimeTicks> expiry =
+      timeout ? std::make_optional(base::TimeTicks::Now() + *timeout)
+              : std::nullopt;
 
-  // Cannot re-queue a notice.
-  if (GetMessageStatus(message_key) != ProductMessageStatus::kNone) {
+  // Cannot re-queue a notice unless overriding the timer.
+  if (active_messages_.contains(message_key)) {
     return;
+  } else if (const auto existing = pending_messages_.find(message_key);
+             existing != pending_messages_.end()) {
+    // If this would not supersede an existing expiry timer, don't queue it.
+    if (!existing->second.expires_at ||
+        (expiry && expiry <= *existing->second.expires_at)) {
+      return;
+    }
+
+    // We're overriding the expiry timer, so replace the existing entry.
+    pending_messages_.erase(existing);
   }
 
+  // Add the new notice.
   const auto result = pending_messages_.emplace(
-      message_key, std::move(ready_to_start_callback));
-  CHECK(result.second) << "Duplicate message ID: " << message_key.ToString();
+      message_key, QueueData(std::move(ready_to_start_callback), expiry));
+  CHECK(result.second);
   status_update_callbacks_.Notify(message_key, ProductMessageStatus::kWaiting);
   MaybeShowNextMessage();
 }
@@ -135,8 +169,10 @@ ProductMessageStatus ProductMessagingController::GetMessageStatus(
     return *shown ? ProductMessageStatus::kShowing
                   : ProductMessageStatus::kReady;
   }
-  if (pending_messages_.contains(message)) {
-    return ProductMessageStatus::kWaiting;
+  if (const auto it = pending_messages_.find(message);
+      it != pending_messages_.end()) {
+    return it->second.is_expired() ? ProductMessageStatus::kNone
+                                   : ProductMessageStatus::kWaiting;
   }
   return ProductMessageStatus::kNone;
 }
@@ -162,7 +198,7 @@ ProductMessagingController::GetAllMessages(
   }
   if (filter_statuses.contains(ProductMessageStatus::kWaiting)) {
     for (auto& [key, data] : pending_messages_) {
-      if (key.type() > priority_higher_than) {
+      if (key.type() > priority_higher_than && !data.is_expired()) {
         infos.emplace(key, ProductMessageStatus::kWaiting);
       }
     }
@@ -174,6 +210,16 @@ base::CallbackListSubscription
 ProductMessagingController::AddStatusUpdateCallbackForTesting(
     ProductMessageStatusCallback callback) {
   return status_update_callbacks_.Add(std::move(callback));
+}
+
+std::optional<base::TimeDelta>
+ProductMessagingController::GetRemainingTimeForTesting(
+    ProductMessageKey message_key) const {
+  const auto* const entry = base::FindOrNull(pending_messages_, message_key);
+  CHECK(entry);
+  return entry->expires_at
+             ? std::make_optional(*entry->expires_at - base::TimeTicks::Now())
+             : std::nullopt;
 }
 
 void ProductMessagingController::ReleaseHandle(ProductMessageKey message_key,
@@ -199,30 +245,46 @@ void ProductMessagingController::MaybeShowNextMessage() {
                      weak_ptr_factory_.GetWeakPtr()));
 }
 
-void ProductMessagingController::PurgeBlockedMessages() {
-  ProductMessagingPolicy::Ids ids;
+void ProductMessagingController::PurgeBlockedAndExpiredMessages() {
+  // General purpose method to purge pending messages that match a predicate.
+  const auto purge_all_that =
+      [&](const base::FunctionRef<bool(ProductMessageKey, const QueueData&)>&
+              should_purge) {
+        std::vector<ProductMessageKey> to_purge;
+        for (auto& [key, data] : pending_messages_) {
+          if (should_purge(key, data)) {
+            to_purge.push_back(key);
+          }
+        }
+        for (auto id : to_purge) {
+          pending_messages_.erase(id);
+        }
+      };
+
+  // Purge timed-out messages.
+  purge_all_that([](ProductMessageKey, const QueueData& data) {
+    return data.is_expired();
+  });
+
+  // Get the IDs of all shown messages.
+  ProductMessagingPolicy::Ids shown_ids;
   for (const auto& name :
        storage_service_->ReadProductMessagingData().shown_notices) {
     std::string actual_name = name;
     actual_name += internal::kProductMessageUniqueIdSuffix;
     const auto id =
         internal::ProductMessageUniqueId::FromName(actual_name.c_str());
-    ids.insert(id);
+    shown_ids.insert(id);
   }
-  std::vector<ProductMessageKey> to_purge;
-  for (const auto& [key, data] : pending_messages_) {
-    if (policy_->BlockedByAnyOf(key, ids, /*include_self=*/true)) {
-      to_purge.push_back(key);
-      continue;
-    }
-  }
-  for (auto id : to_purge) {
-    pending_messages_.erase(id);
-  }
+
+  // Purge all blocked messages.
+  purge_all_that([&](ProductMessageKey key, const QueueData&) {
+    return policy_->BlockedByAnyOf(key, shown_ids, /*include_self=*/true);
+  });
 }
 
 void ProductMessagingController::MaybeShowNextMessageImpl() {
-  PurgeBlockedMessages();
+  PurgeBlockedAndExpiredMessages();
   if (pending_messages_.empty()) {
     return;
   }
@@ -281,7 +343,8 @@ void ProductMessagingController::MaybeShowNextMessageImpl() {
   }
 
   // Fire the next notice.
-  ProductMessageReadyCallback cb = std::move(pending_messages_[to_show]);
+  ProductMessageReadyCallback cb =
+      std::move(pending_messages_[to_show].callback);
   pending_messages_.erase(to_show);
   active_messages_.emplace(to_show, false);
   std::move(cb).Run(base::WrapUnique(
@@ -312,7 +375,13 @@ void ProductMessagingController::OnMessageShown(ProductMessageKey message_key) {
 std::string ProductMessagingController::DumpData() const {
   std::ostringstream oss;
   for (const auto& [key, data] : pending_messages_) {
-    oss << "\n{ key: " << key.ToString() << " }";
+    oss << "\n{ key: " << key.ToString();
+    if (data.expires_at) {
+      oss << " expires_at: " << *data.expires_at;
+    } else {
+      oss << " (does not expire)";
+    }
+    oss << " }";
   }
   return oss.str();
 }

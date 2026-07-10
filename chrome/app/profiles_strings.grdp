@@ -1252,6 +1252,26 @@
       No thanks
     </message>
 
+    <!-- Feature Showcase - Lens -->
+    <message name="IDS_FEATURE_SHOWCASE_GOOGLE_LENS_TITLE" desc="This is the headline for the Google Lens opt-in screen. It introduces the visual search feature. (CHAR LIMIT = 40).">
+      Browse smarter with Google Lens
+    </message>
+    <message name="IDS_FEATURE_SHOWCASE_GOOGLE_LENS_SUBTITLE" desc="This is the subtitle for Google Lens, explaining the primary use cases (shopping, translation, search).">
+      Select anything on your screen as you browse to shop, translate, and search using AI
+    </message>
+    <message name="IDS_FEATURE_SHOWCASE_GOOGLE_LENS_DISCLOSURE" desc="This is a technical disclosure for Google Lens. It specifies that PDFs are also part of the shared data. The tone should be informative.">
+      When you use Google Lens on desktop, the page title, URL, and content, including PDFs, are sent to Google
+    </message>
+    <message name="IDS_FEATURE_SHOWCASE_GOOGLE_LENS_NOT_NOW" desc="The label for the 'Not now' button to not enable the Google Lens feature.">
+      Not now
+    </message>
+    <message name="IDS_FEATURE_SHOWCASE_GOOGLE_LENS_YES_IM_IN" desc="Label for the 'Yes, I'm in' button to enable the Google Lens feature.">
+      Yes, I'm in
+    </message>
+    <message name="IDS_FEATURE_SHOWCASE_GOOGLE_LENS_ILLUSTRATION_A11Y_LABEL" desc="Accessibility label for the illustration on the Google Lens page in the Feature Showcase.">
+      A simplified image showing how you can use Google Lens to look up a product
+    </message>
+
     <!-- Signout Confirmation Dialog Desktop -->
     <message name="IDS_SIGNOUT_CONFIRMATION_EXTENSIONS_SECTION_TITLE" desc="Title of the Extensions section in the Signout Confirmation dialog which allows users to remove extensions linked to their account when signing out.">
       {ACCOUNT_EXTENSIONS_COUNT, plural,

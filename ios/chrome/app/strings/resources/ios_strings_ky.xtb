@@ -117,6 +117,7 @@
 <translation id="1373120905936431262">Nano Banana менен ремикс үчүн сүрөт жүктөп бериңиз</translation>
 <translation id="1377508275003315939">Сырсөздөр</translation>
 <translation id="1381022135873211423">{count,plural, =1{{count} ичинен {position} дарек}other{{count} ичинен {position} дарек}}</translation>
+<translation id="13813615483058219">Бир жерден ката кетти. Интернет байланышыңызды текшерип, үнүн жогорулатып же кайра аракет кылыңыз.</translation>
 <translation id="1383876407941801731">Издөө</translation>
 <translation id="138618066238211776"><ph name="USER_NAME" /> катары улантуу</translation>
 <translation id="138692594145659985">Картаны сактоо параметрлери</translation>
@@ -874,6 +875,7 @@
 <translation id="4021447724486050609">Серепчиңизди жаңыртыңыз</translation>
 <translation id="4021931095789478915">Окуу тизмесине ${url} дарегин кошуу</translation>
 <translation id="4028871427853484857">Аккаунтта сактоо…</translation>
+<translation id="4036529942385659684">Аракетсиз тургандан кийин башкы бетти көрсөтүү</translation>
 <translation id="4038354071007134711">Файлды бул түзмөктөгү бир дагы колднмо ача албйт.</translation>
 <translation id="4042870976416480368">Барактан табуу</translation>
 <translation id="4045441967987592849">Кайра ачуу</translation>
@@ -911,7 +913,6 @@
 <translation id="417138788035229076">Топту тескөө</translation>
 <translation id="4172051516777682613">Ар дайым көрүнсүн</translation>
 <translation id="417273154673973994">{count,plural, =1{1 өтмөктөр тобу жабылды жана сакталды}other{{count} өтмөктөр тобу жабылып, сакталды}}</translation>
-<translation id="417612446554534067">Түзмөктөрүңүзгө жөнөтүңүз</translation>
 <translation id="4180726336228139707">Ушул түзмөктө гана</translation>
 <translation id="4181841719683918333">Тилдер</translation>
 <translation id="4183350924949589798">Кошумча коопсуздук керекпи?</translation>
@@ -1135,6 +1136,7 @@
 <translation id="4896467949657706481">Өтмөктөр жабылды; аккаунттан чыгып кеттиңиз</translation>
 <translation id="4911042367886397055">Кайрадан кош келиңиз <ph name="USER_NAME" />!</translation>
 <translation id="4913626501929406101">Сырсөзүңүздүн көчүрмөсүн үй-бүлөлүк тобуңуздагы киши менен коопсуз түрдө бөлүшө аласыз. <ph name="BEGIN_LINK" />Кеңири маалымат<ph name="END_LINK" /></translation>
+<translation id="4916679969857390442">Линза</translation>
 <translation id="4917025507570489430"><ph name="USER_EMAIL" /> аккаунту менен кирип турганда учурдагы серептөө дайындарыңызды колдоно аласыз. Уюмуңуз бул маалыматты көрүшү мүмкүн.</translation>
 <translation id="4918086044614829423">Кабыл алуу</translation>
 <translation id="4930714375720679147">Күйгүзүү</translation>

@@ -522,7 +522,7 @@ def _make_called_by_native_regex(is_javap):
   if not is_javap:
     sb.append(r'\s*(?P<return_type_annotations>(?:\s*@[\w.]+(?:\(.*?\))?)+)?')
   sb.append(r'\s*(?P<return_type>[\S ]*?)'
-            r'\s*(?P<name>[\w.]+)'
+            r'\s*(?P<name>[\w.$]+)'
             r'\s*\(\s*(?P<params>[^{;]*)\)'
             r'\s*(?:throws\s+[^{;]+)?'
             r'[{;]')

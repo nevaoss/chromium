@@ -12,6 +12,10 @@
 
 class WebStateList;
 
+namespace feature_engagement {
+class Tracker;
+}
+
 @protocol BWGCommands;
 @protocol SettingsCommands;
 
@@ -19,6 +23,7 @@ class WebStateList;
 @interface GeminiSessionHandler : NSObject <GeminiSessionDelegate>
 
 - (instancetype)initWithWebStateList:(WebStateList*)webStateList
+                             tracker:(feature_engagement::Tracker*)tracker
     NS_DESIGNATED_INITIALIZER;
 
 - (instancetype)init NS_UNAVAILABLE;

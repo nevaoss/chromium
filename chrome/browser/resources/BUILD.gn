@@ -54,6 +54,7 @@ group("resources") {
       "bookmarks:resources",
       "certificate_manager:resources",
       "content_annotator_internals:resources",
+      "contextual_cueing/internals:resources",
       "data_sharing:resources",
       "downloads:resources",
       "drive_picker_host:resources",
@@ -95,6 +96,7 @@ group("resources") {
       "webui_browser:resources",
       "webui_gallery:resources",
       "webui_toolbar:resources",
+      "webui_toolbar_shared:resources",
       "whats_new:resources",
       "//components/browser_apis/tab_strip/resources",
     ]

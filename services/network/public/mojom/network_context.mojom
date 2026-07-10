@@ -184,7 +184,7 @@ interface CustomProxyConfigClient {
 // Sent by TrustedURLLoaderHeaderClient to perform modifications for a request.
 interface TrustedHeaderClient {
   // Allows modifying request headers before the request is sent.
-  OnBeforeSendHeaders(HttpRequestHeaders headers)
+  OnBeforeSendHeaders(url.mojom.Url request_url, HttpRequestHeaders headers)
       => (int32 result, HttpRequestHeaders? headers);
 
   // Allows modifying response headers, including sensitive headers such as
@@ -1539,7 +1539,7 @@ interface NetworkContext {
       pending_remote<WebSocketAuthenticationHandler>? auth_handler,
       pending_remote<TrustedHeaderClient>? header_client,
       mojo_base.mojom.UnguessableToken? throttling_profile_id,
-      mojo_base.mojom.UnguessableToken? network_restrictions_id);
+      mojo_base.mojom.UnguessableToken network_restrictions_id);
 
   // Creates a WebTransport connection to |url|. |origin| is used for the
   // client indication - see
@@ -1565,7 +1565,7 @@ interface NetworkContext {
       pending_remote<URLLoaderNetworkServiceObserver>?
           url_loader_network_observer,
       ClientSecurityState client_security_state,
-      mojo_base.mojom.UnguessableToken? network_restrictions_id);
+      mojo_base.mojom.UnguessableToken network_restrictions_id);
 
   // Create a NetLogExporter, which helps export NetLog to an existing file.
   // Note that the log is generally global, including all NetworkContexts
@@ -1595,7 +1595,7 @@ interface NetworkContext {
       url.mojom.Url url,
       network.mojom.CredentialsMode credentials_mode,
       NetworkAnonymizationKey network_anonymization_key,
-      mojo_base.mojom.UnguessableToken? network_restrictions_id,
+      mojo_base.mojom.UnguessableToken network_restrictions_id,
       MutableNetworkTrafficAnnotationTag traffic_annotation,
       ConnectionKeepAliveConfig? keepalive_config,
       pending_remote<ConnectionChangeObserverClient>? observer_client);

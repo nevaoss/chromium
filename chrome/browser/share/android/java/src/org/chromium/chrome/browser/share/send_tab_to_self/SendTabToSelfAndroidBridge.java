@@ -233,7 +233,7 @@ public class SendTabToSelfAndroidBridge {
         if (activity instanceof ChromeTabbedActivity) {
             ChromeTabbedActivity tabbedActivity = (ChromeTabbedActivity) activity;
             if (tabbedActivity.getLayoutManager() != null) {
-                tabbedActivity.getLayoutManager().showLayout(LayoutType.TAB_SWITCHER, true);
+                tabbedActivity.getLayoutManager().showLayout(LayoutType.HUB, true);
             }
         }
         return PrimaryActionClickBehavior.DISMISS_IMMEDIATELY;

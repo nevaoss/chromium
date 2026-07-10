@@ -194,7 +194,7 @@ void FilterSuggestionGenerator::OnAllAnnotationsFetched(
   // Suppress suggestions if the latest annotation is for the same domain and
   // within the throttle duration.
   if (!all_annotations.empty() &&
-      all_annotations.front().source_domain == domain &&
+      all_annotations.front().source_host == url.GetHost() &&
       base::Time::Now() - all_annotations.front().creation_timestamp <
           kSameDomainSuggestionSuppressionDuration.Get()) {
     LogSuggestionSuppressed(log_router_, navigation_id, domain,
@@ -301,10 +301,12 @@ void FilterSuggestionGenerator::OnFilterSuggestionCandidatesFetched(
   UrlFilterSuggestion suggestion(UrlFilterSuggestion::Params{
       .navigation_url = std::move(candidate.navigation_url),
       .source_domain = base::UTF8ToUTF16(matching_annotation_it->source_domain),
+      .source_host = base::UTF8ToUTF16(matching_annotation_it->source_host),
       .extraction_timestamp = matching_annotation_it->creation_timestamp,
       .attribute_ui_labels = std::move(attribute_ui_labels),
       .triggering_navigation_id = navigation_id,
       .triggering_domain = std::string(domain),
+      .triggering_host = url.GetHost(),
       .task_type = std::move(matching_annotation_it->task_type),
       .suggestion_message = std::move(*message)});
   LogSuggestionGenerated(log_router_, navigation_id, domain, suggestion);

@@ -812,22 +812,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Security.PrivateNetworkAccess.PrivateIpResolveMatch"
-    enum="Boolean" expires_after="2026-07-05">
-  <owner>hchao@chromium.org</owner>
-  <owner>clamy@chromium.org</owner>
-  <owner>cthomp@chromium.org</owner>
-  <owner>estark@chromium.org</owner>
-  <owner>jdeblasio@chromium.org</owner>
-  <owner>src/chrome/browser/local_network_access/OWNERS</owner>
-  <summary>
-    Records whether a request to a literal private IP address resolved to that
-    private IP address. Recorded at most once per call to
-    `network::URLLoader::OnConnected()`, which may be more than once per URL
-    request.
-  </summary>
-</histogram>
-
 <histogram name="Security.SafetyTips.Interaction{SafetyTip}"
     enum="SafetyTipInteraction" expires_after="2023-06-18">
   <owner>jdeblasio@chromium.org</owner>

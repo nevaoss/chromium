@@ -10,8 +10,16 @@ export function getHtml(this: BookmarkTreeNodeElement) {
   // clang-format off
   return html`
 ${this.node.folder ? html`
-  <details ?open="${this.node.folder.id === 1n}">
-    <summary>${this.node.folder.title || 'Bookmarks'}</summary>
+  <details>
+    <summary>
+      ${this.node.folder.title || 'Bookmarks'}
+      <button @click="${this.onAddUrlClick}">+URL</button>
+      <button @click="${this.onAddFolderClick}">+Folder</button>
+      ${this.node.folder.id?.value ? html`
+        <button @click="${this.onEditClick}">Edit</button>
+        <button @click="${this.onDeleteClick}">Delete</button>
+      ` : ''}
+    </summary>
     <div class="folder-children">
       ${this.node.folder.children.map(item => html`
         <webui-browser-bookmark-tree-node .node="${item}">
@@ -23,8 +31,10 @@ ${this.node.folder ? html`
 ${this.node.url ? html`
   <div class="bookmark-item">
     <a href="${this.node.url.url}" target="_blank">
-          ${this.node.url.title || this.node.url.url}
-        </a>
+      ${this.node.url.title || this.node.url.url}
+    </a>
+    <button @click="${this.onEditClick}">Edit</button>
+    <button @click="${this.onDeleteClick}">Delete</button>
   </div>
 ` : ''}
 `;

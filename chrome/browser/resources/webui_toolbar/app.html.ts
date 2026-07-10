@@ -49,6 +49,11 @@ ${this.isBackForwardButtonEnabled_ ? html`
         .hidden="${this.navigationControlsState_.pinnedToolbarActionsState.length === 0}">
     </pinned-toolbar-actions>
   ` : ''}
+  ${this.isBatterySaverButtonEnabled_ ? html`
+    <battery-saver-button id="battery-saver"
+        .hidden="${!this.navigationControlsState_.batterySaverButtonVisible}">
+    </battery-saver-button>
+  ` : ''}
   ${this.isAvatarButtonEnabled_ ? html`
     <avatar-button id="avatar"
         .state="${this.navigationControlsState_.avatarControlState}">

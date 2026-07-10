@@ -47,18 +47,18 @@
 #include "third_party/blink/public/web/web_view.h"
 #include "ui/events/keycodes/keyboard_codes.h"
 
-using autofill::mojom::FocusedFieldType;
-using base::ASCIIToUTF16;
-using blink::WebDocument;
-using blink::WebElement;
-using blink::WebInputElement;
-using blink::WebNode;
-using blink::WebString;
-using testing::_;
-using testing::AnyNumber;
-using testing::AtLeast;
-using testing::AtMost;
-using testing::Eq;
+using ::autofill::mojom::FocusedFieldType;
+using ::base::ASCIIToUTF16;
+using ::blink::WebDocument;
+using ::blink::WebElement;
+using ::blink::WebInputElement;
+using ::blink::WebNode;
+using ::blink::WebString;
+using ::testing::_;
+using ::testing::AnyNumber;
+using ::testing::AtLeast;
+using ::testing::AtMost;
+using ::testing::Eq;
 
 namespace autofill {
 namespace {
@@ -139,10 +139,12 @@ class FakeContentAutofillDriver : public mojom::AutofillDriver {
 
   void DidEndTextFieldEditing() override {}
 
-  void SelectFieldOptionsDidChange(const autofill::FormData& form,
+  void SelectFieldOptionsDidChange(const FormData& form,
                                    FieldRendererId field_id) override {}
 
-  void OnEmailVerificationTokenShared(FieldRendererId field_id) override {}
+  void FormWithEmailVerificationTokenSubmitted(
+      const FormData& form,
+      FieldRendererId field_id) override {}
 
   std::unique_ptr<base::RunLoop> forms_seen_run_loop_;
 
@@ -284,18 +286,19 @@ class PasswordGenerationAgentTest : public ChromeRenderViewTest {
   void BindPasswordManagerClient(mojo::ScopedInterfaceEndpointHandle handle);
 
   // Callback for TriggeredGeneratePassword.
-  MOCK_METHOD1(TriggeredGeneratePasswordReply,
-               void(const std::optional<
-                    autofill::password_generation::PasswordGenerationUIData>&));
+  MOCK_METHOD1(
+      TriggeredGeneratePasswordReply,
+      void(
+          const std::optional<password_generation::PasswordGenerationUIData>&));
 
   FakeContentAutofillDriver fake_autofill_driver_;
   testing::NiceMock<FakeMojoPasswordManagerDriver> fake_driver_;
   testing::StrictMock<FakePasswordGenerationDriver> fake_pw_client_;
 
   int called_inform_about_user_input_count_ = 0;
-  std::optional<autofill::FormData> form_data_maybe_submitted_;
-  autofill::mojom::FocusedFieldType last_focused_field_type_ =
-      autofill::mojom::FocusedFieldType::kUnknown;
+  std::optional<FormData> form_data_maybe_submitted_;
+  mojom::FocusedFieldType last_focused_field_type_ =
+      mojom::FocusedFieldType::kUnknown;
 };
 
 void PasswordGenerationAgentTest::RegisterMainFrameRemoteInterfaces() {
@@ -319,17 +322,16 @@ void PasswordGenerationAgentTest::RegisterMainFrameRemoteInterfaces() {
           base::Unretained(this)));
 
   ON_CALL(fake_driver_, InformAboutUserInput)
-      .WillByDefault([this](const autofill::FormData& form_data) {
+      .WillByDefault([this](const FormData& form_data) {
         called_inform_about_user_input_count_++;
         form_data_maybe_submitted_ = form_data;
       });
 
   ON_CALL(fake_driver_, FocusedInputChanged)
-      .WillByDefault(
-          [this](autofill::FieldRendererId focused_field_id,
-                 autofill::mojom::FocusedFieldType focused_field_type) {
-            last_focused_field_type_ = focused_field_type;
-          });
+      .WillByDefault([this](FieldRendererId focused_field_id,
+                            mojom::FocusedFieldType focused_field_type) {
+        last_focused_field_type_ = focused_field_type;
+      });
 }
 
 void PasswordGenerationAgentTest::SetUp() {
@@ -809,8 +811,8 @@ TEST_F(PasswordGenerationAgentTest, MaximumCharsForGenerationOffer) {
   fake_pw_client_.Flush();
 
   histogram_tester.ExpectBucketCount(
-      "PasswordGeneration.Event",
-      autofill::password_generation::GENERATION_POPUP_SHOWN, 1);
+      "PasswordGeneration.Event", password_generation::GENERATION_POPUP_SHOWN,
+      1);
 }
 
 TEST_F(PasswordGenerationAgentTest, MinimumLengthForEditedPassword) {
@@ -1388,7 +1390,7 @@ TEST_F(PasswordGenerationAgentTest, GenerationAvailableByRendererIds) {
   // Check that generation is available only on new password field of this form.
   PasswordFormGenerationData generation_data;
   generation_data.new_password_renderer_id =
-      autofill::form_util::GetFieldRendererId(password_elements[0]);
+      form_util::GetFieldRendererId(password_elements[0]);
 
   password_generation_->FoundFormEligibleForGeneration(generation_data);
   ExpectAutomaticGenerationAvailable(kPasswordElementsIds[0], kAvailable);
@@ -1398,7 +1400,7 @@ TEST_F(PasswordGenerationAgentTest, GenerationAvailableByRendererIds) {
   // Simulate that the browser informs about the second eligible for generation
   // form. Check that generation is available on both forms.
   generation_data.new_password_renderer_id =
-      autofill::form_util::GetFieldRendererId(password_elements[2]);
+      form_util::GetFieldRendererId(password_elements[2]);
   password_generation_->FoundFormEligibleForGeneration(generation_data);
   ExpectAutomaticGenerationAvailable(kPasswordElementsIds[0], kAvailable);
   ExpectGenerationElementLostFocus(kPasswordElementsIds[1]);

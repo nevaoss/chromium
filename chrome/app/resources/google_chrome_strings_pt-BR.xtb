@@ -435,15 +435,6 @@ Se esta página não funcionar como o esperado, ative a otimização.</translati
 <translation id="569897634095159764">Não foi possível se conectar à Internet. O servidor proxy requer autenticação.</translation>
 <translation id="5709557627224531708">Defina o Chrome como seu navegador padrão</translation>
 <translation id="5719246646468301581">Termos adicionais de Serviço do Google Chrome e do ChromeOS</translation>
-<translation id="5719324992913248873">Essa ação vai:
-        <ph name="LINE_BREAKS" />
-          • redefinir alguns atalhos e configurações do Chrome;
-          <ph name="LINE_BREAK" />
-          • desativar extensões;
-          <ph name="LINE_BREAK" />
-          • excluir cookies e outros dados temporários de sites.
-          <ph name="LINE_BREAKS" />
-          Os favoritos, o histórico e as senhas salvas não serão afetados.</translation>
 <translation id="5736850870166430177">Se um site tentar roubar sua senha ou se você fizer o download de um arquivo nocivo, o Chrome também poderá enviar os URLs, incluindo partes do conteúdo da página, para o Navegação segura</translation>
 <translation id="5756509061973259733">Este dispositivo já tem um perfil do Chrome com essa conta</translation>
 <translation id="5759947850379142561">Selecione qualquer texto ou imagem para pesquisar com o Google Lens ou pressione Esc para sair</translation>

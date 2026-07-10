@@ -136,11 +136,13 @@ function updateTaskDetailsInUrl(
   // Add all the params from the aim URL, except host.
   if (aimUrl) {
     try {
-      new URL(aimUrl).searchParams.forEach((value, key) => {
+      const aimUrlObj = new URL(aimUrl);
+      aimUrlObj.searchParams.forEach((value, key) => {
         if (key !== CHROME_HOST_PARAM_KEY) {
           url.searchParams.set(key, value);
         }
       });
+      url.hash = aimUrlObj.hash;
     } catch (e) {
       console.error('Failed to parse AI thread URL:', aimUrl, e);
     }
@@ -1104,16 +1106,7 @@ export class ContextualTasksAppElement extends ContextualTasksAppElementBase {
         // (e.g., when the composebox changes height).
         if (wasHidden && !this.isComposeboxHidden_()) {
           this.updateComplete.then(() => {
-            // Defer focus to the next message loop cycle using setTimeout(...,
-            // 0). While `this.updateComplete` guarantees the parent DOM is
-            // updated (removing the `hidden` attribute), the browser layout
-            // engine needs a layout pass to realize the nested child input is
-            // visible and interactive. setTimeout avoids a chain of
-            // updateComplete promises of all nested shadow DOM elements, and is
-            // simpler and cleaner.
-            setTimeout(() => {
-              this.composebox_?.focus();
-            }, 0);
+            this.composebox_?.tryFocus();
           });
         }
       } else {

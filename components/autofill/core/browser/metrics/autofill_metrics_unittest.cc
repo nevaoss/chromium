@@ -2748,6 +2748,8 @@ TEST_F(AutofillMetricsTest, GetFieldTypeUserEditStatusMetric) {
 
 // Base class for cross-frame filling metrics, in particular for
 // Autofill.CreditCard.SeamlessFills.*.
+// This uses the simplified security model of `TestAutofillDriver` which only
+// allows filling fields from the same origin.
 class AutofillMetricsCrossFrameFormTest : public AutofillMetricsTest {
  public:
   struct CreditCardAndCvc {
@@ -2802,16 +2804,6 @@ class AutofillMetricsCrossFrameFormTest : public AutofillMetricsTest {
     ASSERT_NE(form_.main_frame_origin(), form_.fields()[1].origin());
     ASSERT_NE(form_.main_frame_origin(), form_.fields()[3].origin());
     ASSERT_EQ(form_.fields()[1].origin(), form_.fields()[3].origin());
-
-    // Mock a simplified security model which allows to filter (only) fields
-    // from the same origin.
-    autofill_driver().SetFieldTypeMapFilter(base::BindRepeating(
-        [](AutofillMetricsCrossFrameFormTest* self,
-           const url::Origin& triggered_origin, FieldGlobalId field,
-           FieldType) {
-          return triggered_origin == self->GetFieldById(field).origin();
-        },
-        this));
   }
 
   CreditCard& credit_card() { return credit_card_; }
@@ -3172,7 +3164,8 @@ TEST_F(AutofillMetricsSeamlessnessTest, CreditCardFormRecordOnIFrames) {
       skipped_status_vector = {FieldFillingSkipReason::kNotSkipped,
                                FieldFillingSkipReason::kAlreadyAutofilled};
     } else {
-      skipped_status_vector = {FieldFillingSkipReason::kNotSkipped};
+      skipped_status_vector = {FieldFillingSkipReason::kNotSkipped,
+                               FieldFillingSkipReason::kIframeSecurityPolicy};
     }
     DenseSet<AutofillStatus> autofill_status_vector;
     int field_log_events_count = 0;

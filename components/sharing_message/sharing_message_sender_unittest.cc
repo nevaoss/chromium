@@ -287,7 +287,7 @@ TEST_F(SharingMessageSenderTest, MessageSent_AckReceived) {
             fake_device_info_sync_service_.GetLocalDeviceInfoProvider()
                 ->GetLocalDeviceInfo();
         ASSERT_EQ(local_device->guid(), message.sender_guid());
-        ASSERT_EQ(syncer::GetDeviceDisplayNames(local_device).full_name,
+        ASSERT_EQ(syncer::GetDisplayNameCandidates(local_device).fallback_full_name,
                   message.sender_device_name());
         ASSERT_TRUE(local_device->sharing_info().has_value());
         auto& fcm_ack_configuration = message.fcm_channel_configuration();

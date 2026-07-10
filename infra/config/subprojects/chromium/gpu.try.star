@@ -398,15 +398,6 @@ def gpu_mac_builder(*, name, **kwargs):
     )
 
 gpu_mac_builder(
-    name = "gpu-fyi-try-mac-amd-pro-rel",
-    mirrors = [
-        "ci/GPU FYI Mac Builder",
-        "ci/Mac Pro FYI Release (AMD)",
-    ],
-    gn_args = "ci/GPU FYI Mac Builder",
-)
-
-gpu_mac_builder(
     name = "gpu-fyi-try-mac-amd-retina-asan",
     mirrors = [
         "ci/GPU FYI Mac Builder (asan)",

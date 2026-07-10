@@ -20,6 +20,7 @@
 #include "content/browser/web_contents/web_contents_impl.h"
 #include "content/browser/webid/idp_network_request_manager.h"
 #include "content/browser/webid/request.h"
+#include "content/browser/webid/request_service.h"
 #include "content/browser/webid/test/federated_auth_request_request_token_callback_helper.h"
 #include "content/browser/webid/test/mock_api_permission_delegate.h"
 #include "content/browser/webid/test/mock_auto_reauthn_permission_delegate.h"
@@ -298,21 +299,22 @@ class RequestMultipleFramesTest : public RenderViewHostImplTestHarness {
       TestDialogController::AccountsDialogAction accounts_dialog_action,
       TestDialogController::State* dialog_controller_state,
       TestIdpNetworkRequestManager** out_network_manager = nullptr) {
-    Request* federated_auth_request_impl = &Request::CreateForTesting(
-        render_frame_host, test_api_permission_delegate_.get(),
-        mock_auto_reauthn_permission_delegate_.get(),
-        mock_permission_delegate_.get(), mock_identity_registry_.get(),
-        request_remote.BindNewPipeAndPassReceiver());
-    federated_auth_request_impl->SetDialogControllerForTests(
-        std::make_unique<TestDialogController>(accounts_dialog_action,
-                                               dialog_controller_state));
+    Request* request =
+        &RequestService::GetOrCreateForCurrentDocument(&render_frame_host)
+             ->CreateRequestForTesting(
+                 request_remote.BindNewPipeAndPassReceiver(),
+                 test_api_permission_delegate_.get(),
+                 mock_auto_reauthn_permission_delegate_.get(),
+                 mock_permission_delegate_.get(),
+                 mock_identity_registry_.get());
+    request->SetDialogControllerForTests(std::make_unique<TestDialogController>(
+        accounts_dialog_action, dialog_controller_state));
     auto network_manager = std::make_unique<TestIdpNetworkRequestManager>();
     if (out_network_manager) {
       *out_network_manager = network_manager.get();
     }
-    federated_auth_request_impl->SetNetworkManagerForTests(
-        std::move(network_manager));
-    return federated_auth_request_impl;
+    request->SetNetworkManagerForTests(std::move(network_manager));
+    return request;
   }
 
   // Creates a child frame with identity-credentials-get PP delegation
@@ -597,7 +599,7 @@ TEST_F(RequestMultipleFramesTest,
 
   mojo::Remote<blink::mojom::FederatedAuthRequest> iframe_request_remote;
   TestDialogController::State iframe_dialog_state;
-  auto* federated_auth_request_impl =
+  auto* request =
       CreateRequest(*same_site_iframe, iframe_request_remote,
                     TestDialogController::AccountsDialogAction::kSelectAccount,
                     &iframe_dialog_state);
@@ -611,7 +613,7 @@ TEST_F(RequestMultipleFramesTest,
   base::RunLoop ukm_loop;
   ukm_recorder_->SetOnAddEntryCallback(FedCmEntry::kEntryName,
                                        ukm_loop.QuitClosure());
-  federated_auth_request_impl->PreventSilentAccess(base::DoNothing());
+  request->PreventSilentAccess(base::DoNothing());
 
   // Perform an actual FedCM request to log some metrics and flush the ukm
   // recorder.
@@ -642,7 +644,7 @@ TEST_F(RequestMultipleFramesTest, MainFramePreventSilentAccess) {
 
   mojo::Remote<blink::mojom::FederatedAuthRequest> main_frame_request_remote;
   TestDialogController::State main_frame_dialog_state;
-  auto* federated_auth_request_impl =
+  auto* request =
       CreateRequest(*main_rfh(), main_frame_request_remote,
                     TestDialogController::AccountsDialogAction::kNone,
                     &main_frame_dialog_state);
@@ -656,7 +658,7 @@ TEST_F(RequestMultipleFramesTest, MainFramePreventSilentAccess) {
   base::RunLoop ukm_loop;
   ukm_recorder_->SetOnAddEntryCallback(FedCmEntry::kEntryName,
                                        ukm_loop.QuitClosure());
-  federated_auth_request_impl->PreventSilentAccess(base::DoNothing());
+  request->PreventSilentAccess(base::DoNothing());
   ukm_loop.Run();
 
   auto entries = ukm_recorder_->GetEntriesByName(FedCmEntry::kEntryName);
@@ -686,7 +688,7 @@ TEST_F(RequestMultipleFramesTest, SameSiteIframePreventSilentAccess) {
 
   mojo::Remote<blink::mojom::FederatedAuthRequest> iframe_request_remote;
   TestDialogController::State iframe_dialog_state;
-  auto* federated_auth_request_impl =
+  auto* request =
       CreateRequest(*same_site_iframe, iframe_request_remote,
                     TestDialogController::AccountsDialogAction::kSelectAccount,
                     &iframe_dialog_state);
@@ -700,7 +702,7 @@ TEST_F(RequestMultipleFramesTest, SameSiteIframePreventSilentAccess) {
   base::RunLoop ukm_loop;
   ukm_recorder_->SetOnAddEntryCallback(FedCmEntry::kEntryName,
                                        ukm_loop.QuitClosure());
-  federated_auth_request_impl->PreventSilentAccess(base::DoNothing());
+  request->PreventSilentAccess(base::DoNothing());
   ukm_loop.Run();
 
   auto entries = ukm_recorder_->GetEntriesByName(FedCmEntry::kEntryName);
@@ -729,7 +731,7 @@ TEST_F(RequestMultipleFramesTest, CrossSiteIframePreventSilentAccess) {
 
   mojo::Remote<blink::mojom::FederatedAuthRequest> iframe_request_remote;
   TestDialogController::State iframe_dialog_state;
-  auto* federated_auth_request_impl =
+  auto* request =
       CreateRequest(*cross_site_iframe, iframe_request_remote,
                     TestDialogController::AccountsDialogAction::kSelectAccount,
                     &iframe_dialog_state);
@@ -743,7 +745,7 @@ TEST_F(RequestMultipleFramesTest, CrossSiteIframePreventSilentAccess) {
   base::RunLoop ukm_loop;
   ukm_recorder_->SetOnAddEntryCallback(FedCmEntry::kEntryName,
                                        ukm_loop.QuitClosure());
-  federated_auth_request_impl->PreventSilentAccess(base::DoNothing());
+  request->PreventSilentAccess(base::DoNothing());
   ukm_loop.Run();
 
   auto entries = ukm_recorder_->GetEntriesByName(FedCmEntry::kEntryName);

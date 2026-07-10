@@ -23,6 +23,15 @@ class TabDragWindowAdapter {
   virtual gfx::Point ConvertScreenPointToLocal(
       const gfx::Point& screen_point) const = 0;
 
+  // Acquires input capture for this window.
+  virtual void SetCapture() = 0;
+
+  // Releases input capture from this window.
+  virtual void ReleaseCapture() = 0;
+
+  // Returns true if this window has capture.
+  virtual bool HasCapture() const = 0;
+
   virtual base::WeakPtr<TabDragWindowAdapter> AsWeakPtr() = 0;
 };
 

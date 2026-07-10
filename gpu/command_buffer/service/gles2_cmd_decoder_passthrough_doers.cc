@@ -4508,7 +4508,8 @@ error::Error GLES2DecoderPassthroughImpl::DoDescheduleUntilFinishedCHROMIUM() {
 
   TRACE_EVENT_BEGIN("cc",
                     "GLES2DecoderPassthroughImpl::DescheduleUntilFinished",
-                    perfetto::Track::FromPointer(this));
+                    perfetto::NamedTrack::FromPointer(
+                        "gpu::gles2::GLES2DecoderPassthroughImpl", this));
   client()->OnDescheduleUntilFinished();
   return error::kDeferLaterCommands;
 }

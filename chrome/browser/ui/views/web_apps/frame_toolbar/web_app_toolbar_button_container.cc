@@ -150,6 +150,7 @@ WebAppToolbarButtonContainer::WebAppToolbarButtonContainer(
   if (base::FeatureList::IsEnabled(features::kWebAppInstallDialog) &&
       app_controller->CanUserUninstall() &&
       !app_controller->IsPreinstalledOnly() &&
+      !app_controller->IsIsolatedWebApp() &&
       app_controller->IsFirstLaunchAfterInstall()) {
     auto* button = AddChildView(
         std::make_unique<WebAppUninstallToolbarButton>(base::BindRepeating(

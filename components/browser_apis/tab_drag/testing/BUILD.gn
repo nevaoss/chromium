@@ -10,6 +10,8 @@ source_set("testing") {
     "toy_drop_target.h",
     "toy_tab_drag_session_input_adapter.cc",
     "toy_tab_drag_session_input_adapter.h",
+    "toy_tab_drag_session_listener.cc",
+    "toy_tab_drag_session_listener.h",
     "toy_tab_drag_window_adapter.cc",
     "toy_tab_drag_window_adapter.h",
   ]
@@ -17,6 +19,7 @@ source_set("testing") {
   public_deps = [
     "//components/browser_apis/tab_drag:mojom",
     "//components/browser_apis/tab_drag/adapters",
+    "//components/browser_apis/tab_drag/sessions",
     "//components/browser_apis/tab_strip/types",
   ]
 

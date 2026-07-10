@@ -386,8 +386,8 @@ TEST_F(AppBarViewControllerTest, TestAssistantButtonStateAccountWithAvatar) {
   UIButtonConfiguration* config = button.configuration;
   EXPECT_NSEQ(config.title, l10n_util::GetNSString(IDS_IOS_APP_BAR_ACCOUNT));
   ASSERT_NE(config.image, nil);
-  EXPECT_EQ(config.image.size.width, 10);
-  EXPECT_EQ(config.image.size.height, 10);
+  EXPECT_EQ(config.image.size.width, 23);
+  EXPECT_EQ(config.image.size.height, 23);
 }
 
 // Tests that the tab grid button has the correct accessibility label and

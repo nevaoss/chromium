@@ -86,6 +86,12 @@ constexpr size_t kFlatbufferSafetyThreshold = 1536 * 1024 * 1024; /* 1.5 GiB */
 // The largest kernel tile size used by ruy's packing kernels (AVX-512 uses 16).
 constexpr int32_t kMaxKernelBlockSize = 16;
 
+// The maximum input rank that TFLite's broadcasting binary operators natively
+// support. Inputs with a higher rank must first be reduced to a shape of this
+// rank or lower via `SerializeBinaryOperationWithRankReduction` before being
+// emitted.
+constexpr size_t kTfliteBroadcastRankLimit = 4;
+
 // Rounds `value` up to the nearest multiple of `block_size`, using checked
 // arithmetic to detect overflow.
 base::CheckedNumeric<int32_t> RoundUp(base::CheckedNumeric<int32_t> value,
@@ -866,17 +872,22 @@ ContextProperties GraphBuilderTflite::GetContextProperties() {
        // the rank before invoking the native kernel.
        // https://source.chromium.org/chromium/chromium/src/+/main:third_party/tflite/src/tensorflow/lite/kernels/pow.cc
        /*pow_input=*/{kFloat16To32AndInt32, SupportedRanks::UpTo(5)},
-       // Comparisons are limited to 4D when broadcasting is required:
+       // TFLite's comparison kernels are limited to 4D when broadcasting is
+       // required. SerializeElementWiseBinary handles rank-5 cases by reducing
+       // the rank before invoking the native kernel: it first tries to
+       // collapse adjacent axes whose broadcast pattern is consistent for both
+       // operands, and falls back to explicit BROADCAST_TO + RESHAPE when
+       // collapsing alone is insufficient.
        // https://source.chromium.org/chromium/chromium/src/+/main:third_party/tflite/src/tensorflow/lite/kernels/comparisons.cc
-       /*equal_input=*/{kFloat16To32AndInt32To64, SupportedRanks::UpTo(4)},
-       /*greater_input=*/{kFloat16To32AndInt32To64, SupportedRanks::UpTo(4)},
+       /*equal_input=*/{kFloat16To32AndInt32To64, SupportedRanks::UpTo(5)},
+       /*greater_input=*/{kFloat16To32AndInt32To64, SupportedRanks::UpTo(5)},
        /*greater_or_equal_input=*/
-       {kFloat16To32AndInt32To64, SupportedRanks::UpTo(4)},
-       /*lesser_input=*/{kFloat16To32AndInt32To64, SupportedRanks::UpTo(4)},
+       {kFloat16To32AndInt32To64, SupportedRanks::UpTo(5)},
+       /*lesser_input=*/{kFloat16To32AndInt32To64, SupportedRanks::UpTo(5)},
        /*lesser_or_equal_input=*/
-       {kFloat16To32AndInt32To64, SupportedRanks::UpTo(4)},
+       {kFloat16To32AndInt32To64, SupportedRanks::UpTo(5)},
        /*not_equal_input=*/
-       {kFloat16To32AndInt32To64, SupportedRanks::UpTo(4)},
+       {kFloat16To32AndInt32To64, SupportedRanks::UpTo(5)},
        // TFLite's native LOGICAL_AND/LOGICAL_OR kernels are limited to 4D
        // when broadcasting is required, and the NOT_EQUAL kernel used to
        // polyfill XOR is limited to 4D as well. SerializeElementWiseBinary
@@ -900,10 +911,10 @@ ContextProperties GraphBuilderTflite::GetContextProperties() {
        {DataTypeConstraint::kUint8, SupportedRanks::UpTo(5)},
        // IsNaN is emulated by not_equal.
        /*is_nan_input=*/
-       {DataTypeConstraint::kFloat16To32, SupportedRanks::UpTo(4)},
+       {DataTypeConstraint::kFloat16To32, SupportedRanks::UpTo(5)},
        // IsInfinite is emulated by abs and equal.
        /*is_infinite_input=*/
-       {DataTypeConstraint::kFloat16To32, SupportedRanks::UpTo(4)},
+       {DataTypeConstraint::kFloat16To32, SupportedRanks::UpTo(5)},
        /*logical_output=*/DataTypeConstraint::kUint8,
        /*abs_input=*/{kFloat16To32AndInt32, SupportedRanks::UpTo(8)},
        /*ceil_input=*/
@@ -3630,7 +3641,6 @@ GraphBuilderTflite::InsertLogicalBinaryOperations(
     base::span<const int32_t> output_dims) {
   // TFLite's LOGICAL_AND/LOGICAL_OR kernels and the NOT_EQUAL kernel used to
   // polyfill LogicalXor are all limited to 4D when broadcasting is required.
-  constexpr size_t kMaxLogicalBroadcastRank = 4;
   ASSIGN_OR_RETURN(const OperatorOffset final_binary_op,
                    SerializeBinaryOperationWithRankReduction(
                        code, lhs_bool_tensor_index, lhs_dims,
@@ -3639,7 +3649,7 @@ GraphBuilderTflite::InsertLogicalBinaryOperations(
                        /*rhs_tensor_type=*/::tflite::TensorType_BOOL,
                        output_bool_tensor_index, output_dims,
                        /*output_tensor_type=*/::tflite::TensorType_BOOL,
-                       kMaxLogicalBroadcastRank));
+                       kTfliteBroadcastRankLimit));
   operators_.emplace_back(final_binary_op);
   return base::ok();
 }
@@ -5099,7 +5109,6 @@ auto GraphBuilderTflite::SerializeElementWiseBinary(
   // because TFLite's native kernel only supports broadcasting up to rank 4.
   if (!IsLogicalElementWiseBinary(op.kind)) {
     if (op.kind == mojom::ElementWiseBinary::Kind::kPow) {
-      constexpr size_t kMaxPowBroadcastRank = 4;
       ASSIGN_OR_RETURN(
           const std::vector<int32_t> output_dims,
           ToSignedDimensions(
@@ -5112,7 +5121,7 @@ auto GraphBuilderTflite::SerializeElementWiseBinary(
           lhs_tensor_info.data_type, rhs_tensor_info.index,
           rhs_tensor_info.dimensions, rhs_tensor_info.data_type,
           output_tensor_index, output_dims, output_tensor_type,
-          kMaxPowBroadcastRank);
+          kTfliteBroadcastRankLimit);
     }
     return SerializeBinaryOperation(code, lhs_tensor_info.index,
                                     rhs_tensor_info.index, output_tensor_index);
@@ -5178,9 +5187,18 @@ auto GraphBuilderTflite::SerializeElementWiseBinary(
       SerializeTemporaryTensorWithByteSizeCheck(output_tensor_info.dimensions,
                                                 ::tflite::TensorType_BOOL));
 
-  operators_.emplace_back(SerializeBinaryOperation(
-      code, lhs_tensor_info.index, rhs_tensor_info.index,
-      output_tensor_bool_index));
+  // Use the rank-reduction helper because TFLite's comparison kernels
+  // (EQUAL/GREATER/GREATER_EQUAL/LESS/LESS_EQUAL/NOT_EQUAL) are
+  // limited to 4D when broadcasting is required.
+  ASSIGN_OR_RETURN(const OperatorOffset comparison_op,
+                   SerializeBinaryOperationWithRankReduction(
+                       code, lhs_tensor_info.index, lhs_tensor_info.dimensions,
+                       lhs_tensor_info.data_type, rhs_tensor_info.index,
+                       rhs_tensor_info.dimensions, rhs_tensor_info.data_type,
+                       output_tensor_bool_index, output_tensor_info.dimensions,
+                       /*output_tensor_type=*/::tflite::TensorType_BOOL,
+                       kTfliteBroadcastRankLimit));
+  operators_.emplace_back(comparison_op);
 
   // Cast the output from bool to uint8, since that's what WebNN expects back.
   return SerializeCastOperation(
@@ -7507,9 +7525,15 @@ auto GraphBuilderTflite::SerializeIsInfinite(
     default:
       NOTREACHED() << "Unsupported data type for isInfinite operation.";
   }
-  return SerializeBinaryOperation(::tflite::BuiltinOperator_EQUAL,
-                                  abs_output_tensor_index, inf_tensor_index,
-                                  output_tensor_info.index);
+
+  // Use the rank-reduction helper because TFLite's EQUAL kernel is
+  // limited to 4D when broadcasting is required.
+  return SerializeBinaryOperationWithRankReduction(
+      ::tflite::BuiltinOperator_EQUAL, abs_output_tensor_index,
+      input_tensor_info.dimensions, input_tensor_info.data_type,
+      inf_tensor_index, /*rhs_dims=*/{}, input_tensor_info.data_type,
+      output_tensor_info.index, output_tensor_info.dimensions,
+      output_tensor_info.data_type, kTfliteBroadcastRankLimit);
 }
 
 auto GraphBuilderTflite::SerializeLogicalNot(

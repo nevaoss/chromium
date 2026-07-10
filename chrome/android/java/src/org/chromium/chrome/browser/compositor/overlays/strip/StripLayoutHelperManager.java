@@ -422,20 +422,20 @@ public class StripLayoutHelperManager
     class TabSwitcherLayoutObserver implements LayoutStateObserver {
         @Override
         public void onStartedShowing(int layoutType) {
-            if (layoutType == LayoutType.TAB_SWITCHER && isActivityInXrFullSpaceModeNow()) {
+            if (layoutType == LayoutType.HUB && isActivityInXrFullSpaceModeNow()) {
                 setStripVisibilityState(StripVisibilityState.OBSCURED, /* clear= */ false);
             }
         }
 
         @Override
         public void onFinishedShowing(@LayoutType int layoutType) {
-            if (layoutType != LayoutType.TAB_SWITCHER) return;
+            if (layoutType != LayoutType.HUB) return;
             setStripVisibilityState(StripVisibilityState.OBSCURED, /* clear= */ false);
         }
 
         @Override
         public void onStartedHiding(@LayoutType int layoutType) {
-            if (layoutType != LayoutType.TAB_SWITCHER) return;
+            if (layoutType != LayoutType.HUB) return;
             if (!isActivityInXrFullSpaceModeNow()) {
                 setStripVisibilityState(StripVisibilityState.OBSCURED, /* clear= */ true);
             }
@@ -447,7 +447,7 @@ public class StripLayoutHelperManager
 
         @Override
         public void onFinishedHiding(int layoutType) {
-            if (layoutType != LayoutType.TAB_SWITCHER) return;
+            if (layoutType != LayoutType.HUB) return;
             if (isActivityInXrFullSpaceModeNow()) {
                 setStripVisibilityState(StripVisibilityState.OBSCURED, /* clear= */ true);
             }
@@ -609,7 +609,7 @@ public class StripLayoutHelperManager
                         isAppInDesktopWindow(),
                         mIsTopResumedActivity,
                         ChromeAndroidTaskTrackerFactory.getInstance(),
-                        () -> mIsIncognito,
+                        mIsIncognito,
                         () -> mTabModelSelector,
                         this::updateButtonMargins);
 
@@ -1744,6 +1744,7 @@ public class StripLayoutHelperManager
 
         mIncognitoHelper.tabModelSelected(mIsIncognito);
         mNormalHelper.tabModelSelected(!mIsIncognito);
+        mTrailingButtonsCoordinator.onTabModelSwitched(mIsIncognito);
 
         updateStripButtons();
 
@@ -1807,11 +1808,10 @@ public class StripLayoutHelperManager
                                 + getMsbStartPaddingForTouchTarget())
                         : 0.0f;
 
-        // In Incognito, glic is always hidden so use touch target size of 0.
         mNormalHelper.updateEndMarginForStripButtons(
                 trailingButtonsTouchTargetSize, msbTouchTargetSize);
         mIncognitoHelper.updateEndMarginForStripButtons(
-                /* trailingButtonsTouchTargetSize= */ 0.0f, msbTouchTargetSize);
+                trailingButtonsTouchTargetSize, msbTouchTargetSize);
     }
 
     private boolean shouldMsbBeVisible() {

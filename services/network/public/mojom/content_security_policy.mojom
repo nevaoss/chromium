@@ -235,14 +235,3 @@ struct CSPViolation {
   // The source code location that triggered the blocked navigation.
   SourceLocation source_location;
 };
-
-union AllowCSPFromHeaderValue {
-  // Set to true if the 'Allow-CSP-From' header just contains '*'.
-  bool allow_star;
-
-  // The parsed origin contained in the 'Allow-CSP-From' header.
-  url.mojom.Origin origin;
-
-  // If the header value is invalid, an error message will be stored here.
-  string error_message;
-};

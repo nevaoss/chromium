@@ -805,7 +805,8 @@ std::unique_ptr<StoredPage> PrerenderHost::Activate(
     auto* manager =
         PreloadActivationReportManager::GetOrCreateForBrowserContext(
             web_contents_->GetBrowserContext());
-    manager->ReportActivation(activation_beacon_url_, &*web_contents_);
+    manager->ReportActivation(activation_beacon_url_,
+                              GetFrameTree()->root()->current_frame_host());
   }
 
   FrameTree& target_frame_tree = web_contents_->GetPrimaryFrameTree();

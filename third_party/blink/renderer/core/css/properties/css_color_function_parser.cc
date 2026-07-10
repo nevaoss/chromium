@@ -565,7 +565,9 @@ CSSValue* ColorFunctionParser::ConsumeFunctionalSyntaxColor(
       if (IsRelativeColor()) {
         return nullptr;
       }
-      if (!Color::IsLegacyColorSpace(color_space_)) {
+      // rgb(), rgba(), hsl() and hsla() allow legacy syntax.
+      if (color_space_ != Color::ColorSpace::kSRGBLegacy &&
+          color_space_ != Color::ColorSpace::kHSL) {
         return nullptr;
       }
       // , <alpha-value>?
@@ -593,16 +595,13 @@ CSSValue* ColorFunctionParser::ConsumeFunctionalSyntaxColor(
       if (has_none_) {
         return nullptr;
       }
-      // Legacy rgb needs percentage consistency. Percentages need to be mapped
-      // from the range [0, 1] to the [0, 255] that the color space uses.
-      // Percentages and bare numbers CAN be mixed in relative colors.
+      // Legacy rgb() syntax needs percentage consistency. Percentages need to
+      // be mapped from the range [0, 1] to the [0, 255] that the color space
+      // uses. Percentages and bare numbers CAN be mixed in relative colors.
       if (color_space_ == Color::ColorSpace::kSRGBLegacy) {
         bool uses_percentage = false;
         bool uses_bare_numbers = false;
         for (int i = 0; i < 3; i++) {
-          if (channel_types_[i] == ChannelType::kNone) {
-            continue;
-          }
           if (channel_types_[i] == ChannelType::kPercentage) {
             if (uses_bare_numbers) {
               return nullptr;
@@ -613,23 +612,19 @@ CSSValue* ColorFunctionParser::ConsumeFunctionalSyntaxColor(
               return nullptr;
             }
             uses_bare_numbers = true;
+          } else {
+            NOTREACHED();
           }
         }
-      }
-
-      // Legacy syntax is not allowed for hwb().
-      if (color_space_ == Color::ColorSpace::kHWB) {
-        return nullptr;
-      }
-
-      if (color_space_ == Color::ColorSpace::kHSL ||
-          color_space_ == Color::ColorSpace::kHWB) {
+      } else if (color_space_ == Color::ColorSpace::kHSL) {
+        // Legacy hsl() syntax needs percentages for S and L.
         for (int i : {1, 2}) {
           if (channel_types_[i] == ChannelType::kNumber) {
-            // Legacy color syntax needs percentages.
             return nullptr;
           }
         }
+      } else {
+        NOTREACHED();
       }
     }
 

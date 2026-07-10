@@ -15,24 +15,23 @@
 
 namespace blink {
 
-void RouteLocation::Trace(Visitor* v) const {
-  v->Trace(url_pattern_);
-}
-
 const Route* RouteLocation::FindOrCreateRoute(Document& document) const {
-  if (url_pattern_) {
-    // A URLPattern becomes an anonymous route. One route for each unique
-    // URLPattern.
-    RouteMap::Ensure(document).AddAnonymousRoute(url_pattern_);
+  if (type_ == kUrlPattern || type_ == kUrl) {
+    // url-pattern() and url() become anonymous routes. One route for each
+    // unique entry.
+    RouteMap::Ensure(document).AddAnonymousRoute(value_);
   }
   const auto* route_map = RouteMap::Get(&document);
   if (!route_map) {
     return nullptr;
   }
-  if (url_pattern_) {
-    return route_map->FindRoute(url_pattern_);
+  switch (type_) {
+    case kUrl:
+    case kUrlPattern:
+      return route_map->FindAnonymousRoute(value_);
+    case kRouteName:
+      return route_map->FindRoute(value_);
   }
-  return route_map->FindRoute(GetRouteName());
 }
 
 bool RouteLocation::CheckSelectorMatch(
@@ -49,13 +48,21 @@ bool RouteLocation::CheckSelectorMatch(
 }
 
 void RouteLocation::SerializeTo(StringBuilder& builder) const {
-  DCHECK(!string_.IsNull());
-  if (url_pattern_) {
-    builder.Append("url-pattern(");
-    SerializeString(string_, builder);
-    builder.Append(")");
-  } else {
-    SerializeIdentifier(string_, builder);
+  DCHECK(!value_.IsNull());
+  switch (type_) {
+    case kUrlPattern:
+      builder.Append("url-pattern(");
+      SerializeString(value_, builder);
+      builder.Append(")");
+      break;
+    case kUrl:
+      builder.Append("url(");
+      SerializeString(value_, builder);
+      builder.Append(")");
+      break;
+    case kRouteName:
+      SerializeIdentifier(value_, builder);
+      break;
   }
 }
 
@@ -72,6 +79,7 @@ bool NavigationLocationTestExpression::Matches(Document& document) const {
 void NavigationLocationTestExpression::SerializeTo(
     StringBuilder& builder) const {
   SerializePrepositionTo(preposition_, builder);
+  builder.Append(": ");
   route_location_->SerializeTo(builder);
 }
 
@@ -80,16 +88,16 @@ void NavigationLocationTestExpression::SerializePrepositionTo(
     StringBuilder& builder) {
   switch (preposition) {
     case NavigationPreposition::kAt:
-      builder.Append("at: ");
+      builder.Append("at");
       break;
     case NavigationPreposition::kFrom:
-      builder.Append("from: ");
+      builder.Append("from");
       break;
     case NavigationPreposition::kTo:
-      builder.Append("to: ");
+      builder.Append("to");
       break;
     case NavigationPreposition::kWith:
-      builder.Append("with: ");
+      builder.Append("with");
       break;
   }
 }

@@ -127,11 +127,6 @@ namespace media {
 // All features in alphabetical order. The features should be documented
 // alongside the definition of their values in the .cc file.
 
-#if !BUILDFLAG(IS_ANDROID)
-MEDIA_EXPORT BASE_DECLARE_FEATURE(kAudioDucking);
-MEDIA_EXPORT extern const base::FeatureParam<int> kAudioDuckingAttenuation;
-#endif  // !BUILDFLAG(IS_ANDROID)
-
 #if BUILDFLAG(IS_WIN)
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kAudioDuckingWin);
 #endif  // BUILDFLAG(IS_WIN)
@@ -400,9 +395,11 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kMediaControlsExpandGesture);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kMediaDrmPersistentLicense);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kMediaDrmPreprovisioning);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kMediaDrmPreprovisioningAtStartup);
+MEDIA_EXPORT BASE_DECLARE_FEATURE(kMediaDrmPreprovisioningBackoff);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kMediaDrmGetStatusForPolicy);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kMediaDrmQueryInSeparateProcess);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kPauseMediaOnSystemSleepAndroid);
+MEDIA_EXPORT BASE_DECLARE_FEATURE(kNoPauseMediaOnHeadphoneUnplug);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kRequestSystemAudioFocus);
 
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kUseAudioLatencyFromHAL);

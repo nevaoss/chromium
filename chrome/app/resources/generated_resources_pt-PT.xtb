@@ -597,7 +597,6 @@ Verifique as suas palavras-passe em qualquer altura no <ph name="GOOGLE_PASSWORD
 <translation id="1433478348197382180">Modo de leitura</translation>
 <translation id="1433980411933182122">Arranque</translation>
 <translation id="1434659328474177625"><ph name="ISSUER" /> validou o seu email</translation>
-<translation id="1434696352799406980">Repõe a página inicial, a página novo separador, o motor de pesquisa e os separadores fixos. Também desativa todas as extensões e limpa os dados temporários como os cookies. Os marcadores, o histórico e as palavras-passe guardadas não são limpos.</translation>
 <translation id="1434886155212424586">A Página inicial é a página Novo separador</translation>
 <translation id="1435940442311036198">Usar uma token de acesso num dispositivo diferente</translation>
 <translation id="1436390408194692385">Válido por <ph name="TICKET_TIME_LEFT" /></translation>
@@ -3704,7 +3703,6 @@ Quer pará-lo?</translation>
 <translation id="366484203224589850"><ph name="TASK_TITLE" />: o Gemini está a trabalhar nesta tarefa há muito tempo e vai parar em breve para poupar bateria</translation>
 <translation id="3664911592976620204">{NUM_OTHER_MEMBERS,plural, =0{Adira ao grupo de separadores com <ph name="OWNER_FIRST_NAME" />}=1{Adira ao grupo de separadores com <ph name="OWNER_FIRST_NAME" /> e mais # pessoa}other{Adira ao grupo de separadores com <ph name="OWNER_FIRST_NAME" /> e mais # pessoas}}</translation>
 <translation id="3665301845536101715">Abrir no painel lateral</translation>
-<translation id="3665589677786828986">O Chrome detetou que algumas das suas definições foram danificadas por outro programa e repôs as respetivas predefinições originais.</translation>
 <translation id="3665918214153961651">A carregar ficheiro</translation>
 <translation id="3666196264870170605">Descarregamento de depuração de NICs Intel WiFi</translation>
 <translation id="3666971425390608309">Transferência pausada: <ph name="FILE_NAME" />.</translation>
@@ -4992,7 +4990,6 @@ Quer pará-lo?</translation>
 <translation id="4580596421317071374">As palavras-passe são guardadas no <ph name="GOOGLE_PASSWORD_MANAGER" /> neste dispositivo.</translation>
 <translation id="4580939929828762295">Mantenha-se em segurança com o Gestor de Palavras-passe da Google</translation>
 <translation id="4582297591746054421">Normalmente, os sites leem a sua área de transferência para funcionalidades como manter a formatação do texto que copiou.</translation>
-<translation id="4582563038311694664">Repor todas as definições</translation>
 <translation id="4584094413232466841">Remover estas informações do preenchimento automático do Chrome?</translation>
 <translation id="4584770411839426377">Janela</translation>
 <translation id="4584836561445313300">A sua organização vai poder ver e gerir todos os dados de navegação existentes, como palavras-passe e muito mais</translation>
@@ -10081,7 +10078,6 @@ Mantenha o seu ficheiro de chave num local seguro, pois irá precisar dele para 
 <translation id="8327386430364625757">Tipo de letra matemático</translation>
 <translation id="8327490658947427005">Seleção não disponível em <ph name="LANGUAGE" /></translation>
 <translation id="8327544198829180337">Fechar esta vista</translation>
-<translation id="8327676037044516220">Definições de conteúdo e autorizações</translation>
 <translation id="8328228852664998535">Se continuar, as suas palavras-passe, chaves de acesso e outros dados vão ser eliminados permanentemente do <ph name="BRAND" />. As contas que criou para sites ou apps não são eliminadas.</translation>
 <translation id="8328777765163860529">Fechar Tudo</translation>
 <translation id="8330617762701840933">A lista de Websites que redirecionam para um navegador alternativo.</translation>
@@ -10902,7 +10898,6 @@ Pode incluir informações sobre o software instalado, os ficheiros, o navegador
 <translation id="8925458182817574960">&amp;Definições</translation>
 <translation id="8926389886865778422">Não voltar a perguntar</translation>
 <translation id="8926555406617248399">Separadores ocultos</translation>
-<translation id="892706138619340876">Algumas definições foram repostas</translation>
 <translation id="8927438609932588163">Permitir que os sites guardem dados no seu dispositivo</translation>
 <translation id="8929696694736010839">Apenas para a sessão de Navegação anónima atual</translation>
 <translation id="8929738682246584251">Ativar/desativar lupa</translation>

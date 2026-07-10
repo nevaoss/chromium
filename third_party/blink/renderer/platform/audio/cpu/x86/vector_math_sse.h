@@ -14,8 +14,9 @@ namespace blink {
 namespace vector_math {
 namespace sse {
 
-constexpr uint32_t kBitsPerRegister = 128u;
-constexpr uint32_t kPackedFloatsPerRegister = kBitsPerRegister / 32u;
+constexpr size_t kBitsPerRegister = 128u;
+constexpr size_t kPackedFloatsPerRegister =
+    kBitsPerRegister / (sizeof(float) * 8u);
 constexpr size_t kFramesToProcessMask = ~(kPackedFloatsPerRegister - 1u);
 
 bool IsAligned(const float*);
@@ -27,7 +28,7 @@ bool IsAligned(const float*);
 void Conv(const float* source_p,
           const float* prepared_filter_p,
           float* dest_p,
-          uint32_t frames_to_process,
+          size_t frames_to_process,
           size_t filter_size);
 
 void PrepareFilterForConv(const float* filter_p,
@@ -51,11 +52,11 @@ void Vclip(const float* source_p,
            const float* low_threshold_p,
            const float* high_threshold_p,
            float* dest_p,
-           uint32_t frames_to_process);
+           size_t frames_to_process);
 
 // *max_p = max(*max_p, source_max) where
 // source_max = max(abs(source[k])) for all k
-void Vmaxmgv(const float* source_p, float* max_p, uint32_t frames_to_process);
+void Vmaxmgv(const float* source_p, float* max_p, size_t frames_to_process);
 
 // dest[k] = source1[k] * source2[k]
 void Vmul(base::span<const float> source1,
@@ -66,27 +67,27 @@ void Vmul(base::span<const float> source1,
 void Vsma(const float* source_p,
           const float* scale,
           float* dest_p,
-          uint32_t frames_to_process);
+          size_t frames_to_process);
 
 // dest[k] = scale * source[k]
 void Vsmul(const float* source_p,
            const float* scale,
            float* dest_p,
-           uint32_t frames_to_process);
+           size_t frames_to_process);
 
 // dest[k] = addend + source[k]
 void Vsadd(const float* source_p,
            const float* addend,
            float* dest_p,
-           uint32_t frames_to_process);
+           size_t frames_to_process);
 
 void Vsadd(const float* source_p,
            float addend,
            float* dest_p,
-           uint32_t frames_to_process);
+           size_t frames_to_process);
 
 // sum += sum(source[k]^2) for all k
-void Vsvesq(const float* source_p, float* sum_p, uint32_t frames_to_process);
+void Vsvesq(const float* source_p, float* sum_p, size_t frames_to_process);
 
 // real_dest[k] = real1[k] * real2[k] - imag1[k] * imag2[k]
 // imag_dest[k] = real1[k] * imag2[k] + imag1[k] * real2[k]
@@ -96,7 +97,7 @@ void Zvmul(const float* real1p,
            const float* imag2p,
            float* real_dest_p,
            float* imag_dest_p,
-           uint32_t frames_to_process);
+           size_t frames_to_process);
 
 }  // namespace sse
 }  // namespace vector_math

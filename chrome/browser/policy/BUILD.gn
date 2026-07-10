@@ -819,10 +819,6 @@ source_set("policy") {
 
   if (is_win) {
     public += [ "browser_dm_token_storage_win.h" ]
-
-    if (is_chrome_branded) {
-      public += [ "status_provider/updater_status_and_value_provider.h" ]
-    }
   }
 
   if (is_mac) {
@@ -1130,6 +1126,7 @@ source_set("impl") {
       "//chrome/browser/ash/wallpaper_handlers",
       "//chrome/browser/chromeos/reporting",
       "//chrome/browser/nearby_sharing/common",
+      "//chrome/browser/ui/webui/certificate_manager",
       "//chromeos/ash/components/demo_mode",
       "//chromeos/ash/components/install_attributes",
       "//chromeos/ash/components/policy/policy_blocklist_service",
@@ -1161,15 +1158,28 @@ source_set("impl") {
       "//chrome/browser/google",
       "//chrome/credential_provider/common:common_constants",
     ]
-
-    if (is_chrome_branded) {
-      sources += [ "status_provider/updater_status_and_value_provider.cc" ]
-    }
   }
 
   if (is_mac) {
     sources += [ "browser_dm_token_storage_mac.mm" ]
     deps += [ "//chrome/browser:app_controller_mac" ]
+  }
+
+  if (is_win || is_mac) {
+    sources += [
+      "status_provider/updater_status_and_value_provider.cc",
+      "status_provider/updater_status_and_value_provider.h",
+    ]
+    deps += [
+      "//chrome/browser/google",
+      "//chrome/browser/updater",
+    ]
+    if (is_win) {
+      sources += [ "status_provider/updater_status_and_value_provider_win.cc" ]
+    }
+    if (is_mac) {
+      sources += [ "status_provider/updater_status_and_value_provider_mac.cc" ]
+    }
   }
 
   if (is_linux || is_win || is_mac || is_chromeos) {

@@ -564,4 +564,10 @@ public class LocationBarLayout extends ConstraintLayout {
      * suggestions list. See {@link FuseboxLayoutMode}.
      */
     void setFuseboxLayoutMode(@FuseboxLayoutMode int layoutMode) {}
+
+    /**
+     * Informs the location bar whether the autocomplete system is in "standby" i.e. accepting input
+     * but not showing suggestions until input is received.
+     */
+    void setIsInStandby(boolean isInStandby) {}
 }

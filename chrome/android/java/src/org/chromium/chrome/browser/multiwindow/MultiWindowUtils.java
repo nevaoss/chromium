@@ -1665,6 +1665,18 @@ public class MultiWindowUtils implements ActivityStateListener {
         return results;
     }
 
+    /* package */ static Map<Integer, AppTask> getAppTasksById(Context context) {
+        ActivityManager activityManager =
+                (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        List<AppTask> appTasks = activityManager.getAppTasks();
+        Map<Integer, AppTask> results = new HashMap<>();
+        for (AppTask task : appTasks) {
+            ActivityManager.RecentTaskInfo info = AndroidTaskUtils.getTaskInfoFromTask(task);
+            if (info != null) results.put(info.taskId, task);
+        }
+        return results;
+    }
+
     /* package */ static void setAppTaskIdsForTesting(Set<Integer> appTaskIds) {
         sAppTaskIdsForTesting = appTaskIds;
         ResettersForTesting.register(() -> sAppTaskIdsForTesting = null);

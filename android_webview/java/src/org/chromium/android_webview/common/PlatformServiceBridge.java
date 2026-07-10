@@ -74,10 +74,7 @@ public abstract class PlatformServiceBridge {
     // to avoid blocking the critical path for startup.
     public void queryMetricsSetting(Callback<Boolean> callback) {
         ThreadUtils.assertOnUiThread();
-        ThreadUtils.postOnUiThread(
-                () -> {
-                    callback.onResult(false);
-                });
+        ThreadUtils.postOnUiThread(callback.bind(false));
     }
 
     public void setSafeBrowsingHandler() {

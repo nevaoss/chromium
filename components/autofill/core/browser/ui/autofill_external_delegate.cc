@@ -221,6 +221,7 @@ bool HasAutofillSuggestionsForA11y(SuggestionType type) {
     case SuggestionType::kDevtoolsTestAddressByCountry:
     case SuggestionType::kPendingStateSignin:
     case SuggestionType::kLoadingThrobber:
+    case SuggestionType::kFetchingAmbientData:
     case SuggestionType::kAtMemorySearchResult:
     case SuggestionType::kBnplFootnote:
     case SuggestionType::kAtMemoryInactivityNudge:
@@ -318,6 +319,7 @@ bool AutofillExternalDelegate::IsAutofillAndFirstLayerSuggestionId(
     case SuggestionType::kWebauthnPasskeyQrCode:
     case SuggestionType::kPendingStateSignin:
     case SuggestionType::kLoadingThrobber:
+    case SuggestionType::kFetchingAmbientData:
     case SuggestionType::kAtMemorySearchResult:
     case SuggestionType::kAtMemoryInactivityNudge:
     case SuggestionType::kBnplFootnote:
@@ -487,13 +489,20 @@ void AutofillExternalDelegate::AttemptToDisplayAutofillSuggestions(
   // the same place relative to the field after the update.
   const bool prefer_prev_arrow_side_on_suggestions_update = show_tabbed_popup;
 
+  PopupAnchorType anchor_type =
+      should_use_caret_bounds ? PopupAnchorType::kCaret : default_anchor_type;
+#if BUILDFLAG(IS_ANDROID)
+  if (is_at_memory) {
+    anchor_type = PopupAnchorType::kAtMemoryBottomSheet;
+  }
+#endif
+
   AutofillClient::PopupOpenArgs open_args(
       should_use_caret_bounds ? gfx::RectF(caret_bounds_)
                               : query_field_.bounds(),
       query_field_.text_direction(), std::move(suggestions), trigger_source_,
-      query_field_.form_control_ax_id(),
-      should_use_caret_bounds ? PopupAnchorType::kCaret : default_anchor_type,
-      show_tabbed_popup, prefer_prev_arrow_side_on_suggestions_update);
+      query_field_.form_control_ax_id(), anchor_type, show_tabbed_popup,
+      prefer_prev_arrow_side_on_suggestions_update);
   manager_->client().ShowAutofillSuggestions(open_args, GetWeakPtr());
 }
 
@@ -738,6 +747,7 @@ void AutofillExternalDelegate::DidSelectSuggestion(
     case SuggestionType::kViewPasswordDetails:
     case SuggestionType::kPendingStateSignin:
     case SuggestionType::kLoadingThrobber:
+    case SuggestionType::kFetchingAmbientData:
     case SuggestionType::kBnplFootnote:
       NOTREACHED();  // Should be handled elsewhere.
   }
@@ -928,8 +938,8 @@ void AutofillExternalDelegate::DidAcceptSuggestion(
       break;
     }
     case SuggestionType::kAllLoyaltyCardsEntry: {
-      manager_->touch_to_fill_delegate()->ShowTouchToFillForAllLoyaltyCards(
-          query_form_, query_field_);
+      manager_->touch_to_fill_payment_method_delegate()
+          ->ShowTouchToFillForAllLoyaltyCards(query_form_, query_field_);
       break;
     }
     case SuggestionType::kOneTimePasswordEntry: {
@@ -988,6 +998,7 @@ void AutofillExternalDelegate::DidAcceptSuggestion(
     case SuggestionType::kViewPasswordDetails:
     case SuggestionType::kPendingStateSignin:
     case SuggestionType::kLoadingThrobber:
+    case SuggestionType::kFetchingAmbientData:
     case SuggestionType::kBnplFootnote:
     case SuggestionType::kAtMemoryNoConnection:
     case SuggestionType::kPersonalContextNotice:
@@ -1104,6 +1115,7 @@ bool AutofillExternalDelegate::RemoveSuggestion(const Suggestion& suggestion) {
     case SuggestionType::kLoyaltyCardEntry:
     case SuggestionType::kOneTimePasswordEntry:
     case SuggestionType::kLoadingThrobber:
+    case SuggestionType::kFetchingAmbientData:
     case SuggestionType::kAtMemorySearchResult:
     case SuggestionType::kAtMemoryInactivityNudge:
     case SuggestionType::kBnplFootnote:

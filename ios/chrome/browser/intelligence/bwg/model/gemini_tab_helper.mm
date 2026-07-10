@@ -385,10 +385,8 @@ bool GeminiTabHelper::IsGeminiChatAvailableForWebState() {
     return !is_aim_url && !is_ntp;
   }
 
-  // By default, the NTP is ineligible, and only extractable pages are eligible
-  // (unless `IsGeminiFloatyAllPagesEnabled` is enabled).
-  return !is_ntp && (CanExtractPageContextForWebState(web_state_) ||
-                     IsGeminiFloatyAllPagesEnabled());
+  // By default, the NTP is ineligible, and only extractable pages are eligible.
+  return !is_ntp && CanExtractPageContextForWebState(web_state_);
 }
 
 IOSGeminiInvocationPageType GeminiTabHelper::GetCurrentPageType() {

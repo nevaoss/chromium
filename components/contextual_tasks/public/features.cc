@@ -723,6 +723,17 @@ const char kContextualTasksCookiePrefetchName[] =
 const char kContextualTasksCookiePrefetchDescription[] =
     "Enables prefetching of cookies for contextual tasks.";
 
+const char kEnableContextualTasksPinButtonInToolbarName[] =
+    "Contextual Tasks Pin Button In Toolbar";
+const char kEnableContextualTasksPinButtonInToolbarDescription[] =
+    "Enables the pin button in the toolbar for contextual tasks.";
+
+const char kContextualTasksHideMenuOnAiPageName[] =
+    "Contextual Tasks Hide Menu On AI Page";
+const char kContextualTasksHideMenuOnAiPageDescription[] =
+    "Hides the 3-dot (overflow) menu when viewing an AI page in the side "
+    "panel. The menu is still shown for lens flows.";
+
 }  // namespace flag_descriptions
 
 }  // namespace contextual_tasks

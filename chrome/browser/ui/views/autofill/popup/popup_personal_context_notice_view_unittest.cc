@@ -14,6 +14,7 @@
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/events/test/event_generator.h"
 #include "ui/views/controls/button/md_text_button.h"
+#include "ui/views/controls/styled_label.h"
 #include "ui/views/widget/widget.h"
 #include "ui/views/widget/widget_utils.h"
 
@@ -63,16 +64,27 @@ class PopupPersonalContextNoticeViewTest : public ChromeViewsTestBase {
   raw_ptr<PopupPersonalContextNoticeView> view_ = nullptr;
 };
 
+// TODO(crbug.com/517520354): Update GetText() instances with localized strings.
 // Tests the notice view is correctly created and displays its initial elements.
 TEST_F(PopupPersonalContextNoticeViewTest, InitialState) {
   ShowView();
+
+  // Check that the description is visible and has the correct text.
+  views::StyledLabel* description = view().description_for_testing();
+  ASSERT_NE(description, nullptr);
+  EXPECT_TRUE(description->GetVisible());
+  EXPECT_EQ(u"Manage in settings", description->GetText());
+
+  // Check that the description contains a link with a correct text.
+  views::Link* settings_link = description->GetFirstLinkForTesting();
+  EXPECT_TRUE(settings_link);
+  EXPECT_EQ(u"settings", settings_link->GetText());
 
   // Check that the "Got it" button is visible and has the correct text.
   views::MdTextButton* got_it_button = view().got_it_button_for_testing();
   ASSERT_NE(got_it_button, nullptr);
   EXPECT_TRUE(got_it_button->GetVisible());
-  // TODO(crbug.com/517520354): Update to localized string.
-  EXPECT_EQ(got_it_button->GetText(), u"OK");
+  EXPECT_EQ(u"OK", got_it_button->GetText());
 }
 
 // Tests that clicking on GotIt button triggers the removal of the notice.

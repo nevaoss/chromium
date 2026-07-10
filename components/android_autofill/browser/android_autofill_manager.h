@@ -91,6 +91,10 @@ class AndroidAutofillManager : public AutofillManager,
   void OnFormSubmittedImpl(const FormData& form,
                            mojom::SubmissionSource source) override;
 
+  void OnFormWithEmailVerificationTokenSubmittedImpl(
+      const FormData& form,
+      const FieldGlobalId& field_id) override {}
+
   void OnCaretMovedInFormFieldImpl(const FormData& form,
                                    const FieldGlobalId& field_id,
                                    const gfx::Rect& caret_bounds) override {}

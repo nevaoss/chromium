@@ -120,6 +120,12 @@ class GlicSharingManagerImpl : public GlicSharingManagerInternal,
       const mojom::GetTabContextOptions& options,
       base::OnceCallback<void(GlicGetContextResult)> callback) override;
 
+  void GetImageBytes(
+      tabs::TabHandle tab_handle,
+      const std::string& document_id,
+      int32_t dom_node_id,
+      base::OnceCallback<void(GlicGetImageBytesResult)> callback) override;
+
   void SubscribeToPinCandidates(
       mojom::GetPinCandidatesOptionsPtr options,
       mojo::PendingRemote<mojom::PinCandidatesObserver> observer) override;

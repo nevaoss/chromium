@@ -101,6 +101,7 @@
 #include "components/account_manager_core/account_manager_facade.h"
 #include "components/autofill/content/browser/content_autofill_client.h"
 #include "components/autofill/core/browser/data_manager/payments/payments_data_manager.h"
+#include "components/autofill/core/browser/integrators/personal_context/personal_context_autofill_util.h"
 #include "components/autofill/core/browser/payments/bnpl_manager.h"
 #include "components/autofill/core/browser/payments/payments_autofill_client.h"
 #include "components/autofill/core/browser/permissions/autofill_ai/autofill_ai_permission_utils.h"
@@ -678,6 +679,9 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
   personal_context::PersonalContextEnablementService* enablement_service =
       PersonalContextEnablementServiceFactory::GetForProfile(profile);
   html_source->AddBoolean(
+      "showSuggestionsFromGeminiSettings",
+      autofill::ShouldShowPersonalContextAutofillSetting(enablement_service));
+  html_source->AddBoolean(
       "showPersonalContextSettingsLink",
       enablement_service &&
           enablement_service->GetEnablementState() ==
@@ -802,10 +806,10 @@ void SettingsUI::TryShowHatsSurveyWithTimeout() {
 
 #if !BUILDFLAG(IS_CHROMEOS)
 void SettingsUI::CreateThemeColorPickerHandler(
-    mojo::PendingReceiver<theme_color_picker::mojom::ThemeColorPickerHandler>
-        handler,
     mojo::PendingRemote<theme_color_picker::mojom::ThemeColorPickerClient>
-        client) {
+        client,
+    mojo::PendingReceiver<theme_color_picker::mojom::ThemeColorPickerHandler>
+        handler) {
   theme_color_picker_handler_ = std::make_unique<ThemeColorPickerHandler>(
       std::move(handler), std::move(client),
       NtpCustomBackgroundServiceFactory::GetForProfile(

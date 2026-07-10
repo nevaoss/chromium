@@ -36,7 +36,9 @@ scoped_refptr<MultivariantPlaylist> CreateMultivariantPlaylist(
 
   // Parse the given source. Failure here isn't supposed to be part of the test,
   // so use a CHECK.
-  auto result = MultivariantPlaylist::Parse(source, std::move(uri), version);
+  auto origin = url::Origin::Create(uri);
+  auto result =
+      MultivariantPlaylist::Parse(source, std::move(uri), origin, version);
   CHECK(result.has_value());
   return std::move(result).value();
 }

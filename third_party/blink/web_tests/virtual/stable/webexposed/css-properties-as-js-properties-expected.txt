@@ -46,7 +46,6 @@ backgroundSize
 basePalette
 baselineShift
 baselineSource
-blockEllipsis
 blockSize
 border
 borderBlock
@@ -165,7 +164,6 @@ containerName
 containerType
 content
 contentVisibility
-continue
 cornerBlockEndShape
 cornerBlockStartShape
 cornerBottomLeftShape
@@ -333,7 +331,6 @@ mathStyle
 maxBlockSize
 maxHeight
 maxInlineSize
-maxLines
 maxWidth
 minBlockSize
 minHeight

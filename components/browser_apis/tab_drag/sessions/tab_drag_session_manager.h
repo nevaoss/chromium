@@ -17,9 +17,10 @@
 
 namespace tabs_api {
 
-class TabDragPlatformProvider;
+class TabDragSessionInjector;
 class TabDragSession;
-class TabDragEventRouter;
+class DropTargetRegistry;
+class TabDragWindowAdapter;
 
 // Browser-process-wide manager that owns and coordinates the active
 // TabDragSession. This ensures the session outlives individual window
@@ -27,13 +28,14 @@ class TabDragEventRouter;
 class TabDragSessionManager {
  public:
   explicit TabDragSessionManager(
-      std::unique_ptr<TabDragPlatformProvider> platform_provider);
+      std::unique_ptr<TabDragSessionInjector> injector);
   TabDragSessionManager(const TabDragSessionManager&) = delete;
   TabDragSessionManager& operator=(const TabDragSessionManager&) = delete;
   ~TabDragSessionManager();
 
   // Starts a global drag session. Returns monostate if successful, or an error.
   base::expected<std::monostate, mojo_base::mojom::ErrorPtr> StartDrag(
+      TabDragWindowAdapter* source_window,
       const std::vector<tabs_api::NodeId>& source_tab_ids,
       const gfx::Point& start_point);
 
@@ -42,14 +44,13 @@ class TabDragSessionManager {
   // Callback notified by the active session when it naturally terminates.
   void OnSessionEnded();
 
-  TabDragEventRouter* event_router() { return event_router_.get(); }
+  DropTargetRegistry& GetDropTargetRegistry();
 
  private:
   void DestroyActiveSession();
 
-  std::unique_ptr<TabDragPlatformProvider> platform_provider_;
+  std::unique_ptr<TabDragSessionInjector> injector_;
   std::unique_ptr<TabDragSession> active_session_;
-  std::unique_ptr<TabDragEventRouter> event_router_;
 
   base::WeakPtrFactory<TabDragSessionManager> weak_factory_{this};
 };

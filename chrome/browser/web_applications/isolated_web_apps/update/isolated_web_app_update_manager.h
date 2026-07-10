@@ -102,7 +102,12 @@ class IsolatedWebAppUpdateManager : public WebAppInstallManagerObserver {
  public:
   class Observer : public base::CheckedObserver {
    public:
-    virtual void OnUpdateDiscoveryTaskCompleted(
+    virtual void OnUpdateDiscoveryCompleted(
+        const webapps::AppId& app_id,
+        IsolatedWebAppUpdateCheckAndPrepareTask::CompletionStatus status,
+        std::optional<IwaVersion> discovered_version) {}
+
+    virtual void OnUpdateDiscoverAndPrepareTaskCompleted(
         const webapps::AppId& app_id,
         IsolatedWebAppUpdateCheckAndPrepareTask::CompletionStatus status) {}
 
@@ -157,10 +162,16 @@ class IsolatedWebAppUpdateManager : public WebAppInstallManagerObserver {
       const webapps::AppId& app_id,
       webapps::WebappUninstallSource uninstall_source) override;
 
+  // Queues an update discovery task for the provided `app_id` that only checks
+  // for updates but doesn't prepare or download the update bundle. Returns a
+  // boolean indicating whether an update discovery task was queued
+  // successfully.
+  bool DiscoverUpdate(const webapps::AppId& app_id);
+
   // Queues an update discovery task for the provided `app_id`. Returns a
   // boolean indicating whether an update discovery task was queued
   // successfully.
-  bool MaybeDiscoverUpdatesForApp(const webapps::AppId& app_id);
+  bool MaybeDiscoverAndPrepareUpdate(const webapps::AppId& app_id);
 
   // Queues an update discovery task (and potentially an apply update task
   // afterwards if the discovery leads to a pending update) for the provided
@@ -171,16 +182,16 @@ class IsolatedWebAppUpdateManager : public WebAppInstallManagerObserver {
   // effectively locking the IWA to the specified version.
   // The result of the discover & apply chain will be communicated via
   // observers.
-  void DiscoverUpdatesForApp(const IsolatedWebAppUrlInfo& url_info,
-                             const GURL& update_manifest_url,
-                             const UpdateChannel& update_channel,
-                             bool allow_downgrades,
-                             const std::optional<IwaVersion>& pinned_version,
-                             bool dev_mode);
+  void DiscoverAndPrepareUpdate(const IsolatedWebAppUrlInfo& url_info,
+                                const GURL& update_manifest_url,
+                                const UpdateChannel& update_channel,
+                                bool allow_downgrades,
+                                const std::optional<IwaVersion>& pinned_version,
+                                bool dev_mode);
 
   // Used to queue update discovery tasks manually from the
   // chrome://web-app-internals page. Returns the number of tasks queued.
-  size_t DiscoverUpdatesNow();
+  size_t DiscoverAndPrepareUpdatesNow();
 
   // Tells the update system about a locally available update for a dev-mode app
   // (as opposed to an update discovered through the Update Manifest of a
@@ -262,7 +273,7 @@ class IsolatedWebAppUpdateManager : public WebAppInstallManagerObserver {
 
     bool IsAnyTaskRunning() const;
 
-    void OnUpdateDiscoveryTaskCompleted(
+    void OnUpdateDiscoverAndPrepareTaskCompleted(
         IsolatedWebAppUpdateCheckAndPrepareTask* task_ptr,
         IsolatedWebAppUpdateCheckAndPrepareTask::CompletionStatus status);
 
@@ -296,13 +307,13 @@ class IsolatedWebAppUpdateManager : public WebAppInstallManagerObserver {
 
   // Queues new update discovery tasks and returns the number of new tasks
   // that have been queued.
-  size_t QueueUpdateDiscoveryTasks();
+  size_t QueueUpdateDiscoverAndPrepareTasks();
 
-  // Tries to queue an update discovery task for the provided `web_app`. It
-  // might fail if the Update Manifest URL cannot be determined or if the app is
-  // not an Isolated Web App.
-  bool MaybeQueueUpdateDiscoveryTask(
-      const WebApp& web_app,
+  // Tries to queue an update discovery and prepare task for the provided
+  // `web_app`. It might fail if the update options cannot be determined or if
+  // the app is not an Isolated Web App.
+  bool MaybeQueueUpdateDiscoverAndPrepareTask(
+      const WebApp* web_app,
       const base::flat_map<web_package::SignedWebBundleId,
                            IsolatedWebAppUpdateOptions>&
           id_to_update_options_map);
@@ -319,7 +330,7 @@ class IsolatedWebAppUpdateManager : public WebAppInstallManagerObserver {
       base::OnceCallback<void(IsolatedWebAppApplyUpdateCommandResult)>
           callback);
 
-  void OnUpdateDiscoveryTaskCompleted(
+  void OnUpdateDiscoverAndPrepareTaskCompleted(
       std::unique_ptr<IsolatedWebAppUpdateCheckAndPrepareTask> task,
       IsolatedWebAppUpdateCheckAndPrepareTask::CompletionStatus status);
 

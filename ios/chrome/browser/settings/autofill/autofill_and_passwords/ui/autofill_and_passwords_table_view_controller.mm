@@ -229,7 +229,7 @@
   _shouldShowAutofillAIFeatures = shouldShow;
 }
 
-#pragma mark - Sign-in Promo
+#pragma mark - AutofillAndPasswordsSigninPromoConsumer
 
 - (void)promoStateChanged:(BOOL)promoEnabled
         promoConfigurator:(SigninPromoViewConfigurator*)promoConfigurator
@@ -265,7 +265,8 @@
 }
 
 - (void)configureSigninPromoWithConfigurator:
-    (SigninPromoViewConfigurator*)configurator {
+            (SigninPromoViewConfigurator*)promoConfigurator
+                             identityChanged:(BOOL)identityChanged {
   TableViewModel* model = self.tableViewModel;
   if (![model hasSectionForSectionIdentifier:SettingsSectionIdentifierSignIn]) {
     return;
@@ -283,9 +284,20 @@
           [model itemAtIndexPath:path]);
 
   if (item) {
-    item.configurator = configurator;
+    item.configurator = promoConfigurator;
     [self reconfigureCellsForItems:@[ item ]];
   }
+}
+
+- (void)promoProgressStateDidChange {
+  [self.delegate
+      autofillAndPasswordsTableViewControllerPromoProgressStateDidChange:self];
+}
+
+- (void)signinPromoViewMediatorCloseButtonWasTapped:
+    (SigninPromoViewMediator*)mediator {
+  [self.delegate
+      autofillAndPasswordsTableViewControllerDidTapSigninPromoClose:self];
 }
 
 #pragma mark - SettingsControllerProtocol

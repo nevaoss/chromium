@@ -68,7 +68,7 @@ public class TabBottomSheetManagerImpl implements TabBottomSheetManager {
             new LayoutStateObserver() {
                 @Override
                 public void onStartedShowing(@LayoutType int layoutType) {
-                    if (layoutType == LayoutType.TAB_SWITCHER) {
+                    if (layoutType == LayoutType.HUB) {
                         mIsSuppressedOnTabSwitcher = true;
                         maybeCloseBottomSheet();
                     } else if (layoutType == LayoutType.TOOLBAR_SWIPE) {
@@ -79,7 +79,7 @@ public class TabBottomSheetManagerImpl implements TabBottomSheetManager {
 
                 @Override
                 public void onStartedHiding(@LayoutType int layoutType) {
-                    if (layoutType == LayoutType.TAB_SWITCHER) {
+                    if (layoutType == LayoutType.HUB) {
                         mIsSuppressedOnTabSwitcher = false;
                         maybeShowIfNextIsBrowsing();
                     } else if (layoutType == LayoutType.TOOLBAR_SWIPE) {
@@ -263,6 +263,7 @@ public class TabBottomSheetManagerImpl implements TabBottomSheetManager {
             boolean startsExpanded) {
         // Close any existing bottom sheet before showing a new one.
         tryToCloseBottomSheet(/* animate= */ false);
+        assert mTabBottomSheetCoordinator == null;
         mTabBottomSheetCoordinator =
                 new TabBottomSheetCoordinator(
                         mContext,
@@ -316,6 +317,9 @@ public class TabBottomSheetManagerImpl implements TabBottomSheetManager {
                 // The bottom sheet is showing. Close it and send a onClose event back to native.
                 mIsCloseFromNative = true;
                 mTabBottomSheetCoordinator.closeBottomSheet(animate);
+                if (!animate) {
+                    notifyOnClose();
+                }
             }
         }
     }

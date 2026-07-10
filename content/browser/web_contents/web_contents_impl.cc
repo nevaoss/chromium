@@ -95,7 +95,7 @@
 #include "content/browser/media/audio_stream_monitor.h"
 #include "content/browser/media/media_web_contents_observer.h"
 #include "content/browser/memory/scheduler_loop_quarantine_web_contents_observer.h"
-#include "content/browser/network/declarative_performance_observer.h"
+#include "content/browser/network/declarative_performance_observer_coordinator.h"
 #include "content/browser/permissions/permission_controller_impl.h"
 #include "content/browser/permissions/permission_util.h"
 #include "content/browser/preloading/prefetch/prefetch_request.h"
@@ -4414,7 +4414,7 @@ void WebContentsImpl::Init(const WebContents::CreateParams& params,
   SchedulerLoopQuarantineWebContentsObserver::MaybeCreateForWebContents(this);
   RedirectChainDetector::CreateForWebContents(this);
   BtmWebContentsObserver::MaybeCreateForWebContents(this);
-  DeclarativePerformanceObserver::CreateForWebContents(this);
+  DeclarativePerformanceObserverCoordinator::CreateForWebContents(this);
 
   // BrowserPluginGuest::Init needs to be called after this WebContents has
   // a RenderWidgetHostViewChildFrame. That is, |view_->CreateView| above.
@@ -10738,6 +10738,14 @@ void WebContentsImpl::OnFocusedElementChangedInFrame(
   OPTIONAL_TRACE_EVENT1("content",
                         "WebContentsImpl::OnFocusedElementChangedInFrame",
                         "render_frame_host", frame);
+  // Only apply focus updates from the currently focused frame. We ignore
+  // updates from unfocused frames (instead of treating them as bad messages)
+  // because document-local focus changes are allowed, and focus transitions
+  // can race asynchronously. Focus theft is already handled and blocked (with
+  // bad messages) in `RenderFrameHostImpl::VerifyFencedFrameFocusChange`.
+  if (frame != GetFocusedFrame()) {
+    return;
+  }
   RenderWidgetHostViewBase* root_view =
       static_cast<RenderWidgetHostViewBase*>(GetRenderWidgetHostView());
   if (!root_view || !frame->GetView()) {

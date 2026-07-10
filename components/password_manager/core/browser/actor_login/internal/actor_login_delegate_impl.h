@@ -43,17 +43,15 @@ class ActorLoginDelegateImpl
   ActorLoginDelegateImpl(const ActorLoginDelegateImpl&) = delete;
   ActorLoginDelegateImpl& operator=(const ActorLoginDelegateImpl&) = delete;
 
-  // Retrieve the instance stored in `user_data`.
-  static ActorLoginDelegateImpl* FromUserData(
-      base::SupportsUserData* user_data);
+  // Retrieve the instance stored in `client`.
+  static ActorLoginDelegateImpl* FromUserData(ActorLoginDelegateClient* client);
 
-  // Create and store the instance in `user_data`.
+  // Create and store the instance in `client`.
   static ActorLoginDelegateImpl* CreateForUserData(
-      base::SupportsUserData* user_data,
-      ActorLoginDelegateClient* actor_login_delegate_client);
+      ActorLoginDelegateClient* client);
 
-  // Removes the instance stored in `user_data` for testing purposes.
-  static void RemoveFromUserDataForTesting(base::SupportsUserData* user_data);
+  // Removes the instance stored in `client` for testing purposes.
+  static void RemoveFromUserDataForTesting(ActorLoginDelegateClient* client);
 
   // `ActorLoginDelegate` implementation:
   void GetCredentials(

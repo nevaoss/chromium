@@ -45,6 +45,14 @@ class CommonArgs:
 
 
 @dataclasses.dataclass
+class CommentThread:
+    """Represents a reconstructed comment thread."""
+    file_path: str
+    patch_set: int
+    thread_markdown: str
+
+
+@dataclasses.dataclass
 class ClInfo:
     """Information representing a changelist/commit."""
     # The git revision of the CL.
@@ -61,3 +69,5 @@ class ClInfo:
     dir_metadata: MetadataTree
     # The hashtags associated with the CL.
     hashtags: set[str] = dataclasses.field(default_factory=set)
+    # The reconstructed comment threads associated with the CL.
+    comments: list[CommentThread] = dataclasses.field(default_factory=list)

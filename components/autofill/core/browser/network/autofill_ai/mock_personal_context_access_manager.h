@@ -39,6 +39,12 @@ class MockPersonalContextAccessManager : public PersonalContextAccessManager {
               (),
               (const, override));
   MOCK_METHOD(bool, IsTypeCached, (EntityType type), (const, override));
+  MOCK_METHOD(void, AddObserver, (Observer * observer), (override));
+  MOCK_METHOD(void, RemoveObserver, (Observer * observer), (override));
+  MOCK_METHOD(RequestStatus,
+              GetPrefetchAmbientAutofillStatusByEntityType,
+              (EntityType type),
+              (const, override));
 };
 
 }  // namespace autofill

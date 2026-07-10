@@ -189,6 +189,8 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kPermissionsPolicyVerificationInContent);
 #endif
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kPrefetchCookieIndices);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kPrefetchDevtoolsUserAgentOverride);
+CONTENT_EXPORT BASE_DECLARE_FEATURE(
+    kPreloadActivationReportWithExtensionInterception);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kPreloadingConfig);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(
     kPrerenderMoreCorrectSpeculativeRFHCreation);
@@ -227,7 +229,6 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(
 CONTENT_EXPORT extern const base::FeatureParam<std::string>
     kServiceWorkerBypassFetchHandlerBypassedHashStrings;
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kServiceWorkerSrcdocSupport);
-CONTENT_EXPORT BASE_DECLARE_FEATURE(kServiceWorkerStaticRouterRaceRequestFix2);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kServiceWorkerStaticRouterCORPCheck);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kServiceWorkerStaticRouterOpaqueCheck);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kServiceWorkerStaticRouterParsedHeaders);

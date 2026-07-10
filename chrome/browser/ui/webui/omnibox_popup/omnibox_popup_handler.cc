@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_handler.h"
+
 #include "ui/base/models/menu_model.h"
 
 OmniboxPopupHandler::OmniboxPopupHandler(
@@ -27,12 +28,12 @@ void OmniboxPopupHandler::CloseUI() {
   }
 }
 
-void OmniboxPopupHandler::OnSelectionChanged(
-    omnibox_popup::mojom::OmniboxInputStatePtr state) {
-  if (state->sequence_number < current_sequence_number_) {
+void OmniboxPopupHandler::OnSelectionChanged(const gfx::Range& selection,
+                                             uint32_t sequence_number) {
+  if (sequence_number < current_sequence_number_) {
     return;
   }
-  latest_selection_ = state->selection;
+  latest_selection_ = selection;
 }
 
 void OmniboxPopupHandler::OnShow() {
@@ -44,12 +45,16 @@ void OmniboxPopupHandler::OnContextMenuClosed() {
 }
 
 void OmniboxPopupHandler::SetInputState(const std::string& text,
-                                        const gfx::Range& selection) {
+                                        const gfx::Range& selection,
+                                        bool user_input_in_progress,
+                                        bool is_double_click) {
   latest_selection_ = selection;
   current_sequence_number_++;
   auto state = omnibox_popup::mojom::OmniboxInputState::New();
+  state->sequence_number = current_sequence_number_;
   state->text = text;
   state->selection = selection;
-  state->sequence_number = current_sequence_number_;
+  state->user_input_in_progress = user_input_in_progress;
+  state->is_double_click = is_double_click;
   page_->SetInputState(std::move(state));
 }

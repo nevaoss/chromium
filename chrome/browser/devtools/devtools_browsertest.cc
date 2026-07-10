@@ -530,7 +530,7 @@ class DevToolsBeforeUnloadTest : public DevToolsTest {
   }
 
   void RunBeforeUnloadTest(bool is_docked,
-                           base::RepeatingCallback<void(void)> close_method,
+                           base::RepeatingClosure close_method,
                            bool wait_for_browser_close = true) {
     OpenDevToolsWindow(kDebuggerTestPage, is_docked);
     auto runner = base::MakeRefCounted<content::MessageLoopRunner>();

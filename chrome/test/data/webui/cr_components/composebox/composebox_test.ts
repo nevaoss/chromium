@@ -13,16 +13,16 @@ import type {ContextualEntrypointAndMenuElement} from 'chrome://resources/cr_com
 import {WindowProxy} from 'chrome://resources/cr_components/composebox/window_proxy.js';
 import {createAutocompleteResultForTesting, createSearchMatchForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
-import {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {DriveDisclaimerStatus, PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {PageRemote as SearchboxPageRemote} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {InputType} from 'chrome://resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
 import type {UnguessableToken} from 'chrome://resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
 import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
-import {getTrustedHtml} from 'chrome://webui-test/trusted_html.js';
 import type {TestMock} from 'chrome://webui-test/test_mock.js';
 import {microtasksFinished} from 'chrome://webui-test/test_util.js';
+import {getTrustedHtml} from 'chrome://webui-test/trusted_html.js';
 
-import {installMock, MockInputState} from './composebox_test_utils.js';
+import {installMock} from './composebox_test_utils.js';
 
 suite('ComposeboxTest', () => {
   let composebox: ComposeboxElement;
@@ -413,34 +413,6 @@ suite('ComposeboxTest', () => {
     assertEquals(2, carousel.files.length);
   });
 
-  test('incompatible files are deleted on input state change', async () => {
-    // Add a file to composebox.
-    const token = 'uuid-1' as unknown as UnguessableToken;
-    const file = new ComposeboxFile(
-        token, 'image.png', 'image/png', InputType.kLensImage, {
-          isDeletable: true,
-        });
-    composebox.files = new Map([[token, file]]);
-    await composebox.updateComplete;
-
-    // Verify it is there.
-    assertEquals(1, composebox.files.size);
-
-    // Trigger input state change with kLensImage in disabledInputTypes.
-    const inputState = new MockInputState({
-      allowedInputTypes: [InputType.kLensImage, InputType.kLensFile],
-      disabledInputTypes: [InputType.kLensImage],  // Image is disabled
-    });
-
-    searchboxCallbackRouterRemote.onInputStateChanged(inputState);
-    await searchboxCallbackRouterRemote.$.flushForTesting();
-    await microtasksFinished();
-    await composebox.updateComplete;
-
-    // Verify the file was deleted.
-    assertEquals(0, composebox.files.size);
-  });
-
   test('queryAutocomplete passes cursor position', async () => {
     composebox.input = 'hello';
     await composebox.updateComplete;
@@ -788,6 +760,34 @@ suite('ComposeboxTest', () => {
 
     assertEquals(1, handler.getCallCount('getSmartTabSharingActive'));
     assertTrue(newComposebox.smartTabSharingActive);
+  });
+
+  test(
+      'onOpenDriveUpload suppresses upload if disclaimer not accepted',
+      async () => {
+        searchboxHandler.setResultFor(
+            'getDriveDisclaimerStatus',
+            Promise.resolve({status: DriveDisclaimerStatus.kNotAccepted}));
+
+        await composebox.onOpenDriveUpload();
+
+        assertEquals(
+            1, searchboxHandler.getCallCount('getDriveDisclaimerStatus'));
+        assertEquals(0, searchboxHandler.getCallCount('onDriveUploadClicked'));
+      });
+
+  test('onOpenDriveUpload triggers upload if disclaimer accepted', async () => {
+    searchboxHandler.setResultFor(
+        'getDriveDisclaimerStatus',
+        Promise.resolve({status: DriveDisclaimerStatus.kAccepted}));
+    searchboxHandler.setResultFor(
+        'onDriveUploadClicked',
+        Promise.resolve({response: {files: [], error: null}}));
+
+    await composebox.onOpenDriveUpload();
+
+    assertEquals(1, searchboxHandler.getCallCount('getDriveDisclaimerStatus'));
+    assertEquals(1, searchboxHandler.getCallCount('onDriveUploadClicked'));
   });
 });
 

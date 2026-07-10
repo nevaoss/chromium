@@ -13,8 +13,10 @@
 #import "ios/chrome/browser/assistant/ui/assistant_container_view_controller.h"
 #import "ios/chrome/browser/cobrowse/coordinator/assistant_aim_mediator.h"
 #import "ios/chrome/browser/cobrowse/debugger/aim_srp_debugger_breadcrumbs_view_controller.h"
+#import "ios/chrome/browser/cobrowse/debugger/aim_srp_debugger_url_view_controller.h"
 #import "ios/chrome/browser/cobrowse/model/cobrowse_browser_agent.h"
 #import "ios/chrome/browser/cobrowse/model/cobrowse_context.h"
+#import "ios/chrome/browser/cobrowse/model/cobrowse_util.h"
 #import "ios/chrome/browser/cobrowse/model/ios_contextual_tasks_service_factory.h"
 #import "ios/chrome/browser/cobrowse/ui/assistant_aim_ui_constants.h"
 #import "ios/chrome/browser/cobrowse/ui/assistant_aim_view_controller.h"
@@ -32,10 +34,12 @@
 #import "ios/chrome/browser/shared/public/commands/open_new_tab_command.h"
 #import "ios/chrome/browser/shared/public/commands/scene_commands.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
+#import "ios/chrome/browser/signin/model/authentication_service_factory.h"
 #import "ios/chrome/browser/tabs/model/tab_helper_filter.h"
 #import "ios/chrome/browser/tabs/model/tab_helper_util.h"
 #import "ios/chrome/browser/url_loading/model/url_loading_browser_agent.h"
 #import "ios/web/public/web_state.h"
+#import "url/gurl.h"
 
 @interface AssistantAIMCoordinator () <AssistantAIMViewControllerDelegate,
                                        AssistantContainerDelegate,
@@ -76,9 +80,13 @@ class AssistantAIMUIStateProvider
   __weak id<AssistantContainerCommands> _containerHandler;
 }
 
+- (instancetype)initWithBaseViewController:(UIViewController*)viewController
+                                   browser:(Browser*)browser {
+  CHECK(IsAimCobrowseEligible(browser->GetProfile()));
+  return [super initWithBaseViewController:viewController browser:browser];
+}
 
 - (void)start {
-  CHECK(IsAimCobrowseEnabled());
   if (base::FeatureList::IsEnabled(kAssistantAimMinimizedState)) {
     _currentDetent = AssistantContainerDetent::kMinimized;
   } else {
@@ -102,13 +110,13 @@ class AssistantAIMUIStateProvider
   _containerHandler = HandlerForProtocol(self.browser->GetCommandDispatcher(),
                                          AssistantContainerCommands);
 
-  web::WebState::CreateParams params(self.browser->GetProfile());
   contextual_tasks::ContextualTasksService* contextualTasksService = nullptr;
   if (IsCobrowseAimHistoryEnabled()) {
     contextualTasksService = IOSContextualTasksServiceFactory::GetForProfile(
         self.browser->GetProfile());
   }
 
+  web::WebState::CreateParams params(self.browser->GetProfile());
   std::unique_ptr<web::WebState> webState = web::WebState::Create(params);
   AttachTabHelpers(webState.get(), TabHelperFilter::kAssistantAim);
 
@@ -117,7 +125,9 @@ class AssistantAIMUIStateProvider
         cobrowseBrowserAgent:agent
             containerHandler:_containerHandler
       contextualTasksService:contextualTasksService
-                   URLLoader:UrlLoadingBrowserAgent::FromBrowser(self.browser)];
+                   URLLoader:UrlLoadingBrowserAgent::FromBrowser(self.browser)
+       authenticationService:AuthenticationServiceFactory::GetForProfile(
+                                 self.browser->GetProfile())];
 
   _mediator.delegate = self;
   _mediator.sceneHandler =
@@ -349,6 +359,17 @@ class AssistantAIMUIStateProvider
       [[AimSRPDebuggerBreadcrumbsViewController alloc] initWithEvents:events];
   UINavigationController* navController =
       [[UINavigationController alloc] initWithRootViewController:logsVC];
+  [_viewController presentViewController:navController
+                                animated:YES
+                              completion:nil];
+}
+
+- (void)assistantAIMViewControllerDidRequestLoadedURL:
+    (AssistantAIMViewController*)viewController {
+  AIMSRPDebuggerURLViewController* URLVC =
+      [[AIMSRPDebuggerURLViewController alloc] initWithURL:_mediator.loadedURL];
+  UINavigationController* navController =
+      [[UINavigationController alloc] initWithRootViewController:URLVC];
   [_viewController presentViewController:navController
                                 animated:YES
                               completion:nil];

@@ -466,19 +466,6 @@ mojom::IPAddressSpace CalculateResourceAddressSpace(
   return IPEndPointToIPAddressSpace(endpoint);
 }
 
-std::optional<net::IPAddress> ParsePrivateIpFromUrl(const GURL& url) {
-  net::IPAddress address;
-  if (!address.AssignFromIPLiteral(url.HostNoBracketsPiece())) {
-    return std::nullopt;
-  }
-
-  if (IPAddressToIPAddressSpace(address) != mojom::IPAddressSpace::kLocal) {
-    return std::nullopt;
-  }
-
-  return address;
-}
-
 std::optional<mojom::IPAddressSpace> GetAddressSpaceFromUrl(const GURL& url) {
   if (url.DomainIs("local")) {
     return mojom::IPAddressSpace::kLocal;

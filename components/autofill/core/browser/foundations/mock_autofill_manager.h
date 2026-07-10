@@ -59,6 +59,10 @@ class MockAutofillManager : public AutofillManager {
               (const FormData& form, mojom::SubmissionSource source),
               (override));
   MOCK_METHOD(void,
+              OnFormWithEmailVerificationTokenSubmittedImpl,
+              (const FormData& form, const FieldGlobalId& field_id),
+              (override));
+  MOCK_METHOD(void,
               OnCaretMovedInFormFieldImpl,
               (const FormData& form,
                const FieldGlobalId& field_id,

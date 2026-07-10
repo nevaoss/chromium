@@ -20,16 +20,24 @@
 class BrowserWindowInterface;
 class ExtensionsMenuCoordinator;
 
+namespace webui_toolbar {
+class IconTable;
+}
+
 class WebUIToolbarExtensionsContainer
     : public ExtensionsContainer,
       public ExtensionsContainerViews,
       public ToolbarActionsModel::Observer,
       public extensions_bar::mojom::PageHandler {
  public:
+  // `push_icon_table_updates` controls whether this instance is responsible for
+  // pushing IconTable updates via Mojo.
   WebUIToolbarExtensionsContainer(
       BrowserWindowInterface& browser,
       views::Widget* widget,
-      base::WeakPtr<content::WebContents> web_contents);
+      base::WeakPtr<content::WebContents> web_contents,
+      webui_toolbar::IconTable* icon_table,
+      bool push_icon_table_updates);
   ~WebUIToolbarExtensionsContainer() override;
 
   // ExtensionsContainer:
@@ -96,6 +104,8 @@ class WebUIToolbarExtensionsContainer
   const raw_ref<BrowserWindowInterface> browser_;
   const raw_ptr<views::Widget> widget_;
   const base::WeakPtr<content::WebContents> web_contents_;
+  const bool push_icon_table_updates_;
+  const raw_ptr<webui_toolbar::IconTable> icon_table_;
   const raw_ref<ToolbarActionsModel> model_;
   base::ScopedObservation<ToolbarActionsModel, ToolbarActionsModel::Observer>
       observe_actions_{this};

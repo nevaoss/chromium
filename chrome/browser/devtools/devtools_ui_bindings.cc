@@ -3032,6 +3032,7 @@ void DevToolsUIBindings::ReadyToCommitNavigation(
       LOG(ERROR) << "Attempt to navigate to an invalid DevTools front-end URL: "
                  << navigation_handle->GetURL().spec();
       frontend_host_.reset();
+      extensions_api_.clear();
       return;
     }
     if (frontend_host_) {
@@ -3051,6 +3052,10 @@ void DevToolsUIBindings::ReadyToCommitNavigation(
         base::BindRepeating(
             &DevToolsUIBindings::HandleMessageFromDevToolsFrontend,
             base::Unretained(this)));
+    return;
+  }
+
+  if (!frontend_host_) {
     return;
   }
 

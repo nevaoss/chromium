@@ -597,7 +597,6 @@
 <translation id="1433478348197382180">ରିଡିଂ ମୋଡ</translation>
 <translation id="1433980411933182122">ଷ୍ଟାର୍ଟଅପ୍</translation>
 <translation id="1434659328474177625"><ph name="ISSUER" /> ଆପଣଙ୍କ ଇମେଲକୁ ଯାଞ୍ଚ କରିଛି</translation>
-<translation id="1434696352799406980">ଏହା ଆପଣଙ୍କର ଷ୍ଟାର୍ଟ୍-ଅପ୍ ପୃଷ୍ଠା, ନୂଆ ଟାବ୍ ପୃଷ୍ଠା, ସର୍ଚ୍ଚ ଇଞ୍ଜିନ୍ ଓ ପିନ୍ କରାଯାଇଥିବା ଟାବ୍‌ଗୁଡ଼ିକୁ ରିସେଟ୍ କରିବ। ଏହା ସମସ୍ତ ଏକ୍ସଟେନ୍‌ସନ୍‌କୁ ମଧ୍ୟ ଅକ୍ଷମ କରିବା ସହ କୁକୀଗୁଡ଼ିକ ଭଳି ଅସ୍ଥାୟୀ ଡାଟାକୁ ଖାଲି କରିଦେବ। ଆପଣଙ୍କର ବୁକ୍‌ମାର୍କ, ଇତିହାସ ଓ ସେଭ୍ କରାଯାଇଥିବା ପାସ୍‌ୱର୍ଡଗୁଡ଼ିକୁ ଖାଲି କରାଯିବ ନାହିଁ।</translation>
 <translation id="1434886155212424586">ମୂଳପୃଷ୍ଠା, ନୂଆ ଟାବ୍ ପୃଷ୍ଠା ଅଟେ</translation>
 <translation id="1435940442311036198">ଗୋଟିଏ ଭିନ୍ନ ଡିଭାଇସରେ ଏକ ପାସକୀ ବ୍ୟବହାର କରନ୍ତୁ</translation>
 <translation id="1436390408194692385"><ph name="TICKET_TIME_LEFT" /> ପର୍ଯ୍ୟନ୍ତ ବୈଧ ଅଟେ</translation>
@@ -2561,6 +2560,7 @@
 <translation id="2822551631199737692">କ୍ୟାମେରାକୁ ବ୍ୟବହାର କରାଯାଉଛି</translation>
 <translation id="2822634587701817431">କମ୍ / ପ୍ରସାରିତ କରନ୍ତୁ</translation>
 <translation id="2824942875887026017"><ph name="IDS_SHORT_PRODUCT_NAME" /> ଆପଣଙ୍କର ଆଡ୍‍ମିନିଷ୍ଟ୍ରେଟର୍‍ରୁ ପ୍ରକ୍ସି ସେଟିଂସ୍ ବ୍ୟବହାର କରୁଛି</translation>
+<translation id="2825200993288778739">ଆପଣଙ୍କ ନିଜର ଦକ୍ଷତା ବଢ଼ାନ୍ତୁ କିମ୍ବା ଲାଇବ୍ରେରୀରୁ ଦକ୍ଷତା ଯୋଗ କରନ୍ତୁ</translation>
 <translation id="282525059261716597">କମାଣ୍ଡ ଲାଇନ:</translation>
 <translation id="2825758591930162672">ବିଷୟର ସାର୍ବଜନିକ କୀ</translation>
 <translation id="2826576843404243001">ସୁରକ୍ଷିତ କନେକ୍ସନକୁ ସପୋର୍ଟ କରୁନଥିବା ସାଇଟଗୁଡ଼ିକ ପାଇଁ ସାଇଟକୁ ଭିଜିଟ କରିବା ପୂର୍ବରୁ ଚେତାବନୀ ପାଆନ୍ତୁ। ଆପଣ ଆଡଭାନ୍ସଡ ପ୍ରୋଟେକସନ ସକ୍ଷମ କରିଥିବା ଯୋଗୁଁ ଏହି ସେଟିଂକୁ ପରିବର୍ତ୍ତନ କରିପାରିବେ ନାହିଁ।</translation>
@@ -3701,7 +3701,6 @@
 <translation id="366484203224589850"><ph name="TASK_TITLE" />: Gemini ଏହି ଟାସ୍କ ଉପରେ ବହୁତ ସମୟ ଧରି କାମ କରୁଛି ଏବଂ ବେଟେରୀ ସଂରକ୍ଷଣ କରିବା ପାଇଁ ଶୀଘ୍ର ବନ୍ଦ ହୋଇଯିବ</translation>
 <translation id="3664911592976620204">{NUM_OTHER_MEMBERS,plural, =0{<ph name="OWNER_FIRST_NAME" />ଙ୍କ ସହ ଟାବ ଗ୍ରୁପରେ ଯୋଗ ଦିଅନ୍ତୁ}=1{<ph name="OWNER_FIRST_NAME" /> ଏବଂ ଅନ୍ୟ # ଜଣଙ୍କ ସହ ଟାବ ଗ୍ରୁପରେ ଯୋଗ ଦିଅନ୍ତୁ}other{<ph name="OWNER_FIRST_NAME" /> ଏବଂ ଅନ୍ୟ # ଜଣଙ୍କ ସହ ଟାବ ଗ୍ରୁପରେ ଯୋଗ ଦିଅନ୍ତୁ}}</translation>
 <translation id="3665301845536101715">ସାଇଡ ପେନେଲରେ ଖୋଲନ୍ତୁ</translation>
-<translation id="3665589677786828986">Chrome ଚିହ୍ନଟ କରିଛି କି ଅନ୍ୟ କୌଣସି ପ୍ରୋଗ୍ରାମ୍ ଦ୍ବାରା ଆପଣଙ୍କର କିଛି ସେଟିଂସ୍ ନଷ୍ଟ ହୋଇଯାଇଥିଲା ଏବଂ ସେଗୁଡ଼ିକୁ ସେମାନଙ୍କର ମୂଳ ଡିଫଲ୍ଟରେ ପୁନଃସେଟ୍ କରନ୍ତୁ।</translation>
 <translation id="3665918214153961651">ଫାଇଲ ଅପଲୋଡ କରାଯାଉଛି</translation>
 <translation id="3666196264870170605">Intel WiFi NIC ଡିବଗ ଡମ୍ପ</translation>
 <translation id="3666971425390608309">ଡାଉନଲୋଡକୁ ବିରତ କରାଯାଇଛି: <ph name="FILE_NAME" />।</translation>
@@ -4637,6 +4636,7 @@
 <translation id="4321179778687042513">ctrl</translation>
 <translation id="432160826079505197"><ph name="FILE_NAME" /> ଫାଇଣ୍ଡରରେ ଦେଖାନ୍ତୁ</translation>
 <translation id="4322394346347055525">ଅନ୍ୟ ଟାବ୍‌ଗୁଡ଼ିକୁ ବନ୍ଦ କରନ୍ତୁ</translation>
+<translation id="4322400254469690320"><ph name="FEATURE_NAME" /> ଫୋଲ୍ଡରରେ ଆପଣଙ୍କ <ph name="FILENAME" /> ଖୋଜନ୍ତୁ</translation>
 <translation id="4324577459193912240">ଫାଇଲ୍ ଅସମ୍ପୂର୍ଣ୍ଣ ଅଟେ</translation>
 <translation id="4325433082696797523">ଷ୍ଟୋରେଜ ଏବଂ ପାୱାର</translation>
 <translation id="4325515113816851466">ତୁମେ ସାଇନ ଆଉଟ କରିବା ପରେ ତୁମ ବାପାମାଙ୍କ ପସନ୍ଦଗୁଡ଼ିକ ଲାଗୁ ହେବ ନାହିଁ</translation>
@@ -4987,7 +4987,6 @@
 <translation id="4580596421317071374">ପାସୱାର୍ଡଗୁଡ଼ିକ ଏହି ଡିଭାଇସର <ph name="GOOGLE_PASSWORD_MANAGER" />ରେ ସେଭ କରାଯାଇଛି।</translation>
 <translation id="4580939929828762295">Google Password Manager ସହ ସୁରକ୍ଷିତ ରୁହନ୍ତୁ</translation>
 <translation id="4582297591746054421">ଆପଣ କପି କରିଥିବା ଟେକ୍ସଟର ଫର୍ମାଟିଂକୁ ରଖିବା ପରି ଫିଚରଗୁଡ଼ିକ ପାଇଁ ସାଇଟଗୁଡ଼ିକ ସାଧାରଣତଃ ଆପଣଙ୍କ କ୍ଲିପବୋର୍ଡକୁ ପଢ଼ିଥାଏ</translation>
-<translation id="4582563038311694664">ସମସ୍ତ ସେଟିଂ ରିସେଟ୍‍ କରନ୍ତୁ</translation>
 <translation id="4584094413232466841">Chrome ଅଟୋଫିଲରୁ ଏହି ସୂଚନାକୁ କାଢ଼ି ଦେବେ?</translation>
 <translation id="4584770411839426377">ୱିଣ୍ଡୋ</translation>
 <translation id="4584836561445313300">ଆପଣଙ୍କ ସଂସ୍ଥା ପାସୱାର୍ଡ ଏବଂ ଅନେକ କିଛି ପରି ଯେ କୌଣସି ପୂର୍ବରୁ ଥିବା ବ୍ରାଉଜିଂ ଡାଟା ଦେଖିପାରିବ ଏବଂ ପରିଚାଳନା କରିପାରିବ</translation>
@@ -6629,6 +6628,7 @@
 <translation id="5826993284769733527">ଅର୍ଦ୍ଧ-ପାରଦର୍ଶୀ</translation>
 <translation id="5827266244928330802">Safari</translation>
 <translation id="5827591412833386477">ସମାନ ଗୋଷ୍ଠୀରେ ସାଇଟଗୁଡ଼ିକୁ ଦେଖାନ୍ତୁ</translation>
+<translation id="5827835011646404677">ଆପଣଙ୍କ Google ଆକାଉଣ୍ଟରେ ଦକ୍ଷତାଗୁଡ଼ିକ ସେଭ ହୋଇଛି</translation>
 <translation id="5828181959764767444">ସୂର୍ଯ୍ୟାସ୍ତ</translation>
 <translation id="5828545842856466741">ପ୍ରୋଫାଇଲ୍ ଯୋଗ କରନ୍ତୁ...</translation>
 <translation id="5828633471261496623">ପ୍ରିଣ୍ଟିଂ...</translation>
@@ -10070,7 +10070,6 @@ Google Chrome ଆପଣଙ୍କ ମୋବାଇଲ୍ ଡାଟା ବ୍ୟବ
 <translation id="8327386430364625757">ଗାଣିତିକ ଫଣ୍ଟ</translation>
 <translation id="8327490658947427005">ଚୟନିତ ବିଷୟବସ୍ତୁ <ph name="LANGUAGE" />ରେ ଉପଲବ୍ଧ ନାହିଁ</translation>
 <translation id="8327544198829180337">ଏହି ଭ୍ୟୁ ବନ୍ଦ କରନ୍ତୁ</translation>
-<translation id="8327676037044516220">ଅନୁମତି ଏବଂ ବିଷୟବସ୍ତୁ ସେଟିଂସ୍</translation>
 <translation id="8328228852664998535">ଯଦି ଆପଣ ଜାରି ରଖନ୍ତି, ତେବେ ଆପଣଙ୍କ ପାସୱାର୍ଡ, ପାସକୀ ଏବଂ ଅନ୍ୟ ଡାଟା <ph name="BRAND" />ରୁ ସ୍ଥାୟୀ ଭାବେ ଡିଲିଟ ହୋଇଯିବ। ସାଇଟ କିମ୍ୱା ଆପ୍ସ ପାଇଁ ଆପଣ ତିଆରି କରିଥିବା ଯେ କୌଣସି ଆକାଉଣ୍ଟ ଡିଲିଟ ହେବ ନାହିଁ।</translation>
 <translation id="8328777765163860529">ସବୁଗୁଡ଼ିକ ବନ୍ଦ କରନ୍ତୁ</translation>
 <translation id="8330617762701840933">ବିକଳ୍ପ ବ୍ରାଉଜରକୁ ରିଡାଇରେକ୍ଟ କରୁଥିବା ୱେବସାଇଟଗୁଡ଼ିକର ତାଲିକା।</translation>
@@ -10891,7 +10890,6 @@ Google Chrome ଆପଣଙ୍କ ମୋବାଇଲ୍ ଡାଟା ବ୍ୟବ
 <translation id="8925458182817574960">&amp;ସେଟିଂସ୍</translation>
 <translation id="8926389886865778422">ପୁର୍ନବାର ପଚାରନ୍ତୁ ନାହିଁ</translation>
 <translation id="8926555406617248399">ଟାବଗୁଡ଼ିକ ଲୁଚାଯାଇଛି</translation>
-<translation id="892706138619340876">କିଛି ସେଟିଂସ୍‌କୁ ପୁନଃସେଟ୍ କରାଯାଇଥିଲା</translation>
 <translation id="8927438609932588163">ଆପଣଙ୍କ ଡିଭାଇସରେ ଡାଟା ସେଭ କରିବା ପାଇଁ ସାଇଟଗୁଡ଼ିକୁ ଅନୁମତି ଦିଅନ୍ତୁ</translation>
 <translation id="8929696694736010839">କେବଳ ବର୍ତ୍ତମାନର ଇନକଗ୍ନିଟୋ ସେସନ୍</translation>
 <translation id="8929738682246584251">ମେଗ୍ନିଫାୟର ଚାଲୁ/ବନ୍ଦ ଅଛି</translation>
@@ -11200,6 +11198,7 @@ Google Chrome ଆପଣଙ୍କ ମୋବାଇଲ୍ ଡାଟା ବ୍ୟବ
 <translation id="9130015405878219958">ଅବୈଧ ମୋଡ୍ ଏଣ୍ଟର୍ ହୋଇଛି।</translation>
 <translation id="9130135798965366513">ଜାରି ରଖିବା ପାଇଁ <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> ଏହି ସାଇଟ ସହ ଆପଣଙ୍କ <ph name="FIELDS_STRING" />କୁ ସେୟାର କରିବ। ଏହି ସାଇଟର <ph name="BEGIN_LINK1" />ଗୋପନୀୟତା ନୀତି<ph name="END_LINK1" /> ଏବଂ <ph name="BEGIN_LINK2" />ସେବାର ସର୍ତ୍ତାବଳୀ<ph name="END_LINK2" />କୁ ଦେଖନ୍ତୁ।</translation>
 <translation id="9130364135697530260">ଏହି ସାଇଟରେ ଏମ୍ବେଡ କରାଯାଇଥିବା ବିଷୟବସ୍ତୁ, ଆପଣଙ୍କ ବିଷୟରେ ଏହା ସେଭ କରିଥିବା ସୂଚନାକୁ ବ୍ୟବହାର କରିପାରିବ</translation>
+<translation id="9130857050314385402">ଆପଣ ଦକ୍ଷତା ବ୍ୟବହାର କଲେ ଟାବ ଟାଇଟେଲ ଏବଂ URLଗୁଡ଼ିକୁ Googleକୁ ପଠାଯାଏ</translation>
 <translation id="9131209053278896908">ଏଠାରେ ବ୍ଲକ କରାଯାଇଥିବା ସାଇଟଗୁଡ଼ିକ ଦେଖାଯାଏ</translation>
 <translation id="9131487537093447019">ବ୍ଲୁଟୁଥ୍ ଡିଭାଇସ୍‍ଗୁଡ଼ିକୁ ମେସେଜ୍ ପଠାନ୍ତୁ ଏବଂ ସେଥିରୁ ମେସେଜ୍ ପ୍ରାପ୍ତ କରନ୍ତୁ।</translation>
 <translation id="9133568201369135151">ଡାଏଗ୍ନୋଷ୍ଟିକ ଡାଟା ସଂଗ୍ରହ ସମ୍ପୂର୍ଣ୍ଣ ହୋଇଛି। ଏହି ଡାଟାରେ ଆପଣଙ୍କର କିଛି ବ୍ୟକ୍ତିଗତ ସୂଚନା ଅନ୍ତର୍ଭୁକ୍ତ।</translation>

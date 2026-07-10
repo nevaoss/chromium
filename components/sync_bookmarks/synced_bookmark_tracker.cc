@@ -480,18 +480,21 @@ SyncedBookmarkTracker::InitEntitiesFromModelAndMetadata(
       return CorruptionReason::DUPLICATED_SERVER_ID;
     }
 
+    // Note that currently the client tag hash is persisted for permanent nodes
+    // too, although it is not required for anything beyond in-memory tracking
+    // of entities (which use a client tag hash as key).
+    if (!bookmark_metadata.metadata().has_client_tag_hash()) {
+      DLOG(ERROR) << "Error when decoding sync metadata: "
+                  << "Bookmark client tag hash is missing.";
+      return CorruptionReason::MISSING_CLIENT_TAG_HASH;
+    }
+
     // Handle tombstones.
     if (bookmark_metadata.metadata().is_deleted()) {
       if (bookmark_metadata.has_id()) {
         DLOG(ERROR) << "Error when decoding sync metadata: Tombstones "
                        "shouldn't have a bookmark id.";
         return CorruptionReason::BOOKMARK_ID_IN_TOMBSTONE;
-      }
-
-      if (!bookmark_metadata.metadata().has_client_tag_hash()) {
-        DLOG(ERROR) << "Error when decoding sync metadata: "
-                    << "Tombstone client tag hash is missing.";
-        return CorruptionReason::MISSING_CLIENT_TAG_HASH;
       }
 
       const syncer::ClientTagHash client_tag_hash =
@@ -532,16 +535,6 @@ SyncedBookmarkTracker::InitEntitiesFromModelAndMetadata(
     if (!node) {
       DLOG(ERROR) << "Error when decoding sync metadata: unknown Bookmark id.";
       return CorruptionReason::UNKNOWN_BOOKMARK_ID;
-    }
-
-    // Note that currently the client tag hash is persisted for permanent nodes
-    // too, although it's irrelevant (and even subject to change value upon
-    // restart if the code changes).
-    if (!bookmark_metadata.metadata().has_client_tag_hash() &&
-        !node->is_permanent_node()) {
-      DLOG(ERROR) << "Error when decoding sync metadata: "
-                  << "Bookmark client tag hash is missing.";
-      return CorruptionReason::MISSING_CLIENT_TAG_HASH;
     }
 
     // The client-tag-hash is expected to be equal to the hash of the bookmark's

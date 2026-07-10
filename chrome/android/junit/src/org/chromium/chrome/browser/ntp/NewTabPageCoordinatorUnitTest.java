@@ -395,7 +395,7 @@ public class NewTabPageCoordinatorUnitTest {
                         mBottomSheetController,
                         mModalDialogManager,
                         mSnackbarManager,
-                        /* isTablet= */ false,
+                        /* isLff= */ false,
                         mTabStripHeightSupplier,
                         mHomeSurfaceTracker,
                         mBackPressManager);

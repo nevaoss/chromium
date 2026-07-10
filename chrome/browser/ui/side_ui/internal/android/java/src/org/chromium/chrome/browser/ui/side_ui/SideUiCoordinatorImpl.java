@@ -56,7 +56,7 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
     private final Callback<Integer> mTopMarginObserver;
 
     /** Maps {@link AnchorSide} to {@link ViewGroup} where {@link SideUiContainer} is attached. */
-    private final Map<Integer, ViewGroup> mAnchorContainers = new ArrayMap<>();
+    private final Map<@AnchorSide Integer, ViewGroup> mAnchorContainers = new ArrayMap<>();
 
     /** List of registered {@link SideUiContainer} objects. */
     private final List<SideUiContainer> mSideUiContainers = new ArrayList<>();
@@ -267,15 +267,17 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
                         minWebContentsWidth);
         boolean canShowSideUi = newSideUiSpecs.getWidth(currentAnchorSide) > 0;
 
-        List<Integer> showableSideUiIds = new ArrayList<>();
-        List<Integer> unshowableSideUiIds = new ArrayList<>();
+        List<@SideUiId Integer> showableSideUiIds = new ArrayList<>();
+        List<@SideUiId Integer> unshowableSideUiIds = new ArrayList<>();
         if (canShowSideUi) {
             showableSideUiIds.add(SideUiId.SIDE_PANEL);
         } else {
             unshowableSideUiIds.add(SideUiId.SIDE_PANEL);
         }
+        SideUiShowability sideUiShowability =
+                new SideUiShowability(showableSideUiIds, unshowableSideUiIds);
         for (var sideUiObserver : mSideUiObservers) {
-            sideUiObserver.onShowableSideUisUpdated(showableSideUiIds, unshowableSideUiIds);
+            sideUiObserver.onShowableSideUisUpdated(sideUiShowability);
         }
 
         // 3.1. Check if we need to close side UI.
@@ -306,7 +308,7 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
     }
 
     private boolean hasConflictingAnchorSides(SideUiContainer sideUiContainer) {
-        List<Integer> allocatedAnchorSide = new ArrayList<>();
+        List<@AnchorSide Integer> allocatedAnchorSide = new ArrayList<>();
         @SideUiId int id = sideUiContainer.getSideUiId();
 
         for (SideUiContainer container : mSideUiContainers) {
@@ -348,7 +350,7 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
                         properties, currentSideUiSpecs, windowWidth, minWebContentsWidth);
 
         // 4. Collect containers whose width needs updating for resize event and transition effect.
-        Map<Integer, Integer> updatedSides = new ArrayMap<>(); // side -> width
+        Map<@AnchorSide Integer, Integer> updatedSides = new ArrayMap<>(); // side -> width
         for (SideUiContainer container : mSideUiContainers) {
             @AnchorSide int side = container.getAnchorSide();
             int currentWidth = currentSideUiSpecs.getWidth(side);
@@ -376,8 +378,8 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
         //
         // Therefore, we need to explicitly check if the visibility is View.GONE, and if so, return
         // 0.
-        Map<Integer, Integer> anchorContainerWidths = new ArrayMap<>();
-        for (Map.Entry<Integer, ViewGroup> entry : mAnchorContainers.entrySet()) {
+        Map<@AnchorSide Integer, Integer> anchorContainerWidths = new ArrayMap<>();
+        for (Map.Entry<@AnchorSide Integer, ViewGroup> entry : mAnchorContainers.entrySet()) {
             @AnchorSide int anchorSide = entry.getKey();
             ViewGroup anchorContainer = entry.getValue();
             @Px
@@ -411,7 +413,7 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
             @Px int windowWidth,
             @Px int minWebContentsWidth) {
         int availableWidth = windowWidth - minWebContentsWidth;
-        Map<Integer, Integer> sideUiWidths = new ArrayMap<>(); // anchorSide -> width
+        Map<@AnchorSide Integer, Integer> sideUiWidths = new ArrayMap<>(); // anchorSide -> width
 
         // Initialize the widths from the current anchorContainers.
         for (@AnchorSide int side : mAnchorContainers.keySet()) {
@@ -467,7 +469,7 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
                         .setOrdering(TransitionSet.ORDERING_TOGETHER)
                         .setInterpolator(interpolator);
 
-        for (Map.Entry<Integer, Integer> entry : deltaSideUiSpecs.entrySet()) {
+        for (Map.Entry<@AnchorSide Integer, Integer> entry : deltaSideUiSpecs.entrySet()) {
             int side = entry.getKey();
             int width = entry.getValue();
             // Add transitions for the side UI containers.
@@ -513,7 +515,7 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
 
     private void commitNewSpecsForAnimatedResize(
             SideUiSpecs newSideUiSpecs, SideUiSpecs deltaSideUiSpecs, TransitionSet transitionSet) {
-        for (Map.Entry<Integer, Integer> entry : deltaSideUiSpecs.entrySet()) {
+        for (Map.Entry<@AnchorSide Integer, Integer> entry : deltaSideUiSpecs.entrySet()) {
             @AnchorSide int anchorSide = entry.getKey();
             int sideUiWidth = entry.getValue();
             SideUiContainer sideUiContainer = assumeNonNull(getSideUiContainerBySide(anchorSide));
@@ -529,7 +531,8 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
                         @Override
                         public void onTransitionEnd(Transition transition) {
                             // Detach and close the container after the transition is complete.
-                            for (Map.Entry<Integer, Integer> entry : deltaSideUiSpecs.entrySet()) {
+                            for (Map.Entry<@AnchorSide Integer, Integer> entry :
+                                    deltaSideUiSpecs.entrySet()) {
                                 @AnchorSide int anchorSide = entry.getKey();
                                 int sideUiWidth = entry.getValue();
                                 SideUiContainer sideUiContainer =
@@ -554,7 +557,7 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
         ViewUtils.triggerSynchronousMeasureAndLayout(mAnchorContainerParent);
         TransitionManager.beginDelayedTransition(getRootView(), transitionSet);
 
-        for (Map.Entry<Integer, Integer> entry : deltaSideUiSpecs.entrySet()) {
+        for (Map.Entry<@AnchorSide Integer, Integer> entry : deltaSideUiSpecs.entrySet()) {
             @AnchorSide int anchorSide = entry.getKey();
             int sideUiWidth = entry.getValue();
             ViewGroup anchorContainer = assumeNonNull(mAnchorContainers.get(anchorSide));
@@ -573,7 +576,7 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
             SideUiContainerTransition.resetContainer(container);
         }
 
-        for (Map.Entry<Integer, Integer> entry : deltaSideUiSpecs.entrySet()) {
+        for (Map.Entry<@AnchorSide Integer, Integer> entry : deltaSideUiSpecs.entrySet()) {
             @AnchorSide int anchorSide = entry.getKey();
             int sideUiWidth = entry.getValue();
             SideUiContainer sideUiContainer = getSideUiContainerBySide(anchorSide);

@@ -11,9 +11,12 @@
 #include "base/test/bind.h"
 #include "base/test/task_environment.h"
 #include "content/browser/webid/accounts_fetcher.h"
+#include "content/browser/webid/identity_registry.h"
 #include "content/browser/webid/request.h"
+#include "content/public/browser/browser_context.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
+#include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "content/public/browser/webid/federated_embedder_login_request.h"
 #include "content/public/browser/webid/identity_credential_source.h"
@@ -49,7 +52,17 @@ class InterceptorMockNavigationHandle : public MockNavigationHandle {
 
 class MockFederatedAuthRequest : public Request {
  public:
-  explicit MockFederatedAuthRequest(RenderFrameHost* rfh) : Request(rfh) {}
+  explicit MockFederatedAuthRequest(RenderFrameHost* rfh)
+      : Request(
+            rfh,
+            /*manager=*/nullptr,
+            rfh->GetBrowserContext()
+                ->GetFederatedIdentityApiPermissionContext(),
+            rfh->GetBrowserContext()
+                ->GetFederatedIdentityAutoReauthnPermissionContext(),
+            rfh->GetBrowserContext()->GetFederatedIdentityPermissionContext(),
+            IdentityRegistry::FromWebContents(
+                WebContents::FromRenderFrameHost(rfh))) {}
 
   MOCK_METHOD(
       void,

@@ -153,6 +153,11 @@ enum SectionIdentifier {
 
 #pragma mark - SettingsRootTableViewController
 
+- (void)viewWillAppear:(BOOL)animated {
+  [super viewWillAppear:animated];
+  self.navigationController.toolbarHidden = NO;
+}
+
 - (void)updateUIForEditState {
   [super updateUIForEditState];
   [self updatedToolbarForEditState];

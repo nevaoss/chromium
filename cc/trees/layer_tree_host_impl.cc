@@ -6280,7 +6280,8 @@ void LayerTreeHostImpl::SetUnboundedFrameSink(
 }
 
 void LayerTreeHostImpl::DismissUnboundedFrameSink() {
-  DCHECK(task_runner_provider_->IsImplThread());
+  DCHECK(task_runner_provider_->IsImplThread() ||
+         !task_runner_provider_->HasImplThread());
   if (unbounded_frame_sink_handler_) {
     unbounded_frame_sink_handler_->DismissFrameSink();
   }

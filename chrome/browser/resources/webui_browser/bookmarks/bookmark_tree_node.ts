@@ -4,6 +4,7 @@
 
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
 
+import {BookmarksService} from '../bookmarks_api.mojom-webui.js';
 import type {BookmarkNode} from '../bookmarks_api.mojom-webui.js';
 
 import {getCss} from './bookmark_tree_node.css.js';
@@ -31,11 +32,87 @@ export class BookmarkTreeNodeElement extends CrLitElement {
 
   accessor node: BookmarkNode = {
     folder: {
-      id: 0n,
+      id: {value: ''},
       title: '',
       children: [],
     },
   };
+
+  private bookmarksService_ = BookmarksService.getRemote();
+
+  protected onAddUrlClick(e: Event) {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!this.node.folder) {
+      return;
+    }
+
+    const parentId = this.node.folder.id!;
+    const newUrlNode = {
+      url: {
+        id: null,
+        title: 'new bookmark',
+        url: 'chrome://new-tab-page',
+      },
+    };
+
+    this.bookmarksService_.createBookmarkNode(parentId, null, newUrlNode);
+  }
+
+  protected onAddFolderClick(e: Event) {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!this.node.folder) {
+      return;
+    }
+
+    const parentId = this.node.folder.id!;
+    const newFolderNode = {
+      folder: {
+        id: null,
+        title: 'new folder',
+        children: [],
+      },
+    };
+
+    this.bookmarksService_.createBookmarkNode(parentId, null, newFolderNode);
+  }
+
+  protected onEditClick(e: Event) {
+    e.stopPropagation();
+    e.preventDefault();
+
+    if (this.node.url) {
+      const updatedNode = {
+        url: {
+          id: this.node.url.id!,
+          title: 'has been updated',
+          url: 'http://updated.somewhere',
+        },
+      };
+
+      this.bookmarksService_.updateBookmarkNode(updatedNode);
+    } else if (this.node.folder) {
+      const updatedNode = {
+        folder: {
+          id: this.node.folder.id!,
+          title: 'updated folder',
+          children: [],
+        },
+      };
+
+      this.bookmarksService_.updateBookmarkNode(updatedNode);
+    }
+  }
+
+  protected onDeleteClick(e: Event) {
+    e.stopPropagation();
+    e.preventDefault();
+
+    const id = this.node.url ? this.node.url.id! : this.node.folder!.id!;
+
+    this.bookmarksService_.deleteBookmarkNode(id);
+  }
 }
 
 declare global {

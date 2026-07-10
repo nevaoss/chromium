@@ -1,5 +1,5 @@
 include_rules = [
-  "+components/bookmarks/browser",
+  "+components/bookmarks",
   "+mojo/public",
   "+url",
 ]

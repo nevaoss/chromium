@@ -18,6 +18,7 @@
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_util.h"
+#include "base/strings/string_view_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/trace_event/trace_event.h"
@@ -333,7 +334,8 @@ sync_pb::EntitySpecifics CreateSpecificsFromBookmarkNode(
   }
 
   if (favicon_bytes.get() && favicon_bytes->size() != 0) {
-    bm_specifics->set_favicon(favicon_bytes->data(), favicon_bytes->size());
+    bm_specifics->set_favicon(
+        base::as_string_view(base::span<const uint8_t>(*favicon_bytes)));
     // Avoid sync-ing favicon URLs that are unreasonably large, as determined by
     // |kMaxFaviconUrlSize|. Most notably, URLs prefixed with the data: scheme
     // to embed the content of the image itself in the URL may be arbitrarily

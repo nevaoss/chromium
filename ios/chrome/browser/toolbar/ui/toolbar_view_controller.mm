@@ -13,6 +13,7 @@
 #import "base/time/time.h"
 #import "ios/chrome/browser/composebox/public/composebox_entrypoint.h"
 #import "ios/chrome/browser/intents/model/intents_donation_helper.h"
+#import "ios/chrome/browser/ntp/shared/metrics/home_metrics.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/layout_state.h"
 #import "ios/chrome/browser/shared/public/commands/activity_service_commands.h"
 #import "ios/chrome/browser/shared/public/commands/browser_coordinator_commands.h"
@@ -178,6 +179,9 @@ const base::TimeDelta kProgressBarEndAnimationDuration =
 
   // Whether the visible page is the NTP.
   BOOL _NTPVisible;
+
+  // Whether the NTP is showing the Start Surface.
+  BOOL _isStartSurface;
 
   // Whether the visible page is loading.
   BOOL _isLoading;
@@ -512,7 +516,8 @@ const base::TimeDelta kProgressBarEndAnimationDuration =
   }
 }
 
-- (void)setNTPVisible:(BOOL)NTPVisible {
+- (void)setNTPVisible:(BOOL)NTPVisible isStartSurface:(BOOL)isStartSurface {
+  _isStartSurface = isStartSurface;
   if (NTPVisible == _NTPVisible) {
     return;
   }
@@ -1451,6 +1456,7 @@ const base::TimeDelta kProgressBarEndAnimationDuration =
   if (_NTPVisible) {
     base::RecordAction(
         base::UserMetricsAction("MobileToolbarShowStackViewOnNTP"));
+    RecordHomeAction(IOSHomeActionType::kTabSwitcher, _isStartSurface);
   }
   base::RecordAction(base::UserMetricsAction("MobileToolbarShowStackView"));
 

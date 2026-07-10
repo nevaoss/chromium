@@ -483,11 +483,6 @@ IOSChromePaymentsAutofillClient::GetRiskBasedAuthenticator() {
   return risk_based_authenticator_.get();
 }
 
-bool IOSChromePaymentsAutofillClient::IsRiskBasedAuthEffectivelyAvailable()
-    const {
-  return true;
-}
-
 bool IOSChromePaymentsAutofillClient::IsMandatoryReauthEnabled() {
   return GetPaymentsDataManager().IsPaymentMethodsMandatoryReauthEnabled();
 }
@@ -540,25 +535,25 @@ void IOSChromePaymentsAutofillClient::UpdateOfferNotification(
 void IOSChromePaymentsAutofillClient::DismissOfferNotification() {}
 
 bool IOSChromePaymentsAutofillClient::ShowTouchToFillCreditCard(
-    base::WeakPtr<TouchToFillDelegate> delegate,
+    base::WeakPtr<TouchToFillPaymentMethodDelegate> delegate,
     base::span<const Suggestion> suggestions) {
   return false;
 }
 
 bool IOSChromePaymentsAutofillClient::ShowTouchToFillIban(
-    base::WeakPtr<TouchToFillDelegate> delegate,
+    base::WeakPtr<TouchToFillPaymentMethodDelegate> delegate,
     base::span<const Iban> ibans_to_suggest) {
   return false;
 }
 
 bool IOSChromePaymentsAutofillClient::ShowTouchToFillAffiliatedLoyaltyCard(
-    base::WeakPtr<TouchToFillDelegate> delegate,
+    base::WeakPtr<TouchToFillPaymentMethodDelegate> delegate,
     std::vector<LoyaltyCard> loyalty_cards_to_suggest) {
   return false;
 }
 
 bool IOSChromePaymentsAutofillClient::ShowTouchToFillForAllLoyaltyCards(
-    base::WeakPtr<TouchToFillDelegate> delegate,
+    base::WeakPtr<TouchToFillPaymentMethodDelegate> delegate,
     std::vector<LoyaltyCard> loyalty_cards_to_suggest) {
   return false;
 }

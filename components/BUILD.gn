@@ -796,7 +796,10 @@ test("components_unittests") {
     # guest_contents is a supporting component for any solution that embeds
     # unowned inner WebContents. As it is for embedding WebContents, only
     # add the deps when use_blink is true.
-    deps += [ "//components/guest_contents/browser:unit_tests" ]
+    deps += [
+      "//components/guest_contents/browser:unit_tests",
+      "//components/surface_embed/renderer:unit_tests",
+    ]
   }
 
   if (enable_guest_view) {
@@ -1143,6 +1146,7 @@ if (use_blink) {
       "dom_distiller/content/browser/test/test_util.cc",
       "dom_distiller/content/browser/test/test_util.h",
       "dom_distiller/content/browser/test/viewer_js_browsertest.cc",
+      "optimization_guide/content/browser/page_content_image_extractor_browsertest.cc",
       "optimization_guide/content/browser/page_content_metadata_observer_browsertest.cc",
       "optimization_guide/content/browser/page_content_proto_provider_browsertest.cc",
       "optimization_guide/content/renderer/page_text_agent_browsertest.cc",

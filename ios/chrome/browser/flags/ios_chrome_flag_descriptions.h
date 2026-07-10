@@ -72,6 +72,12 @@ inline constexpr char kAppBackgroundRefreshDescription[] =
     "Schedules app background refresh after some minimum period of time has "
     "passed after the last refresh.";
 
+inline constexpr char kAppSwitcherAISummarizationName[] =
+    "App Switcher AI summarization";
+inline constexpr char kAppSwitcherAISummarizationDescription[] =
+    "When enabled, the app will properly handle external actions from the "
+    "AI Summarization option in the App Switcher.";
+
 inline constexpr char kAppleCalendarExperienceKitName[] =
     "Experience Kit Apple Calendar";
 inline constexpr char kAppleCalendarExperienceKitDescription[] =
@@ -190,6 +196,10 @@ inline constexpr char kAutofillAmbientAutofillName[] =
     "Autofill Ambient Autofill";
 inline constexpr char kAutofillAmbientAutofillDescription[] =
     "Enables Ambient Autofill.";
+
+inline constexpr char kAutofillAtMemoryName[] = "Autofill AtMemory";
+inline constexpr char kAutofillAtMemoryDescription[] =
+    "Enables Autofill AtMemory.";
 
 inline constexpr char kAutofillBottomSheetNewBlurName[] =
     "New Blur Method for Autofill Bottom Sheet";
@@ -592,6 +602,11 @@ inline constexpr char kDisableShareButtonName[] =
 inline constexpr char kDisableShareButtonDescription[] =
     "Hides the share button in toolbar.";
 
+inline constexpr char kDisplayTracingName[] = "Display Tracing";
+inline constexpr char kDisplayTracingDescription[] =
+    "Enables display and input latency tracing instrumentation on view "
+    "controllers.";
+
 inline constexpr char kDownloadAutoDeletionClearFilesOnEveryStartupName[] =
     "Enable Download Auto-Deletion Testing Mode";
 inline constexpr char
@@ -816,14 +831,6 @@ inline constexpr char kGeminiCopresenceDescription[] =
     "Enables the Gemini Copresence feature, which provides a persistent Gemini "
     "overlay.";
 
-inline constexpr char kGeminiDynamicSettingsName[] = "Gemini Dynamic Settings";
-inline constexpr char kGeminiDynamicSettingsDescription[] =
-    "Enables loading Gemini settings dynamically using the Gemini SDK.";
-
-inline constexpr char kGeminiFloatyAllPagesName[] = "Gemini Floaty All Pages";
-inline constexpr char kGeminiFloatyAllPagesDescription[] =
-    "Enables the Gemini floaty on all pages.";
-
 inline constexpr char kGeminiImageRemixToolName[] = "Gemini Image Remix Tool";
 inline constexpr char kGeminiImageRemixToolDescription[] =
     "Enables the image remix tool in the Gemini floaty.";
@@ -840,10 +847,6 @@ inline constexpr char kGeminiLiveDescription[] = "Enables Gemini Live.";
 inline constexpr char kGeminiLuminousName[] = "Gemini Luminous";
 inline constexpr char kGeminiLuminousDescription[] =
     "Enables Gemini Luminous UI.";
-
-inline constexpr char kGeminiMapsRichUIName[] = "Gemini Maps Rich UI";
-inline constexpr char kGeminiMapsRichUIDescription[] =
-    "Enables the rich Maps UI in Gemini.";
 
 inline constexpr char kGeminiMultiTabContextName[] = "Gemini Multi Tab Context";
 inline constexpr char kGeminiMultiTabContextDescription[] =

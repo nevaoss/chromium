@@ -220,9 +220,10 @@ class IsolatedWebAppFileHandlingApprovalBrowserTest
         &provider().install_manager());
     manifest_updated_observer.BeginListening({url_info.app_id()});
 
-    EXPECT_THAT(
-        provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
-        testing::Eq(1ul));
+    EXPECT_THAT(provider()
+                    .isolated_web_app_update_manager()
+                    .DiscoverAndPrepareUpdatesNow(),
+                testing::Eq(1ul));
 
     manifest_updated_observer.Wait();
   }

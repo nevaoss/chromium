@@ -49,7 +49,6 @@
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/test/interaction/interactive_browser_test.h"
 #include "components/device_signals/core/browser/pref_names.h"
-#include "components/device_signals/core/common/signals_features.h"
 #include "components/enterprise/browser/device_trust/device_trust_key_manager.h"
 #include "components/prefs/pref_service.h"
 #include "ui/base/interaction/element_identifier.h"
@@ -484,7 +483,6 @@ class DeviceTrustBrowserTestWithConsent
     scoped_feature_list_.InitWithFeatures(
         /*enabled_features=*/
         {
-            enterprise_signals::features::kDeviceSignalsConsentDialog,
             kDTCKeyUploadedBySharedAPIEnabled,
         },
         /*disabled_features=*/{});
@@ -744,10 +742,7 @@ class DeviceTrustPolicyLevelBrowserTest
                 .is_managed = true,
                 .is_inline_policy_enabled = false,
             }),
-        })) {
-    scoped_feature_list_.InitWithFeatureState(
-        enterprise_signals::features::kDeviceSignalsConsentDialog, true);
-  }
+        })) {}
 
   bool is_affiliated() { return testing::get<0>(GetParam()); }
   bool will_trigger_device_inline_flow() { return testing::get<1>(GetParam()); }

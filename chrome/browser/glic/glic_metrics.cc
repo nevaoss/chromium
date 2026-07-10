@@ -724,6 +724,11 @@ void GlicMetrics::LogGetContextForActorFromTabError(
       error);
 }
 
+void GlicMetrics::LogGetImageBytesFromTabError(
+    GlicGetContextFromTabError error) {
+  base::UmaHistogramEnumeration("Glic.Api.GetImageBytesFromTab.Error", error);
+}
+
 void GlicMetrics::OnActivateTabFromInstance(tabs::TabInterface* tab) {
   const actor::ActorTask* task =
       actor::ActorKeyedService::Get(profile_)->GetTaskFromTab(*tab);

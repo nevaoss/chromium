@@ -81,6 +81,9 @@ BASE_FEATURE(kWebUIOmniboxFullPopup, DISABLED);
 // NOTE: This flag is intended to control the next-gen Omnibox experience and
 // will eventually supersede the `kWebUIOmniboxFullPopup` feature flag.
 BASE_FEATURE(kWebUIOmniboxFullPopupV2, DISABLED);
+// Enables the double click mechanism of sending selection set by
+// passing click events through the WebView.
+BASE_FEATURE(kWebUIOmniboxFullPopupDoubleClick, ENABLED);
 // If enabled, enables EverywhereOmnibox popup triggered by shortcut.
 BASE_FEATURE(kEverywhereOmnibox, DISABLED);
 // Enables the WebUI for omnibox suggestions without modifying the popup UI.

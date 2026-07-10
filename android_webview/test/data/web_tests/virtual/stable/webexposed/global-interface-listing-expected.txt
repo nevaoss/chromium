@@ -401,6 +401,7 @@ interface Blob
     method slice
     method stream
     method text
+    method textStream
 interface BlobEvent : Event
     attribute @@toStringTag
     getter data
@@ -7273,6 +7274,7 @@ interface Request
     method formData
     method json
     method text
+    method textStream
 interface ResizeObserver
     attribute @@toStringTag
     method constructor
@@ -7313,6 +7315,7 @@ interface Response
     method formData
     method json
     method text
+    method textStream
 interface SVGAElement : SVGGraphicsElement
     attribute @@toStringTag
     getter download

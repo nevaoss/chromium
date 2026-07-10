@@ -795,7 +795,15 @@ class AutoPictureInPictureTabHelperBrowserTest : public WebRtcTestBase {
     SwitchBackToOpenerAndWaitForPipToClose();
   }
 
-  void SwitchToNewTabAndDontExpectAutopip() {
+  // By default, expect that the browser-side preconditions remain unmet after
+  // switching tabs (e.g., because there is no media engagement). For cases
+  // where preconditions are met (e.g., video has engagement) but we are blocked
+  // by renderer-side constraints (e.g., video size), set
+  // `expect_preconditions_unmet` to false. We cannot `EXPECT_TRUE` in that
+  // case because the activation window is transient and may expire by the time
+  // we check it.
+  void SwitchToNewTabAndDontExpectAutopip(
+      bool expect_preconditions_unmet = true) {
     auto* opener_web_contents =
         browser()->tab_strip_model()->GetActiveWebContents();
     auto* tab_helper =
@@ -813,8 +821,11 @@ class AutoPictureInPictureTabHelperBrowserTest : public WebRtcTestBase {
 
     // The tab helper should indicate that we are not in pip.
     EXPECT_FALSE(tab_helper->IsInAutoPictureInPicture());
-    // Preconditions should remain unmet.
-    EXPECT_FALSE(tab_helper->AreAutoPictureInPicturePreconditionsMet());
+
+    if (expect_preconditions_unmet) {
+      // Preconditions should remain unmet.
+      EXPECT_FALSE(tab_helper->AreAutoPictureInPicturePreconditionsMet());
+    }
 
     // Verify that we did not enter pip.
     EXPECT_FALSE(opener_web_contents->HasPictureInPictureVideo());
@@ -3470,6 +3481,165 @@ IN_PROC_BROWSER_TEST_F(BrowserInitiatedAutoPictureInPictureBrowserTest,
   CheckPromptResultUkmRecorded(web_contents->GetLastCommittedURL(),
                                UkmEntry::kBrowserInitiatedName,
                                PromptResult::kAllowOnce);
+}
+
+struct AutoPipSizeTestCase {
+  int width;
+  int height;
+  bool should_pip;
+};
+
+// Pretty-print helper for test parameters.
+std::ostream& operator<<(std::ostream& os,
+                         const AutoPipSizeTestCase& test_case) {
+  return os << test_case.width << "x" << test_case.height
+            << (test_case.should_pip ? "_Allow" : "_Block");
+}
+
+class BrowserInitiatedAutoPictureInPictureSizeTest
+    : public BrowserInitiatedAutoPictureInPictureBrowserTest,
+      public ::testing::WithParamInterface<AutoPipSizeTestCase> {};
+
+IN_PROC_BROWSER_TEST_P(BrowserInitiatedAutoPictureInPictureSizeTest,
+                       VerifySizeThreshold) {
+  const auto& test_case = GetParam();
+
+  LoadNotRegisteredPage(browser());
+  auto* web_contents = browser()->tab_strip_model()->GetActiveWebContents();
+  PlayVideo(web_contents);
+  WaitForAudioFocusGained();
+  WaitForMediaSessionPlaying(web_contents);
+  WaitForWasRecentlyAudible(web_contents);
+  SetExpectedHasHighEngagement(true);
+
+  // Set object-fit to fill to avoid letterboxing, then resize and wait for
+  // layout.
+  EXPECT_EQ(true, EvalJs(web_contents,
+                         content::JsReplace(
+                             "new Promise(resolve => {"
+                             "  video.style.objectFit = 'fill';"
+                             "  video.style.width = $1 + 'px';"
+                             "  video.style.height = $2 + 'px';"
+                             "  requestAnimationFrame(() => "
+                             "requestAnimationFrame(() => resolve(true)));"
+                             "});",
+                             test_case.width, test_case.height)));
+
+  test_case.should_pip
+      ? SwitchToNewTabAndBackAndExpectAutopip(/*should_video_pip=*/true,
+                                              /*should_document_pip=*/false)
+      : SwitchToNewTabAndDontExpectAutopip(
+            /*expect_preconditions_unmet=*/false);
+}
+
+INSTANTIATE_TEST_SUITE_P(All,
+                         BrowserInitiatedAutoPictureInPictureSizeTest,
+                         ::testing::Values(
+                             // Too small (both dimensions)
+                             AutoPipSizeTestCase{50, 50, false},
+                             // Borderline small (width)
+                             AutoPipSizeTestCase{99, 100, false},
+                             // Borderline small (height)
+                             AutoPipSizeTestCase{100, 99, false},
+                             // Exactly at threshold
+                             AutoPipSizeTestCase{100, 100, true},
+                             // Large enough
+                             AutoPipSizeTestCase{300, 300, true}),
+                         ::testing::PrintToStringParamName());
+
+IN_PROC_BROWSER_TEST_F(BrowserInitiatedAutoPictureInPictureBrowserTest,
+                       ManualPipNotBlockedIfVideoTooSmall) {
+  LoadNotRegisteredPage(browser());
+  auto* web_contents = browser()->tab_strip_model()->GetActiveWebContents();
+  PlayVideo(web_contents);
+  WaitForAudioFocusGained();
+  WaitForMediaSessionPlaying(web_contents);
+  WaitForWasRecentlyAudible(web_contents);
+  SetExpectedHasHighEngagement(true);
+
+  // Resize the video to be too small for Auto-PiP and wait for layout.
+  EXPECT_EQ(true, EvalJs(web_contents,
+                         "new Promise(resolve => {"
+                         "  video.style.width = '50px';"
+                         "  video.style.height = '50px';"
+                         "  requestAnimationFrame(() => "
+                         "requestAnimationFrame(() => resolve(true)));"
+                         "});"));
+
+  // Trigger manual PiP via MediaSession.
+  content::MediaStartStopObserver enter_pip_observer(
+      web_contents,
+      content::MediaStartStopObserver::Type::kEnterPictureInPicture);
+  content::MediaSession::Get(web_contents)->EnterPictureInPicture();
+  enter_pip_observer.Wait();
+
+  // It should open despite being small because it is manual.
+  EXPECT_TRUE(web_contents->HasPictureInPictureVideo());
+
+  // Clean up by exiting PiP.
+  content::MediaStartStopObserver exit_pip_observer(
+      web_contents,
+      content::MediaStartStopObserver::Type::kExitPictureInPicture);
+  content::MediaSession::Get(web_contents)->ExitPictureInPicture();
+  exit_pip_observer.Wait();
+}
+
+IN_PROC_BROWSER_TEST_F(BrowserInitiatedAutoPictureInPictureBrowserTest,
+                       OpensIfVideoResizedBackToLarge) {
+  LoadNotRegisteredPage(browser());
+  auto* web_contents = browser()->tab_strip_model()->GetActiveWebContents();
+  PlayVideo(web_contents);
+  WaitForAudioFocusGained();
+  WaitForMediaSessionPlaying(web_contents);
+  WaitForWasRecentlyAudible(web_contents);
+  SetExpectedHasHighEngagement(true);
+
+  // Resize the video to be too small for Auto-PiP and wait for layout.
+  EXPECT_EQ(true, EvalJs(web_contents,
+                         "new Promise(resolve => {"
+                         "  video.style.width = '50px';"
+                         "  video.style.height = '50px';"
+                         "  requestAnimationFrame(() => "
+                         "requestAnimationFrame(() => resolve(true)));"
+                         "});"));
+
+  // Resize it back to be large and wait for layout.
+  EXPECT_EQ(true, EvalJs(web_contents,
+                         "new Promise(resolve => {"
+                         "  video.style.width = '300px';"
+                         "  video.style.height = '300px';"
+                         "  requestAnimationFrame(() => "
+                         "requestAnimationFrame(() => resolve(true)));"
+                         "});"));
+
+  // We expect Auto-PiP to open.
+  SwitchToNewTabAndBackAndExpectAutopip(/*should_video_pip=*/true,
+                                        /*should_document_pip=*/false);
+}
+
+IN_PROC_BROWSER_TEST_F(BrowserInitiatedAutoPictureInPictureBrowserTest,
+                       DoesNotOpenIfVideoScaledDown) {
+  LoadNotRegisteredPage(browser());
+  auto* web_contents = browser()->tab_strip_model()->GetActiveWebContents();
+  PlayVideo(web_contents);
+  WaitForAudioFocusGained();
+  WaitForMediaSessionPlaying(web_contents);
+  WaitForWasRecentlyAudible(web_contents);
+  SetExpectedHasHighEngagement(true);
+
+  // Video is 300x300 styled (large enough), but scaled down to 10% (30x30
+  // visual).
+  EXPECT_EQ(true, EvalJs(web_contents,
+                         "new Promise(resolve => {"
+                         "  video.style.objectFit = 'fill';"
+                         "  video.style.width = '300px';"
+                         "  video.style.height = '300px';"
+                         "  video.style.transform = 'scale(0.1)';"
+                         "  requestAnimationFrame(() => "
+                         "requestAnimationFrame(() => resolve(true)));"
+                         "});"));
+
+  SwitchToNewTabAndDontExpectAutopip(/*expect_preconditions_unmet=*/false);
 }
 
 class AutoPictureInPictureTabHelperWindowOcclusionDisabledBrowserTest

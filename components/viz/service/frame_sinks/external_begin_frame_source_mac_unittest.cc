@@ -60,7 +60,6 @@ class MockDisplayLinkMac : public ui::DisplayLinkMac {
                                            std::move(callback), false));
             });
   }
-  MOCK_METHOD(bool, NotifyEventAndCheckValidity, (), (override));
   MOCK_METHOD(std::unique_ptr<ui::VSyncCallbackMac>,
               RegisterCallback,
               (base::RepeatingCallback<void(ui::VSyncParamsMac)>),

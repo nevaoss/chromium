@@ -223,6 +223,11 @@ profile_metrics::BrowserProfileType AutofillClient::GetProfileType() const {
   return profile_metrics::BrowserProfileType::kRegular;
 }
 
+const subscription_eligibility::SubscriptionEligibilityService*
+AutofillClient::GetSubscriptionEligibilityService() const {
+  return nullptr;
+}
+
 LogManager* AutofillClient::GetCurrentLogManager() {
   return nullptr;
 }
@@ -241,7 +246,8 @@ bool AutofillClient::IsAndroidLargeFormFactor() const {
 
 #if BUILDFLAG(IS_ANDROID)
 void AutofillClient::ShowAtMemoryBottomSheet(
-    base::span<const Suggestion> suggestions) {}
+    base::span<const Suggestion> suggestions,
+    base::WeakPtr<AutofillSuggestionDelegate> delegate) {}
 
 AutofillSnackbarControllerImpl*
 AutofillClient::GetAutofillSnackbarController() {

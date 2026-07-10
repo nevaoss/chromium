@@ -11,6 +11,7 @@
 #include "base/containers/circular_deque.h"
 #include "base/memory/ptr_util.h"
 #include "base/test/scoped_feature_list.h"
+#include "build/build_config.h"
 #include "ui/events/base_event_utils.h"
 #include "ui/events/event.h"
 #include "ui/views/bubble/bubble_border.h"
@@ -451,7 +452,13 @@ TEST_F(OccludedWidgetInputProtectorTest, ShouldBlockEvent_AnchoredWidget) {
       mouse_event, *view));
 }
 
-TEST_F(OccludedWidgetInputProtectorTest, HistoricalOcclusion_Hide) {
+// Flaky on Mac: https://crbug.com/523294178.
+#if BUILDFLAG(IS_MAC)
+#define MAYBE_HistoricalOcclusion_Hide DISABLED_HistoricalOcclusion_Hide
+#else
+#define MAYBE_HistoricalOcclusion_Hide HistoricalOcclusion_Hide
+#endif
+TEST_F(OccludedWidgetInputProtectorTest, MAYBE_HistoricalOcclusion_Hide) {
   auto aot_widget = CreateWidgetWithZOrder(ui::ZOrderLevel::kFloatingWindow);
   const gfx::Rect aot_bounds(10, 10, 100, 100);
   aot_widget->SetBounds(aot_bounds);
@@ -479,7 +486,13 @@ TEST_F(OccludedWidgetInputProtectorTest, HistoricalOcclusion_Hide) {
       event, *view));
 }
 
-TEST_F(OccludedWidgetInputProtectorTest, HistoricalOcclusion_Close) {
+// Flaky on Mac: https://crbug.com/523294178.
+#if BUILDFLAG(IS_MAC)
+#define MAYBE_HistoricalOcclusion_Close DISABLED_HistoricalOcclusion_Close
+#else
+#define MAYBE_HistoricalOcclusion_Close HistoricalOcclusion_Close
+#endif
+TEST_F(OccludedWidgetInputProtectorTest, MAYBE_HistoricalOcclusion_Close) {
   auto aot_widget = CreateWidgetWithZOrder(ui::ZOrderLevel::kFloatingWindow);
   const gfx::Rect aot_bounds(10, 10, 100, 100);
   aot_widget->SetBounds(aot_bounds);
@@ -504,7 +517,14 @@ TEST_F(OccludedWidgetInputProtectorTest, HistoricalOcclusion_Close) {
       event, *view));
 }
 
-TEST_F(OccludedWidgetInputProtectorTest, HistoricalOcclusion_Unregister) {
+// Flaky on Mac: https://crbug.com/523294178.
+#if BUILDFLAG(IS_MAC)
+#define MAYBE_HistoricalOcclusion_Unregister \
+  DISABLED_HistoricalOcclusion_Unregister
+#else
+#define MAYBE_HistoricalOcclusion_Unregister HistoricalOcclusion_Unregister
+#endif
+TEST_F(OccludedWidgetInputProtectorTest, MAYBE_HistoricalOcclusion_Unregister) {
   auto aot_widget = CreateWidgetWithZOrder(ui::ZOrderLevel::kFloatingWindow);
   const gfx::Rect aot_bounds(10, 10, 100, 100);
   aot_widget->SetBounds(aot_bounds);

@@ -96,7 +96,6 @@ source_set("web_applications") {
     "custom_icon_fetcher.h",
     "daily_metrics_helper.cc",
     "daily_metrics_helper.h",
-    "extension_status_utils.h",
     "extensions_manager.h",
     "external_install_options.cc",
     "external_install_options.h",
@@ -226,6 +225,7 @@ source_set("web_applications") {
     "jobs/uninstall/remove_web_app_job.h",
     "jobs/uninstall/uninstall_job.cc",
     "jobs/uninstall/uninstall_job.h",
+    "jobs/uninstall/web_app_uninstall_and_replace_job.cc",
     "jobs/uninstall/web_app_uninstall_and_replace_job.h",
     "jobs/update_ignore_state.cc",
     "jobs/update_ignore_state.h",
@@ -1047,6 +1047,7 @@ source_set("web_applications_unit_tests") {
     "jobs/install_placeholder_job_unittest.cc",
     "jobs/manifest_to_web_app_install_info_job_unittest.cc",
     "jobs/migration_target_install_job_unittest.cc",
+    "jobs/uninstall/web_app_uninstall_and_replace_job_unittest.cc",
     "locks/web_app_lock_manager_unittest.cc",
     "os_integration/file_handling_sub_manager_unittest.cc",
     "os_integration/file_handling_utils_unittest.cc",
@@ -1381,6 +1382,7 @@ source_set("web_applications_browser_tests") {
     "//chrome/browser/notifications:system_notification_helper",
     "//chrome/browser/permissions",
     "//chrome/browser/policy:policy_util",
+    "//chrome/browser/prefs:util",
     "//chrome/browser/profiles:profile",
     "//chrome/browser/push_messaging",
     "//chrome/browser/push_messaging:service_impl_public",
@@ -1473,6 +1475,7 @@ source_set("app_service_browser_tests") {
 
   if (is_chromeos) {
     sources += [
+      "app_service/web_app_navigation_capturing_migration_defaulton_browsertest.cc",
       "app_service/web_app_publisher_helper_browsertest.cc",
       "app_service/web_apps_browsertest.cc",
       "app_service/web_apps_chromeos_browsertest.cc",

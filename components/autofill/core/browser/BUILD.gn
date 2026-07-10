@@ -129,6 +129,8 @@ static_library("browser") {
   sources = [
     "at_memory/at_memory_data_type.cc",
     "at_memory/at_memory_data_type.h",
+    "at_memory/at_memory_enablement_utils.cc",
+    "at_memory/at_memory_enablement_utils.h",
     "at_memory/at_memory_funnel_metrics.cc",
     "at_memory/at_memory_funnel_metrics.h",
     "at_memory/at_memory_manager.cc",
@@ -461,7 +463,7 @@ static_library("browser") {
     "integrators/password_manager/password_manager_delegate.h",
     "integrators/personal_context/personal_context_autofill_util.cc",
     "integrators/personal_context/personal_context_autofill_util.h",
-    "integrators/touch_to_fill/touch_to_fill_delegate.h",
+    "integrators/touch_to_fill/touch_to_fill_payment_method_delegate.h",
     "logging/log_buffer_submitter.cc",
     "logging/log_buffer_submitter.h",
     "logging/log_manager.cc",
@@ -1081,6 +1083,7 @@ static_library("browser") {
     "//components/signin/public/base",
     "//components/signin/public/identity_manager",
     "//components/strings",
+    "//components/subscription_eligibility",
     "//components/sync",
     "//components/translate/core/common",
     "//components/variations",
@@ -1429,6 +1432,7 @@ static_library("test_support") {
     "//components/personal_context/core",
     "//components/strike_database:proto",
     "//components/strike_database:test_support",
+    "//components/subscription_eligibility",
   ]
 
   deps = [
@@ -1540,6 +1544,7 @@ source_set("unit_tests") {
   testonly = true
   sources = [
     "at_memory/at_memory_data_type_unittest.cc",
+    "at_memory/at_memory_enablement_utils_unittest.cc",
     "at_memory/at_memory_funnel_metrics_unittest.cc",
     "at_memory/at_memory_manager_unittest.cc",
     "at_memory/autofill_data_provider_impl_unittest.cc",
@@ -1649,6 +1654,7 @@ source_set("unit_tests") {
     "form_structure_sectioning_util_unittest.cc",
     "form_structure_unittest.cc",
     "form_types_unittest.cc",
+    "foundations/autofill_driver_router_unittest.cc",
     "foundations/autofill_manager_unittest.cc",
     "foundations/browser_autofill_manager_unittest.cc",
     "foundations/form_forest_unittest.cc",
@@ -1921,7 +1927,7 @@ source_set("unit_tests") {
     "//components/optimization_guide/proto:optimization_guide_proto",
     "//components/os_crypt/async/browser:test_support",
     "//components/password_manager/core/browser/features:password_features",
-    "//components/plus_addresses/core/browser",
+    "//components/personal_context/core:test_support",
     "//components/policy/core/common",
     "//components/pref_registry",
     "//components/prefs",
@@ -1933,6 +1939,7 @@ source_set("unit_tests") {
     "//components/signin/public/identity_manager:test_support",
     "//components/strike_database:features",
     "//components/strings",
+    "//components/subscription_eligibility",
     "//components/sync",
     "//components/sync:test_support",
     "//components/sync_preferences",

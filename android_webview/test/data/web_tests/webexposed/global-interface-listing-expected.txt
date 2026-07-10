@@ -2398,6 +2398,7 @@ interface Element : Node
     attribute @@toStringTag
     attribute @@unscopables
     getter activeViewTransition
+    getter ariaActionsElements
     getter ariaActiveDescendantElement
     getter ariaAtomic
     getter ariaAutoComplete
@@ -2579,6 +2580,7 @@ interface Element : Node
     method webkitMatchesSelector
     method webkitRequestFullScreen
     method webkitRequestFullscreen
+    setter ariaActionsElements
     setter ariaActiveDescendantElement
     setter ariaAtomic
     setter ariaAutoComplete
@@ -2664,6 +2666,7 @@ interface ElementImage
     method constructor
 interface ElementInternals
     attribute @@toStringTag
+    getter ariaActionsElements
     getter ariaActiveDescendantElement
     getter ariaAtomic
     getter ariaAutoComplete
@@ -2730,6 +2733,7 @@ interface ElementInternals
     method setFormValue
     method setToolParamSchema
     method setValidity
+    setter ariaActionsElements
     setter ariaActiveDescendantElement
     setter ariaAtomic
     setter ariaAutoComplete
@@ -3556,6 +3560,7 @@ interface HTMLAreaElement : HTMLElement
     getter host
     getter hostname
     getter href
+    getter hreflang
     getter interestForElement
     getter noHref
     getter origin
@@ -3570,6 +3575,7 @@ interface HTMLAreaElement : HTMLElement
     getter search
     getter shape
     getter target
+    getter type
     getter username
     method constructor
     method toString
@@ -3581,6 +3587,7 @@ interface HTMLAreaElement : HTMLElement
     setter host
     setter hostname
     setter href
+    setter hreflang
     setter interestForElement
     setter noHref
     setter password
@@ -3594,6 +3601,7 @@ interface HTMLAreaElement : HTMLElement
     setter search
     setter shape
     setter target
+    setter type
     setter username
 interface HTMLAudioElement : HTMLMediaElement
     attribute @@toStringTag
@@ -8978,6 +8986,7 @@ interface SVGNumberList
 interface SVGPathElement : SVGGeometryElement
     attribute @@toStringTag
     method constructor
+    method getPathData
 interface SVGPatternElement : SVGElement
     attribute @@toStringTag
     getter height
@@ -9412,6 +9421,13 @@ interface SelectorDirective : Directive
     attribute @@toStringTag
     method constructor
     method getMatchingRange
+interface SemanticEmbedder
+    static method availability
+    static method create
+    attribute @@toStringTag
+    method constructor
+    method destroy
+    method embed
 interface Sensor : EventTarget
     attribute @@toStringTag
     getter activated
@@ -9641,7 +9657,6 @@ interface SpeechRecognition : EventTarget
     getter onstart
     getter processLocally
     getter quality
-    getter unspokenPunctuation
     method abort
     method constructor
     method start
@@ -9664,7 +9679,6 @@ interface SpeechRecognition : EventTarget
     setter onstart
     setter processLocally
     setter quality
-    setter unspokenPunctuation
 interface SpeechRecognitionErrorEvent : Event
     attribute @@toStringTag
     getter error
@@ -12228,7 +12242,6 @@ interface webkitSpeechRecognition : EventTarget
     getter onstart
     getter processLocally
     getter quality
-    getter unspokenPunctuation
     method abort
     method constructor
     method start
@@ -12251,7 +12264,6 @@ interface webkitSpeechRecognition : EventTarget
     setter onstart
     setter processLocally
     setter quality
-    setter unspokenPunctuation
 interface webkitSpeechRecognitionError : Event
     attribute @@toStringTag
     getter error

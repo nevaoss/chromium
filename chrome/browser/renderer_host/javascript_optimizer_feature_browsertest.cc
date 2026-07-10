@@ -50,6 +50,7 @@
 #include "components/keyed_service/core/service_access_type.h"
 #include "components/prefs/pref_service.h"
 #include "components/safe_browsing/core/browser/db/fake_database_manager.h"
+#include "components/safe_browsing/core/common/features.h"
 #include "components/safe_browsing/core/common/safe_browsing_prefs.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_handle.h"
@@ -978,6 +979,37 @@ IN_PROC_BROWSER_TEST_F(JavascriptOptimizerBrowserTest_UseSiteFamiliarity,
 IN_PROC_BROWSER_TEST_F(JavascriptOptimizerBrowserTest_UseSiteFamiliarity,
                        ExpectOptimizationDisabledForUnfamiliarSite) {
   NavigateToUnfamiliarSite(/*expect_v8_optimizations_enabled=*/false);
+}
+
+class JavascriptOptimizerBrowserTest_UseSiteFamiliarityMigrationDryRun
+    : public JavascriptOptimizerBrowserTest_UseSiteFamiliarity {
+ public:
+  JavascriptOptimizerBrowserTest_UseSiteFamiliarityMigrationDryRun() = default;
+
+  void SetUpCommandLine(base::CommandLine* command_line) override {
+    JavascriptOptimizerBrowserTest_UseSiteFamiliarity::SetUpCommandLine(
+        command_line);
+    feature_list_.InitAndEnableFeatureWithParameters(
+        safe_browsing::kMigrateToBlockV8OptimizerOnUnfamiliarSites,
+        {{"dry_run", "true"}});
+  }
+
+  void SetUpOnMainThread() override {
+    JavascriptOptimizerBrowserTest_UseSiteFamiliarity::SetUpOnMainThread();
+    // Clear the pref set by the base class to force the migration logic to be
+    // evaluated.
+    profile()->GetPrefs()->ClearPref(
+        prefs::kJavascriptOptimizerBlockedForUnfamiliarSites);
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(
+    JavascriptOptimizerBrowserTest_UseSiteFamiliarityMigrationDryRun,
+    ExpectOptimizationEnabledForUnfamiliarSiteWithDryRun) {
+  NavigateToUnfamiliarSite(/*expect_v8_optimizations_enabled=*/true);
 }
 
 IN_PROC_BROWSER_TEST_P(JavascriptOptimizerParamBrowserTest,

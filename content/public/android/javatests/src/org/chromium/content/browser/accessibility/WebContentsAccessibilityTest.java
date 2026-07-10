@@ -2214,6 +2214,7 @@ public class WebContentsAccessibilityTest {
      */
     @Test
     @SmallTest
+    @DisabledTest(message = "crbug.com/521495846")
     public void testNodeInfo_spellingError() throws Throwable {
         setupTestWithHTML("<input type='text' value='one wordd has an error'>");
 

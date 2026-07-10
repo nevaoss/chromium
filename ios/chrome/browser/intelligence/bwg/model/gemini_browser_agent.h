@@ -123,6 +123,11 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
   void StartGeminiFlow(UIViewController* base_view_controller,
                        GeminiStartupState* startup_state);
 
+  // Creates and returns the GeminiConfiguration for the active web state.
+  GeminiConfiguration* CreateGeminiConfigurationForActiveWebState(
+      UIViewController* base_view_controller,
+      GeminiStartupState* startup_state);
+
   // Dismisses the floaty and resets the Gemini flow.
   void DismissFloaty();
 

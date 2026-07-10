@@ -392,8 +392,6 @@ UseCounterMetricsRecorder::GetAllowedUkmFeatures() {
           WebFeature::kSpeculationRulesHeader,
           WebFeature::kGeolocationGetCurrentPosition,
           WebFeature::kGeolocationWatchPosition,
-          WebFeature::
-              kServiceWorkerStaticRouter_RaceNetworkAndFetchHandlerImprovement,
           WebFeature::kStorageAccessAPI_requestStorageAccessFor_Method,
           WebFeature::kSharedWorkerScriptUnderServiceWorkerControlIsBlob,
           WebFeature::kCSSEnvironmentVariable_SafeAreaInsetBottom_FastPath,

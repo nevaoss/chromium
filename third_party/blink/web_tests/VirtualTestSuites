@@ -58,7 +58,7 @@
     "expires": "Jun 1, 2027"
   },
   {
-    "prefix": "ai-prompt-api-legacy-params-disabled",
+    "prefix": "ai-prompt-api-all-params",
     "platforms": [
       "Linux",
       "Mac",
@@ -66,16 +66,17 @@
       "ChromeOS"
     ],
     "bases": [
+      "external/wpt/ai/language-model",
       "http/tests/inspector-protocol/issues/language-model-params.js"
     ],
     "args": [
-      "--disable-blink-features=AIPromptAPILegacyParams,AIPromptAPIParams"
+      "--enable-blink-features=AIPromptAPIParams,AIPromptAPILegacyParams"
     ],
     "owners": [
       "msw@chromium.org",
       "iahouma@google.com"
     ],
-    "expires": "Jan 1, 2027"
+    "expires": "Jun 5, 2027"
   },
   {
     "prefix": "ai-prompt-api-legacy-params",
@@ -125,10 +126,10 @@
     "prefix": "service-worker-intercept-downloads",
     "platforms": ["Linux", "Mac", "Win"],
     "bases": [
-      "external/wpt/service-workers/service-worker/fetch-event-download.https.html",
-      "external/wpt/service-workers/service-worker/fetch-event-download-respond-with.https.html",
-      "external/wpt/service-workers/service-worker/fetch-event-download-fallback.https.html",
-      "external/wpt/service-workers/service-worker/fetch-event-download-out-of-scope.https.html"
+      "external/wpt/service-workers/service-worker/tentative/fetch-event-download.https.html",
+      "external/wpt/service-workers/service-worker/tentative/fetch-event-download-respond-with.https.html",
+      "external/wpt/service-workers/service-worker/tentative/fetch-event-download-fallback.https.html",
+      "external/wpt/service-workers/service-worker/tentative/fetch-event-download-out-of-scope.https.html"
     ],
     "args": ["--enable-features=ServiceWorkerInterceptDownloads"],
     "exclusive_tests": "ALL",
@@ -324,6 +325,7 @@
       "css3/viewport-percentage-lengths/viewport-percentage-lengths-scaled-normal-scrollbars.html",
       "css3/viewport-percentage-lengths/viewport-percentage-lengths-scaled-overlay-scrollbars.html",
       "external/wpt/css/css-break/grid/grid-item-fragmentation-023.html",
+      "external/wpt/css/css-transforms/3d-point-mapping-deep.html",
       "fast/dom/Element/scale-page-bounding-client-rect.html",
       "fast/dom/Element/scale-page-client-rects.html",
       "fast/dom/HTMLObjectElement/update-data.html",
@@ -339,7 +341,6 @@
       "paint/invalidation/compositing/subpixel-offset-scaled-will-change-transform.html",
       "paint/invalidation/transform/subpixel-offset-scaled-transform.html",
       "transforms/3d/hit-testing/hover-rotated-with-children-negative-z.html",
-      "transforms/3d/point-mapping/3d-point-mapping-deep.html",
       "transforms/rotate.html"
     ],
     "args": [
@@ -2476,8 +2477,8 @@
       "html5lib/generated/run-html5test-com-write.html",
       "html5lib/generated/run-tests1-data.html",
       "html5lib/generated/run-tests1-write.html",
-      "external/wpt/html/syntax/parsing/html5lib_html5test-com.html",
-      "external/wpt/html/syntax/parsing/html5lib_tests1.html",
+      "external/wpt/html/syntax/parsing/html5lib_url.html?file=html5test-com",
+      "external/wpt/html/syntax/parsing/html5lib_url.html?file=tests1",
       "external/wpt/html/syntax/xmldecl/xmldecl-1.html",
       "external/wpt/html/syntax/xmldecl/xmldecl-2.html"
     ],
@@ -2498,7 +2499,7 @@
       "external/wpt/html/semantics/permission-element"
     ],
     "args": [
-      "--enable-blink-features=UserMediaElement,InstallElement"
+      "--enable-blink-features=UserMediaElement,InstallElement,UserMediaElementLegacy"
     ],
     "owners": [
       "permissions-core@google.com"
@@ -3063,6 +3064,25 @@
     "owners": [
       "syg@chromium.org",
       "samuelmaddock@electronjs.org"
+    ]
+  },
+  {
+    "prefix": "shadow-root-namespace-check",
+    "platforms": [
+      "Linux",
+      "Mac",
+      "Win"
+    ],
+    "bases": [
+      "external/wpt/shadow-dom/attach-shadow-non-html-namespace.html"
+    ],
+    "exclusive_tests": "ALL",
+    "args": [
+      "--enable-blink-features=ShadowRootNamespaceCheck"
+    ],
+    "expires": "Jun 10, 2027",
+    "owners": [
+      "daniec@microsoft.com"
     ]
   },
   {
@@ -3657,6 +3677,7 @@
       "synthetic_gestures",
       "transitions",
       "view-transition",
+      "wpt_internal/webgl/draw-element-image",
       "wpt_internal/html/script-execution",
       "wpt_internal/scheduler/integration_tests",
       "wpt_internal/view-transition",
@@ -5161,9 +5182,68 @@
       "external/wpt/html/canvas/element/manual/draw-element-image/video.tentative.html",
       "external/wpt/html/canvas/offscreen/manual/draw-element-image/video-worker.tentative.html",
       "wpt_internal/webgl/draw-element-image/webgl-video.html",
-      "wpt_internal/webgl/draw-element-image/webgl-video-worker.html"
+      "wpt_internal/webgl/draw-element-image/webgl-video-worker-pixeltest.html",
+      "wpt_internal/webgl/draw-element-image/webgl-video-worker-reftest.html"
     ],
     "args": ["--use-gpu-in-tests", "--enable-threaded-compositing"],
     "expires": "never"
+  },
+  {
+    "prefix": "disable-css-line-clamp-longhands",
+    "platforms": [
+      "Linux"
+    ],
+    "bases": [
+      "external/wpt/css/css-overflow/line-clamp",
+      "external/wpt/css/css-overflow/parsing",
+      "external/wpt/css/css-overflow/inheritance.html",
+      "external/wpt/compat/webkit-box-clamp-bottom-border.html",
+      "external/wpt/compat/webkit-box-clamp-visibility-change.html",
+      "external/wpt/css/css-flexbox/alignment/flex-align-baseline-line-clamp-001.tentative.html",
+      "external/wpt/css/css-flexbox/alignment/flex-align-baseline-line-clamp-002.tentative.html",
+      "external/wpt/css/css-flexbox/alignment/flex-align-baseline-line-clamp-003.tentative.html",
+      "external/wpt/css/css-grid/alignment/grid-align-baseline-line-clamp-001.tentative.html",
+      "external/wpt/css/css-grid/alignment/grid-align-baseline-line-clamp-002.tentative.html",
+      "external/wpt/css/css-grid/alignment/grid-align-baseline-line-clamp-003.tentative.html",
+      "external/wpt/css/css-inline/baseline-source/baseline-source-first-001.html",
+      "external/wpt/css/css-inline/baseline-source/baseline-source-first-002.html",
+      "external/wpt/css/css-inline/baseline-source/baseline-source-first-003.html",
+      "external/wpt/css/css-inline/baseline-source/baseline-source-last-001.html",
+      "external/wpt/css/css-inline/baseline-source/baseline-source-last-002.html",
+      "external/wpt/css/css-inline/baseline-source/baseline-source-last-003.html",
+      "external/wpt/css/css-inline/text-box-trim/text-box-trim-line-clamp-001.html",
+      "external/wpt/css/css-inline/text-box-trim/text-box-trim-line-clamp-002.html",
+      "external/wpt/css/css-text/white-space/text-wrap-balance-005.html",
+      "external/wpt/css/css-text/white-space/text-wrap-balance-line-clamp-001.html",
+      "external/wpt/css/css-text/white-space/text-wrap-balance-line-clamp-002.html",
+      "external/wpt/css/css-text/white-space/text-wrap-balance-line-clamp-003.html",
+      "external/wpt/css/css-text/white-space/text-wrap-balance-line-clamp-004.html",
+      "external/wpt/css/css-text/white-space/text-wrap-balance-line-clamp-005.html",
+      "external/wpt/css/css-text/white-space/text-wrap-balance-line-clamp-006.html",
+      "external/wpt/css/css-text/white-space/text-wrap-balance-line-clamp-007.html",
+      "external/wpt/css/css-text/white-space/text-wrap-pretty-line-clamp-crash-001.html",
+      "external/wpt/css/css-ui/text-overflow-string-001.html",
+      "external/wpt/css/css-ui/text-overflow-string-002.html",
+      "external/wpt/css/css-ui/text-overflow-string-003.html",
+      "external/wpt/css/css-ui/text-overflow-string-004.html",
+      "external/wpt/css/css-ui/text-overflow-string-005.html",
+      "external/wpt/css/css-ui/text-overflow-string-006.html",
+      "fast/deprecated-flexbox/dynamically-change-line-clamp.html",
+      "fast/deprecated-flexbox/line-clamp-crash.html",
+      "fast/deprecated-flexbox/line-clamp-removed-dynamically.html",
+      "fast/overflow/line-clamp-and-columns.html",
+      "fast/overflow/line-clamp-ellipsis-in-free-space.html",
+      "fast/overflow/line-clamp-floats-dont-grow-container.html",
+      "fast/overflow/line-clamp-hides-trailing-anchor.html",
+      "fast/overflow/line-clamp.html",
+      "paint/invalidation/text-line-clamp-truncation.html"
+    ],
+    "args": [
+      "--disable-blink-features=CSSLineClampAsShorthand"
+    ],
+    "owners": [
+      "abotella@igalia.com"
+    ],
+    "expires": "Dec 31, 2026"
   }
 ]

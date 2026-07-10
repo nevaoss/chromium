@@ -206,7 +206,7 @@ IN_PROC_BROWSER_TEST_F(AutofillPopupControllerBrowserTest, ResetSelectedLine) {
                                         /*expect_popup_to_be_shown=*/true));
 
   auto* client =
-      autofill::ChromeAutofillClient::FromWebContentsForTesting(web_contents());
+      ChromeAutofillClient::FromWebContentsForTesting(web_contents());
   base::WeakPtr<AutofillSuggestionController> controller =
       client->suggestion_controller_for_testing();
   ASSERT_TRUE(controller);

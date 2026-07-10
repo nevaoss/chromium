@@ -218,6 +218,7 @@ constexpr auto kAllocatorDumpNameAllowlist =
         "malloc/partitions/allocator/thread_cache",
         "malloc/partitions/allocator/thread_cache/main_thread",
         "malloc/partitions/aligned",
+        "malloc/partitions/leaked",
         "malloc/partitions/original",
         "malloc/sys_malloc",
         "malloc/win_heap",

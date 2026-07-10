@@ -13,7 +13,7 @@ import {loadTimeData} from '//resources/js/load_time_data.js';
 import {hasKeyModifiers} from '//resources/js/util.js';
 import type {CrLitElement, PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
 import type {AutocompleteMatch, AutocompleteResult, PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote, SelectedFileInfo, SmartComposeStats, TabInfo} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
-import {DriveUploadError} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {DriveDisclaimerStatus, DriveUploadError} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {BigBuffer} from '//resources/mojo/mojo/public/mojom/base/big_buffer.mojom-webui.js';
 import type {UnguessableToken} from '//resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
 import type {Url} from '//resources/mojo/url/mojom/url.mojom-webui.js';
@@ -74,6 +74,7 @@ export const ComposeboxEmbedderMixin =
               reflect: true,
               type: Boolean,
             },
+            submitting: {type: Boolean},
             showContextMenuDescription: {type: Boolean},
             smartTabSharingActive: {type: Boolean},
             smartTabSharingVisible: {type: Boolean},
@@ -177,6 +178,11 @@ export const ComposeboxEmbedderMixin =
         accessor animationState: GlowAnimationState = GlowAnimationState.NONE;
         accessor disableCaretColorAnimation: boolean = false;
         accessor disableVoiceSearchAnimation: boolean = false;
+        // Blocks autocomplete updates after a query has been submitted or
+        // clicked. This prevents the dropdown from briefly flashing open due to
+        // late-arriving autocomplete updates or automatic focus restoration
+        // before navigation completes.
+        accessor submitting: boolean = false;
         accessor addedTabsIds: Map<number, UnguessableToken> = new Map();
         accessor aimThreadRestoredTabs: TabInfo[] = [];
         accessor isDraggingFile: boolean = false;
@@ -358,6 +364,17 @@ export const ComposeboxEmbedderMixin =
             this.eventTracker.add(inputElem, 'input', () => {
               this.submitEnabled = this.computeSubmitEnabled();
             });
+            // The following two event handlers are to re-enable the inputState
+            // update after the submission of a query when
+            // submitting is true.
+            // This occurs when the user quickly cancels the navigation and
+            // starts interacting with the input element again.
+            this.eventTracker.add(inputElem, 'mousedown', () => {
+              this.submitting = false;
+            });
+            this.eventTracker.add(inputElem, 'keydown', () => {
+              this.submitting = false;
+            });
           }
         }
 
@@ -438,7 +455,8 @@ export const ComposeboxEmbedderMixin =
             const oldInputState =
                 changedProperties.get('inputState') as InputState | undefined;
             if (oldInputState &&
-                this.inputState?.activeTool !== oldInputState.activeTool) {
+                this.inputState?.activeTool !== oldInputState.activeTool &&
+                !this.submitting) {
               this.focusInput();
               this.queryAutocomplete(/* clearMatches= */ true);
             }
@@ -570,6 +588,10 @@ export const ComposeboxEmbedderMixin =
           }
         }
 
+        addFileContextForTesting(file: ComposeboxFile) {
+          this.onFileContextAdded(file);
+        }
+
         onTranscriptUpdate(e: CustomEvent<string>) {
           this.transcript = e.detail;
         }
@@ -593,6 +615,7 @@ export const ComposeboxEmbedderMixin =
           metaKey: boolean,
           shiftKey: boolean,
         }>) {
+          this.submitting = true;
           this.clearAutocompleteMatches();
           // We only close the composebox when opening in a new tab because
           // doing so in the current tab causes a visual jitter where the
@@ -615,10 +638,8 @@ export const ComposeboxEmbedderMixin =
           this.inputState = inputState;
 
           const allowedTypes = this.inputState.allowedInputTypes;
-          const disabledTypes = this.inputState.disabledInputTypes || [];
           this.files.forEach((file, uuid) => {
-            if (!allowedTypes.includes(file.inputType) ||
-                disabledTypes.includes(file.inputType)) {
+            if (!allowedTypes.includes(file.inputType)) {
               this.deleteFile(uuid);
             }
           });
@@ -633,8 +654,10 @@ export const ComposeboxEmbedderMixin =
         }
 
         onAutocompleteResultChanged(result: AutocompleteResult) {
-          if (this.lastQueriedInput === null ||
-              this.lastQueriedInput.trimStart() !== result.input) {
+          if (this.submitting) {
+            return;
+          }
+          if (this.lastQueriedInput.trimStart() !== result.input) {
             return;
           }
 
@@ -790,7 +813,14 @@ export const ComposeboxEmbedderMixin =
           }
         }
 
+        onClearSmartCompose() {
+          this.smartComposeInlineHint = '';
+        }
+
         onInputFocusin() {
+          if (this.submitting) {
+            return;
+          }
           // if there's a last queried input, it's guaranteed that at least
           // the verbatim match will exist.
           if (this.lastQueriedInput) {
@@ -1034,6 +1064,16 @@ export const ComposeboxEmbedderMixin =
         async onOpenDriveUpload() {
           recordContextualElementClickedMetric(
               this.composeboxSource, 'AimPopup', ContextType.DRIVE);
+
+          // Check if the user has accepted the Drive disclaimer. This handles
+          // the edge case where a user sees the drive option in the menu, but
+          // then revokes Drive permissions.
+          const {status} =
+              await this.getSearchboxHandler().getDriveDisclaimerStatus();
+          if (status !== DriveDisclaimerStatus.kAccepted) {
+            return;
+          }
+
           const {response} =
               await this.getSearchboxHandler().onDriveUploadClicked();
           this.addDriveUploads(response.files, response.error ?? undefined);
@@ -1669,6 +1709,7 @@ export const ComposeboxEmbedderMixin =
         }
 
         submitCleanup() {
+          this.submitting = true;
           this.clearAutocompleteMatches();
           this.resetSmartComposeStats();
           this.animationState = GlowAnimationState.SUBMITTING;
@@ -2179,6 +2220,23 @@ export const ComposeboxEmbedderMixin =
           e.detail.onPreviewFetched(previewDataUrl || '');
         }
 
+        async onWaitForTabLoad(e: CustomEvent<{
+          tabId: number,
+          onTabLoaded: (faviconDataUrl?: string) => void,
+        }>) {
+          e.stopPropagation();
+          try {
+            const {faviconDataUrl} =
+                await this.getSearchboxHandler().waitForTabFaviconLoad(
+                    e.detail.tabId);
+            const urlStr = (faviconDataUrl as unknown as {url?: string})?.url ||
+                (faviconDataUrl ? faviconDataUrl : undefined);
+            e.detail.onTabLoaded(urlStr);
+          } catch (error) {
+            e.detail.onTabLoaded(undefined);
+          }
+        }
+
         voiceSearchEndCleanup() {
           this.inVoiceSearchMode = false;
           this.animationState = GlowAnimationState.NONE;
@@ -2278,7 +2336,7 @@ export const ComposeboxEmbedderMixin =
         }
 
         shouldShowDivider(): boolean {
-          if (this.tabFaviconChipsToCoinsEnabled) {
+          if (this.tabFaviconChipsToCoinsEnabled && this.hasTabs()) {
             const hasNonTabFiles =
                 Array.from(this.files.values()).some(f => !f.url);
             if (!hasNonTabFiles) {
@@ -2360,6 +2418,7 @@ export const ComposeboxEmbedderMixin =
 
 export interface ComposeboxEmbedderMixinInterface extends
     I18nMixinLitInterface {
+  submitting: boolean;
   addedTabsIds: Map<number, UnguessableToken>;
   aimThreadRestoredTabs: TabInfo[];
   animationState: GlowAnimationState;
@@ -2482,6 +2541,7 @@ export interface ComposeboxEmbedderMixinInterface extends
   onVoiceSearchButtonClick(): void;
   onVoicePermissionChanged(e: CustomEvent<VoicePermissionPromptState>): void;
   onFileContextAdded(file: ComposeboxFile): void;
+  addFileContextForTesting(file: ComposeboxFile): void;
   voiceSearchEndCleanup(): void;
   onVoiceSearchFinalResult(e: CustomEvent<string>): void;
   onVoiceSearchCancel(e: CustomEvent<boolean>): void;
@@ -2503,6 +2563,7 @@ export interface ComposeboxEmbedderMixinInterface extends
       token: UnguessableToken, status: ContextUploadStatus,
       errorType: ContextUploadErrorType|null): void;
   onInputInput(e: CustomEvent<Event>): void;
+  onClearSmartCompose(): void;
   onInputFocusin(): void;
   onRecordingStopped(e: CustomEvent<string>): void;
   onKeydown(e: KeyboardEvent): void;
@@ -2567,6 +2628,10 @@ export interface ComposeboxEmbedderMixinInterface extends
   onGetTabPreview(e: CustomEvent<{
     tabId: number,
     onPreviewFetched: (previewDataUrl: string) => void,
+  }>): Promise<void>;
+  onWaitForTabLoad(e: CustomEvent<{
+    tabId: number,
+    onTabLoaded: (faviconDataUrl?: string) => void,
   }>): Promise<void>;
   shouldShowDivider(): boolean;
   shouldShowSubmitButton(): boolean;

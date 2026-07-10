@@ -47,6 +47,7 @@ android_library("java") {
   sources = [
     "java/src/org/chromium/components/search_engines/FakeSearchEngineCountryDelegate.java",
     "java/src/org/chromium/components/search_engines/NoOpSearchEngineCountryDelegate.java",
+    "java/src/org/chromium/components/search_engines/PrepopulatedAndRecentlyVisitedTemplateURLs.java",
     "java/src/org/chromium/components/search_engines/SearchEngineAssets.java",
     "java/src/org/chromium/components/search_engines/SearchEngineChoiceService.java",
     "java/src/org/chromium/components/search_engines/SearchEngineCountryDelegate.java",
@@ -58,6 +59,7 @@ android_library("java") {
 
 generate_jni("jni_headers") {
   sources = [
+    "java/src/org/chromium/components/search_engines/PrepopulatedAndRecentlyVisitedTemplateURLs.java",
     "java/src/org/chromium/components/search_engines/TemplateUrl.java",
     "java/src/org/chromium/components/search_engines/TemplateUrlService.java",
   ]
@@ -86,6 +88,7 @@ android_library("junit") {
   testonly = true
   resources_package = "org.chromium.components.search_engines"
   sources = [
+    "java/src/org/chromium/components/search_engines/PrepopulatedAndRecentlyVisitedTemplateURLsUnitTest.java",
     "java/src/org/chromium/components/search_engines/SearchEngineAssetsUnitTest.java",
     "java/src/org/chromium/components/search_engines/SearchEngineChoiceServiceUnitTest.java",
     "java/src/org/chromium/components/search_engines/SearchEnginesFeatureUtilsUnitTest.java",

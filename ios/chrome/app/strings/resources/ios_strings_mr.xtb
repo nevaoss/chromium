@@ -117,6 +117,7 @@
 <translation id="1373120905936431262">Nano Banana सह रीमिक्स करण्यासाठी इमेज अपलोड करा</translation>
 <translation id="1377508275003315939">पासवर्ड</translation>
 <translation id="1381022135873211423">{count,plural, =1{{count} पैकी {position} क्रमांकाचा पत्ता}other{{count} पैकी {position} क्रमांकाचा पत्ता}}</translation>
+<translation id="13813615483058219">काहीतरी चूक झाली. तुमचे इंटरनेट कनेक्शन तपासा, व्हॉल्यूम वाढवा किंवा पुन्हा प्रयत्न करा.</translation>
 <translation id="1383876407941801731">शोधा</translation>
 <translation id="138618066238211776"><ph name="USER_NAME" /> म्हणून पुढे सुरू ठेवा</translation>
 <translation id="138692594145659985">कार्ड सेव्ह करण्यासाठी पर्याय</translation>
@@ -912,7 +913,6 @@
 <translation id="417138788035229076">गट व्यवस्थापित करा</translation>
 <translation id="4172051516777682613">नेहमी दर्शवा</translation>
 <translation id="417273154673973994">{count,plural, =1{१ टॅब गट बंद आणि सेव्ह केला आहे}other{{count} टॅब गट बंद आणि सेव्ह केले आहेत}}</translation>
-<translation id="417612446554534067">तुमच्या डिव्हाइस वर पाठवा</translation>
 <translation id="4180726336228139707">फक्त या डिव्हाइसवर</translation>
 <translation id="4181841719683918333">भाषा</translation>
 <translation id="4183350924949589798">आणखी सुरक्षा हवी आहे का?</translation>
@@ -1136,6 +1136,7 @@
 <translation id="4896467949657706481">टॅब बंद केले गेले होते; तुम्हाला साइन आउट केले गेले होते</translation>
 <translation id="4911042367886397055">तुमचे पुन्हा स्वागत आहे, <ph name="USER_NAME" /> !</translation>
 <translation id="4913626501929406101">तुम्ही तुमच्या पासवर्डची प्रत तुमच्या कुटुंब गटातील एखाद्या व्यक्तीशी सुरक्षितपणे शेअर करू शकता. <ph name="BEGIN_LINK" />अधिक जाणून घ्या<ph name="END_LINK" /></translation>
+<translation id="4916679969857390442">लेन्स</translation>
 <translation id="4917025507570489430">तुम्ही <ph name="USER_EMAIL" /> म्हणून साइन इन केलेले असते, तेव्हा सद्य ब्राउझिंग डेटा वापरू शकता. तुमची संस्था कदाचित हा डेटा पाहू शकते.</translation>
 <translation id="4918086044614829423">स्वीकारा</translation>
 <translation id="4930714375720679147">सुरू करा</translation>

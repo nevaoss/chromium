@@ -1128,6 +1128,17 @@ chromium-metrics-reviews@google.com.
   <summary>Records the reason why a snackbar was dismissed.</summary>
 </histogram>
 
+<histogram name="Snackbar.QueueDepthAtInsertion" units="Snackbars"
+    expires_after="2026-12-31">
+  <owner>vpasupathy@google.com</owner>
+  <owner>chrome-ui-security-bugs@google.com</owner>
+  <summary>
+    Records the combined size of the standard and persistent snackbar queues at
+    the exact moment a new snackbar is inserted via add(). Used to detect queue
+    spam and DoS conditions.
+  </summary>
+</histogram>
+
 <histogram name="Snackbar.Shown" enum="SnackbarIdentifier"
     expires_after="never">
 <!-- expires-never: Required as long as snackbars exist. -->
@@ -1136,6 +1147,17 @@ chromium-metrics-reviews@google.com.
   <owner>src/chrome/browser/ui/messages/OWNERS</owner>
   <summary>
     Records the identifier of a snackbar every time one is shown.
+  </summary>
+</histogram>
+
+<histogram name="Snackbar.TimerDrift" units="ms" expires_after="2026-12-31">
+  <owner>vpasupathy@google.com</owner>
+  <owner>chrome-ui-security-bugs@google.com</owner>
+  <summary>
+    Records the difference between the actual time a snackbar was dismissed due
+    to timeout and its requested duration. Tracks the exact uptimeMillis() to
+    detect Android UI thread stalls or deadlocks that delay security notices.
+    Capped at 60 seconds.
   </summary>
 </histogram>
 
@@ -1300,7 +1322,7 @@ features through Chrome Labs. -->
 </histogram>
 
 <histogram name="WebUI.ColorsStylesheetServingDuration" units="ms"
-    expires_after="2026-10-11">
+    expires_after="2026-12-13">
   <owner>skau@chromium.org</owner>
   <owner>tluk@chromium.org</owner>
   <improvement direction="LOWER_IS_BETTER"/>

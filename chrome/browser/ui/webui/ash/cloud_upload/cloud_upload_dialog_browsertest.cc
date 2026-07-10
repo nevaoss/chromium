@@ -2161,5 +2161,6 @@ IN_PROC_BROWSER_TEST_F(CloudOpenTaskBrowserTest,
 
 void NonManagedUserWebUIBrowserTest::SetUpCommandLine(
     base::CommandLine* command_line) {
+  WebUIMochaBrowserTest::SetUpCommandLine(command_line);
   ash::cloud_upload::SetUpCommandLineForNonManagedUser(command_line);
 }

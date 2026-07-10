@@ -56,6 +56,7 @@ enum ContextMenuType {
   kBack,
   kForward,
   kHome,
+  kBatterySaver,
 
   // Pinned toolbar action buttons
   kPinnedActionNewIncognitoWindow,
@@ -592,6 +593,7 @@ struct NavigationControlsState {
   HomeControlState home_control_state;
   AppMenuControlState app_menu_control_state;
   AvatarControlState avatar_control_state;
+  bool battery_saver_button_visible;
   LocationBarState location_bar_state;
   // List of pinned toolbar action button states. Order corresponds to order
   // of the drawn buttons and duplicates imply duplicate buttons.

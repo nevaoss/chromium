@@ -1853,15 +1853,11 @@ void NativeWidgetNSWindowBridge::SetCanAppearInExistingFullscreenSpaces(
     bool can_appear_in_existing_fullscreen_spaces) {
   NSWindowCollectionBehavior collectionBehavior = window_.collectionBehavior;
   if (can_appear_in_existing_fullscreen_spaces) {
-    if (@available(macOS 13.0, *)) {
-      collectionBehavior &= ~NSWindowCollectionBehaviorPrimary;
-    }
+    collectionBehavior &= ~NSWindowCollectionBehaviorPrimary;
     collectionBehavior |= NSWindowCollectionBehaviorFullScreenAuxiliary;
     collectionBehavior &= ~NSWindowCollectionBehaviorFullScreenPrimary;
   } else {
-    if (@available(macOS 13.0, *)) {
-      collectionBehavior |= NSWindowCollectionBehaviorPrimary;
-    }
+    collectionBehavior |= NSWindowCollectionBehaviorPrimary;
     collectionBehavior |= NSWindowCollectionBehaviorFullScreenPrimary;
     collectionBehavior &= ~NSWindowCollectionBehaviorFullScreenAuxiliary;
   }

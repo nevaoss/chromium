@@ -15,13 +15,15 @@
 #import "testing/gmock/include/gmock/gmock.h"
 #import "url/gurl.h"
 
+namespace password_manager {
+class MockPasswordFormManagerForUI;
+class PasswordFormMetricsRecorder;
+}  // namespace password_manager
+
 // Mock queue observer.
 class MockIOSChromeSavePasswordInfoBarDelegate
     : public IOSChromeSavePasswordInfoBarDelegate {
  public:
-  MockIOSChromeSavePasswordInfoBarDelegate(
-      bool password_update,
-      std::unique_ptr<password_manager::PasswordFormManagerForUI> form_to_save);
   ~MockIOSChromeSavePasswordInfoBarDelegate() override;
 
   // Factory method that creates a mock save password delegate for pending
@@ -30,26 +32,31 @@ class MockIOSChromeSavePasswordInfoBarDelegate
       NSString* username,
       NSString* password,
       const GURL& url = GURL(),
-      std::optional<std::string> account_to_store_password = std::nullopt);
+      std::optional<std::string> account_to_store_password = std::nullopt,
+      password_manager::PasswordFormMetricsRecorder* metrics_recorder =
+          nullptr);
 
   MOCK_METHOD(void, InfoBarDismissed, (), (override));
-  MOCK_METHOD(void,
-              UpdateCredentials,
-              (NSString * username, NSString* password),
-              (override));
   MOCK_METHOD(bool, Accept, (), (override));
   MOCK_METHOD(bool, Cancel, (), (override));
-  MOCK_METHOD(void, InfobarPresenting, (bool automatic), (override));
-  MOCK_METHOD(void, InfobarGone, (), (override));
+
+  password_manager::MockPasswordFormManagerForUI* mock_form_manager() const {
+    return mock_form_manager_;
+  }
 
  private:
   MockIOSChromeSavePasswordInfoBarDelegate(
       std::unique_ptr<password_manager::PasswordForm> form,
       std::unique_ptr<GURL> url,
-      std::optional<std::string> account_to_store_password);
+      std::optional<std::string> account_to_store_password,
+      std::unique_ptr<password_manager::MockPasswordFormManagerForUI>
+          form_manager,
+      password_manager::MockPasswordFormManagerForUI* mock_form_manager_ptr);
 
   std::unique_ptr<password_manager::PasswordForm> form_;
   std::unique_ptr<GURL> url_;
+  raw_ptr<password_manager::MockPasswordFormManagerForUI> mock_form_manager_ =
+      nullptr;
 };
 
 #endif  // IOS_CHROME_BROWSER_PASSWORDS_MODEL_TEST_MOCK_IOS_CHROME_SAVE_PASSWORDS_INFOBAR_DELEGATE_H_

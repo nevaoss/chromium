@@ -116,7 +116,6 @@ import org.chromium.chrome.browser.customtabs.PopupCreatorFactory;
 import org.chromium.chrome.browser.desktop_site.DesktopSiteUtils;
 import org.chromium.chrome.browser.device.DeviceClassManager;
 import org.chromium.chrome.browser.devtools.DevToolsWindowAndroid;
-import org.chromium.chrome.browser.dom_distiller.DomDistillerUiUtils;
 import org.chromium.chrome.browser.dom_distiller.ReaderModeManager;
 import org.chromium.chrome.browser.download.DownloadManagerService;
 import org.chromium.chrome.browser.download.DownloadUtils;
@@ -3093,11 +3092,6 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                         this, profile, url.getSpec(), getModalDialogManager());
             }
 
-            return true;
-        }
-
-        if (id == R.id.reader_mode_prefs_id) {
-            DomDistillerUiUtils.openDialogSettings(currentTab.getWebContents());
             return true;
         }
 

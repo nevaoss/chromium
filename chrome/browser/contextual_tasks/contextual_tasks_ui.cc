@@ -446,8 +446,6 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
       {"oauthErrorDialogBody", IDS_CONTEXTUAL_TASKS_OAUTH_ERROR_DIALOG_BODY},
       {"oauthErrorDialogReloadButton",
        IDS_CONTEXTUAL_TASKS_OAUTH_ERROR_DIALOG_RELOAD_BUTTON},
-      {"stsTryItLink", IDS_STS_IPH_TRY_IT_LINK},
-      {"stsTryItBodyEnd", IDS_STS_IPH_TRY_IT_BODY_END},
       {"stsTryItTurnOn", IDS_STS_IPH_TRY_IT_TURN_ON},
       {"stsTryItNotNow", IDS_STS_IPH_TRY_IT_NOT_NOW},
       {"stsDefaultOnLink", IDS_STS_IPH_DEFAULT_ON_LINK},
@@ -533,6 +531,9 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
       "composeboxShowContextMenu",
       contextual_tasks::GetIsContextualTasksNextboxContextMenuEnabled());
   source->AddBoolean("composeboxShowContextMenuDescription", false);
+  source->AddBoolean(
+      "contextMenuAnimationLimitingEnabled",
+      base::FeatureList::IsEnabled(omnibox::kContextMenuAnimationLimiting));
   source->AddBoolean(
       "enablePinButton",
       contextual_tasks::IsContextualTasksPinButtonInToolbarEnabled());
@@ -710,8 +711,11 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
 
 #if !BUILDFLAG(IS_ANDROID)
   ui::TrackedElementHandlerDocumentSingleton::Register(
-      this,
-      std::vector<ui::ElementIdentifier>{kSmartTabSharingMenuItemElementId});
+      this, std::vector<ui::ElementIdentifier>{
+                kSmartTabSharingMenuItemElementId,
+                kContextualTasksWebUIPinButtonElementId,
+                kContextualTasksWebUIOverflowMenuElementId,
+                kContextualTasksWebUIOverflowMenuPinButtonElementId});
 #endif
 }
 

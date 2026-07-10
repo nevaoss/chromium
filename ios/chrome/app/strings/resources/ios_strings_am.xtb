@@ -874,6 +874,7 @@
 <translation id="4021447724486050609">አሳሽዎን ያዘምኑ</translation>
 <translation id="4021931095789478915">${ዩአርኤል} ን ወደ የንባብ ዝርዝር ያክሉ</translation>
 <translation id="4028871427853484857">በመለያ ውስጥ አስቀምጥ…</translation>
+<translation id="4036529942385659684">ከእንቅስቃሴ-አልባነት ጊዜ በኋላ የመነሻ ገጽን አሳይ</translation>
 <translation id="4038354071007134711">ፋይሉን መክፈት የሚችል መተግበሪያ በዚህ መሣሪያ ላይ የለም።</translation>
 <translation id="4042870976416480368">በዚህ ገፅ ውስጥ አግኝ</translation>
 <translation id="4045441967987592849">ዳግም ክፈት</translation>
@@ -911,7 +912,6 @@
 <translation id="417138788035229076">ቡድን ያስተዳድሩ</translation>
 <translation id="4172051516777682613">ሁልጊዜ አሳይ</translation>
 <translation id="417273154673973994">{count,plural, =1{1 የትር ቡድን ተዘግቷል እና ተቀምጧል}one{{count} የትር ቡድን ተዘግቷል እና ተቀምጧል}other{{count} የትር ቡድኖች ተዘግተዋል እና ተቀምጠዋል}}</translation>
-<translation id="417612446554534067">ወደ የእርስዎ መሣሪያዎች ይላኩ</translation>
 <translation id="4180726336228139707">በዚህ መሣሪያ ላይ ብቻ</translation>
 <translation id="4181841719683918333">ቋንቋዎች</translation>
 <translation id="4183350924949589798">ተጨማሪ ደህንነት?</translation>
@@ -1135,6 +1135,7 @@
 <translation id="4896467949657706481">ትሮች ተዘግተዋል፤ እርስዎ ዘግተው ወጥተዋል</translation>
 <translation id="4911042367886397055">እንኳን በደህና ተመልሰው መጡ፣ <ph name="USER_NAME" />!</translation>
 <translation id="4913626501929406101">የይለፍ ቃልዎ ቅጂ ደህንነቱ በተጠበቀ ሁኔታ በቤተሰብ ቡድንዎ ውስጥ ካለ ሰው ጋር ማጋራት ይችላሉ። <ph name="BEGIN_LINK" />የበለጠ ለመረዳት<ph name="END_LINK" /></translation>
+<translation id="4916679969857390442">ሌንስ</translation>
 <translation id="4917025507570489430">እንደ <ph name="USER_EMAIL" /> በመለያ ሲገቡ ነባር የአሰሳ ውሂብን መምረጥ ይችላሉ። ድርጅትዎ ይህን ውሂብ መመልከት ይችል ይሆናል።</translation>
 <translation id="4918086044614829423">ይቀበሉ</translation>
 <translation id="4930714375720679147">አብራ</translation>

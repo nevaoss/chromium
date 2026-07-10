@@ -18,6 +18,7 @@
 
 @protocol AssistantContainerCommands;
 @protocol SceneCommands;
+class GURL;
 @class CobrowseContext;
 @class AimSRPDebuggerEvent;
 
@@ -26,6 +27,7 @@ class ContextualTasksService;
 }
 class UrlLoadingBrowserAgent;
 class CobrowseBrowserAgent;
+class AuthenticationService;
 namespace web {
 class WebState;
 }
@@ -58,7 +60,7 @@ class WebState;
 
 // Initializes the mediator with a web state and a cobrowse browser agent that
 // defines the AI mode assistant state, a container handler, the contextual
-// tasks service, and the URL loader.
+// tasks service, the URL loader, and the authentication service.
 - (instancetype)initWithWebState:(std::unique_ptr<web::WebState>)webState
             cobrowseBrowserAgent:(CobrowseBrowserAgent*)cobrowseBrowserAgent
                 containerHandler:
@@ -66,12 +68,17 @@ class WebState;
           contextualTasksService:
               (contextual_tasks::ContextualTasksService*)contextualTasksService
                        URLLoader:(UrlLoadingBrowserAgent*)URLLoader
+           authenticationService:(AuthenticationService*)authenticationService
     NS_DESIGNATED_INITIALIZER;
 
 - (instancetype)init NS_UNAVAILABLE;
 
 // The logged events for AIM SRP communication.
 @property(nonatomic, readonly) NSArray<AimSRPDebuggerEvent*>* debugEvents;
+
+// The currently loaded AIM URL.
+@property(nonatomic, readonly) GURL loadedURL;
+
 // Returns YES if the AIM page supports the given capability. Returns NO if
 // the handshake has not completed yet or the capability is not supported.
 - (BOOL)supportsCapability:(lens::FeatureCapability)capability;

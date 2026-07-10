@@ -597,7 +597,6 @@ Bạn có thể kiểm tra mật khẩu bất cứ lúc nào trong <ph name="GOO
 <translation id="1433478348197382180">Chế độ đọc</translation>
 <translation id="1433980411933182122">Khởi động</translation>
 <translation id="1434659328474177625"><ph name="ISSUER" /> đã xác minh email của bạn</translation>
-<translation id="1434696352799406980">Thao tác này sẽ đặt lại trang khởi động, trang thẻ mới, công cụ tìm kiếm và thẻ được ghim. Thao tác này cũng sẽ vô hiệu hóa tất cả các tiện ích và xóa dữ liệu tạm thời như cookie. Dấu trang, lịch sử và mật khẩu đã lưu của bạn sẽ không bị xóa.</translation>
 <translation id="1434886155212424586">Trang chủ là trang Thẻ mới</translation>
 <translation id="1435940442311036198">Sử dụng khoá đăng nhập trên một thiết bị khác</translation>
 <translation id="1436390408194692385">Có hiệu lực trong <ph name="TICKET_TIME_LEFT" /></translation>
@@ -3716,7 +3715,6 @@ Bạn có thể quản lý các tùy chọn cài đặt của tài khoản này 
 <translation id="366484203224589850"><ph name="TASK_TITLE" />: Gemini đã thực hiện công việc này trong một thời gian dài và sẽ sớm dừng lại để tiết kiệm pin</translation>
 <translation id="3664911592976620204">{NUM_OTHER_MEMBERS,plural, =0{Tham gia nhóm thẻ cùng với <ph name="OWNER_FIRST_NAME" />}=1{Tham gia nhóm thẻ cùng với <ph name="OWNER_FIRST_NAME" /> và # người khác}other{Tham gia nhóm thẻ cùng với <ph name="OWNER_FIRST_NAME" /> và # người khác}}</translation>
 <translation id="3665301845536101715">Mở trong bảng điều khiển bên</translation>
-<translation id="3665589677786828986">Chrome phát hiện thấy rằng một số cài đặt của bạn đã bị lỗi do một chương trình khác gây ra và đặt lại các cài đặt đó về giá trị mặc định ban đầu.</translation>
 <translation id="3665918214153961651">Đang tải tệp lên</translation>
 <translation id="3666196264870170605">Tệp kết xuất hoạt động gỡ lỗi bộ điều khiển giao diện mạng Wi-Fi của Intel</translation>
 <translation id="3666971425390608309">Đã tạm dừng tải <ph name="FILE_NAME" /> xuống.</translation>
@@ -5004,7 +5002,6 @@ Bạn có thể quản lý các tùy chọn cài đặt của tài khoản này 
 <translation id="4580596421317071374">Mật khẩu được lưu vào <ph name="GOOGLE_PASSWORD_MANAGER" /> trên thiết bị này.</translation>
 <translation id="4580939929828762295">Bảo vệ bạn an toàn bằng Trình quản lý mật khẩu của Google</translation>
 <translation id="4582297591746054421">Các trang web thường đọc bảng nhớ tạm để áp dụng những tính năng như giữ nguyên định dạng của văn bản đã sao chép</translation>
-<translation id="4582563038311694664">Đặt lại tất cả cài đặt</translation>
 <translation id="4584094413232466841">Xoá thông tin này khỏi dữ liệu tự động điền của Chrome?</translation>
 <translation id="4584770411839426377">Cửa sổ</translation>
 <translation id="4584836561445313300">Tổ chức của bạn sẽ có thể xem và quản lý mọi dữ liệu duyệt web hiện có, chẳng hạn như mật khẩu và các dữ liệu khác</translation>
@@ -10094,7 +10091,6 @@ Giữ tệp khóa của bạn ở nơi an toàn. Bạn sẽ cần tệp khóa đ
 <translation id="8327386430364625757">Phông chữ toán học</translation>
 <translation id="8327490658947427005">Nội dung đã chọn không phải bằng <ph name="LANGUAGE" /></translation>
 <translation id="8327544198829180337">Đóng dạng xem này</translation>
-<translation id="8327676037044516220">Các chế độ cài đặt nội dung và quyền</translation>
 <translation id="8328228852664998535">Nếu bạn tiếp tục thì mật khẩu, khoá truy cập và dữ liệu khác của bạn sẽ bị xoá vĩnh viễn khỏi <ph name="BRAND" />. Mọi tài khoản bạn tạo cho các trang web hoặc ứng dụng sẽ không bị xoá.</translation>
 <translation id="8328777765163860529">Đóng tất cả</translation>
 <translation id="8330617762701840933">Danh sách trang web chuyển hướng tới trình duyệt thay thế.</translation>
@@ -10915,7 +10911,6 @@ Thông tin này có thể bao gồm thông tin về phần mềm đã cài đặ
 <translation id="8925458182817574960">&amp;Cài đặt</translation>
 <translation id="8926389886865778422">Đừng hỏi lại</translation>
 <translation id="8926555406617248399">Đã ẩn thẻ</translation>
-<translation id="892706138619340876">Đã đặt lại một số cài đặt</translation>
 <translation id="8927438609932588163">Cho phép các trang web lưu dữ liệu trên thiết bị của bạn</translation>
 <translation id="8929696694736010839">Chỉ phiên truy cập Ẩn danh hiện tại</translation>
 <translation id="8929738682246584251">Bật/tắt kính lúp</translation>

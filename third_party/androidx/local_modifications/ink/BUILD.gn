@@ -25,7 +25,7 @@ source_set("ink_native") {
 
   deps = [
     ":ink_jni_headers",
-    "//third_party/ink:ink_jni_registration",
+    "//third_party/androidx/third_party/ink:ink_jni_registration",
     "//third_party/jni_zero",
   ]
 }

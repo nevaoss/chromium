@@ -10,6 +10,9 @@ const environmentSpecificBindings =
 const GetExtensionAPIDefinitionsForTest =
     requireNative('apiDefinitions').GetExtensionAPIDefinitionsForTest;
 const GetAPIFeatures = requireNative('test_features').GetAPIFeatures;
+const GetUseStandardizedApiBehavior =
+    requireNative('test_api_standardized_behavior')
+        .GetUseStandardizedApiBehavior;
 const userGestures = requireNative('user_gestures');
 const logging = requireNative('logging');
 
@@ -18,7 +21,7 @@ const GetModuleSystem = requireNative('v8_context').GetModuleSystem;
 // A flag to determine adapt testing behavior to comply with the W3C
 // browser.test proposal
 // (github.com/w3c/webextensions/blob/main/proposals/browser_test_api.md).
-let useStandardizedApiBehavior = false;
+const useStandardizedApiBehavior = GetUseStandardizedApiBehavior();
 
 function handleException(message, error) {
   bindingUtil.handleException(message || 'Unknown error', error);
@@ -737,13 +740,6 @@ apiBridge.registerCustomHook(function(api) {
       runNextTest();
     });
   });
-
-  // TODO(crbug.com/493947412): Instead of a setter, initialize this from the
-  // C++ test harness. For now this allows us to test the new behavior.
-  apiFunctions.setHandleRequest(
-      'setUseStandardizedApiBehaviorForTesting', function(enabled) {
-        useStandardizedApiBehavior = enabled;
-      });
 
   apiFunctions.setHandleRequest('getApiDefinitions', function() {
     return GetExtensionAPIDefinitionsForTest();

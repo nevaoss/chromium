@@ -402,6 +402,7 @@ chromium-metrics-reviews@google.com.
   <variant name=".connectors-internals"/>
   <variant name=".constrained-test"/>
   <variant name=".context-hub"/>
+  <variant name=".contextual-cueing-internals"/>
   <variant name=".contextual-tasks"/>
   <variant name=".crashes"/>
   <variant name=".credits"/>
@@ -1953,7 +1954,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram
-    name="PageLoad.Clients.GoogleSearch.FontLoading.FallbackDuration.{GWSFontLoadingMilestone}"
+    name="PageLoad.Clients.GoogleSearch.FontLoading.FallbackDuration2.{GWSFontLoadingMilestone}"
     units="ms" expires_after="2027-06-01">
   <owner>suzukikeita@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
@@ -1965,7 +1966,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram
-    name="PageLoad.Clients.GoogleSearch.FontLoading.InitialFallbackDuration.Complete"
+    name="PageLoad.Clients.GoogleSearch.FontLoading.InitialFallbackDuration2.Complete"
     units="ms" expires_after="2027-06-01">
   <owner>suzukikeita@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
@@ -4031,7 +4032,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.DocumentTiming.NavigationToLoadEventFired" units="ms"
-    expires_after="2026-10-11">
+    expires_after="2026-12-13">
   <owner>bmcquade@chromium.org</owner>
   <owner>csharrison@chromium.org</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -5428,7 +5429,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.ParseTiming.NavigationToParseStart" units="ms"
-    expires_after="2026-10-11">
+    expires_after="2026-12-13">
   <owner>bmcquade@chromium.org</owner>
   <owner>csharrison@chromium.org</owner>
   <improvement direction="LOWER_IS_BETTER"/>

@@ -650,6 +650,10 @@ void Database::DetachFromSequence() {
 void Database::CloseInternal(bool forced) {
   TRACE_EVENT0("sql", "Database::CloseInternal");
 
+  absl::Cleanup report_time = [this, timer = base::ElapsedTimer()] {
+    RecordTimingHistogram("Sql.Database.DatabaseCloseTime.", timer.Elapsed());
+  };
+
   CHECK_EQ(outstanding_blob_count_, 0U)
       << "All StreamingBlobHandles should be destroyed before closing "
          "sql::Database";

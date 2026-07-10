@@ -655,6 +655,12 @@ void WebUILocationBar::OnLhsChipDrag(
                                           allowed_operations, source);
 }
 
+void WebUILocationBar::AnnounceAlert(const std::u16string& announcement) {
+  if (toolbar_delegate_) {
+    toolbar_delegate_->AnnounceAlert(announcement);
+  }
+}
+
 bool WebUILocationBar::ShouldHideContentSettingImage() {
   if (omnibox_controller_->edit_model()->user_input_in_progress()) {
     return true;

@@ -25,6 +25,19 @@ class FullWebUIOmniboxFrame : public RoundedOmniboxResultsFrame {
   ~FullWebUIOmniboxFrame() override;
 
   void SetElevation(int elevation);
+
+  // Updates whether mouse events should be forwarded to the underlying
+  // location bar.
+  void SetForwardMouseEvents(bool forward);
+
+  // views::View:
+  void AddedToWidget() override;
+#if !defined(USE_AURA)
+  void OnMouseEvent(ui::MouseEvent* event) override;
+#endif  // !USE_AURA
+
+ private:
+  gfx::Insets GetEventForwardingInsets();
 };
 
 #endif  // CHROME_BROWSER_UI_VIEWS_OMNIBOX_FULL_WEBUI_OMNIBOX_FRAME_H_

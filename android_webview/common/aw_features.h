@@ -28,7 +28,9 @@ BASE_DECLARE_FEATURE(kWebViewEarlyTracingInit);
 BASE_DECLARE_FEATURE(kWebViewEnableDnsPlatform);
 BASE_DECLARE_FEATURE(kWebViewFileSystemAccess);
 BASE_DECLARE_FEATURE(kWebViewForceWebAuthn);
+BASE_DECLARE_FEATURE(kWebViewGateTextSizeAdjustOnTextAutosizing);
 BASE_DECLARE_FEATURE(kWebViewInvokeZoomPickerOnGSU);
+BASE_DECLARE_FEATURE(kWebViewMemoryProfilingClient);
 BASE_DECLARE_FEATURE(kWebViewProfileStoreNotTriggerStartup);
 BASE_DECLARE_FEATURE(kWebViewLatchedCookiePolicy);
 BASE_DECLARE_FEATURE(kWebViewMixedContentAutoupgrades);
@@ -89,6 +91,8 @@ extern const base::FeatureParam<int> kWebViewHttpCacheQuotaApiMinimum;
 extern const base::FeatureParam<int> kWebViewHttpCacheQuotaApiMaximum;
 extern const base::FeatureParam<bool> kWebViewHttpCacheQuotaApiAffectsCodeCache;
 extern const base::FeatureParam<bool> kWebViewHttpCacheQuotaApiForceBackendInit;
+
+BASE_DECLARE_FEATURE(kWebViewDownloadFavicons);
 
 }  // namespace android_webview::features
 

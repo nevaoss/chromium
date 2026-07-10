@@ -21,6 +21,7 @@
 #include "ui/display/screen.h"
 #include "ui/gfx/geometry/resize_utils.h"
 #include "ui/gfx/geometry/size.h"
+
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS)
 #include "components/webapps/isolated_web_apps/scheme.h"
@@ -651,6 +652,8 @@ void PictureInPictureWindowManager::CloseWindowInternal() {
     pip_window_controller_ = nullptr;
   }
 
+  NotifyObserversOnExitPictureInPicture();
+
   opener_display_.reset();
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -950,6 +953,12 @@ void PictureInPictureWindowManager::MaybeRecordPictureInPictureChanged(
 void PictureInPictureWindowManager::NotifyObserversOnEnterPictureInPicture() {
   for (Observer& observer : observers_) {
     observer.OnEnterPictureInPicture();
+  }
+}
+
+void PictureInPictureWindowManager::NotifyObserversOnExitPictureInPicture() {
+  for (Observer& observer : observers_) {
+    observer.OnExitPictureInPicture();
   }
 }
 

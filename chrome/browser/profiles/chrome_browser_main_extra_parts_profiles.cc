@@ -81,6 +81,7 @@
 #include "chrome/browser/download/background_download_service_factory.h"
 #include "chrome/browser/download/download_core_service_factory.h"
 #include "chrome/browser/engagement/site_engagement_service_factory.h"
+#include "chrome/browser/enterprise/browser_management/enterprise_management_metrics_service_factory.h"
 #include "chrome/browser/enterprise/browser_management/management_service_factory.h"
 #include "chrome/browser/enterprise/connectors/connectors_service.h"
 #include "chrome/browser/enterprise/data_protection/data_protection_url_lookup_service_factory.h"
@@ -254,6 +255,7 @@
 #include "chrome/browser/ui/autofill/autofill_client_provider_factory.h"
 #include "chrome/browser/ui/find_bar/find_bar_state_factory.h"
 #include "chrome/browser/ui/hats/hats_service_factory.h"
+#include "chrome/browser/ui/omnibox/ai_mode_button_service_factory.h"
 #include "chrome/browser/ui/prefs/prefs_tab_helper.h"
 #include "chrome/browser/ui/safety_hub/menu_notification_service_factory.h"
 #include "chrome/browser/ui/safety_hub/notification_permission_review_service_factory.h"
@@ -320,6 +322,7 @@
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/autofill/at_memory_promo_tracker_factory.h"
+#include "components/enterprise/network_header_injection/core/features.h"  // nogncheck
 #endif
 #if BUILDFLAG(IS_WIN)
 #include "chrome/browser/ui/search_promotion/search_promotion_manager_factory.h"
@@ -739,6 +742,7 @@ void ChromeBrowserMainExtraPartsProfiles::
   actor_login::ActorLoginPermissionCleaningServiceFactory::GetInstance();
   actor_login::ActorLoginPermissionServiceFactory::GetInstance();
   AiDataKeyedServiceFactory::GetInstance();
+  AiModeButtonServiceFactory::GetInstance();
   AimEligibilityServiceFactory::GetInstance();
 #if BUILDFLAG(IS_ANDROID)
   AndroidProfileBrowserCollectionServiceFactory::GetInstance();
@@ -984,7 +988,9 @@ void ChromeBrowserMainExtraPartsProfiles::
 #endif
 #if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || \
     BUILDFLAG(IS_WIN)
-  enterprise_custom_headers::HttpHeaderInjectionServiceFactory::GetInstance();
+  if (enterprise_custom_headers::IsHttpHeaderInjectionEnabled()) {
+    enterprise_custom_headers::HttpHeaderInjectionServiceFactory::GetInstance();
+  }
 #endif
 #if BUILDFLAG(ENTERPRISE_WATERMARK)
   enterprise_data_protection::DataProtectionUrlLookupServiceFactory::
@@ -1300,6 +1306,7 @@ void ChromeBrowserMainExtraPartsProfiles::
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   policy::ExtensionInstallPolicyServiceFactory::GetInstance();
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+  policy::EnterpriseManagementMetricsServiceFactory::GetInstance();
   policy::ManagementServiceFactory::GetInstance();
 #if BUILDFLAG(IS_CHROMEOS)
   policy::PolicyCertServiceFactory::GetInstance();

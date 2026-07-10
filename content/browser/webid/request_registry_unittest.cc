@@ -12,6 +12,7 @@
 #include "base/test/bind.h"
 #include "base/test/scoped_feature_list.h"
 #include "content/browser/webid/request.h"
+#include "content/browser/webid/request_service.h"
 #include "content/browser/webid/test/delegated_idp_network_request_manager.h"
 #include "content/browser/webid/test/mock_api_permission_delegate.h"
 #include "content/browser/webid/test/mock_auto_reauthn_permission_delegate.h"
@@ -106,23 +107,23 @@ class RequestRegistryTest : public RenderViewHostImplTestHarness {
     mock_identity_registry_ = std::make_unique<NiceMock<MockIdentityRegistry>>(
         web_contents(), /*delegate=*/nullptr, GURL(kIdpUrl));
 
-    federated_auth_request_impl_ = &Request::CreateForTesting(
-        *main_test_rfh(), test_api_permission_delegate_.get(),
-        mock_auto_reauthn_permission_delegate_.get(),
-        mock_permission_delegate_.get(), mock_identity_registry_.get(),
-        request_remote_.BindNewPipeAndPassReceiver());
+    request_ = &RequestService::GetOrCreateForCurrentDocument(main_test_rfh())
+                    ->CreateRequestForTesting(
+                        request_remote_.BindNewPipeAndPassReceiver(),
+                        test_api_permission_delegate_.get(),
+                        mock_auto_reauthn_permission_delegate_.get(),
+                        mock_permission_delegate_.get(),
+                        mock_identity_registry_.get());
     auto mock_dialog_controller =
         std::make_unique<NiceMock<MockIdentityRequestDialogController>>();
-    federated_auth_request_impl_->SetDialogControllerForTests(
-        std::move(mock_dialog_controller));
+    request_->SetDialogControllerForTests(std::move(mock_dialog_controller));
     std::unique_ptr<TestIdpNetworkRequestManager> network_request_manager =
         std::make_unique<TestIdpNetworkRequestManager>();
-    federated_auth_request_impl_->SetNetworkManagerForTests(
-        std::move(network_request_manager));
+    request_->SetNetworkManagerForTests(std::move(network_request_manager));
   }
 
   void TearDown() override {
-    federated_auth_request_impl_ = nullptr;
+    request_ = nullptr;
     RenderViewHostImplTestHarness::TearDown();
   }
 
@@ -130,7 +131,7 @@ class RequestRegistryTest : public RenderViewHostImplTestHarness {
   base::test::ScopedFeatureList feature_list_;
 
   mojo::Remote<blink::mojom::FederatedAuthRequest> request_remote_;
-  raw_ptr<Request> federated_auth_request_impl_;
+  raw_ptr<Request> request_;
 
   std::unique_ptr<TestApiPermissionDelegate> test_api_permission_delegate_;
   std::unique_ptr<StrictMock<MockPermissionDelegate>> mock_permission_delegate_;

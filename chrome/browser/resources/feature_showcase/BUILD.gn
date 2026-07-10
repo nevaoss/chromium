@@ -29,6 +29,9 @@ build_webui("build") {
     "feature_showcase_stepper.html.ts",
     "feature_showcase_step.ts",
     "feature_showcase_step.html.ts",
+    "google_lens/google_lens_browser_proxy.ts",
+    "google_lens/google_lens_step.ts",
+    "google_lens/google_lens_step.html.ts",
     "example/example_step.ts",
     "example/example_step.html.ts",
     "password_manager/password_manager_browser_proxy.ts",
@@ -40,6 +43,7 @@ build_webui("build") {
     "default_browser/default_browser_step.css",
     "feature_showcase_stepper.css",
     "feature_showcase_step.css",
+    "google_lens/google_lens_step.css",
     "example/example_step.css",
     "password_manager/password_manager_step.css",
   ]
@@ -57,6 +61,7 @@ build_webui("build") {
   ]
   mojo_files = [
     "$root_gen_dir/chrome/browser/ui/webui/feature_showcase/feature_showcase.mojom-webui.ts",
+    "$root_gen_dir/chrome/browser/ui/webui/feature_showcase/google_lens.mojom-webui.ts",
     "$root_gen_dir/chrome/browser/ui/webui/feature_showcase/password_manager.mojom-webui.ts",
   ]
 

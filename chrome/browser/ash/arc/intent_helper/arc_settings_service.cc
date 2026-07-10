@@ -876,11 +876,12 @@ void ArcSettingsServiceImpl::SyncTimeZone() const {
 
 void ArcSettingsServiceImpl::SyncTimeZoneByGeolocation() const {
   base::DictValue extras;
-  extras.Set("autoTimeZone", ash::system::TimeZoneResolverManager::
-                                     GetEffectiveUserTimeZoneResolveMethod(
-                                         registrar_.prefs(), false) !=
-                                 ash::system::TimeZoneResolverManager::
-                                     TimeZoneResolveMethod::DISABLED);
+  extras.Set("autoTimeZone",
+             ash::system::TimeZoneResolverManager::
+                     GetEffectiveUserTimeZoneResolveMethod(
+                         local_state_.get(), registrar_.prefs(), false) !=
+                 ash::system::TimeZoneResolverManager::TimeZoneResolveMethod::
+                     DISABLED);
   SendSettingsBroadcast("org.chromium.arc.intent_helper.SET_AUTO_TIME_ZONE",
                         extras);
 }

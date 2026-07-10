@@ -69,10 +69,6 @@ chromium-metrics-reviews@google.com.
   <variant name="GlicCreateNewChat"
       summary="the Start New Chat with Gemini command"/>
   <variant name="GlicShare" summary="the Share with Gemini command"/>
-  <variant name="GlicShareLimit" summary="the Glic share limit command"/>
-  <variant name="GlicStartShare" summary="the Share Tab with Gemini command"/>
-  <variant name="GlicStopShare"
-      summary="the Stop Sharing Tab with Gemini command"/>
   <variant name="GlicSwitchToRecentConversation"
       summary="the Switch to Recent Conversation command"/>
   <variant name="GlicUnshare" summary="the Unshare with Gemini command"/>
@@ -2092,7 +2088,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Tabs.DuplicatesCountAtStartup" units="tabs"
-    expires_after="2026-06-28">
+    expires_after="2027-06-28">
   <owner>huitingyu@google.com</owner>
   <owner>bling-pandamonium@google.com</owner>
   <summary>
@@ -2127,7 +2123,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Tabs.InactiveCountAtStartup" units="tabs"
-    expires_after="2026-06-28">
+    expires_after="2027-06-28">
   <owner>huitingyu@google.com</owner>
   <owner>bling-pandamonium@google.com</owner>
   <summary>

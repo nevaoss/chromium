@@ -29,6 +29,8 @@ source_set("bookmarks") {
 
 source_set("impl") {
   sources = [
+    "bookmark_node_finder.cc",
+    "bookmark_node_finder.h",
     "bookmarks_service_impl.cc",
     "bookmarks_service_impl.h",
   ]
@@ -44,7 +46,10 @@ source_set("impl") {
 source_set("unit_tests") {
   testonly = true
 
-  sources = [ "bookmarks_service_impl_unittest.cc" ]
+  sources = [
+    "bookmark_node_finder_unittest.cc",
+    "bookmarks_service_impl_unittest.cc",
+  ]
 
   deps = [
     ":bookmarks",

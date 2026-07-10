@@ -4,6 +4,8 @@
 
 #include "chrome/browser/glic/host/glic_page_handler.h"
 
+#include <utility>
+
 #include "base/callback_list.h"
 #include "base/feature_list.h"
 #include "base/files/file_util.h"
@@ -132,6 +134,7 @@
 #include "pdf/buildflags.h"
 #include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
 #include "third_party/blink/public/common/features.h"
+#include "third_party/blink/public/mojom/content_extraction/ai_page_content.mojom.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "ui/base/device_form_factor.h"
 #include "ui/base/window_open_disposition.h"
@@ -144,6 +147,10 @@
 #include "extensions/browser/guest_view/web_view/web_view_guest.h"
 #else
 #include "components/guest_view/browser/slim_web_view/slim_web_view_guest.h"  // nogncheck
+#endif
+
+#if BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/flags/android/chrome_feature_list.h"
 #endif
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -179,7 +186,7 @@ namespace glic {
 
 namespace {
 
-mojom::GetContextResultPtr LogErrorAndUnwrapResult(
+mojom::GetContextResultPtr LogErrorAndUnwrapContextResult(
     base::OnceCallback<void(GlicGetContextFromTabError)> error_logger,
     GlicGetContextResult result) {
   if (!result.has_value()) {
@@ -187,6 +194,31 @@ mojom::GetContextResultPtr LogErrorAndUnwrapResult(
     return mojom::GetContextResult::NewErrorReason(result.error().message);
   }
   return std::move(result.value());
+}
+
+mojom::GetImageBytesResultPtr LogErrorAndUnwrapImageBytesResult(
+    base::OnceCallback<void(GlicGetContextFromTabError)> error_logger,
+    GlicGetImageBytesResult result) {
+  if (!result.has_value()) {
+    std::move(error_logger).Run(result.error().error_code);
+    return mojom::GetImageBytesResult::NewErrorReason(result.error().message);
+  }
+
+  auto converted_result = mojom::ImageBytesResult::New();
+  converted_result->bytes = std::move(result.value()->image_bytes);
+
+  converted_result->image_info = mojom::ImageInfo::New();
+  const blink::mojom::AIPageContentImageInfoPtr& image_info =
+      result.value()->image_info;
+  if (image_info) {
+    converted_result->image_info->caption = image_info->image_caption;
+    if (image_info->source_origin) {
+      converted_result->image_info->source_origin = image_info->source_origin;
+    }
+    converted_result->image_info->url = image_info->url;
+    converted_result->image_info->mime_type = image_info->mime_type;
+  }
+  return mojom::GetImageBytesResult::NewImageBytes(std::move(converted_result));
 }
 
 GlicUnpinTrigger FromMojomUnpinTrigger(mojom::UnpinTrigger trigger) {
@@ -199,17 +231,6 @@ GlicUnpinTrigger FromMojomUnpinTrigger(mojom::UnpinTrigger trigger) {
       return GlicUnpinTrigger::kChip;
     case mojom::UnpinTrigger::kActuation:
       return GlicUnpinTrigger::kActuation;
-  }
-}
-
-GlicZoomAction ToGlicZoomAction(mojom::ZoomAction action) {
-  switch (action) {
-    case mojom::ZoomAction::kZoomIn:
-      return GlicZoomAction::kZoomIn;
-    case mojom::ZoomAction::kZoomOut:
-      return GlicZoomAction::kZoomOut;
-    case mojom::ZoomAction::kReset:
-      return GlicZoomAction::kReset;
   }
 }
 
@@ -672,8 +693,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     }
     state->enable_get_page_metadata =
         base::FeatureList::IsEnabled(blink::features::kFrameMetadataObserver);
-    state->enable_api_activation_gating =
-        base::FeatureList::IsEnabled(features::kGlicApiActivationGating);
+
     if (base::FeatureList::IsEnabled(
             glic::mojom::features::kGlicAppendModelQualityClientId)) {
       state->host_capabilities.push_back(
@@ -846,7 +866,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     GetSharingManagerInternal().GetContextFromTab(
         tab_handle, *options,
         base::BindOnce(
-            &LogErrorAndUnwrapResult,
+            &LogErrorAndUnwrapContextResult,
             base::BindOnce(&GlicMetrics::LogGetContextFromFocusedTabError,
                            base::Unretained(glic_service_->metrics())))
             .Then(std::move(callback)));
@@ -859,8 +879,21 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     GetSharingManagerInternal().GetContextFromTab(
         tabs::TabHandle(tab_id), *options,
         base::BindOnce(
-            &LogErrorAndUnwrapResult,
+            &LogErrorAndUnwrapContextResult,
             base::BindOnce(&GlicMetrics::LogGetContextFromTabError,
+                           base::Unretained(glic_service_->metrics())))
+            .Then(std::move(callback)));
+  }
+
+  void GetImageBytesFromTab(int32_t tab_id,
+                            const std::string& document_id,
+                            int32_t dom_node_id,
+                            GetImageBytesFromTabCallback callback) override {
+    GetSharingManagerInternal().GetImageBytes(
+        tabs::TabHandle(tab_id), document_id, dom_node_id,
+        base::BindOnce(
+            &LogErrorAndUnwrapImageBytesResult,
+            base::BindOnce(&GlicMetrics::LogGetImageBytesFromTabError,
                            base::Unretained(glic_service_->metrics())))
             .Then(std::move(callback)));
   }
@@ -1117,6 +1150,15 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
   void SetLocationPermissionState(
       bool enabled,
       SetLocationPermissionStateCallback callback) override {
+#if BUILDFLAG(IS_ANDROID)
+    // Glic WebUI should not set location on Android if this flag is disabled.
+    // See b/523326989 for context.
+    if (!base::FeatureList::IsEnabled(
+            chrome::android::kGlicExperimentalLocation)) {
+      std::move(callback).Run();
+      return;
+    }
+#endif
     pref_service_->SetBoolean(prefs::kGlicGeolocationEnabled, enabled);
     if (enabled) {
       base::RecordAction(
@@ -1175,6 +1217,15 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
 
   void ShouldAllowGeolocationPermissionRequest(
       ShouldAllowGeolocationPermissionRequestCallback callback) override {
+#if BUILDFLAG(IS_ANDROID)
+    // This should not be called when the flag is disabled, but added fallback
+    // to be safe.
+    if (!base::FeatureList::IsEnabled(
+            chrome::android::kGlicExperimentalLocation)) {
+      std::move(callback).Run(false);
+      return;
+    }
+#endif
     std::move(callback).Run(
         pref_service_->GetBoolean(prefs::kGlicGeolocationEnabled) &&
         host().IsWidgetShowing(this));
@@ -1683,12 +1734,6 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
         std::move(handler), std::move(success_status_callback));
   }
 
-  void NotifyIsInvoking(bool is_invoking) override {
-    if (web_client_) {
-      web_client_->NotifyIsInvoking(is_invoking);
-    }
-  }
-
   // SkillsService::Observer implementation.
   void OnSkillUpdated(std::string_view skill_id,
                       skills::SkillsService::UpdateSource update_source,
@@ -1872,10 +1917,6 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     web_client_->NotifyInstanceActivationChanged(is_active);
   }
 
-  bool ShouldDoApiActivationGating() const {
-    return base::FeatureList::IsEnabled(features::kGlicApiActivationGating) &&
-           !active_state_calculator_.IsActive();
-  }
 
   void MaybeNotifyFocusedTabChanged(
       glic::mojom::FocusedTabDataPtr focused_tab_data) {
@@ -2079,8 +2120,26 @@ void GlicPageHandler::NotifyWindowIntentToShow() {
 }
 
 void GlicPageHandler::Zoom(mojom::ZoomAction zoom_action) {
-  base::UmaHistogramEnumeration("Glic.ZoomAction",
-                                ToGlicZoomAction(zoom_action));
+  auto* pref_service =
+      Profile::FromBrowserContext(browser_context_)->GetPrefs();
+  int current_zoom = pref_service->GetInteger(prefs::kGlicZoomLevel);
+
+  GlicZoomAction action_metric;
+  switch (zoom_action) {
+    case mojom::ZoomAction::kZoomIn:
+      action_metric = current_zoom >= 200 ? GlicZoomAction::kZoomInAtMax
+                                          : GlicZoomAction::kZoomIn;
+      break;
+    case mojom::ZoomAction::kZoomOut:
+      action_metric = current_zoom <= 100 ? GlicZoomAction::kZoomOutAtMin
+                                          : GlicZoomAction::kZoomOut;
+      break;
+    case mojom::ZoomAction::kReset:
+      action_metric = GlicZoomAction::kReset;
+      break;
+  }
+
+  base::UmaHistogramEnumeration("Glic.ZoomAction", action_metric);
   page_->Zoom(zoom_action);
 }
 

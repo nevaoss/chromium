@@ -2625,6 +2625,104 @@ suite('NewTabPageAppTest', () => {
           1, metrics.count('NewTabPage.Click', NtpElement.THREADS_RAIL));
     });
   });
+
+  suite('VoiceSearchCoherence', () => {
+    async function recreateApp() {
+      document.body.innerHTML = window.trustedTypes!.emptyHTML;
+      app = document.createElement('ntp-app');
+      document.body.appendChild(app);
+      await microtasksFinished();
+    }
+
+    test('Disabled: renders legacy overlay and not new dialog', async () => {
+      loadTimeData.overrideValues({
+        voiceSearchCoherenceSearchboxWithLiveTranscriptionEnabled: false,
+      });
+      await recreateApp();
+
+      // Act.
+      $$(app, '#searchbox')!.dispatchEvent(new Event('open-voice-search'));
+      await microtasksFinished();
+
+      // Assert.
+      assertTrue(!!app.shadowRoot.querySelector('ntp-voice-search-overlay'));
+      assertFalse(!!app.shadowRoot.querySelector('#voiceSearchDialog'));
+    });
+
+    test(
+        'Enabled: dialog handles cancel, error, and final result', async () => {
+          loadTimeData.overrideValues({
+            voiceSearchCoherenceSearchboxWithLiveTranscriptionEnabled: true,
+          });
+          await recreateApp();
+
+          // Open voice search dialog.
+          $$(app, '#searchbox')!.dispatchEvent(new Event('open-voice-search'));
+          await microtasksFinished();
+
+          const dialog = app.shadowRoot.querySelector<HTMLDialogElement>(
+              '#voiceSearchDialog');
+          assertTrue(!!dialog);
+          assertTrue(dialog.open);
+          assertFalse(
+              !!app.shadowRoot.querySelector('ntp-voice-search-overlay'));
+
+          // Verify animation is NOT rendered.
+          const glow = app.shadowRoot.querySelector('search-animated-glow');
+          assertFalse(!!glow);
+
+          // Verify voice search element properties.
+          const voiceSearch =
+              app.shadowRoot.querySelector('cr-composebox-voice-search');
+          assertTrue(!!voiceSearch);
+          assertTrue(voiceSearch.liveTranscriptEnabled);
+          assertFalse(voiceSearch.submitStopButtonsEnabled);
+
+          // Simulate error event.
+          voiceSearch.dispatchEvent(new Event('voice-search-error'));
+          await microtasksFinished();
+
+          // Assert error state is set on app and searchbox.
+          assertTrue(app.hasVoiceSearchError);
+          const searchbox = app.shadowRoot.querySelector('ntp-searchbox');
+          assertTrue(!!searchbox);
+          assertTrue(searchbox.hasVoiceSearchError);
+
+          // Simulate cancel event.
+          voiceSearch.dispatchEvent(new Event('voice-search-cancel'));
+          await microtasksFinished();
+
+          // Assert dialog is closed and error state is reset.
+          assertFalse(dialog.open);
+          assertFalse(app.hasVoiceSearchError);
+
+          // Re-open dialog for final result testing.
+          $$(app, '#searchbox')!.dispatchEvent(new Event('open-voice-search'));
+          await microtasksFinished();
+          assertTrue(dialog.open);
+
+          // Simulate final result event.
+          voiceSearch.dispatchEvent(
+              new CustomEvent('voice-search-final-result', {
+                detail: 'hello world',
+              }));
+
+          // Assert dialog is closed.
+          assertFalse(dialog.open);
+
+          // Assert submitQuery was called on the searchbox page handler with
+          // correct arguments.
+          assertEquals(1, searchboxHandler.getCallCount('submitQuery'));
+          const args = searchboxHandler.getArgs('submitQuery')[0];
+          assertEquals('hello world', args[0]);  // queryText
+          assertEquals(0, args[1]);              // button
+          assertEquals(false, args[2]);          // altKey
+          assertEquals(false, args[3]);          // ctrlKey
+          assertEquals(false, args[4]);          // metaKey
+          assertEquals(false, args[5]);          // shiftKey
+          assertEquals(true, args[6]);           // isVoiceSearch
+        });
+  });
 });
 
 suite('NewTabPageAppReducedMotionTest', () => {
@@ -2904,13 +3002,13 @@ suite('NewTabPageAppContextMenuAnimationTest', () => {
     await microtasksFinished();
   }
 
-  suite('CappingEnabled', () => {
+  suite('LimitingEnabled', () => {
     suiteSetup(() => {
       loadTimeData.overrideValues({
         ntpRealboxNextEnabled: true,
         ntpNextFeaturesEnabled: true,
         actionChipsEnabled: true,
-        realboxContextMenuAnimationCappingEnabled: true,
+        contextMenuAnimationLimitingEnabled: true,
       });
     });
 
@@ -3000,13 +3098,13 @@ suite('NewTabPageAppContextMenuAnimationTest', () => {
     });
   });
 
-  suite('CappingDisabled', () => {
+  suite('LimitingDisabled', () => {
     suiteSetup(() => {
       loadTimeData.overrideValues({
         ntpRealboxNextEnabled: true,
         ntpNextFeaturesEnabled: true,
         actionChipsEnabled: true,
-        realboxContextMenuAnimationCappingEnabled: false,
+        contextMenuAnimationLimitingEnabled: false,
       });
     });
 

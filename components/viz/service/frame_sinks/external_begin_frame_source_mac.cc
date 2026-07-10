@@ -255,19 +255,6 @@ void ExternalBeginFrameSourceMac::SetVSyncDisplayID(int64_t display_id,
   }
 }
 
-void ExternalBeginFrameSourceMac::RefreshRateChangedOnSameDisplay() {
-  if (!ui::DisplayLinkMac::SupportsDisplayLinkMacInBrowser()) {
-    return;
-  }
-
-  // Forward the notification to output surface for frame presentation.
-  output_surface_->RefreshRateChangedOnSameDisplay();
-
-  if (display_link_mac_ && !display_link_mac_->NotifyEventAndCheckValidity()) {
-    // Recreate a new one.
-    SetVSyncDisplayID(display_id_, /*force_update=*/true);
-  }
-}
 void ExternalBeginFrameSourceMac::StartBeginFrame() {
   if (display_link_mac_) {
     if (vsync_callback_mac_) {
@@ -649,10 +636,4 @@ void ExternalBeginFrameSourceMac::OnSuspend() {
   }
 }
 
-void ExternalBeginFrameSourceMac::OnResume() {
-  if (display_link_mac_ && !display_link_mac_->NotifyEventAndCheckValidity()) {
-    // Recreate a new one.
-    SetVSyncDisplayID(display_id_, /*force_update=*/true);
-  }
-}
 }  // namespace viz

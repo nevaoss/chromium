@@ -275,6 +275,7 @@ void ShowTabSearch(BrowserWindowInterface* browser);
 void CloseTabSearch(BrowserWindowInterface* browser);
 void ToggleTabSearchPin(BrowserWindowInterface* browser);
 void ToggleContextualTasksSidePanel(BrowserWindowInterface* browser);
+void ToggleContextualTasksSidePanelZeroState(BrowserWindowInterface* browser);
 void ToggleVerticalTabs(BrowserWindowInterface* browser);
 void ToggleVerticalTabsExpandOnHover(BrowserWindowInterface* browser);
 bool CanCloseFind(BrowserWindowInterface* browser);
@@ -308,8 +309,6 @@ void OpenReportUnsafeSiteDialog(BrowserWindowInterface* browser);
 void ToggleBookmarkBar(BrowserWindowInterface* browser);
 void SetBookmarkBarVisibilityState(BrowserWindowInterface* browser,
                                    bookmarks::BookmarkBarVisibilityState state);
-void ToggleShowAppsShortcutInBookmarkBar(BrowserWindowInterface* browser);
-void ToggleShowTabGroupsInBookmarkBar(BrowserWindowInterface* browser);
 void ToggleShowFullURLs(BrowserWindowInterface* browser);
 void ToggleShowGoogleLensShortcut(BrowserWindowInterface* browser);
 void ToggleShowAiModeOmniboxButton(BrowserWindowInterface* browser);

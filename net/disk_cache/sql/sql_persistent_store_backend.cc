@@ -259,26 +259,6 @@ bool IsBrowserIdle() {
       performance_scenarios::kDefaultIdleScenarios);
 }
 
-class MonitoredVectorIOBuffer : public net::IOBuffer {
- public:
-  MonitoredVectorIOBuffer(base::span<const uint8_t> data,
-                          scoped_refptr<SqlReadCacheMemoryMonitor> monitor)
-      : monitor_(std::move(monitor)), vector_(data.begin(), data.end()) {
-    SetSpan(vector_);
-  }
-
- private:
-  ~MonitoredVectorIOBuffer() override {
-    ClearSpan();
-    if (monitor_) {
-      monitor_->ReleaseBytes(vector_.size());
-    }
-  }
-
-  scoped_refptr<SqlReadCacheMemoryMonitor> monitor_;
-  std::vector<uint8_t> vector_;
-};
-
 uint64_t CalculateSortValue(uint64_t time_since_last_used,
                             uint64_t bytes_usage,
                             bool is_high_priority,

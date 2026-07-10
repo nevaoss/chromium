@@ -203,8 +203,7 @@ class Seat : public aura::client::FocusChangeObserver,
   static constexpr int kMaxObserverPriority = 1;
 
   // Map from priority to a list of SeatObserver pointers.
-  std::array<base::ObserverList<SeatObserver>::Unchecked,
-             kMaxObserverPriority + 1>
+  std::array<base::ObserverList<SeatObserver>, kMaxObserverPriority + 1>
       priority_observer_list_;
 
   // The platform code is the key in this map as it represents the physical

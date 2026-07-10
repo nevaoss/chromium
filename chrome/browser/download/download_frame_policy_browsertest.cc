@@ -23,6 +23,7 @@
 #include "components/subresource_filter/core/common/common_features.h"
 #include "components/subresource_filter/core/common/test_ruleset_utils.h"
 #include "components/subresource_filter/core/mojom/subresource_filter.mojom.h"
+#include "components/ukm/test_ukm_recorder.h"
 #include "content/public/common/content_switches.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
@@ -32,6 +33,7 @@
 #include "net/dns/mock_host_resolver.h"
 #include "net/test/embedded_test_server/controllable_http_response.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
+#include "services/metrics/public/cpp/ukm_builders.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/common/features.h"
 #include "url/gurl.h"
@@ -139,6 +141,8 @@ class DownloadFramePolicyBrowserTest
   }
 
   void SetUpOnMainThread() override {
+    ukm_recorder_ = std::make_unique<ukm::TestAutoSetUkmRecorder>();
+
     host_resolver()->AddRule("*", "127.0.0.1");
     SetRulesetWithRules(
         {subresource_filter::testing::CreateSuffixRule("ad_script.js"),
@@ -271,6 +275,28 @@ class DownloadFramePolicyBrowserTest
             web_contents());
   }
 
+  bool RecordedUkmUseCounter(const blink::mojom::WebFeature& expected_entry,
+                             const GURL& expected_url) {
+    const auto& entries = ukm_recorder_->GetEntriesByName(
+        ukm::builders::Blink_UseCounter::kEntryName);
+    for (const ukm::mojom::UkmEntry* entry : entries) {
+      const ukm::UkmSource* src =
+          ukm_recorder_->GetSourceForSourceId(entry->source_id);
+
+      if (!src || src->url() != expected_url) {
+        continue;
+      }
+
+      const int64_t* metric = ukm_recorder_->GetEntryMetric(
+          entry, ukm::builders::Blink_UseCounter::kFeatureName);
+      if (*metric == static_cast<int>(expected_entry)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   base::HistogramTester* GetHistogramTester() {
     return histogram_tester_.get();
   }
@@ -285,6 +311,7 @@ class DownloadFramePolicyBrowserTest
 
  private:
   std::unique_ptr<base::HistogramTester> histogram_tester_;
+  std::unique_ptr<ukm::TestAutoSetUkmRecorder> ukm_recorder_;
   std::unique_ptr<content::DownloadTestObserver> download_observer_;
   std::unique_ptr<page_load_metrics::PageLoadMetricsTestWaiter>
       web_feature_waiter_;
@@ -724,4 +751,31 @@ IN_PROC_BROWSER_TEST_F(DownloadFramePolicyBrowserTest,
       blink::mojom::WebFeature::kDownloadPrePolicyCheck, 0);
 
   CheckNumDownloadsExpectation();
+}
+
+IN_PROC_BROWSER_TEST_F(DownloadFramePolicyBrowserTest,
+                       PopUpDownload_RecordsUseCounterAgainstInitiator) {
+  base::HistogramTester histogram_tester;
+  SetNumDownloadsExpectation(1);
+
+  GURL top_frame_url =
+      embedded_test_server()->GetURL("a.test", "/frame_factory.html");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), top_frame_url));
+
+  GURL download_url = embedded_test_server()->GetURL("a.test", "/allow.zip");
+
+  // Create a popup that loads the download.
+  EXPECT_TRUE(ExecJs(web_contents(),
+                     "window.open('" + download_url.spec() + "', '_blank');"));
+
+  CheckNumDownloadsExpectation();
+
+  // Close browser to trigger metric recording.
+  CloseBrowserSynchronously(browser());
+
+  // Verify that the use counter was recorded for the initiator page.
+  ASSERT_TRUE(RecordedUkmUseCounter(
+      blink::mojom::WebFeature::kDownloadPrePolicyCheck, top_frame_url));
+  ASSERT_TRUE(RecordedUkmUseCounter(
+      blink::mojom::WebFeature::kDownloadPostPolicyCheck, top_frame_url));
 }

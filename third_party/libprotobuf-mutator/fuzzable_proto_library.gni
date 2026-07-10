@@ -62,6 +62,7 @@ template("fuzzable_proto_library") {
 
     _fuzzable_proto_target = "${target_name}_fuzzable__proto"
     proto_library(_fuzzable_proto_target) {
+      testonly = true
       sources = _prepended_protos
       proto_deps = [ ":$_prepend_fuzzable_target" ]
 
@@ -93,9 +94,11 @@ template("fuzzable_proto_library") {
 
     # These groups are required by proto_library template in proto_library.gni.
     group("${target_name}_fuzzable_input_group") {
+      testonly = true
       public_deps = [ ":${_fuzzable_proto_target}_input_group" ]
     }
     group("${target_name}_fuzzable_gen") {
+      testonly = true
       public_deps = [ ":${_fuzzable_proto_target}_gen" ]
     }
 

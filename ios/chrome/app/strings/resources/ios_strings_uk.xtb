@@ -874,6 +874,7 @@
 <translation id="4021447724486050609">Оновіть вебпереглядач</translation>
 <translation id="4021931095789478915">Додати URL-адресу ${url} у список читання</translation>
 <translation id="4028871427853484857">Зберегти в обліковому записі…</translation>
+<translation id="4036529942385659684">Показувати початкову сторінку після періоду неактивності</translation>
 <translation id="4038354071007134711">Немає додатків на пристрої, щоб відкрити цей файл.</translation>
 <translation id="4042870976416480368">Знайти на сторінці</translation>
 <translation id="4045441967987592849">Повторно відкрити</translation>
@@ -911,7 +912,6 @@
 <translation id="417138788035229076">Керувати групою</translation>
 <translation id="4172051516777682613">Завжди показувати</translation>
 <translation id="417273154673973994">{count,plural, =1{1 групу вкладок закрито й збережено}one{{count} групу вкладок закрито й збережено}few{{count} групи вкладок закрито й збережено}many{{count} груп вкладок закрито й збережено}other{{count} групи вкладок закрито й збережено}}</translation>
-<translation id="417612446554534067">Надіслати на ваші пристрої</translation>
 <translation id="4180726336228139707">Лише на цьому пристрої</translation>
 <translation id="4181841719683918333">Мови</translation>
 <translation id="4183350924949589798">Посилити захист?</translation>
@@ -1135,6 +1135,7 @@
 <translation id="4896467949657706481">Ви вийшли з облікового запису, а вкладки було закрито</translation>
 <translation id="4911042367886397055">З поверненням, <ph name="USER_NAME" />!</translation>
 <translation id="4913626501929406101">Ви можете безпечно надіслати копію пароля учасникам сімейної групи. <ph name="BEGIN_LINK" />Докладніше<ph name="END_LINK" /></translation>
+<translation id="4916679969857390442">Лупа</translation>
 <translation id="4917025507570489430">Ви зможете використовувати наявні дані вебперегляду, коли ввійдете в обліковий запис <ph name="USER_EMAIL" />. Ваша організація може переглядати ці дані.</translation>
 <translation id="4918086044614829423">Прийняти</translation>
 <translation id="4930714375720679147">Увімкнути</translation>

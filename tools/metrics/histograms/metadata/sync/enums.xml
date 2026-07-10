@@ -1937,6 +1937,7 @@ chromium-metrics-reviews@google.com.
   <int value="7" label="Password Manager keyboard accessory"/>
   <int value="8" label="Passkey Unlock Profile Menu"/>
   <int value="9" label="Passkey Authenticator Window"/>
+  <int value="10" label="Password Save Prompt"/>
 </enum>
 
 <!-- LINT.ThenChange(/components/trusted_vault/trusted_vault_client.h:TrustedVaultUserActionTrigger) -->

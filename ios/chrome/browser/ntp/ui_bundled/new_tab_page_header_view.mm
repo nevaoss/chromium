@@ -970,7 +970,8 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
     // bottom.
     self.fakeOmniboxContainer.transform = CGAffineTransformIdentity;
   }
-  self.alpha = std::max<CGFloat>(1.0 - progress, 0.01);
+  CGFloat minAlpha = IsChromeNextIaEnabled() ? 0.0 : 0.01;
+  self.alpha = std::max<CGFloat>(1.0 - progress, minAlpha);
 }
 
 // Calculates progress and calls appropriate helper methods to update the header

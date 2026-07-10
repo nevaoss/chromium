@@ -8,6 +8,7 @@
 #include <initializer_list>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 
 #include "base/callback_list.h"
@@ -15,6 +16,7 @@
 #include "base/functional/callback_forward.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
+#include "base/time/time.h"
 #include "components/user_education/common/session/user_education_session_manager.h"
 #include "components/user_education/common/user_education_storage_service.h"
 #include "components/user_education/product_messaging/product_messaging_types.h"
@@ -24,10 +26,6 @@ namespace user_education {
 
 class ProductMessagingController;
 class ProductMessagingPolicy;
-
-namespace internal {
-class MessagingCoordinator;
-}
 
 // The owner of this object currently has priority to show a product message
 // It must be held while the message is showing and released immediately after
@@ -99,14 +97,15 @@ class ProductMessagingController final {
   //
   // Similarly, re-queueing a message that is already showing or has been
   // successfully shown will have no effect, and `ready_to_start_callback` will
-  // not be called.
+  // not be called (but see below).
   //
-  // The expectation is that all of the messages will be queued during browser
-  // startup, so that even if A must show after B, but B requests to show just
-  // before A, then they will still show in the correct order starting a frame
-  // or two later.
+  // If `timeout` is specified, the message will fall out of the queue after
+  // that time has elapsed. If a new message with the same key is queued, the
+  // one with a timeout further in the future will be the one that ends up in
+  // the queue.
   void QueueMessage(ProductMessageKey message_key,
-                    ProductMessageReadyCallback ready_to_start_callback);
+                    ProductMessageReadyCallback ready_to_start_callback,
+                    std::optional<base::TimeDelta> timeout = std::nullopt);
 
   // Removes `message_id` from the queue, if it is queued.
   // Has no effect if the message has already started to show.
@@ -129,9 +128,16 @@ class ProductMessagingController final {
   base::CallbackListSubscription AddStatusUpdateCallbackForTesting(
       ProductMessageStatusCallback callback);
 
+  // Returns the remaining time for `message_key` in the queue, or `nullopt` if
+  // no expiry. Fails if the message is not queued. May be negative if the entry
+  // is expired but has not been purged, indicating it is overdue to expire.
+  std::optional<base::TimeDelta> GetRemainingTimeForTesting(
+      ProductMessageKey message_key) const;
+
  private:
   friend class ProductMessagingHandleImpl;
-  friend class internal::MessagingCoordinator;
+
+  struct QueueData;
 
   // Called by ProductMessagePriorityHandle when it is released. Clears the
   // current message and maybe tries to start the next.
@@ -142,7 +148,7 @@ class ProductMessagingController final {
   void MaybeShowNextMessage();
 
   // Remove any queued message that should not show.
-  void PurgeBlockedMessages();
+  void PurgeBlockedAndExpiredMessages();
 
   // Actually shows the next message, if one is eligible. Must be called on a
   // fresh call stack, and should only be queued by
@@ -163,7 +169,7 @@ class ProductMessagingController final {
   std::map<ProductMessageKey, bool> active_messages_;
 
   raw_ptr<UserEducationStorageService> storage_service_ = nullptr;
-  std::map<ProductMessageKey, ProductMessageReadyCallback> pending_messages_;
+  std::map<ProductMessageKey, QueueData> pending_messages_;
   std::unique_ptr<ProductMessagingPolicy> policy_;
   base::CallbackListSubscription session_subscription_;
   base::RepeatingCallbackList<ProductMessageStatusCallback::RunType>

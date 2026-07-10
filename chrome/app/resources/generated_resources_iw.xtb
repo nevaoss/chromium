@@ -597,7 +597,6 @@
 <translation id="1433478348197382180">מצב קריאה</translation>
 <translation id="1433980411933182122">הפעלה</translation>
 <translation id="1434659328474177625">‫<ph name="ISSUER" /> אימת את כתובת האימייל שלך</translation>
-<translation id="1434696352799406980">‏פעולה זו תאפס את דף הפתיחה, את דף הכרטיסייה החדשה, את מנוע החיפוש ואת הכרטיסיות המוצמדות שלך. היא גם תשבית את כל התוספים ותמחק נתונים זמניים כגון קובצי Cookie. הסימניות, ההיסטוריה והסיסמאות השמורות לא יימחקו.</translation>
 <translation id="1434886155212424586">דף הבית הוא הדף 'כרטיסייה חדשה'</translation>
 <translation id="1435940442311036198">שימוש במפתח גישה במכשיר אחר</translation>
 <translation id="1436390408194692385">תקף למשך <ph name="TICKET_TIME_LEFT" /></translation>
@@ -653,7 +652,7 @@
 <translation id="1470084204649225129">{NUM_TABS,plural, =1{הוספת הכרטיסייה לקבוצה חדשה}one{הוספת כרטיסיות לקבוצה חדשה}two{הוספת כרטיסיות לקבוצה חדשה}other{הוספת כרטיסיות לקבוצה חדשה}}</translation>
 <translation id="1470946456740188591">‏כדי להפעיל או להשבית או הגלישה באמצעות סמן הטקסט, אפשר להשתמש במקשי הקיצור Ctrl+Search+7</translation>
 <translation id="1471034383866732283">למצב הקריאה יש בעיה באיתור התוכן הראשי בדף הזה</translation>
-<translation id="1472675084647422956">הצגת יותר מידע</translation>
+<translation id="1472675084647422956">עוד</translation>
 <translation id="1473223074251193484">‏קביעת ההגדרות האישיות לשיתוף אינטרנט בין מכשירים (tethering)</translation>
 <translation id="1473616112002966036">&amp;פריים</translation>
 <translation id="1473927070149284123">אפשר לנסות שוב או להתחבר לרשת באופן ידני</translation>
@@ -2571,6 +2570,7 @@
 <translation id="2822551631199737692">המצלמה נמצאת בשימוש</translation>
 <translation id="2822634587701817431">כיווץ / הרחבה</translation>
 <translation id="2824942875887026017">‏<ph name="IDS_SHORT_PRODUCT_NAME" /> משתמש בהגדרות Proxy שנקבעו על-ידי מנהל המערכת</translation>
+<translation id="2825200993288778739">יוצרים מיומנויות חדשות או מוסיפים מיומנויות מהספרייה</translation>
 <translation id="282525059261716597">שורת פקודה:</translation>
 <translation id="2825758591930162672">מפתח ציבורי של נושא</translation>
 <translation id="2826576843404243001">מקבלים אזהרה לפני שמבקרים באתרים שלא תומכים בחיבורים מאובטחים. לא ניתן לשנות את ההגדרה הזו כי ההגנה המתקדמת מופעלת.</translation>
@@ -3711,7 +3711,6 @@
 <translation id="366484203224589850">‏‫<ph name="TASK_TITLE" />: Gemini עובד על המשימה כבר הרבה זמן ויפסיק בקרוב כדי לחסוך בסוללה</translation>
 <translation id="3664911592976620204">{NUM_OTHER_MEMBERS,plural, =0{הצטרפות לקבוצת כרטיסיות עם <ph name="OWNER_FIRST_NAME" />}=1{הצטרפות לקבוצת כרטיסיות עם <ph name="OWNER_FIRST_NAME" /> ועוד משתמש אחד (#)}one{הצטרפות לקבוצת כרטיסיות עם <ph name="OWNER_FIRST_NAME" /> ועוד # משתמשים}two{הצטרפות לקבוצת כרטיסיות עם <ph name="OWNER_FIRST_NAME" /> ועוד # משתמשים}other{הצטרפות לקבוצת כרטיסיות עם <ph name="OWNER_FIRST_NAME" /> ועוד # משתמשים}}</translation>
 <translation id="3665301845536101715">פתיחה בחלונית צדדית</translation>
-<translation id="3665589677786828986">‏Chrome זיהה שחלק מההגדרות שלך נפגמו על ידי תכנית אחרת ואיפס אותן לברירות המחדל המקוריות.</translation>
 <translation id="3665918214153961651">העלאת הקובץ מתבצעת</translation>
 <translation id="3666196264870170605">Intel WiFi NICs Debug Dump</translation>
 <translation id="3666971425390608309">ההורדה של <ph name="FILE_NAME" /> הושהתה.</translation>
@@ -4648,6 +4647,7 @@
 <translation id="4321179778687042513">ctrl</translation>
 <translation id="432160826079505197">‏הצגה של <ph name="FILE_NAME" /> ב-Finder</translation>
 <translation id="4322394346347055525">סגירת כרטיסיות אחרות</translation>
+<translation id="4322400254469690320">חיפוש של <ph name="FILENAME" /> בתיקייה <ph name="FEATURE_NAME" /></translation>
 <translation id="4324577459193912240">הקובץ לא הושלם</translation>
 <translation id="4325433082696797523">אחסון וחשמל</translation>
 <translation id="4325515113816851466">הבחירות של ההורה שלך לא יחולו אחרי היציאה</translation>
@@ -4999,7 +4999,6 @@
 <translation id="4580596421317071374">הסיסמאות נשמרות ב<ph name="GOOGLE_PASSWORD_MANAGER" /> במכשיר הזה.</translation>
 <translation id="4580939929828762295">‏מנהל הסיסמאות של Google עוזר לשמור על הבטיחות שלך</translation>
 <translation id="4582297591746054421">אתרים קוראים בדרך כלל את הלוח כדי לתמוך בתכונות כמו שמירה על עיצוב הטקסט שהועתק אליו</translation>
-<translation id="4582563038311694664">איפוס כל ההגדרות</translation>
 <translation id="4584094413232466841">‏להסיר את הפרטים האלה מהמילוי האוטומטי של Chrome?</translation>
 <translation id="4584770411839426377">חלון</translation>
 <translation id="4584836561445313300">הארגון שלך יוכל לראות ולנהל את נתוני הגלישה הקיימים, כמו סיסמאות ועוד</translation>
@@ -5751,7 +5750,7 @@
 <translation id="513555878193063507">‏הוספה של APN חדש</translation>
 <translation id="5136343472380336530">‏יש לוודא ששני המכשירים אינם נעולים, שהם קרובים זה לזה ושבשניהם מופעל Bluetooth. <ph name="LINK_BEGIN" />מידע נוסף<ph name="LINK_END" /></translation>
 <translation id="5136529877787728692">F7</translation>
-<translation id="5138227688689900538">פחות מידע</translation>
+<translation id="5138227688689900538">פחות</translation>
 <translation id="5139823398361067371">יש להזין את קוד האימות של מפתח האבטחה. אם לא ידוע לך מהו קוד האימות, יהיה עליך לאפס את מפתח האבטחה.</translation>
 <translation id="5139955368427980650">&amp;פתיחה</translation>
 <translation id="5140742218917419811">מקשים לשימוש</translation>
@@ -6644,6 +6643,7 @@
 <translation id="5826993284769733527">שקוף למחצה</translation>
 <translation id="5827266244928330802">Safari</translation>
 <translation id="5827591412833386477">הצגת האתרים באותה קבוצה</translation>
+<translation id="5827835011646404677">‏המיומנויות נשמרות בחשבון שלך ב-Google</translation>
 <translation id="5828181959764767444">שקיעה</translation>
 <translation id="5828545842856466741">הוספת פרופיל...</translation>
 <translation id="5828633471261496623">ההדפסה מתבצעת...</translation>
@@ -10090,7 +10090,6 @@
 <translation id="8327386430364625757">גופן מתמטי</translation>
 <translation id="8327490658947427005">הקטע שבחרת הוא לא ב<ph name="LANGUAGE" /></translation>
 <translation id="8327544198829180337">סגירת התצוגה הזו</translation>
-<translation id="8327676037044516220">הגדרות תוכן והרשאות</translation>
 <translation id="8328228852664998535">לאחר המשך הפעולה, הסיסמאות, מפתחות הגישה ונתונים אחרים יימחקו באופן סופי מ<ph name="BRAND" />. חשבונות שיצרת לאתרים או לאפליקציות לא יימחקו.</translation>
 <translation id="8328777765163860529">סגירת הכול</translation>
 <translation id="8330617762701840933">רשימת האתרים שמפנים לדפדפן חלופי.</translation>
@@ -10911,7 +10910,6 @@
 <translation id="8925458182817574960">&amp;הגדרות</translation>
 <translation id="8926389886865778422">אין לשאול שוב</translation>
 <translation id="8926555406617248399">הכרטיסיות מוסתרות</translation>
-<translation id="892706138619340876">בוצע איפוס של חלק מההגדרות</translation>
 <translation id="8927438609932588163">מתן הרשאה לאתרים לשמור נתונים במכשיר שלך</translation>
 <translation id="8929696694736010839">בסשן האנונימי הנוכחי בלבד</translation>
 <translation id="8929738682246584251">הפעלה או השבתה של זכוכית המגדלת</translation>
@@ -11220,6 +11218,7 @@
 <translation id="9130015405878219958">הוזן מצב לא חוקי.</translation>
 <translation id="9130135798965366513">כדי להמשיך, הפרטים '<ph name="FIELDS_STRING" />' ישותפו על ידי <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> עם האתר הזה. בקישורים הבאים ניתן לצפות ב<ph name="BEGIN_LINK1" />מדיניות הפרטיות<ph name="END_LINK1" /> ו<ph name="BEGIN_LINK2" />בתנאים ובהגבלות<ph name="END_LINK2" /> של האתר הזה.</translation>
 <translation id="9130364135697530260">תוכן מוטמע באתר הזה יכול להשתמש במידע שנשמר עליך</translation>
+<translation id="9130857050314385402">‏כשמשתמשים במיומנות מסוימת, השמות וכתובות ה-URL של הכרטיסיות נשלחים אל Google</translation>
 <translation id="9131209053278896908">כאן יופיעו אתרים חסומים</translation>
 <translation id="9131487537093447019">‏שליחת הודעות למכשירי Bluetooth וקבלת הודעות מהם.</translation>
 <translation id="9133568201369135151">איסוף נתוני האבחון הסתיים. חלק מהפרטים האישיים שלך כלולים בנתונים האלה.</translation>

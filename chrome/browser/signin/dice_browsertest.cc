@@ -1702,6 +1702,12 @@ IN_PROC_BROWSER_TEST_F(DiceBrowserTestWithExplicitSignin,
   EXPECT_TRUE(
       GetIdentityManager()->HasPrimaryAccount(signin::ConsentLevel::kSignin));
   histogram_tester.ExpectUniqueSample(
+      "Signin.SignIn.Offered",
+      signin_metrics::AccessPoint::kSigninChoiceRemembered, 1);
+  histogram_tester.ExpectUniqueSample(
+      "Signin.SignIn.Started",
+      signin_metrics::AccessPoint::kSigninChoiceRemembered, 1);
+  histogram_tester.ExpectUniqueSample(
       "Signin.SignIn.Completed",
       signin_metrics::AccessPoint::kSigninChoiceRemembered, 1);
 }

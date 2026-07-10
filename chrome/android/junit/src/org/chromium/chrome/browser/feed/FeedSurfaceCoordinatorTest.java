@@ -64,11 +64,12 @@ import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
 import org.chromium.chrome.browser.feed.componentinterfaces.SurfaceCoordinator;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.magic_stack.ModuleRegistry;
-import org.chromium.chrome.browser.ntp.NewTabPageLaunchOrigin;
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationConfigManager;
 import org.chromium.chrome.browser.ntp_customization.policy.NtpCustomizationPolicyManager;
 import org.chromium.chrome.browser.ntp_customization.theme.NtpBackgroundImageCoordinator;
 import org.chromium.chrome.browser.ntp_customization.theme.upload_image.BackgroundImageInfo;
+import org.chromium.chrome.browser.ntp_customization.theme_sync.data.NtpBackgroundDataBase;
+import org.chromium.chrome.browser.ntp_customization.theme_sync.data.NtpBackgroundDataUploadImage;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
 import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
 import org.chromium.chrome.browser.preferences.Pref;
@@ -116,6 +117,8 @@ import java.util.function.Supplier;
 public class FeedSurfaceCoordinatorTest {
     private static final @SurfaceType int SURFACE_TYPE = SurfaceType.NEW_TAB_PAGE;
     private static final long SURFACE_CREATION_TIME_NS = 1234L;
+    private static final String FILE_ID_HASH = "fileIdHash";
+
     private BackgroundImageInfo mBackgroundImageInfo;
     private Bitmap mBitmap;
 
@@ -468,7 +471,15 @@ public class FeedSurfaceCoordinatorTest {
         NtpCustomizationConfigManager configManager = NtpCustomizationConfigManager.getInstance();
         configManager.setBackgroundTypeForTesting(CHROME_COLOR);
 
-        configManager.onUploadedImageSelected(mBitmap, mBackgroundImageInfo);
+        NtpBackgroundDataUploadImage uploadImageData =
+                new NtpBackgroundDataUploadImage(
+                        NtpBackgroundDataBase.PlatformType.ANDROID_LOCAL,
+                        /* lastUploadImageFilePath= */ "",
+                        mBackgroundImageInfo,
+                        mBitmap,
+                        /* primaryColor= */ null,
+                        FILE_ID_HASH);
+        configManager.onBackgroundDataChanged(mActivity, uploadImageData);
 
         // Verifies the coordinator delegates the setBackground call to the custom view.
         verify(mBackgroundImageCoordinator)
@@ -589,7 +600,6 @@ public class FeedSurfaceCoordinatorTest {
                         mBottomSheetController,
                         mShareDelegateSupplier,
                         mScrollableContainerDelegate,
-                        NewTabPageLaunchOrigin.UNKNOWN,
                         mPrivacyPreferencesManager,
                         () -> null,
                         SURFACE_CREATION_TIME_NS,
@@ -635,7 +645,6 @@ public class FeedSurfaceCoordinatorTest {
                 mBottomSheetController,
                 mShareDelegateSupplier,
                 mScrollableContainerDelegate,
-                NewTabPageLaunchOrigin.UNKNOWN,
                 mPrivacyPreferencesManager,
                 () -> {
                     return null;

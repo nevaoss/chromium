@@ -13,11 +13,18 @@
 #include "chromeos/ash/experiences/isolated_web_app/isolated_web_app_api_allowlist.h"
 #include "chromeos/ash/experiences/isolated_web_app/shaped_window_targeter.h"
 #include "chromeos/constants/chromeos_features.h"
+#include "content/public/browser/browser_context.h"
 #include "content/public/browser/document_user_data.h"
+#include "content/public/browser/permission_controller.h"
+#include "content/public/browser/permission_descriptor_util.h"
+#include "content/public/browser/permission_result.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
+#include "content/public/browser/web_contents_delegate.h"
 #include "content/public/browser/web_exposed_isolation_level.h"
 #include "third_party/blink/public/mojom/chromeos/isolated_web_app_api_bridge.mojom.h"
+#include "third_party/blink/public/mojom/manifest/display_mode.mojom.h"
+#include "third_party/blink/public/mojom/permissions/permission_status.mojom.h"
 #include "ui/aura/window.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/views/widget/widget.h"
@@ -89,7 +96,9 @@ IsolatedWebAppApiBridgeImpl::IsolatedWebAppApiBridgeImpl(
     : content::DocumentUserData<IsolatedWebAppApiBridgeImpl>(
           render_frame_host) {}
 
-IsolatedWebAppApiBridgeImpl::~IsolatedWebAppApiBridgeImpl() = default;
+IsolatedWebAppApiBridgeImpl::~IsolatedWebAppApiBridgeImpl() {
+  UnsubscribeFromWindowManagementPermissionChanges();
+}
 
 void IsolatedWebAppApiBridgeImpl::Bind(
     mojo::PendingReceiver<blink::mojom::IsolatedWebAppApiBridge> receiver) {
@@ -102,13 +111,30 @@ void IsolatedWebAppApiBridgeImpl::Bind(
 void IsolatedWebAppApiBridgeImpl::SetShape(const std::vector<gfx::Rect>& rects,
                                            SetShapeCallback callback) {
   if (!force_enable_api_for_testing_ && !ApiIsEnabledFor(render_frame_host())) {
-    mojo::ReportBadMessage("SetShape is disabled for this caller.");
+    receiver_.ReportBadMessage("SetShape is disabled for this caller.");
     return;
   }
 
   if (!render_frame_host().IsActive()) {
     // Only active `RenderFrameHost`s should show or update the UI.
     std::move(callback).Run(blink::mojom::SetShapeResult::kNoWindow);
+    return;
+  }
+
+  content::WebContents* web_contents =
+      content::WebContents::FromRenderFrameHost(&render_frame_host());
+  if (!web_contents) {
+    std::move(callback).Run(blink::mojom::SetShapeResult::kNoWindow);
+    return;
+  }
+
+  blink::mojom::DisplayMode display_mode = blink::mojom::DisplayMode::kBrowser;
+  if (web_contents->GetDelegate()) {
+    display_mode = web_contents->GetDelegate()->GetDisplayMode(web_contents);
+  }
+
+  if (display_mode != blink::mojom::DisplayMode::kUnframed) {
+    std::move(callback).Run(blink::mojom::SetShapeResult::kNotUnframed);
     return;
   }
 
@@ -124,7 +150,63 @@ void IsolatedWebAppApiBridgeImpl::SetShape(const std::vector<gfx::Rect>& rects,
   }
 
   SetShapeAndEventTargeter(*widget, rects);
+
+  if (rects.empty()) {
+    UnsubscribeFromWindowManagementPermissionChanges();
+  } else {
+    SubscribeToWindowManagementPermissionChanges();
+  }
+
   std::move(callback).Run(blink::mojom::SetShapeResult::kSuccess);
+}
+
+void IsolatedWebAppApiBridgeImpl::ResetShape() {
+  views::Widget* widget = GetWidget();
+  if (widget) {
+    SetShapeAndEventTargeter(*widget, {});
+  }
+}
+
+void IsolatedWebAppApiBridgeImpl::OnWindowManagementPermissionChanged(
+    content::PermissionResult result) {
+  if (result.status != blink::mojom::PermissionStatus::GRANTED) {
+    ResetShape();
+    UnsubscribeFromWindowManagementPermissionChanges();
+  }
+}
+
+void IsolatedWebAppApiBridgeImpl::
+    SubscribeToWindowManagementPermissionChanges() {
+  if (permission_subscription_id_) {
+    return;
+  }
+
+  auto* controller =
+      render_frame_host().GetBrowserContext()->GetPermissionController();
+  url::Origin origin = render_frame_host().GetLastCommittedOrigin();
+
+  permission_subscription_id_ = controller->SubscribeToPermissionResultChange(
+      content::PermissionDescriptorUtil::
+          CreatePermissionDescriptorForPermissionType(
+              blink::PermissionType::WINDOW_MANAGEMENT),
+      /*render_process_host*/ nullptr, &render_frame_host(), origin.GetURL(),
+      /*should_include_device_status=*/false,
+      base::BindRepeating(
+          &IsolatedWebAppApiBridgeImpl::OnWindowManagementPermissionChanged,
+          base::Unretained(this)));
+}
+
+void IsolatedWebAppApiBridgeImpl::
+    UnsubscribeFromWindowManagementPermissionChanges() {
+  if (!permission_subscription_id_) {
+    return;
+  }
+
+  render_frame_host()
+      .GetBrowserContext()
+      ->GetPermissionController()
+      ->UnsubscribeFromPermissionResultChange(*permission_subscription_id_);
+  permission_subscription_id_.reset();
 }
 
 views::Widget* IsolatedWebAppApiBridgeImpl::GetWidget() {

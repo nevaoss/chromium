@@ -466,7 +466,7 @@ const SendTabToSelfEntry* SendTabToSelfBridge::SendEntry(
 
   std::unique_ptr<SendTabToSelfEntry> entry =
       std::make_unique<SendTabToSelfEntry>(
-          guid, url, trimmed_title, shared_time, GetLocalFullName(),
+          guid, url, trimmed_title, shared_time, GetLocalFallbackFullName(),
           target_device_cache_guid, context, std::move(navigation_history));
 
   // The size is recorded before potential truncation (dropping) of the context
@@ -619,9 +619,10 @@ SendTabToSelfBridge::GetTargetDeviceInfoSortedList() {
   }
 
   // Resolve display names for the filtered list. This handles de-duplication
-  // by name and chooses between short/full names based on collisions.
+  // by name and chooses between preferred/fallback names based on collisions.
   std::vector<syncer::DeviceInfoWithName> device_names =
-      syncer::DetermineDisplayNamesAndDeduplicate(devices, GetLocalFullName());
+      syncer::DetermineDisplayNamesAndDeduplicate(devices,
+                                                  GetLocalFallbackFullName());
 
   return base::ToVector(device_names, [&](const auto& info) {
     auto it = std::ranges::find(devices_with_timestamps, info.device,
@@ -783,7 +784,7 @@ SendTabToSelfEntry* SendTabToSelfBridge::GetMutableEntryByGUID(
   return it->second.get();
 }
 
-std::string SendTabToSelfBridge::GetLocalFullName() const {
+std::string SendTabToSelfBridge::GetLocalFallbackFullName() const {
   if (local_device_name_for_testing_.has_value()) {
     return *local_device_name_for_testing_;
   }
@@ -792,7 +793,7 @@ std::string SendTabToSelfBridge::GetLocalFullName() const {
       change_processor()->TrackedCacheGuid());
   CHECK(local_device, base::NotFatalUntil::M148);
 
-  return syncer::GetDeviceDisplayNames(local_device).full_name;
+  return syncer::GetDisplayNameCandidates(local_device).fallback_full_name;
 }
 
 bool SendTabToSelfBridge::ShouldIncludeDevice(

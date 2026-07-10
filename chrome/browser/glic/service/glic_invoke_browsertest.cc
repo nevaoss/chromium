@@ -97,6 +97,20 @@ IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeWithEmptyConversationId) {
   EXPECT_EQ(error_future.Get(), GlicInvokeError::kInvalidConversationId);
 }
 
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeWithInvalidInstanceId) {
+  base::test::TestFuture<GlicInvokeError> error_future;
+  InstanceId invalid_id("non-existent-instance-id");
+  GlicInvokeOptions options(glic::Target(invalid_id),
+                            mojom::InvocationSource::kOsButton);
+  options.on_error = error_future.GetCallback();
+  options.target.surface = DefaultSurface{
+      GetTabListInterface()->GetActiveTab()->GetBrowserWindowInterface()};
+
+  coordinator().Invoke(std::move(options));
+
+  EXPECT_EQ(error_future.Get(), GlicInvokeError::kInstanceNotFound);
+}
+
 IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeWhenWebClientAlreadySet) {
   tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
 
@@ -281,6 +295,30 @@ IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeWithWaitForPanelOpen) {
 #endif  // !BUILDFLAG(IS_ANDROID)
 }
 
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeWithOnPanelOpened) {
+  tabs::TabInterface* tab = CreateAndActivateTab(GetSimpleTestUrl());
+
+  base::test::TestFuture<void> panel_opened_future;
+  base::test::TestFuture<void> success_future;
+  GlicInvokeOptions options(glic::Target(*tab),
+                            mojom::InvocationSource::kOsButton);
+  options.wait_for_panel_open = true;
+  options.on_panel_opened = panel_opened_future.GetCallback();
+  options.on_success = success_future.GetCallback();
+
+  coordinator().Invoke(std::move(options));
+
+  auto* instance = GetInstanceForTab(tab);
+  ASSERT_TRUE(instance);
+
+  // on_panel_opened should be called.
+  EXPECT_TRUE(panel_opened_future.Wait());
+  EXPECT_TRUE(instance->IsShowing());
+
+  // success should also be called eventually.
+  EXPECT_TRUE(success_future.Wait());
+}
+
 IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeWhileInvokeInProgress) {
   tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
   base::test::TestFuture<GlicInvokeError> error_future1;
@@ -416,6 +454,29 @@ IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeSuccess) {
 
   EXPECT_TRUE(success_future.Wait());
   EXPECT_TRUE(GetInstanceForTab(tab));
+}
+
+// Verifies that invoking with prompts doesn't cause any crashes or failures
+// during the processing of options. Note: this acts as a smoke test and does
+// not intercept the IPC to verify the prompts were actually delivered to the
+// WebUI.
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeWithPromptsSmokeTest) {
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+
+  base::test::TestFuture<void> success_future;
+  GlicInvokeOptions options(glic::Target(*tab),
+                            mojom::InvocationSource::kOsButton);
+  options.on_success = success_future.GetCallback();
+  options.prompts = {"test prompt"};
+
+  coordinator().Invoke(std::move(options));
+
+  EXPECT_TRUE(success_future.Wait());
+
+  GlicInstanceImpl* instance = GetInstanceForTab(tab);
+  ASSERT_TRUE(instance);
+
+  ASSERT_OK(WaitForGlicClient(instance));
 }
 
 IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,

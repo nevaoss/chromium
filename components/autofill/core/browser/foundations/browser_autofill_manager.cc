@@ -325,6 +325,7 @@ FillDataType GetEventTypeFromSingleFieldSuggestionType(SuggestionType type) {
     case SuggestionType::kAtMemoryNoConnection:
     case SuggestionType::kAtMemorySearchAffordance:
     case SuggestionType::kPersonalContextNotice:
+    case SuggestionType::kFetchingAmbientData:
       NOTREACHED();
   }
   NOTREACHED();
@@ -730,6 +731,7 @@ bool IsManagementFooterOption(const Suggestion& suggestion) {
     case SuggestionType::kFillAutofillAi:
     case SuggestionType::kPendingStateSignin:
     case SuggestionType::kLoadingThrobber:
+    case SuggestionType::kFetchingAmbientData:
     case SuggestionType::kBnplFootnote:
     case SuggestionType::kAutocompleteAtMemoryButton:
     case SuggestionType::kAtMemoryNoConnection:
@@ -980,6 +982,10 @@ void BrowserAutofillManager::OnFormSubmittedImpl(const FormData& form,
   }
 }
 
+void BrowserAutofillManager::OnFormWithEmailVerificationTokenSubmittedImpl(
+    const FormData& form,
+    const FieldGlobalId& field_id) {}
+
 void BrowserAutofillManager::UpdatePendingForm(const FormData& form) {
   // Process the current pending form if different than supplied |form|.
   if (pending_form_data_ && CalculateFormSignature(*pending_form_data_) !=
@@ -1060,8 +1066,9 @@ void BrowserAutofillManager::LogSubmissionMetrics(
     metrics_->credit_card_form_event_logger.set_signin_state_for_metrics(
         metrics_->signin_state_for_metrics);
     metrics_->credit_card_form_event_logger.OnFormSubmitted(*submitted_form);
-    if (touch_to_fill_delegate_) {
-      touch_to_fill_delegate_->LogMetricsAfterSubmission(*submitted_form);
+    if (touch_to_fill_payment_method_delegate_) {
+      touch_to_fill_payment_method_delegate_->LogMetricsAfterSubmission(
+          *submitted_form);
     }
   }
   if (client().IsAutofillEnabled()) {
@@ -1380,11 +1387,11 @@ bool BrowserAutofillManager::TryToShowTouchToFillSuggestions(
     const AutofillField* trigger_autofill_field,
     const std::vector<Suggestion>& suggestions,
     AutofillSuggestionTriggerSource trigger_source) {
-  if (!touch_to_fill_delegate_) {
+  if (!touch_to_fill_payment_method_delegate_) {
     return false;
   }
 
-  if (touch_to_fill_delegate_->IsShowingTouchToFill()) {
+  if (touch_to_fill_payment_method_delegate_->IsShowingTouchToFill()) {
     return true;
   }
 
@@ -1402,7 +1409,8 @@ bool BrowserAutofillManager::TryToShowTouchToFillSuggestions(
 
   return trigger_source ==
              AutofillSuggestionTriggerSource::kFormControlElementClicked &&
-         touch_to_fill_delegate_->TryToShowTouchToFill(form, trigger_field);
+         touch_to_fill_payment_method_delegate_->TryToShowTouchToFill(
+             form, trigger_field);
 }
 
 std::vector<Suggestion> BrowserAutofillManager::MergeWithAddressSuggestions(
@@ -2334,8 +2342,8 @@ void BrowserAutofillManager::OnHidePopupImpl() {
   client().HideSuggestions(SuggestionHidingReason::kRendererEvent,
                            /*product=*/std::nullopt);
   client().HideAutofillFieldIph();
-  if (touch_to_fill_delegate_) {
-    touch_to_fill_delegate_->HideTouchToFill();
+  if (touch_to_fill_payment_method_delegate_) {
+    touch_to_fill_payment_method_delegate_->HideTouchToFill();
   }
 }
 
@@ -2669,8 +2677,8 @@ void BrowserAutofillManager::Reset() {
   suggestion_generators_.clear();
   four_digit_combinations_in_dom_.clear();
   last_unlocked_credit_card_cvc_.clear();
-  if (touch_to_fill_delegate_) {
-    touch_to_fill_delegate_->Reset();
+  if (touch_to_fill_payment_method_delegate_) {
+    touch_to_fill_payment_method_delegate_->Reset();
   }
   form_filler_->Reset();
   ai_card_recommendation_manager_.reset();

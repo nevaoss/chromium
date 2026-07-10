@@ -597,7 +597,6 @@ Jebkurā laikā varat pārbaudīt paroles pakalpojumā <ph name="GOOGLE_PASSWORD
 <translation id="1433478348197382180">Lasīšanas režīms</translation>
 <translation id="1433980411933182122">Startēšana</translation>
 <translation id="1434659328474177625"><ph name="ISSUER" /> verificēja jūsu e-pasta adresi</translation>
-<translation id="1434696352799406980">Tādējādi tiks atiestatīta jūsu sākumlapa, jaunas cilnes lapa, meklētājprogramma un piespraustās cilnes. Turklāt tiks atspējoti visi paplašinājumi, kā arī tiks notīrīti pagaidu dati, piemēram, sīkfaili. Netiks notīrītas jūsu grāmatzīmes, vēsture un saglabātās paroles.</translation>
 <translation id="1434886155212424586">Sākumlapa ir jaunas cilnes lapa</translation>
 <translation id="1435940442311036198">Izmantot piekļuves atslēgu citā ierīcē</translation>
 <translation id="1436390408194692385">Derīga vēl šādu laiku: <ph name="TICKET_TIME_LEFT" /></translation>
@@ -2562,6 +2561,7 @@ Varat pārvaldīt šī konta iestatījumus, savā ierīcē instalējot lietotni 
 <translation id="2822551631199737692">Tiek izmantota kamera</translation>
 <translation id="2822634587701817431">Samazināt/izvērst</translation>
 <translation id="2824942875887026017"><ph name="IDS_SHORT_PRODUCT_NAME" /> izmanto jūsu administratora starpniekservera iestatījumus</translation>
+<translation id="2825200993288778739">Izveidojiet savas prasmes vai pievienojiet prasmes no prasmju bibliotēkas.</translation>
 <translation id="282525059261716597">Komandrinda:</translation>
 <translation id="2825758591930162672">Subjekta publiskā atslēga</translation>
 <translation id="2826576843404243001">Ja vietne neatbalsta drošus savienojumus, saņemsiet brīdinājumu pirms vietnes apmeklēšanas. Jūs nevarat mainīt šo iestatījumu, jo ir iespējota papildu aizsardzība.</translation>
@@ -3700,7 +3700,6 @@ Servera ziņojums: <ph name="SERVER_MSG" /></translation>
 <translation id="366484203224589850"><ph name="TASK_TITLE" />: Gemini ilgi strādāja pie šī uzdevuma un drīzumā apturēs darbu, lai taupītu akumulatora enerģiju.</translation>
 <translation id="3664911592976620204">{NUM_OTHER_MEMBERS,plural, =0{Pievienošanās ciļņu grupai, ko izmanto <ph name="OWNER_FIRST_NAME" />}=1{Pievienošanās ciļņu grupai, ko izmanto <ph name="OWNER_FIRST_NAME" /> un # cits dalībnieks}zero{Pievienošanās ciļņu grupai, ko izmanto <ph name="OWNER_FIRST_NAME" /> un # citi dalībnieki}one{Pievienošanās ciļņu grupai, ko izmanto <ph name="OWNER_FIRST_NAME" /> un # cits dalībnieks}other{Pievienošanās ciļņu grupai, ko izmanto <ph name="OWNER_FIRST_NAME" /> un # citi dalībnieki}}</translation>
 <translation id="3665301845536101715">Atvērt sānu panelī</translation>
-<translation id="3665589677786828986">Pārlūkā Chrome tika konstatēts, ka daži jūsu iestatījumi tika bojāti citā programmā, tāpēc šie iestatījumi tika atiestatīti uz sākotnējiem noklusējuma iestatījumiem.</translation>
 <translation id="3665918214153961651">Notiek faila augšupielāde</translation>
 <translation id="3666196264870170605">Intel Wi-Fi NIC atkļūdošanas izmete</translation>
 <translation id="3666971425390608309">Lejupielāde pārtraukta: <ph name="FILE_NAME" />.</translation>
@@ -4637,6 +4636,7 @@ Vai vēlaties palaist rīku <ph name="CONTROL_PANEL_APPLET_NAME" />?</translatio
 <translation id="4321179778687042513">ctrl</translation>
 <translation id="432160826079505197">Rādīt failu <ph name="FILE_NAME" /> lietojumprogrammā Finder</translation>
 <translation id="4322394346347055525">Aizvērt citas cilnes</translation>
+<translation id="4322400254469690320">Atrodiet failu <ph name="FILENAME" /> mapē “<ph name="FEATURE_NAME" />”.</translation>
 <translation id="4324577459193912240">Fails nav pilnībā lejupielādēts</translation>
 <translation id="4325433082696797523">Krātuve un barošana</translation>
 <translation id="4325515113816851466">Pēc izrakstīšanās jūsu vecāku izvēlētās opcijas netiks lietotas.</translation>
@@ -4987,7 +4987,6 @@ Vai vēlaties palaist rīku <ph name="CONTROL_PANEL_APPLET_NAME" />?</translatio
 <translation id="4580596421317071374">Paroles tiek saglabātas šajā ierīcē, izmantojot pakalpojumu <ph name="GOOGLE_PASSWORD_MANAGER" />.</translation>
 <translation id="4580939929828762295">Esiet drošībā, izmantojot Google paroļu pārvaldnieku</translation>
 <translation id="4582297591746054421">Parasti vietnes lasa starpliktuvi, lai nodrošinātu noteiktas funkcijas, piemēram, nokopētā teksta formatējuma saglabāšanu.</translation>
-<translation id="4582563038311694664">Atiestatīt visus iestatījumus</translation>
 <translation id="4584094413232466841">Vai noņemt šo informāciju no Chrome automātiskās aizpildes?</translation>
 <translation id="4584770411839426377">Logs</translation>
 <translation id="4584836561445313300">Jūsu organizācija varēs skatīt un pārvaldīt visus esošos pārlūkošanas datus, piemēram, paroles un citus datus.</translation>
@@ -6629,6 +6628,7 @@ Lai tālinātu, nospiediet Ctrl + Alt + spilgtuma samazināšanas taustiņu.
 <translation id="5826993284769733527">Daļēji caurredzams</translation>
 <translation id="5827266244928330802">Safari</translation>
 <translation id="5827591412833386477">Rādīt tajā pašā grupā iekļautās vietnes</translation>
+<translation id="5827835011646404677">Prasmes tiek saglabātas jūsu Google kontā.</translation>
 <translation id="5828181959764767444">Saulriets</translation>
 <translation id="5828545842856466741">Pievienot profilu...</translation>
 <translation id="5828633471261496623">Notiek drukāšana...</translation>
@@ -10074,7 +10074,6 @@ Glabājiet atslēgas failu drošā vietā. Tas būs vajadzīgs, lai izveidotu ja
 <translation id="8327386430364625757">Matemātiskais fonts</translation>
 <translation id="8327490658947427005">Atlasītais teksts nav šādā valodā: <ph name="LANGUAGE" /></translation>
 <translation id="8327544198829180337">Aizvērt šo skatu</translation>
-<translation id="8327676037044516220">Atļaujas un satura iestatījumi</translation>
 <translation id="8328228852664998535">Ja turpināsiet, jūsu paroles, piekļuves atslēgas un citi dati tiks neatgriezeniski izdzēsti no pakalpojuma <ph name="BRAND" />. Netiks dzēsti konti, kurus izveidojāt vietnēm vai lietotnēm.</translation>
 <translation id="8328777765163860529">Aizvērt visu</translation>
 <translation id="8330617762701840933">To vietņu saraksts, kuras aktivizē novirzīšanu uz papildu pārlūkprogrammu.</translation>
@@ -10895,7 +10894,6 @@ Tā var ietvert informāciju par ierīcē instalēto programmatūru, failiem, p�
 <translation id="8925458182817574960">&amp;Iestatījumi</translation>
 <translation id="8926389886865778422">Nejautāt atkārtoti</translation>
 <translation id="8926555406617248399">Cilnes ir paslēptas</translation>
-<translation id="892706138619340876">Daļa iestatījumu tika atiestatīti</translation>
 <translation id="8927438609932588163">Atļaut vietnēm saglabāt datus jūsu ierīcē</translation>
 <translation id="8929696694736010839">Tikai pašreizējā inkognito sesijā</translation>
 <translation id="8929738682246584251">Ieslēgt/izslēgt lupu</translation>
@@ -11204,6 +11202,7 @@ Tā var ietvert informāciju par ierīcē instalēto programmatūru, failiem, p�
 <translation id="9130015405878219958">Ievadīts nederīgs režīms.</translation>
 <translation id="9130135798965366513">Lai turpinātu, <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> kopīgos ar šo vietni šādus jūsu datus: <ph name="FIELDS_STRING" />. Skatiet šīs vietnes <ph name="BEGIN_LINK1" />konfidencialitātes politiku<ph name="END_LINK1" /> un <ph name="BEGIN_LINK2" />pakalpojumu sniegšanas noteikumus<ph name="END_LINK2" />.</translation>
 <translation id="9130364135697530260">Šīs vietnes iegultajā saturā var tikt izmantota par jums saglabātā informācija</translation>
+<translation id="9130857050314385402">Kad izmantojat prasmi, ciļņu nosaukumi un vietrāži URL tiek nosūtīti uz Google serveriem.</translation>
 <translation id="9131209053278896908">Šeit ir redzamas bloķētās vietnes</translation>
 <translation id="9131487537093447019">Sūtīt ziņojumus uz Bluetooth ierīcēm un saņemt ziņojumus no tām.</translation>
 <translation id="9133568201369135151">Diagnostikas datu vākšana ir pabeigta. Šajos datos ir iekļauta noteikta jūsu personas informācija.</translation>

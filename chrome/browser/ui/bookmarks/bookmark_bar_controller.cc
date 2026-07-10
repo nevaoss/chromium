@@ -20,6 +20,7 @@
 #include "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_utils.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/ui_features.h"
+#include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/ui/webui/new_tab_page/new_tab_page_ui.h"
 #include "chrome/browser/ui/webui/new_tab_page_third_party/new_tab_page_third_party_ui.h"
 #include "chrome/browser/ui/webui/ntp/new_tab_ui.h"
@@ -28,6 +29,7 @@
 #include "components/bookmarks/browser/bookmark_model.h"
 #include "components/bookmarks/common/bookmark_bar_visibility_state.h"
 #include "components/bookmarks/common/bookmark_pref_names.h"
+#include "components/feature_engagement/public/feature_constants.h"
 #include "components/prefs/pref_service.h"
 #include "components/saved_tab_groups/public/tab_group_sync_service.h"
 #include "components/search/ntp_features.h"
@@ -100,6 +102,14 @@ BookmarkBarController::BookmarkBarController(BrowserWindowInterface& browser,
       prefs->SetInteger(
           bookmarks::prefs::kBookmarkBarVisibilityState,
           static_cast<int>(bookmarks::BookmarkBarVisibilityState::kAlwaysShow));
+    }
+
+    // To test the auto-hiding locally all prefs must be cleared.
+    if (base::FeatureList::IsEnabled(
+            ntp_features::kBookmarkBarUpdatesForTesting)) {
+      prefs->ClearPref(bookmarks::prefs::kBookmarkBarVisibilityState);
+      prefs->ClearPref(prefs::kBookmarkBarPreviousInitialRenderOnNtpTime);
+      prefs->ClearPref(prefs::kBookmarkBarRenderedOnNtpCount);
     }
 
     pref_change_registrar_.Add(
@@ -326,7 +336,7 @@ void BookmarkBarController::MaybeUpdateAutoRemovalPrefs() {
   base::Time last_shown_time =
       prefs->GetTime(prefs::kBookmarkBarPreviousInitialRenderOnNtpTime);
   if (base::Time::Now() - last_shown_time >
-      ntp_features::kBookmarkBarMinStalenessTimeInterval.Get()) {
+      ntp_features::GetBookmarkBarMinStalenessTimeInterval()) {
     prefs->SetTime(prefs::kBookmarkBarPreviousInitialRenderOnNtpTime,
                    base::Time::Now());
     prefs->SetInteger(
@@ -334,9 +344,16 @@ void BookmarkBarController::MaybeUpdateAutoRemovalPrefs() {
         prefs->GetInteger(prefs::kBookmarkBarRenderedOnNtpCount) + 1);
   }
   if (prefs->GetInteger(prefs::kBookmarkBarRenderedOnNtpCount) >
-      ntp_features::kBookmarkBarCountThreshold.Get()) {
+      ntp_features::GetBookmarkBarCountThreshold()) {
     prefs->SetInteger(
         bookmarks::prefs::kBookmarkBarVisibilityState,
         static_cast<int>(bookmarks::BookmarkBarVisibilityState::kAlwaysHide));
+    // Show the custom action promo (undo toast) when the bookmark bar is
+    // auto-hidden due to inactivity.
+    if (auto* user_education =
+            BrowserUserEducationInterface::From(base::to_address(browser_))) {
+      user_education->MaybeShowFeaturePromo(
+          feature_engagement::kIPHBookmarkBarSimplifiedFeature);
+    }
   }
 }

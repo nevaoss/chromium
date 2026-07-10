@@ -32,7 +32,6 @@ class AbortSignal;
 class Element;
 class ExecuteToolOptions;
 class SourceLocation;
-class ModelContextOptions;
 class ModelContextGetToolOptions;
 class ModelContextRegisterToolOptions;
 class ModelContextTool;

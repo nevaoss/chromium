@@ -94,6 +94,7 @@ class ContextualTasksSidePanelCoordinator
   void Show(bool transition_from_tab,
             omnibox::ChromeAimEntryPoint entry_point) override;
   void Close() override;
+  void OpenInZeroState() override;
   bool IsPanelOpenForContextualTask() const override;
   std::optional<tabs::TabHandle> GetAutoSuggestedTabHandle() override;
   void OnTaskChanged(content::WebContents* web_contents,

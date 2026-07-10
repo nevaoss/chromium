@@ -327,6 +327,13 @@ BASE_DECLARE_FEATURE(
     kEnableOAuthMultiloginStandardCookiesBindingForSecondaryPartitions);
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kEnableOAuthMultiloginYoutubeCookiesBinding);
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE_PARAM(bool, kOAuthMultiloginYoutubeCookieBindingEnforced);
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
+
 // Enables a separate account-scoped storage for preferences.
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kEnablePreferencesAccountStorage);
@@ -695,6 +702,13 @@ BASE_DECLARE_FEATURE(kSyncEnableBookmarksInTransportMode);
 // flag is enabled by default on Windows/Mac/Linux.
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kBookmarksMigrateUiChanges);
+
+#if BUILDFLAG(IS_CHROMEOS)
+// If enabled, undoes the effect of kChromeOsUseConsentLevelSigninForNewUsers
+// by reverting the consent level to kSync.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kUndoChromeOsUseConsentLevelSignin);
+#endif  // BUILDFLAG(IS_CHROMEOS)
 
 // If enabled, buttons for sign-in promos / intercepts will use consistent
 // primary - tonal button class pattern.

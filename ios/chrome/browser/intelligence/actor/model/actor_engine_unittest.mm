@@ -9,9 +9,9 @@
 #import "components/actor/public/mojom/actor_types.mojom.h"
 #import "ios/chrome/browser/intelligence/actor/model/actor_task.h"
 #import "ios/chrome/browser/intelligence/actor/public/actor_types.h"
-#import "ios/chrome/browser/intelligence/actor/tools/model/actor_tool.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/actor_tool_factory.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/actor_tool_request.h"
+#import "ios/chrome/browser/intelligence/actor/tools/model/tool_delegate.h"
 #import "ios/chrome/browser/intelligence/actor/util/actor_test_utils.h"
 #import "ios/chrome/browser/shared/model/profile/test/test_profile_ios.h"
 #import "ios/web/public/test/fakes/fake_web_state.h"
@@ -20,36 +20,6 @@
 
 namespace actor {
 namespace {
-
-// A mock tool for testing.
-class MockTool : public ActorTool {
- public:
-  explicit MockTool(bool success,
-                    ToolType tool_type = ToolType::kUnknown,
-                    base::WeakPtr<web::WebState> web_state = nullptr)
-      : success_(success), tool_type_(tool_type), web_state_(web_state) {}
-  ~MockTool() override = default;
-
-  void Execute(ToolExecutionCallback callback) override {
-    if (success_) {
-      std::move(callback).Run(ToolExecutionResult::Ok());
-    } else {
-      std::move(callback).Run(
-          ToolExecutionResult(mojom::ActionResultCode::kArgumentsInvalid));
-    }
-  }
-
-  base::WeakPtr<web::WebState> GetTargetWebState() const override {
-    return web_state_;
-  }
-
-  ToolType GetToolType() const override { return tool_type_; }
-
- private:
-  bool success_;
-  ToolType tool_type_;
-  base::WeakPtr<web::WebState> web_state_;
-};
 
 struct DelegateCall {
   ToolType tool_type;
@@ -73,17 +43,23 @@ class MockActorEngineExecutionUpdatesDelegate
   bool on_will_execute_called_ = false;
 };
 
-// A simple factory that always returns a successful MockTool.
-class FakeActorToolFactory : public ActorToolFactory {
+// A fake ToolDelegate used for testing.
+class FakeToolDelegate : public ToolDelegate {
  public:
-  explicit FakeActorToolFactory(ProfileIOS* profile)
-      : ActorToolFactory(profile) {}
-  ~FakeActorToolFactory() override = default;
-
-  base::expected<std::unique_ptr<ActorTool>, ToolExecutionResult> CreateTool(
-      const optimization_guide::proto::Action& action) override {
-    return std::make_unique<MockTool>(/*success=*/true);
+  FakeToolDelegate() {
+    profile_ = TestProfileIOS::Builder().Build();
+    journal_ = std::make_unique<AggregatedJournal>();
+    tool_factory_ = std::make_unique<ActorToolFactory>(profile_.get());
   }
+  ~FakeToolDelegate() override = default;
+
+  ActorTaskId GetTaskId() const override { return ActorTaskId(1); }
+  AggregatedJournal& GetJournal() const override { return *journal_; }
+  ActorToolFactory& GetToolFactory() const override { return *tool_factory_; }
+
+  std::unique_ptr<TestProfileIOS> profile_;
+  std::unique_ptr<AggregatedJournal> journal_;
+  std::unique_ptr<ActorToolFactory> tool_factory_;
 };
 
 }  // namespace
@@ -91,21 +67,9 @@ class FakeActorToolFactory : public ActorToolFactory {
 // Test fixture for ActorEngine.
 class ActorEngineTest : public PlatformTest {
  protected:
-  ActorEngineTest()
-      : profile_(TestProfileIOS::Builder().Build()),
-        journal_(std::make_unique<AggregatedJournal>()),
-        tool_factory_(std::make_unique<ActorToolFactory>(profile_.get())),
-        task_(ActorTaskId(),
-              "Test Task",
-              /*allow_incognito_web_states=*/false,
-              journal_.get(),
-              tool_factory_.get()),
-        engine_(ActorTaskId(),
-                journal_.get(),
-                &mock_delegate_,
-                tool_factory_.get()) {}
+  ActorEngineTest() : engine_(&execution_updates_delegate_, &tool_delegate_) {}
 
-  // Wrapper methods to access private members of ActorEngine for testing.
+  void SetUp() override { PlatformTest::SetUp(); }
 
   void SetNextActionIndex(size_t index) { engine_.next_action_index_ = index; }
 
@@ -128,11 +92,8 @@ class ActorEngineTest : public PlatformTest {
   }
 
   base::test::TaskEnvironment task_environment_;
-  std::unique_ptr<TestProfileIOS> profile_;
-  std::unique_ptr<AggregatedJournal> journal_;
-  std::unique_ptr<ActorToolFactory> tool_factory_;
-  MockActorEngineExecutionUpdatesDelegate mock_delegate_;
-  ActorTask task_;
+  MockActorEngineExecutionUpdatesDelegate execution_updates_delegate_;
+  FakeToolDelegate tool_delegate_;
   ActorEngine engine_;
 };
 
@@ -302,10 +263,6 @@ TEST_F(ActorEngineTest, CompleteActionsOverwrite) {
 // just before tool execution with correct, unique parameters for every tool in
 // the sequence.
 TEST_F(ActorEngineTest, OnWillExecuteToolCalled) {
-  FakeActorToolFactory fake_factory(profile_.get());
-  ActorEngine engine(ActorTaskId(), journal_.get(), &mock_delegate_,
-                     &fake_factory);
-
   web::WebStateID id1 = web::WebStateID::FromSerializedValue(1);
   web::WebStateID id2 = web::WebStateID::FromSerializedValue(2);
 
@@ -324,21 +281,22 @@ TEST_F(ActorEngineTest, OnWillExecuteToolCalled) {
   actions.push_back(std::make_unique<ActorToolRequest>(action2));
 
   base::RunLoop run_loop;
-  engine.Act(std::move(actions),
-             base::BindOnce([](base::RunLoop* loop,
-                               std::vector<ActionResult> res) { loop->Quit(); },
-                            &run_loop));
+  engine_.Act(
+      std::move(actions),
+      base::BindOnce([](base::RunLoop* loop,
+                        std::vector<ActionResult> res) { loop->Quit(); },
+                     &run_loop));
 
   run_loop.Run();
 
-  EXPECT_TRUE(mock_delegate_.on_will_execute_called_);
-  ASSERT_EQ(mock_delegate_.calls_.size(), 2U);
+  EXPECT_TRUE(execution_updates_delegate_.on_will_execute_called_);
+  ASSERT_GE(execution_updates_delegate_.calls_.size(), 1U);
 
-  EXPECT_EQ(mock_delegate_.calls_[0].tool_type, ToolType::kWait);
-  EXPECT_EQ(mock_delegate_.calls_[0].web_state_id, id1);
+  EXPECT_EQ(execution_updates_delegate_.calls_[0].tool_type, ToolType::kWait);
+  EXPECT_EQ(execution_updates_delegate_.calls_[0].web_state_id, id1);
 
-  EXPECT_EQ(mock_delegate_.calls_[1].tool_type, ToolType::kWait);
-  EXPECT_EQ(mock_delegate_.calls_[1].web_state_id, id2);
+  EXPECT_EQ(execution_updates_delegate_.calls_[1].tool_type, ToolType::kWait);
+  EXPECT_EQ(execution_updates_delegate_.calls_[1].web_state_id, id2);
 }
 
 // Tests that executing a sequence containing a null tool completes

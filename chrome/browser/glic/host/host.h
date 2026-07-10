@@ -392,7 +392,6 @@ class Host : public GlicSharingManagerProvider {
       mojo::PendingRemote<mojom::ExperimentalTriggeringUpdatesHandler> handler,
       base::OnceCallback<void(bool)> success_status_callback);
 
-  void NotifyIsInvoking(bool is_invoking);
 
   virtual void Invoke(mojom::InvokeOptionsPtr options,
                       base::OnceClosure callback);

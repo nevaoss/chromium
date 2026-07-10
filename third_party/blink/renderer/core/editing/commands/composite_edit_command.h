@@ -154,6 +154,8 @@ class CORE_EXPORT CompositeEditCommand : public EditCommand {
   void PrepareWhitespaceAtPositionForSplit(Position&);
   void ReplaceCollapsibleWhitespaceWithNonBreakingSpaceIfNeeded(
       const VisiblePosition&);
+  void ReplaceCollapsibleWhitespaceWithNonBreakingSpaceIfNeeded(
+      const Position&);
   bool CanRebalance(const Position&) const;
   void RemoveCssProperty(Element*, CSSPropertyID);
   void RemoveElementAttribute(Element*, const QualifiedName& attribute);

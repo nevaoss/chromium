@@ -19,6 +19,7 @@
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/chrome_switches.h"
 #include "components/keyed_service/content/browser_context_dependency_manager.h"
+#include "components/signin/public/identity_manager/account_info.h"
 #include "components/signin/public/identity_manager/identity_test_utils.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
 #include "url/url_util.h"
@@ -397,7 +398,14 @@ GlicTestEnvironmentService::GlicTestEnvironmentService(Profile* profile)
 #endif
     auto* identity_manager = IdentityManagerFactory::GetForProfile(profile);
     if (!identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin)) {
-      SigninWithPrimaryAccount(profile);
+      AccountInfo::Builder builder(signin::MakePrimaryAccountAvailable(
+          identity_manager, "glic-test@example.com",
+          signin::ConsentLevel::kSignin));
+      builder.SetFullName("Glic Testing").SetGivenName("Glic");
+      if (!config.default_account_hosted_domain.empty()) {
+        builder.SetHostedDomain(config.default_account_hosted_domain);
+      }
+      signin::UpdateAccountInfoForAccount(identity_manager, builder.Build());
     }
     SetModelExecutionCapability(true);
   }

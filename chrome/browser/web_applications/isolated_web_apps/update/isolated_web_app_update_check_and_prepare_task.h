@@ -138,6 +138,10 @@ class IsolatedWebAppUpdateCheckAndPrepareTask {
     return task_params_.url_info();
   }
 
+  bool update_manifest_check_only() const {
+    return task_params_.update_manifest_check_only();
+  }
+
   // The version discovered by the update check. This is populated once the
   // update manifest has been fetched and parsed, and contains the version
   // that was determined to be applicable to the app.

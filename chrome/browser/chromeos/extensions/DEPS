@@ -47,17 +47,11 @@ specific_include_rules = {
   "file_system_provider_apitest\\.cc": [
     "+chrome/browser/ash",
   ],
-  "file_system_provider_api\\.cc": [
-    "+chrome/browser/ash/guest_os",
-  ],
   "info_private_apitest\\.cc": [
     "+ash",
     "+chrome/browser/ash/arc",
   ],
   "wallpaper_api\\.h": [
     "+ash/public/mojom/wallpaper.mojom.h",
-  ],
-  "system_log_apitest\\.cc": [
-    "+chrome/browser/ash/test",
   ],
 }

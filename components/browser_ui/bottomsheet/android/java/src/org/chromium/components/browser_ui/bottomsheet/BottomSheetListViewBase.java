@@ -30,7 +30,30 @@ import org.chromium.ui.base.ViewUtils;
 
 import java.util.Set;
 
-/** A generic base class for list-based bottom sheets. */
+/**
+ * A generic base class for list-based bottom sheets.
+ *
+ * <p>This class manages the lifecycle, sizing, and scroll behavior of bottom sheets that primarily
+ * display a list of items (using RecyclerView).
+ *
+ * <p>Sizing and Sizing Logic: The sheet supports two main height states: - HALF state (Desired
+ * Height): Designed to show a limited set of items. It displays up to
+ * MAX_FULLY_VISIBLE_LIST_ITEM_COUNT (typically 3) items fully. If there are more items, it displays
+ * a partial item (peeking) to visually cue the user that more content is available by scrolling.
+ * Footer items are excluded from this state. - FULL state (Maximum Height): Designed to show the
+ * entire content, including any footer items. Sizing is calculated dynamically by measuring the
+ * header, handlebar, and list items.
+ *
+ * <p>Scroll Behavior: - In the FULL state, the list is scrollable. - In the HALF state, scrolling
+ * is initially disabled if the list is at the top. This allows drag gestures on the list to drag
+ * the sheet up to the FULL state instead of scrolling the list. If the sheet is in the HALF state
+ * but the list is already scrolled down (which can happen during transitions), it remains
+ * scrollable until the user scrolls back to the top.
+ *
+ * <p>Footer Concepts: Subclasses can define footer items by returning their view types in
+ * footerItemTypes(). Footer items are treated differently from regular list items: they are only
+ * shown when the sheet is fully extended (FULL state) and are positioned at the bottom of the list.
+ */
 @NullMarked
 public abstract class BottomSheetListViewBase implements BottomSheetContent {
     public static final int MAX_FULLY_VISIBLE_LIST_ITEM_COUNT = 3;
@@ -129,12 +152,16 @@ public abstract class BottomSheetListViewBase implements BottomSheetContent {
     protected abstract Set<Integer> footerItemTypes();
 
     /**
-     * @param bottomSheetController The {@link BottomSheetController} used to show/hide the sheet.
+     * Constructor for BottomSheetListViewBase. Controls the bottom sheet and its content view.
+     *
+     * <p>If suppressCollectionA11y is true, the screen reader will not automatically announce the
+     * index of the item in the list. This is useful when the list contains non-item elements like
+     * headers or footers that would distort the count. In this case, you must manually set the
+     * content description on the item views during binding to ensure accessibility.
+     *
+     * @param bottomSheetController The BottomSheetController used to show/hide the sheet.
      * @param contentView The content of the bottom sheet.
-     * @param suppressCollectionA11y Disables/enables setting the collection related a11y node info,
-     *     basically removing the "2 of 4" part in a regular RecycleView item announcement. Setting
-     *     it to `true` implies that the item content description is updated accordingly for items
-     *     that are eligible for indexing from the UI perspective.
+     * @param suppressCollectionA11y Disables/enables setting the collection related a11y node info.
      */
     public BottomSheetListViewBase(
             BottomSheetController bottomSheetController,

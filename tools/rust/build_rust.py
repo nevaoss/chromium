@@ -77,6 +77,9 @@ EXCLUDED_TESTS = [
     os.path.join('tests', 'codegen-llvm', 'common_prim_int_ptr.rs'),
     # Temporarily disabled due to https://crbug.com/433249564
     os.path.join('tests', 'codegen-llvm', 'enum', 'enum-discriminant-eq.rs'),
+    # Temporarily disabled due to https://crbug.com/522257311
+    os.path.join('tests', 'codegen-llvm', 'issues', 'issue-118306.rs'),
+    os.path.join('tests', 'codegen-llvm', 'pow_known_base.rs'),
 ]
 EXCLUDED_TESTS_WINDOWS = [
     # Temporarily disabled due to https://crbug.com/379308086

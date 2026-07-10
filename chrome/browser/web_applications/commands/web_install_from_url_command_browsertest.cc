@@ -817,8 +817,9 @@ IN_PROC_BROWSER_TEST_F(WebInstallBackgroundAppAlreadyInstalledBrowserTest,
       browser(), background_doc_install_url);
 
   // Initiate another install request for the same background document.
-  base::AutoReset<bool> auto_accept =
-      SetAutoAcceptWebInstallLaunchDialogForTesting();
+  base::AutoReset<web_app::InstallDialogTestResponse> auto_accept =
+      web_app::SetPwaInstallationAutoRespondForTesting(
+          web_app::InstallDialogTestResponse::kAcceptAndLaunch);
   // Because we didn't install via web install, we'll be prompted to allow
   // permission before the launch.
   SetPermissionResponse(/*permission_granted=*/true);
@@ -880,8 +881,9 @@ IN_PROC_BROWSER_TEST_F(WebInstallBackgroundAppAlreadyInstalledBrowserTest,
       browser(), background_doc_install_url);
 
   // Initiate another install request for the same background document.
-  base::AutoReset<bool> auto_accept =
-      SetAutoAcceptWebInstallLaunchDialogForTesting();
+  base::AutoReset<web_app::InstallDialogTestResponse> auto_accept =
+      web_app::SetPwaInstallationAutoRespondForTesting(
+          web_app::InstallDialogTestResponse::kAcceptAndLaunch);
   // Because we didn't install via web install, we'll be prompted to allow
   // permission before the launch.
   SetPermissionResponse(/*permission_granted=*/true);
@@ -1136,8 +1138,9 @@ IN_PROC_BROWSER_TEST_F(WebInstallBackgroundAppAlreadyInstalledBrowserTest,
                                apps::LaunchSource::kFromReparenting, 1);
 
   // Initiate another install request for the same background document.
-  base::AutoReset<bool> auto_accept =
-      SetAutoAcceptWebInstallLaunchDialogForTesting();
+  base::AutoReset<web_app::InstallDialogTestResponse> auto_accept =
+      web_app::SetPwaInstallationAutoRespondForTesting(
+          web_app::InstallDialogTestResponse::kAcceptAndLaunch);
   // Because we didn't install via web install, we'll be prompted to allow
   // permission before the launch.
   SetPermissionResponse(/*permission_granted=*/true, app_web_contents);
@@ -1219,8 +1222,9 @@ IN_PROC_BROWSER_TEST_F(WebInstallBackgroundAppAlreadyInstalledBrowserTest,
       embedded_https_test_server().GetURL("/web_apps/simple/index.html")));
 
   SetPermissionResponse(/*permission_granted=*/true);
-  base::AutoReset<bool> auto_accept =
-      SetAutoAcceptWebInstallLaunchDialogForTesting();
+  base::AutoReset<web_app::InstallDialogTestResponse> auto_accept =
+      web_app::SetPwaInstallationAutoRespondForTesting(
+          web_app::InstallDialogTestResponse::kAcceptAndLaunch);
 
   test_clock->Advance(base::Hours(1));
   ASSERT_TRUE(TryInstallApp(install_url.spec(), manifest_id.spec()));
@@ -1333,8 +1337,9 @@ IN_PROC_BROWSER_TEST_F(WebInstallBackgroundAppAlreadyInstalledBrowserTest,
   EXPECT_TRUE(future.Wait());
 
   // Initiate another install request for the same background document.
-  base::AutoReset<bool> auto_accept =
-      SetAutoAcceptWebInstallLaunchDialogForTesting();
+  base::AutoReset<web_app::InstallDialogTestResponse> auto_accept =
+      web_app::SetPwaInstallationAutoRespondForTesting(
+          web_app::InstallDialogTestResponse::kAcceptAndLaunch);
   // Because we didn't install via web install, we'll be prompted to allow
   // permission before the launch.
   SetPermissionResponse(/*permission_granted=*/true);

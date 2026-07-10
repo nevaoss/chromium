@@ -7,20 +7,32 @@ package org.chromium.chrome.browser.ntp_customization.theme_sync.data;
 import static org.chromium.chrome.browser.ntp_customization.theme_sync.data.NtpBackgroundDataBase.BACKGROUND_TYPE_KEY;
 
 import android.content.Context;
+import android.database.Cursor;
+import android.graphics.Bitmap;
 import android.graphics.Matrix;
 import android.graphics.Point;
+import android.net.Uri;
+import android.provider.OpenableColumns;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import org.chromium.base.Callback;
+import org.chromium.base.Log;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.ntp_customization.NtpCustomizationConfigManager;
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationUtils;
 
 /** Utility class for NTP background data conversion. */
 @NullMarked
 public class NtpBackgroundDataUtils {
+    private static final String TAG = "NtpThemeDataUtils";
+    private static final String[] sProjection = {
+        OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE
+    };
+
     /**
      * Returns the NtpBackgroundDataBase object from the given JSON representation. Null if the type
      * is invalid.
@@ -120,5 +132,58 @@ public class NtpBackgroundDataUtils {
         } catch (JSONException e) {
             return null;
         }
+    }
+
+    /**
+     * Loads the NTP background image from disk asynchronously.
+     *
+     * @param onImageLoadedCallback The callback to invoke when the image is loaded.
+     */
+    static void loadImage(Callback<@Nullable Bitmap> onImageLoadedCallback) {
+        NtpCustomizationUtils.readNtpBackgroundImage(
+                (bitmap) -> {
+                    onImageLoadedCallback.onResult(bitmap);
+                },
+                NtpCustomizationConfigManager.EXECUTOR);
+    }
+
+    /**
+     * Generates an instant metadata-based unique key for a Photo Picker URI. Safe to run on the
+     * Main UI thread.
+     *
+     * @return A string identity key like "1000003842.jpg_3421055"
+     */
+    public static String getMetadataFingerprint(Context context, Uri uri) {
+        if (uri == null) return "";
+
+        String displayName = "";
+        long fileSize = -1;
+
+        // Query the ContentResolver using try-with-resources to auto-close the cursor.
+        try (Cursor cursor =
+                context.getContentResolver().query(uri, sProjection, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                int sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE);
+
+                if (nameIndex != -1) {
+                    displayName = cursor.getString(nameIndex);
+                }
+                if (sizeIndex != -1) {
+                    fileSize = cursor.getLong(sizeIndex);
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to resolve content metadata for the given Uri.", e);
+        }
+
+        // Safety fallback: if the system provider fails to yield a name,
+        // fall back to using the last path segment of the wrapper URI itself.
+        if (displayName == null || displayName.isEmpty()) {
+            displayName = uri.getLastPathSegment();
+        }
+
+        // Return a combined string key.
+        return displayName + "_" + fileSize;
     }
 }

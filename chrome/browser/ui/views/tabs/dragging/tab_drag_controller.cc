@@ -3069,15 +3069,17 @@ void TabDragController::OnDragDropClientDestroying() {
 
 void TabDragController::UpdateDragTarget(TabDragTarget* new_target,
                                          const gfx::Point& point_in_screen) {
-  if (current_drag_target_ && current_drag_target_ != new_target) {
-    current_drag_target_->OnTabDragExited(point_in_screen);
-  }
-  current_drag_target_ = new_target;
-  if (current_drag_target_) {
-    current_drag_target_->OnTabDragEntered();
-    drag_target_destroyed_subscription_ =
-        current_drag_target_->RegisterWillDestroyCallback(base::BindOnce(
-            &TabDragController::ResetDragTarget, base::Unretained(this)));
+  if (current_drag_target_ != new_target) {
+    if (current_drag_target_) {
+      current_drag_target_->OnTabDragExited(point_in_screen);
+    }
+    current_drag_target_ = new_target;
+    if (current_drag_target_) {
+      current_drag_target_->OnTabDragEntered();
+      drag_target_destroyed_subscription_ =
+          current_drag_target_->RegisterWillDestroyCallback(base::BindOnce(
+              &TabDragController::ResetDragTarget, base::Unretained(this)));
+    }
   }
 }
 

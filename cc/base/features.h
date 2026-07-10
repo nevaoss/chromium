@@ -190,13 +190,6 @@ CC_BASE_EXPORT void SetIsEligibleForThrottleMainFrameTo60Hz(bool is_eligible);
 CC_BASE_EXPORT BASE_DECLARE_FEATURE(kViewTransitionCaptureAndDisplay);
 
 
-// When enabled, internal begin frame source will be used in cc to reduce IPC
-// between cc and viz when there were many "did not produce frame" recently,
-// and SetAutoNeedsBeginFrame will be called on CompositorFrameSink.
-CC_BASE_EXPORT BASE_DECLARE_FEATURE(
-    kInternalBeginFrameSourceOnManyDidNotProduceFrame);
-CC_BASE_EXPORT extern const base::FeatureParam<int>
-    kNumDidNotProduceFrameBeforeInternalBeginFrameSource;
 
 // When enabled, the LayerTreeHost will expect to use layer lists instead of
 // layer trees by default; the caller can explicitly opt into enabled or

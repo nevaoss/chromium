@@ -3022,6 +3022,7 @@
 <translation id="5718601519531438273">Обухвата информације као што су пасоши и возачке дозволе</translation>
 <translation id="5720705177508910913">Тренутни корисник</translation>
 <translation id="5720895412771013401">Рачунари</translation>
+<translation id="5721147290164931316">Скенирајте да бисте се пријавили помоћу телефона</translation>
 <translation id="5721367770070844253">{count,plural, =1{{website_1}}=2{{website_1}, {website_2}}=3{{website_1}, {website_2} и још 1}one{{website_1}, {website_2} и још {more_count}}few{{website_1}, {website_2} и још {more_count}}other{{website_1}, {website_2} и још {more_count}}}</translation>
 <translation id="572328651809341494">Недавно коришћене картице</translation>
 <translation id="5723873695528696965">контролише и репрограмира MIDI уређаје</translation>
@@ -4269,6 +4270,7 @@
 <translation id="7646681339175747202">Лозинка коју сте управо користили је пронађена при повреди података. Google менаџер лозинки препоручује да одмах промените лозинку.</translation>
 <translation id="7647206758853451655">Квалитет штампања</translation>
 <translation id="7648133459447652947">Да би се приказао курсор, промените апликацију, поново учитајте страницу или се вратите</translation>
+<translation id="764847582138410250">Скенирајте да бисте се пријавили помоћу телефона</translation>
 <translation id="7648527891719919697">Овај сајт ће остати блокиран јер сте укључили Напредну заштиту у <ph name="BEGIN_ANDROID_SETTINGS_LINK" />подешавањима Android-а<ph name="END_ANDROID_SETTINGS_LINK" />. <ph name="BEGIN_LEARN_MORE_LINK" />Сазнајте више о овом упозорењу<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="7648900539798595789">Сачувајте број познатог путника у Google новчанику</translation>
 <translation id="7648992873808071793">складишти датотеке на овом уређају</translation>

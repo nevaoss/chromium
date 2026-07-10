@@ -5,7 +5,10 @@
 #import "ios/chrome/browser/settings/autofill/autofill_and_passwords/coordinator/identity_docs_mediator.h"
 
 #import "base/memory/raw_ptr.h"
+#import "base/test/ios/wait_util.h"
 #import "base/test/scoped_feature_list.h"
+#import "components/autofill/core/browser/data_manager/autofill_ai/entity_data_manager.h"
+#import "components/autofill/core/browser/test_utils/entity_data_test_utils.h"
 #import "components/autofill/core/common/autofill_features.h"
 #import "components/sync/test/test_sync_service.h"
 #import "ios/chrome/browser/autofill/model/ios_autofill_entity_data_manager_factory.h"
@@ -119,4 +122,32 @@ TEST_F(IdentityDocsMediatorTest, SplitsItemsByType) {
   [mediator_ pushItemsToConsumer:@[ license, idCard, passport ]];
 
   [consumer_ verify];
+}
+
+// Tests that calling `didSelectDeleteEntityItems` removes the entity from the
+// data manager.
+TEST_F(IdentityDocsMediatorTest, DidSelectDeleteEntityItemsRemovesEntity) {
+  autofill::EntityInstance instance =
+      autofill::test::GetPassportEntityInstance();
+  autofill::EntityInstance::EntityId entity_id = instance.guid();
+  autofill::EntityDataManager* entity_data_manager =
+      IOSAutofillEntityDataManagerFactory::GetForProfile(profile_.get());
+  entity_data_manager->AddOrUpdateEntityInstance(instance);
+
+  ASSERT_TRUE(base::test::ios::WaitUntilConditionOrTimeout(
+      base::test::ios::kWaitForActionTimeout, true, ^{
+        return entity_data_manager->GetEntityInstance(entity_id).has_value();
+      }));
+
+  AutofillAIEntityItem* item =
+      [[AutofillAIEntityItem alloc] initWithType:kAutofillAIBaseItemTypeEntity];
+  item.guid = entity_id;
+  item.entityTypeName = instance.type().name();
+
+  [mediator_ didSelectDeleteEntityItems:@[ item ]];
+
+  ASSERT_TRUE(base::test::ios::WaitUntilConditionOrTimeout(
+      base::test::ios::kWaitForActionTimeout, true, ^{
+        return !entity_data_manager->GetEntityInstance(entity_id).has_value();
+      }));
 }

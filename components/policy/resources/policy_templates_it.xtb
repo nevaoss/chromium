@@ -7342,9 +7342,6 @@ Se non viene configurata o se la durata della release non può essere determinat
 <translation id="5649788773465136073">Disattiva l'uso degli identificatori di contenuti protetti con i siti, il che potrebbe comportare una qualità inferiore della riproduzione dei contenuti protetti.</translation>
 <translation id="5650256117857913687">Non consente agli utenti che accedono da remoto di aprire gli URL lato host nel browser client locale</translation>
 <translation id="5650716720715977549">Applica limitazioni alle richieste agli endpoint di rete con un livello di protezione più alto</translation>
-<translation id="5651538748810288218">Se la policy viene impostata su 1, i siti web possono accedere ai sensori, ad esempio di movimento e di luce, e usarli. Se la policy viene impostata su 2, viene negato l'accesso ai sensori.
-
-      Se non viene configurata, si applica la policy <ph name="ALLOW_SENSORS_POLICY_NAME" />, ma gli utenti possono modificare l'impostazione.</translation>
 <translation id="5652250453612826983">Consente di controllare le policy relative alla supervisione dei genitori. Queste policy vengono applicate soltanto agli account di minori
       e non sono configurate nella Console di amministrazione, ma direttamente dal server API Kids.</translation>
 <translation id="5654682237531873653">Se la policy viene impostata su Attivata, viene attivata la funzionalità di controllo ortografico e gli utenti non potranno disattivarla. Su <ph name="MS_WIN_NAME" />, <ph name="PRODUCT_OS_NAME" /> e <ph name="LINUX_OS_NAME" />, le lingue per il controllo ortografico possono essere attivate o disattivate singolarmente, pertanto gli utenti possono disattivare la funzionalità di controllo ortografico disattivando ognuna di queste lingue. Per evitare questo, usa la policy <ph name="SPELLCHECK_LANGUAGE_POLICY_NAME" /> per forzare l'attivazione di specifiche lingue per il controllo ortografico.

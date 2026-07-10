@@ -91,10 +91,10 @@ class CORE_EXPORT RouteMap final : public ScriptWrappable,
   ParseResult ParseAndApplyRoutes(const String& route_map_text);
 
   void AddRouteFromRule(const String& dashed_ident, URLPattern*);
-  void AddAnonymousRoute(URLPattern*);
+  void AddAnonymousRoute(const AtomicString& url_pattern_string);
 
-  const Route* FindRoute(const String& route_name) const;
-  const Route* FindRoute(const URLPattern*) const;
+  const Route* FindRoute(const AtomicString& route_name) const;
+  const Route* FindAnonymousRoute(const AtomicString& url_pattern_string) const;
 
   // Re-match all routes. Schedule for re-evaluation of CSS rules if something
   // changed.

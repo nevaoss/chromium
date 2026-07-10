@@ -31,7 +31,7 @@ import java.lang.annotation.RetentionPolicy;
 public class Snackbar {
     /**
      * Snackbars that are created as an immediate response to user's action. These snackbars are
-     * managed in a stack and will be swiped away altogether after timeout.
+     * managed in a stack and will be dismissed one by one.
      */
     public static final int TYPE_ACTION = 0;
 
@@ -205,7 +205,7 @@ public class Snackbar {
     /**
      * Sets whether the snackbar is high priority. High priority snackbars are shielded from being
      * discarded by the timeout of other action-type snackbars in the queue (e.g. for security-
-     * critical notices).
+     * critical notices), and they stay at the front of the queue.
      */
     public Snackbar setHighPriority(boolean highPriority) {
         mIsHighPriority = highPriority;

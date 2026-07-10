@@ -6,6 +6,8 @@
 #define COMPONENTS_BROWSER_APIS_BOOKMARKS_BOOKMARKS_SERVICE_IMPL_H_
 
 #include "base/memory/raw_ptr.h"
+#include "base/uuid.h"
+#include "components/browser_apis/bookmarks/bookmark_node_finder.h"
 #include "components/browser_apis/bookmarks/bookmarks_service.h"
 #include "mojo/public/cpp/bindings/receiver_set.h"
 
@@ -28,7 +30,16 @@ class BookmarksServiceImpl : public BookmarksService {
 
   // mojom::BookmarksServiceDirectReturnStub:
   mojom::BookmarksService::GetBookmarksResult GetBookmarks() override;
-  mojom::BookmarksService::GetBookmarkResult GetBookmark(int64_t id) override;
+  mojom::BookmarksService::GetBookmarkResult GetBookmark(
+      const base::Uuid& id) override;
+  mojom::BookmarksService::CreateBookmarkNodeResult CreateBookmarkNode(
+      const base::Uuid& parent_id,
+      std::optional<int32_t> index,
+      mojom::BookmarkNodePtr node) override;
+  mojom::BookmarksService::UpdateBookmarkNodeResult UpdateBookmarkNode(
+      mojom::BookmarkNodePtr node) override;
+  mojom::BookmarksService::DeleteBookmarkNodeResult DeleteBookmarkNode(
+      const base::Uuid& id) override;
 
  private:
   mojom::BookmarkNodePtr ConvertNode(const bookmarks::BookmarkNode* node);
@@ -36,6 +47,7 @@ class BookmarksServiceImpl : public BookmarksService {
   mojom::BookmarksServiceBridge bridge_{this};
 
   raw_ptr<bookmarks::BookmarkModel> bookmark_model_;
+  BookmarkNodeFinder finder_;
   mojo::ReceiverSet<mojom::BookmarksService> receivers_;
 };
 

@@ -621,7 +621,7 @@ public abstract class ToolbarLayout extends FrameLayout
     void setLayoutUpdater(Runnable layoutUpdater) {}
 
     /**
-     * @param attached Whether or not the web content is attached to the view heirarchy.
+     * @param attached Whether or not the web content is attached to the view hierarchy.
      */
     void setContentAttached(boolean attached) {}
 

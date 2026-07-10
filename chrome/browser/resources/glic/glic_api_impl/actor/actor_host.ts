@@ -16,13 +16,13 @@ import {byteArrayFromClient, getArrayBufferFromBigBuffer, idFromClient, idToClie
 import {ErrorWithReasonImpl} from '../request_types.js';
 import type {ResumeActorTaskResultPrivate, TabContextResultPrivate} from '../request_types.js';
 import {assertNever} from '../transport/messaging.js';
-import type {MessageHandlerInterface, ResponseExtras} from '../transport/messaging.js';
+import type {ResponseExtras} from '../transport/messaging.js';
+import type {PostMessageHandler} from '../transport/post_message_transport.js';
 
 import type * as actorTypes from './actor_types.js';
 import type {ActorHost} from './actor_types.js';
 
-export class ActorHostMessageHandler implements
-    MessageHandlerInterface<ActorHost> {
+export class ActorHostMessageHandler implements PostMessageHandler<ActorHost> {
   constructor(private actorHandler: ActorHandlerInterface) {}
 
   async getContextForActorFromTab(

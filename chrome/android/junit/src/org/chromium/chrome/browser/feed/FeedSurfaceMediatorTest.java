@@ -371,6 +371,33 @@ public class FeedSurfaceMediatorTest {
         verify(mListLayoutHelper).setColumnCount(expectedSpanCount);
     }
 
+    @Test
+    public void testScrollListenerRegisteredOnCreation() {
+        mFeedSurfaceMediator = createMediator();
+
+        // Verify scroll listener is added to the RecyclerView during creation.
+        verify(mRecyclerView).addOnScrollListener(any(RecyclerView.OnScrollListener.class));
+    }
+
+    @Test
+    public void testScrollListenerNotToggledWithFeed() {
+        mFeedSurfaceMediator = createMediator();
+        when(mPrefService.getBoolean(Pref.ENABLE_SNIPPETS_BY_DSE)).thenReturn(true);
+
+        // 1. Turn feed on.
+        when(mPrefService.getBoolean(Pref.ENABLE_SNIPPETS)).thenReturn(true);
+        mFeedSurfaceMediator.updateContent();
+
+        // 2. Turn feed off.
+        when(mPrefService.getBoolean(Pref.ENABLE_SNIPPETS)).thenReturn(false);
+        mFeedSurfaceMediator.updateContent();
+
+        // Verify scroll listener is not added again or removed.
+        verify(mRecyclerView).addOnScrollListener(any(RecyclerView.OnScrollListener.class));
+        verify(mRecyclerView, never())
+                .removeOnScrollListener(any(RecyclerView.OnScrollListener.class));
+    }
+
     private FeedSurfaceMediator createMediator() {
         return new FeedSurfaceMediator(
                 mFeedSurfaceCoordinator, mActivity, null, /* actionDelegate= */ null, mProfileMock);

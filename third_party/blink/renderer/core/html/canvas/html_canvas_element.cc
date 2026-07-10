@@ -758,8 +758,10 @@ void HTMLCanvasElement::PostFinalizeFrame(FlushReason reason) {
             context_->PaintRenderingResultsToResource(kBackBuffer, reason)) {
       const gfx::Rect src_rect(Size());
       dirty_rect_.Intersect(src_rect);
-      frame_dispatcher_->DispatchFrame(std::move(canvas_resource), dirty_rect_,
-                                       IsOpaque());
+      auto exported_resource = base::MakeRefCounted<ExportedCanvasResource>(
+          std::move(canvas_resource));
+      frame_dispatcher_->DispatchFrame(std::move(exported_resource),
+                                       dirty_rect_, IsOpaque());
       dirty_rect_ = gfx::Rect();
     }
   }
@@ -1655,9 +1657,6 @@ void HTMLCanvasElement::SetIsDisplayed(bool displayed) {
     context_->MaybeRecordUKMCanvasAccessibility();
   }
 
-  if (accessibility_manager_) {
-    accessibility_manager_->SetVisible(displayed);
-  }
 }
 
 cc::TextureLayer* HTMLCanvasElement::GetOrCreateCcLayerForCanvas2DIfNeeded() {
@@ -2105,7 +2104,15 @@ RespectImageOrientationEnum HTMLCanvasElement::RespectImageOrientation() const {
   return LayoutObject::GetImageOrientation(GetLayoutObject());
 }
 
-void HTMLCanvasElement::OnAxObjectCreated(bool is_ignored) {
+void HTMLCanvasElement::OnAxObjectIgnoredStateChanged(bool is_ignored) {
+  if (accessibility_manager_) {
+    accessibility_manager_->SetIgnored(is_ignored);
+    return;
+  }
+  // If the canvas is ignored, it doesn't need accessibility support.
+  if (is_ignored) {
+    return;
+  }
   accessibility_manager_ = MakeGarbageCollected<HTMLCanvasAccessibilityManager>(
       GetDocument().GetTaskRunner(TaskType::kInternalDefault), is_ignored,
       this);

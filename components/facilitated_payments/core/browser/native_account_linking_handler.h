@@ -48,6 +48,12 @@ class NativeAccountLinkingHandler {
   // DoOnAccountLinkingResult virtual method.
   void OnAccountLinkingResult(bool result);
 
+  // Called when the user accepts the account linking prompt.
+  void OnAccepted();
+
+  // Called when the user declines the account linking prompt.
+  void OnDeclined();
+
  protected:
   // Virtual hook to handle subclass-specific timing/logic on token reception.
   virtual void DoOnClientTokenReceived(
@@ -85,13 +91,11 @@ class NativeAccountLinkingHandler {
 
  private:
   // Callback for when the network request completes.
-  // TODO(crbug.com/417330610): Add action_token parameter to this callback once
-  // the callback signature in FacilitatedPaymentsNetworkInterface is updated to
-  // return action_token.
   void OnGetDetailsForCreatePaymentInstrumentResponseReceived(
       base::TimeTicks start_time,
       autofill::payments::PaymentsAutofillClient::PaymentsRpcResult rpc_result,
-      bool is_eligible);
+      bool is_eligible,
+      const std::vector<uint8_t>& action_token);
 
   const raw_ref<FacilitatedPaymentsClient> client_;
 
@@ -100,6 +104,9 @@ class NativeAccountLinkingHandler {
 
   // The GMSCore API client.
   std::unique_ptr<FacilitatedPaymentsApiClient> api_client_;
+
+  // Cached action token used for invoking the instrument manager GMSCore API.
+  std::vector<uint8_t> action_token_;
 
   base::WeakPtrFactory<NativeAccountLinkingHandler> weak_ptr_factory_{this};
 };

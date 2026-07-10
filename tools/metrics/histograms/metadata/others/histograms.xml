@@ -4556,7 +4556,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Hwsec.Attestation.PrepareDuration" units="ms"
-    expires_after="2026-10-11">
+    expires_after="2026-12-13">
   <owner>chingkang@chromium.org</owner>
   <owner>cros-hwsec-userland-eng+uma@google.com</owner>
   <summary>The duration of preparation for enrollment in attestation.</summary>
@@ -5889,20 +5889,6 @@ chromium-metrics-reviews@google.com.
     which is attached to a frame. This metric is recorded when the frame is
     deleted or is navigated to different document. This is not recorded when
     there is no prefetched signed exchanges.
-  </summary>
-</histogram>
-
-<histogram name="Prefs.JSonStore.SetValueKey" units="hash"
-    expires_after="2024-06-01">
-  <owner>etienneb@chromium.org</owner>
-  <owner>gab@chromium.org</owner>
-  <summary>
-    Records the hash of a preference key that is modified. The metric is used to
-    track which preferences are triggering an update to the preference files on
-    disk.
-
-    Keys are registered within the pref registry (see:
-    components/prefs/pref_registry.h).
   </summary>
 </histogram>
 
@@ -8021,7 +8007,7 @@ regressions. -->
 </histogram>
 
 <histogram name="WebFont.CacheHit" enum="WebFontCacheHit"
-    expires_after="2026-10-11">
+    expires_after="2026-12-13">
   <owner>hajimehoshi@chromium.org</owner>
   <owner>kenjibaheux@chromium.org</owner>
   <owner>kouhei@chromium.org</owner>

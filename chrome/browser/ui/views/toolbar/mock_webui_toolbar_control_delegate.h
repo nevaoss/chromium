@@ -57,6 +57,10 @@ class MockWebUIToolbarControlDelegate
               (toolbar_ui_api::mojom::AppMenuControlStatePtr state),
               (override));
   MOCK_METHOD(void,
+              OnBatterySaverControlStateChanged,
+              (bool is_showing),
+              (override));
+  MOCK_METHOD(void,
               OnOmniboxViewStateChanged,
               (toolbar_ui_api::mojom::OmniboxViewStatePtr state),
               (override));

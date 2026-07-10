@@ -163,8 +163,7 @@ SupportedCodecs GetDolbyVisionCodecs(
 }
 #endif  // BUILDFLAG(ENABLE_PLATFORM_DOLBY_VISION)
 
-SupportedCodecs GetSupportedCodecs(const media::CdmCapability& capability,
-                                   bool requires_clear_lead_support = true) {
+SupportedCodecs GetSupportedCodecs(const media::CdmCapability& capability) {
   SupportedCodecs supported_codecs = media::EME_CODEC_NONE;
 
   for (const auto& codec : capability.audio_codecs) {
@@ -212,7 +211,7 @@ SupportedCodecs GetSupportedCodecs(const media::CdmCapability& capability,
   // For compatibility with older CDMs different profiles are only used
   // with some video codecs.
   for (const auto& [codec, video_codec_info] : capability.video_codecs) {
-    if (requires_clear_lead_support && !video_codec_info.supports_clear_lead) {
+    if (!video_codec_info.supports_clear_lead) {
       continue;
     }
     switch (codec) {
@@ -451,8 +450,7 @@ void AddPlayReady(const media::KeySystemCapability& capability,
       capability.hw_cdm_capability_or_status.value();
   // For the default PlayReady key system, we support a codec only when it
   // supports clear lead.
-  hw_secure_codecs = GetSupportedCodecs(hw_secure_capability,
-                                        /*requires_clear_lead_support=*/true);
+  hw_secure_codecs = GetSupportedCodecs(hw_secure_capability);
   hw_secure_encryption_schemes =
       capability.hw_cdm_capability_or_status->encryption_schemes;
   if (!capability.hw_cdm_capability_or_status->session_types.contains(

@@ -6642,6 +6642,67 @@ TEST_P(PageContextWrapperTest,
             "Accept 2");
 }
 
+// Tests that the extraction pipeline prunes SVG metadata and layout tags
+// completely.
+TEST_P(PageContextWrapperTest,
+       PopulatePageContext_RichExtraction_PruningSvgMetadataNodes) {
+  if (!IsRefactored()) {
+    return;
+  }
+
+  auto page_structure =
+      HtmlPage("SVG Pruning Check", Paragraph("Accept 1"),
+               RawHtml("<svg>"
+                       "  <metadata>metadata content</metadata>"
+                       "  <defs>defs content</defs>"
+                       "  <symbol>symbol content</symbol>"
+                       "  <mask>mask content</mask>"
+                       "  <clipPath>clipPath content</clipPath>"
+                       "  <pattern>pattern content</pattern>"
+                       "</svg>"),
+               Paragraph("Accept 2"));
+
+  std::string main_html = page_helper_->Build(page_structure);
+  web::test::LoadHtml(base::SysUTF8ToNSString(main_html),
+                      test_server_.GetURL(kMainPagePath), web_state());
+
+  PageContextWrapperConfig config =
+      PageContextWrapperConfigBuilder()
+          .SetUseRichExtraction(true)
+          .SetUseRefactoredExtractor(IsRefactored())
+          .Build();
+
+  PageContextWrapperCallbackResponse response = RunPageContextWrapperWithConfig(
+      web_state(), config, ^(PageContextWrapper* wrapper) {
+        wrapper.shouldGetAnnotatedPageContent = YES;
+      });
+
+  ASSERT_TRUE(response.has_value());
+  std::unique_ptr<optimization_guide::proto::PageContext> page_context =
+      std::move(response.value());
+
+  ASSERT_TRUE(page_context);
+  ASSERT_TRUE(page_context->has_annotated_page_content());
+
+  const auto& actual_apc = page_context->annotated_page_content();
+  const auto& root = actual_apc.root_node();
+
+  ASSERT_EQ(root.children_nodes_size(), 3);
+  EXPECT_EQ(root.children_nodes(0)
+                .children_nodes(0)
+                .content_attributes()
+                .text_data()
+                .text_content(),
+            "Accept 1");
+  EXPECT_EQ(root.children_nodes(1).children_nodes_size(), 0);
+  EXPECT_EQ(root.children_nodes(2)
+                .children_nodes(0)
+                .content_attributes()
+                .text_data()
+                .text_content(),
+            "Accept 2");
+}
+
 // Tests that the focused frame on cross origin is correctly identified and its
 // token is populated in the PageInteractionInfo.
 TEST_P(PageContextWrapperTest,

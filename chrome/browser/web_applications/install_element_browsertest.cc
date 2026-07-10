@@ -573,8 +573,9 @@ IN_PROC_BROWSER_TEST_F(InstallElementBrowserTest,
   // Dynamically set the installurl attribute to the background document just
   // installed.
   ASSERT_TRUE(SetButtonInstallUrl(background_doc_install_url));
-  base::AutoReset<bool> auto_accept =
-      SetAutoAcceptWebInstallLaunchDialogForTesting();
+  base::AutoReset<web_app::InstallDialogTestResponse> auto_accept =
+      web_app::SetPwaInstallationAutoRespondForTesting(
+          web_app::InstallDialogTestResponse::kAcceptAndLaunch);
 
   // Click the install element.
   ui_test_utils::BrowserCreatedObserver browser_created_observer;

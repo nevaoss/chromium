@@ -32,7 +32,10 @@ class MockDelegate : public VerticalTabGroupHeaderView::Delegate {
               ToggleCollapsedState,
               (ToggleTabGroupCollapsedStateOrigin),
               (override));
-  MOCK_METHOD(views::Widget*, ShowGroupEditorBubble, (bool), (override));
+  MOCK_METHOD(std::unique_ptr<views::Widget>,
+              ShowGroupEditorBubble,
+              (bool),
+              (override));
   MOCK_METHOD(std::u16string, GetGroupContentString, (), (const, override));
   MOCK_METHOD(bool, IsValid, (), (const, override));
   MOCK_METHOD(void, InitHeaderDrag, (const ui::LocatedEvent&), (override));

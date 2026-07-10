@@ -3162,16 +3162,37 @@ IN_PROC_BROWSER_TEST_P(AdsPageLoadMetricsObserverSurfaceBrowserTest,
   SetRulesetWithRules(
       {subresource_filter::testing::CreateSuffixRule("ad_script.js")});
 
-  net::test_server::ExpectationHandler main_html_handler(
-      embedded_test_server());
-  main_html_handler.OnRequest("/mock_page.html", /*is_prefix=*/true)
-      .RespondWith(
-          "text/html; charset=utf-8",
-          "<html><body></body><script src=\"ad_script.js\"></script></html>");
+  auto main_html_response =
+      std::make_unique<net::test_server::ControllableHttpResponse>(
+          embedded_test_server(), "/mock_page.html",
+          /*relative_url_is_prefix=*/true);
 
-  net::test_server::ExpectationHandler image_handler(embedded_test_server());
-  image_handler.OnRequest("/image.gif", /*is_prefix=*/true)
-      .RespondWith("text/html; charset=utf-8", "");
+  auto ad_script_response =
+      std::make_unique<net::test_server::ControllableHttpResponse>(
+          embedded_test_server(), "/ad_script.js",
+          /*relative_url_is_prefix=*/true);
+
+  auto image_response =
+      std::make_unique<net::test_server::ControllableHttpResponse>(
+          embedded_test_server(), "/image.gif",
+          /*relative_url_is_prefix=*/true);
+
+  ASSERT_TRUE(embedded_test_server()->Start());
+
+  auto waiter = CreateAdsPageLoadMetricsTestWaiter();
+
+  browser()->OpenURL(
+      content::OpenURLParams(embedded_test_server()->GetURL("/mock_page.html"),
+                             content::Referrer(),
+                             WindowOpenDisposition::CURRENT_TAB,
+                             ui::PAGE_TRANSITION_TYPED, false),
+      /*navigation_handle_callback=*/{});
+
+  main_html_response->WaitForRequest();
+  main_html_response->Send(page_load_metrics::kHttpOkResponseHeader);
+  main_html_response->Send(
+      "<html><body></body><script src=\"ad_script.js\"></script></html>");
+  main_html_response->Done();
 
   const char* script_format = std::get<0>(GetParam()).script;
   const bool lambda = std::get<1>(GetParam());
@@ -3193,21 +3214,14 @@ IN_PROC_BROWSER_TEST_P(AdsPageLoadMetricsObserverSurfaceBrowserTest,
                                               /*offsets=*/nullptr);
   }
 
-  net::test_server::ExpectationHandler ad_script_handler(
-      embedded_test_server());
-  ad_script_handler.OnRequest("/ad_script.js", /*is_prefix=*/true)
-      .RespondWith("text/html; charset=utf-8", script);
+  ad_script_response->WaitForRequest();
+  ad_script_response->Send(page_load_metrics::kHttpOkResponseHeader);
+  ad_script_response->Send(script);
+  ad_script_response->Done();
 
-  ASSERT_TRUE(embedded_test_server()->Start());
-
-  auto waiter = CreateAdsPageLoadMetricsTestWaiter();
-
-  browser()->OpenURL(
-      content::OpenURLParams(embedded_test_server()->GetURL("/mock_page.html"),
-                             content::Referrer(),
-                             WindowOpenDisposition::CURRENT_TAB,
-                             ui::PAGE_TRANSITION_TYPED, false),
-      /*navigation_handle_callback=*/{});
+  image_response->WaitForRequest();
+  image_response->Send(page_load_metrics::kHttpOkResponseHeader);
+  image_response->Done();
 
   // Two subresources should have been reported as ads.
   waiter->AddMinimumAdResourceExpectation(2);

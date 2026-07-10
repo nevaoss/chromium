@@ -5,6 +5,7 @@
 #ifndef CHROME_BROWSER_UI_OMNIBOX_AI_MODE_PAGE_ACTION_CONTROLLER_H_
 #define CHROME_BROWSER_UI_OMNIBOX_AI_MODE_PAGE_ACTION_CONTROLLER_H_
 
+#include "base/callback_list.h"
 #include "base/memory/raw_ref.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
@@ -92,29 +93,30 @@ class AiModePageActionController : public OmniboxEditModel::Observer {
   };
   // LINT.ThenChange(//tools/metrics/histograms/metadata/omnibox/enums.xml:AiModePageActionIconSource)
 
-  // Helper for `UpdatePageAction()`. Updates visibility and override image:
+  // Helper for `UpdatePageAction()`. Updates visibility, text, tooltip and
+  // override image:
   // - If DSE is google, will use built-in image.
   // - If DSE is 3p, will check the in-memory favicon cache.
   // - If icon not found in the in-memory favicon cache, will check the on-disk
   //   favicon DB.
   // - If icon not found in the on-disk favicon DB, then will make a network
   //   request to fetch the icon.
-  void SetPageActionVisibility(bool is_visible);
+  void UpdatePageActionUi(bool is_visible);
 
-  // Helper for `SetPageActionVisibility()` to update visibility. `source` used
+  // Helper for `UpdatePageActionUi()` to update visibility. `source` used
   // for logging.
   void Hide(IconSource source);
 
-  // Helper for `SetPageActionVisibility()` to update the image and visibility.
+  // Helper for `UpdatePageActionUi()` to update the image and visibility.
   // `source` used for logging.
   void ShowAndOverrideImage(const ui::ImageModel& image, IconSource source);
 
-  // Helpers used in `SetPageActionVisibility()` to asynchronously fetch the
+  // Helpers used in `UpdatePageActionUi()` to asynchronously fetch the
   // favicon.
   void OnFaviconFetchedLocally(const GURL& favicon_url,
                                const gfx::Image& favicon);
   void FetchFaviconFromNetwork(const GURL& favicon_url);
-  void OnFaviconFetchedFromNetwork(SkBitmap bitmap);
+  void OnFaviconFetchedFromNetwork(const GURL& favicon_url, SkBitmap bitmap);
 
   const raw_ref<BrowserWindowInterface> bwi_;
   const raw_ref<Profile> profile_;
@@ -123,9 +125,15 @@ class AiModePageActionController : public OmniboxEditModel::Observer {
   ui::ScopedUnownedUserData<AiModePageActionController> scoped_data_;
 
   base::ScopedObservation<OmniboxEditModel, OmniboxEditModel::Observer>
-      observation_{this};
+      omnibox_edit_model_observation_{this};
 
-  // Used for `OnFaviconFetched()` callback.
+  base::CallbackListSubscription ai_mode_config_subscription_;
+
+  // Used to cancel pending favicon fetches when the config changes.
+  base::WeakPtrFactory<AiModePageActionController> favicon_fetch_weak_factory_{
+      this};
+
+  // Lives as long as this lives. Used to subscribe to config changes.
   base::WeakPtrFactory<AiModePageActionController> weak_factory_{this};
 };
 

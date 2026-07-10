@@ -96,6 +96,17 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="ContextualTasks.Context.CandidateTabHasEmbeddings"
+    enum="Boolean" expires_after="2026-11-01">
+  <owner>sophiechang@chromium.org</owner>
+  <owner>abhayprakash@google.com</owner>
+  <summary>
+    Recorded for each candidate tab when retrieving tab signals during
+    Contextual Tasks context calculation. Records whether the candidate tab has
+    embeddings.
+  </summary>
+</histogram>
+
 <histogram name="ContextualTasks.Context.ContextCalculationLatency" units="ms"
     expires_after="2026-11-01">
   <owner>sophiechang@chromium.org</owner>

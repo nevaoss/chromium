@@ -473,10 +473,7 @@ public class AwSupervisedUserTest extends AwParameterizedTest {
         public void shouldBlockUrl(GURL requestUrl, final Callback<Boolean> callback) {
             String path = requestUrl.getPath();
             boolean isRestrictedContent = RESTRICTED_CONTENT_BLOCKLIST.contains(path);
-            mExecutor.execute(
-                    () -> {
-                        callback.onResult(isRestrictedContent);
-                    });
+            mExecutor.execute(callback.bind(isRestrictedContent));
         }
 
         @Override

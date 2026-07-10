@@ -42,7 +42,6 @@
 #include "chrome/browser/ash/app_list/app_service/app_service_app_item.h"
 #include "chrome/browser/ash/app_list/app_service/app_service_app_model_builder.h"
 #include "chrome/browser/ash/app_list/arc/arc_app_icon.h"
-#include "chrome/browser/ash/app_list/arc/arc_app_icon_factory.h"
 #include "chrome/browser/ash/app_list/arc/arc_app_launcher.h"
 #include "chrome/browser/ash/app_list/arc/arc_app_list_prefs.h"
 #include "chrome/browser/ash/app_list/arc/arc_app_list_prefs_factory.h"
@@ -135,8 +134,6 @@ constexpr char kFrameworkPackageName[] = "android";
 
 constexpr int kFrameworkNycVersion = 25;
 constexpr int kFrameworkPiVersion = 28;
-
-constexpr size_t kMaxSimultaneousIconRequests = 250;
 
 constexpr int kDefaultIconUpdateCount = 1;
 
@@ -248,89 +245,7 @@ class FakeAppIconLoaderDelegate : public AppIconLoaderDelegate {
   base::OnceClosure icon_loaded_callback_;
 };
 
-// FakeArcAppIcon is a sub class of ArcAppIcon, to record all ArcAppIcon load
-// icon requests to calculate the max icon loading requests count.
-class FakeArcAppIcon : public ArcAppIcon {
- public:
-  FakeArcAppIcon(
-      content::BrowserContext* context,
-      const std::string& app_id,
-      int size_in_dip,
-      ArcAppIcon::Observer* observer,
-      ArcAppIcon::IconType icon_type,
-      std::set<raw_ptr<ArcAppIcon, SetExperimental>>& arc_app_icon_requests,
-      size_t& max_arc_app_icon_request_count)
-      : ArcAppIcon(context, app_id, size_in_dip, observer, icon_type),
-        arc_app_icon_requests_(arc_app_icon_requests),
-        max_arc_app_icon_request_count_(max_arc_app_icon_request_count) {}
 
-  ~FakeArcAppIcon() override = default;
-
-  FakeArcAppIcon(const FakeArcAppIcon&) = delete;
-  FakeArcAppIcon& operator=(const FakeArcAppIcon&) = delete;
-
-  void LoadSupportedScaleFactors() override {
-    arc_app_icon_requests_->insert(this);
-    if (*max_arc_app_icon_request_count_ < arc_app_icon_requests_->size()) {
-      *max_arc_app_icon_request_count_ = arc_app_icon_requests_->size();
-    }
-
-    ArcAppIcon::LoadSupportedScaleFactors();
-  }
-
- private:
-  void LoadForScaleFactor(ui::ResourceScaleFactor scale_factor) override {
-    arc_app_icon_requests_->insert(this);
-    if (*max_arc_app_icon_request_count_ < arc_app_icon_requests_->size()) {
-      *max_arc_app_icon_request_count_ = arc_app_icon_requests_->size();
-    }
-
-    ArcAppIcon::LoadForScaleFactor(scale_factor);
-  }
-
-  void OnIconRead(
-      std::unique_ptr<ArcAppIcon::ReadResult> read_result) override {
-    arc_app_icon_requests_->erase(this);
-    ArcAppIcon::OnIconRead(std::move(read_result));
-  }
-
-  const raw_ref<std::set<raw_ptr<ArcAppIcon, SetExperimental>>>
-      arc_app_icon_requests_;
-  const raw_ref<size_t> max_arc_app_icon_request_count_;
-};
-
-// FakeArcAppIconFactory is a sub class of ArcAppIconFactory, to generate
-// FakeArcAppIcon.
-class FakeArcAppIconFactory : public arc::ArcAppIconFactory {
- public:
-  FakeArcAppIconFactory(
-      std::set<raw_ptr<ArcAppIcon, SetExperimental>>& arc_app_icon_requests,
-      size_t& max_arc_app_icon_request_count)
-      : arc::ArcAppIconFactory(),
-        arc_app_icon_requests_(arc_app_icon_requests),
-        max_arc_app_icon_request_count_(max_arc_app_icon_request_count) {}
-
-  ~FakeArcAppIconFactory() override = default;
-
-  FakeArcAppIconFactory(const FakeArcAppIconFactory&) = delete;
-  FakeArcAppIconFactory& operator=(const FakeArcAppIconFactory&) = delete;
-
-  std::unique_ptr<ArcAppIcon> CreateArcAppIcon(
-      content::BrowserContext* context,
-      const std::string& app_id,
-      int size_in_dip,
-      ArcAppIcon::Observer* observer,
-      ArcAppIcon::IconType icon_type) override {
-    return std::make_unique<FakeArcAppIcon>(
-        context, app_id, size_in_dip, observer, icon_type,
-        *arc_app_icon_requests_, *max_arc_app_icon_request_count_);
-  }
-
- private:
-  const raw_ref<std::set<raw_ptr<ArcAppIcon, SetExperimental>>>
-      arc_app_icon_requests_;
-  const raw_ref<size_t> max_arc_app_icon_request_count_;
-};
 
 ArcAppIconDescriptor GetAppListIconDescriptor(
     ui::ResourceScaleFactor scale_factor) {
@@ -1253,10 +1168,6 @@ class ArcAppModelIconTest : public ArcAppModelBuilderRecreate,
 
   arc::mojom::AppInfoPtr test_app() const { return fake_apps()[0]->Clone(); }
 
-  size_t max_arc_app_icon_request_count() {
-    return max_arc_app_icon_request_count_;
-  }
-
  private:
   data_decoder::test::InProcessDataDecoder in_process_data_decoder_;
   std::unique_ptr<ui::test::ScopedSetSupportedResourceScaleFactors>
@@ -1264,8 +1175,6 @@ class ArcAppModelIconTest : public ArcAppModelBuilderRecreate,
   std::unique_ptr<base::RunLoop> run_loop_;
   base::OnceClosure icon_update_callback_;
   int icon_updated_count_;
-  std::set<raw_ptr<ArcAppIcon, SetExperimental>> arc_app_icon_requests_;
-  size_t max_arc_app_icon_request_count_ = 0;
 };
 
 class ArcDefaultAppTest : public ArcAppModelBuilderRecreate {
@@ -2966,8 +2875,6 @@ TEST_P(ArcAppModelIconTest, LoadManyIcons) {
   RemoveAppsFromIconLoader(app_ids);
 
   LoadIconsWithIconLoader(app_ids, app_count);
-
-  EXPECT_GE(kMaxSimultaneousIconRequests, max_arc_app_icon_request_count());
 }
 
 TEST_P(ArcAppModelIconTest, LoadManyIconsWithSomeBadIcons) {
@@ -3004,8 +2911,6 @@ TEST_P(ArcAppModelIconTest, LoadManyIconsWithSomeBadIcons) {
   for (auto& app_id : app_ids)
     icon_loader.FetchImage(app_id);
   delegate.WaitForIconLoaded(app_ids, extension_misc::EXTENSION_ICON_MEDIUM);
-
-  EXPECT_GE(kMaxSimultaneousIconRequests, max_arc_app_icon_request_count());
 }
 
 TEST_P(ArcAppModelBuilderTest, IconLoaderCompressed) {

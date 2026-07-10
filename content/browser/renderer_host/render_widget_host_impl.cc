@@ -81,6 +81,7 @@
 #include "content/browser/renderer_host/render_widget_host_owner_delegate.h"
 #include "content/browser/renderer_host/render_widget_host_view_base.h"
 #include "content/browser/renderer_host/render_widget_host_view_child_frame.h"
+#include "content/browser/renderer_host/unbounded_surface_window.h"
 #include "content/browser/renderer_host/visible_time_request_trigger.h"
 #include "content/browser/scheduler/browser_task_executor.h"
 #include "content/browser/scheduler/browser_ui_thread_scheduler.h"
@@ -1215,8 +1216,6 @@ blink::VisualProperties RenderWidgetHostImpl::GetVisualProperties() {
         properties_from_parent_local_root_.root_widget_viewport_segments;
   }
 
-  visual_properties.capture_sequence_number = view_->GetCaptureSequenceNumber();
-
   // TODO(ccameron): GetLocalSurfaceId is not synchronized with the device
   // scale factor of the surface. Fix this.
   viz::LocalSurfaceId local_surface_id = view_->GetLocalSurfaceId();
@@ -1601,6 +1600,23 @@ void RenderWidgetHostImpl::ForwardMouseEventWithLatencyInfo(
     return;
   }
 
+  // Dismiss any active unbounded surface if a mouse click occurs outside of
+  // its window bounds.
+  if (mouse_event.GetType() == WebInputEvent::Type::kMouseDown && GetView()) {
+    if (auto* root_view = GetView()->GetRootView()) {
+      if (root_view->HasActiveUnboundedSurface()) {
+        if (UnboundedSurfaceWindow* unbounded_window =
+                root_view->GetUnboundedSurfaceWindow()) {
+          gfx::PointF screen_point = mouse_event.PositionInScreen();
+          if (!unbounded_window->GetBounds().Contains(
+                  gfx::ToFlooredPoint(screen_point))) {
+            root_view->DismissUnboundedSurface();
+          }
+        }
+      }
+    }
+  }
+
   auto* touch_emulator = GetTouchEmulator(/*create_if_necessary=*/false);
   if (touch_emulator &&
       touch_emulator->HandleMouseEvent(mouse_event, GetView())) {
@@ -1718,6 +1734,19 @@ void RenderWidgetHostImpl::ForwardKeyboardEventWithCommands(
 
   if (!GetProcess()->IsInitializedAndNotDead()) {
     return;
+  }
+
+  // Dismiss any active unbounded surface when the Escape key is pressed.
+  if (GetView() &&
+      (key_event.GetType() == WebInputEvent::Type::kRawKeyDown ||
+       key_event.GetType() == WebInputEvent::Type::kKeyDown) &&
+      key_event.windows_key_code == ui::VKEY_ESCAPE) {
+    if (auto* root_view = GetView()->GetRootView()) {
+      if (root_view->HasActiveUnboundedSurface()) {
+        root_view->DismissUnboundedSurface();
+        return;
+      }
+    }
   }
 
   // First, let keypress listeners take a shot at handling the event.  If a
@@ -3166,8 +3195,6 @@ bool RenderWidgetHostImpl::StoredVisualPropertiesNeedsUpdate(
              new_visual_properties.browser_controls_params ||
          old_visual_properties->visible_viewport_size_device_px !=
              new_visual_properties.visible_viewport_size_device_px ||
-         old_visual_properties->capture_sequence_number !=
-             new_visual_properties.capture_sequence_number ||
          old_visual_properties->page_scale_factor !=
              new_visual_properties.page_scale_factor ||
          old_visual_properties->compositing_scale_factor !=

@@ -912,7 +912,6 @@
 <translation id="417138788035229076">Halda gruppi</translation>
 <translation id="4172051516777682613">Kuva alati</translation>
 <translation id="417273154673973994">{count,plural, =1{1 vahelehegrupp on salvestatud ja suletud}other{{count} vahelehegruppi on salvestatud ja suletud}}</translation>
-<translation id="417612446554534067">Saatmine teie seadmetesse</translation>
 <translation id="4180726336228139707">Ainult selles seadmes</translation>
 <translation id="4181841719683918333">Keeled</translation>
 <translation id="4183350924949589798">Kas soovite paremat turvalisust?</translation>
@@ -1136,6 +1135,7 @@
 <translation id="4896467949657706481">Vahelehed suleti; teid logiti välja</translation>
 <translation id="4911042367886397055">Tere tulemast tagasi, <ph name="USER_NAME" />!</translation>
 <translation id="4913626501929406101">Saate mõne oma peregrupi liikmega turvaliselt oma parooli koopiat jagada. <ph name="BEGIN_LINK" />Lisateave<ph name="END_LINK" /></translation>
+<translation id="4916679969857390442">Objektiiv</translation>
 <translation id="4917025507570489430">Kui olete kontoga <ph name="USER_EMAIL" /> sisse logitud, saate kasutada olemasolevaid sirvimisandmeid. Teie organisatsioonil võib olla võimalik neid andmeid vaadata.</translation>
 <translation id="4918086044614829423">Nõustu</translation>
 <translation id="4930714375720679147">Lülita sisse</translation>

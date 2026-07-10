@@ -69,6 +69,8 @@ class DigitalIdentityMultiStepDialogDelegate
 
   views::Widget::ClosedReason get_closed_reason() { return closed_reason_; }
 
+  bool ShouldAllowKeyEventsDuringInputProtection() const override;
+
  private:
   bool OnDialogAccepted();
   bool OnDialogCanceled();
@@ -215,6 +217,11 @@ void DigitalIdentityMultiStepDialogDelegate::ResetCallbacks() {
   SetAcceptCallbackWithClose(base::BindRepeating([]() { return false; }));
   SetCancelCallbackWithClose(base::BindRepeating([]() { return false; }));
   SetCloseCallback(base::OnceClosure());
+}
+
+bool DigitalIdentityMultiStepDialogDelegate::
+    ShouldAllowKeyEventsDuringInputProtection() const {
+  return false;
 }
 
 // static

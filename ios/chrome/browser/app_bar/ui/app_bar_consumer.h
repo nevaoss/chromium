@@ -57,6 +57,9 @@ enum class AppBarAssistantButtonState {
 // Sets whether the incognito mode is active.
 - (void)setIncognito:(BOOL)incognito;
 
+// Sets whether the current page is the NTP and if it is the Start Surface.
+- (void)setNTPVisible:(BOOL)ntpVisible isStartSurface:(BOOL)isStartSurface;
+
 @end
 
 #endif  // IOS_CHROME_BROWSER_APP_BAR_UI_APP_BAR_CONSUMER_H_

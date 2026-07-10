@@ -597,7 +597,6 @@ Suriin ang iyong mga password anumang oras sa <ph name="GOOGLE_PASSWORD_MANAGER"
 <translation id="1433478348197382180">Reading Mode</translation>
 <translation id="1433980411933182122">Pag-startup</translation>
 <translation id="1434659328474177625">Na-verify ng <ph name="ISSUER" /> ang iyong email</translation>
-<translation id="1434696352799406980">Ire-reset nito ang iyong page sa pagsisimula, page ng bagong tab, search engine at mga naka-pin na tab. Idi-disable din nito ang lahat ng extension at iki-clear ang pansamantalang data tulad ng cookies. Hindi iki-clear ang iyong mga bookmark, history at naka-save na password.</translation>
 <translation id="1434886155212424586">Ang homepage ay ang pahina ng Bagong Tab</translation>
 <translation id="1435940442311036198">Gumamit ng passkey sa ibang device</translation>
 <translation id="1436390408194692385">May bisa sa loob ng <ph name="TICKET_TIME_LEFT" /></translation>
@@ -3716,7 +3715,6 @@ Puwede mong pamahalaan ang mga setting ng account na ito sa pamamagitan ng pag-i
 <translation id="366484203224589850"><ph name="TASK_TITLE" />: Matagal nang ginagawa ng Gemini ang gawaing ito at malapit na itong huminto para makatipid ng baterya</translation>
 <translation id="3664911592976620204">{NUM_OTHER_MEMBERS,plural, =0{Sumali sa grupo ng tab kasama ni <ph name="OWNER_FIRST_NAME" />}=1{Sumali sa grupo ng tab kasama ni <ph name="OWNER_FIRST_NAME" /> at # pa}one{Sumali sa grupo ng tab kasama ni <ph name="OWNER_FIRST_NAME" /> at # pa}other{Sumali sa grupo ng tab kasama ni <ph name="OWNER_FIRST_NAME" /> at # pa}}</translation>
 <translation id="3665301845536101715">Buksan sa panel sa gilid</translation>
-<translation id="3665589677786828986">Natunton ng Chrome na ilan sa iyong mga setting ay nasira ng isa pang program at ni-reset ang mga ito sa kanilang mga orihinal na default.</translation>
 <translation id="3665918214153961651">Pag-upload ng file</translation>
 <translation id="3666196264870170605">Dump ng Pag-debug ng Mga Intel Wi-Fi NIC</translation>
 <translation id="3666971425390608309">Na-pause ang pag-download: <ph name="FILE_NAME" />.</translation>
@@ -5004,7 +5002,6 @@ Puwede mong pamahalaan ang mga setting ng account na ito sa pamamagitan ng pag-i
 <translation id="4580596421317071374">Sine-save ang mga password sa <ph name="GOOGLE_PASSWORD_MANAGER" /> sa device na ito.</translation>
 <translation id="4580939929828762295">Manatiling ligtas sa Google Password Manager</translation>
 <translation id="4582297591746054421">Karaniwang binabasa ng mga site ang iyong clipboard para sa mga feature gaya ng pagpapanatili ng pag-format ng text na kinopya mo</translation>
-<translation id="4582563038311694664">I-reset lahat ng setting</translation>
 <translation id="4584094413232466841">Alisin ang impormasyong ito sa autofill sa Chrome?</translation>
 <translation id="4584770411839426377">Window</translation>
 <translation id="4584836561445313300">Makikita at mapapamahalaan ng iyong organisasyon ang anumang kasalukuyang data mula sa pag-browse, tulad ng mga password at higit pa</translation>
@@ -10094,7 +10091,6 @@ Ilagay ang iyong key file sa ligtas na lugar. Kailangan mo ito upang lumikha ng 
 <translation id="8327386430364625757">Mathematical na font</translation>
 <translation id="8327490658947427005">Hindi Nakasalin sa <ph name="LANGUAGE" /> ang Seleksyon</translation>
 <translation id="8327544198829180337">Isara ang view na ito</translation>
-<translation id="8327676037044516220">Mga pahintulot at setting ng content</translation>
 <translation id="8328228852664998535">Kung magpapatuloy ka, permanenteng made-delete ang iyong mga password, passkey, at iba pang data sa <ph name="BRAND" />. Hindi made-delete ang anumang account na ginawa mo para sa mga site o app.</translation>
 <translation id="8328777765163860529">Isara Lahat</translation>
 <translation id="8330617762701840933">Ang listahan ng mga website na nagre-redirect sa alternatibong browser.</translation>
@@ -10917,7 +10913,6 @@ Puwedeng kasama rito ang impormasyon tungkol sa naka-install na software, mga fi
 <translation id="8925458182817574960">&amp;Mga Setting</translation>
 <translation id="8926389886865778422">Huwag nang itanong ulit</translation>
 <translation id="8926555406617248399">Na-hide ang mga tab</translation>
-<translation id="892706138619340876">Na-reset ang ilang setting</translation>
 <translation id="8927438609932588163">Payagan ang mga site na mag-save ng data sa iyong device</translation>
 <translation id="8929696694736010839">Kasalukuyang Incognito session lang</translation>
 <translation id="8929738682246584251">I-on/i-off ang magnifier</translation>

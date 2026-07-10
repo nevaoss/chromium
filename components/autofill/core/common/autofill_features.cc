@@ -65,13 +65,6 @@ BASE_FEATURE(kAutofillActorSuppressImport, base::FEATURE_DISABLED_BY_DEFAULT);
 // longer depends on address-based Autofill being enabled.
 BASE_FEATURE(kAutofillAddOtherDatatypesPref, base::FEATURE_DISABLED_BY_DEFAULT);
 
-
-// Kill switch: If enabled, NameFieldParser will parse 'Last name, First name'
-// sequence.
-// TODO(crbug.com/329016404): Remove after M146 branch point (2026-02-09).
-BASE_FEATURE(kAutofillAddressParseSurnameNameSequence,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Feature flag to control displaying of Autofill suggestions on
 // unclassified fields based on prefix matching. These suggestions are displayed
 // after the user typed a certain number of characters that match some data
@@ -305,7 +298,7 @@ BASE_FEATURE_PARAM(bool,
                    kAutofillAiServerModelUseCacheResults,
                    &kAutofillAiServerModel,
                    "autofill_ai_model_use_cache_results",
-                   false);
+                   true);
 
 // If enabled, AutofillAi supports shipment entities.
 BASE_FEATURE(kAutofillAiShipment, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -379,6 +372,11 @@ BASE_FEATURE(kAutofillAllowFillingModifiedInitialValues,
 
 // When enabled, the ambient autofill experience is enabled in Chrome.
 BASE_FEATURE(kAutofillAmbientAutofill, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE_PARAM(std::string,
+                   kAutofillAmbientAutofillEligibleTiers,
+                   &kAutofillAmbientAutofill,
+                   "ambient_autofill_eligible_tiers",
+                   "");
 
 // If enabled, on Android desktop, the Autofill keyboard accessory will have a
 // new behavior and design.
@@ -960,6 +958,23 @@ BASE_FEATURE(kAutofillThirdPartyModeContentProvider,
 BASE_FEATURE(kAutofillThirdPartyModeRestoredOnStart,
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
+
+// Mitigates side-channel brute-force probing of autofill data by rate-limiting
+// AskForValuesToFill() invocations per RenderFrame via a token bucket.
+BASE_FEATURE(kAutofillThrottleBruteForceProbing,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
+// The burst budget of AskForValuesToFill() calls permitted per RenderFrame.
+BASE_FEATURE_PARAM(int,
+                   kAutofillThrottleBruteForceProbingMaxTokens,
+                   &kAutofillThrottleBruteForceProbing,
+                   15);
+
+// The rate at which AskForValuesToFill() token budget replenishes.
+BASE_FEATURE_PARAM(base::TimeDelta,
+                   kAutofillThrottleBruteForceProbingReplenishRate,
+                   &kAutofillThrottleBruteForceProbing,
+                   base::Milliseconds(750));
 
 // Enables tracking of user edits to <select> fields that were not autofilled.
 BASE_FEATURE(kAutofillTrackSelectFieldEdits, base::FEATURE_DISABLED_BY_DEFAULT);

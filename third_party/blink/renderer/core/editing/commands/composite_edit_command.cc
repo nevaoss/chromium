@@ -880,16 +880,28 @@ void CompositeEditCommand::PrepareWhitespaceAtPositionForSplit(
       MakeGarbageCollected<RelocatablePosition>(upstream_pos);
   DeleteInsignificantText(upstream_pos, MostForwardCaretPosition(position));
 
-  GetDocument().UpdateStyleAndLayout(DocumentUpdateReason::kEditing);
-  position = MostForwardCaretPosition(relocatable_upstream_pos->GetPosition());
-  VisiblePosition visible_pos = CreateVisiblePosition(position);
-  VisiblePosition previous_visible_pos = PreviousPositionOf(visible_pos);
-  ReplaceCollapsibleWhitespaceWithNonBreakingSpaceIfNeeded(
-      previous_visible_pos);
+  if (RuntimeEnabledFeatures::EditingUseDomPositionApiEnabled()) {
+    GetDocument().UpdateStyleAndLayout(DocumentUpdateReason::kEditing);
+    position =
+        MostForwardCaretPosition(relocatable_upstream_pos->GetPosition());
+    Position previous_pos = PreviousPositionOf(position);
+    ReplaceCollapsibleWhitespaceWithNonBreakingSpaceIfNeeded(previous_pos);
 
-  GetDocument().UpdateStyleAndLayout(DocumentUpdateReason::kEditing);
-  ReplaceCollapsibleWhitespaceWithNonBreakingSpaceIfNeeded(
-      CreateVisiblePosition(position));
+    GetDocument().UpdateStyleAndLayout(DocumentUpdateReason::kEditing);
+    ReplaceCollapsibleWhitespaceWithNonBreakingSpaceIfNeeded(position);
+  } else {
+    GetDocument().UpdateStyleAndLayout(DocumentUpdateReason::kEditing);
+    position =
+        MostForwardCaretPosition(relocatable_upstream_pos->GetPosition());
+    VisiblePosition visible_pos = CreateVisiblePosition(position);
+    VisiblePosition previous_visible_pos = PreviousPositionOf(visible_pos);
+    ReplaceCollapsibleWhitespaceWithNonBreakingSpaceIfNeeded(
+        previous_visible_pos);
+
+    GetDocument().UpdateStyleAndLayout(DocumentUpdateReason::kEditing);
+    ReplaceCollapsibleWhitespaceWithNonBreakingSpaceIfNeeded(
+        CreateVisiblePosition(position));
+  }
 }
 
 void CompositeEditCommand::
@@ -901,6 +913,22 @@ void CompositeEditCommand::
   auto* container_text_node = DynamicTo<Text>(pos.ComputeContainerNode());
   if (!container_text_node)
     return;
+  ReplaceTextInNode(container_text_node, pos.OffsetInContainerNode(), 1,
+                    NonBreakingSpaceString(),
+                    EditCommand::PasswordEchoBehavior::kDoNotEcho);
+}
+
+void CompositeEditCommand::
+    ReplaceCollapsibleWhitespaceWithNonBreakingSpaceIfNeeded(
+        const Position& position) {
+  if (!IsCollapsibleWhitespace(CharacterAfter(position))) {
+    return;
+  }
+  Position pos = MostForwardCaretPosition(position);
+  auto* container_text_node = DynamicTo<Text>(pos.ComputeContainerNode());
+  if (!container_text_node) {
+    return;
+  }
   ReplaceTextInNode(container_text_node, pos.OffsetInContainerNode(), 1,
                     NonBreakingSpaceString(),
                     EditCommand::PasswordEchoBehavior::kDoNotEcho);

@@ -874,6 +874,7 @@
 <translation id="4021447724486050609">Je browser updaten</translation>
 <translation id="4021931095789478915">${url} toevoegen aan leeslijst</translation>
 <translation id="4028871427853484857">Opslaan in account…</translation>
+<translation id="4036529942385659684">Startpagina tonen na periode van inactiviteit</translation>
 <translation id="4038354071007134711">Geen app op dit apparaat kan het bestand openen.</translation>
 <translation id="4042870976416480368">Zoeken op pagina</translation>
 <translation id="4045441967987592849">Opnieuw openen</translation>
@@ -911,7 +912,6 @@
 <translation id="417138788035229076">Groep beheren</translation>
 <translation id="4172051516777682613">Altijd bekijken</translation>
 <translation id="417273154673973994">{count,plural, =1{Eén tabbladgroep gesloten en opgeslagen}other{{count} tabbladgroepen gesloten en opgeslagen}}</translation>
-<translation id="417612446554534067">Naar je apparaten sturen</translation>
 <translation id="4180726336228139707">Alleen op dit apparaat</translation>
 <translation id="4181841719683918333">Talen</translation>
 <translation id="4183350924949589798">Sterkere beveiliging?</translation>
@@ -1135,6 +1135,7 @@
 <translation id="4896467949657706481">Tabbladen zijn gesloten en je bent uitgelogd</translation>
 <translation id="4911042367886397055">Welkom terug <ph name="USER_NAME" />.</translation>
 <translation id="4913626501929406101">Je kunt een kopie van je wachtwoord beveiligd delen met iemand in je gezinsgroep. <ph name="BEGIN_LINK" />Meer informatie<ph name="END_LINK" /></translation>
+<translation id="4916679969857390442">Lens</translation>
 <translation id="4917025507570489430">Je kunt bestaande browsegegevens gebruiken als je bent ingelogd als <ph name="USER_EMAIL" />. Je organisatie kan deze gegevens misschien bekijken.</translation>
 <translation id="4918086044614829423">Accepteren</translation>
 <translation id="4930714375720679147">Aanzetten</translation>

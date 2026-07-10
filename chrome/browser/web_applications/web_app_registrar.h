@@ -523,6 +523,10 @@ class WebAppRegistrar {
   // its scope. This returns false for apps that aren't installed.
   bool CanCaptureLinksInScope(const webapps::AppId& app_id) const;
 
+  // Verifies if the scopes of 2 apps match for user link capturing.
+  bool AppScopesMatchForUserLinkCapturing(const webapps::AppId& app_id1,
+                                          const webapps::AppId& app_id2) const;
+
   // ChromeOS stores the per-app capturing setting in PreferredAppsImpl, not
   // here.
 #if !BUILDFLAG(IS_CHROMEOS)
@@ -548,10 +552,6 @@ class WebAppRegistrar {
   // Returns a set of app ids that match the scope for user link capturing that
   std::vector<webapps::AppId> GetOverlappingAppsMatchingScope(
       const webapps::AppId& app_id) const;
-
-  // Verifies if the scopes of 2 apps match for user link capturing.
-  bool AppScopesMatchForUserLinkCapturing(const webapps::AppId& app_id1,
-                                          const webapps::AppId& app_id2) const;
 #endif
 
   // Returns information about apps that controls the input url, i.e. the app's

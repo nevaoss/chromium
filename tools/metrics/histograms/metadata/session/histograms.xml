@@ -163,6 +163,27 @@ chromium-metrics-reviews@google.com.
   <token key="EncryptedStatus" variants="EncryptedStatus"/>
 </histogram>
 
+<histogram name="Session.CommandStorageManager.EncryptedBackendUninitialized"
+    enum="SessionEncryptedBackendUninitialized" expires_after="2026-09-01">
+  <owner>sammon@google.com</owner>
+  <owner>dljames@chromium.org</owner>
+  <summary>
+    Records when the encrypted backend is accessed before it has been
+    initialized. The enum indicates which operation attempted the access.
+  </summary>
+</histogram>
+
+<histogram name="Session.CommandStorageManager.EncryptedReadMatch"
+    enum="SessionReadComparisonResult" expires_after="2026-09-01">
+  <owner>sammon@google.com</owner>
+  <owner>dljames@chromium.org</owner>
+  <summary>
+    The result of comparing the commands read from the cleartext and encrypted
+    backends. Recorded after the commands are read from the cleartext and
+    encrypted backends when the feature flag allows.
+  </summary>
+</histogram>
+
 <histogram name="Session.CommandStorageManager.OnEncryptorReadyDuration"
     units="ms" expires_after="2026-09-01">
   <owner>sammon@google.com</owner>

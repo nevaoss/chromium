@@ -56,6 +56,14 @@ class RoundedOmniboxResultsFrame : public views::View {
 
   static constexpr int kDefaultElevation = 16;
 
+  // Updates whether mouse events should be forwarded to the underlying
+  // location bar.
+  void set_forward_mouse_events(bool forward) {
+    forward_mouse_events_ = forward;
+  }
+
+  bool forward_mouse_events() const { return forward_mouse_events_; }
+
   // views::View:
   void Layout(PassKey) override;
   void AddedToWidget() override;
@@ -74,7 +82,7 @@ class RoundedOmniboxResultsFrame : public views::View {
   raw_ptr<views::View> contents_;
 
   // Only used on platforms that support Aura (non-Mac).
-  [[maybe_unused]] const bool forward_mouse_events_;
+  [[maybe_unused]] bool forward_mouse_events_;
 };
 
 #endif  // CHROME_BROWSER_UI_VIEWS_OMNIBOX_ROUNDED_OMNIBOX_RESULTS_FRAME_H_

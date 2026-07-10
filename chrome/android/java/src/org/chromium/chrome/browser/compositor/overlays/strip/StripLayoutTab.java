@@ -228,6 +228,7 @@ public class StripLayoutTab extends StripLayoutView {
      * @param id The id of the {@link Tab} to visually represent.
      * @param clickHandler Handles clicks on this {@link StripLayoutTab}.
      * @param keyboardFocusHandler Handles keyboard focus gain/loss on this {@link StripLayoutTab}.
+     * @param accessibilityFocusHandler Handles accessibility focus on this {@link StripLayoutTab}.
      * @param loadTrackerCallback The {@link TabLoadTrackerCallback} to be notified of loading state
      *     changes.
      * @param updateHost The {@link LayoutUpdateHost}.
@@ -240,12 +241,13 @@ public class StripLayoutTab extends StripLayoutView {
             int id,
             StripLayoutViewOnClickHandler clickHandler,
             StripLayoutViewOnKeyboardFocusHandler keyboardFocusHandler,
+            StripLayoutViewOnAccessibilityFocusHandler accessibilityFocusHandler,
             TabLoadTrackerCallback loadTrackerCallback,
             LayoutUpdateHost updateHost,
             boolean incognito,
             boolean isPinned,
             @MediaState int mediaState) {
-        super(incognito, clickHandler, keyboardFocusHandler, context);
+        super(incognito, clickHandler, keyboardFocusHandler, accessibilityFocusHandler, context);
         mTabId = id;
         mMediaState = mediaState;
         mIsPinned = isPinned;

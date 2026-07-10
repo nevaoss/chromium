@@ -6,6 +6,8 @@
 
 #include "base/auto_reset.h"
 #include "base/check_is_test.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_union_urlpatterninit_usvstring.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_url_pattern_init.h"
 #include "third_party/blink/renderer/core/css/style_engine.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/element.h"
@@ -19,11 +21,6 @@
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 
 namespace blink {
-
-namespace {
-
-
-}  // anonymous namespace
 
 RouteMap::RouteMap(Document& document) : Supplement<Document>(document) {}
 RouteMap::RouteMap() : Supplement<Document>(nullptr) {
@@ -178,26 +175,33 @@ void RouteMap::AddRouteFromRule(const String& dashed_ident,
   UpdateMatchStatus(*route);
 }
 
-void RouteMap::AddAnonymousRoute(URLPattern* pattern) {
-  String pattern_string = pattern->ToString();
+void RouteMap::AddAnonymousRoute(const AtomicString& url_pattern_string) {
   Member<Route>& route =
-      anonymous_routes_.insert(pattern_string, nullptr).stored_value->value;
+      anonymous_routes_.insert(url_pattern_string, nullptr).stored_value->value;
   if (route) {
     return;
   }
+
+  V8URLPatternInput* url_pattern_input =
+      MakeGarbageCollected<V8URLPatternInput>(url_pattern_string);
+  const Document& document = GetDocument();
+  URLPattern* url_pattern =
+      URLPattern::Create(document.GetExecutionContext()->GetIsolate(),
+                         url_pattern_input, document.Url(), IGNORE_EXCEPTION);
+
   route = MakeGarbageCollected<Route>(GetDocument());
-  route->AddPattern(pattern);
+  route->AddPattern(url_pattern);
   UpdateMatchStatus(*route);
 }
 
-const Route* RouteMap::FindRoute(const String& route_name) const {
+const Route* RouteMap::FindRoute(const AtomicString& route_name) const {
   const auto it = routes_.find(route_name);
   return it == routes_.end() ? nullptr : it->value;
 }
 
-const Route* RouteMap::FindRoute(const URLPattern* pattern) const {
-  String pattern_string = pattern->ToString();
-  auto it = anonymous_routes_.find(pattern_string);
+const Route* RouteMap::FindAnonymousRoute(
+    const AtomicString& url_pattern_string) const {
+  auto it = anonymous_routes_.find(url_pattern_string);
   return it == anonymous_routes_.end() ? nullptr : it->value;
 }
 

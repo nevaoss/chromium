@@ -10,7 +10,6 @@
 #include "base/memory/raw_ref.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_instance.h"
 #include "components/autofill/core/browser/network/autofill_ai/personal_context_access_manager_impl.h"
-#include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
 
 namespace autofill {
 

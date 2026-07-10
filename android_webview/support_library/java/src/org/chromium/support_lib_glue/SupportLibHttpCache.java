@@ -9,8 +9,6 @@ import org.chromium.base.TraceEvent;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.support_lib_boundary.HttpCacheBoundaryInterface;
 
-import java.util.concurrent.Callable;
-
 @NullMarked
 class SupportLibHttpCache implements HttpCacheBoundaryInterface {
     private final AwHttpCacheManager mAwHttpCacheManager;
@@ -67,10 +65,5 @@ class SupportLibHttpCache implements HttpCacheBoundaryInterface {
                 TraceEvent.scoped("WebView.APICall.AndroidX.HTTP_CACHE_SET_QUOTA_BYTES")) {
             mAwHttpCacheManager.setQuotaBytes(quotaInBytes);
         }
-    }
-
-    @Override
-    public Object getOrCreatePeer(Callable<Object> creationCallable) {
-        return mAwHttpCacheManager.getOrCreateSupportLibObject(creationCallable);
     }
 }

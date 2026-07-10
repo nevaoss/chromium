@@ -4,12 +4,11 @@
 
 import 'chrome://shopping-insights-side-panel.top-chrome/app.js';
 
-import {PageCallbackRouter, PriceTrackingHandlerRemote} from 'chrome://resources/cr_components/commerce/price_tracking.mojom-webui.js';
+import {browserProxyFactory as priceTrackingBrowserProxyFactory, PriceTrackingHandlerRemote} from 'chrome://resources/cr_components/commerce/price_tracking.mojom-webui.js';
 import type {PageRemote} from 'chrome://resources/cr_components/commerce/price_tracking.mojom-webui.js';
-import {PriceTrackingBrowserProxyImpl} from 'chrome://resources/cr_components/commerce/price_tracking_browser_proxy.js';
 import type {BookmarkProductInfo, ProductInfo} from 'chrome://resources/cr_components/commerce/shared.mojom-webui.js';
 import type {PriceInsightsInfo} from 'chrome://resources/cr_components/commerce/shopping_service.mojom-webui.js';
-import {PriceInsightsInfo_PriceBucket} from 'chrome://resources/cr_components/commerce/shopping_service.mojom-webui.js';
+import {PriceInsightsInfo_PriceBucket, ShoppingServiceHandlerRemote} from 'chrome://resources/cr_components/commerce/shopping_service.mojom-webui.js';
 import {ShoppingServiceBrowserProxyImpl} from 'chrome://resources/cr_components/commerce/shopping_service_browser_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import type {PriceTrackingSectionElement} from 'chrome://shopping-insights-side-panel.top-chrome/price_tracking_section.js';
@@ -21,10 +20,9 @@ import {microtasksFinished} from 'chrome://webui-test/test_util.js';
 
 suite('PriceTrackingSectionTest', () => {
   let priceTrackingSection: PriceTrackingSectionElement;
-  let callbackRouter: PageCallbackRouter;
   let callbackRouterRemote: PageRemote;
-  const shoppingServiceApi =
-      TestMock.fromClass(ShoppingServiceBrowserProxyImpl);
+  const shoppingServiceHandler =
+      TestMock.fromClass(ShoppingServiceHandlerRemote);
   const priceTrackingHandler = TestMock.fromClass(PriceTrackingHandlerRemote);
   let metrics: MetricsTracker;
 
@@ -99,19 +97,19 @@ suite('PriceTrackingSectionTest', () => {
   setup(() => {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
 
-    shoppingServiceApi.reset();
-    ShoppingServiceBrowserProxyImpl.setInstance(shoppingServiceApi);
+    shoppingServiceHandler.reset();
+    ShoppingServiceBrowserProxyImpl.setInstance({
+      handler: shoppingServiceHandler,
+    });
 
     priceTrackingHandler.reset();
-    callbackRouter = new PageCallbackRouter();
     priceTrackingHandler.setResultFor(
         'getParentBookmarkFolderNameForCurrentUrl',
         Promise.resolve({name: 'Parent folder'}));
-    callbackRouterRemote = callbackRouter.$.bindNewPipeAndPassRemote();
-    PriceTrackingBrowserProxyImpl.setInstance({
-      handler: priceTrackingHandler,
-      callbackRouter: callbackRouter,
-    });
+    const {instance, remote} =
+        priceTrackingBrowserProxyFactory.createForTest(priceTrackingHandler);
+    priceTrackingBrowserProxyFactory.setInstance(instance);
+    callbackRouterRemote = remote;
 
     priceTrackingSection = document.createElement('price-tracking-section');
     priceTrackingSection.productInfo = productInfo;

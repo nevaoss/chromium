@@ -25,6 +25,7 @@
 #include "content/browser/webid/disconnect_request.h"
 #include "content/browser/webid/idp_network_request_manager.h"
 #include "content/browser/webid/metrics.h"
+#include "content/browser/webid/request_service.h"
 #include "content/browser/webid/test/delegated_idp_network_request_manager.h"
 #include "content/browser/webid/test/federated_auth_request_request_token_callback_helper.h"
 #include "content/browser/webid/test/mock_api_permission_delegate.h"
@@ -1212,13 +1213,13 @@ class RequestTest : public RenderViewHostImplTestHarness {
     simulator->Commit();
 
     mojo::Remote<blink::mojom::FederatedAuthRequest> remote;
-    Request::CreateForTesting(*static_cast<TestRenderFrameHost*>(
-                                  simulator->GetFinalRenderFrameHost()),
-                              test_api_permission_delegate_.get(),
-                              test_auto_reauthn_permission_delegate_.get(),
-                              test_permission_delegate_.get(),
-                              test_identity_registry_.get(),
-                              remote.BindNewPipeAndPassReceiver());
+    RequestService::GetOrCreateForCurrentDocument(
+        static_cast<TestRenderFrameHost*>(simulator->GetFinalRenderFrameHost()))
+        ->CreateRequestForTesting(remote.BindNewPipeAndPassReceiver(),
+                                  test_api_permission_delegate_.get(),
+                                  test_auto_reauthn_permission_delegate_.get(),
+                                  test_permission_delegate_.get(),
+                                  test_identity_registry_.get());
     return remote;
   }
 
@@ -1240,11 +1241,13 @@ class RequestTest : public RenderViewHostImplTestHarness {
     static_cast<TestWebContents*>(web_contents())
         ->NavigateAndCommit(GURL(rp_url_), ui::PAGE_TRANSITION_LINK);
 
-    federated_auth_request_impl_ = &Request::CreateForTesting(
-        *main_test_rfh(), test_api_permission_delegate_.get(),
-        test_auto_reauthn_permission_delegate_.get(),
-        test_permission_delegate_.get(), test_identity_registry_.get(),
-        request_remote_.BindNewPipeAndPassReceiver());
+    request_ = &RequestService::GetOrCreateForCurrentDocument(main_test_rfh())
+                    ->CreateRequestForTesting(
+                        request_remote_.BindNewPipeAndPassReceiver(),
+                        test_api_permission_delegate_.get(),
+                        test_auto_reauthn_permission_delegate_.get(),
+                        test_permission_delegate_.get(),
+                        test_identity_registry_.get());
 
     std::unique_ptr<TestIdpNetworkRequestManager> network_request_manager =
         std::make_unique<TestIdpNetworkRequestManager>();
@@ -1255,8 +1258,8 @@ class RequestTest : public RenderViewHostImplTestHarness {
       std::unique_ptr<TestIdpNetworkRequestManager> manager) {
     test_network_request_manager_ = std::move(manager);
     // DelegatedIdpNetworkRequestManager is owned by
-    // |federated_auth_request_impl_|.
-    federated_auth_request_impl_->SetNetworkManagerForTests(
+    // |request_|.
+    request_->SetNetworkManagerForTests(
         std::make_unique<DelegatedIdpNetworkRequestManager>(
             test_network_request_manager_.get()));
   }
@@ -1293,8 +1296,7 @@ class RequestTest : public RenderViewHostImplTestHarness {
 
     dialog_controller_state_ = TestDialogController::State();
     custom_dialog_controller_->SetState(&dialog_controller_state_);
-    federated_auth_request_impl_->SetDialogControllerForTests(
-        std::move(custom_dialog_controller_));
+    request_->SetDialogControllerForTests(std::move(custom_dialog_controller_));
 
     SetConfig(configuration);
 
@@ -1458,7 +1460,7 @@ class RequestTest : public RenderViewHostImplTestHarness {
   }
 
   void CloseDialog() {
-    federated_auth_request_impl_->OnDialogDismissed(
+    request_->OnDialogDismissed(
         IdentityRequestDialogController::DismissReason::kCloseButton);
   }
 
@@ -1466,8 +1468,7 @@ class RequestTest : public RenderViewHostImplTestHarness {
                       blink::mojom::RedirectParams::Tag method,
                       const GURL& redirect_to,
                       const std::string& request_body) {
-    federated_auth_request_impl_->RedirectTo(idp_config_url, method,
-                                             redirect_to, request_body);
+    request_->RedirectTo(idp_config_url, method, redirect_to, request_body);
   }
 
   void CompleteDisconnectRequest() {
@@ -1479,13 +1480,11 @@ class RequestTest : public RenderViewHostImplTestHarness {
         blink::mojom::IdentityCredentialDisconnectOptions::New();
     options->config = blink::mojom::IdentityProviderConfig::New();
     options->config->config_url = GURL(kProviderUrlFull);
-    federated_auth_request_impl_->disconnect_request_ =
-        DisconnectRequest::Create(
-            std::move(network_request_manager), test_permission_delegate_.get(),
-            main_test_rfh(), std::move(fedcm_metrics), std::move(options));
-    federated_auth_request_impl_->disconnect_request_->callback_ =
-        base::DoNothing();
-    federated_auth_request_impl_->disconnect_request_->Complete(
+    request_->disconnect_request_ = DisconnectRequest::Create(
+        std::move(network_request_manager), test_permission_delegate_.get(),
+        main_test_rfh(), std::move(fedcm_metrics), std::move(options));
+    request_->disconnect_request_->callback_ = base::DoNothing();
+    request_->disconnect_request_->Complete(
         blink::mojom::DisconnectStatus::kSuccess, DisconnectStatus::kSuccess);
   }
 
@@ -1850,7 +1849,7 @@ class RequestTest : public RenderViewHostImplTestHarness {
   std::vector<blink::mojom::IdentityProviderRequestOptionsPtr>
   MaybeAddRegisteredProviders(
       std::vector<blink::mojom::IdentityProviderRequestOptionsPtr>& providers) {
-    return federated_auth_request_impl_->MaybeAddRegisteredProviders(providers);
+    return request_->MaybeAddRegisteredProviders(providers);
   }
 
   void ExpectTwoUniqueSessionIDs() {
@@ -1904,8 +1903,8 @@ class RequestTest : public RenderViewHostImplTestHarness {
   }
 
   void SimulateLoginToIdP(std::string login_url = kIdpLoginUrl) {
-    federated_auth_request_impl_->LoginToIdP(/*can_append_hints=*/true,
-                                             GURL(kIdpUrl), GURL(login_url));
+    request_->LoginToIdP(/*can_append_hints=*/true, GURL(kIdpUrl),
+                         GURL(login_url));
   }
 
   void ExpectSuccessfulActiveFlow() {
@@ -1945,8 +1944,8 @@ class RequestTest : public RenderViewHostImplTestHarness {
     // observers.
     test_permission_delegate_
         ->idp_signin_statuses_[OriginFromString(kProviderUrlFull)] = true;
-    federated_auth_request_impl_->OnIdpSigninStatusReceived(
-        OriginFromString(kProviderUrlFull), true);
+    request_->OnIdpSigninStatusReceived(OriginFromString(kProviderUrlFull),
+                                        true);
 
     WaitForCurrentAuthRequest(/*should_fast_forward=*/false);
     CheckAuthExpectations(kConfigurationValid, kExpectationSuccess);
@@ -1970,7 +1969,7 @@ class RequestTest : public RenderViewHostImplTestHarness {
   std::string rp_url_;
 
   mojo::Remote<blink::mojom::FederatedAuthRequest> request_remote_;
-  raw_ptr<Request, AcrossTasksDanglingUntriaged> federated_auth_request_impl_;
+  raw_ptr<Request, AcrossTasksDanglingUntriaged> request_;
 
   std::unique_ptr<TestIdpNetworkRequestManager> test_network_request_manager_;
 
@@ -3683,7 +3682,7 @@ TEST_F(RequestTest,
   EXPECT_FALSE(DidFetchAnyEndpoint());
 
   // Delete the request before DelayTimer kicks in.
-  federated_auth_request_impl_->ResetAndDeleteThisForTesting();
+  request_->ResetAndDeleteThisForTesting();
 
   // If double counted, these samples would not be unique so the following
   // checks will fail.
@@ -3700,7 +3699,7 @@ TEST_F(RequestTest,
   EXPECT_FALSE(DidFetchAnyEndpoint());
 
   // Abort the request before DelayTimer kicks in.
-  federated_auth_request_impl_->CancelTokenRequest();
+  request_->CancelTokenRequest();
 
   // If double counted, these samples would not be unique so the following
   // checks will fail.
@@ -4487,8 +4486,7 @@ TEST_F(RequestTest, FailureUiThenSuccessfulSignin) {
   // calling the observer.
   test_permission_delegate_->idp_signin_statuses_[kIdpOrigin] = true;
   network_manager->accounts_parse_status_ = ParseStatus::kSuccess;
-  federated_auth_request_impl_->OnIdpSigninStatusReceived(
-      kIdpOrigin, /*idp_signin_status=*/true);
+  request_->OnIdpSigninStatusReceived(kIdpOrigin, /*idp_signin_status=*/true);
 
   WaitForCurrentAuthRequest();
   CheckAuthExpectations(kConfigurationValid, kExpectationSuccess);
@@ -4539,8 +4537,7 @@ TEST_F(RequestTest, FailureUiThenSuccessfulSigninButHidden) {
   // calling observer.
   test_permission_delegate_->idp_signin_statuses_[kIdpOrigin] = true;
   network_manager->accounts_parse_status_ = ParseStatus::kSuccess;
-  federated_auth_request_impl_->OnIdpSigninStatusReceived(
-      kIdpOrigin, /*idp_signin_status=*/true);
+  request_->OnIdpSigninStatusReceived(kIdpOrigin, /*idp_signin_status=*/true);
 
   WaitForCurrentAuthRequest();
   CheckAuthExpectations(kConfigurationValid, kExpectationSuccess);
@@ -4592,8 +4589,7 @@ TEST_F(RequestTest, FailureUiSigninFromDifferentIdp) {
   // Simulate user signing into different IdP by updating the IdP signin status
   // and calling observer.
   test_permission_delegate_->idp_signin_statuses_[kOtherOrigin] = true;
-  federated_auth_request_impl_->OnIdpSigninStatusReceived(
-      kOtherOrigin, /*idp_signin_status=*/true);
+  request_->OnIdpSigninStatusReceived(kOtherOrigin, /*idp_signin_status=*/true);
   base::RunLoop().RunUntilIdle();
 
   // No fetches should have been triggered.
@@ -4642,8 +4638,7 @@ TEST_F(RequestTest, FailureUiAccountEndpointKeepsFailing) {
   test_permission_delegate_->idp_signin_statuses_[kIdpOrigin] = true;
   weak_dialog_controller->SetIdpSigninStatusMismatchDialogAction(
       IdpSigninStatusMismatchDialogAction::kClose);
-  federated_auth_request_impl_->OnIdpSigninStatusReceived(
-      kIdpOrigin, /*idp_signin_status=*/true);
+  request_->OnIdpSigninStatusReceived(kIdpOrigin, /*idp_signin_status=*/true);
 
   base::RunLoop().RunUntilIdle();
 
@@ -4699,8 +4694,7 @@ TEST_F(RequestTest, FailureUiThenFailDifferentEndpoint) {
   // calling the observer.
   test_permission_delegate_->idp_signin_statuses_[kIdpOrigin] = true;
   network_manager->accounts_parse_status_ = ParseStatus::kSuccess;
-  federated_auth_request_impl_->OnIdpSigninStatusReceived(
-      kIdpOrigin, /*idp_signin_status=*/true);
+  request_->OnIdpSigninStatusReceived(kIdpOrigin, /*idp_signin_status=*/true);
 
   WaitForCurrentAuthRequest();
   RequestExpectations expectations = {
@@ -4761,7 +4755,9 @@ TEST_F(RequestTest, AllSuccessfulMultiIdpRequestWithoutIdpReorder) {
   EXPECT_EQ(2u, NumFetched(FetchedEndpoint::ACCOUNTS));
 
   // Check that the appropriate metrics are recorded upon destruction.
-  federated_auth_request_impl_->ResetAndDeleteThisForTesting();
+  request_->ResetAndDeleteThisForTesting();
+  RequestService::DeleteForCurrentDocument(main_test_rfh());
+  request_ = nullptr;
   ukm_loop.Run();
   histogram_tester_.ExpectUniqueSample("Blink.FedCm.NumRequestsPerDocument", 1,
                                        1);
@@ -4986,10 +4982,8 @@ TEST_F(RequestTest, MultiIdpLoginToOneIdp) {
   // The second IDP has 3 accounts, so those should be showing up.
   EXPECT_EQ(all_accounts_for_display().size(), 3u);
 
-  EXPECT_FALSE(federated_auth_request_impl_->HasUserTriedToSignInToIdp(
-      GURL(kProviderUrlFull)));
-  EXPECT_FALSE(federated_auth_request_impl_->HasUserTriedToSignInToIdp(
-      GURL(kProviderTwoUrlFull)));
+  EXPECT_FALSE(request_->HasUserTriedToSignInToIdp(GURL(kProviderUrlFull)));
+  EXPECT_FALSE(request_->HasUserTriedToSignInToIdp(GURL(kProviderTwoUrlFull)));
   // First, simulate the user clicking on the sign in to IDP active.
   SimulateLoginToIdP();
   // Then, simulate user signing into IdP by updating the IdP signin status and
@@ -4999,8 +4993,8 @@ TEST_F(RequestTest, MultiIdpLoginToOneIdp) {
   config.idp_info[kProviderUrlFull].accounts_response.parse_status =
       ParseStatus::kSuccess;
   SetConfig(config);
-  federated_auth_request_impl_->OnIdpSigninStatusReceived(
-      providerOrigin, /*idp_signin_status=*/true);
+  request_->OnIdpSigninStatusReceived(providerOrigin,
+                                      /*idp_signin_status=*/true);
 
   base::RunLoop().RunUntilIdle();
 
@@ -5010,10 +5004,8 @@ TEST_F(RequestTest, MultiIdpLoginToOneIdp) {
   // now 4.
   EXPECT_EQ(all_accounts_for_display().size(), 4u);
   EXPECT_EQ(new_accounts().size(), 1u);
-  EXPECT_TRUE(federated_auth_request_impl_->HasUserTriedToSignInToIdp(
-      GURL(kProviderUrlFull)));
-  EXPECT_FALSE(federated_auth_request_impl_->HasUserTriedToSignInToIdp(
-      GURL(kProviderTwoUrlFull)));
+  EXPECT_TRUE(request_->HasUserTriedToSignInToIdp(GURL(kProviderUrlFull)));
+  EXPECT_FALSE(request_->HasUserTriedToSignInToIdp(GURL(kProviderTwoUrlFull)));
 }
 
 // Test that API can succeed with multiple IdPs, if all IDPs have login status
@@ -5425,7 +5417,9 @@ TEST_F(RequestTest, TooManyRequests) {
   EXPECT_FALSE(DidFetchAnyEndpoint());
 
   // Check that the appropriate metrics are recorded upon destruction.
-  federated_auth_request_impl_->ResetAndDeleteThisForTesting();
+  request_->ResetAndDeleteThisForTesting();
+  RequestService::DeleteForCurrentDocument(main_test_rfh());
+  request_ = nullptr;
 
   ukm_loop.Run();
 
@@ -5482,7 +5476,9 @@ TEST_F(RequestTest, TooManyRequestsDifferentIdP) {
   EXPECT_FALSE(DidFetchAnyEndpoint());
 
   // Check that the appropriate metrics are recorded upon destruction.
-  federated_auth_request_impl_->ResetAndDeleteThisForTesting();
+  request_->ResetAndDeleteThisForTesting();
+  RequestService::DeleteForCurrentDocument(main_test_rfh());
+  request_ = nullptr;
 
   ukm_loop.Run();
 
@@ -5526,7 +5522,9 @@ TEST_F(RequestTest, ActiveModeTooManyRequestsWithNewPassiveFlow) {
   EXPECT_FALSE(DidFetchAnyEndpoint());
 
   // Check that the appropriate metrics are recorded upon destruction.
-  federated_auth_request_impl_->ResetAndDeleteThisForTesting();
+  request_->ResetAndDeleteThisForTesting();
+  RequestService::DeleteForCurrentDocument(main_test_rfh());
+  request_ = nullptr;
 
   ukm_loop.Run();
 
@@ -5581,7 +5579,9 @@ TEST_F(RequestTest, ActiveModeTooManyRequestsWithNewActiveFlow) {
   EXPECT_FALSE(DidFetchAnyEndpoint());
 
   // Check that the appropriate metrics are recorded upon destruction.
-  federated_auth_request_impl_->ResetAndDeleteThisForTesting();
+  request_->ResetAndDeleteThisForTesting();
+  RequestService::DeleteForCurrentDocument(main_test_rfh());
+  request_ = nullptr;
 
   ukm_loop.Run();
 
@@ -5636,7 +5636,9 @@ TEST_F(RequestTest, PassiveReplacedByActiveFlow) {
   CheckAuthExpectations(configuration, passive_flow_expectations);
 
   // Check that the appropriate metrics are recorded upon destruction.
-  federated_auth_request_impl_->ResetAndDeleteThisForTesting();
+  request_->ResetAndDeleteThisForTesting();
+  RequestService::DeleteForCurrentDocument(main_test_rfh());
+  request_ = nullptr;
 
   ukm_loop.Run();
 
@@ -6456,7 +6458,7 @@ TEST_F(RequestTest, SuccessfulAuthZRequestWithPopUpWindow) {
   // When the pop-up window is opened, resolve it immediately by
   // producing an access token.
   std::unique_ptr<WebContents> modal(CreateTestWebContents());
-  auto impl = federated_auth_request_impl_;
+  auto impl = request_;
   EXPECT_CALL(*weak_dialog_controller, ShowModalDialog)
       .WillOnce(::testing::WithArg<0>([&modal, &impl](const GURL& url) {
         auto params = blink::mojom::ResolveTokenParams::NewToken(
@@ -6520,7 +6522,7 @@ TEST_F(RequestTest, ContinuationPopupCallingClose) {
   // When the pop-up window is opened, resolve it immediately by
   // producing an access token.
   std::unique_ptr<WebContents> modal(CreateTestWebContents());
-  auto impl = federated_auth_request_impl_;
+  auto impl = request_;
   EXPECT_CALL(*weak_dialog_controller, ShowModalDialog)
       .WillOnce(::testing::WithArg<0>([&modal, &impl](const GURL& url) {
         impl->OnClose();
@@ -6763,7 +6765,7 @@ TEST_F(RequestTest, ActiveFlowDismissLoadingUI) {
 TEST_F(RequestTest, CloseModalDialogView) {
   // Test that IdentityRegistry is notified when modal dialog view is closed.
   EXPECT_FALSE(test_identity_registry_->notified_);
-  federated_auth_request_impl_->CloseModalDialogView();
+  request_->CloseModalDialogView();
   EXPECT_TRUE(test_identity_registry_->notified_);
 }
 
@@ -6784,11 +6786,13 @@ class RequestNewTabTest : public RequestTest {
     static_cast<TestWebContents*>(web_contents())
         ->NavigateAndCommit(GURL("chrome://newtab/"), ui::PAGE_TRANSITION_LINK);
 
-    federated_auth_request_impl_ = &Request::CreateForTesting(
-        *main_test_rfh(), test_api_permission_delegate_.get(),
-        test_auto_reauthn_permission_delegate_.get(),
-        test_permission_delegate_.get(), test_identity_registry_.get(),
-        request_remote_.BindNewPipeAndPassReceiver());
+    request_ = &RequestService::GetOrCreateForCurrentDocument(main_test_rfh())
+                    ->CreateRequestForTesting(
+                        request_remote_.BindNewPipeAndPassReceiver(),
+                        test_api_permission_delegate_.get(),
+                        test_auto_reauthn_permission_delegate_.get(),
+                        test_permission_delegate_.get(),
+                        test_identity_registry_.get());
 
     std::unique_ptr<TestIdpNetworkRequestManager> network_request_manager =
         std::make_unique<TestIdpNetworkRequestManager>();
@@ -6840,9 +6844,9 @@ TEST_F(RequestTest, RequestUserInfoFailure) {
   config->config_url = GURL(kIdpUrl);
   UserInfoCallbackHelper callback_helper;
   // This request will fail right away (not from IDP origin).
-  federated_auth_request_impl_->RequestUserInfo(
-      std::move(config), base::BindOnce(&UserInfoCallbackHelper::Complete,
-                                        base::Unretained(&callback_helper)));
+  request_->RequestUserInfo(std::move(config),
+                            base::BindOnce(&UserInfoCallbackHelper::Complete,
+                                           base::Unretained(&callback_helper)));
   // This is a regression test and it passes if the test does not crash.
   callback_helper.WaitForCallback();
 }
@@ -6920,11 +6924,11 @@ TEST_F(RequestTest, DoubleMismatchDialog) {
   EXPECT_TRUE(did_show_idp_signin_status_mismatch_dialog());
 
   test_permission_delegate_->idp_signin_statuses_[kIdpOrigin] = true;
-  federated_auth_request_impl_->OnIdpSigninStatusReceived(kIdpOrigin, true);
+  request_->OnIdpSigninStatusReceived(kIdpOrigin, true);
   base::RunLoop().RunUntilIdle();
 
   // Check that the appropriate metrics are recorded upon destruction.
-  federated_auth_request_impl_->ResetAndDeleteThisForTesting();
+  request_->ResetAndDeleteThisForTesting();
   ukm_loop.Run();
 
   // The additional mismatch should be recorded in the metrics.
@@ -6968,7 +6972,7 @@ TEST_F(RequestTest, AbortedAccountsDialogShownDurationMetric) {
   EXPECT_FALSE(did_show_idp_signin_status_mismatch_dialog());
 
   // Abort the request.
-  federated_auth_request_impl_->CancelTokenRequest();
+  request_->CancelTokenRequest();
 
   WaitForCurrentAuthRequest();
   RequestExpectations expectations{RequestTokenStatus::kErrorCanceled,
@@ -7013,7 +7017,7 @@ TEST_F(RequestTest, AbortedMismatchDialogShownDurationMetric) {
   EXPECT_FALSE(did_show_accounts_dialog());
 
   // Abort the request.
-  federated_auth_request_impl_->CancelTokenRequest();
+  request_->CancelTokenRequest();
 
   RequestExpectations expectations{RequestTokenStatus::kErrorCanceled,
                                    FederatedAuthRequestResult::kCanceled,
@@ -7049,7 +7053,7 @@ TEST_F(RequestTest, RecordNumRequestsPerDocumentMetric) {
   EXPECT_FALSE(did_show_idp_signin_status_mismatch_dialog());
 
   // Abort the first auth request.
-  federated_auth_request_impl_->CancelTokenRequest();
+  request_->CancelTokenRequest();
 
   WaitForCurrentAuthRequest();
   RequestExpectations expectations{RequestTokenStatus::kErrorCanceled,
@@ -7073,7 +7077,9 @@ TEST_F(RequestTest, RecordNumRequestsPerDocumentMetric) {
   EXPECT_FALSE(did_show_idp_signin_status_mismatch_dialog());
 
   // Check that the appropriate metrics are recorded upon destruction.
-  federated_auth_request_impl_->ResetAndDeleteThisForTesting();
+  request_->ResetAndDeleteThisForTesting();
+  RequestService::DeleteForCurrentDocument(main_test_rfh());
+  request_ = nullptr;
 
   ukm_loop.Run();
 
@@ -8139,8 +8145,8 @@ TEST_F(RequestTest, UseOtherAccountAccountOrder) {
                 IdentityRequestAccount::DisplayPriority::kNew;
           }
         }
-        federated_auth_request_impl_->OnIdpSigninStatusReceived(
-            OriginFromString(kProviderUrlFull), true);
+        request_->OnIdpSigninStatusReceived(OriginFromString(kProviderUrlFull),
+                                            true);
         return modal.get();
       }));
 
@@ -8198,8 +8204,8 @@ TEST_F(RequestTest, UseOtherAccountMultipleNewAccounts) {
                 IdentityRequestAccount::DisplayPriority::kNew;
           }
         }
-        federated_auth_request_impl_->OnIdpSigninStatusReceived(
-            OriginFromString(kProviderUrlFull), true);
+        request_->OnIdpSigninStatusReceived(OriginFromString(kProviderUrlFull),
+                                            true);
         return modal.get();
       }));
 
@@ -8245,8 +8251,8 @@ TEST_F(RequestTest, UseOtherAccountNoNewAccount) {
       .WillOnce(::testing::WithArg<0>([&modal, this](const GURL& url) {
         // No changes to the accounts being logged in. But set the login status
         // to force the popup to close.
-        federated_auth_request_impl_->OnIdpSigninStatusReceived(
-            OriginFromString(kProviderUrlFull), true);
+        request_->OnIdpSigninStatusReceived(OriginFromString(kProviderUrlFull),
+                                            true);
         return modal.get();
       }));
 
@@ -8283,7 +8289,7 @@ TEST_F(RequestTest, UseOtherAccountThenClose) {
             // Signs in to new accounts.
             test_network_request_manager_->accounts_list_ = {
                 kSingleAccount[0], kTwoAccounts[0], kTwoAccounts[1]};
-            federated_auth_request_impl_->OnIdpSigninStatusReceived(
+            request_->OnIdpSigninStatusReceived(
                 OriginFromString(kProviderUrlFull), true);
             // The action is set to close, so the request will be rejected.
             weak_dialog_controller->accounts_dialog_action_ =
@@ -8322,8 +8328,7 @@ TEST_F(RequestTest, MultipleIdpSigninDueToHint) {
 
   RunAuthDontWaitForCallback(kDefaultMultiIdpRequestParameters, config);
 
-  EXPECT_FALSE(federated_auth_request_impl_->HasUserTriedToSignInToIdp(
-      GURL(kProviderUrlFull)));
+  EXPECT_FALSE(request_->HasUserTriedToSignInToIdp(GURL(kProviderUrlFull)));
 
   for (int i = 0; i < 5; ++i) {
     // First, simulate the user clicking on the sign in to IDP active.
@@ -8332,12 +8337,11 @@ TEST_F(RequestTest, MultipleIdpSigninDueToHint) {
     // and calling the observer.
     test_permission_delegate_->idp_signin_statuses_[providerOrigin] = true;
     // We do not update the accounts so they would still be filtered out.
-    federated_auth_request_impl_->OnIdpSigninStatusReceived(
-        providerOrigin, /*idp_signin_status=*/true);
+    request_->OnIdpSigninStatusReceived(providerOrigin,
+                                        /*idp_signin_status=*/true);
 
     base::RunLoop().RunUntilIdle();
-    EXPECT_TRUE(federated_auth_request_impl_->HasUserTriedToSignInToIdp(
-        GURL(kProviderUrlFull)));
+    EXPECT_TRUE(request_->HasUserTriedToSignInToIdp(GURL(kProviderUrlFull)));
   }
 }
 
@@ -8389,7 +8393,7 @@ TEST_F(RequestTest, VerifyingDialogDestroyExplicitMetrics) {
   config.delay_token_response = true;
 
   RunAuthDontWaitForCallback(kDefaultRequestParameters, config);
-  federated_auth_request_impl_->ResetAndDeleteThisForTesting();
+  request_->ResetAndDeleteThisForTesting();
 
   histogram_tester_.ExpectUniqueSample("Blink.FedCm.VerifyingDialogResult",
                                        VerifyingDialogResult::kDestroyExplicit,
@@ -8418,7 +8422,7 @@ TEST_F(RequestTest, VerifyingDialogDestroyAutoReauthnMetrics) {
   config.delay_token_response = true;
 
   RunAuthDontWaitForCallback(kDefaultRequestParameters, config);
-  federated_auth_request_impl_->ResetAndDeleteThisForTesting();
+  request_->ResetAndDeleteThisForTesting();
 
   histogram_tester_.ExpectUniqueSample(
       "Blink.FedCm.VerifyingDialogResult",
@@ -8998,8 +9002,7 @@ TEST_P(RequestNotifyAutofillParamTest, NotifyAutofillSuggestionAccepted) {
       std::make_unique<TestDialogController>(kConfigurationValid);
 
   dialog_controller->SetState(&dialog_controller_state_);
-  federated_auth_request_impl_->SetDialogControllerForTests(
-      std::move(dialog_controller));
+  request_->SetDialogControllerForTests(std::move(dialog_controller));
 
   GURL idp = params.unknown_idp ? GURL("https://unknownidp.example/")
                                 : GURL(kProviderUrlFull);
@@ -9017,8 +9020,8 @@ TEST_P(RequestNotifyAutofillParamTest, NotifyAutofillSuggestionAccepted) {
       &callback_result, run_loop.QuitClosure());
 
   // This should return early and not crash.
-  federated_auth_request_impl_->NotifyAutofillSuggestionAccepted(
-      idp, account_id, params.show_modal, std::move(callback));
+  request_->NotifyAutofillSuggestionAccepted(idp, account_id, params.show_modal,
+                                             std::move(callback));
 
   run_loop.Run();
 
@@ -9046,7 +9049,7 @@ TEST_F(RequestTest, DismissIgnoredDuringRedirectTo) {
   MockConfiguration config = kConfigurationValid;
   config.delay_token_response = true;
 
-  federated_auth_request_impl_->SetForceAllowRedirectToForTesting(true);
+  request_->SetForceAllowRedirectToForTesting(true);
 
   // Start the request flow.
   RunAuthDontWaitForCallback(kDefaultRequestParameters, config);

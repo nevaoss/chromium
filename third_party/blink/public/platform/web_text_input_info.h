@@ -83,6 +83,7 @@ struct BLINK_PLATFORM_EXPORT WebTextInputInfo {
   // The array of ime_text_spans at the current caret position.
   std::vector<ui::ImeTextSpan> ime_text_spans;
 
+<<<<<<< HEAD
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
   // The input panel (virtual keyboard) rectangle for the currently
   // focused input field.
@@ -91,6 +92,13 @@ struct BLINK_PLATFORM_EXPORT WebTextInputInfo {
   // The text input element rectangle.
   gfx::Rect bounds;
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
+=======
+  // HTML metadata fields.
+  WebString label;
+  WebString name;
+  WebString id;
+  WebString placeholder;
+>>>>>>> 151.0.7895.0~1
 
   bool Equals(const WebTextInputInfo&) const;
 };

@@ -597,7 +597,6 @@ Je kunt je wachtwoorden altijd checken in <ph name="GOOGLE_PASSWORD_MANAGER" />.
 <translation id="1433478348197382180">Leesmodus</translation>
 <translation id="1433980411933182122">Opstarten</translation>
 <translation id="1434659328474177625"><ph name="ISSUER" /> heeft je e-mailadres geverifieerd</translation>
-<translation id="1434696352799406980">Hiermee worden je homepage, nieuwe tabbladpagina, zoekmachine en vastgezette tabbladen opnieuw ingesteld. Ook worden alle extensies uitgezet en tijdelijke gegevens (zoals cookies) gewist. Je bookmarks, geschiedenis en opgeslagen wachtwoorden worden niet gewist.</translation>
 <translation id="1434886155212424586">Homepage is de nieuwe tabbladpagina</translation>
 <translation id="1435940442311036198">Een toegangscode gebruiken op een ander apparaat</translation>
 <translation id="1436390408194692385">Geldigheidsduur: <ph name="TICKET_TIME_LEFT" /></translation>
@@ -2562,6 +2561,7 @@ Je kunt instellingen beheren via het kaartmenu of meer opties bekijken in het ge
 <translation id="2822551631199737692">Camera in gebruik</translation>
 <translation id="2822634587701817431">Verkleinen/vergroten</translation>
 <translation id="2824942875887026017"><ph name="IDS_SHORT_PRODUCT_NAME" /> gebruikt proxyinstellingen van je beheerder</translation>
+<translation id="2825200993288778739">Maak je eigen vaardigheden of voeg ze toe uit de vaardighedenbibliotheek</translation>
 <translation id="282525059261716597">Opdrachtregel:</translation>
 <translation id="2825758591930162672">Openbare sleutel van entiteit</translation>
 <translation id="2826576843404243001">Krijg een waarschuwing voordat je een site bezoekt die geen beveiligde verbindingen ondersteunt. Je kunt deze instelling niet wijzigen, omdat je Geavanceerde beveiliging hebt aangezet.</translation>
@@ -3700,7 +3700,6 @@ Je kunt instellingen beheren via het kaartmenu of meer opties bekijken in het ge
 <translation id="366484203224589850"><ph name="TASK_TITLE" />: Gemini werkt al lang aan deze taak en stopt binnenkort om de batterij te sparen.</translation>
 <translation id="3664911592976620204">{NUM_OTHER_MEMBERS,plural, =0{Lid worden van tabbladgroep met <ph name="OWNER_FIRST_NAME" />}=1{Lid worden van tabbladgroep met <ph name="OWNER_FIRST_NAME" /> en # andere persoon}other{Lid worden van tabbladgroep met <ph name="OWNER_FIRST_NAME" /> en # anderen}}</translation>
 <translation id="3665301845536101715">Openen in zijvenster</translation>
-<translation id="3665589677786828986">Chrome heeft gedetecteerd dat sommige van je instellingen zijn beschadigd door een ander programma en heeft de instellingen teruggezet naar de oorspronkelijke standaardwaarden.</translation>
 <translation id="3665918214153961651">Bestand uploaden</translation>
 <translation id="3666196264870170605">Dump van foutopsporing voor Intel wifi-NIC's</translation>
 <translation id="3666971425390608309">Download onderbroken: <ph name="FILE_NAME" />.</translation>
@@ -4636,6 +4635,7 @@ Je kunt instellingen beheren via het kaartmenu of meer opties bekijken in het ge
 <translation id="4321179778687042513">ctrl</translation>
 <translation id="432160826079505197"><ph name="FILE_NAME" /> tonen in Finder</translation>
 <translation id="4322394346347055525">Andere tabbladen sluiten</translation>
+<translation id="4322400254469690320">Je vindt je <ph name="FILENAME" /> in de map <ph name="FEATURE_NAME" /></translation>
 <translation id="4324577459193912240">Bestand onvolledig</translation>
 <translation id="4325433082696797523">Opslag en voeding</translation>
 <translation id="4325515113816851466">De keuzes van je ouder zijn niet meer van toepassing nadat je bent uitgelogd</translation>
@@ -4986,7 +4986,6 @@ Je kunt instellingen beheren via het kaartmenu of meer opties bekijken in het ge
 <translation id="4580596421317071374">Wachtwoorden worden opgeslagen in <ph name="GOOGLE_PASSWORD_MANAGER" /> op dit apparaat.</translation>
 <translation id="4580939929828762295">Veilig blijven met Google Wachtwoordmanager</translation>
 <translation id="4582297591746054421">Sites lezen je klembord meestal voor functies zoals behoud van opmaak van de tekst die je hebt gekopieerd</translation>
-<translation id="4582563038311694664">Alle instellingen opnieuw instellen</translation>
 <translation id="4584094413232466841">Deze informatie verwijderen uit automatisch invullen in Chrome?</translation>
 <translation id="4584770411839426377">Venster</translation>
 <translation id="4584836561445313300">Je organisatie kan bestaande browsegegevens, zoals wachtwoorden, bekijken en beheren</translation>
@@ -6627,6 +6626,7 @@ Je kunt meerdere schakelaars toewijzen aan deze actie.</translation>
 <translation id="5826993284769733527">Semi-transparant</translation>
 <translation id="5827266244928330802">Safari</translation>
 <translation id="5827591412833386477">Sites in dezelfde groep tonen</translation>
+<translation id="5827835011646404677">Vaardigheden worden opgeslagen in je Google-account</translation>
 <translation id="5828181959764767444">Zonsondergang</translation>
 <translation id="5828545842856466741">Profiel toevoegen...</translation>
 <translation id="5828633471261496623">Bezig met afdrukken....</translation>
@@ -10067,7 +10067,6 @@ Bewaar je sleutelbestand op een veilige plaats. Je hebt het bestand nodig om nie
 <translation id="8327386430364625757">Wiskundig lettertype</translation>
 <translation id="8327490658947427005">Selectie niet in het <ph name="LANGUAGE" /></translation>
 <translation id="8327544198829180337">Deze weergave sluiten</translation>
-<translation id="8327676037044516220">Rechten en contentinstellingen</translation>
 <translation id="8328228852664998535">Als je doorgaat, worden je wachtwoorden, toegangssleutels en andere gegevens definitief uit <ph name="BRAND" /> verwijderd. Accounts die je voor sites of apps hebt gemaakt, worden niet verwijderd.</translation>
 <translation id="8328777765163860529">Alles sluiten</translation>
 <translation id="8330617762701840933">De lijst met websites die omleiden naar een alternatieve browser.</translation>
@@ -10889,7 +10888,6 @@ Dit kan informatie zijn over de geïnstalleerde software, bestanden, je browser,
 <translation id="8925458182817574960">&amp;Instellingen</translation>
 <translation id="8926389886865778422">Niet meer vragen</translation>
 <translation id="8926555406617248399">Tabbladen verborgen</translation>
-<translation id="892706138619340876">Sommige instellingen zijn gereset</translation>
 <translation id="8927438609932588163">Toestaan dat sites gegevens opslaan op je apparaat</translation>
 <translation id="8929696694736010839">Alleen huidige incognitosessie</translation>
 <translation id="8929738682246584251">Vergrootglas aan/uit</translation>
@@ -11198,6 +11196,7 @@ Op <ph name="BEGIN_LINK2" />policies.google.com<ph name="END_LINK2" /> vind je m
 <translation id="9130015405878219958">Ongeldige modus opgegeven.</translation>
 <translation id="9130135798965366513"><ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> deelt je <ph name="FIELDS_STRING" /> met deze site om door te gaan. Bekijk het <ph name="BEGIN_LINK1" />privacybeleid<ph name="END_LINK1" /> en de <ph name="BEGIN_LINK2" />servicevoorwaarden<ph name="END_LINK2" /> van deze site.</translation>
 <translation id="9130364135697530260">Ingesloten content op deze site kan informatie gebruiken die over jou is opgeslagen</translation>
+<translation id="9130857050314385402">Tabbladtitels en URL's worden naar Google gestuurd als je de vaardigheid gebruikt</translation>
 <translation id="9131209053278896908">Hier zie je geblokkeerde sites</translation>
 <translation id="9131487537093447019">Berichten verzenden naar en ontvangen van Bluetooth-apparaten.</translation>
 <translation id="9133568201369135151">Verzameling van diagnostische gegevens is afgerond. Sommige van je persoonlijke informatie is opgenomen in deze gegevens.</translation>

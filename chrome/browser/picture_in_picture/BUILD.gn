@@ -124,6 +124,7 @@ source_set("impl") {
     sources += [
       "auto_picture_in_picture_permission_controller_bridge.cc",
       "auto_picture_in_picture_tab_model_observer_helper.cc",
+      "document_picture_in_picture_bridge_android.cc",
       "picture_in_picture_bounds_cache_bridge.cc",
     ]
     deps += [

@@ -48,9 +48,10 @@ FilterAnnotation CreateDummyAnnotation(
     std::string task_type,
     std::string source_domain,
     std::vector<FilterAttribute> attributes) {
+  std::string host = "sub." + source_domain;
   return FilterAnnotation(base::Uuid::GenerateRandomV4(), std::move(task_type),
-                          std::move(source_domain), base::Time::Now(),
-                          std::move(attributes));
+                          std::move(source_domain), std::move(host),
+                          base::Time::Now(), std::move(attributes));
 }
 
 using testing::_;
@@ -133,10 +134,12 @@ TEST_F(FilterSuggestionGeneratorTest,
   UrlFilterSuggestion expected_suggestion(UrlFilterSuggestion::Params{
       .navigation_url = expected_candidate.navigation_url,
       .source_domain = base::UTF8ToUTF16(annotation.source_domain),
+      .source_host = base::UTF8ToUTF16(annotation.source_host),
       .extraction_timestamp = annotation.creation_timestamp,
       .attribute_ui_labels = std::move(attribute_ui_labels),
       .triggering_navigation_id = kTestNavigationId,
       .triggering_domain = "example.com",
+      .triggering_host = "example.com",
       .task_type = kShoppingTask,
       .suggestion_message = u"Template"});
 
@@ -183,12 +186,12 @@ TEST_F(FilterSuggestionGeneratorTest,
   // Create an old annotation (older than 30 minutes).
   FilterAnnotation old_annotation(
       base::Uuid::GenerateRandomV4(), kShoppingTask, kTestDomain,
-      base::Time::Now() - base::Minutes(31), attributes);
+      "sub.example.com", base::Time::Now() - base::Minutes(31), attributes);
 
   // Create a recent annotation.
-  FilterAnnotation recent_annotation(base::Uuid::GenerateRandomV4(),
-                                     kShoppingTask, kTestDomain,
-                                     base::Time::Now(), attributes);
+  FilterAnnotation recent_annotation(
+      base::Uuid::GenerateRandomV4(), kShoppingTask, kTestDomain,
+      "sub.example.com", base::Time::Now(), attributes);
 
   base::test::TestFuture<bool> store_future1;
   base::test::TestFuture<bool> store_future2;

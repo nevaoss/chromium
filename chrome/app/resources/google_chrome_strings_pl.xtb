@@ -434,15 +434,6 @@ Jeśli ta strona nie działa zgodnie z oczekiwaniami, spróbuj zezwolić na opt
 <translation id="569897634095159764">Nie można połączyć się z internetem. Serwer proxy wymaga uwierzytelnienia.</translation>
 <translation id="5709557627224531708">Ustaw Chrome jako domyślną przeglądarkę</translation>
 <translation id="5719246646468301581">Dodatkowe warunki korzystania z Google Chrome i ChromeOS</translation>
-<translation id="5719324992913248873">To działanie spowoduje:
-          <ph name="LINE_BREAKS" />
-           • zresetowanie niektórych ustawień i skrótów Chrome,
-           <ph name="LINE_BREAK" />
-           • wyłączenie rozszerzeń,
-           <ph name="LINE_BREAK" />
-           • usunięcie plików cookie i innych tymczasowych danych witryn.
-            <ph name="LINE_BREAKS" />
-           Zakładki, historia i zapisane hasła pozostaną bez zmian.</translation>
 <translation id="5736850870166430177">Jeśli strona próbuje wykraść Twoje hasło lub pobierasz szkodliwy plik, Chrome może też wysłać URL wraz z fragmentami zawartości strony do usługi Bezpieczne przeglądanie.</translation>
 <translation id="5756509061973259733">Na tym urządzeniu istnieje już profil Chrome z tym kontem</translation>
 <translation id="5759947850379142561">Wybierz tekst lub obraz, aby wyszukać go za pomocą Obiektywu Google, lub naciśnij Escape, aby zamknąć Obiektyw</translation>

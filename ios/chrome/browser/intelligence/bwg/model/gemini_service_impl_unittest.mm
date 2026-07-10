@@ -112,7 +112,7 @@ class GeminiServiceImplTest : public PlatformTest {
   }
 
   void SetCapabilityForAccount(AccountInfo info, bool capability) {
-    AccountCapabilitiesTestMutator mutator(&info.capabilities);
+    AccountCapabilitiesTestMutator mutator(&info);
     mutator.set_can_use_model_execution_features(capability);
     mutator.set_can_use_gemini_in_chrome(capability);
     identity_test_env_.UpdateAccountInfoForAccount(info);

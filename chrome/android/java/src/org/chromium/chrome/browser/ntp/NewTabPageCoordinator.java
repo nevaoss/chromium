@@ -62,6 +62,7 @@ import org.chromium.chrome.browser.ntp_customization.NtpCustomizationCoordinator
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationCoordinatorFactory;
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationUtils;
 import org.chromium.chrome.browser.ntp_customization.theme.NtpCustomizationPromoManager;
+import org.chromium.chrome.browser.omnibox.HintTextUpdater;
 import org.chromium.chrome.browser.omnibox.SearchEngineService;
 import org.chromium.chrome.browser.omnibox.SearchEngineService.SearchEngineIconObserver;
 import org.chromium.chrome.browser.omnibox.SearchEngineService.SearchEngineNameObserver;
@@ -135,7 +136,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
     private final BottomSheetController mBottomSheetController;
     private final ModalDialogManager mModalDialogManager;
     private final SnackbarManager mSnackbarManager;
-    private final Boolean mIsTablet;
+    private final boolean mIsLff;
     private final Supplier<Integer> mTabStripHeightSupplier;
     private final SearchEngineService mSearchEngineService;
     private final BackPressManager mBackPressManager;
@@ -231,7 +232,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
      * @param bottomSheetController Used to interact with the bottom sheet.
      * @param modalDialogManager The instance of {@link ModalDialogManager}
      * @param snackbarManager Manages snackbars shown in the app.
-     * @param isTablet {@code true} if the NTP surface is in tablet mode.
+     * @param isLff {@code true} if the NTP surface is on a large form factor (LFF) device.
      * @param tabStripHeightSupplier Supplier of the tab strip height.
      * @param homeSurfaceTracker Used to decide whether we are the home surface.
      * @param backPressManager Manages back press dispatching.
@@ -249,7 +250,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
             BottomSheetController bottomSheetController,
             ModalDialogManager modalDialogManager,
             SnackbarManager snackbarManager,
-            boolean isTablet,
+            boolean isLff,
             Supplier<Integer> tabStripHeightSupplier,
             @Nullable HomeSurfaceTracker homeSurfaceTracker,
             BackPressManager backPressManager) {
@@ -267,7 +268,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         mBottomSheetController = bottomSheetController;
         mModalDialogManager = modalDialogManager;
         mSnackbarManager = snackbarManager;
-        mIsTablet = isTablet;
+        mIsLff = isLff;
         mTabStripHeightSupplier = tabStripHeightSupplier;
         mSearchEngineService = SearchEngineService.getForProfile(mProfile);
 
@@ -338,7 +339,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         mContextMenuStartPosition =
                 ReturnToChromeUtil.calculateContextMenuStartPosition(mActivity.getResources());
 
-        if (mIsTablet) {
+        if (mIsLff) {
             mDisplayStyleObserver = this::onDisplayStyleChanged;
             mUiConfig.addObserver(mDisplayStyleObserver);
         } else {
@@ -356,7 +357,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
                 NtpSearchBoxFactory.createSearchBox(
                         mActivity,
                         searchBoxStub,
-                        mIsTablet,
+                        mIsLff,
                         lifecycleDispatcher,
                         mProfile.isOffTheRecord(),
                         mWindowAndroid,
@@ -486,8 +487,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
     public void onSearchBoxHintTextChanged() {
         if (mNtpSearchBox != null) {
             mNtpSearchBox.setSearchBoxHintText(
-                    mSearchEngineService.getOmniboxHintText(
-                            AutocompleteRequestType.SEARCH, /* fuseboxSessionState= */ null));
+                    HintTextUpdater.getNtpHintText(mActivity, mSearchEngineService));
         }
     }
 
@@ -539,7 +539,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
     private void onComposeplateButtonClicked(View view) {
         if (OmniboxFeatures.isMultimodalInputEnabled(mActivity)
                 && OmniboxFeatures.sRedirectComposeplateButton.getValue()
-                && !mIsTablet
+                && !mIsLff
                 && mIsComposeplatePolicyEnabled) {
             mManager.focusSearchBox(false, AutocompleteRequestType.AI_MODE, false, null);
             return;
@@ -800,7 +800,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
     private void updateTilesLayoutMargins() {
         if (mMostVisitedTilesCoordinator == null) return;
 
-        mMostVisitedTilesCoordinator.updateTilesLayoutMargins(shouldShowLogo(), mIsTablet);
+        mMostVisitedTilesCoordinator.updateTilesLayoutMargins(shouldShowLogo(), mIsLff);
     }
 
     /**
@@ -857,7 +857,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
          * form-factor since this translation does not WAI. (see crbug.com/40910640)
          */
         if (mDisableUrlFocusChangeAnimations
-                || mIsTablet
+                || mIsLff
                 || mNtpSearchBox == null
                 || mScrollDelegate == null) {
             return;
@@ -920,14 +920,14 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         }
     }
 
-    /** Returns the fake search box's transition start offset on NTP. */
     private int getNtpSearchBoxTransitionStartOffset(boolean showFakeSearchBoxWithoutLogo) {
-        if (mIsTablet && showFakeSearchBoxWithoutLogo) {
-            // On tablets, it is possible to show fake search box if DSE doesn't have logo if DSE
-            // mobile parity v2 is enabled. The mNTPFakeSearchBoxTransitionStartOffset is used to
-            // calculate scrolling percentage in getToolbarTransitionPercentage(). Reset to 0 when
-            // no doodle is shown for 3p DSE to prevent the alpha of fake search box being set to 0
-            // (transparent) by ToolbarTablet#updateNtp().
+        if (mIsLff && showFakeSearchBoxWithoutLogo) {
+            // On large form factor (LFF) devices, it is possible to show fake search box if DSE
+            // doesn't have logo if DSE mobile parity v2 is enabled. The
+            // mNTPFakeSearchBoxTransitionStartOffset is used to calculate scrolling percentage in
+            // getToolbarTransitionPercentage(). Reset to 0 when no doodle is shown for 3p DSE to
+            // prevent the alpha of fake search box being set to 0 (transparent) by
+            // ToolbarTablet#updateNtp().
             return 0;
         } else {
             return mNtpSearchBoxTransitionStartOffset;
@@ -987,7 +987,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
             mHasShownView = true;
             onInitializationProgressChanged();
             if (NtpCustomizationPromoManager.canTriggerCustomizationBottomSheet(
-                    mWindowAndroid, mIsTablet, sCount)) {
+                    mWindowAndroid, mIsLff, sCount)) {
                 triggerCustomizationBottomSheet();
             }
             TraceEvent.instant("NewTabPageSearchAvailable");
@@ -1228,7 +1228,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
 
     @Override
     public @Nullable UiConfig getUiConfig() {
-        return mIsTablet ? mUiConfig : null;
+        return mIsLff ? mUiConfig : null;
     }
 
     @Override
@@ -1262,12 +1262,12 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
 
     @Override
     public int getStartMargin() {
-        boolean isInNarrowWindowOnTablet =
-                mIsTablet
-                        && NtpCustomizationUtils.isInNarrowWindowOnTablet(
-                                mIsTablet, assumeNonNull(mUiConfig));
+        boolean isInNarrowWindowOnLff =
+                mIsLff
+                        && NtpCustomizationUtils.isInNarrowWindowOnLff(
+                                mIsLff, assumeNonNull(mUiConfig));
         int marginResourceId =
-                isInNarrowWindowOnTablet
+                isInNarrowWindowOnLff
                         ? R.dimen.ntp_search_box_lateral_margin_narrow_window_tablet
                         : R.dimen.mvt_container_lateral_margin;
         return mActivity.getResources().getDimensionPixelSize(marginResourceId);
@@ -1416,7 +1416,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
     }
 
     private void onDisplayStyleChanged(UiConfig.DisplayStyle newDisplayStyle) {
-        if (!mIsTablet) return;
+        if (!mIsLff) return;
 
         updateDoodleOnTablet();
         updateSearchBoxTwoSideMargin();
@@ -1430,7 +1430,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
      * ensuring the change occurs post-logo initialization.
      */
     private void updateDoodleOnTablet() {
-        if (!mIsTablet || mLogoCoordinator == null) return;
+        if (!mIsLff || mLogoCoordinator == null) return;
 
         mLogoCoordinator.updateDoodleOnTablet(mShowingNonStandardGoogleLogo);
     }
@@ -1438,7 +1438,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
     private void updateSearchBoxTwoSideMargin() {
         mSearchBoxTwoSideMargin =
                 NtpCustomizationUtils.getSearchBoxTwoSideMargin(
-                        mActivity.getResources(), assertNonNull(mUiConfig), mIsTablet);
+                        mActivity.getResources(), assertNonNull(mUiConfig), mIsLff);
     }
 
     /**

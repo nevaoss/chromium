@@ -73,6 +73,7 @@
 #import "ios/chrome/browser/shared/public/commands/omnibox_commands.h"
 #import "ios/chrome/browser/shared/public/commands/settings_commands.h"
 #import "ios/chrome/browser/shared/public/commands/snackbar_commands.h"
+#import "ios/chrome/browser/shared/public/commands/tab_picker_commands.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/browser/shared/public/snackbar/snackbar_message.h"
 #import "ios/chrome/browser/shared/ui/symbols/symbols.h"
@@ -92,10 +93,13 @@
 
 namespace {
 
-// The floaty has innate padding which causes the floaty to be farther away from
-// the bottom toolbar. To properly position the floaty closer to the toolbar,
-// this constant is used to remove some of that innate padding.
-const CGFloat kFloatyIntrinsicPaddingCorrection = 8.0;
+// This is the inate padding of the Floaty default implementation. Remove it so
+// we can have our own padding defined.
+const CGFloat kFloatyIntrinsicPaddingCorrection = 34.0;
+
+// Bottom margin for floaty.
+const CGFloat kLegacyFloatingBottomMargin = 26;
+const CGFloat kFloatingBottomMargin = 10;
 
 // The vertical offset clearance required to position the dormant Live session
 // snackbar cleanly above the floaty pill. Note this includes the full floaty
@@ -230,7 +234,9 @@ GeminiBrowserAgent::GeminiBrowserAgent(Browser* browser)
     bwg_gateway_.pageStateChangeHandler = gemini_page_state_change_handler_;
 
     bwg_session_handler_ = [[GeminiSessionHandler alloc]
-        initWithWebStateList:browser_->GetWebStateList()];
+        initWithWebStateList:browser_->GetWebStateList()
+                     tracker:feature_engagement::TrackerFactory::GetForProfile(
+                                 browser_->GetProfile())];
     if (IsGeminiCopresenceEnabled()) {
       gemini_view_state_handler_ =
           [[GeminiViewStateChangeHandler alloc] initWithTarget:this];
@@ -258,6 +264,23 @@ GeminiBrowserAgent::GeminiBrowserAgent(Browser* browser)
 
     if (IsGeminiMultiTabContextEnabled()) {
       gemini_tab_picker_handler_ = [[GeminiTabPickerHandler alloc] init];
+
+      CommandDispatcher* dispatcher = browser_->GetCommandDispatcher();
+      gemini_tab_picker_handler_.tabPickerHandler =
+          static_cast<id<TabPickerCommands>>(dispatcher);
+      gemini_tab_picker_handler_.snackbarHandler =
+          static_cast<id<SnackbarCommands>>(dispatcher);
+
+      base::WeakPtr<GeminiBrowserAgent> weak_this = weak_factory_.GetWeakPtr();
+      gemini_tab_picker_handler_.selectionCallback =
+          ^(std::set<web::WebStateID> selectedIDs,
+            std::set<web::WebStateID> cachedIDs) {
+            if (weak_this) {
+              // TODO(crbug.com/503002699): Use selected IDs to pass shared tabs
+              // to Gemini SDK.
+            }
+          };
+
       bwg_gateway_.tabPickerHandler = gemini_tab_picker_handler_;
     }
 
@@ -393,6 +416,7 @@ void GeminiBrowserAgent::BrowserDestroyed(Browser* browser) {
   gemini_link_opening_handler_ = nil;
 
   gemini_actuation_handler_ = nil;
+  gemini_tab_picker_handler_ = nil;
 
   if (identity_manager_) {
     identity_manager_->RemoveObserver(this);
@@ -452,10 +476,6 @@ void GeminiBrowserAgent::OnPrimaryAccountChanged(
 }
 
 void GeminiBrowserAgent::ConfigureGemini() {
-  if (!IsGeminiDynamicSettingsEnabled()) {
-    return;
-  }
-
   AuthenticationService* auth_service =
       AuthenticationServiceFactory::GetForProfile(browser_->GetProfile());
   if (!auth_service || !auth_service->HasPrimaryIdentity()) {
@@ -638,6 +658,25 @@ void GeminiBrowserAgent::StartGeminiFlow(UIViewController* base_view_controller,
                          fromEntryPoint:entry_point];
 }
 
+GeminiConfiguration*
+GeminiBrowserAgent::CreateGeminiConfigurationForActiveWebState(
+    UIViewController* base_view_controller,
+    GeminiStartupState* startup_state) {
+  web::WebState* web_state = browser_->GetWebStateList()->GetActiveWebState();
+  if (!web_state) {
+    return nil;
+  }
+  GeminiTabHelper* gemini_tab_helper = GetActiveTabHelper(web_state);
+  if (!gemini_tab_helper) {
+    return nil;
+  }
+  GeminiPageContext* initial_page_context =
+      gemini_tab_helper->GetPartialPageContext();
+  ApplyUserPrefsToPageContext(initial_page_context);
+  return CreateGeminiConfiguration(base_view_controller, startup_state,
+                                   web_state, initial_page_context);
+}
+
 bool GeminiBrowserAgent::HasCompletedFirstRun() {
   PrefService* pref_service = browser_->GetProfile()->GetPrefs();
 
@@ -707,8 +746,11 @@ CGFloat GeminiBrowserAgent::GetFloatyOffset() {
     max_bottom_inset += scene_state.window.safeAreaInsets.bottom;
   }
 
+  CGFloat bottomMargin = IsChromeNextIaEnabled() ? kFloatingBottomMargin
+                                                 : kLegacyFloatingBottomMargin;
+
   CGFloat offset = (max_bottom_inset * GetFloatyProgress()) -
-                   kFloatyIntrinsicPaddingCorrection;
+                   kFloatyIntrinsicPaddingCorrection + bottomMargin;
 
   return offset;
 }
@@ -768,6 +810,10 @@ void GeminiBrowserAgent::InvokeFloaty(GeminiConfiguration* config) {
   ios::provider::StartBwgOverlay(config);
   last_shown_view_state_ = ios::provider::GetCurrentGeminiViewState();
   is_floaty_invoked_ = true;
+  if (IsChromeNextIaEnabled()) {
+    ios::provider::UpdateOverlayOffsetWithOpacity(GetFloatyOffset(),
+                                                  GetFloatyProgress());
+  }
   for (auto& observer : observers_) {
     observer.OnFloatyInvokedChanged(is_floaty_invoked_);
   }
@@ -853,6 +899,12 @@ void GeminiBrowserAgent::PresentFloaty(UIViewController* base_view_controller,
     PropagatePageContextToProvider(initial_page_context);
     if (prepopulated_prompt) {
       ios::provider::UpdatePromptAction(entry_point, prepopulated_prompt);
+    }
+    if (IsChromeNextIaEnabled() && IsFullscreenRefactoringEnabled()) {
+      [HandlerForProtocol(browser_->GetCommandDispatcher(), FullscreenCommands)
+          exitFullscreenWithTrigger:FullscreenModeTransitionTrigger::
+                                        kUserInitiatedFinishedByCode
+                           animated:YES];
     }
     ForceShowFloatyIfInvoked();
     ios::provider::UpdateGeminiViewState(

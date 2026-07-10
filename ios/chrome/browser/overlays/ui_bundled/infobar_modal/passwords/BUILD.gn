@@ -22,6 +22,7 @@ source_set("passwords") {
     "//ios/chrome/browser/overlays/ui_bundled/infobar_modal:coordinators",
     "//ios/chrome/browser/overlays/ui_bundled/infobar_modal:mediators",
     "//ios/chrome/browser/passwords/model:infobar_delegates",
+    "//ios/chrome/browser/shared/model/browser",
     "//ios/chrome/browser/shared/public/commands",
     "//ui/base",
   ]
@@ -35,6 +36,8 @@ source_set("unit_tests") {
     ":passwords",
     "//base/test:test_support",
     "//components/infobars/core",
+    "//components/metrics",
+    "//components/password_manager/core/browser:test_support",
     "//ios/chrome/app/strings",
     "//ios/chrome/browser/infobars/model",
     "//ios/chrome/browser/infobars/model/test",

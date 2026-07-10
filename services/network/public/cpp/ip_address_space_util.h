@@ -164,12 +164,6 @@ mojom::IPAddressSpace COMPONENT_EXPORT(NETWORK_CPP)
     CalculateResourceAddressSpace(const GURL& url,
                                   const net::IPEndPoint& endpoint);
 
-// Return the IP address of the host if the host is a private IP address
-// literal, otherwise returns std::nullopt.
-//
-// This does not apply any IP address space overrides.
-std::optional<net::IPAddress> COMPONENT_EXPORT(NETWORK_CPP)
-    ParsePrivateIpFromUrl(const GURL& url);
 
 // Return the IP address space of the host if we can determine it from the URL,
 // otherwise returns std::nullopt.

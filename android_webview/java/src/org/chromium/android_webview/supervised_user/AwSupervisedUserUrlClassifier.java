@@ -97,7 +97,7 @@ public class AwSupervisedUserUrlClassifier {
                 .shouldBlockUrl(
                         requestUrl,
                         shouldBlockUrl -> {
-                            ThreadUtils.postOnUiThread(() -> callback.onResult(shouldBlockUrl));
+                            ThreadUtils.postOnUiThread(callback.bind(shouldBlockUrl));
                         });
     }
 

@@ -46,15 +46,17 @@ void main(){
     this.texLoc = gl.getUniformLocation(this.program, 'u_tex');
   }
 
-  render(target) {
+  render(target, x, y) {
+    x = Number.parseInt(x) || 0;
+    y = Number.parseInt(y) || 0;
     const gl = this.gl;
     gl.useProgram(this.program);
 
-    // Destination rect in GL clip space, placed at top left
-    const xMin = -1;
-    const xMax = (2 * target.width) - 1.0;
-    const yMin = 1.0 - (2 * target.height);
-    const yMax = 1;
+    // Destination rect in GL clip space, placed at (x, y) in canvas grid
+    const xMin = -1 + (2 * x / gl.drawingBufferWidth);
+    const xMax = (2 * (target.width + x) / gl.drawingBufferWidth) - 1.0;
+    const yMin = 1.0 - (2 * (target.height + y) / gl.drawingBufferHeight);
+    const yMax = 1 - (2 * y / gl.drawingBufferHeight);
 
     gl.bindVertexArray(this.vertArray);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertBuf);
@@ -73,12 +75,7 @@ void main(){
 
     gl.bindTexture(gl.TEXTURE_2D, this.tex);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    const level = 0;
-    const internalformat = gl.RGBA8;
-    const format = gl.RGBA;
-    const type = gl.UNSIGNED_BYTE;
-
-    gl.texElementImage2D(gl.TEXTURE_2D, internalformat, target);
+    gl.texElementImage2D(gl.TEXTURE_2D, gl.RGBA8, target);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.uniform1i(this.texLoc, 0);
@@ -86,17 +83,51 @@ void main(){
   }
 }
 
+// This script supports two modes: reftest and pixeltest, which are enabled by
+// sending a message containing 'reftest' or 'pixeltest' respectively.
+//
+// In reftest mode, the script accumulates three frames, clears the canvas to
+// white, and renders the frames in a 2x2 grid (top-left, top-right, and
+// bottom-left quadrants). Once rendering is complete, it sends a 'done'
+// message to the main thread to trigger the screenshot.
+//
+// In pixeltest mode, the script renders each incoming frame individually and
+// reads back the pixel color at coordinates (25, 25), sending the color data
+// back to the main thread for assertion.
+let reftest = false, pixeltest = false;
 let gl;
 let prog;
+let frames = [];
 self.onmessage = (e) => {
+  if (e.data.reftest) {
+    reftest = true;
+  }
+  if (e.data.pixeltest) {
+    pixeltest = true;
+  }
   if (e.data.canvas) {
     gl = e.data.canvas.getContext('webgl2');
     prog = new SimpleGLProgram(gl);
+    self.postMessage({gl_ready: true});
   }
   if (e.data.elementImage) {
-    prog.render(e.data.elementImage);
-    const imageData = new Uint8Array(4);
-    gl.readPixels(25, 25, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, imageData);
-    self.postMessage({pixel: Array.from(imageData)});
+    if (reftest) {
+      frames.push(e.data.elementImage);
+      if (frames.length == 3) {
+        gl.clearColor(1, 1, 1, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        prog.render(frames[0], 0, 0);
+        prog.render(frames[1], 100, 0);
+        prog.render(frames[2], 0, 100);
+        gl.finish();
+        self.postMessage({done: true});
+      }
+    }
+    if (pixeltest) {
+      prog.render(e.data.elementImage);
+      const imageData = new Uint8Array(4);
+      gl.readPixels(25, 25, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, imageData);
+      self.postMessage({pixel: Array.from(imageData)});
+    }
   }
 };

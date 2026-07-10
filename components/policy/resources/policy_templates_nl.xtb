@@ -7212,9 +7212,6 @@ Als je dit beleid niet instelt of als de releaseleeftijd niet kan worden bepaald
 <translation id="5649788773465136073">Zet het gebruik van ID's voor beschermde content met sites uit. Dit kan leiden tot een lagere kwaliteit van afgespeelde beschermde content.</translation>
 <translation id="5650256117857913687">Niet toestaan dat gebruikers met externe toegang URL's aan de hostzijde openen in hun lokale clientbrowser</translation>
 <translation id="5650716720715977549">Beperkingen toepassen op verzoeken naar netwerkeindpunten die meer privé zijn</translation>
-<translation id="5651538748810288218">Als je het beleid instelt op 1, hebben websites toegang tot sensoren, zoals bewegings- en lichtsensoren. Als je het beleid instelt op 2, wordt de toegang tot sensoren geblokkeerd.
-
-      Als je het beleid niet instelt, is <ph name="ALLOW_SENSORS_POLICY_NAME" /> van toepassing maar kunnen gebruikers deze instelling wijzigen.</translation>
 <translation id="5652250453612826983">Hiermee bepaal je de beleidsregels voor ouderlijk toezicht, die alleen op kinderaccounts worden toegepast.
       Deze beleidsregels worden niet ingesteld in de beheerdersconsole, maar worden rechtstreeks geconfigureerd via Kids API Server.</translation>
 <translation id="5654682237531873653">Als je het beleid toepast, wordt de spellingcontrole aangezet en kunnen gebruikers deze niet uitzetten. In <ph name="MS_WIN_NAME" />, <ph name="PRODUCT_OS_NAME" /> en <ph name="LINUX_OS_NAME" /> kunnen talen voor spellingcontrole afzonderlijk worden aan- of uitgezet, zodat gebruikers de spellingcontrole nog steeds kunnen uitzetten door alle talen voor spellingcontrole uit te zetten. Als je dat wilt voorkomen, gebruik je het beleid <ph name="SPELLCHECK_LANGUAGE_POLICY_NAME" /> om af te dwingen dat specifieke talen voor spellingcontrole worden aangezet.

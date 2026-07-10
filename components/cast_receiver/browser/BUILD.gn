@@ -45,6 +45,8 @@ if (enable_cast_receiver) {
       "streaming_controller_remoting.h",
       "streaming_input_observer.cc",
       "streaming_input_observer.h",
+      "streaming_receiver_channel.cc",
+      "streaming_receiver_channel.h",
       "streaming_receiver_session_client.cc",
       "streaming_receiver_session_client.h",
       "streaming_runtime_application.cc",
@@ -122,11 +124,14 @@ source_set("unit_tests") {
   if (enable_cast_receiver) {
     deps += [
       ":browser",
+      "//components/cast/message_port",
+      "//components/cast/message_port:test_message_port_receiver",
       "//content/public/browser",
       "//content/test:test_support",
     ]
     sources += [
       "streaming_input_observer_unittest.cc",
+      "streaming_receiver_channel_unittest.cc",
       "streaming_receiver_session_client_unittest.cc",
     ]
   }

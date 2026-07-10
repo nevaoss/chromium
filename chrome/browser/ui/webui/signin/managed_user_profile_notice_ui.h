@@ -13,6 +13,7 @@
 #include "chrome/browser/ui/webui/signin/signin_utils.h"
 #include "content/public/browser/web_ui_controller.h"
 #include "third_party/skia/include/core/SkColor.h"
+#include "url/gurl.h"
 
 #if !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_ANDROID)
 #include "chrome/common/webui_url_constants.h"
@@ -51,9 +52,16 @@ class ManagedUserProfileNoticeUI : public content::WebUIController {
     kEnterpriseOIDC,
     kProfilePicker,
     kFirstRun,
-    kDeviceSignalsDisclaimer
+    kDeviceSignalsDisclaimer,
+    kMaxValue = kDeviceSignalsDisclaimer
   };
   // LINT.ThenChange(//chrome/browser/resources/signin/managed_user_profile_notice/managed_user_profile_notice_browser_proxy.ts:ScreenType)
+
+  // Returns the URL for the managed user profile notice screen with the
+  // specified ScreenType as a query parameter.
+  static GURL GetURLForType(ScreenType type);
+
+  static ScreenType GetScreenTypeFromURLForTesting(const GURL& url);
 
   explicit ManagedUserProfileNoticeUI(content::WebUI* web_ui);
   ~ManagedUserProfileNoticeUI() override;

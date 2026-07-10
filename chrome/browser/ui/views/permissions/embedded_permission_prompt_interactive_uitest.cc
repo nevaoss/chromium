@@ -88,6 +88,7 @@ class EmbeddedPermissionPromptInteractiveTest
     feature_list_.InitWithFeatures(
         {blink::features::kGeolocationElement,
          blink::features::kUserMediaElement,
+         blink::features::kUserMediaElementLegacy,
          blink::features::kBypassPepcSecurityForTesting},
         {});
   }
@@ -1237,6 +1238,7 @@ class EmbeddedPermissionPromptPositioningInteractiveTest
         {
             {blink::features::kGeolocationElement, {}},
             {blink::features::kUserMediaElement, {}},
+            {blink::features::kUserMediaElementLegacy, {}},
             {permissions::features::kPermissionElementPromptPositioning,
              {{"PermissionElementPromptPositioningParam", "near_element"}}},
             {blink::features::kBypassPepcSecurityForTesting, {}},

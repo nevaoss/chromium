@@ -214,6 +214,7 @@ WebUIToolbarWebView::WebUIToolbarWebView(
       split_tabs_control_(this),
       home_control_(this),
       app_menu_control_(*this),
+      battery_saver_control_(this),
       avatar_control_(this, browser->GetBrowserForMigrationOnly()),
       location_bar_(std::move(location_bar)),
       back_control_(this, BackForwardButton::Direction::kBack),
@@ -230,6 +231,8 @@ WebUIToolbarWebView::WebUIToolbarWebView(
       toolbar_ui_api::mojom::ReloadControlState::New();
   last_queued_state_.home_control_state =
       toolbar_ui_api::mojom::HomeControlState::New();
+  last_queued_state_.battery_saver_button_visible =
+      battery_saver_control_.IsVisible();
   last_queued_state_.location_bar_state =
       toolbar_ui_api::mojom::LocationBarState::New();
   last_queued_state_.location_bar_state->omnibox_view_state =
@@ -352,12 +355,16 @@ void WebUIToolbarWebView::AddedToWidget() {
     if (features::IsWebUIHomeButtonEnabled()) {
       home_control_.Init();
     }
+    if (features::IsWebUIBatterySaverButtonEnabled()) {
+      battery_saver_control_.Init();
+    }
     if (features::IsWebUIPinnedToolbarActionsEnabled()) {
       pinned_toolbar_actions_.Init();
     }
     if (features::IsWebUIExtensionsContainerEnabled()) {
       extensions_container_ = std::make_unique<WebUIToolbarExtensionsContainer>(
-          *browser_, GetWidget(), web_contents()->GetWeakPtr());
+          *browser_, GetWidget(), web_contents()->GetWeakPtr(), &icon_table_,
+          /*push_icon_table_updates=*/false);
       // Register `extensions_container_` as the `ExtensionsContainer` for
       // `browser_`.
       scoped_extensions_container_user_data_ =
@@ -446,6 +453,9 @@ void WebUIToolbarWebView::HandleContextMenu(
       break;
     case toolbar_ui_api::mojom::ContextMenuType::kHome:
       home_control_.HandleContextMenu(screen_rect, source);
+      break;
+    case toolbar_ui_api::mojom::ContextMenuType::kBatterySaver:
+      battery_saver_control_.ShowBubble(screen_rect);
       break;
     case toolbar_ui_api::mojom::ContextMenuType::
         kPinnedActionNewIncognitoWindow:
@@ -988,6 +998,13 @@ void WebUIToolbarWebView::OnAppMenuControlStateChanged(
   }
 }
 
+void WebUIToolbarWebView::OnBatterySaverControlStateChanged(bool is_showing) {
+  if (is_showing != last_queued_state_.battery_saver_button_visible) {
+    last_queued_state_.battery_saver_button_visible = is_showing;
+    PostPushNavigationState();
+  }
+}
+
 void WebUIToolbarWebView::OnOmniboxViewStateChanged(
     toolbar_ui_api::mojom::OmniboxViewStatePtr state) {
   if (*state != *last_queued_state_.location_bar_state->omnibox_view_state) {
@@ -1176,6 +1193,8 @@ gfx::Size WebUIToolbarWebView::ComputeLayout(
                   split_tabs_control_.IsVisible();
   button_count += features::IsWebUIBackForwardButtonEnabled();
   button_count += features::IsWebUIAvatarButtonEnabled();
+  button_count += features::IsWebUIBatterySaverButtonEnabled() &&
+                  battery_saver_control_.IsVisible();
 
   const int size = GetLayoutConstant(LayoutConstant::kToolbarButtonHeight);
   const int gap = GetLayoutConstant(LayoutConstant::kToolbarIconDefaultMargin);

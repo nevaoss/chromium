@@ -7498,9 +7498,6 @@ Si no se establece o si no se puede determinar la antigüedad de lanzamiento, se
 <translation id="5649788773465136073">Inhabilitar el uso de identificadores de contenido protegido con sitios, lo que podría generar una reproducción de menor calidad del contenido protegido.</translation>
 <translation id="5650256117857913687">Impedir que los usuarios con acceso remoto abran las URLs del host en el navegador de su cliente local</translation>
 <translation id="5650716720715977549">Aplicar restricciones a las solicitudes a extremos de red más privados</translation>
-<translation id="5651538748810288218">Si la estableces en 1, los sitios web podrán acceder a los sensores y usarlos, como los de movimiento y luz. Si la estableces en 2, se negará el acceso a los sensores.
-
-      Si no la estableces, se aplicará la política <ph name="ALLOW_SENSORS_POLICY_NAME" />, pero los usuarios podrán cambiar esta configuración.</translation>
 <translation id="5652250453612826983">Controla las políticas de supervisión parental, que se aplican solo a las cuentas de menores de edad.
       Estas políticas no se establecen en la Consola del administrador; se configuran directamente en el servidor de la API de Kids.</translation>
 <translation id="5654682237531873653">Si habilitas la política, se activará el corrector ortográfico, y los usuarios no podrán desactivarlo. En <ph name="MS_WIN_NAME" />, <ph name="PRODUCT_OS_NAME" /> y <ph name="LINUX_OS_NAME" />, es posible activar y desactivar individualmente idiomas con corrección ortográfica, por lo que de todos modos los usuarios podrán desactivar el corrector ortográfico si desactivan cada idioma que tenga corrección ortográfica. A fin de evitarlo, usa la política<ph name="SPELLCHECK_LANGUAGE_POLICY_NAME" /> para habilitar idiomas específicos con corrección ortográfica de manera automática.

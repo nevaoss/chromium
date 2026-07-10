@@ -705,14 +705,11 @@ void MaybeAddPinnedHomeTab(BrowserWindowInterface* browser,
 void MaybeShowNavigationCaptureIph(webapps::AppId app_id,
                                    Profile* profile,
                                    Browser* browser) {
-  // Prevent ChromeOS from reaching this function in tests.
-#if !BUILDFLAG(IS_CHROMEOS)
   web_app::WebAppProvider* provider =
       web_app::WebAppProvider::GetForWebApps(profile);
   CHECK(provider);
   provider->ui_manager().MaybeShowIPHPromoForAppsLaunchedViaLinkCapturing(
       browser, profile, app_id);
-#endif
 }
 
 Browser::CreateParams CreateParamsForApp(const webapps::AppId& app_id,

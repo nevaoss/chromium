@@ -11,12 +11,16 @@
 #include "base/numerics/safe_conversions.h"
 #include "base/task/single_thread_task_runner.h"
 #include "third_party/blink/public/mojom/chromeos/isolated_web_app_api_bridge.mojom-blink.h"
+#include "third_party/blink/public/mojom/manifest/display_mode.mojom-blink.h"
 #include "third_party/blink/public/platform/browser_interface_broker_proxy.h"
 #include "third_party/blink/public/platform/task_type.h"
 #include "third_party/blink/renderer/bindings/core/v8/idl_types.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
+#include "third_party/blink/renderer/core/css/media_values.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
+#include "third_party/blink/renderer/core/frame/local_dom_window.h"
+#include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/geometry/dom_rect_read_only.h"
 #include "third_party/blink/renderer/platform/bindings/exception_code.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
@@ -28,6 +32,7 @@
 #include "third_party/blink/renderer/platform/heap/visitor.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_remote.h"
 #include "third_party/blink/renderer/platform/supplementable.h"
+#include "third_party/blink/renderer/platform/wtf/casting.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
 #include "ui/gfx/geometry/rect.h"
@@ -66,6 +71,24 @@ ScriptPromise<IDLUndefined> IsolatedWebApp::setShape(
     ScriptState* script_state,
     const HeapVector<Member<DOMRectReadOnly>>& rects,
     ExceptionState& exception_state) {
+  ExecutionContext* context = GetSupplementable();
+  if (context && context->IsWindow()) {
+    LocalDOMWindow* window = To<LocalDOMWindow>(context);
+    if (window->GetFrame()) {
+      MediaValues* media_values =
+          MediaValues::CreateDynamicIfFrameExists(window->GetFrame());
+      if (media_values) {
+        mojom::blink::DisplayMode display_mode = media_values->DisplayMode();
+        if (display_mode != mojom::blink::DisplayMode::kUnframed) {
+          exception_state.ThrowDOMException(
+              DOMExceptionCode::kInvalidStateError,
+              "setShape requires the window to be in unframed display mode.");
+          return EmptyPromise();
+        }
+      }
+    }
+  }
+
   if (rects.size() > mojom::blink::kMaxSetShapeRects) {
     exception_state.ThrowTypeError("Invalid number of rectangles.");
     return EmptyPromise();
@@ -114,6 +137,12 @@ ScriptPromise<IDLUndefined> IsolatedWebApp::setShape(
                 resolver->RejectWithDOMException(
                     DOMExceptionCode::kInvalidStateError,
                     "The window could not be found.");
+                break;
+              case mojom::blink::SetShapeResult::kNotUnframed:
+                resolver->RejectWithDOMException(
+                    DOMExceptionCode::kInvalidStateError,
+                    "setShape requires the window to be in unframed display "
+                    "mode.");
                 break;
             }
           })));

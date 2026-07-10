@@ -8,7 +8,7 @@
 # See //third_party/blink/web_tests/TestLists/optimization_guide.filter for the
 # tests run in this configuration.
 
-crbug.com/489522224 virtual/webnn-service-with-gpu/external/wpt/webnn/conformance_tests/add.https.any.html?gpu [ Crash ]
+crbug.com/489522224 virtual/webnn-service-with-gpu/external/wpt/webnn/conformance_tests/add.https.any.html?gpu [ Failure ]
 crbug.com/489392109 virtual/webnn-service-with-gpu/external/wpt/webnn/conformance_tests/qdq_subgraph.https.any.html?gpu [ Crash ]
 crbug.com/489392109 virtual/webnn-service-with-gpu/external/wpt/webnn/conformance_tests/qdq_subgraph.https.any.serviceworker.html?gpu [ Crash ]
 crbug.com/489392109 virtual/webnn-service-with-gpu/external/wpt/webnn/conformance_tests/qdq_subgraph.https.any.sharedworker.html?gpu [ Crash ]

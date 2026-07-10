@@ -934,7 +934,6 @@ robolectric_binary("android_webview_junit_tests") {
     "../junit/src/org/chromium/android_webview/robolectric/AwInsetsTest.java",
     "../junit/src/org/chromium/android_webview/robolectric/AwLayoutSizerTest.java",
     "../junit/src/org/chromium/android_webview/robolectric/AwScrollOffsetManagerTest.java",
-    "../junit/src/org/chromium/android_webview/robolectric/AwWebContentsMetricsRecorderTest.java",
     "../junit/src/org/chromium/android_webview/robolectric/PlatformSelectionActionMenuDelegateTest.java",
     "../junit/src/org/chromium/android_webview/robolectric/PrefetchOperationResultTest.java",
     "../junit/src/org/chromium/android_webview/robolectric/RectUtilsTest.java",

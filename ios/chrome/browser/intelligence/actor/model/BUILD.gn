@@ -4,6 +4,8 @@
 
 source_set("model") {
   sources = [
+    "actor_browser_agent.h",
+    "actor_browser_agent.mm",
     "actor_engine.h",
     "actor_engine.mm",
     "actor_service.h",
@@ -29,11 +31,13 @@ source_set("model") {
     "//ios/chrome/browser/intelligence/actor/tools/public",
     "//ios/chrome/browser/intelligence/actor/tools/utils:actor_browser_utils",
     "//ios/chrome/browser/intelligence/actor/tools/utils:actor_tool_utils",
+    "//ios/chrome/browser/intelligence/actor/tools/utils:logging_util",
     "//ios/chrome/browser/intelligence/features",
     "//ios/chrome/browser/intelligence/proto_wrappers",
     "//ios/chrome/browser/shared/model/browser",
     "//ios/chrome/browser/shared/model/profile",
     "//ios/chrome/browser/shared/model/profile:profile_keyed_service_factory",
+    "//ios/chrome/browser/shared/model/web_state_list",
     "//ios/chrome/browser/shared/model/web_state_list:utils",
     "//ios/web/public",
 
@@ -61,6 +65,7 @@ source_set("tab_helper") {
 source_set("unit_tests") {
   testonly = true
   sources = [
+    "actor_browser_agent_unittest.mm",
     "actor_engine_unittest.mm",
     "actor_service_unittest.mm",
     "actor_tab_helper_unittest.mm",

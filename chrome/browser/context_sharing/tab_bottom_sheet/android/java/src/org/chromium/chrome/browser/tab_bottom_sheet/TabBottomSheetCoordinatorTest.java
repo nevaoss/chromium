@@ -634,7 +634,10 @@ public class TabBottomSheetCoordinatorTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.TAB_BOTTOM_SHEET + ":resize_webview/true")
+    @EnableFeatures({
+        ChromeFeatureList.TAB_BOTTOM_SHEET,
+        ChromeFeatureList.TAB_BOTTOM_SHEET_RESIZE_WEBVIEW
+    })
     public void testOnContainerSizeChanged_resizingEnabled() {
         BottomSheetObserver observer = simulateShowSuccessAndGetObserver();
 
@@ -647,7 +650,7 @@ public class TabBottomSheetCoordinatorTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.TAB_BOTTOM_SHEET + ":resize_webview/false")
+    @EnableFeatures(ChromeFeatureList.TAB_BOTTOM_SHEET)
     public void testOnContainerSizeChanged_resizingDisabled() {
         BottomSheetObserver observer = simulateShowSuccessAndGetObserver();
 
@@ -659,7 +662,10 @@ public class TabBottomSheetCoordinatorTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.TAB_BOTTOM_SHEET + ":resize_webview/true")
+    @EnableFeatures({
+        ChromeFeatureList.TAB_BOTTOM_SHEET,
+        ChromeFeatureList.TAB_BOTTOM_SHEET_RESIZE_WEBVIEW
+    })
     public void testOnContainerSizeChanged_StartWithFixedHeight() {
         BottomSheetObserver observer = simulateShowSuccessAndGetObserver();
 
@@ -674,7 +680,10 @@ public class TabBottomSheetCoordinatorTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.TAB_BOTTOM_SHEET + ":resize_webview/true")
+    @EnableFeatures({
+        ChromeFeatureList.TAB_BOTTOM_SHEET,
+        ChromeFeatureList.TAB_BOTTOM_SHEET_RESIZE_WEBVIEW
+    })
     public void testOnContainerSizeChanged_FallbackToFlexible() {
         BottomSheetObserver observer = simulateShowSuccessAndGetObserver();
 
@@ -688,7 +697,10 @@ public class TabBottomSheetCoordinatorTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.TAB_BOTTOM_SHEET + ":resize_webview/true")
+    @EnableFeatures({
+        ChromeFeatureList.TAB_BOTTOM_SHEET,
+        ChromeFeatureList.TAB_BOTTOM_SHEET_RESIZE_WEBVIEW
+    })
     public void testOnContainerSizeChanged_MultipleCalls() {
         BottomSheetObserver observer = simulateShowSuccessAndGetObserver();
         int expectedFixedHeight = (int) (MAX_OFFSET * FULL_HEIGHT_RATIO);
@@ -702,7 +714,10 @@ public class TabBottomSheetCoordinatorTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.TAB_BOTTOM_SHEET + ":resize_webview/true")
+    @EnableFeatures({
+        ChromeFeatureList.TAB_BOTTOM_SHEET,
+        ChromeFeatureList.TAB_BOTTOM_SHEET_RESIZE_WEBVIEW
+    })
     public void testFixedHeightCalculation_UsesLandscapeRatio() {
         Configuration landscapeConfig = new Configuration();
         landscapeConfig.orientation = Configuration.ORIENTATION_LANDSCAPE;
@@ -724,7 +739,7 @@ public class TabBottomSheetCoordinatorTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.TAB_BOTTOM_SHEET + ":resize_webview/false")
+    @EnableFeatures(ChromeFeatureList.TAB_BOTTOM_SHEET)
     public void testFixedHeightCalculation_AccountsForBottomControls() {
         int bottomMargin = 400;
         when(mMockBottomSheetController.isAnchoredToBottomControls()).thenReturn(true);
@@ -750,7 +765,7 @@ public class TabBottomSheetCoordinatorTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.TAB_BOTTOM_SHEET + ":resize_webview/false")
+    @EnableFeatures(ChromeFeatureList.TAB_BOTTOM_SHEET)
     public void testOnContainerSizeChanged_ActivityPaused_DoesNotChangeHeight() {
         BottomSheetObserver observer = simulateShowSuccessAndGetObserver();
         View expandedContent = mView.findViewById(R.id.expanded_content_group);
@@ -763,7 +778,7 @@ public class TabBottomSheetCoordinatorTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.TAB_BOTTOM_SHEET + ":resize_webview/false")
+    @EnableFeatures(ChromeFeatureList.TAB_BOTTOM_SHEET)
     public void testOnContainerSizeChanged_ActivityStopped_DoesNotChangeHeight() {
         BottomSheetObserver observer = simulateShowSuccessAndGetObserver();
         View expandedContent = mView.findViewById(R.id.expanded_content_group);
@@ -776,7 +791,7 @@ public class TabBottomSheetCoordinatorTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.TAB_BOTTOM_SHEET + ":resize_webview/false")
+    @EnableFeatures(ChromeFeatureList.TAB_BOTTOM_SHEET)
     public void testOnContainerSizeChanged_ActivityDestroyed_DoesNotChangeHeight() {
         BottomSheetObserver observer = simulateShowSuccessAndGetObserver();
         View expandedContent = mView.findViewById(R.id.expanded_content_group);

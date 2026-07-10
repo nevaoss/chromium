@@ -443,8 +443,7 @@ public class ToolbarPhone extends ToolbarLayout
         mTrackerSupplier = trackerSupplier;
         mBackButtonCoordinator = backButtonCoordinator;
         mUseAdjustedTintColorForNtp =
-                NtpCustomizationUtils.shouldAdjustIconTintForNtp(
-                        windowAndroid, /* isTablet= */ false);
+                NtpCustomizationUtils.shouldAdjustIconTintForNtp(windowAndroid, /* isLff= */ false);
 
         getToolbarDataProvider().addToolbarDataProviderObserver(this);
     }

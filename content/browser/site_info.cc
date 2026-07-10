@@ -5,6 +5,7 @@
 #include "content/browser/site_info.h"
 
 #include <algorithm>
+#include <memory>
 #include <optional>
 
 #include "base/command_line.h"
@@ -384,6 +385,15 @@ SiteInfo SiteInfo::Create(const IsolationContext& isolation_context,
 SiteInfo SiteInfo::CreateForTesting(const IsolationContext& isolation_context,
                                     const GURL& url) {
   return Create(isolation_context, UrlInfo::CreateForTesting(url));
+}
+
+// static
+std::unique_ptr<SecurityPrincipal>
+SecurityPrincipal::CreateForTesting(  // IN-TEST
+    BrowserContext* context,
+    const GURL& url) {
+  return std::make_unique<SiteInfo>(
+      SiteInfo::CreateForTesting(IsolationContext(context), url));
 }
 
 SiteInfo::SiteInfo(const AgentClusterKey& agent_cluster_key,

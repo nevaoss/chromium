@@ -133,9 +133,8 @@ enum class LinkCapturing {
   kEnabled,
   kDisabled,
   kEnabledViaClientMode,
-  kEnabledWithSelfLinkCapture,
   kMinValue = kEnabled,
-  kMaxValue = kEnabledWithSelfLinkCapture
+  kMaxValue = kEnabledViaClientMode
 };
 
 constexpr std::string_view ToParamString(LinkCapturing capturing) {
@@ -146,8 +145,6 @@ constexpr std::string_view ToParamString(LinkCapturing capturing) {
       return "CaptureOff";
     case LinkCapturing::kEnabledViaClientMode:
       return "CaptureForSpecifiedClientMode";
-    case LinkCapturing::kEnabledWithSelfLinkCapture:
-      return "CaptureOnWithSelfLinkCapture";
   }
 }
 
@@ -840,13 +837,6 @@ class NavCaptureParameterizedBrowserTest
             base::FieldTrialParams());
       }
 
-#if BUILDFLAG(IS_CHROMEOS)
-      if (GetLinkCapturing() == LinkCapturing::kEnabledWithSelfLinkCapture) {
-        enabled_features.emplace_back(
-            apps::features::kNavigationCapturingOnExistingFrames,
-            base::FieldTrialParams());
-      }
-#endif  // !BUILDFLAG(IS_CHROMEOS)
     }
     enabled_features.emplace_back(
         features::kPwaNavigationCapturing,
@@ -1622,16 +1612,12 @@ class NavCaptureParameterizedBrowserTest
              "Add the switch '--run-all-tests' to run disabled tests too.";
     }
 
-#if !BUILDFLAG(IS_CHROMEOS)
-    if (GetLinkCapturing() == LinkCapturing::kEnabledWithSelfLinkCapture) {
-      GTEST_SKIP() << "The existing-frame feature flag is ChromeOS specific";
-    }
-#else
+#if BUILDFLAG(IS_CHROMEOS)
     if (GetClientModeCombination() == ClientModeCombination::kNotSpecified) {
       GTEST_SKIP() << "Unspecified client mode support is not yet implemented "
                       "for ChromeOS";
     }
-#endif  // !BUILDFLAG(IS_CHROMEOS)
+#endif  // BUILDFLAG(IS_CHROMEOS)
 
     AssertValidTestConfiguration();
     if (testing::Test::HasFatalFailure()) {
@@ -1686,7 +1672,6 @@ class NavCaptureParameterizedBrowserTest
     switch (GetLinkCapturing()) {
       case LinkCapturing::kEnabled:
       case LinkCapturing::kEnabledViaClientMode:
-      case LinkCapturing::kEnabledWithSelfLinkCapture:
 #if BUILDFLAG(IS_CHROMEOS)
         ASSERT_EQ(apps::test::EnableLinkCapturingByUser(profile(), app_a),
                   base::ok());
@@ -1959,9 +1944,7 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Combine(
         testing::Values(ClientModeCombination::kAuto),
         testing::Values(AppUserDisplayMode::kBothStandalone),
-        testing::Values(LinkCapturing::kEnabled,
-                        LinkCapturing::kDisabled,
-                        LinkCapturing::kEnabledWithSelfLinkCapture),
+        testing::Values(LinkCapturing::kEnabled, LinkCapturing::kDisabled),
         testing::Values(StartingPoint::kAppWindow, StartingPoint::kTab),
         testing::Values(Destination::kScopeA2A,
                         Destination::kScopeA2B,
@@ -2006,9 +1989,7 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Combine(
         testing::Values(ClientModeCombination::kAuto),
         testing::Values(AppUserDisplayMode::kAppAStandaloneAppBBrowser),
-        testing::Values(LinkCapturing::kEnabled,
-                        LinkCapturing::kDisabled,
-                        LinkCapturing::kEnabledWithSelfLinkCapture),
+        testing::Values(LinkCapturing::kEnabled, LinkCapturing::kDisabled),
         testing::Values(StartingPoint::kAppWindow, StartingPoint::kTab),
         testing::Values(Destination::kScopeA2B),
         testing::Values(RedirectType::kNone),
@@ -2057,27 +2038,6 @@ INSTANTIATE_TEST_SUITE_P(
     LinkCaptureTestParamToString);
 
 INSTANTIATE_TEST_SUITE_P(
-    SelfCapturingIgnoresModified,
-    NavCaptureParameterizedBrowserTest,
-    testing::Combine(
-        testing::Values(ClientModeCombination::kAuto),
-        testing::Values(AppUserDisplayMode::kBothStandalone),
-        testing::Values(LinkCapturing::kEnabledWithSelfLinkCapture),
-        testing::Values(StartingPoint::kTab, StartingPoint::kAppWindow),
-        testing::Values(Destination::kScopeA2B),
-        testing::Values(RedirectType::kNone),
-        testing::Values(NavigationElement::kElementLink,
-                        NavigationElement::kElementButton),
-        testing::Values(test::ClickMethod::kMiddleClick,
-                        test::ClickMethod::kShiftClick),
-        testing::Values(OpenerMode::kNoOpener),
-        testing::Values(NavigationTarget::kSelf,
-                        NavigationTarget::kBlank,
-                        NavigationTarget::kFrame,
-                        NavigationTarget::kNoFrame)),
-    LinkCaptureTestParamToString);
-
-INSTANTIATE_TEST_SUITE_P(
     IntentPicker,
     NavCaptureParameterizedBrowserTest,
     testing::Combine(
@@ -2122,9 +2082,7 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(ClientModeCombination::kBothFocusExisting,
                         ClientModeCombination::kBothNavigateExisting),
         testing::Values(AppUserDisplayMode::kBothStandalone),
-        testing::Values(LinkCapturing::kEnabled,
-                        LinkCapturing::kDisabled,
-                        LinkCapturing::kEnabledWithSelfLinkCapture),
+        testing::Values(LinkCapturing::kEnabled, LinkCapturing::kDisabled),
         testing::Values(StartingPoint::kAppWindow, StartingPoint::kTab),
         testing::Values(Destination::kScopeA2A, Destination::kScopeA2B),
         // TODO: Add redirection cases.
@@ -2145,8 +2103,7 @@ INSTANTIATE_TEST_SUITE_P(
                         ClientModeCombination::kBothFocusExisting,
                         ClientModeCombination::kBothNavigateExisting),
         testing::Values(AppUserDisplayMode::kBothBrowser),
-        testing::Values(LinkCapturing::kEnabled,
-                        LinkCapturing::kEnabledWithSelfLinkCapture),
+        testing::Values(LinkCapturing::kEnabled),
         testing::Values(StartingPoint::kTab),
         testing::Values(Destination::kScopeA2A, Destination::kScopeA2B),
         // TODO(crbug.com/375619465): Test redirection.
@@ -2168,9 +2125,7 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(ClientModeCombination::kBothFocusExisting,
                         ClientModeCombination::kBothNavigateExisting),
         testing::Values(AppUserDisplayMode::kAppAStandaloneAppBBrowser),
-        testing::Values(LinkCapturing::kEnabled,
-                        LinkCapturing::kDisabled,
-                        LinkCapturing::kEnabledWithSelfLinkCapture),
+        testing::Values(LinkCapturing::kEnabled, LinkCapturing::kDisabled),
         testing::Values(StartingPoint::kAppWindow, StartingPoint::kTab),
         testing::Values(Destination::kScopeA2B),
         // TODO: Add redirection cases.
@@ -2207,8 +2162,7 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(ClientModeCombination::kBothFocusExisting,
                         ClientModeCombination::kBothNavigateExisting),
         testing::Values(AppUserDisplayMode::kBothStandalone),
-        testing::Values(LinkCapturing::kEnabled,
-                        LinkCapturing::kEnabledWithSelfLinkCapture),
+        testing::Values(LinkCapturing::kEnabled),
         testing::Values(StartingPoint::kAppWindow),
         testing::Values(Destination::kScopeA2A),
         testing::Values(RedirectType::kServerSideViaB),
@@ -2225,8 +2179,7 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(ClientModeCombination::kBothFocusExisting,
                         ClientModeCombination::kBothNavigateExisting),
         testing::Values(AppUserDisplayMode::kAppAStandaloneAppBBrowser),
-        testing::Values(LinkCapturing::kEnabled,
-                        LinkCapturing::kEnabledWithSelfLinkCapture),
+        testing::Values(LinkCapturing::kEnabled),
         testing::Values(StartingPoint::kTab),
         testing::Values(Destination::kScopeA2A),
         testing::Values(RedirectType::kServerSideViaB),
@@ -2302,8 +2255,7 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Combine(
         testing::Values(ClientModeCombination::kAuto),
         testing::Values(AppUserDisplayMode::kAppAStandaloneAppBBrowser),
-        testing::Values(LinkCapturing::kEnabled,
-                        LinkCapturing::kEnabledWithSelfLinkCapture),
+        testing::Values(LinkCapturing::kEnabled),
         testing::Values(StartingPoint::kTab),
         testing::Values(Destination::kScopeA2A,
                         Destination::kScopeA2B,
@@ -2361,8 +2313,7 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Combine(
         testing::Values(ClientModeCombination::kBothNavigateNew),
         testing::Values(AppUserDisplayMode::kBothStandalone),
-        testing::Values(LinkCapturing::kEnabled,
-                        LinkCapturing::kEnabledWithSelfLinkCapture),
+        testing::Values(LinkCapturing::kEnabled),
         testing::Values(StartingPoint::kAppWindow, StartingPoint::kTab),
         testing::Values(Destination::kScopeA2B, Destination::kScopeA2X),
         testing::Values(RedirectType::kServerSideViaA,
@@ -2384,8 +2335,7 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(ClientModeCombination::kBothNavigateExisting,
                         ClientModeCombination::kBothFocusExisting),
         testing::Values(AppUserDisplayMode::kBothStandalone),
-        testing::Values(LinkCapturing::kEnabled,
-                        LinkCapturing::kEnabledWithSelfLinkCapture),
+        testing::Values(LinkCapturing::kEnabled),
         testing::Values(StartingPoint::kTab),
         testing::Values(Destination::kScopeA2B, Destination::kScopeA2X),
         testing::Values(RedirectType::kServerSideViaA),
@@ -2491,8 +2441,7 @@ INSTANTIATE_TEST_SUITE_P(
             ClientModeCombination::kBothNavigateExisting),
         testing::Values(AppUserDisplayMode::kAppAStandaloneAppBTabbed,
                         AppUserDisplayMode::kAppAStandaloneAppBTabbedWithHome),
-        testing::Values(LinkCapturing::kEnabled,
-                        LinkCapturing::kEnabledWithSelfLinkCapture),
+        testing::Values(LinkCapturing::kEnabled),
         testing::Values(StartingPoint::kTab),
         testing::Values(Destination::kScopeA2B, Destination::kScopeA2B2),
         testing::Values(RedirectType::kNone,
@@ -2584,8 +2533,7 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(ClientModeCombination::kBothFocusExisting,
                         ClientModeCombination::kBothNavigateExisting),
         testing::Values(AppUserDisplayMode::kBothStandalone),
-        testing::Values(LinkCapturing::kEnabled,
-                        LinkCapturing::kEnabledWithSelfLinkCapture),
+        testing::Values(LinkCapturing::kEnabled),
         testing::Values(StartingPoint::kAppWindow, StartingPoint::kTab),
         testing::Values(Destination::kScopeA2B),
         testing::Values(RedirectType::kNone),
@@ -2602,9 +2550,7 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(ClientModeCombination::kBothFocusExisting,
                         ClientModeCombination::kBothNavigateExisting),
         testing::Values(AppUserDisplayMode::kAppAStandaloneAppBBrowser),
-        testing::Values(LinkCapturing::kEnabled,
-                        LinkCapturing::kDisabled,
-                        LinkCapturing::kEnabledWithSelfLinkCapture),
+        testing::Values(LinkCapturing::kEnabled, LinkCapturing::kDisabled),
         testing::Values(StartingPoint::kAppWindow, StartingPoint::kTab),
         testing::Values(Destination::kScopeA2B),
         // TODO: Add redirection cases.
@@ -2623,8 +2569,7 @@ INSTANTIATE_TEST_SUITE_P(
             ClientModeCombination::kAppANavigateExistingAppBFocusExisting,
             ClientModeCombination::kBothNavigateExisting),
         testing::Values(AppUserDisplayMode::kBothStandalone),
-        testing::Values(LinkCapturing::kEnabled,
-                        LinkCapturing::kEnabledWithSelfLinkCapture),
+        testing::Values(LinkCapturing::kEnabled),
         testing::Values(StartingPoint::kAppWindow, StartingPoint::kTab),
         testing::Values(Destination::kScopeA2B),
         testing::Values(RedirectType::kServerSideViaA,
@@ -2644,8 +2589,7 @@ INSTANTIATE_TEST_SUITE_P(
                         ClientModeCombination::kBothNavigateExisting),
         testing::Values(AppUserDisplayMode::kAppAStandaloneAppBBrowser,
                         AppUserDisplayMode::kBothBrowser),
-        testing::Values(LinkCapturing::kEnabled,
-                        LinkCapturing::kEnabledWithSelfLinkCapture),
+        testing::Values(LinkCapturing::kEnabled),
         testing::Values(StartingPoint::kTab),
         testing::Values(Destination::kScopeA2B),  // Navigate A -> B
         testing::Values(RedirectType::kServerSideViaA),
@@ -2667,8 +2611,7 @@ INSTANTIATE_TEST_SUITE_P(
             ClientModeCombination::kBothNavigateExisting),
         testing::Values(AppUserDisplayMode::kAppAStandaloneAppBTabbed,
                         AppUserDisplayMode::kAppAStandaloneAppBTabbedWithHome),
-        testing::Values(LinkCapturing::kEnabled,
-                        LinkCapturing::kEnabledWithSelfLinkCapture),
+        testing::Values(LinkCapturing::kEnabled),
         testing::Values(StartingPoint::kTab),
         testing::Values(Destination::kScopeA2B, Destination::kScopeA2B2),
         testing::Values(RedirectType::kNone,
@@ -2756,8 +2699,7 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(ClientModeCombination::kBothFocusExisting,
                         ClientModeCombination::kBothNavigateExisting),
         testing::Values(AppUserDisplayMode::kBothStandalone),
-        testing::Values(LinkCapturing::kEnabled,
-                        LinkCapturing::kEnabledWithSelfLinkCapture),
+        testing::Values(LinkCapturing::kEnabled),
         testing::Values(StartingPoint::kAppWindow, StartingPoint::kTab),
         testing::Values(Destination::kScopeA2B),
         testing::Values(RedirectType::kNone),
@@ -2815,8 +2757,7 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(ClientModeCombination::kBothFocusExisting,
                         ClientModeCombination::kBothNavigateExisting),
         testing::Values(AppUserDisplayMode::kBothStandalone),
-        testing::Values(LinkCapturing::kEnabled,
-                        LinkCapturing::kEnabledWithSelfLinkCapture),
+        testing::Values(LinkCapturing::kEnabled),
         testing::Values(StartingPoint::kAppWindow, StartingPoint::kTab),
         testing::Values(Destination::kScopeA2B),
         testing::Values(RedirectType::kNone),
@@ -2867,8 +2808,7 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Combine(
         testing::Values(ClientModeCombination::kAuto),
         testing::Values(AppUserDisplayMode::kBothStandalone),
-        testing::Values(LinkCapturing::kEnabled,
-                        LinkCapturing::kEnabledWithSelfLinkCapture),
+        testing::Values(LinkCapturing::kEnabled),
         testing::Values(StartingPoint::kAppWindow),
         testing::Values(Destination::kScopeA2X),
         testing::Values(RedirectType::kNone, RedirectType::kServerSideViaB),
@@ -2935,18 +2875,17 @@ IN_PROC_BROWSER_TEST_F(NavigationCapturingTestWithAppBInNewBrowserWindow,
 INSTANTIATE_TEST_SUITE_P(
     ChooseActiveBrowser,
     NavigationCapturingTestWithAppBInNewBrowserWindow,
-    testing::Combine(
-        testing::Values(ClientModeCombination::kAuto),
-        testing::Values(AppUserDisplayMode::kBothBrowser),
-        testing::Values(LinkCapturing::kEnabled,
-                        LinkCapturing::kEnabledWithSelfLinkCapture),
-        testing::Values(StartingPoint::kTab),
-        testing::Values(Destination::kScopeA2B),
-        testing::Values(RedirectType::kNone),
-        testing::Values(NavigationElement::kElementLink),
-        testing::Values(test::ClickMethod::kLeftClick),
-        testing::Values(OpenerMode::kNoOpener),
-        testing::Values(NavigationTarget::kSelf, NavigationTarget::kBlank)),
+    testing::Combine(testing::Values(ClientModeCombination::kAuto),
+                     testing::Values(AppUserDisplayMode::kBothBrowser),
+                     testing::Values(LinkCapturing::kEnabled),
+                     testing::Values(StartingPoint::kTab),
+                     testing::Values(Destination::kScopeA2B),
+                     testing::Values(RedirectType::kNone),
+                     testing::Values(NavigationElement::kElementLink),
+                     testing::Values(test::ClickMethod::kLeftClick),
+                     testing::Values(OpenerMode::kNoOpener),
+                     testing::Values(NavigationTarget::kSelf,
+                                     NavigationTarget::kBlank)),
     LinkCaptureTestParamToString);
 
 }  // namespace

@@ -8,7 +8,7 @@ import org.jspecify.annotations.NullMarked;
 
 /** Boundary interface for HttpCache. */
 @NullMarked
-public interface HttpCacheBoundaryInterface extends IsomorphicObjectBoundaryInterface {
+public interface HttpCacheBoundaryInterface {
     long getDefaultQuotaBytes();
 
     boolean isUsingDefaultQuota();

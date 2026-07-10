@@ -55,6 +55,7 @@ import org.chromium.ui.modelutil.MVCListAdapter.ListItem;
 import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.modelutil.SimpleRecyclerViewAdapter;
+import org.chromium.ui.util.CommonOnLayoutChangeListeners;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -270,20 +271,19 @@ public class InstanceSwitcherCoordinator {
             // The global layout listener is one-shot so it is unable to handle subsequent window
             // resizes.
             dialogView.addOnLayoutChangeListener(
-                    (v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
-                        if (bottom - top != oldBottom - oldTop) {
-                            maybeUpdateInstanceListContainerParams(
-                                    dialogView,
-                                    tabHeaderRow,
-                                    instanceListContainer,
-                                    activeInstancesList,
-                                    inactiveInstancesList,
-                                    isInactiveListShowingSupplier.getAsBoolean(),
-                                    newWindowLayout,
-                                    minCommandItemHeightPx,
-                                    itemPaddingHeightPx);
-                        }
-                    });
+                    CommonOnLayoutChangeListeners.createHeightChangedListener(
+                            () -> {
+                                maybeUpdateInstanceListContainerParams(
+                                        dialogView,
+                                        tabHeaderRow,
+                                        instanceListContainer,
+                                        activeInstancesList,
+                                        inactiveInstancesList,
+                                        isInactiveListShowingSupplier.getAsBoolean(),
+                                        newWindowLayout,
+                                        minCommandItemHeightPx,
+                                        itemPaddingHeightPx);
+                            }));
         }
 
         var listener =

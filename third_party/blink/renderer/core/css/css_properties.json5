@@ -2037,6 +2037,9 @@
       valid_for_position_try: true,
       valid_for_permission_element: true,
       invalidate: ["layout"],
+      keywords: ["auto", "normal", "stretch", "baseline", "center", "start",
+                 "end", "self-start", "self-end", "flex-start", "flex-end",
+                 "anchor-center"],
     },
     {
       name: "anchor-name",
@@ -4106,6 +4109,9 @@
       valid_for_position_try: true,
       valid_for_permission_element: true,
       invalidate: ["layout"],
+      keywords: ["auto", "normal", "stretch", "baseline", "center", "start",
+        "end", "self-start", "self-end", "flex-start", "flex-end", "left",
+        "right", "anchor-center"],
     },
     {
       name: "left",
@@ -4514,6 +4520,7 @@
       invalidate: ["layout", "scroll-anchor"],
       affected_by_zoom: true,
       percentages_depend_on_used_value: true,
+      keywords: ["auto", "min-content", "max-content", "fit-content", "stretch"],
     },
     {
       name: "min-width",
@@ -4537,6 +4544,7 @@
       invalidate: ["layout", "scroll-anchor"],
       affected_by_zoom: true,
       percentages_depend_on_used_value: true,
+      keywords: ["auto", "min-content", "max-content", "fit-content", "stretch"],
     },
     {
       name: "mix-blend-mode",
@@ -7352,27 +7360,19 @@
     {
       name: "continue",
       property_methods: ["CSSValueFromComputedStyleInternal"],
-      field_group: "*",
-      field_template: "keyword",
       keywords: ["normal", "collapse", "-webkit-legacy"],
-      default_value: "normal",
       typedom_types: ["Keyword"],
-      invalidate: ["layout", "paint"],
-      runtime_flag: "CSSLineClamp",
+      stored_on_extra_field: ["Continue"],
+      runtime_flag: "CSSLineClampAsShorthand",
     },
     {
       name: "max-lines",
       property_methods: ["ParseSingleValue", "CSSValueFromComputedStyleInternal"],
-      field_group: "*",
-      field_template: "external",
-      include_paths: ["third_party/blink/renderer/core/style/max_lines_data.h"],
-      default_value: "MaxLinesData(0, true)",
-      type_name: "MaxLinesData",
       converter: "ConvertMaxLines",
       keywords: ["auto"],
       typedom_types: ["Number", "Keyword"],
-      invalidate: ["layout", "paint"],
-      runtime_flag: "CSSLineClamp",
+      stored_on_extra_field: ["MaxLines"],
+      runtime_flag: "CSSLineClampAsShorthand",
     },
     {
       name: "block-ellipsis",
@@ -7384,15 +7384,39 @@
       default_value: "no-ellipsis",
       typedom_types: ["Keyword"],
       invalidate: ["layout", "paint"],
-      runtime_flag: "CSSLineClamp",
+      runtime_flag: "CSSLineClampAsShorthand",
     },
     {
+      // This is a longhand that behaves like the spec'd shorthand, so we store it in extra fields
+      // corresponding to each of the longhands, which are also used for those longhands proper with
+      // the `CSSLineClampAsShorthand` runtime flag.
+      // However, the spec's `block-ellipsis` longhand is inherited, while the rest of longhands
+      // aren't; so to avoid issues, we avoid sharing its state with the longhand.
       name: "line-clamp",
+      property_methods: ["ParseSingleValue", "CSSValueFromComputedStyleInternal"],
+      style_builder_custom_functions: ["initial", "inherit", "value"],
+      keywords: ["none", "auto", "ellipsis", "no-ellipsis", "-webkit-legacy"],
+      typedom_types: ["Keyword", "Number"],
+      stored_on_extra_field: [
+        "Continue",
+        "MaxLines",
+        "LineClampInternalBlockEllipsis"
+      ],
+      // overlaps with -alternative-webkit-line-clamp
+      overlapping: true,
+      runtime_flag: "CSSLineClamp"
+    },
+    {
+      // True shorthand for `line-clamp`
+      name: "-alternative-line-clamp-shorthand",
+      alternative_of: "line-clamp",
       property_methods: ["ParseShorthand", "CSSValueFromComputedStyleInternal"],
       longhands: ["max-lines", "block-ellipsis", "continue"],
-      runtime_flag: "CSSLineClamp",
+      runtime_flag: "CSSLineClampAsShorthand",
     },
     {
+      // Standalone (legacy) version of the -webkit-line-clamp property, when no
+      // related runtime flags are enabled.
       name: "-webkit-line-clamp",
       property_methods: ["ParseSingleValue", "CSSValueFromComputedStyleInternal"],
       field_group: "*",
@@ -7405,11 +7429,33 @@
       name_for_methods: "WebkitLineClamp",
     },
     {
-      name: "-alternative-webkit-line-clamp",
+      // Longhand version of -webkit-line-clamp which stores its values in extra
+      // fields, used when the CSSLineClamp is enabled (so there *is* a
+      // `line-clamp` property) but when CSSLineClampAsShorthand is disabled (so
+      // `line-clamp` is a longhand, not a shorthand).
+      name: "-alternative-webkit-line-clamp-longhand",
       alternative_of: "-webkit-line-clamp",
+      property_methods: ["ParseSingleValue", "CSSValueFromComputedStyleInternal"],
+      style_builder_custom_functions: ["initial", "inherit", "value"],
+      keywords: ["none"],
+      typedom_types: ["Keyword", "Number"],
+      stored_on_extra_field: [
+        "Continue",
+        "MaxLines",
+        "LineClampInternalBlockEllipsis"
+      ],
+      // overlaps with line-clamp
+      legacy_overlapping: true,
+      runtime_flag: "CSSLineClamp",
+    },
+    {
+      // Shorthand version of -webkit-line-clamp, corresponding to the
+      // `-alternative-line-clamp-shorthand` definition.
+      name: "-alternative-webkit-line-clamp-shorthand",
+      alternative_of: "-alternative-webkit-line-clamp-longhand",
       property_methods: ["ParseShorthand", "CSSValueFromComputedStyleInternal"],
       longhands: ["max-lines", "block-ellipsis", "continue"],
-      runtime_flag: "CSSLineClamp",
+      runtime_flag: "CSSLineClampAsShorthand",
     },
     {
       name: "-webkit-mask-box-image-outset",
@@ -8085,6 +8131,7 @@
       valid_for_position_try: true,
       valid_for_page_context: true,
       percentages_depend_on_used_value: true,
+      keywords: ["auto", "min-content", "max-content", "fit-content", "stretch"],
     },
     {
       name: "min-block-size",
@@ -8098,6 +8145,7 @@
       valid_for_permission_element: true,
       valid_for_page_context: true,
       percentages_depend_on_used_value: true,
+      keywords: ["auto", "min-content", "max-content", "fit-content", "stretch"],
     },
     {
       name: "max-inline-size",
@@ -8995,6 +9043,7 @@
       ],
       property_methods: ["ParseShorthand", "CSSValueFromComputedStyleInternal"],
       valid_for_page_context: true,
+      keywords: ["none", "repeat", "stretch", "space", "round"],
     },
     {
       name: "border-inline",
@@ -9152,6 +9201,7 @@
       },
       typedom_types: ["Keyword", "Length"],
       valid_for_permission_element: true,
+      keywords: ["none"],
     },
     {
       name: "contain-intrinsic-block-size",
@@ -9162,6 +9212,7 @@
       },
       typedom_types: ["Keyword", "Length"],
       valid_for_permission_element: true,
+      keywords: ["none"],
     },
     {
       name: "contain-intrinsic-size",
@@ -9613,6 +9664,8 @@
       longhands: ["outline-color", "outline-style", "outline-width"],
       property_methods: ["ParseShorthand", "CSSValueFromComputedStyleInternal"],
       valid_for_page_context: true,
+      keywords: ["auto", "none", "inset", "groove", "ridge", "outset", "dotted",
+                "dashed", "solid", "double", "medium", "thick", "thin"],
     },
     {
       name: "overflow",
@@ -9625,6 +9678,7 @@
       name: "overscroll-behavior",
       longhands: ["overscroll-behavior-x", "overscroll-behavior-y"],
       property_methods: ["ParseShorthand", "CSSValueFromComputedStyleInternal"],
+      keywords: ["auto", "none", "contain"],
     },
     {
       name: "padding",
@@ -9657,6 +9711,7 @@
       name: "page-break-before",
       longhands: ["break-before"],
       property_methods: ["ParseShorthand", "CSSValueFromComputedStyleInternal"],
+      keywords: ["auto", "left", "right", "always", "avoid"],
     },
     {
       name: "page-break-inside",

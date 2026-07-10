@@ -1288,7 +1288,7 @@ String Internals::textAffinity() {
                             ->GetFocusController()
                             .FocusedFrame()
                             ->Selection()
-                            .GetSelectionInDOMTree()
+                            .GetSelectionInDomTree()
                             .Affinity() == TextAffinity::kUpstream) {
     return "Upstream";
   }
@@ -3115,7 +3115,7 @@ StaticSelection* Internals::getSelectionInFlatTree(
     return nullptr;
   }
   return StaticSelection::FromSelectionInFlatTree(ConvertToSelectionInFlatTree(
-      local_frame->Selection().GetSelectionInDOMTree()));
+      local_frame->Selection().GetSelectionInDomTree()));
 }
 
 Node* Internals::visibleSelectionAnchorNode() {

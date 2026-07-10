@@ -10,10 +10,12 @@
 #include "base/containers/span.h"
 #include "base/memory/weak_ptr.h"
 #include "base/time/time.h"
+#include "base/types/expected.h"
 #include "chrome/browser/glic/glic_enums.h"
 #include "chrome/browser/glic/host/context/glic_focused_browser_manager.h"
 #include "chrome/browser/glic/host/context/glic_tab_data.h"
 #include "components/tabs/public/tab_interface.h"
+#include "third_party/blink/public/mojom/content_extraction/ai_page_content.mojom-forward.h"
 
 namespace glic {
 
@@ -26,6 +28,10 @@ struct GlicGetContextError {
 // The result passed from the sharing manager up to the page handler.
 using GlicGetContextResult =
     base::expected<mojom::GetContextResultPtr, GlicGetContextError>;
+
+using GlicGetImageBytesResult =
+    base::expected<blink::mojom::AIPageContentImageBytesResultPtr,
+                   GlicGetContextError>;
 
 // Metadata pertaining to tab pinning.
 enum class GlicPinTrigger {
@@ -306,6 +312,12 @@ class GlicSharingManagerInternal : public GlicSharingManager {
       tabs::TabHandle tab_handle,
       const mojom::GetTabContextOptions& options,
       base::OnceCallback<void(GlicGetContextResult)> callback) = 0;
+
+  virtual void GetImageBytes(
+      tabs::TabHandle tab_handle,
+      const std::string& document_id,
+      int32_t dom_node_id,
+      base::OnceCallback<void(GlicGetImageBytesResult)> callback) = 0;
 
   // Callback for conversation turn submission.
   virtual void OnConversationTurnSubmitted() = 0;

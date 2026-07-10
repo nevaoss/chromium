@@ -82,6 +82,7 @@
 #include "components/prefs/pref_service.h"
 #include "components/signin/public/identity_manager/account_capabilities_test_mutator.h"
 #include "components/signin/public/identity_manager/identity_test_environment.h"
+#include "components/subscription_eligibility/subscription_eligibility_service.h"
 #include "components/translate/core/browser/language_state.h"
 #include "components/translate/core/browser/mock_translate_driver.h"
 #include "components/ukm/test_ukm_recorder.h"
@@ -198,6 +199,11 @@ class TestAutofillClientTemplate : public T {
     personal_context_access_manager_ = personal_context_access_manager;
   }
 
+  const subscription_eligibility::SubscriptionEligibilityService*
+  GetSubscriptionEligibilityService() const override {
+    return &subscription_eligibility_service_;
+  }
+
   consent_auditor::ConsentAuditor* GetConsentAuditor() override {
     if (!consent_auditor_) {
       consent_auditor_ =
@@ -240,7 +246,7 @@ class TestAutofillClientTemplate : public T {
   }
 
   PasswordManagerDelegate* GetPasswordManagerDelegate(
-      const autofill::FieldGlobalId& field_id) override {
+      const FieldGlobalId& field_id) override {
     return password_manager_delegate_.get();
   }
 
@@ -780,7 +786,9 @@ class TestAutofillClientTemplate : public T {
   bool wallet_public_pass_storage_enabled_ = true;
 
   std::unique_ptr<test::AutofillTestingPrefService> prefs_ =
-      autofill::test::PrefServiceForTesting();
+      test::PrefServiceForTesting();
+  subscription_eligibility::SubscriptionEligibilityService
+      subscription_eligibility_service_{GetPrefs()};
   std::unique_ptr<TestStrikeDatabase> test_strike_database_;
 
   std::unique_ptr<TestPersonalDataManager> test_personal_data_manager_;

@@ -321,7 +321,9 @@ class AudioCallback : public media::AudioInputStream::AudioInputCallback {
     on_data_callback_.Run(source, capture_time, volume, glitch_info);
   }
 
-  void OnError() override {
+  using Error = media::AudioInputStream::AudioInputCallback::Error;
+
+  void OnError(Error error_code) override {
     error_during_callback_ = true;
     on_error_callback_.Run();
   }

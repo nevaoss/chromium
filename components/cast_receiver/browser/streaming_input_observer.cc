@@ -18,6 +18,7 @@
 #include "ui/events/keycodes/dom/dom_code.h"
 #include "ui/events/keycodes/dom/dom_key.h"
 #include "ui/events/keycodes/dom/keycode_converter.h"
+#include "ui/events/types/scroll_types.h"
 
 namespace cast_receiver {
 namespace {
@@ -85,6 +86,8 @@ KeyboardEvent::ActionType MapKeyActionType(blink::WebInputEvent::Type type) {
       return KeyboardEvent::UNKNOWN;
   }
 }
+
+constexpr float kPixelsPerLineStep = 40.0f;
 
 }  // namespace
 
@@ -300,10 +303,34 @@ StreamingInputObserver::HandleMouseWheelEvent(
   proto.set_x_ratio(std::clamp(x_ratio, 0.0f, 1.0f));
   proto.set_y_ratio(std::clamp(y_ratio, 0.0f, 1.0f));
 
-  float move_x_ratio = wheel_event.delta_x / visible_viewport_size.width();
-  float move_y_ratio = wheel_event.delta_y / visible_viewport_size.height();
-  proto.set_move_x_ratio(move_x_ratio);
-  proto.set_move_y_ratio(move_y_ratio);
+  // Resolve the scroll delta to pixels based on the granularity of the event,
+  // before converting it to a viewport ratio.
+  float delta_x = wheel_event.delta_x;
+  float delta_y = wheel_event.delta_y;
+
+  switch (wheel_event.delta_units) {
+    case ui::ScrollGranularity::kScrollByPage:
+    case ui::ScrollGranularity::kScrollByDocument:
+      // Page scroll maps to the size of the viewport. Document scroll maps to
+      // the entire document size, but we approximate it to viewport size as a
+      // fallback.
+      delta_x *= visible_viewport_size.width();
+      delta_y *= visible_viewport_size.height();
+      break;
+    case ui::ScrollGranularity::kScrollByLine:
+      // 1 line scroll maps to a default line step in pixels (40 DIPs).
+      // Matches cc::kPixelsPerLineStep.
+      delta_x *= kPixelsPerLineStep;
+      delta_y *= kPixelsPerLineStep;
+      break;
+    case ui::ScrollGranularity::kScrollByPixel:
+    case ui::ScrollGranularity::kScrollByPrecisePixel:
+    default:
+      break;
+  }
+
+  proto.set_move_x_ratio(delta_x / visible_viewport_size.width());
+  proto.set_move_y_ratio(delta_y / visible_viewport_size.height());
 
   int modifiers = wheel_event.GetModifiers();
   proto.set_alt_key_press(

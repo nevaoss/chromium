@@ -75,6 +75,9 @@ UIButtonConfiguration* CreateHeaderButtonConfiguration(UIImage* image) {
   // The view holding the actions.
   UIView* _headerActionsView;
 
+  // The new thread button.
+  UIButton* _startNewThreadButton;
+
   // The back button for history.
   UIButton* _backButton;
 }
@@ -101,22 +104,31 @@ UIButtonConfiguration* CreateHeaderButtonConfiguration(UIImage* image) {
   _headerActionsView.alpha = percentage;
 }
 
-- (void)setMode:(AssistantAIMHeaderViewMode)mode {
+- (void)setMode:(AssistantAIMState)mode {
   switch (mode) {
-    case AssistantAIMHeaderViewMode::kChat:
+    case AssistantAIMState::kZeroState:
       _logoView.hidden = NO;
       _headerActionsView.hidden = NO;
       _backButton.hidden = YES;
+      _startNewThreadButton.hidden = YES;
       _titleLabel.text = @"";
 
       self.backgroundColor = [UIColor clearColor];
       break;
-    case AssistantAIMHeaderViewMode::kHistory:
+    case AssistantAIMState::kThread:
+      _logoView.hidden = NO;
+      _headerActionsView.hidden = NO;
+      _backButton.hidden = YES;
+      _startNewThreadButton.hidden = NO;
+      _titleLabel.text = @"";
+
+      self.backgroundColor = [UIColor clearColor];
+      break;
+    case AssistantAIMState::kHistory:
       _logoView.hidden = YES;
       _headerActionsView.hidden = YES;
       _backButton.hidden = NO;
       _titleLabel.text = l10n_util::GetNSString(IDS_IOS_AIM_HISTORY);
-
       self.backgroundColor = [UIColor colorNamed:kSecondaryBackgroundColor];
       break;
   }
@@ -230,6 +242,7 @@ UIButtonConfiguration* CreateHeaderButtonConfiguration(UIImage* image) {
     [button.heightAnchor constraintEqualToConstant:kButtonSize],
   ]];
 
+  _startNewThreadButton = button;
   return button;
 }
 
@@ -245,6 +258,8 @@ UIButtonConfiguration* CreateHeaderButtonConfiguration(UIImage* image) {
   UIButton* button = [UIButton buttonWithConfiguration:config
                                          primaryAction:nil];
   button.translatesAutoresizingMaskIntoConstraints = NO;
+  button.accessibilityIdentifier =
+      kAssistantAIMContextMenuButtonAccessibilityIdentifier;
 
   NSMutableArray* actions = [[NSMutableArray alloc] init];
 
@@ -271,6 +286,15 @@ UIButtonConfiguration* CreateHeaderButtonConfiguration(UIImage* image) {
                   [weakSelf didTapShowLogsButton];
                 }];
     [actions addObject:showLogsAction];
+
+    UIAction* showURLAction =
+        [UIAction actionWithTitle:@"AIM Loaded URL"
+                            image:DefaultSymbolWithPointSize(@"link", 16)
+                       identifier:nil
+                          handler:^(UIAction* action) {
+                            [weakSelf didTapShowURLButton];
+                          }];
+    [actions addObject:showURLAction];
   }
 
   button.menu = [UIMenu menuWithTitle:@"" children:actions];
@@ -354,11 +378,15 @@ UIButtonConfiguration* CreateHeaderButtonConfiguration(UIImage* image) {
 }
 
 - (void)didTapHistoryButton {
-  [self.actionHandler didTapHistory];
+  [self.delegate assistantAIMHeaderViewDidTapHistory:self];
 }
 
 - (void)didTapShowLogsButton {
   [self.delegate assistantAIMHeaderViewDidRequestSRPLogs:self];
+}
+
+- (void)didTapShowURLButton {
+  [self.delegate assistantAIMHeaderViewDidRequestLoadedURL:self];
 }
 
 - (void)didTapBackButton {
@@ -366,7 +394,7 @@ UIButtonConfiguration* CreateHeaderButtonConfiguration(UIImage* image) {
 }
 
 - (void)didTapStartNewThread {
-  [self.actionHandler didTapStartNewThread];
+  [self.delegate assistantAIMHeaderViewDidTapStartNewThread:self];
 }
 
 @end

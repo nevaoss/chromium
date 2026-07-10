@@ -856,11 +856,6 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
 
 #pragma mark - ComposeboxPickerPresenterDataSource
 
-- (std::set<web::WebStateID>)allAttachedWebStateIDsForPresenter:
-    (ComposeboxPickerPresenter*)presenter {
-  return [_mediator allAttachedWebStateIDs];
-}
-
 - (std::set<web::WebStateID>)attachedWebStateIDsInCurrentContextForPresenter:
     (ComposeboxPickerPresenter*)presenter {
   return [_mediator attachedWebStateIDsInCurrentContext];

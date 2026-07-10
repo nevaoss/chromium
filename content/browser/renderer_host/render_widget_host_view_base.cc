@@ -44,6 +44,7 @@
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/common/page_visibility_state.h"
 #include "third_party/blink/public/mojom/frame/intrinsic_sizing_info.mojom.h"
+#include "third_party/blink/public/mojom/unbounded_element/unbounded_element.mojom.h"
 #include "ui/base/ui_base_types.h"
 #include "ui/display/display_util.h"
 #include "ui/display/screen.h"
@@ -152,12 +153,6 @@ gfx::Size RenderWidgetHostViewBase::GetRequestedRendererSize() {
 gfx::Size RenderWidgetHostViewBase::GetRequestedRendererSizeDevicePx() {
   return gfx::ScaleToCeiledSize(GetRequestedRendererSize(),
                                 GetDeviceScaleFactor());
-}
-
-uint32_t RenderWidgetHostViewBase::GetCaptureSequenceNumber() const {
-  // TODO(vmpstr): Implement this for overrides other than aura and child frame.
-  NOTIMPLEMENTED_LOG_ONCE();
-  return 0u;
 }
 
 ui::TextInputClient* RenderWidgetHostViewBase::GetTextInputClient() {
@@ -914,8 +909,9 @@ void RenderWidgetHostViewBase::DidNavigate() {
 }
 
 void RenderWidgetHostViewBase::CreateUnboundedSurface(
-    RenderFrameHostImpl* parent_rfh,
-    const gfx::Rect& bounds_in_screen) {}
+    mojo::PendingAssociatedReceiver<blink::mojom::UnboundedSurfaceHost> host,
+    mojo::PendingAssociatedRemote<blink::mojom::UnboundedSurfaceClient> client,
+    const gfx::Rect& bounds_in_dips) {}
 
 void RenderWidgetHostViewBase::UpdateUnboundedSurfaceBounds(
     const gfx::Rect& bounds_in_screen) {
@@ -925,6 +921,12 @@ void RenderWidgetHostViewBase::UpdateUnboundedSurfaceBounds(
 }
 
 void RenderWidgetHostViewBase::DismissUnboundedSurface() {
+  if (unbounded_surface_window_) {
+    unbounded_surface_window_->Dismiss();
+  }
+}
+
+void RenderWidgetHostViewBase::DestroyUnboundedSurface() {
   unbounded_surface_window_.reset();
 }
 
@@ -954,8 +956,10 @@ void RenderWidgetHostViewBase::GetUnboundedSurfaceCompositorFrameSink(
   }
 }
 
-UnboundedSurfaceWindow*
-RenderWidgetHostViewBase::GetUnboundedSurfaceWindowForTesting() const {
+UnboundedSurfaceWindow* RenderWidgetHostViewBase::GetUnboundedSurfaceWindow()
+    const {
+  DCHECK(!unbounded_surface_window_ ||
+         base::FeatureList::IsEnabled(blink::features::kUnboundedElement));
   return unbounded_surface_window_.get();
 }
 

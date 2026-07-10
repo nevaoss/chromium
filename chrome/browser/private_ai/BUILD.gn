@@ -8,8 +8,6 @@ source_set("private_ai") {
     "private_ai_service.h",
     "private_ai_service_factory.cc",
     "private_ai_service_factory.h",
-    "private_ai_utils.cc",
-    "private_ai_utils.h",
   ]
   public_deps = [
     "//chrome/browser:browser_public_dependencies",
@@ -30,7 +28,6 @@ source_set("private_ai") {
     "//components/private_ai/content",
     "//components/signin/public/base",
     "//components/signin/public/identity_manager",
-    "//components/variations",
     "//content/public/browser",
     "//google_apis",
   ]

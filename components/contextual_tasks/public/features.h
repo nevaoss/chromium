@@ -408,6 +408,10 @@ extern const char
     kContextualTasksOverrideShowBottomSheetOnLargeScreenDescription[];
 extern const char kContextualTasksCookiePrefetchName[];
 extern const char kContextualTasksCookiePrefetchDescription[];
+extern const char kEnableContextualTasksPinButtonInToolbarName[];
+extern const char kEnableContextualTasksPinButtonInToolbarDescription[];
+extern const char kContextualTasksHideMenuOnAiPageName[];
+extern const char kContextualTasksHideMenuOnAiPageDescription[];
 
 }  // namespace flag_descriptions
 

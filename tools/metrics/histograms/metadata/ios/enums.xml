@@ -1085,6 +1085,12 @@ chromium-metrics-reviews@google.com.
   <int value="10" label="Price Tracking Promo tile"/>
   <int value="11" label="Tips tile"/>
   <int value="12" label="ShopCard tile"/>
+  <int value="13" label="Lens"/>
+  <int value="14" label="Voice Search"/>
+  <int value="15" label="Incognito Quick Action"/>
+  <int value="16" label="AIM Quick Action"/>
+  <int value="17" label="Tab Switcher"/>
+  <int value="18" label="Plus Button"/>
 </enum>
 
 <!-- LINT.IfChange(IOSHomeCustomizationBackgroundStyle) -->

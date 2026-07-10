@@ -326,6 +326,9 @@ class BrowserView : public BrowserWindow,
   // Accessor for the BrowserView's TabSearchBubbleHost instance.
   TabSearchBubbleHost* GetTabSearchBubbleHost();
 
+  // Setter for the BrowserView's TabSearchBubbleHost instance.
+  void UpdateTabSearchBubbleHost();
+
   // Accessor for the ExclusiveAccessBubble.
   ExclusiveAccessBubbleViews* GetExclusiveAccessBubble();
 
@@ -852,9 +855,6 @@ class BrowserView : public BrowserWindow,
 
   // Returns the state of the bookmark bar.
   BookmarkBar::State bookmark_bar_state() const;
-
-  // Setter for the BrowserView's TabSearchBubbleHost instance.
-  void UpdateTabSearchBubbleHost();
 
   // Display the current active split view as a series of multiple side-by-side
   // web contents.

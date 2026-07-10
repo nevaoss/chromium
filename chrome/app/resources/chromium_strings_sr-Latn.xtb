@@ -123,15 +123,6 @@ Neke funkcije su možda nedostupne i promene podešavanja neće biti sačuvane.
 <translation id="2287771843518581140">{NUM_TABS,plural, =1{Chromium preporučuje da pauzirate karticu koja usporava pregledač}one{Chromium preporučuje da pauzirate kartice koje usporavaju pregledač}few{Chromium preporučuje da pauzirate kartice koje usporavaju pregledač}other{Chromium preporučuje da pauzirate kartice koje usporavaju pregledač}}</translation>
 <translation id="2307973900865360088">Zadrži na traci</translation>
 <translation id="2313870531055795960">Proverava URL-ove sa listom nebezbednih sajtova koji se čuvaju u Chromium-u. Ako neki sajt pokuša da ukrade vašu lozinku ili probate da preuzmete štetnu datoteku, Chromium može da pošalje URL-ove, uključujući delove sadržaja stranice, u Bezbedno pregledanje.</translation>
-<translation id="2332076562712130931">Ovom radnjom:
-          <ph name="LINE_BREAKS" />
-           • resetujete neka Chromium podešavanja i Chromium prečice
-           <ph name="LINE_BREAK" />
-           • onemogućavate dodatke
-           <ph name="LINE_BREAK" />
-           • brišete kolačiće i druge privremene podatke o sajtovima
-            <ph name="LINE_BREAKS" />
-           Ovo se neće odraziti na obeleživače, istoriju i sačuvane lozinke.</translation>
 <translation id="2343156876103232566">Da biste poslali broj sa ovog uređaja na Android telefon, prijavite se u Chromium na oba uređaja.</translation>
 <translation id="2356070529366658676">Pitaj</translation>
 <translation id="2359808026110333948">Nastavi</translation>

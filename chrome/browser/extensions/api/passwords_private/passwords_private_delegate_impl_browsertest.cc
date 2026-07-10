@@ -2396,4 +2396,17 @@ IN_PROC_BROWSER_TEST_F(PasswordsPrivateDelegateImplTest,
 }
 #endif
 
+IN_PROC_BROWSER_TEST_F(PasswordsPrivateDelegateImplTest,
+                       GetSavedPasswordsListMapsApcField) {
+  PasswordForm sample_form = CreateSampleForm();
+  SetUpPasswordStores({sample_form});
+  auto delegate = CreateDelegate();
+
+  const PasswordsPrivateDelegate::UiEntries& credentials =
+      GetCredentials(*delegate);
+  ASSERT_EQ(credentials.size(), 1u);
+  // Backend returns false by default.
+  EXPECT_FALSE(credentials.at(0).is_automatic_password_change_supported);
+}
+
 }  // namespace extensions

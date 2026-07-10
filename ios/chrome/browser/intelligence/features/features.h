@@ -254,6 +254,7 @@ BASE_DECLARE_FEATURE(kGeminiCopresence);
 bool IsGeminiCopresenceEnabled();
 
 // The threshold interval for displaying the response ready state in seconds.
+// TODO(crbug.com/522712050): Remove once Gemini Config Params are merged.
 extern const char kGeminiCopresenceResponseReadyInterval[];
 double GetGeminiCopresenceResponseReadyInterval();
 
@@ -272,15 +273,12 @@ extern const char kGeminiCopresenceWithFullscreenDisabler[];
 bool IsGeminiCopresenceTrackSourcesEnabled();
 extern const char kGeminiCopresenceTrackSources[];
 
-// Feature flag for Gemini Dynamic Resizing.
-BASE_DECLARE_FEATURE(kGeminiResponseViewDynamicResizing);
+// Feature flag for Gemini configurable parameters.
+BASE_DECLARE_FEATURE(kGeminiConfigParams);
 
-// Returns true if Gemini Dynamic Resizing is enabled.
-bool IsGeminiResponseViewDynamicResizingEnabled();
-
-// Feature flag for Gemini Dynamic Settings.
-BASE_DECLARE_FEATURE(kGeminiDynamicSettings);
-bool IsGeminiDynamicSettingsEnabled();
+// The threshold interval for displaying the response ready state in seconds.
+extern const char kGeminiResponseReadyInterval[];
+double GetGeminiResponseReadyInterval();
 
 // Feature flag for enabling early metrics collection for page stability.
 BASE_DECLARE_FEATURE(kPageStabilityMetrics);
@@ -343,16 +341,6 @@ bool IsGeminiActorEnabled();
 // Feature flag for enabling rich APC (v2) extraction for Gemini.
 BASE_DECLARE_FEATURE(kGeminiRichAPCExtraction);
 bool IsGeminiRichAPCExtractionEnabled();
-
-// Feature flag to enable Gemini Floaty on all pages.
-BASE_DECLARE_FEATURE(kGeminiFloatyAllPages);
-bool IsGeminiFloatyAllPagesEnabled();
-
-// Enables the GeminiMapsRichUI feature.
-BASE_DECLARE_FEATURE(kGeminiMapsRichUI);
-
-// Returns true if the GeminiMapsRichUI feature is enabled.
-bool IsGeminiMapsRichUIEnabled();
 
 // Enables the GeminiUnaryMigration feature.
 BASE_DECLARE_FEATURE(kGeminiUnaryMigration);
@@ -420,6 +408,12 @@ BASE_DECLARE_FEATURE(kGeminiLuminous);
 
 // Returns true if Gemini Luminous is enabled.
 bool IsGeminiLuminousEnabled();
+
+// Feature flag controlling App Switcher AI summarization.
+BASE_DECLARE_FEATURE(kAppSwitcherAISummarization);
+
+// Returns true if App Switcher AI summarization is enabled.
+bool IsAppSwitcherAISummarizationEnabled();
 
 #pragma mark - Debugging Features
 

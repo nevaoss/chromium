@@ -342,7 +342,7 @@ public class AccountPickerBottomSheetMediator
 
     /** Implements {@link AccountsChangeObserver}. */
     @Override
-    public void onCoreAccountInfosChanged() {
+    public void onAccountsChanged() {
         mAccountManagerFacade.getAccounts().then(this::updateAccounts);
     }
 

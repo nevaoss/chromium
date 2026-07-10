@@ -486,6 +486,18 @@ TEST_F(PasswordAutofillManagerTest, PreviewSuggestion) {
       password_autofill_manager_->PreviewSuggestionForTest(test_username_));
 }
 
+TEST_F(PasswordAutofillManagerTest, PreviewGroupedSuggestion) {
+  fill_data().preferred_login.is_grouped_affiliation = true;
+  TestPasswordManagerClient client;
+  InitializePasswordAutofillManager(&client, nullptr);
+
+  // Grouped suggestions should be masked using an 8-character long mask.
+  EXPECT_CALL(*client.mock_driver(),
+              PreviewSuggestion(test_username_, std::u16string(8, '*')));
+  EXPECT_TRUE(
+      password_autofill_manager_->PreviewSuggestionForTest(test_username_));
+}
+
 // Test that the popup is marked as visible after receiving password
 // suggestions.
 TEST_F(PasswordAutofillManagerTest, ExternalDelegatePasswordSuggestions) {
@@ -2424,6 +2436,26 @@ TEST_F(PasswordAutofillManagerTest,
       *client.mock_driver(),
       PreviewSuggestion(test_username_,
                         std::u16string(backup_password_.length(), '*')));
+  password_autofill_manager_->DidSelectSuggestion(suggestion);
+  testing::Mock::VerifyAndClearExpectations(client.mock_driver());
+
+  EXPECT_EQ(client.GetUndoPasswordChangeController()->GetState(test_username_),
+            PasswordRecoveryState::kRegularFlow);
+}
+
+TEST_F(PasswordAutofillManagerTest,
+       PasswordRecoveryFlow_PreviewGroupedBackupSuggestion) {
+  TestPasswordManagerClient client;
+  InitializePasswordAutofillManager(&client, nullptr);
+  const Suggestion::PasswordSuggestionDetails payload(
+      test_username_, test_password_, backup_password_,
+      /*signon_realm=*/"", /*is_cross_domain=*/true);
+  const Suggestion suggestion = autofill::test::CreateAutofillSuggestion(
+      autofill::SuggestionType::kBackupPasswordEntry, test_username_, payload);
+
+  // Grouped backup suggestions should be masked using an 8-character long mask.
+  EXPECT_CALL(*client.mock_driver(),
+              PreviewSuggestion(test_username_, std::u16string(8, '*')));
   password_autofill_manager_->DidSelectSuggestion(suggestion);
   testing::Mock::VerifyAndClearExpectations(client.mock_driver());
 

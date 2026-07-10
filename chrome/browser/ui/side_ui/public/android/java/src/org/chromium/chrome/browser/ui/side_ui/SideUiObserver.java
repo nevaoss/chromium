@@ -10,9 +10,8 @@ import android.transition.TransitionSet;
 
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiShowability;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiSpecs;
-
-import java.util.List;
 
 /** Observer for side UI changes. */
 @NullMarked
@@ -73,16 +72,9 @@ public interface SideUiObserver {
     void onSideUiSpecsChanged(SideUiSpecs sideUiSpecs);
 
     /**
-     * Called when the capability of Side UI containers to fit on screen is updated.
+     * Called when {@link SideUiShowability} is updated.
      *
-     * <p>"Showable" means there is enough space for the Side UI container, but it may not be
-     * currently shown.
-     *
-     * <p>"Unshowable" means there is not enough space for the Side UI container, and it is
-     * guaranteed to be hidden.
-     *
-     * @param showableIds The IDs of containers that have enough space to be shown.
-     * @param unshowableIds The IDs of containers that do not have enough space.
+     * @param sideUiShowability The new {@link SideUiShowability}.
      */
-    default void onShowableSideUisUpdated(List<Integer> showableIds, List<Integer> unshowableIds) {}
+    default void onShowableSideUisUpdated(SideUiShowability sideUiShowability) {}
 }

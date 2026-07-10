@@ -597,7 +597,6 @@ Semak kata laluan anda pada bila-bila masa dalam <ph name="GOOGLE_PASSWORD_MANAG
 <translation id="1433478348197382180">Mod Membaca</translation>
 <translation id="1433980411933182122">Permulaan</translation>
 <translation id="1434659328474177625"><ph name="ISSUER" /> mengesahkan e-mel anda</translation>
-<translation id="1434696352799406980">Ini akan menetapkan semula halaman permulaan, halaman tab baharu, enjin carian dan tab tersemat anda. Selain itu, semua sambungan akan dilumpuhkan dan data sementara seperti kuki akan dikosongkan. Sejarah penanda halaman anda dan kata laluan yang disimpan tidak akan dikosongkan.</translation>
 <translation id="1434886155212424586">Halaman utama ialah halaman Tab Baharu</translation>
 <translation id="1435940442311036198">Gunakan kunci laluan pada peranti lain</translation>
 <translation id="1436390408194692385">Sah selama <ph name="TICKET_TIME_LEFT" /></translation>
@@ -3716,7 +3715,6 @@ Anda boleh mengurus tetapan akaun ini dengan memasang apl Family Link pada peran
 <translation id="366484203224589850"><ph name="TASK_TITLE" />: Gemini telah mengusahakan tugasan ini untuk masa yang lama dan akan berhenti sebentar lagi untuk menjimatkan bateri</translation>
 <translation id="3664911592976620204">{NUM_OTHER_MEMBERS,plural, =0{Sertai kumpulan tab bersama <ph name="OWNER_FIRST_NAME" />}=1{Sertai kumpulan tab bersama <ph name="OWNER_FIRST_NAME" /> dan # ahli yang lain}other{Sertai kumpulan tab bersama <ph name="OWNER_FIRST_NAME" /> dan # ahli yang lain}}</translation>
 <translation id="3665301845536101715">Buka dalam panel sisi</translation>
-<translation id="3665589677786828986">Chrome mengesan bahawa sesetengah tetapan anda telah terganggu oleh program lain dan menetapkannya semula kepada tetapan lalainya yang asal.</translation>
 <translation id="3665918214153961651">Memuat naik fail</translation>
 <translation id="3666196264870170605">Pembuangan Nyahpepijat NIC Wi-Fi Intel</translation>
 <translation id="3666971425390608309">Muat turun dijeda: <ph name="FILE_NAME" />.</translation>
@@ -5004,7 +5002,6 @@ Anda boleh mengurus tetapan akaun ini dengan memasang apl Family Link pada peran
 <translation id="4580596421317071374">Kata laluan disimpan pada <ph name="GOOGLE_PASSWORD_MANAGER" /> pada peranti ini.</translation>
 <translation id="4580939929828762295">Kekal selamat dengan Google Password Manager</translation>
 <translation id="4582297591746054421">Tapak biasanya membaca papan keratan anda untuk ciri seperti mengekalkan format teks yang anda salin</translation>
-<translation id="4582563038311694664">Tetapkan semula semua tetapan</translation>
 <translation id="4584094413232466841">Alih keluar maklumat ini daripada autolengkap Chrome?</translation>
 <translation id="4584770411839426377">Tetingkap</translation>
 <translation id="4584836561445313300">Organisasi anda akan dapat melihat dan mengurus sebarang data penyemakan imbas yang sedia ada, seperti kata laluan dan pelbagai lagi</translation>
@@ -10092,7 +10089,6 @@ Simpan fail kunci anda di tempat selamat. Anda akan memerlukannya untuk mencipta
 <translation id="8327386430364625757">Fon matematik</translation>
 <translation id="8327490658947427005">Pilihan Bukan dalam bahasa <ph name="LANGUAGE" /></translation>
 <translation id="8327544198829180337">Tutup paparan ini</translation>
-<translation id="8327676037044516220">Kebenaran dan tetapan kandungan</translation>
 <translation id="8328228852664998535">Jika anda meneruskan tindakan ini, kata laluan, kunci laluan dan data anda yang lain akan dipadamkan secara kekal daripada <ph name="BRAND" />. Sebarang akaun yang anda buat untuk laman atau apl tidak akan dipadamkan.</translation>
 <translation id="8328777765163860529">Tutup Semua</translation>
 <translation id="8330617762701840933">Senarai laman web yang mengubah hala ke penyemak imbas alternatif.</translation>
@@ -10914,7 +10910,6 @@ Maklumat ini termasuk maklumat tentang perisian yang dipasang, fail, penyemak im
 <translation id="8925458182817574960">&amp;Tetapan</translation>
 <translation id="8926389886865778422">Jangan tanya lagi</translation>
 <translation id="8926555406617248399">Tab disembunyikan</translation>
-<translation id="892706138619340876">Beberapa tetapan telah ditetapkan semula</translation>
 <translation id="8927438609932588163">Benarkan laman menyimpan data pada peranti anda</translation>
 <translation id="8929696694736010839">Sesi Inkognito semasa sahaja</translation>
 <translation id="8929738682246584251">Hidupkan/matikan penggadang</translation>

@@ -944,13 +944,6 @@ targets.mixin(
 )
 
 targets.mixin(
-    name = "gpu_force_angle_d3d9",
-    args = [
-        "--extra-browser-args=--use-angle=d3d9",
-    ],
-)
-
-targets.mixin(
     name = "gpu_force_angle_gles",
     args = [
         "--extra-browser-args=--use-angle=gles",

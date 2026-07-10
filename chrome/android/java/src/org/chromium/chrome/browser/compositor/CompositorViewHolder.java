@@ -27,7 +27,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.transition.ChangeBounds;
 import android.transition.Transition;
-import android.transition.TransitionSet;
 import android.util.ArrayMap;
 import android.util.AttributeSet;
 import android.util.Size;
@@ -102,7 +101,6 @@ import org.chromium.content_public.browser.NavigationHandle;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.ui.KeyboardVisibilityDelegate;
 import org.chromium.ui.UiUtils;
-import org.chromium.ui.animation.transition.IntegerValueTransition;
 import org.chromium.ui.base.ApplicationViewportInsetTracker;
 import org.chromium.ui.base.EventForwarder;
 import org.chromium.ui.base.EventOffsetHandler;
@@ -239,12 +237,7 @@ public class CompositorViewHolder extends FrameLayout
     private boolean mInGesture;
     private boolean mInTouch;
     private boolean mContentViewScrolling;
-    // The number of active touch pointers. We are sending a gesture begin
-    // event for every added touch point, and a gesnture end event for every
-    // removed touch point.
-    // TODO(crbug.com/265479149): We will remove |mInGesture| if we enable the
-    // SUPPRESS_TOOLBAR_CAPTURES_AT_GESTURE_END feature.
-    private int mNumGestureActiveTouches;
+
     private @Nullable ApplicationViewportInsetTracker mApplicationBottomInsetSupplier;
 
     // Handler for changes to viewport insets.
@@ -375,11 +368,6 @@ public class CompositorViewHolder extends FrameLayout
                 }
 
                 @Override
-                public void onCrash(Tab tab) {
-                    mNumGestureActiveTouches = 0;
-                }
-
-                @Override
                 public void onDidFinishNavigationInPrimaryMainFrame(
                         Tab tab, NavigationHandle navigation) {
                     if (!navigation.isSameDocument() && navigation.hasCommitted()) {
@@ -389,34 +377,16 @@ public class CompositorViewHolder extends FrameLayout
                     }
                 }
 
-                // TODO(crbug.com/265479149): Split out a specific delegate for
-                // gesture listening below and remove from TabObserver.
-                @Override
-                public void onGestureBegin() {
-                    mNumGestureActiveTouches++;
-                    updateInMotion();
-                }
-
-                @Override
-                public void onGestureEnd() {
-                    mNumGestureActiveTouches = Math.max(mNumGestureActiveTouches - 1, 0);
-                    updateInMotion();
-                }
-
                 @Override
                 public void onTouchDown() {
-                    if (ChromeFeatureList.sToolbarStaleCaptureBugFix.isEnabled()) {
-                        mInTouch = true;
-                        updateInMotion();
-                    }
+                    mInTouch = true;
+                    updateInMotion();
                 }
 
                 @Override
                 public void onTouchUp() {
-                    if (ChromeFeatureList.sToolbarStaleCaptureBugFix.isEnabled()) {
-                        mInTouch = false;
-                        updateInMotion();
-                    }
+                    mInTouch = false;
+                    updateInMotion();
                 }
             };
 
@@ -466,8 +436,7 @@ public class CompositorViewHolder extends FrameLayout
                     if (tab != null) {
                         // Set the size of NTP if we're in the attached state as it may have not
                         // been sized properly when initializing tab. See the comment in
-                        // #initializeTab()
-                        // for why.
+                        // #initializeTab() for why.
                         boolean attachedNativePage =
                                 tab.isNativePage() && isAttachedToWindow(tab.getView());
                         boolean sizeChanged =
@@ -963,14 +932,7 @@ public class CompositorViewHolder extends FrameLayout
 
     private void updateInMotion() {
         // TODO(crbug.com/40244051): Track fling as well.
-        boolean inMotion = mContentViewScrolling;
-        if (ChromeFeatureList.sToolbarStaleCaptureBugFix.isEnabled()) {
-            inMotion |= mInTouch;
-        } else if (ChromeFeatureList.sSuppressToolbarCapturesAtGestureEnd.isEnabled()) {
-            inMotion |= mNumGestureActiveTouches > 0;
-        } else {
-            inMotion |= mInGesture;
-        }
+        boolean inMotion = mContentViewScrolling || mInTouch;
         mInMotionSupplier.set(inMotion);
         if (mContentView != null) {
             mContentView.setDeferKeepScreenOnChanges(inMotion);
@@ -1452,36 +1414,23 @@ public class CompositorViewHolder extends FrameLayout
         WebContents webContents = currentTab.getWebContents();
         if (webContents == null) return null;
 
-        Point viewportSize = getViewportSize();
-        int sideUiTotalWidth =
-                sideUiSpecs.getWidth(AnchorSide.LEFT) + sideUiSpecs.getWidth(AnchorSide.RIGHT);
-        int startWidth = ViewUtils.dpToPx(mActivity, webContents.getWidth());
-        int targetWidth = viewportSize.x - sideUiTotalWidth;
+        if (mView == null) return null;
 
-        TransitionSet transitionSet = new TransitionSet();
+        // TODO(crbug.com/515834044): Investigate adding a Transition to instead resize WebContents
+        //  in the middle of the Transition to make the transition a bit smoother.
 
         // TODO(crbug.com/513304704): Add tests covering the Java View Transitions.
-        if (mView != null) {
-            // Apply a ChangeBounds() to the view and all its descendants to make sure any changes
-            // are properly animated. If this isn't applied to all the descendant Views, the
-            // animation may not be triggered at all.
-            ChangeBounds changeBounds = new ChangeBounds();
-            Collection<View> descendants = new ArrayList<>();
-            changeBounds.addTarget(mView);
-            ViewUtils.getAllDescendants(mView, descendants, emptySet());
-            for (View view : descendants) {
-                changeBounds.addTarget(view);
-            }
-            transitionSet.addTransition(changeBounds);
+        // Apply a ChangeBounds() to the view and all its descendants to make sure any changes are
+        // properly animated. If this isn't applied to all the descendant Views, the animation may
+        // not be triggered at all.
+        ChangeBounds changeBounds = new ChangeBounds();
+        Collection<View> descendants = new ArrayList<>();
+        changeBounds.addTarget(mView);
+        ViewUtils.getAllDescendants(mView, descendants, emptySet());
+        for (View view : descendants) {
+            changeBounds.addTarget(view);
         }
-
-        transitionSet.addTransition(
-                new IntegerValueTransition(
-                        this,
-                        startWidth,
-                        targetWidth,
-                        (desiredWidth) -> updateWebContentsSize(getCurrentTab(), desiredWidth)));
-        return transitionSet;
+        return changeBounds;
     }
 
     @Override
@@ -1813,6 +1762,7 @@ public class CompositorViewHolder extends FrameLayout
                 (sideUiStateProvider) -> {
                     mSideUiStateProvider = sideUiStateProvider;
                     mSideUiStateProvider.addObserver(this);
+                    updateWebContentsSize(getCurrentTab());
                 });
     }
 
@@ -2015,7 +1965,6 @@ public class CompositorViewHolder extends FrameLayout
             mHasKeyboardGeometryChangeFired = false;
             if (mTabVisible != null) mTabVisible.removeObserver(mTabObserver);
             if (tab != null) {
-                mNumGestureActiveTouches = 0;
                 tab.addObserver(mTabObserver);
                 mCompositorView.onTabChanged();
             }
@@ -2413,6 +2362,16 @@ public class CompositorViewHolder extends FrameLayout
 
             event.setContentDescription(getAccessibilityDescription(view));
             event.setClassName(CompositorViewHolder.class.getName());
+
+            if (event.getEventType() == AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED) {
+                // TODO(crbug.com/522892476): This is not the "proper" place to respond to a11y
+                // events. It's intended to be a place to augment the AccessibilityEvent before it's
+                // actually fired. We listen here, since ExploreByTouchHelper does not emit
+                // #onPerformActionForVirtualView events on a11y focus. If we refactor to instead
+                // use an AccessibilityNodeProvider, we likely can listen to this event in the
+                // "proper" location.
+                view.onAccessibilityFocused();
+            }
         }
 
         @Override

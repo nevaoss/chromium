@@ -10,23 +10,22 @@ import {loadTimeData} from '//resources/js/load_time_data.js';
 import type {BitmapN32} from '//resources/mojo/skia/public/mojom/bitmap.mojom-webui.js';
 
 import {ContentSettingsType} from '../../content_settings_types.mojom-webui.js';
-import type {CaptureRegionObserver, CaptureRegionResult as CaptureRegionResultMojo, OpenSettingsOptions as OpenSettingsOptionsMojo, PinCandidate as PinCandidateMojo, PinCandidatesObserver, ScrollToSelector as ScrollToSelectorMojo, TabDataHandlerInterface, TabDataMojoType, TabFaviconHandlerInterface, WebClientHandlerInterface} from '../../glic.mojom-webui.js';
-import {CaptureRegionErrorReason as CaptureRegionErrorReasonMojo, CaptureRegionObserverReceiver, ClientErrorDialogType as ClientErrorDialogTypeMojo, PinCandidatesObserverReceiver, ResponseStopCause as ResponseStopCauseMojo, SettingsPageField as SettingsPageFieldMojo, SkillSource as SkillSourceMojo, TabDataHandlerReceiver, TabFaviconHandlerReceiver, WebClientReceiver} from '../../glic.mojom-webui.js';
+import type {CaptureRegionErrorReason as CaptureRegionErrorReasonMojo, CaptureRegionObserver, CaptureRegionResult as CaptureRegionResultMojo, OpenSettingsOptions as OpenSettingsOptionsMojo, PinCandidate as PinCandidateMojo, PinCandidatesObserver, ScrollToSelector as ScrollToSelectorMojo, TabDataHandlerInterface, TabDataMojoType, TabFaviconHandlerInterface, WebClientHandlerInterface} from '../../glic.mojom-webui.js';
+import {CaptureRegionObserverReceiver, ClientErrorDialogType as ClientErrorDialogTypeMojo, PinCandidatesObserverReceiver, ResponseStopCause as ResponseStopCauseMojo, SettingsPageField as SettingsPageFieldMojo, SkillSource as SkillSourceMojo, TabDataHandlerReceiver, TabFaviconHandlerReceiver, WebClientReceiver} from '../../glic.mojom-webui.js';
 import type {CaptureRegionParams, ClientErrorDialogType, ConversationInfo, CounterAbuseVerdict, CreateSkillRequest, ExperimentalTriggeringUpdate, GetPinCandidatesOptions, MicrophoneStatus, OnResponseStoppedDetails, OpenSettingsOptions, PinTabsOptions, Screenshot, ScrollToParams, Skill, SkillsWebClientEvent, TabContextOptions, UnpinTabsOptions, UpdateSkillRequest, WebClientMode, ZeroStateSuggestions, ZeroStateSuggestionsOptions, ZeroStateSuggestionsV2} from '../../glic_api/glic_api.js';
 import {CaptureScreenshotErrorReason, ClientCapabilities, ResponseStopCause, ScrollToErrorReason} from '../../glic_api/glic_api.js';
 import {replaceProperties} from '../conversions.js';
 import {enumFromClient, enumToClient} from '../enum_conversions.js';
-import type {ActorClient, ActorHost, GlicException, RgbaImage, TabContextResultPrivate, WebClient, WebClientHost, WebClientInitialStatePrivate} from '../request_types.js';
+import type {ActorClient, ActorHost, GlicException, ImageBytesResultPrivate, RgbaImage, TabContextResultPrivate, WebClientHost, WebClientInitialStatePrivate, WebClientPinCandidatesObserver, WebClientRegionCapture, WebClientTabDataObserver, WebClientTabFaviconObserver} from '../request_types.js';
 import {ErrorWithReasonImpl, exceptionFromTransferable, SubscriberObservationType} from '../request_types.js';
 import {ResponseExtras} from '../transport/messaging.js';
-import type {MessageHandlerInterface} from '../transport/messaging.js';
-import type {PendingReceiver, PendingRemote, PostMessageRemote} from '../transport/post_message_transport.js';
+import type {PendingReceiver, PendingRemote, PostMessageHandler, PostMessageRemote, PostMessageRouter} from '../transport/post_message_transport.js';
 
-import {bitmapN32ToRGBAImage, captureRegionResultToClient, conversationInfoFromClient, conversionSettings, counterAbuseVerdictFromClient, focusedTabDataToClient, getPinCandidatesOptionsFromClient, hostCapabilitiesToClient, idFromClient, idToClient, microphoneStatusToMojo, optionalFromClient, optionalToClient, panelStateToClient, pinTabsOptionsToMojo, subscriberObservationTypeFromClient, tabContextOptionsFromClient, tabContextToClient, tabDataToClient, timeDeltaFromClient, unpinTabsOptionsToMojo, urlFromClient, urlToClient, webClientModeToMojo, zeroStateSuggestionsToClient} from './conversions.js';
-import type {GatedSender} from './gated_sender.js';
+import {bitmapN32ToRGBAImage, captureRegionResultToClient, conversationInfoFromClient, conversionSettings, counterAbuseVerdictFromClient, focusedTabDataToClient, getPinCandidatesOptionsFromClient, hostCapabilitiesToClient, idFromClient, idToClient, imageBytesResultToClient, microphoneStatusToMojo, optionalFromClient, optionalToClient, panelStateToClient, pinTabsOptionsToMojo, subscriberObservationTypeFromClient, tabContextOptionsFromClient, tabContextToClient, tabDataToClient, timeDeltaFromClient, unpinTabsOptionsToMojo, urlFromClient, urlToClient, webClientModeToMojo, zeroStateSuggestionsToClient} from './conversions.js';
 import type {ApiHostEmbedder, GlicApiHost} from './glic_api_host.js';
 import {DetailedWebClientState} from './glic_api_host.js';
 import {WebClientImpl} from './host_to_client.js';
+import {linkPipeClosure} from './host_utils.js';
 
 /**
  * Handles all requests to the host.
@@ -37,17 +36,14 @@ import {WebClientImpl} from './host_to_client.js';
  * Any new state or function that's not a handler should be added to
  * `GlicApiHost`.
  */
-export class HostMessageHandler implements
-    MessageHandlerInterface<WebClientHost> {
+export class HostMessageHandler implements PostMessageHandler<WebClientHost> {
   // Undefined until the web client is initialized.
   private receiver: WebClientReceiver|undefined;
 
   // Reminder: Don't add more state here! See `HostMessageHandler`'s comment.
-
   constructor(
       private handler: WebClientHandlerInterface,
-      private sender: GatedSender<WebClient>, private embedder: ApiHostEmbedder,
-      private host: GlicApiHost) {}
+      private embedder: ApiHostEmbedder, private host: GlicApiHost) {}
 
   destroy() {
     if (this.receiver) {
@@ -83,6 +79,7 @@ export class HostMessageHandler implements
     const {initialState} = await this.handler.webClientCreated(
         this.receiver.$.bindNewPipeAndPassRemote());
     webClientImpl.markCreated();
+
     conversionSettings.platform = enumToClient(initialState.platform);
     const actorPipes = this.host.setInitialState(initialState);
     const chromeVersion = initialState.chromeVersion.components;
@@ -90,18 +87,6 @@ export class HostMessageHandler implements
     this.host.setInstanceIsActive(initialState.instanceIsActive);
     const platform = initialState.platform;
 
-    // If the panel isn't active, don't send the focused tab until later.
-    if (initialState.enableApiActivationGating && !initialState.panelIsActive) {
-      const actualFocus = initialState.focusedTabData;
-      initialState.focusedTabData = {
-        noFocusedTabData: {
-          activeTabData: null,
-          noFocusReason: 'glic not active',
-        },
-      };
-      // Note: this will queue up the message, and not send it right awway.
-      webClientImpl.notifyFocusedTabChanged(actualFocus);
-    }
 
     return {
       initialState: replaceProperties(initialState, {
@@ -302,6 +287,21 @@ export class HostMessageHandler implements
     };
   }
 
+  async getImageBytesFromTab(
+      request: {tabId: string, documentId: string, domNodeId: number},
+      extras: ResponseExtras):
+      Promise<{result: ImageBytesResultPrivate | null}> {
+    const {result: {errorReason, imageBytes}} =
+        await this.handler.getImageBytesFromTab(
+            idFromClient(request.tabId), request.documentId, request.domNodeId);
+    if (!imageBytes) {
+      throw new Error(`getImageBytes failed: ${errorReason}`);
+    }
+    return {
+      result: imageBytesResultToClient(imageBytes, extras),
+    };
+  }
+
   async setMaximumNumberOfPinnedTabs(request: {
     requestedMax: number,
   }): Promise<{effectiveMax: number}> {
@@ -382,23 +382,21 @@ export class HostMessageHandler implements
   }
 
   subscribeToCaptureRegion(request: {
-    observationId: number,
+    remote: PendingRemote<WebClientRegionCapture>,
     params?: CaptureRegionParams,
   }): void {
     this.host.captureRegionObserver?.destroy();
-    this.host.captureRegionObserver = new CaptureRegionObserverImpl(
-        this.sender, this.handler, request.observationId, request.params);
-  }
-
-  unsubscribeFromCaptureRegion(request: {observationId: number}): void {
-    if (!this.host.captureRegionObserver) {
-      return;
-    }
-    if (this.host.captureRegionObserver.observationId ===
-        request.observationId) {
-      this.host.captureRegionObserver.destroy();
-      this.host.captureRegionObserver = undefined;
-    }
+    const remote: PostMessageRemote<WebClientRegionCapture> =
+        this.host.communicator.router.newRemote(request.remote);
+    const observer =
+        new CaptureRegionObserverImpl(remote, this.handler, request.params);
+    remote.addCloseHandler(() => {
+      observer.destroy();
+      if (this.host.captureRegionObserver === observer) {
+        this.host.captureRegionObserver = undefined;
+      }
+    });
+    this.host.captureRegionObserver = observer;
   }
 
   subscribeToZoomLevel(): void {
@@ -676,22 +674,20 @@ export class HostMessageHandler implements
 
   subscribeToPinCandidates(request: {
     options: GetPinCandidatesOptions,
-    observationId: number,
+    pinCandidatesPipe: PendingRemote<WebClientPinCandidatesObserver>,
   }): void {
-    this.host.pinCandidatesObserver?.disconnectFromSource();
-    this.host.pinCandidatesObserver = new PinCandidatesObserverImpl(
-        this.sender, this.handler, request.options, request.observationId);
-  }
-
-  unsubscribeFromPinCandidates(request: {observationId: number}): void {
-    if (!this.host.pinCandidatesObserver) {
-      return;
-    }
-    if (this.host.pinCandidatesObserver.observationId ===
-        request.observationId) {
-      this.host.pinCandidatesObserver.disconnectFromSource();
-      this.host.pinCandidatesObserver = undefined;
-    }
+    this.host.pinCandidatesObserver?.destroy();
+    const remote: PostMessageRemote<WebClientPinCandidatesObserver> =
+        this.host.communicator.router.newRemote(request.pinCandidatesPipe);
+    const observer =
+        new PinCandidatesObserverImpl(remote, this.handler, request.options);
+    remote.addCloseHandler(() => {
+      observer.destroy();
+      if (this.host.pinCandidatesObserver === observer) {
+        this.host.pinCandidatesObserver = undefined;
+      }
+    });
+    this.host.pinCandidatesObserver = observer;
   }
 
   async getZeroStateSuggestionsForFocusedTab(request: {
@@ -760,24 +756,22 @@ export class HostMessageHandler implements
     this.handler.setOnboardingCompleted();
   }
 
-  subscribeToTabData(
-      payload: {tabId: string, observationId: number, cancel: boolean}): void {
-    if (payload.cancel) {
-      this.host.tabDataHandlerSet.remove(payload.observationId);
-    } else {
-      this.host.tabDataHandlerSet.create(
-          idFromClient(payload.tabId), payload.observationId);
-    }
+  subscribeToTabData(request: {
+    tabId: string,
+    remote: PendingRemote<WebClientTabDataObserver>,
+  }): void {
+    new TabDataHandlerImpl(
+        idFromClient(request.tabId), this.handler, request.remote,
+        this.host.communicator.router);
   }
 
-  subscribeToTabFavicon(
-      payload: {tabId: string, observationId: number, cancel: boolean}): void {
-    if (payload.cancel) {
-      this.host.tabFaviconHandlerSet.remove(payload.observationId);
-    } else {
-      this.host.tabFaviconHandlerSet.create(
-          idFromClient(payload.tabId), payload.observationId);
-    }
+  subscribeToTabFavicon(request: {
+    tabId: string,
+    remote: PendingRemote<WebClientTabFaviconObserver>,
+  }): void {
+    new TabFaviconHandlerImpl(
+        idFromClient(request.tabId), this.handler, request.remote,
+        this.host.communicator.router);
   }
 
   setErrorDialogState(request: {
@@ -798,45 +792,14 @@ export class HostMessageHandler implements
 
 
 export class CaptureRegionObserverImpl implements CaptureRegionObserver {
-  receiver?: CaptureRegionObserverReceiver;
+  private mojoReceiver?: CaptureRegionObserverReceiver;
   constructor(
-      private sender: GatedSender<WebClient>,
-      private handler: WebClientHandlerInterface, public observationId: number,
+      public readonly pmRemote: PostMessageRemote<WebClientRegionCapture>,
+      private handler: WebClientHandlerInterface,
       private params?: CaptureRegionParams) {
-    this.connectToSource();
-  }
-
-  disconnectFromSource() {
-    if (!this.receiver) {
-      return;
-    }
-    this.sender.sendWhenActive('captureRegionUpdate', {
-      reason: enumToClient(CaptureRegionErrorReasonMojo.kUnknown),
-      observationId: this.observationId,
-    });
-    this.destroy();
-  }
-
-  // Stops requesting updates.
-  destroy() {
-    if (!this.receiver) {
-      return;
-    }
-    this.receiver.$.close();
-    this.receiver = undefined;
-  }
-
-  // Starts requesting updates.
-  private connectToSource() {
-    if (this.receiver) {
-      return;
-    }
-    this.receiver = new CaptureRegionObserverReceiver(this);
-    const remote = this.receiver.$.bindNewPipeAndPassRemote();
-    this.receiver.onConnectionError.addListener(() => {
-      // The connection was closed without OnUpdate being called with an error.
-      this.onUpdate(null, CaptureRegionErrorReasonMojo.kUnknown);
-    });
+    this.mojoReceiver = new CaptureRegionObserverReceiver(this);
+    linkPipeClosure(this.pmRemote, this.mojoReceiver);
+    const remote = this.mojoReceiver.$.bindNewPipeAndPassRemote();
     this.handler.captureRegion(
         remote,
         this.params ? {
@@ -846,131 +809,73 @@ export class CaptureRegionObserverImpl implements CaptureRegionObserver {
                       null);
   }
 
+  // Stops requesting updates.
+  destroy() {
+    if (!this.mojoReceiver) {
+      return;
+    }
+    this.mojoReceiver.$.close();
+    this.mojoReceiver = undefined;
+  }
+
   onUpdate(
       result: CaptureRegionResultMojo|null,
       reason: CaptureRegionErrorReasonMojo|null): void {
     const captureResult = captureRegionResultToClient(result);
     if (captureResult) {
-      // Use `sendWhenActive` to queue up all captured regions if the panel is
-      // inactive. This is important because the panel is inactive during region
-      // selection, and we don't want to lose any of the user's selections.
-      this.sender.sendWhenActive('captureRegionUpdate', {
+      this.pmRemote.requestNoResponse('captureRegionUpdate', {
         result: captureResult,
-        observationId: this.observationId,
       });
     } else {
-      // Use `sendWhenActive` to ensure the error is delivered, even if the
-      // panel is currently inactive.
-      this.sender.sendWhenActive('captureRegionUpdate', {
-        reason: enumToClient(reason ?? CaptureRegionErrorReasonMojo.kUnknown),
-        observationId: this.observationId,
-      });
+      // If the capture update failed, notify the client of the error reason
+      // if provided and destroy the observer to close the pipe.
+      if (reason !== null) {
+        this.pmRemote.requestNoResponse('captureRegionUpdate', {
+          reason: enumToClient(reason),
+        });
+      }
       this.destroy();
     }
   }
 }
 
-export class TabDataHandlerSet {
-  handlersByObservation: Map<number, TabDataHandlerImpl> = new Map();
-
-  constructor(
-      public sender: PostMessageRemote<WebClient>,
-      private webClientHandler: WebClientHandlerInterface) {}
-  create(tabId: number, observationId: number): void {
-    const handler = new TabDataHandlerImpl(
-        tabId, this.webClientHandler, this.sender, this, observationId);
-    this.handlersByObservation.set(observationId, handler);
-  }
-  remove(observationId: number): void {
-    const handler = this.handlersByObservation.get(observationId);
-    if (!handler) {
-      return;
-    }
-    handler.destroy();
-    this.handlersByObservation.delete(observationId);
-  }
-}
-
 class TabDataHandlerImpl implements TabDataHandlerInterface {
-  receiver?: TabDataHandlerReceiver;
+  mojoReceiver?: TabDataHandlerReceiver;
+  private pmRemote: PostMessageRemote<WebClientTabDataObserver>;
 
   constructor(
       tabId: number, handler: WebClientHandlerInterface,
-      private sender: PostMessageRemote<WebClient>,
-      handlerSet: TabDataHandlerSet, public readonly observationId: number) {
-    this.receiver = new TabDataHandlerReceiver(this);
-    this.receiver.onConnectionError.addListener(() => {
-      handlerSet.remove(this.observationId);
-    });
+      pendingRemote: PendingRemote<WebClientTabDataObserver>,
+      router: PostMessageRouter) {
+    this.pmRemote = router.newRemote(pendingRemote);
+    this.mojoReceiver = new TabDataHandlerReceiver(this);
+    linkPipeClosure(this.pmRemote, this.mojoReceiver);
     handler.subscribeToTabData(
-        tabId, this.receiver.$.bindNewPipeAndPassRemote());
-  }
-  destroy() {
-    if (!this.receiver) {
-      return;
-    }
-    this.receiver.$.close();
-    this.receiver = undefined;
-    this.sender.requestNoResponse(
-        'tabDataChanged',
-        // Omitting tab data signals completion.
-        {observationId: this.observationId});
+        tabId, this.mojoReceiver.$.bindNewPipeAndPassRemote());
   }
   onTabDataChanged(tabData: TabDataMojoType): void {
     const extras = new ResponseExtras();
-    this.sender.requestNoResponse(
+    this.pmRemote.requestNoResponse(
         'tabDataChanged', {
           tabData: tabDataToClient(tabData, extras),
-          observationId: this.observationId,
         },
         extras.transfers);
   }
 }
 
-export class TabFaviconHandlerSet {
-  handlersByObservation: Map<number, TabFaviconHandlerImpl> = new Map();
-
-  constructor(
-      public sender: PostMessageRemote<WebClient>,
-      private webClientHandler: WebClientHandlerInterface) {}
-  create(tabId: number, observationId: number): void {
-    const handler = new TabFaviconHandlerImpl(
-        tabId, this.webClientHandler, this.sender, this, observationId);
-    this.handlersByObservation.set(observationId, handler);
-  }
-  remove(observationId: number): void {
-    const handler = this.handlersByObservation.get(observationId);
-    if (!handler) {
-      return;
-    }
-    handler.destroy();
-    this.handlersByObservation.delete(observationId);
-  }
-}
-
 class TabFaviconHandlerImpl implements TabFaviconHandlerInterface {
-  receiver?: TabFaviconHandlerReceiver;
+  private mojoReceiver?: TabFaviconHandlerReceiver;
+  private pmRemote: PostMessageRemote<WebClientTabFaviconObserver>;
 
   constructor(
       tabId: number, handler: WebClientHandlerInterface,
-      private sender: PostMessageRemote<WebClient>,
-      handlerSet: TabFaviconHandlerSet, public readonly observationId: number) {
-    this.receiver = new TabFaviconHandlerReceiver(this);
-    this.receiver.onConnectionError.addListener(() => {
-      handlerSet.remove(this.observationId);
-    });
+      pendingRemote: PendingRemote<WebClientTabFaviconObserver>,
+      router: PostMessageRouter) {
+    this.pmRemote = router.newRemote(pendingRemote);
+    this.mojoReceiver = new TabFaviconHandlerReceiver(this);
+    linkPipeClosure(this.pmRemote, this.mojoReceiver);
     handler.subscribeToTabFavicon(
-        tabId, this.receiver.$.bindNewPipeAndPassRemote());
-  }
-  destroy() {
-    if (!this.receiver) {
-      return;
-    }
-    this.receiver.$.close();
-    this.receiver = undefined;
-    this.sender.requestNoResponse(
-        'tabFaviconChanged',
-        {observationId: this.observationId, tabRemoved: true});
+        tabId, this.mojoReceiver.$.bindNewPipeAndPassRemote());
   }
   onTabFaviconChanged(favicon: BitmapN32|null): void {
     const extras = new ResponseExtras();
@@ -981,54 +886,53 @@ class TabFaviconHandlerImpl implements TabFaviconHandlerInterface {
         extras.addTransfer(faviconImage.dataRGBA);
       }
     }
-    this.sender.requestNoResponse(
+    this.pmRemote.requestNoResponse(
         'tabFaviconChanged', {
           favicon: faviconImage,
-          observationId: this.observationId,
         },
         extras.transfers);
   }
 }
 
 export class PinCandidatesObserverImpl implements PinCandidatesObserver {
-  receiver?: PinCandidatesObserverReceiver;
+  private mojoReceiver?: PinCandidatesObserverReceiver;
   constructor(
-      private sender: GatedSender<WebClient>,
+      private pmRemote: PostMessageRemote<WebClientPinCandidatesObserver>,
       private handler: WebClientHandlerInterface,
-      private options: GetPinCandidatesOptions, public observationId: number) {
+      private options: GetPinCandidatesOptions) {
     this.connectToSource();
   }
 
-  // Stops requesting updates. This should be called on destruction, as well as
-  // when the panel is hidden to avoid incurring unnecessary costs.
   disconnectFromSource() {
-    if (!this.receiver) {
+    if (!this.mojoReceiver) {
       return;
     }
-    this.receiver.$.close();
-    this.receiver = undefined;
+    this.mojoReceiver.$.close();
+    this.mojoReceiver = undefined;
   }
 
-  // Start/resume requesting updates.
+  destroy() {
+    this.disconnectFromSource();
+  }
+
   connectToSource() {
-    if (this.receiver) {
+    if (this.mojoReceiver) {
       return;
     }
-    this.receiver = new PinCandidatesObserverReceiver(this);
+    this.mojoReceiver = new PinCandidatesObserverReceiver(this);
     this.handler.subscribeToPinCandidates(
         getPinCandidatesOptionsFromClient(this.options),
-        this.receiver.$.bindNewPipeAndPassRemote());
+        this.mojoReceiver.$.bindNewPipeAndPassRemote());
   }
 
   onPinCandidatesChanged(candidates: PinCandidateMojo[]): void {
     const extras = new ResponseExtras();
-    this.sender.sendLatestWhenActive(
+    this.pmRemote.requestNoResponse(
         'pinCandidatesChanged', {
           candidates:
               candidates.map(c => ({
                                tabData: tabDataToClient(c.tabData, extras),
                              })),
-          observationId: this.observationId,
         },
         extras.transfers);
   }

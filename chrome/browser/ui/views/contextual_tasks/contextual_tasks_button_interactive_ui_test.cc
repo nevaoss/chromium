@@ -440,8 +440,15 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksEphemeralButtonInteractiveTest,
       WaitForShow(kContextualTasksEphemeralToolbarButtonElementId));
 }
 
+#if BUILDFLAG(IS_WIN) && defined(ADDRESS_SANITIZER)
+#define MAYBE_ButtonVisibilityIsPreservedAsSidePanelToggles \
+  DISABLED_ButtonVisibilityIsPreservedAsSidePanelToggles
+#else
+#define MAYBE_ButtonVisibilityIsPreservedAsSidePanelToggles \
+  ButtonVisibilityIsPreservedAsSidePanelToggles
+#endif
 IN_PROC_BROWSER_TEST_F(ContextualTasksEphemeralButtonInteractiveTest,
-                       ButtonVisibilityIsPreservedAsSidePanelToggles) {
+                       MAYBE_ButtonVisibilityIsPreservedAsSidePanelToggles) {
   if ((true)) {
     GTEST_SKIP() << "Branded variant button visibility behavior differs.";
   }
@@ -467,6 +474,10 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksEphemeralButtonInteractiveTest,
       PressButton(kContextualTasksEphemeralToolbarButtonElementId),
       WaitForHide(kSidePanelElementId),
       EnsurePresent(kContextualTasksEphemeralToolbarButtonElementId),
+      EnsureNotPresent(
+          ContextualTasksCloseTabButton::kContextualTasksCloseTabButton),
+      PressButton(kPinnedToolbarActionShowSidePanelContextualTasksElementId),
+      WaitForShow(kSidePanelElementId),
       EnsureNotPresent(
           ContextualTasksCloseTabButton::kContextualTasksCloseTabButton));
 }

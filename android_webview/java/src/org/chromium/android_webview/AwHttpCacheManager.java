@@ -15,7 +15,7 @@ import org.chromium.build.annotations.NullMarked;
 @JNINamespace("android_webview")
 @Lifetime.Profile
 @NullMarked
-public class AwHttpCacheManager extends AwSupportLibIsomorphic {
+public class AwHttpCacheManager {
     private final long mNativeAwHttpCacheManager;
 
     public AwHttpCacheManager(long nativeAwHttpCacheManager) {

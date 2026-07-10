@@ -959,9 +959,13 @@ option:-internal-spatial-navigation-focus {
     outline-offset: -1px;
 }
 
-input:not([type="image" i], [type="range" i], [type="checkbox" i], [type="radio" i]) {
+input:not([type="range" i], [type="checkbox" i], [type="radio" i]) {
   overflow: clip !important;
   overflow-clip-margin: 0px !important;
+}
+
+input[type="image" i] {
+  overflow-clip-margin: content-box !important;
 }
 
 /* https://html.spec.whatwg.org/multipage/rendering.html#hidden-elements */

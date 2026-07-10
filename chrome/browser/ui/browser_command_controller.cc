@@ -19,6 +19,7 @@
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/user_metrics.h"
 #include "base/notimplemented.h"
+#include "base/strings/strcat.h"
 #include "base/time/time.h"
 #include "build/branding_buildflags.h"
 #include "build/build_config.h"
@@ -327,16 +328,6 @@ BrowserCommandController::BrowserCommandController(BrowserWindowInterface* bwi)
           base::Unretained(this)));
   profile_pref_registrar_.Add(
       bookmarks::prefs::kBookmarkBarVisibilityState,
-      base::BindRepeating(
-          &BrowserCommandController::UpdateCommandsForBookmarkBar,
-          base::Unretained(this)));
-  profile_pref_registrar_.Add(
-      bookmarks::prefs::kShowAppsShortcutInBookmarkBar,
-      base::BindRepeating(
-          &BrowserCommandController::UpdateCommandsForBookmarkBar,
-          base::Unretained(this)));
-  profile_pref_registrar_.Add(
-      bookmarks::prefs::kShowTabGroupsInBookmarkBar,
       base::BindRepeating(
           &BrowserCommandController::UpdateCommandsForBookmarkBar,
           base::Unretained(this)));
@@ -1137,12 +1128,6 @@ bool BrowserCommandController::ExecuteCommandWithDisposition(
       SetBookmarkBarVisibilityState(
           browser_, bookmarks::BookmarkBarVisibilityState::kOnlyShowOnNtp);
       break;
-    case IDC_BOOKMARK_BAR_SHOW_APPS_SHORTCUT:
-      ToggleShowAppsShortcutInBookmarkBar(browser_);
-      break;
-    case IDC_BOOKMARK_BAR_TOGGLE_SHOW_TAB_GROUPS:
-      ToggleShowTabGroupsInBookmarkBar(browser_);
-      break;
     case IDC_SHOW_FULL_URLS:
       ToggleShowFullURLs(browser_);
       break;
@@ -1289,6 +1274,11 @@ bool BrowserCommandController::ExecuteCommandWithDisposition(
         // (BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX))
     case IDC_SHOW_BETA_FORUM:
       ShowBetaForum(browser_);
+      break;
+    case IDC_CHROME_ENTERPRISE_RELEASE_NOTES:
+      if (base::FeatureList::IsEnabled(features::kEnterpriseReleaseNotes)) {
+        chrome::ShowChromeEnterpriseReleaseNotes(browser_);
+      }
       break;
     case IDC_ROUTE_MEDIA:
       RouteMediaInvokedFromAppMenu(browser_);
@@ -1809,6 +1799,9 @@ void BrowserCommandController::InitCommandState() {
   command_updater_.UpdateCommandEnabled(IDC_HELP_PAGE_VIA_MENU, true);
   command_updater_.UpdateCommandEnabled(IDC_SHOW_BETA_FORUM, true);
   command_updater_.UpdateCommandEnabled(
+      IDC_CHROME_ENTERPRISE_RELEASE_NOTES,
+      base::FeatureList::IsEnabled(features::kEnterpriseReleaseNotes));
+  command_updater_.UpdateCommandEnabled(
       IDC_BOOKMARKS_MENU, (!guest_session && !profile()->IsSystemProfile()));
   command_updater_.UpdateCommandEnabled(IDC_SAVED_TAB_GROUPS_MENU, true);
   command_updater_.UpdateCommandEnabled(
@@ -2235,14 +2228,6 @@ void BrowserCommandController::UpdateCommandsForBookmarkBar() {
                                         visibility_commands_enabled);
   command_updater_.UpdateCommandEnabled(IDC_BOOKMARK_BAR_SUBMENU_ONLY_ON_NTP,
                                         visibility_commands_enabled);
-  command_updater_.UpdateCommandEnabled(
-      IDC_BOOKMARK_BAR_SHOW_APPS_SHORTCUT,
-      common_enabled && !profile()->GetPrefs()->IsManagedPreference(
-                            bookmarks::prefs::kShowAppsShortcutInBookmarkBar));
-  command_updater_.UpdateCommandEnabled(
-      IDC_BOOKMARK_BAR_TOGGLE_SHOW_TAB_GROUPS,
-      common_enabled && !profile()->GetPrefs()->IsManagedPreference(
-                            bookmarks::prefs::kShowTabGroupsInBookmarkBar));
 }
 
 void BrowserCommandController::UpdateCommandsForFileSelectionDialogs() {

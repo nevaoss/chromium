@@ -22,10 +22,14 @@ class ToyTabDragWindowAdapter : public TabDragWindowAdapter {
   gfx::Rect GetBoundsInScreen() const override;
   gfx::Point ConvertScreenPointToLocal(
       const gfx::Point& screen_point) const override;
+  void SetCapture() override;
+  void ReleaseCapture() override;
+  bool HasCapture() const override;
   base::WeakPtr<TabDragWindowAdapter> AsWeakPtr() override;
 
  private:
   gfx::Rect bounds_;
+  bool has_capture_ = false;
   base::WeakPtrFactory<ToyTabDragWindowAdapter> weak_factory_{this};
 };
 

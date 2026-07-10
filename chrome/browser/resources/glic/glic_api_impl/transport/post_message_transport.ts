@@ -120,6 +120,12 @@ export interface PostMessageRouter {
 
   // Enable logging for all messages.
   setLoggingEnabled(enabled: boolean): void;
+
+  // Adds a close handler to the pipe associated with the given id.
+  // If the pipe is already closed, calls the handler immediately.
+  addCloseHandler(
+      pipeId: PendingRemote<InterfaceDef>|PendingReceiver<InterfaceDef>,
+      handler: () => void): void;
 }
 
 export const ON_PIPE_CLOSED = Symbol('ON_PIPE_CLOSED');
@@ -531,6 +537,12 @@ export class PostMessageRouterImpl extends MessageLogger implements
     }
     return pipe;
   }
+
+  addCloseHandler(
+      pipeId: PendingRemote<InterfaceDef>|PendingReceiver<InterfaceDef>,
+      handler: () => void): void {
+    this.getOrMakePipe(pipeId).addCloseHandler(handler);
+  }
 }
 
 
@@ -611,7 +623,6 @@ export class PostMessageReceiverImpl implements PostMessageReceiver {
     this.pipe.addCloseHandler(f);
   }
 }
-
 // Sends requests over postMessage.
 export class PostMessageRequestSender {
   requestId = 1;
@@ -756,15 +767,15 @@ export interface PostMessageLifecycleObserver {
    * not trigger this. Messages sent to pending pipes trigger this only after
    * the receiver is created.
    */
-  onRequestReceived(type: string, interfaceDef: InterfaceDef|undefined): void;
+  onRequestReceived?(type: string, interfaceDef: InterfaceDef|undefined): void;
   /** Called when a request handler throws an exception. */
-  onRequestHandlerException(type: string, interfaceDef: InterfaceDef|undefined):
-      void;
+  onRequestHandlerException?
+      (type: string, interfaceDef: InterfaceDef|undefined): void;
   /**
    * Called when a request response is sent (will not be called if
    * `onRequestHandlerException()` is called.).
    */
-  onRequestCompleted(type: string, interfaceDef: InterfaceDef|undefined): void;
+  onRequestCompleted?(type: string, interfaceDef: InterfaceDef|undefined): void;
 }
 
 type HandlerFunction = (payload: unknown, extras: ResponseExtras) =>
@@ -817,7 +828,7 @@ export class PostMessageRequestReceiver {
       }
       return;
     }
-    this.requestObserver.onRequestReceived(type, pipe.interfaceDef);
+    this.requestObserver.onRequestReceived?.(type, pipe.interfaceDef);
 
     const handleFn = pipe.getHandlerFunction(type);
     if (!handleFn) {
@@ -832,7 +843,7 @@ export class PostMessageRequestReceiver {
       response = await this.handlerWrapper(
           type, pipe.interfaceDef, requestPayload, extras, handleFn);
     } catch (error) {
-      this.requestObserver.onRequestHandlerException(type, pipe.interfaceDef);
+      this.requestObserver.onRequestHandlerException?.(type, pipe.interfaceDef);
       console.warn('Unexpected error', error);
       if (error instanceof Error) {
         exception = this.router.errorCodec.serialize(error);
@@ -843,7 +854,7 @@ export class PostMessageRequestReceiver {
     }
 
     if (!exception) {
-      this.requestObserver.onRequestCompleted(type, pipe.interfaceDef);
+      this.requestObserver.onRequestCompleted?.(type, pipe.interfaceDef);
     }
 
     // If the message contains no `requestId`, a response is not requested.

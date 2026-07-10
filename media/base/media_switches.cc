@@ -833,7 +833,7 @@ BASE_FEATURE(kVideoBlitColorAccuracy,
 BASE_FEATURE(kCastVideoEncoderFrameDrop, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Gated behind feature flag to allow safe rollback of zero-copy capture.
-BASE_FEATURE(kZeroCopyDesktopCapture, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kZeroCopyDesktopCapture, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables optimizations to flush() and configure() in the WebCodecs' audio and
 // video decoder implementations. Kill-switch to be removed after M145 stable.
@@ -1100,7 +1100,7 @@ BASE_FEATURE(kAllowAudioPlaybackCapture, base::FEATURE_ENABLED_BY_DEFAULT);
 // Allows media playback to start when the audio focus request is delayed
 // (e.g. during a phone call).
 BASE_FEATURE(kAllowDelayedAudioFocusGainAndroid,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Allows the enhanced picture-in-picture transition animation that depend on
 // the sourceRectHint PictureInPictureParam.
@@ -1156,6 +1156,10 @@ BASE_FEATURE(kMediaDrmPreprovisioning, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kMediaDrmPreprovisioningAtStartup,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+// Enables exponential backoff for preprovisioning requests in
+// MediaDrmOriginIdManager.
+BASE_FEATURE(kMediaDrmPreprovisioningBackoff, base::FEATURE_ENABLED_BY_DEFAULT);
+
 // Enables MediaDrmBridge to call into MediaDrm API to query HDCP Status to
 // support the CDM API GetStatusForPolicy.
 BASE_FEATURE(kMediaDrmGetStatusForPolicy, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1168,6 +1172,9 @@ BASE_FEATURE(kMediaDrmQueryInSeparateProcess, base::FEATURE_ENABLED_BY_DEFAULT);
 // Pause media when a system sleep/suspension is detected.
 BASE_FEATURE(kPauseMediaOnSystemSleepAndroid,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// When enabled, do not pause media when a headphone unplug event is received.
+BASE_FEATURE(kNoPauseMediaOnHeadphoneUnplug, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When enabled, Playing media sessions will request audio focus from the
 // Android system.
@@ -1443,7 +1450,7 @@ BASE_FEATURE(kReduceHardwareVideoDecoderBuffers,
 
 // Enables the Enterprise Autoplay policies (AutoplayAllowed and
 // AutoplayAllowlist) on Android.
-BASE_FEATURE(kAutoplayPoliciesAndroid, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAutoplayPoliciesAndroid, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // The following Media Engagement flags are not enabled on mobile platforms:
 // - MediaEngagementBypassAutoplayPolicies: enables the Media Engagement Index
@@ -1477,15 +1484,6 @@ BASE_FEATURE(kMediaOptimizer,
 
 // Enable aggregate power measurement for media playback.
 BASE_FEATURE(kMediaPowerExperiment, base::FEATURE_DISABLED_BY_DEFAULT);
-
-#if !BUILDFLAG(IS_ANDROID)
-// Enables audio ducking.
-BASE_FEATURE(kAudioDucking, base::FEATURE_ENABLED_BY_DEFAULT);
-// 0 = no attenuation
-// 100 = fully muted
-const base::FeatureParam<int> kAudioDuckingAttenuation{&kAudioDucking,
-                                                       "attenuation", 80};
-#endif  // !BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(IS_WIN)
 // Enables ducking of other Windows applications.
@@ -1580,7 +1578,7 @@ BASE_FEATURE(kCastMacForceBaselineProfile, base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_WIN)
 // Controls whether hardware H264 is default enabled on Windows.
-BASE_FEATURE(kCastStreamingWinHardwareH264, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kCastStreamingWinHardwareH264, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 
 #if BUILDFLAG(IS_FUCHSIA)
@@ -1751,11 +1749,9 @@ bool IsMacCatapSystemLoopbackCaptureSupported() {
 }
 
 bool IsMacSckSystemLoopbackCaptureSupported() {
-  // Only supported on macOS 13.0+.
   // Disabled on macOS 15.0 due to problems with permission prompt.
   // The override feature is useful for testing on unsupported versions.
-  return (base::mac::MacOSVersion() >= 13'00'00 &&
-          base::mac::MacOSVersion() < 15'00'00) ||
+  return (base::mac::MacOSVersion() < 15'00'00) ||
          base::FeatureList::IsEnabled(kMacSckSystemAudioLoopbackOverride);
 }
 #endif  // BUILDFLAG(IS_MAC)

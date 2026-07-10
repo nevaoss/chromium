@@ -44,7 +44,9 @@ DEFINE_LOCAL_PRODUCT_MESSAGE_KEY(kExtremeHighPriorityId,
 
 class ProductMessagingControllerTest : public testing::Test {
  public:
-  ProductMessagingControllerTest() = default;
+  template <typename... Args>
+  explicit ProductMessagingControllerTest(Args&&... args)
+      : task_environment_(args...) {}
   ~ProductMessagingControllerTest() override = default;
 
   void SetUp() override {
@@ -92,6 +94,10 @@ class ProductMessagingControllerTest : public testing::Test {
                        ProductMessageStatus::kShowing);
   }
 
+  base::test::SingleThreadTaskEnvironment& task_environment() {
+    return task_environment_;
+  }
+
  private:
   base::test::SingleThreadTaskEnvironment task_environment_;
   test::TestUserEducationSessionProvider session_provider_{false};
@@ -99,6 +105,26 @@ class ProductMessagingControllerTest : public testing::Test {
   ProductMessagingController controller_;
   raw_ptr<ProductMessagingPolicyImpl> policy_ = nullptr;
 };
+
+TEST_F(ProductMessagingControllerTest, Shows) {
+  test::TestProductMessage notice(controller(), kNoticeId1);
+  FlushEvents();
+  EXPECT_TRUE(notice.has_priority());
+  notice.SetShown();
+  notice.Release();
+  EXPECT_FALSE(HasAnyMessages());
+  EXPECT_THAT(storage_service().ReadProductMessagingData().shown_notices,
+              testing::UnorderedElementsAre(kNoticeId1.GetName()));
+}
+
+TEST_F(ProductMessagingControllerTest, GrantedWithInvalidCallback) {
+  {
+    test::TestProductMessage notice(controller(), kNoticeId1);
+  }
+  FlushEvents();
+  EXPECT_EQ(ProductMessageStatus::kNone,
+            controller().GetMessageStatus(kNoticeId1));
+}
 
 TEST_F(ProductMessagingControllerTest, ConditionallyRecordsDone) {
   test::TestProductMessage notice(controller(), kNoticeId1);
@@ -737,6 +763,63 @@ TEST_F(ProductMessagingControllerPriorityTest,
 
   EXPECT_TRUE(ignore.has_priority());
   EXPECT_TRUE(notice.has_priority());
+}
+
+namespace {
+constexpr base::TimeDelta kTimeout = base::Seconds(10);
+}
+
+class ProductMessagingControllerTimeoutTest
+    : public ProductMessagingControllerTest {
+ public:
+  ProductMessagingControllerTimeoutTest()
+      : ProductMessagingControllerTest(
+            base::test::TaskEnvironment::TimeSource::MOCK_TIME) {}
+  ~ProductMessagingControllerTimeoutTest() override = default;
+};
+
+TEST_F(ProductMessagingControllerTimeoutTest, MessageTimesOut) {
+  test::TestProductMessage high(controller(), kExtremeHighPriorityId);
+  test::TestProductMessage low(controller(), kExtremeLowPriorityId, kTimeout);
+  FlushEvents();
+  EXPECT_EQ(ProductMessageStatus::kReady,
+            controller().GetMessageStatus(high.key()));
+  EXPECT_EQ(ProductMessageStatus::kWaiting,
+            controller().GetMessageStatus(low.key()));
+  EXPECT_EQ(controller().GetRemainingTimeForTesting(low.key()), kTimeout);
+  task_environment().FastForwardBy(kTimeout / 2);
+  EXPECT_EQ(controller().GetRemainingTimeForTesting(low.key()), kTimeout / 2);
+  EXPECT_EQ(ProductMessageStatus::kReady,
+            controller().GetMessageStatus(high.key()));
+  EXPECT_EQ(ProductMessageStatus::kWaiting,
+            controller().GetMessageStatus(low.key()));
+  task_environment().FastForwardBy(kTimeout);
+  EXPECT_EQ(ProductMessageStatus::kReady,
+            controller().GetMessageStatus(high.key()));
+  EXPECT_EQ(ProductMessageStatus::kNone,
+            controller().GetMessageStatus(low.key()));
+  high.Release();
+  FlushEvents();
+  EXPECT_EQ(ProductMessageStatus::kNone,
+            controller().GetMessageStatus(high.key()));
+  EXPECT_EQ(ProductMessageStatus::kNone,
+            controller().GetMessageStatus(low.key()));
+}
+
+TEST_F(ProductMessagingControllerTimeoutTest, MessageReplacesSelf) {
+  test::TestProductMessage high(controller(), kExtremeHighPriorityId);
+  test::TestProductMessage low(controller(), kExtremeLowPriorityId, kTimeout);
+  FlushEvents();
+  task_environment().FastForwardBy(kTimeout / 2);
+  // This replaces and resets the timer.
+  test::TestProductMessage low2(controller(), kExtremeLowPriorityId, kTimeout);
+  FlushEvents();
+  EXPECT_EQ(controller().GetRemainingTimeForTesting(low.key()), kTimeout);
+  high.Release();
+  FlushEvents();
+  // The newly-queued message is the one that shows, not the replaced one.
+  EXPECT_FALSE(low.has_priority());
+  EXPECT_TRUE(low2.has_priority());
 }
 
 }  // namespace user_education

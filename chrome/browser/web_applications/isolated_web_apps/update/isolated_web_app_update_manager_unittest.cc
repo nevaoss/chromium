@@ -713,16 +713,16 @@ TEST_F(IsolatedWebAppUpdateManagerUpdateMockTimeTest,
 }
 
 TEST_F(IsolatedWebAppUpdateManagerUpdateMockTimeTest,
-       MaybeDiscoverUpdatesForApp) {
+       MaybeDiscoverAndPrepareUpdate) {
   // Trigger updates for an app that is not installed. This should fail.
-  EXPECT_THAT(update_manager().MaybeDiscoverUpdatesForApp(
+  EXPECT_THAT(update_manager().MaybeDiscoverAndPrepareUpdate(
                   GetAppId(GetIwa1WebBundleId())),
               IsFalse());
 
   // Trigger updates for an app that is not an IWA. This should fail.
   webapps::AppId non_iwa_app_id = test::InstallDummyWebApp(
       profile(), "non-iwa", GURL("https://example.com"));
-  EXPECT_THAT(update_manager().MaybeDiscoverUpdatesForApp(non_iwa_app_id),
+  EXPECT_THAT(update_manager().MaybeDiscoverAndPrepareUpdate(non_iwa_app_id),
               IsFalse());
 
   auto url_info =
@@ -738,7 +738,7 @@ TEST_F(IsolatedWebAppUpdateManagerUpdateMockTimeTest,
 
   // Trigger updates for an app that is not installed via policy. This should
   // fail.
-  EXPECT_THAT(update_manager().MaybeDiscoverUpdatesForApp(
+  EXPECT_THAT(update_manager().MaybeDiscoverAndPrepareUpdate(
                   GetAppId(GetIwa1WebBundleId())),
               IsFalse());
 
@@ -748,7 +748,7 @@ TEST_F(IsolatedWebAppUpdateManagerUpdateMockTimeTest,
       profile()->GetPrefs(),
       test_update_server().CreateForceInstallPolicyEntry(GetIwa1WebBundleId()));
 
-  EXPECT_THAT(update_manager().MaybeDiscoverUpdatesForApp(
+  EXPECT_THAT(update_manager().MaybeDiscoverAndPrepareUpdate(
                   GetAppId(GetIwa1WebBundleId())),
               IsTrue());
 
@@ -756,8 +756,99 @@ TEST_F(IsolatedWebAppUpdateManagerUpdateMockTimeTest,
 
   AssertAppDiscoveryTaskSuccessful(GetIwa1WebBundleId());
 }
+TEST_F(IsolatedWebAppUpdateManagerUpdateMockTimeTest, DiscoverUpdate) {
+  // Trigger updates for an app that is not installed. This should fail.
+  EXPECT_THAT(update_manager().DiscoverUpdate(GetAppId(GetIwa1WebBundleId())),
+              IsFalse());
 
-TEST_F(IsolatedWebAppUpdateManagerUpdateMockTimeTest, DiscoverUpdatesNow) {
+  // Trigger updates for an app that is not an IWA. This should fail.
+  webapps::AppId non_iwa_app_id = test::InstallDummyWebApp(
+      profile(), "non-iwa", GURL("https://example.com"));
+  EXPECT_THAT(update_manager().DiscoverUpdate(non_iwa_app_id), IsFalse());
+
+  auto url_info =
+      IsolatedWebAppUrlInfo::CreateFromSignedWebBundleId(GetIwa1WebBundleId());
+  InitialIwaBundleForceInstall(CreateIwa1Bundle(kInitialIwaVersion));
+  fake_ui_manager().SetNumWindowsForApp(GetAppId(GetIwa1WebBundleId()), 1);
+
+  test::RemoveForceInstalledIwaFromPolicy(profile()->GetPrefs(),
+                                          GetIwa1WebBundleId());
+
+  AssertAppInstalledAtVersion(GetIwa1WebBundleId(),
+                              *IwaVersion::Create(kInitialIwaVersion));
+
+  // Trigger updates for an app that is not installed via policy. This should
+  // fail.
+  EXPECT_THAT(update_manager().DiscoverUpdate(GetAppId(GetIwa1WebBundleId())),
+              IsFalse());
+
+  test_update_server().AddBundle(CreateIwa1Bundle(kUpdateIwaVersion));
+
+  test::AddForceInstalledIwaToPolicy(
+      profile()->GetPrefs(),
+      test_update_server().CreateForceInstallPolicyEntry(GetIwa1WebBundleId()));
+
+  class UpdateCheckTaskResultWaiter
+      : public IsolatedWebAppUpdateManager::Observer {
+   public:
+    UpdateCheckTaskResultWaiter(WebAppProvider& provider,
+                                const webapps::AppId expected_app_id,
+                                base::OnceClosure on_done)
+        : expected_app_id_(expected_app_id), on_done_(std::move(on_done)) {
+      observation_.Observe(&provider.isolated_web_app_update_manager());
+    }
+
+    void OnUpdateDiscoveryCompleted(
+        const webapps::AppId& app_id,
+        IsolatedWebAppUpdateCheckAndPrepareTask::CompletionStatus status,
+        std::optional<IwaVersion> discovered_version) override {
+      if (app_id != expected_app_id_) {
+        return;
+      }
+      status_ = status;
+      discovered_version_ = discovered_version;
+      observation_.Reset();
+      std::move(on_done_).Run();
+    }
+
+    IsolatedWebAppUpdateCheckAndPrepareTask::CompletionStatus status() const {
+      return status_.value();
+    }
+
+    std::optional<IwaVersion> discovered_version() const {
+      return discovered_version_;
+    }
+
+   private:
+    const webapps::AppId expected_app_id_;
+    base::OnceClosure on_done_;
+    std::optional<IsolatedWebAppUpdateCheckAndPrepareTask::CompletionStatus>
+        status_;
+    std::optional<IwaVersion> discovered_version_;
+    base::ScopedObservation<IsolatedWebAppUpdateManager,
+                            IsolatedWebAppUpdateManager::Observer>
+        observation_{this};
+  };
+
+  base::RunLoop run_loop;
+  UpdateCheckTaskResultWaiter waiter(provider(), GetAppId(GetIwa1WebBundleId()),
+                                     run_loop.QuitClosure());
+
+  EXPECT_THAT(update_manager().DiscoverUpdate(GetAppId(GetIwa1WebBundleId())),
+              IsTrue());
+
+  run_loop.Run();
+
+  EXPECT_THAT(
+      waiter.status(),
+      ValueIs(IsolatedWebAppUpdateCheckAndPrepareTask::Success::kUpdateFound));
+  EXPECT_TRUE(waiter.discovered_version().has_value());
+  EXPECT_EQ(waiter.discovered_version().value(),
+            *IwaVersion::Create(kUpdateIwaVersion));
+}
+
+TEST_F(IsolatedWebAppUpdateManagerUpdateMockTimeTest,
+       DiscoverAndPrepareUpdatesNow) {
   InitialIwaBundleForceInstall(CreateIwa1Bundle(kInitialIwaVersion));
 
   fake_ui_manager().SetNumWindowsForApp(GetAppId(GetIwa1WebBundleId()), 1);
@@ -771,7 +862,7 @@ TEST_F(IsolatedWebAppUpdateManagerUpdateMockTimeTest, DiscoverUpdatesNow) {
       update_manager().GetNextUpdateDiscoveryTimeForTesting();
   EXPECT_THAT(old_update_discovery_time.has_value(), IsTrue());
 
-  EXPECT_THAT(update_manager().DiscoverUpdatesNow(), Eq(1ul));
+  EXPECT_THAT(update_manager().DiscoverAndPrepareUpdatesNow(), Eq(1ul));
   EXPECT_THAT(update_manager().GetNextUpdateDiscoveryTimeForTesting(),
               AllOf(Ne(old_update_discovery_time), Ge(base::TimeTicks::Now())));
 
@@ -876,7 +967,7 @@ TEST_F(IsolatedWebAppUpdateManagerUpdateTest,
   fake_ui_manager().SetNumWindowsForApp(GetAppId(GetIwa1WebBundleId()), 1);
 
   test_update_server().AddBundle(CreateIwa1Bundle(kUpdateIwaVersion));
-  update_manager().DiscoverUpdatesNow();
+  update_manager().DiscoverAndPrepareUpdatesNow();
 
   AssertAppDiscoveryTaskSuccessful(GetIwa1WebBundleId());
 
@@ -993,7 +1084,7 @@ TEST_F(IsolatedWebAppUpdateManagerUpdateMockTimeTest,
   test_update_server().SetServedUpdateManifestResponse(
       unmanaged_update_url, net::HTTP_OK, unmanaged_manifest_json);
 
-  update_manager().DiscoverUpdatesNow();
+  update_manager().DiscoverAndPrepareUpdatesNow();
 
   // Managed update manifest was empty, no update should have been picked up.
   AssertAppDiscoveryTaskFailedWith(
@@ -1039,7 +1130,7 @@ TEST_F(IsolatedWebAppUpdateManagerUpdateMockTimeTest,
   test_update_server().SetServedUpdateManifestResponse(update_manifest_url,
                                                        net::HTTP_NOT_FOUND, "");
 
-  update_manager().DiscoverUpdatesNow();
+  update_manager().DiscoverAndPrepareUpdatesNow();
 
   AssertAppDiscoveryTaskFailedWith(GetIwa1WebBundleId(),
                                    IsolatedWebAppUpdateCheckAndPrepareTask::
@@ -1057,7 +1148,7 @@ TEST_F(IsolatedWebAppUpdateManagerUpdateTest,
   test_update_server().AddBundle(CreateIwa1Bundle("1.1.0"));
   test_update_server().AddBundle(CreateIwa2Bundle("2.2.0"));
 
-  update_manager().DiscoverUpdatesNow();
+  update_manager().DiscoverAndPrepareUpdatesNow();
   WebAppTestManifestUpdatedObserver manifest_updated_observer(
       &provider().install_manager());
   manifest_updated_observer.BeginListeningAndWait(
@@ -1127,7 +1218,7 @@ TEST_F(IsolatedWebAppUpdateManagerUpdateTest,
   test_update_server().AddBundle(CreateIwa1Bundle("2.1.0"));
   test_update_server().AddBundle(CreateIwa2Bundle("3.1.0"));
 
-  EXPECT_THAT(update_manager().DiscoverUpdatesNow(), Eq(1ul));
+  EXPECT_THAT(update_manager().DiscoverAndPrepareUpdatesNow(), Eq(1ul));
 
   WebAppTestManifestUpdatedObserver manifest_updated_observer(
       &provider().install_manager());
@@ -1157,7 +1248,7 @@ TEST_F(IsolatedWebAppUpdateManagerUpdateTest,
           }))
       .RetiresOnSaturation();
 
-  EXPECT_THAT(update_manager().DiscoverUpdatesNow(), Eq(2ul));
+  EXPECT_THAT(update_manager().DiscoverAndPrepareUpdatesNow(), Eq(2ul));
 
   web_package::SignedWebBundleId iwa_to_keep = future.Take();
 
@@ -1180,7 +1271,7 @@ TEST_F(IsolatedWebAppUpdateManagerUpdateTest, StopsWaitingIfIwaIsUninstalled) {
   fake_ui_manager().SetNumWindowsForApp(GetAppId(GetIwa1WebBundleId()), 1);
 
   test_update_server().AddBundle(CreateIwa1Bundle(kUpdateIwaVersion));
-  update_manager().DiscoverUpdatesNow();
+  update_manager().DiscoverAndPrepareUpdatesNow();
   AssertAppDiscoveryTaskSuccessful(GetIwa1WebBundleId());
 
   EXPECT_THAT(UpdateApplyWaiters(),
@@ -1213,7 +1304,7 @@ TEST_F(IsolatedWebAppUpdateManagerUpdateTest,
   test_update_server().AddBundle(CreateIwa1Bundle("1.1.0"));
   test_update_server().AddBundle(CreateIwa2Bundle("2.2.0"));
 
-  update_manager().DiscoverUpdatesNow();
+  update_manager().DiscoverAndPrepareUpdatesNow();
   AssertAppDiscoveryTaskSuccessful(GetIwa1WebBundleId());
   AssertAppDiscoveryTaskSuccessful(GetIwa2WebBundleId());
 

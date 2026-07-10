@@ -874,6 +874,7 @@
 <translation id="4021447724486050609">Mettre à jour votre navigateur</translation>
 <translation id="4021931095789478915">Ajouter ${url} à la liste de lecture</translation>
 <translation id="4028871427853484857">Enregistrer dans le compte…</translation>
+<translation id="4036529942385659684">Afficher la page de démarrage après une période d'inactivité</translation>
 <translation id="4038354071007134711">Aucune appli sur appareil ne peut ouvrir fichier.</translation>
 <translation id="4042870976416480368">Rechercher sur la page</translation>
 <translation id="4045441967987592849">Rouvrir</translation>
@@ -911,7 +912,6 @@
 <translation id="417138788035229076">Gérer le groupe</translation>
 <translation id="4172051516777682613">Toujours afficher</translation>
 <translation id="417273154673973994">{count,plural, =1{1 groupe d'onglets fermé et enregistré}one{{count} groupe d'onglets fermé et enregistré}other{{count} groupes d'onglets fermés et enregistrés}}</translation>
-<translation id="417612446554534067">Envoyer à vos appareils</translation>
 <translation id="4180726336228139707">Uniquement sur cet appareil</translation>
 <translation id="4181841719683918333">Langues</translation>
 <translation id="4183350924949589798">Renforcer la sécurité ?</translation>
@@ -1135,6 +1135,7 @@
 <translation id="4896467949657706481">Les onglets ont été fermés. Vous avez été déconnecté.</translation>
 <translation id="4911042367886397055">Bon retour parmi nous, <ph name="USER_NAME" /> !</translation>
 <translation id="4913626501929406101">Vous pouvez partager de façon sécurisée une copie de votre mot de passe avec un membre de votre groupe familial. <ph name="BEGIN_LINK" />En savoir plus<ph name="END_LINK" /></translation>
+<translation id="4916679969857390442">Loupe</translation>
 <translation id="4917025507570489430">Vous pourrez utiliser vos données de navigation existantes lorsque vous serez connecté en tant que <ph name="USER_EMAIL" />. Il est possible que votre organisation puisse voir ces données.</translation>
 <translation id="4918086044614829423">Accepter</translation>
 <translation id="4930714375720679147">Activer</translation>

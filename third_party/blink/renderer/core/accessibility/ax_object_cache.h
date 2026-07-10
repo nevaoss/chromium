@@ -58,7 +58,6 @@ class HTMLOptionElement;
 class HTMLFrameOwnerElement;
 class HTMLSelectElement;
 struct PhysicalRect;
-class WebPluginContainer;
 
 class CORE_EXPORT AXObjectCache : public GarbageCollected<AXObjectCache> {
  public:

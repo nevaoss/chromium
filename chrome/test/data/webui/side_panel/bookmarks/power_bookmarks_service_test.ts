@@ -17,7 +17,7 @@ import {TestMock} from 'chrome://webui-test/test_mock.js';
 import {TestPluralStringProxy} from 'chrome://webui-test/test_plural_string_proxy.js';
 import {microtasksFinished} from 'chrome://webui-test/test_util.js';
 
-import {TestBrowserProxy as TestShoppingServiceApiProxy} from './commerce/test_shopping_service_api_proxy.js';
+import {TestPageHandler as TestShoppingServiceHandler} from './commerce/test_shopping_service_api_proxy.js';
 import {TestBookmarksApiProxy} from './test_bookmarks_api_proxy.js';
 import {TestPowerBookmarksDelegate} from './test_power_bookmarks_delegate.js';
 
@@ -54,7 +54,7 @@ suite('SidePanelPowerBookmarksServiceTest', () => {
   let delegate: ServiceTestPowerBookmarksDelegate;
   let service: PowerBookmarksService;
   let bookmarksApi: TestBookmarksApiProxy;
-  let shoppingServiceApi: TestShoppingServiceApiProxy;
+  let shoppingServiceHandler: TestShoppingServiceHandler;
   let imageServiceHandler: TestMock<PageImageServiceHandlerRemote>&
       PageImageServiceHandlerRemote;
 
@@ -258,8 +258,10 @@ suite('SidePanelPowerBookmarksServiceTest', () => {
     bookmarksApi.setAllBookmarks(structuredClone(folders));
     BookmarksApiProxyImpl.setInstance(bookmarksApi);
 
-    shoppingServiceApi = new TestShoppingServiceApiProxy();
-    ShoppingServiceBrowserProxyImpl.setInstance(shoppingServiceApi);
+    shoppingServiceHandler = new TestShoppingServiceHandler();
+    ShoppingServiceBrowserProxyImpl.setInstance({
+      handler: shoppingServiceHandler,
+    });
 
     const pluralString = new TestPluralStringProxy();
     PluralStringProxyImpl.setInstance(pluralString);

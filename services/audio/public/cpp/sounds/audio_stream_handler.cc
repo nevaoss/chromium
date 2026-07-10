@@ -19,7 +19,6 @@
 #include "base/notreached.h"
 #include "base/synchronization/lock.h"
 #include "base/task/sequenced_task_runner.h"
-#include "base/task/single_thread_task_runner.h"
 #include "base/task/task_traits.h"
 #include "base/task/thread_pool.h"
 #include "base/time/time.h"
@@ -43,8 +42,6 @@ const double kOutputVolumePercent = 0.8;
 
 // Keep alive timeout for audio stream.
 const int kKeepAliveMs = 1500;
-
-AudioStreamHandler::TestObserver* g_observer_for_testing = nullptr;
 
 }  // namespace
 
@@ -72,21 +69,17 @@ class AudioStreamHandler::AudioStreamContainer
     DCHECK(task_runner_->RunsTasksInCurrentSequence());
 
     // Create OutputDevice if it is the first time playing.
-    if (device_ == nullptr) {
+    if (!device_) {
       const media::AudioParameters params(
           media::AudioParameters::AUDIO_PCM_LOW_LATENCY,
           media::ChannelLayoutConfig::Guess(audio_handler_->GetNumChannels()),
           audio_handler_->GetSampleRate(),
           media::AudioHandler::kDefaultFrameCount);
-      if (g_observer_for_testing) {
-        g_observer_for_testing->Initialize(this, params);
-      } else {
-        mojo::PendingRemote<media::mojom::AudioStreamFactory> stream_factory;
-        stream_factory_binder_.Run(
-            stream_factory.InitWithNewPipeAndPassReceiver());
-        device_ = std::make_unique<audio::OutputDevice>(
-            std::move(stream_factory), params, this, std::string());
-      }
+      mojo::PendingRemote<media::mojom::AudioStreamFactory> stream_factory;
+      stream_factory_binder_.Run(
+          stream_factory.InitWithNewPipeAndPassReceiver());
+      device_ = std::make_unique<audio::OutputDevice>(
+          std::move(stream_factory), params, this, std::string());
     }
 
     {
@@ -102,9 +95,7 @@ class AudioStreamHandler::AudioStreamContainer
         }
         return;
       } else {
-        if (!g_observer_for_testing) {
-          device_->SetVolume(kOutputVolumePercent);
-        }
+        device_->SetVolume(kOutputVolumePercent);
       }
 
       if (paused_) {
@@ -115,11 +106,7 @@ class AudioStreamHandler::AudioStreamContainer
     }
 
     started_ = true;
-    if (g_observer_for_testing) {
-      g_observer_for_testing->OnPlay();
-    } else {
-      device_->Play();
-    }
+    device_->Play();
   }
 
   void Stop() {
@@ -127,11 +114,7 @@ class AudioStreamHandler::AudioStreamContainer
 
     if (started_) {
       // Do not hold the |state_lock_| while stopping the output stream.
-      if (g_observer_for_testing) {
-        g_observer_for_testing->OnStop();
-      } else {
-        device_->Pause();
-      }
+      device_->Pause();
     }
 
     started_ = false;
@@ -145,11 +128,7 @@ class AudioStreamHandler::AudioStreamContainer
 
     if (started_) {
       // Do not hold the |state_lock_| while stopping the output stream.
-      if (g_observer_for_testing) {
-        g_observer_for_testing->OnPause();
-      } else {
-        device_->Pause();
-      }
+      device_->Pause();
       paused_ = true;
       started_ = false;
       stop_closure_.Cancel();
@@ -318,11 +297,6 @@ base::TimeDelta AudioStreamHandler::duration() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK(IsInitialized());
   return duration_;
-}
-
-// static
-void AudioStreamHandler::SetObserverForTesting(TestObserver* observer) {
-  g_observer_for_testing = observer;
 }
 
 }  // namespace audio

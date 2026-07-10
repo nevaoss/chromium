@@ -597,7 +597,6 @@ Kontrolloji fjalëkalimet e tua në çdo kohë te <ph name="GOOGLE_PASSWORD_MANA
 <translation id="1433478348197382180">Modaliteti i leximit</translation>
 <translation id="1433980411933182122">Nisja</translation>
 <translation id="1434659328474177625"><ph name="ISSUER" /> verifikoi email-in tënd</translation>
-<translation id="1434696352799406980">Ky funksion do të rivendosë faqen e parë, faqen e skedës së re, motorin e kërkimit dhe skedat e gozhduara. Ai do të çaktivizojë po ashtu të gjitha shtesat dhe do të pastrojë të dhënat e përkohshme si kukit. Faqeshënuesit, historiku dhe fjalëkalimet e ruajtura nuk do të pastrohen.</translation>
 <translation id="1434886155212424586">Faqja kryesore është faqja "Skedë e re"</translation>
 <translation id="1435940442311036198">Përdor një çelës kalimi në një pajisje tjetër</translation>
 <translation id="1436390408194692385">E vlefshme për <ph name="TICKET_TIME_LEFT" /></translation>
@@ -2559,6 +2558,7 @@ Për ndihmë lidhur me zgjidhjen e problemeve të transmetimit, drejtohu te <ph 
 <translation id="2822551631199737692">Kamera në përdorim</translation>
 <translation id="2822634587701817431">Ngushto/zgjero</translation>
 <translation id="2824942875887026017"><ph name="IDS_SHORT_PRODUCT_NAME" /> po përdor cilësimet e përfaqësuesit nga administratori yt</translation>
+<translation id="2825200993288778739">Krijo tënden ose shto nga biblioteka e aftësive</translation>
 <translation id="282525059261716597">Rreshti i komandës:</translation>
 <translation id="2825758591930162672">Çelësi publik i subjektit</translation>
 <translation id="2826576843404243001">Për sajtet që nuk i mbështesin lidhjet e sigurta, merr paralajmërime para se të vizitosh sajtin. Nuk mund ta ndryshosh këtë cilësim sepse ke të aktivizuar "Mbrojtjen e përparuar".</translation>
@@ -3699,7 +3699,6 @@ Për ndihmë lidhur me zgjidhjen e problemeve të transmetimit, drejtohu te <ph 
 <translation id="366484203224589850"><ph name="TASK_TITLE" />: Gemini ka punuar për këtë detyrë për një kohë të gjatë dhe do të ndalojë së shpejti për të kursyer baterinë</translation>
 <translation id="3664911592976620204">{NUM_OTHER_MEMBERS,plural, =0{Bashkohu në grupin e skedave me <ph name="OWNER_FIRST_NAME" />}=1{Bashkohu në grupin e skedave me <ph name="OWNER_FIRST_NAME" /> dhe # tjetër}other{Bashkohu në grupin e skedave me <ph name="OWNER_FIRST_NAME" /> dhe # të tjerë}}</translation>
 <translation id="3665301845536101715">Hape në panelin anësor</translation>
-<translation id="3665589677786828986">Chrome zbuloi se disa prej cilësimeve të tua ishin të dëmtuara nga një program tjetër dhe i rivendosi ato në vlerat fillestare.</translation>
 <translation id="3665918214153961651">Po ngarkon skedarin</translation>
 <translation id="3666196264870170605">Hedhja e të dhënave të korrigjimit për kontrolluesit NIC të WiFi të Intel</translation>
 <translation id="3666971425390608309">Shkarkimi u vendos në pauzë: <ph name="FILE_NAME" /></translation>
@@ -4636,6 +4635,7 @@ Për ndihmë lidhur me zgjidhjen e problemeve të transmetimit, drejtohu te <ph 
 <translation id="4321179778687042513">ctrl</translation>
 <translation id="432160826079505197">Shfaqe <ph name="FILE_NAME" /> te "Gjetësi"</translation>
 <translation id="4322394346347055525">Mbyll skedat e tjera</translation>
+<translation id="4322400254469690320">Gjej "<ph name="FILENAME" />" në dosjen "<ph name="FEATURE_NAME" />"</translation>
 <translation id="4324577459193912240">Skedari i paplotë</translation>
 <translation id="4325433082696797523">Hapësira ruajtëse dhe energjia</translation>
 <translation id="4325515113816851466">Zgjedhjet e prindit tënd nuk do të zbatohen pasi të dalësh nga llogaria</translation>
@@ -4986,7 +4986,6 @@ Për ndihmë lidhur me zgjidhjen e problemeve të transmetimit, drejtohu te <ph 
 <translation id="4580596421317071374">Fjalëkalimet ruhen te <ph name="GOOGLE_PASSWORD_MANAGER" /> në këtë pajisje.</translation>
 <translation id="4580939929828762295">Qëndro i sigurt me "Menaxherin e fjalëkalimeve të Google"</translation>
 <translation id="4582297591746054421">Sajtet lexojnë zakonisht kujtesën tënde të fragmenteve për veçoritë si ruajtja e formatimit të tekstit që ke kopjuar</translation>
-<translation id="4582563038311694664">Rivendos të gjitha cilësimet</translation>
 <translation id="4584094413232466841">Të hiqen këto informacione nga plotësimi automatik i Chrome?</translation>
 <translation id="4584770411839426377">Dritarja</translation>
 <translation id="4584836561445313300">Organizata jote do të mund t'i shikojë dhe menaxhojë të gjitha të dhënat ekzistuese të shfletuesit, si p.sh. fjalëkalimet dhe të tjera</translation>
@@ -6629,6 +6628,7 @@ Mund të caktosh shumë çelësa për këtë veprim.</translation>
 <translation id="5826993284769733527">Gjysmë-transparent</translation>
 <translation id="5827266244928330802">Safari</translation>
 <translation id="5827591412833386477">Shfaq sajtet në të njëjtin grup</translation>
+<translation id="5827835011646404677">"Aftësitë" ruhen në "Llogarinë tënde të Google"</translation>
 <translation id="5828181959764767444">Perëndimi i diellit</translation>
 <translation id="5828545842856466741">Shto profil...</translation>
 <translation id="5828633471261496623">Po printon...</translation>
@@ -10070,7 +10070,6 @@ Mbaje skedarin e çelësit tënd në një vend të sigurt. Do të të duhet për
 <translation id="8327386430364625757">Font matematikor</translation>
 <translation id="8327490658947427005">Zgjedhja nuk është në <ph name="LANGUAGE" /></translation>
 <translation id="8327544198829180337">Mbyll këtë pamje</translation>
-<translation id="8327676037044516220">Cilësimet e lejeve dhe të përmbajtjeve</translation>
 <translation id="8328228852664998535">Nëse vazhdon, fjalëkalimet, çelësat e kalimit dhe të dhënat e tjera do të fshihen përgjithmonë nga <ph name="BRAND" />. Llogaritë që ke krijuar për sajtet ose aplikacionet nuk do të fshihet.</translation>
 <translation id="8328777765163860529">Mbylli të gjitha</translation>
 <translation id="8330617762701840933">Lista e sajteve që ridrejtohen te një shfletues alternativ.</translation>
@@ -10891,7 +10890,6 @@ Kjo mund të përfshijë informacione për softuerët e instaluar, skedarët, sh
 <translation id="8925458182817574960">Cilësimet</translation>
 <translation id="8926389886865778422">Mos pyet përsëri</translation>
 <translation id="8926555406617248399">Skedat janë fshehur</translation>
-<translation id="892706138619340876">Disa cilësime u rivendosën</translation>
 <translation id="8927438609932588163">Lejo që sajtet të ruajnë të dhëna në pajisjen tënde</translation>
 <translation id="8929696694736010839">Vetëm sesioni aktual "i fshehtë"</translation>
 <translation id="8929738682246584251">Zmadhuesi aktiv/joaktiv</translation>
@@ -11200,6 +11198,7 @@ Kjo mund të përfshijë informacione për softuerët e instaluar, skedarët, sh
 <translation id="9130015405878219958">U fut modalitet i pavlefshëm.</translation>
 <translation id="9130135798965366513">Për të vazhduar, <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> do të ndajë <ph name="FIELDS_STRING" /> me këtë sajt. Shiko <ph name="BEGIN_LINK1" />politikën e privatësisë<ph name="END_LINK1" /> dhe <ph name="BEGIN_LINK2" />kushtet e shërbimit<ph name="END_LINK2" /> të këtij sajti.</translation>
 <translation id="9130364135697530260">Përmbajtjet e integruara në këtë sajt mund të përdorin informacionet që kanë ruajtur në lidhje me ty</translation>
+<translation id="9130857050314385402">Titujt e skedave dhe URL-të dërgohen te Google kur ti përdor aftësinë</translation>
 <translation id="9131209053278896908">Sajtet e bllokuara shfaqen këtu</translation>
 <translation id="9131487537093447019">Dërgo dhe merr mesazhe nga pajisjet me Bluetooth.</translation>
 <translation id="9133568201369135151">Mbledhja e të dhënave diagnostikuese ka përfunduar. Disa nga informacionet e tua personale janë përfshirë në këto të dhëna.</translation>

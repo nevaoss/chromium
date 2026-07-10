@@ -9,15 +9,15 @@ import type {ActorClientInterface, ActorTaskState as ActorTaskStateMojo, Additio
 import {enumToClient} from '../enum_conversions.js';
 import type {ActorClient, WebClient} from '../request_types.js';
 import {ResponseExtras} from '../transport/messaging.js';
+import type {PostMessageRemote} from '../transport/post_message_transport.js';
 
 import type {NavigationConfirmationRequest as NavigationConfirmationRequestMojo, NavigationConfirmationResponse as NavigationConfirmationResponseMojo, SelectAutofillSuggestionsDialogRequest as SelectAutofillSuggestionsDialogRequestMojo, SelectAutofillSuggestionsDialogResponse as SelectAutofillSuggestionsDialogResponseMojo, SelectCredentialDialogRequest as SelectCredentialDialogRequestMojo, SelectCredentialDialogResponse as SelectCredentialDialogResponseMojo, UserConfirmationDialogRequest as UserConfirmationDialogRequestMojo, UserConfirmationDialogResponse as UserConfirmationDialogResponseMojo} from './../../actor_webui.mojom-webui.js';
 import {additionalContextToClient, focusedTabDataToClient, idToClient, invokeOptionsToClient, navigationConfirmationRequestToClient, navigationConfirmationResponseToMojo, pageMetadataToClient, panelOpeningDataToClient, panelStateToClient, selectAutofillSuggestionsDialogRequestToClient, selectAutofillSuggestionsDialogResponseToMojo, selectCredentialDialogRequestToClient, selectCredentialDialogResponseToMojo, tabDataToClient, timeDeltaFromClient, userConfirmationDialogRequestToClient, userConfirmationDialogResponseToMojo, webClientModeToMojo, zeroStateSuggestionsToClient} from './conversions.js';
-import type {GatedSender} from './gated_sender.js';
 import type {ApiHostEmbedder, GlicApiHost} from './glic_api_host.js';
 import {PanelOpenState} from './types.js';
 
 export class WebClientImpl implements WebClientInterface {
-  private sender: GatedSender<WebClient>;
+  private sender: PostMessageRemote<WebClient>;
   private clientCreated = Promise.withResolvers<void>();
 
   constructor(private host: GlicApiHost, private embedder: ApiHostEmbedder) {
@@ -172,7 +172,7 @@ export class WebClientImpl implements WebClientInterface {
 
   notifyFocusedTabChanged(focusedTabData: (FocusedTabDataMojo)): void {
     const extras = new ResponseExtras();
-    this.sender.sendLatestWhenActive(
+    this.sender.requestNoResponse(
         'notifyFocusedTabChanged', {
           focusedTabDataPrivate: focusedTabDataToClient(focusedTabData, extras),
         },
@@ -182,11 +182,6 @@ export class WebClientImpl implements WebClientInterface {
   notifyPanelActiveChange(panelActive: boolean): void {
     this.sender.requestNoResponse('notifyPanelActiveChanged', {panelActive});
     this.host.panelIsActive = panelActive;
-    this.host.updateSenderActive();
-  }
-
-  notifyIsInvoking(isInvoking: boolean): void {
-    this.host.setIsInvoking(isInvoking);
   }
 
   notifyManualResizeChanged(resizing: boolean): void {
@@ -209,7 +204,7 @@ export class WebClientImpl implements WebClientInterface {
 
   notifyPinnedTabsChanged(tabData: TabDataMojo[]): void {
     const extras = new ResponseExtras();
-    this.sender.sendLatestWhenActive(
+    this.sender.requestNoResponse(
         'notifyPinnedTabsChanged',
         {tabData: tabData.map((x) => tabDataToClient(x, extras))},
         extras.transfers);
@@ -217,15 +212,13 @@ export class WebClientImpl implements WebClientInterface {
 
   notifyPinnedTabDataChanged(tabData: TabDataMojo): void {
     const extras = new ResponseExtras();
-    this.sender.sendLatestWhenActive(
+    this.sender.requestNoResponse(
         'notifyPinnedTabDataChanged',
-        {tabData: tabDataToClient(tabData, extras)}, extras.transfers,
-        // Cache only one entry per tab ID.
-        `${tabData.tabId}`);
+        {tabData: tabDataToClient(tabData, extras)}, extras.transfers);
   }
 
   notifySkillPreviewsChanged(skillPreviews: SkillPreviewMojo[]): void {
-    this.sender.sendLatestWhenActive('notifySkillPreviewsChanged', {
+    this.sender.requestNoResponse('notifySkillPreviewsChanged', {
       skillPreviews: skillPreviews.map(s => ({
                                          ...s,
                                          source: enumToClient(s.source),
@@ -236,7 +229,7 @@ export class WebClientImpl implements WebClientInterface {
 
   notifyContextualSkillPreviewsChanged(skillPreviews: SkillPreviewMojo[]):
       void {
-    this.sender.sendLatestWhenActive('notifyContextualSkillPreviewsChanged', {
+    this.sender.requestNoResponse('notifyContextualSkillPreviewsChanged', {
       contextualSkillPreviews:
           skillPreviews.map(s => ({
                               ...s,
@@ -247,20 +240,16 @@ export class WebClientImpl implements WebClientInterface {
   }
 
   notifySkillPreviewChanged(skillPreview: SkillPreviewMojo): void {
-    this.sender.sendLatestWhenActive(
-        'notifySkillPreviewChanged', {
-          skillPreview: {
-            ...skillPreview,
-            source: enumToClient(skillPreview.source),
-          },
-        },
-        [],
-        // Cache only one entry per skill ID.
-        `skill-${skillPreview.id}`);
+    this.sender.requestNoResponse('notifySkillPreviewChanged', {
+      skillPreview: {
+        ...skillPreview,
+        source: enumToClient(skillPreview.source),
+      },
+    });
   }
 
   notifySkillDeleted(skillId: string): void {
-    this.sender.sendWhenActive('notifySkillDeleted', {
+    this.sender.requestNoResponse('notifySkillDeleted', {
       skillId,
     });
   }
@@ -268,7 +257,7 @@ export class WebClientImpl implements WebClientInterface {
   notifyZeroStateSuggestionsChanged(
       suggestions: ZeroStateSuggestionsV2Mojo,
       options: ZeroStateSuggestionsOptionsMojo): void {
-    this.sender.sendLatestWhenActive('zeroStateSuggestionsChanged', {
+    this.sender.requestNoResponse('zeroStateSuggestionsChanged', {
       suggestions: zeroStateSuggestionsToClient(suggestions),
       options: options,
     });
@@ -276,18 +265,16 @@ export class WebClientImpl implements WebClientInterface {
 
   notifyPageMetadataChanged(tabId: number, metadata: PageMetadataMojo|null):
       void {
-    this.sender.sendLatestWhenActive(
-        'pageMetadataChanged', {
-          tabId: idToClient(tabId),
-          pageMetadata: pageMetadataToClient(metadata),
-        },
-        undefined, `${tabId}`);
+    this.sender.requestNoResponse('pageMetadataChanged', {
+      tabId: idToClient(tabId),
+      pageMetadata: pageMetadataToClient(metadata),
+    });
   }
 
   notifyAdditionalContext(context: AdditionalContextMojo): void {
     const extras = new ResponseExtras();
     const clientContext = additionalContextToClient(context, extras);
-    this.sender.sendWhenActive(
+    this.sender.requestNoResponse(
         'notifyAdditionalContext', {context: clientContext}, extras.transfers);
   }
 
@@ -306,7 +293,7 @@ export class WebClientImpl implements WebClientInterface {
 }
 
 export class ActorClientImpl implements ActorClientInterface {
-  constructor(private sender: GatedSender<ActorClient>) {}
+  constructor(private sender: PostMessageRemote<ActorClient>) {}
 
   notifyActorTaskStateChanged(taskId: number, state: ActorTaskStateMojo): void {
     const clientState = enumToClient(state);

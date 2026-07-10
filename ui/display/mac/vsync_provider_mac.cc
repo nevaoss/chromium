@@ -78,10 +78,10 @@ void VSyncProviderMac::RemoveSupportedDisplayLinkId(
 void VSyncProviderMac::RegisterCallback(VSyncCallbackMac::Callback callback,
                                         CGDirectDisplayID display_id) {
   if (!task_runner_->BelongsToCurrentThread()) {
-    task_runner_->PostTask(FROM_HERE,
-                           base::BindOnce(&VSyncProviderMac::RegisterCallback,
-                                          weak_factory_.GetWeakPtr(),
-                                          std::move(callback), display_id));
+    task_runner_->PostTask(
+        FROM_HERE, base::BindOnce(&VSyncProviderMac::RegisterCallback,
+                                  base::Unretained(this), std::move(callback),
+                                  display_id));
     return;
   }
 
@@ -105,10 +105,10 @@ void VSyncProviderMac::RegisterCallback(VSyncCallbackMac::Callback callback,
 void VSyncProviderMac::UnregisterCallback(VSyncCallbackMac::Callback callback,
                                           CGDirectDisplayID display_id) {
   if (!task_runner_->BelongsToCurrentThread()) {
-    task_runner_->PostTask(FROM_HERE,
-                           base::BindOnce(&VSyncProviderMac::UnregisterCallback,
-                                          weak_factory_.GetWeakPtr(),
-                                          std::move(callback), display_id));
+    task_runner_->PostTask(
+        FROM_HERE, base::BindOnce(&VSyncProviderMac::UnregisterCallback,
+                                  base::Unretained(this), std::move(callback),
+                                  display_id));
     return;
   }
 

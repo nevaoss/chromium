@@ -8,6 +8,9 @@
 #include "base/memory/raw_ptr.h"
 #include "components/viz/common/surfaces/parent_local_surface_id_allocator.h"
 #include "content/browser/renderer_host/unbounded_surface_window.h"
+#include "mojo/public/cpp/bindings/associated_receiver.h"
+#include "mojo/public/cpp/bindings/associated_remote.h"
+#include "third_party/blink/public/mojom/unbounded_element/unbounded_element.mojom.h"
 #include "ui/accelerated_widget_mac/accelerated_widget_mac.h"
 #include "ui/compositor/layer.h"
 #include "ui/display/display.h"
@@ -30,14 +33,19 @@ class DisplayCALayerTree;
 
 namespace content {
 
-class RenderFrameHostImpl;
+class RenderWidgetHostViewMac;
 
 class UnboundedSurfaceWindowMac : public UnboundedSurfaceWindow,
                                   public viz::HostFrameSinkClient,
-                                  public ui::AcceleratedWidgetMacNSView {
+                                  public ui::AcceleratedWidgetMacNSView,
+                                  public blink::mojom::UnboundedSurfaceHost {
  public:
-  UnboundedSurfaceWindowMac(RenderFrameHostImpl* parent_rfh,
-                            const gfx::Rect& bounds_in_screen);
+  UnboundedSurfaceWindowMac(
+      RenderWidgetHostViewMac* parent_view,
+      mojo::PendingAssociatedReceiver<blink::mojom::UnboundedSurfaceHost> host,
+      mojo::PendingAssociatedRemote<blink::mojom::UnboundedSurfaceClient>
+          client,
+      const gfx::Rect& bounds_in_dips);
   ~UnboundedSurfaceWindowMac() override;
 
   // UnboundedSurfaceWindow overrides:
@@ -50,7 +58,10 @@ class UnboundedSurfaceWindowMac : public UnboundedSurfaceWindow,
       mojo::PendingRemote<viz::mojom::CompositorFrameSinkClient> client)
       override;
 
-  gfx::Rect GetBoundsForTesting() const override;
+  gfx::Rect GetBounds() const override;
+
+  // blink::mojom::UnboundedSurfaceHost overrides:
+  void UpdateBounds(const gfx::Rect& bounds) override;
 
   // Event Routing:
   void RouteMouseEvent(NSEvent* event);
@@ -59,6 +70,8 @@ class UnboundedSurfaceWindowMac : public UnboundedSurfaceWindow,
 
   // Resign Key:
   void OnWindowResignedKey();
+
+  void Dismiss() override;
 
   // viz::HostFrameSinkClient overrides:
   void OnFirstSurfaceActivation(const viz::SurfaceInfo& surface_info) override {
@@ -78,11 +91,15 @@ class UnboundedSurfaceWindowMac : public UnboundedSurfaceWindow,
   };
 
   DisplayInfo GetDisplayInfo() const;
-  void InitWindow(const gfx::Rect& bounds_in_screen);
+  void InitWindow(const gfx::Rect& bounds_in_dips);
+  void OnConnectionError();
+  gfx::Rect ConvertDIPToScreenBounds(const gfx::Rect& bounds_in_dips) const;
 
-  raw_ptr<RenderFrameHostImpl> parent_rfh_;
+  raw_ptr<RenderWidgetHostViewMac> parent_view_;
   viz::FrameSinkId frame_sink_id_;
   viz::ParentLocalSurfaceIdAllocator local_surface_id_allocator_;
+  mojo::AssociatedReceiver<blink::mojom::UnboundedSurfaceHost> receiver_{this};
+  mojo::AssociatedRemote<blink::mojom::UnboundedSurfaceClient> client_remote_;
 #ifdef __OBJC__
   NSWindow* __strong window_ = nil;
 #else

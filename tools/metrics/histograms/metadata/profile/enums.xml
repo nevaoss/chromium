@@ -424,6 +424,7 @@ chromium-metrics-reviews@google.com.
     browser.
   </int>
   <int value="10" label="Feature Showcase"/>
+  <int value="11" label="Finish Or Continue"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/ui/views/profiles/profile_management_flow_controller.h:Step) -->

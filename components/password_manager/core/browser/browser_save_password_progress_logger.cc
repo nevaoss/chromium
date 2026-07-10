@@ -470,7 +470,7 @@ void BrowserSavePasswordProgressLogger::LogPasswordForm(
         GetStringFromID(STRING_CONFIRMATION_PASSWORD_ELEMENT_RENDERER_ID),
         NumberToString(form.confirmation_password_element_renderer_id.value()));
   }
-  log.Set(GetStringFromID(STRING_PASSWORD_GENERATED),
+  log.Set(GetStringFromID(STRING_PASSWORD_IS_GENERATED),
           form.type == PasswordForm::Type::kGenerated);
   log.Set(GetStringFromID(STRING_TIMES_USED), form.times_used_in_html_form);
   LogValue(label, base::Value(std::move(log)));

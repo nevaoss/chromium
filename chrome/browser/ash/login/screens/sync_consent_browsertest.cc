@@ -5,6 +5,7 @@
 #include "ash/constants/ash_features.h"
 #include "ash/constants/ash_pref_names.h"
 #include "ash/constants/ash_switches.h"
+#include "ash/login/resources/grit/ash_login_strings.h"
 #include "base/auto_reset.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
@@ -38,7 +39,6 @@
 #include "chrome/browser/ui/webui/ash/login/sync_consent_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/welcome_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/settings/pref_names.h"
-#include "chrome/grit/generated_resources.h"
 #include "chrome/test/base/testing_profile_manager.h"
 #include "components/prefs/pref_service.h"
 #include "components/signin/public/base/consent_level.h"
@@ -252,7 +252,9 @@ class SyncConsentTest : public OobeBaseTest {
     return base::FeatureList::IsEnabled(
                syncer::kReplaceSyncPromosWithSignInPromos) &&
            base::FeatureList::IsEnabled(
-               ::switches::kChromeOsUseConsentLevelSigninForNewUsers);
+               ::switches::kChromeOsUseConsentLevelSigninForNewUsers) &&
+           !base::FeatureList::IsEnabled(
+               ::switches::kUndoChromeOsUseConsentLevelSignin);
   }
 
   std::optional<SyncConsentScreen::Result> screen_result_;

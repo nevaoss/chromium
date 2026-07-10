@@ -25,8 +25,18 @@ JNI Zero generates boiler-plate code with the goal of making our code:
 2. typesafe,
 3. more optimizable.
 
-JNI Zero uses regular expressions to parse .java files, so don't do anything too
-fancy :).
+### Why Python?
+
+Using an annotation processor instead of Python to generate code would give
+perfect type information, but would mean that C++ files that depend on JNI Zero
+output would be blocked on Java compiles to finish before they can begin. To
+avoid such a slowdown compile times, JNI Zero uses regular expressions to parse
+.java files. It also does not have any knowledge of the classpath when resolving
+types.
+
+In order to ensure that Python resolves types correctly, JNI Zero has an
+annotation processor that validates that Python correctly resolved the relevant
+types.
 
 ## Usage
 
@@ -690,11 +700,10 @@ needs to mark as compile-only (e.g. with `jar_excluded_patterns`). Another
 downside is that if one `android_library` depends on two `generate_jni` srcjars,
 the compiler complains of duplicate `GEN_JNI.java` classes.
 
-To address both of these downsides, and for easier integration with Bazel (which
-supports `neverlink`, but not `jar_excluded_patterns`), we now generate separate
-`android_library` targets for the generated code. To avoid a circuclar
-dependency, we generate placeholder (compile-only) files for each type
-referenced by the generated code. See
+To address both of these downsides, we now generate separate `android_library`
+targets for the generated code. To avoid a circuclar dependency, we generate
+placeholder (compile-only) files for each type referenced by the generated code.
+See
 [`testPlaceholdersOverlapping-placeholder.srcjar.golden`](test/golden/testPlaceholdersOverlapping-placeholder.srcjar.golden)
 for an example.
 

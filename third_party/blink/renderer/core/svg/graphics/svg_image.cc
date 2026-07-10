@@ -389,9 +389,14 @@ bool SVGImage::ApplyShaderInternal(const DrawInfo& draw_info,
                                    const SkMatrix& local_matrix) {
   if (draw_info.ContainerSize().IsEmpty())
     return false;
+  gfx::Vector2dF container_scale(1.f, 1.f);
+  if (RuntimeEnabledFeatures::SvgImageNonUniformScalingFixEnabled()) {
+    container_scale =
+        gfx::Vector2dF(local_matrix.getScaleX(), local_matrix.getScaleY());
+  }
   const gfx::Rect cull_rect(gfx::ToEnclosingRect(unzoomed_src_rect));
   std::optional<PaintRecord> record =
-      PaintRecordForCurrentFrame(draw_info, &cull_rect);
+      PaintRecordForCurrentFrame(draw_info, container_scale, &cull_rect);
   if (!record)
     return false;
 
@@ -450,6 +455,7 @@ void SVGImage::Draw(cc::PaintCanvas* canvas,
 
 std::optional<PaintRecord> SVGImage::PaintRecordForCurrentFrame(
     const DrawInfo& draw_info,
+    const gfx::Vector2dF& container_scale,
     const gfx::Rect* cull_rect) {
   if (!document_host_) {
     return std::nullopt;
@@ -461,6 +467,9 @@ std::optional<PaintRecord> SVGImage::PaintRecordForCurrentFrame(
   if (LayoutSVGRoot* layout_root = LayoutRoot()) {
     layout_root->SetContainerSize(
         PhysicalSize::FromSizeFFloor(draw_info.ContainerSize()));
+    if (RuntimeEnabledFeatures::SvgImageNonUniformScalingFixEnabled()) {
+      layout_root->SetContainerScale(container_scale);
+    }
   }
   LocalFrame* frame = GetFrame();
   LocalFrameView* view = frame->View();
@@ -508,9 +517,27 @@ void SVGImage::DrawInternal(const DrawInfo& draw_info,
                             const cc::PaintFlags& flags,
                             const gfx::RectF& dst_rect,
                             const gfx::RectF& unzoomed_src_rect) {
+  // Compute the source-to-destination transform up front so we can reuse the
+  // scale factors for container scale computation and the canvas concat below.
+  const SkM44 src_to_dst = SkM44::RectToRect(
+      gfx::RectFToSkRect(unzoomed_src_rect), gfx::RectFToSkRect(dst_rect));
+
+  gfx::Vector2dF container_scale(1.f, 1.f);
+  if (RuntimeEnabledFeatures::SvgImageNonUniformScalingFixEnabled()) {
+    // src_to_dst is a pure scale+translate; rc(0,0) and rc(1,1) are sx, sy.
+    // Multiply by `residual_scale` to undo the rounding adjustment that was
+    // applied to `unzoomed_src_rect` in `DrawForContainer`. This recovers the
+    // scale relative to the original unzoomed source, which is what
+    // non-scaling-stroke needs.
+    const gfx::SizeF residual_scale = draw_info.CalculateResidualScale();
+    container_scale =
+        gfx::Vector2dF(src_to_dst.rc(0, 0) * residual_scale.width(),
+                       src_to_dst.rc(1, 1) * residual_scale.height());
+  }
+
   const gfx::Rect cull_rect(gfx::ToEnclosingRect(unzoomed_src_rect));
   std::optional<PaintRecord> record =
-      PaintRecordForCurrentFrame(draw_info, &cull_rect);
+      PaintRecordForCurrentFrame(draw_info, container_scale, &cull_rect);
   if (!record)
     return;
 
@@ -525,8 +552,7 @@ void SVGImage::DrawInternal(const DrawInfo& draw_info,
     // without clipping, and translate accordingly.
     canvas->save();
     canvas->clipRect(gfx::RectToSkRect(gfx::ToEnclosingRect(dst_rect)));
-    canvas->concat(SkM44::RectToRect(gfx::RectFToSkRect(unzoomed_src_rect),
-                                     gfx::RectFToSkRect(dst_rect)));
+    canvas->concat(src_to_dst);
     canvas->drawPicture(std::move(*record));
     canvas->restore();
   }

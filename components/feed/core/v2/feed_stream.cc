@@ -1000,9 +1000,7 @@ LaunchResult FeedStream::ShouldAttemptLoad(const StreamType& stream_type,
 }
 
 bool FeedStream::MissedLastRefresh(const StreamType& stream_type) {
-  // TODO(crbug.com/407797637): Replace stream_type.IsForYou() to
-  // stream_type.isValid() once kFollowing is removed.
-  if (!stream_type.IsForYou()) {
+  if (!stream_type.IsValid()) {
     return false;
   }
   RequestSchedule schedule = feed::prefs::GetRequestSchedule(*profile_prefs_);
@@ -1368,9 +1366,7 @@ void FeedStream::LoadModel(const StreamType& stream_type,
 
 void FeedStream::SetRequestSchedule(const StreamType& stream_type,
                                     RequestSchedule schedule) {
-  // TODO(crbug.com/407797637): Replace stream_type.IsForYou() to
-  // stream_type.isValid() once kFollowing is removed.
-  if (!stream_type.IsForYou()) {
+  if (!stream_type.IsValid()) {
     DLOG(ERROR) << "Ignoring request schedule for this stream: " << stream_type;
     return;
   }

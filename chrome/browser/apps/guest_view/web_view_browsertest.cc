@@ -8,6 +8,7 @@
 #include <set>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -1454,12 +1455,70 @@ IN_PROC_BROWSER_TEST_P(WebViewTest, Shim_TestAllowTransparencyAttribute) {
   TestHelper("testAllowTransparencyAttribute", "web_view/shim", NO_TEST_SERVER);
 }
 
-IN_PROC_BROWSER_TEST_P(WebViewDPITest, Shim_TestAutosizeHeight) {
-  TestHelper("testAutosizeHeight", "web_view/shim", NO_TEST_SERVER);
-}
+constexpr char kAutoSizeUsesScrollWidthForOverflow[] =
+    "AutoSizeUsesScrollWidthForOverflow";
 
-IN_PROC_BROWSER_TEST_P(WebViewSizeTest, Shim_TestAutosizeHeight) {
-  TestHelper("testAutosizeHeight", "web_view/shim", NO_TEST_SERVER);
+class WebViewSizeTestAutosizeHeight
+    : public WebViewTestBase,
+      public testing::WithParamInterface<std::tuple<bool, bool, bool>> {
+ public:
+  WebViewSizeTestAutosizeHeight() {
+    scoped_feature_list_.InitWithFeatureState(features::kGuestViewMPArch,
+                                              guest_view_mparch_enabled());
+  }
+
+  void SetUpCommandLine(base::CommandLine* command_line) override {
+    WebViewTestBase::SetUpCommandLine(command_line);
+    command_line->AppendSwitchASCII(
+        auto_size_uses_scroll_width_for_overflow_enabled()
+            ? ::switches::kEnableBlinkFeatures
+            : ::switches::kDisableBlinkFeatures,
+        kAutoSizeUsesScrollWidthForOverflow);
+    if (use_device_scale_factor()) {
+      command_line->AppendSwitchASCII(switches::kForceDeviceScaleFactor,
+                                      base::NumberToString(2.0f));
+    }
+  }
+
+  static std::string DescribeParams(
+      const testing::TestParamInfo<ParamType>& info) {
+    const auto [mparch_enabled, auto_size_enabled, use_device_scale_factor] =
+        info.param;
+    return base::StringPrintf(
+        "%s_%s_%s", mparch_enabled ? "MPArch" : "InnerWebContents",
+        auto_size_enabled ? "AutoSizeUsesScrollWidthForOverflowEnabled"
+                          : "AutoSizeUsesScrollWidthForOverflowDisabled",
+        use_device_scale_factor ? "DPI" : "DefaultDPI");
+  }
+
+ protected:
+  bool guest_view_mparch_enabled() const { return std::get<0>(GetParam()); }
+
+  bool auto_size_uses_scroll_width_for_overflow_enabled() const {
+    return std::get<1>(GetParam());
+  }
+
+  bool use_device_scale_factor() const { return std::get<2>(GetParam()); }
+
+  const char* test_name() const {
+    return auto_size_uses_scroll_width_for_overflow_enabled()
+               ? "testAutosizeHeightFeatureEnabled"
+               : "testAutosizeHeightFeatureDisabled";
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+INSTANTIATE_TEST_SUITE_P(All,
+                         WebViewSizeTestAutosizeHeight,
+                         testing::Combine(testing::Bool(),
+                                          testing::Bool(),
+                                          testing::Bool()),
+                         WebViewSizeTestAutosizeHeight::DescribeParams);
+
+IN_PROC_BROWSER_TEST_P(WebViewSizeTestAutosizeHeight, Shim_TestAutosizeHeight) {
+  TestHelper(test_name(), "web_view/shim", NO_TEST_SERVER);
 }
 
 IN_PROC_BROWSER_TEST_P(WebViewDPITest, Shim_TestAutosizeBeforeNavigation) {

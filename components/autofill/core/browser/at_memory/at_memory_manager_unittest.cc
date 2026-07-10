@@ -17,6 +17,7 @@
 #include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "base/types/expected.h"
+#include "build/build_config.h"
 #include "components/accessibility_annotator/core/mock_accessibility_query_service.h"
 #include "components/autofill/core/browser/at_memory/at_memory_data_type.h"
 #include "components/autofill/core/browser/at_memory/at_memory_utils.h"
@@ -151,7 +152,7 @@ class AtMemoryManagerTest : public testing::Test,
     webdata_helper().WaitUntilIdle();
   }
 
-  autofill::test::AutofillUnitTestEnvironment autofill_test_environment_;
+  test::AutofillUnitTestEnvironment autofill_test_environment_;
   base::test::TaskEnvironment task_environment_;
   raw_ptr<accessibility_annotator::MockAccessibilityQueryService>
       mock_query_service_ptr_ = nullptr;
@@ -717,10 +718,14 @@ TEST_F(AtMemoryManagerTest, PersonalContextEnabled_AppendsNoticeSuggestion) {
 
   manager().OnFilterChanged(u"");
 
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
+  EXPECT_TRUE(suggestions.empty());
+#else
   ASSERT_EQ(1u, suggestions.size());
   EXPECT_EQ(SuggestionType::kPersonalContextNotice, suggestions[0].type);
   EXPECT_EQ(Suggestion::FiltrationPolicy::kStatic,
             suggestions[0].filtration_policy);
+#endif  // BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
 }
 
 // Tests that the personal context notice is not appended when the feature is

@@ -64,7 +64,10 @@
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
 #include "third_party/blink/renderer/core/html/canvas/html_canvas_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_input_element.h"
+#include "third_party/blink/renderer/core/html/forms/html_label_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_text_area_element.h"
+#include "third_party/blink/renderer/core/html/forms/labels_node_list.h"
+#include "third_party/blink/renderer/core/html/html_element.h"
 #include "third_party/blink/renderer/core/input/context_menu_allowed_scope.h"
 #include "third_party/blink/renderer/core/input/event_handler.h"
 #include "third_party/blink/renderer/core/input_type_names.h"
@@ -73,6 +76,7 @@
 #include "third_party/blink/renderer/core/layout/layout_theme.h"
 #include "third_party/blink/renderer/core/page/focus_controller.h"
 #include "third_party/blink/renderer/core/page/page.h"
+#include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
 #include <cmath>
@@ -83,6 +87,35 @@ namespace blink {
 using mojom::blink::FormControlType;
 
 namespace {
+
+String GetElementLabels(Element* element) {
+  if (!element) {
+    return String();
+  }
+  auto* html_element = DynamicTo<HTMLElement>(element);
+  if (!html_element) {
+    return String();
+  }
+  LabelsNodeList* labels = html_element->labels();
+  if (!labels || labels->length() == 0) {
+    return String();
+  }
+
+  StringBuilder builder;
+  for (unsigned i = 0; i < labels->length(); ++i) {
+    Node* label_node = labels->item(i);
+    if (auto* label_element = DynamicTo<HTMLLabelElement>(label_node)) {
+      String text = label_element->TextContentExcludingLabelable();
+      if (!text.empty()) {
+        if (!builder.empty()) {
+          builder.Append(" ");
+        }
+        builder.Append(text);
+      }
+    }
+  }
+  return builder.ReleaseString();
+}
 
 bool NeedsIncrementalInsertion(const LocalFrame& frame,
                                const String& new_text) {
@@ -1785,11 +1818,23 @@ WebTextInputInfo InputMethodController::TextInputInfo() const {
   info.virtual_keyboard_policy = VirtualKeyboardPolicyOfFocusedElement();
   info.type = TextInputType();
   info.flags = TextInputFlags();
+<<<<<<< HEAD
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
   info.input_panel_rectangle = InputPanelRectangle();
   if (Element* focused_element = GetDocument().FocusedElement())
     info.bounds = focused_element->BoundsInWidget();
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
+=======
+
+  if (Element* focused_element = GetDocument().FocusedElement()) {
+    info.label = GetElementLabels(focused_element);
+    info.name = focused_element->FastGetAttribute(html_names::kNameAttr);
+    info.id = focused_element->GetIdAttribute();
+    info.placeholder =
+        focused_element->FastGetAttribute(html_names::kPlaceholderAttr);
+  }
+
+>>>>>>> 151.0.7895.0~1
   if (info.type == kWebTextInputTypeNone)
     return info;
 

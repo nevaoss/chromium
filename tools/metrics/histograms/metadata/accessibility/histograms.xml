@@ -3406,6 +3406,18 @@ even if they fit the naming pattern. -->
   </summary>
 </histogram>
 
+<histogram name="Accessibility.ReadAnything.ReadAloud.PlaybackContext"
+    enum="ReadAnythingPlaybackContext" expires_after="2027-01-01">
+  <owner>ericchao@google.com</owner>
+  <owner>ammedina@google.com</owner>
+  <owner>chrome-a11y-core@google.com</owner>
+  <summary>
+    Enum value that tracks whether a Read Aloud speech session was started in
+    the side panel or in the immersive overlay mode. Recorded when playback
+    begins.
+  </summary>
+</histogram>
+
 <histogram name="Accessibility.ReadAnything.ReadAloud.SettingsChange"
     enum="ReadAnythingReadAloudSettingsChange" expires_after="2026-12-06">
   <owner>lwinston@google.com</owner>

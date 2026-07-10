@@ -366,6 +366,10 @@ BASE_FEATURE_PARAM(
     &kMigrateToBlockV8OptimizerOnUnfamiliarSites,
     "min_age_of_initial_visit",
     base::Hours(24));
+constexpr base::FeatureParam<bool>
+    kMigrateToBlockV8OptimizerOnUnfamiliarSitesDryRun{
+        &kMigrateToBlockV8OptimizerOnUnfamiliarSites, "dry_run",
+        /*default_value=*/false};
 
 BASE_FEATURE(kMovePasswordLeakDetectionToggleIos,
              base::FEATURE_ENABLED_BY_DEFAULT);

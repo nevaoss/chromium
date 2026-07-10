@@ -7,6 +7,7 @@
 
 #include "base/functional/callback.h"
 #include "chrome/browser/ui/webui/feature_showcase/feature_showcase.mojom.h"
+#include "chrome/browser/ui/webui/feature_showcase/google_lens.mojom.h"
 #include "chrome/browser/ui/webui/feature_showcase/password_manager.mojom.h"
 #include "chrome/common/webui_url_constants.h"
 #include "content/public/browser/web_ui_controller.h"
@@ -18,6 +19,7 @@
 #include "ui/webui/mojo_web_ui_controller.h"
 
 class FeatureShowcaseHandler;
+class GoogleLensHandler;
 class PasswordManagerHandler;
 class FeatureShowcaseUI;
 
@@ -35,6 +37,7 @@ class FeatureShowcaseUIConfig
 class FeatureShowcaseUI
     : public ui::MojoWebUIController,
       public feature_showcase::mojom::FeatureShowcasePageHandlerFactory,
+      public feature_showcase::mojom::GoogleLensPageHandlerFactory,
       public feature_showcase::mojom::PasswordManagerPageHandlerFactory {
  public:
   WEB_UI_CONTROLLER_TYPE_DECL();
@@ -56,6 +59,13 @@ class FeatureShowcaseUI
           feature_showcase::mojom::FeatureShowcasePageHandlerFactory> receiver);
 
   // Instantiates the implementor of the
+  // feature_showcase::mojom::GoogleLensPageHandlerFactory mojo interface
+  // passing the pending receiver that will be internally bound.
+  void BindInterface(
+      mojo::PendingReceiver<
+          feature_showcase::mojom::GoogleLensPageHandlerFactory> receiver);
+
+  // Instantiates the implementor of the
   // feature_showcase::mojom::PasswordManagerPageHandlerFactory mojo interface
   // passing the pending receiver that will be internally bound.
   void BindInterface(
@@ -68,6 +78,11 @@ class FeatureShowcaseUI
       mojo::PendingReceiver<feature_showcase::mojom::FeatureShowcasePageHandler>
           handler) override;
 
+  // feature_showcase::mojom::GoogleLensPageHandlerFactory:
+  void CreateGoogleLensPageHandler(
+      mojo::PendingReceiver<feature_showcase::mojom::GoogleLensPageHandler>
+          handler) override;
+
   // feature_showcase::mojom::PasswordManagerPageHandlerFactory:
   void CreatePasswordManagerPageHandler(
       mojo::PendingReceiver<feature_showcase::mojom::PasswordManagerPageHandler>
@@ -77,10 +92,13 @@ class FeatureShowcaseUI
 
   base::OnceClosure finish_callback_;
   std::unique_ptr<FeatureShowcaseHandler> page_handler_;
+  std::unique_ptr<GoogleLensHandler> google_lens_handler_;
   std::unique_ptr<PasswordManagerHandler> password_manager_handler_;
 
   mojo::Receiver<feature_showcase::mojom::FeatureShowcasePageHandlerFactory>
       page_factory_receiver_{this};
+  mojo::Receiver<feature_showcase::mojom::GoogleLensPageHandlerFactory>
+      google_lens_factory_receiver_{this};
   mojo::Receiver<feature_showcase::mojom::PasswordManagerPageHandlerFactory>
       password_manager_factory_receiver_{this};
 };

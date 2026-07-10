@@ -28,7 +28,7 @@
 #include "components/autofill/core/browser/data_model/valuables/loyalty_card.h"
 #include "components/autofill/core/browser/foundations/autofill_manager.h"
 #include "components/autofill/core/browser/foundations/browser_autofill_manager.h"
-#include "components/autofill/core/browser/integrators/touch_to_fill/touch_to_fill_delegate.h"
+#include "components/autofill/core/browser/integrators/touch_to_fill/touch_to_fill_payment_method_delegate.h"
 #include "components/autofill/core/browser/payments/bnpl_util.h"
 #include "components/autofill/core/browser/payments/payments_util.h"
 #include "components/autofill/core/browser/suggestions/suggestion.h"
@@ -46,7 +46,7 @@ namespace {
 TouchToFillDelegateAndroidImpl* GetDelegate(AutofillManager& manager) {
   auto& bam = static_cast<BrowserAutofillManager&>(manager);
   return static_cast<TouchToFillDelegateAndroidImpl*>(
-      bam.touch_to_fill_delegate());
+      bam.touch_to_fill_payment_method_delegate());
 }
 }  // namespace
 
@@ -80,7 +80,7 @@ content::WebContents* TouchToFillPaymentMethodControllerImpl::web_contents() {
 }
 
 bool TouchToFillPaymentMethodControllerImpl::InitHideHelper(
-    TouchToFillDelegate& delegate) {
+    TouchToFillPaymentMethodDelegate& delegate) {
   // The focused frame may be a different frame than the one the delegate is
   // associated with. This happens in two scenarios:
   // - With frame-transcending forms: the focused frame is subframe, whose
@@ -141,7 +141,7 @@ bool TouchToFillPaymentMethodControllerImpl::IsActiveWebContents() {
 
 bool TouchToFillPaymentMethodControllerImpl::ShowPaymentMethods(
     std::unique_ptr<TouchToFillPaymentMethodView> view,
-    base::WeakPtr<TouchToFillDelegate> delegate,
+    base::WeakPtr<TouchToFillPaymentMethodDelegate> delegate,
     base::span<const Suggestion> suggestions) {
   if (!keyboard_suppressor_.is_suppressing()) {
     return false;
@@ -172,7 +172,7 @@ bool TouchToFillPaymentMethodControllerImpl::ShowPaymentMethods(
 
 bool TouchToFillPaymentMethodControllerImpl::ShowIbans(
     std::unique_ptr<TouchToFillPaymentMethodView> view,
-    base::WeakPtr<TouchToFillDelegate> delegate,
+    base::WeakPtr<TouchToFillPaymentMethodDelegate> delegate,
     base::span<const Iban> ibans_to_suggest) {
   if (!keyboard_suppressor_.is_suppressing()) {
     return false;
@@ -199,7 +199,7 @@ bool TouchToFillPaymentMethodControllerImpl::ShowIbans(
 
 bool TouchToFillPaymentMethodControllerImpl::ShowAffiliatedLoyaltyCards(
     std::unique_ptr<TouchToFillPaymentMethodView> view,
-    base::WeakPtr<TouchToFillDelegate> delegate,
+    base::WeakPtr<TouchToFillPaymentMethodDelegate> delegate,
     base::span<const LoyaltyCard> affiliated_loyalty_cards,
     base::span<const LoyaltyCard> all_loyalty_cards,
     bool first_time_usage) {
@@ -231,7 +231,7 @@ bool TouchToFillPaymentMethodControllerImpl::ShowAffiliatedLoyaltyCards(
 
 bool TouchToFillPaymentMethodControllerImpl::ShowAllLoyaltyCards(
     std::unique_ptr<TouchToFillPaymentMethodView> view,
-    base::WeakPtr<TouchToFillDelegate> delegate,
+    base::WeakPtr<TouchToFillPaymentMethodDelegate> delegate,
     base::span<const LoyaltyCard> all_loyalty_cards) {
   // Abort if TTF surface is already shown.
   if (view_) {
@@ -379,7 +379,7 @@ void TouchToFillPaymentMethodControllerImpl::OnContentAutofillDriverCreated(
     ContentAutofillDriver& driver) {
   auto& manager =
       static_cast<BrowserAutofillManager&>(driver.GetAutofillManager());
-  manager.set_touch_to_fill_delegate(
+  manager.set_touch_to_fill_payment_method_delegate(
       std::make_unique<TouchToFillDelegateAndroidImpl>(&manager));
 }
 

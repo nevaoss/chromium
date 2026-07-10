@@ -2493,4 +2493,24 @@ IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
   EXPECT_EQ(2, browser()->tab_strip_model()->count());
 }
 
+IN_PROC_BROWSER_TEST_F(BrowserNavigatorTest,
+                       Disposition_NewSplitView_ActiveTabInGroup) {
+  chrome::AddTabAt(browser(), GURL(url::kAboutBlankURL), -1,
+                   /*foreground=*/false);
+  ASSERT_EQ(2, browser()->GetTabStripModel()->count());
+  browser()->GetTabStripModel()->AddToNewGroup({0, 1});
+
+  browser()->GetTabStripModel()->ActivateTabAt(0);
+  ASSERT_EQ(0, browser()->GetTabStripModel()->active_index());
+
+  NavigateParams params(MakeNavigateParams());
+  params.disposition = WindowOpenDisposition::NEW_SPLIT_VIEW;
+  Navigate(&params);
+
+  // The newly added split tab should be the active tab.
+  ASSERT_TRUE(params.navigated_or_inserted_contents);
+  EXPECT_EQ(params.navigated_or_inserted_contents,
+            browser()->GetTabStripModel()->GetActiveWebContents());
+}
+
 }  // namespace

@@ -120,15 +120,6 @@
 <translation id="2287771843518581140">{NUM_TABS,plural, =1{ブラウザの動作を遅くしているタブを一時停止することをおすすめします}other{ブラウザの動作を遅くしているタブを一時停止することをおすすめします}}</translation>
 <translation id="2307973900865360088">Dock に追加</translation>
 <translation id="2313870531055795960">Chromium に保存されている安全でないサイトのリストと URL を照合します。サイトがパスワードを不正に取得しようとしている場合や、ユーザーが安全でないファイルをダウンロードしようとした場合は、URL とページ コンテンツの一部をセーフ ブラウジングに送信することがあります。</translation>
-<translation id="2332076562712130931">この操作を行うと、次のようになります。
-          <ph name="LINE_BREAKS" />
-           • Chromium の設定と Chromium のショートカットがリセットされます
-           <ph name="LINE_BREAK" />
-           • 拡張機能が無効になります
-           <ph name="LINE_BREAK" />
-           • Cookie や他の一時的なサイトデータが削除されます
-            <ph name="LINE_BREAKS" />
-           ブックマーク、履歴、保存したパスワードへの影響はありません。</translation>
 <translation id="2343156876103232566">Android スマートフォンに番号を送信するには、両方のデバイスで Chromium にログインしてください。</translation>
 <translation id="2356070529366658676">確認する</translation>
 <translation id="2359808026110333948">続行</translation>

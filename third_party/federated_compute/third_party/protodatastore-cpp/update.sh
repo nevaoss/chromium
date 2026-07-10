@@ -7,12 +7,12 @@ set -e
 shopt -s extglob dotglob
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-# Get the repo URL and hash from  README.chromium
-PDS_REPO=$(sed -n 's/^URL: \(.*\)/\1/p' "${SCRIPT_DIR}/README.chromium")
+PDS_REPO="https://chromium.googlesource.com/external/github.com/google/protodatastore-cpp"
+# Get the hash from README.chromium.
 PDS_REV=$(sed -n 's/^Revision: \(.*\)/\1/p' "${SCRIPT_DIR}/README.chromium")
 
-if [[ -z "${PDS_REPO}" || -z "${PDS_REV}" ]]; then
-  echo "Error: Could not extract URL or Revision from README.chromium"
+if [[ -z "${PDS_REV}" ]]; then
+  echo "Error: Could not extract Revision from README.chromium"
   exit 1
 fi
 

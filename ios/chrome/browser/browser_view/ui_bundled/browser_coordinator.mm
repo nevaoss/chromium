@@ -145,6 +145,8 @@
 #import "ios/chrome/browser/incognito_reauth/ui_bundled/incognito_reauth_scene_agent.h"
 #import "ios/chrome/browser/infobars/model/infobar_ios.h"
 #import "ios/chrome/browser/infobars/model/infobar_manager_impl.h"
+#import "ios/chrome/browser/intelligence/actor/coordinator/actor_overlay_coordinator.h"
+#import "ios/chrome/browser/intelligence/bwg/coordinator/gemini_container_coordinator.h"
 #import "ios/chrome/browser/intelligence/bwg/coordinator/gemini_entry_flow_coordinator.h"
 #import "ios/chrome/browser/intelligence/bwg/coordinator/gemini_first_run_coordinator.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_browser_agent.h"
@@ -247,6 +249,7 @@
 #import "ios/chrome/browser/shared/model/web_state_list/tab_utils.h"
 #import "ios/chrome/browser/shared/public/commands/activity_service_commands.h"
 #import "ios/chrome/browser/shared/public/commands/activity_service_share_url_command.h"
+#import "ios/chrome/browser/shared/public/commands/actor_overlay_commands.h"
 #import "ios/chrome/browser/shared/public/commands/add_contacts_commands.h"
 #import "ios/chrome/browser/shared/public/commands/auto_deletion_commands.h"
 #import "ios/chrome/browser/shared/public/commands/autofill_commands.h"
@@ -305,6 +308,7 @@
 #import "ios/chrome/browser/shared/public/commands/snackbar_commands.h"
 #import "ios/chrome/browser/shared/public/commands/sync_presenter_commands.h"
 #import "ios/chrome/browser/shared/public/commands/synced_set_up_commands.h"
+#import "ios/chrome/browser/shared/public/commands/tab_picker_commands.h"
 #import "ios/chrome/browser/shared/public/commands/text_zoom_commands.h"
 #import "ios/chrome/browser/shared/public/commands/toolbar_commands.h"
 #import "ios/chrome/browser/shared/public/commands/unit_conversion_commands.h"
@@ -344,6 +348,7 @@
 #import "ios/chrome/browser/synced_set_up/coordinator/synced_set_up_coordinator_delegate.h"
 #import "ios/chrome/browser/synced_set_up/utils/utils.h"
 #import "ios/chrome/browser/tab_insertion/model/tab_insertion_browser_agent.h"
+#import "ios/chrome/browser/tab_picker/coordinator/tab_picker_coordinator.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_group_action_type.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_group_confirmation_coordinator.h"
 #import "ios/chrome/browser/tabs/model/tab_title_util.h"
@@ -412,6 +417,7 @@ const char kChromeAppStoreUrl[] =
 
 @interface BrowserCoordinator () <
     ActivityServiceCommands,
+    ActorOverlayCommands,
     AddContactsCommands,
     AppLauncherTabHelperBrowserPresentationProvider,
     AutoDeletionCommands,
@@ -489,6 +495,7 @@ const char kChromeAppStoreUrl[] =
     SnackbarCoordinatorDelegate,
     StoreKitCoordinatorDelegate,
     SyncPresenterCommands,
+    TabPickerCommands,
     TextZoomCommands,
     TrustedVaultReauthenticationCoordinatorDelegate,
     UnitConversionCommands,
@@ -700,6 +707,9 @@ const char kChromeAppStoreUrl[] =
 // Coordinator for presenting SKStoreProductViewController.
 @property(nonatomic, strong) StoreKitCoordinator* storeKitCoordinator;
 
+// Coordinator for the tab picker.
+@property(nonatomic, strong) TabPickerCoordinator* tabPickerCoordinator;
+
 // Coordinator for Text Zoom.
 @property(nonatomic, strong) TextZoomCoordinator* textZoomCoordinator;
 
@@ -815,6 +825,7 @@ const char kChromeAppStoreUrl[] =
   TabGroupConfirmationCoordinator* _lastTabClosingAlert;
 
   // The coordinators for Gemini related logic.
+  GeminiContainerCoordinator* _geminiContainerCoordinator;
   GeminiFirstRunCoordinator* _geminiFirstRunCoordinator;
   GeminiEntryFlowCoordinator* _geminiEntryFlowCoordinator;
 
@@ -863,6 +874,9 @@ const char kChromeAppStoreUrl[] =
 
   // The coordinator showing the multimodal composebox menu.
   ComposeboxMenuCoordinator* _composeboxMenuCoordinator;
+
+  // The coordinator showing the Actor overlay.
+  ActorOverlayCoordinator* _actorOverlayCoordinator;
 }
 
 #pragma mark - SnackbarCoordinatorDelegate
@@ -1249,6 +1263,12 @@ const char kChromeAppStoreUrl[] =
   self.storeKitCoordinator = nil;
 }
 
+// Stops the tab picker coordinator.
+- (void)stopTabPickerCoordinator {
+  [self.tabPickerCoordinator stop];
+  self.tabPickerCoordinator = nil;
+}
+
 // Stops the coordinator for password manager settings.
 - (void)stopPasswordSettingsCoordinator {
   [self.passwordSettingsCoordinator stop];
@@ -1346,6 +1366,7 @@ const char kChromeAppStoreUrl[] =
   // handlers.
   NSArray<Protocol*>* protocols = @[
     @protocol(ActivityServiceCommands),
+    @protocol(ActorOverlayCommands),
     @protocol(AutoDeletionCommands),
     @protocol(AutofillCommands),
     @protocol(BrowserCoordinatorCommands),
@@ -1379,6 +1400,7 @@ const char kChromeAppStoreUrl[] =
     @protocol(SharedTabGroupLastTabAlertCommands),
     @protocol(SyncedSetUpCommands),
     @protocol(SyncPresenterCommands),
+    @protocol(TabPickerCommands),
     @protocol(TextZoomCommands),
     @protocol(WebContentCommands),
     @protocol(DefaultBrowserGenericPromoCommands),
@@ -1672,6 +1694,8 @@ const char kChromeAppStoreUrl[] =
   [self.snackbarCoordinator stop];
   self.snackbarCoordinator = nil;
 
+  [self stopTabPickerCoordinator];
+
   _keyCommandsProvider = nil;
   _dispatcher = nil;
   _layoutGuideCenter = nil;
@@ -1823,6 +1847,9 @@ const char kChromeAppStoreUrl[] =
 
 // Stops child coordinators.
 - (void)stopChildCoordinators {
+  [_actorOverlayCoordinator stop];
+  _actorOverlayCoordinator = nil;
+
   [self.ARQuickLookCoordinator stop];
   self.ARQuickLookCoordinator = nil;
 
@@ -1973,6 +2000,11 @@ const char kChromeAppStoreUrl[] =
 
   [_passkeyIncognitoCoordinator stop];
   _passkeyIncognitoCoordinator = nil;
+
+  if (IsIOSGeminiBottomSheetMigrationEnabled()) {
+    [_geminiContainerCoordinator stop];
+    _geminiContainerCoordinator = nil;
+  }
 
   if (IsGeneralizedGeminiEntryFlowEnabled()) {
     [_geminiEntryFlowCoordinator stop];
@@ -2201,11 +2233,28 @@ const char kChromeAppStoreUrl[] =
 
 // Starts the Gemini session directly via the browser agent.
 - (void)startGeminiSessionWithStartupState:(GeminiStartupState*)startupState {
+  if (IsIOSGeminiBottomSheetMigrationEnabled()) {
+    // TODO(crbug.com/522834015): Start the First Run coordinator if needed.
+    if (_geminiContainerCoordinator) {
+      return;
+    }
+
+    _geminiContainerCoordinator = [[GeminiContainerCoordinator alloc]
+        initWithBaseViewController:self.viewController
+                           browser:self.browser
+                      startupState:startupState];
+    [_geminiContainerCoordinator start];
+    return;
+  }
+
   GeminiBrowserAgent* geminiBrowserAgent =
       GeminiBrowserAgent::FromBrowser(self.browser);
-  if (geminiBrowserAgent) {
-    geminiBrowserAgent->StartGeminiFlow(self.viewController, startupState);
+  if (!geminiBrowserAgent) {
+    CHECK(geminiBrowserAgent, base::NotFatalUntil::M152);
+    return;
   }
+
+  geminiBrowserAgent->StartGeminiFlow(self.viewController, startupState);
 }
 
 #pragma mark - ActivityServiceCommands
@@ -3273,6 +3322,7 @@ const char kChromeAppStoreUrl[] =
   [self cancelCollaborationFlows];
   [self.NTPCoordinator clearPresentedState];
   [self dismissMultimodalActionsMenu];
+  [self stopTabPickerCoordinator];
   // The composebox replaces the omnibox.
   if (dismissOmnibox) {
     [self hideComposebox];
@@ -3562,6 +3612,24 @@ const char kChromeAppStoreUrl[] =
   [_driveFilePickerCoordinator start];
 }
 
+#pragma mark - ActorOverlayCommands
+
+- (void)showActorOverlayForWebState:(web::WebState*)webState {
+  if (_actorOverlayCoordinator) {
+    [self hideActorOverlay];
+  }
+  _actorOverlayCoordinator = [[ActorOverlayCoordinator alloc]
+      initWithBaseViewController:self.viewController
+                         browser:self.browser
+                        webState:webState];
+  [_actorOverlayCoordinator start];
+}
+
+- (void)hideActorOverlay {
+  [_actorOverlayCoordinator stop];
+  _actorOverlayCoordinator = nil;
+}
+
 #pragma mark - EnhancedCalendarCommands
 
 - (void)showEnhancedCalendarWithConfig:
@@ -3809,14 +3877,7 @@ const char kChromeAppStoreUrl[] =
 #pragma mark - BWGCommands
 
 - (void)startGeminiFlowWithStartupState:(GeminiStartupState*)startupState {
-  GeminiBrowserAgent* geminiBrowserAgent =
-      GeminiBrowserAgent::FromBrowser(self.browser);
-  if (!geminiBrowserAgent) {
-    CHECK(geminiBrowserAgent, base::NotFatalUntil::M152);
-    return;
-  }
-
-  geminiBrowserAgent->StartGeminiFlow(self.viewController, startupState);
+  [self startGeminiSessionWithStartupState:startupState];
 }
 
 - (void)
@@ -3858,6 +3919,21 @@ const char kChromeAppStoreUrl[] =
   if (_geminiFirstRunCoordinator) {
     [_geminiFirstRunCoordinator stopWithCompletion:completion];
     _geminiFirstRunCoordinator = nil;
+    return;
+  }
+
+  if (_geminiContainerCoordinator) {
+    __weak __typeof(self) weakSelf = self;
+    [_geminiContainerCoordinator dismissWithCompletion:^{
+      BrowserCoordinator* strongSelf = weakSelf;
+      if (strongSelf) {
+        [strongSelf->_geminiContainerCoordinator stop];
+        strongSelf->_geminiContainerCoordinator = nil;
+      }
+      if (completion) {
+        completion();
+      }
+    }];
     return;
   }
 
@@ -4222,6 +4298,31 @@ const char kChromeAppStoreUrl[] =
 - (void)repostFormTabHelperDismissRepostFormDialog:
     (RepostFormTabHelper*)helper {
   [self stopRepostFormCoordinator];
+}
+
+#pragma mark - TabPickerCommands
+
+- (void)showTabPickerWithParams:(TabPickerParams*)params
+                     completion:(TabPickerCompletionBlock)completion {
+  if (self.tabPickerCoordinator) {
+    return;
+  }
+
+  UIViewController* baseViewController = params.baseViewController
+                                             ? params.baseViewController
+                                             : self.viewController;
+
+  self.tabPickerCoordinator = [[TabPickerCoordinator alloc]
+      initWithBaseViewController:baseViewController
+                         browser:self.browser];
+  self.tabPickerCoordinator.params = params;
+  self.tabPickerCoordinator.tabPickerCompletionBlock = completion;
+  self.tabPickerCoordinator.tabPickerHandler = self;
+  [self.tabPickerCoordinator start];
+}
+
+- (void)hideTabPicker {
+  [self stopTabPickerCoordinator];
 }
 
 #pragma mark - TextZoomCommands
@@ -4917,8 +5018,14 @@ const char kChromeAppStoreUrl[] =
 }
 
 - (void)showSyncPassphraseSettings {
+  [self showSyncPassphraseSettingsWithDismissalCompletion:nil];
+}
+
+- (void)showSyncPassphraseSettingsWithDismissalCompletion:
+    (SyncPresenterCompletionCallback)completion {
   [HandlerForProtocol(self.dispatcher, SettingsCommands)
-      showSyncPassphraseSettingsFromViewController:self.viewController];
+      showSyncPassphraseSettingsFromViewController:self.viewController
+                                        completion:completion];
 }
 
 - (void)showGoogleServicesSettings {

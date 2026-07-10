@@ -1498,9 +1498,6 @@
       <message name="IDS_IOS_BWG_PROMO_SECOND_BOX_TITLE" desc="Second box title text for the Gemini Promo page.">
           Summarize
       </message>
-      <message name="IDS_IOS_BWG_SETTINGS_APP_ACTIVITY_FOOTER_TEXT" desc="The footer text of app activity row in BWG settings page.">
-        View and manage Gemini activity like your chats, feedback, and prompts
-      </message>
       <message name="IDS_IOS_BWG_SETTINGS_APP_ACTIVITY_TITLE" desc="The title text of app activity row in BWG settings page.">
         Gemini App Activity
       </message>
@@ -4374,6 +4371,11 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       <message name="IDS_IOS_LENS_PROMO_TITLE" desc="The title text for a Lens promo view.">
         Search with Lens
       </message>
+      <message name="IDS_IOS_LEVEL_UP_COMPLETED_TASKS" desc="Label indicating the number of tasks completed in the Level Up list. [iOS only]">
+        {count, plural,
+          =1 {1 completed task}
+          other {# completed tasks}}
+      </message>
       <message name="IDS_IOS_LEVEL_UP_FEATURE_GOOGLE_LENS" desc="Feature name for Google Lens. [iOS only]">
         Google Lens
       </message>
@@ -5255,12 +5257,6 @@ Handoff must also be enabled in the General section of Settings, and your device
       <message name="IDS_IOS_PAGE_INFO_CONNECTION" desc="Title of the button opening the connection information (in page info)">
         Connection
       </message>
-      <message name="IDS_IOS_PAGE_INFO_OFFLINE_PAGE" desc="Message to display in the page info when the page you are on is an offline page.">
-        This page has been saved to your Reading List.
-      </message>
-      <message name="IDS_IOS_PAGE_INFO_OFFLINE_PAGE_LABEL" desc="Label to display at the top of the site information screen when the page you are on is an offline page.">
-        Offline page
-      </message>
       <message name="IDS_IOS_PAGE_INFO_OFFLINE_TITLE" desc="Title of the message to display in the page info bubble when the page you are on is an offline page.">
         Viewing offline version
       </message>
@@ -5509,6 +5505,9 @@ Handoff must also be enabled in the General section of Settings, and your device
       <message name="IDS_IOS_PASSWORD_MANAGER_TITLE_VIEW_ACCESSIBILITY_LABEL" desc="The accessibility announcement read by Voice Over for the navigation bar title of the Password Manager.">
           Google Password Manager
         </message>
+      <message name="IDS_IOS_PASSWORD_MANAGER_TRUSTED_VAULT_ERROR_INFOBAR_SUBTITLE" desc="Infobar subtitle for fixing trusted vault error before saving a password on the account.">
+        Verify it’s you to use and save your info on all your devices
+      </message>
       <message name="IDS_IOS_PASSWORD_MANAGER_UPDATE_BUTTON" desc="Label for the 'update' button in the Update Password infobar. This infobar asks if the user wishes to update the saved password for a site to a new password the user has just entered; the button applies the suggested update. [Length: 10em]">
         Update
       </message>

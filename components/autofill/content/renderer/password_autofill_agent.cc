@@ -326,7 +326,7 @@ void AnnotateFieldsWithSignatures(
     const std::string& form_signature,
     const std::string& alternative_form_signature) {
   for (const WebFormControlElement& control_element : fields) {
-    std::optional<autofill::FormControlType> type =
+    std::optional<FormControlType> type =
         form_util::GetAutofillFormControlType(control_element);
     if (!type) {
       continue;

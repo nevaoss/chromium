@@ -1318,16 +1318,17 @@ void Preferences::ApplyPreferences(ApplyReason reason,
       // Policy check is false here, because there is no owner for enterprise.
       local_state_->SetInteger(
           ash::prefs::kResolveDeviceTimezoneByGeolocationMethod,
-          static_cast<int>(system::TimeZoneResolverManager::
-                               GetEffectiveUserTimeZoneResolveMethod(
-                                   prefs_, false /* check_policy */)));
+          static_cast<int>(
+              system::TimeZoneResolverManager::
+                  GetEffectiveUserTimeZoneResolveMethod(
+                      local_state_.get(), prefs_, false /* check_policy */)));
     }
     if (user_is_primary_) {
       CHECK(timezone_resolver_manager_);
       timezone_resolver_manager_->UpdateTimezoneResolver();
       if (system::TimeZoneResolverManager::
                   GetEffectiveUserTimeZoneResolveMethod(
-                      prefs_, true /* check_policy */) ==
+                      local_state_.get(), prefs_, true /* check_policy */) ==
               system::TimeZoneResolverManager::TimeZoneResolveMethod::
                   DISABLED &&
           reason == REASON_PREF_CHANGED) {

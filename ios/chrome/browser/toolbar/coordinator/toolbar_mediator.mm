@@ -25,6 +25,7 @@
 #import "ios/chrome/browser/intelligence/bwg/utils/gemini_constants.h"
 #import "ios/chrome/browser/intelligence/bwg/utils/gemini_prefs.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
+#import "ios/chrome/browser/ntp/model/new_tab_page_tab_helper.h"
 #import "ios/chrome/browser/reader_mode/model/reader_mode_web_state_utils.h"
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
 #import "ios/chrome/browser/shared/model/prefs/pref_backed_boolean.h"
@@ -179,7 +180,14 @@
   const GURL visibleURL = webState->GetVisibleURL();
   [self.consumer setShareEnabled:!visibleURL.is_empty()];
 
-  [self.consumer setNTPVisible:IsUrlNtp(visibleURL)];
+  BOOL isNtp = IsUrlNtp(visibleURL);
+  BOOL isStartSurface = NO;
+  if (isNtp) {
+    NewTabPageTabHelper* NTPHelper =
+        NewTabPageTabHelper::FromWebState(webState);
+    isStartSurface = NTPHelper && NTPHelper->ShouldShowStartSurface();
+  }
+  [self.consumer setNTPVisible:isNtp isStartSurface:isStartSurface];
 
   [self.consumer setIsLoading:webState->IsLoading()];
   [self.consumer setLoadingProgress:webState->GetLoadingProgress()];

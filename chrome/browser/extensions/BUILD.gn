@@ -369,6 +369,8 @@ source_set("extensions") {
     "forced_extensions/force_installed_tracker.h",
     "forced_extensions/install_stage_tracker_factory.cc",
     "forced_extensions/install_stage_tracker_factory.h",
+    "initial_external_extension_loader.cc",
+    "initial_external_extension_loader.h",
     "install_tracker_factory.cc",
     "install_tracker_factory.h",
     "install_verifier_factory.cc",
@@ -564,6 +566,8 @@ source_set("extensions") {
     "//chrome/browser/ui/select_file_policy",
     "//chrome/browser/ui/side_panel",
     "//chrome/browser/ui/toolbar",
+    "//chrome/browser/ui/webui:favicon_source",
+    "//chrome/browser/ui/webui:theme_source",
     "//chrome/browser/ui/webui:webui_util",
     "//chrome/browser/undo",
     "//chrome/browser/update_client",
@@ -682,6 +686,14 @@ source_set("extensions") {
     ]
 
     if (enable_desktop_android_extensions) {
+      sources += [
+        # These files are temporary workarounds to allow for a lightweight
+        # extensions runtime in desktop-android builds. They should be removed
+        # (see https://crbug.com/356905053).
+        "extension_menu_model_android.cc",
+        "extension_menu_model_android.h",
+      ]
+
       # pack_extension_job.cc and developer_private_functions.cc include headers
       # from android extension bridges under IS_ANDROID.
       deps += [ "//chrome/browser/ui/android/extensions:public" ]
@@ -841,8 +853,6 @@ source_set("extensions") {
       "extension_view_host_web_modal_handler.h",
       "external_install_error_desktop.cc",
       "external_install_error_desktop.h",
-      "initial_external_extension_loader.cc",
-      "initial_external_extension_loader.h",
       "theme_installed_infobar_delegate.cc",
       "theme_installed_infobar_delegate.h",
       "warning_badge_service.cc",
@@ -1668,6 +1678,7 @@ static_library("test_support") {
     "//chrome/browser/ui/browser_window",
     "//chrome/browser/ui/browser_window:create_browser_window",
     "//chrome/browser/ui/toolbar",
+    "//chrome/browser/ui/webui:theme_source",
     "//components/crx_file",
     "//components/feed:feature_list",
     "//components/policy/core/common:test_support",
@@ -1917,7 +1928,10 @@ source_set("unit_tests") {
     "api/enterprise_hardware_platform/enterprise_hardware_platform_api_unittest.cc",
     "api/extension_action/extension_action_api_unittest.cc",
     "api/gcm/extension_gcm_app_handler_unittest.cc",
+    "api/identity/extension_token_key_unittest.cc",
     "api/identity/identity_api_unittest.cc",
+    "api/identity/identity_mint_queue_unittest.cc",
+    "api/identity/identity_token_cache_unittest.cc",
     "api/management/management_api_unittest.cc",
     "api/notifications/extension_notification_handler_unittest.cc",
     "api/omnibox/omnibox_unittest.cc",
@@ -1980,6 +1994,7 @@ source_set("unit_tests") {
     "forced_extensions/force_installed_test_base.cc",
     "forced_extensions/force_installed_test_base.h",
     "forced_extensions/force_installed_tracker_unittest.cc",
+    "initial_external_extension_loader_unittest.cc",
     "install_verifier_unittest.cc",
     "installed_loader_unittest.cc",
     "omaha_attributes_handler_unittest.cc",
@@ -2095,10 +2110,7 @@ source_set("unit_tests") {
       "api/device_permissions_manager_unittest.cc",
       "api/enterprise_reporting_private/enterprise_reporting_private_unittest.cc",
       "api/file_system/file_system_api_unittest.cc",
-      "api/identity/extension_token_key_unittest.cc",
       "api/identity/gaia_remote_consent_flow_unittest.cc",
-      "api/identity/identity_mint_queue_unittest.cc",
-      "api/identity/identity_token_cache_unittest.cc",
       "api/identity/web_auth_flow_info_bar_delegate_unittest.cc",
       "api/image_writer_private/destroy_partitions_operation_unittest.cc",
       "api/image_writer_private/extractor_unittest.cc",
@@ -2129,8 +2141,7 @@ source_set("unit_tests") {
       "chrome_app_icon_unittest.cc",
       "chrome_app_sorting_unittest.cc",
       "extension_error_ui_default_unittest.cc",
-      "initial_external_extension_loader_unittest.cc",
-      "manifest_v2_experiment_manager_unittest.cc",
+      "manifest_v2_handler_unittest.cc",
       "menu_manager_unittest.cc",
       "mv2_deprecation_impact_checker_unittest.cc",
       "safe_browsing_verdict_handler_unittest.cc",
@@ -2192,6 +2203,7 @@ source_set("unit_tests") {
         "//chrome/browser/ash/login/users",
         "//chrome/browser/ash/printing",
         "//chrome/browser/extensions/api/braille_display_private",
+        "//chrome/browser/prefs:util",
         "//chrome/browser/printing",
         "//chrome/test:test_support_unit",
         "//chromeos/ash/components/dbus/image_burner",
@@ -2531,7 +2543,12 @@ source_set("browser_tests") {
       "//components/messages/android:test_support",
     ]
   } else {
+    sources +=
+        [ "api/contextual_tasks_private/contextual_tasks_private_apitest.cc" ]
+
     deps += [
+      "//chrome/browser/contextual_tasks:test_support",
+      "//chrome/browser/contextual_tasks:ui",
       "//chrome/browser/ui/search:test_support_ui",
       "//chrome/browser/ui/tabs/saved_tab_groups",
       "//chrome/browser/ui/views/location_bar",
@@ -2673,7 +2690,7 @@ source_set("browser_tests") {
       "initial_external_extension_loader_browsertest.cc",
       "lazy_background_page_apitest.cc",
       "locked_fullscreen_window_apitest.cc",
-      "manifest_v2_experiment_manager_browsertest.cc",
+      "manifest_v2_handler_browsertest.cc",
       "native_bindings_apitest.cc",
       "orb_and_cors_extension_browsertest.cc",
       "permissions/active_tab_apitest.cc",

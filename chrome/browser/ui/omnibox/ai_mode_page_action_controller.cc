@@ -7,7 +7,9 @@
 #include "base/check.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
+#include "base/functional/callback_helpers.h"
 #include "base/metrics/histogram_functions.h"
+#include "base/types/to_address.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/bitmap_fetcher/bitmap_fetcher_service.h"
 #include "chrome/browser/bitmap_fetcher/bitmap_fetcher_service_factory.h"
@@ -17,7 +19,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/layout_constants.h"
-#include "chrome/browser/ui/omnibox/ai_mode_button_config.h"
+#include "chrome/browser/ui/omnibox/ai_mode_button_service_factory.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
@@ -29,6 +31,8 @@
 #include "components/favicon/core/favicon_service.h"
 #include "components/favicon_base/favicon_types.h"
 #include "components/keyed_service/core/service_access_type.h"
+#include "components/omnibox/browser/ai_mode_button_config.h"
+#include "components/omnibox/browser/ai_mode_button_service.h"
 #include "components/omnibox/browser/autocomplete_match.h"
 #include "components/omnibox/browser/autocomplete_result.h"
 #include "components/omnibox/browser/omnibox_client.h"
@@ -100,8 +104,17 @@ AiModePageActionController::AiModePageActionController(
   CHECK(IsPageActionMigrated(PageActionIconType::kAiMode));
 
   if (auto* omnibox_controller = location_bar_view.GetOmniboxController()) {
-    observation_.Observe(omnibox_controller->edit_model());
+    omnibox_edit_model_observation_.Observe(omnibox_controller->edit_model());
   }
+
+  auto* ai_mode_button_service =
+      AiModeButtonServiceFactory::GetForProfile(&profile);
+  CHECK(ai_mode_button_service);
+  ai_mode_config_subscription_ =
+      ai_mode_button_service->RegisterOnConfigChanged(
+          base::IgnoreArgs<const ai_mode_button_config::AiModeButtonConfig*>(
+              base::BindRepeating(&AiModePageActionController::UpdatePageAction,
+                                  weak_factory_.GetWeakPtr())));
 }
 
 AiModePageActionController::~AiModePageActionController() = default;
@@ -124,7 +137,7 @@ void AiModePageActionController::UpdatePageAction() {
     NotifyOmniboxTriggeredFeatureService(
         *location_bar_view_->GetOmniboxController());
   }
-  SetPageActionVisibility(is_visible);
+  UpdatePageActionUi(is_visible);
 }
 
 // static
@@ -156,8 +169,12 @@ void AiModePageActionController::NotifyOmniboxTriggeredFeatureService(
 bool AiModePageActionController::ShouldShowPageAction(
     Profile* profile,
     LocationBarView& location_bar_view) {
-  const auto& config = ai_mode_button_config::GetCurrentAiModeButtonConfig();
-  if (!config.IsValid()) {
+  auto* service = AiModeButtonServiceFactory::GetForProfile(profile);
+  if (!service) {
+    return false;
+  }
+  auto* config = service->GetCurrentConfig();
+  if (!config || !config->IsValid()) {
     return false;
   }
 
@@ -242,14 +259,28 @@ bool AiModePageActionController::ShouldShowPageAction(
   return has_focus;
 }
 
-void AiModePageActionController::SetPageActionVisibility(bool is_visible) {
+void AiModePageActionController::UpdatePageActionUi(bool is_visible) {
   if (!is_visible) {
+    favicon_fetch_weak_factory_.InvalidateWeakPtrs();
     Hide(IconSource::kInvisible);
     return;
   }
 
-  const auto& config = ai_mode_button_config::GetCurrentAiModeButtonConfig();
-  if (config.id == SearchEngineType::SEARCH_ENGINE_GOOGLE) {
+  page_actions::PageActionController* page_action_controller =
+      GetPageActionController(*bwi_);
+  CHECK(page_action_controller);
+  auto* service =
+      AiModeButtonServiceFactory::GetForProfile(base::to_address(profile_));
+  CHECK(service);
+  auto* config = service->GetCurrentConfig();
+  CHECK(config);
+
+  page_action_controller->OverrideText(kActionAiMode, config->text);
+  page_action_controller->OverrideTooltip(kActionAiMode, config->tooltip);
+  page_action_controller->OverrideAccessibleName(kActionAiMode,
+                                                 config->a11y_label);
+
+  if (config->id == SearchEngineType::SEARCH_ENGINE_GOOGLE) {
     ShowAndOverrideImage(
         ui::ImageModel::FromImageGenerator(
             base::BindRepeating([](const ui::ColorProvider* color_provider) {
@@ -266,13 +297,13 @@ void AiModePageActionController::SetPageActionVisibility(bool is_visible) {
         IconSource::kVectorIcon);
 
   } else {
-    GURL favicon_url(config.favicon_url);
+    GURL favicon_url(config->favicon_url);
     OmniboxClient* client =
         location_bar_view_->GetOmniboxController()->client();
     gfx::Image image = client->GetFaviconForIconUrl(
         favicon_url,
         base::BindOnce(&AiModePageActionController::OnFaviconFetchedLocally,
-                       weak_factory_.GetWeakPtr(), favicon_url),
+                       favicon_fetch_weak_factory_.GetWeakPtr(), favicon_url),
         /*notify_on_empty=*/true);
     // `image` will be empty if not cached. In which case, let
     // `OnFaviconFetchedLocally()` handle visibility and the image.
@@ -308,8 +339,18 @@ void AiModePageActionController::ShowAndOverrideImage(
 void AiModePageActionController::OnFaviconFetchedLocally(
     const GURL& favicon_url,
     const gfx::Image& favicon) {
-  if (favicon.IsEmpty() ||
-      !ShouldShowPageAction(base::to_address(profile_), *location_bar_view_)) {
+  // If visibility became false, this callback should have been cancelled.
+  CHECK(ShouldShowPageAction(base::to_address(profile_), *location_bar_view_));
+
+  // If the config changed, this callback should have been cancelled.
+  auto* service =
+      AiModeButtonServiceFactory::GetForProfile(base::to_address(profile_));
+  CHECK(service);
+  auto* config = service->GetCurrentConfig();
+  CHECK(config);
+  CHECK_EQ(GURL{config->favicon_url}, favicon_url);
+
+  if (favicon.IsEmpty()) {
     FetchFaviconFromNetwork(favicon_url);
     return;
   }
@@ -330,19 +371,29 @@ void AiModePageActionController::FetchFaviconFromNetwork(
   fetcher_service->RequestImage(
       favicon_url,
       base::BindOnce(&AiModePageActionController::OnFaviconFetchedFromNetwork,
-                     weak_factory_.GetWeakPtr()));
+                     favicon_fetch_weak_factory_.GetWeakPtr(), favicon_url));
 }
 
-void AiModePageActionController::OnFaviconFetchedFromNetwork(SkBitmap bitmap) {
-  if (bitmap.empty() ||
-      !ShouldShowPageAction(base::to_address(profile_), *location_bar_view_)) {
+void AiModePageActionController::OnFaviconFetchedFromNetwork(
+    const GURL& favicon_url,
+    SkBitmap bitmap) {
+  // If visibility became false, this callback should have been cancelled.
+  CHECK(ShouldShowPageAction(base::to_address(profile_), *location_bar_view_));
+
+  // If the config changed, this callback should have been cancelled.
+  auto* service =
+      AiModeButtonServiceFactory::GetForProfile(base::to_address(profile_));
+  CHECK(service);
+  auto* config = service->GetCurrentConfig();
+  CHECK(config);
+  CHECK_EQ(GURL{config->favicon_url}, favicon_url);
+
+  if (bitmap.empty()) {
     Hide(IconSource::kFailedIcon);
     return;
   }
 
   // Store fetched icon into favicon cache.
-  const auto& config = ai_mode_button_config::GetCurrentAiModeButtonConfig();
-  GURL favicon_url(config.favicon_url);
   favicon::FaviconService* favicon_service =
       FaviconServiceFactory::GetForProfile(base::to_address(profile_),
                                            ServiceAccessType::EXPLICIT_ACCESS);

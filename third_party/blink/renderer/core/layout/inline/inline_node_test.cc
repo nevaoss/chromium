@@ -1694,26 +1694,6 @@ TEST_F(InlineNodeTest, FindSvgTextChunksCrash3) {
   // Pass if no CHECK() failures in FindSvgTextChunks().
 }
 
-TEST_F(InlineNodeTest, FontFeaturesInitial) {
-  SetBodyInnerHTML(R"HTML(
-    <div id="initial"></div>
-    <div id="no-kern" style="font-kerning: none"></div>
-  )HTML");
-  const auto is_initial = [this](const char* id) {
-    const auto* layout_object = GetLayoutObjectByElementId(id);
-    Vector<FontFeatureRange, FontFeatureRange::kInitialSize> features;
-    FontFeatureRange::FromFontDescription(
-        layout_object->StyleRef().GetFont()->GetFontDescription(), features);
-    if (FontFeatureRange::IsInitial(features)) {
-      EXPECT_EQ(features.size(), FontFeatureRange::kInitialSize);
-      return true;
-    }
-    return false;
-  };
-  EXPECT_TRUE(is_initial("initial"));
-  EXPECT_FALSE(is_initial("no-kern"));
-}
-
 // crbug.com/437612643
 TEST_F(InlineNodeTest, NestedRubyMinMaxCrash) {
   SetBodyInnerHTML(R"HTML(<div style="display: inline-block;">foo

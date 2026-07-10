@@ -291,6 +291,7 @@ source_set("unit_tests") {
     "//components/prefs:test_support",
     "//components/safe_browsing/core/browser/password_protection:test_support",
     "//components/safe_browsing/core/common:safe_browsing_prefs",
+    "//components/strings",
     "//components/sync_preferences:test_support",
     "//components/test/ios",
     "//components/trusted_vault",

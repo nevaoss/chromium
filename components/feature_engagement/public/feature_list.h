@@ -388,6 +388,8 @@ DEFINE_VARIATION_PARAM(kIPHiOSGeminiFullscreenPromoFeature,
                        "IPH_iOSGeminiFullscreenPromoFeature");
 DEFINE_VARIATION_PARAM(kIPHiOSGeminiImageRemixFeature,
                        "IPH_iOSGeminiImageRemixFeature");
+DEFINE_VARIATION_PARAM(kIPHiOSGeminiWhatCanGeminiDo,
+                       "IPHiOSGeminiWhatCanGeminiDo");
 DEFINE_VARIATION_PARAM(kIPHiOSNewIAPromoFeature, "IPH_iOSNewIAPromoFeature");
 DEFINE_VARIATION_PARAM(kIPHiOSPinMostVisitedSiteFeature,
                        "IPH_iOSPinMostVisitedSiteFeature");
@@ -484,6 +486,8 @@ DEFINE_VARIATION_PARAM(kIPHSideBySidePinnableFeature,
                        "IPH_SideBySidePinnableFeature");
 DEFINE_VARIATION_PARAM(kIPHSideBySideTabSwitchFeature,
                        "IPH_SideBySideTabSwitchFeature");
+DEFINE_VARIATION_PARAM(kIPHSidePanelContextualTasksPinnableFeature,
+                       "IPH_SidePanelContextualTasksPinnableFeature");
 DEFINE_VARIATION_PARAM(kIPHSidePanelGenericPinnableFeature,
                        "IPH_SidePanelGenericPinnableFeature");
 DEFINE_VARIATION_PARAM(kIPHSidePanelLensOverlayPinnableFeature,
@@ -578,11 +582,16 @@ DEFINE_VARIATION_PARAM(kIPHLauncherSearchHelpUiFeature,
                        "IPH_LauncherSearchHelpUi");
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
+    BUILDFLAG(IS_CHROMEOS)
 DEFINE_VARIATION_PARAM(kIPHDesktopPWAsLinkCapturingLaunch,
                        "IPH_DesktopPWAsLinkCapturingLaunch");
 DEFINE_VARIATION_PARAM(kIPHDesktopPWAsLinkCapturingLaunchAppInTab,
                        "IPH_DesktopPWAsLinkCapturingLaunchAppInTab");
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
+        // BUILDFLAG(IS_CHROMEOS)
+
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 DEFINE_VARIATION_PARAM(kIPHSignInBenefitsFeature, "IPH_SignInBenefits");
 DEFINE_VARIATION_PARAM(kIPHSupervisedUserProfileSigninFeature,
                        "IPH_SupervisedUserProfileSignin");
@@ -773,6 +782,7 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHiOSGeminiImageRemixFeature),
         VARIATION_ENTRY(kIPHiOSGeminiLiveIPHFeature),
         VARIATION_ENTRY(kIPHiOSGeminiLiveNewBadgeFeature),
+        VARIATION_ENTRY(kIPHiOSGeminiWhatCanGeminiDo),
         VARIATION_ENTRY(kIPHiOSHistoryOnOverflowMenuFeature),
         VARIATION_ENTRY(kIPHiOSLensKeyboardFeature),
         VARIATION_ENTRY(kIPHiOSLensOverlayEntrypointTipFeature),
@@ -869,6 +879,7 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHShoppingCollectionFeature),
         VARIATION_ENTRY(kIPHSideBySidePinnableFeature),
         VARIATION_ENTRY(kIPHSideBySideTabSwitchFeature),
+        VARIATION_ENTRY(kIPHSidePanelContextualTasksPinnableFeature),
         VARIATION_ENTRY(kIPHSidePanelGenericPinnableFeature),
         VARIATION_ENTRY(kIPHSideSearchAutoTriggeringFeature),
         VARIATION_ENTRY(kIPHSideSearchPageActionLabelFeature),
@@ -915,9 +926,13 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHLauncherSearchHelpUiFeature),
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
         VARIATION_ENTRY(kIPHDesktopPWAsLinkCapturingLaunch),
         VARIATION_ENTRY(kIPHDesktopPWAsLinkCapturingLaunchAppInTab),
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
+        // BUILDFLAG(IS_CHROMEOS)
+
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
         VARIATION_ENTRY(kIPHSignInBenefitsFeature),
         VARIATION_ENTRY(kIPHSupervisedUserProfileSigninFeature),
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)

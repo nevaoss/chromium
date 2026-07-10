@@ -301,6 +301,7 @@ Kung ayaw mo, iba-block ito ng iyong mga setting ng privacy. Papayagan nito ang 
 <translation id="1445896388055045436">Ipakita sa pag-checkout ang mga available na benepisyo at reward ng card. May mga nalalapat na tuntunin ng nag-isyu.</translation>
 <translation id="1447067628680007684">(x86_64)</translation>
 <translation id="1448166547804028941">Hindi puwedeng itakda sa iisang dictionary ang mga key na "<ph name="DATA_CONTROLS_FIRST_KEY_SET" />" bilang mga key na "<ph name="DATA_CONTROLS_SECOND_KEY_SET" />"</translation>
+<translation id="1449251255954293933">I-save ang redress number sa Google Wallet</translation>
 <translation id="1455413310270022028">Pambura</translation>
 <translation id="1457992721081300557">{NUM_REVIEWS,plural, =0{Tingnan ang 0 na review}=1{Tingnan ang 1 review}one{Tingnan ang lahat ng # review}other{Tingnan ang lahat ng # na review}}</translation>
 <translation id="1458059624921545588">Mga Tao at Lipunan</translation>
@@ -1157,6 +1158,7 @@ Kung ayaw mo, iba-block ito ng iyong mga setting ng privacy. Papayagan nito ang 
 <translation id="2782088940970074970">Mga Rental ng Kotse</translation>
 <translation id="278436560439594386">Mga Appliance sa Bahay</translation>
 <translation id="2784474685437057136">B5 Extra</translation>
+<translation id="2784795832957740711">Mga Password · Mga Passkey</translation>
 <translation id="2784949926578158345">Na-reset ang koneksyon.</translation>
 <translation id="2786008859124691917">Mga Bisikleta at Accessory</translation>
 <translation id="2792012897584536778">Nag-set up ang mga administrator ng device na ito ng mga certificate ng seguridad na puwedeng magbigay-daan sa kanilang matingnan ang content ng mga website na binibisita mo.</translation>
@@ -2307,6 +2309,7 @@ Para i-hide ang mga opsyon sa pay later, pumunta sa <ph name="BEGIN_LINK" />mga 
 <translation id="46128681529823442">Kagamitan sa Soccer</translation>
 <translation id="4612904677925722054">Posibleng may pang-mature na content ang site na ito. Kailangang sabihin ng magulang o tagapag-alaga na OK na bisitahin mo ang website na ito.</translation>
 <translation id="4619564267100705184">I-verify na ikaw ito</translation>
+<translation id="4619669610757527494">I-save ang lisensya sa pagmamaneho sa Google Wallet</translation>
 <translation id="4622292761762557753">Ilipat pa rin</translation>
 <translation id="4622647778991854660">Mag-enable ng mga notification sa Notification Center. Buksan ang <ph name="LINK" />.</translation>
 <translation id="4623894491222334521">Mga doc ng pagkakakilanlan</translation>
@@ -2836,6 +2839,7 @@ Para i-hide ang mga opsyon sa pay later, pumunta sa <ph name="BEGIN_LINK" />mga 
 <translation id="543656192084990644">Hindi pinapayagan ang mga sensor ng paggalaw</translation>
 <translation id="5441409130426352029"><ph name="ATTRIBUTE_VALUE" />, na dating <ph name="PREVIOUS_VALUE" /></translation>
 <translation id="5443468954631487277">Baligtarin ang pagkakasunod-sunod nang nakatihaya</translation>
+<translation id="5447103258548475868">I-save ang passport sa Google Wallet</translation>
 <translation id="5447235695608032700">Payagan ang <ph name="SITE" /> na gumamit ng impormasyong na-save nito tungkol sa iyo</translation>
 <translation id="5447973833955560753">Password sa pag-recover</translation>
 <translation id="5451331376824595378">Kapag na-flag ng Chrome ang mga event tungkol sa seguridad, ipapadala sa iyong administrator ang nauugnay na data tungkol sa mga event. Puwedeng kabilang dito ang mga URL ng mga page na binibisita mo sa Chrome, URL ng mga page kung saan ka kumopya ng data, pangalan ng file o metadata, IP address, pag-crash ng browser o tab, at ang username na ginagamit mo para mag-sign in sa mga web-based na application, sa iyong device, at sa Chrome.</translation>
@@ -3018,6 +3022,7 @@ Para i-hide ang mga opsyon sa pay later, pumunta sa <ph name="BEGIN_LINK" />mga 
 <translation id="5718601519531438273">May kasamang impormasyon gaya ng mga passport at lisensya sa pagmamaneho</translation>
 <translation id="5720705177508910913">Kasalukuyang user</translation>
 <translation id="5720895412771013401">Mga Desktop Computer</translation>
+<translation id="5721147290164931316">I-scan para Mag-sign in gamit ang Iyong Telepono</translation>
 <translation id="5721367770070844253">{count,plural, =1{{website_1}}=2{{website_1}, {website_2}}=3{{website_1}, {website_2}, at 1 pa}one{{website_1}, {website_2}, at {more_count} pa}other{{website_1}, {website_2}, at {more_count} pa}}</translation>
 <translation id="572328651809341494">Mga kamakailang tab</translation>
 <translation id="5723873695528696965">Kontrolin at i-reprogram ang iyong mga MIDI device</translation>
@@ -4237,6 +4242,7 @@ Mga karagdagang detalye:
 <translation id="7599089013883397081">Nag-time out ang pag-download</translation>
 <translation id="7602868996817972616">Magtanong sa Google tungkol sa page na ito</translation>
 <translation id="7606123685356405076">Mga model ng Gemini 3</translation>
+<translation id="760632772920590778">I-save ang sasakyan sa Google Wallet</translation>
 <translation id="7610193165460212391">Wala sa sakop ang halaga <ph name="VALUE" />.</translation>
 <translation id="761261689936461781">Makapal</translation>
 <translation id="7613889955535752492">Exp: <ph name="EXPIRATION_MONTH" />/<ph name="EXPIRATION_YEAR" /></translation>
@@ -4265,7 +4271,9 @@ Mga karagdagang detalye:
 <translation id="7646681339175747202">Nakita sa isang paglabag sa data ang password na kakagamit mo lang. Inirerekomenda ng Google Password Manager na palitan na ngayon ang password mo.</translation>
 <translation id="7647206758853451655">Kalidad ng pag-print</translation>
 <translation id="7648133459447652947">Para ipakita ang iyong cursor, lumipat ng app, i-reload ang page, o bumalik</translation>
+<translation id="764847582138410250">I-scan para mag-sign in gamit ang iyong telepono</translation>
 <translation id="7648527891719919697">Mananatiling naka-block ang site na ito dahil na-on mo ang Advanced na Proteksyon sa <ph name="BEGIN_ANDROID_SETTINGS_LINK" />mga setting ng Android<ph name="END_ANDROID_SETTINGS_LINK" />. <ph name="BEGIN_LEARN_MORE_LINK" />Matuto pa tungkol sa babalang ito<ph name="END_LEARN_MORE_LINK" /></translation>
+<translation id="7648900539798595789">I-save ang Known Traveler Number sa Google Wallet</translation>
 <translation id="7648992873808071793">Mag-store ng mga file sa device na ito</translation>
 <translation id="7649070708921625228">Tulong</translation>
 <translation id="7650141368285545431">Gumamit ng passkey mula sa ibang device</translation>
@@ -4358,6 +4366,7 @@ Mga karagdagang detalye:
 <translation id="7773005668374414287">Parehong pagkakasunod-sunod nang nakatihaya</translation>
 <translation id="7779418012194492374">Bawiin ang access para sa <ph name="DEVICE_NAME" /></translation>
 <translation id="7781829728241885113">Kahapon</translation>
+<translation id="7782228658217918863">I-save ang identity card sa Google Wallet</translation>
 <translation id="7782465647372057580">Naka-encrypt at pinapanatiling pribado ang impormasyon ng account</translation>
 <translation id="7785471469930192436">Tingnan ang mga tagubilin ng iyong search engine para sa pag-delete sa iyong history ng paghahanap, kung naaangkop</translation>
 <translation id="7785790577395078482">ang tablet na ito</translation>

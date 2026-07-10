@@ -27,8 +27,8 @@ import '//resources/cr_elements/icons.html.js';
 
 import type {SpEmptyStateElement} from '//bookmarks-side-panel.top-chrome/shared/sp_empty_state.js';
 import {ColorChangeUpdater} from '//resources/cr_components/color_change_listener/colors_css_updater.js';
-import type {PriceTrackingBrowserProxy} from '//resources/cr_components/commerce/price_tracking_browser_proxy.js';
-import {PriceTrackingBrowserProxyImpl} from '//resources/cr_components/commerce/price_tracking_browser_proxy.js';
+import type {BrowserProxy as PriceTrackingBrowserProxy} from '//resources/cr_components/commerce/price_tracking.mojom-webui.js';
+import {browserProxyFactory as priceTrackingBrowserProxyFactory} from '//resources/cr_components/commerce/price_tracking.mojom-webui.js';
 import type {BookmarkProductInfo} from '//resources/cr_components/commerce/shared.mojom-webui.js';
 import type {CrDialogElement} from '//resources/cr_elements/cr_dialog/cr_dialog.js';
 import type {CrLazyRenderLitElement} from '//resources/cr_elements/cr_lazy_render/cr_lazy_render_lit.js';
@@ -123,7 +123,7 @@ export class PowerBookmarksAppElement extends CrLitElement implements
   private bookmarksApi_: BookmarksApiProxy =
       BookmarksApiProxyImpl.getInstance();
   private priceTrackingProxy_: PriceTrackingBrowserProxy =
-      PriceTrackingBrowserProxyImpl.getInstance();
+      priceTrackingBrowserProxyFactory.getInstance();
   private shoppingListenerIds_: number[] = [];
   protected accessor trackedProductInfos_:
       {[key: string]: BookmarkProductInfo} = {};
@@ -242,6 +242,9 @@ export class PowerBookmarksAppElement extends CrLitElement implements
     this.$.bookmarksList.onBookmarkChanged(id);
     this.updateShoppingData_();
     this.updateCanAddCurrentUrl_();
+    if (this.selectedBookmarks_[id]) {
+      this.selectedBookmarks_ = {};
+    }
   }
 
   onBookmarkAdded(bookmark: BookmarksTreeNode, parent: BookmarksTreeNode) {
@@ -255,6 +258,9 @@ export class PowerBookmarksAppElement extends CrLitElement implements
       newParent: BookmarksTreeNode) {
     this.$.bookmarksList.onBookmarkMoved(bookmark, oldParent, newParent);
     this.updateCanAddCurrentUrl_();
+    if (this.selectedBookmarks_[bookmark.id]) {
+      this.selectedBookmarks_ = {};
+    }
   }
 
   onBookmarkRemoved(bookmark: BookmarksTreeNode) {
@@ -372,7 +378,6 @@ export class PowerBookmarksAppElement extends CrLitElement implements
         event.detail.bookmarks.map(bookmark => bookmark.id), event.detail.name,
         event.detail.url, parentId);
     this.selectedBookmarks_ = {};
-    this.editing_ = false;
   }
 
   protected getSelectedDescription_() {
@@ -472,7 +477,6 @@ export class PowerBookmarksAppElement extends CrLitElement implements
         .then(() => {
           this.showDeletionToast_(selectedBookmarksList);
           this.selectedBookmarks_ = {};
-          this.editing_ = false;
         });
   }
 
@@ -494,7 +498,6 @@ export class PowerBookmarksAppElement extends CrLitElement implements
     event.stopPropagation();
     this.showDeletionToast_(event.detail.bookmarks);
     this.selectedBookmarks_ = {};
-    this.editing_ = false;
   }
 
   protected onContextMenuClose_() {

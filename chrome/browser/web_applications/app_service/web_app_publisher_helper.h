@@ -46,6 +46,7 @@
 #include "chrome/browser/media/webrtc/media_stream_capture_indicator.h"
 #include "chrome/browser/notifications/notification_common.h"
 #include "chrome/browser/notifications/notification_display_service.h"
+#include "components/services/app_service/public/cpp/preferred_apps_list_handle.h"
 #endif
 
 class BrowserWindowInterface;
@@ -116,6 +117,7 @@ class WebAppPublisherHelper : public WebAppRegistrarObserver,
 #if BUILDFLAG(IS_CHROMEOS)
                               public NotificationDisplayService::Observer,
                               public MediaStreamCaptureIndicator::Observer,
+                              public apps::PreferredAppsListHandle::Observer,
 #endif
                               public content_settings::Observer {
  public:
@@ -351,6 +353,13 @@ class WebAppPublisherHelper : public WebAppRegistrarObserver,
                                  bool is_capturing_video) override;
   void OnIsCapturingAudioChanged(content::WebContents* web_contents,
                                  bool is_capturing_audio) override;
+
+  // apps::PreferredAppsListHandle::Observer:
+  void OnPreferredAppsListInitialized() override;
+  void OnPreferredAppChanged(const std::string& app_id,
+                             bool is_preferred_app) override;
+  void OnPreferredAppsListWillBeDestroyed(
+      apps::PreferredAppsListHandle* handle) override;
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
   // content_settings::Observer:
@@ -429,6 +438,13 @@ class WebAppPublisherHelper : public WebAppRegistrarObserver,
   void OnGetWebAppSize(webapps::AppId app_id,
                        std::optional<ComputedAppSizeWithOrigin> size);
 
+#if BUILDFLAG(IS_CHROMEOS)
+  // Triggers one-time migration or rollback of web app link capturing
+  // preferences with respect to other types of apps on ChromeOS startup when
+  // the navigation capturing feature flag state changes.
+  void MaybeMigrateLinkCapturingPreferences();
+#endif
+
   const raw_ptr<Profile, DanglingUntriaged> profile_;
 
   const raw_ptr<WebAppProvider, DanglingUntriaged> provider_;
@@ -462,6 +478,10 @@ class WebAppPublisherHelper : public WebAppRegistrarObserver,
       media_indicator_observation_{this};
 
   apps::MediaRequests media_requests_;
+
+  base::ScopedObservation<apps::PreferredAppsListHandle,
+                          apps::PreferredAppsListHandle::Observer>
+      preferred_apps_list_observation_{this};
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
   std::map<std::string, WebAppShortcutsMenuItemInfo> shortcut_id_map_;

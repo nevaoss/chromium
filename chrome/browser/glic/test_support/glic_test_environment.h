@@ -48,6 +48,8 @@ struct GlicTestEnvironmentConfig {
   std::optional<prefs::FreStatus> fre_status = prefs::FreStatus::kCompleted;
   // If set, overrides the default result of cookie sync.
   std::optional<bool> override_cookie_sync_result;
+  // The hosted domain of the default account. Empty for consumer accounts.
+  std::string default_account_hosted_domain;
 };
 
 namespace internal {

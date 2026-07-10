@@ -12,6 +12,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/test/test_future.h"
 #include "content/public/browser/web_contents.h"
+#include "content/public/browser/web_contents_delegate.h"
 #include "content/public/common/content_client.h"
 #include "content/public/test/browser_task_environment.h"
 #include "content/public/test/test_browser_context.h"
@@ -42,6 +43,27 @@ std::unique_ptr<views::Widget> CreateWindowWidget(aura::Window* context) {
   return widget;
 }
 
+// Helper class to set the display mode of a web contents in unit tests.
+class FakeWebContentsDelegate : public content::WebContentsDelegate {
+ public:
+  FakeWebContentsDelegate() = default;
+  ~FakeWebContentsDelegate() override = default;
+
+  blink::mojom::DisplayMode GetDisplayMode(
+      const content::WebContents* source) override {
+    return display_mode_;
+  }
+
+  void set_display_mode(blink::mojom::DisplayMode display_mode) {
+    display_mode_ = display_mode;
+  }
+
+ private:
+  // `setShape` requires the unframed display mode, use that by default.
+  blink::mojom::DisplayMode display_mode_ =
+      blink::mojom::DisplayMode::kUnframed;
+};
+
 }  // namespace
 
 class IsolatedWebAppApiBridgeImplTest : public AshTestBase {
@@ -65,6 +87,7 @@ class IsolatedWebAppApiBridgeImplTest : public AshTestBase {
     // Add the `web_contents_` to `widget_` so that `GetWidget` returns it.
     widget_ = CreateWindowWidget(GetContext());
     widget_->GetNativeWindow()->AddChild(web_contents_->GetNativeView());
+    web_contents_->SetDelegate(&fake_delegate_);
   }
 
   void TearDown() override {
@@ -89,6 +112,7 @@ class IsolatedWebAppApiBridgeImplTest : public AshTestBase {
   std::unique_ptr<content::TestWebContentsFactory> web_contents_factory_;
   raw_ptr<content::WebContents> web_contents_;
   std::unique_ptr<views::Widget> widget_;
+  FakeWebContentsDelegate fake_delegate_;
 };
 
 TEST_F(IsolatedWebAppApiBridgeImplTest, SetShapeCreatesEventTargeter) {
@@ -137,6 +161,19 @@ TEST_F(IsolatedWebAppApiBridgeImplTest, SetShapeReturnsNoWindowIfNoWidget) {
   base::test::TestFuture<blink::mojom::SetShapeResult> future;
   remote->SetShape(rects, future.GetCallback());
   EXPECT_EQ(future.Get(), blink::mojom::SetShapeResult::kNoWindow);
+}
+
+TEST_F(IsolatedWebAppApiBridgeImplTest, SetShapeFailsIfWindowIsNotUnframed) {
+  mojo::Remote<blink::mojom::IsolatedWebAppApiBridge> remote;
+  IsolatedWebAppApiBridgeImpl::CreateForTesting(
+      render_frame_host(), remote.BindNewPipeAndPassReceiver());
+
+  fake_delegate_.set_display_mode(blink::mojom::DisplayMode::kStandalone);
+
+  std::vector<gfx::Rect> rects = {gfx::Rect(10, 10, 50, 50)};
+  base::test::TestFuture<blink::mojom::SetShapeResult> future;
+  remote->SetShape(rects, future.GetCallback());
+  EXPECT_EQ(future.Get(), blink::mojom::SetShapeResult::kNotUnframed);
 }
 
 }  // namespace ash

@@ -168,7 +168,7 @@ public class SendTabToSelfReceiverTest {
         onView(withId(R.id.message_primary_button)).perform(click());
 
         // Verify that the tab switcher is opened.
-        waitForLayout(mSyncTestRule.getActivity().getLayoutManager(), LayoutType.TAB_SWITCHER);
+        waitForLayout(mSyncTestRule.getActivity().getLayoutManager(), LayoutType.HUB);
 
         // Verify that the message banner goes away.
         onView(withId(R.id.message_primary_button)).check(doesNotExist());

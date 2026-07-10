@@ -30,7 +30,6 @@ class Canvas;
 }
 
 struct TabPathFlags {
-  bool force_active = false;
   TabStyle::RenderUnits render_units = TabStyle::RenderUnits::kPixels;
   bool should_paint_extension = true;
 };

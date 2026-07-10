@@ -205,7 +205,7 @@ public class IncognitoNtpOmniboxAutofocusManagerTest {
 
         // Open the Tab Switcher.
         LayoutTestUtils.startShowingAndWaitForLayout(
-                mActivityTestRule.getActivity().getLayoutManager(), LayoutType.TAB_SWITCHER, true);
+                mActivityTestRule.getActivity().getLayoutManager(), LayoutType.HUB, true);
 
         // Open a new incognito NTP.
         final Tab incognitoNtpTab =
@@ -229,7 +229,7 @@ public class IncognitoNtpOmniboxAutofocusManagerTest {
 
         // Open the Tab Switcher.
         LayoutTestUtils.startShowingAndWaitForLayout(
-                mActivityTestRule.getActivity().getLayoutManager(), LayoutType.TAB_SWITCHER, true);
+                mActivityTestRule.getActivity().getLayoutManager(), LayoutType.HUB, true);
 
         // Open first incognito NTP from Tab Switcher.
         final Tab incognitoNtpTab =

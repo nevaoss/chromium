@@ -13,6 +13,7 @@
 #include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
+#include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/omnibox/omnibox_popup_state_manager.h"
 #include "chrome/browser/ui/omnibox/omnibox_popup_view.h"
 #include "chrome/browser/ui/omnibox/omnibox_view.h"
@@ -65,6 +66,20 @@ void OmniboxPopupFullPresenter::Show() {
             delta);
       }
     }
+
+    // Forward events for a short period of time so that double clicks on the
+    // omnibox can still be captured.
+    if (GetWidget() && base::FeatureList::IsEnabled(
+                           omnibox::kWebUIOmniboxFullPopupDoubleClick)) {
+      auto* results_frame =
+          views::AsViewClass<FullWebUIOmniboxFrame>(GetResultsFrame());
+      CHECK(results_frame);
+      results_frame->SetForwardMouseEvents(true);
+      forward_events_timer_.Start(
+          FROM_HERE, base::Milliseconds(500),
+          base::BindOnce(&OmniboxPopupFullPresenter::StopForwardingEvents,
+                         base::Unretained(this)));
+    }
   }
 
   auto* controller =
@@ -81,6 +96,7 @@ void OmniboxPopupFullPresenter::Show() {
 }
 
 void OmniboxPopupFullPresenter::Hide() {
+  forward_events_timer_.Stop();
   widget_observation_.Reset();
   OmniboxPopupPresenterBase::Hide();
 }
@@ -90,6 +106,7 @@ std::string_view OmniboxPopupFullPresenter::GetPopupMetricPrefix() const {
 }
 
 void OmniboxPopupFullPresenter::WidgetDestroyed() {
+  forward_events_timer_.Stop();
   widget_observation_.Reset();
   // Update the popup state manager if widget was destroyed externally, e.g., by
   // the OS. This ensures the popup state manager stays in sync.
@@ -192,5 +209,14 @@ void OmniboxPopupFullPresenter::OnWidgetActivationChanged(views::Widget* widget,
 
     controller()->popup_state_manager()->SetPopupState(
         OmniboxPopupState::kNone);
+  }
+}
+
+void OmniboxPopupFullPresenter::StopForwardingEvents() {
+  if (GetWidget()) {
+    auto* results_frame =
+        views::AsViewClass<FullWebUIOmniboxFrame>(GetResultsFrame());
+    CHECK(results_frame);
+    results_frame->SetForwardMouseEvents(false);
   }
 }

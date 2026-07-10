@@ -704,7 +704,7 @@ ContentPasswordManagerDriver::GetAutofillAgent() {
       autofill::ContentAutofillDriver::GetForRenderFrameHost(
           render_frame_host_);
   DCHECK(autofill_driver);
-  return autofill_driver->GetAutofillAgent();
+  return autofill_driver->GetAutofillAgent(/*pass_key=*/{});
 }
 
 const mojo::AssociatedRemote<autofill::mojom::PasswordAutofillAgent>&

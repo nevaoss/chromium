@@ -232,7 +232,14 @@ def main() -> None:
     _retrieve_previous_run_info(common_args)
 
     cl_info = local_git_steps.process_local_git_data(common_args)
+    if not cl_info:
+        logging.info('No CLs found. Exiting.')
+        return
     gerrit_steps.retrieve_hashtags(common_args, cl_info)
+    gerrit_steps.retrieve_comments(common_args, cl_info)
+    total_comments = sum(len(cl.comments) for cl in cl_info)
+    logging.info('Retrieved %d comment threads.', total_comments)
+
 
 
 if __name__ == '__main__':

@@ -25,9 +25,9 @@
 #import "components/password_manager/core/browser/password_store/mock_password_store_interface.h"
 #import "components/password_manager/core/browser/password_store/password_form_converters.h"
 #import "components/password_manager/core/browser/password_store/stored_credential.h"
+#import "components/strings/grit/components_strings.h"
 #import "components/trusted_vault/trusted_vault_client.h"
 #import "components/ukm/test_ukm_recorder.h"
-#import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
 #import "ios/chrome/browser/shared/public/commands/sync_presenter_commands.h"
 #import "ios/chrome/grit/ios_strings.h"
 #import "services/metrics/public/cpp/ukm_recorder.h"
@@ -99,11 +99,8 @@ class IOSChromeSavePasswordInfoBarDelegateTest : public PlatformTest {
     ON_CALL(*account_store_, GetError)
         .WillByDefault(Return(password_manager::ActionableError::kNoError));
 
-    dispatcher_ = [[CommandDispatcher alloc] init];
     mock_sync_presenter_ =
         OCMStrictProtocolMock(@protocol(SyncPresenterCommands));
-    [dispatcher_ startDispatchingToTarget:mock_sync_presenter_
-                              forProtocol:@protocol(SyncPresenterCommands)];
 
     url_ = GURL(kUrl);
 
@@ -137,7 +134,7 @@ class IOSChromeSavePasswordInfoBarDelegateTest : public PlatformTest {
     delegate_ = std::make_unique<IOSChromeSavePasswordInfoBarDelegate>(
         kAccountToStorePassword, password_update, kSignedInAccountStoreUser,
         std::move(form_manager), ukm_source_id_, /*is_replacement=*/false,
-        dispatcher_, profile_store_.get(), account_store_.get());
+        mock_sync_presenter_, profile_store_.get(), account_store_.get());
     const int different_nav_entry_id = kNavEntryId - 1;
     delegate_->set_nav_entry_id(different_nav_entry_id);
   }
@@ -170,7 +167,7 @@ class IOSChromeSavePasswordInfoBarDelegateTest : public PlatformTest {
   // Pointer to the infobar's form manager.
   raw_ptr<password_manager::MockPasswordFormManagerForUI, DanglingUntriaged>
       form_manager_ptr_;
-  CommandDispatcher* dispatcher_;
+
   id mock_sync_presenter_;
 };
 
@@ -317,6 +314,45 @@ TEST_F(IOSChromeSavePasswordInfoBarDelegateTest,
   InitializeDelegate(/*password_update=*/true);
   EXPECT_THAT(delegate_->GetButtonLabel(ConfirmInfoBarDelegate::BUTTON_CANCEL),
               IsEmpty());
+}
+
+TEST_F(IOSChromeSavePasswordInfoBarDelegateTest,
+       GetButtonLabel_ButtonOk_WhenActionableError) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(
+      password_manager::features::kInFlowTrustedVaultKeyRetrievalIos);
+
+  InitializeDelegate(/*password_update=*/false,
+                     password_manager::ActionableError::kSignInNeeded);
+  EXPECT_EQ(l10n_util::GetStringUTF16(IDS_CONTINUE),
+            delegate_->GetButtonLabel(ConfirmInfoBarDelegate::BUTTON_OK));
+}
+
+TEST_F(IOSChromeSavePasswordInfoBarDelegateTest,
+       GetButtonLabel_ButtonCancel_WhenActionableError) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(
+      password_manager::features::kInFlowTrustedVaultKeyRetrievalIos);
+
+  InitializeDelegate(/*password_update=*/false,
+                     password_manager::ActionableError::kSignInNeeded);
+  EXPECT_THAT(delegate_->GetButtonLabel(ConfirmInfoBarDelegate::BUTTON_CANCEL),
+              IsEmpty());
+}
+
+TEST_F(IOSChromeSavePasswordInfoBarDelegateTest,
+       GetButtonLabel_WhenActionableErrorAndFeatureDisabled) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndDisableFeature(
+      password_manager::features::kInFlowTrustedVaultKeyRetrievalIos);
+
+  InitializeDelegate(/*password_update=*/false,
+                     password_manager::ActionableError::kSignInNeeded);
+  EXPECT_EQ(l10n_util::GetStringUTF16(IDS_IOS_PASSWORD_MANAGER_SAVE_BUTTON),
+            delegate_->GetButtonLabel(ConfirmInfoBarDelegate::BUTTON_OK));
+  EXPECT_EQ(
+      l10n_util::GetStringUTF16(IDS_IOS_PASSWORD_MANAGER_MODAL_BLOCK_BUTTON),
+      delegate_->GetButtonLabel(ConfirmInfoBarDelegate::BUTTON_CANCEL));
 }
 
 TEST_F(IOSChromeSavePasswordInfoBarDelegateTest, Accept_WhenSave) {
@@ -881,6 +917,26 @@ TEST_F(IOSChromeSavePasswordInfoBarDelegateTest,
 }
 
 TEST_F(IOSChromeSavePasswordInfoBarDelegateTest,
+       Accept_ActionableError_NeedsPassphrase) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(
+      password_manager::features::kInFlowTrustedVaultKeyRetrievalIos);
+
+  InitializeDelegate(
+      /*password_update=*/false,
+      password_manager::ActionableError::kNeedsPassphrase);
+
+  // Verify that the password manager does NOT save.
+  EXPECT_CALL(*form_manager_ptr_, Save).Times(0);
+
+  OCMExpect([mock_sync_presenter_
+      showSyncPassphraseSettingsWithDismissalCompletion:[OCMArg any]]);
+
+  // Tap on "Accept".
+  EXPECT_FALSE(delegate_->Accept());
+}
+
+TEST_F(IOSChromeSavePasswordInfoBarDelegateTest,
        Accept_ActionableError_NoError) {
   InitializeDelegate(
       /*password_update=*/false, password_manager::ActionableError::kNoError);
@@ -908,7 +964,7 @@ TEST_F(IOSChromeSavePasswordInfoBarDelegateTest,
   OCMExpect([mock_sync_presenter_
       showTrustedVaultReauthForFetchKeysWithTrigger:
           trusted_vault::TrustedVaultUserActionTriggerForUMA::
-              kPasswordManagerSettings
+              kPasswordSavePrompt
                                          completion:[OCMArg any]]);
 
   // Tap on "Accept".

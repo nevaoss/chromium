@@ -365,12 +365,13 @@ IN_PROC_BROWSER_TEST_P(TwoClientWebAppsSyncTest, SyncFaviconOnly) {
     app_id = installObserver.Wait();
 #else
     // Install as DIY App.
-    SetAutoAcceptDiyAppsInstallDialogForTesting(/*auto_accept=*/true);
+    base::AutoReset<web_app::InstallDialogTestResponse> auto_accept_diy =
+        web_app::SetPwaInstallationAutoRespondForTesting(
+            web_app::InstallDialogTestResponse::kAcceptAndLaunch);
     WebAppTestInstallObserver installObserver(sourceProfile);
     installObserver.BeginListening();
     CHECK(chrome::ExecuteCommand(browser, IDC_INSTALL_PWA));
     app_id = installObserver.Wait();
-    SetAutoAcceptDiyAppsInstallDialogForTesting(/*auto_accept=*/false);
 #endif  // BUILDFLAG(IS_CHROMEOS)
     chrome::CloseWindow(browser);
   }

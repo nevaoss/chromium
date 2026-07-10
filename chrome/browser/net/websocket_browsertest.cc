@@ -66,6 +66,7 @@
 #include "net/test/embedded_test_server/install_default_websocket_handlers.h"
 #include "net/test/embedded_test_server/register_basic_auth_handler.h"
 #include "net/traffic_annotation/network_traffic_annotation_test_helper.h"
+#include "services/network/public/cpp/constants.h"
 #include "services/network/public/cpp/features.h"
 #include "services/network/public/cpp/network_switches.h"
 #include "services/network/public/mojom/network_context.mojom.h"
@@ -182,7 +183,7 @@ class WebSocketBrowserTest : public InProcessBrowserTest {
                                              frame->GetRoutingID())),
         /*auth_handler=*/mojo::NullRemote(), std::move(header_client),
         /*throttling_profile_id=*/std::nullopt,
-        /*network_restrictions_id=*/std::nullopt);
+        /*network_restrictions_id=*/network::GetTestNetworkRestrictionsId());
   }
 
   void SetBlockThirdPartyCookies(bool blocked) {
@@ -1063,7 +1064,8 @@ class TestTrustedHeaderClient : public network::mojom::TrustedHeaderClient {
       : quit_(std::move(quit)) {}
 
   // network::mojom::TrustedHeaderClient:
-  void OnBeforeSendHeaders(const net::HttpRequestHeaders& headers,
+  void OnBeforeSendHeaders(const GURL& request_url,
+                           const net::HttpRequestHeaders& headers,
                            OnBeforeSendHeadersCallback callback) override {
     std::move(callback).Run(net::OK, std::nullopt);
   }

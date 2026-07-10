@@ -78,8 +78,8 @@ bool AnchorPositionScrollData::IsActive() const {
   return anchored_element_->GetAnchorPositionScrollData() == this;
 }
 
-PhysicalOffset
-AnchorPositionScrollData::SpeculativeDefaultAnchorRememberedOffset() const {
+PhysicalOffset AnchorPositionScrollData::GetFilteredRememberedOffset(
+    RememberedScrollOffsetType type) const {
   OutOfFlowData* out_of_flow_data = anchored_element_->GetOutOfFlowData();
 
   const OutOfFlowData::RememberedScrollOffsets* offsets =
@@ -87,30 +87,25 @@ AnchorPositionScrollData::SpeculativeDefaultAnchorRememberedOffset() const {
           ? out_of_flow_data->GetSpeculativeRememberedScrollOffsets()
           : nullptr;
 
-  if (offsets) {
-    return offsets
-        ->GetOffsetForAnchor(default_anchor_adjustment_data_.anchor_element)
-        .value_or(PhysicalOffset());
+  if (!offsets) {
+    return PhysicalOffset();
   }
-  return PhysicalOffset();
+
+  return offsets
+      ->GetOffset(default_anchor_adjustment_data_.anchor_element, type,
+                  NeedsScrollAdjustmentInX(), NeedsScrollAdjustmentInY())
+      .value_or(PhysicalOffset());
+}
+
+PhysicalOffset
+AnchorPositionScrollData::SpeculativeDefaultAnchorRememberedOffset() const {
+  return GetFilteredRememberedOffset(RememberedScrollOffsetType::kLayout);
 }
 
 PhysicalOffset AnchorPositionScrollData::
     SpeculativeDefaultAnchorRememberedOffsetIncludingChained() const {
-  OutOfFlowData* out_of_flow_data = anchored_element_->GetOutOfFlowData();
-
-  const OutOfFlowData::RememberedScrollOffsets* offsets =
-      out_of_flow_data
-          ? out_of_flow_data->GetSpeculativeRememberedScrollOffsets()
-          : nullptr;
-
-  if (offsets) {
-    return offsets
-        ->GetOffsetForAnchorForRangeAdjustment(
-            default_anchor_adjustment_data_.anchor_element)
-        .value_or(PhysicalOffset());
-  }
-  return PhysicalOffset();
+  return GetFilteredRememberedOffset(
+      RememberedScrollOffsetType::kRangeAdjustment);
 }
 
 // static
@@ -434,7 +429,7 @@ void AnchorPositionScrollData::Trace(Visitor* visitor) const {
   visitor->Trace(position_visibility_observer_);
   visitor->Trace(dependent_anchors_);
   PostLayoutSnapshotClient::Trace(visitor);
-  ElementRareDataField::Trace(visitor);
+  NodeRareDataField::Trace(visitor);
 }
 
 }  // namespace blink

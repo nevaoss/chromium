@@ -11,6 +11,7 @@
 #import "ios/chrome/browser/location_bar/ui_bundled/location_bar_consumer.h"
 #import "ios/chrome/browser/orchestrator/ui_bundled/location_bar_animatee.h"
 #import "ios/chrome/browser/shared/public/commands/omnibox_commands.h"
+#import "ios/chrome/browser/shared/ui/util/uikit_ui_util.h"
 
 @protocol ActivityServiceCommands;
 @protocol BadgeViewVisibilityDelegate;
@@ -94,9 +95,11 @@ class Tracker;
 // the omnibox - the editing and the non-editing states. In the editing state,
 // the omnibox textfield is displayed; in the non-editing state, the current
 // location is displayed.
-@interface LocationBarViewController : UIViewController <FullscreenUIElement,
-                                                         LocationBarAnimatee,
-                                                         LocationBarConsumer>
+@interface LocationBarViewController
+    : UIViewController <FullscreenUIElement,
+                        LocationBarAnimatee,
+                        LocationBarConsumer,
+                        ContextMenuTransitionStateProviding>
 
 @property(nonatomic, assign) BOOL incognito;
 

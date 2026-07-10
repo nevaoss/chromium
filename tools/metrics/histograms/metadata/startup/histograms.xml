@@ -58,6 +58,8 @@ chromium-metrics-reviews@google.com.
 
 <variants name="StartupType">
   <variant name="NewTabPage" summary="Chrome starts into the New Tab Page."/>
+  <variant name="NewTabPageWebUi"
+      summary="Chrome starts into the WebUI New Tab Page."/>
 </variants>
 
 <histogram name="Startup.AfterStartupTaskCount" units="units"
@@ -517,6 +519,7 @@ chromium-metrics-reviews@google.com.
   </summary>
   <token key="FirstDrawSurface">
     <variant name="NewTabPage"/>
+    <variant name="NewTabPageWebUi"/>
     <variant name="SearchActivity"/>
   </token>
 </histogram>
@@ -1147,7 +1150,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Startup.GPU.LoadTime.ApplicationStartToGpuInitialized"
-    units="ms" expires_after="2026-10-11">
+    units="ms" expires_after="2026-12-13">
   <owner>spvm@chromium.org</owner>
   <owner>etienneb@chromium.org</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -1171,7 +1174,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Startup.GPU.LoadTime.ChromeMainToGpuInitialized" units="ms"
-    expires_after="2026-10-11">
+    expires_after="2026-12-13">
   <owner>spvm@chromium.org</owner>
   <owner>etienneb@chromium.org</owner>
   <improvement direction="LOWER_IS_BETTER"/>

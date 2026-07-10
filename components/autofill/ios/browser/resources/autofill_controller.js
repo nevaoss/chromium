@@ -251,11 +251,9 @@ function controlElementInputListener_(evt) {
  * |forceFillFieldID| will always be filled even if non-empty.
  *
  * @param {!FormData} data Autofill data to fill in.
- * @param {number} forceFillFieldID Identified field will always be
- *     filled even if non-empty. May be RENDERER_ID_NOT_SET.
  * @return {string} JSON encoded list of renderer IDs of filled elements.
  */
-function fillForm(data, forceFillFieldID) {
+function fillForm(data) {
   // Inject CSS to style the autofilled elements with a yellow background.
   if (!styleInjected) {
     const style = document.createElement('style');
@@ -290,7 +288,7 @@ function fillForm(data, forceFillFieldID) {
     //    always autofilled; see AutofillManager::FillOrPreviewDataModelForm().
     // c) The "value" or "placeholder" attributes match the value, if any; or
     // d) The value has not been set by the user.
-    const shouldBeForceFilled = fieldId === forceFillFieldID.toString();
+    const shouldBeForceFilled = element === document.activeElement;
     if (element.value && fieldWasEditedByUser(element) &&
         !sanitizedFieldIsEmpty(element.value) && !shouldBeForceFilled &&
         !inferenceUtil.isSelectElement(element) &&

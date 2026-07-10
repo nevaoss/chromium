@@ -170,6 +170,7 @@
 #include "services/network/net_log_exporter.h"
 #include "services/network/network_qualities_pref_delegate.h"
 #include "services/network/network_service.h"
+#include "services/network/public/cpp/constants.h"
 #include "services/network/public/cpp/features.h"
 #include "services/network/public/cpp/network_service_buildflags.h"
 #include "services/network/public/cpp/resolve_host_client_base.h"
@@ -6063,7 +6064,7 @@ TEST_F(NetworkContextTest, PreconnectOne) {
 
   network_context->PreconnectSockets(
       1, test_server.base_url(), network::mojom::CredentialsMode::kInclude,
-      net::NetworkAnonymizationKey(), /*network_restrictions_id=*/std::nullopt,
+      net::NetworkAnonymizationKey(), GetTestNetworkRestrictionsId(),
       net::MutableNetworkTrafficAnnotationTag(TRAFFIC_ANNOTATION_FOR_TESTS),
       std::nullopt, mojo::NullRemote());
   connection_listener.WaitForAcceptedConnections(1u);
@@ -6080,18 +6081,18 @@ TEST_F(NetworkContextTest, PreconnectDifferentCredentialsMode) {
 
   network_context->PreconnectSockets(
       1, test_server.base_url(), network::mojom::CredentialsMode::kOmit,
-      net::NetworkAnonymizationKey(), /*network_restrictions_id=*/std::nullopt,
+      net::NetworkAnonymizationKey(), GetTestNetworkRestrictionsId(),
       net::MutableNetworkTrafficAnnotationTag(TRAFFIC_ANNOTATION_FOR_TESTS),
       std::nullopt, mojo::NullRemote());
   network_context->PreconnectSockets(
       1, test_server.base_url(), network::mojom::CredentialsMode::kInclude,
-      net::NetworkAnonymizationKey(), /*network_restrictions_id=*/std::nullopt,
+      net::NetworkAnonymizationKey(), GetTestNetworkRestrictionsId(),
       net::MutableNetworkTrafficAnnotationTag(TRAFFIC_ANNOTATION_FOR_TESTS),
       std::nullopt, mojo::NullRemote());
   network_context->PreconnectSockets(
       1, test_server.base_url(),
       network::mojom::CredentialsMode::kOmitBug_775438_Workaround,
-      net::NetworkAnonymizationKey(), /*network_restrictions_id=*/std::nullopt,
+      net::NetworkAnonymizationKey(), GetTestNetworkRestrictionsId(),
       net::MutableNetworkTrafficAnnotationTag(TRAFFIC_ANNOTATION_FOR_TESTS),
       std::nullopt, mojo::NullRemote());
 
@@ -6146,7 +6147,7 @@ TEST_F(NetworkContextTest, PreconnectHSTS) {
 
     network_context->PreconnectSockets(
         1, server_http_url, network::mojom::CredentialsMode::kOmit,
-        network_anonymization_key, /*network_restrictions_id=*/std::nullopt,
+        network_anonymization_key, GetTestNetworkRestrictionsId(),
         net::MutableNetworkTrafficAnnotationTag(TRAFFIC_ANNOTATION_FOR_TESTS),
         std::nullopt, mojo::NullRemote());
     connection_listener.WaitForAcceptedConnections(1u);
@@ -6159,7 +6160,7 @@ TEST_F(NetworkContextTest, PreconnectHSTS) {
         server_http_url.GetHost(), expiry, false);
     network_context->PreconnectSockets(
         1, server_http_url, network::mojom::CredentialsMode::kOmit,
-        network_anonymization_key, /*network_restrictions_id=*/std::nullopt,
+        network_anonymization_key, GetTestNetworkRestrictionsId(),
         net::MutableNetworkTrafficAnnotationTag(TRAFFIC_ANNOTATION_FOR_TESTS),
         std::nullopt, mojo::NullRemote());
     connection_listener.WaitForAcceptedConnections(1u);
@@ -6181,7 +6182,7 @@ TEST_F(NetworkContextTest, PreconnectZero) {
 
   network_context->PreconnectSockets(
       0, test_server.base_url(), network::mojom::CredentialsMode::kInclude,
-      net::NetworkAnonymizationKey(), /*network_restrictions_id=*/std::nullopt,
+      net::NetworkAnonymizationKey(), GetTestNetworkRestrictionsId(),
       net::MutableNetworkTrafficAnnotationTag(TRAFFIC_ANNOTATION_FOR_TESTS),
       std::nullopt, mojo::NullRemote());
   base::RunLoop().RunUntilIdle();
@@ -6205,7 +6206,7 @@ TEST_F(NetworkContextTest, PreconnectTwo) {
 
   network_context->PreconnectSockets(
       2, test_server.base_url(), network::mojom::CredentialsMode::kInclude,
-      net::NetworkAnonymizationKey(), /*network_restrictions_id=*/std::nullopt,
+      net::NetworkAnonymizationKey(), GetTestNetworkRestrictionsId(),
       net::MutableNetworkTrafficAnnotationTag(TRAFFIC_ANNOTATION_FOR_TESTS),
       std::nullopt, mojo::NullRemote());
   connection_listener.WaitForAcceptedConnections(2u);
@@ -6226,7 +6227,7 @@ TEST_F(NetworkContextTest, PreconnectFour) {
 
   network_context->PreconnectSockets(
       4, test_server.base_url(), network::mojom::CredentialsMode::kInclude,
-      net::NetworkAnonymizationKey(), /*network_restrictions_id=*/std::nullopt,
+      net::NetworkAnonymizationKey(), GetTestNetworkRestrictionsId(),
       net::MutableNetworkTrafficAnnotationTag(TRAFFIC_ANNOTATION_FOR_TESTS),
       std::nullopt, mojo::NullRemote());
 
@@ -6252,7 +6253,7 @@ TEST_F(NetworkContextTest, PreconnectMax) {
 
   network_context->PreconnectSockets(
       76, test_server.base_url(), network::mojom::CredentialsMode::kInclude,
-      net::NetworkAnonymizationKey(), /*network_restrictions_id=*/std::nullopt,
+      net::NetworkAnonymizationKey(), GetTestNetworkRestrictionsId(),
       net::MutableNetworkTrafficAnnotationTag(TRAFFIC_ANNOTATION_FOR_TESTS),
       std::nullopt, mojo::NullRemote());
 
@@ -6292,12 +6293,12 @@ TEST_F(NetworkContextTest, PreconnectNetworkIsolationKey) {
   const auto kNak2 = net::NetworkAnonymizationKey::CreateSameSite(kSiteBar);
   network_context->PreconnectSockets(
       1, test_server.base_url(), network::mojom::CredentialsMode::kOmit, kKey1,
-      /*network_restrictions_id=*/std::nullopt,
+      GetTestNetworkRestrictionsId(),
       net::MutableNetworkTrafficAnnotationTag(TRAFFIC_ANNOTATION_FOR_TESTS),
       std::nullopt, mojo::NullRemote());
   network_context->PreconnectSockets(
       2, test_server.base_url(), network::mojom::CredentialsMode::kOmit, kKey2,
-      /*network_restrictions_id=*/std::nullopt,
+      GetTestNetworkRestrictionsId(),
       net::MutableNetworkTrafficAnnotationTag(TRAFFIC_ANNOTATION_FOR_TESTS),
       std::nullopt, mojo::NullRemote());
   connection_listener.WaitForAcceptedConnections(3u);
@@ -7134,7 +7135,8 @@ class TestURLLoaderHeaderClient : public mojom::TrustedURLLoaderHeaderClient {
     TestHeaderClient& operator=(const TestHeaderClient&) = delete;
 
     // network::mojom::TrustedHeaderClient:
-    void OnBeforeSendHeaders(const net::HttpRequestHeaders& headers,
+    void OnBeforeSendHeaders(const GURL& request_url,
+                             const net::HttpRequestHeaders& headers,
                              OnBeforeSendHeadersCallback callback) override {
       auto new_headers = headers;
       for (const auto& [name, value] : request_headers_to_set_) {
@@ -7430,7 +7432,8 @@ class HangingTestURLLoaderHeaderClient
     TestHeaderClient& operator=(const TestHeaderClient&) = delete;
 
     // network::mojom::TrustedHeaderClient:
-    void OnBeforeSendHeaders(const net::HttpRequestHeaders& headers,
+    void OnBeforeSendHeaders(const GURL& request_url,
+                             const net::HttpRequestHeaders& headers,
                              OnBeforeSendHeadersCallback callback) override {
       saved_request_headers_ = headers;
       saved_on_before_send_headers_callback_ = std::move(callback);
@@ -10042,10 +10045,6 @@ TEST_F(NetworkContextTest, PreconnectRequestWithNetworkRestrictionsID) {
             0);
 }
 
-// ExemptUrlFromNetworkRevocationForNonce(exempted_url, nonce) exempts
-// future requests that have the same "url without filename" as `exempted_url`
-// under the nonce `nonce`.
-
 TEST_F(NetworkContextTest, ClearNetworkRestrictionsTest) {
   std::unique_ptr<NetworkContext> network_context =
       CreateContextWithParams(CreateNetworkContextParamsForTesting());
@@ -12265,7 +12264,7 @@ TEST_F(EarlyCookieLoadOnPreconnectTest, Basic) {
 
   network_context->PreconnectSockets(
       1, test_server.base_url(), network::mojom::CredentialsMode::kInclude,
-      net::NetworkAnonymizationKey(), /*network_restrictions_id=*/std::nullopt,
+      net::NetworkAnonymizationKey(), GetTestNetworkRestrictionsId(),
       net::MutableNetworkTrafficAnnotationTag(TRAFFIC_ANNOTATION_FOR_TESTS),
       std::nullopt, mojo::NullRemote());
 

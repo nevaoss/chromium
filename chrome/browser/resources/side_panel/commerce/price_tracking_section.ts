@@ -5,8 +5,8 @@
 import '/strings.m.js';
 import 'chrome://resources/cr_elements/cr_toggle/cr_toggle.js';
 
-import type {PriceTrackingBrowserProxy} from '//resources/cr_components/commerce/price_tracking_browser_proxy.js';
-import {PriceTrackingBrowserProxyImpl} from '//resources/cr_components/commerce/price_tracking_browser_proxy.js';
+import type {BrowserProxy as PriceTrackingBrowserProxy} from '//resources/cr_components/commerce/price_tracking.mojom-webui.js';
+import {browserProxyFactory as priceTrackingBrowserProxyFactory} from '//resources/cr_components/commerce/price_tracking.mojom-webui.js';
 import type {BookmarkProductInfo, ProductInfo} from '//resources/cr_components/commerce/shared.mojom-webui.js';
 import type {PriceInsightsInfo} from '//resources/cr_components/commerce/shopping_service.mojom-webui.js';
 import {PriceInsightsInfo_PriceBucket} from '//resources/cr_components/commerce/shopping_service.mojom-webui.js';
@@ -82,7 +82,7 @@ export class PriceTrackingSectionElement extends CrLitElement {
 
   private listenerIds_: number[] = [];
   private priceTrackingProxy_: PriceTrackingBrowserProxy =
-      PriceTrackingBrowserProxyImpl.getInstance();
+      priceTrackingBrowserProxyFactory.getInstance();
 
   override connectedCallback() {
     super.connectedCallback();

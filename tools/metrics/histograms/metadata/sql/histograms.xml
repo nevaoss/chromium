@@ -104,6 +104,19 @@ chromium-metrics-reviews@google.com.
   <variant name="Web" summary="Web"/>
 </variants>
 
+<histogram name="Sql.Database.DatabaseCloseTime.{DatabaseTag}"
+    units="microseconds" expires_after="2026-11-29">
+  <owner>jpgravel@chromium.org</owner>
+  <owner>chrome-catan@google.com</owner>
+  <summary>
+    Reports the time spent in Database::CloseInternal, in microseconds, when
+    closing the {DatabaseTag} database.
+
+    Only reported for clients with high-resolution clocks.
+  </summary>
+  <token key="DatabaseTag" variants="DatabaseTag"/>
+</histogram>
+
 <histogram name="Sql.Database.DatabaseOpenTime.{DatabaseTag}"
     units="microseconds" expires_after="2026-11-29">
   <owner>olivierli@chromium.org</owner>

@@ -597,7 +597,6 @@ Du kan til enhver tid tjekke dine adgangskoder i <ph name="GOOGLE_PASSWORD_MANAG
 <translation id="1433478348197382180">Læsetilstand</translation>
 <translation id="1433980411933182122">Opstart</translation>
 <translation id="1434659328474177625"><ph name="ISSUER" /> har verificeret din mailadresse</translation>
-<translation id="1434696352799406980">Denne funktion nulstiller din opstartsside, siden Ny fane, din søgemaskine og dine fastgjorte faner. Den deaktiverer også alle udvidelser og rydder midlertidige data, såsom cookies. Dine bogmærker, din historik og dine gemte adgangskoder slettes ikke.</translation>
 <translation id="1434886155212424586">Startsiden er siden Ny fane</translation>
 <translation id="1435940442311036198">Brug en adgangsnøgle på en anden enhed</translation>
 <translation id="1436390408194692385">Gyldig i <ph name="TICKET_TIME_LEFT" /></translation>
@@ -2576,6 +2575,7 @@ Du kan administrere indstillingerne for denne konto ved at installere Family Lin
 <translation id="2822551631199737692">Kameraet er i brug</translation>
 <translation id="2822634587701817431">Formindsk/udvid</translation>
 <translation id="2824942875887026017"><ph name="IDS_SHORT_PRODUCT_NAME" /> anvender proxyindstillinger fra din administrator</translation>
+<translation id="2825200993288778739">Opret dine egne, eller tilføj fra færdighedssamlingen</translation>
 <translation id="282525059261716597">Kommandolinje:</translation>
 <translation id="2825758591930162672">Emnets offentlige nøgle</translation>
 <translation id="2826576843404243001">Bliv advaret, før du besøger et website, som ikke understøtter sikre forbindelser. Du kan ikke ændre denne indstilling, fordi du har aktiveret Avanceret beskyttelse.</translation>
@@ -3716,7 +3716,6 @@ Du kan administrere indstillingerne for denne konto ved at installere Family Lin
 <translation id="366484203224589850"><ph name="TASK_TITLE" />: Gemini har arbejdet på denne opgave i lang tid og stopper snart for at spare på batteriet</translation>
 <translation id="3664911592976620204">{NUM_OTHER_MEMBERS,plural, =0{Deltag i fanegruppen med <ph name="OWNER_FIRST_NAME" />}=1{Deltag i fanegruppen med <ph name="OWNER_FIRST_NAME" /> og # anden}one{Deltag i fanegruppen med <ph name="OWNER_FIRST_NAME" /> og # anden}other{Deltag i fangegruppen med <ph name="OWNER_FIRST_NAME" /> og # andre}}</translation>
 <translation id="3665301845536101715">Åbn i sidepanel</translation>
-<translation id="3665589677786828986">Chrome har registreret, at nogle af dine indstillinger er blevet ændret af et andet program, og har derfor gendannet standardindstillingerne.</translation>
 <translation id="3665918214153961651">Uploader fil</translation>
 <translation id="3666196264870170605">Dump for fejlretning af Intel WiFi NIC'er</translation>
 <translation id="3666971425390608309">Download af <ph name="FILE_NAME" /> er sat på pause.</translation>
@@ -4653,6 +4652,7 @@ Vil du starte <ph name="CONTROL_PANEL_APPLET_NAME" />?</translation>
 <translation id="4321179778687042513">ctrl</translation>
 <translation id="432160826079505197">Vis <ph name="FILE_NAME" /> i Finder</translation>
 <translation id="4322394346347055525">Luk alle andre faner</translation>
+<translation id="4322400254469690320">Find dine <ph name="FILENAME" /> i mappen <ph name="FEATURE_NAME" /></translation>
 <translation id="4324577459193912240">Filen er ufuldstændig</translation>
 <translation id="4325433082696797523">Lagerplads og strøm</translation>
 <translation id="4325515113816851466">Din forælders valg gælder ikke, når du er logget ud</translation>
@@ -5003,7 +5003,6 @@ Vil du starte <ph name="CONTROL_PANEL_APPLET_NAME" />?</translation>
 <translation id="4580596421317071374">Adgangskoder gemmes i <ph name="GOOGLE_PASSWORD_MANAGER" /> på denne enhed.</translation>
 <translation id="4580939929828762295">Beskyt dine oplysninger med Google Adgangskodeadministrator</translation>
 <translation id="4582297591746054421">Websites læser normalt din udklipsholder for at kunne bevare formatet af den tekst, du kopierede</translation>
-<translation id="4582563038311694664">Nulstil alle indstillinger</translation>
 <translation id="4584094413232466841">Vil du fjerne disse oplysninger fra autofyld i Chrome?</translation>
 <translation id="4584770411839426377">Vindue</translation>
 <translation id="4584836561445313300">Din organisation kan se og administrere eksisterende browserdata, f.eks. adgangskoder</translation>
@@ -6648,6 +6647,7 @@ Flere kontakter kan tildeles denne handling.</translation>
 <translation id="5826993284769733527">Halvtransparent</translation>
 <translation id="5827266244928330802">Safari</translation>
 <translation id="5827591412833386477">Vis websites i samme gruppe</translation>
+<translation id="5827835011646404677">Færdigheder gemmes på din Google-konto</translation>
 <translation id="5828181959764767444">Solnedgang</translation>
 <translation id="5828545842856466741">Tilføj profil...</translation>
 <translation id="5828633471261496623">Udskriver...</translation>
@@ -10092,7 +10092,6 @@ Opbevar din nøglefil på et sikkert sted. Du skal bruge den til at oprette nye 
 <translation id="8327386430364625757">Matematisk skrifttype</translation>
 <translation id="8327490658947427005">Ikke tilgængelig på <ph name="LANGUAGE" /></translation>
 <translation id="8327544198829180337">Luk denne visning</translation>
-<translation id="8327676037044516220">Tilladelser og indstillinger for indhold</translation>
 <translation id="8328228852664998535">Hvis du fortsætter, slettes dine adgangskoder, adgangsnøgler og andre data permanent fra <ph name="BRAND" />. Alle konti, du har oprettet til websites eller apps, slettes ikke.</translation>
 <translation id="8328777765163860529">Luk alt</translation>
 <translation id="8330617762701840933">Liste over de websites, der omdirigerer til en alternativ browser.</translation>
@@ -10914,7 +10913,6 @@ Dette kan omfatte oplysninger om installeret software, filer, din browser, enhed
 <translation id="8925458182817574960">&amp;Indstillinger</translation>
 <translation id="8926389886865778422">Spørg ikke igen</translation>
 <translation id="8926555406617248399">Fanerne er skjult</translation>
-<translation id="892706138619340876">Nogle indstillinger blev nulstillet</translation>
 <translation id="8927438609932588163">Tillad, at websites gemmer data på din enhed</translation>
 <translation id="8929696694736010839">Kun for den aktuelle inkognitosession</translation>
 <translation id="8929738682246584251">Lup til/fra</translation>
@@ -11223,6 +11221,7 @@ Dette kan omfatte oplysninger om installeret software, filer, din browser, enhed
 <translation id="9130015405878219958">Den angivne tilstand er ugyldig.</translation>
 <translation id="9130135798965366513">For at fortsætte deler <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> <ph name="FIELDS_STRING" /> med dette website. Se dette websites <ph name="BEGIN_LINK1" />privatlivspolitik<ph name="END_LINK1" /> og <ph name="BEGIN_LINK2" />servicevilkår<ph name="END_LINK2" />.</translation>
 <translation id="9130364135697530260">Indlejret indhold på dette website kan bruge oplysninger, som websitet har gemt om dig</translation>
+<translation id="9130857050314385402">Fanetitler og -webadresser sendes til Google, når du bruger færdigheden</translation>
 <translation id="9131209053278896908">Blokerede websites vises her</translation>
 <translation id="9131487537093447019">Sende beskeder til og modtage beskeder fra Bluetooth-enheder.</translation>
 <translation id="9133568201369135151">Indsamlingen af diagnosticeringsdata er gennemført. Nogle af dine personlige oplysninger medtages i disse data.</translation>

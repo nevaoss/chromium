@@ -116,11 +116,6 @@ DECLARE_RESOURCE_ID(IDR_ANDROID_AUTOFILL_OFFER_TAG_GREEN,
 DECLARE_RESOURCE_ID(IDR_ANDROID_AUTOFILL_ANDROID_MESSAGES,
                     R.drawable.ic_android_messages_icon)
 
-// Note that R.drawable.plus_addresses_logo is always present, but the icon in
-// branded builds is different from the one in unbranded builds,
-DECLARE_RESOURCE_ID(IDR_AUTOFILL_PLUS_ADDRESS,
-                    R.drawable.ic_plus_addresses_logo_16dp)
-
 // Home and work icons.
 DECLARE_RESOURCE_ID(IDR_ANDROID_AUTOFILL_HOME, R.drawable.ic_home_24dp)
 DECLARE_RESOURCE_ID(IDR_ANDROID_AUTOFILL_WORK, R.drawable.work_logo)

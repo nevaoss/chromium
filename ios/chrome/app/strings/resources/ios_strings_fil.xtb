@@ -117,6 +117,7 @@
 <translation id="1373120905936431262">Mag-upload ng larawang ire-remix gamit ang Nano Banana</translation>
 <translation id="1377508275003315939">Mga Password</translation>
 <translation id="1381022135873211423">{count,plural, =1{{position} sa {count} address}one{{position} sa {count} address}other{{position} sa {count} na address}}</translation>
+<translation id="13813615483058219">Nagkaproblema. Suriin ang iyong koneksyon sa internet, lakasan ang volume mo, o subukan ulit.</translation>
 <translation id="1383876407941801731">Hanapin</translation>
 <translation id="138618066238211776">Magpatuloy bilang <ph name="USER_NAME" /></translation>
 <translation id="138692594145659985">Mga opsyon para mag-save ng card</translation>
@@ -912,7 +913,6 @@
 <translation id="417138788035229076">Pamahalaan ang grupo</translation>
 <translation id="4172051516777682613">Palaging ipakita</translation>
 <translation id="417273154673973994">{count,plural, =1{1 grupo ng tab ang isinara at na-save}one{{count} grupo ng tab ang isinara at na-save}other{{count} na grupo ng tab ang isinara at na-save}}</translation>
-<translation id="417612446554534067">Ipadala sa Iyong Mga Device</translation>
 <translation id="4180726336228139707">Sa device lang na ito</translation>
 <translation id="4181841719683918333">Mga Wika</translation>
 <translation id="4183350924949589798">Higit pang seguridad?</translation>
@@ -1136,6 +1136,7 @@
 <translation id="4896467949657706481">Isinara ang mga tab; na-sign out ka</translation>
 <translation id="4911042367886397055">Maligayang pagbabalik, <ph name="USER_NAME" />!</translation>
 <translation id="4913626501929406101">Puwede kang secure na mag-share ng kopya ng iyong password sa isang tao sa grupo ng pamilya mo. <ph name="BEGIN_LINK" />Matuto pa<ph name="END_LINK" /></translation>
+<translation id="4916679969857390442">Lens</translation>
 <translation id="4917025507570489430">Magagamit mo ang kasalukuyang data mula sa pag-browse kapag naka-sign in ka bilang <ph name="USER_EMAIL" />. Posibleng makita ng iyong organisasyon ang data na ito.</translation>
 <translation id="4918086044614829423">Tanggapin</translation>
 <translation id="4930714375720679147">I-on</translation>

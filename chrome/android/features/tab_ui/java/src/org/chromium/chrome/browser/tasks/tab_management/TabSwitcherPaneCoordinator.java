@@ -70,6 +70,7 @@ import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabId;
 import org.chromium.chrome.browser.tab_ui.RecyclerViewPosition;
 import org.chromium.chrome.browser.tab_ui.TabContentManager;
+import org.chromium.chrome.browser.tab_ui.TabListMode;
 import org.chromium.chrome.browser.tab_ui.TabSwitcherCustomViewManager;
 import org.chromium.chrome.browser.tab_ui.TabSwitcherGroupSuggestionService;
 import org.chromium.chrome.browser.tab_ui.TabSwitcherGroupSuggestionService.SuggestionUiEvent;
@@ -81,7 +82,6 @@ import org.chromium.chrome.browser.tasks.tab_management.TabGridContextMenuCoordi
 import org.chromium.chrome.browser.tasks.tab_management.TabGridDialogMediator.DialogController;
 import org.chromium.chrome.browser.tasks.tab_management.TabGridItemLongPressOrchestrator.CancelLongPressTabItemEventListener;
 import org.chromium.chrome.browser.tasks.tab_management.TabListCoordinator.DragObserver;
-import org.chromium.chrome.browser.tasks.tab_management.TabListCoordinator.TabListMode;
 import org.chromium.chrome.browser.tasks.tab_management.TabListEditorCoordinator.TabListEditorController;
 import org.chromium.chrome.browser.tasks.tab_management.TabListMediator.TabListItemOnClickListenerProvider;
 import org.chromium.chrome.browser.tasks.tab_management.TabSwitcherMessageManager.MessageUpdateObserver;
@@ -332,7 +332,7 @@ public class TabSwitcherPaneCoordinator implements BackPressHandler {
             mTabBookmarkerSupplier = tabBookmarkerSupplier;
             mHubSearchBoxVisibilitySupplier = hubSearchBoxVisibilitySupplier;
 
-            assert mode != TabListMode.STRIP : "TabListMode.STRIP not supported.";
+            assert mode != TabListMode.BOTTOM_STRIP : "TabListMode.BOTTOM_STRIP not supported.";
 
             ViewGroup coordinatorView = activity.findViewById(R.id.coordinator);
 

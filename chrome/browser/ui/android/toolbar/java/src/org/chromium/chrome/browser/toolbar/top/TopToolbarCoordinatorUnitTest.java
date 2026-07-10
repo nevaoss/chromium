@@ -111,6 +111,7 @@ public class TopToolbarCoordinatorUnitTest {
     @Mock private BottomSheetController mBottomSheetController;
     @Mock private ModalDialogManager mModalDialogManager;
     @Mock private SnackbarManager mSnackbarManager;
+    @Mock private Runnable mOnSigninTapped;
     @Mock private Profile mProfile;
     @Mock private View mLocationBarView;
     @Mock private Resources mResources;
@@ -197,7 +198,9 @@ public class TopToolbarCoordinatorUnitTest {
                         mDeviceLockActivityLauncher,
                         mBottomSheetController,
                         mModalDialogManager,
-                        mSnackbarManager);
+                        mSnackbarManager,
+                        mOnSigninTapped,
+                        /* suppressTabStripAtStart= */ false);
     }
 
     @Test

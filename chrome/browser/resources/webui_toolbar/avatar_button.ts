@@ -7,13 +7,13 @@ import '//resources/cr_elements/cr_icon/cr_icon.js';
 import '//resources/cr_elements/icons.html.js';
 
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
+import type {AvatarControlState} from '/shared/toolbar_ui_api_data_model.mojom-webui.js';
+import {AvatarToolbarButtonState} from '/shared/toolbar_ui_api_data_model.mojom-webui.js';
 
 import {getCss} from './avatar_button.css.js';
 import {getHtml} from './avatar_button.html.js';
 import {BrowserProxyImpl} from './browser_proxy.js';
 import {HelpBubbleAnchorMixin} from './toolbar_button.js';
-import {AvatarToolbarButtonState} from './toolbar_ui_api_data_model.mojom-webui.js';
-import type {AvatarControlState} from './toolbar_ui_api_data_model.mojom-webui.js';
 
 const AvatarButtonElementBase = HelpBubbleAnchorMixin(CrLitElement);
 

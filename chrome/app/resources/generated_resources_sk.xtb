@@ -597,7 +597,6 @@ Heslá si môžete kedykoľvek skontrolovať v službe <ph name="GOOGLE_PASSWOR
 <translation id="1433478348197382180">Režim čítania</translation>
 <translation id="1433980411933182122">Spustenie</translation>
 <translation id="1434659328474177625"><ph name="ISSUER" /> overil váš e‑mail</translation>
-<translation id="1434696352799406980">Týmto sa obnoví vaša stránka pri spustení, stránka na novej karte, vyhľadávač a pripnuté karty. Zakážu sa aj všetky rozšírenia a vymažú dočasné dáta, ako napríklad súbory cookie. Záložky, história a uložené heslá sa nevymažú.</translation>
 <translation id="1434886155212424586">Domovská stránka je stránka na novej karte</translation>
 <translation id="1435940442311036198">Použiť prístupový kľúč v inom zariadení</translation>
 <translation id="1436390408194692385">Do konca platnosti zostáva: <ph name="TICKET_TIME_LEFT" /></translation>
@@ -2562,6 +2561,7 @@ Ak chcete spravovať nastavenia tohto účtu, nainštalujte si do zariadenia apl
 <translation id="2822551631199737692">Kamera sa používa</translation>
 <translation id="2822634587701817431">Zmenšiť/zväčšiť</translation>
 <translation id="2824942875887026017"><ph name="IDS_SHORT_PRODUCT_NAME" /> používa nastavenia proxy servera od vášho správcu</translation>
+<translation id="2825200993288778739">Vytvárajte si vlastné zručnosti alebo pridávajte hotové z knižnice zručností</translation>
 <translation id="282525059261716597">Príkazový riadok:</translation>
 <translation id="2825758591930162672">Verejný kľúč subjektu</translation>
 <translation id="2826576843404243001">V prípade webov, ktoré nepodporujú zabezpečené pripojenia, sa pred ich návštevou zobrazí upozornenie. Toto nastavenie nemôžete zmeniť, pretože máte povolenú rozšírenú ochranu.</translation>
@@ -3702,7 +3702,6 @@ Ak chcete spravovať nastavenia tohto účtu, nainštalujte si do zariadenia apl
 <translation id="366484203224589850"><ph name="TASK_TITLE" />: Gemini pracuje na tejto úlohe už dlho a čoskoro prestane, aby šetril batériu</translation>
 <translation id="3664911592976620204">{NUM_OTHER_MEMBERS,plural, =0{Pripojte sa ku skupine kariet s používateľom <ph name="OWNER_FIRST_NAME" />}=1{Pripojte sa ku skupine kariet s používateľom <ph name="OWNER_FIRST_NAME" /> a # ďalším}few{Pripojte sa ku skupine kariet s používateľom <ph name="OWNER_FIRST_NAME" /> a # ďalšími}many{Join tab group with <ph name="OWNER_FIRST_NAME" /> and # others}other{Pripojte sa ku skupine kariet s používateľom <ph name="OWNER_FIRST_NAME" /> a # ďalšími}}</translation>
 <translation id="3665301845536101715">Otvoriť v bočnom paneli</translation>
-<translation id="3665589677786828986">Chrome zistil, že niektoré nastavenia boli poškodené iným programom, a preto obnovil pôvodné predvolené nastavenia.</translation>
 <translation id="3665918214153961651">Nahrávanie súboru</translation>
 <translation id="3666196264870170605">Výpis údajov o ladení ovládačov Intel WiFi NIC</translation>
 <translation id="3666971425390608309">Sťahovanie bolo pozastavené: <ph name="FILE_NAME" /></translation>
@@ -4639,6 +4638,7 @@ Ak chcete spravovať nastavenia tohto účtu, nainštalujte si do zariadenia apl
 <translation id="4321179778687042513">ctrl</translation>
 <translation id="432160826079505197">Zobraziť <ph name="FILE_NAME" /> v aplikácii Finder</translation>
 <translation id="4322394346347055525">Zatvoriť ostatné karty</translation>
+<translation id="4322400254469690320">Súbor <ph name="FILENAME" /> nájdete v priečinku <ph name="FEATURE_NAME" /></translation>
 <translation id="4324577459193912240">Súbor nie je úplný</translation>
 <translation id="4325433082696797523">Priestor a napájanie</translation>
 <translation id="4325515113816851466">Po odhlásení nebudú možnosti vybrané rodičom platiť</translation>
@@ -4989,7 +4989,6 @@ Ak chcete spravovať nastavenia tohto účtu, nainštalujte si do zariadenia apl
 <translation id="4580596421317071374">Heslá sa ukladajú do služby <ph name="GOOGLE_PASSWORD_MANAGER" /> v tomto zariadení.</translation>
 <translation id="4580939929828762295">Buďte v bezpečí so Správcom hesiel Google</translation>
 <translation id="4582297591746054421">Weby zvyčajne čítajú vašu schránku, aby mohli poskytovať funkcie, ako je ponechanie formátu kopírovaného textu</translation>
-<translation id="4582563038311694664">Resetovať všetky nastavenia</translation>
 <translation id="4584094413232466841">Chcete odstrániť tieto informácie z automatického dopĺňania v Chrome?</translation>
 <translation id="4584770411839426377">Okno</translation>
 <translation id="4584836561445313300">Vaša organizácia si bude môcť zobraziť a spravovať všetky existujúce dáta prehliadania, napríklad heslá, ale aj ďalšie</translation>
@@ -6632,6 +6631,7 @@ Tejto akcii môžete prideliť viacero prepínačov.</translation>
 <translation id="5826993284769733527">Polotransparentné</translation>
 <translation id="5827266244928330802">Safari</translation>
 <translation id="5827591412833386477">Zobraziť weby v rovnakej skupine</translation>
+<translation id="5827835011646404677">Zručnosti sa ukladajú do vášho účtu Google</translation>
 <translation id="5828181959764767444">Západ slnka</translation>
 <translation id="5828545842856466741">Pridať profil…</translation>
 <translation id="5828633471261496623">Prebieha tlač...</translation>
@@ -10077,7 +10077,6 @@ Súbor kľúča uložte na bezpečné miesto. Budete ho potrebovať na vytvoreni
 <translation id="8327386430364625757">Písmo pre matematiku</translation>
 <translation id="8327490658947427005">Výber nie je v jazyku <ph name="LANGUAGE" /></translation>
 <translation id="8327544198829180337">Zavrieť toto zobrazenie</translation>
-<translation id="8327676037044516220">Povolenia a nastavenia obsahu</translation>
 <translation id="8328228852664998535">Ak budete pokračovať, vaše heslá, prístupové kľúče a ďalšie údaje budú zo služby <ph name="BRAND" /> natrvalo odstránené. Účty vytvorené pre weby alebo aplikácie odstránené nebudú.</translation>
 <translation id="8328777765163860529">Zavrieť všetky</translation>
 <translation id="8330617762701840933">Zoznam webov presmerovávajúcich do alternatívneho prehliadača.</translation>
@@ -10898,7 +10897,6 @@ Môže to zahŕňať informácie o nainštalovanom softvéri, súboroch, prehli
 <translation id="8925458182817574960">&amp;Nastavenia</translation>
 <translation id="8926389886865778422">Túto otázku už nezobrazovať</translation>
 <translation id="8926555406617248399">Karty sú skryté</translation>
-<translation id="892706138619340876">Niektoré nastavenia boli obnovené</translation>
 <translation id="8927438609932588163">Povoliť webom ukladať dáta v zariadení</translation>
 <translation id="8929696694736010839">Iba aktuálna relácia inkognito</translation>
 <translation id="8929738682246584251">Zapnutie alebo vypnutie lupy</translation>
@@ -11207,6 +11205,7 @@ Môže to zahŕňať informácie o nainštalovanom softvéri, súboroch, prehli
 <translation id="9130015405878219958">Zadali ste neplatný režim.</translation>
 <translation id="9130135798965366513">Ak chcete pokračovať, <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> bude s týmto webom zdieľať vaše <ph name="FIELDS_STRING" />. Pozrite si <ph name="BEGIN_LINK1" />pravidlá ochrany súkromia<ph name="END_LINK1" /> a <ph name="BEGIN_LINK2" />zmluvné podmienky<ph name="END_LINK2" /> tohto webu.</translation>
 <translation id="9130364135697530260">Vložený obsah na tomto webe môže využívať informácie, ktoré o vás uložil</translation>
+<translation id="9130857050314385402">Pri používaní zručnosti sa názvy kariet a webové adresy posielajú Googlu</translation>
 <translation id="9131209053278896908">Tu sa zobrazujú blokované weby</translation>
 <translation id="9131487537093447019">Posielať správy zariadeniam Bluetooth a prijímať správy zo zariadení Bluetooth.</translation>
 <translation id="9133568201369135151">Zhromažďovanie diagnostických údajov bolo dokončené. Sú v nich zahrnuté niektoré vaše osobné údaje.</translation>

@@ -172,6 +172,8 @@ using base::UserMetricsAction;
   [self.browser->GetCommandDispatcher() stopDispatchingToTarget:self];
   [self.overflowMenuMediator disconnect];
   self.overflowMenuMediator = nil;
+  self.contentBlockerMediator.consumer = nil;
+  self.contentBlockerMediator = nil;
 }
 
 #pragma mark - Public
@@ -496,6 +498,8 @@ using base::UserMetricsAction;
     _overflowMenuOrderer = nil;
     [self.overflowMenuMediator disconnect];
     self.overflowMenuMediator = nil;
+    self.contentBlockerMediator.consumer = nil;
+    self.contentBlockerMediator = nil;
   }
 }
 

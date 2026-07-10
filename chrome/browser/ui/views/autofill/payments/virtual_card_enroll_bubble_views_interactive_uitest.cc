@@ -146,12 +146,12 @@ class VirtualCardEnrollBubbleViewsInteractiveUiTest
 
   void ClickGoogleLegalMessageLink() {
     GetBubbleViews()->GoogleLegalMessageClicked(
-        autofill::payments::GetVirtualCardEnrollmentSupportUrl());
+        payments::GetVirtualCardEnrollmentSupportUrl());
   }
 
   void ClickIssuerLegalMessageLink() {
     GetBubbleViews()->IssuerLegalMessageClicked(
-        autofill::payments::GetVirtualCardEnrollmentSupportUrl());
+        payments::GetVirtualCardEnrollmentSupportUrl());
   }
 
   IconLabelBubbleView* GetIconView() {

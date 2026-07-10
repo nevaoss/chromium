@@ -133,8 +133,7 @@ void AuthSessionRequest::StartNewAuthSession(
   NSString* error_string = nil;
 
   std::string matching_scheme;  // macOS 14.3 and earlier.
-  if (@available(macOS 14.4, *)) {
-  } else {
+  if (!@available(macOS 14.4, *)) {
     // Canonicalize the scheme so that it will compare correctly to the GURLs
     // that are visited later. Bail if it is invalid.
     NSString* raw_scheme = request.callbackURLScheme;

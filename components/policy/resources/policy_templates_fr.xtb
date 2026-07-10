@@ -7243,9 +7243,6 @@ Si elle n'est pas définie ou que l'ancienneté de la version ne peut pas être 
 <translation id="5649788773465136073">Désactiver l'utilisation d'identifiants pour le contenu protégé sur les sites, ce qui peut entraîner une qualité de lecture inférieure pour ce type de contenu.</translation>
 <translation id="5650256117857913687">Empêcher les utilisateurs connectés à distance d'ouvrir des URL côté hôte dans leur navigateur client local</translation>
 <translation id="5650716720715977549">Appliquer des restrictions aux requêtes adressées à des points de terminaison plus privés du réseau</translation>
-<translation id="5651538748810288218">Si cette règle est définie sur "1", les sites Web peuvent accéder aux capteurs (de mouvement et de lumière, par exemple) et les utiliser. Si elle est définie sur "2", l'accès aux capteurs est refusé.
-
-      Si elle n'est pas configurée, la règle <ph name="ALLOW_SENSORS_POLICY_NAME" /> s'applique. Toutefois, les utilisateurs peuvent modifier ce paramètre.</translation>
 <translation id="5652250453612826983">Permet de contrôler les règles de supervision parentale qui ne sont appliquées qu'aux comptes utilisateur d'enfants.
       Ces règles ne sont pas définies dans la console d'administration, mais configurées directement par le serveur d'API pour enfants.</translation>
 <translation id="5654682237531873653">Si cette règle est activée, le correcteur orthographique l'est également, et les utilisateurs ne peuvent pas le désactiver. Sur <ph name="MS_WIN_NAME" />, <ph name="PRODUCT_OS_NAME" /> et <ph name="LINUX_OS_NAME" />, il est possible d'ajouter et de supprimer des langues au cas par cas pour le correcteur orthographique. Les utilisateurs peuvent ainsi désactiver le correcteur en supprimant toutes les langues. Afin d'éviter ce cas de figure, utilisez <ph name="SPELLCHECK_LANGUAGE_POLICY_NAME" /> pour forcer l'ajout de langues spécifiques au correcteur orthographique.

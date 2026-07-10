@@ -550,7 +550,7 @@ FeaturePromoControllerImpl::GetNextPromoData() {
     // If there's a pending promo determine if it can show right now.
     const bool is_high_priority =
         pending->second == FeaturePromoPriorityProvider::PromoPriority::kHigh;
-    if (private_->messaging_coordinator.CanShowPromo(is_high_priority)) {
+    if (private_->messaging_coordinator.ReadyToShow(is_high_priority)) {
       result.eligible_promo = private_->queues.UnqueueEligiblePromo(*pending);
     } else {
       result.pending_priority = pending->second;

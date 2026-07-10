@@ -4,9 +4,14 @@
 
 #include "chrome/browser/glic/host/context/glic_delegating_sharing_manager.h"
 
+#include <cstdint>
+#include <string>
+#include <utility>
+
 #include "base/callback_list.h"
 #include "chrome/browser/glic/host/context/glic_sharing_manager_impl.h"
 #include "chrome/browser/glic/host/context/glic_sharing_utils.h"
+#include "third_party/blink/public/mojom/content_extraction/ai_page_content.mojom.h"
 
 namespace glic {
 
@@ -177,6 +182,21 @@ void GlicDelegatingSharingManagerBase::GetContextForActorFromTab(
 
   sharing_manager_delegate_->GetContextForActorFromTab(tab_handle, options,
                                                        std::move(callback));
+}
+
+void GlicDelegatingSharingManagerBase::GetImageBytes(
+    tabs::TabHandle tab_handle,
+    const std::string& document_id,
+    int32_t dom_node_id,
+    base::OnceCallback<void(GlicGetImageBytesResult)> callback) {
+  if (!sharing_manager_delegate_) {
+    std::move(callback).Run(base::unexpected(
+        GlicGetContextError{GlicGetContextFromTabError::kPageContextNotEligible,
+                            "tab not eligible"}));
+    return;
+  }
+  sharing_manager_delegate_->GetImageBytes(tab_handle, document_id, dom_node_id,
+                                           std::move(callback));
 }
 
 std::vector<tabs::TabInterface*>

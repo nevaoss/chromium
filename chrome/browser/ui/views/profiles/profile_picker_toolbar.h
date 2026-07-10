@@ -14,6 +14,8 @@
 
 DECLARE_ELEMENT_IDENTIFIER_VALUE(
     kProfilePickerToolbarDontSignInButtonElementId);
+DECLARE_ELEMENT_IDENTIFIER_VALUE(
+    kProfilePickerToolbarEffectsControlButtonElementId);
 
 // Class responsible for the top toolbar shown within the First Run and Profile
 // Creation flows.
@@ -87,12 +89,15 @@ class ProfilePickerToolbar : public views::View {
 
   void AddSpacer();
   void AddBackButton(base::RepeatingClosure on_back_callback);
-  void AddDontSignInButton(base::RepeatingClosure on_dont_sign_in_callback);
+  void AddDontSignInButton(base::RepeatingClosure on_dont_sign_in_callback,
+                           bool paint_border);
+  void AddSeparator();
   void AddEffectsControlButton(
       base::RepeatingCallback<void(bool)> on_effects_control_callback);
 
   raw_ptr<views::View> sign_in_back_button_ = nullptr;
   raw_ptr<views::View> dont_sign_in_button_ = nullptr;
+  raw_ptr<views::View> separator_ = nullptr;
   raw_ptr<views::View> effects_control_button_ = nullptr;
 };
 

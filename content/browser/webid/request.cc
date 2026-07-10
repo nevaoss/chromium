@@ -36,6 +36,7 @@
 #include "content/browser/webid/idp_network_request_manager.h"
 #include "content/browser/webid/mappers.h"
 #include "content/browser/webid/request_page_data.h"
+#include "content/browser/webid/request_service.h"
 #include "content/browser/webid/url_computations.h"
 #include "content/browser/webid/user_info_request.h"
 #include "content/browser/webid/webid_utils.h"
@@ -156,30 +157,20 @@ Request::AutoReauthnInfo::AutoReauthnInfo(const AutoReauthnInfo&) = default;
 Request::AutoReauthnInfo& Request::AutoReauthnInfo::operator=(
     const AutoReauthnInfo&) = default;
 
-DOCUMENT_USER_DATA_KEY_IMPL(Request);
-
-Request::Request(RenderFrameHost* rfh)
-    : Request(
-          rfh,
-          rfh->GetBrowserContext()->GetFederatedIdentityApiPermissionContext(),
-          rfh->GetBrowserContext()
-              ->GetFederatedIdentityAutoReauthnPermissionContext(),
-          rfh->GetBrowserContext()->GetFederatedIdentityPermissionContext(),
-          IdentityRegistry::FromWebContents(
-              WebContents::FromRenderFrameHost(rfh))) {}
-
 Request::Request(
     RenderFrameHost* rfh,
+    RequestService* request_service,
     FederatedIdentityApiPermissionContextDelegate* api_permission_delegate,
     FederatedIdentityAutoReauthnPermissionContextDelegate*
         auto_reauthn_permission_delegate,
     FederatedIdentityPermissionContextDelegate* permission_delegate,
     IdentityRegistry* identity_registry)
-    : DocumentUserData(rfh),
-      api_permission_delegate_(api_permission_delegate),
+    : api_permission_delegate_(api_permission_delegate),
       auto_reauthn_permission_delegate_(auto_reauthn_permission_delegate),
       permission_delegate_(permission_delegate),
       identity_registry_(identity_registry),
+      render_frame_host_(rfh),
+      request_service_(request_service),
       perfetto_track_(CreatePerfettoTrackForFedCM(this)) {
   CHECK(api_permission_delegate_);
   CHECK(auto_reauthn_permission_delegate_);
@@ -205,47 +196,32 @@ Request::~Request() {
   // `fedcm_metrics_` may no longer be usable when the destructor get invoked
   // naturally.
   disconnect_request_.reset();
-
-  // Since Request is a subclass of DocumentUserData, it only lives as
-  // long as the current document.
-  if (num_requests_ > 0) {
-    Metrics::RecordNumRequestsPerDocument(
-        render_frame_host().GetPageUkmSourceId(), num_requests_);
-  }
-}
-
-Request& Request::CreateForTesting(
-    RenderFrameHost& host,
-    FederatedIdentityApiPermissionContextDelegate* api_permission_context,
-    FederatedIdentityAutoReauthnPermissionContextDelegate*
-        auto_reauthn_permission_context,
-    FederatedIdentityPermissionContextDelegate* permission_context,
-    IdentityRegistry* identity_registry,
-    mojo::PendingReceiver<blink::mojom::FederatedAuthRequest> receiver) {
-  Request::CreateForCurrentDocument(&host, api_permission_context,
-                                    auto_reauthn_permission_context,
-                                    permission_context, identity_registry);
-  Request* service = Request::GetForCurrentDocument(&host);
-  service->BindReceiver(std::move(receiver));
-  return *service;
 }
 
 void Request::BindReceiver(
     mojo::PendingReceiver<blink::mojom::FederatedAuthRequest>
         pending_receiver) {
+  auth_request_receivers_.Add(this, std::move(pending_receiver));
+}
+
+void Request::BindReceiver(
+    mojo::PendingReceiver<blink::mojom::FederatedRequest> pending_receiver) {
   receivers_.Add(this, std::move(pending_receiver));
 }
 
 void Request::ReportBadMessage(const char* message) {
-  receivers_.ReportBadMessage(message);
+  auth_request_receivers_.ReportBadMessage(message);
 }
 
 void Request::ResetAndDeleteThisForTesting() {
   // Resetting the receivers_ before we destruct the objects means that
   // callbacks won't be called. This matches DocumentService::ResetAndDeleteThis
   // and is what our tests expect.
+  auth_request_receivers_.Clear();
   receivers_.Clear();
-  DeleteForCurrentDocument(&render_frame_host());
+  if (request_service_) {
+    request_service_->OnRequestDestroyed(this);
+  }
 }
 
 std::vector<IdentityProviderRequestOptionsPtr>
@@ -472,7 +448,7 @@ void Request::RequestToken(
     }
   }
 
-  ++num_requests_;
+  request_service_->IncrementNumRequests();
 
   std::set<GURL> unique_idps;
   for (auto& idp_get_params_ptr : idp_get_params_ptrs) {

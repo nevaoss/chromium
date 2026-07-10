@@ -293,25 +293,77 @@ void VerticalTabStripView::OnWidgetVisibilityChanged(views::Widget* widget,
   if (collection_node_ && visible && is_first_window_presentation_) {
     // Only scroll-in the active tab for the first window presentation.
     is_first_window_presentation_ = false;
-    OnActiveTabChanged(collection_node_->GetController()->GetActiveTab());
+    OnTabChanged(collection_node_->GetController()->GetActiveTab());
   }
 }
 
-void VerticalTabStripView::OnActiveTabChanged(
-    const tabs::TabInterface* active_tab) {
-  if (collection_node_ && active_tab) {
-    // Expand group if the activated tab is within a collapsed group unless
-    // we are header dragging the collapsed group.
-    if (active_tab->GetGroup().has_value() &&
-        !collection_node_->GetController()->GetDragHandler().IsDragging()) {
-      TabCollectionNode* group_node = collection_node_->GetNodeForHandle(
-          active_tab->GetBrowserWindowInterface()
-              ->GetTabStripModel()
-              ->group_model()
-              ->GetTabGroup(active_tab->GetGroup().value())
-              ->GetCollectionHandle());
-      CHECK(group_node);
+void VerticalTabStripView::OnChildMoved(TabCollectionNode* moved_node) {
+  CHECK(moved_node);
 
+  if (collection_node_ &&
+      collection_node_->GetController()->GetDragHandler().IsDragging()) {
+    return;
+  }
+
+  const tabs::TabInterface* active_tab =
+      collection_node_->GetController()->GetActiveTab();
+
+  bool is_active_tab = false;
+  if (active_tab) {
+    if (moved_node->type() == TabCollectionNode::Type::TAB) {
+      const tabs::TabInterface* tab =
+          std::get<const tabs::TabInterface*>(moved_node->GetNodeData());
+      is_active_tab = (tab == active_tab);
+    } else if (moved_node->type() == TabCollectionNode::Type::SPLIT) {
+      is_active_tab =
+          (moved_node->GetNodeForHandle(active_tab->GetHandle()) != nullptr);
+    }
+  }
+
+  const views::View* focused_view =
+      GetFocusManager() ? GetFocusManager()->GetFocusedView() : nullptr;
+  views::View* view = moved_node->view();
+  bool has_focus = view && focused_view && view->Contains(focused_view);
+
+  if (is_active_tab || has_focus) {
+    switch (moved_node->type()) {
+      case TabCollectionNode::Type::TAB: {
+        const tabs::TabInterface* tab =
+            std::get<const tabs::TabInterface*>(moved_node->GetNodeData());
+        OnTabChanged(tab);
+        break;
+      }
+      case TabCollectionNode::Type::SPLIT:
+      case TabCollectionNode::Type::GROUP:
+        ScrollToView(view);
+        break;
+      case TabCollectionNode::Type::TABSTRIP:
+      case TabCollectionNode::Type::PINNED:
+      case TabCollectionNode::Type::UNPINNED:
+        break;
+    }
+  }
+}
+
+void VerticalTabStripView::OnTabChanged(const tabs::TabInterface* active_tab) {
+  if (!collection_node_ || !active_tab) {
+    return;
+  }
+
+  if (collection_node_->GetController()->GetDragHandler().IsDragging()) {
+    return;
+  }
+
+  // Expand group if the activated tab is within a collapsed group unless
+  // we are header dragging the collapsed group.
+  if (active_tab->GetGroup().has_value()) {
+    TabCollectionNode* group_node = collection_node_->GetNodeForHandle(
+        active_tab->GetBrowserWindowInterface()
+            ->GetTabStripModel()
+            ->group_model()
+            ->GetTabGroup(active_tab->GetGroup().value())
+            ->GetCollectionHandle());
+    if (group_node) {
       auto* group_view =
           views::AsViewClass<VerticalTabGroupView>(group_node->view());
       if (group_view && group_view->IsCollapsed()) {
@@ -319,29 +371,34 @@ void VerticalTabStripView::OnActiveTabChanged(
             ToggleTabGroupCollapsedStateOrigin::kMenuAction);
       }
     }
-
-    // Scroll to the activated tab if it isn't in the visible viewport.
-    TabCollectionNode* activated_node =
-        collection_node_->GetNodeForHandle(active_tab->GetHandle());
-    CHECK(activated_node);
-    views::View* const activated_node_view = activated_node->view();
-    activated_view_tracker_->SetView(activated_node_view);
-
-    // Views must either be in the pinned or unpinned view trees.
-    DCHECK_NE(pinned_tabs_container_view_->Contains(activated_node_view),
-              unpinned_tabs_container_view_->Contains(activated_node_view));
-
-    views::ScrollView* const target_scroll_view =
-        pinned_tabs_container_view_->Contains(activated_node_view)
-            ? pinned_tabs_scroll_view_
-            : unpinned_tabs_scroll_view_;
-
-    // Wait for the next successful layout before attempting to handle moving
-    // the activated view into the scroll view viewport.
-    target_scroll_view->RegisterPostLayoutCallback(base::BindRepeating(
-        &VerticalTabStripView::EnsureVisibleInViewportPostActivationAndLayout,
-        base::Unretained(this)));
   }
+
+  TabCollectionNode* activated_node =
+      collection_node_->GetNodeForHandle(active_tab->GetHandle());
+  CHECK(activated_node);
+  ScrollToView(activated_node->view());
+}
+
+void VerticalTabStripView::ScrollToView(views::View* view) {
+  if (!view || !Contains(view) || is_first_window_presentation_) {
+    return;
+  }
+
+  activated_view_tracker_->SetView(view);
+
+  // Views must either be in the pinned or unpinned view trees.
+  DCHECK_NE(pinned_tabs_container_view_->Contains(view),
+            unpinned_tabs_container_view_->Contains(view));
+
+  views::ScrollView* const target_scroll_view =
+      pinned_tabs_container_view_->Contains(view) ? pinned_tabs_scroll_view_
+                                                  : unpinned_tabs_scroll_view_;
+
+  // Wait for the next successful layout before attempting to handle moving
+  // the activated view into the scroll view viewport.
+  target_scroll_view->RegisterPostLayoutCallback(base::BindRepeating(
+      &VerticalTabStripView::EnsureVisibleInViewportPostActivationAndLayout,
+      base::Unretained(this)));
 }
 
 void VerticalTabStripView::RecordMousePressedInTab() {
@@ -519,8 +576,8 @@ void VerticalTabStripView::EnsureVisibleInViewportPostActivationAndLayout(
 
   // Proceed up the hierarchy until the content view is reached, iteratively
   // adjusting target view bounds.
-  for (views::View* v = activated_view->parent(); v != scroll_view->contents();
-       v = v->parent()) {
+  for (views::View* v = activated_view->parent();
+       v && v != scroll_view->contents(); v = v->parent()) {
     activated_view_bounds =
         views::View::ConvertRectToTarget(v, v->parent(), activated_view_bounds);
   }

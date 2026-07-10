@@ -5,10 +5,12 @@
 #include <memory>
 #include <optional>
 
+#include "base/auto_reset.h"
 #include "base/check_deref.h"
 #include "base/no_destructor.h"
 #include "base/strings/strcat.h"
 #include "base/strings/to_string.h"
+#include "base/test/bind.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/metrics/user_action_tester.h"
 #include "base/test/scoped_feature_list.h"
@@ -39,15 +41,19 @@
 #include "chrome/browser/ui/startup/first_run_test_util.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/profiles/avatar_toolbar_button.h"
+#include "chrome/browser/ui/views/profiles/first_run_flow_controller.h"
 #include "chrome/browser/ui/views/profiles/profile_management_flow_controller.h"
 #include "chrome/browser/ui/views/profiles/profile_picker_interactive_uitest_base.h"
 #include "chrome/browser/ui/views/profiles/profile_picker_toolbar.h"
 #include "chrome/browser/ui/views/profiles/profile_picker_view.h"
 #include "chrome/browser/ui/webui/intro/intro_ui.h"
+#include "chrome/browser/ui/webui/signin/managed_user_profile_notice_ui.h"
 #include "chrome/browser/ui/webui/signin/signin_ui_error.h"
 #include "chrome/browser/ui/webui/signin/signin_url_utils.h"
 #include "chrome/common/webui_url_constants.h"
+#include "net/base/url_util.h"
 #include "chrome/grit/branded_strings.h"
+#include "chrome/grit/browser_resources.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "chrome/test/interaction/interactive_browser_test.h"
 #include "chrome/test/user_education/interactive_feature_promo_test.h"
@@ -78,7 +84,9 @@
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "net/dns/mock_host_resolver.h"
+#include "services/audio/public/cpp/sounds/sounds_manager.h"
 #include "services/network/test/test_url_loader_factory.h"
+#include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/search_engines_data/resources/definitions/prepopulated_engines.h"
 #include "ui/base/interaction/element_identifier.h"
@@ -91,7 +99,10 @@ namespace {
 
 using ::testing::_;
 using ::testing::Eq;
+using ::testing::Mock;
 using ::testing::Not;
+using ::testing::Return;
+using ::testing::StrictMock;
 using ::testing::TestParamInfo;
 using ::testing::Values;
 using ::testing::ValuesIn;
@@ -99,6 +110,22 @@ using ::testing::WithParamInterface;
 
 using Step = ::ProfileManagementFlowController::Step;
 using DeepQuery = ::WebContentsInteractionTestUtil::DeepQuery;
+
+class MockSoundsManager : public audio::SoundsManager {
+ public:
+  MockSoundsManager() = default;
+  ~MockSoundsManager() override = default;
+
+  MOCK_METHOD(
+      bool,
+      Initialize,
+      (SoundKey key, int resource_id, media::AudioCodec codec, bool loop),
+      (override));
+  MOCK_METHOD(bool, Play, (SoundKey key), (override));
+  MOCK_METHOD(bool, Stop, (SoundKey key), (override));
+  MOCK_METHOD(bool, Pause, (SoundKey key), (override));
+  MOCK_METHOD(base::TimeDelta, GetDuration, (SoundKey key), (override));
+};
 
 DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kProfilePickerViewId);
 DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kWebContentsId);
@@ -1277,7 +1304,8 @@ IN_PROC_BROWSER_TEST_P(FirstRunParameterizedInteractiveUiTest,
       WaitForWebContentsNavigation(
           kWebContentsId,
           UseRefreshedView()
-              ? GURL(chrome::kChromeUIManagedUserProfileNoticeRefreshURL)
+              ? ManagedUserProfileNoticeUI::GetURLForType(
+                    ManagedUserProfileNoticeUI::ScreenType::kFirstRun)
               : GURL(chrome::kChromeUIManagedUserProfileNoticeUrl)),
       EnsurePresent(kWebContentsId, GetDeclineManagementButtonQuery()),
       PressJsButton(kWebContentsId, GetDeclineManagementButtonQuery()),
@@ -1905,7 +1933,8 @@ IN_PROC_BROWSER_TEST_P(FirstRunWithHatsInteractiveUiTestWithSyncService,
       WaitForWebContentsNavigation(
           kWebContentsId,
           UseRefreshedView()
-              ? GURL(chrome::kChromeUIManagedUserProfileNoticeRefreshURL)
+              ? ManagedUserProfileNoticeUI::GetURLForType(
+                    ManagedUserProfileNoticeUI::ScreenType::kFirstRun)
               : GURL(chrome::kChromeUIManagedUserProfileNoticeUrl)),
       EnsurePresent(kWebContentsId, GetAcceptManagementButtonQuery()),
       PressJsButton(kWebContentsId, GetAcceptManagementButtonQuery()),
@@ -2127,3 +2156,112 @@ IN_PROC_BROWSER_TEST_P(FirstRunInSearchChoiceRegionInteractiveUiTest,
 INSTANTIATE_TEST_SUITE_P(,
                          FirstRunInSearchChoiceRegionInteractiveUiTest,
                          testing::Values(false, true));
+
+class FirstRunRevampInteractiveUiTest : public FirstRunInteractiveUiBaseTest {
+ public:
+  FirstRunRevampInteractiveUiTest()
+      : FirstRunInteractiveUiBaseTest(
+            TestParam{
+                .refreshed_view_variant =
+                    switches::FirstRunDesktopSignInPromoVariation::kDefault},
+            {{switches::kFirstRunDesktopRevamp, {}}}) {}
+};
+
+IN_PROC_BROWSER_TEST_F(FirstRunRevampInteractiveUiTest, InitSoundsOnFlowStart) {
+  ASSERT_TRUE(fre_service()->ShouldOpenFirstRun());
+
+  auto mock_sounds_manager = std::make_unique<StrictMock<MockSoundsManager>>();
+  MockSoundsManager* mock_sounds_manager_ptr = mock_sounds_manager.get();
+
+  // Set the factory to return the `MockSoundsManager`.
+  base::AutoReset<FirstRunFlowController::SoundsManagerFactory>
+      sounds_factory_reset =
+          FirstRunFlowController::SetSoundsManagerFactoryForTesting(
+              base::BindLambdaForTesting(
+                  [&mock_sounds_manager](
+                      audio::SoundsManager::StreamFactoryBinder)
+                      -> std::unique_ptr<audio::SoundsManager> {
+                    return std::move(mock_sounds_manager);
+                  }));
+
+  // Verify that the ambient and logo sounds are initialized at the start.
+  EXPECT_CALL(
+      *mock_sounds_manager_ptr,
+      Initialize(FirstRunFlowController::kAmbientSoundKey,
+                 IDR_INTRO_SOUND_AMBIENT_FLAC, media::AudioCodec::kFLAC, true))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_sounds_manager_ptr,
+              Initialize(FirstRunFlowController::kLogoSoundKey,
+                         IDR_INTRO_SOUND_LOGO_FLAC, media::AudioCodec::kFLAC,
+                         /*loop=*/false))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_sounds_manager_ptr,
+              Play(FirstRunFlowController::kAmbientSoundKey))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_sounds_manager_ptr,
+              Play(FirstRunFlowController::kLogoSoundKey))
+      .WillOnce(Return(true));
+
+  OpenFirstRun();
+}
+
+IN_PROC_BROWSER_TEST_F(FirstRunRevampInteractiveUiTest,
+                       EffectsButtonControlsSounds) {
+  ASSERT_TRUE(fre_service()->ShouldOpenFirstRun());
+
+  auto mock_sounds_manager = std::make_unique<StrictMock<MockSoundsManager>>();
+  MockSoundsManager* mock_sounds_manager_ptr = mock_sounds_manager.get();
+
+  // Set the factory to return the `MockSoundsManager`.
+  base::AutoReset<FirstRunFlowController::SoundsManagerFactory>
+      sounds_factory_reset =
+          FirstRunFlowController::SetSoundsManagerFactoryForTesting(
+              base::BindLambdaForTesting(
+                  [&mock_sounds_manager](
+                      audio::SoundsManager::StreamFactoryBinder)
+                      -> std::unique_ptr<audio::SoundsManager> {
+                    return std::move(mock_sounds_manager);
+                  }));
+
+  EXPECT_CALL(*mock_sounds_manager_ptr, Initialize)
+      .Times(2)
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_sounds_manager_ptr, Play)
+      .Times(2)
+      .WillRepeatedly(Return(true));
+
+  OpenFirstRun();
+
+  Mock::VerifyAndClearExpectations(mock_sounds_manager_ptr);
+
+  // Verify that clicking on the effects control button pauses
+  // the ambient sound, and stops the one-shot sound(s).
+  EXPECT_CALL(*mock_sounds_manager_ptr,
+              Pause(FirstRunFlowController::kAmbientSoundKey))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_sounds_manager_ptr,
+              Stop(FirstRunFlowController::kLogoSoundKey))
+      .WillOnce(Return(true));
+
+  RunTestSequenceInContext(
+      views::ElementTrackerViews::GetContextForView(view()),
+      WaitForShow(kProfilePickerViewId),
+      InstrumentNonTabWebView(kWebContentsId, web_view()),
+      // Wait for the effects control button to be visible.
+      WaitForShow(kProfilePickerToolbarEffectsControlButtonElementId),
+      // Click the effects control button. Since it is currently playing, it
+      // should pause.
+      PressButton(kProfilePickerToolbarEffectsControlButtonElementId));
+
+  Mock::VerifyAndClearExpectations(mock_sounds_manager_ptr);
+
+  // Verify that clicking on the effects control button resumes the ambient
+  // sound, and DOES NOT play the one-shot sound(s) again.
+  EXPECT_CALL(*mock_sounds_manager_ptr,
+              Play(FirstRunFlowController::kAmbientSoundKey))
+      .WillOnce(Return(true));
+
+  RunTestSequenceInContext(
+      views::ElementTrackerViews::GetContextForView(view()),
+      PressButton(kProfilePickerToolbarEffectsControlButtonElementId));
+}

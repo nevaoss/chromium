@@ -701,6 +701,17 @@ def _WriteHeaders(jni_mode,
       f.write(unshared_header_content)
 
 
+def _WriteResolvedTypes(resolved_types_path, jni_objs):
+  resolved_classes = set()
+  for obj in jni_objs:
+    resolved_classes.update(obj.type_resolver.get_resolved_classes())
+    for c in obj.jni_classes:
+      resolved_classes.update(c.type_resolver.get_resolved_classes())
+
+  with common.atomic_output(resolved_types_path, 'w') as f:
+    f.write('\n'.join(sorted(resolved_classes)) + '\n')
+
+
 def GenerateFromSource(parser, args, jni_mode):
   if not args.use_std_primitive_types:
     java_types.SetUseJniPrimitiveTypes()
@@ -712,15 +723,26 @@ def GenerateFromSource(parser, args, jni_mode):
                       args.unshared_header_names)
 
   try:
-    parsed_files = [
-        parse.parse_java_file(f,
-                              package_prefix=args.package_prefix,
-                              package_prefix_filter=args.package_prefix_filter,
-                              enable_legacy_natives=args.enable_legacy_natives,
-                              allow_private_called_by_natives=args.
-                              allow_private_called_by_natives)
-        for f in args.input_files
-    ]
+    errors = []
+    parsed_files = []
+    for f in args.input_files:
+      try:
+        parsed_files.append(
+            parse.parse_java_file(
+                f,
+                package_prefix=args.package_prefix,
+                package_prefix_filter=args.package_prefix_filter,
+                enable_legacy_natives=args.enable_legacy_natives,
+                allow_private_called_by_natives=args.
+                allow_private_called_by_natives))
+      except parse.ParseError as e:
+        errors.append(e)
+
+    if errors:
+      for e in errors:
+        sys.stderr.write(f'\n--- JNI Parsing Error ---\n{e}\n')
+      sys.exit(1)
+
     jni_objs = [
         JniObject(x,
                   from_javap=False,
@@ -728,6 +750,8 @@ def GenerateFromSource(parser, args, jni_mode):
                   module_name=args.module_name) for x in parsed_files
     ]
     _CheckNotEmpty(jni_objs)
+    if args.resolved_types_path:
+      _WriteResolvedTypes(args.resolved_types_path, jni_objs)
   except parse.ParseError as e:
     sys.stderr.write(f'{e}\n')
     sys.exit(1)

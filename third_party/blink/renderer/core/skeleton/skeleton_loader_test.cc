@@ -9,6 +9,10 @@
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/pseudo_element.h"
+#include "third_party/blink/renderer/core/dom/shadow_root.h"
+#include "third_party/blink/renderer/core/html/html_document.h"
+#include "third_party/blink/renderer/core/html/html_html_element.h"
+#include "third_party/blink/renderer/core/layout/layout_object.h"
 #include "third_party/blink/renderer/core/testing/null_execution_context.h"
 #include "third_party/blink/renderer/core/testing/page_test_base.h"
 #include "third_party/blink/renderer/core/testing/sim/sim_request.h"
@@ -17,14 +21,23 @@
 
 namespace blink {
 
-class SkeletonLoaderSimTest : public SimTest {};
+class SkeletonLoaderSimTest : public SimTest,
+                              public ScopedDeclarativeSkeletonsForTest {
+ public:
+  SkeletonLoaderSimTest() : ScopedDeclarativeSkeletonsForTest(true) {}
+};
 
-class SkeletonLoaderTest : public PageTestBase {
+class SkeletonLoaderTest : public PageTestBase,
+                           public ScopedDeclarativeSkeletonsForTest {
+ public:
+  SkeletonLoaderTest() : ScopedDeclarativeSkeletonsForTest(true) {}
+
  protected:
-  void InsertSkeletonTree(const String&) {
+  void InsertSkeletonTree(const String& source) {
     ScopedNullExecutionContext execution_context;
-    Document* skeleton_document =
-        Document::CreateForTest(execution_context.GetExecutionContext());
+    HTMLDocument* skeleton_document =
+        HTMLDocument::CreateForTest(execution_context.GetExecutionContext());
+    skeleton_document->SetContent(source);
     SkeletonLoader::Ensure(GetDocument())
         .InsertSkeletonTree(*skeleton_document);
   }
@@ -34,8 +47,6 @@ class SkeletonLoaderTest : public PageTestBase {
 };
 
 TEST_F(SkeletonLoaderSimTest, Basic) {
-  ScopedDeclarativeSkeletonsForTest enable_skeletons(true);
-
   // - Create a dummy url that you add to the SkeletonLoader with
   // AddSkeletonPrefetchLink().
   KURL dummy_url("https://example.com/dummy.html");
@@ -71,8 +82,6 @@ TEST_F(SkeletonLoaderSimTest, Basic) {
 }
 
 TEST_F(SkeletonLoaderTest, PseudoElementRecalcRoot) {
-  ScopedDeclarativeSkeletonsForTest enable_skeletons(true);
-
   Element* root = GetDocument().documentElement();
   UpdateAllLifecyclePhasesForTest();
 
@@ -90,6 +99,62 @@ TEST_F(SkeletonLoaderTest, PseudoElementRecalcRoot) {
   EXPECT_EQ(root->GetPseudoElement(kPseudoIdSkeleton), nullptr);
   EXPECT_EQ(GetDocument().GetStyleEngine().style_recalc_root_.GetRootNode(),
             nullptr);
+}
+
+TEST_F(SkeletonLoaderTest, PropagateColorScheme) {
+  UpdateAllLifecyclePhasesForTest();
+
+  InsertSkeletonTree(
+      R"HTML(<html><style>html { color-scheme: dark }</style>Skeleton</html>)HTML");
+  UpdateAllLifecyclePhasesForTest();
+
+  const Element* root = GetDocument().documentElement();
+  const PseudoElement* pseudo = root->GetPseudoElement(kPseudoIdSkeleton);
+  ASSERT_TRUE(pseudo);
+  ASSERT_TRUE(pseudo->GetLayoutObject());
+  EXPECT_EQ(pseudo->GetLayoutObject()->StyleRef().UsedColorScheme(),
+            blink::mojom::ColorScheme::kDark);
+}
+
+TEST_F(SkeletonLoaderTest, PropagateColorSchemeDynamic) {
+  UpdateAllLifecyclePhasesForTest();
+
+  InsertSkeletonTree(R"HTML(<html>Skeleton</html>)HTML");
+  UpdateAllLifecyclePhasesForTest();
+
+  const Element* root = GetDocument().documentElement();
+  const PseudoElement* pseudo = root->GetPseudoElement(kPseudoIdSkeleton);
+  ASSERT_TRUE(pseudo);
+  ASSERT_TRUE(pseudo->GetLayoutObject());
+  EXPECT_EQ(pseudo->GetLayoutObject()->StyleRef().UsedColorScheme(),
+            blink::mojom::ColorScheme::kLight);
+
+  const ShadowRoot* shadow_root = pseudo->GetShadowRoot();
+  ASSERT_TRUE(shadow_root);
+  Element* skeleton_root = To<Element>(shadow_root->firstChild());
+  skeleton_root->SetInlineStyleProperty(CSSPropertyID::kColorScheme, "dark");
+  UpdateAllLifecyclePhasesForTest();
+
+  EXPECT_EQ(pseudo->GetLayoutObject()->StyleRef().UsedColorScheme(),
+            blink::mojom::ColorScheme::kDark);
+}
+
+TEST_F(SkeletonLoaderTest, InheritInitialPosition) {
+  UpdateAllLifecyclePhasesForTest();
+
+  InsertSkeletonTree(
+      R"HTML(<html style="position:inherit">Skeleton</html>)HTML");
+  UpdateAllLifecyclePhasesForTest();
+
+  const Element* root = GetDocument().documentElement();
+  const PseudoElement* pseudo = root->GetPseudoElement(kPseudoIdSkeleton);
+  ASSERT_TRUE(pseudo);
+  const ShadowRoot* shadow_root = pseudo->GetShadowRoot();
+  ASSERT_TRUE(shadow_root);
+  HTMLHtmlElement* skeleton_root =
+      To<HTMLHtmlElement>(shadow_root->firstChild());
+  EXPECT_EQ(skeleton_root->ComputedStyleRef().GetPosition(),
+            EPosition::kStatic);
 }
 
 }  // namespace blink

@@ -766,6 +766,9 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
   // TODO(crbug.com/486706573): Refactor this function and move the common logic
   // to the mixin class. Move embedder specific logic to the embedder class.
   override onAutocompleteResultChanged(result: AutocompleteResult) {
+    if (this.submitting) {
+      return;
+    }
     if (this.lastQueriedInput === null ||
         this.lastQueriedInput.trimStart() !== result.input) {
       return;
@@ -895,10 +898,6 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
       delayUpload: /*delay_upload=*/ false,
       origin: TabUploadOrigin.OTHER,
     } as TabUpload);
-  }
-
-  addFileContextForTesting(file: ComposeboxFile) {
-    this.onFileContextAdded(file);
   }
 
   // TODO(crbug.com/486707842): Move this to contextual tasks composebox.

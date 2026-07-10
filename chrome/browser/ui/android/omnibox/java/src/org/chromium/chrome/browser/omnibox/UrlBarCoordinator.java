@@ -34,13 +34,11 @@ public class UrlBarCoordinator
 
     private final UrlBar mUrlBar;
     private final UrlBarMediator mMediator;
-    private final PropertyModel mModel;
     private final KeyboardVisibilityDelegate mKeyboardVisibilityDelegate;
     private final Callback<Boolean> mFocusChangeCallback;
     private final Callback<Boolean> mTextWrappedCallback;
     private final ObserverList<Callback<Boolean>> mTextWrapListeners = new ObserverList<>();
     private @Nullable Runnable mKeyboardHideTask;
-    private boolean mIsReparenting;
     private boolean mHasFocus;
     private boolean mTextIsWrapped;
 
@@ -84,25 +82,22 @@ public class UrlBarCoordinator
         mFocusChangeCallback = focusChangeCallback;
         mTextWrappedCallback = this::onTextWrappingChanged;
 
-        mModel =
+        PropertyModel model =
                 new PropertyModel.Builder(UrlBarProperties.ALL_KEYS)
                         .with(UrlBarProperties.ACTION_MODE_CALLBACK, actionModeCallback)
-                        .with(UrlBarProperties.ALLOW_FOCUS, true)
                         .with(UrlBarProperties.ALLOW_MULTILINE_INPUT, false)
                         .with(UrlBarProperties.DELEGATE, delegate)
                         .with(UrlBarProperties.INCOGNITO_COLORS_ENABLED, isIncognitoBranded)
                         .with(UrlBarProperties.LONG_CLICK_LISTENER, onLongClickListener)
                         .with(UrlBarProperties.TEXT_WRAPPED_CALLBACK, mTextWrappedCallback)
-                        .with(
-                                UrlBarProperties.FOCUS_CHANGE_CALLBACK,
-                                this::onUrlFocusChangeInternal)
                         .build();
-        PropertyModelChangeProcessor.create(mModel, urlBar, UrlBarViewBinder::bind);
+        PropertyModelChangeProcessor.create(model, urlBar, UrlBarViewBinder::bind);
 
         mMediator =
                 new UrlBarMediator(
                         context,
-                        mModel,
+                        model,
+                        this::onUrlFocusChangeInternal,
                         textChangeListener,
                         richTextChangeListener,
                         keyDownListener);
@@ -116,16 +111,6 @@ public class UrlBarCoordinator
             mUrlBar.removeCallbacks(mKeyboardHideTask);
         }
         mUrlBar.destroy();
-    }
-
-    /** Signals that the Omnibox input session has begun. */
-    public void beginInput() {
-        mMediator.beginInput();
-    }
-
-    /** Signals that the Omnibox input session has ended. */
-    public void endInput() {
-        mMediator.endInput();
     }
 
     /** Returns whether the url bar currently contains more than a single line of text. */
@@ -380,7 +365,6 @@ public class UrlBarCoordinator
     }
 
     private void onUrlFocusChangeInternal(boolean hasFocus) {
-        if (mIsReparenting) return;
         InputMethodManager imm =
                 (InputMethodManager)
                         mUrlBar.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
@@ -438,7 +422,7 @@ public class UrlBarCoordinator
      * dropped while this process is ongoing.
      */
     public void startReparenting() {
-        mIsReparenting = true;
+        mMediator.startReparenting();
     }
 
     /**
@@ -448,11 +432,15 @@ public class UrlBarCoordinator
      *     process has completed.
      */
     public void finishReparenting(boolean postReparentingFocus) {
-        mIsReparenting = false;
+        mMediator.finishReparenting();
         if (postReparentingFocus) {
             mUrlBar.requestFocus();
         } else {
             mUrlBar.clearFocus();
         }
+        // The above call may not actually trigger a focus change, e.g. if focus was lost during
+        // reparenting and the target post-reparenting focus is false, there is no apparent change
+        // from the View's point of view, but the mediator still needs to know.
+        mMediator.onUrlFocusChange(postReparentingFocus);
     }
 }

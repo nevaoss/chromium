@@ -112,7 +112,7 @@ bool SelectionEditor::ComputeAbsoluteBounds(gfx::Rect& anchor,
   return has_selection_bounds_;
 }
 
-const SelectionInDomTree& SelectionEditor::GetSelectionInDOMTree() const {
+const SelectionInDomTree& SelectionEditor::GetSelectionInDomTree() const {
   AssertSelectionValid();
   return selection_;
 }
@@ -194,13 +194,13 @@ void SelectionEditor::DidChangeChildren(
   }
   selection_.ResetDirectionCache();
   MarkCacheDirty();
-  DidFinishDOMMutation();
+  DidFinishDomMutation();
 }
 
 void SelectionEditor::DidFinishTextChange(const Position& new_anchor,
                                           const Position& new_focus) {
   if (new_anchor == selection_.anchor_ && new_focus == selection_.focus_) {
-    DidFinishDOMMutation();
+    DidFinishDomMutation();
     return;
   }
   selection_.anchor_ = new_anchor;
@@ -209,7 +209,7 @@ void SelectionEditor::DidFinishTextChange(const Position& new_anchor,
 
   // See: https://w3c.github.io/selection-api/#selectionchange-event
   TextControlElement* text_control =
-      EnclosingTextControl(GetSelectionInDOMTree().Anchor());
+      EnclosingTextControl(GetSelectionInDomTree().Anchor());
   if (text_control && !text_control->IsInShadowTree()) {
     text_control->ScheduleSelectionchangeEvent();
   } else {
@@ -217,10 +217,10 @@ void SelectionEditor::DidFinishTextChange(const Position& new_anchor,
   }
 
   MarkCacheDirty();
-  DidFinishDOMMutation();
+  DidFinishDomMutation();
 }
 
-void SelectionEditor::DidFinishDOMMutation() {
+void SelectionEditor::DidFinishDomMutation() {
   AssertSelectionValid();
 }
 
@@ -410,7 +410,7 @@ void SelectionEditor::DidUpdateCharacterData(CharacterData* node,
   // The fragment check is a performance optimization. See
   // http://trac.webkit.org/changeset/30062.
   if (selection_.IsNone() || !node || !node->isConnected()) {
-    DidFinishDOMMutation();
+    DidFinishDomMutation();
     return;
   }
   const Position& new_anchor = UpdatePositionAfterAdoptingTextReplacement(
@@ -459,7 +459,7 @@ void SelectionEditor::DidMergeTextNodes(
     const NodeWithIndex& node_to_be_removed_with_index,
     unsigned old_length) {
   if (selection_.IsNone()) {
-    DidFinishDOMMutation();
+    DidFinishDomMutation();
     return;
   }
   const Position& new_anchor = UpdatePostionAfterAdoptingTextNodesMerged(
@@ -491,7 +491,7 @@ static Position UpdatePostionAfterAdoptingTextNodeSplit(
 
 void SelectionEditor::DidSplitTextNode(const Text& old_node) {
   if (selection_.IsNone() || !old_node.isConnected()) {
-    DidFinishDOMMutation();
+    DidFinishDomMutation();
     return;
   }
   const Position& new_anchor =

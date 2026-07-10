@@ -18,8 +18,6 @@ static_library("crosapi") {
     "crosapi_id.h",
     "crosapi_manager.cc",
     "crosapi_manager.h",
-    "local_printer_ash.cc",
-    "local_printer_ash.h",
   ]
 
   deps = [
@@ -195,18 +193,9 @@ static_library("crosapi") {
     "//ui/views",
   ]
 
-  # local_printer_ash.cc includes
-  # chrome/browser/ash/printing/print_management/printing_manager.h, which in
-  # turn requires //chromeos/components/print_management/mojom to generate the
-  # Mojo headers referenced by printing_manager.h.
-  # Ideally, //chrome/browser/ash can just make
-  # //chromeos/components/print_management/mojom a public_deps entry, and this
-  # target can depend on //chrome/browser/ash. However, that creates a circular
-  # dependency, so add this indirect dependency to make it work as intended.
   deps += [
     "//chrome/browser/ash/arc:arc_util",
     "//chrome/browser/prefs",
-    "//chromeos/components/print_management/mojom",
   ]
 
   public_deps = [
@@ -233,43 +222,6 @@ static_library("crosapi") {
   ]
 }
 
-static_library("test_support") {
-  testonly = true
-
-  sources = [
-    "test_local_printer_ash.cc",
-    "test_local_printer_ash.h",
-  ]
-
-  allow_circular_includes_from = [ "//chrome/test:test_support" ]
-
-  public_deps = [ "//chromeos/ash/components/system" ]
-
-  deps = [
-    ":crosapi",
-    "//ash",
-    "//ash:test_support",
-    "//ash/app_list",
-    "//base",
-    "//chrome/browser/apps/app_service",
-    "//chrome/browser/ash/app_list",
-    "//chrome/browser/ash/printing",
-    "//chrome/browser/ash/printing:test_support",
-    "//chrome/browser/ash/printing/history",
-    "//chrome/browser/ash/printing/history:test_support",
-    "//chrome/browser/ui/ash/desks",
-    "//chrome/browser/ui/webui/ash/app_install",
-    "//chrome/test:test_support",
-    "//chromeos/ash/components/dbus/shill",
-    "//chromeos/ash/experiences/arc:arc_test_support",
-    "//chromeos/crosapi/mojom",
-    "//components/component_updater/ash",
-    "//printing",
-    "//testing/gmock",
-    "//ui/events:gesture_detection",
-  ]
-}
-
 source_set("browser_tests") {
   testonly = true
 
@@ -279,7 +231,6 @@ source_set("browser_tests") {
 
   deps = [
     ":crosapi",
-    ":test_support",
     "//ash/constants",
     "//ash/public/cpp",
     "//base",

@@ -19,6 +19,7 @@
 #include "base/functional/bind.h"
 #include "base/memory/weak_ptr.h"
 #include "base/notreached.h"
+#include "build/build_config.h"
 #include "components/accessibility_annotator/core/accessibility_query_service.h"
 #include "components/accessibility_annotator/core/annotation_reducer/entry_type.h"
 #include "components/accessibility_annotator/core/annotation_reducer/memory_search_result.h"
@@ -608,6 +609,9 @@ bool AtMemoryManager::IsSearching() const {
 
 void AtMemoryManager::MaybeAppendPersonalContextNotice(
     std::vector<Suggestion>& suggestions) const {
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
+  return;
+#else
   if (personal_context::features::
           IsPersonalContextFirstRunNoticePhase2Enabled()) {
     if (!owner_->client().ShouldShowPersonalContextAutofillNotice()) {
@@ -621,6 +625,7 @@ void AtMemoryManager::MaybeAppendPersonalContextNotice(
         suggestions.emplace_back(SuggestionType::kPersonalContextNotice);
     suggestion.filtration_policy = Suggestion::FiltrationPolicy::kStatic;
   }
+#endif  // BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
 }
 
 void AtMemoryManager::ExecuteQuery(const std::u16string& filter) {

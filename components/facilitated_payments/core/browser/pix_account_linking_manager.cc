@@ -99,6 +99,7 @@ void PixAccountLinkingManager::MaybeShowPixAccountLinkingPrompt(
     client_->GetFacilitatedPaymentsNetworkInterface()
         ->GetDetailsForCreatePaymentInstrument(
             billing_customer_id,
+            /*client_token=*/std::vector<uint8_t>{},
             base::BindOnce(
                 &PixAccountLinkingManager::
                     OnGetDetailsForCreatePaymentInstrumentResponseReceived,
@@ -254,7 +255,13 @@ void PixAccountLinkingManager::
     OnGetDetailsForCreatePaymentInstrumentResponseReceived(
         base::TimeTicks start_time,
         autofill::payments::PaymentsAutofillClient::PaymentsRpcResult result,
-        bool is_eligible_for_pix_account_linking) {
+        bool is_eligible_for_pix_account_linking,
+        const std::vector<uint8_t>& /*action_token*/) {
+  // `action_token` is unused here because web-based Pix account linking does
+  // not require it. The native account linking flow is coordinated by
+  // `NativeAccountLinkingHandler`, which caches the token in its own callback
+  // `OnGetDetailsForCreatePaymentInstrumentResponseReceived` and uses it to
+  // invoke the native instrument manager.
   LogAccountLinkingGetDetailsForCreatePaymentInstrumentResultAndLatency(
       kPixFopSuffix, is_eligible_for_pix_account_linking,
       base::TimeTicks::Now() - start_time);

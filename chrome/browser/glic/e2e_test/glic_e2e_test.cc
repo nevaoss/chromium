@@ -147,10 +147,16 @@ void GlicE2ETest::SetUp() {
   // for some requests in real_backend mode.
   if (test_mode_ == kRecord || test_mode_ == kReplay ||
       (test_mode_ == kRealBackend && use_wpr_for_real_backend_)) {
+#if BUILDFLAG(IS_WIN)
+    GTEST_SKIP()
+        << "(crbug.com/517199038) WPR tests are temporarily skipped on "
+           "Windows due to WPR process failure";
+#else
     web_page_replay_server_wrapper_ =
         std::make_unique<WebPageReplayServerWrapper>(
             test_mode_ == kReplay || test_mode_ == kRealBackend, 8080, 8081,
             kWprArguments);
+#endif
   }
 
   // Always disable animation for stability.
@@ -284,10 +290,7 @@ GlicE2ETest::WaitForAndInstrumentGlic() {
 
 void GlicE2ETest::MaybeStartWebPageReplayForRecordingPath(
     const std::string recording_filename) {
-#if BUILDFLAG(IS_WIN)
-  GTEST_SKIP() << "(crbug.com/517199038) WPR tests are temporarily skipped on "
-                  "Windows due to WPR process failure";
-#else
+#if !BUILDFLAG(IS_WIN)
   if (test_mode_ == kRealBackend && !use_wpr_for_real_backend_) {
     return;
   }

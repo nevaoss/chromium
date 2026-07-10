@@ -3022,6 +3022,7 @@
 <translation id="5718601519531438273">შეიცავს ისეთ ინფორმაციას, როგორიცაა პასპორტები და მართვის მოწმობები</translation>
 <translation id="5720705177508910913">მიმდინარე მომხმარებელი</translation>
 <translation id="5720895412771013401">სამაგიდო კომპიუტერები</translation>
+<translation id="5721147290164931316">დაასკანირეთ თქვენი ტელეფონით შესასვლელად</translation>
 <translation id="5721367770070844253">{count,plural, =1{{website_1}}=2{{website_1}, {website_2}}=3{{website_1}, {website_2} და 1 სხვა}other{{website_1}, {website_2} და {more_count} სხვა}}</translation>
 <translation id="572328651809341494">ბოლო ჩანართები</translation>
 <translation id="5723873695528696965">თქვენი MIDI-მოწყობილობების კონტროლი და გადაპროგრამება</translation>
@@ -4269,6 +4270,7 @@
 <translation id="7646681339175747202">თქვენ მიერ ახლახან გამოყენებული პაროლი გამოაშკარავდა მონაცემთა გაჟონვისას. Google პაროლების მმართველი გირჩევთ, ახლავე შეცვალოთ თქვენი პაროლი.</translation>
 <translation id="7647206758853451655">ბეჭდვის ხარისხი</translation>
 <translation id="7648133459447652947">იმისათვის, რომ აჩვენოთ თქვენი კურსორი, გადართოთ აპები, გადატვირთოთ გვერდი ან დაბრუნდეთ უკან</translation>
+<translation id="764847582138410250">დაასკანირეთ თქვენი ტელეფონით შესასვლელად</translation>
 <translation id="7648527891719919697">ეს საიტი დაბლოკილი დარჩება, რადგან თქვენ დამატებითი დაცვა ჩართეთ <ph name="BEGIN_ANDROID_SETTINGS_LINK" />Android პარამეტრებიდან<ph name="END_ANDROID_SETTINGS_LINK" />. <ph name="BEGIN_LEARN_MORE_LINK" />შეიტყვეთ მეტი ამ გაფრთხილების შესახებ<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="7648900539798595789">აღიარებული მგზავრის ნომრის შენახვა Google საფულეში</translation>
 <translation id="7648992873808071793">ამ მოწყობილობაში ფაილების შენახვა</translation>
@@ -4898,6 +4900,7 @@
 <translation id="8671519637524426245">მნიშვნელობა <ph name="SECURE_DNS_SALT" /> არ აკმაყოფილებს მოთხოვნებს ზომის მიმართ.</translation>
 <translation id="867224526087042813">ხელმოწერა</translation>
 <translation id="8672535691554698269">კომპიუტერული ქსელები</translation>
+<translation id="8673710317985154384">{NUM_TABS,plural, =1{ჩანართის გაზიარების დეტალების ჩვენება. გაზიარებულია 1 ჩანართი {WEBSITE_LIST_STR}-იდან}other{ჩანართის გაზიარების დეტალების ჩვენება. გაზიარებულია {NUM_TABS} ჩანართი {WEBSITE_LIST_STR}-იდან}}</translation>
 <translation id="8675446170353411473">თქვენი ფაილები მზადდება <ph name="CLOUD_PROVIDER" />-ზე ასატვირთად</translation>
 <translation id="8676424191133491403">დაყოვნების გარეშე</translation>
 <translation id="8680536109547170164"><ph name="QUERY" />, პასუხი, <ph name="ANSWER" /></translation>

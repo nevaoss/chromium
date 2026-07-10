@@ -29,8 +29,8 @@ class UnboundedElementBrowserTest : public ContentBrowserTest {
   UnboundedElementBrowserTest() = default;
   ~UnboundedElementBrowserTest() override = default;
   void SetUp() override {
-#if !BUILDFLAG(IS_MAC)
-    // TODO(crbug.com/508672616): Not yet completed for non-Mac platforms.
+#if BUILDFLAG(IS_ANDROID)
+    // TODO(crbug.com/508672616): Not yet implemented on Android.
     GTEST_SKIP();
 #else
     feature_list_.InitWithFeatures(
@@ -113,8 +113,9 @@ IN_PROC_BROWSER_TEST_F(UnboundedElementBrowserTest, InputEventRouting) {
   EXPECT_TRUE(NavigateToURL(shell(), url));
 
   std::string script = R"(
-    document.body.innerHTML =
-        '<div id="child" style="width:100px; height:100px;" unbounded></div>';
+    document.body.innerHTML = `
+      <div id="child" style="width:100px; height:100px;" unbounded></div>
+    `;
     const div = document.getElementById('child');
     div.addEventListener('mousemove', (e) => {
       window.__mouse_x = e.clientX;
@@ -133,52 +134,50 @@ IN_PROC_BROWSER_TEST_F(UnboundedElementBrowserTest, InputEventRouting) {
   EXPECT_EQ(50, EvalJs(primary_main_frame_host(), "window.__mouse_y"));
 }
 
-// TODO(crbug.com/508672616): This test is currently broken because visibility
-// styles are not yet reset to "hidden" when
-// unbounded_surface_client_->OnDismissed() is called.
-IN_PROC_BROWSER_TEST_F(UnboundedElementBrowserTest,
-                       DISABLED_LightDismissEscKey) {
+IN_PROC_BROWSER_TEST_F(UnboundedElementBrowserTest, LightDismissEscKey) {
   GURL url(embedded_test_server()->GetURL("/title1.html"));
   EXPECT_TRUE(NavigateToURL(shell(), url));
 
   std::string script = R"(
-    document.body.innerHTML =
-      '<div id="target" style="width:50px; height:50px;" unbounded></div>';
+    document.body.innerHTML = `
+      <div id="target" style="width:50px; height:50px;" unbounded></div>
+    `;
     document.getElementById('target').showUnboundedElement();
   )";
   ASSERT_TRUE(ExecJs(primary_main_frame_host(), script));
   WaitForFrameReady();
+
+  std::string get_style =
+      "getComputedStyle(document.getElementById('target')).visibility";
+  EXPECT_EQ("visible", EvalJs(primary_main_frame_host(), get_style));
 
   SimulateKeyPress(web_contents(), ui::DomKey::ESCAPE, ui::DomCode::ESCAPE,
                    ui::VKEY_ESCAPE, false, false, false, false);
   RunUntilInputProcessed(primary_main_frame_host()->GetRenderWidgetHost());
 
-  std::string get_style =
-      "getComputedStyle(document.getElementById('target')).visibility";
   EXPECT_EQ("hidden", EvalJs(primary_main_frame_host(), get_style));
 }
 
-// TODO(crbug.com/508672616): This test is currently broken because visibility
-// styles are not yet reset to "hidden" when
-// unbounded_surface_client_->OnDismissed() is called.
-IN_PROC_BROWSER_TEST_F(UnboundedElementBrowserTest,
-                       DISABLED_LightDismissClickOutside) {
+IN_PROC_BROWSER_TEST_F(UnboundedElementBrowserTest, LightDismissClickOutside) {
   GURL url(embedded_test_server()->GetURL("/title1.html"));
   EXPECT_TRUE(NavigateToURL(shell(), url));
 
   std::string script = R"(
-    document.body.innerHTML =
-      '<div id="target" style="width:50px; height:50px;" unbounded></div>';
+    document.body.innerHTML = `
+      <div id="target" style="width:50px; height:50px;" unbounded></div>
+    `;
     document.getElementById('target').showUnboundedElement();
   )";
   ASSERT_TRUE(ExecJs(primary_main_frame_host(), script));
   WaitForFrameReady();
 
+  std::string get_style =
+      "getComputedStyle(document.getElementById('target')).visibility";
+  EXPECT_EQ("visible", EvalJs(primary_main_frame_host(), get_style));
+
   SimulateMouseClickAt(web_contents(), 0, blink::WebMouseEvent::Button::kLeft,
                        gfx::Point(300, 300));
   RunUntilInputProcessed(primary_main_frame_host()->GetRenderWidgetHost());
-  std::string get_style =
-      "getComputedStyle(document.getElementById('target')).visibility";
   EXPECT_EQ("hidden", EvalJs(primary_main_frame_host(), get_style));
 }
 
@@ -210,17 +209,18 @@ IN_PROC_BROWSER_TEST_F(UnboundedElementBrowserTest, CompositorPopupAllocation) {
   EXPECT_TRUE(NavigateToURL(shell(), url));
 
   std::string script = R"(
-    document.body.innerHTML =
-      '<div id="target" style="width:100px; height:100px;" unbounded></div>';
+    document.body.innerHTML = `
+      <div id="target" style="width:100px; height:100px;" unbounded></div>
+    `;
     document.getElementById('target').showUnboundedElement();
   )";
   EXPECT_TRUE(ExecJs(primary_main_frame_host(), script));
   WaitForFrameReady();
 
   UnboundedSurfaceWindow* window =
-      primary_main_frame_host()->GetUnboundedSurfaceWindowForTesting();
+      primary_main_frame_host()->GetUnboundedSurfaceWindow();
   ASSERT_TRUE(window);
-  gfx::Rect bounds = window->GetBoundsForTesting();
+  gfx::Rect bounds = window->GetBounds();
   EXPECT_EQ(100, bounds.width());
   EXPECT_EQ(100, bounds.height());
 }
@@ -271,15 +271,16 @@ IN_PROC_BROWSER_TEST_F(UnboundedElementHighDPIBrowserTest,
   EXPECT_TRUE(NavigateToURL(shell(), url));
 
   std::string script = R"(
-    document.body.innerHTML =
-      '<div id="target" style="width:100px; height:100px;" unbounded></div>';
+    document.body.innerHTML = `
+      <div id="target" style="width:100px; height:100px;" unbounded></div>
+    `;
     document.getElementById('target').showUnboundedElement();
   )";
   EXPECT_TRUE(ExecJs(primary_main_frame_host(), script));
   WaitForFrameReady();
 
   UnboundedSurfaceWindow* window =
-      primary_main_frame_host()->GetUnboundedSurfaceWindowForTesting();
+      primary_main_frame_host()->GetUnboundedSurfaceWindow();
   ASSERT_TRUE(window);
 
   float dsf = primary_main_frame_host()
@@ -288,7 +289,7 @@ IN_PROC_BROWSER_TEST_F(UnboundedElementHighDPIBrowserTest,
                   ->GetDeviceScaleFactor();
   EXPECT_EQ(2.0f, dsf);
 
-  gfx::Rect bounds = window->GetBoundsForTesting();
+  gfx::Rect bounds = window->GetBounds();
   EXPECT_EQ(100, bounds.width());
   EXPECT_EQ(100, bounds.height());
 }
@@ -324,14 +325,21 @@ IN_PROC_BROWSER_TEST_F(UnboundedElementBrowserTest,
 
   RenderFrameHostImpl* rfh =
       static_cast<RenderFrameHostImpl*>(primary_main_frame_host());
-  UnboundedSurfaceWindow* window = rfh->GetUnboundedSurfaceWindowForTesting();
+  UnboundedSurfaceWindow* window = rfh->GetUnboundedSurfaceWindow();
   ASSERT_TRUE(window);
-  gfx::Rect popup_bounds = window->GetBoundsForTesting();
+  gfx::Rect popup_bounds = window->GetBounds();
   EXPECT_GE(popup_bounds.width(), 200);
   EXPECT_GE(popup_bounds.height(), 90);
 }
 
-IN_PROC_BROWSER_TEST_F(UnboundedElementBrowserTest, PopupInputEventRouting) {
+// TODO(crbug.com/523970924): Re-enable the test.
+#if BUILDFLAG(IS_LINUX)
+#define MAYBE_PopupInputEventRouting DISABLED_PopupInputEventRouting
+#else
+#define MAYBE_PopupInputEventRouting PopupInputEventRouting
+#endif
+IN_PROC_BROWSER_TEST_F(UnboundedElementBrowserTest,
+                       MAYBE_PopupInputEventRouting) {
 #if BUILDFLAG(IS_CHROMEOS)
   // TODO(crbug.com/508672616): Not yet working on ChromeOS due to Aura/Ash
   // popup container positioning and coordinate conversion issues.
@@ -342,8 +350,9 @@ IN_PROC_BROWSER_TEST_F(UnboundedElementBrowserTest, PopupInputEventRouting) {
 
   std::string script = R"(
     document.body.style.margin = '0';
-    document.body.innerHTML =
-        '<div id="child" style="width:100px; height:100px;" unbounded></div>';
+    document.body.innerHTML = `
+      <div id="child" style="width:100px; height:100px;" unbounded></div>
+    `;
     const div = document.getElementById('child');
     div.addEventListener('mousemove', (e) => {
       window.__mouse_x = e.clientX;
@@ -357,14 +366,14 @@ IN_PROC_BROWSER_TEST_F(UnboundedElementBrowserTest, PopupInputEventRouting) {
 
   RenderFrameHostImpl* rfh =
       static_cast<RenderFrameHostImpl*>(primary_main_frame_host());
-  UnboundedSurfaceWindow* window = rfh->GetUnboundedSurfaceWindowForTesting();
+  UnboundedSurfaceWindow* window = rfh->GetUnboundedSurfaceWindow();
   ASSERT_TRUE(window);
 
   blink::WebMouseEvent event(blink::WebInputEvent::Type::kMouseMove,
                              blink::WebInputEvent::kNoModifiers,
                              base::TimeTicks::Now());
   event.button = blink::WebMouseEvent::Button::kNoButton;
-  gfx::Rect popup_bounds = window->GetBoundsForTesting();
+  gfx::Rect popup_bounds = window->GetBounds();
   const int kMouseOffsetX = 50;
   const int kMouseOffsetY = 50;
   event.SetPositionInWidget(kMouseOffsetX, kMouseOffsetY);
@@ -381,8 +390,16 @@ IN_PROC_BROWSER_TEST_F(UnboundedElementBrowserTest, PopupInputEventRouting) {
 #endif
 }
 
+// TODO(crbug.com/523970924): Re-enable the test.
+#if BUILDFLAG(IS_LINUX)
+#define MAYBE_PopupOutsideViewportInputEventRouting \
+  DISABLED_PopupOutsideViewportInputEventRouting
+#else
+#define MAYBE_PopupOutsideViewportInputEventRouting \
+  PopupOutsideViewportInputEventRouting
+#endif
 IN_PROC_BROWSER_TEST_F(UnboundedElementBrowserTest,
-                       PopupOutsideViewportInputEventRouting) {
+                       MAYBE_PopupOutsideViewportInputEventRouting) {
 #if BUILDFLAG(IS_CHROMEOS)
   // TODO(crbug.com/508672616): Not yet working on ChromeOS due to Aura/Ash
   // popup container positioning and coordinate conversion issues.
@@ -396,9 +413,10 @@ IN_PROC_BROWSER_TEST_F(UnboundedElementBrowserTest,
   std::string script = base::StringPrintf(
       R"(
     document.body.style.margin = '0';
-    document.body.innerHTML =
-        '<div id="child" style="width:100px; height:100px; ' +
-        'position:absolute; top:%dpx; left:%dpx;" unbounded></div>';
+    document.body.innerHTML = `
+      <div id="child" style="width:100px; height:100px; position:absolute;
+           top:%dpx; left:%dpx;" unbounded></div>
+    `;
     const div = document.getElementById('child');
     div.addEventListener('mousemove', (e) => {
       window.__mouse_x = e.clientX;
@@ -413,14 +431,14 @@ IN_PROC_BROWSER_TEST_F(UnboundedElementBrowserTest,
 
   RenderFrameHostImpl* rfh =
       static_cast<RenderFrameHostImpl*>(primary_main_frame_host());
-  UnboundedSurfaceWindow* window = rfh->GetUnboundedSurfaceWindowForTesting();
+  UnboundedSurfaceWindow* window = rfh->GetUnboundedSurfaceWindow();
   ASSERT_TRUE(window);
 
   blink::WebMouseEvent event(blink::WebInputEvent::Type::kMouseMove,
                              blink::WebInputEvent::kNoModifiers,
                              base::TimeTicks::Now());
   event.button = blink::WebMouseEvent::Button::kNoButton;
-  gfx::Rect popup_bounds = window->GetBoundsForTesting();
+  gfx::Rect popup_bounds = window->GetBounds();
   const int kMouseOffsetX = 50;
   const int kMouseOffsetY = 70;
   event.SetPositionInWidget(kMouseOffsetX, kMouseOffsetY);
@@ -449,9 +467,10 @@ IN_PROC_BROWSER_TEST_F(UnboundedElementBrowserTest,
   std::string script = R"(
     document.body.style.margin = '0';
     document.body.style.height = '2000px';
-    document.body.innerHTML =
-        '<div id="child" style="width:100px; height:100px; ' +
-        'position:absolute; top:400px; left:50px;" unbounded></div>';
+    document.body.innerHTML = `
+      <div id="child" style="width:100px; height:100px; position:absolute;
+           top:400px; left:50px;" unbounded></div>
+    `;
     window.scrollTo(0, 100);
     const div = document.getElementById('child');
     div.addEventListener('mousemove', (e) => {
@@ -497,9 +516,10 @@ IN_PROC_BROWSER_TEST_F(UnboundedElementBrowserTest, DISABLED_IframeInputEventRou
   // Set up the unbounded element inside the iframe.
   std::string iframe_script = R"(
     document.body.style.margin = '0';
-    document.body.innerHTML =
-        '<div id="child" style="width:50px; height:50px; ' +
-        'position:absolute; top:120px; left:120px;" unbounded></div>';
+    document.body.innerHTML = `
+      <div id="child" style="width:50px; height:50px; position:absolute;
+           top:120px; left:120px;" unbounded></div>
+    `;
     const div = document.getElementById('child');
     div.addEventListener('mousemove', (e) => {
       window.__mouse_x = e.clientX;
@@ -529,9 +549,10 @@ IN_PROC_BROWSER_TEST_F(UnboundedElementBrowserTest, DynamicBoundsSync) {
   EXPECT_TRUE(NavigateToURL(shell(), url));
 
   std::string script = R"(
-    document.body.innerHTML =
-        '<div id="child" style="width:100px; height:100px; ' +
-        'position:absolute; top:0; left:0;" unbounded></div>';
+    document.body.innerHTML = `
+      <div id="child" style="width:100px; height:100px; position:absolute;
+           top:0; left:0;" unbounded></div>
+    `;
     const div = document.getElementById('child');
     div.showUnboundedElement();
   )";
@@ -540,12 +561,12 @@ IN_PROC_BROWSER_TEST_F(UnboundedElementBrowserTest, DynamicBoundsSync) {
   WaitForFrameReady();
 
   UnboundedSurfaceWindow* window =
-      primary_main_frame_host()->GetUnboundedSurfaceWindowForTesting();
+      primary_main_frame_host()->GetUnboundedSurfaceWindow();
   ASSERT_TRUE(window);
 
   // Verify initial bounds
   {
-    gfx::Rect bounds = window->GetBoundsForTesting();
+    gfx::Rect bounds = window->GetBounds();
     EXPECT_EQ(100, bounds.width());
     EXPECT_EQ(100, bounds.height());
   }
@@ -567,10 +588,70 @@ IN_PROC_BROWSER_TEST_F(UnboundedElementBrowserTest, DynamicBoundsSync) {
 
   // Verify updated bounds
   {
-    gfx::Rect bounds = window->GetBoundsForTesting();
+    gfx::Rect bounds = window->GetBounds();
     EXPECT_EQ(150, bounds.width());
     EXPECT_EQ(200, bounds.height());
   }
+}
+
+IN_PROC_BROWSER_TEST_F(UnboundedElementBrowserTest,
+                       IframeDeletionDoesNotDismissUnboundedSurface) {
+  GURL url(embedded_test_server()->GetURL("/title1.html"));
+  EXPECT_TRUE(NavigateToURL(shell(), url));
+
+  std::string script = R"(
+    document.body.innerHTML = `
+      <div id="target" style="width:100px; height:100px;" unbounded></div>
+      <iframe id="test_iframe" src="about:blank"></iframe>
+    `;
+    document.getElementById('target').showUnboundedElement();
+  )";
+  EXPECT_TRUE(ExecJs(primary_main_frame_host(), script));
+  WaitForFrameReady();
+
+  UnboundedSurfaceWindow* window =
+      primary_main_frame_host()->GetUnboundedSurfaceWindow();
+  ASSERT_TRUE(window);
+  EXPECT_TRUE(window->is_valid());
+
+  // Remove the iframe and verify it doesn't dismiss the unbounded surface.
+  EXPECT_TRUE(ExecJs(primary_main_frame_host(),
+                     "document.getElementById('test_iframe').remove();"));
+  RunUntilInputProcessed(primary_main_frame_host()->GetRenderWidgetHost());
+  EXPECT_TRUE(window->is_valid());
+}
+
+IN_PROC_BROWSER_TEST_F(UnboundedElementBrowserTest,
+                       DoesNotStealFocusWhenOpened) {
+  GURL url(embedded_test_server()->GetURL("/title1.html"));
+  EXPECT_TRUE(NavigateToURL(shell(), url));
+
+  std::string script = R"(
+    document.body.innerHTML = `
+      <div id="c" style="width: 100px; height: 100px;">
+        <input id="i">
+      </div>
+    `;
+    const i = document.getElementById('i');
+    const c = document.getElementById('c');
+    i.focus();
+    c.setAttribute('unbounded', '');
+    c.showUnboundedElement();
+  )";
+  EXPECT_TRUE(ExecJs(primary_main_frame_host(), script));
+
+  WaitForFrameReady();
+  UnboundedSurfaceWindow* window =
+      primary_main_frame_host()->GetUnboundedSurfaceWindow();
+  ASSERT_TRUE(window);
+  EXPECT_TRUE(window->is_valid());
+
+  SimulateKeyPress(web_contents(), ui::DomKey::FromCharacter('a'),
+                   ui::DomCode::US_A, ui::VKEY_A, false, false, false, false);
+  RunUntilInputProcessed(primary_main_frame_host()->GetRenderWidgetHost());
+
+  EXPECT_EQ("a", EvalJs(primary_main_frame_host(),
+                        "document.getElementById('i').value"));
 }
 
 }  // namespace content

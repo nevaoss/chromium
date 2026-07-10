@@ -10,8 +10,9 @@ import type {PropertyValues} from 'chrome://resources/lit/v3_0/lit.rollup.js';
 
 import type {TextAnnotation, TextAttributes, TextBoxRect} from '../constants.js';
 import {TextTypeface} from '../constants.js';
-import {colorsEqual, convertRotatedCoordinates, Ink2Manager, MIN_TEXTBOX_SIZE_PX, stylesEqual} from '../ink2_manager.js';
+import {colorsEqual, Ink2Manager, MIN_TEXTBOX_SIZE_PX, stylesEqual} from '../ink2_manager.js';
 import type {TextBoxInit, ViewportParams} from '../ink2_manager.js';
+import {convertRotatedCoordinates} from '../ink_text_annotation_utils.js';
 import {PdfViewerPrivateProxyImpl} from '../pdf_viewer_private_proxy.js';
 import {colorToHex, hasCtrlModifier} from '../pdf_viewer_utils.js';
 
@@ -331,6 +332,7 @@ export class InkTextBoxElement extends InkTextBoxElementBase {
                   width: this.width_,
                 },
                 textOrientation: this.textOrientation_,
+                viewportOrientation: this.viewportRotations_,
               };
 
               const result =

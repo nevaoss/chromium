@@ -120,15 +120,6 @@
 <translation id="2287771843518581140">{NUM_TABS,plural, =1{Chromium brauzerni sekinlashtiruvchi varaqni pauza qilishni tavsiya qiladi}other{Chromium brauzerni sekinlashtiruvchi varaqlarni pauza qilishni tavsiya qiladi}}</translation>
 <translation id="2307973900865360088">Dokda qoldirish</translation>
 <translation id="2313870531055795960">URL manzillar Chromium bilgan zararli saytlar roʻyxati orqali tekshiriladi. Agar sayt parolingizni oʻgirlashga urinsa yoki zararli fayl yuklab olsangiz, Chromium ham URL manzillar kabi sahifa elementlarini Saytlarni xavfsiz kezish tizimiga yuborishi mumkin.</translation>
-<translation id="2332076562712130931">Bunda:
-          <ph name="LINE_BREAKS" />
-           • Ayrim Chromium sozlamalari va Chromium yorliqlari tiklanadi
-           <ph name="LINE_BREAK" />
-           • Kengaytmalar faolsizlantiriladi
-           <ph name="LINE_BREAK" />
-           • Cookie fayllar va boshqa vaqtincha sayt maʼlumotlari tozalanadi
-            <ph name="LINE_BREAKS" />
-           Bukmarklar, tarix va saqlangan parollar joyida qoladi.</translation>
 <translation id="2343156876103232566">Bu yerdan Android telefoningizga raqam yuborish uchun ikkala qurilmada Chromium hisobingizga kiring.</translation>
 <translation id="2356070529366658676">So‘ralsin</translation>
 <translation id="2359808026110333948">Davom etish</translation>
@@ -545,6 +536,17 @@ Ba’zi imkoniyatlar ishlamasligi mumkin. Profilni saqlash uchun boshqa jild tay
 <translation id="6896758677409633944">Nusxa olish</translation>
 <translation id="6901631050894301805">Chromiumni birlamchi brauzer etib tayinlang va vazifalar paneliga mahkamlang</translation>
 <translation id="6909503629704372277">Chromium profillarini boshqarish</translation>
+<translation id="6919942714452658456">Bunda:
+          <ph name="LINE_BREAKS" />
+            • Boshlangʻich sahifa, yangi varaq sahifasi, qidiruv tizimi va qadalgan varaqlar tiklanadi
+            <ph name="LINE_BREAK" />
+            • Kengaytmalar faolsizlantiriladi
+            <ph name="LINE_BREAK" />
+            • Cookie fayllar va boshqa vaqtincha sayt maʼlumotlari tozalanadi
+            <ph name="LINE_BREAK" />
+            • Chromium yorliqlari tiklanadi
+            <ph name="LINE_BREAKS" />
+            Bukmarklar, tarix va saqlangan parollar joyida qoladi.</translation>
 <translation id="6934579572334859869">Rasmli qidiruv orqali bu rasm haqida savol berish</translation>
 <translation id="6948031725951063910">Chromium brauzeridagi bukmarklar soni limitiga (<ph name="BOOKMARK_LIMIT" />) yetdi, shu sababli ayrim bukmarklar Google hisobingizga saqlanmadi.
 
@@ -726,6 +728,15 @@ Chromium sozlamalaringizni qaytadan tiklay olmadi.</translation>
 <translation id="8907580949721785412">Chromium parollarni ko‘rsatishga urinmoqda. Ruxsat berish uchun Windows platformasidagi parolingizni kiriting.</translation>
 <translation id="8932992523185907506">Chromium endi birlamchi brauzeringiz emas. Chromium birlamchi brauzer etib tayinlansinmi?</translation>
 <translation id="8941642502866065432">Chromiumni yangilab bo‘lmadi</translation>
+<translation id="8944232836376404813">Bunda:
+          <ph name="LINE_BREAKS" />
+            • Boshlangʻich sahifa, yangi varaq sahifasi, qidiruv tizimi va qadalgan varaqlar dastlabki holatiga qaytariladi
+            <ph name="LINE_BREAK" />
+            • Kengaytmalar faolsizlantiriladi
+            <ph name="LINE_BREAK" />
+            • Cookie fayllari va saytlarning boshqa vaqtincha maʼlumotlari oʻchirib tashlanadi
+            <ph name="LINE_BREAKS" />
+            Bukmarklar, tarix va saqlangan parollar joyida qoladi.</translation>
 <translation id="897581876605952338">Chromium Enterprise logotipi</translation>
 <translation id="8981150672034878610">Profilingizni ochishda nimadir xato ketgani uchun Chromium ishga tushmadi. Chromiumni qayta ishga tushirish.</translation>
 <translation id="8988036198400390003">Chromium profillarini boshqaring</translation>

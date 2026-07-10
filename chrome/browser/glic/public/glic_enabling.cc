@@ -92,7 +92,13 @@ namespace glic {
 #if BUILDFLAG(IS_ANDROID)
 constexpr char kDefaultEnabledCountries[] = "us";
 #else
-constexpr char kDefaultEnabledCountries[] = "us,ca,nz,in";
+constexpr char kDefaultEnabledCountries[] =
+    // Phase 1
+    "us,ca,nz,in,"
+    // Phase 2
+    "as,au,bd,bn,bt,cc,ck,cx,fj,fm,gu,hk,hm,id,jp,kh,ki,kr,la,lk,mh,mm,mn,mo,"
+    "mp,mv,my,nc,nf,np,nr,nu,pf,pg,ph,pk,pn,pw,sb,sg,th,tk,tl,to,tv,tw,vn,vu,"
+    "wf,ws";
 #endif
 
 // Feature flag kGlicLocaleFiltering controls whether locale filtering is
@@ -1085,6 +1091,12 @@ GlicEnabling::GetGeminiEnterpriseSettings(Profile* profile) {
       LOG(ERROR) << "Gemini Enterprise settings override is not a valid "
                     "JSON dictionary.";
     }
+  }
+
+  auto* actor_service = actor::ActorKeyedService::Get(profile);
+  if (!actor_service || !GlicActorPolicyChecker::IsEnterpriseAccount(
+                            *profile, actor_service->GetJournal())) {
+    return std::nullopt;
   }
 
   const base::DictValue& pref_dict =

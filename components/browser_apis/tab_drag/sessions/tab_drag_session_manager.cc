@@ -8,26 +8,23 @@
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
 #include "base/task/sequenced_task_runner.h"
-#include "components/browser_apis/tab_drag/adapters/tab_drag_platform_provider.h"
-#include "components/browser_apis/tab_drag/adapters/tab_drag_session_input_adapter.h"
-#include "components/browser_apis/tab_drag/adapters/tab_drag_window_adapter.h"
-#include "components/browser_apis/tab_drag/sessions/tab_drag_event_router.h"
 #include "components/browser_apis/tab_drag/sessions/tab_drag_session.h"
+#include "components/browser_apis/tab_drag/sessions/tab_drag_session_injector.h"
 #include "mojo/public/mojom/base/error.mojom.h"
 
 namespace tabs_api {
 
 TabDragSessionManager::TabDragSessionManager(
-    std::unique_ptr<TabDragPlatformProvider> platform_provider)
-    : platform_provider_(std::move(platform_provider)),
-      event_router_(std::make_unique<TabDragEventRouter>()) {
-  CHECK(platform_provider_);
+    std::unique_ptr<TabDragSessionInjector> injector)
+    : injector_(std::move(injector)) {
+  CHECK(injector_);
 }
 
 TabDragSessionManager::~TabDragSessionManager() = default;
 
 base::expected<std::monostate, mojo_base::mojom::ErrorPtr>
 TabDragSessionManager::StartDrag(
+    TabDragWindowAdapter* source_window,
     const std::vector<tabs_api::NodeId>& source_tab_ids,
     const gfx::Point& start_point) {
   if (source_tab_ids.empty()) {
@@ -41,11 +38,15 @@ TabDragSessionManager::StartDrag(
         "drag session is already active"));
   }
 
-  auto session = std::make_unique<TabDragSession>(
-      source_tab_ids, start_point,
-      platform_provider_->tab_drag_session_input_adapter(), event_router_.get(),
-      base::BindOnce(&TabDragSessionManager::OnSessionEnded,
-                     weak_factory_.GetWeakPtr()));
+  TabDragSessionParams params;
+  params.source_window = source_window;
+  params.source_tab_ids = source_tab_ids;
+  params.start_point = start_point;
+  params.end_callback = base::BindOnce(&TabDragSessionManager::OnSessionEnded,
+                                       weak_factory_.GetWeakPtr());
+
+  auto session =
+      std::make_unique<TabDragSession>(std::move(params), injector_.get());
 
   auto start_result = session->Start();
   if (!start_result.has_value()) {
@@ -72,6 +73,10 @@ void TabDragSessionManager::DestroyActiveSession() {
   if (active_session_) {
     active_session_.reset();
   }
+}
+
+DropTargetRegistry& TabDragSessionManager::GetDropTargetRegistry() {
+  return injector_->GetDropTargetRegistry();
 }
 
 }  // namespace tabs_api

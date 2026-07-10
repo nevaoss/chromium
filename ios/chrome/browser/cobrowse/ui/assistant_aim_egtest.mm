@@ -107,6 +107,11 @@ id<GREYMatcher> CloseButton() {
   config.features_disabled.push_back(omnibox::kAimServerEligibilityEnabled);
   config.features_disabled.push_back(kAssistantAimMinimizedState);
   config.features_disabled.push_back(kComposeboxServerSideState);
+
+  // Enable omnibox debugging flags.
+  config.additional_args.push_back("-EnableOmniboxDebugging");
+  config.additional_args.push_back("YES");
+
   return config;
 }
 
@@ -219,6 +224,58 @@ id<GREYMatcher> CloseButton() {
       performAction:grey_swipeFastInDirection(kGREYDirectionDown)];
 
   WaitForDetent(AssistantContainerDetent::kMinimized);
+}
+
+// Tests that the Loaded AIM URL debugger view controller is presented
+// correctly when tapping the "AIM Loaded URL" action in the context menu
+// under omnibox debugging, and that it can be closed by tapping the Close
+// button.
+- (void)testLoadedURLDebuggerView {
+  if ([ComposeboxAppInterface isServerSideStateEnabled]) {
+    EARL_GREY_TEST_SKIPPED(
+        @"Skipped when kComposeboxServerSideState is enabled.");
+  }
+  OpenCoBrowse(self.testServer);
+
+  // Wait for the assistant to appear.
+  [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
+
+  // Tap context menu button.
+  [[EarlGrey selectElementWithMatcher:
+                 grey_accessibilityID(
+                     kAssistantAIMContextMenuButtonAccessibilityIdentifier)]
+      performAction:grey_tap()];
+
+  // Tap "AIM Loaded URL" from the menu.
+  [[EarlGrey selectElementWithMatcher:
+                 chrome_test_util::ContextMenuItemWithAccessibilityLabel(
+                     @"AIM Loaded URL")] performAction:grey_tap()];
+
+  // Verify that the AIMSRPDebuggerURLViewController view is presented.
+  [ChromeEarlGrey
+      waitForUIElementToAppearWithMatcher:
+          grey_accessibilityID(
+              kAIMSRPDebuggerURLViewControllerAccessibilityIdentifier)];
+
+  // Verify that the text view is visible and displays some URL.
+  [[EarlGrey
+      selectElementWithMatcher:
+          grey_accessibilityID(
+              kAIMSRPDebuggerURLViewControllerTextViewAccessibilityIdentifier)]
+      assertWithMatcher:grey_sufficientlyVisible()];
+
+  // Tap the Close button to dismiss it.
+  [[EarlGrey
+      selectElementWithMatcher:
+          grey_accessibilityID(
+              kAIMSRPDebuggerURLViewControllerCloseButtonAccessibilityIdentifier)]
+      performAction:grey_tap()];
+
+  // Verify that the debugger view is dismissed.
+  [[EarlGrey selectElementWithMatcher:
+                 grey_accessibilityID(
+                     kAIMSRPDebuggerURLViewControllerAccessibilityIdentifier)]
+      assertWithMatcher:grey_nil()];
 }
 
 // Tests that the assistant starts in minimized state when the flag is enabled.

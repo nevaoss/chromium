@@ -117,6 +117,7 @@
 <translation id="1373120905936431262">Carregue uma imagem para reinventar com o Nano Banana</translation>
 <translation id="1377508275003315939">Palavras-passe</translation>
 <translation id="1381022135873211423">{count,plural, =1{{position} de {count} morada}other{{position} de {count} moradas}}</translation>
+<translation id="13813615483058219">Algo correu mal. Verifique a ligação à Internet, aumente o volume ou tente novamente.</translation>
 <translation id="1383876407941801731">Pesquisar</translation>
 <translation id="138618066238211776">Continuar como <ph name="USER_NAME" /></translation>
 <translation id="138692594145659985">Opções para guardar o cartão</translation>
@@ -500,6 +501,7 @@
 <translation id="2666092431469916601">Parte superior</translation>
 <translation id="2669454659051515572">Qualquer pessoa que use este dispositivo pode ver os ficheiros transferidos</translation>
 <translation id="2671423594960767771">Partilhar grupo</translation>
+<translation id="2673183423393669407">Pagar em prestações</translation>
 <translation id="2673508731173059946">Aceder ao link copiado</translation>
 <translation id="2679659833697380">As informações são guardadas no seu dispositivo</translation>
 <translation id="2681572445246787428">Assinatura de documentos</translation>
@@ -912,7 +914,6 @@
 <translation id="417138788035229076">Gerir grupo</translation>
 <translation id="4172051516777682613">Mostrar sempre</translation>
 <translation id="417273154673973994">{count,plural, =1{1 grupo de separadores fechado e guardado}other{{count} grupos de separadores fechados e guardados}}</translation>
-<translation id="417612446554534067">Enviar para os seus dispositivos</translation>
 <translation id="4180726336228139707">Apenas neste dispositivo</translation>
 <translation id="4181841719683918333">Idiomas</translation>
 <translation id="4183350924949589798">Mais segurança?</translation>
@@ -1136,6 +1137,7 @@
 <translation id="4896467949657706481">Os separadores foram fechados e a sua sessão foi terminada</translation>
 <translation id="4911042367886397055">Damos-lhe as boas-vindas, <ph name="USER_NAME" />!</translation>
 <translation id="4913626501929406101">Pode partilhar de forma segura uma cópia da sua palavra-passe com alguém no seu grupo familiar. <ph name="BEGIN_LINK" />Saiba mais<ph name="END_LINK" /></translation>
+<translation id="4916679969857390442">Lente</translation>
 <translation id="4917025507570489430">Pode usar os dados de navegação existentes quando tiver sessão iniciada como <ph name="USER_EMAIL" />. A sua organização pode conseguir ver estes dados.</translation>
 <translation id="4918086044614829423">Aceitar</translation>
 <translation id="4930714375720679147">Ativar</translation>
@@ -1557,6 +1559,7 @@ A Entrega também tem de estar ativada na secção Geral das Definições e os s
 <translation id="6327249202318869726">O Gemini está desativado para a sua conta. Contacte o seu administrador para mais informações.</translation>
 <translation id="6331836477476466332">Um navegador mais seguro e poderoso para si</translation>
 <translation id="6337234675334993532">Encriptação</translation>
+<translation id="6337711171050747395">Mostrar opções de pagamento em prestações no pagamento</translation>
 <translation id="633809752005859102">Algo correu muito mal. Estamos a tratar do assunto.</translation>
 <translation id="6339793034470834130">Para usar o Web Inspector, ligue-se ao Safari no computador com um cabo e aceda ao iPhone a partir do menu do programador. Pode ativar o menu do programador na secção Avançadas das definições do Safari no computador.</translation>
 <translation id="6340285871011301182">Tradução parcial não disponível.</translation>

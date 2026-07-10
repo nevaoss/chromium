@@ -4,6 +4,7 @@
 
 #include "android_webview/common/aw_features.h"
 
+#include "base/feature.h"
 #include "base/feature_list.h"
 #include "base/metrics/field_trial_params.h"
 
@@ -49,6 +50,19 @@ BASE_FEATURE(kWebViewFileSystemAccess, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Force the default WebAuthn state to be APP mode.
 BASE_FEATURE(kWebViewForceWebAuthn, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Gate text-size-adjust on whether the app called
+// setLayoutAlgorithm(TEXT_AUTOSIZING).
+BASE_FEATURE(kWebViewGateTextSizeAdjustOnTextAutosizing,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Install the profiling client with memory_system::Initializer. If this is
+// enabled the profiler MAY be started by
+// HeapProfilerController::StartIfEnabled, which is controlled by the
+// cross-platform features in
+// components/heap_profiling/in_process/heap_profiler_parameters.h. Otherwise
+// the profiler will never be started.
+BASE_FEATURE(kWebViewMemoryProfilingClient, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables lazy profile creation in WebView.
 BASE_FEATURE(kWebViewProfileStoreNotTriggerStartup,
@@ -357,5 +371,10 @@ const base::FeatureParam<bool> kWebViewHttpCacheQuotaApiAffectsCodeCache{
 // it has not already been initialized. This may trigger evictions more readily.
 const base::FeatureParam<bool> kWebViewHttpCacheQuotaApiForceBackendInit{
     &kWebViewHttpCacheQuotaApi, "ForceBackendInit", true};
+
+// When enabled (which is the default state) a navigation will download a
+// Favicon. When disabled (which can be done through Finch or Flag UI) a
+// navigation will not download a Favicon.
+BASE_FEATURE(kWebViewDownloadFavicons, base::FEATURE_ENABLED_BY_DEFAULT);
 
 }  // namespace android_webview::features

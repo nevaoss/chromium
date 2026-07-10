@@ -598,7 +598,6 @@
 <translation id="1433478348197382180">وضع القراءة</translation>
 <translation id="1433980411933182122">التشغيل</translation>
 <translation id="1434659328474177625">تم تأكيد عنوان بريدك الإلكتروني بواسطة <ph name="ISSUER" /></translation>
-<translation id="1434696352799406980">سيعيد هذا تعيين صفحة بدء التشغيل، وصفحة علامة تبويب جديدة، ومحرك البحث، وعلامات التبويب المثبتة. وستعطِّل أيضًا جميع الإضافات وتمحو البيانات المؤقتة مثل ملفات تعريف الارتباط. ولن يتم محو الإشارات المرجعية، والسجل، وكلمات المرور المحفوظة.</translation>
 <translation id="1434886155212424586">الصفحة الرئيسية هي صفحة "علامة تبويب جديدة"</translation>
 <translation id="1435940442311036198">استخدام مفتاح مرور على جهاز آخر</translation>
 <translation id="1436390408194692385">صالحة لمدة <ph name="TICKET_TIME_LEFT" /></translation>
@@ -2565,6 +2564,7 @@
 <translation id="2822551631199737692">الكاميرا قيد الاستخدام</translation>
 <translation id="2822634587701817431">تقليص/توسيع</translation>
 <translation id="2824942875887026017">يستخدم <ph name="IDS_SHORT_PRODUCT_NAME" /> إعدادات الخادم الوكيل من المشرف.</translation>
+<translation id="2825200993288778739">يمكنك إنشاء مهاراتك الخاصة أو إضافتها من مكتبة المهارات</translation>
 <translation id="282525059261716597">سطر الأوامر:</translation>
 <translation id="2825758591930162672">المفتاح العام للجهة لصاحب الشهادة</translation>
 <translation id="2826576843404243001">بالنسبة إلى المواقع الإلكترونية التي لا تتيح الاتصالات الآمنة، سيظهر لك تحذير قبل الانتقال إليها. لا يمكنك تغيير هذه الإعدادات لأنّ إعداد "الحماية المتقدّمة" مفعّل.</translation>
@@ -3705,7 +3705,6 @@
 <translation id="366484203224589850">‏‫<ph name="TASK_TITLE" />: يعمل Gemini على هذه المهمة منذ فترة طويلة وسيتوقف قريبًا للحفاظ على طاقة البطارية</translation>
 <translation id="3664911592976620204">{NUM_OTHER_MEMBERS,plural, =0{الانضمام إلى مجموعة علامات التبويب التي تضمّ "<ph name="OWNER_FIRST_NAME" />"}=1{الانضمام إلى مجموعة علامات التبويب التي تضمّ "<ph name="OWNER_FIRST_NAME" />" ومستخدمًا واحدًا آخر}two{الانضمام إلى مجموعة علامات التبويب التي تضمّ "<ph name="OWNER_FIRST_NAME" />" ومستخدمَين آخرَين}few{الانضمام إلى مجموعة علامات التبويب التي تضمّ "<ph name="OWNER_FIRST_NAME" />" و# مستخدمِين آخرِين}many{الانضمام إلى مجموعة علامات التبويب التي تضمّ "<ph name="OWNER_FIRST_NAME" />" و# مستخدمًا آخر}other{الانضمام إلى مجموعة علامات التبويب التي تضمّ "<ph name="OWNER_FIRST_NAME" />" و# مستخدم آخر}}</translation>
 <translation id="3665301845536101715">الفتح في اللوحة الجانبية</translation>
-<translation id="3665589677786828986">‏اكتشف Chrome أن بعض إعداداتك تم إتلافها من قبل برنامج آخر وإعادة تعيينها للحالة التلقائية الأصلية.</translation>
 <translation id="3665918214153961651">جارٍ تحميل الملف</translation>
 <translation id="3666196264870170605">‏ملف الذاكرة الذي يضم بيانات تصحيح الأخطاء لوحدات تحكُّم واجهة الشبكة (NIC) الخاصة بـ Intel WiFi</translation>
 <translation id="3666971425390608309">تم إيقاف تنزيل <ph name="FILE_NAME" /> مؤقتًا.</translation>
@@ -4640,6 +4639,7 @@
 <translation id="4321179778687042513">ctrl</translation>
 <translation id="432160826079505197">‏إظهار "<ph name="FILE_NAME" />" في Finder</translation>
 <translation id="4322394346347055525">إغلاق علامات التبويب الأخرى</translation>
+<translation id="4322400254469690320">يمكنك العثور على <ph name="FILENAME" /> في مجلد "<ph name="FEATURE_NAME" />"</translation>
 <translation id="4324577459193912240">ملف غير مكتمل</translation>
 <translation id="4325433082696797523">التخزين والطاقة</translation>
 <translation id="4325515113816851466">لن يتم تطبيق خيارات أحد والدَيك بعد تسجيل الخروج</translation>
@@ -4990,7 +4990,6 @@
 <translation id="4580596421317071374">يتم حفظ كلمات المرور في <ph name="GOOGLE_PASSWORD_MANAGER" /> على هذا الجهاز.</translation>
 <translation id="4580939929828762295">‏أنت في أمان مع "مدير كلمات المرور في Google"</translation>
 <translation id="4582297591746054421">تقرأ المواقع الإلكترونية عادةً الحافظة لتتيح ميزات، مثل الحفاظ على صيغة النص الذي نسخته.</translation>
-<translation id="4582563038311694664">إعادة ضبط كل الإعدادات</translation>
 <translation id="4584094413232466841">‏هل أردت إزالة هذه المعلومات من ميزة "الملء التلقائي" في Chrome؟</translation>
 <translation id="4584770411839426377">نافذة</translation>
 <translation id="4584836561445313300">ستتمكن مؤسستك من الاطّلاع على أي بيانات تصفّح حالية وإدارتها، مثل كلمات المرور وغيرها</translation>
@@ -6635,6 +6634,7 @@
 <translation id="5826993284769733527">شبه شفاف</translation>
 <translation id="5827266244928330802">Safari</translation>
 <translation id="5827591412833386477">عرض المواقع الإلكترونية ضمن المجموعة نفسها</translation>
+<translation id="5827835011646404677">‏يتم حفظ المهارات في حسابك على Google</translation>
 <translation id="5828181959764767444">غروب</translation>
 <translation id="5828545842856466741">إضافة ملف شخصي...</translation>
 <translation id="5828633471261496623">الطباعة جارية...</translation>
@@ -6895,7 +6895,7 @@
 <translation id="6013027779243312217">الحصول على مقاطع شرح لملفات الصوت والفيديو</translation>
 <translation id="6014293228235665243">غير مقروءة</translation>
 <translation id="6015776718598175635">نجوم</translation>
-<translation id="6015796118275082299">عام</translation>
+<translation id="6015796118275082299">سنة الصنع</translation>
 <translation id="6016178549409952427">الانتقال إلى المحتوى الإضافي <ph name="CURRENT_ELEMENT" /> من أصل <ph name="TOTAL_ELEMENTS" /></translation>
 <translation id="6016462059150340136">كل الأجهزة المجاورة</translation>
 <translation id="6016972670657536680">اختَر اللغة وزر لوحة المفاتيح. اللغة المحددة حاليًا هي <ph name="LANGUAGE" />.</translation>
@@ -10086,7 +10086,6 @@
 <translation id="8327386430364625757">الخط الرياضي</translation>
 <translation id="8327490658947427005">النص المُحدَّد ليس باللغة <ph name="LANGUAGE" /></translation>
 <translation id="8327544198829180337">إغلاق هذا العرض</translation>
-<translation id="8327676037044516220">إعدادات المحتوى والأذونات</translation>
 <translation id="8328228852664998535">في حال المتابعة، سيتم حذف كلمات المرور ومفاتيح المرور والبيانات الأخرى نهائيًا من "<ph name="BRAND" />". ولن يتم حذف أي حسابات أنشأتها للمواقع الإلكترونية أو التطبيقات.</translation>
 <translation id="8328777765163860529">إغلاق الكل</translation>
 <translation id="8330617762701840933">قائمة المواقع الإلكترونية التي تتم إعادة توجيهها إلى المتصفِّح البديل</translation>
@@ -10907,7 +10906,6 @@
 <translation id="8925458182817574960">&amp;الإعدادات</translation>
 <translation id="8926389886865778422">عدم السؤال مرة أخرى</translation>
 <translation id="8926555406617248399">تم إخفاء علامات التبويب</translation>
-<translation id="892706138619340876">تمت إعادة ضبط بعض الإعدادات</translation>
 <translation id="8927438609932588163">السماح للمواقع الإلكترونية بحفظ البيانات على جهازك</translation>
 <translation id="8929696694736010839">جلسة التصفُّح المتخفي الحالية فقط</translation>
 <translation id="8929738682246584251">تفعيل/إيقاف المكبِّر</translation>
@@ -11216,6 +11214,7 @@
 <translation id="9130015405878219958">تم إدخال وضع غير صحيح.</translation>
 <translation id="9130135798965366513">للمتابعة، سيشارك <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> <ph name="FIELDS_STRING" /> مع هذا الموقع الإلكتروني. يُرجى الاطّلاع على <ph name="BEGIN_LINK1" />سياسة الخصوصية<ph name="END_LINK1" /> و<ph name="BEGIN_LINK2" />بنود الخدمة<ph name="END_LINK2" /> لهذا الموقع الإلكتروني.</translation>
 <translation id="9130364135697530260">يمكن للمحتوى المضمَّن في هذا الموقع الإلكتروني استخدام المعلومات التي تم حفظها عنك.</translation>
+<translation id="9130857050314385402">‏يتم إرسال عناوين علامات التبويب وعناوين URL إلى Google عند استخدام المهارات</translation>
 <translation id="9131209053278896908">تظهر في هذه القائمة المواقع الإلكترونية التي تحظرها.</translation>
 <translation id="9131487537093447019">إرسال الرسائل إلى أجهزة البلوتوث واستلامها منها.</translation>
 <translation id="9133568201369135151">اكتمل جمع بيانات التشخيص. وتشتمل هذه البيانات على بعض معلوماتك الشخصية.</translation>

@@ -95,26 +95,25 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Compositing.BeginMainFrame.BMFReason8" units="reasons"
-    expires_after="2026-10-30">
-  <owner>thiabaud@google.com</owner>
-  <owner>jonross@chromium.org</owner>
-  <summary>
-    Records the reason(s) for which we triggered a BeginMainFrame. Recorded when
-    the BeginMainFrame is run. The value recorded is a bitset of the enum
-    |BeginMainFrameReason|, with all the reasons the current BeginMainFrame was
-    triggered.
-  </summary>
-</histogram>
-
-<histogram name="Compositing.BeginMainFrame.BMFReason8.NoUpdate"
+<histogram name="Compositing.BeginMainFrame.BMFReason9{FrameType}{Suffix}"
     units="reasons" expires_after="2026-10-30">
   <owner>thiabaud@google.com</owner>
   <owner>jonross@chromium.org</owner>
   <summary>
-    Same as &quot;Compositing.BeginMainFrame.BMFReason8&quot;, but only recorded
-    if the BeginMainFrame finishes with no updates.
+    Records the reason(s) for which we triggered a BeginMainFrame{FrameType}.
+    Recorded when the BeginMainFrame is run{Suffix}. The value recorded is a
+    bitset of the enum |BeginMainFrameReason|, with all the reasons the current
+    BeginMainFrame was triggered.
   </summary>
+  <token key="FrameType">
+    <variant name="" summary=""/>
+    <variant name=".Embedded" summary="for an embedded frame"/>
+    <variant name=".NonEmbedded" summary="for a non-embedded frame"/>
+  </token>
+  <token key="Suffix">
+    <variant name="" summary=""/>
+    <variant name=".NoUpdate" summary=", and finished with no updates"/>
+  </token>
 </histogram>
 
 <histogram name="Compositing.BeginMainFrame.MainResult"

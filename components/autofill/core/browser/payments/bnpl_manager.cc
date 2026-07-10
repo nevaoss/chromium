@@ -586,17 +586,15 @@ std::vector<Suggestion> BnplManager::GetBnplSuggestions(
             .GetPersonalDataManager()
             .payments_data_manager();
     if (is_card_number_field_empty &&
-        payments::ShouldStartPayLaterWithLoadingSpinner(
-            payments_data_manager)) {
+        ShouldStartPayLaterWithLoadingSpinner(payments_data_manager)) {
       suggestions.push_back(autofill::GetLoadingSuggestionForPayLaterTab(
           payments_data_manager.GetBnplIssuers().size()));
     } else {
       suggestions.append_range(autofill::GetSuggestionsForBnpl(
-          payments::GetSortedBnplIssuerContext(
-              browser_autofill_manager_->client(),
-              /*checkout_amount=*/std::nullopt,
-              /*amount_extraction_error=*/std::nullopt,
-              std::move(enforced_order)),
+          GetSortedBnplIssuerContext(browser_autofill_manager_->client(),
+                                     /*checkout_amount=*/std::nullopt,
+                                     /*amount_extraction_error=*/std::nullopt,
+                                     std::move(enforced_order)),
           browser_autofill_manager_->client().GetAppLocale(),
           is_card_number_field_empty));
     }
@@ -835,11 +833,11 @@ void BnplManager::OnDidGetLegalMessageFromServer(
       break;
   }
 
-  if (result == payments::PaymentsAutofillClient::PaymentsRpcResult::kSuccess) {
+  if (result == PaymentsAutofillClient::PaymentsRpcResult::kSuccess) {
     ongoing_flow_state_->context_token = std::move(context_token);
 
     CHECK(!legal_message.empty());
-    payments::BnplTosModel bnpl_tos_model;
+    BnplTosModel bnpl_tos_model;
     bnpl_tos_model.legal_message_lines = std::move(legal_message);
     bnpl_tos_model.issuer = ongoing_flow_state_->issuer.value();
 
@@ -948,7 +946,7 @@ void BnplManager::OnRedirectUrlFetched(
     }
   }
 
-  if (result == payments::PaymentsAutofillClient::PaymentsRpcResult::kSuccess) {
+  if (result == PaymentsAutofillClient::PaymentsRpcResult::kSuccess) {
     ongoing_flow_state_->redirect_url = std::move(response.redirect_url);
     ongoing_flow_state_->context_token = std::move(response.context_token);
 
@@ -1119,7 +1117,7 @@ void BnplManager::OnBnplPaymentInstrumentCreated(
     std::string instrument_id) {
   int64_t instrument_id_int = 0;
 
-  if (result == payments::PaymentsAutofillClient::PaymentsRpcResult::kSuccess &&
+  if (result == PaymentsAutofillClient::PaymentsRpcResult::kSuccess &&
       base::StringToInt64(instrument_id, &instrument_id_int)) {
     ongoing_flow_state_->issuer->set_payment_instrument(PaymentInstrument(
         /*instrument_id=*/instrument_id_int, /*nickname=*/u"",
@@ -1157,7 +1155,7 @@ void BnplManager::UpdateBnplPaymentInstrument() {
 
 void BnplManager::OnBnplPaymentInstrumentUpdated(
     PaymentsAutofillClient::PaymentsRpcResult result) {
-  if (result == payments::PaymentsAutofillClient::PaymentsRpcResult::kSuccess) {
+  if (result == PaymentsAutofillClient::PaymentsRpcResult::kSuccess) {
     FetchRedirectUrl();
   } else {
     OnFailureAfterTosAccepted(result);
@@ -1165,7 +1163,7 @@ void BnplManager::OnBnplPaymentInstrumentUpdated(
 }
 
 void BnplManager::ReplaceLoadingThrobberWithIssuerSuggestions(
-    const std::vector<payments::BnplIssuerContext>& issuer_contexts) {
+    const std::vector<BnplIssuerContext>& issuer_contexts) {
   CHECK(!cached_suggestions_.empty());
   std::vector<Suggestion> new_suggestions = cached_suggestions_;
 

@@ -117,6 +117,7 @@
 <translation id="1373120905936431262">Nano Bananaৰ জৰিয়তে ৰিমিক্স কৰিবলৈ এখন প্ৰতিচ্ছবি আপল’ড কৰক</translation>
 <translation id="1377508275003315939">পাছৱৰ্ড</translation>
 <translation id="1381022135873211423">{count,plural, =1{{count} টা ঠিকনাৰ {position} নম্বৰ ঠিকনাটো}one{{count} টা ঠিকনাৰ {position} নম্বৰ ঠিকনাটো}other{{count} টা ঠিকনাৰ {position} নম্বৰ ঠিকনাটো}}</translation>
+<translation id="13813615483058219">কিবা ভুল হ’ল। আপোনাৰ ইণ্টাৰনেট সংযোগ পৰীক্ষা কৰক, আপোনাৰ ভলিউম বৃদ্ধি কৰক, বা পুনৰ চেষ্টা কৰক।</translation>
 <translation id="1383876407941801731">সন্ধান কৰক</translation>
 <translation id="138618066238211776"><ph name="USER_NAME" /> হিচাপে অব্যাহত ৰাখক</translation>
 <translation id="138692594145659985">কাৰ্ড ছেভ কৰাৰ বিকল্পসমূহ</translation>
@@ -874,6 +875,7 @@
 <translation id="4021447724486050609">আপোনাৰ ব্ৰাউজাৰটো আপডে’ট কৰক</translation>
 <translation id="4021931095789478915">পঢ়াৰ সূচীত ${url} যোগ দিয়ক</translation>
 <translation id="4028871427853484857">একাউণ্টত ছেভ কৰক…</translation>
+<translation id="4036529942385659684">নিষ্ক্ৰিয়তাৰ সময়সীমাৰ পাছত আৰম্ভণিৰ পৃষ্ঠাখন দেখুৱাওক</translation>
 <translation id="4038354071007134711">এই ডিভাইচটোত থকা কোনো এপ্লিকেশ্বনে ফাইলটো খুলিব নোৱাৰে।</translation>
 <translation id="4042870976416480368">পৃষ্ঠাত বিচাৰক</translation>
 <translation id="4045441967987592849">পুনৰ খোলক</translation>
@@ -911,7 +913,6 @@
 <translation id="417138788035229076">গোট পৰিচালনা কৰক</translation>
 <translation id="4172051516777682613">সদায় দেখুৱাওক</translation>
 <translation id="417273154673973994">{count,plural, =1{১ টা টেবৰ গোট বন্ধ কৰি ছেভ কৰা হৈছে}one{{count} টা টেবৰ গোট বন্ধ কৰি ছেভ কৰা হৈছে}other{{count} টা টেবৰ গোট বন্ধ কৰি ছেভ কৰা হৈছে}}</translation>
-<translation id="417612446554534067">আপোনাৰ ডিভাইচসমূহলৈ পঠিয়াওক</translation>
 <translation id="4180726336228139707">কেৱল এই ডিভাইচটোত</translation>
 <translation id="4181841719683918333">ভাষাসমূহ</translation>
 <translation id="4183350924949589798">অধিক সুৰক্ষা লাগে নেকি?</translation>
@@ -1135,6 +1136,7 @@
 <translation id="4896467949657706481">টেবসমূহ বন্ধ কৰা হৈছে; আপোনাক ছাইন আউট কৰোৱা হৈছে</translation>
 <translation id="4911042367886397055">পুনৰ স্বাগতম, <ph name="USER_NAME" />!</translation>
 <translation id="4913626501929406101">আপুনি আপোনাৰ পাছৱৰ্ডৰ এটা প্ৰতিলিপি আপোনাৰ পৰিয়ালৰ গোটৰ যিকোনো ব্যক্তিৰ সৈতে সুৰক্ষিতভাৱে শ্বেয়াৰ কৰিব পাৰে। <ph name="BEGIN_LINK" />অধিক জানক<ph name="END_LINK" /></translation>
+<translation id="4916679969857390442">লেন্স</translation>
 <translation id="4917025507570489430">আপুনি <ph name="USER_EMAIL" /> হিচাপে ছাইন ইন হৈ থাকোঁতে পূৰ্বৰে পৰা থকা ব্ৰাউজিঙৰ ডেটা ব্যৱহাৰ কৰিব পাৰে। আপোনাৰ প্ৰতিষ্ঠানে হয়তো এই ডেটা চাব পাৰিব।</translation>
 <translation id="4918086044614829423">গ্ৰহণ কৰক</translation>
 <translation id="4930714375720679147">অন কৰক</translation>

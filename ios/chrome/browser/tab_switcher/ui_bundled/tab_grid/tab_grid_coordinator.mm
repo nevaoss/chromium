@@ -1609,26 +1609,12 @@ bool FindNavigatorShouldBePresentedInBrowser(Browser* browser) {
 
   // Postpone the start of the coordinator to allow the context menu dismissal
   // animation to complete cleanly and prevent a UIKit transition deadlock.
-  // TODO(crbug.com/493866370): These transition details shouldn't be the
-  // responsibility of the TabGridCoordinator. Instead, implement a Protocol
-  // ("TransitionStateProviding") which exposes the context menu animator, and
-  // a common utility to run a block once the current transition completes.
   __weak TabGridCoordinator* weakSelf = self;
-  id<UIContextMenuInteractionAnimating> contextMenuAnimator =
-      _viewController.activeContextMenuAnimator;
-  if (contextMenuAnimator) {
-    [contextMenuAnimator addCompletion:^{
-      web::GetUIThreadTaskRunner({})->PostTask(
-          FROM_HERE, base::BindOnce(^{
-            TabGridCoordinator* strongSelf = weakSelf;
-            if (strongSelf) {
-              [strongSelf.sendTabToSelfCoordinator start];
-            }
-          }));
-    }];
-  } else {
-    [self.sendTabToSelfCoordinator start];
-  }
+  ExecuteWhenTransitionsComplete(
+      ^{
+        [weakSelf.sendTabToSelfCoordinator start];
+      },
+      _viewController);
 }
 
 #pragma mark - SendTabToSelfCoordinatorDelegate

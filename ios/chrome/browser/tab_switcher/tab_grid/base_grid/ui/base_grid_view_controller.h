@@ -9,6 +9,7 @@
 
 #import <set>
 
+#import "ios/chrome/browser/shared/ui/util/uikit_ui_util.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_collection_consumer.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_grid/grid/grid_theme.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_grid/tab_grid_paging.h"
@@ -107,7 +108,9 @@ class WebStateID;
 @end
 
 // A view controller that contains a grid of items.
-@interface BaseGridViewController : UIViewController <TabCollectionConsumer>
+@interface BaseGridViewController
+    : UIViewController <TabCollectionConsumer,
+                        ContextMenuTransitionStateProviding>
 // The remaining distance to scroll to the top, in point.
 @property(nonatomic, readonly) CGFloat remainingScrollDistanceTop;
 // The remaining distance to scroll to the bottom, in point.

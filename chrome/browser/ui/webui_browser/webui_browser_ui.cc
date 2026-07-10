@@ -34,6 +34,8 @@
 #include "chrome/grit/tab_strip_api_resources_map.h"
 #include "chrome/grit/webui_browser_resources.h"
 #include "chrome/grit/webui_browser_resources_map.h"
+#include "chrome/grit/webui_toolbar_shared_resources.h"
+#include "chrome/grit/webui_toolbar_shared_resources_map.h"
 #include "components/contextual_search/contextual_search_service.h"
 #include "components/contextual_search/contextual_search_session_handle.h"
 #include "components/favicon_base/favicon_url_parser.h"
@@ -110,6 +112,7 @@ WebUIBrowserUI::WebUIBrowserUI(content::WebUI* web_ui)
   webui::SetupWebUIDataSource(source, kWebuiBrowserResources,
                               IDR_WEBUI_BROWSER_WEBUI_BROWSER_HTML);
   source->AddResourcePaths(kTabStripApiResources);
+  source->AddResourcePaths(kWebuiToolbarSharedResources);
 
   static constexpr webui::LocalizedString kStrings[] = {
       // Localized strings (alphabetical order).

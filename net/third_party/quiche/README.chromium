@@ -1,6 +1,6 @@
 Name: QUICHE
 URL: https://quiche.googlesource.com/quiche
-Revision: 1276ee42511694e93439c7023781f1a7dcc075a3
+Revision: 5101364ca7f0ab1d797f1bbc0fbd28a71e4f8783
 Version: git
 Update Mechanism: Manual
 License: BSD-3-Clause

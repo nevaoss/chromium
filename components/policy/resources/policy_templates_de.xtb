@@ -7239,9 +7239,6 @@ Wenn die Richtlinie nicht konfiguriert ist oder das Alter des Release nicht ermi
 <translation id="5649788773465136073">Die Verwendung von Kennungen für geschützte Inhalte auf Websites deaktivieren. Dies kann zu einer geringeren Wiedergabequalität geschützter Inhalte führen.</translation>
 <translation id="5650256117857913687">Nutzer mit Remote-Zugriff daran hindern, URLs auf Hostseite in ihrem lokalen Clientbrowser zu öffnen</translation>
 <translation id="5650716720715977549">Einschränkungen auf Anfragen an eher private Netzwerk-Endpunkte anwenden</translation>
-<translation id="5651538748810288218">Wenn die Richtlinie auf 1 gesetzt ist, dürfen Websites auf Sensoren wie Bewegungs- und Lichtsensoren zugreifen und diese nutzen. Ist sie auf 2 gesetzt, wird der Zugriff auf alle Sensoren verweigert.
-
-      Wenn sie nicht konfiguriert ist, gilt die Richtlinie <ph name="ALLOW_SENSORS_POLICY_NAME" />, aber Nutzer können diese Einstellung ändern.</translation>
 <translation id="5652250453612826983">Legt die Richtlinien für die Elternaufsicht fest. Diese werden nur auf Kinderkonten angewendet.
       Diese Richtlinien werden nicht in der Admin-Konsole, sondern direkt von Kids API Server konfiguriert.</translation>
 <translation id="5654682237531873653">Wenn die Richtlinie aktiviert ist, ist die Rechtschreibprüfung an und Nutzer können sie nicht deaktivieren. Unter <ph name="MS_WIN_NAME" />, <ph name="PRODUCT_OS_NAME" /> und <ph name="LINUX_OS_NAME" /> können die Sprachen für die Rechtschreibprüfung einzeln aktiviert und deaktiviert werden. Dadurch haben Nutzer die Möglichkeit, die Rechtschreibprüfung durch Deaktivieren aller Sprachen auszuschalten. Soll diese Möglichkeit nicht zur Verfügung stehen, kann die Richtlinie <ph name="SPELLCHECK_LANGUAGE_POLICY_NAME" /> verwendet dazu werden, die Aktivierung bestimmter Sprachen für die Rechtschreibprüfung zu erzwingen.

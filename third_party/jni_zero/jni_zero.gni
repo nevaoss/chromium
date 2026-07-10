@@ -446,6 +446,16 @@ template("generate_jni_impl") {
         "--output-dir",
         rebase_path(_jni_output_dir, root_build_dir),
       ]
+      if (defined(invoker.enable_resolved_types_validation) &&
+          invoker.enable_resolved_types_validation) {
+        _resolved_types_path =
+            "$target_gen_dir/$_final_target_name.resolved_types.txt"
+        outputs += [ _resolved_types_path ]
+        args += [
+          "--resolved-types-path",
+          rebase_path(_resolved_types_path, root_build_dir),
+        ]
+      }
       if (_enable_definition_macros) {
         args += [ "--use-std-primitive-types" ]
       }

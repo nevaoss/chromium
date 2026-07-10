@@ -1176,11 +1176,11 @@ data/accessibility/aria/aria-list-expected-auralinux.txt
 data/accessibility/aria/aria-list-expected-blink.txt
 data/accessibility/aria/aria-list-expected-mac.txt
 data/accessibility/aria/aria-list-expected-win.txt
-data/accessibility/aria/aria-list.html
 data/accessibility/aria/aria-list-labeled-expected-android-external.txt
 data/accessibility/aria/aria-list-labeled-expected-android.txt
 data/accessibility/aria/aria-list-labeled-expected-blink.txt
 data/accessibility/aria/aria-list-labeled.html
+data/accessibility/aria/aria-list.html
 data/accessibility/aria/aria-listbox-activedescendant-expected-blink.txt
 data/accessibility/aria/aria-listbox-activedescendant-expected-mac.txt
 data/accessibility/aria/aria-listbox-activedescendant.html
@@ -1961,6 +1961,10 @@ data/accessibility/aria/aria1.1-combobox-expected-blink.txt
 data/accessibility/aria/aria1.1-combobox-expected-mac.txt
 data/accessibility/aria/aria1.1-combobox-expected-win.txt
 data/accessibility/aria/aria1.1-combobox.html
+data/accessibility/aria/ariaActionsElements-expected-blink.txt
+data/accessibility/aria/ariaActionsElements-internals-expected-blink.txt
+data/accessibility/aria/ariaActionsElements-internals.html
+data/accessibility/aria/ariaActionsElements.html
 data/accessibility/aria/ariaControlsElements-expected-blink.txt
 data/accessibility/aria/ariaControlsElements-internals-expected-blink.txt
 data/accessibility/aria/ariaControlsElements-internals.html
@@ -5924,6 +5928,9 @@ data/accessibility/html/tabindex-with-link-children-expected-mac.txt
 data/accessibility/html/tabindex-with-link-children-expected-uia-win.txt
 data/accessibility/html/tabindex-with-link-children-expected-win.txt
 data/accessibility/html/tabindex-with-link-children.html
+data/accessibility/html/tabindex-with-list-child-expected-android.txt
+data/accessibility/html/tabindex-with-list-child-expected-blink.txt
+data/accessibility/html/tabindex-with-list-child.html
 data/accessibility/html/table-canvas-fallback-expected-blink.txt
 data/accessibility/html/table-canvas-fallback.html
 data/accessibility/html/table-column-remove-expected-blink.txt
@@ -6199,10 +6206,6 @@ data/accessibility/language-detection/lang-attribute-switching-expected-mac.txt
 data/accessibility/language-detection/lang-attribute-switching-expected-win.txt
 data/accessibility/language-detection/lang-attribute-switching.html
 data/accessibility/language-detection/lang-attribute.html
-data/accessibility/language-detection/static-basic-expected-blink.txt
-data/accessibility/language-detection/static-basic-expected-mac.txt
-data/accessibility/language-detection/static-basic-expected-win.txt
-data/accessibility/language-detection/static-basic.html
 data/accessibility/lines/lines-inline-nested.html
 data/accessibility/lines/lines.html
 data/accessibility/mac/action/ax-press-button-expected.txt
@@ -7687,8 +7690,6 @@ data/frame_tree/scrollable_page_with_two_frames.html
 data/frame_tree/top.html
 data/frame_with_load_event.html
 data/fullscreen_frame.html
-data/gamepad-permissions-policy-none.html
-data/gamepad-permissions-policy-none.html.mock-http-headers
 data/generic_sensor/ambient_light_sensor_cross_origin_iframe_test.html
 data/generic_sensor/ambient_light_sensor_test.html
 data/generic_sensor/ambient_light_sensor_unavailable_test.html
@@ -8055,6 +8056,7 @@ data/gpu/webgl2_conformance_mac_runtimes.json
 data/gpu/webgl2_conformance_win_runtimes.json
 data/gpu/webgl_extension_test.html
 data/gpu/webgl_test_page.html
+data/gpu/webgl_with_fullscreen.html
 data/gpu/webgl_with_select_element.html
 data/gpu/webgl_y16_uploads.html
 data/gpu/webgpu-caching.html

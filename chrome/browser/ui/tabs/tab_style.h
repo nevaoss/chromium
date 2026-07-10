@@ -29,16 +29,16 @@ class TabStyle {
   // in different situations, but most (excluding |kClip|) are roughly the same
   // shape.
   enum class PathType {
-    // Interior fill outline. Extends halfway into the border so there are no
+    // File-folder tab outline. Extends halfway into the border so there are no
     // gaps between border and fill.
-    kFill,
+    kActiveTab,
     // Center of the border path. The path is guaranteed to fit into the tab
     // bounds, including the stroke thickness.
     kBorder,
     // The hit test region. May be extended into a rectangle that touches the
     // top of the bounding box when the window is maximized, for Fitts' Law.
     kHitTest,
-    // The path used for focus rings.
+    // A rounded rectangle path used for things like focus rings and hover.
     kHighlight,
   };
 

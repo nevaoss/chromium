@@ -205,6 +205,7 @@
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 #include "chrome/browser/ui/webui/feature_showcase/feature_showcase.mojom.h"
 #include "chrome/browser/ui/webui/feature_showcase/feature_showcase_ui.h"
+#include "chrome/browser/ui/webui/feature_showcase/google_lens.mojom.h"
 #include "chrome/browser/ui/webui/feature_showcase/password_manager.mojom.h"
 #include "chrome/browser/ui/webui/signin/signout_confirmation/signout_confirmation_ui.h"
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
@@ -285,11 +286,11 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
           Profile::FromBrowserContext(
               render_frame_host->GetBrowserContext()))) {
     RegisterWebUIControllerInterfaceBinder<
-        history::mojom::ForeignSessionPageHandler, HistoryUI,
+        history::mojom::ForeignSessionPageHandlerFactory, HistoryUI,
         TabsFromOtherDevicesSidePanelUI>(map);
   } else {
     RegisterWebUIControllerInterfaceBinder<
-        history::mojom::ForeignSessionPageHandler, HistoryUI>(map);
+        history::mojom::ForeignSessionPageHandlerFactory, HistoryUI>(map);
   }
 
   RegisterWebUIControllerInterfaceBinder<
@@ -315,21 +316,21 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
         history_clusters_service->is_journeys_feature_flag_enabled()) {
       if (HistorySidePanelCoordinator::IsSupported()) {
         RegisterWebUIControllerInterfaceBinder<
-            history_embeddings::mojom::PageHandler, HistoryUI,
+            history_embeddings::mojom::PageHandlerFactory, HistoryUI,
             HistorySidePanelUI>(map);
       } else {
         RegisterWebUIControllerInterfaceBinder<
-            history_embeddings::mojom::PageHandler, HistoryUI,
+            history_embeddings::mojom::PageHandlerFactory, HistoryUI,
             HistoryClustersSidePanelUI>(map);
       }
     } else {
       if (HistorySidePanelCoordinator::IsSupported()) {
         RegisterWebUIControllerInterfaceBinder<
-            history_embeddings::mojom::PageHandler, HistorySidePanelUI,
+            history_embeddings::mojom::PageHandlerFactory, HistorySidePanelUI,
             HistoryUI>(map);
       } else {
         RegisterWebUIControllerInterfaceBinder<
-            history_embeddings::mojom::PageHandler, HistoryUI>(map);
+            history_embeddings::mojom::PageHandlerFactory, HistoryUI>(map);
       }
     }
   }
@@ -356,6 +357,9 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
   RegisterWebUIControllerInterfaceBinder<
       feature_showcase::mojom::PasswordManagerPageHandlerFactory,
       FeatureShowcaseUI>(map);
+  RegisterWebUIControllerInterfaceBinder<
+      feature_showcase::mojom::GoogleLensPageHandlerFactory, FeatureShowcaseUI>(
+      map);
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
   RegisterWebUIControllerInterfaceBinder<
       batch_upload_promo::mojom::PageHandlerFactory, settings::SettingsUI>(map);
@@ -684,7 +688,8 @@ void PopulateChromeWebUIFrameInterfaceBrokersTrustedPartsDesktop(
         .Add<tabs_api::mojom::TabStripUIController>();
   }
 
-  if (features::IsWebUIToolbarEnabled() || base::FeatureList::IsEnabled(
+  if (features::IsWebUIToolbarEnabled() ||
+      base::FeatureList::IsEnabled(
           features::kWebUIToolbarProcessOverheadExperiment)) {
     registry.ForWebUI<WebUIToolbarUI>()
         .Add<browser_controls_api::mojom::BrowserControlsService>()

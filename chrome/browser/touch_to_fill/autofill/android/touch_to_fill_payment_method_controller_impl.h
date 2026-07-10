@@ -35,7 +35,7 @@ class BnplIssuer;
 class ContentAutofillClient;
 class Iban;
 class LoyaltyCard;
-class TouchToFillDelegate;
+class TouchToFillPaymentMethodDelegate;
 class TouchToFillPaymentMethodView;
 
 // Controller of the bottom sheet surface for filling credit card IBAN or
@@ -55,21 +55,22 @@ class TouchToFillPaymentMethodControllerImpl
   ~TouchToFillPaymentMethodControllerImpl() override;
 
   // TouchToFillPaymentMethodController:
-  bool ShowPaymentMethods(std::unique_ptr<TouchToFillPaymentMethodView> view,
-                          base::WeakPtr<TouchToFillDelegate> delegate,
-                          base::span<const Suggestion> suggestions) override;
+  bool ShowPaymentMethods(
+      std::unique_ptr<TouchToFillPaymentMethodView> view,
+      base::WeakPtr<TouchToFillPaymentMethodDelegate> delegate,
+      base::span<const Suggestion> suggestions) override;
   bool ShowIbans(std::unique_ptr<TouchToFillPaymentMethodView> view,
-                 base::WeakPtr<TouchToFillDelegate> delegate,
+                 base::WeakPtr<TouchToFillPaymentMethodDelegate> delegate,
                  base::span<const Iban> ibans_to_suggest) override;
   bool ShowAffiliatedLoyaltyCards(
       std::unique_ptr<TouchToFillPaymentMethodView> view,
-      base::WeakPtr<TouchToFillDelegate> delegate,
+      base::WeakPtr<TouchToFillPaymentMethodDelegate> delegate,
       base::span<const LoyaltyCard> affiliated_loyalty_cards,
       base::span<const LoyaltyCard> all_loyalty_cards,
       bool first_time_usage) override;
   bool ShowAllLoyaltyCards(
       std::unique_ptr<TouchToFillPaymentMethodView> view,
-      base::WeakPtr<TouchToFillDelegate> delegate,
+      base::WeakPtr<TouchToFillPaymentMethodDelegate> delegate,
       base::span<const LoyaltyCard> all_loyalty_cards) override;
   bool OnPurchaseAmountExtracted(
       base::span<const payments::BnplIssuerContext> bnpl_issuer_contexts,
@@ -128,7 +129,7 @@ class TouchToFillPaymentMethodControllerImpl
   }
 
  private:
-  bool InitHideHelper(TouchToFillDelegate& delegate);
+  bool InitHideHelper(TouchToFillPaymentMethodDelegate& delegate);
 
   // The controller must ignore user actions if the associated WebContents is
   // not active anymore. This is to handle race conditions between, for example,
@@ -143,7 +144,7 @@ class TouchToFillPaymentMethodControllerImpl
                           ContentAutofillDriverFactory::Observer>
       driver_factory_observation_{this};
   // Delegate for the surface being shown.
-  base::WeakPtr<TouchToFillDelegate> delegate_;
+  base::WeakPtr<TouchToFillPaymentMethodDelegate> delegate_;
   // View that displays the surface, owned by `this`.
   std::unique_ptr<TouchToFillPaymentMethodView> view_;
   // The corresponding Java TouchToFillPaymentMethodControllerBridge.

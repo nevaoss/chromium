@@ -74,9 +74,11 @@ public class TabGroupListBottomSheetMediator {
 
                 @Override
                 public void onSheetContentChanged(@Nullable BottomSheetContent newContent) {
-                    if (mDelegate.isSameContentView(newContent)
-                            && !mBottomSheetController.hasBottomInset()) {
-                        mDelegate.addPadding();
+                    if (mDelegate.isSameContentView(newContent)) {
+                        mCurrentlyShowing = true;
+                        if (!mBottomSheetController.hasBottomInset()) {
+                            mDelegate.addPadding();
+                        }
                     }
                 }
             };
@@ -129,7 +131,6 @@ public class TabGroupListBottomSheetMediator {
         if (!requestSuccess) {
             mBottomSheetController.removeObserver(mBottomSheetObserver);
         }
-        mCurrentlyShowing = requestSuccess;
     }
 
     /** Destroys the mediator. */

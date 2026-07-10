@@ -35,6 +35,10 @@ uint64_t GetTaskFlowId(uint32_t sequence_id, uint64_t order_num) {
   static constexpr uint64_t kMask = 0x03af62470b040902;
   return kMask ^ (static_cast<uint64_t>(sequence_id) << 32) ^ order_num;
 }
+
+perfetto::NamedTrack GetSchedulerTraceTrack(const Scheduler* ptr) {
+  return perfetto::NamedTrack::FromPointer("gpu::Scheduler", ptr);
+}
 }  // namespace
 
 Scheduler::Task::Task(SequenceId sequence_id,
@@ -149,13 +153,13 @@ void Scheduler::Sequence::SetEnabled(bool enabled) {
   if (enabled_ == enabled)
     return;
   enabled_ = enabled;
+  auto track =
+      perfetto::NamedTrack::FromPointer("gpu::Scheduler::Sequence", this);
   if (enabled) {
-    TRACE_EVENT_BEGIN("gpu", "SequenceEnabled",
-                      perfetto::Track::FromPointer(this), "sequence_id",
+    TRACE_EVENT_BEGIN("gpu", "SequenceEnabled", track, "sequence_id",
                       sequence_id_.GetUnsafeValue());
   } else {
-    TRACE_EVENT_END("gpu", perfetto::Track::FromPointer(this), "sequence_id",
-                    sequence_id_.GetUnsafeValue());
+    TRACE_EVENT_END("gpu", track, "sequence_id", sequence_id_.GetUnsafeValue());
   }
   scheduler_->TryScheduleSequence(this);
 }
@@ -428,7 +432,7 @@ void Scheduler::TryScheduleSequence(Sequence* sequence) {
     // waiting for work to be done on another thread).
     if (!thread_state.running && HasAnyUnblockedTasksOnRunner(task_runner)) {
       TRACE_EVENT_BEGIN("gpu", "Scheduler::Running",
-                        perfetto::Track::FromPointer(this));
+                        GetSchedulerTraceTrack(this));
       DVLOG(10) << "Waking up thread because there is work to do.";
       thread_state.running = true;
       thread_state.run_next_task_scheduled = base::TimeTicks::Now();
@@ -498,7 +502,7 @@ Scheduler::Sequence* Scheduler::FindNextTaskFromRoot(Sequence* root_sequence) {
   // First, recurse into any dependency that needs to run before the first
   // task in |root_sequence|. The dependencies are sorted by their order num
   // (because of WaitFence ordering).
-  const uint32_t first_task_order_num = root_sequence->tasks_.front().order_num;
+  const uint64_t first_task_order_num = root_sequence->tasks_.front().order_num;
   DVLOG(10) << "Sequence " << root_sequence->sequence_id()
             << " (order_num: " << first_task_order_num << ") has "
             << root_sequence->wait_fences_.size() << " waits.";
@@ -582,7 +586,7 @@ void Scheduler::RunNextTask() {
     auto it = per_thread_state_map_.find(task_runner);
     if (it == per_thread_state_map_.end()) {
       TRACE_EVENT_END("gpu", /*"Scheduler::Running"*/
-                      perfetto::Track::FromPointer(this));
+                      GetSchedulerTraceTrack(this));
 
       DVLOG(10) << "Thread has no sequences. Sleeping.";
       return;
@@ -611,7 +615,7 @@ void Scheduler::RunNextTask() {
       */
 
       TRACE_EVENT_END("gpu", /*"Scheduler::Running"*/
-                      perfetto::Track::FromPointer(this));
+                      GetSchedulerTraceTrack(this));
 
       DVLOG(10) << "Empty scheduling queue. Sleeping.";
       thread_state.running = false;
@@ -641,7 +645,7 @@ void Scheduler::RunNextTask() {
 
     if (!HasAnyUnblockedTasksOnRunner(task_runner)) {
       TRACE_EVENT_END("gpu", /*"Scheduler::Running"*/
-                      perfetto::Track::FromPointer(this));
+                      GetSchedulerTraceTrack(this));
       DVLOG(10) << "Thread has no runnable sequences. Sleeping.";
       thread_state.running = false;
       return;

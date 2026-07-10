@@ -8,12 +8,14 @@
 #include <utility>
 
 #include "base/check_deref.h"
+#include "base/check_is_test.h"
 #include "base/command_line.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/functional/callback_helpers.h"
 #include "base/memory/weak_ptr.h"
 #include "base/metrics/histogram_functions.h"
+#include "base/no_destructor.h"
 #include "base/notreached.h"
 #include "base/strings/string_util.h"
 #include "base/task/single_thread_task_runner.h"
@@ -35,6 +37,7 @@
 #include "chrome/browser/ui/views/profiles/feature_showcase/default_browser_step_eligibility_checker.h"
 #include "chrome/browser/ui/views/profiles/feature_showcase/feature_showcase_eligibility_tracker.h"
 #include "chrome/browser/ui/views/profiles/feature_showcase/feature_showcase_step_eligibility_checker.h"
+#include "chrome/browser/ui/views/profiles/feature_showcase/google_lens_step_eligibility_checker.h"
 #include "chrome/browser/ui/views/profiles/feature_showcase/password_manager_feature_showcase_eligibility_checker.h"
 #include "chrome/browser/ui/views/profiles/profile_management_flow_controller.h"
 #include "chrome/browser/ui/views/profiles/profile_management_flow_controller_impl.h"
@@ -48,6 +51,7 @@
 #include "chrome/common/channel_info.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/common/webui_url_constants.h"
+#include "chrome/grit/browser_resources.h"
 #include "components/prefs/pref_service.h"
 #include "components/regional_capabilities/regional_capabilities_service.h"
 #include "components/signin/public/base/consent_level.h"
@@ -57,9 +61,12 @@
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/signin/public/identity_manager/primary_account_mutator.h"
 #include "components/signin/public/identity_manager/tribool.h"
+#include "content/public/browser/audio_service.h"
 #include "content/public/browser/web_ui.h"
 #include "google_apis/gaia/core_account_id.h"
+#include "media/base/audio_codecs.h"
 #include "net/base/url_util.h"
+#include "services/audio/public/cpp/sounds/sounds_manager.h"
 #include "url/gurl.h"
 
 #if BUILDFLAG(IS_WIN)
@@ -76,6 +83,12 @@
 #endif  // BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
 namespace {
+
+FirstRunFlowController::SoundsManagerFactory& GetSoundsManagerFactory() {
+  static base::NoDestructor<FirstRunFlowController::SoundsManagerFactory>
+      factory(base::BindRepeating(&audio::SoundsManager::Create));
+  return *factory;
+}
 
 const signin_metrics::AccessPoint kAccessPoint =
     signin_metrics::AccessPoint::kForYouFre;
@@ -103,6 +116,7 @@ bool IsPostIdentityStep(ProfileManagementFlowController::Step step) {
     case ProfileManagementFlowController::Step::kDefaultBrowser:
     case ProfileManagementFlowController::Step::kSearchEngineChoice:
     case ProfileManagementFlowController::Step::kFeatureShowcase:
+    case ProfileManagementFlowController::Step::kFinishOrContinue:
       return true;
   }
 }
@@ -393,22 +407,24 @@ class DefaultBrowserStepController : public ProfileManagementStepController {
 
 class FeatureShowcaseStepController : public ProfileManagementStepController {
  public:
-  explicit FeatureShowcaseStepController(
-      ProfilePickerWebContentsHost* host,
-      Profile* profile,
-      base::OnceClosure step_completed_callback)
+  FeatureShowcaseStepController(ProfilePickerWebContentsHost* host,
+                                Profile* profile,
+                                base::OnceClosure step_completed_callback)
       : ProfileManagementStepController(host),
         profile_(profile),
         step_completed_callback_(std::move(step_completed_callback)) {
+    CHECK(step_completed_callback_);
     std::vector<std::unique_ptr<FeatureShowcaseStepEligibilityChecker>>
         checkers;
-
     // Register checkers in order of priority (highest first).
+    checkers.push_back(std::make_unique<GoogleLensStepEligibilityChecker>());
     checkers.push_back(
         std::make_unique<PasswordManagerFeatureShowcaseEligibilityChecker>());
     tracker_ = std::make_unique<FeatureShowcaseEligibilityTracker>(
         std::move(checkers));
   }
+
+  bool is_eligible() const { return is_eligible_; }
 
   ~FeatureShowcaseStepController() override = default;
 
@@ -438,7 +454,9 @@ class FeatureShowcaseStepController : public ProfileManagementStepController {
 
  private:
   void OnEligibilityDetermined(const std::vector<std::string>& eligible_steps) {
-    if (eligible_steps.empty()) {
+    is_eligible_ = !eligible_steps.empty();
+
+    if (!is_eligible_) {
       std::move(step_shown_callback_.value()).Run(/*success=*/false);
       std::move(step_completed_callback_).Run();
       return;
@@ -479,11 +497,65 @@ class FeatureShowcaseStepController : public ProfileManagementStepController {
   }
 
   raw_ptr<Profile> profile_;
+  bool is_eligible_ = false;
   base::OnceClosure step_completed_callback_;
   StepSwitchFinishedCallback step_shown_callback_;
   std::unique_ptr<FeatureShowcaseEligibilityTracker> tracker_;
 
   base::WeakPtrFactory<FeatureShowcaseStepController> weak_ptr_factory_{this};
+};
+
+class FinishOrContinueStepController : public ProfileManagementStepController {
+ public:
+  FinishOrContinueStepController(
+      ProfilePickerWebContentsHost* host,
+      base::OnceCallback<bool()> eligibility_callback,
+      base::OnceClosure step_completed_callback)
+      : ProfileManagementStepController(host),
+        eligibility_callback_(std::move(eligibility_callback)),
+        step_completed_callback_(std::move(step_completed_callback)) {}
+
+  ~FinishOrContinueStepController() override = default;
+
+  void Show(StepSwitchFinishedCallback step_shown_callback,
+            bool reset_state) override {
+    CHECK(reset_state);
+    CHECK(eligibility_callback_);
+    CHECK(!step_shown_callback->is_null());
+    step_shown_callback_ = std::move(step_shown_callback);
+
+    const GURL url = net::AppendQueryParameter(
+        GURL(chrome::kChromeUIIntroURL)
+            .Resolve(chrome::kChromeUIIntroFinishOrContinueSubPage),
+        "showcase", std::move(eligibility_callback_).Run() ? "true" : "false");
+
+    host()->ShowScreenInPickerContents(
+        url, base::BindOnce(&FinishOrContinueStepController::OnLoadFinished,
+                            weak_ptr_factory_.GetWeakPtr()));
+  }
+
+  void OnNavigateBackRequested() override {
+    // Navigating back is not allowed for the finish or continue step.
+    NOTREACHED();
+  }
+
+ private:
+  void OnLoadFinished() {
+    CHECK(!step_shown_callback_->is_null());
+    std::move(step_shown_callback_.value()).Run(/*success=*/true);
+    // TODO(crbug.com/516392211): Remove once button actions are implemented.
+    OnStepCompleted();
+  }
+
+  void OnStepCompleted() {
+    CHECK(step_completed_callback_);
+    std::move(step_completed_callback_).Run();
+  }
+
+  base::OnceCallback<bool()> eligibility_callback_;
+  base::OnceClosure step_completed_callback_;
+  StepSwitchFinishedCallback step_shown_callback_;
+  base::WeakPtrFactory<FinishOrContinueStepController> weak_ptr_factory_{this};
 };
 
 using IdentityStepsCompletedCallback =
@@ -587,6 +659,15 @@ std::unique_ptr<ProfileManagementStepController> CreateFeatureShowcaseStep(
       host, profile, std::move(step_completed_callback));
 }
 
+std::unique_ptr<ProfileManagementStepController> CreateFinishOrContinueStep(
+    ProfilePickerWebContentsHost* host,
+    base::OnceCallback<bool()> eligibility_callback,
+    base::OnceClosure step_completed_callback) {
+  return std::make_unique<FinishOrContinueStepController>(
+      host, std::move(eligibility_callback),
+      std::move(step_completed_callback));
+}
+
 FirstRunFlowController::FirstRunFlowController(
     ProfilePickerWebContentsHost* host,
     ClearHostClosure clear_host_callback,
@@ -635,7 +716,17 @@ void FirstRunFlowController::ToggleMediaEffects(bool active) {
           GetCurrentStepController()) {
     current_step_controller->ToggleMediaEffects(active);
   }
-  // TODO(crbug.com/485150597): Add resuming/pausing the audio.
+  if (sounds_manager_) {
+    if (active) {
+      // Resume only the ambient sound, other (on action) sounds are played
+      // once, and resuming them may be confusing for the user.
+      sounds_manager_->Play(kAmbientSoundKey);
+    } else {
+      sounds_manager_->Pause(kAmbientSoundKey);
+      // Stop one-shot sounds, safe to call even if not playing.
+      sounds_manager_->Stop(kLogoSoundKey);
+    }
+  }
 }
 
 bool FirstRunFlowController::AreEffectsEnabled() const {
@@ -653,6 +744,23 @@ void FirstRunFlowController::Init() {
           base::BindRepeating(&FirstRunFlowController::AreEffectsEnabled,
                               base::Unretained(this))));
   SwitchToStep(Step::kIntro, /*reset_state=*/true);
+
+  if (switches::IsFirstRunDesktopRevampEnabled(
+          IsProfileInSearchEngineChoiceRegion(profile_))) {
+    sounds_manager_ = GetSoundsManagerFactory().Run(
+        content::GetAudioServiceStreamFactoryBinder());
+    if (sounds_manager_) {
+      sounds_manager_->Initialize(kLogoSoundKey, IDR_INTRO_SOUND_LOGO_FLAC,
+                                  media::AudioCodec::kFLAC, /*loop=*/false);
+      sounds_manager_->Initialize(kAmbientSoundKey,
+                                  IDR_INTRO_SOUND_AMBIENT_FLAC,
+                                  media::AudioCodec::kFLAC, /*loop=*/true);
+      if (AreEffectsEnabled()) {
+        sounds_manager_->Play(kLogoSoundKey);
+        sounds_manager_->Play(kAmbientSoundKey);
+      }
+    }
+  }
 
   signin_metrics::LogSignInOffered(
       kAccessPoint, signin_metrics::PromoAction::
@@ -818,12 +926,30 @@ FirstRunFlowController::RegisterPostIdentitySteps(
     auto feature_showcase_step_completed =
         base::BindOnce(&FirstRunFlowController::AdvanceToNextPostIdentityStep,
                        base::Unretained(this));
-    RegisterStep(
-        Step::kFeatureShowcase,
-        CreateFeatureShowcaseStep(host(), profile_,
-                                  std::move(feature_showcase_step_completed)));
+    auto feature_showcase_step =
+        std::make_unique<FeatureShowcaseStepController>(
+            host(), profile_, std::move(feature_showcase_step_completed));
+    FeatureShowcaseStepController* feature_showcase_step_ptr =
+        feature_showcase_step.get();
+    RegisterStep(Step::kFeatureShowcase, std::move(feature_showcase_step));
     post_identity_steps.emplace(
         ProfileManagementFlowController::Step::kFeatureShowcase);
+
+    auto finish_or_continue_step_completed =
+        base::BindOnce(&FirstRunFlowController::AdvanceToNextPostIdentityStep,
+                       base::Unretained(this));
+    RegisterStep(
+        Step::kFinishOrContinue,
+        CreateFinishOrContinueStep(
+            host(),
+            base::BindOnce(&FeatureShowcaseStepController::is_eligible,
+                           // Unretained ok: sibling step controllers are
+                           // guaranteed to have the same lifetime as the
+                           // flow controller
+                           base::Unretained(feature_showcase_step_ptr)),
+            std::move(finish_or_continue_step_completed)));
+    post_identity_steps.emplace(
+        ProfileManagementFlowController::Step::kFinishOrContinue);
   }
 
   RegisterStep(
@@ -834,4 +960,13 @@ FirstRunFlowController::RegisterPostIdentitySteps(
   post_identity_steps.emplace(
       ProfileManagementFlowController::Step::kFinishFlow);
   return post_identity_steps;
+}
+
+// static
+base::AutoReset<FirstRunFlowController::SoundsManagerFactory>
+FirstRunFlowController::SetSoundsManagerFactoryForTesting(  // IN-TEST
+    FirstRunFlowController::SoundsManagerFactory factory) {
+  CHECK_IS_TEST();
+  return base::AutoReset<SoundsManagerFactory>(&GetSoundsManagerFactory(),
+                                               std::move(factory));
 }

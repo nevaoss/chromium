@@ -239,8 +239,8 @@ std::string_view SavePasswordProgressLogger::GetStringFromID(
     case SavePasswordProgressLogger::
         STRING_CONFIRMATION_PASSWORD_ELEMENT_RENDERER_ID:
       return "Confirmation password element renderer id";
-    case SavePasswordProgressLogger::STRING_PASSWORD_GENERATED:
-      return "Password generated";
+    case SavePasswordProgressLogger::STRING_PASSWORD_IS_GENERATED:
+      return "Password is generated";
     case SavePasswordProgressLogger::STRING_TIMES_USED:
       return "Times used";
     case SavePasswordProgressLogger::STRING_NAME_OR_ID:
@@ -380,19 +380,22 @@ std::string_view SavePasswordProgressLogger::GetStringFromID(
       return "PasswordForm vote";
     case SavePasswordProgressLogger::STRING_REUSE_FOUND:
       return "Password reused from ";
-    case SavePasswordProgressLogger::STRING_GENERATION_DISABLED_SAVING_DISABLED:
-      return "Generation disabled: saving disabled";
     case SavePasswordProgressLogger::
-        STRING_GENERATION_DISABLED_NOT_ABLE_TO_SAVE_PASSWORDS:
-      return "Generation disabled: not able to save passwords";
+        STRING_GENERATION_DISABLED_BY_USER_OR_POLICY:
+      return "Generation disabled: Settings preference, session type, SSL "
+             "status, or policy block";
+    case SavePasswordProgressLogger::STRING_GENERATION_DISABLED_STORE_ERROR:
+      return "Generation disabled: Storage backend error, auth issue, or "
+             "locked keychain";
     case SavePasswordProgressLogger::STRING_GENERATION_DISABLED_NO_SYNC:
       return "Generation disabled: no sync";
     case SavePasswordProgressLogger::
         STRING_GENERATION_RENDERER_AUTOMATIC_GENERATION_AVAILABLE:
-      return "Generation: automatic generation is available";
+      return "Generation: Field is eligible for automatic generation";
     case SavePasswordProgressLogger::
         STRING_GENERATION_RENDERER_SHOW_GENERATION_POPUP:
-      return "Show generation popup triggered";
+      return "Generation: Renderer requested displaying password generation "
+             "popup";
     case SavePasswordProgressLogger::
         STRING_GENERATION_RENDERER_GENERATED_PASSWORD_ACCEPTED:
       return "Generated password accepted";
@@ -720,6 +723,15 @@ std::string_view SavePasswordProgressLogger::GetStringFromID(
         STRING_ACTOR_LOGIN_PRIMARY_MAIN_FRAME_ORIGIN_CHANGED:
       return "Actor login: origin is not equal to or affiliated with the "
              "credential's request origin";
+    case SavePasswordProgressLogger::STRING_GENERATION_STORE_PRE_SAVE:
+      return "Password Generation: Saving draft of accepted generated password "
+             "to password store (pre-save)";
+    case SavePasswordProgressLogger::STRING_GENERATION_STORE_COMMIT:
+      return "Password Generation: Finalizing and committing pre-saved draft "
+             "to password store upon form submission";
+    case SavePasswordProgressLogger::STRING_GENERATION_STORE_ROLLBACK:
+      return "Password Generation: User cancelled generation or cleared the "
+             "field, removing draft from password store";
     case SavePasswordProgressLogger::STRING_INVALID:
       return "INVALID";
       // Intentionally no default: clause here -- all IDs need to get covered.

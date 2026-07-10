@@ -66,6 +66,10 @@
 #include "third_party/blink/renderer/platform/wtf/vector.h"
 #include "third_party/webrtc_overrides/low_precision_timer.h"
 
+namespace gfx {
+class Size;
+}
+
 namespace cc {
 class Layer;
 }
@@ -218,6 +222,7 @@ class CORE_EXPORT HTMLMediaElement
   // Lazy loading support.
   bool HasLazyLoadingAttribute() const;
   bool IsLazyLoadDeferred() const;
+  bool IsLazyLoadResumed() const;
   void LoadDeferredMediaIfNeeded();
   void LoadDeferredTracks();
 
@@ -656,7 +661,8 @@ class CORE_EXPORT HTMLMediaElement
   void RequestSeekForward(base::TimeDelta seek_time) override;
   void RequestSeekBackward(base::TimeDelta seek_time) override;
   void RequestSeekTo(base::TimeDelta seek_time) override;
-  void RequestEnterPictureInPicture() override {}
+  void RequestEnterPictureInPicture(
+      const std::optional<gfx::Size>& min_size) override {}
   void RequestMute(bool mute) override;
   void SetVolumeMultiplier(double multiplier) override;
   void SetPersistentState(bool persistent) override {}

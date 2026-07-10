@@ -91,6 +91,11 @@ class GlicDelegatingSharingManagerBase : public GlicSharingManagerInternal {
       tabs::TabHandle tab_handle,
       const mojom::GetTabContextOptions& options,
       base::OnceCallback<void(GlicGetContextResult)> callback) override;
+  void GetImageBytes(
+      tabs::TabHandle tab_handle,
+      const std::string& document_id,
+      int32_t dom_node_id,
+      base::OnceCallback<void(GlicGetImageBytesResult)> callback) override;
 
   void OnConversationTurnSubmitted() override;
   base::WeakPtr<GlicSharingManagerInternal> GetWeakPtr() override;

@@ -603,6 +603,7 @@ class alignas(64) PA_COMPONENT_EXPORT(PARTITION_ALLOC) PartitionRoot {
   PA_ALWAYS_INLINE internal::InSlotMetadata*
   InSlotMetadataPointerFromObjectForTesting(void* object) const;
 #endif  // PA_BUILDFLAG(ENABLE_BACKUP_REF_PTR_SUPPORT)
+  PA_NOINLINE size_t GetSlotSizeForTesting(const void* object) const;
 
   PA_ALWAYS_INLINE bool IsMemoryTaggingEnabled() const;
   PA_ALWAYS_INLINE bool UseRandomMemoryTagging() const;

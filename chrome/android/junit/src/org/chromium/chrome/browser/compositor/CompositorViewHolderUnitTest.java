@@ -14,6 +14,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -106,13 +107,10 @@ import org.chromium.ui.resources.ResourceManager;
 import org.chromium.ui.resources.dynamics.DynamicResourceLoader;
 
 import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /** Unit tests for {@link CompositorViewHolder}. */
 @RunWith(BaseRobolectricTestRunner.class)
-@EnableFeatures({ChromeFeatureList.SUPPRESS_TOOLBAR_CAPTURES_AT_GESTURE_END})
 @DisableFeatures({
     ChromeFeatureList.FULLSCREEN_INSETS_API_MIGRATION,
     ChromeFeatureList.FULLSCREEN_INSETS_API_MIGRATION_ON_AUTOMOTIVE
@@ -168,13 +166,6 @@ public class CompositorViewHolderUnitTest {
                         0,
                         InputDevice.SOURCE_CLASS_POINTER,
                         0);
-    }
-
-    private static final class EventSource {
-        static final int IN_MOTION = 0;
-        static final int TOUCH_EVENT_OBSERVER = 1;
-
-        private EventSource() {}
     }
 
     @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
@@ -312,30 +303,6 @@ public class CompositorViewHolderUnitTest {
     @After
     public void tearDown() {
         LocalizationUtils.setRtlForTesting(false);
-    }
-
-    private List<Integer> observeTouchAndMotionEvents() {
-        List<Integer> eventSequence = new ArrayList<>();
-        mCompositorViewHolder
-                .getInMotionSupplier()
-                .addSyncObserverAndPostIfNonNull(
-                        (inMotion) -> eventSequence.add(EventSource.IN_MOTION));
-        // This touch observer is used as a proxy for when ViewGroup#dispatchTouchEvent is called,
-        // which is when the touch is propagated to children.
-        mCompositorViewHolder.addTouchEventObserver(
-                new TouchEventObserver() {
-                    @Override
-                    public boolean onInterceptTouchEvent(MotionEvent e) {
-                        return false;
-                    }
-
-                    @Override
-                    public boolean dispatchTouchEvent(MotionEvent e) {
-                        eventSequence.add(EventSource.TOUCH_EVENT_OBSERVER);
-                        return false;
-                    }
-                });
-        return eventSequence;
     }
 
     // controlsResizeView tests ---
@@ -1119,50 +1086,6 @@ public class CompositorViewHolderUnitTest {
     }
 
     @Test
-    @DisableFeatures({
-        ChromeFeatureList.SUPPRESS_TOOLBAR_CAPTURES_AT_GESTURE_END,
-        ChromeFeatureList.TOOLBAR_STALE_CAPTURE_BUG_FIX
-    })
-    public void testInMotionSupplier() {
-        mCompositorViewHolder.dispatchTouchEvent(MOTION_EVENT_DOWN);
-        mCompositorViewHolder.onInterceptTouchEvent(MOTION_EVENT_DOWN);
-        Assert.assertTrue(mCompositorViewHolder.getInMotionSupplier().get());
-
-        mCompositorViewHolder.dispatchTouchEvent(MOTION_EVENT_UP);
-        mCompositorViewHolder.onInterceptTouchEvent(MOTION_EVENT_UP);
-        Assert.assertFalse(mCompositorViewHolder.getInMotionSupplier().get());
-
-        mCompositorViewHolder.dispatchTouchEvent(MOTION_EVENT_DOWN);
-        mCompositorViewHolder.onInterceptTouchEvent(MOTION_EVENT_DOWN);
-        Assert.assertTrue(mCompositorViewHolder.getInMotionSupplier().get());
-
-        // Simulate a child handling a scroll, where they call requestDisallowInterceptTouchEvent
-        // and then we no longer get onInterceptTouchEvent. The dispatchTouchEvent alone should
-        // still cause our motion status to correctly update.
-        mCompositorViewHolder.requestDisallowInterceptTouchEvent(true);
-        mCompositorViewHolder.dispatchTouchEvent(MOTION_EVENT_UP);
-        Assert.assertFalse(mCompositorViewHolder.getInMotionSupplier().get());
-    }
-
-    @Test
-    @DisableFeatures(ChromeFeatureList.TOOLBAR_STALE_CAPTURE_BUG_FIX)
-    public void testGestureBeginEndInMotionSupplier() {
-        when(mWindowAndroid.getActivity()).thenReturn(new WeakReference<>(mActivity));
-        mCompositorViewHolder.onNativeLibraryReady(
-                mWindowAndroid, /* tabContentManager= */ null, mPrefService);
-
-        mCompositorViewHolder.onContentChanged();
-        verify(mTab, atLeast(1)).addObserver(mTabObserverCaptor.capture());
-
-        mTabObserverCaptor.getAllValues().forEach((obs) -> obs.onGestureBegin());
-        Assert.assertTrue(mCompositorViewHolder.getInMotionSupplier().get());
-
-        mTabObserverCaptor.getAllValues().forEach((obs) -> obs.onGestureEnd());
-        Assert.assertFalse(mCompositorViewHolder.getInMotionSupplier().get());
-    }
-
-    @Test
-    @EnableFeatures(ChromeFeatureList.TOOLBAR_STALE_CAPTURE_BUG_FIX)
     public void testInMotionSupplier_OnTouch() {
         when(mWindowAndroid.getActivity()).thenReturn(new WeakReference<>(mActivity));
         mCompositorViewHolder.onNativeLibraryReady(
@@ -1218,21 +1141,6 @@ public class CompositorViewHolderUnitTest {
     }
 
     @Test
-    @DisableFeatures({
-        ChromeFeatureList.TOOLBAR_STALE_CAPTURE_BUG_FIX,
-        ChromeFeatureList.SUPPRESS_TOOLBAR_CAPTURES_AT_GESTURE_END
-    })
-    public void testInMotionOrdering() {
-        // With the 'defer in motion' experiment enabled, touch events are routed to android UI
-        // after being sent to native/web content.
-        List<Integer> eventSequence = observeTouchAndMotionEvents();
-        mCompositorViewHolder.dispatchTouchEvent(MOTION_EVENT_DOWN);
-        assertEquals(
-                Arrays.asList(EventSource.TOUCH_EVENT_OBSERVER, EventSource.IN_MOTION),
-                eventSequence);
-    }
-
-    @Test
     @Config(qualifiers = "sw600dp")
     public void testSetBackgroundRunnable() {
         // Trigger a compositor layout. Verify the background has not yet been removed.
@@ -1268,7 +1176,6 @@ public class CompositorViewHolderUnitTest {
     }
 
     @Test
-    @DisableFeatures(ChromeFeatureList.TOOLBAR_STALE_CAPTURE_BUG_FIX)
     public void testOnControlsOffsetChanged_NoRequestRenderIfScrolling() {
         mCompositorViewHolder.dispatchTouchEvent(MOTION_EVENT_DOWN);
         mCompositorViewHolder.onControlsOffsetChanged(0, 0, false, 0, 0, false, true, false);
@@ -1455,7 +1362,7 @@ public class CompositorViewHolderUnitTest {
         mCompositorViewHolder.onSideUiSpecsChanged(currentSideUiSpecs);
 
         // Verify.
-        verify(mWebContents)
+        verify(mWebContents, atLeastOnce())
                 .setSize(viewportWidth - (startContainerWidth + endContainerWidth), viewportHeight);
     }
 

@@ -67,7 +67,8 @@ class VerticalTabStripView final : public views::View,
   void OnWidgetActivationChanged(views::Widget* widget, bool active) override;
   void OnWidgetVisibilityChanged(views::Widget* widget, bool visible) override;
 
-  void OnActiveTabChanged(const tabs::TabInterface* active_tab);
+  void OnChildMoved(TabCollectionNode* moved_node);
+  void OnTabChanged(const tabs::TabInterface* active_tab);
 
   void RecordMousePressedInTab();
   bool IsFocusInTabStrip();
@@ -77,6 +78,7 @@ class VerticalTabStripView final : public views::View,
 
   views::View* AddScrollViewContents(std::unique_ptr<views::View> view);
   void RemoveScrollViewContents(views::View* view);
+  void ScrollToView(views::View* view);
   void SetScrollViewProperties(views::ScrollView* scroll_view);
   void ResetCollectionNode();
 

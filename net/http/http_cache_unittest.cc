@@ -14860,6 +14860,9 @@ class HttpCacheNoVarySearchMockFileOperationsTest
       load_expectations_ +=
           EXPECT_CALL(*writer_, Write)
               .WillOnce(DoAll(QuitRunLoop(load_run_loop_), Return(true)));
+      load_expectations_ +=
+          EXPECT_CALL(*file_operations, DetachFromCurrentSequence());
+      load_expectations_ += EXPECT_CALL(*writer_, DetachFromCurrentSequence());
     }
     http_cache.emplace(std::make_unique<MockBackendFactory>(),
                        std::move(file_operations));

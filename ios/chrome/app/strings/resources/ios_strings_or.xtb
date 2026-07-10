@@ -874,6 +874,7 @@
 <translation id="4021447724486050609">ଆପଣଙ୍କ ବ୍ରାଉଜରକୁ ଅପଡେଟ କରନ୍ତୁ</translation>
 <translation id="4021931095789478915">ପଢ଼ିବା ତାଲିକାରେ ${url} ଯୋଗ କରନ୍ତୁ</translation>
 <translation id="4028871427853484857">ଆକାଉଣ୍ଟରେ ସେଭ କରନ୍ତୁ…</translation>
+<translation id="4036529942385659684">ନିଷ୍କ୍ରିୟତାର ଅବଧି ପରେ ଆରମ୍ଭ ପୃଷ୍ଠା ଦେଖାନ୍ତୁ</translation>
 <translation id="4038354071007134711">ଏହି ଡିଭାଇସ୍‌ରେ କୌଣସି ଆପ୍ଲିକେସନ୍‌ ଫାଇଲ୍‌ ଖୋଲିପାରିବ ନାହିଁ।</translation>
 <translation id="4042870976416480368">ପୃଷ୍ଠାରେ ଖୋଜନ୍ତୁ</translation>
 <translation id="4045441967987592849">ପୁଣି ଖୋଲନ୍ତୁ</translation>
@@ -911,7 +912,6 @@
 <translation id="417138788035229076">ଗୋଷ୍ଠୀ ପରିଚାଳନା କରନ୍ତୁ</translation>
 <translation id="4172051516777682613">ସର୍ବଦା ଦେଖାନ୍ତୁ</translation>
 <translation id="417273154673973994">{count,plural, =1{1 ଟାବ ଗ୍ରୁପକୁ ବନ୍ଦ କରି ସେଭ କରାଯାଇଛି}other{{count} ଟାବ ଗ୍ରୁପକୁ ବନ୍ଦ କରି ସେଭ କରାଯାଇଛି}}</translation>
-<translation id="417612446554534067">ଆପଣଙ୍କ ଡିଭାଇସଗୁଡ଼ିକୁ ପଠାନ୍ତୁ</translation>
 <translation id="4180726336228139707">କେବଳ ଏହି ଡିଭାଇସରେ</translation>
 <translation id="4181841719683918333">ଭାଷାସମୂହ</translation>
 <translation id="4183350924949589798">ଅଧିକ ସୁରକ୍ଷା ଆବଶ୍ୟକ?</translation>
@@ -1135,6 +1135,7 @@
 <translation id="4896467949657706481">ଟାବଗୁଡ଼ିକ ବନ୍ଦ ହୋଇଯାଇଛି; ଆପଣ ସାଇନ ଆଉଟ ହୋଇଯାଇଛନ୍ତି</translation>
 <translation id="4911042367886397055">ଆପଣଙ୍କୁ ପୁଣି ସ୍ୱାଗତ, <ph name="USER_NAME" />!</translation>
 <translation id="4913626501929406101">ଆପଣ ଆପଣଙ୍କ ପରିବାର ଗୋଷ୍ଠୀରେ ଥିବା କୌଣସି ବ୍ୟକ୍ତିଙ୍କ ସହିତ ଆପଣଙ୍କ ପାସୱାର୍ଡର ଏକ କପିକୁ ସୁରକ୍ଷିତ ଭାବେ ସେୟାର କରିପାରିବେ। <ph name="BEGIN_LINK" />ଅଧିକ ଜାଣନ୍ତୁ<ph name="END_LINK" /></translation>
+<translation id="4916679969857390442">ଲେନ୍ସ</translation>
 <translation id="4917025507570489430">ଆପଣ <ph name="USER_EMAIL" /> ଭାବେ ସାଇନ ଇନ କଲେ, ପୂର୍ବରୁ ଥିବା ବ୍ରାଉଜିଂ ଡାଟାକୁ ଆପଣ ବ୍ୟବହାର କରିପାରିବେ। ଆପଣଙ୍କ ସଂସ୍ଥା ଏହି ଡାଟାକୁ ଭ୍ୟୁ କରିବାକୁ ସକ୍ଷମ ହୋଇପାରେ।</translation>
 <translation id="4918086044614829423">ସ୍ୱୀକାର କରନ୍ତୁ</translation>
 <translation id="4930714375720679147">ଚାଲୁ କରନ୍ତୁ</translation>

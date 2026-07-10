@@ -1390,10 +1390,10 @@ TEST_F(SendTabToSelfBridgeTest,
           .WithLastUpdatedTimestamp(clock()->Now())
           .WithSendTabToSelfReceivingEnabled(true)
           .Build();
-  syncer::DeviceDisplayNames names1 =
-      syncer::GetDeviceDisplayNames(device1.get());
-  ASSERT_EQ("Manufacturer Phone model1", names1.full_name);
-  ASSERT_EQ("Manufacturer Phone", names1.short_name);
+  syncer::DisplayNameCandidates candidates1 =
+      syncer::GetDisplayNameCandidates(device1.get());
+  ASSERT_EQ("Manufacturer Phone model1", candidates1.fallback_full_name);
+  ASSERT_EQ("Manufacturer Phone", candidates1.preferred_name_if_unique);
   AddTestDevice(device1.get());
 
   std::unique_ptr<syncer::DeviceInfo> device2 =
@@ -1404,10 +1404,10 @@ TEST_F(SendTabToSelfBridgeTest,
           .WithLastUpdatedTimestamp(clock()->Now() - base::Seconds(1))
           .WithSendTabToSelfReceivingEnabled(true)
           .Build();
-  syncer::DeviceDisplayNames names2 =
-      syncer::GetDeviceDisplayNames(device2.get());
-  ASSERT_EQ("Manufacturer Phone model2", names2.full_name);
-  ASSERT_EQ("Manufacturer Phone", names2.short_name);
+  syncer::DisplayNameCandidates candidates2 =
+      syncer::GetDisplayNameCandidates(device2.get());
+  ASSERT_EQ("Manufacturer Phone model2", candidates2.fallback_full_name);
+  ASSERT_EQ("Manufacturer Phone", candidates2.preferred_name_if_unique);
   AddTestDevice(device2.get());
 
   // Short name for both should be "Manufacturer Phone" (Manufacturer
@@ -1600,25 +1600,26 @@ TEST_F(SendTabToSelfBridgeTest,
   // Set local cache GUID.
   SetLocalDeviceCacheGuid(kMyLocalGuid);
 
-  // Add a local device where GetDeviceDisplayNames returns a specific full
-  // name. Using a specific model ensures the complex naming logic is used.
+  // Add a local device where GetDisplayNameCandidates returns a specific
+  // fallback full name. Using a specific model ensures the complex naming logic
+  // is used.
   std::unique_ptr<syncer::DeviceInfo> local_device =
       CreateDevice(kMyLocalGuid, "local_name", clock()->Now(), "local_model");
 
   device_info_tracker()->Add(std::move(local_device));
   device_info_tracker()->SetLocalCacheGuid(kMyLocalGuid);
 
-  // Add another device with the same full name but different GUID.
+  // Add another device with the same fallback full name but different GUID.
   std::unique_ptr<syncer::DeviceInfo> duplicate_device = CreateDevice(
       kMyDuplicateGuid, "local_name", clock()->Now(), "local_model");
   device_info_tracker()->Add(std::move(duplicate_device));
 
-  // The duplicate device should be excluded because its full name matches the
-  // local device's full name.
+  // The duplicate device should be excluded because its fallback full name
+  // matches the local device's fallback full name.
   EXPECT_THAT(bridge()->GetTargetDeviceInfoSortedList(), IsEmpty());
 }
 
-// Tests that SendEntry uses the full name of the local device.
+// Tests that SendEntry uses the fallback full name of the local device.
 TEST_F(SendTabToSelfBridgeTest, SendEntry_UsesFullName) {
   const std::string kMyLocalGuid = "unique_local_guid_2";
   InitializeBridgeWithoutDevice();
@@ -1627,7 +1628,7 @@ TEST_F(SendTabToSelfBridgeTest, SendEntry_UsesFullName) {
   std::unique_ptr<syncer::DeviceInfo> local_device =
       CreateDevice(kMyLocalGuid, "local_name", clock()->Now(), "local_model");
   const std::string full_name =
-      syncer::GetDeviceDisplayNames(local_device.get()).full_name;
+      syncer::GetDisplayNameCandidates(local_device.get()).fallback_full_name;
 
   device_info_tracker()->Add(std::move(local_device));
   device_info_tracker()->SetLocalCacheGuid(kMyLocalGuid);

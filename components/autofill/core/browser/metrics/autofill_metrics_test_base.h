@@ -21,7 +21,7 @@
 #include "components/autofill/core/browser/foundations/test_autofill_driver.h"
 #include "components/autofill/core/browser/foundations/test_browser_autofill_manager.h"
 #include "components/autofill/core/browser/foundations/with_test_autofill_client_driver_manager.h"
-#include "components/autofill/core/browser/integrators/touch_to_fill/touch_to_fill_delegate.h"
+#include "components/autofill/core/browser/integrators/touch_to_fill/touch_to_fill_payment_method_delegate.h"
 #include "components/autofill/core/browser/payments/payments_autofill_client.h"
 #include "components/autofill/core/browser/payments/test_credit_card_save_manager.h"
 #include "components/autofill/core/browser/payments/test_payments_autofill_client.h"
@@ -56,7 +56,7 @@ class MockPaymentsAutofillClient : public payments::TestPaymentsAutofillClient {
 
   MOCK_METHOD(bool,
               ShowTouchToFillCreditCard,
-              ((base::WeakPtr<TouchToFillDelegate>),
+              ((base::WeakPtr<TouchToFillPaymentMethodDelegate>),
                (base::span<const autofill::Suggestion>)),
               (override));
 };

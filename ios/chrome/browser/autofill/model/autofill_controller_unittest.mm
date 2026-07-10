@@ -363,7 +363,7 @@ class AutofillControllerTest : public PlatformTest {
 
   web::ScopedTestingWebClient web_client_;
   web::WebTaskEnvironment task_environment_;
-  autofill::test::AutofillUnitTestEnvironment autofill_test_environment_{
+  test::AutofillUnitTestEnvironment autofill_test_environment_{
       {.disable_server_communication = true}};
   IOSChromeScopedTestingLocalState scoped_testing_local_state_;
   std::unique_ptr<TestProfileIOS> profile_;
@@ -377,7 +377,7 @@ class AutofillControllerTest : public PlatformTest {
   ScopedFeatureList scoped_feature_list_2_;
 
  private:
-  std::unique_ptr<autofill::AutofillClient> autofill_client_;
+  std::unique_ptr<AutofillClient> autofill_client_;
 
   AutofillAgent* autofill_agent_;
 
@@ -897,8 +897,7 @@ void AutofillControllerTest::SetUpForSuggestions(
     size_t expected_number_of_forms) {
   PersonalDataManager* personal_data_manager =
       PersonalDataManagerFactory::GetForProfile(profile_.get());
-  AutofillProfile profile(
-      autofill::i18n_model_definition::kLegacyHierarchyCountryCode);
+  AutofillProfile profile(i18n_model_definition::kLegacyHierarchyCountryCode);
   profile.SetRawInfo(NAME_FULL, u"Homer Simpson");
   profile.SetRawInfo(ADDRESS_HOME_LINE1, u"123 Main Street");
   profile.SetRawInfo(ADDRESS_HOME_CITY, u"Springfield");
@@ -988,16 +987,14 @@ TEST_F(AutofillControllerTest, MultipleProfileSuggestions) {
       PersonalDataManagerFactory::GetForProfile(profile_.get());
   personal_data_manager->SetSyncServiceForTest(nullptr);
 
-  AutofillProfile profile(
-      autofill::i18n_model_definition::kLegacyHierarchyCountryCode);
+  AutofillProfile profile(i18n_model_definition::kLegacyHierarchyCountryCode);
   profile.SetRawInfo(NAME_FULL, u"Homer Simpson");
   profile.SetRawInfo(ADDRESS_HOME_LINE1, u"123 Main Street");
   profile.SetRawInfo(ADDRESS_HOME_CITY, u"Springfield");
   profile.SetRawInfo(ADDRESS_HOME_STATE, u"IL");
   profile.SetRawInfo(ADDRESS_HOME_ZIP, u"55123");
 
-  AutofillProfile profile2(
-      autofill::i18n_model_definition::kLegacyHierarchyCountryCode);
+  AutofillProfile profile2(i18n_model_definition::kLegacyHierarchyCountryCode);
   profile2.SetRawInfo(NAME_FULL, u"Larry Page");
   profile2.SetRawInfo(ADDRESS_HOME_LINE1, u"1600 Amphitheatre Parkway");
   profile2.SetRawInfo(ADDRESS_HOME_CITY, u"Mountain View");
@@ -1162,19 +1159,6 @@ TEST_F(AutofillControllerTest, KeyValueFocusChange) {
   EXPECT_NSEQ(@"Bonjour", suggestion.value);
 }
 
-// Checks that focusing on an element of a key/value type form without typing
-// won't result in suggestions being sent to the AutofillAgent, once data has
-// been loaded into a test data manager.
-TEST_F(AutofillControllerTest, NoKeyValueSuggestionsWithoutTyping) {
-  SetUpKeyValueData();
-  ResetWaitForSuggestionRetrieval();
-  // Focus element.
-  web::test::ExecuteJavaScript(@"document.forms[0].greeting.focus()",
-                               web_state());
-  WaitForSuggestionRetrieval(/*wait_for_trigger=*/YES);
-  EXPECT_EQ(0U, [suggestion_controller() suggestions].count);
-}
-
 // Checks that an HTML page containing a credit card-type form which is
 // submitted with scripts (simulating user form submission) results in a credit
 // card being successfully imported into the PersonalDataManager.
@@ -1311,8 +1295,7 @@ TEST_F(AutofillControllerTest,
       AutofillJavaScriptFeature::GetInstance()->GetWebFramesManager(
           web_state());
   auto* main_frame = frames_manager->GetMainWebFrame();
-  auto* fieldDataManager =
-      autofill::FieldDataManagerFactoryIOS::FromWebFrame(main_frame);
+  auto* fieldDataManager = FieldDataManagerFactoryIOS::FromWebFrame(main_frame);
   // Name.
   fieldDataManager->UpdateFieldDataMap(FieldRendererId(2), u"Chuck",
                                        FieldPropertiesFlags::kAutofilled);

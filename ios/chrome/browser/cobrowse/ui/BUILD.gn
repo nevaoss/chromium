@@ -12,6 +12,8 @@ source_set("ui") {
     "assistant_aim_mutator.h",
     "assistant_aim_view_controller.h",
     "assistant_aim_view_controller.mm",
+    "assistant_aim_zero_state_view_controller.h",
+    "assistant_aim_zero_state_view_controller.mm",
   ]
   deps = [
     ":constants",

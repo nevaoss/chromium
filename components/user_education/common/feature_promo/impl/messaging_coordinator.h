@@ -34,7 +34,7 @@ class MessagingCoordinator {
   };
 
   // Returns whether a promo can be shown right now.
-  bool CanShowPromo(bool high_priority) const;
+  bool ReadyToShow(bool high_priority) const;
 
   // Allows the client to update the promo state. This may result in acquiring
   // or releasing the promo handle.
@@ -72,7 +72,7 @@ class MessagingCoordinator {
   DECLARE_CLASS_PRODUCT_MESSAGE_KEY(kHighPriorityNoticeId,
                                     ProductMessageType::kHighPriorityIph);
 
-  void MaybeRequestPriority(bool high_priority);
+  void RequestPriority(bool high_priority);
   void ReleaseAll();
   void OnPriorityReceived(ProductMessagingHandle handle);
   void OnStatusChange(ProductMessageKey message_key,
@@ -80,7 +80,6 @@ class MessagingCoordinator {
 
   PromoState promo_state_ = PromoState::kNone;
   ProductMessagingHandle handle_;
-  base::CallbackListSubscription message_shown_subscription_;
   base::RepeatingClosureList promo_preempted_callbacks_;
   base::RepeatingClosureList promo_ready_callbacks_;
   raw_ref<ProductMessagingController> controller_;

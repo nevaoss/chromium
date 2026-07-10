@@ -40,8 +40,9 @@ tabs::ConstChildPtr GetNodeFromHandle(
 RootTabCollectionNode::RootTabCollectionNode(
     TabStripModel* tab_strip_model,
     CustomAddChildViewCallback add_node_view_to_parent,
-    CustomRemoveChildViewCallback remove_node_view_from_parent)
-    : TabCollectionNode(tab_strip_model->Root()),
+    CustomRemoveChildViewCallback remove_node_view_from_parent,
+    TabStripOrientation orientation)
+    : TabCollectionNode(tab_strip_model->Root(), orientation),
       tab_strip_model_(tab_strip_model),
       add_node_view_to_parent_(add_node_view_to_parent),
       remove_node_view_from_parent_(remove_node_view_from_parent) {}
@@ -76,7 +77,7 @@ RootTabCollectionNode::RegisterOnChildRemovedCallback(
 
 base::CallbackListSubscription
 RootTabCollectionNode::RegisterOnChildMovedCallback(
-    base::RepeatingClosure callback) {
+    ChildMovedCallback callback) {
   return on_child_moved_callback_list_.Add(std::move(callback));
 }
 
@@ -157,7 +158,8 @@ void RootTabCollectionNode::OnChildMoved(
                                  dst_parent_node);
   }
 
-  on_child_moved_callback_list_.Notify();
+  TabCollectionNode* final_moved_node = GetNodeForHandle(moved_node_handle);
+  on_child_moved_callback_list_.Notify(final_moved_node);
 }
 
 void RootTabCollectionNode::OnTabStripModelChanged(

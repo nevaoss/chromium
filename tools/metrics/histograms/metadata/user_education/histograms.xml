@@ -91,6 +91,8 @@ chromium-metrics-reviews@google.com.
 
 <variants name="TutorialID">
   <variant name="" summary="any tutorial"/>
+  <variant name="ContextualTasks"
+      summary="the tutorial for the contextual tasks feature"/>
   <variant name="CustomizeChromeSidePanel"
       summary="the tutorial for the customize chrome side panel"/>
   <variant name="LensOverlay" summary="the tutorial for the Lens Overlay"/>

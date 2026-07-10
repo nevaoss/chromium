@@ -70,6 +70,7 @@
 #include "ui/gfx/geometry/resize_utils.h"
 #include "ui/gfx/geometry/skia_conversions.h"
 #include "ui/gfx/text_constants.h"
+#include "ui/views/background.h"
 #include "ui/views/controls/image_view.h"
 #include "ui/views/controls/label.h"
 #include "ui/views/widget/widget_delegate.h"
@@ -175,43 +176,6 @@ T* AddChildView(std::vector<std::unique_ptr<views::View>>* views,
   views->push_back(std::move(child));
   return static_cast<T*>(views->back().get());
 }
-
-class WindowBackgroundView : public views::View {
-  METADATA_HEADER(WindowBackgroundView, views::View)
-
- public:
-  WindowBackgroundView() = default;
-  WindowBackgroundView(const WindowBackgroundView&) = delete;
-  WindowBackgroundView& operator=(const WindowBackgroundView&) = delete;
-  ~WindowBackgroundView() override = default;
-
-  void OnThemeChanged() override {
-    views::View::OnThemeChanged();
-    layer()->SetColor(GetColorProvider()->GetColor(kColorPipWindowBackground));
-  }
-};
-
-BEGIN_METADATA(WindowBackgroundView)
-END_METADATA
-
-class ControlsBackgroundView : public views::View {
-  METADATA_HEADER(ControlsBackgroundView, views::View)
-
- public:
-  ControlsBackgroundView() = default;
-  ControlsBackgroundView(const ControlsBackgroundView&) = delete;
-  ControlsBackgroundView& operator=(const ControlsBackgroundView&) = delete;
-  ~ControlsBackgroundView() override = default;
-
-  void OnThemeChanged() override {
-    views::View::OnThemeChanged();
-    SetBackground(views::CreateSolidBackground(
-        GetColorProvider()->GetColor(kColorPipWindowScrimFull)));
-  }
-};
-
-BEGIN_METADATA(ControlsBackgroundView)
-END_METADATA
 
 class GradientBackground : public views::Background {
  public:
@@ -1092,9 +1056,18 @@ void VideoOverlayWindowViews::SetUpViews() {
   // View that is displayed when video is hidden. ------------------------------
   // Adding an extra pixel to width/height makes sure controls background cover
   // entirely window when platform has fractional scale applied.
-  auto window_background_view = std::make_unique<WindowBackgroundView>();
+  auto window_background_view = std::make_unique<views::View>();
+  window_background_view->SetBackground(
+      views::CreateLayerBasedSolidBackground(kColorPipWindowBackground));
+  window_background_view->GetBackground()->SetInternalName(
+      "WindowBackgroundView");
+
   auto video_view = std::make_unique<views::View>();
-  auto controls_scrim_view = std::make_unique<ControlsBackgroundView>();
+
+  auto controls_scrim_view = std::make_unique<views::View>();
+  controls_scrim_view->SetBackground(
+      views::CreateSolidBackground(kColorPipWindowScrimFull));
+
   auto controls_container_view = std::make_unique<views::View>();
   auto title_view = std::make_unique<views::View>();
   auto close_controls_view = std::make_unique<CloseImageButton>(
@@ -1307,9 +1280,6 @@ void VideoOverlayWindowViews::SetUpViews() {
   auto resize_handle_view =
       std::make_unique<ResizeHandleButton>(views::Button::PressedCallback());
 #endif
-
-  window_background_view->SetPaintToLayer(ui::LAYER_SOLID_COLOR);
-  window_background_view->layer()->SetName("WindowBackgroundView");
 
   // view::View that holds the video. -----------------------------------------
   video_view->SetPaintToLayer(ui::LAYER_TEXTURED);

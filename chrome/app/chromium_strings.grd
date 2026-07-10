@@ -686,7 +686,7 @@ Chromium is unable to recover your settings.
       <message name="IDS_PASSWORD_MANAGER_TITLE_BRAND" desc="The product name used in the title of the password bubble." translateable="false">
         Chromium
       </message>
-      <message name="IDS_PASSWORD_BUBBLES_PASSWORD_MANAGER_LINK_TEXT_SAVING_ON_DEVICE" desc="The text of the Google Password Manager links displayed on Password Manager bubbles footer when the credentials are stored only locally.">
+      <message name="IDS_PASSWORD_MANAGER_BRAND_NAME" desc="This string is used both as a standalone label and injected into sentences. Please translate this as a standalone noun in the Nominative case to ensure it looks correct in titles. Sentence structures surrounding it may read slightly awkwardly.">
         Password Manager
       </message>
       <message name="IDS_PASSWORD_MANAGER_SAVE_PASSWORD_SIGNED_OUT_MESSAGE_DESCRIPTION" desc="The description of the Password Manager's save password message when the user is signed out.">
@@ -1972,6 +1972,15 @@ Chromium is unable to recover your settings.
           Pinned! You can access Image Search again from the new button on the toolbar
         </message>
 
+        <message name="IDS_TUTORIAL_CONTEXTUAL_TASKS_STEP1" desc="The body text of the first step of the Contextual Tasks tutorial.">
+          You can pin Contextual Tasks to easily ask questions as you browse
+        </message>
+        <message name="IDS_TUTORIAL_CONTEXTUAL_TASKS_STEP2" desc="The body text of the second step of the Contextual Tasks tutorial.">
+          Select "Pin to toolbar"
+        </message>
+        <message name="IDS_TUTORIAL_CONTEXTUAL_TASKS_STEP3" desc="The body text of the third step of the Contextual Tasks tutorial.">
+          Pinned! Use Contextual Tasks again from the toolbar
+        </message>
         <!-- Overlay WebUI Strings -->
         <message name="IDS_LENS_OVERLAY_COPY"
           desc="Command in the Lens Overlay context menu to copy text.">

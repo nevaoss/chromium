@@ -26,6 +26,7 @@ NSString* const kIncognitoCurrentKey = @"IncognitoActive";
 
 @implementation IncognitoState {
   IncognitoStateObserverList* _observers;
+  BOOL _incognitoContentVisible;
 }
 
 @synthesize lockState = _lockState;
@@ -58,6 +59,10 @@ NSString* const kIncognitoCurrentKey = @"IncognitoActive";
     [_sceneState.prefs setBool:_incognitoContentVisible
                         forKey:kIncognitoCurrentKey];
   }
+}
+
+- (BOOL)incognitoContentVisible {
+  return _incognitoContentVisible;
 }
 
 - (void)setIncognitoContentVisible:(BOOL)incognitoContentVisible {

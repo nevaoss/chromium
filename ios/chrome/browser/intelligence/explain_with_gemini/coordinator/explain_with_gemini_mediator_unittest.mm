@@ -229,7 +229,6 @@ TEST_F(ExplainWithGeminiMediatorTest, TriggerAction_StartsFlow_NoMock) {
     base::test::ScopedFeatureList scoped_feature_list;
     scoped_feature_list.InitWithFeaturesAndParameters(
         {{kPageActionMenu, {}},
-         {kGeminiFloatyAllPages, {}},
          {kExplainGeminiEditMenu, {{"PositionForExplainGeminiEditMenu", "1"}}}},
         {});
 

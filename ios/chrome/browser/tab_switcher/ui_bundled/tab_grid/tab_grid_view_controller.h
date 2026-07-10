@@ -9,6 +9,7 @@
 
 #import "ios/chrome/browser/keyboard/ui_bundled/key_command_actions.h"
 #import "ios/chrome/browser/shared/ui/util/ui_view_controller_with_display_tracing.h"
+#import "ios/chrome/browser/shared/ui/util/uikit_ui_util.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_grid/grid/disabled_grid_view_controller.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_grid/grid/grid_consumer.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_grid/tab_grid_consumer.h"
@@ -101,7 +102,8 @@ enum class TabGridPageConfiguration {
                                           TabGridConsumer,
                                           TabGridIdleStatusHandler,
                                           TabGridToolbarsMainTabGridDelegate,
-                                          UISearchBarDelegate>
+                                          UISearchBarDelegate,
+                                          ContextMenuTransitionStateProviding>
 
 // Returns whether the child views have been set up.
 // Used by EarlGrey tests to poll for deferred setup completion.

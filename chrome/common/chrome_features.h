@@ -106,8 +106,10 @@ BASE_DECLARE_FEATURE(kPreinstalledWebAppAlwaysMigrateForTesting);
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kChromeStructuredMetrics);
 
+#if !BUILDFLAG(IS_ANDROID)
 COMPONENT_EXPORT(CHROME_FEATURES)
-BASE_DECLARE_FEATURE(kCustomizeTabGroupColorPalette);
+BASE_DECLARE_FEATURE(kContextContainers);
+#endif
 
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kDesktopPWAsElidedExtensionsMenu);
@@ -163,6 +165,8 @@ BASE_DECLARE_FEATURE(kGlicIgnoreDogfoodClient);
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicExperimentalTriggering);
 COMPONENT_EXPORT(CHROME_FEATURES)
+BASE_DECLARE_FEATURE(kGlicExperimentalTriggeringOptInTabFocus);
+COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicExperimentalTriggeringSuppressDoneNotification);
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicExperimentalTriggeringOptInBypass);
@@ -171,6 +175,15 @@ BASE_DECLARE_FEATURE(kGlicExperimentalTriggeringOpenWindowIfNone);
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<std::string>
     kGlicExperimentalTriggeringOptInURL;
+COMPONENT_EXPORT(CHROME_FEATURES)
+extern const base::FeatureParam<std::string>
+    kGlicExperimentalTriggeringTabFocusHosts;
+COMPONENT_EXPORT(CHROME_FEATURES)
+extern const base::FeatureParam<std::string>
+    kGlicExperimentalTriggeringTabFocusPathSubstring;
+COMPONENT_EXPORT(CHROME_FEATURES)
+extern const base::FeatureParam<std::string>
+    kGlicExperimentalTriggeringTabFocusFallbackURL;
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<base::TimeDelta> kGlicActorPageToolTimeout;
 COMPONENT_EXPORT(CHROME_FEATURES)
@@ -531,11 +544,6 @@ BASE_DECLARE_FEATURE(kGlicDefaultContextPinOnBind);
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicUnloadOnClose);
 
-// Causes certain glic API calls to fail or defer when the panel
-// is inactive (see ActiveStateCalculator).
-COMPONENT_EXPORT(CHROME_FEATURES)
-BASE_DECLARE_FEATURE(kGlicApiActivationGating);
-
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicBindPinnedUnboundTab);
 
@@ -643,9 +651,6 @@ BASE_DECLARE_FEATURE(kGlicLiveModeOnlyGlow);
 
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicPrintMenuItem);
-
-COMPONENT_EXPORT(CHROME_FEATURES)
-BASE_DECLARE_FEATURE(kGlicMITabContextMenu);
 
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<int> kGlicCompositeViewWidth;
@@ -853,6 +858,8 @@ BASE_DECLARE_FEATURE(kHttpsFirstModeIncognito);
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kIndigo);
 COMPONENT_EXPORT(CHROME_FEATURES)
+extern const base::FeatureParam<bool> kIndigoRequireGlicEnabling;
+COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<base::TimeDelta>
     kIndigoAnchoredMessageResetDuration;
 COMPONENT_EXPORT(CHROME_FEATURES)
@@ -876,6 +883,8 @@ COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<std::string> kIndigoGlicPromptKey;
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<std::string> kIndigoGlicSkillId;
+COMPONENT_EXPORT(CHROME_FEATURES)
+extern const base::FeatureParam<base::TimeDelta> kIndigoGlicTriggerDelay;
 
 #if !BUILDFLAG(IS_ANDROID)
 COMPONENT_EXPORT(CHROME_FEATURES)

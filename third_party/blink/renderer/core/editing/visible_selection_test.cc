@@ -67,7 +67,7 @@ std::string VisibleSelectionTest::GetWordSelectionText(
       TextGranularity::kWord));
 }
 
-static void TestFlatTreePositionsToEqualToDOMTreePositions(
+static void TestFlatTreePositionsToEqualToDomTreePositions(
     const VisibleSelection& selection,
     const VisibleSelectionInFlatTree& selection_in_flat_tree) {
   // Since DOM tree positions can't be map to flat tree version, e.g.
@@ -273,7 +273,7 @@ TEST_F(VisibleSelectionTest, Initialisation) {
   EXPECT_EQ(0u, range->startOffset());
   EXPECT_EQ(0u, range->endOffset());
   EXPECT_EQ("", range->GetText());
-  TestFlatTreePositionsToEqualToDOMTreePositions(selection,
+  TestFlatTreePositionsToEqualToDomTreePositions(selection,
                                                  selection_in_flat_tree);
 
   const VisibleSelection no_selection =
@@ -536,7 +536,7 @@ TEST_F(VisibleSelectionTest, WordGranularity) {
     EXPECT_EQ(0u, range->startOffset());
     EXPECT_EQ(5u, range->endOffset());
     EXPECT_EQ("Lorem", range->GetText());
-    TestFlatTreePositionsToEqualToDOMTreePositions(selection,
+    TestFlatTreePositionsToEqualToDomTreePositions(selection,
                                                    selection_in_flat_tree);
   }
 
@@ -552,7 +552,7 @@ TEST_F(VisibleSelectionTest, WordGranularity) {
     EXPECT_EQ(6u, range->startOffset());
     EXPECT_EQ(11u, range->endOffset());
     EXPECT_EQ("ipsum", range->GetText());
-    TestFlatTreePositionsToEqualToDOMTreePositions(selection,
+    TestFlatTreePositionsToEqualToDomTreePositions(selection,
                                                    selection_in_flat_tree);
   }
 
@@ -570,7 +570,7 @@ TEST_F(VisibleSelectionTest, WordGranularity) {
     EXPECT_EQ(5u, range->startOffset());
     EXPECT_EQ(6u, range->endOffset());
     EXPECT_EQ(" ", range->GetText());
-    TestFlatTreePositionsToEqualToDOMTreePositions(selection,
+    TestFlatTreePositionsToEqualToDomTreePositions(selection,
                                                    selection_in_flat_tree);
   }
 
@@ -588,7 +588,7 @@ TEST_F(VisibleSelectionTest, WordGranularity) {
     EXPECT_EQ(26u, range->startOffset());
     EXPECT_EQ(27u, range->endOffset());
     EXPECT_EQ(",", range->GetText());
-    TestFlatTreePositionsToEqualToDOMTreePositions(selection,
+    TestFlatTreePositionsToEqualToDomTreePositions(selection,
                                                    selection_in_flat_tree);
   }
 
@@ -604,7 +604,7 @@ TEST_F(VisibleSelectionTest, WordGranularity) {
     EXPECT_EQ(27u, range->startOffset());
     EXPECT_EQ(28u, range->endOffset());
     EXPECT_EQ(" ", range->GetText());
-    TestFlatTreePositionsToEqualToDOMTreePositions(selection,
+    TestFlatTreePositionsToEqualToDomTreePositions(selection,
                                                    selection_in_flat_tree);
   }
 
@@ -620,7 +620,7 @@ TEST_F(VisibleSelectionTest, WordGranularity) {
     EXPECT_EQ(0u, range->startOffset());
     EXPECT_EQ(5u, range->endOffset());
     EXPECT_EQ("Lorem", range->GetText());
-    TestFlatTreePositionsToEqualToDOMTreePositions(selection,
+    TestFlatTreePositionsToEqualToDomTreePositions(selection,
                                                    selection_in_flat_tree);
   }
 
@@ -636,7 +636,7 @@ TEST_F(VisibleSelectionTest, WordGranularity) {
     EXPECT_EQ(0u, range->startOffset());
     EXPECT_EQ(11u, range->endOffset());
     EXPECT_EQ("Lorem ipsum", range->GetText());
-    TestFlatTreePositionsToEqualToDOMTreePositions(selection,
+    TestFlatTreePositionsToEqualToDomTreePositions(selection,
                                                    selection_in_flat_tree);
   }
 }

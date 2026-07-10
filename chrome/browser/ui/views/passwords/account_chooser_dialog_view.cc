@@ -45,7 +45,7 @@
 AccountChooserDialogView::AccountChooserDialogView(
     CredentialManagerDialogController* controller,
     content::WebContents* web_contents)
-    : controller_(controller), web_contents_(web_contents) {
+    : controller_(controller), web_contents_(web_contents->GetWeakPtr()) {
   DCHECK(controller);
   DCHECK(web_contents);
   SetButtons(static_cast<int>(ui::mojom::DialogButton::kCancel));
@@ -84,7 +84,7 @@ void AccountChooserDialogView::ShowAccountChooser() {
   DCHECK(!widget_);
   SetOwnershipOfNewWidget(views::Widget::InitParams::CLIENT_OWNS_WIDGET);
   widget_ = base::WrapUnique(
-      constrained_window::ShowWebModalDialogViews(this, web_contents_));
+      constrained_window::ShowWebModalDialogViews(this, web_contents_.get()));
 }
 
 void AccountChooserDialogView::ControllerGone() {
@@ -107,7 +107,7 @@ void AccountChooserDialogView::WindowClosing() {
     // Clear the controller pointer before calling OnCloseDialog() to prevent
     // re-entrancy issues during widget destruction. The controller tries
     // deleting `this`.
-    std::exchange(controller_, nullptr)->OnCloseDialog();
+    controller_.ExtractAsDangling()->OnCloseDialog();
   }
 }
 
@@ -141,7 +141,7 @@ void AccountChooserDialogView::InitWindow() {
                 &AccountChooserDialogView::CredentialsItemPressed,
                 base::Unretained(this), base::Unretained(form.get())),
             titles.first, titles.second, form.get(),
-            GetURLLoaderForMainFrame(web_contents_).get(),
+            GetURLLoaderForMainFrame(web_contents_.get()).get(),
             web_contents_->GetPrimaryMainFrame()->GetLastCommittedOrigin()));
     ChromeLayoutProvider* layout_provider = ChromeLayoutProvider::Get();
     gfx::Insets insets =

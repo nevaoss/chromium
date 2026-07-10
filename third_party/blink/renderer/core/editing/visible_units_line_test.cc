@@ -508,6 +508,51 @@ TEST_F(VisibleUnitsLineTest, logicalEndOfLine) {
                 .DeepEquivalent());
 }
 
+TEST_F(VisibleUnitsLineTest, LogicalEndOfLineFromLeadingWbr) {
+  // The spans must be atomic inlines (inline-block, inline-flex, ...) so they
+  // establish a nested inline formatting context; the bug does not trigger
+  // with plain inline spans. The editability boundary (editable div,
+  // non-editable spans) is also required: it keeps the caret canonicalized at
+  // the block-anchored position that triggers the bug.
+  InsertStyleElement(".code { display: inline-flex; }");
+  // Two spans are needed: with a single span, the end of the nested inner
+  // line coincides with the end of the div's line, masking the bug.
+  SetBodyContent(
+      "<div id=editable contenteditable>"
+      "<wbr><span class=code contenteditable=false>1</span>"
+      "<span class=code contenteditable=false>2</span></div>");
+
+  const auto& editable = *GetElementById("editable");
+  const auto& first_wbr = *editable.firstChild();
+  const PositionWithAffinity position(Position::BeforeNode(first_wbr));
+
+  EXPECT_EQ(Position::LastPositionInNode(editable),
+            LogicalEndOfLine(CreateVisiblePosition(position)).DeepEquivalent());
+}
+
+TEST_F(VisibleUnitsLineTest, LogicalStartOfLineFromTrailingWbr) {
+  // The spans must be atomic inlines (inline-block, inline-flex, ...) so they
+  // establish a nested inline formatting context; the bug does not trigger
+  // with plain inline spans. The editability boundary (editable div,
+  // non-editable spans) is also required: it keeps the caret canonicalized at
+  // the block-anchored position that triggers the bug.
+  InsertStyleElement(".code { display: inline-flex; }");
+  // Two spans are needed: with a single span, the start of the nested inner
+  // line coincides with the start of the div's line, masking the bug.
+  SetBodyContent(
+      "<div id=editable contenteditable>"
+      "<span class=code contenteditable=false>1</span>"
+      "<span class=code contenteditable=false>2</span><wbr></div>");
+
+  const auto& editable = *GetElementById("editable");
+  const auto& last_wbr = *editable.lastChild();
+  const PositionWithAffinity position(Position::AfterNode(last_wbr));
+
+  EXPECT_EQ(
+      Position::FirstPositionInNode(editable),
+      LogicalStartOfLine(CreateVisiblePosition(position)).DeepEquivalent());
+}
+
 TEST_F(VisibleUnitsLineTest, logicalStartOfLine) {
   const char* body_content =
       "<span id=host><b slot='#one' id=one>11</b><b slot='#two' "

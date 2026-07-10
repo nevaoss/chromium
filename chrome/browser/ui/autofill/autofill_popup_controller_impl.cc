@@ -171,31 +171,6 @@ void MaybeRecordAddressDeletedMetric(content::WebContents* web_contents,
 
 }  // namespace
 
-#if !BUILDFLAG(IS_MAC) && !BUILDFLAG(IS_ANDROID)
-// static
-base::WeakPtr<AutofillSuggestionController>
-AutofillSuggestionController::GetOrCreate(
-    base::WeakPtr<AutofillSuggestionController> previous,
-    base::WeakPtr<AutofillSuggestionDelegate> delegate,
-    content::WebContents* web_contents,
-    PopupControllerCommon controller_common,
-    int32_t form_control_ax_id,
-    AutofillSuggestionTriggerSource trigger_source) {
-  if (previous &&
-      previous->MayRecycle(delegate, web_contents, trigger_source)) {
-    previous->Recycle(std::move(controller_common), form_control_ax_id);
-    return previous;
-  }
-
-  if (previous) {
-    previous->Hide(SuggestionHidingReason::kViewDestroyed);
-  }
-  auto* controller = new AutofillPopupControllerImpl(
-      delegate, web_contents, std::move(controller_common), form_control_ax_id,
-      /*parent=*/std::nullopt);
-  return controller->GetWeakPtr();
-}
-#endif
 
 bool AutofillPopupControllerImpl::MayRecycle(
     base::WeakPtr<AutofillSuggestionDelegate> delegate,
@@ -325,6 +300,7 @@ void AutofillPopupControllerImpl::Show(
     OnSuggestionsChanged();
   } else {
     bool has_parent = parent_controller_ && parent_controller_->get();
+    is_tabbed_popup_ = controller_common_.show_tabbed_popup;
     auto tabbed_pane_config =
         controller_common_.show_tabbed_popup
             ? std::make_optional<AutofillPopupView::TabbedPaneConfig>(
@@ -456,6 +432,7 @@ bool AutofillPopupControllerImpl::HasCreditCardSuggestions() const {
 void AutofillPopupControllerImpl::ViewDestroyed() {
   // The view has already been destroyed so clear the reference to it.
   view_ = nullptr;
+  is_tabbed_popup_ = false;
   Hide(SuggestionHidingReason::kViewDestroyed);
 }
 
@@ -718,8 +695,18 @@ AutofillPopupControllerImpl::GetWeakPtr() {
 }
 
 void AutofillPopupControllerImpl::ClearState() {
-  // Don't clear view_, because otherwise the popup will have to get
-  // regenerated and this will cause flickering.
+  // If the tabbed state changed since the last `Show()`, then `view_` is
+  // cleared to trigger popup regeneration. Otherwise, don't clear `view_` to
+  // avoid unnecessary flickering from popup regeneration.
+  if (is_tabbed_popup_ != controller_common_.show_tabbed_popup) {
+    if (view_) {
+      base::WeakPtr<AutofillPopupView> view = std::move(view_);
+      view->Hide();
+    }
+    view_ = nullptr;
+    is_tabbed_popup_ = false;
+  }
+
   filtered_suggestions_.clear();
   non_filtered_suggestions_.clear();
   any_suggestion_selected_ = false;
@@ -740,6 +727,7 @@ void AutofillPopupControllerImpl::HideViewAndDie() {
     FireControlsChangedEvent(false);
     view_->Hide();
     view_ = nullptr;
+    is_tabbed_popup_ = false;
   }
 
   if (self_deletion_weak_ptr_factory_.HasWeakPtrs()) {
@@ -876,7 +864,7 @@ void AutofillPopupControllerImpl::SelectSuggestion(int index) {
     return;
   }
 
-  const autofill::Suggestion& suggestion = GetSuggestionAt(index);
+  const Suggestion& suggestion = GetSuggestionAt(index);
   if (!suggestion.IsAcceptable()) {
     UnselectSuggestion();
     return;

@@ -191,6 +191,8 @@ public class WebViewChromiumAwInit {
     @GuardedBy("mLazyInitLock")
     private WebViewDatabaseAdapter mDefaultWebViewDatabase;
 
+    private final ProfileStore mProfileStore = new ProfileStore(this);
+
     // Volatile to guard for incorrectly trying to use this without calling `startChromium`.
     // TODO(crbug.com/389871700): Consider hiding the variable where it can't be incorrectly
     // accessed. See crrev.com/c/6081452/comment/9dff4e5e_c049d778/ for context.
@@ -369,6 +371,10 @@ public class WebViewChromiumAwInit {
         CallSite.GET_PROFILE_STORE,
         CallSite.WEBVIEW_INSTANCE_GET_SETTINGS,
         CallSite.WEBVIEW_INSTANCE_GET_AW_CONTENTS,
+        CallSite.GET_PROFILE,
+        CallSite.GET_OR_CREATE_PROFILE,
+        CallSite.GET_ALL_PROFILE_NAMES,
+        CallSite.DELETE_PROFILE,
         CallSite.COUNT,
     })
     public @interface CallSite {
@@ -482,8 +488,12 @@ public class WebViewChromiumAwInit {
         int GET_PROFILE_STORE = 108;
         int WEBVIEW_INSTANCE_GET_SETTINGS = 109;
         int WEBVIEW_INSTANCE_GET_AW_CONTENTS = 110;
+        int GET_PROFILE = 111;
+        int GET_OR_CREATE_PROFILE = 112;
+        int GET_ALL_PROFILE_NAMES = 113;
+        int DELETE_PROFILE = 114;
         // Remember to update WebViewStartupCallSite in enums.xml when adding new values here.
-        int COUNT = 111;
+        int COUNT = 115;
     };
 
     // LINT.ThenChange(//tools/metrics/histograms/metadata/android/enums.xml:WebViewStartupCallSite)
@@ -1137,8 +1147,10 @@ public class WebViewChromiumAwInit {
     }
 
     public ProfileStore getProfileStore() {
-        triggerAndWaitForChromiumStarted(CallSite.GET_PROFILE_STORE);
-        return mChromiumStartedGlobals.mProfileStore;
+        if (ProfileStore.requiresStartup()) {
+            triggerAndWaitForChromiumStarted(CallSite.GET_PROFILE_STORE);
+        }
+        return mProfileStore;
     }
 
     public CookieManager getDefaultCookieManager() {
@@ -1251,7 +1263,7 @@ public class WebViewChromiumAwInit {
                                     : Set.of(AwBrowserContext.getDefaultContextName());
 
                     for (String context : profilesCopy) {
-                        mChromiumStartedGlobals.mProfileStore.getOrCreateProfile(
+                        mProfileStore.getOrCreateProfile(
                                 context, ProfileStore.CallSite.ASYNC_WEBVIEW_STARTUP);
                     }
                     callback.onSuccess(mWebViewStartUpDiagnostics);
@@ -1264,12 +1276,10 @@ public class WebViewChromiumAwInit {
     private static final class ChromiumStartedGlobals {
         final AwTracingController mAwTracingController;
         final AwProxyController mAwProxyController;
-        final ProfileStore mProfileStore;
 
         ChromiumStartedGlobals() {
             mAwProxyController = new AwProxyController();
             mAwTracingController = new AwTracingController();
-            mProfileStore = new ProfileStore();
         }
     }
 
@@ -1289,7 +1299,7 @@ public class WebViewChromiumAwInit {
             }
             if (mDefaultProfile != null) return;
             mDefaultProfile =
-                    mChromiumStartedGlobals.mProfileStore.getOrCreateProfile(
+                    mProfileStore.getOrCreateProfile(
                             AwBrowserContext.getDefaultContextName(),
                             ProfileStore.CallSite.GET_DEFAULT_PROFILE);
             mDefaultProfileIsInitialized.countDown();

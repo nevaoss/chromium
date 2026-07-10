@@ -31,6 +31,7 @@ class AutocompleteResult;
 class GURL;
 class SessionID;
 class SkBitmap;
+class AiModeButtonService;
 class TemplateURL;
 class TemplateURLService;
 struct AutocompleteMatch;
@@ -136,6 +137,10 @@ class OmniboxClient {
   virtual TemplateURLService* GetTemplateURLService();
   const TemplateURLService* GetTemplateURLService() const {
     return const_cast<OmniboxClient*>(this)->GetTemplateURLService();
+  }
+  virtual AiModeButtonService* GetAiModeButtonService();
+  const AiModeButtonService* GetAiModeButtonService() const {
+    return const_cast<OmniboxClient*>(this)->GetAiModeButtonService();
   }
   virtual const AutocompleteSchemeClassifier& GetSchemeClassifier() const = 0;
   virtual AutocompleteClassifier* GetAutocompleteClassifier();

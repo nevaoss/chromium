@@ -597,7 +597,6 @@
 <translation id="1433478348197382180">የንባብ ሁነታ</translation>
 <translation id="1433980411933182122">ማስጀመሪያ</translation>
 <translation id="1434659328474177625"><ph name="ISSUER" /> ኢሜይልዎን አረጋግጠዋል</translation>
-<translation id="1434696352799406980">ይህ የእርስዎን የመነሻ ገፅ፣ አዲስ የትር ገፅ፣ የፍለጋ ፕሮግራምን እና የተሰኩ ትሮችን ዳግም ያቀናብራቸዋል። እንዲሁም ሁሉንም ቅጥያዎች ያሰናክላል እና እንደ ኩኪዎች ያለ ጊዜያዊ ውሂብን ያጸዳል። የእርስዎ ዕልባቶች፣ ታሪክ እና የተቀመጡ የይለፍ ቃላት አይጸዱም።</translation>
 <translation id="1434886155212424586">መነሻ ገፅ አዲሱ የትር ገፅ ነው</translation>
 <translation id="1435940442311036198">አንድ የይለፍ ቁልፍን በተለየ መሣሪያ ላይ ይጠቀሙ</translation>
 <translation id="1436390408194692385">ለ<ph name="TICKET_TIME_LEFT" /> የሚሰራ</translation>
@@ -2570,6 +2569,7 @@
 <translation id="2822551631199737692">ካሜራ ሥራ ላይ ነው</translation>
 <translation id="2822634587701817431">አሳንስ / ዘርጋ</translation>
 <translation id="2824942875887026017"><ph name="IDS_SHORT_PRODUCT_NAME" /> ከእርስዎ አስተዳዳሪ የወኪል ቅንብሮችን እየተጠቀመ ነው</translation>
+<translation id="2825200993288778739">የራስዎን ይገንቡ ወይም ከክህሎቶች ቤተ-መጽሐፍት ያክሉ</translation>
 <translation id="282525059261716597">የትዕዛዝ መስመር፦</translation>
 <translation id="2825758591930162672">የርዕሰ ጉዳዩ ህዝባዊ ቁልፍ</translation>
 <translation id="2826576843404243001">የተመሰጠሩ ግንኙነቶችን ለማይደግፉ ጣቢያዎች ጣቢያውን ከመጎብኘትዎ በፊት ማስጠንቀቂያ ያግኙ። የላቀ ጥበቃን ስላነቁ ይህን ቅንብር መለወጥ አይችሉም።</translation>
@@ -3710,7 +3710,6 @@
 <translation id="366484203224589850"><ph name="TASK_TITLE" />፦ Gemini በዚህ ተግባር ላይ ለረጅም ጊዜ እየሰራ ነው እና ባትሪን ለመቆጠብ በቅርቡ ያቆማል</translation>
 <translation id="3664911592976620204">{NUM_OTHER_MEMBERS,plural, =0{ከ<ph name="OWNER_FIRST_NAME" /> ጋር የትር ቡድንን ይቀላቀላሉ}=1{ከ<ph name="OWNER_FIRST_NAME" /> እና # ሌላ ጋር የትር ቡድንን ይቀላቀላሉ}one{ከ<ph name="OWNER_FIRST_NAME" /> እና # ሌላ ጋር የትር ቡድንን ይቀላቀላሉ}other{ከ<ph name="OWNER_FIRST_NAME" /> እና # ሌሎች ጋር የትር ቡድንን ይቀላቀላሉ}}</translation>
 <translation id="3665301845536101715">የጎን ፓነል ውስጥ ክፈት</translation>
-<translation id="3665589677786828986">Chrome አንዳንድ ቅንብሮችዎ በሌላ ፕሮግራም መበላሸቱን አስተውሏል፣ እና ወደ የመጀመሪያዎቹ ነባሪዎቻቸው መልሷቸዋል።</translation>
 <translation id="3665918214153961651">ፋይል በመስቀል ላይ</translation>
 <translation id="3666196264870170605">የIntel WiFi NICዎች ስህተት ማረሚያ ክምችት</translation>
 <translation id="3666971425390608309"><ph name="FILE_NAME" />ን ማውረድ ባለበት ቆሟል።</translation>
@@ -4645,6 +4644,7 @@
 <translation id="4321179778687042513">ctrl</translation>
 <translation id="432160826079505197"><ph name="FILE_NAME" />ን በፈላጊ ውስጥ ያሳዩ</translation>
 <translation id="4322394346347055525">ሌሎች ትሮችን ዝጋ</translation>
+<translation id="4322400254469690320">የእርስዎን <ph name="FILENAME" /> በ<ph name="FEATURE_NAME" /> አቃፊ ውስጥ ያግኙ</translation>
 <translation id="4324577459193912240">ፋይል ያልተሟላ ነው</translation>
 <translation id="4325433082696797523">ማከማቻ እና ኃይል</translation>
 <translation id="4325515113816851466">ዘግተው ከወጡ በኋላ የወላጅዎ ምርጫዎች ተግባራዊ አይሆኑም</translation>
@@ -4995,7 +4995,6 @@
 <translation id="4580596421317071374">በዚህ መሣሪያ ላይ የይለፍ ቃላት በ<ph name="GOOGLE_PASSWORD_MANAGER" /> ላይ ይቀመጣሉ።</translation>
 <translation id="4580939929828762295">በGoogle የይለፍ ቃል አስተዳዳሪ ደኅንነትዎን ይጠብቁ</translation>
 <translation id="4582297591746054421">ጣቢያዎች እንደ እርስዎ የቀዱትን የጽሑፍ ቅርጸት ማቆየት ያሉ ባህሪያትን ለማግኘት አብዛኛውን ጊዜ ቅንጥብ ሰሌዳዎን ያነብባሉ</translation>
-<translation id="4582563038311694664">ሁሉንም ቅንብሮች ዳግም አስጀምር</translation>
 <translation id="4584094413232466841">ይህ መረጃ ከChrome ራስ-ሙላ ላይ ይወገድ?</translation>
 <translation id="4584770411839426377">መስኮት</translation>
 <translation id="4584836561445313300">ድርጅትዎ እንደ የይለፍ ቃሎች እና ሌሎችም ያለ ማንኛውንም ነባር የአሰሳ ውሂብ ማየት እና ማስተዳደር ይችላል</translation>
@@ -6640,6 +6639,7 @@
 <translation id="5826993284769733527">ከፊል ብርሃን አሳላፊ</translation>
 <translation id="5827266244928330802">Safari</translation>
 <translation id="5827591412833386477">በተመሳሳይ ቡድን ውስጥ ያሉ ጣቢያዎችን አሳይ</translation>
+<translation id="5827835011646404677">ክህሎቶች ወደ Google መለያዎ ይቀመጣሉ</translation>
 <translation id="5828181959764767444">ፀሐይ መግባት</translation>
 <translation id="5828545842856466741">መገለጫ አክል...</translation>
 <translation id="5828633471261496623">በማተም ላይ...</translation>
@@ -10089,7 +10089,6 @@ nil</translation>
 <translation id="8327386430364625757">የሂሳብ ቅርጸ-ቁምፊ</translation>
 <translation id="8327490658947427005">ምርጫ በ<ph name="LANGUAGE" /> ውስጥ አይደለም</translation>
 <translation id="8327544198829180337">ይህን ዕይታ ዝጋ</translation>
-<translation id="8327676037044516220">ፈቃዶች እና የይዘት ቅንብሮች</translation>
 <translation id="8328228852664998535">በዚህ ከቀጠሉ፣ የእርስዎ የይለፍ ቃሎች፣ የይለፍ ቁልፎች፣ እና ሌሎች ውሂብ ከ<ph name="BRAND" /> ላይ በቋሚነት ይሰረዛሉ። ለጣቢያዎች ወይም ለማተግበሪያዎች የፈጠሩዋቸው ማንኛቸውም መለያዎች አይሰረዙም።</translation>
 <translation id="8328777765163860529">ሁሉንም ዝጋ</translation>
 <translation id="8330617762701840933">ወደ አማራጭ አሳሽ የሚያዞሩ ድር ጣቢያዎች ዝርዝር።</translation>
@@ -10910,7 +10909,6 @@ nil</translation>
 <translation id="8925458182817574960">&amp;ቅንብሮች</translation>
 <translation id="8926389886865778422">ደግመው አይጠይቁ</translation>
 <translation id="8926555406617248399">ትሮች ተደብቀዋል</translation>
-<translation id="892706138619340876">አንዳንድ ቅንብሮች ዳግም ተጀምረዋል</translation>
 <translation id="8927438609932588163">ጣቢያዎች በመሣሪያዎ ላይ ውሂብ እንዲያስቀምጡ ይፍቀዱ</translation>
 <translation id="8929696694736010839">የአሁኑ ማንነት የማያሳውቅ ክፍለ-ጊዜ ብቻ</translation>
 <translation id="8929738682246584251">ማጉያ አብራ/አጥፋ</translation>
@@ -11219,6 +11217,7 @@ nil</translation>
 <translation id="9130015405878219958">ልክ ያልሆነ ሁነታ ገብቷል።</translation>
 <translation id="9130135798965366513">ለመቀጠል፣ <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> የእርስዎን <ph name="FIELDS_STRING" /> ከዚህ ጣቢያ ጋር ያጋራል። የዚህን ጣቢያ <ph name="BEGIN_LINK1" />የግላዊነት መመሪያ<ph name="END_LINK1" /> እና <ph name="BEGIN_LINK2" />የአገልግሎት ውል<ph name="END_LINK2" /> ይመልከቱ።</translation>
 <translation id="9130364135697530260">የተከተተ ይዘት በዚህ ጣቢያ ላይ ስለ እርስዎ ያስቀመጡትን መረጃ መጠቀም ይችላሉ</translation>
+<translation id="9130857050314385402">ክህሎትን ሲጠቀሙ የትር ርዕሶች እና ዩአርኤሎች ወደ Google ይላካሉ</translation>
 <translation id="9131209053278896908">የታገዱ ጣቢያዎች እዚህ ይታያሉ</translation>
 <translation id="9131487537093447019">መልዕክቶችን ወደ ብሉቱዝ መሣሪያዎች ይልካል እና ከእነሱ ይቀበላል።</translation>
 <translation id="9133568201369135151">የምርመራ ውሂብ መሰብሰብ ተጠናቅቋል። አንዳንድ የእርስዎ የግል መረጃ በዚህ ውሂብ ውስጥ ተካትቷል።</translation>

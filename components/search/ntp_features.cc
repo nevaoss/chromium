@@ -52,11 +52,6 @@ BASE_FEATURE(kEnergyEffect, base::FEATURE_DISABLED_BY_DEFAULT);
 // If enabled, the EnergyEffect animation for Realbox will be shown.
 BASE_FEATURE(kEnergyEffectAnimation, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// If enabled, the impressions of the realbox context menu animation will be
-// capped.
-BASE_FEATURE(kRealboxContextMenuAnimationCapping,
-             "RealboxContextMenuAnimationCapping",
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled, NTP "realbox" will be themed for CR23. Includes realbox
 // matching omnibox theme and increased realbox shadow.
@@ -297,6 +292,10 @@ BASE_FEATURE(kNtpShortcutsRedesign, base::FEATURE_DISABLED_BY_DEFAULT);
 // If enabled, the bookmark bar may be auto-removed on the NTP and new
 // visibility settings are added.
 BASE_FEATURE(kNtpSimplificationBookmarkBar, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// If enabled, the bookmark bar time interval and number of times it's shown on
+// the NTP before auto-hiding is decreased for testing.
+BASE_FEATURE(kBookmarkBarUpdatesForTesting, base::FEATURE_DISABLED_BY_DEFAULT);
 
 const char kNtpModuleIgnoredCriteriaThreshold[] =
     "NtpModuleIgnoredCriteriaThreshold";
@@ -590,6 +589,18 @@ int GetMaxMostVisitedTilesInExpandedState() {
 
 int GetMaxEnterpriseShortcuts() {
   return kMaxEnterpriseShortcuts.Get();
+}
+base::TimeDelta GetBookmarkBarMinStalenessTimeInterval() {
+  if (base::FeatureList::IsEnabled(kBookmarkBarUpdatesForTesting)) {
+    return base::Seconds(15);
+  }
+  return kBookmarkBarMinStalenessTimeInterval.Get();
+}
+int GetBookmarkBarCountThreshold() {
+  if (base::FeatureList::IsEnabled(kBookmarkBarUpdatesForTesting)) {
+    return 1;
+  }
+  return kBookmarkBarCountThreshold.Get();
 }
 
 }  // namespace ntp_features

@@ -90,7 +90,7 @@ class GeminiTabHelperTest : public PlatformTest {
     AccountInfo account = signin::MakePrimaryAccountAvailable(
         identity_manager, "test@example.com", signin::ConsentLevel::kSignin);
     // Grant the user the capability to use Gemini.
-    AccountCapabilitiesTestMutator mutator(&account.capabilities);
+    AccountCapabilitiesTestMutator mutator(&account);
     mutator.set_can_use_model_execution_features(true);
     signin::UpdateAccountInfoForAccount(identity_manager, account);
     profile_->GetPrefs()->SetInteger(prefs::kGeminiEnabledByPolicy, 0);
@@ -831,7 +831,7 @@ TEST_F(GeminiTabHelperTest,
 TEST_F(GeminiTabHelperTest,
        IsGeminiAvailableForWebState_WhenUrlIsPdf_AllPagesEnabled) {
   feature_list_.InitWithFeatures(
-      /*enabled_features=*/{kGeminiFloatyAllPages, kPageActionMenu},
+      /*enabled_features=*/{kPageActionMenu},
       /*disabled_features=*/{});
   web_state_ = std::make_unique<web::FakeWebState>();
   web_state_->SetBrowserState(profile_.get());

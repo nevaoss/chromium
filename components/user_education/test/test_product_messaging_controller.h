@@ -7,6 +7,7 @@
 
 #include <initializer_list>
 
+#include "base/memory/weak_ptr.h"
 #include "components/user_education/product_messaging/product_messaging_controller.h"
 
 namespace user_education::test {
@@ -15,8 +16,10 @@ namespace user_education::test {
 // Will hold the handle until `Release()` is called.
 class TestProductMessage {
  public:
-  explicit TestProductMessage(ProductMessagingController& controller,
-                              ProductMessageKey key);
+  explicit TestProductMessage(
+      ProductMessagingController& controller,
+      ProductMessageKey key,
+      std::optional<base::TimeDelta> timeout = std::nullopt);
   TestProductMessage(const TestProductMessage&) = delete;
   void operator=(const TestProductMessage&) = delete;
   ~TestProductMessage();
@@ -40,6 +43,7 @@ class TestProductMessage {
   bool shown_ = false;
   ProductMessageStatusCallback pending_status_callback_;
   ProductMessagingHandle handle_;
+  base::WeakPtrFactory<TestProductMessage> weak_ptr_factory_{this};
 };
 
 }  // namespace user_education::test

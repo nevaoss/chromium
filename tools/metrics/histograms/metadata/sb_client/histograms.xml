@@ -77,6 +77,7 @@ chromium-metrics-reviews@google.com.
   <variant name="DangerousFileType" summary="dangerous file type"/>
   <variant name="Malicious" summary="malicious content"/>
   <variant name="Others" summary="other danger types"/>
+  <variant name="Safe" summary="content is safe"/>
   <variant name="Uncommon" summary="uncommon content"/>
 </variants>
 
@@ -1329,7 +1330,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 
 <histogram name="SBClientPhishing.PreClassificationCheckResult{RequestType}"
     enum="SBClientDetectionPreClassificationCheckResult"
-    expires_after="2026-10-11">
+    expires_after="2026-12-13">
   <owner>andysjlim@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -1654,7 +1655,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SBClientPhishing.VisualFeatureTime.TotalDuration" units="ms"
-    expires_after="2026-10-11">
+    expires_after="2026-12-13">
   <owner>andysjlim@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>

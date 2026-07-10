@@ -26,7 +26,7 @@
 #include "components/autofill/core/browser/data_model/valuables/loyalty_card.h"
 #include "components/autofill/core/browser/foundations/test_autofill_client.h"
 #include "components/autofill/core/browser/foundations/test_browser_autofill_manager.h"
-#include "components/autofill/core/browser/integrators/touch_to_fill/touch_to_fill_delegate.h"
+#include "components/autofill/core/browser/integrators/touch_to_fill/touch_to_fill_payment_method_delegate.h"
 #include "components/autofill/core/browser/payments/bnpl_util.h"
 #include "components/autofill/core/browser/payments/payments_util.h"
 #include "components/autofill/core/browser/payments/test_legal_message_line.h"
@@ -206,7 +206,7 @@ class TouchToFillPaymentMethodControllerImplTest
     NavigateAndCommit(GURL("about:blank"));
     FocusWebContentsOnMainFrame();
     ASSERT_TRUE(web_contents()->GetFocusedFrame());
-    autofill_manager().set_touch_to_fill_delegate(
+    autofill_manager().set_touch_to_fill_payment_method_delegate(
         std::make_unique<MockTouchToFillDelegateAndroidImpl>(
             &autofill_manager()));
     mock_view_ = std::make_unique<MockTouchToFillPaymentMethodViewImpl>();
@@ -221,7 +221,7 @@ class TouchToFillPaymentMethodControllerImplTest
   }
 
   void SetUpIbanFormField() {
-    some_form_data_ = autofill::test::CreateTestIbanFormData();
+    some_form_data_ = test::CreateTestIbanFormData();
     some_form_ = some_form_data_.global_id();
     some_field_ = test::MakeFieldGlobalId();
   }
@@ -254,7 +254,7 @@ class TouchToFillPaymentMethodControllerImplTest
 
   MockTouchToFillDelegateAndroidImpl& ttf_delegate() {
     return *static_cast<MockTouchToFillDelegateAndroidImpl*>(
-        autofill_manager().touch_to_fill_delegate());
+        autofill_manager().touch_to_fill_payment_method_delegate());
   }
 
   const std::vector<CreditCard> credit_cards_ = {test::GetCreditCard(),
@@ -328,8 +328,8 @@ class TouchToFillPaymentMethodControllerImplTest
   std::unique_ptr<content::WebContents> second_web_contents_;
 
   FormData some_form_data_ =
-      autofill::test::CreateTestCreditCardFormData(/*is_https=*/true,
-                                                   /*use_month_type=*/false);
+      test::CreateTestCreditCardFormData(/*is_https=*/true,
+                                         /*use_month_type=*/false);
   FormGlobalId some_form_ = some_form_data_.global_id();
   FieldGlobalId some_field_ = test::MakeFieldGlobalId();
 };
@@ -534,8 +534,7 @@ TEST_F(TouchToFillPaymentMethodControllerImplTest,
 TEST_F(TouchToFillPaymentMethodControllerImplTest,
        ShowBnplIssuersOnPreexistingView) {
   base::MockOnceClosure mock_cancel_callback;
-  base::MockOnceCallback<void(autofill::BnplIssuer)>
-      mock_selected_issuer_callback;
+  base::MockOnceCallback<void(BnplIssuer)> mock_selected_issuer_callback;
   EXPECT_CALL(*mock_view_,
               ShowPaymentMethods(
                   &payment_method_controller(), ElementsAreArray(suggestions_),
@@ -559,8 +558,7 @@ TEST_F(TouchToFillPaymentMethodControllerImplTest,
 TEST_F(TouchToFillPaymentMethodControllerImplTest,
        ShowBnplIssuersAbortsIfNoViewAvailable) {
   base::MockOnceClosure mock_cancel_callback;
-  base::MockOnceCallback<void(autofill::BnplIssuer)>
-      mock_selected_issuer_callback;
+  base::MockOnceCallback<void(BnplIssuer)> mock_selected_issuer_callback;
   EXPECT_CALL(*mock_view_, ShowBnplIssuers).Times(0);
   EXPECT_CALL(ttf_delegate(), SetCancelCallback).Times(0);
   EXPECT_CALL(ttf_delegate(), SetSelectedIssuerCallback).Times(0);

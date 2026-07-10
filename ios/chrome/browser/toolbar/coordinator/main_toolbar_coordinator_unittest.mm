@@ -13,7 +13,6 @@
 #import "ios/chrome/browser/infobars/model/infobar_manager_impl.h"
 #import "ios/chrome/browser/omnibox/model/omnibox_position/omnibox_position_browser_agent.h"
 #import "ios/chrome/browser/omnibox/model/omnibox_position/omnibox_position_browser_agent_observer.h"
-#import "ios/chrome/browser/reading_list/model/offline_page_tab_helper.h"
 #import "ios/chrome/browser/reading_list/model/reading_list_model_factory.h"
 #import "ios/chrome/browser/saved_tab_groups/model/tab_group_sync_service_factory.h"
 #import "ios/chrome/browser/search_engines/model/template_url_service_factory.h"
@@ -259,8 +258,6 @@ TEST_F(MainToolbarCoordinatorTest, SideSwipeSnapshotForToolbarNotInHierarchy) {
   web::WebState* web_state = test_web_state.get();
   WebViewProxyTabHelper::CreateForWebState(web_state);
   InfoBarManagerImpl::CreateForWebState(web_state);
-  OfflinePageTabHelper::CreateForWebState(
-      web_state, ReadingListModelFactory::GetForProfile(profile_.get()));
   InfobarBadgeTabHelper::CreateForWebState(web_state);
 
   browser_->GetWebStateList()->InsertWebState(

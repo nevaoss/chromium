@@ -11,6 +11,7 @@
 
 #import <optional>
 
+#import "base/ios/block_types.h"
 #import "ios/web/common/uikit_ui_util.h"
 
 // UI Util containing functions that require UIKit.
@@ -238,5 +239,24 @@ NSArray<UITrait>* TraitCollectionSetForTraits(NSArray<UITrait>* traits)
 
 // Returns the memory footprint of an image in KB.
 size_t MemoryFootprintForImage(UIImage* image);
+
+// An interface for view controllers that manage transient context menu
+// interactions. Provides access to the active context menu animator to allow
+// coordinating actions (such as presenting new UI) after the context menu is
+// dismissed.
+@protocol ContextMenuTransitionStateProviding <NSObject>
+@property(nonatomic, readonly) id<UIContextMenuInteractionAnimating>
+    activeContextMenuAnimator;
+@end
+
+// Executes the given `action` block as soon as active transitions on the
+// `viewController` complete. Handles both regular view controller transitions
+// (via `transitionCoordinator`) and context menu transitions (if the
+// `viewController` conforms to `ContextMenuTransitionStateProviding`). If no
+// active transition or context menu animation is detected, `action` is executed
+// synchronously. If `viewController` gets destroyed before the transition(s)
+// complete, `action` will not be executed.
+void ExecuteWhenTransitionsComplete(ProceduralBlock action,
+                                    UIViewController* viewController);
 
 #endif  // IOS_CHROME_BROWSER_SHARED_UI_UTIL_UIKIT_UI_UTIL_H_

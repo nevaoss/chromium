@@ -1394,12 +1394,10 @@ webapps::AppId InstallPwaForCurrentUrl(Browser* browser) {
   base::AutoReset<web_app::CreateShortcutDialogCheckState> auto_check =
       web_app::SetCreateShortcutDialogCheckStateForTesting(
           web_app::CreateShortcutDialogCheckState::kChecked);
-  SetAutoAcceptDiyAppsInstallDialogForTesting(true);
   WebAppTestInstallWithOsHooksObserver observer(browser->profile());
   observer.BeginListening();
   CHECK(chrome::ExecuteCommand(browser, IDC_INSTALL_PWA));
   webapps::AppId app_id = observer.Wait();
-  SetAutoAcceptDiyAppsInstallDialogForTesting(false);
   return app_id;
 }
 

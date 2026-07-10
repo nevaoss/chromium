@@ -1646,10 +1646,9 @@ inline constexpr char kNtpCustomizeChromeButtonOpenCount[] =
 // List keeping track of disabled NTP modules.
 inline constexpr char kNtpDisabledModules[] = "NewTabPage.DisabledModules";
 
-// Dictionary containing the state of the Realbox "+" context menu button
-// animation.
-inline constexpr char kRealboxContextMenuAnimationState[] =
-    "realbox.context_menu_animation_state";
+// Dictionary containing the state of the context menu button animation.
+inline constexpr char kContextMenuAnimationState[] =
+    "context_menu_animation_state";
 
 // List keeping track of modules hidden in Customize Chrome.
 inline constexpr char kNtpCustomizeChromeHiddenModules[] =
@@ -1905,6 +1904,21 @@ inline constexpr char kWebAppsUninstalledDefaultChromeApps[] =
 // Used only in the new web applications system to store app preferences which
 // outlive the app installation and uninstallation.
 inline constexpr char kWebAppsPreferences[] = "web_apps.web_app_ids";
+
+#if BUILDFLAG(IS_CHROMEOS)
+// The current migration state for PWA navigation capturing on ChromeOS, stored
+// as an integer matching values in `web_app::MigrationState`. Default
+// initialized to match that on-by-default is not enabled on ChromeOS.
+inline constexpr char kLastNavigationCapturingMigrationState[] =
+    "web_apps.last_navigation_capturing_migration_state";
+
+// A list of web app IDs that were set as the preferred app for capturing
+// supported links before migration was executed to start capturing by default.
+// Used as a backup to revert changes if the user turns off capturing by default
+// on ChromeOS.
+inline constexpr char kWebAppsPreviouslyAppSupportedLinks[] =
+    "web_apps.previously_app_supported_links";
+#endif
 
 #if BUILDFLAG(IS_MAC)
 // A boolean that indicates whether ad-hoc code signing should be used for

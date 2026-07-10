@@ -75,20 +75,17 @@ history_embeddings::mojom::AnswerStatus AnswererAnswerStatusToMojoAnswerStatus(
 HistoryEmbeddingsHandler::HistoryEmbeddingsHandler(
     mojo::PendingReceiver<history_embeddings::mojom::PageHandler>
         pending_page_handler,
+    mojo::PendingRemote<history_embeddings::mojom::Page> pending_page,
     base::WeakPtr<Profile> profile,
     content::WebUI* web_ui,
     bool for_side_panel)
     : page_handler_(this, std::move(pending_page_handler)),
+      page_(std::move(pending_page)),
       for_side_panel_(for_side_panel),
       profile_(std::move(profile)),
       web_ui_(web_ui) {}
 
 HistoryEmbeddingsHandler::~HistoryEmbeddingsHandler() = default;
-
-void HistoryEmbeddingsHandler::SetPage(
-    mojo::PendingRemote<history_embeddings::mojom::Page> pending_page) {
-  page_.Bind(std::move(pending_page));
-}
 
 void HistoryEmbeddingsHandler::Search(
     history_embeddings::mojom::SearchQueryPtr query) {

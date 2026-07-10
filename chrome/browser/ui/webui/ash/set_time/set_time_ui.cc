@@ -170,8 +170,8 @@ SetTimeUI::SetTimeUI(content::WebUI* web_ui) : MojoWebDialogUI(web_ui) {
   // Set up the chrome://set-time source.
   content::WebUIDataSource* source = content::WebUIDataSource::CreateAndAdd(
       Profile::FromWebUI(web_ui), ash::kChromeUISetTimeHost);
-  webui::SetJSModuleDefaults(source);
-  webui::EnableTrustedTypesCSP(source);
+  webui::SetupWebUIDataSource(source, kSetTimeDialogResources,
+                              IDR_SET_TIME_DIALOG_SET_TIME_HTML);
   static constexpr webui::LocalizedString kStrings[] = {
       {"setTimeTitle", IDS_SET_TIME_TITLE},
       {"prompt", IDS_SET_TIME_PROMPT},
@@ -194,9 +194,6 @@ SetTimeUI::SetTimeUI(content::WebUI* web_ui) : MojoWebDialogUI(web_ui) {
   values.Set("buildTime", base::GetBuildTime().InMillisecondsFSinceUnixEpoch());
 
   source->AddLocalizedStrings(values);
-
-  webui::SetupWebUIDataSource(source, kSetTimeDialogResources,
-                              IDR_SET_TIME_DIALOG_SET_TIME_HTML);
 }
 
 SetTimeUI::~SetTimeUI() = default;

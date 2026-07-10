@@ -13,7 +13,7 @@ namespace blink {
 class SelectionAdjusterTest : public EditingTestBase {};
 
 // ------------ Shadow boundary adjustment tests --------------
-TEST_F(SelectionAdjusterTest, AdjustShadowToCollpasedInDOMTree) {
+TEST_F(SelectionAdjusterTest, AdjustShadowToCollpasedInDomTree) {
   const SelectionInDomTree& selection = SetSelectionTextToBody(
       "<span><template data-mode=\"open\">a|bc</template></span>^");
   const SelectionInDomTree& result =

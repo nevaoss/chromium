@@ -120,6 +120,7 @@ std::unique_ptr<WebNNContextImpl, OnTaskRunnerDeleter> ContextImplOrt::Create(
     mojo::ScopedDataPipeConsumerHandle write_tensor_consumer,
     mojo::ScopedDataPipeProducerHandle read_tensor_producer,
     scoped_refptr<Environment> env,
+    scoped_refptr<SessionOptions> session_options,
     std::unique_ptr<GpuTaskScheduler> gpu_task_scheduler,
     scoped_refptr<gpu::MemoryTracker> memory_tracker,
     scoped_refptr<base::SingleThreadTaskRunner> owning_task_runner,
@@ -135,8 +136,6 @@ std::unique_ptr<WebNNContextImpl, OnTaskRunnerDeleter> ContextImplOrt::Create(
   // attributes from WebNN context options to determine ORT device type.
   OrtHardwareDeviceType device_type = WebnnToOrtDeviceType(options->device);
   const EpWorkarounds ep_workarounds = env->GetEpWorkarounds(device_type);
-  scoped_refptr<SessionOptions> session_options =
-      SessionOptions::Create(device_type, env);
 
   // The ONNX Runtime default CPU EP has a limitation that DequantizeLinear with
   // type int32 should have no zero point or all zero points should be 0. This

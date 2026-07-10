@@ -455,7 +455,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.AdaptiveToolbarButton.Clicked"
-    enum="AdaptiveToolbarButtonVariant" expires_after="2026-10-11">
+    enum="AdaptiveToolbarButtonVariant" expires_after="2026-12-13">
   <owner>bttk@chromium.org</owner>
   <owner>chrome-segmentation-platform@google.com</owner>
   <summary>
@@ -1345,7 +1345,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.ChildProcess.JavalessStarted" enum="Boolean"
-    expires_after="2026-10-11">
+    expires_after="2026-12-13">
   <owner>smaier@chromium.org</owner>
   <summary>
     Records when a child process (specifically a renderer) is started via the
@@ -2204,7 +2204,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.DynamicTopChrome.WindowResize.DesktopWindowModeState"
-    enum="DesktopWindowModeState" expires_after="2026-07-19">
+    enum="DesktopWindowModeState" expires_after="2027-01-19">
   <owner>aishwaryarj@google.com</owner>
   <owner>wenyufu@chromium.org</owner>
   <owner>clank-large-form-factors@google.com</owner>
@@ -3071,6 +3071,26 @@ chromium-metrics-reviews@google.com.
   <summary>
     Number of URLs present in Text Share intents (ACTION_SEND) received by
     Chrome.
+  </summary>
+</histogram>
+
+<histogram name="Android.Intent.TrustedReferrer" enum="IntentReferrer"
+    expires_after="2027-06-09">
+  <owner>mthiesse@chromium.org</owner>
+  <owner>yfriedman@google.com</owner>
+  <summary>
+    Records whether, and why, we used a trusted referrer on an Intent coming
+    from another app.
+  </summary>
+</histogram>
+
+<histogram name="Android.Intent.TrustedTransitionTypeUsed"
+    enum="IntentTransitionType" expires_after="2027-06-09">
+  <owner>mthiesse@chromium.org</owner>
+  <owner>yfriedman@google.com</owner>
+  <summary>
+    Records whether, and why, we used a trusted TransitionType on an Intent
+    coming from another app.
   </summary>
 </histogram>
 
@@ -7536,112 +7556,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Android.WebView.DarkMode.ForceDarkBehavior"
-    enum="WebViewForceDarkBehavior" expires_after="2023-06-01">
-  <owner>michaelbai@chromium.org</owner>
-  <owner>src/android_webview/OWNERS</owner>
-  <summary>
-    Records WebView force dark behavior settings on each main frame navigation
-    entry committed.
-  </summary>
-</histogram>
-
-<histogram name="Android.WebView.DarkMode.InDarkMode" enum="Boolean"
-    expires_after="2023-06-01">
-  <owner>michaelbai@chromium.org</owner>
-  <owner>src/android_webview/OWNERS</owner>
-  <summary>
-    Records if WebView applies the algorithmic darkening on each main frame
-    navigation entry committed.
-  </summary>
-</histogram>
-
-<histogram name="Android.WebView.DarkMode.InDarkModeVsNightMode"
-    enum="WebViewInDarkModeVsNightMode" expires_after="2023-06-01">
-  <owner>michaelbai@chromium.org</owner>
-  <owner>src/android_webview/OWNERS</owner>
-  <summary>
-    Records if the application is in the night mode and if WebView applies the
-    algorithmic darkening on each main frame navigation entry committed.
-  </summary>
-</histogram>
-
-<histogram name="Android.WebView.DarkMode.LightTheme" enum="LightTheme"
-    expires_after="2023-06-01">
-  <owner>michaelbai@chromium.org</owner>
-  <owner>src/android_webview/OWNERS</owner>
-  <summary>
-    Records if the application has light theme on each main frame navigation
-    entry committed.
-  </summary>
-</histogram>
-
-<histogram name="Android.WebView.DarkMode.NightMode" enum="NightMode"
-    expires_after="2023-06-01">
-  <owner>michaelbai@chromium.org</owner>
-  <owner>src/android_webview/OWNERS</owner>
-  <summary>
-    Records application's night mode bit related to
-    android.content.res.Configuration.UI_MODE_NIGHT_MASK on each main frame
-    navigation entry committed.
-  </summary>
-</histogram>
-
-<histogram name="Android.WebView.DarkMode.NightModeVsLightTheme"
-    enum="WebViewNightModeVsLightTheme" expires_after="2023-06-01">
-  <owner>michaelbai@chromium.org</owner>
-  <owner>src/android_webview/OWNERS</owner>
-  <summary>
-    Records if application is in night mode and if it has light theme on each
-    main frame navigation entry committed.
-  </summary>
-</histogram>
-
-<histogram name="Android.WebView.DarkMode.PageDarkenedAccordingToAppTheme"
-    enum="Boolean" expires_after="2023-06-01">
-  <owner>michaelbai@chromium.org</owner>
-  <owner>src/android_webview/OWNERS</owner>
-  <summary>
-    Records WebView is darkened or not when the prefers-color-scheme is set to
-    dark according to the app theme not FORCE_DARK_AUTO setting. This histogram
-    is recorded on main frame's color scheme inferred for every committed
-    navigation.
-  </summary>
-</histogram>
-
-<histogram name="Android.WebView.DarkMode.PrefersDarkFromTheme"
-    enum="BooleanYesNo" expires_after="2023-06-01">
-  <owner>michaelbai@chromium.org</owner>
-  <owner>src/android_webview/OWNERS</owner>
-  <summary>
-    Records if WebView shall set prefers-color-scheme to dark according to app's
-    theme after FORCE_DARK_AUTO fails. It is recorded on each main frame
-    navigation entry committed.
-  </summary>
-</histogram>
-
-<histogram name="Android.WebView.DarkMode.PrimaryTextLuminanceVsLightTheme"
-    enum="WebViewPrimaryTextLuminanceVsLightTheme" expires_after="2023-06-01">
-  <owner>michaelbai@chromium.org</owner>
-  <owner>src/android_webview/OWNERS</owner>
-  <summary>
-    Records if the application has light theme and if its theme's
-    textColorPrimary attribute is light on each main frame navigation entry
-    committed.
-  </summary>
-</histogram>
-
-<histogram name="Android.WebView.DarkMode.PrimaryTextLuminanceVsNightMode"
-    enum="WebViewPrimaryTextLuminanceVsNightMode" expires_after="2023-06-01">
-  <owner>michaelbai@chromium.org</owner>
-  <owner>src/android_webview/OWNERS</owner>
-  <summary>
-    Records if the application is in night mode and if its theme's
-    textColorPrimary attribute is light on each main frame navigation entry
-    committed.
-  </summary>
-</histogram>
-
 <histogram name="Android.WebView.DevUi.AppLaunch" enum="Boolean"
     expires_after="2026-07-15">
   <owner>ntfschr@chromium.org</owner>
@@ -7821,26 +7735,6 @@ chromium-metrics-reviews@google.com.
     enforced.
 
     Only logged for Android WebView.
-  </summary>
-</histogram>
-
-<histogram name="Android.WebView.ForceDarkBehavior"
-    enum="WebViewForceDarkBehavior" expires_after="2023-06-01">
-  <owner>peter@chromium.org</owner>
-  <owner>src/android_webview/OWNERS</owner>
-  <summary>
-    Records strategy to be used by force dark in WebView when
-    setForceDarkBehavior API is called by the embedding application.
-  </summary>
-</histogram>
-
-<histogram name="Android.WebView.ForceDarkMode" enum="WebViewForceDarkMode"
-    expires_after="2023-06-01">
-  <owner>peter@chromium.org</owner>
-  <owner>src/android_webview/OWNERS</owner>
-  <summary>
-    Records WebView's force dark setting and the UI's night mode when
-    setForceDark API is called by the embedding application.
   </summary>
 </histogram>
 
@@ -8100,17 +7994,6 @@ chromium-metrics-reviews@google.com.
     app or from the OS or from calling setWebContentsDebuggingEnabled(true).
     This is logged each time the MetricsService uploads metrics. Warning: this
     histogram was expired from 2025-05-18 to 2025-07-25; data may be missing.
-  </summary>
-</histogram>
-
-<histogram name="Android.WebView.IsInstantApp" enum="Boolean"
-    expires_after="2026-07-01">
-  <owner>peter@chromium.org</owner>
-  <owner>src/android_webview/OWNERS</owner>
-  <summary>
-    Records whether WebView is running in an Instant App. This is emitted once
-    during WebView global initialization. Recorded in an internal repository, so
-    code references might be missing.
   </summary>
 </histogram>
 
@@ -8646,7 +8529,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.WebView.OnRenderProcessGoneResult2"
-    enum="AndroidWebViewRenderProcessGoneResult" expires_after="2026-06-21">
+    enum="AndroidWebViewRenderProcessGoneResult" expires_after="2027-06-21">
   <owner>ntfschr@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <summary>
@@ -8687,15 +8570,21 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Android.WebView.Preconnect.ConnectionDuration" units="ms"
-    expires_after="2026-09-01">
+<histogram name="Android.WebView.Preconnect.ConnectionDuration{Protocol}"
+    units="ms" expires_after="2026-12-01">
   <owner>peconn@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <summary>
-    Records the duration of a preconnected session in WebView. This is the time
-    elapsed between connection opening and closing. Logged when the preconnected
-    session is closed.
+    Records the duration of a {Protocol} preconnected session in WebView. This
+    is the time elapsed between connection opening and closing. Logged when the
+    preconnected session is closed.
   </summary>
+  <token key="Protocol">
+    <variant name="" summary="all"/>
+    <variant name=".HTTP2" summary="HTTP/2"/>
+    <variant name=".Other" summary="Other protocol"/>
+    <variant name=".QUIC" summary="QUIC"/>
+  </token>
 </histogram>
 
 <histogram name="Android.WebView.Preconnect.Event"
@@ -8706,6 +8595,21 @@ chromium-metrics-reviews@google.com.
     Records events during the WebView preconnect lifecycle. Logged when the
     preconnect process begins and when the session is closed.
   </summary>
+</histogram>
+
+<histogram name="Android.WebView.Preconnect.SessionCreationTime.{Protocol}"
+    units="ms" expires_after="2026-09-01">
+  <owner>peconn@chromium.org</owner>
+  <owner>src/android_webview/OWNERS</owner>
+  <summary>
+    Records the setup latency of a {Protocol} preconnected session in WebView.
+    Logged when the connection is established.
+  </summary>
+  <token key="Protocol">
+    <variant name="HTTP2" summary="HTTP/2"/>
+    <variant name="Other" summary="Other protocol"/>
+    <variant name="QUIC" summary="QUIC"/>
+  </token>
 </histogram>
 
 <histogram name="Android.WebView.PrimaryCpuAbiBitness"
@@ -9297,7 +9201,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Android.WebView.Startup.CreationTime.FirstInstanceAfterGlobalStartup"
-    units="ms" expires_after="2026-10-11">
+    units="ms" expires_after="2026-12-13">
   <owner>torne@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -9406,7 +9310,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.WebView.Startup.CreationTime.NotFirstInstance"
-    units="ms" expires_after="2026-10-11">
+    units="ms" expires_after="2026-12-13">
   <owner>torne@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -9790,7 +9694,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.WebView.UserAgentClientHintsMetadata.AvailableType"
-    enum="UserAgentMetadataAvailableType" expires_after="2026-05-01">
+    enum="UserAgentMetadataAvailableType" expires_after="2027-05-01">
   <owner>victortan@chromium.org</owner>
   <owner>torne@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>

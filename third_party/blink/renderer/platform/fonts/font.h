@@ -160,10 +160,6 @@ class PLATFORM_EXPORT Font : public GarbageCollected<Font> {
   // list is common for all `SimpleFontData` for `this`.
   base::span<const FontFeatureRange> GetFontFeatures() const;
 
-  // True if `this` has any non-initial font features. This includes not only
-  // `GetFontFeatures()` but also features computed in later stages.
-  bool HasNonInitialFontFeatures() const;
-
   // True if `this` has font-features which encompass the entire range.
   bool HasSimpleFontFeatures() const;
 

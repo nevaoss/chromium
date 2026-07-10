@@ -117,6 +117,7 @@
 <translation id="1373120905936431262">បង្ហោះ​រូបភាព ដើម្បីច្នៃ​ដោយប្រើ Nano Banana</translation>
 <translation id="1377508275003315939">ពាក្យ​សម្ងាត់</translation>
 <translation id="1381022135873211423">{count,plural, =1{អាសយដ្ឋានទី {position} នៃ {count}}other{អាសយដ្ឋានទី {position} នៃ {count}}}</translation>
+<translation id="13813615483058219">មានអ្វីមួយខុសប្រក្រតី។ សូម​ពិនិត្យមើល​ការតភ្ជាប់អ៊ីនធឺណិត​របស់អ្នក បង្កើន​កម្រិត​សំឡេង​របស់អ្នក ឬព្យាយាម​ម្ដងទៀត។</translation>
 <translation id="1383876407941801731">ស្វែងរក</translation>
 <translation id="138618066238211776">បន្តជា <ph name="USER_NAME" /></translation>
 <translation id="138692594145659985">ជម្រើស​សម្រាប់រក្សា​ទុកកាត</translation>
@@ -912,7 +913,6 @@
 <translation id="417138788035229076">គ្រប់គ្រង​ក្រុម</translation>
 <translation id="4172051516777682613">បង្ហាញជានិច្ច</translation>
 <translation id="417273154673973994">{count,plural, =1{បានបិទ និងរក្សាទុក 1 ក្រុមផ្ទាំង}other{បានបិទ និងរក្សាទុក {count} ក្រុមផ្ទាំង}}</translation>
-<translation id="417612446554534067">ផ្ញើ​ទៅ​ឧបករណ៍​របស់អ្នក</translation>
 <translation id="4180726336228139707">តែ​នៅ​លើ​ឧបករណ៍​នេះ​ប៉ុណ្ណោះ</translation>
 <translation id="4181841719683918333">ភាសា</translation>
 <translation id="4183350924949589798">សុវត្ថិភាពច្រើនទៀតឬ?</translation>
@@ -1136,6 +1136,7 @@
 <translation id="4896467949657706481">ផ្ទាំងត្រូវបានបិទ ហើយអ្នកត្រូវបាននាំចេញពីគណនី</translation>
 <translation id="4911042367886397055">សូមស្វាគមន៍​សម្រាប់​ការវិល​ត្រឡប់​មកវិញ <ph name="USER_NAME" />!</translation>
 <translation id="4913626501929406101">អ្នកអាច​ចែករំលែក​ច្បាប់ចម្លង​ពាក្យ​សម្ងាត់​របស់អ្នក​ដោយសុវត្ថិភាព​ជាមួយ​នរណាម្នាក់​នៅក្នុង​ក្រុមគ្រួសារ​របស់អ្នក។ <ph name="BEGIN_LINK" />ស្វែងយល់បន្ថែម<ph name="END_LINK" /></translation>
+<translation id="4916679969857390442">លែន</translation>
 <translation id="4917025507570489430">អ្នកអាច​ប្រើ​ទិន្នន័យរុករក​ដែលមាន​ស្រាប់បាន នៅពេល​ដែលអ្នក​ចូលគណនី​ជា <ph name="USER_EMAIL" />។ ស្ថាប័ន​របស់អ្នក​ប្រហែលជា​អាច​មើលទិន្នន័យ​នេះបាន។</translation>
 <translation id="4918086044614829423">ទទួល</translation>
 <translation id="4930714375720679147">បើក</translation>

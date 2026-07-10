@@ -137,15 +137,7 @@
   infobarType_ = self.config->infobar_type();
 
   NSString* title = base::SysUTF16ToNSString(delegate->GetMessageText());
-
-  std::optional<std::string> account_string =
-      delegate->GetAccountToStorePassword();
-  NSString* subtitle =
-      account_string ? l10n_util::GetNSStringF(
-                           IDS_IOS_PASSWORD_MANAGER_ON_ACCOUNT_SAVE_SUBTITLE,
-                           base::UTF8ToUTF16(*account_string))
-                     : l10n_util::GetNSString(
-                           IDS_IOS_PASSWORD_MANAGER_LOCAL_SAVE_SUBTITLE);
+  NSString* subtitle = delegate->GetSubtitle();
 
   NSString* button_text = base::SysUTF16ToNSString(
       delegate->GetButtonLabel(ConfirmInfoBarDelegate::BUTTON_OK));

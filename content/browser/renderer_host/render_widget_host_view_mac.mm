@@ -24,7 +24,6 @@
 #include "base/mac/mac_util.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/notreached.h"
-#include "base/numerics/ranges.h"
 #include "base/strings/string_util.h"
 #include "base/strings/sys_string_conversions.h"
 #include "base/strings/utf_string_conversions.h"
@@ -215,9 +214,10 @@ RenderWidgetHostViewMac::RenderWidgetHostViewMac(RenderWidgetHost* widget)
       is_loading_(false),
       popup_parent_host_view_(nullptr),
       popup_child_host_view_(nullptr),
-      gesture_provider_(ui::GetGestureProviderConfig(
-                            ui::GestureProviderConfigType::CURRENT_PLATFORM),
-                        this),
+      gesture_provider_(base::MakeRefCounted<ui::FilteredGestureProvider>(
+          ui::GetGestureProviderConfig(
+              ui::GestureProviderConfigType::CURRENT_PLATFORM),
+          this)),
       accessibility_focus_overrider_(this),
       ns_view_id_(remote_cocoa::GetNewNSViewId()),
       weak_factory_(this) {
@@ -269,6 +269,7 @@ RenderWidgetHostViewMac::RenderWidgetHostViewMac(RenderWidgetHost* widget)
 }
 
 RenderWidgetHostViewMac::~RenderWidgetHostViewMac() {
+  gesture_provider_->Shutdown();
   if (popup_parent_host_view_) {
     DCHECK(!popup_parent_host_view_->popup_child_host_view_ ||
            popup_parent_host_view_->popup_child_host_view_ == this);
@@ -682,11 +683,11 @@ input::CursorManager* RenderWidgetHostViewMac::GetCursorManager() {
 void RenderWidgetHostViewMac::OnOldViewDidNavigatePreCommit() {
   CHECK(browser_compositor_) << "Shouldn't be called during destruction!";
   browser_compositor_->DidNavigateMainFramePreCommit();
-  gesture_provider_.ResetDetection();
+  gesture_provider_->ResetDetection();
 }
 
 void RenderWidgetHostViewMac::OnNewViewDidNavigatePostCommit() {
-  gesture_provider_.ResetDetection();
+  gesture_provider_->ResetDetection();
 }
 
 void RenderWidgetHostViewMac::DidEnterBackForwardCache() {
@@ -929,21 +930,10 @@ void RenderWidgetHostViewMac::UpdateScreenInfo() {
   // Update with the latest display list from the remote process if needed.
   bool current_display_changed = false;
   bool any_display_changed = false;
-  bool refresh_rate_changed_on_same_display = false;
   if (new_screen_infos_from_shim_.has_value()) {
     current_display_changed =
         new_screen_infos_from_shim_->current() != screen_infos_.current();
     any_display_changed = new_screen_infos_from_shim_.value() != screen_infos_;
-
-    if (new_screen_infos_from_shim_->current().display_id ==
-            screen_infos_.current().display_id &&
-        screen_infos_.current().display_frequency != 0 &&
-        !base::IsApproximatelyEqual(
-            new_screen_infos_from_shim_->current().display_frequency,
-            screen_infos_.current().display_frequency,
-            display::Display::kRefreshRateEpsilon)) {
-      refresh_rate_changed_on_same_display = true;
-    }
 
     screen_infos_ = new_screen_infos_from_shim_.value();
     original_screen_infos_ = screen_infos_;
@@ -957,11 +947,9 @@ void RenderWidgetHostViewMac::UpdateScreenInfo() {
   bool dip_size_changed = view_bounds_in_window_dip_.size() !=
                           browser_compositor_->GetRendererSize();
 
-  if (dip_size_changed || current_display_changed ||
-      refresh_rate_changed_on_same_display) {
+  if (dip_size_changed || current_display_changed) {
     browser_compositor_->UpdateSurfaceFromNSView(
-        view_bounds_in_window_dip_.size(),
-        refresh_rate_changed_on_same_display);
+        view_bounds_in_window_dip_.size());
   }
 
   // TODO(crbug.com/40165361): Unify display info caching and change detection.
@@ -1110,9 +1098,6 @@ void RenderWidgetHostViewMac::SetShowingContextMenu(bool showing) {
   ns_view_->SetShowingContextMenu(showing);
 }
 
-uint32_t RenderWidgetHostViewMac::GetCaptureSequenceNumber() const {
-  return latest_capture_sequence_number_;
-}
 
 void RenderWidgetHostViewMac::CopyFromSurface(
     const gfx::Rect& src_subrect,
@@ -1136,14 +1121,10 @@ void RenderWidgetHostViewMac::CopyFromSurface(
       std::move(callback));
 }
 
-void RenderWidgetHostViewMac::EnsureSurfaceSynchronizedForWebTest() {
-  ++latest_capture_sequence_number_;
-  browser_compositor_->ForceNewSurfaceId();
-}
 
 ui::FilteredGestureProvider*
 RenderWidgetHostViewMac::GetFilteredGestureProviderForTesting() {
-  return &gesture_provider_;
+  return gesture_provider_.get();
 }
 
 void RenderWidgetHostViewMac::OnDidUpdateVisualPropertiesComplete(
@@ -1450,7 +1431,7 @@ void RenderWidgetHostViewMac::ResetFallbackToFirstNavigationSurface() {
 }
 
 void RenderWidgetHostViewMac::OnUnconfirmedTapConvertedToTap() {
-  gesture_provider_.OnUnconfirmedTapConvertedToTap();
+  gesture_provider_->OnUnconfirmedTapConvertedToTap();
 }
 
 bool RenderWidgetHostViewMac::RequestRepaintOnNewSurface() {
@@ -1561,6 +1542,8 @@ void RenderWidgetHostViewMac::GestureEventAck(
   // but not consumed.
   StopFlingingIfNecessary(event, ack_result);
 
+  mouse_wheel_phase_handler_.GestureEventAck(event, ack_result);
+
   bool consumed = ack_result == blink::mojom::InputEventResultState::kConsumed;
   switch (event.GetType()) {
     case WebInputEvent::Type::kGestureScrollBegin:
@@ -1576,7 +1559,6 @@ void RenderWidgetHostViewMac::GestureEventAck(
     default:
       break;
   }
-  mouse_wheel_phase_handler_.GestureEventAck(event, ack_result);
 }
 
 void RenderWidgetHostViewMac::ProcessAckedTouchEvent(
@@ -1584,9 +1566,14 @@ void RenderWidgetHostViewMac::ProcessAckedTouchEvent(
     blink::mojom::InputEventResultState ack_result) {
   const bool event_consumed =
       ack_result == blink::mojom::InputEventResultState::kConsumed;
-  gesture_provider_.OnTouchEventAck(
+  auto weak_this = weak_factory_.GetWeakPtr();
+  scoped_refptr<ui::FilteredGestureProvider> protector(gesture_provider_);
+  protector->OnTouchEventAck(
       touch.event.unique_touch_event_id, event_consumed,
       input::InputEventResultStateIsSetBlocking(ack_result));
+  if (!weak_this) {
+    return;
+  }
   if (touch.event.touch_start_or_first_touch_move && event_consumed &&
       host()->delegate() && host()->delegate()->GetInputEventRouter()) {
     host()
@@ -1655,8 +1642,13 @@ void RenderWidgetHostViewMac::SendTouchpadZoomEvent(
 void RenderWidgetHostViewMac::InjectTouchEvent(
     const WebTouchEvent& event,
     const ui::LatencyInfo& latency_info) {
+  auto weak_this = weak_factory_.GetWeakPtr();
+  scoped_refptr<ui::FilteredGestureProvider> protector(gesture_provider_);
   ui::FilteredGestureProvider::TouchHandlingResult result =
-      gesture_provider_.OnTouchEvent(MotionEventWeb(event));
+      protector->OnTouchEvent(MotionEventWeb(event));
+  if (!weak_this) {
+    return;
+  }
   if (!result.succeeded)
     return;
 
@@ -2031,8 +2023,13 @@ void RenderWidgetHostViewMac::RouteOrProcessMouseEvent(
 void RenderWidgetHostViewMac::RouteOrProcessTouchEvent(
     const blink::WebTouchEvent& const_web_event) {
   blink::WebTouchEvent web_event = const_web_event;
+  auto weak_this = weak_factory_.GetWeakPtr();
+  scoped_refptr<ui::FilteredGestureProvider> protector(gesture_provider_);
   ui::FilteredGestureProvider::TouchHandlingResult result =
-      gesture_provider_.OnTouchEvent(MotionEventWeb(web_event));
+      protector->OnTouchEvent(MotionEventWeb(web_event));
+  if (!weak_this) {
+    return;
+  }
   if (!result.succeeded)
     return;
 
@@ -2612,10 +2609,11 @@ RenderWidgetHostViewMac::MaybeUpdateScreenInfosForHiDPI() {
 }
 
 void RenderWidgetHostViewMac::CreateUnboundedSurface(
-    RenderFrameHostImpl* parent_rfh,
-    const gfx::Rect& bounds_in_screen) {
-  unbounded_surface_window_ =
-      std::make_unique<UnboundedSurfaceWindowMac>(parent_rfh, bounds_in_screen);
+    mojo::PendingAssociatedReceiver<blink::mojom::UnboundedSurfaceHost> host,
+    mojo::PendingAssociatedRemote<blink::mojom::UnboundedSurfaceClient> client,
+    const gfx::Rect& bounds_in_dips) {
+  unbounded_surface_window_ = std::make_unique<UnboundedSurfaceWindowMac>(
+      this, std::move(host), std::move(client), bounds_in_dips);
 }
 
 bool RenderWidgetHostViewMac::IsHeadless() const {

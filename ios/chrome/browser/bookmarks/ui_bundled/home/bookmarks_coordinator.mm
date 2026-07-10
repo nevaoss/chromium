@@ -521,7 +521,7 @@ enum class PresentedState {
       bool is_ntp = activeWebState &&
                     activeWebState->GetVisibleURL() == kChromeUINewTabURL;
       new_tab_page_uma::RecordNTPAction(
-          _regularProfile->IsOffTheRecord(), is_ntp,
+          _currentProfile->IsOffTheRecord(), is_ntp,
           new_tab_page_uma::ACTION_OPENED_BOOKMARK);
       base::RecordAction(
           base::UserMetricsAction("MobileBookmarkManagerEntryOpened"));

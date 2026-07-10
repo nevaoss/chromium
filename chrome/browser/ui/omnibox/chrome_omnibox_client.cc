@@ -66,6 +66,7 @@
 #include "chrome/browser/ui/lens/lens_searchbox_controller.h"
 #include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/navigator/browser_navigator.h"
+#include "chrome/browser/ui/omnibox/ai_mode_button_service_factory.h"
 #include "chrome/browser/ui/omnibox/chrome_omnibox_navigation_observer.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/omnibox/omnibox_tab_helper.h"
@@ -311,6 +312,10 @@ ChromeOmniboxClient::GetAutocompleteControllerEmitter() {
 
 TemplateURLService* ChromeOmniboxClient::GetTemplateURLService() {
   return TemplateURLServiceFactory::GetForProfile(profile_);
+}
+
+AiModeButtonService* ChromeOmniboxClient::GetAiModeButtonService() {
+  return AiModeButtonServiceFactory::GetForProfile(profile_);
 }
 
 const AutocompleteSchemeClassifier& ChromeOmniboxClient::GetSchemeClassifier()

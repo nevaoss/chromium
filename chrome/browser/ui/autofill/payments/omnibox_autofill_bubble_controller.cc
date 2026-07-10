@@ -10,7 +10,7 @@
 
 namespace autofill {
 
-DEFINE_USER_DATA(autofill::OmniboxAutofillBubbleController);
+DEFINE_USER_DATA(OmniboxAutofillBubbleController);
 
 OmniboxAutofillBubbleController::OmniboxAutofillBubbleController(
     tabs::TabInterface& tab_interface,

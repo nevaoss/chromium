@@ -12,10 +12,6 @@ namespace page_load_metrics::features {
 // Throttle sending custom user timings to the browser process.
 // crbug.com/467177770 for more details.
 BASE_FEATURE(kThrottleSendingCustomUserTimings,
-#if !BUILDFLAG(IS_ANDROID)
              base::FEATURE_ENABLED_BY_DEFAULT);
-#else
-             base::FEATURE_DISABLED_BY_DEFAULT);
-#endif
 
 }  // namespace page_load_metrics::features

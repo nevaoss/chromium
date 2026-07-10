@@ -36,6 +36,7 @@
 #include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_ui.h"
 #include "chrome/browser/ui/webui/searchbox/webui_omnibox_handler.h"
 #include "chrome/test/base/in_process_browser_test.h"
+#include "chrome/test/base/ui_test_utils.h"
 #include "components/omnibox/browser/autocomplete_match.h"
 #include "components/omnibox/browser/autocomplete_result.h"
 #include "components/omnibox/browser/omnibox_popup_selection.h"
@@ -284,11 +285,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxPopupViewWebUIFullV2Test, TabSwitchStateSync) {
                                ->GetWebUIController();
   auto* popup_ui = static_cast<OmniboxPopupUI*>(webui_controller);
   if (auto* popup_handler = popup_ui ? popup_ui->popup_handler() : nullptr) {
-    auto state = omnibox_popup::mojom::OmniboxInputState::New();
-    state->text = "test query";
-    state->selection = initial_selection;
-    state->sequence_number = 10000;
-    popup_handler->OnSelectionChanged(std::move(state));
+    popup_handler->OnSelectionChanged(initial_selection, 10000);
   }
 
   // Switch to another tab (initial tab).
@@ -333,11 +330,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxPopupViewWebUIFullV2Test, TabSwitchNoSavedState) {
                                ->GetWebUIController();
   auto* popup_ui = static_cast<OmniboxPopupUI*>(webui_controller);
   if (auto* popup_handler = popup_ui ? popup_ui->popup_handler() : nullptr) {
-    auto state = omnibox_popup::mojom::OmniboxInputState::New();
-    state->text = "test query";
-    state->selection = initial_selection;
-    state->sequence_number = 10000;
-    popup_handler->OnSelectionChanged(std::move(state));
+    popup_handler->OnSelectionChanged(initial_selection, 10000);
   }
 
   // Clear any saved omnibox state from the initial tab.

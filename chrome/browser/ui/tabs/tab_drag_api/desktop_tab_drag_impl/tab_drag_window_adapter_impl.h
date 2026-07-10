@@ -24,6 +24,10 @@ class TabDragWindowAdapterImpl : public tabs_api::TabDragWindowAdapter {
   gfx::Point ConvertScreenPointToLocal(
       const gfx::Point& screen_point) const override;
 
+  void SetCapture() override;
+  void ReleaseCapture() override;
+  bool HasCapture() const override;
+
   base::WeakPtr<tabs_api::TabDragWindowAdapter> AsWeakPtr() override;
 
  private:

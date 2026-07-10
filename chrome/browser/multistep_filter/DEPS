@@ -1,6 +1,7 @@
 include_rules = [
   "+chrome/browser/favicon",
   "+chrome/browser/ui/browser_window",
+  "+chrome/browser/ui/page_action",
   "+chrome/grit",
   "+components/favicon/core",
   "+components/vector_icons",

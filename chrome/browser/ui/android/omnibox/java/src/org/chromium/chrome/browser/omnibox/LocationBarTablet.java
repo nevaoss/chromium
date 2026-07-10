@@ -11,6 +11,7 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Rect;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.InsetDrawable;
 import android.graphics.drawable.LayerDrawable;
 import android.os.Handler;
 import android.util.AttributeSet;
@@ -51,6 +52,7 @@ class LocationBarTablet extends LocationBarLayout implements OnLongClickListener
     private final LayerDrawable mFocusedPopupDrawable;
     private final GradientDrawable mOuterRect;
     private final GradientDrawable mInnerRect;
+    private final InsetDrawable mInsetStandbyBorder;
     private LayerDrawable mUnfocusedDrawable;
     private final LayerDrawable mHoverDrawable;
 
@@ -95,6 +97,8 @@ class LocationBarTablet extends LocationBarLayout implements OnLongClickListener
     private @FuseboxLayoutMode int mLayoutMode;
     private boolean mIsReparentedToPopover;
     private @BrandedColorScheme int mBrandedColorScheme = BrandedColorScheme.APP_DEFAULT;
+    private boolean mIsInStandby;
+    private boolean mIsHovered;
 
     /** Constructor used to inflate from XML. */
     public LocationBarTablet(Context context, AttributeSet attrs) {
@@ -139,6 +143,13 @@ class LocationBarTablet extends LocationBarLayout implements OnLongClickListener
                                         getContext(),
                                         R.drawable.modern_toolbar_text_box_background_highlight));
         mHoverDrawable.mutate();
+        mInsetStandbyBorder =
+                (InsetDrawable)
+                        assumeNonNull(
+                                AppCompatResources.getDrawable(
+                                        getContext(),
+                                        R.drawable.modern_toolbar_text_box_standby_border));
+        mInsetStandbyBorder.mutate();
         mHandler = new Handler();
     }
 
@@ -158,11 +169,9 @@ class LocationBarTablet extends LocationBarLayout implements OnLongClickListener
                     @Override
                     public boolean onHover(View v, MotionEvent event) {
                         switch (event.getAction()) {
-                            case MotionEvent.ACTION_HOVER_ENTER:
-                                setForeground(mHoverDrawable);
-                                return true;
-                            case MotionEvent.ACTION_HOVER_EXIT:
-                                setForeground(null);
+                            case MotionEvent.ACTION_HOVER_ENTER, MotionEvent.ACTION_HOVER_EXIT:
+                                mIsHovered = event.getAction() == MotionEvent.ACTION_HOVER_ENTER;
+                                updateForeground();
                                 return true;
                             default:
                                 return false;
@@ -517,6 +526,9 @@ class LocationBarTablet extends LocationBarLayout implements OnLongClickListener
             mOuterRect.setColor(
                     OmniboxResourceProvider.getStandardSuggestionBackgroundColor(
                             getContext(), mBrandedColorScheme));
+            mFocusedPopupDrawable.setLayerInsetRelative(
+                    mFocusedPopupDrawable.findIndexByLayerId(R.id.glif_border_layer), 0, 0, 0, 0);
+            mGlifBorderDrawable.setCornerRadius(mOmniboxSuggestionDropdownRoundCornerRadius);
         }
     }
 
@@ -533,16 +545,35 @@ class LocationBarTablet extends LocationBarLayout implements OnLongClickListener
         updateLayoutAndBackground();
     }
 
+    @Override
+    void setIsInStandby(boolean isInStandby) {
+        if (isInStandby == mIsInStandby) return;
+        mIsInStandby = isInStandby;
+        updateLayoutAndBackground();
+        updateForeground();
+    }
+
+    private void updateForeground() {
+        if (mIsInStandby) {
+            setForeground(mInsetStandbyBorder);
+        } else if (mIsHovered) {
+            setForeground(mHoverDrawable);
+        } else {
+            setForeground(null);
+        }
+    }
+
     private void updateLayoutAndBackground() {
         adjustVerticalTranslationForFuseboxState(mFuseboxState);
         FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams) getLayoutParams();
         Resources resources = getResources();
         LinearLayout.LayoutParams parentParams =
                 (LinearLayout.LayoutParams) mHolder.getLayoutParams();
-        if (mFuseboxState == FuseboxState.COMPACT
-                || mFuseboxState == FuseboxState.EXPANDED
-                || (mLayoutMode == FuseboxLayoutMode.SUGGESTIONS_POPOVER
-                        && mIsReparentedToPopover)) {
+        if (!mIsInStandby
+                && (mFuseboxState == FuseboxState.COMPACT
+                        || mFuseboxState == FuseboxState.EXPANDED
+                        || (mLayoutMode == FuseboxLayoutMode.SUGGESTIONS_POPOVER
+                                && mIsReparentedToPopover))) {
             parentParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
             int expansionPx =
                     resources.getDimensionPixelSize(
@@ -579,6 +610,7 @@ class LocationBarTablet extends LocationBarLayout implements OnLongClickListener
             // state. Not setting this risks visual glitches when returning to the fusebox.
             setBackground(mUnfocusedDrawable);
         }
+
         adjustBackgroundForSuggestions();
         setLayoutParams(layoutParams);
         mHolder.setLayoutParams(parentParams);

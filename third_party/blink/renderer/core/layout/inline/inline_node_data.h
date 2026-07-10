@@ -17,7 +17,7 @@ class InlineItemsBuilderTemplate;
 // Data which is required for inline nodes.
 struct CORE_EXPORT InlineNodeData final : InlineItemsData {
  public:
-  InlineNodeData() : InlineItemsData(/*is_node_data=*/true) {}
+  InlineNodeData() : InlineItemsData(DataType::kNodeData) {}
   // Returns true if `text_content` contains non-latin1 characters other than
   // kObjectReplacementCharacter.
   bool HasNonOrc16BitCharacters() const { return has_non_orc_16bit_; }

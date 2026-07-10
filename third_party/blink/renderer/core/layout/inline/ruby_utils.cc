@@ -14,6 +14,7 @@
 #include "third_party/blink/renderer/core/layout/inline/line_info.h"
 #include "third_party/blink/renderer/core/layout/inline/logical_line_container.h"
 #include "third_party/blink/renderer/core/layout/inline/logical_line_item.h"
+#include "third_party/blink/renderer/core/layout/inline/used_font.h"
 #include "third_party/blink/renderer/core/layout/layout_object_inlines.h"
 #include "third_party/blink/renderer/core/layout/physical_box_fragment.h"
 #include "third_party/blink/renderer/platform/fonts/font_height.h"
@@ -35,15 +36,16 @@ std::tuple<LayoutUnit, LayoutUnit> AdjustTextOverUnderOffsetsForEmHeight(
     LayoutUnit over,
     LayoutUnit under,
     const ComputedStyle& style,
+    const UsedFont& used_font,
     const ShapeResultView& shape_view) {
   DCHECK_LE(over, under);
-  const SimpleFontData* primary_font_data = style.GetFont()->PrimaryFont();
-  if (!primary_font_data)
+  if (!used_font.PrimaryFont()) {
     return std::make_pair(over, under);
+  }
   const auto font_baseline = style.GetFontBaseline();
   const LayoutUnit line_height = under - over;
-  const LayoutUnit primary_ascent =
-      primary_font_data->GetFontMetrics().FixedAscent(font_baseline);
+  const float paint_scale = used_font.ScalingFactor();
+  const LayoutUnit primary_ascent = used_font.FixedAscent(font_baseline);
   const LayoutUnit primary_descent = line_height - primary_ascent;
 
   HeapHashSet<Member<const SimpleFontData>> run_fonts = shape_view.UsedFonts();
@@ -53,8 +55,10 @@ std::tuple<LayoutUnit, LayoutUnit> AdjustTextOverUnderOffsetsForEmHeight(
   LayoutUnit over_diff = kNoDiff;
   LayoutUnit under_diff = kNoDiff;
   for (const auto& run_font : run_fonts) {
-    const FontHeight normalized_height =
+    FontHeight normalized_height =
         run_font->NormalizedTypoAscentAndDescent(font_baseline);
+    normalized_height.ascent *= paint_scale;
+    normalized_height.descent *= paint_scale;
     // Floor() is better than Round().  We should not subtract pixels larger
     // than |primary_ascent - em_box.ascent|.
     const LayoutUnit current_over_diff(
@@ -716,7 +720,7 @@ std::pair<LayoutUnit, LayoutUnit> ApplyRubyAlign(LayoutUnit available_line_size,
 AnnotationMetrics ComputeAnnotationOverflow(
     const LogicalLineItems& logical_line,
     const FontHeight& line_box_metrics,
-    const ComputedStyle& line_style,
+    LayoutUnit line_font_size,
     std::optional<FontHeight> annotation_metrics) {
   // Min/max position of content and annotations, ignoring line-height.
   // They are distance from the line box top.
@@ -738,12 +742,13 @@ AnnotationMetrics ComputeAnnotationOverflow(
     if (item.IsControl() || item.IsRubyLinePlaceholder()) {
       continue;
     }
+    UsedFont used_font = item.GetUsedFont();
     LayoutUnit item_over = line_box_metrics.ascent + item.BlockOffset();
     LayoutUnit item_under = line_box_metrics.ascent + item.BlockEndOffset();
     if (item.shape_result) {
       if (const auto* style = item.Style()) {
         std::tie(item_over, item_under) = AdjustTextOverUnderOffsetsForEmHeight(
-            item_over, item_under, *style, *item.shape_result);
+            item_over, item_under, *style, used_font, *item.shape_result);
       }
     } else {
       if (item.IsAtomicInline() && !item.IsInitialLetterBox()) {
@@ -752,23 +757,26 @@ AnnotationMetrics ComputeAnnotationOverflow(
         continue;
       }
     }
-    content_over = std::min(content_over, item_over);
-    content_under = std::max(content_under, item_under);
 
     if (const auto* style = item.Style()) {
       if (style->GetTextEmphasisMark() != TextEmphasisMark::kNone) {
-        if (RuntimeEnabledFeatures::TextEmphasisWithRubyEnabled()) {
-          float scale = item.text_fit_scale ? item.text_fit_scale->scale : 1.0f;
-          const auto& emphasis_mark_outsets =
+        if (RuntimeEnabledFeatures::TextEmphasisWithRubyEnabled() ||
+            RuntimeEnabledFeatures::TextEmphasisAsRubyEnabled()) {
+          const auto emphasis_mark_height =
               InlineBoxState::ComputeEmphasisMarkOutsets(
-                  *style, *style->GetFont(), scale);
+                  *style, used_font.GetFont(), used_font.ScalingFactor())
+                  .LineHeight();
           if (style->GetTextEmphasisLineLogicalSide() ==
               LineLogicalSide::kOver) {
-            over_emphasis =
-                std::max(emphasis_mark_outsets.LineHeight(), over_emphasis);
+            if (RuntimeEnabledFeatures::TextEmphasisAsRubyEnabled()) {
+              item_over -= emphasis_mark_height;
+            }
+            over_emphasis = std::max(emphasis_mark_height, over_emphasis);
           } else {
-            under_emphasis =
-                std::max(emphasis_mark_outsets.LineHeight(), under_emphasis);
+            if (RuntimeEnabledFeatures::TextEmphasisAsRubyEnabled()) {
+              item_under += emphasis_mark_height;
+            }
+            under_emphasis = std::max(emphasis_mark_height, under_emphasis);
           }
         } else {
           if (style->GetTextEmphasisLineLogicalSide() ==
@@ -780,6 +788,8 @@ AnnotationMetrics ComputeAnnotationOverflow(
         }
       }
     }
+    content_over = std::min(content_over, item_over);
+    content_under = std::max(content_under, item_under);
   }
 
   if (annotation_metrics) {
@@ -804,9 +814,9 @@ AnnotationMetrics ComputeAnnotationOverflow(
   }
 
   // Probably this is an empty line. We should secure font-size space.
-  const LayoutUnit font_size(line_style.ComputedFontSize());
-  if (content_under - content_over < font_size) {
-    LayoutUnit half_leading = (line_box_metrics.LineHeight() - font_size) / 2;
+  if (content_under - content_over < line_font_size) {
+    LayoutUnit half_leading =
+        (line_box_metrics.LineHeight() - line_font_size) / 2;
     half_leading = half_leading.ClampNegativeToZero();
     content_over = line_over + half_leading;
     content_under = line_under - half_leading;
@@ -822,13 +832,22 @@ AnnotationMetrics ComputeAnnotationOverflow(
     content_under = std::max(content_under, line_under);
   }
 
+  const bool has_over_emphasis =
+      RuntimeEnabledFeatures::TextEmphasisAsRubyEnabled() &&
+      over_emphasis > LayoutUnit();
+  const bool has_under_emphasis =
+      RuntimeEnabledFeatures::TextEmphasisAsRubyEnabled() &&
+      under_emphasis > LayoutUnit();
   // With some fonts, text fragment sizes can exceed line-height.
   // We'd like to set overflow only if we have annotations.
   // This affects fast/ruby/line-height.html on macOS.
-  if (content_over < line_over && !has_over_annotation)
+  if (content_over < line_over && !has_over_annotation && !has_over_emphasis) {
     content_over = line_over;
-  if (content_under > line_under && !has_under_annotation)
+  }
+  if (content_under > line_under && !has_under_annotation &&
+      !has_under_emphasis) {
     content_under = line_under;
+  }
 
   return {(line_over - content_over).ClampNegativeToZero(),
           (content_under - line_under).ClampNegativeToZero(),

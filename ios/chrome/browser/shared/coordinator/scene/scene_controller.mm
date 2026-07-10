@@ -167,6 +167,7 @@
 #import "ios/chrome/common/app_group/app_group_constants.h"
 #import "ios/chrome/common/ui/reauthentication/reauthentication_module.h"
 #import "ios/chrome/grit/ios_strings.h"
+#import "ios/components/webui/web_ui_url_constants.h"
 #import "ios/public/provider/chrome/browser/cobalt/cobalt_api.h"
 #import "ios/web/common/features.h"
 #import "ios/web/public/js_image_transcoder/java_script_image_transcoder.h"
@@ -177,6 +178,7 @@
 #import "services/network/public/cpp/shared_url_loader_factory.h"
 #import "ui/base/device_form_factor.h"
 #import "ui/base/l10n/l10n_util.h"
+#import "ui/base/page_transition_types.h"
 
 namespace {
 
@@ -274,6 +276,16 @@ bool IsProfileUnmanaged(ProfileIOS* profile) {
 }
 
 }  // namespace
+
+// If `params` is for a Dino game URL, update transition type to allow opening.
+UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
+  if (params.from_widget_or_siri &&
+      params.web_params.url.SchemeIs(kChromeUIScheme) &&
+      params.web_params.url.host() == kChromeUIDinoHost) {
+    params.web_params.transition_type = ui::PAGE_TRANSITION_AUTO_BOOKMARK;
+  }
+  return params;
+}
 
 // TODO(crbug.com/429354805): Add method comments(!)
 
@@ -669,8 +681,9 @@ bool IsProfileUnmanaged(ProfileIOS* profile) {
 }
 
 - (void)openOrReuseTabInMode:(ApplicationMode)targetMode
-           withUrlLoadParams:(const UrlLoadParams&)urlLoadParams
+           withUrlLoadParams:(UrlLoadParams)urlLoadParams
          tabOpenedCompletion:(ProceduralBlock)tabOpenedCompletion {
+  urlLoadParams = UpdateParamsForDinoGame(urlLoadParams);
   WrangledBrowser* targetInterface = targetMode == ApplicationMode::NORMAL
                                          ? self.mainInterface
                                          : self.incognitoInterface;
@@ -758,19 +771,17 @@ bool IsProfileUnmanaged(ProfileIOS* profile) {
 
   if (shouldOpenNewTab) {
     [targetBVC appendTabAddedCompletion:tabOpenedCompletion];
-    UrlLoadParams newTabParams = urlLoadParams;
-    newTabParams.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
-    newTabParams.in_incognito = targetMode == ApplicationMode::INCOGNITO;
+    urlLoadParams.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
+    urlLoadParams.in_incognito = targetMode == ApplicationMode::INCOGNITO;
     UrlLoadingBrowserAgent::FromBrowser(targetInterface.browser)
-        ->Load(newTabParams);
+        ->Load(urlLoadParams);
     return;
   }
 
   // Otherwise, load `urlLoadParams` in the current tab.
-  UrlLoadParams sameTabParams = urlLoadParams;
-  sameTabParams.disposition = WindowOpenDisposition::CURRENT_TAB;
+  urlLoadParams.disposition = WindowOpenDisposition::CURRENT_TAB;
   UrlLoadingBrowserAgent::FromBrowser(targetInterface.browser)
-      ->Load(sameTabParams);
+      ->Load(urlLoadParams);
   if (tabOpenedCompletion) {
     tabOpenedCompletion();
   }
@@ -938,6 +949,7 @@ bool IsProfileUnmanaged(ProfileIOS* profile) {
       [targetInterface.bvc appendTabAddedCompletion:tabOpenedCompletion];
       UrlLoadParams savedParams = urlLoadParams;
       savedParams.in_incognito = targetMode == ApplicationMode::INCOGNITO;
+      savedParams.switch_mode_if_needed = false;
       UrlLoadingBrowserAgent::FromBrowser(targetInterface.browser)
           ->Load(savedParams);
     } else {
@@ -2301,8 +2313,7 @@ bool IsProfileUnmanaged(ProfileIOS* profile) {
 
 - (void)dismissModalsAndMaybeOpenSelectedTabInMode:
             (ApplicationModeForTabOpening)targetMode
-                                 withUrlLoadParams:
-                                     (const UrlLoadParams&)urlLoadParams
+                                 withUrlLoadParams:(UrlLoadParams)urlLoadParams
                                     dismissOmnibox:(BOOL)dismissOmnibox
                                         completion:(ProceduralBlock)completion {
   PrefService* prefs = GetApplicationContext()->GetLocalState();
@@ -2320,12 +2331,12 @@ bool IsProfileUnmanaged(ProfileIOS* profile) {
     targetMode = ApplicationModeForTabOpening::NORMAL;
   }
 
-  UrlLoadParams copyOfUrlLoadParams = urlLoadParams;
+  urlLoadParams = UpdateParamsForDinoGame(urlLoadParams);
 
   __weak SceneController* weakSelf = self;
   void (^dismissModalsCompletion)() = ^{
     [weakSelf handleModalsDismissalWithMode:targetMode
-                              urlLoadParams:copyOfUrlLoadParams
+                              urlLoadParams:urlLoadParams
                                  completion:completion];
   };
 

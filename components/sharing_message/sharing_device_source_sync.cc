@@ -69,7 +69,8 @@ std::optional<SharingTargetDeviceInfo> SharingDeviceSourceSync::GetDeviceByGuid(
   }
 
   return SharingTargetDeviceInfo(
-      device_info->guid(), syncer::GetDeviceDisplayNames(device_info).full_name,
+      device_info->guid(),
+      syncer::GetDisplayNameCandidates(device_info).fallback_full_name,
       GetDevicePlatform(*device_info), device_info->pulse_interval(),
       device_info->form_factor(), device_info->last_updated_timestamp());
 }
@@ -168,7 +169,8 @@ SharingDeviceSourceSync::ConvertAndDeduplicateDevices(
       local_device_info_provider_->GetLocalDeviceInfo();
   std::optional<std::string> local_full_name;
   if (local_device) {
-    local_full_name = syncer::GetDeviceDisplayNames(local_device).full_name;
+    local_full_name =
+        syncer::GetDisplayNameCandidates(local_device).fallback_full_name;
   }
 
   // Resolve display names for the filtered list. This handles de-duplication

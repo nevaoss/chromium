@@ -2023,6 +2023,13 @@ void PartitionRoot::CheckMetadataIntegrity(const void* ptr) {
 #endif  // PA_BUILDFLAG(USE_PARTITION_COOKIE)
 }
 
+PA_NOINLINE size_t
+PartitionRoot::GetSlotSizeForTesting(const void* object) const {
+  auto slot_start = internal::SlotStart::Unchecked(object).Untag();
+  auto* slot_span = SlotSpanMetadata::FromSlotStart(slot_start, this);
+  return slot_span->bucket->slot_size;
+}
+
 // static
 PA_NOINLINE PartitionRoot* PartitionRoot::GetRootFromAddress(void* object) {
   uintptr_t address = reinterpret_cast<uintptr_t>(UntagPtr(object));

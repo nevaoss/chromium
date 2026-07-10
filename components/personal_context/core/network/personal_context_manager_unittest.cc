@@ -14,12 +14,14 @@
 #include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
+#include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "base/test/test.pb.h"
 #include "base/test/test_future.h"
 #include "base/time/time.h"
 #include "components/personal_context/core/context_memory_error.h"
+#include "components/personal_context/core/network/personal_context_fetcher.h"
 #include "components/personal_context/core/personal_context_features.h"
 #include "components/personal_context/core/personal_context_types.h"
 #include "components/personal_context/proto/context_memory_service.pb.h"
@@ -133,7 +135,7 @@ class PersonalContextManagerTest : public testing::Test {
   bool SimulateResponse(std::string_view content,
                         net::HttpStatusCode http_status) {
     return test_url_loader_factory_.SimulateResponseForPendingRequest(
-        "https://contextmemoryservice-pa.googleapis.com/v1:fetchContext",
+        "https://contextmemoryservice.pa.googleapis.com/v1:fetchContext",
         std::string(content), http_status,
         network::TestURLLoaderFactory::kUrlMatchPrefix);
   }
@@ -154,7 +156,7 @@ class PersonalContextManagerTest : public testing::Test {
   bool SimulatePiiResponse(std::string_view content,
                            net::HttpStatusCode http_status) {
     return test_url_loader_factory_.SimulateResponseForPendingRequest(
-        "https://contextmemoryservice-pa.googleapis.com/v1:fetchPiiEntities",
+        "https://contextmemoryservice.pa.googleapis.com/v1:fetchPiiEntities",
         std::string(content), http_status,
         network::TestURLLoaderFactory::kUrlMatchPrefix);
   }
@@ -192,6 +194,7 @@ class PersonalContextManagerTest : public testing::Test {
 };
 
 TEST_F(PersonalContextManagerTest, FetchContextEmptyAccessToken) {
+  base::HistogramTester histogram_tester;
   RemoteResponseHolder response_holder;
   personal_context_manager()->FetchContext(
       proto::CONTEXT_MEMORY_FEATURE_AMBIENT_AUTOFILL, TestMessage(),
@@ -199,23 +202,41 @@ TEST_F(PersonalContextManagerTest, FetchContextEmptyAccessToken) {
   EXPECT_FALSE(response_holder.GetFinalStatus());
   EXPECT_EQ(ContextMemoryError::ExecutionError::kPermissionDenied,
             response_holder.error());
+
+  // Check that the result histogram records failure.
+  histogram_tester.ExpectUniqueSample(
+      "PersonalContext.FetchContext.Result.AmbientAutofill", /*sample=*/false,
+      /*expected_bucket_count=*/1);
 }
 
 TEST_F(PersonalContextManagerTest, FetchContextWithUserSignIn) {
+  base::HistogramTester histogram_tester;
   RemoteResponseHolder response_holder;
   SetAutomaticIssueOfAccessTokens();
   personal_context_manager()->FetchContext(
       proto::CONTEXT_MEMORY_FEATURE_AMBIENT_AUTOFILL, TestMessage(),
       /*timeout=*/std::nullopt, response_holder.GetCallback());
+
   EXPECT_TRUE(SimulateSuccessfulResponse());
   EXPECT_TRUE(response_holder.GetFinalStatus());
   EXPECT_EQ("foo response", response_holder.GetOutput<TestMessage>().test());
+
+  // Check that the result histogram records success.
+  histogram_tester.ExpectUniqueSample(
+      "PersonalContext.FetchContext.Result.AmbientAutofill", /*sample=*/true,
+      /*expected_bucket_count=*/1);
+
+  // Check that the latency was recorded.
+  histogram_tester.ExpectTotalCount(
+      "PersonalContext.FetchContext.Latency.AmbientAutofill",
+      /*expected_count=*/1);
 }
 
 // Tests that when a new request is issued and the total number of active
 // requests would exceed the maximum for this feature, the oldest request is
 // cancelled.
 TEST_F(PersonalContextManagerTest, MultipleParallelRequestsLimit) {
+  base::HistogramTester histogram_tester;
   RemoteResponseHolder response_holder1, response_holder2;
 
   SetAutomaticIssueOfAccessTokens();
@@ -229,7 +250,7 @@ TEST_F(PersonalContextManagerTest, MultipleParallelRequestsLimit) {
       /*timeout=*/std::nullopt, response_holder2.GetCallback());
 
   test_url_loader_factory()->EraseResponse(
-      GURL("https://contextmemoryservice-pa.googleapis.com/v1:fetchContext"));
+      GURL("https://contextmemoryservice.pa.googleapis.com/v1:fetchContext"));
   EXPECT_TRUE(SimulateSuccessfulResponse());
 
   EXPECT_TRUE(response_holder2.GetFinalStatus());
@@ -237,6 +258,23 @@ TEST_F(PersonalContextManagerTest, MultipleParallelRequestsLimit) {
   EXPECT_FALSE(response_holder1.GetFinalStatus());
   EXPECT_EQ(ContextMemoryError::ExecutionError::kCancelled,
             response_holder1.error());
+
+  // The cancelled request should record a failure and client cancellation
+  // error. The second (successful) request should record success.
+  histogram_tester.ExpectTotalCount(
+      "PersonalContext.FetchContext.Result.AmbientAutofill",
+      /*expected_count=*/2);
+  histogram_tester.ExpectBucketCount(
+      "PersonalContext.FetchContext.Result.AmbientAutofill", /*sample=*/false,
+      /*expected_count=*/1);
+  histogram_tester.ExpectBucketCount(
+      "PersonalContext.FetchContext.Result.AmbientAutofill", /*sample=*/true,
+      /*expected_count=*/1);
+
+  histogram_tester.ExpectUniqueSample(
+      "PersonalContext.FetchContext.ErrorStatus.AmbientAutofill",
+      ContextMemoryError::ExecutionError::kCancelled,
+      /*expected_bucket_count=*/1);
 }
 
 TEST_F(PersonalContextManagerTest, FetchPiiEntitiesEmptyAccessToken) {

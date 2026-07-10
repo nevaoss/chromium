@@ -70,7 +70,7 @@ export {WebSpeechTtsClient} from './read_aloud/webspeech_tts_client.js';
 export type {WordBoundaryState} from './read_aloud/word_boundaries.js';
 export {WordBoundaries} from './read_aloud/word_boundaries.js';
 export {getWordCount, LOG_EMPTY_DELAY_MS, playFromSelectionTimeout, spinnerDebounceTimeout} from './shared/common.js';
-export {getRectIndexAtY, getRectsForSegments, getTextNodeOffsets} from './shared/dom_queries.js';
+export {getNearestTextBoundaryPoint, getRectIndexAtY, getRectsForSegments, getTextNodeOffsets} from './shared/dom_queries.js';
 export {getNewIndex, isActivationKey, isArrow, isBackwardArrow, isForwardArrow, isHorizontalArrow, isVerticalArrow} from './shared/keyboard_util.js';
 export type {MetricsBrowserProxy} from './shared/metrics_browser_proxy.js';
 export {MetricsBrowserProxyImpl, ReadAloudSettingsChange, ReadAnythingNewPage, ReadAnythingSettingsChange, ReadAnythingSpeechError, ReadAnythingVoiceType} from './shared/metrics_browser_proxy.js';

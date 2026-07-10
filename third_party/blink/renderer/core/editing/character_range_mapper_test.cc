@@ -285,7 +285,7 @@ TEST_F(CharacterRangeMapperTest, RangeInInputField) {
   EXPECT_EQ(selection_range, resolved_range);
 }
 
-TEST_F(CharacterRangeMapperTest, RangeInShadowDOM) {
+TEST_F(CharacterRangeMapperTest, RangeInShadowDom) {
   const SelectionInDomTree selection = SetSelectionTextToBody(
       R"HTML(
       <div id="host">
@@ -324,7 +324,7 @@ TEST_F(CharacterRangeMapperTest, RangeInShadowDOM) {
   EXPECT_EQ(selection_range_in_flat_tree, resolved_range_in_flat_tree);
 }
 
-TEST_F(CharacterRangeMapperTest, RangeInShadowDOMAndScopeInLightDOM) {
+TEST_F(CharacterRangeMapperTest, RangeInShadowDomAndScopeInLightDom) {
   const SelectionInDomTree selection = SetSelectionTextToBody(
       R"HTML(
       <div id="host">

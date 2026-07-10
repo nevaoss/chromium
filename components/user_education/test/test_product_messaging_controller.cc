@@ -9,11 +9,13 @@
 namespace user_education::test {
 
 TestProductMessage::TestProductMessage(ProductMessagingController& controller,
-                                       ProductMessageKey key)
+                                       ProductMessageKey key,
+                                       std::optional<base::TimeDelta> timeout)
     : key_(key) {
   controller.QueueMessage(key_,
                           base::BindOnce(&TestProductMessage::OnReadyToShow,
-                                         base::Unretained(this)));
+                                         weak_ptr_factory_.GetWeakPtr()),
+                          timeout);
 }
 
 TestProductMessage::~TestProductMessage() = default;

@@ -597,7 +597,6 @@
 <translation id="1433478348197382180">ໂໝດການອ່ານ</translation>
 <translation id="1433980411933182122">ສະຕາດອັບ</translation>
 <translation id="1434659328474177625"><ph name="ISSUER" /> ໄດ້ຢັ້ງຢືນອີເມວຂອງທ່ານແລ້ວ</translation>
-<translation id="1434696352799406980">ນີ້ຈະຕັ້ງໜ້າການເລີ່ມຕົ້ນ, ໜ້າແຖບໃໝ່, ລະບົບຊອກຫາ ແລະແຖບປັກໝຸດຂອງທ່ານຄືນໃໝ່. ມັນຈະຍັງປິດນຳໃຊ້ສ່ວນຂະຫຍາຍທັງໝົດ ແລະລ້າງຂໍ້ມູນຊົ່ວຄາວ ເຊັ່ນ: ຄຸກກີ້. ສ່ວນ ບຸກມາກ, ປະຫວັດ ແລະລະຫັດຜ່ານທີ່ບັນທຶກໄວ້ຂອງທ່ານຈະບໍ່ຖືກລຶບລ້າງ.</translation>
 <translation id="1434886155212424586">ໂຮມເພສແມ່ນໜ້າແຖບໃໝ່</translation>
 <translation id="1435940442311036198">ໃຊ້ກະແຈຜ່ານຢູ່ອຸປະກອນອື່ນ</translation>
 <translation id="1436390408194692385">ໃຊ້ໄດ້ສຳລັບ <ph name="TICKET_TIME_LEFT" /></translation>
@@ -2574,6 +2573,7 @@
 <translation id="2822551631199737692">ມີການໃຊ້ກ້ອງຖ່າຍຮູບຢູ່</translation>
 <translation id="2822634587701817431">ຫຍໍ້ລົງ / ຂະຫຍາຍ</translation>
 <translation id="2824942875887026017"><ph name="IDS_SHORT_PRODUCT_NAME" /> ກຳລັງໃຊ້ການຕັ້ງຄ່າພຣັອກຊີຈາກຜູ້ເບິ່ງແຍງລະບົບຂອງທ່ານ</translation>
+<translation id="2825200993288778739">ສ້າງທັກສະຂອງທ່ານເອງ ຫຼື ເພີ່ມຈາກຫ້ອງສະໝຸດທັກສະ</translation>
 <translation id="282525059261716597">ແຖວຄຳສັ່ງ:</translation>
 <translation id="2825758591930162672">ປຸ່ມທົ່ວໄປຂອງຫົວຂໍ້</translation>
 <translation id="2826576843404243001">ສຳລັບເວັບໄຊທີ່ບໍ່ຮອງຮັບການເຊື່ອມຕໍ່ທີ່ປອດໄພ, ຮັບຄຳເຕືອນກ່ອນທີ່ຈະເຂົ້າເບິ່ງເວັບໄຊ. ທ່ານບໍ່ສາມາດປ່ຽນການຕັ້ງຄ່ານີ້ໄດ້ເນື່ອງຈາກທ່ານເປີດການນຳໃຊ້ການປົກປ້ອງຂັ້ນສູງໄວ້.</translation>
@@ -3714,7 +3714,6 @@
 <translation id="366484203224589850"><ph name="TASK_TITLE" />: Gemini ເຮັດໜ້າວຽກນີ້ມາເປັນເວລາດົນແລ້ວ ແລະ ຈະຢຸດໃນໄວໆນີ້ເພື່ອປະຢັດແບັດເຕີຣີ</translation>
 <translation id="3664911592976620204">{NUM_OTHER_MEMBERS,plural, =0{ເຂົ້າຮ່ວມກຸ່ມແຖບກັບ <ph name="OWNER_FIRST_NAME" />}=1{ເຂົ້າຮ່ວມກຸ່ມແຖບກັບ <ph name="OWNER_FIRST_NAME" /> ແລະ ອີກ # ຄົນ}other{ເຂົ້າຮ່ວມກຸ່ມແຖບກັບ <ph name="OWNER_FIRST_NAME" /> ແລະ ອີກ # ຄົນ}}</translation>
 <translation id="3665301845536101715">ເປີດໃນແຜງຄວບຄຸມດ້ານຂ້າງ</translation>
-<translation id="3665589677786828986">Chrome ກວດພົບວ່າ ການຕັ້ງຄ່າຂອງທ່ານບາງຕົວໄດ້ຮັບຄວາມເສຍຫາຍໂດຍໂປຣແກຼມອື່ນ ແລະໄດ້ຕັ້ງຄ່າພວກມັນໄປເປັນຄ່າມາດຕະຖານເດີມຂອງພວກມັນແລ້ວ.</translation>
 <translation id="3665918214153961651">ກຳລັງອັບໂຫຼດໄຟລ໌</translation>
 <translation id="3666196264870170605">ໄຟລ໌ Dump ການດີບັກສຳລັບ Intel Wi-Fi NIC</translation>
 <translation id="3666971425390608309">ຢຸດດາວໂຫຼດຊົ່ວຄາວແລ້ວ: <ph name="FILE_NAME" />.</translation>
@@ -4651,6 +4650,7 @@
 <translation id="4321179778687042513">Ctrl</translation>
 <translation id="432160826079505197">ສະແດງ <ph name="FILE_NAME" /> ໃນຕົວຊອກຫາ</translation>
 <translation id="4322394346347055525">ເລືອກແຖບອື່ນ</translation>
+<translation id="4322400254469690320">ຊອກຫາ <ph name="FILENAME" /> ຂອງທ່ານໃນໂຟນເດີ <ph name="FEATURE_NAME" /></translation>
 <translation id="4324577459193912240">ໄຟລ໌ບໍ່ສົມບູນ</translation>
 <translation id="4325433082696797523">ບ່ອນຈັດເກັບຂໍ້ມູນ ແລະ ພະລັງງານ</translation>
 <translation id="4325515113816851466">ຕົວເລືອກຂອງຜູ້ປົກຄອງຂອງທ່ານຈະບໍ່ມີຜົນນຳໃຊ້ຫຼັງຈາກທີ່ທ່ານອອກຈາກລະບົບ</translation>
@@ -5001,7 +5001,6 @@
 <translation id="4580596421317071374">ລະຫັດຜ່ານຖືກບັນທຶກໄປໃສ່ <ph name="GOOGLE_PASSWORD_MANAGER" /> ຢູ່ອຸປະກອນນີ້.</translation>
 <translation id="4580939929828762295">ປອດໄພຢູ່ສະເໝີດ້ວຍຕົວຈັດການລະຫັດຜ່ານ Google</translation>
 <translation id="4582297591746054421">ໂດຍປົກກະຕິແລ້ວ ເວັບໄຊຈະອ່ານຄລິບບອດສຳລັບຄຸນສົມບັດ ເຊັ່ນ: ການຮັກສາການຈັດຮູບແບບຂອງຂໍ້ຄວາມທີ່ທ່ານສຳເນົາໄວ້</translation>
-<translation id="4582563038311694664">ຕັ້ງທຸກການຕັ້ງຄ່າ​ຄືນໃໝ່</translation>
 <translation id="4584094413232466841">ລຶບຂໍ້ມູນນີ້ອອກຈາກການຕື່ມຂໍ້ມູນອັດຕະໂນມັດຢູ່ Chrome ບໍ?</translation>
 <translation id="4584770411839426377">ໜ້າຈໍ</translation>
 <translation id="4584836561445313300">ອົງກອນຂອງທ່ານຈະສາມາດເບິ່ງ ແລະ ຈັດການຂໍ້ມູນການທ່ອງເວັບທີ່ມີຢູ່ ເຊັ່ນ: ລະຫັດຜ່ານ ແລະ ອື່ນໆ</translation>
@@ -6645,6 +6644,7 @@
 <translation id="5826993284769733527">ເຄິ່ງໂປ່ງແສງ</translation>
 <translation id="5827266244928330802">Safari</translation>
 <translation id="5827591412833386477">ສະແດງເວັບໄຊໃນກຸ່ມດຽວກັນ</translation>
+<translation id="5827835011646404677">ລະບົບຈະບັນທຶກທັກສະໄວ້ໃນບັນຊີ Google ຂອງທ່ານ</translation>
 <translation id="5828181959764767444">ຕາເວັນຕົກ</translation>
 <translation id="5828545842856466741">ເພີ່ມໂປຣໄຟລ໌່...</translation>
 <translation id="5828633471261496623">ກໍາລັງພິມ...</translation>
@@ -10085,7 +10085,6 @@
 <translation id="8327386430364625757">ຟອນກ່ຽວກັບຄະນິດສາດ</translation>
 <translation id="8327490658947427005">ການເລືອກບໍ່ຢູ່ໃນ <ph name="LANGUAGE" /></translation>
 <translation id="8327544198829180337">ປິດມຸມມອງນີ້</translation>
-<translation id="8327676037044516220">ການອະນຸຍາດ ແລະ ການຕັ້ງຄ່າເນື້ອຫາ</translation>
 <translation id="8328228852664998535">ຫາກທ່ານດຳເນີນການຕໍ່, ລະບົບຈະລຶບລະຫັດຜ່ານ, ກະແຈຜ່ານ ແລະ ຂໍ້ມູນອື່ນໆຂອງທ່ານອອກຈາກ <ph name="BRAND" /> ຢ່າງຖາວອນ. ລະບົບຈະບໍ່ລຶບບັນຊີໃດກໍຕາມທີ່ທ່ານສ້າງໄວ້ສຳລັບເວັບໄຊ ຫຼື ແອັບ.</translation>
 <translation id="8328777765163860529">ປິດທັງໝົດ</translation>
 <translation id="8330617762701840933">ລາຍຊື່ຂອງເວັບໄຊທີ່ປ່ຽນເສັ້ນທາງໄປຫາໂປຣແກຣມທ່ອງເວັບສຳຮອງ.</translation>
@@ -10906,7 +10905,6 @@
 <translation id="8925458182817574960">ການຕັ້ງຄ່າ</translation>
 <translation id="8926389886865778422">ຢ່າຖາມອີກ</translation>
 <translation id="8926555406617248399">ເຊື່ອງແຖບແລ້ວ</translation>
-<translation id="892706138619340876">ບາງການຕັ້ງຄ່າໄດ້ຖືກຣີເຊັດແລ້ວ</translation>
 <translation id="8927438609932588163">ອະນຸຍາດໃຫ້ເວັບໄຊບັນທຶກຂໍ້ມູນຢູ່ອຸປະກອນຂອງທ່ານ</translation>
 <translation id="8929696694736010839">ເຊດຊັນບໍ່ເປີດເຜີຍຕົວຕົນປັດຈຸບັນເທົ່ານັ້ນ</translation>
 <translation id="8929738682246584251">ເປີດ/ປິດ ແວ່ນຂະຫຍາຍ</translation>
@@ -11215,6 +11213,7 @@
 <translation id="9130015405878219958">ປ້ອນໂໝດໃຊ້ບໍ່ໄດ້ເຂົ້າໄປແລ້ວ.</translation>
 <translation id="9130135798965366513">ເພື່ອສືບຕໍ່, <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> ຈະແບ່ງປັນ <ph name="FIELDS_STRING" /> ຂອງທ່ານກັບເວັບໄຊນີ້. ເບິ່ງ <ph name="BEGIN_LINK1" />ນະໂຍບາຍຄວາມເປັນສ່ວນຕົວ<ph name="END_LINK1" /> ແລະ <ph name="BEGIN_LINK2" />ຂໍ້ກຳນົດບໍລິການ<ph name="END_LINK2" /> ຂອງເວັບໄຊນີ້.</translation>
 <translation id="9130364135697530260">ເນື້ອຫາທີ່ຝັງໄວ້ຢູ່ເວັບໄຊນີ້ສາມາດໃຊ້ຂໍ້ມູນທີ່ພວກມັນບັນທຶກໄວ້ກ່ຽວກັບທ່ານໄດ້</translation>
+<translation id="9130857050314385402">ລະບົບຈະສົ່ງຊື່ແຖບ ແລະ URL ໄປຫາ Google ເມື່ອທ່ານໃຊ້ທັກສະ</translation>
 <translation id="9131209053278896908">ເວັບໄຊທີ່ບລັອກແລ້ວຈະປາກົດຢູ່ບ່ອນນີ້</translation>
 <translation id="9131487537093447019">ສົ່ງ​ຂໍ້​ຄວາມ​ຫາ ​ແລະ​ຮັບ​ຂໍ້​ຄວາມ​ຈາກອຸ​ປະ​ກອນ Bluetooth​.</translation>
 <translation id="9133568201369135151">ການຮວບຮວມຂໍ້ມູນການວິນິໄສສຳເລັດແລ້ວ. ຂໍ້ມູນສ່ວນຕົວບາງຢ່າງຂອງທ່ານແມ່ນຮວມຢູ່ໃນຂໍ້ມູນນີ້.</translation>

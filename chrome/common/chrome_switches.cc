@@ -173,6 +173,18 @@ const char kDebugPackedApps[] = "debug-packed-apps";
 // Passes command line parameters to the DevTools front-end.
 const char kDevToolsFlags[] = "devtools-flags";
 
+// Specifies a stringified JSON dictionary defining allowlist and blocklist
+// pattern rules for DevTools-controlled navigations.
+// If an allowlist is provided (even if empty), all top-level navigations to
+// non-matching URLs are blocked. If both allowlist and blocklist match a URL,
+// the more specific pattern determines the outcome.
+// Example: '{ \
+//             "allowlist": ["[*.]foo.com"], \
+//             "blocklist": ["[*.]bar.com"] \
+//           }'
+const char kDevToolsNavigationGatingRules[] =
+    "devtools-navigation-gating-rules";
+
 // Triggers a plethora of diagnostic modes.
 const char kDiagnostics[] = "diagnostics";
 

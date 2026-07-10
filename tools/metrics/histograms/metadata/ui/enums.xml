@@ -395,6 +395,10 @@ chromium-metrics-reviews@google.com.
     The snackbar was cleared by other events, such as activity being stopped or
     manually cleared by the manager.
   </int>
+  <int value="7" label="Replaced by high priority">
+    The snackbar was instantly preempted and dismissed by a high priority
+    security warning.
+  </int>
 </enum>
 
 <!-- LINT.IfChange(SnackbarIdentifier) -->
@@ -746,6 +750,7 @@ chromium-metrics-reviews@google.com.
   <int value="-1475777739" label="chrome://physical-web-diagnostics/"/>
   <int value="-1471376798" label="chrome-untrusted://print/"/>
   <int value="-1440785181" label="chrome://profile-signin-confirmation/"/>
+  <int value="-1437371895" label="chrome://contextual-cueing-internals/"/>
   <int value="-1423026122" label="chrome://md-user-manager/"/>
   <int value="-1401057585" label="chrome://account-manager-error/"/>
   <int value="-1398642514" label="chrome://gesture/"/>

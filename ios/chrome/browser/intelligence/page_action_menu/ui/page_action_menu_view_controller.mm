@@ -701,16 +701,22 @@ const CGFloat kDividerWidth = 1.0;
       [self.pageActionMenuHandler dismissPageActionMenuWithCompletion:nil];
       break;
     case PageActionMenuPriceTracking: {
-      // Capture the mutator before dismissal.
-      id<PageActionMenuMutator> mutator = self.mutator;
-      [self.pageActionMenuHandler dismissPageActionMenuWithCompletion:^{
-        [mutator openPriceInsightsPanel];
-      }];
+      [self handlePriceTrackingRowTap];
       break;
     }
     default:
       break;
   }
+}
+
+// Handles taps on the price tracking feature row.
+- (void)handlePriceTrackingRowTap {
+  CHECK(IsProactiveSuggestionsFrameworkEnabled());
+  // Capture the mutator before dismissal.
+  id<PageActionMenuMutator> mutator = self.mutator;
+  [self.pageActionMenuHandler dismissPageActionMenuWithCompletion:^{
+    [mutator openPriceInsightsPanel];
+  }];
 }
 
 // Handles taps on the left side of split action feature rows.
@@ -1143,6 +1149,13 @@ const CGFloat kDividerWidth = 1.0;
                 forControlEvents:UIControlEventTouchUpInside];
         [accessoryStack addArrangedSubview:chevronButton];
         [stackView addArrangedSubview:accessoryStack];
+
+        // Make the entire row tappable
+        UITapGestureRecognizer* tapRecognizer = [[UITapGestureRecognizer alloc]
+            initWithTarget:self
+                    action:@selector(handlePriceTrackingRowTap)];
+        tapRecognizer.cancelsTouchesInView = NO;
+        [containerView addGestureRecognizer:tapRecognizer];
       } else {
         if (feature.actionText && feature.actionText.length > 0) {
           UIButton* actionButton = [UIButton buttonWithType:UIButtonTypeSystem];

@@ -156,15 +156,6 @@ bool FeatureHasRuntimeMutabilityEnabled(
   return HasFlags(feature_cached_value, mask);
 }
 
-// Returns true if the feature has runtime mutability disabled. This happens
-// if a runtime mutable feature is accessed before the feature's runtime
-// mutability has been enabled.
-bool FeatureHasRuntimeMutabilityDisabled(
-    FeatureStateCache feature_cached_value) {
-  return HasFlags(feature_cached_value,
-                  internal::kRuntimeMutabilityDisabledMask);
-}
-
 // Returns true if the feature was accessed before the FeatureList was
 // initialized.
 bool FeatureWasAccessedEarly(FeatureStateCache feature_cached_value) {
@@ -428,11 +419,6 @@ bool Feature::HasRuntimeMutabilityEnabled() const {
       cached_value.load(std::memory_order_relaxed));
 }
 
-bool Feature::HasRuntimeMutabilityDisabled() const {
-  return FeatureHasRuntimeMutabilityDisabled(
-      cached_value.load(std::memory_order_relaxed));
-}
-
 bool Feature::WasAccessedEarly() const {
   return FeatureWasAccessedEarly(cached_value.load(std::memory_order_relaxed));
 }
@@ -442,55 +428,6 @@ BASE_FEATURE(kDCheckIsFatalFeature,
              "DcheckIsFatal",
              FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(DCHECK_IS_CONFIGURABLE)
-
-struct FeatureList::RuntimeMutableFeatureState {
-  RuntimeMutableFeatureState(
-      const Feature& feature,
-      OnRuntimeMutableFeatureStateChangedCallback callback);
-  ~RuntimeMutableFeatureState();
-
-  RuntimeMutableFeatureState(const RuntimeMutableFeatureState&);
-  RuntimeMutableFeatureState(RuntimeMutableFeatureState&&);
-  RuntimeMutableFeatureState& operator=(const RuntimeMutableFeatureState&);
-  RuntimeMutableFeatureState& operator=(RuntimeMutableFeatureState&&);
-
-  // The feature that has runtime mutability enabled.
-  std::reference_wrapper<const Feature> feature;
-
-  // Callback to be invoked when the feature state is changed.
-  OnRuntimeMutableFeatureStateChangedCallback callback;
-
-  // The runtime override state of the feature, or OVERRIDE_USE_DEFAULT if the
-  // feature is not runtime overridden.
-  OverrideState override_state = OVERRIDE_USE_DEFAULT;
-
-  // The name and group of the field trial that has, at runtime, superseded
-  // the feature's startup-initialized state.
-  std::string field_trial_name;
-  std::string group_name;
-};
-
-FeatureList::RuntimeMutableFeatureState::RuntimeMutableFeatureState(
-    const Feature& feature,
-    FeatureList::OnRuntimeMutableFeatureStateChangedCallback callback)
-    : feature(feature), callback(std::move(callback)) {}
-
-FeatureList::RuntimeMutableFeatureState::~RuntimeMutableFeatureState() =
-    default;
-
-FeatureList::RuntimeMutableFeatureState::RuntimeMutableFeatureState(
-    const RuntimeMutableFeatureState&) = default;
-
-FeatureList::RuntimeMutableFeatureState::RuntimeMutableFeatureState(
-    RuntimeMutableFeatureState&&) = default;
-
-FeatureList::RuntimeMutableFeatureState&
-FeatureList::RuntimeMutableFeatureState::operator=(
-    const RuntimeMutableFeatureState&) = default;
-
-FeatureList::RuntimeMutableFeatureState&
-FeatureList::RuntimeMutableFeatureState::operator=(
-    RuntimeMutableFeatureState&&) = default;
 
 FeatureList::FeatureList() : caching_context_(g_current_caching_context++) {}
 
@@ -597,30 +534,13 @@ void FeatureList::EnableRuntimeMutability(
   // Feature was not declared as runtime mutable. This is a programming error.
   CHECK(FeatureIsRuntimeMutable(cached_value));
 
-  // Runtime mutable features must all be registered exactly once during feature
-  // list initialization. These CHECKs detect double registration scenarios,
-  // which are programming errors.
+  // Runtime mutable features must be registered exactly once, during feature
+  // list initialization, and before first use.
   CHECK(!FeatureHasRuntimeMutabilityEnabled(cached_value));
-  CHECK(!FeatureHasRuntimeMutabilityDisabled(cached_value));
-
-  // If the feature has already been accessed, before runtime mutability was
-  // enabled and the feature list initialized, disable the feature's runtime
-  // mutability and log an error.
-  if (FeatureWasAccessedEarly(cached_value)) {
-    AtomicSetFeatureStateFlags(feature.cached_value,
-                               internal::kRuntimeMutabilityDisabledMask);
-    // TODO: http://crbug.com/482451012 Consider CHECKing that the feature was
-    // not accessed early; otherwise, capture this failure scenario in a metric
-    // or a DumpWithoutCrashing report.
-    return;
-  }
-
+  CHECK(!FeatureWasAccessedEarly(cached_value));
   bool inserted = runtime_mutable_overrides_
                       .try_emplace(feature.name, feature, std::move(callback))
                       .second;
-  // Features must be registered exactly once. This CHECK detects double
-  // registration (by name), which is a programming error. This shouldn't
-  // happen in practice, earlier checks should have already failed.
   CHECK(inserted);
 
   // In principle, a correctly implemented runtime mutable feature doesn't
@@ -793,6 +713,7 @@ bool FeatureList::IsEnabled(const Feature& feature) {
 
   if (!g_feature_list_instance ||
       !g_feature_list_instance->AllowFeatureAccess(feature)) {
+    CHECK(!feature.IsRuntimeMutable());
     RegisterFeatureAccess(feature, internal::kCachedLogEarlyMask);
     EarlyFeatureAccessTracker::GetInstance()->AccessedFeature(
         feature, g_feature_list_instance &&
@@ -1148,30 +1069,12 @@ FeatureList::OverrideState FeatureList::GetOverrideState(
   Feature::FeatureStateCache current_cached_value =
       feature.cached_value.load(std::memory_order_relaxed);
 
-  const bool is_runtime_mutable = FeatureIsRuntimeMutable(current_cached_value);
-  if (is_runtime_mutable) {
-    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-    if (FeatureHasRuntimeMutabilityEnabled(current_cached_value)) {
-      // Runtime mutability is enabled, so we should use the override state if
-      // it is set.
-      auto it = runtime_mutable_overrides_.find(feature.name);
-      CHECK(it != runtime_mutable_overrides_.end());
-      const auto& override_entry = it->second;
-      DCHECK_EQ(&override_entry.feature.get(), &feature);
-      if (override_entry.override_state != OVERRIDE_USE_DEFAULT) {
-        return override_entry.override_state;
-      }
-    } else if (!FeatureHasRuntimeMutabilityDisabled(current_cached_value)) {
-      // Runtime mutability was not enabled for this feature during FeatureList
-      // initialization. The first time the feature is accessed, we log the
-      // error and mark the feature as having had its runtime mutability
-      // disabled.
-      AtomicSetFeatureStateFlags(feature.cached_value,
-                                 internal::kRuntimeMutabilityDisabledMask);
-      // TODO: http://crbug.com/482451012 Consider CHECKing that the feature
-      // has had runtime mutability enabled; otherwise, capture this failure
-      // scenario in a metric or a DumpWithoutCrashing report.
-    }
+  // If the feature is runtime mutable, then we need to check if there is a
+  // runtime override state and use that if it exists.
+  auto optional_runtime_override =
+      MaybeGetRuntimeOverrideState(feature, current_cached_value);
+  if (optional_runtime_override.has_value()) {
+    return *optional_runtime_override;
   }
 
   // Fall through to using the static override state. We can use this, including
@@ -1192,6 +1095,28 @@ FeatureList::OverrideState FeatureList::GetOverrideState(
   AtomicSetFeatureState(feature.cached_value, state, caching_context_);
 
   return state;
+}
+
+std::optional<FeatureList::OverrideState>
+FeatureList::MaybeGetRuntimeOverrideState(
+    const Feature& feature,
+    Feature::FeatureStateCache current_cached_value) const {
+  const bool is_runtime_mutable = FeatureIsRuntimeMutable(current_cached_value);
+  if (is_runtime_mutable) {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+    CHECK(FeatureHasRuntimeMutabilityEnabled(current_cached_value));
+    // Runtime mutability is enabled, so we should use the override state if
+    // it is set.
+    auto it = runtime_mutable_overrides_.find(feature.name);
+    CHECK(it != runtime_mutable_overrides_.end());
+    const auto& override_entry = it->second;
+    DCHECK_EQ(&override_entry.feature.get(), &feature);
+    if (override_entry.override_state != OVERRIDE_USE_DEFAULT) {
+      return override_entry.override_state;
+    }
+  }
+
+  return std::nullopt;
 }
 
 FeatureList::OverrideState FeatureList::GetOverrideStateByFeatureName(

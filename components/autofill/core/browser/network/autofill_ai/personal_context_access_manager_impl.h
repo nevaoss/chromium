@@ -13,6 +13,7 @@
 #include "base/containers/span.h"
 #include "base/memory/raw_ref.h"
 #include "base/memory/weak_ptr.h"
+#include "base/observer_list.h"
 #include "base/scoped_observation.h"
 #include "base/time/time.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_instance.h"
@@ -20,6 +21,7 @@
 #include "components/autofill/core/browser/network/autofill_ai/personal_context_access_manager.h"
 #include "components/personal_context/core/personal_context_enablement_service.h"
 #include "components/personal_context/core/personal_context_types.h"
+#include "components/personal_context/proto/features/common_data.pb.h"
 #include "net/base/backoff_entry.h"
 #include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
 
@@ -54,12 +56,17 @@ class PersonalContextAccessManagerImpl
   // PersonalContextAccessManager:
   void PrefetchAmbientAutofillContext(
       base::span<const EntityType> requested_types) override;
+  RequestStatus GetPrefetchAmbientAutofillStatusByEntityType(
+      EntityType type) const override;
   std::optional<EntityInstance> GetCachedEntity(
       const EntityInstance::EntityId& id) const override;
   void GetUnmaskedSpiiEntity(const EntityInstance::EntityId& id,
                              GetUnmaskedSpiiEntityCallback callback) override;
   std::vector<EntityInstance> GetCachedEntities() const override;
   bool IsTypeCached(EntityType type) const override;
+  void AddObserver(PersonalContextAccessManager::Observer* observer) override;
+  void RemoveObserver(
+      PersonalContextAccessManager::Observer* observer) override;
 
   // personal_context::PersonalContextEnablementService::Observer:
   void OnEnablementStateChanged(
@@ -69,12 +76,7 @@ class PersonalContextAccessManagerImpl
   friend class PersonalContextAccessManagerImplTestApi;
 
   struct RequestState {
-    enum class Status {
-      kPending,
-      kSuccess,
-      kFailure,
-    };
-    Status status = Status::kSuccess;
+    RequestStatus status = RequestStatus::kNotStarted;
     base::TimeTicks last_update_time;
     std::unique_ptr<net::BackoffEntry> backoff_entry;
   };
@@ -93,10 +95,21 @@ class PersonalContextAccessManagerImpl
       std::vector<EntityType> requested_types,
       personal_context::FetchContextResult result);
 
-  // Caches a batch of prefetched `entities` and schedules new invalidations
-  // after `kPrefetchedEntitiesCacheTTL`.
+  // Handles the asynchronous result of the SPII entities fetch.
+  void OnFetchPiiEntitiesComplete(
+      const EntityInstance::EntityId& id,
+      GetUnmaskedSpiiEntityCallback callback,
+      personal_context::FetchPiiEntitiesResult result);
+
+  // Caches a batch of prefetched `entities` and their original `protos`.
+  // Schedules new invalidations for each `EntityType` after
+  // `kPrefetchedEntitiesCacheTTL`. The original entity `protos` from where
+  // `entities` were extracted also require caching for subsequent
+  // unmasking requests.
   void CachePrefetchedEntities(
-      absl::flat_hash_map<EntityType, std::vector<EntityInstance>> entities);
+      absl::flat_hash_map<EntityType, std::vector<EntityInstance>> entities,
+      absl::flat_hash_map<EntityInstance::EntityId,
+                          personal_context::proto::Entity> protos);
 
   // Returns true if a network request should be initiated for `type`.
   // This is true if the type is not cached, its cache TTL has expired, or a
@@ -109,7 +122,10 @@ class PersonalContextAccessManagerImpl
 
   // Marks the cache state for `type` as `status`. Updates the timestamp
   // to start the cache TTL timer and sets the appropriate failure count.
-  void SetTypeStatus(EntityType type, RequestState::Status status);
+  void SetTypeStatus(EntityType type, RequestStatus status);
+
+  // Notifies observers of the prefetch status.
+  void NotifyPrefetchStatusObservers(bool success);
 
   // Caches an unmasked SPII `entity`, so it can be refilled without an
   // additional network round trip for `kUnmaskedSpiiCacheTTL`.
@@ -124,7 +140,7 @@ class PersonalContextAccessManagerImpl
   //
   // **Eviction Mechanism**: Managed **per entity type** (not per individual
   // entity). When a type is prefetched, its lifetime is tracked in
-  // `cached_types_`. After `kPrefetchedEntitiesCacheTTL` the entire
+  // `cached_state_`. After `kPrefetchedEntitiesCacheTTL` the entire
   // type expires, and all entities belonging to this type are evicted together
   // from this cache.
   //
@@ -136,6 +152,10 @@ class PersonalContextAccessManagerImpl
   //   type from `unmasked_spii_cache_`.
   base::flat_set<EntityInstance, EntityInstance::CompareByGuid>
       prefetched_entity_cache_;
+
+  // Map from EntityId to the original proto Entity received during prefetch.
+  absl::flat_hash_map<EntityInstance::EntityId, personal_context::proto::Entity>
+      prefetched_proto_cache_;
 
   // Cache of unmasked sensitive PII (SPII) entity instances.
   //
@@ -155,6 +175,8 @@ class PersonalContextAccessManagerImpl
 
   // Maps entity types to their current cache request/response state.
   base::flat_map<EntityType, RequestState> cache_state_;
+
+  base::ObserverList<PersonalContextAccessManager::Observer> observers_;
 
   base::ScopedObservation<
       personal_context::PersonalContextEnablementService,

@@ -269,6 +269,7 @@ Aksi halde bu işlem gizlilik ayarlarınız tarafından engellenecek. Buna izin 
 <translation id="1407135791313364759">Tümünü aç</translation>
 <translation id="1408696301184924537">Bir dahaki sefere bu IBAN'ı otomatik doldurmak için Google Hesabınıza kaydedin</translation>
 <translation id="1408787208417187241">Üstte üçlü tel zımba</translation>
+<translation id="1410306713026702438"><ph name="SUGGESTION_TITLE" />, <ph name="SUGGESTION_DESCRIPTION" />. <ph name="SUGGESTION_TYPE" />. <ph name="GROUP_HEADER" /> grubunda <ph name="NUM_MATCHES_IN_GROUP" /> eşleşmeden <ph name="MATCH_POSITION" />.</translation>
 <translation id="1410365862999780287">Etkinliğiniz bu cihazı kullanan diğer kullanıcılar tarafından görülmediğinden daha gizli bir şekilde göz atabilirsiniz. Bu durum, Google da dahil olmak üzere ziyaret ettiğiniz web siteleri ve kullandıkları hizmetler tarafından verilerin toplanma şeklini değiştirmez. Yine de indirdikleriniz, yer işaretleri ve okuma listesi öğeleri kaydedilir.</translation>
 <translation id="1410941016594047814">Zarf Invite</translation>
 <translation id="1413235258620101697">Daha hızlı ödeme için bu kartın CVC'si şifrelenerek Google Cüzdan'a kaydedilecek</translation>
@@ -660,6 +661,7 @@ Aksi halde bu işlem gizlilik ayarlarınız tarafından engellenecek. Buna izin 
 <translation id="2045871135676061132">Zarf Personal</translation>
 <translation id="2046951263634619614">Kitapçılar</translation>
 <translation id="2048261947532620704">Sayfa çevriliyor</translation>
+<translation id="2055016614992422886">Görüşme</translation>
 <translation id="2059166748188874810">Belediye</translation>
 <translation id="2059202684901022309">22 x 34 inç</translation>
 <translation id="2064568741209980952">Kredi ve Borç</translation>
@@ -3557,6 +3559,7 @@ Sonra ödeme seçeneklerini gizlemek için <ph name="BEGIN_LINK" />ödeme ayarla
 <translation id="6550245281449521513">Fare kilidine izin verilmiyor</translation>
 <translation id="6551737294564628267"><ph name="ATTRIBUTE_NAME" />, yeni</translation>
 <translation id="6552566579578780089">Ödemeler</translation>
+<translation id="6553777254569586547"><ph name="SUGGESTION_TITLE" />. <ph name="SUGGESTION_TYPE" />. <ph name="GROUP_HEADER" /> grubunda <ph name="NUM_MATCHES_IN_GROUP" /> eşleşmeden <ph name="MATCH_POSITION" />.</translation>
 <translation id="6554732001434021288">En son <ph name="NUM_DAYS" /> gün önce ziyaret edildi</translation>
 <translation id="6556866813142980365">Yeniden yap</translation>
 <translation id="6557715786897013164">14 x 17 inç</translation>

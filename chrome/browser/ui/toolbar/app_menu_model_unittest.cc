@@ -18,6 +18,7 @@
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/browser/browser_features.h"
 #include "chrome/browser/defaults.h"
+#include "chrome/browser/enterprise/browser_management/management_service_factory.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/password_manager/password_manager_test_util.h"
 #include "chrome/browser/prefs/browser_prefs.h"
@@ -47,6 +48,7 @@
 #include "chrome/test/base/testing_profile.h"
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/password_manager/core/browser/password_store/test_password_store.h"
+#include "components/policy/core/common/management/scoped_management_service_override_for_testing.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/scoped_user_pref_update.h"
 #include "components/search/ntp_features.h"
@@ -957,3 +959,40 @@ TEST_P(AppMenuModelBookmarkBarTest, BookmarkBarSubmenu) {
 }
 
 INSTANTIATE_TEST_SUITE_P(All, AppMenuModelBookmarkBarTest, testing::Bool());
+
+class AppMenuModelEnterpriseReleaseNotesTest
+    : public base::test::WithFeatureOverride,
+      public AppMenuModelTest {
+ public:
+  AppMenuModelEnterpriseReleaseNotesTest()
+      : WithFeatureOverride(features::kEnterpriseReleaseNotes) {}
+  ~AppMenuModelEnterpriseReleaseNotesTest() override = default;
+};
+
+TEST_P(AppMenuModelEnterpriseReleaseNotesTest, MenuVisibility) {
+  {
+    AppMenuModel model(this, browser());
+    model.Init();
+    EXPECT_FALSE(model.GetIndexOfCommandId(IDC_CHROME_ENTERPRISE_RELEASE_NOTES)
+                     .has_value());
+  }
+
+  policy::ScopedManagementServiceOverrideForTesting profile_management(
+      policy::ManagementServiceFactory::GetForProfile(profile()),
+      policy::EnterpriseManagementAuthority::CLOUD_DOMAIN);
+
+  {
+    AppMenuModel model(this, browser());
+    model.Init();
+#if BUILDFLAG(IS_LINUX)
+    EXPECT_EQ(IsParamFeatureEnabled(),
+              model.GetIndexOfCommandId(IDC_CHROME_ENTERPRISE_RELEASE_NOTES)
+                  .has_value());
+#else
+    EXPECT_FALSE(model.GetIndexOfCommandId(IDC_CHROME_ENTERPRISE_RELEASE_NOTES)
+                     .has_value());
+#endif
+  }
+}
+
+INSTANTIATE_FEATURE_OVERRIDE_TEST_SUITE(AppMenuModelEnterpriseReleaseNotesTest);

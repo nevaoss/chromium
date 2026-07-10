@@ -803,7 +803,7 @@ std::unique_ptr<views::View> EcheTray::CreateBubbleHeaderView(
                    kEcheArrowBackIcon, IDS_APP_ACCNAME_BACK));
 
   views::Label* title = header->AddChildView(std::make_unique<views::Label>(
-      l10n_util::GetStringFUTF16(ID_ASH_ECHE_APP_STREAMING_BUBBLE_TITLE,
+      l10n_util::GetStringFUTF16(IDS_ASH_ECHE_APP_STREAMING_BUBBLE_TITLE,
                                  phone_name),
       views::style::CONTEXT_DIALOG_TITLE, views::style::STYLE_PRIMARY,
       gfx::DirectionalityMode::DIRECTIONALITY_FROM_TEXT));

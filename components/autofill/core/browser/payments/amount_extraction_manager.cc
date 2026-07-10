@@ -127,8 +127,7 @@ AmountExtractionManager::GetEligibleFeatures(
     const std::vector<Suggestion>& suggestions,
     FillingProduct filling_product,
     FieldType field_type) const {
-  if (payments::ShouldShowBnplSuggestions(autofill_manager_->client(),
-                                          field_type) &&
+  if (ShouldShowBnplSuggestions(autofill_manager_->client(), field_type) &&
       filling_product == FillingProduct::kCreditCard &&
       base::FeatureList::IsEnabled(
           features::kAutofillEnablePayNowPayLaterTabs)) {

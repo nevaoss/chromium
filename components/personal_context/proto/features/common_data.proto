@@ -98,6 +98,7 @@ message Entity {
     NationalId national_id = 5;
     FlightReservation flight_reservation = 6;
     Vehicle vehicle = 7;
+    SensitivePiiPresence sensitive_pii_presence = 11;
   }
 
   // The source references for the entity.
@@ -280,6 +281,19 @@ message Vehicle {
 
   // The name of the primary owner of the vehicle.
   string owner_name = 8;
+}
+
+// Signals the availability of sensitive PII for the user.
+message SensitivePiiPresence {
+  // The type of SPII data for which presence is indicated.
+  enum Type {
+    UNSPECIFIED = 0;
+    DRIVERS_LICENSE = 1;
+    PASSPORT = 2;
+    NATIONAL_ID = 3;
+  }
+
+  Type type = 1;
 }
 
 // Represents the memory data types supported by the Chrome client. This

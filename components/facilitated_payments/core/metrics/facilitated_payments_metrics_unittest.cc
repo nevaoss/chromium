@@ -414,7 +414,8 @@ INSTANTIATE_TEST_SUITE_P(
         AccountLinkingFlowExitedReason::kClientTokenNotAvailable,
         AccountLinkingFlowExitedReason::kNetworkInterfaceUnavailable,
         AccountLinkingFlowExitedReason::kGetDetailsFailed,
-        AccountLinkingFlowExitedReason::kNotEligiblePerPaymentsBackend));
+        AccountLinkingFlowExitedReason::kNotEligiblePerPaymentsBackend,
+        AccountLinkingFlowExitedReason::kActionTokenNotAvailable));
 
 TEST(FacilitatedPaymentsMetricsTest,
      LogAccountLinkingGetDetailsForCreatePaymentInstrumentResultAndLatency) {

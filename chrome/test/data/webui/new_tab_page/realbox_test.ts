@@ -13,6 +13,7 @@ import type {SearchAnimatedGlowElement} from 'chrome://resources/cr_components/s
 import {createAutocompleteResultForTesting, createSearchMatchForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {PageMetricsCallbackRouter} from 'chrome://resources/js/metrics_reporter.mojom-webui.js';
+import {DriveDisclaimerStatus} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {InputType, ModelMode, ToolMode} from 'chrome://resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
 import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {assertStyle, MockInputState} from 'chrome://webui-test/cr_components/searchbox/searchbox_test_utils.js';
@@ -235,6 +236,9 @@ suite('NewTabPageRealboxNextTest', () => {
   });
 
   test('selecting drive upload opens composebox', async () => {
+    testProxy.handler.setResultFor('getDriveDisclaimerStatus', Promise.resolve({
+      status: DriveDisclaimerStatus.kAccepted,
+    }));
     const sampleToken = {high: BigInt(123), low: BigInt(456)};
     testProxy.handler.setResultFor('onDriveUploadClicked', Promise.resolve({
       response: {
@@ -270,6 +274,9 @@ suite('NewTabPageRealboxNextTest', () => {
   });
 
   test('selecting drive upload opens composebox with error', async () => {
+    testProxy.handler.setResultFor('getDriveDisclaimerStatus', Promise.resolve({
+      status: DriveDisclaimerStatus.kAccepted,
+    }));
     testProxy.handler.setResultFor(
         'onDriveUploadClicked', Promise.resolve({
           response: {
@@ -758,6 +765,10 @@ suite('NewTabPageRealboxNextTest', () => {
     const metricName =
         'TestSource.AimEntrypoint.ClassicPopup.ContextualElement.Clicked';
 
+    testProxy.handler.setResultFor('getDriveDisclaimerStatus', Promise.resolve({
+      status: DriveDisclaimerStatus.kAccepted,
+    }));
+
     entrypointAndMenu.dispatchEvent(new CustomEvent('open-drive-upload', {
       bubbles: true,
       composed: true,
@@ -989,5 +1000,110 @@ suite('NewTabPageRealboxNextTest', () => {
             'search-animated-glow');
     assertTrue(!!animatedGlow);
     assertFalse(animatedGlow.darkThemeColorsEnabled);
+  });
+
+  test(
+      'compose button hides for URL suggestions when ' +
+          'ntpRealboxDynamicAiModeButton is enabled',
+      async () => {
+        loadTimeData.overrideValues({ntpRealboxDynamicAiModeButton: true});
+
+        // Re-create realbox to pick up new loadTimeData.
+        realbox = createAndAppendRealbox({
+          composeButtonEnabled: true,
+        });
+        await microtasksFinished();
+
+        // Initially, with no results, compose button should be visible.
+        let composeButton =
+            realbox.shadowRoot.querySelector('cr-searchbox-compose-button');
+        assertTrue(!!composeButton);
+
+        // Simulate autocomplete result with a URL suggestion as default match.
+        const urlMatch = createSearchMatchForTesting({
+          isSearchType: false,
+        });
+        realbox.result = createAutocompleteResultForTesting({
+          matches: [urlMatch],
+        });
+        await microtasksFinished();
+
+        // Compose button should be hidden.
+        composeButton =
+            realbox.shadowRoot.querySelector('cr-searchbox-compose-button');
+        assertFalse(!!composeButton);
+
+        // Simulate autocomplete result with a Search suggestion as default match.
+        const searchMatch = createSearchMatchForTesting({
+          isSearchType: true,
+        });
+        realbox.result = createAutocompleteResultForTesting({
+          matches: [searchMatch],
+        });
+        await microtasksFinished();
+
+        // Compose button should be visible again.
+        composeButton =
+            realbox.shadowRoot.querySelector('cr-searchbox-compose-button');
+        assertTrue(!!composeButton);
+      });
+
+   test('has-user-input attribute is set when typing', async () => {
+      loadTimeData.overrideValues({ntpRealboxDynamicAiModeButton: true});
+      realbox = createAndAppendRealbox({
+        composeButtonEnabled: true,
+        composeboxEnabled: true,
+        ntpRealboxNextEnabled: true,
+      });
+      await microtasksFinished();
+      const composeButton =
+          realbox.shadowRoot.querySelector('cr-searchbox-compose-button');
+      assertTrue(!!composeButton);
+
+      assertFalse(composeButton.hasAttribute('has-user-input'));
+
+      // Simulate typing
+      realbox.$.input.dispatchEvent(new CustomEvent('searchbox-input-text-updated', {
+        detail: {value: 'hello', isComposing: false},
+      }));
+      await microtasksFinished();
+      assertTrue(composeButton.hasAttribute('has-user-input'));
+
+      // Simulate clearing input
+      realbox.$.input.dispatchEvent(new CustomEvent('searchbox-input-text-updated', {
+        detail: {value: '', isComposing: false},
+      }));
+      await microtasksFinished();
+      assertFalse(composeButton.hasAttribute('has-user-input'));
+    });
+
+  suite('DynamicAiModeButton', () => {
+    test('dynamic attribute is set correctly', async () => {
+      loadTimeData.overrideValues({ntpRealboxDynamicAiModeButton: true});
+      realbox = createAndAppendRealbox({
+        composeButtonEnabled: true,
+        composeboxEnabled: true,
+        ntpRealboxNextEnabled: true,
+      });
+      await microtasksFinished();
+      const composeButton =
+          realbox.shadowRoot.querySelector('cr-searchbox-compose-button');
+      assertTrue(!!composeButton);
+      assertTrue(composeButton.hasAttribute('dynamic'));
+    });
+
+    test('dynamic attribute is not set when disabled', async () => {
+      loadTimeData.overrideValues({ntpRealboxDynamicAiModeButton: false});
+      realbox = createAndAppendRealbox({
+        composeButtonEnabled: true,
+        composeboxEnabled: true,
+        ntpRealboxNextEnabled: true,
+      });
+      await microtasksFinished();
+      const composeButton =
+          realbox.shadowRoot.querySelector('cr-searchbox-compose-button');
+      assertTrue(!!composeButton);
+      assertFalse(composeButton.hasAttribute('dynamic'));
+    });
   });
 });

@@ -882,6 +882,8 @@ should be able to be added at any place in this file.
   <variant name="_WebUiHelpBubbleTest"
       summary="For WebUiHelpBubbleTest feature."/>
   <variant name="_WhatsNewUpdated" summary="For what's new updated content."/>
+  <variant name="IPH_SidePanelContextualTasksPinnableFeature"
+      summary="contextual tasks side panel pinnable"/>
 </variants>
 
 <variants name="MerchantTrust_Type">
@@ -5078,11 +5080,12 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
-<action name="Android.TabStripMenu.ShowTabsVertically">
+<action name="Android.TabStripMenu.ToggleTabLayout">
   <owner>eleanorlee@google.com</owner>
   <description>
-    User tapped 'Show tabs vertically' in the tab strip context menu to display
-    the vertical tabs.
+    User tapped 'Show tabs vertically' in the tab strip context menu or 'Show
+    tabs horizontally' in the Vertical Tabs empty context menu to toggle the tab
+    layout.
   </description>
 </action>
 
@@ -5091,6 +5094,24 @@ should be able to be added at any place in this file.
   <description>
     User tapped 'Unpin Glic' on the tab strip context menu to unpin the Glic
     button in the tab strip.
+  </description>
+</action>
+
+<action name="Android.VerticalTabs.UndoCloseTab">
+  <owner>agazal@google.com</owner>
+  <owner>kije@google.com</owner>
+  <owner>clank-app-team@google.com</owner>
+  <description>
+    User undoes a closed tab that was closed from the Vertical Tabs pane.
+  </description>
+</action>
+
+<action name="Android.VerticalTabs.UndoCloseTabGroup">
+  <owner>agazal@google.com</owner>
+  <owner>kije@google.com</owner>
+  <owner>clank-app-team@google.com</owner>
+  <description>
+    User undoes a closed group that was closed from the Vertical Tabs pane.
   </description>
 </action>
 
@@ -7820,6 +7841,24 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="BookmarkBar_ContextMenu_AlwaysHide">
+  <owner>jennserrano@google.com</owner>
+  <owner>chrome-desktop-ntp@google.com</owner>
+  <description>
+    The user selected the &quot;Always Hide&quot; option for the bookmark bar
+    visibility using the context menu.
+  </description>
+</action>
+
+<action name="BookmarkBar_ContextMenu_AlwaysShow">
+  <owner>jennserrano@google.com</owner>
+  <owner>chrome-desktop-ntp@google.com</owner>
+  <description>
+    The user selected the &quot;Always Show&quot; option for the bookmark bar
+    visibility using context menu.
+  </description>
+</action>
+
 <action name="BookmarkBar_ContextMenu_Edit">
   <owner>Please list the metric's owners. Add more owner tags as needed.</owner>
   <description>Please enter the description of this user action.</description>
@@ -7839,6 +7878,15 @@ should be able to be added at any place in this file.
 <action name="BookmarkBar_ContextMenu_NewFolder">
   <owner>Please list the metric's owners. Add more owner tags as needed.</owner>
   <description>Please enter the description of this user action.</description>
+</action>
+
+<action name="BookmarkBar_ContextMenu_OnlyShowOnNtp">
+  <owner>jennserrano@google.com</owner>
+  <owner>chrome-desktop-ntp@google.com</owner>
+  <description>
+    The user selected the &quot;Only Show on NTP&quot; option for the bookmark
+    bar visibility using the context menu.
+  </description>
 </action>
 
 <action name="BookmarkBar_ContextMenu_Open">
@@ -30448,9 +30496,12 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
-<action name="MobilePasswordCheckupInteractionIgnoredOnCooldown">
+<action name="MobilePasswordCheckupInteractionIgnoredDuringNavigation">
   <owner>vincb@google.com</owner>
-  <description>TODO(crbug.com/483963166): Write the description.</description>
+  <description>
+    Reported when a user interaction (tap) on the Password Checkup homepage is
+    ignored because a navigation is already in progress. iOS only.
+  </description>
 </action>
 
 <action name="MobilePasswordCheckupSettingsBack">

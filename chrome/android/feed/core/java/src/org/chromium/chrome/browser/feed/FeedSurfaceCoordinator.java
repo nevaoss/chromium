@@ -47,7 +47,6 @@ import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
 import org.chromium.chrome.browser.feed.componentinterfaces.SurfaceCoordinator;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.magic_stack.ModuleRegistry;
-import org.chromium.chrome.browser.ntp.NewTabPageLaunchOrigin;
 import org.chromium.chrome.browser.ntp.NewTabPageLayout;
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationConfigManager;
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationConfigManager.HomepageStateListener;
@@ -100,9 +99,7 @@ public class FeedSurfaceCoordinator
         implements FeedSurfaceProvider,
                 FeedBubbleDelegate,
                 SwipeRefreshLayout.OnRefreshListener,
-                SurfaceCoordinator,
-                FeedContentFirstLoadWatcher {
-
+                SurfaceCoordinator {
     protected final Activity mActivity;
     private final SnackbarManager mSnackbarManager;
     private final @Nullable View mNtpHeader;
@@ -375,7 +372,6 @@ public class FeedSurfaceCoordinator
      * @param profile The current user profile.
      * @param bottomSheetController The bottom sheet controller.
      * @param shareDelegateSupplier The supplier for the share delegate used to share articles.
-     * @param launchOrigin The origin of what launched the feed.
      * @param privacyPreferencesManager Manages the privacy preferences.
      * @param toolbarSupplier Supplies the {@link Toolbar}.
      * @param embeddingSurfaceCreatedTimeNs Timestamp of creation of the UI surface.
@@ -399,7 +395,6 @@ public class FeedSurfaceCoordinator
             BottomSheetController bottomSheetController,
             Supplier<@Nullable ShareDelegate> shareDelegateSupplier,
             @Nullable ScrollableContainerDelegate externalScrollableContainerDelegate,
-            @NewTabPageLaunchOrigin int launchOrigin,
             PrivacyPreferencesManagerImpl privacyPreferencesManager,
             Supplier<Toolbar> toolbarSupplier,
             long embeddingSurfaceCreatedTimeNs,
@@ -636,10 +631,6 @@ public class FeedSurfaceCoordinator
             mScrollableContainerDelegate = null;
         }
     }
-
-    // TODO(crbug.com/407797637): Removes the FeedContentFirstLoadWatcher interface.
-    @Override
-    public void nonNativeContentLoaded(@StreamKind int kind) {}
 
     @Override
     @SuppressWarnings("NullAway")
@@ -1071,7 +1062,6 @@ public class FeedSurfaceCoordinator
                 mShareSupplier,
                 kind,
                 mActionDelegate,
-                /* feedContentFirstLoadWatcher= */ this,
                 streamsMediator,
                 new FeedSurfaceRendererBridge.Factory() {});
     }

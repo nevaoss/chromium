@@ -484,11 +484,12 @@ WebMediaPlayerImpl::WebMediaPlayerImpl(
       player_id_(GetNextMediaPlayerId()),
       defer_load_cb_(std::move(defer_load_cb)),
       isolate_(frame_->GetAgentGroupScheduler()->Isolate()),
-      demuxer_manager_(std::make_unique<media::DemuxerManager>(
-          this,
-          media_task_runner_,
-          media_log_.get(),
-          std::move(demuxer_override))),
+      demuxer_manager_(
+          std::make_unique<media::DemuxerManager>(this,
+                                                  frame_->GetSecurityOrigin(),
+                                                  media_task_runner_,
+                                                  media_log_.get(),
+                                                  std::move(demuxer_override))),
       tick_clock_(base::DefaultTickClock::GetInstance()),
       url_index_(url_index),
       raster_context_provider_(std::move(raster_context_provider)),

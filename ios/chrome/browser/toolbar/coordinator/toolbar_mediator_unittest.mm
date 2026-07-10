@@ -28,6 +28,7 @@
 #import "ios/chrome/browser/menu/ui_bundled/browser_action_factory.h"
 #import "ios/chrome/browser/menu/ui_bundled/menu_histograms.h"
 #import "ios/chrome/browser/optimization_guide/model/optimization_guide_service_factory.h"
+#import "ios/chrome/browser/ntp/model/new_tab_page_tab_helper.h"
 #import "ios/chrome/browser/policy/model/policy_util.h"
 #import "ios/chrome/browser/shared/model/browser/test/test_browser.h"
 #import "ios/chrome/browser/shared/model/profile/test/test_profile_ios.h"
@@ -315,6 +316,39 @@ TEST_P(ToolbarMediatorTest, TestWebStateSelectionUpdatesConsumer) {
 
   browser_->GetWebStateList()->InsertWebState(
       CreateWebState(), WebStateList::InsertionParams::AtIndex(0).Activate());
+
+  EXPECT_OCMOCK_VERIFY(consumer_);
+}
+
+// Tests that selecting a NTP web state updates the consumer with NTP visible
+// and isStartSurface status.
+TEST_P(ToolbarMediatorTest, TestWebStateSelectionNTPUpdatesConsumer) {
+  std::unique_ptr<web::FakeWebState> web_state = CreateWebState();
+  web_state->SetVisibleURL(GURL("chrome://newtab"));
+  NewTabPageTabHelper::CreateForWebState(web_state.get());
+  NewTabPageTabHelper::FromWebState(web_state.get())
+      ->SetShowStartSurface(false);
+
+  OCMExpect([consumer_ setNTPVisible:YES isStartSurface:NO]);
+
+  browser_->GetWebStateList()->InsertWebState(
+      std::move(web_state),
+      WebStateList::InsertionParams::AtIndex(0).Activate());
+
+  EXPECT_OCMOCK_VERIFY(consumer_);
+
+  // Test Start Surface NTP
+  std::unique_ptr<web::FakeWebState> start_web_state = CreateWebState();
+  start_web_state->SetVisibleURL(GURL("chrome://newtab"));
+  NewTabPageTabHelper::CreateForWebState(start_web_state.get());
+  NewTabPageTabHelper::FromWebState(start_web_state.get())
+      ->SetShowStartSurface(true);
+
+  OCMExpect([consumer_ setNTPVisible:YES isStartSurface:YES]);
+
+  browser_->GetWebStateList()->InsertWebState(
+      std::move(start_web_state),
+      WebStateList::InsertionParams::AtIndex(1).Activate());
 
   EXPECT_OCMOCK_VERIFY(consumer_);
 }

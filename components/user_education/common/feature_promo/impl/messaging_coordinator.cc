@@ -16,28 +16,21 @@ DEFINE_CLASS_PRODUCT_MESSAGE_KEY(MessagingCoordinator, kHighPriorityNoticeId);
 
 MessagingCoordinator::MessagingCoordinator(
     ProductMessagingController& controller)
-    : controller_(controller) {
-  message_shown_subscription_ = controller_->status_update_callbacks_.Add(
-      base::BindRepeating(&MessagingCoordinator::OnStatusChange,
-                          weak_ptr_factory_.GetWeakPtr()));
-}
+    : controller_(controller) {}
 
 MessagingCoordinator::~MessagingCoordinator() = default;
 
-bool MessagingCoordinator::CanShowPromo(bool high_priority) const {
+bool MessagingCoordinator::ReadyToShow(bool high_priority) const {
   // Must always be holding the handle.
   if (!handle_) {
     return false;
   }
 
-  // Only a high priority promo can take advantage of a high-priority-pending.
-  if (!high_priority && (promo_state_ == PromoState::kHighPriorityPending ||
-                         promo_state_ == PromoState::kHighPriorityShowing)) {
-    return false;
+  if (high_priority) {
+    return promo_state_ == PromoState::kHighPriorityPending;
+  } else {
+    return promo_state_ == PromoState::kLowPriorityPending;
   }
-
-  // Otherwise holding the handle is sufficient.
-  return true;
 }
 
 bool MessagingCoordinator::IsBlockedByExternalPromo() const {
@@ -56,18 +49,18 @@ void MessagingCoordinator::TransitionToState(PromoState promo_state) {
       ReleaseAll();
       break;
     case PromoState::kLowPriorityShowing:
-      CHECK(CanShowPromo(false));
-      // Priority is not held when a low priority promo is showing.
-      handle_.reset();
+      CHECK(ReadyToShow(/*high_priority=*/false));
+      handle_->SetShown();
       break;
     case PromoState::kHighPriorityShowing:
-      CHECK(CanShowPromo(true));
+      CHECK(ReadyToShow(/*high_priority=*/true));
+      handle_->SetShown();
       break;
     case PromoState::kLowPriorityPending:
-      MaybeRequestPriority(/*high_priority=*/false);
+      RequestPriority(/*high_priority=*/false);
       break;
     case PromoState::kHighPriorityPending:
-      MaybeRequestPriority(/*high_priority=*/true);
+      RequestPriority(/*high_priority=*/true);
       break;
   }
 
@@ -84,10 +77,8 @@ base::CallbackListSubscription MessagingCoordinator::AddPromoReadyCallback(
   return promo_ready_callbacks_.Add(std::move(callback));
 }
 
-void MessagingCoordinator::MaybeRequestPriority(bool high_priority) {
-  // Should not re-request priority if we already have it. If the promo can be
-  // shown it should either be shown, or the state should return to kNone.
-  CHECK(!CanShowPromo(high_priority));
+void MessagingCoordinator::RequestPriority(bool high_priority) {
+  CHECK(!ReadyToShow(high_priority));
 
   // If the handle is held but it's being held for the wrong reason, release it.
   if (handle_) {
@@ -97,15 +88,9 @@ void MessagingCoordinator::MaybeRequestPriority(bool high_priority) {
   auto cb = base::BindOnce(&MessagingCoordinator::OnPriorityReceived,
                            weak_ptr_factory_.GetWeakPtr());
   if (high_priority) {
-    // High priority notices take the same precedence as
-    if (controller_->GetMessageStatus(kHighPriorityNoticeId) ==
-        ProductMessageStatus::kNone) {
-      controller_->UnqueueMessage(kLowPriorityNoticeId);
-      controller_->QueueMessage(kHighPriorityNoticeId, std::move(cb));
-    }
-  } else if (controller_->GetMessageStatus(kLowPriorityNoticeId) ==
-             ProductMessageStatus::kNone) {
-    // Low-priority show after all other messaging.
+    controller_->UnqueueMessage(kLowPriorityNoticeId);
+    controller_->QueueMessage(kHighPriorityNoticeId, std::move(cb));
+  } else {
     controller_->UnqueueMessage(kHighPriorityNoticeId);
     controller_->QueueMessage(kLowPriorityNoticeId, std::move(cb));
   }
@@ -119,6 +104,8 @@ void MessagingCoordinator::ReleaseAll() {
 
 void MessagingCoordinator::OnPriorityReceived(ProductMessagingHandle handle) {
   handle_ = std::move(handle);
+  handle_->SetSupersededCallback(base::BindRepeating(
+      &MessagingCoordinator::OnStatusChange, base::Unretained(this)));
   promo_ready_callbacks_.Notify();
 }
 

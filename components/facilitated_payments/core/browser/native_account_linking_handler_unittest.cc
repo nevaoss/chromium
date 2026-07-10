@@ -145,15 +145,18 @@ TEST_F(NativeAccountLinkingHandlerTest, FetchClientToken_Failure) {
       1);
 }
 
-TEST_F(NativeAccountLinkingHandlerTest, InitiateNetworkCall_Success) {
+TEST_F(NativeAccountLinkingHandlerTest,
+       InitiateAccountLinkingNetworkCall_Success) {
   std::vector<uint8_t> client_token = {1, 2, 3};
   EXPECT_CALL(payments_network_interface_,
-              GetDetailsForCreatePaymentInstrument(_, _, _))
-      .WillOnce([](long billing_customer_id, auto callback,
-                   const std::string& app_locale) {
-        std::move(callback).Run(autofill::payments::PaymentsAutofillClient::
-                                    PaymentsRpcResult::kSuccess,
-                                /*is_eligible=*/true);
+              GetDetailsForCreatePaymentInstrument(_, client_token, _, _))
+      .WillOnce([](long billing_customer_id, const std::vector<uint8_t>& token,
+                   auto callback, const std::string& app_locale) {
+        std::move(callback).Run(
+            autofill::payments::PaymentsAutofillClient::PaymentsRpcResult::
+                kSuccess,
+            /*is_eligible=*/true,
+            /*action_token=*/std::vector<uint8_t>{'t', 'o', 'k', 'e', 'n'});
         return base::StrongAlias<autofill::payments::RequestIdTag,
                                  std::string>();
       });
@@ -170,15 +173,17 @@ TEST_F(NativeAccountLinkingHandlerTest, InitiateNetworkCall_Success) {
       1);
 }
 
-TEST_F(NativeAccountLinkingHandlerTest, InitiateNetworkCall_Failure) {
+TEST_F(NativeAccountLinkingHandlerTest,
+       InitiateAccountLinkingNetworkCall_Failure) {
   std::vector<uint8_t> client_token = {1, 2, 3};
   EXPECT_CALL(payments_network_interface_,
-              GetDetailsForCreatePaymentInstrument(_, _, _))
-      .WillOnce([](long billing_customer_id, auto callback,
-                   const std::string& app_locale) {
+              GetDetailsForCreatePaymentInstrument(_, client_token, _, _))
+      .WillOnce([](long billing_customer_id, const std::vector<uint8_t>& token,
+                   auto callback, const std::string& app_locale) {
         std::move(callback).Run(autofill::payments::PaymentsAutofillClient::
                                     PaymentsRpcResult::kPermanentFailure,
-                                /*is_eligible=*/false);
+                                /*is_eligible=*/false,
+                                /*action_token=*/std::vector<uint8_t>{});
         return base::StrongAlias<autofill::payments::RequestIdTag,
                                  std::string>();
       });
@@ -194,6 +199,61 @@ TEST_F(NativeAccountLinkingHandlerTest, InitiateNetworkCall_Failure) {
       "FacilitatedPayments.TestFop.AccountLinking."
       "GetDetailsForCreatePaymentInstrument.Latency",
       1);
+}
+
+TEST_F(NativeAccountLinkingHandlerTest, OnAccepted_Success) {
+  std::vector<uint8_t> client_token = {1, 2, 3};
+  std::vector<uint8_t> expected_action_token = {'t', 'o', 'k', 'e', 'n'};
+  EXPECT_CALL(payments_network_interface_,
+              GetDetailsForCreatePaymentInstrument(_, client_token, _, _))
+      .WillOnce([&](long billing_customer_id, const std::vector<uint8_t>& token,
+                    auto callback, const std::string& app_locale) {
+        std::move(callback).Run(autofill::payments::PaymentsAutofillClient::
+                                    PaymentsRpcResult::kSuccess,
+                                /*is_eligible=*/true, expected_action_token);
+        return base::StrongAlias<autofill::payments::RequestIdTag,
+                                 std::string>();
+      });
+
+  handler_->InitiateAccountLinkingNetworkCall(client_token);
+
+  handler_->OnAccepted();
+
+  histogram_tester_.ExpectTotalCount(
+      "FacilitatedPayments.TestFop.AccountLinking.FlowExitedReason", 0);
+}
+
+TEST_F(NativeAccountLinkingHandlerTest, OnAccepted_NoToken) {
+  EXPECT_CALL(*handler_, DoOnAccountLinkingResult(false)).Times(1);
+
+  handler_->OnAccepted();
+
+  histogram_tester_.ExpectUniqueSample(
+      "FacilitatedPayments.TestFop.AccountLinking.FlowExitedReason",
+      /*sample=*/AccountLinkingFlowExitedReason::kActionTokenNotAvailable,
+      /*expected_bucket_count=*/1);
+}
+
+TEST_F(NativeAccountLinkingHandlerTest, OnDeclined) {
+  std::vector<uint8_t> client_token = {1, 2, 3};
+  EXPECT_CALL(payments_network_interface_,
+              GetDetailsForCreatePaymentInstrument(_, client_token, _, _))
+      .WillOnce([](long billing_customer_id, const std::vector<uint8_t>& token,
+                   auto callback, const std::string& app_locale) {
+        std::move(callback).Run(
+            autofill::payments::PaymentsAutofillClient::PaymentsRpcResult::
+                kSuccess,
+            /*is_eligible=*/true,
+            /*action_token=*/std::vector<uint8_t>{'t', 'o', 'k', 'e', 'n'});
+        return base::StrongAlias<autofill::payments::RequestIdTag,
+                                 std::string>();
+      });
+
+  handler_->InitiateAccountLinkingNetworkCall(client_token);
+
+  EXPECT_CALL(*handler_, DoOnAccountLinkingResult(false)).Times(1);
+
+  handler_->OnDeclined();
 }
 
 }  // namespace

@@ -40,6 +40,8 @@ std::string_view GetSkipFieldFillLogMessage(
       return "Skipped: Field already autofilled with same value.";
     case FieldFillingSkipReason::kBlockedByOtherFillingOperationOrProduct:
       return "Skipped: Blocked by other filling operation or product.";
+    case FieldFillingSkipReason::kIframeSecurityPolicy:
+      return "Skipped: Field violates the iframe security policy.";
     case FieldFillingSkipReason::kNotSkipped:
       return "Fillable";
     case FieldFillingSkipReason::kUnknown:

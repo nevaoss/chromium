@@ -54,6 +54,7 @@ import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowLooper;
 
 import org.chromium.base.CallbackUtils;
+import org.chromium.base.UnownedUserDataHost;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
@@ -233,6 +234,7 @@ public class StripLayoutHelperManagerTest {
         when(mToolbarManager.getStatusBarColorController()).thenReturn(mStatusBarColorController);
         when(mDesktopWindowStateManager.isInUnfocusedDesktopWindow()).thenReturn(false);
         when(mWindowAndroid.getActivity()).thenReturn(new WeakReference<>(mActivity));
+        when(mWindowAndroid.getUnownedUserDataHost()).thenReturn(new UnownedUserDataHost());
         when(mUpdateHost.getAnimationHandler())
                 .thenReturn(new CompositorAnimationHandler(CallbackUtils.emptyRunnable()));
         TabGroupSyncServiceFactory.setForTesting(mTabGroupSyncService);
@@ -797,13 +799,11 @@ public class StripLayoutHelperManagerTest {
     @Test
     public void testGetVirtualViews_TabSwitcher() {
         List<VirtualView> views = new ArrayList<>();
-        mStripLayoutHelperManager
-                .getTabSwitcherObserver()
-                .onFinishedShowing(LayoutType.TAB_SWITCHER);
+        mStripLayoutHelperManager.getTabSwitcherObserver().onFinishedShowing(LayoutType.HUB);
         mStripLayoutHelperManager.getVirtualViews(views);
         assertTrue("Views are empty when tab switcher is showing.", views.isEmpty());
 
-        mStripLayoutHelperManager.getTabSwitcherObserver().onStartedHiding(LayoutType.TAB_SWITCHER);
+        mStripLayoutHelperManager.getTabSwitcherObserver().onStartedHiding(LayoutType.HUB);
         mStripLayoutHelperManager.getVirtualViews(views);
         assertFalse("Views are not empty after tab switcher is hiding.", views.isEmpty());
     }
@@ -1456,6 +1456,7 @@ public class StripLayoutHelperManagerTest {
                 new StripLayoutTab(
                         mActivity,
                         tabId,
+                        null,
                         null,
                         null,
                         callback,

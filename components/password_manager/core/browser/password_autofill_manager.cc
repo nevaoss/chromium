@@ -142,6 +142,7 @@ bool IsSuggestionHandledInPasswordManager(SuggestionType type) {
     case SuggestionType::kViewPasswordDetails:
     case SuggestionType::kPendingStateSignin:
     case SuggestionType::kLoadingThrobber:
+    case SuggestionType::kFetchingAmbientData:
     case SuggestionType::kBnplFootnote:
     case SuggestionType::kAutocompleteAtMemoryButton:
       return false;
@@ -279,9 +280,10 @@ void PasswordAutofillManager::DidSelectSuggestion(
             ->IsBiometricAuthenticationBeforeFillingEnabled()) {
       return;
     }
+    size_t password_length =
+        payload.is_cross_domain ? 8 : payload.backup_password.value().length();
     password_manager_driver_->PreviewSuggestion(
-        payload.username,
-        std::u16string(payload.backup_password.value().length(), '*'));
+        payload.username, std::u16string(password_length, '*'));
     return;
   }
   PreviewSuggestion(GetUsernameFromSuggestion(suggestion.main_text.value),
@@ -817,9 +819,12 @@ bool PasswordAutofillManager::PreviewSuggestion(const std::u16string& username,
   }
   if (const autofill::PasswordAndMetadata* password_and_metadata =
           GetPasswordAndMetadataForUsername(username, type)) {
+    size_t password_length =
+        password_and_metadata->is_grouped_affiliation
+            ? 8
+            : password_and_metadata->password_value.length();
     password_manager_driver_->PreviewSuggestion(
-        username,
-        std::u16string(password_and_metadata->password_value.length(), '*'));
+        username, std::u16string(password_length, '*'));
     return true;
   }
   return false;

@@ -45,7 +45,7 @@ class SelectionEditor final : public GarbageCollected<SelectionEditor> {
   SelectionEditor& operator=(const SelectionEditor&) = delete;
   void Dispose();
 
-  const SelectionInDomTree& GetSelectionInDOMTree() const;
+  const SelectionInDomTree& GetSelectionInDomTree() const;
 
   VisibleSelection ComputeVisibleSelectionInDomTree() const;
   VisibleSelectionInFlatTree ComputeVisibleSelectionInFlatTree() const;
@@ -101,7 +101,7 @@ class SelectionEditor final : public GarbageCollected<SelectionEditor> {
   void UpdateCachedAbsoluteBoundsIfNeeded() const;
 
   void DidFinishTextChange(const Position& anchor, const Position& focus);
-  void DidFinishDOMMutation();
+  void DidFinishDomMutation();
   void DidInsertNode(const Node&);
 
   WeakMember<Document> document_;

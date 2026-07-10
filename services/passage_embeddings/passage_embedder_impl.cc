@@ -104,7 +104,7 @@ bool PassageEmbedderImpl::LoadSentencePieceModelFile(base::File sp_file) {
   }
 
   auto model_proto = std::make_unique<sentencepiece::ModelProto>();
-  model_proto->ParseFromArray(sp_model.data(), sp_model.length());
+  model_proto->ParseFromArray(sp_model.bytes().data(), sp_model.bytes().size());
   sp_processor_ = std::make_unique<sentencepiece::SentencePieceProcessor>();
   if (!(sp_processor_->Load(std::move(model_proto)).ok())) {
     sp_processor_.reset();

@@ -1552,7 +1552,7 @@ void BrowserProcessImpl::PreMainMessageLoopRun() {
 
   providers.emplace_back(std::make_pair(
       // Note: 15 is chosen to be higher than the 10 precedence above for
-      // DPAPI. This ensures that when the the provider is enabled for
+      // DPAPI. This ensures that when the provider is enabled for
       // encryption, the App-Bound encryption key is used and not the DPAPI
       // one.
       /*precedence=*/15u,

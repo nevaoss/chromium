@@ -761,11 +761,12 @@ enum class NonstandardizedOutcome {
 class TestStandardizedAPITest : public TestAPITest,
                                 public testing::WithParamInterface<bool> {
  protected:
-  std::string SetUseStandardizedApiBehaviorForTesting(
-      bool standardized_behavior_enabled) const {
-    return base::StringPrintf(
-        "chrome.test.setUseStandardizedApiBehaviorForTesting(%s);",
-        standardized_behavior_enabled ? "true" : "false");
+  void SetUpCommandLine(base::CommandLine* command_line) override {
+    TestAPITest::SetUpCommandLine(command_line);
+    if (GetParam()) {
+      command_line->AppendSwitch(
+          switches::kExtensionTestApiStandardizedBehavior);
+    }
   }
 };
 
@@ -773,8 +774,6 @@ class TestStandardizedAPITest : public TestAPITest,
 // Object.is() more extensively.
 IN_PROC_BROWSER_TEST_P(TestStandardizedAPITest, assertEq) {
   bool standardized_behavior_enabled = GetParam();
-  std::string set_api_behavior =
-      SetUseStandardizedApiBehaviorForTesting(standardized_behavior_enabled);
 
   struct {
     std::string title;
@@ -811,14 +810,13 @@ IN_PROC_BROWSER_TEST_P(TestStandardizedAPITest, assertEq) {
     SCOPED_TRACE(base::StringPrintf("Case: %s", c.title.c_str()));
     ResultCatcher result_catcher;
     std::string script = base::StringPrintf(
-        R"(%s
-           chrome.test.runTests([
+        R"(chrome.test.runTests([
              function test() {
                %s
                chrome.test.succeed();
              }
            ]);)",
-        set_api_behavior.c_str(), c.test_case.c_str());
+        c.test_case.c_str());
 
     ASSERT_TRUE(LoadExtensionWithScript(script.c_str()));
 

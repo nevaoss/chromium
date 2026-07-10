@@ -220,10 +220,6 @@ void ShowSubAppsInstallDialog(
     const webapps::AppId& parent_app_id,
     base::OnceCallback<void(bool)> callback);
 
-// Sets whether |ShowDiyInstallDialogForWebApps| should accept immediately
-// without any user interaction.
-void SetAutoAcceptDiyAppsInstallDialogForTesting(bool auto_accept);
-
 // Shows the Isolated Web App manual install wizard.
 IsolatedWebAppInstallerCoordinator* LaunchIsolatedWebAppInstaller(
     Profile* profile,
@@ -257,9 +253,6 @@ void ShowWebInstallAppLaunchDialog(
     std::string app_name,
     const SkBitmap& icon,
     WebInstallAppLaunchAcceptanceCallback callback);
-
-// Sets whether |ShowWebInstallAppLaunchDialog| should accept immediately.
-base::AutoReset<bool> SetAutoAcceptWebInstallLaunchDialogForTesting();
 
 // Shows the install not supported dialog for web apps. This dialog is
 // displayed when the user tries to install a web app in an unsupported

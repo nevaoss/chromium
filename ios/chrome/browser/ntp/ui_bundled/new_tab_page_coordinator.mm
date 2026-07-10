@@ -1910,6 +1910,7 @@
 #pragma mark - NewTabPageShortcutsHandler
 
 - (void)openLensViewFinder {
+  RecordHomeAction(IOSHomeActionType::kLens, [self isStartSurface]);
   [self.NTPMetricsRecorder recordLensTapped];
   feature_engagement::TrackerFactory::GetForProfile(self.profile)
       ->NotifyEvent(feature_engagement::events::kIOSLensButtonUsed);
@@ -1926,6 +1927,7 @@
 }
 
 - (void)openAIM {
+  RecordHomeAction(IOSHomeActionType::kQuickActionAIM, [self isStartSurface]);
   [self.NTPMetricsRecorder recordAIMButtonTapped];
   if (!IsDisableComposeboxFromAIMNTPEnabled() && !IsComposeboxAIMDisabled() &&
       _aimEligibilityService->IsFuseboxEligible() &&
@@ -1943,6 +1945,7 @@
 }
 
 - (void)loadVoiceSearchFromView:(UIView*)voiceSearchSourceView {
+  RecordHomeAction(IOSHomeActionType::kVoiceSearch, [self isStartSurface]);
   [self.NTPMetricsRecorder recordVoiceSearchTapped];
   [self dismissCustomizationMenu];
 
@@ -1957,6 +1960,8 @@
 }
 
 - (void)openIncognitoSearch {
+  RecordHomeAction(IOSHomeActionType::kQuickActionIncognito,
+                   [self isStartSurface]);
   [self.NTPMetricsRecorder recordIncognitoTapped];
   [self dismissCustomizationMenu];
 
@@ -1968,6 +1973,7 @@
 }
 
 - (void)openMultimodalActionsMenu {
+  RecordHomeAction(IOSHomeActionType::kPlusButton, [self isStartSurface]);
   [self.NTPMetricsRecorder recordPlusButtonTapped];
   [self dismissCustomizationMenu];
 

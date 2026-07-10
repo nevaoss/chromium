@@ -2,7 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <cstdint>
+#include <optional>
+#include <string>
+
 #include "base/functional/callback.h"
+#include "base/strings/string_number_conversions.h"
+#include "base/strings/stringprintf.h"
 #include "base/test/gmock_callback_support.h"
 #include "base/test/gmock_expected_support.h"
 #include "base/test/scoped_logging_settings.h"
@@ -12,6 +18,7 @@
 #include "chrome/browser/enterprise/browser_management/management_service_factory.h"
 #include "chrome/browser/glic/glic_enums.h"
 #include "chrome/browser/glic/host/auth_controller.h"
+#include "chrome/browser/glic/host/context/glic_tab_data.h"
 #include "chrome/browser/glic/host/glic.mojom.h"
 #include "chrome/browser/glic/host/glic_features.mojom-features.h"
 #include "chrome/browser/glic/host/glic_web_contents_warming_pool.h"
@@ -48,6 +55,8 @@
 #include "components/favicon/core/favicon_driver.h"
 #include "components/favicon/core/favicon_driver_observer.h"
 #include "components/optimization_guide/content/browser/page_content_proto_provider.h"
+#include "components/optimization_guide/content/browser/page_content_test_utils.h"
+#include "components/optimization_guide/proto/features/common_quality_data.pb.h"
 #include "components/policy/core/common/management/scoped_management_service_override_for_testing.h"
 #include "components/policy/core/common/mock_configuration_policy_provider.h"
 #include "components/policy/core/common/policy_map.h"
@@ -62,11 +71,15 @@
 #include "content/public/browser/favicon_status.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
+#include "content/public/browser/render_frame_host.h"
+#include "content/public/browser/render_widget_host.h"
+#include "content/public/browser/web_contents.h"
 #include "content/public/common/content_features.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "mojo/public/cpp/base/big_buffer.h"
 #include "services/network/test/test_url_loader_factory.h"
+#include "third_party/blink/public/common/features.h"
 #include "url/origin.h"
 
 #if BUILDFLAG(IS_CHROMEOS)
@@ -76,6 +89,8 @@
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/glic/widget/glic_widget.h"
 #include "chrome/browser/media/audio_ducker.h"
+#include "chrome/browser/resource_coordinator/lifecycle_unit_state.mojom.h"
+#include "chrome/browser/resource_coordinator/tab_lifecycle_unit_external.h"
 #include "chrome/browser/skills/skills_service_factory.h"
 #include "chrome/browser/skills/skills_ui_tab_controller.h"
 #include "chrome/browser/ui/browser.h"
@@ -248,7 +263,6 @@ class NewGlicApiTest : public GlicApiBrowserTest,
            {features::kGlicWebContentsWarmingDelay.name, "7d"}}},
          {features::kGlicRollout, {}},
          {features::kGlicScrollTo, {}},
-         {features::kGlicApiActivationGating, {}},
          {mojom::features::kGlicMultiTab, {}},
          {features::kGlicWebActuationSetting, {}},
          {features::kGlicCaptureRegion, {}},
@@ -262,7 +276,8 @@ class NewGlicApiTest : public GlicApiBrowserTest,
          {chrome::android::kBrowserWindowInterfaceMobile, {}},
 #endif
          {features::kGlicActor,
-          {{features::kGlicActorPolicyControlExemption.name, "true"}}}},
+          {{features::kGlicActorPolicyControlExemption.name, "true"}}},
+         {blink::features::kAIPageContentTrackedElementsIframe, {}}},
         /*disabled_features=*/
         {
             features::kGlicWarming,
@@ -703,12 +718,9 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testCreateTabSimple) {
 #if BUILDFLAG(IS_ANDROID)
 #define MAYBE_testCreateTab DISABLED_testCreateTab
 #define MAYBE_testCreateTabInBackground DISABLED_testCreateTabInBackground
-#define MAYBE_testCreateTabFailsIfNotActive \
-  DISABLED_testCreateTabFailsIfNotActive
 #else
 #define MAYBE_testCreateTab testCreateTab
 #define MAYBE_testCreateTabInBackground testCreateTabInBackground
-#define MAYBE_testCreateTabFailsIfNotActive testCreateTabFailsIfNotActive
 #endif
 
 IN_PROC_BROWSER_TEST_P(NewGlicApiTest, MAYBE_testCreateTab) {
@@ -746,6 +758,87 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTest,
   EXPECT_EQ(GetTabListInterface()->GetTabCount(), 1);
   ExecuteJsTest();
   EXPECT_EQ(GetTabListInterface()->GetTabCount(), 1);
+}
+
+IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testGetImageBytesFromTab) {
+  // 1. Open glic.
+  ASSERT_OK(OpenGlicForActiveTab());
+
+  content::WebContents* web_contents =
+      GetTabListInterface()->GetActiveTab()->GetContents();
+  ASSERT_TRUE(web_contents);
+
+  // 2. Inject image into the page and wait for load.
+  const std::string kImageBase64 =
+      "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+  ASSERT_TRUE(
+      content::EvalJs(web_contents, base::StringPrintf(R"js(
+    new Promise(resolve => {
+      const img = document.createElement('img');
+      img.src = 'data:image/gif;base64,%s';
+      img.alt = 'test_image_bytes';
+      img.onload = () => resolve(true);
+      document.body.appendChild(img);
+      if (img.complete) {
+        resolve(true);
+      }
+    });
+  )js",
+                                                       kImageBase64.c_str()))
+          .ExtractBool());
+
+  // Wait for rendering to sync.
+  {
+    base::test::TestFuture<bool> future;
+    web_contents->GetPrimaryMainFrame()
+        ->GetRenderWidgetHost()
+        ->InsertVisualStateCallback(future.GetCallback());
+    ASSERT_TRUE(future.Wait());
+  }
+
+  // 3. Fetch AIPageContent to extract the DOM node ID of the image.
+  base::test::TestFuture<optimization_guide::AIPageContentResultOrError>
+      content_future;
+  optimization_guide::GetAIPageContent(
+      web_contents,
+      optimization_guide::ActionableAIPageContentOptions(
+          /*on_critical_path =*/true),
+      content_future.GetCallback());
+
+  auto result = content_future.Take();
+  ASSERT_TRUE(result.has_value());
+
+  const optimization_guide::proto::ContentNode* image_node =
+      optimization_guide::FindFirstNodeWithAttributeType(
+          result->proto.root_node(),
+          optimization_guide::proto::CONTENT_ATTRIBUTE_IMAGE);
+  ASSERT_TRUE(image_node);
+  int32_t dom_node_id =
+      image_node->content_attributes().common_ancestor_dom_node_id();
+  ASSERT_NE(dom_node_id, 0);
+
+  // 4. Get the document identifier.
+  std::optional<std::string> document_identifier =
+      optimization_guide::DocumentIdentifierUserData::GetDocumentIdentifier(
+          web_contents->GetPrimaryMainFrame()->GetGlobalFrameToken());
+  ASSERT_TRUE(document_identifier.has_value());
+
+  const int tab_id = GetTabId(web_contents);
+
+  GlicHistogramTester histogram_tester;
+
+  ExecuteJsTest(
+      {.params = base::Value(base::DictValue()
+                                 .Set("tabId", base::NumberToString(tab_id))
+                                 .Set("documentId", *document_identifier)
+                                 .Set("domNodeId", dom_node_id))});
+
+  histogram_tester.ExpectBucketCount("Glic.Api.GetImageBytesFromTab.Error",
+                                     GlicGetContextFromTabError::kUnknown, 1);
+  histogram_tester.ExpectBucketCount("Glic.Api.GetImageBytesFromTab.Error",
+                                     GlicGetContextFromTabError::kTabNotFound,
+                                     1);
+  histogram_tester.ExpectTotalCount("Glic.Api.GetImageBytesFromTab.Error", 2);
 }
 
 class GlicApiScrollToTest : public NewGlicApiTest {
@@ -917,7 +1010,8 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithNewTabDaisyChain,
 #endif
 
 #if !BUILDFLAG(IS_ANDROID)
-IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testEnableDragResize) {
+// TODO(crbug.com/520959831): Fix flaky test.
+IN_PROC_BROWSER_TEST_P(NewGlicApiTest, DISABLED_testEnableDragResize) {
   ASSERT_OK(OpenGlicForActiveTabAndDetach());
   ASSERT_OK(WaitForGlicClient());
   ASSERT_OK(WaitUntilCanResize(false));
@@ -1034,22 +1128,6 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testResizeWindowWithinBounds) {
             glic_widget->WidgetToVisibleBounds(final_widget_bounds).size());
 }
 #endif
-
-IN_PROC_BROWSER_TEST_P(NewGlicApiTest, MAYBE_testCreateTabFailsIfNotActive) {
-  ASSERT_OK(OpenGlicForActiveTab());
-  ExecuteJsTest();
-}
-
-IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testCreateTabSucceedsIfInvoking) {
-  ASSERT_OK_AND_ASSIGN(auto* instance, OpenGlicForActiveTab());
-  ASSERT_OK(WaitForGlicClient(instance));
-  instance->host().NotifyIsInvoking(true);
-  auto options = mojom::InvokeOptions::New();
-  options->invocation_source = mojom::InvocationSource::kTopChromeButton;
-  instance->host().GetPrimaryWebClient()->Invoke(std::move(options),
-                                                 base::DoNothing());
-  ExecuteJsTest();
-}
 
 IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testFailureForCapturedApiTestError) {
   ASSERT_OK(OpenGlicForActiveTab());
@@ -1357,6 +1435,14 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testDoNothing) {
   ASSERT_EQ(GetTabListInterface()->GetTabCount(), 1);
   ASSERT_EQ(GetTabListInterface()->GetTab(0)->GetContents()->GetURL(),
             GetTestUrl("page.html"));
+  ASSERT_OK(OpenGlicForActiveTab());
+  ExecuteJsTest();
+}
+
+IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testGetContextFromFocusedTabWithIframe) {
+  ASSERT_TRUE(content::NavigateToURL(
+      GetTabListInterface()->GetActiveTab()->GetContents(),
+      embedded_test_server()->GetURL("/browser_tests/test_iframe.html")));
   ASSERT_OK(OpenGlicForActiveTab());
   ExecuteJsTest();
 }
@@ -1673,6 +1759,74 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testGetPageMetadataUpdates) {
   ASSERT_OK(OpenGlicForActiveTab());
   ExecuteJsTest();
 }
+
+// TODO(crbug.com/449764057): Flakes/fails on all platforms except windows.
+#if BUILDFLAG(IS_WIN)
+#define MAYBE_testGetPageMetadataOnNavigation testGetPageMetadataOnNavigation
+#else
+#define MAYBE_testGetPageMetadataOnNavigation \
+  DISABLED_testGetPageMetadataOnNavigation
+#endif
+IN_PROC_BROWSER_TEST_P(NewGlicApiTest, MAYBE_testGetPageMetadataOnNavigation) {
+  ASSERT_TRUE(content::NavigateToURL(
+      GetTabListInterface()->GetActiveTab()->GetContents(),
+      embedded_test_server()->GetURL("/glic/browser_tests/test.html")));
+  ASSERT_OK(OpenGlicForActiveTab());
+  ExecuteJsTest();
+}
+
+// TODO(crbug.com/454086033): Re-enable this test once I figure out how to
+// discard the tab while preserving the test harness.
+#if !BUILDFLAG(IS_ANDROID)
+IN_PROC_BROWSER_TEST_P(NewGlicApiTest,
+                       DISABLED_testGetPageMetadataWebContentsChanged) {
+  // Navigate the first tab.
+  ASSERT_TRUE(content::NavigateToURL(
+      GetTabListInterface()->GetActiveTab()->GetContents(),
+      embedded_test_server()->GetURL("/glic/browser_tests/test.html")));
+
+  ASSERT_OK(OpenGlicForActiveTab());
+
+  // Runs the JS test until the first `advanceToNextStep()`.
+  ExecuteJsTest();
+
+  // The JS test is now paused.
+  // We first switch focus to the second tab (Tab 1) so that Tab 0 becomes
+  // inactive and can be safely discarded.
+  GetTabListInterface()->ActivateTab(
+      GetTabListInterface()->GetTab(1)->GetHandle());
+
+  content::WebContents* web_contents =
+      GetTabListInterface()->GetTab(0)->GetContents();
+  ASSERT_TRUE(web_contents);
+
+  // Discard the tab. This will destroy the WebContents.
+  resource_coordinator::TabLifecycleUnitExternal::FromWebContents(web_contents)
+      ->DiscardTab(::mojom::LifecycleUnitDiscardReason::PROACTIVE);
+
+  // Wait for the tab to be discarded.
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return GetTabListInterface()->GetTab(0)->GetContents()->WasDiscarded();
+  }));
+
+  // Select the tab to reload it. This will create a new WebContents.
+  GetTabListInterface()->ActivateTab(
+      GetTabListInterface()->GetTab(0)->GetHandle());
+  content::WebContents* new_web_contents =
+      GetTabListInterface()->GetTab(0)->GetContents();
+  ASSERT_TRUE(new_web_contents);
+  ASSERT_TRUE(content::WaitForLoadStop(new_web_contents));
+
+  // Change the content of the 'author' meta tag from "George" to "Ruth".
+  const char* script =
+      "document.querySelector('meta[name=\"author\"]').setAttribute('content', "
+      "'Ruth')";
+  ASSERT_TRUE(content::ExecJs(new_web_contents, script));
+
+  // Continue the JS test to verify the metadata update.
+  ContinueJsTest();
+}
+#endif
 
 // TODO(harringtond): Times out on Android.
 #if BUILDFLAG(IS_ANDROID)

@@ -418,7 +418,7 @@ public class SendTabToSelfAndroidBridgeTest {
         // Verify that the banner dismisses immediately and showLayout is called to show the tab
         // switcher.
         Assert.assertEquals(PrimaryActionClickBehavior.DISMISS_IMMEDIATELY, result);
-        verify(layoutManager).showLayout(LayoutType.TAB_SWITCHER, true);
+        verify(layoutManager).showLayout(LayoutType.HUB, true);
 
         // Clean up global static state.
         ApplicationStatus.onStateChangeForTesting(tabbedActivity, ActivityState.DESTROYED);

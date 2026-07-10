@@ -597,7 +597,6 @@
 <translation id="1433478348197382180">Reading Mode</translation>
 <translation id="1433980411933182122">اسٹارٹ اپ</translation>
 <translation id="1434659328474177625"><ph name="ISSUER" /> نے آپ کی ای میل کی توثیق کی</translation>
-<translation id="1434696352799406980">یہ آپ کے ابتدائی صفحہ، نئے ٹیب کے صفحہ، سرچ انجن اور پن کردہ ٹیبز کو دوبارہ ترتیب دے گا۔ یہ سبھی ایکسٹینشنز کو غیر فعال اور کوکیز جیسے عارضی ڈیٹا کو صاف بھی کر دے گا۔ آپ کے بُک مارکس، سرگزشت اور محفوظ کردہ پاس ورڈز کو صاف نہیں کیا جائے گا۔</translation>
 <translation id="1434886155212424586">ہوم صفحہ نیا ٹیب صفحہ ہے</translation>
 <translation id="1435940442311036198">کسی دوسرے آلے پر پاس کی استعمال کریں</translation>
 <translation id="1436390408194692385"><ph name="TICKET_TIME_LEFT" /> کیلئے کارآمد ہے</translation>
@@ -2564,6 +2563,7 @@
 <translation id="2822551631199737692">کیمرہ استعمال میں ہے</translation>
 <translation id="2822634587701817431">سکیڑیں / پھیلائیں</translation>
 <translation id="2824942875887026017"><ph name="IDS_SHORT_PRODUCT_NAME" /> آپ کے منتظم سے پراکسی کی ترتیبات کا استعمال کر رہا ہے</translation>
+<translation id="2825200993288778739">اپنی خود کی بنائیں یا مہارتوں کی لائبریری سے شامل کریں</translation>
 <translation id="282525059261716597">کمانڈ لائن:</translation>
 <translation id="2825758591930162672">موضوع کی عوامی کلید</translation>
 <translation id="2826576843404243001">محفوظ کنکشنز کا تعاون کرنے والی سائٹس کیلئے، سائٹ ملاحظہ کرنے سے پہلے وارننگ حاصل کریں۔ آپ اس ترتیب کو تبدیل نہیں کر سکتے کیونکہ آپ نے اعلی تحفظ کو فعال کیا ہے۔</translation>
@@ -3702,7 +3702,6 @@
 <translation id="366484203224589850">‏‫<ph name="TASK_TITLE" />: Gemini اس ٹاسک پر کافی دیر سے کام کر رہا ہے اور بیٹری بچانے کے لیے جلد ہی بند ہو جائے گا</translation>
 <translation id="3664911592976620204">{NUM_OTHER_MEMBERS,plural, =0{‫<ph name="OWNER_FIRST_NAME" /> کے ساتھ ٹیب گروپ میں شامل ہوں}=1{‫<ph name="OWNER_FIRST_NAME" /> اور # دیگر کے ساتھ ٹیب گروپ میں شامل ہوں}other{‫<ph name="OWNER_FIRST_NAME" /> اور # دیگر کے ساتھ ٹیب گروپ میں شامل ہوں؟}}</translation>
 <translation id="3665301845536101715">سائیڈ پینل میں کھولیں</translation>
-<translation id="3665589677786828986">‏Chrome کو پتا چلا کہ آپ کی کچھ ترتیبات دوسرے پروگرام کی وجہ سے خراب ہوگئی تھیں اور انہیں ان کی اصل ڈیفالٹ میں دوبارہ ترتیب دے دیا گیا تھا۔</translation>
 <translation id="3665918214153961651">فائل اپ لوڈ کر رہا ہے</translation>
 <translation id="3666196264870170605">‏Intel WiFi NICs ڈیبگ ڈمپ</translation>
 <translation id="3666971425390608309">ڈاؤن لوڈ موقوف ہے: <ph name="FILE_NAME" />۔</translation>
@@ -4639,6 +4638,7 @@
 <translation id="4321179778687042513">ctrl</translation>
 <translation id="432160826079505197">تلاش کنندہ میں <ph name="FILE_NAME" /> دکھائیں</translation>
 <translation id="4322394346347055525">دیگر ٹیبز بند کریں</translation>
+<translation id="4322400254469690320"><ph name="FEATURE_NAME" /> فولڈر میں اپنا <ph name="FILENAME" /> تلاش کریں</translation>
 <translation id="4324577459193912240">فائل نا مکمل ہے</translation>
 <translation id="4325433082696797523">اسٹوریج اور پاور</translation>
 <translation id="4325515113816851466">آپ کے سائن آؤٹ کرنے کے بعد آپ کے والد/والدہ کے انتخابات لاگو نہیں ہوں گے</translation>
@@ -4989,7 +4989,6 @@
 <translation id="4580596421317071374">اس آلے پر پاس ورڈز <ph name="GOOGLE_PASSWORD_MANAGER" /> میں محفوظ ہوتے ہیں۔</translation>
 <translation id="4580939929828762295">‏‫Google پاس ورڈ مینیجر کے ساتھ محفوظ رہیں</translation>
 <translation id="4582297591746054421">آپ کے کاپی کردہ ٹیکسٹ کی فارمیٹنگ برقرار رکھنے جیسی خصوصیات کے لیے سائٹس عام طور پر آپ کی کلپ بورڈ پڑھتی ہیں</translation>
-<translation id="4582563038311694664">سبھی ترتیبات کو دوبارہ سیٹ کریں</translation>
 <translation id="4584094413232466841">‏‫Chrome آٹوفل سے اس معلومات کو ہٹائیں؟</translation>
 <translation id="4584770411839426377">ونڈو</translation>
 <translation id="4584836561445313300">آپ کی تنظیم کسی بھی موجودہ براؤزنگ ڈیٹا جیسے پاس ورڈز وغیرہ کو دیکھ سکے گی اور اس کا نظم کر سکے گی۔</translation>
@@ -6631,6 +6630,7 @@
 <translation id="5826993284769733527">نیم شفاف</translation>
 <translation id="5827266244928330802">Safari</translation>
 <translation id="5827591412833386477">ایک ہی کروپ میں سائٹس دکھائیں</translation>
+<translation id="5827835011646404677">‏مہارتیں آپ کے Google اکاؤنٹ میں محفوظ ہو جاتی ہیں</translation>
 <translation id="5828181959764767444">غروب آفتاب</translation>
 <translation id="5828545842856466741">پروفائل شامل کریں...</translation>
 <translation id="5828633471261496623">پرنٹ کیا جا رہا ہے…</translation>
@@ -10072,7 +10072,6 @@
 <translation id="8327386430364625757">ریاضی کا فونٹ</translation>
 <translation id="8327490658947427005"><ph name="LANGUAGE" /> میں انتخاب نہیں ہے</translation>
 <translation id="8327544198829180337">اس منظر کو بند کریں</translation>
-<translation id="8327676037044516220">اجازتیں اور مواد کی ترتیبات</translation>
 <translation id="8328228852664998535">اگر آپ جاری رکھتے ہیں تو آپ کے پاس ورڈز، پاس کیز، اور دیگر ڈیٹا کو <ph name="BRAND" /> سے مستقل طور پر حذف کر دیا جائے گا۔ سائٹس یا ایپس کے لیے آپ کے بنائے ہوئے اکاؤنٹس کو حذف نہیں کیا جائے گا۔</translation>
 <translation id="8328777765163860529">تمام بند کریں</translation>
 <translation id="8330617762701840933">ان ویب سائٹس کی فہرست جو متبادل براؤزر پر ری ڈائریکٹ ہوتی ہیں۔</translation>
@@ -10893,7 +10892,6 @@
 <translation id="8925458182817574960">&amp;ترتیبات</translation>
 <translation id="8926389886865778422">دوبارہ سوال نہ کریں</translation>
 <translation id="8926555406617248399">ٹیبز پوشیدہ ہیں</translation>
-<translation id="892706138619340876">کچھ ترتیبات کو دوبارہ ترتیب دے دیا گیا تھا</translation>
 <translation id="8927438609932588163">سائٹس کو اپنے آلے پر ڈیٹا محفوظ کرنے کی اجازت دیں</translation>
 <translation id="8929696694736010839">صرف موجودہ پوشیدگی سیشن</translation>
 <translation id="8929738682246584251">میگنیفائر آن یا آف کریں</translation>
@@ -11202,6 +11200,7 @@
 <translation id="9130015405878219958">غلط وضع درج کر دی گئی۔</translation>
 <translation id="9130135798965366513">جاری رکھنے کے لیے، <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> اس سائٹ کے ساتھ آپ کے <ph name="FIELDS_STRING" /> کا اشتراک کرے گا۔ اس سائٹ کی <ph name="BEGIN_LINK1" />رازداری کی پالیسی<ph name="END_LINK1" /> اور <ph name="BEGIN_LINK2" />سروس کی شرائط<ph name="END_LINK2" /> دیکھیں۔</translation>
 <translation id="9130364135697530260">اس سائٹ پر سرایت کردہ مواد آپ کے بارے میں محفوظ کردہ معلومات کا استعمال کر سکتا ہے</translation>
+<translation id="9130857050314385402">‏جب آپ مہارت کا استعمال کرتے ہیں تو ٹیب کے عنوانات اور URLs کو Google کو بھیجا جاتا ہے</translation>
 <translation id="9131209053278896908">مسدود کردہ سائٹس یہاں دکھائی دیں گی</translation>
 <translation id="9131487537093447019">بلوٹوتھ آلات پر پیغامات بھیجیں اور ان سے پیغامات موصول کریں۔</translation>
 <translation id="9133568201369135151">ڈائیگاناسٹک ڈیٹا کی جمع آوری مکمل ہو گئی ہے۔ آپ کی کچھ ذاتی معلومات اس ڈیٹا میں شامل ہیں۔</translation>

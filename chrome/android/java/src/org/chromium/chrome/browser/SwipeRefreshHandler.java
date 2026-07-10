@@ -32,6 +32,7 @@ import org.chromium.components.browser_ui.styles.SemanticColorUtils;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.third_party.android.swiperefresh.SwipeRefreshLayout;
 import org.chromium.ui.OverscrollAction;
+import org.chromium.ui.OverscrollActivationStatus;
 import org.chromium.ui.OverscrollRefreshHandler;
 import org.chromium.ui.base.BackGestureEventSwipeEdge;
 import org.chromium.ui.base.WindowAndroid;
@@ -250,8 +251,9 @@ public class SwipeRefreshHandler extends TabWebContentsUserData
     public void didStopRefreshing() {
         if (mSwipeRefreshLayout == null || !mSwipeRefreshLayout.isRefreshing()) return;
         cancelStopRefreshingRunnable();
-        mSwipeRefreshLayout.postDelayed(
-                getStopRefreshingRunnable(), STOP_REFRESH_ANIMATION_DELAY_MS);
+        // Use a handler rather than PostTask because we need to be able to cancel it.
+        ThreadUtils.getUiThreadHandler()
+                .postDelayed(getStopRefreshingRunnable(), STOP_REFRESH_ANIMATION_DELAY_MS);
     }
 
     @Override
@@ -307,13 +309,18 @@ public class SwipeRefreshHandler extends TabWebContentsUserData
     }
 
     @Override
-    public void release(boolean allowRefresh) {
+    public void release(@OverscrollActivationStatus int status) {
         TraceEvent.begin("SwipeRefreshHandler.release");
         assumeNonNull(mSwipeRefreshLayout);
+        boolean allowRefresh =
+                status == OverscrollActivationStatus.ALLOW_ACTIVATION
+                        || status == OverscrollActivationStatus.FORCE_ACTIVATION;
         if (mSwipeType == OverscrollAction.PULL_TO_REFRESH) {
             mSwipeRefreshLayout.release(allowRefresh);
         } else if (mSwipeType == OverscrollAction.HISTORY_NAVIGATION) {
-            if (mNavigationCoordinator != null) mNavigationCoordinator.release(allowRefresh);
+            if (mNavigationCoordinator != null) {
+                mNavigationCoordinator.release(status);
+            }
         } else if (mSwipeType == OverscrollAction.PULL_FROM_BOTTOM_EDGE) {
             if (mBottomOverscrollHandler != null) {
                 mBottomOverscrollHandler.release(allowRefresh);

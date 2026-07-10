@@ -62,6 +62,7 @@ import org.chromium.chrome.browser.layouts.LayoutStateProvider;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.PersistedInstanceType;
 import org.chromium.chrome.browser.multiwindow.MultiWindowModeStateDispatcher;
 import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
+import org.chromium.chrome.browser.ntp.RecentlyClosedBulkEvent;
 import org.chromium.chrome.browser.ntp.RecentlyClosedEntry;
 import org.chromium.chrome.browser.ntp.RecentlyClosedGroup;
 import org.chromium.chrome.browser.ntp.RecentlyClosedTab;
@@ -99,13 +100,15 @@ import org.chromium.chrome.browser.ui.favicon.FaviconUtils;
 import org.chromium.chrome.browser.ui.lens.LensOverlayTabHelper;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.native_page.NativePage;
+import org.chromium.chrome.browser.ui.side_panel.AndroidSidePanelEnabledFn;
+import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiId;
+import org.chromium.chrome.browser.ui.side_ui.SideUiStateProvider;
 import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils;
 import org.chromium.components.bookmarks.BookmarkId;
 import org.chromium.components.bookmarks.BookmarkItem;
 import org.chromium.components.browser_ui.accessibility.PageZoomManager;
 import org.chromium.components.browser_ui.util.GlobalDiscardableReferencePool;
 import org.chromium.components.browser_ui.widget.RoundedIconGenerator;
-import org.chromium.components.dom_distiller.core.DomDistillerFeatures;
 import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.components.image_fetcher.ImageFetcherConfig;
@@ -178,6 +181,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
     private final FaviconHelper.DefaultFaviconHelper mDefaultFaviconHelper;
     private final RoundedIconGenerator mRoundedIconGenerator;
     private final Supplier<RecentlyClosedEntriesManager> mRecentlyClosedEntriesManagerSupplier;
+    private final Supplier<SideUiStateProvider> mSideUiStateProviderSupplier;
     private @Nullable ForeignSessionHelper mForeignSessionHelper;
 
     public TabbedAppMenuPropertiesDelegate(
@@ -197,7 +201,8 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
             PageZoomManager pageZoomManager,
             OneshotSupplier<HubManager> hubManagerSupplier,
             @Nullable OpenInAppMenuItemProvider openInAppMenuItemProvider,
-            Supplier<RecentlyClosedEntriesManager> recentlyClosedEntriesManagerSupplier) {
+            Supplier<RecentlyClosedEntriesManager> recentlyClosedEntriesManagerSupplier,
+            Supplier<SideUiStateProvider> sideUiStateProviderSupplier) {
         super(
                 context,
                 activityTabProvider,
@@ -217,6 +222,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
         mDefaultFaviconHelper = new FaviconHelper.DefaultFaviconHelper();
         mRoundedIconGenerator = FaviconUtils.createCircularIconGenerator(mContext);
         mRecentlyClosedEntriesManagerSupplier = recentlyClosedEntriesManagerSupplier;
+        mSideUiStateProviderSupplier = sideUiStateProviderSupplier;
 
         incognitoReauthControllerOneshotSupplier.onAvailable(
                 mIncognitoReauthCallbackController.makeCancelable(
@@ -555,11 +561,6 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
 
         // Divider Line
         maybeAddDividerLine(modelList, R.id.divider_line_id);
-
-        // Reader Mode Prefs
-        if (shouldShowReaderModePrefs(currentTab)) {
-            modelList.add(buildReaderModePrefsItem());
-        }
 
         // Settings
         modelList.add(buildSettingsItem());
@@ -1099,18 +1100,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
             }
 
             if (entry instanceof RecentlyClosedTab tab) {
-                items.add(
-                        buildRecentEntryMenuItem(
-                                entry,
-                                TitleUtil.getTitleForDisplay(tab.getTitle(), tab.getUrl()),
-                                createIconSupplierForTab(
-                                        tab.getUrl(),
-                                        tab.getTabGroupId(),
-                                        // Recently closed tabs are not tracked for incognito.
-                                        /* isOffTheRecord= */ false,
-                                        // No live Tab object is available to get a cached favicon.
-                                        /* cachedFavicon= */ null,
-                                        /* fallbackToHost= */ false)));
+                items.add(buildRecentTabMenuItem(tab));
                 count++;
             } else if (entry instanceof RecentlyClosedWindow window) {
                 items.add(buildClosedWindowMenuItem(window));
@@ -1119,9 +1109,15 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
             } else if (entry instanceof RecentlyClosedGroup group) {
                 items.add(buildClosedGroupMenuItem(group));
                 count++;
+            } else if (entry instanceof RecentlyClosedBulkEvent bulkEvent) {
+                for (RecentlyClosedTab tab : bulkEvent.getTabs()) {
+                    if (count >= MAX_RECENT_ENTRIES_TO_SHOW) {
+                        break;
+                    }
+                    items.add(buildRecentTabMenuItem(tab));
+                    count++;
+                }
             }
-
-            // TODO(crbug.com/509065810): Support other bulk closures.
         }
         return items;
     }
@@ -1298,20 +1294,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                                     AppMenuHandler.AppMenuItemType.DIVIDER,
                                     buildModelForDivider(R.id.divider_line_id)));
                     for (RecentlyClosedTab tab : tabs) {
-                        LazyOneshotSupplier<Drawable> iconSupplier =
-                                createIconSupplierForTab(
-                                        tab.getUrl(),
-                                        tab.getTabGroupId(),
-                                        // Recently closed tabs are not tracked for incognito.
-                                        /* isOffTheRecord= */ false,
-                                        // No live Tab object is available to get a cached favicon.
-                                        /* cachedFavicon= */ null,
-                                        /* fallbackToHost= */ false);
-                        submenuItems.add(
-                                buildRecentEntryMenuItem(
-                                        tab,
-                                        TitleUtil.getTitleForDisplay(tab.getTitle(), tab.getUrl()),
-                                        iconSupplier));
+                        submenuItems.add(buildRecentTabMenuItem(tab));
                     }
                     return submenuItems;
                 };
@@ -1343,6 +1326,20 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                                         mContext, R.drawable.ic_open_in_new_24dp))
                         .build();
         return new ListItem(AppMenuHandler.AppMenuItemType.RECENT_ENTRY, model);
+    }
+
+    private ListItem buildRecentTabMenuItem(RecentlyClosedTab tab) {
+        return buildRecentEntryMenuItem(
+                tab,
+                TitleUtil.getTitleForDisplay(tab.getTitle(), tab.getUrl()),
+                createIconSupplierForTab(
+                        tab.getUrl(),
+                        tab.getTabGroupId(),
+                        // Recently closed tabs are not tracked for incognito.
+                        /* isOffTheRecord= */ false,
+                        // No live Tab object is available to get a cached favicon.
+                        /* cachedFavicon= */ null,
+                        /* fallbackToHost= */ false));
     }
 
     private ListItem buildRecentEntryMenuItem(
@@ -2047,7 +2044,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
             return false;
         }
 
-        return DomDistillerFeatures.sReaderModeDistillInApp.isEnabled();
+        return true;
     }
 
     @Contract("null -> false")
@@ -2352,6 +2349,16 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                 || !GlicEnabling.isEnabledForProfile(currentTab.getProfile())) {
             return null;
         }
+        // Only enforce width constraints if side panel feature is enabled on the device.
+        // TODO(crbug.com/519680563): Remove this side panel check once bottom sheet enabled on LFF.
+        if (AndroidSidePanelEnabledFn.isEnabled()) {
+            SideUiStateProvider sideUiStateProvider = mSideUiStateProviderSupplier.get();
+            assert sideUiStateProvider != null;
+            if (!sideUiStateProvider.canShowSideUi(SideUiId.SIDE_PANEL)) {
+                return null;
+            }
+        }
+
         return new ListItem(
                 AppMenuHandler.AppMenuItemType.STANDARD,
                 buildModelForStandardMenuItem(

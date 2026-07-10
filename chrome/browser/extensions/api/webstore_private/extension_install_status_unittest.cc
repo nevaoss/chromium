@@ -177,8 +177,8 @@ class ExtensionInstallStatusTest : public ExtensionServiceTestWithInstall {
     return ExtensionServiceInitParams();
   }
 
-  // Since this is testing the MV2 deprecation experiments, we don't want to
-  // bypass their disabling for testing.
+  // Since this is testing the MV2 deprecation, we don't want to bypass the
+  // related disabling for testing.
   bool ShouldAllowMV2Extensions() override { return false; }
 };
 

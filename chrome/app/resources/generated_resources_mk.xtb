@@ -597,7 +597,6 @@
 <translation id="1433478348197382180">Режим на читање</translation>
 <translation id="1433980411933182122">Стартување</translation>
 <translation id="1434659328474177625"><ph name="ISSUER" /> ја потврди вашата е-пошта</translation>
-<translation id="1434696352799406980">Ова ќе ви ги ресетира страницата на стартување, страницата во нова картичка, пребарувачот и прикачените картички. Исто така, ќе ги оневозможи сите екстензии и ќе ги избрише привремените податоци како колачињата. Обележувачите, историјата и зачуваните лозинки нема да се избришат.</translation>
 <translation id="1434886155212424586">Почетна страница е страницата за Нова картичка</translation>
 <translation id="1435940442311036198">Користете криптографски клуч на друг уред</translation>
 <translation id="1436390408194692385">Важи уште <ph name="TICKET_TIME_LEFT" /></translation>
@@ -2575,6 +2574,7 @@
 <translation id="2822551631199737692">Камерата е во употреба</translation>
 <translation id="2822634587701817431">Смали/прошири</translation>
 <translation id="2824942875887026017"><ph name="IDS_SHORT_PRODUCT_NAME" /> користи поставки за прокси од вашиот администратор</translation>
+<translation id="2825200993288778739">Создајте ваша или додајте од збирката вештини</translation>
 <translation id="282525059261716597">Ред за наредби:</translation>
 <translation id="2825758591930162672">Јавен клуч на субјектот</translation>
 <translation id="2826576843404243001">За сајтовите што не поддржуваат безбедни врски, добијте предупредување пред да го отворите сајтот. Не може да ја промените поставкава бидејќи имате овозможено „Напредна заштита“.</translation>
@@ -3715,7 +3715,6 @@
 <translation id="366484203224589850"><ph name="TASK_TITLE" />: Gemini работи на задачава долго време и наскоро ќе престане за да ја заштеди батеријата</translation>
 <translation id="3664911592976620204">{NUM_OTHER_MEMBERS,plural, =0{Придружете се во групата картички со <ph name="OWNER_FIRST_NAME" />}=1{Придружете се во групата картички со <ph name="OWNER_FIRST_NAME" /> и уште #}one{Придружете се во групата картички со <ph name="OWNER_FIRST_NAME" /> и уште #}other{Придружете се во групата картички со <ph name="OWNER_FIRST_NAME" /> и уште #}}</translation>
 <translation id="3665301845536101715">Отвори во страничната табла</translation>
-<translation id="3665589677786828986">Chrome откри дека некои од поставките на прелистувачот ги оштетила друга програма и ги ресетирала на првичните стандардни вредности.</translation>
 <translation id="3665918214153961651">Се прикачува датотека</translation>
 <translation id="3666196264870170605">Меморија за отстранување грешки на NICs на Wi-Fi на Intel</translation>
 <translation id="3666971425390608309">Преземањето е паузирано: <ph name="FILE_NAME" />.</translation>
@@ -4652,6 +4651,7 @@
 <translation id="4321179778687042513">ctrl</translation>
 <translation id="432160826079505197">Прикажи ја <ph name="FILE_NAME" /> во наоѓачот</translation>
 <translation id="4322394346347055525">Затвори други картички</translation>
+<translation id="4322400254469690320">Најдете ја датотеката <ph name="FILENAME" /> во папката <ph name="FEATURE_NAME" /></translation>
 <translation id="4324577459193912240">Датотеката не е целосна</translation>
 <translation id="4325433082696797523">Простор и напојување</translation>
 <translation id="4325515113816851466">Изборите на твојот родител нема да важат откако ќе се одјавиш</translation>
@@ -5002,7 +5002,6 @@
 <translation id="4580596421317071374">Лозинките се зачувуваат во <ph name="GOOGLE_PASSWORD_MANAGER" /> на уредов.</translation>
 <translation id="4580939929828762295">Заштитете се со Google Password Manager</translation>
 <translation id="4582297591746054421">Сајтовите обично ја читаат вашата привремена меморија за функциите како што е задржувањето на форматот на текстот што сте го копирале</translation>
-<translation id="4582563038311694664">Ресетирај ги сите поставки</translation>
 <translation id="4584094413232466841">Да се отстранат податоциве од „Автоматско пополнување на Chrome“?</translation>
 <translation id="4584770411839426377">Прозорец</translation>
 <translation id="4584836561445313300">Вашата организација ќе може да ги гледа и да управува со постојните податоци од прелистување, како лозинки и друго</translation>
@@ -6647,6 +6646,7 @@
 <translation id="5826993284769733527">Полупроѕирно</translation>
 <translation id="5827266244928330802">Сафари</translation>
 <translation id="5827591412833386477">Прикажи ги сајтовите во истата група</translation>
+<translation id="5827835011646404677">Вештините се зачувуваат во вашата сметка на Google</translation>
 <translation id="5828181959764767444">Зајдисонце</translation>
 <translation id="5828545842856466741">Додајте профил…</translation>
 <translation id="5828633471261496623">Се печати…</translation>
@@ -10090,7 +10090,6 @@
 <translation id="8327386430364625757">Математички фонт</translation>
 <translation id="8327490658947427005">Изборот не е на <ph name="LANGUAGE" /></translation>
 <translation id="8327544198829180337">Затвори го овој приказ</translation>
-<translation id="8327676037044516220">Дозволи и поставки за содржини</translation>
 <translation id="8328228852664998535">Ако продолжите, вашите лозинки, криптографски клучеви и други податоци ќе се избришат трајно од <ph name="BRAND" />. Сметките што сте ги создале за сајтови или апликации нема да се избришат.</translation>
 <translation id="8328777765163860529">Затвори ги сите</translation>
 <translation id="8330617762701840933">Списокот на веб-сајтови кои пренасочуваат кон алтернативен прелистувач.</translation>
@@ -10911,7 +10910,6 @@
 <translation id="8925458182817574960">&amp;Поставки</translation>
 <translation id="8926389886865778422">Не прашувај повторно</translation>
 <translation id="8926555406617248399">Картичките се скриени</translation>
-<translation id="892706138619340876">Некои поставки се ресетирани</translation>
 <translation id="8927438609932588163">Дозволете сајтовите да ги зачувуваат податоците на вашиот уред</translation>
 <translation id="8929696694736010839">Само тековната сесија во „Инкогнито“</translation>
 <translation id="8929738682246584251">Лупата е вклучена/исклучена</translation>
@@ -11220,6 +11218,7 @@
 <translation id="9130015405878219958">Внесен е неважечки режим.</translation>
 <translation id="9130135798965366513">За да продолжите, <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> ќе ги сподели вашето <ph name="FIELDS_STRING" /> со сајтов. Погледнете ги <ph name="BEGIN_LINK1" />Политиката за приватност<ph name="END_LINK1" /> и <ph name="BEGIN_LINK2" />Условите за користење<ph name="END_LINK2" /> на сајтов.</translation>
 <translation id="9130364135697530260">Вметнатите содржини на сајтов може да ги користат податоците што ги зачувале за вас</translation>
+<translation id="9130857050314385402">Насловите и URL-адресите на картичките се испраќаат до Google кога користите вештина</translation>
 <translation id="9131209053278896908">Блокираните сајтови ќе се појавуваат тука</translation>
 <translation id="9131487537093447019">Испраќајте и примајте пораки од уреди со Bluetooth.</translation>
 <translation id="9133568201369135151">Прибирањето дијагностички податоци заврши. Податоциве опфаќаат некои од вашите лични податоци.</translation>

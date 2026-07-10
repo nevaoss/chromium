@@ -5,7 +5,13 @@
 #ifndef BASE_FEATURE_LIST_INTERNAL_H_
 #define BASE_FEATURE_LIST_INTERNAL_H_
 
+#include <functional>
+#include <string>
+
+#include "base/base_export.h"
 #include "base/feature.h"
+#include "base/feature_list.h"
+#include "base/functional/callback.h"
 
 namespace base::internal {
 
@@ -36,21 +42,6 @@ enum : Feature::FeatureStateCache {
   // objects that manage runtime mutability and is properly configured. The
   // feature's state may change at runtime.
   kRuntimeMutabilityEnabledMask = 1 << 19,
-
-  // The feature has had its runtime mutability disabled. This happens if a
-  // runtime mutable feature is accessed before the feature's runtime mutability
-  // has been enabled. Note that having runtime mutability disabled is not the
-  // same as not having runtime mutability enabled. Having runtime mutability
-  // disabled means that the feature is in a bad state wherein its runtime
-  // mutability has been rendered non-functional.
-  //
-  // This state may be detected and set via two scenarios:
-  // 1. The runtime mutable feature was accessed before the FeatureList was
-  //    initialized. The state can be detected if/when EnableRuntimeMutability()
-  //    is eventually called for the already-accessed feature.
-  // 2. EnableRuntimeMutability() was never called for the feature. This state
-  //    can be detected on the first access of the feature.
-  kRuntimeMutabilityDisabledMask = 1 << 20,
 };
 
 // Result of a runtime-mutable feature operation. These values are logged to
@@ -74,6 +65,35 @@ enum class RuntimeMutabilityResult {
   kFailure_CommandLineOverride = 4,
   // Add new values above this line, and update kMaxValue below.
   kMaxValue = kFailure_CommandLineOverride,
+};
+
+// State for a runtime-mutable feature. This is stored in the FeatureList's
+// map of runtime-mutable features.
+struct BASE_EXPORT RuntimeMutableFeatureState {
+  RuntimeMutableFeatureState(
+      const Feature& feature,
+      FeatureList::OnRuntimeMutableFeatureStateChangedCallback callback);
+  ~RuntimeMutableFeatureState();
+
+  RuntimeMutableFeatureState(const RuntimeMutableFeatureState&);
+  RuntimeMutableFeatureState(RuntimeMutableFeatureState&&);
+  RuntimeMutableFeatureState& operator=(const RuntimeMutableFeatureState&);
+  RuntimeMutableFeatureState& operator=(RuntimeMutableFeatureState&&);
+
+  // The feature that has runtime mutability enabled.
+  std::reference_wrapper<const Feature> feature;
+
+  // Callback to be invoked when the feature state is changed.
+  FeatureList::OnRuntimeMutableFeatureStateChangedCallback callback;
+
+  // The runtime override state of the feature, or OVERRIDE_USE_DEFAULT if the
+  // feature is not runtime overridden.
+  FeatureList::OverrideState override_state = FeatureList::OVERRIDE_USE_DEFAULT;
+
+  // The name and group of the field trial that has, at runtime, superseded
+  // the feature's startup-initialized state.
+  std::string field_trial_name;
+  std::string group_name;
 };
 
 }  // namespace base::internal

@@ -55,7 +55,7 @@ class PersonalContextServiceImplTest : public testing::Test {
   bool SimulateResponse(const std::string& content,
                         net::HttpStatusCode http_status) {
     return test_url_loader_factory_.SimulateResponseForPendingRequest(
-        "https://contextmemoryservice-pa.googleapis.com/v1:fetchContext",
+        "https://contextmemoryservice.pa.googleapis.com/v1:fetchContext",
         content, http_status, network::TestURLLoaderFactory::kUrlMatchPrefix);
   }
 
@@ -115,7 +115,7 @@ TEST_F(PersonalContextServiceImplTest, FetchPiiEntitiesDelegatesToManager) {
   std::string serialized_response;
   pii_response.SerializeToString(&serialized_response);
   test_url_loader_factory_.SimulateResponseForPendingRequest(
-      "https://contextmemoryservice-pa.googleapis.com/v1:fetchPiiEntities",
+      "https://contextmemoryservice.pa.googleapis.com/v1:fetchPiiEntities",
       serialized_response, net::HTTP_OK,
       network::TestURLLoaderFactory::kUrlMatchPrefix);
 

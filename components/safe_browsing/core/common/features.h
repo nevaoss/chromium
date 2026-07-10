@@ -361,6 +361,10 @@ BASE_DECLARE_FEATURE_PARAM(
 BASE_DECLARE_FEATURE_PARAM(
     base::TimeDelta,
     kMigrateToBlockV8OptimizerOnUnfamiliarSitesMinAgeOfInitialVisit);
+// If true, the migration will run in dry-run mode (evaluating eligibility and
+// logging metrics, but not actually changing the content setting).
+extern const base::FeatureParam<bool>
+    kMigrateToBlockV8OptimizerOnUnfamiliarSitesDryRun;
 
 // When enabled, the Password Leak detection toggle is moved out from under the
 // 'Standard protection' Safe Browsing option to the top-level 'Privacy and

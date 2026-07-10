@@ -230,6 +230,7 @@ template("chrome_extra_paks") {
         "$root_gen_dir/chrome/browser/indigo/resources/indigo_browser_resources.pak",
         "$root_gen_dir/chrome/certificate_manager_resources.pak",
         "$root_gen_dir/chrome/content_annotator_internals_resources.pak",
+        "$root_gen_dir/chrome/contextual_cueing_internals_resources.pak",
         "$root_gen_dir/chrome/data_sharing_resources.pak",
         "$root_gen_dir/chrome/dev_ui_resources.pak",
         "$root_gen_dir/chrome/downloads_resources.pak",
@@ -272,6 +273,7 @@ template("chrome_extra_paks") {
         "$root_gen_dir/chrome/webui_browser_resources.pak",
         "$root_gen_dir/chrome/webui_gallery_resources.pak",
         "$root_gen_dir/chrome/webui_toolbar_resources.pak",
+        "$root_gen_dir/chrome/webui_toolbar_shared_resources.pak",
         "$root_gen_dir/chrome/whats_new_resources.pak",
         "$root_gen_dir/components/headless/command_handler/headless_command_resources.pak",
         "$root_gen_dir/content/browser/tracing/tracing_resources.pak",
@@ -281,6 +283,7 @@ template("chrome_extra_paks") {
       deps += [
         "//chrome/browser/actor/resources:browser_resources",
         "//chrome/browser/indigo/resources:browser_resources",
+        "//chrome/browser/resources/contextual_cueing/internals:resources",
         "//components/headless/command_handler",
         "//content/browser/tracing:resources",
       ]
@@ -369,7 +372,6 @@ template("chrome_extra_paks") {
         "$root_gen_dir/chrome/drive_internals_resources.pak",
         "$root_gen_dir/chrome/edu_coexistence_resources.pak",
         "$root_gen_dir/chrome/emoji_picker_resources.pak",
-        "$root_gen_dir/chrome/emulator_resources.pak",
         "$root_gen_dir/chrome/enterprise_reporting_resources.pak",
         "$root_gen_dir/chrome/extended_updates_resources.pak",
         "$root_gen_dir/chrome/floating_workspace_resources.pak",

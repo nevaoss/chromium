@@ -158,6 +158,7 @@
 #include "google_apis/gaia/gaia_id.h"
 #include "google_apis/gaia/gaia_urls.h"
 #include "google_apis/gaia/google_service_auth_error.h"
+#include "net/base/url_util.h"
 #include "services/network/test/test_url_loader_factory.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "ui/base/accelerators/accelerator.h"
@@ -546,9 +547,12 @@ void WaitForBrowserUrl(const GURL& url, content::WebContents* target) {
 }
 
 GURL GetManagedUserProfileNoticeUrl() {
-  return base::FeatureList::IsEnabled(switches::kFirstRunDesktopRefresh)
-             ? GURL(chrome::kChromeUIManagedUserProfileNoticeRefreshURL)
-             : GURL(chrome::kChromeUIManagedUserProfileNoticeUrl);
+  if (base::FeatureList::IsEnabled(switches::kFirstRunDesktopRefresh)) {
+    const ManagedUserProfileNoticeUI::ScreenType default_type =
+        ManagedUserProfileNoticeUI::ScreenType::kProfilePicker;
+    return ManagedUserProfileNoticeUI::GetURLForType(default_type);
+  }
+  return GURL(chrome::kChromeUIManagedUserProfileNoticeUrl);
 }
 
 // Browser extra part used to be notified early enough to track the
@@ -1021,6 +1025,7 @@ IN_PROC_BROWSER_TEST_F(ProfilePickerCreationFlowBrowserTest, ShowPicker) {
 }
 
 IN_PROC_BROWSER_TEST_F(ProfilePickerCreationFlowBrowserTest, ShowChoice) {
+  base::HistogramTester histogram_tester;
   ProfilePicker::Show(ProfilePicker::Params::FromEntryPoint(
       ProfilePicker::EntryPoint::kProfileMenuAddNewProfile));
   EXPECT_TRUE(ProfilePicker::IsOpen());
@@ -1031,6 +1036,8 @@ IN_PROC_BROWSER_TEST_F(ProfilePickerCreationFlowBrowserTest, ShowChoice) {
   EXPECT_NE(delegate->GetWindowTitle(), delegate->GetAccessibleWindowTitle());
   WaitForLoadStop(GURL("chrome://profile-picker/new-profile"));
   EXPECT_NE(delegate->GetWindowTitle(), delegate->GetAccessibleWindowTitle());
+  histogram_tester.ExpectUniqueSample(
+      "Signin.SignIn.Offered", signin_metrics::AccessPoint::kUserManager, 1);
 }
 
 IN_PROC_BROWSER_TEST_F(ProfilePickerCreationFlowBrowserTest,

@@ -597,7 +597,6 @@ Controlla le password in qualsiasi momento in <ph name="GOOGLE_PASSWORD_MANAGER"
 <translation id="1433478348197382180">Modalità Lettura</translation>
 <translation id="1433980411933182122">Avvio</translation>
 <translation id="1434659328474177625"><ph name="ISSUER" /> ha verificato la tua email</translation>
-<translation id="1434696352799406980">L'operazione reimposterà la pagina iniziale, la pagina Nuova scheda, il motore di ricerca e le schede fissate. Inoltre, disattiverà tutte le estensioni e rimuoverà i dati temporanei, come i cookie. La cronologia, le password salvate e i preferiti non saranno cancellati.</translation>
 <translation id="1434886155212424586">La pagina iniziale è la pagina Nuova scheda</translation>
 <translation id="1435940442311036198">Usa una passkey su un altro dispositivo</translation>
 <translation id="1436390408194692385">Validità per <ph name="TICKET_TIME_LEFT" /></translation>
@@ -2561,6 +2560,7 @@ Puoi gestire le impostazioni dell'account installando l'app Family Link su quest
 <translation id="2822551631199737692">Fotocamera in uso</translation>
 <translation id="2822634587701817431">Comprimi/Espandi</translation>
 <translation id="2824942875887026017"><ph name="IDS_SHORT_PRODUCT_NAME" /> usa le impostazioni proxy stabilite dall'amministratore</translation>
+<translation id="2825200993288778739">Crea la tua skill o aggiungi dalla libreria delle skill</translation>
 <translation id="282525059261716597">Riga di comando:</translation>
 <translation id="2825758591930162672">Chiave pubblica del soggetto</translation>
 <translation id="2826576843404243001">Ricevi un avviso prima di visitare i siti che non supportano le connessioni sicure. Non puoi modificare questa impostazione perché hai attivato la protezione avanzata.</translation>
@@ -3701,7 +3701,6 @@ Puoi gestire le impostazioni dell'account installando l'app Family Link su quest
 <translation id="366484203224589850"><ph name="TASK_TITLE" />: Gemini sta lavorando a questa attività da molto tempo e si fermerà presto per risparmiare batteria</translation>
 <translation id="3664911592976620204">{NUM_OTHER_MEMBERS,plural, =0{Partecipa al gruppo di schede con <ph name="OWNER_FIRST_NAME" />}=1{Partecipa al gruppo di schede con <ph name="OWNER_FIRST_NAME" /> e # altra persona}other{Partecipa al gruppo di schede con <ph name="OWNER_FIRST_NAME" /> e # altre persone}}</translation>
 <translation id="3665301845536101715">Apri nel riquadro laterale</translation>
-<translation id="3665589677786828986">Chrome ha rilevato che alcune impostazioni sono state danneggiate da un altro programma e le ha ripristinate con i valori originali predefiniti.</translation>
 <translation id="3665918214153961651">Caricamento del file in corso…</translation>
 <translation id="3666196264870170605">Dump di debug delle NIC WiFi Intel</translation>
 <translation id="3666971425390608309">Download in pausa: <ph name="FILE_NAME" />.</translation>
@@ -4638,6 +4637,7 @@ Puoi gestire le impostazioni dell'account installando l'app Family Link su quest
 <translation id="4321179778687042513">ctrl</translation>
 <translation id="432160826079505197">Mostra <ph name="FILE_NAME" /> nel Finder</translation>
 <translation id="4322394346347055525">Chiudi le altre schede</translation>
+<translation id="4322400254469690320">Trova il tuo <ph name="FILENAME" /> nella cartella <ph name="FEATURE_NAME" /></translation>
 <translation id="4324577459193912240">File incompleto</translation>
 <translation id="4325433082696797523">Archiviazione e alimentazione</translation>
 <translation id="4325515113816851466">Le scelte del genitore non verranno applicate dopo aver disconnesso l'account</translation>
@@ -4988,7 +4988,6 @@ Puoi gestire le impostazioni dell'account installando l'app Family Link su quest
 <translation id="4580596421317071374">Le password vengono salvate in <ph name="GOOGLE_PASSWORD_MANAGER" /> su questo dispositivo.</translation>
 <translation id="4580939929828762295">Naviga sicuro con Gestore delle password di Google</translation>
 <translation id="4582297591746054421">In genere, i siti leggono gli appunti per funzionalità come il mantenimento della formattazione del testo copiato</translation>
-<translation id="4582563038311694664">Ripristina tutte le impostazioni</translation>
 <translation id="4584094413232466841">Rimuovere queste informazioni dalla compilazione automatica di Chrome?</translation>
 <translation id="4584770411839426377">Finestra</translation>
 <translation id="4584836561445313300">La tua organizzazione potrà vedere e gestire i dati di navigazione esistenti, ad esempio le password e altro ancora</translation>
@@ -6630,6 +6629,7 @@ Puoi assegnare più sensori a questa azione.</translation>
 <translation id="5826993284769733527">Semitrasparente</translation>
 <translation id="5827266244928330802">Safari</translation>
 <translation id="5827591412833386477">Mostra i siti nello stesso gruppo</translation>
+<translation id="5827835011646404677">Le skill vengono salvate nel tuo Account Google</translation>
 <translation id="5828181959764767444">Tramonto</translation>
 <translation id="5828545842856466741">Aggiungi profilo…</translation>
 <translation id="5828633471261496623">Stampa in corso...</translation>
@@ -10071,7 +10071,6 @@ Conserva il file di chiave in un luogo sicuro. Ti servirà per creare nuove vers
 <translation id="8327386430364625757">Carattere matematico</translation>
 <translation id="8327490658947427005">Selezione non in lingua: <ph name="LANGUAGE" /></translation>
 <translation id="8327544198829180337">Chiudi questa visualizzazione</translation>
-<translation id="8327676037044516220">Autorizzazioni e impostazioni contenuti</translation>
 <translation id="8328228852664998535">Se continui, le password, le passkey e altri dati verranno eliminati definitivamente da <ph name="BRAND" />. Gli account creati per siti o app non verranno eliminati.</translation>
 <translation id="8328777765163860529">Chiudi tutte</translation>
 <translation id="8330617762701840933">L'elenco di siti web che vengono reindirizzati al browser alternativo.</translation>
@@ -10892,7 +10891,6 @@ Potrebbero essere incluse informazioni su software installati, file, browser, si
 <translation id="8925458182817574960">&amp;Impostazioni</translation>
 <translation id="8926389886865778422">Non visualizzare più questo avviso</translation>
 <translation id="8926555406617248399">Schede nascoste</translation>
-<translation id="892706138619340876">Alcune impostazioni sono state reimpostate</translation>
 <translation id="8927438609932588163">Consenti ai siti di salvare dati sul dispositivo</translation>
 <translation id="8929696694736010839">Solo per la sessione in incognito corrente</translation>
 <translation id="8929738682246584251">Lente d'ingrandimento on/off</translation>
@@ -11201,6 +11199,7 @@ Potrebbero essere incluse informazioni su software installati, file, browser, si
 <translation id="9130015405878219958">La modalità inserita non è valida.</translation>
 <translation id="9130135798965366513">Per continuare, <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> condividerà il tuo <ph name="FIELDS_STRING" /> con questo sito. Leggi le <ph name="BEGIN_LINK1" />norme sulla privacy<ph name="END_LINK1" /> e i <ph name="BEGIN_LINK2" />termini di servizio<ph name="END_LINK2" /> del sito.</translation>
 <translation id="9130364135697530260">Per i contenuti incorporati in questo sito non è possibile usare le informazioni su di te che sono state salvate</translation>
+<translation id="9130857050314385402">I titoli e gli URL delle schede vengono inviati a Google quando utilizzi la skill</translation>
 <translation id="9131209053278896908">I siti bloccati vengono mostrati qui</translation>
 <translation id="9131487537093447019">Inviare e ricevere messaggi a/da dispositivi Bluetooth.</translation>
 <translation id="9133568201369135151">Raccolta dei dati diagnostici completata. Alcune delle tue informazioni personali sono incluse in questi dati.</translation>

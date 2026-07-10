@@ -11,9 +11,8 @@ import type {PowerBookmarkRowElement} from 'chrome://bookmarks-side-panel.top-ch
 import type {PowerBookmarksAddFolderButtonElement} from 'chrome://bookmarks-side-panel.top-chrome/power_bookmarks_add_folder_button.js';
 import type {PowerBookmarksAppElement} from 'chrome://bookmarks-side-panel.top-chrome/power_bookmarks_app.js';
 import type {PowerBookmarksListHeaderElement} from 'chrome://bookmarks-side-panel.top-chrome/power_bookmarks_list_header.js';
-import {PageCallbackRouter, PriceTrackingHandlerRemote} from 'chrome://resources/cr_components/commerce/price_tracking.mojom-webui.js';
+import {browserProxyFactory as priceTrackingBrowserProxyFactory, PriceTrackingHandlerRemote} from 'chrome://resources/cr_components/commerce/price_tracking.mojom-webui.js';
 import type {PageRemote} from 'chrome://resources/cr_components/commerce/price_tracking.mojom-webui.js';
-import {PriceTrackingBrowserProxyImpl} from 'chrome://resources/cr_components/commerce/price_tracking_browser_proxy.js';
 import {PageImageServiceBrowserProxy} from 'chrome://resources/cr_components/page_image_service/browser_proxy.js';
 import {PageImageServiceHandlerRemote} from 'chrome://resources/cr_components/page_image_service/page_image_service.mojom-webui.js';
 import type {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
@@ -116,7 +115,6 @@ suite('General', () => {
     PluralStringProxyImpl.setInstance(pluralStringProxy);
 
     priceTrackingHandler.reset();
-    const callbackRouter = new PageCallbackRouter();
     priceTrackingHandler.setResultFor(
         'getAllPriceTrackedBookmarkProductInfo',
         Promise.resolve({productInfos: []}));
@@ -126,11 +124,10 @@ suite('General', () => {
     priceTrackingHandler.setResultFor(
         'getShoppingCollectionBookmarkFolderId',
         Promise.resolve({collectionId: BigInt(-1)}));
-    callbackRouterRemote = callbackRouter.$.bindNewPipeAndPassRemote();
-    PriceTrackingBrowserProxyImpl.setInstance({
-      handler: priceTrackingHandler,
-      callbackRouter: callbackRouter,
-    });
+    const {instance, remote} =
+        priceTrackingBrowserProxyFactory.createForTest(priceTrackingHandler);
+    priceTrackingBrowserProxyFactory.setInstance(instance);
+    callbackRouterRemote = remote;
 
     imageServiceHandler = TestMock.fromClass(PageImageServiceHandlerRemote);
     PageImageServiceBrowserProxy.setInstance(
@@ -646,6 +643,55 @@ suite('General', () => {
           0,
       );
       await microtasksFinished();
+    });
+
+    test('ClearsSelectionOnMove', async () => {
+      const header =
+          powerBookmarksApp.$.bookmarksList.shadowRoot
+              .querySelector<HTMLElement>('power-bookmarks-list-header')!;
+      const editButton =
+          header.shadowRoot!.querySelector<HTMLElement>('#editButton')!;
+      editButton.click();
+      await microtasksFinished();
+
+      await selectBookmark('3');
+      assertTrue(powerBookmarksApp['selectedBookmarks_']['3'] === true);
+      assertTrue(powerBookmarksApp['editing_']);
+
+      bookmarksApi.callbackRouterRemote.onBookmarkNodeMoved(
+          FOLDERS[1]!.id,
+          /*oldIndex=*/ 0,
+          FOLDERS[0]!.id,
+          /*newIndex=*/ 0,
+      );
+      await microtasksFinished();
+
+      assertFalse(powerBookmarksApp['selectedBookmarks_']['3'] === true);
+      assertTrue(powerBookmarksApp['editing_']);
+    });
+
+    test('ClearsSelectionOnChanged', async () => {
+      const header =
+          powerBookmarksApp.$.bookmarksList.shadowRoot
+              .querySelector<HTMLElement>('power-bookmarks-list-header')!;
+      const editButton =
+          header.shadowRoot!.querySelector<HTMLElement>('#editButton')!;
+      editButton.click();
+      await microtasksFinished();
+
+      await selectBookmark('3');
+      assertTrue(powerBookmarksApp['selectedBookmarks_']['3'] === true);
+      assertTrue(powerBookmarksApp['editing_']);
+
+      bookmarksApi.callbackRouterRemote.onBookmarkNodeChanged(
+          '3',
+          'New Title',
+          'https://www.google.com/',
+      );
+      await microtasksFinished();
+
+      assertFalse(powerBookmarksApp['selectedBookmarks_']['3'] === true);
+      assertTrue(powerBookmarksApp['editing_']);
     });
 
     test('MovesBookmarkWithFilter', async () => {

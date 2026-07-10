@@ -11,7 +11,6 @@
 #include "base/memory/raw_ptr.h"
 #include "chrome/browser/task_manager/task_manager_metrics_recorder.h"
 #include "chrome/browser/ui/task_manager/task_manager_table_model.h"
-#include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/browser/ui/views/task_manager_search_bar_view.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/base/models/table_model.h"
@@ -19,19 +18,17 @@
 #include "ui/base/mojom/menu_source_type.mojom-forward.h"
 #include "ui/menus/simple_menu_model.h"
 #include "ui/views/context_menu_controller.h"
-#include "ui/views/controls/button/md_text_button.h"
-#include "ui/views/controls/menu/menu_runner.h"
-#include "ui/views/controls/separator.h"
-#include "ui/views/controls/tabbed_pane/tabbed_pane.h"
 #include "ui/views/controls/tabbed_pane/tabbed_pane_listener.h"
 #include "ui/views/controls/table/table_grouper.h"
 #include "ui/views/controls/table/table_view_observer.h"
-#include "ui/views/controls/textfield/textfield.h"
 #include "ui/views/window/dialog_delegate.h"
 
 class Browser;
+class ChromeLayoutProvider;
 
 namespace views {
+class MenuRunner;
+class TabbedPaneTabStrip;
 class TableView;
 class View;
 }  // namespace views
@@ -199,9 +196,6 @@ class TaskManagerView : public TableViewDelegate,
 
   std::unique_ptr<ui::SimpleMenuModel> menu_model_;
   std::unique_ptr<views::MenuRunner> menu_runner_;
-
-  // We need to own the text of the menu, the Windows API does not copy it.
-  std::u16string always_on_top_menu_text_;
 
   raw_ptr<views::TableView> tab_table_ = nullptr;
 

@@ -431,6 +431,18 @@ IN_PROC_BROWSER_TEST_F(SettingsTest, Prefs) {
   RunTest("settings/settings_prefs_test.js", "mocha.run()");
 }
 
+IN_PROC_BROWSER_TEST_F(SettingsTest, PrefService) {
+  RunTest("settings/pref_service_test.js", "mocha.run()");
+}
+
+IN_PROC_BROWSER_TEST_F(SettingsTest, PrefServiceObserverMixin) {
+  RunTest("settings/pref_service_observer_mixin_test.js", "mocha.run()");
+}
+
+IN_PROC_BROWSER_TEST_F(SettingsTest, PrefServiceObserverMixinLit) {
+  RunTest("settings/pref_service_observer_mixin_lit_test.js", "mocha.run()");
+}
+
 IN_PROC_BROWSER_TEST_F(SettingsTest, PrefUtils) {
   RunTest("settings/settings_pref_util_test.js", "mocha.run()");
 }

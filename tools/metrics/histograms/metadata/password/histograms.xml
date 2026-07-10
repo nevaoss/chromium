@@ -670,6 +670,17 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="PasswordManager.ActorLogin.GetPermissions.Latency" units="ms"
+    expires_after="2026-12-04">
+  <owner>ioanap@chromium.org</owner>
+  <owner>chrome-password-manager-metrics-alerts@google.com</owner>
+  <summary>
+    Records the overall time elapsed between calling
+    ActorLoginPermissionsManager::GetAllPermissions and when all permissions
+    (both passwords and federated) have been retrieved.
+  </summary>
+</histogram>
+
 <histogram name="PasswordManager.ActorLogin.TimeFromAttemptToSuccess"
     units="ms" expires_after="2026-12-06">
   <owner>otara@google.com</owner>
@@ -1408,7 +1419,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PasswordManager.CredentialManager.{ProfileType}.Launch.Success"
-    enum="BooleanSuccess" expires_after="2026-06-21">
+    enum="BooleanSuccess" expires_after="2027-06-21">
   <owner>ioanap@chromium.org</owner>
   <owner>friedrichh@chromium.org</owner>
   <summary>
@@ -1662,7 +1673,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PasswordManager.FillingAssistance{PasswordAccountStorageUsageLevelOrSecurityOrigin}{Profile}"
-    enum="PasswordManagerFillingAssistance" expires_after="2026-10-11">
+    enum="PasswordManagerFillingAssistance" expires_after="2026-12-13">
   <owner>kazinova@google.com</owner>
   <owner>chrome-password-manager-metrics-alerts@google.com</owner>
   <summary>
@@ -3758,7 +3769,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 
 <histogram
     name="PasswordManager.SavedPasswordIsGenerated{PasswordAccountStorageUsageLevel}{Profile}"
-    enum="BooleanSavedPasswordIsGenerated" expires_after="2026-10-11">
+    enum="BooleanSavedPasswordIsGenerated" expires_after="2026-12-13">
   <owner>kazinova@google.com</owner>
   <owner>chrome-password-manager-metrics-alerts@google.com</owner>
   <summary>
@@ -4077,7 +4088,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 
 <histogram name="PasswordManager.TouchToFill.PasswordGeneration.TriggerOutcome"
     enum="TouchToFillPasswordGenerationTriggerOutcome"
-    expires_after="2026-07-26">
+    expires_after="2027-07-26">
   <owner>atsvirchkova@google.com</owner>
   <owner>ioanap@chromium.org</owner>
   <summary>
@@ -4136,7 +4147,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="PasswordManager.TouchToFill.TimeToSuccessfulLogin" units="ms"
-    expires_after="2026-06-21">
+    expires_after="2026-09-21">
   <owner>ioanap@chromium.org</owner>
   <owner>friedrichh@chromium.org</owner>
   <summary>

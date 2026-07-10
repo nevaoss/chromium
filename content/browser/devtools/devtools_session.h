@@ -143,7 +143,8 @@ class DevToolsSession : public protocol::FrontendChannel,
 
   friend class FlattenedDevToolsProtocolTest;
 
-  blink::mojom::BrowserOriginatingSessionState* browser_agent_state() {
+  blink::mojom::BrowserOriginatingSessionState*
+  browser_originating_session_state() {
     return session_state_cookie_->browser_originating_session_state.get();
   }
 

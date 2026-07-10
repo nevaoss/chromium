@@ -611,7 +611,7 @@ IN_PROC_BROWSER_TEST_F(KioskIwaSimpleUpdateTest, UpdatesToLatestAtExit) {
   AddTestBundle(kVersionString2);
   EXPECT_EQ(GetWebAppProvider()
                 .isolated_web_app_update_manager()
-                .DiscoverUpdatesNow(),
+                .DiscoverAndPrepareUpdatesNow(),
             1UL);
 
   ExpectAppUpdateDiscovered();
@@ -850,7 +850,7 @@ class KioskIwaVersionPinningUpdateTest
       case KioskIwaVersionPinningUpdateTestParams::TestCase::kNoUpdateQueued:
         EXPECT_EQ(GetWebAppProvider()
                       .isolated_web_app_update_manager()
-                      .DiscoverUpdatesNow(),
+                      .DiscoverAndPrepareUpdatesNow(),
                   0UL);
         break;
       case KioskIwaVersionPinningUpdateTestParams::TestCase::kUpdateApplied:

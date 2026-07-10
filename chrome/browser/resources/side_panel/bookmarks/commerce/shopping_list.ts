@@ -9,8 +9,8 @@ import 'chrome://resources/cr_elements/cr_icon/cr_icon.js';
 import 'chrome://resources/cr_elements/cr_toast/cr_toast.js';
 import './icons.html.js';
 
-import type {PriceTrackingBrowserProxy} from '//resources/cr_components/commerce/price_tracking_browser_proxy.js';
-import {PriceTrackingBrowserProxyImpl} from '//resources/cr_components/commerce/price_tracking_browser_proxy.js';
+import type {BrowserProxy as PriceTrackingBrowserProxy} from '//resources/cr_components/commerce/price_tracking.mojom-webui.js';
+import {browserProxyFactory as priceTrackingBrowserProxyFactory} from '//resources/cr_components/commerce/price_tracking.mojom-webui.js';
 import type {BookmarkProductInfo} from '//resources/cr_components/commerce/shared.mojom-webui.js';
 import type {CrToastElement} from 'chrome://resources/cr_elements/cr_toast/cr_toast.js';
 import {getFaviconForPageURL} from 'chrome://resources/js/icon.js';
@@ -64,7 +64,7 @@ export class ShoppingListElement extends CrLitElement {
   private bookmarksApi_: BookmarksApiProxy =
       BookmarksApiProxyImpl.getInstance();
   private priceTrackingProxy_: PriceTrackingBrowserProxy =
-      PriceTrackingBrowserProxyImpl.getInstance();
+      priceTrackingBrowserProxyFactory.getInstance();
   private listenerIds_: number[] = [];
   private retryOperationCallback_: (() => void)|null = null;
 

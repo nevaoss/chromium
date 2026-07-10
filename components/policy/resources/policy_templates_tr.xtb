@@ -7371,9 +7371,6 @@ Politika ayarlanmazsa veya sürüm yaşı belirlenemezse tüm güncellemelerde <
 <translation id="5649788773465136073">Sitelerde korunan içerik tanımlayıcılarının kullanımını devre dışı bırak. Bu durumda, korunan içeriklerin oynatma kalitesi düşebilir.</translation>
 <translation id="5650256117857913687">Uzaktan erişim kullanıcılarının, yerel istemci tarayıcılarında ana makine taraflı URL'leri açmasını devre dışı bırak</translation>
 <translation id="5650716720715977549">Daha özel ağ uç noktalarına yapılan isteklere kısıtlama uygula</translation>
-<translation id="5651538748810288218">Politikayı 1 değerine ayarlarsanız web siteleri, hareket ve ışık gibi sensörlere erişip bunları kullanabilir. Politikayı 2 değerine ayarlarsanız sensörlere erişim engellenir.
-
-      Politikayı ayarlamadan bırakırsanız <ph name="ALLOW_SENSORS_POLICY_NAME" /> politikası geçerli olur. Kullanıcılar bu ayarı değiştirebilir.</translation>
 <translation id="5652250453612826983">Yalnızca çocuk hesaplarına uygulanan ebeveyn gözetimi politikalarını kontrol eder.
       Bu politikalar yönetici konsolunda ayarlanmayıp doğrudan Kids API Server tarafından yapılandırılır.</translation>
 <translation id="5654682237531873653">Politikanın Etkin değerine ayarlanması, yazım denetimini açar ve kullanıcılar tarafından kapatılamaz. Yazım denetimi dilleri <ph name="MS_WIN_NAME" />, <ph name="PRODUCT_OS_NAME" /> ve <ph name="LINUX_OS_NAME" /> ürünlerinde ayrı ayrı açılıp kapatılabilir. Böylece kullanıcılar, her yazım denetimi dilini kapatarak yine de yazım denetimini devre dışı bırakabilirler. Bunu önlemek için belirli yazım denetimi dillerini etkinleştirmeye zorlamak üzere <ph name="SPELLCHECK_LANGUAGE_POLICY_NAME" /> politikasını kullanın.

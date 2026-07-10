@@ -134,12 +134,6 @@ void Host::NotifyActorTaskListRowClicked(int32_t task_id) {
   }
 }
 
-void Host::NotifyIsInvoking(bool is_invoking) {
-  if (auto* client = GetPrimaryWebClient()) {
-    client->NotifyIsInvoking(is_invoking);
-  }
-}
-
 void Host::NotifyContextualSkillsChanged(
     std::vector<mojom::SkillPreviewPtr> contextual_skill_previews) {
   if (auto* client = GetPrimaryWebClient()) {

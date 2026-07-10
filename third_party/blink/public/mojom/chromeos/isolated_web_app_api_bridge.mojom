@@ -30,6 +30,8 @@ enum SetShapeResult {
   kInvalidLength,
   // The window could not be found.
   kNoWindow,
+  // The window is not in unframed mode.
+  kNotUnframed,
 };
 
 // The maximum number of rectangles allowed to be passed in to `SetShape`.

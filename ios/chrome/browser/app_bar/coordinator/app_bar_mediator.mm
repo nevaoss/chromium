@@ -40,6 +40,8 @@
 #import "ios/chrome/browser/intents/model/intents_donation_helper.h"
 #import "ios/chrome/browser/lens/ui_bundled/lens_availability.h"
 #import "ios/chrome/browser/lens/ui_bundled/lens_entrypoint.h"
+#import "ios/chrome/browser/ntp/model/new_tab_page_tab_helper.h"
+#import "ios/chrome/browser/ntp/model/new_tab_page_util.h"
 #import "ios/chrome/browser/policy/model/policy_util.h"
 #import "ios/chrome/browser/search_engines/model/search_engine_observer_bridge.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/incognito_state.h"
@@ -641,6 +643,17 @@
   if (!self.consumer || !self.currentWebStateList) {
     return;
   }
+
+  web::WebState* activeWebState = self.currentWebStateList->GetActiveWebState();
+  BOOL isNtp = activeWebState && IsVisibleURLNewTabPage(activeWebState);
+  BOOL isStartSurface = NO;
+  if (isNtp) {
+    NewTabPageTabHelper* NTPHelper =
+        NewTabPageTabHelper::FromWebState(activeWebState);
+    isStartSurface = NTPHelper && NTPHelper->ShouldShowStartSurface();
+  }
+  [self.consumer setNTPVisible:isNtp isStartSurface:isStartSurface];
+
   NSUInteger tabCount;
 
   // Determine the tab count to display in the tab grid button.

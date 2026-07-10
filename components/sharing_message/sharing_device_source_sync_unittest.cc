@@ -226,14 +226,16 @@ TEST_F(SharingDeviceSourceSyncTest, GetDeviceCandidates_DeviceNaming) {
   auto devices =
       device_source->GetDeviceCandidates(SharingFeature::kClickToCallV2);
   ASSERT_EQ(4u, devices.size());
-  EXPECT_EQ(syncer::GetDeviceDisplayNames(device_info_4.get()).short_name,
-            devices[0].client_name());
-  EXPECT_EQ(syncer::GetDeviceDisplayNames(device_info_3.get()).full_name,
+  EXPECT_EQ(
+      syncer::GetDisplayNameCandidates(device_info_4.get()).preferred_name_if_unique,
+      devices[0].client_name());
+  EXPECT_EQ(syncer::GetDisplayNameCandidates(device_info_3.get()).fallback_full_name,
             devices[1].client_name());
-  EXPECT_EQ(syncer::GetDeviceDisplayNames(device_info_2.get()).full_name,
+  EXPECT_EQ(syncer::GetDisplayNameCandidates(device_info_2.get()).fallback_full_name,
             devices[2].client_name());
-  EXPECT_EQ(syncer::GetDeviceDisplayNames(device_info_1.get()).short_name,
-            devices[3].client_name());
+  EXPECT_EQ(
+      syncer::GetDisplayNameCandidates(device_info_1.get()).preferred_name_if_unique,
+      devices[3].client_name());
 }
 
 TEST_F(SharingDeviceSourceSyncTest, GetDeviceCandidates_Expired) {
@@ -300,11 +302,13 @@ TEST_F(SharingDeviceSourceSyncTest, GetDeviceCandidates_RenameAfterFiltering) {
       device_source->GetDeviceCandidates(SharingFeature::kClickToCallV2);
   ASSERT_EQ(2u, devices.size());
   EXPECT_EQ(device_info_4->guid(), devices[0].guid());
-  EXPECT_EQ(syncer::GetDeviceDisplayNames(device_info_4.get()).short_name,
-            devices[0].client_name());
+  EXPECT_EQ(
+      syncer::GetDisplayNameCandidates(device_info_4.get()).preferred_name_if_unique,
+      devices[0].client_name());
   EXPECT_EQ(device_info_2->guid(), devices[1].guid());
-  EXPECT_EQ(syncer::GetDeviceDisplayNames(device_info_2.get()).short_name,
-            devices[1].client_name());
+  EXPECT_EQ(
+      syncer::GetDisplayNameCandidates(device_info_2.get()).preferred_name_if_unique,
+      devices[1].client_name());
 }
 
 TEST_F(SharingDeviceSourceSyncTest, GetDeviceCandidates_NoChannel) {

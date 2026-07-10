@@ -31,7 +31,8 @@
 
 #backButton {
   --cr-icon-button-fill-color: var(--cr-primary-text-color);
-  margin: 0 -4px;
+  margin: 0;
+  margin-inline-start: -4px;
 }
 
 ::slotted(cr-icon-button[slot=buttons]) {

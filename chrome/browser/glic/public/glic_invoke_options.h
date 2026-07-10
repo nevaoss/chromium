@@ -180,7 +180,9 @@ enum class GlicInvokeError {
   // Could not create clipboard metadata for policy checks. This is likely due
   // to the context type not yet being supported.
   kAdditionalContextNoClipboardMetadata = 14,
-  kMaxValue = kAdditionalContextNoClipboardMetadata,
+  // The targeted Glic InstanceId could not be found or has closed.
+  kInstanceNotFound = 15,
+  kMaxValue = kInstanceNotFound,
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicInvokeResult,//chrome/browser/glic/host/glic_internals_page_handler.cc:GlicInvokeError)
 
@@ -282,6 +284,10 @@ struct GlicInvokeOptions {
   // before proceeding with the invocation.
   FreCompletionWaitMode fre_completion_wait_mode =
       FreCompletionWaitMode::kDefault;
+
+  // Browser-specific callback for when the side panel is opened (and stabilized
+  // if wait_for_panel_open is true).
+  base::OnceClosure on_panel_opened;
 
   // Browser-specific callback for when the invocation successfully completes.
   // This is called asynchronously.

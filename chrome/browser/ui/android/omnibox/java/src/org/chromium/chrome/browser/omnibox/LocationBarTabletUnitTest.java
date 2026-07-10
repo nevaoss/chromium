@@ -6,12 +6,14 @@ package org.chromium.chrome.browser.omnibox;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 
 import android.app.Activity;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.InsetDrawable;
 import android.graphics.drawable.LayerDrawable;
 import android.view.Gravity;
 import android.view.View;
@@ -237,6 +239,22 @@ public class LocationBarTabletUnitTest {
                 OmniboxResourceProvider.getStandardSuggestionBackgroundColor(
                         mActivity, BrandedColorScheme.APP_DEFAULT);
         assertEquals(expectedOuterRectColor, outerRect.getColor().getDefaultColor());
+
+        LayerDrawable background = (LayerDrawable) mLocationBarTablet.getBackground();
+        int glifLayerIndex = background.findIndexByLayerId(R.id.glif_border_layer);
+        assertEquals(0, background.getLayerInsetBottom(glifLayerIndex));
+        assertEquals(0, background.getLayerInsetTop(glifLayerIndex));
+        assertEquals(0, background.getLayerInsetLeft(glifLayerIndex));
+        assertEquals(0, background.getLayerInsetRight(glifLayerIndex));
+
+        mLocationBarTablet.onSpecializedFuseboxModeActivated(true);
+        GlifStrokeDrawable glifStrokeDrawable =
+                (GlifStrokeDrawable) background.getDrawable(glifLayerIndex);
+        float radius =
+                mLocationBarTablet
+                        .getResources()
+                        .getDimension(R.dimen.omnibox_suggestion_dropdown_round_corner_radius);
+        assertEquals(radius, glifStrokeDrawable.getCornerRadiusForTesting(), MathUtils.EPSILON);
     }
 
     @Test
@@ -482,5 +500,25 @@ public class LocationBarTabletUnitTest {
                 OmniboxResourceProvider.getStandardSuggestionBackgroundColor(
                         mActivity, BrandedColorScheme.APP_DEFAULT);
         assertEquals(expectedAppDefaultInnerColor, innerRect.getColor().getDefaultColor());
+    }
+
+    @Test
+    public void testSetIsInStandby() {
+        assertNull(mLocationBarTablet.getForeground());
+
+        mLocationBarTablet.setIsInStandby(true);
+
+        // Verify the InsetDrawable border was applied to the foreground.
+        assertNotNull(mLocationBarTablet.getForeground());
+        assertTrue(mLocationBarTablet.getForeground() instanceof InsetDrawable);
+        mLocationBarTablet.onFuseboxStateChanged(FuseboxState.EXPANDED);
+        // Standby mode should override the fusebox state when deciding if to expand.
+        var layoutParams = (LinearLayout.LayoutParams) mHolderView.getLayoutParams();
+        assertEquals(0, layoutParams.leftMargin);
+        assertEquals(0, layoutParams.rightMargin);
+        assertEquals(0, layoutParams.topMargin);
+
+        mLocationBarTablet.setIsInStandby(false);
+        assertNull(mLocationBarTablet.getForeground());
     }
 }

@@ -443,15 +443,6 @@ Google Chrome ne može da vrati podešavanja.</translation>
 <translation id="569897634095159764">Povezivanje sa internetom nije uspelo. Proksi server zahteva potvrdu identiteta.</translation>
 <translation id="5709557627224531708">Podesite Chrome kao podrazumevani pregledač</translation>
 <translation id="5719246646468301581">Dodatni uslovi korišćenja usluge za Google Chrome i ChromeOS</translation>
-<translation id="5719324992913248873">Ovom radnjom:
-          <ph name="LINE_BREAKS" />
-           • resetujete neka Chrome podešavanja i Chrome prečice
-           <ph name="LINE_BREAK" />
-           • onemogućavate dodatke
-           <ph name="LINE_BREAK" />
-           • brišete kolačiće i druge privremene podatke o sajtovima
-            <ph name="LINE_BREAKS" />
-           Ovo se neće odraziti na obeleživače, istoriju i sačuvane lozinke.</translation>
 <translation id="5736850870166430177">Ako neki sajt pokuša da ukrade vašu lozinku ili probate da preuzmete štetni fajl, Chrome može da pošalje URL-ove, uključujući delove sadržaja stranice, u Bezbedno pregledanje</translation>
 <translation id="5756509061973259733">Chrome profil sa ovim nalogom već postoji na ovom uređaju</translation>
 <translation id="5759947850379142561">Izaberite bilo koji tekst ili sliku za pretragu pomoću Google objektiva ili pritisnite Escape da biste izašli iz Google objektiva</translation>

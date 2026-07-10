@@ -76,6 +76,7 @@ preprocess_if_expr("move_html") {
   in_files = [
     "browser_tests/minimal_client.html",
     "browser_tests/test.html",
+    "browser_tests/test_iframe.html",
     "test_client/fre.html",
     "test_client/index.html",
     "test_client/metadata_test_page.html",

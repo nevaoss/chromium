@@ -65,6 +65,7 @@ class PersonalContextManager final {
   void OnFetchContextResponse(
       proto::ContextMemoryFeature feature,
       FetcherId fetcher_id,
+      base::TimeTicks start_time,
       FetchContextCallback callback,
       base::expected<const proto::FetchContextResponse, ContextMemoryError>
           fetch_response);

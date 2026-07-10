@@ -285,6 +285,8 @@ std::optional<EntityInstance> PersonalContextEntityToEntityInstance(
       return PersonalContextOrderToEntityInstance(entity.order());
     case personal_context::proto::Entity::kShipment:
       return PersonalContextShipmentToEntityInstance(entity.shipment());
+    case personal_context::proto::Entity::kSensitivePiiPresence:
+      return std::nullopt;
     case personal_context::proto::Entity::ENTITY_NOT_SET:
       NOTREACHED();
   }
@@ -311,6 +313,29 @@ AutofillEntityTypeToPersonalContextEntityType(EntityType type) {
     case EntityTypeName::kRedressNumber:
       // These entities are not supported by personal context.
       return personal_context::proto::EntityType::UNSPECIFIED;
+  }
+}
+
+std::optional<EntityType> ToEntityType(
+    personal_context::proto::Entity::EntityCase entity_case) {
+  switch (entity_case) {
+    case personal_context::proto::Entity::kPassport:
+      return EntityType(EntityTypeName::kPassport);
+    case personal_context::proto::Entity::kDriversLicense:
+      return EntityType(EntityTypeName::kDriversLicense);
+    case personal_context::proto::Entity::kNationalId:
+      return EntityType(EntityTypeName::kNationalIdCard);
+    case personal_context::proto::Entity::kFlightReservation:
+      return EntityType(EntityTypeName::kFlightReservation);
+    case personal_context::proto::Entity::kVehicle:
+      return EntityType(EntityTypeName::kVehicle);
+    case personal_context::proto::Entity::kOrder:
+      return EntityType(EntityTypeName::kOrder);
+    case personal_context::proto::Entity::kShipment:
+      return EntityType(EntityTypeName::kShipment);
+    case personal_context::proto::Entity::kSensitivePiiPresence:
+    case personal_context::proto::Entity::ENTITY_NOT_SET:
+      return std::nullopt;
   }
 }
 

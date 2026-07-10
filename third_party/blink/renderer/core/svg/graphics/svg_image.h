@@ -44,6 +44,7 @@
 #include "third_party/blink/renderer/platform/wtf/casting.h"
 #include "ui/gfx/geometry/size.h"
 #include "ui/gfx/geometry/size_f.h"
+#include "ui/gfx/geometry/vector2d_f.h"
 
 namespace blink {
 
@@ -239,6 +240,7 @@ class CORE_EXPORT SVGImage final : public Image {
   // optional additional cull rect.
   std::optional<PaintRecord> PaintRecordForCurrentFrame(
       const DrawInfo&,
+      const gfx::Vector2dF& container_scale,
       const gfx::Rect* cull_rect);
 
   void DrawInternal(const DrawInfo&,

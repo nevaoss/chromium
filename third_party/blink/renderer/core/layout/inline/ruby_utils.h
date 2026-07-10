@@ -114,7 +114,7 @@ struct AnnotationMetrics {
 AnnotationMetrics ComputeAnnotationOverflow(
     const LogicalLineItems& logical_line,
     const FontHeight& line_box_metrics,
-    const ComputedStyle& line_style,
+    LayoutUnit line_font_size,
     std::optional<FontHeight> annotation_metrics);
 
 // Update inline positions of LogicalLineItems for all LogicalRubyColumns

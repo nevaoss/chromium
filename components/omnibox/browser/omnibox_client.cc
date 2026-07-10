@@ -63,6 +63,10 @@ TemplateURLService* OmniboxClient::GetTemplateURLService() {
   return nullptr;
 }
 
+AiModeButtonService* OmniboxClient::GetAiModeButtonService() {
+  return nullptr;
+}
+
 AutocompleteClassifier* OmniboxClient::GetAutocompleteClassifier() {
   return nullptr;
 }

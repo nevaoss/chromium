@@ -936,7 +936,12 @@ base::WeakPtr<content::NavigationHandle> Navigate(NavigateParams* params) {
         tab_strip_model->AddToNewSplit(
             {new_tab_index}, split_tabs::SplitTabVisualData(),
             split_tabs::SplitTabCreatedSource::kLinkClick);
-        tab_strip_model->ActivateTabAt(new_tab_index);
+        // Re-query the index after adding to split, as `AddToNewSplit()` may
+        // have moved the tab to a different position.
+        const int inserted_tab_index = tab_strip_model->GetIndexOfWebContents(
+            contents_to_navigate_or_insert);
+        CHECK_NE(inserted_tab_index, TabStripModel::kNoTab);
+        tab_strip_model->ActivateTabAt(inserted_tab_index);
       }
     }
   }

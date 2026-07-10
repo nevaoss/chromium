@@ -37,16 +37,16 @@ namespace {
 class TestUserMetricsServiceClient
     : public ::metrics::TestMetricsServiceClient {
  public:
-  std::optional<bool> GetCurrentUserMetricsConsent() const override {
-    return current_user_metrics_consent_;
+  std::optional<bool> GetCurrentUserMetricsChoice() const override {
+    return current_user_choice_;
   }
 
-  void UpdateCurrentUserMetricsConsent(bool metrics_consent) override {
-    current_user_metrics_consent_ = metrics_consent;
+  void UpdateCurrentUserMetricsChoice(bool user_choice) override {
+    current_user_choice_ = user_choice;
   }
 
  private:
-  bool current_user_metrics_consent_ = true;
+  bool current_user_choice_ = true;
 };
 }  // namespace
 
@@ -853,7 +853,7 @@ TEST_F(PerSessionSettingsUserActionTrackerTest,
   // NOTE: revoking UMA consent will clear the pref that stores the current
   // unique settings that the user has used. Now that the consent has been
   // granted, we will record that Settings changes to .DeviceLifetime histogram.
-  test_metrics_service_client_->UpdateCurrentUserMetricsConsent(true);
+  test_metrics_service_client_->UpdateCurrentUserMetricsChoice(true);
   std::set<std::string> expected_set;
 
   tracker_->RecordPageFocus();
@@ -917,7 +917,7 @@ TEST_F(PerSessionSettingsUserActionTrackerTest,
 
   // Simulate that the user has revoked UMA consent, no data will be recorded
   // to UMA.
-  test_metrics_service_client_->UpdateCurrentUserMetricsConsent(false);
+  test_metrics_service_client_->UpdateCurrentUserMetricsChoice(false);
 
   // Flip the WiFi toggle in Settings, the is a unique Setting that is changing
   // so the number of unique settings that have been changed is 1.
@@ -973,8 +973,8 @@ TEST_F(PerSessionSettingsUserActionTrackerTest,
   // to UMA because they have previously revoked their consent and have made a
   // change in Settings. The data we are recording is no longer accurate so we
   // will no longer record the data to UMA. See
-  // ash::prefs::kHasEverRevokedMetricsConsent for more information.
-  test_metrics_service_client_->UpdateCurrentUserMetricsConsent(true);
+  // ash::prefs::kHasEverRevokedMetricsChoice for more information.
+  test_metrics_service_client_->UpdateCurrentUserMetricsChoice(true);
 
   // Flip the WiFi toggle in Settings, the is a unique Setting that is changing
   // so the number of unique settings that have been changed is 1.
@@ -1058,20 +1058,20 @@ TEST_F(PerSessionSettingsUserActionTrackerTest,
   // NOTE: revoking UMA consent will clear the pref that stores the current
   // unique settings that the user has used. Now that the consent has been
   // granted, we will record that Settings changes to .DeviceLifetime histogram.
-  test_metrics_service_client_->UpdateCurrentUserMetricsConsent(true);
+  test_metrics_service_client_->UpdateCurrentUserMetricsChoice(true);
   std::set<std::string> expected_set;
 
   // Simulate that the user has revoked UMA consent, the function
   // ProvideCurrentSessionData will not get called and no data will be recorded
   // to UMA.
-  test_metrics_service_client_->UpdateCurrentUserMetricsConsent(false);
+  test_metrics_service_client_->UpdateCurrentUserMetricsChoice(false);
 
   // Simulate that the user has re-granted UMA consent, no data will be recorded
   // to UMA because they have previously revoked their consent. Once a user
   // revokes their consent, re-granting it without making a Setting change will
   // result in recording of their data, since we will not have any discrepancy
   // in the data we are recording.
-  test_metrics_service_client_->UpdateCurrentUserMetricsConsent(true);
+  test_metrics_service_client_->UpdateCurrentUserMetricsChoice(true);
 
   // Flip the WiFi toggle in Settings, the is a unique Setting that is changing
   // so the number of unique settings that have been changed is 1.

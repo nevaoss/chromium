@@ -35,7 +35,6 @@
 #include "chrome/browser/contextual_search/contextual_search_web_contents_helper.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_context_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
-#include "chrome/browser/ui/omnibox/ai_mode_button_config.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/omnibox/omnibox_popup_state_manager.h"
@@ -56,6 +55,8 @@
 #include "components/omnibox/browser/actions/omnibox_action.h"
 #include "components/omnibox/browser/actions/omnibox_pedal.h"
 #include "components/omnibox/browser/actions/omnibox_pedal_concepts.h"
+#include "components/omnibox/browser/ai_mode_button_config.h"
+#include "components/omnibox/browser/ai_mode_button_service.h"
 #include "components/omnibox/browser/autocomplete_classifier.h"
 #include "components/omnibox/browser/autocomplete_enums.h"
 #include "components/omnibox/browser/autocomplete_match.h"
@@ -199,6 +200,17 @@ void EmitAcceptedKeywordSuggestionHistogram(
         turl->GetBuiltinEngineType(),
         BuiltinEngineType::KEYWORD_MODE_ENGINE_TYPE_MAX);
   }
+}
+
+const ai_mode_button_config::AiModeButtonConfig* GetAiModeButtonConfig(
+    OmniboxController* controller) {
+  // `GetAiModeButtonConfig()` is only called when AI mode button is visible.
+  CHECK(controller);
+  auto* service = controller->client()->GetAiModeButtonService();
+  CHECK(service);
+  auto* config = service->GetCurrentConfig();
+  CHECK(config);
+  return config;
 }
 
 }  // namespace
@@ -400,8 +412,9 @@ void OmniboxEditModel::SetUserText(const std::u16string& text) {
 }
 
 bool OmniboxEditModel::Unelide() {
-  // Unelision should not occur if the user has already inputted text.
-  if (user_input_in_progress()) {
+  // Unelision should not occur if the user has already inputted text or moved
+  // to another match. Doing so would incorrectly reset the omnibox text.
+  if (user_input_in_progress() || has_temporary_text_) {
     return false;
   }
 
@@ -791,8 +804,8 @@ void OmniboxEditModel::OpenAiMode(bool via_keyboard, bool via_context_menu) {
     RecordAiModeButtonClick();
   }
 
-  const auto& config = ai_mode_button_config::GetCurrentAiModeButtonConfig();
-  if (config.id != SearchEngineType::SEARCH_ENGINE_GOOGLE) {
+  if (GetAiModeButtonConfig(controller_)->id !=
+      SearchEngineType::SEARCH_ENGINE_GOOGLE) {
     NavigateToThirdPartyAiMode(query_text);
     return;
   }
@@ -2269,7 +2282,7 @@ std::u16string OmniboxEditModel::GetPopupAccessibilityLabelForCurrentSelection(
 
 std::u16string OmniboxEditModel::GetPopupAccessibilityLabelForAimButton() {
   DCHECK(popup_selection_.state == OmniboxPopupSelection::FOCUSED_BUTTON_AIM);
-  return ai_mode_button_config::GetCurrentAiModeButtonConfig().a11y_label;
+  return GetAiModeButtonConfig(controller_)->a11y_label;
 }
 
 std::u16string
@@ -3519,15 +3532,16 @@ void OmniboxEditModel::NavigateToAiModeWithoutContextualizer(
 
 void OmniboxEditModel::NavigateToThirdPartyAiMode(
     const std::u16string& query_text) {
-  const auto& config = ai_mode_button_config::GetCurrentAiModeButtonConfig();
-  std::string url =
-      query_text.empty() ? config.navigation_url_empty : config.navigation_url;
+  auto* config = GetAiModeButtonConfig(controller_);
+  std::string url = query_text.empty() ? config->navigation_url_empty
+                                       : config->navigation_url;
   TemplateURLData turl_data;
   turl_data.SetURL(url);
   TemplateURL turl(turl_data);
-  TemplateURLService* service = controller_->client()->GetTemplateURLService();
+  TemplateURLService* turl_service =
+      controller_->client()->GetTemplateURLService();
   GURL ai_mode_url =
-      turl.GenerateSearchURL(service->search_terms_data(), query_text);
+      turl.GenerateSearchURL(turl_service->search_terms_data(), query_text);
   if (ai_mode_url.is_valid()) {
     controller_->client()->OpenUrl(ai_mode_url);
   }

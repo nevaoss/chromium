@@ -1862,15 +1862,31 @@ bool RenderProcessHostImpl::Init() {
   if (IsInitializedAndNotDead())
     return true;
 
-  if (IsForTopChromeWebUI()) {
+#if !BUILDFLAG(IS_ANDROID)
+  bool is_initial_web_ui = false;
+  // If `use_separate_process` is true, the initial WebUI has its own process
+  // lock URL (e.g. chrome://webui-toolbar.top-chrome/), which can be uniquely
+  // identified using `IsInitialWebUIURL`.
+  // If `use_separate_process` is false, it shares the generic process lock
+  // `chrome://top-chrome/` with other Top Chrome WebUIs. In this case, we
+  // cannot distinguish it by lock URL and must fallback to checking if it is a
+  // Top Chrome WebUI process in general.
+  if (features::kInitialWebUIUseSeparateProcess.Get()) {
+    is_initial_web_ui = GetContentClient()->browser()->IsInitialWebUIURL(
+        GetProcessLock().GetProcessLockURL());
+  } else {
+    is_initial_web_ui = IsForTopChromeWebUI();
+  }
+
+  if (is_initial_web_ui) {
     bool existing_found = false;
     auto* browser_context = GetBrowserContext();
     for (auto it = RenderProcessHost::AllHostsIterator(); !it.IsAtEnd();
          it.Advance()) {
       RenderProcessHost* host = it.GetCurrentValue();
-      if (host != this && host->IsForTopChromeWebUI() &&
-          host->GetBrowserContext() == browser_context &&
-          host->IsInitializedAndNotDead()) {
+      if (host != this && host->GetBrowserContext() == browser_context &&
+          host->IsInitializedAndNotDead() &&
+          host->GetProcessLock() == GetProcessLock()) {
         existing_found = true;
         break;
       }
@@ -1879,6 +1895,7 @@ bool RenderProcessHostImpl::Init() {
         "InitialWebUI.Toolbar.ProcessAlreadyExistsForTheSameProfileOnCreation",
         existing_found);
   }
+#endif  // !BUILDFLAG(IS_ANDROID)
 
   base::CommandLine::StringType renderer_prefix;
   // A command prefix is something prepended to the command line of the spawned
@@ -3152,7 +3169,7 @@ void RenderProcessHostImpl::DisableRefCounts() {
 }
 
 bool RenderProcessHostImpl::AreRefCountsDisabled() {
-  CHECK_CURRENTLY_ON(BrowserThread::UI, base::NotFatalUntil::M152);
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
   return are_ref_counts_disabled_;
 }
 
@@ -3216,7 +3233,7 @@ void RenderProcessHostImpl::RemoveRoute(int32_t routing_id) {
                                   ->set_render_process_host_listener_changed();
                 proto->set_routing_id(routing_id);
               });
-  CHECK(listeners_.Lookup(routing_id) != nullptr, base::NotFatalUntil::M152);
+  DCHECK(listeners_.Lookup(routing_id) != nullptr);
   listeners_.Remove(routing_id);
   Cleanup();
 }
@@ -3293,8 +3310,8 @@ void RenderProcessHostImpl::ShutdownForBadMessage(
 
 void RenderProcessHostImpl::UpdateClientPriority(
     RenderProcessHostPriorityClient* client) {
-  CHECK(client, base::NotFatalUntil::M152);
-  CHECK_EQ(1u, priority_clients_.count(client), base::NotFatalUntil::M152);
+  DCHECK(client);
+  DCHECK_EQ(1u, priority_clients_.count(client));
   UpdateProcessPriorityInputs();
 }
 
@@ -3871,7 +3888,6 @@ void RenderProcessHostImpl::PropagateBrowserCommandLineToRenderer(
       switches::kDisableVideoCaptureUseGpuMemoryBuffer,
       switches::kDomAutomationController,
       switches::kEnableAutomation,
-      switches::kEnableExperimentalAccessibilityLanguageDetection,
       switches::kEnableExperimentalAccessibilityLabelsDebugging,
       switches::kEnableExperimentalWebPlatformFeatures,
       switches::kEnableBlinkTestFeatures,
@@ -4310,7 +4326,7 @@ void RenderProcessHostImpl::OnChannelConnected(int32_t peer_pid) {
 #endif
 
   if (IsReady()) {
-    CHECK(!sent_render_process_ready_, base::NotFatalUntil::M152);
+    DCHECK(!sent_render_process_ready_);
     sent_render_process_ready_ = true;
     // Send RenderProcessReady only if we already received the process handle.
     for (auto& observer : observers_)
@@ -4442,8 +4458,7 @@ bool RenderProcessHostImpl::HasOnlyNonLiveRenderFrameHosts() {
     return false;
 
   // We should never find more than render_frame_host_count_.
-  CHECK_EQ(GetRenderFrameHostCount(), found_rfh_count,
-           base::NotFatalUntil::M152);
+  DCHECK_EQ(GetRenderFrameHostCount(), found_rfh_count);
 
   // We accounted for all the RenderFrameHosts (at least one), and none were
   // live.
@@ -4453,7 +4468,7 @@ bool RenderProcessHostImpl::HasOnlyNonLiveRenderFrameHosts() {
 void RenderProcessHostImpl::Cleanup() {
   TRACE_EVENT("shutdown", "RenderProcessHostImpl::Cleanup",
               ChromeTrackEvent::kRenderProcessHost, *this);
-  CHECK_CURRENTLY_ON(BrowserThread::UI, base::NotFatalUntil::M152);
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
   base::UmaHistogramBoolean("BrowserRenderProcessHost.Cleanup.Total", true);
   // Keep the one renderer thread around forever in single process mode.
   if (run_renderer_in_process()) {
@@ -4574,7 +4589,7 @@ void RenderProcessHostImpl::Cleanup() {
   // safe for the process to cleanly exit but not for the RenderProcessHost to
   // be deleted.
   if (has_only_non_live_rfhs) {
-    CHECK(!listeners_.IsEmpty(), base::NotFatalUntil::M152);
+    DCHECK(!listeners_.IsEmpty());
 
     // No need to terminate the renderer if it is already gone.
     if (!IsInitializedAndNotDead())
@@ -4610,7 +4625,7 @@ void RenderProcessHostImpl::Cleanup() {
         base::BindOnce(&WebRtcLog::ClearLogMessageCallback, GetDeprecatedID()));
   }
 
-  CHECK_EQ(0, pending_views_, base::NotFatalUntil::M152);
+  DCHECK_EQ(0, pending_views_);
 
   // If the process associated with this RenderProcessHost is still alive,
   // notify all observers that the process has exited cleanly, even though it
@@ -4674,7 +4689,7 @@ void RenderProcessHostImpl::AddPendingView() {
 }
 
 void RenderProcessHostImpl::RemovePendingView() {
-  CHECK(pending_views_, base::NotFatalUntil::M152);
+  DCHECK(pending_views_);
   --pending_views_;
   if (!pending_views_)
     UpdateProcessPriority();
@@ -4682,8 +4697,7 @@ void RenderProcessHostImpl::RemovePendingView() {
 
 void RenderProcessHostImpl::AddPriorityClient(
     RenderProcessHostPriorityClient* priority_client) {
-  CHECK(!priority_clients_.contains(priority_client),
-        base::NotFatalUntil::M152);
+  DCHECK(!priority_clients_.contains(priority_client));
   priority_clients_.insert(priority_client);
   UpdateProcessPriorityInputs();
 }

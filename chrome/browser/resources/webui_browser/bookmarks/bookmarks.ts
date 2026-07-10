@@ -33,7 +33,7 @@ export class BookmarksElement extends CrLitElement {
 
   protected accessor rootNode_: BookmarkNode = {
     folder: {
-      id: 0n,
+      id: {value: ''},
       title: '',
       children: [],
     },
@@ -41,6 +41,11 @@ export class BookmarksElement extends CrLitElement {
 
   override connectedCallback() {
     super.connectedCallback();
+    this.fetchBookmarks_();
+    this.addEventListener('bookmarks-changed', () => this.fetchBookmarks_());
+  }
+
+  private fetchBookmarks_() {
     BookmarksService.getRemote().getBookmarks().then(
         root => this.rootNode_ = root);
   }

@@ -39,7 +39,7 @@
 #include "components/autofill/core/browser/integrators/one_time_tokens/metrics/otp_form_event_logger.h"
 #include "components/autofill/core/browser/integrators/one_time_tokens/otp_manager.h"
 #include "components/autofill/core/browser/integrators/password_manager/password_manager_delegate.h"
-#include "components/autofill/core/browser/integrators/touch_to_fill/touch_to_fill_delegate.h"
+#include "components/autofill/core/browser/integrators/touch_to_fill/touch_to_fill_payment_method_delegate.h"
 #include "components/autofill/core/browser/metrics/autofill_metrics.h"
 #include "components/autofill/core/browser/metrics/form_events/address_form_event_logger.h"
 #include "components/autofill/core/browser/metrics/form_events/credit_card_form_event_logger.h"
@@ -326,13 +326,15 @@ class BrowserAutofillManager : public AutofillManager {
   //   2. there is no form and WebOTP is not used
   void ReportAutofillWebOTPMetrics(bool used_web_otp) override;
 
-  TouchToFillDelegate* touch_to_fill_delegate() {
-    return touch_to_fill_delegate_.get();
+  TouchToFillPaymentMethodDelegate* touch_to_fill_payment_method_delegate() {
+    return touch_to_fill_payment_method_delegate_.get();
   }
 
-  void set_touch_to_fill_delegate(
-      std::unique_ptr<TouchToFillDelegate> touch_to_fill_delegate) {
-    touch_to_fill_delegate_ = std::move(touch_to_fill_delegate);
+  void set_touch_to_fill_payment_method_delegate(
+      std::unique_ptr<TouchToFillPaymentMethodDelegate>
+          touch_to_fill_payment_method_delegate) {
+    touch_to_fill_payment_method_delegate_ =
+        std::move(touch_to_fill_payment_method_delegate);
   }
 
   // This reference is not stable over the lifetime of BrowserAutofillManager.
@@ -358,6 +360,9 @@ class BrowserAutofillManager : public AutofillManager {
   // AutofillManager:
   void OnFormSubmittedImpl(const FormData& form,
                            mojom::SubmissionSource source) override;
+  void OnFormWithEmailVerificationTokenSubmittedImpl(
+      const FormData& form,
+      const FieldGlobalId& field_id) override;
   void OnCaretMovedInFormFieldImpl(const FormData& form,
                                    const FieldGlobalId& field_id,
                                    const gfx::Rect& caret_bounds) override {}
@@ -646,7 +651,8 @@ class BrowserAutofillManager : public AutofillManager {
   // our behalf.
   std::unique_ptr<AutofillExternalDelegate> external_delegate_ =
       std::make_unique<AutofillExternalDelegate>(this);
-  std::unique_ptr<TouchToFillDelegate> touch_to_fill_delegate_;
+  std::unique_ptr<TouchToFillPaymentMethodDelegate>
+      touch_to_fill_payment_method_delegate_;
 
   // This is always non-nullopt except very briefly during Reset().
   std::optional<MetricsState> metrics_ = std::make_optional<MetricsState>(this);

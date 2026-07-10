@@ -292,6 +292,7 @@ public class NewTabPageTest {
     @Feature({"NewTabPage", "FeedNewTabPage"})
     @DisableIf.Build(sdk_equals = Build.VERSION_CODES.R, message = "http://crbug.com/40664848")
     @DisableIf.Device(DeviceFormFactor.DESKTOP) // Failing on desktop http://crbug.com/40664848
+    @DisabledTest(message = "b/524422264")
     public void testFocusFakebox() {
         int initialFakeboxTop = getFakeboxTop(mNtp);
 
@@ -304,6 +305,7 @@ public class NewTabPageTest {
             Assert.assertTrue(afterFocusFakeboxTop < initialFakeboxTop);
         }
 
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
         mOmnibox.clearFocus();
         waitForFakeboxTopPosition(mNtp, initialFakeboxTop);
     }

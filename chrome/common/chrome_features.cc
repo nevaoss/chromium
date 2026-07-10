@@ -130,9 +130,9 @@ BASE_FEATURE(kPreinstalledWebAppAlwaysMigrateForTesting,
 // Controls the enablement of structured metrics on Windows, Linux, and Mac.
 BASE_FEATURE(kChromeStructuredMetrics, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// When enabled, allows parsing of `tab_group_color_palette` theme key, else
-// ignores it.
-BASE_FEATURE(kCustomizeTabGroupColorPalette, base::FEATURE_DISABLED_BY_DEFAULT);
+#if !BUILDFLAG(IS_ANDROID)
+BASE_FEATURE(kContextContainers, base::FEATURE_DISABLED_BY_DEFAULT);
+#endif
 
 // Moves the Extensions "puzzle piece" icon from the title bar into the app menu
 // for web app windows.
@@ -209,6 +209,8 @@ const base::FeatureParam<double> kGlicActorApcComparisonSamplingRate{
 BASE_FEATURE(kGlicIgnoreDogfoodClient, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicExperimentalTriggering, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicExperimentalTriggeringOptInTabFocus,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicExperimentalTriggeringSuppressDoneNotification,
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicExperimentalTriggeringOptInBypass,
@@ -219,6 +221,23 @@ BASE_FEATURE(kGlicExperimentalTriggeringOpenWindowIfNone,
 const base::FeatureParam<std::string> kGlicExperimentalTriggeringOptInURL{
     &kGlicExperimentalTriggering, "glic-experimental-triggering-opt-in-url",
     "https://gemini.google.com/glic/intro?"};
+
+const base::FeatureParam<std::string> kGlicExperimentalTriggeringTabFocusHosts{
+    &kGlicExperimentalTriggeringOptInTabFocus,
+    "glic-experimental-triggering-tab-focus-hosts",
+    "gemini.google.com,gemini-autopush.corp.google.com"};
+
+const base::FeatureParam<std::string>
+    kGlicExperimentalTriggeringTabFocusPathSubstring{
+        &kGlicExperimentalTriggeringOptInTabFocus,
+        "glic-experimental-triggering-tab-focus-path-substring",
+        "/spark,/corp/spark"};
+
+const base::FeatureParam<std::string>
+    kGlicExperimentalTriggeringTabFocusFallbackURL{
+        &kGlicExperimentalTriggeringOptInTabFocus,
+        "glic-experimental-triggering-tab-focus-fallback-url",
+        "https://gemini.google.com/spark"};
 
 const base::FeatureParam<base::TimeDelta> kGlicActorPageToolTimeout{
     &kGlicActor, "glic-actor-page-tool-timeout", base::Seconds(30)};
@@ -796,8 +815,6 @@ BASE_FEATURE(kGlicDefaultContextPinOnBind, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicUnloadOnClose, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kGlicApiActivationGating, base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kGlicBindPinnedUnboundTab, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, don't try to update the views background color based on the
@@ -888,8 +905,6 @@ BASE_FEATURE(kGlicDaisyChainNewTabs, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 
 BASE_FEATURE(kGlicLiveModeOnlyGlow, base::FEATURE_ENABLED_BY_DEFAULT);
-
-BASE_FEATURE(kGlicMITabContextMenu, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicGeminiContinueURLRedirect, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicWebContinuity, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1201,6 +1216,9 @@ BASE_FEATURE(kHttpsFirstModeIncognito, base::FEATURE_ENABLED_BY_DEFAULT);
 // Experimental image replacement feature. b/482792874
 BASE_FEATURE(kIndigo, base::FEATURE_DISABLED_BY_DEFAULT);
 
+const base::FeatureParam<bool> kIndigoRequireGlicEnabling{
+    &kIndigo, "indigo_require_glic_enabling", false};
+
 const base::FeatureParam<base::TimeDelta> kIndigoAnchoredMessageResetDuration{
     &kIndigo, "indigo_anchored_message_reset_duration", base::Hours(24)};
 const base::FeatureParam<std::string> kIndigoGenerateUrl{
@@ -1225,6 +1243,8 @@ const base::FeatureParam<std::string> kIndigoGlicPromptKey{
     &kIndigoOpenGlic, "indigo_glic_prompt_key", ""};
 const base::FeatureParam<std::string> kIndigoGlicSkillId{
     &kIndigoOpenGlic, "indigo_glic_skill_id", ""};
+const base::FeatureParam<base::TimeDelta> kIndigoGlicTriggerDelay{
+    &kIndigoOpenGlic, "indigo_glic_trigger_delay", base::Milliseconds(300)};
 
 #if !BUILDFLAG(IS_ANDROID)
 // A feature that controls whether Instant uses a spare renderer.

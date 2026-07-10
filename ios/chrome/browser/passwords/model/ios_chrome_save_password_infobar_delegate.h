@@ -18,7 +18,7 @@
 #import "ios/chrome/browser/passwords/model/ios_chrome_password_infobar_metrics_recorder.h"
 #import "services/metrics/public/cpp/ukm_source_id.h"
 
-@class CommandDispatcher;
+@protocol SyncPresenterCommands;
 
 namespace password_manager {
 class PasswordFormManagerForUI;
@@ -40,7 +40,7 @@ class IOSChromeSavePasswordInfoBarDelegate : public ConfirmInfoBarDelegate {
       std::unique_ptr<password_manager::PasswordFormManagerForUI> form_to_save,
       ukm::SourceId ukm_source_id,
       bool is_replacement,
-      CommandDispatcher* dispatcher,
+      id<SyncPresenterCommands> sync_presenter_handler,
       password_manager::PasswordStoreInterface* profile_store,
       password_manager::PasswordStoreInterface* account_store);
 
@@ -65,8 +65,8 @@ class IOSChromeSavePasswordInfoBarDelegate : public ConfirmInfoBarDelegate {
   // The URL host for which the credentials are being saved for.
   NSString* GetURLHostText() const;
 
-  // Gets the command dispatcher.
-  CommandDispatcher* GetDispatcher() const { return dispatcher_; }
+  // The subtitle for the Infobar.
+  NSString* GetSubtitle() const;
 
   // The account where the password will be saved, or std::nullopt if it's
   // saved locally.
@@ -83,25 +83,15 @@ class IOSChromeSavePasswordInfoBarDelegate : public ConfirmInfoBarDelegate {
   void InfoBarDismissed() override;
 
   // Updates the credentials being saved with `username` and `password`.
-  // TODO(crbug.com/40667480): This function is only virtual so it can be mocked
-  // for testing purposes.  It should become non-virtual once this test is
-  // refactored for testability.
-  virtual void UpdateCredentials(NSString* username, NSString* password);
+  void UpdateCredentials(NSString* username, NSString* password);
 
   // Informs the delegate that the Infobar has been presented. If `automatic`
   // YES the Infobar was presented automatically (e.g. The banner was
   // presented), if NO the user triggered it  (e.g. Tapped on the badge).
-  // TODO(crbug.com/40667480): This function is only virtual so it can be mocked
-  // for testing purposes.  It should become non-virtual once this test is
-  // refactored for testability.
-  virtual void InfobarPresenting(bool automatic);
+  void InfobarPresenting(bool automatic);
 
   // Informs the delegate that the Infobar view is gone.
-  // TODO(crbug.com/40667480): This function is only virtual so it can be mocked
-  // for testing purposes.  It should become non-virtual once this test is
-  // refactored for testability.
-  // TODO(crbug.com/40248770): Fix dismissal handlers.
-  virtual void InfobarGone();
+  void InfobarGone();
 
   // True if password is being updated at the moment the InfobarModal is
   // created.
@@ -128,7 +118,7 @@ class IOSChromeSavePasswordInfoBarDelegate : public ConfirmInfoBarDelegate {
   // their account, handles it by displaying an appropriate view for resolving
   // the error. Returns true if a fix error view was displayed. Otherwise, does
   // nothing.
-  bool MaybeHandlePasswordError(password_manager::ActionableError error);
+  bool MaybeHandlePasswordError();
 
   // Saves the password from `form_to_save_`.
   void SavePassword();
@@ -142,8 +132,8 @@ class IOSChromeSavePasswordInfoBarDelegate : public ConfirmInfoBarDelegate {
   // The UKM source ID for the page.
   const ukm::SourceId ukm_source_id_;
 
-  // CommandDispatcher for dispatching commands.
-  CommandDispatcher* dispatcher_ = nullptr;
+  // Handler for sync presenter commands.
+  __weak id<SyncPresenterCommands> sync_presenter_handler_ = nil;
 
   // The password_manager::PasswordFormManager managing the form we're asking
   // the user about, and should save as per their decision.

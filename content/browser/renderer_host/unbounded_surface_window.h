@@ -24,6 +24,7 @@ class UnboundedSurfaceWindow {
   virtual ~UnboundedSurfaceWindow() = default;
 
   virtual bool is_valid() const = 0;
+  virtual void Dismiss() = 0;
 
   virtual void SetBounds(const gfx::Rect& bounds_in_screen) = 0;
   virtual viz::FrameSinkId GetFrameSinkId() const = 0;
@@ -33,7 +34,7 @@ class UnboundedSurfaceWindow {
       mojo::PendingRemote<viz::mojom::CompositorFrameSinkClient> client) = 0;
 
   virtual void RouteMouseEvent(const blink::WebMouseEvent& event) = 0;
-  virtual gfx::Rect GetBoundsForTesting() const = 0;
+  virtual gfx::Rect GetBounds() const = 0;
 };
 
 }  // namespace content

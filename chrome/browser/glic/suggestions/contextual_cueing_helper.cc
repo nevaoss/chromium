@@ -145,8 +145,8 @@ glic::GlicNudgeController* ContextualCueingHelper::GetGlicNudgeController() {
   if (!glic_nudge_controller_) {
     TabListInterface* tab_list =
         TabModelList::GetTabModelForWebContents(web_contents());
-    glic_nudge_controller_ =
-        std::make_unique<glic::GlicNudgeControllerAndroid>(tab_list);
+    glic_nudge_controller_ = std::make_unique<glic::GlicNudgeControllerAndroid>(
+        tab_list, web_contents());
   }
   return glic_nudge_controller_.get();
 #endif

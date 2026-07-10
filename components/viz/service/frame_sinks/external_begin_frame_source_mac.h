@@ -43,7 +43,6 @@ class VIZ_COMMON_EXPORT ExternalBeginFrameSourceMac
 
   // BeginFrameSource implementation.
   void SetVSyncDisplayID(int64_t display_id, bool force_update) override;
-  void RefreshRateChangedOnSameDisplay() override;
   void DidReceiveNewCALayerParams() override;
 
   void UpdateVSyncDisplay(int64_t display_id,
@@ -96,7 +95,6 @@ class VIZ_COMMON_EXPORT ExternalBeginFrameSourceMac
 
   // Implements base::PowerSuspendObserver.
   void OnSuspend() override;
-  void OnResume() override;
 
   BeginFrameArgsGenerator begin_frame_args_generator_;
 

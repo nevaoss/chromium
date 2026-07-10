@@ -303,6 +303,7 @@ bool IsPasswordSuggestion(FormSuggestion* suggestion) {
     case SuggestionType::kAtMemoryNoConnection:
     case SuggestionType::kAtMemorySearchAffordance:
     case SuggestionType::kPersonalContextNotice:
+    case SuggestionType::kFetchingAmbientData:
       return false;
   }
   NOTREACHED();

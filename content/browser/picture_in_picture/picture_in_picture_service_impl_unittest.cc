@@ -5,6 +5,7 @@
 #include "content/browser/picture_in_picture/picture_in_picture_service_impl.h"
 
 #include <memory>
+#include <optional>
 #include <tuple>
 #include <utility>
 
@@ -31,6 +32,7 @@
 #include "testing/gmock/include/gmock/gmock.h"
 #include "third_party/blink/public/mojom/frame/fullscreen.mojom.h"
 #include "third_party/blink/public/mojom/picture_in_picture/picture_in_picture.mojom.h"
+#include "ui/gfx/geometry/size.h"
 
 using testing::_;
 
@@ -175,7 +177,8 @@ class PictureInPictureMediaPlayerReceiver : public media::mojom::MediaPlayer {
   void RequestSeekForward(base::TimeDelta seek_time) override {}
   void RequestSeekBackward(base::TimeDelta seek_time) override {}
   void RequestSeekTo(base::TimeDelta seek_time) override {}
-  void RequestEnterPictureInPicture() override {}
+  void RequestEnterPictureInPicture(
+      const std::optional<gfx::Size>& min_size) override {}
   void RequestMute(bool mute) override {}
   void SetVolumeMultiplier(double multiplier) override {}
   void SetPersistentState(bool persistent) override {}

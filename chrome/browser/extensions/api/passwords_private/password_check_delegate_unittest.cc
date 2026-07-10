@@ -200,10 +200,13 @@ auto ExpectCompromisedInfo(
 
 // Creates matcher for a given compromised credential
 auto ExpectCredential(const std::optional<std::string>& change_password_url,
-                      const std::u16string& username) {
+                      const std::u16string& username,
+                      bool is_automatic_password_change_supported = false) {
   return AllOf(
       Field(&PasswordUiEntry::username, base::UTF16ToASCII(username)),
-      Field(&PasswordUiEntry::change_password_url, change_password_url));
+      Field(&PasswordUiEntry::change_password_url, change_password_url),
+      Field(&PasswordUiEntry::is_automatic_password_change_supported,
+            is_automatic_password_change_supported));
 }
 
 // Creates matcher for a given compromised credential
@@ -212,20 +215,22 @@ auto ExpectCompromisedCredential(
     const std::u16string& username,
     base::TimeDelta elapsed_time_since_compromise,
     const std::string& elapsed_time_since_compromise_str,
-    std::vector<api::passwords_private::CompromiseType> compromise_types) {
+    std::vector<api::passwords_private::CompromiseType> compromise_types,
+    bool is_automatic_password_change_supported = false) {
   auto change_password_url_field_matcher =
       change_password_url.has_value()
           ? Field(&PasswordUiEntry::change_password_url,
                   change_password_url.value())
           : Field(&PasswordUiEntry::change_password_url,
                   testing::Eq(std::nullopt));
-  return AllOf(
-      Field(&PasswordUiEntry::username, base::UTF16ToASCII(username)),
-      change_password_url_field_matcher,
-      Field(&PasswordUiEntry::compromised_info,
-            Optional(ExpectCompromisedInfo(elapsed_time_since_compromise,
-                                           elapsed_time_since_compromise_str,
-                                           compromise_types))));
+  return AllOf(Field(&PasswordUiEntry::username, base::UTF16ToASCII(username)),
+               change_password_url_field_matcher,
+               Field(&PasswordUiEntry::compromised_info,
+                     Optional(ExpectCompromisedInfo(
+                         elapsed_time_since_compromise,
+                         elapsed_time_since_compromise_str, compromise_types))),
+               Field(&PasswordUiEntry::is_automatic_password_change_supported,
+                     is_automatic_password_change_supported));
 }
 
 std::unique_ptr<TestingProfile> CreateTestingProfile() {

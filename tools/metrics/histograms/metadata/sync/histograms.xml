@@ -1574,7 +1574,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.History.DatabaseError" enum="SyncHistoryDatabaseError"
-    expires_after="2026-07-27">
+    expires_after="2027-07-27">
   <owner>treib@chromium.org</owner>
   <owner>mastiz@chromium.org</owner>
   <summary>
@@ -1652,6 +1652,21 @@ chromium-metrics-reviews@google.com.
   <owner>treib@chromium.org</owner>
   <summary>
     Histogram tracks the number of invalidations received per sync data type.
+  </summary>
+</histogram>
+
+<histogram name="Sync.Invalidations.OnMessagesDeleted" enum="Boolean"
+    expires_after="2026-10-25">
+  <owner>rushans@google.com</owner>
+  <owner>src/components/sync/OWNERS</owner>
+  <summary>
+    Records true whenever OnMessagesDeleted is called on FCMHandler. This metric
+    should be compared against Sync.IncomingInvalidationStatus total count to
+    compare the ratio of deleted messages in FCM.
+
+    Note: messages can be deleted if there are too many incoming FCM messages
+    from different sender IDs on one client, i.e. not only sync invalidations.
+    Refer to FCM documentation for more details.
   </summary>
 </histogram>
 
@@ -2003,7 +2018,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.PostedClientToServerMessage"
-    enum="SyncClientToServerMessageContents" expires_after="2026-10-11">
+    enum="SyncClientToServerMessageContents" expires_after="2026-12-13">
   <owner>mastiz@chromium.org</owner>
   <owner>treib@chromium.org</owner>
   <owner>src/components/sync/OWNERS</owner>
@@ -2016,7 +2031,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.PostedClientToServerMessageError2" enum="SyncErrorType"
-    expires_after="2026-10-11">
+    expires_after="2026-12-13">
   <owner>mastiz@chromium.org</owner>
   <owner>treib@chromium.org</owner>
   <owner>src/components/sync/OWNERS</owner>
@@ -2028,7 +2043,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.PostedClientToServerMessageLatency" units="ms"
-    expires_after="2026-10-11">
+    expires_after="2026-12-13">
   <owner>mastiz@chromium.org</owner>
   <owner>treib@chromium.org</owner>
   <owner>src/components/sync/OWNERS</owner>
@@ -2054,7 +2069,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.PostedDataTypeCommitRequest" enum="SyncDataTypes"
-    expires_after="2026-10-11">
+    expires_after="2026-12-13">
   <owner>mastiz@chromium.org</owner>
   <owner>rushans@google.com</owner>
   <owner>src/components/sync/OWNERS</owner>
@@ -2071,7 +2086,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.PostedDataTypeGetUpdatesRequest" enum="SyncDataTypes"
-    expires_after="2026-10-11">
+    expires_after="2026-12-13">
   <owner>mastiz@chromium.org</owner>
   <owner>rushans@google.com</owner>
   <owner>src/components/sync/OWNERS</owner>
@@ -3110,7 +3125,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.URLFetchResponse"
-    enum="CombinedHttpResponseAndNetErrorCode" expires_after="2026-10-11">
+    enum="CombinedHttpResponseAndNetErrorCode" expires_after="2026-12-13">
   <owner>mastiz@chromium.org</owner>
   <owner>treib@chromium.org</owner>
   <summary>

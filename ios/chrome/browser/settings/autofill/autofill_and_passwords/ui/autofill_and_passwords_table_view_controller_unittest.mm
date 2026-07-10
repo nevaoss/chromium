@@ -230,7 +230,8 @@ TEST_P(AutofillAndPasswordsTableViewControllerTest,
 
   // Calling configureSigninPromoWithConfigurator before promo exists should be
   // a no-op.
-  [view_controller configureSigninPromoWithConfigurator:configurator1];
+  [view_controller configureSigninPromoWithConfigurator:configurator1
+                                        identityChanged:NO];
 
   NSString* promo_text =
       l10n_util::GetNSString(IDS_IOS_SIGNIN_PROMO_AUTOFILL_AND_PASSWORDS);
@@ -252,7 +253,8 @@ TEST_P(AutofillAndPasswordsTableViewControllerTest,
                        hasCloseButton:YES
                      hasSignInSpinner:NO];
 
-  [view_controller configureSigninPromoWithConfigurator:configurator2];
+  [view_controller configureSigninPromoWithConfigurator:configurator2
+                                        identityChanged:NO];
 
   promo_item = base::apple::ObjCCastStrict<TableViewSigninPromoItem>(
       GetTableViewItem(0, 0));

@@ -35,7 +35,7 @@ class OmniboxPopupViewFullWebUI : public OmniboxPopupViewWebUI {
   // user data, so it can be restored when switching back to this tab.
   void SaveStateToTab(content::WebContents* tab) override;
   // Pushes the current text to the WebUI.
-  void PushTextToWebUI() override;
+  void PushTextToWebUI(bool is_double_click) override;
   // Called when the active tab changes.
   void OnTabChanged(content::WebContents* contents) override;
   // Called when the omnibox gains focus.

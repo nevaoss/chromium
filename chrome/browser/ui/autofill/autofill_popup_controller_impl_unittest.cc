@@ -50,8 +50,7 @@ using ::testing::MockFunction;
 using ::testing::NiceMock;
 using ::testing::Return;
 
-using SingleEntryRemovalMethod =
-    autofill::AutofillMetrics::SingleEntryRemovalMethod;
+using SingleEntryRemovalMethod = AutofillMetrics::SingleEntryRemovalMethod;
 
 Matcher<const AutofillSuggestionDelegate::SuggestionMetadata&>
 EqualsSuggestionMetadata(
@@ -868,6 +867,28 @@ TEST_F(AutofillPopupControllerImplTest,
                   Field(&Suggestion::type, SuggestionType::kBnplFootnote)));
   EXPECT_THAT(controller.GetSuggestionFilterMatches(),
               ElementsAre(std::nullopt, std::nullopt));
+}
+
+TEST_F(AutofillPopupControllerImplTest,
+       ClearState_HidesAndClearsViewIfTabStateChanges) {
+  ShowSuggestions(manager(), {SuggestionType::kCreditCardEntry});
+
+  AutofillPopupController& controller =
+      client().suggestion_controller(manager());
+  EXPECT_TRUE(
+      test_api(static_cast<AutofillPopupControllerImpl&>(controller)).view());
+
+  // Calling ClearState with matching non-tabbed popup does not clear `view_`.
+  test_api(static_cast<AutofillPopupControllerImpl&>(controller)).ClearState();
+  EXPECT_TRUE(
+      test_api(static_cast<AutofillPopupControllerImpl&>(controller)).view());
+
+  // Calling ClearState with mismatching tabbed popup clears `view_`.
+  test_api(static_cast<AutofillPopupControllerImpl&>(controller))
+      .SetShowTabbedPopup(true);
+  test_api(static_cast<AutofillPopupControllerImpl&>(controller)).ClearState();
+  EXPECT_FALSE(
+      test_api(static_cast<AutofillPopupControllerImpl&>(controller)).view());
 }
 
 TEST_F(AutofillPopupControllerImplTest,

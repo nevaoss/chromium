@@ -65,7 +65,7 @@ enum class DeleteMode { kSimple, kSmart };
 enum class InsertMode { kSimple, kSmart };
 enum class DragSourceType { kHTMLSource, kPlainTextSource };
 enum class EditorParagraphSeparator { kIsDiv, kIsP };
-enum class EditorCommandSource { kMenuOrKeyBinding, kDOM };
+enum class EditorCommandSource { kMenuOrKeyBinding, kDom };
 
 class CORE_EXPORT Editor final : public GarbageCollected<Editor> {
  public:

@@ -328,7 +328,9 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest, Succeeds) {
       &provider().install_manager());
   manifest_updated_observer.BeginListening({GetAppId()});
 
-  EXPECT_THAT(provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
+  EXPECT_THAT(provider()
+                  .isolated_web_app_update_manager()
+                  .DiscoverAndPrepareUpdatesNow(),
               Eq(1ul));
 
   manifest_updated_observer.Wait();
@@ -403,9 +405,10 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
         &provider().install_manager());
     manifest_updated_observer.BeginListening({GetAppId()});
 
-    EXPECT_THAT(
-        provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
-        Eq(1ul));
+    EXPECT_THAT(provider()
+                    .isolated_web_app_update_manager()
+                    .DiscoverAndPrepareUpdatesNow(),
+                Eq(1ul));
 
     manifest_updated_observer.Wait();
 
@@ -443,9 +446,10 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
         &provider().install_manager());
     manifest_updated_observer.BeginListening({GetAppId()});
 
-    EXPECT_THAT(
-        provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
-        Eq(1ul));
+    EXPECT_THAT(provider()
+                    .isolated_web_app_update_manager()
+                    .DiscoverAndPrepareUpdatesNow(),
+                Eq(1ul));
 
     manifest_updated_observer.Wait();
 
@@ -490,7 +494,9 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
 
   ASSERT_FALSE(web_app::ChromeIwaRuntimeDataProvider::GetInstance()
                    .IsManagedUpdatePermitted(GetWebBundleId().id()));
-  EXPECT_THAT(provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
+  EXPECT_THAT(provider()
+                  .isolated_web_app_update_manager()
+                  .DiscoverAndPrepareUpdatesNow(),
               Eq(0ul));
 
   histogram_tester.ExpectBucketCount("WebApp.Isolated.UpdateSuccess",
@@ -530,7 +536,9 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
       &provider().install_manager());
   manifest_updated_observer.BeginListening({GetAppId()});
 
-  EXPECT_THAT(provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
+  EXPECT_THAT(provider()
+                  .isolated_web_app_update_manager()
+                  .DiscoverAndPrepareUpdatesNow(),
               Eq(0ul));
 
   EXPECT_THAT(GetIsolatedWebApp(GetAppId()),
@@ -579,7 +587,9 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
       &provider().install_manager());
   manifest_updated_observer.BeginListening({GetAppId()});
 
-  EXPECT_THAT(provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
+  EXPECT_THAT(provider()
+                  .isolated_web_app_update_manager()
+                  .DiscoverAndPrepareUpdatesNow(),
               Eq(0ul));
 
   EXPECT_THAT(GetIsolatedWebApp(GetAppId()),
@@ -641,7 +651,9 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
         std::move(callback).Run();
       }));
 
-  EXPECT_THAT(provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
+  EXPECT_THAT(provider()
+                  .isolated_web_app_update_manager()
+                  .DiscoverAndPrepareUpdatesNow(),
               Eq(1ul));
 
   manifest_updated_observer.Wait();
@@ -689,7 +701,9 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
   UpdateDiscoveryTaskResultWaiter initial_update_waiter(
       provider(), GetAppId(), initial_update_future.GetCallback());
 
-  EXPECT_THAT(provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
+  EXPECT_THAT(provider()
+                  .isolated_web_app_update_manager()
+                  .DiscoverAndPrepareUpdatesNow(),
               Eq(1ul));
   EXPECT_THAT(initial_update_future.Take(),
               ErrorIs(IsolatedWebAppUpdateCheckAndPrepareTask::Error::
@@ -728,7 +742,9 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
       &provider().install_manager());
   manifest_updated_observer.BeginListening({GetAppId()});
 
-  EXPECT_THAT(provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
+  EXPECT_THAT(provider()
+                  .isolated_web_app_update_manager()
+                  .DiscoverAndPrepareUpdatesNow(),
               Eq(1ul));
 
   manifest_updated_observer.Wait();
@@ -747,7 +763,9 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
   // Add new version 7.0.6
   AddNewBundleToUpdateServer("app-7.0.6", "7.0.6");
 
-  EXPECT_THAT(provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
+  EXPECT_THAT(provider()
+                  .isolated_web_app_update_manager()
+                  .DiscoverAndPrepareUpdatesNow(),
               Eq(0ul));
 
   EXPECT_EQ(GetIsolatedWebApp(GetAppId())->isolation_data()->version(),
@@ -792,9 +810,10 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
     UpdateDiscoveryTaskResultWaiter initial_update_waiter(
         provider(), GetAppId(), initial_update_future.GetCallback());
 
-    EXPECT_THAT(
-        provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
-        Eq(1ul));
+    EXPECT_THAT(provider()
+                    .isolated_web_app_update_manager()
+                    .DiscoverAndPrepareUpdatesNow(),
+                Eq(1ul));
     EXPECT_THAT(initial_update_future.Take(),
                 ErrorIs(IsolatedWebAppUpdateCheckAndPrepareTask::Error::
                             kPinnedVersionNotFoundInUpdateManifest));
@@ -824,9 +843,10 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
     UpdateDiscoveryTaskResultWaiter second_update_waiter(
         provider(), GetAppId(), second_update_future.GetCallback());
 
-    EXPECT_THAT(
-        provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
-        Eq(1ul));
+    EXPECT_THAT(provider()
+                    .isolated_web_app_update_manager()
+                    .DiscoverAndPrepareUpdatesNow(),
+                Eq(1ul));
     EXPECT_THAT(second_update_future.Take(),
                 ValueIs(IsolatedWebAppUpdateCheckAndPrepareTask::Success::
                             kPinnedVersionUpdateFoundAndSavedInDatabase));
@@ -877,7 +897,9 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
               /*pinned_version=*/*IwaVersion::Create("5.0.5"))));
   manifest_updated_observer.BeginListening({GetAppId()});
 
-  EXPECT_THAT(provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
+  EXPECT_THAT(provider()
+                  .isolated_web_app_update_manager()
+                  .DiscoverAndPrepareUpdatesNow(),
               Eq(1ul));
 
   manifest_updated_observer.Wait();
@@ -917,9 +939,10 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest, Unpinning) {
   // pinned.
   {
     AddNewBundleToUpdateServer("app-7.0.6", "7.0.6");
-    EXPECT_THAT(
-        provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
-        Eq(0ul));
+    EXPECT_THAT(provider()
+                    .isolated_web_app_update_manager()
+                    .DiscoverAndPrepareUpdatesNow(),
+                Eq(0ul));
   }
 
   // After pinned_version is unset, the app is updated to the latest version
@@ -935,9 +958,10 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest, Unpinning) {
             iwa_test_update_server_.CreateForceInstallPolicyEntry(
                 /*web_bundle_id=*/GetWebBundleId())));
 
-    EXPECT_THAT(
-        provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
-        Eq(1ul));
+    EXPECT_THAT(provider()
+                    .isolated_web_app_update_manager()
+                    .DiscoverAndPrepareUpdatesNow(),
+                Eq(1ul));
 
     manifest_updated_observer.Wait();
 
@@ -984,7 +1008,9 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
       &provider().install_manager());
   manifest_updated_observer.BeginListening({GetAppId()});
 
-  EXPECT_THAT(provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
+  EXPECT_THAT(provider()
+                  .isolated_web_app_update_manager()
+                  .DiscoverAndPrepareUpdatesNow(),
               Eq(1ul));
 
   manifest_updated_observer.Wait();
@@ -1036,9 +1062,10 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
     UpdateDiscoveryTaskResultWaiter initial_update_waiter(
         provider(), GetAppId(), future.GetCallback());
 
-    EXPECT_THAT(
-        provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
-        Eq(1ul));
+    EXPECT_THAT(provider()
+                    .isolated_web_app_update_manager()
+                    .DiscoverAndPrepareUpdatesNow(),
+                Eq(1ul));
     EXPECT_THAT(future.Take(),
                 ErrorIs(IsolatedWebAppUpdateCheckAndPrepareTask::Error::
                             kPinnedVersionNotFoundInUpdateManifest));
@@ -1055,9 +1082,10 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
     AddNewBundleToUpdateServer("app-6.0.0", "6.0.0", {{kBetaChannel}});
     AddNewBundleToUpdateServer("app-7.0.6", "7.0.6");
 
-    EXPECT_THAT(
-        provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
-        Eq(1ul));
+    EXPECT_THAT(provider()
+                    .isolated_web_app_update_manager()
+                    .DiscoverAndPrepareUpdatesNow(),
+                Eq(1ul));
 
     manifest_updated_observer.Wait();
 
@@ -1112,7 +1140,9 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
       &provider().install_manager());
   manifest_updated_observer.BeginListening({GetAppId()});
 
-  EXPECT_THAT(provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
+  EXPECT_THAT(provider()
+                  .isolated_web_app_update_manager()
+                  .DiscoverAndPrepareUpdatesNow(),
               Eq(1ul));
   EXPECT_THAT(future.Take(),
               ValueIs(IsolatedWebAppUpdateCheckAndPrepareTask::Success::
@@ -1234,7 +1264,9 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerUserInstallBrowserTest,
       &provider().install_manager());
   manifest_updated_observer.BeginListening({web_app->app_id()});
 
-  EXPECT_THAT(provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
+  EXPECT_THAT(provider()
+                  .isolated_web_app_update_manager()
+                  .DiscoverAndPrepareUpdatesNow(),
               Eq(1ul));
   EXPECT_THAT(future.Take(),
               ValueIs(IsolatedWebAppUpdateCheckAndPrepareTask::Success::
@@ -1286,7 +1318,9 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
 
   // Adding new version for an IWA triggers Discovery Task, but no updates will
   // be applied as new version is not meant for the "default" channel.
-  EXPECT_THAT(provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
+  EXPECT_THAT(provider()
+                  .isolated_web_app_update_manager()
+                  .DiscoverAndPrepareUpdatesNow(),
               Eq(1ul));
   EXPECT_THAT(
       future.Take(),
@@ -1336,7 +1370,9 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
   UpdateDiscoveryTaskResultWaiter waiter(provider(), GetAppId(),
                                          future.GetCallback());
 
-  EXPECT_THAT(provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
+  EXPECT_THAT(provider()
+                  .isolated_web_app_update_manager()
+                  .DiscoverAndPrepareUpdatesNow(),
               Eq(1ul));
   EXPECT_THAT(
       future.Take(),
@@ -1365,7 +1401,9 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
           iwa_test_update_server_.CreateForceInstallPolicyEntry(
               GetWebBundleId(), kBetaChannel)));
 
-  EXPECT_THAT(provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
+  EXPECT_THAT(provider()
+                  .isolated_web_app_update_manager()
+                  .DiscoverAndPrepareUpdatesNow(),
               Eq(1ul));
 
   manifest_updated_observer.Wait();
@@ -1450,7 +1488,9 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManifestBrowserTest,
   web_app::UpdateDiscoveryTaskResultWaiter waiter(provider(), GetAppId(),
                                                   future.GetCallback());
 
-  EXPECT_THAT(provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
+  EXPECT_THAT(provider()
+                  .isolated_web_app_update_manager()
+                  .DiscoverAndPrepareUpdatesNow(),
               ::testing::Eq(1ul));
 
   // Wait for the update discovery task to complete via the future.
@@ -1513,7 +1553,9 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManifestBrowserTest,
   web_app::UpdateDiscoveryTaskResultWaiter waiter(provider(), GetAppId(),
                                                   future.GetCallback());
 
-  EXPECT_THAT(provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
+  EXPECT_THAT(provider()
+                  .isolated_web_app_update_manager()
+                  .DiscoverAndPrepareUpdatesNow(),
               ::testing::Eq(1ul));
 
   // Wait for the update discovery task to complete via the future.
@@ -1580,7 +1622,9 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
       GetAppOrigin().GetURL(), storage_partition,
       content::ServiceWorkerCapability::SERVICE_WORKER_WITH_FETCH_HANDLER);
 
-  EXPECT_THAT(provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
+  EXPECT_THAT(provider()
+                  .isolated_web_app_update_manager()
+                  .DiscoverAndPrepareUpdatesNow(),
               Eq(1ul));
 
   // Updates will be applied once the app's window is closed.
@@ -1628,7 +1672,9 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
   EXPECT_THAT(provider().ui_manager().GetNumWindowsForApp(GetAppId()), Eq(1ul));
 
   AddNewBundleToUpdateServer("app-7.0.6", "7.0.6");
-  EXPECT_THAT(provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
+  EXPECT_THAT(provider()
+                  .isolated_web_app_update_manager()
+                  .DiscoverAndPrepareUpdatesNow(),
               Eq(1ul));
 
   ASSERT_TRUE(base::test::RunUntil([this]() {
@@ -1695,7 +1741,9 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
   WebAppTestManifestUpdatedObserver manifest_updated_observer(
       &provider().install_manager());
   manifest_updated_observer.BeginListening({app_id});
-  EXPECT_THAT(provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
+  EXPECT_THAT(provider()
+                  .isolated_web_app_update_manager()
+                  .DiscoverAndPrepareUpdatesNow(),
               Eq(1ul));
   manifest_updated_observer.Wait();
 
@@ -1729,7 +1777,9 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerBrowserTest,
   EXPECT_THAT(provider().ui_manager().GetNumWindowsForApp(GetAppId()), Eq(1ul));
 
   AddNewBundleToUpdateServer("app-7.0.6", "7.0.6");
-  EXPECT_THAT(provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
+  EXPECT_THAT(provider()
+                  .isolated_web_app_update_manager()
+                  .DiscoverAndPrepareUpdatesNow(),
               Eq(1ul));
 
   ASSERT_TRUE(base::test::RunUntil([this]() {
@@ -1934,7 +1984,9 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerWithKeyRotationBrowserTest,
 
     // Add a bundle with version 1.0.0 signed by a rotated key.
     AddBundleSignedBy(kKeyPair2);
-    EXPECT_EQ(provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
+    EXPECT_EQ(provider()
+                  .isolated_web_app_update_manager()
+                  .DiscoverAndPrepareUpdatesNow(),
               1u);
     manifest_updated_observer.Wait();
   }
@@ -2151,7 +2203,9 @@ IN_PROC_BROWSER_TEST_F(IsolatedWebAppUpdateManagerWithKeyRotationBrowserTest,
           .AddHtml("/", R"(<html><head><title>1.0.1</title></head></html>)")
           .BuildBundle(web_bundle_id_, {kKeyPair2}));
 
-  EXPECT_EQ(provider().isolated_web_app_update_manager().DiscoverUpdatesNow(),
+  EXPECT_EQ(provider()
+                .isolated_web_app_update_manager()
+                .DiscoverAndPrepareUpdatesNow(),
             1u);
   manifest_updated_observer.Wait();
 

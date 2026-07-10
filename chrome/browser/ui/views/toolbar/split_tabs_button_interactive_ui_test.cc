@@ -510,10 +510,28 @@ IN_PROC_BROWSER_TEST_P(SplitTabButtonInteractiveTest, ButtonIconUpdates) {
                                   : kSplitSceneLeftOldIcon),
       ObserveState(kActiveTabChanged, browser()->tab_strip_model()),
       FocusInactiveTabInSplit(), WaitForState(kActiveTabChanged, true),
+      StopObservingState(kActiveTabChanged),
       EnsurePresent(kToolbarSplitTabsToolbarButtonElementId),
       CheckSplitTabButtonIcon(features::IsRoundedIconsEnabled()
                                   ? kSplitSceneRightIcon
-                                  : kSplitSceneRightOldIcon));
+                                  : kSplitSceneRightOldIcon),
+      Do([&]() {
+        TabStripModel* tab_strip_model = browser()->tab_strip_model();
+        split_tabs::SplitTabId split =
+            tab_strip_model->GetActiveTab()->GetSplit().value();
+        tab_strip_model->UpdateSplitLayout(
+            split, split_tabs::SplitTabLayout::kStacked);
+      }),
+      WaitForAXNode(), DoWaitForLayout(),
+      CheckSplitTabButtonIcon(features::IsRoundedIconsEnabled()
+                                  ? kSplitSceneDownIcon
+                                  : kSplitSceneDownOldIcon),
+      ObserveState(kActiveTabChanged, browser()->tab_strip_model()),
+      FocusInactiveTabInSplit(), WaitForState(kActiveTabChanged, true),
+      EnsurePresent(kToolbarSplitTabsToolbarButtonElementId),
+      CheckSplitTabButtonIcon(features::IsRoundedIconsEnabled()
+                                  ? kSplitSceneUpIcon
+                                  : kSplitSceneUpOldIcon));
 }
 
 IN_PROC_BROWSER_TEST_P(SplitTabButtonInteractiveTest, EnterSplitView) {

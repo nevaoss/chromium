@@ -20,12 +20,14 @@
 #include "chrome/browser/devtools/devtools_infobar_delegate.h"
 #include "chrome/browser/devtools/devtools_window.h"
 #include "chrome/browser/global_features.h"
+#include "chrome/browser/infobars/infobar_features.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/browser/ui/collected_cookies_infobar_delegate.h"
 #include "chrome/browser/ui/omnibox/alternate_nav_infobar_delegate.h"
 #include "chrome/browser/ui/ui_features.h"
+#include "chrome/browser/ui/views/site_data/page_specific_site_data_dialog_controller.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/infobars/content/content_infobar_manager.h"
@@ -222,13 +224,18 @@ bool InfoBarInternalsHandler::TriggerInfoBarInternal(InfoBarType type) {
 
       content::WebContents* web_contents =
           bwi->GetActiveTabInterface()->GetContents();
-      infobars::ContentInfoBarManager* infobar_manager =
-          infobars::ContentInfoBarManager::FromWebContents(web_contents);
-      if (!infobar_manager) {
-        return false;
+      if (infobars::IsInfoBarMigrated(
+              infobars::InfoBarDelegate::COLLECTED_COOKIES_INFOBAR_DELEGATE)) {
+        PageSpecificSiteDataDialogController::ShowCollectedCookiesInfoBar(
+            web_contents);
+      } else {
+        infobars::ContentInfoBarManager* infobar_manager =
+            infobars::ContentInfoBarManager::FromWebContents(web_contents);
+        if (!infobar_manager) {
+          return false;
+        }
+        CollectedCookiesInfoBarDelegate::Create(infobar_manager);
       }
-
-      CollectedCookiesInfoBarDelegate::Create(infobar_manager);
       return true;
     }
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)

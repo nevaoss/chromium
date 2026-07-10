@@ -45,9 +45,11 @@
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/ui/views/drive_picker_host/drive_picker_result_handler.mojom.h"
+#include "chrome/browser/ui/webui/drive_picker_host/drive_disclaimer_controller.h"
 #endif
 
 class Profile;
+class ContextualSearchboxTabFaviconHelper;
 class SkBitmap;
 class DrivePickerHostController;
 
@@ -147,6 +149,8 @@ class ContextualSearchboxHandler
                    bool is_voice_search) override;
   void GetRecentTabs(GetRecentTabsCallback callback) override;
   void GetTabPreview(int32_t tab_id, GetTabPreviewCallback callback) override;
+  void WaitForTabFaviconLoad(int32_t tab_id,
+                             WaitForTabFaviconLoadCallback callback) override;
   void GetInputState(GetInputStateCallback callback) override;
   void OpenAutocompleteMatch(uint8_t line,
                              const GURL& url,
@@ -256,6 +260,10 @@ class ContextualSearchboxHandler
  protected:
   // SearchboxHandler:
   omnibox::InputState GetInputState() const override;
+  // Returns the current input state, re-initializing the underlying model if
+  // its weak pointer was invalidated after window startup. Use this instead of
+  // `GetInputState() const` when calling from non-const C++ operations.
+  omnibox::InputState GetValidInputState();
   std::string GetPreviousQuery() override;
 
   virtual void OpenUrl(GURL url, const WindowOpenDisposition disposition);
@@ -398,6 +406,8 @@ class ContextualSearchboxHandler
   base::ScopedObservation<TabListInterface, TabListInterfaceObserver>
       tab_list_observation_{this};
 
+  std::unique_ptr<ContextualSearchboxTabFaviconHelper> tab_favicon_helper_;
+
  protected:
   std::optional<bool> smart_tab_sharing_active_for_thread_;
   bool has_incremented_sts_activation_count_ = false;
@@ -420,11 +430,17 @@ class ContextualSearchboxHandler
 
 #if !BUILDFLAG(IS_ANDROID)
   void OnDrivePickerDisconnected();
+  void OnDriveDisclaimerChecked(
+      drive_picker::DriveDisclaimerController::DisclaimerStatus status);
+  drive_picker::DriveDisclaimerController* GetDriveDisclaimerController();
 
   mojo::Receiver<drive_picker_host::mojom::DrivePickerResultHandler>
       drive_picker_result_handler_receiver_{this};
 
   std::unique_ptr<DrivePickerHostController> drive_picker_controller_;
+
+  std::unique_ptr<drive_picker::DriveDisclaimerController>
+      drive_disclaimer_controller_;
 #endif
 
   OnDriveUploadClickedCallback drive_upload_click_callback_;

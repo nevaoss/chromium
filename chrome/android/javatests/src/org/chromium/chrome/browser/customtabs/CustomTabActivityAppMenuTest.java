@@ -12,7 +12,7 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
 
 import android.app.Activity;
-import android.app.Instrumentation;
+import android.app.Instrumentation.ActivityMonitor;
 import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.Context;
@@ -113,6 +113,7 @@ public class CustomTabActivityAppMenuTest {
     public CustomTabActivityTestRule mCustomTabActivityTestRule = new CustomTabActivityTestRule();
 
     private String mTestPage;
+    private final List<ActivityMonitor> mMonitorsToCleanUp = new ArrayList<>();
 
     private static class TestContext extends ContextWrapper {
         public TestContext(Context baseContext) {
@@ -175,6 +176,10 @@ public class CustomTabActivityAppMenuTest {
                 });
 
         WebappsUtils.setAddToHomeIntentSupportedForTesting(null);
+        for (ActivityMonitor monitor : mMonitorsToCleanUp) {
+            InstrumentationRegistry.getInstrumentation().removeMonitor(monitor);
+        }
+        mMonitorsToCleanUp.clear();
     }
 
     private Intent createMinimalCustomTabIntent() {
@@ -364,7 +369,7 @@ public class CustomTabActivityAppMenuTest {
         ModelList menuItemsModelList =
                 AppMenuTestSupport.getMenuModelList(
                         mCustomTabActivityTestRule.getAppMenuCoordinator());
-        int expectedMenuSize = 2;
+        int expectedMenuSize = 1;
         if (BrowserUiUtils.isPageInfoMovedToAppMenu(mCustomTabActivityTestRule.getActivity())) {
             expectedMenuSize++;
         }
@@ -374,7 +379,7 @@ public class CustomTabActivityAppMenuTest {
         Assert.assertNotNull(
                 AppMenuTestSupport.getMenuItemPropertyModel(
                         mCustomTabActivityTestRule.getAppMenuCoordinator(), R.id.find_in_page_id));
-        Assert.assertNotNull(
+        Assert.assertNull(
                 AppMenuTestSupport.getMenuItemPropertyModel(
                         mCustomTabActivityTestRule.getAppMenuCoordinator(),
                         R.id.reader_mode_prefs_id));
@@ -658,8 +663,9 @@ public class CustomTabActivityAppMenuTest {
         IntentFilter filter = new IntentFilter(Intent.ACTION_VIEW);
         filter.addDataScheme(
                 Uri.parse(mCustomTabActivityTestRule.getTestServer().getURL("/")).getScheme());
-        final Instrumentation.ActivityMonitor monitor =
+        final ActivityMonitor monitor =
                 InstrumentationRegistry.getInstrumentation().addMonitor(filter, null, false);
+        mMonitorsToCleanUp.add(monitor);
         openAppMenuAndAssertMenuShown();
         PostTask.runOrPostTask(
                 TaskTraits.UI_DEFAULT,
@@ -730,9 +736,10 @@ public class CustomTabActivityAppMenuTest {
                         LaunchCauseMetrics.LAUNCH_CAUSE_HISTOGRAM,
                         LaunchCauseMetrics.LaunchCause.CUSTOM_TAB));
 
-        final Instrumentation.ActivityMonitor monitor =
+        final ActivityMonitor monitor =
                 InstrumentationRegistry.getInstrumentation()
                         .addMonitor(ChromeTabbedActivity.class.getName(), null, false);
+        mMonitorsToCleanUp.add(monitor);
         openAppMenuAndAssertMenuShown();
         PostTask.runOrPostTask(
                 TaskTraits.UI_DEFAULT,

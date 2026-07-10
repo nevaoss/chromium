@@ -252,7 +252,7 @@ void RemoveTreeNodeFromParent(NavigationEntryImpl::TreeNode* node) {
     // we add it to the non-opt-in list here to be spec compliant (unless it's
     // currently opted-in, in which case this call will do nothing).
     ChildProcessSecurityPolicyImpl::GetInstance()
-        ->AddDefaultIsolatedOriginIfNeeded(
+        ->RecordDefaultOriginAgentClusterOriginIfNew(
             frame_entry->site_instance()->GetIsolationContext(),
             frame_entry->committed_origin().value(),
             true /* global_ walk_or_frame_removal */);

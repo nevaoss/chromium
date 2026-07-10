@@ -256,7 +256,7 @@ class LocationBarBadgeMediatorTest : public PlatformTest {
 
     AccountInfo account_info = signin::MakePrimaryAccountAvailable(
         identity_manager, email, signin::ConsentLevel::kSignin);
-    AccountCapabilitiesTestMutator mutator(&account_info.capabilities);
+    AccountCapabilitiesTestMutator mutator(&account_info);
     mutator.set_can_use_model_execution_features(capability);
 
     signin::UpdateAccountInfoForAccount(identity_manager, account_info);

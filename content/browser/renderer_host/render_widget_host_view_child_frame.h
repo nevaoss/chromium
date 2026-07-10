@@ -95,7 +95,6 @@ class CONTENT_EXPORT RenderWidgetHostViewChildFrame
       base::TimeDelta timeout,
       base::OnceCallback<void(const content::CopyFromSurfaceResult&)> callback)
       override;
-  void EnsureSurfaceSynchronizedForWebTest() override;
   void Hide() override;
   bool IsShowing() override;
   void WasOccluded() override;
@@ -128,7 +127,6 @@ class CONTENT_EXPORT RenderWidgetHostViewChildFrame
   void OnEditElementFocusedForStylusWriting(
       blink::mojom::StylusWritingFocusResultPtr focus_result) override;
 #endif  // BUILDFLAG(IS_WIN)
-  uint32_t GetCaptureSequenceNumber() const override;
   gfx::Size GetCompositorViewportPixelSize() override;
   void InitAsPopup(RenderWidgetHostView* parent_host_view,
                    const gfx::Rect& bounds,

@@ -101,3 +101,8 @@ wheel: <
   version: "version:2021.5.30"
 >
 
+# httplib2 is required by depot_tools/gerrit_util.py
+wheel: <
+  name: "infra/python/wheels/httplib2-py3"
+  version: "version:0.13.1"
+>

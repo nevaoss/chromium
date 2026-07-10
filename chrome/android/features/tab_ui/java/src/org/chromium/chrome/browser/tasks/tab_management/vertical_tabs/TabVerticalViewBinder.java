@@ -15,6 +15,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.ColorInt;
+import androidx.annotation.VisibleForTesting;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.widget.ImageViewCompat;
@@ -24,6 +25,7 @@ import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.tasks.tab_management.TabActionButtonData;
 import org.chromium.chrome.browser.tasks.tab_management.TabListViewBinderUtils;
 import org.chromium.chrome.browser.tasks.tab_management.TabProperties;
+import org.chromium.chrome.browser.tasks.tab_management.TabUiThemeUtil;
 import org.chromium.chrome.tab_ui.R;
 import org.chromium.components.browser_ui.styles.SemanticColorUtils;
 import org.chromium.components.tab_groups.TabGroupColorPickerUtils;
@@ -35,6 +37,7 @@ import org.chromium.ui.modelutil.PropertyModel;
 class TabVerticalViewBinder {
     private static final float ROTATION_COLLAPSED = 0f;
     private static final float ROTATION_EXPANDED = 180f;
+    @VisibleForTesting static final long CHEVRON_ANIMATION_DURATION_MS = 200L;
 
     // Public Entry-Point Binders
 
@@ -175,7 +178,7 @@ class TabVerticalViewBinder {
         }
 
         updateFavicon(model, view);
-        setupCloseButtonHoverListener(model, view);
+        setupTabHoverListener(model, view);
     }
 
     /**
@@ -246,9 +249,20 @@ class TabVerticalViewBinder {
         boolean isCollapsed = model.get(TabProperties.IS_COLLAPSED);
         @Nullable ImageView expandChevron = view.findViewById(R.id.expand_chevron);
         if (expandChevron != null) {
-            // TODO(crbug.com/509226293): Animate the rotation once child tab
-            // expansion transitions are implemented.
-            expandChevron.setRotation(isCollapsed ? ROTATION_COLLAPSED : ROTATION_EXPANDED);
+            expandChevron.animate().cancel();
+            float targetRotation = isCollapsed ? ROTATION_COLLAPSED : ROTATION_EXPANDED;
+
+            if (expandChevron.getRotation() == targetRotation) return;
+
+            if (expandChevron.isAttachedToWindow()) {
+                expandChevron
+                        .animate()
+                        .rotation(targetRotation)
+                        .setDuration(CHEVRON_ANIMATION_DURATION_MS)
+                        .start();
+            } else {
+                expandChevron.setRotation(targetRotation);
+            }
         }
     }
 
@@ -312,7 +326,7 @@ class TabVerticalViewBinder {
 
     // Gesture & Interaction Layout Helpers
 
-    private static void setupCloseButtonHoverListener(PropertyModel model, ViewGroup view) {
+    private static void setupTabHoverListener(PropertyModel model, ViewGroup view) {
         @Nullable ImageView actionButton = view.findViewById(R.id.action_button);
         if (actionButton == null) return;
 
@@ -327,9 +341,17 @@ class TabVerticalViewBinder {
                     switch (motionEvent.getAction()) {
                         case MotionEvent.ACTION_HOVER_ENTER:
                             actionButton.setVisibility(View.VISIBLE);
+                            ViewCompat.setBackgroundTintList(
+                                    view,
+                                    ColorStateList.valueOf(
+                                            TabUiThemeUtil.getHoveredTabContainerColor(
+                                                    view.getContext(),
+                                                    model.get(TabProperties.IS_INCOGNITO))));
                             break;
                         case MotionEvent.ACTION_HOVER_EXIT:
                             actionButton.setVisibility(View.INVISIBLE);
+                            ViewCompat.setBackgroundTintList(
+                                    view, ColorStateList.valueOf(Color.TRANSPARENT));
                             break;
                     }
                     return false;

@@ -10,7 +10,6 @@ import json
 import os
 import sys
 import logging
-from six.moves import input  # pylint: disable=redefined-builtin
 
 from chrome_telemetry_build import chromium_config
 from core import benchmark_finders

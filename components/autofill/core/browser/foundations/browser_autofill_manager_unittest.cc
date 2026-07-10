@@ -166,22 +166,22 @@
 namespace autofill {
 namespace {
 
+using ::autofill::autofill_metrics::GetUkmEvents;
+using ::autofill::autofill_metrics::UkmEventsAre;
+using ::autofill::mojom::SubmissionIndicatorEvent;
+using ::autofill::mojom::SubmissionSource;
+using ::autofill::test::AddFieldPredictionsToForm;
+using ::autofill::test::CreateFieldPrediction;
+using ::autofill::test::CreateTestAddressFormData;
+using ::autofill::test::CreateTestFormField;
+using ::autofill::test::CreateTestHybridSignUpFormData;
+using ::autofill::test::CreateTestIbanFormData;
 using ::autofill::test::MakeGuid;
-using autofill_metrics::GetUkmEvents;
-using autofill_metrics::UkmEventsAre;
 using ::base::Bucket;
 using ::base::BucketsAre;
 using ::base::UTF8ToUTF16;
 using ::base::test::RunCallback;
 using ::base::test::RunOnceCallback;
-using mojom::SubmissionIndicatorEvent;
-using mojom::SubmissionSource;
-using test::AddFieldPredictionsToForm;
-using test::CreateFieldPrediction;
-using test::CreateTestAddressFormData;
-using test::CreateTestFormField;
-using test::CreateTestHybridSignUpFormData;
-using test::CreateTestIbanFormData;
 using ::testing::_;
 using ::testing::AllOf;
 using ::testing::AnyNumber;
@@ -628,20 +628,24 @@ class MockAutofillClient : public TestAutofillClient {
   MOCK_METHOD(AutofillAiManager*, GetAutofillAiManager, (), (override));
 };
 
-class MockTouchToFillDelegate : public TouchToFillDelegate {
+class MockTouchToFillPaymentMethodDelegate
+    : public TouchToFillPaymentMethodDelegate {
  public:
-  static std::unique_ptr<MockTouchToFillDelegate> Create(
+  static std::unique_ptr<MockTouchToFillPaymentMethodDelegate> Create(
       BrowserAutofillManager* manager) {
-    auto delegate = std::make_unique<NiceMock<MockTouchToFillDelegate>>();
+    auto delegate =
+        std::make_unique<NiceMock<MockTouchToFillPaymentMethodDelegate>>();
     ON_CALL(*delegate, GetAutofillManager()).WillByDefault(ReturnRef(*manager));
     ON_CALL(*delegate, IsShowingTouchToFill()).WillByDefault(Return(false));
     return delegate;
   }
 
-  MockTouchToFillDelegate() = default;
-  MockTouchToFillDelegate(const MockTouchToFillDelegate&) = delete;
-  MockTouchToFillDelegate& operator=(const MockTouchToFillDelegate&) = delete;
-  ~MockTouchToFillDelegate() override = default;
+  MockTouchToFillPaymentMethodDelegate() = default;
+  MockTouchToFillPaymentMethodDelegate(
+      const MockTouchToFillPaymentMethodDelegate&) = delete;
+  MockTouchToFillPaymentMethodDelegate& operator=(
+      const MockTouchToFillPaymentMethodDelegate&) = delete;
+  ~MockTouchToFillPaymentMethodDelegate() override = default;
 
   MOCK_METHOD(BrowserAutofillManager&, GetAutofillManager, (), (override));
   MOCK_METHOD(bool,
@@ -763,7 +767,8 @@ class TestBrowserAutofillManager : public autofill::TestBrowserAutofillManager {
  public:
   explicit TestBrowserAutofillManager(AutofillDriver* driver)
       : autofill::TestBrowserAutofillManager(driver) {
-    set_touch_to_fill_delegate(MockTouchToFillDelegate::Create(this));
+    set_touch_to_fill_payment_method_delegate(
+        MockTouchToFillPaymentMethodDelegate::Create(this));
     test_api(*this).SetExternalDelegate(
         std::make_unique<TestAutofillExternalDelegate>(this));
     test_api(*this).set_credit_card_access_manager(
@@ -1093,20 +1098,25 @@ class BrowserAutofillManagerTest
     }
     autofill_client().set_last_committed_primary_main_frame_url(form->url());
 
-    test_api(*form).Append(CreateTestFormField("Name on Card", "nameoncard", "",
-                                               FormControlType::kInputText));
-    test_api(*form).Append(CreateTestFormField("Card Number", "cardnumber", "",
-                                               FormControlType::kInputText));
+    auto append_field = [&](FormFieldData field) {
+      field.set_origin(url::Origin::Create(form->url()));
+      test_api(*form).Append(std::move(field));
+    };
+
+    append_field(CreateTestFormField("Name on Card", "nameoncard", "",
+                                     FormControlType::kInputText));
+    append_field(CreateTestFormField("Card Number", "cardnumber", "",
+                                     FormControlType::kInputText));
     if (use_month_type) {
-      test_api(*form).Append(CreateTestFormField(
-          "Expiration Date", "ccmonth", "", FormControlType::kInputMonth));
+      append_field(CreateTestFormField("Expiration Date", "ccmonth", "",
+                                       FormControlType::kInputMonth));
     } else {
-      test_api(*form).Append(CreateTestFormField(
-          "Expiration Date", "ccmonth", "", FormControlType::kInputText));
-      test_api(*form).Append(
+      append_field(CreateTestFormField("Expiration Date", "ccmonth", "",
+                                       FormControlType::kInputText));
+      append_field(
           CreateTestFormField("", "ccyear", "", FormControlType::kInputText));
     }
-    test_api(*form).Append(
+    append_field(
         CreateTestFormField("CVC", "cvc", "", FormControlType::kInputText));
   }
 
@@ -1197,9 +1207,9 @@ class BrowserAutofillManagerTest
         autofill_client().GetCrowdsourcingManager());
   }
 
-  MockTouchToFillDelegate& touch_to_fill_delegate() {
-    return *static_cast<MockTouchToFillDelegate*>(
-        autofill_manager().touch_to_fill_delegate());
+  MockTouchToFillPaymentMethodDelegate& touch_to_fill_delegate() {
+    return *static_cast<MockTouchToFillPaymentMethodDelegate*>(
+        autofill_manager().touch_to_fill_payment_method_delegate());
   }
 
   MockCreditCardAccessManager& cc_access_manager() {
@@ -2754,7 +2764,7 @@ TEST_F(BrowserAutofillManagerTest, SuggestionGenerationTimingMetric) {
 
   autofill_manager().OnAskForValuesToFill(
       form, form.fields()[0].global_id(), gfx::Rect(),
-      autofill::AutofillSuggestionTriggerSource::kFormControlElementClicked,
+      AutofillSuggestionTriggerSource::kFormControlElementClicked,
       std::nullopt);
 
   // Verify the metric was recorded exactly once.
@@ -3359,12 +3369,12 @@ TEST_F(BrowserAutofillManagerWithLogEventsTest,
       {CreateFieldPrediction(ADDRESS_HOME_LINE1,
                              FieldPrediction::SOURCE_OVERRIDE)},
       form_suggestion);
-  autofill::test::AddFieldPredictionToForm(form.fields()[2], ADDRESS_HOME_CITY,
-                                           form_suggestion);
-  autofill::test::AddFieldPredictionToForm(form.fields()[3], ADDRESS_HOME_STATE,
-                                           form_suggestion);
-  autofill::test::AddFieldPredictionToForm(form.fields()[4], ADDRESS_HOME_ZIP,
-                                           form_suggestion);
+  test::AddFieldPredictionToForm(form.fields()[2], ADDRESS_HOME_CITY,
+                                 form_suggestion);
+  test::AddFieldPredictionToForm(form.fields()[3], ADDRESS_HOME_STATE,
+                                 form_suggestion);
+  test::AddFieldPredictionToForm(form.fields()[4], ADDRESS_HOME_ZIP,
+                                 form_suggestion);
 
   std::string response_string;
   ASSERT_TRUE(response.SerializeToString(&response_string));
@@ -3454,8 +3464,8 @@ TEST_F(BrowserAutofillManagerWithLogEventsTest,
                                       ADDRESS_HOME_STREET_ADDRESS,
                                       ADDRESS_HOME_CITY};
   for (size_t i = 0; i < server_types.size(); ++i) {
-    autofill::test::AddFieldPredictionToForm(form.fields()[i], server_types[i],
-                                             form_suggestion);
+    test::AddFieldPredictionToForm(form.fields()[i], server_types[i],
+                                   form_suggestion);
   }
 
   std::string response_string;
@@ -3821,20 +3831,19 @@ TEST_F(BrowserAutofillManagerTest, OnLoadedServerPredictionsFromApi) {
   AutofillQueryResponse::FormSuggestion* form_suggestion;
   // Set suggestions for form 1.
   form_suggestion = response.add_form_suggestions();
-  autofill::test::AddFieldPredictionToForm(form.fields()[0], ADDRESS_HOME_CITY,
-                                           form_suggestion);
-  autofill::test::AddFieldPredictionToForm(form.fields()[1], ADDRESS_HOME_STATE,
-                                           form_suggestion);
-  autofill::test::AddFieldPredictionToForm(form.fields()[2], ADDRESS_HOME_ZIP,
-                                           form_suggestion);
+  test::AddFieldPredictionToForm(form.fields()[0], ADDRESS_HOME_CITY,
+                                 form_suggestion);
+  test::AddFieldPredictionToForm(form.fields()[1], ADDRESS_HOME_STATE,
+                                 form_suggestion);
+  test::AddFieldPredictionToForm(form.fields()[2], ADDRESS_HOME_ZIP,
+                                 form_suggestion);
   // Set suggestions for form 2.
   form_suggestion = response.add_form_suggestions();
-  autofill::test::AddFieldPredictionToForm(form2.fields()[0], NAME_LAST,
-                                           form_suggestion);
-  autofill::test::AddFieldPredictionToForm(form2.fields()[1], NAME_MIDDLE,
-                                           form_suggestion);
-  autofill::test::AddFieldPredictionToForm(form2.fields()[2], ADDRESS_HOME_ZIP,
-                                           form_suggestion);
+  test::AddFieldPredictionToForm(form2.fields()[0], NAME_LAST, form_suggestion);
+  test::AddFieldPredictionToForm(form2.fields()[1], NAME_MIDDLE,
+                                 form_suggestion);
+  test::AddFieldPredictionToForm(form2.fields()[2], ADDRESS_HOME_ZIP,
+                                 form_suggestion);
 
   std::string response_string;
   ASSERT_TRUE(response.SerializeToString(&response_string));
@@ -3901,16 +3910,16 @@ TEST_F(BrowserAutofillManagerTest, DetermineHeuristicsWithOverallPrediction) {
 
   AutofillQueryResponse response;
   auto* form_suggestion = response.add_form_suggestions();
-  autofill::test::AddFieldPredictionToForm(
-      form.fields()[0], CREDIT_CARD_NAME_FIRST, form_suggestion);
-  autofill::test::AddFieldPredictionToForm(
-      form.fields()[1], CREDIT_CARD_NAME_LAST, form_suggestion);
-  autofill::test::AddFieldPredictionToForm(form.fields()[2], CREDIT_CARD_NUMBER,
-                                           form_suggestion);
-  autofill::test::AddFieldPredictionToForm(
-      form.fields()[3], CREDIT_CARD_EXP_MONTH, form_suggestion);
-  autofill::test::AddFieldPredictionToForm(
-      form.fields()[4], CREDIT_CARD_EXP_4_DIGIT_YEAR, form_suggestion);
+  test::AddFieldPredictionToForm(form.fields()[0], CREDIT_CARD_NAME_FIRST,
+                                 form_suggestion);
+  test::AddFieldPredictionToForm(form.fields()[1], CREDIT_CARD_NAME_LAST,
+                                 form_suggestion);
+  test::AddFieldPredictionToForm(form.fields()[2], CREDIT_CARD_NUMBER,
+                                 form_suggestion);
+  test::AddFieldPredictionToForm(form.fields()[3], CREDIT_CARD_EXP_MONTH,
+                                 form_suggestion);
+  test::AddFieldPredictionToForm(form.fields()[4], CREDIT_CARD_EXP_4_DIGIT_YEAR,
+                                 form_suggestion);
 
   std::string response_string;
   ASSERT_TRUE(response.SerializeToString(&response_string));
@@ -4065,12 +4074,17 @@ void DoTestFormSubmittedNonAddressControlWithDefaultValue(
   test_api(form).fields().erase(phonenumber_it);
 
   // Insert country code and national phone number fields.
-  test_api(form).Append(CreateTestFormField("Country Code", "countrycode", "1",
-                                            form_control_type,
-                                            "tel-country-code"));
-  test_api(form).Append(CreateTestFormField("Phone Number", "phonenumber", "",
-                                            FormControlType::kInputText,
-                                            "tel-national"));
+  FormFieldData country_code_field =
+      CreateTestFormField("Country Code", "countrycode", "1", form_control_type,
+                          "tel-country-code");
+  country_code_field.set_origin(form.main_frame_origin());
+  test_api(form).Append(std::move(country_code_field));
+
+  FormFieldData phone_number_field =
+      CreateTestFormField("Phone Number", "phonenumber", "",
+                          FormControlType::kInputText, "tel-national");
+  phone_number_field.set_origin(form.main_frame_origin());
+  test_api(form).Append(std::move(phone_number_field));
 
   test->FormsSeen({form});
 
@@ -6892,9 +6906,7 @@ TEST_F(BrowserAutofillManagerTest, FillOrPreviewForm_BlockedFields) {
   EXPECT_CALL(autofill_driver(),
               ApplyFormAction(mojom::FormActionType::kFill,
                               mojom::ActionPersistence::kFill, _, _, _, _,
-                              expected_types, _))
-      .WillOnce(
-          Return(base::flat_set<FieldGlobalId>{form.fields()[0].global_id()}));
+                              expected_types, _));
 
   autofill_manager().FillOrPreviewForm(
       mojom::ActionPersistence::kFill, form.global_id(),
@@ -6928,9 +6940,7 @@ TEST_F(BrowserAutofillManagerTest,
   EXPECT_CALL(autofill_driver(),
               ApplyFormAction(mojom::FormActionType::kFill,
                               mojom::ActionPersistence::kFill, _, _, _, _,
-                              expected_types, _))
-      .WillOnce(
-          Return(base::flat_set<FieldGlobalId>{form.fields()[0].global_id()}));
+                              expected_types, _));
 
   autofill_manager().FillOrPreviewForm(
       mojom::ActionPersistence::kFill, form.global_id(),

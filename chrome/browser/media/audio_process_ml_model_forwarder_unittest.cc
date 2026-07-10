@@ -102,6 +102,9 @@ TEST_F(AudioProcessMlModelForwarderTest,
   EXPECT_FALSE(model_provider_.IsRegistered(
       optimization_guide::proto::
           OPTIMIZATION_TARGET_WEBRTC_NEURAL_RESIDUAL_ECHO_ESTIMATOR));
+  EXPECT_FALSE(model_provider_.IsRegistered(
+      optimization_guide::proto::
+          OPTIMIZATION_TARGET_WEBRTC_VOICE_ISOLATION_DENOISER));
 }
 
 TEST_F(AudioProcessMlModelForwarderTest,
@@ -111,6 +114,9 @@ TEST_F(AudioProcessMlModelForwarderTest,
   EXPECT_FALSE(model_provider_.IsRegistered(
       optimization_guide::proto::
           OPTIMIZATION_TARGET_WEBRTC_NEURAL_RESIDUAL_ECHO_ESTIMATOR));
+  EXPECT_FALSE(model_provider_.IsRegistered(
+      optimization_guide::proto::
+          OPTIMIZATION_TARGET_WEBRTC_VOICE_ISOLATION_DENOISER));
 }
 
 TEST_F(AudioProcessMlModelForwarderTest,
@@ -122,6 +128,9 @@ TEST_F(AudioProcessMlModelForwarderTest,
   EXPECT_TRUE(model_provider_.IsRegistered(
       optimization_guide::proto::
           OPTIMIZATION_TARGET_WEBRTC_NEURAL_RESIDUAL_ECHO_ESTIMATOR));
+  EXPECT_TRUE(model_provider_.IsRegistered(
+      optimization_guide::proto::
+          OPTIMIZATION_TARGET_WEBRTC_VOICE_ISOLATION_DENOISER));
 }
 
 TEST_F(AudioProcessMlModelForwarderTest,
@@ -138,6 +147,9 @@ TEST_F(AudioProcessMlModelForwarderTest,
   EXPECT_TRUE(model_provider_.IsRegistered(
       optimization_guide::proto::
           OPTIMIZATION_TARGET_WEBRTC_NEURAL_RESIDUAL_ECHO_ESTIMATOR));
+  EXPECT_TRUE(model_provider_.IsRegistered(
+      optimization_guide::proto::
+          OPTIMIZATION_TARGET_WEBRTC_VOICE_ISOLATION_DENOISER));
 }
 
 TEST_F(AudioProcessMlModelForwarderTest,
@@ -152,6 +164,9 @@ TEST_F(AudioProcessMlModelForwarderTest,
   EXPECT_FALSE(model_provider_.IsRegistered(
       optimization_guide::proto::
           OPTIMIZATION_TARGET_WEBRTC_NEURAL_RESIDUAL_ECHO_ESTIMATOR));
+  EXPECT_FALSE(model_provider_.IsRegistered(
+      optimization_guide::proto::
+          OPTIMIZATION_TARGET_WEBRTC_VOICE_ISOLATION_DENOISER));
 }
 
 TEST_F(AudioProcessMlModelForwarderTest, OnAudioCaptureStartedSavesEventTime) {
@@ -173,10 +188,13 @@ TEST_F(AudioProcessMlModelForwarderTest,
   forwarder_->Initialize(model_provider_);
   forwarder_->OnAudioProcessLaunched(std::move(remote_ml_model_manager_));
 
-  // The model observer should NOT be registered yet.
+  // The model observers should NOT be registered yet.
   EXPECT_FALSE(model_provider_.IsRegistered(
       optimization_guide::proto::
           OPTIMIZATION_TARGET_WEBRTC_NEURAL_RESIDUAL_ECHO_ESTIMATOR));
+  EXPECT_FALSE(model_provider_.IsRegistered(
+      optimization_guide::proto::
+          OPTIMIZATION_TARGET_WEBRTC_VOICE_ISOLATION_DENOISER));
 
   // Advance time.
   task_environment_.AdvanceClock(base::Days(1));
@@ -193,10 +211,13 @@ TEST_F(AudioProcessMlModelForwarderTest,
            first_capture_time;
   }));
 
-  // The model observer should now be registered.
+  // The model observers should now be registered.
   EXPECT_TRUE(model_provider_.IsRegistered(
       optimization_guide::proto::
           OPTIMIZATION_TARGET_WEBRTC_NEURAL_RESIDUAL_ECHO_ESTIMATOR));
+  EXPECT_TRUE(model_provider_.IsRegistered(
+      optimization_guide::proto::
+          OPTIMIZATION_TARGET_WEBRTC_VOICE_ISOLATION_DENOISER));
 
   // Advance time again.
   task_environment_.AdvanceClock(base::Days(1));
@@ -223,6 +244,9 @@ TEST_F(AudioProcessMlModelForwarderTest,
   EXPECT_FALSE(model_provider_.IsRegistered(
       optimization_guide::proto::
           OPTIMIZATION_TARGET_WEBRTC_NEURAL_RESIDUAL_ECHO_ESTIMATOR));
+  EXPECT_FALSE(model_provider_.IsRegistered(
+      optimization_guide::proto::
+          OPTIMIZATION_TARGET_WEBRTC_VOICE_ISOLATION_DENOISER));
 }
 
 TEST_F(AudioProcessMlModelForwarderTest, ForwardUpdates) {
@@ -364,6 +388,40 @@ TEST_F(AudioProcessMlModelForwarderTest,
   model_provider_.RemoveModel(
       optimization_guide::proto::
           OPTIMIZATION_TARGET_WEBRTC_NEURAL_RESIDUAL_ECHO_ESTIMATOR);
+  EXPECT_TRUE(base::test::RunUntil(
+      [&]() { return !forwarder_->HasModelForTesting(); }));
+}
+
+TEST_F(AudioProcessMlModelForwarderTest, ForwardVoiceIsolationDenoiserUpdates) {
+  forwarder_->Initialize(model_provider_);
+  forwarder_->OnAudioProcessLaunched(std::move(remote_ml_model_manager_));
+  forwarder_->OnAudioCaptureStarted();
+
+  testing::InSequence s;
+
+  // Forward a model file.
+  EXPECT_CALL(
+      ml_model_manager_,
+      SetModel(audio::mojom::MlModelType::kVoiceIsolationDenoiser, testing::_))
+      .Times(1)
+      .WillOnce([](audio::mojom::MlModelType, base::File file) {
+        ASSERT_TRUE(file.IsValid());
+      });
+  model_provider_.UpdateModelImmediatelyForTesting(
+      optimization_guide::proto::
+          OPTIMIZATION_TARGET_WEBRTC_VOICE_ISOLATION_DENOISER,
+      CreateModelInfo());
+  EXPECT_TRUE(base::test::RunUntil(
+      [&]() { return !forwarder_->HasPendingTasksForTesting(); }));
+
+  // Forward "stop serving" signal.
+  EXPECT_CALL(
+      ml_model_manager_,
+      StopServingModel(audio::mojom::MlModelType::kVoiceIsolationDenoiser))
+      .Times(1);
+  model_provider_.RemoveModel(
+      optimization_guide::proto::
+          OPTIMIZATION_TARGET_WEBRTC_VOICE_ISOLATION_DENOISER);
   EXPECT_TRUE(base::test::RunUntil(
       [&]() { return !forwarder_->HasModelForTesting(); }));
 }

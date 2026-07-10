@@ -351,6 +351,8 @@ void PopulateChromeWebUIFrameBinders(
     BUILDFLAG(IS_CHROMEOS)
   RegisterWebUIControllerInterfaceBinder<skills::mojom::PageHandlerFactory,
                                          skills::SkillsUI>(map);
+  RegisterWebUIControllerInterfaceBinder<skills::mojom::SkillsPageHandler,
+                                         skills::SkillsUI>(map);
 #endif
 
   // When possible, please one one of the Parts functions above and avoid making

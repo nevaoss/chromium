@@ -36,6 +36,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
@@ -51,6 +52,7 @@ import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.AnchorSide;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiContainerProperties;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiId;
+import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiShowability;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiSpecs;
 import org.chromium.ui.base.TestActivity;
 import org.chromium.ui.base.ViewUtils;
@@ -184,7 +186,7 @@ public class SideUiCoordinatorImplTest {
         RobolectricUtil.runAllBackgroundAndUi();
 
         // Verify observers notified.
-        Map<Integer, Integer> sideUiWidths = new ArrayMap<>();
+        Map<@AnchorSide Integer, Integer> sideUiWidths = new ArrayMap<>();
         sideUiWidths.put(AnchorSide.LEFT, width);
         sideUiWidths.put(AnchorSide.RIGHT, 0);
         SideUiSpecs expectedSideUiSpecs = new SideUiSpecs(sideUiWidths);
@@ -212,7 +214,7 @@ public class SideUiCoordinatorImplTest {
         RobolectricUtil.runAllBackgroundAndUi();
 
         // Verify observers notified.
-        Map<Integer, Integer> sideUiWidths = new ArrayMap<>();
+        Map<@AnchorSide Integer, Integer> sideUiWidths = new ArrayMap<>();
         sideUiWidths.put(AnchorSide.LEFT, 0);
         sideUiWidths.put(AnchorSide.RIGHT, width);
         SideUiSpecs expectedSideUiSpecs = new SideUiSpecs(sideUiWidths);
@@ -506,7 +508,7 @@ public class SideUiCoordinatorImplTest {
         RobolectricUtil.runAllBackgroundAndUi();
 
         // Verify that observers are notified with the updated specs.
-        Map<Integer, Integer> sideUiWidths = new ArrayMap<>();
+        Map<@AnchorSide Integer, Integer> sideUiWidths = new ArrayMap<>();
         sideUiWidths.put(AnchorSide.LEFT, 0);
         sideUiWidths.put(AnchorSide.RIGHT, sideUiContainer.mMinWidthDp);
         SideUiSpecs expectedSideUiSpecs = new SideUiSpecs(sideUiWidths);
@@ -545,8 +547,11 @@ public class SideUiCoordinatorImplTest {
 
         // Verify that observer is notified of the showable state, but specs change is NOT notified
         // (since specs are unchanged).
-        verify(mSideUiObserver)
-                .onShowableSideUisUpdated(eq(List.of(SideUiId.SIDE_PANEL)), eq(List.of()));
+        ArgumentCaptor<SideUiShowability> showabilityCaptor =
+                ArgumentCaptor.forClass(SideUiShowability.class);
+        verify(mSideUiObserver).onShowableSideUisUpdated(showabilityCaptor.capture());
+        assertEquals(List.of(SideUiId.SIDE_PANEL), showabilityCaptor.getValue().mShowableSideUiIds);
+        assertTrue(showabilityCaptor.getValue().mUnshowableSideUiIds.isEmpty());
         verify(mSideUiObserver, never()).onSideUiSpecsChanged(any());
 
         // Verify the container view's width is unchanged.
@@ -595,8 +600,12 @@ public class SideUiCoordinatorImplTest {
         RobolectricUtil.runAllBackgroundAndUi();
 
         // Verify the observer is notified that the container can no longer be shown.
-        verify(mSideUiObserver)
-                .onShowableSideUisUpdated(eq(List.of()), eq(List.of(SideUiId.SIDE_PANEL)));
+        ArgumentCaptor<SideUiShowability> showabilityCaptor =
+                ArgumentCaptor.forClass(SideUiShowability.class);
+        verify(mSideUiObserver).onShowableSideUisUpdated(showabilityCaptor.capture());
+        assertTrue(showabilityCaptor.getValue().mShowableSideUiIds.isEmpty());
+        assertEquals(
+                List.of(SideUiId.SIDE_PANEL), showabilityCaptor.getValue().mUnshowableSideUiIds);
 
         clearInvocations(mSideUiObserver);
 
@@ -607,8 +616,9 @@ public class SideUiCoordinatorImplTest {
         RobolectricUtil.runAllBackgroundAndUi();
 
         // Verify the observer is notified that the container can be shown again.
-        verify(mSideUiObserver)
-                .onShowableSideUisUpdated(eq(List.of(SideUiId.SIDE_PANEL)), eq(List.of()));
+        verify(mSideUiObserver).onShowableSideUisUpdated(showabilityCaptor.capture());
+        assertEquals(List.of(SideUiId.SIDE_PANEL), showabilityCaptor.getValue().mShowableSideUiIds);
+        assertTrue(showabilityCaptor.getValue().mUnshowableSideUiIds.isEmpty());
     }
 
     private int getSideUiContainerViewWidth() {

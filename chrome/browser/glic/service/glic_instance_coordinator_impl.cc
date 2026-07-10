@@ -495,7 +495,14 @@ base::WeakPtr<GlicInstance> GlicInstanceCoordinatorImpl::InvokeInternal(
                 conv_id.conversation_id, conv_id.turn_id);
           },
           [&](NewConversation) { return CreateGlicInstance(); },
-          [&](const InstanceId& id) { return GetInstanceImplFor(id); },
+          [&](const InstanceId& id) {
+            GlicInstanceImpl* target_instance = GetInstanceImplFor(id);
+            if (!target_instance && options.on_error) {
+              std::move(options.on_error)
+                  .Run(GlicInvokeError::kInstanceNotFound);
+            }
+            return target_instance;
+          },
           [&](DefaultConversation) {
             if (std::holds_alternative<Floating>(resolved_target)) {
               return GetOrCreateInstanceImplForFloaty();

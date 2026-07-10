@@ -29,6 +29,8 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.robolectric.Robolectric;
 
+import org.chromium.base.supplier.ObservableSuppliers;
+import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.AnchorSide;
@@ -44,6 +46,8 @@ public class VerticalTabsSideUiCoordinatorUnitTest {
 
     private VerticalTabsSideUiCoordinator mCoordinator;
     private Activity mActivity;
+    private final SettableNonNullObservableSupplier<Boolean> mIsVerticalTabsActiveSupplier =
+            ObservableSuppliers.createNonNull(false);
 
     @Before
     public void setUp() {
@@ -52,7 +56,10 @@ public class VerticalTabsSideUiCoordinatorUnitTest {
         when(mMockTabListCoordinator.getView()).thenReturn(mockView);
         mCoordinator =
                 new VerticalTabsSideUiCoordinator(
-                        mActivity, mMockSideUiCoordinator, mMockTabListCoordinator);
+                        mActivity,
+                        mMockSideUiCoordinator,
+                        mMockTabListCoordinator,
+                        mIsVerticalTabsActiveSupplier);
     }
 
     @After
@@ -99,5 +106,15 @@ public class VerticalTabsSideUiCoordinatorUnitTest {
         ViewGroup.LayoutParams layoutParams = mCoordinator.getView().getLayoutParams();
         assertNotNull(layoutParams);
         assertEquals(150, layoutParams.width);
+    }
+
+    @Test
+    @SmallTest
+    public void testOnContainerResized() {
+        mCoordinator.onContainerResized(100);
+        assertTrue(mIsVerticalTabsActiveSupplier.get());
+
+        mCoordinator.onContainerResized(0);
+        assertTrue(!mIsVerticalTabsActiveSupplier.get());
     }
 }

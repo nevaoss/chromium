@@ -597,7 +597,6 @@ Vérifiez vos mots de passe à tout moment dans le <ph name="GOOGLE_PASSWORD_MAN
 <translation id="1433478348197382180">Mode Lecture</translation>
 <translation id="1433980411933182122">Démarrage</translation>
 <translation id="1434659328474177625"><ph name="ISSUER" /> a validé votre adresse e-mail</translation>
-<translation id="1434696352799406980">Cette fonctionnalité réinitialise la page de démarrage, la page Nouvel onglet, le moteur de recherche et les onglets épinglés. Elle désactive en outre toutes les extensions, et efface les données temporaires telles que les cookies. Vos favoris, votre historique et vos mots de passe enregistrés ne sont pas supprimés.</translation>
 <translation id="1434886155212424586">La page Nouvel onglet est la page d'accueil.</translation>
 <translation id="1435940442311036198">Utiliser une clé d'accès sur un autre appareil</translation>
 <translation id="1436390408194692385">Valide pendant <ph name="TICKET_TIME_LEFT" /></translation>
@@ -2562,6 +2561,7 @@ Vous pouvez gérer les paramètres de ce compte en installant l'application Fami
 <translation id="2822551631199737692">Caméra utilisée</translation>
 <translation id="2822634587701817431">Réduire/Développer</translation>
 <translation id="2824942875887026017"><ph name="IDS_SHORT_PRODUCT_NAME" /> utilise les paramètres de proxy définis par votre administrateur</translation>
+<translation id="2825200993288778739">Créez votre propre compétence ou ajoutez-en une depuis la bibliothèque de compétences</translation>
 <translation id="282525059261716597">Ligne de commande :</translation>
 <translation id="2825758591930162672">Clé publique de l'objet</translation>
 <translation id="2826576843404243001">Recevoir un avertissement avant d'accéder aux sites qui ne prennent pas en charge les connexions sécurisées. Vous ne pouvez pas modifier ce paramètre, car la Protection Avancée est activée.</translation>
@@ -3700,7 +3700,6 @@ Vous pouvez gérer les paramètres de ce compte en installant l'application Fami
 <translation id="366484203224589850"><ph name="TASK_TITLE" /> : Gemini travaille sur cette tâche depuis longtemps et va bientôt s'arrêter pour économiser la batterie.</translation>
 <translation id="3664911592976620204">{NUM_OTHER_MEMBERS,plural, =0{Rejoindre le groupe d'onglets avec <ph name="OWNER_FIRST_NAME" />}=1{Rejoindre le groupe d'onglets avec <ph name="OWNER_FIRST_NAME" /> et # autre personne}one{Rejoindre le groupe d'onglets avec <ph name="OWNER_FIRST_NAME" /> et # autre personne}other{Rejoindre le groupe d'onglets avec <ph name="OWNER_FIRST_NAME" /> et # autres personnes}}</translation>
 <translation id="3665301845536101715">Ouvrir dans le panneau latéral</translation>
-<translation id="3665589677786828986">Chrome a détecté que certains de vos paramètres ont été corrompus par un autre programme. Leurs valeurs par défaut ont été rétablies.</translation>
 <translation id="3665918214153961651">Importation du fichier en cours</translation>
 <translation id="3666196264870170605">Vidage de débogage des cartes d'interface réseau Wi-Fi Intel</translation>
 <translation id="3666971425390608309">Téléchargement suspendu : <ph name="FILE_NAME" />.</translation>
@@ -4637,6 +4636,7 @@ Souhaitez-vous lancer <ph name="CONTROL_PANEL_APPLET_NAME" /> ?</translation>
 <translation id="4321179778687042513">ctrl</translation>
 <translation id="432160826079505197">Afficher <ph name="FILE_NAME" /> dans le Finder</translation>
 <translation id="4322394346347055525">Fermer les autres onglets</translation>
+<translation id="4322400254469690320">Retrouvez votre <ph name="FILENAME" /> dans le dossier <ph name="FEATURE_NAME" /></translation>
 <translation id="4324577459193912240">Fichier incomplet</translation>
 <translation id="4325433082696797523">Stockage et alimentation</translation>
 <translation id="4325515113816851466">Les choix de ton parent ne s'appliqueront plus une fois que tu te seras déconnecté</translation>
@@ -4987,7 +4987,6 @@ Souhaitez-vous lancer <ph name="CONTROL_PANEL_APPLET_NAME" /> ?</translation>
 <translation id="4580596421317071374">Les mots de passe sont enregistrés dans le <ph name="GOOGLE_PASSWORD_MANAGER" /> sur cet appareil.</translation>
 <translation id="4580939929828762295">Protégez-vous avec Gestionnaire mots de passe Google</translation>
 <translation id="4582297591746054421">Les sites lisent généralement le contenu du presse-papiers pour proposer certaines fonctionnalités, comme conserver la mise en forme du texte copié</translation>
-<translation id="4582563038311694664">Réinitialiser tous les paramètres</translation>
 <translation id="4584094413232466841">Supprimer ces informations de la saisie automatique Chrome ?</translation>
 <translation id="4584770411839426377">Fenêtre</translation>
 <translation id="4584836561445313300">Votre organisation pourra voir et gérer toutes les données de navigation existantes, comme les mots de passe, etc.</translation>
@@ -6631,6 +6630,7 @@ Assurez-vous de ne pas dévoiler d'informations sensibles.</translation>
 <translation id="5826993284769733527">Semi-transparent</translation>
 <translation id="5827266244928330802">Safari</translation>
 <translation id="5827591412833386477">Afficher les sites du même groupe</translation>
+<translation id="5827835011646404677">Les compétences sont enregistrées dans votre compte Google</translation>
 <translation id="5828181959764767444">Coucher de soleil</translation>
 <translation id="5828545842856466741">Ajouter un profil…</translation>
 <translation id="5828633471261496623">Impression...</translation>
@@ -10075,7 +10075,6 @@ Conservez votre fichier de clé en lieu sûr. Vous en aurez besoin lors de la cr
 <translation id="8327386430364625757">Police mathématique</translation>
 <translation id="8327490658947427005">La sélection n'est pas en <ph name="LANGUAGE" /></translation>
 <translation id="8327544198829180337">Fermer cette vue</translation>
-<translation id="8327676037044516220">Autorisations et paramètres de contenu</translation>
 <translation id="8328228852664998535">Si vous continuez, vos mots de passe, clés d'accès et autres données seront définitivement supprimés du <ph name="BRAND" />. Les comptes que vous avez créés pour des sites ou des applis ne seront pas supprimés.</translation>
 <translation id="8328777765163860529">Tout fermer</translation>
 <translation id="8330617762701840933">La liste des sites Web qui redirigent vers un navigateur secondaire.</translation>
@@ -10896,7 +10895,6 @@ Cela peut inclure des informations sur les logiciels installés, les fichiers, v
 <translation id="8925458182817574960">&amp;Paramètres</translation>
 <translation id="8926389886865778422">Ne plus afficher ce message</translation>
 <translation id="8926555406617248399">Onglets masqués</translation>
-<translation id="892706138619340876">Certains paramètres ont été réinitialisés</translation>
 <translation id="8927438609932588163">Autoriser les sites à enregistrer des données sur votre appareil</translation>
 <translation id="8929696694736010839">Session de navigation privée actuelle uniquement</translation>
 <translation id="8929738682246584251">Activer/Désactiver la loupe</translation>
@@ -11205,6 +11203,7 @@ Cela peut inclure des informations sur les logiciels installés, les fichiers, v
 <translation id="9130015405878219958">Le mode indiqué est incorrect.</translation>
 <translation id="9130135798965366513">Pour continuer, <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> partagera ces éléments avec le site : <ph name="FIELDS_STRING" />. Consultez les <ph name="BEGIN_LINK1" />Règles de confidentialité<ph name="END_LINK1" /> et les <ph name="BEGIN_LINK2" />Conditions d'utilisation<ph name="END_LINK2" /> du site.</translation>
 <translation id="9130364135697530260">Le contenu intégré de ce site peut utiliser les informations que celui-ci a enregistrées vous concernant</translation>
+<translation id="9130857050314385402">Les titres et les URL des onglets sont envoyés à Google lorsque vous utilisez des compétences</translation>
 <translation id="9131209053278896908">Les sites bloqués s'affichent ici</translation>
 <translation id="9131487537093447019">Envoyer des messages à des appareils Bluetooth, et en recevoir de ces derniers</translation>
 <translation id="9133568201369135151">La collecte des données de diagnostic est terminée. Ces données contiennent certaines de vos informations personnelles.</translation>

@@ -597,7 +597,6 @@
 <translation id="1433478348197382180">阅读模式</translation>
 <translation id="1433980411933182122">启动</translation>
 <translation id="1434659328474177625"><ph name="ISSUER" /> 已验证您的邮箱</translation>
-<translation id="1434696352799406980">这将重置您的启动页、“打开新的标签页”页面、搜索引擎和固定标签页，同时还会停用所有扩展程序并清除临时数据（例如 Cookie）。但是，系统不会清除您的书签、历史记录和保存的密码。</translation>
 <translation id="1434886155212424586">首页是新标签页</translation>
 <translation id="1435940442311036198">使用另一部设备上的通行密钥</translation>
 <translation id="1436390408194692385">有效期：<ph name="TICKET_TIME_LEFT" /></translation>
@@ -2556,6 +2555,7 @@
 <translation id="2822551631199737692">摄像头正在使用中</translation>
 <translation id="2822634587701817431">缩小/放大</translation>
 <translation id="2824942875887026017"><ph name="IDS_SHORT_PRODUCT_NAME" /> 使用的是由您的管理员指定的代理设置</translation>
+<translation id="2825200993288778739">您可以自行构建，也可以从技能库中添加</translation>
 <translation id="282525059261716597">命令行：</translation>
 <translation id="2825758591930162672">证书持有者的公共密钥</translation>
 <translation id="2826576843404243001">在您访问不支持安全连接的网站前，系统会发出警告。您无法更改此设置，因为您已启用“高级保护”。</translation>
@@ -3694,7 +3694,6 @@
 <translation id="366484203224589850"><ph name="TASK_TITLE" />：Gemini 处理此任务已有一段时间，即将停止处理以节省电量</translation>
 <translation id="3664911592976620204">{NUM_OTHER_MEMBERS,plural, =0{加入<ph name="OWNER_FIRST_NAME" />所在的标签页分组}=1{加入<ph name="OWNER_FIRST_NAME" />和另外 # 人所在的标签页分组}other{加入<ph name="OWNER_FIRST_NAME" />和另外 # 人所在的标签页分组}}</translation>
 <translation id="3665301845536101715">在侧边栏中打开</translation>
-<translation id="3665589677786828986">Chrome检测到您的部分设置被其他程序篡改了，因此已将这些设置重置为原始默认设置。</translation>
 <translation id="3665918214153961651">正在上传文件</translation>
 <translation id="3666196264870170605">Intel Wi-Fi NIC 调试转储</translation>
 <translation id="3666971425390608309"><ph name="FILE_NAME" /> 已暂停下载。</translation>
@@ -4630,6 +4629,7 @@
 <translation id="4321179778687042513">ctrl</translation>
 <translation id="432160826079505197">在 Finder 中显示 <ph name="FILE_NAME" /></translation>
 <translation id="4322394346347055525">关闭其他标签页</translation>
+<translation id="4322400254469690320">在“<ph name="FEATURE_NAME" />”文件夹中查找您的 <ph name="FILENAME" /></translation>
 <translation id="4324577459193912240">文件下载未完成</translation>
 <translation id="4325433082696797523">存储和电源</translation>
 <translation id="4325515113816851466">退出账号后，家长选择的设置将不再适用</translation>
@@ -4980,7 +4980,6 @@
 <translation id="4580596421317071374">系统会将密码保存到此设备上的 <ph name="GOOGLE_PASSWORD_MANAGER" />中。</translation>
 <translation id="4580939929828762295">使用 Google 密码管理工具确保安全</translation>
 <translation id="4582297591746054421">网站通常会读取您的剪贴板内容以实现某些功能（例如保留您所复制文字的格式）</translation>
-<translation id="4582563038311694664">重置所有设置</translation>
 <translation id="4584094413232466841">要从 Chrome 自动填充功能中移除此信息吗？</translation>
 <translation id="4584770411839426377">窗口</translation>
 <translation id="4584836561445313300">您的组织将能够查看和管理任何现有的浏览数据，例如密码等</translation>
@@ -6621,6 +6620,7 @@
 <translation id="5826993284769733527">半透明</translation>
 <translation id="5827266244928330802">Safari</translation>
 <translation id="5827591412833386477">显示同一群组中的网站</translation>
+<translation id="5827835011646404677">技能会保存到您的 Google 账号</translation>
 <translation id="5828181959764767444">日落</translation>
 <translation id="5828545842856466741">添加个人资料…</translation>
 <translation id="5828633471261496623">正在打印...</translation>
@@ -10062,7 +10062,6 @@
 <translation id="8327386430364625757">数学字体</translation>
 <translation id="8327490658947427005">所选内容不是<ph name="LANGUAGE" /></translation>
 <translation id="8327544198829180337">关闭此视图</translation>
-<translation id="8327676037044516220">权限和内容设置</translation>
 <translation id="8328228852664998535">如果您继续操作，您的密码、通行密钥和其他数据将从 <ph name="BRAND" />中永久删除。您为网站或应用创建的所有账号都不会被删除。</translation>
 <translation id="8328777765163860529">全部关闭</translation>
 <translation id="8330617762701840933">会重定向到备用浏览器的网站的列表。</translation>
@@ -10883,7 +10882,6 @@
 <translation id="8925458182817574960">设置(&amp;S)</translation>
 <translation id="8926389886865778422">不再询问</translation>
 <translation id="8926555406617248399">标签页已隐藏</translation>
-<translation id="892706138619340876">部分设置已重置</translation>
 <translation id="8927438609932588163">允许网站将数据保存在设备上</translation>
 <translation id="8929696694736010839">仅限当前的无痕式会话</translation>
 <translation id="8929738682246584251">放大镜开/关</translation>
@@ -11192,6 +11190,7 @@
 <translation id="9130015405878219958">输入的模式无效。</translation>
 <translation id="9130135798965366513">如果您继续，<ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> 会将您的<ph name="FIELDS_STRING" />分享给此网站。您可查看此网站的<ph name="BEGIN_LINK1" />隐私权政策<ph name="END_LINK1" />和<ph name="BEGIN_LINK2" />服务条款<ph name="END_LINK2" />。</translation>
 <translation id="9130364135697530260">此网站上的嵌入式内容可以使用它们保存的与您相关的信息</translation>
+<translation id="9130857050314385402">使用技能时，系统会将标签页标题和网址发送给 Google</translation>
 <translation id="9131209053278896908">已屏蔽的网站会显示在这里</translation>
 <translation id="9131487537093447019">向蓝牙设备发送消息，以及接收来自蓝牙设备的消息。</translation>
 <translation id="9133568201369135151">诊断数据收集已完成。这些数据中包含您的部分个人信息。</translation>

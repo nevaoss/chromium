@@ -76,6 +76,7 @@
 #include "chrome/browser/ui/focus/browser_focus_controller_webui.h"
 #include "chrome/browser/ui/fullscreen/browser_window_fullscreen_controller.h"
 #include "chrome/browser/ui/lens/lens_overlay_entry_point_controller.h"
+#include "chrome/browser/ui/omnibox/ai_mode_button_service_factory.h"
 #include "chrome/browser/ui/omnibox/ai_mode_page_action_controller.h"
 #include "chrome/browser/ui/performance_controls/memory_saver_bubble_controller.h"
 #include "chrome/browser/ui/performance_controls/memory_saver_opt_in_iph_controller.h"
@@ -197,7 +198,6 @@
 #include "components/search/ntp_features.h"
 #include "components/search/search.h"
 #include "content/public/common/content_constants.h"
-#include "extensions/browser/manifest_v2_experiment_manager.h"
 #include "extensions/common/extension_features.h"
 #include "ui/views/interaction/element_highlighter_views.h"
 
@@ -568,6 +568,10 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
   browser_animation_controller_ =
       GetUserDataFactory().CreateInstance<BrowserAnimationController>(*browser,
                                                                       *browser);
+  browser_animation_controller_->AddAnimationProvider(
+      std::make_unique<SidePanelAnimations>());
+  browser_animation_controller_->AddAnimationProvider(
+      std::make_unique<TabStripAnimations>());
 
   context_highlight_window_feature_ =
       std::make_unique<ContextHighlightWindowFeature>(*browser);
@@ -675,7 +679,10 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
 
   // This code needs exclusive access manager to be initialized.
 #if !BUILDFLAG(IS_CHROMEOS)
-  if (download_toolbar_ui_controller_) {
+  if (browser_view) {
+    download_toolbar_ui_controller_ =
+        GetUserDataFactory().CreateInstance<DownloadToolbarUIController>(
+            *browser_view->browser(), browser_view);
     download_toolbar_ui_controller_->display_controller()
         ->ListenToFullScreenChanges();
   }
@@ -686,6 +693,15 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
     // ready.
     fullscreen_control_host_ = std::make_unique<FullscreenControlHost>(
         browser_view, exclusive_access_manager_.get());
+  }
+
+  if (browser_view) {
+    if (features::HasTabSearchToolbarButton() ||
+        tabs::IsVerticalTabsFeatureEnabled()) {
+      tab_search_toolbar_button_controller_ =
+          GetUserDataFactory().CreateInstance<TabSearchToolbarButtonController>(
+              *browser_, browser_.get(), browser_view);
+    }
   }
 
   // Features that are only enabled for normal browser windows (e.g. a window
@@ -748,7 +764,8 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
           browser, browser_command_controller_.get(), location_bar);
     }
 
-    if (browser_view && IsPageActionMigrated(PageActionIconType::kAiMode)) {
+    if (browser_view && IsPageActionMigrated(PageActionIconType::kAiMode) &&
+        AiModeButtonServiceFactory::GetForProfile(profile)) {
       LocationBarView* location_bar_view = browser_view->GetLocationBarView();
       // TODO(crbug.com/491707187): Make it work with any LocationBar
       if (location_bar_view) {
@@ -870,6 +887,10 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
           browser->profile(), browser->tab_strip_model(), browser->window(),
           browser);
 
+  if (browser_view) {
+    user_education_->Init(browser_view);
+  }
+
   // Initialize post-window dependent embedder features last.
   embedder_browser_window_features_->InitPostWindowConstruction(browser);
 }
@@ -877,14 +898,6 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
 void BrowserWindowFeatures::InitPostBrowserViewConstruction(
     BrowserView* browser_view) {
   scrim_view_controller_ = std::make_unique<ScrimViewController>(browser_view);
-
-  // Set the window for the animation controller. Add animation providers here
-  // as well.
-  browser_animation_controller_->set_browser_view(browser_view);
-  browser_animation_controller_->AddAnimationProvider(
-      std::make_unique<SidePanelAnimations>());
-  browser_animation_controller_->AddAnimationProvider(
-      std::make_unique<TabStripAnimations>());
 
   if (HistorySidePanelCoordinator::IsSupported()) {
     GetUserDataFactory().CreateInstance<HistorySidePanelCoordinator>(
@@ -965,13 +978,6 @@ void BrowserWindowFeatures::InitPostBrowserViewConstruction(
           GetUserDataFactory().CreateInstance<ActorUiWindowController>(
               *browser_, browser_, std::move(container_overlay_view_pairs));
     }
-
-    if (features::HasTabSearchToolbarButton() ||
-        tabs::IsVerticalTabsFeatureEnabled()) {
-      tab_search_toolbar_button_controller_ =
-          GetUserDataFactory().CreateInstance<TabSearchToolbarButtonController>(
-              *browser_, browser_.get(), browser_view);
-    }
   }
 
   if (browser_->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL ||
@@ -983,12 +989,6 @@ void BrowserWindowFeatures::InitPostBrowserViewConstruction(
                 enterprise_data_protection::DataProtectionUIController>(
                 *browser_view->browser(), browser_view);
   }
-
-#if !BUILDFLAG(IS_CHROMEOS)
-  download_toolbar_ui_controller_ =
-      GetUserDataFactory().CreateInstance<DownloadToolbarUIController>(
-          *browser_view->browser(), browser_view);
-#endif
 
   if (base::FeatureList::IsEnabled(ntp_features::kNtpFooter)) {
     new_tab_footer_controller_ =
@@ -1019,8 +1019,6 @@ void BrowserWindowFeatures::InitPostBrowserViewConstruction(
   zoom_bubble_coordinator_ =
       GetUserDataFactory().CreateInstance<ZoomBubbleCoordinator>(
           *browser_, *browser_, zoom_bubble_manager_.get());
-
-  user_education_->Init(browser_view);
 
   find_bar_owner_ = std::make_unique<FindBarOwnerViews>(browser_view);
 

@@ -621,7 +621,10 @@ void ProfileImpl::LoadPrefsForNormalStartup(bool async_prefs) {
     ash::DeviceSettingsService::Get()->LoadIfNotPresent();
 
   user_cloud_policy_manager_ash_ = policy::CreateUserCloudPolicyManagerAsh(
-      this, force_immediate_policy_load, io_task_runner_);
+      g_browser_process->local_state(),
+      g_browser_process->shared_url_loader_factory(),
+      g_browser_process->platform_part()->browser_policy_connector_ash(), this,
+      force_immediate_policy_load, io_task_runner_);
 
   cloud_policy_manager = nullptr;
   policy_provider = GetUserCloudPolicyManagerAsh();

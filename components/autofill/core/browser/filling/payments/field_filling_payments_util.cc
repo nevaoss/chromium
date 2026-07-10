@@ -499,8 +499,10 @@ FillingValueAndType GetFillingValueAndTypeForCreditCard(
     const AutofillField& field,
     bool is_cvc_filling_supported,
     std::string* failure_to_fill) {
-  CHECK(field.Type().GetGroups().contains_any(
-      {FieldTypeGroup::kCreditCard, FieldTypeGroup::kStandaloneCvcField}));
+  if (field.Type().GetCreditCardType() == UNKNOWN_TYPE) {
+    return {};
+  }
+
   FillingValueAndType filling_value_and_type(
       credit_card.record_type() == CreditCard::RecordType::kVirtualCard &&
               action_persistence == mojom::ActionPersistence::kPreview

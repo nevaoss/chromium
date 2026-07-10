@@ -9,9 +9,8 @@ import {ActionSource} from 'chrome://bookmarks-side-panel.top-chrome/bookmarks.m
 import {BookmarksApiProxyImpl} from 'chrome://bookmarks-side-panel.top-chrome/bookmarks_api_proxy.js';
 import type {ShoppingListElement} from 'chrome://bookmarks-side-panel.top-chrome/commerce/shopping_list.js';
 import {ACTION_BUTTON_TRACK_IMAGE, ACTION_BUTTON_UNTRACK_IMAGE, LOCAL_STORAGE_EXPAND_STATUS_KEY} from 'chrome://bookmarks-side-panel.top-chrome/commerce/shopping_list.js';
-import {PageCallbackRouter, PriceTrackingHandlerRemote} from 'chrome://resources/cr_components/commerce/price_tracking.mojom-webui.js';
+import {browserProxyFactory as priceTrackingBrowserProxyFactory, PriceTrackingHandlerRemote} from 'chrome://resources/cr_components/commerce/price_tracking.mojom-webui.js';
 import type {PageRemote} from 'chrome://resources/cr_components/commerce/price_tracking.mojom-webui.js';
-import {PriceTrackingBrowserProxyImpl} from 'chrome://resources/cr_components/commerce/price_tracking_browser_proxy.js';
 import type {BookmarkProductInfo} from 'chrome://resources/cr_components/commerce/shared.mojom-webui.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
@@ -136,12 +135,10 @@ suite('SidePanelShoppingListTest', () => {
     BookmarksApiProxyImpl.setInstance(bookmarksApi);
 
     priceTrackingHandler.reset();
-    const callbackRouter = new PageCallbackRouter();
-    callbackRouterRemote = callbackRouter.$.bindNewPipeAndPassRemote();
-    PriceTrackingBrowserProxyImpl.setInstance({
-      handler: priceTrackingHandler,
-      callbackRouter: callbackRouter,
-    });
+    const {instance, remote} =
+        priceTrackingBrowserProxyFactory.createForTest(priceTrackingHandler);
+    priceTrackingBrowserProxyFactory.setInstance(instance);
+    callbackRouterRemote = remote;
 
     shoppingList = document.createElement('shopping-list');
     shoppingList.productInfos = products.slice();

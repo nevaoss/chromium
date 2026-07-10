@@ -597,7 +597,6 @@ Proverite lozinke u bilo kom trenutku u: <ph name="GOOGLE_PASSWORD_MANAGER" />.<
 <translation id="1433478348197382180">Režim čitanja</translation>
 <translation id="1433980411933182122">Pokretanje</translation>
 <translation id="1434659328474177625">Pregledač <ph name="ISSUER" /> je verifikovao imejl</translation>
-<translation id="1434696352799406980">Ovo će resetovati početnu stranicu, stranicu nove kartice, pretraživač i zakačene kartice. Takođe će onemogućiti sve dodatke i obrisati privremene podatke poput kolačića. Obeleživači, istorija i sačuvane lozinke neće biti obrisani.</translation>
 <translation id="1434886155212424586">Početna stranica je stranica Nova kartica</translation>
 <translation id="1435940442311036198">Koristite pristupni kôd na drugom uređaju</translation>
 <translation id="1436390408194692385">Važi još <ph name="TICKET_TIME_LEFT" /></translation>
@@ -3699,7 +3698,6 @@ Možete da upravljate podešavanjima ovog naloga ako instalirate aplikaciju Fami
 <translation id="366484203224589850"><ph name="TASK_TITLE" />: Gemini radi na ovom zadatku već duže vreme i uskoro će prestati da bi sačuvao bateriju</translation>
 <translation id="3664911592976620204">{NUM_OTHER_MEMBERS,plural, =0{Pridružite se grupi kartica sa korisnikom <ph name="OWNER_FIRST_NAME" />}=1{Pridružite se grupi kartica sa korisnikom <ph name="OWNER_FIRST_NAME" /> i još # osobom}one{Pridružite se grupi kartica sa korisnikom <ph name="OWNER_FIRST_NAME" /> i još # osobom}few{Pridružite se grupi kartica sa korisnikom <ph name="OWNER_FIRST_NAME" /> i još # osobe}other{Pridružite se grupi kartica sa korisnikom <ph name="OWNER_FIRST_NAME" /> i još # osoba}}</translation>
 <translation id="3665301845536101715">Otvori na bočnoj tabli</translation>
-<translation id="3665589677786828986">Chrome je otkrio da je drugi program oštetio neka od podešavanja i resetovao ih je na prvobitne podrazumevane vrednosti.</translation>
 <translation id="3665918214153961651">Otprema se fajl</translation>
 <translation id="3666196264870170605">Uklanjanje podataka o otklanjanju grešaka za NIC-ove za Intel WiFi</translation>
 <translation id="3666971425390608309">Preuzimanje je pauzirano: <ph name="FILE_NAME" />.</translation>
@@ -4987,7 +4985,6 @@ Možete da upravljate podešavanjima ovog naloga ako instalirate aplikaciju Fami
 <translation id="4580596421317071374">Lozinke se čuvaju na ovom uređaju u:<ph name="GOOGLE_PASSWORD_MANAGER" />.</translation>
 <translation id="4580939929828762295">Ostanite bezbedni uz Google menadžer lozinki</translation>
 <translation id="4582297591746054421">Sajtovi obično čitaju privremenu memoriju za potrebe funkcija poput zadržavanja formatiranja teksta koji ste kopirali</translation>
-<translation id="4582563038311694664">Resetuj sva podešavanja</translation>
 <translation id="4584094413232466841">Želite da uklonite ove informacije iz Chrome automatskog popunjavanja?</translation>
 <translation id="4584770411839426377">Prozor</translation>
 <translation id="4584836561445313300">Organizacija će moći da vidi postojeće podatke pregledanja, poput lozinki i drugog sadržaja, i da upravlja njima</translation>
@@ -10078,7 +10075,6 @@ Datoteka ključa: <ph name="KEY_FILE" />
 <translation id="8327386430364625757">Matematički font</translation>
 <translation id="8327490658947427005">Izabrana stavka nije na jeziku <ph name="LANGUAGE" /></translation>
 <translation id="8327544198829180337">Zatvori ovaj prikaz</translation>
-<translation id="8327676037044516220">Podešavanja dozvola i sadržaja</translation>
 <translation id="8328228852664998535">Ako nastavite, lozinke, pristupni ključevi i drugi podaci će biti trajno izbrisani sa uređaja <ph name="BRAND" />. Nalozi koje ste otvorili za sajtove ili aplikacije neće biti izbrisani.</translation>
 <translation id="8328777765163860529">Zatvori sve</translation>
 <translation id="8330617762701840933">Lista veb-sajtova koji preusmeravaju u alternativni pregledač.</translation>
@@ -10899,7 +10895,6 @@ To može da obuhvata informacije o instaliranom softveru, fajlovima, pregledaču
 <translation id="8925458182817574960">&amp;Podešavanja</translation>
 <translation id="8926389886865778422">Ne pitaj me ponovo</translation>
 <translation id="8926555406617248399">Kartice su skrivene</translation>
-<translation id="892706138619340876">Neka podešavanja su resetovana</translation>
 <translation id="8927438609932588163">Dozvolite sajtovima da čuvaju podatke na uređaju</translation>
 <translation id="8929696694736010839">Samo aktuelna sesija bez arhiviranja</translation>
 <translation id="8929738682246584251">Uključi/isključi lupu</translation>

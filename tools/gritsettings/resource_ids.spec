@@ -481,6 +481,10 @@
     "META": {"sizes": {"includes": [20]}},
     "includes": [3768],
   },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/contextual_cueing/internals/resources.grd": {
+    "META": {"sizes": {"includes": [10]}},
+    "includes": [3769],
+  },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/contextual_tasks/resources.grd": {
     "META": {"sizes": {"includes": [60]}},
     "includes": [3770],
@@ -822,7 +826,7 @@
     "includes": [4960],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/signin/resources.grd": {
-    "META": {"sizes": {"includes": [90],}},
+    "META": {"sizes": {"includes": [100],}},
     "includes": [4980],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/signin/signout_confirmation/resources.grd": {
@@ -1627,6 +1631,9 @@
   "ash/login/resources/login_resources.grd": {
     "structures": [9140],
   },
+  "ash/login/resources/login_strings.grd": {
+    "messages": [9150],
+  },
   "ash/public/cpp/resources/ash_public_unscaled_resources.grd": {
     "includes": [9160],
     "structures": [9180],
@@ -1808,6 +1815,11 @@
 
   "third_party/search_engines_data/resources_internal/search_engine_descriptions_strings.grd": {
     "messages": [10120],
+  },
+
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/webui_toolbar_shared/resources.grd": {
+    "META": {"sizes": {"includes": [20]}},
+    "includes": [10140],
   },
 
   "<(SHARED_INTERMEDIATE_DIR)/THIS_IS_A_PLACEHOLDER.grd": {

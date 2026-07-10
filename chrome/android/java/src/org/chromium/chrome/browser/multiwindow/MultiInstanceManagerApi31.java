@@ -905,6 +905,7 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
     @Override
     public void closeWindows(List<Integer> instanceIds, @CloseWindowAppSource int source) {
         boolean shouldCloseCurrentInstance = false;
+        var appTasksById = MultiWindowUtils.getAppTasksById(mActivity);
         for (int instanceId : instanceIds) {
             if (instanceId == mInstanceId) {
                 // Close the current instance in the end. This ensures that all other instances in
@@ -913,15 +914,18 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
                 shouldCloseCurrentInstance = true;
                 continue;
             }
-            closeWindow(instanceId, source);
+            int taskId = ChromeMultiInstancePersistentStore.readTaskId(instanceId);
+            closeWindow(instanceId, source, appTasksById.getOrDefault(taskId, null));
         }
         if (shouldCloseCurrentInstance) {
-            closeWindow(mInstanceId, source);
+            int taskId = ChromeMultiInstancePersistentStore.readTaskId(mInstanceId);
+            closeWindow(mInstanceId, source, appTasksById.getOrDefault(taskId, null));
         }
         notifyInstancesClosed(instanceIds, isPermanentClosureSource(source));
     }
 
-    private void closeWindow(int instanceId, @CloseWindowAppSource int source) {
+    private void closeWindow(
+            int instanceId, @CloseWindowAppSource int source, @Nullable AppTask appTask) {
         boolean shouldPermanentlyDelete = shouldPermanentlyDeleteWindow(instanceId, source);
         if (shouldPermanentlyDelete) {
             removeInstanceInfo(instanceId, source);
@@ -954,9 +958,17 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
             ChromeMultiInstancePersistentStore.writeClosureTime(instanceId);
             ChromeMultiInstancePersistentStore.removeTaskId(instanceId);
         }
+
+        // Activity#finishAndRemoveTask() is preferred for active instances because it synchronously
+        // sets isFinishing() to true, which prevents native initialization race conditions and
+        // crashes. AppTask#finishAndRemoveTask() is used as a fallback to ensure background or
+        // unloaded tasks (where the Activity instance is null) are cleanly removed via the
+        // ActivityManager Service.
         Activity activity = MultiWindowUtils.getActivityById(instanceId);
         if (activity != null) {
             activity.finishAndRemoveTask();
+        } else if (appTask != null) {
+            appTask.finishAndRemoveTask();
         }
 
         if (shouldPermanentlyDelete && mInstanceId != instanceId) {

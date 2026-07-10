@@ -1525,6 +1525,7 @@ base::DictValue ToDictValue(
 
 struct GeminiEnterpriseSettingsParams {
   bool feature_enabled = false;
+  bool is_enterprise = true;
   std::optional<glic::mojom::GeminiEnterpriseSettings> pref_settings;
   std::optional<glic::mojom::GeminiEnterpriseSettings> cmd_settings;
   std::optional<glic::mojom::GeminiEnterpriseSettings> expected_settings;
@@ -1547,8 +1548,26 @@ class GlicEnablingGeminiEnterpriseSettingsTest
 
   void SetUp() override {
     GlicEnablingProfileEligibilityTest::SetUp();
+    if (IsSkipped()) {
+      return;
+    }
 
     const auto& params = GetParam();
+
+    auto* identity_test_env = identity_test_env_adaptor_->identity_test_env();
+    // Glic requires the model execution capability to be enabled for the
+    // profile to be eligible.
+    AccountInfo account_info = identity_test_env->MakePrimaryAccountAvailable(
+        params.is_enterprise ? "user@enterprise.com" : "user@gmail.com",
+        signin::ConsentLevel::kSignin);
+    AccountCapabilitiesTestMutator mutator(&account_info.capabilities);
+    mutator.set_can_use_model_execution_features(true);
+    if (params.is_enterprise) {
+      account_info = AccountInfo::Builder(account_info)
+                         .SetHostedDomain("enterprise.com")
+                         .Build();
+    }
+    identity_test_env->UpdateAccountInfoForAccount(account_info);
 
     if (params.pref_settings.has_value()) {
       profile()->GetPrefs()->SetDict(glic::prefs::kGlicGeminiEnterpriseSettings,
@@ -1626,7 +1645,11 @@ INSTANTIATE_TEST_SUITE_P(
                                        .expected_settings = std::nullopt},
         GeminiEnterpriseSettingsParams{.feature_enabled = true,
                                        .cmd_settings = GetCmdSettings(),
-                                       .expected_settings = GetCmdSettings()}));
+                                       .expected_settings = GetCmdSettings()},
+        GeminiEnterpriseSettingsParams{.feature_enabled = true,
+                                       .is_enterprise = false,
+                                       .pref_settings = GetPrefSettings(),
+                                       .expected_settings = std::nullopt}));
 
 class GlicEnablingGeminiEnterpriseSettingsErrorTest
     : public GlicEnablingProfileEligibilityTest {

@@ -117,6 +117,7 @@
 <translation id="1373120905936431262">‏‫Nano Banana کے ساتھ ریمکس کرنے کے لیے کوئی تصویر اپ لوڈ کریں</translation>
 <translation id="1377508275003315939">پاس ورڈز</translation>
 <translation id="1381022135873211423">{count,plural, =1{{count} پتہ میں سے {position}}other{{count} پتے میں سے {position}}}</translation>
+<translation id="13813615483058219">کچھ غلط ہو گیا۔ اپنا انٹرنیٹ کنکشن چیک کریں، اپنا والیوم بڑھائیں یا دوبارہ کوشش کریں۔</translation>
 <translation id="1383876407941801731">تلاش کریں</translation>
 <translation id="138618066238211776">بطور <ph name="USER_NAME" /> جاری رکھیں</translation>
 <translation id="138692594145659985">کارڈ محفوظ کرنے کے اختیارات</translation>
@@ -874,6 +875,7 @@
 <translation id="4021447724486050609">اپنے براؤزر کو اپ ڈیٹ کریں</translation>
 <translation id="4021931095789478915">‏پڑھنے کی فہرست میں ‎${url} شامل کریں</translation>
 <translation id="4028871427853484857">اکاؤنٹ میں محفوظ کریں…</translation>
+<translation id="4036529942385659684">غیر فعالیت کی مدت کے بعد اسٹارٹ صفحہ دکھائیں</translation>
 <translation id="4038354071007134711">اس آلہ پر کوئی ایپلیکیشن اس فائل کو نہیں کھول سکتی ہے۔</translation>
 <translation id="4042870976416480368">صفحہ میں تلاش کریں</translation>
 <translation id="4045441967987592849">دوبارہ کھولیں</translation>
@@ -911,7 +913,6 @@
 <translation id="417138788035229076">گروپ کا نظم کریں</translation>
 <translation id="4172051516777682613">ہمیشہ دکھائیں</translation>
 <translation id="417273154673973994">{count,plural, =1{‫1 ٹیب گروپ کو بند اور محفوظ کر دیا گیا}other{‫{count} ٹیب گروپس کو بند اور محفوظ کر دیا گیا}}</translation>
-<translation id="417612446554534067">اپنے آلات پر بھیجیں</translation>
 <translation id="4180726336228139707">صرف اس آلے پر</translation>
 <translation id="4181841719683918333">زبانیں</translation>
 <translation id="4183350924949589798">مزید سیکیورٹی؟</translation>
@@ -1135,6 +1136,7 @@
 <translation id="4896467949657706481">ٹیبز بند کیے گئے؛ آپ کو سائن آؤٹ کیا گیا</translation>
 <translation id="4911042367886397055">پھر سے خوش آمدید، <ph name="USER_NAME" />!</translation>
 <translation id="4913626501929406101">آپ اپنے فیملی گروپ میں کسی کے ساتھ اپنے پاس ورڈ کی کاپی کا اشتراک محفوظ طریقے سے کر سکتے ہیں۔ <ph name="BEGIN_LINK" />مزید جانیں<ph name="END_LINK" /></translation>
+<translation id="4916679969857390442">لینز</translation>
 <translation id="4917025507570489430">بطور <ph name="USER_EMAIL" /> سائن ان ہونے پر، آپ موجودہ براؤزنگ ڈیٹا استعمال کر سکتے ہیں۔ آپ کی تنظیم اس ڈیٹا کو دیکھنے کے قابل ہو سکتی ہے۔</translation>
 <translation id="4918086044614829423">قبول کریں</translation>
 <translation id="4930714375720679147">آن کریں</translation>

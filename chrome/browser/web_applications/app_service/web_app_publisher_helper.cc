@@ -81,6 +81,7 @@
 #include "chrome/browser/web_applications/web_app_ui_manager.h"
 #include "chrome/browser/web_applications/web_app_utils.h"
 #include "chrome/common/chrome_features.h"
+#include "chrome/common/pref_names.h"
 #include "components/content_settings/core/browser/content_settings_type_set.h"
 #include "components/content_settings/core/browser/host_content_settings_map.h"
 #include "components/content_settings/core/common/content_settings.h"
@@ -516,8 +517,7 @@ bool AreOtherAppsPreferredForLinks(
 
   base::flat_set<std::string> preferred_apps =
       proxy->PreferredAppsList().FindPreferredAppsForFilters(
-          *new_app_intent_filters);
-  preferred_apps.erase(app_id);
+          app_id, *new_app_intent_filters);
 
   return preferred_apps.size() > 0;
 }
@@ -1776,6 +1776,11 @@ void WebAppPublisherHelper::Init() {
 void WebAppPublisherHelper::ObserveWebAppSubsystems() {
   install_manager_observation_.Observe(&install_manager());
   registrar_observation_.Observe(&registrar());
+#if BUILDFLAG(IS_CHROMEOS)
+  auto* proxy = apps::AppServiceProxyFactory::GetForProfile(profile_);
+  preferred_apps_list_observation_.Observe(&proxy->PreferredAppsList());
+  MaybeMigrateLinkCapturingPreferences();
+#endif
 }
 
 IconEffects WebAppPublisherHelper::GetIconEffects(const WebApp* web_app) {
@@ -2171,5 +2176,28 @@ void WebAppPublisherHelper::OnGetWebAppSize(
   app->data_size_in_bytes = size->data_size_in_bytes();
   delegate_->PublishWebApp(std::move(app));
 }
+
+#if BUILDFLAG(IS_CHROMEOS)
+void WebAppPublisherHelper::MaybeMigrateLinkCapturingPreferences() {
+  auto* proxy = apps::AppServiceProxyFactory::GetForProfile(profile_);
+  if (!proxy->PreferredAppsList().IsInitialized()) {
+    return;
+  }
+  // TODO(crbug.com/519225475): Implement migration for existing web apps to
+  // start capturing by default.
+}
+
+void WebAppPublisherHelper::OnPreferredAppsListInitialized() {
+  MaybeMigrateLinkCapturingPreferences();
+}
+
+void WebAppPublisherHelper::OnPreferredAppChanged(const std::string& app_id,
+                                                  bool is_preferred_app) {}
+
+void WebAppPublisherHelper::OnPreferredAppsListWillBeDestroyed(
+    apps::PreferredAppsListHandle* handle) {
+  preferred_apps_list_observation_.Reset();
+}
+#endif
 
 }  // namespace web_app

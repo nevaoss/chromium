@@ -199,7 +199,7 @@ UpdateDiscoveryTaskResultWaiter::UpdateDiscoveryTaskResultWaiter(
 UpdateDiscoveryTaskResultWaiter::~UpdateDiscoveryTaskResultWaiter() = default;
 
 // IsolatedWebAppUpdateManager::Observer:
-void UpdateDiscoveryTaskResultWaiter::OnUpdateDiscoveryTaskCompleted(
+void UpdateDiscoveryTaskResultWaiter::OnUpdateDiscoverAndPrepareTaskCompleted(
     const webapps::AppId& app_id,
     IsolatedWebAppUpdateCheckAndPrepareTask::CompletionStatus status) {
   if (app_id != expected_app_id_) {

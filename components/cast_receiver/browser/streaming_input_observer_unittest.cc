@@ -18,6 +18,7 @@
 #include "third_party/blink/public/common/input/web_touch_event.h"
 #include "ui/events/keycodes/dom/dom_code.h"
 #include "ui/events/keycodes/dom/dom_key.h"
+#include "ui/events/types/scroll_types.h"
 
 namespace cast_receiver {
 
@@ -245,7 +246,7 @@ TEST_F(StreamingInputObserverTest, TranslateTouchMove) {
   EXPECT_FLOAT_EQ(proto.touches(0).y_ratio(), 0.50f);
 }
 
-TEST_F(StreamingInputObserverTest, TranslateMouseWheel) {
+TEST_F(StreamingInputObserverTest, TranslateMouseWheelScrollByPixel) {
   StreamingInputObserver observer(web_contents());
 
   blink::WebMouseWheelEvent wheel_event(
@@ -254,6 +255,7 @@ TEST_F(StreamingInputObserverTest, TranslateMouseWheel) {
   wheel_event.SetPositionInWidget(gfx::PointF(250.0f, 100.0f));
   wheel_event.delta_x = 20.0f;
   wheel_event.delta_y = -10.0f;
+  wheel_event.delta_units = ui::ScrollGranularity::kScrollByPixel;
 
   std::optional<MouseEvent> opt_proto =
       HandleMouseWheelEvent(observer, wheel_event, visible_viewport_size());
@@ -268,6 +270,83 @@ TEST_F(StreamingInputObserverTest, TranslateMouseWheel) {
   EXPECT_FLOAT_EQ(proto.move_y_ratio(), -0.02f);
   EXPECT_TRUE(proto.alt_key_press());
   EXPECT_FALSE(proto.ctrl_key_press());
+}
+
+TEST_F(StreamingInputObserverTest, TranslateMouseWheelScrollByPage) {
+  StreamingInputObserver observer(web_contents());
+
+  blink::WebMouseWheelEvent wheel_event(
+      blink::WebInputEvent::Type::kMouseWheel,
+      blink::WebInputEvent::kNoModifiers,
+      blink::WebInputEvent::GetStaticTimeStampForTests());
+  wheel_event.SetPositionInWidget(gfx::PointF(250.0f, 100.0f));
+  wheel_event.delta_x = 2.0f;
+  wheel_event.delta_y = -1.0f;
+  wheel_event.delta_units = ui::ScrollGranularity::kScrollByPage;
+
+  std::optional<MouseEvent> opt_proto =
+      HandleMouseWheelEvent(observer, wheel_event, visible_viewport_size());
+  ASSERT_TRUE(opt_proto.has_value());
+
+  const MouseEvent& proto = opt_proto.value();
+  EXPECT_EQ(proto.action_type(), MouseEvent::MOUSE_WHEEL);
+  EXPECT_FLOAT_EQ(proto.x_ratio(), 0.25f);
+  EXPECT_FLOAT_EQ(proto.y_ratio(), 0.20f);
+  // Page scroll deltas are mapped directly to ratios
+  EXPECT_FLOAT_EQ(proto.move_x_ratio(), 2.0f);
+  EXPECT_FLOAT_EQ(proto.move_y_ratio(), -1.0f);
+}
+
+TEST_F(StreamingInputObserverTest, TranslateMouseWheelScrollByLine) {
+  StreamingInputObserver observer(web_contents());
+
+  blink::WebMouseWheelEvent wheel_event(
+      blink::WebInputEvent::Type::kMouseWheel,
+      blink::WebInputEvent::kNoModifiers,
+      blink::WebInputEvent::GetStaticTimeStampForTests());
+  wheel_event.SetPositionInWidget(gfx::PointF(250.0f, 100.0f));
+  wheel_event.delta_x = 2.0f;
+  wheel_event.delta_y = -1.0f;
+  wheel_event.delta_units = ui::ScrollGranularity::kScrollByLine;
+
+  std::optional<MouseEvent> opt_proto =
+      HandleMouseWheelEvent(observer, wheel_event, visible_viewport_size());
+  ASSERT_TRUE(opt_proto.has_value());
+
+  const MouseEvent& proto = opt_proto.value();
+  EXPECT_EQ(proto.action_type(), MouseEvent::MOUSE_WHEEL);
+  EXPECT_FLOAT_EQ(proto.x_ratio(), 0.25f);
+  EXPECT_FLOAT_EQ(proto.y_ratio(), 0.20f);
+  // Line scroll deltas mapped to movement ratios (2 * 40 / 1000 = 0.08, -1 * 40
+  // / 500 = -0.08)
+  EXPECT_FLOAT_EQ(proto.move_x_ratio(), 0.08f);
+  EXPECT_FLOAT_EQ(proto.move_y_ratio(), -0.08f);
+}
+
+TEST_F(StreamingInputObserverTest, TranslateMouseWheelScrollByDocument) {
+  StreamingInputObserver observer(web_contents());
+
+  blink::WebMouseWheelEvent wheel_event(
+      blink::WebInputEvent::Type::kMouseWheel,
+      blink::WebInputEvent::kNoModifiers,
+      blink::WebInputEvent::GetStaticTimeStampForTests());
+  wheel_event.SetPositionInWidget(gfx::PointF(250.0f, 100.0f));
+  wheel_event.delta_x = 2.0f;
+  wheel_event.delta_y = -1.0f;
+  wheel_event.delta_units = ui::ScrollGranularity::kScrollByDocument;
+
+  std::optional<MouseEvent> opt_proto =
+      HandleMouseWheelEvent(observer, wheel_event, visible_viewport_size());
+  ASSERT_TRUE(opt_proto.has_value());
+
+  const MouseEvent& proto = opt_proto.value();
+  EXPECT_EQ(proto.action_type(), MouseEvent::MOUSE_WHEEL);
+  EXPECT_FLOAT_EQ(proto.x_ratio(), 0.25f);
+  EXPECT_FLOAT_EQ(proto.y_ratio(), 0.20f);
+  // Document scroll deltas are mapped directly to ratios (fallback behavior
+  // matching page scroll)
+  EXPECT_FLOAT_EQ(proto.move_x_ratio(), 2.0f);
+  EXPECT_FLOAT_EQ(proto.move_y_ratio(), -1.0f);
 }
 
 TEST_F(StreamingInputObserverTest, TranslateKeyDown) {

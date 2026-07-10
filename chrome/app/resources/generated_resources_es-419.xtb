@@ -597,7 +597,6 @@ Puedes revisar las contraseñas en cualquier momento, en <ph name="GOOGLE_PASSWO
 <translation id="1433478348197382180">Modo de lectura</translation>
 <translation id="1433980411933182122">Inicio</translation>
 <translation id="1434659328474177625"><ph name="ISSUER" /> verificó tu correo electrónico</translation>
-<translation id="1434696352799406980">Esta acción restablecerá la página de inicio, la página Nueva pestaña, el motor de búsqueda y las pestañas fijas. Además, inhabilitará todas las extensiones y borrará datos temporales, como las cookies. No se borrarán tus favoritos, historial ni contraseñas guardadas.</translation>
 <translation id="1434886155212424586">La página Nueva pestaña es la nueva página principal.</translation>
 <translation id="1435940442311036198">Usar una clave de acceso en otro dispositivo</translation>
 <translation id="1436390408194692385">Período de validez: <ph name="TICKET_TIME_LEFT" /></translation>
@@ -2559,6 +2558,7 @@ Para administrar la configuración de esta cuenta, instala la app de Family Lin
 <translation id="2822551631199737692">Cámara en uso</translation>
 <translation id="2822634587701817431">Reducir/Ampliar</translation>
 <translation id="2824942875887026017"><ph name="IDS_SHORT_PRODUCT_NAME" /> usa la configuración de proxy de tu administrador</translation>
+<translation id="2825200993288778739">Crea la tuya o agrega una desde la biblioteca de habilidades</translation>
 <translation id="282525059261716597">Línea de comandos:</translation>
 <translation id="2825758591930162672">Clave pública del sujeto</translation>
 <translation id="2826576843404243001">Para los sitios que no admiten conexiones seguras, recibe una advertencia antes de visitar el sitio. No puedes cambiar este parámetro de configuración porque tienes habilitada la Protección avanzada.</translation>
@@ -3699,7 +3699,6 @@ Para administrar la configuración de esta cuenta, instala la app de Family Lin
 <translation id="366484203224589850"><ph name="TASK_TITLE" />: Gemini estuvo trabajando en esta tarea durante mucho tiempo y pronto se detendrá para ahorrar batería</translation>
 <translation id="3664911592976620204">{NUM_OTHER_MEMBERS,plural, =0{Unirse al grupo de pestañas con <ph name="OWNER_FIRST_NAME" />}=1{Unirse al grupo de pestañas con <ph name="OWNER_FIRST_NAME" /> y # persona más}other{Unirse al grupo de pestañas con <ph name="OWNER_FIRST_NAME" /> y # personas más}}</translation>
 <translation id="3665301845536101715">Abrir en el panel lateral</translation>
-<translation id="3665589677786828986">Chrome detectó que otro programa dañó algunas opciones de configuración, por lo que la restableció a los valores predeterminados.</translation>
 <translation id="3665918214153961651">Cargando archivo</translation>
 <translation id="3666196264870170605">Volcado de depuración de los NIC de Intel WiFi</translation>
 <translation id="3666971425390608309">Descarga en pausa: <ph name="FILE_NAME" />.</translation>
@@ -4636,6 +4635,7 @@ Para administrar la configuración de esta cuenta, instala la app de Family Lin
 <translation id="4321179778687042513">ctrl</translation>
 <translation id="432160826079505197">Mostrar <ph name="FILE_NAME" /> en el buscador</translation>
 <translation id="4322394346347055525">Cerrar las demás pestañas</translation>
+<translation id="4322400254469690320">Busca tu archivo <ph name="FILENAME" /> en la carpeta <ph name="FEATURE_NAME" /></translation>
 <translation id="4324577459193912240">El archivo está incompleto</translation>
 <translation id="4325433082696797523">Almacenamiento y energía</translation>
 <translation id="4325515113816851466">Las opciones de tu madre o padre no se aplicarán después de que salgas de la cuenta</translation>
@@ -4986,7 +4986,6 @@ Para administrar la configuración de esta cuenta, instala la app de Family Lin
 <translation id="4580596421317071374">Las contraseñas se guardan en <ph name="GOOGLE_PASSWORD_MANAGER" /> en este dispositivo.</translation>
 <translation id="4580939929828762295">Mantén la seguridad con el Administrador de contraseñas de Google</translation>
 <translation id="4582297591746054421">Por lo general los sitios leen el portapapeles para habilitar funciones, como la de conservar el formato del texto que copias.</translation>
-<translation id="4582563038311694664">Restablecer toda la configuración</translation>
 <translation id="4584094413232466841">¿Quieres quitar esta información de la función Autocompletar de Chrome?</translation>
 <translation id="4584770411839426377">Ventana</translation>
 <translation id="4584836561445313300">Tu organización podrá ver y administrar los datos de navegación existentes, como las contraseñas y mucho más</translation>
@@ -6631,6 +6630,7 @@ Puedes asignar varios interruptores a esta acción.</translation>
 <translation id="5826993284769733527">Semitransparente</translation>
 <translation id="5827266244928330802">Safari</translation>
 <translation id="5827591412833386477">Mostrar sitios en el mismo grupo</translation>
+<translation id="5827835011646404677">Las habilidades se guardan en tu Cuenta de Google</translation>
 <translation id="5828181959764767444">Atardecer</translation>
 <translation id="5828545842856466741">Agregar perfil…</translation>
 <translation id="5828633471261496623">Impresión...</translation>
@@ -10073,7 +10073,6 @@ Mantén el archivo de clave en un lugar seguro. Debes crear las nuevas versiones
 <translation id="8327386430364625757">Fuente matemática</translation>
 <translation id="8327490658947427005">No mostrar selección en <ph name="LANGUAGE" /></translation>
 <translation id="8327544198829180337">Cerrar esta vista</translation>
-<translation id="8327676037044516220">Configuración de contenido y permisos</translation>
 <translation id="8328228852664998535">Si continúas, se borrarán de forma permanente tus contraseñas, llaves de acceso y otros datos de <ph name="BRAND" />. No se borrarán las cuentas que hayas creado para sitios ni apps.</translation>
 <translation id="8328777765163860529">Cerrar todas</translation>
 <translation id="8330617762701840933">La lista de sitios web que se van a redireccionar a un navegador alternativo.</translation>
@@ -10894,7 +10893,6 @@ Esto puede incluir información sobre el software instalado, los archivos, el na
 <translation id="8925458182817574960">&amp;Configuración</translation>
 <translation id="8926389886865778422">No volver a preguntar</translation>
 <translation id="8926555406617248399">Se ocultaron las pestañas</translation>
-<translation id="892706138619340876">Algunas opciones de configuración se restablecieron</translation>
 <translation id="8927438609932588163">Permitir que los sitios guarden datos en tu dispositivo</translation>
 <translation id="8929696694736010839">Solo para la sesión en modo Incógnito actual</translation>
 <translation id="8929738682246584251">Lupa activada/desactivada</translation>
@@ -11203,6 +11201,7 @@ Esto puede incluir información sobre el software instalado, los archivos, el na
 <translation id="9130015405878219958">Se ingresó un modo no válido.</translation>
 <translation id="9130135798965366513">Para continuar, <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> compartirá tu <ph name="FIELDS_STRING" /> con este sitio. Consulta la <ph name="BEGIN_LINK1" />política de privacidad<ph name="END_LINK1" /> y las <ph name="BEGIN_LINK2" />condiciones del servicio<ph name="END_LINK2" /> de este sitio.</translation>
 <translation id="9130364135697530260">El contenido incorporado en este sitio puede usar la información que guardó sobre ti</translation>
+<translation id="9130857050314385402">Los títulos de las pestañas y las URLs se envían a Google cuando usas la habilidad</translation>
 <translation id="9131209053278896908">Los sitios que bloqueaste aparecen aquí</translation>
 <translation id="9131487537093447019">Enviar y recibir mensajes desde dispositivos Bluetooth</translation>
 <translation id="9133568201369135151">Se completó la recopilación de datos de diagnóstico. Parte de tu información personal se incluye en estos datos.</translation>

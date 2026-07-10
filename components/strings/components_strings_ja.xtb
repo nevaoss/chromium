@@ -3022,6 +3022,7 @@
 <translation id="5718601519531438273">パスポートや運転免許証などの情報が含まれます</translation>
 <translation id="5720705177508910913">現在のユーザー</translation>
 <translation id="5720895412771013401">デスクトップ パソコン</translation>
+<translation id="5721147290164931316">スキャンしてスマートフォンでログイン</translation>
 <translation id="5721367770070844253">{count,plural, =1{{website_1}}=2{{website_1}、{website_2}}=3{{website_1}、{website_2}、他 1 個}other{{website_1}、{website_2}、他 {more_count} 個}}</translation>
 <translation id="572328651809341494">最近使ったタブ</translation>
 <translation id="5723873695528696965">MIDI デバイスの操作と再プログラム</translation>
@@ -4270,6 +4271,7 @@
 <translation id="7646681339175747202">たった今使用したパスワードがデータ侵害で検出されました。Google パスワード マネージャーでは、パスワードを今すぐ変更することをおすすめします。</translation>
 <translation id="7647206758853451655">印刷画質</translation>
 <translation id="7648133459447652947">カーソルを表示するには、アプリを切り替えるか、ページを再読み込みするか、前に戻ります</translation>
+<translation id="764847582138410250">スキャンしてスマートフォンでログイン</translation>
 <translation id="7648527891719919697"><ph name="BEGIN_ANDROID_SETTINGS_LINK" />Android の設定<ph name="END_ANDROID_SETTINGS_LINK" />で高度な保護機能を有効にしているため、このサイトはブロックされたままになります。<ph name="BEGIN_LEARN_MORE_LINK" />この警告の詳細<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="7648900539798595789">Google ウォレットに Known Traveler 番号を保存</translation>
 <translation id="7648992873808071793">このデバイスのファイルの保存</translation>

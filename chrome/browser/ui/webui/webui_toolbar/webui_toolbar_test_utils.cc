@@ -49,6 +49,7 @@ CreateValidNavigationControlsState() {
       toolbar_ui_api::mojom::HomeControlState::New(),
       toolbar_ui_api::mojom::AppMenuControlState::New(),
       toolbar_ui_api::mojom::AvatarControlState::New(),
+      /*battery_saver_button_visible=*/false,
       toolbar_ui_api::mojom::LocationBarState::New(
           toolbar_ui_api::mojom::OmniboxViewState::New(),
           toolbar_ui_api::mojom::LocationBarFlags::New(),

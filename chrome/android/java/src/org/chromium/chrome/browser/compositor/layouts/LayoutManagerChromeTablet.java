@@ -267,7 +267,7 @@ public class LayoutManagerChromeTablet extends LayoutManagerChrome {
     public void showLayout(@LayoutType int layoutType, boolean animate) {
         // The Tab Switcher should always appear in the Full Space mode on XR.
         if (mXrSceneCoreSessionManager != null
-                && layoutType == LayoutType.TAB_SWITCHER
+                && layoutType == LayoutType.HUB
                 && !mXrSceneCoreSessionManager.isXrFullSpaceMode()) {
             boolean spaceModeChangeStarted =
                     mXrSceneCoreSessionManager.requestSpaceModeChange(
@@ -286,21 +286,21 @@ public class LayoutManagerChromeTablet extends LayoutManagerChrome {
     @Override
     protected void startShowing(Layout layout, boolean animate) {
         super.startShowing(layout, animate);
-        if (mXrSceneCoreSessionManager != null && isTabSwitcher(layout)) {
+        if (mXrSceneCoreSessionManager != null && isHubLayout(layout)) {
             mXrSceneCoreSessionManager.setMainPanelVisibility(true);
         }
     }
 
     @Override
     public void doneHiding() {
-        if (mXrSceneCoreSessionManager != null && isTabSwitcher(getActiveLayout())) {
+        if (mXrSceneCoreSessionManager != null && isHubLayout(getActiveLayout())) {
             mXrSceneCoreSessionManager.requestSpaceModeChange(/* requestFullSpaceMode= */ false);
             mXrSceneCoreSessionManager.setMainPanelVisibility(false);
         }
         super.doneHiding();
     }
 
-    private boolean isTabSwitcher(@Nullable Layout layout) {
-        return layout != null && layout.getLayoutType() == LayoutType.TAB_SWITCHER;
+    private boolean isHubLayout(@Nullable Layout layout) {
+        return layout != null && layout.getLayoutType() == LayoutType.HUB;
     }
 }

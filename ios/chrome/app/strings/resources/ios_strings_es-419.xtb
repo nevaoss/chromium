@@ -93,7 +93,7 @@
 <translation id="1296581780163690620">¿Quieres descargar el archivo? (<ph name="FILE_SIZE" />)</translation>
 <translation id="1305822519689023679">Para asegurarte de que siempre puedas usar las contraseñas en tu Cuenta de Google, verifica tu identidad.</translation>
 <translation id="1310362642333088424">Necesitas más espacio de almacenamiento para descargar archivos, fotos y mucho más.</translation>
-<translation id="1312168552565502328">Cookies, datos del sitio</translation>
+<translation id="1312168552565502328">Cookies, datos de sitios</translation>
 <translation id="1312721752506309252">Se activó la protección mejorada</translation>
 <translation id="1321993286294231467">Se produjo un error al guardar la imagen.</translation>
 <translation id="1322735045095424339">Tu organización requiere que utilices el modo Incógnito</translation>
@@ -874,6 +874,7 @@
 <translation id="4021447724486050609">Actualiza tu navegador</translation>
 <translation id="4021931095789478915">Agregar ${url} a la Lista de lectura</translation>
 <translation id="4028871427853484857">Guardar en la cuenta…</translation>
+<translation id="4036529942385659684">Mostrar la página de inicio después de un período de inactividad</translation>
 <translation id="4038354071007134711">Ninguna aplicación puede abrir el archivo.</translation>
 <translation id="4042870976416480368">Buscar en la página</translation>
 <translation id="4045441967987592849">Volver a abrir</translation>
@@ -911,7 +912,6 @@
 <translation id="417138788035229076">Administrar grupo</translation>
 <translation id="4172051516777682613">Mostrar siempre</translation>
 <translation id="417273154673973994">{count,plural, =1{Se cerró y guardó 1 grupo de pestañas}other{Se cerraron y guardaron {count} grupos de pestañas}}</translation>
-<translation id="417612446554534067">Enviar a tus dispositivos</translation>
 <translation id="4180726336228139707">Solo en este dispositivo</translation>
 <translation id="4181841719683918333">Idiomas</translation>
 <translation id="4183350924949589798">¿Quieres obtener más seguridad?</translation>
@@ -1135,6 +1135,7 @@
 <translation id="4896467949657706481">Se cerraron las pestañas; saliste de tu cuenta</translation>
 <translation id="4911042367886397055">Te damos la bienvenida nuevamente, <ph name="USER_NAME" /></translation>
 <translation id="4913626501929406101">Puedes compartir de forma segura una copia de tu contraseña con un miembro de tu grupo familiar. <ph name="BEGIN_LINK" />Más información<ph name="END_LINK" /></translation>
+<translation id="4916679969857390442">Lupa</translation>
 <translation id="4917025507570489430">Puedes usar los datos de navegación existentes cuando accedes como <ph name="USER_EMAIL" />. Es posible que tu organización pueda ver estos datos.</translation>
 <translation id="4918086044614829423">Aceptar</translation>
 <translation id="4930714375720679147">Activar</translation>

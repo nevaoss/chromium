@@ -377,14 +377,14 @@ IN_PROC_BROWSER_TEST_F(BrowserFocusTest, TabsRememberFocus) {
 }
 
 // Tabs remember focus with find-in-page box.
-IN_PROC_BROWSER_TEST_F(BrowserFocusTest, TabsRememberFocusFindInPage) {
-  // TODO(crbug.com/40268465): Re-enable when child widget focus manager
-  // relationship is fixed.
 #if BUILDFLAG(IS_MAC)
-  if (base::mac::MacOSMajorVersion() >= 13) {
-    GTEST_SKIP() << "Broken on macOS 13: https://crbug.com/40268465";
-  }
+// TODO(https://crbug.com/40268465): Re-enable when child widget focus manager
+// relationship is fixed.
+#define MAYBE_TabsRememberFocusFindInPage DISABLED_TabsRememberFocusFindInPage
+#else
+#define MAYBE_TabsRememberFocusFindInPage TabsRememberFocusFindInPage
 #endif
+IN_PROC_BROWSER_TEST_F(BrowserFocusTest, MAYBE_TabsRememberFocusFindInPage) {
   ASSERT_TRUE(ui_test_utils::BringBrowserWindowToFront(browser()));
   const GURL url = embedded_test_server()->GetURL(kSimplePage);
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));

@@ -27,7 +27,6 @@ BASE_DECLARE_FEATURE(kCustomizeChromeWallpaperSearchButton);
 BASE_DECLARE_FEATURE(kCustomizeChromeWallpaperSearchInspirationCard);
 BASE_DECLARE_FEATURE(kEnergyEffect);
 BASE_DECLARE_FEATURE(kEnergyEffectAnimation);
-BASE_DECLARE_FEATURE(kRealboxContextMenuAnimationCapping);
 BASE_DECLARE_FEATURE(kRealboxCr23Theming);
 BASE_DECLARE_FEATURE(kRealboxMatchOmniboxTheme);
 BASE_DECLARE_FEATURE(kNtpAlphaBackgroundCollections);
@@ -87,6 +86,7 @@ BASE_DECLARE_FEATURE(kNtpDoodleMurals);
 BASE_DECLARE_FEATURE(kLightningTakeoverEdition);
 BASE_DECLARE_FEATURE(kNtpShortcutsRedesign);
 BASE_DECLARE_FEATURE(kNtpSimplificationBookmarkBar);
+BASE_DECLARE_FEATURE(kBookmarkBarUpdatesForTesting);
 
 // Parameter for controlling the luminosity difference for NTP elements on light
 // backgrounds.
@@ -335,6 +335,10 @@ int GetMaxMostVisitedTilesInExpandedState();
 
 // Returns the max number of enterprise shortcuts allowed.
 int GetMaxEnterpriseShortcuts();
+
+base::TimeDelta GetBookmarkBarMinStalenessTimeInterval();
+
+int GetBookmarkBarCountThreshold();
 
 }  // namespace ntp_features
 

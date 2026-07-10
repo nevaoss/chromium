@@ -580,7 +580,7 @@ TEST_F(OverflowMenuMediatorTest, TestFeedbackItemHiddenWhenCapabilityFalse) {
   AccountInfo account_info =
       identity_manager()->FindExtendedAccountInfo(core_account_info);
 
-  AccountCapabilitiesTestMutator mutator(&account_info.capabilities);
+  AccountCapabilitiesTestMutator mutator(&account_info);
   mutator.set_can_submit_feedback(false);
 
   signin::UpdateAccountInfoForAccount(identity_manager(), account_info);
@@ -620,7 +620,7 @@ TEST_F(OverflowMenuMediatorTest, TestFeedbackItemShownWhenCapabilityTrue) {
   AccountInfo account_info =
       identity_manager()->FindExtendedAccountInfo(core_account_info);
 
-  AccountCapabilitiesTestMutator mutator(&account_info.capabilities);
+  AccountCapabilitiesTestMutator mutator(&account_info);
   mutator.set_can_submit_feedback(true);
 
   signin::UpdateAccountInfoForAccount(identity_manager(), account_info);

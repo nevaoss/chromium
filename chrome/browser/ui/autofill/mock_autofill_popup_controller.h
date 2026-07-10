@@ -60,7 +60,7 @@ class MockAutofillPopupController : public AutofillPopupController {
   MOCK_METHOD(void, OnSuggestionsChanged, (), (override));
   MOCK_METHOD(void,
               AcceptSuggestion,
-              (int, autofill::AutofillMetrics::SuggestionAcceptedMethod),
+              (int, AutofillMetrics::SuggestionAcceptedMethod),
               (override));
   const std::vector<Suggestion>& GetSuggestions() const override {
     return suggestions_;
@@ -71,7 +71,7 @@ class MockAutofillPopupController : public AutofillPopupController {
               (const override));
   int GetLineCount() const override { return suggestions_.size(); }
 
-  const autofill::Suggestion& GetSuggestionAt(int row) const override {
+  const Suggestion& GetSuggestionAt(int row) const override {
     return suggestions_[row];
   }
 
@@ -158,7 +158,7 @@ class MockAutofillPopupController : public AutofillPopupController {
   void InvalidateWeakPtrs() { weak_ptr_factory_.InvalidateWeakPtrs(); }
 
  private:
-  std::vector<autofill::Suggestion> suggestions_;
+  std::vector<Suggestion> suggestions_;
   std::vector<std::optional<SuggestionFilterMatch>> filter_matches_;
   gfx::ScopedDefaultFontDescription default_font_desc_setter_{
       "Arial, Times New Roman, 15px"};

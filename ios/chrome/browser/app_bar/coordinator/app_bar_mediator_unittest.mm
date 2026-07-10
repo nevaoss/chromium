@@ -33,6 +33,7 @@
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/lens/ui_bundled/lens_entrypoint.h"
 #import "ios/chrome/browser/menu/ui_bundled/browser_action_factory.h"
+#import "ios/chrome/browser/ntp/model/new_tab_page_tab_helper.h"
 #import "ios/chrome/browser/optimization_guide/model/optimization_guide_service_factory.h"
 #import "ios/chrome/browser/policy/model/policy_util.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/incognito_lock_state.h"
@@ -278,7 +279,7 @@ class AppBarMediatorTest : public PlatformTest {
         identity_manager,
         builder.Build(base::SysNSStringToUTF8(identity.userEmail)));
 
-    AccountCapabilitiesTestMutator mutator(&account_info.capabilities);
+    AccountCapabilitiesTestMutator mutator(&account_info);
     mutator.set_can_use_model_execution_features(capability);
     mutator.set_can_use_gemini_in_chrome(capability);
 
@@ -1172,5 +1173,38 @@ TEST_F(AppBarMediatorTest, TestAssistantButtonStateAccountFallbackPolicy) {
                        avatar:nil
                      signedIn:NO]);
   [mediator_ updateAssistantButton];
+  EXPECT_OCMOCK_VERIFY(consumer_);
+}
+
+// Tests that selecting a NTP web state updates the consumer with NTP visible
+// and isStartSurface status.
+TEST_F(AppBarMediatorTest, TestWebStateSelectionNTPUpdatesConsumer) {
+  auto web_state = std::make_unique<web::FakeWebState>();
+  web_state->SetVisibleURL(GURL("chrome://newtab"));
+  NewTabPageTabHelper::CreateForWebState(web_state.get());
+  NewTabPageTabHelper::FromWebState(web_state.get())
+      ->SetShowStartSurface(false);
+
+  OCMExpect([consumer_ setNTPVisible:YES isStartSurface:NO]);
+
+  regular_web_state_list_->InsertWebState(
+      std::move(web_state),
+      WebStateList::InsertionParams::AtIndex(0).Activate());
+
+  EXPECT_OCMOCK_VERIFY(consumer_);
+
+  // Test Start Surface NTP
+  auto start_web_state = std::make_unique<web::FakeWebState>();
+  start_web_state->SetVisibleURL(GURL("chrome://newtab"));
+  NewTabPageTabHelper::CreateForWebState(start_web_state.get());
+  NewTabPageTabHelper::FromWebState(start_web_state.get())
+      ->SetShowStartSurface(true);
+
+  OCMExpect([consumer_ setNTPVisible:YES isStartSurface:YES]);
+
+  regular_web_state_list_->InsertWebState(
+      std::move(start_web_state),
+      WebStateList::InsertionParams::AtIndex(1).Activate());
+
   EXPECT_OCMOCK_VERIFY(consumer_);
 }

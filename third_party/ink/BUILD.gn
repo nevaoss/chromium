@@ -2,9 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-if (is_android) {
-  import("//third_party/jni_zero/jni_zero.gni")
-}
+assert(
+    !is_android,
+    "Ink in //third_party/ink is not supported on Android. Use //third_party/androidx/third_party/ink instead.")
 
 config("public_config") {
   include_dirs = [ "//third_party/ink/src" ]
@@ -96,6 +96,20 @@ source_set("ink") {
     "src/ink/rendering/skia/common_internal/sksl_common_shader_helper_functions.h",
     "src/ink/rendering/skia/common_internal/sksl_fragment_shader_helper_functions.h",
     "src/ink/rendering/skia/common_internal/sksl_vertex_shader_helper_functions.h",
+    "src/ink/rendering/skia/native/internal/create_mesh_specification.cc",
+    "src/ink/rendering/skia/native/internal/create_mesh_specification.h",
+    "src/ink/rendering/skia/native/internal/mesh_drawable.cc",
+    "src/ink/rendering/skia/native/internal/mesh_drawable.h",
+    "src/ink/rendering/skia/native/internal/mesh_specification_cache.cc",
+    "src/ink/rendering/skia/native/internal/mesh_specification_cache.h",
+    "src/ink/rendering/skia/native/internal/mesh_uniform_data.cc",
+    "src/ink/rendering/skia/native/internal/mesh_uniform_data.h",
+    "src/ink/rendering/skia/native/internal/path_drawable.cc",
+    "src/ink/rendering/skia/native/internal/path_drawable.h",
+    "src/ink/rendering/skia/native/internal/shader_cache.cc",
+    "src/ink/rendering/skia/native/internal/shader_cache.h",
+    "src/ink/rendering/skia/native/skia_renderer.cc",
+    "src/ink/rendering/skia/native/skia_renderer.h",
     "src/ink/strokes/in_progress_stroke.cc",
     "src/ink/strokes/in_progress_stroke.h",
     "src/ink/strokes/input/internal/stroke_input_validation_helpers.cc",
@@ -179,137 +193,12 @@ source_set("ink") {
   configs -= [ "//build/config/compiler:chromium_code" ]
   configs += [ "//build/config/compiler:no_chromium_code" ]
 
-  public_deps = [ "//third_party/abseil-cpp:absl" ]
+  public_deps = [
+    "//skia",
+    "//third_party/abseil-cpp:absl",
+  ]
 
   deps = [ "//third_party/libtess2" ]
-
-  if (is_android) {
-    # Use find_required_jni.py to help populate this list.
-    sources += [
-      "src/ink/brush/internal/jni/brush_behavior_jni.cc",
-      "src/ink/brush/internal/jni/brush_behavior_native.cc",
-      "src/ink/brush/internal/jni/brush_behavior_native.h",
-      "src/ink/brush/internal/jni/brush_behavior_node_jni.cc",
-      "src/ink/brush/internal/jni/brush_behavior_node_native.cc",
-      "src/ink/brush/internal/jni/brush_behavior_node_native.h",
-      "src/ink/brush/internal/jni/brush_coat_jni.cc",
-      "src/ink/brush/internal/jni/brush_coat_native.cc",
-      "src/ink/brush/internal/jni/brush_coat_native.h",
-      "src/ink/brush/internal/jni/brush_family_jni.cc",
-      "src/ink/brush/internal/jni/brush_family_native.cc",
-      "src/ink/brush/internal/jni/brush_family_native.h",
-      "src/ink/brush/internal/jni/brush_jni.cc",
-      "src/ink/brush/internal/jni/brush_native.cc",
-      "src/ink/brush/internal/jni/brush_native.h",
-      "src/ink/brush/internal/jni/brush_native_helper.cc",
-      "src/ink/brush/internal/jni/brush_native_helper.h",
-      "src/ink/brush/internal/jni/brush_paint_jni.cc",
-      "src/ink/brush/internal/jni/brush_paint_native.cc",
-      "src/ink/brush/internal/jni/brush_paint_native.h",
-      "src/ink/brush/internal/jni/brush_tip_jni.cc",
-      "src/ink/brush/internal/jni/brush_tip_native.cc",
-      "src/ink/brush/internal/jni/brush_tip_native.h",
-      "src/ink/brush/internal/jni/easing_function_jni.cc",
-      "src/ink/brush/internal/jni/easing_function_native.cc",
-      "src/ink/brush/internal/jni/easing_function_native.h",
-      "src/ink/brush/internal/jni/stock_brushes_jni.cc",
-      "src/ink/brush/internal/jni/stock_brushes_native.cc",
-      "src/ink/brush/internal/jni/stock_brushes_native.h",
-      "src/ink/color/internal/jni/color_jni_helper.cc",
-      "src/ink/color/internal/jni/color_jni_helper.h",
-      "src/ink/color/internal/jni/color_native_helper.cc",
-      "src/ink/color/internal/jni/color_native_helper.h",
-      "src/ink/geometry/internal/jni/affine_transform_jni.cc",
-      "src/ink/geometry/internal/jni/affine_transform_native.cc",
-      "src/ink/geometry/internal/jni/affine_transform_native.h",
-      "src/ink/geometry/internal/jni/angle_jni.cc",
-      "src/ink/geometry/internal/jni/angle_native.cc",
-      "src/ink/geometry/internal/jni/angle_native.h",
-      "src/ink/geometry/internal/jni/box_accumulator_jni_helper.cc",
-      "src/ink/geometry/internal/jni/box_accumulator_jni_helper.h",
-      "src/ink/geometry/internal/jni/box_jni.cc",
-      "src/ink/geometry/internal/jni/box_jni_helper.cc",
-      "src/ink/geometry/internal/jni/box_jni_helper.h",
-      "src/ink/geometry/internal/jni/box_native.cc",
-      "src/ink/geometry/internal/jni/box_native.h",
-      "src/ink/geometry/internal/jni/mesh_format_jni.cc",
-      "src/ink/geometry/internal/jni/mesh_format_native.cc",
-      "src/ink/geometry/internal/jni/mesh_format_native.h",
-      "src/ink/geometry/internal/jni/mesh_format_native_helper.h",
-      "src/ink/geometry/internal/jni/mesh_jni.cc",
-      "src/ink/geometry/internal/jni/mesh_native.cc",
-      "src/ink/geometry/internal/jni/mesh_native.h",
-      "src/ink/geometry/internal/jni/mesh_native_helper.h",
-      "src/ink/geometry/internal/jni/parallelogram_jni.cc",
-      "src/ink/geometry/internal/jni/parallelogram_jni_helper.cc",
-      "src/ink/geometry/internal/jni/parallelogram_jni_helper.h",
-      "src/ink/geometry/internal/jni/parallelogram_native.cc",
-      "src/ink/geometry/internal/jni/parallelogram_native.h",
-      "src/ink/geometry/internal/jni/partitioned_mesh_jni.cc",
-      "src/ink/geometry/internal/jni/partitioned_mesh_native.cc",
-      "src/ink/geometry/internal/jni/partitioned_mesh_native.h",
-      "src/ink/geometry/internal/jni/partitioned_mesh_native_helper.h",
-      "src/ink/geometry/internal/jni/triangle_jni.cc",
-      "src/ink/geometry/internal/jni/triangle_native.cc",
-      "src/ink/geometry/internal/jni/triangle_native.h",
-      "src/ink/geometry/internal/jni/vec_jni.cc",
-      "src/ink/geometry/internal/jni/vec_jni_helper.cc",
-      "src/ink/geometry/internal/jni/vec_jni_helper.h",
-      "src/ink/geometry/internal/jni/vec_native.cc",
-      "src/ink/geometry/internal/jni/vec_native.h",
-      "src/ink/jni/internal/jni_defines.h",
-      "src/ink/jni/internal/jni_jvm_interface.cc",
-      "src/ink/jni/internal/jni_jvm_interface.h",
-      "src/ink/jni/internal/jni_string_util.cc",
-      "src/ink/jni/internal/jni_string_util.h",
-      "src/ink/jni/internal/status_jni.cc",
-      "src/ink/jni/internal/status_jni_helper.cc",
-      "src/ink/jni/internal/status_jni_helper.h",
-      "src/ink/jni/internal/status_native.cc",
-      "src/ink/jni/internal/status_native.h",
-      "src/ink/rendering/android/internal/jni/canvas_mesh_renderer_jni.cc",
-      "src/ink/strokes/internal/jni/in_progress_stroke_jni.cc",
-      "src/ink/strokes/internal/jni/in_progress_stroke_native.cc",
-      "src/ink/strokes/internal/jni/in_progress_stroke_native.h",
-      "src/ink/strokes/internal/jni/in_progress_stroke_native_helper.cc",
-      "src/ink/strokes/internal/jni/in_progress_stroke_native_helper.h",
-      "src/ink/strokes/internal/jni/stroke_input_batch_jni.cc",
-      "src/ink/strokes/internal/jni/stroke_input_batch_native.cc",
-      "src/ink/strokes/internal/jni/stroke_input_batch_native.h",
-      "src/ink/strokes/internal/jni/stroke_input_batch_native_helper.h",
-      "src/ink/strokes/internal/jni/stroke_input_jni_helper.cc",
-      "src/ink/strokes/internal/jni/stroke_input_jni_helper.h",
-      "src/ink/strokes/internal/jni/stroke_jni.cc",
-      "src/ink/strokes/internal/jni/stroke_native.cc",
-      "src/ink/strokes/internal/jni/stroke_native.h",
-      "src/ink/strokes/internal/jni/stroke_native_helper.h",
-    ]
-
-    deps += [
-      ":ink_jni_registration",
-      "//third_party/androidx/local_modifications/ink:ink_native",
-    ]
-
-    configs += [ ":ink_jni_registration_version_script" ]
-  } else {
-    sources += [
-      "src/ink/rendering/skia/native/internal/create_mesh_specification.cc",
-      "src/ink/rendering/skia/native/internal/create_mesh_specification.h",
-      "src/ink/rendering/skia/native/internal/mesh_drawable.cc",
-      "src/ink/rendering/skia/native/internal/mesh_drawable.h",
-      "src/ink/rendering/skia/native/internal/mesh_specification_cache.cc",
-      "src/ink/rendering/skia/native/internal/mesh_specification_cache.h",
-      "src/ink/rendering/skia/native/internal/mesh_uniform_data.cc",
-      "src/ink/rendering/skia/native/internal/mesh_uniform_data.h",
-      "src/ink/rendering/skia/native/internal/path_drawable.cc",
-      "src/ink/rendering/skia/native/internal/path_drawable.h",
-      "src/ink/rendering/skia/native/internal/shader_cache.cc",
-      "src/ink/rendering/skia/native/internal/shader_cache.h",
-      "src/ink/rendering/skia/native/skia_renderer.cc",
-      "src/ink/rendering/skia/native/skia_renderer.h",
-    ]
-    public_deps += [ "//skia" ]
-  }
 }
 
 source_set("brush_test_support") {
@@ -414,45 +303,4 @@ source_set("types_test_support") {
     "//testing/gmock",
     "//third_party/abseil-cpp:absl",
   ]
-}
-
-if (is_android) {
-  _ink_aar_targets = [
-    "//third_party/androidx:androidx_ink_ink_brush_android_java",
-    "//third_party/androidx:androidx_ink_ink_geometry_android_java",
-    "//third_party/androidx:androidx_ink_ink_nativeloader_android_java",
-    "//third_party/androidx:androidx_ink_ink_rendering_android_java",
-    "//third_party/androidx:androidx_ink_ink_strokes_android_java",
-  ]
-
-  _ink_jar_files = []
-  _ink_aar_deps = []
-  foreach(_target, _ink_aar_targets) {
-    _out_dir = get_label_info(_target, "target_out_dir")
-    _name = get_label_info(_target, "name")
-    _ink_jar_files += [ "${_out_dir}/${_name}/classes.jar" ]
-    _name_without_java = string_replace(_name, "_java", "_J")
-    _unpack_target = "${_name_without_java}__unpack_aar"
-    _ink_aar_deps += [ get_label_info(_target, "dir") + ":" + _unpack_target ]
-  }
-
-  # The following classes are excluded from JNI registration because their C++
-  # sources are not included (because they are not needed for PDF Viewer):
-  _ink_class_blocklist = [
-    "androidx.ink.geometry.BoxAccumulatorNative",
-    "androidx.ink.geometry.IntersectionNative",
-    "androidx.ink.strokes.MeshCreationNative",
-  ]
-
-  # Ink uses implicit registration, but this does not work when the native code
-  # is include in libchrome.so (loaded by the "base" split), and the Java code
-  # lives in the "on_demand" module.
-  # To fix this, we generated RegisterNatives() calls.
-  generate_jar_jni_registration("ink_jni_registration") {
-    jar_files = _ink_jar_files
-    class_blocklist = _ink_class_blocklist
-    generate_linker_version_script = true
-    register_natives_name = "Ink_RegisterNatives"
-    deps = _ink_aar_deps
-  }
 }

@@ -173,6 +173,7 @@ public class TabStripSceneLayerTest {
                                 1,
                                 mOnClickHandler,
                                 mKeyboardFocusHandler,
+                                /* accessibilityFocusHandler= */ null,
                                 mTabLoadTrackerCallback,
                                 mLayoutUpdateHost,
                                 false,

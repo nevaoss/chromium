@@ -111,6 +111,14 @@ class AutofillSuggestionController : public AutofillPopupViewDelegate {
   virtual void Recycle(PopupControllerCommon controller_common,
                        int32_t form_control_ax_id) = 0;
 
+ private:
+  static base::WeakPtr<AutofillSuggestionController> Create(
+      base::WeakPtr<AutofillSuggestionDelegate> delegate,
+      content::WebContents* web_contents,
+      PopupControllerCommon controller_common,
+      int32_t form_control_ax_id,
+      AutofillSuggestionTriggerSource trigger_source);
+
  protected:
   ~AutofillSuggestionController() override = default;
 };

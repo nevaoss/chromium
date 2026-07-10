@@ -73,6 +73,7 @@
 #include "chrome/browser/translate/chrome_translate_client.h"
 #include "chrome/browser/ui/accelerator_table.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
+#include "chrome/browser/ui/animation/browser_animation_controller.h"
 #include "chrome/browser/ui/autofill/autofill_bubble_base.h"
 #include "chrome/browser/ui/autofill/payments/save_card_ui.h"
 #include "chrome/browser/ui/bookmarks/bookmark_bar_controller.h"
@@ -1096,6 +1097,12 @@ BrowserView::BrowserView(Browser* browser)
           ->AddLockedForOnTaskUpdatedCallback(base::BindRepeating(
               &BrowserView::OnLockedForOnTaskUpdated, base::Unretained(this)));
 #endif
+
+  // This must be set before BrowserView::AddedToWidget() which relies on
+  // a fully-initialized BrowserAnimationController for initial layout setup.
+  auto* const animation_controller = BrowserAnimationController::From(browser_);
+  CHECK(animation_controller);
+  animation_controller->set_browser_view(this);
 }
 
 BrowserView::~BrowserView() {
@@ -4231,8 +4238,12 @@ void BrowserView::UpdateTabSearchBubbleHost() {
         toolbar_->tab_search_button(), browser_.get());
     auto* toolbar_button_controller =
         TabSearchToolbarButtonController::From(browser_.get());
-    CHECK(toolbar_button_controller);
-    toolbar_button_controller->UpdateBubbleHost(tab_search_bubble_host_.get());
+    // If TabSearchToolbarButtonController has not yet been instantiated at this
+    // point it will update the TabSearchBubbleHost when it is constructed.
+    if (toolbar_button_controller) {
+      toolbar_button_controller->UpdateBubbleHost(
+          tab_search_bubble_host_.get());
+    }
   } else {
     tab_search_bubble_host_ = std::make_unique<TabSearchBubbleHost>(
         BrowserElementsViews::From(browser_.get())
@@ -5046,13 +5057,7 @@ void BrowserView::AddedToWidget() {
   // be constructed following the check above.
   autofill_bubble_handler_ =
       std::make_unique<autofill::AutofillBubbleHandlerImpl>(
-          toolbar_button_provider);
-
-#if !BUILDFLAG(IS_CHROMEOS)
-  if (auto* controller = DownloadToolbarUIController::From(browser_.get())) {
-    controller->Init();
-  }
-#endif
+          browser_.get(), toolbar_button_provider);
 
   auto* const frame_view = GetFrameView();
   frame_view->OnBrowserViewInitViewsComplete();
@@ -5342,6 +5347,11 @@ bool BrowserView::MaybeUpdateSplitView(content::WebContents* contents) {
 bool BrowserView::MaybeUpdateDevtools(content::WebContents* contents) {
   const tabs::TabInterface* const new_tab =
       contents ? tabs::TabInterface::GetFromContents(contents) : nullptr;
+  auto* devtools_ui_controller =
+      browser_->GetFeatures().devtools_ui_controller();
+  if (!devtools_ui_controller) {
+    return false;
+  }
 
   bool devtools_layout_updated = false;
   if (IsInSplitView()) {
@@ -5352,13 +5362,11 @@ bool BrowserView::MaybeUpdateDevtools(content::WebContents* contents) {
     std::vector<tabs::TabInterface*> split_tabs = split_data->ListTabs();
     for (tabs::TabInterface* tab : split_tabs) {
       devtools_layout_updated |=
-          browser_->GetFeatures().devtools_ui_controller()->UpdateDevtools(
-              tab->GetContents(), false);
+          devtools_ui_controller->UpdateDevtools(tab->GetContents(), false);
     }
   } else {
     devtools_layout_updated =
-        browser_->GetFeatures().devtools_ui_controller()->UpdateDevtools(
-            contents, false);
+        devtools_ui_controller->UpdateDevtools(contents, false);
   }
   return devtools_layout_updated;
 }

@@ -26,8 +26,8 @@ class EntityInstanceBuilderTest : public PlatformTest {
  public:
   EntityInstanceBuilderTest() {
     scoped_feature_list_.InitWithFeatures(
-        {autofill::features::kAutofillAiWithDataSchema,
-         autofill::features::kAutofillAiCreateEntityDataManager},
+        {features::kAutofillAiWithDataSchema,
+         features::kAutofillAiCreateEntityDataManager},
         {});
 
     TestProfileIOS::Builder builder;
@@ -43,7 +43,7 @@ class EntityInstanceBuilderTest : public PlatformTest {
   // Verifies that an entity instance can be saved to and fetched from the
   // EntityDataManager.
   void VerifySaveAndFetch(const EntityInstance& instance) {
-    autofill::EntityDataManager* entity_data_manager =
+    EntityDataManager* entity_data_manager =
         IOSAutofillEntityDataManagerFactory::GetForProfile(profile_.get());
 
     entity_data_manager->AddOrUpdateEntityInstance(instance);

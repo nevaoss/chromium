@@ -8,6 +8,8 @@
 #import <Foundation/Foundation.h>
 
 #import <optional>
+#import <string>
+#import <string_view>
 
 #import "base/time/time.h"
 
@@ -17,7 +19,10 @@
 @interface SceneStatePrefs : NSObject
 
 // Designated initializer.
-- (instancetype)initWithSession:(UISceneSession*)session;
+- (instancetype)initWithSessionIdentifier:(std::string)sessionIdentifier
+                              profileName:(std::string)profileName
+                             sceneSession:(UISceneSession*)sceneSession
+    NS_DESIGNATED_INITIALIZER;
 - (instancetype)init NS_UNAVAILABLE;
 
 // Getter and setter for boolean preference with the given key.

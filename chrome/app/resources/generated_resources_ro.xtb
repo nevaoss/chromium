@@ -597,7 +597,6 @@ Verifică parolele oricând în <ph name="GOOGLE_PASSWORD_MANAGER" />.</translat
 <translation id="1433478348197382180">Modul de lectură</translation>
 <translation id="1433980411933182122">Pornire</translation>
 <translation id="1434659328474177625"><ph name="ISSUER" /> ți-a confirmat adresa de e-mail</translation>
-<translation id="1434696352799406980">Astfel, pagina de pornire, pagina Filă nouă, motorul de căutare și filele fixate vor fi resetate. De asemenea, vor fi dezactivate toate extensiile, iar datele temporare vor fi șterse, cum ar fi cookie-urile. Marcajele, istoricul și parolele salvate nu vor fi șterse.</translation>
 <translation id="1434886155212424586">Pagina de pornire este pagina Filă nouă</translation>
 <translation id="1435940442311036198">Folosește o cheie de acces pe alt dispozitiv</translation>
 <translation id="1436390408194692385">Valabil timp de <ph name="TICKET_TIME_LEFT" /></translation>
@@ -2562,6 +2561,7 @@ Poți gestiona setările contului dacă instalezi aplicația Family Link pe disp
 <translation id="2822551631199737692">Camera foto este în uz</translation>
 <translation id="2822634587701817431">Restrânge/Extinde</translation>
 <translation id="2824942875887026017"><ph name="IDS_SHORT_PRODUCT_NAME" /> folosește setările proxy ale administratorului</translation>
+<translation id="2825200993288778739">Creează-ți propriile abilități sau adaugă-le din biblioteca de abilități</translation>
 <translation id="282525059261716597">Linia de comandă:</translation>
 <translation id="2825758591930162672">Cheia publică a subiectului</translation>
 <translation id="2826576843404243001">Pentru site-urile care nu acceptă conexiuni securizate, primești un avertisment înainte să le accesezi. Nu poți schimba această setare deoarece ai activată Protecția avansată.</translation>
@@ -3701,7 +3701,6 @@ Mesaj de la server: <ph name="SERVER_MSG" /></translation>
 <translation id="366484203224589850"><ph name="TASK_TITLE" />: Gemini lucrează la această activitate de mult timp și se va opri în curând pentru a economisi bateria</translation>
 <translation id="3664911592976620204">{NUM_OTHER_MEMBERS,plural, =0{Alătură-te grupului de file cu <ph name="OWNER_FIRST_NAME" />}=1{Alătură-te grupului de file cu <ph name="OWNER_FIRST_NAME" /> și încă # persoană}few{Alătură-te grupului de file cu <ph name="OWNER_FIRST_NAME" /> și încă # persoane}other{Alătură-te grupului de file cu <ph name="OWNER_FIRST_NAME" /> și încă # de persoane}}</translation>
 <translation id="3665301845536101715">Deschide în panoul lateral</translation>
-<translation id="3665589677786828986">Chrome a detectat că unele dintre setări au fost deteriorate de alt program și le-a resetat la valorile inițiale.</translation>
 <translation id="3665918214153961651">Se încarcă fișierul</translation>
 <translation id="3666196264870170605">Date pentru remedierea erorilor cardurilor de interfață cu rețeaua Intel Wi-Fi</translation>
 <translation id="3666971425390608309">Descărcare întreruptă: <ph name="FILE_NAME" />.</translation>
@@ -4638,6 +4637,7 @@ Mesaj de la server: <ph name="SERVER_MSG" /></translation>
 <translation id="4321179778687042513">ctrl</translation>
 <translation id="432160826079505197">Afișează <ph name="FILE_NAME" /> în Finder</translation>
 <translation id="4322394346347055525">Închide celelalte file</translation>
+<translation id="4322400254469690320">Găsește <ph name="FILENAME" /> în dosarul <ph name="FEATURE_NAME" /></translation>
 <translation id="4324577459193912240">Fișier incomplet</translation>
 <translation id="4325433082696797523">Spațiu de stocare și alimentare</translation>
 <translation id="4325515113816851466">Alegerile părintelui tău nu se vor aplica după ce te deconectezi</translation>
@@ -4988,7 +4988,6 @@ Mesaj de la server: <ph name="SERVER_MSG" /></translation>
 <translation id="4580596421317071374">Parolele se salvează în <ph name="GOOGLE_PASSWORD_MANAGER" /> pe acest dispozitiv.</translation>
 <translation id="4580939929828762295">Rămâi în siguranță cu Managerul de parole Google</translation>
 <translation id="4582297591746054421">Site-urile citesc de obicei clipboardul pentru a face acțiuni precum păstrarea formatării textului pe care l-ai copiat</translation>
-<translation id="4582563038311694664">Restabilește toate setările</translation>
 <translation id="4584094413232466841">Elimini aceste informații din completarea automată din Chrome?</translation>
 <translation id="4584770411839426377">Fereastră</translation>
 <translation id="4584836561445313300">Organizația ta va putea să vadă și să gestioneze toate datele de navigare existente, cum ar fi parolele și altele</translation>
@@ -6631,6 +6630,7 @@ Poți atribui mai multe comutatoare acestei acțiuni.</translation>
 <translation id="5826993284769733527">Semitransparent</translation>
 <translation id="5827266244928330802">Safari</translation>
 <translation id="5827591412833386477">Afișează site-urile din același grup</translation>
+<translation id="5827835011646404677">Abilitățile sunt salvate în Contul Google</translation>
 <translation id="5828181959764767444">Apus</translation>
 <translation id="5828545842856466741">Adaugă un profil...</translation>
 <translation id="5828633471261496623">Se printează...</translation>
@@ -10075,7 +10075,6 @@ Păstrează fișierul cu cheia într-un loc sigur. Acesta va fi necesar la crear
 <translation id="8327386430364625757">Font matematic</translation>
 <translation id="8327490658947427005">Selecția nu este în <ph name="LANGUAGE" /></translation>
 <translation id="8327544198829180337">Închide această afișare</translation>
-<translation id="8327676037044516220">Permisiuni și setări privind conținutul</translation>
 <translation id="8328228852664998535">Dacă alegi să continui, parolele, cheile de acces și alte date se vor șterge definitiv din <ph name="BRAND" />. Conturile pe care le-ai creat pentru site-uri sau aplicații nu se vor șterge.</translation>
 <translation id="8328777765163860529">Închideți toate</translation>
 <translation id="8330617762701840933">Lista de site-uri care redirecționează la browserul secundar.</translation>
@@ -10896,7 +10895,6 @@ Aici pot fi incluse informații despre software-ul instalat, fișiere, browser, 
 <translation id="8925458182817574960">&amp;Setări</translation>
 <translation id="8926389886865778422">Nu mai întreba</translation>
 <translation id="8926555406617248399">Filele sunt ascunse</translation>
-<translation id="892706138619340876">Anumite setări au fost restabilite</translation>
 <translation id="8927438609932588163">Permite site-urilor să salveze date pe dispozitiv</translation>
 <translation id="8929696694736010839">Numai sesiunea incognito actuală</translation>
 <translation id="8929738682246584251">Lupă activată / dezactivată</translation>
@@ -11205,6 +11203,7 @@ Aici pot fi incluse informații despre software-ul instalat, fișiere, browser, 
 <translation id="9130015405878219958">A fost introdus un mod nevalid.</translation>
 <translation id="9130135798965366513">Pentru a continua, <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> va permite accesul site-ului la <ph name="FIELDS_STRING" />. Consultă <ph name="BEGIN_LINK1" />politica de confidențialitate<ph name="END_LINK1" /> și <ph name="BEGIN_LINK2" />termenii și condițiile<ph name="END_LINK2" /> site-ului.</translation>
 <translation id="9130364135697530260">Conținutul încorporat în acest site poate folosi informațiile pe care le salvează despre tine</translation>
+<translation id="9130857050314385402">Titlurile filelor și adresele URL sunt trimise la Google când folosești o abilitate</translation>
 <translation id="9131209053278896908">Site-urile blocate apar aici</translation>
 <translation id="9131487537093447019">Trimite mesaje către dispozitivele Bluetooth și primește mesaje de la acestea.</translation>
 <translation id="9133568201369135151">Colectarea datelor de diagnosticare s-a finalizat. Aceste date includ anumite informații cu caracter personal.</translation>

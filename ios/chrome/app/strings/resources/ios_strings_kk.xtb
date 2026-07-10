@@ -912,7 +912,6 @@
 <translation id="417138788035229076">Топты басқару</translation>
 <translation id="4172051516777682613">Әрқашан көрсету</translation>
 <translation id="417273154673973994">{count,plural, =1{1 қойындылар тобы жабылды және сақталды.}other{{count} қойындылар тобы жабылды және сақталды.}}</translation>
-<translation id="417612446554534067">Құрылғыларға жіберу</translation>
 <translation id="4180726336228139707">Тек осы құрылғыда</translation>
 <translation id="4181841719683918333">Тілдер</translation>
 <translation id="4183350924949589798">Қауіпсіздікті күшейткіңіз келе ме?</translation>
@@ -1136,6 +1135,7 @@
 <translation id="4896467949657706481">Қойындылар жабылды; аккаунттан шығарылдыңыз</translation>
 <translation id="4911042367886397055"><ph name="USER_NAME" />, қайта оралғаныңызға қуаныштымыз!</translation>
 <translation id="4913626501929406101">Құпия сөзіңіздің көшірмесін отбасылық топтағы адамдармен қауіпсіз түрде бөлісе аласыз. <ph name="BEGIN_LINK" />Толық ақпарат<ph name="END_LINK" /></translation>
+<translation id="4916679969857390442">Үлкейткіш әйнек</translation>
 <translation id="4917025507570489430">Бұрыннан бар браузерді пайдалану деректерін <ph name="USER_EMAIL" /> аккаунтына кірген кезде пайдалануға болады. Ұйымыңыз бұл деректерді көреді.</translation>
 <translation id="4918086044614829423">Қабылдау</translation>
 <translation id="4930714375720679147">Қосу</translation>

@@ -134,6 +134,8 @@ class ChromeAutofillClient : public ContentAutofillClient {
   const std::string& GetAppLocale() const final;
   version_info::Channel GetChannel() const final;
   bool IsOffTheRecord() const final;
+  const subscription_eligibility::SubscriptionEligibilityService*
+  GetSubscriptionEligibilityService() const final;
   scoped_refptr<network::SharedURLLoaderFactory> GetURLLoaderFactory() final;
   AutofillCrowdsourcingManager& GetCrowdsourcingManager() final;
   VotesUploader& GetVotesUploader() final;
@@ -242,7 +244,9 @@ class ChromeAutofillClient : public ContentAutofillClient {
   // on Android.
   AutofillSnackbarControllerImpl* GetAutofillSnackbarController() final;
 
-  void ShowAtMemoryBottomSheet(base::span<const Suggestion> suggestions) final;
+  void ShowAtMemoryBottomSheet(
+      base::span<const Suggestion> suggestions,
+      base::WeakPtr<AutofillSuggestionDelegate> delegate) final;
 
   // Returns the AtMemoryBottomSheetBridge for the current tab.
   AtMemoryBottomSheetBridge* GetOrCreateAtMemoryBottomSheetBridge();

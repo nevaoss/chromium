@@ -30,7 +30,7 @@ TEST_F(StyleCommandsTest, ComputeAndSetTypingStyleWithNullPosition) {
                            SetSelectionOptions());
 
   EXPECT_TRUE(StyleCommands::ExecuteToggleBold(GetFrame(), nullptr,
-                                               EditorCommandSource::kDOM, ""));
+                                               EditorCommandSource::kDom, ""));
 
   EXPECT_EQ("|<b></b> ", GetSelectionTextFromBody());
 }
@@ -53,7 +53,7 @@ TEST_F(StyleCommandsTest, StrikethroughToggleAfterDeletingContent) {
 
   // Apply strikethrough.
   EXPECT_TRUE(StyleCommands::ExecuteStrikethrough(
-      GetFrame(), nullptr, EditorCommandSource::kDOM, ""));
+      GetFrame(), nullptr, EditorCommandSource::kDom, ""));
 
   String html = div->GetInnerHTMLString();
   EXPECT_EQ("<strike>E</strike>", html);
@@ -80,7 +80,7 @@ TEST_F(StyleCommandsTest, StrikethroughToggleAfterDeletingContent) {
 
   // Toggle strikethrough off in the empty element.
   EXPECT_TRUE(StyleCommands::ExecuteStrikethrough(
-      GetFrame(), nullptr, EditorCommandSource::kDOM, ""));
+      GetFrame(), nullptr, EditorCommandSource::kDom, ""));
 
   // Type new content.
   TypingCommand::InsertText(
@@ -107,7 +107,7 @@ TEST_F(StyleCommandsTest, StrikethroughToggleInEmptyContentEditable) {
 
   // Apply strikethrough.
   EXPECT_TRUE(StyleCommands::ExecuteStrikethrough(
-      GetFrame(), nullptr, EditorCommandSource::kDOM, ""));
+      GetFrame(), nullptr, EditorCommandSource::kDom, ""));
 
   String html = div->GetInnerHTMLString();
   EXPECT_EQ("<strike>E</strike>", html);
@@ -120,7 +120,7 @@ TEST_F(StyleCommandsTest, StrikethroughToggleInEmptyContentEditable) {
 
   // Toggle strikethrough off in the empty element.
   EXPECT_TRUE(StyleCommands::ExecuteStrikethrough(
-      GetFrame(), nullptr, EditorCommandSource::kDOM, ""));
+      GetFrame(), nullptr, EditorCommandSource::kDom, ""));
 
   // Insert new text.
   TypingCommand::InsertText(

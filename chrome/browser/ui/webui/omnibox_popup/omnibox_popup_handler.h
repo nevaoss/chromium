@@ -39,13 +39,16 @@ class OmniboxPopupHandler : public omnibox_popup::mojom::PageHandler {
   // omnibox_popup::mojom::PageHandler:
   void ShowContextMenu(const gfx::Point& point) override;
   void CloseUI() override;
-  void OnSelectionChanged(
-      omnibox_popup::mojom::OmniboxInputStatePtr state) override;
+  void OnSelectionChanged(const gfx::Range& selection,
+                          uint32_t sequence_number) override;
 
   // omnibox_popup::mojom::Page:
   void OnShow();
   void OnContextMenuClosed();
-  void SetInputState(const std::string& text, const gfx::Range& selection);
+  void SetInputState(const std::string& text,
+                     const gfx::Range& selection,
+                     bool user_input_in_progress,
+                     bool is_double_click);
 
   const gfx::Range& latest_selection() const { return latest_selection_; }
 

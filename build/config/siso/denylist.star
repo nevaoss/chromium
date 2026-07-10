@@ -46,8 +46,6 @@ def __step_config(ctx, step_config):
         "mojo/public/tools/bindings/minify_with_terser.py",
         "remoting/tools/build/remoting_copy_locales.py",
         "testing/libfuzzer/fuzzers/generate_v8_inspector_fuzzer_corpus.py",
-        "testing/libfuzzer/research/domatolpm/fuzzer_generator.py",
-        "testing/libfuzzer/research/domatolpm/generator.py",
         "testing/scripts/rust/generate_script.py",
         # Dynamically walks and loads 160+ translated grd files (xtb) and requires
         # full grit python libraries. Too many dynamic dependencies to track.
@@ -61,9 +59,7 @@ def __step_config(ctx, step_config):
         # metadata files to determine JS source files to load at runtime, making
         # input tracking too complex for static analysis without Starlark handlers.
         "third_party/closure_compiler/js_binary.py",
-        "third_party/dawn/generator/dawn_json_generator.py",
         "third_party/dawn/generator/dawn_version_generator.py",
-        "third_party/dawn/generator/opengl_loader_generator.py",
         "third_party/dawn/src/tint/cmd/bench/generate_benchmark_inputs.py",
         "third_party/dawn/tools/generate-sources-gn.py",
         "third_party/dawn/tools/run.py",

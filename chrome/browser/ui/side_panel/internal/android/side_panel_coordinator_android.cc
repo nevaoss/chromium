@@ -213,6 +213,13 @@ void SidePanelCoordinatorAndroid::Close(SidePanelEntryHideReason hide_reason,
 
 void SidePanelCoordinatorAndroid::OnTabReparented(tabs::TabInterface* tab) {
   SPLOG("OnTabReparented - tab: " << tab);
+
+  if (auto* registry = SidePanelRegistry::From(tab)) {
+    for (auto const& entry : registry->entries()) {
+      entry->ClearCachedView();
+    }
+  }
+
   // In multi-tab windows, when the active tab is reparented out, the source
   // window activates another tab first. This triggers
   // `SidePanelTabListObserverAndroid::OnActiveTabChanged()`, which already

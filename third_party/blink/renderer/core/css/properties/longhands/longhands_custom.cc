@@ -6452,6 +6452,168 @@ const CSSValue* BlockEllipsis::CSSValueFromComputedStyleInternal(
   return CSSIdentifierValue::Create(style.BlockEllipsis());
 }
 
+const CSSValue* LineClamp::ParseSingleValue(
+    CSSParserTokenStream& stream,
+    const CSSParserContext& context,
+    CSSParserLocalContext& local_context) const {
+  if (stream.Peek().Id() == CSSValueID::kNone) {
+    return css_parsing_utils::ConsumeIdent(stream);
+  }
+
+  const CSSPrimitiveValue* num_lines = nullptr;
+  const CSSIdentifierValue* auto_keyword = nullptr;
+  const CSSIdentifierValue* block_ellipsis = nullptr;
+  const CSSIdentifierValue* webkit_legacy = nullptr;
+
+  do {
+    if (stream.Peek().Id() == CSSValueID::kWebkitLegacy) {
+      webkit_legacy = css_parsing_utils::ConsumeIdent(stream);
+      break;
+    }
+
+    if (!auto_keyword && stream.Peek().Id() == CSSValueID::kAuto) {
+      auto_keyword = css_parsing_utils::ConsumeIdent(stream);
+      continue;
+    }
+
+    if (!block_ellipsis) {
+      block_ellipsis =
+          css_parsing_utils::ConsumeIdent<CSSValueID::kEllipsis,
+                                          CSSValueID::kNoEllipsis>(stream);
+      if (block_ellipsis) {
+        continue;
+      }
+    }
+
+    if (!num_lines) {
+      num_lines = css_parsing_utils::ConsumePositiveInteger(stream, context,
+                                                            local_context);
+      if (num_lines) {
+        continue;
+      }
+    }
+
+    break;
+  } while (!stream.AtEnd());
+
+  if (!num_lines && !auto_keyword && !block_ellipsis) {
+    return nullptr;
+  }
+
+  if (block_ellipsis && block_ellipsis->GetValueID() == CSSValueID::kEllipsis) {
+    block_ellipsis = nullptr;
+  }
+
+  CSSValueList* list = CSSValueList::CreateSpaceSeparated();
+  if (num_lines) {
+    list->Append(*num_lines);
+  }
+  if (auto_keyword) {
+    if (num_lines || !block_ellipsis) {
+      list->Append(*auto_keyword);
+    }
+  } else if (!num_lines && !block_ellipsis) {
+    list->Append(*CSSIdentifierValue::Create(CSSValueID::kAuto));
+  }
+  if (block_ellipsis) {
+    list->Append(*block_ellipsis);
+  }
+  if (webkit_legacy) {
+    list->Append(*webkit_legacy);
+  }
+  DCHECK(list->length());
+  return list;
+}
+
+const CSSValue* LineClamp::CSSValueFromComputedStyleInternal(
+    const ComputedStyle& style,
+    const LayoutObject*,
+    bool allow_visited_style,
+    CSSValuePhase value_phase) const {
+  if (style.Continue() == EContinue::kNormal) {
+    DCHECK(style.MaxLines().IsAutoValue());
+    DCHECK_EQ(style.LineClampInternalBlockEllipsis(),
+              EBlockEllipsis::kNoEllipsis);
+    return CSSIdentifierValue::Create(CSSValueID::kNone);
+  }
+
+  CSSValueList* list = CSSValueList::CreateSpaceSeparated();
+  if (!style.MaxLines().IsAutoValue() ||
+      style.LineClampInternalBlockEllipsis() == EBlockEllipsis::kEllipsis) {
+    if (style.MaxLines().Lines() != 0) {
+      list->Append(*CSSNumericLiteralValue::Create(
+          style.MaxLines().Lines(), CSSPrimitiveValue::UnitType::kInteger));
+    }
+    if (style.MaxLines().HasAutoKeyword()) {
+      list->Append(*CSSIdentifierValue::Create(CSSValueID::kAuto));
+    }
+  }
+
+  if (style.LineClampInternalBlockEllipsis() != EBlockEllipsis::kEllipsis) {
+    list->Append(*CSSIdentifierValue::Create(style.BlockEllipsis()));
+  }
+
+  if (style.Continue() == EContinue::kWebkitLegacy) {
+    list->Append(*CSSIdentifierValue::Create(style.Continue()));
+  } else {
+    DCHECK_EQ(style.Continue(), EContinue::kCollapse);
+  }
+
+  DCHECK(list->length());
+  return list;
+}
+
+void LineClamp::ApplyInitial(StyleResolverState& state) const {
+  state.StyleBuilder().SetContinue(EContinue::kNormal);
+  state.StyleBuilder().SetMaxLines(MaxLinesData(0, true));
+  state.StyleBuilder().SetLineClampInternalBlockEllipsis(
+      EBlockEllipsis::kNoEllipsis);
+}
+
+void LineClamp::ApplyInherit(StyleResolverState& state) const {
+  state.StyleBuilder().SetContinue(state.ParentStyle()->Continue());
+  state.StyleBuilder().SetMaxLines(state.ParentStyle()->MaxLines());
+  state.StyleBuilder().SetLineClampInternalBlockEllipsis(
+      state.ParentStyle()->LineClampInternalBlockEllipsis());
+}
+
+void LineClamp::ApplyValue(StyleResolverState& state,
+                           const CSSValue& value,
+                           ValueModeFlags) const {
+  if (const auto* ident = DynamicTo<CSSIdentifierValue>(value)) {
+    DCHECK_EQ(ident->GetValueID(), CSSValueID::kNone);
+    ApplyInitial(state);
+    return;
+  }
+
+  uint16_t num_lines = 0;
+  bool force_auto = false;
+  bool webkit_legacy = false;
+  EBlockEllipsis ellipsis = EBlockEllipsis::kEllipsis;
+
+  for (const auto& item : To<CSSValueList>(value)) {
+    if (const auto* primitive_value = DynamicTo<CSSPrimitiveValue>(*item)) {
+      num_lines = primitive_value->ConvertTo<uint16_t>(
+          state.CssToLengthConversionData());
+      continue;
+    }
+    CSSValueID keyword = To<CSSIdentifierValue>(*item).GetValueID();
+    if (keyword == CSSValueID::kAuto) {
+      force_auto = true;
+    } else if (keyword == CSSValueID::kWebkitLegacy) {
+      webkit_legacy = true;
+    } else {
+      ellipsis = CssValueIDToPlatformEnum<EBlockEllipsis>(keyword);
+    }
+  }
+
+  state.StyleBuilder().SetContinue(webkit_legacy ? EContinue::kWebkitLegacy
+                                                 : EContinue::kCollapse);
+  state.StyleBuilder().SetMaxLines(
+      MaxLinesData(num_lines, force_auto || !num_lines));
+  state.StyleBuilder().SetLineClampInternalBlockEllipsis(ellipsis);
+}
+
 const CSSValue* LineHeight::CSSValueFromComputedStyleInternal(
     const ComputedStyle& style,
     const LayoutObject*,
@@ -11112,6 +11274,72 @@ const CSSValue* WebkitLineClamp::CSSValueFromComputedStyleInternal(
   }
   return CSSNumericLiteralValue::Create(style.WebkitLineClamp(),
                                         CSSPrimitiveValue::UnitType::kNumber);
+}
+
+const CSSValue* AlternativeWebkitLineClampLonghand::ParseSingleValue(
+    CSSParserTokenStream& stream,
+    const CSSParserContext& context,
+    CSSParserLocalContext& local_context) const {
+  if (stream.Peek().Id() == CSSValueID::kNone) {
+    return css_parsing_utils::ConsumeIdent(stream);
+  } else {
+    // When specifying number of lines, don't allow 0 as a valid value.
+    return css_parsing_utils::ConsumePositiveInteger(stream, context,
+                                                     local_context);
+  }
+}
+
+const CSSValue*
+AlternativeWebkitLineClampLonghand::CSSValueFromComputedStyleInternal(
+    const ComputedStyle& style,
+    const LayoutObject*,
+    bool allow_visited_style,
+    CSSValuePhase value_phase) const {
+  if (style.Continue() == EContinue::kNormal) {
+    DCHECK(style.MaxLines().IsAutoValue());
+    DCHECK_EQ(style.LineClampInternalBlockEllipsis(),
+              EBlockEllipsis::kNoEllipsis);
+    return CSSIdentifierValue::Create(CSSValueID::kNone);
+  }
+  if (style.Continue() == EContinue::kWebkitLegacy &&
+      !style.MaxLines().HasAutoKeyword() &&
+      style.LineClampInternalBlockEllipsis() == EBlockEllipsis::kEllipsis) {
+    return CSSNumericLiteralValue::Create(
+        style.MaxLines().Lines(), CSSPrimitiveValue::UnitType::kInteger);
+  }
+  return nullptr;
+}
+
+void AlternativeWebkitLineClampLonghand::ApplyInitial(
+    StyleResolverState& state) const {
+  state.StyleBuilder().SetContinue(EContinue::kNormal);
+  state.StyleBuilder().SetMaxLines(MaxLinesData(0, true));
+  state.StyleBuilder().SetLineClampInternalBlockEllipsis(
+      EBlockEllipsis::kNoEllipsis);
+}
+
+void AlternativeWebkitLineClampLonghand::ApplyInherit(
+    StyleResolverState& state) const {
+  state.StyleBuilder().SetContinue(state.ParentStyle()->Continue());
+  state.StyleBuilder().SetMaxLines(state.ParentStyle()->MaxLines());
+  state.StyleBuilder().SetLineClampInternalBlockEllipsis(
+      state.ParentStyle()->LineClampInternalBlockEllipsis());
+}
+
+void AlternativeWebkitLineClampLonghand::ApplyValue(StyleResolverState& state,
+                                                    const CSSValue& value,
+                                                    ValueModeFlags) const {
+  if (const auto* ident = DynamicTo<CSSIdentifierValue>(value)) {
+    DCHECK_EQ(ident->GetValueID(), CSSValueID::kNone);
+    ApplyInitial(state);
+    return;
+  }
+  uint16_t num_lines = To<CSSPrimitiveValue>(value).ConvertTo<uint16_t>(
+      state.CssToLengthConversionData());
+  state.StyleBuilder().SetContinue(EContinue::kWebkitLegacy);
+  state.StyleBuilder().SetMaxLines(MaxLinesData(num_lines, false));
+  state.StyleBuilder().SetLineClampInternalBlockEllipsis(
+      EBlockEllipsis::kEllipsis);
 }
 
 const CSSValue* WebkitLocale::ParseSingleValue(

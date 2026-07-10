@@ -120,15 +120,6 @@
 <translation id="2287771843518581140">{NUM_TABS,plural, =1{Chromium zaleca wstrzymanie karty, która spowalnia przeglądarkę}few{Chromium zaleca wstrzymanie kart, które spowalniają przeglądarkę}many{Chromium zaleca wstrzymanie kart, które spowalniają przeglądarkę}other{Chromium zaleca wstrzymanie kart, które spowalniają przeglądarkę}}</translation>
 <translation id="2307973900865360088">Zachowaj w Docku</translation>
 <translation id="2313870531055795960">Sprawdza, czy URL jest na liście niebezpiecznych stron zapisanej w Chromium. Jeśli strona próbuje wykraść Twoje hasło lub pobierasz szkodliwy plik, Chromium może też wysłać URL wraz z fragmentami zawartości strony do usługi Bezpieczne przeglądanie.</translation>
-<translation id="2332076562712130931">To działanie spowoduje:
-          <ph name="LINE_BREAKS" />
-           • zresetowanie niektórych ustawień i skrótów Chromium,
-           <ph name="LINE_BREAK" />
-           • wyłączenie rozszerzeń,
-           <ph name="LINE_BREAK" />
-           • usunięcie plików cookie i innych tymczasowych danych witryn.
-            <ph name="LINE_BREAKS" />
-           Zakładki, historia i zapisane hasła pozostaną bez zmian.</translation>
 <translation id="2343156876103232566">Aby wysłać stąd numer na swój telefon z Androidem, zaloguj się w Chromium na obu urządzeniach.</translation>
 <translation id="2356070529366658676">Pytaj</translation>
 <translation id="2359808026110333948">Dalej</translation>

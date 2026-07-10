@@ -255,7 +255,7 @@ public class CollaborationIntegrationTest {
         // tab group id it should watch for, but it needs to see that it's now associated with a
         // valid collaboration id. And while the DataSharingService is what has member information
         // for a collaboration id, the SharedGroupObserver cannot link its tab group id to the
-        // collaboration id that it'll be informed about until teh TabGroupSyncService lets it know
+        // collaboration id that it'll be informed about until the TabGroupSyncService lets it know
         // about the mapping. Once both of these happen, we're safe to continue, but the order of
         // these is not deterministic and we must wait for both.
         int startingAddedCount =

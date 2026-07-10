@@ -735,8 +735,6 @@ TEST_P(FeedStreamTestForAllStreamTypes, LoadFromNetworkBecauseStoreIsStale) {
       MakeTypicalInitialModelState(
           /*first_cluster_id=*/0,
           kTestTimeEpoch -
-              // TODO(crbug.com/407797637): Remove hardcoded false once WebFeed
-              // is fully removed.
               GetFeedConfig().GetStalenessThreshold(GetStreamType()) -
               base::Minutes(1)),
       base::DoNothing());

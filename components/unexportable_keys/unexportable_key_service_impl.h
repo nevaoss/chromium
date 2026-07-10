@@ -14,6 +14,7 @@
 #include "base/memory/raw_ref.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
+#include "base/time/time.h"
 #include "base/types/expected.h"
 #include "components/unexportable_keys/background_task_origin.h"
 #include "components/unexportable_keys/background_task_priority.h"
@@ -24,10 +25,30 @@
 #include "crypto/signature_verifier.h"
 #include "crypto/unexportable_key.h"
 #include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
+#include "third_party/abseil-cpp/absl/container/flat_hash_set.h"
 
 namespace unexportable_keys {
 
+// LINT.IfChange(SpareKeyPoolRetrievalResult)
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class SpareKeyPoolRetrievalResult {
+  kHit = 0,
+  // We haven't initialized spare keys yet.
+  kMissNotInitialized = 1,
+  // We tried to initialize a spare key but creation failed.
+  kMissFailedToCreateSpareKey = 2,
+  // We decided to not create a key for this algorithm.
+  kMissNoKeyForAlgorithm = 3,
+  // A key got requested before we finished replenishing the pool.
+  kMissDidNotReplenishFromLastUse = 4,
+  // The hardware doesn't support the requested algorithm.
+  kAlgorithmNotSupported = 5,
+  kMaxValue = kAlgorithmNotSupported,
+};
+// LINT.ThenChange(/tools/metrics/histograms/metadata/net/enums.xml:SpareKeyPoolRetrievalResult)
 class UnexportableKeyTaskManager;
+class SpareKeyPoolRequest;
 
 class COMPONENT_EXPORT(UNEXPORTABLE_KEYS) UnexportableKeyServiceImpl
     : public UnexportableKeyService {
@@ -184,6 +205,16 @@ class COMPONENT_EXPORT(UNEXPORTABLE_KEYS) UnexportableKeyServiceImpl
   void ReplenishSpareSigningKeyPoolAsync(
       base::span<const crypto::SignatureVerifier::SignatureAlgorithm>
           acceptable_algorithms);
+
+  // Callback invoked when a background task generates a spare key. This adds
+  // the key to the pool and immediately triggers a new task if the pool is
+  // below capacity. If `key_or_error` is an error, this marks the replenishment
+  // as failed to prevent runaway error loops.
+  void OnSpareSigningKeyGenerated(
+      SpareKeyPoolRequest* request,
+      ServiceErrorOr<scoped_refptr<RefCountedUnexportableSigningKey>>
+          key_or_error);
+
   const raw_ref<UnexportableKeyTaskManager, DanglingUntriaged> task_manager_;
   const BackgroundTaskOrigin task_origin_;
 
@@ -205,6 +236,15 @@ class COMPONENT_EXPORT(UNEXPORTABLE_KEYS) UnexportableKeyServiceImpl
       crypto::SignatureVerifier::SignatureAlgorithm,
       std::vector<scoped_refptr<RefCountedUnexportableSigningKey>>>
       spare_signing_keys_pool_;
+
+  // Tracks the pending background tasks that generate spare keys. Used to avoid
+  // queuing more tasks than needed to reach the maximum spare pool capacity.
+  // We store unique_ptr to ensure pointer stability for the requests,
+  // as they might be referenced asynchronously.
+  // `std::nullopt` indicates that the pool has not started replenishing yet.
+  // When populated, it holds the in-flight requests.
+  std::optional<absl::flat_hash_set<std::unique_ptr<SpareKeyPoolRequest>>>
+      inflight_spare_key_pool_requests_;
 
   base::WeakPtrFactory<UnexportableKeyServiceImpl> weak_ptr_factory_{this};
 };

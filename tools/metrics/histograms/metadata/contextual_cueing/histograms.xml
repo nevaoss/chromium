@@ -275,6 +275,17 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="ContextualCueing.V2.Orchestrator.WinnerTarget"
+    enum="CueTargetType" expires_after="2027-06-01">
+  <owner>benedictwong@google.com</owner>
+  <owner>sophiechang@chromium.org</owner>
+  <summary>
+    Recorded when the Contextual Cueing Orchestrator selects a winning CueTarget
+    to execute. It tracks the target type that won the UCB scoring evaluation
+    for the current page load.
+  </summary>
+</histogram>
+
 </histograms>
 
 </histogram-configuration>

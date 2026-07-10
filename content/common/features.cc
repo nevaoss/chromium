@@ -563,6 +563,10 @@ BASE_FEATURE(kPrefetchCookieIndices, base::FEATURE_DISABLED_BY_DEFAULT);
 // and prerender) on all predictors. This is useful in comparing the impact of
 // blink::features::kPrerender2 experiment with and without them.
 
+// Enables extension interception for preload activation report beacons.
+BASE_FEATURE(kPreloadActivationReportWithExtensionInterception,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // This Feature allows configuring preloading features via a parameter string.
 // See content/browser/preloading/preloading_config.cc to see how to use this
 // feature.
@@ -708,14 +712,6 @@ const base::FeatureParam<std::string>
 // (crbug.com/41411856): When enabled, the srcdoc iframes are controlled by the
 // same service worker that controls their parent.
 BASE_FEATURE(kServiceWorkerSrcdocSupport, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// When this is enabled, it fixes the object lifetime issue when
-// `race-network-and-fetch-handler` is used, the object should be deleted after
-// the fetch event completion, regardless of the result of racing.
-//
-// crbug.com/340949948 for more details.
-BASE_FEATURE(kServiceWorkerStaticRouterRaceRequestFix2,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enforce CORP check for Service Worker Static Router's cache source.
 BASE_FEATURE(kServiceWorkerStaticRouterCORPCheck,

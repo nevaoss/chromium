@@ -96,7 +96,7 @@ class UpdateDiscoveryTaskResultWaiter
   ~UpdateDiscoveryTaskResultWaiter() override;
 
   // IsolatedWebAppUpdateManager::Observer:
-  void OnUpdateDiscoveryTaskCompleted(
+  void OnUpdateDiscoverAndPrepareTaskCompleted(
       const webapps::AppId& app_id,
       IsolatedWebAppUpdateCheckAndPrepareTask::CompletionStatus status)
       override;

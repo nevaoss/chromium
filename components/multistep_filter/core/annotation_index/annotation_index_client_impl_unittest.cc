@@ -367,8 +367,7 @@ TEST_F(AnnotationIndexClientImplTest,
        ExtractFilterAnnotation_Success_ReturnsAnnotation) {
   ExtractTaskAttributesResponse proto_response =
       CreateExtractTaskAttributesResponse(
-          kTestDomain, kTestTaskType,
-          {{kTestAttributeKey, kTestAttributeValue}});
+          kTestTaskType, {{kTestAttributeKey, kTestAttributeValue}});
   base::test::TestFuture<std::optional<FilterAnnotation>> future;
 
   client_->ExtractFilterAnnotation(GURL(kTestExtractUrl), future.GetCallback(),

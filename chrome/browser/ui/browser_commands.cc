@@ -33,6 +33,7 @@
 #include "chrome/browser/browsing_data/chrome_browsing_data_remover_delegate.h"
 #include "chrome/browser/chained_back_navigation_tracker.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_side_panel_coordinator.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 #include "chrome/browser/devtools/devtools_window.h"
 #include "chrome/browser/download/download_prefs.h"
 #include "chrome/browser/favicon/favicon_utils.h"
@@ -139,6 +140,7 @@
 #include "components/browsing_data/content/browsing_data_helper.h"
 #include "components/commerce/core/commerce_utils.h"
 #include "components/commerce/core/pref_names.h"
+#include "components/contextual_tasks/public/features.h"
 #include "components/embedder_support/user_agent_utils.h"
 #include "components/favicon/content/content_favicon_driver.h"
 #include "components/feature_engagement/public/feature_constants.h"
@@ -2346,6 +2348,18 @@ void ToggleContextualTasksSidePanel(BrowserWindowInterface* browser) {
   }
 }
 
+void ToggleContextualTasksSidePanelZeroState(BrowserWindowInterface* browser) {
+  auto* controller =
+      contextual_tasks::ContextualTasksPanelController::From(browser);
+  CHECK(controller);
+  if (controller->IsPanelOpenForContextualTask()) {
+    controller->Close();
+  } else {
+    controller->OpenInZeroState();
+  }
+}
+
+
 void ToggleVerticalTabs(BrowserWindowInterface* browser) {
   tabs::VerticalTabStripStateController* controller =
       tabs::VerticalTabStripStateController::From(browser);
@@ -2488,20 +2502,6 @@ void SetBookmarkBarVisibilityState(
     bookmarks::BookmarkBarVisibilityState state) {
   browser->GetProfile()->GetPrefs()->SetInteger(
       bookmarks::prefs::kBookmarkBarVisibilityState, static_cast<int>(state));
-}
-
-void ToggleShowAppsShortcutInBookmarkBar(BrowserWindowInterface* browser) {
-  bool pref_enabled = browser->GetProfile()->GetPrefs()->GetBoolean(
-      bookmarks::prefs::kShowAppsShortcutInBookmarkBar);
-  browser->GetProfile()->GetPrefs()->SetBoolean(
-      bookmarks::prefs::kShowAppsShortcutInBookmarkBar, !pref_enabled);
-}
-
-void ToggleShowTabGroupsInBookmarkBar(BrowserWindowInterface* browser) {
-  bool pref_enabled = browser->GetProfile()->GetPrefs()->GetBoolean(
-      bookmarks::prefs::kShowTabGroupsInBookmarkBar);
-  browser->GetProfile()->GetPrefs()->SetBoolean(
-      bookmarks::prefs::kShowTabGroupsInBookmarkBar, !pref_enabled);
 }
 
 void ToggleShowFullURLs(BrowserWindowInterface* browser) {

@@ -29,8 +29,6 @@ import org.chromium.chrome.browser.toolbar.optional_button.ButtonData;
 import org.chromium.chrome.browser.toolbar.optional_button.ButtonData.ButtonSpec;
 import org.chromium.chrome.browser.ui.bottombar.BottomBarConfigUtils;
 import org.chromium.chrome.browser.ui.browser_window.ChromeAndroidTask;
-import org.chromium.chrome.browser.ui.messages.snackbar.Snackbar;
-import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.user_education.IphCommandBuilder;
 import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.components.feature_engagement.EventConstants;
@@ -265,20 +263,7 @@ public class GlicToolbarButtonController extends BaseButtonDataProvider {
             return;
         }
         if (tab != null && tab.isOffTheRecord()) {
-            if (mActivity instanceof SnackbarManager.SnackbarManageable) {
-                SnackbarManager snackbarManager =
-                        ((SnackbarManager.SnackbarManageable) mActivity).getSnackbarManager();
-                if (snackbarManager != null) {
-                    snackbarManager.showSnackbar(
-                            Snackbar.make(
-                                            mActivity.getString(
-                                                    R.string.glic_incognito_not_available),
-                                            null,
-                                            Snackbar.TYPE_NOTIFICATION,
-                                            Snackbar.UMA_GLIC)
-                                    .setDuration(SnackbarManager.DEFAULT_SNACKBAR_DURATION_MS));
-                }
-            }
+            GlicHelper.showNotAvailableInIncognitoSnackbar(mActivity);
             return;
         }
 

@@ -251,14 +251,16 @@ TEST_F(MultistepFilterServiceTest, GenerateFilterSuggestions) {
   base::MockCallback<
       base::OnceCallback<void(std::optional<UrlFilterSuggestion>)>>
       mock_callback;
-  UrlFilterSuggestion mock_suggestion(
-      UrlFilterSuggestion::Params{.navigation_url = kUrl,
-                                  .source_domain = u"example.com",
-                                  .extraction_timestamp = base::Time::Now(),
-                                  .attribute_ui_labels = {},
-                                  .triggering_navigation_id = kTestNavigationId,
-                                  .triggering_domain = "example.com",
-                                  .task_type = "task1"});
+  UrlFilterSuggestion mock_suggestion(UrlFilterSuggestion::Params{
+      .navigation_url = kUrl,
+      .source_domain = u"example.com",
+      .source_host = u"example.com",
+      .extraction_timestamp = base::Time::Now(),
+      .attribute_ui_labels = {},
+      .triggering_navigation_id = kTestNavigationId,
+      .triggering_domain = "example.com",
+      .triggering_host = "example.com",
+      .task_type = "task1"});
 
   EXPECT_CALL(*mock_generator_,
               GenerateSuggestion(kUrl, _, kTestNavigationId, "example.com"))

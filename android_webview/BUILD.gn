@@ -507,7 +507,6 @@ if (_is_default_toolchain) {
       "java/src/org/chromium/android_webview/AwViewMethods.java",
       "java/src/org/chromium/android_webview/AwWebContentsDelegate.java",
       "java/src/org/chromium/android_webview/AwWebContentsDelegateAdapter.java",
-      "java/src/org/chromium/android_webview/AwWebContentsMetricsRecorder.java",
       "java/src/org/chromium/android_webview/AwWebContentsObserver.java",
       "java/src/org/chromium/android_webview/AwWebResourceError.java",
       "java/src/org/chromium/android_webview/AwWebResourceInterceptResponse.java",
@@ -619,7 +618,6 @@ if (_is_default_toolchain) {
       "//components/autofill/android:autofill_java",
       "//components/background_task_scheduler:background_task_scheduler_task_ids_java",
       "//components/content_capture/android:java",
-      "//components/crash/android:handler_java",
       "//components/crash/android:java",
       "//components/embedder_support/android:application_java",
       "//components/embedder_support/android:context_menu_java",
@@ -976,23 +974,9 @@ if (_is_default_toolchain) {
     deps = [ "//gin:v8_snapshot_assets" ]
   }
 
-  java_group("monochrome_webview_primary_abi_assets") {
-    deps = [
-      "//gin:v8_snapshot_assets",
-      "//third_party/icu:icu_assets",
-    ]
-  }
-
   if (android_64bit_target_cpu && defined(android_app_secondary_abi)) {
     java_group("webview_secondary_abi_assets") {
       deps = [ "//gin:v8_snapshot_secondary_abi_assets" ]
-    }
-
-    java_group("monochrome_webview_secondary_abi_assets") {
-      deps = [
-        "//gin:v8_snapshot_secondary_abi_assets",
-        "//third_party/icu:icu_assets",
-      ]
     }
   }
 

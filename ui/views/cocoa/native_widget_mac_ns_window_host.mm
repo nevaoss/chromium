@@ -715,8 +715,7 @@ void NativeWidgetMacNSWindowHost::UpdateCompositorProperties() {
           content_bounds_in_screen_.size(), display_.device_scale_factor()));
   compositor_->UpdateSurface(content_bounds_in_pixels,
                              display_.device_scale_factor(),
-                             display_.GetColorSpaces(), display_.id(),
-                             /*refresh_rate_changed_on_same_display=*/false);
+                             display_.GetColorSpaces(), display_.id());
 }
 
 void NativeWidgetMacNSWindowHost::DestroyCompositor() {
@@ -1494,17 +1493,6 @@ void NativeWidgetMacNSWindowHost::OnVisibleOnAllWorkspacesChanged(
 
 void NativeWidgetMacNSWindowHost::OnWindowDisplayChanged(
     const display::Display& new_display) {
-  // Refresh rate change caused by display change is not handled here. It will
-  // be handled in compositor_->SetVSyncDisplayID().
-  bool refresh_rate_changed_on_same_display = false;
-  bool same_frequency = base::IsApproximatelyEqual(
-      display_.display_frequency(), new_display.display_frequency(),
-      display::Display::kRefreshRateEpsilon);
-  if (display_.display_frequency() != 0 && display_.id() == new_display.id() &&
-      !same_frequency) {
-    refresh_rate_changed_on_same_display = true;
-  }
-
   display_ = new_display;
   if (!compositor_) {
     return;
@@ -1516,8 +1504,7 @@ void NativeWidgetMacNSWindowHost::OnWindowDisplayChanged(
           content_bounds_in_screen_.size(), display_.device_scale_factor()));
   compositor_->UpdateSurface(content_bounds_in_pixels,
                              display_.device_scale_factor(),
-                             display_.GetColorSpaces(), display_.id(),
-                             refresh_rate_changed_on_same_display);
+                             display_.GetColorSpaces(), display_.id());
 }
 
 void NativeWidgetMacNSWindowHost::OnWindowWillClose() {

@@ -2468,12 +2468,13 @@ IN_PROC_BROWSER_TEST_F(WebAppBrowserTest, WebAppInternalsPage) {
                                        "/banners/no_manifest_test_page.html"));
 
   // Install as DIY App.
-  SetAutoAcceptDiyAppsInstallDialogForTesting(/*auto_accept=*/true);
+  base::AutoReset<InstallDialogTestResponse> auto_accept =
+      SetPwaInstallationAutoRespondForTesting(
+          InstallDialogTestResponse::kAcceptAndLaunch);
   WebAppTestInstallObserver observer(profile());
   observer.BeginListening();
   CHECK(chrome::ExecuteCommand(browser(), IDC_INSTALL_PWA));
   observer.Wait();
-  SetAutoAcceptDiyAppsInstallDialogForTesting(/*auto_accept=*/false);
 
   // Loads with two apps.
   NavigateViaLinkClickToURLAndWait(browser(),
@@ -2489,12 +2490,13 @@ IN_PROC_BROWSER_TEST_F(WebAppBrowserTest, BrowserDisplayNotInstallable) {
   EXPECT_EQ(GetAppMenuCommandState(IDC_INSTALL_PWA, browser()), kEnabled);
 
   // Install as DIY App.
-  SetAutoAcceptDiyAppsInstallDialogForTesting(/*auto_accept=*/true);
+  base::AutoReset<InstallDialogTestResponse> auto_accept =
+      SetPwaInstallationAutoRespondForTesting(
+          InstallDialogTestResponse::kAcceptAndLaunch);
   WebAppTestInstallObserver observer(profile());
   observer.BeginListening();
   CHECK(chrome::ExecuteCommand(browser(), IDC_INSTALL_PWA));
   observer.Wait();
-  SetAutoAcceptDiyAppsInstallDialogForTesting(/*auto_accept=*/false);
 
   // Navigate to this site again and install should not show up since universal
   // install is enabled.

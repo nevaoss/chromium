@@ -479,7 +479,7 @@ public class TipsPromoCoordinatorUnitTest {
 
         mView.findViewById(R.id.tips_promo_settings_button).performClick();
         verify(mBottomSheetController).hideContent(any(), eq(true));
-        verify(mLayoutManager).showLayout(eq(LayoutType.TAB_SWITCHER), eq(true));
+        verify(mLayoutManager).showLayout(eq(LayoutType.HUB), eq(true));
 
         histogramWatcher.assertExpected();
     }

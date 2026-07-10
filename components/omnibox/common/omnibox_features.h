@@ -31,7 +31,13 @@ BASE_DECLARE_FEATURE(kDynamicMaxAutocomplete);
 // Local history zero-prefix (aka zero-suggest) and prefix suggestions.
 BASE_DECLARE_FEATURE(kFocusTriggersWebAndSRPZeroSuggest);
 BASE_DECLARE_FEATURE(kOmniboxCrossDeviceTabZeroSuggest);
-BASE_DECLARE_FEATURE_PARAM(int, kOmniboxCrossDeviceTabZeroSuggestMaxAge);
+BASE_DECLARE_FEATURE_PARAM(int, kOmniboxCrossDeviceTabZeroSuggestMaxAgeMinutes);
+BASE_DECLARE_FEATURE_PARAM(
+    int,
+    kOmniboxCrossDeviceTabZeroSuggestDelayedContinuationMaxAgeMinutes);
+BASE_DECLARE_FEATURE_PARAM(
+    int,
+    kOmniboxCrossDeviceTabZeroSuggestMaxDelayedContinuationUptimeMinutes);
 BASE_DECLARE_FEATURE(kOnClobberSuggestIOS);
 BASE_DECLARE_FEATURE(kHideContextualGroupHeaders);
 BASE_DECLARE_FEATURE(kHideSuggestionGroupHeaders);
@@ -121,6 +127,7 @@ BASE_DECLARE_FEATURE(kReportApplicationLanguageInSearchRequest);
 BASE_DECLARE_FEATURE(kOmniboxAppendInvocationSource);
 
 BASE_DECLARE_FEATURE(kOmniboxAsyncViewInflation);
+BASE_DECLARE_FEATURE(kOmniboxFuseboxAsyncInflation);
 BASE_DECLARE_FEATURE(kUseFusedLocationProvider);
 
 BASE_DECLARE_FEATURE(kOmniboxMobileParityUpdate);

@@ -85,6 +85,9 @@ ElementSelector* UsernameElement() {
   NSString* sendTabToSelf =
       l10n_util::GetNSString(IDS_IOS_SEND_TAB_TO_SELF_TARGET_DEVICE_ACTION);
   [ChromeEarlGrey verifyTextVisibleInActivitySheetWithID:sendTabToSelf];
+
+  // Clean up the activity sheet.
+  [ChromeEarlGrey closeActivitySheet];
 }
 
 - (void)testShowPromoIfSignedOutAndHasDeviceAccount {
