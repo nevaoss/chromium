@@ -344,6 +344,7 @@ void AppRuntimeProxyingURLLoaderFactory::InProgressRequest::OnLoaderCreated(
 }
 
 void AppRuntimeProxyingURLLoaderFactory::InProgressRequest::OnBeforeSendHeaders(
+    const GURL& request_url,
     const net::HttpRequestHeaders& headers,
     OnBeforeSendHeadersCallback callback) {
   if (!current_request_uses_header_client_) {
