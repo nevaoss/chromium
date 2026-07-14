@@ -14,7 +14,6 @@
 #include "base/test/task_environment.h"
 #include "chrome/browser/new_tab_page/promos/promo_data.h"
 #include "chrome/common/pref_names.h"
-#include "chrome/grit/generated_resources.h"
 #include "chrome/test/base/testing_profile.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/scoped_user_pref_update.h"

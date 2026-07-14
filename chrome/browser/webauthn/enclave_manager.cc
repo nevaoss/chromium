@@ -627,9 +627,7 @@ cbor::Value BuildPINRenewalRequest(std::string cert_xml,
   request.emplace(enclave::kRecoveryKeyStoreSigXml, ToVector(sig_xml));
   request.emplace(enclave::kRequestWrappedSecretKey, wrapped_secret);
   request.emplace(enclave::kRequestWrappedPINDataKey, wrapped_pin);
-  if (base::FeatureList::IsEnabled(device::kWebAuthnNewRefreshFlow)) {
-    request.emplace(enclave::kRecoveryKeyStoreCreateNewVault, true);
-  }
+  request.emplace(enclave::kRecoveryKeyStoreCreateNewVault, true);
 
   return cbor::Value(std::move(request));
 }
@@ -2996,9 +2994,7 @@ class EnclaveManager::StateMachine {
       base::span<const uint8_t> security_domain_secret) {
     cbor::Value::MapValue map;
     map.emplace(1, base::span<const uint8_t>(hashed_pin.hashed));
-    if (base::FeatureList::IsEnabled(device::kWebAuthnSendPinGeneration)) {
-      map.emplace(2, 0);  // Generation number.
-    }
+    // Key 2 used to be the generation number and is now obsolete.
     map.emplace(3, claim_key);
     map.emplace(4, base::as_byte_span(
                        vault_details.vault->vault_parameters().counter_id()));

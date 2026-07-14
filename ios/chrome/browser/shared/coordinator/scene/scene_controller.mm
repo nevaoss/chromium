@@ -128,8 +128,8 @@
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_list_observer_bridge.h"
 #import "ios/chrome/browser/shared/public/commands/bookmarks_commands.h"
 #import "ios/chrome/browser/shared/public/commands/browser_coordinator_commands.h"
-#import "ios/chrome/browser/shared/public/commands/bwg_commands.h"
 #import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
+#import "ios/chrome/browser/shared/public/commands/gemini_commands.h"
 #import "ios/chrome/browser/shared/public/commands/lens_commands.h"
 #import "ios/chrome/browser/shared/public/commands/open_lens_input_selection_command.h"
 #import "ios/chrome/browser/shared/public/commands/open_new_tab_command.h"
@@ -1499,7 +1499,8 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
       [[BrowserLifecycleManager alloc] initWithProfile:profile
                                             sceneState:sceneState
                                          sceneEndpoint:_mainCoordinator
-                                      settingsEndpoint:_mainCoordinator];
+                                      settingsEndpoint:_mainCoordinator
+                                        geminiEndpoint:_mainCoordinator];
 
   // Create and start the BVC.
   [self.browserLifecycleManager createMainCoordinatorAndInterface];
@@ -2550,8 +2551,8 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
     return;
   }
 
-  id<BWGCommands> geminiHandler = HandlerForProtocol(
-      self.currentInterface.browser->GetCommandDispatcher(), BWGCommands);
+  id<GeminiCommands> geminiHandler = HandlerForProtocol(
+      self.currentInterface.browser->GetCommandDispatcher(), GeminiCommands);
   GeminiStartupState* startupState = [[GeminiStartupState alloc]
       initWithEntryPoint:gemini::EntryPoint::ExternalAppStoreEvent];
 

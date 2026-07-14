@@ -14,23 +14,23 @@ namespace signin {
 class IdentityManager;
 }
 class AuthenticationService;
-class GeminiBrowserAgent;
-class GeminiService;
 @class BrowserActionFactory;
+class FullscreenBrowserAgent;
 @protocol FullscreenBrowserAgentObserving;
+@protocol FullscreenCommands;
 class FullscreenController;
 @protocol FullscreenUIElement;
+class GeminiBrowserAgent;
+@protocol GeminiCommands;
+class GeminiService;
 @class IncognitoState;
-class FullscreenBrowserAgent;
+@protocol LensCommands;
 class PrefService;
 @protocol SceneCommands;
-@protocol TabGridCommands;
 @protocol SettingsCommands;
-@protocol BWGCommands;
-@protocol FullscreenCommands;
+@protocol TabGridCommands;
 @class TabGridState;
 @protocol TabGroupsCommands;
-@protocol LensCommands;
 class TemplateURLService;
 class UrlLoadingBrowserAgent;
 class WebStateList;
@@ -69,8 +69,8 @@ class WebStateList;
 // Handler for the settings commands.
 @property(nonatomic, weak) id<SettingsCommands> settingsHandler;
 
-// Handler for the BWG commands.
-@property(nonatomic, weak) id<BWGCommands> geminiHandler;
+// Handler for the Gemini commands.
+@property(nonatomic, weak) id<GeminiCommands> geminiHandler;
 
 // Handler for the lens commands.
 @property(nonatomic, weak) id<LensCommands> lensHandler;

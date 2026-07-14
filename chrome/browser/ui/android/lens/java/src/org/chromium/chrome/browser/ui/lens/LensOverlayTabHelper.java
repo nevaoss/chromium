@@ -49,9 +49,9 @@ public class LensOverlayTabHelper implements UserData {
         @LensMetrics.LensSupportStatus
         Integer supportStatus =
                 LensSupportStatusHelper.getLensSupportStatus(tab.getProfile(), tab.isIncognito());
-        // TODO(crbug.com/522044734): Record metrics once LensEntryPoint usage is fixed.
-        // We currently do not record metrics here to avoid polluting histograms with the
-        // erroneous CHROME_LENS_OVERLAY entry point.
+        if (supportStatus != null) {
+            LensMetrics.recordPageSearchSupportStatus(supportStatus);
+        }
 
         return supportStatus != null
                 && supportStatus == LensMetrics.LensSupportStatus.LENS_SEARCH_SUPPORTED;

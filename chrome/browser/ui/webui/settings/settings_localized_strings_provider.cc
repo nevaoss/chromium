@@ -1943,6 +1943,8 @@ void AddAutofillStrings(content::WebUIDataSource* html_source,
 
   html_source->AddString("personalContextSettingsUrl",
                          personal_context::kPersonalContextSettingsURL);
+  html_source->AddString("personalContextConnectedAppsUrl",
+                         personal_context::kPersonalContextConnectedAppsURL);
 }
 
 void AddSignOutDialogStrings(content::WebUIDataSource* html_source,

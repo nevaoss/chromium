@@ -92,10 +92,6 @@ export function getHtml(this: GlicInternalsAppElement) {
           <td>Guest URL</td>
           <td>${this.data_.config.guestUrl}</td>
         </tr>
-        <tr>
-          <td>FRE guest URL</td>
-          <td>${this.data_.config.freGuestUrl}</td>
-        </tr>
       </table>` :
       html`<h3 id="loadingMsg">Loading...</h3>`}
     <h2>Glic UI / Client Debug Information</h2>

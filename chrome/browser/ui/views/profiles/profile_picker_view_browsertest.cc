@@ -1042,11 +1042,15 @@ IN_PROC_BROWSER_TEST_F(ProfilePickerCreationFlowBrowserTest, ShowChoice) {
 
 IN_PROC_BROWSER_TEST_F(ProfilePickerCreationFlowBrowserTest,
                        ShowChoiceWithInitialEmail) {
+  base::HistogramTester histogram_tester;
   constexpr char kEmail[] = "test@gmail.com";
   ProfilePicker::Show(ProfilePicker::Params::FromStartupWithEmail(kEmail));
   EXPECT_TRUE(ProfilePicker::IsOpen());
   WaitForPickerWidgetCreated();
   WaitForLoadStop(GetSigninChromeSyncDiceUrl(kEmail));
+  histogram_tester.ExpectUniqueSample(
+      "Signin.SignIn.Offered",
+      signin_metrics::AccessPoint::kUserManagerWithPrefilledEmail, 1);
 }
 
 IN_PROC_BROWSER_TEST_F(ProfilePickerCreationFlowBrowserTest,

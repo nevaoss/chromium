@@ -22,6 +22,8 @@ struct OmniboxInputState {
   bool user_input_in_progress;
   // Whether the input was double clicked to open the omnibox.
   bool is_double_click;
+  // The full url to show on unelision.
+  string full_url;
 };
 
 // Browser-side handler for the Omnibox Popup.

@@ -94,7 +94,7 @@ void GeneratedIconFixManager::ScheduleFixAfterSyncInstall(
 }
 
 void GeneratedIconFixManager::OnWebAppsWillBeUpdatedFromSync(
-    const std::vector<const WebApp*>& new_apps_state) {
+    base::span<const WebApp* const> new_apps_state) {
   for (const WebApp* app : new_apps_state) {
     if (MakeScheduleDecision(app) !=
         GeneratedIconFixScheduleDecision::kSchedule) {

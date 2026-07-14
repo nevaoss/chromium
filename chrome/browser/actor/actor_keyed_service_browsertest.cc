@@ -64,9 +64,6 @@ namespace actor {
 ActorKeyedServiceBrowserTest::ActorKeyedServiceBrowserTest() {
   scoped_feature_list_.InitWithFeatures(
       /*enabled_features=*/{features::kGlic,
-#if BUILDFLAG(IS_ANDROID)
-                            chrome::android::kBrowserWindowInterfaceMobile,
-#endif
                             features::kGlicActor},
       /*disabled_features=*/{features::kGlicWarming});
 }

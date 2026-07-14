@@ -21,6 +21,21 @@ OmniboxAutofillBubbleController::OmniboxAutofillBubbleController(
 
 OmniboxAutofillBubbleController::~OmniboxAutofillBubbleController() = default;
 
+void OmniboxAutofillBubbleController::Initialize(
+    std::vector<Suggestion> suggestions,
+    base::RepeatingCallback<void(base::span<const Suggestion>)>
+        on_suggestions_shown,
+    base::RepeatingCallback<void(const Suggestion&)> did_select_suggestion,
+    base::RepeatingCallback<
+        void(const Suggestion&,
+             const AutofillSuggestionDelegate::SuggestionMetadata&)>
+        did_accept_suggestion) {
+  suggestions_ = std::move(suggestions);
+  on_suggestions_shown_callback_ = std::move(on_suggestions_shown);
+  did_select_suggestion_callback_ = std::move(did_select_suggestion);
+  did_accept_suggestion_callback_ = std::move(did_accept_suggestion);
+}
+
 // static
 OmniboxAutofillBubbleController* OmniboxAutofillBubbleController::From(
     tabs::TabInterface& tab_interface) {

@@ -217,7 +217,8 @@ class CONTENT_EXPORT RenderFrameHostDelegate {
   // the renderer process.
   virtual void UpdateFaviconURL(
       RenderFrameHostImpl* source,
-      const std::vector<blink::mojom::FaviconURLPtr>& candidates) {}
+      const std::vector<blink::mojom::FaviconURLPtr>& candidates,
+      blink::mojom::FaviconUpdateReason reason) {}
 
   // The frame changed its window.name property.
   virtual void DidChangeName(RenderFrameHostImpl* render_frame_host,

@@ -556,12 +556,8 @@ NSArray<UITrait>* TraitCollectionSetForTraits(NSArray<UITrait>* traits) {
       UITraitSceneCaptureState.class, UITraitToolbarItemPresentationSize.class,
       UITraitTypesettingLanguage.class, UITraitUserInterfaceIdiom.class,
       UITraitUserInterfaceLevel.class, UITraitUserInterfaceStyle.class,
-      UITraitVerticalSizeClass.class
+      UITraitVerticalSizeClass.class, UITraitListEnvironment.class
     ] mutableCopy];
-
-    if (@available(iOS 18, *)) {
-      [mutableTraits addObject:UITraitListEnvironment.class];
-    }
 
     everyUIMutableTrait = [NSArray arrayWithArray:mutableTraits];
   });

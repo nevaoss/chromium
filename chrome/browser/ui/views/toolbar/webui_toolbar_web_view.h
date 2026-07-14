@@ -24,6 +24,7 @@
 #include "chrome/browser/ui/views/toolbar/webui_pinned_toolbar_actions.h"
 #include "chrome/browser/ui/views/toolbar/webui_reload_control.h"
 #include "chrome/browser/ui/views/toolbar/webui_split_tabs_control.h"
+#include "chrome/browser/ui/views/toolbar/webui_toolbar_extensions_container_wrapper.h"
 #include "chrome/browser/ui/webui/webui_toolbar/adapters/navigation_controls_state_fetcher.h"
 #include "chrome/browser/ui/webui/webui_toolbar/browser_controls_service.h"
 #include "chrome/browser/ui/webui/webui_toolbar/icon_table.h"
@@ -44,13 +45,6 @@ class BrowserWindowInterface;
 class WebUILocationBar;
 class WebUIToolbarUI;
 class WebUIToolbarInternalWebView;
-class ExtensionsContainer;
-class WebUIToolbarExtensionsContainer;
-
-namespace ui {
-template <typename T>
-class ScopedUnownedUserData;
-}
 
 // This has to be forward declared and stored in unique_ptrs<> due to the
 // separate toolbar/impl targets in BUILD.gn.
@@ -105,6 +99,8 @@ class WebUIToolbarControlDelegate {
   virtual void OnPinnedToolbarActionsStateChanged(
       std::vector<toolbar_ui_api::mojom::PinnedToolbarActionStatePtr>
           state) = 0;
+  virtual void OnExtensionsStateChanged(
+      std::vector<extensions_bar::mojom::ExtensionActionInfoPtr> state) = 0;
   virtual void OnContentSettingChanged(
       std::vector<toolbar_ui_api::mojom::ContentSettingImageStatePtr>
           state) = 0;
@@ -315,6 +311,9 @@ class WebUIToolbarWebView
   void OnPinnedToolbarActionsStateChanged(
       std::vector<toolbar_ui_api::mojom::PinnedToolbarActionStatePtr> state)
       override;
+  void OnExtensionsStateChanged(
+      std::vector<extensions_bar::mojom::ExtensionActionInfoPtr> state)
+      override;
   void OnContentSettingChanged(
       std::vector<toolbar_ui_api::mojom::ContentSettingImageStatePtr> state)
       override;
@@ -355,7 +354,6 @@ class WebUIToolbarWebView
   WebUIToolbarUI* GetWebUIToolbarUI();
 
   void OnTouchUiChanged();
-  void OnActiveTabChanged(BrowserWindowInterface* browser_interface);
   void PostPushNavigationState();
   void MaybeInitializePageDependentControls();
   void PushNavigationState();
@@ -434,10 +432,7 @@ class WebUIToolbarWebView
   // This is null if WebUILocationBar is off, or the window is in one of the
   // modes (e.g. popup) that don't use it yet.
   std::unique_ptr<WebUILocationBar> location_bar_;
-  std::unique_ptr<WebUIToolbarExtensionsContainer> extensions_container_;
-  std::unique_ptr<ui::ScopedUnownedUserData<ExtensionsContainer>>
-      scoped_extensions_container_user_data_;
-  base::CallbackListSubscription active_tab_subscription_;
+  WebUIToolbarExtensionsContainerWrapper extensions_container_;
   WebUIBackForwardControl back_control_;
   WebUIBackForwardControl forward_control_;
   WebUIPinnedToolbarActions pinned_toolbar_actions_;

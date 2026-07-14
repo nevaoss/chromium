@@ -13,7 +13,6 @@ import android.animation.AnimatorListenerAdapter;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.PendingIntent;
-import android.app.UiModeManager;
 import android.content.ComponentCallbacks;
 import android.content.Context;
 import android.content.Intent;
@@ -50,6 +49,7 @@ import org.chromium.base.ActivityState;
 import org.chromium.base.ApiCompatibilityUtils;
 import org.chromium.base.Callback;
 import org.chromium.base.ContextUtils;
+import org.chromium.base.DeviceInfo;
 import org.chromium.base.Log;
 import org.chromium.base.ObserverList;
 import org.chromium.base.PackageManagerUtils;
@@ -592,13 +592,6 @@ public class WindowAndroid
         }
     }
 
-    private static boolean isTv(Context context) {
-        UiModeManager uiModeManager =
-                (UiModeManager) context.getSystemService(Context.UI_MODE_SERVICE);
-        return uiModeManager != null
-                && uiModeManager.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION;
-    }
-
     private static boolean isInternalDisplay(Context context) {
         // TODO(b/521980379): Evaluate migrating to DisplayAndroid#isInternal for external display
         // check.
@@ -606,7 +599,7 @@ public class WindowAndroid
     }
 
     private static boolean computeAllowChangeRefreshRate(Context context) {
-        return !isTv(context) && isInternalDisplay(context);
+        return !DeviceInfo.isTV() && isInternalDisplay(context);
     }
 
     @CalledByNativeForTesting

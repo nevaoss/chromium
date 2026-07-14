@@ -16,7 +16,6 @@
 #include "chrome/browser/site_protection/site_familiarity_utils.h"
 #include "chrome/browser/ui/views/infobars/confirm_infobar.h"
 #include "chrome/browser/ui/views/js_optimization/js_optimizations_infobar_delegate.h"
-#include "chrome/grit/generated_resources.h"
 #include "components/policy/core/browser/browser_policy_connector.h"
 #include "components/policy/core/common/mock_configuration_policy_provider.h"
 #include "components/policy/policy_constants.h"

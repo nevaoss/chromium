@@ -73,6 +73,8 @@ class SigninUtilsTest : public PlatformTest {
         AuthenticationServiceFactory::GetInstance(),
         AuthenticationServiceFactory::GetFactoryWithDelegate(
             std::make_unique<FakeAuthenticationServiceDelegate>()));
+    builder.AddTestingFactory(SyncServiceFactory::GetInstance(),
+                              SyncServiceFactory::GetDefaultFactory());
     builder.AddTestingFactory(
         feature_engagement::TrackerFactory::GetInstance(),
         base::BindRepeating(&BuildFeatureEngagementMockTracker));

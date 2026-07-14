@@ -16,8 +16,9 @@ class AtMemoryBottomSheetProperties {
     static final WritableBooleanPropertyKey VISIBLE = new WritableBooleanPropertyKey();
     static final WritableObjectPropertyKey<Callback<String>> ON_QUERY_SUBMITTED_CALLBACK =
             new WritableObjectPropertyKey<>();
+    static final WritableBooleanPropertyKey IS_LOADING = new WritableBooleanPropertyKey();
 
-    static final PropertyKey[] ALL_KEYS = {VISIBLE, ON_QUERY_SUBMITTED_CALLBACK};
+    static final PropertyKey[] ALL_KEYS = {VISIBLE, ON_QUERY_SUBMITTED_CALLBACK, IS_LOADING};
 
     private AtMemoryBottomSheetProperties() {}
 }

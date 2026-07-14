@@ -11,13 +11,11 @@ BASE_FEATURE(kCentralizedInfoBarFramework, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE_PARAM(bool,
                    kEnableAll,
                    &kCentralizedInfoBarFramework,
-                   "enable_all",
                    false);
 
 BASE_FEATURE_PARAM(bool,
                    kMigratedCollectedCookies,
                    &kCentralizedInfoBarFramework,
-                   "collected_cookies",
                    false);
 
 const base::FeatureParam<bool>* GetInfoBarMigrationParam(

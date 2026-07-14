@@ -69,7 +69,7 @@ class SettingsBrowserTest : public WebUIMochaBrowserTest {
  protected:
   SettingsBrowserTest() {
     scoped_feature_list_.InitWithFeatures(
-        {},
+        {optimization_guide::features::kAiSettingsPageForceAvailable},
         /*disabled_features=*/
         {features::kGlicDefaultTabContextSetting});
     set_test_loader_host(chrome::kChromeUISettingsHost);
@@ -2092,6 +2092,10 @@ IN_PROC_BROWSER_TEST_F(YourSavedInfoTest, IdentityDocsPageTest) {
 
 IN_PROC_BROWSER_TEST_F(YourSavedInfoTest, ShoppingPageTest) {
   RunTest("settings/shopping_page_test.js", "mocha.run()");
+}
+
+IN_PROC_BROWSER_TEST_F(YourSavedInfoTest, SuggestionsFromGeminiSubpage) {
+  RunTest("settings/suggestions_from_gemini_subpage_test.js", "mocha.run()");
 }
 
 IN_PROC_BROWSER_TEST_F(YourSavedInfoTest, TravelPageTest) {

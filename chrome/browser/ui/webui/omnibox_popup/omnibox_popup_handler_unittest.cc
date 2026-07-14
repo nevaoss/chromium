@@ -67,15 +67,18 @@ TEST_F(OmniboxPopupHandlerTest, SetInputState) {
   std::string test_text = "test input";
   gfx::Range test_selection(1, 5);
   bool is_double_click = false;
+  std::string full_url = "test.com";
   EXPECT_CALL(page_, SetInputState(testing::_))
       .WillOnce([&](omnibox_popup::mojom::OmniboxInputStatePtr state) {
         EXPECT_EQ(state->text, test_text);
         EXPECT_EQ(state->selection, test_selection);
         EXPECT_EQ(state->is_double_click, is_double_click);
         EXPECT_TRUE(state->user_input_in_progress);
+        EXPECT_EQ(state->full_url, full_url);
       });
   handler_->SetInputState(test_text, test_selection,
-                          /*user_input_in_progress=*/true, is_double_click);
+                          /*user_input_in_progress=*/true, is_double_click,
+                          full_url);
   page_.FlushForTesting();
 }
 

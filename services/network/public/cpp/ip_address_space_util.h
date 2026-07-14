@@ -147,7 +147,7 @@ struct COMPONENT_EXPORT(NETWORK_CPP) CalculateClientAddressSpaceParams {
 // concepts too (documents and worker global scopes), it should probably only be
 // used at the content/ layer or above.
 //
-// See: https://wicg.github.io/cors-rfc1918/#address-space
+// See: https://wicg.github.io/local-network-access/#ip-address-space-section
 mojom::IPAddressSpace COMPONENT_EXPORT(NETWORK_CPP) CalculateClientAddressSpace(
     const GURL& url,
     std::optional<CalculateClientAddressSpaceParams> params);
@@ -159,7 +159,7 @@ mojom::IPAddressSpace COMPONENT_EXPORT(NETWORK_CPP) CalculateClientAddressSpace(
 // determine the address space of the *target* of a fetch, for comparison with
 // that of the client of the fetch.
 //
-// See: https://wicg.github.io/cors-rfc1918/#integration-fetch
+// See: https://wicg.github.io/local-network-access/#integration-with-fetch
 mojom::IPAddressSpace COMPONENT_EXPORT(NETWORK_CPP)
     CalculateResourceAddressSpace(const GURL& url,
                                   const net::IPEndPoint& endpoint);

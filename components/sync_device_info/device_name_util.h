@@ -22,6 +22,8 @@ namespace syncer {
 // user-friendly than the `preferred_name_if_unique`. This happens for instance
 // when the manufacturer puts a marketing name instead of a raw hardware
 // identifier into the model property.
+// TODO(crbug.com/522788942): Remove this struct once kSyncSimplifyDeviceNaming
+// is fully launched.
 struct DisplayNameCandidates {
   // The preferred and usually cleaner name (e.g., "Samsung Phone",
   // "MacbookPro") shown by default if unique.
@@ -32,13 +34,22 @@ struct DisplayNameCandidates {
   std::string fallback_full_name;
 };
 
+// TODO(crbug.com/522788942): Remove this struct once kSyncSimplifyDeviceNaming
+// is fully launched.
 struct DeviceInfoWithName {
   raw_ptr<const DeviceInfo> device;
   std::string display_name;
 };
 
-// Returns display name candidates (primary and fallback) for `device`.
+// Returns display name candidates (primary and fallback) for `device`,
+// combining various sources such as hardware heuristics, server-provided
+// marketing names, and client-defined names.
 DisplayNameCandidates GetDisplayNameCandidates(const DeviceInfo* device);
+
+// Returns the display name for the given device.
+// This is a simplified version that does not perform deduplication or
+// filtering. It simply returns the preferred display name.
+std::string GetDeviceDisplayName(const DeviceInfo* device);
 
 // Returns a list of display names for the given devices. This handles:
 // 1. De-duplication by fallback full name: only the first occurrence in
@@ -56,6 +67,8 @@ DisplayNameCandidates GetDisplayNameCandidates(const DeviceInfo* device);
 // `devices` should be sorted by recency (most recent first).
 // Returns a list of DeviceInfoWithName. The order of `devices` is
 // preserved (excluding filtered/de-duplicated entries).
+// TODO(crbug.com/522788942): Remove this function once
+// kSyncSimplifyDeviceNaming is fully launched.
 std::vector<DeviceInfoWithName> DetermineDisplayNamesAndDeduplicate(
     const std::vector<const DeviceInfo*>& devices,
     const std::optional<std::string>& local_device_name);

@@ -294,6 +294,7 @@ class GuestPageHolderImpl;
 class IdleManagerImpl;
 class NavigationEarlyHintsManager;
 class NavigationRequest;
+class InitiatorNavigationStateImpl;
 class PeerConnectionTrackerHost;
 class PendingNavigation;
 class PrefetchedSignedExchangeCache;
@@ -449,18 +450,9 @@ class CONTENT_EXPORT RenderFrameHostImpl
   static void SetCodeCacheHostReceiverHandlerForTesting(
       CodeCacheHostReceiverHandler handler);
 
-  // Get the PolicyContainerHost associated with `frame_token`.
-  static PolicyContainerHost* GetPolicyContainerHost(
-      const blink::LocalFrameToken* frame_token,
-      int initiator_process_id,
-      StoragePartitionImpl* storage_partition);
-
-  // Get the SiteInstance for the RenderFrameHost associated with `frame_token`,
-  // looking it up via NavigationStateKeepAlive in the case that the
-  // RenderFrameHost has already been deleted after initiating a scheduled
-  // navigation. The `storage_partition` parameter is used for looking up
-  // NavigationStateKeepAlives when needed.
-  static SiteInstanceImpl* GetSourceSiteInstanceFromFrameToken(
+  // Get the InitiatorNavigationStateImpl associated with `frame_token`.
+  static scoped_refptr<InitiatorNavigationState>
+  GetInitiatorNavigationStateFromFrameToken(
       const blink::LocalFrameToken* frame_token,
       int initiator_process_id,
       StoragePartitionImpl* storage_partition);
@@ -1829,6 +1821,10 @@ class CONTENT_EXPORT RenderFrameHostImpl
     return broker_holder_->broker_receiver();
   }
   bool has_broker_holder_for_testing() { return broker_holder_.has_value(); }
+  const blink::mojom::LocalResourceLoaderConfigPtr&
+  local_resource_loader_config_for_testing() const {
+    return local_resource_loader_config_;
+  }
   void SetKeepAliveTimeoutForTesting(base::TimeDelta timeout);
 
   network::mojom::WebSandboxFlags active_sandbox_flags();
@@ -2562,8 +2558,8 @@ class CONTENT_EXPORT RenderFrameHostImpl
                               RunBeforeUnloadConfirmCallback callback) override;
   void MaybeStartOutermostMainFrameNavigation(
       const std::vector<GURL>& urls) override;
-  void UpdateFaviconURL(
-      std::vector<blink::mojom::FaviconURLPtr> favicon_urls) override;
+  void UpdateFaviconURL(std::vector<blink::mojom::FaviconURLPtr> favicon_urls,
+                        blink::mojom::FaviconUpdateReason reason) override;
   void DownloadURL(blink::mojom::DownloadURLParamsPtr params) override;
   void FocusedElementChanged(bool is_editable_element,
                              bool is_richly_editable_element,
@@ -3338,6 +3334,11 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // existence of the MockRenderProcessHost.
   void SetPrerenderStateChangedCallback(
       PrerenderStateChangedCallback prerender_state_callback);
+
+  // Records the current navigation state of this RFH. It should be passed to
+  // NavigationRequests initiated by this RFH.
+  scoped_refptr<InitiatorNavigationState>
+  CreateInitiatorStateFromCurrentFrame();
 
  protected:
   friend class RenderFrameHostFactory;

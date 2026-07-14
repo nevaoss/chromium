@@ -315,22 +315,19 @@ export class OmniboxPopupSearchboxElement extends
     this.userInputInProgress_ = state.userInputInProgress;
     this.currentSequenceNum_ = state.sequenceNumber;
     if (state.selection.start <= state.selection.end) {
-      // TODO(crbug.com/514810983): Show full URL on double click instead of
-      // shifting selection.
-      const selectionOffset = state.isDoubleClick ? 12 : 0;
+      if (state.isDoubleClick) {
+        this.$.input.setInputText(state.fullUrl);
+      }
       this.$.input.setSelectionRange(
-          state.selection.start - selectionOffset,
-          state.selection.end - selectionOffset);
+          state.selection.start, state.selection.end);
     } else {
-      // TODO(crbug.com/514810983): This else statement might be unneeded, since
-      // the start from the backend should always be less than or equal to the
-      // end.
+      // Backend can pass reversed ranges for single clicks. This should still
+      // select all.
       this.$.input.select();
     }
     this.getDropdownElement().unselect();
     this.pageHandler().stopAutocomplete(/*clearResult=*/ false);
     this.lastQueriedInput = state.text;
-    this.dropdownIsVisible = false;
   }
 
   protected onInputFocusin_() {

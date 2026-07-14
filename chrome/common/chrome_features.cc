@@ -260,6 +260,14 @@ BASE_FEATURE(kActorUiThemed, base::FEATURE_ENABLED_BY_DEFAULT);
 // Controls whether UI bug fixes for the Task Icon are enabled.
 BASE_FEATURE(kGlicActorUiTaskIconUiFixes, base::FEATURE_ENABLED_BY_DEFAULT);
 
+// If enabled, delays showing the Actor task list bubble to allow layout
+// animations to settle.
+BASE_FEATURE(kGlicActorUiTaskListBubbleDelayShow,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
+const base::FeatureParam<int> kGlicActorUiTaskListBubbleDelayMs{
+    &kGlicActorUiTaskListBubbleDelayShow, "delay_ms", 250};
+
 // If enabled, post tasks in the window controller to fix re-entrancy crash.
 BASE_FEATURE(kGlicActorPostTaskUiUpdateEnabled,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -621,13 +629,6 @@ BASE_FEATURE_PARAM(base::TimeDelta,
                    "glic-user-status-throttle-interval",
                    base::Seconds(5));
 
-BASE_FEATURE(kGlicFreURLConfig, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE_PARAM(std::string,
-                   kGlicFreURL,
-                   &kGlicFreURLConfig,
-                   "glic-fre-url",
-                   "https://gemini.google.com/glic/intro?");
-
 BASE_FEATURE(kGlicLearnMoreURLConfig, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE_PARAM(std::string,
                    kGlicShortcutsLearnMoreURL,
@@ -921,12 +922,12 @@ const base::FeatureParam<int> kGlicWebContinuityMaxTurnIdLength{
 
 BASE_FEATURE(kGlicUseToolbarHeightSidePanel, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kGlicButtonPressedState, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicButtonPressedState, base::FEATURE_ENABLED_BY_DEFAULT);
 
 const base::FeatureParam<bool> kGlicButtonContainerBackground{
     &kGlicButtonPressedState, "glic-button-container-background", false};
 const base::FeatureParam<bool> kGlicButtonPressedForceSolidIcon{
-    &kGlicButtonPressedState, "glic-button-pressed-force-solid-icon", false};
+    &kGlicButtonPressedState, "glic-button-pressed-force-solid-icon", true};
 
 BASE_FEATURE(kGlicShareImage, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -994,6 +995,10 @@ BASE_FEATURE_PARAM(base::TimeDelta,
 BASE_FEATURE(kGlicActorAutofillOneTimePassword,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Whether to click a field before filling it in Glic actor autofill.
+// This feature is also gated by |kGlicActorAutofill|.
+BASE_FEATURE(kGlicActorAutofillPreClick, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Whether to enable the section label in Glic actor autofill.
 // This feature is also gated by |kGlicActorAutofill|.
 BASE_FEATURE(kGlicActorAutofillSectionLabel, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1006,7 +1011,7 @@ const base::FeatureParam<int> kGlicGuestUrlPresetType{
 
 BASE_FEATURE(kGlicContextualCueBubble, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kGlicClientZoomControl, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicClientZoomControl, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kActorFormFillingServiceEnableAddress,
              base::FEATURE_ENABLED_BY_DEFAULT);

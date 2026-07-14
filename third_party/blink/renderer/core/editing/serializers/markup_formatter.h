@@ -94,7 +94,7 @@ class MarkupFormatter final {
                                           const String& data);
   static void AppendXMLDeclaration(StringBuilder&, const Document&);
 
-  MarkupFormatter(AbsoluteURLs, SerializationType);
+  MarkupFormatter(ResolveUrls, SerializationType);
   MarkupFormatter(const MarkupFormatter&) = delete;
   MarkupFormatter& operator=(const MarkupFormatter&) = delete;
 
@@ -121,7 +121,7 @@ class MarkupFormatter final {
   String ResolveURLIfNeeded(const Element&, const Attribute& attribute) const;
 
  private:
-  const AbsoluteURLs resolve_urls_method_;
+  const ResolveUrls resolve_urls_method_;
   SerializationType serialization_type_;
 };
 

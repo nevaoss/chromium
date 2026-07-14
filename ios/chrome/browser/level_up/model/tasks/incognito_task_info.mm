@@ -15,8 +15,10 @@ class IncognitoTaskInfo : public TaskInfo {
 
   // TaskInfo implementation.
   TaskType GetTaskType() const override { return TaskType::kIncognito; }
-  int GetTitleId() const override { return 0; }
-  int GetTaskDescriptionId() const override { return 0; }
+  std::string GetTitle() const override { return "Go Incognito"; }
+  std::string GetTaskDescription() const override {
+    return "Open incognito tabs to browse the web privately";
+  }
   std::string GetIconSymbolName() const override {
     return base::SysNSStringToUTF8(kIncognitoSymbol);
   }
@@ -27,7 +29,7 @@ class IncognitoTaskInfo : public TaskInfo {
   std::string GetTriggerUserAction() const override {
     return "IncognitoMode_Started";
   }
-  base::RepeatingClosure GetNavigationAction() const override {
+  TaskInfo::NavigationAction GetNavigationAction() const override {
     return base::DoNothing();
   }
 };

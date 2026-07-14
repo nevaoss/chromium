@@ -344,7 +344,7 @@ void WebAppRegistrar::NotifyWebAppFileHandlerApprovalStateChanged(
 }
 
 void WebAppRegistrar::NotifyWebAppsWillBeUpdatedFromSync(
-    const std::vector<const WebApp*>& new_apps_state) {
+    base::span<const WebApp* const> new_apps_state) {
   DVLOG(1) << "NotifyWebAppsWillBeUpdatedFromSync";
   for (WebAppRegistrarObserver& observer : observers_) {
     observer.OnWebAppsWillBeUpdatedFromSync(new_apps_state);

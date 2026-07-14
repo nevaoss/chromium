@@ -55,7 +55,7 @@ StyledMarkupAccumulator::StyledMarkupAccumulator(
     const TextOffset& end,
     Document* document,
     const CreateMarkupOptions& options)
-    : formatter_(options.ShouldResolveURLs(),
+    : formatter_(options.ShouldResolveUrls(),
                  IsA<HTMLDocument>(document) ? SerializationType::kHTML
                                              : SerializationType::kXML),
       start_(start),

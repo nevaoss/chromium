@@ -12,13 +12,11 @@ import android.graphics.drawable.Drawable;
 import android.view.LayoutInflater;
 import android.view.View;
 
-import androidx.appcompat.widget.SearchView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.RecyclerView.Adapter;
 
 import org.chromium.base.Callback;
-import org.chromium.base.ui.KeyboardUtils;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.chrome.browser.ui.autofill.internal.R;
 import org.chromium.components.browser_ui.styles.SemanticColorUtils;
@@ -28,7 +26,7 @@ import org.chromium.components.browser_ui.styles.SemanticColorUtils;
 public class AtMemoryBottomSheetView {
     private final View mContentView;
     private final RecyclerView mRecyclerView;
-    private final SearchView mSearchView;
+    private final AtMemorySearchBarView mSearchBarView;
 
     public AtMemoryBottomSheetView(Context context) {
         mContentView = LayoutInflater.from(context).inflate(R.layout.at_memory_bottom_sheet, null);
@@ -37,7 +35,7 @@ public class AtMemoryBottomSheetView {
         mRecyclerView.setLayoutManager(new LinearLayoutManager(context));
         mRecyclerView.addItemDecoration(new AtMemoryDividerItemDecoration(context));
 
-        mSearchView = mContentView.findViewById(R.id.search_query_input);
+        mSearchBarView = mContentView.findViewById(R.id.search_query_input_container);
     }
 
     public View getContentView() {
@@ -49,33 +47,19 @@ public class AtMemoryBottomSheetView {
     }
 
     public void focusSearchArea() {
-        // TODO(crbug.com/512802813): Fix cursor not blinking on subsequent openings of the bottom
-        // sheet.
-        mSearchView.requestFocus();
-        // SearchView is a wrapper layout. We must find and pass its focused child (the internal
-        // edit text) to show the keyboard.
-        View focusedChild = mSearchView.findFocus();
-        KeyboardUtils.showKeyboard(focusedChild != null ? focusedChild : mSearchView);
+        mSearchBarView.focusSearchArea();
     }
 
     public void clearSearchText() {
-        mSearchView.setQuery("", /* submit= */ false);
+        mSearchBarView.clearSearchText();
     }
 
     public void setOnQuerySubmittedCallback(Callback<String> callback) {
-        mSearchView.setOnQueryTextListener(
-                new SearchView.OnQueryTextListener() {
-                    @Override
-                    public boolean onQueryTextSubmit(String query) {
-                        callback.onResult(query);
-                        return true;
-                    }
+        mSearchBarView.setOnQuerySubmittedCallback(callback);
+    }
 
-                    @Override
-                    public boolean onQueryTextChange(String newText) {
-                        return false;
-                    }
-                });
+    public void setIsLoading(boolean isLoading) {
+        mSearchBarView.setIsLoading(isLoading);
     }
 
     /** Draws a divider line below each item in the list except for the last item. */

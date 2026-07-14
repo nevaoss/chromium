@@ -915,6 +915,12 @@ void PasswordSyncBridge::ApplyDisableSyncChanges(
     std::unique_ptr<syncer::MetadataChangeList> delete_metadata_change_list) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK(password_store_sync_);
+
+  // Sync metadata is deleted explicitly below, `delete_metadata_change_list` is
+  // therefore not needed and should be dropped.
+  delete_metadata_change_list->DropAllChanges();
+  delete_metadata_change_list.reset();
+
   switch (wipe_model_upon_sync_disabled_behavior_) {
     case syncer::WipeModelUponSyncDisabledBehavior::kNever:
       CHECK(!password_store_sync_->IsAccountStore());

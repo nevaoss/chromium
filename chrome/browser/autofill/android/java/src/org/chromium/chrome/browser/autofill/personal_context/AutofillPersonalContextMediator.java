@@ -11,6 +11,7 @@ import static org.chromium.chrome.browser.autofill.personal_context.AutofillPers
 
 import android.content.Context;
 
+import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.chrome.browser.autofill.AutofillUiUtils;
 import org.chromium.chrome.browser.autofill.autofill_ai.EntityDataManager;
@@ -51,18 +52,21 @@ class AutofillPersonalContextMediator {
             manager.setPersonalContextEnabled(enabled);
         }
         mModel.set(PERSONAL_CONTEXT_ENABLED, enabled);
-        // TODO(b/514253925): Record user action.
+        RecordUserAction.record(
+                enabled
+                        ? AutofillPersonalContextFragment.ACTION_TOGGLED_ON
+                        : AutofillPersonalContextFragment.ACTION_TOGGLED_OFF);
     }
 
     private void onManageConnectedAppsClicked() {
         AutofillUiUtils.openLink(
                 mContext, EntityDataManager.getPersonalContextManageConnectedAppsUrl());
-        // TODO(b/514253925): Record user action.
+        RecordUserAction.record(AutofillPersonalContextFragment.ACTION_MANAGE_CONNECTED_APPS);
     }
 
     private void onManageSuggestionsClicked() {
         AutofillUiUtils.openLink(
                 mContext, EntityDataManager.getPersonalContextManageSuggestionsUrl());
-        // TODO(b/514253925): Record user action.
+        RecordUserAction.record(AutofillPersonalContextFragment.ACTION_MANAGE_SUGGESTIONS);
     }
 }

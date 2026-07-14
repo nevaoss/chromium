@@ -58,9 +58,6 @@ class PLATFORM_EXPORT CanvasResource : public gpu::ClientImage {
       const gpu::SyncToken& sync_token,
       bool is_lost)>;
 
-  using LastUnrefCallback = base::OnceCallback<void(
-      scoped_refptr<blink::CanvasResource> canvas_resource)>;
-
   // Returns true if this instance creates TransferableResources for usage with
   // GPU compositing.
   virtual bool CreatesAcceleratedTransferableResources() const = 0;

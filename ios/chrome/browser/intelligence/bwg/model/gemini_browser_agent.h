@@ -128,6 +128,10 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
       UIViewController* base_view_controller,
       GeminiStartupState* startup_state);
 
+  // Presents a Gemini Live microphone authorization alert or Settings prompt.
+  void ShowGeminiLiveMicrophoneAlert(UIViewController* base_view_controller,
+                                     void (^completion)(BOOL granted));
+
   // Dismisses the floaty and resets the Gemini flow.
   void DismissFloaty();
 
@@ -163,6 +167,9 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
 
   // Dismisses Gemini from all other windows and executes the completion block.
   void DismissGeminiFromOtherWindows(base::OnceClosure completion);
+
+  // Returns the entry point that triggered the current Gemini flow.
+  gemini::EntryPoint GetEntryPoint() const;
 
  private:
   explicit GeminiBrowserAgent(Browser* browser);
@@ -294,12 +301,6 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
       gemini::FloatyUpdateSource source,
       bool is_presented);
 
-  // Returns true if the floaty has active hiding sources.
-  bool DoesFloatyHaveActiveHidingSources() const;
-
-  // Returns true if the floaty is only hidden by the keyboard.
-  bool IsOnlyHiddenByKeyboard() const;
-
   // Returns true if the omnibox is focused.
   bool IsOmniboxFocused() const;
 
@@ -312,11 +313,6 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
   // Updates the Gemini Live mode UI and page context. Returns true if page
   // context update was performed.
   bool UpdateLiveModeUIAndMaybeContext();
-
-  // Returns true if the source expects the floaty to re-show after hiding it.
-  // New sources must be added to the switch statement depending on if we
-  // expect the source to re-show the floaty after hiding it.
-  bool ShouldSourceReshowFloaty(gemini::FloatyUpdateSource source) const;
 
   // Returns true if the update from `source` should be ignored because the Live
   // session dormant snackbar is active.
@@ -396,10 +392,6 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
   // Whether the keyboard is currently visible.
   bool is_keyboard_visible_ = false;
 
-  // Set of sources currently hiding the floaty. If this set is not empty, the
-  // floaty is considered temporarily hidden.
-  std::set<gemini::FloatyUpdateSource> active_hiding_sources_;
-
   // Used to track the last shown view state of an invoked floaty. Used to show
   // a hidden floaty with the previous view state.
   ios::provider::GeminiViewState last_shown_view_state_ =
@@ -459,6 +451,9 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
   // Badge.
   bool has_triggered_gemini_live_iph_ = false;
   bool has_triggered_gemini_live_new_badge_ = false;
+
+  // The entry point that triggered the current Gemini flow.
+  gemini::EntryPoint entry_point_ = gemini::EntryPoint::Unknown;
 
   // Weak pointer factory.
   // Observers for GeminiBrowserAgent.

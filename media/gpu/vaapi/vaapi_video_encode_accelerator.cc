@@ -999,8 +999,8 @@ void VaapiVideoEncodeAccelerator::EncodePendingInputs() {
       jobs.emplace_back(std::move(job));
     }
     for (auto& job : jobs) {
-      TRACE_EVENT_BEGIN("media,gpu", "PlatformEncoding.Encode",
-                        perfetto::Track::FromPointer(&job));
+      TRACE_EVENT("media,gpu", "PlatformEncoding.Encode",
+                  perfetto::Flow::FromPointer(job.get()));
 
       if (!encoder_->Encode(*job)) {
         NotifyError({EncoderStatus::Codes::kEncoderFailedEncode,
@@ -1009,6 +1009,7 @@ void VaapiVideoEncodeAccelerator::EncodePendingInputs() {
       }
     }
     for (size_t i = 0; i < jobs.size(); i++) {
+      auto flow = perfetto::TerminatingFlow::FromPointer(jobs[i].get());
       std::optional<EncodeResult> result =
           encoder_->GetEncodeResult(std::move(jobs[i]));
       if (!result) {
@@ -1017,10 +1018,10 @@ void VaapiVideoEncodeAccelerator::EncodePendingInputs() {
         return;
       }
 
-      TRACE_EVENT_END("media,gpu", /*"PlatformEncoding.Encode"*/
-                      perfetto::Track::FromPointer(&jobs[i]), "timestamp",
-                      result->metadata().timestamp.InMicroseconds(), "size",
-                      spatial_layer_resolutions[i].ToString());
+      TRACE_EVENT_INSTANT("media,gpu", "PlatformEncoding.EncodeResult", flow,
+                          "timestamp",
+                          result->metadata().timestamp.InMicroseconds(), "size",
+                          spatial_layer_resolutions[i].ToString());
 
       pending_encode_results_.push(std::move(result));
     }

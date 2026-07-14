@@ -1102,14 +1102,20 @@ TEST_F(HTMLSelectElementTest, InnerElementOverflow) {
   Element& inner_element = select->InnerElement();
 
   GetDocument().UpdateStyleAndLayoutTree();
-  EXPECT_EQ(inner_element.GetComputedStyle()->OverflowX(), EOverflow::kVisible);
+  EXPECT_EQ(inner_element.GetComputedStyle()->OverflowX(), EOverflow::kClip);
   EXPECT_EQ(inner_element.GetComputedStyle()->OverflowY(), EOverflow::kVisible);
 
   select->SetInlineStyleProperty(CSSPropertyID::kTextOverflow,
                                  CSSValueID::kEllipsis);
   GetDocument().UpdateStyleAndLayoutTree();
-  EXPECT_EQ(inner_element.GetComputedStyle()->OverflowX(), EOverflow::kHidden);
-  EXPECT_EQ(inner_element.GetComputedStyle()->OverflowY(), EOverflow::kHidden);
+  EXPECT_EQ(inner_element.GetComputedStyle()->OverflowX(), EOverflow::kClip);
+  EXPECT_EQ(inner_element.GetComputedStyle()->OverflowY(), EOverflow::kVisible);
+
+  select->SetInlineStyleProperty(CSSPropertyID::kWritingMode,
+                                 CSSValueID::kVerticalRl);
+  GetDocument().UpdateStyleAndLayoutTree();
+  EXPECT_EQ(inner_element.GetComputedStyle()->OverflowX(), EOverflow::kVisible);
+  EXPECT_EQ(inner_element.GetComputedStyle()->OverflowY(), EOverflow::kClip);
 }
 
 TEST_F(HTMLSelectElementTest, DescendantCounters) {

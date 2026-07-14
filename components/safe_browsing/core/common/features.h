@@ -31,6 +31,14 @@ BASE_DECLARE_FEATURE(kAdSamplerTriggerFeature);
 // Enables adding warning shown timestamp to client safe browsing report.
 BASE_DECLARE_FEATURE(kAddWarningShownTSToClientSafeBrowsingReport);
 
+// Controls whether V4Store attempts to migrate V5 stores on disk to V4. This
+// feature is temporary while the `kLocalListsUseSBv5` feature is still only
+// partially implemented.
+BASE_DECLARE_FEATURE(kAllowSafeBrowsingV4StoreDiskMigrationChanges);
+
+// Enables antivirus product info to be included in download pings.
+BASE_DECLARE_FEATURE(kAntivirusTelemetryForDownloads);
+
 // Enables automatic revocation of notification permissions after the user has
 // received a number of notifications with a suspicious verdict from the
 // on-device model.
@@ -156,10 +164,6 @@ BASE_DECLARE_FEATURE(kClientSideDetectionRedirectChainKillswitch);
 BASE_DECLARE_FEATURE(kClientSideDetectionRetryLimit);
 extern const base::FeatureParam<int> kClientSideDetectionRetryLimitTime;
 
-// Send a sample CSPP ping when a URL matches the CSD allowlist and all other
-// preclassification check conditions pass.
-BASE_DECLARE_FEATURE(kClientSideDetectionSamplePing);
-
 #if BUILDFLAG(IS_ANDROID)
 // Inquire the server-side model instead of the on-device model for scam
 // detection.
@@ -247,6 +251,10 @@ BASE_DECLARE_FEATURE(kEsbAsASyncedSetting);
 // - features will not depend on the SBER preference value,
 //   safebrowsing.scout_reporting_enabled
 BASE_DECLARE_FEATURE(kExtendedReportingRemovePrefDependency);
+
+// Bypasses the Safe Browsing network query for extensions blocklist checks
+// because a subsequent check will retrieve the blocklist state.
+BASE_DECLARE_FEATURE(kExtensionBlocklistSkipNetworkQuery);
 
 // Allows the Extension Telemetry Service to accept and use configurations
 // sent by the server.
@@ -426,6 +434,10 @@ extern const base::FeatureParam<int> kSafeBrowsingDailyPhishingReportsLimitESB;
 // See go/skip-sync-hpd-allowlist-android for details.
 BASE_DECLARE_FEATURE(kSafeBrowsingSyncCheckerCheckAllowlist);
 #endif
+
+// Allows Safe Browsing Real-Time URL lookups to wait for DNS resolution of the
+// main frame URL.
+BASE_DECLARE_FEATURE(kSafeBrowsingWaitForDnsForRealTimeLookup);
 
 // Enables saving gaia password hash from the Profile Picker sign-in flow.
 BASE_DECLARE_FEATURE(kSavePasswordHashFromProfilePicker);

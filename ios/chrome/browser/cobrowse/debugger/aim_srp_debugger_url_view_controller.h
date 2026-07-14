@@ -8,9 +8,23 @@
 #import <UIKit/UIKit.h>
 
 class GURL;
+@class AIMSRPDebuggerURLViewController;
+
+// Delegate protocol for AIMSRPDebuggerURLViewController.
+@protocol AIMSRPDebuggerURLViewControllerDelegate <NSObject>
+
+// Called when the user updates the URL in the debugger.
+- (void)debuggerURLViewController:
+            (AIMSRPDebuggerURLViewController*)viewController
+                     didUpdateURL:(const GURL&)url;
+
+@end
 
 // A view controller that displays the loaded AIM URL with copy capabilities.
 @interface AIMSRPDebuggerURLViewController : UIViewController
+
+// The delegate to receive updates from the debugger.
+@property(nonatomic, weak) id<AIMSRPDebuggerURLViewControllerDelegate> delegate;
 
 - (instancetype)initWithURL:(const GURL&)url NS_DESIGNATED_INITIALIZER;
 

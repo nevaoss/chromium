@@ -65,6 +65,7 @@ import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
 import org.chromium.chrome.browser.findinpage.FindToolbarManager;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.fullscreen.FullscreenManager;
+import org.chromium.chrome.browser.glic.GlicEnabling;
 import org.chromium.chrome.browser.glic.GlicKeyedService;
 import org.chromium.chrome.browser.glic.GlicKeyedServiceFactory;
 import org.chromium.chrome.browser.keyboard_accessory.ManualFillingComponent;
@@ -255,6 +256,7 @@ public class ToolbarManagerUnitTest {
     public void setUp() {
         ActorKeyedServiceFactory.setForTesting(mActorKeyedService);
         GlicKeyedServiceFactory.setForTesting(mGlicKeyedService);
+        GlicEnabling.setEnabledForTesting(true);
         ComposeboxQueryControllerBridge.setInstanceForTesting(null);
         ChromeAutocompleteSchemeClassifierJni.setInstanceForTesting(
                 mChromeAutocompleteSchemeClassifierJni);

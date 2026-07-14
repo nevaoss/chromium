@@ -93,9 +93,6 @@ struct ConfigInfo {
   // The URL from which the guest web client is loaded from.
   url.mojom.Url guest_url;
 
-  // The URL from which the FRE page is loaded from.
-  url.mojom.Url fre_guest_url;
-
   // User configured preset URLs for different environments of the guest web
   // client.
   url.mojom.Url autopush_guest_url;
@@ -1183,6 +1180,18 @@ struct CaptureRegionParams {
   GetTabContextOptions options;
 };
 
+// Interface for annotation-related functionality, used by the web client.
+interface AnnotationHandler {
+  // Scrolls to and (optionally) highlights content specified by `params`. Only
+  // one highlight is active at a time. Returns an error reason if the scroll
+  // fails, or null otherwise.
+  ScrollTo(ScrollToParams params) => (ScrollToErrorReason? error_reason);
+
+  // Drops the content highlight from scrollTo(). No effects if no contents are
+  // highlighted.
+  DropScrollToHighlight();
+};
+
 // Access to the browser from the web client by proxy through the WebUI.
 // A single WebClientHandler will provide access to the browser for only
 // a single web client. If the webview navigates or refreshes, a new
@@ -1204,6 +1213,9 @@ interface WebClientHandler {
   // Creates the actor handler.
   CreateActorHandler(pending_receiver<ActorHandler> receiver,
                      pending_remote<ActorClient> client);
+
+  // Creates the annotation handler.
+  CreateAnnotationHandler(pending_receiver<AnnotationHandler> receiver);
 
   // Creates a new tab. `url` must have a http or https protocol.
   // `tab_data` is null if the tab could not be created, which may happen if the
@@ -1457,15 +1469,6 @@ interface WebClientHandler {
   // Called when the web client sends a browser actuation result over the
   // network.
   OnActionSubmitted(bool is_retry);
-
-  // Scrolls to and (optionally) highlights content specified by `params`. Only
-  // one highlight is active at a time. Returns an error reason if the scroll
-  // fails, or null otherwise.
-  ScrollTo(ScrollToParams params) => (ScrollToErrorReason? error_reason);
-
-  // Drops the content highlight from scrollTo(). No effects if no contents are
-  // highlighted.
-  DropScrollToHighlight();
 
   // Enrolls Chrome in the synthetic experiment group specified by
   // trial_name.group_name. Enrollment will start when the API is called and end

@@ -53,8 +53,9 @@ class TabBottomSheetPeekViewBinder {
             view.setActionButtonContentDescription(
                     model.get(TabBottomSheetPeekProperties.ACTION_BUTTON_CONTENT_DESCRIPTION_ID));
         } else if (TabBottomSheetPeekProperties.CONTENT_DESCRIPTION_A11Y == propertyKey) {
-            view.setContentDescription(
-                    model.get(TabBottomSheetPeekProperties.CONTENT_DESCRIPTION_A11Y));
+            TabBottomSheetPeekProperties.ContentDescriptionCallback callback =
+                    model.get(TabBottomSheetPeekProperties.CONTENT_DESCRIPTION_A11Y);
+            view.setContentDescription(callback != null ? callback.get(view.getContext()) : null);
         } else if (TabBottomSheetPeekProperties.ON_ACTION_BUTTON_CLICKED == propertyKey) {
             view.setActionButtonClickListener(
                     v -> model.get(TabBottomSheetPeekProperties.ON_ACTION_BUTTON_CLICKED).run());

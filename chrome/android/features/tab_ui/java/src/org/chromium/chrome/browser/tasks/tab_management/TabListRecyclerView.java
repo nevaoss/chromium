@@ -131,7 +131,7 @@ public class TabListRecyclerView extends RecyclerView
         }
     }
 
-    void setupCustomItemAnimator() {
+    public void setupCustomItemAnimator() {
         if (mTabListItemAnimator == null) {
             mTabListItemAnimator = new TabListItemAnimator(mIsAnimatorRunningSupplier);
             setItemAnimator(mTabListItemAnimator);

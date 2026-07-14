@@ -1115,28 +1115,6 @@ String MenuListSelectType::UpdateTextStyleInternal() {
       builder->SetTextAlign(option_style->GetTextAlign(true));
     }
 
-    if (inner_style &&
-        RuntimeEnabledFeatures::SelectRemoveOverflowHiddenEnabled()) {
-      if (auto* select_style = select_->GetComputedStyle()) {
-        if (select_style->TextOverflow() != inner_style->TextOverflow()) {
-          if (!builder) {
-            builder = ComputedStyleBuilder(*inner_style);
-          }
-          MenuListInnerElement::UpdateOverflowStyle(*builder, *select_style);
-        } else {
-          // If text-overflow matches, then overflow should always be set
-          // accordingly.
-          if (inner_style->TextOverflow().IsEllipsis()) {
-            DCHECK_EQ(inner_style->OverflowX(), EOverflow::kHidden);
-            DCHECK_EQ(inner_style->OverflowY(), EOverflow::kHidden);
-          } else {
-            DCHECK_EQ(inner_style->OverflowX(), EOverflow::kVisible);
-            DCHECK_EQ(inner_style->OverflowY(), EOverflow::kVisible);
-          }
-        }
-      }
-    }
-
     if (builder) {
       const ComputedStyle* new_style = builder->TakeStyle();
       if (auto* inner_layout = inner_element.GetLayoutObject()) {

@@ -603,7 +603,7 @@ blink::mojom::CommonNavigationParamsPtr MakeCommonNavigationParams(
     std::unique_ptr<blink::WebNavigationInfo> info,
     int load_flags,
     bool has_download_sandbox_flag,
-    bool from_ad,
+    bool from_ad_frame,
     bool is_history_navigation_in_new_child_frame,
     network::mojom::RequestDestination request_destination) {
   // A valid RequestorOrigin is always expected to be present.
@@ -641,7 +641,7 @@ blink::mojom::CommonNavigationParamsPtr MakeCommonNavigationParams(
   download_policy.ApplyDownloadFramePolicy(
       info->is_opener_navigation, info->url_request.HasUserGesture(),
       info->url_request.RequestorOrigin().CanAccess(current_origin),
-      has_download_sandbox_flag, from_ad);
+      has_download_sandbox_flag, from_ad_frame, info->is_ad_script_in_stack);
 
   std::optional<GURL> initiator_base_url;
   GURL requestor_base_url(info->requestor_base_url);
@@ -1017,6 +1017,8 @@ void FillMiscNavigationParams(
   }
 
   navigation_params->is_browser_initiated = commit_params.is_browser_initiated;
+  navigation_params->is_secure_context_root =
+      commit_params.is_secure_context_root;
 
   navigation_params->is_cross_site_cross_browsing_context_group =
       commit_params.is_cross_site_cross_browsing_context_group;
@@ -6043,13 +6045,13 @@ void RenderFrameImpl::OpenURL(std::unique_ptr<blink::WebNavigationInfo> info) {
   bool has_download_sandbox_flag =
       info->initiator_frame_has_download_sandbox_flag ||
       current_frame_has_download_sandbox_flag;
-  bool from_ad = info->initiator_frame_is_ad || frame_->IsAdFrame();
+  bool from_ad_frame = info->initiator_frame_is_ad || frame_->IsAdFrame();
 
   params->download_policy.ApplyDownloadFramePolicy(
       info->is_opener_navigation, info->url_request.HasUserGesture(),
       info->url_request.RequestorOrigin().CanAccess(
           frame_->GetSecurityOrigin()),
-      has_download_sandbox_flag, from_ad);
+      has_download_sandbox_flag, from_ad_frame, info->is_ad_script_in_stack);
 
   params->started_by_ad =
       info->initiator_frame_is_ad || info->is_ad_script_in_stack;
@@ -6368,7 +6370,7 @@ void RenderFrameImpl::BeginNavigationInternal(
   bool has_download_sandbox_flag =
       info->initiator_frame_has_download_sandbox_flag ||
       current_frame_has_download_sandbox_flag;
-  bool from_ad = info->initiator_frame_is_ad || frame_->IsAdFrame();
+  bool from_ad_frame = info->initiator_frame_is_ad || frame_->IsAdFrame();
 
   mojo::PendingRemote<blink::mojom::NavigationStateKeepAliveHandle>
       initiator_navigation_state_keep_alive_handle =
@@ -6382,10 +6384,10 @@ void RenderFrameImpl::BeginNavigationInternal(
           std::move(info->resume_defer_commit_listener));
 
   blink::mojom::CommonNavigationParamsPtr common_params =
-      MakeCommonNavigationParams(frame_->GetSecurityOrigin(), std::move(info),
-                                 load_flags, has_download_sandbox_flag, from_ad,
-                                 is_history_navigation_in_new_child_frame,
-                                 request_destination);
+      MakeCommonNavigationParams(
+          frame_->GetSecurityOrigin(), std::move(info), load_flags,
+          has_download_sandbox_flag, from_ad_frame,
+          is_history_navigation_in_new_child_frame, request_destination);
 
   bool is_duplicate_navigation = false;
   base::TimeDelta nav_start_diff;
@@ -6412,7 +6414,20 @@ void RenderFrameImpl::BeginNavigationInternal(
             prev_common_params.should_replace_current_entry &&
         begin_params->headers == prev_begin_params.headers &&
         begin_params->has_rel_opener == prev_begin_params.has_rel_opener) {
-      is_duplicate_navigation = true;
+      // Note: The renderer-initiated duplicate navigation cookie check differs
+      // from the browser-initiated check. To prevent cross-site leaks, we only
+      // check here for changes to non-HttpOnly cookies made by this document.
+      DuplicateNavsCookieStatus cookie_status;
+      if (navigation_client_impl_->cookie_modification_count() ==
+          frame_->GetDocument().CookieModificationCount()) {
+        cookie_status = DuplicateNavsCookieStatus::kCookiesNotChanged;
+        is_duplicate_navigation = true;
+      } else {
+        cookie_status = DuplicateNavsCookieStatus::kCookiesChanged;
+      }
+      base::UmaHistogramEnumeration(
+          "Navigation.RendererInitiated.DuplicateNavCookieStatus",
+          cookie_status);
       nav_start_diff = (common_params->navigation_start -
                         prev_common_params.navigation_start);
     }
@@ -6506,6 +6521,8 @@ void RenderFrameImpl::BeginNavigationInternal(
       renderer_cancellation_listener_receiver.InitWithNewPipeAndPassRemote(),
       renderer_ignore_duplicate_navigation_listener_receiver
           .InitWithNewPipeAndPassRemote());
+  navigation_client_impl_->SetCookieModificationCount(
+      frame_->GetDocument().CookieModificationCount());
 
   GetFrameHost()->BeginNavigation(
       std::move(common_params), std::move(begin_params),
@@ -6988,7 +7005,8 @@ WebView* RenderFrameImpl::CreateNewWindow(
       // `openee_can_access_opener_origin` only matters for opener navigations,
       // so its value here is irrelevant.
       /*openee_can_access_opener_origin=*/true,
-      !GetWebFrame()->IsAllowedToDownload(), GetWebFrame()->IsAdFrame());
+      !GetWebFrame()->IsAllowedToDownload(), GetWebFrame()->IsAdFrame(),
+      GetWebFrame()->IsAdScriptInStack());
 
   params->started_with_transient_activation = request.HasUserGesture();
   params->started_by_ad =

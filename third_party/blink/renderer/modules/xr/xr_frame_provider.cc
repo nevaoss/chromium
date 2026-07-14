@@ -854,7 +854,8 @@ void XRFrameProvider::SubmitFrame(XRFrameTransportDelegate* transport_delegate,
     // Just tell the device side that there was no submitted frame instead of
     // executing the implicit end-of-frame submit.
     frame_transport_->FrameSubmitMissing(immersive_presentation_provider_.get(),
-                                         transport_delegate, this_frame_id);
+                                         std::move(export_result),
+                                         this_frame_id);
     dropped_frames_++;
 
     return;

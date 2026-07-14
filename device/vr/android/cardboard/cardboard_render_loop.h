@@ -69,7 +69,9 @@ class CardboardRenderLoop : public base::android::JavaHandlerThread,
                          const gfx::RectF& left_bounds,
                          const gfx::RectF& right_bounds,
                          const gfx::Size& source_size) override;
-  void SubmitFrameMissing(int16_t frame_index, const gpu::SyncToken&) override;
+  void SubmitFrameMissing(
+      int16_t frame_index,
+      gpu::SharedImageExportResult camera_image_multi_result) override;
   void SubmitFrame(int16_t frame_index,
                    base::TimeDelta time_waited) override;
   void SubmitFrameDrawnIntoTexture(

@@ -36,5 +36,5 @@ void GoogleLensStepEligibilityChecker::CheckEligibility(
 }
 
 std::string GoogleLensStepEligibilityChecker::GetStepIdentifier() const {
-  return "google-lens";
+  return std::string(kFeatureShowcaseGoogleLensStepIdentifier);
 }

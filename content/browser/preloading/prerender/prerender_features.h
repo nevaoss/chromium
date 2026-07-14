@@ -69,6 +69,12 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kPrerender2WarmUpCompositorForNonImmediate);
 // prerender when a matching prerender speculation rule is added.
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kPrerenderUntilScriptUpgrade);
 
+// If enabled, allows a prerender to reuse its initiator's process while
+// remaining in a dedicated BrowsingInstance.
+CONTENT_EXPORT BASE_DECLARE_FEATURE(kPrerender2ReuseInitiatorProcess);
+CONTENT_EXPORT extern const base::FeatureParam<std::string>
+    kPrerender2ReuseInitiatorProcessActionType;
+
 CONTENT_EXPORT bool UsePrefetchPrerenderIntegration();
 }  // namespace features
 

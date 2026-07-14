@@ -56,9 +56,9 @@
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_list.h"
 #import "ios/chrome/browser/shared/public/commands/activity_service_commands.h"
 #import "ios/chrome/browser/shared/public/commands/activity_service_share_url_command.h"
-#import "ios/chrome/browser/shared/public/commands/bwg_commands.h"
 #import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
 #import "ios/chrome/browser/shared/public/commands/enhanced_calendar_commands.h"
+#import "ios/chrome/browser/shared/public/commands/gemini_commands.h"
 #import "ios/chrome/browser/shared/public/commands/lens_commands.h"
 #import "ios/chrome/browser/shared/public/commands/mini_map_commands.h"
 #import "ios/chrome/browser/shared/public/commands/reading_list_add_command.h"
@@ -1183,8 +1183,8 @@ NSString* const kAlertAccessibilityIdentifier = @"AlertAccessibilityIdentifier";
   }
   RecordImageRemixContextMenuEntryPointTapped(aspectRatio);
 
-  id<BWGCommands> handler =
-      HandlerForProtocol(_browser->GetCommandDispatcher(), BWGCommands);
+  id<GeminiCommands> handler =
+      HandlerForProtocol(_browser->GetCommandDispatcher(), GeminiCommands);
   GeminiStartupState* state = [[GeminiStartupState alloc]
       initWithEntryPoint:gemini::EntryPoint::ImageContextMenu];
   state.imageAttachment = image;

@@ -21,8 +21,16 @@ class LineInfo;
 class LogicalLineContainer;
 class LogicalLineItems;
 class ShapeResult;
+class ShapeResultView;
+class UsedFont;
 struct InlineItemResult;
 struct LogicalRubyColumn;
+
+// Adjust over/under offsets for em height with alphabetic baseline.
+// This is used for emphasis marks.
+std::tuple<LayoutUnit, LayoutUnit> AdjustTextOverUnderOffsetsForEmphasis(
+    const ShapeResultView& shape_view,
+    const UsedFont& used_font);
 
 struct RubyItemIndexes {
   // Points a kOpenRubyColumn item.

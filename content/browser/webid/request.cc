@@ -159,7 +159,7 @@ Request::AutoReauthnInfo& Request::AutoReauthnInfo::operator=(
 
 Request::Request(
     RenderFrameHost* rfh,
-    RequestService* request_service,
+    RequestService& request_service,
     FederatedIdentityApiPermissionContextDelegate* api_permission_delegate,
     FederatedIdentityAutoReauthnPermissionContextDelegate*
         auto_reauthn_permission_delegate,
@@ -219,9 +219,12 @@ void Request::ResetAndDeleteThisForTesting() {
   // and is what our tests expect.
   auth_request_receivers_.Clear();
   receivers_.Clear();
-  if (request_service_) {
-    request_service_->OnRequestDestroyed(this);
-  }
+  // TODO(crbug.com/519217823): Refactor this to avoid "delete this" pattern by
+  // having tests request destruction via RequestService directly.
+  // WARNING: Calling OnRequestDestroyed(this) will destroy 'this' immediately
+  // because the request is owned by request_service_. Do not add any code
+  // after this call!
+  request_service_->OnRequestDestroyed(this);
 }
 
 std::vector<IdentityProviderRequestOptionsPtr>
@@ -692,53 +695,11 @@ void Request::SetIdpSigninStatus(
 }
 
 void Request::RegisterIdP(const GURL& idp, RegisterIdPCallback callback) {
-  if (!IsIdPRegistrationEnabled()) {
-    std::move(callback).Run(RegisterIdpStatus::kErrorFeatureDisabled);
-    return;
-  }
-
-  if (!origin().IsSameOriginWith(url::Origin::Create(idp))) {
-    std::move(callback).Run(RegisterIdpStatus::kErrorCrossOriginConfig);
-    return;
-  }
-
-  if (!network_manager_) {
-    network_manager_ = CreateNetworkManager();
-  }
-
-  fedcm_idp_registration_handler_ = std::make_unique<IdpRegistrationHandler>(
-      render_frame_host(), network_manager_.get(), idp);
-  fedcm_idp_registration_handler_->FetchConfig(
-      base::BindOnce(&Request::OnIdpRegistrationConfigFetched,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback), idp));
-}
-
-void Request::OnIdpRegistrationConfigFetched(
-    RegisterIdPCallback callback,
-    const GURL& idp,
-    std::vector<ConfigFetcher::FetchResult> fetch_results) {
-  CHECK_EQ(fetch_results.size(), 1u);
-  fedcm_idp_registration_handler_.reset();
-  if (fetch_results[0].error) {
-    std::move(callback).Run(RegisterIdpStatus::kErrorInvalidConfig);
-    return;
-  }
-
-  permission_delegate_->RegisterIdP(idp);
-  std::move(callback).Run(RegisterIdpStatus::kSuccess);
+  request_service_->RegisterIdP(idp, std::move(callback));
 }
 
 void Request::UnregisterIdP(const GURL& idp, UnregisterIdPCallback callback) {
-  if (!IsIdPRegistrationEnabled()) {
-    std::move(callback).Run(false);
-    return;
-  }
-  if (!origin().IsSameOriginWith(url::Origin::Create(idp))) {
-    std::move(callback).Run(false);
-    return;
-  }
-  permission_delegate_->UnregisterIdP(idp);
-  std::move(callback).Run(true);
+  request_service_->UnregisterIdP(idp, std::move(callback));
 }
 
 void Request::OnIdpSigninStatusReceived(const url::Origin& idp_config_origin,
@@ -2339,12 +2300,7 @@ void Request::CompleteUserInfoRequest(
 }
 
 std::unique_ptr<IdpNetworkRequestManager> Request::CreateNetworkManager() {
-  if (mock_network_manager_) {
-    return std::move(mock_network_manager_);
-  }
-
-  return IdpNetworkRequestManager::Create(
-      static_cast<RenderFrameHostImpl*>(&render_frame_host()));
+  return request_service_->CreateNetworkManager();
 }
 
 std::unique_ptr<IdentityRequestDialogController>
@@ -2372,7 +2328,7 @@ Request::CreateDialogController() {
 
 void Request::SetNetworkManagerForTests(
     std::unique_ptr<IdpNetworkRequestManager> manager) {
-  mock_network_manager_ = std::move(manager);
+  request_service_->SetNetworkManagerForTests(std::move(manager));
 }
 
 void Request::SetDialogControllerForTests(
@@ -2727,14 +2683,8 @@ bool Request::RequiresUserMediation() {
 
 void Request::SetRequiresUserMediation(bool requires_user_mediation,
                                        base::OnceClosure callback) {
-  auto_reauthn_permission_delegate_->SetRequiresUserMediation(
-      origin(), requires_user_mediation);
-  if (permission_delegate_) {
-    permission_delegate_->OnSetRequiresUserMediation(origin(),
-                                                     std::move(callback));
-  } else {
-    std::move(callback).Run();
-  }
+  request_service_->SetRequiresUserMediation(requires_user_mediation,
+                                             std::move(callback));
 }
 
 void Request::LoginToIdP(bool can_append_hints,
@@ -2781,19 +2731,7 @@ void Request::MaybeShowActiveModeModalDialog(const GURL& idp_config_url,
 }
 
 void Request::PreventSilentAccess(PreventSilentAccessCallback callback) {
-  SetRequiresUserMediation(true, std::move(callback));
-  if (permission_delegate_->HasSharingPermission(GetEmbeddingOrigin())) {
-    // Ensure the lifecycle state as GetPageUkmSourceId doesn't support the
-    // prerendering page. As FederatedAuthRequest runs behind the
-    // BrowserInterfaceBinders, the service doesn't receive any request while
-    // prerendering, and the CHECK should always meet the condition.
-    CHECK(!render_frame_host().IsInLifecycleState(
-        RenderFrameHost::LifecycleState::kPrerendering));
-    RecordPreventSilentAccess(
-        ComputeRequesterFrameType(render_frame_host(), origin(),
-                                  GetEmbeddingOrigin()),
-        render_frame_host().GetPageUkmSourceId());
-  }
+  request_service_->PreventSilentAccess(std::move(callback));
 }
 
 void Request::Disconnect(

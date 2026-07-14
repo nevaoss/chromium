@@ -6,10 +6,10 @@
 #define CHROME_BROWSER_WEB_APPLICATIONS_GENERATED_ICON_FIX_MANAGER_H_
 
 #include <optional>
-#include <vector>
 
 #include "base/auto_reset.h"
 #include "base/containers/flat_set.h"
+#include "base/containers/span.h"
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
@@ -82,7 +82,7 @@ class GeneratedIconFixManager
   void ScheduleFixAfterSyncInstall(const webapps::AppId& app_id);
 
   void OnWebAppsWillBeUpdatedFromSync(
-      const std::vector<const WebApp*>& new_apps_state) override;
+      base::span<const WebApp* const> new_apps_state) override;
   void OnAppRegistrarDestroyed() override;
   void OnConnectionChanged(
       net::NetworkChangeNotifier::ConnectionType type) override;

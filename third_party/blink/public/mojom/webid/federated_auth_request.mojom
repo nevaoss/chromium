@@ -220,6 +220,10 @@ struct TokenError {
 // Create a federated sign-in request using the specified provider.
 // This interface is called from a renderer process and implemented in the
 // browser process.
+// TODO(https://crbug.com/519217823): The methods in this interface are being
+// moved to FederatedRequestService (which supports multiple concurrent
+// requests) and FederatedRequest. Remove this interface once the migration
+// is complete.
 interface FederatedAuthRequest {
   // Requests a token to be generated, given an array of
   // IdentityProviderGetParameters.
@@ -297,4 +301,14 @@ interface FederatedRequest {
 
 // Manages federated identity request sessions.
 interface FederatedRequestService {
+  // Registers the url as an IdP's configURL of the user's preference.
+  RegisterIdP(url.mojom.Url url) => (RegisterIdpStatus status);
+
+  // Unregisters the url as an IdP's configURL of the user's preference.
+  UnregisterIdP(url.mojom.Url url) => (bool success);
+
+  // Require user mediation with navigator.credentials.preventSilentAccess() as
+  // defined in
+  // https://w3c.github.io/webappsec-credential-management/#user-mediation
+  PreventSilentAccess() => ();
 };

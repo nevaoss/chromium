@@ -444,10 +444,10 @@ chromium-metrics-reviews@google.com.
   <int value="35" label="UMA_CONDITIONAL_TAB_STRIP_DISMISS_UNDO"/>
   <int value="37" label="UMA_READING_LIST_BOOKMARK_ADDED"/>
   <int value="38" label="UMA_PRIVACY_SANDBOX_PAGE_OPEN"/>
-  <int value="39" label="UMA_WEB_FEED_FOLLOW_SUCCESS"/>
-  <int value="40" label="UMA_WEB_FEED_FOLLOW_FAILURE"/>
-  <int value="41" label="UMA_WEB_FEED_UNFOLLOW_SUCCESS"/>
-  <int value="42" label="UMA_WEB_FEED_UNFOLLOW_FAILURE"/>
+  <int value="39" label="(Obsolete) UMA_WEB_FEED_FOLLOW_SUCCESS"/>
+  <int value="40" label="(Obsolete) UMA_WEB_FEED_FOLLOW_FAILURE"/>
+  <int value="41" label="(Obsolete) UMA_WEB_FEED_UNFOLLOW_SUCCESS"/>
+  <int value="42" label="(Obsolete) UMA_WEB_FEED_UNFOLLOW_FAILURE"/>
   <int value="43" label="UMA_LANGUAGE_SPLIT_RESTART"/>
   <int value="44" label="UMA_AUTOFILL_VIRTUAL_CARD_FILLED"/>
   <int value="45" label="UMA_WINDOW_ERROR"/>

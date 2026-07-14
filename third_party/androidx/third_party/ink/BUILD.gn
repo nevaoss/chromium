@@ -268,12 +268,7 @@ source_set("ink") {
     "//third_party/libtess2",
   ]
 
-  deps += [
-    ":ink_jni_registration",
-    "//third_party/androidx/local_modifications/ink:ink_native",
-  ]
-
-  configs += [ ":ink_jni_registration_version_script" ]
+  deps += [ ":ink_jni_registration" ]
 }
 
 _ink_aar_targets = [

@@ -1506,7 +1506,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="OptimizationGuide.ModelExecution.OnDeviceModelUninstallReason.{BaseModel}"
-    enum="OnDeviceModelUninstallReason" expires_after="2026-10-15">
+    enum="OnDeviceModelUninstallReason" expires_after="2026-12-16">
   <owner>zekunjiang@google.com</owner>
   <owner>wittman@chromium.org</owner>
   <summary>
@@ -1980,7 +1980,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="OptimizationGuide.OnDeviceModel.NewModelInstalled"
-    enum="InstalledModel" expires_after="2026-10-15">
+    enum="InstalledModel" expires_after="2026-12-16">
   <owner>zekunjiang@google.com</owner>
   <owner>wittman@chromium.org</owner>
   <summary>

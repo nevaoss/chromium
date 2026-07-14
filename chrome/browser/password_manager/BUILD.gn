@@ -59,10 +59,7 @@ source_set("password_manager") {
       "Security.framework",
       "Foundation.framework",
     ]
-    deps += [
-      "//chrome/app:branded_strings",
-      "//chrome/app:generated_resources",
-    ]
+    deps += [ "//chrome/app:branded_strings" ]
     public += [ "password_manager_util_mac.h" ]
     sources += [ "password_manager_util_mac.mm" ]
   }

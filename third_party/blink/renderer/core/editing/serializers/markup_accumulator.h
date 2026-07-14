@@ -53,7 +53,7 @@ class CORE_EXPORT MarkupAccumulator {
     kUnsynchronized,
   };
 
-  MarkupAccumulator(AbsoluteURLs,
+  MarkupAccumulator(ResolveUrls,
                     SerializationType,
                     const ShadowRootInclusion&,
                     AttributesMode = AttributesMode::kSynchronized);

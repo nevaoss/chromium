@@ -875,13 +875,6 @@ public class WebViewChromiumAwInit {
                 StartupTasksRunner.StartupMode.COUNT);
         RecordHistogram.recordEnumeratedHistogram(
                 "Android.WebView.Startup.CreationTime.InitReason2", startCallSite, CallSite.COUNT);
-        if (startupMode == StartupTasksRunner.StartupMode.ASYNC_BUT_FULLY_SYNC
-                || startupMode == StartupTasksRunner.StartupMode.PARTIAL_ASYNC_THEN_SYNC) {
-            RecordHistogram.recordEnumeratedHistogram(
-                    "Android.WebView.Startup.ChromiumInitTime.AsyncToSyncSwitchReason2",
-                    finishCallSite,
-                    CallSite.COUNT);
-        }
         RecordHistogram.recordTimesHistogram(
                 "Android.WebView.Startup.ChromiumInitTime.WallClockTime", wallClockTimeMs);
         RecordHistogram.recordTimesHistogram(

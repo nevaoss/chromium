@@ -198,9 +198,6 @@ template("generate_jni_registration") {
       rebase_path(depfile, root_build_dir),
       "--java-sources-file",
       rebase_path(_java_sources_list, root_build_dir),
-
-      # TODO(http://crbug.com/434278751): Remove support for legacy natives.
-      "--enable-legacy-natives",
     ]
 
     if (defined(_native_sources_list)) {
@@ -361,6 +358,7 @@ template("generate_jar_jni_registration") {
 
   if (defined(_version_script_path)) {
     config("${target_name}_version_script") {
+      inputs = [ _version_script_path ]
       ldflags = [ "-Wl,--version-script=" +
                   rebase_path(_version_script_path, root_build_dir) ]
     }
@@ -468,9 +466,6 @@ template("generate_jni_impl") {
           rebase_path(_srcjar_output, root_build_dir),
           "--placeholder-srcjar-path",
           rebase_path(_placeholder_srcjar_output, root_build_dir),
-
-          # TODO(http://crbug.com/434278751): Remove support for legacy natives.
-          "--enable-legacy-natives",
         ]
         outputs += [
           _srcjar_output,

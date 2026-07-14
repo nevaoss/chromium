@@ -21,6 +21,7 @@
 #include "components/sync/base/client_tag_hash.h"
 #include "components/sync/base/data_type.h"
 #include "components/sync/base/server_defined_unique_tags.h"
+#include "components/sync/base/time.h"
 #include "components/sync/base/unique_position.h"
 #include "components/sync/model/conflict_resolution.h"
 #include "components/sync/protocol/bookmark_model_metadata.pb.h"
@@ -111,6 +112,8 @@ sync_pb::BookmarkMetadata CreateNodeMetadata(
       syncer::ClientTagHash::FromUnhashed(syncer::BOOKMARKS,
                                           node->uuid().AsLowercaseString())
           .value());
+  bookmark_metadata.mutable_metadata()->set_creation_time(
+      syncer::TimeToProtoTime(base::Time::Now()));
   *bookmark_metadata.mutable_metadata()->mutable_unique_position() =
       unique_position.ToProto();
   return bookmark_metadata;
@@ -127,6 +130,8 @@ sync_pb::BookmarkMetadata CreatePermanentNodeMetadata(
       syncer::ClientTagHash::FromUnhashed(syncer::BOOKMARKS,
                                           node->uuid().AsLowercaseString())
           .value());
+  bookmark_metadata.mutable_metadata()->set_creation_time(
+      syncer::TimeToProtoTime(base::Time::Now()));
   return bookmark_metadata;
 }
 

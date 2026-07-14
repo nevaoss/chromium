@@ -87,6 +87,7 @@ source_set("unit_tests") {
     "//base/test:test_support",
     "//chrome/browser/tab_group_sync:factories",
     "//chrome/browser/ui",
+    "//chrome/browser/ui:recently_audible_helper",
     "//chrome/browser/ui:ui_features",
     "//chrome/browser/ui/tabs:test_support",
     "//chrome/browser/ui/tabs/alert:tab_alert",

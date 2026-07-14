@@ -712,12 +712,14 @@ ExtensionFunction::ResponseAction UserScriptsExecuteFunction::Run() {
   if (!file_sources.empty()) {
     // JS files don't require localization.
     constexpr bool kRequiresLocalization = false;
-    scripting::CheckAndLoadFiles(
-        std::move(file_sources), script_parsing::ContentScriptType::kJs,
-        *extension(), kRequiresLocalization,
-        base::BindOnce(&UserScriptsExecuteFunction::DidLoadResources, this,
-                       std::move(sources)),
-        &error);
+    if (!scripting::CheckAndLoadFiles(
+            std::move(file_sources), script_parsing::ContentScriptType::kJs,
+            *extension(), kRequiresLocalization,
+            base::BindOnce(&UserScriptsExecuteFunction::DidLoadResources, this,
+                           std::move(sources)),
+            &error)) {
+      return RespondNow(Error(std::move(error)));
+    }
   } else {
     if (!Execute(std::move(sources), &error)) {
       return RespondNow(Error(std::move(error)));

@@ -43,8 +43,8 @@ const NSTimeInterval kChevronAnimationDuration = 0.25;
   UIStackView* _rowStack;
   // Line separating rows.
   UIView* _separatorView;
-  // Navigation action on tap.
-  void (^_navigationAction)(void);
+  // Backing task model.
+  __weak LevelUpTask* _task;
 }
 
 - (instancetype)initWithFrame:(CGRect)frame {
@@ -129,7 +129,7 @@ const NSTimeInterval kChevronAnimationDuration = 0.25;
 - (void)configureWithTask:(LevelUpTask*)task showSeparator:(BOOL)showSeparator {
   self.backgroundColor = nil;
   _chevronView.transform = CGAffineTransformIdentity;
-  _navigationAction = task.navigationAction;
+  _task = task;
 
   _iconView.hidden = NO;
   [_rowStack setCustomSpacing:UIStackViewSpacingUseDefault
@@ -140,8 +140,13 @@ const NSTimeInterval kChevronAnimationDuration = 0.25;
     _iconView.image = DefaultSymbolWithPointSize(kCheckmarkSymbol, kIconSize);
   } else {
     _iconView.tintColor = [UIColor colorNamed:kBlueColor];
-    _iconView.image =
-        DefaultSymbolWithPointSize(task.iconSymbolName, kIconSize);
+    if (task.isCustomSymbol) {
+      _iconView.image =
+          CustomSymbolWithPointSize(task.iconSymbolName, kIconSize);
+    } else {
+      _iconView.image =
+          DefaultSymbolWithPointSize(task.iconSymbolName, kIconSize);
+    }
   }
 
   _titleLabel.text = task.title;
@@ -156,7 +161,7 @@ const NSTimeInterval kChevronAnimationDuration = 0.25;
            chevronExpanded:(BOOL)chevronExpanded
            separatorHidden:(BOOL)separatorHidden {
   self.backgroundColor = backgroundColor;
-  _navigationAction = nil;
+  _task = nil;
 
   if (icon) {
     _iconView.image = icon;
@@ -203,9 +208,7 @@ const NSTimeInterval kChevronAnimationDuration = 0.25;
 }
 
 - (void)didTapRow {
-  if (_navigationAction) {
-    _navigationAction();
-  }
+  [self.delegate taskRowView:self didTapTask:_task];
 }
 
 @end

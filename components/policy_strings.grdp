@@ -516,10 +516,10 @@ Additional details:
   <message name="IDS_POLICY_STATUS_USER" desc="Title for the user policy status box.">
     User policies
   </message>
-<message name="IDS_POLICY_STATUS_MACHINE" desc="Title for the machine policy status box.">
+  <message name="IDS_POLICY_STATUS_MACHINE" desc="Title for the machine policy status box.">
     Machine policies
   </message>
- <if expr="is_win">
+ <if expr="is_win or is_macosx or is_linux">
   <message name="IDS_POLICY_STATUS_UPDATER" desc="Title for the updater policy status box on windows.">
     Google Update
   </message>

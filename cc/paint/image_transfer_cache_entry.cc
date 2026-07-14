@@ -638,9 +638,14 @@ bool ServiceImageTransferCacheEntry::Deserialize(
     reader.Read(&gainmap_info_);
   }
 
-  // Determine if this image will be tone mapped.
+  // Skip color space conversion if this image will be tone mapped.
+  // TODO(https://crbug.com/395659818): This will inappropriately color convert
+  // SDR images with AGTM metadata. This will not affect the rendering result,
+  // but is odd. All of the caching of the color space conversion here should be
+  // removed.
   const bool is_tone_mapped =
-      has_gainmap_ || ToneMapUtil::UseGlobalToneMapFilter(image_->colorSpace());
+      has_gainmap_ || ToneMapUtil::UseGlobalToneMapFilter(image_->colorSpace(),
+                                                          gfx::HDRMetadata());
 
   // Perform color conversion (if no tone mapping is needed).
   if (target_color_space && !is_tone_mapped) {

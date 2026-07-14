@@ -76,8 +76,7 @@
 - (NSObject*)valueForKey:(NSString*)key {
   NSObject* object = nil;
   if (_sceneSession) {
-    object = [_sceneSession.userInfo objectForKey:key];
-    if (object) {
+    if ((object = [_sceneSession.userInfo objectForKey:key])) {
       [[NSUserDefaults standardUserDefaults] removeObjectForKey:key];
     }
   }

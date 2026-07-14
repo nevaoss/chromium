@@ -6,10 +6,12 @@ package org.chromium.chrome.browser.tasks.tab_management;
 
 import org.chromium.base.Callback;
 import org.chromium.base.supplier.NullableObservableSupplier;
+import org.chromium.base.task.PostTask;
+import org.chromium.base.task.TaskTraits;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
-import org.chromium.chrome.browser.tab.SendTabToSelfTabCardLabelData;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.state.SendTabToSelfTabCardLabelData;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelObserver;
 
@@ -57,25 +59,35 @@ public class SendTabToSelfTabLabeller implements TabModelObserver {
      *     TabModel}.
      */
     public void showAll(@Nullable List<Tab> tabs) {
+        PostTask.postTask(TaskTraits.UI_DEFAULT, () -> showAllInternal(tabs));
+    }
+
+    private void showAllInternal(@Nullable List<Tab> tabs) {
         if (tabs == null) {
             tabs = getTabsFromTabModel();
         }
         Map<Integer, TabCardLabelData> cardLabels = new HashMap<>();
         for (Tab tab : tabs) {
-            cardLabels.put(tab.getId(), buildLabel(tab));
+            if (tab == null || tab.isDestroyed() || tab.getUserDataHost() == null) continue;
+            // First check the in-memory UserDataHost synchronously. This avoids posting tasks to
+            // the UI thread when the data is already loaded.
+            SendTabToSelfTabCardLabelData data = SendTabToSelfTabCardLabelData.get(tab);
+            if (data != null) {
+                cardLabels.put(tab.getId(), buildLabel(data));
+            } else {
+                // Asynchronously restore from LevelDB. If no data is found, push null to clear.
+                SendTabToSelfTabCardLabelData.from(
+                        tab,
+                        (loadedData) -> {
+                            TabCardLabelData labelData = buildLabel(loadedData);
+                            mNotificationHandler.updateTabCardLabels(
+                                    Collections.singletonMap(tab.getId(), labelData));
+                        });
+            }
         }
         if (!cardLabels.isEmpty()) {
             mNotificationHandler.updateTabCardLabels(cardLabels);
         }
-    }
-
-    /**
-     * Handles newly added tabs by ensuring their Send Tab To Self labels are displayed if
-     * applicable.
-     */
-    @Override
-    public void didAddTab(Tab tab, int type, int creationState, boolean markedForSelection) {
-        showAll(Collections.singletonList(tab));
     }
 
     /**
@@ -117,13 +129,12 @@ public class SendTabToSelfTabLabeller implements TabModelObserver {
     /**
      * Builds the {@link TabCardLabelData} for a given tab if it has active Send Tab To Self data.
      *
-     * @param tab The tab to create the label for.
+     * @param data The Send Tab To Self data to create the label for.
      * @return The {@link TabCardLabelData} containing the label details, or null if no label
      *     applies.
      */
-    private @Nullable TabCardLabelData buildLabel(Tab tab) {
-        SendTabToSelfTabCardLabelData data = SendTabToSelfTabCardLabelData.get(tab);
-        if (data == null) {
+    private @Nullable TabCardLabelData buildLabel(@Nullable SendTabToSelfTabCardLabelData data) {
+        if (data == null || data.isNegativeCache()) {
             // TODO(crbug.com/488072250): This might clear labels applied by other features.
             // Clear labels only for the tabs which were previously labelled by this labeller.
             return null;

@@ -175,16 +175,22 @@ class TestRenderingContext2D final
     return true;
   }
 
-  CanvasResourceProvider* GetResourceProvider() const override {
-    return nullptr;
+  base::ByteSize AllocatedBufferSize() const override {
+    return base::ByteSize();
   }
 
   CanvasResourceProvider* GetOrCreateResourceProvider() override {
     return nullptr;
   }
 
+  bool Is2DCanvasAccelerated() const override { return false; }
+
   // Implementing pure virtual functions from CanvasRenderingContext.
   scoped_refptr<StaticBitmapImage> GetImage() override { return nullptr; }
+  scoped_refptr<StaticBitmapImage> PaintRenderingResultsToSnapshot(
+      SourceDrawingBuffer) override {
+    return nullptr;
+  }
   std::unique_ptr<CanvasResourceProvider> ReplaceResourceProvider(
       std::unique_ptr<CanvasResourceProvider>) override {
     return nullptr;

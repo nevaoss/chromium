@@ -15,8 +15,10 @@ class CameraSearchTaskInfo : public TaskInfo {
 
   // TaskInfo implementation.
   TaskType GetTaskType() const override { return TaskType::kCameraSearch; }
-  int GetTitleId() const override { return 0; }
-  int GetTaskDescriptionId() const override { return 0; }
+  std::string GetTitle() const override { return "Search with camera"; }
+  std::string GetTaskDescription() const override {
+    return "Shop, translate and identify what you see with your camera";
+  }
   std::string GetIconSymbolName() const override {
     return base::SysNSStringToUTF8(kCameraSymbol);
   }
@@ -25,7 +27,7 @@ class CameraSearchTaskInfo : public TaskInfo {
     return LevelUpTaskCategory::kSearch;
   }
   std::string GetTriggerUserAction() const override { return ""; }
-  base::RepeatingClosure GetNavigationAction() const override {
+  TaskInfo::NavigationAction GetNavigationAction() const override {
     return base::DoNothing();
   }
 };

@@ -21,12 +21,15 @@ DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(
 
 EmbeddedPermissionPromptSystemSettingsView::
     EmbeddedPermissionPromptSystemSettingsView(
-        Browser* browser,
+        content::WebContents* web_contents,
         base::WeakPtr<EmbeddedPermissionPromptViewDelegate> delegate)
-    : EmbeddedPermissionPromptBaseView(browser, delegate) {
-  browser_subscription_ = browser->RegisterDidBecomeActive(base::BindRepeating(
-      &EmbeddedPermissionPromptSystemSettingsView::DidBecomeActive,
-      base::Unretained(this)));
+    : EmbeddedPermissionPromptBaseView(web_contents, delegate) {
+  if (BrowserWindowInterface* browser = GetBrowser()) {
+    browser_subscription_ =
+        browser->RegisterDidBecomeActive(base::BindRepeating(
+            &EmbeddedPermissionPromptSystemSettingsView::DidBecomeActive,
+            base::Unretained(this)));
+  }
 }
 
 EmbeddedPermissionPromptSystemSettingsView::

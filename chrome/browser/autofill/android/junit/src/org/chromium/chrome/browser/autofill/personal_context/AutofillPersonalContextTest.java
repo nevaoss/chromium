@@ -5,6 +5,7 @@
 package org.chromium.chrome.browser.autofill.personal_context;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.verify;
@@ -29,6 +30,7 @@ import org.robolectric.Shadows;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
+import org.chromium.base.test.util.UserActionTester;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.autofill.autofill_ai.EntityDataManager;
 import org.chromium.chrome.browser.autofill.autofill_ai.EntityDataManagerJni;
@@ -54,9 +56,11 @@ public class AutofillPersonalContextTest {
     @Mock private SettingsIndexData mSearchIndexDataMock;
 
     private AutofillPersonalContextFragment mFragment;
+    private UserActionTester mActionTester;
 
     @Before
     public void setUp() {
+        mActionTester = new UserActionTester();
         when(mProfile.getOriginalProfile()).thenReturn(mProfile);
         EntityDataManagerJni.setInstanceForTesting(mMockEntityDataManagerJni);
         ProfileManager.setLastUsedProfileForTesting(mProfile);
@@ -71,7 +75,7 @@ public class AutofillPersonalContextTest {
 
     @Test
     @SmallTest
-    public void testPersonalContextSwitchToggle() {
+    public void testPersonalContextSwitchToggleOff() {
         when(mMockEntityDataManagerJni.isPersonalContextEnabled(0L)).thenReturn(true);
 
         AutofillPersonalContextCoordinator.createFor(
@@ -85,6 +89,33 @@ public class AutofillPersonalContextTest {
                 .onPreferenceChange(mFragment.getAutofillPersonalContextSwitch(), false);
 
         verify(mMockEntityDataManagerJni).setPersonalContextEnabled(0L, false);
+        assertTrue(
+                mActionTester
+                        .getActions()
+                        .contains(AutofillPersonalContextFragment.ACTION_TOGGLED_OFF));
+    }
+
+    @Test
+    @SmallTest
+    @EnableFeatures(ChromeFeatureList.AUTOFILL_AI_WITH_DATA_SCHEMA)
+    public void testPersonalContextSwitchToggleOn() {
+        when(mMockEntityDataManagerJni.isPersonalContextEnabled(0L)).thenReturn(false);
+
+        AutofillPersonalContextCoordinator.createFor(
+                mFragment, mFragment.requireActivity(), mProfile);
+
+        assertFalse(mFragment.getAutofillPersonalContextSwitch().isChecked());
+
+        mFragment
+                .getAutofillPersonalContextSwitch()
+                .getOnPreferenceChangeListener()
+                .onPreferenceChange(mFragment.getAutofillPersonalContextSwitch(), true);
+
+        verify(mMockEntityDataManagerJni).setPersonalContextEnabled(0L, true);
+        assertTrue(
+                mActionTester
+                        .getActions()
+                        .contains(AutofillPersonalContextFragment.ACTION_TOGGLED_ON));
     }
 
     @Test
@@ -107,6 +138,10 @@ public class AutofillPersonalContextTest {
         assertNotNull(intent);
         assertEquals(Intent.ACTION_VIEW, intent.getAction());
         assertEquals(Uri.parse(testUrl), intent.getData());
+        assertTrue(
+                mActionTester
+                        .getActions()
+                        .contains(AutofillPersonalContextFragment.ACTION_MANAGE_CONNECTED_APPS));
     }
 
     @Test
@@ -129,6 +164,10 @@ public class AutofillPersonalContextTest {
         assertNotNull(intent);
         assertEquals(Intent.ACTION_VIEW, intent.getAction());
         assertEquals(Uri.parse(testUrl), intent.getData());
+        assertTrue(
+                mActionTester
+                        .getActions()
+                        .contains(AutofillPersonalContextFragment.ACTION_MANAGE_SUGGESTIONS));
     }
 
     @Test

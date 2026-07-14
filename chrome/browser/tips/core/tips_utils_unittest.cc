@@ -9,11 +9,12 @@
 
 #include "base/notreached.h"
 #include "base/strings/string_number_conversions.h"
+#include "chrome/browser/tips/core/tips_types.h"
 #include "chrome/grit/generated_resources.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/base/l10n/l10n_util.h"
 
-namespace notifications {
+namespace tips {
 namespace {
 
 TEST(NotificationTipsUtilsTest, GetTipsNotificationData) {
@@ -29,7 +30,7 @@ TEST(NotificationTipsUtilsTest, GetTipsNotificationData) {
       TipsNotificationsFeatureType::kRecentTabs};
 
   for (const auto type : tips_list) {
-    NotificationData data = GetTipsNotificationData(type);
+    notifications::NotificationData data = GetTipsNotificationData(type);
     std::u16string expected_title;
     std::u16string expected_message;
 
@@ -94,7 +95,7 @@ TEST(NotificationTipsUtilsTest, GetTipsNotificationData) {
 
     EXPECT_EQ(data.title, expected_title);
     EXPECT_EQ(data.message, expected_message);
-    EXPECT_EQ(data.custom_data[kTipsNotificationsFeatureType],
+    EXPECT_EQ(data.custom_data[notifications::kTipsNotificationsFeatureType],
               base::NumberToString(static_cast<int>(type)));
 
     EXPECT_EQ(data.buttons.size(), 1u);
@@ -105,4 +106,4 @@ TEST(NotificationTipsUtilsTest, GetTipsNotificationData) {
 }
 
 }  // namespace
-}  // namespace notifications
+}  // namespace tips

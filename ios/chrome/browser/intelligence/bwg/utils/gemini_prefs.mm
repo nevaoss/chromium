@@ -42,6 +42,10 @@ bool DidUserConsentToGemini(PrefService* prefs) {
   return prefs->GetBoolean(::prefs::kIOSBwgConsent);
 }
 
+bool DidUserConsentToGeminiLive(PrefService* prefs) {
+  return prefs->GetBoolean(::prefs::kIOSGeminiLiveConsent);
+}
+
 bool DidUserSeeGeminiPromo(PrefService* prefs) {
   return prefs->GetInteger(prefs::kIOSBWGPromoImpressionCount) > 0;
 }
@@ -50,7 +54,15 @@ bool DidGeminiLiveIntroPlay(PrefService* prefs) {
   return prefs->GetBoolean(::prefs::kIOSGeminiLiveIntroPlayed);
 }
 
+void SetGeminiLiveIntroPlayed(PrefService* prefs) {
+  prefs->SetBoolean(::prefs::kIOSGeminiLiveIntroPlayed, true);
+}
+
 void UpdateUserConsentPrefs(bool value, PrefService* prefs) {
   prefs->SetBoolean(::prefs::kIOSBwgConsent, value);
+}
+
+void UpdateUserConsentToLivePrefs(bool value, PrefService* prefs) {
+  prefs->SetBoolean(::prefs::kIOSGeminiLiveConsent, value);
 }
 }  // namespace gemini

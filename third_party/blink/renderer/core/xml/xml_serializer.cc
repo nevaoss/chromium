@@ -28,7 +28,7 @@ namespace blink {
 
 String XMLSerializer::serializeToString(Node* root) {
   DCHECK(root);
-  MarkupAccumulator accumulator(kDoNotResolveURLs, SerializationType::kXML,
+  MarkupAccumulator accumulator(ResolveUrls::kNone, SerializationType::kXML,
                                 ShadowRootInclusion());
   return accumulator.SerializeNodes<EditingStrategy>(*root, kIncludeNode);
 }

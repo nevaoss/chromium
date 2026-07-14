@@ -181,7 +181,7 @@ struct PasswordGenerationAgent::GenerationItemInfo {
                      FormData form_data,
                      std::vector<blink::WebInputElement> password_elements)
       : generation_element(std::move(generation_element)),
-        form_data_(std::move(form_data)),
+        form_data(std::move(form_data)),
         password_elements(std::move(password_elements)) {}
 
   GenerationItemInfo(const GenerationItemInfo&) = delete;
@@ -193,7 +193,7 @@ struct PasswordGenerationAgent::GenerationItemInfo {
   blink::WebInputElement generation_element;
 
   // FormData for the generation element.
-  FormData form_data_;
+  FormData form_data;
 
   // Password elements (new password only or both new password and
   // confirmation password) in the form.
@@ -497,7 +497,7 @@ void PasswordGenerationAgent::TriggeredGeneratePassword(
             current_generation_item->generation_element),
         is_generation_element_password_type,
         GetTextDirectionForElement(current_generation_item->generation_element),
-        current_generation_item->form_data_,
+        current_generation_item->form_data,
         current_generation_item->generation_rejected);
     std::move(callback).Run(std::move(password_generation_ui_data));
     current_generation_item->generation_popup_shown = true;
@@ -776,7 +776,7 @@ void PasswordGenerationAgent::AutomaticGenerationAvailable() {
           current_generation_item->generation_element),
       is_generation_element_password_type,
       GetTextDirectionForElement(current_generation_item->generation_element),
-      current_generation_item->form_data_,
+      current_generation_item->form_data,
       current_generation_item->generation_rejected);
   current_generation_item->generation_popup_shown = true;
   unsafe_driver()->AutomaticGenerationAvailable(password_generation_ui_data);

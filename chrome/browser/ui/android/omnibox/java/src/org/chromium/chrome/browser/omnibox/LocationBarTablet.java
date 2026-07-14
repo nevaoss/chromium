@@ -259,6 +259,16 @@ class LocationBarTablet extends LocationBarLayout implements OnLongClickListener
     }
 
     @Override
+    protected void setUrlFocusChangePercent(
+            float ntpSearchBoxScrollFraction,
+            float urlFocusChangeFraction,
+            boolean isUrlFocusChangeInProgress) {
+        super.setUrlFocusChangePercent(
+                ntpSearchBoxScrollFraction, urlFocusChangeFraction, isUrlFocusChangeInProgress);
+        updateForeground();
+    }
+
+    @Override
     public void setOutlineProvider(ViewOutlineProvider provider) {
         mOutlineProvider = provider;
         super.setOutlineProvider(provider);
@@ -519,6 +529,7 @@ class LocationBarTablet extends LocationBarLayout implements OnLongClickListener
     void setFuseboxLayoutMode(@FuseboxLayoutMode int layoutMode) {
         super.setFuseboxLayoutMode(layoutMode);
         mLayoutMode = layoutMode;
+        updateForeground();
         // We don't expect that the layout mode will ever change back after becoming
         // SUGGESTIONS_POPOVER (it depends only on flags set at build time and startup) and thus
         // don't handle that case.
@@ -556,7 +567,9 @@ class LocationBarTablet extends LocationBarLayout implements OnLongClickListener
     private void updateForeground() {
         if (mIsInStandby) {
             setForeground(mInsetStandbyBorder);
-        } else if (mIsHovered) {
+        } else if (mIsHovered
+                && (mLayoutMode != FuseboxLayoutMode.SUGGESTIONS_POPOVER
+                        || !mUrlCoordinator.hasFocus())) {
             setForeground(mHoverDrawable);
         } else {
             setForeground(null);
@@ -620,7 +633,7 @@ class LocationBarTablet extends LocationBarLayout implements OnLongClickListener
         MarginLayoutParams statusViewLayoutParams =
                 (MarginLayoutParams) mStatusView.getLayoutParams();
         Resources resources = getResources();
-        if (state == FuseboxState.COMPACT) {
+        if (state == FuseboxState.COMPACT && !mIsInStandby) {
             // In the compact fusebox state, the location bar is taller than its inner background,
             // creating the appearance of vertical misalignment. We resolve this by translating
             // constituent views to be centered withing the 56 dp inner background, shifting them

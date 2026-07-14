@@ -158,6 +158,11 @@ IN_PROC_BROWSER_TEST_F(SetShapeTest, ValidatesInput) {
       "[new DOMRect(0, 0, 200, NaN)]",
       // Too many rectangles.
       "Array(10001).fill(new DOMRect(0, 0, 200, 200))",
+      // Rectangles too small.
+      "[new DOMRect(0, 0, 9, 9)]",
+      "[new DOMRect(0, 0, 9, 10)]",
+      "[new DOMRect(0, 0, 10, 9)]",
+      "[new DOMRect(0, 0, 9, 9), new DOMRect(10, 10, 5, 5)]",
   });
   for (const auto& input : invalid_inputs) {
     std::string script = base::StrCat({
@@ -228,6 +233,40 @@ IN_PROC_BROWSER_TEST_F(SetShapeTest, ClearsShapeOnTransitionFromUnframed) {
       ]).catch(error => error.name)
     )");
   EXPECT_EQ("InvalidStateError", set_shape_after_revoke);
+  EXPECT_THAT(frame, ShapeRectanglesAre({}));
+}
+
+IN_PROC_BROWSER_TEST_F(SetShapeTest, AllowsMixOfSmallAndLargeRects) {
+  content::RenderFrameHost* frame = OpenApp(app_url_info_->app_id());
+
+  auto result = content::EvalJs(frame, R"(
+      window.chromeos.isolatedWebApp.setShape([
+        new DOMRect(0, 0, 9, 9),
+        new DOMRect(10, 10, 10, 10)
+      ])
+    )");
+  EXPECT_EQ(base::Value(), result);
+  EXPECT_THAT(frame, ShapeRectanglesAre({
+                         gfx::Rect(0, 0, 9, 9),
+                         gfx::Rect(10, 10, 10, 10),
+                     }));
+}
+
+IN_PROC_BROWSER_TEST_F(SetShapeTest, EmptyListClearsShape) {
+  content::RenderFrameHost* frame = OpenApp(app_url_info_->app_id());
+
+  auto set_result = content::EvalJs(frame, R"(
+      window.chromeos.isolatedWebApp.setShape([
+        new DOMRect(0, 0, 200, 200)
+      ])
+    )");
+  EXPECT_EQ(base::Value(), set_result);
+  EXPECT_THAT(frame, ShapeRectanglesAre({gfx::Rect(0, 0, 200, 200)}));
+
+  auto clear_result = content::EvalJs(frame, R"(
+      window.chromeos.isolatedWebApp.setShape([])
+    )");
+  EXPECT_EQ(base::Value(), clear_result);
   EXPECT_THAT(frame, ShapeRectanglesAre({}));
 }
 

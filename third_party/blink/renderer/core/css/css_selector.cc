@@ -297,6 +297,16 @@ inline unsigned CSSSelector::SpecificityForOneSelector() const {
   NOTREACHED();
 }
 
+std::array<uint8_t, 3> CSSSelector::SimpleSelectorSpecificityTuple() const {
+  unsigned specificity = SpecificityForOneSelector();
+
+  uint8_t a = (specificity & kIdMask) >> 16;
+  uint8_t b = (specificity & kClassMask) >> 8;
+  uint8_t c = (specificity & kElementMask);
+
+  return {a, b, c};
+}
+
 unsigned CSSSelector::SpecificityForPage() const {
   // See https://drafts.csswg.org/css-page/#cascading-and-page-context
   unsigned s = 0;

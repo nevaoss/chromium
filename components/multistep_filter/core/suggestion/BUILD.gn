@@ -6,13 +6,10 @@ source_set("suggestion") {
   sources = [
     "filter_suggestion_generator.cc",
     "filter_suggestion_generator.h",
-    "filter_suggestion_message_util.cc",
-    "filter_suggestion_message_util.h",
   ]
   deps = [
     "//base:i18n",
     "//components/multistep_filter/core:features",
-    "//components/multistep_filter/core:switches",
     "//components/multistep_filter/core:util",
     "//components/multistep_filter/core/annotation_index",
     "//components/multistep_filter/core/logging",
@@ -29,7 +26,6 @@ source_set("unit_tests") {
   testonly = true
   sources = [
     "filter_suggestion_generator_unittest.cc",
-    "filter_suggestion_message_util_unittest.cc",
   ]
   deps = [
     ":suggestion",

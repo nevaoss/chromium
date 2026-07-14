@@ -6672,6 +6672,9 @@ Called by update_use_counter_feature_enum.py.-->
       label="V8ElementInternals_AriaActionsElements_AttributeSetter"/>
   <int value="5927" label="SVGPathElementGetPathData"/>
   <int value="5928" label="SVGPathElementGetPathDataNormalized"/>
+  <int value="5929" label="DownloadFromAdScript"/>
+  <int value="5930" label="CompositorKeyframeSnapshotMissing"/>
+  <int value="5931" label="TimelineTrigger"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom:WebFeature) -->
@@ -8614,6 +8617,17 @@ Called by update_use_counter_css.py.-->
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/renderer/core/loader/preload_helper.h:OriginStatusOnSubresource) -->
+
+<!-- LINT.IfChange(PACUpdateType)-->
+
+<enum name="PACUpdateType">
+  <int value="0" label="None"/>
+  <int value="1" label="RasterInducingScroll"/>
+  <int value="2" label="Repaint"/>
+  <int value="3" label="Full"/>
+</enum>
+
+<!-- LINT.ThenChange(//third_party/blink/renderer/platform/graphics/compositing/paint_artifact_compositor.h:UpdateType) -->
 
 <!-- LINT.IfChange(PermissionElementInvalidStyleReason) -->
 

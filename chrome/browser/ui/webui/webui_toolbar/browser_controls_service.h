@@ -55,6 +55,7 @@ class BrowserControlsService
   NavigateHomeResult NavigateHome(
       const std::vector<mojom::EventDispositionFlag>& click_flags) override;
   NavigateResult Navigate(const GURL& url) override;
+  NavigateTextResult NavigateText(const std::string& text) override;
 
   static base::expected<ui::EventFlags, mojo_base::mojom::ErrorPtr>
   ToUiEventFlags(

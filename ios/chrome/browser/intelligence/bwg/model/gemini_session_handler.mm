@@ -9,13 +9,17 @@
 #import "base/time/time.h"
 #import "components/feature_engagement/public/event_constants.h"
 #import "components/feature_engagement/public/tracker.h"
+#import "components/prefs/pref_service.h"
 #import "ios/chrome/browser/intelligence/bwg/metrics/gemini_metrics.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_session_delegate.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_tab_helper.h"
 #import "ios/chrome/browser/intelligence/bwg/utils/gemini_constants.h"
+#import "ios/chrome/browser/intelligence/bwg/utils/gemini_prefs.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
+#import "ios/chrome/browser/shared/model/prefs/pref_names.h"
+#import "ios/chrome/browser/shared/model/profile/profile_ios.h"
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_list.h"
-#import "ios/chrome/browser/shared/public/commands/bwg_commands.h"
+#import "ios/chrome/browser/shared/public/commands/gemini_commands.h"
 #import "ios/chrome/browser/shared/public/commands/settings_commands.h"
 #import "ios/public/provider/chrome/browser/bwg/gemini_api.h"
 
@@ -117,6 +121,8 @@ IOSGeminiSessionCancellationReason HistogramEnumFromGeminiCancelType(
   raw_ptr<WebStateList> _webStateList;
   // The feature engagement tracker.
   raw_ptr<feature_engagement::Tracker> _tracker;
+  // The PrefService.
+  raw_ptr<PrefService> _prefService;
   // Session start time for duration tracking.
   base::TimeTicks _sessionStartTime;
   // Tracks if user has received the first response in current session.
@@ -131,11 +137,13 @@ IOSGeminiSessionCancellationReason HistogramEnumFromGeminiCancelType(
 }
 
 - (instancetype)initWithWebStateList:(WebStateList*)webStateList
-                             tracker:(feature_engagement::Tracker*)tracker {
+                             tracker:(feature_engagement::Tracker*)tracker
+                         prefService:(PrefService*)prefService {
   self = [super init];
   if (self) {
     _webStateList = webStateList;
     _tracker = tracker;
+    _prefService = prefService;
   }
   return self;
 }
@@ -378,6 +386,30 @@ IOSGeminiSessionCancellationReason HistogramEnumFromGeminiCancelType(
 
 - (void)geminiLiveUserDidTapLiveButton {
   [self.geminiViewStateDelegate geminiLiveUserDidTapLiveButton];
+}
+
+- (void)geminiLiveIntroShown:(UIViewController*)viewController {
+  if (_prefService) {
+    gemini::SetGeminiLiveIntroPlayed(_prefService);
+  }
+}
+
+- (void)geminiLive:(UIViewController*)viewController
+    showMicrophoneAlertWithCompletion:(void (^)(BOOL granted))completion {
+  [self.geminiHandler
+      showGeminiLiveMicrophoneAlertWithBaseViewController:viewController
+                                               completion:completion];
+}
+
+- (void)geminiLive:(UIViewController*)viewController
+    showConsentScreenWithCompletion:(void (^)(BOOL accepted))completion {
+  [self.geminiHandler
+      startGeminiLiveFirstRunWithBaseViewController:viewController
+                                         completion:^(BOOL success) {
+                                           if (completion) {
+                                             completion(success);
+                                           }
+                                         }];
 }
 
 #pragma mark - Private

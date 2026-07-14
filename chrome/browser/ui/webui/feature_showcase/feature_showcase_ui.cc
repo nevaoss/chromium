@@ -8,9 +8,11 @@
 #include "base/check_deref.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
+#include "base/values.h"
 #include "build/branding_buildflags.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/regional_capabilities/regional_capabilities_service_factory.h"
+#include "chrome/browser/ui/webui/feature_showcase/default_browser_handler.h"
 #include "chrome/browser/ui/webui/feature_showcase/feature_showcase_handler.h"
 #include "chrome/browser/ui/webui/feature_showcase/google_lens_handler.h"
 #include "chrome/browser/ui/webui/feature_showcase/password_manager_handler.h"
@@ -27,6 +29,7 @@
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_data_source.h"
 #include "services/network/public/mojom/content_security_policy.mojom.h"
+#include "ui/base/l10n/l10n_util.h"
 #include "ui/webui/webui_util.h"
 
 namespace {
@@ -53,13 +56,13 @@ void AddDefaultBrowserStepResources(content::WebUIDataSource* source) {
 
 void AddGoogleLensStepResources(content::WebUIDataSource* source) {
   source->AddLocalizedStrings({
-      {"lensTitle", IDS_FEATURE_SHOWCASE_GOOGLE_LENS_TITLE},
-      {"lensSubtitle", IDS_FEATURE_SHOWCASE_GOOGLE_LENS_SUBTITLE},
-      {"lensDisclosure", IDS_FEATURE_SHOWCASE_GOOGLE_LENS_DISCLOSURE},
-      {"lensYesImIn", IDS_FEATURE_SHOWCASE_GOOGLE_LENS_YES_IM_IN},
-      {"lensNotNow", IDS_FEATURE_SHOWCASE_GOOGLE_LENS_NOT_NOW},
+      {"lensTitle", IDS_FEATURE_SHOWCASE_LENS_OVERLAY_TITLE},
+      {"lensSubtitle", IDS_FEATURE_SHOWCASE_LENS_OVERLAY_SUBTITLE},
+      {"lensDisclosure", IDS_FEATURE_SHOWCASE_LENS_OVERLAY_DISCLOSURE},
+      {"lensYesImIn", IDS_FEATURE_SHOWCASE_LENS_OVERLAY_YES_IM_IN},
+      {"lensNotNow", IDS_FEATURE_SHOWCASE_LENS_OVERLAY_NOT_NOW},
       {"lensIllustrationA11yLabel",
-       IDS_FEATURE_SHOWCASE_GOOGLE_LENS_ILLUSTRATION_A11Y_LABEL},
+       IDS_FEATURE_SHOWCASE_LENS_OVERLAY_ILLUSTRATION_A11Y_LABEL},
   });
 
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
@@ -129,11 +132,38 @@ void FeatureShowcaseUI::SetFinishCallback(base::OnceClosure finish_callback) {
   finish_callback_ = std::move(finish_callback);
 }
 
+void FeatureShowcaseUI::SetCanPinToTaskbar(bool can_pin) {
+  can_pin_ = can_pin;
+  if (default_browser_page_handler_) {
+    default_browser_page_handler_->SetCanPin(can_pin);
+  }
+
+  if (can_pin) {
+    base::DictValue update;
+    update.Set(
+        "refreshDefaultBrowserTitle",
+        l10n_util::GetStringUTF16(IDS_FRE_DEFAULT_BROWSER_AND_PINNING_TITLE));
+    update.Set("refreshDefaultBrowserSubtitle",
+               l10n_util::GetStringUTF16(
+                   IDS_FRE_DEFAULT_BROWSER_AND_PINNING_SUBTITLE));
+    content::WebUIDataSource::Update(Profile::FromWebUI(web_ui()),
+                                     chrome::kChromeUIFeatureShowcaseHost,
+                                     std::move(update));
+  }
+}
+
 void FeatureShowcaseUI::BindInterface(
     mojo::PendingReceiver<
         feature_showcase::mojom::FeatureShowcasePageHandlerFactory> receiver) {
   page_factory_receiver_.reset();
   page_factory_receiver_.Bind(std::move(receiver));
+}
+
+void FeatureShowcaseUI::BindInterface(
+    mojo::PendingReceiver<
+        feature_showcase::mojom::DefaultBrowserPageHandlerFactory> receiver) {
+  default_browser_page_factory_receiver_.reset();
+  default_browser_page_factory_receiver_.Bind(std::move(receiver));
 }
 
 void FeatureShowcaseUI::BindInterface(
@@ -156,6 +186,14 @@ void FeatureShowcaseUI::CreatePageHandler(
   page_handler_ = std::make_unique<FeatureShowcaseHandler>(
       std::move(handler), base::BindOnce(&FeatureShowcaseUI::OnShowcaseFinished,
                                          base::Unretained(this)));
+}
+
+void FeatureShowcaseUI::CreatePageHandler(
+    mojo::PendingReceiver<feature_showcase::mojom::DefaultBrowserPageHandler>
+        handler) {
+  default_browser_page_handler_ =
+      std::make_unique<DefaultBrowserHandler>(std::move(handler));
+  default_browser_page_handler_->SetCanPin(can_pin_);
 }
 
 void FeatureShowcaseUI::CreateGoogleLensPageHandler(

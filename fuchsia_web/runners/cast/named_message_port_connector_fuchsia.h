@@ -5,6 +5,9 @@
 #ifndef FUCHSIA_WEB_RUNNERS_CAST_NAMED_MESSAGE_PORT_CONNECTOR_FUCHSIA_H_
 #define FUCHSIA_WEB_RUNNERS_CAST_NAMED_MESSAGE_PORT_CONNECTOR_FUCHSIA_H_
 
+#include <string>
+#include <vector>
+
 #include "base/memory/raw_ptr.h"
 #include "components/cast/named_message_port_connector/named_message_port_connector.h"
 
@@ -20,7 +23,8 @@ class Frame;
 class NamedMessagePortConnectorFuchsia
     : public cast_api_bindings::NamedMessagePortConnector {
  public:
-  explicit NamedMessagePortConnectorFuchsia(fuchsia::web::Frame* frame);
+  NamedMessagePortConnectorFuchsia(fuchsia::web::Frame* frame,
+                                   std::vector<std::string> allowed_origins);
   ~NamedMessagePortConnectorFuchsia() override;
 
   NamedMessagePortConnectorFuchsia(const NamedMessagePortConnectorFuchsia&) =

@@ -132,6 +132,10 @@ content::WebUIDataSource* CreateAndAddPasswordsUIHTMLSource(
        IDS_PASSWORD_MANAGER_UI_ALREADY_CHANGED_PASSWORD},
       {"appsLabel", IDS_PASSWORD_MANAGER_UI_APPS_LABEL},
       {"authTimedOut", IDS_PASSWORD_MANAGER_UI_AUTH_TIMED_OUT},
+      {"automatedPasswordChangeCheckupButton",
+       IDS_PASSWORD_MANAGER_UI_PASSWORD_CHANGE_CHECKUP_BUTTON},
+      {"automatedPasswordChangeCheckupButtonAriaDescription",
+       IDS_PASSWORD_MANAGER_UI_PASSWORD_CHANGE_CHECKUP_BUTTON_ARIA_DESCRIPTION},
       {"automatedPasswordChangeTitle",
        IDS_PASSWORD_MANAGER_UI_PASSWORD_CHANGE_SETTINGS_TITLE},
       {"automatedPasswordChangeDescription",
@@ -681,16 +685,8 @@ content::WebUIDataSource* CreateAndAddPasswordsUIHTMLSource(
           password_manager::features::kEnablePasswordManagerMojoApi));
 
   source->AddBoolean(
-      "enablePasswordCheckup",
-      base::FeatureList::IsEnabled(
-          password_manager::features::kPasswordCheckupPrototype));
-
-  bool passwordUploadUiUpdateEnabled = false;
-#if !BUILDFLAG(IS_CHROMEOS)
-  passwordUploadUiUpdateEnabled =
-      base::FeatureList::IsEnabled(switches::kPasswordUploadUiUpdate);
-#endif  // !BUILDFLAG(IS_CHROMEOS)
-  source->AddBoolean("passwordUploadUiUpdate", passwordUploadUiUpdateEnabled);
+      "passwordUploadUiUpdate",
+      base::FeatureList::IsEnabled(switches::kPasswordUploadUiUpdate));
 
   source->AddString("webuiRefresh2026", features::IsWebuiRefresh2026Enabled()
                                             ? "webui-refresh-2026"

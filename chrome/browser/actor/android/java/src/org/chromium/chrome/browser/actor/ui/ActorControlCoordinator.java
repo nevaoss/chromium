@@ -5,16 +5,10 @@
 package org.chromium.chrome.browser.actor.ui;
 
 
-import android.content.Context;
-import android.content.res.Resources;
 import android.text.TextUtils;
-import android.view.View;
-
-import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.Log;
 import org.chromium.build.annotations.NullMarked;
-import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.actor.ActorTask;
 import org.chromium.chrome.browser.actor.ActorTaskState;
 import org.chromium.chrome.browser.glic.GlicMetrics;
@@ -35,7 +29,6 @@ public class ActorControlCoordinator implements ActorControlStateTracker.Observe
 
     private static final String TAG = "ActorControlCoordin";
 
-    private final Context mContext;
     private final ActorControlMediator mMediator;
     private final PropertyModel mModel;
     private final TabBottomSheetManager mTabBottomSheetManager;
@@ -46,18 +39,15 @@ public class ActorControlCoordinator implements ActorControlStateTracker.Observe
     /**
      * Constructs a new {@link ActorControlCoordinator}.
      *
-     * @param context The {@link Context} for the UI.
      * @param tabBottomSheetManager The {@link TabBottomSheetManager} for the tab bottom sheet.
      * @param stateTracker The tracker for the UI state.
      * @param tabSelectionDelegate The delegate to handle tab selection.
      */
     // TODO(crbug.com/491895203): Add render test for peek view.
     public ActorControlCoordinator(
-            Context context,
             TabBottomSheetManager tabBottomSheetManager,
             ActorControlStateTracker stateTracker,
             TabSelectionDelegate tabSelectionDelegate) {
-        mContext = context;
         mTabBottomSheetManager = tabBottomSheetManager;
         mTabSelectionDelegate = tabSelectionDelegate;
         mStateTracker = stateTracker;
@@ -122,35 +112,12 @@ public class ActorControlCoordinator implements ActorControlStateTracker.Observe
 
     private void setPeekViewContent(String title, PeekViewUiState state) {
         mPeekViewUiState = state;
-        String contentDescription = calculateContentDescription(title, state);
-        mMediator.setContent(title, contentDescription, state);
+        mMediator.setContent(title, state);
     }
 
     private void clearPeekViewContent() {
         mPeekViewUiState = PeekViewUiState.DEFAULT;
-        mMediator.setContent("", null, PeekViewUiState.DEFAULT);
-    }
-
-    @VisibleForTesting
-    @Nullable String calculateContentDescription(String title, PeekViewUiState state) {
-        StringBuilder sb = new StringBuilder();
-        if (!TextUtils.isEmpty(title)) {
-            sb.append(title.trim());
-        }
-        String desc = state.descriptionResId != Resources.ID_NULL
-                ? mContext.getString(state.descriptionResId)
-                : "";
-        if (state.getDescriptionVisibility() == View.VISIBLE && !TextUtils.isEmpty(desc)) {
-            if (sb.length() > 0) {
-                sb.append(", ");
-            }
-            sb.append(desc.trim());
-        }
-        String rawText = sb.toString();
-        if (TextUtils.isEmpty(rawText)) {
-            return null;
-        }
-        return mContext.getString(R.string.peek_state_accessible_label, rawText);
+        mMediator.setContent("", PeekViewUiState.DEFAULT);
     }
 
     /** Cleans up component */
@@ -161,7 +128,7 @@ public class ActorControlCoordinator implements ActorControlStateTracker.Observe
 
     /** Called when the actor control button is clicked. */
     /* package */ void onActorControlClicked() {
-        ActorTask activeTask = mStateTracker.getCurrentActiveTask();
+        ActorTask activeTask = mStateTracker.getActiveTaskAssociatedWithCurrentConversation();
         // TODO(crbug.com/503370476): Use ActorUiStateManager to track when tasks are finished,
         // instead of checking activeTask.
         if (activeTask == null) {

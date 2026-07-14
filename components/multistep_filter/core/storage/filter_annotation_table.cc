@@ -13,6 +13,7 @@
 #include "base/check.h"
 #include "base/notimplemented.h"
 #include "base/strings/strcat.h"
+#include "base/strings/string_util.h"
 #include "components/multistep_filter/core/data_models/filter_annotation.h"
 #include "sql/database.h"
 #include "sql/statement.h"
@@ -26,7 +27,6 @@ namespace filter_annotations {
 constexpr char kTableName[] = "filter_annotations";
 constexpr char kId[] = "id";
 constexpr char kTaskType[] = "task_type";
-constexpr char kSourceDomain[] = "source_domain";
 constexpr char kSourceHost[] = "source_host";
 constexpr char kCreationTimestamp[] = "creation_timestamp";
 }  // namespace filter_annotations
@@ -65,7 +65,6 @@ bool FilterAnnotationTable::Init(sql::Database* db) {
         {"CREATE TABLE ", filter_annotations::kTableName, "(",
          filter_annotations::kId, " TEXT PRIMARY KEY NOT NULL,",
          filter_annotations::kTaskType, " TEXT NOT NULL,",
-         filter_annotations::kSourceDomain, " TEXT NOT NULL,",
          filter_annotations::kSourceHost, " TEXT NOT NULL,",
          filter_annotations::kCreationTimestamp, " INTEGER NOT NULL)"});
     return db_->Execute(kCreateFilterAnnotationsTableSql);
@@ -99,16 +98,16 @@ bool FilterAnnotationTable::Init(sql::Database* db) {
         {"CREATE INDEX IF NOT EXISTS filter_annotations_task_host_idx ON ",
          filter_annotations::kTableName, "(", filter_annotations::kTaskType,
          ", ", filter_annotations::kSourceHost, ")"});
-    const std::string kCreateAnnotationsDomainTimestampIndexSql = base::StrCat(
+    const std::string kCreateAnnotationsHostTimestampIndexSql = base::StrCat(
         {"CREATE INDEX IF NOT EXISTS "
-         "filter_annotations_domain_timestamp_idx "
+         "filter_annotations_host_timestamp_idx "
          "ON ",
-         filter_annotations::kTableName, "(", filter_annotations::kSourceDomain,
+         filter_annotations::kTableName, "(", filter_annotations::kSourceHost,
          ", ", filter_annotations::kCreationTimestamp, ")"});
     return db_->Execute(kCreateFilterAnnotationsIndexSql) &&
            db_->Execute(kCreateAttributesIndexSql) &&
            db_->Execute(kCreateAnnotationsCompositeIndexSql) &&
-           db_->Execute(kCreateAnnotationsDomainTimestampIndexSql);
+           db_->Execute(kCreateAnnotationsHostTimestampIndexSql);
   };
 
   return create_filter_annotations_table() &&
@@ -150,14 +149,12 @@ bool FilterAnnotationTable::StoreAnnotation(
       base::StrCat(
           {"INSERT INTO ", filter_annotations::kTableName, "(",
            filter_annotations::kId, ", ", filter_annotations::kTaskType, ", ",
-           filter_annotations::kSourceDomain, ", ",
            filter_annotations::kSourceHost, ", ",
-           filter_annotations::kCreationTimestamp, ") VALUES(?,?,?,?,?)"})));
+           filter_annotations::kCreationTimestamp, ") VALUES(?,?,?,?)"})));
   insert_annotation.BindString(0, annotation.id.AsLowercaseString());
   insert_annotation.BindString(1, annotation.task_type);
-  insert_annotation.BindString(2, annotation.source_domain);
-  insert_annotation.BindString(3, annotation.source_host);
-  insert_annotation.BindTime(4, annotation.creation_timestamp);
+  insert_annotation.BindString(2, annotation.source_host);
+  insert_annotation.BindTime(3, annotation.creation_timestamp);
 
   if (!insert_annotation.Run()) {
     return false;
@@ -183,26 +180,36 @@ bool FilterAnnotationTable::StoreAnnotation(
 }
 
 std::vector<FilterAnnotation>
-FilterAnnotationTable::GetAnnotationsForTaskSortedByCreationTimestamp(
-    std::string_view task_type,
+FilterAnnotationTable::GetAnnotationsForTasksSortedByCreationTimestamp(
+    base::span<const std::string> task_types,
     size_t max_count,
     base::Time min_creation_time) {
+  if (task_types.empty()) {
+    return {};
+  }
+
   std::vector<FilterAnnotation> annotations;
 
-  sql::Statement select_annotations(db_->GetCachedStatement(
-      SQL_FROM_HERE,
+  std::string task_types_str =
+      base::JoinString(std::vector<std::string>(task_types.size(), "?"), ", ");
+  std::string query =
       base::StrCat({"SELECT ", filter_annotations::kId, ", ",
                     filter_annotations::kTaskType, ", ",
-                    filter_annotations::kSourceDomain, ", ",
                     filter_annotations::kSourceHost, ", ",
                     filter_annotations::kCreationTimestamp, " FROM ",
                     filter_annotations::kTableName, " WHERE ",
-                    filter_annotations::kTaskType, " = ? AND ",
-                    filter_annotations::kCreationTimestamp, " >= ? ORDER BY ",
-                    filter_annotations::kCreationTimestamp, " DESC LIMIT ?"})));
-  select_annotations.BindString(0, task_type);
-  select_annotations.BindTime(1, min_creation_time);
-  select_annotations.BindInt64(2, max_count);
+                    filter_annotations::kTaskType, " IN (", task_types_str,
+                    ") AND ", filter_annotations::kCreationTimestamp,
+                    " >= ? ORDER BY ", filter_annotations::kCreationTimestamp,
+                    " DESC LIMIT ?"});
+  sql::Statement select_annotations(db_->GetUniqueStatement(query));
+
+  int param_index = 0;
+  for (const std::string& task_type : task_types) {
+    select_annotations.BindString(param_index++, task_type);
+  }
+  select_annotations.BindTime(param_index++, min_creation_time);
+  select_annotations.BindInt64(param_index++, max_count);
 
   while (select_annotations.Step()) {
     std::string id_str = select_annotations.ColumnString(0);
@@ -212,9 +219,8 @@ FilterAnnotationTable::GetAnnotationsForTaskSortedByCreationTimestamp(
     }
 
     std::string retrieved_task_type = select_annotations.ColumnString(1);
-    std::string source_domain = select_annotations.ColumnString(2);
-    std::string source_host = select_annotations.ColumnString(3);
-    base::Time creation_timestamp = select_annotations.ColumnTime(4);
+    std::string source_host = select_annotations.ColumnString(2);
+    base::Time creation_timestamp = select_annotations.ColumnTime(3);
 
     sql::Statement select_attributes(db_->GetCachedStatement(
         SQL_FROM_HERE,
@@ -230,7 +236,7 @@ FilterAnnotationTable::GetAnnotationsForTaskSortedByCreationTimestamp(
                               select_attributes.ColumnString(1));
     }
 
-    annotations.emplace_back(id, retrieved_task_type, source_domain,
+    annotations.emplace_back(id, retrieved_task_type,
                              source_host, creation_timestamp,
                              std::move(attributes));
   }
@@ -276,11 +282,11 @@ std::optional<int64_t> FilterAnnotationTable::DeleteAnnotationsForTask(
   return deleted_count;
 }
 
-std::optional<int64_t> FilterAnnotationTable::DeleteAnnotationsForDomains(
-    const std::vector<std::string>& domains,
+std::optional<int64_t> FilterAnnotationTable::DeleteAnnotationsForHosts(
+    const std::vector<std::string>& hosts,
     base::Time delete_begin,
     base::Time delete_end) {
-  if (domains.empty()) {
+  if (hosts.empty()) {
     return DeleteAnnotationsForTimeRange(delete_begin, delete_end);
   }
 
@@ -290,9 +296,9 @@ std::optional<int64_t> FilterAnnotationTable::DeleteAnnotationsForDomains(
   }
 
   int64_t total_deleted = 0;
-  for (const std::string& domain : domains) {
+  for (const std::string& host : hosts) {
     std::optional<int64_t> deleted =
-        DeleteAnnotationsForDomain(domain, delete_begin, delete_end);
+        DeleteAnnotationsForHost(host, delete_begin, delete_end);
     if (!deleted.has_value()) {
       return std::nullopt;
     }
@@ -332,16 +338,16 @@ std::optional<int64_t> FilterAnnotationTable::DeleteAnnotationsForTimeRange(
   return db_->GetLastChangeCount();
 }
 
-std::optional<int64_t> FilterAnnotationTable::DeleteAnnotationsForDomain(
-    std::string_view domain,
+std::optional<int64_t> FilterAnnotationTable::DeleteAnnotationsForHost(
+    std::string_view host,
     base::Time begin,
     base::Time end) {
   sql::Statement delete_attributes(db_->GetCachedStatement(
       SQL_FROM_HERE, GetDeleteAttributesSql(base::StrCat(
-                         {filter_annotations::kSourceDomain, " = ? AND ",
+                         {filter_annotations::kSourceHost, " = ? AND ",
                           filter_annotations::kCreationTimestamp, " >= ? AND ",
                           filter_annotations::kCreationTimestamp, " < ?"}))));
-  delete_attributes.BindString(0, domain);
+  delete_attributes.BindString(0, host);
   delete_attributes.BindTime(1, begin);
   delete_attributes.BindTime(2, end);
   if (!delete_attributes.Run()) {
@@ -351,10 +357,10 @@ std::optional<int64_t> FilterAnnotationTable::DeleteAnnotationsForDomain(
   sql::Statement delete_annotations(db_->GetCachedStatement(
       SQL_FROM_HERE,
       base::StrCat({"DELETE FROM ", filter_annotations::kTableName, " WHERE ",
-                    filter_annotations::kSourceDomain, " = ? AND ",
+                    filter_annotations::kSourceHost, " = ? AND ",
                     filter_annotations::kCreationTimestamp, " >= ? AND ",
                     filter_annotations::kCreationTimestamp, " < ?"})));
-  delete_annotations.BindString(0, domain);
+  delete_annotations.BindString(0, host);
   delete_annotations.BindTime(1, begin);
   delete_annotations.BindTime(2, end);
   if (!delete_annotations.Run()) {

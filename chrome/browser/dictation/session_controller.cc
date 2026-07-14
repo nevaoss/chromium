@@ -5,11 +5,15 @@
 #include "chrome/browser/dictation/session_controller.h"
 
 #include <memory>
+#include <ostream>
 
+#include "base/no_destructor.h"
+#include "base/state_transitions.h"
 #include "base/task/single_thread_task_runner.h"
 #include "chrome/browser/dictation/session_controller_delegate.h"
 #include "chrome/browser/dictation/session_ui.h"
 #include "chrome/browser/dictation/stream_provider.h"
+#include "chrome/browser/dictation/target.h"
 
 namespace dictation {
 
@@ -27,12 +31,12 @@ void SessionController::Initialize() {
   ui_ = delegate_->CreateUi(*this);
 }
 
-void SessionController::StartDictationStream(Target& target) {
+void SessionController::StartDictationStream(std::unique_ptr<Target> target) {
   CHECK_EQ(state_, State::kInactive);
 
   std::unique_ptr<StreamProvider> stream_provider =
       delegate_->CreateStreamProvider(*this);
-  stream_provider->BindToTarget(target);
+  stream_provider->BindToTargetAndConnect(std::move(target));
   attached_stream_provider_ = std::move(stream_provider);
 
   MoveToState(State::kStreamInitializing);
@@ -61,8 +65,38 @@ void SessionController::RequestEndSession() {
 }
 
 void SessionController::MoveToState(State new_state) {
-  // TODO(bokan): use base::StateTransitions
+  using enum State;
+#if DCHECK_IS_ON()
+  static const base::NoDestructor<base::StateTransitions<State>>
+      allowed_transitions(base::StateTransitions<State>(
+          {{kInactive, {kStreamInitializing}},
+           {kStreamInitializing, {kInactive, kTranscribing}},
+           {kTranscribing, {kInactive, kFinalizing}},
+           {kFinalizing, {kInactive}}}));
+  if (new_state != state_) {
+    DCHECK_STATE_TRANSITION(allowed_transitions, /*old_state=*/state_,
+                            /*new_state=*/new_state);
+  }
+#endif  // DCHECK_IS_ON()
   state_ = new_state;
+}
+
+const char* ToString(SessionController::State state) {
+  using enum SessionController::State;
+  switch (state) {
+    case kInactive:
+      return "kInactive";
+    case kStreamInitializing:
+      return "kStreamInitializing";
+    case kTranscribing:
+      return "kTranscribing";
+    case kFinalizing:
+      return "kFinalizing";
+  }
+}
+
+std::ostream& operator<<(std::ostream& out, SessionController::State state) {
+  return out << ToString(state);
 }
 
 }  // namespace dictation

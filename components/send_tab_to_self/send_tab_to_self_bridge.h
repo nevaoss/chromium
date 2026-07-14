@@ -107,8 +107,8 @@ class SendTabToSelfBridge : public syncer::DataTypeSyncBridge,
       const std::string& target_device_cache_guid,
       const PageContext& context,
       NavigationHistory navigation_history,
-      base::OnceCallback<void(SendTabToSelfResult)> commit_confirmation)
-      override;
+      base::OnceCallback<void(SendTabToSelfResult)> commit_confirmation,
+      ShareEntryPoint entry_point) override;
   void DismissEntry(std::string_view guid) override;
   void MarkEntryOpened(std::string_view guid) override;
   bool IsReady() override;
@@ -127,7 +127,6 @@ class SendTabToSelfBridge : public syncer::DataTypeSyncBridge,
   void SetLocalDeviceNameForTest(const std::string& local_device_name);
 
  private:
-
   // Notify all observers of any added |new_entries| when they are added the the
   // model via sync.
   void NotifyRemoteSendTabToSelfEntryAdded(
@@ -160,6 +159,9 @@ class SendTabToSelfBridge : public syncer::DataTypeSyncBridge,
   SendTabToSelfEntry* GetMutableEntryByGUID(std::string_view guid) const;
 
   bool IsTargetedToLocalDevice(const SendTabToSelfEntry& entry) const;
+
+  // Returns the DeviceInfo for the local device, or nullptr if not available.
+  const syncer::DeviceInfo* GetLocalDeviceInfo() const;
 
   // Returns the fallback full name of the local device.
   std::string GetLocalFallbackFullName() const;

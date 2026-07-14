@@ -138,6 +138,15 @@ void XRWebGLTextureArraySwapChain::OnFrameEnd() {
     gl->Disable(GL_RASTERIZER_DISCARD);
   }
 
+  // Ensure pages that set WEBGL_polygon_mode don't interfere with rendering.
+  GLenum polygon_mode = GL_FILL_ANGLE;
+  if (context()->ExtensionsUtil()->IsExtensionEnabled("WEBGL_polygon_mode")) {
+    GLint value = 0;
+    gl->GetIntegerv(GL_POLYGON_MODE_ANGLE, &value);
+    polygon_mode = static_cast<GLenum>(value);
+    gl->PolygonModeANGLE(GL_FRONT_AND_BACK, GL_FILL_ANGLE);
+  }
+
   gl->ColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
   gl->DepthMask(GL_FALSE);
   gl->BindVertexArrayOES(vao_);
@@ -169,6 +178,9 @@ void XRWebGLTextureArraySwapChain::OnFrameEnd() {
   }
   if (dither_enabled) {
     gl->Enable(GL_DITHER);
+  }
+  if (polygon_mode != GL_FILL_ANGLE) {
+    gl->PolygonModeANGLE(GL_FRONT_AND_BACK, polygon_mode);
   }
 
   // WebGLRenderingContextBase inherits from DrawingBuffer::Client, but makes

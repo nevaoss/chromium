@@ -27,6 +27,16 @@ using CreditCardBenefit = std::variant<CreditCardFlatRateBenefit,
                                        CreditCardCategoryBenefit,
                                        CreditCardMerchantBenefit>;
 
+enum class CreditCardBenefitType {
+  kUnknown = 0,
+  kFlatRate = 1,
+  kCategory = 2,
+  kMerchant = 3,
+  kMaxValue = kMerchant,
+};
+
+CreditCardBenefitType GetTypeForCardBenefit(const CreditCardBenefit& benefit);
+
 class CreditCardBenefitBase {
  public:
   using BenefitId = base::StrongAlias<class BenefitIdTag, std::string>;

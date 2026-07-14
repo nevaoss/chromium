@@ -17,10 +17,10 @@
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_grid/tab_grid_paging.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_grid/toolbars/tab_grid_toolbars_main_tab_grid_delegate.h"
 
-@protocol BWGCommands;
 @class ChromeAppBarPrototype;
-@class GridContainerViewController;
+@protocol GeminiCommands;
 @protocol GridCommands;
+@class GridContainerViewController;
 class GURL;
 @protocol InactiveTabsInfoConsumer;
 @class IncognitoGridViewController;
@@ -28,6 +28,7 @@ class GURL;
 @protocol IncognitoReauthConsumer;
 enum class IPHDismissalReasonType;
 @class LayoutGuideCenter;
+@class LayoutState;
 @class PinnedTabsViewController;
 @protocol PriceCardDataSource;
 @class RegularGridViewController;
@@ -43,7 +44,6 @@ enum class IPHDismissalReasonType;
 @protocol TabGridToolbarsCommandsWrangler;
 @class TabGridTopToolbar;
 @class TabGroupsPanelViewController;
-@class LayoutState;
 
 // Configurations for tab grid pages.
 enum class TabGridPageConfiguration {
@@ -116,7 +116,7 @@ enum class TabGridPageConfiguration {
 @property(nonatomic, weak) id<TabGridCommands> tabGridHandler;
 
 // Handler for Gemini commands.
-@property(nonatomic, weak) id<BWGCommands> geminiHandler;
+@property(nonatomic, weak) id<GeminiCommands> geminiHandler;
 
 // Delegate for this view controller to handle presenting tab UI.
 @property(nonatomic, weak) id<TabPresentationDelegate> tabPresentationDelegate;

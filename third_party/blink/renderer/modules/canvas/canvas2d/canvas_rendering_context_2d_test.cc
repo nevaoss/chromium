@@ -67,6 +67,7 @@
 #include "third_party/blink/renderer/bindings/modules/v8/v8_union_canvasfilter_string.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_union_cssimagevalue_htmlcanvaselement_htmlimageelement_htmlvideoelement_imagebitmap_offscreencanvas_svgimageelement_videoframe.h"
 #include "third_party/blink/renderer/core/accessibility/ax_context.h"
+#include "third_party/blink/renderer/core/accessibility/ax_object_cache_base.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/events/native_event_listener.h"
@@ -94,6 +95,7 @@
 #include "third_party/blink/renderer/core/typed_arrays/array_buffer_view_helpers.h"
 #include "third_party/blink/renderer/core/typed_arrays/dom_array_buffer_view.h"
 #include "third_party/blink/renderer/core/typed_arrays/dom_typed_array.h"
+#include "third_party/blink/renderer/modules/accessibility/ax_object.h"
 #include "third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.h"
 #include "third_party/blink/renderer/modules/canvas/canvas2d/canvas_gradient.h"
 #include "third_party/blink/renderer/modules/canvas/canvas2d/canvas_style_test_utils.h"
@@ -146,7 +148,8 @@
 #include "third_party/skia/include/core/SkRect.h"
 #include "third_party/skia/include/core/SkRefCnt.h"
 #include "third_party/skia/include/core/SkSurface.h"
-#include "ui/accessibility/ax_mode.h"
+#include "ui/accessibility/accessibility_features.h"
+#include "ui/accessibility/ax_enums.mojom-blink.h"
 #include "ui/gfx/geometry/point_f.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/size.h"
@@ -3631,6 +3634,218 @@ TEST_P(CanvasRenderingContext2DTest, DrawFocusWithContextLost) {
   // DrawFocusIfNeeded() triggers a context loss internally, due to the invalid
   // canvas size.  The test passes if we don't crash.
   Context2D()->drawFocusIfNeeded(button);
+}
+
+TEST_P(CanvasRenderingContext2DTest, AccessibilityCanvasAnnotation) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(::features::kAccessibilityCanvas);
+
+  CreateContext(kNonOpaque);
+
+  // Enable accessibility.
+  AXContext ax_context(GetDocument(), ui::kAXModeComplete);
+  AXObjectCache* cache = GetDocument().ExistingAXObjectCache();
+  ASSERT_TRUE(cache);
+
+  // Force layout update to ensure AX objects are created.
+  UpdateAllLifecyclePhasesForTest();
+
+  AXObject* ax_canvas = To<AXObjectCacheBase>(cache)->Get(&CanvasElement());
+  ASSERT_TRUE(ax_canvas);
+
+  auto serialize_canvas = [&](ui::AXNodeData* node_data) {
+    cache->UpdateAXForAllDocuments();
+    ScopedFreezeAXCache freeze(*cache);
+    ax_canvas->Serialize(node_data, ax_context.GetAXMode());
+  };
+
+  // Initially, canvas annotation should be empty.
+  ui::AXNodeData node_data;
+  serialize_canvas(&node_data);
+  EXPECT_FALSE(node_data.HasStringAttribute(
+      ax::mojom::StringAttribute::kCanvasAnnotation));
+
+  // Draw some text.
+  Context2D()->fillText("Hello", 0, 0);
+  CanvasElement().PostFinalizeFrame(FlushReason::kOther);
+
+  // Serialize again.
+  node_data = ui::AXNodeData();
+  serialize_canvas(&node_data);
+  EXPECT_TRUE(node_data.HasStringAttribute(
+      ax::mojom::StringAttribute::kCanvasAnnotation));
+  EXPECT_EQ(node_data.GetStringAttribute(
+                ax::mojom::StringAttribute::kCanvasAnnotation),
+            "Hello");
+
+  // Draw more text.
+  Context2D()->fillText("World", 50, 0);
+  CanvasElement().PostFinalizeFrame(FlushReason::kOther);
+
+  node_data = ui::AXNodeData();
+  serialize_canvas(&node_data);
+  EXPECT_TRUE(node_data.HasStringAttribute(
+      ax::mojom::StringAttribute::kCanvasAnnotation));
+  EXPECT_EQ(node_data.GetStringAttribute(
+                ax::mojom::StringAttribute::kCanvasAnnotation),
+            "Hello World");
+
+  // Partial clear that doesn't cover "Hello" (at 0,0) but covers "World" (at
+  // 50,0). Clear rect (40, -10, 60, 20) should cover "World" but not "Hello".
+  Context2D()->clearRect(40, -10, 60, 20);
+  CanvasElement().PostFinalizeFrame(FlushReason::kOther);
+
+  node_data = ui::AXNodeData();
+  serialize_canvas(&node_data);
+  EXPECT_TRUE(node_data.HasStringAttribute(
+      ax::mojom::StringAttribute::kCanvasAnnotation));
+  EXPECT_EQ(node_data.GetStringAttribute(
+                ax::mojom::StringAttribute::kCanvasAnnotation),
+            "Hello");
+
+  // Draw "Overwrite" at 0,0 (should overwrite "Hello").
+  Context2D()->fillText("Overwrite", 0, 0);
+  CanvasElement().PostFinalizeFrame(FlushReason::kOther);
+
+  node_data = ui::AXNodeData();
+  serialize_canvas(&node_data);
+  EXPECT_TRUE(node_data.HasStringAttribute(
+      ax::mojom::StringAttribute::kCanvasAnnotation));
+  EXPECT_EQ(node_data.GetStringAttribute(
+                ax::mojom::StringAttribute::kCanvasAnnotation),
+            "Overwrite");
+
+  // Full clear.
+  Context2D()->clearRect(0, 0, CanvasElement().width(),
+                         CanvasElement().height());
+  CanvasElement().PostFinalizeFrame(FlushReason::kOther);
+
+  node_data = ui::AXNodeData();
+  serialize_canvas(&node_data);
+  EXPECT_FALSE(node_data.HasStringAttribute(
+      ax::mojom::StringAttribute::kCanvasAnnotation));
+}
+
+TEST_P(CanvasRenderingContext2DTest,
+       AccessibilityCanvasAnnotation_FeatureDisabled) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndDisableFeature(::features::kAccessibilityCanvas);
+
+  CreateContext(kNonOpaque);
+
+  // Enable accessibility.
+  AXContext ax_context(GetDocument(), ui::kAXModeComplete);
+  AXObjectCache* cache = GetDocument().ExistingAXObjectCache();
+  ASSERT_TRUE(cache);
+
+  // Force layout update to ensure AX objects are created.
+  UpdateAllLifecyclePhasesForTest();
+
+  AXObject* ax_canvas = To<AXObjectCacheBase>(cache)->Get(&CanvasElement());
+  ASSERT_TRUE(ax_canvas);
+
+  auto serialize_canvas = [&](ui::AXNodeData* node_data) {
+    cache->UpdateAXForAllDocuments();
+    ScopedFreezeAXCache freeze(*cache);
+    ax_canvas->Serialize(node_data, ax_context.GetAXMode());
+  };
+
+  // Initially, canvas annotation should be empty.
+  ui::AXNodeData node_data;
+  serialize_canvas(&node_data);
+  EXPECT_FALSE(node_data.HasStringAttribute(
+      ax::mojom::StringAttribute::kCanvasAnnotation));
+
+  // Draw some text.
+  Context2D()->fillText("Hello", 0, 0);
+  CanvasElement().PostFinalizeFrame(FlushReason::kOther);
+
+  // Serialize again. Canvas annotation should STILL be empty because feature is
+  // disabled.
+  node_data = ui::AXNodeData();
+  serialize_canvas(&node_data);
+  EXPECT_FALSE(node_data.HasStringAttribute(
+      ax::mojom::StringAttribute::kCanvasAnnotation));
+}
+
+TEST_P(CanvasRenderingContext2DTest, AccessibilityCanvasAnnotation_StrokeText) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(::features::kAccessibilityCanvas);
+
+  CreateContext(kNonOpaque);
+
+  // Enable accessibility.
+  AXContext ax_context(GetDocument(), ui::kAXModeComplete);
+  AXObjectCache* cache = GetDocument().ExistingAXObjectCache();
+  ASSERT_TRUE(cache);
+
+  // Force layout update to ensure AX objects are created.
+  UpdateAllLifecyclePhasesForTest();
+
+  AXObject* ax_canvas = To<AXObjectCacheBase>(cache)->Get(&CanvasElement());
+  ASSERT_TRUE(ax_canvas);
+
+  auto serialize_canvas = [&](ui::AXNodeData* node_data) {
+    cache->UpdateAXForAllDocuments();
+    ScopedFreezeAXCache freeze(*cache);
+    ax_canvas->Serialize(node_data, ax_context.GetAXMode());
+  };
+
+  // Initially, canvas annotation should be empty.
+  ui::AXNodeData node_data;
+  serialize_canvas(&node_data);
+  EXPECT_FALSE(node_data.HasStringAttribute(
+      ax::mojom::StringAttribute::kCanvasAnnotation));
+
+  // Draw some text.
+  Context2D()->strokeText("Hello", 0, 0);
+  CanvasElement().PostFinalizeFrame(FlushReason::kOther);
+
+  // Serialize again.
+  node_data = ui::AXNodeData();
+  serialize_canvas(&node_data);
+  EXPECT_TRUE(node_data.HasStringAttribute(
+      ax::mojom::StringAttribute::kCanvasAnnotation));
+  EXPECT_EQ(node_data.GetStringAttribute(
+                ax::mojom::StringAttribute::kCanvasAnnotation),
+            "Hello");
+}
+
+TEST_P(CanvasRenderingContext2DTest, AccessibilityCanvasAnnotation_MaxWidth) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(::features::kAccessibilityCanvas);
+
+  CreateContext(kNonOpaque);
+
+  // Enable accessibility.
+  AXContext ax_context(GetDocument(), ui::kAXModeComplete);
+  AXObjectCache* cache = GetDocument().ExistingAXObjectCache();
+  ASSERT_TRUE(cache);
+
+  // Force layout update to ensure AX objects are created.
+  UpdateAllLifecyclePhasesForTest();
+
+  AXObject* ax_canvas = To<AXObjectCacheBase>(cache)->Get(&CanvasElement());
+  ASSERT_TRUE(ax_canvas);
+
+  auto serialize_canvas = [&](ui::AXNodeData* node_data) {
+    cache->UpdateAXForAllDocuments();
+    ScopedFreezeAXCache freeze(*cache);
+    ax_canvas->Serialize(node_data, ax_context.GetAXMode());
+  };
+
+  // Draw some text with max_width.
+  Context2D()->fillText("Hello World", 0, 0, 10);
+  CanvasElement().PostFinalizeFrame(FlushReason::kOther);
+
+  // Serialize.
+  ui::AXNodeData node_data;
+  serialize_canvas(&node_data);
+  EXPECT_TRUE(node_data.HasStringAttribute(
+      ax::mojom::StringAttribute::kCanvasAnnotation));
+  EXPECT_EQ(node_data.GetStringAttribute(
+                ax::mojom::StringAttribute::kCanvasAnnotation),
+            "Hello World");
 }
 
 }  // namespace blink

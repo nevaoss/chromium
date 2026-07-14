@@ -12,12 +12,14 @@ import static androidx.test.espresso.matcher.ViewMatchers.withEffectiveVisibilit
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 
 import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.not;
 import static org.junit.Assert.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 
 import static org.chromium.base.test.transit.ViewFinder.waitForNoView;
+import static org.chromium.base.test.util.Criteria.checkThat;
 import static org.chromium.chrome.browser.url_constants.UrlConstantResolver.getOriginalNativeNtpUrl;
 
 import android.content.res.Configuration;
@@ -32,6 +34,7 @@ import androidx.test.espresso.matcher.ViewMatchers;
 import androidx.test.filters.MediumTest;
 import androidx.test.filters.SmallTest;
 
+import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -328,19 +331,45 @@ public class LocationBarTest {
                         .getURLWithHostName(HOSTNAME, "/");
         mActivityTestRule.loadUrl(url);
 
+        // Select the omnibox and confirm expected ready state:
+        // - Mobile devices show (by default) no text
+        // - Desktop devices show the current page URL
+        // - in both cases any text in the Omnibox is selected.
+        ThreadUtils.runOnUiThread(mLocationBarMediator::requestUrlFocus);
+        CriteriaHelper.pollUiThread(
+                () -> {
+                    var text = mUrlBar.getText().toString();
+                    if (expectDesktopMode) {
+                        checkThat("Omnibox holds URL", text, Matchers.startsWith(HOSTNAME));
+                    } else {
+                        checkThat("Omnibox holds URL", text, Matchers.isEmptyString());
+                    }
+
+                    checkThat(
+                            "Selection starts at text end",
+                            mUrlBar.getSelectionStart(),
+                            equalTo(text.length()));
+                    checkThat("Selection ends at 0", mUrlBar.getSelectionEnd(), equalTo(0));
+                });
+
+        // Now, type some text and confirm cursor placement again.
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
-                    Assert.assertTrue(mUrlBar.getText().toString().startsWith(HOSTNAME));
-                    mUrlBar.requestFocus();
-                    if (expectDesktopMode) {
-                        Assert.assertTrue(mUrlBar.getText().toString().startsWith(HOSTNAME));
-                    } else {
-                        Assert.assertEquals("", mUrlBar.getText().toString());
-                    }
                     mLocationBarCoordinator.setOmniboxEditingText(url);
-                    Assert.assertEquals(url, mUrlBar.getText().toString());
-                    Assert.assertEquals(url.length(), mUrlBar.getSelectionStart());
-                    Assert.assertEquals(url.length(), mUrlBar.getSelectionEnd());
+                });
+
+        CriteriaHelper.pollUiThread(
+                () -> {
+                    var text = mUrlBar.getText().toString();
+                    checkThat(
+                            "No characters are dropped during typing",
+                            text,
+                            Matchers.startsWith(url));
+                    checkThat(
+                            "No text selection",
+                            mUrlBar.getSelectionStart(),
+                            equalTo(mUrlBar.getSelectionEnd()));
+                    checkThat("Cursor at end", mUrlBar.getSelectionStart(), equalTo(text.length()));
                 });
     }
 

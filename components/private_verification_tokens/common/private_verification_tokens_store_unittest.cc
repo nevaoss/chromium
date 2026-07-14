@@ -196,11 +196,43 @@ TEST_F(PrivateVerificationTokensStoreTest,
   EXPECT_EQ(keys.at("c.eee"), store->public_keys().at("c.eee"));
 
   store.reset();
+  base::ThreadPoolInstance::Get()->FlushForTesting();
   // re-read database and check
   sql::Database database(sql::test::kTestTag);
   EXPECT_TRUE(database.Open(database_path));
   // Verify that all stored tokens remain in the database.
   VerifyTableRowCount(database, kTokenTableName, 5u);
+  VerifyTableRowCount(database, kKeyTableName, 3u);
+}
+
+TEST_F(PrivateVerificationTokensStoreTest, DeleteAllTokens_Success) {
+  const base::FilePath database_path = DbPath(TempDir());
+  std::map<std::string, PrivateVerificationTokensPublicKey> keys;
+  std::map<std::string, std::vector<PrivateVerificationTokensToken>> tokens;
+  CreateTestData(keys, tokens);
+  StoreInDatabase(database_path, keys, tokens);
+
+  CreateStore(database_path);
+  ASSERT_EQ(store()->tokens().size(), 3u);
+
+  store()->DeleteAllTokens();
+  // Cache should be cleared immediately.
+  EXPECT_EQ(store()->tokens().size(), 0u);
+
+  // Wait for the async db call to finish.
+  base::ThreadPoolInstance::Get()->FlushForTesting();
+
+  // Verify memory cache is still empty.
+  EXPECT_EQ(store()->tokens().size(), 0u);
+
+  store_.reset();
+  base::ThreadPoolInstance::Get()->FlushForTesting();
+
+  // Re-read database and check that it's empty in DB as well.
+  sql::Database database(sql::test::kTestTag);
+  EXPECT_TRUE(database.Open(database_path));
+  VerifyTableRowCount(database, kTokenTableName, 0u);
+  // Keys should still be there.
   VerifyTableRowCount(database, kKeyTableName, 3u);
 }
 

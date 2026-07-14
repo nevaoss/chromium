@@ -12,6 +12,8 @@ source_set("webui_toolbar") {
     "browser_controls_service.h",
     "icon_table.h",
     "toolbar_ui_service.h",
+    "webui_toolbar_drag_state.h",
+    "webui_toolbar_extensions_container_observer.h",
     "webui_toolbar_ui.h",
   ]
   public_deps = [
@@ -41,6 +43,7 @@ source_set("impl") {
     "browser_controls_service.cc",
     "icon_table.cc",
     "toolbar_ui_service.cc",
+    "webui_toolbar_drag_state.cc",
     "webui_toolbar_extensions_container.cc",
     "webui_toolbar_extensions_container.h",
     "webui_toolbar_layout_css_helper.cc",

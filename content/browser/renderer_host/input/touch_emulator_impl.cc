@@ -80,7 +80,7 @@ TouchEmulatorImpl::TouchEmulatorImpl(input::TouchEmulatorClient* client,
       native_stream_active_sequence_count_(0),
       last_emulated_start_target_(nullptr),
       pending_taps_count_(0) {
-  DCHECK(client_);
+  CHECK(client_, base::NotFatalUntil::M152);
   ResetState();
   SetDeviceScaleFactor(device_scale_factor);
 }
@@ -299,7 +299,7 @@ bool TouchEmulatorImpl::HandleTouchEvent(const blink::WebTouchEvent& event) {
 bool TouchEmulatorImpl::HandleEmulatedTouchEvent(
     blink::WebTouchEvent event,
     input::RenderWidgetHostViewInput* target_view) {
-  DCHECK(gesture_provider_);
+  CHECK(gesture_provider_, base::NotFatalUntil::M152);
   auto weak_this = weak_ptr_factory_.GetWeakPtr();
   scoped_refptr<ui::FilteredGestureProvider> gesture_provider(
       gesture_provider_);
@@ -408,7 +408,7 @@ void TouchEmulatorImpl::OnGestureEvent(const ui::GestureEventData& gesture) {
   WebGestureEvent gesture_event =
       ui::CreateWebGestureEventFromGestureEventData(gesture);
 
-  DCHECK(gesture_event.unique_touch_event_id);
+  CHECK(gesture_event.unique_touch_event_id, base::NotFatalUntil::M152);
 
   switch (gesture_event.GetType()) {
     case WebInputEvent::Type::kUndefined:
@@ -483,7 +483,8 @@ void TouchEmulatorImpl::InjectTouchEvent(
     const blink::WebTouchEvent& event,
     input::RenderWidgetHostViewInput* target_view,
     base::OnceClosure callback) {
-  DCHECK(IsEnabled() && mode_ == Mode::kInjectingTouchEvents);
+  CHECK(IsEnabled() && mode_ == Mode::kInjectingTouchEvents,
+        base::NotFatalUntil::M152);
   touch_event_ = event;
   injected_touch_completion_callbacks_.push(std::move(callback));
   auto weak_this = weak_ptr_factory_.GetWeakPtr();
@@ -510,19 +511,20 @@ void TouchEmulatorImpl::CancelTouch() {
 
   input::WebTouchEventTraits::ResetTypeAndTouchStates(
       WebInputEvent::Type::kTouchCancel, ui::EventTimeForNow(), &touch_event_);
-  DCHECK(gesture_provider_);
+  CHECK(gesture_provider_, base::NotFatalUntil::M152);
   if (gesture_provider_->GetCurrentDownEvent())
     HandleEmulatedTouchEvent(touch_event_, last_emulated_start_target_);
 }
 
 void TouchEmulatorImpl::UpdateCursor() {
-  DCHECK(IsEnabled());
+  CHECK(IsEnabled(), base::NotFatalUntil::M152);
   if (mode_ == Mode::kEmulatingTouchFromMouse)
     client_->SetCursor(InPinchGestureMode() ? pinch_cursor_ : touch_cursor_);
 }
 
 bool TouchEmulatorImpl::UpdateShiftPressed(bool shift_pressed) {
-  DCHECK(IsEnabled() && mode_ == Mode::kEmulatingTouchFromMouse);
+  CHECK(IsEnabled() && mode_ == Mode::kEmulatingTouchFromMouse,
+        base::NotFatalUntil::M152);
   if (shift_pressed_ == shift_pressed)
     return false;
   shift_pressed_ = shift_pressed;
@@ -531,8 +533,8 @@ bool TouchEmulatorImpl::UpdateShiftPressed(bool shift_pressed) {
 }
 
 void TouchEmulatorImpl::PinchBegin(const WebGestureEvent& event) {
-  DCHECK(InPinchGestureMode());
-  DCHECK(!pinch_gesture_active_);
+  CHECK(InPinchGestureMode(), base::NotFatalUntil::M152);
+  CHECK(!pinch_gesture_active_, base::NotFatalUntil::M152);
   pinch_gesture_active_ = true;
   pinch_anchor_ = event.PositionInWidget();
   pinch_scale_ = 1.f;
@@ -542,7 +544,7 @@ void TouchEmulatorImpl::PinchBegin(const WebGestureEvent& event) {
 }
 
 void TouchEmulatorImpl::PinchUpdate(const WebGestureEvent& event) {
-  DCHECK(pinch_gesture_active_);
+  CHECK(pinch_gesture_active_, base::NotFatalUntil::M152);
   float dy = pinch_anchor_.y() - event.PositionInWidget().y();
   float scale = exp(dy * 0.002f);
   WebGestureEvent pinch_event =
@@ -553,7 +555,7 @@ void TouchEmulatorImpl::PinchUpdate(const WebGestureEvent& event) {
 }
 
 void TouchEmulatorImpl::PinchEnd(const WebGestureEvent& event) {
-  DCHECK(pinch_gesture_active_);
+  CHECK(pinch_gesture_active_, base::NotFatalUntil::M152);
   pinch_gesture_active_ = false;
   WebGestureEvent pinch_event =
       GetPinchGestureEvent(WebInputEvent::Type::kGesturePinchEnd, event);

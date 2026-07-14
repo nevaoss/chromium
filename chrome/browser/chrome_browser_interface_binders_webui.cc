@@ -73,6 +73,7 @@
 #endif
 
 #if BUILDFLAG(ENABLE_WEBUI_NTP)
+#include "chrome/browser/new_tab_page/modules/v2/most_relevant_tab_resumption/most_relevant_tab_resumption.mojom.h"
 #include "chrome/browser/ui/webui/new_tab_page/action_chips/action_chips.mojom.h"
 #include "chrome/browser/ui/webui/new_tab_page/new_tab_page_ui.h"
 #include "components/search/ntp_features.h"
@@ -274,6 +275,12 @@ void PopulateChromeWebUIFrameBindersPartsAllPlatforms(
   if (base::FeatureList::IsEnabled(ntp_features::kNtpNextFeatures)) {
     content::RegisterWebUIControllerInterfaceBinder<
         action_chips::mojom::ActionChipsHandlerFactory, NewTabPageUI>(map);
+  }
+  if (base::FeatureList::IsEnabled(
+          ntp_features::kNtpMostRelevantTabResumptionModule)) {
+    content::RegisterWebUIControllerInterfaceBinder<
+        ntp::most_relevant_tab_resumption::mojom::PageHandler, NewTabPageUI>(
+        map);
   }
 #endif  // BUILDFLAG(ENABLE_WEBUI_NTP)
 

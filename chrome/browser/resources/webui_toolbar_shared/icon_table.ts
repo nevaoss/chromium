@@ -5,8 +5,8 @@
 import {skColorToRgba} from '//resources/js/color_utils.js';
 import type {SkColor} from '//resources/mojo/skia/public/mojom/skcolor.mojom-webui.js';
 
-import type {IconHandle, IconUpdate} from './toolbar_ui_api_data_model.mojom-webui.js';
-import {IconType} from './toolbar_ui_api_data_model.mojom-webui.js';
+import {IconType} from './icon_handle.mojom-webui.js';
+import type {IconHandle, IconUpdate} from './icon_handle.mojom-webui.js';
 
 export interface IconInfo {
   urlOrName: string;

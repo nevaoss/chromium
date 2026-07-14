@@ -58,6 +58,9 @@ bool IsAvatarSyncPromoFeatureEnabled();
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 base::TimeDelta GetAvatarSyncPromoFeatureMinimumCookeAgeParam();
 
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kAvoidAutoTriggerListAccountsOnStale);
+
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 // A HaTS survey flag for the survey to gather user feedback before any changes
 // to the FRE as part of Chrome Desktop FRE Refresh project.
@@ -101,7 +104,12 @@ BASE_DECLARE_FEATURE(kCctSignInPrompt);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kChromeAndroidIdentitySurveyFirstRun);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE_PARAM(double,
+                           kChromeAndroidIdentitySurveyFirstRunProbability);
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kChromeAndroidIdentitySurveyWeb);
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE_PARAM(double, kChromeAndroidIdentitySurveyWebProbability);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kChromeAndroidIdentitySurveyNtpSigninButton);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
@@ -532,6 +540,9 @@ BASE_DECLARE_FEATURE(kMagiChromeSignInExperimentsBatch1);
 // IdentityManager.
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kMakeIdentityManagerSourceOfAccounts);
+
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kMakeIdentityManagerSourceOfAccountsPart2);
 
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kMigrateAccountManagerDelegate);

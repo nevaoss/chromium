@@ -14,7 +14,7 @@ namespace user_prefs {
 class PrefRegistrySyncable;
 }
 
-namespace notifications::tips::prefs {
+namespace tips::prefs {
 
 // Boolean prefs indicating whether a tip notification has already been shown.
 extern const char kAndroidTipNotificationShownESB[];
@@ -30,7 +30,7 @@ extern const char kAndroidTipNotificationShownRecentTabs[];
 // Registers the profile preferences for the Tips module.
 void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry);
 
-}  // namespace notifications::tips::prefs
+}  // namespace tips::prefs
 
 #endif  // BUILDFLAG(IS_ANDROID)
 

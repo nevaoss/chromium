@@ -120,10 +120,15 @@ class RequestRegistryTest : public RenderViewHostImplTestHarness {
     std::unique_ptr<TestIdpNetworkRequestManager> network_request_manager =
         std::make_unique<TestIdpNetworkRequestManager>();
     request_->SetNetworkManagerForTests(std::move(network_request_manager));
+
+    RequestService::GetOrCreateForCurrentDocument(main_test_rfh())
+        ->BindFederatedRequestService(
+            request_service_remote_.BindNewPipeAndPassReceiver());
   }
 
   void TearDown() override {
     request_ = nullptr;
+    request_service_remote_.reset();
     RenderViewHostImplTestHarness::TearDown();
   }
 
@@ -131,6 +136,7 @@ class RequestRegistryTest : public RenderViewHostImplTestHarness {
   base::test::ScopedFeatureList feature_list_;
 
   mojo::Remote<blink::mojom::FederatedAuthRequest> request_remote_;
+  mojo::Remote<blink::mojom::FederatedRequestService> request_service_remote_;
   raw_ptr<Request> request_;
 
   std::unique_ptr<TestApiPermissionDelegate> test_api_permission_delegate_;
@@ -236,6 +242,58 @@ TEST_F(RequestRegistryTest, UnregistersIdP) {
         EXPECT_EQ(true, result);
         loop.Quit();
       }));
+  loop.Run();
+}
+
+// Test Registering an IdP via FederatedRequestService.
+TEST_F(RequestRegistryTest, RequestServiceRegisterIdP) {
+  GURL config_url = GURL(kIdpUrl);
+
+  feature_list_.InitAndEnableFeature(features::kFedCmIdPRegistration);
+
+  EXPECT_CALL(*mock_permission_delegate_, RegisterIdP(_)).WillOnce(Return());
+
+  base::RunLoop loop;
+  request_service_remote_->RegisterIdP(
+      std::move(config_url),
+      base::BindLambdaForTesting([&loop](RegisterIdpStatus result) {
+        EXPECT_EQ(RegisterIdpStatus::kSuccess, result);
+        loop.Quit();
+      }));
+  loop.Run();
+}
+
+// Test Unregistering an IdP via FederatedRequestService.
+TEST_F(RequestRegistryTest, RequestServiceUnregisterIdP) {
+  GURL config_url = GURL(kIdpUrl);
+
+  feature_list_.InitAndEnableFeature(features::kFedCmIdPRegistration);
+
+  EXPECT_CALL(*mock_permission_delegate_, UnregisterIdP(_)).WillOnce(Return());
+
+  base::RunLoop loop;
+  request_service_remote_->UnregisterIdP(
+      std::move(config_url), base::BindLambdaForTesting([&loop](bool result) {
+        EXPECT_EQ(true, result);
+        loop.Quit();
+      }));
+  loop.Run();
+}
+
+// Test PreventSilentAccess via FederatedRequestService.
+TEST_F(RequestRegistryTest, RequestServicePreventSilentAccess) {
+  EXPECT_CALL(*mock_permission_delegate_, HasSharingPermission(_))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*mock_auto_reauthn_permission_delegate_,
+              SetRequiresUserMediation(_, true))
+      .WillOnce(Return());
+  EXPECT_CALL(*mock_permission_delegate_, OnSetRequiresUserMediation(_, _))
+      .WillOnce(::testing::WithArg<1>(
+          [](base::OnceClosure callback) { std::move(callback).Run(); }));
+
+  base::RunLoop loop;
+  request_service_remote_->PreventSilentAccess(
+      base::BindLambdaForTesting([&loop]() { loop.Quit(); }));
   loop.Run();
 }
 

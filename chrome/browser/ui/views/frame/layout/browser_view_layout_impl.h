@@ -163,10 +163,10 @@ class BrowserViewLayoutImpl : public BrowserViewLayout {
   virtual void DoPostLayoutCleanup();
 
  private:
-  // Does the actual layout. If the top container bounds are changed, may need
-  // to exit early, recalculate parameters, and do a second pass without the top
-  // container.
-  void DoLayout(views::View* host, bool include_top_container);
+  // Called when the layout params are updated mid-layout (typically in
+  // fullscreen after a size change in the top container overlay).
+  virtual void OnLayoutParamsChanged(const BrowserLayoutParams& old_params,
+                                     const BrowserLayoutParams& new_params);
 
   // Retrieve dimensions of modal dialogs.
 

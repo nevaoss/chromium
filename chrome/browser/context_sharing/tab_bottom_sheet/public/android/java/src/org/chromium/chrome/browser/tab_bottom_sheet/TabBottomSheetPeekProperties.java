@@ -4,7 +4,10 @@
 
 package org.chromium.chrome.browser.tab_bottom_sheet;
 
+import android.content.Context;
+
 import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
 import org.chromium.ui.modelutil.PropertyKey;
 import org.chromium.ui.modelutil.PropertyModel.ReadableObjectPropertyKey;
 import org.chromium.ui.modelutil.PropertyModel.WritableIntPropertyKey;
@@ -13,6 +16,12 @@ import org.chromium.ui.modelutil.PropertyModel.WritableObjectPropertyKey;
 /** Properties for the Tab Bottom Sheet Peek View. */
 @NullMarked
 public class TabBottomSheetPeekProperties {
+
+    /** Callback to compute content description dynamically with view context. */
+    @FunctionalInterface
+    public interface ContentDescriptionCallback {
+        @Nullable String get(Context context);
+    }
 
     public static final WritableObjectPropertyKey<String> TITLE_TEXT =
             new WritableObjectPropertyKey<>();
@@ -53,8 +62,8 @@ public class TabBottomSheetPeekProperties {
     public static final ReadableObjectPropertyKey<Runnable> ON_PEEK_VIEW_CLICKED =
             new ReadableObjectPropertyKey<>();
 
-    public static final WritableObjectPropertyKey<String> CONTENT_DESCRIPTION_A11Y =
-            new WritableObjectPropertyKey<>();
+    public static final WritableObjectPropertyKey<ContentDescriptionCallback>
+            CONTENT_DESCRIPTION_A11Y = new WritableObjectPropertyKey<>();
 
     public static final PropertyKey[] ALL_KEYS = {
         TITLE_TEXT,

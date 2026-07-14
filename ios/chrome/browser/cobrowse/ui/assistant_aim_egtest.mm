@@ -4,14 +4,17 @@
 
 #import <XCTest/XCTest.h>
 
+#import "base/strings/sys_string_conversions.h"
 #import "components/omnibox/browser/aim_eligibility_service_features.h"
 #import "ios/chrome/browser/assistant/ui/assistant_container_detent.h"
 #import "ios/chrome/browser/cobrowse/ui/assistant_aim_ui_constants.h"
 #import "ios/chrome/browser/composebox/eg_tests/composebox_app_interface.h"
 #import "ios/chrome/browser/composebox/public/features.h"
 #import "ios/chrome/browser/composebox/shared/ui/composebox_ui_constants.h"
+#import "ios/chrome/browser/scene/ui/scene_ui_constants.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_grid/tab_grid_constants.h"
+#import "ios/chrome/grit/ios_strings.h"
 #import "ios/chrome/test/earl_grey/chrome_earl_grey.h"
 #import "ios/chrome/test/earl_grey/chrome_earl_grey_ui.h"
 #import "ios/chrome/test/earl_grey/chrome_matchers.h"
@@ -19,6 +22,7 @@
 #import "ios/testing/earl_grey/app_launch_manager.h"
 #import "ios/testing/earl_grey/earl_grey_test.h"
 #import "net/test/embedded_test_server/embedded_test_server.h"
+#import "ui/base/l10n/l10n_util.h"
 #import "url/gurl.h"
 
 namespace {
@@ -84,6 +88,14 @@ void OpenCoBrowse(net::EmbeddedTestServer* testServer) {
       performAction:grey_tap()];
 }
 
+// Returns the matcher for the Main WebState scroll view, ignoring Co-browse's.
+id<GREYMatcher> MainWebStateScrollView() {
+  return grey_allOf(
+      chrome_test_util::WebStateScrollViewMatcher(),
+      grey_ancestor(grey_accessibilityID(kAppContentAccessibilityIdentifier)),
+      nil);
+}
+
 // Returns the matcher for the Assistant AIM close button.
 id<GREYMatcher> CloseButton() {
   return grey_accessibilityID(kAssistantAIMCloseButtonAccessibilityIdentifier);
@@ -112,11 +124,30 @@ id<GREYMatcher> CloseButton() {
   config.additional_args.push_back("-EnableOmniboxDebugging");
   config.additional_args.push_back("YES");
 
+  // Map localhost to 127.0.0.1 and set it as the google base URL
+  // to satisfy IsAimURL check while avoiding HSTS upgrades/SSL hangs on
+  // google.com.
+  config.additional_args.push_back(
+      "--host-resolver-rules=MAP localhost 127.0.0.1");
+  config.additional_args.push_back("--google-base-url=http://localhost");
+  config.additional_args.push_back("--ignore-google-port-numbers");
+
   return config;
 }
 
 - (void)setUp {
   [self addTeardownBlock:^{
+    // Explicitly close the Co-browse assistant sheet if it remains open.
+    // This acts as a safety net to ensure that an open sheet does not bleed
+    // into subsequent tests, even if a test case errors or fails prematurely.
+    NSError* error = nil;
+    [[EarlGrey selectElementWithMatcher:CloseButton()]
+        assertWithMatcher:grey_sufficientlyVisible()
+                    error:&error];
+    if (!error) {
+      [[EarlGrey selectElementWithMatcher:CloseButton()]
+          performAction:grey_tap()];
+    }
     [ComposeboxAppInterface setAllToolsEnabled:NO];
     [ComposeboxAppInterface setFuseboxEligible:NO];
     [ComposeboxAppInterface setTabUploadAutoSucceed:NO];
@@ -142,6 +173,32 @@ id<GREYMatcher> CloseButton() {
   // Verify the assistant is dismissed.
   [[EarlGrey selectElementWithMatcher:CloseButton()]
       assertWithMatcher:grey_nil()];
+}
+
+- (void)testShowsUndoSnackbarAfterClosing {
+  if ([ComposeboxAppInterface isServerSideStateEnabled]) {
+    EARL_GREY_TEST_SKIPPED(
+        @"Skipped when kComposeboxServerSideState is enabled.");
+  }
+  OpenCoBrowse(self.testServer);
+
+  // Wait for the assistant to appear.
+  [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
+
+  // Tap the close button.
+  [[EarlGrey selectElementWithMatcher:CloseButton()] performAction:grey_tap()];
+
+  // Verify the assistant is dismissed.
+  [[EarlGrey selectElementWithMatcher:CloseButton()]
+      assertWithMatcher:grey_nil()];
+
+  NSString* snackbarTitle =
+      l10n_util::GetNSString(IDS_IOS_AIM_CLOSE_SNACKBAR_TITLE);
+  id<GREYMatcher> snackbarMatcher =
+      grey_allOf(chrome_test_util::SnackbarViewMatcher(),
+                 grey_descendant(grey_accessibilityLabel(snackbarTitle)), nil);
+  // Verify the undo snackbar is shown.
+  [ChromeEarlGrey waitForUIElementToAppearWithMatcher:snackbarMatcher];
 }
 
 // Tests that the assistant can be dismissed and reopened multiple times.
@@ -194,6 +251,42 @@ id<GREYMatcher> CloseButton() {
   // Verify the assistant is visible again.
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
 }
+
+// Tests that tapping the new tab button in the toolbar opens a new tab, hides
+// the assistant, and navigating on the new tab shows the assistant again.
+- (void)testNewTabButtonHidesAssistant {
+  if ([ComposeboxAppInterface isServerSideStateEnabled]) {
+    EARL_GREY_TEST_SKIPPED(
+        @"Skipped when kComposeboxServerSideState is enabled.");
+  }
+  if ([ChromeEarlGrey isIPadIdiom]) {
+    EARL_GREY_TEST_SKIPPED(@"Secondary toolbar is not present on iPad.");
+  }
+
+  OpenCoBrowse(self.testServer);
+
+  // Wait for the assistant to appear.
+  [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
+
+  // Tap the new tab button.
+  [[EarlGrey selectElementWithMatcher:chrome_test_util::NewTabButton()]
+      performAction:grey_tap()];
+
+  // Verify the assistant is dismissed (hidden).
+  [[EarlGrey selectElementWithMatcher:CloseButton()]
+      assertWithMatcher:grey_nil()];
+
+  // Verify that a new tab was opened (we should be on NTP).
+  [ChromeEarlGrey waitForMainTabCount:2];
+
+  // Navigate to a URL on the new tab.
+  [ChromeEarlGrey loadURL:self.testServer->GetURL("/echo")];
+  [ChromeEarlGrey waitForPageToFinishLoading];
+
+  // Verify the assistant is visible again.
+  [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
+}
+
 // Tests that the assistant can transition between medium, large, and minimized
 // detents.
 - (void)testDetentTransitions {
@@ -276,6 +369,94 @@ id<GREYMatcher> CloseButton() {
                  grey_accessibilityID(
                      kAIMSRPDebuggerURLViewControllerAccessibilityIdentifier)]
       assertWithMatcher:grey_nil()];
+}
+
+// Tests that the loaded AIM URL can be edited in the debugger, and that saving
+// the changes updates the URL and triggers a navigation.
+- (void)testLoadedURLDebuggerEditing {
+  if ([ComposeboxAppInterface isServerSideStateEnabled]) {
+    EARL_GREY_TEST_SKIPPED(
+        @"Skipped when kComposeboxServerSideState is enabled.");
+  }
+  OpenCoBrowse(self.testServer);
+
+  [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
+
+  // Open the debugger.
+  [[EarlGrey selectElementWithMatcher:
+                 grey_accessibilityID(
+                     kAssistantAIMContextMenuButtonAccessibilityIdentifier)]
+      performAction:grey_tap()];
+  [[EarlGrey selectElementWithMatcher:
+                 chrome_test_util::ContextMenuItemWithAccessibilityLabel(
+                     @"AIM Loaded URL")] performAction:grey_tap()];
+
+  // Verify debugger presented.
+  [ChromeEarlGrey
+      waitForUIElementToAppearWithMatcher:
+          grey_accessibilityID(
+              kAIMSRPDebuggerURLViewControllerAccessibilityIdentifier)];
+
+  // Tap "Edit".
+  [[EarlGrey
+      selectElementWithMatcher:
+          grey_accessibilityID(
+              kAIMSRPDebuggerURLViewControllerEditButtonAccessibilityIdentifier)]
+      performAction:grey_tap()];
+
+  // Edit full URL using the test server with localhost hostname to satisfy
+  // the IsAimURL check and allow it to load locally.
+  GURL editedURL =
+      self.testServer->GetURL("localhost", "/search?udm=50&q=editedquery");
+  NSString* editedURLString = base::SysUTF8ToNSString(editedURL.spec());
+  [[EarlGrey
+      selectElementWithMatcher:
+          grey_accessibilityID(
+              kAIMSRPDebuggerURLViewControllerTextViewAccessibilityIdentifier)]
+      performAction:grey_replaceText(editedURLString)];
+
+  // Tap "Done".
+  [[EarlGrey
+      selectElementWithMatcher:
+          grey_accessibilityID(
+              kAIMSRPDebuggerURLViewControllerDoneButtonAccessibilityIdentifier)]
+      performAction:grey_tap()];
+
+  // Verify debugger dismissed.
+  [[EarlGrey selectElementWithMatcher:
+                 grey_accessibilityID(
+                     kAIMSRPDebuggerURLViewControllerAccessibilityIdentifier)]
+      assertWithMatcher:grey_nil()];
+
+  // Open the debugger again to verify the loaded URL was updated.
+  [[EarlGrey selectElementWithMatcher:
+                 grey_accessibilityID(
+                     kAssistantAIMContextMenuButtonAccessibilityIdentifier)]
+      performAction:grey_tap()];
+  [[EarlGrey selectElementWithMatcher:
+                 chrome_test_util::ContextMenuItemWithAccessibilityLabel(
+                     @"AIM Loaded URL")] performAction:grey_tap()];
+
+  [ChromeEarlGrey
+      waitForUIElementToAppearWithMatcher:
+          grey_accessibilityID(
+              kAIMSRPDebuggerURLViewControllerAccessibilityIdentifier)];
+
+  // Verify the full URL displays the updated URL.
+  [[EarlGrey
+      selectElementWithMatcher:
+          grey_allOf(
+              grey_accessibilityID(
+                  kAIMSRPDebuggerURLViewControllerTextViewAccessibilityIdentifier),
+              grey_text(editedURLString), nil)]
+      assertWithMatcher:grey_notNil()];
+
+  // Close debugger.
+  [[EarlGrey
+      selectElementWithMatcher:
+          grey_accessibilityID(
+              kAIMSRPDebuggerURLViewControllerCloseButtonAccessibilityIdentifier)]
+      performAction:grey_tap()];
 }
 
 // Tests that the assistant starts in minimized state when the flag is enabled.
@@ -440,6 +621,134 @@ id<GREYMatcher> CloseButton() {
 
   // Verify the assistant is still visible in the first window.
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
+}
+
+// Tests that when the assistant detent is changed (e.g., to minimized),
+// this detent persists when switching to the tab grid and selecting another
+// tab.
+- (void)testAssistantDetentPersistsAcrossTabs {
+  if ([ComposeboxAppInterface isServerSideStateEnabled]) {
+    EARL_GREY_TEST_SKIPPED(
+        @"Skipped when kComposeboxServerSideState is enabled.");
+  }
+  // 1. Load a page in the first tab.
+  [ChromeEarlGrey loadURL:self.testServer->GetURL("/pony.html")];
+  [ChromeEarlGrey waitForPageToFinishLoading];
+
+  // 2. Open a second tab and start Co-browse.
+  [ChromeEarlGrey openNewTab];
+  OpenCoBrowse(self.testServer);
+
+  // Wait for Assistant to appear and start in Medium state.
+  [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
+  WaitForDetent(AssistantContainerDetent::kMedium);
+
+  // 3. Switch to minimized.
+  [[EarlGrey
+      selectElementWithMatcher:grey_accessibilityID(
+                                   kAssistantContainerDetentMediumIdentifier)]
+      performAction:grey_swipeFastInDirection(kGREYDirectionDown)];
+  WaitForDetent(AssistantContainerDetent::kMinimized);
+
+  // 4. Go to tab grid, check no cobrowse.
+  [ChromeEarlGreyUI openTabGrid];
+  [ChromeEarlGrey
+      waitForUIElementToAppearWithMatcher:grey_accessibilityID(
+                                              kTabGridScrollViewIdentifier)];
+  [[EarlGrey selectElementWithMatcher:CloseButton()]
+      assertWithMatcher:grey_nil()];
+
+  // 5. Go to another tab (the first tab at index 0).
+  [[EarlGrey selectElementWithMatcher:grey_accessibilityID(
+                                          @"GridCellIdentifierPrefix0")]
+      performAction:grey_tap()];
+  [ChromeEarlGrey waitForWebStateContainingText:"pony"];
+
+  // 6. Check cobrowse is here and minimized.
+  [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
+  WaitForDetent(AssistantContainerDetent::kMinimized);
+}
+
+// Tests that when the assistant is closed (killed) and reopened,
+// it starts in the default detent rather than the last used detent.
+- (void)testReopenAssistantStartsInDefaultDetent {
+  if ([ComposeboxAppInterface isServerSideStateEnabled]) {
+    EARL_GREY_TEST_SKIPPED(
+        @"Skipped when kComposeboxServerSideState is enabled.");
+  }
+
+  // 1. Open Co-browse.
+  OpenCoBrowse(self.testServer);
+
+  // Wait for Assistant to appear and start in Medium state.
+  [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
+  WaitForDetent(AssistantContainerDetent::kMedium);
+
+  // 2. Expand to Large state.
+  [[EarlGrey
+      selectElementWithMatcher:grey_accessibilityID(
+                                   kAssistantContainerDetentMediumIdentifier)]
+      performAction:grey_swipeFastInDirection(kGREYDirectionUp)];
+  WaitForDetent(AssistantContainerDetent::kLarge);
+
+  // 3. Close the assistant explicitly (killing it).
+  [[EarlGrey selectElementWithMatcher:CloseButton()] performAction:grey_tap()];
+  [[EarlGrey selectElementWithMatcher:CloseButton()]
+      assertWithMatcher:grey_nil()];
+
+  // 4. Reopen Co-browse.
+  OpenCoBrowse(self.testServer);
+
+  // 5. Verify it starts in the default Medium detent (NOT Large).
+  [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
+  WaitForDetent(AssistantContainerDetent::kMedium);
+}
+
+// Tests that Co-browse Assistant is hidden when toolbars are hidden.
+- (void)testCobrowseHidesWhenToolbarsHide {
+  if ([ComposeboxAppInterface isServerSideStateEnabled]) {
+    EARL_GREY_TEST_SKIPPED(
+        @"Skipped when kComposeboxServerSideState is enabled.");
+  }
+  OpenCoBrowse(self.testServer);
+
+  // Wait for the assistant to appear.
+  [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
+
+  // Minimize the Assistant so the Main page is exposed and can be scrolled.
+  [[EarlGrey
+      selectElementWithMatcher:grey_accessibilityID(
+                                   kAssistantContainerDetentMediumIdentifier)]
+      performAction:grey_swipeFastInDirection(kGREYDirectionDown)];
+  WaitForDetent(AssistantContainerDetent::kMinimized);
+
+  // Make the Main page tall so we can scroll to hide the toolbar.
+  NSString* script = @"document.body.style.height = '2000px';";
+  [ChromeEarlGrey evaluateJavaScriptForSideEffect:script];
+
+  // Scroll down on the Main page to hide the toolbar.
+  [[EarlGrey selectElementWithMatcher:MainWebStateScrollView()]
+      performAction:grey_swipeSlowInDirection(kGREYDirectionUp)];
+
+  // Verify that the toolbar is hidden.
+  [ChromeEarlGreyUI waitForToolbarVisible:NO];
+
+  // Verify that Co-browse is no longer visible.
+  [[EarlGrey selectElementWithMatcher:CloseButton()]
+      assertWithMatcher:grey_not(grey_sufficientlyVisible())];
+
+  // Scroll up on the Main page to show the toolbar again.
+  [[EarlGrey selectElementWithMatcher:MainWebStateScrollView()]
+      performAction:grey_swipeFastInDirection(kGREYDirectionDown)];
+
+  // Verify that the toolbar is visible.
+  [ChromeEarlGreyUI waitForToolbarVisible:YES];
+
+  // Verify that Co-browse is visible again.
+  [ChromeEarlGrey
+      waitForUIElementToAppearWithMatcher:grey_allOf(CloseButton(),
+                                                     grey_sufficientlyVisible(),
+                                                     nil)];
 }
 
 @end

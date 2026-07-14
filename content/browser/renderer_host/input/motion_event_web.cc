@@ -205,7 +205,7 @@ base::TimeTicks MotionEventWeb::GetEventTime() const {
 
 ui::MotionEvent::ToolType MotionEventWeb::GetToolType(
     size_t pointer_index) const {
-  DCHECK_LT(pointer_index, GetPointerCount());
+  CHECK_LT(pointer_index, GetPointerCount(), base::NotFatalUntil::M152);
 
   const WebPointerProperties& pointer = event_.touches[pointer_index];
 

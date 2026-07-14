@@ -22,6 +22,8 @@
 #include "testing/gmock/include/gmock/gmock-matchers.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "url/gurl.h"
+#include "url/origin.h"
 #include "url/url_constants.h"
 
 using CastMessagePort = std::unique_ptr<cast_api_bindings::MessagePort>;
@@ -45,12 +47,15 @@ class NamedMessagePortConnectorFuchsiaTest : public WebEngineBrowserTest {
   // BrowserTestBase implementation.
   void SetUpOnMainThread() override {
     WebEngineBrowserTest::SetUpOnMainThread();
+    ASSERT_TRUE(embedded_test_server()->Start());
+    allowed_origins_ = {
+        url::Origin::Create(embedded_test_server()->GetURL("/")).Serialize()};
     frame_ = FrameForTest::Create(context(), fuchsia::web::CreateFrameParams());
     frame_.navigation_listener().SetBeforeAckHook(base::BindRepeating(
         &NamedMessagePortConnectorFuchsiaTest::OnBeforeAckHook,
         base::Unretained(this)));
-    connector_ =
-        std::make_unique<NamedMessagePortConnectorFuchsia>(frame_.get());
+    connector_ = std::make_unique<NamedMessagePortConnectorFuchsia>(
+        frame_.get(), allowed_origins_);
   }
 
   void TearDownOnMainThread() override {
@@ -75,7 +80,8 @@ class NamedMessagePortConnectorFuchsiaTest : public WebEngineBrowserTest {
       CastMessagePort connect_port;
       connector_->GetConnectMessage(&connect_message, &connect_port);
       frame_->PostMessage(
-          "*", CreateWebMessage(connect_message, std::move(connect_port)),
+          allowed_origins_[0],
+          CreateWebMessage(connect_message, std::move(connect_port)),
           [](fuchsia::web::Frame_PostMessage_Result result) {
             EXPECT_TRUE(result.is_response());
           });
@@ -86,13 +92,13 @@ class NamedMessagePortConnectorFuchsiaTest : public WebEngineBrowserTest {
     callback();
   }
 
+  std::vector<std::string> allowed_origins_;
   std::unique_ptr<base::RunLoop> navigate_run_loop_;
   FrameForTest frame_;
   std::unique_ptr<NamedMessagePortConnectorFuchsia> connector_;
 };
 
 IN_PROC_BROWSER_TEST_F(NamedMessagePortConnectorFuchsiaTest, EndToEnd) {
-  ASSERT_TRUE(embedded_test_server()->Start());
   GURL test_url(embedded_test_server()->GetURL("/connector.html"));
 
   fuchsia::web::NavigationControllerPtr controller;
@@ -145,7 +151,6 @@ IN_PROC_BROWSER_TEST_F(NamedMessagePortConnectorFuchsiaTest, EndToEnd) {
 IN_PROC_BROWSER_TEST_F(NamedMessagePortConnectorFuchsiaTest, MultiplePorts) {
   constexpr size_t kExpectedPortCount = 3;
 
-  ASSERT_TRUE(embedded_test_server()->Start());
   GURL test_url(
       embedded_test_server()->GetURL("/connector_multiple_ports.html"));
 

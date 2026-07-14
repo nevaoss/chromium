@@ -112,12 +112,10 @@ void ScrollToTop() {
 // Asserts that the "mark" toolbar button is visible and has the a11y label of
 // `a11y_label_id`.
 void AssertToolbarMarkButtonText(int a11y_label_id) {
-  [[EarlGrey
-      selectElementWithMatcher:
-          grey_allOf(
-              grey_accessibilityID(kReadingListToolbarMarkButtonID),
-              chrome_test_util::ButtonWithAccessibilityLabelId(a11y_label_id),
-              nil)] assertWithMatcher:grey_sufficientlyVisible()];
+  id<GREYMatcher> buttonMatcher = grey_allOf(
+      grey_accessibilityID(kReadingListToolbarMarkButtonID),
+      chrome_test_util::ButtonWithAccessibilityLabelId(a11y_label_id), nil);
+  [ChromeEarlGrey waitForSufficientlyVisibleElementWithMatcher:buttonMatcher];
 }
 
 // Asserts the `button_id` navigation bar button is not visible.
@@ -144,9 +142,8 @@ void AssertToolbarButtonNotVisibleWithID(NSString* button_id) {
 void AssertNavigationBarButtonVisibleWithID(NSString* button_id) {
   id<GREYMatcher> buttonMatcher =
       grey_allOf(grey_accessibilityID(button_id),
-                 grey_ancestor(grey_kindOfClassName(@"UINavigationBar")), nil);
-  [[EarlGrey selectElementWithMatcher:buttonMatcher]
-      assertWithMatcher:grey_sufficientlyVisible()];
+                 grey_ancestor(grey_kindOfClass([UINavigationBar class])), nil);
+  [ChromeEarlGrey waitForSufficientlyVisibleElementWithMatcher:buttonMatcher];
 }
 
 // Assert the `button_id` toolbar button is visible.
@@ -159,7 +156,9 @@ void AssertToolbarButtonVisibleWithID(NSString* button_id) {
 
 // Taps the `button_id` toolbar button.
 void TapToolbarButtonWithID(NSString* button_id) {
-  [[EarlGrey selectElementWithMatcher:grey_accessibilityID(button_id)]
+  [[EarlGrey
+      selectElementWithMatcher:grey_allOf(grey_accessibilityID(button_id),
+                                          grey_sufficientlyVisible(), nil)]
       performAction:grey_tap()];
 }
 

@@ -150,7 +150,9 @@ class OpenXrRenderLoop : public XRThread,
                                     mojo::PlatformHandle texture_handle,
                                     const gpu::SyncToken& sync_token) override;
 #endif
-  void SubmitFrameMissing(int16_t frame_index, const gpu::SyncToken&) override;
+  void SubmitFrameMissing(
+      int16_t frame_index,
+      gpu::SharedImageExportResult camera_export_multi_result) override;
   void SubmitFrame(int16_t frame_index,
                    base::TimeDelta time_waited) final;
   void SubmitFrameDrawnIntoTexture(

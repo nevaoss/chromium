@@ -63,6 +63,8 @@ void OmniboxPopupViewFullWebUI::PushTextToWebUI(bool is_double_click) {
             static_cast<OmniboxViewViews*>(omnibox_view_)) {
       selection = omnibox_view_views->GetSelectedRange();
     }
+    const std::u16string full_url =
+        controller()->client()->GetFormattedFullURL();
 
     // `last_sent_text_` is null after a state reset (e.g., tab switch).
     // Otherwise, check if `text` or `selection` has diverged.
@@ -75,7 +77,8 @@ void OmniboxPopupViewFullWebUI::PushTextToWebUI(bool is_double_click) {
       // changes (e.g. during double clicks or mouse dragging), we do not push
       // the input text and risk resetting DOM input state or scroll position.
       popup_handler->SetInputState(base::UTF16ToUTF8(text), selection,
-                                   user_input_in_progress, is_double_click);
+                                   user_input_in_progress, is_double_click,
+                                   base::UTF16ToUTF8(full_url));
       last_sent_text_ = text;
     }
   }
@@ -165,9 +168,11 @@ void OmniboxPopupViewFullWebUI::OnTabChanged(content::WebContents* contents) {
             ? state->model_state.user_text
             : controller()->edit_model()->GetPermanentDisplayText();
     gfx::Range selection = state ? state->selection : gfx::Range(0, 0);
-    popup_handler->SetInputState(base::UTF16ToUTF8(text), selection,
-                                 user_input_in_progress,
-                                 /*is_double_click=*/false);
+    const std::u16string full_url =
+        controller()->client()->GetFormattedFullURL();
+    popup_handler->SetInputState(
+        base::UTF16ToUTF8(text), selection, user_input_in_progress,
+        /*is_double_click=*/false, base::UTF16ToUTF8(full_url));
     last_sent_text_ = text;
   }
 }

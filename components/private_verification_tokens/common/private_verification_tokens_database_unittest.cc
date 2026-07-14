@@ -750,6 +750,28 @@ TEST_F(PrivateVerificationTokensDatabaseTest,
   EXPECT_TRUE(tokens.empty());
 }
 
+TEST_F(PrivateVerificationTokensDatabaseTest, DeleteAllTokens_Success) {
+  CreateDatabase(db_path_);
+
+  uint32_t key_id = 678;
+  const base::Time expiration = base::Time::UnixEpoch() + base::Seconds(7);
+  uint32_t version = 1;
+  std::map<std::string, std::vector<SerializedToken>> all_tokens = {
+      {"a.com", {{1, 2, 3}, {11, 12, 13}, {14, 15, 16}}},
+      {"b.com", {{4, 5, 6}}},
+  };
+  EXPECT_TRUE(pvt_database_->StoreTokens(
+      CreateTokens(all_tokens, key_id, expiration, version)));
+
+  pvt_database_->DeleteAllTokens();
+  pvt_database_.reset();
+
+  sql::Database database(sql::test::kTestTag);
+  EXPECT_TRUE(database.Open(db_path_));
+  VerifyTableRowCount(database, kTokenTableName, 0);
+  database.Close();
+}
+
 }  // namespace
 
 }  // namespace private_verification_tokens

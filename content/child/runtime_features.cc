@@ -207,6 +207,9 @@ void SetRuntimeFeaturesFromChromiumFeatures() {
            raw_ref(features::kFedCmNonStringToken), kDefault},
           {wf::EnableGamepadMultitouch,
            raw_ref(features::kEnableGamepadMultitouch)},
+          {wf::EnableGamepadRawInputChangeEvent,
+           raw_ref(features::kGamepadRawInputChangeEvent),
+           kSetOnlyIfOverridden},
           {wf::EnableSharedStorageAPI,
            raw_ref(features::kPrivacySandboxAdsAPIsOverride),
            kSetOnlyIfOverridden},
@@ -279,6 +282,8 @@ void SetRuntimeFeaturesFromChromiumFeatures() {
           {wf::EnableWebOTPAssertionFeaturePolicy,
            raw_ref(features::kWebOTPAssertionFeaturePolicy),
            kSetOnlyIfOverridden},
+          {wf::EnableWebGPUCompatibilityMode,
+           raw_ref(features::kWebGPUCompatibilityMode)},
           {wf::EnableWebUSB, raw_ref(features::kWebUsb)},
           {wf::EnableWebXR, raw_ref(features::kWebXr)},
 #if BUILDFLAG(ENABLE_VR)

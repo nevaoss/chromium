@@ -79,9 +79,9 @@
 #import "ios/chrome/browser/shared/public/commands/activity_service_commands.h"
 #import "ios/chrome/browser/shared/public/commands/bookmarks_commands.h"
 #import "ios/chrome/browser/shared/public/commands/browser_coordinator_commands.h"
-#import "ios/chrome/browser/shared/public/commands/bwg_commands.h"
 #import "ios/chrome/browser/shared/public/commands/cobalt_commands.h"
 #import "ios/chrome/browser/shared/public/commands/find_in_page_commands.h"
+#import "ios/chrome/browser/shared/public/commands/gemini_commands.h"
 #import "ios/chrome/browser/shared/public/commands/help_commands.h"
 #import "ios/chrome/browser/shared/public/commands/lens_overlay_commands.h"
 #import "ios/chrome/browser/shared/public/commands/level_up_commands.h"
@@ -943,7 +943,7 @@ OverflowMenuFooter* CreateOverflowMenuManagedFooter(
                              accessibilityID:kToolsMenuOpenAskBWG
                                 hideItemText:nil
                                      handler:^{
-                                       [weakSelf startAskBWG];
+                                       [weakSelf startAskGemini];
                                      }];
 }
 
@@ -1521,7 +1521,7 @@ OverflowMenuFooter* CreateOverflowMenuManagedFooter(
     }
     // Ensures that the floaty doesn't show when another view controller is
     // presented as a result of an overflow item being tapped.
-    [weakSelf.BWGHandler
+    [weakSelf.geminiHandler
         hideFloatyIfInvokedAnimated:NO
                          fromSource:gemini::FloatyUpdateSource::ViewTransition];
     [weakSelf logFeatureEngagementEventForClickOnAction:actionType];
@@ -2780,10 +2780,10 @@ OverflowMenuFooter* CreateOverflowMenuManagedFooter(
   [self.sceneHandler openAIMenu];
 }
 
-// Starts ask BWG.
-- (void)startAskBWG {
+// Starts ask Gemini.
+- (void)startAskGemini {
   [self dismissMenu];
-  [self.BWGHandler
+  [self.geminiHandler
       startGeminiFlowWithStartupState:
           [[GeminiStartupState alloc]
               initWithEntryPoint:gemini::EntryPoint::OverflowMenu]];

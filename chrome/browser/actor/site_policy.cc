@@ -134,13 +134,13 @@ void OnOptimizationGuideDecision(
   }
 }
 
-void MayActOnUrlInternal(
-    const GURL& url,
-    bool allow_insecure_http,
-    Profile* profile,
-    base::optional_ref<const OriginGatingCache> origin_gating_cache,
-    const EnterprisePolicyChecker& policy_checker,
-    std::unique_ptr<DecisionWrapper> decision_wrapper) {
+void MayActOnUrlInternal(const GURL& url,
+                         bool allow_insecure_http,
+                         Profile* profile,
+                         const OriginGatingCache& origin_gating_cache,
+                         const EnterprisePolicyChecker& policy_checker,
+                         bool apply_sensitive_origin_check,
+                         std::unique_ptr<DecisionWrapper> decision_wrapper) {
   if ((net::IsLocalhost(url) && url.SchemeIsHTTPOrHTTPS()) ||
       url.IsAboutBlank()) {
     decision_wrapper->Accept();
@@ -256,36 +256,33 @@ void MayActOnUrlInternal(
     return;
   }
 
-  // Blocklist is checked by `ShouldBlockNavigationUrlForOriginGating` when this
-  // feature is enabled, and origins the user allowed the actor to interact with
-  // will be included in the `origin_gating_cache`. If `url`'s origin has not
-  // been confirmed by the user, we apply the optimization guide check.
-  if (IsNavigationGatingEnabled() &&
-      (!origin_gating_cache || origin_gating_cache->IsNavigationConfirmedByUser(
-                                   url::Origin::Create(url)))) {
+  if (origin_gating_cache.IsNavigationConfirmedByUser(
+          url::Origin::Create(url))) {
     decision_wrapper->Accept();
     return;
   }
 
-  // Check that the optimization guide component has loaded. It could be
-  // missing, for example, if the user has very recently installed chrome and
-  // the component updater has not yet run. We don't want to reject every URL,
-  // so we check for this and fail open.
-  const bool optimization_guide_component_loaded =
-      optimization_guide::OptimizationHintsComponentUpdateListener::
-          GetInstance()
-              ->hints_component_info()
-              .has_value();
+  if (apply_sensitive_origin_check) {
+    // Check that the optimization guide component has loaded. It could be
+    // missing, for example, if the user has very recently installed chrome and
+    // the component updater has not yet run. We don't want to reject every URL,
+    // so we check for this and fail open.
+    const bool optimization_guide_component_loaded =
+        optimization_guide::OptimizationHintsComponentUpdateListener::
+            GetInstance()
+                ->hints_component_info()
+                .has_value();
 
-  if (auto* optimization_guide_decider =
-          OptimizationGuideKeyedServiceFactory::GetForProfile(profile);
-      optimization_guide_decider && optimization_guide_component_loaded &&
-      base::FeatureList::IsEnabled(kGlicActionUseOptimizationGuide)) {
-    optimization_guide_decider->CanApplyOptimization(
-        url, optimization_guide::proto::GLIC_ACTION_PAGE_BLOCK,
-        base::BindOnce(&OnOptimizationGuideDecision,
-                       std::move(decision_wrapper)));
-    return;
+    if (auto* optimization_guide_decider =
+            OptimizationGuideKeyedServiceFactory::GetForProfile(profile);
+        optimization_guide_decider && optimization_guide_component_loaded &&
+        base::FeatureList::IsEnabled(kGlicActionUseOptimizationGuide)) {
+      optimization_guide_decider->CanApplyOptimization(
+          url, optimization_guide::proto::GLIC_ACTION_PAGE_BLOCK,
+          base::BindOnce(&OnOptimizationGuideDecision,
+                         std::move(decision_wrapper)));
+      return;
+    }
   }
 
   // Fail open.
@@ -341,7 +338,8 @@ void MayActOnTab(const tabs::TabInterface& tab,
   MayActOnUrlInternal(
       url, /*allow_insecure_http=*/false,
       Profile::FromBrowserContext(web_contents.GetBrowserContext()),
-      origin_gating_cache, policy_checker, std::move(decision_wrapper));
+      origin_gating_cache, policy_checker,
+      /*apply_sensitive_origin_check=*/true, std::move(decision_wrapper));
 }
 
 void MayActOnUrl(const GURL& url,
@@ -349,13 +347,16 @@ void MayActOnUrl(const GURL& url,
                  Profile* profile,
                  AggregatedJournal& journal,
                  TaskId task_id,
+                 const OriginGatingCache& origin_gating_cache,
                  const EnterprisePolicyChecker& policy_checker,
                  DecisionCallbackWithReason callback) {
   std::unique_ptr<DecisionWrapper> decision_wrapper =
       std::make_unique<DecisionWrapper>(journal, url, task_id, "MayActOnUrl",
                                         std::move(callback));
-  MayActOnUrlInternal(url, allow_insecure_http, profile, std::nullopt,
-                      policy_checker, std::move(decision_wrapper));
+  MayActOnUrlInternal(
+      url, allow_insecure_http, profile, origin_gating_cache, policy_checker,
+      /*apply_sensitive_origin_check=*/!IsNavigationGatingEnabled(),
+      std::move(decision_wrapper));
 }
 
 base::expected<void, DecisionCallback>

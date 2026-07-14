@@ -369,9 +369,15 @@ BASE_FEATURE(kVideoPipForceTrustedForMediaPlaybackForTesting,
              base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // !BUILDFLAG(IS_ANDROID)
 
-// Enables tracking the occlusion of encrypted video elements.
+// Enables tracking the occlusion of HW secure encrypted video elements.
+// The HW secure check is OS agnostic, but this switch is currently only
+// enabled by default on Windows, and not used for other platforms.
 BASE_FEATURE(kEncryptedMediaOcclusionTracking,
+#if BUILDFLAG(IS_WIN)
+             base::FEATURE_ENABLED_BY_DEFAULT);
+#else
              base::FEATURE_DISABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(IS_WIN)
 
 // Enables extended video bitstream validation for H.264 and H.265.
 BASE_FEATURE(kExtendedVideoBitstreamValidation,
@@ -392,6 +398,12 @@ BASE_FEATURE(kPlatformHEVCDecoderSupport, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kPlatformHEVCEncoderSupport, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_ANDROID)
 #endif  // BUILDFLAG(ENABLE_PLATFORM_HEVC)
+
+#if BUILDFLAG(IS_APPLE)
+// Enables VideoToolbox Quality Metrics (MSE / PSNR) generation.
+BASE_FEATURE(kVTVideoEncodeAcceleratorCalculatePSNR,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(IS_APPLE)
 
 #if BUILDFLAG(ENABLE_HEVC_PARSER_AND_HW_DECODER)
 // Enables HEVC MediaRecorder muxer support.
@@ -611,8 +623,26 @@ BASE_FEATURE(kRevokeMediaSourceObjectURLOnAttach,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(ENABLE_SYMPHONIA)
-BASE_FEATURE(kSymphoniaAudioDecoding, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kSymphoniaMp3Decoding, base::FEATURE_DISABLED_BY_DEFAULT);
+// Android / Fuchsia are expected to launch in M150.
+BASE_FEATURE(kSymphoniaAudioDecoding,
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
+    BUILDFLAG(IS_CHROMEOS)
+             base::FEATURE_ENABLED_BY_DEFAULT
+#else
+             base::FEATURE_DISABLED_BY_DEFAULT
+#endif
+);
+
+// Android / Fuchsia are expected to launch in M150.
+BASE_FEATURE(kSymphoniaMp3Decoding,
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
+    BUILDFLAG(IS_CHROMEOS)
+             base::FEATURE_ENABLED_BY_DEFAULT
+#else
+             base::FEATURE_DISABLED_BY_DEFAULT
+#endif
+);
+
 BASE_FEATURE(kSymphoniaPcmDecoding, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kSymphoniaVorbisDecoding, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif

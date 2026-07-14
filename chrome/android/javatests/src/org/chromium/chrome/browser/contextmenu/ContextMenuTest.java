@@ -978,7 +978,7 @@ public class ContextMenuTest {
     @SmallTest
     @Feature({"Browser", "ContextMenu"})
     @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/481444053
-    public void testContextMenuOpenedFromHighlight() {
+    public void testContextMenuOpenedFromHighlight() throws Exception {
         DeviceInput.setSupportsPrecisionPointerForTesting(false);
         Tab tab = mActivityTestRule.getActivityTab();
 
@@ -1025,17 +1025,27 @@ public class ContextMenuTest {
                 HistogramWatcher.newSingleRecordWatcher(
                         "ContextMenu.Shown.SharedHighlightingInteraction", 1);
 
+        final CallbackHelper menuShownHelper = new CallbackHelper();
+        final AtomicReference<ContextMenuCoordinator> coordinatorRef = new AtomicReference<>();
+        ContextMenuHelper.setMenuShownCallbackForTests(
+                (coordinator) -> {
+                    coordinatorRef.set(coordinator);
+                    menuShownHelper.notifyCalled();
+                });
+
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
-                    ContextMenuHelper.setMenuShownCallbackForTests(
-                            (coordinator) -> {
-                                assertMenuItemsAreEqual(coordinator, expectedItems);
-                                shownHistogramWatcher.assertExpected();
-                                sharedHistogramWatcher.assertExpected();
-                            });
                     contextMenuHelper.showContextMenuForTesting(
                             populatorFactory, params, null, tab.getView(), 0);
                 });
+
+        menuShownHelper.waitForCallback(0);
+
+        ContextMenuCoordinator coordinator = coordinatorRef.get();
+        Assert.assertNotNull("Context menu coordinator is null", coordinator);
+        assertMenuItemsAreEqual(coordinator, expectedItems);
+        shownHistogramWatcher.assertExpected();
+        sharedHistogramWatcher.assertExpected();
     }
 
     @Test

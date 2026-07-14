@@ -415,10 +415,11 @@ IN_PROC_BROWSER_TEST_P(WebAppLinkCapturingBrowserTest,
 
 IN_PROC_BROWSER_TEST_P(WebAppLinkCapturingBrowserTest,
                        ParentAppWithChildLinks) {
-  // Note: The order matters so the nested app navigation for installation
-  // doesn't get captured by the parent app.
-  webapps::AppId nested_app_id = InstallNestedApp();
+  // Install the parent app first, then the nested app. This ensures that the
+  // nested app's default link capturing preference is not overridden by the
+  // parent app's installation.
   webapps::AppId parent_app_id = InstallParentApp();
+  webapps::AppId nested_app_id = InstallNestedApp();
 
   if (!LinkCapturingEnabledByDefault()) {
     ASSERT_EQ(apps::test::EnableLinkCapturingByUser(profile(), parent_app_id),
@@ -441,8 +442,8 @@ IN_PROC_BROWSER_TEST_P(WebAppLinkCapturingBrowserTest,
 #else
   if (LinkCapturingEnabledByDefault()) {
     // If link capturing is on by default, then the nested app will also be
-    // capturing links in it's scope (and thus the nested url will launch a
-    // nested app browser. the nested app browser.
+    // capturing links in its scope (and thus the nested url will launch a
+    // nested app browser).
     Browser* app_browser = browser_created_observer.Wait();
     EXPECT_TRUE(AppBrowserController::IsForWebApp(app_browser, nested_app_id));
     EXPECT_NE(browser(), app_browser);

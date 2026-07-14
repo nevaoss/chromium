@@ -75,7 +75,7 @@ constexpr char kInvalidLegalMessageLines[] =
 
 class TestPaymentsAutofillClientMock : public TestPaymentsAutofillClient {
  public:
-  explicit TestPaymentsAutofillClientMock(autofill::AutofillClient* client)
+  explicit TestPaymentsAutofillClientMock(AutofillClient* client)
       : TestPaymentsAutofillClient(client) {}
 
   ~TestPaymentsAutofillClientMock() override = default;

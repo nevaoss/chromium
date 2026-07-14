@@ -26,6 +26,7 @@
 #include "components/sync/base/client_tag_hash.h"
 #include "components/sync/base/features.h"
 #include "components/sync/base/server_defined_unique_tags.h"
+#include "components/sync/base/time.h"
 #include "components/sync/base/unique_position.h"
 #include "components/sync/engine/data_type_activation_response.h"
 #include "components/sync/model/data_type_activation_request.h"
@@ -157,6 +158,8 @@ sync_pb::BookmarkMetadata CreateNodeMetadata(
       syncer::ClientTagHash::FromUnhashed(syncer::BOOKMARKS,
                                           node->uuid().AsLowercaseString())
           .value());
+  bookmark_metadata.mutable_metadata()->set_creation_time(
+      syncer::TimeToProtoTime(base::Time::Now()));
   *bookmark_metadata.mutable_metadata()->mutable_unique_position() =
       unique_position.ToProto();
   // Required by SyncedBookmarkTracker during validation of local metadata.

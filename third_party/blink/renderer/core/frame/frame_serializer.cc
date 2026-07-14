@@ -425,7 +425,7 @@ class SerializerMarkupAccumulator : public MarkupAccumulator {
       MultiResourcePacker* resource_serializer,
       WebFrameSerializer::MHTMLPartsGenerationDelegate* web_delegate,
       Document& document)
-      : MarkupAccumulator(kResolveAllURLs,
+      : MarkupAccumulator(ResolveUrls::kAll,
                           IsA<HTMLDocument>(document) ? SerializationType::kHTML
                                                       : SerializationType::kXML,
                           ShadowRootInclusion()),

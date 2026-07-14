@@ -48,30 +48,46 @@
 
 namespace {
 
+// Spacing between buttons in the toolbar's horizontal stack view.
 constexpr CGFloat kStackViewSpacing = 9;
+
+// Duration of the banner promo slide animation.
 const base::TimeDelta kBannerPromoAnimationDuration = base::Seconds(0.5);
 
-constexpr CGFloat kButtonMinScale = 0.2;
+// The minimum scale factor for a button.
+constexpr CGFloat kButtonMinScale = 0.37;
 
-constexpr CGFloat kAnimationDuration = 0.2f;
+// Duration of standard toolbar transition animations (fade, scale).
+constexpr CGFloat kAnimationDuration = 0.2;
 
+// Margin between the location bar and the tab group indicator view.
 constexpr CGFloat kLocationBarToTabGroupMargin = 6;
 
 // The margin for the leading/trailing edges of the stack view.
+// Regular-Regular (iPad) size class margin.
 constexpr CGFloat kStackViewMarginRegularRegular = 16;
+// iPhone landscape margin.
 constexpr CGFloat kStackViewMarginLandscape = 46;
+// iPhone portrait margin.
 constexpr CGFloat kStackViewMarginPortrait = 9;
 
 // The margin between the stack views and the location bar.
+// Regular-Regular (iPad) size class margin.
 constexpr CGFloat kLocationBarStackViewMarginRegularRegular = 40;
+// iPhone portrait margin.
 constexpr CGFloat kLocationBarStackViewMarginPortrait = 9;
+// iPhone landscape margin.
 constexpr CGFloat kLocationBarStackViewMarginLandscape = 18;
 
-// Max width of the location bar.
+// Maximum allowed width for the location bar.
 constexpr CGFloat kLocationBarMaxWidth = 600;
 
 // The threshold for the fullscreen progress of a collapsed toolbar.
 constexpr CGFloat kFullscreenCollapsedThreshold = 0.05;
+
+// The threshold for fullscreen progress above which buttons are fully visible
+// and unscaled.
+constexpr CGFloat kFullscreenProgressThreshold = 0.99;
 
 // Timing to finish the animation of the progress bar before hiding it.
 const base::TimeDelta kProgressBarEndAnimationDuration =
@@ -501,19 +517,7 @@ const base::TimeDelta kProgressBarEndAnimationDuration =
   [self loadViewIfNeeded];
   [self updateToolbarElementsVisibility];
   [self updateTabGroupIndicatorAvailability];
-
-  if (_visible) {
-    [self.layoutGuideCenter referenceView:_toolsMenuButton
-                                underName:kToolsMenuGuide];
-    [self.layoutGuideCenter referenceView:_backButton
-                                underName:kBackButtonGuide];
-    [self.layoutGuideCenter referenceView:_forwardButton
-                                underName:kForwardButtonGuide];
-    [self.layoutGuideCenter referenceView:_shareButton
-                                underName:kShareButtonGuide];
-
-    [self updateTabSwitcherGuide];
-  }
+  [self updateLayoutGuides];
 }
 
 - (void)setNTPVisible:(BOOL)NTPVisible isStartSurface:(BOOL)isStartSurface {
@@ -908,12 +912,13 @@ const base::TimeDelta kProgressBarEndAnimationDuration =
       button.alpha = 0;
       continue;
     }
-    if (progress > 0.99) {
+    if (progress > kFullscreenProgressThreshold) {
       button.alpha = 1;
       button.transform = CGAffineTransformIdentity;
     } else {
       button.alpha = progress;
-      CGFloat scale = progress + (1 - progress) * kButtonMinScale;
+      // Linearly interpolates the scale between kButtonMinScale and 1.0.
+      CGFloat scale = progress + (1.0 - progress) * kButtonMinScale;
       button.transform = CGAffineTransformMakeScale(scale, scale);
     }
   }
@@ -1463,17 +1468,27 @@ const base::TimeDelta kProgressBarEndAnimationDuration =
   [self.sceneHandler displayTabGridInMode:TabGridOpeningMode::kDefault];
 }
 
+// Returns whether the toolbar should be hidden. The toolbar is typically hidden
+// on the regular NTP when scrolled to the top, unless a tab strip is visible.
+- (BOOL)shouldHideToolbar {
+  BOOL alwaysShowToolbar = CanShowTabStrip(self) && _topPosition;
+  if (alwaysShowToolbar) {
+    return NO;
+  }
+  return _NTPVisible && !_incognito && !CanShowTabStrip(self) &&
+         _NTPScrollProgress == 0.0;
+}
+
 // Updates the visibility of the toolbar.
 - (void)updateToolbarVisibility {
-  BOOL hideToolbar;
+  BOOL hideToolbar = [self shouldHideToolbar];
+
   BOOL alwaysShowToolbar = CanShowTabStrip(self) && _topPosition;
   if (alwaysShowToolbar) {
     self.view.alpha = 1.0;
-    hideToolbar = NO;
-  } else {
-    hideToolbar = _NTPVisible && !_incognito && !CanShowTabStrip(self) &&
-                  _NTPScrollProgress == 0.0;
   }
+
+  [self updateLayoutGuides];
 
   BOOL visibilityChanged = hideToolbar != self.view.isHidden;
 
@@ -1601,6 +1616,37 @@ const base::TimeDelta kProgressBarEndAnimationDuration =
     _bannerPromoBackgroundHeightConstraint.constant = [self
         bannerPromoBackgroundHeightForFullscreenProgress:_fullscreenProgress];
   }
+}
+
+// Safely updates a layout guide by either referencing `view` or unreferencing
+// it if `hide` is YES and the guide is currently owned by `view`.
+- (void)updateGuide:(GuideName*)guide withView:(UIView*)view hide:(BOOL)hide {
+  if (hide) {
+    if ([self.layoutGuideCenter referencedViewUnderName:guide] == view) {
+      [self.layoutGuideCenter referenceView:nil underName:guide];
+    }
+  } else {
+    [self.layoutGuideCenter referenceView:view underName:guide];
+  }
+}
+
+// Updates the layout guides to point to the buttons in this toolbar.
+// This should be called when this toolbar becomes the active visible toolbar.
+- (void)updateLayoutGuides {
+  if (!_visible) {
+    return;
+  }
+
+  BOOL hideToolbar = [self shouldHideToolbar];
+
+  [self updateGuide:kToolsMenuGuide withView:_toolsMenuButton hide:hideToolbar];
+  [self updateGuide:kBackButtonGuide withView:_backButton hide:hideToolbar];
+  [self updateGuide:kForwardButtonGuide
+           withView:_forwardButton
+               hide:hideToolbar];
+  [self updateGuide:kShareButtonGuide withView:_shareButton hide:hideToolbar];
+
+  [self updateTabSwitcherGuide];
 }
 
 // Conditionally registers the Tab Switcher layout guide.

@@ -15,10 +15,13 @@ NSString* const
     kAIMSRPDebuggerURLViewControllerCloseButtonAccessibilityIdentifier =
         @"AIMSRPDebuggerURLViewControllerCloseButtonAccessibilityIdentifier";
 NSString* const
-    kAIMSRPDebuggerURLViewControllerCopyButtonAccessibilityIdentifier =
-        @"AIMSRPDebuggerURLViewControllerCopyButtonAccessibilityIdentifier";
-NSString* const
     kAIMSRPDebuggerURLViewControllerTextViewAccessibilityIdentifier =
         @"AIMSRPDebuggerURLViewControllerTextViewAccessibilityIdentifier";
+NSString* const
+    kAIMSRPDebuggerURLViewControllerEditButtonAccessibilityIdentifier =
+        @"AIMSRPDebuggerURLViewControllerEditButtonAccessibilityIdentifier";
+NSString* const
+    kAIMSRPDebuggerURLViewControllerDoneButtonAccessibilityIdentifier =
+        @"AIMSRPDebuggerURLViewControllerDoneButtonAccessibilityIdentifier";
 
 const CGFloat kSheetDetentAnimationDuration = 0.3;

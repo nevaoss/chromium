@@ -151,10 +151,6 @@ But, the tests are built by {}.\
                 ),
             ),
             "content_browsertests": targets.mixin(
-                # Only retry the individual failed tests instead of rerunning
-                # entire shards.
-                # crbug.com/1475852
-                retry_only_failed_tests = True,
                 swarming = targets.swarming(
                     shards = 12,
                 ),

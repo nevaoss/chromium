@@ -796,4 +796,98 @@ TEST_F(PasswordManagerUtilTest, IsAbleToSavePasswords_NotSyncing) {
   EXPECT_FALSE(IsAbleToSavePasswords(&mock_client_));
 }
 
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+struct TrustedVaultErrorPreventsFromSavingTestCase {
+  std::string name;
+  // It might be that the credential is updated in both stores. In this case
+  // `password_store_for_saving` will be the enum value with both bits set (the
+  // account and the profile store bits). This approach replicates the
+  // behavior of `GetPasswordStoreForSaving`.
+  PasswordForm::Store password_store_for_saving;
+  password_manager::ActionableError profile_store_error;
+  password_manager::ActionableError account_store_error;
+  bool expected_result;
+};
+
+class PasswordManagerUtilTrustedVaultErrorPreventsFromSavingTest
+    : public testing::TestWithParam<
+          TrustedVaultErrorPreventsFromSavingTestCase> {
+ protected:
+  PasswordManagerUtilTrustedVaultErrorPreventsFromSavingTest() {
+    feature_list_.InitAndEnableFeature(
+        password_manager::features::
+            kPasswordSaveInContextErrorResolutionOnDesktop);
+  }
+  ~PasswordManagerUtilTrustedVaultErrorPreventsFromSavingTest() override =
+      default;
+
+  base::test::ScopedFeatureList feature_list_;
+  MockPasswordManagerClient client_;
+};
+
+TEST_P(PasswordManagerUtilTrustedVaultErrorPreventsFromSavingTest,
+       IsSavingBlockedByTrustedVaultError) {
+  const auto& test_case = GetParam();
+
+  auto mock_profile_store =
+      base::MakeRefCounted<password_manager::MockPasswordStoreInterface>();
+  auto mock_account_store =
+      base::MakeRefCounted<password_manager::MockPasswordStoreInterface>();
+
+  EXPECT_CALL(client_, GetProfilePasswordStore())
+      .WillRepeatedly(Return(mock_profile_store.get()));
+  EXPECT_CALL(client_, GetAccountPasswordStore())
+      .WillRepeatedly(Return(mock_account_store.get()));
+
+  testing::NiceMock<password_manager::MockPasswordFormManagerForUI>
+      form_manager;
+  EXPECT_CALL(form_manager, GetPasswordStoreForSaving)
+      .WillRepeatedly(Return(test_case.password_store_for_saving));
+
+  PasswordForm dummy_form;
+  EXPECT_CALL(form_manager, GetPendingCredentials())
+      .WillRepeatedly(testing::ReturnRef(dummy_form));
+
+  EXPECT_CALL(*mock_profile_store, GetError())
+      .WillRepeatedly(Return(test_case.profile_store_error));
+  EXPECT_CALL(*mock_account_store, GetError())
+      .WillRepeatedly(Return(test_case.account_store_error));
+
+  EXPECT_EQ(IsSavingBlockedByTrustedVaultError(&client_, &form_manager),
+            test_case.expected_result);
+}
+
+const TrustedVaultErrorPreventsFromSavingTestCase
+    kTrustedVaultErrorPreventsFromSavingTestCases[] = {
+        {"NoError", PasswordForm::Store::kProfileStore,
+         password_manager::ActionableError::kNoError,
+         password_manager::ActionableError::kNoError, false},
+        {"ProfileStoreBlocked", PasswordForm::Store::kProfileStore,
+         password_manager::ActionableError::kTrustedVaultKeyNeeded,
+         password_manager::ActionableError::kNoError, true},
+        {"AccountStoreBlocked", PasswordForm::Store::kAccountStore,
+         password_manager::ActionableError::kNoError,
+         password_manager::ActionableError::kTrustedVaultKeyNeeded, true},
+        {"BothStoresBlocked",
+         PasswordForm::Store::kProfileStore |
+             PasswordForm::Store::kAccountStore,
+         password_manager::ActionableError::kTrustedVaultKeyNeeded,
+         password_manager::ActionableError::kTrustedVaultKeyNeeded, true},
+        {"OneStoreBlockedOtherStoreHasInactionableError",
+         PasswordForm::Store::kProfileStore |
+             PasswordForm::Store::kAccountStore,
+         password_manager::ActionableError::kTrustedVaultKeyNeeded,
+         password_manager::ActionableError::kInactionable, false},
+};
+
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    PasswordManagerUtilTrustedVaultErrorPreventsFromSavingTest,
+    testing::ValuesIn(kTrustedVaultErrorPreventsFromSavingTestCases),
+    [](const testing::TestParamInfo<
+        TrustedVaultErrorPreventsFromSavingTestCase>& info) {
+      return info.param.name;
+    });
+#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+
 }  // namespace password_manager_util

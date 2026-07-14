@@ -130,7 +130,7 @@ public class TabBottomSheetManagerTest {
                                     null,
                                     null,
                                     Color.WHITE,
-                                    new TestTabBottomSheetComponentProvider());
+                                    new TestCoBrowseComponentProvider());
                     mManager =
                             (TabBottomSheetManagerImpl)
                                     tabbedRootUiCoordinator.getTabBottomSheetManagerForTesting();
@@ -141,7 +141,7 @@ public class TabBottomSheetManagerTest {
     public void tearDown() {
         if (mManager != null) {
             ThreadUtils.runOnUiThreadBlocking(
-                    () -> mManager.tryToCloseBottomSheet(/* animate= */ false));
+                    () -> mManager.tryToCloseBottomSheet(/* animate= */ true));
         }
     }
 
@@ -237,7 +237,7 @@ public class TabBottomSheetManagerTest {
                                         webContents,
                                         TabBottomSheetClientType.UNKNOWN,
                                         CoBrowseContainerType.BOTTOM_SHEET,
-                                        new TestTabBottomSheetComponentProvider()));
+                                        new TestCoBrowseComponentProvider()));
 
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
@@ -265,7 +265,6 @@ public class TabBottomSheetManagerTest {
         ThreadUtils.runOnUiThread(
                 () -> {
                     coBrowseViews.destroy();
-                    webContents.destroy();
                 });
     }
 
@@ -290,7 +289,7 @@ public class TabBottomSheetManagerTest {
                                         webContents,
                                         TabBottomSheetClientType.UNKNOWN,
                                         CoBrowseContainerType.BOTTOM_SHEET,
-                                        new TestTabBottomSheetComponentProvider()));
+                                        new TestCoBrowseComponentProvider()));
 
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
@@ -328,7 +327,6 @@ public class TabBottomSheetManagerTest {
         ThreadUtils.runOnUiThread(
                 () -> {
                     coBrowseViews.destroy();
-                    webContents.destroy();
                 });
     }
 
@@ -575,7 +573,7 @@ public class TabBottomSheetManagerTest {
                                         null,
                                         null,
                                         Color.WHITE,
-                                        new TestTabBottomSheetComponentProvider()));
+                                        new TestCoBrowseComponentProvider()));
 
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {

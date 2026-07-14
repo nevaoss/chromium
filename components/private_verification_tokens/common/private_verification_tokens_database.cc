@@ -85,6 +85,8 @@ static constexpr char kDeleteKeysForSql[] =
 static constexpr char kDeleteKeySql[] =
     "DELETE FROM keys WHERE etld_plus_one = ? AND key_id = ?";
 
+static constexpr char kDeleteAllTokensSql[] = "DELETE FROM tokens";
+
 // clang-format on
 
 }  // namespace
@@ -140,6 +142,17 @@ PrivateVerificationTokensDatabase::PrivateVerificationTokensDatabase(
 
 PrivateVerificationTokensDatabase::~PrivateVerificationTokensDatabase() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+}
+
+void PrivateVerificationTokensDatabase::DeleteAllTokens() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!EnsureDBInitialized()) {
+    return;
+  }
+  sql::Statement statement(
+      database_->GetCachedStatement(SQL_FROM_HERE, kDeleteAllTokensSql));
+  DCHECK(statement.is_valid());
+  statement.Run();
 }
 
 const base::FilePath& PrivateVerificationTokensDatabase::PathToDatabase()

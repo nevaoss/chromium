@@ -50,34 +50,6 @@ LayoutThemeDefault::LayoutThemeDefault() : painter_(*this) {}
 
 LayoutThemeDefault::~LayoutThemeDefault() = default;
 
-// Use the Windows style sheets to match their metrics.
-String LayoutThemeDefault::ExtraDefaultStyleSheet() {
-  String extra_style_sheet = LayoutTheme::ExtraDefaultStyleSheet();
-  String multiple_fields_style_sheet =
-      RuntimeEnabledFeatures::InputMultipleFieldsUIEnabled()
-          ? UncompressResourceAsASCIIString(
-                IDR_UASTYLE_THEME_INPUT_MULTIPLE_FIELDS_CSS)
-          : String();
-  StringBuilder builder;
-  builder.ReserveCapacity(extra_style_sheet.length() +
-                          multiple_fields_style_sheet.length());
-  builder.Append(extra_style_sheet);
-  builder.Append(multiple_fields_style_sheet);
-  return builder.ToString();
-}
-
-gfx::Size LayoutThemeDefault::SliderTickSize() const {
-  // The value should be synchronized with a -webkit-slider-container rule in
-  // html.css.
-  return gfx::Size(1, 4);
-}
-
-int LayoutThemeDefault::SliderTickOffsetFromTrackCenter() const {
-  // The value should be synchronized with a -webkit-slider-container rule in
-  // html.css and LayoutThemeAndroid::ExtraDefaultStyleSheet().
-  return 7;
-}
-
 void LayoutThemeDefault::AdjustSliderThumbSize(
     ComputedStyleBuilder& builder) const {
   gfx::Size size = WebThemeEngineHelper::GetNativeThemeEngine()->GetSize(
@@ -108,11 +80,6 @@ void LayoutThemeDefault::AdjustInnerSpinButtonStyle(
     style.SetHeight(Length::Fixed(size.width() * zoom_level));
     style.SetMinHeight(Length::Fixed(size.width() * zoom_level));
   }
-}
-
-Color LayoutThemeDefault::PlatformFocusRingColor() const {
-  constexpr Color focus_ring_color = Color::FromRGBA32(0xFFE59700);
-  return focus_ring_color;
 }
 
 void LayoutThemeDefault::AdjustButtonStyle(

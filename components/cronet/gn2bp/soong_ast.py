@@ -23,7 +23,7 @@ class JniZeroTargetType(enum.Enum):
 def get_jni_zero_target_type(target):
     if target.script != '//third_party/jni_zero/jni_zero.py':
         return None
-    if target.args[0] == 'generate-final':
+    if target.common.args[0] == 'generate-final':
         return JniZeroTargetType.REGISTRATION_GENERATOR
     return JniZeroTargetType.GENERATOR
 

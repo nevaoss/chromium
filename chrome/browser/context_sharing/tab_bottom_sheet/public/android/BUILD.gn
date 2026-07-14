@@ -13,7 +13,7 @@ java_cpp_enum("enums_java") {
 }
 
 generate_jni("jni_headers") {
-  sources = [ "java/src/org/chromium/chrome/browser/tab_bottom_sheet/TabBottomSheetComponentProvider.java" ]
+  sources = [ "java/src/org/chromium/chrome/browser/tab_bottom_sheet/CoBrowseComponentProvider.java" ]
 }
 
 android_library("java") {
@@ -22,7 +22,7 @@ android_library("java") {
     ":jni_headers",
   ]
   sources = [
-    "java/src/org/chromium/chrome/browser/tab_bottom_sheet/TabBottomSheetComponentProvider.java",
+    "java/src/org/chromium/chrome/browser/tab_bottom_sheet/CoBrowseComponentProvider.java",
     "java/src/org/chromium/chrome/browser/tab_bottom_sheet/TabBottomSheetContent.java",
     "java/src/org/chromium/chrome/browser/tab_bottom_sheet/TabBottomSheetManager.java",
     "java/src/org/chromium/chrome/browser/tab_bottom_sheet/TabBottomSheetPeekProperties.java",

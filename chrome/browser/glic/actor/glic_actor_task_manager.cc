@@ -250,7 +250,10 @@ void GlicActorClientSession::CreateTask(
       &actor_policy_checker(), std::move(options), GetWeakPtr());
   CHECK(!current_task_id_.is_null());
 
-  manager_->SetActuating(true);
+  if (manager_->delegate_) {
+    manager_->delegate_->OnTaskIdChanged(current_task_id_.value());
+  }
+  manager_->MaybeNotifyActuatingChanged();
 
   actor_task_state_changed_subscription_ =
       actor_keyed_service().AddTaskStateChangedCallback(base::BindRepeating(
@@ -842,6 +845,13 @@ std::vector<tabs::TabInterface*> GlicActorTaskManager::GetLastActedTabs()
   return target_tabs;
 }
 
+std::optional<int> GlicActorTaskManager::current_task_id() const {
+  if (session_ && !session_->current_task_id().is_null()) {
+    return session_->current_task_id().value();
+  }
+  return std::nullopt;
+}
+
 base::CallbackListSubscription
 GlicActorTaskManager::AddActuatingChangedCallback(
     base::RepeatingCallback<void(bool)> callback) {
@@ -986,10 +996,13 @@ void GlicActorClientSession::NotifyActorTaskStateChanged(
 
   if (task.IsCompleted()) {
     current_task_id_ = actor::TaskId();
+    if (manager_->delegate_) {
+      manager_->delegate_->OnTaskIdChanged(std::nullopt);
+    }
     attempted_reload_after_crash_ = false;
     reload_observer_.reset();
     actor_task_state_changed_subscription_.reset();
-    manager_->SetActuating(false);
+    manager_->MaybeNotifyActuatingChanged();
   }
 }
 
@@ -1041,15 +1054,16 @@ base::WeakPtr<GlicActorClientSession> GlicActorClientSession::GetWeakPtr() {
 
 void GlicActorTaskManager::UnbindSession() {
   session_.reset();
-  SetActuating(false);
+  MaybeNotifyActuatingChanged();
 }
 
-void GlicActorTaskManager::SetActuating(bool actuating) {
-  if (actuating_ == actuating) {
+void GlicActorTaskManager::MaybeNotifyActuatingChanged() {
+  const bool current_actuating_state = IsActuating();
+  if (last_notified_actuating_state_ == current_actuating_state) {
     return;
   }
-  actuating_ = actuating;
-  actuating_changed_callbacks_.Notify(actuating_);
+  last_notified_actuating_state_ = current_actuating_state;
+  actuating_changed_callbacks_.Notify(current_actuating_state);
 }
 
 void GlicActorClientSession::OnTabAddedToTask(

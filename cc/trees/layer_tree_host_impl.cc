@@ -3098,17 +3098,18 @@ viz::CompositorFrame LayerTreeHostImpl::GenerateCompositorFrame(
   }
 
   if (frame->damage_reasons.Has(DamageReason::kAnimatedImage)) {
-    CHECK(!settings_.trees_in_viz_in_viz_process);
-    CHECK(image_animation_controller_);
-    std::optional<ImageAnimationController::ConsistentFrameDuration>
-        animating_image_duration =
-            image_animation_controller_->GetConsistentContentFrameDuration();
-    if (animating_image_duration) {
-      metadata.frame_interval_inputs.content_interval_info.push_back(
-          {viz::ContentFrameIntervalType::kAnimatingImage,
-           animating_image_duration->frame_duration,
-           animating_image_duration->num_images - 1u});
-      frame->damage_reasons.Remove(DamageReason::kAnimatedImage);
+    if (!settings_.trees_in_viz_in_viz_process) {
+      CHECK(image_animation_controller_);
+      std::optional<ImageAnimationController::ConsistentFrameDuration>
+          animating_image_duration =
+              image_animation_controller_->GetConsistentContentFrameDuration();
+      if (animating_image_duration) {
+        metadata.frame_interval_inputs.content_interval_info.push_back(
+            {viz::ContentFrameIntervalType::kAnimatingImage,
+             animating_image_duration->frame_duration,
+             animating_image_duration->num_images - 1u});
+        frame->damage_reasons.Remove(DamageReason::kAnimatedImage);
+      }
     }
   }
 

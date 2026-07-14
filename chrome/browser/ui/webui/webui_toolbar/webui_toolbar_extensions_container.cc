@@ -23,6 +23,7 @@
 #include "chrome/browser/ui/webui/webui_toolbar/icon_table.h"
 #include "components/browser_apis/ui_controllers/toolbar/icon_handle.h"
 #include "content/public/browser/web_ui.h"
+#include "mojo/public/cpp/bindings/clone_traits.h"
 #include "ui/base/models/image_model_utils.h"
 #include "ui/base/mojom/menu_source_type.mojom.h"
 #include "ui/views/controls/menu/menu_item_view.h"
@@ -183,6 +184,12 @@ WebUIToolbarExtensionsContainer::~WebUIToolbarExtensionsContainer() {
   }
 }
 
+void WebUIToolbarExtensionsContainer::SetObserver(
+    WebUIToolbarExtensionsContainerObserver* observer) {
+  CHECK(!page_);
+  observer_ = observer;
+}
+
 ToolbarActionViewModel* WebUIToolbarExtensionsContainer::GetActionForId(
     const std::string& action_id) {
   auto it = actions_.find(action_id);
@@ -316,12 +323,16 @@ void WebUIToolbarExtensionsContainer::OnToolbarActionRemoved(
   }
   actions_[id]->model()->UnregisterCommand();
   actions_.erase(id);
+
+  std::vector<toolbar_ui_api::mojom::IconUpdatePtr> icon_updates;
+  if (push_icon_table_updates_) {
+    icon_updates = icon_table_->TakePendingUpdates();
+  }
+
   if (page_) {
-    std::vector<toolbar_ui_api::mojom::IconUpdatePtr> icon_updates;
-    if (push_icon_table_updates_) {
-      icon_updates = icon_table_->TakePendingUpdates();
-    }
     page_->ActionRemoved(std::move(icon_updates), id);
+  } else if (observer_) {
+    observer_->OnActionRemoved(std::move(icon_updates), id);
   }
 }
 
@@ -337,6 +348,7 @@ void WebUIToolbarExtensionsContainer::OnToolbarPinnedActionsChanged() {
 void WebUIToolbarExtensionsContainer::Bind(
     mojo::PendingRemote<extensions_bar::mojom::Page> page,
     mojo::PendingReceiver<extensions_bar::mojom::PageHandler> receiver) {
+  CHECK(!observer_);
   receiver_.reset();
   receiver_.Bind(std::move(receiver));
   page_.reset();
@@ -350,7 +362,10 @@ void WebUIToolbarExtensionsContainer::Bind(
 }
 
 void WebUIToolbarExtensionsContainer::NotifyOfAllActions() {
-  if (!page_ || actions_.empty()) {
+  if (!page_ && !observer_) {
+    return;
+  }
+  if (actions_.empty()) {
     return;
   }
 
@@ -367,12 +382,18 @@ void WebUIToolbarExtensionsContainer::NotifyOfAllActions() {
   if (push_icon_table_updates_) {
     icon_updates = icon_table_->TakePendingUpdates();
   }
-  page_->ActionsAddedOrUpdated(std::move(icon_updates), std::move(updates));
+
+  if (page_) {
+    page_->ActionsAddedOrUpdated(std::move(icon_updates), std::move(updates));
+  } else if (observer_) {
+    observer_->OnActionsAddedOrUpdated(std::move(icon_updates),
+                                       std::move(updates));
+  }
 }
 
 void WebUIToolbarExtensionsContainer::NotifyOfOneAction(
     const ToolbarActionsModel::ActionId& id) {
-  if (!page_) {
+  if (!page_ && !observer_) {
     return;
   }
 
@@ -387,7 +408,13 @@ void WebUIToolbarExtensionsContainer::NotifyOfOneAction(
   if (push_icon_table_updates_) {
     icon_updates = icon_table_->TakePendingUpdates();
   }
-  page_->ActionsAddedOrUpdated(std::move(icon_updates), std::move(update));
+
+  if (page_) {
+    page_->ActionsAddedOrUpdated(std::move(icon_updates), std::move(update));
+  } else if (observer_) {
+    observer_->OnActionsAddedOrUpdated(std::move(icon_updates),
+                                       std::move(update));
+  }
 }
 
 ui::TrackedElement*
@@ -403,11 +430,13 @@ views::Widget* WebUIToolbarExtensionsContainer::GetWidget() const {
 
 void WebUIToolbarExtensionsContainer::NotifyActionPoppedOut(
     base::OnceClosure closure) {
-  if (!page_) {
+  if (page_) {
+    page_->ActionPoppedOut(std::move(closure));
+  } else if (observer_) {
+    observer_->OnActionPoppedOut(std::move(closure));
+  } else {
     std::move(closure).Run();
-    return;
   }
-  page_->ActionPoppedOut(std::move(closure));
 }
 
 void WebUIToolbarExtensionsContainer::ExecuteUserAction(const std::string& id) {

@@ -59,6 +59,8 @@ using password_manager::StoredCredential;
 namespace password_manager_util {
 namespace {
 
+using enum password_manager::PasswordForm::Store;
+
 std::tuple<int, base::Time, int> GetPriorityProperties(
     const StoredCredential& form) {
   return std::make_tuple(-static_cast<int>(GetMatchType(form)),
@@ -75,10 +77,10 @@ bool IsBetterMatchStored(const StoredCredential& lhs,
 // Trusted Vault key recovery.
 bool ShouldAllowSavingPasswordsWithInFlowRecovery(
     password_manager::ActionableError error) {
-  return base::FeatureList::IsEnabled(
+  return error == password_manager::ActionableError::kTrustedVaultKeyNeeded &&
+         base::FeatureList::IsEnabled(
              password_manager::features::
-                 kInFlowTrustedVaultKeyRetrievalAndroid) &&
-         error == password_manager::ActionableError::kTrustedVaultKeyNeeded;
+                 kInFlowTrustedVaultKeyRetrievalAndroid);
 }
 #endif
 
@@ -157,6 +159,46 @@ bool IsAbleToSavePasswords(password_manager::PasswordManagerClient* client) {
   const password_manager::PasswordStoreInterface* profile_store =
       client->GetProfilePasswordStore();
   return profile_store && IsAbleToSavePasswords(profile_store->GetError());
+}
+
+bool IsSavingBlockedByTrustedVaultError(
+    const password_manager::PasswordManagerClient* client,
+    const password_manager::PasswordFormManagerForUI* form_manager) {
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
+  // TODO(crbug.com/484367376): Implement this function for all platforms.
+  return false;
+#else
+  bool has_trusted_vault_error = false;
+  bool has_other_blocking_errors = false;
+  // It might be that the credential is updated in both stores. In this case
+  // `store_for_saving` will be the enum value with both bits set (the account
+  // and the profile store bits).
+  password_manager::PasswordForm::Store store_for_saving =
+      form_manager->GetPasswordStoreForSaving(
+          form_manager->GetPendingCredentials());
+  for (password_manager::PasswordForm::Store store_type :
+       {kProfileStore, kAccountStore}) {
+    if ((store_for_saving & store_type) != store_type) {
+      continue;
+    }
+    const password_manager::PasswordStoreInterface* store =
+        (store_type == kAccountStore) ? client->GetAccountPasswordStore()
+                                      : client->GetProfilePasswordStore();
+    if (!store) {
+      continue;
+    }
+    password_manager::ActionableError error = store->GetError();
+    if (error == password_manager::ActionableError::kTrustedVaultKeyNeeded) {
+      has_trusted_vault_error = true;
+    } else if (!IsAbleToSavePasswords(error)) {
+      has_other_blocking_errors = true;
+    }
+  }
+  return has_trusted_vault_error && !has_other_blocking_errors &&
+         base::FeatureList::IsEnabled(
+             password_manager::features::
+                 kPasswordSaveInContextErrorResolutionOnDesktop);
+#endif
 }
 
 std::string_view GetSignonRealmWithProtocolExcluded(const PasswordForm& form) {

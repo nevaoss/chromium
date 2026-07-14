@@ -25,6 +25,7 @@
 #include "content/browser/devtools/devtools_instrumentation.h"
 #include "content/browser/preloading/prefetch/no_vary_search_helper.h"
 #include "content/browser/preloading/preload_activation_report_manager.h"
+#include "content/browser/preloading/preload_activation_report_utils.h"
 #include "content/browser/preloading/preloading_attempt_impl.h"
 #include "content/browser/preloading/preloading_trigger_type_impl.h"
 #include "content/browser/preloading/prerender/devtools_prerender_attempt.h"
@@ -42,6 +43,7 @@
 #include "content/browser/renderer_host/page_impl.h"
 #include "content/browser/renderer_host/render_frame_host_impl.h"
 #include "content/browser/renderer_host/render_view_host_impl.h"
+#include "content/browser/site_instance_impl.h"
 #include "content/browser/web_contents/web_contents_impl.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/content_browser_client.h"
@@ -513,11 +515,49 @@ PrerenderHost::PrerenderHost(
   } else {
     frame_tree_delegate_ = std::make_unique<PrerenderFrameTreeDelegate>(
         web_contents.GetBrowserContext(), web_contents, *this);
+
     scoped_refptr<SiteInstanceImpl> site_instance =
         base::FeatureList::IsEnabled(kCreatePrerenderSiteInstanceWithURL)
             ? SiteInstanceImpl::CreateForURL(web_contents.GetBrowserContext(),
                                              attributes.prerendering_url)
             : SiteInstanceImpl::Create(web_contents.GetBrowserContext());
+
+    // TODO(https://crbug.com/524800804): Add the following restrictions:
+    // 1. For moderate eagerness only
+    // 2. Disallow Target_hint = 'blank' to use the same process.
+    // 3. Disallow cross-site prerendering to reuse the process.
+    if (!attributes.IsBrowserInitiated() &&
+        attributes.initiator_frame_token.has_value() &&
+        base::FeatureList::IsEnabled(
+            features::kPrerender2ReuseInitiatorProcess)) {
+      std::string allowed_action =
+          features::kPrerender2ReuseInitiatorProcessActionType.Get();
+
+      bool action_matches = false;
+      if (allowed_action == "all") {
+        action_matches = true;
+      } else if (allowed_action == "prerender" &&
+                 attributes.prerender_action_type ==
+                     blink::mojom::SpeculationAction::kPrerender) {
+        action_matches = true;
+      } else if (allowed_action == "prerender-until-script" &&
+                 attributes.prerender_action_type ==
+                     blink::mojom::SpeculationAction::kPrerenderUntilScript) {
+        action_matches = true;
+      }
+
+      if (action_matches) {
+        RenderFrameHostImpl* initiator_rfh =
+            RenderFrameHostImpl::FromFrameToken(
+                attributes.initiator_process_id,
+                attributes.initiator_frame_token.value());
+        if (initiator_rfh) {
+          site_instance->ReuseExistingProcessIfPossible(
+              initiator_rfh->GetProcess());
+        }
+      }
+    }
+
     GetFrameTree()->Init(site_instance.get(),
                          /*renderer_initiated_creation=*/false,
                          /*main_frame_name=*/"", /*opener_for_origin=*/nullptr,
@@ -574,6 +614,8 @@ bool PrerenderHost::StartPrerendering() {
   load_url_params.initiator_origin = attributes_.initiator_origin;
   load_url_params.initiator_process_id = attributes_.initiator_process_id;
   load_url_params.initiator_frame_token = attributes_.initiator_frame_token;
+  load_url_params.initiator_navigation_state =
+      attributes_.initiator_navigation_state;
 #if BUILDFLAG(IS_ANDROID)
   if (!attributes_.additional_headers.IsEmpty()) {
     load_url_params.extra_headers =
@@ -710,7 +752,9 @@ void PrerenderHost::ReadyToCommitNavigation(
           blink::mojom::WebFeature::kPrerender2CrossOriginIframes);
     }
 
-    if (base::FeatureList::IsEnabled(features::kPrerenderActivationBeacon)) {
+    if (IsPrerenderActivationBeaconEnabled(
+            navigation_request->GetURL(),
+            navigation_request->GetResponseHeaders())) {
       activation_beacon_url_ = FindActivationBeaconURL(*navigation_request);
     }
   }
@@ -800,8 +844,7 @@ std::unique_ptr<StoredPage> PrerenderHost::Activate(
   CHECK(is_ready_for_activation_);
   is_ready_for_activation_ = false;
 
-  if (base::FeatureList::IsEnabled(features::kPrerenderActivationBeacon) &&
-      !activation_beacon_url_.is_empty()) {
+  if (!activation_beacon_url_.is_empty()) {
     auto* manager =
         PreloadActivationReportManager::GetOrCreateForBrowserContext(
             web_contents_->GetBrowserContext());

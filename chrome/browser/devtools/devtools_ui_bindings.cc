@@ -147,6 +147,7 @@
 #include "extensions/common/manifest_handlers/devtools_page_handler.h"
 #include "extensions/common/mojom/api_permission_id.mojom-shared.h"
 #include "extensions/common/permissions/permissions_data.h"
+#include "extensions/common/switches.h"
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 
 using content::BrowserThread;
@@ -2226,6 +2227,18 @@ base::DictValue DevToolsUIBindings::GetHostConfigDictionary(Profile* profile) {
                         "enabled", GetFeatureStateForDevTools(
                                        ::features::kDevToolsPlusButton,
                                        enabled_by_flags, disabled_by_flags)));
+
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+  // We check AreExtensionsOnExtensionURLsAllowed() here because this is used to
+  // restrict access to chrome-extension:// URLs, and that helper covers both
+  // --extensions-on-extension-urls and the legacy --extensions-on-chrome-urls
+  // behavior.
+  response_dict.Set(
+      "extensionsOnChromeUrls",
+      base::DictValue().Set(
+          "enabled",
+          extensions::switches::AreExtensionsOnExtensionURLsAllowed()));
+#endif
 
   return response_dict;
 }

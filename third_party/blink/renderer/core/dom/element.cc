@@ -1403,9 +1403,6 @@ void Element::SetElementAttribute(const QualifiedName& name, Element* element) {
     if (AXObjectCache* cache = GetDocument().ExistingAXObjectCache()) {
       cache->HandleAttributeChanged(name, this);
     }
-    if (name == html_names::kCommandforAttr) {
-      GetDocument().MarkOverscrollCommandTargetsDirty();
-    }
   }
 }
 
@@ -3825,10 +3822,6 @@ void Element::AttributeChanged(const AttributeModificationParams& params) {
           ->RemovePendingParsingElement(GetIdAttribute(), this);
     }
 
-    if (isConnected() &&
-        (!params.old_value.empty() || !params.new_value.empty())) {
-      GetDocument().MarkOverscrollCommandTargetsDirty();
-    }
   } else if (name == html_names::kClassAttr) {
     if (params.old_value == params.new_value &&
         params.reason != AttributeModificationReason::kByMoveToNewDocument &&
@@ -4363,10 +4356,6 @@ Node::InsertionNotificationRequest Element::InsertedInto(
     }
   }
 
-  if (insertion_point.isConnected() && !GetIdAttribute().empty()) {
-    GetDocument().MarkOverscrollCommandTargetsDirty();
-  }
-
   return kInsertionDone;
 }
 
@@ -4555,9 +4544,6 @@ void Element::RemovedFrom(ContainerNode& insertion_point) {
     tracker->RemoveAllOverscroll();
   }
 
-  if (was_in_document && !GetIdAttribute().empty()) {
-    document.MarkOverscrollCommandTargetsDirty();
-  }
 }
 
 void Element::AttachColumnPseudoElements(AttachContext& context) {
@@ -5980,6 +5966,14 @@ void Element::RebuildLayoutTree(WhitespaceAttacher& whitespace_attacher) {
     if (has_pseudo_elements) {
       RebuildPseudoElementLayoutTree(kPseudoIdScrollMarkerGroupAfter,
                                      local_attacher);
+      RebuildPseudoElementLayoutTree(kPseudoIdScrollButtonBlockEnd,
+                                     local_attacher);
+      RebuildPseudoElementLayoutTree(kPseudoIdScrollButtonInlineEnd,
+                                     local_attacher);
+      RebuildPseudoElementLayoutTree(kPseudoIdScrollButtonInlineStart,
+                                     local_attacher);
+      RebuildPseudoElementLayoutTree(kPseudoIdScrollButtonBlockStart,
+                                     local_attacher);
     }
     LayoutObject* layout_object = GetLayoutObject();
     if (layout_object || !HasDisplayContentsStyle()) {
@@ -6010,14 +6004,6 @@ void Element::RebuildLayoutTree(WhitespaceAttacher& whitespace_attacher) {
       RebuildPseudoElementLayoutTree(kPseudoIdCheckMark, *child_attacher);
       RebuildPseudoElementLayoutTree(kPseudoIdBefore, *child_attacher);
       RebuildPseudoElementLayoutTree(kPseudoIdMarker, *child_attacher);
-      RebuildPseudoElementLayoutTree(kPseudoIdScrollButtonBlockEnd,
-                                     local_attacher);
-      RebuildPseudoElementLayoutTree(kPseudoIdScrollButtonInlineEnd,
-                                     local_attacher);
-      RebuildPseudoElementLayoutTree(kPseudoIdScrollButtonInlineStart,
-                                     local_attacher);
-      RebuildPseudoElementLayoutTree(kPseudoIdScrollButtonBlockStart,
-                                     local_attacher);
       RebuildPseudoElementLayoutTree(kPseudoIdScrollMarkerGroupBefore,
                                      local_attacher);
       RebuildPseudoElementLayoutTree(kPseudoIdBackdrop, *child_attacher);
@@ -6113,7 +6099,6 @@ void Element::RebuildOverscrollAreaLayoutTree(
     PseudoElement* pseudo_element =
         overscroll_area->GetPseudoElement(kPseudoIdOverscrollAreaParent);
     pseudo_element->RebuildLayoutTree(whitespace_attacher);
-    CHECK(pseudo_element->GetLayoutObject());
   }
 }
 
@@ -6131,7 +6116,6 @@ void Element::AttachOverscrollPseudoElements(AttachContext& context) {
     PseudoElement* pseudo_element =
         overscroll_area->GetPseudoElement(kPseudoIdOverscrollAreaParent);
     pseudo_element->AttachLayoutTree(context);
-    CHECK(pseudo_element->GetLayoutObject());
   }
 }
 
@@ -8710,7 +8694,7 @@ bool Element::CanBeKeyboardFocusableScroller(
   }
   DocumentLifecycle::DisallowTransitionScope disallow_transition(
       GetDocument().Lifecycle());
-  return IsScrollableNode(this);
+  return IsScrollableNode(this, SpatialNavigationDirection::kNone);
 }
 
 bool Element::ContainsKeyboardFocusableElementsSlow(
@@ -8944,14 +8928,6 @@ void Element::ActiveViewTransitionTypeStateChanged() {
           style_change_reason::kPseudoClass,
           style_change_extra_data::g_active_view_transition_type));
   PseudoStateChanged(CSSSelector::kPseudoActiveViewTransitionType);
-}
-
-void Element::OverscrollTargetStateChanged() {
-  SetNeedsStyleRecalc(kLocalStyleChange,
-                      StyleChangeReasonForTracing::CreateWithExtraData(
-                          style_change_reason::kPseudoClass,
-                          style_change_extra_data::g_overscroll_target));
-  PseudoStateChanged(CSSSelector::kPseudoOverscrollTarget);
 }
 
 bool Element::MatchesOverscrollOpen() const {

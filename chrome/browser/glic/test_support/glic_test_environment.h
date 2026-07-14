@@ -116,9 +116,7 @@ class GlicTestEnvironment : public ProfileObserver {
   void SetGlicPagePath(const std::string& path);
   void AddMockGlicQueryParam(const std::string_view& key,
                              const std::string_view& value);
-  void SetGlicFreUrlOverride(const GURL& url);
   GURL GetGuestURL() const;
-  const std::optional<GURL>& GetGlicFreUrl() const;
 
  private:
   void OnWillCreateBrowserContextKeyedServices(
@@ -135,8 +133,6 @@ class GlicTestEnvironment : public ProfileObserver {
   // URL configuration state.
   std::string glic_page_path_ = "/glic/test_client/index.html";
   std::map<std::string, std::string> mock_glic_query_params_;
-  std::optional<GURL> glic_fre_url_;
-  std::optional<GURL> glic_fre_url_override_;
   GURL guest_url_;
   net::test_server::EmbeddedTestServerHandle test_server_handle_;
 };

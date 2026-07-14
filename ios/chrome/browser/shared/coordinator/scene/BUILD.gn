@@ -291,6 +291,7 @@ source_set("unit_tests") {
   sources = [
     "scene_controller_unittest.mm",
     "scene_delegate_unittests.mm",
+    "scene_state_prefs_unittest.mm",
     "scene_util_unittest.mm",
     "state/layout_state_unittest.mm",
     "task_updater_scene_agent_unittest.mm",

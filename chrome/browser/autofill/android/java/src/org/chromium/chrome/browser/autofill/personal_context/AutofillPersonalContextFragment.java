@@ -39,6 +39,24 @@ public class AutofillPersonalContextFragment extends ChromeBaseSettingsFragment 
     public static final String PREF_AUTOFILL_PERSONAL_CONTEXT_MANAGE_SUGGESTIONS =
             "autofill_personal_context_manage_suggestions";
 
+    // User action constants for external entry points
+    public static final String ACTION_ENTRY_FROM_IDENTITY_DOCS =
+            "PersonalContext.Settings.EntryPoint.IdentityDocsSettings";
+    public static final String ACTION_ENTRY_FROM_TRAVEL =
+            "PersonalContext.Settings.EntryPoint.TravelSettings";
+    public static final String ACTION_ENTRY_FROM_SHOPPING =
+            "PersonalContext.Settings.EntryPoint.ShoppingSettings";
+    public static final String ACTION_ENTRY_FROM_AUTOFILL_AND_PASSWORDS =
+            "PersonalContext.Settings.EntryPoint.AutofillAndPasswordsSettings";
+
+    // User action constants for internal page actions
+    public static final String ACTION_TOGGLED_ON = "PersonalContext.Settings.ToggledOn";
+    public static final String ACTION_TOGGLED_OFF = "PersonalContext.Settings.ToggledOff";
+    public static final String ACTION_MANAGE_CONNECTED_APPS =
+            "PersonalContext.Settings.ManageConnectedAppsClick";
+    public static final String ACTION_MANAGE_SUGGESTIONS =
+            "PersonalContext.Settings.ManageSuggestionsClick";
+
     private final SettableMonotonicObservableSupplier<String> mPageTitle =
             ObservableSuppliers.createMonotonic();
 

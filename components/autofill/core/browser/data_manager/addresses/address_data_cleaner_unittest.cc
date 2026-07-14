@@ -404,8 +404,6 @@ TEST_P(AddressDataCleanerTest, Deduplicate_kAccountMerge) {
 }
 
 TEST_P(AddressDataCleanerTest, Deduplicate_kAccountNameEmailSubset) {
-  base::test::ScopedFeatureList feature_list(
-      features::kAutofillEnableSupportForNameAndEmail);
   test_api(data_cleaner_).SetAreCleanupsPending(false);
 
   AutofillProfile account_name_email_profile(AddressCountryCode("XX"));

@@ -80,6 +80,7 @@ class ProfilePickerView : public views::WidgetDelegateView,
       bool success) override;
   void SetNativeToolbarSigninButtonsVisible(bool visible) override;
   void SetNativeToolbarDontSignInButtonVisible(bool visible) override;
+  void SetNativeToolbarStartBrowsingButtonVisible(bool visible) override;
   bool AreNativeToolbarSigninButtonsVisibleForTesting() const;
   SkColor GetPreferredBackgroundColor() const override;
 
@@ -137,6 +138,8 @@ class ProfilePickerView : public views::WidgetDelegateView,
   // To display the Profile picker, use ProfilePicker::Show().
   explicit ProfilePickerView(ProfilePicker::Params&& params);
   ~ProfilePickerView() override;
+
+  const ProfilePicker::Params& params() const { return params_; }
 
   // Displays the profile picker.
   void Display();
@@ -219,8 +222,6 @@ class ProfilePickerView : public views::WidgetDelegateView,
   void ShowScreenFinished(
       content::WebContents* contents,
       base::OnceClosure navigation_finished_closure = base::OnceClosure());
-
-  void NavigateBack();
 
   // Register basic keyboard accelerators such as closing the window (Alt-F4
   // on Windows).

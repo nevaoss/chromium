@@ -1120,17 +1120,33 @@ void ArCoreGl::GetRenderedFrameStats(WebXrFrame* frame) {
                   completion_time, "frame", frame->index);
 }
 
-void ArCoreGl::SubmitFrameMissing(int16_t frame_index,
-                                  const gpu::SyncToken& sync_token) {
+void ArCoreGl::SubmitFrameMissing(
+    int16_t frame_index,
+    gpu::SharedImageExportResult camera_export_multi_result) {
   TRACE_EVENT1("gpu", "ArCoreGl::SubmitFrameMissing", "frame", frame_index);
   DVLOG(2) << __func__;
 
   if (!IsSubmitFrameExpected(frame_index))
     return;
 
-  if (ar_compositor_) {
-    ar_image_transport_->WaitSyncToken(sync_token);
+  std::vector<gpu::SyncToken> camera_sync_tokens;
+  auto camera_image =
+      webxr_->GetAnimatingFrame()->camera_image_shared_buffer->shared_image;
+  if (camera_image) {
+    camera_sync_tokens =
+        camera_image->EndExportAsVector(std::move(camera_export_multi_result));
+  }
 
+  for (auto& camera_sync_token : camera_sync_tokens) {
+    ar_image_transport_->WaitSyncToken(camera_sync_token);
+  }
+
+  // This sync token is ordered after all camera sync tokens, so following code
+  // will only have to wait this one sync token.
+  webxr_->GetAnimatingFrame()->camera_image_shared_buffer->sync_token =
+      ar_image_transport_->GenSyncToken();
+
+  if (ar_compositor_) {
     if (have_camera_image_) {
       webxr_->ProcessOrDefer(base::BindOnce(
           &ArCoreGl::SubmitVizFrame, weak_ptr_factory_.GetWeakPtr(),
@@ -1151,7 +1167,6 @@ void ArCoreGl::SubmitFrameMissing(int16_t frame_index,
     }
   } else {
     webxr_->RecycleUnusedAnimatingFrame();
-    ar_image_transport_->WaitSyncToken(sync_token);
     CopyCameraImageToFramebuffer();
     FinishFrame(frame_index);
     DVLOG(3) << __func__ << ": frame=" << frame_index << " SwapBuffers";

@@ -47,7 +47,7 @@ public class AtMemoryBottomSheetCoordinator {
 
         void onQuerySubmitted(String query);
 
-        void onSuggestionClicked(AutofillSuggestion suggestion);
+        void onSuggestionClicked(int position);
 
         void onFlyoutClicked(AutofillSuggestion suggestion);
     }

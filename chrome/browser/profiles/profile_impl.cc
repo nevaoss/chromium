@@ -123,7 +123,6 @@
 #include "chrome/common/chrome_switches.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/common/url_constants.h"
-#include "chrome/grit/branded_strings.h"
 #include "components/background_sync/background_sync_controller_impl.h"
 #include "components/bookmarks/browser/bookmark_model.h"
 #include "components/browser_sync/sync_to_signin_migration.h"
@@ -184,6 +183,7 @@
 #include "mojo/public/cpp/bindings/self_owned_receiver.h"
 #include "pdf/buildflags.h"
 #include "printing/buildflags/buildflags.h"
+#include "profile_load_tracker_win.h"
 #include "services/data_decoder/public/cpp/data_decoder.h"
 #include "services/preferences/public/mojom/preferences.mojom.h"
 #include "services/preferences/public/mojom/tracked_preference_validation_delegate.mojom.h"
@@ -504,6 +504,12 @@ ProfileImpl::ProfileImpl(
     profile_metrics::SetBrowserProfileType(
         this, profile_metrics::BrowserProfileType::kRegular);
   }
+
+#if BUILDFLAG(IS_WIN)
+  if (base::FeatureList::IsEnabled(features::kProfileLoadTracker)) {
+    profile_load_tracker_ = std::make_unique<ProfileLoadTracker>(*this);
+  }
+#endif
 
   if (delegate_) {
     delegate_->OnProfileCreationStarted(this, create_mode);
@@ -1657,6 +1663,14 @@ bool ProfileImpl::IsNewProfile() const {
 void ProfileImpl::SetCreationTimeForTesting(base::Time creation_time) {
   prefs_->SetTime(prefs::kProfileCreationTime, creation_time);
 }
+
+#if BUILDFLAG(IS_WIN)
+void ProfileImpl::AckCrashForTracking() {
+  if (profile_load_tracker_) {
+    profile_load_tracker_->AckCrashForTracking();
+  }
+}
+#endif
 
 bool ProfileImpl::IsSignedIn() {
   signin::IdentityManager* identity_manager =

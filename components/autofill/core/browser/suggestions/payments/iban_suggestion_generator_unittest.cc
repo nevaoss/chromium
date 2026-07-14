@@ -90,7 +90,7 @@ class IbanSuggestionGeneratorTest : public testing::Test {
         .WillByDefault(testing::Return(false));
   }
 
-  AutofillClient& client() { return autofill_client_; }
+  TestAutofillClient& client() { return autofill_client_; }
   FormStructure& form() { return *form_structure_; }
   AutofillField& field() { return *form_structure_->fields().front(); }
   PersonalDataManager& personal_data_manager() {
@@ -342,6 +342,20 @@ TEST_F(IbanSuggestionGeneratorTest, GetLocalAndServerIbanSuggestions) {
               Suggestion::Guid(local_iban1.guid()), local_iban1.nickname()),
           MatchesTextAndSuggestionType(separator_suggestion),
           MatchesTextAndSuggestionType(footer_suggestion)));
+}
+
+// Tests that IBAN suggestions are not generated when payments is blocked by the
+// AutofillSettings policy.
+TEST_F(IbanSuggestionGeneratorTest, AutofillSettingsBlocked) {
+  base::test::ScopedFeatureList scoped_feature_list{
+      features::kAutofillEnableAutofillSettingsEnterprisePolicy};
+
+  SetUpLocalIban(test::GetLocalIban().value(), test::GetLocalIban().nickname());
+
+  client().SetAutofillTypeBlockedByPolicy(
+      AutofillClient::AutofillPolicyDataCategory::kPayments, true);
+
+  EXPECT_TRUE(GetSuggestionsForIbans().empty());
 }
 
 }  // namespace

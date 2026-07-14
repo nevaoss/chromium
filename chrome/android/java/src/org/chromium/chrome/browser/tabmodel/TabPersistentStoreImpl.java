@@ -48,6 +48,7 @@ import org.chromium.chrome.browser.tab.TabSelectionType;
 import org.chromium.chrome.browser.tab.TabState;
 import org.chromium.chrome.browser.tab.TabStateAttributes;
 import org.chromium.chrome.browser.tab.TabStateAttributes.DirtinessState;
+import org.chromium.chrome.browser.tab.TabStateAttributesRegistry;
 import org.chromium.chrome.browser.tab.TabStateExtractor;
 import org.chromium.chrome.browser.tab.state.PersistedTabData;
 import org.chromium.chrome.browser.tabmodel.PersistentStoreMigrationManager.StoreType;
@@ -294,7 +295,9 @@ public class TabPersistentStoreImpl implements TabPersistentStore {
                 new TabModelSelectorTabRegistrationObserver.Observer() {
                     @Override
                     public void onTabRegistered(Tab tab) {
-                        TabStateAttributes attributes = TabStateAttributes.from(tab);
+                        TabStateAttributes attributes =
+                                TabStateAttributesRegistry.getAttributesFor(
+                                        tab, TabPersistentStoreImpl.class);
                         assumeNonNull(attributes);
                         if (attributes.addObserver(attributesObserver) == DirtinessState.DIRTY) {
                             addTabToSaveQueue(tab);
@@ -304,7 +307,9 @@ public class TabPersistentStoreImpl implements TabPersistentStore {
                     @Override
                     public void onTabUnregistered(Tab tab) {
                         if (!tab.isDestroyed()) {
-                            assumeNonNull(TabStateAttributes.from(tab))
+                            assumeNonNull(
+                                            TabStateAttributesRegistry.getAttributesFor(
+                                                    tab, TabPersistentStoreImpl.class))
                                     .removeObserver(attributesObserver);
                         }
                         if (tab.isClosing()) {
@@ -434,7 +439,9 @@ public class TabPersistentStoreImpl implements TabPersistentStore {
                 int id = tab.getId();
                 boolean incognito = tab.isIncognito();
                 try {
-                    TabStateAttributes attributes = TabStateAttributes.from(tab);
+                    TabStateAttributes attributes =
+                            TabStateAttributesRegistry.getAttributesFor(
+                                    tab, TabPersistentStoreImpl.class);
                     if (attributes != null) {
                         attributes.clearTabStateDirtiness();
                     }
@@ -913,7 +920,10 @@ public class TabPersistentStoreImpl implements TabPersistentStore {
 
     private void addTabToSaveQueueIfApplicable(@Nullable Tab tab) {
         if (tab == null || tab.isDestroyed()) return;
-        TabStateAttributes tabStateAttributes = assumeNonNull(TabStateAttributes.from(tab));
+        TabStateAttributes tabStateAttributes =
+                assumeNonNull(
+                        TabStateAttributesRegistry.getAttributesFor(
+                                tab, TabPersistentStoreImpl.class));
         @DirtinessState int dirtinessState = tabStateAttributes.getDirtinessState();
         if (mTabsToSave.contains(tab) || dirtinessState == DirtinessState.CLEAN) {
             return;
@@ -1261,7 +1271,10 @@ public class TabPersistentStoreImpl implements TabPersistentStore {
         @Override
         protected void onPreExecute() {
             if (mDestroyed || isCancelled()) return;
-            assumeNonNull(TabStateAttributes.from(mTab)).clearTabStateDirtiness();
+            assumeNonNull(
+                            TabStateAttributesRegistry.getAttributesFor(
+                                    mTab, TabPersistentStoreImpl.class))
+                    .clearTabStateDirtiness();
             mState = TabStateExtractor.from(mTab);
         }
 

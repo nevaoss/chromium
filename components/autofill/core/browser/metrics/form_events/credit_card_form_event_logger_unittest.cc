@@ -99,18 +99,34 @@ TEST_F(CreditCardFormEventLoggerTest,
        OnUserDecisionToUseBnpl_SuggestionAcceptedLogged) {
   base::HistogramTester histogram_tester;
 
-  autofill_manager().GetCreditCardFormEventLogger().OnUserDecisionToUseBnpl();
+  std::vector<Suggestion> suggestions = {
+      Suggestion(SuggestionType::kCreditCardEntry),
+      Suggestion(SuggestionType::kVirtualCreditCardEntry),
+      Suggestion(SuggestionType::kCreditCardEntry),
+  };
+
+  autofill_manager().GetCreditCardFormEventLogger().OnUserDecisionToUseBnpl(
+      suggestions);
   histogram_tester.ExpectUniqueSample(
       "Autofill.FormEvents.CreditCard.Bnpl",
       /*sample=*/autofill_metrics::BnplFormEvent::kBnplSuggestionAccepted,
       /*expected_bucket_count=*/1);
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.Bnpl.SuggestionAccepted.CreditCardSuggestionsCount",
+      /*sample=*/3,
+      /*expected_bucket_count=*/1);
 
   // Test that `kBnplSuggestionAccepted` is logged only once even if
   // `OnUserDecisionToUseBnpl()` is called more than once on the same page.
-  autofill_manager().GetCreditCardFormEventLogger().OnUserDecisionToUseBnpl();
+  autofill_manager().GetCreditCardFormEventLogger().OnUserDecisionToUseBnpl(
+      suggestions);
   histogram_tester.ExpectUniqueSample(
       "Autofill.FormEvents.CreditCard.Bnpl",
       /*sample=*/autofill_metrics::BnplFormEvent::kBnplSuggestionAccepted,
+      /*expected_bucket_count=*/1);
+  histogram_tester.ExpectUniqueSample(
+      "Autofill.Bnpl.SuggestionAccepted.CreditCardSuggestionsCount",
+      /*sample=*/3,
       /*expected_bucket_count=*/1);
 }
 
@@ -122,7 +138,7 @@ TEST_F(CreditCardFormEventLoggerTest,
   autofill_manager().AddSeenForm(form, field_types);
 
   autofill_manager().GetCreditCardFormEventLogger().OnBnplSuggestionShown();
-  autofill_manager().GetCreditCardFormEventLogger().OnUserDecisionToUseBnpl();
+  autofill_manager().GetCreditCardFormEventLogger().OnUserDecisionToUseBnpl({});
 
   {
     using Ukm = UkmBnplSuggestionShownType;

@@ -10,10 +10,10 @@ import {loadTimeData} from '//resources/js/load_time_data.js';
 import {TrackedElementManager} from '//resources/js/tracked_element/tracked_element_manager.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
 import type {MenuSourceType} from '//resources/mojo/ui/base/mojom/menu_source_type.mojom-webui.js';
-import type {ExtensionActionInfo} from '/shared/extensions_bar.mojom-webui.js';
 import {PageCallbackRouter, PageHandlerFactory, PageHandlerRemote} from '/shared/extensions_bar.mojom-webui.js';
+import type {ExtensionActionInfo} from '/shared/extensions_bar_data_model.mojom-webui.js';
+import type {IconUpdate} from '/shared/icon_handle.mojom-webui.js';
 import {IconTable} from '/shared/icon_table.js';
-import type {IconUpdate} from '/shared/toolbar_ui_api_data_model.mojom-webui.js';
 
 import {ExtensionElement} from './extension.js';
 import {getCss} from './extensions_bar.css.js';

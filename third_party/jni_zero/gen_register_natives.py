@@ -23,17 +23,15 @@ _CLASS_NAME_RE = re.compile(r'\b(?:class|interface|enum)\s+([\w.$]+)',
 
 
 def _GenerateLinkerScript(linker_script_path, jni_objs):
+  # Use full names rather than globs so that these take precedence over the
+  # standard Java_* rule.
+  jni_mode = common.JniMode()
   sb = []
   sb.append('{\n')
   sb.append('  local:\n')
-  classes = set()
   for jni_obj in jni_objs:
-    classes.add(jni_obj.java_class)
-
-  for java_class in sorted(classes):
-    mangled_name = common.jni_mangle(java_class.full_name_with_slashes)
-    sb.append(f'    Java_{mangled_name}_*;\n')
-
+    for native in jni_obj.natives:
+      sb.append(f'    {native.boundary_name_cpp(jni_mode)};\n')
   sb.append('};\n')
 
   with common.atomic_output(linker_script_path, mode='w') as f:

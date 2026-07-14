@@ -654,7 +654,11 @@ export class PasswordManagerImpl implements PasswordManagerProxy {
   }
 
   undoRemoveSavedPasswordOrException() {
-    chrome.passwordsPrivate.undoRemoveSavedPasswordOrException();
+    if (!loadTimeData.getBoolean('enablePasswordManagerMojoApi')) {
+      chrome.passwordsPrivate.undoRemoveSavedPasswordOrException();
+      return;
+    }
+    this.handler.undoRemoveSavedPasswordOrException();
   }
 
   fetchFamilyMembers() {

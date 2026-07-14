@@ -18,7 +18,7 @@
 #import "ios/chrome/browser/shared/model/browser/test/test_browser.h"
 #import "ios/chrome/browser/shared/model/profile/test/test_profile_ios.h"
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_list.h"
-#import "ios/chrome/browser/shared/public/commands/bwg_commands.h"
+#import "ios/chrome/browser/shared/public/commands/gemini_commands.h"
 #import "ios/chrome/browser/shared/public/commands/settings_commands.h"
 #import "ios/web/public/test/fakes/fake_web_state.h"
 #import "ios/web/public/test/web_task_environment.h"
@@ -59,24 +59,24 @@ class GeminiSessionHandlerTest : public PlatformTest {
 
     browser_ = std::make_unique<TestBrowser>(profile_.get());
     web_state_list_ = browser_->GetWebStateList();
-    session_handler_ =
-        [[GeminiSessionHandler alloc] initWithWebStateList:web_state_list_
-                                                   tracker:mock_tracker_];
-
+    session_handler_ = [[GeminiSessionHandler alloc]
+        initWithWebStateList:web_state_list_
+                     tracker:mock_tracker_
+                 prefService:profile_->GetPrefs()];
     optimization_guide_service_ =
         OptimizationGuideServiceFactory::GetForProfile(profile_.get());
 
     // Set up mock handlers.
-    mock_bwg_handler_ = OCMProtocolMock(@protocol(BWGCommands));
+    mock_gemini_handler_ = OCMProtocolMock(@protocol(GeminiCommands));
     mock_settings_handler_ = OCMProtocolMock(@protocol(SettingsCommands));
-    session_handler_.geminiHandler = mock_bwg_handler_;
+    session_handler_.geminiHandler = mock_gemini_handler_;
     session_handler_.settingsHandler = mock_settings_handler_;
 
     AddWebState();
   }
 
   void TearDown() override {
-    [mock_bwg_handler_ stopMocking];
+    [mock_gemini_handler_ stopMocking];
     [mock_settings_handler_ stopMocking];
     PlatformTest::TearDown();
   }
@@ -106,7 +106,7 @@ class GeminiSessionHandlerTest : public PlatformTest {
   base::UserActionTester user_action_tester_;
   GeminiSessionHandler* session_handler_;
   raw_ptr<OptimizationGuideService> optimization_guide_service_;
-  id mock_bwg_handler_;
+  id mock_gemini_handler_;
   id mock_settings_handler_;
 };
 
@@ -267,7 +267,8 @@ TEST_F(GeminiSessionHandlerTest, TestDifferentInputTypes) {
   // Test Summarize input type.
   GeminiSessionHandler* handler1 =
       [[GeminiSessionHandler alloc] initWithWebStateList:web_state_list_
-                                                 tracker:mock_tracker_];
+                                                 tracker:mock_tracker_
+                                             prefService:profile_->GetPrefs()];
   [handler1 didSendQueryWithInputType:gemini::InputType::kSummarize
              isNanoBananaToolSelected:NO
                   imagesAttachedCount:0
@@ -280,7 +281,8 @@ TEST_F(GeminiSessionHandlerTest, TestDifferentInputTypes) {
   // Test CheckThisSite input type.
   GeminiSessionHandler* handler2 =
       [[GeminiSessionHandler alloc] initWithWebStateList:web_state_list_
-                                                 tracker:mock_tracker_];
+                                                 tracker:mock_tracker_
+                                             prefService:profile_->GetPrefs()];
   [handler2 didSendQueryWithInputType:gemini::InputType::kCheckThisSite
              isNanoBananaToolSelected:NO
                   imagesAttachedCount:0
@@ -293,7 +295,8 @@ TEST_F(GeminiSessionHandlerTest, TestDifferentInputTypes) {
   // Test FindRelatedSites input type.
   GeminiSessionHandler* handler3 =
       [[GeminiSessionHandler alloc] initWithWebStateList:web_state_list_
-                                                 tracker:mock_tracker_];
+                                                 tracker:mock_tracker_
+                                             prefService:profile_->GetPrefs()];
   [handler3 didSendQueryWithInputType:gemini::InputType::kFindRelatedSites
              isNanoBananaToolSelected:NO
                   imagesAttachedCount:0
@@ -306,7 +309,8 @@ TEST_F(GeminiSessionHandlerTest, TestDifferentInputTypes) {
   // Test AskAboutPage input type.
   GeminiSessionHandler* handler4 =
       [[GeminiSessionHandler alloc] initWithWebStateList:web_state_list_
-                                                 tracker:mock_tracker_];
+                                                 tracker:mock_tracker_
+                                             prefService:profile_->GetPrefs()];
   [handler4 didSendQueryWithInputType:gemini::InputType::kAskAboutPage
              isNanoBananaToolSelected:NO
                   imagesAttachedCount:0
@@ -319,7 +323,8 @@ TEST_F(GeminiSessionHandlerTest, TestDifferentInputTypes) {
   // Test CreateFaq input type.
   GeminiSessionHandler* handler5 =
       [[GeminiSessionHandler alloc] initWithWebStateList:web_state_list_
-                                                 tracker:mock_tracker_];
+                                                 tracker:mock_tracker_
+                                             prefService:profile_->GetPrefs()];
   [handler5 didSendQueryWithInputType:gemini::InputType::kCreateFaq
              isNanoBananaToolSelected:NO
                   imagesAttachedCount:0
@@ -332,7 +337,8 @@ TEST_F(GeminiSessionHandlerTest, TestDifferentInputTypes) {
   // Test Unknown input type.
   GeminiSessionHandler* handler6 =
       [[GeminiSessionHandler alloc] initWithWebStateList:web_state_list_
-                                                 tracker:mock_tracker_];
+                                                 tracker:mock_tracker_
+                                             prefService:profile_->GetPrefs()];
   [handler6 didSendQueryWithInputType:gemini::InputType::kUnknown
              isNanoBananaToolSelected:NO
                   imagesAttachedCount:0

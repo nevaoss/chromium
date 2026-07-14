@@ -102,6 +102,8 @@ class PrivateVerificationTokensDatabase {
   // Mark token with the given id as redeemed.
   bool SetRedeemed(int64_t token_id);
 
+  void DeleteAllTokens();
+
   const base::FilePath& PathToDatabase() const;
 
  private:

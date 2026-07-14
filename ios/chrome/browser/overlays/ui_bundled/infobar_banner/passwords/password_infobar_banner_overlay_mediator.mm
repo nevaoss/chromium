@@ -14,7 +14,7 @@
 #import "ios/chrome/browser/overlays/model/public/overlay_request_support.h"
 #import "ios/chrome/browser/overlays/ui_bundled/infobar_banner/infobar_banner_overlay_mediator+consumer_support.h"
 #import "ios/chrome/browser/overlays/ui_bundled/overlay_request_mediator+subclassing.h"
-#import "ios/chrome/browser/passwords/model/ios_chrome_save_password_infobar_delegate.h"
+#import "ios/chrome/browser/passwords/infobars/model/ios_chrome_save_password_infobar_delegate.h"
 #import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
 #import "ios/chrome/browser/shared/public/commands/non_modal_signin_promo_commands.h"
 #import "ios/chrome/browser/shared/public/features/features.h"

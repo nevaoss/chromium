@@ -424,6 +424,7 @@ class CC_EXPORT SchedulerStateMachine {
   void WillPerformImplSideInvalidationInternal();
   void DidDrawInternal(DrawResult draw_result);
   void UpdateConsecutiveNoDamageThrottlingInterval();
+  bool DisableThrottlingDueToHighFramerateRequests() const;
 
   const SchedulerSettings settings_;
 

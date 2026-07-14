@@ -12,7 +12,7 @@
 #import "ios/chrome/browser/overlays/model/public/default/default_infobar_overlay_request_config.h"
 #import "ios/chrome/browser/overlays/model/public/overlay_request_support.h"
 #import "ios/chrome/browser/overlays/ui_bundled/overlay_request_mediator+subclassing.h"
-#import "ios/chrome/browser/passwords/model/ios_chrome_save_password_infobar_delegate.h"
+#import "ios/chrome/browser/passwords/infobars/model/ios_chrome_save_password_infobar_delegate.h"
 #import "ios/chrome/browser/shared/public/commands/settings_commands.h"
 #import "ios/chrome/grit/ios_branded_strings.h"
 #import "ios/chrome/grit/ios_strings.h"

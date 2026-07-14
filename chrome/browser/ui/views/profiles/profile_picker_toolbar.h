@@ -16,6 +16,8 @@ DECLARE_ELEMENT_IDENTIFIER_VALUE(
     kProfilePickerToolbarDontSignInButtonElementId);
 DECLARE_ELEMENT_IDENTIFIER_VALUE(
     kProfilePickerToolbarEffectsControlButtonElementId);
+DECLARE_ELEMENT_IDENTIFIER_VALUE(
+    kProfilePickerToolbarStartBrowsingButtonElementId);
 
 // Class responsible for the top toolbar shown within the First Run and Profile
 // Creation flows.
@@ -41,9 +43,16 @@ class ProfilePickerToolbar : public views::View {
     Builder(const Builder&) = delete;
     Builder& operator=(const Builder&) = delete;
 
+    Builder(Builder&&);
+    Builder& operator=(Builder&&);
+
     // Adds the "Don't sign in" button to the toolbar.
     Builder& WithDontSignInButton(
         base::RepeatingClosure on_dont_sign_in_callback);
+
+    // Adds the "Start browsing" button to the toolbar.
+    Builder& WithStartBrowsingButton(
+        base::RepeatingClosure on_start_browsing_callback);
 
     // Adds the effects (audio/animations) control button to the toolbar.
     // Comparing to other buttons, this button is always visible.
@@ -59,6 +68,7 @@ class ProfilePickerToolbar : public views::View {
    private:
     base::RepeatingClosure on_back_callback_;
     base::RepeatingClosure on_dont_sign_in_callback_;
+    base::RepeatingClosure on_start_browsing_callback_;
     base::RepeatingCallback<void(bool)> on_effects_control_callback_;
   };
 
@@ -78,6 +88,10 @@ class ProfilePickerToolbar : public views::View {
   // button is not created.
   void SetDontSignInButtonVisible(bool visible);
 
+  // Changes the visibility of the "Start browsing" button. It's no-op if the
+  // button is not created.
+  void SetStartBrowsingButtonVisible(bool visible);
+
   // Returns whether effects (animations/audio) are enabled.
   bool AreEffectsEnabled() const;
 
@@ -91,12 +105,16 @@ class ProfilePickerToolbar : public views::View {
   void AddBackButton(base::RepeatingClosure on_back_callback);
   void AddDontSignInButton(base::RepeatingClosure on_dont_sign_in_callback,
                            bool paint_border);
+  void AddStartBrowsingButton(
+      base::RepeatingClosure on_start_browsing_callback);
   void AddSeparator();
+  void MaybeUpdateSeparatorVisibility();
   void AddEffectsControlButton(
       base::RepeatingCallback<void(bool)> on_effects_control_callback);
 
   raw_ptr<views::View> sign_in_back_button_ = nullptr;
   raw_ptr<views::View> dont_sign_in_button_ = nullptr;
+  raw_ptr<views::View> start_browsing_button_ = nullptr;
   raw_ptr<views::View> separator_ = nullptr;
   raw_ptr<views::View> effects_control_button_ = nullptr;
 };

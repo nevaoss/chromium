@@ -108,12 +108,12 @@ class CueTarget {
   // May be asynchronous (e.g., waiting for page content annotations).
   // Implementations must safely handle `web_contents` being destroyed during
   // async execution.
-  using EligibilityCallback = base::OnceCallback<void(
-      bool eligible,
-      ContentGenerator generator)>;
-  virtual void CheckEligibility(base::WeakPtr<content::WebContents> web_contents,
-                                CueIntrusiveness intrusiveness,
-                                EligibilityCallback callback) = 0;
+  using EligibilityCallback =
+      base::OnceCallback<void(bool eligible, ContentGenerator generator)>;
+  virtual void CheckEligibility(
+      base::WeakPtr<content::WebContents> web_contents,
+      CueIntrusiveness intrusiveness,
+      EligibilityCallback callback) = 0;
 
   // Synchronous page-level gate (e.g., page content annotations, URL checks).
   // Called by the controller before generating content in the legacy path.

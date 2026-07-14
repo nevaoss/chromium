@@ -15,6 +15,7 @@
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/single_thread_task_runner.h"
 #include "build/build_config.h"
+#include "chrome/browser/content_settings/host_content_settings_map_factory.h"
 #include "chrome/browser/enterprise/data_protection/data_protection_clipboard_utils.h"
 #include "chrome/browser/feature_engagement/tracker_factory.h"
 #include "chrome/browser/glic/browser_ui/glic_nudge_controller.h"
@@ -37,6 +38,8 @@
 #include "chrome/browser/ui/toasts/toast_controller.h"
 #include "chrome/browser/ui/toasts/toast_features.h"
 #include "chrome/grit/generated_resources.h"
+#include "components/content_settings/core/browser/host_content_settings_map.h"
+#include "components/content_settings/core/common/content_settings_pattern.h"
 #include "components/feature_engagement/public/tracker.h"
 #include "components/shared_highlighting/core/common/disabled_sites.h"
 #include "components/shared_highlighting/core/common/fragment_directives_utils.h"
@@ -178,6 +181,7 @@ class GlicSelectionObserver::WidgetActionDelegate
 GlicSelectionObserver::GlicSelectionObserver(content::WebContents* web_contents)
     : content::WebContentsObserver(web_contents),
       action_delegate_(std::make_unique<WidgetActionDelegate>(this)) {
+  CHECK(web_contents);
   Profile* profile =
       Profile::FromBrowserContext(web_contents->GetBrowserContext());
   glic_keyed_service_ = GlicKeyedService::Get(profile);
@@ -196,9 +200,6 @@ GlicSelectionObserver::GlicSelectionObserver(content::WebContents* web_contents)
 }
 
 bool GlicSelectionObserver::IsSelectionPromptEnabled() const {
-  if (!web_contents()) {
-    return false;
-  }
   Profile* profile =
       Profile::FromBrowserContext(web_contents()->GetBrowserContext());
   return GlicEnabling::IsSelectionPromptEnabledForProfile(profile);
@@ -667,13 +668,10 @@ void GlicSelectionObserver::ShowSelectionAffordance(
             GlicSelectionAction::kWidgetShown);
 
         widget_delegate_ = std::make_unique<GlicSelectionWidgetDelegate>(
-            *action_delegate_, *bounds,
-            web_contents() ? web_contents()->GetContainerBounds() : gfx::Rect(),
+            *action_delegate_, *bounds, web_contents()->GetContainerBounds(),
             std::u16string(selected_text), is_widget_pinned_);
-        if (web_contents()) {
-          widget_delegate_->set_parent_window(platform_util::GetViewForWindow(
-              web_contents()->GetTopLevelNativeWindow()));
-        }
+        widget_delegate_->set_parent_window(platform_util::GetViewForWindow(
+            web_contents()->GetTopLevelNativeWindow()));
         selection_widget_ = views::BubbleDialogDelegate::CreateBubble(
             widget_delegate_.get(),
             base::BindOnce(&GlicSelectionObserver::OnWidgetClosed,
@@ -701,6 +699,23 @@ bool GlicSelectionObserver::ShouldShowSelectionWidget() {
     return false;
   }
 
+  Profile* profile =
+      Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+
+  if (features::kGlicSelectionEnableSiteSettings.Get() &&
+      ContentSettingsPattern::FromURL(web_contents()->GetLastCommittedURL())
+          .IsValid()) {
+    HostContentSettingsMap* settings_map =
+        HostContentSettingsMapFactory::GetForProfile(profile);
+    ContentSetting setting =
+        settings_map->GetContentSetting(web_contents()->GetLastCommittedURL(),
+                                        web_contents()->GetLastCommittedURL(),
+                                        ContentSettingsType::INLINE_CUE_MENU);
+    if (setting == CONTENT_SETTING_BLOCK) {
+      return false;
+    }
+  }
+
   // Check the top cue only list.
   std::string top_cue_only_list_str =
       features::kGlicSelectionTopCueOnlyList.Get();
@@ -722,6 +737,19 @@ bool GlicSelectionObserver::ShouldShowSelectionWidget() {
 
 void GlicSelectionObserver::OnHideForThisSite() {
   is_hidden_on_current_page_ = true;
+
+  if (features::kGlicSelectionEnableSiteSettings.Get() &&
+      ContentSettingsPattern::FromURL(web_contents()->GetLastCommittedURL())
+          .IsValid()) {
+    Profile* profile =
+        Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+    HostContentSettingsMap* settings_map =
+        HostContentSettingsMapFactory::GetForProfile(profile);
+    settings_map->SetContentSettingDefaultScope(
+        web_contents()->GetLastCommittedURL(), GURL(),
+        ContentSettingsType::INLINE_CUE_MENU, CONTENT_SETTING_BLOCK);
+  }
+
   DismissUI(/*keep_nudge=*/false);
 }
 
@@ -862,9 +890,7 @@ void GlicSelectionObserver::OnAskGemini() {
 
 void GlicSelectionObserver::OnCopy() {
   DismissUI(/*keep_nudge=*/false);
-  if (web_contents()) {
-    web_contents()->Copy();
-  }
+  web_contents()->Copy();
 }
 
 void GlicSelectionObserver::OnCopyLink() {

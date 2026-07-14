@@ -9,15 +9,19 @@
 
 #import <cmath>
 
+#import "base/feature_list.h"
 #import "base/strings/string_number_conversions.h"
 #import "base/strings/sys_string_conversions.h"
 #import "components/autofill/core/browser/data_model/payments/credit_card.h"
 #import "components/autofill/core/browser/data_quality/autofill_data_util.h"
+#import "components/autofill/core/common/autofill_features.h"
 #import "components/autofill/ios/browser/form_suggestion.h"
 #import "components/password_manager/ios/shared_password_controller.h"
 #import "components/webauthn/ios/features.h"
+#import "ios/chrome/browser/autofill/model/features.h"
 #import "ios/chrome/browser/autofill/model/form_suggestion_constants.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
+#import "ios/chrome/browser/shared/ui/symbols/symbols.h"
 #import "ios/chrome/browser/shared/ui/util/uikit_ui_util.h"
 #import "ios/chrome/common/ui/colors/semantic_color_names.h"
 #import "ios/chrome/common/ui/util/constraints_ui_util.h"
@@ -301,6 +305,7 @@ bool IsPasswordSuggestion(FormSuggestion* suggestion) {
     case SuggestionType::kAutocompleteAtMemoryButton:
     case SuggestionType::kOpenGemini:
     case SuggestionType::kAtMemoryNoConnection:
+    case SuggestionType::kAtMemoryGenericError:
     case SuggestionType::kAtMemorySearchAffordance:
     case SuggestionType::kPersonalContextNotice:
     case SuggestionType::kFetchingAmbientData:
@@ -338,7 +343,39 @@ NSString* AccessibilityLabel(NSString* suggestion_text,
   return base::SysUTF16ToNSString(accessibility_label);
 }
 
+// Returns whether the provided `suggestion` has a context menu.
+bool ShouldShowContextMenu(FormSuggestion* suggestion) {
+  switch (suggestion.type) {
+    case SuggestionType::kPasswordEntry:
+    case SuggestionType::kBackupPasswordEntry:
+    case SuggestionType::kCreditCardEntry:
+    case SuggestionType::kVirtualCreditCardEntry:
+    case SuggestionType::kAddressEntry:
+    case SuggestionType::kFillAutofillAi:
+      return true;
+    default:
+      return false;
+  }
+}
+
+// Returns whether the provided `suggestion` has an edit action.
+bool ShouldShowEditAction(FormSuggestion* suggestion) {
+  switch (suggestion.type) {
+    case SuggestionType::kPasswordEntry:
+    case SuggestionType::kBackupPasswordEntry:
+    case SuggestionType::kCreditCardEntry:
+    case SuggestionType::kVirtualCreditCardEntry:
+    case SuggestionType::kAddressEntry:
+      return true;
+    default:
+      return false;
+  }
+}
+
 }  // namespace
+
+@interface FormSuggestionLabel () <UIContextMenuInteractionDelegate>
+@end
 
 @implementation FormSuggestionLabel {
   // Client of this view.
@@ -414,14 +451,9 @@ NSString* AccessibilityLabel(NSString* suggestion_text,
 
     BOOL isTablet = ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_TABLET;
 
-    NSString* displayDescription =
-        IsConditionalPasskeyLoginEnabled() && IsPasswordSuggestion(suggestion)
-            ? l10n_util::GetNSString(IDS_IOS_PASSWORD_SUBTEXT)
-            : suggestion.displayDescription;
-
     BOOL hasText = suggestionText.length > 0 ||
                    suggestion.minorValue.length > 0 ||
-                   displayDescription.length > 0;
+                   suggestion.displayDescription.length > 0;
 
     if (hasText) {
       if (isTablet) {
@@ -434,7 +466,8 @@ NSString* AccessibilityLabel(NSString* suggestion_text,
         // on the plus side, might actually be more light weight in the end.
         [stackView addArrangedSubview:AttributedTextLabel(
                                           suggestionText, suggestion.minorValue,
-                                          displayDescription, suggestion.icon)];
+                                          suggestion.displayDescription,
+                                          suggestion.icon)];
       } else {
         // On phones, store the suggestion information in a stack view so that
         // it can be selectively truncated if necessary.
@@ -454,9 +487,9 @@ NSString* AccessibilityLabel(NSString* suggestion_text,
         // Format the suggestion information using a stack view so that each
         // piece of information can be truncated individually when truncation is
         // needed.
-        NSArray<UIView*>* views =
-            TextViews(suggestionText, suggestion.minorValue, displayDescription,
-                      [self isCreditCardSuggestion]);
+        NSArray<UIView*>* views = TextViews(
+            suggestionText, suggestion.minorValue,
+            suggestion.displayDescription, [self isCreditCardSuggestion]);
         for (UIView* view in views) {
           [stackView addArrangedSubview:view];
         }
@@ -471,10 +504,11 @@ NSString* AccessibilityLabel(NSString* suggestion_text,
     [self setClipsToBounds:YES];
     [self setUserInteractionEnabled:YES];
     [self setIsAccessibilityElement:YES];
-    [self setAccessibilityLabel:AccessibilityLabel(
-                                    suggestionText, displayDescription,
-                                    suggestion.type ==
-                                        SuggestionType::kBackupPasswordEntry)];
+    [self
+        setAccessibilityLabel:AccessibilityLabel(
+                                  suggestionText, suggestion.displayDescription,
+                                  suggestion.type ==
+                                      SuggestionType::kBackupPasswordEntry)];
     [self
         setAccessibilityValue:l10n_util::GetNSStringF(
                                   IDS_IOS_AUTOFILL_SUGGESTION_INDEX_VALUE,
@@ -490,6 +524,14 @@ NSString* AccessibilityLabel(NSString* suggestion_text,
         _widthConstraint =
             [self.widthAnchor constraintLessThanOrEqualToConstant:maximumWidth];
         _widthConstraint.active = YES;
+      }
+    }
+
+    if (ShouldShowContextMenu(suggestion)) {
+      if (base::FeatureList::IsEnabled(
+              autofill::features::kAutofillAmbientAutofill)) {
+        [self addInteraction:[[UIContextMenuInteraction alloc]
+                                 initWithDelegate:self]];
       }
     }
   }
@@ -550,6 +592,58 @@ NSString* AccessibilityLabel(NSString* suggestion_text,
   if (CGRectContainsPoint(self.bounds, locationInView)) {
     [_delegate didTapFormSuggestionLabel:self];
   }
+}
+
+#pragma mark - UIContextMenuInteractionDelegate
+
+- (UIContextMenuConfiguration*)contextMenuInteraction:
+                                   (UIContextMenuInteraction*)interaction
+                       configurationForMenuAtLocation:(CGPoint)location {
+  __weak __typeof(self) weakSelf = self;
+  return [UIContextMenuConfiguration
+      configurationWithIdentifier:nil
+                  previewProvider:nil
+                   actionProvider:^UIMenu*(
+                       NSArray<UIMenuElement*>* suggestedActions) {
+                     return [weakSelf contextMenu];
+                   }];
+}
+
+- (UITargetedPreview*)contextMenuInteraction:
+                          (UIContextMenuInteraction*)interaction
+    previewForHighlightingMenuWithConfiguration:
+        (UIContextMenuConfiguration*)configuration {
+  return [self emptyPreviewForInteraction:interaction];
+}
+
+- (UITargetedPreview*)contextMenuInteraction:
+                          (UIContextMenuInteraction*)interaction
+    previewForDismissingMenuWithConfiguration:
+        (UIContextMenuConfiguration*)configuration {
+  return [self emptyPreviewForInteraction:interaction];
+}
+
+- (UITargetedPreview*)emptyPreviewForInteraction:
+    (UIContextMenuInteraction*)interaction {
+  if (!self.window) {
+    return nil;
+  }
+  UIView* emptyView = [[UIView alloc] initWithFrame:CGRectZero];
+  UIPreviewParameters* parameters = [[UIPreviewParameters alloc] init];
+  parameters.backgroundColor = [UIColor clearColor];
+  parameters.shadowPath = [UIBezierPath bezierPathWithRect:CGRectZero];
+  parameters.visiblePath = [UIBezierPath bezierPathWithRect:CGRectZero];
+
+  // Align the context menu with the leading side of the suggestion label.
+  BOOL isRTL = self.effectiveUserInterfaceLayoutDirection ==
+               UIUserInterfaceLayoutDirectionRightToLeft;
+  CGFloat x = isRTL ? CGRectGetMaxX(self.bounds) : 0;
+  CGPoint center = CGPointMake(x, CGRectGetMinY(self.bounds));
+  UIPreviewTarget* target = [[UIPreviewTarget alloc] initWithContainer:self
+                                                                center:center];
+  return [[UITargetedPreview alloc] initWithView:emptyView
+                                      parameters:parameters
+                                          target:target];
 }
 
 #pragma mark - Private
@@ -630,6 +724,58 @@ NSString* AccessibilityLabel(NSString* suggestion_text,
       break;
   }
   return maxWidth;
+}
+
+// Handles the tap on the edit context menu action.
+- (void)handleEditTap {
+  [_delegate openEditForSuggestion:self.suggestion];
+}
+
+// Returns the action to edit.
+- (UIAction*)editAction {
+  __weak __typeof(self) weakSelf = self;
+  UIAction* editAction = [UIAction
+      actionWithTitle:l10n_util::GetNSString(IDS_IOS_EDIT_ACTION_TITLE)
+                image:DefaultSymbolWithPointSize(kEditActionSymbol,
+                                                 kSymbolActionPointSize)
+           identifier:nil
+              handler:^(__kindof UIAction* action) {
+                [weakSelf handleEditTap];
+              }];
+  editAction.accessibilityIdentifier =
+      kFormSuggestionLabelEditAccessibilityIdentifier;
+  return editAction;
+}
+
+// Handles the tap on the open settings context menu action.
+- (void)handleOpenSettingsTap {
+  [_delegate openSettingsForSuggestion:self.suggestion];
+}
+
+// Returns the action to open settings.
+- (UIAction*)openSettingsAction {
+  __weak __typeof(self) weakSelf = self;
+  UIAction* settingsAction = [UIAction
+      actionWithTitle:l10n_util::GetNSString(IDS_IOS_CONTEXT_MENU_OPEN_SETTINGS)
+                image:DefaultSymbolWithPointSize(kSettingsSymbol,
+                                                 kSymbolActionPointSize)
+           identifier:nil
+              handler:^(__kindof UIAction* action) {
+                [weakSelf handleOpenSettingsTap];
+              }];
+  settingsAction.accessibilityIdentifier =
+      kFormSuggestionLabelOpenSettingsAccessibilityIdentifier;
+  return settingsAction;
+}
+
+// Returns the context menu for the suggestion.
+- (UIMenu*)contextMenu {
+  NSMutableArray<UIMenuElement*>* children = [[NSMutableArray alloc] init];
+  if (ShouldShowEditAction(self.suggestion)) {
+    [children addObject:[self editAction]];
+  }
+  [children addObject:[self openSettingsAction]];
+  return [UIMenu menuWithTitle:@"" children:children];
 }
 
 @end

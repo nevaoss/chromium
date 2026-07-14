@@ -245,6 +245,7 @@ source_set("impl") {
     "//chrome/browser/history",
     "//chrome/browser/media/webrtc",
     "//chrome/browser/preloading/prefetch/no_state_prefetch",
+    "//chrome/browser/ui:recently_audible_helper",
     "//chrome/browser/ui:ui_features",
     "//chrome/browser/ui/browser_window",
     "//components/content_settings/browser",

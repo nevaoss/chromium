@@ -35,9 +35,6 @@ PageContentStore::~PageContentStore() {
 
 void PageContentStore::OnDatabaseError(int extended_error,
                                        sql::Statement* stmt) {
-  VLOG(1) << "PageContentStore database operation failed: " << extended_error
-          << ", " << stmt->GetSQLStatement();
-
   // Attempt to recover a corrupt database, if it is eligible to be recovered.
   if (sql::IsErrorCatastrophic(extended_error) &&
       sql::Recovery::RecoverIfPossible(

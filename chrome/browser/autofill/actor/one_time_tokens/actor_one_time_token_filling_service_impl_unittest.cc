@@ -12,6 +12,7 @@
 #include "base/functional/callback.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/test/gmock_expected_support.h"
+#include "base/test/scoped_feature_list.h"
 #include "base/test/test_future.h"
 #include "base/time/time.h"
 #include "base/types/expected.h"
@@ -26,6 +27,7 @@
 #include "components/keyed_service/core/keyed_service.h"
 #include "components/one_time_tokens/core/browser/one_time_token.h"
 #include "components/one_time_tokens/core/browser/one_time_token_service.h"
+#include "components/one_time_tokens/core/common/one_time_token_features.h"
 #include "content/public/test/browser_task_environment.h"
 #include "content/public/test/test_renderer_host.h"
 #include "content/public/test/web_contents_tester.h"
@@ -92,6 +94,25 @@ class ActorOneTimeTokenFillingServiceImplTest : public ActorTestBase {
  private:
   std::unique_ptr<ActorOneTimeTokenFillingServiceImpl> service_;
 };
+
+// Tests that `RetrieveOtp` returns the mock OTP immediately from the feature
+// parameter when the parameter is set.
+TEST_F(ActorOneTimeTokenFillingServiceImplTest, RetrieveOtp_MockOtpFeatureSet) {
+  const std::string kMockOtp = "987654";
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(
+      one_time_tokens::features::kGmailOtpRetrievalService,
+      {{"mock-gmail-otp-value", kMockOtp}});
+
+  // The OTP service is not expected to be queried for cached tokens or
+  // subscription since RetrieveOtp returns early.
+  EXPECT_CALL(otp_service(), GetCachedOneTimeTokens).Times(0);
+  EXPECT_CALL(otp_service(), Subscribe).Times(0);
+
+  base::test::TestFuture<std::string> future;
+  service().RetrieveOtp(tab().GetHandle(), {}, future.GetCallback());
+  EXPECT_EQ(future.Get(), kMockOtp);
+}
 
 // Tests that `RetrieveOtp` correctly returns an available OTP from the
 // underlying service.

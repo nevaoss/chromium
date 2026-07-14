@@ -1054,7 +1054,8 @@ base::expected<void, CommitError> DCLayerTree::VisualTree::BuildTree(
       }
     }
 
-    TRACE_EVENT0("gpu", "DCLayerTree::CommitAndClearPendingOverlays::Commit");
+    TRACE_EVENT("gpu", "DCLayerTree::CommitAndClearPendingOverlays::Commit",
+                "num_layers_modified", num_layers_modified);
     base::ScopedUmaHistogramTimer scoped_timer(
         "GPU.DirectComposition.DCompCommitDuration",
         base::ScopedUmaHistogramTimer::ScopedHistogramTiming::

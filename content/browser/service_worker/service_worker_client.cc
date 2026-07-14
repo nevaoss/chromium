@@ -34,6 +34,7 @@
 #include "content/public/common/origin_util.h"
 #include "mojo/public/cpp/bindings/remote_set.h"
 #include "net/base/url_util.h"
+#include "services/network/public/cpp/constants.h"
 #include "services/network/public/cpp/single_request_url_loader_factory.h"
 #include "services/network/public/cpp/url_loader_factory_builder.h"
 #include "services/network/public/cpp/wrapper_shared_url_loader_factory.h"
@@ -1267,7 +1268,7 @@ ServiceWorkerClient::CreateNetworkURLLoaderFactory(
     CreateNetworkURLLoaderFactoryType type,
     StoragePartitionImpl* storage_partition,
     const network::ResourceRequest& resource_request,
-    const std::optional<base::UnguessableToken>& network_restrictions_id) {
+    const base::UnguessableToken& network_restrictions_id) {
   CHECK(!is_response_committed());
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
 
@@ -1298,13 +1299,11 @@ ServiceWorkerClient::CreateNetworkURLLoaderFactory(
       //
       // Note: Currently we skip passing `network_restrictions_id` here because
       // intercepted requests (such as Search Prefetch) are normally served
-      // locally by the embedder but we do need to consider if they fallback to
-      // using the network.
-      // TODO(crbug.com/515272371): If the request cannot be handled locally
-      // by the embedder and falls back to the network, the Connection Allowlist
-      // is currently bypassed because the browser's global URLLoaderFactory
-      // is used. Consider applying a browser-side Connection Allowlist check
-      // here (similar to WindowClient.navigate() checks).
+      // locally by the embedder or are only relevant to behavior triggered
+      // outside the frame, like the omnibox. In the future, if an intercepted
+      // request may trigger a new request on behalf of a specific context, we
+      // need to ensure that the `network_restrictions_id` of that context is
+      // provided.
       if (ContentBrowserClient::URLLoaderRequestHandler embedder_url_loader_handler =
               GetContentClient()
                   ->browser()

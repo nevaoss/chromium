@@ -56,6 +56,7 @@ export class OverflowMenuElement extends OverflowMenuElementBase {
       isPinButtonEnabled: {type: Boolean},
       isAiPage: {type: Boolean},
       isUserFeedbackAllowed: {type: Boolean},
+      contextualTasksEnableSpatialModelToolbarLayout_: {type: Boolean},
     };
   }
 
@@ -70,6 +71,8 @@ export class OverflowMenuElement extends OverflowMenuElementBase {
       loadTimeData.getBoolean('isAiPage');
   accessor isUserFeedbackAllowed: boolean =
       loadTimeData.getBoolean('isUserFeedbackAllowed');
+  accessor contextualTasksEnableSpatialModelToolbarLayout_: boolean =
+      loadTimeData.getBoolean('contextualTasksEnableSpatialModelToolbarLayout');
   private browserProxy_: BrowserProxy = BrowserProxyImpl.getInstance();
   private listenerIds_: number[] = [];
 // <if expr="not is_android">
@@ -139,8 +142,10 @@ export class OverflowMenuElement extends OverflowMenuElementBase {
     this.close();
     this.isPinned = !this.isPinned;
     if (this.isPinned) {
+      recordAction('ContextualTasks.WebUI.UserAction.PinSidePanel');
       this.browserProxy_.handler.pinSidePanel();
     } else {
+      recordAction('ContextualTasks.WebUI.UserAction.UnpinSidePanel');
       this.browserProxy_.handler.unpinSidePanel();
     }
     this.dispatchEvent(new CustomEvent('pin-click'));
@@ -164,10 +169,33 @@ export class OverflowMenuElement extends OverflowMenuElementBase {
     this.browserProxy_.handler.openMyActivityUi();
   }
 
-  protected onFeedbackClick_() {
+  protected onHelpClick_() {
     this.close();
     recordAction('ContextualTasks.WebUI.UserAction.OpenHelp');
+    this.browserProxy_.handler.openOnboardingHelpUi();
+  }
+
+
+  protected onFeedbackClick_() {
+    this.close();
+    recordAction('ContextualTasks.WebUI.UserAction.OpenFeedback');
     this.browserProxy_.handler.openFeedbackUi();
+  }
+
+  protected shouldShowThreadHistoryInMenu_(): boolean {
+    return this.isSmallDeviceFormFactor ||
+        (this.contextualTasksEnableSpatialModelToolbarLayout_ && this.isAiPage);
+  }
+
+  protected shouldShowOpenInNewTabInMenu_(): boolean {
+    return !this.isSmallDeviceFormFactor &&
+        !this.contextualTasksEnableSpatialModelToolbarLayout_;
+  }
+
+  protected shouldShowMenuHeaderDivider_(): boolean {
+    return this.shouldShowOpenInNewTabInMenu_() ||
+        this.shouldShowThreadHistoryInMenu_() ||
+        this.shouldShowPinButton_();
   }
 }
 

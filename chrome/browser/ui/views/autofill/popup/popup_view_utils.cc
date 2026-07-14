@@ -615,6 +615,7 @@ bool IsExpandableSuggestionType(SuggestionType type) {
     case SuggestionType::kAutocompleteAtMemoryButton:
     case SuggestionType::kOpenGemini:
     case SuggestionType::kAtMemoryNoConnection:
+    case SuggestionType::kAtMemoryGenericError:
     case SuggestionType::kAtMemorySearchAffordance:
     case SuggestionType::kPersonalContextNotice:
     case SuggestionType::kFetchingAmbientData:
@@ -634,6 +635,7 @@ bool IsSuggestionTypeAutoselected(SuggestionType type) {
     case SuggestionType::kAllSavedPasswordsEntry:
     case SuggestionType::kAtMemoryInactivityNudge:
     case SuggestionType::kAtMemoryNoConnection:
+    case SuggestionType::kAtMemoryGenericError:
     case SuggestionType::kAtMemorySearchResult:
     case SuggestionType::kAutocompleteAtMemoryButton:
     case SuggestionType::kAutocompleteEntry:

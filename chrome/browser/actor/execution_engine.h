@@ -293,6 +293,10 @@ class ExecutionEngine : public ToolDelegate,
 
   State state() const { return state_; }
 
+  const OriginGatingCache& origin_gating_cache() const {
+    return origin_gating_cache_;
+  }
+
   // Currently, navigations are generally forced to happen in the same tab (see
   // https://crbug.com/420669167 ). In some cases we need to drop this
   // restriction for certain tools to function.

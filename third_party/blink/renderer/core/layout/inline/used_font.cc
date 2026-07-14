@@ -14,6 +14,15 @@ LayoutUnit UsedFont::FixedAscent(FontBaseline baseline) const {
   return LayoutUnit();
 }
 
+LayoutUnit UsedFont::FixedDescent() const {
+  if (const auto* font_data = PrimaryFont()) [[likely]] {
+    return LayoutUnit(
+        font_data->GetFontMetrics().FloatDescent(kAlphabeticBaseline) *
+        text_fit_scaling_factor_);
+  }
+  return LayoutUnit();
+}
+
 std::optional<float> UsedFont::UnderlineThickness() const {
   if (const auto* font_data = PrimaryFont()) {
     if (auto optional_thickness =

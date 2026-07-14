@@ -876,9 +876,15 @@ void LocalDOMWindow::CountUseOnlyInCrossSiteIframe(
 bool LocalDOMWindow::HasInsecureContextInAncestors() const {
   for (Frame* parent = GetFrame()->Tree().Parent(); parent;
        parent = parent->Tree().Parent()) {
+    // Stop the walk at a secure-context root; see
+    // `ContentBrowserClient::IsSecureContextRoot()` for details.
+    if (parent->GetSecurityContext()->IsSecureContextRoot()) {
+      return false;
+    }
     auto* origin = parent->GetSecurityContext()->GetSecurityOrigin();
-    if (!origin->IsPotentiallyTrustworthy())
+    if (!origin->IsPotentiallyTrustworthy()) {
       return true;
+    }
   }
   return false;
 }

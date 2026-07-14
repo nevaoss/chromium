@@ -48,7 +48,8 @@ class OmniboxPopupHandler : public omnibox_popup::mojom::PageHandler {
   void SetInputState(const std::string& text,
                      const gfx::Range& selection,
                      bool user_input_in_progress,
-                     bool is_double_click);
+                     bool is_double_click,
+                     const std::string& full_url);
 
   const gfx::Range& latest_selection() const { return latest_selection_; }
 

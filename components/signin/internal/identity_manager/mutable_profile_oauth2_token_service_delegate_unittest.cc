@@ -162,7 +162,6 @@ class TestKeyProvider : public os_crypt_async::KeyProvider {
   }
 
   bool UseForEncryption() final { return use_for_encryption_; }
-  bool IsCompatibleWithOsCryptSync() final { return false; }
 
   const std::string name_;
   const bool use_for_encryption_;

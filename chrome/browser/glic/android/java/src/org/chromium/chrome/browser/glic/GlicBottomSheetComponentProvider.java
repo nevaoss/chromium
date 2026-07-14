@@ -15,16 +15,17 @@ import org.jni_zero.JNINamespace;
 
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.chrome.browser.profiles.Profile;
-import org.chromium.chrome.browser.tab_bottom_sheet.TabBottomSheetComponentProvider;
+import org.chromium.chrome.browser.tab_bottom_sheet.CoBrowseComponentProvider;
 import org.chromium.chrome.browser.tab_bottom_sheet.TabBottomSheetContent;
+import org.chromium.components.browser_ui.widget.text.TextViewWithCompoundDrawables;
 
 /**
- * Concrete implementation of {@link TabBottomSheetComponentProvider} for Glic. Returns specialized
+ * Concrete implementation of {@link CoBrowseComponentProvider} for Glic. Returns specialized
  * components and handles agent task termination.
  */
 @JNINamespace("glic")
 @NullMarked
-public class GlicBottomSheetComponentProvider implements TabBottomSheetComponentProvider {
+public class GlicBottomSheetComponentProvider implements CoBrowseComponentProvider {
     private final Profile mProfile;
 
     /** JNI static factory method to create the provider. */
@@ -33,8 +34,14 @@ public class GlicBottomSheetComponentProvider implements TabBottomSheetComponent
         return new GlicBottomSheetComponentProvider(profile);
     }
 
-    private GlicBottomSheetComponentProvider(Profile profile) {
+    GlicBottomSheetComponentProvider(Profile profile) {
         mProfile = profile;
+    }
+
+    @Override
+    public boolean setupPlaceholderView(TextViewWithCompoundDrawables placeholder) {
+        GlicUiUtils.setupPlaceholderView(placeholder);
+        return true;
     }
 
     @Override
@@ -44,7 +51,6 @@ public class GlicBottomSheetComponentProvider implements TabBottomSheetComponent
             @ColorInt int backgroundColor,
             @Px int peekViewHeight,
             @IdRes int peekViewContainerId,
-            @IdRes int emptyPlaceholderContainerId,
             Runnable onBackPressed) {
         return new GlicBottomSheetContent(
                 contentView,
@@ -52,7 +58,6 @@ public class GlicBottomSheetComponentProvider implements TabBottomSheetComponent
                 backgroundColor,
                 peekViewHeight,
                 peekViewContainerId,
-                emptyPlaceholderContainerId,
                 onBackPressed,
                 mProfile);
     }

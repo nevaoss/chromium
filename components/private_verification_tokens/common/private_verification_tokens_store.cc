@@ -101,6 +101,11 @@ PrivateVerificationTokensStore::tokens() const {
   return tokens_;
 }
 
+void PrivateVerificationTokensStore::DeleteAllTokens() {
+  database_.AsyncCall(&PrivateVerificationTokensDatabase::DeleteAllTokens);
+  tokens_.clear();
+}
+
 PrivateVerificationTokensStore::~PrivateVerificationTokensStore() = default;
 
 }  // namespace private_verification_tokens

@@ -20,6 +20,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -354,6 +355,15 @@ class NET_EXPORT HttpCache : public HttpTransactionFactory {
   // and effectively bypass the cache lock whenever there is lock contention.
   void SimulateCacheLockTimeoutForTesting() { bypass_lock_for_test_ = true; }
 
+  // Causes CacheBodyCompressor to fail after `max_size` uncompressed bytes.
+  // Used by tests to exercise compression error paths in Writers.
+  void set_compression_max_size_for_testing(int64_t max_size) {
+    compression_max_size_for_testing_ = max_size;
+  }
+  std::optional<int64_t> compression_max_size_for_testing() const {
+    return compression_max_size_for_testing_;
+  }
+
   // Causes all transactions created after this point to simulate lock timeout
   // and effectively bypass the cache lock whenever there is lock contention
   // after the transaction has completed its headers phase.
@@ -388,7 +398,7 @@ class NET_EXPORT HttpCache : public HttpTransactionFactory {
       std::unique_ptr<HttpTransactionFactory> new_network_layer);
 
   // Get the URL from the entry's cache key.
-  static std::string GetResourceURLFromHttpCacheKey(const std::string& key);
+  static std::string_view GetResourceURLFromHttpCacheKey(std::string_view key);
 
   // Generates the cache key for a request.
   static std::optional<std::string> GenerateCacheKeyForRequest(
@@ -930,6 +940,8 @@ class NET_EXPORT HttpCache : public HttpTransactionFactory {
 
   // A clock that can be swapped out for testing.
   raw_ptr<base::Clock> clock_;
+
+  std::optional<int64_t> compression_max_size_for_testing_;
 
   // Used to track which keys led to a no-store response.
   base::LRUCacheSet<SHA256HashValue> keys_marked_no_store_;

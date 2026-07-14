@@ -96,9 +96,6 @@ static ServiceWorkerContext* g_service_worker_context_for_testing = nullptr;
 
 bool (*g_host_non_unique_filter)(std::string_view) = nullptr;
 
-static network::SharedURLLoaderFactory* g_url_loader_factory_for_testing =
-    nullptr;
-
 static network::mojom::NetworkContext*
     g_network_context_for_proxy_lookup_for_testing = nullptr;
 
@@ -285,7 +282,7 @@ bool IsAllowedByConnectionAllowlist(const PrefetchRequest& request,
   // enabled. In order to check the origin trial status, the initiator policy
   // container policies need to be retrieved.
   if (!base::FeatureList::IsEnabled(network::features::kConnectionAllowlists)) {
-    return false;
+    return true;
   }
 
   const PrefetchRendererInitiatorInfo* renderer_initiator_info =
@@ -558,13 +555,34 @@ base::WeakPtr<PrefetchContainer> PrefetchService::CreatePrefetchContainer(
     std::unique_ptr<PrePrefetchContainer> pre_prefetch_container) {
   if (base::FeatureList::IsEnabled(
           features::kPrefetchOffTheMainThreadForceForTesting)) {
-    // - If `pre_prefetch_container` is non-null, it's already from the
-    //   off-the-main-thread path and thus don't force the off-the-main-thread
-    //   path again.
-    // - Currently off-the-main-thread prefetch is only for same-site requests.
-    if (!pre_prefetch_container &&
-        !prefetch_request->IsCrossSiteRequest(
-            url::Origin::Create(prefetch_request->key().url()))) {
+    const bool is_eligible_for_force_pre_prefetch = [&]() {
+      // If `pre_prefetch_container` is non-null, it's already from the
+      // off-the-main-thread path and thus don't force the off-the-main-thread
+      // path again.
+      if (pre_prefetch_container) {
+        return false;
+      }
+
+      const auto origin = url::Origin::Create(prefetch_request->key().url());
+
+      // Currently off-the-main-thread prefetch is only for same-site requests.
+      if (prefetch_request->IsCrossSiteRequest(origin)) {
+        return false;
+      }
+
+      // Also don't trigger off-the-main-thread prefetch if still we need a
+      // proxy. This mirrors the condition for
+      // `PreloadingEligibility::kSameSiteCrossOriginPrefetchRequiredProxy`.
+      if (prefetch_request->IsProxyRequiredForURL(origin) &&
+          !ShouldPrefetchBypassProxyForTestHost(
+              prefetch_request->key().url().GetHost())) {
+        return false;
+      }
+
+      return true;
+    }();
+
+    if (is_eligible_for_force_pre_prefetch) {
       base::WeakPtr<PrefetchContainer> prefetch_container =
           CreatePrefetchContainerFromPrePrefetchForTesting(  // IN-TEST
               std::move(prefetch_request));
@@ -1513,16 +1531,6 @@ void PrefetchService::EvictPrefetch(base::PassKey<PrefetchScheduler>,
 bool PrefetchService::StartSinglePrefetch(
     base::PassKey<PrefetchScheduler>,
     PrefetchContainer& prefetch_container) {
-  return StartSinglePrefetch(prefetch_container);
-}
-
-bool PrefetchService::StartSinglePrefetchForTesting(
-    PrefetchContainer& prefetch_container) {
-  return StartSinglePrefetch(prefetch_container);
-}
-
-bool PrefetchService::StartSinglePrefetch(
-    PrefetchContainer& prefetch_container) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK_EQ(prefetch_container.GetLoadState(),
            PrefetchContainer::LoadState::kEligible);
@@ -1748,10 +1756,6 @@ PrefetchService::CreateIsolatedNetworkContextForTesting(  // IN-TEST
 scoped_refptr<network::SharedURLLoaderFactory>
 PrefetchService::GetURLLoaderFactoryForCurrentPrefetch(
     PrefetchContainer& prefetch_container) {
-  if (g_url_loader_factory_for_testing) {
-    return base::WrapRefCounted(g_url_loader_factory_for_testing);
-  }
-
   // We can only use PrePrefetch's `URLLoaderFactory` for the initial request.
   // E.g., assume the page 4 redirects (1)A -> (2)A -> (3)B -> (4)A,
   // and B is a cross-site redirect. In this case,
@@ -1999,12 +2003,6 @@ void PrefetchService::SetHostNonUniqueFilterForTesting(
 }
 
 // static
-void PrefetchService::SetURLLoaderFactoryForTesting(
-    network::SharedURLLoaderFactory* url_loader_factory) {
-  g_url_loader_factory_for_testing = url_loader_factory;
-}
-
-// static
 void PrefetchService::SetNetworkContextForProxyLookupForTesting(
     network::mojom::NetworkContext* network_context) {
   g_network_context_for_proxy_lookup_for_testing = network_context;
@@ -2046,13 +2044,17 @@ void PrefetchService::EvictPrefetchesForBrowsingDataRemoval(
                                           prefetch_status_on_destruction);
 }
 
-void PrefetchService::CancelUnrelatedPrefetchForNavigation() {
+void PrefetchService::CancelUnrelatedPrefetchForNavigation(
+    const std::optional<blink::DocumentToken>&
+        navigation_initiator_document_token) {
   CHECK(
       base::FeatureList::IsEnabled(features::kPrefetchCancelUnrelatedPrefetch));
 
-  std::vector<base::WeakPtr<PrefetchContainer>> prefetches_to_reset;
-  for (const auto& it : owned_prefetches()) {
-    auto& prefetch_container = it.second;
+  const auto policy =
+      features::kPrefetchCancelUnrelatedPrefetchCancelPolicy.Get();
+
+  auto is_cancel_target =
+      [&](const PrefetchContainer& prefetch_container) -> bool {
     // Cancel prefetches not yet servable, which may compete with the navigation
     // for network bandwidth.
     //
@@ -2062,11 +2064,29 @@ void PrefetchService::CancelUnrelatedPrefetchForNavigation() {
     // already passed; prefetch matching blocks until the using prefetch becomes
     // `PrefetchMatchResolverAction::ActionKind::kMaybeServable`.
     const bool is_maybe_servable =
-        prefetch_container->GetLoadState() ==
+        prefetch_container.GetLoadState() ==
             PrefetchContainer::LoadState::kDeterminedHead ||
-        prefetch_container->GetLoadState() ==
+        prefetch_container.GetLoadState() ==
             PrefetchContainer::LoadState::kCompleted;
-    if (!is_maybe_servable) {
+
+    switch (policy) {
+      case features::PrefetchCancelUnrelatedPrefetchCancelPolicy::kNotServable:
+        return !is_maybe_servable;
+      case features::PrefetchCancelUnrelatedPrefetchCancelPolicy::
+          kNotServableSameInitiatorDocument:
+        const bool is_initiated_by_same_document =
+            navigation_initiator_document_token.has_value() &&
+            navigation_initiator_document_token ==
+                prefetch_container.key().GetDocumentToken();
+
+        return !is_maybe_servable && is_initiated_by_same_document;
+    }
+  };
+
+  std::vector<base::WeakPtr<PrefetchContainer>> prefetches_to_reset;
+  for (const auto& it : owned_prefetches()) {
+    auto& prefetch_container = it.second;
+    if (is_cancel_target(*prefetch_container)) {
       prefetches_to_reset.push_back(prefetch_container->GetWeakPtr());
     }
   }

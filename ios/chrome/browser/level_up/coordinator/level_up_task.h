@@ -9,7 +9,9 @@
 
 #import "ios/chrome/browser/level_up/model/task_types.h"
 
-// Model representing a single level-up task item.
+class TaskInfo;
+
+// Model representing a single level-up task item, wrapping a C++ TaskInfo.
 @interface LevelUpTask : NSObject
 
 // Unique identifier for this task.
@@ -24,24 +26,20 @@
 // Name for this task's icon.
 @property(nonatomic, copy, readonly) NSString* iconSymbolName;
 
+// Whether this icon is a custom asset symbol.
+@property(nonatomic, assign, readonly) BOOL isCustomSymbol;
+
 // The user task completion state.
 @property(nonatomic, assign, readonly) BOOL completed;
 
 // The category grouping this task belongs to.
 @property(nonatomic, assign, readonly) LevelUpTaskCategory category;
 
-// The action executed when the task is selected to navigate to the relevant
-// destination inside Chrome, enabling the user to perform the task.
-@property(nonatomic, copy, readonly) void (^navigationAction)(void);
+// The backing C++ task info model.
+@property(nonatomic, assign, readonly) const TaskInfo* taskInfo;
 
-- (instancetype)initWithTaskID:(NSString*)taskID
-                         title:(NSString*)title
-               taskDescription:(NSString*)taskDescription
-                iconSymbolName:(NSString*)iconSymbolName
-                     completed:(BOOL)completed
-                      category:(LevelUpTaskCategory)category
-              navigationAction:(void (^)(void))navigationAction
-    NS_DESIGNATED_INITIALIZER;
+- (instancetype)initWithTaskInfo:(const TaskInfo*)taskInfo
+                       completed:(BOOL)completed NS_DESIGNATED_INITIALIZER;
 
 - (instancetype)init NS_UNAVAILABLE;
 

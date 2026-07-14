@@ -306,7 +306,8 @@ SoftwareImageDecodeCacheUtils::CacheKey::FromDrawImage(const DrawImage& image,
   TargetColorParams target_color_params = image.target_color_params();
   target_color_params.hdr_headroom = std::nullopt;
   if (paint_image.HasGainmapInfo() ||
-      ToneMapUtil::UseGlobalToneMapFilter(paint_image.color_space())) {
+      ToneMapUtil::UseGlobalToneMapFilter(paint_image.color_space(),
+                                          paint_image.GetHDRMetadata())) {
     if (paint_image.color_space()) {
       target_color_params.color_space =
           gfx::ColorSpace(*paint_image.color_space());

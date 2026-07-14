@@ -14,7 +14,7 @@ import {BrowserProxyImpl, ContextMenuType} from './browser_proxy.js';
 import type {BrowserProxy} from './browser_proxy.js';
 import {getCss} from './home_button.css.js';
 import {getHtml} from './home_button.html.js';
-import {getContextMenuPosition, getEventDispositionFlags, HelpBubbleAnchorMixin, PressHandler} from './toolbar_button.js';
+import {getContextMenuPosition, getEventDispositionFlags, HelpBubbleAnchorMixin, PressHandler, roundedIconsEnabled} from './toolbar_button.js';
 
 const HomeButtonElementBase = HelpBubbleAnchorMixin(CrLitElement);
 
@@ -35,6 +35,7 @@ export class HomeButtonElement extends HomeButtonElementBase {
     return {
       ...super.properties,
       state: {type: Object},
+      touchUi: {type: Boolean},
     };
   }
 
@@ -42,6 +43,8 @@ export class HomeButtonElement extends HomeButtonElementBase {
     shouldBeShown: false,
     isContextMenuVisible: false,
   };
+
+  accessor touchUi: boolean = false;
 
   protected pressHandler_: PressHandler = new PressHandler(
       this.onLongPress_.bind(this), this.onShortPress_.bind(this));
@@ -102,6 +105,15 @@ export class HomeButtonElement extends HomeButtonElementBase {
       this.browserProxy_.toolbarUIHandler.onHomeButtonDropUrl(url.split('\n')[0]!);
     } else if (e.dataTransfer.types.includes('Files')) {
       this.browserProxy_.toolbarUIHandler.onHomeButtonDropFile({x: e.clientX, y: e.clientY});
+    }
+  }
+
+  protected getIronIcon_(): string {
+    if (roundedIconsEnabled()) {
+      return 'webui-toolbar:home';
+    } else {
+      return this.touchUi ? 'webui-toolbar:navigate_home_touch_old' :
+                            'webui-toolbar:navigate_home_chrome_refresh_old';
     }
   }
 }

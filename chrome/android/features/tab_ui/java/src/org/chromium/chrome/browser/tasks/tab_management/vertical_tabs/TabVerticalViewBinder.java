@@ -20,8 +20,12 @@ import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.widget.ImageViewCompat;
 
+import com.google.android.material.progressindicator.CircularProgressIndicator;
+
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.tab.MediaState;
+import org.chromium.chrome.browser.tab.TabUtils;
 import org.chromium.chrome.browser.tasks.tab_management.TabActionButtonData;
 import org.chromium.chrome.browser.tasks.tab_management.TabListViewBinderUtils;
 import org.chromium.chrome.browser.tasks.tab_management.TabProperties;
@@ -68,9 +72,11 @@ class TabVerticalViewBinder {
             updateChildRowPadding(model, view);
         } else if (TabProperties.CONTENT_DESCRIPTION_TEXT_RESOLVER == propertyKey) {
             TabListViewBinderUtils.updateContentDescription(model, view);
+        } else if (TabProperties.MEDIA_INDICATOR == propertyKey) {
+            updateMediaIndicator(model, view);
+        } else if (TabProperties.ACTOR_UI_STATE == propertyKey) {
+            updateActorIndicator(model, view);
         }
-        // TODO(crbug.com/509226293): Add MEDIA_INDICATOR to TabProperties.ALL_KEYS_VERTICAL_TAB
-        // and implement binder logic to display/update playing/muted audio icons.
     }
 
     /**
@@ -133,6 +139,8 @@ class TabVerticalViewBinder {
             PropertyModel model, ViewGroup view, PropertyKey propertyKey) {
         if (TabProperties.FAVICON_FETCHER == propertyKey) {
             updateFavicon(model, view);
+        } else if (TabProperties.IS_LOADING == propertyKey) {
+            updateLoadingState(model, view);
         } else if (TabProperties.TAB_CLICK_LISTENER == propertyKey) {
             TabListViewBinderUtils.setNullableClickListener(
                     model.get(TabProperties.TAB_CLICK_LISTENER), view, model);
@@ -147,9 +155,60 @@ class TabVerticalViewBinder {
 
     private static void updateFavicon(PropertyModel model, ViewGroup view) {
         @Nullable ImageView faviconView = view.findViewById(R.id.tab_favicon);
-        if (faviconView != null) {
-            TabListViewBinderUtils.updateFavicon(model, faviconView);
+        if (faviconView == null) return;
+
+        TabListViewBinderUtils.updateFaviconImage(model, faviconView);
+        adjustFaviconVisibility(model, faviconView);
+    }
+
+    private static void updateLoadingState(PropertyModel model, ViewGroup view) {
+        boolean isLoading = model.get(TabProperties.IS_LOADING);
+        @Nullable CircularProgressIndicator spinner = view.findViewById(R.id.tab_loading_spinner);
+
+        if (spinner != null) {
+            if (isLoading) {
+                boolean isIncognito = model.get(TabProperties.IS_INCOGNITO);
+                spinner.setIndicatorColor(getLoadingSpinnerColor(view.getContext(), isIncognito));
+                spinner.show();
+            } else {
+                spinner.setVisibility(View.GONE);
+            }
         }
+
+        @Nullable ImageView faviconView = view.findViewById(R.id.tab_favicon);
+        if (faviconView != null) {
+            adjustFaviconVisibility(model, faviconView);
+        }
+    }
+
+    private static void adjustFaviconVisibility(PropertyModel model, ImageView faviconView) {
+        if (model.get(TabProperties.FAVICON_FETCHER) == null) {
+            faviconView.setVisibility(View.GONE);
+            return;
+        }
+        boolean isLoading = model.get(TabProperties.IS_LOADING);
+        faviconView.setVisibility(isLoading ? View.INVISIBLE : View.VISIBLE);
+    }
+
+    private static void updateMediaIndicator(PropertyModel model, ViewGroup view) {
+        ImageView mediaIndicator = view.findViewById(R.id.media_indicator_icon);
+        if (mediaIndicator == null) return;
+
+        @MediaState int mediaState = model.get(TabProperties.MEDIA_INDICATOR);
+        if (mediaState != MediaState.NONE) {
+            mediaIndicator.setImageResource(TabUtils.getMediaIndicatorDrawable(mediaState));
+            mediaIndicator.setVisibility(View.VISIBLE);
+        } else {
+            mediaIndicator.setVisibility(View.GONE);
+        }
+    }
+
+    private static void updateActorIndicator(PropertyModel model, ViewGroup view) {
+        @Nullable View indicatorView = view.findViewById(R.id.ai_indicator);
+        if (indicatorView == null) return;
+
+        boolean shouldBeVisible = TabListViewBinderUtils.setupActorIndicator(model, view);
+        indicatorView.setVisibility(shouldBeVisible ? View.VISIBLE : View.GONE);
     }
 
     // Row-Specific Layout Color Binder Helpers
@@ -178,7 +237,10 @@ class TabVerticalViewBinder {
         }
 
         updateFavicon(model, view);
-        setupTabHoverListener(model, view);
+        setupTabHoverListener(
+                model,
+                view,
+                /* defaultBackgroundColor= */ ColorStateList.valueOf(Color.TRANSPARENT));
     }
 
     /**
@@ -204,6 +266,7 @@ class TabVerticalViewBinder {
             ViewCompat.setBackgroundTintList(view, tintList);
         }
         updateFavicon(model, view);
+        setupTabHoverListener(model, view, /* defaultBackgroundColor= */ null);
     }
 
     /**
@@ -221,24 +284,25 @@ class TabVerticalViewBinder {
         @Nullable Drawable bg = view.getBackground();
         if (bg != null && colorId != null) {
             bg.mutate();
-            int color =
+            int backgroundColor =
                     TabGroupColorPickerUtils.getTabGroupColorPickerItemColor(
                             context, colorId, isIncognito);
-            ViewCompat.setBackgroundTintList(view, ColorStateList.valueOf(color));
+            ViewCompat.setBackgroundTintList(view, ColorStateList.valueOf(backgroundColor));
 
             @ColorInt
-            int textColor = ContextCompat.getColor(context, R.color.default_text_color_light);
-            @ColorInt
-            int iconColor = ContextCompat.getColor(context, R.color.default_icon_color_light);
+            int foregroundColor =
+                    TabGroupColorPickerUtils.getTabGroupColorPickerItemTextColor(
+                            context, colorId, isIncognito);
 
             TextView titleView = view.findViewById(R.id.group_title);
             if (titleView != null) {
-                titleView.setTextColor(textColor);
+                titleView.setTextColor(foregroundColor);
             }
 
             @Nullable ImageView expandChevron = view.findViewById(R.id.expand_chevron);
             if (expandChevron != null) {
-                ImageViewCompat.setImageTintList(expandChevron, ColorStateList.valueOf(iconColor));
+                ImageViewCompat.setImageTintList(
+                        expandChevron, ColorStateList.valueOf(foregroundColor));
             }
         }
     }
@@ -324,23 +388,35 @@ class TabVerticalViewBinder {
         return ColorStateList.valueOf(color);
     }
 
+    private static @ColorInt int getLoadingSpinnerColor(Context context, boolean isIncognito) {
+        if (isIncognito) {
+            return Color.WHITE;
+        } else {
+            return SemanticColorUtils.getDefaultIconColorAccent1(context);
+        }
+    }
+
     // Gesture & Interaction Layout Helpers
 
-    private static void setupTabHoverListener(PropertyModel model, ViewGroup view) {
+    private static void setupTabHoverListener(
+            PropertyModel model, ViewGroup view, @Nullable ColorStateList defaultBackgroundColor) {
         @Nullable ImageView actionButton = view.findViewById(R.id.action_button);
-        if (actionButton == null) return;
 
         view.setOnHoverListener(
                 (rowView, motionEvent) -> {
                     boolean isSelected = model.get(TabProperties.IS_SELECTED);
                     if (isSelected) {
-                        actionButton.setVisibility(View.VISIBLE);
+                        if (actionButton != null) {
+                            actionButton.setVisibility(View.VISIBLE);
+                        }
                         return false;
                     }
 
                     switch (motionEvent.getAction()) {
                         case MotionEvent.ACTION_HOVER_ENTER:
-                            actionButton.setVisibility(View.VISIBLE);
+                            if (actionButton != null) {
+                                actionButton.setVisibility(View.VISIBLE);
+                            }
                             ViewCompat.setBackgroundTintList(
                                     view,
                                     ColorStateList.valueOf(
@@ -349,9 +425,10 @@ class TabVerticalViewBinder {
                                                     model.get(TabProperties.IS_INCOGNITO))));
                             break;
                         case MotionEvent.ACTION_HOVER_EXIT:
-                            actionButton.setVisibility(View.INVISIBLE);
-                            ViewCompat.setBackgroundTintList(
-                                    view, ColorStateList.valueOf(Color.TRANSPARENT));
+                            if (actionButton != null) {
+                                actionButton.setVisibility(View.INVISIBLE);
+                            }
+                            ViewCompat.setBackgroundTintList(view, defaultBackgroundColor);
                             break;
                     }
                     return false;

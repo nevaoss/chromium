@@ -20,8 +20,6 @@
 #include "components/permissions/permission_request.h"
 #include "components/permissions/request_type.h"
 
-class Browser;
-
 namespace content {
 class WebContents;
 }
@@ -31,8 +29,7 @@ class EmbeddedPermissionPrompt
       public EmbeddedPermissionPromptViewDelegate,
       public EmbeddedPermissionPromptContentScrimView::Delegate {
  public:
-  EmbeddedPermissionPrompt(Browser* browser,
-                           content::WebContents* web_contents,
+  EmbeddedPermissionPrompt(content::WebContents* web_contents,
                            permissions::PermissionPrompt::Delegate* delegate);
   ~EmbeddedPermissionPrompt() override;
   EmbeddedPermissionPrompt(const EmbeddedPermissionPrompt&) = delete;

@@ -1,6 +1,6 @@
 [
     {
-        "duration": "40.0",
+        "duration": "41.0",
         "name": "rendering.desktop/css_value_type_shadow"
     },
     {
@@ -20,7 +20,7 @@
         "name": "v8.browsing_desktop/browse:media:pinterest:2018"
     },
     {
-        "duration": "95.0",
+        "duration": "96.0",
         "name": "v8.browsing_desktop/browse:media:tumblr:2018"
     },
     {
@@ -36,7 +36,7 @@
         "name": "v8.browsing_desktop/browse:media:youtubetv_watch:2020"
     },
     {
-        "duration": "76.0",
+        "duration": "75.0",
         "name": "v8.browsing_desktop/browse:news:cnn:2021"
     },
     {

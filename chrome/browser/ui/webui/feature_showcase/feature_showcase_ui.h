@@ -6,6 +6,7 @@
 #define CHROME_BROWSER_UI_WEBUI_FEATURE_SHOWCASE_FEATURE_SHOWCASE_UI_H_
 
 #include "base/functional/callback.h"
+#include "chrome/browser/ui/webui/feature_showcase/default_browser.mojom.h"
 #include "chrome/browser/ui/webui/feature_showcase/feature_showcase.mojom.h"
 #include "chrome/browser/ui/webui/feature_showcase/google_lens.mojom.h"
 #include "chrome/browser/ui/webui/feature_showcase/password_manager.mojom.h"
@@ -19,6 +20,7 @@
 #include "ui/webui/mojo_web_ui_controller.h"
 
 class FeatureShowcaseHandler;
+class DefaultBrowserHandler;
 class GoogleLensHandler;
 class PasswordManagerHandler;
 class FeatureShowcaseUI;
@@ -36,6 +38,7 @@ class FeatureShowcaseUIConfig
 // The WebUIController for `chrome://feature-showcase`.
 class FeatureShowcaseUI
     : public ui::MojoWebUIController,
+      public feature_showcase::mojom::DefaultBrowserPageHandlerFactory,
       public feature_showcase::mojom::FeatureShowcasePageHandlerFactory,
       public feature_showcase::mojom::GoogleLensPageHandlerFactory,
       public feature_showcase::mojom::PasswordManagerPageHandlerFactory {
@@ -51,12 +54,15 @@ class FeatureShowcaseUI
   // when the user is done.
   void SetFinishCallback(base::OnceClosure finish_callback);
 
-  // Instantiates the implementor of the
-  // feature_showcase::mojom::FeatureShowcasePageHandlerFactory mojo interface
-  // passing the pending receiver that will be internally bound.
+  void SetCanPinToTaskbar(bool can_pin);
+
   void BindInterface(
       mojo::PendingReceiver<
           feature_showcase::mojom::FeatureShowcasePageHandlerFactory> receiver);
+
+  void BindInterface(
+      mojo::PendingReceiver<
+          feature_showcase::mojom::DefaultBrowserPageHandlerFactory> receiver);
 
   // Instantiates the implementor of the
   // feature_showcase::mojom::GoogleLensPageHandlerFactory mojo interface
@@ -78,6 +84,11 @@ class FeatureShowcaseUI
       mojo::PendingReceiver<feature_showcase::mojom::FeatureShowcasePageHandler>
           handler) override;
 
+  // feature_showcase::mojom::DefaultBrowserPageHandlerFactory:
+  void CreatePageHandler(
+      mojo::PendingReceiver<feature_showcase::mojom::DefaultBrowserPageHandler>
+          handler) override;
+
   // feature_showcase::mojom::GoogleLensPageHandlerFactory:
   void CreateGoogleLensPageHandler(
       mojo::PendingReceiver<feature_showcase::mojom::GoogleLensPageHandler>
@@ -90,13 +101,17 @@ class FeatureShowcaseUI
 
   void OnShowcaseFinished();
 
+  bool can_pin_ = false;
   base::OnceClosure finish_callback_;
   std::unique_ptr<FeatureShowcaseHandler> page_handler_;
+  std::unique_ptr<DefaultBrowserHandler> default_browser_page_handler_;
   std::unique_ptr<GoogleLensHandler> google_lens_handler_;
   std::unique_ptr<PasswordManagerHandler> password_manager_handler_;
 
   mojo::Receiver<feature_showcase::mojom::FeatureShowcasePageHandlerFactory>
       page_factory_receiver_{this};
+  mojo::Receiver<feature_showcase::mojom::DefaultBrowserPageHandlerFactory>
+      default_browser_page_factory_receiver_{this};
   mojo::Receiver<feature_showcase::mojom::GoogleLensPageHandlerFactory>
       google_lens_factory_receiver_{this};
   mojo::Receiver<feature_showcase::mojom::PasswordManagerPageHandlerFactory>

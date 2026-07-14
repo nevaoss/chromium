@@ -8,7 +8,7 @@
 
 #if BUILDFLAG(IS_ANDROID)
 
-namespace notifications::tips::prefs {
+namespace tips::prefs {
 
 // LINT.IfChange(TipsShownPrefs)
 const char kAndroidTipNotificationShownESB[] =
@@ -47,6 +47,6 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
   registry->RegisterBooleanPref(kAndroidTipNotificationShownRecentTabs, false);
 }
 
-}  // namespace notifications::tips::prefs
+}  // namespace tips::prefs
 
 #endif  // BUILDFLAG(IS_ANDROID)

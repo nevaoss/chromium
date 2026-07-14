@@ -194,6 +194,10 @@ BASE_DECLARE_FEATURE(kGlicActorUiTabIndicatorSpinnerIgnoreReducedMotion);
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicActorUiTaskIconUiFixes);
 COMPONENT_EXPORT(CHROME_FEATURES)
+BASE_DECLARE_FEATURE(kGlicActorUiTaskListBubbleDelayShow);
+COMPONENT_EXPORT(CHROME_FEATURES)
+extern const base::FeatureParam<int> kGlicActorUiTaskListBubbleDelayMs;
+COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kActorUiThemed);
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicActorPostTaskUiUpdateEnabled);
@@ -421,10 +425,6 @@ extern const base::FeatureParam<bool> kGlicUserStatusRefreshApi;
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<base::TimeDelta>
     kGlicUserStatusThrottleInterval;
-
-COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kGlicFreURLConfig);
-COMPONENT_EXPORT(CHROME_FEATURES)
-extern const base::FeatureParam<std::string> kGlicFreURL;
 
 // TODO(b/414418994): remove features/parameters when URLs are finalized.
 COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kGlicLearnMoreURLConfig);
@@ -677,6 +677,9 @@ BASE_DECLARE_FEATURE_PARAM(base::TimeDelta, kGlicActorAutofillMaximumTimeout);
 
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicActorAutofillOneTimePassword);
+
+COMPONENT_EXPORT(CHROME_FEATURES)
+BASE_DECLARE_FEATURE(kGlicActorAutofillPreClick);
 
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicActorAutofillSectionLabel);

@@ -23,13 +23,14 @@
 #include <string>
 
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
 
 using std::string;
 
 namespace uri_template {
 namespace {
 
-std::unordered_map<string, string> parameters_ = {
+absl::flat_hash_map<string, string> parameters_ = {
     {"var", "value"},
     {"hello", "Hello World!"},
     {"path", "/foo/bar"},

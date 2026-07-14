@@ -724,17 +724,18 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
       std::move(callback));
 
   if (_queryContextualizer) {
-    _queryContextualizer->Contextualize(
-        /*task_id=*/std::nullopt, base::SysNSStringToUTF8(text),
-        /*tabs_to_recontextualize=*/{}, /*tabs_to_force_contextualize=*/{},
-        /*on_ineligible_callback=*/base::DoNothing(),
-        /*on_processed_callback=*/base::DoNothing(),
-        base::BindOnce(
-            [](base::OnceClosure closure,
-               base::WeakPtr<contextual_search::ContextualSearchSessionHandle>
-                   ignored_handle) { std::move(closure).Run(); },
-            std::move(createSearchUrlCallback)),
-        /*enable_smart_tab_selection=*/false);
+    contextual_tasks::QueryContextualizer::ContextualizeParams params;
+    params.task_id = std::nullopt;
+    params.query_text = base::SysNSStringToUTF8(text);
+    params.on_ineligible_callback = base::DoNothing();
+    params.on_processed_callback = base::DoNothing();
+    params.complete_callback = base::BindOnce(
+        [](base::OnceClosure closure,
+           base::WeakPtr<contextual_search::ContextualSearchSessionHandle>
+               ignored_handle) { std::move(closure).Run(); },
+        std::move(createSearchUrlCallback));
+    params.enable_smart_tab_selection = false;
+    _queryContextualizer->Contextualize(std::move(params));
   } else {
     std::move(createSearchUrlCallback).Run();
   }

@@ -43,15 +43,15 @@ void FilterStore::StoreAnnotation(const FilterAnnotation& annotation,
       .Then(std::move(callback));
 }
 
-void FilterStore::GetAnnotationsForTaskSortedByCreationTimestamp(
-    std::string task_type,
+void FilterStore::GetAnnotationsForTasksSortedByCreationTimestamp(
+    std::vector<std::string> task_types,
     base::OnceCallback<void(std::vector<FilterAnnotation>)> callback,
     size_t max_count,
     base::Time min_creation_time) {
   backend_
       .AsyncCall(
-          &FilterStoreBackend::GetAnnotationsForTaskSortedByCreationTimestamp)
-      .WithArgs(std::move(task_type), max_count, min_creation_time)
+          &FilterStoreBackend::GetAnnotationsForTasksSortedByCreationTimestamp)
+      .WithArgs(std::move(task_types), max_count, min_creation_time)
       .Then(std::move(callback));
 }
 
@@ -63,13 +63,13 @@ void FilterStore::DeleteAnnotationsForTask(
       .Then(std::move(callback));
 }
 
-void FilterStore::DeleteAnnotationsForDomains(
-    std::vector<std::string> domains,
+void FilterStore::DeleteAnnotationsForHosts(
+    std::vector<std::string> hosts,
     base::Time delete_begin,
     base::Time delete_end,
     base::OnceCallback<void(std::optional<int64_t>)> callback) {
-  backend_.AsyncCall(&FilterStoreBackend::DeleteAnnotationsForDomains)
-      .WithArgs(std::move(domains), delete_begin, delete_end)
+  backend_.AsyncCall(&FilterStoreBackend::DeleteAnnotationsForHosts)
+      .WithArgs(std::move(hosts), delete_begin, delete_end)
       .Then(std::move(callback));
 }
 

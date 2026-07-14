@@ -21,9 +21,12 @@ bool GeminiAllowedByEnterprise(PrefService* prefs);
 void ResetGeminiConsent(PrefService* prefs);
 FirstRunState CurrentFirstRunState(PrefService* prefs);
 bool DidUserConsentToGemini(PrefService* prefs);
+bool DidUserConsentToGeminiLive(PrefService* prefs);
 bool DidUserSeeGeminiPromo(PrefService* prefs);
 bool DidGeminiLiveIntroPlay(PrefService* prefs);
+void SetGeminiLiveIntroPlayed(PrefService* prefs);
 void UpdateUserConsentPrefs(bool consent, PrefService* prefs);
+void UpdateUserConsentToLivePrefs(bool consent, PrefService* prefs);
 }  // namespace gemini
 
 #endif  // IOS_CHROME_BROWSER_INTELLIGENCE_BWG_UTILS_GEMINI_PREFS_H_

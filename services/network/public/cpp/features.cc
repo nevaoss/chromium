@@ -230,9 +230,6 @@ BASE_FEATURE_PARAM(int,
 // Blocks local network requests without user permission to prevent exploitation
 // of vulnerable local devices.
 //
-// This feature is being built as a replacement for Private Network Access
-// (PNA), and if this is on PNA features may stop working.
-//
 // Spec: https://wicg.github.io/local-network-access/
 // TODO(neva): This workaround allows Xframe regardless of
 // "allowXFrameSameOrigin" value. To make "allowXFrameSameOrigin" working
@@ -580,7 +577,7 @@ BASE_FEATURE_PARAM(size_t,
                    1'000'000);
 
 BASE_FEATURE(kCompressionDictionaryLimitEarlyMatching,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kNetworkServiceTaskScheduler, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE_PARAM(bool,

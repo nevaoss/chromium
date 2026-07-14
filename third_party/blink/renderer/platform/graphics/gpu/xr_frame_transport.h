@@ -63,7 +63,7 @@ class PLATFORM_EXPORT XRFrameTransport final
                    int16_t vr_frame_id);
 
   void FrameSubmitMissing(device::mojom::blink::XRPresentationProvider*,
-                          XRFrameTransportDelegate* delegate,
+                          gpu::SharedImageExportResult camera_export_result,
                           int16_t vr_frame_id);
 
   using OnSubmitFrameTransferredCallback = base::RepeatingCallback<

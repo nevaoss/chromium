@@ -86,7 +86,6 @@ class MutationObserverRegistration;
 class NodeCloningData;
 class NodeList;
 class NodeListsNodeData;
-class Part;
 class QualifiedName;
 class RegisteredEventListener;
 class ScrollTimeline;
@@ -105,8 +104,6 @@ class V8UnionSetHTMLUnsafeOptionsOrTrustedParserOptions;
 class WebPluginContainerImpl;
 class WritableStream;
 struct PhysicalRect;
-
-using PartsList = HeapDeque<Member<Part>>;
 
 const int kElementNamespaceTypeShift = 5;
 const int kNodeStyleChangeShift = 16;
@@ -1487,11 +1484,15 @@ void ShowNodePath(const blink::Node*);
 #endif
 
 namespace cppgc {
-// Assign Node to be allocated on custom NodeSpace.
+// Assign Node-derived types to custom spaces: Element-derived classes go to
+// ElementSpace (kept dense so DOM-traversal hot paths walk pure-Element pages),
+// and all other Nodes (Text, Comment, Document, ...) go to NodeSpace.
 template <typename T>
   requires(std::derived_from<T, blink::Node>)
 struct SpaceTrait<T> {
-  using Space = blink::NodeSpace;
+  using Space = std::conditional_t<std::derived_from<T, blink::Element>,
+                                   blink::ElementSpace,
+                                   blink::NodeSpace>;
 };
 }  // namespace cppgc
 

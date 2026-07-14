@@ -2,7 +2,7 @@ Name: compiler-rt
 Short Name: compiler-rt
 URL: https://compiler-rt.llvm.org/
 Version: N/A
-Revision: bc97b63a261e142e24df48a613a8ff3254f1c856
+Revision: fe03e8f617256a163e2e8c685ae4e0a25cc9ed48
 Update Mechanism: Autoroll
 License: NCSA, Apache-with-LLVM-Exception, MIT
 License File: src/LICENSE.TXT

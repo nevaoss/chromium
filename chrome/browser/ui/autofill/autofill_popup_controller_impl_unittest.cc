@@ -20,6 +20,8 @@
 #include "components/autofill/core/browser/suggestions/suggestion_type.h"
 #include "components/autofill/core/browser/ui/popup_interaction.h"
 #include "components/autofill/core/common/aliases.h"
+#include "content/public/test/test_renderer_host.h"
+#include "content/public/test/test_utils.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/accessibility/ax_active_popup.h"
@@ -34,7 +36,6 @@
 #if !BUILDFLAG(IS_CHROMEOS)
 #include "content/public/test/scoped_accessibility_mode_override.h"
 #endif  // !BUILDFLAG(IS_CHROMEOS)
-
 namespace autofill {
 namespace {
 
@@ -99,7 +100,7 @@ class AutofillPopupControllerImplTest
     // 1. Prepare the backend mock results.
     std::vector<accessibility_annotator::MemorySearchResult> entries;
     for (const auto& value : results) {
-      entries.emplace_back(accessibility_annotator::EntryType::kNameFull,
+      entries.emplace_back(accessibility_annotator::MemoryDataType::kNameFull,
                            u"Name", value);
     }
     accessibility_annotator::MemorySearchResults search_results(
@@ -108,7 +109,7 @@ class AutofillPopupControllerImplTest
 
     // 2. Setup the backend expectation if the query is non-empty.
     if (!query.empty()) {
-      EXPECT_CALL(*client().accessibility_query_service(),
+      EXPECT_CALL(*client().at_memory_query_service(),
                   Query(std::u16string_view(query), _))
           .WillOnce(base::test::RunOnceCallback<1>(std::move(search_results)));
     }
@@ -563,6 +564,30 @@ TEST_F(AutofillPopupControllerImplTest,
       SuggestionHidingReason::kEndEditing);
 
   Mock::VerifyAndClearExpectations(client().popup_view());
+}
+
+// Tests that calling Show() when the popup view has focus but the focused
+// frame is null (e.g. because it was detached) does not cause a crash due to
+// a null pointer dereference.
+TEST_F(AutofillPopupControllerImplTest,
+       ShowWithFocusedViewAndNullFocusedFrame_NoCrash) {
+  ShowSuggestions(manager(), {SuggestionType::kAddressEntry});
+
+  EXPECT_CALL(*client().popup_view(), HasFocus).WillRepeatedly(Return(true));
+
+  content::RenderFrameHost* child_rfh =
+      content::RenderFrameHostTester::For(main_frame())->AppendChild("child");
+  FocusWebContentsOnFrame(child_rfh);
+  content::RenderFrameHostTester::For(child_rfh)->Detach();
+  ASSERT_EQ(web_contents()->GetFocusedFrame(), nullptr);
+
+  // This should not crash.
+  client().suggestion_controller(manager()).Show(
+      AutofillSuggestionController::GenerateSuggestionUiSessionId(),
+      {Suggestion(u"Search Query", SuggestionType::kAddressEntry)},
+      AutofillSuggestionTriggerSource::kFormControlElementClicked,
+      AutoselectFirstSuggestion(false),
+      AutofillSuggestionsIgnoreFocusLoss(false));
 }
 
 TEST_F(AutofillPopupControllerImplTest,

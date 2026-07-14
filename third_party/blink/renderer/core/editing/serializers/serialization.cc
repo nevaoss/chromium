@@ -515,7 +515,7 @@ DocumentFragment* CreateFragmentFromMarkupWithContext(
 
 String CreateMarkup(const Node* node,
                     ChildrenOnly children_only,
-                    AbsoluteURLs should_resolve_urls,
+                    ResolveUrls should_resolve_urls,
                     const ShadowRootInclusion& shadow_root_inclusion) {
   if (!node)
     return "";
@@ -851,7 +851,7 @@ String CreateStrictlyProcessedMarkupWithContext(
     unsigned fragment_end,
     const String& base_url,
     ChildrenOnly children_only,
-    AbsoluteURLs should_resolve_urls,
+    ResolveUrls should_resolve_urls,
     const ShadowRootInclusion& shadow_root_inclusion) {
   if (raw_markup.empty())
     return String();

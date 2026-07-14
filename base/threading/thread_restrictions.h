@@ -137,6 +137,7 @@ class Profile;
 class ProfileImpl;
 class ScopedAllowBlockingForProfile;
 #if BUILDFLAG(IS_WIN)
+class ProfileLoadTracker;
 class ScopedAllowBlockingForMediaFoundation;
 #endif
 class StartupTabProviderImpl;
@@ -225,6 +226,9 @@ bool IsCoreSchedulingAvailable();
 int NumberOfPhysicalCores();
 }  // namespace system
 }  // namespace chromeos
+namespace client_certificates {
+class KcerPrivateKey;
+}  // namespace client_certificates
 namespace content {
 class BrowserGpuChannelHostFactory;
 class BrowserMainLoop;
@@ -309,7 +313,7 @@ namespace gpu {
 class MappableBufferAHB;
 class MappableBufferDXGI;
 class GpuPersistentCache;
-}
+}  // namespace gpu
 namespace history_report {
 class HistoryReportJniBridge;
 }
@@ -588,6 +592,7 @@ class BASE_EXPORT ScopedAllowBlocking {
   friend class ::ProfileImpl;
   friend class ::ScopedAllowBlockingForProfile;
 #if BUILDFLAG(IS_WIN)
+  friend class ::ProfileLoadTracker;
   friend class ::ScopedAllowBlockingForMediaFoundation;
 #endif
   friend class ::StartupTabProviderImpl;
@@ -767,6 +772,7 @@ class BASE_EXPORT ScopedAllowBaseSyncPrimitives {
   friend class blink::WorkerThread;
   friend class blink::scheduler::NonMainThreadImpl;
   friend class cc::CategorizedWorkerPoolJob;
+  friend class client_certificates::KcerPrivateKey;
   friend class content::BrowserMainLoop;
   friend class content::BrowserProcessIOThread;
   friend class content::DWriteFontCollectionProxy;
@@ -894,9 +900,9 @@ class BASE_EXPORT
   friend class base::Thread;                      // http://crbug.com/918039
   friend class cc::CompletionEvent;               // http://crbug.com/902653
   friend class content::
-      BrowserGpuChannelHostFactory;          // http://crbug.com/125248
-  friend class content::TextInputClientMac;  // http://crbug.com/121917
-  friend class dbus::Bus;                    // http://crbug.com/125222
+      BrowserGpuChannelHostFactory;           // http://crbug.com/125248
+  friend class content::TextInputClientMac;   // http://crbug.com/121917
+  friend class dbus::Bus;                     // http://crbug.com/125222
   friend class dbus_xdg::FileTransferPortal;  // https://crbug.com/40398800
   friend class discardable_memory::
       ClientDiscardableSharedMemoryManager;  // http://crbug.com/1396355

@@ -834,14 +834,15 @@ std::vector<hats::SurveyConfig> GetAllSurveyConfigs() {
   // profiles.
   survey_configs.emplace_back(
       &switches::kChromeAndroidIdentitySurveyFirstRun,
-      kHatsSurveyTriggerSigninFirstRun, std::nullopt,
+      kHatsSurveyTriggerSigninFirstRun, "HhgAhQYhw0tK1KeaPYj0NeTaRKBh",
       std::vector<std::string>{}, signin_string_psd_fields,
       /*log_responses_to_uma=*/false,
       /*log_responses_to_ukm=*/false,
       hats::SurveyConfig::ProfileAgeRequirement::kAnyAge);
   survey_configs.emplace_back(
       &switches::kChromeAndroidIdentitySurveyWeb, kHatsSurveyTriggerSigninWeb,
-      std::nullopt, std::vector<std::string>{}, signin_string_psd_fields);
+      "36F2N72TP0tK1KeaPYj0SdXcHEJ4", std::vector<std::string>{},
+      signin_string_psd_fields);
   survey_configs.emplace_back(
       &switches::kChromeAndroidIdentitySurveyNtpSigninButton,
       kHatsSurveyTriggerSigninNtpSigninButton, "yirfCKnhD0tK1KeaPYj0P9BTzPNw",
@@ -861,7 +862,6 @@ std::vector<hats::SurveyConfig> GetAllSurveyConfigs() {
       std::vector<std::string>{}, signin_string_psd_fields);
 
 #endif  // #if !BUILDFLAG(IS_ANDROID)
-
 
   survey_configs.emplace_back(
       &omnibox_feature_configs::HappinessTrackingSurveyForOmniboxOnFocusZps::
@@ -979,30 +979,6 @@ std::optional<uint64_t> SurveyConfig::ValidateHatsSurveyUkmId(
              : std::nullopt;
 }
 
-std::optional<base::TimeDelta> SurveyConfig::GetCooldownPeriodOverride(
-    Profile* profile) const {
-  if (!cooldown_period_override_) {
-    return std::nullopt;
-  }
-
-  GoogleGroupsManager* groups_manager =
-      GoogleGroupsManagerFactory::GetForBrowserContext(profile);
-
-  if (!groups_manager) {
-    return std::nullopt;
-  }
-
-  if (!groups_manager->IsFeatureEnabledForProfile(*survey_feature) ||
-      !groups_manager->IsFeatureGroupControlled(*survey_feature)) {
-    return std::nullopt;
-  }
-
-  return cooldown_period_override_;
-}
-
-bool SurveyConfig::IsCooldownOverrideEnabled(Profile* profile) const {
-  return GetCooldownPeriodOverride(profile).has_value();
-}
 
 void GetActiveSurveyConfigs(SurveyConfigs& survey_configs_by_triggers_) {
   auto surveys = GetAllSurveyConfigs();

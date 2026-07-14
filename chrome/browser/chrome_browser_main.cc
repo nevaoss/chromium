@@ -92,7 +92,6 @@
 #include "chrome/common/profiler/core_unwinders.h"
 #include "chrome/common/profiler/thread_profiler_configuration.h"
 #include "chrome/grit/branded_strings.h"
-#include "chrome/grit/generated_resources.h"
 #include "chrome/installer/util/google_update_settings.h"
 #include "components/color/color_mixers.h"
 #include "components/device_event_log/device_event_log.h"

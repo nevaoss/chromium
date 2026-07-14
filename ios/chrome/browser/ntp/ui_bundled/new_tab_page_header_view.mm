@@ -24,7 +24,6 @@
 #import "ios/chrome/browser/ntp/ui_bundled/fake_location_bar_view.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_color_palette.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_constants.h"
-#import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_controller_delegate.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_delegate.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_feature.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_header_commands.h"
@@ -183,6 +182,10 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
 
 // The Lens button. May be null if Lens is not available.
 @property(nonatomic, strong) ExtendedTouchTargetButton* lensButton;
+// The Identity Disc showing the current user's avatar on NTP.
+@property(nonatomic, strong) NTPIdentityDiscButton* identityDiscButton;
+// The entrypoint for the Home customization menu.
+@property(nonatomic, strong) UIButton* customizationMenuButton;
 // The button that opens multiodal actions in Composebox. May be nil if
 // Composebox or multimodal actions are not enabled.
 @property(nonatomic, strong) ExtendedTouchTargetButton* plusButton;
@@ -232,6 +235,8 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
 @property(nonatomic, assign) BOOL voiceSearchIsEnabled;
 @property(nonatomic, copy) NSString* defaultSearchEngineName;
 @property(nonatomic, strong) FakeLocationBarView* fakeLocationBar;
+
+@property(nonatomic, assign, readwrite) CGFloat scrollProgress;
 
 @end
 
@@ -1094,6 +1099,9 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
   _customizationMenuButton = customizationMenuButton;
   _customizationNewFeatureBadge = newBadgeView;
 
+  [self.layoutGuideCenter referenceView:customizationMenuButton
+                              underName:kFeedIPHNamedGuide];
+
   if (IsNTPBackgroundCustomizationEnabled()) {
     [self applyBackgroundTheme];
   }
@@ -1906,8 +1914,7 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
                    isElementFocused:
                        (UIScribbleElementIdentifier)elementIdentifier {
   DCHECK(elementIdentifier == kScribbleFakeboxElementId);
-  return
-      [self.toolbarDelegate fakeboxScribbleForwardingTarget].isFirstResponder;
+  return self.scribbleForwardingTarget.isFirstResponder;
 }
 
 - (CGRect)
@@ -1926,13 +1933,11 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
                          completion:
                              (void (^)(UIResponder<UITextInput>* focusedInput))
                                  completion {
-  if (!
-      [self.toolbarDelegate fakeboxScribbleForwardingTarget].isFirstResponder) {
-    [[self.toolbarDelegate fakeboxScribbleForwardingTarget]
-        becomeFirstResponder];
+  if (!self.scribbleForwardingTarget.isFirstResponder) {
+    [self.scribbleForwardingTarget becomeFirstResponder];
   }
 
-  completion([self.toolbarDelegate fakeboxScribbleForwardingTarget]);
+  completion(self.scribbleForwardingTarget);
 }
 
 - (BOOL)indirectScribbleInteraction:(UIIndirectScribbleInteraction*)interaction
@@ -2067,8 +2072,14 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
         progress = 1.0;
       }
     }
+    self.scrollProgress = progress;
 
-    [self.toolbarDelegate setScrollProgressForTabletOmnibox:progress];
+    if (IsChromeNextIaEnabled()) {
+      if (progress == 0.0 && _toolsMenuButton) {
+        [self.layoutGuideCenter referenceView:_toolsMenuButton
+                                    underName:kToolsMenuGuide];
+      }
+    }
   }
 
   if (animateScrollAnimation) {

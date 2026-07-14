@@ -104,6 +104,7 @@ UseCounterMetricsRecorder::GetAllowedUkmFeatures() {
           WebFeature::kDownloadPrePolicyCheck,
           WebFeature::kDownloadPostPolicyCheck,
           WebFeature::kDownloadInAdFrame,
+          WebFeature::kDownloadFromAdScript,
           WebFeature::kDownloadInSandbox,
           WebFeature::kDownloadWithoutUserGesture,
           WebFeature::kLazyLoadFrameLoadingAttributeLazy,

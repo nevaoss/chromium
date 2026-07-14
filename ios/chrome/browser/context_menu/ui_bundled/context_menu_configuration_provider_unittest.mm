@@ -30,9 +30,9 @@
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_list.h"
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_opener.h"
 #import "ios/chrome/browser/shared/public/commands/activity_service_commands.h"
-#import "ios/chrome/browser/shared/public/commands/bwg_commands.h"
 #import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
 #import "ios/chrome/browser/shared/public/commands/enhanced_calendar_commands.h"
+#import "ios/chrome/browser/shared/public/commands/gemini_commands.h"
 #import "ios/chrome/browser/shared/public/commands/mini_map_commands.h"
 #import "ios/chrome/browser/shared/public/commands/save_to_photos_commands.h"
 #import "ios/chrome/browser/shared/public/commands/scene_commands.h"
@@ -165,10 +165,10 @@ class ContextMenuConfigurationProviderTest : public PlatformTest {
     [browser_->GetCommandDispatcher()
         startDispatchingToTarget:mock_enhanced_calendar_handler
                      forProtocol:@protocol(EnhancedCalendarCommands)];
-    mock_gemini_handler = OCMStrictProtocolMock(@protocol(BWGCommands));
+    mock_gemini_handler = OCMStrictProtocolMock(@protocol(GeminiCommands));
     [browser_->GetCommandDispatcher()
         startDispatchingToTarget:mock_gemini_handler
-                     forProtocol:@protocol(BWGCommands)];
+                     forProtocol:@protocol(GeminiCommands)];
   }
 
   void TearDown() final {

@@ -265,7 +265,7 @@ int TcpConnectJob::Connector::OnEndpointFailed(int error) {
 
   // If there's only one connector, this makes the next attempt prefer the
   // address family other than that of the request that just failed.
-  parent_->prefer_ipv6_ =
+  parent_->fresh_state_.prefer_ipv6 =
       (current_address_->GetFamily() != ADDRESS_FAMILY_IPV6);
 
   // If this isn't an IsIPEndPointUsable() error, record the failed connection

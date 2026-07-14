@@ -78,6 +78,10 @@ class VIZ_COMMON_EXPORT RasterContextProvider {
   virtual void AddObserver(ContextLostObserver* obs) = 0;
   virtual void RemoveObserver(ContextLostObserver* obs) = 0;
 
+  // Returns true if the context has been lost. Can be called only after
+  // successful BindToCurrentSequence().
+  virtual bool IsLost() = 0;
+
   // Returns the lock that should be held if using this context from multiple
   // threads. This can be called on any thread.
   // Returns null if the context does not support locking and must be used from

@@ -118,7 +118,7 @@ class GlicInstanceCoordinatorBrowserTest
 };
 
 IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest, InitialState) {
-  EXPECT_EQ(coordinator().GetInstancesForTesting().size(), 0u);
+  EXPECT_EQ(coordinator().GetInstances().size(), 0u);
 }
 
 IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
@@ -140,7 +140,7 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
 IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
                        MAYBE_SignOutClosesAllInstances) {
   ASSERT_OK(OpenGlicForActiveTab());
-  EXPECT_EQ(coordinator().GetInstancesForTesting().size(), 1u);
+  EXPECT_EQ(coordinator().GetInstances().size(), 1u);
 
   auto* identity_manager = IdentityManagerFactory::GetForProfile(GetProfile());
   ASSERT_TRUE(identity_manager);
@@ -152,7 +152,7 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
 
   signin::ClearPrimaryAccount(identity_manager);
 
-  EXPECT_EQ(coordinator().GetInstancesForTesting().size(), 0u);
+  EXPECT_EQ(coordinator().GetInstances().size(), 0u);
 }
 
 IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest, CloseHidesInstance) {
@@ -216,7 +216,7 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorUnbindOnCloseTest,
   ASSERT_OK_AND_ASSIGN(auto* instance2, OpenGlicForActiveTab());
   EXPECT_EQ(instance1, instance2);
 
-  EXPECT_EQ(coordinator().GetInstancesForTesting().size(), 1u);
+  EXPECT_EQ(coordinator().GetInstances().size(), 1u);
   EXPECT_TRUE(instance2->IsShowing());
 
   // Do not submit any input on tab2, close the side panel for the active tab
@@ -229,7 +229,7 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorUnbindOnCloseTest,
 
   // But because it was bound to tab1 (and kept bound), the instance itself
   // should still exist.
-  EXPECT_EQ(coordinator().GetInstancesForTesting().size(), 1u);
+  EXPECT_EQ(coordinator().GetInstances().size(), 1u);
   EXPECT_EQ(GetInstanceForTab(tab1), instance1);
   EXPECT_EQ(GetContentsVisibility(instance1), content::Visibility::HIDDEN);
 }
@@ -299,7 +299,7 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorUnbindOnCloseTest,
 
   // Because input was submitted, it should NOT unbind from tab2.
   EXPECT_TRUE(GetInstanceForTab(tab2));
-  EXPECT_EQ(coordinator().GetInstancesForTesting().size(), 1u);
+  EXPECT_EQ(coordinator().GetInstances().size(), 1u);
   EXPECT_FALSE(instance2->IsShowing());
   EXPECT_EQ(GetContentsVisibility(instance2), content::Visibility::HIDDEN);
 }
@@ -396,7 +396,7 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorUnbindOnCloseTest,
   // Verify both stay bound!
   EXPECT_TRUE(GetInstanceForTab(tab1));
   EXPECT_TRUE(GetInstanceForTab(tab2));
-  EXPECT_EQ(coordinator().GetInstancesForTesting().size(), 1u);
+  EXPECT_EQ(coordinator().GetInstances().size(), 1u);
 }
 
 IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorUnbindOnCloseTest,
@@ -409,7 +409,7 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorUnbindOnCloseTest,
   auto* instance = coordinator().GetInstanceImplForTab(tab2);
   ASSERT_TRUE(instance);
   EXPECT_EQ(GetInstanceForTab(tab1), instance);
-  EXPECT_EQ(coordinator().GetInstancesForTesting().size(), 1u);
+  EXPECT_EQ(coordinator().GetInstances().size(), 1u);
   EXPECT_TRUE(instance->IsShowing());
   EXPECT_EQ(GetContentsVisibility(instance), content::Visibility::VISIBLE);
 
@@ -419,7 +419,7 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorUnbindOnCloseTest,
   // Because it was pinned with kContextMenu (not kInstanceCreation),
   // it should NOT unbind from tab2, even though no input was submitted.
   EXPECT_TRUE(GetInstanceForTab(tab2));
-  EXPECT_EQ(coordinator().GetInstancesForTesting().size(), 1u);
+  EXPECT_EQ(coordinator().GetInstances().size(), 1u);
   EXPECT_FALSE(instance->IsShowing());
   EXPECT_EQ(GetContentsVisibility(instance), content::Visibility::HIDDEN);
 }
@@ -460,7 +460,7 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorUnbindOnCloseTest,
 
   // Verify that the instance was successfully deleted and no UAF occurred.
   EXPECT_FALSE(weak_instance);
-  EXPECT_EQ(coordinator().GetInstancesForTesting().size(), 0u);
+  EXPECT_EQ(coordinator().GetInstances().size(), 0u);
 }
 
 IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
@@ -473,7 +473,7 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
   EXPECT_TRUE(GetInstanceForTab(tab1));
   EXPECT_EQ(GetInstanceForTab(tab1), GetInstanceForTab(tab2));
   EXPECT_TRUE(GetInstanceForTab(tab1)->IsShowing());
-  EXPECT_FALSE(coordinator().GetInstancesForTesting().empty());
+  EXPECT_FALSE(coordinator().GetInstances().empty());
 }
 
 IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
@@ -1448,7 +1448,7 @@ class GlicInstanceCoordinatorLocalHotkeyScopeTest
 
 IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorLocalHotkeyScopeTest,
                        HotkeyTriggersToggle) {
-  EXPECT_EQ(coordinator().GetInstancesForTesting().size(), 0u);
+  EXPECT_EQ(coordinator().GetInstances().size(), 0u);
 
   // Simulate receiving the hotkey command.
   bool handled = coordinator().GetHotkeyManagerForTesting()->AcceleratorPressed(
@@ -1479,7 +1479,7 @@ class GlicInstanceCoordinatorLocalHotkeyScopeDisabledTest
 
 IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorLocalHotkeyScopeDisabledTest,
                        HotkeyIsSkipped) {
-  EXPECT_EQ(coordinator().GetInstancesForTesting().size(), 0u);
+  EXPECT_EQ(coordinator().GetInstances().size(), 0u);
 
   // Simulate receiving the hotkey command.
   bool handled = coordinator().GetHotkeyManagerForTesting()->AcceleratorPressed(
@@ -1487,7 +1487,7 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorLocalHotkeyScopeDisabledTest,
   EXPECT_FALSE(handled);
 
   // Expect 0 instances to be created.
-  EXPECT_EQ(coordinator().GetInstancesForTesting().size(), 0u);
+  EXPECT_EQ(coordinator().GetInstances().size(), 0u);
 }
 
 IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
@@ -1547,14 +1547,14 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
   ASSERT_OK(
       WaitForSidePanelState(tab, GlicSidePanelCoordinator::State::kClosed));
   EXPECT_TRUE(weak_instance);
-  EXPECT_EQ(coordinator().GetInstancesForTesting().size(), 1u);
+  EXPECT_EQ(coordinator().GetInstances().size(), 1u);
 
   // Now unpin the tab.
   instance->GetSharingManagerInternal().UnpinTabs({tab->GetHandle()});
 
   // Run until the instance is deleted asynchronously.
   ASSERT_OK(WaitForInstanceDeletion(weak_instance));
-  EXPECT_EQ(coordinator().GetInstancesForTesting().size(), 0u);
+  EXPECT_EQ(coordinator().GetInstances().size(), 0u);
 }
 
 IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,

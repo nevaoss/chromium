@@ -41,7 +41,7 @@
 #import "ios/chrome/browser/ntp/ui_bundled/logo_animation_controller.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_component_factory.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_coordinator.h"
-#import "ios/chrome/browser/omnibox/model/omnibox_position/omnibox_position_browser_agent.h"
+#import "ios/chrome/browser/omnibox/model/omnibox_focus/omnibox_focus_browser_agent.h"
 #import "ios/chrome/browser/popup_menu/coordinator/popup_menu_coordinator.h"
 #import "ios/chrome/browser/saved_tab_groups/model/tab_group_sync_service_factory.h"
 #import "ios/chrome/browser/search_engines/model/template_url_service_factory.h"
@@ -57,11 +57,11 @@
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_opener.h"
 #import "ios/chrome/browser/shared/public/commands/activity_service_commands.h"
 #import "ios/chrome/browser/shared/public/commands/browser_coordinator_commands.h"
-#import "ios/chrome/browser/shared/public/commands/bwg_commands.h"
 #import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
 #import "ios/chrome/browser/shared/public/commands/contextual_panel_entrypoint_iph_commands.h"
 #import "ios/chrome/browser/shared/public/commands/contextual_sheet_commands.h"
 #import "ios/chrome/browser/shared/public/commands/find_in_page_commands.h"
+#import "ios/chrome/browser/shared/public/commands/gemini_commands.h"
 #import "ios/chrome/browser/shared/public/commands/help_commands.h"
 #import "ios/chrome/browser/shared/public/commands/lens_commands.h"
 #import "ios/chrome/browser/shared/public/commands/page_action_menu_commands.h"
@@ -182,7 +182,7 @@ class BrowserViewControllerTest : public BlockCleanupTest {
     WebNavigationBrowserAgent::CreateForBrowser(browser_.get());
     TabUsageRecorderBrowserAgent::CreateForBrowser(browser_.get());
     StartSurfaceRecentTabBrowserAgent::CreateForBrowser(browser_.get());
-    OmniboxPositionBrowserAgent::CreateForBrowser(browser_.get());
+    OmniboxFocusBrowserAgent::CreateForBrowser(browser_.get());
     AutocompleteBrowserAgent::CreateForBrowser(browser_.get());
     BrowserViewVisibilityNotifierBrowserAgent::CreateForBrowser(browser_.get());
     // FullscreenController depends on ToolbarsSizeBrowserAgent, so the agent
@@ -246,9 +246,9 @@ class BrowserViewControllerTest : public BlockCleanupTest {
     [dispatcher startDispatchingToTarget:page_action_menu_handler
                              forProtocol:@protocol(PageActionMenuCommands)];
 
-    id bwg_handler = OCMProtocolMock(@protocol(BWGCommands));
-    [dispatcher startDispatchingToTarget:bwg_handler
-                             forProtocol:@protocol(BWGCommands)];
+    id gemini_handler = OCMProtocolMock(@protocol(GeminiCommands));
+    [dispatcher startDispatchingToTarget:gemini_handler
+                             forProtocol:@protocol(GeminiCommands)];
 
     // Set up Applicationhander and SettingsHandler mocks.
     mock_application_handler_ = OCMProtocolMock(@protocol(SceneCommands));

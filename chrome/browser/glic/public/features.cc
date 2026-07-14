@@ -40,6 +40,8 @@ const base::FeatureParam<bool> kGlicSelectionPromptEnablePinning{
     &kGlicSelectionPrompt, "enable_pinning", false};
 const base::FeatureParam<std::string> kGlicSelectionTopCueOnlyList{
     &kGlicSelectionPrompt, "top_cue_only_list", ""};
+const base::FeatureParam<bool> kGlicSelectionEnableSiteSettings{
+    &kGlicSelectionPrompt, "enable_site_settings", false};
 
 BASE_FEATURE(kGlicClearTurnIdOnPanelWillOpen,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -71,12 +73,7 @@ BASE_FEATURE(kGlicLiveMode,
 );
 
 BASE_FEATURE(kGlicDefaultToLastActiveConversation,
-#if BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_DESKTOP_ANDROID)
-             base::FEATURE_ENABLED_BY_DEFAULT
-#else
-             base::FEATURE_DISABLED_BY_DEFAULT
-#endif
-);
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 const base::FeatureParam<base::TimeDelta>
     kGlicDefaultToLastActiveConversationMaxRecency{

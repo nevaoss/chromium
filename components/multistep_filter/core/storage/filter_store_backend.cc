@@ -48,8 +48,8 @@ bool FilterStoreBackend::StoreAnnotation(const FilterAnnotation& annotation) {
 }
 
 std::vector<FilterAnnotation>
-FilterStoreBackend::GetAnnotationsForTaskSortedByCreationTimestamp(
-    std::string_view task_type,
+FilterStoreBackend::GetAnnotationsForTasksSortedByCreationTimestamp(
+    std::vector<std::string> task_types,
     size_t max_count,
     base::Time min_creation_time) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -58,8 +58,8 @@ FilterStoreBackend::GetAnnotationsForTaskSortedByCreationTimestamp(
     return {};
   }
   return filter_annotation_table_
-      .GetAnnotationsForTaskSortedByCreationTimestamp(task_type, max_count,
-                                                      min_creation_time);
+      .GetAnnotationsForTasksSortedByCreationTimestamp(task_types, max_count,
+                                                       min_creation_time);
 }
 
 std::optional<int64_t> FilterStoreBackend::DeleteAnnotationsForTask(
@@ -72,8 +72,8 @@ std::optional<int64_t> FilterStoreBackend::DeleteAnnotationsForTask(
   return filter_annotation_table_.DeleteAnnotationsForTask(task_type);
 }
 
-std::optional<int64_t> FilterStoreBackend::DeleteAnnotationsForDomains(
-    std::vector<std::string> domains,
+std::optional<int64_t> FilterStoreBackend::DeleteAnnotationsForHosts(
+    std::vector<std::string> hosts,
     base::Time delete_begin,
     base::Time delete_end) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -81,8 +81,8 @@ std::optional<int64_t> FilterStoreBackend::DeleteAnnotationsForDomains(
   if (!IsDatabaseInitialized()) {
     return std::nullopt;
   }
-  return filter_annotation_table_.DeleteAnnotationsForDomains(
-      domains, delete_begin, delete_end);
+  return filter_annotation_table_.DeleteAnnotationsForHosts(hosts, delete_begin,
+                                                            delete_end);
 }
 
 void FilterStoreBackend::ClearData() {

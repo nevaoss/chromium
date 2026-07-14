@@ -3005,11 +3005,11 @@ TEST_P(PaymentsDataManagerShouldBlockBenefitsTest,
   payments_data_manager().AddCreditCardBenefitForTest(
       std::move(flat_rate_benefit));
 
-  EXPECT_TRUE(payments_data_manager()
-                  .GetApplicableBenefitDescriptionForCardAndOrigin(
-                      test::GetMaskedServerCard(), origin,
-                      autofill_client()->GetAutofillOptimizationGuideDecider())
-                  .empty());
+  EXPECT_FALSE(payments_data_manager()
+                   .GetApplicableBenefitForCardAndOrigin(
+                       test::GetMaskedServerCard(), origin,
+                       autofill_client()->GetAutofillOptimizationGuideDecider())
+                   .has_value());
 
   // Add other benefit.
   CreditCardMerchantBenefit merchant_benefit =
@@ -3020,11 +3020,14 @@ TEST_P(PaymentsDataManagerShouldBlockBenefitsTest,
   test_api(merchant_benefit).SetMerchantDomains({origin});
   payments_data_manager().AddCreditCardBenefitForTest(merchant_benefit);
 
-  EXPECT_EQ(
-      payments_data_manager().GetApplicableBenefitDescriptionForCardAndOrigin(
+  std::optional<CreditCardBenefit> benefit =
+      payments_data_manager().GetApplicableBenefitForCardAndOrigin(
           card, origin,
-          autofill_client()->GetAutofillOptimizationGuideDecider()),
-      merchant_benefit.benefit_description());
+          autofill_client()->GetAutofillOptimizationGuideDecider());
+  ASSERT_TRUE(benefit.has_value());
+  EXPECT_EQ(std::get<CreditCardMerchantBenefit>(benefit.value())
+                .benefit_description(),
+            merchant_benefit.benefit_description());
 }
 
 // Tests that card flat rate benefits should not be blocked if the given url is
@@ -3057,11 +3060,14 @@ TEST_P(PaymentsDataManagerShouldBlockBenefitsTest,
   test_api(payments_data_manager()).AddServerCreditCard(card);
   payments_data_manager().AddCreditCardBenefitForTest(flat_rate_benefit);
 
-  EXPECT_EQ(
-      payments_data_manager().GetApplicableBenefitDescriptionForCardAndOrigin(
+  std::optional<CreditCardBenefit> benefit =
+      payments_data_manager().GetApplicableBenefitForCardAndOrigin(
           card, origin,
-          autofill_client()->GetAutofillOptimizationGuideDecider()),
-      flat_rate_benefit.benefit_description());
+          autofill_client()->GetAutofillOptimizationGuideDecider());
+  ASSERT_TRUE(benefit.has_value());
+  EXPECT_EQ(std::get<CreditCardFlatRateBenefit>(benefit.value())
+                .benefit_description(),
+            flat_rate_benefit.benefit_description());
 }
 
 INSTANTIATE_TEST_SUITE_P(

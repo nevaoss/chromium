@@ -8,6 +8,7 @@
 #include "chrome/browser/dictation/dictation_keyed_service.h"
 #include "chrome/browser/dictation/features.h"
 #include "chrome/browser/dictation/session_ui.h"
+#include "chrome/browser/dictation/target.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/views/dictation/dictation_bubble_ui.h"

@@ -203,7 +203,6 @@ import org.chromium.chrome.browser.native_page.NativePageAssassin;
 import org.chromium.chrome.browser.navigation_predictor.NavigationPredictorBridge;
 import org.chromium.chrome.browser.new_tab_url.DseNewTabUrlManager;
 import org.chromium.chrome.browser.night_mode.NightModeStateProvider;
-import org.chromium.chrome.browser.notifications.scheduler.TipsNotificationsFeatureType;
 import org.chromium.chrome.browser.notifications.tips.TipsPromoCoordinator;
 import org.chromium.chrome.browser.notifications.tips.TipsUtils;
 import org.chromium.chrome.browser.ntp.NewTabPage;
@@ -305,6 +304,7 @@ import org.chromium.chrome.browser.tabmodel.TabList;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabModelSelectorBase;
+import org.chromium.chrome.browser.tabmodel.TabModelSelectorImpl;
 import org.chromium.chrome.browser.tabmodel.TabModelSelectorObserver;
 import org.chromium.chrome.browser.tabmodel.TabModelSelectorTabModelObserver;
 import org.chromium.chrome.browser.tabmodel.TabModelSelectorTabObserver;
@@ -330,6 +330,7 @@ import org.chromium.chrome.browser.tasks.tab_management.TabUiUtils;
 import org.chromium.chrome.browser.tasks.tab_management.TabsSettings;
 import org.chromium.chrome.browser.tasks.tab_management.archived_tabs_auto_delete_promo.ArchivedTabsAutoDeletePromoManager;
 import org.chromium.chrome.browser.tasks.tab_management.vertical_tabs.VerticalTabsActionDelegate;
+import org.chromium.chrome.browser.tips.TipsNotificationsFeatureType;
 import org.chromium.chrome.browser.toolbar.ToolbarIntentMetadata;
 import org.chromium.chrome.browser.toolbar.ToolbarManager;
 import org.chromium.chrome.browser.toolbar.extensions.ExtensionsToolbarCoordinator;
@@ -1192,7 +1193,10 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                             mBackPressManager,
                             getSnackbarManager(),
                             getActivityResultTracker(),
-                            glicClickHandler);
+                            glicClickHandler,
+                            ((TabbedRootUiCoordinator) mRootUiCoordinator)
+                                    .getSideUiStateProviderSupplier(),
+                            mRootUiCoordinator.getTabObscuringHandler());
             mLayoutStateProviderSupplier.set(mLayoutManager);
         }
     }
@@ -1494,6 +1498,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                             (profileProvider) -> {
                                 UsageStatsService.createPageViewObserverIfEnabled(
                                         this,
+                                        getLifecycleDispatcher(),
                                         profileProvider.getOriginalProfile(),
                                         getActivityTabProvider(),
                                         getTabContentManagerSupplier());
@@ -2779,7 +2784,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                             new TipsPromoCoordinator(
                                     this,
                                     assertNonNull(mRootUiCoordinator.getBottomSheetController()),
-                                    getQuickDeleteController(),
+                                    this::createQuickDeleteController,
                                     createBottomSheetSigninCoordinator(
                                             new BottomSheetSigninAndHistorySyncCoordinator
                                                     .Delegate() {},
@@ -4340,6 +4345,23 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
 
             openForeignSessionTab(sessionTag, tabId);
             RecordUserAction.record("MobileMenuRecentEntry");
+        } else if (id == R.id.recent_entry_window_tab_menu_item) {
+            assert menuItemData != null;
+            assert menuItemData.get(
+                            AppMenuPropertiesDelegateImpl.RECENT_ENTRY_SESSION_ID_BUNDLE_KEY)
+                    != null;
+            assert menuItemData.containsKey(
+                    AppMenuPropertiesDelegateImpl.RECENT_ENTRY_INSTANCE_ID_BUNDLE_KEY);
+
+            int sessionId =
+                    menuItemData.getInt(
+                            AppMenuPropertiesDelegateImpl.RECENT_ENTRY_SESSION_ID_BUNDLE_KEY);
+            int windowId =
+                    menuItemData.getInt(
+                            AppMenuPropertiesDelegateImpl.RECENT_ENTRY_INSTANCE_ID_BUNDLE_KEY);
+            if (restoreTabFromClosedWindow(windowId, sessionId)) {
+                RecordUserAction.record("MobileMenuRecentEntry");
+            }
         } else if (id == R.id.recent_entry_group_menu_item) {
             assert menuItemData != null;
             assert menuItemData.get(
@@ -4482,7 +4504,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                         QuickDeleteMetricsDelegate.QuickDeleteAction.MENU_ITEM_CLICKED);
             }
 
-            getQuickDeleteController().showDialog();
+            createQuickDeleteController().showDialog();
         } else if (id == R.id.ntp_customization_id) {
             Supplier<@Nullable Profile> profileSupplier =
                     () -> {
@@ -4566,6 +4588,47 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
         helper.destroy();
     }
 
+    /**
+     * Restores a single tab from a closed window by moving it to the current activity.
+     *
+     * @param windowId The instance ID of the closed window.
+     * @param sessionId The session ID of the tab to restore.
+     * @return True if the tab was successfully restored, false otherwise.
+     */
+    boolean restoreTabFromClosedWindow(int windowId, int sessionId) {
+        // TODO(crbug.com/509065811): Consider moving this to {@link TabWindowManager}.
+        TabModelSelectorImpl headlessSelector =
+                (TabModelSelectorImpl)
+                        TabWindowManagerSingleton.getInstance().getTabModelSelectorById(windowId);
+        if (headlessSelector == null) {
+            return false;
+        }
+
+        TabModel normalModel = headlessSelector.getModel(/* incognito= */ false);
+
+        Tab tab = normalModel.getTabById(sessionId);
+        if (tab == null) {
+            return false;
+        }
+        tab.addObserver(
+                new EmptyTabObserver() {
+                    @Override
+                    public void onActivityAttachmentChanged(
+                            Tab tab, @Nullable WindowAndroid window) {
+                        if (window == null) {
+                            return;
+                        }
+
+                        if (tab.getWebContents() == null) {
+                            tab.loadIfNeeded(/* forceBackingSize= */ false);
+                        }
+                        tab.removeObserver(this);
+                    }
+                });
+        headlessSelector.moveTabToWindow(tab, this, TabModel.INVALID_TAB_INDEX);
+        return true;
+    }
+
     @VisibleForTesting
     boolean handleCreateNewTabGroupAction(Tab currentTab) {
         if (!mTabModelSelector.isTabStateInitialized() || currentTab == null) {
@@ -4600,7 +4663,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
         return true;
     }
 
-    private QuickDeleteController getQuickDeleteController() {
+    private QuickDeleteController createQuickDeleteController() {
         Profile profile = mTabModelProfileSupplier.get();
         return new QuickDeleteController(
                 this,

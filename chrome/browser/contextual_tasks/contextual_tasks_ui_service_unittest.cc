@@ -12,6 +12,8 @@
 #include "base/test/task_environment.h"
 #include "base/test/test_future.h"
 #include "base/uuid.h"
+#include "chrome/browser/contextual_search/contextual_search_service_factory.h"
+#include "chrome/browser/contextual_search/contextual_search_web_contents_helper.h"
 #include "chrome/browser/contextual_tasks/active_task_context_provider.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_cookie_synchronizer.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_side_panel_coordinator.h"
@@ -28,10 +30,12 @@
 #include "chrome/browser/ui/tabs/test_tab_strip_model_delegate.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/test/base/testing_profile.h"
+#include "components/contextual_search/contextual_search_session_handle.h"
 #include "components/contextual_tasks/public/contextual_tasks_service.h"
 #include "components/contextual_tasks/public/features.h"
 #include "components/contextual_tasks/public/mock_contextual_tasks_service.h"
 #include "components/contextual_tasks/public/prefs.h"
+#include "components/lens/lens_features.h"
 #include "components/omnibox/browser/mock_aim_eligibility_service.h"
 #include "components/prefs/testing_pref_service.h"
 #include "components/search_engines/search_terms_data.h"
@@ -2775,6 +2779,135 @@ TEST_F(ContextualTasksUiServiceTest,
   }));
 }
 
+TEST_F(
+    ContextualTasksUiServiceTest,
+    HandleNavigation_WebUI_CobrowseNotEligible_NoRedirect_WhenLensSessionUnderUnification) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      {contextual_tasks::kContextualTasks,
+       lens::features::kLensSidePanelUnification},
+      {});
+  GURL webui_url(chrome::kChromeUIContextualTasksURL);
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+
+  identity_test_env_->MakePrimaryAccountAvailable(
+      "user@gmail.com", signin::ConsentLevel::kSignin);
+
+  EXPECT_CALL(*aim_eligibility_service_, IsCobrowseEligible())
+      .WillRepeatedly(Return(false));
+
+  // Create and associate a Lens-initiated contextual search session.
+  auto* contextual_search_service =
+      ContextualSearchServiceFactory::GetForProfile(profile_.get());
+  ASSERT_TRUE(contextual_search_service);
+  auto session_handle = contextual_search_service->CreateSession(
+      contextual_tasks::CreateQueryControllerConfigParams(),
+      contextual_search::ContextualSearchSource::kLens,
+      /*invocation_source=*/std::nullopt);
+  ASSERT_TRUE(session_handle);
+
+  auto* helper = ContextualSearchWebContentsHelper::GetOrCreateForWebContents(
+      web_contents.get());
+  helper->SetTaskSession(std::nullopt, std::move(session_handle),
+                         /*input_state_model=*/nullptr);
+
+  // The navigation should not be redirected, so HandleNavigation should return
+  // false.
+  EXPECT_FALSE(real_service_->HandleNavigation(
+      CreateOpenUrlParams(webui_url, false), web_contents.get(),
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
+      /*is_same_site_or_from_ui=*/true, /*is_mobile_ua=*/false, std::nullopt,
+      std::nullopt, blink::mojom::WindowFeatures()));
+}
+
+TEST_F(
+    ContextualTasksUiServiceTest,
+    HandleNavigation_WebUI_CobrowseNotEligible_NoRedirect_WhenPendingLensSessionUnderUnification) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      {contextual_tasks::kContextualTasks,
+       lens::features::kLensSidePanelUnification},
+      {});
+  base::Uuid task_id = base::Uuid::GenerateRandomV4();
+  GURL webui_url =
+      net::AppendQueryParameter(GURL(chrome::kChromeUIContextualTasksURL),
+                                kTaskQueryParam, task_id.AsLowercaseString());
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+
+  identity_test_env_->MakePrimaryAccountAvailable(
+      "user@gmail.com", signin::ConsentLevel::kSignin);
+
+  EXPECT_CALL(*aim_eligibility_service_, IsCobrowseEligible())
+      .WillRepeatedly(Return(false));
+
+  // Create a Lens-initiated contextual search session.
+  auto* contextual_search_service =
+      ContextualSearchServiceFactory::GetForProfile(profile_.get());
+  ASSERT_TRUE(contextual_search_service);
+  auto session_handle = contextual_search_service->CreateSession(
+      contextual_tasks::CreateQueryControllerConfigParams(),
+      contextual_search::ContextualSearchSource::kLens,
+      /*invocation_source=*/std::nullopt);
+  ASSERT_TRUE(session_handle);
+
+  // Store in pending_session_handles_ instead of helper.
+  real_service_->AddPendingSessionHandleForTesting(task_id,
+                                                   std::move(session_handle));
+
+  // The navigation should not be redirected, so HandleNavigation should return
+  // false.
+  EXPECT_FALSE(real_service_->HandleNavigation(
+      CreateOpenUrlParams(webui_url, false), web_contents.get(),
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
+      /*is_same_site_or_from_ui=*/true, /*is_mobile_ua=*/false, std::nullopt,
+      std::nullopt, blink::mojom::WindowFeatures()));
+}
+
+TEST_F(
+    ContextualTasksUiServiceTest,
+    HandleNavigation_WebUI_CobrowseNotEligible_Redirects_WhenNonLensSessionUnderUnification) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      {contextual_tasks::kContextualTasks,
+       lens::features::kLensSidePanelUnification},
+      {});
+  GURL webui_url(chrome::kChromeUIContextualTasksURL);
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+
+  identity_test_env_->MakePrimaryAccountAvailable(
+      "user@gmail.com", signin::ConsentLevel::kSignin);
+
+  EXPECT_CALL(*aim_eligibility_service_, IsCobrowseEligible())
+      .WillRepeatedly(Return(false));
+
+  // Create and associate a non-Lens initiated contextual search session (e.g.
+  // kOmnibox).
+  auto* contextual_search_service =
+      ContextualSearchServiceFactory::GetForProfile(profile_.get());
+  ASSERT_TRUE(contextual_search_service);
+  auto session_handle = contextual_search_service->CreateSession(
+      contextual_tasks::CreateQueryControllerConfigParams(),
+      contextual_search::ContextualSearchSource::kOmnibox,
+      /*invocation_source=*/std::nullopt);
+  ASSERT_TRUE(session_handle);
+
+  auto* helper = ContextualSearchWebContentsHelper::GetOrCreateForWebContents(
+      web_contents.get());
+  helper->SetTaskSession(std::nullopt, std::move(session_handle),
+                         /*input_state_model=*/nullptr);
+
+  // The navigation should still be redirected, so HandleNavigation should
+  // return true.
+  EXPECT_TRUE(real_service_->HandleNavigation(
+      CreateOpenUrlParams(webui_url, false), web_contents.get(),
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
+      /*is_same_site_or_from_ui=*/true, /*is_mobile_ua=*/false, std::nullopt,
+      std::nullopt, blink::mojom::WindowFeatures()));
+}
+
 TEST_F(ContextualTasksUiServiceTest,
        HandleNavigation_WebUI_NotSignedIn_Redirects) {
   base::test::ScopedFeatureList scoped_feature_list(
@@ -3064,41 +3197,6 @@ TEST_F(ContextualTasksUiServiceTest, SearchResultsLink_HandledAsThreadLink) {
   run_loop.Run();
 }
 
-TEST_F(ContextualTasksUiServiceTest, IsTrustedAiUrl) {
-  // Exact allowlist parameters should pass
-  GURL valid_url(
-      "https://google.com/"
-      "search?q=a&sxsrf=b&ei=c&iflsig=d&ved=e&uact=f&sclient=g&udm=h&fbs=i&aep="
-      "j&ntc=k&mstk=l&aioh=m&csuir=n&cs=o");
-  EXPECT_TRUE(service_for_nav_->IsTrustedAiUrl(valid_url));
 
-  // Extra parameters not in allowlist should fail
-  GURL invalid_extra_url(
-      "https://google.com/"
-      "search?q=a&sxsrf=b&ei=c&iflsig=d&ved=e&uact=f&sclient=g&udm=h&fbs=i&aep="
-      "j&ntc=k&mstk=l&aioh=m&csuir=n&cs=o&extra=p");
-  EXPECT_FALSE(service_for_nav_->IsTrustedAiUrl(invalid_extra_url));
-
-  // Missing one or more parameters should pass
-  GURL missing_params_url(
-      "https://google.com/"
-      "search?q=a&sxsrf=b&ei=c&iflsig=d&ved=e&uact=f&sclient=g&udm=h&fbs=i&aep="
-      "j&ntc=k&mstk=l&aioh=m&csuir=n");
-  EXPECT_TRUE(service_for_nav_->IsTrustedAiUrl(missing_params_url));
-
-  // Non google.com/search URLs should fail
-  GURL invalid_domain_url(
-      "https://example.com/"
-      "search?q=a&sxsrf=b&ei=c&iflsig=d&ved=e&uact=f&sclient=g&udm=h&fbs=i&aep="
-      "j&ntc=k&mstk=l&aioh=m&csuir=n&cs=o");
-  EXPECT_FALSE(service_for_nav_->IsTrustedAiUrl(invalid_domain_url));
-
-  GURL invalid_path_url(
-      "https://google.com/"
-      "other_path?q=a&sxsrf=b&ei=c&iflsig=d&ved=e&uact=f&sclient=g&udm=h&fbs=i&"
-      "aep="
-      "j&ntc=k&mstk=l&aioh=m&csuir=n&cs=o");
-  EXPECT_FALSE(service_for_nav_->IsTrustedAiUrl(invalid_path_url));
-}
 
 }  // namespace contextual_tasks

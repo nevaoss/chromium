@@ -16,10 +16,13 @@ import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
 
 import androidx.annotation.ColorInt;
+import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.TraceEvent;
 import org.chromium.base.metrics.RecordUserAction;
+import org.chromium.base.task.PostTask;
+import org.chromium.base.task.TaskTraits;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
@@ -109,12 +112,16 @@ public class SwipeRefreshHandler extends TabWebContentsUserData
     // state.
     private @Nullable BottomOverscrollHandler mBottomOverscrollHandler;
 
+    /**
+     * Returns a {@link SwipeRefreshHandler} for the given {@link Tab} creating a new one if needed.
+     */
     public static SwipeRefreshHandler from(Tab tab) {
         return SwipeRefreshHandler.from(tab, DEFAULT_SWIPE_REFRESH_LAYOUT_CREATOR);
     }
 
-    public static SwipeRefreshHandler from(
-            Tab tab, SwipeRefreshLayoutCreator swipeRefreshLayoutCreator) {
+    @VisibleForTesting
+    static SwipeRefreshHandler from(Tab tab, SwipeRefreshLayoutCreator swipeRefreshLayoutCreator) {
+        assert !tab.isDestroyed();
         SwipeRefreshHandler handler = get(tab);
         if (handler == null) {
             handler =
@@ -126,7 +133,9 @@ public class SwipeRefreshHandler extends TabWebContentsUserData
         return handler;
     }
 
+    /** Returns a {@link SwipeRefreshHandler} for the given {@link Tab} if it exists. */
     public static @Nullable SwipeRefreshHandler get(Tab tab) {
+        if (tab.isDestroyed()) return null;
         return tab.getUserDataHost().getUserData(USER_DATA_KEY);
     }
 
@@ -179,14 +188,10 @@ public class SwipeRefreshHandler extends TabWebContentsUserData
                 () -> {
                     assumeNonNull(mSwipeRefreshLayout);
                     cancelStopRefreshingRunnable();
-                    // Posted via the UI thread Handler (rather than PostTask) so that
-                    // cancelStopRefreshingRunnable() can actually remove the pending task
-                    // via Handler.removeCallbacks; otherwise the delayed runnable lingers
-                    // in the MessageQueue and retains this handler (and its container
-                    // Activity) until it fires.
-                    ThreadUtils.getUiThreadHandler()
-                            .postDelayed(
-                                    getStopRefreshingRunnable(), MAX_REFRESH_ANIMATION_DURATION_MS);
+                    PostTask.postDelayedTask(
+                            TaskTraits.UI_DEFAULT,
+                            getStopRefreshingRunnable(),
+                            MAX_REFRESH_ANIMATION_DURATION_MS);
                     if (mAccessibilityRefreshString == null) {
                         int resId = R.string.accessibility_swipe_refresh;
                         mAccessibilityRefreshString = context.getString(resId);
@@ -206,9 +211,7 @@ public class SwipeRefreshHandler extends TabWebContentsUserData
                                 mDetachRefreshLayoutRunnable = null;
                                 detachSwipeRefreshLayoutIfNecessary();
                             };
-                    // Posted via the UI thread Handler (rather than PostTask) so that
-                    // cancelDetachLayoutRunnable() can actually remove the pending task.
-                    ThreadUtils.getUiThreadHandler().post(mDetachRefreshLayoutRunnable);
+                    PostTask.postTask(TaskTraits.UI_DEFAULT, mDetachRefreshLayoutRunnable);
                 });
     }
 
@@ -233,10 +236,6 @@ public class SwipeRefreshHandler extends TabWebContentsUserData
 
     @Override
     public void destroyInternal() {
-        // Cancel any pending posted runnables so they do not linger in the UI thread
-        // MessageQueue and retain this handler (and its Activity) after the tab is gone.
-        cancelStopRefreshingRunnable();
-        cancelDetachLayoutRunnable();
         if (mSwipeRefreshLayout != null) {
             mSwipeRefreshLayout.setOnRefreshListener(null);
             mSwipeRefreshLayout.setOnResetListener(null);
@@ -251,9 +250,8 @@ public class SwipeRefreshHandler extends TabWebContentsUserData
     public void didStopRefreshing() {
         if (mSwipeRefreshLayout == null || !mSwipeRefreshLayout.isRefreshing()) return;
         cancelStopRefreshingRunnable();
-        // Use a handler rather than PostTask because we need to be able to cancel it.
-        ThreadUtils.getUiThreadHandler()
-                .postDelayed(getStopRefreshingRunnable(), STOP_REFRESH_ANIMATION_DELAY_MS);
+        mSwipeRefreshLayout.postDelayed(
+                getStopRefreshingRunnable(), STOP_REFRESH_ANIMATION_DELAY_MS);
     }
 
     @Override

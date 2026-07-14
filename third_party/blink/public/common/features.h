@@ -787,6 +787,9 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(base::TimeDelta,
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
     bool,
     kInlineScriptCacheEnabledForDefaultHint);
+// Gating the migration of Android IME cursor anchor updates from Mojo IPC to
+// RenderFrameMetadata.
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kInputCursorAnchorInfoMigration);
 
 // This flag is used to set field parameters to choose predictor we use when
 // kResamplingInputEvents is disabled. It's used for gathering accuracy metrics
@@ -2000,6 +2003,7 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kWebRtcIgnoreUnspecifiedColorSpace);
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kWebRtcUseMinMaxVEADimensions);
 
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kWebUSBTransferSizeLimit);
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kWebUSBWorldIsolatedCache);
 
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kWebviewAccelerateSmallCanvases);
 

@@ -23,6 +23,7 @@
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chromeos/ash/components/channel/channel_info.h"
 #include "chromeos/ash/components/specialized_features/feature_access_checker.h"
+#include "chromeos/ash/experiences/arc/app/arc_app_constants.h"
 #include "chromeos/components/mahi/public/cpp/mahi_manager.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/pref_service.h"

@@ -9,15 +9,21 @@
 #include "components/browser_apis/tab_drag/sessions/drop_target_registry_impl.h"
 #include "components/browser_apis/tab_drag/sessions/tab_drag_event_router.h"
 #include "components/browser_apis/tab_drag/sessions/tab_drag_session_listener.h"
+#include "components/browser_apis/tab_drag/sessions/tab_drag_window_registry.h"
 
 namespace tabs_api {
 
 TabDragSessionDesktopInjector::TabDragSessionDesktopInjector()
-    : adapter_(std::make_unique<TabDragSessionInputAdapterImpl>()),
+    : window_registry_(std::make_unique<TabDragWindowRegistry>()),
+      adapter_(std::make_unique<TabDragSessionInputAdapterImpl>()),
       registry_(std::make_unique<DropTargetRegistryImpl>()),
       event_router_(std::make_unique<TabDragEventRouter>(*registry_)) {}
 
 TabDragSessionDesktopInjector::~TabDragSessionDesktopInjector() = default;
+
+TabDragWindowRegistry* TabDragSessionDesktopInjector::GetWindowRegistry() {
+  return window_registry_.get();
+}
 
 TabDragSessionInputAdapter& TabDragSessionDesktopInjector::GetInputAdapter() {
   return *adapter_;

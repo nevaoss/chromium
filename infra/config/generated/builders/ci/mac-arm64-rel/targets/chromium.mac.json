@@ -40,7 +40,6 @@
         "module_name": "//chrome/test:interactive_ui_tests",
         "module_scheme": "gtest",
         "name": "interactive_ui_tests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -63,7 +62,6 @@
         "module_name": "//chrome/test:unit_tests",
         "module_scheme": "gtest",
         "name": "unit_tests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -3671,7 +3669,6 @@
         "module_name": "//third_party/abseil-cpp:absl_hardening_tests",
         "module_scheme": "gtest",
         "name": "absl_hardening_tests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -3694,7 +3691,6 @@
         "module_name": "//ui/accessibility:accessibility_unittests",
         "module_scheme": "gtest",
         "name": "accessibility_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -3717,7 +3713,6 @@
         "module_name": "//third_party/angle/src/tests:angle_unittests",
         "module_scheme": "gtest",
         "name": "angle_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -3741,7 +3736,6 @@
         "module_name": "//base:base_unittests",
         "module_scheme": "gtest",
         "name": "base_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -3764,7 +3758,6 @@
         "module_name": "//third_party/blink/common:blink_common_unittests",
         "module_scheme": "gtest",
         "name": "blink_common_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -3787,7 +3780,6 @@
         "module_name": "//third_party/blink/renderer/platform:blink_fuzzer_unittests",
         "module_scheme": "gtest",
         "name": "blink_fuzzer_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -3810,7 +3802,6 @@
         "module_name": "//third_party/blink/renderer/platform/heap:blink_heap_unittests",
         "module_scheme": "gtest",
         "name": "blink_heap_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -3841,7 +3832,6 @@
           "--gerrit-patchset=${patch_set}",
           "--buildbucket-id=${buildbucket_build_id}"
         ],
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -3864,7 +3854,6 @@
         "module_name": "//third_party/blink/renderer/controller:blink_unittests",
         "module_scheme": "gtest",
         "name": "blink_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -3887,7 +3876,6 @@
         "module_name": "//third_party/boringssl:boringssl_crypto_tests",
         "module_scheme": "gtest",
         "name": "boringssl_crypto_tests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -3910,7 +3898,6 @@
         "module_name": "//third_party/boringssl:boringssl_ssl_tests",
         "module_scheme": "gtest",
         "name": "boringssl_ssl_tests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -3936,7 +3923,6 @@
         "module_name": "//media/capture:capture_unittests",
         "module_scheme": "gtest",
         "name": "capture_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -3959,7 +3945,6 @@
         "module_name": "//media/cast:cast_unittests",
         "module_scheme": "gtest",
         "name": "cast_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -3982,7 +3967,6 @@
         "module_name": "//cc:cc_unittests",
         "module_scheme": "gtest",
         "name": "cc_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4005,7 +3989,6 @@
         "module_name": "//chrome/test:chrome_app_unittests",
         "module_scheme": "gtest",
         "name": "chrome_app_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4028,7 +4011,6 @@
         "module_name": "//chrome/test/chromedriver:chromedriver_unittests",
         "module_scheme": "gtest",
         "name": "chromedriver_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4051,7 +4033,6 @@
         "module_name": "//components:components_browsertests",
         "module_scheme": "gtest",
         "name": "components_browsertests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4074,7 +4055,6 @@
         "module_name": "//components:components_unittests",
         "module_scheme": "gtest",
         "name": "components_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4098,7 +4078,6 @@
         "module_name": "//content/test:content_browsertests",
         "module_scheme": "gtest",
         "name": "content_browsertests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4117,7 +4096,6 @@
         "module_name": "//content/test:content_unittests",
         "module_scheme": "gtest",
         "name": "content_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4140,7 +4118,6 @@
         "module_name": "//third_party/crashpad/crashpad:crashpad_tests",
         "module_scheme": "gtest",
         "name": "crashpad_tests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4163,7 +4140,6 @@
         "module_name": "//crypto:crypto_unittests",
         "module_scheme": "gtest",
         "name": "crypto_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4186,7 +4162,6 @@
         "module_name": "//device:device_unittests",
         "module_scheme": "gtest",
         "name": "device_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4209,7 +4184,6 @@
         "module_name": "//ui/display:display_unittests",
         "module_scheme": "gtest",
         "name": "display_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4233,7 +4207,6 @@
         "module_name": "//third_party/leveldatabase:env_chromium_unittests",
         "module_scheme": "gtest",
         "name": "env_chromium_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4256,7 +4229,6 @@
         "module_name": "//ui/events:events_unittests",
         "module_scheme": "gtest",
         "name": "events_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4279,7 +4251,6 @@
         "module_name": "//extensions:extensions_unittests",
         "module_scheme": "gtest",
         "name": "extensions_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4302,7 +4273,6 @@
         "module_name": "//components/services/filesystem:filesystem_service_unittests",
         "module_scheme": "gtest",
         "name": "filesystem_service_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4325,7 +4295,6 @@
         "module_name": "//testing/libfuzzer/tests:fuzzing_unittests",
         "module_scheme": "gtest",
         "name": "fuzzing_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4348,7 +4317,6 @@
         "module_name": "//google_apis/gcm:gcm_unit_tests",
         "module_scheme": "gtest",
         "name": "gcm_unit_tests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4371,7 +4339,6 @@
         "module_name": "//ui/gfx:gfx_unittests",
         "module_scheme": "gtest",
         "name": "gfx_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4394,7 +4361,6 @@
         "module_name": "//gin:gin_unittests",
         "module_scheme": "gtest",
         "name": "gin_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4417,7 +4383,6 @@
         "module_name": "//google_apis:google_apis_unittests",
         "module_scheme": "gtest",
         "name": "google_apis_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4440,7 +4405,6 @@
         "module_name": "//gpu:gpu_unittests",
         "module_scheme": "gtest",
         "name": "gpu_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4463,7 +4427,6 @@
         "module_name": "//components/gwp_asan:gwp_asan_unittests",
         "module_scheme": "gtest",
         "name": "gwp_asan_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4486,7 +4449,6 @@
         "module_name": "//headless:headless_browsertests",
         "module_scheme": "gtest",
         "name": "headless_browsertests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4509,7 +4471,6 @@
         "module_name": "//headless:headless_unittests",
         "module_scheme": "gtest",
         "name": "headless_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4532,7 +4493,6 @@
         "module_name": "//chrome/test:interactive_ui_tests",
         "module_scheme": "gtest",
         "name": "interactive_ui_tests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4551,7 +4511,6 @@
         "module_name": "//ipc:ipc_tests",
         "module_scheme": "gtest",
         "name": "ipc_tests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4574,7 +4533,6 @@
         "module_name": "//ui/latency:latency_unittests",
         "module_scheme": "gtest",
         "name": "latency_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4598,7 +4556,6 @@
         "module_name": "//third_party/leveldatabase:leveldb_unittests",
         "module_scheme": "gtest",
         "name": "leveldb_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4621,7 +4578,6 @@
         "module_name": "//third_party/libjingle_xmpp:libjingle_xmpp_unittests",
         "module_scheme": "gtest",
         "name": "libjingle_xmpp_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4644,7 +4600,6 @@
         "module_name": "//third_party/liburlpattern:liburlpattern_unittests",
         "module_scheme": "gtest",
         "name": "liburlpattern_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4667,7 +4622,6 @@
         "module_name": "//media:media_unittests",
         "module_scheme": "gtest",
         "name": "media_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4690,7 +4644,6 @@
         "module_name": "//ui/message_center:message_center_unittests",
         "module_scheme": "gtest",
         "name": "message_center_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4713,7 +4666,6 @@
         "module_name": "//media/midi:midi_unittests",
         "module_scheme": "gtest",
         "name": "midi_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4736,7 +4688,6 @@
         "module_name": "//mojo:mojo_unittests",
         "module_scheme": "gtest",
         "name": "mojo_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4759,7 +4710,6 @@
         "module_name": "//ui/native_theme:native_theme_unittests",
         "module_scheme": "gtest",
         "name": "native_theme_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4782,7 +4732,6 @@
         "module_name": "//net:net_unittests",
         "module_scheme": "gtest",
         "name": "net_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4805,7 +4754,6 @@
         "module_name": "//chrome/browser/media/router:openscreen_unittests",
         "module_scheme": "gtest",
         "name": "openscreen_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4828,7 +4776,6 @@
         "module_name": "//pdf:pdf_unittests",
         "module_scheme": "gtest",
         "name": "pdf_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4851,7 +4798,6 @@
         "module_name": "//third_party/perfetto:perfetto_unittests",
         "module_scheme": "gtest",
         "name": "perfetto_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4874,7 +4820,6 @@
         "module_name": "//tools/mac/power:power_sampler_unittests",
         "module_scheme": "gtest",
         "name": "power_sampler_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4897,7 +4842,6 @@
         "module_name": "//printing:printing_unittests",
         "module_scheme": "gtest",
         "name": "printing_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4920,7 +4864,6 @@
         "module_name": "//third_party/puffin:puffin_unittests",
         "module_scheme": "gtest",
         "name": "puffin_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4943,7 +4886,6 @@
         "module_name": "//remoting:remoting_unittests",
         "module_scheme": "gtest",
         "name": "remoting_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4966,7 +4908,6 @@
         "module_name": "//sandbox:sandbox_unittests",
         "module_scheme": "gtest",
         "name": "sandbox_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -4989,7 +4930,6 @@
         "module_name": "//services:services_unittests",
         "module_scheme": "gtest",
         "name": "services_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5012,7 +4952,6 @@
         "module_name": "//ui/shell_dialogs:shell_dialogs_unittests",
         "module_scheme": "gtest",
         "name": "shell_dialogs_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5035,7 +4974,6 @@
         "module_name": "//skia:skia_unittests",
         "module_scheme": "gtest",
         "name": "skia_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5058,7 +4996,6 @@
         "module_name": "//ui/snapshot:snapshot_unittests",
         "module_scheme": "gtest",
         "name": "snapshot_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5081,7 +5018,6 @@
         "module_name": "//sql:sql_unittests",
         "module_scheme": "gtest",
         "name": "sql_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5104,7 +5040,6 @@
         "module_name": "//storage:storage_unittests",
         "module_scheme": "gtest",
         "name": "storage_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5128,7 +5063,6 @@
         "module_name": "//chrome/test:sync_integration_tests",
         "module_scheme": "gtest",
         "name": "sync_integration_tests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5147,7 +5081,6 @@
         "module_name": "//ui/base:ui_base_unittests",
         "module_scheme": "gtest",
         "name": "ui_base_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5170,7 +5103,6 @@
         "module_name": "//ui/touch_selection:ui_touch_selection_unittests",
         "module_scheme": "gtest",
         "name": "ui_touch_selection_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5193,7 +5125,6 @@
         "module_name": "//ui/tests:ui_unittests",
         "module_scheme": "gtest",
         "name": "ui_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5216,7 +5147,6 @@
         "module_name": "//chrome/test:unit_tests",
         "module_scheme": "gtest",
         "name": "unit_tests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5239,7 +5169,6 @@
         "module_name": "//chrome/updater:updater_tests",
         "module_scheme": "gtest",
         "name": "updater_tests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5262,7 +5191,6 @@
         "module_name": "//url:url_unittests",
         "module_scheme": "gtest",
         "name": "url_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5285,7 +5213,6 @@
         "module_name": "//ui/views:views_unittests",
         "module_scheme": "gtest",
         "name": "views_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5308,7 +5235,6 @@
         "module_name": "//components/viz:viz_unittests",
         "module_scheme": "gtest",
         "name": "viz_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5331,7 +5257,6 @@
         "module_name": "//third_party/blink/renderer/platform/wtf:wtf_unittests",
         "module_scheme": "gtest",
         "name": "wtf_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5354,7 +5279,6 @@
         "module_name": "//chrome/test:xr_browser_tests",
         "module_scheme": "gtest",
         "name": "xr_browser_tests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5377,7 +5301,6 @@
         "module_name": "//third_party/zlib:zlib_unittests",
         "module_scheme": "gtest",
         "name": "zlib_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5405,7 +5328,6 @@
         "resultdb": {
           "enable": true
         },
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5440,7 +5362,6 @@
           "has_native_resultdb_integration": true
         },
         "results_handler": "layout tests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5471,7 +5392,6 @@
           "has_native_resultdb_integration": true
         },
         "results_handler": "layout tests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5501,7 +5421,6 @@
           "has_native_resultdb_integration": true
         },
         "results_handler": "layout tests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5530,7 +5449,6 @@
         "resultdb": {
           "enable": true
         },
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5554,7 +5472,6 @@
         "resultdb": {
           "enable": true
         },
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5572,7 +5489,6 @@
         "module_name": "//chrome/test/chromedriver:chromedriver_replay_unittests",
         "module_scheme": "single",
         "name": "chromedriver_replay_unittests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5601,7 +5517,6 @@
         "module_name": "//components:components_perftests",
         "module_scheme": "flat",
         "name": "components_perftests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5623,7 +5538,6 @@
           "enable": true,
           "result_format": "single"
         },
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5650,7 +5564,6 @@
           "enable": true,
           "result_format": "single"
         },
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5676,7 +5589,6 @@
         "resultdb": {
           "enable": true
         },
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5716,7 +5628,6 @@
           "has_native_resultdb_integration": true
         },
         "results_handler": "layout tests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5735,7 +5646,6 @@
         "module_name": "//chrome/installer/mac:mac_signing_tests",
         "module_scheme": "pyunit",
         "name": "mac_signing_tests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5761,7 +5671,6 @@
         "resultdb": {
           "enable": true
         },
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5787,7 +5696,6 @@
         "resultdb": {
           "enable": true
         },
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5818,7 +5726,6 @@
         "resultdb": {
           "enable": true
         },
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5850,7 +5757,6 @@
         "resultdb": {
           "enable": true
         },
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",
@@ -5881,7 +5787,6 @@
         "module_name": "//ui/views:views_perftests",
         "module_scheme": "single",
         "name": "views_perftests",
-        "retry_only_failed_tests": true,
         "swarming": {
           "dimensions": {
             "cpu": "arm64",

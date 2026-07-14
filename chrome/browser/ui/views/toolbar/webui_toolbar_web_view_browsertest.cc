@@ -33,6 +33,7 @@
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
+#include "chrome/browser/extensions/chrome_test_extension_loader.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/themes/theme_service.h"
@@ -44,6 +45,7 @@
 #include "chrome/browser/ui/browser_command_controller.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
+#include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/desktop_browser_window_capabilities.h"
 #include "chrome/browser/ui/browser_window/test/mock_browser_window_interface.h"
 #include "chrome/browser/ui/interaction/browser_elements.h"
@@ -56,6 +58,7 @@
 #include "chrome/browser/ui/test/test_browser_dialog.h"
 #include "chrome/browser/ui/toolbar/pinned_toolbar/pinned_toolbar_actions_ids.h"
 #include "chrome/browser/ui/toolbar/pinned_toolbar/pinned_toolbar_actions_model.h"
+#include "chrome/browser/ui/toolbar/toolbar_actions_model.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/toolbar_button_provider.h"
@@ -115,6 +118,7 @@
 #include "content/public/test/navigation_handle_observer.h"
 #include "content/public/test/scoped_accessibility_mode_override.h"
 #include "content/public/test/test_navigation_observer.h"
+#include "extensions/common/extension.h"
 #include "net/base/filename_util.h"
 #include "net/dns/mock_host_resolver.h"
 #include "third_party/blink/public/common/features.h"
@@ -1102,8 +1106,18 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest,
       web_view->GetWebContents(),
       DispatchPointerClick(kBackSelector, "mouse",
                            "detail: 1, button: 0, ctrlKey: true")));
+  // DispatchPointerClick only sends pointerdown and pointerup.
+  // Explicitly dispatch the contextmenu event to accurately simulate real-world
+  // browser behavior on Mac, where a real Ctrl+LeftClick natively triggers both
+  // pointerdown and contextmenu events.
+  EXPECT_TRUE(content::ExecJs(
+      web_view->GetWebContents(),
+      DispatchPointerEvent("contextmenu", kBackSelector, "mouse",
+                           "detail: 1, button: 0, ctrlKey: true")));
 
   auto* back_control = &webui_toolbar_view->back_control_;
+  ASSERT_TRUE(back_control->menu_runner_);
+  EXPECT_TRUE(back_control->menu_runner_->IsRunning());
   back_control->menu_runner_->Cancel();
 
   // Verify no new tab was opened.
@@ -1772,7 +1786,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarLifecyclePrewarmedBrowserTest,
   views::Widget::InitParams widget_params(
       views::Widget::InitParams::CLIENT_OWNS_WIDGET,
       views::Widget::InitParams::TYPE_WINDOW);
-  widget_params.context = browser()->window()->GetNativeWindow();
+  widget_params.context = browser()->GetWindow()->GetNativeWindow();
   widget_params.bounds = gfx::Rect(0, 0, 100, 100);
   widget->Init(std::move(widget_params));
 
@@ -1803,7 +1817,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarLifecyclePrewarmedBrowserTest,
   views::Widget::InitParams widget_params(
       views::Widget::InitParams::CLIENT_OWNS_WIDGET,
       views::Widget::InitParams::TYPE_WINDOW);
-  widget_params.context = browser()->window()->GetNativeWindow();
+  widget_params.context = browser()->GetWindow()->GetNativeWindow();
   widget_params.bounds = gfx::Rect(0, 0, 100, 100);
   widget->Init(std::move(widget_params));
 
@@ -1832,7 +1846,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarLifecycleNonPrewarmedBrowserTest,
   views::Widget::InitParams widget_params(
       views::Widget::InitParams::CLIENT_OWNS_WIDGET,
       views::Widget::InitParams::TYPE_WINDOW);
-  widget_params.context = browser()->window()->GetNativeWindow();
+  widget_params.context = browser()->GetWindow()->GetNativeWindow();
   widget_params.bounds = gfx::Rect(0, 0, 100, 100);
   widget->Init(std::move(widget_params));
 
@@ -1919,7 +1933,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarLifecyclePrewarmedDeferredBrowserTest,
   views::Widget::InitParams widget_params(
       views::Widget::InitParams::CLIENT_OWNS_WIDGET,
       views::Widget::InitParams::TYPE_WINDOW);
-  widget_params.context = browser()->window()->GetNativeWindow();
+  widget_params.context = browser()->GetWindow()->GetNativeWindow();
   widget_params.bounds = gfx::Rect(0, 0, 100, 100);
   widget->Init(std::move(widget_params));
   widget->GetContentsView()->AddChildView(std::move(toolbar_view));
@@ -2180,6 +2194,39 @@ class WebUIToolbarWebViewBrowserTest : public InProcessBrowserTest {
       const std::vector<base::test::FeatureRef>& enabled,
       const std::vector<base::test::FeatureRef>& disabled) {
     feature_list_.InitWithFeatures(enabled, disabled);
+  }
+
+  void SimulateDropOnToolbar(content::WebContents* web_contents,
+                             const std::string& text) {
+    EXPECT_TRUE(
+        content::ExecJs(web_contents, base::StringPrintf(R"(
+      const toolbarApp = document.querySelector('toolbar-app');
+      const dataTransfer = new DataTransfer();
+      dataTransfer.setData('text/plain', "%s");
+      const dropEvent = new DragEvent('drop', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer: dataTransfer
+      });
+      toolbarApp.dispatchEvent(dropEvent);
+    )",
+                                                         text.c_str())));
+  }
+
+  void SimulateUriListDropOnToolbar(content::WebContents* web_contents,
+                                    const std::string& url) {
+    EXPECT_TRUE(content::ExecJs(web_contents, base::StringPrintf(R"(
+      const toolbarApp = document.querySelector('toolbar-app');
+      const dataTransfer = new DataTransfer();
+      dataTransfer.setData('text/uri-list', "%s");
+      const dropEvent = new DragEvent('drop', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer: dataTransfer
+      });
+      toolbarApp.dispatchEvent(dropEvent);
+    )",
+                                                                 url.c_str())));
   }
 
   base::test::ScopedFeatureList feature_list_;
@@ -2520,7 +2567,7 @@ class WebUIToolbarWebViewSplitTabsBrowserTest : public InProcessBrowserTest {
         {features::kInitialWebUI, features::kWebUISplitTabsButton,
          features::kSkipIPCChannelPausingForNonGuests,
          features::kWebUIInProcessResourceLoadingV2,
-         features::kInitialWebUISyncNavStartToCommit},
+         features::kInitialWebUISyncNavStartToCommit, features::kRoundedIcons},
         {});
   }
 
@@ -2733,8 +2780,14 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewSplitTabsBrowserTest,
                       DispatchPointerEvent("pointerup", kSplitTabsSelector)));
 }
 
+// TODO(crbug.com/524808223): Re-enable this test.
+#if BUILDFLAG(IS_WIN)
+#define MAYBE_VerifySplitTabLocations DISABLED_VerifySplitTabLocations
+#else
+#define MAYBE_VerifySplitTabLocations VerifySplitTabLocations
+#endif
 IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewSplitTabsBrowserTest,
-                       VerifySplitTabLocations) {
+                       MAYBE_VerifySplitTabLocations) {
   WebUIToolbarWebView* webui_toolbar_view = GetWebUIToolbarWebView(browser());
   views::WebView* web_view = webui_toolbar_view->GetWebViewForTesting();
   PinButton(browser(), web_view, prefs::kPinSplitTabButton);
@@ -2754,7 +2807,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewSplitTabsBrowserTest,
     return content::EvalJs(web_view->GetWebContents(),
                            base::StrCat({GetButtonIconJS(kSplitTabsSelector),
                                          "?.getAttribute('iron-icon') || ''"}))
-               .ExtractString() == "split-tabs-button:split-scene-right";
+               .ExtractString() == "webui-toolbar:split_scene_right";
   }));
 
   // Activate the other tab (Left/Start).
@@ -2766,7 +2819,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewSplitTabsBrowserTest,
     return content::EvalJs(web_view->GetWebContents(),
                            base::StrCat({GetButtonIconJS(kSplitTabsSelector),
                                          "?.getAttribute('iron-icon') || ''"}))
-               .ExtractString() == "split-tabs-button:split-scene-left";
+               .ExtractString() == "webui-toolbar:split_scene_left";
   }));
 }
 
@@ -2835,25 +2888,203 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewBrowserTest, DropUrlOnToolbar) {
   content::TestNavigationObserver navigation_observer(
       browser()->tab_strip_model()->GetActiveWebContents());
 
-  EXPECT_TRUE(content::ExecJs(web_contents,
-                              base::StringPrintf(R"(
-    const toolbarApp = document.querySelector('toolbar-app');
-    const dataTransfer = new DataTransfer();
-    dataTransfer.setData('text/uri-list', '%s');
-    const dropEvent = new DragEvent('drop', {
-      bubbles: true,
-      cancelable: true,
-      dataTransfer: dataTransfer
-    });
-    toolbarApp.dispatchEvent(dropEvent);
-  )",
-                                                 new_url.spec().c_str())));
+  SimulateUriListDropOnToolbar(web_contents, new_url.spec());
 
   navigation_observer.Wait();
   EXPECT_EQ(new_url, browser()
                          ->tab_strip_model()
                          ->GetActiveWebContents()
                          ->GetLastCommittedURL());
+}
+
+IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewBrowserTest,
+                       DropJavaScriptUrlOnToolbar) {
+  ui::TrackedElement* element = nullptr;
+  WebUIToolbarWebView* webui_toolbar_view = nullptr;
+  views::WebView* web_view = nullptr;
+  ASSERT_NO_FATAL_FAILURE(SetUpWebUI(kWebUIToolbarElementIdentifier, &element,
+                                     &webui_toolbar_view, &web_view,
+                                     browser()));
+  content::WebContents* web_contents = web_view->GetWebContents();
+
+  // Load about:blank.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
+
+  content::WebContents* active_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  NavigationCounter counter(active_contents);
+
+  // Verify initial title is empty.
+  EXPECT_EQ("",
+            content::EvalJs(active_contents, "document.title").ExtractString());
+
+  // Simulate dropping a javascript URL as text/uri-list.
+  SimulateUriListDropOnToolbar(web_contents,
+                               "javascript:void(document.title='PWNED')");
+
+  // Wait to see if any navigation starts (it should not).
+  counter.WaitForNoNavigations();
+
+  // Verify that the title remained empty (javascript was not executed).
+  EXPECT_EQ("",
+            content::EvalJs(active_contents, "document.title").ExtractString());
+}
+
+IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewBrowserTest,
+                       DropNestedJavaScriptUrlOnToolbar) {
+  ui::TrackedElement* element = nullptr;
+  WebUIToolbarWebView* webui_toolbar_view = nullptr;
+  views::WebView* web_view = nullptr;
+  ASSERT_NO_FATAL_FAILURE(SetUpWebUI(kWebUIToolbarElementIdentifier, &element,
+                                     &webui_toolbar_view, &web_view,
+                                     browser()));
+  content::WebContents* web_contents = web_view->GetWebContents();
+
+  // Load about:blank.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
+
+  content::WebContents* active_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  NavigationCounter counter(active_contents);
+
+  // Verify initial title is empty.
+  EXPECT_EQ("",
+            content::EvalJs(active_contents, "document.title").ExtractString());
+
+  // Simulate dropping a nested javascript URL as text/uri-list.
+  SimulateUriListDropOnToolbar(
+      web_contents, "javascript:javascript:void(document.title='PWNED')");
+
+  // Wait to see if any navigation starts (it should not).
+  counter.WaitForNoNavigations();
+
+  // Verify that the title remained empty (javascript was not executed).
+  EXPECT_EQ("",
+            content::EvalJs(active_contents, "document.title").ExtractString());
+}
+
+IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewBrowserTest,
+                       DropJavaScriptTextOnToolbar) {
+  ui::TrackedElement* element = nullptr;
+  WebUIToolbarWebView* webui_toolbar_view = nullptr;
+  views::WebView* web_view = nullptr;
+  ASSERT_NO_FATAL_FAILURE(SetUpWebUI(kWebUIToolbarElementIdentifier, &element,
+                                     &webui_toolbar_view, &web_view,
+                                     browser()));
+  content::WebContents* web_contents = web_view->GetWebContents();
+
+  // Load about:blank.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
+
+  content::WebContents* active_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  NavigationCounter counter(active_contents);
+
+  // Verify initial title is empty.
+  EXPECT_EQ("",
+            content::EvalJs(active_contents, "document.title").ExtractString());
+
+  // Simulate dropping a javascript URL that attempts to modify the title.
+  SimulateDropOnToolbar(web_contents,
+                        "javascript:void(document.title='PWNED')");
+
+  // Wait to see if any navigation starts (it should not).
+  counter.WaitForNoNavigations();
+
+  // Verify that the title remained empty (javascript was not executed).
+  EXPECT_EQ("",
+            content::EvalJs(active_contents, "document.title").ExtractString());
+}
+
+IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewBrowserTest,
+                       DropNestedJavaScriptTextOnToolbar) {
+  ui::TrackedElement* element = nullptr;
+  WebUIToolbarWebView* webui_toolbar_view = nullptr;
+  views::WebView* web_view = nullptr;
+  ASSERT_NO_FATAL_FAILURE(SetUpWebUI(kWebUIToolbarElementIdentifier, &element,
+                                     &webui_toolbar_view, &web_view,
+                                     browser()));
+  content::WebContents* web_contents = web_view->GetWebContents();
+
+  // Load about:blank.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
+
+  content::WebContents* active_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  NavigationCounter counter(active_contents);
+
+  // Verify initial title is empty.
+  EXPECT_EQ("",
+            content::EvalJs(active_contents, "document.title").ExtractString());
+
+  // Simulate dropping a nested javascript URL.
+  SimulateDropOnToolbar(web_contents,
+                        "javascript:javascript:void(document.title='PWNED')");
+
+  // Wait to see if any navigation starts (it should not).
+  counter.WaitForNoNavigations();
+
+  // Verify that the title remained empty (javascript was not executed).
+  EXPECT_EQ("",
+            content::EvalJs(active_contents, "document.title").ExtractString());
+}
+
+IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewBrowserTest, DropUrlTextOnToolbar) {
+  ui::TrackedElement* element = nullptr;
+  WebUIToolbarWebView* webui_toolbar_view = nullptr;
+  views::WebView* web_view = nullptr;
+  ASSERT_NO_FATAL_FAILURE(SetUpWebUI(kWebUIToolbarElementIdentifier, &element,
+                                     &webui_toolbar_view, &web_view,
+                                     browser()));
+  content::WebContents* web_contents = web_view->GetWebContents();
+
+  GURL test_url("https://www.example.test/");
+
+  content::TestNavigationObserver navigation_observer(
+      browser()->tab_strip_model()->GetActiveWebContents());
+
+  SimulateDropOnToolbar(web_contents, test_url.spec());
+
+  // Wait for the navigation to finish and assert.
+  navigation_observer.Wait();
+  EXPECT_EQ(test_url, browser()
+                          ->tab_strip_model()
+                          ->GetActiveWebContents()
+                          ->GetLastCommittedURL());
+}
+
+IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewBrowserTest,
+                       DropSearchTextOnToolbar) {
+  ui::TrackedElement* element = nullptr;
+  WebUIToolbarWebView* webui_toolbar_view = nullptr;
+  views::WebView* web_view = nullptr;
+  ASSERT_NO_FATAL_FAILURE(SetUpWebUI(kWebUIToolbarElementIdentifier, &element,
+                                     &webui_toolbar_view, &web_view,
+                                     browser()));
+  content::WebContents* web_contents = web_view->GetWebContents();
+
+  std::string search_term = "hello world";
+  content::TestNavigationObserver navigation_observer(
+      browser()->tab_strip_model()->GetActiveWebContents());
+
+  SimulateDropOnToolbar(web_contents, search_term);
+
+  // Wait for the navigation (it might load an error page, but the URL commits).
+  navigation_observer.Wait();
+
+  GURL committed_url = browser()
+                           ->tab_strip_model()
+                           ->GetActiveWebContents()
+                           ->GetLastCommittedURL();
+
+  EXPECT_TRUE(committed_url.SchemeIs(url::kHttpsScheme));
+  EXPECT_EQ("www.google.com", committed_url.host());
+  EXPECT_EQ("/search", committed_url.path());
+  // The query should contain "q=hello+world" (spaces are URL-encoded as + or
+  // %20).
+  EXPECT_TRUE(
+      committed_url.query().find("q=hello+world") != std::string::npos ||
+      committed_url.query().find("q=hello%20world") != std::string::npos);
 }
 
 IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewBrowserTest, DropFileOnToolbar) {
@@ -2904,6 +3135,157 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewBrowserTest, DropFileOnToolbar) {
                           ->tab_strip_model()
                           ->GetActiveWebContents()
                           ->GetLastCommittedURL());
+}
+
+IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewBrowserTest, LoadExtension) {
+  ui::TrackedElement* element = nullptr;
+  WebUIToolbarWebView* webui_toolbar_view = nullptr;
+  views::WebView* web_view = nullptr;
+  ASSERT_NO_FATAL_FAILURE(SetUpWebUI(kWebUIToolbarElementIdentifier, &element,
+                                     &webui_toolbar_view, &web_view,
+                                     browser()));
+  content::WebContents* web_contents = web_view->GetWebContents();
+
+  base::ScopedAllowBlockingForTesting allow_blocking;
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  base::FilePath manifest_path =
+      temp_dir.GetPath().AppendASCII("manifest.json");
+  std::string manifest_content = R"({
+    "name": "Test Extension",
+    "version": "1.0",
+    "manifest_version": 3,
+    "action": {}
+  })";
+  ASSERT_TRUE(base::WriteFile(manifest_path, manifest_content));
+
+  extensions::ChromeTestExtensionLoader loader(browser()->profile());
+  scoped_refptr<const extensions::Extension> extension =
+      loader.LoadExtension(temp_dir.GetPath());
+  ASSERT_TRUE(extension);
+
+  // Pin the extension so it becomes visible.
+  ToolbarActionsModel::Get(browser()->profile())
+      ->SetActionVisibility(extension->id(), true);
+
+  std::string extension_id = extension->id();
+  EXPECT_TRUE(base::test::RunUntil([&]() {
+    return content::EvalJs(web_contents,
+                           base::StringPrintf(R"(
+      (() => {
+        const app = document.querySelector('toolbar-app');
+        if (!app) return false;
+        const extensionsContainer = app.shadowRoot.querySelector('#extensions');
+        if (!extensionsContainer) return false;
+        const extensionElements = extensionsContainer.shadowRoot
+            .querySelectorAll('webui-toolbar-extension');
+        return Array.from(extensionElements).some(el => el.state.id === '%s');
+      })();
+    )",
+                                              extension_id.c_str()))
+        .ExtractBool();
+  }));
+}
+
+IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewBrowserTest,
+                       CanDragEnterVerification) {
+  ui::TrackedElement* element = nullptr;
+  WebUIToolbarWebView* webui_toolbar_view = nullptr;
+  views::WebView* web_view = nullptr;
+  ASSERT_NO_FATAL_FAILURE(SetUpWebUI(kWebUIToolbarElementIdentifier, &element,
+                                     &webui_toolbar_view, &web_view,
+                                     browser()));
+  content::WebContents* web_contents = web_view->GetWebContents();
+  content::WebContentsDelegate* delegate = web_contents->GetDelegate();
+  ASSERT_NE(nullptr, delegate);
+
+  // Webpage-initiated file:// text drop.
+  {
+    content::DropData drop_data;
+    drop_data.did_originate_from_renderer = true;
+    drop_data.text = u"file:///etc/passwd";
+    EXPECT_FALSE(delegate->CanDragEnter(web_contents, drop_data,
+                                        blink::kDragOperationCopy));
+  }
+
+  // Webpage-initiated file:// link drop.
+  {
+    content::DropData drop_data;
+    drop_data.did_originate_from_renderer = true;
+    ui::ClipboardUrlInfo url_info(GURL("file:///tmp/test.html"),
+                                  std::u16string());
+    drop_data.url_infos.push_back(url_info);
+    EXPECT_TRUE(delegate->CanDragEnter(web_contents, drop_data,
+                                       blink::kDragOperationCopy));
+  }
+
+  // Local-initiated file:// text drop.
+  {
+    content::DropData drop_data;
+    drop_data.did_originate_from_renderer = false;
+    drop_data.text = u"file:///etc/passwd";
+    EXPECT_TRUE(delegate->CanDragEnter(web_contents, drop_data,
+                                       blink::kDragOperationCopy));
+  }
+
+  // Webpage-initiated chrome:// link drop.
+  {
+    content::DropData drop_data;
+    drop_data.did_originate_from_renderer = true;
+    ui::ClipboardUrlInfo url_info(GURL("chrome://accessibility"),
+                                  std::u16string());
+    drop_data.url_infos.push_back(url_info);
+    EXPECT_TRUE(delegate->CanDragEnter(web_contents, drop_data,
+                                       blink::kDragOperationCopy));
+  }
+
+  // Webpage-initiated chrome:// text drop.
+  {
+    content::DropData drop_data;
+    drop_data.did_originate_from_renderer = true;
+    drop_data.text = u"chrome://accessibility";
+    EXPECT_FALSE(delegate->CanDragEnter(web_contents, drop_data,
+                                        blink::kDragOperationCopy));
+  }
+
+  // Local-initiated chrome:// text drop.
+  {
+    content::DropData drop_data;
+    drop_data.did_originate_from_renderer = false;
+    drop_data.text = u"chrome://accessibility";
+    EXPECT_TRUE(delegate->CanDragEnter(web_contents, drop_data,
+                                       blink::kDragOperationCopy));
+  }
+
+  // Webpage-initiated javascript: link drop.
+  {
+    content::DropData drop_data;
+    drop_data.did_originate_from_renderer = true;
+    ui::ClipboardUrlInfo url_info(GURL("javascript:alert(1)"),
+                                  std::u16string());
+    drop_data.url_infos.push_back(url_info);
+    EXPECT_TRUE(delegate->CanDragEnter(web_contents, drop_data,
+                                       blink::kDragOperationCopy));
+  }
+
+  // Webpage-initiated javascript: text drop.
+  {
+    content::DropData drop_data;
+    drop_data.did_originate_from_renderer = true;
+    drop_data.text = u"javascript:alert(1)";
+    EXPECT_FALSE(delegate->CanDragEnter(web_contents, drop_data,
+                                        blink::kDragOperationCopy));
+  }
+
+  // Local-initiated javascript: text drop.
+  {
+    content::DropData drop_data;
+    drop_data.did_originate_from_renderer = false;
+    drop_data.text = u"javascript:alert(1)";
+    EXPECT_FALSE(delegate->CanDragEnter(web_contents, drop_data,
+                                        blink::kDragOperationCopy));
+  }
 }
 
 // Tests for the home button. Also serve as the general PressHandler tests.
@@ -2990,6 +3372,18 @@ class WebUIToolbarWebViewHomeButtonBrowserTest : public InProcessBrowserTest {
     auto* styled_label =
         static_cast<views::StyledLabel*>(bubble->children().front());
     styled_label->ClickFirstLinkForTesting();
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+// Home icon is different for touch only with old icon set.
+class WebUIToolbarWebViewHomeButtonOldIconsBrowserTest
+    : public WebUIToolbarWebViewHomeButtonBrowserTest {
+ public:
+  WebUIToolbarWebViewHomeButtonOldIconsBrowserTest() {
+    feature_list_.InitAndDisableFeature(features::kRoundedIcons);
   }
 
  private:
@@ -3186,30 +3580,35 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewHomeButtonBrowserTest,
                            ->GetLastCommittedURL());
 }
 
-IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewHomeButtonBrowserTest,
+IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewHomeButtonOldIconsBrowserTest,
                        TouchModeChangesIcon) {
   WebUIToolbarWebView* webui_toolbar_view = SetUpAndPinHomeButton(browser());
   views::WebView* web_view = webui_toolbar_view->GetWebViewForTesting();
   content::WebContents* web_contents = web_view->GetWebContents();
 
-  std::string get_icon_js =
-      base::StrCat({"window.getComputedStyle(", GetButtonIconJS(kHomeSelector),
-                    ").getPropertyValue('--cr-icon-image')"});
+  std::string get_icon_js = base::StrCat(
+      {GetButtonIconJS(kHomeSelector), ".getAttribute('iron-icon')"});
+  std::string get_button_height_js =
+      base::StrCat({GetButtonIconJS(kHomeSelector), ".offsetHeight"});
 
   // Verify standard mode icon
-  EXPECT_TRUE(content::EvalJs(web_contents, get_icon_js)
-                  .ExtractString()
-                  .find("home_20.svg") != std::string::npos);
+  EXPECT_EQ("webui-toolbar:navigate_home_chrome_refresh_old",
+            content::EvalJs(web_contents, get_icon_js));
+
+  // Also its size.
+  EXPECT_EQ(GetLayoutConstant(LayoutConstant::kToolbarButtonHeight),
+            content::EvalJs(web_contents, get_button_height_js));
 
   {
     ui::TouchUiController::TouchUiScoperForTesting touch_ui_scoper(true);
 
     // Wait and verify Touch mode icon
     EXPECT_TRUE(base::test::RunUntil([&]() {
-      std::string current_icon =
-          content::EvalJs(web_contents, get_icon_js).ExtractString();
-      return current_icon.find("home_24.svg") != std::string::npos;
+      return GetLayoutConstant(LayoutConstant::kToolbarButtonHeight) ==
+             content::EvalJs(web_contents, get_button_height_js);
     }));
+    EXPECT_EQ("webui-toolbar:navigate_home_touch_old",
+              content::EvalJs(web_contents, get_icon_js));
   }
 
   // Revert to non-touch mode happens automatically when scoper goes out of
@@ -3217,10 +3616,11 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewHomeButtonBrowserTest,
 
   // Wait and verify standard mode icon again
   EXPECT_TRUE(base::test::RunUntil([&]() {
-    std::string current_icon =
-        content::EvalJs(web_contents, get_icon_js).ExtractString();
-    return current_icon.find("home_20.svg") != std::string::npos;
+    return GetLayoutConstant(LayoutConstant::kToolbarButtonHeight) ==
+           content::EvalJs(web_contents, get_button_height_js);
   }));
+  EXPECT_EQ("webui-toolbar:navigate_home_chrome_refresh_old",
+            content::EvalJs(web_contents, get_icon_js));
 }
 
 IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewHomeButtonBrowserTest,
@@ -3858,7 +4258,7 @@ IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest,
   PinAction(action_id, mojom_action);
 
   // Show translate bubble.
-  browser()->window()->ShowTranslateBubble(
+  BrowserWindow::FromBrowser(browser())->ShowTranslateBubble(
       browser()->tab_strip_model()->GetActiveWebContents(),
       translate::TRANSLATE_STEP_BEFORE_TRANSLATE, "fr", "en",
       translate::TranslateErrors::NONE, true);

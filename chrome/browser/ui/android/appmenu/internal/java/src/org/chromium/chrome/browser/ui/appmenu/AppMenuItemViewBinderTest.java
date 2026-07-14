@@ -759,4 +759,16 @@ public class AppMenuItemViewBinderTest {
                 expectedColor,
                 tint.getDefaultColor());
     }
+
+    @Test
+    @UiThreadTest
+    @MediumTest
+    public void testHeaderPixelHeight() {
+        PropertyModel model = new PropertyModel.Builder(AppMenuItemProperties.ALL_KEYS).build();
+        int expectedHeight =
+                mActivity.getResources().getDimensionPixelSize(R.dimen.menu_header_height);
+
+        Assert.assertEquals(
+                expectedHeight, AppMenuItemViewBinder.getHeaderPixelHeight(mActivity, model));
+    }
 }

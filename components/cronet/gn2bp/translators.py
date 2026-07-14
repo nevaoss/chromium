@@ -85,10 +85,10 @@ def create_rust_cxx_modules(blueprint, gn, target, is_test_target, context):
         )
 
     cxx_bridge_module_name = create_modules_from_target(
-        blueprint, gn, _find_cxx_bridge_binary(target.deps), target.type,
-        is_test_target, context)[0].name
+        blueprint, gn, _find_cxx_bridge_binary(target.common.deps),
+        target.type, is_test_target, context)[0].name
     modules = []
-    for (i, src) in enumerate(sorted(target.sources)):
+    for (i, src) in enumerate(sorted(target.common.sources)):
         header_genrule = soong_ast.Module(
             "cc_genrule",
             f"{soong_ast.label_to_module_name(target.name, context)}_header_{i}",
@@ -130,7 +130,7 @@ def create_proto_modules(blueprint, gn, target, is_test_target, context):
     """
     assert (target.type == 'proto_library')
 
-    if any(output.endswith('.descriptor') for output in target.outputs):
+    if any(output.endswith('.descriptor') for output in target.common.outputs):
         # One example of a proto descriptor generator target is:
         #   //base/tracing/protos:chrome_track_event_gen
         # These targets require special logic since they generate a descriptor file
@@ -150,7 +150,7 @@ def create_proto_modules(blueprint, gn, target, is_test_target, context):
     # all archs.
     def get_value_arg(arg_name, sanitize=None):
         arch_values = set()
-        for arch in target.arch.values():
+        for arch_name, arch in target.arch.items():
             args = arch.args
             if not args:
                 continue
@@ -178,7 +178,7 @@ def create_proto_modules(blueprint, gn, target, is_test_target, context):
         dep_module.name
         for dep_modules in (create_modules_from_target(
             blueprint, gn, dep, target.type, is_test_target, context)
-                            for dep in target.deps)
+                            for dep in target.common.deps)
         for dep_module in dep_modules if dep_module.type.endswith('_binary')
     }
     plugin = get_value_arg("--plugin")
@@ -210,7 +210,7 @@ def create_proto_modules(blueprint, gn, target, is_test_target, context):
     if translation_config.buildtools_protobuf_src in sorted_proto_paths:
         cmd += ['--proto_path=%s' % translation_config.android_protobuf_src]
 
-    sources = {gn_utils.label_to_path(src) for src in target.sources}
+    sources = {gn_utils.label_to_path(src) for src in target.common.sources}
     absolute_sources = sorted(
         [f"external/cronet/{context.import_channel}/{src}" for src in sources])
 
@@ -274,15 +274,15 @@ def create_proto_modules(blueprint, gn, target, is_test_target, context):
     source_module.tools = tools
     header_module.tools = tools
 
-    source_module.out.update(output for output in target.outputs
+    source_module.out.update(output for output in target.common.outputs
                              if output.endswith('.cc'))
-    header_module.out.update(output for output in target.outputs
+    header_module.out.update(output for output in target.common.outputs
                              if output.endswith('.h'))
 
     # This has proto files that will be used for reference resolution
     # but not compiled into cpp files. These additional sources has no output.
     proto_data_sources = sorted([
-        gn_utils.label_to_path(proto_src) for proto_src in target.inputs
+        gn_utils.label_to_path(proto_src) for proto_src in target.common.inputs
         if proto_src.endswith(".proto")
     ])
     source_module.srcs.update(proto_data_sources)
@@ -299,8 +299,8 @@ def create_proto_modules(blueprint, gn, target, is_test_target, context):
 def create_gcc_preprocess_modules(blueprint, target, context):
     # gcc_preprocess.py internally execute host gcc which is not allowed in genrule.
     # So, this function create multiple modules and realize equivalent processing
-    assert (len(target.sources) == 1)
-    source = list(target.sources)[0]
+    assert (len(target.common.sources) == 1)
+    source = list(target.common.sources)[0]
     assert (Path(source).suffix == '.template')
     stem = Path(source).stem
 
@@ -324,8 +324,8 @@ def create_gcc_preprocess_modules(blueprint, target, context):
     preprocess_module.cflags.extend(['-E', '-P', '-DANDROID'])
     preprocess_module.srcs.add(':' + rename_module.name)
     defines = [
-        '-D' + target.args[i + 1] for i, arg in enumerate(target.args)
-        if arg == '--define'
+        '-D' + target.common.args[i + 1]
+        for i, arg in enumerate(target.common.args) if arg == '--define'
     ]
     preprocess_module.cflags.extend(defines)
     blueprint.add_module(preprocess_module)
@@ -363,9 +363,9 @@ def create_action_foreach_modules(blueprint, gn, target, is_test_target,
     def create_subtarget(i, src):
         subtarget = copy.deepcopy(target)
         subtarget.name += f"_{i}"
-        subtarget.sources = {src}
+        subtarget.common.sources = {src}
         new_args = []
-        for arg in target.args:
+        for arg in target.common.args:
             if '{{source}}' in arg:
                 new_args.append('$(location %s)' %
                                 (gn_utils.label_to_path(src)))
@@ -377,24 +377,24 @@ def create_action_foreach_modules(blueprint, gn, target, is_test_target,
                                         source_name_part).split("/")[-1]
                 # file_name represent the output file name. But we need the whole path
                 # This can be found from target.outputs.
-                for out in target.outputs:
+                for out in target.common.outputs:
                     if out.endswith(file_name):
                         new_args.append('$(location %s)' % out)
-                        subtarget.outputs = {out}
+                        subtarget.common.outputs = {out}
 
-                for file in (target.sources | target.inputs):
+                for file in (target.common.sources | target.common.inputs):
                     if file.endswith(file_name):
                         new_args.append('$(location %s)' %
                                         gn_utils.label_to_path(file))
             else:
                 new_args.append(arg)
-        subtarget.args = new_args
+        subtarget.common.args = new_args
         return subtarget
 
     return [
         create_action_module(blueprint, gn, create_subtarget(i, src),
                              'cc_genrule', is_test_target, context)
-        for i, src in enumerate(sorted(target.sources))
+        for i, src in enumerate(sorted(target.common.sources))
     ]
 
 
@@ -421,7 +421,7 @@ def create_action_module_internal(gn,
     module.srcs = sanitizer.get_srcs()
     module.tool_files = sanitizer.get_tool_files()
     module.tools = sanitizer.get_tools()
-    target.deps = sanitizer.get_deps()
+    target.common.deps = sanitizer.get_deps()
 
     return module
 
@@ -528,7 +528,7 @@ def create_java_module(bp_module_name, target, blueprint, context):
     #
     # For even more more background, see https://crbug.com/397396295.
 
-    sources = target.sources
+    sources = target.common.sources
     source_is_jar = any(source.endswith('.jar') for source in sources)
     unfiltered_module = soong_ast.Module(
         "java_import" if source_is_jar else "java_library",
@@ -686,30 +686,30 @@ def create_bindgen_module(
         context: translation_context.TranslationContext) -> soong_ast.Module:
     module = soong_ast.Module("rust_bindgen", "lib" + module_name, target.name,
                               context)
-    if len(target.sources) > 1:
+    if len(target.common.sources) > 1:
         raise ValueError(
-            f"Expected a single source file for bindgen but found {target.sources}."
+            f"Expected a single source file for bindgen but found {target.common.sources}."
         )
 
-    if len(target.outputs) > 2:
+    if len(target.common.outputs) > 2:
         raise ValueError(
-            f"Expected at most two output files for bindgen but found {target.outputs}"
+            f"Expected at most two output files for bindgen but found {target.common.outputs}"
         )
-    module.wrapper_src = gn_utils.label_to_path(list(target.sources)[0])
+    module.wrapper_src = gn_utils.label_to_path(list(target.common.sources)[0])
     module.crate_name = module_name
 
-    if "c++" in target.args:
+    if "c++" in target.common.args:
         # This is defined in the rust_bindgen templates where "C++" will
         # be added to the args if `cpp` field is defined. Soong depends
         # on `cpp_std` field to identify that this is a C++ header.
         module.cpp_std = common.CPP_VERSION
 
-    module.source_stem = get_bindgen_source_stem(target.outputs)
+    module.source_stem = get_bindgen_source_stem(target.common.outputs)
 
-    if "--wrap-static-fns" in target.args:
+    if "--wrap-static-fns" in target.common.args:
         module.handle_static_inline = True
 
-    module.bindgen_flags = get_bindgen_flags(target.args)
+    module.bindgen_flags = get_bindgen_flags(target.common.args)
     # This ensures that any CC file that is being processed through the
     # rust_bindgen module is able to #include files relative to the root of the
     # repository.
@@ -1102,6 +1102,11 @@ def set_module_include_dirs(module, cflags, include_dirs, context):
         if d not in context.include_dirs_denylist
     ]
 
+    # If we end up including Cronet's root, then also include the Android-side
+    # unversioned include override directory, with higher precedence.
+    if f"external/cronet/{context.import_channel}/" in module.include_dirs:
+        module.include_dirs.insert(0, "external/cronet/include/")
+
 
 def create_aidl_module(bp_module_name, target, blueprint, context):
     module = soong_ast.Module("aidl_interface", bp_module_name, target.name,
@@ -1122,7 +1127,7 @@ def create_aidl_module(bp_module_name, target, blueprint, context):
     filegroup_module = soong_ast.Module("filegroup", filegroup_module_name,
                                         target.name, context)
     filegroup_module.srcs = [
-        gn_utils.label_to_path(src) for src in sorted(target.sources)
+        gn_utils.label_to_path(src) for src in sorted(target.common.sources)
     ]
     filegroup_module.build_file_path = target.build_file_path
     # The following lines will trim an absolute path to the path
@@ -1319,7 +1324,7 @@ def create_modules_from_target(blueprint, gn, gn_target_name, parent_gn_type,
         # Build scripts are generated via `generate_build_scripts_output.py`. See the header
         # of that script for more details.
         generated_files = [
-            output.split("/")[-1] for output in target.outputs if
+            output.split("/")[-1] for output in target.common.outputs if
             output.endswith(".rs") and not output.endswith("/cargo_flags.rs")
         ]
         if len(generated_files) == 0:
@@ -1423,7 +1428,7 @@ def create_modules_from_target(blueprint, gn, gn_target_name, parent_gn_type,
             # Actions should get their srcs from their corresponding ActionSanitizer as actionSanitizer
             # filters srcs differently according to the type of the action.
             module.srcs.update(
-                gn_utils.label_to_path(src) for src in target.sources
+                gn_utils.label_to_path(src) for src in target.common.sources
                 if common.is_supported_source_file(src))
 
         # Add arch-specific properties
@@ -1435,11 +1440,11 @@ def create_modules_from_target(blueprint, gn, gn_target_name, parent_gn_type,
         module.rtti = target.rtti
 
         if target.type in gn_utils.LINKER_UNIT_TYPES:
-            configure_cc_module(module, target.cflags, target.defines,
-                                target.ldflags, target.libs, module, blueprint,
-                                context)
-            set_module_include_dirs(module, target.cflags, target.include_dirs,
-                                    context)
+            configure_cc_module(module, target.common.cflags,
+                                target.common.defines, target.common.ldflags,
+                                target.common.libs, module, blueprint, context)
+            set_module_include_dirs(module, target.common.cflags,
+                                    target.common.include_dirs, context)
             # TODO: set_module_xxx is confusing, apply similar function to module and target in better way.
             for arch_name, arch in target.get_archs().items():
                 # TODO(aymanm): Make libs arch-specific.
@@ -1477,9 +1482,10 @@ def create_modules_from_target(blueprint, gn, gn_target_name, parent_gn_type,
         ]:
             module.crate_name = target.crate_name
             module.crate_root = gn_utils.label_to_path(target.crate_root)
-            if target.inputs:
+            if target.common.inputs:
                 module.srcs.update(
-                    gn_utils.label_to_path(inp) for inp in target.inputs)
+                    gn_utils.label_to_path(inp)
+                    for inp in target.common.inputs)
             if target.rust_package_version:
                 module.cargo_env_compat = True
                 module.cargo_pkg_version = target.rust_package_version
@@ -1528,6 +1534,7 @@ def create_modules_from_target(blueprint, gn, gn_target_name, parent_gn_type,
 
         # dep_name is an unmangled GN target name (e.g. //foo:bar(toolchain)).
         all_deps = [(dep_name, 'common') for dep_name in target.proto_deps]
+        all_deps += [(dep_name, 'common') for dep_name in target.common.deps]
         for arch_name, arch in target.arch.items():
             all_deps += [(dep_name, arch_name) for dep_name in arch.deps]
 
@@ -1801,7 +1808,7 @@ def create_modules_from_target(blueprint, gn, gn_target_name, parent_gn_type,
                         # an action.
                         _, placeholder_path = get_jni_zero_generator_proxy_and_placeholder_paths(
                             dep_module)
-                        if placeholder_path in target.inputs:
+                        if placeholder_path in target.common.inputs:
                             # The target depends on both jni_zero generator outputs (proxy and
                             # placeholder). We can simply pull both of them at the same time
                             # by depending on the jni_zero generator module directly. In

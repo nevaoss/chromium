@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "base/json/json_reader.h"
 #include "base/run_loop.h"
 #include "base/test/metrics/user_action_tester.h"
 #include "base/test/run_until.h"
@@ -20,6 +21,8 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
+#include "components/enterprise/data_controls/core/browser/prefs.h"
+#include "components/prefs/scoped_user_pref_update.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "mojo/public/cpp/base/big_buffer.h"
@@ -584,6 +587,132 @@ IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
   EXPECT_EQ(error_future.Get(),
             GlicInvokeError::kAdditionalContextNoSourceFrame);
   EXPECT_FALSE(GetInstanceForTab(tab));
+}
+
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
+                       InvokeWithClipboardPolicyBlocked) {
+  // Set up Data Controls to block clipboard copy/paste.
+  {
+    ScopedListPrefUpdate list(GetProfile()->GetPrefs(),
+                              data_controls::kDataControlsRulesPref);
+    list->Append(*base::JSONReader::Read(
+        R"({
+          "destinations": { "os_clipboard": true },
+          "restrictions": [{
+            "class": "CLIPBOARD",
+            "level": "BLOCK"
+          }]
+        })",
+        base::JSON_PARSE_CHROMIUM_EXTENSIONS));
+  }
+
+  tabs::TabInterface* tab = CreateAndActivateTab(GURL("about:blank"));
+  ASSERT_TRUE(content::NavigateToURL(tab->GetContents(), GURL("about:blank")));
+
+  // Create mock AdditionalContext containing PNG image data.
+  auto context_mojom = mojom::AdditionalContext::New();
+  context_mojom->source = mojom::AdditionalContextSource::kShareContextMenu;
+  context_mojom->name = "https://example.com/image.png";
+
+  auto context_data = mojom::ContextData::New();
+  context_data->mime_type = "image/png";
+  // The first 4 bytes of a valid PNG file header, so it isn't rejected.
+  context_data->data =
+      mojo_base::BigBuffer(std::vector<uint8_t>{0x89, 0x50, 0x4E, 0x47});
+
+  context_mojom->parts.push_back(
+      mojom::AdditionalContextPart::NewData(std::move(context_data)));
+
+  base::test::TestFuture<GlicInvokeError> error_future;
+  GlicInvokeOptions options(glic::Target(*tab),
+                            mojom::InvocationSource::kOsButton);
+  options.on_error = error_future.GetCallback();
+
+  content::RenderFrameHost* rfh = tab->GetContents()->GetPrimaryMainFrame();
+  ASSERT_TRUE(rfh);
+
+  options.additional_context = AdditionalTabContext(
+      std::move(context_mojom), rfh->GetGlobalId(), PolicyCheck::kClipboard);
+
+  coordinator().Invoke(std::move(options));
+
+  EXPECT_EQ(error_future.Get(),
+            GlicInvokeError::kAdditionalContextFailedCopyPolicy);
+  EXPECT_FALSE(GetInstanceForTab(tab));
+}
+
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeWithContextNoSourceFrame) {
+  tabs::TabInterface* tab = CreateAndActivateTab(GURL("about:blank"));
+  ASSERT_TRUE(content::NavigateToURL(tab->GetContents(), GURL("about:blank")));
+
+  // Create mock AdditionalContext containing PNG image data.
+  auto context_mojom = mojom::AdditionalContext::New();
+  context_mojom->source = mojom::AdditionalContextSource::kShareContextMenu;
+  context_mojom->name = "https://example.com/image.png";
+
+  auto context_data = mojom::ContextData::New();
+  context_data->mime_type = "image/png";
+  context_data->data =
+      mojo_base::BigBuffer(std::vector<uint8_t>{0x89, 0x50, 0x4E, 0x47});
+
+  context_mojom->parts.push_back(
+      mojom::AdditionalContextPart::NewData(std::move(context_data)));
+
+  base::test::TestFuture<GlicInvokeError> error_future;
+  GlicInvokeOptions options(glic::Target(*tab),
+                            mojom::InvocationSource::kOsButton);
+  options.on_error = error_future.GetCallback();
+
+  // Provide an invalid GlobalRenderFrameHostId to simulate the frame being
+  // destroyed before the invoke task starts.
+  options.additional_context = AdditionalTabContext(
+      std::move(context_mojom), content::GlobalRenderFrameHostId(-1, -1),
+      PolicyCheck::kClipboard);
+
+  coordinator().Invoke(std::move(options));
+
+  // The policy check should fail because it cannot find the source frame.
+  EXPECT_EQ(error_future.Get(),
+            GlicInvokeError::kAdditionalContextNoSourceFrame);
+  EXPECT_FALSE(GetInstanceForTab(tab));
+}
+
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeWithInvalidContextData) {
+  tabs::TabInterface* tab = CreateAndActivateTab(GURL("about:blank"));
+  ASSERT_TRUE(content::NavigateToURL(tab->GetContents(), GURL("about:blank")));
+
+  // Create mock AdditionalContext with an invalid mime_type.
+  // ExtractThumbnailData() in glic_invoke_task.cc strictly checks for
+  // "image/png", so "image/jpeg" will cause thumbnail_data to be empty.
+  auto context_mojom = mojom::AdditionalContext::New();
+  context_mojom->source = mojom::AdditionalContextSource::kShareContextMenu;
+  context_mojom->name = "https://example.com/image.png";
+
+  auto context_data = mojom::ContextData::New();
+  context_data->mime_type = "image/jpeg";
+  context_data->data =
+      mojo_base::BigBuffer(std::vector<uint8_t>{0xFF, 0xD8, 0xFF, 0xE0});
+
+  context_mojom->parts.push_back(
+      mojom::AdditionalContextPart::NewData(std::move(context_data)));
+
+  base::test::TestFuture<GlicInvokeError> error_future;
+  GlicInvokeOptions options(glic::Target(*tab),
+                            mojom::InvocationSource::kOsButton);
+  options.on_error = error_future.GetCallback();
+
+  content::RenderFrameHost* rfh = tab->GetContents()->GetPrimaryMainFrame();
+  ASSERT_TRUE(rfh);
+
+  // Trigger clipboard policy check.
+  options.additional_context = AdditionalTabContext(
+      std::move(context_mojom), rfh->GetGlobalId(), PolicyCheck::kClipboard);
+
+  coordinator().Invoke(std::move(options));
+
+  EXPECT_EQ(error_future.Get(),
+            GlicInvokeError::kAdditionalContextNoClipboardMetadata);
+  EXPECT_TRUE(GetInstanceForTab(tab));
 }
 IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeWithTabsToPin) {
   tabs::TabInterface* tab1 = GetTabListInterface()->GetActiveTab();

@@ -5243,6 +5243,9 @@ enum WebFeature {
   kV8ElementInternals_AriaActionsElements_AttributeSetter = 5926,
   kSVGPathElementGetPathData = 5927,
   kSVGPathElementGetPathDataNormalized = 5928,
+  kDownloadFromAdScript = 5929,
+  kCompositorKeyframeSnapshotMissing = 5930,
+  kTimelineTrigger = 5931,
 
   // Add new features immediately above this line. Don't change the existing
   // numbers of any item, and don't reuse removed slots. Also don't add extra

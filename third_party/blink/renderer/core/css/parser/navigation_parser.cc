@@ -6,6 +6,7 @@
 
 #include "third_party/blink/renderer/core/css/navigation_query.h"
 #include "third_party/blink/renderer/core/css/parser/css_parser_token_stream.h"
+#include "third_party/blink/renderer/core/css/properties/css_parsing_utils.h"
 #include "third_party/blink/renderer/core/route_matching/navigation_phase.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 
@@ -125,7 +126,7 @@ NavigationQuery* NavigationParser::ParseQuery(CSSParserTokenStream& stream) {
 }
 
 RouteLocation* NavigationParser::ParseLocation(CSSParserTokenStream& stream) {
-  if (stream.Peek().GetType() == kIdentToken) {
+  if (css_parsing_utils::IsDashedIdent(stream.Peek())) {
     // <route-name>
     AtomicString route_name(
         stream.ConsumeIncludingWhitespace().Value().ToString());

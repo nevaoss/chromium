@@ -57,19 +57,18 @@ class MockPaymentsAutofillClient : public TestPaymentsAutofillClient {
               ShowTouchToFillBnplIssuers,
               (base::span<const BnplIssuerContext>,
                const std::string&,
-               base::OnceCallback<void(autofill::BnplIssuer)>,
+               base::OnceCallback<void(BnplIssuer)>,
                base::OnceClosure),
               (override));
-  MOCK_METHOD(
-      bool,
-      OnPurchaseAmountExtracted,
-      (base::span<const BnplIssuerContext> bnpl_issuer_contexts,
-       std::optional<int64_t> extracted_amount,
-       bool is_amount_supported_by_any_issuer,
-       const std::optional<std::string>& app_locale,
-       base::OnceCallback<void(autofill::BnplIssuer)> selected_issuer_callback,
-       base::OnceClosure cancel_callback),
-      (override));
+  MOCK_METHOD(bool,
+              OnPurchaseAmountExtracted,
+              (base::span<const BnplIssuerContext> bnpl_issuer_contexts,
+               std::optional<int64_t> extracted_amount,
+               bool is_amount_supported_by_any_issuer,
+               const std::optional<std::string>& app_locale,
+               base::OnceCallback<void(BnplIssuer)> selected_issuer_callback,
+               base::OnceClosure cancel_callback),
+              (override));
 };
 
 class AndroidBnplUiDelegateTest : public ChromeRenderViewHostTestHarness {

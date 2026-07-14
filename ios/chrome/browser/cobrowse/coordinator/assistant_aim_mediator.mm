@@ -152,6 +152,17 @@
   return _webState ? _webState->GetLastCommittedURL() : GURL();
 }
 
+- (void)loadURL:(const GURL&)url {
+  if (!experimental_flags::IsOmniboxDebuggingEnabled()) {
+    return;
+  }
+  if (!_webState) {
+    return;
+  }
+  web::NavigationManager::WebLoadParams params(url);
+  _webState->GetNavigationManager()->LoadURLWithParams(params);
+}
+
 - (void)setConsumer:(id<AssistantAIMConsumer>)consumer {
   if (_consumer == consumer) {
     return;
@@ -178,10 +189,17 @@
   _webState.reset();
   _urlLoader = nullptr;
   _context = nil;
+  [self endSession];
   _cobrowseBrowserAgent = nullptr;
   _capabilities = std::nullopt;
   _logger = nil;
   _authenticationService = nullptr;
+}
+
+- (void)endSession {
+  if (_cobrowseBrowserAgent) {
+    _cobrowseBrowserAgent->SetSessionActive(false);
+  }
 }
 
 #pragma mark - CRWWebStatePolicyDecider

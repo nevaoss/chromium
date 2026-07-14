@@ -701,14 +701,14 @@ PaymentsDataManager::GetMerchantBenefitByInstrumentIdAndOrigin(
       });
 }
 
-std::u16string
-PaymentsDataManager::GetApplicableBenefitDescriptionForCardAndOrigin(
+std::optional<CreditCardBenefit>
+PaymentsDataManager::GetApplicableBenefitForCardAndOrigin(
     const CreditCard& credit_card,
     const url::Origin& origin,
     const AutofillOptimizationGuideDecider* optimization_guide) const {
   // Ensures that benefit suggestions can be displayed.
   if (ShouldBlockCardBenefitSuggestionLabels()) {
-    return std::u16string();
+    return std::nullopt;
   }
 
   CreditCardBenefitBase::LinkedCardInstrumentId benefit_instrument_id(
@@ -718,7 +718,7 @@ PaymentsDataManager::GetApplicableBenefitDescriptionForCardAndOrigin(
   std::optional<CreditCardMerchantBenefit> merchant_benefit =
       GetMerchantBenefitByInstrumentIdAndOrigin(benefit_instrument_id, origin);
   if (merchant_benefit && merchant_benefit->IsActiveBenefit()) {
-    return merchant_benefit->benefit_description();
+    return *merchant_benefit;
   }
 
   // 2. Check category benefit.
@@ -734,7 +734,7 @@ PaymentsDataManager::GetApplicableBenefitDescriptionForCardAndOrigin(
           GetCategoryBenefitByInstrumentIdAndCategory(benefit_instrument_id,
                                                       category_benefit_type);
       if (category_benefit && category_benefit->IsActiveBenefit()) {
-        return category_benefit->benefit_description();
+        return *category_benefit;
       }
     }
   }
@@ -743,20 +743,19 @@ PaymentsDataManager::GetApplicableBenefitDescriptionForCardAndOrigin(
   std::optional<CreditCardFlatRateBenefit> flat_rate_benefit =
       GetFlatRateBenefitByInstrumentId(benefit_instrument_id);
   if (flat_rate_benefit && flat_rate_benefit->IsActiveBenefit()) {
-    // Return empty string if flat rate benefit is blocked on the current
-    // merchant.
-    return base::FeatureList::IsEnabled(
-               features::kAutofillEnableFlatRateCardBenefitsBlocklist) &&
-                   optimization_guide &&
-                   optimization_guide
-                       ->ShouldBlockFlatRateBenefitSuggestionLabelsForUrl(
-                           origin.GetURL())
-               ? std::u16string()
-               : flat_rate_benefit->benefit_description();
+    // Return `nullopt` if flat rate benefit is blocked on the current merchant.
+    if (base::FeatureList::IsEnabled(
+            features::kAutofillEnableFlatRateCardBenefitsBlocklist) &&
+        optimization_guide &&
+        optimization_guide->ShouldBlockFlatRateBenefitSuggestionLabelsForUrl(
+            origin.GetURL())) {
+      return std::nullopt;
+    }
+    return *flat_rate_benefit;
   }
 
   // No eligible benefit to display.
-  return std::u16string();
+  return std::nullopt;
 }
 
 std::vector<const CreditCard*> PaymentsDataManager::GetLocalCreditCards()

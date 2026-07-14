@@ -46,6 +46,7 @@
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/actions/actions_util.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
+#include "chrome/browser/ui/actions/chrome_action_properties.h"
 #include "chrome/browser/ui/actions/chrome_actions.h"
 #include "chrome/browser/ui/ai_overlay_dialog/ai_overlay_dialog_controller.h"
 #include "chrome/browser/ui/autofill/address_bubbles_icon_controller.h"
@@ -258,6 +259,8 @@ void BrowserActions::InitializeBrowserActions() {
   InitializeChromeMenuActions();
 
   InitializeToolbarAndMiscActions();
+
+  InitializeNavigationActions();
 
   AddListeners();
 }
@@ -1054,7 +1057,8 @@ void BrowserActions::InitializeChromeMenuActions() {
                     bubble_controller->HideBubble();
                   } else {
                     send_tab_to_self::ShowBubble(
-                        tab_strip_model->GetActiveWebContents());
+                        tab_strip_model->GetActiveWebContents(),
+                        send_tab_to_self::ShareEntryPoint::kToolbarIcon);
                   }
                 },
                 bwi, tab_strip_model),
@@ -1657,14 +1661,15 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
   root_action_item_->AddChild(
       actions::ActionItem::Builder(
           base::BindRepeating(
-              [](chrome::BrowserCommandController* browser_command_controller,
-                 actions::ActionItem* item,
+              [](BrowserWindowInterface* bwi, actions::ActionItem* item,
                  actions::ActionInvocationContext context) {
-                browser_command_controller->ShowCustomizeChromeSidePanel(
-                    SidePanelOpenTrigger::kNewTabFooter,
-                    CustomizeChromeSection::kFooter);
+                bwi->GetFeatures()
+                    .browser_command_controller()
+                    ->ShowCustomizeChromeSidePanel(
+                        SidePanelOpenTrigger::kNewTabFooter,
+                        CustomizeChromeSection::kFooter);
               },
-              bwi->GetFeatures().browser_command_controller()))
+              bwi))
           .SetActionId(kActionSidePanelShowCustomizeChromeFooter)
           .Build());
 
@@ -1892,4 +1897,21 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
 void BrowserActions::AddListeners() {
   browser_action_prefs_listener_ = std::make_unique<BrowserActionPrefsListener>(
       base::to_address(profile_), this);
+}
+
+void BrowserActions::InitializeNavigationActions() {
+  BrowserWindowInterface* const bwi = base::to_address(bwi_);
+
+  root_action_item_->AddChild(
+      actions::ActionItem::Builder(
+          base::BindRepeating(
+              [](BrowserWindowInterface* bwi, actions::ActionItem* item,
+                 actions::ActionInvocationContext context) {
+                WindowOpenDisposition disposition =
+                    context.GetProperty(chrome::kDispositionKey);
+                chrome::GoBack(bwi, disposition);
+              },
+              bwi))
+          .SetActionId(kActionBack)
+          .Build());
 }

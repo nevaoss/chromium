@@ -136,30 +136,8 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="CustomTabs.AuthTab.ExternalNavigationScheme"
-    enum="CustomTabsAuthScheme" expires_after="2026-10-25">
-  <owner>sinansahin@google.com</owner>
-  <owner>chrome-connective-tissue@google.com</owner>
-  <summary>
-    Records the scheme of the external navigation URL for Custom Tabs that were
-    launched with a redirect_uri param. Not recorded for Auth Tabs. Recorded
-    when a URL is sent as an intent to the system. Android only.
-  </summary>
-</histogram>
-
-<histogram name="CustomTabs.AuthTab.RedirectUriScheme"
-    enum="CustomTabsAuthScheme" expires_after="2026-06-22">
-  <owner>sinansahin@google.com</owner>
-  <owner>chrome-connective-tissue@google.com</owner>
-  <summary>
-    Records the scheme of the redirect_uri param within the URL used to launch
-    the Custom Tab. Recorded when the Custom Tab receives and handles the
-    initial intent. Android only.
-  </summary>
-</histogram>
-
-<histogram name="CustomTabs.AuthTab.TimeToDalVerification.SinceFlowCompletion"
-    units="ms" expires_after="2026-06-22">
+<histogram name="CustomTabs.AuthTab.TimeToDalVerification.SinceFlowCompletion2"
+    units="ms" expires_after="2027-06-16">
   <owner>sinansahin@google.com</owner>
   <owner>chrome-connective-tissue@google.com</owner>
   <summary>
@@ -171,8 +149,8 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="CustomTabs.AuthTab.TimeToDalVerification.SinceStart"
-    units="ms" expires_after="2026-06-22">
+<histogram name="CustomTabs.AuthTab.TimeToDalVerification.SinceStart2"
+    units="ms" expires_after="2027-06-16">
   <owner>sinansahin@google.com</owner>
   <owner>chrome-connective-tissue@google.com</owner>
   <summary>
@@ -652,6 +630,42 @@ chromium-metrics-reviews@google.com.
     Records how CCT was opened i.e. opened as a new one, opened on top of Google
     search widget results via CCT omnibox, or restored from a disk state file.
     Recored once per CCT when it is initialized. Android only.
+  </summary>
+</histogram>
+
+<histogram name="CustomTabs.PageContent.Eligibility"
+    enum="CustomTabsPageContentEligibility" expires_after="2026-12-15">
+  <owner>jinsukkim@google.com</owner>
+  <owner>tivi@google.com</owner>
+  <owner>chrome-connective-tissue@google.com</owner>
+  <summary>
+    Records Custom Tab page content features eligibility, detailing if it was
+    enabled by embedder, by Chrome developer experiment, or disqualified.
+    Android only. Logged once per button click.
+  </summary>
+</histogram>
+
+<histogram name="CustomTabs.PageContent.Outcome"
+    enum="CustomTabsPageContentExtractionResult" expires_after="2026-12-15">
+  <owner>jinsukkim@google.com</owner>
+  <owner>tivi@google.com</owner>
+  <owner>chrome-connective-tissue@google.com</owner>
+  <summary>
+    Records the detailed outcome of requesting/generating page content values
+    (annotated page content URI, screenshots, or file content URIs) for Custom
+    Tabs actions. Android only. Logged once per button click.
+  </summary>
+</histogram>
+
+<histogram name="CustomTabs.PageContent.RequestedTypes"
+    enum="CustomTabsPageContentRequestedType" expires_after="2026-12-15">
+  <owner>jinsukkim@google.com</owner>
+  <owner>tivi@google.com</owner>
+  <owner>chrome-connective-tissue@google.com</owner>
+  <summary>
+    Records each content type (APC, Screenshot, or File) requested inside the
+    custom bottom bar view click map from Embedder. Android only. Logged once
+    per button click.
   </summary>
 </histogram>
 

@@ -12,9 +12,14 @@
 #include "chrome/browser/picture_in_picture/scoped_picture_in_picture_occlusion_observation.h"
 #include "chrome/browser/ui/url_identity.h"
 #include "components/permissions/permission_prompt.h"
+#include "content/public/browser/web_contents_observer.h"
+#include "ui/gfx/native_ui_types.h"
 #include "ui/views/bubble/bubble_dialog_delegate_view.h"
 
-class Browser;
+namespace content {
+class WebContents;
+}
+
 class BrowserWindowInterface;
 
 // Base view that provide security-related functionality to permission prompts.
@@ -25,12 +30,13 @@ class BrowserWindowInterface;
 // * Ensure no button is selected by default to prevent unintended button
 // presses
 class PermissionPromptBaseView : public views::BubbleDialogDelegateView,
-                                 public PictureInPictureOcclusionObserver {
+                                 public PictureInPictureOcclusionObserver,
+                                 public content::WebContentsObserver {
   METADATA_HEADER(PermissionPromptBaseView, views::BubbleDialogDelegateView)
 
  public:
   PermissionPromptBaseView(
-      Browser* browser,
+      content::WebContents* web_contents,
       base::WeakPtr<permissions::PermissionPrompt::Delegate> delegate);
   ~PermissionPromptBaseView() override;
 
@@ -61,7 +67,7 @@ class PermissionPromptBaseView : public views::BubbleDialogDelegateView,
   const UrlIdentity& GetUrlIdentityObject() const { return url_identity_; }
 
   static UrlIdentity GetUrlIdentity(
-      Browser* browser,
+      content::WebContents* web_contents,
       permissions::PermissionPrompt::Delegate& delegate);
 
   static std::u16string GetAllowAlwaysText(
@@ -87,7 +93,11 @@ class PermissionPromptBaseView : public views::BubbleDialogDelegateView,
 
   void AnchorToPageInfoOrChip();
 
-  Browser* browser() const { return browser_; }
+  BrowserWindowInterface* GetBrowser();
+  const BrowserWindowInterface* GetBrowser() const;
+
+  // Gets the permission prompt's top-level NativeWindow.
+  gfx::NativeWindow GetNativeWindow();
 
   bool record_browser_always_active_value() const {
     return record_browser_always_active_value_;
@@ -117,8 +127,6 @@ class PermissionPromptBaseView : public views::BubbleDialogDelegateView,
   // Boolean value to track if the browser was always active while the prompt
   // was displayed.
   bool record_browser_always_active_value_ = true;
-
-  const raw_ptr<Browser> browser_ = nullptr;
 
   // $ORIGIN in the title should be bolded, the ranges of the $ORIGINs are
   // gained while building the title string via `l10n_util::GetStringFUTF16()`.

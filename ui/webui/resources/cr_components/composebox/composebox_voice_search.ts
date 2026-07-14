@@ -177,7 +177,10 @@ export class ComposeboxVoiceSearchElement extends
       detailsUrl_: {type: String},
       detailedError_: {type: Number},
       hasErrorTimer: {type: Boolean},
-      isPermissionPromptOpen_: {type: Boolean, reflect: true},
+      isPermissionPromptOpen_: {
+        type: Boolean,
+        reflect: true,
+      },
       submitButtonIconType: {type: String},
       /**
        * Determines whether to automatically submit the query upon receiving a
@@ -194,8 +197,6 @@ export class ComposeboxVoiceSearchElement extends
       /**
        * Maximum number of characters recognized before force-submitting a
        * query. Includes characters of non-confident recognition transcripts.
-       * TODO(crbug.com/510393520): Enforce a 120-character limit for the
-       * Searchbox surface.
        */
       queryLengthLimit: {type: Number},
       /**
@@ -567,6 +568,10 @@ export class ComposeboxVoiceSearchElement extends
         // webkit is the source of truth for timing out and has
         // decided to time out.
         if (!this.dynamicTimeoutEnabled) {
+          this.onError_(VoiceSearchError.NO_MATCH);
+        } else if (this.transcript_) {
+          this.onFinalResult_(this.transcript_);
+        } else {
           this.onError_(VoiceSearchError.NO_MATCH);
         }
         return;

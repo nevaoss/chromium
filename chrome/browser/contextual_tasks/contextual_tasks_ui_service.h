@@ -299,11 +299,6 @@ class ContextualTasksUiService : public KeyedService {
   // Returns whether the provided URL is to an AI page.
   virtual bool IsAiUrl(const GURL& url);
 
-  // Returns whether the provided URL is a trusted AI page (i.e. is an AI URL
-  // and contains the permitted subset of query parameters). This is used to
-  // validate URLs requested from the private extension API.
-  virtual bool IsTrustedAiUrl(const GURL& url);
-
   // Returns whether the provided task ID is for a task that should show the
   // error page on load.
   virtual bool IsPendingErrorPage(const base::Uuid& task_id);
@@ -420,6 +415,16 @@ class ContextualTasksUiService : public KeyedService {
     return weak_ptr_factory_.GetWeakPtr();
   }
 
+  // Returns true if there is an active session on `web_contents` or a pending
+  // session for `task_id` that is allowed while ineligible.
+  bool IsSessionAllowedWhileIneligible(content::WebContents* web_contents,
+                                       const base::Uuid& task_id) const;
+
+  void AddPendingSessionHandleForTesting(
+      const base::Uuid& task_id,
+      std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
+          session_handle);
+
  protected:
   // The actual implementation of `HandleNavigation` that extracts more of the
   // components needed to decide if the navigation should be handled by this
@@ -465,7 +470,9 @@ class ContextualTasksUiService : public KeyedService {
   // Checks whether a top-level navigation targeting a Contextual Tasks WebUI
   // URL occurs in an environment that is ineligible for the feature (e.g., user
   // is ineligible or Google is not the default search provider).
-  virtual bool ShouldRedirectIneligibleRequest(const GURL& url) const;
+  virtual bool ShouldRedirectIneligibleRequest(
+      const GURL& url,
+      content::WebContents* source_contents) const;
 
  private:
   enum class OAuthFetchTrigger {
@@ -638,6 +645,14 @@ class ContextualTasksUiService : public KeyedService {
   // safely inject the transcribed query back into the correct WebUI panel.
   base::WeakPtr<content::WebContents>
       web_contents_for_outstanding_voice_request_;
+
+  // Map of task IDs to pending session handles. Storing handles here before
+  // calling Show() prevents a race condition where the NavigationThrottle
+  // runs before InitializeTaskInSidePanel() has a chance to associate the
+  // handle with the WebContents.
+  std::map<base::Uuid,
+           std::unique_ptr<contextual_search::ContextualSearchSessionHandle>>
+      pending_session_handles_;
 
   base::WeakPtrFactory<ContextualTasksUiService> weak_ptr_factory_{this};
 };

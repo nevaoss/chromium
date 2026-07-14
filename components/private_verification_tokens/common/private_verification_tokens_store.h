@@ -43,6 +43,8 @@ class PrivateVerificationTokensStore {
       const;
   bool is_initialized() const { return initialized_; }
 
+  void DeleteAllTokens();
+
  private:
   explicit PrivateVerificationTokensStore(
       scoped_refptr<base::SequencedTaskRunner> task_runner,

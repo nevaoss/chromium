@@ -234,8 +234,7 @@ bool IsBottomOmniboxAvailable();
 // Returns the `traits` array provided in the function's parameter if the
 // feature flag for the 'traitCollectionDidChange' refactor work is enabled.
 // Otherwise, return an array containing every iOS UITrait.
-NSArray<UITrait>* TraitCollectionSetForTraits(NSArray<UITrait>* traits)
-    API_AVAILABLE(ios(17.0));
+NSArray<UITrait>* TraitCollectionSetForTraits(NSArray<UITrait>* traits);
 
 // Returns the memory footprint of an image in KB.
 size_t MemoryFootprintForImage(UIImage* image);

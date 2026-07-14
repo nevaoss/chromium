@@ -609,6 +609,8 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
   source->AddBoolean("hideMenuOnAiPageEnabled",
                      base::FeatureList::IsEnabled(
                          contextual_tasks::kContextualTasksHideMenuOnAiPage));
+  source->AddBoolean("contextualTasksEnableSpatialModelToolbarLayout",
+      contextual_tasks::GetContextualTasksSpatialModelToolbarLayoutEnabled());
   source->AddBoolean(
       "contextManagementInComposeboxEnabled",
       base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox));
@@ -623,8 +625,13 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
               contextual_search::ContextualSearchSource::kContextualTasks));
 #if !BUILDFLAG(IS_ANDROID)
   GURL url = web_ui->GetWebContents()->GetVisibleURL();
+  // Incognito browsers always use dark mode. This is checked explicitly
+  // because the ThemeService only tracks the parent profile's theme.
+  // See BrowserWidget::GetColorProviderKey() in
+  // chrome/browser/ui/views/frame/browser_widget.cc.
   bool is_dark_mode =
-      ThemeServiceFactory::GetForProfile(profile)->BrowserUsesDarkColors();
+      ThemeServiceFactory::GetForProfile(profile)->BrowserUsesDarkColors() ||
+      profile->IsOffTheRecord();
   is_dark_mode =
       contextual_tasks::GetDarkModeFromUrl(url).value_or(is_dark_mode);
   source->AddBoolean("darkMode", is_dark_mode);
@@ -714,6 +721,7 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
       this, std::vector<ui::ElementIdentifier>{
                 kSmartTabSharingMenuItemElementId,
                 kContextualTasksWebUIPinButtonElementId,
+                kContextualTasksWebUIToolbarElementId,
                 kContextualTasksWebUIOverflowMenuElementId,
                 kContextualTasksWebUIOverflowMenuPinButtonElementId});
 #endif
@@ -968,9 +976,13 @@ void ContextualTasksUI::CreateHelpBubbleHandler(
 
 bool ContextualTasksUIConfig::IsWebUIEnabled(
     content::BrowserContext* browser_context) {
-  // Disable for OTR profiles.
-  return base::FeatureList::IsEnabled(contextual_tasks::kContextualTasks) &&
-         !browser_context->IsOffTheRecord();
+  // Keep Contextual Tasks disabled for incognito profiles unless
+  // Lens Side Panel Unification is enabled.
+  if (browser_context->IsOffTheRecord() &&
+      !lens::features::IsLensSidePanelUnificationEnabled()) {
+    return false;
+  }
+  return base::FeatureList::IsEnabled(contextual_tasks::kContextualTasks);
 }
 
 bool ContextualTasksUIConfig::ShouldCrashOnJavascriptErrorInDevelopmentBuild()

@@ -668,7 +668,8 @@ class CONTENT_EXPORT WebContentsImpl
   bool CompletedFirstVisuallyNonEmptyPaint() override;
   void UpdateFaviconURL(
       RenderFrameHostImpl* source,
-      const std::vector<blink::mojom::FaviconURLPtr>& candidates) override;
+      const std::vector<blink::mojom::FaviconURLPtr>& candidates,
+      blink::mojom::FaviconUpdateReason reason) override;
   const std::vector<blink::mojom::FaviconURLPtr>& GetFaviconURLs() override;
   void Resize(const gfx::Rect& new_bounds) override;
   gfx::Size GetSize() override;

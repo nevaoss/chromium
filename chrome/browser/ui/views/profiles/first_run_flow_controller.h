@@ -18,6 +18,7 @@
 #include "chrome/browser/ui/views/profiles/profile_management_flow_controller.h"
 #include "chrome/browser/ui/views/profiles/profile_management_flow_controller_impl.h"
 #include "chrome/browser/ui/views/profiles/profile_management_types.h"
+#include "chrome/browser/ui/views/profiles/profile_picker_toolbar.h"
 #include "chrome/browser/ui/views/profiles/profile_picker_web_contents_host.h"
 #include "services/audio/public/cpp/sounds/sounds_manager.h"
 
@@ -45,12 +46,14 @@ std::unique_ptr<ProfileManagementStepController> CreateFeatureShowcaseStep(
 std::unique_ptr<ProfileManagementStepController> CreateFinishOrContinueStep(
     ProfilePickerWebContentsHost* host,
     base::OnceCallback<bool()> eligibility_callback,
+    base::RepeatingCallback<bool()> query_effects_callback,
     base::OnceClosure step_completed_callback);
 
 class FirstRunFlowController : public ProfileManagementFlowControllerImpl {
  public:
   static constexpr audio::SoundsManager::SoundKey kAmbientSoundKey = 0;
   static constexpr audio::SoundsManager::SoundKey kLogoSoundKey = 1;
+  static constexpr audio::SoundsManager::SoundKey kWelcomeBackSoundKey = 2;
 
   // Profile management flow controller that will run the FRE for `profile` in
   // `host`.
@@ -69,8 +72,7 @@ class FirstRunFlowController : public ProfileManagementFlowControllerImpl {
       ProfilePicker::ProfilePickingArgs args,
       base::OnceCallback<void(bool)> pick_profile_complete_callback) override;
   void ShowSigninError(Profile* profile, const SigninUIError& error) override;
-  void ToggleMediaEffects(bool active) override;
-  bool AreEffectsEnabled() const;
+  ProfilePickerToolbar::Builder CreateToolbarBuilder() override;
 
   using SoundsManagerFactory =
       base::RepeatingCallback<std::unique_ptr<audio::SoundsManager>(
@@ -96,10 +98,18 @@ class FirstRunFlowController : public ProfileManagementFlowControllerImpl {
  private:
   void HandleIntroSigninChoice(IntroChoice choice);
 
+  void PlaySignInCelebrationSound();
+
+  void StartBrowsing();
+
   // Run the `finish_flow_callback_` if it's not empty.
   void RunFinishFlowCallback();
 
   std::string GetHatsSurveyTrigger() const;
+
+  void ToggleMediaEffects(bool active);
+
+  bool AreEffectsEnabled() const;
 
   void MaybeTriggerHatsSurvey();
 

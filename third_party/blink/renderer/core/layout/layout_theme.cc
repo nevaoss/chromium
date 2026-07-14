@@ -23,6 +23,7 @@
 
 #include "build/build_config.h"
 #include "third_party/blink/public/common/renderer_preferences/renderer_preferences.h"
+#include "third_party/blink/public/resources/grit/blink_resources.h"
 #include "third_party/blink/public/strings/grit/blink_strings.h"
 #include "third_party/blink/public/web/blink.h"
 #include "third_party/blink/renderer/core/css_value_keywords.h"
@@ -58,6 +59,7 @@
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/style/computed_style.h"
 #include "third_party/blink/renderer/core/style/computed_style_initial_values.h"
+#include "third_party/blink/renderer/platform/data_resource_helper.h"
 #include "third_party/blink/renderer/platform/file_metadata.h"
 #include "third_party/blink/renderer/platform/fonts/font_selector.h"
 #include "third_party/blink/renderer/platform/graphics/touch_action.h"
@@ -65,7 +67,6 @@
 #include "third_party/blink/renderer/platform/text/writing_mode.h"
 #include "third_party/blink/renderer/platform/theme/web_theme_engine_helper.h"
 #include "third_party/blink/renderer/platform/web_test_support.h"
-#include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/color/color_provider.h"
 #include "ui/gfx/color_utils.h"
@@ -189,8 +190,6 @@ Color LayoutTheme::inactive_list_box_selection_background_color_dark_mode_ =
     Color::FromRGBA32(0x4D3B3B3B);
 Color LayoutTheme::inactive_list_box_selection_foreground_color_dark_mode_ =
     Color::FromRGBA32(0xFF323232);
-
-LayoutTheme::LayoutTheme() : has_custom_focus_ring_color_(false) {}
 
 AppearanceValue LayoutTheme::AdjustAppearanceWithAuthorStyle(
     AppearanceValue appearance,
@@ -341,10 +340,13 @@ void LayoutTheme::AdjustStyle(const Element& element,
 }
 
 String LayoutTheme::ExtraDefaultStyleSheet() {
-  // If you want to add something depending on a runtime flag here,
-  // please consider using `@supports blink-feature(flag-name)` in a
-  // stylesheet resource file.
-  return "@namespace 'http://www.w3.org/1999/xhtml';\n";
+  // If you want to add something depending on a runtime flag here, please
+  // consider using `@supports blink-feature(flag-name)` in a stylesheet
+  // resource file.
+  return RuntimeEnabledFeatures::InputMultipleFieldsUIEnabled()
+             ? UncompressResourceAsASCIIString(
+                   IDR_UASTYLE_THEME_INPUT_MULTIPLE_FIELDS_CSS)
+             : String();
 }
 
 String LayoutTheme::ExtraFullscreenStyleSheet() {
@@ -865,19 +867,17 @@ Color LayoutTheme::PlatformTextSearchColor(
 }
 
 void LayoutTheme::SetCustomFocusRingColor(const Color& c) {
-  const bool changed =
-      !has_custom_focus_ring_color_ || custom_focus_ring_color_ != c;
-  custom_focus_ring_color_ = c;
-  has_custom_focus_ring_color_ = true;
-  if (changed) {
-    Page::PlatformColorsChanged();
+  if (c == custom_focus_ring_color_) {
+    return;
   }
+  custom_focus_ring_color_ = c;
+  Page::PlatformColorsChanged();
 }
 
 Color LayoutTheme::FocusRingColor(
     mojom::blink::ColorScheme color_scheme) const {
-  return has_custom_focus_ring_color_ ? custom_focus_ring_color_
-                                      : GetTheme().PlatformFocusRingColor();
+  constexpr Color default_focus_ring_color = Color::FromRGBA32(0xFFE59700);
+  return custom_focus_ring_color_.value_or(default_focus_ring_color);
 }
 
 String LayoutTheme::DisplayNameForFile(const File& file) const {
@@ -908,14 +908,6 @@ void LayoutTheme::AdjustControlPartStyle(ComputedStyleBuilder& builder) {
     default:
       break;
   }
-}
-
-bool LayoutTheme::HasCustomFocusRingColor() const {
-  return has_custom_focus_ring_color_;
-}
-
-Color LayoutTheme::GetCustomFocusRingColor() const {
-  return custom_focus_ring_color_;
 }
 
 bool LayoutTheme::IsAccentColorCustomized(

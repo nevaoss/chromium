@@ -1111,7 +1111,8 @@ void WebTestControlHost::WebContentsDestroyed() {
 
 void WebTestControlHost::DidUpdateFaviconURL(
     RenderFrameHost* render_frame_host,
-    const std::vector<blink::mojom::FaviconURLPtr>& candidates) {
+    const std::vector<blink::mojom::FaviconURLPtr>& candidates,
+    blink::mojom::FaviconUpdateReason reason) {
   if (web_test_runtime_flags_.dump_icon_changes()) {
     std::string log = IsMainWindow(web_contents()) ? "main frame " : "frame ";
     printer_->AddMessageRaw(log + "- didChangeIcons\n");

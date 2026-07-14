@@ -187,7 +187,7 @@ void SingleThreadProxy::SetLayerTreeFrameSink(
       DebugScopedSetImplThread impl(task_runner_provider_);
       scheduler_on_impl_thread_->DidCreateAndInitializeLayerTreeFrameSink();
     } else if (!inside_synchronous_composite_) {
-      SetNeedsCommit();
+      SetNeedsCommit(false);
     }
     layer_tree_frame_sink_creation_requested_ = false;
     layer_tree_frame_sink_lost_ = false;
@@ -305,14 +305,14 @@ void SingleThreadProxy::CommitComplete() {
   next_frame_is_newly_committed_frame_ = true;
 }
 
-void SingleThreadProxy::SetNeedsCommit() {
+void SingleThreadProxy::SetNeedsCommit(bool urgent) {
   DCHECK(task_runner_provider_->IsMainThread());
   if (commit_requested_)
     return;
   commit_requested_ = true;
   DebugScopedSetImplThread impl(task_runner_provider_);
   if (scheduler_on_impl_thread_)
-    scheduler_on_impl_thread_->SetNeedsBeginMainFrame(/* urgent = */ false);
+    scheduler_on_impl_thread_->SetNeedsBeginMainFrame(urgent);
 }
 
 void SingleThreadProxy::SetNeedsRedraw(const gfx::Rect& damage_rect) {
@@ -330,6 +330,31 @@ void SingleThreadProxy::SetTargetLocalSurfaceId(
     return;
   DebugScopedSetImplThread impl(task_runner_provider_);
   host_impl_->SetTargetLocalSurfaceId(target_local_surface_id);
+}
+
+void SingleThreadProxy::SetUnboundedFrameSink(
+    std::unique_ptr<LayerTreeFrameSink> unbounded_frame_sink,
+    const viz::LocalSurfaceId& local_surface_id) {
+  DCHECK(task_runner_provider_->IsMainThread());
+  DCHECK(layer_tree_host_->GetSettings().enable_unbounded_element);
+  DebugScopedSetImplThread impl(task_runner_provider_);
+  host_impl_->SetUnboundedFrameSink(std::move(unbounded_frame_sink),
+                                    local_surface_id);
+}
+
+void SingleThreadProxy::DismissUnboundedFrameSink() {
+  DCHECK(task_runner_provider_->IsMainThread());
+  DCHECK(layer_tree_host_->GetSettings().enable_unbounded_element);
+  DebugScopedSetImplThread impl(task_runner_provider_);
+  host_impl_->DismissUnboundedFrameSink();
+}
+
+void SingleThreadProxy::SetUnboundedLocalSurfaceId(
+    const viz::LocalSurfaceId& local_surface_id) {
+  DCHECK(task_runner_provider_->IsMainThread());
+  DCHECK(layer_tree_host_->GetSettings().enable_unbounded_element);
+  DebugScopedSetImplThread impl(task_runner_provider_);
+  host_impl_->SetUnboundedLocalSurfaceId(local_surface_id);
 }
 
 void SingleThreadProxy::DetachInputDelegateAndRenderFrameObserver() {

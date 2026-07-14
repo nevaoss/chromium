@@ -5,6 +5,7 @@
 #ifndef CHROME_BROWSER_DICTATION_SESSION_CONTROLLER_H_
 #define CHROME_BROWSER_DICTATION_SESSION_CONTROLLER_H_
 
+#include <iosfwd>
 #include <memory>
 
 #include "base/callback_list.h"
@@ -56,7 +57,7 @@ class SessionController : public SessionUiDelegate {
   // Starts a new dictation stream by creating and attaching a new stream
   // provider. An existing stream must have been detached before calling this
   // method.
-  void StartDictationStream(Target& target);
+  void StartDictationStream(std::unique_ptr<Target> target);
 
   // Ends the current dictation stream and detaches the stream provider.
   void EndDictationStream();
@@ -83,6 +84,9 @@ class SessionController : public SessionUiDelegate {
 
   base::WeakPtrFactory<SessionController> weak_ptr_factory_{this};
 };
+
+const char* ToString(SessionController::State state);
+std::ostream& operator<<(std::ostream& out, SessionController::State state);
 
 }  // namespace dictation
 

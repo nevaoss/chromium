@@ -6,6 +6,7 @@ source_set("dictation") {
   public = [
     "dictation_keyed_service.h",
     "dictation_keyed_service_factory.h",
+    "dictation_multiplexer.h",
     "features.h",
     "session_controller.h",
     "session_controller_delegate.h",
@@ -24,7 +25,10 @@ source_set("impl") {
   sources = [
     "dictation_keyed_service.cc",
     "dictation_keyed_service_factory.cc",
+    "dictation_multiplexer.cc",
     "features.cc",
+    "listener_stream_provider.cc",
+    "listener_stream_provider.h",
     "session_controller.cc",
     "session_ui_impl.cc",
     "session_ui_impl.h",
@@ -37,7 +41,9 @@ source_set("impl") {
     "//chrome/browser/ui:browser_element_identifiers",
     "//chrome/browser/ui/browser_window",
     "//chrome/browser/ui/views/interaction",
+    "//chrome/common/extensions/api",
     "//content/public/browser",
+    "//extensions/browser",
     "//ui/views",
   ]
 }

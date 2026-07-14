@@ -2960,12 +2960,17 @@ TEST_F(PopupViewViewsTest, AtMemory_KeyboardNavigation) {
       .Times(testing::AnyNumber());
 
   // RETURN triggers filter update when no suggestion is selected.
+  EXPECT_CALL(controller(),
+              SetFilter(Eq(AutofillPopupController::SuggestionFilter(
+                            AutofillPopupController::StringFilter(u"query"))),
+                        AutofillPopupController::FilterSource::kInputChanged));
   EXPECT_CALL(
       controller(),
       SetFilter(Eq(AutofillPopupController::SuggestionFilter(
                     AutofillPopupController::StringFilter(u"query"))),
                 AutofillPopupController::FilterSource::kSearchSubmitted));
   test_api(view()).SetSearchQuery(u"query");
+  task_environment()->RunUntilIdle();
   event.windows_key_code = ui::VKEY_RETURN;
   EXPECT_TRUE(test_api(view()).HandleKeyPressEvent(event));
 

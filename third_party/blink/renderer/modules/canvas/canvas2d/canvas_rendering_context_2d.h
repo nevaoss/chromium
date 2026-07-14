@@ -180,9 +180,12 @@ class MODULES_EXPORT CanvasRenderingContext2D final
 
   // CanvasRenderingContext implementation
   bool IsComposited() const override;
+  bool Is2DCanvasAccelerated() const override;
   scoped_refptr<CanvasResource> PaintRenderingResultsToResource(
       SourceDrawingBuffer source_buffer,
       FlushReason reason) override;
+  scoped_refptr<StaticBitmapImage> PaintRenderingResultsToSnapshot(
+      SourceDrawingBuffer source_buffer) override;
   const std::optional<cc::PaintRecord>& GetLastRecording() override;
 
   int Width() const final;
@@ -240,11 +243,10 @@ class MODULES_EXPORT CanvasRenderingContext2D final
   // callsites and make this method private.
   CanvasHibernationHandler* GetHibernationHandler() const;
 
-  CanvasResourceProvider* GetResourceProviderForTesting() const {
-    return GetResourceProvider();
-  }
-
   void EnableAccelerationIfPossible() override;
+  base::ByteSize AllocatedBufferSize() const override;
+
+  bool IsResourceProviderValid() const;
 
  protected:
   HTMLCanvasElement* HostAsHTMLCanvasElement() const final;
@@ -269,8 +271,6 @@ class MODULES_EXPORT CanvasRenderingContext2D final
 
   void ResetInternal() override;
 
-  CanvasResourceProvider* GetResourceProvider() const override;
-  CanvasResourceProvider* resource_provider() const;
   void Dispose() override;
 
   void CreateCanvasResourceProvider();

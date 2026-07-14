@@ -4,6 +4,7 @@
 
 package org.chromium.chrome.browser.ui.autofill;
 
+import static org.chromium.chrome.browser.ui.autofill.AtMemoryBottomSheetProperties.IS_LOADING;
 import static org.chromium.chrome.browser.ui.autofill.AtMemoryBottomSheetProperties.ON_QUERY_SUBMITTED_CALLBACK;
 import static org.chromium.chrome.browser.ui.autofill.AtMemoryBottomSheetProperties.VISIBLE;
 
@@ -22,6 +23,8 @@ class AtMemoryBottomSheetViewBinder {
             }
         } else if (propertyKey == ON_QUERY_SUBMITTED_CALLBACK) {
             view.setOnQuerySubmittedCallback(model.get(ON_QUERY_SUBMITTED_CALLBACK));
+        } else if (propertyKey == IS_LOADING) {
+            view.setIsLoading(model.get(IS_LOADING));
         }
     }
 }

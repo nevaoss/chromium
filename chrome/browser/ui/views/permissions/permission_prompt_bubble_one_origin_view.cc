@@ -36,6 +36,7 @@
 #include "components/permissions/request_type.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/url_formatter/elide_url.h"
+#include "content/public/browser/web_contents.h"
 #include "extensions/common/constants.h"
 #include "third_party/blink/public/common/features.h"
 #include "ui/base/l10n/l10n_util.h"
@@ -137,12 +138,10 @@ std::optional<std::u16string> GetExtraText(
 }  // namespace
 
 PermissionPromptBubbleOneOriginView::PermissionPromptBubbleOneOriginView(
-    Browser* browser,
+    content::WebContents* web_contents,
     base::WeakPtr<permissions::PermissionPrompt::Delegate> delegate,
     PermissionPromptStyle prompt_style)
-    : PermissionPromptBubbleBaseView(browser,
-                                     delegate,
-                                     prompt_style) {
+    : PermissionPromptBubbleBaseView(web_contents, delegate, prompt_style) {
   std::vector<std::string> requested_audio_capture_device_ids;
   std::vector<std::string> requested_video_capture_device_ids;
   std::vector<base::WeakPtr<permissions::PermissionRequest>> visible_requests =
@@ -258,7 +257,7 @@ void PermissionPromptBubbleOneOriginView::MaybeAddMediaPreview(
 #if !BUILDFLAG(IS_CHROMEOS)
   // Unit tests call this without initializing `browser_`, but this should not
   // happen in production code.
-  if (!browser()) {
+  if (!GetBrowser()) {
     return;
   }
 
@@ -283,9 +282,10 @@ void PermissionPromptBubbleOneOriginView::MaybeAddMediaPreview(
     OnAudioDevicesChanged(cached_device_info->GetAudioDeviceInfos());
   }
 
-  media_previews_.emplace(browser(), this, index,
-                          requested_audio_capture_device_ids,
-                          requested_video_capture_device_ids);
+  media_previews_.emplace(
+      Profile::FromBrowserContext(web_contents()->GetBrowserContext()), this,
+      index, requested_audio_capture_device_ids,
+      requested_video_capture_device_ids);
 #endif
 }
 

@@ -301,6 +301,7 @@
     "Win ASan Release": "ci/Win ASan Release/gn-args.json",
     "Win ASan Release Media": "ci/Win ASan Release Media/gn-args.json",
     "android-arm64-libfuzzer-hwasan": "ci/android-arm64-libfuzzer-hwasan/gn-args.json",
+    "android-desktop-x64-asan-rel": "ci/android-desktop-x64-asan-rel/gn-args.json",
     "android-desktop-x64-libfuzzer-asan": "ci/android-desktop-x64-libfuzzer-asan/gn-args.json",
     "chromeos-x64-libfuzzer-asan-rel-tests": "ci/chromeos-x64-libfuzzer-asan-rel-tests/gn-args.json",
     "linux-x64-centipede-asan-rel-tests": "ci/linux-x64-centipede-asan-rel-tests/gn-args.json",
@@ -671,7 +672,6 @@
     "chromeos-amd64-generic-dbg": "try/chromeos-amd64-generic-dbg/gn-args.json",
     "chromeos-amd64-generic-rel": "try/chromeos-amd64-generic-rel/gn-args.json",
     "chromeos-amd64-generic-rel-gtest": "try/chromeos-amd64-generic-rel-gtest/gn-args.json",
-    "chromeos-amd64-generic-rel-gtest-and-tast": "try/chromeos-amd64-generic-rel-gtest-and-tast/gn-args.json",
     "chromeos-arm-generic-dbg": "try/chromeos-arm-generic-dbg/gn-args.json",
     "chromeos-arm-generic-rel": "try/chromeos-arm-generic-rel/gn-args.json",
     "chromeos-arm64-generic-rel": "try/chromeos-arm64-generic-rel/gn-args.json",
@@ -760,6 +760,7 @@
   },
   "tryserver.chromium.fuzz": {
     "android-arm64-libfuzzer-hwasan": "try/android-arm64-libfuzzer-hwasan/gn-args.json",
+    "android-desktop-x64-asan-rel": "try/android-desktop-x64-asan-rel/gn-args.json",
     "android-desktop-x64-libfuzzer-asan": "try/android-desktop-x64-libfuzzer-asan/gn-args.json",
     "chromeos-x64-libfuzzer-asan-rel-tests": "try/chromeos-x64-libfuzzer-asan-rel-tests/gn-args.json",
     "linux-asan-dbg": "try/linux-asan-dbg/gn-args.json",

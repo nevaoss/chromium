@@ -844,6 +844,7 @@ void RenderFrameHostManager::InitRoot(
               // hashes of hosts for insecure request upgrades
               std::vector<uint32_t>(),
               false /* has_potentially_trustworthy_unique_origin */,
+              false /* is_secure_context_root */,
               false /* has_active_user_gesture */,
               false /* has_received_user_gesture_before_nav */,
               false /* is_ad_frame */),
@@ -899,6 +900,7 @@ void RenderFrameHostManager::InitChild(
               // hashes of hosts for insecure request upgrades
               std::vector<uint32_t>(),
               false /* has_potentially_trustworthy_unique_origin */,
+              false /* is_secure_context_root */,
               false /* has_active_user_gesture */,
               false /* has_received_user_gesture_before_nav */,
               false /* is_ad_frame */),
@@ -3299,7 +3301,9 @@ RenderFrameHostManager::GetSiteInstanceForNavigation(
   // If |new_instance| is a new SiteInstance for a subframe or a fenced frame
   // that require a dedicated process, set its process reuse policy so that such
   // subframes and fenced frames are consolidated into existing processes for
-  // that site. Avoid aggressive process reuse for PDF content frames.
+  // that site. Avoid aggressive process reuse for content with embedder-imposed
+  // isolation (PDF viewers and unique-instance content such as MimeHandler
+  // extensions).
   // TODO(crbug.com/40230422): The model described in fenced frames process
   // isolation explainer is still in the design stage. Determining correctness
   // here will also involve resolving on the FF process model plan (see
@@ -3307,7 +3311,7 @@ RenderFrameHostManager::GetSiteInstanceForNavigation(
   // frame/blob/master/explainer/process_isolation.md).
   if (!frame_tree_node_->IsOutermostMainFrame() &&
       !new_instance->HasProcess() && new_instance->RequiresDedicatedProcess() &&
-      !new_instance->IsPdf()) {
+      new_instance->GetSiteInfo().embedder_isolation_info().is_none()) {
     // Also give the embedder and user-specifiable feature a chance to override
     // this decision. Certain frames have different enough workloads so that
     // it's better to avoid placing a subframe into an existing process for

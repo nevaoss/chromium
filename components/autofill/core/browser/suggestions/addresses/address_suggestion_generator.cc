@@ -643,9 +643,7 @@ std::vector<Suggestion> CreateSuggestionsFromProfiles(
     }
 
     if (profile.record_type() ==
-            AutofillProfile::RecordType::kAccountNameEmail &&
-        base::FeatureList::IsEnabled(
-            features::kAutofillEnableSupportForNameAndEmail)) {
+        AutofillProfile::RecordType::kAccountNameEmail) {
       suggestion.iph_metadata = Suggestion::IPHMetadata(
           &feature_engagement::kIPHAutofillAccountNameEmailSuggestionFeature);
     }
@@ -999,6 +997,13 @@ void AddressSuggestionGenerator::GenerateSuggestions(
     const AutofillField* trigger_autofill_field,
     AutofillClient& client,
     base::FunctionRef<void(ReturnedSuggestions)> callback) {
+  if (client.IsAutofillTypeBlockedByPolicy(
+          client.GetLastCommittedPrimaryMainFrameURL(),
+          AutofillClient::AutofillPolicyDataCategory::kContactInfo)) {
+    callback({SuggestionDataSource::kAddress, {}});
+    return;
+  }
+
   FieldTypeSet field_types = [&]() -> FieldTypeSet {
     if (!form_structure || !trigger_autofill_field) {
       return {};

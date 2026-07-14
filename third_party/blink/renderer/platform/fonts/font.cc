@@ -262,6 +262,9 @@ LayoutUnit Font::EmphasisMarkAscent(const AtomicString& mark) const {
   if (!mark_font_data)
     return LayoutUnit();
 
+  if (RuntimeEnabledFeatures::TextEmphasisAsRubyEnabled()) {
+    return mark_font_data->NormalizedTypoAscent();
+  }
   return mark_font_data->GetFontMetrics().FixedAscent();
 }
 
@@ -271,6 +274,9 @@ LayoutUnit Font::EmphasisMarkDescent(const AtomicString& mark) const {
   if (!mark_font_data)
     return LayoutUnit();
 
+  if (RuntimeEnabledFeatures::TextEmphasisAsRubyEnabled()) {
+    return mark_font_data->NormalizedTypoDescent();
+  }
   return mark_font_data->GetFontMetrics().FixedDescent();
 }
 
@@ -280,6 +286,9 @@ LayoutUnit Font::EmphasisMarkHeight(const AtomicString& mark) const {
   if (!mark_font_data)
     return LayoutUnit();
 
+  if (RuntimeEnabledFeatures::TextEmphasisAsRubyEnabled()) {
+    return mark_font_data->NormalizedTypoAscentAndDescent().LineHeight();
+  }
   return LayoutUnit::FromFloatRound(
       mark_font_data->GetFontMetrics().FloatHeight());
 }

@@ -1,8 +1,4 @@
 {
-  "$build/chromium_orchestrator": {
-    "compilator": "chromeos-amd64-generic-rel-gtest-compilator",
-    "compilator_watcher_git_revision": "27c191f304c8d7329a393d8a69020fc14032c3c3"
-  },
   "$build/chromium_tests_builder_config": {
     "builder_config": {
       "additional_exclusions": [
@@ -114,7 +110,7 @@
     "output_local_strategy": "minimum",
     "profile_mode": "cloud",
     "project": "rbe-chromium-untrusted",
-    "remote_jobs": -1
+    "remote_jobs": 150
   },
   "$recipe_engine/resultdb/test_presentation": {
     "column_keys": [],
@@ -124,5 +120,5 @@
     ]
   },
   "builder_group": "tryserver.chromium.chromiumos",
-  "recipe": "chromium/orchestrator"
+  "recipe": "chromium_trybot"
 }

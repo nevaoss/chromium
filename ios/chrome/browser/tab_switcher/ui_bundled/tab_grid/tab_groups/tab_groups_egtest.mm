@@ -1330,7 +1330,8 @@ void TapTabGroupTitle() {
 }
 
 // Tests drag and drop the last tab from a group to another window.
-- (void)testDragAndDropLastTabToOtherWindow {
+// TODO(crbug.com/524679738): Re-enable this test.
+- (void)DISABLED_testDragAndDropLastTabToOtherWindow {
   if (![ChromeEarlGrey areMultipleWindowsSupported]) {
     EARL_GREY_TEST_SKIPPED(@"Multiple windows can't be opened.");
   }

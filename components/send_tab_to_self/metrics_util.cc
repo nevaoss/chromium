@@ -8,6 +8,7 @@
 
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/strcat.h"
+#include "components/send_tab_to_self/send_tab_to_self_model.h"
 
 namespace send_tab_to_self {
 
@@ -27,6 +28,99 @@ enum class NotificationStatus {
   kThrottled = 6,
   kMaxValue = kThrottled,
 };
+
+SendTabToSelfFormFactorCombination GetFormFactorCombination(
+    syncer::DeviceInfo::FormFactor sender_form_factor,
+    syncer::DeviceInfo::FormFactor target_form_factor) {
+  switch (sender_form_factor) {
+    case syncer::DeviceInfo::FormFactor::kDesktop:
+      switch (target_form_factor) {
+        case syncer::DeviceInfo::FormFactor::kDesktop:
+          return SendTabToSelfFormFactorCombination::kDesktopToDesktop;
+        case syncer::DeviceInfo::FormFactor::kPhone:
+          return SendTabToSelfFormFactorCombination::kDesktopToPhone;
+        case syncer::DeviceInfo::FormFactor::kTablet:
+          return SendTabToSelfFormFactorCombination::kDesktopToTablet;
+        case syncer::DeviceInfo::FormFactor::kUnknown:
+        case syncer::DeviceInfo::FormFactor::kAutomotive:
+        case syncer::DeviceInfo::FormFactor::kWearable:
+        case syncer::DeviceInfo::FormFactor::kTv:
+          return SendTabToSelfFormFactorCombination::kDesktopToUnknown;
+      }
+    case syncer::DeviceInfo::FormFactor::kPhone:
+      switch (target_form_factor) {
+        case syncer::DeviceInfo::FormFactor::kDesktop:
+          return SendTabToSelfFormFactorCombination::kPhoneToDesktop;
+        case syncer::DeviceInfo::FormFactor::kPhone:
+          return SendTabToSelfFormFactorCombination::kPhoneToPhone;
+        case syncer::DeviceInfo::FormFactor::kTablet:
+          return SendTabToSelfFormFactorCombination::kPhoneToTablet;
+        case syncer::DeviceInfo::FormFactor::kUnknown:
+        case syncer::DeviceInfo::FormFactor::kAutomotive:
+        case syncer::DeviceInfo::FormFactor::kWearable:
+        case syncer::DeviceInfo::FormFactor::kTv:
+          return SendTabToSelfFormFactorCombination::kPhoneToUnknown;
+      }
+    case syncer::DeviceInfo::FormFactor::kTablet:
+      switch (target_form_factor) {
+        case syncer::DeviceInfo::FormFactor::kDesktop:
+          return SendTabToSelfFormFactorCombination::kTabletToDesktop;
+        case syncer::DeviceInfo::FormFactor::kPhone:
+          return SendTabToSelfFormFactorCombination::kTabletToPhone;
+        case syncer::DeviceInfo::FormFactor::kTablet:
+          return SendTabToSelfFormFactorCombination::kTabletToTablet;
+        case syncer::DeviceInfo::FormFactor::kUnknown:
+        case syncer::DeviceInfo::FormFactor::kAutomotive:
+        case syncer::DeviceInfo::FormFactor::kWearable:
+        case syncer::DeviceInfo::FormFactor::kTv:
+          return SendTabToSelfFormFactorCombination::kTabletToUnknown;
+      }
+    case syncer::DeviceInfo::FormFactor::kUnknown:
+    case syncer::DeviceInfo::FormFactor::kAutomotive:
+    case syncer::DeviceInfo::FormFactor::kWearable:
+    case syncer::DeviceInfo::FormFactor::kTv:
+      switch (target_form_factor) {
+        case syncer::DeviceInfo::FormFactor::kDesktop:
+          return SendTabToSelfFormFactorCombination::kUnknownToDesktop;
+        case syncer::DeviceInfo::FormFactor::kPhone:
+          return SendTabToSelfFormFactorCombination::kUnknownToPhone;
+        case syncer::DeviceInfo::FormFactor::kTablet:
+          return SendTabToSelfFormFactorCombination::kUnknownToTablet;
+        case syncer::DeviceInfo::FormFactor::kUnknown:
+        case syncer::DeviceInfo::FormFactor::kAutomotive:
+        case syncer::DeviceInfo::FormFactor::kWearable:
+        case syncer::DeviceInfo::FormFactor::kTv:
+          return SendTabToSelfFormFactorCombination::kUnknownToUnknown;
+      }
+  }
+}
+
+SendTabToSelfDeviceCount GetSendTabToSelfDeviceCount(
+    EntryPointDisplayReason reason,
+    size_t device_count) {
+  switch (reason) {
+    case EntryPointDisplayReason::kOfferSignIn:
+      return SendTabToSelfDeviceCount::kNoTargetDevicesBecauseSignedOut;
+    case EntryPointDisplayReason::kInformNoTargetDevice:
+      return SendTabToSelfDeviceCount::kZeroDevices;
+    case EntryPointDisplayReason::kOfferFeature:
+      if (device_count == 0) {
+        return SendTabToSelfDeviceCount::kZeroDevices;
+      } else if (device_count == 1) {
+        return SendTabToSelfDeviceCount::kOneDevice;
+      } else if (device_count == 2) {
+        return SendTabToSelfDeviceCount::kTwoDevices;
+      } else if (device_count == 3) {
+        return SendTabToSelfDeviceCount::kThreeDevices;
+      } else if (device_count == 4) {
+        return SendTabToSelfDeviceCount::kFourDevices;
+      } else if (device_count == 5) {
+        return SendTabToSelfDeviceCount::kFiveDevices;
+      } else {
+        return SendTabToSelfDeviceCount::kMoreThanFiveDevices;
+      }
+  }
+}
 
 }  // namespace
 
@@ -115,6 +209,35 @@ void RecordTimeSentToReceived(base::TimeDelta delay) {
 void RecordTimeSentToOpened(base::TimeDelta delay) {
   base::UmaHistogramCustomTimes("Sharing.SendTabToSelf.TimeSentToOpened", delay,
                                 base::Milliseconds(100), base::Days(10), 100);
+}
+
+void RecordDeviceFormFactorCombination(
+    syncer::DeviceInfo::FormFactor sender_form_factor,
+    syncer::DeviceInfo::FormFactor target_form_factor) {
+  base::UmaHistogramEnumeration(
+      "Sharing.SendTabToSelf.DeviceFormFactorCombination",
+      GetFormFactorCombination(sender_form_factor, target_form_factor));
+}
+
+void RecordTargetDeviceCount(EntryPointDisplayReason display_reason,
+                             size_t device_count) {
+  base::UmaHistogramEnumeration(
+      "Sharing.SendTabToSelf.TargetDeviceCount",
+      GetSendTabToSelfDeviceCount(display_reason, device_count));
+}
+
+void RecordEntryPointInvoked(ShareEntryPoint entry_point) {
+  base::UmaHistogramEnumeration("Sharing.SendTabToSelf.InvokedEntryPoint",
+                                entry_point);
+}
+
+void RecordEntryPointSent(ShareEntryPoint entry_point) {
+  base::UmaHistogramEnumeration("Sharing.SendTabToSelf.SentEntryPoint",
+                                entry_point);
+}
+
+void RecordSendResult(SendTabToSelfResult result) {
+  base::UmaHistogramEnumeration("Sharing.SendTabToSelf.SendResult", result);
 }
 
 }  // namespace send_tab_to_self

@@ -111,6 +111,7 @@
 #include "components/lens/lens_overlay_side_panel_menu_option.h"
 #include "components/lens/lens_overlay_side_panel_result.h"
 #include "components/lens/proto/server/lens_overlay_response.pb.h"
+#include "components/omnibox/browser/aim_eligibility_service_features.h"
 #include "components/omnibox/browser/mock_aim_eligibility_service.h"
 #include "components/omnibox/common/omnibox_features.h"
 #include "components/optimization_guide/content/browser/page_context_eligibility.h"
@@ -416,7 +417,6 @@ class LensOverlayPageFake : public lens::mojom::LensPage {
                           bool is_injected_image) override {
     last_received_text_ = std::move(text);
   }
-
 
   void ShouldShowContextualSearchBox(bool should_show) override {
     last_received_should_show_contextual_searchbox_ = should_show;
@@ -4656,11 +4656,8 @@ class LensOverlayControllerEntrypointsBrowserTest
         {lens::features::kLensOverlayOmniboxEntryPoint, {}},
         {lens::features::kLensOverlaySurvey, {}},
         {lens::features::kLensOverlaySidePanelOpenInNewTab, {}}};
-    // TODO(crbug.com/441102004): Update OverlayHidesEntrypoints to support
-    //   kAiModeOmniboxEntryPoint.
-    feature_list_.InitWithFeaturesAndParameters(
-        enabled_features,
-        /*disabled_features=*/{omnibox::kAiModeOmniboxEntryPoint});
+    feature_list_.InitWithFeaturesAndParameters(enabled_features,
+                                                /*disabled_features=*/{});
   }
 
   void VerifyEntrypoints(bool expected_visible) {
@@ -4704,6 +4701,12 @@ class LensOverlayControllerEntrypointsBrowserTest
 
 IN_PROC_BROWSER_TEST_F(LensOverlayControllerEntrypointsBrowserTest,
                        OverlayHidesEntrypoints) {
+  // Lens is only shown if AIM is not.
+  auto* aim_eligibility_service = static_cast<MockAimEligibilityService*>(
+      AimEligibilityServiceFactory::GetForProfile(browser()->profile()));
+  ON_CALL(*aim_eligibility_service, IsAimEligible())
+      .WillByDefault(testing::Return(false));
+
   WaitForPaint();
 
   // State should start in off.
@@ -6352,8 +6355,6 @@ class LensOverlayControllerBrowserWithPixelsTest
     return false;
   }
 };
-
-
 
 IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserWithPixelsTest,
                        ViewportImageBoundingBoxes) {

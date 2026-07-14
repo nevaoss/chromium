@@ -1196,7 +1196,7 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testTabSwitchDoesNotLogActivationMetric) {
   ExecuteJsTest({.params = base::Value("second")});
 
   ASSERT_TRUE(base::test::RunUntil([&]() {
-    return GetInstanceCoordinatorImpl().GetInstancesForTesting().size() == 1u;
+    return GetInstanceCoordinatorImpl().GetInstances().size() == 1u;
   }));
   ASSERT_EQ("A", GetGlicInstanceImpl()->conversation_id());
 
@@ -2711,10 +2711,10 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testRemoveBlankInstanceOnClose) {
   RunTestSequence(
       InstrumentTab(kFirstTab),
       OpenGlic(GlicInstrumentMode::kNone, /*conversation_id=*/std::nullopt));
-  ASSERT_EQ(1u, GetInstanceCoordinatorImpl().GetInstancesForTesting().size());
+  ASSERT_EQ(1u, GetInstanceCoordinatorImpl().GetInstances().size());
   ExecuteJsTest();
   ASSERT_TRUE(base::test::RunUntil([&]() {
-    return GetInstanceCoordinatorImpl().GetInstancesForTesting().size() == 0u;
+    return GetInstanceCoordinatorImpl().GetInstances().size() == 0u;
   }));
 }
 
@@ -2734,7 +2734,7 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab,
   ExecuteJsTest({.params = base::Value("second")});
 
   ASSERT_TRUE(base::test::RunUntil([&]() {
-    return GetInstanceCoordinatorImpl().GetInstancesForTesting().size() == 1u;
+    return GetInstanceCoordinatorImpl().GetInstances().size() == 1u;
   }));
   ASSERT_EQ("id_hello", GetGlicInstanceImpl()->conversation_id());
 

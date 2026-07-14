@@ -99,6 +99,22 @@ BASE_FEATURE(kPrefetchOffTheMainThreadForceForTesting,
 BASE_FEATURE(kPrefetchCancelUnrelatedPrefetch,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+constexpr base::FeatureParam<PrefetchCancelUnrelatedPrefetchCancelPolicy>::
+    Option kPrefetchCancelUnrelatedPrefetchCancelPolicyOptions[] = {
+        {PrefetchCancelUnrelatedPrefetchCancelPolicy::kNotServable,
+         "NotServable"},
+        {PrefetchCancelUnrelatedPrefetchCancelPolicy::
+             kNotServableSameInitiatorDocument,
+         "NotServableSameInitiatorDocument"},
+};
+
+const base::FeatureParam<PrefetchCancelUnrelatedPrefetchCancelPolicy>
+    kPrefetchCancelUnrelatedPrefetchCancelPolicy{
+        &kPrefetchCancelUnrelatedPrefetch,
+        "prefetch_cancel_unrelated_prefetch_cancel_policy",
+        PrefetchCancelUnrelatedPrefetchCancelPolicy::kNotServable,
+        &kPrefetchCancelUnrelatedPrefetchCancelPolicyOptions};
+
 BASE_FEATURE(kPrefetchAsyncPrefetchHandleCallback,
              base::FEATURE_ENABLED_BY_DEFAULT);
 

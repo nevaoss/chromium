@@ -349,6 +349,9 @@ public class SearchActivityTest {
 
     @Test
     @MediumTest
+    @DisableIf.Build(
+            sdk_equals = Build.VERSION_CODES.S_V2,
+            message = "Fails on Android 12L (Sv2) dbg bot (crbug.com/525742395)")
     public void testSetUrl_urlBarTextEmpty() throws Exception {
         final SearchActivity searchActivity = startSearchActivity();
         mTestDelegate.shouldDelayNativeInitializationCallback.waitForCallback(0);

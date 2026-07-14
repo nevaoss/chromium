@@ -369,6 +369,8 @@ source_set("extensions") {
     "forced_extensions/force_installed_tracker.h",
     "forced_extensions/install_stage_tracker_factory.cc",
     "forced_extensions/install_stage_tracker_factory.h",
+    "glic_util.cc",
+    "glic_util.h",
     "initial_external_extension_loader.cc",
     "initial_external_extension_loader.h",
     "install_tracker_factory.cc",
@@ -553,6 +555,8 @@ source_set("extensions") {
     "//chrome/browser/tab_list",
     "//chrome/browser/ui:accelerator_utils_headers",
     "//chrome/browser/ui:browser_element_identifiers",
+    "//chrome/browser/ui:incognito_allowed_url",
+    "//chrome/browser/ui:recently_audible_helper",
     "//chrome/browser/ui:simple_message_box_headers",
     "//chrome/browser/ui:ui_features",
     "//chrome/browser/ui/autofill",
@@ -977,6 +981,7 @@ source_set("extensions") {
       "//chrome/browser/ui/window_sizer",
       "//chrome/browser/ui/zoom",
       "//chrome/browser/webauthn",
+      "//components/password_manager/core/browser/form_parsing",
       "//components/services/app_service",
 
       # Only for allow_circular_includes_from
@@ -1594,6 +1599,10 @@ source_set("extensions") {
 
   if (enable_devtools_frontend) {
     deps += [ "//chrome/browser/ui/webui/devtools" ]
+  }
+
+  if (!is_android) {
+    deps += [ "//chrome/browser/ui:browser_tab_strip_tracker" ]
   }
 }
 
@@ -2445,6 +2454,7 @@ source_set("browser_tests") {
     "//chrome/app:command_ids",
     "//chrome/browser:chrome_browser_main",
     "//chrome/browser:chrome_content_browser_client",
+    "//chrome/browser:platform_util_internal",
     "//chrome/browser/autocomplete:aim_eligibility_service",
     "//chrome/browser/bookmarks",
     "//chrome/browser/content_settings:content_settings_factory",
@@ -2543,8 +2553,10 @@ source_set("browser_tests") {
       "//components/messages/android:test_support",
     ]
   } else {
-    sources +=
-        [ "api/contextual_tasks_private/contextual_tasks_private_apitest.cc" ]
+    sources += [
+      "api/contextual_tasks_private/contextual_tasks_messaging_browsertest.cc",
+      "api/contextual_tasks_private/contextual_tasks_private_apitest.cc",
+    ]
 
     deps += [
       "//chrome/browser/contextual_tasks:test_support",
@@ -2614,6 +2626,7 @@ source_set("browser_tests") {
       "api/braille_display_private/braille_display_private_apitest.cc",
       "api/command_line_private/command_line_private_apitest.cc",
       "api/declarative/declarative_apitest.cc",
+      "api/dictation_private/dictation_private_apitest.cc",
       "api/extension_action/browser_action_apitest.cc",
       "api/extension_action/browser_action_browsertest.cc",
       "api/extension_action/page_action_apitest.cc",
@@ -2952,6 +2965,7 @@ source_set("browser_tests") {
       "//chrome/browser/controlled_frame:test_support",
       "//chrome/browser/custom_handlers",
       "//chrome/browser/devtools:test_support",
+      "//chrome/browser/dictation:test_support",
       "//chrome/browser/enterprise/connectors/test:test_support",
       "//chrome/browser/extensions:test_support",
       "//chrome/browser/extensions/api/braille_display_private:controller",

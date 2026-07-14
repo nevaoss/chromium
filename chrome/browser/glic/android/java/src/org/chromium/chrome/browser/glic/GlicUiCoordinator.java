@@ -84,7 +84,6 @@ public class GlicUiCoordinator implements Destroyable {
                     new ActorControlStateTracker(profileSupplier, activityTabProvider);
             mActorControlCoordinator =
                     new ActorControlCoordinator(
-                            mActivity,
                             tabBottomSheetManager,
                             mActorControlStateTracker,
                             (tabId) -> {

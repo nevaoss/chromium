@@ -8,7 +8,7 @@ import '/shared/icon_from_table.js';
 
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
 import {MenuSourceType} from '//resources/mojo/ui/base/mojom/menu_source_type.mojom-webui.js';
-import type {IconHandle} from '/shared/toolbar_ui_api_data_model.mojom-webui.js';
+import type {IconHandle} from '/shared/icon_handle.mojom-webui.js';
 
 import {getCss} from './extension.css.js';
 import {getHtml} from './extension.html.js';

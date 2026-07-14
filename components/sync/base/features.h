@@ -238,6 +238,8 @@ BASE_DECLARE_FEATURE(kAlwaysRegisterSessionsInvalidationsAndroid);
 
 // If enabled, the android.os.Build.FINGERPRINT prefix is uploaded in
 // DeviceInfo.
+// TODO(crbug.com/522788942): Consolidate this with
+// kSyncUseServerDeterminedDeviceName.
 BASE_DECLARE_FEATURE(kSyncUploadAndroidBuildFingerprintPrefix);
 #endif  // BUILDFLAG(IS_ANDROID)
 
@@ -250,6 +252,18 @@ BASE_DECLARE_FEATURE(kEstimateNewSignInUsersWithFinchAvailablePopulation);
 // values even if they are stale. This ensures that we log the last known cookie
 // sign-in status for short-lived sessions instead of the default OFF value.
 BASE_DECLARE_FEATURE(kSyncFixWebSigninSessionDurationForShortLivedSessions);
+
+// If enabled, simplifies the device naming architecture by using the
+// most user friendly name that can be computed for a device (the so-called
+// "preferred name" in legacy path) as a single source of truth, bypassing the
+// legacy deduplication and name-based local device filtering. This affects Send
+// Tab to Self and Sharing features.
+BASE_DECLARE_FEATURE(kSyncSimplifyDeviceNaming);
+
+// If enabled, uses the server-determined model name (marketing name) as the
+// preferred name (and fallback name) if available. This provides a more
+// recognizable name for the user.
+BASE_DECLARE_FEATURE(kSyncUseServerDeterminedDeviceName);
 
 }  // namespace syncer
 

@@ -312,8 +312,15 @@ TEST_F(BrowserControlsServiceTest, NavigateHome_ShiftClick) {
 TEST_F(BrowserControlsServiceTest, Navigate) {
   GURL test_url("https://www.example.test/");
   std::ignore = service().Navigate(test_url);
-  EXPECT_EQ(1ul, toy_browser().received_urls().size());
+  ASSERT_EQ(1u, toy_browser().received_urls().size());
   EXPECT_EQ(test_url, toy_browser().received_urls().back());
+}
+
+TEST_F(BrowserControlsServiceTest, NavigateText) {
+  std::string text = "testing search query";
+  std::ignore = service().NavigateText(text);
+  ASSERT_EQ(1u, toy_browser().received_navigate_texts().size());
+  EXPECT_EQ(text, toy_browser().received_navigate_texts().back());
 }
 
 TEST_F(BrowserControlsServiceTest, EventFlagsConversion) {

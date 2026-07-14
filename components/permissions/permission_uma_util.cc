@@ -2013,51 +2013,13 @@ std::string PermissionUmaUtil::GetRequestTypeString(RequestType request_type) {
 // static
 bool PermissionUmaUtil::IsPromptDispositionQuiet(
     PermissionPromptDisposition prompt_disposition) {
-  switch (prompt_disposition) {
-    case PermissionPromptDisposition::LOCATION_BAR_RIGHT_STATIC_ICON:
-    case PermissionPromptDisposition::LOCATION_BAR_RIGHT_ANIMATED_ICON:
-    case PermissionPromptDisposition::LOCATION_BAR_LEFT_QUIET_CHIP:
-    case PermissionPromptDisposition::LOCATION_BAR_LEFT_QUIET_ABUSIVE_CHIP:
-    case PermissionPromptDisposition::MINI_INFOBAR:
-    case PermissionPromptDisposition::MESSAGE_UI:
-    case PermissionPromptDisposition::LOCATION_BAR_LEFT_QUIET_ICON:
-      return true;
-    case PermissionPromptDisposition::ANCHORED_BUBBLE:
-    case PermissionPromptDisposition::ELEMENT_ANCHORED_BUBBLE:
-    case PermissionPromptDisposition::MODAL_DIALOG:
-    case PermissionPromptDisposition::LOCATION_BAR_LEFT_CHIP_AUTO_BUBBLE:
-    case PermissionPromptDisposition::NONE_VISIBLE:
-    case PermissionPromptDisposition::CUSTOM_MODAL_DIALOG:
-    case PermissionPromptDisposition::NOT_APPLICABLE:
-    case PermissionPromptDisposition::MAC_OS_PROMPT:
-    case PermissionPromptDisposition::MESSAGE_UI_LOUD:
-      return false;
-  }
+  return kQuietPromptDispositions.contains(prompt_disposition);
 }
 
 // static
 bool PermissionUmaUtil::IsPromptDispositionLoud(
     PermissionPromptDisposition prompt_disposition) {
-  switch (prompt_disposition) {
-    case PermissionPromptDisposition::ANCHORED_BUBBLE:
-    case PermissionPromptDisposition::ELEMENT_ANCHORED_BUBBLE:
-    case PermissionPromptDisposition::CUSTOM_MODAL_DIALOG:
-    case PermissionPromptDisposition::MODAL_DIALOG:
-    case PermissionPromptDisposition::MAC_OS_PROMPT:
-    case PermissionPromptDisposition::LOCATION_BAR_LEFT_CHIP_AUTO_BUBBLE:
-    case PermissionPromptDisposition::MESSAGE_UI_LOUD:
-      return true;
-    case PermissionPromptDisposition::LOCATION_BAR_RIGHT_STATIC_ICON:
-    case PermissionPromptDisposition::LOCATION_BAR_RIGHT_ANIMATED_ICON:
-    case PermissionPromptDisposition::LOCATION_BAR_LEFT_QUIET_CHIP:
-    case PermissionPromptDisposition::LOCATION_BAR_LEFT_QUIET_ABUSIVE_CHIP:
-    case PermissionPromptDisposition::MINI_INFOBAR:
-    case PermissionPromptDisposition::MESSAGE_UI:
-    case PermissionPromptDisposition::NONE_VISIBLE:
-    case PermissionPromptDisposition::NOT_APPLICABLE:
-    case PermissionPromptDisposition::LOCATION_BAR_LEFT_QUIET_ICON:
-      return false;
-  }
+  return kLoudPromptDispositions.contains(prompt_disposition);
 }
 
 // static

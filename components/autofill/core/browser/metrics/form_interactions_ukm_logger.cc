@@ -355,9 +355,9 @@ void FormInteractionsUkmLogger::LogAutofillFieldInfoAtFormRemove(
   // that a manual override defines the server type.
   bool server_type_is_override = false;
 
-  // The final field type from the list of |autofill::FieldType| that we
-  // choose after rationalization, which is used to determine
-  // the autofill suggestion when the user triggers autofilling.
+  // The final field type from the list of `FieldType` that we choose after
+  // rationalization, which is used to determine the autofill suggestion when
+  // the user triggers autofilling.
   FieldType overall_type = NO_SERVER_DATA;
   // The sections are mapped to consecutive natural numbers starting at 1,
   // numbered according to the ordering of their first fields.

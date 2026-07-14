@@ -110,6 +110,7 @@ class PrefsUtil {
       const api::settings_private::PrefObject& pref_object);
 
   raw_ptr<Profile> profile_;  // weak
+  std::unique_ptr<TypedPrefMap> allowlist_;
 };
 
 }  // namespace extensions

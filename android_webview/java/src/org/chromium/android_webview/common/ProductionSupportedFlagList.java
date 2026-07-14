@@ -233,9 +233,6 @@ public final class ProductionSupportedFlagList {
                 BlinkFeatures.HIT_TEST_BORDER_RADIUS_FOR_STACKING_CONTEXT,
                 "Hit testing should respect border-radius clips when creating a stacking context."),
         Flag.baseFeature(
-                BlinkFeatures.PAINT_OFFSET_TRANSLATION_FOR_COMPOSITED,
-                "Creates a paint offset translation for composited objects."),
-        Flag.baseFeature(
                 AndroidAutofillFeatures.ANDROID_AUTOFILL_LAZY_FRAMEWORK_WRAPPER_NAME,
                 "Enable lazily initializing framework Autofill wrapper."),
         Flag.baseFeature(
@@ -327,6 +324,9 @@ public final class ProductionSupportedFlagList {
                 AutofillFeatures.AUTOFILL_SUPPORT_SPLIT_ZIP_CODE,
                 "When enabled, two-part zip codes are splitted into two fields while filling and"
                         + " imported from two adjacent fields."),
+        Flag.baseFeature(
+                AutofillFeatures.AUTOFILL_SUPPORT_STANDALONE_ZIP_CODE_GLOBALLY,
+                "When enabled, standalone zip code fields are detected globally."),
         Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_SUPPORT_COMBINED_ZIP_AND_CITY_FR,
                 "When enabled, fields that combine postal code and city in France will be parsed"
@@ -914,7 +914,7 @@ public final class ProductionSupportedFlagList {
                 ContentFeatures.IDB_SQLITE_ON_DISK_ROLLOUT,
                 "Enables the SQLite backing store rollout for on-disk IndexedDB."),
         Flag.baseFeature(
-                ContentFeatures.IGNORE_DUPLICATE_NAVS,
+                "WebViewIgnoreDuplicateNavs",
                 "Ignore duplicate navigations, keeping the older navigations instead."),
         Flag.baseFeature("OverrideAPIKey"),
         Flag.baseFeature("CacheStylusSettings", "Cache stylus related settings."),

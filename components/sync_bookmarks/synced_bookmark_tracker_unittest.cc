@@ -62,8 +62,9 @@ enum class ExpectedCorruptionReason {
   TRACKED_MANAGED_NODE = 11,
   MISSING_CLIENT_TAG_HASH = 12,
   MISSING_FAVICON_HASH = 13,
+  INVALID_METADATA = 14,
 
-  kMaxValue = MISSING_FAVICON_HASH
+  kMaxValue = INVALID_METADATA
 };
 
 sync_pb::EntitySpecifics GenerateSpecifics(const std::string& title,
@@ -89,6 +90,8 @@ sync_pb::BookmarkMetadata CreateNodeMetadata(
       syncer::ClientTagHash::FromUnhashed(syncer::BOOKMARKS,
                                           node->uuid().AsLowercaseString())
           .value());
+  bookmark_metadata.mutable_metadata()->set_creation_time(
+      syncer::TimeToProtoTime(base::Time::Now()));
   // Required by the validation logic.
   if (!node->is_folder()) {
     bookmark_metadata.mutable_metadata()->set_bookmark_favicon_hash(123);
@@ -105,6 +108,8 @@ sync_pb::BookmarkMetadata CreateTombstoneMetadata(
   bookmark_metadata.mutable_metadata()->set_sequence_number(1);
   bookmark_metadata.mutable_metadata()->set_client_tag_hash(
       client_tag_hash.value());
+  bookmark_metadata.mutable_metadata()->set_creation_time(
+      syncer::TimeToProtoTime(base::Time::Now()));
   return bookmark_metadata;
 }
 
@@ -1015,6 +1020,34 @@ TEST(SyncedBookmarkTrackerTest, ShouldInvalidateMetadataIfMissingFaviconHash) {
   histogram_tester.ExpectUniqueSample(
       "Sync.BookmarksModelMetadataCorruptionReason",
       /*sample=*/ExpectedCorruptionReason::MISSING_FAVICON_HASH,
+      /*expected_bucket_count=*/1);
+}
+
+TEST(SyncedBookmarkTrackerTest, ShouldInvalidateMetadataIfInvalidMetadata) {
+  TestBookmarkModelView model;
+
+  const bookmarks::BookmarkNode* bookmark_bar_node = model.bookmark_bar_node();
+  const bookmarks::BookmarkNode* node0 =
+      model.AddURL(/*parent=*/bookmark_bar_node, /*index=*/0, u"Title",
+                   GURL("http://www.url.com"));
+
+  sync_pb::BookmarkModelMetadata model_metadata =
+      CreateMetadataForPermanentNodes(&model);
+  sync_pb::BookmarkMetadata* node0_metadata =
+      model_metadata.add_bookmarks_metadata();
+  *node0_metadata = CreateNodeMetadata(node0, /*server_id=*/"id0");
+
+  // Make it invalid by clearing creation_time.
+  node0_metadata->mutable_metadata()->clear_creation_time();
+
+  base::HistogramTester histogram_tester;
+  EXPECT_THAT(SyncedBookmarkTracker::CreateFromBookmarkModelAndMetadata(
+                  &model, model_metadata),
+              IsNull());
+
+  histogram_tester.ExpectUniqueSample(
+      "Sync.BookmarksModelMetadataCorruptionReason",
+      /*sample=*/ExpectedCorruptionReason::INVALID_METADATA,
       /*expected_bucket_count=*/1);
 }
 

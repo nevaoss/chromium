@@ -44,13 +44,13 @@ class BASE_I18N_EXPORT LanguageTag {
   LanguageTag& operator=(const LanguageTag&);
 
   friend bool operator==(const LanguageTag& lhs, const LanguageTag& rhs) {
-    return lhs.ToString() == rhs.ToString();
+    return lhs.tag_string() == rhs.tag_string();
   }
   friend bool operator<(const LanguageTag& lhs, const LanguageTag& rhs) {
-    return lhs.ToString() < rhs.ToString();
+    return lhs.tag_string() < rhs.tag_string();
   }
   friend std::ostream& operator<<(std::ostream& os, const LanguageTag& lt) {
-    return os << lt.ToString();
+    return os << lt.tag_string();
   }
   friend std::ostream& operator<<(std::ostream& os,
                                   const std::optional<LanguageTag>& opt) {
@@ -58,7 +58,7 @@ class BASE_I18N_EXPORT LanguageTag {
   }
 
   // Returns the BCP47 language tag (e.g., "en-US", "zh-CN").
-  std::string_view ToString() const;
+  std::string_view tag_string() const;
 
   // Returns the language tag in legacy ICU format, replacing hyphens with
   // underscores (e.g., "en_US", "zh_CN").
@@ -172,7 +172,7 @@ namespace std {
 template <>
 struct hash<base::LanguageTag> {
   std::size_t operator()(const base::LanguageTag& tag) const {
-    return std::hash<std::string_view>()(tag.ToString());
+    return std::hash<std::string_view>()(tag.tag_string());
   }
 };
 

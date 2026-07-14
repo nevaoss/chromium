@@ -359,7 +359,7 @@ class RemoveLocalStorageTester {
         // it's the same path, and calling `GetStoragePartition()` too early
         // will cause a race against DOMStorageContextWrapper/LocalStorageImpl
         // creation.
-        storage::GetLocalStorageDatabasePath(browser_context_->GetPath()),
+        browser_context_->GetPath(),
         /*memory_dump_id=*/std::nullopt,
         base::BindLambdaForTesting([&](storage::DbStatus status) {
           ASSERT_TRUE(status.ok());

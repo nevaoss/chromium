@@ -17,7 +17,6 @@
 namespace omnibox {
 namespace {
 constexpr bool IS_ANDROID = !!BUILDFLAG(IS_ANDROID);
-constexpr bool IS_DESKTOP_ANDROID = !!BUILDFLAG(IS_DESKTOP_ANDROID);
 constexpr bool IS_IOS = !!BUILDFLAG(IS_IOS);
 
 constexpr base::FeatureState DISABLED = base::FEATURE_DISABLED_BY_DEFAULT;
@@ -39,7 +38,7 @@ BASE_FEATURE(kOmniboxRemoveSuggestionsFromClipboard, enable_if(IS_ANDROID));
 // autocomplete_grouper_sections.h) to limit and group (but not sort) matches.
 BASE_FEATURE(kGroupingFrameworkForNonZPS,
              "OmniboxGroupingFrameworkForNonZPS",
-             enable_if(IS_ANDROID && !IS_DESKTOP_ANDROID));
+             enable_if(IS_ANDROID));
 
 // Feature used to cap max zero suggestions shown according to the param
 // OmniboxMaxZeroSuggestMatches. If omitted,
@@ -184,10 +183,6 @@ BASE_FEATURE(kOmniboxMultimodalInput, DISABLED);
 
 // An additional gate to the behavior of OmniboxMultimodalInput on desktop.
 BASE_FEATURE(kAndroidDesktopAimGate, DISABLED);
-
-// Whether the AI Mode entrypoint is shown in the Omnibox as a RHS button. Only
-// used on desktop platforms.
-BASE_FEATURE(kAiModeOmniboxEntryPoint, ENABLED);
 
 // Whether the aim button should dynamically change to portray the submission
 // type.

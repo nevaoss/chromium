@@ -11,7 +11,9 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/views/permissions/embedded_permission_prompt_base_view.h"
 
-class Browser;
+namespace content {
+class WebContents;
+}
 
 // A view used to display information to the user that they need to go to OS
 // system settings and grant permission to Chrome, in order to use that
@@ -22,7 +24,7 @@ class EmbeddedPermissionPromptSystemSettingsView
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kOpenSettingsId);
 
   EmbeddedPermissionPromptSystemSettingsView(
-      Browser* browser,
+      content::WebContents* web_contents,
       base::WeakPtr<EmbeddedPermissionPromptViewDelegate> delegate);
   EmbeddedPermissionPromptSystemSettingsView(
       const EmbeddedPermissionPromptSystemSettingsView&) = delete;

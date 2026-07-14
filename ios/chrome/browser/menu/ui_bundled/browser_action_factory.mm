@@ -16,8 +16,8 @@
 #import "ios/chrome/browser/shared/model/prefs/pref_names.h"
 #import "ios/chrome/browser/shared/model/profile/profile_ios.h"
 #import "ios/chrome/browser/shared/public/commands/browser_coordinator_commands.h"
-#import "ios/chrome/browser/shared/public/commands/bwg_commands.h"
 #import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
+#import "ios/chrome/browser/shared/public/commands/gemini_commands.h"
 #import "ios/chrome/browser/shared/public/commands/lens_commands.h"
 #import "ios/chrome/browser/shared/public/commands/open_lens_input_selection_command.h"
 #import "ios/chrome/browser/shared/public/commands/open_new_tab_command.h"
@@ -535,12 +535,8 @@
 // Helper method for completion block to hide Gemini Floaty. Ensures that the
 // floaty is hidden before the view invoked from an UIAction is presented.
 - (void)hideGeminiFloatyIfInvoked {
-  if (!IsGeminiCopresenceEnabled()) {
-    return;
-  }
-
-  id<BWGCommands> geminiHandler =
-      HandlerForProtocol(self.browser->GetCommandDispatcher(), BWGCommands);
+  id<GeminiCommands> geminiHandler =
+      HandlerForProtocol(self.browser->GetCommandDispatcher(), GeminiCommands);
   [geminiHandler
       hideFloatyIfInvokedAnimated:YES
                        fromSource:gemini::FloatyUpdateSource::ContextMenu];

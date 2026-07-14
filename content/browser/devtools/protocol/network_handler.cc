@@ -4724,7 +4724,7 @@ void NetworkHandler::LoadNetworkResource(
         network::mojom::TrustTokenOperationPolicyVerdict::kForbid,
         network::mojom::TrustTokenOperationPolicyVerdict::kForbid,
         frame->GetCookieSettingOverrides(),
-        /*network_restrictions_id=*/network::GetTODONetworkRestrictionsId(),
+        /*network_restrictions_id=*/frame->GetNetworkRestrictionsID(),
         "NetworkHandler::LoadNetworkResource");
 
     auto factory = CreateNetworkFactoryForDevTools(

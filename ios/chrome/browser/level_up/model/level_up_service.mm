@@ -51,7 +51,7 @@ void LevelUpService::MarkTaskCompleted(TaskType task_type) {
     update->Append(storage_id);
 
     // Recalculate level.
-    int new_level = 0;
+    int new_level = 1;
     bool all_tasks_completed = true;
     for (const auto& [type, info] : tasks_) {
       if (!completed_tasks_.contains(TaskTypeToString(type))) {
@@ -60,7 +60,7 @@ void LevelUpService::MarkTaskCompleted(TaskType task_type) {
       }
     }
     if (all_tasks_completed) {
-      new_level = 1;
+      new_level = 2;
     }
 
     if (new_level > current_level_) {
@@ -126,7 +126,7 @@ void LevelUpService::RegisterProfilePrefs(
   registry->RegisterListPref(prefs::kLevelUpCompletedTasks,
                              user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
   registry->RegisterIntegerPref(
-      prefs::kLevelUpHighestLevel, 0,
+      prefs::kLevelUpHighestLevel, 1,
       user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
   registry->RegisterBooleanPref(
       prefs::kLevelUpUIEnabled, false,

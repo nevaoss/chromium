@@ -22,7 +22,8 @@ constexpr uint64_t kPortConnectorBindingsId = 1000;
 }  // namespace
 
 NamedMessagePortConnectorFuchsia::NamedMessagePortConnectorFuchsia(
-    fuchsia::web::Frame* frame)
+    fuchsia::web::Frame* frame,
+    std::vector<std::string> allowed_origins)
     : frame_(frame) {
   DCHECK(frame_);
 
@@ -43,9 +44,9 @@ NamedMessagePortConnectorFuchsia::NamedMessagePortConnectorFuchsia(
   fuchsia::mem::Buffer bindings_script = base::MemBufferFromString(
       std::move(bindings_script_string), kBindingsScriptVmoName);
 
-  std::vector<std::string> origins = {"*"};
   frame_->AddBeforeLoadJavaScript(
-      kPortConnectorBindingsId, std::move(origins), std::move(bindings_script),
+      kPortConnectorBindingsId, std::move(allowed_origins),
+      std::move(bindings_script),
       [](fuchsia::web::Frame_AddBeforeLoadJavaScript_Result result) {
         CHECK(result.is_response())
             << "Couldn't inject port connector bindings.";

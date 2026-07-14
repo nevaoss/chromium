@@ -2162,7 +2162,9 @@ void GpuImageDecodeCache::UploadImageIfNecessary(const DrawImage& draw_image,
   // Do not color convert images that are YUV or might be tone mapped.
   if (image_data->info.yuva.has_value() ||
       draw_image.paint_image().HasGainmapInfo() ||
-      ToneMapUtil::UseGlobalToneMapFilter(decoded_color_space.get())) {
+      ToneMapUtil::UseGlobalToneMapFilter(
+          decoded_color_space.get(),
+          draw_image.paint_image().GetHDRMetadata())) {
     target_color_space = nullptr;
   }
 

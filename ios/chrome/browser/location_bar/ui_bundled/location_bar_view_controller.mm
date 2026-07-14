@@ -45,7 +45,7 @@
 #import "ios/chrome/browser/shared/model/prefs/pref_names.h"
 #import "ios/chrome/browser/shared/public/commands/activity_service_commands.h"
 #import "ios/chrome/browser/shared/public/commands/browser_coordinator_commands.h"
-#import "ios/chrome/browser/shared/public/commands/bwg_commands.h"
+#import "ios/chrome/browser/shared/public/commands/gemini_commands.h"
 #import "ios/chrome/browser/shared/public/commands/help_commands.h"
 #import "ios/chrome/browser/shared/public/commands/lens_commands.h"
 #import "ios/chrome/browser/shared/public/commands/lens_overlay_commands.h"
@@ -1177,9 +1177,6 @@ const CGFloat kGeminiLiveCircleSize = 20.0;
     willDisplayMenuForConfiguration:(UIContextMenuConfiguration*)configuration
                            animator:
                                (id<UIContextMenuInteractionAnimating>)animator {
-  if (!IsGeminiCopresenceEnabled()) {
-    return;
-  }
 
   [self.geminiHandler
       hideFloatyIfInvokedAnimated:YES

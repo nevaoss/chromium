@@ -53,6 +53,7 @@ class SendTabToSelfBrowserAgent
       base::span<const send_tab_to_self::SendTabToSelfEntry* const> new_entries)
       override;
   void OnEntriesRemovedRemotely(base::span<const std::string> guids) override;
+  void OnModelReady() override;
 
   // ReceivingUiHandler::
   void DisplayNewEntries(
@@ -77,6 +78,14 @@ class SendTabToSelfBrowserAgent
   friend class BrowserUserData<SendTabToSelfBrowserAgent>;
 
   explicit SendTabToSelfBrowserAgent(Browser* browser);
+
+  // Checks if there are any unopened entries targeted to the local device
+  // and auto-opens them as background tabs.
+  void CheckAndOpenPendingEntriesIfBrowserVisible();
+
+  // Opens `entry` in a new background tab and marks it as opened.
+  void OpenEntryInBackgroundTab(
+      const send_tab_to_self::SendTabToSelfEntry* entry);
 
   // Display an infobar for `entry` on the specified `web_state`.
   void DisplayInfoBar(web::WebState* web_state,

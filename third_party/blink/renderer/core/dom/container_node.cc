@@ -1937,7 +1937,7 @@ String ContainerNode::getHTML(const GetHTMLOptions* options,
   for (auto& shadow_root : options->shadowRoots()) {
     shadow_root_inclusion.include_shadow_roots.insert(shadow_root);
   }
-  return CreateMarkup(this, kChildrenOnly, kDoNotResolveURLs,
+  return CreateMarkup(this, kChildrenOnly, ResolveUrls::kNone,
                       shadow_root_inclusion);
 }
 

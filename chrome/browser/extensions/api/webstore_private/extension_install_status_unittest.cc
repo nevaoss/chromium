@@ -19,7 +19,6 @@
 #include "chrome/browser/policy/cloud/extension_install_policy_service_factory.h"
 #include "chrome/browser/policy/cloud/mock_extension_install_policy_service.h"
 #include "chrome/browser/supervised_user/supervised_user_test_util.h"
-#include "chrome/grit/generated_resources.h"
 #include "components/enterprise/browser/reporting/common_pref_names.h"
 #include "components/policy/core/common/cloud/cloud_policy_client_types.h"
 #include "components/policy/core/common/features.h"

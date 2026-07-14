@@ -16,16 +16,16 @@
 @protocol ActivityServiceCommands;
 @protocol BadgeViewVisibilityDelegate;
 @protocol BrowserCoordinatorCommands;
-@protocol BWGCommands;
 @protocol ContextualPanelEntrypointVisibilityDelegate;
 @protocol FakeboxButtonsSnapshotProvider;
+@protocol GeminiCommands;
 @protocol HelpCommands;
 @protocol IncognitoBadgeViewVisibilityDelegate;
 @class LayoutGuideCenter;
 @protocol LensCommands;
 @protocol LensOverlayCommands;
-@protocol LocationBarOffsetProvider;
 @protocol LocationBarMutator;
+@protocol LocationBarOffsetProvider;
 @class LocationBarViewController;
 @protocol PageActionMenuCommands;
 @protocol PageActionMenuEntryPointCommands;
@@ -147,7 +147,7 @@ class Tracker;
 @property(nonatomic, weak) id<PageActionMenuCommands> pageActionMenuHandler;
 
 // The Gemini command handler.
-@property(nonatomic, weak) id<BWGCommands> geminiHandler;
+@property(nonatomic, weak) id<GeminiCommands> geminiHandler;
 
 // The page action menu entry point handler. Returns the page action menu entry
 // point view for direct communication between a command dispatched and the page

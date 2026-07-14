@@ -4022,15 +4022,15 @@ void LineBreaker::HandleCloseTag(const InlineItem& item, LineInfo* line_info) {
       // We can break before a breakable space if we either:
       //   a) allow breaking before a white space, or
       //   b) the break point is preceded by another breakable space.
-      // TODO(abotella): What if the following breakable space is after an
-      // open tag which has a different white-space value?
       bool preceded_by_breakable_space =
           item_result->EndOffset() > 0 &&
           IsBreakableSpace(Text()[item_result->EndOffset() - 1]);
       item_result->can_break_after =
           IsBreakableSpace(Text()[item_result->EndOffset()]) &&
           (!current_style_->ShouldBreakOnlyAfterWhiteSpace() ||
-           preceded_by_breakable_space);
+           preceded_by_breakable_space) &&
+          (!RuntimeEnabledFeatures::LineBreakAfterSpaceBeforeOpenTagEnabled() ||
+           !IsNextNonBidiControlItemOpenTag());
       return;
     }
     if (auto_wrap_ && !IsBreakableSpace(Text()[item_result->EndOffset() - 1]))
@@ -4235,8 +4235,12 @@ void LineBreaker::HandleOverflow(LineInfo* line_info) {
   disable_bisect_line_break_ = true;
 
   // Restore the hyphenation states to before the loop if needed.
+  // The loop above may have shrunk `item_results` via `Rewind()` (e.g. when
+  // handling a ruby column), so the saved index can be stale. Only restore
+  // the hyphen if the item it referenced still exists. See crbug.com/435058045.
   DCHECK(!HasHyphen());
-  if (hyphen_index_before) [[unlikely]] {
+  if (hyphen_index_before && *hyphen_index_before < item_results->size())
+      [[unlikely]] {
     position_ += AddHyphen(item_results, *hyphen_index_before);
   }
 
@@ -4600,6 +4604,21 @@ void LineBreaker::SetCurrentStyleForce(const ComputedStyle& style) {
 bool LineBreaker::IsPreviousItemOfType(InlineItem::InlineItemType type) {
   return current_.item_index > 0 &&
          Items().at(current_.item_index - 1)->Type() == type;
+}
+
+bool LineBreaker::IsNextNonBidiControlItemOpenTag() const {
+  const InlineItems& items = Items();
+  for (wtf_size_t i = current_.item_index; i < items.size(); ++i) {
+    const InlineItem::InlineItemType type = items[i]->Type();
+    if (type == InlineItem::kOpenTag) {
+      return true;
+    }
+    if (type == InlineItem::kBidiControl) {
+      continue;
+    }
+    return false;
+  }
+  return false;
 }
 
 void LineBreaker::MoveToNextOf(const InlineItem& item) {

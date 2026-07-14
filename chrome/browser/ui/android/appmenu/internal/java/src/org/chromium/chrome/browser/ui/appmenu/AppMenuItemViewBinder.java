@@ -105,6 +105,17 @@ class AppMenuItemViewBinder {
         }
     }
 
+    public static void bindHeaderItem(PropertyModel model, View view, PropertyKey key) {
+        if (key == AppMenuItemProperties.MENU_ITEM_ID) {
+            int id = model.get(AppMenuItemProperties.MENU_ITEM_ID);
+            view.setId(id);
+        } else if (key == AppMenuItemProperties.TITLE) {
+            CharSequence title = model.get(AppMenuItemProperties.TITLE);
+            ((TextView) view.findViewById(R.id.menu_item_text)).setText(title);
+            view.setTooltipText(title);
+        }
+    }
+
     public static void bindTitleButtonItem(PropertyModel model, View view, PropertyKey key) {
         bindStandardItem(model, view, key);
 
@@ -269,6 +280,10 @@ class AppMenuItemViewBinder {
         }
     }
 
+    public static @Px int getHeaderPixelHeight(Context context, PropertyModel model) {
+        return context.getResources().getDimensionPixelSize(R.dimen.menu_header_height);
+    }
+
     public static void bindItemWithSubmenu(PropertyModel model, View view, PropertyKey key) {
         bindStandardItem(model, view, key);
 
@@ -303,8 +318,15 @@ class AppMenuItemViewBinder {
     }
 
     private static void setIcon(View view, final PropertyModel model) {
-        Drawable icon = model.get(AppMenuItemProperties.ICON);
         ChromeImageView imageView = view.findViewById(R.id.menu_item_icon);
+        if (imageView == null) {
+            return;
+        }
+
+        Drawable icon = model.get(AppMenuItemProperties.ICON);
+        LazyOneshotSupplier<Drawable> iconSupplier = model.get(AppMenuItemProperties.ICON_SUPPLIER);
+
+        boolean hasIcon = icon != null || iconSupplier != null;
 
         @ColorRes int colorResId = model.get(AppMenuItemProperties.ICON_COLOR_RES);
         ColorStateList tintList = null;
@@ -338,7 +360,7 @@ class AppMenuItemViewBinder {
         }
 
         imageView.setImageDrawable(icon);
-        imageView.setVisibility(icon == null ? View.GONE : View.VISIBLE);
+        imageView.setVisibility(hasIcon ? View.VISIBLE : View.GONE);
 
         // tint the icon
         ImageViewCompat.setImageTintList(imageView, tintList);

@@ -1790,6 +1790,12 @@ void SchedulerStateMachine::UpdateConsecutiveNoDamageThrottlingInterval() {
     return;
   }
 
+  if (DisableThrottlingDueToHighFramerateRequests()) {
+    consecutive_no_damage_main_frames_ = 0;
+    main_frame_consecutive_no_damage_throttled_interval_ = base::TimeDelta();
+    return;
+  }
+
   // TODO(thiabaud): Figure out better constants, these ones are just arbitrary.
   // Maybe make this a Finch parameter?
   const int count = consecutive_no_damage_main_frames_;
@@ -1816,9 +1822,15 @@ void SchedulerStateMachine::SetRequestHighFramerate(bool flag) {
   }
 }
 
+bool SchedulerStateMachine::DisableThrottlingDueToHighFramerateRequests()
+    const {
+  return high_framerate_requests_count_ > 0 &&
+         base::FeatureList::IsEnabled(
+             features::kHighFramerateRequestFromClient);
+}
+
 base::TimeDelta SchedulerStateMachine::MainFrameThrottledInterval() const {
-  if (high_framerate_requests_count_ &&
-      base::FeatureList::IsEnabled(features::kHighFramerateRequestFromClient)) {
+  if (DisableThrottlingDueToHighFramerateRequests()) {
     return base::TimeDelta();
   } else {
     return main_frame_throttled_interval_;

@@ -129,6 +129,11 @@ class AIManager : public base::SupportsUserData::Data,
       blink::mojom::AIClassifierCreateOptionsPtr options,
       mojo::PendingRemote<on_device_model::mojom::DownloadObserver> monitor)
       override;
+  void CanCreateSemanticEmbedder(
+      CanCreateSemanticEmbedderCallback callback) override;
+  void CreateSemanticEmbedder(
+      mojo::PendingRemote<blink::mojom::AIManagerCreateSemanticEmbedderClient>
+          client) override;
 
   // Check whether optimization guide supports the feature matching `capability`
   // and modalities specified by `capabilities`; yields a result to `callback`.
@@ -165,6 +170,8 @@ class AIManager : public base::SupportsUserData::Data,
       const base::flat_set<std::string>& default_supported);
 
  private:
+  bool IsPromptApiEnabled() const;
+
   base::OnceCallback<void(std::unique_ptr<optimization_guide::OnDeviceSession>)>
   CreateSummarizerSessionCallback(
       blink::mojom::AISummarizerCreateOptionsPtr options,

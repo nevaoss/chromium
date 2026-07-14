@@ -38,15 +38,16 @@
 #import "ios/chrome/browser/shared/model/profile/test/test_profile_ios.h"
 #import "ios/chrome/browser/shared/model/profile/test/test_profile_manager_ios.h"
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_list.h"
-#import "ios/chrome/browser/shared/public/commands/bwg_commands.h"
 #import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
 #import "ios/chrome/browser/shared/public/commands/fullscreen_commands.h"
+#import "ios/chrome/browser/shared/public/commands/gemini_commands.h"
 #import "ios/chrome/browser/shared/public/commands/settings_commands.h"
 #import "ios/chrome/browser/shared/public/commands/snackbar_commands.h"
 #import "ios/chrome/browser/snapshots/model/fake_snapshot_generator_delegate.h"
 #import "ios/chrome/browser/snapshots/model/snapshot_source_tab_helper.h"
 #import "ios/chrome/browser/snapshots/model/snapshot_tab_helper.h"
 #import "ios/chrome/browser/web/model/web_view_proxy/web_view_proxy_tab_helper.h"
+#import "ios/chrome/common/app_group/app_group_constants.h"
 #import "ios/chrome/test/ios_chrome_scoped_testing_local_state.h"
 #import "ios/web/find_in_page/find_in_page_java_script_feature.h"
 #import "ios/web/js_messaging/java_script_feature_manager.h"
@@ -58,6 +59,7 @@
 #import "ios/web/public/test/js_test_util.h"
 #import "ios/web/public/test/scoped_testing_web_client.h"
 #import "ios/web/public/test/web_task_environment.h"
+#import "testing/gtest_mac.h"
 #import "testing/platform_test.h"
 #import "third_party/ocmock/OCMock/OCMock.h"
 #import "third_party/ocmock/gtest_support.h"
@@ -76,8 +78,7 @@ class GeminiBrowserAgentTest : public PlatformTest {
       : web_client_(std::make_unique<web::FakeWebClient>()),
         task_environment_(base::test::TaskEnvironment::TimeSource::MOCK_TIME) {
     feature_list_.InitWithFeatures(
-        {kPageActionMenu, kPageContextExtractorRefactored, kGeminiCopresence},
-        {});
+        {kPageActionMenu, kPageContextExtractorRefactored}, {});
     static_cast<web::FakeWebClient*>(web_client_.Get())
         ->SetJavaScriptFeatures(
             {web::FindInPageJavaScriptFeature::GetInstance(),
@@ -109,10 +110,10 @@ class GeminiBrowserAgentTest : public PlatformTest {
     [browser_->GetCommandDispatcher()
         startDispatchingToTarget:mock_settings_handler_
                      forProtocol:@protocol(SettingsCommands)];
-    mock_bwg_handler_ = OCMProtocolMock(@protocol(BWGCommands));
+    mock_gemini_handler_ = OCMProtocolMock(@protocol(GeminiCommands));
     [browser_->GetCommandDispatcher()
-        startDispatchingToTarget:mock_bwg_handler_
-                     forProtocol:@protocol(BWGCommands)];
+        startDispatchingToTarget:mock_gemini_handler_
+                     forProtocol:@protocol(GeminiCommands)];
 
     std::unique_ptr<web::FakeWebState> web_state =
         std::make_unique<web::FakeWebState>();
@@ -170,7 +171,7 @@ class GeminiBrowserAgentTest : public PlatformTest {
     gemini_tab_helper_ = nullptr;
     optimization_guide_service_ = nullptr;
     mock_settings_handler_ = nullptr;
-    mock_bwg_handler_ = nullptr;
+    mock_gemini_handler_ = nullptr;
     fake_snapshot_delegate_ = nullptr;
     browser_.reset();
     profile_manager_.PrepareForDestruction();
@@ -199,11 +200,6 @@ class GeminiBrowserAgentTest : public PlatformTest {
   // Setter for `is_floaty_invoked_`.
   void SetIsFloatyInvoked(bool is_invoked) {
     gemini_browser_agent_->is_floaty_invoked_ = is_invoked;
-  }
-
-  // Clear `active_hiding_sources_`.
-  void ClearActiveHidingSources() {
-    gemini_browser_agent_->active_hiding_sources_.clear();
   }
 
   // Setter for `is_floaty_temporarily_hidden_`.
@@ -258,7 +254,7 @@ class GeminiBrowserAgentTest : public PlatformTest {
   raw_ptr<web::FakeWebState> web_state_;
   raw_ptr<web::FakeWebFrame> fake_main_frame_;
   id mock_settings_handler_;
-  id mock_bwg_handler_;
+  id mock_gemini_handler_;
   FakeSnapshotGeneratorDelegate* fake_snapshot_delegate_;
   raw_ptr<feature_engagement::test::MockTracker> mock_tracker_;
 };
@@ -359,13 +355,11 @@ TEST_F(GeminiBrowserAgentTest, TestGeminiBrowserAgentStartGeminiFlow) {
   histogram_tester.ExpectUniqueSample(
       kGeminiInvocationPageTypeHistogram,
       IOSGeminiInvocationPageType::kExtractableWebPage, 1);
+  EXPECT_EQ(gemini_browser_agent_->GetEntryPoint(), gemini::EntryPoint::Promo);
 }
 
 // Tests that switching active web states handles observations correctly.
 TEST_F(GeminiBrowserAgentTest, TestActiveWebStateChanged) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitAndEnableFeature(kGeminiCopresence);
-
   // Create a new browser to ensure the GeminiBrowserAgent is initialized with
   // the feature flag enabled.
 
@@ -524,40 +518,6 @@ TEST_F(GeminiBrowserAgentTest,
   EXPECT_EQ(ios::provider::GeminiViewState::kExpanded, GetLastShownViewState());
 }
 
-// Tests that the floaty remains hidden if the keyboard dismisses but a view
-// controller is still presenting.
-TEST_F(GeminiBrowserAgentTest,
-       TestFloatyRemainsHiddenWhenKeyboardDismissedIfViewPresent) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitAndEnableFeatureWithParameters(
-      kGeminiCopresence, {{kGeminiCopresenceTrackSources, "true"}});
-  SetIsFloatyInvoked(true);
-  gemini_browser_agent_->HideFloatyIfInvoked(
-      /*animated=*/true, /*source=*/gemini::FloatyUpdateSource::ViewTransition);
-  gemini_browser_agent_->HideFloatyIfInvoked(
-      /*animated=*/true, /*source=*/gemini::FloatyUpdateSource::Keyboard);
-  gemini_browser_agent_->SetLastShownViewState(
-      ios::provider::GeminiViewState::kExpanded);
-
-  // Emulate a user typing for some time.
-  SetFloatyHiddenTimestamp(base::TimeTicks::Now() - base::Seconds(5));
-
-  // Emulate keyboard dismissing.
-  gemini_browser_agent_->ShowFloatyIfInvoked(
-      /*animated=*/true, /*source=*/gemini::FloatyUpdateSource::Keyboard);
-
-  // The floaty should still be considered temporarily hidden.
-  EXPECT_TRUE(IsFloatyTemporarilyHidden());
-
-  // Emulate view controller dismissing.
-  gemini_browser_agent_->ShowFloatyIfInvoked(
-      /*animated=*/true, /*source=*/gemini::FloatyUpdateSource::ViewTransition);
-
-  // The floaty should now be shown.
-  EXPECT_FALSE(IsFloatyTemporarilyHidden());
-  EXPECT_EQ(ios::provider::GeminiViewState::kExpanded, GetLastShownViewState());
-}
-
 // Tests that the floaty is not dismissed when `DismissFloaty` is called to
 // clean up properties but a user has not interacted with floaty UI to properly
 // dismiss it.
@@ -577,7 +537,6 @@ TEST_F(GeminiBrowserAgentTest, TestDismissFloatyWhenTemporarilyHidden) {
 // floaty i.e. when the floaty is shown.
 TEST_F(GeminiBrowserAgentTest, TestDismissFloatyWhenFloatyIsShown) {
   SetIsFloatyInvoked(true);
-  ClearActiveHidingSources();
   gemini_browser_agent_->DismissFloaty();
 
   EXPECT_FALSE(IsFloatyInvoked());
@@ -603,10 +562,10 @@ TEST_F(GeminiBrowserAgentTest, TestDismissGeminiFromOtherWindows) {
   BrowserList* browser_list = BrowserListFactory::GetForProfile(second_profile);
   browser_list->AddBrowser(second_browser.get());
 
-  id mock_second_handler = OCMProtocolMock(@protocol(BWGCommands));
+  id mock_second_handler = OCMProtocolMock(@protocol(GeminiCommands));
   [second_browser->GetCommandDispatcher()
       startDispatchingToTarget:mock_second_handler
-                   forProtocol:@protocol(BWGCommands)];
+                   forProtocol:@protocol(GeminiCommands)];
 
   [[mock_second_handler expect]
       dismissGeminiFlowWithCompletion:[OCMArg checkWithBlock:^BOOL(
@@ -627,7 +586,6 @@ TEST_F(GeminiBrowserAgentTest, TestDismissGeminiFromOtherWindows) {
 // Tests that the floaty is dismissed when the primary account changes.
 TEST_F(GeminiBrowserAgentTest, TestDismissedOnPrimaryAccountChanged) {
   SetIsFloatyInvoked(true);
-  ClearActiveHidingSources();
 
   signin::PrimaryAccountChangeEvent::State previous_state;
   CoreAccountInfo account_info;
@@ -776,10 +734,10 @@ TEST_F(GeminiBrowserAgentTest, TestStartGeminiFlowNoActiveWebState) {
   // Initialize browser agent on a browser with no active WebStates.
   std::unique_ptr<TestBrowser> empty_browser =
       std::make_unique<TestBrowser>(profile_);
-  id mock_bwg_handler = OCMProtocolMock(@protocol(BWGCommands));
+  id mock_gemini_handler = OCMProtocolMock(@protocol(GeminiCommands));
   [empty_browser->GetCommandDispatcher()
-      startDispatchingToTarget:mock_bwg_handler
-                   forProtocol:@protocol(BWGCommands)];
+      startDispatchingToTarget:mock_gemini_handler
+                   forProtocol:@protocol(GeminiCommands)];
   GeminiBrowserAgent::CreateForBrowser(empty_browser.get());
   GeminiBrowserAgent* empty_agent =
       GeminiBrowserAgent::FromBrowser(empty_browser.get());
@@ -841,7 +799,6 @@ TEST_F(GeminiBrowserAgentTest, TestGeminiLiveIPHAndNewBadgeFET) {
 
   // Emulate the floaty being invoked so DismissFloaty actually runs fully.
   SetIsFloatyInvoked(true);
-  ClearActiveHidingSources();
 
   gemini_browser_agent_->DismissFloaty();
 }

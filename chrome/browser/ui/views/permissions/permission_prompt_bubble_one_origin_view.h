@@ -12,6 +12,10 @@
 #if !BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/ui/views/media_preview/permission_prompt_previews_coordinator.h"
 #include "components/media_effects/media_device_info.h"
+
+namespace content {
+class WebContents;
+}
 #endif
 
 // Bubble that prompts the user to grant or deny a permission request from one
@@ -35,7 +39,7 @@ class PermissionPromptBubbleOneOriginView :
     public PermissionPromptBubbleBaseView {
  public:
   PermissionPromptBubbleOneOriginView(
-      Browser* browser,
+      content::WebContents* web_contents,
       base::WeakPtr<permissions::PermissionPrompt::Delegate> delegate,
       PermissionPromptStyle prompt_style);
   PermissionPromptBubbleOneOriginView(

@@ -149,6 +149,13 @@ void IbanSuggestionGenerator::GenerateSuggestions(
     const AutofillField* trigger_autofill_field,
     AutofillClient& client,
     base::FunctionRef<void(ReturnedSuggestions)> callback) {
+  if (client.IsAutofillTypeBlockedByPolicy(
+          client.GetLastCommittedPrimaryMainFrameURL(),
+          AutofillClient::AutofillPolicyDataCategory::kPayments)) {
+    callback({SuggestionDataSource::kIban, {}});
+    return;
+  }
+
   // The field is eligible only if it's focused on an IBAN field.
   if (!trigger_autofill_field ||
       !trigger_autofill_field->Type().GetTypes().contains(IBAN_VALUE)) {

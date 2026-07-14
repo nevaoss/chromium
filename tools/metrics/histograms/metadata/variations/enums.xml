@@ -293,6 +293,8 @@ chromium-metrics-reviews@google.com.
 
 <!-- LINT.ThenChange(//components/variations/metrics.h:LoadSeedResult) -->
 
+<!-- LINT.IfChange(VariationsSeedStoreResult) -->
+
 <enum name="VariationsSeedStoreResult">
   <int value="0" label="Success"/>
   <int value="1" label="Failed - Empty Seed (obsolete)"/>
@@ -310,7 +312,10 @@ chromium-metrics-reviews@google.com.
   <int value="13" label="Non-Gzip Delta Count"/>
   <int value="14" label="Gzip Full Count"/>
   <int value="15" label="Non-Gzip Full Count"/>
+  <int value="16" label="Failed - Uncompressed Size Limit Exceeded"/>
 </enum>
+
+<!-- LINT.ThenChange(//components/variations/metrics.h:StoreSeedResult) -->
 
 <enum name="VariationsSeedUsage">
   <int value="0" label="Regular seed used"/>

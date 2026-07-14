@@ -5,45 +5,12 @@
 module toolbar_ui_api.mojom;
 
 import "components/browser_apis/browser_controls/browser_controls_api_data_model.mojom";
+import "components/browser_apis/ui_controllers/toolbar/extensions_bar_data_model.mojom";
+import "components/browser_apis/ui_controllers/toolbar/icon_handle.mojom";
 import "components/content_settings/core/common/content_settings_types.mojom";
 import "mojo/public/mojom/base/string16.mojom";
 import "mojo/public/mojom/base/time.mojom";
-import "skia/public/mojom/skcolor.mojom";
 import "ui/gfx/range/mojom/range.mojom";
-
-// A reference to a separately uploaded icon. See IconHandle in icon_handle.h
-// and webui_toolbar::IconTable.
-// Note that this can only be sent C++ -> JS; if you try to sent it towards
-// C++ you'll just end up with a null IconHandle, since the traits don't know
-// what IconTable (or other implementation!) is supposed to be interpreting the
-// number.
-struct IconHandle {
-  uint64 handle_id;
-};
-
-enum IconType {
-  kIconSet,
-  kMaskUrl,
-  kFullColorUrl,
-};
-
-// Used to update binding of an IconHandle.
-struct IconUpdate {
-  uint64 handle_id;
-  // If this is null, the icon is deleted.
-  // Otherwise, the semantics depend on icon_type:
-  // kIconSet: `icon_url_or_name` is the name of an icon provided by a
-  //           <cr-iconset>
-  // kMaskUrl: `icon_url_or_name` is a URL to a monochrome mask image,
-  //           which should be painted with current pen (for now).
-  // kFullColorUrl: `icon_url_or_name` is a URL to a multi-color image,
-  //                that's not controlled by pen colors.
-  string? icon_url_or_name;
-  IconType icon_type;
-
-  // Color to apply to vector icons.
-  skia.mojom.SkColor? color;
-};
 
 // The context menu types that can be opened with ToolbarUIService's
 // ShowContextMenu.
@@ -302,7 +269,8 @@ enum ContentSettingImageType {
 
 // These fields correspond to the accessors of ContentSettingImageModel.
 struct ContentSettingImageState {
-  // The type of icon to display.
+  // The specific content setting icon button to display, described by this
+  // state.
   ContentSettingImageType type;
 
   // Accessible name for the icon. If empty, `tooltip` is used instead.
@@ -337,6 +305,67 @@ struct ContentSettingImageState {
 
   // NOTE: The visual icon to display is determined by `type`
   // and `is_blocked`.
+};
+
+// LINT.IfChange(PageActionId)
+// Enum of all page actions listed in kPageActionProperties.
+enum PageActionId {
+  kActionAiMode,
+  kActionIndigo,
+  kActionMultistepFilter,
+  kActionSidePanelShowLensOverlayResults,
+  kActionLensOverlayHomework,
+  kActionShowTranslate,
+  kActionShowMemorySaverChip,
+  kActionShowJsOptimizationsIcon,
+  kActionRecordReplay,
+  kActionShowIntentPicker,
+  kActionZoomNormal,
+  kActionSidePanelShowReadAnything,
+  kActionOffersAndRewardsForPage,
+  kActionShowFileSystemAccess,
+  kActionInstallPwa,
+  kActionCommercePriceInsights,
+  kActionCommerceDiscounts,
+  kActionShowPasswordsBubbleOrPage,
+  kActionShowCollaborationRecentActivity,
+  kActionAutofillMandatoryReauth,
+  kActionFind,
+  kActionShowCookieControls,
+  kActionShowAddressesBubbleOrPage,
+  kActionVirtualCardEnroll,
+  kActionFilledCardInformation,
+  kActionShowPaymentsBubbleOrPage,
+  kActionSidePanelShowContextualTasks,
+  kActionBookmarkThisTab,
+  kActionFederation,
+  kActionGlicContextualCueing,
+  kActionAnchoredContextualCue,
+  kActionWebAuthnAmbientSignin,
+  kActionAutofillPayment,
+};
+// LINT.ThenChange(//chrome/browser/ui/page_action/page_action_properties_provider.cc:kPageActionProperties)
+
+// The input modality that causes the page action to trigger: click, keyboard
+// key, or touch gesture.
+enum PageActionTrigger {
+  kMouse = 0,
+  kKeyboard = 1,
+  kGesture = 2,
+};
+
+// These fields correspond to PageActionModel accessors.
+struct PageActionState {
+  // The specific page action icon button to display, described by this state.
+  PageActionId page_action_id;
+
+  // Alternative text for a11y screen readers.
+  mojo_base.mojom.String16 accessible_name;
+
+  // Mouseover tooltip to display.
+  mojo_base.mojom.String16 tooltip_text;
+
+  // TODO: crbug.com/501449027 - Add remaining fields.
 };
 
 // Colors used by the omnibox.
@@ -472,8 +501,12 @@ struct PinnedToolbarActionState {
 struct LocationBarState {
   OmniboxViewState omnibox_view_state;
   LocationBarFlags location_bar_flags;
-  // The set of content setting icon state for each visible RHS icon.
+  // The set of content setting icon states for each visible RHS icon. Displayed
+  // in the same order as in the array.
   array<ContentSettingImageState> content_setting_image_states;
+  // The set of page action setting icon states for each visible RHS icon.
+  // Displayed in the same order as in the array.
+  array<PageActionState> page_action_states;
   // LHS location bar chips states.
   LhsChipsState lhs_chips_state;
 
@@ -595,12 +628,17 @@ struct NavigationControlsState {
   AvatarControlState avatar_control_state;
   bool battery_saver_button_visible;
   LocationBarState location_bar_state;
+  // State of extensions.
+  array<extensions_bar.mojom.ExtensionActionInfo> extensions_state;
   // List of pinned toolbar action button states. Order corresponds to order
   // of the drawn buttons and duplicates imply duplicate buttons.
   array<PinnedToolbarActionState> pinned_toolbar_actions_state;
   // This is incremented every time a settings change may change the layout
   // constants.
   int32 layout_constants_version = 0;
+
+  // This is true if we're in touch mode.
+  bool touch_ui = false;
 };
 
 enum FocusRequestTarget {

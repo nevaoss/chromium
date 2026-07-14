@@ -41,6 +41,7 @@
 #include "chrome/test/base/in_process_browser_test.h"
 #include "components/actor/core/actor_features.h"
 #include "components/actor/core/actor_util.h"
+#include "components/actor/core/origin_gating_cache.h"
 #include "components/actor/public/mojom/actor_types.mojom.h"
 #include "components/enterprise/buildflags/buildflags.h"
 #include "components/enterprise/connectors/core/features.h"
@@ -232,7 +233,7 @@ IN_PROC_BROWSER_TEST_F(GlicActorPolicyCheckerBrowserTestBase,
                        IsEnterpriseAccountCheck_NonEnterprise) {
   // Signed in with a non-enterprise account.
   SimulatePrimaryAccountChangedSignIn(&kNonEnterpriseAccount);
-  EXPECT_FALSE(GlicActorPolicyChecker::IsEnterpriseAccount(
+  EXPECT_FALSE(GlicActorPolicyChecker::IsEnterpriseAccountForActor(
       *GetProfile(), GetActorService().GetJournal()));
 }
 
@@ -240,7 +241,7 @@ IN_PROC_BROWSER_TEST_F(GlicActorPolicyCheckerBrowserTestBase,
                        IsEnterpriseAccountCheck_Enterprise) {
   // Signed in with an enterprise account.
   SimulatePrimaryAccountChangedSignIn(&kEnterpriseAccount);
-  EXPECT_TRUE(GlicActorPolicyChecker::IsEnterpriseAccount(
+  EXPECT_TRUE(GlicActorPolicyChecker::IsEnterpriseAccountForActor(
       *GetProfile(), GetActorService().GetJournal()));
 }
 
@@ -335,7 +336,7 @@ IN_PROC_BROWSER_TEST_P(GlicActorPolicyCheckerBrowserTestNonManagedBrowser,
 
 IN_PROC_BROWSER_TEST_P(GlicActorPolicyCheckerBrowserTestNonManagedBrowser,
                        IsBrowserManagedCheck) {
-  EXPECT_FALSE(GlicActorPolicyChecker::IsBrowserManaged(*GetProfile()));
+  EXPECT_FALSE(GlicActorPolicyChecker::IsBrowserManagedForActor(*GetProfile()));
 }
 
 INSTANTIATE_TEST_SUITE_P(/* no prefix */,
@@ -468,7 +469,8 @@ class GlicActorPolicyCheckerBrowserTestManagedBrowser
 
     base::test::TestFuture<actor::MayActOnUrlBlockReason> allowed;
     MayActOnUrl(url_to_check, /*allow_insecure_http=*/true, GetProfile(),
-                actor_service->GetJournal(), TaskId(123), policy_checker,
+                actor_service->GetJournal(), TaskId(123),
+                actor::OriginGatingCache(), policy_checker,
                 allowed.GetCallback());
     EXPECT_EQ(expected_result.may_act_on_url_block_reason, allowed.Get());
   }
@@ -482,7 +484,7 @@ class GlicActorPolicyCheckerBrowserTestManagedBrowser
 
 IN_PROC_BROWSER_TEST_F(GlicActorPolicyCheckerBrowserTestManagedBrowser,
                        IsBrowserManagedCheck) {
-  EXPECT_TRUE(GlicActorPolicyChecker::IsBrowserManaged(*GetProfile()));
+  EXPECT_TRUE(GlicActorPolicyChecker::IsBrowserManagedForActor(*GetProfile()));
 }
 
 IN_PROC_BROWSER_TEST_F(GlicActorPolicyCheckerBrowserTestManagedBrowser,

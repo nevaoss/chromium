@@ -469,7 +469,6 @@ component("net") {
     "device_bound_sessions/session_inclusion_rules_display.h",
     "device_bound_sessions/session_key.cc",
     "device_bound_sessions/session_key.h",
-    "device_bound_sessions/session_params.cc",
     "device_bound_sessions/session_params.h",
     "device_bound_sessions/session_usage.cc",
     "device_bound_sessions/session_usage.h",
@@ -1897,12 +1896,16 @@ component("net") {
       "disk_cache/sql/sql_shared_cache_index_database.cc",
       "disk_cache/sql/sql_shared_cache_index_database.h",
       "disk_cache/sql/sql_shared_cache_index_database_queries.h",
+      "disk_cache/sql/sql_shared_cache_isolated_database.cc",
+      "disk_cache/sql/sql_shared_cache_isolated_database.h",
+      "disk_cache/sql/sql_shared_cache_isolated_database_queries.h",
       "disk_cache/sql/sql_tracked_sequence_bound.h",
       "disk_cache/sql/sql_write_buffer_memory_monitor.cc",
       "disk_cache/sql/sql_write_buffer_memory_monitor.h",
     ]
     deps += [
       "//components/performance_manager/scenario_api",
+      "//components/sqlite_vfs",
       "//sql",
     ]
   }
@@ -3663,18 +3666,23 @@ target(_test_target_type, "net_unittests") {
       "disk_cache/sql/sql_persistent_store_in_memory_index_unittest.cc",
       "disk_cache/sql/sql_persistent_store_unittest.cc",
       "disk_cache/sql/sql_shared_cache_index_database_unittest.cc",
+      "disk_cache/sql/sql_shared_cache_isolated_database_unittest.cc",
       "disk_cache/sql/sql_tracked_sequence_bound_unittest.cc",
       "disk_cache/sql/test_util.cc",
       "disk_cache/sql/test_util.h",
     ]
 
-    deps += [ "//components/performance_manager/scenario_api:test_support" ]
+    deps += [
+      "//components/performance_manager/scenario_api:test_support",
+      "//components/sqlite_vfs",
+    ]
 
     # Platforms where sqlite_dev_shell is defined.
     if (is_win || is_mac || is_linux || is_chromeos) {
       sources += [
         "disk_cache/sql/sql_persistent_store_queries_unittest.cc",
         "disk_cache/sql/sql_shared_cache_index_database_queries_unittest.cc",
+        "disk_cache/sql/sql_shared_cache_isolated_database_queries_unittest.cc",
       ]
       data_deps += [ "//third_party/sqlite:sqlite_dev_shell" ]
     }

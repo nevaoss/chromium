@@ -20,7 +20,9 @@
 #include "ui/views/controls/styled_label.h"
 #include "ui/views/layout/flex_layout_view.h"
 
-class Browser;
+namespace content {
+class WebContents;
+}
 
 // Base view used for embedded permission prompts dialogs.
 // It looks like this:
@@ -58,7 +60,7 @@ class EmbeddedPermissionPromptBaseView : public PermissionPromptBaseView,
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kOkButtonId);
 
   EmbeddedPermissionPromptBaseView(
-      Browser* browser,
+      content::WebContents* web_contents,
       base::WeakPtr<EmbeddedPermissionPromptViewDelegate> delegate);
   EmbeddedPermissionPromptBaseView(const EmbeddedPermissionPromptBaseView&) =
       delete;

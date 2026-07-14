@@ -132,7 +132,9 @@ std::unique_ptr<FormFieldParser> AddressFieldParser::Parse(
 bool AddressFieldParser::IsStandaloneZipSupported(
     const GeoIpCountryCode& client_country) {
   return client_country == GeoIpCountryCode("BR") ||
-         client_country == GeoIpCountryCode("MX");
+         client_country == GeoIpCountryCode("MX") ||
+         base::FeatureList::IsEnabled(
+             features::kAutofillSupportStandaloneZipCodeGlobally);
 }
 
 // static

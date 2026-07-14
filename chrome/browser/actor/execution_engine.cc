@@ -1150,7 +1150,8 @@ void ExecutionEngine::IsAcceptableNavigationDestination(
     const GURL& url,
     DecisionCallbackWithReason callback) {
   MayActOnUrl(url, /*allow_insecure_http=*/true, task_->GetProfile(), *journal_,
-              task_->id(), task_->policy_checker(), std::move(callback));
+              task_->id(), origin_gating_cache_, task_->policy_checker(),
+              std::move(callback));
 }
 
 Profile& ExecutionEngine::GetProfile() {

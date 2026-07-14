@@ -839,9 +839,10 @@ void LayerTreeHost::SetNeedsUpdateLayers() {
   events_metrics_manager_.SaveActiveEventMetrics();
 }
 
-void LayerTreeHost::SetNeedsCommit() {
+void LayerTreeHost::SetNeedsCommit(bool urgent) {
+  TRACE_EVENT("cc", __PRETTY_FUNCTION__, "urgent", urgent);
   DCHECK(IsMainThread());
-  proxy_->SetNeedsCommit();
+  proxy_->SetNeedsCommit(urgent);
   swap_promise_manager_.NotifyLatencyInfoSwapPromiseMonitors();
   events_metrics_manager_.SaveActiveEventMetrics();
 }
@@ -1475,6 +1476,7 @@ void LayerTreeHost::SetViewportRectAndScale(
     const gfx::Rect& device_viewport_rect,
     float device_scale_factor,
     const viz::LocalSurfaceId& local_surface_id_from_parent) {
+  TRACE_EVENT("cc", __PRETTY_FUNCTION__);
   const viz::LocalSurfaceId previous_local_surface_id =
       pending_commit_state()->local_surface_id_from_parent;
   SetLocalSurfaceIdFromParent(local_surface_id_from_parent);
@@ -1519,7 +1521,10 @@ void LayerTreeHost::SetViewportRectAndScale(
   if (device_viewport_rect_changed || painted_device_scale_factor_changed ||
       device_scale_factor_changed) {
     SetPropertyTreesNeedRebuild();
-    SetNeedsCommit();
+    // Urgent because we want resize to be reflected immediately. For instance
+    // if a side panel is expanding / contracting, we want the content to reflow
+    // as quickly as possible.
+    SetNeedsCommit(/*urgent=*/true);
   }
 }
 

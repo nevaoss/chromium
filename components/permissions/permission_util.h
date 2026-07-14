@@ -13,7 +13,7 @@
 #include "components/permissions/permission_decision.h"
 #include "components/permissions/permission_prompt.h"
 #include "components/permissions/permission_request_data.h"
-#include "components/permissions/permission_uma_util.h"
+#include "components/permissions/permission_uma_constants.h"
 #include "content/public/browser/permission_result.h"
 #include "services/network/public/mojom/permissions_policy/permissions_policy_feature.mojom-forward.h"
 #include "third_party/blink/public/mojom/permissions/permission_status.mojom.h"
@@ -32,19 +32,6 @@ class GURL;
 namespace permissions {
 class PermissionRequest;
 struct PermissionRequestData;
-
-// This enum backs a UMA histogram, so it must be treated as append-only.
-enum class PermissionAction {
-  GRANTED = 0,
-  DENIED = 1,
-  DISMISSED = 2,
-  IGNORED = 3,
-  REVOKED = 4,
-  GRANTED_ONCE = 5,
-
-  // Always keep this at the end.
-  NUM,
-};
 
 enum PermissionPromptViewID {
   VIEW_ID_PERMISSION_PROMPT_NONE = 0,

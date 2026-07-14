@@ -651,6 +651,7 @@ absl_test("cord_test") {
     "//third_party/abseil-cpp/absl/base:config",
     "//third_party/abseil-cpp/absl/base:core_headers",
     "//third_party/abseil-cpp/absl/base:endian",
+    "//third_party/abseil-cpp/absl/base:hardening",
     "//third_party/abseil-cpp/absl/base:no_destructor",
     "//third_party/abseil-cpp/absl/container:fixed_array",
     "//third_party/abseil-cpp/absl/functional:function_ref",

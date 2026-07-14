@@ -1369,7 +1369,15 @@ TEST_F(AutofillAgentTestFocus, FireFocusEventsForNullElement) {
 // Tests that focusing an input element, removing it from the DOM, and then
 // shifting focus away allows the input element to be garbage collected (i.e.,
 // it doesn't leak memory via C++ persistent roots in AutofillAgent).
-TEST_F(AutofillAgentTestFocus, InputElementIsGarbageCollectedAfterRemoval) {
+// Times out on asan: https://issues.chromium.org/issues/524395187
+#if defined(ADDRESS_SANITIZER)
+#define MAYBE_InputElementIsGarbageCollectedAfterRemoval \
+  DISABLED_InputElementIsGarbageCollectedAfterRemoval
+#else
+#define MAYBE_InputElementIsGarbageCollectedAfterRemoval \
+  InputElementIsGarbageCollectedAfterRemoval
+#endif
+TEST_F(AutofillAgentTestFocus, MAYBE_InputElementIsGarbageCollectedAfterRemoval) {
   // Setup FinalizationRegistry in JS to track the element.
   ExecuteJavaScriptForTests(R"(
     window.element_collected = false;

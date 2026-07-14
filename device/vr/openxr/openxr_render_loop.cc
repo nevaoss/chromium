@@ -542,8 +542,9 @@ bool OpenXrRenderLoop::MarkFrameSubmitted(int16_t frame_index) {
   return true;
 }
 
-void OpenXrRenderLoop::SubmitFrameMissing(int16_t frame_index,
-                                          const gpu::SyncToken& sync_token) {
+void OpenXrRenderLoop::SubmitFrameMissing(
+    int16_t frame_index,
+    gpu::SharedImageExportResult camera_export_multi_result) {
   DVLOG(3) << __func__ << " frame_index=" << frame_index;
   TRACE_EVENT_INSTANT("xr", "OpenXrRenderLoop::SubmitFrameMissing");
   if (pending_frame_) {
@@ -905,7 +906,8 @@ void OpenXrRenderLoop::SubmitFrame(int16_t frame_index,
   // The sync token passed here is unused by OpenXR backend's implementation of
   // SubmitFrameMissing.
   // TODO(crbug.com/40917172): Support non-shared buffer mode.
-  SubmitFrameMissing(frame_index, gpu::SyncToken());
+  SubmitFrameMissing(frame_index,
+                     gpu::SharedImageExportResult::CreateEmptyResult());
 }
 
 void OpenXrRenderLoop::SubmitFrameDrawnIntoTexture(

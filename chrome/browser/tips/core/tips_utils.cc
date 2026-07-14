@@ -9,12 +9,12 @@
 #include "base/no_destructor.h"
 #include "base/notreached.h"
 #include "base/strings/string_number_conversions.h"
-#include "chrome/browser/notifications/scheduler/public/notification_scheduler_types.h"
 #include "chrome/browser/tips/core/tips_prefs.h"
+#include "chrome/browser/tips/core/tips_types.h"
 #include "chrome/grit/generated_resources.h"
 #include "ui/base/l10n/l10n_util.h"
 
-namespace notifications {
+namespace tips {
 namespace {
 
 const std::map<TipsNotificationsFeatureType, std::pair<int, int>>&
@@ -55,21 +55,21 @@ GetTipsNotificationsFeatureTypeMap() {
 
 }  // namespace
 
-NotificationData GetTipsNotificationData(
+notifications::NotificationData GetTipsNotificationData(
     TipsNotificationsFeatureType feature_type) {
   const auto& map = GetTipsNotificationsFeatureTypeMap();
   const auto it = map.find(feature_type);
   DCHECK(it != map.end());
 
-  NotificationData data;
+  notifications::NotificationData data;
   data.title = l10n_util::GetStringUTF16(it->second.first);
   data.message = l10n_util::GetStringUTF16(it->second.second);
-  data.custom_data[kTipsNotificationsFeatureType] =
+  data.custom_data[notifications::kTipsNotificationsFeatureType] =
       base::NumberToString(static_cast<int>(feature_type));
   data.buttons.clear();
-  NotificationData::Button open_chrome_button;
-  open_chrome_button.type = ActionButtonType::kHelpful;
-  open_chrome_button.id = kDefaultHelpfulButtonId;
+  notifications::NotificationData::Button open_chrome_button;
+  open_chrome_button.type = notifications::ActionButtonType::kHelpful;
+  open_chrome_button.id = notifications::kDefaultHelpfulButtonId;
   open_chrome_button.text =
       l10n_util::GetStringUTF16(IDS_TIPS_NOTIFICATIONS_HELPFUL_BUTTON_TEXT);
   data.buttons.emplace_back(std::move(open_chrome_button));
@@ -80,32 +80,27 @@ NotificationData GetTipsNotificationData(
 std::string GetFeatureTypePref(TipsNotificationsFeatureType feature_type) {
   switch (feature_type) {
     case TipsNotificationsFeatureType::kEnhancedSafeBrowsing:
-      return notifications::tips::prefs::kAndroidTipNotificationShownESB;
+      return prefs::kAndroidTipNotificationShownESB;
     case TipsNotificationsFeatureType::kQuickDelete:
-      return notifications::tips::prefs::
-          kAndroidTipNotificationShownQuickDelete;
+      return prefs::kAndroidTipNotificationShownQuickDelete;
     case TipsNotificationsFeatureType::kGoogleLens:
-      return notifications::tips::prefs::kAndroidTipNotificationShownLens;
+      return prefs::kAndroidTipNotificationShownLens;
     case TipsNotificationsFeatureType::kBottomOmnibox:
-      return notifications::tips::prefs::
-          kAndroidTipNotificationShownBottomOmnibox;
+      return prefs::kAndroidTipNotificationShownBottomOmnibox;
     case TipsNotificationsFeatureType::kPasswordAutofill:
-      return notifications::tips::prefs::
-          kAndroidTipNotificationShownPasswordAutofill;
+      return prefs::kAndroidTipNotificationShownPasswordAutofill;
     case TipsNotificationsFeatureType::kSignin:
-      return notifications::tips::prefs::kAndroidTipNotificationShownSignin;
+      return prefs::kAndroidTipNotificationShownSignin;
     case TipsNotificationsFeatureType::kCreateTabGroups:
-      return notifications::tips::prefs::
-          kAndroidTipNotificationShownCreateTabGroups;
+      return prefs::kAndroidTipNotificationShownCreateTabGroups;
     case TipsNotificationsFeatureType::kCustomizeMVT:
-      return notifications::tips::prefs::
-          kAndroidTipNotificationShownCustomizeMVT;
+      return prefs::kAndroidTipNotificationShownCustomizeMVT;
     case TipsNotificationsFeatureType::kRecentTabs:
-      return notifications::tips::prefs::kAndroidTipNotificationShownRecentTabs;
+      return prefs::kAndroidTipNotificationShownRecentTabs;
     default:
       NOTREACHED();
   }
 }
 #endif  // BUILDFLAG(IS_ANDROID)
 
-}  // namespace notifications
+}  // namespace tips

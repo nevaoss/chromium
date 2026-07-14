@@ -78,7 +78,7 @@ public class AtMemoryBottomSheetMediatorTest {
         PropertyModel itemModel1 = mModelList.get(0).model;
         itemModel1.get(AtMemoryBottomSheetSuggestionProperties.ON_SUGGESTION_CLICKED).run();
 
-        verify(mDelegate).onSuggestionClicked(suggestions.get(0));
+        verify(mDelegate).onSuggestionClicked(/* position= */ 0);
 
         PropertyModel itemModel2 = mModelList.get(1).model;
         itemModel2.get(AtMemoryBottomSheetSuggestionProperties.ON_FLYOUT_CLICKED).run();
@@ -89,8 +89,28 @@ public class AtMemoryBottomSheetMediatorTest {
     @Test
     public void testOnDismissed() {
         mModel.set(AtMemoryBottomSheetProperties.VISIBLE, true);
+        mModel.set(AtMemoryBottomSheetProperties.IS_LOADING, true);
         mMediator.onDismissed();
         assertFalse(mModel.get(AtMemoryBottomSheetProperties.VISIBLE));
+        assertFalse(mModel.get(AtMemoryBottomSheetProperties.IS_LOADING));
         verify(mDelegate).onDismissed();
+    }
+
+    @Test
+    public void testOnQuerySubmitted() {
+        mMediator.onQuerySubmitted("flight");
+        assertTrue(mModel.get(AtMemoryBottomSheetProperties.IS_LOADING));
+        verify(mDelegate).onQuerySubmitted("flight");
+
+        mMediator.show(List.of());
+        assertTrue(mModel.get(AtMemoryBottomSheetProperties.IS_LOADING));
+
+        mMediator.show(
+                List.of(
+                        new AutofillSuggestion.Builder()
+                                .setLabel("No data")
+                                .setSubLabel("")
+                                .build()));
+        assertFalse(mModel.get(AtMemoryBottomSheetProperties.IS_LOADING));
     }
 }

@@ -69,8 +69,14 @@ namespace {
 #define ASSIGN_OR_RETURN_VOID(lhs, rexpr) \
   ASSIGN_OR_RETURN(lhs, rexpr, [](std::string error) { return; });
 
+#define ASSIGN_OR_RETURN_FALSE(lhs, rexpr) \
+  ASSIGN_OR_RETURN(lhs, rexpr, [](std::string error) { return false; });
+
 #define ASSIGN_OR_RETURN_NULLOPT(lhs, rexpr) \
   ASSIGN_OR_RETURN(lhs, rexpr, [](std::string error) { return std::nullopt; });
+
+#define ASSIGN_OPTIONAL_OR_RETURN_VOID(lhs, rexpr) \
+  ASSIGN_OR_RETURN(lhs, rexpr, [] { return; });
 
 // Registers a fuzz test for all three device types (CPU, GPU, NPU).
 // The variadic args carry the .WithDomains()/.WithSeeds() chain.
@@ -424,6 +430,16 @@ struct ScatterElementsParams {
   bool is_input_constant;
   bool is_indices_constant;
   bool is_updates_constant;
+};
+
+struct SliceParams {
+  OperandDataType data_type;
+  uint32_t rank;
+  std::array<uint32_t, 8> input_dims;
+  std::array<uint32_t, 8> starts;
+  std::array<uint32_t, 8> sizes;
+  std::array<uint32_t, 8> strides;
+  bool is_input_constant;
 };
 
 struct SplitParams {
@@ -1094,6 +1110,19 @@ auto AnyScatterElementsParams() {
   );
 }
 
+auto AnySliceParams() {
+  const auto& limits = GetContextPropertiesForTesting().data_type_limits;
+  return fuzztest::StructOf<SliceParams>(
+      AnyOperandDataTypeFor(limits.slice_input.data_types),
+      AnyTensorRankIncludeZero(),                // rank
+      fuzztest::ArrayOf<8>(AnyDimSize()),        // input_dims
+      fuzztest::ArrayOf<8>(AnyDimSizeOrZero()),  // starts
+      fuzztest::ArrayOf<8>(AnyDimSize()),        // sizes
+      fuzztest::ArrayOf<8>(AnyDimSize()),        // strides
+      fuzztest::Arbitrary<bool>()                // is_input_constant
+  );
+}
+
 auto AnySplitParams() {
   const auto& limits = GetContextPropertiesForTesting().data_type_limits;
   return fuzztest::StructOf<SplitParams>(
@@ -1228,6 +1257,116 @@ std::optional<OperandId> BuildOptionalOperand(
   return BuildInputOrConstant(builder, state == OptionalOperandKind::kConstant,
                               std::move(name), *desc,
                               optional_operand_data.back(), named_inputs);
+}
+
+// Build the DequantizeLinear for the input side of a DQ-Op-Q pattern. Create
+// the quantized input operand (as input or constant), scale/zero-point
+// constants, an intermediate operand for the op's input, and the
+// DequantizeLinear operation. The input data buffer is appended to
+// `data_buffers` to keep it alive for `named_inputs`. Return nullopt if
+// descriptor creation or validation fails.
+std::optional<OperandId> BuildDequantizeInput(
+    GraphInfoBuilder& builder,
+    const ContextProperties& context_properties,
+    bool is_input_constant,
+    std::string_view input_name,
+    const OperandDescriptor& op_input_desc,
+    OperandDataType quantized_type,
+    const QuantizationParams& quantization_params,
+    std::optional<uint32_t> channel_axis,
+    uint8_t seed_for_data,
+    float scale_value,
+    uint8_t zero_point_value,
+    std::vector<std::vector<uint8_t>>& data_buffers,
+    base::flat_map<std::string, base::span<const uint8_t>>& named_inputs) {
+  auto scale_shape = ComputeQuantizationScaleShape(
+      op_input_desc.shape(), quantization_params, channel_axis);
+
+  ASSIGN_OR_RETURN_NULLOPT(
+      auto input_dq_desc,
+      OperandDescriptor::Create(context_properties, quantized_type,
+                                op_input_desc.shape(), ""));
+  ASSIGN_OR_RETURN_NULLOPT(
+      auto input_scale_desc,
+      OperandDescriptor::Create(context_properties, op_input_desc.data_type(),
+                                scale_shape, ""));
+  ASSIGN_OR_RETURN_NULLOPT(
+      auto input_zero_desc,
+      OperandDescriptor::Create(context_properties, quantized_type, scale_shape,
+                                ""));
+  ASSIGN_OR_RETURN_NULLOPT(auto input_desc_result,
+                           ValidateDequantizeLinearAndInferOutput(
+                               context_properties, input_dq_desc,
+                               input_scale_desc, input_zero_desc, ""));
+
+  data_buffers.emplace_back(input_dq_desc.PackedByteLength(), seed_for_data);
+  OperandId input_dq_id =
+      BuildInputOrConstant(builder, is_input_constant, std::string(input_name),
+                           input_dq_desc, data_buffers.back(), named_inputs);
+
+  std::vector<float> scale_data(input_scale_desc.NumberOfElements(),
+                                scale_value);
+  OperandId input_scale_id =
+      BuildFloatConstant(builder, input_scale_desc, scale_data);
+
+  std::vector<uint8_t> zero_data(input_zero_desc.PackedByteLength(),
+                                 zero_point_value);
+  OperandId input_zero_id = builder.BuildConstant(
+      input_zero_desc.shape(), input_zero_desc.data_type(), zero_data);
+
+  OperandId op_input_id = builder.BuildIntermediateOperand(
+      op_input_desc.shape(), op_input_desc.data_type());
+
+  builder.BuildDequantizeLinear(input_dq_id, input_scale_id, input_zero_id,
+                                op_input_id);
+  return op_input_id;
+}
+
+// Build the QuantizeLinear for the output side of a DQ-Op-Q pattern. Create the
+// scale/zero-point constants, the graph output operand, and the QuantizeLinear
+// operation. Return false if descriptor creation or validation fails.
+bool BuildQuantizeOutput(GraphInfoBuilder& builder,
+                         const ContextProperties& context_properties,
+                         std::string_view output_name,
+                         const OperandDescriptor& op_output_desc,
+                         OperandDataType quantized_type,
+                         const QuantizationParams& quantization_params,
+                         std::optional<uint32_t> channel_axis,
+                         OperandId op_output_id,
+                         float scale_value,
+                         uint8_t zero_point_value) {
+  auto scale_shape = ComputeQuantizationScaleShape(
+      op_output_desc.shape(), quantization_params, channel_axis);
+
+  ASSIGN_OR_RETURN_FALSE(
+      auto output_scale_desc,
+      OperandDescriptor::Create(context_properties, op_output_desc.data_type(),
+                                scale_shape, ""));
+  ASSIGN_OR_RETURN_FALSE(
+      auto output_zero_desc,
+      OperandDescriptor::Create(context_properties, quantized_type, scale_shape,
+                                ""));
+  ASSIGN_OR_RETURN_FALSE(auto quantized_output_desc,
+                         ValidateQuantizeLinearAndInferOutput(
+                             context_properties, op_output_desc,
+                             output_scale_desc, output_zero_desc, ""));
+
+  std::vector<float> scale_data(output_scale_desc.NumberOfElements(),
+                                scale_value);
+  OperandId output_scale_id =
+      BuildFloatConstant(builder, output_scale_desc, scale_data);
+
+  std::vector<uint8_t> zero_data(output_zero_desc.PackedByteLength(),
+                                 zero_point_value);
+  OperandId output_zero_id = builder.BuildConstant(
+      output_zero_desc.shape(), output_zero_desc.data_type(), zero_data);
+
+  OperandId quantize_output_id = builder.BuildOutput(
+      std::string(output_name), quantized_output_desc.shape(),
+      quantized_output_desc.data_type());
+  builder.BuildQuantizeLinear(op_output_id, output_scale_id, output_zero_id,
+                              quantize_output_id);
+  return true;
 }
 
 struct ConcatDescriptors {
@@ -1788,6 +1927,59 @@ std::optional<Resample2dDescriptors> SetUpResample2dDescriptors(
   };
 }
 
+struct SliceDescriptors {
+  OperandDescriptor input_desc;
+  OperandDescriptor output_desc;
+  std::vector<uint32_t> starts;
+  std::vector<uint32_t> sizes;
+  std::vector<uint32_t> strides;
+};
+
+// Helper to set up SliceDescriptors. Returns nullopt if any validation fails.
+std::optional<SliceDescriptors> SetUpSliceDescriptors(
+    const ContextProperties& context_properties,
+    const SliceParams& params) {
+  std::vector<uint32_t> input_dims(params.input_dims.begin(),
+                                   params.input_dims.begin() + params.rank);
+
+  ASSIGN_OR_RETURN_NULLOPT(
+      auto input_desc,
+      OperandDescriptor::Create(context_properties, params.data_type,
+                                input_dims, ""));
+
+  // Fix up slice parameters to satisfy constraints:
+  // - starts[i] < input_dims[i]
+  // - sizes[i] >= 1
+  // - starts[i] + sizes[i] <= input_dims[i]
+  // - strides[i] >= 1 and strides[i] <= sizes[i]
+  std::vector<uint32_t> starts(params.rank);
+  std::vector<uint32_t> sizes(params.rank);
+  std::vector<uint32_t> strides(params.rank);
+  for (uint32_t i = 0; i < params.rank; ++i) {
+    starts[i] = params.starts[i] % input_dims[i];
+    uint32_t max_size = input_dims[i] - starts[i];
+    sizes[i] = (params.sizes[i] % max_size) + 1;
+    strides[i] = (params.strides[i] % sizes[i]) + 1;
+  }
+
+  SliceAttributes attributes;
+  attributes.starts = starts;
+  attributes.sizes = sizes;
+  attributes.strides = strides;
+
+  ASSIGN_OR_RETURN_NULLOPT(
+      auto output_desc,
+      ValidateSliceAndInferOutput(context_properties, input_desc, attributes));
+
+  return SliceDescriptors{
+      .input_desc = std::move(input_desc),
+      .output_desc = std::move(output_desc),
+      .starts = std::move(starts),
+      .sizes = std::move(sizes),
+      .strides = std::move(strides),
+  };
+}
+
 struct SplitDescriptors {
   OperandDescriptor input_desc;
   std::vector<OperandDescriptor> output_descs;
@@ -2187,6 +2379,7 @@ class WebNNGraphImplFuzzerImpl
   void Reduce(ReduceParams params, uint8_t seed_for_data);
   void Resample2d(Resample2dParams params, uint8_t seed_for_data);
   void ScatterElements(ScatterElementsParams params, uint8_t seed_for_data);
+  void Slice(SliceParams params, uint8_t seed_for_data);
   void Split(SplitParams params, uint8_t seed_for_data);
   void Transpose(TransposeParams params, uint8_t seed_for_data);
   void DQConcatQ(ConcatParams concat_params,
@@ -2230,6 +2423,11 @@ class WebNNGraphImplFuzzerImpl
                      uint8_t seed_for_input,
                      float seed_for_scale,
                      uint8_t seed_for_zero_point);
+  void DQSliceQ(SliceParams slice_params,
+                OperandDataType quantized_type,
+                uint8_t seed_for_input,
+                float seed_for_scale,
+                uint8_t seed_for_zero_point);
   void DQSplitQ(SplitParams split_params,
                 OperandDataType quantized_type,
                 uint8_t seed_for_input,
@@ -3479,6 +3677,41 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::ScatterElements(
 }
 
 template <typename BaseFixture>
+void WebNNGraphImplFuzzerImpl<BaseFixture>::Slice(SliceParams params,
+                                                  uint8_t seed_for_data) {
+  ASSIGN_OR_RETURN_VOID(
+      auto slice_descs,
+      SetUpSliceDescriptors(this->context_properties(), params));
+
+  mojo::Remote<mojom::WebNNGraphBuilder> remote =
+      this->BindNewGraphBuilderRemote();
+  GraphInfoBuilder builder(remote);
+
+  std::vector<uint8_t> input_data(slice_descs.input_desc.PackedByteLength(),
+                                  seed_for_data);
+
+  base::flat_map<std::string, base::span<const uint8_t>> named_inputs;
+  OperandId input_id =
+      BuildInputOrConstant(builder, params.is_input_constant, "input",
+                           slice_descs.input_desc, input_data, named_inputs);
+
+  OperandId output_id =
+      builder.BuildOutput("output", slice_descs.output_desc.shape(),
+                          slice_descs.output_desc.data_type());
+
+  builder.BuildSlice(input_id, output_id, slice_descs.starts, slice_descs.sizes,
+                     slice_descs.strides);
+
+  if (!builder.IsValidGraphForTesting(this->context_properties())) {
+    return;
+  }
+  BuildAndCompute(this->context_, std::move(remote), builder.TakeGraphInfo(),
+                  std::move(named_inputs));
+
+  GetGlobalFuzzEnvironment().GetWebNNTestEnvironment().RunUntilIdle();
+}
+
+template <typename BaseFixture>
 void WebNNGraphImplFuzzerImpl<BaseFixture>::Split(SplitParams params,
                                                   uint8_t seed_for_data) {
   ASSIGN_OR_RETURN_VOID(
@@ -3574,100 +3807,26 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::DQConcatQ(
       .quantization_kind = QuantizationKind::kPerTensor,
       .channel_block_size = 1};
 
-  const size_t input_num = concat_descs.input_descs.size();
-
-  // Build dequantize descriptors for each input.
-  std::vector<OperandDescriptor> input_dq_descs;
-  std::vector<OperandDescriptor> input_scale_descs;
-  std::vector<OperandDescriptor> input_zero_descs;
-  input_dq_descs.reserve(input_num);
-  input_scale_descs.reserve(input_num);
-  input_zero_descs.reserve(input_num);
-
-  for (const auto& input_desc : concat_descs.input_descs) {
-    auto scale_shape = ComputeQuantizationScaleShape(
-        input_desc.shape(), per_tensor_quantization_params);
-
-    ASSIGN_OR_RETURN_VOID(
-        auto dq_desc,
-        OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                  input_desc.shape(), ""));
-    ASSIGN_OR_RETURN_VOID(
-        auto scale_desc,
-        OperandDescriptor::Create(this->context_properties(),
-                                  concat_params.data_type, scale_shape, ""));
-    ASSIGN_OR_RETURN_VOID(auto zero_desc, OperandDescriptor::Create(
-                                              this->context_properties(),
-                                              quantized_type, scale_shape, ""));
-
-    ASSIGN_OR_RETURN_VOID(
-        auto desc_result,
-        ValidateDequantizeLinearAndInferOutput(
-            this->context_properties(), dq_desc, scale_desc, zero_desc, ""));
-
-    input_dq_descs.push_back(std::move(dq_desc));
-    input_scale_descs.push_back(std::move(scale_desc));
-    input_zero_descs.push_back(std::move(zero_desc));
-  }
-
-  // Build quantize descriptors for output.
-  auto output_scale_shape = ComputeQuantizationScaleShape(
-      concat_descs.output_desc.shape(), per_tensor_quantization_params);
-
-  ASSIGN_OR_RETURN_VOID(auto output_scale_desc,
-                        OperandDescriptor::Create(this->context_properties(),
-                                                  concat_params.data_type,
-                                                  output_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto output_zero_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                output_scale_shape, ""));
-
-  ASSIGN_OR_RETURN_VOID(
-      auto quantized_output_desc,
-      ValidateQuantizeLinearAndInferOutput(
-          this->context_properties(), concat_descs.output_desc,
-          output_scale_desc, output_zero_desc, ""));
-
   mojo::Remote<mojom::WebNNGraphBuilder> remote =
       this->BindNewGraphBuilderRemote();
   GraphInfoBuilder builder(remote);
 
   base::flat_map<std::string, base::span<const uint8_t>> named_inputs;
-  std::vector<std::vector<uint8_t>> input_dq_data_buffers;
-  std::vector<std::vector<float>> input_scale_data_buffers;
-  std::vector<std::vector<uint8_t>> input_zero_data_buffers;
-  input_dq_data_buffers.reserve(input_num);
-  input_scale_data_buffers.reserve(input_num);
-  input_zero_data_buffers.reserve(input_num);
+  std::vector<std::vector<uint8_t>> data_buffers;
+  const size_t input_num = concat_descs.input_descs.size();
   std::vector<OperandId> concat_input_ids;
   concat_input_ids.reserve(input_num);
 
   for (size_t i = 0; i < input_num; ++i) {
-    input_dq_data_buffers.emplace_back(input_dq_descs[i].PackedByteLength(),
-                                       seed_for_input);
-    input_scale_data_buffers.emplace_back(
-        input_scale_descs[i].NumberOfElements(), seed_for_scale);
-    input_zero_data_buffers.emplace_back(input_zero_descs[i].PackedByteLength(),
-                                         seed_for_zero_point);
-
-    OperandId input_dq_id = BuildInputOrConstant(
-        builder, concat_params.is_input_constant,
-        "input" + base::NumberToString(i), input_dq_descs[i],
-        input_dq_data_buffers.back(), named_inputs);
-
-    OperandId input_scale_id = BuildFloatConstant(
-        builder, input_scale_descs[i], input_scale_data_buffers.back());
-    OperandId input_zero_id = builder.BuildConstant(
-        input_zero_descs[i].shape(), input_zero_descs[i].data_type(),
-        input_zero_data_buffers.back());
-
-    OperandId concat_input_id = builder.BuildIntermediateOperand(
-        concat_descs.input_descs[i].shape(),
-        concat_descs.input_descs[i].data_type());
-
-    builder.BuildDequantizeLinear(input_dq_id, input_scale_id, input_zero_id,
-                                  concat_input_id);
+    ASSIGN_OPTIONAL_OR_RETURN_VOID(
+        auto concat_input_id,
+        BuildDequantizeInput(
+            builder, this->context_properties(),
+            concat_params.is_input_constant, "input" + base::NumberToString(i),
+            concat_descs.input_descs[i], quantized_type,
+            per_tensor_quantization_params,
+            /*channel_axis=*/std::nullopt, seed_for_input, seed_for_scale,
+            seed_for_zero_point, data_buffers, named_inputs));
     concat_input_ids.push_back(concat_input_id);
   }
 
@@ -3677,20 +3836,13 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::DQConcatQ(
   builder.BuildConcat(std::move(concat_input_ids), concat_output_id,
                       concat_descs.axis);
 
-  std::vector<float> output_scale_data(output_scale_desc.NumberOfElements(),
-                                       seed_for_scale);
-  std::vector<uint8_t> output_zero_data(output_zero_desc.PackedByteLength(),
-                                        seed_for_zero_point);
-  OperandId output_scale_id =
-      BuildFloatConstant(builder, output_scale_desc, output_scale_data);
-  OperandId output_zero_id = builder.BuildConstant(
-      output_zero_desc.shape(), output_zero_desc.data_type(), output_zero_data);
-
-  OperandId quantize_output_id =
-      builder.BuildOutput("output", quantized_output_desc.shape(),
-                          quantized_output_desc.data_type());
-  builder.BuildQuantizeLinear(concat_output_id, output_scale_id, output_zero_id,
-                              quantize_output_id);
+  if (!BuildQuantizeOutput(builder, this->context_properties(), "output",
+                           concat_descs.output_desc, quantized_type,
+                           per_tensor_quantization_params,
+                           /*channel_axis=*/std::nullopt, concat_output_id,
+                           seed_for_scale, seed_for_zero_point)) {
+    return;
+  }
 
   if (!builder.IsValidGraphForTesting(this->context_properties())) {
     return;
@@ -3724,195 +3876,47 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::DQConv2dQ(
           : 0u;
   const uint32_t bias_channel_axis = 0u;
 
-  auto input_scale_shape = ComputeQuantizationScaleShape(
-      conv2d_descs.input_desc.shape(), quantization_params, input_channel_axis);
-  auto filter_scale_shape =
-      ComputeQuantizationScaleShape(conv2d_descs.filter_desc.shape(),
-                                    quantization_params, filter_channel_axis);
-  std::vector<uint32_t> bias_scale_shape;
-  if (conv2d_descs.bias_desc.has_value()) {
-    bias_scale_shape =
-        ComputeQuantizationScaleShape(conv2d_descs.bias_desc->shape(),
-                                      quantization_params, bias_channel_axis);
-  }
-
-  ASSIGN_OR_RETURN_VOID(
-      auto input_dq_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                conv2d_descs.input_desc.shape(), ""));
-  ASSIGN_OR_RETURN_VOID(auto input_scale_desc,
-                        OperandDescriptor::Create(this->context_properties(),
-                                                  conv2d_params.data_type,
-                                                  input_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto input_zero_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                input_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto filter_dq_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                conv2d_descs.filter_desc.shape(), ""));
-  ASSIGN_OR_RETURN_VOID(auto filter_scale_desc,
-                        OperandDescriptor::Create(this->context_properties(),
-                                                  conv2d_params.data_type,
-                                                  filter_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto filter_zero_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                filter_scale_shape, ""));
-  // "kInt32" is necessary to exercise the fusiable path for TFLite backend:
-  // https://source.chromium.org/chromium/chromium/src/+/main:services/webnn/tflite/graph_builder_tflite.cc;l=1746;drc=ec4ff4bae24916aaad3186ce4bc1339313b6fb5a;
-  // TODO(crbug.com/498987226): Remove this restriction to increase test
-  // coverage.
-  std::optional<OperandDescriptor> bias_dq_desc;
-  std::optional<OperandDescriptor> bias_scale_desc;
-  std::optional<OperandDescriptor> bias_zero_desc;
-  if (conv2d_descs.bias_desc.has_value()) {
-    ASSIGN_OR_RETURN_VOID(
-        bias_dq_desc, OperandDescriptor::Create(
-                          this->context_properties(), OperandDataType::kInt32,
-                          conv2d_descs.bias_desc->shape(), ""));
-    ASSIGN_OR_RETURN_VOID(bias_scale_desc,
-                          OperandDescriptor::Create(this->context_properties(),
-                                                    conv2d_params.data_type,
-                                                    bias_scale_shape, ""));
-    ASSIGN_OR_RETURN_VOID(bias_zero_desc,
-                          OperandDescriptor::Create(this->context_properties(),
-                                                    OperandDataType::kInt32,
-                                                    bias_scale_shape, ""));
-  }
-
-  ASSIGN_OR_RETURN_VOID(auto input_desc_result,
-                        ValidateDequantizeLinearAndInferOutput(
-                            this->context_properties(), input_dq_desc,
-                            input_scale_desc, input_zero_desc, ""));
-  ASSIGN_OR_RETURN_VOID(auto filter_desc_result,
-                        ValidateDequantizeLinearAndInferOutput(
-                            this->context_properties(), filter_dq_desc,
-                            filter_scale_desc, filter_zero_desc, ""));
-  std::optional<OperandDescriptor> bias_desc_result;
-  if (bias_dq_desc.has_value()) {
-    ASSIGN_OR_RETURN_VOID(bias_desc_result,
-                          ValidateDequantizeLinearAndInferOutput(
-                              this->context_properties(), *bias_dq_desc,
-                              *bias_scale_desc, *bias_zero_desc, ""));
-  }
-
-  auto output_scale_shape =
-      ComputeQuantizationScaleShape(conv2d_descs.output_desc.shape(),
-                                    quantization_params, output_channel_axis);
-
-  ASSIGN_OR_RETURN_VOID(auto output_scale_desc,
-                        OperandDescriptor::Create(this->context_properties(),
-                                                  conv2d_params.data_type,
-                                                  output_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto output_zero_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                output_scale_shape, ""));
-
-  ASSIGN_OR_RETURN_VOID(
-      auto quantized_output_desc,
-      ValidateQuantizeLinearAndInferOutput(
-          this->context_properties(), conv2d_descs.output_desc,
-          output_scale_desc, output_zero_desc, ""));
-
-  std::vector<uint8_t> input_dq_data(input_dq_desc.PackedByteLength(),
-                                     seed_for_data);
-  std::vector<uint8_t> filter_dq_data(filter_dq_desc.PackedByteLength(),
-                                      seed_for_data);
-  std::vector<uint8_t> bias_dq_data;
-  if (bias_dq_desc.has_value()) {
-    bias_dq_data.assign(bias_dq_desc->PackedByteLength(), seed_for_data);
-  }
-  // These values are used to exercise the fusiable path for TFLite backend:
-  // https://source.chromium.org/chromium/chromium/src/+/main:services/webnn/tflite/graph_builder_tflite.cc;l=1809;drc=ec4ff4bae24916aaad3186ce4bc1339313b6fb5a
-  // https://source.chromium.org/chromium/chromium/src/+/main:services/webnn/tflite/graph_builder_tflite.cc;l=1754;drc=ec4ff4bae24916aaad3186ce4bc1339313b6fb5a
-  // TODO(crbug.com/498987226): Remove this restriction to increase test
-  // coverage.
-  std::vector<float> input_scale_data(input_scale_desc.NumberOfElements(),
-                                      0.5f);
-  std::vector<float> filter_scale_data(filter_scale_desc.NumberOfElements(),
-                                       0.25f);
-  std::vector<float> bias_scale_data;
-  if (bias_scale_desc.has_value()) {
-    bias_scale_data.assign(bias_scale_desc->NumberOfElements(), 0.125f);
-  }
-  std::vector<float> output_scale_data(output_scale_desc.NumberOfElements(),
-                                       0.125f);
-  std::vector<uint8_t> input_zero_data(input_zero_desc.PackedByteLength(), 0);
-  std::vector<uint8_t> filter_zero_data(filter_zero_desc.PackedByteLength(), 0);
-  std::vector<uint8_t> bias_zero_data;
-  if (bias_zero_desc.has_value()) {
-    bias_zero_data.assign(bias_zero_desc->PackedByteLength(), 0);
-  }
-  std::vector<uint8_t> output_zero_data(output_zero_desc.PackedByteLength(), 0);
-
   mojo::Remote<mojom::WebNNGraphBuilder> remote =
       this->BindNewGraphBuilderRemote();
   GraphInfoBuilder builder(remote);
 
   base::flat_map<std::string, base::span<const uint8_t>> named_inputs;
+  std::vector<std::vector<uint8_t>> data_buffers;
 
-  OperandId input_dq_id =
-      BuildInputOrConstant(builder, conv2d_params.is_input_constant, "input",
-                           input_dq_desc, input_dq_data, named_inputs);
-  OperandId filter_dq_id =
-      BuildInputOrConstant(builder, conv2d_params.is_filter_constant, "filter",
-                           filter_dq_desc, filter_dq_data, named_inputs);
-  std::optional<OperandId> bias_dq_id;
-  switch (conv2d_params.bias_kind) {
-    case OptionalOperandKind::kNone:
-      break;
-    case OptionalOperandKind::kInput:
-      bias_dq_id = builder.BuildInput("bias", bias_dq_desc->shape(),
-                                      bias_dq_desc->data_type());
-      named_inputs.insert({"bias", bias_dq_data});
-      break;
-    case OptionalOperandKind::kConstant:
-      bias_dq_id = builder.BuildConstant(
-          bias_dq_desc->shape(), bias_dq_desc->data_type(), bias_dq_data);
-      break;
-  }
-
-  OperandId input_scale_id =
-      BuildFloatConstant(builder, input_scale_desc, input_scale_data);
-  OperandId input_zero_id = builder.BuildConstant(
-      input_zero_desc.shape(), input_zero_desc.data_type(), input_zero_data);
-  OperandId filter_scale_id =
-      BuildFloatConstant(builder, filter_scale_desc, filter_scale_data);
-  OperandId filter_zero_id = builder.BuildConstant(
-      filter_zero_desc.shape(), filter_zero_desc.data_type(), filter_zero_data);
-  std::optional<OperandId> bias_scale_id;
-  std::optional<OperandId> bias_zero_id;
-  if (bias_scale_desc.has_value()) {
-    bias_scale_id =
-        BuildFloatConstant(builder, *bias_scale_desc, bias_scale_data);
-    bias_zero_id = builder.BuildConstant(
-        bias_zero_desc->shape(), bias_zero_desc->data_type(), bias_zero_data);
-  }
-  OperandId output_scale_id =
-      BuildFloatConstant(builder, output_scale_desc, output_scale_data);
-  OperandId output_zero_id = builder.BuildConstant(
-      output_zero_desc.shape(), output_zero_desc.data_type(), output_zero_data);
-
-  OperandId conv2d_input_id = builder.BuildIntermediateOperand(
-      conv2d_descs.input_desc.shape(), conv2d_descs.input_desc.data_type());
-  OperandId conv2d_filter_id = builder.BuildIntermediateOperand(
-      conv2d_descs.filter_desc.shape(), conv2d_descs.filter_desc.data_type());
+  // These scale and zero-point values are used to exercise the fusiable path
+  // for TFLite backend (input_scale=0.5, filter_scale=0.25, bias_scale=0.125,
+  // output_scale=0.125, all zero_points=0):
+  // https://source.chromium.org/chromium/chromium/src/+/main:services/webnn/tflite/graph_builder_tflite.cc;l=1809;drc=ec4ff4bae24916aaad3186ce4bc1339313b6fb5a
+  // https://source.chromium.org/chromium/chromium/src/+/main:services/webnn/tflite/graph_builder_tflite.cc;l=1754;drc=ec4ff4bae24916aaad3186ce4bc1339313b6fb5a
+  // TODO(crbug.com/498987226): Remove this restriction to increase test
+  // coverage.
+  ASSIGN_OPTIONAL_OR_RETURN_VOID(
+      auto conv2d_input_id,
+      BuildDequantizeInput(
+          builder, this->context_properties(), conv2d_params.is_input_constant,
+          "input", conv2d_descs.input_desc, quantized_type, quantization_params,
+          input_channel_axis, seed_for_data, /*scale_value=*/0.5f,
+          /*zero_point_value=*/0, data_buffers, named_inputs));
+  ASSIGN_OPTIONAL_OR_RETURN_VOID(
+      auto conv2d_filter_id,
+      BuildDequantizeInput(builder, this->context_properties(),
+                           conv2d_params.is_filter_constant, "filter",
+                           conv2d_descs.filter_desc, quantized_type,
+                           quantization_params, filter_channel_axis,
+                           seed_for_data, /*scale_value=*/0.25f,
+                           /*zero_point_value=*/0, data_buffers, named_inputs));
   std::optional<OperandId> conv2d_bias_id;
-  if (bias_dq_id.has_value()) {
-    conv2d_bias_id = builder.BuildIntermediateOperand(
-        conv2d_descs.bias_desc->shape(), conv2d_descs.bias_desc->data_type());
-  }
-
-  builder.BuildDequantizeLinear(input_dq_id, input_scale_id, input_zero_id,
-                                conv2d_input_id);
-  builder.BuildDequantizeLinear(filter_dq_id, filter_scale_id, filter_zero_id,
-                                conv2d_filter_id);
-  if (bias_dq_id.has_value()) {
-    builder.BuildDequantizeLinear(*bias_dq_id, *bias_scale_id, *bias_zero_id,
-                                  *conv2d_bias_id);
+  if (conv2d_params.bias_kind != OptionalOperandKind::kNone) {
+    ASSIGN_OPTIONAL_OR_RETURN_VOID(
+        auto bias_id,
+        BuildDequantizeInput(
+            builder, this->context_properties(),
+            conv2d_params.bias_kind == OptionalOperandKind::kConstant, "bias",
+            *conv2d_descs.bias_desc, OperandDataType::kInt32,
+            quantization_params, bias_channel_axis, seed_for_data,
+            /*scale_value=*/0.125f, /*zero_point_value=*/0, data_buffers,
+            named_inputs));
+    conv2d_bias_id = bias_id;
   }
 
   OperandId conv_output_id = builder.BuildIntermediateOperand(
@@ -3954,11 +3958,13 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::DQConv2dQ(
     quantize_input_id = activation_output_id;
   }
 
-  OperandId quantize_output_id =
-      builder.BuildOutput("output", quantized_output_desc.shape(),
-                          quantized_output_desc.data_type());
-  builder.BuildQuantizeLinear(quantize_input_id, output_scale_id,
-                              output_zero_id, quantize_output_id);
+  if (!BuildQuantizeOutput(builder, this->context_properties(), "output",
+                           conv2d_descs.output_desc, quantized_type,
+                           quantization_params, output_channel_axis,
+                           quantize_input_id,
+                           /*scale_value=*/0.125f, /*zero_point_value=*/0)) {
+    return;
+  }
 
   if (!builder.IsValidGraphForTesting(this->context_properties())) {
     return;
@@ -3990,124 +3996,41 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::DQElementWiseBinaryQ(
       .quantization_kind = QuantizationKind::kPerTensor,
       .channel_block_size = 1};
 
-  auto lhs_scale_shape = ComputeQuantizationScaleShape(
-      descs.lhs_desc.shape(), per_tensor_quantization_params);
-  ASSIGN_OR_RETURN_VOID(
-      auto lhs_dq_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                descs.lhs_desc.shape(), ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto lhs_scale_desc,
-      OperandDescriptor::Create(this->context_properties(), params.data_type,
-                                lhs_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto lhs_zero_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                lhs_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(auto lhs_desc_result,
-                        ValidateDequantizeLinearAndInferOutput(
-                            this->context_properties(), lhs_dq_desc,
-                            lhs_scale_desc, lhs_zero_desc, ""));
-
-  auto rhs_scale_shape = ComputeQuantizationScaleShape(
-      descs.rhs_desc.shape(), per_tensor_quantization_params);
-  ASSIGN_OR_RETURN_VOID(
-      auto rhs_dq_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                descs.rhs_desc.shape(), ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto rhs_scale_desc,
-      OperandDescriptor::Create(this->context_properties(), params.data_type,
-                                rhs_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto rhs_zero_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                rhs_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(auto rhs_desc_result,
-                        ValidateDequantizeLinearAndInferOutput(
-                            this->context_properties(), rhs_dq_desc,
-                            rhs_scale_desc, rhs_zero_desc, ""));
-
-  auto output_scale_shape = ComputeQuantizationScaleShape(
-      descs.output_desc.shape(), per_tensor_quantization_params);
-  ASSIGN_OR_RETURN_VOID(
-      auto output_scale_desc,
-      OperandDescriptor::Create(this->context_properties(), params.data_type,
-                                output_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto output_zero_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                output_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(auto quantized_output_desc,
-                        ValidateQuantizeLinearAndInferOutput(
-                            this->context_properties(), descs.output_desc,
-                            output_scale_desc, output_zero_desc, ""));
-
   mojo::Remote<mojom::WebNNGraphBuilder> remote =
       this->BindNewGraphBuilderRemote();
   GraphInfoBuilder builder(remote);
 
   base::flat_map<std::string, base::span<const uint8_t>> named_inputs;
+  std::vector<std::vector<uint8_t>> data_buffers;
 
-  std::vector<uint8_t> lhs_dq_data(lhs_dq_desc.PackedByteLength(),
-                                   seed_for_input);
-  std::vector<float> lhs_scale_data(lhs_scale_desc.NumberOfElements(),
-                                    seed_for_scale);
-  std::vector<uint8_t> lhs_zero_data(lhs_zero_desc.PackedByteLength(),
-                                     seed_for_zero_point);
+  ASSIGN_OPTIONAL_OR_RETURN_VOID(
+      auto binary_lhs_id,
+      BuildDequantizeInput(
+          builder, this->context_properties(), params.is_lhs_constant, "lhs",
+          descs.lhs_desc, quantized_type, per_tensor_quantization_params,
+          /*channel_axis=*/std::nullopt, seed_for_input, seed_for_scale,
+          seed_for_zero_point, data_buffers, named_inputs));
 
-  OperandId lhs_dq_id =
-      BuildInputOrConstant(builder, params.is_lhs_constant, "lhs", lhs_dq_desc,
-                           lhs_dq_data, named_inputs);
-
-  OperandId lhs_scale_id =
-      BuildFloatConstant(builder, lhs_scale_desc, lhs_scale_data);
-  OperandId lhs_zero_id = builder.BuildConstant(
-      lhs_zero_desc.shape(), lhs_zero_desc.data_type(), lhs_zero_data);
-  OperandId binary_lhs_id = builder.BuildIntermediateOperand(
-      descs.lhs_desc.shape(), descs.lhs_desc.data_type());
-  builder.BuildDequantizeLinear(lhs_dq_id, lhs_scale_id, lhs_zero_id,
-                                binary_lhs_id);
-
-  std::vector<uint8_t> rhs_dq_data(rhs_dq_desc.PackedByteLength(),
-                                   seed_for_input);
-  std::vector<float> rhs_scale_data(rhs_scale_desc.NumberOfElements(),
-                                    seed_for_scale);
-  std::vector<uint8_t> rhs_zero_data(rhs_zero_desc.PackedByteLength(),
-                                     seed_for_zero_point);
-
-  OperandId rhs_dq_id =
-      BuildInputOrConstant(builder, params.is_rhs_constant, "rhs", rhs_dq_desc,
-                           rhs_dq_data, named_inputs);
-
-  OperandId rhs_scale_id =
-      BuildFloatConstant(builder, rhs_scale_desc, rhs_scale_data);
-  OperandId rhs_zero_id = builder.BuildConstant(
-      rhs_zero_desc.shape(), rhs_zero_desc.data_type(), rhs_zero_data);
-  OperandId binary_rhs_id = builder.BuildIntermediateOperand(
-      descs.rhs_desc.shape(), descs.rhs_desc.data_type());
-  builder.BuildDequantizeLinear(rhs_dq_id, rhs_scale_id, rhs_zero_id,
-                                binary_rhs_id);
+  ASSIGN_OPTIONAL_OR_RETURN_VOID(
+      auto binary_rhs_id,
+      BuildDequantizeInput(
+          builder, this->context_properties(), params.is_rhs_constant, "rhs",
+          descs.rhs_desc, quantized_type, per_tensor_quantization_params,
+          /*channel_axis=*/std::nullopt, seed_for_input, seed_for_scale,
+          seed_for_zero_point, data_buffers, named_inputs));
 
   OperandId binary_output_id = builder.BuildIntermediateOperand(
       descs.output_desc.shape(), descs.output_desc.data_type());
   builder.BuildElementWiseBinary(params.kind, binary_lhs_id, binary_rhs_id,
                                  binary_output_id);
 
-  std::vector<float> output_scale_data(output_scale_desc.NumberOfElements(),
-                                       seed_for_scale);
-  std::vector<uint8_t> output_zero_data(output_zero_desc.PackedByteLength(),
-                                        seed_for_zero_point);
-  OperandId output_scale_id =
-      BuildFloatConstant(builder, output_scale_desc, output_scale_data);
-  OperandId output_zero_id = builder.BuildConstant(
-      output_zero_desc.shape(), output_zero_desc.data_type(), output_zero_data);
-
-  OperandId quantize_output_id =
-      builder.BuildOutput("output", quantized_output_desc.shape(),
-                          quantized_output_desc.data_type());
-  builder.BuildQuantizeLinear(binary_output_id, output_scale_id, output_zero_id,
-                              quantize_output_id);
+  if (!BuildQuantizeOutput(builder, this->context_properties(), "output",
+                           descs.output_desc, quantized_type,
+                           per_tensor_quantization_params,
+                           /*channel_axis=*/std::nullopt, binary_output_id,
+                           seed_for_scale, seed_for_zero_point)) {
+    return;
+  }
 
   if (!builder.IsValidGraphForTesting(this->context_properties())) {
     return;
@@ -4147,7 +4070,7 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::DQGatherQ(
   //     because the gather axis (1 dim) is replaced by indices_rank dims.
   OperandDataType quantized_type = quantization_params.quantized_type;
   uint32_t input_channel_axis = channel_axis % gather_params.input_rank;
-  uint32_t output_channel_axis = 0;
+  std::optional<uint32_t> output_channel_axis;
 
   if (gather_descs.output_desc.shape().empty()) {
     quantization_params.quantization_kind = QuantizationKind::kPerTensor;
@@ -4161,73 +4084,20 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::DQGatherQ(
     output_channel_axis = input_channel_axis + gather_params.indices_rank - 1;
   }
 
-  auto input_scale_shape = ComputeQuantizationScaleShape(
-      gather_descs.input_desc.shape(), quantization_params, input_channel_axis);
-
-  ASSIGN_OR_RETURN_VOID(
-      auto input_dq_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                gather_descs.input_desc.shape(), ""));
-  ASSIGN_OR_RETURN_VOID(auto input_scale_desc,
-                        OperandDescriptor::Create(this->context_properties(),
-                                                  gather_params.input_data_type,
-                                                  input_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto input_zero_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                input_scale_shape, ""));
-
-  ASSIGN_OR_RETURN_VOID(auto input_desc_result,
-                        ValidateDequantizeLinearAndInferOutput(
-                            this->context_properties(), input_dq_desc,
-                            input_scale_desc, input_zero_desc, ""));
-
-  auto output_scale_shape =
-      ComputeQuantizationScaleShape(gather_descs.output_desc.shape(),
-                                    quantization_params, output_channel_axis);
-
-  ASSIGN_OR_RETURN_VOID(auto output_scale_desc,
-                        OperandDescriptor::Create(this->context_properties(),
-                                                  gather_params.input_data_type,
-                                                  output_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto output_zero_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                output_scale_shape, ""));
-
-  ASSIGN_OR_RETURN_VOID(
-      auto quantized_output_desc,
-      ValidateQuantizeLinearAndInferOutput(
-          this->context_properties(), gather_descs.output_desc,
-          output_scale_desc, output_zero_desc, ""));
-
   mojo::Remote<mojom::WebNNGraphBuilder> remote =
       this->BindNewGraphBuilderRemote();
   GraphInfoBuilder builder(remote);
 
   base::flat_map<std::string, base::span<const uint8_t>> named_inputs;
+  std::vector<std::vector<uint8_t>> data_buffers;
 
-  std::vector<uint8_t> input_dq_data(input_dq_desc.PackedByteLength(),
-                                     seed_for_input);
-  std::vector<float> input_scale_data(input_scale_desc.NumberOfElements(),
-                                      seed_for_scale);
-  std::vector<uint8_t> input_zero_data(input_zero_desc.PackedByteLength(),
-                                       seed_for_zero_point);
-
-  OperandId input_dq_id =
-      BuildInputOrConstant(builder, gather_params.is_input_constant, "input",
-                           input_dq_desc, input_dq_data, named_inputs);
-
-  OperandId input_scale_id =
-      BuildFloatConstant(builder, input_scale_desc, input_scale_data);
-  OperandId input_zero_id = builder.BuildConstant(
-      input_zero_desc.shape(), input_zero_desc.data_type(), input_zero_data);
-
-  OperandId gather_input_id = builder.BuildIntermediateOperand(
-      gather_descs.input_desc.shape(), gather_descs.input_desc.data_type());
-
-  builder.BuildDequantizeLinear(input_dq_id, input_scale_id, input_zero_id,
-                                gather_input_id);
+  ASSIGN_OPTIONAL_OR_RETURN_VOID(
+      auto gather_input_id,
+      BuildDequantizeInput(
+          builder, this->context_properties(), gather_params.is_input_constant,
+          "input", gather_descs.input_desc, quantized_type, quantization_params,
+          input_channel_axis, seed_for_input, seed_for_scale,
+          seed_for_zero_point, data_buffers, named_inputs));
 
   std::vector<uint8_t> indices_data = CreateBufferAsIndicesType(
       gather_descs.indices_desc.PackedByteLength(),
@@ -4243,18 +4113,15 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::DQGatherQ(
   builder.BuildGather(gather_input_id, indices_id, gather_output_id,
                       gather_descs.axis);
 
-  // Reuse input scale/zero data for output since they should have the same
-  // values.
-  OperandId output_scale_id =
-      BuildFloatConstant(builder, output_scale_desc, input_scale_data);
-  OperandId output_zero_id = builder.BuildConstant(
-      output_zero_desc.shape(), output_zero_desc.data_type(), input_zero_data);
-
-  OperandId quantize_output_id =
-      builder.BuildOutput("output", quantized_output_desc.shape(),
-                          quantized_output_desc.data_type());
-  builder.BuildQuantizeLinear(gather_output_id, output_scale_id, output_zero_id,
-                              quantize_output_id);
+  // Reuse input scale/zero-point values for output since they should have the
+  // same values.
+  if (!BuildQuantizeOutput(builder, this->context_properties(), "output",
+                           gather_descs.output_desc, quantized_type,
+                           quantization_params, output_channel_axis,
+                           gather_output_id, seed_for_scale,
+                           seed_for_zero_point)) {
+    return;
+  }
 
   if (!builder.IsValidGraphForTesting(this->context_properties())) {
     return;
@@ -4284,141 +4151,33 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::DQGemmQ(
   OperandDataType quantized_type = quantization_params.quantized_type;
   const uint32_t b_channel_axis = gemm_params.b_transpose ? 0u : 1u;
 
-  auto a_scale_shape = ComputeQuantizationScaleShape(
-      gemm_descs.a_desc.shape(), per_tensor_quantization_params);
-  auto b_scale_shape = ComputeQuantizationScaleShape(
-      gemm_descs.b_desc.shape(), quantization_params, b_channel_axis);
-
-  ASSIGN_OR_RETURN_VOID(
-      auto a_dq_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                gemm_descs.a_desc.shape(), ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto a_scale_desc,
-      OperandDescriptor::Create(this->context_properties(),
-                                gemm_params.data_type, a_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto a_zero_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                a_scale_shape, ""));
-
-  ASSIGN_OR_RETURN_VOID(
-      auto b_dq_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                gemm_descs.b_desc.shape(), ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto b_scale_desc,
-      OperandDescriptor::Create(this->context_properties(),
-                                gemm_params.data_type, b_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto b_zero_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                b_scale_shape, ""));
-
-  ASSIGN_OR_RETURN_VOID(auto a_desc_result,
-                        ValidateDequantizeLinearAndInferOutput(
-                            this->context_properties(), a_dq_desc, a_scale_desc,
-                            a_zero_desc, ""));
-  ASSIGN_OR_RETURN_VOID(auto b_desc_result,
-                        ValidateDequantizeLinearAndInferOutput(
-                            this->context_properties(), b_dq_desc, b_scale_desc,
-                            b_zero_desc, ""));
-
-  std::optional<OperandDescriptor> c_dq_desc;
-  std::optional<OperandDescriptor> c_scale_desc;
-  std::optional<OperandDescriptor> c_zero_desc;
-  if (gemm_params.has_c) {
-    // C shape is {1}, {N}, {1, N}, or {M, N}. For 1D shapes, axis 0 is the
-    // only option. For 2D shapes, quantize along the N dimension at axis 1.
-    const uint32_t c_channel_axis =
-        gemm_descs.c_desc->shape().size() == 1 ? 0u : 1u;
-    auto c_scale_shape = ComputeQuantizationScaleShape(
-        gemm_descs.c_desc->shape(), quantization_params, c_channel_axis);
-
-    // The specific values and data types in this test are used to exercise
-    // the fusiable path for TFLite backend:
-    // https://source.chromium.org/chromium/chromium/src/+/main:services/webnn/tflite/graph_builder_tflite.cc;l=2079;drc=ec4ff4bae24916aaad3186ce4bc1339313b6fb5a
-    // TODO(crbug.com/498987226): Remove these restrictions to increase test
-    // coverage.
-    ASSIGN_OR_RETURN_VOID(
-        c_dq_desc, OperandDescriptor::Create(this->context_properties(),
-                                             OperandDataType::kInt32,
-                                             gemm_descs.c_desc->shape(), ""));
-    ASSIGN_OR_RETURN_VOID(
-        c_scale_desc,
-        OperandDescriptor::Create(this->context_properties(),
-                                  gemm_params.data_type, c_scale_shape, ""));
-    ASSIGN_OR_RETURN_VOID(
-        c_zero_desc,
-        OperandDescriptor::Create(this->context_properties(),
-                                  OperandDataType::kInt32, c_scale_shape, ""));
-
-    ASSIGN_OR_RETURN_VOID(auto c_desc_result,
-                          ValidateDequantizeLinearAndInferOutput(
-                              this->context_properties(), *c_dq_desc,
-                              *c_scale_desc, *c_zero_desc, ""));
-  }
-
-  auto output_scale_shape = ComputeQuantizationScaleShape(
-      gemm_descs.output_desc.shape(), per_tensor_quantization_params);
-
-  ASSIGN_OR_RETURN_VOID(
-      auto output_scale_desc,
-      OperandDescriptor::Create(this->context_properties(),
-                                gemm_params.data_type, output_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto output_zero_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                output_scale_shape, ""));
-
-  ASSIGN_OR_RETURN_VOID(auto quantized_output_desc,
-                        ValidateQuantizeLinearAndInferOutput(
-                            this->context_properties(), gemm_descs.output_desc,
-                            output_scale_desc, output_zero_desc, ""));
-
-  std::vector<uint8_t> a_dq_data(a_dq_desc.PackedByteLength(), seed_for_data);
-  std::vector<uint8_t> b_dq_data(b_dq_desc.PackedByteLength(), seed_for_data);
-  std::vector<float> a_scale_data(a_scale_desc.NumberOfElements(), 0.5f);
-  std::vector<float> b_scale_data(b_scale_desc.NumberOfElements(), 0.25f);
-  std::vector<float> output_scale_data(output_scale_desc.NumberOfElements(),
-                                       0.125f);
-  std::vector<uint8_t> a_zero_data(a_zero_desc.PackedByteLength(), 0);
-  std::vector<uint8_t> b_zero_data(b_zero_desc.PackedByteLength(), 0);
-  std::vector<uint8_t> output_zero_data(output_zero_desc.PackedByteLength(), 0);
-
   mojo::Remote<mojom::WebNNGraphBuilder> remote =
       this->BindNewGraphBuilderRemote();
   GraphInfoBuilder builder(remote);
 
   base::flat_map<std::string, base::span<const uint8_t>> named_inputs;
+  std::vector<std::vector<uint8_t>> data_buffers;
 
-  OperandId a_dq_id =
-      BuildInputOrConstant(builder, gemm_params.is_a_constant, "a", a_dq_desc,
-                           a_dq_data, named_inputs);
-  OperandId b_dq_id =
-      BuildInputOrConstant(builder, gemm_params.is_b_constant, "b", b_dq_desc,
-                           b_dq_data, named_inputs);
-
-  OperandId a_scale_id =
-      BuildFloatConstant(builder, a_scale_desc, a_scale_data);
-  OperandId a_zero_id = builder.BuildConstant(
-      a_zero_desc.shape(), a_zero_desc.data_type(), a_zero_data);
-  OperandId b_scale_id =
-      BuildFloatConstant(builder, b_scale_desc, b_scale_data);
-  OperandId b_zero_id = builder.BuildConstant(
-      b_zero_desc.shape(), b_zero_desc.data_type(), b_zero_data);
-  OperandId output_scale_id =
-      BuildFloatConstant(builder, output_scale_desc, output_scale_data);
-  OperandId output_zero_id = builder.BuildConstant(
-      output_zero_desc.shape(), output_zero_desc.data_type(), output_zero_data);
-
-  OperandId gemm_a_id = builder.BuildIntermediateOperand(
-      gemm_descs.a_desc.shape(), gemm_descs.a_desc.data_type());
-  OperandId gemm_b_id = builder.BuildIntermediateOperand(
-      gemm_descs.b_desc.shape(), gemm_descs.b_desc.data_type());
-
-  builder.BuildDequantizeLinear(a_dq_id, a_scale_id, a_zero_id, gemm_a_id);
-  builder.BuildDequantizeLinear(b_dq_id, b_scale_id, b_zero_id, gemm_b_id);
+  // These scale and zero-point values are used to exercise the fusiable path
+  // for TFLite backend (a_scale=0.5, b_scale=0.25, c_scale=0.125,
+  // output_scale=0.125, all zero_points=0):
+  // https://source.chromium.org/chromium/chromium/src/+/main:services/webnn/tflite/graph_builder_tflite.cc;l=2079;drc=ec4ff4bae24916aaad3186ce4bc1339313b6fb5a
+  // TODO(crbug.com/498987226): Remove these restrictions to increase test
+  // coverage.
+  ASSIGN_OPTIONAL_OR_RETURN_VOID(
+      auto gemm_a_id,
+      BuildDequantizeInput(
+          builder, this->context_properties(), gemm_params.is_a_constant, "a",
+          gemm_descs.a_desc, quantized_type, per_tensor_quantization_params,
+          /*channel_axis=*/std::nullopt, seed_for_data, /*scale_value=*/0.5f,
+          /*zero_point_value=*/0, data_buffers, named_inputs));
+  ASSIGN_OPTIONAL_OR_RETURN_VOID(
+      auto gemm_b_id,
+      BuildDequantizeInput(builder, this->context_properties(),
+                           gemm_params.is_b_constant, "b", gemm_descs.b_desc,
+                           quantized_type, quantization_params, b_channel_axis,
+                           seed_for_data, /*scale_value=*/0.25f,
+                           /*zero_point_value=*/0, data_buffers, named_inputs));
 
   BuildGemmAttributes gemm_attr;
   gemm_attr.alpha = gemm_params.alpha;
@@ -4426,26 +4185,25 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::DQGemmQ(
   gemm_attr.a_transpose = gemm_params.a_transpose;
   gemm_attr.b_transpose = gemm_params.b_transpose;
 
-  std::vector<uint8_t> c_dq_data;
-  std::vector<float> c_scale_data;
-  std::vector<uint8_t> c_zero_data;
   if (gemm_params.has_c) {
-    c_dq_data.assign(c_dq_desc->PackedByteLength(), seed_for_data);
-    c_scale_data.assign(c_scale_desc->NumberOfElements(), 0.125f);
-    c_zero_data.assign(c_zero_desc->PackedByteLength(), 0);
+    // C shape is {1}, {N}, {1, N}, or {M, N}. For 1D shapes, axis 0 is the
+    // only option. For 2D shapes, quantize along the N dimension at axis 1.
+    const uint32_t c_channel_axis =
+        gemm_descs.c_desc->shape().size() == 1 ? 0u : 1u;
 
-    OperandId c_dq_id =
-        BuildInputOrConstant(builder, gemm_params.is_c_constant, "c",
-                             *c_dq_desc, c_dq_data, named_inputs);
-
-    OperandId c_scale_id =
-        BuildFloatConstant(builder, *c_scale_desc, c_scale_data);
-    OperandId c_zero_id = builder.BuildConstant(
-        c_zero_desc->shape(), c_zero_desc->data_type(), c_zero_data);
-
-    OperandId gemm_c_id = builder.BuildIntermediateOperand(
-        gemm_descs.c_desc->shape(), gemm_descs.c_desc->data_type());
-    builder.BuildDequantizeLinear(c_dq_id, c_scale_id, c_zero_id, gemm_c_id);
+    // C uses int32 quantized type to exercise the fusiable path for TFLite
+    // backend:
+    // https://source.chromium.org/chromium/chromium/src/+/main:services/webnn/tflite/graph_builder_tflite.cc;l=2079;drc=ec4ff4bae24916aaad3186ce4bc1339313b6fb5a
+    // TODO(crbug.com/498987226): Remove these restrictions to increase test
+    // coverage.
+    ASSIGN_OPTIONAL_OR_RETURN_VOID(
+        auto gemm_c_id,
+        BuildDequantizeInput(builder, this->context_properties(),
+                             gemm_params.is_c_constant, "c", *gemm_descs.c_desc,
+                             OperandDataType::kInt32, quantization_params,
+                             c_channel_axis, seed_for_data,
+                             /*scale_value=*/0.125f, /*zero_point_value=*/0,
+                             data_buffers, named_inputs));
     gemm_attr.c_operand_id = gemm_c_id;
   }
 
@@ -4453,11 +4211,13 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::DQGemmQ(
       gemm_descs.output_desc.shape(), gemm_descs.output_desc.data_type());
   builder.BuildGemm(gemm_a_id, gemm_b_id, gemm_output_id, gemm_attr);
 
-  OperandId quantize_output_id =
-      builder.BuildOutput("output", quantized_output_desc.shape(),
-                          quantized_output_desc.data_type());
-  builder.BuildQuantizeLinear(gemm_output_id, output_scale_id, output_zero_id,
-                              quantize_output_id);
+  if (!BuildQuantizeOutput(builder, this->context_properties(), "output",
+                           gemm_descs.output_desc, quantized_type,
+                           per_tensor_quantization_params,
+                           /*channel_axis=*/std::nullopt, gemm_output_id,
+                           /*scale_value=*/0.125f, /*zero_point_value=*/0)) {
+    return;
+  }
 
   if (!builder.IsValidGraphForTesting(this->context_properties())) {
     return;
@@ -4490,69 +4250,20 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::DQPadQ(
       .quantization_kind = QuantizationKind::kPerTensor,
       .channel_block_size = 1};
 
-  auto input_scale_shape = ComputeQuantizationScaleShape(
-      pad_descs.input_desc.shape(), per_tensor_quantization_params);
-
-  ASSIGN_OR_RETURN_VOID(
-      auto input_dq_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                pad_descs.input_desc.shape(), ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto input_scale_desc,
-      OperandDescriptor::Create(this->context_properties(),
-                                pad_params.data_type, input_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto input_zero_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                input_scale_shape, ""));
-
-  ASSIGN_OR_RETURN_VOID(auto input_desc_result,
-                        ValidateDequantizeLinearAndInferOutput(
-                            this->context_properties(), input_dq_desc,
-                            input_scale_desc, input_zero_desc, ""));
-
-  auto output_scale_shape = ComputeQuantizationScaleShape(
-      pad_descs.output_desc.shape(), per_tensor_quantization_params);
-
-  ASSIGN_OR_RETURN_VOID(
-      auto output_scale_desc,
-      OperandDescriptor::Create(this->context_properties(),
-                                pad_params.data_type, output_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto output_zero_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                output_scale_shape, ""));
-
-  ASSIGN_OR_RETURN_VOID(auto quantized_output_desc,
-                        ValidateQuantizeLinearAndInferOutput(
-                            this->context_properties(), pad_descs.output_desc,
-                            output_scale_desc, output_zero_desc, ""));
-
   mojo::Remote<mojom::WebNNGraphBuilder> remote =
       this->BindNewGraphBuilderRemote();
   GraphInfoBuilder builder(remote);
 
   base::flat_map<std::string, base::span<const uint8_t>> named_inputs;
-  std::vector<uint8_t> input_dq_data(input_dq_desc.PackedByteLength(),
-                                     seed_for_input);
-  std::vector<float> input_scale_data(input_scale_desc.NumberOfElements(),
-                                      seed_for_scale);
-  std::vector<uint8_t> input_zero_data(input_zero_desc.PackedByteLength(),
-                                       seed_for_zero_point);
-
-  OperandId input_dq_id =
-      BuildInputOrConstant(builder, pad_params.is_input_constant, "input",
-                           input_dq_desc, input_dq_data, named_inputs);
-
-  OperandId input_scale_id =
-      BuildFloatConstant(builder, input_scale_desc, input_scale_data);
-  OperandId input_zero_id = builder.BuildConstant(
-      input_zero_desc.shape(), input_zero_desc.data_type(), input_zero_data);
-  OperandId pad_input_id = builder.BuildIntermediateOperand(
-      pad_descs.input_desc.shape(), pad_descs.input_desc.data_type());
-
-  builder.BuildDequantizeLinear(input_dq_id, input_scale_id, input_zero_id,
-                                pad_input_id);
+  std::vector<std::vector<uint8_t>> data_buffers;
+  ASSIGN_OPTIONAL_OR_RETURN_VOID(
+      auto pad_input_id,
+      BuildDequantizeInput(
+          builder, this->context_properties(), pad_params.is_input_constant,
+          "input", pad_descs.input_desc, quantized_type,
+          per_tensor_quantization_params,
+          /*channel_axis=*/std::nullopt, seed_for_input, seed_for_scale,
+          seed_for_zero_point, data_buffers, named_inputs));
 
   OperandId pad_output_id = builder.BuildIntermediateOperand(
       pad_descs.output_desc.shape(), pad_descs.output_desc.data_type());
@@ -4560,20 +4271,13 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::DQPadQ(
   builder.BuildPad(pad_input_id, pad_output_id, pad_descs.beginning_padding,
                    pad_descs.ending_padding, pad_params.mode, pad_params.value);
 
-  std::vector<float> output_scale_data(output_scale_desc.NumberOfElements(),
-                                       seed_for_scale);
-  std::vector<uint8_t> output_zero_data(output_zero_desc.PackedByteLength(),
-                                        seed_for_zero_point);
-  OperandId output_scale_id =
-      BuildFloatConstant(builder, output_scale_desc, output_scale_data);
-  OperandId output_zero_id = builder.BuildConstant(
-      output_zero_desc.shape(), output_zero_desc.data_type(), output_zero_data);
-
-  OperandId quantize_output_id =
-      builder.BuildOutput("output", quantized_output_desc.shape(),
-                          quantized_output_desc.data_type());
-  builder.BuildQuantizeLinear(pad_output_id, output_scale_id, output_zero_id,
-                              quantize_output_id);
+  if (!BuildQuantizeOutput(builder, this->context_properties(), "output",
+                           pad_descs.output_desc, quantized_type,
+                           per_tensor_quantization_params,
+                           /*channel_axis=*/std::nullopt, pad_output_id,
+                           seed_for_scale, seed_for_zero_point)) {
+    return;
+  }
 
   if (!builder.IsValidGraphForTesting(this->context_properties())) {
     return;
@@ -4601,84 +4305,27 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::DQPool2dQ(
       input_layout == InputOperandLayout::kNchw ? 1u : 3u;
   const uint32_t output_channel_axis = input_channel_axis;
 
-  auto input_scale_shape = ComputeQuantizationScaleShape(
-      pool2d_descs.input_desc.shape(), quantization_params, input_channel_axis);
-
-  ASSIGN_OR_RETURN_VOID(
-      auto input_dq_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                pool2d_descs.input_desc.shape(), ""));
-  ASSIGN_OR_RETURN_VOID(auto input_scale_desc,
-                        OperandDescriptor::Create(this->context_properties(),
-                                                  pool2d_params.data_type,
-                                                  input_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto input_zero_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                input_scale_shape, ""));
-
-  ASSIGN_OR_RETURN_VOID(auto input_desc_result,
-                        ValidateDequantizeLinearAndInferOutput(
-                            this->context_properties(), input_dq_desc,
-                            input_scale_desc, input_zero_desc, ""));
-
-  auto output_scale_shape =
-      ComputeQuantizationScaleShape(pool2d_descs.output_desc.shape(),
-                                    quantization_params, output_channel_axis);
-
-  ASSIGN_OR_RETURN_VOID(auto output_scale_desc,
-                        OperandDescriptor::Create(this->context_properties(),
-                                                  pool2d_params.data_type,
-                                                  output_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto output_zero_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                output_scale_shape, ""));
-
-  ASSIGN_OR_RETURN_VOID(
-      auto quantized_output_desc_result,
-      ValidateQuantizeLinearAndInferOutput(
-          this->context_properties(), pool2d_descs.output_desc,
-          output_scale_desc, output_zero_desc, ""));
-
-  std::vector<uint8_t> input_dq_data(input_dq_desc.PackedByteLength(),
-                                     seed_for_data);
-  // These values are used to exercise the fusiable path for TFLite backend:
-  // https://source.chromium.org/chromium/chromium/src/+/main:services/webnn/tflite/graph_builder_tflite.cc;l=2262;drc=ec4ff4bae24916aaad3186ce4bc1339313b6fb5a
-  // https://source.chromium.org/chromium/chromium/src/+/main:services/webnn/tflite/graph_builder_tflite.cc;l=2273;drc=ec4ff4bae24916aaad3186ce4bc1339313b6fb5a
-  // TODO(crbug.com/498987226): Remove this restriction to increase test
-  // coverage.
-  std::vector<float> input_scale_data(input_scale_desc.NumberOfElements(),
-                                      0.25f);
-  std::vector<float> output_scale_data(output_scale_desc.NumberOfElements(),
-                                       0.25f);
-  std::vector<uint8_t> input_zero_data(input_zero_desc.PackedByteLength(), 0);
-  std::vector<uint8_t> output_zero_data(output_zero_desc.PackedByteLength(), 0);
-
   mojo::Remote<mojom::WebNNGraphBuilder> remote =
       this->BindNewGraphBuilderRemote();
   GraphInfoBuilder builder(remote);
 
   base::flat_map<std::string, base::span<const uint8_t>> named_inputs;
+  std::vector<std::vector<uint8_t>> data_buffers;
 
-  OperandId input_dq_id =
-      BuildInputOrConstant(builder, pool2d_params.is_input_constant, "input",
-                           input_dq_desc, input_dq_data, named_inputs);
-
-  OperandId input_scale_id =
-      BuildFloatConstant(builder, input_scale_desc, input_scale_data);
-  OperandId input_zero_id = builder.BuildConstant(
-      input_zero_desc.shape(), input_zero_desc.data_type(), input_zero_data);
-  OperandId output_scale_id =
-      BuildFloatConstant(builder, output_scale_desc, output_scale_data);
-  OperandId output_zero_id = builder.BuildConstant(
-      output_zero_desc.shape(), output_zero_desc.data_type(), output_zero_data);
-
-  OperandId pool2d_input_id = builder.BuildIntermediateOperand(
-      pool2d_descs.input_desc.shape(), pool2d_descs.input_desc.data_type());
-
-  builder.BuildDequantizeLinear(input_dq_id, input_scale_id, input_zero_id,
-                                pool2d_input_id);
+  // These scale and zero-point values are used to exercise the fusiable path
+  // for TFLite backend (input_scale=0.25, output_scale=0.25, all
+  // zero_points=0):
+  // https://source.chromium.org/chromium/chromium/src/+/main:services/webnn/tflite/graph_builder_tflite.cc;l=2262;drc=ec4ff4bae24916aaad3186ce4bc1339313b6fb5a
+  // https://source.chromium.org/chromium/chromium/src/+/main:services/webnn/tflite/graph_builder_tflite.cc;l=2273;drc=ec4ff4bae24916aaad3186ce4bc1339313b6fb5a
+  // TODO(crbug.com/498987226): Remove this restriction to increase test
+  // coverage.
+  ASSIGN_OPTIONAL_OR_RETURN_VOID(
+      auto pool2d_input_id,
+      BuildDequantizeInput(
+          builder, this->context_properties(), pool2d_params.is_input_constant,
+          "input", pool2d_descs.input_desc, quantized_type, quantization_params,
+          input_channel_axis, seed_for_data, /*scale_value=*/0.25f,
+          /*zero_point_value=*/0, data_buffers, named_inputs));
 
   OperandId pool_output_id = builder.BuildIntermediateOperand(
       pool2d_descs.output_desc.shape(), pool2d_descs.output_desc.data_type());
@@ -4697,11 +4344,13 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::DQPool2dQ(
   builder.BuildPool2d(pool2d_params.pool2d_kind, pool2d_input_id,
                       pool_output_id, pool2d_attr);
 
-  OperandId quantize_output_id =
-      builder.BuildOutput("output", quantized_output_desc_result.shape(),
-                          quantized_output_desc_result.data_type());
-  builder.BuildQuantizeLinear(pool_output_id, output_scale_id, output_zero_id,
-                              quantize_output_id);
+  if (!BuildQuantizeOutput(builder, this->context_properties(), "output",
+                           pool2d_descs.output_desc, quantized_type,
+                           quantization_params, output_channel_axis,
+                           pool_output_id,
+                           /*scale_value=*/0.25f, /*zero_point_value=*/0)) {
+    return;
+  }
 
   if (!builder.IsValidGraphForTesting(this->context_properties())) {
     return;
@@ -4732,40 +4381,18 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::DQReduceQ(
   // shape. Otherwise, clamp `input_channel_axis` to be valid for the input
   // shape.
   QuantizationParams input_quantization_params = quantization_params;
-  uint32_t input_channel_axis = 0;
+  std::optional<uint32_t> input_channel_axis;
   if (reduce_descs.input_desc.shape().empty()) {
     input_quantization_params.quantization_kind = QuantizationKind::kPerTensor;
   } else {
     input_channel_axis = channel_axis % reduce_descs.input_desc.shape().size();
   }
-  auto input_scale_shape = ComputeQuantizationScaleShape(
-      reduce_descs.input_desc.shape(), input_quantization_params,
-      input_channel_axis);
-
-  ASSIGN_OR_RETURN_VOID(
-      auto input_dq_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                reduce_descs.input_desc.shape(), ""));
-  ASSIGN_OR_RETURN_VOID(auto input_scale_desc,
-                        OperandDescriptor::Create(this->context_properties(),
-                                                  reduce_params.data_type,
-                                                  input_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto input_zero_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                input_scale_shape, ""));
-
-  ASSIGN_OR_RETURN_VOID(auto input_desc_result,
-                        ValidateDequantizeLinearAndInferOutput(
-                            this->context_properties(), input_dq_desc,
-                            input_scale_desc, input_zero_desc, ""));
-
   // Use per-tensor quantization for the output when reduce produces a scalar
   // (keep_dimensions is false and all axes are reduced), since
   // per-channel/per-block quantization requires a non-empty shape. Otherwise,
   // clamp `output_channel_axis` to be valid for the output shape.
   QuantizationParams output_quantization_params = quantization_params;
-  uint32_t output_channel_axis = 0;
+  std::optional<uint32_t> output_channel_axis;
   if (reduce_descs.output_desc.shape().empty()) {
     output_quantization_params.quantization_kind = QuantizationKind::kPerTensor;
   } else {
@@ -4773,60 +4400,20 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::DQReduceQ(
         channel_axis % reduce_descs.output_desc.shape().size();
   }
 
-  auto output_scale_shape = ComputeQuantizationScaleShape(
-      reduce_descs.output_desc.shape(), output_quantization_params,
-      output_channel_axis);
-
-  ASSIGN_OR_RETURN_VOID(auto output_scale_desc,
-                        OperandDescriptor::Create(this->context_properties(),
-                                                  reduce_params.data_type,
-                                                  output_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto output_zero_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                output_scale_shape, ""));
-
-  ASSIGN_OR_RETURN_VOID(
-      auto quantized_output_desc,
-      ValidateQuantizeLinearAndInferOutput(
-          this->context_properties(), reduce_descs.output_desc,
-          output_scale_desc, output_zero_desc, ""));
-
-  std::vector<uint8_t> input_dq_data(input_dq_desc.PackedByteLength(),
-                                     seed_for_input);
-  std::vector<float> input_scale_data(input_scale_desc.NumberOfElements(),
-                                      seed_for_scale);
-  std::vector<float> output_scale_data(output_scale_desc.NumberOfElements(),
-                                       seed_for_scale);
-  std::vector<uint8_t> input_zero_data(input_zero_desc.PackedByteLength(),
-                                       seed_for_zero_point);
-  std::vector<uint8_t> output_zero_data(output_zero_desc.PackedByteLength(),
-                                        seed_for_zero_point);
-
   mojo::Remote<mojom::WebNNGraphBuilder> remote =
       this->BindNewGraphBuilderRemote();
   GraphInfoBuilder builder(remote);
 
   base::flat_map<std::string, base::span<const uint8_t>> named_inputs;
+  std::vector<std::vector<uint8_t>> data_buffers;
 
-  OperandId input_dq_id =
-      BuildInputOrConstant(builder, reduce_params.is_input_constant, "input",
-                           input_dq_desc, input_dq_data, named_inputs);
-
-  OperandId input_scale_id =
-      BuildFloatConstant(builder, input_scale_desc, input_scale_data);
-  OperandId input_zero_id = builder.BuildConstant(
-      input_zero_desc.shape(), input_zero_desc.data_type(), input_zero_data);
-  OperandId output_scale_id =
-      BuildFloatConstant(builder, output_scale_desc, output_scale_data);
-  OperandId output_zero_id = builder.BuildConstant(
-      output_zero_desc.shape(), output_zero_desc.data_type(), output_zero_data);
-
-  OperandId reduce_input_id = builder.BuildIntermediateOperand(
-      reduce_descs.input_desc.shape(), reduce_descs.input_desc.data_type());
-
-  builder.BuildDequantizeLinear(input_dq_id, input_scale_id, input_zero_id,
-                                reduce_input_id);
+  ASSIGN_OPTIONAL_OR_RETURN_VOID(
+      auto reduce_input_id,
+      BuildDequantizeInput(
+          builder, this->context_properties(), reduce_params.is_input_constant,
+          "input", reduce_descs.input_desc, quantized_type,
+          input_quantization_params, input_channel_axis, seed_for_input,
+          seed_for_scale, seed_for_zero_point, data_buffers, named_inputs));
 
   OperandId reduce_output_id = builder.BuildIntermediateOperand(
       reduce_descs.output_desc.shape(), reduce_descs.output_desc.data_type());
@@ -4835,11 +4422,13 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::DQReduceQ(
                       reduce_output_id, reduce_descs.axes,
                       reduce_params.keep_dimensions);
 
-  OperandId quantize_output_id =
-      builder.BuildOutput("output", quantized_output_desc.shape(),
-                          quantized_output_desc.data_type());
-  builder.BuildQuantizeLinear(reduce_output_id, output_scale_id, output_zero_id,
-                              quantize_output_id);
+  if (!BuildQuantizeOutput(builder, this->context_properties(), "output",
+                           reduce_descs.output_desc, quantized_type,
+                           output_quantization_params, output_channel_axis,
+                           reduce_output_id, seed_for_scale,
+                           seed_for_zero_point)) {
+    return;
+  }
 
   if (!builder.IsValidGraphForTesting(this->context_properties())) {
     return;
@@ -4872,76 +4461,22 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::DQResample2dQ(
       .quantization_kind = QuantizationKind::kPerTensor,
       .channel_block_size = 1};
 
-  auto input_scale_shape = ComputeQuantizationScaleShape(
-      resample2d_descs.input_desc.shape(), per_tensor_quantization_params);
-
-  ASSIGN_OR_RETURN_VOID(
-      auto input_dq_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                resample2d_descs.input_desc.shape(), ""));
-  ASSIGN_OR_RETURN_VOID(auto input_scale_desc,
-                        OperandDescriptor::Create(this->context_properties(),
-                                                  resample2d_params.data_type,
-                                                  input_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto input_zero_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                input_scale_shape, ""));
-
-  ASSIGN_OR_RETURN_VOID(auto input_desc_result,
-                        ValidateDequantizeLinearAndInferOutput(
-                            this->context_properties(), input_dq_desc,
-                            input_scale_desc, input_zero_desc, ""));
-
-  auto output_scale_shape = ComputeQuantizationScaleShape(
-      resample2d_descs.output_desc.shape(), per_tensor_quantization_params);
-
-  ASSIGN_OR_RETURN_VOID(auto output_scale_desc,
-                        OperandDescriptor::Create(this->context_properties(),
-                                                  resample2d_params.data_type,
-                                                  output_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto output_zero_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                output_scale_shape, ""));
-
-  ASSIGN_OR_RETURN_VOID(
-      auto quantized_output_desc,
-      ValidateQuantizeLinearAndInferOutput(
-          this->context_properties(), resample2d_descs.output_desc,
-          output_scale_desc, output_zero_desc, ""));
-
-  std::vector<uint8_t> input_dq_data(input_dq_desc.PackedByteLength(),
-                                     seed_for_input);
-  std::vector<float> input_scale_data(input_scale_desc.NumberOfElements(),
-                                      seed_for_scale);
-  std::vector<float> output_scale_data(output_scale_desc.NumberOfElements(),
-                                       seed_for_scale);
-  std::vector<uint8_t> input_zero_data(input_zero_desc.PackedByteLength(),
-                                       seed_for_zero_point);
-  std::vector<uint8_t> output_zero_data(output_zero_desc.PackedByteLength(),
-                                        seed_for_zero_point);
-
   mojo::Remote<mojom::WebNNGraphBuilder> remote =
       this->BindNewGraphBuilderRemote();
   GraphInfoBuilder builder(remote);
 
   base::flat_map<std::string, base::span<const uint8_t>> named_inputs;
+  std::vector<std::vector<uint8_t>> data_buffers;
 
-  OperandId input_dq_id =
-      BuildInputOrConstant(builder, resample2d_params.is_input_constant,
-                           "input", input_dq_desc, input_dq_data, named_inputs);
-
-  OperandId input_scale_id =
-      BuildFloatConstant(builder, input_scale_desc, input_scale_data);
-  OperandId input_zero_id = builder.BuildConstant(
-      input_zero_desc.shape(), input_zero_desc.data_type(), input_zero_data);
-  OperandId resample2d_input_id =
-      builder.BuildIntermediateOperand(resample2d_descs.input_desc.shape(),
-                                       resample2d_descs.input_desc.data_type());
-
-  builder.BuildDequantizeLinear(input_dq_id, input_scale_id, input_zero_id,
-                                resample2d_input_id);
+  ASSIGN_OPTIONAL_OR_RETURN_VOID(
+      auto resample2d_input_id,
+      BuildDequantizeInput(builder, this->context_properties(),
+                           resample2d_params.is_input_constant, "input",
+                           resample2d_descs.input_desc, quantized_type,
+                           per_tensor_quantization_params,
+                           /*channel_axis=*/std::nullopt, seed_for_input,
+                           seed_for_scale, seed_for_zero_point, data_buffers,
+                           named_inputs));
 
   OperandId resample_output_id = builder.BuildIntermediateOperand(
       resample2d_descs.output_desc.shape(),
@@ -4954,16 +4489,74 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::DQResample2dQ(
   builder.BuildResample2d(resample2d_input_id, resample_output_id,
                           resample2d_attr);
 
-  OperandId output_scale_id =
-      BuildFloatConstant(builder, output_scale_desc, output_scale_data);
-  OperandId output_zero_id = builder.BuildConstant(
-      output_zero_desc.shape(), output_zero_desc.data_type(), output_zero_data);
+  if (!BuildQuantizeOutput(builder, this->context_properties(), "output",
+                           resample2d_descs.output_desc, quantized_type,
+                           per_tensor_quantization_params,
+                           /*channel_axis=*/std::nullopt, resample_output_id,
+                           seed_for_scale, seed_for_zero_point)) {
+    return;
+  }
 
-  OperandId quantize_output_id =
-      builder.BuildOutput("output", quantized_output_desc.shape(),
-                          quantized_output_desc.data_type());
-  builder.BuildQuantizeLinear(resample_output_id, output_scale_id,
-                              output_zero_id, quantize_output_id);
+  if (!builder.IsValidGraphForTesting(this->context_properties())) {
+    return;
+  }
+
+  BuildAndCompute(this->context_, std::move(remote), builder.TakeGraphInfo(),
+                  std::move(named_inputs));
+
+  GetGlobalFuzzEnvironment().GetWebNNTestEnvironment().RunUntilIdle();
+}
+
+template <typename BaseFixture>
+void WebNNGraphImplFuzzerImpl<BaseFixture>::DQSliceQ(
+    SliceParams slice_params,
+    OperandDataType quantized_type,
+    uint8_t seed_for_input,
+    float seed_for_scale,
+    uint8_t seed_for_zero_point) {
+  ASSIGN_OR_RETURN_VOID(
+      auto slice_descs,
+      SetUpSliceDescriptors(this->context_properties(), slice_params));
+
+  // kPerTensor quantization is used to exercise the fusiable path for TFLite
+  // backend.
+  // https://source.chromium.org/chromium/chromium/src/+/main:services/webnn/tflite/graph_builder_tflite.cc;l=2422;drc=ec4ff4bae24916aaad3186ce4bc1339313b6fb5a
+  // TODO(crbug.com/498987226): Remove this restriction to increase test
+  // coverage.
+  QuantizationParams per_tensor_quantization_params{
+      .quantized_type = quantized_type,
+      .quantization_kind = QuantizationKind::kPerTensor,
+      .channel_block_size = 1};
+
+  mojo::Remote<mojom::WebNNGraphBuilder> remote =
+      this->BindNewGraphBuilderRemote();
+  GraphInfoBuilder builder(remote);
+
+  base::flat_map<std::string, base::span<const uint8_t>> named_inputs;
+  std::vector<std::vector<uint8_t>> data_buffers;
+
+  ASSIGN_OPTIONAL_OR_RETURN_VOID(
+      auto slice_input_id,
+      BuildDequantizeInput(
+          builder, this->context_properties(), slice_params.is_input_constant,
+          "input", slice_descs.input_desc, quantized_type,
+          per_tensor_quantization_params,
+          /*channel_axis=*/std::nullopt, seed_for_input, seed_for_scale,
+          seed_for_zero_point, data_buffers, named_inputs));
+
+  OperandId slice_output_id = builder.BuildIntermediateOperand(
+      slice_descs.output_desc.shape(), slice_descs.output_desc.data_type());
+
+  builder.BuildSlice(slice_input_id, slice_output_id, slice_descs.starts,
+                     slice_descs.sizes, slice_descs.strides);
+
+  if (!BuildQuantizeOutput(builder, this->context_properties(), "output",
+                           slice_descs.output_desc, quantized_type,
+                           per_tensor_quantization_params,
+                           /*channel_axis=*/std::nullopt, slice_output_id,
+                           seed_for_scale, seed_for_zero_point)) {
+    return;
+  }
 
   if (!builder.IsValidGraphForTesting(this->context_properties())) {
     return;
@@ -4996,83 +4589,23 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::DQSplitQ(
       .quantization_kind = QuantizationKind::kPerTensor,
       .channel_block_size = 1};
 
-  auto input_scale_shape = ComputeQuantizationScaleShape(
-      split_descs.input_desc.shape(), per_tensor_quantization_params);
-
-  ASSIGN_OR_RETURN_VOID(
-      auto input_dq_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                split_descs.input_desc.shape(), ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto input_scale_desc,
-      OperandDescriptor::Create(this->context_properties(),
-                                split_params.data_type, input_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto input_zero_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                input_scale_shape, ""));
-
-  ASSIGN_OR_RETURN_VOID(auto input_desc_result,
-                        ValidateDequantizeLinearAndInferOutput(
-                            this->context_properties(), input_dq_desc,
-                            input_scale_desc, input_zero_desc, ""));
-
-  // Build quantize descriptors for each output.
   const size_t output_num = split_descs.output_descs.size();
-  std::vector<OperandDescriptor> output_scale_descs;
-  std::vector<OperandDescriptor> output_zero_descs;
-  std::vector<OperandDescriptor> quantized_output_descs;
-  output_scale_descs.reserve(output_num);
-  output_zero_descs.reserve(output_num);
-  quantized_output_descs.reserve(output_num);
-  for (const auto& output_desc : split_descs.output_descs) {
-    auto output_scale_shape = ComputeQuantizationScaleShape(
-        output_desc.shape(), per_tensor_quantization_params);
-
-    ASSIGN_OR_RETURN_VOID(auto scale_desc,
-                          OperandDescriptor::Create(this->context_properties(),
-                                                    split_params.data_type,
-                                                    output_scale_shape, ""));
-    ASSIGN_OR_RETURN_VOID(
-        auto zero_desc,
-        OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                  output_scale_shape, ""));
-
-    ASSIGN_OR_RETURN_VOID(auto quantized_desc,
-                          ValidateQuantizeLinearAndInferOutput(
-                              this->context_properties(), output_desc,
-                              scale_desc, zero_desc, ""));
-
-    output_scale_descs.push_back(std::move(scale_desc));
-    output_zero_descs.push_back(std::move(zero_desc));
-    quantized_output_descs.push_back(std::move(quantized_desc));
-  }
 
   mojo::Remote<mojom::WebNNGraphBuilder> remote =
       this->BindNewGraphBuilderRemote();
   GraphInfoBuilder builder(remote);
 
   base::flat_map<std::string, base::span<const uint8_t>> named_inputs;
-  std::vector<uint8_t> input_dq_data(input_dq_desc.PackedByteLength(),
-                                     seed_for_input);
-  std::vector<float> input_scale_data(input_scale_desc.NumberOfElements(),
-                                      seed_for_scale);
-  std::vector<uint8_t> input_zero_data(input_zero_desc.PackedByteLength(),
-                                       seed_for_zero_point);
+  std::vector<std::vector<uint8_t>> data_buffers;
 
-  OperandId input_dq_id =
-      BuildInputOrConstant(builder, split_params.is_input_constant, "input",
-                           input_dq_desc, input_dq_data, named_inputs);
-
-  OperandId input_scale_id =
-      BuildFloatConstant(builder, input_scale_desc, input_scale_data);
-  OperandId input_zero_id = builder.BuildConstant(
-      input_zero_desc.shape(), input_zero_desc.data_type(), input_zero_data);
-  OperandId split_input_id = builder.BuildIntermediateOperand(
-      split_descs.input_desc.shape(), split_descs.input_desc.data_type());
-
-  builder.BuildDequantizeLinear(input_dq_id, input_scale_id, input_zero_id,
-                                split_input_id);
+  ASSIGN_OPTIONAL_OR_RETURN_VOID(
+      auto split_input_id,
+      BuildDequantizeInput(
+          builder, this->context_properties(), split_params.is_input_constant,
+          "input", split_descs.input_desc, quantized_type,
+          per_tensor_quantization_params,
+          /*channel_axis=*/std::nullopt, seed_for_input, seed_for_scale,
+          seed_for_zero_point, data_buffers, named_inputs));
 
   std::vector<OperandId> split_output_ids;
   split_output_ids.reserve(output_num);
@@ -5086,28 +4619,15 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::DQSplitQ(
   builder.BuildSplit(split_input_id, split_output_ids, split_descs.axis);
 
   // Quantize each output.
-  std::vector<std::vector<float>> output_scale_data_buffers;
-  std::vector<std::vector<uint8_t>> output_zero_data_buffers;
-  output_scale_data_buffers.reserve(output_num);
-  output_zero_data_buffers.reserve(output_num);
-
   for (size_t i = 0; i < output_num; ++i) {
-    output_scale_data_buffers.emplace_back(
-        output_scale_descs[i].NumberOfElements(), seed_for_scale);
-    output_zero_data_buffers.emplace_back(
-        output_zero_descs[i].PackedByteLength(), seed_for_zero_point);
-
-    OperandId output_scale_id = BuildFloatConstant(
-        builder, output_scale_descs[i], output_scale_data_buffers.back());
-    OperandId output_zero_id = builder.BuildConstant(
-        output_zero_descs[i].shape(), output_zero_descs[i].data_type(),
-        output_zero_data_buffers.back());
-
-    OperandId quantize_output_id = builder.BuildOutput(
-        "output" + base::NumberToString(i), quantized_output_descs[i].shape(),
-        quantized_output_descs[i].data_type());
-    builder.BuildQuantizeLinear(split_output_ids[i], output_scale_id,
-                                output_zero_id, quantize_output_id);
+    if (!BuildQuantizeOutput(builder, this->context_properties(),
+                             "output" + base::NumberToString(i),
+                             split_descs.output_descs[i], quantized_type,
+                             per_tensor_quantization_params,
+                             /*channel_axis=*/std::nullopt, split_output_ids[i],
+                             seed_for_scale, seed_for_zero_point)) {
+      return;
+    }
   }
 
   if (!builder.IsValidGraphForTesting(this->context_properties())) {
@@ -5141,85 +4661,37 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::DQTransposeQ(
   per_tensor_quantization_params.quantization_kind =
       QuantizationKind::kPerTensor;
 
-  auto input_scale_shape = ComputeQuantizationScaleShape(
-      transpose_descs.input_desc.shape(), per_tensor_quantization_params);
-
   OperandDataType quantized_type = quantization_params.quantized_type;
-  ASSIGN_OR_RETURN_VOID(
-      auto input_dq_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                transpose_descs.input_desc.shape(), ""));
-  ASSIGN_OR_RETURN_VOID(auto input_scale_desc,
-                        OperandDescriptor::Create(this->context_properties(),
-                                                  transpose_params.data_type,
-                                                  input_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto input_zero_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                input_scale_shape, ""));
-
-  ASSIGN_OR_RETURN_VOID(auto input_desc_result,
-                        ValidateDequantizeLinearAndInferOutput(
-                            this->context_properties(), input_dq_desc,
-                            input_scale_desc, input_zero_desc, ""));
 
   // Use per-tensor quantization for the output when transpose produces a
   // scalar (rank 0), since per-channel/per-block quantization requires a
   // non-empty shape. Otherwise, clamp channel_axis to be valid for the output
   // shape.
   QuantizationParams output_quantization_params = quantization_params;
-  uint32_t output_channel_axis = 0;
+  std::optional<uint32_t> output_channel_axis;
   if (transpose_descs.output_desc.shape().empty()) {
     output_quantization_params.quantization_kind = QuantizationKind::kPerTensor;
   } else {
     output_channel_axis =
         channel_axis % transpose_descs.output_desc.shape().size();
   }
-  auto output_scale_shape = ComputeQuantizationScaleShape(
-      transpose_descs.output_desc.shape(), output_quantization_params,
-      output_channel_axis);
-
-  ASSIGN_OR_RETURN_VOID(auto output_scale_desc,
-                        OperandDescriptor::Create(this->context_properties(),
-                                                  transpose_params.data_type,
-                                                  output_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto output_zero_desc,
-      OperandDescriptor::Create(this->context_properties(), quantized_type,
-                                output_scale_shape, ""));
-
-  ASSIGN_OR_RETURN_VOID(
-      auto quantized_output_desc,
-      ValidateQuantizeLinearAndInferOutput(
-          this->context_properties(), transpose_descs.output_desc,
-          output_scale_desc, output_zero_desc, ""));
 
   mojo::Remote<mojom::WebNNGraphBuilder> remote =
       this->BindNewGraphBuilderRemote();
   GraphInfoBuilder builder(remote);
 
   base::flat_map<std::string, base::span<const uint8_t>> named_inputs;
-  std::vector<uint8_t> input_dq_data(input_dq_desc.PackedByteLength(),
-                                     seed_for_input);
-  std::vector<float> input_scale_data(input_scale_desc.NumberOfElements(),
-                                      seed_for_scale);
-  std::vector<uint8_t> input_zero_data(input_zero_desc.PackedByteLength(),
-                                       seed_for_zero_point);
+  std::vector<std::vector<uint8_t>> data_buffers;
 
-  OperandId input_dq_id =
-      BuildInputOrConstant(builder, transpose_params.is_input_constant, "input",
-                           input_dq_desc, input_dq_data, named_inputs);
-
-  OperandId input_scale_id =
-      BuildFloatConstant(builder, input_scale_desc, input_scale_data);
-  OperandId input_zero_id = builder.BuildConstant(
-      input_zero_desc.shape(), input_zero_desc.data_type(), input_zero_data);
-  OperandId transpose_input_id =
-      builder.BuildIntermediateOperand(transpose_descs.input_desc.shape(),
-                                       transpose_descs.input_desc.data_type());
-
-  builder.BuildDequantizeLinear(input_dq_id, input_scale_id, input_zero_id,
-                                transpose_input_id);
+  ASSIGN_OPTIONAL_OR_RETURN_VOID(
+      auto transpose_input_id,
+      BuildDequantizeInput(builder, this->context_properties(),
+                           transpose_params.is_input_constant, "input",
+                           transpose_descs.input_desc, quantized_type,
+                           per_tensor_quantization_params,
+                           /*channel_axis=*/std::nullopt, seed_for_input,
+                           seed_for_scale, seed_for_zero_point, data_buffers,
+                           named_inputs));
 
   OperandId transpose_output_id =
       builder.BuildIntermediateOperand(transpose_descs.output_desc.shape(),
@@ -5228,20 +4700,13 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::DQTransposeQ(
   builder.BuildTranspose(transpose_input_id, transpose_output_id,
                          std::move(transpose_descs.permutation));
 
-  std::vector<float> output_scale_data(output_scale_desc.NumberOfElements(),
-                                       seed_for_scale);
-  std::vector<uint8_t> output_zero_data(output_zero_desc.PackedByteLength(),
-                                        seed_for_zero_point);
-  OperandId output_scale_id =
-      BuildFloatConstant(builder, output_scale_desc, output_scale_data);
-  OperandId output_zero_id = builder.BuildConstant(
-      output_zero_desc.shape(), output_zero_desc.data_type(), output_zero_data);
-
-  OperandId quantize_output_id =
-      builder.BuildOutput("output", quantized_output_desc.shape(),
-                          quantized_output_desc.data_type());
-  builder.BuildQuantizeLinear(transpose_output_id, output_scale_id,
-                              output_zero_id, quantize_output_id);
+  if (!BuildQuantizeOutput(builder, this->context_properties(), "output",
+                           transpose_descs.output_desc, quantized_type,
+                           output_quantization_params, output_channel_axis,
+                           transpose_output_id, seed_for_scale,
+                           seed_for_zero_point)) {
+    return;
+  }
 
   if (!builder.IsValidGraphForTesting(this->context_properties())) {
     return;
@@ -5568,6 +5033,19 @@ WEBNN_FUZZ_TEST_F(
                      },
                      /*seed_for_data=*/4}}));
 
+WEBNN_FUZZ_TEST_F(Slice,
+                  .WithDomains(AnySliceParams(), fuzztest::Arbitrary<uint8_t>())
+                      .WithSeeds({{SliceParams{
+                                       /*data_type=*/OperandDataType::kFloat32,
+                                       /*rank=*/4,
+                                       /*input_dims=*/{1, 3, 4, 4, 1, 1, 1, 1},
+                                       /*starts=*/{0, 1, 0, 0, 0, 0, 0, 0},
+                                       /*sizes=*/{1, 2, 4, 4, 1, 1, 1, 1},
+                                       /*strides=*/{1, 1, 2, 4, 1, 1, 1, 1},
+                                       /*is_input_constant=*/false,
+                                   },
+                                   /*seed_for_data=*/3}}));
+
 WEBNN_FUZZ_TEST_F(Split,
                   .WithDomains(AnySplitParams(), fuzztest::Arbitrary<uint8_t>())
                       .WithSeeds({{SplitParams{
@@ -5823,6 +5301,28 @@ WEBNN_FUZZ_TEST_F(
                          /*scale_width=*/2.0f,
                          /*output_height=*/8,
                          /*output_width=*/8,
+                         /*is_input_constant=*/false,
+                     },
+                     /*quantized_type=*/OperandDataType::kUint8,
+                     /*seed_for_input=*/2,
+                     /*seed_for_scale=*/0.25f,
+                     /*seed_for_zero_point=*/0}}));
+
+WEBNN_FUZZ_TEST_F(
+    DQSliceQ,
+    .WithDomains(AnySliceParams(),
+                 AnyQuantizedDataType(),
+                 /*seed_for_input=*/fuzztest::Arbitrary<uint8_t>(),
+                 /*seed_for_scale=*/
+                 fuzztest::ElementOf({0.125f, 0.25f, 0.5f, 1.0f, 2.0f}),
+                 /*seed_for_zero_point=*/fuzztest::Arbitrary<uint8_t>())
+        .WithSeeds({{SliceParams{
+                         /*data_type=*/OperandDataType::kFloat32,
+                         /*rank=*/4,
+                         /*input_dims=*/{1, 3, 4, 4, 1, 1, 1, 1},
+                         /*starts=*/{0, 1, 0, 0, 0, 0, 0, 0},
+                         /*sizes=*/{1, 2, 4, 4, 1, 1, 1, 1},
+                         /*strides=*/{1, 1, 2, 4, 1, 1, 1, 1},
                          /*is_input_constant=*/false,
                      },
                      /*quantized_type=*/OperandDataType::kUint8,

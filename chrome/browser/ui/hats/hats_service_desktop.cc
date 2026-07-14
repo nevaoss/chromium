@@ -84,31 +84,13 @@ std::string GetLastSurveyCheckTime(const std::string& trigger) {
 // The last time a survey without the cool down period override was triggered.
 constexpr char kAnyLastSurveyStartedTimePath[] = "any_last_survey_started_time";
 
-// The last time a survey with the cool down period override was triggered.
-constexpr char kAnyLastSurveyWithCooldownOverrideStartedTimePath[] =
-    "any_last_survey_with_cooldown_override_started_time";
-
 // Checks if the survey can be shown to the user subject to the cooldown period
 // restrictions. The default cooldown period is equal to the
-// `kMinimumTimeBetweenAnySurveyStarts`. Some configs in special cases can
-// override the cool down period. This should be used only in situations such as
-// early dogfood launches. Surveys with and without cooldown override are
-// handled separately. Any survey with cooldown override won't affect the survey
-// without cooldown override and vice versa. For example, if a survey A (with
-// overridden cool down period) is prompted at T0 and a survey B (with default
-// cool down period) is prompted at T1, then at T2 the elapsed time for the
-// survey A will be T2 - T0 and for the survey B - T2 - T1.
-bool DoesCooldownApply(Profile* profile,
-                       PrefService* prefs,
-                       const hats::SurveyConfig& config) {
-  const std::optional<base::TimeDelta> cooldown_override =
-      config.GetCooldownPeriodOverride(profile);
-  const bool has_cooldown_override = cooldown_override.has_value();
+// `kMinimumTimeBetweenAnySurveyStarts`.
+bool DoesCooldownApply(PrefService* prefs) {
   const base::DictValue& pref_data = prefs->GetDict(prefs::kHatsSurveyMetadata);
-  const std::optional<base::Time> last_started_time = base::ValueToTime(
-      pref_data.Find(has_cooldown_override
-                         ? kAnyLastSurveyWithCooldownOverrideStartedTimePath
-                         : kAnyLastSurveyStartedTimePath));
+  const std::optional<base::Time> last_started_time =
+      base::ValueToTime(pref_data.Find(kAnyLastSurveyStartedTimePath));
   // The cooldown period has not started because no survey has been launched
   // before.
   if (!last_started_time.has_value()) {
@@ -117,15 +99,9 @@ bool DoesCooldownApply(Profile* profile,
 
   const base::TimeDelta elapsed_time_since_started =
       base::Time::Now() - *last_started_time;
-  const base::TimeDelta cooldown_period =
-      has_cooldown_override ? *cooldown_override
-                            : kMinimumTimeBetweenAnySurveyStarts;
   // If a user has received any HaTS survey too recently, they are also
   // ineligible.
-  if (elapsed_time_since_started < cooldown_period) {
-    return true;
-  }
-  return false;
+  return elapsed_time_since_started < kMinimumTimeBetweenAnySurveyStarts;
 }
 
 }  // namespace
@@ -369,16 +345,6 @@ void HatsServiceDesktop::SetSurveyMetadataForTesting(
     pref_data.RemoveByDottedPath(kAnyLastSurveyStartedTimePath);
   }
 
-  if (metadata.any_last_survey_with_cooldown_override_started_time
-          .has_value()) {
-    pref_data.SetByDottedPath(
-        kAnyLastSurveyWithCooldownOverrideStartedTimePath,
-        base::TimeToValue(
-            *metadata.any_last_survey_with_cooldown_override_started_time));
-  } else {
-    pref_data.RemoveByDottedPath(
-        kAnyLastSurveyWithCooldownOverrideStartedTimePath);
-  }
 
   if (metadata.is_survey_full.has_value()) {
     pref_data.SetByDottedPath(GetIsSurveyFull(trigger),
@@ -421,14 +387,6 @@ void HatsServiceDesktop::GetSurveyMetadataForTesting(
     metadata->any_last_survey_started_time = any_last_survey_started_time;
   }
 
-  std::optional<base::Time>
-      any_last_survey_with_cooldown_override_started_time =
-          base::ValueToTime(pref_data.FindByDottedPath(
-              kAnyLastSurveyWithCooldownOverrideStartedTimePath));
-  if (any_last_survey_with_cooldown_override_started_time.has_value()) {
-    metadata->any_last_survey_with_cooldown_override_started_time =
-        any_last_survey_with_cooldown_override_started_time;
-  }
 
   std::optional<bool> is_survey_full =
       pref_data.FindBoolByDottedPath(GetIsSurveyFull(trigger));
@@ -499,7 +457,7 @@ bool HatsServiceDesktop::CanShowSurvey(const std::string& trigger) const {
       break;
   }
 
-  if (DoesCooldownApply(profile(), GetPrefsForHatsMetadata(), config)) {
+  if (DoesCooldownApply(GetPrefsForHatsMetadata())) {
     UMA_HISTOGRAM_ENUMERATION(
         kHatsShouldShowSurveyReasonHistogram,
         HatsServiceDesktop::ShouldShowSurveyReasons::kNoAnyLastSurveyTooRecent);
@@ -625,11 +583,8 @@ void HatsServiceDesktop::RecordSurveyAsShown(std::string trigger_id) {
       static_cast<int>(version_info::GetVersion().components()[0]));
   pref_data.SetByDottedPath(GetLastSurveyStartedTime(trigger),
                             base::TimeToValue(base::Time::Now()));
-  pref_data.SetByDottedPath(
-      trigger_survey_config->second.IsCooldownOverrideEnabled(profile())
-          ? kAnyLastSurveyWithCooldownOverrideStartedTimePath
-          : kAnyLastSurveyStartedTimePath,
-      base::TimeToValue(base::Time::Now()));
+  pref_data.SetByDottedPath(kAnyLastSurveyStartedTimePath,
+                            base::TimeToValue(base::Time::Now()));
 }
 
 void HatsServiceDesktop::HatsNextDialogClosed() {

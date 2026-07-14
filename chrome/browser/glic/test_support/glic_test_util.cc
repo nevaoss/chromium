@@ -176,7 +176,7 @@ GlicInstance* GetOnlyGlicInstance(Profile* profile) {
   }
   auto& coordinator = static_cast<GlicInstanceCoordinatorImpl&>(
       service->instance_coordinator());
-  auto instances = coordinator.GetInstancesForTesting();
+  auto instances = coordinator.GetInstances();
   CHECK_LT(instances.size(), 2u);
   return instances.empty() ? nullptr : instances[0];
 }
@@ -204,7 +204,7 @@ GlicInstance* GetInstanceById(Profile* profile, InstanceId id) {
   }
   auto& coordinator = static_cast<GlicInstanceCoordinatorImpl&>(
       service->instance_coordinator());
-  for (GlicInstanceImpl* instance : coordinator.GetInstancesForTesting()) {
+  for (GlicInstanceImpl* instance : coordinator.GetInstances()) {
     if (instance->id() == id) {
       return instance;
     }

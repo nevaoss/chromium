@@ -33,6 +33,7 @@
 #include "base/i18n/character_encoding.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
+#include "base/memory/self_deleting.h"
 #include "base/metrics/field_trial_params.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/no_destructor.h"
@@ -5428,6 +5429,18 @@ bool ChromeContentBrowserClient::PreSpawnChild(
       enforce_code_integrity = base::FeatureList::IsEnabled(
           sandbox::policy::features::kNetworkServiceCodeIntegrity);
       break;
+    case sandbox::mojom::Sandbox::kWebNNModelCompilation:
+      // Enable startup CIG so non-MS-signed DLLs cannot be injected into
+      // the WebNN compiler process. The ONNX Runtime and execution-provider
+      // DLLs that ship with Chrome are Microsoft-signed and load fine
+      // under CIG. chrome.dll / chrome_elf.dll are allowed below via
+      // AllowExtraDll(). For IHV testing with non-MS-signed EPs (e.g.
+      // --webnn-ort-library-path-for-testing), pass
+      // --allow-third-party-modules to disable startup CIG.
+      enforce_code_integrity =
+          !base::CommandLine::ForCurrentProcess()->HasSwitch(
+              sandbox::policy::switches::kAllowThirdPartyModules);
+      break;
     case sandbox::mojom::Sandbox::kServiceWithJit:
       enforce_code_integrity = true;
       break;
@@ -5444,7 +5457,6 @@ bool ChromeContentBrowserClient::PreSpawnChild(
     case sandbox::mojom::Sandbox::kScreenAI:
     case sandbox::mojom::Sandbox::kAudio:
     case sandbox::mojom::Sandbox::kOnDeviceModelExecution:
-    case sandbox::mojom::Sandbox::kWebNNModelCompilation:
     case sandbox::mojom::Sandbox::kSpeechRecognition:
     case sandbox::mojom::Sandbox::kPdfConversion:
     case sandbox::mojom::Sandbox::kService:
@@ -6340,23 +6352,25 @@ class SpecialAccessFileURLLoaderFactory
     // The SpecialAccessFileURLLoaderFactory will delete itself when there are
     // no more receivers - see the
     // network::SelfDeletingURLLoaderFactory::OnDisconnect method.
-    new SpecialAccessFileURLLoaderFactory(
+    base::MakeSelfDeleting<SpecialAccessFileURLLoaderFactory>(
         child_id, pending_remote.InitWithNewPipeAndPassReceiver());
 
     return pending_remote;
   }
 
+  SpecialAccessFileURLLoaderFactory(
+      int child_id,
+      mojo::PendingReceiver<network::mojom::URLLoaderFactory> factory_receiver,
+      base::SelfDeletingPassKey key)
+      : network::SelfDeletingURLLoaderFactory(std::move(factory_receiver), key),
+        child_id_(child_id) {}
   SpecialAccessFileURLLoaderFactory(const SpecialAccessFileURLLoaderFactory&) =
       delete;
   SpecialAccessFileURLLoaderFactory& operator=(
       const SpecialAccessFileURLLoaderFactory&) = delete;
 
  private:
-  explicit SpecialAccessFileURLLoaderFactory(
-      int child_id,
-      mojo::PendingReceiver<network::mojom::URLLoaderFactory> factory_receiver)
-      : network::SelfDeletingURLLoaderFactory(std::move(factory_receiver)),
-        child_id_(child_id) {}
+  ~SpecialAccessFileURLLoaderFactory() override = default;
 
   // network::mojom::URLLoaderFactory:
   void CreateLoaderAndStart(
@@ -6767,6 +6781,10 @@ ChromeContentBrowserClient::
     CreateURLLoaderHandlerForServiceWorkerInitiatedNavigationRequest(
         content::FrameTreeNodeId frame_tree_node_id,
         const network::ResourceRequest& resource_request) {
+  // Note: SearchPrefetchService only applies to omnibox searches, which are not
+  // in scope for Connection Allowlist intervention. However, if we ever intend
+  // to create a loader in this function on behalf of a specific context, then
+  // that loader must respect the Connection Allowlist of that context.
   SearchPrefetchURLLoader::RequestHandler prefetch_handler =
       SearchPrefetchURLLoaderInterceptor::MaybeCreateLoaderForRequest(
           resource_request, frame_tree_node_id);
@@ -8799,6 +8817,28 @@ ChromeContentBrowserClient::GetPostMessageTargetOverride(
   }
 
   return nullptr;
+}
+
+bool ChromeContentBrowserClient::IsSecureContextRoot(
+    content::RenderFrameHost* parent_frame,
+    content::FrameTreeNodeId frame_tree_node_id,
+    const GURL& url) {
+#if BUILDFLAG(ENABLE_EXTENSIONS) && !BUILDFLAG(IS_ANDROID)
+  if (!parent_frame) {
+    return false;
+  }
+  // The boundary only applies to chrome-extension documents.
+  if (!url.SchemeIs(extensions::kExtensionScheme)) {
+    return false;
+  }
+  auto* manager =
+      extensions::mime_handler::MimeHandlerStreamManager::FromRenderFrameHost(
+          parent_frame);
+  return manager && manager->IsExtensionFrameTreeNodeIdForUrl(
+                        parent_frame, frame_tree_node_id, url);
+#else
+  return false;
+#endif  // BUILDFLAG(ENABLE_EXTENSIONS) && !BUILDFLAG(IS_ANDROID)
 }
 
 bool ChromeContentBrowserClient::IsCrossOriginSubframeAllowedToShowFilePicker(

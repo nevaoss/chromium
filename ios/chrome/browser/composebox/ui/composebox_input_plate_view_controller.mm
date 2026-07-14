@@ -404,9 +404,7 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
 }
 
 - (void)showMultimodalMenu {
-  if (@available(iOS 17.4, *)) {
-    [_plusButton performPrimaryAction];
-  }
+  [_plusButton performPrimaryAction];
 }
 
 #pragma mark - ComposeboxInputItemCellDelegate

@@ -45,6 +45,7 @@
 #include "chrome/browser/themes/theme_service.h"
 #include "chrome/browser/themes/theme_service_factory.h"
 #include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/profiles/profile_colors_util.h"
@@ -2594,7 +2595,7 @@ class AvatarToolbarButtonProfileColorBrowserTest
       Browser* target_browser = nullptr) {
     target_browser = target_browser ? target_browser : browser();
     return GetCurrentProfileThemeColors(
-        *target_browser->window()->GetColorProvider(),
+        *BrowserWindow::FromBrowser(target_browser)->GetColorProvider(),
         *ThemeServiceFactory::GetForProfile(target_browser->profile()));
   }
 };

@@ -185,6 +185,12 @@ BrowserControlsService::NavigateResult BrowserControlsService::Navigate(
   return std::monostate();
 }
 
+BrowserControlsService::NavigateTextResult BrowserControlsService::NavigateText(
+    const std::string& text) {
+  browser_adapter_->NavigateText(text);
+  return std::monostate();
+}
+
 void BrowserControlsService::SetDelegate(
     BrowserControlsServiceDelegate* delegate) {
   delegate_ = delegate;

@@ -258,7 +258,7 @@ class PopoverCloseWatcherEventListener : public NativeEventListener {
 class NameInHeapSnapshotBuilder : public MarkupAccumulator {
  public:
   NameInHeapSnapshotBuilder()
-      : MarkupAccumulator(kDoNotResolveURLs,
+      : MarkupAccumulator(ResolveUrls::kNone,
                           SerializationType::kHTML,
                           ShadowRootInclusion(),
                           MarkupAccumulator::AttributesMode::kUnsynchronized) {}
@@ -882,29 +882,12 @@ void HTMLElement::AttributeChanged(const AttributeModificationParams& params) {
     return;
   }
 
-  if (params.reason != AttributeModificationReason::kDirectly) {
-    return;
+  if (params.name == html_names::kOverscrollareaAttr) {
+    PseudoStateChanged(CSSSelector::kPseudoOverscrollTarget);
   }
 
-  if (params.name == html_names::kCommandAttr) {
-    bool old_is_overscroll = IsOverscrollCommand(
-        GetCommandEventType(params.old_value, GetExecutionContext()));
-    bool new_is_overscroll = IsOverscrollCommand(
-        GetCommandEventType(params.new_value, GetExecutionContext()));
-    if (isConnected() && old_is_overscroll != new_is_overscroll) {
-      if (new_is_overscroll) {
-        GetDocument().AddOverscrollCommandInvoker(*this);
-      } else {
-        GetDocument().RemoveOverscrollCommandInvoker(*this);
-      }
-      GetDocument().MarkOverscrollCommandTargetsDirty();
-    }
-  } else if (params.name == html_names::kCommandforAttr) {
-    if (isConnected() && IsOverscrollCommand(GetCommandEventType(
-                             FastGetAttribute(html_names::kCommandAttr),
-                             GetExecutionContext()))) {
-      GetDocument().MarkOverscrollCommandTargetsDirty();
-    }
+  if (params.reason != AttributeModificationReason::kDirectly) {
+    return;
   }
 
   // adjustedFocusedElementInTreeScope() is not trivial. We should check
@@ -1157,10 +1140,14 @@ void HTMLElement::ApplyAlignmentAttributeToStyle(
     vertical_align_value = CSSValueID::kTop;
   } else if (EqualIgnoringAsciiCase(alignment, "top")) {
     vertical_align_value = CSSValueID::kTop;
-  } else if (EqualIgnoringAsciiCase(alignment, "middle")) {
-    vertical_align_value = CSSValueID::kWebkitBaselineMiddle;
-  } else if (EqualIgnoringAsciiCase(alignment, "center")) {
-    vertical_align_value = CSSValueID::kMiddle;
+  } else if (EqualIgnoringAsciiCase(alignment, "middle") ||
+             EqualIgnoringAsciiCase(alignment, "center")) {
+    if (RuntimeEnabledFeatures::EmbeddedContentCenterAlignBaselineEnabled() ||
+        EqualIgnoringAsciiCase(alignment, "middle")) {
+      vertical_align_value = CSSValueID::kWebkitBaselineMiddle;
+    } else {
+      vertical_align_value = CSSValueID::kMiddle;
+    }
   } else if (EqualIgnoringAsciiCase(alignment, "bottom")) {
     vertical_align_value = CSSValueID::kBaseline;
   } else if (EqualIgnoringAsciiCase(alignment, "texttop")) {
@@ -3388,6 +3375,58 @@ void HTMLElement::setAutocapitalize(const AtomicString& value) {
   setAttribute(html_names::kAutocapitalizeAttr, value);
 }
 
+bool HTMLElement::IsAutocapitalizeOrAutocorrectInheriting() const {
+  // https://html.spec.whatwg.org/multipage/interaction.html#autocapitalize-and-autocorrect-inheriting-element
+  // The set is exactly button, fieldset, input, output, select, and textarea,
+  // which are the instantiable HTMLFormControlElement subclasses in Blink.
+  return IsA<HTMLFormControlElement>(*this);
+}
+
+bool HTMLElement::autocorrect() const {
+  // https://html.spec.whatwg.org/multipage/interaction.html#autocorrection
+  // return true if the element's used autocorrection state is On and false if
+  // the element's used autocorrection state is Off.
+
+  // 1. If element is an input element whose type attribute is in one of the
+  // URL, Email, or Password states, then return Off.
+  if (auto* input_element = DynamicTo<HTMLInputElement>(*this)) {
+    switch (input_element->FormControlType()) {
+      case FormControlType::kInputUrl:
+      case FormControlType::kInputEmail:
+      case FormControlType::kInputPassword:
+        return false;
+      default:
+        break;
+    }
+  }
+
+  // 2. If the autocorrect content attribute is present on element, then return
+  // the state of the attribute.
+  if (FastHasAttribute(html_names::kAutocorrectAttr)) {
+    const AtomicString& value = FastGetAttribute(html_names::kAutocorrectAttr);
+    // The attribute's invalid value default, missing value default, and empty
+    // value default are all the On state.
+    return !EqualIgnoringAsciiCase(value, keywords::kOff);
+  }
+
+  // 3. If element is an autocapitalize-and-autocorrect inheriting element and
+  // has a non-null form owner, then return the state of element's form owner's
+  // autocorrect attribute.
+  if (IsAutocapitalizeOrAutocorrectInheriting()) {
+    if (const HTMLFormElement* form = formOwner()) {
+      return form->autocorrect();
+    }
+  }
+
+  // 4. Return On.
+  return true;
+}
+
+void HTMLElement::setAutocorrect(bool enable) {
+  setAttribute(html_names::kAutocorrectAttr,
+               enable ? keywords::kOn : keywords::kOff);
+}
+
 bool HTMLElement::isContentEditableForBinding() const {
   return IsEditableOrEditingHost(*this);
 }
@@ -3664,13 +3703,6 @@ Node::InsertionNotificationRequest HTMLElement::InsertedInto(
   if (IsFormAssociatedCustomElement())
     EnsureElementInternals().InsertedInto(insertion_point);
 
-  if (insertion_point.isConnected() &&
-      IsOverscrollCommand(GetCommandEventType(
-          FastGetAttribute(html_names::kCommandAttr), GetExecutionContext()))) {
-    GetDocument().AddOverscrollCommandInvoker(*this);
-    GetDocument().MarkOverscrollCommandTargetsDirty();
-  }
-
   return kInsertionDone;
 }
 
@@ -3697,13 +3729,6 @@ void HTMLElement::RemovedFrom(ContainerNode& insertion_point) {
   Element::RemovedFrom(insertion_point);
   if (IsFormAssociatedCustomElement())
     EnsureElementInternals().RemovedFrom(insertion_point);
-
-  if (was_in_document &&
-      IsOverscrollCommand(GetCommandEventType(
-          FastGetAttribute(html_names::kCommandAttr), GetExecutionContext()))) {
-    GetDocument().RemoveOverscrollCommandInvoker(*this);
-    GetDocument().MarkOverscrollCommandTargetsDirty();
-  }
 }
 
 void HTMLElement::DidMoveToNewDocument(Document& old_document) {

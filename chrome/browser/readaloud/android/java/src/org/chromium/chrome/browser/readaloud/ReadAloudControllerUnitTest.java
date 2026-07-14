@@ -71,6 +71,7 @@ import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.fullscreen.FullscreenManager;
 import org.chromium.chrome.browser.fullscreen.FullscreenOptions;
+import org.chromium.chrome.browser.glic.GlicEnabling;
 import org.chromium.chrome.browser.layouts.LayoutManager;
 import org.chromium.chrome.browser.layouts.LayoutStateProvider;
 import org.chromium.chrome.browser.layouts.LayoutStateProvider.LayoutStateObserver;
@@ -320,6 +321,7 @@ public class ReadAloudControllerUnitTest {
         TapToSeekSelectionManager.setSmartSelectionClient(mSelectionClient);
         TapToSeekSelectionManager.setSelectionPopupController(mSelectionPopupController);
 
+        GlicEnabling.setEnabledForTesting(false);
         mController = createController();
         verify(mLayoutStateProvider).addObserver(mLayoutStateObserver.capture());
         verify(mFullscreenManager).addObserver(mFullscreenObserver.capture());
@@ -1035,8 +1037,8 @@ public class ReadAloudControllerUnitTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.GLIC)
     public void testPlayTab_WithGlicActive_Confirm() {
+        GlicEnabling.setEnabledForTesting(true);
         when(mActorUiTabController.isActorActive()).thenReturn(true);
         when(mActorUiTabController.showTaskAbortConfirmationDialog(any()))
                 .thenAnswer(
@@ -1057,8 +1059,8 @@ public class ReadAloudControllerUnitTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.GLIC)
     public void testPlayTab_WithGlicActive_Cancel() {
+        GlicEnabling.setEnabledForTesting(true);
         when(mActorUiTabController.isActorActive()).thenReturn(true);
         when(mActorUiTabController.showTaskAbortConfirmationDialog(any())).thenReturn(true);
 
@@ -1073,8 +1075,8 @@ public class ReadAloudControllerUnitTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.GLIC)
     public void testPlayTab_WithGlicActive_Confirm_AfterDestroy() {
+        GlicEnabling.setEnabledForTesting(true);
         // Setup: Mock active Glic task and capture dialogue confirm callback
         when(mActorUiTabController.isActorActive()).thenReturn(true);
         when(mActorUiTabController.showTaskAbortConfirmationDialog(mGlicCallbackCaptor.capture()))

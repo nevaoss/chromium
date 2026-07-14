@@ -121,6 +121,8 @@ public class ActorOverlayCoordinatorTest {
         Mockito.when(mTab.getProfile()).thenReturn(mProfile);
 
         // Make ActorUiTabController.from() return a real instance.
+        Mockito.when(mTab.getProfile()).thenReturn(mProfile);
+        GlicEnabling.setEnabledForTesting(true);
         mTabController = ActorUiTabController.from(mTab);
         ActorUiTabControllerJni.setInstanceForTesting(mTabControllerNatives);
 

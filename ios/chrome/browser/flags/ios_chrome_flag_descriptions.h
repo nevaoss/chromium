@@ -48,6 +48,10 @@ inline constexpr char kActorServiceLoggingName[] = "ActorServiceLogging";
 inline constexpr char kActorServiceLoggingDescription[] =
     "Enables Actor logging, which is for debugging only.";
 
+inline constexpr char kAiAvatarRingIosName[] = "AiAvatarRing";
+inline constexpr char kAiAvatarRingIosDescription[] =
+    "Display a ring around the avatar if the primary account has a AI Tier";
+
 inline constexpr char kAimCobrowseHeaderName[] = "AimCobrowseHeader";
 inline constexpr char kAimCobrowseHeaderDescription[] =
     "Changes the design of the AIM cobrowse header.";
@@ -94,9 +98,10 @@ inline constexpr char kAskAboutThisPageName[] = "AskAboutThisPage";
 inline constexpr char kAskAboutThisPageDescription[] =
     "Enables the AskAboutThisPage feature.";
 
-inline constexpr char kAskGeminiChipName[] = "Ask Gemini Chip";
-inline constexpr char kAskGeminiChipDescription[] =
-    "Enables the Ask Gemini Chip feature.";
+inline constexpr char kAskGeminiChipIgnoreCriteriaName[] =
+    "Ask Gemini Chip Ignore Criteria";
+inline constexpr char kAskGeminiChipIgnoreCriteriaDescription[] =
+    "Enables the Ask Gemini Chip ignoring FET and time criteria.";
 
 inline constexpr char kAssistantAimMinimizedStateName[] =
     "AssistantAimMinimizedState";
@@ -248,12 +253,6 @@ inline constexpr char
     kAutofillEnablePrefetchingRiskDataForRetrievalDescription[] =
         "When enabled, risk data is prefetched during payments autofill flows "
         "to reduce user-perceived latency.";
-
-inline constexpr char kAutofillEnableSupportForNameAndEmailName[] =
-    "Support for name and email addresses in Autofill";
-inline constexpr char kAutofillEnableSupportForNameAndEmailDescription[] =
-    "When enabled, a name and email profile with data comming from the account "
-    "will be created for autofilling.";
 
 inline constexpr char kAutofillEnableWalletBrandingName[] =
     "Update Google Pay branding to Wallet where applicable";
@@ -826,11 +825,6 @@ inline constexpr char kGeminiClientMigrationDescription[] =
     "Enables the client migration for Gemini, adding the infrastructure for "
     "several key features that render more than just text.";
 
-inline constexpr char kGeminiCopresenceName[] = "Gemini Copresence";
-inline constexpr char kGeminiCopresenceDescription[] =
-    "Enables the Gemini Copresence feature, which provides a persistent Gemini "
-    "overlay.";
-
 inline constexpr char kGeminiImageRemixToolName[] = "Gemini Image Remix Tool";
 inline constexpr char kGeminiImageRemixToolDescription[] =
     "Enables the image remix tool in the Gemini floaty.";
@@ -997,12 +991,6 @@ inline constexpr char kIOSKeyboardAccessoryDefaultViewName[] =
 inline constexpr char kIOSKeyboardAccessoryDefaultViewDescription[] =
     "When enabled, a default Keyboard Accessory view with navigation buttons "
     "is provided for a <select> HTML element.";
-
-inline constexpr char kIOSKeyboardAccessoryTwoBubbleName[] =
-    "Enable the two-bubble design for the Keyboard Accessory view";
-inline constexpr char kIOSKeyboardAccessoryTwoBubbleDescription[] =
-    "When enabled, the two-bubble design is used for the Keyboard Accessory "
-    "view.";
 
 inline constexpr char kIOSLevelUpName[] = "Level Up";
 inline constexpr char kIOSLevelUpDescription[] =
@@ -1770,7 +1758,7 @@ inline constexpr char kSendTabToSelfEnhancedHandoffName[] =
     "Send Tab To Self enhanced handoff";
 inline constexpr char kSendTabToSelfEnhancedHandoffDescription[] =
     "Enables an enhanced version of Send Tab To Self that propagates more "
-    "information, such as form fields.";
+    "information, such as form fields, and updates various UIs.";
 
 inline constexpr char kShareInOmniboxLongPressName[] =
     "Share in Omnibox Long Press";
@@ -1907,12 +1895,6 @@ inline constexpr char kSyncWalletVehicleRegistrationsName[] =
     "Sync wallet vehicle registrations";
 inline constexpr char kSyncWalletVehicleRegistrationsDescription[] =
     "Enables syncing vehicle registrations in the wallet to the server.";
-
-inline constexpr char kTabGridNewTransitionsName[] =
-    "Enable new TabGrid transitions";
-inline constexpr char kTabGridNewTransitionsDescription[] =
-    "When enabled, the new Tab Grid to Browser (and vice versa) transitions"
-    "are used.";
 
 inline constexpr char kTabGroupColorOnSurfaceName[] =
     "Tab group color on surfaces";

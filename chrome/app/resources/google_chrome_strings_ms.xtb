@@ -60,6 +60,17 @@
 <translation id="1587223624401073077">Google Chrome menggunakan kamera anda.</translation>
 <translation id="1587325591171447154"><ph name="FILE_NAME" /> berbahaya, jadi Chrome telah menyekat fail itu.</translation>
 <translation id="1597911401261118146">Untuk menyemak sama ada kata laluan anda selamat daripada pelanggaran data dan isu keselamatan lain, <ph name="BEGIN_LINK" />log masuk ke Chrome<ph name="END_LINK" />.</translation>
+<translation id="1619639070275605589">Tindakan ini akan:
+          <ph name="LINE_BREAKS" />
+            • Menetapkan semula halaman permulaan, halaman tab baharu, enjin carian dan tab tersemat anda
+            <ph name="LINE_BREAK" />
+            • Melumpuhkan sambungan
+            <ph name="LINE_BREAK" />
+            • Memadamkan kuki dan data laman lain yang bersifat sementara
+            <ph name="LINE_BREAK" />
+            • Menetapkan semula pintasan Chrome
+            <ph name="LINE_BREAKS" />
+            Penanda halaman, sejarah dan kata laluan yang disimpan tidak akan terjejas.</translation>
 <translation id="1619887657840448962">Untuk menjadikan Chrome lebih selamat, kami melumpuhkan sambungan berikut yang tidak disenaraikan dalam <ph name="IDS_EXTENSION_WEB_STORE_TITLE" /> dan mungkin telah ditambahkan tanpa pengetahuan anda.</translation>
 <translation id="1628000112320670027">Dapatkan bantuan berkenaan Chrome</translation>
 <translation id="1640672724030957280">Memuat turun...</translation>
@@ -136,6 +147,7 @@
 <translation id="2472092250898121027">Sambungan ini mengandungi perisian hasad dan tidak selamat. Alih keluar sambungan ini daripada Chrome supaya sambungan ini tidak dapat melihat dan mengubah data anda pada laman yang anda lawati lagi, termasuk maklumat peribadi anda.</translation>
 <translation id="2485422356828889247">Nyahpasang</translation>
 <translation id="2513154137948333830">But semula diperlukan: <ph name="INSTALL_SUCCESS" /></translation>
+<translation id="2523492931736391680">Kerja anda dilindungi pada Chrome</translation>
 <translation id="2534365042754120737">Untuk melindungi data anda, benarkan Chrome mengalih keluar kebenaran daripada laman yang belum anda lawati baru-baru ini. Tidak menghentikan pemberitahuan.</translation>
 <translation id="2556847002339236023">Organisasi anda menutup Chrome apabila apl tersebut tidak digunakan selama <ph name="TIMEOUT_DURATION" />. Data semakan imbas telah dipadamkan. Pemadaman ini termasuk sejarah, autolengkap dan muat turun.</translation>
 <translation id="2563121210305478421">Lancarkan semula Chrome?</translation>
@@ -240,6 +252,7 @@ Jika halaman ini tidak berfungsi seperti yang dijangkakan, cuba benarkan pengopt
 <translation id="345171907106878721">Tambahkan diri anda kepada Chrome</translation>
 <translation id="3453763134178591239">Syarat Chrome OS</translation>
 <translation id="3503306920980160878">Chrome memerlukan akses kepada lokasi anda untuk berkongsi lokasi dengan tapak ini</translation>
+<translation id="3512495006767217696">Dibina dalam Chrome untuk membantu anda membuat, menyimpan dan menggunakan autolengkap kata laluan kukuh. Tambahkan pintasan untuk akses mudah</translation>
 <translation id="3539955434060988644">Buka pautan dalam tetingkap Inko&amp;gnito Chrome</translation>
 <translation id="3576528680708590453">Pentadbir sistem anda telah mengkonfigurasikan Google Chrome agar membuka penyemak imbas alternatif untuk mengakses <ph name="TARGET_URL_HOSTNAME" />.</translation>
 <translation id="3582972582564653026">Segerakkan dan peribadikan Chrome pada semua peranti anda</translation>
@@ -302,6 +315,7 @@ Jika halaman ini tidak berfungsi seperti yang dijangkakan, cuba benarkan pengopt
 <translation id="4149882025268051530">Pemasang gagal untuk nyahmampat arkib. Sila muat turun Google Chrome semula.</translation>
 <translation id="415112847282352845">Untuk mendapatkan alamat anda dan pelbagai lagi pada semua peranti anda, log masuk ke Chrome. Alamat ini akan disimpan dalam Google Account anda selepas anda log masuk.</translation>
 <translation id="4153934450158521343">Chrome akan ditutup dan data akan dipadamkan sebentar lagi</translation>
+<translation id="4159985264221160808">Untuk melindungi kerja anda pada Chrome, organisasi anda akan dapat melihat atau mengurus maklumat tertentu</translation>
 <translation id="4173512894976930765">Laman mungkin akan berfungsi seperti yang dijangkakan. Anda akan dilog keluar dari kebanyakan laman apabila anda menutup semua tetingkap Chrome, kecuali Google Account anda jika anda log masuk ke Chrome.</translation>
 <translation id="4175922240926474352">Chrome menyekat muat turun ini kerana laman tidak menggunakan sambungan selamat dan fail mungkin telah diubah</translation>
 <translation id="4191857738314598978">{0,plural, =1{Lancarkan semula Chrome dalam masa sehari}other{Lancarkan semula Chrome dalam masa # hari}}</translation>
@@ -333,6 +347,7 @@ Jika halaman ini tidak berfungsi seperti yang dijangkakan, cuba benarkan pengopt
 <translation id="4493028449971051158">Ralat permulaan: sila jalankan pemasang sebagai pentadbir.</translation>
 <translation id="4501471624619070934">Pemasangan gagal kerana akses disekat di negara ini.</translation>
 <translation id="4571503333518166079">Pergi ke tetapan pemberitahuan Chrome</translation>
+<translation id="4580939929828762295">Kekal selamat dengan Google Password Manager</translation>
 <translation id="4592634244097223647">Tanya Google tentang imej ini</translation>
 <translation id="459622048091363950">Sebaik sahaja Chrome mendapat akses, laman web akan dapat meminta akses daripada anda.</translation>
 <translation id="4598116752460667024">Cari sebarang proses daripada senarai.</translation>
@@ -517,6 +532,7 @@ Jika halaman ini tidak berfungsi seperti yang dijangkakan, cuba benarkan pengopt
 <translation id="6438015621983209660">Lanjutkan Penyemakan Imbas Selamat Dipertingkat dengan Chrome pada telefon anda</translation>
 <translation id="6442774133615368941">Beli-belah, terjemahkan dan kenal pasti perkara yang anda lihat menggunakan kamera anda pada apl Chrome iOS</translation>
 <translation id="6448835208126432197">Untuk memilih sebahagian daripada skrin dalam Gemini dalam Chrome, gunakan pintasan papan kekunci.</translation>
+<translation id="6473659734176498825">Imej ringkas yang menunjukkan titik masuk Google Password Manager dalam Chrome</translation>
 <translation id="6473905796280459355">Akses halaman Perihal Chrome</translation>
 <translation id="6481963882741794338">Pautkan Chrome dan perkhidmatan Google lain untuk pemeribadian dan tujuan lain</translation>
 <translation id="648319183876919572">Penyemakan Imbas Selamat Dipertingkatkan melakukan lebih banyak lagi untuk melindungi anda daripada laman web dan muat turun berbahaya</translation>
@@ -688,6 +704,7 @@ Jika halaman ini tidak berfungsi seperti yang dijangkakan, cuba benarkan pengopt
 <translation id="8064965390968184078">1. Klik <ph name="BUTTON_LABEL" /> di bawah
 2. Klik <ph name="BUTTON_2" /> dalam tetapan Windows anda
 3. Klik <ph name="BUTTON_3" /> dalam pemberitahuan Windows untuk menyematkan Chrome pada bar tugas anda untuk akses pantas</translation>
+<translation id="8069447462453318634">Pilih "Sematkan pada bar alat"</translation>
 <translation id="8074398340364918139">Untuk mencari ciri atau sambungan Chrome tertentu, taip pintasan carian dalam bar alamat, diikuti dengan kekunci papan kekunci pilihan anda</translation>
 <translation id="8077579734294125741">Profil Chrome Lain</translation>
 <translation id="8086881907087796310">Pemasangan gagal kerana komputer anda tidak menepati keperluan perkakasan minimum.</translation>
@@ -773,6 +790,15 @@ Penanda halaman baharu tidak boleh disimpan dalam akaun anda sehingga anda memad
 <translation id="8922998289262614701">Alih keluar data apl ini daripada Chrome</translation>
 <translation id="8925636929359899517">Kami menggunakan maklumat untuk meningkatkan perkhidmatan ini. Lihat <ph name="BEGIN_LINK1" />Dasar Privasi<ph name="END_LINK1" /> dan <ph name="BEGIN_LINK2" />Syarat Perkhidmatan<ph name="END_LINK2" />.</translation>
 <translation id="8936233353620149764">Togol Gemini dalam Chrome</translation>
+<translation id="8944232836376404813">Tindakan ini akan:
+          <ph name="LINE_BREAKS" />
+            • Menetapkan semula halaman permulaan, halaman tab baharu, enjin carian dan tab tersemat anda
+            <ph name="LINE_BREAK" />
+            • Melumpuhkan sambungan
+            <ph name="LINE_BREAK" />
+            • Memadamkan kuki dan data laman lain yang bersifat sementara
+            <ph name="LINE_BREAKS" />
+            Penanda halaman, sejarah dan kata laluan yang disimpan tidak akan terjejas.</translation>
 <translation id="8948460679427074738">Sambungan ini belum menerbitkan amalan privasi, seperti cara sambungan ini mengumpulkan dan menggunakan data. Chrome mengesyorkan supaya anda mengalih keluar sambungan tersebut.</translation>
 <translation id="8958307504142971576">Kini anda mempunyai lebih banyak ciri yang tersedia dalam Chrome</translation>
 <translation id="8991530961471831170">Buka Gemini dalam Chrome</translation>

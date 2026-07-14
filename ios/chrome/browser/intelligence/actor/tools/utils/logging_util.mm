@@ -17,7 +17,7 @@ void LogJournalEvent(
     const GURL& url,
     ActorTaskId task_id,
     std::string_view event_name,
-    const std::vector<std::pair<std::string_view, std::string_view>>& details) {
+    const std::vector<std::pair<std::string, std::string>>& details) {
   JournalDetailsBuilder builder;
   for (const auto& [key, value] : details) {
     builder.Add(key, value);
@@ -46,6 +46,32 @@ void LogToolExecutionResult(AggregatedJournal& journal,
   }
 
   journal.Log(url, task_id, event_name, std::move(details));
+}
+
+std::unique_ptr<AggregatedJournal::PendingAsyncEntry> StartAsyncJournalEntry(
+    AggregatedJournal& journal,
+    const GURL& url,
+    ActorTaskId task_id,
+    const std::string& tool_name,
+    const std::string& event_name) {
+  return journal.CreatePendingAsyncEntry(
+      url, task_id, journal.AllocateDynamicTrackUUID(),
+      base::StringPrintf("%s: %s", event_name.c_str(), tool_name.c_str()),
+      /*details=*/{});
+}
+
+void EndAsyncJournalEntry(AggregatedJournal::PendingAsyncEntry* entry,
+                          const ToolExecutionResult& result) {
+  CHECK(entry);
+
+  JournalDetailsBuilder builder;
+  if (result.IsOk()) {
+    builder.Add("result", "success");
+  } else {
+    builder.AddError(GetToolExecutionResultMessage(result));
+  }
+
+  entry->EndEntry(std::move(builder).Build());
 }
 
 }  // namespace actor

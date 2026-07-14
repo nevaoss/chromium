@@ -4,6 +4,7 @@
 
 package org.chromium.chrome.browser.compositor.layouts;
 
+import android.content.Context;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewStub;
@@ -12,10 +13,12 @@ import org.chromium.base.Log;
 import org.chromium.base.supplier.MonotonicObservableSupplier;
 import org.chromium.base.supplier.NonNullObservableSupplier;
 import org.chromium.base.supplier.ObservableSuppliers;
+import org.chromium.base.supplier.OneshotSupplier;
 import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.build.annotations.Initializer;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.R;
 import org.chromium.chrome.browser.back_press.BackPressManager;
 import org.chromium.chrome.browser.bookmarks.TabBookmarker;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
@@ -31,6 +34,7 @@ import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager;
 import org.chromium.chrome.browser.share.ShareDelegate;
 import org.chromium.chrome.browser.tab.TabLaunchType;
+import org.chromium.chrome.browser.tab.TabObscuringHandler;
 import org.chromium.chrome.browser.tab_ui.ActionConfirmationManager;
 import org.chromium.chrome.browser.tab_ui.TabContentManager;
 import org.chromium.chrome.browser.tab_ui.TabSwitcher;
@@ -40,6 +44,8 @@ import org.chromium.chrome.browser.theme.ToolbarThemeColorProvider;
 import org.chromium.chrome.browser.toolbar.ControlContainer;
 import org.chromium.chrome.browser.toolbar.ToolbarManager;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
+import org.chromium.chrome.browser.ui.side_ui.SideUiStateProvider;
+import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
 import org.chromium.components.browser_ui.desktop_windowing.DesktopWindowStateManager;
 import org.chromium.ui.base.ActivityResultTracker;
@@ -129,7 +135,9 @@ public class LayoutManagerChromeTablet extends LayoutManagerChrome {
             BackPressManager backPressManager,
             SnackbarManager snackbarManager,
             ActivityResultTracker activityResultTracker,
-            GlicButtonDelegate glicClickHandler) {
+            GlicButtonDelegate glicClickHandler,
+            OneshotSupplier<SideUiStateProvider> sideUiStateProviderSupplier,
+            TabObscuringHandler tabObscuringHandler) {
         super(
                 host,
                 contentContainer,
@@ -172,7 +180,9 @@ public class LayoutManagerChromeTablet extends LayoutManagerChrome {
                         backPressManager,
                         snackbarManager,
                         activityResultTracker,
-                        glicClickHandler);
+                        glicClickHandler,
+                        sideUiStateProviderSupplier,
+                        tabObscuringHandler);
         addSceneOverlay(mTabStripLayoutHelperManager);
         addObserver(mTabStripLayoutHelperManager.getTabSwitcherObserver());
         mDesktopWindowStateManager = desktopWindowStateManager;
@@ -230,12 +240,15 @@ public class LayoutManagerChromeTablet extends LayoutManagerChrome {
                 toolbarColorProvider,
                 bottomControlsOffsetSupplier);
         if (DeviceClassManager.enableLayerDecorationCache()) {
+            Context context = mHost.getContext();
+            // Tab strip height is 0 if VerticalTab is on at Chrome start. TitleCache should still
+            // get initialized with the right non-zero height in that case.
+            int tabStripHeight =
+                    VerticalTabUtils.isVerticalTabsEnabled(context)
+                            ? context.getResources().getDimensionPixelSize(R.dimen.tab_strip_height)
+                            : mTabStripHeightSupplier.get();
             mLayerTitleCache =
-                    new LayerTitleCache(
-                            mHost.getContext(),
-                            getResourceManager(),
-                            mTabStripHeightSupplier.get(),
-                            selector);
+                    new LayerTitleCache(context, getResourceManager(), tabStripHeight, selector);
             // TODO: TitleCache should be a part of the ResourceManager.
             mLayerTitleCacheSupplier.set(mLayerTitleCache);
         }

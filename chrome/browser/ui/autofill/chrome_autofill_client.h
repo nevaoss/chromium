@@ -154,10 +154,12 @@ class ChromeAutofillClient : public ContentAutofillClient {
   void MarkPersonalContextInAutofillNoticeAsAcknowledged() override;
   AutocompleteHistoryManager* GetAutocompleteHistoryManager() final;
   AutofillComposeDelegate* GetComposeDelegate() final;
-  accessibility_annotator::AccessibilityQueryService*
-  GetAccessibilityQueryService() override;
+  accessibility_annotator::AtMemoryQueryService* GetAtMemoryQueryService()
+      override;
   personal_context::PersonalContextEnablementState
   GetPersonalContextEnablementState() const override;
+  personal_context::PersonalContextEnablementService*
+  GetPersonalContextEnablementService() const override;
   PasswordManagerDelegate* GetPasswordManagerDelegate(
       const FieldGlobalId& field_id) final;
   void GetAiPageContent(GetAiPageContentCallback callback) final;
@@ -210,6 +212,7 @@ class ChromeAutofillClient : public ContentAutofillClient {
   void HideSuggestions(SuggestionHidingReason reason,
                        std::optional<FillingProduct> product) final;
   void OpenGeminiInSidebar(const std::u16string& prompt) final;
+  bool IsGlicEnabled() const final;
   void TriggerUserPerceptionOfAutofillSurvey(
       FillingProduct filling_product,
       const std::map<std::string, std::string>& field_filling_stats_data) final;
@@ -227,6 +230,9 @@ class ChromeAutofillClient : public ContentAutofillClient {
   ActorKeyMetricsRecorder* GetActorKeyMetricsRecorder() final;
   bool IsAutofillEnabled() const final;
   bool IsAutofillProfileEnabled() const final;
+  bool IsAutofillTypeBlockedByPolicy(
+      const GURL& url,
+      AutofillPolicyDataCategory category) const final;
   bool IsAutocompleteEnabled() const final;
   bool IsWalletPublicPassStorageEnabled() const final;
   bool IsPasswordManagerEnabled() const final;
@@ -247,6 +253,7 @@ class ChromeAutofillClient : public ContentAutofillClient {
   void ShowAtMemoryBottomSheet(
       base::span<const Suggestion> suggestions,
       base::WeakPtr<AutofillSuggestionDelegate> delegate) final;
+  void HideAtMemoryBottomSheet() final;
 
   // Returns the AtMemoryBottomSheetBridge for the current tab.
   AtMemoryBottomSheetBridge* GetOrCreateAtMemoryBottomSheetBridge();

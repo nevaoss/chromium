@@ -443,7 +443,7 @@ void PaintOpWriter::Write(scoped_refptr<SkottieWrapper> skottie) {
   size_t bytes_written = 0u;
   if (!locked) {
     bytes_written = options_.transfer_cache->CreateEntry(
-        ClientSkottieTransferCacheEntry(skottie), remaining_.data());
+        ClientSkottieTransferCacheEntry(skottie), remaining_);
     options_.transfer_cache->AssertLocked(TransferCacheEntryType::kSkottie, id);
   }
 

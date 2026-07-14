@@ -190,11 +190,7 @@ BASE_FEATURE(kNtpShortcuts, base::FEATURE_ENABLED_BY_DEFAULT);
 // If enabled, the Tab Resumption module will be shown.
 // TODO(b/516245005): Enable Tab Resumption Module for Android.
 BASE_FEATURE(kNtpMostRelevantTabResumptionModule,
-#if BUILDFLAG(IS_ANDROID)
-             base::FEATURE_DISABLED_BY_DEFAULT);
-#else
              base::FEATURE_ENABLED_BY_DEFAULT);
-#endif
 
 // If enabled, the Tab Resumption module will be allowed to fallback to the
 // favicon server when fetching favicons for displayed continuation suggestions.
@@ -263,12 +259,24 @@ BASE_FEATURE(kNtpTabGroupsModuleZeroState,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled, stale modules will be auto-removed from the NTP.
+// TODO(b/525245973): Enable on Android once customize chrome is implemented.
+#if BUILDFLAG(IS_ANDROID)
+BASE_FEATURE(kNtpFeatureOptimizationModuleRemoval,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#else
 BASE_FEATURE(kNtpFeatureOptimizationModuleRemoval,
              base::FEATURE_ENABLED_BY_DEFAULT);
+#endif
 
 // If enabled, stale shortcuts will be auto-removed from the NTP.
+// TODO(b/525245973): Enable on Android once customize chrome is implemented.
+#if BUILDFLAG(IS_ANDROID)
+BASE_FEATURE(kNtpFeatureOptimizationShortcutsRemoval,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#else
 BASE_FEATURE(kNtpFeatureOptimizationShortcutsRemoval,
              base::FEATURE_ENABLED_BY_DEFAULT);
+#endif
 
 // If enabled, the dismiss module buttons will be removed from the NTP modules.
 BASE_FEATURE(kNtpFeatureOptimizationDismissModulesRemoval,

@@ -137,6 +137,8 @@ TEST_F(PageContextFetcherIframeInfoTest, AddIframeInfoSuccess) {
                                 true, 1);
   histograms.ExpectUniqueSample(
       "Glic.PageContextFetcher.IframeInfoHasUrlOrigin", true, 1);
+  histograms.ExpectTotalCount(
+      "Glic.PageContextFetcher.ScreenshotInfo.IframeInfo.ProtoSize", 1);
 
   const auto& screenshot_info =
       fetcher.pending_result_->annotated_page_content_result->proto
@@ -205,6 +207,8 @@ TEST_F(PageContextFetcherIframeInfoTest, AddIframeInfoNoUrlOrigin) {
                                 true, 1);
   histograms.ExpectUniqueSample(
       "Glic.PageContextFetcher.IframeInfoHasUrlOrigin", false, 1);
+  histograms.ExpectTotalCount(
+      "Glic.PageContextFetcher.ScreenshotInfo.IframeInfo.ProtoSize", 1);
 
   const auto& screenshot_info =
       fetcher.pending_result_->annotated_page_content_result->proto

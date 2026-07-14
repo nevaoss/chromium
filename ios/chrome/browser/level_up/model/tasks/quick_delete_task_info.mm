@@ -15,8 +15,10 @@ class QuickDeleteTaskInfo : public TaskInfo {
 
   // TaskInfo implementation.
   TaskType GetTaskType() const override { return TaskType::kQuickDelete; }
-  int GetTitleId() const override { return 0; }
-  int GetTaskDescriptionId() const override { return 0; }
+  std::string GetTitle() const override { return "Quick delete"; }
+  std::string GetTaskDescription() const override {
+    return "Manage your history, cookies and more to protect your privacy";
+  }
   std::string GetIconSymbolName() const override {
     return base::SysNSStringToUTF8(kTrashSymbol);
   }
@@ -25,7 +27,7 @@ class QuickDeleteTaskInfo : public TaskInfo {
     return LevelUpTaskCategory::kSafety;
   }
   std::string GetTriggerUserAction() const override { return ""; }
-  base::RepeatingClosure GetNavigationAction() const override {
+  TaskInfo::NavigationAction GetNavigationAction() const override {
     return base::DoNothing();
   }
 };

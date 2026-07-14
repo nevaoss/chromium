@@ -44,30 +44,11 @@ std::optional<std::string> WaitForNextMessage(
   return unquoted_message;
 }
 
-std::vector<base::test::FeatureRefAndParams> GetFeaturesToEnableLinkCapturingUX(
-    std::optional<bool> override_captures_by_default) {
-#if BUILDFLAG(IS_CHROMEOS)
-  CHECK(!override_captures_by_default || !override_captures_by_default.value());
-  // TODO(crbug.com/376922620): Create a feature flag to turn off the v1
-  // throttle.
-  return {{::features::kPwaNavigationCapturing,
-           {{::features::kNavigationCapturingDefaultState.name,
-             "reimpl_default_off"}}}};
-#else
-  // TODO(crbug.com/351775835): Integrate testing for all enum states of
-  // `CapturingState`.
-  std::string on_by_default_label = "reimpl_default_on";
-  std::string off_by_default_label = "reimpl_default_off";
-
-  bool should_override_by_default = override_captures_by_default.value_or(
-      ::features::kNavigationCapturingDefaultState.default_value ==
-      ::features::CapturingState::kReimplDefaultOn);
-
-  return {{::features::kPwaNavigationCapturing,
-           {{::features::kNavigationCapturingDefaultState.name,
-             std::string(should_override_by_default ? on_by_default_label
-                                                    : off_by_default_label)}}}};
-#endif  // BUILDFLAG(IS_CHROMEOS)
+std::vector<base::test::FeatureRefAndParams>
+GetFeaturesToEnableLinkCapturingUXHelper(const std::string& default_state) {
+  return {
+      {::features::kPwaNavigationCapturing,
+       {{::features::kNavigationCapturingDefaultState.name, default_state}}}};
 }
 
 }  // namespace
@@ -77,10 +58,10 @@ bool ShouldLinksWithExistingFrameTargetsCapture(
   switch (version) {
     case LinkCapturingFeatureVersion::kV2DefaultOff:
       return false;
-#if !BUILDFLAG(IS_CHROMEOS)
+    case LinkCapturingFeatureVersion::kV2DefaultOnViaClientMode:
+      return false;
     case LinkCapturingFeatureVersion::kV2DefaultOn:
       return false;
-#endif  // !BUILDFLAG(IS_CHROMEOS)
   }
 }
 
@@ -88,10 +69,10 @@ std::string ToString(LinkCapturingFeatureVersion version) {
   switch (version) {
     case LinkCapturingFeatureVersion::kV2DefaultOff:
       return "V2DefaultOff";
-#if !BUILDFLAG(IS_CHROMEOS)
+    case LinkCapturingFeatureVersion::kV2DefaultOnViaClientMode:
+      return "V2DefaultOnViaClientMode";
     case LinkCapturingFeatureVersion::kV2DefaultOn:
       return "V2DefaultOn";
-#endif  // !BUILDFLAG(IS_CHROMEOS)
   }
 }
 
@@ -105,13 +86,12 @@ std::vector<base::test::FeatureRefAndParams> GetFeaturesToEnableLinkCapturingUX(
   CHECK_IS_TEST();
   switch (version) {
     case LinkCapturingFeatureVersion::kV2DefaultOff:
-      return GetFeaturesToEnableLinkCapturingUX(
-          /*override_captures_by_default=*/false);
-#if !BUILDFLAG(IS_CHROMEOS)
+      return GetFeaturesToEnableLinkCapturingUXHelper("reimpl_default_off");
+    case LinkCapturingFeatureVersion::kV2DefaultOnViaClientMode:
+      return GetFeaturesToEnableLinkCapturingUXHelper(
+          "reimpl_on_via_client_mode");
     case LinkCapturingFeatureVersion::kV2DefaultOn:
-      return GetFeaturesToEnableLinkCapturingUX(
-          /*override_captures_by_default=*/true);
-#endif
+      return GetFeaturesToEnableLinkCapturingUXHelper("reimpl_default_on");
   }
 }
 

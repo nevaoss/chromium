@@ -8,15 +8,35 @@ component("private_insights") {
     "private_insights_service.h",
   ]
   sources = [
+    "fcp_flags.cc",
+    "fcp_flags.h",
     "private_insights_features.cc",
     "private_insights_service.cc",
   ]
   defines = [ "IS_PRIVATE_INSIGHTS_IMPL" ]
   deps = [
+    ":fcp_event_publisher",
+    ":fcp_log_manager",
     "//base",
     "//components/keyed_service/core",
     "//third_party/federated_compute:fl_runner",
   ]
+}
+
+source_set("fcp_event_publisher") {
+  visibility = [ ":*" ]
+  public = [ "fcp_event_publisher.h" ]
+  sources = [ "fcp_event_publisher.cc" ]
+  public_deps = [ "//third_party/federated_compute:fl_runner" ]
+  deps = [ "//base" ]
+}
+
+source_set("fcp_log_manager") {
+  visibility = [ ":*" ]
+  public = [ "fcp_log_manager.h" ]
+  sources = [ "fcp_log_manager.cc" ]
+  public_deps = [ "//third_party/federated_compute:fl_runner" ]
+  deps = [ "//base" ]
 }
 
 source_set("unit_tests") {

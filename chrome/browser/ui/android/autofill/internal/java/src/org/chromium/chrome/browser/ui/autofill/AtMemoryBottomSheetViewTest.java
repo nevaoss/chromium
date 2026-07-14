@@ -11,8 +11,8 @@ import static org.junit.Assert.assertTrue;
 import android.content.Context;
 import android.view.ContextThemeWrapper;
 import android.view.View;
+import android.widget.EditText;
 
-import androidx.appcompat.widget.SearchView;
 import androidx.test.core.app.ApplicationProvider;
 
 import org.junit.Before;
@@ -58,9 +58,9 @@ public class AtMemoryBottomSheetViewTest {
     @Test
     public void testSearchTextIsClearedWhenVisible() {
         View contentView = mView.getContentView();
-        SearchView searchView = contentView.findViewById(R.id.search_query_input);
+        EditText searchView = contentView.findViewById(R.id.search_query_input);
         assertNotNull(searchView);
-        searchView.setQuery("some text", false);
+        searchView.setText("some text");
 
         PropertyModel model =
                 new PropertyModel.Builder(AtMemoryBottomSheetProperties.ALL_KEYS)
@@ -68,6 +68,6 @@ public class AtMemoryBottomSheetViewTest {
                         .build();
         AtMemoryBottomSheetViewBinder.bind(model, mView, AtMemoryBottomSheetProperties.VISIBLE);
 
-        assertEquals("", searchView.getQuery().toString());
+        assertEquals("", searchView.getText().toString());
     }
 }

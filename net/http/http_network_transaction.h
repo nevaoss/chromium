@@ -519,6 +519,10 @@ class NET_EXPORT_PRIVATE HttpNetworkTransaction
   // NOTREACHED() as it indicates a potential infinite retry loop.
   size_t retry_attempts_on_connection_errors_ = 0;
 
+  // The initial connection error encountered by this transaction. Stored on the
+  // first retry attempt.
+  int initial_connection_error_ = 0;
+
   // Number of times the transaction was restarted via a RestartWith* call.
   size_t num_restarts_ = 0;
 

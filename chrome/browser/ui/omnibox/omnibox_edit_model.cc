@@ -3387,18 +3387,18 @@ void OmniboxEditModel::NavigateToAiModeWithContextualizer(
   if (session_handle_) {
     session_handle_.reset();
   }
-  query_contextualizer_->Contextualize(
-      /*task_id=*/std::nullopt, base::UTF16ToUTF8(query_text),
-      /*tabs_to_recontextualize=*/{},
-      /*tabs_to_force_contextualize=*/{},
-      /*on_ineligible_callback=*/base::DoNothing(),
-      /*on_processed_callback=*/base::DoNothing(),
-      base::BindOnce(
-          &OmniboxEditModel::
-              NavigateToAiModeWithContextualizerOnContextualizationComplete,
-          weak_factory_.GetWeakPtr(), query_text,
-          WindowOpenDisposition::CURRENT_TAB),
-      /*enable_smart_tab_selection=*/false);
+  contextual_tasks::QueryContextualizer::ContextualizeParams params;
+  params.task_id = std::nullopt;
+  params.query_text = base::UTF16ToUTF8(query_text);
+  params.on_ineligible_callback = base::DoNothing();
+  params.on_processed_callback = base::DoNothing();
+  params.complete_callback = base::BindOnce(
+      &OmniboxEditModel::
+          NavigateToAiModeWithContextualizerOnContextualizationComplete,
+      weak_factory_.GetWeakPtr(), query_text,
+      WindowOpenDisposition::CURRENT_TAB);
+  params.enable_smart_tab_selection = false;
+  query_contextualizer_->Contextualize(std::move(params));
 }
 
 void OmniboxEditModel::

@@ -14104,12 +14104,18 @@ class TestUpdateFaviconURLLocalFrameHost : public FakeLocalFrameHost {
 
   // FakeLocalFrameHost:
   void UpdateFaviconURL(
-      Vector<blink::mojom::blink::FaviconURLPtr> favicon_urls) override {
-    did_notify_ = true;
+      Vector<blink::mojom::blink::FaviconURLPtr> favicon_urls,
+      blink::mojom::blink::FaviconUpdateReason reason) override {
+    last_reason_ = reason;
   }
 
-  bool did_notify_ = false;
+  std::optional<blink::mojom::blink::FaviconUpdateReason> last_reason_;
 };
+
+constexpr char kPageWithFaviconHTML[] =
+    "<html><head>"
+    "<link rel='icon' href='http://www.google.com/favicon.ico'>"
+    "</head></html>";
 
 // Ensure the render view sends favicon url update events correctly.
 TEST_F(WebFrameTest, FaviconURLUpdateEvent) {
@@ -14125,16 +14131,13 @@ TEST_F(WebFrameTest, FaviconURLUpdateEvent) {
 
   // An event should be sent when a favicon url exists.
   frame->GetDocument()->documentElement()->SetInnerHTMLWithoutTrustedTypes(
-      "<html>"
-      "<head>"
-      "<link rel='icon' href='http://www.google.com/favicon.ico'>"
-      "</head>"
-      "</html>");
+      kPageWithFaviconHTML);
   RunPendingTasks();
 
-  EXPECT_TRUE(frame_host.did_notify_);
+  EXPECT_EQ(frame_host.last_reason_,
+            blink::mojom::blink::FaviconUpdateReason::kLinkElementChange);
 
-  frame_host.did_notify_ = false;
+  frame_host.last_reason_.reset();
 
   // An event should not be sent if no favicon url exists. This is an assumption
   // made by some of Chrome's favicon handling.
@@ -14145,7 +14148,51 @@ TEST_F(WebFrameTest, FaviconURLUpdateEvent) {
       "</html>");
   RunPendingTasks();
 
-  EXPECT_FALSE(frame_host.did_notify_);
+  EXPECT_FALSE(frame_host.last_reason_.has_value());
+  web_view_helper.Reset();
+}
+
+// Ensure media feature changes send kMediaQueryChange as the reason.
+TEST_F(WebFrameTest, FaviconURLUpdateReasonMediaQueryChange) {
+  TestUpdateFaviconURLLocalFrameHost frame_host;
+  frame_test_helpers::TestWebFrameClient web_frame_client;
+  frame_host.Init(web_frame_client.GetRemoteNavigationAssociatedInterfaces());
+  frame_test_helpers::WebViewHelper web_view_helper;
+  web_view_helper.Initialize(&web_frame_client);
+  RunPendingTasks();
+
+  LocalFrame* frame = web_view_helper.GetWebView()->MainFrameImpl()->GetFrame();
+
+  frame->GetDocument()->documentElement()->SetInnerHTMLWithoutTrustedTypes(
+      kPageWithFaviconHTML);
+  RunPendingTasks();
+  frame_host.last_reason_.reset();
+
+  frame->GetDocument()->GetMediaQueryMatcher();
+  frame->GetDocument()->EvaluateMediaQueryList();
+  RunPendingTasks();
+
+  EXPECT_EQ(frame_host.last_reason_,
+            blink::mojom::blink::FaviconUpdateReason::kMediaQueryChange);
+  web_view_helper.Reset();
+}
+
+// Ensure loading a page with a favicon sends kPageLoad as the reason.
+TEST_F(WebFrameTest, FaviconURLUpdateReasonPageLoad) {
+  TestUpdateFaviconURLLocalFrameHost frame_host;
+  frame_test_helpers::TestWebFrameClient web_frame_client;
+  frame_host.Init(web_frame_client.GetRemoteNavigationAssociatedInterfaces());
+
+  frame_test_helpers::WebViewHelper web_view_helper;
+  web_view_helper.Initialize(&web_frame_client);
+
+  frame_test_helpers::LoadHTMLString(
+      web_view_helper.GetWebView()->MainFrameImpl(), kPageWithFaviconHTML,
+      url_test_helpers::ToKURL("http://example.com/"));
+  RunPendingTasks();
+
+  EXPECT_EQ(frame_host.last_reason_,
+            blink::mojom::blink::FaviconUpdateReason::kPageLoad);
   web_view_helper.Reset();
 }
 

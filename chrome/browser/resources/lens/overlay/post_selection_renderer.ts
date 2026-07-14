@@ -1136,6 +1136,14 @@ export class PostSelectionRendererElement extends
     this.selectionOverlayRect = rect;
   }
 
+  getActiveRegionIdForTesting(): string {
+    return this.activeRegionId;
+  }
+
+  setActiveRegionIdForTesting(id: string) {
+    this.activeRegionId = id;
+  }
+
   private showPolylineCloseButton(
       multiRegionSelectionEnabled: boolean,
       activeRegionHasPolyline: boolean): boolean {

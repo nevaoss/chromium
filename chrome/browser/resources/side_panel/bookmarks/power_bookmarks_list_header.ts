@@ -148,6 +148,11 @@ export class PowerBookmarksListHeaderElement extends CrLitElement {
                           loadTimeData.getString('visualView');
   }
 
+  protected getViewButtonA11yLabel_() {
+    return this.compact ? loadTimeData.getString('switchToVisualView') :
+                          loadTimeData.getString('switchToCompactView');
+  }
+
   protected onBackButtonClick_() {
     this.fire('back-clicked');
   }

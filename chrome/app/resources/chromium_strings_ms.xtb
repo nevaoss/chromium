@@ -73,6 +73,7 @@ peranti Bluetooth. <ph name="IDS_SERIAL_DEVICE_CHOOSER_AUTHORIZE_BLUETOOTH_LINK"
 <translation id="1820835682567584003">Chromium cuba <ph name="AUTHENTICATION_PURPOSE" /></translation>
 <translation id="183031085822326697">Apabila anda membuka Chromium pada <ph name="DEVICE_TYPE" /> anda selepas ini, anda akan melihat gesaan untuk menggunakan Google Password Manager.</translation>
 <translation id="1838374766361614909">Kosongkan carian</translation>
+<translation id="1846849503013521481">Untuk melindungi kerja anda pada Chromium, organisasi anda akan dapat melihat atau mengurus maklumat tertentu</translation>
 <translation id="18552579716432081">Untuk memadamkan data semakan imbas daripada peranti ini dan menyimpan data semakan imbas tersebut dalam Google Account anda, <ph name="BEGIN_LINK" />log keluar dari Chromium<ph name="END_LINK" />.</translation>
 <translation id="1857749206890802997">Muat turun Chromium pada telefon anda untuk membuka atau membuat kumpulan tab baharu semasa dalam perjalanan.</translation>
 <translation id="185970820835152459">Anda boleh mengurus Google Account anda yang dilog masuk. Google Account anda digunakan untuk penyemak imbas Chromium, Play Store, Gmail dan pelbagai lagi. Jika anda ingin menambah akaun untuk orang lain, seperti ahli keluarga, tambahkan sahaja orang baharu pada <ph name="DEVICE_TYPE" /> anda. <ph name="LINK_BEGIN" />Ketahui lebih lanjut<ph name="LINK_END" /></translation>
@@ -435,6 +436,7 @@ Jika halaman ini tidak berfungsi seperti yang dijangkakan, cuba benarkan pengopt
 <translation id="5953657885167112863">Peribadikan Chromium Anda</translation>
 <translation id="5960071705175224773">Tetapan anda telah diubah oleh apl yang tidak diketahui</translation>
 <translation id="5968400720580217226">AI Mode</translation>
+<translation id="5977420883993828287">Disematkan! Gunakan Tugasan Kontekstual sekali lagi daripada bar alat</translation>
 <translation id="5986585015444752010">{COUNT,plural, =1{Organisasi anda akan menutup Chromium secara automatik apabila Chromium tidak digunakan selama 1 minit.}other{Organisasi anda akan menutup Chromium secara automatik apabila Chromium tidak digunakan selama # minit.}}</translation>
 <translation id="5987687638152509985">Kemas kini Chromium untuk memulakan penyegerakan</translation>
 <translation id="6003112304606738118">Memuat turun… <ph name="HOURS" /> jam lagi</translation>
@@ -539,6 +541,17 @@ Beberapa ciri mungkin tidak tersedia. Sila nyatakan direktori profil yang berbez
 <translation id="6896758677409633944">Salin</translation>
 <translation id="6901631050894301805">Tetapkan Chromium sebagai penyemak imbas lalai anda dan sematkan Chromium pada bar tugas anda</translation>
 <translation id="6909503629704372277">&amp;Urus profil Chromium</translation>
+<translation id="6919942714452658456">Tindakan ini akan:
+          <ph name="LINE_BREAKS" />
+            • Menetapkan semula halaman permulaan, halaman tab baharu, enjin carian dan tab tersemat anda
+            <ph name="LINE_BREAK" />
+            • Melumpuhkan sambungan
+            <ph name="LINE_BREAK" />
+            • Memadamkan kuki dan data laman lain yang bersifat sementara
+            <ph name="LINE_BREAK" />
+            • Menetapkan semula pintasan Chromium
+            <ph name="LINE_BREAKS" />
+            Penanda halaman, sejarah dan kata laluan yang disimpan tidak akan terjejas.</translation>
 <translation id="6934579572334859869">Tanya Carian Imej tentang imej ini</translation>
 <translation id="6948031725951063910">Anda telah mencapai had <ph name="BOOKMARK_LIMIT" /> penanda halaman Chromium, maka sesetengah penanda halaman anda belum disimpan dalam Google Account anda.
 
@@ -608,6 +621,7 @@ Chromium tidak dapat mengembalikan tetapan anda.</translation>
 <translation id="7686590090926151193">Chromium bukan penyemak imbas lalai anda</translation>
 <translation id="7689606757190482937">Segerakkan dan peribadikan Chromium pada semua peranti anda</translation>
 <translation id="7699779824407626136">Kemaskinian Chromium</translation>
+<translation id="7700735928747402058">Kerja anda dilindungi pada Chromium</translation>
 <translation id="7716950018788545737">Tugasan tamat.</translation>
 <translation id="77283119132245232">Menyediakan perkhidmatan penyurihan sistem untuk <ph name="BROWSER_NAME" />. Jika perkhidmatan ini dilumpuhkan, penyurihan prestasi yang dibuat oleh penyemak imbas tidak akan menyertakan peristiwa seluruh sistem seperti peristiwa suis konteks dan urutan tersedia.</translation>
 <translation id="7745317241717453663">Tindakan ini akan memadamkan data semakan imbas anda daripada peranti ini. Untuk mendapatkan kembali data anda kemudian, log masuk ke Chromium sebagai <ph name="USER_EMAIL" />.</translation>
@@ -639,6 +653,7 @@ Chromium tidak dapat mengembalikan tetapan anda.</translation>
 <translation id="8031714377769448844">Sematkan Chromium pada bar tugas anda untuk menemukan Chromium dengan pantas pada bila-bila masa</translation>
 <translation id="80471789339884597">Terima kasih kerana memasang. Anda perlu memulakan semula semua penyemak imbas anda sebelum menggunakan <ph name="BUNDLE_NAME" />.</translation>
 <translation id="8054112667659782652">Pintasan Sentiasa paparkan Carian Imej</translation>
+<translation id="8069447462453318634">Pilih "Sematkan pada bar alat"</translation>
 <translation id="8077498902115777962">Lumpuhkan Chromium yang berjalan pada latar untuk apl</translation>
 <translation id="80790299200510644">Carian Imej</translation>
 <translation id="8086881907087796310">Pemasangan gagal kerana komputer anda tidak menepati keperluan perkakasan minimum.</translation>
@@ -720,6 +735,15 @@ Chromium tidak dapat mengembalikan tetapan anda.</translation>
 <translation id="8907580949721785412">Chromium cuba menunjukkan kata laluan. Taip kata laluan Windows anda untuk membenarkannya.</translation>
 <translation id="8932992523185907506">Chromium bukan penyemak imbas lalai anda lagi. Jadikan Chromium penyemak imbas lalai?</translation>
 <translation id="8941642502866065432">Tidak dapat mengemas kini Chromium</translation>
+<translation id="8944232836376404813">Tindakan ini akan:
+          <ph name="LINE_BREAKS" />
+            • Menetapkan semula halaman permulaan, halaman tab baharu, enjin carian dan tab tersemat anda
+            <ph name="LINE_BREAK" />
+            • Melumpuhkan sambungan
+            <ph name="LINE_BREAK" />
+            • Memadamkan kuki dan data laman lain yang bersifat sementara
+            <ph name="LINE_BREAKS" />
+            Penanda halaman, sejarah dan kata laluan yang disimpan tidak akan terjejas.</translation>
 <translation id="897581876605952338">Logo Chromium Enterprise</translation>
 <translation id="8981150672034878610">Tidak dapat memulakan Chromium kerana terdapat masalah semasa membuka profil anda. Cuba mulakan semula Chromium.</translation>
 <translation id="8988036198400390003">Urus profil Chromium</translation>

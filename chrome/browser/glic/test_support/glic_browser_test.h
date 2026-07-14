@@ -62,6 +62,10 @@
 #include "ui/views/test/mock_activation_controller.h"
 #endif
 
+#if BUILDFLAG(IS_CHROMEOS)
+#include "components/sync/base/features.h"
+#endif
+
 namespace glic {
 
 #if BUILDFLAG(IS_ANDROID)
@@ -147,8 +151,10 @@ class GlicBrowserTestMixin : public T {
       : T(std::forward<Args>(args)...) {
     std::vector<base::test::FeatureRefAndParams> enabled_features = {
         {features::kGlicMultiInstance, {}},
+#if BUILDFLAG(IS_CHROMEOS)
+        {syncer::kReplaceSyncPromosWithSignInPromos, {}},
+#endif
 #if BUILDFLAG(IS_ANDROID)
-        {chrome::android::kBrowserWindowInterfaceMobile, {}},
         {chrome::android::kTabBottomSheet, {}},
 #endif
     // TODO(crbug.com/516793173): Remove this compile-time check once C++
@@ -250,6 +256,14 @@ class GlicBrowserTestMixin : public T {
       base::WeakPtr<GlicInstanceImpl> instance) {
     return RunUntilEqual<GlicInstanceImpl*>([&]() { return instance.get(); },
                                             nullptr);
+  }
+
+  [[nodiscard]] TestResult<> WaitForInstanceAwakened(
+      GlicInstance* instance = nullptr) {
+    auto* instance_impl = GetInstanceImpl(instance);
+    return RunUntilEqual<bool>(
+        [&]() { return instance_impl->IsHibernated(); }, false,
+        "WaitForInstanceAwakened: instance did not wake up");
   }
 
   void RegisterConversation(GlicInstance* instance,
@@ -636,9 +650,6 @@ class GlicBrowserTestMixin : public T {
 
   GURL GetGuestURL() { return glic_test_environment_.GetGuestURL(); }
 
-  void SetGlicFreUrlOverride(const GURL& url) {
-    glic_test_environment_.SetGlicFreUrlOverride(url);
-  }
 
   [[nodiscard]] TestResult<void> WaitForGlicClient(
       GlicInstance* instance = nullptr) {

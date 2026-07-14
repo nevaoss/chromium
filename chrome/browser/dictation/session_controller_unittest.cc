@@ -38,8 +38,7 @@ TEST_F(DictationSessionControllerTest, StartsInactive) {
 // Test that starting and stopping a stream moves the controller into the
 // appropriate state.
 TEST_F(DictationSessionControllerTest, StreamAffectsState) {
-  MockTarget target;
-  controller_->StartDictationStream(target);
+  controller_->StartDictationStream(std::make_unique<MockTarget>());
   EXPECT_EQ(controller_->state(),
             SessionController::State::kStreamInitializing);
   EXPECT_NE(controller_->attached_stream_provider(), nullptr);
@@ -52,7 +51,8 @@ TEST_F(DictationSessionControllerTest, StreamAffectsState) {
 // Test that starting a stream initializes the stream provider and binds it to
 // the given target.
 TEST_F(DictationSessionControllerTest, StartStreamInitializesStreamProvider) {
-  MockTarget target;
+  auto target = std::make_unique<MockTarget>();
+  MockTarget* target_ptr = target.get();
   auto mock_stream_provider =
       std::make_unique<testing::NiceMock<MockStreamProvider>>();
   MockStreamProvider* stream_provider_ptr = mock_stream_provider.get();
@@ -61,20 +61,22 @@ TEST_F(DictationSessionControllerTest, StartStreamInitializesStreamProvider) {
   // target.
   EXPECT_CALL(mock_delegate_, CreateStreamProvider(_))
       .WillOnce(Return(std::move(mock_stream_provider)));
-  EXPECT_CALL(*stream_provider_ptr, BindToTarget(testing::Ref(target)));
-  controller_->StartDictationStream(target);
+  EXPECT_CALL(*stream_provider_ptr, BindToTargetAndConnect(_))
+      .WillOnce([target_ptr](std::unique_ptr<Target> passed_target) {
+        EXPECT_EQ(passed_target.get(), target_ptr);
+      });
+  controller_->StartDictationStream(std::move(target));
 }
 
 // Test that ending a stream notifies the stream provider to stop.
 TEST_F(DictationSessionControllerTest, EndStream) {
-  MockTarget target;
   auto mock_stream_provider =
       std::make_unique<testing::NiceMock<MockStreamProvider>>();
   MockStreamProvider* stream_provider_ptr = mock_stream_provider.get();
 
   EXPECT_CALL(mock_delegate_, CreateStreamProvider(_))
       .WillOnce(Return(std::move(mock_stream_provider)));
-  controller_->StartDictationStream(target);
+  controller_->StartDictationStream(std::make_unique<MockTarget>());
 
   EXPECT_CALL(*stream_provider_ptr, Stop());
   controller_->EndDictationStream();

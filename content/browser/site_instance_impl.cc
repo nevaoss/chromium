@@ -1181,9 +1181,12 @@ bool SiteInstanceImpl::IsNavigationSameSite(
   if (!SandboxConfigurationsMatch(GetSiteInfo(), dest_url_info))
     return false;
 
-  // Similarly, do not consider PDF and non-PDF documents to be same-site; they
-  // should never share a SiteInstance. See https://crbug.com/359345045.
-  if (IsPdf() != dest_url_info.embedder_isolation_info.is_pdf()) {
+  // Documents with different embedder-imposed isolation (PDF vs non-PDF, see
+  // https://crbug.com/359345045; isolated-instance vs non-isolated; two
+  // isolated-instance navigations with different per-instance ids) must never
+  // be considered same-site.
+  if (GetSiteInfo().embedder_isolation_info() !=
+      dest_url_info.embedder_isolation_info) {
     return false;
   }
 

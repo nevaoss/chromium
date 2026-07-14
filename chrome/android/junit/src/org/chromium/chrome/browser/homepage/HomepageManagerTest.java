@@ -31,10 +31,12 @@ import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.chrome.browser.actor.ui.ActorUiTabController;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.chrome.browser.glic.GlicEnabling;
 import org.chromium.chrome.browser.new_tab_url.DseNewTabUrlManager;
 import org.chromium.chrome.browser.partnercustomizations.PartnerBrowserCustomizations;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
 import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
+import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabLaunchType;
 import org.chromium.chrome.browser.tabmodel.TabCreator;
@@ -598,10 +600,13 @@ public class HomepageManagerTest {
     @Test
     @EnableFeatures(ChromeFeatureList.GLIC)
     public void testOpenHomepage_WithActiveTab_GlicEnabled_ActorActive_ConfirmDialogShown() {
+        GlicEnabling.setEnabledForTesting(true);
         HomepageManager homepageManager = HomepageManager.getInstance();
         HomepagePolicyManager.setHomepageForTesting(true, JUnitTestGURLs.EXAMPLE_URL, false);
 
         Tab tab = Mockito.mock(Tab.class);
+        Profile profile = Mockito.mock(Profile.class);
+        Mockito.doReturn(profile).when(tab).getProfile();
         UserDataHost userDataHost = new UserDataHost();
         Mockito.doReturn(userDataHost).when(tab).getUserDataHost();
         userDataHost.setUserData(ActorUiTabController.class, mActorUiTabController);
@@ -639,10 +644,13 @@ public class HomepageManagerTest {
     @Test
     @EnableFeatures(ChromeFeatureList.GLIC)
     public void testOpenHomepage_WithActiveTab_GlicEnabled_ActorActive_ConfirmDialogNotShown() {
+        GlicEnabling.setEnabledForTesting(true);
         HomepageManager homepageManager = HomepageManager.getInstance();
         HomepagePolicyManager.setHomepageForTesting(true, JUnitTestGURLs.EXAMPLE_URL, false);
 
         Tab tab = Mockito.mock(Tab.class);
+        Profile profile = Mockito.mock(Profile.class);
+        Mockito.doReturn(profile).when(tab).getProfile();
         UserDataHost userDataHost = new UserDataHost();
         Mockito.doReturn(userDataHost).when(tab).getUserDataHost();
         userDataHost.setUserData(ActorUiTabController.class, mActorUiTabController);
@@ -670,10 +678,13 @@ public class HomepageManagerTest {
     @Test
     @EnableFeatures(ChromeFeatureList.GLIC)
     public void testOpenHomepage_WithActiveTab_GlicEnabled_ActorNotActive() {
+        GlicEnabling.setEnabledForTesting(true);
         HomepageManager homepageManager = HomepageManager.getInstance();
         HomepagePolicyManager.setHomepageForTesting(true, JUnitTestGURLs.EXAMPLE_URL, false);
 
         Tab tab = Mockito.mock(Tab.class);
+        Profile profile = Mockito.mock(Profile.class);
+        Mockito.doReturn(profile).when(tab).getProfile();
         UserDataHost userDataHost = new UserDataHost();
         Mockito.doReturn(userDataHost).when(tab).getUserDataHost();
         userDataHost.setUserData(ActorUiTabController.class, mActorUiTabController);

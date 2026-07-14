@@ -14,6 +14,7 @@
 #import "components/feature_engagement/test/mock_tracker.h"
 #import "components/omnibox/browser/test_location_bar_model.h"
 #import "components/send_tab_to_self/features.h"
+#import "components/send_tab_to_self/metrics_util.h"
 #import "components/variations/scoped_variations_ids_provider.h"
 #import "components/variations/variations_ids_provider.h"
 #import "ios/chrome/browser/autocomplete/model/autocomplete_browser_agent.h"
@@ -36,10 +37,10 @@
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_list.h"
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_opener.h"
 #import "ios/chrome/browser/shared/public/commands/browser_coordinator_commands.h"
-#import "ios/chrome/browser/shared/public/commands/bwg_commands.h"
 #import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
 #import "ios/chrome/browser/shared/public/commands/contextual_panel_entrypoint_iph_commands.h"
 #import "ios/chrome/browser/shared/public/commands/contextual_sheet_commands.h"
+#import "ios/chrome/browser/shared/public/commands/gemini_commands.h"
 #import "ios/chrome/browser/shared/public/commands/help_commands.h"
 #import "ios/chrome/browser/shared/public/commands/lens_commands.h"
 #import "ios/chrome/browser/shared/public/commands/page_action_menu_commands.h"
@@ -200,9 +201,9 @@ class LocationBarCoordinatorTest : public PlatformTest {
     [dispatcher startDispatchingToTarget:mock_page_action_menu_handler
                              forProtocol:@protocol(PageActionMenuCommands)];
 
-    id mock_bwg_handler = OCMProtocolMock(@protocol(BWGCommands));
-    [dispatcher startDispatchingToTarget:mock_bwg_handler
-                             forProtocol:@protocol(BWGCommands)];
+    id mock_gemini_handler = OCMProtocolMock(@protocol(GeminiCommands));
+    [dispatcher startDispatchingToTarget:mock_gemini_handler
+                             forProtocol:@protocol(GeminiCommands)];
 
     mock_browser_coordinator_handler_ =
         OCMProtocolMock(@protocol(BrowserCoordinatorCommands));
@@ -444,7 +445,8 @@ TEST_F(LocationBarCoordinatorTest, SendTabToSelfTapped) {
   // Note: `ignoringNonObjectArgs` because OCMock cannot handle C++ references.
   [[[mock_browser_coordinator_handler_ expect] ignoringNonObjectArgs]
       showSendTabToSelfUI:GURL()
-                    title:@"Test Title"];
+                    title:@"Test Title"
+               entryPoint:send_tab_to_self::ShareEntryPoint::kOmniboxMenu];
 
   [partial_mock_coordinator locationBarSendTabToSelfTapped];
 

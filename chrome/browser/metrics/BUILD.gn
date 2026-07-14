@@ -294,6 +294,8 @@ source_set("impl") {
     "//chrome/browser/sync:factories",
     "//chrome/browser/tracing",
     "//chrome/browser/translate",
+    "//chrome/browser/ui:browser_otr_state",
+    "//chrome/browser/ui:recently_audible_helper",
     "//chrome/browser/ui:ui_features",
     "//chrome/browser/upgrade_detector",
     "//components/activity_reporter",

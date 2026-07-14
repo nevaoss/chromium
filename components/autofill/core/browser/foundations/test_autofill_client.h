@@ -14,6 +14,7 @@
 
 #include "base/command_line.h"
 #include "base/compiler_specific.h"
+#include "base/containers/flat_set.h"
 #include "base/feature_list.h"
 #include "base/functional/callback.h"
 #include "base/functional/callback_forward.h"
@@ -22,7 +23,7 @@
 #include "base/notreached.h"
 #include "base/scoped_observation.h"
 #include "build/build_config.h"
-#include "components/accessibility_annotator/core/accessibility_query_service.h"
+#include "components/accessibility_annotator/core/at_memory_query_service.h"
 #include "components/autofill/core/browser/country_type.h"
 #include "components/autofill/core/browser/crowdsourcing/autofill_crowdsourcing_manager.h"
 #include "components/autofill/core/browser/crowdsourcing/mock_autofill_crowdsourcing_manager.h"
@@ -226,9 +227,9 @@ class TestAutofillClientTemplate : public T {
     return &mock_autocomplete_history_manager_;
   }
 
-  accessibility_annotator::AccessibilityQueryService*
-  GetAccessibilityQueryService() override {
-    return accessibility_query_service_.get();
+  accessibility_annotator::AtMemoryQueryService* GetAtMemoryQueryService()
+      override {
+    return at_memory_query_service_.get();
   }
 
   personal_context::PersonalContextEnablementState
@@ -429,6 +430,9 @@ class TestAutofillClientTemplate : public T {
     is_tab_in_actor_mode_ = is_in_actor_mode;
   }
 
+  bool IsGlicEnabled() const override { return is_glic_enabled_; }
+  void set_is_glic_enabled(bool enabled) { is_glic_enabled_ = enabled; }
+
   bool IsAutofillEnabled() const override {
     return IsAutofillProfileEnabled() ||
            AutofillClient::GetPaymentsAutofillClient()
@@ -437,6 +441,22 @@ class TestAutofillClientTemplate : public T {
 
   bool IsAutofillProfileEnabled() const override {
     return autofill_profile_enabled_;
+  }
+
+  bool IsAutofillTypeBlockedByPolicy(
+      const GURL& url,
+      AutofillClient::AutofillPolicyDataCategory category) const override {
+    return blocked_policy_categories_.contains(category);
+  }
+
+  void SetAutofillTypeBlockedByPolicy(
+      AutofillClient::AutofillPolicyDataCategory category,
+      bool blocked) {
+    if (blocked) {
+      blocked_policy_categories_.insert(category);
+    } else {
+      blocked_policy_categories_.erase(category);
+    }
   }
 
   bool IsWalletPublicPassStorageEnabled() const override {
@@ -675,10 +695,10 @@ class TestAutofillClientTemplate : public T {
     test_shared_loader_factory_ = url_loader_factory;
   }
 
-  void set_accessibility_query_service(
-      std::unique_ptr<accessibility_annotator::AccessibilityQueryService>
-          accessibility_query_service) {
-    accessibility_query_service_ = std::move(accessibility_query_service);
+  void set_at_memory_query_service(
+      std::unique_ptr<accessibility_annotator::AtMemoryQueryService>
+          at_memory_query_service) {
+    at_memory_query_service_ = std::move(at_memory_query_service);
   }
 
   void set_identity_credential_delegate(
@@ -754,8 +774,8 @@ class TestAutofillClientTemplate : public T {
   raw_ptr<PersonalContextAccessManager> personal_context_access_manager_ =
       nullptr;
   std::unique_ptr<OtpPhishGuardDelegate> otp_phish_guard_delegate_;
-  std::unique_ptr<accessibility_annotator::AccessibilityQueryService>
-      accessibility_query_service_;
+  std::unique_ptr<accessibility_annotator::AtMemoryQueryService>
+      at_memory_query_service_;
   personal_context::PersonalContextEnablementState
       personal_context_enablement_state_ =
           personal_context::PersonalContextEnablementState::kEnabled;
@@ -833,6 +853,8 @@ class TestAutofillClientTemplate : public T {
   bool should_show_personal_context_autofill_notice_ = false;
   bool is_personal_context_notice_acknowledged_ = false;
 
+  bool is_glic_enabled_ = false;
+
   SuggestionHidingReason popup_hidden_reason_;
 
   std::optional<AutofillClient::IphFeature> autofill_iph_showing_;
@@ -858,6 +880,9 @@ class TestAutofillClientTemplate : public T {
 
   std::optional<AutofillClient::SuggestionUiSessionId>
       suggestion_ui_session_id_;
+
+  base::flat_set<AutofillClient::AutofillPolicyDataCategory>
+      blocked_policy_categories_;
 
   base::WeakPtr<AutofillSuggestionDelegate> active_suggestion_delegate_;
 

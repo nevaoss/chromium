@@ -26,6 +26,7 @@
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/notreached.h"
+#include "base/numerics/safe_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/single_thread_task_runner.h"
@@ -1070,11 +1071,17 @@ void PageContextFetcher::MaybeAddIframeInfo() {
 
   // Populate the standalone screenshot_info on FetchPageContextResult.
   pending_result_->screenshot_info.emplace();
+  size_t iframe_proto_size = 0;
   for (const auto& iframe_info : iframe_info_) {
     base::UmaHistogramBoolean("Glic.PageContextFetcher.IframeInfoHasUrlOrigin",
                               iframe_info.has_security_origin());
     *pending_result_->screenshot_info->add_iframe_info() = iframe_info;
+    iframe_proto_size += iframe_info.ByteSizeLong();
   }
+
+  base::UmaHistogramCounts10000(
+      "Glic.PageContextFetcher.ScreenshotInfo.IframeInfo.ProtoSize",
+      base::saturated_cast<int>(iframe_proto_size));
 
   // Also copy to the field inside AnnotatedPageContent to ensure backward
   // compatibility.

@@ -445,6 +445,7 @@ class AutoPictureInPictureTabHelperBrowserTest : public WebRtcTestBase {
     ASSERT_TRUE(embedded_test_server()->Start());
 
     ukm_recorder_ = std::make_unique<ukm::TestAutoSetUkmRecorder>();
+    test_clock_.SetNowTicks(base::TimeTicks::Now());
   }
 
   void SetUp() override {
@@ -731,6 +732,12 @@ class AutoPictureInPictureTabHelperBrowserTest : public WebRtcTestBase {
     auto* tab_helper =
         AutoPictureInPictureTabHelper::FromWebContents(opener_web_contents);
 
+    // Inject `test_clock_` to freeze time during the tab-switch transition.
+    // This prevents the Auto PiP activation window
+    // (`blink::kActivationLifespan`) from expiring on slow test bots, which
+    // would otherwise cause flakiness.
+    tab_helper->set_clock_for_testing(&test_clock_);
+
     // There should not currently be a picture-in-picture window.
     EXPECT_FALSE(opener_web_contents->HasPictureInPictureVideo());
     EXPECT_FALSE(opener_web_contents->HasPictureInPictureDocument());
@@ -988,12 +995,15 @@ class AutoPictureInPictureTabHelperBrowserTest : public WebRtcTestBase {
     return {blink::features::kBrowserInitiatedAutomaticPictureInPicture};
   }
 
+  base::SimpleTestTickClock& test_clock() { return test_clock_; }
+
  private:
   std::unique_ptr<media_session::test::TestAudioFocusObserver>
       audio_focus_observer_;
 
   base::test::ScopedFeatureList scoped_feature_list_;
   std::unique_ptr<ukm::TestAutoSetUkmRecorder> ukm_recorder_;
+  base::SimpleTestTickClock test_clock_;
 };
 
 class AutoPictureInPictureWithVideoPlaybackBrowserTest
@@ -1656,17 +1666,10 @@ IN_PROC_BROWSER_TEST_F(AutoPictureInPictureTabHelperBrowserTest,
   auto* web_contents = browser()->tab_strip_model()->GetActiveWebContents();
   GetUserMediaAndAccept(web_contents);
 
-  // Set clock for testing.
-  base::SimpleTestTickClock test_clock;
-  test_clock.SetNowTicks(base::TimeTicks::Now());
-  auto* tab_helper =
-      AutoPictureInPictureTabHelper::FromWebContents(web_contents);
-  tab_helper->set_clock_for_testing(&test_clock);
-
   // Trigger metric recording.
   base::HistogramTester histograms;
   SwitchToNewTabAndWaitForAutoPip();
-  test_clock.Advance(base::Milliseconds(5000));
+  test_clock().Advance(base::Milliseconds(5000));
   SwitchBackToOpenerAndWaitForPipToClose();
 
   // Verify expectations.
@@ -1686,11 +1689,9 @@ IN_PROC_BROWSER_TEST_F(
   GetUserMediaAndAccept(web_contents);
 
   // Set clock for testing.
-  base::SimpleTestTickClock test_clock;
-  test_clock.SetNowTicks(base::TimeTicks::Now());
   auto* tab_helper =
       AutoPictureInPictureTabHelper::FromWebContents(web_contents);
-  tab_helper->set_clock_for_testing(&test_clock);
+  tab_helper->set_clock_for_testing(&test_clock());
 
   base::HistogramTester histograms;
 
@@ -1704,7 +1705,7 @@ IN_PROC_BROWSER_TEST_F(
   enter_pip_observer.Wait();
 
   // Trigger metric recording.
-  test_clock.Advance(base::Milliseconds(5000));
+  test_clock().Advance(base::Milliseconds(5000));
   ui_test_utils::BrowserDestroyedObserver observer(browser());
   web_contents->ClosePage();
   observer.Wait();
@@ -1731,21 +1732,14 @@ IN_PROC_BROWSER_TEST_F(AutoPictureInPictureTabHelperBrowserTest,
   auto* web_contents = browser()->tab_strip_model()->GetActiveWebContents();
   GetUserMediaAndAccept(web_contents);
 
-  // Set clock for testing.
-  base::SimpleTestTickClock test_clock;
-  test_clock.SetNowTicks(base::TimeTicks::Now());
-  auto* tab_helper =
-      AutoPictureInPictureTabHelper::FromWebContents(web_contents);
-  tab_helper->set_clock_for_testing(&test_clock);
-
   // Simulate the accumulatation of video conferencing pip time.
   base::HistogramTester histograms;
   SwitchToNewTabAndWaitForAutoPip();
-  test_clock.Advance(base::Milliseconds(5000));
+  test_clock().Advance(base::Milliseconds(5000));
   SwitchBackToOpenerAndWaitForPipToClose();
 
   SwitchToNewTabAndWaitForAutoPip();
-  test_clock.Advance(base::Milliseconds(5000));
+  test_clock().Advance(base::Milliseconds(5000));
   SwitchBackToOpenerAndWaitForPipToClose();
 
   // Trigger metric recording.
@@ -2829,17 +2823,10 @@ IN_PROC_BROWSER_TEST_F(AutoPictureInPictureWithVideoPlaybackBrowserTest,
   SetExpectedHasHighEngagement(true);
   WaitForWasRecentlyAudible(web_contents);
 
-  // Set clock for testing.
-  base::SimpleTestTickClock test_clock;
-  test_clock.SetNowTicks(base::TimeTicks::Now());
-  auto* tab_helper =
-      AutoPictureInPictureTabHelper::FromWebContents(web_contents);
-  tab_helper->set_clock_for_testing(&test_clock);
-
   // Trigger metric recording.
   base::HistogramTester histograms;
   SwitchToNewTabAndWaitForAutoPip();
-  test_clock.Advance(base::Milliseconds(5000));
+  test_clock().Advance(base::Milliseconds(5000));
   SwitchBackToOpenerAndWaitForPipToClose();
 
   // Verify expectations.
@@ -2861,26 +2848,19 @@ IN_PROC_BROWSER_TEST_F(AutoPictureInPictureWithVideoPlaybackBrowserTest,
   SetExpectedHasHighEngagement(true);
   WaitForWasRecentlyAudible(web_contents);
 
-  // Set clock for testing.
-  base::SimpleTestTickClock test_clock;
-  test_clock.SetNowTicks(base::TimeTicks::Now());
-  auto* tab_helper =
-      AutoPictureInPictureTabHelper::FromWebContents(web_contents);
-  tab_helper->set_clock_for_testing(&test_clock);
-
   // Trigger metric recording.
   base::HistogramTester histograms;
   SwitchToNewTabAndWaitForAutoPip();
   // Playing for 5000 ms
-  test_clock.Advance(base::Milliseconds(5000));
+  test_clock().Advance(base::Milliseconds(5000));
   PauseVideo(web_contents);
   WaitForMediaSessionPaused(web_contents);
   // Paused for 2000 ms.
-  test_clock.Advance(base::Milliseconds(2000));
+  test_clock().Advance(base::Milliseconds(2000));
   PlayVideo(web_contents);
   WaitForMediaSessionPlaying(web_contents);
   // Playing for 3000 ms
-  test_clock.Advance(base::Milliseconds(3000));
+  test_clock().Advance(base::Milliseconds(3000));
   SwitchBackToOpenerAndWaitForPipToClose();
 
   // Verify expectations.
@@ -2901,27 +2881,20 @@ IN_PROC_BROWSER_TEST_F(AutoPictureInPictureWithVideoPlaybackBrowserTest,
   WaitForWasRecentlyAudible(web_contents);
   SetExpectedHasHighEngagement(true);
 
-  // Set clock for testing.
-  base::SimpleTestTickClock test_clock;
-  test_clock.SetNowTicks(base::TimeTicks::Now());
-  auto* tab_helper =
-      AutoPictureInPictureTabHelper::FromWebContents(web_contents);
-  tab_helper->set_clock_for_testing(&test_clock);
-
   base::HistogramTester histograms;
 
   // Trigger Auto-PiP.
   SwitchToNewTabAndWaitForAutoPip();
 
   // Advance clock by 10 seconds while playing.
-  test_clock.Advance(base::Milliseconds(10000));
+  test_clock().Advance(base::Milliseconds(10000));
 
   // Pause video.
   PauseVideo(web_contents);
   WaitForMediaSessionPaused(web_contents);
 
   // Advance clock by another 10 seconds while paused.
-  test_clock.Advance(base::Milliseconds(10000));
+  test_clock().Advance(base::Milliseconds(10000));
 
   // Close Auto-PiP.
   SwitchBackToOpenerAndWaitForPipToClose();
@@ -2955,11 +2928,9 @@ IN_PROC_BROWSER_TEST_F(AutoPictureInPictureWithVideoPlaybackBrowserTest,
   auto* web_contents = browser()->tab_strip_model()->GetActiveWebContents();
 
   // Set clock for testing.
-  base::SimpleTestTickClock test_clock;
-  test_clock.SetNowTicks(base::TimeTicks::Now());
   auto* tab_helper =
       AutoPictureInPictureTabHelper::FromWebContents(web_contents);
-  tab_helper->set_clock_for_testing(&test_clock);
+  tab_helper->set_clock_for_testing(&test_clock());
 
   base::HistogramTester histograms;
 
@@ -2971,7 +2942,7 @@ IN_PROC_BROWSER_TEST_F(AutoPictureInPictureWithVideoPlaybackBrowserTest,
   enter_pip_observer.Wait();
 
   // Trigger metric recording.
-  test_clock.Advance(base::Milliseconds(5000));
+  test_clock().Advance(base::Milliseconds(5000));
   ui_test_utils::BrowserDestroyedObserver observer(browser());
   web_contents->ClosePage();
   observer.Wait();
@@ -3002,21 +2973,14 @@ IN_PROC_BROWSER_TEST_F(AutoPictureInPictureWithVideoPlaybackBrowserTest,
   SetExpectedHasHighEngagement(true);
   WaitForWasRecentlyAudible(web_contents);
 
-  // Set clock for testing.
-  base::SimpleTestTickClock test_clock;
-  test_clock.SetNowTicks(base::TimeTicks::Now());
-  auto* tab_helper =
-      AutoPictureInPictureTabHelper::FromWebContents(web_contents);
-  tab_helper->set_clock_for_testing(&test_clock);
-
   // Simulate the accumulatation of media playback pip time.
   base::HistogramTester histograms;
   SwitchToNewTabAndWaitForAutoPip();
-  test_clock.Advance(base::Milliseconds(5000));
+  test_clock().Advance(base::Milliseconds(5000));
   SwitchBackToOpenerAndWaitForPipToClose();
 
   SwitchToNewTabAndWaitForAutoPip();
-  test_clock.Advance(base::Milliseconds(5000));
+  test_clock().Advance(base::Milliseconds(5000));
   SwitchBackToOpenerAndWaitForPipToClose();
 
   // Trigger metric recording.
@@ -3050,17 +3014,10 @@ IN_PROC_BROWSER_TEST_F(
   SetExpectedHasHighEngagement(true);
   WaitForWasRecentlyAudible(web_contents);
 
-  // Set clock for testing.
-  base::SimpleTestTickClock test_clock;
-  test_clock.SetNowTicks(base::TimeTicks::Now());
-  auto* tab_helper =
-      AutoPictureInPictureTabHelper::FromWebContents(web_contents);
-  tab_helper->set_clock_for_testing(&test_clock);
-
   // Simulate the accumulatation of media playback pip time.
   base::HistogramTester histograms;
   SwitchToNewTabAndWaitForAutoPip();
-  test_clock.Advance(base::Milliseconds(5000));
+  test_clock().Advance(base::Milliseconds(5000));
   SwitchBackToOpenerAndWaitForPipToClose();
 
   // Starts using camera/microphone.
@@ -3068,7 +3025,7 @@ IN_PROC_BROWSER_TEST_F(
 
   // Simulate the accumulatation of video conferencing pip time.
   SwitchToNewTabAndWaitForAutoPip();
-  test_clock.Advance(base::Milliseconds(5000));
+  test_clock().Advance(base::Milliseconds(5000));
   SwitchBackToOpenerAndWaitForPipToClose();
 
   // Trigger metrics recording.

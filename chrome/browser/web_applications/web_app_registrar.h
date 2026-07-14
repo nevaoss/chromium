@@ -16,6 +16,7 @@
 #include "base/check_op.h"
 #include "base/containers/flat_map.h"
 #include "base/containers/flat_set.h"
+#include "base/containers/span.h"
 #include "base/feature_list.h"
 #include "base/files/file_path.h"
 #include "base/functional/callback.h"
@@ -596,7 +597,7 @@ class WebAppRegistrar {
   void NotifyWebAppFileHandlerApprovalStateChanged(
       const webapps::AppId& app_id);
   void NotifyWebAppsWillBeUpdatedFromSync(
-      const std::vector<const WebApp*>& new_apps_state);
+      base::span<const WebApp* const> new_apps_state);
   void NotifyWebAppDisabledStateChanged(const webapps::AppId& app_id,
                                         bool is_disabled);
   void NotifyWebAppsDisabledModeChanged();

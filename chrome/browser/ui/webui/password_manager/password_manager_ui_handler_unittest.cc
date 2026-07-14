@@ -370,4 +370,11 @@ TEST_F(PasswordManagerUIHandlerUnitTest,
   EXPECT_FALSE(future.Get());
 }
 
+TEST_F(PasswordManagerUIHandlerUnitTest,
+       UndoRemoveSavedPasswordOrException_CallsDelegate) {
+  handler().UndoRemoveSavedPasswordOrException();
+  EXPECT_TRUE(
+      test_delegate().get_undo_remove_saved_password_or_exception_called());
+}
+
 }  // namespace password_manager

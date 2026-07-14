@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "ash/test/ash_test_base.h"
+#include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
 #include "base/test/test_future.h"
 #include "content/public/browser/web_contents.h"
@@ -20,6 +21,7 @@
 #include "content/public/test/test_content_client.h"
 #include "content/public/test/test_web_contents_factory.h"
 #include "mojo/public/cpp/bindings/remote.h"
+#include "mojo/public/cpp/test_support/test_utils.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/mojom/chromeos/isolated_web_app_api_bridge.mojom.h"
 #include "ui/aura/window.h"
@@ -88,9 +90,14 @@ class IsolatedWebAppApiBridgeImplTest : public AshTestBase {
     widget_ = CreateWindowWidget(GetContext());
     widget_->GetNativeWindow()->AddChild(web_contents_->GetNativeView());
     web_contents_->SetDelegate(&fake_delegate_);
+
+    IsolatedWebAppApiBridgeImpl::CreateForTesting(
+        web_contents_->GetPrimaryMainFrame(),
+        remote_.BindNewPipeAndPassReceiver());
   }
 
   void TearDown() override {
+    remote_.reset();
     web_contents_ = nullptr;
     web_contents_factory_.reset();
     widget_.reset();
@@ -101,10 +108,6 @@ class IsolatedWebAppApiBridgeImplTest : public AshTestBase {
     test_content_client_.reset();
   }
 
-  content::RenderFrameHost* render_frame_host() {
-    return web_contents_->GetPrimaryMainFrame();
-  }
-
  protected:
   std::unique_ptr<content::TestContentClient> test_content_client_;
   std::unique_ptr<content::TestContentBrowserClient> test_browser_client_;
@@ -113,16 +116,13 @@ class IsolatedWebAppApiBridgeImplTest : public AshTestBase {
   raw_ptr<content::WebContents> web_contents_;
   std::unique_ptr<views::Widget> widget_;
   FakeWebContentsDelegate fake_delegate_;
+  mojo::Remote<blink::mojom::IsolatedWebAppApiBridge> remote_;
 };
 
 TEST_F(IsolatedWebAppApiBridgeImplTest, SetShapeCreatesEventTargeter) {
-  mojo::Remote<blink::mojom::IsolatedWebAppApiBridge> remote;
-  IsolatedWebAppApiBridgeImpl::CreateForTesting(
-      render_frame_host(), remote.BindNewPipeAndPassReceiver());
-
   std::vector<gfx::Rect> rects = {gfx::Rect(10, 10, 50, 50)};
   base::test::TestFuture<blink::mojom::SetShapeResult> future;
-  remote->SetShape(rects, future.GetCallback());
+  remote_->SetShape(rects, future.GetCallback());
   EXPECT_EQ(future.Get(), blink::mojom::SetShapeResult::kSuccess);
 
   // Verify that the window has an event targeter.
@@ -130,19 +130,15 @@ TEST_F(IsolatedWebAppApiBridgeImplTest, SetShapeCreatesEventTargeter) {
 }
 
 TEST_F(IsolatedWebAppApiBridgeImplTest, SetShapeWithEmptyRectsResetsTargeter) {
-  mojo::Remote<blink::mojom::IsolatedWebAppApiBridge> remote;
-  IsolatedWebAppApiBridgeImpl::CreateForTesting(
-      render_frame_host(), remote.BindNewPipeAndPassReceiver());
-
   // First set a shape.
   std::vector<gfx::Rect> rects = {gfx::Rect(10, 10, 50, 50)};
   base::test::TestFuture<blink::mojom::SetShapeResult> future1;
-  remote->SetShape(rects, future1.GetCallback());
+  remote_->SetShape(rects, future1.GetCallback());
   EXPECT_EQ(future1.Get(), blink::mojom::SetShapeResult::kSuccess);
 
   // Then clear it.
   base::test::TestFuture<blink::mojom::SetShapeResult> future2;
-  remote->SetShape({}, future2.GetCallback());
+  remote_->SetShape({}, future2.GetCallback());
   EXPECT_EQ(future2.Get(), blink::mojom::SetShapeResult::kSuccess);
 
   // Verify that the window no longer has a custom event targeter.
@@ -150,30 +146,44 @@ TEST_F(IsolatedWebAppApiBridgeImplTest, SetShapeWithEmptyRectsResetsTargeter) {
 }
 
 TEST_F(IsolatedWebAppApiBridgeImplTest, SetShapeReturnsNoWindowIfNoWidget) {
-  mojo::Remote<blink::mojom::IsolatedWebAppApiBridge> remote;
-  IsolatedWebAppApiBridgeImpl::CreateForTesting(
-      render_frame_host(), remote.BindNewPipeAndPassReceiver());
-
   // Remove `web_contents_` from `widget_`.
   widget_->GetNativeWindow()->RemoveChild(web_contents_->GetNativeView());
 
   std::vector<gfx::Rect> rects = {gfx::Rect(10, 10, 50, 50)};
   base::test::TestFuture<blink::mojom::SetShapeResult> future;
-  remote->SetShape(rects, future.GetCallback());
+  remote_->SetShape(rects, future.GetCallback());
   EXPECT_EQ(future.Get(), blink::mojom::SetShapeResult::kNoWindow);
 }
 
 TEST_F(IsolatedWebAppApiBridgeImplTest, SetShapeFailsIfWindowIsNotUnframed) {
-  mojo::Remote<blink::mojom::IsolatedWebAppApiBridge> remote;
-  IsolatedWebAppApiBridgeImpl::CreateForTesting(
-      render_frame_host(), remote.BindNewPipeAndPassReceiver());
-
   fake_delegate_.set_display_mode(blink::mojom::DisplayMode::kStandalone);
 
   std::vector<gfx::Rect> rects = {gfx::Rect(10, 10, 50, 50)};
   base::test::TestFuture<blink::mojom::SetShapeResult> future;
-  remote->SetShape(rects, future.GetCallback());
+  remote_->SetShape(rects, future.GetCallback());
   EXPECT_EQ(future.Get(), blink::mojom::SetShapeResult::kNotUnframed);
+}
+
+TEST_F(IsolatedWebAppApiBridgeImplTest, SetShapeFailsIfNoRectIs10x10) {
+  std::vector<gfx::Rect> rects = {
+      gfx::Rect(10, 10, /*width=*/9, /*height=*/9),
+      gfx::Rect(20, 20, /*width=*/5, /*height=*/10)};
+  mojo::test::BadMessageObserver bad_message_observer;
+  remote_->SetShape(rects, /*callback=*/base::DoNothing());
+  EXPECT_EQ(
+      "SetShape called with invalid shape (no rect meets minimum size "
+      "requirement).",
+      bad_message_observer.WaitForBadMessage());
+}
+
+TEST_F(IsolatedWebAppApiBridgeImplTest,
+       SetShapeSucceedsIfAtLeastOneRectIs10x10) {
+  std::vector<gfx::Rect> rects = {
+      gfx::Rect(10, 10, /*width=*/9, /*height=*/9),
+      gfx::Rect(20, 20, /*width=*/10, /*height=*/10)};
+  base::test::TestFuture<blink::mojom::SetShapeResult> future;
+  remote_->SetShape(rects, future.GetCallback());
+  EXPECT_EQ(future.Get(), blink::mojom::SetShapeResult::kSuccess);
 }
 
 }  // namespace ash

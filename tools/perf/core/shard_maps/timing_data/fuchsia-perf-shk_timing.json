@@ -24,11 +24,11 @@
         "name": "media.mobile/video.html?src=foodmarket_720p30fps.mp4"
     },
     {
-        "duration": "26.0",
+        "duration": "25.0",
         "name": "media.mobile/video.html?src=tulip2.m4a&type=audio"
     },
     {
-        "duration": "26.0",
+        "duration": "25.0",
         "name": "media.mobile/video.html?src=tulip2.mp3&type=audio"
     },
     {
@@ -60,11 +60,11 @@
         "name": "media.mobile/video.html?src=tulip2.vp9.webm&background"
     },
     {
-        "duration": "28.0",
+        "duration": "27.0",
         "name": "media.mobile/video.html?src=tulip2.vp9.webm_WiFi"
     },
     {
-        "duration": "211.0",
+        "duration": "209.0",
         "name": "speedometer2/Speedometer2"
     },
     {
@@ -76,7 +76,7 @@
         "name": "v8.browsing_mobile/browse:chrome:omnibox:2019"
     },
     {
-        "duration": "74.0",
+        "duration": "73.0",
         "name": "v8.browsing_mobile/browse:media:facebook_photos:2019"
     },
     {
@@ -108,7 +108,7 @@
         "name": "v8.browsing_mobile/browse:news:cnn:2021"
     },
     {
-        "duration": "47.0",
+        "duration": "46.0",
         "name": "v8.browsing_mobile/browse:news:cricbuzz:2019"
     },
     {

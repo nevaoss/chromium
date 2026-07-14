@@ -32,6 +32,7 @@
 #include "base/strings/escape.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_split.h"
+#include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
 
 using std::string;
 
@@ -137,7 +138,7 @@ UriTemplateConfig MakeConfig(string* variable) {
 
 void ProcessVariableSection(
     string* variable_section,
-    const std::unordered_map<string, string>& parameters,
+    const absl::flat_hash_map<string, string>& parameters,
     string* target,
     std::set<string>* vars_found) {
   // Note that this function will modify the variable_section string to remove
@@ -161,7 +162,7 @@ void ProcessVariableSection(
 }  // namespace
 
 bool Expand(const string& path_uri,
-            const std::unordered_map<string, string>& parameters,
+            const absl::flat_hash_map<string, string>& parameters,
             string* target,
             std::set<string>* vars_found) {
   size_t cur = 0;

@@ -10,10 +10,10 @@ import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
 
 import {getCss} from './icon_from_table.css.js';
 import {getHtml} from './icon_from_table.html.js';
+import type {IconHandle} from './icon_handle.mojom-webui.js';
+import {IconType} from './icon_handle.mojom-webui.js';
 import {IconTable} from './icon_table.js';
 import type {IconInfo} from './icon_table.js';
-import type {IconHandle} from './toolbar_ui_api_data_model.mojom-webui.js';
-import {IconType} from './toolbar_ui_api_data_model.mojom-webui.js';
 
 // Size is controlled by --icon-size CSS variable.
 export class IconFromTableElement extends CrLitElement {

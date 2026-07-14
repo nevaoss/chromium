@@ -14,7 +14,7 @@
 #include "components/permissions/android/permission_prompt/permission_dialog_delegate.h"
 #include "components/permissions/embedded_permission_prompt_flow_model.h"
 #include "components/permissions/permission_prompt.h"
-#include "components/permissions/permission_uma_util.h"
+#include "components/permissions/permission_uma_constants.h"
 #include "components/permissions/permissions_client.h"
 #include "components/permissions/resolvers/permission_prompt_options.h"
 #include "ui/gfx/geometry/rect.h"

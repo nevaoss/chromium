@@ -22,10 +22,12 @@ source_set("language_tag") {
 
   defines = [ "BASE_I18N_IMPLEMENTATION" ]
 
-  public_deps = [ ":base_i18n_export" ]
+  public_deps = [
+    ":base_i18n_export",
+    "//base/i18n/internal",
+  ]
   deps = [
     "//base",
-    "//base/i18n/internal",
     "//base/i18n/internal:canonical_language_tags",
     "//base/i18n/internal:i18n_icu_bridge_ffi",
   ]
@@ -53,6 +55,7 @@ source_set("unittests") {
   deps = [
     "//base",
     "//base:i18n",
+    "//base/i18n/internal:unittests",
     "//base/test:test_support",
     "//testing/gmock",
     "//testing/gtest",

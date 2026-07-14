@@ -700,6 +700,10 @@ export class RegionSelectionElement extends RegionSelectionElementBase {
       height: normalizedHeight,
     };
   }
+
+  setSelectionOverlayRectForTesting(rect: DOMRect) {
+    this.selectionOverlayRect = rect;
+  }
 }
 
 declare global {

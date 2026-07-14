@@ -363,7 +363,7 @@ void GlicE2ETest::ThrottleWebContentsNetwork(
 void GlicE2ETest::ThrottleGlicNetwork() {
   auto& coordinator =
       static_cast<GlicInstanceCoordinatorImpl&>(instance_coordinator());
-  for (GlicInstanceImpl* instance : coordinator.GetInstancesForTesting()) {
+  for (GlicInstanceImpl* instance : coordinator.GetInstances()) {
     content::WebContents* guest_contents =
         instance->host().web_client_contents();
     if (guest_contents) {

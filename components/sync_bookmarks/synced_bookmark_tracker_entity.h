@@ -9,6 +9,7 @@
 
 #include "base/memory/raw_ptr.h"
 #include "components/sync/base/client_tag_hash.h"
+#include "components/sync/model/processor_entity_metadata.h"
 #include "components/sync/protocol/entity_metadata.pb.h"
 
 namespace sync_pb {
@@ -32,7 +33,7 @@ class SyncedBookmarkTrackerEntity {
  public:
   // |bookmark_node| can be null for tombstones.
   SyncedBookmarkTrackerEntity(const bookmarks::BookmarkNode* bookmark_node,
-                              sync_pb::EntityMetadata metadata);
+                              syncer::ProcessorEntityMetadata entity_metadata);
   SyncedBookmarkTrackerEntity(const SyncedBookmarkTrackerEntity&) = delete;
   SyncedBookmarkTrackerEntity(SyncedBookmarkTrackerEntity&&) = delete;
   ~SyncedBookmarkTrackerEntity();
@@ -41,6 +42,9 @@ class SyncedBookmarkTrackerEntity {
       delete;
   SyncedBookmarkTrackerEntity& operator=(SyncedBookmarkTrackerEntity&&) =
       delete;
+
+  // Returns true if this entity is deleted (tombstone).
+  bool IsDeleted() const;
 
   // Returns true if this data is out of sync with the server.
   // A commit may or may not be in progress at this time.
@@ -83,9 +87,11 @@ class SyncedBookmarkTrackerEntity {
     bookmark_node_ = bookmark_node;
   }
 
-  const sync_pb::EntityMetadata& metadata() const { return metadata_; }
+  const sync_pb::EntityMetadata& metadata() const { return metadata_.proto(); }
 
-  sync_pb::EntityMetadata* MutableMetadata() { return &metadata_; }
+  sync_pb::EntityMetadata* MutableMetadata() {
+    return metadata_.mutable_proto();
+  }
 
   bool commit_may_have_started() const { return commit_may_have_started_; }
   void set_commit_may_have_started(bool value) {
@@ -103,7 +109,7 @@ class SyncedBookmarkTrackerEntity {
       bookmark_node_;
 
   // Serializable Sync metadata.
-  sync_pb::EntityMetadata metadata_;
+  syncer::ProcessorEntityMetadata metadata_;
 
   // Whether there could be a commit sent to the server for this entity. It's
   // used to protect against sending tombstones for entities that have never

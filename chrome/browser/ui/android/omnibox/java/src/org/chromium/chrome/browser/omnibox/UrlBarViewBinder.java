@@ -65,8 +65,6 @@ class UrlBarViewBinder {
                             focusChangeCallback.onResult(focused);
                         }
                     });
-        } else if (UrlBarProperties.SHOW_CURSOR.equals(propertyKey)) {
-            view.setCursorVisible(model.get(UrlBarProperties.SHOW_CURSOR));
         } else if (UrlBarProperties.TEXT_CONTEXT_MENU_DELEGATE.equals(propertyKey)) {
             view.setTextContextMenuDelegate(model.get(UrlBarProperties.TEXT_CONTEXT_MENU_DELEGATE));
         } else if (UrlBarProperties.MANAGE_SEARCH_ENGINES_CALLBACK.equals(propertyKey)) {
@@ -88,12 +86,6 @@ class UrlBarViewBinder {
                 // 1. forcibly places the cursor at the point of click, or
                 // 2. selecting all content (if selectAllOnFocus is set to true)
                 // in both cases overriding the selection supplied by software.
-                //
-                // This is technically sufficient right now:
-                // - When we restore persisted tab editing state - we bring the focus - and
-                //   selection - from software, so the OS does not override our preferences.
-                // - When the user focuses the UrlBar and the content is persisted (LFFs with
-                //   precision devices attached) we presently want to select all content.
                 //
                 // Be careful when extending selection to override OS settings - Android 12 is
                 // particularly sensitive here.

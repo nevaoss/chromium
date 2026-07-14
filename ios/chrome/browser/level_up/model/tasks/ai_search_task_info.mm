@@ -16,8 +16,10 @@ class AISearchTaskInfo : public TaskInfo {
 
   // TaskInfo implementation.
   TaskType GetTaskType() const override { return TaskType::kAISearch; }
-  int GetTitleId() const override { return 0; }
-  int GetTaskDescriptionId() const override { return 0; }
+  std::string GetTitle() const override { return "Search with AI Mode"; }
+  std::string GetTaskDescription() const override {
+    return "Ask anything and get the best of the web";
+  }
   std::string GetIconSymbolName() const override {
     return base::SysNSStringToUTF8(kMagnifyingglassSparkSymbol);
   }
@@ -28,7 +30,7 @@ class AISearchTaskInfo : public TaskInfo {
   std::string GetTriggerUserAction() const override {
     return kNTPMIAEntryPointTappedAction;
   }
-  base::RepeatingClosure GetNavigationAction() const override {
+  TaskInfo::NavigationAction GetNavigationAction() const override {
     return base::DoNothing();
   }
 };

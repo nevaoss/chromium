@@ -324,7 +324,7 @@ class CC_EXPORT LayerTreeHost : public MutatorHostDelegate {
 
   // Requests that the next main frame update performs a full commit
   // synchronization.
-  virtual void SetNeedsCommit();
+  virtual void SetNeedsCommit(bool urgent = false);
 
   // Invoked when a compositing update is first requested and scheduled.
   void OnCommitRequested();

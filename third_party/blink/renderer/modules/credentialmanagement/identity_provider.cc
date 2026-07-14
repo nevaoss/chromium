@@ -185,10 +185,18 @@ ScriptPromise<IDLBoolean> IdentityProvider::registerIdentityProvider(
       MakeGarbageCollected<ScriptPromiseResolver<IDLBoolean>>(script_state);
   auto promise = resolver->Promise();
 
-  auto* request =
-      CredentialManagerProxy::From(script_state)->FederatedAuthRequest();
-  request->RegisterIdP(KURL(configURL),
-                       BindOnce(&OnRegisterIdP, WrapPersistent(resolver)));
+  if (RuntimeEnabledFeatures::FedCmMultipleRequestsEnabled(
+          ExecutionContext::From(script_state))) {
+    auto* service =
+        CredentialManagerProxy::From(script_state)->FederatedRequestService();
+    service->RegisterIdP(KURL(configURL),
+                         BindOnce(&OnRegisterIdP, WrapPersistent(resolver)));
+  } else {
+    auto* request =
+        CredentialManagerProxy::From(script_state)->FederatedAuthRequest();
+    request->RegisterIdP(KURL(configURL),
+                         BindOnce(&OnRegisterIdP, WrapPersistent(resolver)));
+  }
 
   return promise;
 }
@@ -211,10 +219,18 @@ ScriptPromise<IDLUndefined> IdentityProvider::unregisterIdentityProvider(
       MakeGarbageCollected<ScriptPromiseResolver<IDLUndefined>>(script_state);
   auto promise = resolver->Promise();
 
-  auto* request =
-      CredentialManagerProxy::From(script_state)->FederatedAuthRequest();
-  request->UnregisterIdP(KURL(configURL),
-                         BindOnce(&OnUnregisterIdP, WrapPersistent(resolver)));
+  if (RuntimeEnabledFeatures::FedCmMultipleRequestsEnabled(
+          ExecutionContext::From(script_state))) {
+    auto* service =
+        CredentialManagerProxy::From(script_state)->FederatedRequestService();
+    service->UnregisterIdP(
+        KURL(configURL), BindOnce(&OnUnregisterIdP, WrapPersistent(resolver)));
+  } else {
+    auto* request =
+        CredentialManagerProxy::From(script_state)->FederatedAuthRequest();
+    request->UnregisterIdP(
+        KURL(configURL), BindOnce(&OnUnregisterIdP, WrapPersistent(resolver)));
+  }
 
   return promise;
 }

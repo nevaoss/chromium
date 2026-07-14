@@ -120,8 +120,6 @@ extern const char kHatsSurveyTriggerTesting[];
 // and demo purposes when the migration feature flag is enabled.
 extern const char kHatsNextSurveyTriggerIDTesting[];
 
-class Profile;
-
 namespace hats {
 struct SurveyConfig {
   // GENERATED_JAVA_ENUM_PACKAGE: org.chromium.chrome.browser.ui.hats
@@ -232,27 +230,6 @@ struct SurveyConfig {
   static std::optional<uint64_t> ValidateHatsSurveyUkmId(
       const std::optional<uint64_t> hats_survey_ukm_id);
 
-  // Returns the cooldown override for this survey only if the survey feature
-  // is enabled for the current profile and the feature is in the dogfood stage,
-  // i.e. it's controlled by some Google group.
-  std::optional<base::TimeDelta> GetCooldownPeriodOverride(
-      Profile* profile) const;
-
-  // A convenience method to check if the survey config has an effective
-  // cooldown override period.
-  bool IsCooldownOverrideEnabled(Profile* profile) const;
-
- private:
-  // Overrides the default time between a user seeing a survey and being able to
-  // see it again. When this value is non-zero, the date when other survey
-  // impressions happened is ignored. This value should not be used directly
-  // because the cooldown period override should be effective only if the survey
-  // feature is launched for a specific Google group, see
-  // `IsCooldownOverrideEnabled()`.
-  // TODO: crbug.com/348137782 - Either make this a global constant or add a
-  // verification logic that no 2 different cooldown period overrides are
-  // configured.
-  std::optional<base::TimeDelta> cooldown_period_override_;
 };
 
 using SurveyConfigs = base::flat_map<std::string, SurveyConfig>;

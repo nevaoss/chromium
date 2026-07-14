@@ -333,7 +333,9 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
   source->AddBoolean(
       "voiceSearchCoherenceSearchboxEnabled",
       base::FeatureList::IsEnabled(omnibox::kVoiceSearchCoherenceSearchbox));
-
+  source->AddBoolean(
+      "voiceSearchCoherenceAnySearchboxExperimentEnabled",
+      SearchboxHandler::GetVoiceSearchCoherenceAnySearchboxExperimentEnabled());
   source->AddBoolean(
       "voiceSearchCoherenceSearchboxWithLiveTranscriptionEnabled",
       omnibox::kVoiceSearchCoherenceSearchboxWithLiveTranscription.Get());
@@ -724,7 +726,6 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
   source->AddBoolean("composeboxShowImageSuggest",
                      ntp_composebox::kShowComposeboxImageSuggestions.Get());
 
-  source->AddBoolean("composeboxShowContextMenuDescription", false);
 
   source->AddBoolean("composeboxSmartComposeEnabled",
                      ntp_composebox::kShowSmartCompose.Get());

@@ -5,17 +5,24 @@
 #include "components/autofill/core/browser/at_memory/at_memory_enablement_utils.h"
 
 #include "base/feature_list.h"
+#include "build/branding_buildflags.h"
+#include "build/build_config.h"
+#include "components/autofill/core/common/autofill_debug_features.h"
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/personal_context/core/personal_context_enablement_service.h"
 #include "components/personal_context/core/personal_context_prefs.h"
 #include "components/personal_context/core/personal_context_types.h"
 #include "components/prefs/pref_service.h"
 
+#if !BUILDFLAG(IS_FUCHSIA)
+#include "components/variations/service/google_groups_manager.h"  // nogncheck
+#endif
+
 namespace autofill {
 
 namespace {
 
-bool IsPersonalContextEligible(
+[[nodiscard]] bool IsPersonalContextEligible(
     personal_context::PersonalContextEnablementService*
         personal_context_service) {
   if (!personal_context_service) {
@@ -34,7 +41,7 @@ bool IsPersonalContextEligible(
   NOTREACHED();
 }
 
-bool IsPersonalContextToggleOn(PrefService* pref_service) {
+[[nodiscard]] bool IsPersonalContextToggleOn(const PrefService* pref_service) {
   if (!pref_service) {
     return false;
   }
@@ -46,47 +53,78 @@ bool IsPersonalContextToggleOn(PrefService* pref_service) {
 //
 // Checks that AtMemory feature flags are enabled, At-Memory eligibility
 // criteria and PersonalContext eligibility criteria are met.
-// Contrary to `IsAtMemoryEnabled`, does not check user-controlled toggles.
-bool IsAtMemorySupported(personal_context::PersonalContextEnablementService*
-                             personal_context_service) {
-  // TODO(crbug.com/522695178) Allow overriding the eligibility checks for
-  // testing and dogfooding.
+// Contrary to `MayPerformAtMemoryAction`, does not check user-controlled
+// toggles.
+[[nodiscard]] bool IsAtMemorySupported(
+    personal_context::PersonalContextEnablementService*
+        personal_context_service,
+    const GoogleGroupsManager* google_groups_manager) {
+  if (base::FeatureList::IsEnabled(
+          features::debug::kAtMemorySkipEligibilityChecks)) {
+    return base::FeatureList::IsEnabled(features::kAutofillAtMemory);
+  }
 
   if (!IsPersonalContextEligible(personal_context_service)) {
     return false;
   }
   // TODO(crbug.com/517490748) Check blocklist.
   // TODO(crbug.com/521270638) Check enterprise policy implementation.
-  // TODO(crbug.com/505644871) Disable atmemory in non-branded Chromium builds.
   // TODO(crbug.com/517838959) Check subscription tier eligibility.
 
+  if constexpr (!BUILDFLAG(GOOGLE_CHROME_BRANDING)) {
+    return false;
+  }
+
   // TODO(crbug.com/509479886) Add unit test to ensure this is checked last.
-  return base::FeatureList::IsEnabled(features::kAutofillAtMemory);
+  return IsAtMemoryFeatureEnabled(google_groups_manager);
+}
+
+[[nodiscard]] bool SatisfiesPersonalContextToggleRequirement(
+    AtMemoryAction action,
+    const PrefService* pref_service) {
+  switch (action) {
+    case AtMemoryAction::kTriggerSearchUI:
+    case AtMemoryAction::kAllowCustomizeAtMemoryShortcut:
+    case AtMemoryAction::kShowIph:
+      return IsPersonalContextToggleOn(pref_service);
+    case AtMemoryAction::kShowAtMemoryInSettings:
+      return true;
+  }
+  NOTREACHED();
 }
 
 }  // namespace
 
-bool IsAtMemoryEnabled(personal_context::PersonalContextEnablementService*
-                           personal_context_service,
-                       PrefService* pref_service) {
-  return IsAtMemorySupported(personal_context_service) &&
-         IsPersonalContextToggleOn(pref_service);
+bool MayPerformAtMemoryAction(AtMemoryAction action,
+                              const AutofillClient& client) {
+  return MayPerformAtMemoryAction(
+      action, client.GetPersonalContextEnablementService(), client.GetPrefs(),
+      client.GetGoogleGroupsManager());
 }
 
-AtMemoryInvocationCustomizationSettingVisibility
-GetAtMemoryInvocationCustomizationSettingVisibility(
+bool MayPerformAtMemoryAction(
+    AtMemoryAction action,
     personal_context::PersonalContextEnablementService*
         personal_context_service,
-    PrefService* pref_service) {
-  if (!IsAtMemorySupported(personal_context_service)) {
-    return AtMemoryInvocationCustomizationSettingVisibility::kInvisible;
+    const PrefService* pref_service,
+    const GoogleGroupsManager* google_groups_manager) {
+  if (!IsAtMemorySupported(personal_context_service, google_groups_manager)) {
+    return false;
   }
 
-  return IsPersonalContextToggleOn(pref_service)
-             ? AtMemoryInvocationCustomizationSettingVisibility::
-                   kVisibleInteractable
-             : AtMemoryInvocationCustomizationSettingVisibility::
-                   kVisibleGreyedOut;
+  return SatisfiesPersonalContextToggleRequirement(action, pref_service);
+}
+
+bool IsAtMemoryFeatureEnabled(
+    const GoogleGroupsManager* google_groups_manager) {
+#if !BUILDFLAG(IS_FUCHSIA)
+  return google_groups_manager
+             ? google_groups_manager->IsFeatureEnabledForProfile(
+                   features::kAutofillAtMemory)
+             : base::FeatureList::IsEnabled(features::kAutofillAtMemory);
+#else
+  return base::FeatureList::IsEnabled(features::kAutofillAtMemory);
+#endif
 }
 
 }  // namespace autofill

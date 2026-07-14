@@ -306,8 +306,8 @@ void RemoteFrame::Navigate(FrameLoadRequest& frame_request,
       is_opener_navigation, request.HasUserGesture(),
       request.RequestorOrigin()->CanAccess(
           GetSecurityContext()->GetSecurityOrigin()),
-      initiator_frame_has_download_sandbox_flag,
-      initiator_frame_is_ad);
+      initiator_frame_has_download_sandbox_flag, initiator_frame_is_ad,
+      is_ad_script_in_stack);
 
   params->started_by_ad = initiator_frame_is_ad || is_ad_script_in_stack;
   params->is_container_initiated = frame_request.IsContainerInitiated();
@@ -624,6 +624,12 @@ void RemoteFrame::SetReplicatedIsAdFrame(bool is_ad_frame) {
       owner_element->SetIsAdRelated(NoProvenance{});
     }
   }
+}
+
+void RemoteFrame::SetReplicatedIsSecureContextRoot(
+    bool is_secure_context_root) {
+  TRACE_EVENT("navigation", "RemoteFrame::SetReplicatedIsSecureContextRoot");
+  security_context_.SetIsSecureContextRoot(is_secure_context_root);
 }
 
 void RemoteFrame::SetReplicatedName(const String& name,

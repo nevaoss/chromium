@@ -15,8 +15,10 @@ class SafeBrowsingTaskInfo : public TaskInfo {
 
   // TaskInfo implementation.
   TaskType GetTaskType() const override { return TaskType::kSafeBrowsing; }
-  int GetTitleId() const override { return 0; }
-  int GetTaskDescriptionId() const override { return 0; }
+  std::string GetTitle() const override { return "Enhanced Safe Browsing"; }
+  std::string GetTaskDescription() const override {
+    return "Add an extra layer of protection against online threats";
+  }
   std::string GetIconSymbolName() const override {
     return base::SysNSStringToUTF8(kShieldSymbol);
   }
@@ -27,7 +29,7 @@ class SafeBrowsingTaskInfo : public TaskInfo {
   std::string GetTriggerUserAction() const override {
     return "MobilePrivacySafeBrowsingSettingsClose";
   }
-  base::RepeatingClosure GetNavigationAction() const override {
+  TaskInfo::NavigationAction GetNavigationAction() const override {
     return base::DoNothing();
   }
 };

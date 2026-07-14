@@ -877,8 +877,16 @@ class ContextualTasksInteractiveUiTest : public InteractiveBrowserTest {
 };
 
 // TODO(crbug.com/500717050): Parameterize this test suite on the feature flag.
+// TODO(crbug.com/524797987): Re-enable this test.
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+#define MAYBE_AddAndRemovePdfChipFromComposebox \
+  DISABLED_AddAndRemovePdfChipFromComposebox
+#else
+#define MAYBE_AddAndRemovePdfChipFromComposebox \
+  AddAndRemovePdfChipFromComposebox
+#endif
 IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
-                       AddAndRemovePdfChipFromComposebox) {
+                       MAYBE_AddAndRemovePdfChipFromComposebox) {
   const GURL kInterceptionUrl("https://www.google.com/search?udm=50");
 
   base::FilePath test_data_dir;
@@ -925,8 +933,16 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
                   WaitForComposeboxFilesCount(0));
 }
 
+// TODO(crbug.com/524797987): Re-enable this test.
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+#define MAYBE_AddAndRemoveImageChipFromComposebox \
+  DISABLED_AddAndRemoveImageChipFromComposebox
+#else
+#define MAYBE_AddAndRemoveImageChipFromComposebox \
+  AddAndRemoveImageChipFromComposebox
+#endif
 IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
-                       AddAndRemoveImageChipFromComposebox) {
+                       MAYBE_AddAndRemoveImageChipFromComposebox) {
   const GURL kInterceptionUrl("https://www.google.com/search?udm=50");
 
   base::FilePath test_data_dir;
@@ -963,8 +979,15 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
                   WaitForComposeboxFilesCount(0));
 }
 
+// TODO(crbug.com/524797987): Re-enable this test.
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+#define MAYBE_AddAndRemoveTabFromComposebox \
+  DISABLED_AddAndRemoveTabFromComposebox
+#else
+#define MAYBE_AddAndRemoveTabFromComposebox AddAndRemoveTabFromComposebox
+#endif
 IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
-                       AddAndRemoveTabFromComposebox) {
+                       MAYBE_AddAndRemoveTabFromComposebox) {
   const GURL kInterceptionUrl("https://www.google.com/search?udm=50");
   const GURL kGenericPageUrl = embedded_test_server()->GetURL("/title1.html");
 
@@ -2419,6 +2442,35 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
                                        /*expected_upload_image_count=*/0,
                                        /*expected_upload_file_count=*/0,
                                        /*expected_added_input_names=*/{}));
+}
+
+// CUJ covered by this test:
+// 1) User navigates to google search contextual tasks trigger URL (udm=50)
+// 2) The tab should navigate to chrome://contextual-tasks
+// 3) The composebox becomes visible and the input field is focused
+IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
+                       FocusComposeboxOnInitialLoad) {
+  const GURL kInterceptionUrl("https://www.google.com/search?udm=50");
+
+  StateChange composebox_focused;
+  composebox_focused.type = StateChange::Type::kExistsAndConditionTrue;
+  composebox_focused.where = {"contextual-tasks-app"};
+  composebox_focused.test_function =
+      "function(app) {"
+      "  const cb = app?.shadowRoot?.querySelector('#composebox');"
+      "  const crCb = cb?.shadowRoot?.querySelector('#composebox');"
+      "  const inputSuite = "
+      "crCb?.shadowRoot?.querySelector('#composeboxInput');"
+      "  const input = inputSuite?.shadowRoot?.querySelector('#input');"
+      "  return !app.isComposeboxHidden_() && input && "
+      "         input.getRootNode().activeElement === input;"
+      "}";
+  composebox_focused.event = kElementExistsEvent;
+
+  RunTestSequence(InstrumentTab(kPrimaryTab, 0),
+                  SelectTab(kTabStripElementId, 0),
+                  OpenContextualTasksInCurrentTab(kInterceptionUrl),
+                  WaitForStateChange(kPrimaryTab, composebox_focused));
 }
 
 // CUJ covered by this test:

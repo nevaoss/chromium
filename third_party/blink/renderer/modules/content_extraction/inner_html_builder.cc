@@ -22,7 +22,7 @@ String InnerHtmlBuilder::Build(LocalFrame& frame) {
 }
 
 InnerHtmlBuilder::InnerHtmlBuilder(Document& d)
-    : MarkupAccumulator(kDoNotResolveURLs,
+    : MarkupAccumulator(ResolveUrls::kNone,
                         IsA<HTMLDocument>(d) ? SerializationType::kHTML
                                              : SerializationType::kXML,
                         ShadowRootInclusion()) {}

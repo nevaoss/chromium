@@ -408,6 +408,14 @@ class WebAppPublisherHelper : public WebAppRegistrarObserver,
   // Returns whether the app should show a badge.
   bool ShouldShowBadge(const std::string& app_id,
                        bool has_notification_indicator);
+
+  // Sets a web app as supported for capturing links if there are no other
+  // non-web apps that captures the similar set of links. Call this after
+  // `CreateWebApp()` has been called and the web app has been published to the
+  // AppService so that the intent_filters are set on the corresponding
+  // `AppPtr`.
+  void MaybeSetSupportedLinksPreference(const WebApp* web_app,
+                                        bool app_had_supported_links);
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
   // Called after the user has allowed or denied an app launch with files.

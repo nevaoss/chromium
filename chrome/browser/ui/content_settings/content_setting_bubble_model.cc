@@ -175,20 +175,11 @@ bool GetSettingManagedByUser(const GURL& url,
 
 ContentSettingBubbleModel::ListItem CreateUrlListItem(int32_t id,
                                                       const GURL& url) {
-  // Empty URLs should get a placeholder.
-  // TODO(csharrison): See if we can DCHECK that the URL will be valid here.
-  std::u16string title =
-      url.spec().empty()
-          ? l10n_util::GetStringUTF16(IDS_TAB_LOADING_TITLE)
-          : url_formatter::FormatUrl(
-                url, url_formatter::kFormatUrlOmitUsernamePassword,
-                base::UnescapeRule::NONE, nullptr, nullptr, nullptr);
-  // Format the title to include the unicode single dot bullet code-point
-  // \u2022 and two spaces.
-  title = l10n_util::GetStringFUTF16(IDS_LIST_BULLET, title);
-  return ContentSettingBubbleModel::ListItem(nullptr, title, std::u16string(),
-                                             true /* has_link */,
-                                             false /* has_blocked_badge */, id);
+  ContentSettingBubbleModel::ListItem item(
+      nullptr, ContentSettingBubbleModel::FormatUrlWithBullet(url),
+      std::u16string(), true /* has_link */, false /* has_blocked_badge */, id);
+  item.url = url;
+  return item;
 }
 
 struct ContentSettingsTypeIdEntry {
@@ -259,6 +250,23 @@ base::AutoReset<std::optional<bool>>
 ContentSettingBubbleModel::CreateScopedDisplayURLOverrideForTesting() {
   return base::AutoReset<std::optional<bool>>(
       &g_display_url_override_for_testing, true);
+}
+
+// static
+std::u16string ContentSettingBubbleModel::FormatTitleWithBullet(
+    const std::u16string& title) {
+  return l10n_util::GetStringFUTF16(IDS_LIST_BULLET, title);
+}
+
+// static
+std::u16string ContentSettingBubbleModel::FormatUrlWithBullet(const GURL& url) {
+  std::u16string title =
+      url.spec().empty()
+          ? l10n_util::GetStringUTF16(IDS_TAB_LOADING_TITLE)
+          : url_formatter::FormatUrl(
+                url, url_formatter::kFormatUrlOmitUsernamePassword,
+                base::UnescapeRule::NONE, nullptr, nullptr, nullptr);
+  return FormatTitleWithBullet(title);
 }
 
 // ContentSettingSimpleBubbleModel ---------------------------------------------

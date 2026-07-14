@@ -1461,7 +1461,6 @@ ci.builder(
                     "--mutter-display=1280x800",
                     "--test-launcher-filter-file=../../testing/buildbot/filters/ozone-linux.browser_tests_mutter.filter;../../testing/buildbot/filters/linux-arm64-wayland-rel-fyi.browser_tests.filter",
                 ],
-                retry_only_failed_tests = True,
                 swarming = targets.swarming(
                     shards = 20,
                 ),
@@ -1470,7 +1469,6 @@ ci.builder(
                 args = [
                     "--test-launcher-filter-file=../../testing/buildbot/filters/linux-arm64-wayland-rel-fyi.content_browsertests.filter",
                 ],
-                retry_only_failed_tests = True,
             ),
             "interactive_ui_tests": targets.mixin(
                 args = [
@@ -2463,7 +2461,6 @@ fyi_mac_builder(
         targets = ["trees_in_viz_disabled_tests"],
         mixins = [
             "mac_15_x64",
-            "retry_only_failed_tests",
         ],
         per_test_modifications = {
             "blink_web_tests": targets.mixin(
@@ -2481,9 +2478,6 @@ fyi_mac_builder(
                 ),
             ),
             "content_browsertests": targets.mixin(
-                # Only retry the individual failed tests instead of rerunning
-                # entire shards.
-                # crbug.com/1475852
                 swarming = targets.swarming(
                     shards = 12,
                 ),
@@ -2540,7 +2534,6 @@ ci.builder(
         mixins = [
             "x86-64",
             "win10",
-            "retry_only_failed_tests",
         ],
         per_test_modifications = {
             "blink_web_tests": targets.mixin(
@@ -2558,9 +2551,6 @@ ci.builder(
                 ),
             ),
             "browser_tests": targets.mixin(
-                # Only retry the individual failed tests instead of rerunning
-                # entire shards.
-                # crbug.com/1473501
                 swarming = targets.swarming(
                     # This is for slow test execution that often becomes a
                     # critical path of swarming jobs. crbug.com/868114
@@ -2624,7 +2614,6 @@ ci.builder(
         mixins = [
             "x86-64",
             "linux-jammy",
-            "retry_only_failed_tests",
         ],
         per_test_modifications = {
             "browser_tests": targets.mixin(
@@ -2700,7 +2689,6 @@ ci.builder(
             "has_native_resultdb_integration",
             "linux-jammy",
             "x86-64",
-            "retry_only_failed_tests",
         ],
         per_test_modifications = {
             "android_browsertests": targets.mixin(
@@ -2774,7 +2762,6 @@ ci.builder(
         targets = ["trees_in_viz_enabled_tests"],
         mixins = [
             "linux-jammy",
-            "retry_only_failed_tests",
         ],
         per_test_modifications = {
             "blink_web_tests": targets.mixin(

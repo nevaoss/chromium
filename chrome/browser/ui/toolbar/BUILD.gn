@@ -72,7 +72,6 @@ source_set("toolbar") {
       "//ui/menus",
     ]
     deps += [
-      "//chrome/browser/ui:tab_search_feature",
       "//chrome/browser/ui:ui_features",
       "//chrome/browser/ui/actions:actions_headers",
       "//chrome/browser/ui/tabs:tab_strip",
@@ -146,7 +145,6 @@ source_set("impl") {
       "//chrome/browser/sync:factories",
       "//chrome/browser/themes",
       "//chrome/browser/ui:layout_constants",
-      "//chrome/browser/ui:tab_search_feature",
       "//chrome/browser/ui:ui_features",
       "//chrome/browser/ui/bookmarks",
       "//chrome/browser/ui/browser_window",
@@ -239,6 +237,7 @@ source_set("impl") {
 
     deps += [
       "//chrome/browser/extensions",
+      "//chrome/browser/ui:ui_features",
       "//chrome/browser/ui/extensions",
     ]
   }

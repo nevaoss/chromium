@@ -22,7 +22,7 @@
 #include "base/strings/utf_ostream_operators.h"
 #include "base/strings/utf_string_conversions.h"
 #include "build/buildflag.h"
-#include "components/accessibility_annotator/core/annotation_reducer/entry_type.h"
+#include "components/accessibility_annotator/core/annotation_reducer/memory_data_type.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_instance.h"
 #include "components/autofill/core/browser/field_types.h"
 #include "components/autofill/core/browser/suggestions/suggestion_type.h"
@@ -84,6 +84,8 @@ std::string_view ConvertIconToPrintableString(Suggestion::Icon icon) {
       return "kError";
     case Suggestion::Icon::kFlight:
       return "kFlight";
+    case Suggestion::Icon::kFlightSpark:
+      return "kFlightSpark";
     case Suggestion::Icon::kGlobe:
       return "kGlobe";
     case Suggestion::Icon::kGoogle:
@@ -102,6 +104,12 @@ std::string_view ConvertIconToPrintableString(Suggestion::Icon icon) {
       return "kHome";
     case Suggestion::Icon::kIdCard:
       return "kIdCard";
+    case Suggestion::Icon::kIdCard2:
+      return "kIdCard2";
+    case Suggestion::Icon::kIdCard2Spark:
+      return "kIdCard2Spark";
+    case Suggestion::Icon::kIdCardSpark:
+      return "kIdCardSpark";
     case Suggestion::Icon::kKey:
       return "kKey";
     case Suggestion::Icon::kLocation:
@@ -112,8 +120,14 @@ std::string_view ConvertIconToPrintableString(Suggestion::Icon icon) {
       return "kMagic";
     case Suggestion::Icon::kOfferTag:
       return "kOfferTag";
+    case Suggestion::Icon::kOrder:
+      return "kOrder";
+    case Suggestion::Icon::kOrderSpark:
+      return "kOrderSpark";
     case Suggestion::Icon::kPassport:
       return "kPassport";
+    case Suggestion::Icon::kPassportSpark:
+      return "kPassportSpark";
     case Suggestion::Icon::kPenSpark:
       return "kPenSpark";
     case Suggestion::Icon::kPersonCheck:
@@ -126,12 +140,18 @@ std::string_view ConvertIconToPrintableString(Suggestion::Icon icon) {
       return "kScanCreditCard";
     case Suggestion::Icon::kSettings:
       return "kSettings";
+    case Suggestion::Icon::kShipment:
+      return "kShipment";
+    case Suggestion::Icon::kShipmentSpark:
+      return "kShipmentSpark";
     case Suggestion::Icon::kSpark:
       return "kSpark";
     case Suggestion::Icon::kUndo:
       return "kUndo";
     case Suggestion::Icon::kVehicle:
       return "kVehicle";
+    case Suggestion::Icon::kVehicleSpark:
+      return "kVehicleSpark";
     case Suggestion::Icon::kWork:
       return "kWork";
     case Suggestion::Icon::kGmail:
@@ -303,8 +323,8 @@ Suggestion::AtMemoryPayload::AtMemoryPayload() = default;
 
 Suggestion::AtMemoryPayload::AtMemoryPayload(
     std::u16string value,
-    accessibility_annotator::EntryType entry_type)
-    : value(std::move(value)), entry_type(entry_type) {}
+    accessibility_annotator::MemoryDataType memory_data_type)
+    : value(std::move(value)), memory_data_type(memory_data_type) {}
 
 Suggestion::AtMemoryPayload::AtMemoryPayload(const AtMemoryPayload&) = default;
 

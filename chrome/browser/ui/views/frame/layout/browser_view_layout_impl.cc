@@ -207,40 +207,17 @@ void BrowserViewLayoutImpl::Layout(views::View* host) {
     return;
   }
   base::AutoReset<bool> guard_reset(&reentrancy_guard_, true);
-  DoLayout(host, /*include_top_container=*/true);
-}
 
-void BrowserViewLayoutImpl::DoLayout(views::View* host,
-                                     bool include_top_container) {
-  const auto params =
-      delegate().GetBrowserLayoutParams(/*use_browser_bounds=*/true);
+  auto params = delegate().GetBrowserLayoutParams(/*use_browser_bounds=*/true);
   if (params.IsEmpty()) {
     return;
   }
 
   DoPreLayoutComputations(params);
 
-  // If the top container is not parented to the main container, it is an
-  // overlay and must be laid out separately.
-  const bool lay_out_floating_top_container =
-      include_top_container && views().top_container &&
-      views().top_container->parent() != views().browser_view;
-
-  // In fullscreen-with-toolbar, the top container must be laid out first. If
-  // the size changes, then the size of the browser view will change as well, so
-  // the layout properties must be recalculated.
-  //
-  // See https://crbug.com/519626620 for an example of what can happen if this
-  // is not done.
-  const auto window_state = delegate().GetBrowserWindowState();
-  if (lay_out_floating_top_container &&
-      window_state == WindowState::kFullscreenWithToolbar) {
-    const gfx::Size old_size = views().top_container->size();
-
-    // TODO(https://crbug.com/522850958): This is duplicated again below to
-    // minimize the amount of code changed for a patch that is to be merged
-    // back. Unify the two afterwards.
-
+  // If the top container is separate from the browser view, lay it out now.
+  if (views().top_container &&
+      views().top_container->parent() != views().browser_view) {
     // In slide/immersive mode, animating the top container is handled by
     // someone else, but there are adjustments that are needed to be made.
     ProposedLayout top_container_layout;
@@ -260,10 +237,14 @@ void BrowserViewLayoutImpl::DoLayout(views::View* host,
     views().top_container->SetBoundsRect(
         GetTopContainerBoundsInParent(top_container_local_bounds, params));
 
-    if (old_size != views().top_container->size()) {
-      DoPostLayoutCleanup();
-      DoLayout(host, /*include_top_container=*/false);
-      return;
+    // In (for example) fullscreen-with-toolbar, if the size of the top
+    // container changes, then the overall layout dimensions may also change.
+    // See https://crbug.com/519626620 for more information.
+    const auto new_params =
+        delegate().GetBrowserLayoutParams(/*use_browser_bounds=*/true);
+    if (params != new_params) {
+      OnLayoutParamsChanged(params, new_params);
+      params = new_params;
     }
   }
 
@@ -274,31 +255,6 @@ void BrowserViewLayoutImpl::DoLayout(views::View* host,
   std::move(layout).ApplyLayout(host, [this](views::View* view, bool visible) {
     SetViewVisibility(view, visible);
   });
-
-  // TODO(https://crbug.com/522850958): This is where a floating top container
-  // has historically been laid out, but this should be combined with the above
-  // block at a later time. It is maintained here to avoid
-  if (lay_out_floating_top_container &&
-      window_state != WindowState::kFullscreenWithToolbar) {
-    // In slide/immersive mode, animating the top container is handled by
-    // someone else, but there are adjustments that are needed to be made.
-    ProposedLayout top_container_layout;
-
-    // The computation for the top container components does not change.
-    const gfx::Rect top_container_local_bounds = CalculateTopContainerLayout(
-        top_container_layout, params, /*needs_exclusion=*/true);
-
-    // Apply the child layouts for the top container.
-    std::move(top_container_layout)
-        .ApplyLayout(views().top_container,
-                     [this](views::View* view, bool visible) {
-                       SetViewVisibility(view, visible);
-                     });
-
-    // Position the top container in its parent, whatever that is.
-    views().top_container->SetBoundsRect(
-        GetTopContainerBoundsInParent(top_container_local_bounds, params));
-  }
 
   // The normal clipping created by `View::Paint()` may not cover the bottom of
   // the TopContainerView at certain scale factor because both of the position
@@ -366,6 +322,10 @@ void BrowserViewLayoutImpl::DoPostLayoutVisualAdjustments(
     const BrowserLayoutParams& params) {}
 
 void BrowserViewLayoutImpl::DoPostLayoutCleanup() {}
+
+void BrowserViewLayoutImpl::OnLayoutParamsChanged(
+    const BrowserLayoutParams& old_params,
+    const BrowserLayoutParams& new_params) {}
 
 // Dialog positioning.
 

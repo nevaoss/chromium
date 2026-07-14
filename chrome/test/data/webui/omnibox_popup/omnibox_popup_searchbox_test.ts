@@ -41,6 +41,7 @@ suite('OmniboxPopupSearchboxTest', function() {
       selection: {start: 0, end: 0},
       userInputInProgress: false,
       isDoubleClick: false,
+      fullUrl: '',
     });
     await microtasksFinished();
 
@@ -69,6 +70,7 @@ suite('OmniboxPopupSearchboxTest', function() {
       selection: {start: 0, end: 0},
       userInputInProgress: true,
       isDoubleClick: false,
+      fullUrl: '',
     });
     await microtasksFinished();
 
@@ -114,6 +116,7 @@ suite('OmniboxPopupSearchboxTest', function() {
       selection: {start: 1, end: 4},
       userInputInProgress: false,
       isDoubleClick: false,
+      fullUrl: '',
     });
     await microtasksFinished();
 
@@ -129,6 +132,7 @@ suite('OmniboxPopupSearchboxTest', function() {
       selection: {start: 0, end: 0},
       userInputInProgress: true,
       isDoubleClick: false,
+      fullUrl: '',
     });
     await microtasksFinished();
 
@@ -143,6 +147,7 @@ suite('OmniboxPopupSearchboxTest', function() {
       selection: {start: 0, end: 0},
       userInputInProgress: false,
       isDoubleClick: false,
+      fullUrl: '',
     });
     await microtasksFinished();
 
@@ -159,6 +164,7 @@ suite('OmniboxPopupSearchboxTest', function() {
       selection: {start: 12, end: 12},
       userInputInProgress: true,
       isDoubleClick: false,
+      fullUrl: '',
     });
     await microtasksFinished();
 
@@ -192,6 +198,7 @@ suite('OmniboxPopupSearchboxTest', function() {
       selection: {start: 0, end: 0},
       userInputInProgress: true,
       isDoubleClick: false,
+      fullUrl: '',
     });
     await microtasksFinished();
     handler.reset();
@@ -214,5 +221,28 @@ suite('OmniboxPopupSearchboxTest', function() {
 
     // Verify onSelectionChanged is sent once composition ends.
     assertEquals(1, handler.getCallCount('onSelectionChanged'));
+  });
+
+  test('DoubleClickingShowsFullUrl', async () => {
+    // Focus the input.
+    const input = searchbox.$.input.inputElement;
+    const full_url = 'http://test.com';
+    input.focus();
+    await microtasksFinished();
+
+
+    callbackRouter.setInputState({
+      sequenceNumber: 1,
+      text: 'test.com',
+      selection: {start: 0, end: 4},
+      userInputInProgress: true,
+      isDoubleClick: true,
+      fullUrl: full_url,
+    });
+    await microtasksFinished();
+    handler.reset();
+
+    // Verify the full URL is displayed.
+    assertEquals(full_url, input.value);
   });
 });

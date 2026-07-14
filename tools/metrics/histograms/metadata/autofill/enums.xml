@@ -4143,6 +4143,22 @@ Called by update_autofill_enums.py.-->
   <int value="13" label="AlternativeName"/>
 </enum>
 
+<enum name="AutofillSilentUpdateFieldMergeCategory">
+  <int value="0" label="No categories matched (Other)"/>
+  <int value="1" label="Capitalization update only"/>
+  <int value="2" label="Diacritic and capitalization update only"/>
+  <int value="3"
+      label="(Error) Capitalization only and Capitalization and diacritic
+             only update"/>
+  <int value="4" label="Empty to non-empty update only"/>
+  <int value="5" label="Capitalization and empty to non-empty update"/>
+  <int value="6"
+      label="Diacritic and capitalization, and empty to non-empty update"/>
+  <int value="7"
+      label="(Error) Capitalization only and Capitalization and diacritic
+             only and empty to non-empty update"/>
+</enum>
+
 <enum name="AutofillSingleEntryRemovalMethod">
   <int value="0" label="Keyboard shift + delete pressed"/>
   <int value="1" label="Delete button clicked"/>
@@ -5705,7 +5721,7 @@ Called by update_autofill_enums.py.-->
   <int value="75" label="Manage identity docs information"/>
   <int value="76" label="Manage travel information"/>
   <int value="77" label="Loading throbber"/>
-  <int value="78" label="@memory search result"/>
+  <int value="78" label="AtMemory search result"/>
   <int value="79" label="BNPL footnote"/>
   <int value="80" label="AtMemory inactivity nudge"/>
   <int value="81" label="Autocomplete AtMemory button"/>
@@ -5715,6 +5731,7 @@ Called by update_autofill_enums.py.-->
   <int value="85" label="Personal context notice"/>
   <int value="86" label="Webauthn passkey QR code"/>
   <int value="87" label="Fetching Ambient Data"/>
+  <int value="88" label="AtMemory generic error"/>
 </enum>
 
 <!-- LINT.ThenChange(/components/autofill/core/browser/suggestions/suggestion_type.h:SuggestionType) -->

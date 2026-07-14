@@ -145,8 +145,10 @@ BASE_FEATURE(kAimTriggeredThreadLinks, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kContextualTasksWindowTracking, base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kContextualTasksAiUrlAllowedParamsFilter,
-             base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kContextualTasksUploadChunking, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kContextualTasksEnableSpatialModelToolbarLayout,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool GetIsContextualTasksPdfCitationsEnabled() {
   return base::FeatureList::IsEnabled(kContextualTasksPdfCitations);
@@ -158,6 +160,15 @@ bool GetIsContextualTasksLazyFetchClusterInfoEnabled() {
 
 bool GetIsContextualTasksWindowTrackingEnabled() {
   return base::FeatureList::IsEnabled(kContextualTasksWindowTracking);
+}
+
+bool GetIsContextualTasksUploadChunkingEnabled() {
+  return base::FeatureList::IsEnabled(kContextualTasksUploadChunking);
+}
+
+bool GetContextualTasksSpatialModelToolbarLayoutEnabled() {
+  return base::FeatureList::IsEnabled(
+      kContextualTasksEnableSpatialModelToolbarLayout);
 }
 
 const base::FeatureParam<bool> kContextualTasksLockAndUnlockInputCapability(
@@ -595,16 +606,6 @@ std::string GetContextualTasksUserAgentSuffix() {
   return kContextualTasksUserAgentSuffix.Get();
 }
 
-const base::FeatureParam<std::string> kContextualTasksAiUrlAllowedParams{
-    &kContextualTasksAiUrlAllowedParamsFilter,
-    "contextual-tasks-ai-url-allowed-params",
-    "q,sxsrf,ei,iflsig,ved,uact,sclient,udm,fbs,aep,ntc,mstk,aioh,csuir,cs"};
-
-std::vector<std::string> GetContextualTasksAiUrlAllowedParams() {
-  return base::SplitString(kContextualTasksAiUrlAllowedParams.Get(), ",",
-                           base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-}
-
 bool ShouldLogContextualTasksContextQuality() {
   if (!base::FeatureList::IsEnabled(kContextualTasksContextLogging)) {
     return false;
@@ -733,6 +734,11 @@ const char kContextualTasksHideMenuOnAiPageName[] =
 const char kContextualTasksHideMenuOnAiPageDescription[] =
     "Hides the 3-dot (overflow) menu when viewing an AI page in the side "
     "panel. The menu is still shown for lens flows.";
+
+const char kContextualTasksEnableSpatialModelToolbarLayoutName[] =
+    "Contextual Tasks Enable Spatial Model Toolbar Layout";
+const char kContextualTasksEnableSpatialModelToolbarLayoutDescription[] =
+    "Enables the spatial model toolbar layout for contextual tasks.";
 
 }  // namespace flag_descriptions
 

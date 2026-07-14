@@ -57,6 +57,7 @@ import org.chromium.chrome.browser.app.tabwindow.TabWindowManagerSingleton;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.homepage.HomepageManager;
 import org.chromium.chrome.browser.incognito.IncognitoUtils;
+import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.CloseWindowAppSource;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.InstanceAllocationType;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.NewWindowAppSource;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.PersistedInstanceType;
@@ -64,6 +65,7 @@ import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.SupportedProfileType;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
+import org.chromium.chrome.browser.tabmodel.TabModelUtils;
 import org.chromium.chrome.browser.tabmodel.TabPersistenceUtils;
 import org.chromium.chrome.browser.tabwindow.TabWindowManager;
 import org.chromium.chrome.browser.tabwindow.WindowId;
@@ -826,6 +828,67 @@ public class MultiWindowUtils implements ActivityStateListener {
     public static void writeLatestPersistentStateId(int instanceId, int latestPersistentStateId) {
         ChromeMultiInstancePersistentStore.writeLatestPersistentStateId(
                 instanceId, latestPersistentStateId);
+    }
+
+    /**
+     * Removes the instance info for the given index.
+     *
+     * @param index The instance index.
+     * @param source The source of the window closure.
+     */
+    /* package */ static void removeInstanceInfo(int index, @CloseWindowAppSource int source) {
+        assert isMultiInstanceApi31Enabled();
+        ChromeMultiInstancePersistentStore.deleteInstanceState(index);
+        RecordHistogram.recordEnumeratedHistogram(
+                MultiInstanceManager.CLOSE_WINDOW_APP_SOURCE_HISTOGRAM,
+                source,
+                CloseWindowAppSource.NUM_ENTRIES);
+    }
+
+    /**
+     * Writes the tab count for the given index.
+     *
+     * @param index The instance index.
+     * @param selector The TabModelSelector to get the tab counts from.
+     */
+    /* package */ static void writeTabCount(int index, TabModelSelector selector) {
+        if (!selector.isTabStateInitialized()) return;
+        int tabCount = selector.getModel(false).getCount();
+        int incognitoTabCount = selector.getModel(true).getCount();
+        ChromeMultiInstancePersistentStore.writeTabCount(index, tabCount, incognitoTabCount);
+        if (tabCount == 0) {
+            ChromeMultiInstancePersistentStore.writeActiveTabUrl(index, "");
+            ChromeMultiInstancePersistentStore.writeActiveTabTitle(index, "");
+        }
+    }
+
+    /**
+     * Writes the active tab info for the given index.
+     *
+     * @param index The instance index.
+     * @param selector The TabModelSelector to get the tab models.
+     * @param activeTab The active tab, if any.
+     */
+    /* package */ static void writeActiveTabInfo(
+            int index, TabModelSelector selector, @Nullable Tab activeTab) {
+        Tab urlTab = null;
+        if (activeTab != null) {
+            ChromeMultiInstancePersistentStore.writeIncognitoSelected(
+                    index, activeTab.isIncognito());
+            urlTab =
+                    activeTab.isIncognito()
+                            ? TabModelUtils.getCurrentTab(selector.getModel(false))
+                            : activeTab;
+        }
+
+        if (urlTab != null) {
+            ChromeMultiInstancePersistentStore.writeActiveTabUrl(
+                    index, urlTab.getOriginalUrl().getSpec());
+            ChromeMultiInstancePersistentStore.writeActiveTabTitle(index, urlTab.getTitle());
+        } else {
+            ChromeMultiInstancePersistentStore.writeActiveTabUrl(index, "");
+            ChromeMultiInstancePersistentStore.writeActiveTabTitle(index, "");
+        }
     }
 
     /**

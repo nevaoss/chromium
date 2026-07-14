@@ -371,8 +371,7 @@ class AutofillControllerTest : public PlatformTest {
   bool processed_a_task_ = false;
   // Histogram tester for these tests.
   std::unique_ptr<base::HistogramTester> histogram_tester_;
-  raw_ptr<AutofillBottomSheetTabHelper, DanglingUntriaged>
-      bottomsheet_tab_helper_;
+  raw_ptr<AutofillBottomSheetTabHelper> bottomsheet_tab_helper_;
   id<AutofillCommands> autofill_commands_handler_;
   ScopedFeatureList scoped_feature_list_2_;
 
@@ -448,6 +447,8 @@ void AutofillControllerTest::TearDown() {
   [suggestion_controller_ detachFromWebState];
 
   autofill_manager_injector_.reset();
+
+  bottomsheet_tab_helper_ = nullptr;
 
   web::test::WaitForBackgroundTasks();
   web_state_.reset();

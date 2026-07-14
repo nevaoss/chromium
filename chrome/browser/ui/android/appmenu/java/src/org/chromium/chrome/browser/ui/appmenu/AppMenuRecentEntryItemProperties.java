@@ -6,6 +6,7 @@ package org.chromium.chrome.browser.ui.appmenu;
 
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.ui.modelutil.PropertyKey;
+import org.chromium.ui.modelutil.PropertyModel.WritableIntPropertyKey;
 import org.chromium.ui.modelutil.PropertyModel.WritableObjectPropertyKey;
 
 import java.util.Arrays;
@@ -17,6 +18,9 @@ public class AppMenuRecentEntryItemProperties {
     public static final WritableObjectPropertyKey<Object> RECENT_ENTRY =
             new WritableObjectPropertyKey<>("RECENT_ENTRY");
 
+    /** The instance ID of the window associated with this item if any. */
+    public static final WritableIntPropertyKey WINDOW_ID = new WritableIntPropertyKey("WINDOW_ID");
+
     /** The session tag associated with this item if it is a foreign session. */
     public static final WritableObjectPropertyKey<String> FOREIGN_SESSION_TAG =
             new WritableObjectPropertyKey<>("FOREIGN_SESSION_TAG");
@@ -26,7 +30,7 @@ public class AppMenuRecentEntryItemProperties {
             new WritableObjectPropertyKey<>("FOREIGN_SESSION_TAB");
 
     public static final PropertyKey[] RECENT_ENTRY_KEYS =
-            new PropertyKey[] {RECENT_ENTRY, FOREIGN_SESSION_TAG, FOREIGN_SESSION_TAB};
+            new PropertyKey[] {RECENT_ENTRY, WINDOW_ID, FOREIGN_SESSION_TAG, FOREIGN_SESSION_TAB};
 
     public static final PropertyKey[] ALL_KEYS =
             Arrays.copyOf(

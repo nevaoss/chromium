@@ -184,7 +184,7 @@ class MarkupAccumulator::ElementSerializationData final {
 };
 
 MarkupAccumulator::MarkupAccumulator(
-    AbsoluteURLs resolve_urls_method,
+    ResolveUrls resolve_urls_method,
     SerializationType serialization_type,
     const ShadowRootInclusion& shadow_root_inclusion,
     AttributesMode attributes_mode)

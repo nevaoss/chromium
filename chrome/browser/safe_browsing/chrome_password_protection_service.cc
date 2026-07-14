@@ -381,11 +381,7 @@ void ChromePasswordProtectionService::SetSyncPasswordHash(
     base::TimeDelta max_delay =
         base::Days(kPasswordCaptureEventLogFreqDaysMin +
                    kPasswordCaptureEventLogFreqDaysExtra);
-    if (delay < min_delay) {
-      delay = min_delay;
-    } else if (delay > max_delay) {
-      delay = max_delay;
-    }
+    delay = std::clamp(delay, min_delay, max_delay);
     SetLogPasswordCaptureTimer(delay);
   }
 #endif

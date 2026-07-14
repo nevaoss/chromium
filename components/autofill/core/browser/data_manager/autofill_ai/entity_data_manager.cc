@@ -49,6 +49,7 @@ EntityDataManager::EntityDataManager(
     syncer::SyncService* sync_service,
     scoped_refptr<AutofillWebDataService> webdata_service,
     history::HistoryService* history_service,
+    PersonalContextAccessManager* pcontext_manager,
     strike_database::StrikeDatabaseBase* strike_database,
     GeoIpCountryCode variation_country_code)
     : webdata_service_(std::move(webdata_service)),
@@ -59,6 +60,9 @@ EntityDataManager::EntityDataManager(
   LoadEntitiesFromDatabase();
   if (history_service) {
     history_service_observation_.Observe(history_service);
+  }
+  if (pcontext_manager) {
+    pcontext_observation_.Observe(pcontext_manager);
   }
   if (strike_database) {
     save_strike_db_by_host_ =
@@ -137,23 +141,34 @@ void EntityDataManager::LoadEntitiesFromDatabase() {
 }
 
 void EntityDataManager::AddOrUpdateEntityInstance(EntityInstance entity) {
-  webdata_service_->AddOrUpdateEntityInstance(
-      std::move(entity),
-      base::BindOnce(
-          [](base::WeakPtr<EntityDataManager> self, EntityInstanceChange eic) {
-            if (!self) {
-              return;
-            }
-            CHECK(eic.type() == EntityInstanceChange::ADD ||
-                  eic.type() == EntityInstanceChange::UPDATE);
-            EntityInstance entity = eic.data_model();
+  switch (entity.record_type()) {
+    case EntityInstance::RecordType::kLocal:
+    case EntityInstance::RecordType::kServerWallet:
+      // Local and wallet entities are stored in EntityTable.
+      webdata_service_->AddOrUpdateEntityInstance(
+          std::move(entity),
+          base::BindOnce(
+              [](base::WeakPtr<EntityDataManager> self,
+                 EntityInstanceChange eic) {
+                if (!self) {
+                  return;
+                }
+                CHECK(eic.type() == EntityInstanceChange::ADD ||
+                      eic.type() == EntityInstanceChange::UPDATE);
+                EntityInstance entity = eic.data_model();
 
-            // Erase first because insert() does not replace existing entries.
-            self->entities_.erase(entity.guid());
-            self->entities_.insert(std::move(entity));
-            self->NotifyEntityInstancesChanged();
-          },
-          GetWeakPtr()));
+                // Erase first because insert() does not replace existing
+                // entries.
+                self->entities_.erase(entity.guid());
+                self->entities_.insert(std::move(entity));
+                self->NotifyEntityInstancesChanged();
+              },
+              GetWeakPtr()));
+      break;
+    case EntityInstance::RecordType::kPersonalContext:
+      // pContext entities can't be added or updated by the client.
+      NOTREACHED();
+  }
 }
 
 void EntityDataManager::RemoveEntityInstance(EntityInstance::EntityId guid) {
@@ -162,18 +177,28 @@ void EntityDataManager::RemoveEntityInstance(EntityInstance::EntityId guid) {
   if (!entity_instance) {
     return;
   }
-  webdata_service_->RemoveEntityInstance(
-      *entity_instance,
-      base::BindOnce(
-          [](base::WeakPtr<EntityDataManager> self, EntityInstanceChange eic) {
-            if (!self) {
-              return;
-            }
-            CHECK_EQ(eic.type(), EntityInstanceChange::REMOVE);
-            self->entities_.erase(eic.key());
-            self->NotifyEntityInstancesChanged();
-          },
-          GetWeakPtr()));
+  switch (entity_instance->record_type()) {
+    case EntityInstance::RecordType::kLocal:
+    case EntityInstance::RecordType::kServerWallet:
+      // Local and wallet entities are stored in EntityTable.
+      webdata_service_->RemoveEntityInstance(
+          *entity_instance, base::BindOnce(
+                                [](base::WeakPtr<EntityDataManager> self,
+                                   EntityInstanceChange eic) {
+                                  if (!self) {
+                                    return;
+                                  }
+                                  CHECK_EQ(eic.type(),
+                                           EntityInstanceChange::REMOVE);
+                                  self->entities_.erase(eic.key());
+                                  self->NotifyEntityInstancesChanged();
+                                },
+                                GetWeakPtr()));
+      break;
+    case EntityInstance::RecordType::kPersonalContext:
+      // pContext entities can't be removed by the client.
+      NOTREACHED();
+  }
 }
 
 void EntityDataManager::RemoveEntityInstancesModifiedBetween(
@@ -183,6 +208,7 @@ void EntityDataManager::RemoveEntityInstancesModifiedBetween(
                                                          delete_end);
   // Update the cache.
   LoadEntitiesFromDatabase();
+  // TODO(crbug.com/516721244): Figure out how to handle pContext entities.
 }
 
 base::optional_ref<const EntityInstance> EntityDataManager::GetEntityInstance(
@@ -222,14 +248,47 @@ void EntityDataManager::OnHistoryDeletions(
   }
 }
 
+void EntityDataManager::OnMaskedEntitiesPrefetched(
+    const PersonalContextAccessManager& manager,
+    base::span<const EntityInstance> entities) {
+  CHECK(std::ranges::all_of(entities, [](const EntityInstance& entity) {
+    return entity.record_type() == EntityInstance::RecordType::kPersonalContext;
+  }));
+  // insert() doesn't replace existing values. This suffices, because previously
+  // fetched entities are evicted before new ones are broadcast.
+  entities_.insert(entities.begin(), entities.end());
+  NotifyEntityInstancesChanged();
+}
+
+void EntityDataManager::OnMaskedEntityTypeEvicted(
+    const PersonalContextAccessManager& manager,
+    EntityType type) {
+  base::EraseIf(entities_, [&](const EntityInstance& entity) {
+    return entity.record_type() ==
+               EntityInstance::RecordType::kPersonalContext &&
+           entity.type() == type;
+  });
+  NotifyEntityInstancesChanged();
+}
+
 void EntityDataManager::RecordEntityUsed(const EntityInstance::EntityId& guid,
                                          base::Time use_date) {
   base::optional_ref<EntityInstance> entity = GetMutableEntityInstance(guid);
   if (!entity) {
     return;
   }
-  entity->RecordEntityUsed(use_date);
-  webdata_service_->UpdateEntityMetadata(*entity);
+  switch (entity->record_type()) {
+    case EntityInstance::RecordType::kLocal:
+    case EntityInstance::RecordType::kServerWallet:
+      // Local and wallet entities are stored in EntityTable and can be
+      // modified.
+      entity->RecordEntityUsed(use_date);
+      webdata_service_->UpdateEntityMetadata(*entity);
+      break;
+    case EntityInstance::RecordType::kPersonalContext:
+      // pContext entities can't be updated by the client.
+      break;
+  }
 }
 
 void EntityDataManager::NotifyEntityInstancesChanged() {

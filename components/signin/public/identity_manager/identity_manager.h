@@ -380,9 +380,9 @@ class IdentityManager : public KeyedService,
 
   // Provides the information of all accounts that are present in the Gaia
   // cookie in the cookie jar, ordered by their order in the cookie.
-  // If the returned accounts are not fresh, an internal update will be
-  // triggered and there will be a subsequent invocation of
-  // IdentityManager::Observer::OnAccountsInCookieJarChanged().
+  //
+  // When `switches::kAvoidAutoTriggerListAccountsOnStale` is enabled, this
+  // method will not trigger an update even if the accounts are stale.
   AccountsInCookieJarInfo GetAccountsInCookieJar() const;
 
   // Returns the accounts in the cookie jar without triggering an internal

@@ -6,12 +6,27 @@
 
 #include <string>
 #include <utility>
+#include <variant>
 
 #include "base/containers/flat_set.h"
 #include "components/autofill/core/common/autofill_clock.h"
+#include "third_party/abseil-cpp/absl/functional/overload.h"
 #include "url/origin.h"
 
 namespace autofill {
+
+CreditCardBenefitType GetTypeForCardBenefit(const CreditCardBenefit& benefit) {
+  return std::visit(absl::Overload{[](const CreditCardFlatRateBenefit&) {
+                                     return CreditCardBenefitType::kFlatRate;
+                                   },
+                                   [](const CreditCardCategoryBenefit&) {
+                                     return CreditCardBenefitType::kCategory;
+                                   },
+                                   [](const CreditCardMerchantBenefit&) {
+                                     return CreditCardBenefitType::kMerchant;
+                                   }},
+                    benefit);
+}
 
 CreditCardBenefitBase::CreditCardBenefitBase(
     BenefitId benefit_id,

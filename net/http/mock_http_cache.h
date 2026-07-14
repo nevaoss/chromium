@@ -114,6 +114,11 @@ class MockDiskEntry : public disk_cache::Entry,
   // |resume_return_code_|.
   void ResumeDiskEntryOperation();
 
+  // Returns true if a deferred operation is pending (callback stored).
+  bool HasDeferredOperation() const { return !resume_callback_.is_null(); }
+
+  void set_resume_return_code(int code) { resume_return_code_ = code; }
+
   // Sets the maximum length of a stream. This is only applied to stream 1.
   void set_max_file_size(int val) { max_file_size_ = val; }
 

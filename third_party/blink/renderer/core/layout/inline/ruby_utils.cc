@@ -35,14 +35,13 @@ inline bool IsSpaceForRubyOverhang(UChar32 ch) {
 std::tuple<LayoutUnit, LayoutUnit> AdjustTextOverUnderOffsetsForEmHeight(
     LayoutUnit over,
     LayoutUnit under,
-    const ComputedStyle& style,
+    FontBaseline font_baseline,
     const UsedFont& used_font,
     const ShapeResultView& shape_view) {
   DCHECK_LE(over, under);
   if (!used_font.PrimaryFont()) {
     return std::make_pair(over, under);
   }
-  const auto font_baseline = style.GetFontBaseline();
   const LayoutUnit line_height = under - over;
   const float paint_scale = used_font.ScalingFactor();
   const LayoutUnit primary_ascent = used_font.FixedAscent(font_baseline);
@@ -748,7 +747,8 @@ AnnotationMetrics ComputeAnnotationOverflow(
     if (item.shape_result) {
       if (const auto* style = item.Style()) {
         std::tie(item_over, item_under) = AdjustTextOverUnderOffsetsForEmHeight(
-            item_over, item_under, *style, used_font, *item.shape_result);
+            item_over, item_under, style->GetFontBaseline(), used_font,
+            *item.shape_result);
       }
     } else {
       if (item.IsAtomicInline() && !item.IsInitialLetterBox()) {
@@ -822,14 +822,16 @@ AnnotationMetrics ComputeAnnotationOverflow(
     content_under = line_under - half_leading;
   }
 
-  // Don't provide annotation space if text-emphasis exists.
-  // TODO(layout-dev): If the text-emphasis is in [line_over, line_under],
-  // this line can provide annotation space.
-  if (over_emphasis > LayoutUnit()) {
-    content_over = std::min(content_over, line_over);
-  }
-  if (under_emphasis > LayoutUnit()) {
-    content_under = std::max(content_under, line_under);
+  if (!RuntimeEnabledFeatures::TextEmphasisAsRubyEnabled()) {
+    // Don't provide annotation space if text-emphasis exists.
+    // TODO(layout-dev): If the text-emphasis is in [line_over, line_under],
+    // this line can provide annotation space.
+    if (over_emphasis > LayoutUnit()) {
+      content_over = std::min(content_over, line_over);
+    }
+    if (under_emphasis > LayoutUnit()) {
+      content_under = std::max(content_under, line_under);
+    }
   }
 
   const bool has_over_emphasis =
@@ -1172,6 +1174,16 @@ void RubyBlockPositionCalculator::RubyLine::AddLinesTo(
 void RubyBlockPositionCalculator::AnnotationDepth::Trace(
     Visitor* visitor) const {
   visitor->Trace(column);
+}
+
+std::tuple<LayoutUnit, LayoutUnit> AdjustTextOverUnderOffsetsForEmphasis(
+    const ShapeResultView& shape_view,
+    const UsedFont& used_font) {
+  // We apply kAlphabeticBaseline because this is for painting.
+  LayoutUnit over = -used_font.FixedAscent();
+  LayoutUnit under = used_font.FixedDescent();
+  return AdjustTextOverUnderOffsetsForEmHeight(over, under, kAlphabeticBaseline,
+                                               used_font, shape_view);
 }
 
 }  // namespace blink

@@ -27,8 +27,8 @@
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/menu/ui_bundled/browser_action_factory.h"
 #import "ios/chrome/browser/menu/ui_bundled/menu_histograms.h"
-#import "ios/chrome/browser/optimization_guide/model/optimization_guide_service_factory.h"
 #import "ios/chrome/browser/ntp/model/new_tab_page_tab_helper.h"
+#import "ios/chrome/browser/optimization_guide/model/optimization_guide_service_factory.h"
 #import "ios/chrome/browser/policy/model/policy_util.h"
 #import "ios/chrome/browser/shared/model/browser/test/test_browser.h"
 #import "ios/chrome/browser/shared/model/profile/test/test_profile_ios.h"
@@ -36,8 +36,8 @@
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_opener.h"
 #import "ios/chrome/browser/shared/public/commands/activity_service_commands.h"
 #import "ios/chrome/browser/shared/public/commands/browser_coordinator_commands.h"
-#import "ios/chrome/browser/shared/public/commands/bwg_commands.h"
 #import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
+#import "ios/chrome/browser/shared/public/commands/gemini_commands.h"
 #import "ios/chrome/browser/shared/public/commands/page_side_swipe_commands.h"
 #import "ios/chrome/browser/shared/public/commands/popup_menu_commands.h"
 #import "ios/chrome/browser/shared/public/commands/scene_commands.h"
@@ -196,7 +196,7 @@ class ToolbarMediatorTest : public PlatformTest,
         identity_manager,
         builder.Build(base::SysNSStringToUTF8(identity.userEmail)));
 
-    AccountCapabilitiesTestMutator mutator(&account_info.capabilities);
+    AccountCapabilitiesTestMutator mutator(&account_info);
     mutator.set_can_use_model_execution_features(capability);
     mutator.set_can_use_gemini_in_chrome(capability);
 
@@ -619,7 +619,7 @@ TEST_P(ToolbarMediatorTest, TestTabGroupIndicatorVisibilityUpdated) {
 
 // Tests that assistantButtonTapped: calls geminiHandler to start entry flow.
 TEST_P(ToolbarMediatorTest, TestAssistantButtonTapped) {
-  id mock_gemini_handler = OCMProtocolMock(@protocol(BWGCommands));
+  id mock_gemini_handler = OCMProtocolMock(@protocol(GeminiCommands));
   mediator_.geminiHandler = mock_gemini_handler;
 
   OCMExpect([mock_gemini_handler

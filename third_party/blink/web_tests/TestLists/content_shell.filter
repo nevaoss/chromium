@@ -26,7 +26,7 @@ virtual/unload-allowed/wpt_internal/*
 virtual/indexeddb_leveldb/wpt_internal/*
 virtual/cpu-compositing/wpt_internal/*
 virtual/gpu/wpt_internal/*
-virtual/unbounded-element-disabled/wpt_internal/*
+virtual/unbounded-element/wpt_internal/*
 
 # Blocklisted tests fail unexpectedly on headless shell for at least one
 # platform, so continue running them on content shell.
@@ -39,11 +39,7 @@ external/wpt/client-hints/viewport-size/viewport-size-window-different-dimension
 external/wpt/compat/webkit-box-clamp-bottom-border.html
 external/wpt/compat/webkit-box-horizontal-rtl-variants.html
 external/wpt/compat/webkit-box-rtl-flex.html
-external/wpt/console/console-log-large-array.any.html
 external/wpt/content-security-policy/report-hash/*
-external/wpt/cookiestore/cookieStore_subscribe_arguments.https.any.html
-external/wpt/cookies/attributes/attributes-ctl.sub.html
-external/wpt/cookies/attributes/domain.sub.html
 external/wpt/css/compositing/mix-blend-mode/mix-blend-mode-animation.html
 external/wpt/css/compositing/mix-blend-mode/mix-blend-mode-blended-element-interposed.html
 external/wpt/css/compositing/mix-blend-mode/mix-blend-mode-blended-with-transform-and-perspective.html
@@ -412,7 +408,6 @@ external/wpt/density-size-correction/density-corrected-image-in-canvas.html
 external/wpt/dom/events/scrolling/input-text-scroll-event-when-using-arrow-keys.html
 external/wpt/dom/events/scrolling/scrollend-event-fired-after-snap.html
 external/wpt/dom/events/scrolling/scrollend-event-fires-on-visual-viewport.html
-external/wpt/dom/events/scrolling/scrollend-event-fires-to-iframe-window.html
 external/wpt/dom/events/scrolling/wheel-event-transactions-basic.html?include=scroll-over-scrollable-child
 external/wpt/dom/events/scrolling/wheel-event-transactions-basic.html?include=target-basic
 external/wpt/dom/events/scrolling/wheel-event-transactions-target-display-change.html?include=contents

@@ -252,8 +252,9 @@ class SyncedBookmarkTracker {
     TRACKED_MANAGED_NODE = 11,
     MISSING_CLIENT_TAG_HASH = 12,
     MISSING_FAVICON_HASH = 13,
+    INVALID_METADATA = 14,
 
-    kMaxValue = MISSING_FAVICON_HASH
+    kMaxValue = INVALID_METADATA
   };
   // LINT.ThenChange(/tools/metrics/histograms/metadata/sync/enums.xml:SyncBookmarkModelMetadataCorruptionReason)
 

@@ -1665,6 +1665,11 @@ void QuicChromiumClientSession::OnStreamClosed(quic::QuicStreamId stream_id) {
 }
 
 bool QuicChromiumClientSession::ShouldKeepConnectionAlive() const {
+  // If the session is going away, we only keep it alive if there are
+  // outstanding requests (handled by the base class).
+  if (going_away_) {
+    return quic::QuicSpdyClientSessionBase::ShouldKeepConnectionAlive();
+  }
   // `quic::QuicSpdyClientSessionBase::ShouldKeepConnectionAlive` returns true
   // when we have an outstanding request in flight. We want to send PINGs when
   // there is an outstanding request or if `enable_periodic_ping_` has been
@@ -4106,6 +4111,7 @@ void QuicChromiumClientSession::OnCryptoHandshakeComplete() {
   // confirmed if the session is not created on the default network.
   if (migrate_session_on_network_change_v2_ &&
       default_network_ != handles::kInvalidNetworkHandle &&
+      session_key_.proxy_chain().is_direct() &&
       GetCurrentNetwork() != default_network_) {
     current_migration_cause_ = ON_MIGRATE_BACK_TO_DEFAULT_NETWORK;
     StartMigrateBackToDefaultNetworkTimer(

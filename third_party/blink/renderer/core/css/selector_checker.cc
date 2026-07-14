@@ -3790,7 +3790,7 @@ bool SelectorChecker::MatchesActiveViewTransitionPseudoClass(
 
 bool SelectorChecker::MatchesOverscrollTarget(const Element& element) {
   return RuntimeEnabledFeatures::OverscrollGesturesEnabled() &&
-         element.GetDocument().OverscrollCommandTargets().Contains(&element);
+         element.FastHasAttribute(html_names::kOverscrollareaAttr);
 }
 
 bool SelectorChecker::MatchesFocusPseudoClass(

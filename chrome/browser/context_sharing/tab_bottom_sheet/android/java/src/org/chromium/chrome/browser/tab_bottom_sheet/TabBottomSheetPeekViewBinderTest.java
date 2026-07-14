@@ -227,7 +227,7 @@ public class TabBottomSheetPeekViewBinderTest {
                                         .with(
                                                 TabBottomSheetPeekProperties
                                                         .CONTENT_DESCRIPTION_A11Y,
-                                                "Ask Gemini, Gemini in Chrome")
+                                                context -> "Ask Gemini, Gemini in Chrome")
                                         .build();
                         PropertyModelChangeProcessor.create(
                                 model, realView, TabBottomSheetPeekViewBinder::bind);

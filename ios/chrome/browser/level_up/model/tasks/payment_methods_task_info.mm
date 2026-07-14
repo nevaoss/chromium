@@ -15,8 +15,10 @@ class PaymentMethodsTaskInfo : public TaskInfo {
 
   // TaskInfo implementation.
   TaskType GetTaskType() const override { return TaskType::kPaymentMethods; }
-  int GetTitleId() const override { return 0; }
-  int GetTaskDescriptionId() const override { return 0; }
+  std::string GetTitle() const override { return "Manage payment methods"; }
+  std::string GetTaskDescription() const override {
+    return "Add new payment methods or edit saved ones to check out faster";
+  }
   std::string GetIconSymbolName() const override {
     return base::SysNSStringToUTF8(kCreditCardSymbol);
   }
@@ -27,7 +29,7 @@ class PaymentMethodsTaskInfo : public TaskInfo {
   std::string GetTriggerUserAction() const override {
     return "AutofillCreditCardsViewed";
   }
-  base::RepeatingClosure GetNavigationAction() const override {
+  TaskInfo::NavigationAction GetNavigationAction() const override {
     return base::DoNothing();
   }
 };

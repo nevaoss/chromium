@@ -121,14 +121,14 @@ class BaseActionSanitizer():
         self.target = copy.deepcopy(target)
         if arch:
             # Merge arch specific attributes
-            self.target.sources |= arch.sources
-            self.target.inputs |= arch.inputs
-            self.target.outputs |= arch.outputs
+            self.target.common.sources |= arch.sources
+            self.target.common.inputs |= arch.inputs
+            self.target.common.outputs |= arch.outputs
             self.target.script = self.target.script or arch.script
-            self.target.args = self.target.args or arch.args
-            self.target.response_file_contents = \
-              self.target.response_file_contents or arch.response_file_contents
-        self.args = CommandLineUtility(self.target.args or [])
+            self.target.common.args = self.target.common.args or arch.args
+            self.target.common.response_file_contents = \
+              self.target.common.response_file_contents or arch.response_file_contents
+        self.args = CommandLineUtility(self.target.common.args or [])
 
     def get_name(self):
         return soong_ast.label_to_module_name(self.target.name, self.context)
@@ -156,7 +156,8 @@ class BaseActionSanitizer():
     def get_pre_cmd(self):
         pre_cmd = []
         out_dirs = [
-            out[:out.rfind("/")] for out in self.target.outputs if "/" in out
+            out[:out.rfind("/")] for out in self.target.common.outputs
+            if "/" in out
         ]
         # Sort the list to make the output deterministic.
         for out_dir in sorted(set(out_dirs)):
@@ -170,8 +171,9 @@ class BaseActionSanitizer():
         # shoves a $() macro in an arg, we still run that through shell quoting,
         # which does preserve the "$" but that's mostly luck. We should design
         # a better mechanism for handling "$" and $() macros.
-        return (([f"echo {shlex.quote(self.target.response_file_contents)} |"]
-                 if self.target.response_file_contents else []) +
+        return (([
+            f"echo {shlex.quote(self.target.common.response_file_contents)} |"
+        ] if self.target.common.response_file_contents else []) +
                 [f"$(location {gn_utils.label_to_path(self.target.script)})"] +
                 [shlex.quote(arg) for arg in self.args.get_args()])
 
@@ -185,13 +187,13 @@ class BaseActionSanitizer():
         return self.get_pre_cmd() + self.get_base_cmd()
 
     def get_outputs(self):
-        return self.target.outputs
+        return self.target.common.outputs
 
     def get_srcs(self):
         # gn treats inputs and sources for actions equally.
         # soong only supports source files inside srcs, non-source files are added as
         # tool_files dependency.
-        files = self.target.sources.union(self.target.inputs)
+        files = self.target.common.sources.union(self.target.common.inputs)
         return {
             gn_utils.label_to_path(file)
             for file in files if common.is_supported_source_file(file)
@@ -204,7 +206,7 @@ class BaseActionSanitizer():
         # gn treats inputs and sources for actions equally.
         # soong only supports source files inside srcs, non-source files are added as
         # tool_files dependency.
-        files = self.target.sources.union(self.target.inputs)
+        files = self.target.common.sources.union(self.target.common.inputs)
         tool_files = {
             gn_utils.label_to_path(file)
             # Files that starts with "out/" are usually an output of another action.
@@ -233,7 +235,7 @@ class BaseActionSanitizer():
         pass
 
     def get_deps(self):
-        return self.target.deps
+        return self.target.common.deps
 
     def sanitize(self):
         self._sanitize_args()
@@ -242,7 +244,8 @@ class BaseActionSanitizer():
     # Whether this target generates header files
     def is_header_generated(self):
         return any(
-            os.path.splitext(it)[1] == '.h' for it in self.target.outputs)
+            os.path.splitext(it)[1] == '.h'
+            for it in self.target.common.outputs)
 
 
 class GenerateCanonicalLocalesListSanitizer(BaseActionSanitizer):
@@ -428,7 +431,7 @@ class JavaJniGeneratorSanitizer(JniGeneratorSanitizer):
             re.sub('^jni_headers/', '', out)
             for out in super().get_outputs()
         }
-        self.target.outputs = [
+        self.target.common.outputs = [
             out for out in outputs if out.endswith(".srcjar")
         ]
         return outputs
@@ -457,8 +460,8 @@ class JniRegistrationGeneratorSanitizer(BaseActionSanitizer):
         return set(src for src in all_srcs if src.endswith(".java"))
 
     def _sanitize_inputs(self):
-        self.target.inputs = [
-            file for file in self.target.inputs
+        self.target.common.inputs = [
+            file for file in self.target.common.inputs
             if not file.startswith('//out/')
         ]
 
@@ -689,7 +692,7 @@ class ProtocJavaSanitizer(BaseActionSanitizer):
         # build protoc from source from //third_party/protobuf:protoc. We don't
         # need to add that as an input because it's already a tool dependency in
         # the generated module.
-        self.target.inputs.discard(
+        self.target.common.inputs.discard(
             "//third_party/android_build_tools/protoc/cipd/protoc")
 
     def get_tools(self):
@@ -752,7 +755,7 @@ def get_action_sanitizer(gn, target, gn_type, arch, is_test_target, context):
                 # with all  java sources found under `generate_jni` targets and fill
                 # the C++ version with the exact files.
                 if is_test_target:
-                    target.sources.update(gn.jni_java_sources)
+                    target.common.sources.update(gn.jni_java_sources)
                 return JavaJniRegistrationGeneratorSanitizer(
                     target, arch, is_test_target, context)
             return JniRegistrationGeneratorSanitizer(target, arch,

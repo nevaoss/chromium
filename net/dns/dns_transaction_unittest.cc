@@ -707,7 +707,7 @@ class DnsTransactionTestBase : public testing::Test {
       CHECK_EQ(use_post, config_.doh_config.servers()[0].use_post());
     } else {
       CHECK_LE(num_doh_servers, 255u);
-      std::vector<string> templates;
+      std::vector<std::string> templates;
       templates.reserve(num_doh_servers);
       for (size_t i = 0; i < num_doh_servers; ++i) {
         templates.push_back(URLRequestMockDohJob::GetMockHttpsUrl(

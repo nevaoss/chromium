@@ -9,14 +9,14 @@
 #include "build/buildflag.h"
 #include "chrome/browser/notifications/scheduler/public/notification_data.h"
 #include "chrome/browser/notifications/scheduler/public/notification_scheduler_constant.h"
-#include "chrome/browser/notifications/scheduler/public/notification_scheduler_types.h"
+#include "chrome/browser/tips/core/tips_types.h"
 
-namespace notifications {
+namespace tips {
 
 // Constructs and returns the NotificationData object for the requested feature.
 // This mainly contains UI information and an enum representing the feature
 // type. |feature_type| the feature in question to create a data object for.
-NotificationData GetTipsNotificationData(
+notifications::NotificationData GetTipsNotificationData(
     TipsNotificationsFeatureType feature_type);
 
 #if BUILDFLAG(IS_ANDROID)
@@ -26,6 +26,6 @@ NotificationData GetTipsNotificationData(
 std::string GetFeatureTypePref(TipsNotificationsFeatureType feature_type);
 #endif  // BUILDFLAG(IS_ANDROID)
 
-}  // namespace notifications
+}  // namespace tips
 
 #endif  // CHROME_BROWSER_TIPS_CORE_TIPS_UTILS_H_

@@ -100,6 +100,9 @@ class CC_EXPORT ProxyMain : public Proxy {
   CommitPipelineStage final_pipeline_stage() const {
     return final_pipeline_stage_;
   }
+  bool has_sent_urgent_commit_request() const {
+    return has_sent_urgent_commit_request_;
+  }
 
  private:
   // Proxy implementation.
@@ -110,7 +113,7 @@ class CC_EXPORT ProxyMain : public Proxy {
   void SetShouldWarmUp() override;
   void SetNeedsAnimate(BeginMainFrameReason, bool urgent) override;
   void SetNeedsUpdateLayers() override;
-  void SetNeedsCommit() override;
+  void SetNeedsCommit(bool urgent) override;
   void SetNeedsRedraw(const gfx::Rect& damage_rect) override;
   void SetTargetLocalSurfaceId(
       const viz::LocalSurfaceId& target_local_surface_id) override;

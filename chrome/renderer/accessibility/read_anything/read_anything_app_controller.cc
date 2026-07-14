@@ -3049,12 +3049,12 @@ void ReadAnythingAppController::UpdateContent(const std::string& title,
     model_.set_next_distillation_method(
         ReadAnythingAppModel::DistillationMethod::kScreen2x);
 
-    // Only attempt distillation if we have an active tree, otherwise only
-    // update the model and wait for event to distill.
+    // Immediately attempt distillation. If there's not yet an active tree,
+    // distillation will be attempted after the event processes. However,
+    // attempting distillation immediately will allow distillation failures
+    // to register.
     model_.set_requires_distillation(true);
-    if (model_.ContainsActiveTree()) {
-      DistillNewTree();
-    }
+    DistillNewTree();
     return;
   }
 

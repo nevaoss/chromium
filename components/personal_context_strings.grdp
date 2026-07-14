@@ -48,6 +48,9 @@
   <message name="IDS_PERSONAL_CONTEXT_AUTOFILL_SETTINGS_TITLE_ANDROID" desc="" formatter_data="android_java" translateable="false">
     Lorem ipsum
   </message>
+  <message name="IDS_PERSONAL_CONTEXT_AUTOFILL_SETTINGS_SUMMARY_ANDROID" desc="" formatter_data="android_java" translateable="false">
+    Lorem ipsum dolor sit
+  </message>
   <message name="IDS_PERSONAL_CONTEXT_AUTOFILL_SETTINGS_SWITCH_TITLE_ANDROID" desc="" formatter_data="android_java" translateable="false">
     Lorem ipsum dolor sit
   </message>

@@ -72,8 +72,11 @@ class FirstRunDefaultBrowserPixelTest
  public:
   FirstRunDefaultBrowserPixelTest()
       : ProfilesPixelTestBaseT<UiBrowserTest>(GetParam().pixel_test_param) {
-    scoped_feature_list_.InitWithFeatureState(switches::kFirstRunDesktopRefresh,
-                                              GetParam().use_refreshed_ui);
+    scoped_feature_list_.InitWithFeatureStates(
+        {{switches::kFirstRunDesktopRefresh, GetParam().use_refreshed_ui},
+         // Explicitly disable the revamp flag as this UI is being deprecated
+         // with this flag.
+         {switches::kFirstRunDesktopRevamp, false}});
   }
 
   ~FirstRunDefaultBrowserPixelTest() override {

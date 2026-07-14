@@ -19,9 +19,11 @@ extern NSString* const kAIMSRPDebuggerURLViewControllerAccessibilityIdentifier;
 extern NSString* const
     kAIMSRPDebuggerURLViewControllerCloseButtonAccessibilityIdentifier;
 extern NSString* const
-    kAIMSRPDebuggerURLViewControllerCopyButtonAccessibilityIdentifier;
-extern NSString* const
     kAIMSRPDebuggerURLViewControllerTextViewAccessibilityIdentifier;
+extern NSString* const
+    kAIMSRPDebuggerURLViewControllerEditButtonAccessibilityIdentifier;
+extern NSString* const
+    kAIMSRPDebuggerURLViewControllerDoneButtonAccessibilityIdentifier;
 
 // Duration for sheet detent update animations.
 extern const CGFloat kSheetDetentAnimationDuration;

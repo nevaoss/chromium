@@ -56,6 +56,7 @@ import org.robolectric.shadows.ShadowLooper;
 import org.chromium.base.CallbackUtils;
 import org.chromium.base.UnownedUserDataHost;
 import org.chromium.base.supplier.ObservableSuppliers;
+import org.chromium.base.supplier.OneshotSupplierImpl;
 import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
@@ -97,6 +98,7 @@ import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.share.ShareDelegate;
 import org.chromium.chrome.browser.tab.MediaState;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.TabObscuringHandler;
 import org.chromium.chrome.browser.tab_group_sync.TabGroupSyncServiceFactory;
 import org.chromium.chrome.browser.tab_ui.ActionConfirmationManager;
 import org.chromium.chrome.browser.tab_ui.TabContentManager;
@@ -108,6 +110,7 @@ import org.chromium.chrome.browser.tabstrip.StripVisibilityState;
 import org.chromium.chrome.browser.tasks.tab_management.TabUiThemeUtil;
 import org.chromium.chrome.browser.toolbar.ToolbarManager;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
+import org.chromium.chrome.browser.ui.side_ui.SideUiStateProvider;
 import org.chromium.chrome.browser.ui.system.StatusBarColorController;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
 import org.chromium.components.browser_ui.desktop_windowing.AppHeaderState;
@@ -182,11 +185,14 @@ public class StripLayoutHelperManagerTest {
     @Mock private SnackbarManager mSnackbarManager;
     @Mock private GlicKeyedService mGlicKeyedService;
     @Mock private TabBookmarker mTabBookmarker;
+    @Mock private TabObscuringHandler mTabObscuringHandler;
     @Mock private ActivityResultTracker mActivityResultTracker;
     @Mock private ActorKeyedService mActorKeyedService;
     @Mock private PrefService mPrefService;
     @Mock private UserPrefs.Natives mUserPrefsJniMock;
     @Mock private PrefChangeRegistrar.Natives mPrefChangeRegistrarJniMock;
+    private final OneshotSupplierImpl<SideUiStateProvider> mSideUiStateProviderSupplier =
+            new OneshotSupplierImpl<>();
     @Captor private ArgumentCaptor<List<Rect>> mSystemExclusionRectCaptor;
 
     private final SettableMonotonicObservableSupplier<LayerTitleCache> mLayerTitleCacheSupplier =
@@ -297,7 +303,10 @@ public class StripLayoutHelperManagerTest {
                         mBackPressManager,
                         mSnackbarManager,
                         mActivityResultTracker,
-                        (preventClose, invocationSource) -> {});
+                        (preventClose, invocationSource) -> {},
+                        mSideUiStateProviderSupplier,
+                        mTabObscuringHandler);
+        ShadowLooper.idleMainLooper();
         mStripLayoutHelperManager.setTabStripTreeProviderForTesting(mTabStripTreeProvider);
         mStripLayoutHelperManager.setTabModelSelector(mTabModelSelector, mTabCreatorManager);
         mStripLayoutHelperManager.setIsTabStripHiddenByHeightTransition(false);
@@ -1501,5 +1510,26 @@ public class StripLayoutHelperManagerTest {
         // Advance clock and run delayed tasks to allow TabLoadTracker's 100ms delay to expire.
         ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
         assertFalse("Tab should stop loading after different-document stop.", stripTab.isLoading());
+    }
+
+    @Test
+    public void testUpdateObscured() {
+        List<VirtualView> views = new ArrayList<>();
+        mStripLayoutHelperManager.getVirtualViews(views);
+        assertFalse("Should have virtual views initially", views.isEmpty());
+
+        mStripLayoutHelperManager.updateObscured(
+                /* obscureTabContent= */ false, /* obscureToolbar= */ true);
+
+        views.clear();
+        mStripLayoutHelperManager.getVirtualViews(views);
+        assertTrue("Should have no virtual views when obscured", views.isEmpty());
+
+        mStripLayoutHelperManager.updateObscured(
+                /* obscureTabContent= */ false, /* obscureToolbar= */ false);
+
+        views.clear();
+        mStripLayoutHelperManager.getVirtualViews(views);
+        assertFalse("Should have virtual views again after unobscured", views.isEmpty());
     }
 }

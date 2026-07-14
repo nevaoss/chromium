@@ -516,7 +516,8 @@ interface LocalFrameHost {
   RunBeforeUnloadConfirm(bool is_reload) => (bool success);
 
   // Notifies that the urls for the favicon of a site has been determined.
-  UpdateFaviconURL(array<FaviconURL> favicon_urls);
+  UpdateFaviconURL(array<FaviconURL> favicon_urls,
+                   FaviconUpdateReason reason);
 
   // Initiates a download based on user actions like 'ALT+click'.
   DownloadURL(DownloadURLParams params);

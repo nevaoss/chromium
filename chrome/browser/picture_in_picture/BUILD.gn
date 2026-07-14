@@ -103,6 +103,7 @@ source_set("impl") {
     "//chrome/browser/permissions",
     "//chrome/browser/profiles:profile",
     "//chrome/browser/safe_browsing",
+    "//chrome/browser/ui:recently_audible_helper",
     "//chrome/browser/ui/navigator",
     "//components/content_settings/browser",
     "//components/content_settings/core/browser",
@@ -177,6 +178,10 @@ source_set("impl") {
 
   if (use_ozone) {
     deps += [ "//ui/ozone" ]
+  }
+
+  if (!is_android) {
+    deps += [ "//chrome/browser/ui:browser_tab_strip_tracker" ]
   }
 }
 
@@ -262,6 +267,7 @@ if (!is_android) {
       "//chrome/browser/preloading:test_support",
       "//chrome/browser/profiles:profile",
       "//chrome/browser/ui",
+      "//chrome/browser/ui:recently_audible_helper",
       "//chrome/browser/ui:ui_features",
       "//chrome/browser/ui/hats:test_support",
       "//chrome/browser/ui/views/page_info",

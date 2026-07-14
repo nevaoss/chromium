@@ -12,10 +12,12 @@
 #include "base/test/scoped_feature_list.h"
 #include "base/test/test_future.h"
 #include "build/build_config.h"
+#include "chrome/browser/content_settings/host_content_settings_map_factory.h"
 #include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_window/test/mock_browser_window_interface.h"
 #include "chrome/test/base/chrome_render_view_host_test_harness.h"
+#include "components/content_settings/core/browser/host_content_settings_map.h"
 #include "components/shared_highlighting/core/common/shared_highlighting_features.h"
 #include "components/shared_highlighting/core/common/shared_highlighting_metrics.h"
 #include "components/tabs/public/mock_tab_interface.h"
@@ -161,9 +163,10 @@ class GlicSelectionObserverTest : public ChromeRenderViewHostTestHarness {
   TestGlicSelectionObserver* GetObserver() { return observer_.get(); }
 
   bool ShouldShowSelectionWidget() {
-    return static_cast<GlicSelectionObserver*>(observer_.get())
-        ->ShouldShowSelectionWidget();
+    return observer_->ShouldShowSelectionWidget();
   }
+
+  void CallOnHideForThisSite() { observer_->OnHideForThisSite(); }
 
   void CallOnLinkGenerated(
       const GURL& fallback_url,
@@ -798,7 +801,8 @@ TEST_F(GlicSelectionObserverTest, SelectionShowOnShiftClick) {
 TEST_F(GlicSelectionObserverTest, UpdateSelectionStatePanelShowingWithWidget) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeatureWithParameters(
-      features::kGlicSelectionPrompt, {{"use_widget", "true"}});
+      features::kGlicSelectionPrompt,
+      {{features::kGlicSelectionPromptUseWidget.name, "true"}});
 
   auto* observer = GetObserver();
   ASSERT_TRUE(observer);
@@ -825,7 +829,8 @@ TEST_F(GlicSelectionObserverTest, UpdateSelectionStatePanelShowingWithWidget) {
 TEST_F(GlicSelectionObserverTest, UpdateSelectionStatePanelShowingNoWidget) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeatureWithParameters(
-      features::kGlicSelectionPrompt, {{"use_widget", "false"}});
+      features::kGlicSelectionPrompt,
+      {{features::kGlicSelectionPromptUseWidget.name, "false"}});
 
   auto* observer = GetObserver();
   ASSERT_TRUE(observer);
@@ -870,6 +875,91 @@ TEST_F(GlicSelectionObserverTest,
 
   EXPECT_FALSE(observer->show_selection_affordance_called());
   EXPECT_FALSE(observer->send_context_called());
+}
+
+TEST_F(GlicSelectionObserverTest, ContentSettingsBlockSelectionWidget) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(
+      features::kGlicSelectionPrompt,
+      {{features::kGlicSelectionEnableSiteSettings.name, "true"}});
+
+  auto* observer = GetObserver();
+  ASSERT_TRUE(observer);
+
+  NavigateAndCommit(GURL("https://example.com"));
+
+  Profile* profile =
+      Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+  HostContentSettingsMap* settings_map =
+      HostContentSettingsMapFactory::GetForProfile(profile);
+
+  // Default setting is ALLOW, so ShouldShowSelectionWidget() should be true.
+  EXPECT_TRUE(ShouldShowSelectionWidget());
+
+  // Block the site.
+  settings_map->SetContentSettingDefaultScope(
+      web_contents()->GetLastCommittedURL(), GURL(),
+      ContentSettingsType::INLINE_CUE_MENU, CONTENT_SETTING_BLOCK);
+  EXPECT_FALSE(ShouldShowSelectionWidget());
+
+  // Reset to ALLOW.
+  settings_map->SetContentSettingDefaultScope(
+      web_contents()->GetLastCommittedURL(), GURL(),
+      ContentSettingsType::INLINE_CUE_MENU, CONTENT_SETTING_ALLOW);
+  EXPECT_TRUE(ShouldShowSelectionWidget());
+
+  // Call OnHideForThisSite() which should write BLOCK.
+  CallOnHideForThisSite();
+  EXPECT_FALSE(ShouldShowSelectionWidget());
+  EXPECT_EQ(CONTENT_SETTING_BLOCK, settings_map->GetContentSetting(
+                                       web_contents()->GetLastCommittedURL(),
+                                       web_contents()->GetLastCommittedURL(),
+                                       ContentSettingsType::INLINE_CUE_MENU));
+
+  // Navigate to another site and verify it is NOT blocked.
+  NavigateAndCommit(GURL("https://google.com"));
+  EXPECT_TRUE(ShouldShowSelectionWidget());
+}
+
+TEST_F(GlicSelectionObserverTest, ContentSettingsDisabledBlockSelectionWidget) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(
+      features::kGlicSelectionPrompt,
+      {{features::kGlicSelectionEnableSiteSettings.name, "false"}});
+
+  auto* observer = GetObserver();
+  ASSERT_TRUE(observer);
+
+  NavigateAndCommit(GURL("https://example.com"));
+
+  Profile* profile =
+      Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+  HostContentSettingsMap* settings_map =
+      HostContentSettingsMapFactory::GetForProfile(profile);
+
+  // Set the site setting to BLOCK directly in the map.
+  settings_map->SetContentSettingDefaultScope(
+      web_contents()->GetLastCommittedURL(), GURL(),
+      ContentSettingsType::INLINE_CUE_MENU, CONTENT_SETTING_BLOCK);
+
+  // Since feature is disabled, ShouldShowSelectionWidget() should STILL return
+  // true despite the BLOCK setting.
+  EXPECT_TRUE(ShouldShowSelectionWidget());
+
+  // Reset setting to ALLOW.
+  settings_map->SetContentSettingDefaultScope(
+      web_contents()->GetLastCommittedURL(), GURL(),
+      ContentSettingsType::INLINE_CUE_MENU, CONTENT_SETTING_ALLOW);
+
+  // Call OnHideForThisSite(). It should set is_hidden_on_current_page_ to true
+  // (so ShouldShowSelectionWidget() becomes false), but it should NOT write
+  // BLOCK to the map.
+  CallOnHideForThisSite();
+  EXPECT_FALSE(ShouldShowSelectionWidget());
+  EXPECT_EQ(CONTENT_SETTING_ALLOW, settings_map->GetContentSetting(
+                                       web_contents()->GetLastCommittedURL(),
+                                       web_contents()->GetLastCommittedURL(),
+                                       ContentSettingsType::INLINE_CUE_MENU));
 }
 
 }  // namespace glic

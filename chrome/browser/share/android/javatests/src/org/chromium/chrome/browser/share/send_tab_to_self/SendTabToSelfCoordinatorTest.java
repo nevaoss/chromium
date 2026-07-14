@@ -51,10 +51,10 @@ import org.chromium.base.ThreadUtils;
 import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.CriteriaHelper;
 import org.chromium.base.test.util.DisableIf;
-import org.chromium.base.test.util.DisableLeakChecks;
 import org.chromium.base.test.util.DisabledTest;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
+import org.chromium.base.test.util.HistogramWatcher;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ChromeTabbedActivity;
 import org.chromium.chrome.browser.document.ChromeLauncherActivity;
@@ -76,10 +76,6 @@ import org.chromium.ui.base.WindowAndroid;
 /** Tests for SendTabToSelfCoordinator */
 @RunWith(ChromeJUnit4ClassRunner.class)
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
-@DisableLeakChecks({
-    "crbug.com/512493358 (SigninManagerImpl)",
-    "crbug.com/512492382 (SigninManagerImpl)"
-})
 public class SendTabToSelfCoordinatorTest {
     @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
     @Rule public SyncTestRule mSyncTestRule = new SyncTestRule();
@@ -150,9 +146,16 @@ public class SendTabToSelfCoordinatorTest {
                                         HTTP_URL.getSpec())
                                 .equals(EntryPointDisplayReason.OFFER_FEATURE));
 
+        var histogramWatcher =
+                HistogramWatcher.newBuilder()
+                        // 2 corresponds to SendTabToSelfDeviceCount::kOneDevice
+                        .expectIntRecord("Sharing.SendTabToSelf.TargetDeviceCount", 2)
+                        .build();
+
         buildAndShowCoordinator();
 
         onView(withId(R.id.device_picker_list)).check(matches(isDisplayed()));
+        histogramWatcher.assertExpected();
     }
 
     @Test
@@ -192,6 +195,17 @@ public class SendTabToSelfCoordinatorTest {
     public void testShowSigninPromoIfSignedOut_activitylessSignin() {
         // An account must be added to the device so the promo is offered.
         mSyncTestRule.addTestAccount();
+        // Two samples are expected because:
+        // 1. Initial invocation while signed out records 0 (kNoTargetDevicesBecauseSignedOut).
+        // 2. Sign-in completion automatically triggers a second show() invocation, which
+        //    records 2 (kOneDevice) since 1 test device is active.
+        var histogramWatcher =
+                HistogramWatcher.newBuilder()
+                        // 0 corresponds to SendTabToSelfDeviceCount::kNoTargetDevicesBecauseSignedOut
+                        .expectIntRecord("Sharing.SendTabToSelf.TargetDeviceCount", 0)
+                        // 2 corresponds to SendTabToSelfDeviceCount::kOneDevice
+                        .expectIntRecord("Sharing.SendTabToSelf.TargetDeviceCount", 2)
+                        .build();
         buildAndShowCoordinator();
 
         // Check the promo is displayed, in particular the sign-in button.
@@ -202,6 +216,7 @@ public class SendTabToSelfCoordinatorTest {
                 .perform(click());
 
         onView(withId(R.id.device_picker_list)).check(matches(isDisplayed()));
+        histogramWatcher.assertExpected();
     }
 
     @Test
@@ -261,6 +276,12 @@ public class SendTabToSelfCoordinatorTest {
                                         HTTP_URL.getSpec())
                                 .equals(EntryPointDisplayReason.OFFER_FEATURE));
 
+        var histogramWatcher =
+                HistogramWatcher.newBuilder()
+                        // 4 corresponds to SendTabToSelfDeviceCount::kThreeDevices
+                        .expectIntRecord("Sharing.SendTabToSelf.TargetDeviceCount", 4)
+                        .build();
+
         buildAndShowCoordinator();
 
         onView(withId(R.id.sheet_item_list)).check(matches(isDisplayed()));
@@ -290,6 +311,7 @@ public class SendTabToSelfCoordinatorTest {
         // Verify the Send button is still enabled and proceed
         onView(withId(R.id.send_button)).check(matches(isEnabled()));
         onView(withId(R.id.send_button)).perform(click());
+        histogramWatcher.assertExpected();
     }
 
     @Test
@@ -386,7 +408,8 @@ public class SendTabToSelfCoordinatorTest {
                                     SigninAndHistorySyncActivityLauncherImpl.get(),
                                     activity.getActivityResultTracker(),
                                     activity.getModalDialogManagerSupplier(),
-                                    activity.getSnackbarManager());
+                                    activity.getSnackbarManager(),
+                                    ShareEntryPoint.SHARE_SHEET);
                     coordinator.show();
                 });
     }

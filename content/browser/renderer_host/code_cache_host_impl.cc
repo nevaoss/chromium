@@ -223,7 +223,7 @@ void DidGenerateCacheableMetadataInCacheStorageOnUI(
     const blink::StorageKey& code_cache_storage_key,
     storage::mojom::CacheStorageControl* cache_storage_control_for_testing,
     mojo::ReportBadMessageCallback bad_message_callback) {
-  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  CHECK_CURRENTLY_ON(BrowserThread::UI, base::NotFatalUntil::M152);
   auto* render_process_host = RenderProcessHost::FromID(render_process_id);
   if (!render_process_host)
     return;
@@ -665,7 +665,8 @@ class LocalCodeCacheHost : public CodeCacheWithSourceKeyedCacheHost {
       return generated_code_cache_context()->generated_js_code_cache();
     }
 
-    DCHECK_EQ(blink::mojom::CodeCacheType::kWebAssembly, cache_type);
+    CHECK_EQ(blink::mojom::CodeCacheType::kWebAssembly, cache_type,
+             base::NotFatalUntil::M152);
     return generated_code_cache_context()->generated_wasm_code_cache();
   }
 

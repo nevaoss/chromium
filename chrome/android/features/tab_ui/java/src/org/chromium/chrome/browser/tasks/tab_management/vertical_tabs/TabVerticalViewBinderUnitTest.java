@@ -26,7 +26,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.test.filters.SmallTest;
@@ -43,6 +42,9 @@ import org.robolectric.shadows.ShadowLooper;
 import org.chromium.base.Callback;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.DisableFeatures;
+import org.chromium.chrome.browser.actor.ui.ActorUiTabController.UiTabState;
+import org.chromium.chrome.browser.actor.ui.TabIndicatorStatus;
+import org.chromium.chrome.browser.tab.MediaState;
 import org.chromium.chrome.browser.tab_ui.TabListFaviconProvider.TabFavicon;
 import org.chromium.chrome.browser.tab_ui.TabListFaviconProvider.TabFaviconFetcher;
 import org.chromium.chrome.browser.tasks.tab_management.TabActionButtonData;
@@ -60,17 +62,16 @@ import org.chromium.ui.modelutil.PropertyModel;
 import java.util.concurrent.TimeUnit;
 
 /** Unit tests for {@link TabVerticalViewBinder}. */
-// TODO(crbug.com/515147675): Create an instrumented RenderTest class once Pinned Tabs and
-//  Tab Group Spines are implemented, to capture pixel snapshots of the rows in all visual states
-//  (resting, selected, incognito, pinned, etc.).
 @RunWith(BaseRobolectricTestRunner.class)
 public class TabVerticalViewBinderUnitTest {
     @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
 
-    private LinearLayout mItemView;
+    private ViewGroup mItemView;
     private TextView mTitleView;
     private ImageView mFaviconView;
     private ImageView mCloseButton;
+    private ImageView mMediaIndicatorView;
+    private View mIndicatorView;
     private PropertyModel mModel;
 
     @Before
@@ -78,12 +79,14 @@ public class TabVerticalViewBinderUnitTest {
         Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
         activity.setTheme(R.style.Theme_BrowserUI_DayNight);
         mItemView =
-                (LinearLayout)
+                (ViewGroup)
                         LayoutInflater.from(activity)
                                 .inflate(R.layout.vertical_tab_item, null, false);
         mTitleView = mItemView.findViewById(R.id.tab_title);
         mFaviconView = mItemView.findViewById(R.id.tab_favicon);
         mCloseButton = mItemView.findViewById(R.id.action_button);
+        mMediaIndicatorView = mItemView.findViewById(R.id.media_indicator_icon);
+        mIndicatorView = mItemView.findViewById(R.id.ai_indicator);
 
         mModel =
                 new PropertyModel.Builder(TabProperties.ALL_KEYS_VERTICAL_TAB)
@@ -98,6 +101,39 @@ public class TabVerticalViewBinderUnitTest {
         TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.TITLE);
 
         assertEquals("Google", mTitleView.getText());
+    }
+
+    @Test
+    @SmallTest
+    public void testBindActorIndicator() {
+        mModel.set(
+                TabProperties.ACTOR_UI_STATE,
+                new UiTabState(0, null, null, TabIndicatorStatus.DYNAMIC, false));
+        TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.ACTOR_UI_STATE);
+        assertEquals(View.VISIBLE, mIndicatorView.getVisibility());
+
+        mModel.set(
+                TabProperties.ACTOR_UI_STATE,
+                new UiTabState(0, null, null, TabIndicatorStatus.STATIC, false));
+        TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.ACTOR_UI_STATE);
+        assertEquals(View.VISIBLE, mIndicatorView.getVisibility());
+
+        mModel.set(
+                TabProperties.ACTOR_UI_STATE,
+                new UiTabState(0, null, null, TabIndicatorStatus.NONE, false));
+        TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.ACTOR_UI_STATE);
+        assertEquals(View.GONE, mIndicatorView.getVisibility());
+    }
+
+    @Test
+    @SmallTest
+    public void testBindContentDescription() {
+        TextResolver resolver = context -> "Accessibility Tab Description";
+        mModel.set(TabProperties.CONTENT_DESCRIPTION_TEXT_RESOLVER, resolver);
+        TabVerticalViewBinder.bindTab(
+                mModel, mItemView, TabProperties.CONTENT_DESCRIPTION_TEXT_RESOLVER);
+
+        assertEquals("Accessibility Tab Description", mItemView.getContentDescription().toString());
     }
 
     @Test
@@ -155,6 +191,20 @@ public class TabVerticalViewBinderUnitTest {
 
         assertEquals(View.GONE, mFaviconView.getVisibility());
         assertNull(mFaviconView.getDrawable());
+    }
+
+    @Test
+    @SmallTest
+    public void testBindMediaIndicator() {
+        mModel.set(TabProperties.MEDIA_INDICATOR, MediaState.AUDIBLE);
+        TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.MEDIA_INDICATOR);
+
+        assertEquals(View.VISIBLE, mMediaIndicatorView.getVisibility());
+
+        mModel.set(TabProperties.MEDIA_INDICATOR, MediaState.NONE);
+        TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.MEDIA_INDICATOR);
+
+        assertEquals(View.GONE, mMediaIndicatorView.getVisibility());
     }
 
     @Test
@@ -400,6 +450,7 @@ public class TabVerticalViewBinderUnitTest {
                         LayoutInflater.from(activity)
                                 .inflate(R.layout.vertical_tab_group_header, null, false);
         TextView titleView = headerView.findViewById(R.id.group_title);
+        ImageView expandChevron = headerView.findViewById(R.id.expand_chevron);
 
         // 1. Test Title binding
         mModel.set(TabProperties.TITLE, "My Research Group");
@@ -417,10 +468,16 @@ public class TabVerticalViewBinderUnitTest {
         ColorStateList tintList = headerView.getBackgroundTintList();
         assertNotNull("Background tint list should be set", tintList);
 
-        int expectedColor =
+        int expectedBackgroundColor =
                 TabGroupColorPickerUtils.getTabGroupColorPickerItemColor(
                         activity, TabGroupColorId.RED, /* isIncognito= */ false);
-        assertEquals(expectedColor, tintList.getDefaultColor());
+        assertEquals(expectedBackgroundColor, tintList.getDefaultColor());
+
+        int expectedForegroundColor =
+                TabGroupColorPickerUtils.getTabGroupColorPickerItemTextColor(
+                        activity, TabGroupColorId.RED, /* isIncognito= */ false);
+        assertEquals(expectedForegroundColor, titleView.getCurrentTextColor());
+        assertEquals(expectedForegroundColor, expandChevron.getImageTintList().getDefaultColor());
 
         // 3. Test Colors tinting in Incognito mode
         PropertyModel incognitoModel =
@@ -433,10 +490,18 @@ public class TabVerticalViewBinderUnitTest {
 
         tintList = headerView.getBackgroundTintList();
         assertNotNull("Background tint list should be set in Incognito", tintList);
-        int expectedIncognitoColor =
+        int expectedIncognitoBackgroundColor =
                 TabGroupColorPickerUtils.getTabGroupColorPickerItemColor(
                         activity, TabGroupColorId.RED, /* isIncognito= */ true);
-        assertEquals(expectedIncognitoColor, tintList.getDefaultColor());
+        assertEquals(expectedIncognitoBackgroundColor, tintList.getDefaultColor());
+
+        int expectedIncognitoForegroundColor =
+                TabGroupColorPickerUtils.getTabGroupColorPickerItemTextColor(
+                        activity, TabGroupColorId.RED, /* isIncognito= */ true);
+        assertEquals(expectedIncognitoForegroundColor, titleView.getCurrentTextColor());
+        assertEquals(
+                expectedIncognitoForegroundColor,
+                expandChevron.getImageTintList().getDefaultColor());
     }
 
     @Test
@@ -517,5 +582,133 @@ public class TabVerticalViewBinderUnitTest {
         mModel.set(TabProperties.TAB_GROUP_ID, null);
         TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.TAB_GROUP_ID);
         assertEquals(0, lp.getMarginStart());
+    }
+
+    @Test
+    @SmallTest
+    public void testBindLoadingState_WithFavicon() {
+        View spinner = mItemView.findViewById(R.id.tab_loading_spinner);
+        assertNotNull(spinner);
+
+        TabFaviconFetcher mockFetcher1 = mock(TabFaviconFetcher.class);
+        mModel.set(TabProperties.FAVICON_FETCHER, mockFetcher1);
+
+        // 1. Loading
+        mModel.set(TabProperties.IS_LOADING, true);
+        TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.IS_LOADING);
+        assertEquals(View.VISIBLE, spinner.getVisibility());
+        assertEquals(View.INVISIBLE, mFaviconView.getVisibility());
+
+        // 2. Favicon fetcher updated while loading (should not break INVISIBLE state)
+        TabFaviconFetcher mockFetcher2 = mock(TabFaviconFetcher.class);
+        mModel.set(TabProperties.FAVICON_FETCHER, mockFetcher2);
+        TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.FAVICON_FETCHER);
+        assertEquals(View.VISIBLE, spinner.getVisibility());
+        assertEquals(View.INVISIBLE, mFaviconView.getVisibility());
+
+        // 3. Not Loading
+        mModel.set(TabProperties.IS_LOADING, false);
+        TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.IS_LOADING);
+        assertEquals(View.GONE, spinner.getVisibility());
+        assertEquals(View.VISIBLE, mFaviconView.getVisibility());
+    }
+
+    @Test
+    @SmallTest
+    public void testBindLoadingState_WithoutFavicon() {
+        View spinner = mItemView.findViewById(R.id.tab_loading_spinner);
+        assertNotNull(spinner);
+
+        mModel.set(TabProperties.FAVICON_FETCHER, null);
+
+        // 1. Loading
+        mModel.set(TabProperties.IS_LOADING, true);
+        TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.IS_LOADING);
+        assertEquals(View.VISIBLE, spinner.getVisibility());
+        assertEquals(View.GONE, mFaviconView.getVisibility());
+
+        // 2. Not Loading
+        mModel.set(TabProperties.IS_LOADING, false);
+        TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.IS_LOADING);
+        assertEquals(View.GONE, spinner.getVisibility());
+        assertEquals(View.GONE, mFaviconView.getVisibility());
+    }
+
+    @Test
+    @SmallTest
+    public void testPinnedTabHoverBackground() {
+        Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
+        activity.setTheme(R.style.Theme_BrowserUI_DayNight);
+        ViewGroup pinnedView =
+                (ViewGroup)
+                        LayoutInflater.from(activity)
+                                .inflate(R.layout.vertical_tab_pinned_item, null, false);
+
+        // Pinned tabs should not have an action button
+        assertNull(pinnedView.findViewById(R.id.action_button));
+
+        mModel.set(TabProperties.IS_SELECTED, false);
+        TabVerticalViewBinder.bindPinnedTab(mModel, pinnedView, TabProperties.IS_SELECTED);
+
+        // Initially, background tint should be null for resting pinned tab
+        assertNull(pinnedView.getBackgroundTintList());
+
+        // Hover enter
+        MotionEvent hoverEnterEvent =
+                MotionEvent.obtain(0, 0, MotionEvent.ACTION_HOVER_ENTER, 0f, 0f, 0);
+        hoverEnterEvent.setSource(InputDevice.SOURCE_MOUSE);
+        pinnedView.dispatchGenericMotionEvent(hoverEnterEvent);
+
+        ColorStateList bgTint = pinnedView.getBackgroundTintList();
+        assertNotNull(bgTint);
+        assertEquals(
+                TabUiThemeUtil.getHoveredTabContainerColor(
+                        pinnedView.getContext(), /* isIncognito= */ false),
+                bgTint.getDefaultColor());
+
+        // Hover exit
+        MotionEvent hoverExitEvent =
+                MotionEvent.obtain(0, 0, MotionEvent.ACTION_HOVER_EXIT, 0f, 0f, 0);
+        hoverExitEvent.setSource(InputDevice.SOURCE_MOUSE);
+        pinnedView.dispatchGenericMotionEvent(hoverExitEvent);
+
+        // Should go back to null (not TRANSPARENT) to allow XML background to show
+        assertNull(pinnedView.getBackgroundTintList());
+    }
+
+    @Test
+    @SmallTest
+    public void testPinnedTabHoverBackground_Selected() {
+        Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
+        activity.setTheme(R.style.Theme_BrowserUI_DayNight);
+        ViewGroup pinnedView =
+                (ViewGroup)
+                        LayoutInflater.from(activity)
+                                .inflate(R.layout.vertical_tab_pinned_item, null, false);
+
+        mModel.set(TabProperties.IS_SELECTED, true);
+        TabVerticalViewBinder.bindPinnedTab(mModel, pinnedView, TabProperties.IS_SELECTED);
+
+        ColorStateList bgTintBefore = pinnedView.getBackgroundTintList();
+        assertNotNull("Background tint should not be null when selected", bgTintBefore);
+
+        // Hover enter
+        MotionEvent hoverEnterEvent =
+                MotionEvent.obtain(0, 0, MotionEvent.ACTION_HOVER_ENTER, 0f, 0f, 0);
+        hoverEnterEvent.setSource(InputDevice.SOURCE_MOUSE);
+        pinnedView.dispatchGenericMotionEvent(hoverEnterEvent);
+
+        // Hovering shouldn't change the selected background tint
+        ColorStateList bgTintAfter = pinnedView.getBackgroundTintList();
+        assertEquals(bgTintBefore, bgTintAfter);
+
+        // Hover exit
+        MotionEvent hoverExitEvent =
+                MotionEvent.obtain(0, 0, MotionEvent.ACTION_HOVER_EXIT, 0f, 0f, 0);
+        hoverExitEvent.setSource(InputDevice.SOURCE_MOUSE);
+        pinnedView.dispatchGenericMotionEvent(hoverExitEvent);
+
+        bgTintAfter = pinnedView.getBackgroundTintList();
+        assertEquals(bgTintBefore, bgTintAfter);
     }
 }

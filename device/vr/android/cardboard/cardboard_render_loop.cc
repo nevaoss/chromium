@@ -436,8 +436,9 @@ bool CardboardRenderLoop::IsSubmitFrameExpected(int16_t frame_index) {
   return true;
 }
 
-void CardboardRenderLoop::SubmitFrameMissing(int16_t frame_index,
-                                             const gpu::SyncToken& sync_token) {
+void CardboardRenderLoop::SubmitFrameMissing(
+    int16_t frame_index,
+    gpu::SharedImageExportResult camera_export_multi_result) {
   TRACE_EVENT1("gpu", "CardboardRenderLoop::SubmitFrameMissing", "frame",
                frame_index);
   DVLOG(2) << __func__ << ": frame=" << frame_index;
@@ -446,8 +447,13 @@ void CardboardRenderLoop::SubmitFrameMissing(int16_t frame_index,
     return;
   }
 
+  if (camera_export_multi_result.HasData()) {
+    presentation_receiver_.ReportBadMessage(
+        "Received unexpected camera sync tokens.");
+    return;
+  }
+
   webxr_->RecycleUnusedAnimatingFrame();
-  cardboard_image_transport_->WaitSyncToken(sync_token);
   FinishFrame(frame_index);
 
   if (pending_getframedata_) {

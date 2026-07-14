@@ -39,6 +39,7 @@ extern const base::FeatureParam<bool> kGlicSelectionPromptUpdatesOnly;
 extern const base::FeatureParam<bool> kGlicSelectionPromptUseWidget;
 extern const base::FeatureParam<bool> kGlicSelectionPromptEnablePinning;
 extern const base::FeatureParam<std::string> kGlicSelectionTopCueOnlyList;
+extern const base::FeatureParam<bool> kGlicSelectionEnableSiteSettings;
 
 BASE_DECLARE_FEATURE(kGlicCreateTabAdjacent);
 

@@ -107,16 +107,6 @@ RouteMap::ParseResult RouteMap::ParseAndApplyRoutes(
                            "Invalid data type or missing name entry for route");
       }
 
-      if (name.starts_with("--")) {
-        // Don't clash with CSS @route rules.
-        //
-        // TODO(crbug.com/436805487): Add a test for this (if support for
-        // <script type="routemap"> (this code) actually won't end up getting
-        // removed).
-        return ParseResult(ParseResult::kTypeError,
-                           "Route names cannot start with '--'");
-      }
-
       auto it = routes_.find(name);
       Route* route;
       if (it == routes_.end()) {

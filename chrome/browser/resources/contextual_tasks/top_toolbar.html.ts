@@ -11,7 +11,7 @@ import type {TopToolbarElement} from './top_toolbar.js';
 // clang-format off
 export function getHtml(this: TopToolbarElement) {
   return html`<!--_html_template_start_-->
-<div id="top-row">
+<div id="top-row" data-element-id="kContextualTasksWebUIToolbarElementId">
 <if expr="_google_chrome">
     <img src="chrome://resources/cr_components/searchbox/icons/google_g_gradient.svg"
         class="top-toolbar-logo">
@@ -39,7 +39,8 @@ export function getHtml(this: TopToolbarElement) {
         iron-icon="contextual_tasks:notes_spark"
         class="no-overlap" title="$i18n{threadHistoryTooltip}"
         aria-label="$i18n{threadHistoryTooltip}"
-        ?hidden="${!this.isAiPage}">
+        ?hidden="${!this.isAiPage ||
+            this.contextualTasksEnableSpatialModelToolbarLayout_}">
     </cr-icon-button>
 
     ${!this.contextManagementInComposeboxEnabled_ ? html`

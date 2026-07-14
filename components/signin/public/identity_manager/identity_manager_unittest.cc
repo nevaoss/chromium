@@ -2037,14 +2037,21 @@ TEST_F(IdentityManagerTest, GetAccountsInCookieJarWithNoAccounts) {
   SetListAccountsResponseNoAccounts(test_url_loader_factory());
 
   // Do an initial call to GetAccountsInCookieJar(). This call should return no
-  // accounts but should also trigger an internal update and eventual
-  // notification that the accounts in the cookie jar have been updated.
+  // accounts.
+  // If 'kAvoidAutoTriggerListAccountsOnStale' is disabled, it should also
+  // trigger an internal update and eventual notification that the accounts
+  // in the cookie jar have been updated.
   const AccountsInCookieJarInfo& accounts_in_cookie_jar =
       identity_manager()->GetAccountsInCookieJar();
   EXPECT_FALSE(accounts_in_cookie_jar.AreAccountsFresh());
   EXPECT_TRUE(
       accounts_in_cookie_jar.GetPotentiallyInvalidSignedInAccounts().empty());
   EXPECT_TRUE(accounts_in_cookie_jar.GetSignedOutAccounts().empty());
+
+  if (base::FeatureList::IsEnabled(
+          switches::kAvoidAutoTriggerListAccountsOnStale)) {
+    identity_manager()->GetAccountsCookieMutator()->TriggerCookieJarUpdate();
+  }
 
   run_loop.Run();
 
@@ -2069,14 +2076,21 @@ TEST_F(IdentityManagerTest, GetAccountsInCookieJarWithOneAccount) {
                                     test_url_loader_factory());
 
   // Do an initial call to GetAccountsInCookieJar(). This call should return no
-  // accounts but should also trigger an internal update and eventual
-  // notification that the accounts in the cookie jar have been updated.
+  // accounts.
+  // If 'kAvoidAutoTriggerListAccountsOnStale' is disabled, it should also
+  // trigger an internal update and eventual notification that the accounts
+  // in the cookie jar have been updated.
   const AccountsInCookieJarInfo& accounts_in_cookie_jar =
       identity_manager()->GetAccountsInCookieJar();
   EXPECT_FALSE(accounts_in_cookie_jar.AreAccountsFresh());
   EXPECT_TRUE(
       accounts_in_cookie_jar.GetPotentiallyInvalidSignedInAccounts().empty());
   EXPECT_TRUE(accounts_in_cookie_jar.GetSignedOutAccounts().empty());
+
+  if (base::FeatureList::IsEnabled(
+          switches::kAvoidAutoTriggerListAccountsOnStale)) {
+    identity_manager()->GetAccountsCookieMutator()->TriggerCookieJarUpdate();
+  }
 
   run_loop.Run();
 
@@ -2109,14 +2123,21 @@ TEST_F(IdentityManagerTest, GetAccountsInCookieJarWithTwoAccounts) {
                                      kTestGaiaId2, test_url_loader_factory());
 
   // Do an initial call to GetAccountsInCookieJar(). This call should return no
-  // accounts but should also trigger an internal update and eventual
-  // notification that the accounts in the cookie jar have been updated.
+  // accounts.
+  // If 'kAvoidAutoTriggerListAccountsOnStale' is disabled, it should also
+  // trigger an internal update and eventual notification that the accounts
+  // in the cookie jar have been updated.
   const AccountsInCookieJarInfo& accounts_in_cookie_jar =
       identity_manager()->GetAccountsInCookieJar();
   EXPECT_FALSE(accounts_in_cookie_jar.AreAccountsFresh());
   EXPECT_TRUE(
       accounts_in_cookie_jar.GetPotentiallyInvalidSignedInAccounts().empty());
   EXPECT_TRUE(accounts_in_cookie_jar.GetSignedOutAccounts().empty());
+
+  if (base::FeatureList::IsEnabled(
+          switches::kAvoidAutoTriggerListAccountsOnStale)) {
+    identity_manager()->GetAccountsCookieMutator()->TriggerCookieJarUpdate();
+  }
 
   run_loop.Run();
 

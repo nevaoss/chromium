@@ -133,6 +133,9 @@ inline constexpr char kAutofillProfileEnabled[] = "autofill.profile_enabled";
 // The opt-ins for Sync Transport features for each client.
 inline constexpr char kAutofillSyncTransportOptIn[] =
     "autofill.sync_transport_opt_ins";
+// A list of GURL wildcard patterns and data categories that are blocked
+// from Autofill by enterprise policy.
+inline constexpr char kAutofillTypesBlocked[] = "autofill.types_blocked";
 // The file path where the autofill states data is downloaded to.
 inline constexpr char kAutofillStatesDataDir[] = "autofill.states_data_dir";
 // The (randomly inititialied) seed value to use when encoding form/field
@@ -275,6 +278,8 @@ void SetAutofillHasSeenIban(PrefService* prefs);
 bool IsAutofillProfileManaged(const PrefService* prefs);
 
 bool IsAutofillCreditCardManaged(const PrefService* prefs);
+
+bool IsAutofillTypesBlockedManaged(const PrefService* prefs);
 
 bool IsAutofillProfileEnabled(const PrefService* prefs);
 

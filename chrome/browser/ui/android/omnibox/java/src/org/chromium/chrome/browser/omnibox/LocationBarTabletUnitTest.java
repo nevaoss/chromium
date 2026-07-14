@@ -16,6 +16,8 @@ import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.InsetDrawable;
 import android.graphics.drawable.LayerDrawable;
 import android.view.Gravity;
+import android.view.InputDevice;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.MeasureSpec;
 import android.view.ViewGroup.LayoutParams;
@@ -50,6 +52,7 @@ import org.chromium.chrome.browser.omnibox.status.StatusCoordinator;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
 import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteCoordinator;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
+import org.chromium.components.browser_ui.util.motion.MotionEventTestUtils;
 import org.chromium.components.omnibox.OmniboxFeatureList;
 import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.base.WindowAndroid;
@@ -239,6 +242,20 @@ public class LocationBarTabletUnitTest {
                 OmniboxResourceProvider.getStandardSuggestionBackgroundColor(
                         mActivity, BrandedColorScheme.APP_DEFAULT);
         assertEquals(expectedOuterRectColor, outerRect.getColor().getDefaultColor());
+        assertNull(mLocationBarTablet.getForeground());
+
+        doReturn(true).when(mUrlBarCoordinator).hasFocus();
+        View urlBar = mLocationBarTablet.findViewById(R.id.url_bar);
+        urlBar.dispatchGenericMotionEvent(
+                MotionEventTestUtils.createMotionEvent(
+                        1,
+                        1,
+                        MotionEvent.ACTION_HOVER_ENTER,
+                        0,
+                        0,
+                        InputDevice.SOURCE_CLASS_POINTER,
+                        MotionEvent.TOOL_TYPE_MOUSE));
+        assertNull(mLocationBarTablet.getForeground());
 
         LayerDrawable background = (LayerDrawable) mLocationBarTablet.getBackground();
         int glifLayerIndex = background.findIndexByLayerId(R.id.glif_border_layer);
@@ -511,12 +528,17 @@ public class LocationBarTabletUnitTest {
         // Verify the InsetDrawable border was applied to the foreground.
         assertNotNull(mLocationBarTablet.getForeground());
         assertTrue(mLocationBarTablet.getForeground() instanceof InsetDrawable);
-        mLocationBarTablet.onFuseboxStateChanged(FuseboxState.EXPANDED);
+        mLocationBarTablet.onFuseboxStateChanged(FuseboxState.COMPACT);
         // Standby mode should override the fusebox state when deciding if to expand.
         var layoutParams = (LinearLayout.LayoutParams) mHolderView.getLayoutParams();
         assertEquals(0, layoutParams.leftMargin);
         assertEquals(0, layoutParams.rightMargin);
         assertEquals(0, layoutParams.topMargin);
+
+        View urlBar = mLocationBarTablet.findViewById(R.id.url_bar);
+        View statusView = mLocationBarTablet.findViewById(R.id.location_bar_status);
+        assertEquals(0, urlBar.getTranslationY(), MathUtils.EPSILON);
+        assertEquals(0, statusView.getTranslationY(), MathUtils.EPSILON);
 
         mLocationBarTablet.setIsInStandby(false);
         assertNull(mLocationBarTablet.getForeground());

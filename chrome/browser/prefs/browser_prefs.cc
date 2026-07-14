@@ -224,6 +224,7 @@
 #include "ui/webui/buildflags.h"
 
 #if BUILDFLAG(ENABLE_WEBUI_NTP)
+#include "chrome/browser/new_tab_page/modules/v2/most_relevant_tab_resumption/most_relevant_tab_resumption_page_handler.h"
 #include "chrome/browser/ui/webui/new_tab_page/new_tab_page_handler.h"
 #include "chrome/browser/ui/webui/new_tab_page/new_tab_page_ui.h"
 #if !BUILDFLAG(IS_ANDROID)
@@ -275,6 +276,7 @@
 #include "chrome/browser/lens/android/lens_prefs.h"
 #include "chrome/browser/media/android/cdm/media_drm_origin_id_manager.h"
 #include "chrome/browser/notifications/notification_channels_provider_android.h"
+#include "chrome/browser/ntp_customization/ntp_android_custom_background_service.h"
 #include "chrome/browser/partnerbookmarks/partner_bookmarks_shim.h"
 #include "chrome/browser/readaloud/android/prefs.h"
 #include "chrome/browser/ssl/known_interception_disclosure_infobar_delegate.h"
@@ -301,7 +303,6 @@
 #include "chrome/browser/new_tab_page/modules/v2/authentication/microsoft_auth_page_handler.h"
 #include "chrome/browser/new_tab_page/modules/v2/calendar/google_calendar_page_handler.h"
 #include "chrome/browser/new_tab_page/modules/v2/calendar/outlook_calendar_page_handler.h"
-#include "chrome/browser/new_tab_page/modules/v2/most_relevant_tab_resumption/most_relevant_tab_resumption_page_handler.h"
 #include "chrome/browser/new_tab_page/modules/v2/tab_groups/tab_groups_page_handler.h"
 #include "chrome/browser/new_tab_page/promos/promo_service.h"
 #include "chrome/browser/screen_ai/pref_names.h"
@@ -986,6 +987,14 @@ constexpr char kGlicSelectionWidgetDismissCount[] =
 inline constexpr char kRealboxContextMenuAnimationState[] =
     "realbox.context_menu_animation_state";
 
+// Deprecated 06/2026.
+inline constexpr char kTabSearchMigrationComplete[] =
+    "toolbar.tab_search_migration_complete";
+inline constexpr char kTabSearchPinnedToTabstripMigrationComplete[] =
+    "tab_search.pinned_to_tabstrip_migration_complete";
+inline constexpr char kTabSearchPinnedToTabstripMigrationComplete2[] =
+    "tab_search.pinned_to_tabstrip_migration_complete_2";
+
 // Register local state used only for migration (clearing or moving to a new
 // key).
 void RegisterLocalStatePrefsForMigration(PrefRegistrySimple* registry) {
@@ -1324,6 +1333,13 @@ void RegisterProfilePrefsForMigration(
 
   // Deprecated 06/2026.
   registry->RegisterDictionaryPref(kRealboxContextMenuAnimationState);
+
+  // Deprecated 06/2026.
+  registry->RegisterBooleanPref(kTabSearchMigrationComplete, true);
+  registry->RegisterBooleanPref(kTabSearchPinnedToTabstripMigrationComplete,
+                                true);
+  registry->RegisterBooleanPref(kTabSearchPinnedToTabstripMigrationComplete2,
+                                true);
 }
 
 }  // namespace
@@ -1852,6 +1868,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
 #endif  // !BUILDFLAG(IS_ANDROID)
   NewTabPageHandler::RegisterProfilePrefs(registry);
   NewTabPageUI::RegisterProfilePrefs(registry);
+  MostRelevantTabResumptionPageHandler::RegisterProfilePrefs(registry);
 #endif  // BUILDFLAG(ENABLE_WEBUI_NTP)
 
 #if BUILDFLAG(IS_ANDROID)
@@ -1862,6 +1879,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
   KnownInterceptionDisclosureInfoBarDelegate::RegisterProfilePrefs(registry);
   MediaDrmOriginIdManager::RegisterProfilePrefs(registry);
   NotificationChannelsProviderAndroid::RegisterProfilePrefs(registry);
+  NtpAndroidCustomBackgroundService::RegisterProfilePrefs(registry);
   ntp_tiles::PopularSitesImpl::RegisterProfilePrefs(registry);
   OomInterventionDecider::RegisterProfilePrefs(registry);
   PartnerBookmarksShim::RegisterProfilePrefs(registry);
@@ -1899,7 +1917,6 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
   send_tab_to_self::RegisterProfilePrefs(registry);
   signin::RegisterProfilePrefs(registry);
   StartupBrowserCreator::RegisterProfilePrefs(registry);
-  MostRelevantTabResumptionPageHandler::RegisterProfilePrefs(registry);
   TabGroupsPageHandler::RegisterProfilePrefs(registry);
   tab_groups::saved_tab_groups::prefs::RegisterProfilePrefs(registry);
   tab_search_prefs::RegisterProfilePrefs(registry);
@@ -2163,7 +2180,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
   registry->RegisterBooleanPref(ntp_tiles::prefs::kTipsHomeModuleEnabled, true);
 
 #if BUILDFLAG(IS_ANDROID)
-  notifications::tips::prefs::RegisterProfilePrefs(registry);
+  tips::prefs::RegisterProfilePrefs(registry);
 #endif  // BUILDFLAG(IS_ANDROID)
 
   registry->RegisterBooleanPref(prefs::kStaticStorageQuotaEnabled, false);
@@ -2538,11 +2555,6 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
   // Added 03/2026.
   profile_prefs->ClearPref(kTabSearchTabIndex);
 
-#if !BUILDFLAG(IS_ANDROID)
-  // Added 02/2026.
-  tabs::MigrateTabSearchPref(profile_prefs);
-#endif  // !BUILDFLAG(IS_ANDROID)
-
   // Added 03/2026
   profile_prefs->ClearPref(
       kSigninFromBookmarksBubbleSyntheticTrialGroupNamePref);
@@ -2598,6 +2610,11 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
 
   // Added 06/2026.
   profile_prefs->ClearPref(kRealboxContextMenuAnimationState);
+
+  // Added 06/2026
+  profile_prefs->ClearPref(kTabSearchMigrationComplete);
+  profile_prefs->ClearPref(kTabSearchPinnedToTabstripMigrationComplete);
+  profile_prefs->ClearPref(kTabSearchPinnedToTabstripMigrationComplete2);
 
   // Please don't delete the following line. It is used by PRESUBMIT.py.
   // END_MIGRATE_OBSOLETE_PROFILE_PREFS

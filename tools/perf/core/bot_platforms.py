@@ -570,7 +570,7 @@ def _motionmark1_3_turbolev_crossbench(estimated_runtime: int = 360,
                                        flags: tuple[str, ...] = ()):
   flags += ('--js-flags=--turbolev', )
   return CrossbenchConfig('motionmark1.3-turbolev.crossbench',
-                          'motionmark_1_3',
+                          'motionmark_1.3',
                           estimated_runtime=estimated_runtime,
                           flags=flags)
 

@@ -7,6 +7,7 @@ package org.chromium.chrome.browser.share.send_tab_to_self;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.Resources;
+import android.text.TextUtils;
 
 import org.jni_zero.CalledByNative;
 import org.jni_zero.JNINamespace;
@@ -22,8 +23,8 @@ import org.chromium.chrome.browser.ChromeTabbedActivity;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.layouts.LayoutType;
 import org.chromium.chrome.browser.profiles.Profile;
-import org.chromium.chrome.browser.tab.SendTabToSelfTabCardLabelData;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.state.SendTabToSelfTabCardLabelData;
 import org.chromium.components.messages.MessageBannerProperties;
 import org.chromium.components.messages.MessageDispatcher;
 import org.chromium.components.messages.MessageDispatcherProvider;
@@ -77,7 +78,8 @@ public class SendTabToSelfAndroidBridge {
             String targetDeviceName,
             String url,
             String title,
-            @Nullable CommitConfirmationCallback commitConfirmation) {
+            @Nullable CommitConfirmationCallback commitConfirmation,
+            @ShareEntryPoint int entryPoint) {
         SendTabToSelfAndroidBridgeJni.get()
                 .sendTabToDevice(
                         profile,
@@ -90,7 +92,8 @@ public class SendTabToSelfAndroidBridge {
                             if (commitConfirmation != null) {
                                 commitConfirmation.onResult(result);
                             }
-                        });
+                        },
+                        entryPoint);
     }
 
     private static void showPostSendToast(
@@ -159,10 +162,23 @@ public class SendTabToSelfAndroidBridge {
         return SendTabToSelfAndroidBridgeJni.get().getAllTargetDeviceInfos(profile);
     }
 
-
     public static @Nullable @EntryPointDisplayReason Integer getEntryPointDisplayReason(
             Profile profile, String url) {
         return SendTabToSelfAndroidBridgeJni.get().getEntryPointDisplayReason(profile, url);
+    }
+
+    /**
+     * Records the target device count when the Send Tab to Self UI is invoked.
+     *
+     * @param profile The profile to use.
+     * @param displayReason The reason the entry point is displayed.
+     * @param deviceCount The number of target devices.
+     */
+    public static void recordTargetDeviceCount(
+            @EntryPointDisplayReason int displayReason,
+            int deviceCount) {
+        SendTabToSelfAndroidBridgeJni.get()
+                .recordTargetDeviceCount(displayReason, deviceCount);
     }
 
     /**
@@ -173,13 +189,17 @@ public class SendTabToSelfAndroidBridge {
      */
     @CalledByNative
     public static void attachTabLabel(Tab tab, String senderDeviceName) {
-        if (tab == null || senderDeviceName == null || senderDeviceName.isEmpty()) return;
+        if (tab == null || tab.getUserDataHost() == null || TextUtils.isEmpty(senderDeviceName))
+            return;
 
         tab.getUserDataHost()
                 .setUserData(
                         SendTabToSelfTabCardLabelData.class,
                         new SendTabToSelfTabCardLabelData(
                                 tab, senderDeviceName, System.currentTimeMillis()));
+        // TODO(crbug.com/488072250): Inform SendTabToSelfTabLabeller to update the UI. This
+        // specifically affects the case where the tab switcher is already opened and a tab gets
+        // auto-opened.
     }
 
     @CalledByNative
@@ -247,7 +267,8 @@ public class SendTabToSelfAndroidBridge {
                 String targetDeviceSyncCacheGuid,
                 String url,
                 String title,
-                CommitConfirmationCallback commitConfirmation);
+                CommitConfirmationCallback commitConfirmation,
+                int entryPoint);
 
         void markEntryOpened(@JniType("Profile*") Profile profile, String guid);
 
@@ -256,7 +277,11 @@ public class SendTabToSelfAndroidBridge {
         @JniType("std::vector")
         List<TargetDeviceInfo> getAllTargetDeviceInfos(@JniType("Profile*") Profile profile);
 
-        @Nullable Integer getEntryPointDisplayReason(
+        @Nullable @EntryPointDisplayReason Integer getEntryPointDisplayReason(
                 @JniType("Profile*") Profile profile, String url);
+
+        void recordTargetDeviceCount(
+                @EntryPointDisplayReason int displayReason,
+                int deviceCount);
     }
 }

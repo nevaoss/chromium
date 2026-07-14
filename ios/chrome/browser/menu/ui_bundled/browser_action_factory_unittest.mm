@@ -15,8 +15,8 @@
 #import "ios/chrome/browser/shared/model/prefs/pref_names.h"
 #import "ios/chrome/browser/shared/model/profile/test/test_profile_ios.h"
 #import "ios/chrome/browser/shared/public/commands/browser_coordinator_commands.h"
-#import "ios/chrome/browser/shared/public/commands/bwg_commands.h"
 #import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
+#import "ios/chrome/browser/shared/public/commands/gemini_commands.h"
 #import "ios/chrome/browser/shared/public/commands/qr_scanner_commands.h"
 #import "ios/chrome/browser/shared/public/commands/save_to_photos_commands.h"
 #import "ios/chrome/browser/shared/public/commands/scene_commands.h"
@@ -85,11 +85,10 @@ class BrowserActionFactoryTest : public PlatformTest {
         startDispatchingToTarget:mock_save_to_photos_commands_handler_
                      forProtocol:@protocol(SaveToPhotosCommands)];
 
-    mock_gemini_commands_handler_ =
-        OCMStrictProtocolMock(@protocol(BWGCommands));
+    mock_gemini_handler_ = OCMStrictProtocolMock(@protocol(GeminiCommands));
     [test_browser_->GetCommandDispatcher()
-        startDispatchingToTarget:mock_gemini_commands_handler_
-                     forProtocol:@protocol(BWGCommands)];
+        startDispatchingToTarget:mock_gemini_handler_
+                     forProtocol:@protocol(GeminiCommands)];
   }
 
   base::test::ScopedFeatureList feature_list_;
@@ -103,7 +102,7 @@ class BrowserActionFactoryTest : public PlatformTest {
   id mock_browser_coordinator_commands_handler_;
   id mock_qr_scanner_commands_handler_;
   id mock_save_to_photos_commands_handler_;
-  id mock_gemini_commands_handler_;
+  id mock_gemini_handler_;
 };
 
 // Tests that the Open in New Tab actions have the right titles and images.

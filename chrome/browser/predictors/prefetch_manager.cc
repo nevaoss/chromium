@@ -310,8 +310,8 @@ void PrefetchManager::PrefetchUrl(
 
   ++inflight_jobs_count_;
 
-  // Since the CORS-RFC1918 check is skipped when the client security state is
-  // unknown, just block any local request to be safe for now.
+  // Since the Local Network Access check is skipped when the client security
+  // state is unknown, just block any local request to be safe for now.
   int options = base::CommandLine::ForCurrentProcess()->HasSwitch(
                     switches::kLoadingPredictorAllowLocalRequestForTesting)
                     ? network::mojom::kURLLoadOptionNone

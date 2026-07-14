@@ -17,19 +17,23 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.app.Activity;
 import android.graphics.Point;
+import android.graphics.Rect;
 import android.os.SystemClock;
 import android.view.MotionEvent;
+import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
 
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.test.filters.SmallTest;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -50,14 +54,18 @@ import org.chromium.base.test.util.Features;
 import org.chromium.chrome.browser.collaboration.CollaborationServiceFactory;
 import org.chromium.chrome.browser.commerce.ShoppingServiceFactory;
 import org.chromium.chrome.browser.commerce.ShoppingServiceFactoryJni;
+import org.chromium.chrome.browser.compositor.overlays.strip.TabContextMenuCoordinator;
 import org.chromium.chrome.browser.compositor.overlays.strip.TabStripContextMenuCoordinator;
 import org.chromium.chrome.browser.data_sharing.DataSharingServiceFactory;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.glic.GlicEnabling;
 import org.chromium.chrome.browser.hub.PaneId;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager;
+import org.chromium.chrome.browser.multiwindow.MultiInstanceOrchestrator;
+import org.chromium.chrome.browser.multiwindow.MultiInstanceOrchestratorFactory;
 import org.chromium.chrome.browser.price_tracking.PriceTrackingFeatures;
 import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.chrome.browser.share.ShareDelegate;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabLaunchType;
 import org.chromium.chrome.browser.tab.TabSelectionType;
@@ -75,6 +83,8 @@ import org.chromium.chrome.browser.ui.favicon.FaviconHelper;
 import org.chromium.chrome.browser.ui.favicon.FaviconHelperJni;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.tab_ui.R;
+import org.chromium.components.browser_ui.desktop_windowing.AppHeaderState;
+import org.chromium.components.browser_ui.desktop_windowing.DesktopWindowStateManager;
 import org.chromium.components.collaboration.CollaborationService;
 import org.chromium.components.collaboration.ServiceStatus;
 import org.chromium.components.commerce.core.ShoppingService;
@@ -88,6 +98,7 @@ import org.chromium.url.GURL;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -117,8 +128,14 @@ public class VerticalTabListCoordinatorUnitTest {
     @Mock private MultiInstanceManager mMultiInstanceManager;
     @Mock private SnackbarManager mSnackbarManager;
     @Mock private TabStripContextMenuCoordinator mTabStripContextMenuCoordinator;
+    @Mock private DesktopWindowStateManager mDesktopWindowStateManager;
+    @Mock private TabContextMenuCoordinator mTabContextMenuCoordinator;
+    @Mock private ShareDelegate mShareDelegate;
+    @Mock private MultiInstanceOrchestrator mMultiInstanceOrchestrator;
 
     private Activity mActivity;
+    private final SettableMonotonicObservableSupplier<ShareDelegate> mShareDelegateSupplier =
+            ObservableSuppliers.createMonotonic(mShareDelegate);
     private final SettableMonotonicObservableSupplier<TabModel> mCurrentTabModelSupplier =
             ObservableSuppliers.createMonotonic();
     private final List<TabGroupObserver> mTabGroupObservers = new ArrayList<>();
@@ -129,6 +146,7 @@ public class VerticalTabListCoordinatorUnitTest {
         FaviconHelperJni.setInstanceForTesting(mFaviconHelperJniMock);
         when(mFaviconHelperJniMock.init()).thenReturn(1L);
         TabGroupSyncServiceFactory.setForTesting(mTabGroupSyncService);
+        when(mTabGroupSyncService.getAllGroupIds()).thenReturn(new String[0]);
         DataSharingServiceFactory.setForTesting(mDataSharingService);
         CollaborationServiceFactory.setForTesting(mCollaborationService);
         ServiceStatus serviceStatus = mock(ServiceStatus.class);
@@ -152,6 +170,7 @@ public class VerticalTabListCoordinatorUnitTest {
         when(mTabModelSelector.isTabStateInitialized()).thenReturn(true);
         when(mWindowAndroid.getActivity()).thenReturn(new WeakReference<>(mActivity));
         GlicEnabling.setEnabledForTesting(false);
+        MultiInstanceOrchestratorFactory.setInstanceForTesting(mMultiInstanceOrchestrator);
 
         doAnswer(
                         invocation -> {
@@ -160,6 +179,11 @@ public class VerticalTabListCoordinatorUnitTest {
                         })
                 .when(mTabModel)
                 .addTabGroupObserver(any(TabGroupObserver.class));
+    }
+
+    @After
+    public void tearDown() {
+        MultiInstanceOrchestratorFactory.setInstanceForTesting(null);
     }
 
     private void createCoordinator() {
@@ -171,7 +195,9 @@ public class VerticalTabListCoordinatorUnitTest {
                         mVerticalTabsActionDelegate,
                         mWindowAndroid,
                         mMultiInstanceManager,
-                        mSnackbarManager);
+                        mSnackbarManager,
+                        mDesktopWindowStateManager,
+                        mShareDelegateSupplier);
     }
 
     private Tab prepareMockTab(int id) {
@@ -223,10 +249,31 @@ public class VerticalTabListCoordinatorUnitTest {
 
     @Test
     @SmallTest
+    public void testConstructor_AddsSpineDecoration() {
+        createCoordinator();
+        ViewGroup view = (ViewGroup) mCoordinator.getView();
+        TabListRecyclerView recyclerView = view.findViewById(R.id.tab_list_recycler_view);
+        assertNotNull(recyclerView);
+
+        boolean hasSpineDecoration = false;
+        for (int i = 0; i < recyclerView.getItemDecorationCount(); i++) {
+            if (recyclerView.getItemDecorationAt(i) instanceof VerticalTabGroupSpineDecoration) {
+                hasSpineDecoration = true;
+                break;
+            }
+        }
+        assertTrue(
+                "VerticalTabGroupSpineDecoration should be added to RecyclerView.",
+                hasSpineDecoration);
+    }
+
+    @Test
+    @SmallTest
     public void testDestroy() {
         doNothing().when(mTabModelSelector).addObserver(mSelectorObserverCaptor.capture());
         createCoordinator();
         mCoordinator.setTabStripContextMenuCoordinatorForTesting(mTabStripContextMenuCoordinator);
+        mCoordinator.setTabContextMenuCoordinatorForTesting(mTabContextMenuCoordinator);
 
         TabModelSelectorObserver observer = mSelectorObserverCaptor.getValue();
         assertNotNull(observer);
@@ -238,6 +285,11 @@ public class VerticalTabListCoordinatorUnitTest {
         assertNull(
                 "The tab strip context menu reference must be nullified upon destruction.",
                 mCoordinator.getTabStripContextMenuCoordinatorForTesting());
+
+        verify(mTabContextMenuCoordinator).dismiss();
+        assertNull(
+                "The tab context menu reference must be nullified upon destruction.",
+                mCoordinator.getTabContextMenuCoordinatorForTesting());
     }
 
     @Test
@@ -305,6 +357,66 @@ public class VerticalTabListCoordinatorUnitTest {
         assertNotNull(
                 "Right click on empty space should instantiate the context menu coordinator.",
                 mCoordinator.getTabStripContextMenuCoordinatorForTesting());
+    }
+
+    @Test
+    @SmallTest
+    public void testTabItemInteraction_LaunchesTabContextMenu() {
+        // Mock the backend model.
+        Tab mockTab = prepareMockTab(456);
+        when(mTabModel.getTabById(456)).thenReturn(mockTab);
+        when(mTabModel.getRelatedTabList(456)).thenReturn(Collections.singletonList(mockTab));
+
+        createCoordinator();
+        ViewGroup container = (ViewGroup) mCoordinator.getView();
+        TabListRecyclerView realRecyclerView = container.findViewById(R.id.tab_list_recycler_view);
+        assertNotNull(realRecyclerView);
+
+        // Wrap the real inflated Recycler View in a spy.
+        TabListRecyclerView recyclerViewSpy = spy(realRecyclerView);
+        assertNull(mCoordinator.getTabContextMenuCoordinatorForTesting());
+
+        // Populate the real UI list dataset with a dummy tab item data properties bundle.
+        SimpleRecyclerViewAdapter adapter =
+                (SimpleRecyclerViewAdapter) realRecyclerView.getAdapter();
+        PropertyModel tabPropertyModel = new PropertyModel(TabProperties.ALL_KEYS_VERTICAL_TAB);
+        tabPropertyModel.set(TabProperties.TAB_ID, 456);
+        adapter.getModelList().add(new MVCListAdapter.ListItem(UiType.TAB, tabPropertyModel));
+
+        // Create a mock View layout box (child of the recycler view) that renders the tab card on
+        // the screen.
+        View mockChildView = mock(View.class);
+        when(mockChildView.getWidth()).thenReturn(300);
+        when(mockChildView.getHeight()).thenReturn(100);
+
+        doAnswer(
+                        invocation -> {
+                            int[] pos = invocation.getArgument(0);
+                            pos[0] = 50;
+                            pos[1] = 100;
+                            return null;
+                        })
+                .when(mockChildView)
+                .getLocationInWindow(any());
+
+        doReturn(mockChildView).when(recyclerViewSpy).findChildViewUnder(150f, 250f);
+        doReturn(0).when(recyclerViewSpy).getChildAdapterPosition(mockChildView);
+
+        // Directly trigger the context interaction mapping.
+        boolean handled =
+                mCoordinator.handleContextMenuInteractionForTesting(
+                        mActivity, recyclerViewSpy, /* localX= */ 150f, /* localY= */ 250f);
+
+        assertTrue("Context gesture interaction on an active tab row should return true.", handled);
+        assertNotNull(
+                "Long press interaction on a tab item view should launch the"
+                        + " TabContextMenuCoordinator.",
+                mCoordinator.getTabContextMenuCoordinatorForTesting());
+
+        if (mCoordinator.getTabContextMenuCoordinatorForTesting() != null) {
+            // Dismiss/destroy the instantiated context menu tracker to satisfy LifetimeAssert
+            mCoordinator.getTabContextMenuCoordinatorForTesting().dismiss();
+        }
     }
 
     @Test
@@ -560,5 +672,37 @@ public class VerticalTabListCoordinatorUnitTest {
         newTabButton.performClick();
         verify(mTabModel, never()).commitAllTabClosures();
         verify(mTabCreator).launchNtp(TabLaunchType.FROM_CHROME_UI);
+    }
+
+    @Test
+    @SmallTest
+    public void testSpacerViewVisibilityInDesktopWindow() {
+        // Mock DesktopWindowStateManager to say we are in desktop windowing mode.
+        var appHeaderState =
+                new AppHeaderState(new Rect(0, 0, 100, 100), new Rect(10, 0, 80, 100), true);
+        when(mDesktopWindowStateManager.getAppHeaderState()).thenReturn(appHeaderState);
+
+        // Capture AppHeaderObserver.
+        ArgumentCaptor<DesktopWindowStateManager.AppHeaderObserver> observerCaptor =
+                ArgumentCaptor.forClass(DesktopWindowStateManager.AppHeaderObserver.class);
+
+        createCoordinator();
+
+        verify(mDesktopWindowStateManager).addObserver(observerCaptor.capture());
+        var observer = observerCaptor.getValue();
+        assertNotNull(observer);
+
+        ViewGroup view = (ViewGroup) mCoordinator.getView();
+        View spacer = view.findViewById(R.id.desktop_window_spacer);
+        assertNotNull("Spacer view should exist.", spacer);
+        assertEquals("Spacer view should be visible.", View.VISIBLE, spacer.getVisibility());
+
+        // Exit desktop window.
+        var appHeaderState2 =
+                new AppHeaderState(new Rect(0, 0, 100, 100), new Rect(10, 0, 80, 100), false);
+        when(mDesktopWindowStateManager.getAppHeaderState()).thenReturn(appHeaderState2);
+        observer.onAppHeaderStateChanged(appHeaderState2);
+
+        assertEquals("Spacer view should be hidden.", View.GONE, spacer.getVisibility());
     }
 }

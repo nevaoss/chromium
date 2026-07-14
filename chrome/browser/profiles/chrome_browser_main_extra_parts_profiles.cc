@@ -14,7 +14,7 @@
 #include "chrome/browser/accessibility/accessibility_labels_service_factory.h"
 #include "chrome/browser/accessibility/page_colors_controller_factory.h"
 #include "chrome/browser/accessibility_annotator/accessibility_annotator_backend_factory.h"
-#include "chrome/browser/accessibility_annotator/accessibility_query_service_factory.h"
+#include "chrome/browser/accessibility_annotator/at_memory_query_service_factory.h"
 #include "chrome/browser/account_settings/account_setting_service_factory.h"
 #include "chrome/browser/actor/actor_keyed_service_factory.h"
 #include "chrome/browser/affiliations/affiliation_service_factory.h"
@@ -30,6 +30,7 @@
 #include "chrome/browser/autofill/autocomplete_history_manager_factory.h"
 #include "chrome/browser/autofill/autofill_ai_model_cache_factory.h"
 #include "chrome/browser/autofill/autofill_ai_model_executor_factory.h"
+#include "chrome/browser/autofill/autofill_enterprise_policy_service_factory.h"
 #include "chrome/browser/autofill/autofill_entity_data_manager_factory.h"
 #include "chrome/browser/autofill/autofill_field_classification_model_service_factory.h"
 #include "chrome/browser/autofill/autofill_image_fetcher_factory.h"
@@ -199,6 +200,7 @@
 #include "chrome/browser/privacy_sandbox/privacy_sandbox_settings_factory.h"
 #include "chrome/browser/private_ai/private_ai_service_factory.h"
 #include "chrome/browser/private_insights/private_insights_service_factory.h"
+#include "chrome/browser/private_verification_tokens/private_verification_tokens_service_factory.h"
 #include "chrome/browser/profile_resetter/triggered_profile_resetter_factory.h"
 #include "chrome/browser/profiles/batch_upload/batch_upload_service_factory.h"
 #include "chrome/browser/profiles/renderer_updater_factory.h"
@@ -345,6 +347,7 @@
 #include "chrome/browser/commerce/merchant_viewer/merchant_viewer_data_manager_factory.h"
 #include "chrome/browser/flags/android/chrome_feature_list.h"
 #include "chrome/browser/media/android/cdm/media_drm_origin_id_manager_factory.h"
+#include "chrome/browser/ntp_customization/ntp_android_custom_background_service_factory.h"
 #include "chrome/browser/password_manager/android/delayed_password_field_classification_model_handler_factory.h"
 #include "chrome/browser/signin/android/signin_bridge_factory.h"
 #include "chrome/browser/signin/signin_manager_android_factory.h"
@@ -718,7 +721,7 @@ void ChromeBrowserMainExtraPartsProfiles::
   AccessibilityAnnotatorBackendFactory::GetInstance();
   AccessibilityLabelsServiceFactory::GetInstance();
 #if !BUILDFLAG(IS_ANDROID)
-  AccessibilityQueryServiceFactory::GetInstance();
+  AtMemoryQueryServiceFactory::GetInstance();
 #endif
   AccountBookmarkSyncServiceFactory::GetInstance();
   AccountConsistencyModeManagerFactory::GetInstance();
@@ -784,6 +787,7 @@ void ChromeBrowserMainExtraPartsProfiles::
   autofill::AutofillEntityDataManagerFactory::GetInstance();
   autofill::AutofillImageFetcherFactory::GetInstance();
   autofill::AutofillLogRouterFactory::GetInstance();
+  autofill::AutofillEnterprisePolicyServiceFactory::GetInstance();
   autofill::AutofillFieldClassificationModelServiceFactory::GetInstance();
   autofill::AutofillOfferManagerFactory::GetInstance();
   autofill::AutofillOptimizationGuideDeciderFactory::GetInstance();
@@ -1202,6 +1206,9 @@ void ChromeBrowserMainExtraPartsProfiles::
 #if BUILDFLAG(USE_NSS_CERTS)
   NssServiceFactory::GetInstance();
 #endif
+#if BUILDFLAG(IS_ANDROID)
+  NtpAndroidCustomBackgroundServiceFactory::GetInstance();
+#endif
   NtpBackgroundServiceFactory::GetInstance();
   NtpCustomBackgroundServiceFactory::GetInstance();
 #if !BUILDFLAG(IS_ANDROID)
@@ -1337,6 +1344,7 @@ void ChromeBrowserMainExtraPartsProfiles::
   PrivacySandboxNoticeServiceFactory::GetInstance();
   PrivacySandboxServiceFactory::GetInstance();
   PrivacySandboxSettingsFactory::GetInstance();
+  PrivateVerificationTokensServiceFactory::GetInstance();
   private_ai::PrivateAiServiceFactory::GetInstance();
   ProfileNetworkContextServiceFactory::GetInstance();
   ProfilePasswordStoreFactory::GetInstance();

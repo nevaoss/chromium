@@ -4,12 +4,14 @@
 #ifndef COMPONENTS_PASSAGE_EMBEDDINGS_CORE_PASSAGE_EMBEDDINGS_SERVICE_CONTROLLER_H_
 #define COMPONENTS_PASSAGE_EMBEDDINGS_CORE_PASSAGE_EMBEDDINGS_SERVICE_CONTROLLER_H_
 
+#include <cstdint>
+#include <deque>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "base/callback_list.h"
 #include "base/observer_list.h"
-#include "base/timer/elapsed_timer.h"
 #include "base/types/optional_ref.h"
 #include "components/optimization_guide/core/delivery/model_info.h"
 #include "components/optimization_guide/proto/passage_embeddings_model_metadata.pb.h"
@@ -17,11 +19,14 @@
 #include "mojo/public/cpp/bindings/remote.h"
 #include "services/passage_embeddings/public/mojom/passage_embeddings.mojom.h"
 
+namespace base {
+class ElapsedTimer;
+}
 namespace passage_embeddings {
 
 class PassageEmbeddingsServiceController : public EmbedderMetadataProvider {
  public:
-  PassageEmbeddingsServiceController();
+  explicit PassageEmbeddingsServiceController(bool execute_for_gemma = false);
   ~PassageEmbeddingsServiceController() override;
 
   // Updates the paths and the metadata needed for executing the passage
@@ -102,6 +107,10 @@ class PassageEmbeddingsServiceController : public EmbedderMetadataProvider {
                        PassagePriority priority,
                        std::vector<mojom::PassageEmbeddingsResultPtr> results);
 
+  // Called when the embedder remote disconnects, typically due to a crash.
+  void OnDisconnected(RequestId request_id,
+                      GetEmbeddingsResultCallback callback);
+
   // Version of the embeddings model.
   int64_t model_version_;
 
@@ -115,7 +124,7 @@ class PassageEmbeddingsServiceController : public EmbedderMetadataProvider {
   mojo::Remote<mojom::PassageEmbedder> embedder_remote_;
 
   // Pending requests to generate embeddings.
-  std::vector<RequestId> pending_requests_;
+  std::deque<RequestId> pending_requests_;
 
   // Notifies embedders that model metadata updated.
   base::ObserverList<EmbedderMetadataObserver> observer_list_;
@@ -124,6 +133,8 @@ class PassageEmbeddingsServiceController : public EmbedderMetadataProvider {
   // prioritizes all the jobs, and ultimately submits batches of work via
   // `GetEmbeddings` when the time is right.
   const std::unique_ptr<Embedder> embedder_;
+
+  const bool execute_for_gemma_ = false;
 
   // Used to generate weak pointers to self.
   base::WeakPtrFactory<PassageEmbeddingsServiceController> weak_ptr_factory_{

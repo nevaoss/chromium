@@ -240,6 +240,12 @@ base::expected<void, std::string> UpdatePropertyTreeNode(
     cc::PropertyTrees& trees,
     cc::TransformNode& node,
     const mojom::TransformNode& wire) {
+  if (wire.id == cc::kSecondaryRootPropertyNodeId &&
+      wire.parent_id == cc::kInvalidPropertyNodeId) {
+    return base::unexpected(
+        "Invalid parent_id for non-root property tree node");
+  }
+
   auto& tree = trees.transform_tree_mutable();
   if (!IsOptionalPropertyTreeIndexValid(tree, wire.parent_frame_id)) {
     return base::unexpected("Invalid parent_frame_id");
@@ -955,6 +961,12 @@ void UpdateTileDisplayLayerExtra(const mojom::TileDisplayLayerExtraPtr& extra,
   layer.SetIsBackdropFilterMask(extra->is_backdrop_filter_mask);
   layer.SetIsDirectlyCompositedImage(extra->is_directly_composited_image);
   layer.SetNearestNeighbor(extra->nearest_neighbor);
+  if (extra->has_animated_image_update_rect) {
+    layer.set_has_animated_image_update_rect();
+  }
+  if (extra->has_non_animated_image_update_rect) {
+    layer.set_has_non_animated_image_update_rect();
+  }
   layer.SetContentColorUsage(extra->content_color_usage);
   layer.SetRecordedBounds(extra->recorded_bounds);
   layer.SetProposedTilingScalesForDeletion(
@@ -1590,6 +1602,10 @@ base::expected<void, std::string> DeserializeAnimationCurve(
     curve->AddKeyframe(std::move(keyframe));
   }
 
+  if (wire.group_id == cc::KeyframeModel::kInvalidGroup) {
+    return base::unexpected("Invalid group_id");
+  }
+
   auto model = cc::KeyframeModel::Create(
       std::move(curve), wire.id, wire.group_id,
       cc::KeyframeModel::TargetPropertyId(wire.target_property_type));
@@ -1637,15 +1653,8 @@ base::expected<void, std::string> DeserializeAnimation(
                 *wire_model, *animation));
         break;
       case mojom::AnimationKeyframeValue::Tag::kSize:
-        RETURN_IF_ERROR(
-            DeserializeAnimationCurve<gfx::KeyframedSizeAnimationCurve>(
-                *wire_model, *animation));
-        break;
       case mojom::AnimationKeyframeValue::Tag::kRect:
-        RETURN_IF_ERROR(
-            DeserializeAnimationCurve<gfx::KeyframedRectAnimationCurve>(
-                *wire_model, *animation));
-        break;
+        return base::unexpected("Unsupported keyframe value type");
       case mojom::AnimationKeyframeValue::Tag::kTransform:
         RETURN_IF_ERROR(
             DeserializeAnimationCurve<gfx::KeyframedTransformAnimationCurve>(

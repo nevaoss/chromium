@@ -1064,6 +1064,7 @@ TEST_F(GpuRasterPixelTest, DrawHdrImageWithMetadata) {
   };
   sk_sp<SkImage> image_500_nits = make_image(0.6765848107833876f);
   sk_sp<SkImage> image_250_nits = make_image(0.6025591549907524f);
+  sk_sp<SkImage> image_100_nits = make_image(0.508078421517399f);
 
   const auto make_display_item_list =
       [&](sk_sp<SkImage> image,
@@ -1173,6 +1174,21 @@ TEST_F(GpuRasterPixelTest, DrawHdrImageWithMetadata) {
     EXPECT_NEAR(color.fR, kExpected10kToSdr, kEpsilon);
     EXPECT_NEAR(color.fG, kExpected10kToSdr, kEpsilon);
     EXPECT_NEAR(color.fB, kExpected10kToSdr, kEpsilon);
+  }
+
+  // Draw with PaintFlags ignoring all HDR metadata.
+  {
+    constexpr float kExpected = 100.f / 203.f;
+    PaintFlags flags;
+    flags.setTargetedHdrHeadroom(
+        PaintFlags::TargetedHdrHeadroom::kDisableEverything);
+    scoped_refptr<DisplayItemList> display_item_list_10k_nits_sdr =
+        make_display_item_list(image_100_nits, 1000.f, 50.f, &flags);
+    auto actual = Raster(display_item_list_10k_nits_sdr, options);
+    auto color = actual.getColor4f(0, 0);
+    EXPECT_NEAR(color.fR, kExpected, kEpsilon);
+    EXPECT_NEAR(color.fG, kExpected, kEpsilon);
+    EXPECT_NEAR(color.fB, kExpected, kEpsilon);
   }
 }
 

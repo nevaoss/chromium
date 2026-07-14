@@ -157,7 +157,7 @@ void MarkupFormatter::AppendCharactersReplacingEntities(
   });
 }
 
-MarkupFormatter::MarkupFormatter(AbsoluteURLs resolve_urls_method,
+MarkupFormatter::MarkupFormatter(ResolveUrls resolve_urls_method,
                                  SerializationType serialization_type)
     : resolve_urls_method_(resolve_urls_method),
       serialization_type_(serialization_type) {}
@@ -166,18 +166,18 @@ String MarkupFormatter::ResolveURLIfNeeded(const Element& element,
                                            const Attribute& attribute) const {
   String value = attribute.Value();
   switch (resolve_urls_method_) {
-    case kResolveAllURLs:
+    case ResolveUrls::kAll:
       if (element.IsURLAttribute(attribute))
         return element.GetDocument().CompleteURL(value).GetString();
       break;
 
-    case kResolveNonLocalURLs:
+    case ResolveUrls::kNonLocal:
       if (element.IsURLAttribute(attribute) &&
           !element.GetDocument().Url().IsLocalFile())
         return element.GetDocument().CompleteURL(value).GetString();
       break;
 
-    case kDoNotResolveURLs:
+    case ResolveUrls::kNone:
       break;
   }
   return value;

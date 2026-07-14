@@ -241,6 +241,8 @@ if (!is_android) {
         "//chrome/test:test_support",
         "//components/infobars/content",
         "//components/sync:test_support",
+        "//device/bluetooth",
+        "//device/bluetooth:mocks",
       ]
     }
 

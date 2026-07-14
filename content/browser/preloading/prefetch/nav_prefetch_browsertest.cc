@@ -1295,6 +1295,94 @@ IN_PROC_BROWSER_TEST_F(NavPrefetchBrowserTest_CancelUnrelatedPrefetchEnabled,
             PrefetchServableState::kServable);
 }
 
+class NavPrefetchBrowserTest_CancelUnrelatedPrefetchSameInitiatorDocument
+    : public NavPrefetchBrowserTest {
+ public:
+  NavPrefetchBrowserTest_CancelUnrelatedPrefetchSameInitiatorDocument() {
+    feature_list_.InitAndEnableFeatureWithParameters(
+        features::kPrefetchCancelUnrelatedPrefetch,
+        {{"prefetch_cancel_unrelated_prefetch_cancel_policy",
+          "NotServableSameInitiatorDocument"}});
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+// Tests that a renderer-initiated navigation cancels unrelated not servable
+// prefetch because they share the same initiator.
+IN_PROC_BROWSER_TEST_F(
+    NavPrefetchBrowserTest_CancelUnrelatedPrefetchSameInitiatorDocument,
+    NavigationCancelsUnrelatedNotServablePrefetchSameInitiator) {
+  ControllableHttpResponse response_cancelled(embedded_test_server(),
+                                              "/title1.html?cancelled=1");
+  ASSERT_TRUE(embedded_test_server()->Start());
+
+  GURL url_navigated =
+      embedded_test_server()->GetURL("/title1.html?navigated=1");
+  GURL url_cancelled =
+      embedded_test_server()->GetURL("/title1.html?cancelled=1");
+
+  auto& rfhi = render_frame_host_impl();
+
+  ASSERT_TRUE(
+      NavigateToURL(shell(), embedded_test_server()->GetURL("/empty.html")));
+
+  StartPrefetch(url_cancelled);
+
+  TestFrameNavigationObserver nav_observer(&rfhi);
+  ASSERT_TRUE(BeginNavigateToURLFromRenderer(&rfhi, url_navigated));
+  nav_observer.Wait();
+  ASSERT_EQ(nav_observer.last_committed_url(), url_navigated);
+  ASSERT_TRUE(nav_observer.last_navigation_succeeded());
+
+  // The navigation cancelled the prefetch because they share the same
+  // initiator.
+  PrefetchKey key(rfhi.GetDocumentToken(), url_cancelled);
+  const auto* prefetch_container =
+      prefetch_service().GetPrefetchContainerForTesting(key);
+  ASSERT_FALSE(prefetch_container);
+}
+
+// Tests that a browser-initiated navigation does not cancel unrelated not
+// servable prefetch because they have different initiators.
+IN_PROC_BROWSER_TEST_F(
+    NavPrefetchBrowserTest_CancelUnrelatedPrefetchSameInitiatorDocument,
+    NavigationDoesntCancelUnrelatedNotServablePrefetchDifferentInitiator) {
+  if (!base::FeatureList::IsEnabled(features::kBackForwardCache)) {
+    // We assume BFCache so that we can check `PrefetchContainer` after
+    // `DidFinishNavigation()`.
+    GTEST_SKIP();
+  }
+
+  ControllableHttpResponse response_cancelled(embedded_test_server(),
+                                              "/title1.html?cancelled=1");
+  ASSERT_TRUE(embedded_test_server()->Start());
+
+  GURL url_navigated =
+      embedded_test_server()->GetURL("/title1.html?navigated=1");
+  GURL url_cancelled =
+      embedded_test_server()->GetURL("/title1.html?cancelled=1");
+
+  auto& rfhi = render_frame_host_impl();
+
+  ASSERT_TRUE(
+      NavigateToURL(shell(), embedded_test_server()->GetURL("/empty.html")));
+
+  StartPrefetch(url_cancelled);
+
+  // Browser-initiated navigation.
+  ASSERT_TRUE(NavigateToURL(shell(), url_navigated));
+
+  // The navigation did NOT cancel the prefetch because the initiator of
+  // navigation is browser, while the initiator of prefetch is the renderer
+  // (rfhi).
+  PrefetchKey key(rfhi.GetDocumentToken(), url_cancelled);
+  const auto* prefetch_container =
+      prefetch_service().GetPrefetchContainerForTesting(key);
+  ASSERT_TRUE(prefetch_container);
+}
+
 class PreloadActivationReportProxyFactory
     : public network::mojom::URLLoaderFactory {
  public:

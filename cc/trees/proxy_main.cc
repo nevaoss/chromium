@@ -160,14 +160,14 @@ void ProxyMain::RecordBeginMainFrameMetrics(
       timer.Elapsed(), base::Microseconds(1), base::Seconds(10), 50);
 
   base::UmaHistogramExactLinear(
-      base::StrCat({"Compositing.BeginMainFrame.BMFReason9", suffix}),
+      base::StrCat({"Compositing.BeginMainFrame.BMFReason10", suffix}),
       begin_main_frame_reason.to_ulong(), num_buckets);
 
   std::string_view embedded_suffix =
       IsEmbeddedFrame() ? ".Embedded" : ".NonEmbedded";
   base::UmaHistogramExactLinear(
       base::StrCat(
-          {"Compositing.BeginMainFrame.BMFReason9", embedded_suffix, suffix}),
+          {"Compositing.BeginMainFrame.BMFReason10", embedded_suffix, suffix}),
       begin_main_frame_reason.to_ulong(), num_buckets);
 }
 
@@ -722,7 +722,7 @@ void ProxyMain::SetNeedsUpdateLayers() {
   }
 }
 
-void ProxyMain::SetNeedsCommit() {
+void ProxyMain::SetNeedsCommit(bool urgent) {
   DCHECK(IsMainThread());
   // If we are currently animating, make sure we don't skip the commit. Note
   // that requesting a commit during the layer update stage means we need to
@@ -733,9 +733,8 @@ void ProxyMain::SetNeedsCommit() {
     return;
   }
   if (SendCommitRequestToImplThreadIfNeeded(BeginMainFrameReason::kOther,
-                                            COMMIT_PIPELINE_STAGE,
-                                            /* urgent = */ false)) {
-    TRACE_EVENT_INSTANT("cc", "ProxyMain::SetNeedsCommit");
+                                            COMMIT_PIPELINE_STAGE, urgent)) {
+    TRACE_EVENT_INSTANT("cc", "ProxyMain::SetNeedsCommit", "urgent", urgent);
   }
 }
 
@@ -1153,7 +1152,7 @@ void ProxyMain::CompositeImmediatelyForTest(base::TimeTicks frame_begin_time,
                                             bool raster,
                                             base::OnceClosure callback) {
   synchronous_composite_for_test_callback_ = std::move(callback);
-  SetNeedsCommit();
+  SetNeedsCommit(false);
 }
 
 double ProxyMain::GetAverageThroughput() const {

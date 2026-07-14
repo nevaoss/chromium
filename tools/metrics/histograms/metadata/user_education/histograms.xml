@@ -425,8 +425,12 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<!-- expires-never: this is a histogram that provides user activity metrics and
+     is useful when correlated with many other histograms, including non-user
+     education histograms. -->
+
 <histogram name="UserEducation.Session.ActivePeriodDuration.Min.Under1Hour"
-    units="minutes" expires_after="2026-11-29">
+    units="minutes" expires_after="never">
   <owner>mickeyburks@chromium.org</owner>
   <owner>frizzle-team@google.com</owner>
   <summary>
@@ -437,8 +441,12 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<!-- expires-never: this is a histogram that provides user activity metrics and
+     is useful when correlated with many other histograms, including non-user
+     education histograms. -->
+
 <histogram name="UserEducation.Session.ActivePeriodDuration.Min.Under24Hours"
-    units="minutes" expires_after="2026-10-25">
+    units="minutes" expires_after="never">
   <owner>mickeyburks@chromium.org</owner>
   <owner>frizzle-team@google.com</owner>
   <summary>
@@ -449,8 +457,12 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<!-- expires-never: this is a histogram that provides user activity metrics and
+     is useful when correlated with many other histograms, including non-user
+     education histograms. -->
+
 <histogram name="UserEducation.Session.IdlePeriodDuration.Hr.Under28Days"
-    units="hours" expires_after="2026-07-26">
+    units="hours" expires_after="never">
   <owner>mickeyburks@chromium.org</owner>
   <owner>frizzle-team@google.com</owner>
   <summary>
@@ -461,8 +473,12 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<!-- expires-never: this is a histogram that provides user activity metrics and
+     is useful when correlated with many other histograms, including non-user
+     education histograms. -->
+
 <histogram name="UserEducation.Session.IdlePeriodDuration.Min.Under24Hours"
-    units="minutes" expires_after="2026-11-29">
+    units="minutes" expires_after="never">
   <owner>mickeyburks@chromium.org</owner>
   <owner>frizzle-team@google.com</owner>
   <summary>
@@ -473,8 +489,12 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<!-- expires-never: this is a histogram that provides user activity metrics and
+     is useful when correlated with many other histograms, including non-user
+     education histograms. -->
+
 <histogram name="UserEducation.Session.LongTermCount" units="count"
-    expires_after="2026-07-26">
+    expires_after="never">
   <owner>dfried@chromium.org</owner>
   <owner>frizzle-team@google.com</owner>
   <summary>
@@ -484,8 +504,12 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<!-- expires-never: this is a histogram that provides user activity metrics and
+     is useful when correlated with many other histograms, including non-user
+     education histograms. -->
+
 <histogram name="UserEducation.Session.MonthlyActiveDays" units="count"
-    expires_after="2026-09-27">
+    expires_after="never">
   <owner>dfried@chromium.org</owner>
   <owner>frizzle-team@google.com</owner>
   <summary>
@@ -496,8 +520,12 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<!-- expires-never: this is a histogram that provides user activity metrics and
+     is useful when correlated with many other histograms, including non-user
+     education histograms. -->
+
 <histogram name="UserEducation.Session.RecentActiveDays" units="count"
-    expires_after="2026-09-27">
+    expires_after="never">
   <owner>dfried@chromium.org</owner>
   <owner>frizzle-team@google.com</owner>
   <summary>
@@ -508,8 +536,12 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<!-- expires-never: this is a histogram that provides user activity metrics and
+     is useful when correlated with many other histograms, including non-user
+     education histograms. -->
+
 <histogram name="UserEducation.Session.RecentActiveWeeks" units="count"
-    expires_after="2026-09-27">
+    expires_after="never">
   <owner>dfried@chromium.org</owner>
   <owner>frizzle-team@google.com</owner>
   <summary>
@@ -520,8 +552,12 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<!-- expires-never: this is a histogram that provides user activity metrics and
+     is useful when correlated with many other histograms, including non-user
+     education histograms. -->
+
 <histogram name="UserEducation.Session.RecentSuperActiveWeeks" units="count"
-    expires_after="2026-07-26">
+    expires_after="never">
   <owner>dfried@chromium.org</owner>
   <owner>frizzle-team@google.com</owner>
   <summary>
@@ -532,8 +568,12 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<!-- expires-never: this is a histogram that provides user activity metrics and
+     is useful when correlated with many other histograms, including non-user
+     education histograms. -->
+
 <histogram name="UserEducation.Session.ShortTermCount" units="count"
-    expires_after="2026-07-26">
+    expires_after="never">
   <owner>dfried@chromium.org</owner>
   <owner>frizzle-team@google.com</owner>
   <summary>

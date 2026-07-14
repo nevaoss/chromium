@@ -25,7 +25,7 @@ import {microtasksFinished} from 'chrome://webui-test/test_util.js';
 
 import {TestContextualTasksBrowserProxy} from './test_contextual_tasks_browser_proxy.js';
 import {ADD_FILE_CONTEXT_FN, setupAutocompleteResults, uploadFileAndVerify} from './test_searchbox_utils.js';
-import {assertStyle, FAKE_TOKEN_STRING, fixtureUrl, getSubmitButton, getSubmitContainer, installMock, simulateUserInput} from './test_utils.js';
+import {assertStyle, FAKE_TOKEN_STRING, fixtureUrl, getSubmitButton, getSubmitContainer, installMock, simulateUserInput} from './contextual_tasks_test_utils.js';
 
 function disableAnimationsRecursively(element: Element) {
   const noAnimation = document.createElement('style');

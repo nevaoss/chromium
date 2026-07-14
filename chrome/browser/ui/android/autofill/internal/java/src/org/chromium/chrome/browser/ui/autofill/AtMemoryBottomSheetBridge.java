@@ -73,6 +73,11 @@ public class AtMemoryBottomSheetBridge implements AtMemoryBottomSheetCoordinator
     }
 
     @CalledByNative
+    public void hide() {
+        mCoordinator.hide();
+    }
+
+    @CalledByNative
     public void destroy() {
         mNativeAtMemoryBottomSheetBridge = 0;
         mCoordinator.hide();
@@ -94,8 +99,11 @@ public class AtMemoryBottomSheetBridge implements AtMemoryBottomSheetCoordinator
     }
 
     @Override
-    public void onSuggestionClicked(AutofillSuggestion suggestion) {
-        // TODO(crbug.com/513143737): Implement suggestion clicked handler
+    public void onSuggestionClicked(int position) {
+        if (mNativeAtMemoryBottomSheetBridge != 0) {
+            AtMemoryBottomSheetBridgeJni.get()
+                    .onSuggestionSelected(mNativeAtMemoryBottomSheetBridge, position);
+        }
     }
 
     @Override
@@ -109,5 +117,7 @@ public class AtMemoryBottomSheetBridge implements AtMemoryBottomSheetCoordinator
 
         void onQuerySubmitted(
                 long nativeAtMemoryBottomSheetBridge, @JniType("std::u16string") String query);
+
+        void onSuggestionSelected(long nativeAtMemoryBottomSheetBridge, int position);
     }
 }

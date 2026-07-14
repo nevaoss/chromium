@@ -27,13 +27,13 @@ class AssertionResult;
 
 namespace apps::test {
 
-// The valid link capturing configurations that can be enabled. ChromeOS does
-// not support default-on.
+// The valid link capturing configurations that can be enabled. Note that
+// ChromeOS does not support default-on in production, but kV2DefaultOn is
+// available for testing.
 enum class LinkCapturingFeatureVersion {
   kV2DefaultOff,
-#if !BUILDFLAG(IS_CHROMEOS)
+  kV2DefaultOnViaClientMode,
   kV2DefaultOn,
-#endif
 };
 
 // Returns if links that target existing frames (e.g. "_self", "_top",

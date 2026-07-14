@@ -25,6 +25,17 @@ class SkeletonLoaderSimTest : public SimTest,
                               public ScopedDeclarativeSkeletonsForTest {
  public:
   SkeletonLoaderSimTest() : ScopedDeclarativeSkeletonsForTest(true) {}
+
+ protected:
+  void SetUp() override {
+    SimTest::SetUp();
+
+    // Start with a basic page load so we have a valid document structure.
+    SimRequest main("https://example.com/", "text/html");
+    LoadURL("https://example.com/");
+    main.Complete("<html><body></body></html>");
+    Compositor().BeginFrame();
+  }
 };
 
 class SkeletonLoaderTest : public PageTestBase,
@@ -47,27 +58,31 @@ class SkeletonLoaderTest : public PageTestBase,
 };
 
 TEST_F(SkeletonLoaderSimTest, Basic) {
-  // - Create a dummy url that you add to the SkeletonLoader with
-  // AddSkeletonPrefetchLink().
-  KURL dummy_url("https://example.com/dummy.html");
+  KURL next_page_url("https://example.com/page.html");
+  KURL skeleton_url("https://example.com/skeleton.html");
 
-  // Start with a basic page load so we have a valid document structure.
-  SimRequest main("https://example.com/", "text/html");
-  LoadURL("https://example.com/");
-  main.Complete("<html><body></body></html>");
+  SimRequest::Params head_params;
+  head_params.response_http_headers = {
+      {http_names::kLink, "<https://example.com/skeleton.html>; rel=skeleton"}};
+  SimRequest next_page_head_request(next_page_url, "text/html", head_params);
+  SimRequest skeleton_request(skeleton_url, "text/html");
 
   Document& document = GetDocument();
   SkeletonLoader& loader = SkeletonLoader::Ensure(document);
 
-  loader.AddSkeletonPrefetchLink(dummy_url);
-  Compositor().BeginFrame();
+  loader.AddSkeletonPrefetchLink(next_page_url);
 
   // Check that the Document does not initially have a ::skeleton pseudo-element
   Element* root = document.documentElement();
   ASSERT_NE(root, nullptr);
   EXPECT_EQ(root->GetPseudoElement(kPseudoIdSkeleton), nullptr);
 
-  loader.NavigateTo(dummy_url);
+  next_page_head_request.Complete("");
+  // TODO(crbug.com/513276602):
+  // skeleton_request.Complete("<div>Skeleton</div>");
+  EXPECT_EQ(root->GetPseudoElement(kPseudoIdSkeleton), nullptr);
+
+  loader.NavigateTo(next_page_url);
   Compositor().BeginFrame();
 
   // Check that the Document now has a ::skeleton pseudo-element
@@ -79,6 +94,40 @@ TEST_F(SkeletonLoaderSimTest, Basic) {
 
   // The Document should no longer have a ::skeleton pseudo-element
   EXPECT_EQ(root->GetPseudoElement(kPseudoIdSkeleton), nullptr);
+}
+
+TEST_F(SkeletonLoaderSimTest, SkeletonLoadsAfterNavigation) {
+  KURL next_page_url("https://example.com/page.html");
+  KURL skeleton_url("https://example.com/skeleton.html");
+
+  SimRequest::Params head_params;
+  head_params.response_http_headers = {
+      {http_names::kLink, "<https://example.com/skeleton.html>; rel=skeleton"}};
+  SimRequest next_page_head_request(next_page_url, "text/html", head_params);
+  SimRequest skeleton_request(skeleton_url, "text/html");
+
+  Document& document = GetDocument();
+  SkeletonLoader& loader = SkeletonLoader::Ensure(document);
+
+  loader.AddSkeletonPrefetchLink(next_page_url);
+
+  // Check that the Document does not initially have a ::skeleton pseudo-element
+  Element* root = document.documentElement();
+  ASSERT_NE(root, nullptr);
+  EXPECT_EQ(root->GetPseudoElement(kPseudoIdSkeleton), nullptr);
+
+  loader.NavigateTo(next_page_url);
+
+  // Navigation triggered, but skeleton still loading
+  EXPECT_EQ(root->GetPseudoElement(kPseudoIdSkeleton), nullptr);
+
+  next_page_head_request.Complete("");
+  // TODO(crbug.com/513276602):
+  // skeleton_request.Complete("<div>Skeleton</div>");
+  Compositor().BeginFrame();
+
+  // Check that the Document now has a ::skeleton pseudo-element
+  EXPECT_NE(root->GetPseudoElement(kPseudoIdSkeleton), nullptr);
 }
 
 TEST_F(SkeletonLoaderTest, PseudoElementRecalcRoot) {

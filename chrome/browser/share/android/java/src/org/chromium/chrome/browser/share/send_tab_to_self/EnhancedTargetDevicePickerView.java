@@ -13,11 +13,11 @@ import android.widget.RelativeLayout;
 
 import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.annotation.Px;
 import androidx.annotation.StringRes;
 
 import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetListViewBase;
@@ -115,9 +115,6 @@ class EnhancedTargetDevicePickerView extends BottomSheetListViewBase {
         if (mSendButton.getMeasuredHeight() == 0) {
             remeasure();
         }
-        // TODO(crbug.com/493866368): Consider adding a metric to track how many users run into the
-        // state where the send button is pushed out of the half state to evaluate if it's worth
-        // implementing a polished experience for this group.
         int sendButtonHeight = mSendButton.getMeasuredHeight();
         int paddingTop = mBottomActionsBlock.getPaddingTop();
         return super.getDesiredSheetHeightPx() + sendButtonHeight + paddingTop + getSideMarginPx();

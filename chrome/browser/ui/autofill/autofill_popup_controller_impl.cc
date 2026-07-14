@@ -31,8 +31,8 @@
 #include "chrome/browser/ui/autofill/autofill_suggestion_controller_utils.h"
 #include "chrome/browser/ui/autofill/next_idle_barrier.h"
 #include "chrome/browser/ui/autofill/popup_controller_common.h"
-#include "components/accessibility_annotator/core/accessibility_query_service.h"
 #include "components/accessibility_annotator/core/annotation_reducer/memory_search_result.h"
+#include "components/accessibility_annotator/core/at_memory_query_service.h"
 #include "components/autofill/content/browser/content_autofill_client.h"
 #include "components/autofill/core/browser/at_memory/at_memory_data_type.h"
 #include "components/autofill/core/browser/data_manager/personal_data_manager.h"
@@ -252,17 +252,29 @@ void AutofillPopupControllerImpl::Show(
 
   // The focused frame may be a different frame than the one the delegate is
   // associated with. This happens in two scenarios:
-  // - With frame-transcending forms: the focused frame is subframe, whose
+  // - With frame-transcending forms: the focused frame is a subframe whose
   //   form has been flattened into an ancestor form.
-  // - With race conditions: while Autofill parsed the form, the focused may
+  // - With race conditions: while Autofill parsed the form, the focus may
   //   have moved to another frame.
   // We support the case where the focused frame is a descendant of the
   // `delegate_`'s frame. We observe the focused frame's RenderFrameDeleted()
   // event.
   content::RenderFrameHost* rfh = web_contents_->GetFocusedFrame();
-  if (!should_ignore_focus_loss &&
-      (!rfh || !delegate_ ||
-       !IsAncestorOf(GetRenderFrameHost(*delegate_), rfh))) {
+  const bool focus_is_in_descendant =
+      rfh && delegate_ && IsAncestorOf(GetRenderFrameHost(*delegate_), rfh);
+
+  // If the focused frame is null or not a descendant of the delegate's frame,
+  // we either hide the popup, or fall back to the delegate's frame if focus
+  // loss should be ignored (e.g. when typing in a popup search bar).
+  if (!focus_is_in_descendant) {
+    if (!should_ignore_focus_loss) {
+      Hide(SuggestionHidingReason::kNoFrameHasFocus);
+      return;
+    }
+    rfh = delegate_ ? GetRenderFrameHost(*delegate_) : nullptr;
+  }
+
+  if (!rfh) {
     Hide(SuggestionHidingReason::kNoFrameHasFocus);
     return;
   }
@@ -336,7 +348,7 @@ void AutofillPopupControllerImpl::Show(
     // TODO(crbug.com/41486228): Consider not to recycle views or controllers
     // and only permit a single call to `Show`.
     key_press_observer_.Reset();
-    key_press_observer_.Observe(web_contents_->GetFocusedFrame());
+    key_press_observer_.Observe(rfh);
 
     if (non_filtered_suggestions_.size() == 1 &&
         non_filtered_suggestions_[0].type ==

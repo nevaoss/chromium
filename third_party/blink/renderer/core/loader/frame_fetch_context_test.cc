@@ -122,6 +122,9 @@ class DummyFrameOwner final : public GarbageCollected<DummyFrameOwner>,
   bool AllowFullscreen() const override { return false; }
   bool AllowPaymentRequest() const override { return false; }
   bool IsDisplayNone() const override { return false; }
+  mojom::blink::FrameResponsiveSizing GetResponsiveSizing() const override {
+    return mojom::blink::FrameResponsiveSizing::kNone;
+  }
   mojom::blink::ColorScheme GetColorScheme() const override {
     return mojom::blink::ColorScheme::kLight;
   }

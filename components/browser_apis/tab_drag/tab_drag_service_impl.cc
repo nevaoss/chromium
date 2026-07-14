@@ -24,8 +24,12 @@ TabDragServiceImpl::TabDragServiceImpl(
 
 TabDragServiceImpl::~TabDragServiceImpl() {
   if (session_manager_ && window_adapter_) {
-    session_manager_->GetDropTargetRegistry().UnregisterDropTarget(
-        window_adapter_.get());
+    DropTargetRegistry& registry = session_manager_->GetDropTargetRegistry();
+    DropTargetId target_id =
+        registry.FindTargetForWindow(window_adapter_->GetWindowId());
+    if (target_id) {
+      registry.UnregisterDropTarget(target_id);
+    }
   }
 }
 

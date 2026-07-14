@@ -126,6 +126,9 @@ proto_library("amount_extraction_heuristic_regexes_proto") {
 }
 
 static_library("browser") {
+  _configs = configs
+  configs = []
+  configs = [ "//third_party/tflite:tflite_shim_config" ] + _configs
   sources = [
     "at_memory/at_memory_data_type.cc",
     "at_memory/at_memory_data_type.h",
@@ -710,6 +713,7 @@ static_library("browser") {
     "payments/save_and_fill_manager.h",
     "payments/save_and_fill_manager_impl.cc",
     "payments/save_and_fill_manager_impl.h",
+    "payments/unmask_auth_flow_type.h",
     "payments/virtual_card_enroll_metrics_logger.cc",
     "payments/virtual_card_enroll_metrics_logger.h",
     "payments/virtual_card_enrollment_flow.h",
@@ -720,6 +724,8 @@ static_library("browser") {
     "payments/webauthn_callback_types.h",
     "permissions/autofill_ai/autofill_ai_permission_utils.cc",
     "permissions/autofill_ai/autofill_ai_permission_utils.h",
+    "permissions/enterprise_policy/autofill_enterprise_policy_service.cc",
+    "permissions/enterprise_policy/autofill_enterprise_policy_service.h",
     "single_field_fillers/autocomplete/autocomplete_history_manager.cc",
     "single_field_fillers/autocomplete/autocomplete_history_manager.h",
     "single_field_fillers/payments/merchant_promo_code_manager.cc",
@@ -729,6 +735,7 @@ static_library("browser") {
     "strike_databases/addresses/address_on_typing_suggestion_strike_database.h",
     "strike_databases/addresses/address_suggestion_strike_database.cc",
     "strike_databases/addresses/address_suggestion_strike_database.h",
+    "strike_databases/addresses/autofill_on_typing_suggestion_strike_database.h",
     "strike_databases/addresses/autofill_profile_migration_strike_database.h",
     "strike_databases/addresses/autofill_profile_save_strike_database.h",
     "strike_databases/addresses/autofill_profile_update_strike_database.h",
@@ -806,6 +813,7 @@ static_library("browser") {
     "ui/payments/autofill_progress_dialog_controller_impl.cc",
     "ui/payments/autofill_progress_dialog_controller_impl.h",
     "ui/payments/autofill_progress_dialog_view.h",
+    "ui/payments/autofill_progress_ui_type.h",
     "ui/payments/bnpl_tos_controller.h",
     "ui/payments/bnpl_tos_controller_impl.cc",
     "ui/payments/bnpl_tos_controller_impl.h",
@@ -1239,6 +1247,7 @@ static_library("test_support") {
     "data_model/autofill_ai/entity_instance_test_api.h",
     "data_model/autofill_ai/entity_type_test_api.h",
     "data_model/payments/credit_card_benefit_test_api.h",
+    "data_model/payments/credit_card_test_api.h",
     "data_quality/addresses/profile_token_quality_test_api.cc",
     "data_quality/addresses/profile_token_quality_test_api.h",
     "data_quality/addresses/test_address_normalizer.cc",
@@ -1304,6 +1313,7 @@ static_library("test_support") {
     "logging/stub_log_manager.h",
     "metrics/autofill_metrics_test_base.cc",
     "metrics/autofill_metrics_test_base.h",
+    "metrics/form_events/credit_card_form_event_logger_test_api.h",
     "metrics/ukm_metrics_test_utils.cc",
     "metrics/ukm_metrics_test_utils.h",
     "ml_model/autofill_ai/mock_autofill_ai_model_cache.cc",
@@ -1675,6 +1685,7 @@ source_set("unit_tests") {
     "integrators/autofill_ai/autofill_ai_labels_unittest.cc",
     "integrators/autofill_ai/autofill_ai_manager_unittest.cc",
     "integrators/autofill_ai/autofill_ai_wallet_utils_unittest.cc",
+    "integrators/autofill_ai/management_utils_unittest.cc",
     "integrators/autofill_ai/metrics/autofill_ai_logger_unittest.cc",
     "integrators/one_time_tokens/metrics/otp_form_event_logger_unittest.cc",
     "integrators/one_time_tokens/otp_field_detector_unittest.cc",
@@ -1874,6 +1885,10 @@ source_set("unit_tests") {
         [ "payments/credit_card_access_manager_mandatory_reauth_unittest.cc" ]
   }
 
+  if (is_win || is_mac || is_linux || is_chromeos) {
+    sources += [ "at_memory_promo_tracker_unittest.cc" ]
+  }
+
   if (!is_ios && !is_android) {
     sources += [
       "payments/desktop_bnpl_strategy_unittest.cc",
@@ -1886,6 +1901,7 @@ source_set("unit_tests") {
       "filling/autofill_ai/autofill_ai_access_manager_unittest.cc",
       "filling/autofill_ai/field_filling_entity_util_unittest.cc",
       "permissions/autofill_ai/autofill_ai_permission_utils_unittest.cc",
+      "permissions/enterprise_policy/autofill_enterprise_policy_service_unittest.cc",
     ]
   }
 
@@ -1996,8 +2012,8 @@ source_set("unit_tests") {
     deps += [ "//components/autofill/ios/common" ]
   }
 
-  if (is_win || is_mac || is_linux || is_chromeos) {
-    sources += [ "at_memory_promo_tracker_unittest.cc" ]
+  if (!is_fuchsia) {
+    deps += [ "//components/variations/service" ]
   }
 
   # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
@@ -2040,6 +2056,7 @@ if (use_fuzzing_engine_with_lpm) {
       "//components/autofill/core/browser",
       "//components/autofill/core/browser:test_support",
       "//components/autofill/core/browser/proto",
+      "//components/autofill/core/browser/proto:proto_fuzzable",
       "//components/autofill/core/common",
       "//third_party/libprotobuf-mutator",
     ]

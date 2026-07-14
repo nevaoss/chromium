@@ -195,7 +195,7 @@ class GlicInstanceCoordinatorImpl
   void SetWarmingEnabledForTesting(bool warming_enabled);
   GlicWebContentsWarmingPool& GetWebContentsWarmingPoolForTesting();
   std::string DescribeForTesting();
-  std::vector<GlicInstanceImpl*> GetInstancesForTesting();
+  std::vector<GlicInstanceImpl*> GetInstances() override;
   GlicInstanceCoordinatorMetrics& GetMetricsForTesting() { return metrics_; }
   InstanceIndependentHotkeyManager* GetHotkeyManagerForTesting() {
     return hotkey_manager_.get();
@@ -235,6 +235,8 @@ class GlicInstanceCoordinatorImpl
 
   // GlicInstanceCoordinatorMetrics::DataProvider implementation
   std::vector<InstanceWebContents> GetAllUnhibernatedWebContents() override;
+
+  void OnInstanceActuatingChanged(bool actuating);
 
   void ShowInstanceForTabs(GlicInstanceImpl* instance,
                            const std::vector<tabs::TabInterface*>& tabs,
@@ -281,6 +283,8 @@ class GlicInstanceCoordinatorImpl
 
   uint32_t next_instance_index_ = 0;
   std::map<InstanceId, std::unique_ptr<GlicInstanceImpl>> instances_;
+  base::flat_map<InstanceId, base::CallbackListSubscription>
+      actuating_changed_subscriptions_;
 
   base::flat_map<GlicInstance*, std::unique_ptr<GlicInvokeHandler>>
       invoke_handlers_;

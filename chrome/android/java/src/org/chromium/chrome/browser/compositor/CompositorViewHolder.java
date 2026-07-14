@@ -1075,6 +1075,13 @@ public class CompositorViewHolder extends FrameLayout
     /**
      * @see #updateWebContentsSize(Tab, Integer)
      */
+    void updateWebContentsSize() {
+        updateWebContentsSize(getCurrentTab(), /* widthOverride= */ null);
+    }
+
+    /**
+     * @see #updateWebContentsSize(Tab, Integer)
+     */
     @VisibleForTesting
     void updateWebContentsSize(@Nullable Tab tab) {
         updateWebContentsSize(tab, /* widthOverride= */ null);
@@ -1455,10 +1462,10 @@ public class CompositorViewHolder extends FrameLayout
 
     @Override
     public void onSideUiSpecsChanged(SideUiSpecs sideUiSpecs) {
-        int sideUiTotalWidth =
-                sideUiSpecs.getWidth(AnchorSide.RIGHT) + sideUiSpecs.getWidth(AnchorSide.LEFT);
-        int webContentsWidth = getViewportSize().x - sideUiTotalWidth;
-        updateWebContentsSize(getCurrentTab(), webContentsWidth);
+        // Delay #updateWebContentsSize to the end of the task queue. Some side panel instances
+        // rapidly close and re-open the side panel, which can cause a flicker if the web contents
+        // are updated synchronously.
+        post(this::updateWebContentsSize);
 
         // TODO(crbug.com/514774842): Account for offset X for animations.
         mLayoutManager.setContentOffsetX(sideUiSpecs.getWidth(AnchorSide.LEFT));

@@ -106,6 +106,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
   registry->RegisterDictionaryPref(kAutofillMetadataUploadEvents);
   registry->RegisterTimePref(kAutofillUploadEventsLastResetTimestamp, {});
   registry->RegisterDictionaryPref(kAutofillSyncTransportOptIn);
+  registry->RegisterListPref(kAutofillTypesBlocked);
 #if BUILDFLAG(IS_ANDROID)
   // Automotive devices require stricter data protection for user privacy, so
   // mandatory reauth for autofill payment methods should always be enabled.
@@ -237,6 +238,10 @@ bool IsAutofillProfileManaged(const PrefService* prefs) {
 
 bool IsAutofillCreditCardManaged(const PrefService* prefs) {
   return prefs->IsManagedPreference(kAutofillCreditCardEnabled);
+}
+
+bool IsAutofillTypesBlockedManaged(const PrefService* prefs) {
+  return prefs->IsManagedPreference(kAutofillTypesBlocked);
 }
 
 bool IsAutofillProfileEnabled(const PrefService* prefs) {

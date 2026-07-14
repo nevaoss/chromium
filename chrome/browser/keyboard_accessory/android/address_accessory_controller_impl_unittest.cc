@@ -18,7 +18,6 @@
 #include "chrome/browser/autofill/personal_data_manager_factory.h"
 #include "chrome/browser/keyboard_accessory/android/accessory_controller.h"
 #include "chrome/browser/keyboard_accessory/test_utils/android/mock_manual_filling_controller.h"
-#include "chrome/grit/generated_resources.h"
 #include "chrome/test/base/chrome_render_view_host_test_harness.h"
 #include "chrome/test/base/testing_profile.h"
 #include "components/autofill/content/browser/test_autofill_client_injector.h"

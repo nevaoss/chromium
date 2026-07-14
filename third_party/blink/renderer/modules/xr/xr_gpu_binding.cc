@@ -170,7 +170,8 @@ XRProjectionLayer* XRGPUBinding::createProjectionLayer(
                                            ? V8XRLayerLayout::Enum::kStereo
                                            : V8XRLayerLayout::Enum::kMono;
 
-  return MakeGarbageCollected<XRProjectionLayer>(this, drawing_context, layout);
+  return MakeGarbageCollected<XRProjectionLayer>(session(), this,
+                                                 drawing_context, layout);
 }
 
 XRGPUSubImage* XRGPUBinding::getViewSubImage(XRProjectionLayer* layer,

@@ -56,6 +56,10 @@ base::DictValue UpdaterStatusAndValueProvider::GetStatus() {
              GetTimeSinceLastActionString(updater_status_->last_checked_time));
   }
 
+  if (dict.empty()) {
+    return {};
+  }
+
   dict.Set(policy::kPolicyDescriptionKey, kUpdaterPolicyStatusDescription);
   return dict;
 }

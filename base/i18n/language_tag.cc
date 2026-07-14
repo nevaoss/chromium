@@ -68,12 +68,12 @@ LanguageTag::LanguageTag(const LanguageTag&) = default;
 LanguageTag& LanguageTag::operator=(const LanguageTag&) = default;
 
 std::string LanguageTag::ToLegacyICUFormat() const {
-  std::string legacy_tag(ToString());
+  std::string legacy_tag(tag_string());
   base::ReplaceSubstringsAfterOffset(&legacy_tag, 0, "-", "_");
   return legacy_tag;
 }
 
-std::string_view LanguageTag::ToString() const {
+std::string_view LanguageTag::tag_string() const {
   return tag_.AsString();
 }
 

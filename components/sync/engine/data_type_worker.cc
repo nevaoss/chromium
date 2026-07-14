@@ -54,8 +54,6 @@ namespace {
 
 const char kPasswordNotesStateHistogramName[] =
     "Sync.PasswordNotesStateInUpdate";
-constexpr char kEntityEncryptionResultHistogramName[] =
-    "Sync.EntityEncryptionSucceeded";
 
 // Sync ignores updates encrypted with keys that have been missing for too long
 // from this client and will proceed normally as if those updates didn't exist.
@@ -78,14 +76,6 @@ enum class CrossUserSharingDecryptionResult {
 
 void LogPasswordNotesState(PasswordNotesStateForUMA state) {
   base::UmaHistogramEnumeration(kPasswordNotesStateHistogramName, state);
-}
-
-void LogEncryptionResult(DataType type, bool success) {
-  base::UmaHistogramBoolean(kEntityEncryptionResultHistogramName, success);
-  base::UmaHistogramBoolean(
-      base::StrCat({kEntityEncryptionResultHistogramName, ".",
-                    DataTypeToHistogramSuffix(type)}),
-      success);
 }
 
 void LogNudgedUpdateLatency(DataType type, base::TimeDelta latency) {
@@ -1449,7 +1439,6 @@ void DataTypeWorker::EncryptPasswordSpecificsData(
     bool result = cryptographer_->Encrypt(
         password_data,
         encrypted_password.mutable_password()->mutable_encrypted());
-    LogEncryptionResult(type_, result);
 
     // `encrypted_notes_backup` field needs to be populated regardless of
     // whether or not there are any notes.
@@ -1495,7 +1484,6 @@ void DataTypeWorker::EncryptOutgoingPasswordSharingInvitations(
     // There should not be encryption failure but DCHECK is not used because
     // it's not guaranteed. In the worst case, the entity will be committed with
     // empty specifics (no unencrypted data will be committed to the server).
-    LogEncryptionResult(type_, encrypted_data.has_value());
     if (encrypted_data) {
       specifics->set_encrypted_password_sharing_invitation_data(
           encrypted_data->data(), encrypted_data->size());
@@ -1526,9 +1514,8 @@ void DataTypeWorker::EncryptSendTabToSelfPageContext(
       continue;
     }
 
-    bool success = cryptographer_->Encrypt(
-        specifics->page_context(), specifics->mutable_encrypted_page_context());
-    LogEncryptionResult(type_, success);
+    cryptographer_->Encrypt(specifics->page_context(),
+                            specifics->mutable_encrypted_page_context());
     specifics->clear_page_context();
   }
 }
@@ -1550,9 +1537,8 @@ void DataTypeWorker::EncryptSpecifics(
       continue;
     }
     sync_pb::EntitySpecifics encrypted_specifics;
-    bool success = cryptographer_->Encrypt(
-        entity_data->specifics, encrypted_specifics.mutable_encrypted());
-    LogEncryptionResult(type_, success);
+    cryptographer_->Encrypt(entity_data->specifics,
+                            encrypted_specifics.mutable_encrypted());
     entity_data->specifics.CopyFrom(encrypted_specifics);
   }
 }

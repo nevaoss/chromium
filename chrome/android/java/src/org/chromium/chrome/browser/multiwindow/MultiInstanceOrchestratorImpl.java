@@ -24,6 +24,7 @@ import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.ChromeTabbedActivity;
 import org.chromium.chrome.browser.IntentHandler;
 import org.chromium.chrome.browser.app.tab_activity_glue.ReparentingTabsTask;
+import org.chromium.chrome.browser.app.tabwindow.TabWindowManagerSingleton;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.incognito.IncognitoUtils;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.NewWindowAppSource;
@@ -33,8 +34,12 @@ import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabLaunchType;
 import org.chromium.chrome.browser.tab.TabUtils;
 import org.chromium.chrome.browser.tabmodel.AsyncTabCreationParams;
+import org.chromium.chrome.browser.tabmodel.HeadlessTabModelSelectorImpl;
 import org.chromium.chrome.browser.tabmodel.TabGroupMetadata;
 import org.chromium.chrome.browser.tabmodel.TabList;
+import org.chromium.chrome.browser.tabmodel.TabModelSelector;
+import org.chromium.chrome.browser.tabmodel.TabModelSelectorObserver;
+import org.chromium.chrome.browser.tabwindow.TabWindowManager;
 import org.chromium.chrome.browser.util.AndroidTaskUtils;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.WebContents;
@@ -70,6 +75,36 @@ import java.util.Set;
     private MultiInstanceOrchestratorImpl(TabReparentingDelegate tabReparentingDelegate) {
         mTabReparentingDelegate = tabReparentingDelegate;
         ApplicationStatus.registerStateListenerForAllActivities(this::onActivityStateChange);
+
+        TabWindowManagerSingleton.getInstance().addObserver(createTabWindowManagerObserver());
+    }
+
+    private TabWindowManager.Observer createTabWindowManagerObserver() {
+        return new TabWindowManager.Observer() {
+            @Override
+            public void onTabModelSelectorAdded(TabModelSelector selector) {
+                int windowId =
+                        TabWindowManagerSingleton.getInstance().getWindowIdForSelector(selector);
+                if (windowId == INVALID_WINDOW_ID
+                        || !(selector instanceof HeadlessTabModelSelectorImpl)) {
+                    return;
+                }
+
+                MultiInstanceHeadlessTabModelObserver observer =
+                        new MultiInstanceHeadlessTabModelObserver(
+                                (HeadlessTabModelSelectorImpl) selector, windowId);
+
+                // Clean up the observer if the selector is destroyed.
+                selector.addObserver(
+                        new TabModelSelectorObserver() {
+                            @Override
+                            public void onDestroyed() {
+                                selector.removeObserver(this);
+                                observer.destroy();
+                            }
+                        });
+            }
+        };
     }
 
     @Override

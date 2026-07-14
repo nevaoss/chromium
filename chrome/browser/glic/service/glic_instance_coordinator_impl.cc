@@ -97,10 +97,8 @@ constexpr base::FeatureParam<int> kGlicMaxAwakeInstancesLimit{
     &kGlicMaxAwakeInstances, "limit", 15};
 
 GlicInstanceCoordinatorImpl::GlicInstanceCoordinatorImpl(
-    Profile* profile,
-    signin::IdentityManager* identity_manager,
-    GlicKeyedService* service,
-    GlicEnabling* enabling,
+    Profile* profile, signin::IdentityManager* identity_manager,
+    GlicKeyedService* service, GlicEnabling* enabling,
     ContextualCueingService* contextual_cueing_service)
     : coordinator_uid_(
           base::RandGenerator(std::numeric_limits<int64_t>::max())),
@@ -108,10 +106,8 @@ GlicInstanceCoordinatorImpl::GlicInstanceCoordinatorImpl(
       service_(service),
       contextual_cueing_service_(contextual_cueing_service),
       memory_pressure_listener_registration_(
-          FROM_HERE,
-          base::MemoryPressureListenerTag::kGlicKeyedService,
-          this),
-      metrics_(this, profile->GetPrefs()),
+          FROM_HERE, base::MemoryPressureListenerTag::kGlicKeyedService, this),
+      metrics_(this),
       web_contents_warming_pool_(
           std::make_unique<GlicWebContentsWarmingPool>(profile)),
       active_instance_sharing_manager_(
@@ -231,8 +227,7 @@ GlicInstanceImpl* GlicInstanceCoordinatorImpl::GetInstanceImplForTab(
   return nullptr;
 }
 
-std::vector<GlicInstanceImpl*>
-GlicInstanceCoordinatorImpl::GetInstancesForTesting() {
+std::vector<GlicInstanceImpl*> GlicInstanceCoordinatorImpl::GetInstances() {
   std::vector<GlicInstanceImpl*> instances;
   for (auto& entry : instances_) {
     instances.push_back(entry.second.get());
@@ -756,6 +751,16 @@ GlicInstanceImpl* GlicInstanceCoordinatorImpl::CreateGlicInstance(
   instance->instance_metrics().OnInstanceCreatedWithoutWarming();
   auto* instance_ptr = instance.get();
   instances_[instance->id()] = std::move(instance);
+
+  if (auto* task_manager = instance_ptr->GetActorTaskManager()) {
+    actuating_changed_subscriptions_[instance_ptr->id()] =
+        task_manager->AddActuatingChangedCallback(base::BindRepeating(
+            &GlicInstanceCoordinatorImpl::OnInstanceActuatingChanged,
+            base::Unretained(this)));
+  }
+
+  metrics_.RecordCountOnCreation();
+
   return instance_ptr;
 }
 
@@ -859,6 +864,7 @@ void GlicInstanceCoordinatorImpl::RemoveInstance(InstanceId id) {
   }
   GlicInstanceImpl* instance = it->second.get();
   OnInstanceActivationChanged(instance, false);
+  actuating_changed_subscriptions_.erase(id);
 
   // Remove the instance first, and then delete. This way,
   // instances_ will not include the instance being deleted while
@@ -1020,7 +1026,15 @@ void GlicInstanceCoordinatorImpl::ContextAccessIndicatorChanged(
 
 std::unique_ptr<WebUIContentsContainer>
 GlicInstanceCoordinatorImpl::CreateWebUIContentsContainer() {
+  metrics_.RecordCountAwakeOnContentsCreated();
   return web_contents_warming_pool_->TakeContainer();
+}
+
+void GlicInstanceCoordinatorImpl::OnInstanceActuatingChanged(bool actuating) {
+  if (!actuating) {
+    return;
+  }
+  metrics_.RecordCountActuatingOnTaskCreation();
 }
 
 void GlicInstanceCoordinatorImpl::SetWarmingEnabledForTesting(

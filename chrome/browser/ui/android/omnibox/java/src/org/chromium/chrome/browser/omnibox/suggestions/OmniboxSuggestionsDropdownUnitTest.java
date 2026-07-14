@@ -10,7 +10,6 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -19,6 +18,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+
+import static org.chromium.ui.test.util.MockitoHelper.clearInvocations;
 
 import android.content.Context;
 import android.view.ContextThemeWrapper;
@@ -46,7 +47,12 @@ import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.chrome.browser.omnibox.R;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator;
+import org.chromium.chrome.browser.omnibox.suggestions.OmniboxSuggestionsDropdown.SuggestionLayoutScrollListener;
 import org.chromium.components.omnibox.OmniboxFeatureList;
+import org.chromium.components.omnibox.suggestions.OmniboxSuggestionUiType;
+import org.chromium.ui.modelutil.MVCListAdapter.ListItem;
+import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
+import org.chromium.ui.modelutil.PropertyModel;
 
 /** Unit tests for {@link OmniboxSuggestionsDropdown}. */
 @RunWith(BaseRobolectricTestRunner.class)
@@ -390,7 +396,6 @@ public class OmniboxSuggestionsDropdownUnitTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     public void testActivationChip() {
         doReturn(mChipVisibilitySupplier)
                 .when(mFuseboxCoordinator)
@@ -420,8 +425,8 @@ public class OmniboxSuggestionsDropdownUnitTest {
                 KeyEvent.KEYCODE_ENTER, new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER));
         verify(mFuseboxCoordinator).onActivationChipClicked();
 
-        clearInvocations(mFuseboxCoordinator);
         mChipVisibilitySupplier.set(false);
+        clearInvocations(mFuseboxCoordinator);
 
         controller.setPosition(1);
         verify(mFuseboxCoordinator, never()).onActivationChipSelectionChanged(anyBoolean());
@@ -429,5 +434,37 @@ public class OmniboxSuggestionsDropdownUnitTest {
         mDropdown.onKeyDown(
                 KeyEvent.KEYCODE_ENTER, new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER));
         verify(mFuseboxCoordinator, never()).onActivationChipClicked();
+    }
+
+    @Test
+    @EnableFeatures(OmniboxFeatureList.OMNIBOX_ASYNC_VIEW_INFLATION)
+    public void testRecycledViewPool_NotClearedAndReused() {
+        ModelList listItems = new ModelList();
+        var listener = new SuggestionLayoutScrollListener(mContext);
+        OmniboxSuggestionsDropdown dropdown =
+                new OmniboxSuggestionsDropdown(mContext, null, listener);
+        // Setting model list initializes the real adapter and view pool.
+        dropdown.setModelList(listItems);
+
+        PreWarmingRecycledViewPool pool =
+                (PreWarmingRecycledViewPool) dropdown.getRecycledViewPool();
+        // Verify pool is initially pre-warmed.
+        assertEquals(
+                PreWarmingRecycledViewPool.PRE_WARMED_DEFAULT_VIEW_COUNT,
+                pool.getRecycledViewCount(OmniboxSuggestionUiType.DEFAULT));
+
+        listItems.add(
+                new ListItem(
+                        OmniboxSuggestionUiType.DEFAULT,
+                        new PropertyModel(SuggestionCommonProperties.ALL_KEYS)));
+
+        // Force layout to trigger recycler interactions (binding the item).
+        dropdown.measure(0, 0);
+        dropdown.layout(0, 0, 100, 100);
+
+        // Verify that the pool was not cleared and one view was reused.
+        assertEquals(
+                PreWarmingRecycledViewPool.PRE_WARMED_DEFAULT_VIEW_COUNT - 1,
+                pool.getRecycledViewCount(OmniboxSuggestionUiType.DEFAULT));
     }
 }

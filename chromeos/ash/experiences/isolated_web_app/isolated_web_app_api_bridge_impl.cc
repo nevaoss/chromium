@@ -4,6 +4,7 @@
 
 #include "chromeos/ash/experiences/isolated_web_app/isolated_web_app_api_bridge_impl.h"
 
+#include <algorithm>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -58,6 +59,12 @@ void SetShapeAndEventTargeter(views::Widget& widget,
     widget.GetNativeWindow()->SetEventTargeter(
         std::make_unique<ShapedWindowTargeter>(rects));
   }
+}
+
+// Returns true if `rect` has dimensions of at least `kMinimumIwaSetShapeSize`.
+bool IsAtLeastMinimumSize(const gfx::Rect& rect) {
+  return rect.width() >= blink::mojom::kMinimumIwaSetShapeSize &&
+         rect.height() >= blink::mojom::kMinimumIwaSetShapeSize;
 }
 
 }  // namespace
@@ -146,6 +153,13 @@ void IsolatedWebAppApiBridgeImpl::SetShape(const std::vector<gfx::Rect>& rects,
 
   if (rects.size() > blink::mojom::kMaxSetShapeRects) {
     std::move(callback).Run(blink::mojom::SetShapeResult::kInvalidLength);
+    return;
+  }
+
+  if (!rects.empty() && std::ranges::none_of(rects, &IsAtLeastMinimumSize)) {
+    receiver_.ReportBadMessage(
+        "SetShape called with invalid shape (no rect meets minimum size "
+        "requirement).");
     return;
   }
 

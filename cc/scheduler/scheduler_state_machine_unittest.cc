@@ -3659,5 +3659,96 @@ TEST(SchedulerStateMachineTest, ThrottleDueToConsecutiveNoDamageFrames) {
       SchedulerStateMachine::Action::SEND_BEGIN_MAIN_FRAME);
 }
 
+TEST(SchedulerStateMachineTest,
+     ThrottleDueToConsecutiveNoDamageFramesWithHighFramerateRequest) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      {features::kThrottleRepeatedNoDamageFrames,
+       features::kHighFramerateRequestFromClient},
+      {});
+
+  SchedulerSettings default_scheduler_settings;
+  StateMachine state(default_scheduler_settings);
+  SET_UP_STATE(state);
+
+  state.FrameIntervalUpdated(base::Hertz(60));
+
+  // 1. Request high framerate, then simulate no-damage frames. Should NOT
+  // throttle.
+  state.SetRequestHighFramerate(true);
+
+  for (int i = 0; i < 90; i++) {
+    state.IssueNextBeginImplFrame();
+    state.SetNeedsBeginMainFrame(false);
+    EXPECT_ACTION_UPDATE_STATE(
+        SchedulerStateMachine::Action::SEND_BEGIN_MAIN_FRAME);
+    state.BeginMainFrameAborted(CommitEarlyOutReason::kFinishedNoUpdates);
+  }
+
+  // Issue next frame immediately. It should NOT throttle.
+  state.IssueNextBeginImplFrame();
+  state.SetNeedsBeginMainFrame(false);
+  EXPECT_FALSE(state.ShouldThrottleSendBeginMainFrame());
+  EXPECT_ACTION_UPDATE_STATE(
+      SchedulerStateMachine::Action::SEND_BEGIN_MAIN_FRAME);
+  state.BeginMainFrameAborted(CommitEarlyOutReason::kFinishedNoUpdates);
+
+  state.SetRequestHighFramerate(false);
+
+  // After releasing high framerate, the counter should have been reset,
+  // so it should still NOT throttle immediately.
+  state.IssueNextBeginImplFrame();
+  state.SetNeedsBeginMainFrame(false);
+  EXPECT_FALSE(state.ShouldThrottleSendBeginMainFrame());
+  EXPECT_ACTION_UPDATE_STATE(
+      SchedulerStateMachine::Action::SEND_BEGIN_MAIN_FRAME);
+  state.BeginMainFrameAborted(CommitEarlyOutReason::kFinishedNoUpdates);
+
+  // 2. Simulate throttling first, then request high framerate. Throttling
+  // should stop. We already have 1 no-damage frame from the previous step after
+  // reset. Need 89 more to throttle.
+  for (int i = 0; i < 89; i++) {
+    state.IssueNextBeginImplFrame();
+    state.SetNeedsBeginMainFrame(false);
+    EXPECT_ACTION_UPDATE_STATE(
+        SchedulerStateMachine::Action::SEND_BEGIN_MAIN_FRAME);
+    state.BeginMainFrameAborted(CommitEarlyOutReason::kFinishedNoUpdates);
+  }
+
+  // Should throttle now.
+  state.IssueNextBeginImplFrame();
+  state.SetNeedsBeginMainFrame(false);
+  EXPECT_TRUE(state.ShouldThrottleSendBeginMainFrame());
+  EXPECT_ACTION(SchedulerStateMachine::Action::NONE);
+
+  // Request high framerate.
+  state.SetRequestHighFramerate(true);
+
+  // Throttling doesn't stop immediately because the consecutive no-damage
+  // throttling interval is still active until the next commit.
+  EXPECT_TRUE(state.ShouldThrottleSendBeginMainFrame());
+  EXPECT_ACTION(SchedulerStateMachine::Action::NONE);
+
+  // Advance time by throttled interval (approx 30ms) to allow a frame to pass.
+  state.AdvanceTimeBy(base::Milliseconds(30));
+  state.IssueNextBeginImplFrame();
+
+  // Now we should be able to send BMF.
+  EXPECT_FALSE(state.ShouldThrottleSendBeginMainFrame());
+  EXPECT_ACTION_UPDATE_STATE(
+      SchedulerStateMachine::Action::SEND_BEGIN_MAIN_FRAME);
+  // This commit/abort will trigger
+  // UpdateConsecutiveNoDamageThrottlingInterval() which resets the interval
+  // because high framerate is requested.
+  state.BeginMainFrameAborted(CommitEarlyOutReason::kFinishedNoUpdates);
+
+  // Release high framerate. Counter was reset during high framerate, so no
+  // throttling.
+  state.SetRequestHighFramerate(false);
+  state.IssueNextBeginImplFrame();
+  state.SetNeedsBeginMainFrame(false);
+  EXPECT_FALSE(state.ShouldThrottleSendBeginMainFrame());
+}
+
 }  // namespace
 }  // namespace cc
