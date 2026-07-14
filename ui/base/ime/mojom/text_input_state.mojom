@@ -77,13 +77,6 @@ struct TextInputState {
 
   // Information of ime text spans at the cursor position.
   array<ImeTextSpanInfo> ime_text_spans_info;
-<<<<<<< HEAD
-
-  // HTML metadata fields.
-  mojo_base.mojom.String16? html_label;
-  mojo_base.mojom.String16? html_name;
-  mojo_base.mojom.String16? html_id;
-  mojo_base.mojom.String16? html_placeholder;
 
   ///@name IS_NEVA_APPRUNTIME
   ///@{
@@ -96,7 +89,5 @@ struct TextInputState {
   [EnableIf=neva_txt_input_props]
   gfx.mojom.Rect bounds;
   ///@}
-=======
->>>>>>> 151.0.7907.0~1
 };
 

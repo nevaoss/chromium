@@ -1786,24 +1786,11 @@ WebTextInputInfo InputMethodController::TextInputInfo() const {
   info.virtual_keyboard_policy = VirtualKeyboardPolicyOfFocusedElement();
   info.type = TextInputType();
   info.flags = TextInputFlags();
-<<<<<<< HEAD
-
-  if (Element* focused_element = GetDocument().FocusedElement()) {
-    info.label = GetElementLabels(focused_element);
-    info.name = focused_element->FastGetAttribute(html_names::kNameAttr);
-    info.id = focused_element->GetIdAttribute();
-    info.placeholder =
-        focused_element->FastGetAttribute(html_names::kPlaceholderAttr);
-  }
-
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
   info.input_panel_rectangle = InputPanelRectangle();
   if (Element* focused_element = GetDocument().FocusedElement())
     info.bounds = focused_element->BoundsInWidget();
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
-
-=======
->>>>>>> 151.0.7907.0~1
   if (info.type == kWebTextInputTypeNone)
     return info;
 
