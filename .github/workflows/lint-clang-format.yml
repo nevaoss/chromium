@@ -78,6 +78,8 @@ jobs:
           thread-comments: update
           # Also surface a summary in the Actions run page.
           step-summary: true
+          # Post clang-format fixes as inline, committable PR suggestions.
+          format-review: true
 
       - name: Fail if clang-format found violations
         if: steps.linter.outputs.checks-failed > 0
