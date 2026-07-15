@@ -1129,7 +1129,8 @@ void WebView::FinishLoadCallback(const std::string& url) {
 
 void WebView::DidUpdateFaviconURL(
     content::RenderFrameHost* rfh,
-    const std::vector<blink::mojom::FaviconURLPtr>& candidates) {
+    const std::vector<blink::mojom::FaviconURLPtr>& candidates,
+    blink::mojom::FaviconUpdateReason reason) {
   TRACE_EVENT0("neva", "WebView::DidUpdateFaviconURL");
 
   for (auto& candidate : candidates) {

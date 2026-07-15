@@ -232,7 +232,8 @@ class WebView : public AppRuntimeWebContentsDelegate,
                      const GURL& validated_url) override;
   void DidUpdateFaviconURL(
       content::RenderFrameHost* rfh,
-      const std::vector<blink::mojom::FaviconURLPtr>& candidates) override;
+      const std::vector<blink::mojom::FaviconURLPtr>& candidates,
+      blink::mojom::FaviconUpdateReason reason) override;
   void DidStartNavigation(content::NavigationHandle* navigation_handle) override;
   void DidFinishNavigation(content::NavigationHandle* navigation_handle) override;
   void DidFailLoad(content::RenderFrameHost* render_frame_host,
