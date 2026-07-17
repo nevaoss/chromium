@@ -15,6 +15,8 @@
 #include "base/compiler_specific.h"
 #include "base/files/file_path.h"
 #include "base/functional/callback.h"
+#include "base/i18n/tag_converters.h"
+#include "base/i18n/tags.h"
 #include "base/run_loop.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
@@ -567,6 +569,7 @@ TEST_P(PDFiumEngineTest, GetDocumentMetadata) {
   ASSERT_TRUE(
       base::Time::FromUTCString("2020-02-06 09:42:34", &expected_mod_date));
   EXPECT_EQ(expected_mod_date, doc_metadata.mod_date);
+  EXPECT_EQ(std::nullopt, doc_metadata.language_tag);
 }
 
 TEST_P(PDFiumEngineTest, GetEmptyDocumentMetadata) {
@@ -588,6 +591,17 @@ TEST_P(PDFiumEngineTest, GetEmptyDocumentMetadata) {
   EXPECT_THAT(doc_metadata.producer, IsEmpty());
   EXPECT_TRUE(doc_metadata.creation_date.is_null());
   EXPECT_TRUE(doc_metadata.mod_date.is_null());
+  EXPECT_EQ(std::nullopt, doc_metadata.language_tag);
+}
+
+TEST_P(PDFiumEngineTest, GetLanguageTagFromDocumentMetadata) {
+  TestClient client(/*use_skia_renderer=*/GetParam());
+  std::unique_ptr<PDFiumEngine> engine =
+      InitializeEngine(&client, FILE_PATH_LITERAL("tags.pdf"));
+  ASSERT_TRUE(engine);
+
+  const DocumentMetadata& doc_metadata = engine->GetDocumentMetadata();
+  EXPECT_EQ(base::language_tags::ENGLISH_US(), doc_metadata.language_tag);
 }
 
 TEST_P(PDFiumEngineTest, HasMeaningfulText) {
@@ -4111,6 +4125,10 @@ TEST_P(PDFiumEngineInkDrawTextTest, DrawTextSaveAndLoad) {
   // Save the PDF data.
   std::vector<uint8_t> saved_pdf_data = engine->GetSaveData();
   ASSERT_FALSE(saved_pdf_data.empty());
+
+  // The size should be small due to font subsetting.
+  constexpr size_t kMaxFileSizeWithSubsettedFont = 15 * 1024;
+  EXPECT_LT(saved_pdf_data.size(), kMaxFileSizeWithSubsettedFont);
 
   // Load the saved PDF data into a new engine.
   NiceMock<TestClient> saved_client(/*use_skia_renderer=*/GetParam());

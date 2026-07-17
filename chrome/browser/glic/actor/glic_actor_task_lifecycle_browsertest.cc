@@ -8,7 +8,12 @@
 #include "chrome/browser/glic/actor/new_glic_actor_functional_browsertest.h"
 #include "chrome/browser/glic/public/service/glic_instance_coordinator.h"
 #include "components/actor/public/mojom/actor_types.mojom.h"
+#include "components/page_content_annotations/content/page_context_fetcher.h"
+#include "content/public/browser/render_frame_host.h"
+#include "content/public/browser/render_widget_host.h"
 #include "content/public/test/browser_test.h"
+#include "content/public/test/browser_test_utils.h"
+#include "third_party/blink/public/common/features.h"
 
 namespace mojo {
 
@@ -109,12 +114,92 @@ class GlicActorTaskLifecycleFunctionalBrowserTest
  public:
   GlicActorTaskLifecycleFunctionalBrowserTest()
       : GlicActorFunctionalBrowserTestBase(
-            "./glic_actor_task_lifecycle_browsertest.js") {}
+            "./glic_actor_task_lifecycle_browsertest.js") {
+    scoped_feature_list_.InitWithFeaturesAndParameters(
+        /*enabled_features=*/
+        {
+            {blink::features::kAIPageContentTrackedElementsIframe, {}},
+            {page_content_annotations::kGlicTabScreenshotExperiment,
+             {{"screenshot_timeout_ms", "30s"}}},
+        },
+        /*disabled_features=*/{});
+  }
   ~GlicActorTaskLifecycleFunctionalBrowserTest() override = default;
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+class GlicActorTaskLifecycleGmailOtpEnabledBrowserTest
+    : public GlicActorTaskLifecycleFunctionalBrowserTest {
+ public:
+  GlicActorTaskLifecycleGmailOtpEnabledBrowserTest() {
+    scoped_feature_list_.InitAndEnableFeature(
+        features::kGlicActorAutofillOneTimePassword);
+  }
+  ~GlicActorTaskLifecycleGmailOtpEnabledBrowserTest() override = default;
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
 IN_PROC_BROWSER_TEST_F(GlicActorTaskLifecycleFunctionalBrowserTest,
                        testPauseAndResumeCreatedTask) {
+  TestFuture<ActorTask::State> task_completion_state;
+  base::CallbackListSubscription completion_subscription;
+
+  ExecuteJsTest();
+
+  TaskId task_id = ExtractTaskIdFromStepData();
+  completion_subscription =
+      CreateTaskCompletionSubscription(task_id, task_completion_state);
+
+  ContinueJsTest();
+
+  EXPECT_EQ(ActorTask::State::kFinished, task_completion_state.Get())
+      << "Task " << task_id << " did not reach kFinished state.";
+}
+
+// TODO(b/484011242): Fix flakiness and re-enable this test on Android.
+#if BUILDFLAG(IS_ANDROID)
+#define MAYBE_testPauseAndResumeCreatedTaskWithIframe \
+  DISABLED_testPauseAndResumeCreatedTaskWithIframe
+#else
+#define MAYBE_testPauseAndResumeCreatedTaskWithIframe \
+  testPauseAndResumeCreatedTaskWithIframe
+#endif
+IN_PROC_BROWSER_TEST_F(GlicActorTaskLifecycleFunctionalBrowserTest,
+                       MAYBE_testPauseAndResumeCreatedTaskWithIframe) {
+  ASSERT_TRUE(content::NavigateToURL(
+      active_tab()->GetContents(),
+      embedded_test_server()->GetURL("/actor/simple_iframe.html")));
+
+  content::RenderFrameHost* main_frame =
+      active_tab()->GetContents()->GetPrimaryMainFrame();
+
+  // Wait for main frame layout/render.
+  {
+    base::test::TestFuture<bool> future;
+    main_frame->GetRenderWidgetHost()->InsertVisualStateCallback(
+        future.GetCallback());
+    ASSERT_TRUE(future.Wait()) << "Timeout waiting for syncing with renderer";
+  }
+
+  // Wait for child frame layout/render.
+  {
+    content::RenderFrameHost* child_frame =
+        content::ChildFrameAt(main_frame, 0);
+    ASSERT_TRUE(child_frame);
+
+    base::test::TestFuture<bool> future;
+    child_frame->GetRenderWidgetHost()->InsertVisualStateCallback(
+        future.GetCallback());
+    ASSERT_TRUE(future.Wait())
+        << "Timeout waiting for syncing with subframe renderer";
+  }
+
+  content::WaitForCopyableViewInWebContents(active_tab()->GetContents());
+
   TestFuture<ActorTask::State> task_completion_state;
   base::CallbackListSubscription completion_subscription;
 
@@ -350,6 +435,123 @@ IN_PROC_BROWSER_TEST_F(GlicActorTaskLifecycleFunctionalBrowserTest,
 
   // Verify that the FIRST tab is now active (since it was the last acted tab).
   EXPECT_EQ(active_tab(), first_tab);
+}
+
+IN_PROC_BROWSER_TEST_F(GlicActorTaskLifecycleGmailOtpEnabledBrowserTest,
+                       testGmailOtpOptInDialog) {
+  GlicInstanceImpl* instance = GetInstanceImpl();
+  ASSERT_TRUE(instance);
+
+  ASSERT_OK_AND_ASSIGN(TaskId task_id, CreateActorTask(instance));
+  EXPECT_NE(task_id, TaskId());
+
+  // Execute JS test, which sets up the subscriber and calls advanceToNextStep()
+  ExecuteJsTest();
+
+  GlicActorTaskManager* task_manager = instance->GetActorTaskManager();
+  ASSERT_TRUE(task_manager);
+
+  // Get the GlicActorClientSession (which implements ActorTaskDelegate)
+  ::actor::ActorTaskDelegate* delegate =
+      task_manager->GetClientSessionForTesting();
+  ASSERT_TRUE(delegate);
+
+  base::test::TestFuture<::actor::webui::mojom::GmailOtpOptInResultPtr>
+      response_future;
+  delegate->RequestToShowGmailOtpOptInDialog(task_id,
+                                             response_future.GetCallback());
+
+  // Continue JS test, which awaits the dialog request promise and completes it.
+  ContinueJsTest();
+
+  // Verify the callback in C++ receives the correct approved response
+  ::actor::webui::mojom::GmailOtpOptInResultPtr response =
+      response_future.Take();
+  ASSERT_TRUE(response->is_permission_granted());
+  EXPECT_TRUE(response->get_permission_granted());
+
+  task_manager->GetClientSessionForTesting()->StopActorTask(
+      task_id.value(), glic::mojom::ActorTaskStopReason::kTaskComplete);
+}
+
+IN_PROC_BROWSER_TEST_F(GlicActorTaskLifecycleGmailOtpEnabledBrowserTest,
+                       testGmailOtpOptInDialogNoSubscriber) {
+  GlicInstanceImpl* instance = GetInstanceImpl();
+  ASSERT_TRUE(instance);
+
+  ASSERT_OK_AND_ASSIGN(TaskId task_id, CreateActorTask(instance));
+  EXPECT_NE(task_id, TaskId());
+
+  // Execute JS test (does nothing and calls advanceToNextStep())
+  ExecuteJsTest();
+
+  GlicActorTaskManager* task_manager = instance->GetActorTaskManager();
+  ASSERT_TRUE(task_manager);
+
+  // Get the GlicActorClientSession
+  ::actor::ActorTaskDelegate* delegate =
+      task_manager->GetClientSessionForTesting();
+  ASSERT_TRUE(delegate);
+
+  base::test::TestFuture<::actor::webui::mojom::GmailOtpOptInResultPtr>
+      response_future;
+  delegate->RequestToShowGmailOtpOptInDialog(task_id,
+                                             response_future.GetCallback());
+
+  // Verify that the callback resolves with the correct error reason (no
+  // subscriber)
+  ::actor::webui::mojom::GmailOtpOptInResultPtr response =
+      response_future.Take();
+  ASSERT_TRUE(response->is_error_reason());
+  EXPECT_EQ(::actor::webui::mojom::GmailOtpOptInErrorReason::
+                kRequestPromiseNoSubscriber,
+            response->get_error_reason());
+
+  // Continue JS test to finish the JS runner thread cleanly.
+  ContinueJsTest();
+
+  task_manager->GetClientSessionForTesting()->StopActorTask(
+      task_id.value(), glic::mojom::ActorTaskStopReason::kTaskComplete);
+}
+
+IN_PROC_BROWSER_TEST_F(GlicActorTaskLifecycleFunctionalBrowserTest,
+                       testGmailOtpOptInDialogFeatureDisabled) {
+  GlicInstanceImpl* instance = GetInstanceImpl();
+  ASSERT_TRUE(instance);
+
+  ASSERT_OK_AND_ASSIGN(TaskId task_id, CreateActorTask(instance));
+  EXPECT_NE(task_id, TaskId());
+
+  // Execute JS test (asserts selectGmailOtpOptInRequestHandler is undefined)
+  ExecuteJsTest();
+
+  GlicActorTaskManager* task_manager = instance->GetActorTaskManager();
+  ASSERT_TRUE(task_manager);
+
+  // Get the GlicActorClientSession
+  ::actor::ActorTaskDelegate* delegate =
+      task_manager->GetClientSessionForTesting();
+  ASSERT_TRUE(delegate);
+
+  base::test::TestFuture<::actor::webui::mojom::GmailOtpOptInResultPtr>
+      response_future;
+  delegate->RequestToShowGmailOtpOptInDialog(task_id,
+                                             response_future.GetCallback());
+
+  // Verify that the callback resolves with the correct error reason (no
+  // subscriber)
+  ::actor::webui::mojom::GmailOtpOptInResultPtr response =
+      response_future.Take();
+  ASSERT_TRUE(response->is_error_reason());
+  EXPECT_EQ(::actor::webui::mojom::GmailOtpOptInErrorReason::
+                kRequestPromiseNoSubscriber,
+            response->get_error_reason());
+
+  // Continue JS test to finish the JS runner thread cleanly.
+  ContinueJsTest();
+
+  task_manager->GetClientSessionForTesting()->StopActorTask(
+      task_id.value(), glic::mojom::ActorTaskStopReason::kTaskComplete);
 }
 
 }  // namespace

@@ -8,6 +8,7 @@
 #include <string>
 
 #include "base/memory/raw_ptr.h"
+#include "base/scoped_observation.h"
 #include "chrome/browser/ui/views/permissions/embedded_permission_prompt_view_delegate.h"
 #include "chrome/browser/ui/views/permissions/permission_prompt_base_view.h"
 #include "components/favicon_base/favicon_types.h"
@@ -81,9 +82,9 @@ class EmbeddedPermissionPromptBaseView : public PermissionPromptBaseView,
   void Init() override;
   void AddedToWidget() override;
 
+  // views::WidgetObserver:
   void OnWidgetBoundsChanged(views::Widget* widget,
                              const gfx::Rect& new_bounds) override;
-  void OnWidgetDestroying(views::Widget* widget) override;
   void OnWidgetVisibilityChanged(views::Widget* widget, bool visible) override;
 
  protected:
@@ -137,9 +138,12 @@ class EmbeddedPermissionPromptBaseView : public PermissionPromptBaseView,
                  const ButtonConfiguration& button);
   std::unique_ptr<views::FlexLayoutView> CreateLoadingIcon();
   gfx::Rect GetBubbleBounds() override;
+
   gfx::Rect element_rect_;
   base::WeakPtr<EmbeddedPermissionPromptViewDelegate> delegate_;
   base::WeakPtr<content::WebContents> web_contents_;
+  base::ScopedObservation<views::Widget, views::WidgetObserver>
+      widget_observation_{this};
 };
 
 #endif  // CHROME_BROWSER_UI_VIEWS_PERMISSIONS_EMBEDDED_PERMISSION_PROMPT_BASE_VIEW_H_

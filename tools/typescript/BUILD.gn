@@ -8,7 +8,10 @@
 # they are broken if an empty package.json file is encountered when they run.
 action("copy_package_json") {
   script = "copy_atomic.py"
-  inputs = [ "//build/action_helpers.py" ]
+  inputs = [
+    "//build/action_helpers.py",
+    "//build/gn_helpers.py",
+  ]
   sources = [ "//package.json" ]
   outputs = [ "$root_out_dir/package.json" ]
   args = [

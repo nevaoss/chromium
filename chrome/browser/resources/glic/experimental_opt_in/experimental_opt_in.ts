@@ -119,6 +119,9 @@ export class ExperimentalOptInApp {
                 'Failed to parse URL in onBeforeRequest:', details.url);
             return {cancel: true};
           }
+          if (loadTimeData.getBoolean('glicDevEnabled')) {
+            return {};
+          }
           if (url.protocol === 'http:' || url.protocol === 'https:') {
             if (url.origin !== this.optInOrigin_) {
               return {cancel: true};
@@ -145,6 +148,9 @@ export class ExperimentalOptInApp {
 
     this.webview_.addEventListener(
         'loadabort', ((e: Event) => {
+                       if (loadTimeData.getBoolean('glicDevEnabled')) {
+                         return;
+                       }
                        const loadAbortEvent =
                            e as unknown as chrome.webviewTag.LoadAbortEvent;
                        // Log failures when the top-level
@@ -226,6 +232,9 @@ export class ExperimentalOptInApp {
   }
 
   private startWatchdog_() {
+    if (loadTimeData.getBoolean('glicDevEnabled')) {
+      return;
+    }
     this.clearWatchdog_();
     this.loadingTimeoutId_ = setTimeout(() => {
       if (!this.hasError_ && this.webview_.hidden === false) {

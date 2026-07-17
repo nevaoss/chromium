@@ -26,4 +26,7 @@ class SampleUniqueAnnotations {
 
     @CalledByNative
     static void useBar1(Bar1.Inner inner) {}
+
+    @NativeClassQualifiedName("Foo::Bar")
+    native void nativeCallWithQualifiedObject(long nativePtr);
 }

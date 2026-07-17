@@ -1270,7 +1270,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Navigation.GestureTransition.CacheHitOrMissReason"
-    enum="NavigationTransitionCacheHitOrMissReason" expires_after="2026-10-18">
+    enum="NavigationTransitionCacheHitOrMissReason" expires_after="2026-12-20">
   <owner>liuwilliam@google.com</owner>
   <owner>baranerf@google.com</owner>
   <owner>chrome-seamless-core@google.com</owner>
@@ -1307,7 +1307,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Navigation.GestureTransition.ScreenshotCacheSize" units="MB"
-    expires_after="2026-10-18">
+    expires_after="2026-12-20">
   <owner>acondor@google.com</owner>
   <owner>liuwilliam@google.com</owner>
   <owner>baranerf@google.com</owner>
@@ -2134,22 +2134,6 @@ chromium-metrics-reviews@google.com.
     crrev.com/c/6238439/comment/fb22b7bc_c8962d32/.
   </summary>
   <token key="ProcessReuseOnCOOPType" variants="ProcessReuseOnCOOPType"/>
-</histogram>
-
-<histogram
-    name="Navigation.ProcessSwap.V8Optimizer.WouldSwapRendererInitiatedAboutBlankNavigation"
-    enum="BooleanOccurred" expires_after="2026-10-18">
-  <owner>tiffanysong@google.com</owner>
-  <owner>jacastro@chromium.org</owner>
-  <owner>chrome-counter-abuse-alerts@google.com</owner>
-  <summary>
-    Recorded on renderer-initiated navigations to about:blank when
-    ShouldSwapBrowsingInstancesForDifferentProcessFlags is called. Records
-    &quot;true&quot; when a process flag difference was detected. Records
-    &quot;false&quot; otherwise. Indicates whether a BrowsingInstance swap on a
-    renderer-initiated about:blank navigation would have occurred due to a
-    process flag difference.
-  </summary>
 </histogram>
 
 <histogram name="Navigation.QueueTime.{Method}.{FrameType}" units="ms"
@@ -3635,7 +3619,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Navigation{Initiator}.DuplicateNavCookieStatus"
-    enum="DuplicateNavsCookieStatus" expires_after="2026-10-18">
+    enum="DuplicateNavsCookieStatus" expires_after="2026-12-20">
   <owner>annasato@google.com</owner>
   <owner>rakina@google.com</owner>
   <owner>chrome-navigation@google.com</owner>
@@ -4041,7 +4025,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Prerender.Experimental.PrerenderProcessReuseAvailability"
-    enum="PrerenderProcessReuseAvailability" expires_after="2026-07-05">
+    enum="PrerenderProcessReuseAvailability" expires_after="2027-07-05">
   <owner>gjc@google.com</owner>
   <owner>chrome-prerendering@google.com</owner>
   <owner>chrome-loading@google.com</owner>
@@ -4177,7 +4161,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Prerender.PrerenderTimeSaved" units="ms"
-    expires_after="2026-07-13">
+    expires_after="2027-07-13">
   <owner>gambard@chromium.org</owner>
   <owner>justincohen@chromium.org</owner>
   <summary>

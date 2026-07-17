@@ -38,6 +38,7 @@
 #include "chrome/browser/external_protocol/external_protocol_handler.h"
 #include "chrome/browser/history_clusters/history_clusters_tab_helper.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/send_tab_to_self/send_tab_to_self_util.h"
 #include "chrome/browser/themes/theme_service.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
@@ -1542,7 +1543,8 @@ bool OmniboxViewViews::OnMousePressed(const ui::MouseEvent& event) {
   if (location_bar_view_ && location_bar_view_->GetOmniboxPopupView() &&
       base::FeatureList::IsEnabled(
           omnibox::kWebUIOmniboxFullPopupDoubleClick)) {
-    location_bar_view_->GetOmniboxPopupView()->PushTextToWebUI(is_double_click);
+    location_bar_view_->GetOmniboxPopupView()->SyncNativeStateToWebUI(
+        is_double_click);
   }
 
   return handled;
@@ -1788,7 +1790,7 @@ void OmniboxViewViews::OnBlur() {
       !controller()->edit_model()->is_keyword_selected()) {
     // Bypass native RevertAll when Full WebUI V2 is enabled to prevent wiping
     // out active WebUI drafting states.
-    if (!base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopupV2) &&
+    if (!base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup) &&
         ((!controller()->edit_model()->user_input_in_progress() &&
           GetText() != controller()->edit_model()->GetPermanentDisplayText()) ||
          (controller()->edit_model()->user_input_in_progress() &&
@@ -1811,7 +1813,7 @@ void OmniboxViewViews::OnBlur() {
     RevertAll();
   } else if (auto* popup_closer =
                  controller()->client()->GetOmniboxPopupCloser()) {
-    if (!base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopupV2)) {
+    if (!base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup)) {
       popup_closer->CloseWithReason(omnibox::PopupCloseReason::kBlur);
     }
   }
@@ -2032,11 +2034,13 @@ bool OmniboxViewViews::ShouldShowPlaceholderText() const {
           omnibox::kOmniboxAimDeferShowUntilVisualStateReady)) {
     // Suppress the hint text while the AIM popup is displayed or in deferred
     // transition.
-    bool is_aim_popup = controller()->popup_state_manager()->popup_state() ==
-                        OmniboxPopupState::kAim;
+    OmniboxPopupState state =
+        controller()->popup_state_manager()->popup_state();
+    bool is_webui_popup =
+        state == OmniboxPopupState::kAim || state == OmniboxPopupState::kFull;
     bool is_transitioning =
         location_bar_view_ && location_bar_view_->in_popup_state_transition();
-    if (is_aim_popup || is_transitioning) {
+    if (is_webui_popup || is_transitioning) {
       return false;
     }
   }
@@ -2135,8 +2139,8 @@ bool OmniboxViewViews::HandleKeyEvent(views::Textfield* textfield,
         const bool ai_mode_modifier = control;
 #endif
         if (ai_mode_modifier && !shift) {
-          controller()->edit_model()->OpenAiMode(/*via_keyboard=*/true,
-                                                 /*via_context_menu=*/false);
+          controller()->edit_model()->OpenAiMode(
+              OmniboxEditModel::AimActivation::kKeyboard);
           return true;
         }
       }
@@ -2732,8 +2736,15 @@ bool OmniboxViewViews::ShouldInstallAimPlaceholderText() const {
   const auto* aim_eligibility_service =
       AimEligibilityServiceFactory::GetForProfile(
           location_bar_view_->GetProfile());
+  const auto* ai_mode_button_service =
+      AiModeButtonServiceFactory::GetForProfile(
+          location_bar_view_->GetProfile());
+  const auto* template_url_service = TemplateURLServiceFactory::GetForProfile(
+      location_bar_view_->GetProfile());
   const bool is_aim_entrypoint_enabled =
-      OmniboxFieldTrial::IsAimOmniboxEntrypointEnabled(aim_eligibility_service);
+      OmniboxFieldTrial::IsAimOmniboxEntrypointEnabled(aim_eligibility_service,
+                                                       ai_mode_button_service,
+                                                       template_url_service);
 
   return is_aim_entrypoint_enabled &&
          controller()->edit_model()->is_caret_visible() && GetAiModeConfig();

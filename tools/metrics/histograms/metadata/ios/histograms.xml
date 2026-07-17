@@ -429,7 +429,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.BackgroundRefresh.BGTaskSchedulerError"
-    enum="BGTaskSchedulerErrorType" expires_after="2026-10-18">
+    enum="BGTaskSchedulerErrorType" expires_after="2026-12-20">
   <owner>fedegermi@google.com</owner>
   <owner>marq@chromium.org</owner>
   <summary>
@@ -449,7 +449,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.BackgroundRefresh.ExecutionDuration.Timeout" units="ms"
-    expires_after="2026-10-18">
+    expires_after="2026-12-20">
   <owner>fedegermi@google.com</owner>
   <owner>marq@chromium.org</owner>
   <summary>
@@ -459,7 +459,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.BackgroundRefresh.InitStage"
-    enum="InitStageDuringBackgroundRefreshType" expires_after="2026-10-18">
+    enum="InitStageDuringBackgroundRefreshType" expires_after="2026-12-20">
   <owner>fedegermi@google.com</owner>
   <owner>marq@chromium.org</owner>
   <summary>
@@ -492,7 +492,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.BackgroundRefresh.StartupWait.Completed" units="ms"
-    expires_after="2026-10-18">
+    expires_after="2026-12-20">
   <owner>fedegermi@google.com</owner>
   <owner>marq@chromium.org</owner>
   <summary>
@@ -1492,7 +1492,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.DefaultBrowserVideoPromo.Fullscreen"
-    enum="IOSDefaultBrowserVideoPromoAction" expires_after="2026-10-18">
+    enum="IOSDefaultBrowserVideoPromoAction" expires_after="2026-12-20">
   <owner>cheickcisse@google.com</owner>
   <owner>sebsg@chromium.org</owner>
   <owner>bling-mony-pod@google.com</owner>
@@ -3117,7 +3117,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.GoogleOne.Outcome.{EntryPoint}" enum="GoogleOneOutcome"
-    expires_after="2026-05-24">
+    expires_after="2027-06-23">
   <owner>olivierrobin@chromium.org</owner>
   <owner>qpubert@chromium.org</owner>
   <summary>
@@ -4808,7 +4808,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.NumberOfContextsToOpen" enum="ContextsToOpen"
-    expires_after="2026-10-18">
+    expires_after="2026-12-20">
   <owner>fedegermi@google.com</owner>
   <owner>bling-fundamentals@google.com</owner>
   <summary>
@@ -6917,6 +6917,29 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="IOS.SaveToPhotos.SignIn.Result"
+    enum="IOSSaveToPhotosSignInResultType" expires_after="2027-06-03">
+  <owner>josephlanza@google.com</owner>
+  <owner>qpubert@google.com</owner>
+  <owner>bling-squid-squad@google.com</owner>
+  <summary>
+    Logged after the user attempts to sign in during the Save to Photos flow.
+    Records the outcome of the sign-in flow (Success, Cancelled, or Failed).
+  </summary>
+</histogram>
+
+<histogram name="IOS.SaveToPhotos.SignIn.Status"
+    enum="IOSSaveToPhotosSignInStatusType" expires_after="2027-06-03">
+  <owner>josephlanza@google.com</owner>
+  <owner>qpubert@google.com</owner>
+  <owner>bling-squid-squad@google.com</owner>
+  <summary>
+    Logged when the Save to Photos flow is initiated. Records the sign-in status
+    of the user (Signed In, Signed Out Without Account on Device, or Signed Out
+    With Account on Device).
+  </summary>
+</histogram>
+
 <histogram name="IOS.SaveToPhotos.UploadFailureLatency" units="ms"
     expires_after="2026-08-21">
   <owner>qpubert@google.com</owner>
@@ -7904,8 +7927,8 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.ThemeSync.InitialSyncState"
-    enum="IOSThemeSyncInitialState" expires_after="2026-05-20">
-  <owner>bwwilliams@google.com</owner>
+    enum="IOSThemeSyncInitialState" expires_after="2027-06-18">
+  <owner>hiramahmood@google.com</owner>
   <owner>adamta@google.com</owner>
   <summary>
     Records the state of the Sync server during the initial Theme Sync flow.
@@ -7923,8 +7946,8 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.ThemeSync.StopAction" enum="IOSThemeSyncStopAction"
-    expires_after="2026-05-20">
-  <owner>bwwilliams@google.com</owner>
+    expires_after="2027-06-18">
+  <owner>hiramahmood@google.com</owner>
   <owner>adamta@google.com</owner>
   <summary>
     Records that the local pre-sync theme was successfully restored when sync
@@ -8263,7 +8286,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.WelcomeBack.DetailScreen.Impression"
-    enum="IOSBestFeaturesItemType" expires_after="2026-08-02">
+    enum="IOSBestFeaturesItemType" expires_after="2027-08-02">
   <owner>cheickcisse@google.com</owner>
   <owner>bling-mony-pod@google.com</owner>
   <summary>
@@ -8274,7 +8297,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.WelcomeBack.FeaturesClickedCount" units="count"
-    expires_after="2026-10-04">
+    expires_after="2027-08-02">
   <owner>cheickcisse@google.com</owner>
   <owner>bling-mony-pod@google.com</owner>
   <summary>

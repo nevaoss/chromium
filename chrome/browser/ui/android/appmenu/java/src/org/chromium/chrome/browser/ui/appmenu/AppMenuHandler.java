@@ -33,6 +33,7 @@ public interface AppMenuHandler {
         AppMenuItemType.BOOKMARK,
         AppMenuItemType.TAB,
         AppMenuItemType.RECENT_ENTRY,
+        AppMenuItemType.RECENT_ENTRY_NO_ICON,
         AppMenuItemType.EMPTY,
         AppMenuItemType.HEADER
     })
@@ -79,17 +80,20 @@ public interface AppMenuHandler {
         /** A recent entry item. */
         int RECENT_ENTRY = 10;
 
+        /** A recent entry item with no icon. */
+        int RECENT_ENTRY_NO_ICON = 11;
+
         /** An item indicating that a submenu is empty. */
-        int EMPTY = 11;
+        int EMPTY = 12;
 
         /** A header item. */
-        int HEADER = 12;
+        int HEADER = 13;
 
         /**
          * The number of menu item types specified above. If you add a menu item type you MUST
          * increment this.
          */
-        int NUM_ENTRIES = 13;
+        int NUM_ENTRIES = 14;
     }
 
     /**

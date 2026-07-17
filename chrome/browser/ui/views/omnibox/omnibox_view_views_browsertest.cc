@@ -1425,10 +1425,12 @@ IN_PROC_BROWSER_TEST_F(OmniboxViewViewsOnFocusZpsTest, ShowHatsSurvey) {
                    const SurveyBitsData& product_specific_bits_data,
                    const SurveyStringData& product_specific_string_data,
                    const std::optional<std::string>& supplied_trigger_id,
-                   const HatsService::SurveyOptions& survey_options) -> void {
+                   const HatsService::SurveyOptions& survey_options)
+                    -> HatsService::LaunchError {
         EXPECT_TRUE(trigger ==
                         kHatsSurveyTriggerOnFocusZpsSuggestionsHappiness ||
                     trigger == kHatsSurveyTriggerOnFocusZpsSuggestionsUtility);
+        return HatsService::LaunchError::kNone;
       });
 
   ASSERT_TRUE(

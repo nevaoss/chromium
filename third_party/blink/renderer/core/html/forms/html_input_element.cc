@@ -1006,6 +1006,9 @@ void HTMLInputElement::ParseAttribute(
       input_type_->InRangeChanged();
     }
     input_type_view_->ReadonlyAttributeChanged();
+  } else if (name == html_names::kColorspaceAttr ||
+             name == html_names::kAlphaAttr) {
+    input_type_->ColorSpaceOrAlphaAttributeChanged();
   } else if (name == html_names::kListAttr) {
     has_non_empty_list_ = !value.empty();
     ResetListAttributeTargetObserver();

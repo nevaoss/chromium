@@ -222,6 +222,31 @@ TEST_F(KcerPrivateKeyTest, GetSSLPrivateKeyNullUntilCertBound) {
   EXPECT_NE(key->GetSSLPrivateKey(), nullptr);
 }
 
+TEST_F(KcerPrivateKeyTest, GetBoundCertNullUntilCertBound) {
+  kcer::PublicKey public_key = GenerateEcKey(/*hardware_backed=*/true);
+  const std::vector<uint8_t> spki = public_key.GetSpki().value();
+  scoped_refptr<KcerPrivateKey> key =
+      MakeKey(std::move(public_key), PrivateKeySource::kChromeOsHwKey);
+
+  // Before BindCert(): no cert is bound.
+  EXPECT_EQ(key->GetBoundCert(), nullptr);
+
+  // Build a cert whose SPKI matches the generated key and import it into NSS.
+  std::unique_ptr<net::CertBuilder> issuer = kcer::MakeCertIssuer();
+  std::unique_ptr<net::CertBuilder> cert_builder =
+      kcer::MakeCertBuilder(issuer.get(), spki);
+  scoped_refptr<net::X509Certificate> x509 =
+      cert_builder->GetX509Certificate();
+  scoped_refptr<const kcer::Cert> cert = ImportCert(x509);
+
+  // After BindCert(): GetBoundCert() surfaces the bound cert, which the
+  // certificate store uses to build a ClientIdentity without re-listing certs.
+  key->BindCert(cert, GetKeyInfo(kcer::PublicKeySpki(spki)));
+  scoped_refptr<net::X509Certificate> bound = key->GetBoundCert();
+  ASSERT_TRUE(bound);
+  EXPECT_TRUE(bound->EqualsExcludingChain(x509.get()));
+}
+
 }  // namespace
 
 }  // namespace client_certificates

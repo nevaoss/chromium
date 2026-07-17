@@ -26,6 +26,7 @@
 #import "ios/chrome/browser/scene/ui/scene_view_controller_delegate.h"
 #import "ios/chrome/browser/scene/ui/scene_view_delegate.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/layout_state.h"
+#import "ios/chrome/browser/shared/coordinator/scene/state/layout_state_passkey.h"
 #import "ios/chrome/browser/shared/public/commands/app_bar_commands.h"
 #import "ios/chrome/browser/shared/public/commands/gemini_commands.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
@@ -40,11 +41,24 @@
 #import "ui/base/device_form_factor.h"
 #import "ui/base/l10n/l10n_util.h"
 
+namespace layout_state {
+class SceneViewControllerPassKeyFactory {
+ public:
+  static base::PassKey<SceneViewControllerPassKeyFactory> CreateKey() {
+    return base::PassKey<SceneViewControllerPassKeyFactory>();
+  }
+};
+}  // namespace layout_state
+
 namespace {
 
 // Transition delay between IPH presentations.
 constexpr NSTimeInterval kIPHTransitionDelay = 0.5;
 
+// Helper function to return the domain passkey used to mutate the layout state.
+inline LayoutStateScenePassKey PassKey() {
+  return layout_state::SceneViewControllerPassKeyFactory::CreateKey();
+}
 }  // namespace
 
 @interface SceneViewController () <LayoutStateObserver, SceneViewDelegate>
@@ -180,7 +194,8 @@ constexpr NSTimeInterval kIPHTransitionDelay = 0.5;
           id<UIViewControllerTransitionCoordinatorContext> context) {
         if (IsChromeNextIaEnabled()) {
           [weakSelf.layoutState updateAppBarPositionWithView:weakSelf.view
-                                                 coordinator:coordinator];
+                                                 coordinator:coordinator
+                                                     passKey:PassKey()];
         }
       }
                       completion:nil];
@@ -188,7 +203,8 @@ constexpr NSTimeInterval kIPHTransitionDelay = 0.5;
 
 - (void)viewDidLayoutSubviews {
   [super viewDidLayoutSubviews];
-  self.layoutState.windowedMode = IsWindowedMode(self.view.window);
+  [self.layoutState setWindowedMode:IsWindowedMode(self.view.window)
+                            passKey:PassKey()];
   [self updateAssistantTopConstraints:self.layoutState.containedLayoutActive];
   if (!IsFullscreenRefactoringEnabled()) {
     [self applyFrameForLayout];
@@ -196,6 +212,11 @@ constexpr NSTimeInterval kIPHTransitionDelay = 0.5;
   // This is necessary as the app bar container doesn't get all the refreshes
   // when resizing the window.
   [_appBar.view setNeedsLayout];
+  // Re-resolves the bottom anchor once the target toolbar is in the view
+  // hierarchy.
+  if (_assistantContainerViewController) {
+    [_assistantContainerViewController layoutInParentView:self.view];
+  }
 }
 
 - (void)viewSafeAreaInsetsDidChange {
@@ -370,9 +391,9 @@ constexpr NSTimeInterval kIPHTransitionDelay = 0.5;
 - (void)layoutState:(LayoutState*)layoutState
     didChangeContainedLayoutSupported:(BOOL)supported {
   if (supported && _assistantContainerViewController) {
-    layoutState.containedLayoutActive = YES;
+    [layoutState setContainedLayoutActive:YES scenePassKey:PassKey()];
   } else if (!supported) {
-    layoutState.containedLayoutActive = NO;
+    [layoutState setContainedLayoutActive:NO scenePassKey:PassKey()];
   }
   [self updateAssistantLayout];
 }
@@ -424,11 +445,15 @@ constexpr NSTimeInterval kIPHTransitionDelay = 0.5;
 
 // Called when the view's trait collection changes.
 - (void)viewTraitDidChange {
-  self.layoutState.containedLayoutSupported =
-      IsSidePanelLayout(self.view.traitCollection);
-  self.layoutState.windowedMode = IsWindowedMode(self.view.window);
+  [self.layoutState
+      setContainedLayoutSupported:IsSidePanelLayout(self.view.traitCollection)
+                          passKey:PassKey()];
+  [self.layoutState setWindowedMode:IsWindowedMode(self.view.window)
+                            passKey:PassKey()];
   if (IsChromeNextIaEnabled()) {
-    [self.layoutState updateAppBarPositionWithView:self.view coordinator:nil];
+    [self.layoutState updateAppBarPositionWithView:self.view
+                                       coordinator:nil
+                                           passKey:PassKey()];
   }
 }
 

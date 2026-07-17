@@ -33,6 +33,7 @@
 #include "components/password_manager/core/browser/undo_password_change_controller.h"
 #include "components/password_manager/core/common/password_manager_constants.h"
 #include "components/signin/public/base/consent_level.h"
+#include "components/signin/public/base/signin_switches.h"
 #include "components/signin/public/identity_manager/identity_test_environment.h"
 #include "components/signin/public/identity_manager/identity_test_utils.h"
 #include "components/strings/grit/components_strings.h"
@@ -253,6 +254,7 @@ class MockPasswordManagerClient : public StubPasswordManagerClient {
               (PasswordManagerDriver*),
               (override));
   MOCK_METHOD(const GURL&, GetLastCommittedURL, (), (const, override));
+  MOCK_METHOD(bool, IsChromeSigninPage, (), (const, override));
 
   const MockPasswordFeatureManager* GetPasswordFeatureManager() const override {
     return &feature_manager_;
@@ -290,6 +292,7 @@ class PasswordSuggestionGeneratorTest : public testing::Test {
         .WillByDefault(Return(&credentials_delegate()));
     ON_CALL(client_, GetLastCommittedURL)
         .WillByDefault(ReturnRef(kExternalURL));
+    ON_CALL(client_, IsChromeSigninPage).WillByDefault(Return(false));
   }
 
   const gfx::Image& favicon() const { return favicon_; }
@@ -1858,14 +1861,17 @@ TEST_F(PasswordSuggestionGeneratorTest,
                   Suggestion::Icon::kDevice));
 }
 
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
 TEST_F(PasswordSuggestionGeneratorTest,
        GetWebauthnSignInWithAnotherDeviceSuggestion_QrEnabled) {
   base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeature(features::kMagiChromeQrCodeAutofill);
+  feature_list.InitAndEnableFeatureWithParameters(
+      switches::kMagiChromePasskeySignIn, {{"flow_type", "autofill"}});
 
   const std::string kTestQrString = "test_qr_string";
   ON_CALL(credentials_delegate(), GetCableQrString)
       .WillByDefault(Return(kTestQrString));
+  EXPECT_CALL(client(), IsChromeSigninPage).WillOnce(Return(true));
 
   std::optional<Suggestion> suggestion =
       generator().GetWebauthnSignInWithAnotherDeviceSuggestion();
@@ -1879,6 +1885,39 @@ TEST_F(PasswordSuggestionGeneratorTest,
   EXPECT_EQ(suggestion->filtration_policy,
             autofill::Suggestion::FiltrationPolicy::kStatic);
 }
+
+TEST_F(PasswordSuggestionGeneratorTest,
+       GetWebauthnSignInWithAnotherDeviceSuggestion_QrEnabled_NotChromeSigninPage) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(
+      switches::kMagiChromePasskeySignIn, {{"flow_type", "autofill"}});
+
+  const std::string kTestQrString = "test_qr_string";
+  ON_CALL(credentials_delegate(), GetCableQrString)
+      .WillByDefault(Return(kTestQrString));
+  ON_CALL(credentials_delegate(), IsSecurityKeyOrHybridFlowAvailable)
+      .WillByDefault(Return(true));
+  const std::vector<PasskeyCredential> passkeys;
+  ON_CALL(credentials_delegate(), GetPasskeys)
+      .WillByDefault(Return(base::ok(&passkeys)));
+  EXPECT_CALL(client(), IsChromeSigninPage).WillOnce(Return(false));
+
+  std::optional<Suggestion> suggestion =
+      generator().GetWebauthnSignInWithAnotherDeviceSuggestion();
+  ASSERT_TRUE(suggestion.has_value());
+  EXPECT_THAT(
+      *suggestion,
+      EqualsSuggestion(
+          SuggestionType::kWebauthnSignInWithAnotherDevice,
+#if BUILDFLAG(IS_IOS)
+          l10n_util::GetStringUTF16(IDS_PASSWORD_MANAGER_USE_PASSKEY),
+#else
+          l10n_util::GetStringUTF16(
+              IDS_PASSWORD_MANAGER_USE_PASSKEY_OTHER_DEVICE),
+#endif  // BUILDFLAG(IS_IOS)
+          Suggestion::Icon::kDevice));
+}
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
 TEST_F(PasswordSuggestionGeneratorTest,
        GetWebauthnSignInWithAnotherDeviceSuggestionWithListedPasskeys) {

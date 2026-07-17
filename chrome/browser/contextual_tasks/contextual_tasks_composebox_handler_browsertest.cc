@@ -23,6 +23,7 @@
 #include "base/test/mock_callback.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/threading/thread_restrictions.h"
+#include "base/time/time.h"
 #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
 #include "chrome/browser/contextual_search/contextual_search_web_contents_helper.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
@@ -43,6 +44,7 @@
 #include "components/contextual_search/contextual_search_metrics_recorder.h"
 #include "components/contextual_search/contextual_search_service.h"
 #include "components/contextual_search/contextual_search_session_handle.h"
+#include "components/contextual_search/contextual_search_types.h"
 #include "components/contextual_search/fake_variations_client.h"
 #include "components/contextual_search/mock_contextual_search_context_controller.h"
 #include "components/contextual_search/mock_contextual_search_session_handle.h"
@@ -181,6 +183,7 @@ class MockContextualTasksUI : public ContextualTasksUI {
               (override));
   MOCK_METHOD(std::vector<int32_t>, GetRestoredTabIds, (), (override));
   MOCK_METHOD(bool, IsActiveTabContextSuggestionShowing, (), (const, override));
+  MOCK_METHOD(bool, IsContextualTasksEligibleOnInit, (), (const, override));
   MOCK_METHOD(contextual_tasks::ContextualTasksAutoSuggestionManager*,
               GetAutoSuggestionManager,
               (),
@@ -398,6 +401,8 @@ class ContextualTasksComposeboxHandlerTest
         .WillByDefault([this]() {
           return auto_suggestion_manager_.GetCurrentSuggestion() != nullptr;
         });
+    ON_CALL(*mock_ui_, IsContextualTasksEligibleOnInit())
+        .WillByDefault(testing::Return(true));
 
     // Create mock controller directly.
     mock_contextual_tasks_service_owner_ = std::make_unique<
@@ -3717,11 +3722,61 @@ IN_PROC_BROWSER_TEST_F(
   restored_tabs.push_back(std::move(tab_info));
 
   EXPECT_CALL(mock_searchbox_page_, SetAimThreadRestoredTabs(testing::_))
-      .WillOnce([&](std::vector<searchbox::mojom::TabInfoPtr> tabs) {
+      .WillOnce([&](const std::vector<searchbox::mojom::TabInfoPtr>& tabs) {
         EXPECT_EQ(tabs.size(), 1u);
         EXPECT_EQ(tabs[0]->url, GURL("https://example.com"));
         EXPECT_EQ(tabs[0]->title, "Example Site");
       });
 
   handler_->SetAimThreadRestoredTabs(std::move(restored_tabs));
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ContextualTasksComposeboxHandlerTestWithContextManagementEnabled,
+    CacheSubmittedTabsOnInit) {
+  auto mock_session = std::make_unique<testing::NiceMock<
+      contextual_search::MockContextualSearchSessionHandle>>();
+
+  std::vector<contextual_search::FileInfo> submitted_file_infos;
+  base::Time now = base::Time::Now();
+  contextual_search::FileInfo tab_info1;
+  tab_info1.tab_url = GURL("about:blank#1");
+  tab_info1.tab_title = "About Blank 1";
+  tab_info1.tab_session_id = SessionID::FromSerializedValue(42);
+  tab_info1.selection_time = now;
+  submitted_file_infos.push_back(tab_info1);
+
+  contextual_search::FileInfo tab_info2;
+  tab_info2.tab_url = GURL("about:blank#2");
+  tab_info2.tab_title = "About Blank 2";
+  tab_info2.tab_session_id = SessionID::FromSerializedValue(43);
+  tab_info2.selection_time = now + base::Seconds(1);
+  submitted_file_infos.push_back(tab_info2);
+
+  // We should also include a raw file to ensure it's filtered out.
+  contextual_search::FileInfo file_info;
+  file_info.file_name = "test.pdf";
+  submitted_file_infos.push_back(file_info);
+
+  EXPECT_CALL(*mock_session, GetSubmittedContextFileInfos())
+      .WillRepeatedly(testing::Return(submitted_file_infos));
+
+  mock_ui_->SetSessionHandle(mock_session.get());
+
+  EXPECT_CALL(mock_searchbox_page_, SetAimThreadRestoredTabs(testing::_))
+      .WillOnce([&](const std::vector<searchbox::mojom::TabInfoPtr>& tabs) {
+        EXPECT_EQ(tabs.size(), 2u);
+        EXPECT_EQ(tabs[0]->url, GURL("about:blank#1"));
+        EXPECT_EQ(tabs[0]->title, "About Blank 1");
+        EXPECT_EQ(tabs[0]->tab_id, 42);
+        EXPECT_EQ(tabs[1]->url, GURL("about:blank#2"));
+        EXPECT_EQ(tabs[1]->title, "About Blank 2");
+        EXPECT_EQ(tabs[1]->tab_id, 43);
+      });
+
+  SetUpHandler();
+  ASSERT_NE(handler_, nullptr);
+
+  // Clean up session handle from mock UI.
+  mock_ui_->SetSessionHandle(nullptr);
 }

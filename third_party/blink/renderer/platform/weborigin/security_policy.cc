@@ -29,6 +29,7 @@
 #include "third_party/blink/renderer/platform/weborigin/security_policy.h"
 
 #include <memory>
+#include <optional>
 
 #include "base/command_line.h"
 #include "base/compiler_specific.h"
@@ -101,14 +102,22 @@ Referrer SecurityPolicy::GenerateReferrer(
 
   // 5. Let referrerOrigin be the result of stripping referrerSource for use as
   // a referrer, with the origin-only flag set to true.
-  KURL referrer_origin = referrer_url;
-  referrer_origin.SetPath(String());
-  referrer_origin.SetQuery(String());
+  // Creating referrerOrigin can be an expensive operation so we use a lambda
+  // to create it dynamically only for the cases where it is used.
+  std::optional<KURL> referrer_origin;
+  auto get_referrer_origin = [&]() -> const KURL& {
+    if (!referrer_origin) {
+      referrer_origin.emplace(referrer_url);
+      referrer_origin->SetPath(String());
+      referrer_origin->SetQuery(String());
+    }
+    return *referrer_origin;
+  };
 
   // 6. If the result of serializing referrerURL is a string whose length is
   // greater than 4096, set referrerURL to referrerOrigin.
   if (referrer_url.GetString().length() > 4096)
-    referrer_url = referrer_origin;
+    referrer_url = get_referrer_origin();
 
   switch (referrer_policy_no_default) {
     case network::mojom::ReferrerPolicy::kNever:
@@ -116,11 +125,11 @@ Referrer SecurityPolicy::GenerateReferrer(
     case network::mojom::ReferrerPolicy::kAlways:
       return Referrer(referrer_url, referrer_policy_no_default);
     case network::mojom::ReferrerPolicy::kOrigin: {
-      return Referrer(referrer_origin, referrer_policy_no_default);
+      return Referrer(get_referrer_origin(), referrer_policy_no_default);
     }
     case network::mojom::ReferrerPolicy::kOriginWhenCrossOrigin: {
       if (!SecurityOrigin::AreSameOrigin(referrer_url, url)) {
-        return Referrer(referrer_origin, referrer_policy_no_default);
+        return Referrer(get_referrer_origin(), referrer_policy_no_default);
       }
       break;
     }
@@ -133,14 +142,14 @@ Referrer SecurityPolicy::GenerateReferrer(
     case network::mojom::ReferrerPolicy::kStrictOrigin: {
       return Referrer(ShouldHideReferrer(url, referrer_url)
                           ? Referrer::NoReferrer()
-                          : referrer_origin,
+                          : get_referrer_origin(),
                       referrer_policy_no_default);
     }
     case network::mojom::ReferrerPolicy::kStrictOriginWhenCrossOrigin: {
       if (!SecurityOrigin::AreSameOrigin(referrer_url, url)) {
         return Referrer(ShouldHideReferrer(url, referrer_url)
                             ? Referrer::NoReferrer()
-                            : referrer_origin,
+                            : get_referrer_origin(),
                         referrer_policy_no_default);
       }
       break;

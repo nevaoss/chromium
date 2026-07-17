@@ -725,6 +725,11 @@ PaymentsDataManager::GetApplicableBenefitForCardAndOrigin(
   // TODO(crbug.com/331961211): Query PaymentsDataManager before Optimization
   // Guide for category benefits
   if (optimization_guide) {
+    // Search for a matching subcategory type.
+    // Note: Merchant URLs can match multiple category types. In such cases,
+    // only the more specific category (subcategory) is returned. For example,
+    // a hotel booking website qualifies as both "hotel" and "travel" at the
+    // same time; the more specific "hotel" category will be returned here.
     CreditCardCategoryBenefit::BenefitCategory category_benefit_type =
         optimization_guide->AttemptToGetEligibleCreditCardBenefitCategory(
             credit_card.benefit_source(), origin.GetURL());
@@ -735,6 +740,26 @@ PaymentsDataManager::GetApplicableBenefitForCardAndOrigin(
                                                       category_benefit_type);
       if (category_benefit && category_benefit->IsActiveBenefit()) {
         return *category_benefit;
+      }
+
+      // If no subcategory benefit was found for the current category, try
+      // searching the parent category that the subcategory benefit is tied to.
+      // For example, if the merchant is identified as hotel category, but no
+      // benefits are found for this category, then we try to search for a
+      // general travel category benefit.
+      if (CreditCardCategoryBenefit::IsTravelSubcategory(
+              category_benefit_type) &&
+          base::FeatureList::IsEnabled(
+              features::
+                  kAutofillEnableTravelCategoryAndMerchantBenefitsFromCurinos)) {
+        std::optional<CreditCardCategoryBenefit> travel_category_benefit =
+            GetCategoryBenefitByInstrumentIdAndCategory(
+                benefit_instrument_id,
+                CreditCardCategoryBenefit::BenefitCategory::kTravel);
+        if (travel_category_benefit &&
+            travel_category_benefit->IsActiveBenefit()) {
+          return *travel_category_benefit;
+        }
       }
     }
   }
@@ -1059,12 +1084,40 @@ void PaymentsDataManager::NotifyObservers() {
 bool PaymentsDataManager::IsCardEligibleForBenefits(
     const CreditCard& card) const {
 #if !BUILDFLAG(IS_IOS)
-  return card.benefit_source() == kAmexCardBenefitSource ||
-         card.benefit_source() == kBmoCardBenefitSource ||
-         (card.benefit_source() == kCurinosCardBenefitSource &&
-          GetFlatRateBenefitByInstrumentId(
-              CreditCardBenefitBase::LinkedCardInstrumentId(
-                  card.instrument_id())));
+  const std::string& benefit_source = card.benefit_source();
+  // Benefits sourced from American Express of Bank of Montreal are always
+  // eligible.
+  if (benefit_source == kAmexCardBenefitSource ||
+      benefit_source == kBmoCardBenefitSource) {
+    return true;
+  }
+
+  if (benefit_source == kCurinosCardBenefitSource) {
+    CreditCardBenefitBase::LinkedCardInstrumentId instrument_id(
+        card.instrument_id());
+    // Flat rate benefits sourced from Curinos are always eligible.
+    if (GetFlatRateBenefitByInstrumentId(instrument_id)) {
+      return true;
+    }
+    // Travel category, subcategory, and merchant benefits sourced from Curinos
+    // are currently restricted by an experiment.
+    if (GetCreditCardBenefitByInstrumentId<CreditCardCategoryBenefit>(
+            instrument_id,
+            [](const CreditCardCategoryBenefit& benefit) {
+              return benefit.benefit_category() ==
+                         CreditCardCategoryBenefit::BenefitCategory::kTravel ||
+                     CreditCardCategoryBenefit::IsTravelSubcategory(
+                         benefit.benefit_category());
+            }) ||
+        GetCreditCardBenefitByInstrumentId<CreditCardMerchantBenefit>(
+            instrument_id,
+            [](const CreditCardMerchantBenefit&) { return true; })) {
+      return base::FeatureList::IsEnabled(
+          features::
+              kAutofillEnableTravelCategoryAndMerchantBenefitsFromCurinos);
+    }
+  }
+  return false;
 #else
   return false;
 #endif  // !BUILDFLAG(IS_IOS)

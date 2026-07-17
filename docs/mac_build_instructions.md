@@ -154,6 +154,18 @@ in your args.gn to disable debug symbols altogether.  This makes both full
 rebuilds and linking faster (at the cost of not getting symbolized backtraces
 in gdb).
 
+Put
+
+```
+use_lld = false
+```
+
+in your `args.gn` to use Apple's linker (ld-prime) instead of LLVM's LLD.
+This is supported for local non-cross arm64 macOS builds (ARM Mac) and
+improves link speed. See
+[Linkers for macOS and iOS builds](apple_platform_linkers.md)
+for more information.
+
 #### Use Reclient
 
 In addition, Google employees should use Reclient, a distributed compilation system.

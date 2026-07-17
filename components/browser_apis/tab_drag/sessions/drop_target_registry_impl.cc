@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include "base/check.h"
 #include "components/browser_apis/tab_drag/adapters/tab_drag_window_adapter.h"
 #include "components/browser_apis/tab_drag/sessions/drop_target.h"
 #include "mojo/public/cpp/bindings/self_owned_associated_receiver.h"
@@ -20,9 +21,14 @@ class DropTargetRegistrationMojoImpl : public mojom::DropTargetRegistration {
       : registry_(registry), target_id_(target_id) {}
 
   ~DropTargetRegistrationMojoImpl() override {
-    if (registry_) {
-      registry_->UnregisterDropTarget(target_id_);
-    }
+    CHECK(registry_);
+    registry_->UnregisterDropTarget(target_id_);
+  }
+
+  // mojom::DropTargetRegistration:
+  void OnBoundsChanged(const gfx::Rect& bounds) override {
+    CHECK(registry_);
+    registry_->UpdateTargetBounds(target_id_, bounds);
   }
 
  private:
@@ -35,13 +41,14 @@ DropTargetRegistryImpl::~DropTargetRegistryImpl() = default;
 
 DropTargetId DropTargetRegistryImpl::RegisterDropTarget(
     TabDragWindowAdapter* window,
+    gfx::NativeView native_view,
     mojo::PendingAssociatedRemote<mojom::DropTarget> target,
     mojo::PendingAssociatedReceiver<mojom::DropTargetRegistration>
         registration) {
   CHECK(window);
   DropTargetId id = id_generator_.GenerateNextId();
   drop_targets_[id] =
-      std::make_unique<DropTarget>(id, window, std::move(target));
+      std::make_unique<DropTarget>(id, window, native_view, std::move(target));
 
   mojo::MakeSelfOwnedAssociatedReceiver(
       std::make_unique<DropTargetRegistrationMojoImpl>(AsWeakPtr(), id),
@@ -64,8 +71,15 @@ DropTargetId DropTargetRegistryImpl::FindTargetAtPoint(
     if (!window_adapter) {
       continue;
     }
-    if (window_adapter->GetBoundsInScreen().Contains(screen_point)) {
-      return target_id;
+
+    // Pass the target's native_view for coordinate conversion
+    gfx::Point local_point = window_adapter->ConvertScreenPointToLocal(
+        target->native_view(), screen_point);
+    auto bounds_opt = target->cached_bounds();
+    if (bounds_opt) {
+      if (bounds_opt->Contains(local_point)) {
+        return target_id;
+      }
     }
   }
   return DropTargetId();
@@ -88,6 +102,20 @@ DropTarget* DropTargetRegistryImpl::GetDropTarget(
     return it->second.get();
   }
   return nullptr;
+}
+
+std::optional<gfx::Rect> DropTargetRegistryImpl::GetCachedBounds(
+    DropTargetId target_id) const {
+  auto* target = GetDropTarget(target_id);
+  return target ? target->cached_bounds() : std::nullopt;
+}
+
+void DropTargetRegistryImpl::UpdateTargetBounds(DropTargetId target_id,
+                                                const gfx::Rect& bounds) {
+  auto* target = GetDropTarget(target_id);
+  if (target) {
+    target->set_cached_bounds(bounds);
+  }
 }
 
 }  // namespace tabs_api

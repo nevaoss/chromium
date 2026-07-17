@@ -103,6 +103,7 @@
 <translation id="1335767868357998043">Одаберите положај траке за адресу</translation>
 <translation id="1347468774581902829">Управљајте активностима</translation>
 <translation id="1348596747084433075">https://www.amazon.com/Wife-Gifts/s?k=for+Wife+Gifts</translation>
+<translation id="1353169676553627502">Искључи ажурирања напретка</translation>
 <translation id="1355337783640312381">Да бисте прешли са једног налога на други, додирните икону налога</translation>
 <translation id="135806768612505061">Све картице</translation>
 <translation id="1358106883354237005">Управљани налог</translation>
@@ -609,6 +610,7 @@
 <translation id="3073633853887034268">Важи</translation>
 <translation id="3080525922482950719">Можете да сачувате странице да бисте их читали касније или офлајн</translation>
 <translation id="3081338492074632642">Проверите да ли се лозинка коју чувате подудара са лозинком за <ph name="WEBSITE" /></translation>
+<translation id="3084484227247071193">Укључи ажурирања напретка</translation>
 <translation id="3087734570205094154">Дно</translation>
 <translation id="309710370695886264">Имате 1 лозинку коју користите за више налога. Решите проблем одмах да бисте били безбедни.</translation>
 <translation id="3099402981545350675">Овим се бришу адресе сачуване на овом уређају. Уклањају се и изабране информације из Chrome-а, али се не бришу са Google налога.</translation>
@@ -708,6 +710,7 @@
 <translation id="3449029510150690417">Направите нову групу картица тако што ћете јој дати назив и боју</translation>
 <translation id="345348365500626747">Адреса је пронађена</translation>
 <translation id="3459644598174926977">Почните да користите Live са Gemini-јем да бисте постављали питања о страници, размишљали наглас и разговарали.</translation>
+<translation id="3462768334899086950">То значи да ћете изгубити несачувани фајл и актуелне картице</translation>
 <translation id="3464194322481586217">Праћење цене није успело.</translation>
 <translation id="3469117812148449995">Опције за чување лозинке</translation>
 <translation id="3472469028191701821">Отвара се на новој картици</translation>
@@ -965,6 +968,7 @@
 <translation id="4326912346867677256">Додирните Користи лозинку да бисте се безбедно пријавили.</translation>
 <translation id="4328843285884395590">Мој диск</translation>
 <translation id="4331177082088332784">Овим можете да управљате у BEGIN_LINK Подешавањима садржаја END_LINK</translation>
+<translation id="4331712008356052424">Да бисте послали овај линк, пријавите се на други уређај помоћу <ph name="USER_EMAIL" /></translation>
 <translation id="4334428914252001502">1 непрочитан чланак.</translation>
 <translation id="4338258232580025606">Пријављивање није могуће</translation>
 <translation id="4338650699862464074">Шаље URL-ове страница које посећујете Google-у.</translation>
@@ -1471,6 +1475,7 @@ Handoff треба да се омогући у одељку General (Опште)
 <translation id="6040143037577758943">Затвори</translation>
 <translation id="6042308850641462728">Још</translation>
 <translation id="6045460247888249350">Додајте наслов</translation>
+<translation id="6050237559175440178">Потврдите идентитет да бисте користили и чували информације на свим уређајима</translation>
 <translation id="6052269326659653305">Промените профил</translation>
 <translation id="605721222689873409">ГГ</translation>
 <translation id="6059830886158432458">Овде контролишите приче и активности</translation>
@@ -1846,6 +1851,7 @@ Handoff треба да се омогући у одељку General (Опште)
 <translation id="722339453342442311">Провери одмах</translation>
 <translation id="7227235818314667565">Управљај дељењем</translation>
 <translation id="7233006041370588369">Изаберите лозинку која ће бити унета.</translation>
+<translation id="723874023660911012">Промени профил</translation>
 <translation id="7241135764990439166">Режим без архивирања није доступан</translation>
 <translation id="7248046129087111453"><ph name="BEGIN_LINK" />Историја претраге<ph name="END_LINK" /> и <ph name="BEGIN_LINK" />други облици активности<ph name="END_LINK" /> могу да буду сачувани на Google налогу</translation>
 <translation id="7253951228444156601">Проверавају се лозинке…</translation>
@@ -2072,6 +2078,7 @@ Handoff треба да се омогући у одељку General (Опште)
 <translation id="7996239959906074962">Подесите…</translation>
 <translation id="800361585186029508">Отвара унете URL-ове у Google Chrome-у.</translation>
 <translation id="8005666035647241369">У Google менаџеру лозинки на овом уређају</translation>
+<translation id="8007106936382123905">{count,plural, =1{1 завршен задатак}one{# завршен задатак}few{# завршена задатка}other{# завршених задатака}}</translation>
 <translation id="8010488806779226127">Истражите функције које вам помажу да урадите више док прегледате</translation>
 <translation id="8011489434346330032">Веб-инспектор</translation>
 <translation id="8014007212279733632">Потврдите идентитет да бисте аутоматски попунили осетљиве информације</translation>
@@ -2155,6 +2162,7 @@ Handoff треба да се омогући у одељку General (Опште)
 <translation id="826614135184049678">Одјављени сте са налога <ph name="USER_NAME" /> у склопу ресетовања на iPad-у. Да бисте се поново пријавили, додирните Настави испод.</translation>
 <translation id="8270320981823560179">Диск</translation>
 <translation id="8273982424131314219">Попунићете информације на <ph name="URL" /></translation>
+<translation id="8274795744553482834">Променићете профил</translation>
 <translation id="8275068909952022340">Још…</translation>
 <translation id="8280797717392145626">Линкови су примљени</translation>
 <translation id="8281781826761538115">Подразумевано – <ph name="DEFAULT_LOCALE" /></translation>

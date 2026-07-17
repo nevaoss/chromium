@@ -12,6 +12,7 @@
 #include "chrome/grit/generated_resources.h"
 #include "components/renderer_context_menu/render_view_context_menu_proxy.h"
 #include "content/public/browser/browser_context.h"
+#include "content/public/browser/context_menu_params.h"
 #include "ui/base/l10n/l10n_util.h"
 
 namespace dictation {
@@ -25,6 +26,7 @@ DictationMenuObserver::DictationMenuObserver(RenderViewContextMenuProxy* proxy,
 DictationMenuObserver::~DictationMenuObserver() = default;
 
 void DictationMenuObserver::InitMenu(const content::ContextMenuParams& params) {
+  selection_text_ = params.selection_text;
   DictationKeyedService* service = GetDictationService();
   if (service && service->ShouldShowContextMenuItem()) {
     CHECK(base::FeatureList::IsEnabled(kDictation));
@@ -51,7 +53,7 @@ void DictationMenuObserver::ExecuteCommand(int command_id) {
 
   DictationKeyedService* service = GetDictationService();
   if (service) {
-    service->ContextMenuHandler(*window_);
+    service->ContextMenuHandler(*window_, selection_text_);
   }
 }
 

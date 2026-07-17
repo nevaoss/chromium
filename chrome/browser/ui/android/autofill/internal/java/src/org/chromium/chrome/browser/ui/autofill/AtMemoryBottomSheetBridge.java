@@ -106,11 +106,6 @@ public class AtMemoryBottomSheetBridge implements AtMemoryBottomSheetCoordinator
         }
     }
 
-    @Override
-    public void onFlyoutClicked(AutofillSuggestion suggestion) {
-        // TODO(crbug.com/513146609): Implement flyout clicked handler
-    }
-
     @NativeMethods
     public interface Natives {
         void onDismissed(long nativeAtMemoryBottomSheetBridge);

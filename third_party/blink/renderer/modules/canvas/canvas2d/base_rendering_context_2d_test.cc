@@ -179,9 +179,7 @@ class TestRenderingContext2D final
     return base::ByteSize();
   }
 
-  CanvasResourceProvider* GetOrCreateResourceProvider() override {
-    return nullptr;
-  }
+  bool InitializeResourceProvider() override { return false; }
 
   bool Is2DCanvasAccelerated() const override { return false; }
 
@@ -189,10 +187,6 @@ class TestRenderingContext2D final
   scoped_refptr<StaticBitmapImage> GetImage() override { return nullptr; }
   scoped_refptr<StaticBitmapImage> PaintRenderingResultsToSnapshot(
       SourceDrawingBuffer) override {
-    return nullptr;
-  }
-  std::unique_ptr<CanvasResourceProvider> ReplaceResourceProvider(
-      std::unique_ptr<CanvasResourceProvider>) override {
     return nullptr;
   }
 

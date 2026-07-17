@@ -15,6 +15,7 @@
 #include "base/unguessable_token.h"
 #include "components/contextual_search/contextual_search_context_controller.h"
 #include "components/contextual_search/contextual_search_metrics_recorder.h"
+#include "components/contextual_search/contextual_search_types.h"
 #include "components/lens/lens_overlay_invocation_source.h"
 #include "mojo/public/cpp/base/big_buffer.h"
 #include "third_party/lens_server_proto/modality_chip_props.pb.h"
@@ -205,7 +206,7 @@ class ContextualSearchSessionHandle {
   // Returns the list of submitted FileInfo for this particular instance
   // of the session. These are uploaded and submitted, but we have not received
   // confirmation that they are available on the server.
-  std::vector<FileInfo> GetSubmittedContextFileInfos() const;
+  virtual std::vector<FileInfo> GetSubmittedContextFileInfos() const;
 
   // Returns all the tab titles corresponding to the submitted context tokens.
   virtual std::vector<std::string> GetSubmittedContextTabTitles() const;

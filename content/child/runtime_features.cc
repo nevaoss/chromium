@@ -347,6 +347,8 @@ void SetRuntimeFeaturesFromChromiumFeatures() {
            raw_ref(network::features::kCompressionDictionaryTransport)},
           {"CookieStoreAPIMaxAge",
            raw_ref(blink::features::kCookieStoreAPIMaxAge)},
+          {"DeclarativePerformanceObserver",
+           raw_ref(network::features::kDeclarativePerformanceObserver)},
           {"DocumentPolicyIncludeJSCallStacksInCrashReports",
            raw_ref(blink::features::
                        kDocumentPolicyIncludeJSCallStacksInCrashReports),
@@ -622,8 +624,7 @@ void ResolveInvalidConfigurations() {
   // UserMediaElement cannot be enabled without the support of the
   // browser process.
   if (!base::FeatureList::IsEnabled(blink::features::kUserMediaElement)) {
-    LOG_IF(WARNING,
-           WebRuntimeFeatures::IsUserMediaElementEnabledByRuntimeFlag())
+    LOG_IF(WARNING, WebRuntimeFeatures::IsUserMediaElementEnabled())
         << "UserMediaElement cannot be enabled in this configuration. Use --"
         << switches::kEnableFeatures << "="
         << blink::features::kUserMediaElement.name << " instead.";

@@ -85,8 +85,6 @@ function stopRecognition(streamId) {
   if (recognition) {
     recognition.stop();
   }
-
-  window.close();
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

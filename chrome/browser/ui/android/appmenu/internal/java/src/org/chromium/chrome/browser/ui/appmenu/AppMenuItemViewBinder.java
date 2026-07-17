@@ -12,6 +12,7 @@ import android.graphics.drawable.Drawable;
 import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
@@ -55,14 +56,16 @@ class AppMenuItemViewBinder {
         R.id.button_wrapper_five
     };
 
-    public static void bindStandardItem(PropertyModel model, View view, PropertyKey key) {
+    private static final View.AccessibilityDelegate sAccessibilityDelegate =
+            new AppMenuAccessibilityDelegate();
+
+    /* package */ static void bindStandardItem(PropertyModel model, View view, PropertyKey key) {
         if (key == AppMenuItemProperties.MENU_ITEM_ID) {
             int id = model.get(AppMenuItemProperties.MENU_ITEM_ID);
             view.setId(id);
         } else if (key == AppMenuItemProperties.TITLE) {
             CharSequence title = model.get(AppMenuItemProperties.TITLE);
             ((TextView) view.findViewById(R.id.menu_item_text)).setText(title);
-            view.setTooltipText(title);
         } else if (key == AppMenuItemProperties.TITLE_CONDENSED) {
             setContentDescription(view.findViewById(R.id.menu_item_text), model);
         } else if (key == AppMenuItemProperties.ENABLED) {
@@ -105,7 +108,7 @@ class AppMenuItemViewBinder {
         }
     }
 
-    public static void bindHeaderItem(PropertyModel model, View view, PropertyKey key) {
+    /* package */ static void bindHeaderItem(PropertyModel model, View view, PropertyKey key) {
         if (key == AppMenuItemProperties.MENU_ITEM_ID) {
             int id = model.get(AppMenuItemProperties.MENU_ITEM_ID);
             view.setId(id);
@@ -116,7 +119,7 @@ class AppMenuItemViewBinder {
         }
     }
 
-    public static void bindTitleButtonItem(PropertyModel model, View view, PropertyKey key) {
+    /* package */ static void bindTitleButtonItem(PropertyModel model, View view, PropertyKey key) {
         bindStandardItem(model, view, key);
 
         if (key == AppMenuItemProperties.ADDITIONAL_ICONS) {
@@ -189,7 +192,7 @@ class AppMenuItemViewBinder {
         }
     }
 
-    public static void bindIconRowItem(PropertyModel model, View view, PropertyKey key) {
+    /* package */ static void bindIconRowItem(PropertyModel model, View view, PropertyKey key) {
         if (key == AppMenuItemProperties.ADDITIONAL_ICONS) {
             // Obtain from the current theme a typed array containing all the attributes.
             TypedArray typedArray =
@@ -233,9 +236,11 @@ class AppMenuItemViewBinder {
                                         : R.color.default_icon_color_tint_list;
                         button.setIconTint(button.getContext().getColorStateList(resId));
                     } else {
-                        button.setCheckable(true);
-                        button.setChecked(isChecked);
+                        button.setCheckable(false);
+                        button.setSelected(isChecked);
+                        button.setAccessibilityDelegate(sAccessibilityDelegate);
                     }
+
                     setupMenuButton(button, iconList.get(i).model, appMenuClickHandler);
                 } else {
                     buttonWrapper.setVisibility(View.GONE);
@@ -253,7 +258,7 @@ class AppMenuItemViewBinder {
         }
     }
 
-    public static @Px int getIconRowItemPixelHeight(Context context, PropertyModel model) {
+    /* package */ static @Px int getIconRowItemPixelHeight(Context context, PropertyModel model) {
         TypedArray a =
                 context.obtainStyledAttributes(
                         new int[] {R.attr.minInteractTargetSize, R.attr.appMenuIconRowPadding});
@@ -272,7 +277,7 @@ class AppMenuItemViewBinder {
         return height;
     }
 
-    public static @Px int getSubmenuHeaderPixelHeight(Context context, PropertyModel model) {
+    /* package */ static @Px int getSubmenuHeaderPixelHeight(Context context, PropertyModel model) {
         if (model.get(AppMenuSubmenuHeaderItemProperties.SHOULD_SHOW_ICON_ROW)) {
             return getIconRowItemPixelHeight(context, model);
         } else {
@@ -280,11 +285,11 @@ class AppMenuItemViewBinder {
         }
     }
 
-    public static @Px int getHeaderPixelHeight(Context context, PropertyModel model) {
+    /* package */ static @Px int getHeaderPixelHeight(Context context, PropertyModel model) {
         return context.getResources().getDimensionPixelSize(R.dimen.menu_header_height);
     }
 
-    public static void bindItemWithSubmenu(PropertyModel model, View view, PropertyKey key) {
+    /* package */ static void bindItemWithSubmenu(PropertyModel model, View view, PropertyKey key) {
         bindStandardItem(model, view, key);
 
         if (key == AppMenuItemWithSubmenuProperties.IS_EXPANDED) {
@@ -295,7 +300,7 @@ class AppMenuItemViewBinder {
         }
     }
 
-    public static void bindSubmenuHeader(PropertyModel model, View view, PropertyKey key) {
+    /* package */ static void bindSubmenuHeader(PropertyModel model, View view, PropertyKey key) {
         bindStandardItem(model, view, key);
 
         if (key == AppMenuItemWithSubmenuProperties.CLICK_LISTENER) {
@@ -308,7 +313,7 @@ class AppMenuItemViewBinder {
         }
     }
 
-    public static void setContentDescription(View view, final PropertyModel model) {
+    /* package */ static void setContentDescription(View view, final PropertyModel model) {
         CharSequence titleCondensed = model.get(AppMenuItemProperties.TITLE_CONDENSED);
         if (TextUtils.isEmpty(titleCondensed)) {
             view.setContentDescription(null);
@@ -416,5 +421,13 @@ class AppMenuItemViewBinder {
 
         // Menu items may be hidden by command line flags before they get to this point.
         button.setVisibility(View.VISIBLE);
+    }
+
+    private static final class AppMenuAccessibilityDelegate extends View.AccessibilityDelegate {
+        @Override
+        public void onInitializeAccessibilityNodeInfo(View host, AccessibilityNodeInfo info) {
+            super.onInitializeAccessibilityNodeInfo(host, info);
+            info.setSelected(false);
+        }
     }
 }

@@ -41,6 +41,7 @@
 #include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "base/time/time.h"
+#include "build/branding_buildflags.h"
 #include "build/build_config.h"
 #include "components/accessibility_annotator/core/mock_at_memory_query_service.h"
 #include "components/autofill/core/browser/autofill_field.h"
@@ -143,6 +144,8 @@
 #include "components/autofill/core/common/signatures.h"
 #include "components/feature_engagement/public/feature_constants.h"
 #include "components/optimization_guide/proto/features/common_quality_data.pb.h"
+#include "components/personal_context/core/mock_personal_context_enablement_service.h"
+#include "components/personal_context/core/personal_context_prefs.h"
 #include "components/prefs/pref_service.h"
 #include "components/security_interstitials/core/pref_names.h"
 #include "components/security_state/core/security_state.h"
@@ -1318,7 +1321,30 @@ class BrowserAutofillManagerTest
   syncer::TestSyncService sync_service_;
 };
 
-TEST_F(BrowserAutofillManagerTest, AtMemoryTriggersEmptySuggestions) {
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+
+class BrowserAutofillManagerAtMemoryTest : public BrowserAutofillManagerTest {
+ public:
+  void SetUp() override {
+    BrowserAutofillManagerTest::SetUp();
+    personal_context::prefs::RegisterProfilePrefs(
+        autofill_client().GetPrefs()->registry());
+    autofill_client().GetPrefs()->SetBoolean(
+        personal_context::prefs::kPersonalContextInAutofillSettingsToggleStatus,
+        true);
+    ON_CALL(mock_personal_context_service_, GetEnablementState())
+        .WillByDefault(
+            Return(personal_context::PersonalContextEnablementState::kEnabled));
+    autofill_client().set_personal_context_enablement_service(
+        &mock_personal_context_service_);
+  }
+
+ protected:
+  NiceMock<personal_context::MockPersonalContextEnablementService>
+      mock_personal_context_service_;
+};
+
+TEST_F(BrowserAutofillManagerAtMemoryTest, AtMemoryTriggersEmptySuggestions) {
   base::test::ScopedFeatureList features(features::kAutofillAtMemory);
   FormData form = CreateTestAddressFormData();
   FormsSeen({form});
@@ -1332,10 +1358,14 @@ TEST_F(BrowserAutofillManagerTest, AtMemoryTriggersEmptySuggestions) {
 
 // Tests that when `PersonalContextEnablementState` is `kDisabledNotEligible`
 // for a given profile, the AtMemory popup doesn't trigger.
-TEST_F(BrowserAutofillManagerTest, AtMemoryTriggerDroppedWhenNotEligible) {
+TEST_F(BrowserAutofillManagerAtMemoryTest, TriggerDroppedWhenNotEligible) {
   base::test::ScopedFeatureList features(features::kAutofillAtMemory);
   FormData form = CreateTestAddressFormData();
   FormsSeen({form});
+
+  ON_CALL(mock_personal_context_service_, GetEnablementState())
+      .WillByDefault(Return(personal_context::PersonalContextEnablementState::
+                                kDisabledNotEligible));
 
   autofill_client().set_personal_context_enablement_state(
       personal_context::PersonalContextEnablementState::kDisabledNotEligible);
@@ -1347,7 +1377,27 @@ TEST_F(BrowserAutofillManagerTest, AtMemoryTriggerDroppedWhenNotEligible) {
   EXPECT_FALSE(external_delegate()->on_suggestions_returned_seen());
 }
 
-TEST_F(BrowserAutofillManagerTest, ComposeDelayedNudgeDoesNotHideAtMemory) {
+// Tests that when the Personal Context toggle is off, the AtMemory popup
+// doesn't trigger.
+TEST_F(BrowserAutofillManagerAtMemoryTest, TriggerDroppedWhenToggleOff) {
+  base::test::ScopedFeatureList features(features::kAutofillAtMemory);
+  FormData form = CreateTestAddressFormData();
+  FormsSeen({form});
+
+  // Turn off the toggle.
+  autofill_client().GetPrefs()->SetBoolean(
+      personal_context::prefs::kPersonalContextInAutofillSettingsToggleStatus,
+      false);
+
+  OnAskForValuesToFill(form, form.fields()[0],
+                       AutofillSuggestionTriggerSource::kAtMemory);
+
+  // No suggestions should be returned, not even empty ones.
+  EXPECT_FALSE(external_delegate()->on_suggestions_returned_seen());
+}
+
+TEST_F(BrowserAutofillManagerAtMemoryTest,
+       ComposeDelayedNudgeDoesNotHideAtMemory) {
   base::test::ScopedFeatureList features(features::kAutofillAtMemory);
   const FormData form = CreateTestAddressFormData();
   FormsSeen({form});
@@ -1373,6 +1423,7 @@ TEST_F(BrowserAutofillManagerTest, ComposeDelayedNudgeDoesNotHideAtMemory) {
   EXPECT_EQ(external_delegate()->trigger_source(),
             AutofillSuggestionTriggerSource::kAtMemory);
 }
+#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
 TEST_F(BrowserAutofillManagerTest, IgnoreInactivityQueryIfPopupVisible) {
   FormData form = CreateTestAddressFormData();

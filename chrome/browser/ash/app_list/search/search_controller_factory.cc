@@ -107,10 +107,8 @@ std::unique_ptr<SearchController> CreateSearchController(
   controller->AddProvider(
       std::make_unique<DesksAdminTemplateProvider>(profile, list_controller));
 
-  if (search_features::IsLauncherGameSearchEnabled()) {
-    controller->AddProvider(
-        std::make_unique<GameProvider>(profile, list_controller));
-  }
+  controller->AddProvider(
+      std::make_unique<GameProvider>(profile, list_controller));
 
   if (ash::personalization_app::CanSeeWallpaperOrPersonalizationApp(profile)) {
     controller->AddProvider(std::make_unique<PersonalizationProvider>(profile));

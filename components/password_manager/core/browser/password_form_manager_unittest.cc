@@ -787,9 +787,8 @@ TEST_P(PasswordFormManagerTest, Autofill) {
   EXPECT_EQ(observed_form_.url(), fill_data.url);
 
   // On Android Touch To Fill will prevent autofilling credentials on page load.
-  // On iOS bio-metric reauth will prevent autofilling as well. On Linux
-  // kFillOnAccountSelect feature is enabled.
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS) || BUILDFLAG(IS_LINUX)
+  // On iOS bio-metric reauth will prevent autofilling as well.
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
   EXPECT_TRUE(fill_data.wait_for_username);
 #else
   EXPECT_FALSE(fill_data.wait_for_username);
@@ -5481,6 +5480,65 @@ TEST_F(PasswordFormManagerTestWithMockedSaver, UsernameFirstFlow) {
                                        _, _, _, _));
   ASSERT_TRUE(form_manager_->ProvisionallySave(submitted_form, &driver_,
                                                possible_usernames));
+}
+
+// Tests that OnPasswordFilledManually triggers a fetch but does not refill.
+TEST_F(PasswordFormManagerTestWithMockedSaver,
+       OnPasswordFilledManually_NoRefill) {
+  base::test::ScopedFeatureList feature_list{features::kPasswordDateLastFilled};
+
+  PasswordFormManager::set_wait_for_server_predictions_for_filling(false);
+  CreateFormManager(observed_form_);
+  fetcher_->NotifyFetchCompleted();
+
+  // Provisionally save a form to initialize parsed_submitted_form_.
+  EXPECT_CALL(*mock_password_save_manager(), CreatePendingCredentials);
+  EXPECT_TRUE(form_manager_->ProvisionallySave(submitted_form_, &driver_,
+                                               possible_usernames_));
+  testing::Mock::VerifyAndClearExpectations(mock_password_save_manager());
+
+  // Expect CreatePendingCredentials to be called again in OnFetchCompleted.
+  EXPECT_CALL(*mock_password_save_manager(), CreatePendingCredentials);
+  ON_CALL(*mock_password_save_manager(), IsEqualToSavedMatch())
+      .WillByDefault(Return(true));
+
+  form_manager_->OnPasswordFilledManually();
+  // Now complete the fetch and verify that no filling happens.
+  EXPECT_CALL(driver_, PropagateFillDataOnParsingCompletion).Times(0);
+  SetNonFederatedAndNotifyFetchCompleted({saved_match_});
+}
+
+// Tests that OnPasswordFilledManually prevents refilling even if the waiter
+// for server predictions was active and predictions arrive later.
+TEST_F(PasswordFormManagerTestWithMockedSaver,
+       OnPasswordFilledManually_NoRefillWithWait) {
+  base::test::ScopedFeatureList feature_list{features::kPasswordDateLastFilled};
+
+  PasswordFormManager::set_wait_for_server_predictions_for_filling(true);
+  CreateFormManager(observed_form_);
+  SetNonFederatedAndNotifyFetchCompleted({saved_match_});
+
+  // Provisionally save a form to initialize parsed_submitted_form_.
+  EXPECT_CALL(*mock_password_save_manager(), CreatePendingCredentials);
+  EXPECT_TRUE(form_manager_->ProvisionallySave(submitted_form_, &driver_,
+                                               possible_usernames_));
+  testing::Mock::VerifyAndClearExpectations(mock_password_save_manager());
+
+  // Trigger manual fill, which sets allow_filling_upon_fetching_ to false.
+  ON_CALL(*mock_password_save_manager(), IsEqualToSavedMatch())
+      .WillByDefault(Return(true));
+  form_manager_->OnPasswordFilledManually();
+
+  // Complete the second fetch. CreatePendingCredentials should be called
+  // because is_submitted_ is true, but no refilling should happen.
+  EXPECT_CALL(*mock_password_save_manager(), CreatePendingCredentials);
+  SetNonFederatedAndNotifyFetchCompleted({saved_match_});
+
+  // Process server predictions. This would trigger FillNow(), but it should
+  // return early because of the manual fill.
+  auto predictions = CreatePredictions(observed_form_, {});
+  EXPECT_CALL(driver_, PropagateFillDataOnParsingCompletion).Times(0);
+  form_manager_->ProcessServerPredictions(predictions);
 }
 
 // Tests that username is not taken when a possible username is not valid.

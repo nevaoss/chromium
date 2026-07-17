@@ -91,6 +91,10 @@ constexpr wgpu::TextureUsage kAllowedReadableMailboxTextureUsages =
 constexpr wgpu::TextureUsage kAllowedMailboxTextureUsages =
     kAllowedWritableMailboxTextureUsages | kAllowedReadableMailboxTextureUsages;
 
+constexpr wgpu::BufferUsage kAllowedMailboxBufferUsages =
+    wgpu::BufferUsage::CopySrc | wgpu::BufferUsage::CopyDst |
+    wgpu::BufferUsage::Storage;
+
 template <typename T1, typename T2>
 void ChainStruct(T1& head, T2* struct_to_chain) {
   DCHECK(struct_to_chain->nextInChain == nullptr);
@@ -2329,8 +2333,19 @@ WebGPUDecoderImpl::AssociateMailboxDawnBuffer(const Mailbox& mailbox,
       shared_image_representation_factory_->ProduceDawnBuffer(
           mailbox, device, backendType, shared_context_state_);
 
+  // Checks similar to ValidateAssociateMailboxAndSetSharedImageClearState but
+  // for buffers.
   if (!shared_buffer) {
     DLOG(ERROR) << "AssociateMailboxDawnBuffer: Couldn't produce shared image";
+    return nullptr;
+  }
+  if (usage & ~kAllowedMailboxBufferUsages) {
+    DLOG(ERROR) << "AssociateMailboxDawnBuffer: Unsupported Buffer usages.";
+    return nullptr;
+  }
+  if (!shared_buffer->usage().HasAll(SHARED_IMAGE_USAGE_WEBGPU_READ |
+                                     SHARED_IMAGE_USAGE_WEBGPU_WRITE)) {
+    DLOG(ERROR) << "AssociateMailboxDawnBuffer: Missing SharedImage usages.";
     return nullptr;
   }
 

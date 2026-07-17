@@ -581,6 +581,7 @@
 <translation id="1902576642799138955">유효성 기간</translation>
 <translation id="1908217026282415406">카메라 사용 및 이동</translation>
 <translation id="1908690643053136980">관리자가 이 사이트에 <ph name="PERMISSION" /> 권한을 허용하지 않습니다.</translation>
+<translation id="1912750443952232242">Google 월렛에 신분증 저장</translation>
 <translation id="1913037223029790376">이 가상 카드의 CVC 사용</translation>
 <translation id="191374271204266022">JSON으로 복사</translation>
 <translation id="1914326953223720820">압축 해제 서비스</translation>
@@ -1493,6 +1494,7 @@
 <translation id="3325568918769906282">내림차순</translation>
 <translation id="3325662270238538525">파일 이름, 파일 콘텐츠의 디지털 지문, 다운로드 소스, 메타데이터 등 최근 파일 액세스 및 수정 내역</translation>
 <translation id="3329013043687509092">채도</translation>
+<translation id="3330483197654063678">사용 설정하면 더욱 관련성 높은 대답을 받을 수 있도록 Chrome에서 이 창의 열린 탭을 공유합니다.</translation>
 <translation id="3333762389743153920">가상 카드로 사용할 수 없음</translation>
 <translation id="3338095232262050444">보안 연결</translation>
 <translation id="333839153442689579">고강도 인터벌 트레이닝</translation>
@@ -2846,6 +2848,7 @@
 <translation id="5458150163479425638">{CONTACT,plural, =0{<ph name="CONTACT_PREVIEW" />}=1{<ph name="CONTACT_PREVIEW" /> 외 <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />개}other{<ph name="CONTACT_PREVIEW" /> 외 <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />개}}</translation>
 <translation id="5463625433003343978">기기를 찾는 중...</translation>
 <translation id="5464236009658034488">사무용품</translation>
+<translation id="5465128270485645058">이 창에서 열려 있는 탭이 이 대화목록과 관련이 있는 경우 자동으로 공유하여 더 맞춤설정된 대답을 받습니다.</translation>
 <translation id="5465724643247062031">유리(불투명)</translation>
 <translation id="5466018172325111652">코드를 받지 못하셨나요? <ph name="BEGIN_LINK" />새 코드 받기<ph name="END_LINK" /></translation>
 <translation id="5466818462212249084">결제 앱</translation>
@@ -3128,6 +3131,7 @@
 <translation id="5911020115933784199">이벤트 및 등록정보</translation>
 <translation id="5911110632211230665">파일 열기 차단됨</translation>
 <translation id="5912796581727968237">Google 월렛 열기</translation>
+<translation id="5914185423510719251">Google 월렛에 KTN 저장</translation>
 <translation id="5914465277418006379"><ph name="MEMBER_FIRST_NAME" />님이 이 탭을 추가했습니다.</translation>
 <translation id="5915189366813702112">유연 근무제</translation>
 <translation id="59174027418879706">사용 가능</translation>
@@ -3651,6 +3655,7 @@
 <translation id="6702851555558236418">오디오 및 음악 소프트웨어</translation>
 <translation id="6702919718839027939">발표</translation>
 <translation id="6704458454638854812">'custom_size' 속성이 설정되어 있으므로 속성 이름이 'custom'이어야 합니다.</translation>
+<translation id="670477556876354552">다시 시작해야 함</translation>
 <translation id="6706005862292023715">커튼 및 창문 장식</translation>
 <translation id="6706210727756204531">범위</translation>
 <translation id="6706678697074905703">이 IBAN은 Google 계정에 저장할 수 없습니다. 대신 이 기기의 Chrome에 저장됩니다.</translation>
@@ -3908,6 +3913,7 @@
 <translation id="7110116949943042888">임시 및 계약직</translation>
 <translation id="7110368079836707726">단과 대학 및 종합 대학</translation>
 <translation id="7111507312244504964">부동산 감정</translation>
+<translation id="7117290130383718594">텍스트 주석</translation>
 <translation id="7118618213916969306">클립보드 URL <ph name="SHORT_URL" /> 검색</translation>
 <translation id="7118852830504022370">이 사이트에서 HTTPS를 지원하지 않기 때문에 경고가 표시되었습니다. <ph name="BEGIN_LEARN_MORE_LINK" />이 경고에 대해 자세히 알아보기<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="7119063404975271297">TV 드라마</translation>

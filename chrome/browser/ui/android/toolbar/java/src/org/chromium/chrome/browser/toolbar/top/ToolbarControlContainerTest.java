@@ -807,6 +807,34 @@ public class ToolbarControlContainerTest {
     }
 
     @Test
+    public void testTopLeftCornerOverlayPositionWithRtl() {
+        initControlContainer(R.layout.toolbar_tablet);
+
+        var appHeaderState =
+                new AppHeaderState(new Rect(0, 0, 100, 100), new Rect(10, 0, 80, 100), true);
+        when(mDesktopWindowStateManager.getAppHeaderState()).thenReturn(appHeaderState);
+        mControlContainer.onAppHeaderStateChanged(appHeaderState);
+
+        SettableNonNullObservableSupplier<Boolean> isVerticalTabsActiveSupplier =
+                ObservableSuppliers.createNonNull(true);
+        mControlContainer.setIsVerticalTabsActiveSupplier(isVerticalTabsActiveSupplier);
+
+        View overlayView = mControlContainer.getTopLeftCornerOverlayViewForTesting();
+        assertNotNull(overlayView);
+        assertEquals(View.VISIBLE, overlayView.getVisibility());
+
+        // Test in LTR mode.
+        mControlContainer.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+        mControlContainer.layout(0, 0, 500, 100);
+        assertEquals("Corner overlay should be on the left in LTR mode", 0, overlayView.getLeft());
+
+        // Test in RTL mode.
+        mControlContainer.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        mControlContainer.layout(0, 0, 500, 100);
+        assertEquals("Corner overlay should be on the left in RTL mode", 0, overlayView.getLeft());
+    }
+
+    @Test
     public void testShowLocationBarOnly() {
         doReturn(mLocationBarView).when(mToolbar).removeLocationBarView();
         doReturn(Color.RED).when(mToolbarDataProvider).getPrimaryColor();

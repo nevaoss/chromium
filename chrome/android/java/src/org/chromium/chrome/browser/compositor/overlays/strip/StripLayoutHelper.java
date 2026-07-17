@@ -87,6 +87,7 @@ import org.chromium.chrome.browser.data_sharing.DataSharingTabManager;
 import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.glic.GlicEnabling;
+import org.chromium.chrome.browser.glic.GlicUtils;
 import org.chromium.chrome.browser.layouts.SceneOverlay;
 import org.chromium.chrome.browser.layouts.animation.CompositorAnimationHandler;
 import org.chromium.chrome.browser.layouts.animation.CompositorAnimator;
@@ -485,6 +486,15 @@ public class StripLayoutHelper
          * @param fade Whether the buttons should be made visible (true) or hidden (false).
          */
         void fadeCompositorButtons(boolean fade);
+
+        /** Returns true if the Glic button is currently visible. */
+        boolean isGlicButtonVisible();
+
+        /** Returns true if the Glic UI is currently visible (e.g. panel is open). */
+        boolean isGlicUiVisible();
+
+        /** Returns the Glic button compositor instance. */
+        @Nullable CompositorButton getGlicButton();
     }
 
     // External influences
@@ -1650,6 +1660,46 @@ public class StripLayoutHelper
         return true;
     }
 
+    private boolean attemptToShowGlicIph() {
+        if (mModel == null || mTabStripIphController == null) return false;
+        // Remove the showGlicIph callback from the queue, as showing IPH is not applicable in
+        // these cases.
+        Tab activeTab = mModel.getTabAt(mModel.index());
+        if (!GlicUtils.isTabEligibleForGlicIph(activeTab)
+                || !mTabStripIphController.wouldTriggerIph(IphType.GLIC_PROMO)
+                || mTrailingButtonDelegate.isGlicUiVisible()) {
+            return true;
+        }
+        // Return early if the tab strip is not visible on screen.
+        if (Boolean.FALSE.equals(mTabStripVisibleSupplier.get())) {
+            return false;
+        }
+        // Checked after tab strip visibility since a hidden strip makes Glic button visibility
+        // return false, which would incorrectly discard the IPH instead of postponing it.
+        CompositorButton glicButton = mTrailingButtonDelegate.getGlicButton();
+        if (glicButton == null || !mTrailingButtonDelegate.isGlicButtonVisible()) {
+            return true;
+        }
+
+        // Display IPH pointing to the Glic button.
+        mTabStripIphController.showIphOnCompositorButton(
+                glicButton, mControlContainer, IphType.GLIC_PROMO, /* enableSnoozeMode= */ false);
+        return true;
+    }
+
+    /**
+     * Attempts to queue Glic IPH for a given tab if it is eligible.
+     *
+     * @param tab The current tab to check.
+     */
+    public void attemptToQueueGlicIph(@Nullable Tab tab) {
+        if (mTabStripIphController != null
+                && mTabStripIphController.wouldTriggerIph(IphType.GLIC_PROMO)
+                && GlicUtils.isTabEligibleForGlicIph(tab)) {
+            mQueuedIphList.add(() -> attemptToShowGlicIph());
+        }
+    }
+
     void setLastSyncedGroupIdForTesting(@Nullable Token tabGroupId) {
         mLastSyncedGroupIdForIph = tabGroupId;
     }
@@ -1731,6 +1781,8 @@ public class StripLayoutHelper
         if (prevId != Tab.INVALID_TAB_ID) {
             setAccessibilityDescription(findTabById(prevId), getTabById(prevId));
         }
+
+        attemptToQueueGlicIph(tab);
     }
 
     /**
@@ -2427,7 +2479,8 @@ public class StripLayoutHelper
                                         mStripTabs,
                                         findGroupTitle(groupId),
                                         toLeft);
-                            });
+                            },
+                            TabClosingSource.TABLET_TAB_STRIP);
         }
         StripLayoutUtils.performHapticFeedback(mControlContainer);
 
@@ -2508,7 +2561,8 @@ public class StripLayoutHelper
                             },
                             mSnackbarManager,
                             mActivityResultTracker,
-                            mWindowAndroid.getModalDialogManager());
+                            mWindowAndroid.getModalDialogManager(),
+                            TabClosingSource.TABLET_TAB_STRIP);
         }
         RectProvider anchorRectProvider = new RectProvider();
         anchorTab.getAnchorRect(anchorRectProvider.getRect());
@@ -4506,7 +4560,14 @@ public class StripLayoutHelper
         StripLayoutTab stripTab = findTabById(tabId);
         if (stripTab != null) {
             stripTab.setIsUnderlined(isUnderlined);
-            mUpdateHost.requestUpdate();
+        }
+    }
+
+    /** Reset the underline animation cycle for a tab. */
+    void resetTabUnderlineAnimationCycle(int tabId) {
+        StripLayoutTab stripTab = findTabById(tabId);
+        if (stripTab != null) {
+            stripTab.resetUnderlineAnimationCycle();
         }
     }
 

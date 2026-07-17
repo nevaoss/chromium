@@ -478,7 +478,7 @@ TEST_F(
 
 // Tests that whenever pContext entities are prefetched, they are stored in the
 // data manager.
-TEST_F(EntityDataManagerTest_InitiallyEmpty, OnMaskedEntitiesPrefetched) {
+TEST_F(EntityDataManagerTest_InitiallyEmpty, OnPrefetchContextComplete) {
   // Wait for the database to load to prevent additional observer events.
   helper().WaitUntilIdle();
   MockEntityDataManagerObserver observer;
@@ -492,8 +492,8 @@ TEST_F(EntityDataManagerTest_InitiallyEmpty, OnMaskedEntitiesPrefetched) {
       {.record_type = EntityInstance::RecordType::kPersonalContext});
 
   EXPECT_CALL(observer, OnEntityInstancesChanged);
-  entity_data_manager().OnMaskedEntitiesPrefetched(pcontext_manager(),
-                                                   {order, shipment});
+  entity_data_manager().OnPrefetchContextComplete(pcontext_manager(),
+                                                  {order, shipment});
   EXPECT_THAT(GetEntityInstances(), UnorderedElementsAre(order, shipment));
 }
 
@@ -516,14 +516,118 @@ TEST_F(EntityDataManagerTest_InitiallyEmpty, OnMaskedEntityTypeEvicted) {
   // Expect OnEntityInstancesChanged() to be called once after prefetching and
   // once after eviction.
   EXPECT_CALL(observer, OnEntityInstancesChanged).Times(2);
-  entity_data_manager().OnMaskedEntitiesPrefetched(pcontext_manager(),
-                                                   {order, shipment});
+  entity_data_manager().OnPrefetchContextComplete(pcontext_manager(),
+                                                  {order, shipment});
   ASSERT_THAT(GetEntityInstances(), UnorderedElementsAre(order, shipment));
 
   // Evict orders.
   entity_data_manager().OnMaskedEntityTypeEvicted(pcontext_manager(),
                                                   order.type());
   EXPECT_THAT(GetEntityInstances(), UnorderedElementsAre(shipment));
+}
+
+// Tests that prefetched personal context entities are filtered out if they
+// represent the same entity as an already cached local/Wallet entity.
+TEST_F(EntityDataManagerTest_InitiallyEmpty,
+       OnPrefetchContextComplete_FiltersDuplicateIncomingEntities) {
+  EntityInstance flight_local =
+      test::GetFlightReservationEntityInstanceWithRandomGuid(
+          {.ticket_number = u"TICKET123",
+           .confirmation_code = u"CONF123",
+           .name = u"Jon Doe",
+           .record_type = EntityInstance::RecordType::kLocal});
+  EntityInstance passport_wallet =
+      test::MaskEntityInstance(test::GetPassportEntityInstanceWithRandomGuid(
+          {.name = u"Jon Doe",
+           .number = u"123456789",
+           .record_type = EntityInstance::RecordType::kServerWallet}));
+  entity_data_manager().AddOrUpdateEntityInstance(flight_local);
+  entity_data_manager().AddOrUpdateEntityInstance(passport_wallet);
+  ASSERT_THAT(GetEntityInstances(),
+              UnorderedElementsAre(flight_local, passport_wallet));
+
+  EntityInstance flight_pc =
+      test::GetFlightReservationEntityInstanceWithRandomGuid(
+          {.ticket_number = u"TICKET999",
+           .confirmation_code = u"CONF123",
+           .name = u"Jane Doe",
+           .record_type = EntityInstance::RecordType::kPersonalContext});
+  EntityInstance passport_pc =
+      test::MaskEntityInstance(test::GetPassportEntityInstanceWithRandomGuid(
+          {.name = u"Jon Doe",
+           .number = u"123456789",
+           .record_type = EntityInstance::RecordType::kPersonalContext}));
+  EntityInstance license_pc =
+      test::GetDriversLicenseEntityInstanceWithRandomGuid(
+          {.number = u"DL9999",
+           .record_type = EntityInstance::RecordType::kPersonalContext});
+  entity_data_manager().OnPrefetchContextComplete(
+      pcontext_manager(), {flight_pc, passport_pc, license_pc});
+  helper().WaitUntilIdle();
+
+  EXPECT_THAT(GetEntityInstances(),
+              UnorderedElementsAre(flight_local, passport_wallet, license_pc));
+}
+
+// Tests that if a duplicate personal context entity is prefetched before the
+// database is loaded, it is filtered out once the database load completes.
+TEST_F(EntityDataManagerTest_InitiallyEmpty,
+       LoadEntitiesFromDatabase_FiltersDuplicateCachedPersonalContextEntities) {
+  EntityInstance flight_local =
+      test::GetFlightReservationEntityInstanceWithRandomGuid(
+          {.ticket_number = u"TICKET123",
+           .confirmation_code = u"CONF123",
+           .name = u"Jon Doe",
+           .record_type = EntityInstance::RecordType::kLocal});
+  entity_data_manager().AddOrUpdateEntityInstance(flight_local);
+
+  // Recreating the data manager queues a database load task in its constructor.
+  RecreateEntityDataManager_Discouraged();
+
+  // Prefetch a duplicate personal context entity while the database load is
+  // still pending.
+  EntityInstance flight_pc =
+      test::GetFlightReservationEntityInstanceWithRandomGuid(
+          {.ticket_number = u"TICKET999",
+           .confirmation_code = u"CONF123",
+           .name = u"Jane Doe",
+           .record_type = EntityInstance::RecordType::kPersonalContext});
+  entity_data_manager().OnPrefetchContextComplete(pcontext_manager(),
+                                                  {flight_pc});
+
+  // Wait for the database
+  helper().WaitUntilIdle();
+
+  EXPECT_THAT(entity_data_manager().GetEntityInstances(),
+              UnorderedElementsAre(flight_local));
+}
+
+// Tests that if a local/Wallet entity is added or updated after a duplicate
+// personal context entity is already cached, the duplicate is filtered out.
+TEST_F(
+    EntityDataManagerTest_InitiallyEmpty,
+    AddOrUpdateEntityInstance_FiltersDuplicateCachedPersonalContextEntities) {
+  helper().WaitUntilIdle();
+  EntityInstance flight_pc =
+      test::GetFlightReservationEntityInstanceWithRandomGuid(
+          {.ticket_number = u"TICKET999",
+           .confirmation_code = u"CONF123",
+           .name = u"Jane Doe",
+           .record_type = EntityInstance::RecordType::kPersonalContext});
+  entity_data_manager().OnPrefetchContextComplete(pcontext_manager(),
+                                                  {flight_pc});
+  ASSERT_THAT(GetEntityInstances(), UnorderedElementsAre(flight_pc));
+
+  EntityInstance flight_local =
+      test::GetFlightReservationEntityInstanceWithRandomGuid(
+          {.ticket_number = u"TICKET123",
+           .confirmation_code = u"CONF123",
+           .name = u"Jon Doe",
+           .record_type = EntityInstance::RecordType::kLocal});
+  entity_data_manager().AddOrUpdateEntityInstance(flight_local);
+  helper().WaitUntilIdle();
+
+  EXPECT_THAT(GetEntityInstances(), UnorderedElementsAre(flight_local));
 }
 
 }  // namespace

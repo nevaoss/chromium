@@ -70,21 +70,28 @@ class DownloadRecordServiceImpl : public DownloadRecordService,
       const std::vector<std::string_view>& download_ids);
 
   // Reply for the asynchronous InsertRecord write started by
-  // RecordDownload(), run on the main sequence. Observes `task` and
+  // `RecordDownload()`, run on the main sequence. Observes `task` and
   // notifies observers when the insert succeeded.
   void OnRecordInserted(base::WeakPtr<web::DownloadTask> weak_task,
                         const DownloadRecord& record,
                         bool success);
 
-  // Task runner for database operations.
+  // Snapshot of `IsDownloadListPaginationEnabled()` taken at construction
+  // time, so an in-process Finch flip cannot change the path chosen at
+  // startup. Every pagination-gated code path reads this member, not the
+  // live function.
+  const bool pagination_enabled_;
+
+  // Task runner for database operations. `store_` is bound to it at
+  // construction.
   scoped_refptr<base::SequencedTaskRunner> database_task_runner_;
 
-  // Owns the SQLite-backed database and the in-memory record cache. The
-  // store is constructed on `database_task_runner_` and all CRUD operations
-  // run there via `AsyncCall`. `base::SequenceBound` also handles
-  // destruction on the bound sequence, so any in-flight DB-sequence task
-  // continues to observe a live store object even if `this` has already
-  // been destroyed on the main thread.
+  // Owns the SQLite-backed database and the in-memory record cache. All
+  // CRUD runs on `database_task_runner_` via `AsyncCall`; `SequenceBound`
+  // also destroys the store on that sequence, so any in-flight DB-task
+  // observes a live store even after `this` is gone on the main thread.
+  // The two preceding members are declared first because they feed this
+  // constructor (member init runs in declaration order).
   base::SequenceBound<DownloadRecordStore> store_;
 
   // ObserverList for download record changes.
@@ -94,13 +101,6 @@ class DownloadRecordServiceImpl : public DownloadRecordService,
   base::ScopedMultiSourceObservation<web::DownloadTask,
                                      web::DownloadTaskObserver>
       download_task_observations_{this};
-
-  // Snapshot of `IsDownloadListPaginationEnabled()` taken at construction
-  // time. Held as a member so any in-process Finch flip during the lifetime
-  // of this service cannot change the path chosen at startup. Every code
-  // path in this service that needs to gate on pagination reads this
-  // member, not the live function.
-  const bool pagination_enabled_;
 
   // Main thread sequence checker for public API calls.
   SEQUENCE_CHECKER(main_sequence_checker_);

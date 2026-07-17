@@ -331,6 +331,7 @@ class RenderViewContextMenu
   void AppendTranslateItem();
   void AppendMediaRouterItem();
   void AppendReadAnythingItem();
+  void AppendSaveToMemoryBanksItem();
   void AppendGlicItems();
   void AppendRotationItems();
   void AppendSpellingAndSearchSuggestionItems();
@@ -442,6 +443,7 @@ class RenderViewContextMenu
 #endif
   void ExecOpenInReadAnything();
   void ExecListenToThisPage();
+  void ExecSaveToMemoryBanks();
 
   void MediaPlayerAction(const blink::mojom::MediaPlayerAction& action);
   void SearchForVideoFrame(int event_flags,

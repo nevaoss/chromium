@@ -221,7 +221,7 @@ BASE_FEATURE(kAutofillAiNoFillingIconsExperiment,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled, AutofillAi supports order entities.
-BASE_FEATURE(kAutofillAiOrder, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAutofillAiOrder, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // If enabled, AutofillAi requires re-auth when filling/viewing sensitive
 // fields. As part of this feature sensitive fields are also obfuscated during
@@ -301,7 +301,7 @@ BASE_FEATURE_PARAM(bool,
                    true);
 
 // If enabled, AutofillAi supports shipment entities.
-BASE_FEATURE(kAutofillAiShipment, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAutofillAiShipment, base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_ANDROID)
 // If enabled, the user is notified about a failure to upstream data to Wallet
@@ -418,6 +418,15 @@ BASE_FEATURE(kAutofillAndroidKeyboardAccessoryDynamicPositioning,
 
 // Feature flag for kAutofillAtMemory.
 BASE_FEATURE(kAutofillAtMemory, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// The subscription tiers for which AtMemory is eligible. Comma-separated list
+// of subscription tier integers. If empty/not defined, no tier restrictions
+// are applied.
+BASE_FEATURE_PARAM(std::string,
+                   kAutofillAtMemoryEligibleTiers,
+                   &kAutofillAtMemory,
+                   "at_memory_eligible_tiers",
+                   "");
 
 // Controls whether the Autosuggest nudging logic is used. If enabled, user are
 // encouraged to use the AtMemory feature.
@@ -920,11 +929,6 @@ BASE_FEATURE(kAutofillStructuredFieldsDisableAddressLines,
 // TODO(crbug.com/465119085): Clean up when launched.
 BASE_FEATURE(kAutofillSupportCombinedZipAndCityFR,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables using a custom address model for Japan, overriding the legacy one.
-// TODO(crbug.com/359768803): Remove in M151.
-BASE_FEATURE(kAutofillSupportPhoneticNameForJP,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables splitting two-part zip codes into two fields while filling and
 // importing split zip codes from two adjacent fields.

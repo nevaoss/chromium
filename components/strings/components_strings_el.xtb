@@ -581,6 +581,7 @@
 <translation id="1902576642799138955">Περίοδος εγκυρότητας</translation>
 <translation id="1908217026282415406">Χρήση και μετακίνηση κάμερας</translation>
 <translation id="1908690643053136980">Ο διαχειριστής σας δεν επιτρέπει την άδεια <ph name="PERMISSION" /> για αυτόν τον ιστότοπο</translation>
+<translation id="1912750443952232242">Αποθήκευση εγγράφου ταυτοποίησης στο Πορτοφόλι Google</translation>
 <translation id="1913037223029790376">Χρήση CVC για αυτή την εικονική κάρτα</translation>
 <translation id="191374271204266022">Αντιγραφή ως JSON</translation>
 <translation id="1914326953223720820">Υπηρεσία αποσυμπίεσης</translation>
@@ -1493,6 +1494,7 @@
 <translation id="3325568918769906282">σε φθίνουσα σειρά</translation>
 <translation id="3325662270238538525">Πρόσφατη πρόσβαση και τροποποιήσεις αρχείων, συμπεριλαμβανομένων των ονομάτων αρχείων, των ψηφιακών μοναδικών χαρακτηριστικών του περιεχομένου του αρχείου, της πηγής λήψης και των μεταδεδομένων</translation>
 <translation id="3329013043687509092">Κορεσμός</translation>
+<translation id="3330483197654063678">Όταν είναι ενεργή, το Chrome θα κάνει κοινή χρήση των ανοιχτών καρτελών σε αυτό το παράθυρο, για να σας βοηθά να λαμβάνετε πιο σχετικές απαντήσεις.</translation>
 <translation id="3333762389743153920">Δεν είναι κατάλληλη για έκδοση εικονικής κάρτας</translation>
 <translation id="3338095232262050444">Ασφαλές</translation>
 <translation id="333839153442689579">Υψηλής έντασης διαλειμματική προπόνηση</translation>
@@ -2847,6 +2849,7 @@
 <translation id="5458150163479425638">{CONTACT,plural, =0{<ph name="CONTACT_PREVIEW" />}=1{<ph name="CONTACT_PREVIEW" /> και <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> ακόμη}other{<ph name="CONTACT_PREVIEW" /> και <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> ακόμη}}</translation>
 <translation id="5463625433003343978">Εύρεση συσκευών…</translation>
 <translation id="5464236009658034488">Προϊόντα γραφείου</translation>
+<translation id="5465128270485645058">Λάβετε πιο προσαρμοσμένες απαντήσεις με αυτόματη κοινή χρήση των ανοιχτών καρτελών σε αυτό το παράθυρο, αν σχετίζονται με αυτό το νήμα.</translation>
 <translation id="5465724643247062031">Γυαλί (Αδιαφανές)</translation>
 <translation id="5466018172325111652">Δεν λάβατε τον κωδικό σας; <ph name="BEGIN_LINK" />Λήψη νέου κωδικού<ph name="END_LINK" /></translation>
 <translation id="5466818462212249084">Εφαρμογές πληρωμών</translation>
@@ -3129,6 +3132,7 @@
 <translation id="5911020115933784199">Εκδηλώσεις και καταχωρίσεις</translation>
 <translation id="5911110632211230665">Το άνοιγμα έχει αποκλειστεί</translation>
 <translation id="5912796581727968237">Άνοιγμα Πορτοφολιού Google</translation>
+<translation id="5914185423510719251">Αποθήκευση KTN στο Πορτοφόλι Google</translation>
 <translation id="5914465277418006379">Ο χρήστης <ph name="MEMBER_FIRST_NAME" /> πρόσθεσε αυτή την καρτέλα</translation>
 <translation id="5915189366813702112">Ευέλικτες συνθήκες εργασίας</translation>
 <translation id="59174027418879706">Ενεργοποιημένο</translation>
@@ -3653,6 +3657,7 @@
 <translation id="6702851555558236418">Λογισμικό ήχου και μουσικής</translation>
 <translation id="6702919718839027939">Παρουσίαση</translation>
 <translation id="6704458454638854812">Η ιδιότητα custom_size έχει οριστεί. Το αναμενόμενο όνομα είναι custom.</translation>
+<translation id="670477556876354552">Απαιτείται επανεκκίνηση</translation>
 <translation id="6706005862292023715">Κουρτίνες και είδη σκίασης παραθύρων</translation>
 <translation id="6706210727756204531">Εύρος</translation>
 <translation id="6706678697074905703">Δεν ήταν δυνατή η αποθήκευση αυτού του IBAN στον Λογαριασμό σας Google. Αντ' αυτού, αποθηκεύτηκε στο Chrome σε αυτή τη συσκευή.</translation>
@@ -3910,6 +3915,7 @@
 <translation id="7110116949943042888">Προσωρινές και εποχικές θέσεις εργασίας</translation>
 <translation id="7110368079836707726">Κολέγια και πανεπιστήμια</translation>
 <translation id="7111507312244504964">Αξιολογήσεις και εκτιμήσεις ακινήτων</translation>
+<translation id="7117290130383718594">Σχολιασμοί κειμένου</translation>
 <translation id="7118618213916969306">Αναζήτηση URL στο πρόχειρο, <ph name="SHORT_URL" /></translation>
 <translation id="7118852830504022370">Η συγκεκριμένη ειδοποίηση εμφανίζεται επειδή αυτός ο ιστότοπος δεν υποστηρίζει HTTPS. <ph name="BEGIN_LEARN_MORE_LINK" />Μάθετε περισσότερα σχετικά με αυτή την ειδοποίηση<ph name="END_LEARN_MORE_LINK" />.</translation>
 <translation id="7119063404975271297">Τηλεοπτικά δράματα</translation>

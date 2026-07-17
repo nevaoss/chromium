@@ -60,6 +60,12 @@ class ActorTaskDelegate {
       std::vector<autofill::ActorFormFillingRequest> requests,
       base::WeakPtr<AutofillSelectionDialogEventHandler> event_handler,
       AutofillSuggestionSelectedCallback callback) = 0;
+
+  using GmailOtpOptInCallback = base::OnceCallback<void(
+      webui::mojom::GmailOtpOptInResultPtr)>;
+  virtual void RequestToShowGmailOtpOptInDialog(
+      TaskId task_id,
+      GmailOtpOptInCallback callback) = 0;
 };
 
 }  // namespace actor

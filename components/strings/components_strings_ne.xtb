@@ -581,6 +581,7 @@
 <translation id="1902576642799138955">वैधता अवधि</translation>
 <translation id="1908217026282415406">क्यामेराको प्रयोग र चाल</translation>
 <translation id="1908690643053136980">तपाईंका एड्मिनले यो साइटलाई <ph name="PERMISSION" /> प्रयोग गरिने अनुमति दिएका छैनन्</translation>
+<translation id="1912750443952232242">Google Wallet मा परिचय पत्र सेभ गर्नुहोस्</translation>
 <translation id="1913037223029790376">यो भर्चुअल कार्डमा CVC प्रयोग गर्नुहोस्</translation>
 <translation id="191374271204266022">JSON ढाँचामा कपी गर्नुहोस्</translation>
 <translation id="1914326953223720820">सेवा अन्जिप गर्नुहोस्</translation>
@@ -1490,6 +1491,7 @@
 <translation id="3325568918769906282">घट्दो क्रममा</translation>
 <translation id="3325662270238538525">फाइलका नाम, फाइलमा भएको सामग्रीको डिजिटल फिंगरप्रिन्ट, डाउनलोड गरिने फाइलको स्रोत र मेटाडेटालगायतका हालसालै एक्सेस तथा परिमार्जन गरिएका फाइलहरू</translation>
 <translation id="3329013043687509092">संतृप्तीकरण</translation>
+<translation id="3330483197654063678">यो सुविधा अन भएका बेला Chrome ले तपाईंलाई अझ सान्दर्भिक जवाफहरू प्राप्त गर्न सघाउने प्रयोजनका लागि यो विन्डोमा खुलेका ट्याबहरू सेयर गर्ने छ।</translation>
 <translation id="3333762389743153920">भर्चुअल कार्डका रूपमा प्रयोग गर्न मिल्दैन</translation>
 <translation id="3338095232262050444">सुरक्षित छ</translation>
 <translation id="333839153442689579">हाई इन्टेन्सिटी इन्टरभल ट्रेनिङ</translation>
@@ -2844,6 +2846,7 @@
 <translation id="5458150163479425638">{CONTACT,plural, =0{<ph name="CONTACT_PREVIEW" />}=1{<ph name="CONTACT_PREVIEW" /> र थप <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}other{<ph name="CONTACT_PREVIEW" /> र थप <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}}</translation>
 <translation id="5463625433003343978">यन्त्रहरू पत्ता लगाइँदै छ...</translation>
 <translation id="5464236009658034488">कार्यालयमा चाहिने सामग्री</translation>
+<translation id="5465128270485645058">यो विन्डोमा भएका खुला ट्याबहरू यो थ्रेडसँग सम्बन्धित छन् भने ती ट्याबहरू स्वतः सेयर गरेर अझ पर्सनलाइज गरिएका जवाफहरू प्राप्त गर्नुहोस्।</translation>
 <translation id="5465724643247062031">ग्लास (ओपाक)</translation>
 <translation id="5466018172325111652">आफ्नो कोड प्राप्त गर्नुभएन? <ph name="BEGIN_LINK" />नयाँ कोड प्राप्त गर्नुहोस्<ph name="END_LINK" /></translation>
 <translation id="5466818462212249084">भुक्तानी गर्न प्रयोग गरिने एपहरू</translation>
@@ -3126,6 +3129,7 @@
 <translation id="5911020115933784199">कार्यक्रम तथा सूची</translation>
 <translation id="5911110632211230665">फाइल खोल्न पाइँदैन</translation>
 <translation id="5912796581727968237">Google Wallet खोल्नुहोस्</translation>
+<translation id="5914185423510719251">Google Wallet मा KTN सेभ गर्नुहोस्</translation>
 <translation id="5914465277418006379"><ph name="MEMBER_FIRST_NAME" /> ले यो ट्याब हाल्नुभयो</translation>
 <translation id="5915189366813702112">पायक पर्ने समयमा काम गर्ने सुविधा</translation>
 <translation id="59174027418879706">सक्षम गरिएको</translation>
@@ -3649,6 +3653,7 @@
 <translation id="6702851555558236418">अडियो तथा सङ्गीतसम्बन्धी सफ्टवेयर</translation>
 <translation id="6702919718839027939">प्रेजेन्ट गर्नुहोस्</translation>
 <translation id="6704458454638854812">प्रोपर्टी "custom_size" सेट गरिएको छ र यसको नाम "कस्टम" राखिएको हुनु पर्छ।</translation>
+<translation id="670477556876354552">रिस्टार्ट गर्नु पर्ने हुन्छ</translation>
 <translation id="6706005862292023715">पर्दा तथा झ्याल मर्मत गर्ने सेवा</translation>
 <translation id="6706210727756204531">स्कोप</translation>
 <translation id="6706678697074905703">यो IBAN तपाईंको Google खातामा सेभ गर्न सकिएन। यसलाई बरु यो डिभाइसको Chrome मा सेभ गरिएको छ।</translation>
@@ -3906,6 +3911,7 @@
 <translation id="7110116949943042888">अस्थायी र मौसमीअनुसार उपलब्ध हुने जागिरहरू</translation>
 <translation id="7110368079836707726">कलेज तथा विश्वविद्यालयहरू</translation>
 <translation id="7111507312244504964">प्रोपर्टीको जाँच तथा मूल्याङ्कन</translation>
+<translation id="7117290130383718594">टेक्स्ट एनोटेसन</translation>
 <translation id="7118618213916969306">क्लिपबोर्डको URL <ph name="SHORT_URL" /> खोज्नुहोस्</translation>
 <translation id="7118852830504022370">यो साइटमा HTTPS नचल्ने भएकाले तपाईंलाई यो चेतावनी देखाइएको हो। <ph name="BEGIN_LEARN_MORE_LINK" />यो चेतावनीका बारेमा थप जान्नुहोस्<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="7119063404975271297">टेलिनाटकहरू</translation>

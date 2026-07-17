@@ -165,6 +165,10 @@
                          completion:dismissComplete];
 }
 
+- (void)hideComposeboxMenu {
+  [_aimComposeboxCoordinator hideComposeboxMenu];
+}
+
 - (void)stop {
   if (!_viewController.isBeingDismissed) {
     [_viewController.view endEditing:YES];

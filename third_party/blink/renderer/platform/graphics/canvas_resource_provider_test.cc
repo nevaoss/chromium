@@ -186,7 +186,7 @@ TEST_F(CanvasResourceProviderTest, CanvasResourceProviderAcceleratedOverlay) {
 
   EXPECT_EQ(provider->Size(), kSize);
   EXPECT_TRUE(provider->IsValid());
-  EXPECT_TRUE(provider->IsAccelerated());
+  EXPECT_FALSE(provider->IsSoftware());
   EXPECT_TRUE(provider->IsSingleBuffered());
   // As it is an CanvasResourceProviderSharedImage and an accelerated canvas, it
   // will internally force it to RGBA8 on MacOS, or otherwise RGBA8 if not on
@@ -217,7 +217,7 @@ TEST_F(CanvasResourceProviderTest, CanvasResourceProviderTexture) {
 
   EXPECT_EQ(provider->Size(), kSize);
   EXPECT_TRUE(provider->IsValid());
-  EXPECT_TRUE(provider->IsAccelerated());
+  EXPECT_FALSE(provider->IsSoftware());
   EXPECT_FALSE(provider->IsSingleBuffered());
   // As it is an CanvasResourceProviderSharedImage and an accelerated canvas, it
   // will internally force it to kRGBA8
@@ -524,7 +524,6 @@ TEST_F(CanvasResourceProviderTest, Canvas2DResourceProviderBitmap) {
 
   EXPECT_EQ(provider->Size(), kSize);
   EXPECT_TRUE(provider->IsValid());
-  EXPECT_FALSE(provider->IsAccelerated());
   EXPECT_TRUE(GetSkImageInfo(provider.get()) == kInfo);
 }
 
@@ -564,7 +563,7 @@ TEST_F(CanvasResourceProviderTest,
 
   EXPECT_EQ(provider->Size(), kSize);
   EXPECT_TRUE(provider->IsValid());
-  EXPECT_FALSE(provider->IsAccelerated());
+  EXPECT_TRUE(provider->IsSoftware());
   EXPECT_TRUE(GetSkImageInfo(provider.get()) == kInfo);
 
   EXPECT_FALSE(provider->IsSingleBuffered());
@@ -589,7 +588,7 @@ TEST_F(CanvasResourceProviderTest,
 
   EXPECT_EQ(provider->Size(), kSize);
   EXPECT_TRUE(provider->IsValid());
-  EXPECT_TRUE(provider->IsAccelerated());
+  EXPECT_FALSE(provider->IsSoftware());
   EXPECT_TRUE(provider->IsSingleBuffered());
   // As it is an CanvasResourceProviderSharedImage and an accelerated canvas, it
   // will internally force it to RGBA8 on MacOS, or otherwise RGBA8 if not on

@@ -119,7 +119,22 @@ BASE_DECLARE_FEATURE(kContextualTasksWindowTracking);
 // Enables upload chunking for Contextual Tasks.
 BASE_DECLARE_FEATURE(kContextualTasksUploadChunking);
 
+// Enables composebox embedded in AIM main frame, new auth, and
+// new side panel and ghost loader for contextual tasks.
+BASE_DECLARE_FEATURE(kContextualTasksRearchitecture);
+
+// Enables sticky conversation UI that follows the user around.
+BASE_DECLARE_FEATURE(kContextualTasksEnableStickyConversation);
+
 BASE_DECLARE_FEATURE(kContextualTasksEnableSpatialModelToolbarLayout);
+
+enum class OverflowMenuItems {
+  kAllItems,
+  kAllWithoutNewThread,
+};
+
+extern const base::FeatureParam<OverflowMenuItems>
+    kContextualTasksSpatialModelToolbarLayoutOverflowItems;
 
 bool GetIsContextualTasksPdfCitationsEnabled();
 
@@ -130,6 +145,17 @@ bool GetIsContextualTasksWindowTrackingEnabled();
 bool GetIsContextualTasksUploadChunkingEnabled();
 
 bool GetContextualTasksSpatialModelToolbarLayoutEnabled();
+
+bool GetContextualTasksSpatialModelToolbarLayoutNewThreadInOverflow();
+
+bool IsStickyConversationEnabled();
+
+// Test utility for overriding conditions for sticky conversation.
+class ScopedStickyConversationEnabledForTesting {
+ public:
+  explicit ScopedStickyConversationEnabledForTesting(bool enabled);
+  ~ScopedStickyConversationEnabledForTesting();
+};
 
 // Enum denoting which entry point can show when enabled.
 enum class EntryPointOption {
@@ -416,6 +442,8 @@ extern const char kContextualTasksHideMenuOnAiPageName[];
 extern const char kContextualTasksHideMenuOnAiPageDescription[];
 extern const char kContextualTasksEnableSpatialModelToolbarLayoutName[];
 extern const char kContextualTasksEnableSpatialModelToolbarLayoutDescription[];
+extern const char kContextualTasksRearchitectureName[];
+extern const char kContextualTasksRearchitectureDescription[];
 
 }  // namespace flag_descriptions
 

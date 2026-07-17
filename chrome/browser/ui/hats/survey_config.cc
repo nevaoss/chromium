@@ -120,6 +120,11 @@ constexpr char kHatsSurveyTriggerIdentityProfilePickerAddProfileSignin[] =
     "identity-profile-picker-add-profile-signin";
 constexpr char kHatsSurveyTriggerIdentityRefreshedFirstRunCompleted[] =
     "identity-refreshed-first-run-completed";
+constexpr char kHatsSurveyTriggerFirstRunDesktopRevampCompleted[] =
+    "identity-revamp-first-run-completed";
+constexpr char
+    kHatsSurveyTriggerFirstRunDesktopRevampNoFeatureShowcaseCompleted[] =
+        "identity-revamp-no-feature-showcase-first-run-completed";
 constexpr char kHatsSurveyTriggerIdentitySigninInterceptProfileSeparation[] =
     "identity-signin-intercept-profile-separation";
 constexpr char kHatsSurveyTriggerIdentitySigninPromoBubbleDismissed[] =
@@ -678,6 +683,28 @@ std::vector<hats::SurveyConfig> GetAllSurveyConfigs() {
       &switches::kFirstRunDesktopRefreshSurvey,
       kHatsSurveyTriggerIdentityRefreshedFirstRunCompleted,
       "o8AU42wsG0ugnJ3q1cK0PBwPwK1J",
+      /*product_specific_bits_data_fields=*/std::vector<std::string>{},
+      /*product_specific_string_data_fields=*/
+      std::vector<std::string>{"Channel"},
+      /*log_responses_to_uma=*/true,
+      /*log_responses_to_ukm=*/false,
+      hats::SurveyConfig::ProfileAgeRequirement::kAnyAge);
+
+  survey_configs.emplace_back(
+      &switches::kFirstRunDesktopRevampSurvey,
+      kHatsSurveyTriggerFirstRunDesktopRevampCompleted,
+      "VDqYHs99T0ugnJ3q1cK0Woy3NNEL",
+      /*product_specific_bits_data_fields=*/std::vector<std::string>{},
+      /*product_specific_string_data_fields=*/
+      std::vector<std::string>{"Channel"},
+      /*log_responses_to_uma=*/true,
+      /*log_responses_to_ukm=*/false,
+      hats::SurveyConfig::ProfileAgeRequirement::kAnyAge);
+
+  survey_configs.emplace_back(
+      &switches::kFirstRunDesktopRevampNoFeatureShowcaseSurvey,
+      kHatsSurveyTriggerFirstRunDesktopRevampNoFeatureShowcaseCompleted,
+      "o1LKfYgQ60ugnJ3q1cK0Ny2XhLRU",
       /*product_specific_bits_data_fields=*/std::vector<std::string>{},
       /*product_specific_string_data_fields=*/
       std::vector<std::string>{"Channel"},

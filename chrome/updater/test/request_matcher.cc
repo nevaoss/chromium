@@ -49,7 +49,8 @@ Matcher GetPathMatcher(const std::string& expected_path_regex) {
         if (!re2::RE2::FullMatch(request.relative_url, expected_path_regex)) {
           ADD_FAILURE() << "Request path [" << request.relative_url
                         << "], did not match expected path regex ["
-                        << expected_path_regex << "].";
+                        << expected_path_regex << "], request content: "
+                        << GetPrintableContent(request);
           return false;
         }
         return true;

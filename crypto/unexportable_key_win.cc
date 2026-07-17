@@ -167,7 +167,8 @@ void LogTPMOperationError(
   //    2- Errors during `kWrappedKeyCreation` TPM operation.
   if (!open_storage_provider_error) {
     CHECK_EQ(!selected_algorithm.has_value(),
-             operation == TPMOperation::kWrappedKeyCreation);
+             (operation == TPMOperation::kWrappedKeyCreation ||
+              operation == TPMOperation::kWrappedAttestationKeyCreation));
   }
 
   std::string algorithm_string =
@@ -483,16 +484,20 @@ base::expected<std::vector<uint8_t>, SECURITY_STATUS> SignRSA(
 }
 
 ScopedNCryptKey LoadWrappedKey(base::span<const uint8_t> wrapped,
-                               ProviderType provider_type) {
+                               ProviderType provider_type,
+                               KeyUsage usage) {
   SCOPED_MAY_LOAD_LIBRARY_AT_BACKGROUND_PRIORITY();
   ScopedNCryptProvider provider;
   SECURITY_STATUS status =
       NCryptOpenStorageProvider(ScopedNCryptProvider::Receiver(provider).get(),
                                 GetWindowsIdentifierForProvider(provider_type),
                                 /*flags=*/0);
+  TPMOperation operation = usage == KeyUsage::kAttestation
+                               ? TPMOperation::kWrappedAttestationKeyCreation
+                               : TPMOperation::kWrappedKeyCreation;
   if (FAILED(status)) {
-    LogTPMOperationError(TPMOperation::kWrappedKeyCreation, status,
-                         std::nullopt, /*open_storage_provider_error=*/true);
+    LogTPMOperationError(operation, status, std::nullopt,
+                         /*open_storage_provider_error=*/true);
     return ScopedNCryptKey();
   }
 
@@ -516,8 +521,7 @@ ScopedNCryptKey LoadWrappedKey(base::span<const uint8_t> wrapped,
         /*dwFlags=*/NCRYPT_SILENT_FLAG);
   }
   if (FAILED(import_status)) {
-    LogTPMOperationError(TPMOperation::kWrappedKeyCreation, import_status,
-                         std::nullopt);
+    LogTPMOperationError(operation, import_status, std::nullopt);
     return ScopedNCryptKey();
   }
   return key;
@@ -782,6 +786,15 @@ class UnexportableKeyProviderWin : public UnexportableKeyProvider {
     base::ScopedBlockingCall scoped_blocking_call(
         FROM_HERE, base::BlockingType::WILL_BLOCK);
 
+    TPMOperation creation_operation =
+        usage == KeyUsage::kAttestation
+            ? TPMOperation::kNewAttestationKeyCreation
+            : TPMOperation::kNewKeyCreation;
+    TPMOperation export_operation =
+        usage == KeyUsage::kAttestation
+            ? TPMOperation::kWrappedAttestationKeyExport
+            : TPMOperation::kWrappedKeyExport;
+
     ScopedNCryptProvider provider;
     {
       SCOPED_MAY_LOAD_LIBRARY_AT_BACKGROUND_PRIORITY();
@@ -789,8 +802,7 @@ class UnexportableKeyProviderWin : public UnexportableKeyProvider {
           ScopedNCryptProvider::Receiver(provider).get(),
           GetWindowsIdentifierForProvider(provider_type_), /*flags=*/0);
       if (FAILED(status)) {
-        LogTPMOperationError(TPMOperation::kNewKeyCreation, status,
-                             std::nullopt,
+        LogTPMOperationError(creation_operation, status, std::nullopt,
                              /*open_storage_provider_error=*/true);
         return std::nullopt;
       }
@@ -825,8 +837,7 @@ class UnexportableKeyProviderWin : public UnexportableKeyProvider {
             /*dwLegacyKeySpec=*/0, /*dwFlags=*/0);
       }
       if (FAILED(creation_status)) {
-        LogTPMOperationError(TPMOperation::kNewKeyCreation, creation_status,
-                             algo);
+        LogTPMOperationError(creation_operation, creation_status, algo);
         return std::nullopt;
       }
 
@@ -841,8 +852,7 @@ class UnexportableKeyProviderWin : public UnexportableKeyProvider {
     if (provider_type_ == ProviderType::kTPM) {
       ASSIGN_OR_RETURN(key_id, ExportKey(key.get(), BCRYPT_OPAQUE_KEY_BLOB),
                        [&](SECURITY_STATUS status) {
-                         LogTPMOperationError(TPMOperation::kWrappedKeyExport,
-                                              status, algo);
+                         LogTPMOperationError(export_operation, status, algo);
                          return std::nullopt;
                        });
     }
@@ -869,7 +879,7 @@ class UnexportableKeyProviderWin : public UnexportableKeyProvider {
     base::ScopedBlockingCall scoped_blocking_call(
         FROM_HERE, base::BlockingType::WILL_BLOCK);
 
-    ScopedNCryptKey key = LoadWrappedKey(wrapped, provider_type_);
+    ScopedNCryptKey key = LoadWrappedKey(wrapped, provider_type_, usage);
     if (!key.is_valid()) {
       return std::nullopt;
     }
@@ -1209,9 +1219,11 @@ class VirtualUnexportableKeyProviderWin
 }  // namespace
 
 ScopedNCryptKey DuplicatePlatformKeyHandle(const UnexportableKey& key) {
-  return LoadWrappedKey(key.GetWrappedKey(), key.IsHardwareBacked()
-                                                 ? ProviderType::kTPM
-                                                 : ProviderType::kSoftware);
+  return LoadWrappedKey(
+      key.GetWrappedKey(),
+      key.IsHardwareBacked() ? ProviderType::kTPM : ProviderType::kSoftware,
+      IsIdentityKey(key.GetNCryptKeyHandle()) ? KeyUsage::kAttestation
+                                              : KeyUsage::kSigning);
 }
 
 std::unique_ptr<UnexportableKeyProvider> GetUnexportableKeyProviderWin() {

@@ -79,8 +79,8 @@
           l10n_util::GetNSString(IDS_IOS_PASSKEY_CREATION_START_REAUTH_REASON)
                   canReusePreviousAuth:YES
                                handler:^(ReauthenticationResult result) {
-                                 completion(result ==
-                                            ReauthenticationResult::kSuccess);
+                                 completion(result !=
+                                            ReauthenticationResult::kFailure);
                                }];
 }
 

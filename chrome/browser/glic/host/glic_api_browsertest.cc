@@ -1932,7 +1932,17 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest,
   ExecuteJsTest({.params = base::Value("verify")});
 }
 
-IN_PROC_BROWSER_TEST_P(GlicApiTest, testPanelWillOpenHasPromptSuggestion) {
+// TODO(crbug.com/517682376): Flaky on ASan, MSan, and Linux/ChromeOS debug.
+#if defined(ADDRESS_SANITIZER) || defined(MEMORY_SANITIZER) || \
+    (!defined(NDEBUG) && (BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)))
+#define MAYBE_testPanelWillOpenHasPromptSuggestion \
+  DISABLED_testPanelWillOpenHasPromptSuggestion
+#else
+#define MAYBE_testPanelWillOpenHasPromptSuggestion \
+  testPanelWillOpenHasPromptSuggestion
+#endif
+IN_PROC_BROWSER_TEST_P(GlicApiTest,
+                       MAYBE_testPanelWillOpenHasPromptSuggestion) {
   // Simulate click on contextual cue with prompt suggestion.
   glic::GlicInvokeOptions options(glic::mojom::InvocationSource::kNudge);
   options.prompts.push_back("Prompt Suggestion");

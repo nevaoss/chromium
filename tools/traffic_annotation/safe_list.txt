@@ -133,7 +133,6 @@ missing_new_fields,chrome/browser/media/webrtc/webrtc_event_log_uploader.cc
 missing_new_fields,chrome/browser/media/webrtc/webrtc_log_uploader.cc
 missing_new_fields,chrome/browser/nearby_sharing/instantmessaging/receive_messages_express.cc
 missing_new_fields,chrome/browser/nearby_sharing/instantmessaging/send_message_express.cc
-missing_new_fields,chrome/browser/nearby_sharing/network_traversal_ice_config_fetcher.cc
 missing_new_fields,chrome/browser/nearby_sharing/tachyon_ice_config_fetcher.cc
 missing_new_fields,chrome/browser/new_tab_page/modules/file_suggestion/drive_service.cc
 missing_new_fields,chrome/browser/new_tab_page/modules/photos/photos_service.cc

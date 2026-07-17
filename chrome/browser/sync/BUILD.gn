@@ -212,6 +212,8 @@ source_set("sync") {
     ]
   } else {
     sources += [
+      "cross_device_theme_tracker_factory.cc",
+      "cross_device_theme_tracker_factory.h",
       "sessions/browser_list_router_helper.cc",
       "sessions/browser_list_router_helper.h",
     ]
@@ -221,9 +223,11 @@ source_set("sync") {
     ]
     deps += [
       "//chrome/browser/accessibility/tree_fixing:prefs",
+      "//chrome/browser/themes",
       "//chrome/browser/ui/read_anything:prefs",
       "//chrome/browser/ui/tabs:tab_strip",
       "//chrome/browser/ui/tabs/saved_tab_groups",
+      "//components/themes/cross_device",
     ]
   }
   if (enable_extensions_core) {

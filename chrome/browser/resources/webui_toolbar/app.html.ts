@@ -69,6 +69,11 @@ ${this.isBackForwardButtonEnabled_ ? html`
         .state="${this.navigationControlsState_.avatarControlState}">
     </avatar-button>
   ` : ''}
+  ${this.isAppMenuButtonEnabled_ ? html`
+    <app-menu-button id="app-menu"
+        .state="${this.navigationControlsState_.appMenuControlState}">
+    </app-menu-button>
+  ` : ''}
 <!--_html_template_end_-->`;
   // clang-format on
 }

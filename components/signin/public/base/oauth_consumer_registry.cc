@@ -228,7 +228,6 @@ constexpr char kProjectorTokenFetcherName[] = "projector_token_fetcher";
 constexpr char kAddSupervisionName[] = "add_supervision";
 constexpr char kParentAccessName[] = "parent_access";
 constexpr char kDataSharingName[] = "data_sharing";
-constexpr char kLauncherItemSuggestName[] = "launcher_item_suggest";
 constexpr char kMarketingBackendConnectorName[] = "marketing_backend_connector";
 constexpr char kPasswordSyncTokenFetcherName[] = "password_sync_token_fetcher";
 constexpr char kLocaleSwitchScreenName[] = "locale_switch_screen";
@@ -333,6 +332,7 @@ constexpr char kDrivePickerHostName[] = "drive_picker_host";
 constexpr char kMultistepFilterName[] = "multistep_filter";
 constexpr char kContextMemoryServiceName[] = "context_memory_service";
 constexpr char kSyncPreviewName[] = "chromesync_preview";
+constexpr char kContextContainersServiceName[] = "context_containers_service";
 }  // namespace
 
 namespace signin {
@@ -407,10 +407,6 @@ OAuthConsumer OAuthConsumerRegistry::GetOAuthConsumerFromId(
           /*scopes=*/{kPeopleApiReadWriteOAuth2Scope,
                       kPeopleApiReadOnlyOAuth2Scope,
                       GaiaConstants::kClearCutOAuth2Scope});
-    case OAuthConsumerId::kLauncherItemSuggest:
-      return OAuthConsumer(
-          /*name=*/kLauncherItemSuggestName,
-          /*scopes=*/{kDriveReadOnlyOAuth2Scope});
     case OAuthConsumerId::kMarketingBackendConnector:
       return OAuthConsumer(
           /*name=*/kMarketingBackendConnectorName,
@@ -795,6 +791,10 @@ OAuthConsumer OAuthConsumerRegistry::GetOAuthConsumerFromId(
       return OAuthConsumer(
           /*name=*/kFpopServiceName,
           /*scopes=*/{kFpopOAuth2Scope});
+    case OAuthConsumerId::kContextContainersService:
+      return OAuthConsumer(
+          /*name=*/kContextContainersServiceName,
+          /*scopes=*/{GaiaConstants::kGoogleUserInfoEmail});
   }
 }
 

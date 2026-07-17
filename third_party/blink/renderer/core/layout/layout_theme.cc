@@ -317,14 +317,19 @@ void LayoutTheme::AdjustStyle(const Element& element,
   // After this point, a Node must be non-null Element if
   // EffectiveAppearance() != AppearanceValue::kNone.
 
-  AdjustControlPartStyle(builder);
-
-  // Call the appropriate style adjustment method based off the appearance
-  // value.
+  // Call the appropriate style adjustment method based off the appearance.
   switch (appearance) {
+    case AppearanceValue::kCheckbox:
+      return AdjustCheckboxStyle(builder);
+    case AppearanceValue::kInnerSpinButton:
+      return AdjustInnerSpinButtonStyle(builder);
     case AppearanceValue::kMenulist:
     case AppearanceValue::kMenulistButton:
       return AdjustMenuListStyle(builder);
+    case AppearanceValue::kPushButton:
+      return AdjustPushButtonStyle(builder);
+    case AppearanceValue::kRadio:
+      return AdjustRadioStyle(builder);
     case AppearanceValue::kSliderThumbHorizontal:
     case AppearanceValue::kSliderThumbVertical:
       return AdjustSliderThumbStyle(builder);
@@ -538,9 +543,26 @@ void LayoutTheme::AdjustRadioStyle(ComputedStyleBuilder& builder) const {
   builder.SetInlineBlockBaselineEdge(EInlineBlockBaselineEdge::kBorderBox);
 }
 
-void LayoutTheme::AdjustButtonStyle(ComputedStyleBuilder&) const {}
+void LayoutTheme::AdjustPushButtonStyle(ComputedStyleBuilder& builder) const {
+  builder.SetLineHeight(ComputedStyleInitialValues::InitialLineHeight());
+}
 
-void LayoutTheme::AdjustInnerSpinButtonStyle(ComputedStyleBuilder&) const {}
+void LayoutTheme::AdjustInnerSpinButtonStyle(
+    ComputedStyleBuilder& builder) const {
+  const Length size =
+      Length::Fixed(WebThemeEngineHelper::GetNativeThemeEngine()
+                        ->GetSize(WebThemeEngine::kPartInnerSpinButton)
+                        .width() *
+                    builder.EffectiveZoom());
+
+  if (IsHorizontalWritingMode(builder.GetWritingMode())) {
+    builder.SetWidth(size);
+    builder.SetMinWidth(size);
+  } else {
+    builder.SetHeight(size);
+    builder.SetMinHeight(size);
+  }
+}
 
 void LayoutTheme::AdjustMenuListStyle(ComputedStyleBuilder& builder) const {
   if (!RuntimeEnabledFeatures::SelectUsesUAClipEnabled()) {
@@ -557,7 +579,21 @@ void LayoutTheme::AdjustSliderThumbStyle(ComputedStyleBuilder& builder) const {
   AdjustSliderThumbSize(builder);
 }
 
-void LayoutTheme::AdjustSliderThumbSize(ComputedStyleBuilder&) const {}
+void LayoutTheme::AdjustSliderThumbSize(ComputedStyleBuilder& builder) const {
+  const gfx::SizeF size = ScaleSize(
+      gfx::SizeF(WebThemeEngineHelper::GetNativeThemeEngine()->GetSize(
+          WebThemeEngine::kPartSliderThumb)),
+      builder.EffectiveZoom());
+
+  const AppearanceValue appearance = builder.EffectiveAppearance();
+  if (appearance == AppearanceValue::kSliderThumbHorizontal) {
+    builder.SetWidth(Length::Fixed(size.width()));
+    builder.SetHeight(Length::Fixed(size.height()));
+  } else if (appearance == AppearanceValue::kSliderThumbVertical) {
+    builder.SetWidth(Length::Fixed(size.height()));
+    builder.SetHeight(Length::Fixed(size.width()));
+  }
+}
 
 void LayoutTheme::AdjustSearchFieldCancelButtonStyle(
     ComputedStyleBuilder&) const {}
@@ -889,25 +925,6 @@ bool LayoutTheme::SupportsCalendarPicker(InputType::Type type) const {
   return type == InputType::Type::kTime || type == InputType::Type::kDate ||
          type == InputType::Type::kDateTimeLocal ||
          type == InputType::Type::kMonth || type == InputType::Type::kWeek;
-}
-
-void LayoutTheme::AdjustControlPartStyle(ComputedStyleBuilder& builder) {
-  // Call the appropriate style adjustment method based off the appearance
-  // value.
-  switch (builder.EffectiveAppearance()) {
-    case AppearanceValue::kCheckbox:
-      return AdjustCheckboxStyle(builder);
-    case AppearanceValue::kRadio:
-      return AdjustRadioStyle(builder);
-    case AppearanceValue::kPushButton:
-    case AppearanceValue::kSquareButton:
-    case AppearanceValue::kButton:
-      return AdjustButtonStyle(builder);
-    case AppearanceValue::kInnerSpinButton:
-      return AdjustInnerSpinButtonStyle(builder);
-    default:
-      break;
-  }
 }
 
 bool LayoutTheme::IsAccentColorCustomized(

@@ -41,6 +41,7 @@ public class TabListItemAnimator extends SimpleItemAnimator {
     private static final float REMOVE_PART_2_FINAL_SCALE = 0f;
 
     public static final long DEFAULT_REMOVE_DURATION = 200;
+    public static final long DEFAULT_MOVE_DURATION = 250;
 
     /** Holds a set of pending and running animations of a type. */
     private static class AnimatorHolder {
@@ -143,6 +144,7 @@ public class TabListItemAnimator extends SimpleItemAnimator {
 
     TabListItemAnimator(SettableNonNullObservableSupplier<Boolean> isAnimatorRunningSupplier) {
         setRemoveDuration(DEFAULT_REMOVE_DURATION);
+        setMoveDuration(DEFAULT_MOVE_DURATION);
         mIsAnimatorRunningSupplier = isAnimatorRunningSupplier;
     }
 

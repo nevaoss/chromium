@@ -177,6 +177,7 @@ source_set("impl") {
       "//chrome/browser/ui/views/location_bar",
       "//chrome/browser/ui/webui:webui_util",
       "//chrome/browser/ui/webui/cr_components/composebox",
+      "//chrome/browser/ui/webui/omnibox_everywhere",
       "//chrome/browser/ui/webui/omnibox_popup",
       "//chrome/browser/ui/webui/top_chrome",
       "//chrome/common",

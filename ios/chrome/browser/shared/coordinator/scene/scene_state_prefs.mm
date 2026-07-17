@@ -46,24 +46,24 @@
   return self;
 }
 
-- (std::optional<bool>)boolForKey:(NSString*)key {
+- (bool)boolForKey:(NSString*)key {
   NSObject* object = [self valueForKey:key];
   if (NSNumber* number = base::apple::ObjCCast<NSNumber>(object)) {
     return [number boolValue];
   }
-  return std::nullopt;
+  return false;
 }
 
 - (void)setBool:(bool)value forKey:(NSString*)key {
   [self setValue:[NSNumber numberWithBool:value] forKey:key];
 }
 
-- (std::optional<base::Time>)timeForKey:(NSString*)key {
+- (base::Time)timeForKey:(NSString*)key {
   NSObject* object = [self valueForKey:key];
   if (NSDate* date = base::apple::ObjCCast<NSDate>(object)) {
     return base::Time::FromNSDate(date);
   }
-  return std::nullopt;
+  return base::Time();
 }
 
 - (void)setTime:(base::Time)value forKey:(NSString*)key {

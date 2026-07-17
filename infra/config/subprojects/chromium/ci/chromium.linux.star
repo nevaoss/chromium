@@ -40,6 +40,7 @@ ci.defaults.set(
     shadow_service_account = ci_constants.DEFAULT_SHADOW_SERVICE_ACCOUNT,
     siso_project = siso.project.DEFAULT_TRUSTED,
     siso_remote_jobs = siso.remote_jobs.HIGH_JOBS_FOR_CI,
+    siso_remote_linking = True,
 )
 
 consoles.console_view(
@@ -368,7 +369,6 @@ ci.builder(
     ),
     cq_mirrors_console_view = "mirrors",
     contact_team_email = "chrome-linux-engprod@google.com",
-    siso_remote_linking = True,
 )
 
 ci.builder(
@@ -1333,7 +1333,6 @@ ci.builder(
     execution_timeout = 6 * time.hour,
     notifies = args.ignore_default([]),
     siso_keep_going = 0,
-    siso_remote_linking = True,
 )
 
 ci.builder(

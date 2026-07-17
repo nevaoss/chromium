@@ -202,6 +202,8 @@ using OrderOptions = OrderOptionsT<>;
 
 EntityInstance GetOrderEntityInstance(OrderOptions options = {});
 
+EntityInstance GetOrderEntityInstanceWithRandomGuid(OrderOptions options = {});
+
 template <typename = void>
 struct ShipmentOptionsT {
   const char16_t* tracking_number = u"12345";
@@ -223,6 +225,9 @@ struct ShipmentOptionsT {
 using ShipmentOptions = ShipmentOptionsT<>;
 
 EntityInstance GetShipmentEntityInstance(ShipmentOptions options = {});
+
+EntityInstance GetShipmentEntityInstanceWithRandomGuid(
+    ShipmentOptions options = {});
 
 template <typename = void>
 struct EntityOptionsT {

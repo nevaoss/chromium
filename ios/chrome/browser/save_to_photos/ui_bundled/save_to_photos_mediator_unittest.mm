@@ -657,6 +657,8 @@ TEST_F(SaveToPhotosMediatorTest,
 // Tests that the SaveToPhotosMediator shows an alert with Try Again and Cancel
 // options if the PhotosService fails to upload the image.
 TEST_F(SaveToPhotosMediatorTest, ShowsTryAgainOrCancelAlertIfUploadFails) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(kIOSSaveToPhotosSignedOut);
 
   // Create a mediator and set up with mock delegate.
   SaveToPhotosMediator* mediator = CreateSaveToPhotosMediator();
@@ -700,6 +702,10 @@ TEST_F(SaveToPhotosMediatorTest, ShowsTryAgainOrCancelAlertIfUploadFails) {
 
   // Verify that the failure alert has been presented.
   EXPECT_OCMOCK_VERIFY(mock_save_to_photos_mediator_delegate);
+
+  histogram_tester_.ExpectUniqueSample(kSaveToPhotosSignInStatusHistogram,
+                                       SaveToPhotosSignInStatus::kSignedIn, 1);
+  [mediator disconnect];
 }
 
 // Tests that the mediator hides Save to Photos when the user signs out.
@@ -770,6 +776,10 @@ TEST_F(SaveToPhotosMediatorTest, OpenSignInIfSignedOutAndFeatureEnabled) {
 
   EXPECT_OCMOCK_VERIFY(mock_save_to_photos_mediator_delegate);
 
+  histogram_tester_.ExpectUniqueSample(
+      kSaveToPhotosSignInStatusHistogram,
+      SaveToPhotosSignInStatus::kSignedOutWithoutAccountOnDevice, 1);
+
   // Expect that the success snackbar is shown once image is uploaded.
   NSString* expected_message = l10n_util::GetNSStringF(
       IDS_IOS_SAVE_TO_PHOTOS_SNACKBAR_IMAGE_SAVED_MESSAGE,
@@ -799,6 +809,49 @@ TEST_F(SaveToPhotosMediatorTest, OpenSignInIfSignedOutAndFeatureEnabled) {
 
   // Verify that the success snackbar has been shown.
   EXPECT_OCMOCK_VERIFY(mock_save_to_photos_mediator_delegate);
+
+  [mediator disconnect];
+}
+
+// Tests that the mediator calls openSignIn when started while signed out and
+// there is an account on device.
+TEST_F(SaveToPhotosMediatorTest, OpenSignInIfSignedOutWithAccountOnDevice) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(kIOSSaveToPhotosSignedOut);
+
+  // Sign out the user.
+  signin::ClearPrimaryAccount(
+      IdentityManagerFactory::GetForProfile(profile_.get()));
+
+  id<SystemIdentity> fake_identity2 = [FakeSystemIdentity fakeIdentity2];
+  fake_system_identity_manager_->AddIdentity(fake_identity2);
+  signin::MakeAccountAvailable(
+      identity_manager_,
+      signin::AccountAvailabilityOptionsBuilder()
+          .WithGaiaId(fake_identity2.gaiaId)
+          .Build(base::SysNSStringToUTF8(fake_identity2.userEmail)));
+
+  // Create a mediator and set up with mock delegate.
+  SaveToPhotosMediator* mediator = CreateSaveToPhotosMediator();
+  id mock_save_to_photos_mediator_delegate =
+      OCMProtocolMock(@protocol(SaveToPhotosMediatorDelegate));
+  mediator.delegate = static_cast<id<SaveToPhotosMediatorDelegate>>(
+      mock_save_to_photos_mediator_delegate);
+
+  // Expect that the mediator will call openSignIn.
+  OCMExpect([mock_save_to_photos_mediator_delegate openSignIn]);
+
+  // Start the mediator and run until the image has been fetched and
+  // processed by the mediator.
+  SetUpImageFetchTabHelperQuitClosure();
+  StartMediator(mediator);
+  task_environment_.RunUntilQuit();
+
+  EXPECT_OCMOCK_VERIFY(mock_save_to_photos_mediator_delegate);
+
+  histogram_tester_.ExpectUniqueSample(
+      kSaveToPhotosSignInStatusHistogram,
+      SaveToPhotosSignInStatus::kSignedOutWithAccountOnDevice, 1);
 
   [mediator disconnect];
 }

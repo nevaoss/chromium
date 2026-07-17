@@ -668,9 +668,9 @@ public class TabbedCrashRecoveryDelegateUnitTest {
         assertEquals(
                 mHostActivity.getString(R.string.crash_recovery_dialog_message),
                 model.get(ModalDialogProperties.MESSAGE_PARAGRAPH_1));
-        verify(mResources)
-                .getQuantityString(
-                        eq(R.plurals.crash_recovery_dialog_positive_button_text), eq(2), eq(2));
+        assertEquals(
+                mHostActivity.getString(R.string.crash_recovery_dialog_positive_button_text),
+                model.get(ModalDialogProperties.POSITIVE_BUTTON_TEXT));
 
         userActionTester.tearDown();
     }
@@ -696,9 +696,9 @@ public class TabbedCrashRecoveryDelegateUnitTest {
         ModalDialogProperties.Controller controller = model.get(ModalDialogProperties.CONTROLLER);
 
         // Verify: Positive button text is correctly set.
-        verify(mResources)
-                .getQuantityString(
-                        eq(R.plurals.crash_recovery_dialog_positive_button_text), eq(1), eq(1));
+        assertEquals(
+                mHostActivity.getString(R.string.crash_recovery_dialog_positive_button_text),
+                model.get(ModalDialogProperties.POSITIVE_BUTTON_TEXT));
 
         assertTrue(
                 userActionTester

@@ -581,6 +581,7 @@ Pretējā gadījumā šī iespēja būtu liegta saskaņā ar jūsu konfidenciali
 <translation id="1902576642799138955">Derīguma laiks</translation>
 <translation id="1908217026282415406">Kameras izmantošana un kustināšana</translation>
 <translation id="1908690643053136980">Jūsu administrators neļauj šajā vietnē izmantot atļauju “<ph name="PERMISSION" />”.</translation>
+<translation id="1912750443952232242">Identifikācijas kartes saglabāšana lietotnē Google maks</translation>
 <translation id="1913037223029790376">Izmantojiet šīs virtuālās kartes CVC</translation>
 <translation id="191374271204266022">Kopēt kā JSON failu</translation>
 <translation id="1914326953223720820">Pakalpojums failu izgūšanai no arhīva</translation>
@@ -1493,6 +1494,7 @@ Lai paslēptu vēlākas maksāšanas iespējas, pārejiet uz <ph name="BEGIN_LIN
 <translation id="3325568918769906282">dilstošā secībā</translation>
 <translation id="3325662270238538525">Nesena piekļuve failiem un to izmaiņas, tostarp failu nosaukumi, faila satura digitālie ciparnospiedumi, lejupielādes avots un metadati</translation>
 <translation id="3329013043687509092">Piesātinājums</translation>
+<translation id="3330483197654063678">Ja šis iestatījums ir ieslēgts, Chrome kopīgos atvērtās šī loga cilnes, lai palīdzētu jums iegūt atbilstošākas atbildes.</translation>
 <translation id="3333762389743153920">Neatbilst virtuālajai kartei</translation>
 <translation id="3338095232262050444">Droši</translation>
 <translation id="333839153442689579">Augstas intensitātes intervālu treniņš</translation>
@@ -2844,6 +2846,7 @@ Varat arī sazināties ar vietnes īpašnieku un ieteikt jaunināt vietni uz pro
 <translation id="5458150163479425638">{CONTACT,plural, =0{<ph name="CONTACT_PREVIEW" />}=1{<ph name="CONTACT_PREVIEW" /> un vēl <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}zero{<ph name="CONTACT_PREVIEW" /> un vēl <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}one{<ph name="CONTACT_PREVIEW" /> un vēl <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}other{<ph name="CONTACT_PREVIEW" /> un vēl <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}}</translation>
 <translation id="5463625433003343978">Notiek ierīču meklēšana…</translation>
 <translation id="5464236009658034488">Biroja piederumi</translation>
+<translation id="5465128270485645058">Iegūstiet pielāgotākas atbildes, automātiski kopīgojot atvērtās cilnes šajā logā, ja tās ir saistītas ar šo pavedienu.</translation>
 <translation id="5465724643247062031">Stikls (necaurspīdīgs)</translation>
 <translation id="5466018172325111652">Vai nesaņēmāt kodu? <ph name="BEGIN_LINK" />Iegūt jaunu kodu<ph name="END_LINK" /></translation>
 <translation id="5466818462212249084">Maksājumu lietotnes</translation>
@@ -3126,6 +3129,7 @@ Varat arī sazināties ar vietnes īpašnieku un ieteikt jaunināt vietni uz pro
 <translation id="5911020115933784199">Pasākumu saraksti un kalendāri</translation>
 <translation id="5911110632211230665">Atvēršana bloķēta</translation>
 <translation id="5912796581727968237">Atvērt lietotni Google maks</translation>
+<translation id="5914185423510719251">KTN saglabāšana lietotnē Google maks</translation>
 <translation id="5914465277418006379"><ph name="MEMBER_FIRST_NAME" /> pievienoja šo cilni</translation>
 <translation id="5915189366813702112">Elastīgs darba režīms</translation>
 <translation id="59174027418879706">Iespējots</translation>
@@ -3649,6 +3653,7 @@ Varat arī sazināties ar vietnes īpašnieku un ieteikt jaunināt vietni uz pro
 <translation id="6702851555558236418">Audio un mūzikas programmatūra</translation>
 <translation id="6702919718839027939">Prezentācija</translation>
 <translation id="6704458454638854812">Parametrs “custom_size” ir iestatīts, paredzētajam nosaukumam ir jābūt “custom”.</translation>
+<translation id="670477556876354552">Nepieciešama restartēšana</translation>
 <translation id="6706005862292023715">Aizkari un logu dekori</translation>
 <translation id="6706210727756204531">Tvērums</translation>
 <translation id="6706678697074905703">Šo IBAN nevarēja saglabāt jūsu Google kontā. Taču tas tika saglabāts pārlūkā Chrome šajā ierīcē.</translation>
@@ -3906,6 +3911,7 @@ Varat arī sazināties ar vietnes īpašnieku un ieteikt jaunināt vietni uz pro
 <translation id="7110116949943042888">Īslaicīgi un sezonas darbi</translation>
 <translation id="7110368079836707726">Koledžas un universitātes</translation>
 <translation id="7111507312244504964">Īpašumu pārbaude un novērtēšana</translation>
+<translation id="7117290130383718594">Teksta komentāri</translation>
 <translation id="7118618213916969306">Meklēt starpliktuves URL, <ph name="SHORT_URL" /></translation>
 <translation id="7118852830504022370">Šis brīdinājums tiek rādīts, jo šajā vietnē netiek atbalstīts protokols HTTPS. <ph name="BEGIN_LEARN_MORE_LINK" />Uzzināt vairāk par šo brīdinājumu<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="7119063404975271297">TV drāmas</translation>

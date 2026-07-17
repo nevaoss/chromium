@@ -543,12 +543,14 @@ const gfx::PointF& WaylandEventSource::GetPointerLocation() const {
 void WaylandEventSource::OnPointerFrameEvent() {
   base::TimeTicks now = EventTimeForNow();
 
-  // Release pressed buttons if focus was lost and not regained within the same
-  // frame. This handles cases where the compositor swallows release events
-  // (e.g. right-clicking the titlebar to open the system menu on GNOME).
+  // Some compositors don't send a release when a window loses pointer focus
+  // (e.g. right-clicking the titlebar buttons on GNOME to open the window
+  // menu) Synthesize one if none of our windows is capturing the pointer.
   if (pending_focus_loss_release_) {
     pending_focus_loss_release_ = false;
-    ReleasePressedPointerButtons(nullptr, now);
+    if (!window_manager_->located_events_grabber()) {
+      ReleasePressedPointerButtons(nullptr, now);
+    }
   }
 
   if (pointer_scroll_data_) {

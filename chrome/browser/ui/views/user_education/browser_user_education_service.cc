@@ -1162,68 +1162,6 @@ void MaybeRegisterChromeFeaturePromos(
               "composebox "
               "and Smart Tab Sharing is available but hasn't been used yet.")));
 
-  // kIPHSmartTabSharingTryItFeature:
-  int smart_tab_sharing_iph_try_it_body_id = IDS_STS_IPH_TRY_IT_BODY;
-  int smart_tab_sharing_iph_try_it_header_id = IDS_STS_IPH_TRY_IT_HEADER;
-  switch (contextual_tasks::kSmartTabSharingIphTryItPromoOption.Get()) {
-    case contextual_tasks::SmartTabSharingIphTryItPromoOption::kIphTryItPromoV1:
-      smart_tab_sharing_iph_try_it_body_id = IDS_STS_IPH_TRY_IT_BODY;
-      smart_tab_sharing_iph_try_it_header_id = IDS_STS_IPH_TRY_IT_HEADER;
-      break;
-    case contextual_tasks::SmartTabSharingIphTryItPromoOption::kIphTryItPromoV2:
-      smart_tab_sharing_iph_try_it_body_id = IDS_STS_IPH_TRY_IT_BODY_V2;
-      smart_tab_sharing_iph_try_it_header_id = IDS_STS_IPH_TRY_IT_HEADER_V2;
-      break;
-  }
-  registry.RegisterFeature(std::move(
-      user_education::FeaturePromoSpecification::CreateForCustomAction(
-          feature_engagement::kIPHSmartTabSharingTryItFeature,
-          ContextualTasksUI::kSmartTabSharingMenuItemElementId,
-          smart_tab_sharing_iph_try_it_body_id, IDS_STS_IPH_TRY_IT_TURN_ON,
-          base::DoNothing())
-          .SetBubbleTitleText(smart_tab_sharing_iph_try_it_header_id)
-          .SetCustomActionDismissText(IDS_STS_IPH_TRY_IT_NOT_NOW)
-          .SetInAnyContext(true)
-          .SetAdditionalConditions(std::move(
-              AdditionalConditions().AddAdditionalCondition(AdditionalCondition{
-                  "smart_tab_sharing_activated",
-                  AdditionalConditions::Constraint::kExactly, 0})))
-          .SetMetadata(148, "orinj@chromium.org",
-                       "Custom UI IPH promo shown above the composebox.")));
-
-  // kIPHSmartTabSharingDefaultOnFeature:
-  int smart_tab_sharing_iph_default_on_body_id = IDS_STS_IPH_DEFAULT_ON_BODY;
-  int smart_tab_sharing_iph_default_on_header_id =
-      IDS_STS_IPH_DEFAULT_ON_HEADER;
-  switch (contextual_tasks::kSmartTabSharingIphDefaultOnOption.Get()) {
-    case contextual_tasks::SmartTabSharingIphDefaultOnOption::kIphDefaultOnV1:
-      smart_tab_sharing_iph_default_on_body_id = IDS_STS_IPH_DEFAULT_ON_BODY;
-      smart_tab_sharing_iph_default_on_header_id =
-          IDS_STS_IPH_DEFAULT_ON_HEADER;
-      break;
-    case contextual_tasks::SmartTabSharingIphDefaultOnOption::kIphDefaultOnV2:
-      smart_tab_sharing_iph_default_on_body_id = IDS_STS_IPH_DEFAULT_ON_BODY_V2;
-      smart_tab_sharing_iph_default_on_header_id =
-          IDS_STS_IPH_DEFAULT_ON_HEADER_V2;
-      break;
-  }
-  registry.RegisterFeature(std::move(
-      user_education::FeaturePromoSpecification::CreateForCustomAction(
-          feature_engagement::kIPHSmartTabSharingDefaultOnFeature,
-          ContextualTasksUI::kSmartTabSharingMenuItemElementId,
-          smart_tab_sharing_iph_default_on_body_id,
-          IDS_STS_IPH_DEFAULT_ON_TURN_ON, base::DoNothing())
-          .SetBubbleTitleText(smart_tab_sharing_iph_default_on_header_id)
-          .SetCustomActionDismissText(IDS_STS_IPH_DEFAULT_ON_NOT_NOW)
-          .SetInAnyContext(true)
-          .SetAdditionalConditions(std::move(
-              AdditionalConditions().AddAdditionalCondition(AdditionalCondition{
-                  "smart_tab_sharing_activated",
-                  AdditionalConditions::Constraint::kAtLeast, 3})))
-          .SetMetadata(148, "orinj@chromium.org",
-                       "Custom UI IPH promo shown above the composebox for "
-                       "default-on.")));
-
   // kIPHReadingListDiscoveryFeature:
   registry.RegisterFeature(
       std::move(FeaturePromoSpecification::CreateForLegacyPromo(

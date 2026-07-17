@@ -54,6 +54,7 @@
 #include "components/translate/core/browser/language_state.h"
 #include "components/translate/core/browser/translate_driver.h"
 #include "content/public/browser/browser_accessibility_state.h"
+#include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/scoped_accessibility_mode.h"
@@ -313,6 +314,11 @@ void ReadAnythingWebContentsObserver::DidUpdateAudioMutingState(bool muted) {
 
 void ReadAnythingWebContentsObserver::WebContentsDestroyed() {
   page_handler_->WebContentsDestroyed();
+}
+
+void ReadAnythingWebContentsObserver::DidFinishNavigation(
+    content::NavigationHandle* navigation_handle) {
+  page_handler_->DidFinishNavigation(navigation_handle);
 }
 
 void ReadAnythingUntrustedPageHandler::MaybeUpdateImmersivePinStatus() {
@@ -1122,6 +1128,13 @@ void ReadAnythingUntrustedPageHandler::OnSpeechEngineStalled() {
 #endif
 }
 
+void ReadAnythingUntrustedPageHandler::RequestReadabilityDistillation() {
+  if (!features::IsReadAnythingWithReadabilityEnabled()) {
+    return;
+  }
+  RequestDomDistillerDistillation(tab_->GetContents());
+}
+
 void ReadAnythingUntrustedPageHandler::PerformActionInTargetTree(
     const ui::AXActionData& data) {
   CHECK(IsObservingTree(data.target_tree_id));
@@ -1247,6 +1260,31 @@ void ReadAnythingUntrustedPageHandler::OnReadingModeHiddenAckTimeout() {
 
 void ReadAnythingUntrustedPageHandler::OnReadingModePresenterChanged() {
   OnGetPresentationState();
+}
+
+// This is used for same-document navigations (such as fragment navigations) in
+// the main frame.
+void ReadAnythingUntrustedPageHandler::DidFinishNavigation(
+    content::NavigationHandle* navigation_handle) {
+  if (!active_ && !features::IsImmersiveReadAnythingEnabled()) {
+    return;
+  }
+  if (!navigation_handle->IsInPrimaryMainFrame() ||
+      !navigation_handle->HasCommitted() ||
+      !navigation_handle->IsSameDocument()) {
+    return;
+  }
+
+  // When passing the URL to the untrusted renderer, make sure any credentials
+  // are stripped out of the URL.
+  GURL url = navigation_handle->GetURL();
+  if (url.has_username() || url.has_password()) {
+    GURL::Replacements replacements;
+    replacements.ClearUsername();
+    replacements.ClearPassword();
+    url = url.ReplaceComponents(replacements);
+  }
+  page_->OnMainFrameSameDocumentNavigation(url);
 }
 
 void ReadAnythingUntrustedPageHandler::OnTabDiscarded(

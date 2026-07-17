@@ -175,10 +175,11 @@ public class SendTabToSelfAndroidBridge {
      * @param deviceCount The number of target devices.
      */
     public static void recordTargetDeviceCount(
+            @ShareEntryPoint int entryPoint,
             @EntryPointDisplayReason int displayReason,
             int deviceCount) {
         SendTabToSelfAndroidBridgeJni.get()
-                .recordTargetDeviceCount(displayReason, deviceCount);
+                .recordTargetDeviceCount(entryPoint, displayReason, deviceCount);
     }
 
     /**
@@ -268,7 +269,7 @@ public class SendTabToSelfAndroidBridge {
                 String url,
                 String title,
                 CommitConfirmationCallback commitConfirmation,
-                int entryPoint);
+                @ShareEntryPoint int entryPoint);
 
         void markEntryOpened(@JniType("Profile*") Profile profile, String guid);
 
@@ -281,6 +282,7 @@ public class SendTabToSelfAndroidBridge {
                 @JniType("Profile*") Profile profile, String url);
 
         void recordTargetDeviceCount(
+                @ShareEntryPoint int entryPoint,
                 @EntryPointDisplayReason int displayReason,
                 int deviceCount);
     }

@@ -57,8 +57,18 @@ template("proto_wkt") {
       _full_visibility += invoker.full_target_visibility
     }
 
+    # `fuzzable_proto_library` uses a shared_library in fuzzing builds, which
+    # avoids duplicate registration issues which happen because full protos are
+    # registered globally.
+    if (use_fuzzing_engine_with_lpm) {
+      import("//third_party/libprotobuf-mutator/fuzzable_proto_library.gni")
+      _full_target_type = "fuzzable_proto_library"
+    } else {
+      _full_target_type = "proto_library"
+    }
+
     # The Full version of this WKT.
-    proto_library(invoker.full_target_name) {
+    target(_full_target_type, invoker.full_target_name) {
       sources = invoker.sources
       visibility = _full_visibility
       proto_in_dir = "src"

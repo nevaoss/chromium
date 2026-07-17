@@ -6,6 +6,7 @@ source_set("sessions") {
   sources = [
     "drop_target.h",
     "drop_target_id.h",
+    "drop_target_registry.h",
     "drop_target_registry_impl.h",
     "tab_drag_event_router.h",
     "tab_drag_session.h",

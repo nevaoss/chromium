@@ -84,6 +84,7 @@ TEST_F(SqlSharedCacheIsolatedDatabaseTest, InitializeAndNikMismatch) {
 
   CacheEntryKey key("0/0/https://example.com/");
   auto headers = base::MakeRefCounted<net::IOBufferWithSize>(4);
+  headers->span().copy_from(base::span<const uint8_t>({1, 2, 3, 4}));
   auto body = base::MakeRefCounted<net::IOBufferWithSize>(3);
   body->span().copy_from(base::span<const uint8_t>({5, 6, 7}));
 
@@ -132,6 +133,7 @@ TEST_F(SqlSharedCacheIsolatedDatabaseTest, InsertAndReadSuccess) {
 
   CacheEntryKey key("0/0/https://example.com/");
   auto headers = base::MakeRefCounted<net::IOBufferWithSize>(4);
+  headers->span().copy_from(base::span<const uint8_t>({1, 2, 3, 4}));
   auto body = base::MakeRefCounted<net::IOBufferWithSize>(3);
   body->span().copy_from(base::span<const uint8_t>({5, 6, 7}));
 
@@ -153,6 +155,7 @@ TEST_F(SqlSharedCacheIsolatedDatabaseTest, WriteBodyAndRead) {
 
   CacheEntryKey key("0/0/https://example.com/");
   auto headers = base::MakeRefCounted<net::IOBufferWithSize>(4);
+  headers->span().copy_from(base::span<const uint8_t>({1, 2, 3, 4}));
   auto row_id_or_error = db.Insert(key, headers, 4, nullptr);
   ASSERT_TRUE(row_id_or_error.has_value());
 
@@ -177,6 +180,7 @@ TEST_F(SqlSharedCacheIsolatedDatabaseTest, ReadNotReady) {
 
   CacheEntryKey key("0/0/https://example.com/");
   auto headers = base::MakeRefCounted<net::IOBufferWithSize>(4);
+  headers->span().copy_from(base::span<const uint8_t>({1, 2, 3, 4}));
   auto row_id_or_error = db.Insert(key, headers, 4, nullptr);
   ASSERT_TRUE(row_id_or_error.has_value());
 
@@ -195,6 +199,7 @@ TEST_F(SqlSharedCacheIsolatedDatabaseTest, ReadKeyMismatch) {
 
   CacheEntryKey key("0/0/https://example.com/");
   auto headers = base::MakeRefCounted<net::IOBufferWithSize>(4);
+  headers->span().copy_from(base::span<const uint8_t>({1, 2, 3, 4}));
   auto row_id_or_error = db.Insert(key, headers, 0, nullptr);
   ASSERT_TRUE(row_id_or_error.has_value());
 
@@ -215,6 +220,7 @@ TEST_F(SqlSharedCacheIsolatedDatabaseTest, InsertBodyTooLarge) {
 
   CacheEntryKey key("0/0/https://example.com/");
   auto headers = base::MakeRefCounted<net::IOBufferWithSize>(4);
+  headers->span().copy_from(base::span<const uint8_t>({1, 2, 3, 4}));
   uint32_t too_large_size =
       static_cast<uint32_t>(std::numeric_limits<int32_t>::max()) + 1;
 
@@ -230,10 +236,12 @@ TEST_F(SqlSharedCacheIsolatedDatabaseTest, WriteBodyInvalidRange) {
 
   CacheEntryKey key("0/0/https://example.com/");
   auto headers = base::MakeRefCounted<net::IOBufferWithSize>(4);
+  headers->span().copy_from(base::span<const uint8_t>({1, 2, 3, 4}));
   auto row_id_or_error = db.Insert(key, headers, 4, nullptr);
   ASSERT_TRUE(row_id_or_error.has_value());
 
   auto buffer = base::MakeRefCounted<net::IOBufferWithSize>(2);
+  buffer->span().copy_from(base::span<const uint8_t>({1, 2}));
 
   EXPECT_EQ(db.WriteBody(key, *row_id_or_error, /*offset=*/-1, buffer,
                          /*set_ready=*/false)
@@ -255,6 +263,7 @@ TEST_F(SqlSharedCacheIsolatedDatabaseTest, ReadInvalidRange) {
 
   CacheEntryKey key("0/0/https://example.com/");
   auto headers = base::MakeRefCounted<net::IOBufferWithSize>(4);
+  headers->span().copy_from(base::span<const uint8_t>({1, 2, 3, 4}));
   auto row_id_or_error = db.Insert(key, headers, 4, nullptr);
   ASSERT_TRUE(row_id_or_error.has_value());
 
@@ -278,6 +287,7 @@ TEST_F(SqlSharedCacheIsolatedDatabaseTest,
 
   CacheEntryKey key("0/0/https://example.com/");
   auto headers = base::MakeRefCounted<net::IOBufferWithSize>(4);
+  headers->span().copy_from(base::span<const uint8_t>({1, 2, 3, 4}));
   auto row_id_or_error = db.Insert(key, headers, 10, nullptr);
   ASSERT_TRUE(row_id_or_error.has_value());
 
@@ -308,6 +318,7 @@ TEST_F(SqlSharedCacheIsolatedDatabaseTest, ReadBeyondWrittenBody) {
 
   CacheEntryKey key("0/0/https://example.com/");
   auto headers = base::MakeRefCounted<net::IOBufferWithSize>(4);
+  headers->span().copy_from(base::span<const uint8_t>({1, 2, 3, 4}));
   auto body = base::MakeRefCounted<net::IOBufferWithSize>(4);
   body->span().copy_from(base::span<const uint8_t>({1, 2, 3, 4}));
 

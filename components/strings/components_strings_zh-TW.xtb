@@ -580,6 +580,7 @@
 <translation id="1902576642799138955">有效期間</translation>
 <translation id="1908217026282415406">使用及調整攝影機</translation>
 <translation id="1908690643053136980">系統管理員不允許這個網站使用<ph name="PERMISSION" /></translation>
+<translation id="1912750443952232242">將身分證儲存到 Google 錢包</translation>
 <translation id="1913037223029790376">請使用這張虛擬卡片的信用卡驗證碼</translation>
 <translation id="191374271204266022">複製為 JSON 格式</translation>
 <translation id="1914326953223720820">解壓縮服務</translation>
@@ -1491,6 +1492,7 @@
 <translation id="3325568918769906282">依遞減順序排列</translation>
 <translation id="3325662270238538525">最近存取及修改的檔案，包括檔案名稱、檔案內容的數位指紋、下載來源和中繼資料</translation>
 <translation id="3329013043687509092">飽和度</translation>
+<translation id="3330483197654063678">開啟後，Chrome 會分享此視窗中的開啟分頁，讓回覆更貼近需求。</translation>
 <translation id="3333762389743153920">不符合虛擬卡片設定資格</translation>
 <translation id="3338095232262050444">安全</translation>
 <translation id="333839153442689579">高強度間歇訓練</translation>
@@ -1776,7 +1778,7 @@
 <translation id="3763752038825281594">你先前不允許這個網站使用<ph name="PERMISSION" /></translation>
 <translation id="3765588406864124894">出紙槽 9</translation>
 <translation id="3767485424735936570">系統管理員政策不建議複製這項內容並貼到「<ph name="VM_NAME" />」</translation>
-<translation id="3769584711865378220"><ph name="URL" /> 想將位置存取權從「概略」改成「精確」</translation>
+<translation id="3769584711865378220"><ph name="URL" /> 想將位置存取權從「大概」改成「精確」</translation>
 <translation id="3772211998634047851">紙 (證券紙)</translation>
 <translation id="377451872037045164"><ph name="CREATE_GOOGLE_KEEP_NOTE_FOCUSED_FRIENDLY_MATCH_TEXT" />；按下 Tab 鍵再按下 Enter 鍵即可在 Google Keep 中快速建立新記事</translation>
 <translation id="3780694243617746492">輸出紙槽</translation>
@@ -1937,7 +1939,7 @@
 <translation id="403724377879219932">可以要求存取區域網路上的其他裝置</translation>
 <translation id="4038863931942689384"><ph name="ATTRIBUTE_VALUE" />，最新</translation>
 <translation id="4039506337798853114">如要顯示游標，請按下 |<ph name="ACCELERATOR" />| 鍵</translation>
-<translation id="4042597221652780603">概略</translation>
+<translation id="4042597221652780603">大概</translation>
 <translation id="4045070493270310437">重新開啟分頁</translation>
 <translation id="4045226534284799755">請先登入 Microsoft 帳戶，然後再試一次</translation>
 <translation id="4045441967987592849">重新開啟</translation>
@@ -2056,7 +2058,7 @@
 <translation id="421066178035138955">使用虛擬實境裝置和資料</translation>
 <translation id="4213500579045346575">健美</translation>
 <translation id="4214357935346142455">登入畫面設定檔</translation>
-<translation id="4218327733815631046">維持概略位置</translation>
+<translation id="4218327733815631046">維持大概位置</translation>
 <translation id="4219596572397833317">提供價格記錄等資訊，協助你做出更聰明的購物決策。</translation>
 <translation id="4220128509585149162">當機</translation>
 <translation id="4221630205957821124">&lt;h4&gt;步驟 1：從入口網站登入&lt;/h4&gt;
@@ -2844,6 +2846,7 @@
 <translation id="5458150163479425638">{CONTACT,plural, =0{<ph name="CONTACT_PREVIEW" />}=1{「<ph name="CONTACT_PREVIEW" />」和另外 <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> 項聯絡資訊}other{「<ph name="CONTACT_PREVIEW" />」和另外 <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> 項聯絡資訊}}</translation>
 <translation id="5463625433003343978">正在尋找裝置…</translation>
 <translation id="5464236009658034488">辦公用品</translation>
+<translation id="5465128270485645058">自動分享此視窗中與對話相關的開啟分頁，讓回覆更貼近需求。</translation>
 <translation id="5465724643247062031">玻璃 (不透明)</translation>
 <translation id="5466018172325111652">沒有收到動態密碼嗎？<ph name="BEGIN_LINK" />取得新的動態密碼<ph name="END_LINK" /></translation>
 <translation id="5466818462212249084">付款應用程式</translation>
@@ -3126,6 +3129,7 @@
 <translation id="5911020115933784199">活動與展演資訊</translation>
 <translation id="5911110632211230665">已禁止開啟</translation>
 <translation id="5912796581727968237">開啟 Google 錢包</translation>
+<translation id="5914185423510719251">將 KTN 儲存到 Google 錢包</translation>
 <translation id="5914465277418006379"><ph name="MEMBER_FIRST_NAME" />已新增這個分頁</translation>
 <translation id="5915189366813702112">彈性工作安排</translation>
 <translation id="59174027418879706">已啟用</translation>
@@ -3649,6 +3653,7 @@
 <translation id="6702851555558236418">音訊與音樂軟體</translation>
 <translation id="6702919718839027939">簡報模式</translation>
 <translation id="6704458454638854812">屬性已設為「custom_size」，請將名稱設為「自訂」。</translation>
+<translation id="670477556876354552">需要重新啟動</translation>
 <translation id="6706005862292023715">窗簾與窗飾</translation>
 <translation id="6706210727756204531">範圍</translation>
 <translation id="6706678697074905703">這個 IBAN 無法儲存到 Google 帳戶，因此改存到這部裝置的 Chrome。</translation>
@@ -3906,6 +3911,7 @@
 <translation id="7110116949943042888">臨時和季節性工作</translation>
 <translation id="7110368079836707726">大專院校</translation>
 <translation id="7111507312244504964">物業檢查與估價</translation>
+<translation id="7117290130383718594">文字註解</translation>
 <translation id="7118618213916969306">搜尋剪貼簿網址 <ph name="SHORT_URL" /></translation>
 <translation id="7118852830504022370">這個網站不支援 HTTPS，因此系統顯示這則警告訊息。<ph name="BEGIN_LEARN_MORE_LINK" />進一步瞭解這項警告<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="7119063404975271297">電視劇</translation>

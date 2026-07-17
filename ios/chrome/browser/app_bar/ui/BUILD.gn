@@ -60,6 +60,7 @@ source_set("unit_tests") {
     "//base",
     "//ios/chrome/app/strings",
     "//ios/chrome/browser/shared/coordinator/scene/state",
+    "//ios/chrome/browser/shared/coordinator/scene/state:test_support",
     "//testing/gtest",
     "//ui/base",
   ]

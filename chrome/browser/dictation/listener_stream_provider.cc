@@ -5,6 +5,7 @@
 #include "chrome/browser/dictation/listener_stream_provider.h"
 
 #include "chrome/browser/dictation/dictation_keyed_service.h"
+#include "chrome/browser/dictation/stream_provider_delegate.h"
 #include "chrome/browser/dictation/target.h"
 #include "chrome/common/extensions/api/dictation_private.h"
 #include "content/public/browser/browser_context.h"
@@ -13,8 +14,9 @@
 namespace dictation {
 
 ListenerStreamProvider::ListenerStreamProvider(
-    content::BrowserContext* browser_context)
-    : browser_context_(browser_context) {}
+    content::BrowserContext* browser_context,
+    StreamProviderDelegate& delegate)
+    : delegate_(delegate), browser_context_(browser_context) {}
 
 ListenerStreamProvider::~ListenerStreamProvider() {
   if (stream_id_) {
@@ -24,6 +26,7 @@ ListenerStreamProvider::~ListenerStreamProvider() {
 
 void ListenerStreamProvider::BindToTargetAndConnect(
     std::unique_ptr<Target> target) {
+  CHECK(target);
   target_ = std::move(target);
   DictationMultiplexer& multiplexer = GetMultiplexer();
   stream_id_ = multiplexer.GenerateStreamId();
@@ -33,8 +36,7 @@ void ListenerStreamProvider::BindToTargetAndConnect(
   details.stream_id = stream_id_.value();
   // TODO(crbug.com/502587072): Populate page context.
   details.page_context = "";
-  // TODO(crbug.com/524620051): Populate editable content.
-  details.editable_content = "";
+  details.editable_content = target_->GetSelectedText();
 
   base::ListValue event_args =
       extensions::api::dictation_private::OnStartStream::Create(details);
@@ -85,9 +87,11 @@ void ListenerStreamProvider::OnTranscriptionUpdated(const std::string& data,
 }
 
 void ListenerStreamProvider::OnStreamStateChanged(StreamState state) {
-  // TODO(crbug.com/502587072): Handle state changes.
   // TODO(crbug.com/502587072): Assert state transitions are correct.
+  StreamState old_state = state_;
   state_ = state;
+
+  delegate_->DidUpdateStreamProviderState(*this, old_state);
 
   if (update_callback_for_testing_) {
     update_callback_for_testing_.Run();
@@ -109,10 +113,16 @@ bool ListenerStreamProvider::IsTranscriptionFinalForTesting() const {
   return is_final_;
 }
 
-ListenerStreamProvider::StreamState
-ListenerStreamProvider::GetStateForTesting()  // IN-TEST
-    const {
+ListenerStreamProvider::StreamState ListenerStreamProvider::GetState() const {
   return state_;
+}
+
+const Target* ListenerStreamProvider::GetTarget() const {
+  return target_.get();
+}
+
+base::WeakPtr<ListenerStreamProvider> ListenerStreamProvider::GetWeakPtr() {
+  return weak_ptr_factory_.GetWeakPtr();
 }
 
 DictationMultiplexer& ListenerStreamProvider::GetMultiplexer() const {

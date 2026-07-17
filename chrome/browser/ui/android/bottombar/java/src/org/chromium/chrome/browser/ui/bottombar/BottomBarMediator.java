@@ -15,10 +15,10 @@ import org.chromium.base.supplier.NullableObservableSupplier;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
-import org.chromium.chrome.browser.glic.GlicEnabling;
 import org.chromium.chrome.browser.glic.GlicKeyedService;
 import org.chromium.chrome.browser.glic.GlicKeyedServiceFactory;
 import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
 import org.chromium.chrome.browser.tab.EmptyTabObserver;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabObserver;
@@ -33,6 +33,8 @@ import org.chromium.components.browser_ui.widget.highlight.ViewHighlighter.Highl
 import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.components.feature_engagement.FeatureConstants;
 import org.chromium.components.feature_engagement.Tracker;
+import org.chromium.components.search_engines.TemplateUrlService;
+import org.chromium.components.search_engines.TemplateUrlService.TemplateUrlServiceObserver;
 import org.chromium.ui.modelutil.PropertyModel;
 
 /** Mediator for the bottom bar */
@@ -88,6 +90,8 @@ public class BottomBarMediator
     private @Nullable Tab mCurrentTab;
     private @Nullable Boolean mIsVisible;
     private @Nullable IphIntent mNewTabIphIntent;
+    private @Nullable TemplateUrlService mTemplateUrlService;
+    private @Nullable TemplateUrlServiceObserver mTemplateUrlServiceObserver;
 
     // Mutable State (Primitive / Non-null)
     private boolean mGlicWasVisible;
@@ -257,7 +261,8 @@ public class BottomBarMediator
 
         // Calculate and set visibility.
         long startTime = SystemClock.uptimeMillis();
-        boolean shouldBeVisible = GlicEnabling.isEnabledForProfile(originalProfile);
+        boolean shouldBeVisible =
+                BottomBarActionEligibility.getEligibleExtraAction(originalProfile) == ActionId.GLIC;
         long decisionDuration = SystemClock.uptimeMillis() - startTime;
 
         BottomBarMetrics.recordGlicVisibilityDecisionTime(decisionDuration);
@@ -285,6 +290,11 @@ public class BottomBarMediator
             mGlicKeyedService.removeAllowedChangedObserver(mAllowedChangedObserver);
             mGlicKeyedService = null;
         }
+        if (mTemplateUrlService != null && mTemplateUrlServiceObserver != null) {
+            mTemplateUrlService.removeObserver(mTemplateUrlServiceObserver);
+            mTemplateUrlService = null;
+            mTemplateUrlServiceObserver = null;
+        }
 
         if (originalProfile == null) return;
 
@@ -293,9 +303,19 @@ public class BottomBarMediator
         if (mGlicKeyedService != null) {
             mGlicKeyedService.addAllowedChangedObserver(mAllowedChangedObserver);
         }
+
+        mTemplateUrlService = TemplateUrlServiceFactory.getForProfile(originalProfile);
+        if (mTemplateUrlService != null) {
+            mTemplateUrlServiceObserver = this::onTemplateURLServiceChanged;
+            mTemplateUrlService.addObserver(mTemplateUrlServiceObserver);
+        }
     }
 
     private void onGlicAllowedChanged() {
+        updateGlicVisibility(mProfileSupplier.get());
+    }
+
+    private void onTemplateURLServiceChanged() {
         updateGlicVisibility(mProfileSupplier.get());
     }
 
@@ -430,6 +450,11 @@ public class BottomBarMediator
         if (mGlicKeyedService != null) {
             mGlicKeyedService.removeAllowedChangedObserver(mAllowedChangedObserver);
             mGlicKeyedService = null;
+        }
+        if (mTemplateUrlService != null && mTemplateUrlServiceObserver != null) {
+            mTemplateUrlService.removeObserver(mTemplateUrlServiceObserver);
+            mTemplateUrlService = null;
+            mTemplateUrlServiceObserver = null;
         }
 
         mOmniboxFocusStateSupplier.removeObserver(mOmniboxFocusObserver);

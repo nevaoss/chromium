@@ -58,6 +58,7 @@ void CheckExpansion(const string& uri_template,
 class UriTemplateTest : public testing::Test {};
 
 TEST_F(UriTemplateTest, TestLevel1Templates) {
+  CheckExpansion("", "");
   CheckExpansion("{var}", "value");
   CheckExpansion("{hello}", "Hello%20World%21");
   CheckExpansion("{percent}", "%2531");
@@ -111,6 +112,7 @@ TEST_F(UriTemplateTest, TestLevel3Templates) {
 
 TEST_F(UriTemplateTest, TestMalformed) {
   CheckExpansion("{", "", false);
+  CheckExpansion("}{", "", false);
   CheckExpansion("map?{x", "", false);
   CheckExpansion("map?{x,{y}", "", false);
   CheckExpansion("map?{x,y}}", "", false);
@@ -130,7 +132,14 @@ TEST_F(UriTemplateTest, TestVariableSet) {
   expected_vars = {"y", "path"};
   CheckExpansion("{+path}{/z}{?y}&k=24", "/foo/bar?y=768&k=24", true,
                  &expected_vars);
+  CheckExpansion("map?{}", "map?");
   CheckExpansion("{y}{+path}", "768/foo/bar", true, &expected_vars);
+}
+
+TEST_F(UriTemplateTest, TestNullVarsFound) {
+  string result;
+  EXPECT_TRUE(Expand("{var}", parameters_, &result, nullptr));
+  EXPECT_EQ("value", result);
 }
 
 }  // namespace

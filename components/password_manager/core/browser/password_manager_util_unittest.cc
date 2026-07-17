@@ -57,9 +57,14 @@ using ::affiliations::FacetURI;
 using ::affiliations::GroupedFacets;
 using ::autofill::password_generation::PasswordGenerationType;
 using ::device_reauth::MockDeviceAuthenticator;
+using ::password_manager::ActionableError;
 using ::password_manager::PasswordForm;
 using ::password_manager::StoredCredential;
+using ::password_manager::UnorderedPasswordFormElementsAre;
+using ::testing::_;
+using ::testing::DoAll;
 using ::testing::Not;
+using ::testing::Return;
 
 constexpr char kTestAndroidRealm[] = "android://hash@com.example.beta.android";
 constexpr char kTestFederationURL[] = "https://google.com/";
@@ -124,11 +129,6 @@ PasswordForm GetTestProxyCredential() {
 }
 
 }  // namespace
-
-using password_manager::UnorderedPasswordFormElementsAre;
-using testing::_;
-using testing::DoAll;
-using testing::Return;
 
 class PasswordManagerUtilTest : public testing::Test {
  public:
@@ -815,8 +815,7 @@ class PasswordManagerUtilTrustedVaultErrorPreventsFromSavingTest
  protected:
   PasswordManagerUtilTrustedVaultErrorPreventsFromSavingTest() {
     feature_list_.InitAndEnableFeature(
-        password_manager::features::
-            kPasswordSaveInContextErrorResolutionOnDesktop);
+        password_manager::features::kPasswordSaveInContextErrorResolution);
   }
   ~PasswordManagerUtilTrustedVaultErrorPreventsFromSavingTest() override =
       default;
@@ -889,5 +888,35 @@ INSTANTIATE_TEST_SUITE_P(
       return info.param.name;
     });
 #endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
+class PasswordManagerUtilRecoverableErrorTest : public PasswordManagerUtilTest {
+ protected:
+  PasswordManagerUtilRecoverableErrorTest() {
+    feature_list_.InitAndEnableFeature(
+        password_manager::features::kPasswordSaveInContextErrorResolution);
+  }
+
+  base::test::ScopedFeatureList feature_list_;
+};
+
+TEST_F(PasswordManagerUtilRecoverableErrorTest,
+       IsSavingBlockedByTrustedVaultError) {
+  EnableSyncForTestAccount();
+
+  auto account_store =
+      base::MakeRefCounted<password_manager::MockPasswordStoreInterface>();
+  EXPECT_CALL(mock_client_, GetAccountPasswordStore)
+      .WillRepeatedly(Return(account_store.get()));
+
+  EXPECT_CALL(*account_store, GetError)
+      .WillOnce(Return(ActionableError::kTrustedVaultKeyNeeded));
+  EXPECT_TRUE(IsSavingBlockedByTrustedVaultError(&mock_client_, nullptr));
+
+  EXPECT_CALL(*account_store, GetError)
+      .WillOnce(Return(ActionableError::kSignInNeeded));
+  EXPECT_FALSE(IsSavingBlockedByTrustedVaultError(&mock_client_, nullptr));
+}
+#endif  // BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
 
 }  // namespace password_manager_util

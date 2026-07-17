@@ -118,9 +118,6 @@ class AutofillAiPermissionUtilsTest : public ::testing::Test {
           {{"autofill_ai_model_use_cache_results", "true"}}}},
         {});
 
-    // Pref and identity state.
-    subscription_eligibility::prefs::RegisterProfilePrefs(
-        client().GetPrefs()->registry());
     client().GetPrefs()->SetInteger(
         subscription_eligibility::prefs::kAiSubscriptionTier, 1);
 
@@ -155,6 +152,27 @@ class AutofillAiPermissionUtilsTest : public ::testing::Test {
   NiceMock<MockSyncService> sync_service_;
   TestAutofillClient client_;
 };
+
+// Tests that IsAutofillAiEntityTypeBlockedByPolicy correctly maps entity
+// schemas to enterprise policy categories.
+TEST_F(AutofillAiPermissionUtilsTest, IsAutofillAiEntityTypeBlockedByPolicy) {
+  const GURL kUrl("https://example.com");
+
+  EXPECT_FALSE(IsAutofillAiEntityTypeBlockedByPolicy(
+      client(), kUrl, EntityType(EntityTypeName::kPassport)));
+
+  client().SetAutofillTypeBlockedByPolicy(
+      AutofillClient::AutofillPolicyDataCategory::kIdentityDocs, true);
+  EXPECT_TRUE(IsAutofillAiEntityTypeBlockedByPolicy(
+      client(), kUrl, EntityType(EntityTypeName::kPassport)));
+  EXPECT_FALSE(IsAutofillAiEntityTypeBlockedByPolicy(
+      client(), kUrl, EntityType(EntityTypeName::kVehicle)));
+
+  client().SetAutofillTypeBlockedByPolicy(
+      AutofillClient::AutofillPolicyDataCategory::kTravel, true);
+  EXPECT_TRUE(IsAutofillAiEntityTypeBlockedByPolicy(
+      client(), kUrl, EntityType(EntityTypeName::kVehicle)));
+}
 
 class AutofillAiMayPerformActionTest
     : public AutofillAiPermissionUtilsTest,

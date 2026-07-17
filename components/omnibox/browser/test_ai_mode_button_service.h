@@ -12,6 +12,8 @@ class TestAiModeButtonService : public AiModeButtonService {
   using AiModeButtonService::AiModeButtonService;
   ~TestAiModeButtonService() override = default;
 
+  using AiModeButtonService::IsValidConfig;
+
   using AiModeButtonService::current_config_;
 };
 

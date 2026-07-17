@@ -362,6 +362,8 @@
   E(kActionContentContextGeneratePassword, \
     IDC_CONTENT_CONTEXT_GENERATEPASSWORD) \
   E(kActionContentContextExitFullscreen, IDC_CONTENT_CONTEXT_EXIT_FULLSCREEN) \
+  E(kActionContentContextSaveToMemoryBanks, \
+    IDC_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS) \
   E(kActionContentContextShowAllSavedPasswords, \
     IDC_CONTENT_CONTEXT_SHOWALLSAVEDPASSWORDS) \
   E(kActionContentContextUsePasskeyFromAnotherDeviceTopLevel, \
@@ -545,6 +547,9 @@
 #elif BUILDFLAG(IS_LINUX)
 #define CHROME_PLATFORM_SPECIFIC_ACTION_IDS \
   E(kUseSystemTitleBar, IDC_USE_SYSTEM_TITLE_BAR) \
+  E(kRestoreWindow, IDC_RESTORE_WINDOW)
+#elif BUILDFLAG(IS_WIN)
+#define CHROME_PLATFORM_SPECIFIC_ACTION_IDS \
   E(kRestoreWindow, IDC_RESTORE_WINDOW)
 #else
 #define CHROME_PLATFORM_SPECIFIC_ACTION_IDS

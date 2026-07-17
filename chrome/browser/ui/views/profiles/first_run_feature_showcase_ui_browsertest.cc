@@ -13,6 +13,7 @@
 #include "chrome/browser/ui/views/profiles/feature_showcase/default_browser_step_eligibility_checker.h"
 #include "chrome/browser/ui/views/profiles/feature_showcase/google_lens_step_eligibility_checker.h"
 #include "chrome/browser/ui/views/profiles/feature_showcase/password_manager_feature_showcase_eligibility_checker.h"
+#include "chrome/browser/ui/views/profiles/feature_showcase/themes_and_customization_step_eligibility_checker.h"
 #include "chrome/browser/ui/views/profiles/first_run_flow_controller.h"
 #include "chrome/browser/ui/views/profiles/profile_management_step_controller.h"
 #include "chrome/browser/ui/views/profiles/profile_picker_view_test_utils.h"
@@ -52,6 +53,7 @@ const std::vector<FeatureShowcaseTestParam>& GetTestParams() {
             kFeatureShowcaseDefaultBrowserStepIdentifier,
             kFeatureShowcaseGoogleLensStepIdentifier,
             kFeatureShowcasePasswordManagerStepIdentifier,
+            kFeatureShowcaseThemesAndCustomizationStepIdentifier,
         };
 
         std::vector<FeatureShowcaseTestParam> params;
@@ -181,6 +183,9 @@ INSTANTIATE_TEST_SUITE_P(
         step_name = "GoogleLens";
       } else if (step_name == kFeatureShowcasePasswordManagerStepIdentifier) {
         step_name = "PasswordManager";
+      } else if (step_name ==
+                 kFeatureShowcaseThemesAndCustomizationStepIdentifier) {
+        step_name = "ThemesAndCustomization";
       }
       return info.param.pixel_test_param.test_suffix + step_name;
     });

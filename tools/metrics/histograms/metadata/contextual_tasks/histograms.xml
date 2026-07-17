@@ -298,7 +298,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="ContextualTasks.HistoryNavigation.UserAction.NavigatedInFullTab"
-    enum="Boolean" expires_after="2026-06-28">
+    enum="Boolean" expires_after="2026-12-22">
   <owner>hujasonx@google.com</owner>
   <owner>chrome-contextual-tasks-eng@google.com</owner>
   <summary>
@@ -516,6 +516,18 @@ chromium-metrics-reviews@google.com.
         summary="The user changed tabs which resulted in staying on the
                  existing thread."/>
   </token>
+</histogram>
+
+<histogram
+    name="ContextualTasks.ToolbarCloseTabButton.UserAction.CloseTabAndExpandSidePanel"
+    enum="Boolean" expires_after="2027-06-18">
+  <owner>yuhengh@chromium.org</owner>
+  <owner>nguyenbryan@google.com</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <summary>
+    Recorded when the user interacts with the contextual tasks toolbar close tab
+    button. Always recorded as true.
+  </summary>
 </histogram>
 
 <histogram name="ContextualTasks.VoiceSearch.StateV2" enum="VoiceSearchState"

@@ -522,4 +522,10 @@ HEADLESS_MODE_PROTOCOL_TEST(RangeMouseEventAfterNodeRemoval,
 HEADLESS_MODE_PROTOCOL_TEST(GetCanvasContextWebGL,
                             "shared/get-canvas-context-webgl.js")
 
+HEADLESS_MODE_PROTOCOL_TEST(PopupWindowHasOpener,
+                            "shared/popup-window-has-opener.js")
+
+HEADLESS_MODE_PROTOCOL_TEST(NormalWindowHasOpener,
+                            "shared/normal-window-has-opener.js")
+
 }  // namespace headless

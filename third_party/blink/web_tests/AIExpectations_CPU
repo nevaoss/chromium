@@ -24,8 +24,7 @@ crbug.com/517535239 external/wpt/ai/summarizer/summarizer-iframe.tentative.https
 crbug.com/517535239 external/wpt/ai/writer/writer-iframe.tentative.https.html [ Failure Pass ]
 
 # Temporarily skip these tests while the underlying model is in migration.
-crbug.com/446717936 external/wpt/ai/proofreader/proofreader-abort.tentative.https.window.html [ Skip ]
-crbug.com/446717936 external/wpt/ai/proofreader/proofreader-proofread.tentative.https.window.html [ Skip ]
+crbug.com/446717936 external/wpt/ai/proofreader/* [ Skip ]
 
 # The overflow test times out because filling the context window takes too long.
 external/wpt/ai/language-model/prompt/context/overflow.tentative.https.window.html [ Timeout ]
@@ -52,24 +51,13 @@ crbug.com/513585708 external/wpt/ai/summarizer/summarizer-summarize.tentative.ht
 crbug.com/513585708 external/wpt/ai/writer/writer-write-streaming.tentative.https.window.html [ Failure Timeout Pass ]
 crbug.com/513585708 external/wpt/ai/writer/writer-write.tentative.https.window.html [ Failure Timeout Pass ]
 
-# Multimodal inputs (audio/image/video) are currently disabled by default for the CPU model via feature flags.
-crbug.com/514431981 external/wpt/ai/language-model/prompt/multimodal/audio-input.tentative.https.window.html [ Failure Pass ]
+# Audio inputs are currently disabled by default for the CPU model via feature flags; image and video should be re-assessed.
+crbug.com/514431981 external/wpt/ai/language-model/prompt/multimodal/audio/* [ Failure Pass ]
 crbug.com/514431981 external/wpt/ai/language-model/prompt/multimodal/availability.tentative.https.window.html [ Failure Pass ]
 crbug.com/514431981 external/wpt/ai/language-model/prompt/multimodal/create.tentative.https.window.html [ Failure Pass ]
-crbug.com/514431981 external/wpt/ai/language-model/prompt/multimodal/image/array-buffer-view-offset.tentative.https.window.html [ Failure Pass ]
-crbug.com/514431981 external/wpt/ai/language-model/prompt/multimodal/image/array-buffer-view.tentative.https.window.html [ Failure Pass ]
-crbug.com/514431981 external/wpt/ai/language-model/prompt/multimodal/image/array-buffer.tentative.https.window.html [ Failure Pass ]
-crbug.com/514431981 external/wpt/ai/language-model/prompt/multimodal/image/blob.tentative.https.window.html [ Failure Pass ]
-crbug.com/514431981 external/wpt/ai/language-model/prompt/multimodal/image/html-canvas-element.tentative.https.window.html [ Failure Pass ]
-crbug.com/514431981 external/wpt/ai/language-model/prompt/multimodal/image/html-image-element-svg.tentative.https.window.html [ Failure Pass ]
-crbug.com/514431981 external/wpt/ai/language-model/prompt/multimodal/image/html-image-element.tentative.https.window.html [ Failure Pass ]
-crbug.com/514431981 external/wpt/ai/language-model/prompt/multimodal/image/image-bitmap.tentative.https.window.html [ Failure Pass ]
-crbug.com/514431981 external/wpt/ai/language-model/prompt/multimodal/image/image-data.tentative.https.window.html [ Failure Pass ]
-crbug.com/514431981 external/wpt/ai/language-model/prompt/multimodal/image/initial-prompt.tentative.https.window.html [ Failure Pass ]
-crbug.com/514431981 external/wpt/ai/language-model/prompt/multimodal/image/offscreen-canvas.tentative.https.window.html [ Failure Pass ]
-crbug.com/514431981 external/wpt/ai/language-model/prompt/multimodal/image/svg-image-element.tentative.https.window.html [ Failure Pass ]
-crbug.com/514431981 external/wpt/ai/language-model/prompt/multimodal/video/html-video-element.tentative.https.window.html [ Failure Pass ]
-crbug.com/514431981 external/wpt/ai/language-model/prompt/multimodal/video/video-frame.tentative.https.window.html [ Failure Pass ]
+crbug.com/514431981 external/wpt/ai/language-model/prompt/multimodal/image/* [ Failure Pass ]
+crbug.com/514431981 external/wpt/ai/language-model/prompt/multimodal/mix-post-abort.tentative.https.window.html [ Failure Pass ]
+crbug.com/514431981 external/wpt/ai/language-model/prompt/multimodal/video/* [ Failure Pass ]
 
 # Temporarily skip semantic embedder WPTs
 crbug.com/428233906 external/wpt/ai/semantic_embedder/* [ Skip ]

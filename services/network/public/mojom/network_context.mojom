@@ -664,6 +664,10 @@ struct NetworkContextParams {
 
   // Initial variations headers to use.
   variations.mojom.VariationsHeaders? initial_variations_headers;
+
+  // If true, EchMode should be queried via the platform API. This enables
+  // embedders like Android WebView to respect the system's ECH policy.
+  bool use_platform_ech_policy = false;
 };
 
 struct NetworkConditions {

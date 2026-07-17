@@ -280,12 +280,15 @@ component("gl") {
     sources += [
       "child_window_win.cc",
       "child_window_win.h",
+      "dc_commit_error.h",
       "dc_layer_overlay_image.cc",
       "dc_layer_overlay_image.h",
       "dc_layer_overlay_params.cc",
       "dc_layer_overlay_params.h",
       "dc_layer_tree.cc",
       "dc_layer_tree.h",
+      "dc_surface_solid_color_pool.cc",
+      "dc_surface_solid_color_pool.h",
       "dcomp_presenter.cc",
       "dcomp_presenter.h",
       "dcomp_surface_proxy.h",
@@ -304,6 +307,8 @@ component("gl") {
       "hdr_metadata_helper_win.cc",
       "hdr_metadata_helper_win.h",
       "os_compositor_tree_base.h",
+      "solid_color_pool_base.cc",
+      "solid_color_pool_base.h",
       "swap_chain_presenter.cc",
       "swap_chain_presenter.h",
       "vsync_provider_win.cc",
@@ -509,6 +514,13 @@ static_library("gl_unittest_utils") {
     "gpu_timing_fake.h",
   ]
 
+  if (is_win) {
+    sources += [
+      "dcomp_mocks.cc",
+      "dcomp_mocks.h",
+    ]
+  }
+
   deps = [
     ":gl",
     "//testing/gmock",
@@ -602,6 +614,7 @@ test("gl_unittests") {
       "gl_fence_win_unittest.cc",
       "hdr_metadata_helper_win_unittest.cc",
       "os_compositor_tree_base_unittest.cc",
+      "solid_color_pool_base_unittest.cc",
     ]
   }
 

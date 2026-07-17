@@ -12,6 +12,7 @@
 
 #include "base/containers/map_util.h"
 #include "base/containers/to_vector.h"
+#include "base/containers/transparent_hash.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
@@ -35,7 +36,6 @@
 #include "components/unexportable_keys/unexportable_key_task_manager.h"
 #include "crypto/unexportable_key.h"
 #include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
-#include "third_party/abseil-cpp/absl/container/hash_container_defaults.h"
 
 namespace unexportable_keys {
 
@@ -44,11 +44,6 @@ namespace {
 using WrappedKeyAndTag = std::pair<std::vector<uint8_t>, std::string>;
 using WrappedKeyAndTagView =
     std::pair<base::span<const uint8_t>, std::string_view>;
-
-struct WrappedKeyAndTagViewHash
-    : absl::DefaultHashContainerHash<WrappedKeyAndTagView> {
-  using is_transparent = void;
-};
 
 WrappedKeyAndTag Materialize(WrappedKeyAndTagView view) {
   auto [wrapped_key, tag] = view;
@@ -350,10 +345,11 @@ class UnexportableKeyServiceImpl::KeyRepository {
   }
 
  private:
-  using WrappedKeyAndTagMap = absl::flat_hash_map<WrappedKeyAndTag,
-                                                  MaybePendingKeyId<KeyIdType>,
-                                                  WrappedKeyAndTagViewHash,
-                                                  std::ranges::equal_to>;
+  using WrappedKeyAndTagMap =
+      absl::flat_hash_map<WrappedKeyAndTag,
+                          MaybePendingKeyId<KeyIdType>,
+                          base::TransparentHashAs<WrappedKeyAndTagView>,
+                          base::TransparentEqualAs<WrappedKeyAndTagView>>;
 
   WrappedKeyAndTagMap key_id_by_wrapped_key_and_tag_;
   KeyIdMap key_by_key_id_;

@@ -315,12 +315,6 @@ inline constexpr char kBrowsingHistorySimilarVisitsGroupingDescription[] =
     "Enables improvements to grouping of similar browsing history on the "
     "history page.";
 
-inline constexpr char kGlicButtonAutoSummarizeName[] =
-    "Glic Button Auto Summarize";
-inline constexpr char kGlicButtonAutoSummarizeDescription[] =
-    "Automatically triggers a summary when the Glic button is clicked on a "
-    "certain page (ex. PDF).";
-
 inline constexpr char kBundledSecuritySettingsName[] =
     "Bundled Security Settings";
 inline constexpr char kBundledSecuritySettingsDescription[] =
@@ -356,7 +350,19 @@ inline constexpr char kChildProcessSecurityPolicyRustDescription[] =
     "implementation or Rust and C++ implementations side-by-side for "
     "validation. The default mode when enabled is Rust-only. Portions of "
     "ChildProcessSecurityPolicy that haven't been implemented in Rust yet will "
-    "fall back to their C++ implementations.";
+    "fall back to their C++ implementations. This can also be configured to "
+    "control whether the Rust implementation manages per-process security "
+    "state.";
+inline constexpr char kChildProcessSecurityPolicyRustChoiceRustOnly[] =
+    "Rust only";
+inline constexpr char kChildProcessSecurityPolicyRustChoiceRustAndCpp[] =
+    "Rust and C++";
+inline constexpr char
+    kChildProcessSecurityPolicyRustChoiceRustOnlyWithProcessState[] =
+        "Rust only (with ProcessState)";
+inline constexpr char
+    kChildProcessSecurityPolicyRustChoiceRustAndCppWithProcessState[] =
+        "Rust and C++ (with ProcessState)";
 
 inline constexpr char kClickToCallName[] = "Click-To-Call";
 inline constexpr char kClickToCallDescription[] =
@@ -555,11 +561,6 @@ inline constexpr char kHdrAgtmName[] = "Adaptive global tone mapping";
 inline constexpr char kHdrAgtmDescription[] =
     "Enables parsing and rendering of adaptive global tone mapping (AGTM) aka "
     "SMTPE ST 2094-50 HDR metadata";
-
-inline constexpr char kHorizontalTabStripComboButtonName[] =
-    "Horizontal Tab Strip Combo Button";
-inline constexpr char kHorizontalTabStripComboButtonDescription[] =
-    "Enables the combo button in the horizontal tab strip.";
 
 inline constexpr char kHistorySyncAlternativeIllustrationName[] =
     "History Sync Alternative Illustration";
@@ -1532,6 +1533,11 @@ inline constexpr char kGlicExperimentalTriggeringName[] =
     "Glic experimental triggering";
 inline constexpr char kGlicExperimentalTriggeringDescription[] =
     "Enables GLIC experimental triggering";
+inline constexpr char kGlicExperimentalTriggeringScreenshotName[] =
+    "Glic experimental triggering screenshot";
+inline constexpr char kGlicExperimentalTriggeringScreenshotDescription[] =
+    "Enables secure client-side screenshot capture and encryption on yield "
+    "for Glic experimental triggering tasks.";
 inline constexpr char
     kGlicExperimentalTriggeringSuppressDoneNotificationName[] =
         "Glic experimental triggering suppress done notification";
@@ -1803,11 +1809,11 @@ inline constexpr char kEnableProcessIsolationUiName[] =
 inline constexpr char kEnableProcessIsolationUiDescription[] =
     "Shows the Enable Process Isolation toggle in chrome://settings/system.";
 
-inline constexpr char kEnableProxyAuthenticationServiceName[] =
-    "Enable Proxy Authentication Service";
-inline constexpr char kEnableProxyAuthenticationServiceDescription[] =
-    "Enables the proxy authentication service for authenticating with forward "
-    "proxies.";
+inline constexpr char kEnableDynamicRouteFetchingName[] =
+    "Enable Dynamic Route Fetching";
+inline constexpr char kEnableDynamicRouteFetchingDescription[] =
+    "Enables fetching proxy configurations and routing rules dynamically from "
+    "Provisioning Domains.";
 
 inline constexpr char kEnableStaticQrCodeForPixName[] =
     "Enable Static Qr Code For Pix";
@@ -2568,6 +2574,14 @@ inline constexpr char kCastStreamingAv1Description[] =
     "Offers the AV1 video codec when negotiating Cast Streaming, and uses AV1 "
     "if selected for the session.";
 
+inline constexpr char kCastStreamingHardwareAv1Name[] =
+    "Toggle hardware accelerated AV1 video encoding for Cast Streaming";
+inline constexpr char kCastStreamingHardwareAv1Description[] =
+    "The default is to allow hardware AV1 encoding when recommended for the "
+    "platform. If enabled, hardware AV1 encoding will always be allowed when "
+    "supported by the platform. If disabled, hardware AV1 encoding will "
+    "never be used.";
+
 inline constexpr char kCastStreamingHardwareH264Name[] =
     "Toggle hardware accelerated H.264 video encoding for Cast Streaming";
 inline constexpr char kCastStreamingHardwareH264Description[] =
@@ -2630,6 +2644,12 @@ inline constexpr char kCastStreamingVp9Name[] =
 inline constexpr char kCastStreamingVp9Description[] =
     "Offers the VP9 video codec when negotiating Cast Streaming, and uses VP9 "
     "if selected for the session.";
+
+inline constexpr char kCastStreamingMaxVideoBitrateName[] =
+    "Cast Streaming Max Video Bitrate Limit";
+inline constexpr char kCastStreamingMaxVideoBitrateDescription[] =
+    "Enables configuring the maximum video bitrate limit for Cast Streaming "
+    "to experiment with different network quality ceilings.";
 
 inline constexpr char kCastStreamingExponentialVideoBitrateAlgorithmName[] =
     "Cast Streaming Exponential Video Bitrate Algorithm";
@@ -3651,19 +3671,13 @@ inline constexpr char kWebUIOmniboxHideAimUrlName[] =
 inline constexpr char kWebUIOmniboxHideAimUrlDescription[] =
     "If enabled, hides the AIM button when the default suggestion is a URL.";
 
-inline constexpr char kWebUIOmniboxFullPopupName[] = "WebUI Omnibox Full Popup";
-inline constexpr char kWebUIOmniboxFullPopupDescription[] =
-    "If enabled, shows the omnibox suggestions and the search input in the "
-    "popup in WebUI.";
 
-inline constexpr char kWebUIOmniboxFullPopupV2Name[] =
-    "WebUI Omnibox Full Popup V2";
-inline constexpr char kWebUIOmniboxFullPopupV2Description[] =
+inline constexpr char kWebUIOmniboxFullPopupName[] =
+    "WebUI Omnibox Full Popup";
+inline constexpr char kWebUIOmniboxFullPopupDescription[] =
     "If enabled, then both the input row and suggestions dropdown (in the "
     "Omnibox) will be rendered using the WebUI stack (i.e. the cutout for the "
-    "location bar will be removed). NOTE: This flag is intended to control "
-    "the next-gen Omnibox experience and will eventually supersede the "
-    "'WebUI Omnibox Full Popup' feature flag.";
+    "location bar will be removed).";
 
 inline constexpr char kWebUIOmniboxPopupName[] = "WebUI Omnibox Popup";
 inline constexpr char kWebUIOmniboxPopupDescription[] =
@@ -3815,6 +3829,13 @@ inline constexpr char kPartitionAllocMemoryTaggingName[] =
     "PartitionAlloc Memory Tagging";
 inline constexpr char kPartitionAllocMemoryTaggingDescription[] =
     "Enable memory tagging in PartitionAlloc.";
+
+inline constexpr char kPartitionAllocSchedulerLoopQuarantineName[] =
+    "PartitionAlloc Scheduler Loop Quarantine";
+inline constexpr char kPartitionAllocSchedulerLoopQuarantineDescription[] =
+    "Enables PartitionAlloc's scheduler loop quarantine. Takes a JSON "
+    "free-form configuration.";
+
 inline constexpr char kPartitionAllocWithAdvancedChecksName[] =
     "PartitionAlloc with Advanced Checks";
 inline constexpr char kPartitionAllocWithAdvancedChecksDescription[] =
@@ -3849,12 +3870,11 @@ inline constexpr char kPasswordManagerShowSuggestionsOnAutofocusDescription[] =
     "click on the already focused field if the field was autofocused on "
     "the page load.";
 
-inline constexpr char kPasswordSaveInContextErrorResolutionOnDesktopName[] =
+inline constexpr char kPasswordSaveInContextErrorResolutionName[] =
     "In-flow resolution of errors during password saving";
-inline constexpr char
-    kPasswordSaveInContextErrorResolutionOnDesktopDescription[] =
-        "Starts the password manager error resolution flow after offering to "
-        "save a password.";
+inline constexpr char kPasswordSaveInContextErrorResolutionDescription[] =
+    "Starts the password manager error resolution flow after offering to "
+    "save a password.";
 
 inline constexpr char kPasswordUploadUiUpdateName[] =
     "Password Upload UI Update";
@@ -3941,10 +3961,6 @@ inline constexpr char kSuspiciousSiteWarningsName[] =
     "Suspicious Site Warnings";
 inline constexpr char kSuspiciousSiteWarningsDescription[] =
     "Enables warnings on sites that Safe Browsing deem to be suspicious.";
-
-inline constexpr char kSearchInSettingsName[] = "Search in Settings";
-inline constexpr char kSearchInSettingsDescription[] =
-    "Enable search in settings";
 
 inline constexpr char kSearchEngineExplicitChoiceDialogName[] =
     "Use explicit-choice dialog confirming new search engine overrides";
@@ -4075,12 +4091,6 @@ inline constexpr char kRendererSideContentDecodingDescription[] =
     "Enables renderer-side content decoding (decompression). When enabled, the "
     "network service sends compressed HTTP response bodies to the renderer "
     "process.";
-
-inline constexpr char kRcapsDynamicProfileCountryName[] =
-    "Dynamic Profile Country";
-inline constexpr char kRcapsDynamicProfileCountryDescription[] =
-    "When enabled, Chrome updates the country associated with "
-    "the profile on open";
 
 inline constexpr char kRustyBmpName[] = "Rust-based BMP image handling";
 inline constexpr char kRustyBmpDescription[] =
@@ -4704,6 +4714,11 @@ inline constexpr char kVerifyQWACsName[] = "Verify QWACs";
 inline constexpr char kVerifyQWACsDescription[] =
     "Enables verification of qualified certificates for website authentication "
     "as described in ETSI TS 119 411-5 V2.1.1 (2025-02).";
+
+inline constexpr char kVidsAppExistingConsumerPreinstallName[] =
+    "Vids app existing consumer preinstall";
+inline constexpr char kVidsAppExistingConsumerPreinstallDescription[] =
+    "Preinstalls the Vids app on ChromeOS for existing consumer users.";
 
 inline constexpr char kVidsAppPreinstallName[] = "Vids app preinstall";
 inline constexpr char kVidsAppPreinstallDescription[] =
@@ -6377,11 +6392,6 @@ inline constexpr char kEnableShouldShowPromotionName[] =
 inline constexpr char kEnableShouldShowPromotionDescription[] =
     "Enables showing the promotion banner on chromewebstore page.";
 
-inline constexpr char kInFlowTrustedVaultKeyRetrievalAndroidName[] =
-    "In-flow Trusted Vault key retrieval";
-inline constexpr char kInFlowTrustedVaultKeyRetrievalAndroidDescription[] =
-    "Starts the key retrieval flow after offering to save a password.";
-
 inline constexpr char kInfiniteTabsFreezingName[] = "Infinite Tabs Freezing";
 inline constexpr char kInfiniteTabsFreezingDescription[] =
     "Freezes eligible tabs which are not in the 5 most recently used ones, to "
@@ -7605,11 +7615,6 @@ inline constexpr char kLauncherContinueSectionWithRecentsName[] =
 inline constexpr char kLauncherContinueSectionWithRecentsDescription[] =
     "Adds Google Drive file suggestions based on users' recent activity to "
     "\"Continue where you left off\" section in Launcher.";
-
-inline constexpr char kLauncherItemSuggestName[] = "Launcher ItemSuggest";
-inline constexpr char kLauncherItemSuggestDescription[] =
-    "Allows configuration of experiment parameters for ItemSuggest in the "
-    "launcher.";
 
 inline constexpr char kLimitShelfItemsToActiveDeskName[] =
     "Limit Shelf items to active desk";

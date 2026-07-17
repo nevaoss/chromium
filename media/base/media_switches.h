@@ -42,10 +42,14 @@ MEDIA_EXPORT extern const char kUserGestureRequiredPolicy[];
 MEDIA_EXPORT extern const char kAudioBufferSize[];
 MEDIA_EXPORT extern const char kAutoGrantCapturedSurfaceControlPrompt[];
 MEDIA_EXPORT extern const char kAutoplayPolicy[];
+MEDIA_EXPORT extern const char kCastStreamingForceDisableHardwareAv1[];
 MEDIA_EXPORT extern const char kCastStreamingForceDisableHardwareH264[];
+MEDIA_EXPORT extern const char kCastStreamingForceDisableHardwareHevc[];
 MEDIA_EXPORT extern const char kCastStreamingForceDisableHardwareVp8[];
 MEDIA_EXPORT extern const char kCastStreamingForceDisableHardwareVp9[];
+MEDIA_EXPORT extern const char kCastStreamingForceEnableHardwareAv1[];
 MEDIA_EXPORT extern const char kCastStreamingForceEnableHardwareH264[];
+MEDIA_EXPORT extern const char kCastStreamingForceEnableHardwareHevc[];
 MEDIA_EXPORT extern const char kCastStreamingForceEnableHardwareVp8[];
 MEDIA_EXPORT extern const char kCastStreamingForceEnableHardwareVp9[];
 MEDIA_EXPORT extern const char kClearKeyCdmPathForTesting[];
@@ -158,6 +162,9 @@ MEDIA_EXPORT extern const base::FeatureParam<double>
 MEDIA_EXPORT extern const base::FeatureParam<double>
     kCastStreamingExponentialVideoBitrateAlgorithmDynamicWindowMultiplier;
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kCastStreamingHardwareHevc);
+MEDIA_EXPORT BASE_DECLARE_FEATURE(kCastStreamingMaxVideoBitrate);
+MEDIA_EXPORT extern const base::FeatureParam<int>
+    kCastStreamingMaxVideoBitrateMbps;
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kCastStreamingPerformanceOverlay);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kCastStreamingVp8);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kCastStreamingVp9);
@@ -581,6 +588,10 @@ MEDIA_EXPORT bool IsChromeWideEchoCancellationEnabled();
 // WebRTC echo cancellation.
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kWebRtcAudioNeuralResidualEchoEstimation);
 
+// When enabled, input audio processing in the audio process may use an ML-based
+// voice isolation denoiser.
+MEDIA_EXPORT BASE_DECLARE_FEATURE(kWebRtcVoiceIsolationDenoiser);
+
 // Flag to enable or disable parsing of MP4 timed metadata tracks.
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kMP4TimedMetadataTrack);
 
@@ -637,6 +648,9 @@ MEDIA_EXPORT bool IsOutOfProcessVideoDecodingEnabled();
 // Return bitmask of audio formats supported by EDID.
 MEDIA_EXPORT uint32_t GetPassthroughAudioFormats();
 
+#if BUILDFLAG(IS_ANDROID)
+MEDIA_EXPORT BASE_DECLARE_FEATURE(kUseMediaFormatCodedSize);
+#endif
 }  // namespace media
 
 #endif  // MEDIA_BASE_MEDIA_SWITCHES_H_

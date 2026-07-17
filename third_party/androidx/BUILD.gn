@@ -774,6 +774,7 @@ if (!limit_android_deps) {
       ":androidx_lifecycle_lifecycle_viewmodel_savedstate_java",
       ":androidx_loader_loader_java",
       ":androidx_savedstate_savedstate_java",
+      ":androidx_tracing_tracing_java",
       ":androidx_viewpager_viewpager_java",
       "//third_party/android_deps:org_jspecify_jspecify_java",
       "//third_party/kotlin_stdlib:kotlin_stdlib_java",
@@ -1290,6 +1291,7 @@ if (!limit_android_deps) {
       ":androidx_core_core_java",
       ":androidx_customview_customview_java",
       ":androidx_exifinterface_exifinterface_java",
+      ":androidx_pdf_pdf_core_java",
       "//third_party/android_deps:com_google_errorprone_error_prone_annotations_java",
       "//third_party/android_deps:material_design_java",
       "//third_party/android_deps:org_jetbrains_kotlinx_kotlinx_coroutines_core_java",
@@ -3762,6 +3764,21 @@ if (!limit_android_deps) {
     deps = [
       ":androidx_collection_collection_java",
       ":androidx_core_core_java",
+      "//third_party/android_deps:org_jspecify_jspecify_java",
+      "//third_party/kotlin_stdlib:kotlin_stdlib_java",
+    ]
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  androidx_android_aar_prebuilt("androidx_pdf_pdf_core_java") {
+    aar_path = "../androidx/cipd/libs/androidx_pdf_pdf_core/pdf-core.aar"
+    info_path = "../androidx/committed/libs/androidx_pdf_pdf_core/androidx_pdf_pdf_core.info"
+    enable_bytecode_checks = false
+
+    deps = [
+      ":androidx_annotation_annotation_java",
+      ":androidx_core_core_java",
+      "//third_party/android_deps:org_jetbrains_kotlinx_kotlinx_coroutines_core_java",
       "//third_party/android_deps:org_jspecify_jspecify_java",
       "//third_party/kotlin_stdlib:kotlin_stdlib_java",
     ]

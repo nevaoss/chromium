@@ -558,8 +558,7 @@ TEST_P(ManagePasswordsUIControllerTest, PasswordSaved) {
 // automatically save the password after the error is fixed.
 TEST_P(ManagePasswordsUIControllerTest, PasswordSavedAfterErrorResolution) {
   base::test::ScopedFeatureList scoped_feature_list{
-      password_manager::features::
-          kPasswordSaveInContextErrorResolutionOnDesktop};
+      password_manager::features::kPasswordSaveInContextErrorResolution};
 
   std::vector<PasswordForm> best_matches;
   std::unique_ptr<MockPasswordFormManagerForUI> test_form_manager =
@@ -616,8 +615,7 @@ TEST_P(ManagePasswordsUIControllerTest, PasswordSavedAfterErrorResolution) {
 TEST_P(ManagePasswordsUIControllerTest,
        PasswordBubbleClosedAfterErrorResolutionElsewhere) {
   base::test::ScopedFeatureList scoped_feature_list{
-      password_manager::features::
-          kPasswordSaveInContextErrorResolutionOnDesktop};
+      password_manager::features::kPasswordSaveInContextErrorResolution};
 
   std::vector<PasswordForm> best_matches;
   std::unique_ptr<MockPasswordFormManagerForUI> test_form_manager =

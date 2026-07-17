@@ -2489,7 +2489,7 @@ Animation::CheckCanStartAnimationOnCompositor(
       reasons |= CompositorAnimations::kInvalidAnimationOrEffect;
     }
     reasons |= keyframe_effect->CheckCanStartAnimationOnCompositor(
-        paint_artifact_compositor, playback_rate_,
+        paint_artifact_compositor, playback_rate_, start_reason,
         unsupported_properties_for_tracing);
   }
   return reasons;
@@ -2746,25 +2746,10 @@ void Animation::SetCompositorPending(CompositorPendingReason reason) {
     UpdateCompositedPaintStatus();
   }
 
-  if (RuntimeEnabledFeatures::
-          CompositedAnimationsCancelledAsynchronouslyEnabled()) {
-    if (compositor_state_ &&
-        (reason == CompositorPendingReason::kPendingCancel ||
-         reason == CompositorPendingReason::kPendingRestart)) {
-      compositor_state_->pending_action = CompositorAction::kCancel;
-    }
-  } else {
-    if (reason == CompositorPendingReason::kPendingCancel) {
-      CancelAnimationOnCompositor();
-      return;
-    }
-    if (reason == CompositorPendingReason::kPendingRestart) {
-      CancelAnimationOnCompositor();
-    }
-    if (!HasActiveAnimationsOnCompositor()) {
-      DestroyCompositorAnimation();
-      compositor_state_.reset();
-    }
+  if (compositor_state_ &&
+      (reason == CompositorPendingReason::kPendingCancel ||
+        reason == CompositorPendingReason::kPendingRestart)) {
+    compositor_state_->pending_action = CompositorAction::kCancel;
   }
 
   if (compositor_state_) {

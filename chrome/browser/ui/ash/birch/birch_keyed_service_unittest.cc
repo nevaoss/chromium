@@ -22,6 +22,7 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/test/metrics/histogram_tester.h"
 #include "base/time/time.h"
 #include "base/version_info/version_info.h"
 #include "chrome/browser/ash/file_suggest/file_suggest_keyed_service.h"
@@ -800,6 +801,7 @@ TEST_F(BirchKeyedServiceTest, BirchRecentTabsWaitForForeignSessionsChange) {
 }
 
 TEST_F(BirchKeyedServiceTest, SelfShareProvider_FromTablet) {
+  base::HistogramTester histogram_tester;
   BirchModel* model = Shell::Get()->birch_model();
   BirchDataProvider* self_share_provider =
       birch_keyed_service()->GetSelfShareProvider();
@@ -822,11 +824,15 @@ TEST_F(BirchKeyedServiceTest, SelfShareProvider_FromTablet) {
 
   // Mark Self Share Item as opened, the provider should now return zero items.
   model->GetSelfShareItemsForTest()[0].PerformAction();
+  histogram_tester.ExpectUniqueSample(
+      "Sharing.SendTabToSelf.ActivatedEntryPoint",
+      send_tab_to_self::ShareActivatedEntryPoint::kChromeOSBirch, 1);
   self_share_provider->RequestBirchDataFetch();
   EXPECT_EQ(model->GetSelfShareItemsForTest().size(), 0u);
 }
 
 TEST_F(BirchKeyedServiceTest, SelfShareProvider_FromPhone) {
+  base::HistogramTester histogram_tester;
   BirchModel* model = Shell::Get()->birch_model();
   BirchDataProvider* self_share_provider =
       birch_keyed_service()->GetSelfShareProvider();
@@ -848,11 +854,15 @@ TEST_F(BirchKeyedServiceTest, SelfShareProvider_FromPhone) {
 
   // Mark Self Share Item as opened, the provider should now return zero items.
   model->GetSelfShareItemsForTest()[0].PerformAction();
+  histogram_tester.ExpectUniqueSample(
+      "Sharing.SendTabToSelf.ActivatedEntryPoint",
+      send_tab_to_self::ShareActivatedEntryPoint::kChromeOSBirch, 1);
   self_share_provider->RequestBirchDataFetch();
   EXPECT_EQ(model->GetSelfShareItemsForTest().size(), 0u);
 }
 
 TEST_F(BirchKeyedServiceTest, SelfShareProvider_FromDesktop) {
+  base::HistogramTester histogram_tester;
   BirchModel* model = Shell::Get()->birch_model();
   BirchDataProvider* self_share_provider =
       birch_keyed_service()->GetSelfShareProvider();
@@ -874,6 +884,9 @@ TEST_F(BirchKeyedServiceTest, SelfShareProvider_FromDesktop) {
 
   // Mark Self Share Item as opened, the provider should now return zero items.
   model->GetSelfShareItemsForTest()[0].PerformAction();
+  histogram_tester.ExpectUniqueSample(
+      "Sharing.SendTabToSelf.ActivatedEntryPoint",
+      send_tab_to_self::ShareActivatedEntryPoint::kChromeOSBirch, 1);
   self_share_provider->RequestBirchDataFetch();
   EXPECT_EQ(model->GetSelfShareItemsForTest().size(), 0u);
 }

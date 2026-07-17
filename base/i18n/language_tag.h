@@ -93,14 +93,18 @@ class BASE_I18N_EXPORT LanguageTag {
   //   }
   template <i18n_extensions::ExtensionTrait T>
   std::optional<typename T::type> GetExtension(T traits) const {
-    return GetExtensionInternal<typename T::type>(T::key);
+    std::string_view extension = GetExtensionStringInternal(traits.key);
+    if (extension.empty()) {
+      return std::nullopt;
+    }
+
+    return traits.Factory(base::PassKey<LanguageTag>(), extension);
   }
 
  private:
   friend class LanguageTagConverter;
 
-  template <typename R>
-  std::optional<R> GetExtensionInternal(char key) const;
+  std::string_view GetExtensionStringInternal(char key) const;
   // This constructor is intended for internal use by `LanguageTagConverter`.
   // Do not call this directly.
   explicit LanguageTag(ImmutableStringType tag);

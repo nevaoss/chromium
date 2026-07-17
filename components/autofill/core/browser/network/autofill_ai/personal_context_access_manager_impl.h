@@ -6,6 +6,7 @@
 #define COMPONENTS_AUTOFILL_CORE_BROWSER_NETWORK_AUTOFILL_AI_PERSONAL_CONTEXT_ACCESS_MANAGER_IMPL_H_
 
 #include <memory>
+#include <string_view>
 #include <vector>
 
 #include "base/containers/flat_map.h"
@@ -17,6 +18,7 @@
 #include "base/observer_list.h"
 #include "base/scoped_observation.h"
 #include "base/time/time.h"
+#include "base/types/expected.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_instance.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_type.h"
 #include "components/autofill/core/browser/network/autofill_ai/personal_context_access_manager.h"
@@ -72,6 +74,7 @@ class PersonalContextAccessManagerImpl
   void GetUnmaskedSpiiEntity(const EntityInstance::EntityId& id,
                              GetUnmaskedSpiiEntityCallback callback) override;
   bool IsTypePrefetched(EntityType type) const override;
+  bool ServerHasDataAvailable(EntityType type) const override;
   void AddObserver(PersonalContextAccessManager::Observer* observer) override;
   void RemoveObserver(
       PersonalContextAccessManager::Observer* observer) override;
@@ -86,6 +89,16 @@ class PersonalContextAccessManagerImpl
 
  private:
   friend class PersonalContextAccessManagerImplTestApi;
+
+  // Results of parsing the server response during prefetch requests. It bundles
+  // the internal `EntityInstance` representation with its original
+  // `personal_context::proto::Entity` received from the server. The original
+  // proto is required for subsequent unmasking requests (see
+  // `GetUnmaskedSpiiEntity`).
+  struct ParsedEntity {
+    EntityInstance instance;
+    personal_context::proto::Entity proto;
+  };
 
   struct RequestState {
     RequestStatus status = RequestStatus::kNotStarted;
@@ -111,20 +124,24 @@ class PersonalContextAccessManagerImpl
       std::vector<EntityType> requested_types,
       personal_context::FetchContextResult result);
 
+  // Parses the raw protobuf string response and converts it into a vector of
+  // EntityInstances. Returns an unexpected error if parsing fails.
+  base::expected<std::vector<ParsedEntity>,
+                 personal_context::ContextMemoryError>
+  ExtractEntitiesFromResponse(std::string_view serialized_response);
+
   // Handles the asynchronous result of the SPII entities fetch.
   void OnFetchPiiEntitiesComplete(
       const EntityInstance::EntityId& id,
       GetUnmaskedSpiiEntityCallback callback,
       personal_context::FetchPiiEntitiesResult result);
 
-  // Processes a batch of prefetched `entities` and their original `protos`, by:
-  // - Notifying observers about the prefetch result.
+  // Processes a batch of prefetched entities, by
+  // - Updating the cache state.
   // - Scheduling eviction of the prefetched types.
-  // The `protos` are cached for unmasking entities.
-  void ProcessPrefetchedEntities(
-      absl::flat_hash_map<EntityType, std::vector<EntityInstance>> entities,
-      absl::flat_hash_map<EntityInstance::EntityId,
-                          personal_context::proto::Entity> protos);
+  // - Notifying observers.
+  void ProcessPrefetchedEntities(std::vector<ParsedEntity> parsed_entities,
+                                 base::span<const EntityType> requested_types);
 
   // Returns true if a network request should be initiated for `type`.
   // This is true if the type is not cached, its cache TTL has expired, or a
@@ -140,7 +157,7 @@ class PersonalContextAccessManagerImpl
   void SetTypeStatus(EntityType type, RequestStatus status);
 
   // Notifies observers of the prefetch status.
-  void NotifyPrefetchStatusObservers(bool success);
+  void NotifyPrefetchStatusObservers(base::span<const EntityInstance> entities);
 
   // Caches an unmasked SPII `entity`, so it can be refilled without an
   // additional network round trip for `kUnmaskedSpiiCacheTTL`.

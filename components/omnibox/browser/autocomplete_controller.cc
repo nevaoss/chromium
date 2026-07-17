@@ -2221,8 +2221,7 @@ void AutocompleteController::NotifyChanged() {
   // Will log metrics for how many matches changed. Will also log timing metrics
   // for the current request if it's complete; otherwise, will just update
   // timestamps of when the last update changed any or the default suggestion.
-  metrics_.OnNotifyChanged(last_result_for_logging_,
-                           internal_result_.GetMatchDedupComparators());
+  metrics_.OnNotifyChanged(last_result_for_logging_, internal_result_);
 
   // Swap matches from `internal_result_` to `published_result_` and copy them
   // back from `published_result_` to `internal_result_`. This allows

@@ -1412,11 +1412,21 @@ void ClientSession::OnSecurityKeyConnection(
     mojo::PendingReceiver<mojom::SecurityKeyForwarder> receiver) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
+  bool allow_gnubby =
+      desktop_environment_options_.enable_security_key() &&
+      effective_policies_.allow_gnubby_forwarding.value_or(true);
+
   auto* extension_session = static_cast<SecurityKeyExtensionSession*>(
       extension_manager_->FindExtensionSession(
           SecurityKeyExtension::kCapability));
+
   if (!extension_session) {
-    LOG(WARNING) << "Security key extension not found. "
+    LOG(WARNING)
+        << "Security key extension is not found. Binding request rejected.";
+    return;
+  }
+  if (!allow_gnubby) {
+    LOG(WARNING) << "Security key forwarding is disabled by policy or option. "
                  << "Binding request rejected.";
     return;
   }

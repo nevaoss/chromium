@@ -320,6 +320,7 @@ base::span<const std::string_view> GetUntestedChromeUrlsForTest() {
       "chrome://managed-user-profile-notice",
       // TODO(crbug.com/40185163): DCHECK failure
       "chrome://memory-internals",
+      "chrome://omnibox-everywhere.top-chrome",
       "chrome://omnibox-popup.top-chrome",
       "chrome://profile-customization",
       "chrome://signin-dice-web-intercept.top-chrome",

@@ -399,11 +399,8 @@ TaskManagerView* TaskManagerView::GetInstanceForTests() {
 // static
 TaskManagerView::TableConfigs TaskManagerView::GetTableConfigs() {
   return TableConfigs{
-      .table_has_border = false,
       .table_refresh = true,
-      .scroll_view_rounded = true,
       .dialog_button_disabled = true,
-      .sort_on_cpu_by_default = true,
   };
 }
 
@@ -571,10 +568,9 @@ std::unique_ptr<views::View> TaskManagerView::CreateSearchBar(
 }
 
 std::unique_ptr<views::ScrollView> TaskManagerView::CreateProcessView(
-    std::unique_ptr<views::TableView> tab_table,
-    bool table_has_border) {
+    std::unique_ptr<views::TableView> tab_table) {
   auto scroll_view = views::TableView::CreateScrollViewWithTable(
-      std::move(tab_table), table_has_border);
+      std::move(tab_table), /*has_border=*/false);
 
   scroll_view->SetLayoutManager(std::make_unique<views::FillLayout>());
   scroll_view->SetProperty(
@@ -674,20 +670,17 @@ void TaskManagerView::Init() {
   CreateHeader(provider);
 
   // Add Process List (a.k.a Scroll View)
-  auto* tab_table_parent = AddChildView(
-      CreateProcessView(std::move(tab_table), table_config_.table_has_border));
+  auto* tab_table_parent =
+      AddChildView(CreateProcessView(std::move(tab_table)));
 
-  if (table_config_.scroll_view_rounded) {
-    tab_table_parent->SetPaintToLayer(ui::LAYER_TEXTURED);
+  tab_table_parent->SetPaintToLayer(ui::LAYER_TEXTURED);
 
-    ui::Layer* scroll_view_layer = tab_table_parent->layer();
-    scroll_view_layer->SetRoundedCornerRadius(
-        gfx::RoundedCornersF(corner_radius));
-    scroll_view_layer->SetIsFastRoundedCorner(true);
-  }
+  ui::Layer* scroll_view_layer = tab_table_parent->layer();
+  scroll_view_layer->SetRoundedCornerRadius(
+      gfx::RoundedCornersF(corner_radius));
+  scroll_view_layer->SetIsFastRoundedCorner(true);
 
-  table_model_->RetrieveSavedColumnsSettingsAndUpdateTable(
-      table_config_.sort_on_cpu_by_default);
+  table_model_->RetrieveSavedColumnsSettingsAndUpdateTable(true);
 
   RestoreSavedCategory();
 

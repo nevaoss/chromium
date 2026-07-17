@@ -6,6 +6,7 @@
  * Create a mock function that records function calls and validates against
  * expectations.
  * @extends Function
+ * @property {*} returnValue
  */
 class MockMethod {
   constructor() {

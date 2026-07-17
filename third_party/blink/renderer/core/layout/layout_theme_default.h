@@ -37,11 +37,6 @@ namespace blink {
 
 class CORE_EXPORT LayoutThemeDefault : public LayoutTheme {
  public:
-  void AdjustSliderThumbSize(ComputedStyleBuilder&) const override;
-
-  void AdjustInnerSpinButtonStyle(ComputedStyleBuilder&) const override;
-  void AdjustButtonStyle(ComputedStyleBuilder&) const override;
-
   void AdjustSearchFieldCancelButtonStyle(ComputedStyleBuilder&) const override;
 
   // These methods define the padding for the MenuList's inner block.

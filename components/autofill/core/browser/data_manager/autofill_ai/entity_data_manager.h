@@ -163,7 +163,7 @@ class EntityDataManager : public KeyedService,
                           const history::DeletionInfo& deletion_info) override;
 
   // PersonalContextAccessManager::Observer:
-  void OnMaskedEntitiesPrefetched(
+  void OnPrefetchContextComplete(
       const PersonalContextAccessManager& manager,
       base::span<const EntityInstance> entities) override;
   void OnMaskedEntityTypeEvicted(const PersonalContextAccessManager& manager,
@@ -211,6 +211,11 @@ class EntityDataManager : public KeyedService,
   // Dropping passes happens at a data manager level (rather than a sync bridge
   // level) because the device's re-auth state can change.
   void EnforceEntityReauthRequirements();
+
+  // Removes any cached `kPersonalContext` entities from `entities_` that
+  // represent the same entity as any non-pContext entity in the cache, based
+  // on their merge constraints.
+  void DedupePersonalContextEntities();
 
   // Becomes true after the response of the initial LoadEntitiesFromDatabase()
   // and remains true from then on.

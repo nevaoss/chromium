@@ -24,6 +24,7 @@ import org.chromium.components.autofill.AutofillDelegate;
 import org.chromium.components.autofill.AutofillSuggestion;
 import org.chromium.components.autofill.AutofillSuggestion.Payload;
 import org.chromium.components.autofill.SuggestionType;
+import org.chromium.components.autofill.autofill_ai.EntityTypeName;
 import org.chromium.ui.DropdownItem;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.text.SpanApplier;
@@ -86,6 +87,13 @@ public class AutofillKeyboardAccessoryViewBridge implements AutofillDelegate {
 
     @Override
     public void accessibilityFocusCleared() {}
+
+    @Override
+    public void openSettingsForEntityType(@EntityTypeName int entityType) {
+        if (mNativeAutofillKeyboardAccessory == 0) return;
+        AutofillKeyboardAccessoryViewBridgeJni.get()
+                .openSettingsForEntityType(mNativeAutofillKeyboardAccessory, entityType);
+    }
 
     private void onDeletionDialogClosed(boolean confirmed) {
         if (mNativeAutofillKeyboardAccessory == 0) return;
@@ -242,7 +250,6 @@ public class AutofillKeyboardAccessoryViewBridge implements AutofillDelegate {
             @JniType("std::u16string") String iphDescriptionText,
             GURL customIconUrl,
             boolean applyDeactivatedStyle,
-            boolean showLoadingOnAcceptance,
             @Nullable Payload payload) {
         int drawableId = iconId == 0 ? DropdownItem.NO_ICON : iconId;
         return new AutofillSuggestion.Builder()
@@ -256,7 +263,6 @@ public class AutofillKeyboardAccessoryViewBridge implements AutofillDelegate {
                 .setIphDescriptionText(iphDescriptionText)
                 .setCustomIconUrl(customIconUrl)
                 .setApplyDeactivatedStyle(applyDeactivatedStyle)
-                .setShowLoadingOnAcceptance(showLoadingOnAcceptance)
                 .setPayload(payload)
                 .build();
     }
@@ -282,5 +288,8 @@ public class AutofillKeyboardAccessoryViewBridge implements AutofillDelegate {
 
         void onDeletionDialogClosed(
                 long nativeAutofillKeyboardAccessoryViewImpl, boolean confirmed);
+
+        void openSettingsForEntityType(
+                long nativeAutofillKeyboardAccessoryViewImpl, @EntityTypeName int entityType);
     }
 }

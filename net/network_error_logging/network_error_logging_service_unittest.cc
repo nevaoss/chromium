@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "net/network_error_logging/network_error_logging_service.h"
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -10,6 +12,7 @@
 #include "base/functional/callback.h"
 #include "base/strings/stringprintf.h"
 #include "base/test/scoped_feature_list.h"
+#include "base/test/scoped_mock_clock_override.h"
 #include "base/test/simple_test_clock.h"
 #include "base/test/values_test_util.h"
 #include "base/time/time.h"
@@ -20,7 +23,6 @@
 #include "net/base/network_anonymization_key.h"
 #include "net/base/schemeful_site.h"
 #include "net/network_error_logging/mock_persistent_nel_store.h"
-#include "net/network_error_logging/network_error_logging_service.h"
 #include "net/reporting/reporting_test_util.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "url/gurl.h"
@@ -1122,14 +1124,10 @@ TEST_P(NetworkErrorLoggingServiceTest, StatusAsValue) {
   // this test.
   base::SimpleTestClock clock;
   service()->SetClockForTesting(&clock);
-  // The clock is initialized to the "zero" or origin point of the Time class.
-  // This sets the clock's Time to the equivalent of the "zero" or origin point
-  // of the TimeTicks class, so that the serialized value produced by
-  // NetLog::TimeToString is consistent across restarts.
-  base::TimeDelta delta_from_origin =
-      base::Time::UnixEpoch().since_origin() -
-      base::TimeTicks::UnixEpoch().since_origin();
-  clock.Advance(delta_from_origin);
+  // Leave the clock at the origin point of base::Time. NetLog::TimeToString
+  // serializes a base::Time relative to the current clocks, so the
+  // ScopedMockClockOverride installed below makes the serialized expiry equal
+  // to its offset from the origin point (i.e. the policy max_age).
 
   service()->OnHeader(kNak_, kOrigin_, kServerIP_, kHeaderSuccessFraction1_);
 
@@ -1151,6 +1149,7 @@ TEST_P(NetworkErrorLoggingServiceTest, StatusAsValue) {
       kNak_, url::Origin::Create(GURL("https://invalid-types.example.com")),
       kServerIP_, kHeaderWrongTypes);
 
+  base::ScopedMockClockOverride mock_clock;
   base::Value actual = service()->StatusAsValue();
   base::Value expected = base::test::ParseJson(R"json(
       {

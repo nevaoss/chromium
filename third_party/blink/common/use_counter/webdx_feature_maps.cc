@@ -119,6 +119,7 @@ GetWebFeatureToWebDXFeatureMap() {
           {WebFeature::kStorageBucketsOpen, WebDXFeature::kStorageBuckets},
           {WebFeature::kCSSSelectorTargetText, WebDXFeature::kTargetText},
           {WebFeature::kHTMLTemplateElement, WebDXFeature::kTemplate},
+          {WebFeature::kHTMLPatching, WebDXFeature::kDRAFT_TemplateFor},
           {WebFeature::kTextWrapBalance, WebDXFeature::kTextWrapBalance},
           {WebFeature::kTextWrapPretty, WebDXFeature::kTextWrapPretty},
           {WebFeature::kCSSSelectorUserValid, WebDXFeature::kUserPseudos},

@@ -11,6 +11,7 @@
 
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
+#include "base/types/optional_ref.h"
 #include "base/types/strong_alias.h"
 #include "build/build_config.h"
 #include "components/autofill/core/common/language_code.h"
@@ -149,13 +150,24 @@ class PasswordManagerClient {
   // page that hosted the form.
   virtual bool IsSavingAndFillingEnabled(const GURL& url) const;
 
+  // Checks if filling is enabled on the current page.
+  // Convenience helper that calls the 2-argument version with std::nullopt.
+  bool IsFillingEnabled(const url::Origin& origin) const;
+
   // Checks if filling is enabled on the current page. Filling is disabled in
-  // the presence of SSL errors on a page. |url| describes the URL to fill the
-  // password for. It is not necessary the URL of the current page but can be a
-  // URL of a proxy or subframe.
+  // the presence of SSL errors on a page. `origin` describes the origin to fill
+  // the password for.
+  //
+  // Opaque origins (e.g., sandboxed iframes or data URLs) are blocked from
+  // filling for security reasons.
+  // For an interim period, this behavior is gated by a kill-switch
+  // (`kPasswordBlockOpaqueOrigins`). During that period, continue to pass `url`
+  // if `url != origin.GetURL()`.
+  //
   // TODO(crbug.com/40685327): This method's name is misleading as it also
   // determines whether saving prompts should be shown.
-  virtual bool IsFillingEnabled(const GURL& url) const;
+  virtual bool IsFillingEnabled(const url::Origin& origin,
+                                base::optional_ref<const GURL> url) const;
 
   // Checks if the field was last filled with an OTP.
   virtual bool IsFieldFilledWithOtp(autofill::FormGlobalId form_id,
@@ -528,6 +540,9 @@ class PasswordManagerClient {
 
   // Returns true if the current page is to the new tab page.
   virtual bool IsNewTabPage() const = 0;
+
+  // Returns true if the current page is a Chrome sign-in page.
+  virtual bool IsChromeSigninPage() const;
 
   // Returns the WebAuthnCredentialsDelegate for the given driver, if available.
   virtual WebAuthnCredentialsDelegate* GetWebAuthnCredentialsDelegateForDriver(

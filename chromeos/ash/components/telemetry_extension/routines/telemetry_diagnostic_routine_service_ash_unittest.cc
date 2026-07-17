@@ -69,7 +69,7 @@ class TelemetryDiagnosticsRoutineServiceAshTest : public testing::Test {
   void SetUp() override { cros_healthd::FakeCrosHealthd::Initialize(); }
   void TearDown() override { cros_healthd::FakeCrosHealthd::Shutdown(); }
 
-  crosapi::TelemetryDiagnosticRoutinesService* routines_service() const {
+  ash::TelemetryDiagnosticsRoutineServiceAsh* routines_service() const {
     return routines_service_.get();
   }
 
@@ -89,9 +89,8 @@ class TelemetryDiagnosticsRoutineServiceAshTest : public testing::Test {
   base::test::TaskEnvironment task_environment_;
 
   // Ash-side implementation of the interface.
-  std::unique_ptr<crosapi::TelemetryDiagnosticRoutinesService>
-      routines_service_{
-          TelemetryDiagnosticsRoutineServiceAsh::Factory::Create()};
+  std::unique_ptr<ash::TelemetryDiagnosticsRoutineServiceAsh> routines_service_{
+      std::make_unique<ash::TelemetryDiagnosticsRoutineServiceAsh>()};
   mojo_service_manager::FakeMojoServiceManager fake_service_manager_;
 };
 

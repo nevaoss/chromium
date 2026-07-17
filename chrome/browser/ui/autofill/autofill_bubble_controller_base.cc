@@ -105,8 +105,7 @@ void AutofillBubbleControllerBase::UpdatePageActionIcon() {
     if (BrowserWindowInterface* browser =
             GlobalBrowserCollection::GetInstance()->FindBrowserWithTab(
                 web_contents())) {
-      browser->GetBrowserForMigrationOnly()->window()->UpdatePageActionIcon(
-          *icon_type);
+      BrowserWindow::FromBrowser(browser)->UpdatePageActionIcon(*icon_type);
     }
     return;
   }

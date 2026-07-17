@@ -15,6 +15,7 @@
 #include "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble_controller.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/bookmarks/bookmark_model_factory.h"
+#include "chrome/browser/bookmarks/managed_bookmark_service_factory.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/collaboration/collaboration_service_factory.h"
 #include "chrome/browser/commerce/shopping_service_factory.h"
@@ -114,8 +115,7 @@
 #include "chrome/browser/ui/views/animations/side_panel_animations.h"
 #include "chrome/browser/ui/views/animations/tab_strip_animations.h"
 #include "chrome/browser/ui/views/color_provider_browser_helper.h"
-#include "chrome/browser/ui/views/contextual_tasks/contextual_tasks_close_button_controller.h"
-#include "chrome/browser/ui/views/contextual_tasks/contextual_tasks_ephemeral_button_controller.h"
+#include "chrome/browser/ui/views/contextual_tasks/contextual_tasks_browser_controller.h"
 #include "chrome/browser/ui/views/data_sharing/data_sharing_bubble_controller.h"
 #include "chrome/browser/ui/views/extensions/extension_keybinding_registry_views.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
@@ -269,8 +269,9 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
           *browser, &web_app::MaybeCreateAppBrowserController, browser);
 
   if (auto* model = BookmarkModelFactory::GetForBrowserContext(profile)) {
+    auto* managed = ManagedBookmarkServiceFactory::GetForProfile(profile);
     bookmarks_service_feature_ =
-        std::make_unique<BookmarksServiceFeature>(model);
+        std::make_unique<BookmarksServiceFeature>(model, managed);
   }
 
   bookmarks_side_panel_coordinator_ =
@@ -622,40 +623,10 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
   //   CloseButtonController depends on ImmersiveModeController.
   // TODO(crbug.com/481268779): Pass these dependencies explicitly.
   if (base::FeatureList::IsEnabled(contextual_tasks::kContextualTasks)) {
-    contextual_tasks_active_task_context_provider_ =
-        std::make_unique<contextual_tasks::ActiveTaskContextProviderImpl>(
-            browser_,
-            contextual_tasks::ContextualTasksServiceFactory::GetForProfile(
-                browser_->GetProfile()));
-    contextual_tasks_entry_point_eligibility_manager_ =
+    contextual_tasks_browser_controller_ =
         GetUserDataFactory()
-            .CreateInstance<contextual_tasks::EntryPointEligibilityManager>(
+            .CreateInstance<contextual_tasks::ContextualTasksBrowserController>(
                 *browser_, browser_);
-    contextual_tasks_side_panel_coordinator_ =
-        GetUserDataFactory()
-            .CreateInstance<
-                contextual_tasks::ContextualTasksSidePanelCoordinator>(
-                *browser_, browser_,
-                contextual_tasks_active_task_context_provider_.get(),
-                contextual_tasks_entry_point_eligibility_manager_.get());
-
-    if (contextual_tasks::kShowEntryPoint.Get() ==
-        contextual_tasks::EntryPointOption::kToolbarEphemeralBranded) {
-      contextual_tasks_ephemeral_button_controller_ =
-          GetUserDataFactory()
-              .CreateInstance<ContextualTasksEphemeralButtonController>(
-                  *browser_, browser_);
-    }
-
-    // Must be after:
-    //   contextual_tasks_side_panel_coordinator_.
-    //   contextual_tasks_entry_point_eligibility_manager_.
-    contextual_tasks_close_button_controller_ =
-        GetUserDataFactory()
-            .CreateInstance<ContextualTasksCloseButtonController>(
-                *browser_, browser_,
-                contextual_tasks_entry_point_eligibility_manager_.get(),
-                contextual_tasks_side_panel_coordinator_.get());
   }
 
   // Initialize embedder features last.
@@ -1201,10 +1172,9 @@ void BrowserWindowFeatures::TearDownPreBrowserWindowDestruction() {
   // in Init (it observes other features such as immersive_mode_controller_
   // via ScopedObservation), and ContextualTasksCloseButtonController must
   // outlive nothing observable.
-  contextual_tasks_close_button_controller_.reset();
-  contextual_tasks_ephemeral_button_controller_.reset();
-  contextual_tasks_side_panel_coordinator_.reset();
-  contextual_tasks_entry_point_eligibility_manager_.reset();
+  if (contextual_tasks_browser_controller_) {
+    contextual_tasks_browser_controller_->Shutdown();
+  }
   signin_view_controller_->TearDownPreBrowserWindowDestruction();
   lens_overlay_entry_point_controller_.reset();
   // Must be before window_feature_controller_ (raw pointer).

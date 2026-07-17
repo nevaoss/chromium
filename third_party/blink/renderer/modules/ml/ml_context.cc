@@ -205,7 +205,9 @@ gpu::SharedImageUsageSet OperandUsageToSharedImageUsageSet(
     shared_image_usage_set |= gpu::SHARED_IMAGE_USAGE_WEBNN_SHARED_TENSOR_WRITE;
   }
   if (usage.Has(webnn::MLTensorUsageFlags::kWebGpuInterop)) {
-    shared_image_usage_set |= gpu::SHARED_IMAGE_USAGE_WEBGPU_SHARED_BUFFER;
+    shared_image_usage_set |= gpu::SHARED_IMAGE_USAGE_WEBGPU_READ |
+                              gpu::SHARED_IMAGE_USAGE_WEBGPU_WRITE |
+                              gpu::SHARED_IMAGE_USAGE_WEBGPU_SHARED_BUFFER;
   }
   return shared_image_usage_set;
 }

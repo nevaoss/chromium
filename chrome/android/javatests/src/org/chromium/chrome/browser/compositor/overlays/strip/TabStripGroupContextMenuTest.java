@@ -391,14 +391,7 @@ public class TabStripGroupContextMenuTest {
 
         // Select the blue color.
         String blueColor = mActivityTestRule.getActivity().getString(R.string.tab_group_color_blue);
-        String notSelectedStringBlue =
-                mActivityTestRule
-                        .getActivity()
-                        .getString(
-                                R.string
-                                        .accessibility_tab_group_color_picker_color_item_not_selected_description,
-                                blueColor);
-        onView(withContentDescription(notSelectedStringBlue)).perform(click());
+        onView(withContentDescription(blueColor)).perform(click());
 
         // Verify the blue color is selected.
         color = ThreadUtils.runOnUiThreadBlocking(() -> tabModel.getTabGroupColor(mTabGroupId));

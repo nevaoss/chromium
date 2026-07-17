@@ -17,9 +17,11 @@
 <translation id="1052842760770519282">Някои от паролите ви не са достъпни</translation>
 <translation id="1057623954802068161">Превъртане до горната част на страницата</translation>
 <translation id="1066338698580889414">Долният лист за известия със съвети е отворен на пълната височина</translation>
+<translation id="1067048845568873861">Дата на създаване</translation>
 <translation id="1070689840697074178">Можете да изтегляте PDF файловете тук</translation>
 <translation id="107147699690128016">Ако промените файловото разширение, файлът може да се отвори в друго приложение и потенциално да навреди на устройството ви.</translation>
 <translation id="1073328695547557412">Докоснете иконата на Google Обектив.</translation>
+<translation id="1075811647922107217">Размер на страницата</translation>
 <translation id="1080116354587839789">Побиране на ширина</translation>
 <translation id="1086486568852410168">Търсене с Google Обектив</translation>
 <translation id="1087799850623149508">Можете да докоснете и задържите, за да преместите адресната лента в долната част</translation>
@@ -642,6 +644,7 @@
 <translation id="3739899004075612870">Отметката бе запазена в/ъв <ph name="PRODUCT_NAME" /></translation>
 <translation id="3740290940447881599">Уверете се, че имате доверие на този сайт</translation>
 <translation id="3740525748616366977">На това устройство не може да се търси с глас</translation>
+<translation id="3749289110408117711">Име на файла</translation>
 <translation id="3756823472711156529">Възстановяване на групата</translation>
 <translation id="3763110477555836428">Когато плащате с тази карта, ще бъде попълнен номер на виртуална карта, за да се защитят действителните ви данни. Управлявайте настройките в Google Wallet. <ph name="BEGIN_LINK1" />Научете повече за виртуалните карти<ph name="END_LINK1" /></translation>
 <translation id="376561056759077985">Някои данни още не са запазени</translation>
@@ -673,6 +676,7 @@
 <translation id="3870538285500327859"><ph name="TAB_TITLE" /> – избран раздел „картина в картината“</translation>
 <translation id="3870908470613821006">Всички хора незабавно ще загубят достъп до групата раздели „<ph name="GROUP_NAME" />“ и тя ще бъде изтрита от всички устройства</translation>
 <translation id="3873174561423636563">За да продължите, <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> ще сподели с този сайт вашите <ph name="FIELDS_STRING" />. Вижте <ph name="BEGIN_LINK1" />общите условия<ph name="END_LINK1" /> на сайта.</translation>
+<translation id="3882323608730650973">Променено</translation>
 <translation id="3892148308691398805">Копиране на текста</translation>
 <translation id="3893858854379998374">За да се запазят отметките в профила ви, изтрийте неизползваните отметки</translation>
 <translation id="3898498281932368596">Блокиране и напускане</translation>
@@ -703,6 +707,7 @@
 <translation id="399788104667917863">Фиксиране в лентата с инструменти</translation>
 <translation id="4000212216660919741">Начална страница в офлайн режим</translation>
 <translation id="4000670338830950598">Персонализиране и контролиране на Google Chrome с откроен елемент</translation>
+<translation id="4002066346123236978">Заглавие</translation>
 <translation id="4015643064997321279">{NUM_PASSWORDS,plural, =1{1 компрометирана парола в профила ви в Google}other{# компрометирани пароли в профила ви в Google}}</translation>
 <translation id="4023638601467301498">Влезте в Chrome, за да получите отметките си и др. на всичките си устройства</translation>
 <translation id="4024768890073681126">Браузърът се управлява от родител</translation>
@@ -1411,6 +1416,7 @@
 <translation id="6846298663435243399">Зарежда се…</translation>
 <translation id="6850409657436465440">Изтеглянето продължава</translation>
 <translation id="6850830437481525139">Затворихте <ph name="TAB_COUNT" /> раздела</translation>
+<translation id="6852437757508328589">{NUM_RESULTS,plural, =1{Намерен е 1 резултат}other{Намерени са # резултата}}</translation>
 <translation id="685340923442249391">{FILE_COUNT,plural, =1{Аудиофайлове, 1 аудиофайл в списъка}other{Аудиофайлове, # аудиофайла в списъка}}</translation>
 <translation id="685850645784703949">Discover от Google – изкл.</translation>
 <translation id="6864459304226931083">Изтегляне на изображението</translation>
@@ -1987,6 +1993,7 @@
 <translation id="9093915805850895575">Отваряне в прозорец на Chrome</translation>
 <translation id="909756639352028172">За възможно най-персонализирана практическа работа включете Chrome в „Активност в мрежата и приложенията“ и свързаните услуги на Google</translation>
 <translation id="9099220545925418560">Въз основа на историята ви на сърфиране. Тази настройка е изключена.</translation>
+<translation id="9099674669267916096">Брой страници</translation>
 <translation id="9100610230175265781">Изисква се пропуск</translation>
 <translation id="9101137867221042551">Управление</translation>
 <translation id="9102803872260866941">Разделът за визуализация е отворен</translation>

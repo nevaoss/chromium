@@ -426,8 +426,8 @@ class SerializerMarkupAccumulator : public MarkupAccumulator {
       WebFrameSerializer::MHTMLPartsGenerationDelegate* web_delegate,
       Document& document)
       : MarkupAccumulator(ResolveUrls::kAll,
-                          IsA<HTMLDocument>(document) ? SerializationType::kHTML
-                                                      : SerializationType::kXML,
+                          IsA<HTMLDocument>(document) ? SerializationType::kHtml
+                                                      : SerializationType::kXml,
                           ShadowRootInclusion()),
         resource_serializer_(resource_serializer),
         web_delegate_(web_delegate),

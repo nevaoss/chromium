@@ -6,6 +6,7 @@
 #define CHROME_BROWSER_UI_AUTOFILL_PAYMENTS_OMNIBOX_AUTOFILL_BUBBLE_CONTROLLER_H_
 
 #include "base/functional/callback.h"
+#include "base/memory/raw_ref.h"
 #include "base/memory/weak_ptr.h"
 #include "chrome/browser/ui/autofill/autofill_bubble_controller_base.h"
 #include "components/autofill/core/browser/suggestions/suggestion.h"
@@ -21,6 +22,10 @@ class TabInterface;
 }
 
 namespace autofill {
+
+class AutofillBubbleBase;
+class PaymentsDataManager;
+enum class PaymentsUiClosedReason;
 
 // Controller class that exposes functionality to omnibox autofill bubbles.
 // Owned by TabFeatures.
@@ -55,12 +60,23 @@ class OmniboxAutofillBubbleController : public AutofillBubbleControllerBase {
                const AutofillSuggestionDelegate::SuggestionMetadata&)>
           did_accept_suggestion);
 
+  AutofillBubbleBase* GetBubbleView() const;
+  std::u16string GetWindowTitle() const;
+  const std::vector<Suggestion>& GetSuggestions() const;
+  base::WeakPtr<OmniboxAutofillBubbleController> GetWeakPtr();
+
+  void OnBubbleClosed(PaymentsUiClosedReason reason);
+
+  bool ShouldShowGooglePayLogo() const;
+
  protected:
   void DoShowBubble() override;
 
  private:
   ui::ScopedUnownedUserData<OmniboxAutofillBubbleController>
       scoped_unowned_user_data_;
+
+  const raw_ref<PaymentsDataManager> payments_data_manager_;
 
   std::vector<Suggestion> suggestions_;
   base::RepeatingCallback<void(base::span<const Suggestion>)>

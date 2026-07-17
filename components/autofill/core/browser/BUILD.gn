@@ -115,10 +115,12 @@ executable("country_native_names_generator") {
 
 compiled_action("generate_country_native_names") {
   tool = ":country_native_names_generator"
+  inputs = [ "$root_build_dir/icudtl.dat" ]
   outputs = [ "$target_gen_dir/geo/country_native_names_inl.h" ]
   args = [ "--output-file-path=" +
            rebase_path("$target_gen_dir/geo/country_native_names_inl.h",
                        root_build_dir) ]
+  deps = [ "//third_party/icu:copy_icudata($default_toolchain)" ]
 }
 
 proto_library("amount_extraction_heuristic_regexes_proto") {
@@ -651,6 +653,8 @@ static_library("browser") {
     "payments/payments_access_token_fetcher.h",
     "payments/payments_autofill_client.cc",
     "payments/payments_autofill_client.h",
+    "payments/payments_churned_users_manager.cc",
+    "payments/payments_churned_users_manager.h",
     "payments/payments_customer_data.h",
     "payments/payments_data_cleaner.cc",
     "payments/payments_data_cleaner.h",

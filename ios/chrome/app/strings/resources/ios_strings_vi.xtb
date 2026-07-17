@@ -103,6 +103,7 @@
 <translation id="1335767868357998043">Chọn vị trí thanh địa chỉ</translation>
 <translation id="1347468774581902829">Quản lý hoạt động</translation>
 <translation id="1348596747084433075">https://www.amazon.com/Wife-Gifts/s?k=for+Wife+Gifts</translation>
+<translation id="1353169676553627502">Tắt thông báo cập nhật tiến trình</translation>
 <translation id="1355337783640312381">Để chuyển đổi giữa các tài khoản, hãy nhấn vào biểu tượng tài khoản</translation>
 <translation id="135806768612505061">Tất cả các thẻ</translation>
 <translation id="1358106883354237005">Tài khoản được quản lý</translation>
@@ -609,6 +610,7 @@
 <translation id="3073633853887034268">Tôi hiểu</translation>
 <translation id="3080525922482950719">Bạn có thể lưu các trang để đọc vào lúc khác hoặc khi không có kết nối mạng</translation>
 <translation id="3081338492074632642">Đảm bảo mật khẩu bạn đang lưu khớp với mật khẩu dùng cho <ph name="WEBSITE" /></translation>
+<translation id="3084484227247071193">Bật thông báo cập nhật tiến trình</translation>
 <translation id="3087734570205094154">Dưới cùng</translation>
 <translation id="309710370695886264">Bạn có 1 mật khẩu trùng lặp. Hãy khắc phục ngay để giữ an toàn.</translation>
 <translation id="3099402981545350675">Thao tác này sẽ xoá các địa chỉ đã lưu trên thiết bị này. Một số thông tin đã chọn trong Chrome cũng sẽ bị xoá, nhưng các thông tin đó vẫn được giữ nguyên trong Tài khoản Google của bạn.</translation>
@@ -708,6 +710,7 @@
 <translation id="3449029510150690417">Tạo nhóm thẻ mới bằng cách đặt tên và màu cho nhóm thẻ</translation>
 <translation id="345348365500626747">Đã tìm thấy địa chỉ</translation>
 <translation id="3459644598174926977">Nói chuyện với Gemini bằng tính năng Live để hỏi về một trang, cùng lên ý tưởng và trò chuyện hai chiều.</translation>
+<translation id="3462768334899086950">Điều này có nghĩa là bạn sẽ mất tệp chưa lưu và các thẻ hiện tại</translation>
 <translation id="3464194322481586217">Không thể theo dõi giá này.</translation>
 <translation id="3469117812148449995">Các lựa chọn lưu mật khẩu</translation>
 <translation id="3472469028191701821">Mở trong thẻ mới</translation>
@@ -965,6 +968,7 @@
 <translation id="4326912346867677256">Nhấn vào "Sử dụng mật khẩu" để đăng nhập một cách an toàn.</translation>
 <translation id="4328843285884395590">Drive của tôi</translation>
 <translation id="4331177082088332784">Bạn có thể quản lý lựa chọn này trong phần BEGIN_LINK Cài đặt nội dung END_LINK</translation>
+<translation id="4331712008356052424">Để gửi đường liên kết này, hãy đăng nhập vào thiết bị khác của bạn bằng <ph name="USER_EMAIL" /></translation>
 <translation id="4334428914252001502">1 bài viết chưa đọc.</translation>
 <translation id="4338258232580025606">Không thể đăng nhập</translation>
 <translation id="4338650699862464074">Gửi URL của các trang bạn truy cập cho Google.</translation>
@@ -1471,6 +1475,7 @@
 <translation id="6040143037577758943">Đóng</translation>
 <translation id="6042308850641462728">Xem thêm</translation>
 <translation id="6045460247888249350">Thêm tiêu đề</translation>
+<translation id="6050237559175440178">Xác minh danh tính để sử dụng và lưu thông tin của bạn trên mọi thiết bị</translation>
 <translation id="6052269326659653305">Chuyển đổi hồ sơ</translation>
 <translation id="605721222689873409">YY</translation>
 <translation id="6059830886158432458">Kiểm soát tin bài và hoạt động của bạn tại đây</translation>
@@ -1846,6 +1851,7 @@
 <translation id="722339453342442311">Kiểm tra ngay</translation>
 <translation id="7227235818314667565">Quản lý việc chia sẻ</translation>
 <translation id="7233006041370588369">Chọn mật khẩu cần điền.</translation>
+<translation id="723874023660911012">Chuyển đổi Hồ sơ</translation>
 <translation id="7241135764990439166">Không dùng được chế độ ẩn danh</translation>
 <translation id="7248046129087111453"><ph name="BEGIN_LINK" />Nhật ký tìm kiếm<ph name="END_LINK" /> và <ph name="BEGIN_LINK" />các hình thức hoạt động khác<ph name="END_LINK" /> có thể được lưu trong Tài khoản Google của bạn.</translation>
 <translation id="7253951228444156601">Đang kiểm tra mật khẩu…</translation>
@@ -2072,6 +2078,7 @@
 <translation id="7996239959906074962">Thiết lập…</translation>
 <translation id="800361585186029508">Mở URL đã nhập trong Google Chrome.</translation>
 <translation id="8005666035647241369">Lưu mật khẩu vào Trình quản lý mật khẩu của Google trên thiết bị này</translation>
+<translation id="8007106936382123905">{count,plural, =1{Đã hoàn thành 1 việc cần làm}other{Đã hoàn thành # việc cần làm}}</translation>
 <translation id="8010488806779226127">Khám phá các tính năng có thể giúp bạn làm được nhiều việc hơn khi duyệt web</translation>
 <translation id="8011489434346330032">Trình kiểm tra web</translation>
 <translation id="8014007212279733632">Xác minh danh tính của bạn để tự động điền thông tin nhạy cảm</translation>
@@ -2155,6 +2162,7 @@
 <translation id="826614135184049678">Bạn đã bị đăng xuất khỏi tài khoản <ph name="USER_NAME" /> trong quá trình đặt lại iPad. Để đăng nhập lại, hãy nhấn vào "Tiếp tục" ở dưới.</translation>
 <translation id="8270320981823560179">Drive</translation>
 <translation id="8273982424131314219">Thông tin của bạn sẽ được điền vào <ph name="URL" /></translation>
+<translation id="8274795744553482834">Bạn sắp chuyển đổi hồ sơ</translation>
 <translation id="8275068909952022340">Khác…</translation>
 <translation id="8280797717392145626">Đã nhận được đường liên kết</translation>
 <translation id="8281781826761538115">Mặc định - <ph name="DEFAULT_LOCALE" /></translation>

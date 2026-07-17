@@ -443,9 +443,8 @@ ShowTranslateBubbleResult ChromeTranslateClient::ShowBubble(
           TranslateBubbleController::From(browser);
       if (controller && controller->GetTranslateBubble()) {
         return TranslateBubbleFactory::Show(
-            browser->GetBrowserForMigrationOnly()->window(), web_contents(),
-            step, source_language, target_language, error_type,
-            is_user_gesture);
+            BrowserWindow::FromBrowser(browser), web_contents(), step,
+            source_language, target_language, error_type, is_user_gesture);
       }
 
       if (is_toast_enabled) {
@@ -462,7 +461,7 @@ ShowTranslateBubbleResult ChromeTranslateClient::ShowBubble(
   }
 
   return TranslateBubbleFactory::Show(
-      browser->GetBrowserForMigrationOnly()->window(), web_contents(), step,
+      BrowserWindow::FromBrowser(browser), web_contents(), step,
       source_language, target_language, error_type, is_user_gesture);
 }
 #endif

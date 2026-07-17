@@ -66,7 +66,7 @@ void OnSendTabToDeviceComplete(base::WeakPtr<content::WebContents> web_contents,
     case SendTabToSelfResult::kFailureEntryRemoved:
     case SendTabToSelfResult::kFailureCommitTimeout:
     case SendTabToSelfResult::kFailureNoInternetConnection:
-      ShowTabSentFailure(web_contents.get(), result);
+      ShowTabSentFailure(web_contents.get(), result, GURL());
       break;
   }
 }
@@ -203,7 +203,8 @@ void SendTabToSelfContextMenuDelegate::OnMenuWillShow(
 
   size_t device_count =
       service->GetSendTabToSelfModel()->GetTargetDeviceInfoSortedList().size();
-  RecordTargetDeviceCount(EntryPointDisplayReason::kOfferFeature, device_count);
+  RecordTargetDeviceCount(entry_point_, EntryPointDisplayReason::kOfferFeature,
+                          device_count);
 }
 
 }  // namespace send_tab_to_self

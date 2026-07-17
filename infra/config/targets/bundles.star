@@ -1320,15 +1320,6 @@ targets.bundle(
 )
 
 targets.bundle(
-    name = "chromeos_vm_gtests",
-    targets = [
-        "chromeos_integration_tests_suite",
-        "chromeos_system_friendly_gtests",
-        "chromeos_vaapi_fakelib_gtests",
-    ],
-)
-
-targets.bundle(
     name = "chromium_android_cast_receiver",
     additional_compile_targets = [
         "cast_browser_apk",
@@ -3882,7 +3873,7 @@ targets.bundle(
                     "--use-fxc",
                 ],
                 swarming = targets.swarming(
-                    shards = 8,
+                    shards = 16,
                 ),
             ),
             "gpu_integration_test_common_args",
@@ -3912,7 +3903,7 @@ targets.bundle(
         "webgpu_cts_tests": [
             targets.mixin(
                 swarming = targets.swarming(
-                    shards = 8,
+                    shards = 16,
                 ),
             ),
             "gpu_integration_test_common_args",

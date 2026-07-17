@@ -77,6 +77,7 @@
 #include "chrome/browser/ui/views/page_action/page_action_view.h"
 #include "chrome/browser/ui/views/page_action/test_support/page_action_test_support.h"
 #include "chrome/browser/ui/views/page_info/page_info_bubble_view_base.h"
+#include "chrome/browser/ui/views/profiles/profile_indicator_icon.h"
 #include "chrome/browser/ui/views/tab_search_bubble_host.h"
 #include "chrome/browser/ui/views/tabs/tab.h"
 #include "chrome/browser/ui/views/tabs/tab_strip.h"
@@ -758,12 +759,12 @@ IN_PROC_BROWSER_TEST_P(WebAppFrameViewChromeOSTest,
   ASSERT_TRUE(WaitForFocus(true, web_app_menu_button_));
 }
 
-// Tests the app icon and title are not shown.
-IN_PROC_BROWSER_TEST_P(WebAppFrameViewChromeOSTest, IconShownAndTitleNotShown) {
+// Tests the app icon is not shown but the title is shown.
+IN_PROC_BROWSER_TEST_P(WebAppFrameViewChromeOSTest, IconNotShownButTitleShown) {
   SetUpWebApp();
   auto* browser_view = BrowserView::GetBrowserViewForBrowser(app_browser_);
   EXPECT_FALSE(browser_view->ShouldShowWindowIcon());
-  EXPECT_FALSE(browser_view->ShouldShowWindowTitle());
+  EXPECT_TRUE(browser_view->ShouldShowWindowTitle());
 }
 
 // Tests that the custom tab bar is focusable from the keyboard.
@@ -836,7 +837,7 @@ IN_PROC_BROWSER_TEST_P(WebAppFrameViewChromeOSTest,
   EXPECT_FALSE(GetPaintingAsActive());
 }
 
-IN_PROC_BROWSER_TEST_P(WebAppFrameViewChromeOSTest, PopupHasNoToolbar) {
+IN_PROC_BROWSER_TEST_P(WebAppFrameViewChromeOSTest, PopupHasToolbar) {
   SetUpWebApp();
 
   Browser* popup_browser;
@@ -854,8 +855,8 @@ IN_PROC_BROWSER_TEST_P(WebAppFrameViewChromeOSTest, PopupHasNoToolbar) {
 
   BrowserView* browser_view =
       BrowserView::GetBrowserViewForBrowser(popup_browser);
-  EXPECT_FALSE(browser_view->web_app_frame_toolbar_for_testing() &&
-               browser_view->web_app_frame_toolbar_for_testing()->GetVisible());
+  EXPECT_TRUE(browser_view->web_app_frame_toolbar_for_testing() &&
+              browser_view->web_app_frame_toolbar_for_testing()->GetVisible());
 }
 
 IN_PROC_BROWSER_TEST_P(BrowserFrameViewChromeOSTest,
@@ -1810,7 +1811,16 @@ IN_PROC_BROWSER_TEST_P(BrowserFrameViewAshAvatarTest,
       kSecondaryAccountId);
 
   EXPECT_TRUE(BrowserFrameViewChromeOS::ShouldShowAvatarForTesting(window));
-  EXPECT_TRUE(test_api.GetProfileIndicatorIcon());
+  auto* icon = test_api.GetProfileIndicatorIcon();
+  ASSERT_TRUE(icon);
+
+  // Verify that the avatar icon is vertically centered within the tabstrip
+  // area.
+  const int expected_frame_height =
+      frame_view->GetTopInset(false) +
+      browser_view->GetFrameElementInfo().tabstrip_preferred_height;
+  const int expected_icon_y = (expected_frame_height - icon->height()) / 2;
+  EXPECT_EQ(expected_icon_y, icon->bounds().y());
 
   // Teleport the window back to owner desktop.
   browser_view->Activate();

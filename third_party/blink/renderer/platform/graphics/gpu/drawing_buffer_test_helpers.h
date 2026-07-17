@@ -453,7 +453,6 @@ class DrawingBufferForTests : public DrawingBuffer {
                       Platform::kWebGL1ContextType,
                       false /* wantDepth */,
                       false /* wantStencil */,
-                      false /* is_offscreen_canvas */,
                       PredefinedColorSpace::kSRGB,
                       gl::GpuPreference::kHighPerformance),
         live_(nullptr) {}

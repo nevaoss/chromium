@@ -57,6 +57,7 @@
 <translation id="1574377791422810894">Chromium-н аюулгүй байдлын хэрэгсэл</translation>
 <translation id="1594928384848033697">Chromium таны Нууц үгний менежерийн өгөгдлийг устгахыг хүсэж байна. Үүнийг зөвшөөрөхийн тулд Windows-н нууц үгээ бичнэ үү.</translation>
 <translation id="1607715478322902680">{COUNT,plural, =0{Шинэчлэлтийг хэрэгжүүлэхийн тулд Chromium-г дахин ачаалахыг таны администратор танаас шаардаж байна}=1{Шинэчлэлтийг хэрэгжүүлэхийн тулд Chromium-г дахин ачаалахыг таны администратор танаас шаардаж байна. Таны нууцлалтай цонхыг дахин нээхгүй.}other{Шинэчлэлтийг хэрэгжүүлэхийн тулд Chromium-г дахин ачаалахыг таны администратор танаас шаардаж байна. Таны # нууцлалтай цонхыг дахин нээхгүй.}}</translation>
+<translation id="1623563412065267963">Утсан дээрээ Chromium аппаар Google-н шилдэг зүйлсийг аваарай</translation>
 <translation id="1625909126243026060">Chromium-н нууцлал болон аюулгүй байдлын үндсэн хяналтуудыг шалгана уу</translation>
 <translation id="1640672724030957280">Татаж байна...</translation>
 <translation id="1680687534629375545">Энэ хуудасны тухай Зурган хайлтаас асуу</translation>
@@ -147,6 +148,7 @@
 <translation id="2572494885440352020">Chromium-ийн туслагч</translation>
 <translation id="2575822587468774919">Зурган хайлтаар хайхыг хүссэн зүйлээ сонгоно уу</translation>
 <translation id="2576118232315942160">Нууц үг болон бусад зүйлээ бүх төхөөрөмж дээрээ авахын тулд Chromium-д нэвтэрнэ үү</translation>
+<translation id="2587622539943955767">Chromium-г татаж, Google Бүртгэлдээ нэвтрэхийн тулд утсаараа QR кодыг скан хийнэ үү.</translation>
 <translation id="2592940277904433508">Chromium-г үргэлжлүүлэн ашиглах</translation>
 <translation id="259935314519650377">Татсан суулгагчийг завсрын санах ойд хадгалж чадсангүй. Алдаа: <ph name="UNPACK_CACHING_ERROR_CODE" />.</translation>
 <translation id="2620436844016719705">Систем</translation>
@@ -360,6 +362,7 @@
 <translation id="4987820182225656817">Зочид Chromium-ийг ашигласнаар хамгийн сүүлийн үеийн мэдээллийг авна.</translation>
 <translation id="4992938037305302429">Таны Chromium дахь бүртгэл</translation>
 <translation id="4994636714258228724">Өөрийгөө Chromium руу нэмэх</translation>
+<translation id="504699503110800016">Урт цэсийг нээх</translation>
 <translation id="5123973130450702873">Chromium-д таны гарыг хянах зөвшөөрөл шаардлагатай</translation>
 <translation id="5141988424377517949">Та ойрын үед зочлоогүй байна. Chromium <ph name="PERMISSION_1" />, <ph name="PERMISSION_2" />, <ph name="PERMISSION_3" />-г хассан.</translation>
 <translation id="5174969993834422967">Та ихэвчлэн мэдэгдлийг блоклодог. Энэ сайтад танд мэдэгдэхийг зөвшөөрөхийн тулд байршлын хэсгийн тань баруун дээд буланд байх мэдэгдлийн дүрс тэмдгийг товшино уу.</translation>
@@ -469,6 +472,7 @@
 <translation id="6245734527075554892">Chromium-д хадгалсан аюултай сайтын жагсаалттай URL-г шалгана</translation>
 <translation id="6248213926982192922">Chromium-ыг анхдагч веб хөтөч болгох</translation>
 <translation id="6248988683584659830">Хайлтын тохиргоо</translation>
+<translation id="6261803579884938625">Утсан дээрээ Chromium аппыг ашиглан явж байх зуураа Google-н аюулгүй байдлын шилдэг онцлогуудыг аваарай</translation>
 <translation id="6268381023930128611">Chromium-с гарах уу?</translation>
 <translation id="6270547683008298381">Эдгээр таб нэмэлт нөөцүүдийг ашиглаж байна. Гүйцэтгэлээ сайжруулахын тулд Chromium-д эдгээр табыг идэвхгүй болгохыг зөвшөөрнө үү.</translation>
 <translation id="6281746429495226318">Chromium-н профайлаа өөрчлөх</translation>
@@ -539,6 +543,7 @@
 <translation id="6873893289264747459">"<ph name="EXTENSION_NAME" />" хортой программ агуулж байгааг Chromium олж мэдлээ</translation>
 <translation id="6877155553248388166">хайлтын хэсгийн баруун доод булан: баруун <ph name="RIGHT" />%, доод <ph name="BOTTOM" />%</translation>
 <translation id="6896758677409633944">Хуулах</translation>
+<translation id="6898028264630240901">Та үзэх явцдаа асуулт асуухын тулд Хам сэдэвт ажлыг бэхлэх боломжтой</translation>
 <translation id="6901631050894301805">Chromium-г өгөгдмөл хөтчөөрөө тохируулж, ажлын хэсэгтээ бэхэлнэ үү</translation>
 <translation id="6909503629704372277">&amp;Chromium-н профайлуудыг удирдах</translation>
 <translation id="6919942714452658456">Энэ үйлдэл:
@@ -567,6 +572,7 @@
 <translation id="7047386856539490735">Эдгээр илэрц хэрэг болж байна уу?</translation>
 <translation id="705851970750939768">Chromium-г шинэчлэх</translation>
 <translation id="7067091210845072982">Хэрэв зурагт хэрэгтэй тайлбар байхгүй бол Chromium танд тайлбар өгөхөөр оролдох болно. Тайлбар үүсгэхийн тулд зургийг Google-д илгээнэ.</translation>
+<translation id="7134687062119989071">Утсан дээрээ Chromium аппыг ашиглан нууц үг, таб болон бусад зүйлээ явж байх зуураа аваарай</translation>
 <translation id="7141270731789036260">Chrome for Testing-г өөрчлөх</translation>
 <translation id="7147227333672430807">Та мессеж, баримт бичиг болон бусад апп дахь холбоосон дээр товших бүрдээ Chromium-г ашиглах боломжтой</translation>
 <translation id="7163519456498498587"><ph name="EXTENSION_NAME" />-г Chromium-с хасах</translation>
@@ -656,6 +662,7 @@
 <translation id="8096472344908884505"><ph name="PAGE_TITLE" /> - Google Chrome for Testing</translation>
 <translation id="8105840573057009683">Chromium-д энэ сайтад зориулж байршлын зөвшөөрөл шаардлагатай</translation>
 <translation id="8107060931443639922">Та дараагийн удаа <ph name="DEVICE_TYPE" /> дээрээ Chromium-г нээхэд үнэ мөшгөх дохиог идэвхжүүлэх сануулга харагдана.</translation>
+<translation id="8117908349476699973">Утсан дээрээ Chromium аппаар сонирхож буй зүйлсийнхээ үнэ буурсан талаарх сэрэмжлүүлгийг аваарай</translation>
 <translation id="8118331347066725040">Lens-р хайхад зориулж санал хүсэлт илгээх</translation>
 <translation id="8133124826068723441">Синк нь таны домэйнд боломжгүй тул ChromiumOS таны өгөгдлийг синк хийж чадсангүй.</translation>
 <translation id="813913629614996137">Эхлүүлж байна…</translation>
@@ -748,6 +755,7 @@
 <translation id="9022552996538154597">Chromium дансандаа нэвтрэх</translation>
 <translation id="904366664621834601">Архивын файлд хортой программыг нууж байж магадгүй бусад файл багтдаг тул Chromium энэ таталтыг блоклосон</translation>
 <translation id="9053882453960391422">Нууц үг, хавчуурга, түүхээ төхөөрөмжүүд дээр төгс синк хийсээр байгаарай. Та өгөгдмөл хөтчөө Chromium болгон шинэчлээд мэддэг, дуртай онцлогууддаа хялбархан хандаарай. Chromium-г шуурхай хандахад зориулж таны ажлын хэсэгт бэхэлнэ.</translation>
+<translation id="9056398481763999048">Утсан дээрээ Chromium аппаар Google-н шилдэг ХОУ-ы хэрэгслүүдийг ашиглаарай</translation>
 <translation id="9062666675513499497">Та Google-н бусад үйлчилгээнд нэвтрэх үедээ Chromium-д нэвтэрнэ үү</translation>
 <translation id="9078733879136747090">Chromium-г автоматаар хаасан</translation>
 <translation id="9089354809943900324">Chromium хуучирсан байна</translation>

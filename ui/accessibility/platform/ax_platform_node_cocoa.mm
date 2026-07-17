@@ -1157,7 +1157,8 @@ const ui::CocoaActionList& GetCocoaActionListForTesting() {
       DCHECK(markersTextRange.anchor()->GetAnchor() ==
              markersTextRange.focus()->GetAnchor());
       DCHECK(markers_anchor) << "Markers anchor should not be null.";
-      DCHECK(markers_anchor->GetRole() == ax::mojom::Role::kStaticText);
+      DCHECK(markers_anchor->GetRole() == ax::mojom::Role::kStaticText ||
+             markers_anchor->GetRole() == ax::mojom::Role::kLineBreak);
     }
 
     // Add misspelling information

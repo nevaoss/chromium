@@ -9,13 +9,15 @@
 #include "base/strings/utf_string_conversions.h"
 #include "components/bookmarks/browser/bookmark_model.h"
 #include "components/bookmarks/browser/bookmark_node.h"
+#include "components/bookmarks/managed/managed_bookmark_service.h"
 
 namespace bookmarks_api {
 
 BookmarkEventTranslator::BookmarkEventTranslator(
     bookmarks::BookmarkModel* model,
+    bookmarks::ManagedBookmarkService* managed,
     Subscriber* subscriber)
-    : model_(model), subscriber_(subscriber) {
+    : model_(model), managed_(managed), subscriber_(subscriber) {
   CHECK(model_);
   CHECK(subscriber_);
   CHECK(model_->loaded());
@@ -29,6 +31,8 @@ BookmarkEventTranslator::~BookmarkEventTranslator() {
 
 // static
 mojom::BookmarkNodePtr BookmarkEventTranslator::ConvertNode(
+    bookmarks::BookmarkModel* model,
+    bookmarks::ManagedBookmarkService* managed,
     const bookmarks::BookmarkNode* node) {
   switch (node->type()) {
     case bookmarks::BookmarkNode::URL: {
@@ -39,6 +43,7 @@ mojom::BookmarkNodePtr BookmarkEventTranslator::ConvertNode(
       if (node->icon_url()) {
         url_node->favicon_url = *node->icon_url();
       }
+      url_node->is_synced = model && !model->IsLocalOnlyNode(*node);
       return mojom::BookmarkNode::NewUrl(std::move(url_node));
     }
     case bookmarks::BookmarkNode::FOLDER:
@@ -49,8 +54,24 @@ mojom::BookmarkNodePtr BookmarkEventTranslator::ConvertNode(
       folder_node->id = node->uuid();
       folder_node->title = base::UTF16ToUTF8(node->GetTitle());
       for (const auto& child : node->children()) {
-        folder_node->children.push_back(ConvertNode(child.get()));
+        folder_node->children.push_back(
+            ConvertNode(model, managed, child.get()));
       }
+      folder_node->is_synced = model && !model->IsLocalOnlyNode(*node);
+
+      if (node->type() == bookmarks::BookmarkNode::Type::BOOKMARK_BAR) {
+        folder_node->permanent_folder_type =
+            mojom::PermanentFolderType::kBookmarkBar;
+      } else if (node->type() == bookmarks::BookmarkNode::Type::OTHER_NODE) {
+        folder_node->permanent_folder_type = mojom::PermanentFolderType::kOther;
+      } else if (node->type() == bookmarks::BookmarkNode::Type::MOBILE) {
+        folder_node->permanent_folder_type =
+            mojom::PermanentFolderType::kMobile;
+      } else if (managed && node == managed->managed_node()) {
+        folder_node->permanent_folder_type =
+            mojom::PermanentFolderType::kManaged;
+      }
+
       return mojom::BookmarkNode::NewFolder(std::move(folder_node));
     }
   }
@@ -79,7 +100,8 @@ void BookmarkEventTranslator::BookmarkNodeAdded(
     bool added_by_user) {
   const bookmarks::BookmarkNode* node = parent->children()[index].get();
   auto added_event = mojom::BookmarkNodeCreated::New(
-      parent->uuid(), static_cast<int32_t>(index), ConvertNode(node));
+      parent->uuid(), static_cast<int32_t>(index),
+      ConvertNode(model_, managed_, node));
 
   std::vector<mojom::BookmarksEventPtr> events;
   events.push_back(mojom::BookmarksEvent::NewAdded(std::move(added_event)));
@@ -107,7 +129,8 @@ void BookmarkEventTranslator::BookmarkNodeRemoved(
 
 void BookmarkEventTranslator::BookmarkNodeChanged(
     const bookmarks::BookmarkNode* node) {
-  auto changed_event = mojom::BookmarkNodeChanged::New(ConvertNode(node));
+  auto changed_event =
+      mojom::BookmarkNodeChanged::New(ConvertNode(model_, managed_, node));
 
   std::vector<mojom::BookmarksEventPtr> events;
   events.push_back(mojom::BookmarksEvent::NewChanged(std::move(changed_event)));

@@ -89,12 +89,6 @@ namespace blink {
 
 namespace {
 
-#if !BUILDFLAG(IS_WIN)
-// Controls whether offscreen canvases are allowed to be placed into overlays.
-BASE_FEATURE(kAllowOverlaysForOffscreenCanvas,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-#endif
-
 const float kResourceAdjustedRatio = 0.5;
 
 bool g_should_fail_drawing_buffer_creation_for_testing = false;
@@ -182,7 +176,6 @@ scoped_refptr<DrawingBuffer> DrawingBuffer::Create(
     bool desynchronized,
     PreserveDrawingBuffer preserve,
     Platform::WebGLContextType webgl_version,
-    bool is_offscreen_canvas,
     PredefinedColorSpace color_space,
     gl::GpuPreference gpu_preference) {
   if (g_should_fail_drawing_buffer_creation_for_testing) {
@@ -240,7 +233,7 @@ scoped_refptr<DrawingBuffer> DrawingBuffer::Create(
           std::move(extensions_util), client, discard_framebuffer_supported,
           texture_storage_enabled, want_alpha_channel, premultiplied_alpha,
           preserve, webgl_version, want_depth_buffer, want_stencil_buffer,
-          is_offscreen_canvas, color_space, gpu_preference));
+          color_space, gpu_preference));
   if (!drawing_buffer->Initialize(size, multisample_supported)) {
     drawing_buffer->BeginDestruction();
     return scoped_refptr<DrawingBuffer>();
@@ -262,7 +255,6 @@ DrawingBuffer::DrawingBuffer(
     Platform::WebGLContextType webgl_version,
     bool want_depth,
     bool want_stencil,
-    bool is_offscreen_canvas,
     PredefinedColorSpace color_space,
     gl::GpuPreference gpu_preference)
     : client_(client),
@@ -286,7 +278,6 @@ DrawingBuffer::DrawingBuffer(
       want_depth_(want_depth),
       want_stencil_(want_stencil),
       color_space_(PredefinedColorSpaceToGfxColorSpace(color_space)),
-      is_offscreen_canvas_(is_offscreen_canvas),
       opengl_flip_y_extension_(
           ContextProvider()->GetCapabilities().mesa_framebuffer_flip_y),
       initial_gpu_(gpu_preference),
@@ -2080,28 +2071,7 @@ scoped_refptr<DrawingBuffer::ColorBuffer> DrawingBuffer::CreateColorBuffer(
   // First see if creating a SharedImage that can be used as an overlay is
   // feasible.
   if (SharedGpuContext::IsGpuCompositingEnabled()) {
-#if BUILDFLAG(IS_WIN)
-    // TODO(crbug.com/488937356): Fold this into the below once the killswitch
-    // on the below is removed (that condition was historically never checked
-    // on Windows).
-    bool use_as_overlay = can_use_low_latency_;
-#else
-    bool use_as_overlay = false;
-    // On Mac OS, DrawingBuffer is using an IOSurface as its backing storage,
-    // this allows WebGL-rendered canvases to be composited by the OS rather
-    // than Chrome.  IOSurfaces are only compatible with the
-    // GL_TEXTURE_RECTANGLE_ARB binding target. So to avoid the knowledge of
-    // GL_TEXTURE_RECTANGLE_ARB type textures being introduced into more areas
-    // of the code, we use the code path of non-WebGLImageChromium for
-    // OffscreenCanvas. See detailed discussion in crbug.com/649668.
-    // TODO(crbug.com/488937356): Eliminate this workaround post-rollout of the
-    // killswitch; the workaround should no longer be necessary
-    // post-SharedImage.
-    if (!is_offscreen_canvas_ ||
-        base::FeatureList::IsEnabled(kAllowOverlaysForOffscreenCanvas)) {
-      use_as_overlay = UseOverlaysForWebGL() || can_use_low_latency_;
-    }
-#endif
+    bool use_as_overlay = UseOverlaysForWebGL() || can_use_low_latency_;
     if (use_as_overlay) {
 #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_WIN)
       // Android's SharedImage backing for ChromiumImage does not support BGRX,

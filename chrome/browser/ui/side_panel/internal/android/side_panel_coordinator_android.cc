@@ -386,6 +386,8 @@ void SidePanelCoordinatorAndroid::Show(
     const UniqueKey& key,
     std::optional<SidePanelOpenTrigger> open_trigger,
     bool suppress_animations) {
+  // TODO(crbug.com/503719405): Remove CHECK once param is non-optional.
+  CHECK(open_trigger.has_value());
   SPLOG("Show - key: " << key << ", open_trigger: "
                        << (open_trigger ? ToString(*open_trigger) : "nullopt")
                        << ", suppress_animations: " << suppress_animations
@@ -450,6 +452,7 @@ void SidePanelCoordinatorAndroid::PopulateSidePanel(
     std::optional<SidePanelOpenTrigger> open_trigger,
     SidePanelEntry* entry,
     std::optional<SidePanelNativeView> content_view) {
+  entry->set_last_open_trigger(open_trigger);
   SPLOG("PopulateSidePanel - unique_key: "
         << unique_key << ", suppress_animations: " << suppress_animations);
   std::unique_ptr<SidePanelNativeViewAndroid> native_view =
@@ -514,17 +517,9 @@ void SidePanelCoordinatorAndroid::ReplaceActiveEntry(
 
   // The existing panel will receive a hidden event, which needs a reason.
   pending_hide_reason_ = SidePanelEntryHideReason::kReplaced;
-  if (open_trigger && *open_trigger == SidePanelOpenTrigger::kTabChanged) {
-    pending_hide_reason_ = SidePanelEntryHideReason::kBackgrounded;
-  } else if (!open_trigger && previous_key.tab_handle && new_key.tab_handle &&
-             previous_key.tab_handle != new_key.tab_handle) {
-    // Some side panel features observe active tab changes on their own and call
-    // `SidePanelCoordinatorAndroid::Show` without an `open_trigger`. In such
-    // cases, we use the entry keys' `tab_handle`s as a heuristic to
-    // determine if `SidePanelEntryHideReason` should be `kBackgrounded`.
-    //
-    // TODO(crbug.com/503719405): Investigate whether we should always require
-    // `open_trigger` for `SidePanelCoordinatorAndroid::Show`.
+  // TODO(crbug.com/503719405): Remove CHECK once param is non-optional.
+  CHECK(open_trigger.has_value());
+  if (*open_trigger == SidePanelOpenTrigger::kTabChanged) {
     pending_hide_reason_ = SidePanelEntryHideReason::kBackgrounded;
   }
 

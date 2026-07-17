@@ -33,6 +33,12 @@ class StreamProvider {
 
   // Called when stream state changes.
   virtual void OnStreamStateChanged(StreamState state) = 0;
+
+  // Returns the current state of the stream provider.
+  virtual StreamState GetState() const = 0;
+
+  // Returns the target that the stream provider is currently bound to.
+  virtual const Target* GetTarget() const = 0;
 };
 
 }  // namespace dictation

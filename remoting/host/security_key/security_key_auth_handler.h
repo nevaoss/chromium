@@ -8,15 +8,13 @@
 #include <memory>
 #include <string>
 
+#include "base/files/file_path.h"
 #include "base/functional/callback.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/time/time.h"
+#include "build/build_config.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "remoting/host/mojom/remote_security_key.mojom.h"
-
-namespace base {
-class SingleThreadTaskRunner;
-}  // namespace base
 
 namespace remoting {
 
@@ -41,8 +39,7 @@ class SecurityKeyAuthHandler {
   // |client_session_details| will be valid until this instance is destroyed.
   static std::unique_ptr<SecurityKeyAuthHandler> Create(
       ClientSessionDetails* client_session_details,
-      const SendMessageCallback& send_message_callback,
-      scoped_refptr<base::SingleThreadTaskRunner> file_task_runner);
+      const SendMessageCallback& send_message_callback);
 
   // Binds a SecurityKeyForwarder receiver for receiving SK forwarding requests.
   virtual void BindSecurityKeyForwarder(

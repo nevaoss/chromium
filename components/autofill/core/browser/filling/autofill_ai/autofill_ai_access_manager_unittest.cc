@@ -101,7 +101,7 @@ class AutofillAiAccessManagerTest : public testing::Test {
         helper_.WaitUntilIdle();
         break;
       case EntityInstance::RecordType::kPersonalContext:
-        edm().OnMaskedEntitiesPrefetched(personal_context_manager(), {entity});
+        edm().OnPrefetchContextComplete(personal_context_manager(), {entity});
         break;
     }
   }

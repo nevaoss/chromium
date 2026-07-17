@@ -324,15 +324,26 @@ IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest, RecentTabChip) {
 }
 #endif
 
-// TODO(crbug.com/508867284): Re-enable when fixed on ChromeOS.
-#if BUILDFLAG(IS_CHROMEOS)
-#define MAYBE_ComposeboxVoiceSearch DISABLED_ComposeboxVoiceSearch
-#else
-#define MAYBE_ComposeboxVoiceSearch ComposeboxVoiceSearch
-#endif
-IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest,
-                       MAYBE_ComposeboxVoiceSearch) {
+IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest, ComposeboxVoiceSearch) {
   RunTest("cr_components/composebox/composebox_voice_search_test.js",
+          "mocha.run()");
+}
+
+IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest,
+                       ComposeboxVoiceSearchMetrics) {
+  RunTest("cr_components/composebox/composebox_voice_search_metrics_test.js",
+          "mocha.run()");
+}
+
+IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest,
+                       ComposeboxVoiceSearchRecognition) {
+  RunTest(
+      "cr_components/composebox/composebox_voice_search_recognition_test.js",
+      "mocha.run()");
+}
+
+IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest, ComposeboxVoiceSearchFlags) {
+  RunTest("cr_components/composebox/composebox_voice_search_flags_test.js",
           "mocha.run()");
 }
 

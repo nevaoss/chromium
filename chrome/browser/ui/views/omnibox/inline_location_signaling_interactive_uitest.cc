@@ -11,6 +11,7 @@
 #include "base/functional/bind.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/test/metrics/histogram_tester.h"
 #include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/time/time.h"
@@ -34,6 +35,7 @@
 #include "chrome/test/base/ui_test_utils.h"
 #include "chrome/test/interaction/interactive_browser_test.h"
 #include "components/content_settings/core/browser/host_content_settings_map.h"
+#include "components/content_settings/core/common/content_settings.h"
 #include "components/content_settings/core/common/content_settings_pattern.h"
 #include "components/omnibox/browser/autocomplete_controller.h"
 #include "components/omnibox/browser/autocomplete_match.h"
@@ -66,12 +68,14 @@ struct InlineLocationSignalingTestCase {
   std::string test_name;
   std::string display_order;
   std::string wording;
-  bool site_permission_allowed = false;
+  ContentSetting site_permission = CONTENT_SETTING_BLOCK;
   bool use_https = true;
   bool is_precise = false;
   std::string user_input = "a";
   std::string mock_suggest_response;
   std::vector<std::pair<std::u16string, std::u16string>> expected_results;
+  std::optional<OmniboxInlineLocationSuggestionShown> expected_shown_state;
+  std::optional<size_t> expected_position_metric;
 };
 
 }  // namespace
@@ -230,9 +234,7 @@ IN_PROC_BROWSER_TEST_P(InlineLocationSignalingE2EInteractiveUiTest,
       HostContentSettingsMapFactory::GetForProfile(profile);
   ContentSettingsPattern pattern = ContentSettingsPattern::FromURL(
       test_server_->GetURL(kExternalEngineHost, "/"));
-  ContentSetting site_perm = GetParam().site_permission_allowed
-                                 ? CONTENT_SETTING_ALLOW
-                                 : CONTENT_SETTING_BLOCK;
+  ContentSetting site_perm = GetParam().site_permission;
   settings_map->SetContentSettingCustomScope(
       pattern, ContentSettingsPattern::Wildcard(),
       ContentSettingsType::GEOLOCATION, site_perm);
@@ -258,6 +260,7 @@ IN_PROC_BROWSER_TEST_P(InlineLocationSignalingE2EInteractiveUiTest,
   ASSERT_TRUE(base::test::RunUntil(
       [&]() { return !geo_service->is_geolocation_bound_for_testing(); }));
 
+  base::HistogramTester histogram_tester;
   omnibox_controller->StopAutocomplete(true);
   omnibox_view->OnBeforePossibleChange();
   omnibox_view->SetUserText(base::UTF8ToUTF16(GetParam().user_input));
@@ -281,6 +284,37 @@ IN_PROC_BROWSER_TEST_P(InlineLocationSignalingE2EInteractiveUiTest,
     EXPECT_EQ(result.match_at(i).description,
               GetParam().expected_results[i].second);
   }
+
+  std::string permission_str;
+  if (site_perm == CONTENT_SETTING_BLOCK) {
+    permission_str = "Deny";
+  } else if (site_perm == CONTENT_SETTING_ASK) {
+    permission_str = "Ask";
+  }
+
+  if (GetParam().expected_shown_state.has_value() && !permission_str.empty()) {
+    EXPECT_GE(
+        histogram_tester.GetBucketCount("Omnibox.InlineLocationSuggestion." +
+                                            permission_str + ".ShownState",
+                                        *GetParam().expected_shown_state),
+        1);
+  } else {
+    if (!permission_str.empty()) {
+      histogram_tester.ExpectTotalCount(
+          "Omnibox.InlineLocationSuggestion." + permission_str + ".ShownState",
+          0);
+    }
+  }
+
+  if (GetParam().expected_position_metric.has_value()) {
+    EXPECT_GE(histogram_tester.GetBucketCount(
+                  "Omnibox.InlineLocationSuggestion.Index",
+                  *GetParam().expected_position_metric),
+              1);
+  } else {
+    histogram_tester.ExpectTotalCount("Omnibox.InlineLocationSuggestion.Index",
+                                      0);
+  }
 }
 
 const InlineLocationSignalingTestCase kTestCases[] = {
@@ -288,7 +322,6 @@ const InlineLocationSignalingTestCase kTestCases[] = {
     {.test_name = "DisplayBelow_UseApproximateLocation",
      .display_order = "DisplayBelow",
      .wording = "UseApproximateLocation",
-     .site_permission_allowed = false,
      .use_https = true,
      .is_precise = false,
      .user_input = "a",
@@ -299,13 +332,15 @@ const InlineLocationSignalingTestCase kTestCases[] = {
      .expected_results = {{u"a", kExpectedDseSearchText},
                           {u"a-location-relevant-suggestion", u""},
                           {u"a-location-relevant-suggestion",
-                           u"Use approximate location"}}},
+                           u"Use approximate location"}},
+     .expected_shown_state =
+         OmniboxInlineLocationSuggestionShown::kLocationSuggestionShown,
+     .expected_position_metric = 2},
 
     // 2. Tests Below placement + Location wording
     {.test_name = "DisplayBelow_UseLocation",
      .display_order = "DisplayBelow",
      .wording = "UseLocation",
-     .site_permission_allowed = false,
      .use_https = true,
      .is_precise = false,
      .user_input = "a",
@@ -315,14 +350,15 @@ const InlineLocationSignalingTestCase kTestCases[] = {
          "\"google:suggestrelevance\":[1400]}]",
      .expected_results = {{u"a", kExpectedDseSearchText},
                           {u"a-location-relevant-suggestion", u""},
-                          {u"a-location-relevant-suggestion",
-                           u"Use location"}}},
+                          {u"a-location-relevant-suggestion", u"Use location"}},
+     .expected_shown_state =
+         OmniboxInlineLocationSuggestionShown::kLocationSuggestionShown,
+     .expected_position_metric = 2},
 
     // 3. Tests Above placement + Approximate wording
     {.test_name = "DisplayAbove_UseApproximateLocation",
      .display_order = "DisplayAbove",
      .wording = "UseApproximateLocation",
-     .site_permission_allowed = false,
      .use_https = true,
      .is_precise = false,
      .user_input = "a",
@@ -333,13 +369,15 @@ const InlineLocationSignalingTestCase kTestCases[] = {
      .expected_results = {{u"a", kExpectedDseSearchText},
                           {u"a-location-relevant-suggestion",
                            u"Use approximate location"},
-                          {u"a-location-relevant-suggestion", u""}}},
+                          {u"a-location-relevant-suggestion", u""}},
+     .expected_shown_state =
+         OmniboxInlineLocationSuggestionShown::kLocationSuggestionShown,
+     .expected_position_metric = 1},
 
     // 4. Tests Above placement + Location wording
     {.test_name = "DisplayAbove_UseLocation",
      .display_order = "DisplayAbove",
      .wording = "UseLocation",
-     .site_permission_allowed = false,
      .use_https = true,
      .is_precise = false,
      .user_input = "a",
@@ -349,13 +387,15 @@ const InlineLocationSignalingTestCase kTestCases[] = {
          "\"google:suggestrelevance\":[1400]}]",
      .expected_results = {{u"a", kExpectedDseSearchText},
                           {u"a-location-relevant-suggestion", u"Use location"},
-                          {u"a-location-relevant-suggestion", u""}}},
+                          {u"a-location-relevant-suggestion", u""}},
+     .expected_shown_state =
+         OmniboxInlineLocationSuggestionShown::kLocationSuggestionShown,
+     .expected_position_metric = 1},
 
     // 5. Tests mismatching suggest subtypes do not invoke copying duplication
     {.test_name = "SubtypeMismatchDoesNotDuplicate",
      .display_order = "DisplayBelow",
      .wording = "UseLocation",
-     .site_permission_allowed = false,
      .use_https = true,
      .is_precise = false,
      .user_input = "a",
@@ -364,14 +404,16 @@ const InlineLocationSignalingTestCase kTestCases[] = {
          "{\"google:suggestsubtypes\":[[100]],"
          "\"google:suggestrelevance\":[1400]}]",
      .expected_results = {{u"a", kExpectedDseSearchText},
-                          {u"a-location-relevant-suggestion", u""}}},
+                          {u"a-location-relevant-suggestion", u""}},
+     .expected_shown_state =
+         OmniboxInlineLocationSuggestionShown::kNoEligibleSuggestionFound},
 
     // 6. Tests duplication is skipped if site already has content settings
     // access granted
     {.test_name = "SkippedWhenSitePermissionAllowed",
      .display_order = "DisplayBelow",
      .wording = "UseLocation",
-     .site_permission_allowed = true,
+     .site_permission = CONTENT_SETTING_ALLOW,
      .use_https = true,
      .is_precise = false,
      .user_input = "a",
@@ -386,7 +428,6 @@ const InlineLocationSignalingTestCase kTestCases[] = {
     {.test_name = "SkippedOverHttpSchemaConnection",
      .display_order = "DisplayBelow",
      .wording = "UseApproximateLocation",
-     .site_permission_allowed = false,
      .use_https = false,
      .is_precise = false,
      .user_input = "a",
@@ -395,14 +436,15 @@ const InlineLocationSignalingTestCase kTestCases[] = {
          "{\"google:suggestsubtypes\":[[457]],"
          "\"google:suggestrelevance\":[1400]}]",
      .expected_results = {{u"a", kExpectedDseSearchText},
-                          {u"a-location-relevant-suggestion", u""}}},
+                          {u"a-location-relevant-suggestion", u""}},
+     .expected_shown_state =
+         OmniboxInlineLocationSuggestionShown::kOnlyParentSuggestionShown},
 
     // 8. Tests that copy duplication triggers strictly on the first eligible
     // match returned
     {.test_name = "OnlyFirstEligibleSubtypeIsDuplicated",
      .display_order = "DisplayBelow",
      .wording = "UseApproximateLocation",
-     .site_permission_allowed = false,
      .use_https = true,
      .is_precise = false,
      .user_input = "a",
@@ -414,13 +456,15 @@ const InlineLocationSignalingTestCase kTestCases[] = {
                           {u"a-location-relevant-suggestion", u""},
                           {u"a-location-relevant-suggestion",
                            u"Use approximate location"},
-                          {u"other-suggestion", u""}}},
+                          {u"other-suggestion", u""}},
+     .expected_shown_state =
+         OmniboxInlineLocationSuggestionShown::kLocationSuggestionShown,
+     .expected_position_metric = 2},
 
     // 9. Verifies intermediate slot positioning rules (Below layout)
     {.test_name = "IntermediatePlacementBelow",
      .display_order = "DisplayBelow",
      .wording = "UseApproximateLocation",
-     .site_permission_allowed = false,
      .use_https = true,
      .is_precise = false,
      .user_input = "a",
@@ -434,13 +478,15 @@ const InlineLocationSignalingTestCase kTestCases[] = {
                           {u"a-location-relevant-suggestion", u""},
                           {u"a-location-relevant-suggestion",
                            u"Use approximate location"},
-                          {u"third-suggestion", u""}}},
+                          {u"third-suggestion", u""}},
+     .expected_shown_state =
+         OmniboxInlineLocationSuggestionShown::kLocationSuggestionShown,
+     .expected_position_metric = 3},
 
     // 10. Verifies intermediate slot positioning rules (Above layout)
     {.test_name = "IntermediatePlacementAbove",
      .display_order = "DisplayAbove",
      .wording = "UseApproximateLocation",
-     .site_permission_allowed = false,
      .use_https = true,
      .is_precise = false,
      .user_input = "a query",
@@ -454,14 +500,16 @@ const InlineLocationSignalingTestCase kTestCases[] = {
                           {u"a query location-relevant-suggestion",
                            u"Use approximate location"},
                           {u"a query location-relevant-suggestion", u""},
-                          {u"a query third-suggestion", u""}}},
+                          {u"a query third-suggestion", u""}},
+     .expected_shown_state =
+         OmniboxInlineLocationSuggestionShown::kLocationSuggestionShown,
+     .expected_position_metric = 2},
 
     // 11. Verifies placement logic when first suggestion is the primary
     // candidate target
     {.test_name = "FirstPlacementAbove",
      .display_order = "DisplayAbove",
      .wording = "UseApproximateLocation",
-     .site_permission_allowed = false,
      .use_https = true,
      .is_precise = false,
      .user_input = "a",
@@ -473,14 +521,16 @@ const InlineLocationSignalingTestCase kTestCases[] = {
                           {u"a-location-relevant-suggestion",
                            u"Use approximate location"},
                           {u"a-location-relevant-suggestion", u""},
-                          {u"other-suggestion", u""}}},
+                          {u"other-suggestion", u""}},
+     .expected_shown_state =
+         OmniboxInlineLocationSuggestionShown::kLocationSuggestionShown,
+     .expected_position_metric = 1},
 
     // 12. Verifies copied suggestion never overrides default index 0 slot
     // verbatim match
     {.test_name = "SignalingMatchNeverTakesIndexZero",
      .display_order = "DisplayAbove",
      .wording = "UseApproximateLocation",
-     .site_permission_allowed = false,
      .use_https = true,
      .is_precise = false,
      .user_input = "query",
@@ -490,14 +540,16 @@ const InlineLocationSignalingTestCase kTestCases[] = {
      .expected_results = {{u"query", kExpectedDseSearchText},
                           {u"a-location-relevant-suggestion",
                            u"Use approximate location"},
-                          {u"a-location-relevant-suggestion", u""}}},
+                          {u"a-location-relevant-suggestion", u""}},
+     .expected_shown_state =
+         OmniboxInlineLocationSuggestionShown::kLocationSuggestionShown,
+     .expected_position_metric = 1},
 
     // 13. Verifies behavior when verbatim search string itself carries
     // signaling subtypes
     {.test_name = "VerbatimSignalingMatchDoesNotDisplaceDefault",
      .display_order = "DisplayAbove",
      .wording = "UseApproximateLocation",
-     .site_permission_allowed = false,
      .use_https = true,
      .is_precise = false,
      .user_input = "a query suggestion",
@@ -506,15 +558,16 @@ const InlineLocationSignalingTestCase kTestCases[] = {
          "{\"google:suggestsubtypes\":[[457]],"
          "\"google:suggestrelevance\":[1600]}]",
      .expected_results = {{u"a query suggestion", kExpectedDseSearchText},
-                          {u"a query suggestion",
-                           u"Use approximate location"}}},
+                          {u"a query suggestion", u"Use approximate location"}},
+     .expected_shown_state =
+         OmniboxInlineLocationSuggestionShown::kLocationSuggestionShown,
+     .expected_position_metric = 1},
 
     // 14. Verifies only the first candidate triggers copy duplication when
     // multiple valid items are loaded
     {.test_name = "MultipleLocationSuggestionsOnlyFirstDuplicated",
      .display_order = "DisplayBelow",
      .wording = "UseApproximateLocation",
-     .site_permission_allowed = false,
      .use_https = true,
      .is_precise = false,
      .user_input = "a",
@@ -526,7 +579,10 @@ const InlineLocationSignalingTestCase kTestCases[] = {
                           {u"a-location-relevant-suggestion", u""},
                           {u"a-location-relevant-suggestion",
                            u"Use approximate location"},
-                          {u"another-location-relevant-suggestion", u""}}},
+                          {u"another-location-relevant-suggestion", u""}},
+     .expected_shown_state =
+         OmniboxInlineLocationSuggestionShown::kLocationSuggestionShown,
+     .expected_position_metric = 2},
 
     // 15. E2E test for precise location caching + Dynamic accuracy wording.
     // The UI wording must show "Use precise location" regardless of the wording
@@ -534,7 +590,6 @@ const InlineLocationSignalingTestCase kTestCases[] = {
     {.test_name = "PreciseLocation_UseApproximateLocationWordingParam",
      .display_order = "DisplayBelow",
      .wording = "UseApproximateLocation",
-     .site_permission_allowed = false,
      .use_https = true,
      .is_precise = true,
      .user_input = "a",
@@ -545,7 +600,10 @@ const InlineLocationSignalingTestCase kTestCases[] = {
      .expected_results = {{u"a", kExpectedDseSearchText},
                           {u"a-location-relevant-suggestion", u""},
                           {u"a-location-relevant-suggestion",
-                           u"Use precise location"}}},
+                           u"Use precise location"}},
+     .expected_shown_state =
+         OmniboxInlineLocationSuggestionShown::kLocationSuggestionShown,
+     .expected_position_metric = 2},
 
     // 16. E2E test for precise location caching + Dynamic accuracy wording.
     // Again, the UI wording must show "Use precise location" even if the
@@ -553,7 +611,6 @@ const InlineLocationSignalingTestCase kTestCases[] = {
     {.test_name = "PreciseLocation_UseLocationWordingParam",
      .display_order = "DisplayAbove",
      .wording = "UseLocation",
-     .site_permission_allowed = false,
      .use_https = true,
      .is_precise = true,
      .user_input = "a",
@@ -564,7 +621,31 @@ const InlineLocationSignalingTestCase kTestCases[] = {
      .expected_results = {{u"a", kExpectedDseSearchText},
                           {u"a-location-relevant-suggestion",
                            u"Use precise location"},
-                          {u"a-location-relevant-suggestion", u""}}},
+                          {u"a-location-relevant-suggestion", u""}},
+     .expected_shown_state =
+         OmniboxInlineLocationSuggestionShown::kLocationSuggestionShown,
+     .expected_position_metric = 1},
+
+    // 17. E2E test verifying that setting permission to ASK correctly logs
+    // to the Ask shown state UMA histogram.
+    {.test_name = "DisplayBelow_UseApproximateLocation_AskPermission",
+     .display_order = "DisplayBelow",
+     .wording = "UseApproximateLocation",
+     .site_permission = CONTENT_SETTING_ASK,
+     .use_https = true,
+     .is_precise = false,
+     .user_input = "a",
+     .mock_suggest_response =
+         "[\"a\",[\"a-location-relevant-suggestion\"],[],[],"
+         "{\"google:suggestsubtypes\":[[457]],"
+         "\"google:suggestrelevance\":[1400]}]",
+     .expected_results = {{u"a", kExpectedDseSearchText},
+                          {u"a-location-relevant-suggestion", u""},
+                          {u"a-location-relevant-suggestion",
+                           u"Use approximate location"}},
+     .expected_shown_state =
+         OmniboxInlineLocationSuggestionShown::kLocationSuggestionShown,
+     .expected_position_metric = 2},
 };
 
 INSTANTIATE_TEST_SUITE_P(

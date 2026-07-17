@@ -103,6 +103,7 @@
 <translation id="1335767868357998043">Valitse osoitepalkin sijainti</translation>
 <translation id="1347468774581902829">Toimintavalinnat</translation>
 <translation id="1348596747084433075">https://www.amazon.com/Wife-Gifts/s?k=for+Wife+Gifts</translation>
+<translation id="1353169676553627502">Laita edistymispäivitykset pois päältä</translation>
 <translation id="1355337783640312381">Jos haluat vaihtaa tiliä, napauta tilikuvaketta</translation>
 <translation id="135806768612505061">Välilehdet</translation>
 <translation id="1358106883354237005">Hallinnoitu tili</translation>
@@ -609,6 +610,7 @@
 <translation id="3073633853887034268">Selvä</translation>
 <translation id="3080525922482950719">Voit tallentaa sivuja myöhempää tai offline-tilassa lukemista varten</translation>
 <translation id="3081338492074632642">Varmista, että tallennettava salasana vastaa palvelun (<ph name="WEBSITE" />) salasanaa.</translation>
+<translation id="3084484227247071193">Laita edistymispäivitykset päälle</translation>
 <translation id="3087734570205094154">Alaosassa</translation>
 <translation id="309710370695886264">Sinulla on 1 uudelleenkäytetty salasana. Korjaa se nyt, jotta pysyt turvassa.</translation>
 <translation id="3099402981545350675">Tämä poistaa tälle laitteelle tallennetut osoitteet. Se myös poistaa valitut tiedot Chromesta, mutta ei Google-tililtäsi.</translation>
@@ -708,6 +710,7 @@
 <translation id="3449029510150690417">Luo uusi välilehtiryhmä nimeämällä se ja valitsemalla sille väri</translation>
 <translation id="345348365500626747">Osoite löytyi</translation>
 <translation id="3459644598174926977">Gemini Liven avulla voit kysyä sivusta, ideoida ääneen ja keskustella.</translation>
+<translation id="3462768334899086950">Tämä tarkoittaa, että menetät tallentamattoman tiedoston ja nykyiset välilehdet</translation>
 <translation id="3464194322481586217">Hintaa ei voitu seurata.</translation>
 <translation id="3469117812148449995">Salasanan tallentamisen vaihtoehdot</translation>
 <translation id="3472469028191701821">Avautuu uudelle välilehdelle</translation>
@@ -965,6 +968,7 @@
 <translation id="4326912346867677256">Kirjaudu turvallisesti sisään valitsemalla "Käytä salasanaa".</translation>
 <translation id="4328843285884395590">Oma Drive</translation>
 <translation id="4331177082088332784">Voit hallita tätä BEGIN_LINK Sisältöasetuksissa END_LINK</translation>
+<translation id="4331712008356052424">Jos haluat lähettää linkin, kirjaudu toiselle laitteelle käyttämällä tiliä <ph name="USER_EMAIL" /></translation>
 <translation id="4334428914252001502">1 lukematon artikkeli</translation>
 <translation id="4338258232580025606">Kirjautuminen ei onnistu</translation>
 <translation id="4338650699862464074">Lähettää avaamiesi sivujen URL-osoitteet Googlelle.</translation>
@@ -1471,6 +1475,7 @@ Handoff täytyy ottaa käyttöön myös Asetusten Yleiset-osiossa. Lisäksi mole
 <translation id="6040143037577758943">Sulje</translation>
 <translation id="6042308850641462728">Lisää</translation>
 <translation id="6045460247888249350">Lisää nimi</translation>
+<translation id="6050237559175440178">Vahvista henkilöllisyytesi, niin voit käyttää ja tallentaa tietojasi kaikilla laitteilla</translation>
 <translation id="6052269326659653305">Vaihda profiilia</translation>
 <translation id="605721222689873409">VV</translation>
 <translation id="6059830886158432458">Muuta tarinoiden ja toiminnan asetuksia täällä</translation>
@@ -1846,6 +1851,7 @@ Jos haluat jatkaa tietokoneella, vaihda tiliksi <ph name="OTHER_EMAIL" />. Saat 
 <translation id="722339453342442311">Tarkista nyt</translation>
 <translation id="7227235818314667565">Hallitse jakamista</translation>
 <translation id="7233006041370588369">Valitse täytettävä salasana.</translation>
+<translation id="723874023660911012">Vaihda profiilia</translation>
 <translation id="7241135764990439166">Incognito-tila ei ole käytettävissä</translation>
 <translation id="7248046129087111453"><ph name="BEGIN_LINK" />Hakuhistoriaa<ph name="END_LINK" /> ja <ph name="BEGIN_LINK" />muita toimintoja<ph name="END_LINK" /> voidaan tallentaa Google-tilillesi.</translation>
 <translation id="7253951228444156601">Tarkistetaan salasanoja…</translation>
@@ -2072,6 +2078,7 @@ Jos haluat jatkaa tietokoneella, vaihda tiliksi <ph name="OTHER_EMAIL" />. Saat 
 <translation id="7996239959906074962">Ota käyttöön…</translation>
 <translation id="800361585186029508">Avaa syötetyt URL-osoitteet Google Chromessa.</translation>
 <translation id="8005666035647241369">Googlen Salasanojen ylläpitoon tällä laitteella</translation>
+<translation id="8007106936382123905">{count,plural, =1{1 valmis tehtävä}other{# valmista tehtävää}}</translation>
 <translation id="8010488806779226127">Tutustu ominaisuuksiin, joiden avulla voit tehdä enemmän selatessa</translation>
 <translation id="8011489434346330032">Web Inspector ‑tarkastustyökalu</translation>
 <translation id="8014007212279733632">Vahvista henkilöllisyytesi, jotta arkaluontoiset tiedot voidaan täyttää automaattisesti</translation>
@@ -2155,6 +2162,7 @@ Jos haluat jatkaa tietokoneella, vaihda tiliksi <ph name="OTHER_EMAIL" />. Saat 
 <translation id="826614135184049678">Sinut kirjattiin ulos tililtä <ph name="USER_NAME" />, kun iPad nollattiin. Kirjaudu takaisin sisään valitsemalla Jatka.</translation>
 <translation id="8270320981823560179">Drive</translation>
 <translation id="8273982424131314219">Täytä tiedot täällä: <ph name="URL" /></translation>
+<translation id="8274795744553482834">Olet vaihtamassa profiilia</translation>
 <translation id="8275068909952022340">Lisää…</translation>
 <translation id="8280797717392145626">Linkkejä vastaanotettu</translation>
 <translation id="8281781826761538115">Oletus – <ph name="DEFAULT_LOCALE" /></translation>

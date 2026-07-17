@@ -8,11 +8,16 @@
 #include <string>
 #include <vector>
 
+#include "base/scoped_observation.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/views/permissions/embedded_permission_prompt_base_view.h"
 
 namespace content {
 class WebContents;
+}
+
+namespace views {
+class Widget;
 }
 
 // A view used to display information to the user that they need to go to OS
@@ -37,7 +42,8 @@ class EmbeddedPermissionPromptSystemSettingsView
   void RunButtonCallback(int type) override;
 
   // EmbeddedPermissionPromptBaseView
-  void PrepareToClose() override;
+  void OnWidgetTreeActivated(views::Widget* root_widget,
+                             views::Widget* active_widget) override;
 
  protected:
   std::vector<RequestLineConfiguration> GetRequestLinesConfiguration()
@@ -45,9 +51,8 @@ class EmbeddedPermissionPromptSystemSettingsView
   std::vector<ButtonConfiguration> GetButtonsConfiguration() const override;
 
  private:
-  void DidBecomeActive(BrowserWindowInterface* browser_window_interface);
-
-  base::CallbackListSubscription browser_subscription_;
+  base::ScopedObservation<views::Widget, views::WidgetObserver>
+      host_widget_observation_{this};
 };
 
 #endif  // CHROME_BROWSER_UI_VIEWS_PERMISSIONS_EMBEDDED_PERMISSION_PROMPT_SYSTEM_SETTINGS_VIEW_H_

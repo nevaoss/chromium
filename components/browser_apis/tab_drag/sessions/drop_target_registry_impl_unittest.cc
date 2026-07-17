@@ -11,6 +11,7 @@
 #include "base/test/run_until.h"
 #include "base/test/task_environment.h"
 #include "components/browser_apis/tab_drag/sessions/drop_target.h"
+#include "components/browser_apis/tab_drag/sessions/drop_target_registry.h"
 #include "components/browser_apis/tab_drag/sessions/tab_drag_window_registry.h"
 #include "components/browser_apis/tab_drag/testing/toy_drop_target.h"
 #include "components/browser_apis/tab_drag/testing/toy_tab_drag_window_adapter.h"
@@ -19,6 +20,7 @@
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/gfx/geometry/point.h"
 #include "ui/gfx/geometry/rect.h"
+#include "ui/gfx/native_ui_types.h"
 
 namespace tabs_api {
 
@@ -42,7 +44,7 @@ TEST_F(DropTargetRegistryImplTest, RegisterAndUnregister) {
   mojo::AssociatedRemote<mojom::DropTargetRegistration> registration;
 
   DropTargetId id = registry_.RegisterDropTarget(
-      &window, remote.Unbind(),
+      &window, gfx::NativeView(), remote.Unbind(),
       registration.BindNewEndpointAndPassDedicatedReceiver());
 
   EXPECT_EQ(1u, registry_.drop_targets_count_for_testing());
@@ -64,7 +66,7 @@ TEST_F(DropTargetRegistryImplTest, FindTargetWindow) {
       &target_a, remote_a.BindNewEndpointAndPassDedicatedReceiver());
   mojo::AssociatedRemote<mojom::DropTargetRegistration> reg_a;
   DropTargetId id_a = registry_.RegisterDropTarget(
-      &window_a, remote_a.Unbind(),
+      &window_a, gfx::NativeView(), remote_a.Unbind(),
       reg_a.BindNewEndpointAndPassDedicatedReceiver());
 
   ToyTabDragWindowAdapter window_b(gfx::Rect(200, 0, 100, 100),
@@ -75,8 +77,16 @@ TEST_F(DropTargetRegistryImplTest, FindTargetWindow) {
       &target_b, remote_b.BindNewEndpointAndPassDedicatedReceiver());
   mojo::AssociatedRemote<mojom::DropTargetRegistration> reg_b;
   DropTargetId id_b = registry_.RegisterDropTarget(
-      &window_b, remote_b.Unbind(),
+      &window_b, gfx::NativeView(), remote_b.Unbind(),
       reg_b.BindNewEndpointAndPassDedicatedReceiver());
+
+  // Push bounds for both targets to support the push model
+  reg_a->OnBoundsChanged(gfx::Rect(0, 0, 100, 100));
+  reg_b->OnBoundsChanged(gfx::Rect(0, 0, 100, 100));
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return registry_.GetCachedBounds(id_a).has_value() &&
+           registry_.GetCachedBounds(id_b).has_value();
+  }));
 
   // Find inside A
   auto result_a =

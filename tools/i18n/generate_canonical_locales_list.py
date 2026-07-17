@@ -84,9 +84,9 @@ _ALL_LOCALES = [
     ("ee", "EWE"),
     ("el", "GREEK"),
     ("en", "ENGLISH"),
+    ("en-001", "ENGLISH_GLOBAL"),
     ("en-AU", "ENGLISH_AUSTRALIA"),
     ("en-CA", "ENGLISH_CANADA"),
-    ("en-GB", "ENGLISH_UK"),
     ("en-GB", "BRITISH_ENGLISH"),
     ("en-GB-oxendict", "ENGLISH_UK_OXENDICT"),
     ("en-IE", "ENGLISH_IRELAND"),
@@ -94,6 +94,8 @@ _ALL_LOCALES = [
     ("en-NZ", "ENGLISH_NEW_ZEALAND"),
     ("en-US", "ENGLISH_US"),
     ("en-ZA", "ENGLISH_SOUTH_AFRICA"),
+    ("en-PH", "ENGLISH_PHILIPPINES"),
+    ("en-LR", "ENGLISH_LIBERIA"),
     ("eo", "ESPERANTO"),
     ("es", "SPANISH"),
     ("es-419", "SPANISH_LATIN_AMERICAN"),
@@ -222,7 +224,7 @@ _ALL_LOCALES = [
     ("tr", "TURKISH"),
     ("ts", "TSONGA"),
     ("tt", "TATAR"),
-    ("ak", "TWI"),  # The 'tw' code is deprecated.
+    ("tw", "TWI"),  # The 'tw' code is deprecated.
     ("ug", "UYGHUR"),
     ("uk", "UKRAINIAN"),
     ("ur", "URDU"),

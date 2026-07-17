@@ -15,10 +15,8 @@
 #include "chrome/browser/glic/selection/selection_overlay_untrusted_ui.h"
 #include "chrome/browser/history_clusters/history_clusters_service_factory.h"
 #include "chrome/browser/history_embeddings/history_embeddings_utils.h"
-#include "chrome/browser/new_tab_page/modules/file_suggestion/drive_suggestion.mojom.h"
 #include "chrome/browser/new_tab_page/modules/file_suggestion/microsoft_files.mojom.h"
 #include "chrome/browser/new_tab_page/modules/v2/authentication/microsoft_auth.mojom.h"
-#include "chrome/browser/new_tab_page/modules/v2/calendar/google_calendar.mojom.h"
 #include "chrome/browser/new_tab_page/modules/v2/calendar/outlook_calendar.mojom.h"
 #include "chrome/browser/new_tab_page/modules/v2/tab_groups/tab_groups.mojom.h"
 #include "chrome/browser/new_tab_page/new_tab_page_util.h"
@@ -65,6 +63,7 @@
 #include "chrome/browser/ui/webui/ntp_microsoft_auth/ntp_microsoft_auth_untrusted_ui.h"
 #include "chrome/browser/ui/webui/omnibox/logging/logs.mojom.h"
 #include "chrome/browser/ui/webui/omnibox/omnibox_ui.h"
+#include "chrome/browser/ui/webui/omnibox_everywhere/omnibox_everywhere_ui.h"
 #include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_ui.h"
 #include "chrome/browser/ui/webui/on_device_internals/on_device_internals_ui.h"
 #include "chrome/browser/ui/webui/password_manager/password_manager_ui.h"
@@ -377,7 +376,8 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
       NewTabPageUI>(map);
 
   RegisterWebUIControllerInterfaceBinder<searchbox::mojom::PageHandlerFactory,
-                                         NewTabPageUI, OmniboxPopupUI>(map);
+                                         NewTabPageUI, OmniboxPopupUI,
+                                         OmniboxEverywhereUI>(map);
 
   RegisterWebUIControllerInterfaceBinder<suggest_internals::mojom::PageHandler,
                                          SuggestInternalsUI>(map);
@@ -388,7 +388,12 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
   RegisterWebUIControllerInterfaceBinder<
       customize_color_scheme_mode::mojom::
           CustomizeColorSchemeModeHandlerFactory,
-      CustomizeChromeUI>(map);
+      CustomizeChromeUI
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+      ,
+      FeatureShowcaseUI
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
+      >(map);
 
   RegisterWebUIControllerInterfaceBinder<
       theme_color_picker::mojom::ThemeColorPickerHandlerFactory,
@@ -397,6 +402,10 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
       ,
       ProfileCustomizationUI
 #endif  // !BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+      ,
+      FeatureShowcaseUI
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
       >(map);
 
   RegisterWebUIControllerInterfaceBinder<
@@ -415,19 +424,9 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
       map);
 #endif  // !defined(OFFICIAL_BUILD)
 
-  if (IsDriveModuleEnabled()) {
-    RegisterWebUIControllerInterfaceBinder<
-        file_suggestion::mojom::DriveSuggestionHandler, NewTabPageUI>(map);
-  }
-
   if (base::FeatureList::IsEnabled(ntp_features::kNtpTabGroupsModule)) {
     RegisterWebUIControllerInterfaceBinder<ntp::tab_groups::mojom::PageHandler,
                                            NewTabPageUI>(map);
-  }
-
-  if (base::FeatureList::IsEnabled(ntp_features::kNtpCalendarModule)) {
-    RegisterWebUIControllerInterfaceBinder<
-        ntp::calendar::mojom::GoogleCalendarPageHandler, NewTabPageUI>(map);
   }
 
   if (IsOutlookCalendarModuleEnabledForProfile(Profile::FromBrowserContext(
@@ -571,7 +570,7 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
       is_contextual_tasks_enabled) {
     RegisterWebUIControllerInterfaceBinder<
         composebox::mojom::PageHandlerFactory, NewTabPageUI, ContextualTasksUI,
-        OmniboxPopupUI>(map);
+        OmniboxPopupUI, OmniboxEverywhereUI>(map);
   }
 
   if (base::FeatureList::IsEnabled(

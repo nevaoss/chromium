@@ -56,6 +56,9 @@ class NET_EXPORT_PRIVATE HttpNetworkTransaction
     : public HttpTransaction,
       public HttpStreamRequest::Delegate {
  public:
+  static constexpr char kAsyncRetryOnTooManyConnectionErrorsFirstHistogram[] =
+      "Net.NetworkTransaction.AsyncRetryOnTooManyConnectionErrors.First";
+
   HttpNetworkTransaction(RequestPriority priority, HttpNetworkSession* session);
 
   HttpNetworkTransaction(const HttpNetworkTransaction&) = delete;

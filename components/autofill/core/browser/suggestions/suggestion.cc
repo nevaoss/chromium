@@ -31,6 +31,7 @@
 #if BUILDFLAG(IS_ANDROID)
 #include "base/android/jni_android.h"
 #include "base/android/jni_string.h"
+#include "components/autofill/android/main_autofill_jni_headers/AutofillAiPayload_jni.h"
 #include "components/autofill/android/main_autofill_jni_headers/AutofillProfilePayload_jni.h"
 #include "components/autofill/android/main_autofill_jni_headers/PaymentsPayload_jni.h"
 #endif  // BUILDFLAG(IS_ANDROID)
@@ -265,6 +266,15 @@ Suggestion::AutofillAiPayload& Suggestion::AutofillAiPayload::operator=(
     AutofillAiPayload&&) = default;
 
 Suggestion::AutofillAiPayload::~AutofillAiPayload() = default;
+
+#if BUILDFLAG(IS_ANDROID)
+base::android::ScopedJavaLocalRef<jobject>
+Suggestion::AutofillAiPayload::CreateJavaObject() const {
+  JNIEnv* env = base::android::AttachCurrentThread();
+  return Java_AutofillAiPayload_Constructor(env, guid.value(),
+                                            requires_server_fetch);
+}
+#endif  // BUILDFLAG(IS_ANDROID)
 
 Suggestion::AutofillProfilePayload::AutofillProfilePayload() = default;
 Suggestion::AutofillProfilePayload::AutofillProfilePayload(Guid guid)

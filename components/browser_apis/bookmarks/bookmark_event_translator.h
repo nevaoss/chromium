@@ -16,6 +16,7 @@
 namespace bookmarks {
 class BookmarkModel;
 class BookmarkNode;
+class ManagedBookmarkService;
 }  // namespace bookmarks
 
 namespace bookmarks_api {
@@ -33,12 +34,15 @@ class BookmarkEventTranslator : public bookmarks::BookmarkModelObserver {
   };
 
   BookmarkEventTranslator(bookmarks::BookmarkModel* model,
+                          bookmarks::ManagedBookmarkService* managed,
                           Subscriber* subscriber);
   BookmarkEventTranslator(const BookmarkEventTranslator&) = delete;
   BookmarkEventTranslator& operator=(const BookmarkEventTranslator&) = delete;
   ~BookmarkEventTranslator() override;
 
   static mojom::BookmarkNodePtr ConvertNode(
+      bookmarks::BookmarkModel* model,
+      bookmarks::ManagedBookmarkService* managed,
       const bookmarks::BookmarkNode* node);
 
   // bookmarks::BookmarkModelObserver:
@@ -69,6 +73,7 @@ class BookmarkEventTranslator : public bookmarks::BookmarkModelObserver {
   void Notify(const std::vector<mojom::BookmarksEventPtr>& events);
 
   raw_ptr<bookmarks::BookmarkModel> model_;
+  raw_ptr<bookmarks::ManagedBookmarkService> managed_;
   raw_ptr<Subscriber> subscriber_;
   // A snapshot of the folder structure (mapping folder UUID to its children's
   // UUIDs) used to detect changes (adds, removes, moves) in the bookmark model.

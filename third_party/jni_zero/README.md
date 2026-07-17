@@ -179,6 +179,12 @@ void MyClass::NonStatic(JNIEnv* env) { ... }
 DEFINE_JNI(MyClass)
 ```
 
+#### Legacy Syntax
+
+Directly expose Java methods using the `native` keyword and JNI Zero will
+generate the bindings. This still works, but we are keen to drop support once
+all usage has been migrated.
+
 ### Calling Native -> Java
 
 1. Annotate some methods with `@CalledByNative`, the generator will now generate

@@ -39,6 +39,8 @@ export class BookmarksElement extends CrLitElement implements
       id: {value: ''},
       title: '',
       children: [],
+      permanentFolderType: null,
+      isSynced: false,
     },
   };
 

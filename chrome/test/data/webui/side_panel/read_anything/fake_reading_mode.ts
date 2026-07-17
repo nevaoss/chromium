@@ -227,6 +227,10 @@ export class FakeReadingMode {
   // element is added to the document.
   onConnected() {}
 
+  // Called when the main frame undergoes a same document navigation (such as
+  // a fragment navigation).
+  onMainFrameSameDocumentNavigation(_url: string) {}
+
   // Called when a user tries to copy text from reading mode with keyboard
   // shortcuts.
   onCopy() {}

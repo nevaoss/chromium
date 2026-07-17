@@ -53,6 +53,9 @@ class Browser;
 /// Ends omnibox editing / defocus the omnibox.
 - (void)endEditing;
 
+// Hides the menu managed by this composebox instance.
+- (void)hideComposeboxMenu;
+
 @end
 
 #endif  // IOS_CHROME_BROWSER_COMPOSEBOX_COORDINATOR_COMPOSEBOX_INPUT_PLATE_COORDINATOR_H_

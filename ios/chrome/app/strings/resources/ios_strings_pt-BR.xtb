@@ -103,6 +103,7 @@
 <translation id="1335767868357998043">Escolha a posição da barra de endereço</translation>
 <translation id="1347468774581902829">Gerenciar atividade</translation>
 <translation id="1348596747084433075">https://www.amazon.com.br/s?k=presentes+para+a+esposa&amp;sprefix=presentes+esposa</translation>
+<translation id="1353169676553627502">Desativar atualizações de progresso</translation>
 <translation id="1355337783640312381">Para trocar de conta, toque no ícone da conta</translation>
 <translation id="135806768612505061">Todas as guias</translation>
 <translation id="1358106883354237005">Conta gerenciada</translation>
@@ -609,6 +610,7 @@
 <translation id="3073633853887034268">Entendi</translation>
 <translation id="3080525922482950719">Você pode salvar páginas para ler depois ou off-line</translation>
 <translation id="3081338492074632642">A senha que você está salvando precisa ser a mesma usada em <ph name="WEBSITE" /></translation>
+<translation id="3084484227247071193">Ativar atualizações de progresso</translation>
 <translation id="3087734570205094154">Parte inferior</translation>
 <translation id="309710370695886264">Você tem uma senha reutilizada. Corrija o problema agora para se proteger.</translation>
 <translation id="3099402981545350675">Essa ação exclui os endereços salvos neste dispositivo. Ela também remove as informações selecionadas do Chrome, mas não as exclui da sua Conta do Google.</translation>
@@ -708,6 +710,7 @@
 <translation id="3449029510150690417">Crie um novo grupo de guias atribuindo um nome e uma cor a ele</translation>
 <translation id="345348365500626747">Endereço encontrado</translation>
 <translation id="3459644598174926977">Converse Live com o Gemini para perguntar sobre uma página, discutir ideias em voz alta e bater papo.</translation>
+<translation id="3462768334899086950">Isso significa que você vai perder o arquivo não salvo e as guias atuais</translation>
 <translation id="3464194322481586217">Não foi possível monitorar o preço.</translation>
 <translation id="3469117812148449995">Opções para salvar senha</translation>
 <translation id="3472469028191701821">Abre em uma nova guia</translation>
@@ -965,6 +968,7 @@
 <translation id="4326912346867677256">Toque em "Usar senha" para fazer login com segurança.</translation>
 <translation id="4328843285884395590">Meu Drive</translation>
 <translation id="4331177082088332784">Você pode gerenciar isso em BEGIN_LINK Configurações de conteúdo END_LINK</translation>
+<translation id="4331712008356052424">Para enviar esse link, faça login no outro dispositivo usando a conta <ph name="USER_EMAIL" /></translation>
 <translation id="4334428914252001502">1 artigo não lido.</translation>
 <translation id="4338258232580025606">Não consigo logar</translation>
 <translation id="4338650699862464074">Envia URLs das páginas que você visita para o Google.</translation>
@@ -1471,6 +1475,7 @@ A "Transição" também deve ser ativada na seção "Geral" das configurações.
 <translation id="6040143037577758943">Fechar</translation>
 <translation id="6042308850641462728">Mais</translation>
 <translation id="6045460247888249350">Adicionar título</translation>
+<translation id="6050237559175440178">Confirme sua identidade para usar e salvar suas informações em todos os seus dispositivos</translation>
 <translation id="6052269326659653305">Trocar de perfil</translation>
 <translation id="605721222689873409">AA</translation>
 <translation id="6059830886158432458">Controle suas matérias e atividade aqui</translation>
@@ -1846,6 +1851,7 @@ Para continuar pelo computador, mude para <ph name="OTHER_EMAIL" />. Você vai r
 <translation id="722339453342442311">Verificar agora</translation>
 <translation id="7227235818314667565">Gerenciar compartilhamento</translation>
 <translation id="7233006041370588369">Selecione uma senha para preencher.</translation>
+<translation id="723874023660911012">Trocar de perfil</translation>
 <translation id="7241135764990439166">O modo de navegação anônima está indisponível</translation>
 <translation id="7248046129087111453">O <ph name="BEGIN_LINK" />histórico de pesquisa<ph name="END_LINK" /> e <ph name="BEGIN_LINK" />outras formas de atividade<ph name="END_LINK" /> podem ser salvos na sua Conta do Google.</translation>
 <translation id="7253951228444156601">Verificando senhas…</translation>
@@ -2072,6 +2078,7 @@ Para continuar pelo computador, mude para <ph name="OTHER_EMAIL" />. Você vai r
 <translation id="7996239959906074962">Configurar…</translation>
 <translation id="800361585186029508">Abre os URLs fornecidos no Google Chrome.</translation>
 <translation id="8005666035647241369">No Gerenciador de senhas do Google deste dispositivo</translation>
+<translation id="8007106936382123905">{count,plural, =1{1 tarefa concluída}one{# tarefa concluída}other{# tarefas concluídas}}</translation>
 <translation id="8010488806779226127">Conheça os recursos que podem ajudar você a fazer mais enquanto navega</translation>
 <translation id="8011489434346330032">Web Inspector</translation>
 <translation id="8014007212279733632">Confirme sua identidade para preencher automaticamente informações sensíveis</translation>
@@ -2155,6 +2162,7 @@ Para continuar pelo computador, mude para <ph name="OTHER_EMAIL" />. Você vai r
 <translation id="826614135184049678">Sua conta <ph name="USER_NAME" /> foi desconectada como parte da redefinição do iPad. Para fazer login novamente, toque em "Continuar" abaixo.</translation>
 <translation id="8270320981823560179">Drive</translation>
 <translation id="8273982424131314219">As informações serão preenchidas em <ph name="URL" /></translation>
+<translation id="8274795744553482834">Você está prestes a trocar de perfil</translation>
 <translation id="8275068909952022340">Mais…</translation>
 <translation id="8280797717392145626">Links recebidos</translation>
 <translation id="8281781826761538115">Padrão: <ph name="DEFAULT_LOCALE" /></translation>

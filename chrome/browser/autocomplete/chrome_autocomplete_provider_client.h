@@ -22,11 +22,12 @@
 #include "chrome/browser/autocomplete/tab_matcher_desktop.h"
 #endif
 
-class Profile;
-class TabMatcher;
+class AiModeButtonService;
+class AimEligibilityService;
 class AutocompleteScoringModelService;
 class OnDeviceTailModelService;
-class AimEligibilityService;
+class Profile;
+class TabMatcher;
 
 namespace content {
 class StoragePartition;
@@ -103,6 +104,7 @@ class ChromeAutocompleteProviderClient : public AutocompleteProviderClient {
   tab_groups::TabGroupSyncService* GetTabGroupSyncService() const override;
   sync_sessions::SessionSyncService* GetSessionSyncService() const override;
   AimEligibilityService* GetAimEligibilityService() const override;
+  AiModeButtonService* GetAiModeButtonService() const override;
 
   bool IsOffTheRecord() const override;
   bool IsIncognitoProfile() const override;

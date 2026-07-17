@@ -247,7 +247,11 @@ chromium-metrics-reviews@google.com.
 
 <variants name="TpmOperation">
   <variant name="MessageSigning" summary="message signing"/>
+  <variant name="NewAttestationKeyCreation"
+      summary="new attestation key creation"/>
   <variant name="NewKeyCreation" summary="new key creation"/>
+  <variant name="WrappedAttestationKeyCreation"
+      summary="wrapped attestation key creation"/>
   <variant name="WrappedKeyCreation" summary="wrapped key creation"/>
 </variants>
 
@@ -583,6 +587,8 @@ chromium-metrics-reviews@google.com.
   <token key="Operation" variants="TpmOperation">
     <variant name="KeyCertification" summary="key certification"/>
     <variant name="SelectAlgorithm" summary="select algorithm"/>
+    <variant name="WrappedAttestationKeyExport"
+        summary="wrapped attestation key export"/>
     <variant name="WrappedKeyExport" summary="wrapped key export"/>
   </token>
   <token key="SignatureAlgorithm">
@@ -3908,7 +3914,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.HttpJob.TotalTime.TLS13.Google" units="ms"
-    expires_after="2026-10-18">
+    expires_after="2026-12-20">
   <owner>bashi@chromium.org</owner>
   <owner>trusty-transport@chromium.org</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -5566,7 +5572,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.QuicSession.AcceptChFrameReceivedViaAlps"
-    enum="AcceptChEntries" expires_after="2026-10-18">
+    enum="AcceptChEntries" expires_after="2026-12-20">
   <owner>bnc@chromium.org</owner>
   <owner>src/net/OWNERS</owner>
   <summary>
@@ -8655,6 +8661,17 @@ chromium-metrics-reviews@google.com.
   <summary>Socket connected status in SpdySession::CreateStream.</summary>
 </histogram>
 
+<histogram name="Net.SpdySession.GetRemoteEndpointResult" enum="NetErrorCodes"
+    expires_after="2027-06-20">
+  <owner>hayato@chromium.org</owner>
+  <owner>src/net/OWNERS</owner>
+  <summary>
+    Records the net error code returned by GetPeerAddress inside
+    SpdySession::GetRemoteEndpoint. This is recorded every time
+    GetRemoteEndpoint is called.
+  </summary>
+</histogram>
+
 <histogram name="Net.SpdySession.GoAwayReceived" enum="Http2WireErrorCodes"
     expires_after="2026-09-02">
   <owner>bashi@chromium.org</owner>
@@ -9338,7 +9355,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.SSLHandshakeEarlyDataReason"
-    enum="SSLHandshakeEarlyDataReason" expires_after="2026-10-18">
+    enum="SSLHandshakeEarlyDataReason" expires_after="2026-12-20">
   <owner>bashi@chromium.org</owner>
   <owner>trusty-transport@chromium.org</owner>
   <summary>
@@ -9791,7 +9808,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.URLLoader.ProportionOfWritesBlockedByMojo" units="%"
-    expires_after="2026-10-18">
+    expires_after="2026-12-20">
   <owner>yoichio@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <improvement direction="LOWER_IS_BETTER"/>

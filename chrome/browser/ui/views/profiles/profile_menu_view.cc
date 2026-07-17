@@ -806,8 +806,9 @@ ProfileMenuView::GetIdentitySectionParams(const ProfileAttributesEntry& entry) {
             /*size_for_placeholder_avatar=*/kIdentityImageSizeForButton,
             /*use_high_res_file=*/true,
             GetPlaceholderAvatarIconParamsVisibleAgainstColor(
-                browser().window()->GetColorProvider()->GetColor(
-                    ui::kColorButtonBackgroundProminent)));
+                BrowserWindow::FromBrowser(&browser())
+                    ->GetColorProvider()
+                    ->GetColor(ui::kColorButtonBackgroundProminent)));
       } else {
         account_image = account_info_for_promos.account_image;
       }
@@ -1275,8 +1276,9 @@ void ProfileMenuView::BuildOtherProfilesSection(
             kOtherProfileImageSize,
             /*use_high_res_file=*/true,
             GetPlaceholderAvatarIconParamsVisibleAgainstColor(
-                browser().window()->GetColorProvider()->GetColor(
-                    ui::kColorMenuBackground)))),
+                BrowserWindow::FromBrowser(&browser())
+                    ->GetColorProvider()
+                    ->GetColor(ui::kColorMenuBackground)))),
         profile_entry->GetName(),
         /*is_guest=*/false,
         base::BindRepeating(&ProfileMenuView::OnOtherProfileSelected,

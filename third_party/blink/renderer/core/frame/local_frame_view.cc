@@ -5046,6 +5046,32 @@ void LocalFrameView::ResetUkmAggregatorForTesting() {
   ukm_aggregator_.reset();
 }
 
+void LocalFrameView::MaybeStopDeferringCommitsWithoutContentfulPaint() {
+  if (!frame_->IsMainFrame()) {
+    return;
+  }
+  // If the document has finished parsing, first paint has been rendered and FCP
+  // hasn't fired, stop deferring commits. This handles pages that only have
+  // non-contentful paint (e.g., background-color only, no text or images).
+  Document* document = frame_->GetDocument();
+  if (!document || !document->HasFinishedParsing()) {
+    return;
+  }
+
+  PaintTiming& paint_timing = PaintTiming::From(*document);
+  // Wait for the first paint to be rendered before stopping deferring commits.
+  if (paint_timing.FirstPaintRendered().is_null()) {
+    return;
+  }
+  // Stop deferring commits was already called on FCP, so we don't need to do it
+  // again.
+  if (!paint_timing.FirstContentfulPaintRenderedButNotPresentedAsMonotonicTime()
+           .is_null()) {
+    return;
+  }
+  GetPage()->GetChromeClient().StopDeferringCommits(*frame_);
+}
+
 void LocalFrameView::OnFirstContentfulPaint() {
   if (frame_->IsMainFrame()) {
     // Restart commits that may have been deferred.

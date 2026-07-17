@@ -67,14 +67,7 @@ BASE_DECLARE_FEATURE(kAutofillPasswordUserPerceptionSurvey);
 // actions.
 BASE_DECLARE_FEATURE(kAwaitPageStabilityForPasswordChange);
 extern const base::FeatureParam<base::TimeDelta> kAwaitPageStabilityTimeout;
-
 #endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
-
-// Retries capturing annotated page context during automated password change if
-// capturing failed for some reason.
-BASE_DECLARE_FEATURE(kRetryCapturePageContent);
-extern const base::FeatureParam<base::TimeDelta> kCapturePageContentDelay;
-extern const base::FeatureParam<int> kCapturePageContentRetryCount;
 
 // Enables Biometrics for the Touch To Fill feature. This only effects Android.
 BASE_DECLARE_FEATURE(kBiometricTouchToFill);
@@ -122,17 +115,7 @@ BASE_DECLARE_FEATURE(kFetchChangePasswordUrlForPasswordChange);
 // selection, rather than autofilling on page load, with highlighting of fields.
 BASE_DECLARE_FEATURE(kFillOnAccountSelect);
 
-#if BUILDFLAG(IS_ANDROID)
-// When enabled, the user can be prompted to retrieve the trusted vault key
-// during a password saving flow.
-BASE_DECLARE_FEATURE(kInFlowTrustedVaultKeyRetrievalAndroid);
-#endif  // BUILDFLAG(IS_ANDROID)
-
 #if BUILDFLAG(IS_IOS)
-// When enabled, the user can be prompted to retrieve the trusted vault key
-// during a password saving flow.
-BASE_DECLARE_FEATURE(kInFlowTrustedVaultKeyRetrievalIos);
-
 // Enables the clean up of hanging form extraction requests made by the
 // password suggestion helper. This is to fix the cases where the suggestions
 // pipeline is broken because the pipeline is waiting for password suggestions
@@ -149,9 +132,6 @@ extern const base::FeatureParam<int>
 BASE_DECLARE_FEATURE(kIOSProactivePasswordGenerationBottomSheet);
 #endif  // BUILDFLAG(IS_IOS)
 
-// Enables rendering a passkey hybrid QR code directly inside the autofill
-// dropdown during conditional UI.
-BASE_DECLARE_FEATURE(kMagiChromeQrCodeAutofill);
 
 // Marks all submitted credentials as leaked, useful for testing of a password
 // leak dialog.
@@ -160,14 +140,24 @@ BASE_DECLARE_FEATURE(kMarkAllCredentialsAsLeaked);
 #if BUILDFLAG(IS_ANDROID)
 // Enables OTP phishing checks.
 BASE_DECLARE_FEATURE(kOtpPhishGuard);
+#endif  // BUILDFLAG(IS_ANDROID)
 
-// The minimum GMS version required to send deletion origin to Android Backend.
-extern const base::FeatureParam<int> kPassDeletionOriginMinGmsVersion;
+// PasswordManagerClient::IsFillingEnabled returns `false` for opaque origins.
+// Intended as a kill-switch.
+BASE_DECLARE_FEATURE(kPasswordBlockOpaqueOrigins);
 
+#if BUILDFLAG(IS_ANDROID)
 // When enabled, DeletionOrigin is sent to Android Backend for password
 // deletions.
 BASE_DECLARE_FEATURE(kPassDeletionOriginToAndroidBackend);
+
+// The minimum GMS version required to send deletion origin to Android Backend.
+extern const base::FeatureParam<int> kPassDeletionOriginMinGmsVersion;
 #endif  // BUILDFLAG(IS_ANDROID)
+
+// Triggers password change glow invoking Glic from settings.
+// This flag is only for the prototype version.
+BASE_DECLARE_FEATURE(kPasswordCheckupPrototype);
 
 // Populate the `date_last_filled` timestamp for passwords.
 BASE_DECLARE_FEATURE(kPasswordDateLastFilled);
@@ -178,27 +168,9 @@ BASE_DECLARE_FEATURE(kPasswordFormClientsideClassifier);
 // Enables offering credentials for filling across grouped domains.
 BASE_DECLARE_FEATURE(kPasswordFormGroupedAffiliations);
 
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)  // Desktop
-BASE_DECLARE_FEATURE(kPasswordSaveInContextErrorResolutionOnDesktop);
-#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
-
-// When enabled, the password store triggers the `OnErrorStateChanged`
-// notifications.
-BASE_DECLARE_FEATURE(kPasswordStorePropagatesActionableErrors);
-
 // Enables logging the content of chrome://password-manager-internals to the
 // terminal.
 BASE_DECLARE_FEATURE(kPasswordManagerLogToTerminal);
-
-// Prevents password manager from showing save/update UI on federated login.
-BASE_DECLARE_FEATURE(kPreventPasswordManagerOnFederatedLogin);
-
-// Prevents offering Automatic Password Change on federated login.
-BASE_DECLARE_FEATURE(kPreventAPCOnFederatedLogin);
-
-// Triggers password change glow invoking Glic from settings.
-// This flag is only for the prototype version.
-BASE_DECLARE_FEATURE(kPasswordCheckupPrototype);
 
 #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)  // Desktop
 // Performs additional security checks wrt. the triggering frame before adding
@@ -206,10 +178,30 @@ BASE_DECLARE_FEATURE(kPasswordCheckupPrototype);
 BASE_DECLARE_FEATURE(kPasswordManualFallbackSecurityChecks);
 #endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 
+// When enabled, the user can resolve actionable errors in context during a
+// password save flow.
+BASE_DECLARE_FEATURE(kPasswordSaveInContextErrorResolution);
+
+// When enabled, the password store triggers the `OnErrorStateChanged`
+// notifications.
+BASE_DECLARE_FEATURE(kPasswordStorePropagatesActionableErrors);
+
+// Prevents offering Automatic Password Change on federated login.
+BASE_DECLARE_FEATURE(kPreventAPCOnFederatedLogin);
+
+// Prevents password manager from showing save/update UI on federated login.
+BASE_DECLARE_FEATURE(kPreventPasswordManagerOnFederatedLogin);
+
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 // Enables "Needs access to keychain, restart chrome" bubble and banner.
 BASE_DECLARE_FEATURE(kRestartToGainAccessToKeychain);
 #endif  // BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+
+// Retries capturing annotated page context during automated password change if
+// capturing failed for some reason.
+BASE_DECLARE_FEATURE(kRetryCapturePageContent);
+extern const base::FeatureParam<base::TimeDelta> kCapturePageContentDelay;
+extern const base::FeatureParam<int> kCapturePageContentRetryCount;
 
 // Shows a confirmation dialog before filling grouped credentials from the
 // manual fallback popup on Desktop.
@@ -226,20 +218,16 @@ BASE_DECLARE_FEATURE(kSkipUndecryptablePasswords);
 // Starts passwords resync when undecryptable passwords are detected.
 BASE_DECLARE_FEATURE(kTriggerPasswordResyncWhenUndecryptablePasswordsDetected);
 
-
 // The feature enables the use of detached Widget during password change
 // to which WebContents is attached. This helps to resolve the problem
 // that requestAnimationFrame() is not fired on a detached WebContents.
 BASE_DECLARE_FEATURE(kUseDetachedWidget);
 
-
 #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)  // Desktop
-
 // Moves the "Use a passkey / Use a different passkey" to the context menu from
 // the autofill dropdown. This is now decoupled from
 // "PasswordManualFallbackAvailable" flag.
 BASE_DECLARE_FEATURE(kWebAuthnUsePasskeyFromAnotherDeviceInContextMenu);
-
 #endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 
 // Enables the "Use a passkey / Use a different passkey" in the password manual

@@ -89,6 +89,9 @@ export class TopToolbarElement extends TopToolbarElementBase {
       },
       onboardingTooltipShowing: {type: Boolean},
       contextualTasksEnableSpatialModelToolbarLayout_: {type: Boolean},
+      contextualTasksEnableSpatialModelToolbarLayoutNewThreadInOverflow_:
+          {type: Boolean},
+      overflowMenuOpen_: {type: Boolean},
     };
   }
 
@@ -110,12 +113,16 @@ export class TopToolbarElement extends TopToolbarElementBase {
       loadTimeData.getBoolean('hideMenuOnAiPageEnabled');
   protected accessor contextualTasksEnableSpatialModelToolbarLayout_: boolean =
       loadTimeData.getBoolean('contextualTasksEnableSpatialModelToolbarLayout');
+  protected accessor contextualTasksEnableSpatialModelToolbarLayoutNewThreadInOverflow_:
+      boolean = loadTimeData.getBoolean(
+          'contextualTasksEnableSpatialModelToolbarLayoutNewThreadInOverflow');
   accessor hideOverflowMenuButton_: boolean =
       this.hideOverflowMenuOnAiPageEnabled_ && this.isAiPage;
   protected accessor isPinned: boolean =
       loadTimeData.getBoolean('isSidePanelPinned');
   protected accessor contextManagementInComposeboxEnabled_: boolean =
       loadTimeData.getBoolean('contextManagementInComposeboxEnabled');
+  protected accessor overflowMenuOpen_: boolean = false;
 
   override connectedCallback() {
     super.connectedCallback();
@@ -195,7 +202,7 @@ export class TopToolbarElement extends TopToolbarElementBase {
   }
 
   protected onNewThreadClick_() {
-    this.dispatchEvent(new CustomEvent('new-thread-click'));
+    this.fire('new-thread-click');
   }
 
   protected onThreadHistoryClick_() {
@@ -206,6 +213,10 @@ export class TopToolbarElement extends TopToolbarElementBase {
   protected onOverflowMenuButtonClick_(e: Event) {
     recordAction('ContextualTasks.WebUI.UserAction.OpenOverflowMenu');
     this.$.overflowMenu.get().showAt(e.target as HTMLElement);
+  }
+
+  protected onOverflowMenuOpenChanged_(e: CustomEvent<{value: boolean}>) {
+    this.overflowMenuOpen_ = e.detail.value;
   }
 
   protected onSourcesClick_(e: Event) {

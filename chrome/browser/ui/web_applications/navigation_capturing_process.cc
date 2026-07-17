@@ -6,7 +6,9 @@
 
 #include <utility>
 
+#include "base/check.h"
 #include "base/check_deref.h"
+#include "base/check_op.h"
 #include "base/debug/crash_logging.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
@@ -1944,7 +1946,7 @@ NavigationCapturingProcess::CapturedNavigateExisting(Browser* app_browser,
                                                      int browser_tab) {
   CHECK(first_navigation_app_id_.has_value());
 
-  CHECK(browser_tab != -1);
+  CHECK_NE(browser_tab, -1);
   if (isolated_web_app_navigation_) {
     CHECK(disposition_ == WindowOpenDisposition::NEW_FOREGROUND_TAB ||
           disposition_ == WindowOpenDisposition::CURRENT_TAB);

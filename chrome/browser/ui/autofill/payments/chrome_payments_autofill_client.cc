@@ -49,6 +49,7 @@
 #include "components/autofill/core/browser/payments/otp_unmask_delegate.h"
 #include "components/autofill/core/browser/payments/otp_unmask_result.h"
 #include "components/autofill/core/browser/payments/payments_autofill_client.h"
+#include "components/autofill/core/browser/payments/payments_churned_users_manager.h"
 #include "components/autofill/core/browser/payments/payments_network_interface.h"
 #include "components/autofill/core/browser/payments/save_and_fill_manager_impl.h"
 #include "components/autofill/core/browser/payments/virtual_card_enrollment_manager.h"
@@ -132,7 +133,9 @@ ChromePaymentsAutofillClient::ChromePaymentsAutofillClient(
     : content::WebContentsObserver(&client->GetWebContents()),
       client_(CHECK_DEREF(client)),
       save_and_fill_manager_(
-          std::make_unique<SaveAndFillManagerImpl>(&client_.get())) {
+          std::make_unique<SaveAndFillManagerImpl>(&client_.get())),
+      payments_churned_users_manager_(
+          std::make_unique<payments::PaymentsChurnedUsersManager>(client)) {
 #if BUILDFLAG(IS_ANDROID)
   touch_to_fill_payment_method_controller_ =
       std::make_unique<TouchToFillPaymentMethodControllerImpl>(&client_.get());

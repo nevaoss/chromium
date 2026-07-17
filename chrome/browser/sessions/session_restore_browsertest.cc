@@ -613,7 +613,7 @@ IN_PROC_BROWSER_TEST_F(SessionRestoreTest, RestoredTabsHaveCorrectInitialSize) {
   ASSERT_EQ(3, tab_strip_model->count());
 
   const gfx::Size contents_size =
-      restored->GetBrowserForMigrationOnly()->window()->GetContentsSize();
+      BrowserWindow::FromBrowser(restored)->GetContentsSize();
   for (int i = 0; i < tab_strip_model->count(); ++i) {
     content::WebContents* contents = tab_strip_model->GetWebContentsAt(i);
     const char kGetWidthJS[] = "window.innerWidth;";

@@ -34,6 +34,7 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_observer.h"
 #include "components/signin/public/base/signin_buildflags.h"
+#include "components/signin/public/base/signin_switches.h"
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 #include "chrome/browser/signin/dice_tab_helper.h"
 #endif
@@ -216,17 +217,15 @@ bool SkipGpmPasskeyCreationForOwnAccount(
           user_name == account_email_local_part);
 }
 
-bool IsChromeSigninPage(content::RenderFrameHost* rfh) {
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
+bool IsChromeSigninPage(content::RenderFrameHost* rfh) {
   content::WebContents* web_contents =
       content::WebContents::FromRenderFrameHost(rfh);
   DiceTabHelper* tab_helper =
       web_contents ? DiceTabHelper::FromWebContents(web_contents) : nullptr;
   return tab_helper && tab_helper->IsChromeSigninPage();
-#else
-  return false;
-#endif
 }
+#endif
 
 }  // namespace
 
@@ -722,13 +721,15 @@ bool ChromeAuthenticatorRequestDelegate::EmbedderControlsAuthenticatorDispatch(
     // hybrid handshake advertising immediately on page load to make the QR
     // string payload instantly available for rendering inside the Autofill
     // popup, while avoiding unnecessary Bluetooth advertising on other pages.
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
     if (IsChromeSigninPage(GetRenderFrameHost()) &&
-        base::FeatureList::IsEnabled(
-            password_manager::features::kMagiChromeQrCodeAutofill) &&
+        (switches::IsMagiChromePasskeyAutofillEnabled() ||
+         switches::IsMagiChromePasskeyBannerEnabled()) &&
         authenticator.AuthenticatorTransport() ==
             device::FidoTransportProtocol::kHybrid) {
       return false;
     }
+#endif
     // There is an active conditional request that is not showing any UI. The UI
     // will dispatch to any plugged in authenticators after the user selects an
     // option.

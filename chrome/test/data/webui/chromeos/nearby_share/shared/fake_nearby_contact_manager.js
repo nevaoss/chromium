@@ -10,6 +10,9 @@ import 'chrome://resources/mojo/chromeos/ash/services/nearby/public/mojom/nearby
 
 /**
  * Fake implementation of ContactManagerInterface
+ * @property {?Array<!Object>} contactRecords
+ * @property {!Array<!string>} allowedContacts
+ * @property {boolean} downloadContactsCalled
  */
 export class FakeContactManager {
   constructor() {

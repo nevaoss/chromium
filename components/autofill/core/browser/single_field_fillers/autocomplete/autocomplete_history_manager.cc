@@ -67,7 +67,8 @@ void AutocompleteHistoryManager::OnGetSingleFieldSuggestions(
   }
   suggestion_generator_ = std::make_unique<AutocompleteSuggestionGenerator>(
       profile_database_,
-      IsAtMemoryFeatureEnabled(client.GetGoogleGroupsManager()));
+      MayPerformAtMemoryAction(AtMemoryAction::kShowAutocompleteAtMemoryButton,
+                               client));
 
   auto on_suggestions_generated = base::BindOnce(
       [](SingleFieldFillRouter::OnSuggestionsReturnedCallback callback,

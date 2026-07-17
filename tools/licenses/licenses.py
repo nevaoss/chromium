@@ -1174,8 +1174,7 @@ def _GetGitOriginUrls(dep_dir: str) -> List[str]:
     # Use .* instead of assuming 'origin'.
     output = subprocess.check_output(
         ["git", "config", "--get-regexp", r"^remote\..*\.url$"],
-        cwd=dep_dir,
-        stderr=subprocess.DEVNULL).decode("utf-8").strip()
+        cwd=dep_dir).decode("utf-8").strip()
     urls = []
     for line in output.splitlines():
       parts = line.split(None, 1)

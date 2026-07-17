@@ -93,6 +93,7 @@
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
+#include "url/origin.h"
 #include "url/url_constants.h"
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
@@ -633,7 +634,7 @@ TEST_F(ChromePasswordManagerClientTest, SavingAndFillingEnabledConditionsTest) {
       .WillRepeatedly(Return(net::CERT_STATUS_AUTHORITY_INVALID));
   const GURL kUrlOn("https://accounts.google.com");
   EXPECT_FALSE(client->IsSavingAndFillingEnabled(kUrlOn));
-  EXPECT_FALSE(client->IsFillingEnabled(kUrlOn));
+  EXPECT_FALSE(client->IsFillingEnabled(url::Origin::Create(kUrlOn)));
 
   // Disable password saving.
   ON_CALL(settings_service(),
@@ -643,13 +644,13 @@ TEST_F(ChromePasswordManagerClientTest, SavingAndFillingEnabledConditionsTest) {
   // Functionality disabled if there are SSL errors and the manager itself is
   // disabled.
   EXPECT_FALSE(client->IsSavingAndFillingEnabled(kUrlOn));
-  EXPECT_FALSE(client->IsFillingEnabled(kUrlOn));
+  EXPECT_FALSE(client->IsFillingEnabled(url::Origin::Create(kUrlOn)));
 
   // Saving disabled if there are no SSL errors, but the manager itself is
   // disabled.
   EXPECT_CALL(*client, GetMainFrameCertStatus()).WillRepeatedly(Return(0));
   EXPECT_FALSE(client->IsSavingAndFillingEnabled(kUrlOn));
-  EXPECT_TRUE(client->IsFillingEnabled(kUrlOn));
+  EXPECT_TRUE(client->IsFillingEnabled(url::Origin::Create(kUrlOn)));
 
   // Enable password saving.
   ON_CALL(settings_service(),
@@ -660,7 +661,7 @@ TEST_F(ChromePasswordManagerClientTest, SavingAndFillingEnabledConditionsTest) {
   // enabled.
   EXPECT_CALL(*client, GetMainFrameCertStatus()).WillRepeatedly(Return(0));
   EXPECT_TRUE(client->IsSavingAndFillingEnabled(kUrlOn));
-  EXPECT_TRUE(client->IsFillingEnabled(kUrlOn));
+  EXPECT_TRUE(client->IsFillingEnabled(url::Origin::Create(kUrlOn)));
 }
 
 TEST_F(ChromePasswordManagerClientTest,
@@ -681,7 +682,7 @@ TEST_F(ChromePasswordManagerClientTest,
   // Saving disabled in Incognito mode.
   const GURL kUrlOn("https://accounts.google.com");
   EXPECT_FALSE(client->IsSavingAndFillingEnabled(kUrlOn));
-  EXPECT_TRUE(client->IsFillingEnabled(kUrlOn));
+  EXPECT_TRUE(client->IsFillingEnabled(url::Origin::Create(kUrlOn)));
 
   // In guest mode saving, filling and manual filling are disabled.
   profile()->SetGuestSession(true);
@@ -690,7 +691,7 @@ TEST_F(ChromePasswordManagerClientTest,
       ->AsTestingProfile()
       ->SetGuestSession(true);
   EXPECT_FALSE(client->IsSavingAndFillingEnabled(kUrlOn));
-  EXPECT_FALSE(client->IsFillingEnabled(kUrlOn));
+  EXPECT_FALSE(client->IsFillingEnabled(url::Origin::Create(kUrlOn)));
 }
 
 TEST_F(ChromePasswordManagerClientTest, OnFedCmFederatedLogin) {
@@ -710,6 +711,75 @@ TEST_F(ChromePasswordManagerClientTest, OnFedCmFederatedLogin) {
   // submitted manager).
   static_cast<content::WebContentsObserver*>(GetClient())
       ->OnFedCmFederatedLogin(true);
+  histogram_tester.ExpectUniqueSample(
+      "PasswordManager.FederatedLogin.SavePromptPrevented", false, 1);
+}
+
+TEST_F(ChromePasswordManagerClientTest, OnNonPasswordLoginDetectedDelegation) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(
+      password_manager::features::kPreventPasswordManagerOnFederatedLogin);
+
+  base::HistogramTester histogram_tester;
+
+  // Create a popup WebContents.
+  std::unique_ptr<content::WebContents> popup_web_contents(
+      content::WebContentsTester::CreateTestWebContents(
+          web_contents()->GetBrowserContext(), nullptr));
+  autofill::ChromeAutofillClient::CreateForWebContents(
+      popup_web_contents.get());
+  ChromePasswordManagerClient::CreateForWebContents(popup_web_contents.get());
+  ChromePasswordManagerClient* popup_client =
+      ChromePasswordManagerClient::FromWebContents(popup_web_contents.get());
+
+  // Set the main WebContents as the opener of the popup.
+  content::WebContentsTester::For(popup_web_contents.get())
+      ->SetOpener(web_contents());
+
+  // Trigger non-password login detection on the popup.
+  popup_client->OnNonFedCmFederatedLogin();
+
+  // The notification should have been delegated to the main WebContents'
+  // PasswordManager, which records the histogram.
+  histogram_tester.ExpectUniqueSample(
+      "PasswordManager.FederatedLogin.SavePromptPrevented", false, 1);
+}
+
+TEST_F(ChromePasswordManagerClientTest, OnNonPasswordLoginDetectedOpenerCycle) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(
+      password_manager::features::kPreventPasswordManagerOnFederatedLogin);
+
+  base::HistogramTester histogram_tester;
+
+  // Create two WebContents.
+  std::unique_ptr<content::WebContents> web_contents_a(
+      content::WebContentsTester::CreateTestWebContents(
+          web_contents()->GetBrowserContext(), nullptr));
+  autofill::ChromeAutofillClient::CreateForWebContents(web_contents_a.get());
+  ChromePasswordManagerClient::CreateForWebContents(web_contents_a.get());
+  ChromePasswordManagerClient* client_a =
+      ChromePasswordManagerClient::FromWebContents(web_contents_a.get());
+
+  std::unique_ptr<content::WebContents> web_contents_b(
+      content::WebContentsTester::CreateTestWebContents(
+          web_contents()->GetBrowserContext(), nullptr));
+  autofill::ChromeAutofillClient::CreateForWebContents(web_contents_b.get());
+  ChromePasswordManagerClient::CreateForWebContents(web_contents_b.get());
+
+  // Set up a cycle in the opener relationship: A -> B -> A.
+  content::WebContentsTester::For(web_contents_a.get())
+      ->SetOpener(web_contents_b.get());
+  content::WebContentsTester::For(web_contents_b.get())
+      ->SetOpener(web_contents_a.get());
+
+  // Trigger non-password login detection on A.
+  // With the recursion removed, this will directly invoke the PasswordManager
+  // on B and return immediately, without causing infinite recursion or hanging.
+  client_a->OnNonFedCmFederatedLogin();
+
+  // B's PasswordManager should have handled the notification and recorded the
+  // histogram. A's PasswordManager is not called.
   histogram_tester.ExpectUniqueSample(
       "PasswordManager.FederatedLogin.SavePromptPrevented", false, 1);
 }
@@ -1032,7 +1102,50 @@ TEST_F(ChromePasswordManagerClientTest, SavingAndFillingDisabledForAboutBlank) {
   NavigateAndCommit(kUrl);
   EXPECT_TRUE(GetClient()->GetLastCommittedOrigin().opaque());
   EXPECT_FALSE(GetClient()->IsSavingAndFillingEnabled(kUrl));
-  EXPECT_FALSE(GetClient()->IsFillingEnabled(kUrl));
+  EXPECT_FALSE(GetClient()->IsFillingEnabled(url::Origin::Create(kUrl)));
+}
+
+TEST_F(ChromePasswordManagerClientTest, OpaqueOriginFillingFeatureGated) {
+  // Use a data URL which results in an opaque origin.
+  const GURL kDataUrl("data:text/html,<html></html>");
+  NavigateAndCommit(kDataUrl);
+  ASSERT_TRUE(GetClient()->GetLastCommittedOrigin().opaque());
+
+  // By default, the feature is enabled, so filling is disabled for opaque
+  // origins.
+  EXPECT_FALSE(
+      GetClient()->IsFillingEnabled(GetClient()->GetLastCommittedOrigin()));
+
+  // Disable the feature.
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndDisableFeature(
+      password_manager::features::kPasswordBlockOpaqueOrigins);
+
+  // When the feature is disabled, filling should be enabled for data URLs
+  // (since the scheme is web-safe and it's not a disallowed URL).
+  // Without URL, it should still return false even if feature is disabled
+  // because we cannot verify the scheme of the opaque origin.
+  EXPECT_FALSE(
+      GetClient()->IsFillingEnabled(GetClient()->GetLastCommittedOrigin()));
+
+  // With URL, it should return true.
+  EXPECT_TRUE(
+      GetClient()->IsFillingEnabled(GetClient()->GetLastCommittedOrigin(),
+                                    GetClient()->GetLastCommittedURL()));
+}
+
+TEST_F(ChromePasswordManagerClientTest, NoFillingOnInvalidUrls) {
+  GURL kEmpty;
+  ASSERT_FALSE(kEmpty.is_valid());
+
+  EXPECT_FALSE(
+      GetClient()->IsFillingEnabled(url::Origin::Create(kEmpty), kEmpty));
+
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndDisableFeature(
+      password_manager::features::kPasswordBlockOpaqueOrigins);
+  EXPECT_FALSE(
+      GetClient()->IsFillingEnabled(url::Origin::Create(kEmpty), kEmpty));
 }
 
 TEST_F(ChromePasswordManagerClientTest,
@@ -1041,7 +1154,7 @@ TEST_F(ChromePasswordManagerClientTest,
   EXPECT_FALSE(client->IsSavingAndFillingEnabled(
       GURL("https://passwords.google.com/path?query=1")));
   EXPECT_FALSE(client->IsFillingEnabled(
-      GURL("https://passwords.google.com/path?query=1")));
+      url::Origin::Create(GURL("https://passwords.google.com/path?query=1"))));
 }
 
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_CHROMEOS)
@@ -1228,7 +1341,7 @@ struct SchemeTestCase {
 const SchemeTestCase kSchemeTestCases[] = {
     {url::kHttpScheme, true},
     {url::kHttpsScheme, true},
-    {url::kDataScheme, true},
+    {url::kDataScheme, false},
 
     {"invalid-scheme-i-just-made-up", false},
     {content::kChromeDevToolsScheme, false},
@@ -1279,7 +1392,8 @@ TEST_P(ChromePasswordManagerClientSchemeTest,
   ASSERT_FALSE(it == std::end(kSchemeTestCases));
   EXPECT_EQ(it->password_manager_works,
             GetClient()->IsSavingAndFillingEnabled(url));
-  EXPECT_EQ(it->password_manager_works, GetClient()->IsFillingEnabled(url));
+  EXPECT_EQ(it->password_manager_works,
+            GetClient()->IsFillingEnabled(url::Origin::Create(url)));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -1470,7 +1584,7 @@ TEST_F(ChromePasswordManagerClientTest,
   // Saving is disabled when the page has a delayed SafeBrowsing warning.
   const GURL kUrlOn("https://accounts.google.com");
   EXPECT_FALSE(client->IsSavingAndFillingEnabled(kUrlOn));
-  EXPECT_FALSE(client->IsFillingEnabled(kUrlOn));
+  EXPECT_FALSE(client->IsFillingEnabled(url::Origin::Create(kUrlOn)));
 }
 #endif
 

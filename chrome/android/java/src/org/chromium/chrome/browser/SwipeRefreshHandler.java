@@ -21,8 +21,6 @@ import androidx.annotation.VisibleForTesting;
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.TraceEvent;
 import org.chromium.base.metrics.RecordUserAction;
-import org.chromium.base.task.PostTask;
-import org.chromium.base.task.TaskTraits;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
@@ -87,10 +85,6 @@ public class SwipeRefreshHandler extends TabWebContentsUserData
     private final Tab mTab;
 
     private final EmptyTabObserver mTabObserver;
-
-    // The container view the SwipeRefreshHandler instance is currently
-    // associated with.
-    private @Nullable ViewGroup mContainerView;
 
     // Async runnable for ending the refresh animation after the page first
     // loads a frame. This is used to provide a reasonable minimum animation time.
@@ -181,17 +175,21 @@ public class SwipeRefreshHandler extends TabWebContentsUserData
                         ? context.getColor(R.color.default_icon_color_blue_light)
                         : SemanticColorUtils.getDefaultIconColorAccent1(context);
         mSwipeRefreshLayout.setColorSchemeColors(iconColor);
-        if (mContainerView != null) mSwipeRefreshLayout.setEnabled(true);
+        if (mTab.getContentView() != null) mSwipeRefreshLayout.setEnabled(true);
         mSwipeRefreshLayout.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
 
         mSwipeRefreshLayout.setOnRefreshListener(
                 () -> {
                     assumeNonNull(mSwipeRefreshLayout);
                     cancelStopRefreshingRunnable();
-                    PostTask.postDelayedTask(
-                            TaskTraits.UI_DEFAULT,
-                            getStopRefreshingRunnable(),
-                            MAX_REFRESH_ANIMATION_DURATION_MS);
+                    // Posted via the UI thread Handler (rather than PostTask) so that
+                    // cancelStopRefreshingRunnable() can actually remove the pending task
+                    // via Handler.removeCallbacks; otherwise the delayed runnable lingers
+                    // in the MessageQueue and retains this handler (and its container
+                    // Activity) until it fires.
+                    ThreadUtils.getUiThreadHandler()
+                            .postDelayed(
+                                    getStopRefreshingRunnable(), MAX_REFRESH_ANIMATION_DURATION_MS);
                     if (mAccessibilityRefreshString == null) {
                         int resId = R.string.accessibility_swipe_refresh;
                         mAccessibilityRefreshString = context.getString(resId);
@@ -211,7 +209,9 @@ public class SwipeRefreshHandler extends TabWebContentsUserData
                                 mDetachRefreshLayoutRunnable = null;
                                 detachSwipeRefreshLayoutIfNecessary();
                             };
-                    PostTask.postTask(TaskTraits.UI_DEFAULT, mDetachRefreshLayoutRunnable);
+                    // Posted via the UI thread Handler (rather than PostTask) so that
+                    // cancelDetachLayoutRunnable() can actually remove the pending task.
+                    ThreadUtils.getUiThreadHandler().post(mDetachRefreshLayoutRunnable);
                 });
     }
 
@@ -219,7 +219,6 @@ public class SwipeRefreshHandler extends TabWebContentsUserData
     @Override
     public void initWebContents(WebContents webContents) {
         webContents.setOverscrollRefreshHandler(this);
-        mContainerView = mTab.getContentView();
         setEnabled(true);
     }
 
@@ -228,7 +227,6 @@ public class SwipeRefreshHandler extends TabWebContentsUserData
     public void cleanupWebContents(WebContents webContents) {
         webContents.setOverscrollRefreshHandler(null);
         detachSwipeRefreshLayoutIfNecessary();
-        mContainerView = null;
         mNavigationCoordinator = null;
         mBottomOverscrollHandler = null;
         setEnabled(false);
@@ -236,6 +234,10 @@ public class SwipeRefreshHandler extends TabWebContentsUserData
 
     @Override
     public void destroyInternal() {
+        // Cancel any pending posted runnables so they do not linger in the UI thread
+        // MessageQueue and retain this handler (and its Activity) after the tab is gone.
+        cancelStopRefreshingRunnable();
+        cancelDetachLayoutRunnable();
         if (mSwipeRefreshLayout != null) {
             mSwipeRefreshLayout.setOnRefreshListener(null);
             mSwipeRefreshLayout.setOnResetListener(null);
@@ -250,8 +252,9 @@ public class SwipeRefreshHandler extends TabWebContentsUserData
     public void didStopRefreshing() {
         if (mSwipeRefreshLayout == null || !mSwipeRefreshLayout.isRefreshing()) return;
         cancelStopRefreshingRunnable();
-        mSwipeRefreshLayout.postDelayed(
-                getStopRefreshingRunnable(), STOP_REFRESH_ANIMATION_DELAY_MS);
+        // Use a handler rather than PostTask because we need to be able to cancel it.
+        ThreadUtils.getUiThreadHandler()
+                .postDelayed(getStopRefreshingRunnable(), STOP_REFRESH_ANIMATION_DELAY_MS);
     }
 
     @Override
@@ -374,15 +377,16 @@ public class SwipeRefreshHandler extends TabWebContentsUserData
         if (mSwipeRefreshLayout == null) return;
         cancelDetachLayoutRunnable();
         if (mSwipeRefreshLayout.getParent() == null) {
-            assumeNonNull(mContainerView).addView(mSwipeRefreshLayout);
+            assumeNonNull(mTab.getContentView()).addView(mSwipeRefreshLayout);
         }
     }
 
     private void detachSwipeRefreshLayoutIfNecessary() {
         if (mSwipeRefreshLayout == null) return;
         cancelDetachLayoutRunnable();
-        if (mSwipeRefreshLayout.getParent() != null) {
-            assumeNonNull(mContainerView).removeView(mSwipeRefreshLayout);
+        ViewGroup parent = (ViewGroup) mSwipeRefreshLayout.getParent();
+        if (parent != null) {
+            parent.removeView(mSwipeRefreshLayout);
         }
     }
 }

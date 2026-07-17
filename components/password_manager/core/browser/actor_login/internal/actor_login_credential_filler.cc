@@ -9,8 +9,10 @@
 #include <utility>
 
 #include "base/check.h"
+#include "base/containers/span.h"
 #include "base/feature_list.h"
 #include "base/functional/concurrent_closures.h"
+#include "base/notimplemented.h"
 #include "base/strings/to_string.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/types/expected.h"
@@ -105,6 +107,14 @@ LoginStatusResult GetEndFillingResult(bool username_filled,
   return LoginStatusResult::kErrorNoFillableFields;
 }
 
+std::vector<int> GetTargetFrameIds(
+    const password_manager::StoredCredential& stored_credential,
+    base::span<password_manager::PasswordFormManager*> eligible_managers) {
+  // TODO(crbug.com/504573041): Implement
+  NOTIMPLEMENTED();
+  return {};
+}
+
 }  // namespace
 
 ActorLoginCredentialFiller::ActorLoginCredentialFiller(
@@ -115,6 +125,7 @@ ActorLoginCredentialFiller::ActorLoginCredentialFiller(
     base::WeakPtr<ActorLoginQualityLoggerInterface> mqls_logger,
     base::TimeTicks attempt_login_start_time,
     IsTaskInFocus is_task_in_focus,
+    FrameFillingStartedCallback frame_filling_started_cb,
     LoginStatusResultOrErrorReply callback)
     : origin_(main_frame_origin),
       credential_(credential),
@@ -125,6 +136,7 @@ ActorLoginCredentialFiller::ActorLoginCredentialFiller(
       attempt_login_start_time_(attempt_login_start_time),
       login_form_finder_(std::make_unique<ActorLoginFormFinder>(client_)),
       is_task_in_focus_(std::move(is_task_in_focus)),
+      on_frame_filling_started_cb_(std::move(frame_filling_started_cb)),
       callback_(std::move(callback)) {}
 
 ActorLoginCredentialFiller::~ActorLoginCredentialFiller() {
@@ -145,7 +157,7 @@ void ActorLoginCredentialFiller::AttemptLogin(
 
   // The check is added separately in order to differentiate between having
   // no signin form on the page and filling being disallowed.
-  if (!client_->IsFillingEnabled(origin_.GetURL())) {
+  if (!client_->IsFillingEnabled(origin_)) {
     LogStatus(logger.get(), Logger::STRING_ACTOR_LOGIN_FILLING_NOT_ALLOWED);
     BuildAttemptLoginOutcome(AttemptLoginOutcomeMqls::kFillingNotAllowed);
     std::move(callback_).Run(
@@ -464,6 +476,13 @@ void ActorLoginCredentialFiller::FillAllEligibleFields(
                   [](const PasswordFormManager* form_manager) {
                     return !form_manager->GetDriver()->IsInPrimaryMainFrame();
                   });
+  }
+
+  // TODO(crbug.com/504573041): Consider removing frames where we failed to
+  // fill. This would need to be done after filling is done though.
+  if (on_frame_filling_started_cb_) {
+    std::move(on_frame_filling_started_cb_)
+        .Run(GetTargetFrameIds(stored_credential, eligible_managers));
   }
 
   for (PasswordFormManager* manager : eligible_managers) {

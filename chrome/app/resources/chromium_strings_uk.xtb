@@ -55,6 +55,7 @@ Chromium потрібен доступ до Bluetooth. <ph name="IDS_SERIAL_DEVI
 <translation id="1574377791422810894">Інструменти безпеки Chromium</translation>
 <translation id="1594928384848033697">Chromium хоче видалити ваші дані в Менеджері паролів. Щоб дозволити це, введіть пароль Windows.</translation>
 <translation id="1607715478322902680">{COUNT,plural, =0{Адміністратор вимагає перезапустити Chromium, щоб застосувати оновлення}=1{Адміністратор вимагає перезапустити Chromium, щоб застосувати оновлення. Вікно в режимі анонімного перегляду не відновиться й не відкриється знову.}one{Адміністратор вимагає перезапустити Chromium, щоб застосувати оновлення. # вікно в режимі анонімного перегляду не відновиться й не відкриється знову.}few{Адміністратор вимагає перезапустити Chromium, щоб застосувати оновлення. # вікна в режимі анонімного перегляду не відновляться й не відкриються знову.}many{Адміністратор вимагає перезапустити Chromium, щоб застосувати оновлення. # вікон в режимі анонімного перегляду не відновляться й не відкриються знову.}other{Адміністратор вимагає перезапустити Chromium, щоб застосувати оновлення. # вікна в режимі анонімного перегляду не відновиться й не відкриється знову.}}</translation>
+<translation id="1623563412065267963">Користуйтеся всіма можливостями Google у додатку Chromium на телефоні</translation>
 <translation id="1625909126243026060">Перевірте основні елементи керування конфіденційністю та безпекою в Chromium</translation>
 <translation id="1640672724030957280">Завантаження...</translation>
 <translation id="1680687534629375545">Запитати про цю сторінку в сервісі "Пошук за зображенням"</translation>
@@ -145,6 +146,7 @@ Chromium потрібен доступ до Bluetooth. <ph name="IDS_SERIAL_DEVI
 <translation id="2572494885440352020">Помічник Chromium</translation>
 <translation id="2575822587468774919">Виберіть об’єкт на зображенні, за яким хочете виконати пошук</translation>
 <translation id="2576118232315942160">Щоб отримати доступ до паролів і інших даних на всіх своїх пристроях, увійдіть у Chromium</translation>
+<translation id="2587622539943955767">Зіскануйте QR-код за допомогою телефона, щоб завантажити Chromium і ввійти в обліковий запис Google.</translation>
 <translation id="2592940277904433508">Продовжити використовувати Chromium</translation>
 <translation id="259935314519650377">Не вдалося кешувати завантажену програму встановлення. Помилка: <ph name="UNPACK_CACHING_ERROR_CODE" />.</translation>
 <translation id="2620436844016719705">Система</translation>
@@ -360,6 +362,7 @@ Chromium потрібен доступ до Bluetooth. <ph name="IDS_SERIAL_DEVI
 <translation id="4987820182225656817">Гості можуть анонімно користуватися Chromium.</translation>
 <translation id="4992938037305302429">Ваш обліковий запис у Chromium</translation>
 <translation id="4994636714258228724">Додати себе в Chromium</translation>
+<translation id="504699503110800016">Відкрийте додаткове меню</translation>
 <translation id="5123973130450702873">Вебпереглядачу Chromium потрібен дозвіл на відстеження ваших рук</translation>
 <translation id="5141988424377517949">Останнім часом ви не відвідували цей сайт. Вебпереглядач Chromium скасував такі дозволи: "<ph name="PERMISSION_1" />", "<ph name="PERMISSION_2" />" і "<ph name="PERMISSION_3" />".</translation>
 <translation id="5174969993834422967">Зазвичай ви блокуєте сповіщення. Щоб дозволити сайту показувати сповіщення, натисніть значок сповіщення в правому куті панелі місцезнаходження.</translation>
@@ -469,6 +472,7 @@ Chromium потрібен доступ до Bluetooth. <ph name="IDS_SERIAL_DEVI
 <translation id="6245734527075554892">Перевіряє URL-адреси за списком шкідливих сайтів, що зберігаються в Chromium</translation>
 <translation id="6248213926982192922">Зробити Chromium переглядачем за умовчанням</translation>
 <translation id="6248988683584659830">Налаштування пошуку</translation>
+<translation id="6261803579884938625">Користуйтеся найкращими функціями безпеки Google, де б ви не були, за допомогою додатка Chromium на телефоні</translation>
 <translation id="6268381023930128611">Вийти з Chromium?</translation>
 <translation id="6270547683008298381">Ці вкладки використовують додаткові ресурси. Щоб підвищити продуктивність, дозвольте Chromium зробити їх неактивними.</translation>
 <translation id="6281746429495226318">Налаштувати профіль Chromium</translation>
@@ -539,6 +543,7 @@ Chromium потрібен доступ до Bluetooth. <ph name="IDS_SERIAL_DEVI
 <translation id="6873893289264747459">Веб-переглядач Chromium виявив, що розширення "<ph name="EXTENSION_NAME" />" містить зловмисне програмне забезпечення</translation>
 <translation id="6877155553248388166">правий нижній кут області пошуку: <ph name="RIGHT" />% праворуч, <ph name="BOTTOM" />% знизу</translation>
 <translation id="6896758677409633944">Копіювати</translation>
+<translation id="6898028264630240901">Ви можете закріпити контекстні завдання, щоб ставити запитання під час вебперегляду</translation>
 <translation id="6901631050894301805">Зробіть Chromium вебпереглядачем за умовчанням і закріпіть його на панелі завдань</translation>
 <translation id="6909503629704372277">&amp;Керувати профілями Chromium</translation>
 <translation id="6919942714452658456">Якщо виконати цю дію:
@@ -567,6 +572,7 @@ Chromium потрібен доступ до Bluetooth. <ph name="IDS_SERIAL_DEVI
 <translation id="7047386856539490735">Ці результати корисні?</translation>
 <translation id="705851970750939768">Оновити Chromium</translation>
 <translation id="7067091210845072982">Якщо зображення не має корисного опису, Chromium спробує додати його. Для цього зображення надсилаються в Google.</translation>
+<translation id="7134687062119989071">Завжди майте доступ до паролів, вкладок і інших даних завдяки додатку Chromium на телефоні</translation>
 <translation id="7141270731789036260">Налаштувати Chrome for Testing</translation>
 <translation id="7147227333672430807">Ви можете відкривати в Chromium посилання з повідомлень, документів і інших додатків</translation>
 <translation id="7163519456498498587">Вилучити розширення <ph name="EXTENSION_NAME" /> з Chromium</translation>
@@ -660,6 +666,7 @@ Chromium не може відновити ваші налаштування.</tr
 <translation id="8096472344908884505"><ph name="PAGE_TITLE" /> – Google Chrome for Testing</translation>
 <translation id="8105840573057009683">Веб-переглядачу Chromium потрібен дозвіл на доступ до геоданих для цього сайту</translation>
 <translation id="8107060931443639922">Коли ви наступного разу відкриєте Chromium на своєму пристрої <ph name="DEVICE_TYPE" />, з’явиться запит увімкнути сповіщення про відстеження цін.</translation>
+<translation id="8117908349476699973">Отримуйте сповіщення про зниження цін на товари, які вас цікавлять, у додатку Chromium на телефоні</translation>
 <translation id="8118331347066725040">Залиште відгук про пошук через Об’єктив</translation>
 <translation id="8133124826068723441">Chromium OS не вдалося синхронізувати ваші дані, оскільки синхронізація для вашого домену недоступна.</translation>
 <translation id="813913629614996137">Ініціалізація...</translation>
@@ -752,6 +759,7 @@ Chromium не може відновити ваші налаштування.</tr
 <translation id="9022552996538154597">Вхід у Chromium</translation>
 <translation id="904366664621834601">Вебпереглядач Chromium заблокував завантаження, оскільки в цьому архіві є файли, які можуть містити зловмисне програмне забезпечення</translation>
 <translation id="9053882453960391422">Паролі, закладки й історія завжди синхронізуються на всіх пристроях. Оновіть вебпереглядач за умовчанням до Chromium, щоб легко користуватись улюбленими функціями. Chromium буде закріплено на панелі завдань для швидкого доступу.</translation>
+<translation id="9056398481763999048">Користуйтеся найкращими інструментами на основі ШІ від Google у додатку Chromium на телефоні</translation>
 <translation id="9062666675513499497">Входити в Chromium під час входу в інші сервіси Google</translation>
 <translation id="9078733879136747090">Chromium було закрито автоматично</translation>
 <translation id="9089354809943900324">Версія Chromium застаріла</translation>

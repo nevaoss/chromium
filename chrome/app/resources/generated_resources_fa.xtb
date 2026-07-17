@@ -2312,6 +2312,7 @@
 <translation id="2710883118091822664">برای ادامه آسان در همه دستگاه‌هایتان، به سیستم وارد شوید</translation>
 <translation id="2713106313042589954">خاموش کردن دوربین</translation>
 <translation id="2713444072780614174">سفید</translation>
+<translation id="2713529429175549458">گذرواژه، پین، یا اثر انگشت</translation>
 <translation id="2714180132046334502">پس‌زمینه تاریک</translation>
 <translation id="2714393097308983682">‏فروشگاه Google Play</translation>
 <translation id="2714617928488200509">مدل‌ها</translation>
@@ -2762,6 +2763,7 @@
 <translation id="3023204744987201088">&amp;اطلاعات تماس</translation>
 <translation id="3023464535986383522">انتخاب برای شنیدن</translation>
 <translation id="3024374909719388945">استفاده از ساعت ۲۴ ساعته</translation>
+<translation id="3025905136198521738">مرتب کردن نمای دونیمه - نمای سمت راست فعال است</translation>
 <translation id="3027296729579831126">روشن کردن «هم‌رسانی با اطراف»</translation>
 <translation id="3027644380269727216">براساس فعالیت شما در سایت. این تنظیم روشن است.</translation>
 <translation id="3028445648481691885">بارگیری لغو شد</translation>
@@ -3292,6 +3294,7 @@
 <translation id="3436118221454753036">از «حالت هوشواره‌ای» بپرسید</translation>
 <translation id="3437072258256045988">‏مدیریت «فعالیت برنامه‌های Gemini»</translation>
 <translation id="3437397693214267762">‏دیدن Outlook Calendar و SharePoint و فایل‌های OneDrive</translation>
+<translation id="3437494162908353428">‏‫DevTools برای این نشانی وب مجاز نیست.</translation>
 <translation id="3438633801274389918">نینجا</translation>
 <translation id="3439153939049640737">همیشه اجازه دادن به <ph name="HOST" /> برای دسترسی به میکروفون شما</translation>
 <translation id="3439970425423980614">‏در حال باز کردن PDF در پیشنمایش</translation>
@@ -3505,6 +3508,7 @@
 <translation id="3596012367874587041">تنظیمات برنامه</translation>
 <translation id="3599221874935822507">برجسته</translation>
 <translation id="3600051066689725006">اطلاعات درخواست وب</translation>
+<translation id="3600181948754917646">‏یادداشت‌های انتشار Chrome Enterprise</translation>
 <translation id="3600956933576601730">برای استفاده کردن از این ویژگی‌ها باید شرایط را مرور و قبول کنید</translation>
 <translation id="3601374594714740284">برای صداهای با کیفیت بالاتر، فضای دستگاهتان را پاک کنید</translation>
 <translation id="360180734785106144">پیشنهاد ویژگی‌های جدید به‌محض دردسترس قرار گرفتن</translation>
@@ -4317,6 +4321,7 @@
 <translation id="4177501066905053472">موضوع‌های آگهی</translation>
 <translation id="4177668342649553942">باز کردن <ph name="SHORTCUT_NAME" /> - <ph name="APP_NAME" /></translation>
 <translation id="4177731895051842298">‏افزونه‌ها برافزاهایی برای Chrome هستند که می‌توانند به شما کمک کنند منظم بمانید، تکالیف را ساده‌تر کنید، و مرورتان را سفارشی‌سازی کنید</translation>
+<translation id="4177860704813504507">گذرواژه یا اثر انگشت</translation>
 <translation id="4178220097446335546">‏برای فراموش کردن این اشتراک و شبکه‌های مرتبط با آن، به صفحه اشتراک Passpoint بروید و اشتراک را حذف کنید.</translation>
 <translation id="4181376007499455822">ملغی نشود</translation>
 <translation id="4181602000363099176">۲۰ برابر</translation>
@@ -4952,6 +4957,7 @@
 <translation id="4660540330091848931">درحال تغییر اندازه</translation>
 <translation id="4662373422909645029">نام مستعار نباید حاوی عدد باشد</translation>
 <translation id="4663373278480897665">دوربین مجاز است</translation>
+<translation id="4664375726751122009">رفتن به نمای دیداری</translation>
 <translation id="4665014895760275686">سازنده</translation>
 <translation id="4665446389743427678">همه داده‌های ذخیره‌شده توسط <ph name="SITE" /> حذف خواهد شد.</translation>
 <translation id="4666472247053585787">مشاهده اعلان‌های تلفن در <ph name="DEVICE_TYPE" /></translation>
@@ -5655,6 +5661,7 @@
 <translation id="5186381005592669696">زبان نمایشگر را برای برنامه‌های پشتیبانی‌شده سفارشی‌سازی کنید</translation>
 <translation id="5186788525428341874">‏می‌توانید از این گذرکلید برای ورود سریع‌تر به سیستم در همه دستگاه‌هایتان استفاده کنید. این گذرواژه در «مدیر گذرواژه Google» برای <ph name="ACCOUNT_NAME" /> ذخیره خواهد شد.</translation>
 <translation id="5186792064936776005">استفاده از پیش‌فرض درصورت وجود</translation>
+<translation id="5186931074173692059">گذرواژه‌هایتان در «<ph name="GOOGLE_PASSWORD_MANAGER" />» حساب <ph name="EMAIL" /> ذخیره می‌شود.</translation>
 <translation id="5187641678926990264">نصب صفحه به‌عنوان برنامه…</translation>
 <translation id="5187826826541650604"><ph name="KEY_NAME" /> (<ph name="DEVICE" />)</translation>
 <translation id="5188242000716462162">هم‌رسانی‌شده توسط <ph name="USER_NAME" /></translation>
@@ -6024,6 +6031,7 @@
 <translation id="5473075389972733037">IBM</translation>
 <translation id="5473099001878321374">‏با ادامه دادن، موافقت می‌کنید این دستگاه همچنین می‌تواند به‌طور خودکار به‌روزرسانی‌ها و برنامه‌ها را از Google، شرکت مخابراتی فرزندتان، و سازنده این دستگاه بارگیری (احتمالاً بااستفاده از داده شبکه تلفن همراه) و نصب کند. برخی‌از این برنامه‌ها ممکن است خریدهای درون‌برنامه پیشنهاد دهند.</translation>
 <translation id="5473156705047072749">{NUM_CHARACTERS,plural, =1{پین باید حداقل یک نویسه داشته باشد}one{پین باید حداقل # نویسه داشته باشد}other{پین باید حداقل # نویسه داشته باشد}}</translation>
+<translation id="5475744834448251260">پین یا اثر انگشت</translation>
 <translation id="547615291475756075">&amp;بزرگ کردن</translation>
 <translation id="5476957746413745956">تنظیم کردن جداگانه سرعت برای هر جهت</translation>
 <translation id="5477089831058413614">پیکربندی نقطه اتصال <ph name="DEVICE_TYPE" /></translation>
@@ -6607,6 +6615,7 @@
 <translation id="5933376509899483611">منطقه زمانی</translation>
 <translation id="5933522550144185133"><ph name="APP_NAME" /> درحال استفاده از دوربین و میکروفون شما است</translation>
 <translation id="5935158534896975820">آماده‌سازی درخواست امضای گواهینامه (درانتظار سرور)</translation>
+<translation id="5935554994339565449">با ابزار جدید «افزودن نوشتار»، نوشتار خود را اضافه کنید</translation>
 <translation id="5936065461722368675">ترجمه کل صفحه</translation>
 <translation id="5937977334791924341">نشان‌واره <ph name="APP" /></translation>
 <translation id="5938002010494270685">ارتقای امنیتی دردسترس است</translation>
@@ -7880,6 +7889,7 @@
 <translation id="6883319974225028188">متأسفانه سیستم نتوانست پیکربندی دستگاه را ذخیره کند.</translation>
 <translation id="6883606786470492001">با مدیریت موضوع‌های آگهی و تنظیمات دیگر، آنچه را که سایت‌ها می‌توانند برای نمایش آگهی‌های شخصی‌سازی‌شده درباره شما بیاموزند محدود کنید</translation>
 <translation id="6884474387073389421">مطمئنید می‌خواهید داده‌های ورود به سیستم انتخاب‌شده را حذف کنید؟</translation>
+<translation id="6884763350679569586">فقط پین</translation>
 <translation id="6885338910541974777">برنامه نصب‌کننده برنامه ناموفق بود.</translation>
 <translation id="6885771755599377173">پیش‌نمایش اطلاعات سیستم</translation>
 <translation id="6886871292305414135">باز کردن پیوند در &amp;برگه جدید</translation>
@@ -8047,6 +8057,7 @@
 <translation id="7003844668372540529">محصول نامشخص <ph name="PRODUCT_ID" /> از <ph name="VENDOR_NAME" /></translation>
 <translation id="7004402701596653846">‏سایت می‌تواند از MIDI استفاده کند</translation>
 <translation id="7004499039102548441">زبانه‌های جدید</translation>
+<translation id="7004791323196577460">مرتب کردن نمای دونیمه - نمای راست فعال است</translation>
 <translation id="7004923218520748660">سنجاق کردن «جستجوی زبانه‌ها»</translation>
 <translation id="7004969808832734860">تا <ph name="DISCOUNT_UP_TO_AMOUNT" /> تخفیف</translation>
 <translation id="7005496624875927304">اجازه‌های اضافی</translation>
@@ -8235,6 +8246,7 @@
 <translation id="7159695867335480590">پخش/ مکث</translation>
 <translation id="7159953856712257647">نصب‌شده به‌طور پیش‌فرض</translation>
 <translation id="7160182524506337403">اکنون می‌توانید اعلان‌های تلفنتان را مشاهده کنید</translation>
+<translation id="7160835047878907171">مرتب کردن نمای دونیمه - نمای پایین فعال است</translation>
 <translation id="7160911207516219534">پانل‌های کناری</translation>
 <translation id="716210145227921528">گذرکلید حذف شد</translation>
 <translation id="7165263843655074092">محافظت امنیتی استاندارد را در این دستگاه دریافت می‌کنید</translation>
@@ -8369,6 +8381,7 @@
 <translation id="7261217796641151584">هم‌رسانی گروه</translation>
 <translation id="7261612856573623172">صدای سیستم نوشتار به گفتار</translation>
 <translation id="7262004276116528033">این خدمات ورود به سیستم توسط <ph name="SAML_DOMAIN" /> میزبانی شده است</translation>
+<translation id="7262162806583378242">هنگام مرور، هر چیزی را در صفحه‌نمایش انتخاب کنید تا بااستفاده از هوشواره خرید کنید، ترجمه کنید، و جستجو کنید</translation>
 <translation id="7262564444061174264">درباره میان‌بر پیمایش بیشتر بدانید.</translation>
 <translation id="7262919421769447042">‫<ph name="PROFILE_MANAGER" /> نمایه شما را مدیریت می‌کند و می‌تواند برخی اطلاعات را ببیند، ازجمله</translation>
 <translation id="7264695323040866038">همیشه برای باز کردن پیوندهای وب پشتیبانی‌شده از برنامه <ph name="APP" /> استفاده شود؟</translation>
@@ -9028,7 +9041,7 @@
 <translation id="7745849183714722618">‏برای فعال کردن ویژگی‌هایی مانند تشخیص فریب، Chrome می‌تواند از مدل‌های هوشواره‌ای استفاده کند که مستقیماً روی دستگاه شما اجرا می‌شوند. وقتی این تنظیم خاموش باشد، ممکن است این ویژگی‌ها کار نکنند. <ph name="BEGIN_LINK" />درباره هوشواره درون‌دستگاهی بیشتر بدانید<ph name="END_LINK" /></translation>
 <translation id="7746045113967198252">موارد روی صفحه‌نمایش (ازجمله نوشتار) را بزرگ‌تر یا کوچک‌تر می‌کند. می‌توانید این تنظیم را بعداً در «تنظیمات &gt; دستگاه &gt; نمایش» پیدا کنید.</translation>
 <translation id="7750228210027921155">تصویردرتصویر</translation>
-<translation id="7751260505918304024">نمایش همه</translation>
+<translation id="7751260505918304024">نشان دادن همه</translation>
 <translation id="7752832973194460442">‏اطلاعات برنامه Android</translation>
 <translation id="7754704193130578113">قبل از بارگیری هر فایل، درباره مکان ذخیره سؤال شود</translation>
 <translation id="7757592200364144203">تغییر نام دستگاه</translation>
@@ -9057,6 +9070,7 @@
 <translation id="7768507955883790804">وقتی از سایت‌ها بازدید می‌کنید، آن‌ها به‌طور خودکار این تنظیم را دنبال می‌کنند</translation>
 <translation id="7768770796815395237">تغییر دادن</translation>
 <translation id="7768784765476638775">انتخاب برای شنیدن</translation>
+<translation id="7769063984980522348">تغییر به نمای فشرده</translation>
 <translation id="7769709635093101687">میان‌بر صفحه‌کلید برای توقف موقت</translation>
 <translation id="7769748505895274502">جمع کردن موارد اخیراً بسته‌شده</translation>
 <translation id="7770072242481632881">گزینشگر پانل کناری</translation>
@@ -10301,6 +10315,7 @@
 <translation id="8687774873995698516">‫<ph name="HOST" /> هرگز اجازه نداشته باشد از شناسه‌ها برای پخش محتوای محافظت‌شده استفاده کند</translation>
 <translation id="8688672835843460752">دردسترس</translation>
 <translation id="8689811383248488428">رد کردن و بستن نمایه</translation>
+<translation id="8689957514193802371">‏به Chromium اجازه دهید گذرواژه <ph name="WEBSITE" /> را به‌طور خودکار تغییر دهد</translation>
 <translation id="8689998525144040851">۱۰۰</translation>
 <translation id="8690129572193755009">سایت‌ها می‌توانند برای کنترل پروتکل‌ها درخواست دهند</translation>
 <translation id="869144235543261764">این زبانه درحال پخش ویدیو در حالت تصویردرتصویر است</translation>
@@ -10838,6 +10853,7 @@
 <translation id="9068878141610261315">نوع فایل پشتیبانی نمی‌شود</translation>
 <translation id="9069417381769492963">هیچ نشانکی با جستجوی شما مطابقت ندارد</translation>
 <translation id="9070342919388027491">زبانه به چپ منتقل شد</translation>
+<translation id="9071664234353284876">بدون اصالت‌سنجی</translation>
 <translation id="9072220108592671115">نسخه نصب‌شده <ph name="VERSION" /></translation>
 <translation id="9072918088200875065">‏به Gemini اجازه دادید برای انجام دادن تکالیف، ازطرف شما به سیستم این سایت‌ها وارد شود</translation>
 <translation id="9074618195273027322">{CORE_COUNT,plural, =1{‫۱ هسته}one{‫{CORE_COUNT} هسته}other{‫{CORE_COUNT} هسته}}</translation>
@@ -11019,6 +11035,7 @@
 <translation id="9203904171912129171">انتخاب دستگاه</translation>
 <translation id="9204881338516142227">تغییر خودکارشده گذرواژه</translation>
 <translation id="9205304506427975617">حتی درصورت داشتن حرکات جزئی سر، می‌توانید مکان‌نما را ثابت نگه دارید. با این کار، تلاش بیشتری برای حرکت دادن مکان‌نما لازم است.</translation>
+<translation id="9205396811802112046">مرتب کردن نمای دونیمه - نمای بالا فعال است</translation>
 <translation id="9207434080086272167">آفتابی</translation>
 <translation id="9207669213427469593">اگر پنجره‌ای را برای استفاده از صفحهٔ دونیمه به یک سمت بچسبانید، پیشنهادهایی برای انتخاب پنجره سمت دیگر خواهید دید.</translation>
 <translation id="9212565256020141627">‏هم‌رسانی تصویر با Gemini ممکن نبود. دوباره امتحان کنید یا تصویر دیگری را امتحان کنید.</translation>
@@ -11037,7 +11054,7 @@
 <translation id="9220820413868316583">انگشتتان را بردارید سپس دوباره امتحان کنید.</translation>
 <translation id="922152298093051471">‏سفارشی‌سازی Chrome</translation>
 <translation id="9222839391870847423">مدت: <ph name="DURATION" /></translation>
-<translation id="923467487918828349">نمایش همه</translation>
+<translation id="923467487918828349">نشان دادن همه</translation>
 <translation id="923900195646492191">{NUM_EXTENSIONS,plural, =1{برای مدیریت آن، «افزونه‌ها» را باز کنید.}one{برای مدیریت آن، «افزونه‌ها» را باز کنید.}other{برای مدیریت آن‌ها، «افزونه‌ها» را باز کنید.}}</translation>
 <translation id="924818813611903184">‏مدیریت زبان‌ها در تنظیمات ChromeOS</translation>
 <translation id="925575170771547168">با این کار <ph name="TOTAL_USAGE" /> از داده‌هایی که سایت‌ها ذخیره کرده‌اند حذف خواهد شد</translation>

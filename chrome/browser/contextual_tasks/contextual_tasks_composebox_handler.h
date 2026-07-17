@@ -88,6 +88,10 @@ class ContextualTasksComposeboxHandler
   // provided by the ContextualTasksUI via the `take_input_model_callback_`.
   void InitializeInputStateModel() override;
 
+  // Overridden to return the eligibility value frozen at WebUI initialization
+  // to avoid mid-session layout shifts or jarring capability transitions.
+  bool IsContextualSearchTabSharingEligible() const override;
+
   void SetAimThreadRestoredTabs(
       std::vector<searchbox::mojom::TabInfoPtr> tabs) override;
 

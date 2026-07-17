@@ -410,6 +410,7 @@ public class TabCollectionTabModelImpl extends TabModelJniBridge {
         if (mNativeTabCollectionTabModelImplPtr != 0) {
             TabCollectionTabModelImplJni.get().destroy(mNativeTabCollectionTabModelImplPtr);
             mNativeTabCollectionTabModelImplPtr = 0;
+            invalidateCache();
         }
 
         for (Tab tab : tabs) {
@@ -430,7 +431,6 @@ public class TabCollectionTabModelImpl extends TabModelJniBridge {
         }
 
         mTabIdToTabs.clear();
-        invalidateCache();
         mTabCountSupplier.set(0);
         mTabModelObservers.clear();
         mTabGroupObservers.clear();
@@ -1735,30 +1735,21 @@ public class TabCollectionTabModelImpl extends TabModelJniBridge {
         Tab tab = getTabById(id);
         if (tab == null) return;
 
+        // Move a tab group.
         Token tabGroupId = tab.getTabGroupId();
         if (tabGroupId != null) {
             moveGroupToIndex(tabGroupId, newIndex);
             return;
         }
 
-        // TODO(crbug.com/433947821): TabListMediator uses this API for individual tab reordering
-        // and expects to get a notification that a group has moved for each tab. However, a single
-        // tab is not a group. We should consider refactoring TabListMediator to use a different API
-        // for individual tab reordering (or also listen to didMoveTab()).
-        int curIndex = indexOf(tab);
-        int finalIndex =
-                moveTabInternal(
-                        tab,
-                        curIndex,
-                        newIndex,
-                        /* newTabGroupId= */ null,
-                        /* isPinned= */ tab.getIsPinned(),
-                        /* isDestinationTab= */ false);
-        if (finalIndex != curIndex) {
-            for (TabGroupObserver observer : mTabGroupObservers) {
-                observer.didMoveTabGroup(tab, curIndex, finalIndex);
-            }
-        }
+        // Move an individual tab.
+        moveTabInternal(
+                tab,
+                indexOf(tab),
+                newIndex,
+                /* newTabGroupId= */ null,
+                /* isPinned= */ tab.getIsPinned(),
+                /* isDestinationTab= */ false);
     }
 
     private @Nullable Token addTabsToGroupInternal(@Nullable Token tabGroupId, List<Tab> tabs) {
@@ -2441,9 +2432,8 @@ public class TabCollectionTabModelImpl extends TabModelJniBridge {
      * @param newTabGroupId The new tab group id of the tab.
      * @param isPinned Whether the tab is pinned.
      * @param isDestinationTab Whether the tab is the destination tab in a merge operation.
-     * @return The final index of the tab.
      */
-    private int moveTabInternal(
+    private void moveTabInternal(
             Tab tab,
             int index,
             int newIndex,
@@ -2562,7 +2552,6 @@ public class TabCollectionTabModelImpl extends TabModelJniBridge {
                 obs.didChangePinState(tab);
             }
         }
-        return finalIndex;
     }
 
     private List<Token> getCandidateTabGroupIdsForMerge(List<Tab> tabsToMerge) {

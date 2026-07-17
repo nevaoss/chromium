@@ -65,6 +65,7 @@
 #include "google_apis/gaia/gaia_urls.h"
 #include "net/base/registry_controlled_domains/registry_controlled_domain.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
+#include "url/origin.h"
 
 #if BUILDFLAG(IS_ANDROID)
 #include "components/password_manager/core/browser/first_cct_page_load_passwords_ukm_recorder.h"
@@ -1151,8 +1152,9 @@ void PasswordManager::CreateFormManagers(
 PasswordFormManager* PasswordManager::CreateFormManager(
     PasswordManagerDriver* driver,
     const autofill::FormData& form) {
-  // Do not proceed if the form cannot not be filled.
-  if (!client_->IsFillingEnabled(form.url())) {
+  url::Origin origin = driver ? driver->GetLastCommittedOrigin()
+                              : url::Origin::Create(form.url());
+  if (!client_->IsFillingEnabled(origin, form.url())) {
     return nullptr;
   }
 

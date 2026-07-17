@@ -355,6 +355,7 @@ PasswordFormManager::~PasswordFormManager() {
 }
 
 void PasswordFormManager::OnPasswordFilledManually() {
+  allow_filling_upon_fetching_ = false;
   if (!base::FeatureList::IsEnabled(features::kPasswordDateLastFilled) ||
       !parsed_submitted_form_ ||
       !password_save_manager_->IsEqualToSavedMatch()) {
@@ -975,15 +976,17 @@ void PasswordFormManager::OnFetchCompleted() {
     CreatePendingCredentials();
   }
 
-  if (IsHttpAuth()) {
-    // No server prediction for http auth, so no need to wait.
-    FillHttpAuth();
-  } else if (parser_.server_predictions() ||
-             !wait_for_server_predictions_for_filling_) {
-    ReportTimeBetweenStoreAndServerUMA();
-    FillNow();
-  } else if (!async_predictions_waiter_.IsActive()) {
-    DelayFillForServerSidePredictions();
+  if (allow_filling_upon_fetching_) {
+    if (IsHttpAuth()) {
+      // No server prediction for http auth, so no need to wait.
+      FillHttpAuth();
+    } else if (parser_.server_predictions() ||
+               !wait_for_server_predictions_for_filling_) {
+      ReportTimeBetweenStoreAndServerUMA();
+      FillNow();
+    } else if (!async_predictions_waiter_.IsActive()) {
+      DelayFillForServerSidePredictions();
+    }
   }
 
   if (should_schedule_save_for_later_) {
@@ -1193,6 +1196,10 @@ void PasswordFormManager::Fill() {
 }
 
 void PasswordFormManager::FillNow() {
+  if (!allow_filling_upon_fetching_) {
+    return;
+  }
+
   if (!driver_) {
     return;
   }
@@ -1364,6 +1371,7 @@ void PasswordFormManager::RecordMetricOnReadonly(
 }
 
 void PasswordFormManager::ReportTimeBetweenStoreAndServerUMA() {
+  // TODO(crbug.com/525318107): Prevent multiple records of this metric.
   if (!received_stored_credentials_time_.is_null()) {
     UMA_HISTOGRAM_TIMES("PasswordManager.TimeBetweenStoreAndServer",
                         TimeTicks::Now() - received_stored_credentials_time_);

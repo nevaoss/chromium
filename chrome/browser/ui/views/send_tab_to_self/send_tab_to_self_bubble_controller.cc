@@ -154,7 +154,11 @@ void SendTabToSelfBubbleController::ShowBubbleWithAnchor(
   if (reason == EntryPointDisplayReason::kOfferFeature) {
     device_count = GetValidDevices().size();
   }
-  RecordTargetDeviceCount(reason, device_count);
+  // Note: `entry_point_` should always be populated here, since it's set in
+  // ShowBubble() which must've been called earlier. If it's not (e.g. in some
+  // unit tests), `kShareSheet` is used as a generic fallback.
+  RecordTargetDeviceCount(entry_point_.value_or(ShareEntryPoint::kShareSheet),
+                          reason, device_count);
 
   std::unique_ptr<SendTabToSelfBubbleView> bubble_view;
   switch (reason) {
@@ -259,7 +263,8 @@ void SendTabToSelfBubbleController::OnDeviceSelected(
 
   const GURL url = GetWebContents().GetLastCommittedURL();
   // Note: `entry_point_` should always be populated here, since it's set in
-  // ShowBubble() which must've been called earlier.
+  // ShowBubble() which must've been called earlier. If it's not (e.g. in some
+  // unit tests), `kShareSheet` is used as a generic fallback.
   handler->SendTabToDevice(
       target_device_guid, url, base::UTF16ToUTF8(GetWebContents().GetTitle()),
       base::BindOnce(

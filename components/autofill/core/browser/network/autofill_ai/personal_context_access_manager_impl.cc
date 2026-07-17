@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <optional>
+#include <set>
 #include <utility>
 
 #include "base/check.h"
@@ -19,7 +20,6 @@
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_type.h"
 #include "components/autofill/core/browser/manual_testing_import.h"
 #include "components/autofill/core/browser/network/autofill_ai/personal_context_conversion_util.h"
-#include "components/autofill/core/common/autofill_debug_features.h"
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/personal_context/core/personal_context_enablement_service.h"
 #include "components/personal_context/core/personal_context_prefs.h"
@@ -46,40 +46,6 @@ constexpr net::BackoffEntry::Policy kBackoffPolicy = {
     .entry_lifetime_ms = -1,
     .always_use_initial_delay = false};
 
-// Results of parsing the server response during prefetch requests. It bundles
-// the internal `EntityInstance` representation with its original
-// `personal_context::proto::Entity` received from the server. The original
-// proto is required for subsequent unmasking requests (see
-// `GetUnmaskedSpiiEntity`).
-struct ParsedEntity {
-  EntityInstance instance;
-  personal_context::proto::Entity proto;
-};
-
-// Parses the raw protobuf string and converts it into a vector of
-// EntityInstances. Returns an unexpected error if parsing fails.
-base::expected<std::vector<ParsedEntity>, personal_context::ContextMemoryError>
-ExtractEntitiesFromResponse(const std::string& serialized_response) {
-  personal_context::proto::ContextMemoryAmbientAutofillResponse response;
-  if (!response.ParseFromString(serialized_response)) {
-    return base::unexpected(
-        personal_context::ContextMemoryError::FromExecutionError(
-            personal_context::ContextMemoryError::ExecutionError::
-                kResponseParseError));
-  }
-
-  std::vector<ParsedEntity> entities;
-  entities.reserve(response.entities_size());
-  for (auto& entity : response.entities()) {
-    if (std::optional<EntityInstance> converted =
-            PersonalContextEntityToEntityInstance(entity)) {
-      entities.push_back({std::move(*converted), std::move(entity)});
-    }
-  }
-
-  return entities;
-}
-
 bool IsPersonalContextEnabled(
     personal_context::PersonalContextEnablementState state) {
   using enum personal_context::PersonalContextEnablementState;
@@ -92,21 +58,6 @@ bool IsPersonalContextEnabled(
     case kEnabledShouldShowNotice:
       return true;
   }
-}
-
-bool IsPrefetchContextEnabled(
-    personal_context::PersonalContextEnablementService& enablement_service,
-    PrefService* pref_service) {
-  if (!base::FeatureList::IsEnabled(features::kAutofillAmbientAutofill)) {
-    return false;
-  }
-
-  if (base::FeatureList::IsEnabled(
-          features::debug::kAutofillAmbientAutofillSkipEligibilityChecks)) {
-    return true;
-  }
-
-  return IsPersonalContextEnabled(enablement_service.GetEnablementState());
 }
 
 }  // namespace
@@ -136,11 +87,6 @@ PersonalContextAccessManagerImpl::~PersonalContextAccessManagerImpl() = default;
 
 void PersonalContextAccessManagerImpl::PrefetchContext(
     base::span<const EntityType> requested_types) {
-  if (!IsPrefetchContextEnabled(*personal_context_enablement_service_,
-                                pref_service_)) {
-    return;
-  }
-
   std::vector<EntityType> types_to_request;
   for (const EntityType& type : requested_types) {
     if (ShouldRequestType(type)) {
@@ -150,7 +96,7 @@ void PersonalContextAccessManagerImpl::PrefetchContext(
   }
 
   if (types_to_request.empty()) {
-    NotifyPrefetchStatusObservers(/*success=*/true);
+    NotifyPrefetchStatusObservers({});
     return;
   }
 
@@ -175,7 +121,7 @@ void PersonalContextAccessManagerImpl::OnPrefetchContextRequestComplete(
     for (const EntityType& type : requested_types) {
       SetTypeStatus(type, RequestStatus::kFailure);
     }
-    NotifyPrefetchStatusObservers(/*success=*/false);
+    NotifyPrefetchStatusObservers({});
     return;
   }
 
@@ -188,28 +134,34 @@ void PersonalContextAccessManagerImpl::OnPrefetchContextRequestComplete(
     for (const EntityType& type : requested_types) {
       SetTypeStatus(type, RequestStatus::kFailure);
     }
-    NotifyPrefetchStatusObservers(/*success=*/false);
+    NotifyPrefetchStatusObservers({});
     return;
   }
 
-  absl::flat_hash_map<EntityType, std::vector<EntityInstance>> grouped_entities;
-  absl::flat_hash_map<EntityInstance::EntityId, personal_context::proto::Entity>
-      protos;
-  // Initialize requested types results, including entries for empty responses
-  // so that EntityTypes without responses are not fetched over and over again.
-  for (EntityType type : requested_types) {
-    grouped_entities[type] = std::vector<EntityInstance>();
-  }
-  // Group entities by type and collect protos.
-  for (auto& entity : *parsed_entities) {
-    EntityInstance::EntityId id = entity.instance.guid();
-    protos.emplace(std::move(id), std::move(entity.proto));
-    grouped_entities[entity.instance.type()].push_back(
-        std::move(entity.instance));
+  ProcessPrefetchedEntities(std::move(*parsed_entities), requested_types);
+}
+
+base::expected<std::vector<PersonalContextAccessManagerImpl::ParsedEntity>,
+               personal_context::ContextMemoryError>
+PersonalContextAccessManagerImpl::ExtractEntitiesFromResponse(
+    std::string_view serialized_response) {
+  personal_context::proto::ContextMemoryAmbientAutofillResponse response;
+  if (!response.ParseFromString(serialized_response)) {
+    return base::unexpected(
+        personal_context::ContextMemoryError::FromExecutionError(
+            personal_context::ContextMemoryError::ExecutionError::
+                kResponseParseError));
   }
 
-  ProcessPrefetchedEntities(std::move(grouped_entities), std::move(protos));
-  NotifyPrefetchStatusObservers(/*success=*/true);
+  std::vector<ParsedEntity> entities;
+  entities.reserve(response.entities_size());
+  for (const personal_context::proto::Entity& entity : response.entities()) {
+    if (std::optional<EntityInstance> converted =
+            PersonalContextEntityToEntityInstance(entity)) {
+      entities.push_back({std::move(*converted), std::move(entity)});
+    }
+  }
+  return entities;
 }
 
 void PersonalContextAccessManagerImpl::GetUnmaskedSpiiEntity(
@@ -293,6 +245,12 @@ PersonalContextAccessManagerImpl::GetPrefetchStatusByEntityType(
   return RequestStatus::kNotStarted;
 }
 
+bool PersonalContextAccessManagerImpl::ServerHasDataAvailable(
+    EntityType type) const {
+  // TODO(crbug.com/503303085): Implement this properly.
+  return false;
+}
+
 void PersonalContextAccessManagerImpl::ResetStateForType(EntityType type) {
   // Clear existing proto entities of this type.
   absl::erase_if(prefetched_proto_cache_, [type](const auto& entry) {
@@ -309,14 +267,11 @@ void PersonalContextAccessManagerImpl::ResetStateForType(EntityType type) {
 }
 
 void PersonalContextAccessManagerImpl::ProcessPrefetchedEntities(
-    absl::flat_hash_map<EntityType, std::vector<EntityInstance>> entities,
-    absl::flat_hash_map<EntityInstance::EntityId,
-                        personal_context::proto::Entity> protos) {
-  for (auto& [type, type_entities] : entities) {
+    std::vector<ParsedEntity> parsed_entities,
+    base::span<const EntityType> requested_types) {
+  // Evict existing entities for the `requested_types`.
+  for (EntityType type : requested_types) {
     ResetStateForType(type);
-    observers_.Notify(
-        &PersonalContextAccessManager::Observer::OnMaskedEntitiesPrefetched,
-        *this, type_entities);
     SetTypeStatus(type, RequestStatus::kSuccess);
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
@@ -324,9 +279,15 @@ void PersonalContextAccessManagerImpl::ProcessPrefetchedEntities(
                        weak_factory_.GetWeakPtr(), type),
         kPrefetchedEntitiesCacheTTL);
   }
-  for (auto& [id, proto] : protos) {
-    prefetched_proto_cache_.emplace(std::move(id), std::move(proto));
+  // Populate the proto cache and notify observers about the fetched entities.
+  std::vector<EntityInstance> entities;
+  entities.reserve(parsed_entities.size());
+  for (ParsedEntity& entity : parsed_entities) {
+    prefetched_proto_cache_.emplace(entity.instance.guid(),
+                                    std::move(entity.proto));
+    entities.push_back(std::move(entity.instance));
   }
+  NotifyPrefetchStatusObservers(entities);
 }
 
 void PersonalContextAccessManagerImpl::CacheUnmaskedSpiiEntity(
@@ -383,16 +344,18 @@ void PersonalContextAccessManagerImpl::
 
 void PersonalContextAccessManagerImpl::SetTestingEntities(
     const std::vector<EntityInstance>& test_entities) {
-  absl::flat_hash_map<EntityType, std::vector<EntityInstance>> grouped_entities;
-  absl::flat_hash_map<EntityInstance::EntityId, personal_context::proto::Entity>
-      protos;
-
+  std::vector<ParsedEntity> parsed_entities;
+  std::set<EntityType> types;
   for (const EntityInstance& entity : test_entities) {
-    grouped_entities[entity.type()].push_back(entity);
-    protos[entity.guid()] = personal_context::proto::Entity();
+    types.insert(entity.type());
+    parsed_entities.push_back({
+        .instance = entity,
+        .proto = personal_context::proto::Entity(),
+    });
   }
-
-  ProcessPrefetchedEntities(std::move(grouped_entities), std::move(protos));
+  ProcessPrefetchedEntities(
+      std::move(parsed_entities),
+      std::vector<EntityType>(types.begin(), types.end()));
 }
 
 bool PersonalContextAccessManagerImpl::ShouldRequestType(
@@ -448,10 +411,10 @@ void PersonalContextAccessManagerImpl::SetTypeStatus(EntityType type,
 }
 
 void PersonalContextAccessManagerImpl::NotifyPrefetchStatusObservers(
-    bool success) {
+    base::span<const EntityInstance> entities) {
   observers_.Notify(
       &PersonalContextAccessManager::Observer::OnPrefetchContextComplete, *this,
-      success);
+      entities);
 }
 
 }  // namespace autofill

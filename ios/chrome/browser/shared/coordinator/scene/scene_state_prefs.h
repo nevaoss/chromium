@@ -26,11 +26,11 @@
 - (instancetype)init NS_UNAVAILABLE;
 
 // Getter and setter for boolean preference with the given key.
-- (std::optional<bool>)boolForKey:(NSString*)key;
+- (bool)boolForKey:(NSString*)key;
 - (void)setBool:(bool)value forKey:(NSString*)key;
 
 // Getter and setter for base::Time preference with the given key.
-- (std::optional<base::Time>)timeForKey:(NSString*)key;
+- (base::Time)timeForKey:(NSString*)key;
 - (void)setTime:(base::Time)value forKey:(NSString*)key;
 
 @end

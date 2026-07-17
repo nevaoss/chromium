@@ -7,6 +7,7 @@
 <translation id="1026101648481255140">Reprendre l'installation</translation>
 <translation id="102763973188675173">Personnalisez et contrôlez Google Chrome. Une mise à jour est disponible.</translation>
 <translation id="1028061813283459617">Pour supprimer les données de navigation de cet appareil uniquement, tout en les conservant dans votre compte Google, <ph name="BEGIN_LINK" />déconnectez-vous de Chrome<ph name="END_LINK" />.</translation>
+<translation id="1028770388543831319">Profitez des meilleures fonctionnalités de sécurité de Google où que vous soyez avec l'appli Chrome sur votre téléphone</translation>
 <translation id="1042270987544905725">Cliquez pour fermer la boîte de dialogue de connexion à Chrome</translation>
 <translation id="1051793555070215510">Aidez-nous à améliorer la navigation privée en répondant à cette enquête d'une minute.</translation>
 <translation id="1055295352198814912">Afficher Gemini dans Chrome dans la barre de menu Mac et activer le raccourci clavier</translation>
@@ -37,6 +38,7 @@ Certaines fonctionnalités ne seront peut-être pas disponibles, et les modifica
 <translation id="1341711321000856656">Vous pouvez changer de profil pour voir les mots de passe d'un autre profil Chrome</translation>
 <translation id="1343830902827845050">Connectez-vous à Chrome</translation>
 <translation id="1356661055722410047">Nouveau ! Vous pouvez traduire du texte et des images sur votre écran.</translation>
+<translation id="1361351916482714918">Naviguez malin avec Google Lens</translation>
 <translation id="1363996462118479832">Impossible de synchroniser vos données dans Chrome OS, car une erreur s'est produite lors de la connexion.</translation>
 <translation id="137466361146087520">Version bêta de Google Chrome</translation>
 <translation id="1383876407941801731">Rechercher</translation>
@@ -111,6 +113,8 @@ Certaines fonctionnalités ne seront peut-être pas disponibles, et les modifica
 <translation id="2024959665595762054">Pour utiliser et enregistrer des données Chrome dans votre compte Google, confirmez votre identité</translation>
 <translation id="2034233344106846793">Chrome convertit automatiquement les connexions non sécurisées en HTTPS lorsque c'est possible</translation>
 <translation id="2039417478970545937">paramètres.</translation>
+<translation id="2040220733769034247">Scannez le QR code avec votre téléphone pour télécharger Chrome et vous connecter à votre compte Google.</translation>
+<translation id="2050189601866423230">Vous pouvez épingler le Mode IA de la recherche Google pour poser des questions pendant que vous naviguez</translation>
 <translation id="2066690553719545730">Toujours afficher le Mode IA</translation>
 <translation id="2091012649849228750">Pour recevoir les futures mises à jour de Google Chrome, vous devez disposer de Windows 10 ou d'une version ultérieure. Cet ordinateur utilise Windows 8.</translation>
 <translation id="2094648590148273905">Conditions d'utilisation de ChromeOS Flex</translation>
@@ -254,6 +258,7 @@ Si cette page ne fonctionne pas comme prévu, essayez d'autoriser l'optimisation
 <translation id="3451115285585441894">Ajout à Google Chrome en cours…</translation>
 <translation id="345171907106878721">Ajouter un utilisateur à Chrome</translation>
 <translation id="3453763134178591239">Conditions d'utilisation de Chrome OS</translation>
+<translation id="3475778264501649775">Accédez à vos mots de passe, vos onglets et plus, même en déplacement, avec l'appli Chrome sur votre téléphone</translation>
 <translation id="3503306920980160878">Chrome a besoin d'accéder à votre position pour la partager avec ce site</translation>
 <translation id="3512495006767217696">Intégré à Chrome pour vous aider à créer, enregistrer et saisir automatiquement des mots de passe sécurisés. Ajoutez le raccourci pour y accéder facilement.</translation>
 <translation id="3539955434060988644">Ouvrir le lien dans la fenêtre de navi&amp;gation privée Chrome</translation>
@@ -327,6 +332,7 @@ Si cette page ne fonctionne pas comme prévu, essayez d'autoriser l'optimisation
 <translation id="4242034826641750751">Chrome a besoin de l'autorisation d'accéder au micro et à la caméra pour ce site</translation>
 <translation id="424864128008805179">Se déconnecter de Chrome ?</translation>
 <translation id="4251615635259297716">Associer vos données Chrome à ce compte ?</translation>
+<translation id="4266456958461406346">Ouvrez le menu Plus <ph name="THREE_DOTS_ICON" />.</translation>
 <translation id="4280647692742956593">Téléchargez Chrome sur votre téléphone pour ouvrir ou créer des groupes d'onglets où que vous soyez.</translation>
 <translation id="4281844954008187215">Conditions d'utilisation</translation>
 <translation id="430327780270213103">Autoriser l'extension à afficher les demandes d'accès dans la barre d'outils Chrome</translation>
@@ -437,6 +443,7 @@ Google Chrome ne peut pas récupérer vos paramètres.</translation>
 <translation id="5465210843490471889">Choisissez un profil Chrome à utiliser avec <ph name="START_GLIC_STYLING" />Gemini<ph name="END_GLIC_STYLING" /></translation>
 <translation id="547202872422499512">Chrome se lance désormais au démarrage de Windows pour que vous puissiez commencer à naviguer instantanément. Vous pouvez désactiver cette option dans les paramètres.</translation>
 <translation id="5486346529181556467">Améliorez la sécurité en ligne pour tous en signalant un site que vous jugez dangereux. En savoir plus sur le <ph name="BEGIN_LINK" />Règlement de Google concernant les sites dangereux<ph name="END_LINK" /></translation>
+<translation id="5503069778428381665">Lorsque vous utilisez Google Lens sur ordinateur, le titre, l'URL et le contenu de la page, y compris les PDF, sont envoyés à Google</translation>
 <translation id="5524890928877629608">angle supérieur gauche de la zone de recherche : <ph name="LEFT" /> % gauche, <ph name="TOP" /> % haut</translation>
 <translation id="5529390769101499214">Pour gérer vos extensions, cliquez sur "Extensions" dans le menu principal de Chrome.</translation>
 <translation id="5550137307985173298">Cliquez sur le bouton "Personnaliser Chrome" sur la page "Nouvel onglet" pour donner une nouvelle apparence à Chrome</translation>
@@ -470,6 +477,7 @@ Google Chrome ne peut pas récupérer vos paramètres.</translation>
 <translation id="586971344380992563"><ph name="BEGIN_LINK" />Chrome vous avertit<ph name="END_LINK" /> en cas de sites et de téléchargements dangereux</translation>
 <translation id="5894164573378901688">Pour utiliser Gemini dans Chrome, connectez-vous avec un autre compte Google</translation>
 <translation id="5895138241574237353">Redémarrer</translation>
+<translation id="5899008323405946573">Utilisez les meilleurs outils IA de Google avec l'appli Chrome sur votre téléphone</translation>
 <translation id="5903106910045431592"><ph name="PAGE_TITLE" /> - Connexion au réseau</translation>
 <translation id="5924017743176219022">Connexion à Internet…</translation>
 <translation id="5925596746603389877">Télécharger le programme d'installation de Chrome</translation>
@@ -567,6 +575,7 @@ Google Chrome ne peut pas récupérer vos paramètres.</translation>
 <translation id="6706525880530967390">{count,plural, =1{Chrome doit valider votre identité avant que certaines données puissent être enregistrées dans votre compte Google et utilisées sur tous vos appareils. Si vous vous déconnectez maintenant, ces données (1 élément) seront supprimées.}one{Chrome doit valider votre identité avant que certaines données puissent être enregistrées dans votre compte Google et utilisées sur tous vos appareils. Si vous vous déconnectez maintenant, ces données ({count} élément) seront supprimées.}other{Chrome doit valider votre identité avant que certaines données puissent être enregistrées dans votre compte Google et utilisées sur tous vos appareils. Si vous vous déconnectez maintenant, ces données ({count} éléments) seront supprimées.}}</translation>
 <translation id="6712881677154121168">Erreur de téléchargement : <ph name="DOWNLOAD_ERROR" />.</translation>
 <translation id="6718739135284199302">Rendre Chrome plus rapide</translation>
+<translation id="6723445727540769832">Profitez du meilleur de Google avec l'appli Chrome sur votre téléphone</translation>
 <translation id="6734827584173583205">Vous n'avez pas consulté le site récemment. Chrome a supprimé "<ph name="PERMISSION_1" />", "<ph name="PERMISSION_2" />" et <ph name="COUNT" /> autre(s).</translation>
 <translation id="6735387454586646204">Système ChromeOS Flex</translation>
 <translation id="6750954913813541382">Pour corriger les fautes d'orthographe, Chrome envoie à Google le texte que vous saisissez dans le navigateur</translation>
@@ -680,6 +689,7 @@ Google Chrome ne peut pas récupérer vos paramètres.</translation>
 <translation id="7804364787702057554">Votre compte dans Chrome</translation>
 <translation id="7804947029129221742">Votre moteur de recherche a été modifié en dehors de Chrome. Pour vous protéger, Chrome a rétabli sa valeur par défaut d'origine. <ph name="LEARN_MORE_LINK" /></translation>
 <translation id="7808348361785373670">Supprimer de Chrome</translation>
+<translation id="7812800388699096556">Illustration montrant comment utiliser Google Lens pour rechercher un produit</translation>
 <translation id="7827099906024714326">Chrome doit valider votre identité avant que certaines données puissent être enregistrées dans votre compte Google et utilisées sur tous vos appareils. Si vous vous déconnectez maintenant, ces données seront supprimées.</translation>
 <translation id="7832314606810669113">Pour accéder à vos favoris et plus sur tous vos appareils, connectez-vous à Chrome. Ce favori sera enregistré dans votre compte Google une fois que vous vous serez connecté.</translation>
 <translation id="7845233973568007926">Merci d'avoir installé notre produit. Vous devez redémarrer votre ordinateur avant d'utiliser <ph name="BUNDLE_NAME" />.</translation>
@@ -697,6 +707,7 @@ Google Chrome ne peut pas récupérer vos paramètres.</translation>
 <translation id="7951272445806340501">Redémarrez ChromeOS Flex pour appliquer la mise à jour.</translation>
 <translation id="7959172989483770734">Gérer les profils Chrome</translation>
 <translation id="7962410387636238736">Cet ordinateur ne recevra plus les mises à jour de Google Chrome, car la compatibilité n'est plus assurée sur Windows XP et Windows Vista</translation>
+<translation id="7988335136512059384">Recevez des alertes en cas de baisse de prix sur les articles qui vous intéressent avec l'appli Chrome sur votre téléphone</translation>
 <translation id="8004582292198964060">Navigateur</translation>
 <translation id="8005666035647241369">Dans le Gestionnaire de mots de passe de Google sur cet appareil</translation>
 <translation id="8008534537613507642">Réinstaller Chrome</translation>
@@ -816,6 +827,7 @@ Vous ne pourrez pas enregistrer de nouveaux favoris dans votre compte tant que v
 <translation id="9018218886431812662">Installation terminée</translation>
 <translation id="9024318700713112071">Définir Chrome comme navigateur par défaut</translation>
 <translation id="9066987883552592250">Fermer Gemini dans Chrome Canary</translation>
+<translation id="9074041031320636790">Et voilà ! Vous pouvez désormais facilement poser des questions pendant que vous naviguez grâce au Mode IA de la recherche Google.</translation>
 <translation id="9090566250983691233">Découvrez pourquoi Chrome bloque certains fichiers</translation>
 <translation id="9106236359747881194">Sélectionner le texte à rechercher</translation>
 <translation id="911206726377975832">Supprimer également vos données de navigation ?</translation>

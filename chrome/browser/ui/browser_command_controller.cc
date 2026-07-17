@@ -297,15 +297,6 @@ class BrowserCommandController::ExtensionStateObserver
 
 // TODO(crbug.com/434734349): Implement dependency injection for this class to
 // allow removing the Browser dependency.
-std::unique_ptr<CommandUpdater>
-BrowserCommandController::CreateCommandUpdater() {
-  if (base::FeatureList::IsEnabled(features::kUseActionsForBrowserCommands)) {
-    return std::make_unique<CommandActionUpdater>(
-        browser_->GetActions()->root_action_item());
-  }
-  return std::make_unique<CommandUpdaterImpl>(this);
-}
-
 BrowserCommandController::BrowserCommandController(BrowserWindowInterface* bwi)
     : browser_(bwi->GetBrowserForMigrationOnly()),
       command_updater_(CreateCommandUpdater()) {
@@ -2621,18 +2612,6 @@ void BrowserCommandController::UpdateCommandsForTabStripStateChanged() {
   UpdateCommandsForBookmarkEditing();
 }
 
-void BrowserCommandController::UpdateCommandAndActionEnabled(
-    int command_id,
-    actions::ActionId action_id,
-    bool enabled) {
-  command_updater_->UpdateCommandEnabled(command_id, enabled);
-  if (!base::FeatureList::IsEnabled(features::kUseActionsForBrowserCommands)) {
-    if (auto* const action = FindAction(action_id, browser_)) {
-      action->SetEnabled(enabled);
-    }
-  }
-}
-
 void BrowserCommandController::UpdateCommandsForEnableGlicChanged() {
   command_updater_->UpdateCommandEnabled(
       IDC_OPEN_GLIC, glic::GlicEnabling::IsEnabledForProfile(profile()));
@@ -2647,6 +2626,27 @@ void BrowserCommandController::UpdateCommandsForEnableGlicChanged() {
       }
     }
   }
+}
+
+void BrowserCommandController::UpdateCommandAndActionEnabled(
+    int command_id,
+    actions::ActionId action_id,
+    bool enabled) {
+  command_updater_->UpdateCommandEnabled(command_id, enabled);
+  if (!base::FeatureList::IsEnabled(features::kUseActionsForBrowserCommands)) {
+    if (auto* const action = FindAction(action_id, browser_)) {
+      action->SetEnabled(enabled);
+    }
+  }
+}
+
+std::unique_ptr<CommandUpdater>
+BrowserCommandController::CreateCommandUpdater() {
+  if (base::FeatureList::IsEnabled(features::kUseActionsForBrowserCommands)) {
+    return std::make_unique<CommandActionUpdater>(
+        browser_->GetActions()->root_action_item());
+  }
+  return std::make_unique<CommandUpdaterImpl>(this);
 }
 
 BrowserWindow* BrowserCommandController::window() {

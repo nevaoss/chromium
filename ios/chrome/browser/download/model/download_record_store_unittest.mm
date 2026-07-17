@@ -53,7 +53,8 @@ class DownloadRecordStoreTest : public PlatformTest {
     db_task_runner_ = base::ThreadPool::CreateSequencedTaskRunner(
         {base::MayBlock(), base::TaskPriority::USER_VISIBLE,
          base::TaskShutdownBehavior::BLOCK_SHUTDOWN});
-    store_ = base::SequenceBound<DownloadRecordStore>(db_task_runner_);
+    store_ = base::SequenceBound<DownloadRecordStore>(
+        db_task_runner_, /*pagination_enabled=*/false);
   }
 
   void TearDown() override {
@@ -108,7 +109,7 @@ TEST_F(DownloadRecordStoreTest, InitializeDatabase_HappyPath_EmptyCache) {
 
 // Non-incognito records must land in BOTH the in-memory cache and the
 // underlying SQLite database. We assert both: the cache via
-// GetByIdFromCache, and the DB via a re-init round-trip that drops and
+// GetById, and the DB via a re-init round-trip that drops and
 // reloads the cache from disk.
 TEST_F(DownloadRecordStoreTest, InsertRecord_NonIncognito_PersistsAndCaches) {
   InitializeWithLegacyStartup();
@@ -122,7 +123,7 @@ TEST_F(DownloadRecordStoreTest, InsertRecord_NonIncognito_PersistsAndCaches) {
 
   // Cache: present right after insert.
   base::test::TestFuture<std::optional<DownloadRecord>> cached_future;
-  store_.AsyncCall(&DownloadRecordStore::GetByIdFromCache)
+  store_.AsyncCall(&DownloadRecordStore::GetById)
       .WithArgs("non_incognito_id")
       .Then(cached_future.GetCallback());
   std::optional<DownloadRecord> cached = cached_future.Get();
@@ -137,7 +138,7 @@ TEST_F(DownloadRecordStoreTest, InsertRecord_NonIncognito_PersistsAndCaches) {
   ASSERT_TRUE(reload_done.Wait());
 
   base::test::TestFuture<std::optional<DownloadRecord>> reloaded_future;
-  store_.AsyncCall(&DownloadRecordStore::GetByIdFromCache)
+  store_.AsyncCall(&DownloadRecordStore::GetById)
       .WithArgs("non_incognito_id")
       .Then(reloaded_future.GetCallback());
   std::optional<DownloadRecord> reloaded = reloaded_future.Get();
@@ -159,7 +160,7 @@ TEST_F(DownloadRecordStoreTest, InsertRecord_Incognito_CachesOnly) {
   EXPECT_TRUE(insert_future.Get());
 
   base::test::TestFuture<std::optional<DownloadRecord>> cached_future;
-  store_.AsyncCall(&DownloadRecordStore::GetByIdFromCache)
+  store_.AsyncCall(&DownloadRecordStore::GetById)
       .WithArgs("incognito_id")
       .Then(cached_future.GetCallback());
   std::optional<DownloadRecord> cached = cached_future.Get();
@@ -173,7 +174,7 @@ TEST_F(DownloadRecordStoreTest, InsertRecord_Incognito_CachesOnly) {
   ASSERT_TRUE(reload_done.Wait());
 
   base::test::TestFuture<std::optional<DownloadRecord>> reloaded_future;
-  store_.AsyncCall(&DownloadRecordStore::GetByIdFromCache)
+  store_.AsyncCall(&DownloadRecordStore::GetById)
       .WithArgs("incognito_id")
       .Then(reloaded_future.GetCallback());
   EXPECT_FALSE(reloaded_future.Get().has_value());
@@ -228,7 +229,7 @@ TEST_F(DownloadRecordStoreTest, DeleteRecord_RemovesFromCacheAndDatabase) {
   EXPECT_TRUE(delete_future.Get());
 
   base::test::TestFuture<std::optional<DownloadRecord>> cached_future;
-  store_.AsyncCall(&DownloadRecordStore::GetByIdFromCache)
+  store_.AsyncCall(&DownloadRecordStore::GetById)
       .WithArgs("delete_id")
       .Then(cached_future.GetCallback());
   EXPECT_FALSE(cached_future.Get().has_value());
@@ -240,7 +241,7 @@ TEST_F(DownloadRecordStoreTest, DeleteRecord_RemovesFromCacheAndDatabase) {
   ASSERT_TRUE(reload_done.Wait());
 
   base::test::TestFuture<std::optional<DownloadRecord>> reloaded_future;
-  store_.AsyncCall(&DownloadRecordStore::GetByIdFromCache)
+  store_.AsyncCall(&DownloadRecordStore::GetById)
       .WithArgs("delete_id")
       .Then(reloaded_future.GetCallback());
   EXPECT_FALSE(reloaded_future.Get().has_value());
@@ -267,11 +268,12 @@ TEST_F(DownloadRecordStoreTest,
   task_environment_.RunUntilIdle();
 
   // Second instance: same temp dir, legacy startup must repopulate cache.
-  store_ = base::SequenceBound<DownloadRecordStore>(db_task_runner_);
+  store_ = base::SequenceBound<DownloadRecordStore>(
+      db_task_runner_, /*pagination_enabled=*/false);
   InitializeWithLegacyStartup();
 
   base::test::TestFuture<std::optional<DownloadRecord>> cached_future;
-  store_.AsyncCall(&DownloadRecordStore::GetByIdFromCache)
+  store_.AsyncCall(&DownloadRecordStore::GetById)
       .WithArgs("rehydrate_id")
       .Then(cached_future.GetCallback());
   std::optional<DownloadRecord> cached = cached_future.Get();
@@ -299,7 +301,8 @@ TEST_F(DownloadRecordStoreTest,
 
   // Second instance: pagination-aware startup runs only the SQL UPDATE
   // and leaves the cache empty.
-  store_ = base::SequenceBound<DownloadRecordStore>(db_task_runner_);
+  store_ = base::SequenceBound<DownloadRecordStore>(
+      db_task_runner_, /*pagination_enabled=*/true);
   InitializeWithPaginationStartup();
 
   base::test::TestFuture<std::vector<DownloadRecord>> future;

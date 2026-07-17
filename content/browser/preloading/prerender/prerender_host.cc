@@ -522,39 +522,14 @@ PrerenderHost::PrerenderHost(
                                              attributes.prerendering_url)
             : SiteInstanceImpl::Create(web_contents.GetBrowserContext());
 
-    // TODO(https://crbug.com/524800804): Add the following restrictions:
-    // 1. For moderate eagerness only
-    // 2. Disallow Target_hint = 'blank' to use the same process.
-    // 3. Disallow cross-site prerendering to reuse the process.
-    if (!attributes.IsBrowserInitiated() &&
-        attributes.initiator_frame_token.has_value() &&
-        base::FeatureList::IsEnabled(
-            features::kPrerender2ReuseInitiatorProcess)) {
-      std::string allowed_action =
-          features::kPrerender2ReuseInitiatorProcessActionType.Get();
-
-      bool action_matches = false;
-      if (allowed_action == "all") {
-        action_matches = true;
-      } else if (allowed_action == "prerender" &&
-                 attributes.prerender_action_type ==
-                     blink::mojom::SpeculationAction::kPrerender) {
-        action_matches = true;
-      } else if (allowed_action == "prerender-until-script" &&
-                 attributes.prerender_action_type ==
-                     blink::mojom::SpeculationAction::kPrerenderUntilScript) {
-        action_matches = true;
-      }
-
-      if (action_matches) {
-        RenderFrameHostImpl* initiator_rfh =
-            RenderFrameHostImpl::FromFrameToken(
-                attributes.initiator_process_id,
-                attributes.initiator_frame_token.value());
-        if (initiator_rfh) {
-          site_instance->ReuseExistingProcessIfPossible(
-              initiator_rfh->GetProcess());
-        }
+    if (ShouldAllowProcessReuse() &&
+        attributes.initiator_frame_token.has_value()) {
+      RenderFrameHostImpl* initiator_rfh = RenderFrameHostImpl::FromFrameToken(
+          attributes.initiator_process_id,
+          attributes.initiator_frame_token.value());
+      if (initiator_rfh) {
+        site_instance->ReuseExistingProcessIfPossible(
+            initiator_rfh->GetProcess());
       }
     }
 
@@ -1414,6 +1389,79 @@ void PrerenderHost::RecordActivation(NavigationRequest& navigation_request) {
 
 PrerenderHost::LoadingOutcome PrerenderHost::WaitForLoadStopForTesting() {
   return frame_tree_delegate_->WaitForLoadStopForTesting();  // IN-TEST
+}
+
+bool PrerenderHost::ShouldAllowProcessReuse() const {
+  if (attributes_.IsBrowserInitiated() ||
+      !base::FeatureList::IsEnabled(
+          features::kPrerender2ReuseInitiatorProcess)) {
+    return false;
+  }
+
+  if (!attributes_.initiator_origin->IsSameOriginWith(
+          attributes_.prerendering_url)) {
+    return false;
+  }
+
+  if (attributes_.GetTargetHint() ==
+      blink::mojom::SpeculationTargetHint::kBlank) {
+    return false;
+  }
+  std::string allowed_action =
+      features::kPrerender2ReuseInitiatorProcessActionType.Get();
+
+  bool action_matches = false;
+  if (allowed_action == "all") {
+    action_matches = true;
+  } else if (allowed_action == "prerender" &&
+             attributes_.prerender_action_type ==
+                 blink::mojom::SpeculationAction::kPrerender) {
+    action_matches = true;
+  } else if (allowed_action == "prerender-until-script" &&
+             attributes_.prerender_action_type ==
+                 blink::mojom::SpeculationAction::kPrerenderUntilScript) {
+    action_matches = true;
+  }
+
+  if (!action_matches) {
+    return false;
+  }
+
+  std::string allowed_eagerness =
+      features::kPrerender2ReuseInitiatorProcessEagerness.Get();
+  if (allowed_eagerness == "all") {
+    return true;
+  }
+
+  auto get_eagerness_score = [](blink::mojom::SpeculationEagerness e) {
+    switch (e) {
+      case blink::mojom::SpeculationEagerness::kConservative:
+        return 0;
+      case blink::mojom::SpeculationEagerness::kModerate:
+        return 1;
+      case blink::mojom::SpeculationEagerness::kEager:
+        return 2;
+      case blink::mojom::SpeculationEagerness::kImmediate:
+        return 3;
+    }
+  };
+
+  CHECK(attributes_.GetEagerness().has_value());
+  int current_score = get_eagerness_score(attributes_.GetEagerness().value());
+  int allowed_score = 1;  // Default Moderate
+  if (allowed_eagerness == "conservative") {
+    allowed_score = 0;
+  } else if (allowed_eagerness == "moderate") {
+    allowed_score = 1;
+  } else if (allowed_eagerness == "eager") {
+    allowed_score = 2;
+  } else if (allowed_eagerness == "immediate") {
+    allowed_score = 3;
+  } else {
+    return false;
+  }
+
+  return current_score <= allowed_score;
 }
 
 const GURL& PrerenderHost::GetInitialUrl() const {

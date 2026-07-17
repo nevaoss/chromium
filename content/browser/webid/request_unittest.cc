@@ -17,8 +17,10 @@
 #include "base/memory/weak_ptr.h"
 #include "base/run_loop.h"
 #include "base/task/sequenced_task_runner.h"
+#include "base/test/bind.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/mock_callback.h"
+#include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
 #include "components/ukm/test_ukm_recorder.h"
 #include "content/browser/web_contents/web_contents_impl.h"
@@ -608,6 +610,7 @@ class TestDialogController
     std::optional<SkColor> brand_text_color;
     // State related to ShowFailureDialog().
     size_t num_show_idp_signin_status_mismatch_dialog_requests{0u};
+    IdentityRequestDialogController::DismissCallback mismatch_dismiss_callback;
     // State related to ShowErrorDialog().
     bool did_show_error_dialog{false};
     std::optional<TokenError> token_error;
@@ -746,6 +749,7 @@ class TestDialogController
             base::BindOnce(std::move(dismiss_callback), DismissReason::kOther));
         break;
       case IdpSigninStatusMismatchDialogAction::kNone:
+        state_->mismatch_dismiss_callback = std::move(dismiss_callback);
         break;
     }
     did_show_ui_ = true;
@@ -958,6 +962,13 @@ class TestIdentityRegistry : public NiceMock<MockIdentityRegistry> {
   void NotifyClose(const url::Origin& notifier_origin) override {
     notified_ = true;
   }
+
+  base::WeakPtr<TestIdentityRegistry> GetWeakPtr() {
+    return weak_ptr_factory_.GetWeakPtr();
+  }
+
+ private:
+  base::WeakPtrFactory<TestIdentityRegistry> weak_ptr_factory_{this};
 };
 
 }  // namespace
@@ -1234,34 +1245,54 @@ class RequestTest : public RenderViewHostImplTestHarness {
     test_permission_delegate_ = std::make_unique<TestPermissionDelegate>();
     test_auto_reauthn_permission_delegate_ =
         std::make_unique<TestAutoReauthnPermissionDelegate>();
-    test_identity_registry_ = std::make_unique<TestIdentityRegistry>(
+    auto test_identity_registry = std::make_unique<TestIdentityRegistry>(
         web_contents(), /*delegate=*/nullptr, GURL(kIdpUrl));
+    test_identity_registry_ = test_identity_registry->GetWeakPtr();
+    web_contents()->SetUserData(IdentityRegistry::UserDataKey(),
+                                std::move(test_identity_registry));
     auth_helper_ = std::make_unique<AuthRequestCallbackHelper>();
 
     static_cast<TestWebContents*>(web_contents())
         ->NavigateAndCommit(GURL(rp_url_), ui::PAGE_TRANSITION_LINK);
 
-    request_ = &RequestService::GetOrCreateForCurrentDocument(main_test_rfh())
-                    ->CreateRequestForTesting(
-                        request_remote_.BindNewPipeAndPassReceiver(),
-                        test_api_permission_delegate_.get(),
-                        test_auto_reauthn_permission_delegate_.get(),
-                        test_permission_delegate_.get(),
-                        test_identity_registry_.get());
+    request_ =
+        RequestService::GetOrCreateForCurrentDocument(main_test_rfh())
+            ->CreateRequestForTesting(
+                request_remote_.BindNewPipeAndPassReceiver(),
+                test_api_permission_delegate_.get(),
+                test_auto_reauthn_permission_delegate_.get(),
+                test_permission_delegate_.get(), test_identity_registry_.get())
+            .GetWeakPtr();
 
     std::unique_ptr<TestIdpNetworkRequestManager> network_request_manager =
         std::make_unique<TestIdpNetworkRequestManager>();
     SetNetworkRequestManager(std::move(network_request_manager));
   }
 
+  void TearDown() override {
+    ResetAndDeleteRequest();
+    test_identity_registry_ = nullptr;
+    RenderViewHostImplTestHarness::TearDown();
+  }
+
+  void ResetAndDeleteRequest() {
+    RequestService* service =
+        RequestService::GetOrCreateForCurrentDocument(main_test_rfh());
+    if (service && service->GetActiveRequestForTesting()) {
+      service->GetActiveRequestForTesting()->ResetAndDeleteThisForTesting();
+    }
+    // The destruction is asynchronous. Wait until the Request object is
+    // physically destroyed, which will automatically invalidate the weak
+    // pointer and ensure fallback metrics are recorded in its destructor.
+    ASSERT_TRUE(base::test::RunUntil([&]() { return !request_; }));
+  }
   void SetNetworkRequestManager(
       std::unique_ptr<TestIdpNetworkRequestManager> manager) {
     test_network_request_manager_ = std::move(manager);
-    // DelegatedIdpNetworkRequestManager is owned by
-    // |request_|.
-    request_->SetNetworkManagerForTests(
-        std::make_unique<DelegatedIdpNetworkRequestManager>(
-            test_network_request_manager_.get()));
+    RequestService::GetOrCreateForCurrentDocument(main_test_rfh())
+        ->SetNetworkManagerForTests(
+            std::make_unique<DelegatedIdpNetworkRequestManager>(
+                test_network_request_manager_.get()));
   }
 
   // Sets the TestDialogController to be used for the next call of
@@ -1296,7 +1327,8 @@ class RequestTest : public RenderViewHostImplTestHarness {
 
     dialog_controller_state_ = TestDialogController::State();
     custom_dialog_controller_->SetState(&dialog_controller_state_);
-    request_->SetDialogControllerForTests(std::move(custom_dialog_controller_));
+    RequestService::GetOrCreateForCurrentDocument(main_test_rfh())
+        ->SetDialogControllerForTests(std::move(custom_dialog_controller_));
 
     SetConfig(configuration);
 
@@ -1440,6 +1472,12 @@ class RequestTest : public RenderViewHostImplTestHarness {
     // Ensure that the request makes its way to Request.
     request_remote_.FlushForTesting();
     base::RunLoop().RunUntilIdle();
+
+    // Re-fetch the active request pointer from the service, as the Mojo call
+    // will have created a new Request object if there wasn't one.
+    request_ = RequestService::GetOrCreateForCurrentDocument(main_test_rfh())
+                   ->GetOrCreateActiveRequest()
+                   ->GetWeakPtr();
   }
 
   void WaitForCurrentAuthRequest(
@@ -1480,11 +1518,13 @@ class RequestTest : public RenderViewHostImplTestHarness {
         blink::mojom::IdentityCredentialDisconnectOptions::New();
     options->config = blink::mojom::IdentityProviderConfig::New();
     options->config->config_url = GURL(kProviderUrlFull);
-    request_->disconnect_request_ = DisconnectRequest::Create(
+    RequestService* service =
+        RequestService::GetOrCreateForCurrentDocument(main_test_rfh());
+    service->disconnect_request_ = DisconnectRequest::Create(
         std::move(network_request_manager), test_permission_delegate_.get(),
         main_test_rfh(), std::move(fedcm_metrics), std::move(options));
-    request_->disconnect_request_->callback_ = base::DoNothing();
-    request_->disconnect_request_->Complete(
+    service->disconnect_request_->callback_ = base::DoNothing();
+    service->disconnect_request_->Complete(
         blink::mojom::DisconnectStatus::kSuccess, DisconnectStatus::kSuccess);
   }
 
@@ -1969,7 +2009,7 @@ class RequestTest : public RenderViewHostImplTestHarness {
   std::string rp_url_;
 
   mojo::Remote<blink::mojom::FederatedAuthRequest> request_remote_;
-  raw_ptr<Request, AcrossTasksDanglingUntriaged> request_;
+  base::WeakPtr<Request> request_;
 
   std::unique_ptr<TestIdpNetworkRequestManager> test_network_request_manager_;
 
@@ -1977,7 +2017,7 @@ class RequestTest : public RenderViewHostImplTestHarness {
   std::unique_ptr<TestPermissionDelegate> test_permission_delegate_;
   std::unique_ptr<TestAutoReauthnPermissionDelegate>
       test_auto_reauthn_permission_delegate_;
-  std::unique_ptr<TestIdentityRegistry> test_identity_registry_;
+  base::WeakPtr<TestIdentityRegistry> test_identity_registry_ = nullptr;
   std::unique_ptr<AuthRequestCallbackHelper> auth_helper_;
 
   // Enables test to inspect TestDialogController state after
@@ -3682,7 +3722,7 @@ TEST_F(RequestTest,
   EXPECT_FALSE(DidFetchAnyEndpoint());
 
   // Delete the request before DelayTimer kicks in.
-  request_->ResetAndDeleteThisForTesting();
+  ResetAndDeleteRequest();
 
   // If double counted, these samples would not be unique so the following
   // checks will fail.
@@ -4574,11 +4614,10 @@ TEST_F(RequestTest, FailureUiSigninFromDifferentIdp) {
   network_manager->accounts_parse_status_ = ParseStatus::kInvalidResponseError;
   test_permission_delegate_->idp_signin_statuses_[kIdpOrigin] = true;
 
-  // Close mismatch dialog upon sign-in status change to check that the
-  // appropriate metrics are recorded.
+  // We want the mismatch dialog to stay open initially, so we use kNone.
   MockConfiguration configuration = kConfigurationValid;
   configuration.idp_signin_status_mismatch_dialog_action =
-      IdpSigninStatusMismatchDialogAction::kClose;
+      IdpSigninStatusMismatchDialogAction::kNone;
 
   RunAuthDontWaitForCallback(kDefaultRequestParameters, configuration);
   EXPECT_TRUE(did_show_idp_signin_status_mismatch_dialog());
@@ -4589,8 +4628,29 @@ TEST_F(RequestTest, FailureUiSigninFromDifferentIdp) {
   // Simulate user signing into different IdP by updating the IdP signin status
   // and calling observer.
   test_permission_delegate_->idp_signin_statuses_[kOtherOrigin] = true;
-  request_->OnIdpSigninStatusReceived(kOtherOrigin, /*idp_signin_status=*/true);
-  base::RunLoop().RunUntilIdle();
+
+  // The request must still be alive here.
+  ASSERT_TRUE(request_);
+  request_->OnIdpSigninStatusReceived(kOtherOrigin,
+                                      /*idp_signin_status=*/true);
+  // No task should be posted, so we don't need to run the loop here.
+
+  // The request must STILL be alive because different IDP sign-in should not
+  // close it.
+  ASSERT_TRUE(request_);
+
+  // Now, explicitly close the dialog to finish the test and record metrics.
+  ASSERT_TRUE(dialog_controller_state_.mismatch_dismiss_callback);
+  std::move(dialog_controller_state_.mismatch_dismiss_callback)
+      .Run(DismissReason::kCloseButton);
+
+  // Wait until the request completes (invalidating its weak pointers).
+  // TODO(crbug.com/514241802): Actually assert that the Request object is
+  // destroyed in RequestService once the cleanup path is implemented.
+  ASSERT_TRUE(base::test::RunUntil([&]() { return !request_; }));
+
+  // Now the request should be destroyed.
+  EXPECT_FALSE(request_);
 
   // No fetches should have been triggered.
   EXPECT_EQ(NumFetched(FetchedEndpoint::WELL_KNOWN), num_well_known_fetches);
@@ -4755,9 +4815,8 @@ TEST_F(RequestTest, AllSuccessfulMultiIdpRequestWithoutIdpReorder) {
   EXPECT_EQ(2u, NumFetched(FetchedEndpoint::ACCOUNTS));
 
   // Check that the appropriate metrics are recorded upon destruction.
-  request_->ResetAndDeleteThisForTesting();
+  ResetAndDeleteRequest();
   RequestService::DeleteForCurrentDocument(main_test_rfh());
-  request_ = nullptr;
   ukm_loop.Run();
   histogram_tester_.ExpectUniqueSample("Blink.FedCm.NumRequestsPerDocument", 1,
                                        1);
@@ -5417,9 +5476,8 @@ TEST_F(RequestTest, TooManyRequests) {
   EXPECT_FALSE(DidFetchAnyEndpoint());
 
   // Check that the appropriate metrics are recorded upon destruction.
-  request_->ResetAndDeleteThisForTesting();
+  ResetAndDeleteRequest();
   RequestService::DeleteForCurrentDocument(main_test_rfh());
-  request_ = nullptr;
 
   ukm_loop.Run();
 
@@ -5476,9 +5534,8 @@ TEST_F(RequestTest, TooManyRequestsDifferentIdP) {
   EXPECT_FALSE(DidFetchAnyEndpoint());
 
   // Check that the appropriate metrics are recorded upon destruction.
-  request_->ResetAndDeleteThisForTesting();
+  ResetAndDeleteRequest();
   RequestService::DeleteForCurrentDocument(main_test_rfh());
-  request_ = nullptr;
 
   ukm_loop.Run();
 
@@ -5522,9 +5579,8 @@ TEST_F(RequestTest, ActiveModeTooManyRequestsWithNewPassiveFlow) {
   EXPECT_FALSE(DidFetchAnyEndpoint());
 
   // Check that the appropriate metrics are recorded upon destruction.
-  request_->ResetAndDeleteThisForTesting();
+  ResetAndDeleteRequest();
   RequestService::DeleteForCurrentDocument(main_test_rfh());
-  request_ = nullptr;
 
   ukm_loop.Run();
 
@@ -5579,9 +5635,8 @@ TEST_F(RequestTest, ActiveModeTooManyRequestsWithNewActiveFlow) {
   EXPECT_FALSE(DidFetchAnyEndpoint());
 
   // Check that the appropriate metrics are recorded upon destruction.
-  request_->ResetAndDeleteThisForTesting();
+  ResetAndDeleteRequest();
   RequestService::DeleteForCurrentDocument(main_test_rfh());
-  request_ = nullptr;
 
   ukm_loop.Run();
 
@@ -5636,9 +5691,8 @@ TEST_F(RequestTest, PassiveReplacedByActiveFlow) {
   CheckAuthExpectations(configuration, passive_flow_expectations);
 
   // Check that the appropriate metrics are recorded upon destruction.
-  request_->ResetAndDeleteThisForTesting();
+  ResetAndDeleteRequest();
   RequestService::DeleteForCurrentDocument(main_test_rfh());
-  request_ = nullptr;
 
   ukm_loop.Run();
 
@@ -6779,20 +6833,24 @@ class RequestNewTabTest : public RequestTest {
     test_permission_delegate_ = std::make_unique<TestPermissionDelegate>();
     test_auto_reauthn_permission_delegate_ =
         std::make_unique<TestAutoReauthnPermissionDelegate>();
-    test_identity_registry_ = std::make_unique<TestIdentityRegistry>(
+    auto test_identity_registry = std::make_unique<TestIdentityRegistry>(
         web_contents(), /*delegate=*/nullptr, GURL(kIdpUrl));
+    test_identity_registry_ = test_identity_registry->GetWeakPtr();
+    web_contents()->SetUserData(IdentityRegistry::UserDataKey(),
+                                std::move(test_identity_registry));
     auth_helper_ = std::make_unique<AuthRequestCallbackHelper>();
 
     static_cast<TestWebContents*>(web_contents())
         ->NavigateAndCommit(GURL("chrome://newtab/"), ui::PAGE_TRANSITION_LINK);
 
-    request_ = &RequestService::GetOrCreateForCurrentDocument(main_test_rfh())
-                    ->CreateRequestForTesting(
-                        request_remote_.BindNewPipeAndPassReceiver(),
-                        test_api_permission_delegate_.get(),
-                        test_auto_reauthn_permission_delegate_.get(),
-                        test_permission_delegate_.get(),
-                        test_identity_registry_.get());
+    request_ =
+        RequestService::GetOrCreateForCurrentDocument(main_test_rfh())
+            ->CreateRequestForTesting(
+                request_remote_.BindNewPipeAndPassReceiver(),
+                test_api_permission_delegate_.get(),
+                test_auto_reauthn_permission_delegate_.get(),
+                test_permission_delegate_.get(), test_identity_registry_.get())
+            .GetWeakPtr();
 
     std::unique_ptr<TestIdpNetworkRequestManager> network_request_manager =
         std::make_unique<TestIdpNetworkRequestManager>();
@@ -6928,7 +6986,7 @@ TEST_F(RequestTest, DoubleMismatchDialog) {
   base::RunLoop().RunUntilIdle();
 
   // Check that the appropriate metrics are recorded upon destruction.
-  request_->ResetAndDeleteThisForTesting();
+  ResetAndDeleteRequest();
   ukm_loop.Run();
 
   // The additional mismatch should be recorded in the metrics.
@@ -7077,9 +7135,8 @@ TEST_F(RequestTest, RecordNumRequestsPerDocumentMetric) {
   EXPECT_FALSE(did_show_idp_signin_status_mismatch_dialog());
 
   // Check that the appropriate metrics are recorded upon destruction.
-  request_->ResetAndDeleteThisForTesting();
+  ResetAndDeleteRequest();
   RequestService::DeleteForCurrentDocument(main_test_rfh());
-  request_ = nullptr;
 
   ukm_loop.Run();
 
@@ -8393,7 +8450,7 @@ TEST_F(RequestTest, VerifyingDialogDestroyExplicitMetrics) {
   config.delay_token_response = true;
 
   RunAuthDontWaitForCallback(kDefaultRequestParameters, config);
-  request_->ResetAndDeleteThisForTesting();
+  ResetAndDeleteRequest();
 
   histogram_tester_.ExpectUniqueSample("Blink.FedCm.VerifyingDialogResult",
                                        VerifyingDialogResult::kDestroyExplicit,
@@ -8422,7 +8479,7 @@ TEST_F(RequestTest, VerifyingDialogDestroyAutoReauthnMetrics) {
   config.delay_token_response = true;
 
   RunAuthDontWaitForCallback(kDefaultRequestParameters, config);
-  request_->ResetAndDeleteThisForTesting();
+  ResetAndDeleteRequest();
 
   histogram_tester_.ExpectUniqueSample(
       "Blink.FedCm.VerifyingDialogResult",
@@ -9077,6 +9134,80 @@ TEST_F(RequestTest, DismissIgnoredDuringRedirectTo) {
   histogram_tester.ExpectUniqueSample(
       "Blink.FedCm.Status.RequestIdToken",
       static_cast<int>(RequestIdTokenStatus::kSuccessUsingRedirectTo), 1);
+}
+
+TEST_F(RequestTest, DisconnectViaFederatedRequestService) {
+  mojo::Remote<blink::mojom::FederatedRequestService> federated_request_service;
+  RequestService* service =
+      RequestService::GetOrCreateForCurrentDocument(main_test_rfh());
+  service->BindFederatedRequestService(
+      federated_request_service.BindNewPipeAndPassReceiver());
+
+  auto options = blink::mojom::IdentityCredentialDisconnectOptions::New();
+  options->config = blink::mojom::IdentityProviderConfig::New();
+  options->config->config_url = GURL(kProviderUrlFull);
+  options->config->client_id = kClientId;
+  options->account_hint = "hint";
+
+  base::RunLoop run_loop;
+  federated_request_service->Disconnect(
+      std::move(options),
+      base::BindLambdaForTesting([&](blink::mojom::DisconnectStatus status) {
+        // Checking that the callback resolves (even if with an expected error
+        // status due to test environment setup) proves that the IPC routing
+        // works.
+        run_loop.Quit();
+      }));
+  run_loop.Run();
+}
+
+TEST_F(RequestTest, ResolveViaFederatedRequestService) {
+  mojo::Remote<blink::mojom::FederatedRequestService> federated_request_service;
+  RequestService* service =
+      RequestService::GetOrCreateForCurrentDocument(main_test_rfh());
+  service->BindFederatedRequestService(
+      federated_request_service.BindNewPipeAndPassReceiver());
+
+  EXPECT_CALL(*test_identity_registry_, NotifyResolve)
+      .WillOnce(::testing::Return(true));
+
+  auto params = blink::mojom::ResolveTokenParams::NewToken(
+      base::Value("an-access-token"));
+
+  base::RunLoop run_loop;
+  federated_request_service->ResolveTokenRequest(
+      "account", std::move(params),
+      base::BindLambdaForTesting([&](bool success) {
+        EXPECT_TRUE(success);
+        run_loop.Quit();
+      }));
+  run_loop.Run();
+}
+
+TEST_F(RequestTest, ResolveViaFederatedRequestServiceEmptyPostRedirectBody) {
+  mojo::Remote<blink::mojom::FederatedRequestService> federated_request_service;
+  RequestService* service =
+      RequestService::GetOrCreateForCurrentDocument(main_test_rfh());
+  service->BindFederatedRequestService(
+      federated_request_service.BindNewPipeAndPassReceiver());
+
+  // Construct a redirect param with a POST method but an EMPTY request body.
+  auto post_params = blink::mojom::RedirectPostParams::New();
+  post_params->url = GURL("https://example.com/redirect");
+  post_params->request_body = "";  // Empty body (violates validation rule)
+
+  auto params = blink::mojom::ResolveTokenParams::NewRedirectTo(
+      blink::mojom::RedirectParams::NewPost(std::move(post_params)));
+
+  // Observe bad Mojo messages.
+  mojo::test::BadMessageObserver bad_message_observer;
+  federated_request_service->ResolveTokenRequest("account", std::move(params),
+                                                 base::DoNothing());
+
+  // Verify that the browser-side implementation correctly detected the
+  // violation and reported a bad message.
+  EXPECT_EQ("POST redirects must have a body",
+            bad_message_observer.WaitForBadMessage());
 }
 
 }  // namespace content::webid

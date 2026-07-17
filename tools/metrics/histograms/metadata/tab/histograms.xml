@@ -364,7 +364,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Tab.Android.DiscardStarted" enum="DiscardReason"
-    expires_after="2026-10-11">
+    expires_after="2026-12-20">
   <owner>ckitagawa@chromium.org</owner>
   <owner>clank-tab-dev@chromium.org</owner>
   <summary>
@@ -522,7 +522,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Tab.GroupingTransition2" enum="TabGroupingTransitionType"
-    expires_after="2026-10-18">
+    expires_after="2026-12-20">
   <owner>dpenning@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
   <summary>
@@ -1030,7 +1030,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="TabGroups.SavedTabGroupTabCount" units="tabs"
-    expires_after="2026-10-18">
+    expires_after="2026-12-20">
   <owner>dljames@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
   <summary>
@@ -1923,7 +1923,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Tabs.ArchivedTabs.MaxLimitReachedAt" units="count"
-    expires_after="2026-10-18">
+    expires_after="2026-12-20">
   <owner>wylieb@google.com</owner>
   <owner>clank-tab-dev@google.com</owner>
   <summary>
@@ -3180,6 +3180,22 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Tabs.TabSearch.WebUI.SearchUpdateDuration" units="ms"
+    expires_after="2026-09-09">
+  <owner>behery@chromium.org</owner>
+  <owner>top-chrome-desktop-ui@google.com</owner>
+  <summary>
+    The time taken to perform a search filter update on the Tab Search WebUI
+    page. This measures the complete duration of the updateFilteredTabs_
+    pipeline, starting when a tab state update or search query input change is
+    received and ending after the media tabs, open tabs, and recently closed
+    lists are filtered (i.e. the WebUI list component has completed rendering
+    the results in the DOM). Recorded every time the search result list in the
+    Tab Search bubble is updated (e.g., on keystroke, tab update/close, or
+    section expand/collapse).
+  </summary>
+</histogram>
+
 <histogram name="Tabs.TabSearch.WebUI.TabListDataReceived2" units="ms"
     expires_after="2026-09-09">
   <owner>kerenzhu@chromium.org</owner>
@@ -3701,7 +3717,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="TabStrip.Tab.ContextMenuReloadCount" units="tabs"
-    expires_after="2026-07-26">
+    expires_after="2026-12-22">
   <owner>agale@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
   <summary>

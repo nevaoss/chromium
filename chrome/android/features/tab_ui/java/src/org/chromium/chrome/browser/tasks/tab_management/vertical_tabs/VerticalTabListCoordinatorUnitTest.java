@@ -12,6 +12,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
@@ -49,14 +50,17 @@ import org.robolectric.shadows.ShadowLooper;
 import org.chromium.base.Token;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
+import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features;
 import org.chromium.chrome.browser.collaboration.CollaborationServiceFactory;
 import org.chromium.chrome.browser.commerce.ShoppingServiceFactory;
 import org.chromium.chrome.browser.commerce.ShoppingServiceFactoryJni;
 import org.chromium.chrome.browser.compositor.overlays.strip.TabContextMenuCoordinator;
+import org.chromium.chrome.browser.compositor.overlays.strip.TabGroupContextMenuCoordinator;
 import org.chromium.chrome.browser.compositor.overlays.strip.TabStripContextMenuCoordinator;
 import org.chromium.chrome.browser.data_sharing.DataSharingServiceFactory;
+import org.chromium.chrome.browser.data_sharing.DataSharingTabManager;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.glic.GlicEnabling;
 import org.chromium.chrome.browser.hub.PaneId;
@@ -90,10 +94,13 @@ import org.chromium.components.collaboration.ServiceStatus;
 import org.chromium.components.commerce.core.ShoppingService;
 import org.chromium.components.data_sharing.DataSharingService;
 import org.chromium.components.tab_group_sync.TabGroupSyncService;
+import org.chromium.components.tab_groups.TabGroupsFeatureMap;
+import org.chromium.ui.KeyboardVisibilityDelegate;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.modelutil.MVCListAdapter;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.modelutil.SimpleRecyclerViewAdapter;
+import org.chromium.ui.widget.RectProvider;
 import org.chromium.url.GURL;
 
 import java.lang.ref.WeakReference;
@@ -107,7 +114,9 @@ import java.util.concurrent.TimeUnit;
 @Features.DisableFeatures({
     ChromeFeatureList.GLIC,
     ChromeFeatureList.DATA_SHARING,
-    ChromeFeatureList.DATA_SHARING_JOIN_ONLY
+    ChromeFeatureList.DATA_SHARING_JOIN_ONLY,
+    ChromeFeatureList.ANDROID_CONTEXT_MENU_NEW_ACTIONS,
+    TabGroupsFeatureMap.UPDATE_TAB_GROUP_COLORS
 })
 public class VerticalTabListCoordinatorUnitTest {
     @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
@@ -132,12 +141,17 @@ public class VerticalTabListCoordinatorUnitTest {
     @Mock private TabContextMenuCoordinator mTabContextMenuCoordinator;
     @Mock private ShareDelegate mShareDelegate;
     @Mock private MultiInstanceOrchestrator mMultiInstanceOrchestrator;
+    @Mock private DataSharingTabManager mDataSharingTabManager;
+    @Mock private TabGroupContextMenuCoordinator mTabGroupContextMenuCoordinator;
+    @Mock private KeyboardVisibilityDelegate mKeyboardDelegate;
 
     private Activity mActivity;
     private final SettableMonotonicObservableSupplier<ShareDelegate> mShareDelegateSupplier =
             ObservableSuppliers.createMonotonic(mShareDelegate);
     private final SettableMonotonicObservableSupplier<TabModel> mCurrentTabModelSupplier =
             ObservableSuppliers.createMonotonic();
+    private final SettableNonNullObservableSupplier<Boolean> mIsVerticalTabsActiveSupplier =
+            ObservableSuppliers.createNonNull(false);
     private final List<TabGroupObserver> mTabGroupObservers = new ArrayList<>();
     private VerticalTabListCoordinator mCoordinator;
 
@@ -171,6 +185,7 @@ public class VerticalTabListCoordinatorUnitTest {
         when(mWindowAndroid.getActivity()).thenReturn(new WeakReference<>(mActivity));
         GlicEnabling.setEnabledForTesting(false);
         MultiInstanceOrchestratorFactory.setInstanceForTesting(mMultiInstanceOrchestrator);
+        when(mWindowAndroid.getKeyboardDelegate()).thenReturn(mKeyboardDelegate);
 
         doAnswer(
                         invocation -> {
@@ -197,7 +212,9 @@ public class VerticalTabListCoordinatorUnitTest {
                         mMultiInstanceManager,
                         mSnackbarManager,
                         mDesktopWindowStateManager,
-                        mShareDelegateSupplier);
+                        mShareDelegateSupplier,
+                        mDataSharingTabManager,
+                        mIsVerticalTabsActiveSupplier);
     }
 
     private Tab prepareMockTab(int id) {
@@ -274,6 +291,7 @@ public class VerticalTabListCoordinatorUnitTest {
         createCoordinator();
         mCoordinator.setTabStripContextMenuCoordinatorForTesting(mTabStripContextMenuCoordinator);
         mCoordinator.setTabContextMenuCoordinatorForTesting(mTabContextMenuCoordinator);
+        mCoordinator.setTabGroupContextMenuCoordinatorForTesting(mTabGroupContextMenuCoordinator);
 
         TabModelSelectorObserver observer = mSelectorObserverCaptor.getValue();
         assertNotNull(observer);
@@ -290,6 +308,12 @@ public class VerticalTabListCoordinatorUnitTest {
         assertNull(
                 "The tab context menu reference must be nullified upon destruction.",
                 mCoordinator.getTabContextMenuCoordinatorForTesting());
+
+        verify(mTabGroupContextMenuCoordinator).destroy();
+        assertNull(
+                "The tab group context menu coordinator reference must be nullified on lifecycle"
+                        + " teardown.",
+                mCoordinator.getTabGroupContextMenuCoordinatorForTesting());
     }
 
     @Test
@@ -361,6 +385,91 @@ public class VerticalTabListCoordinatorUnitTest {
 
     @Test
     @SmallTest
+    public void testTabGroupHeaderInteraction_LaunchesGroupHeaderContextMenu() {
+        // Mock the backend model.
+        Tab mockTab = prepareMockTab(123);
+        Token tabGroupId = new Token(1L, 2L);
+        when(mockTab.getTabGroupId()).thenReturn(tabGroupId);
+        when(mTabModel.getTabById(123)).thenReturn(mockTab);
+        when(mTabModel.getRelatedTabList(123)).thenReturn(Collections.singletonList(mockTab));
+
+        createCoordinator();
+        ViewGroup container = (ViewGroup) mCoordinator.getView();
+        TabListRecyclerView realRecyclerView = container.findViewById(R.id.tab_list_recycler_view);
+        assertNotNull(realRecyclerView);
+
+        // Wrap the real inflated Recycler View in a spy.
+        TabListRecyclerView recyclerViewSpy = spy(realRecyclerView);
+        assertNull(mCoordinator.getTabGroupContextMenuCoordinatorForTesting());
+
+        // Inject the mock coordinator here before calling #handleContextMenuInteractionForTesting
+        // so that we can verify the rect captor later in this test.
+        mCoordinator.setTabGroupContextMenuCoordinatorForTesting(mTabGroupContextMenuCoordinator);
+
+        SimpleRecyclerViewAdapter adapter =
+                (SimpleRecyclerViewAdapter) realRecyclerView.getAdapter();
+        PropertyModel groupPropertyModel = new PropertyModel(TabProperties.ALL_KEYS_VERTICAL_TAB);
+        groupPropertyModel.set(TabProperties.TAB_ID, 123);
+        groupPropertyModel.set(TabProperties.TAB_GROUP_HEADER_ID, tabGroupId);
+
+        // This forces item.type == UiType.TAB but inner header id is not null, mimicking the real
+        // list behavior.
+        adapter.getModelList().add(new MVCListAdapter.ListItem(UiType.TAB, groupPropertyModel));
+
+        assertEquals(
+                "The adapter lookup should resolve this list item row layout as a TAB_GROUP type.",
+                UiType.TAB_GROUP,
+                adapter.getItemViewType(0));
+
+        // Create a mock View layout box (child of the recycler view) that renders the tab card on
+        // the screen.
+        View mockChildView = mock(View.class);
+        when(mockChildView.getWidth()).thenReturn(400);
+        when(mockChildView.getHeight()).thenReturn(80);
+
+        doAnswer(
+                        invocation -> {
+                            int[] pos = invocation.getArgument(0);
+                            pos[0] = 40;
+                            pos[1] = 120;
+                            return null;
+                        })
+                .when(mockChildView)
+                .getLocationInWindow(any());
+
+        doReturn(mockChildView).when(recyclerViewSpy).findChildViewUnder(200f, 150f);
+        doReturn(0).when(recyclerViewSpy).getChildAdapterPosition(mockChildView);
+
+        boolean handled =
+                mCoordinator.handleContextMenuInteractionForTesting(
+                        mActivity, recyclerViewSpy, /* localX= */ 200f, /* localY= */ 150f);
+
+        assertTrue(
+                "Context gesture interaction on an active group header card should return true.",
+                handled);
+
+        ArgumentCaptor<RectProvider> rectCaptor = ArgumentCaptor.forClass(RectProvider.class);
+        verify(mTabGroupContextMenuCoordinator).showMenu(rectCaptor.capture(), eq(tabGroupId));
+
+        Rect descriptiveBoundRect = rectCaptor.getValue().getRect();
+        assertEquals(
+                "Anchor bounding box left edge must be mapped.", 40, descriptiveBoundRect.left);
+        assertEquals("Anchor bounding box top edge must be mapped.", 120, descriptiveBoundRect.top);
+        assertEquals(
+                "Anchor bounding box right edge must be mapped.", 440, descriptiveBoundRect.right);
+        assertEquals(
+                "Anchor bounding box bottom edge must be mapped.",
+                200,
+                descriptiveBoundRect.bottom);
+
+        if (mCoordinator.getTabGroupContextMenuCoordinatorForTesting() != null) {
+            // Dismiss/destroy the instantiated context menu tracker to satisfy LifetimeAssert.
+            mCoordinator.getTabGroupContextMenuCoordinatorForTesting().destroy();
+        }
+    }
+
+    @Test
+    @SmallTest
     public void testTabItemInteraction_LaunchesTabContextMenu() {
         // Mock the backend model.
         Tab mockTab = prepareMockTab(456);
@@ -409,12 +518,12 @@ public class VerticalTabListCoordinatorUnitTest {
 
         assertTrue("Context gesture interaction on an active tab row should return true.", handled);
         assertNotNull(
-                "Long press interaction on a tab item view should launch the"
+                "Long press/right click interaction on a tab item view should launch the"
                         + " TabContextMenuCoordinator.",
                 mCoordinator.getTabContextMenuCoordinatorForTesting());
 
         if (mCoordinator.getTabContextMenuCoordinatorForTesting() != null) {
-            // Dismiss/destroy the instantiated context menu tracker to satisfy LifetimeAssert
+            // Dismiss/destroy the instantiated context menu tracker to satisfy LifetimeAssert.
             mCoordinator.getTabContextMenuCoordinatorForTesting().dismiss();
         }
     }

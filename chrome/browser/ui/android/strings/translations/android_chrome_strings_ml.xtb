@@ -17,9 +17,11 @@
 <translation id="1052842760770519282">നിങ്ങളുടെ ചില പാസ്‌വേഡുകൾ ആക്‌സസ് ചെയ്യാനാകുന്നില്ല</translation>
 <translation id="1057623954802068161">പേജിന്റെ മുകളിലേക്ക് സ്ക്രോൾ ചെയ്യുക</translation>
 <translation id="1066338698580889414">'നുറുങ്ങുകളെ കുറിച്ചുള്ള അറിയിപ്പുകൾ' പ്രമോ മുഴുവനായും തുറന്നു</translation>
+<translation id="1067048845568873861">സൃഷ്‌ടിച്ചു</translation>
 <translation id="1070689840697074178">നിങ്ങൾക്ക് ഇവിടെ PDF-കൾ ഡൗൺലോഡ് ചെയ്യാം</translation>
 <translation id="107147699690128016">ഫയൽ എക്സ്റ്റൻഷൻ മാറ്റിയാൽ, ഫയൽ വ്യത്യസ്ത ആപ്പിൽ തുറന്നേക്കാം, ഒപ്പം അത് നിങ്ങളുടെ ഉപകരണത്തിന് ദോഷകരമാവാൻ സാധ്യതയുണ്ട്.</translation>
 <translation id="1073328695547557412">Google Lens ഐക്കൺ ടാപ്പ് ചെയ്യുക</translation>
+<translation id="1075811647922107217">പേജിന്റെ വലുപ്പം</translation>
 <translation id="1080116354587839789">അനുയോജ്യമായ വീതിയിലാക്കുക</translation>
 <translation id="1086486568852410168">Google Lens ഉപയോഗിച്ച് തിരയുക</translation>
 <translation id="1087799850623149508">വിലാസ ബാർ താഴേക്ക് നീക്കാൻ നിങ്ങൾക്ക് സ്‌പർശിച്ച് പിടിക്കാം</translation>
@@ -642,6 +644,7 @@
 <translation id="3739899004075612870"><ph name="PRODUCT_NAME" /> എന്നതിൽ ബുക്ക്‌മാർക്ക് ചെയ്‌തു</translation>
 <translation id="3740290940447881599">ഈ സൈറ്റ് നിങ്ങൾക്ക് വിശ്വാസമുള്ളതാണെന്ന് ഉറപ്പാക്കുക</translation>
 <translation id="3740525748616366977">ഈ ഉപകരണത്തിൽ ശബ്ദ തിരയൽ ലഭ്യമല്ല</translation>
+<translation id="3749289110408117711">ഫയല്‍ നാമം</translation>
 <translation id="3756823472711156529">ഗ്രൂപ്പ് പുനഃസ്ഥാപിക്കുക</translation>
 <translation id="3763110477555836428">നിങ്ങളുടെ യഥാർത്ഥ വിശദാംശങ്ങൾ പരിരക്ഷിക്കുന്നതിന് ഈ കാർഡ് ഉപയോഗിച്ച് ചെക്ക് ഔട്ട് ചെയ്യുമ്പോൾ ഒരു വെർച്വൽ കാർഡ് നമ്പർ പൂരിപ്പിക്കും. Google Wallet-ൽ മാനേജ് ചെയ്യുക. <ph name="BEGIN_LINK1" />വെർച്വൽ കാർഡുകളെ കുറിച്ച് കൂടുതലറിയുക<ph name="END_LINK1" /></translation>
 <translation id="376561056759077985">ചില ഡാറ്റ ഇതുവരെ സംരക്ഷിച്ചിട്ടില്ല</translation>
@@ -673,6 +676,7 @@
 <translation id="3870538285500327859"><ph name="TAB_TITLE" />, തിരഞ്ഞെടുത്ത 'ചിത്രത്തിനുള്ളിൽ ചിത്രം' ടാബ്</translation>
 <translation id="3870908470613821006">എല്ലാവർക്കും ഉടൻ തന്നെ “<ph name="GROUP_NAME" />” ടാബ് ഗ്രൂപ്പിലേക്കുള്ള ആക്‌സസ് നഷ്‌ടമാകും, അത് എല്ലാ ഉപകരണങ്ങളിൽ നിന്നും ഇല്ലാതാക്കുകയും ചെയ്യും</translation>
 <translation id="3873174561423636563">തുടരാൻ, <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> നിങ്ങളുടെ <ph name="FIELDS_STRING" /> ഈ സൈറ്റുമായി പങ്കിടും. ഈ സൈറ്റിന്റെ <ph name="BEGIN_LINK1" />സേവന നിബന്ധനകൾ<ph name="END_LINK1" /> കാണുക.</translation>
+<translation id="3882323608730650973">പരിഷ്‌കരിച്ചു</translation>
 <translation id="3892148308691398805">ടെക്‌സ്‌റ്റ് പകർത്തുക</translation>
 <translation id="3893858854379998374">നിങ്ങളുടെ അക്കൗണ്ടിൽ ബുക്ക്‌മാർക്കുകൾ സംരക്ഷിക്കാൻ, ഉപയോഗിക്കാത്ത ബുക്ക്‌മാർക്കുകൾ ഇല്ലാതാക്കുക</translation>
 <translation id="3898498281932368596">ബ്ലോക്ക് ചെയ്ത് പുറത്ത് കടക്കുക</translation>
@@ -703,6 +707,7 @@
 <translation id="399788104667917863">ടൂൾബാറിൽ പിൻ ചെയ്യുക</translation>
 <translation id="4000212216660919741">ഓഫ്‌ലൈൻ ഹോം</translation>
 <translation id="4000670338830950598">ഹൈലൈറ്റ് ചെയ്ത ഇനം ഉപയോഗിച്ച് Google Chrome ഇഷ്ടാനുസൃതമാക്കുകയും നിയന്ത്രിക്കുകയും ചെയ്യൂ</translation>
+<translation id="4002066346123236978">ശീർഷകം</translation>
 <translation id="4015643064997321279">{NUM_PASSWORDS,plural, =1{നിങ്ങളുടെ Google Account-ൽ അപഹരിക്കപ്പെട്ട ഒരു പാസ്‌വേഡ്}other{നിങ്ങളുടെ Google Account-ൽ അപഹരിക്കപ്പെട്ട # പാസ്‌വേഡുകൾ}}</translation>
 <translation id="4023638601467301498">ബുക്ക്‌മാർക്കുകളും മറ്റും നിങ്ങളുടെ എല്ലാ ഉപകരണങ്ങളിലും ലഭിക്കാൻ Chrome-ലേക്ക് സൈൻ ഇൻ ചെയ്യുക</translation>
 <translation id="4024768890073681126">നിങ്ങളുടെ ബ്രൗസർ മാനേജ് ചെയ്യുന്നത് നിങ്ങളുടെ രക്ഷിതാവാണ്</translation>
@@ -1411,6 +1416,7 @@
 <translation id="6846298663435243399">ലോഡുചെയ്യുന്നു...</translation>
 <translation id="6850409657436465440">നിങ്ങളുടെ ഡൗൺലോഡ് ഇപ്പോഴും പുരോഗതിയിലാണ്</translation>
 <translation id="6850830437481525139"><ph name="TAB_COUNT" /> ടാബുകൾ അടച്ചു</translation>
+<translation id="6852437757508328589">{NUM_RESULTS,plural, =1{1 ഫലം കണ്ടെത്തി}other{# ഫലങ്ങൾ കണ്ടെത്തി}}</translation>
 <translation id="685340923442249391">{FILE_COUNT,plural, =1{ഓഡിയോ ഫയലുകൾ, ലിസ്റ്റിൽ ഒരു ഓഡിയോ ഫയൽ}other{ഓഡിയോ ഫയലുകൾ, ലിസ്റ്റിൽ # ഓഡിയോ ഫയലുകൾ}}</translation>
 <translation id="685850645784703949">Google-ന്റെ Discover - ഓഫാണ്</translation>
 <translation id="6864459304226931083">ചിത്രം ഡൗൺലോഡ് ചെയ്യുക</translation>
@@ -1987,6 +1993,7 @@
 <translation id="9093915805850895575">Chrome വിൻഡോയിൽ തുറക്കുക</translation>
 <translation id="909756639352028172">വളരെ വ്യക്തിപരമാക്കിയ അനുഭവം നേടാൻ വെബ്, ആപ്പ് ആക്റ്റിവിറ്റിയിലും ലിങ്ക് ചെയ്ത Google സേവനങ്ങളിലും Chrome ഉൾപ്പെടുത്തുക</translation>
 <translation id="9099220545925418560">നിങ്ങളുടെ ബ്രൗസിംഗ് ചരിത്രം അടിസ്ഥാനമാക്കി. ഈ ക്രമീകരണം ഓഫാണ്.</translation>
+<translation id="9099674669267916096">പേജിന്റെ എണ്ണം</translation>
 <translation id="9100610230175265781">പാസ്‌ഫ്രെയ്‌സ് ആവശ്യമാണ്</translation>
 <translation id="9101137867221042551">മാനേജ്മെന്റ്</translation>
 <translation id="9102803872260866941">പ്രിവ്യു ടാബ് തുറന്നു</translation>

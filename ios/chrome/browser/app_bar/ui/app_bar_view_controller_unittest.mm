@@ -7,6 +7,7 @@
 #import "ios/chrome/browser/app_bar/ui/app_bar_background_view.h"
 #import "ios/chrome/browser/app_bar/ui/app_bar_consumer.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/layout_state.h"
+#import "ios/chrome/browser/shared/coordinator/scene/state/layout_state_test_passkey_factory.h"
 #import "ios/chrome/grit/ios_strings.h"
 #import "testing/gtest/include/gtest/gtest.h"
 #import "testing/gtest_mac.h"
@@ -40,13 +41,17 @@
 
 namespace {
 
+using layout_state::LayoutStateTestPassKeyFactory;
+
 // Tests for the AppBarViewController state.
 class AppBarViewControllerTest : public PlatformTest {
  protected:
   void SetUp() override {
     PlatformTest::SetUp();
     layout_state_ = [[LayoutState alloc] init];
-    layout_state_.appBarPosition = AppBarPosition::kBottom;
+    [layout_state_
+        setAppBarPosition:AppBarPosition::kBottom
+                  passKey:LayoutStateTestPassKeyFactory::CreateSceneKey()];
     view_controller_ = [[AppBarViewController alloc] init];
     view_controller_.layoutState = layout_state_;
     [view_controller_ view];

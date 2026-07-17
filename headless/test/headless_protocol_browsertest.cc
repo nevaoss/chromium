@@ -276,6 +276,9 @@ HEADLESS_PROTOCOL_TEST(VirtualTimeDisposeWhileRunning,
                        "emulation/virtual-time-dispose-while-running.js")
 HEADLESS_PROTOCOL_TEST(VirtualTimePausesDocumentLoading,
                        "emulation/virtual-time-pauses-document-loading.js")
+HEADLESS_PROTOCOL_TEST(
+    VirtualTimeCommitWhileResumingLoaders,
+    "emulation/virtual-time-commit-while-resuming-loaders.js")
 
 HEADLESS_PROTOCOL_TEST(PageBeforeUnload, "page/page-before-unload.js")
 
@@ -543,7 +546,10 @@ INSTANTIATE_TEST_SUITE_P(/* no prefix */,
                          ::testing::Bool());
 
 HEADLESS_PROTOCOL_TEST(PopupWindowHasOpener,
-                       "sanity/popup-window-has-opener.js")
+                       "shared/popup-window-has-opener.js")
+
+HEADLESS_PROTOCOL_TEST(NormalWindowHasOpener,
+                       "shared/normal-window-has-opener.js")
 
 HEADLESS_PROTOCOL_TEST(OpenUrlSandboxPrivileges,
                        "sanity/open-url-sandbox-privileges.js")

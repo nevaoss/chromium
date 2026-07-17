@@ -1463,6 +1463,9 @@ policies:
   1462: DefaultAutomaticDownloadsSetting
   1463: AutomaticDownloadsAllowedForUrls
   1464: AutomaticDownloadsBlockedForUrls
+  1465: VoiceTypingSettings
+  1466: ProxyProvisioningDomains
+  1467: ThirdPartyAiChatSettings
 
 atomic_groups:
   1: Homepage

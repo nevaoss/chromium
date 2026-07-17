@@ -46,6 +46,7 @@ BASE_DECLARE_FEATURE(kToolbarGlowUp);
 BASE_DECLARE_FEATURE(kMenuSimplification);
 BASE_DECLARE_FEATURE(kTabGroupColorRefresh);
 BASE_DECLARE_FEATURE(kWebuiRefresh2026);
+BASE_DECLARE_FEATURE(kAppMenuGlowUp);
 
 bool IsTabStripDeclutterEnabled();
 bool IsToolbarGlowUpEnabled();

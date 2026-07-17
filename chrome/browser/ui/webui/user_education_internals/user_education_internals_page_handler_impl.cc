@@ -149,6 +149,11 @@ const base::Feature* GetFeatureByName(const std::string& feature_name,
       }
     }
   }
+  for (const base::Feature* feature : feature_engagement::GetAllFeatures()) {
+    if (feature_name == feature->name) {
+      return feature;
+    }
+  }
   return nullptr;
 }
 
@@ -423,6 +428,13 @@ UserEducationInternalsPageHandlerImpl::UserEducationInternalsPageHandlerImpl(
 
 UserEducationInternalsPageHandlerImpl::
     ~UserEducationInternalsPageHandlerImpl() = default;
+
+void UserEducationInternalsPageHandlerImpl::IsFeatureEngagementInitialized(
+    IsFeatureEngagementInitializedCallback callback) {
+  auto* const tracker =
+      feature_engagement::TrackerFactory::GetForBrowserContext(profile_);
+  std::move(callback).Run(tracker && tracker->IsInitialized());
+}
 
 void UserEducationInternalsPageHandlerImpl::GetTutorials(
     GetTutorialsCallback callback) {

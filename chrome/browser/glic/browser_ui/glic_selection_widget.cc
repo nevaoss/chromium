@@ -529,11 +529,13 @@ class GlicSelectionContentsView : public views::View,
             GlicSelectionWidgetDelegate::MenuCommand::kHideForSite),
         IDS_GLIC_SELECTION_MENU_HIDE_FOR_SITE);
 
-    auto settings_label = gfx::LocateAndRemoveAcceleratorChar(
-        l10n_util::GetStringUTF16(IDS_SETTINGS), nullptr, nullptr);
-    menu_model_->AddItem(
-        static_cast<int>(GlicSelectionWidgetDelegate::MenuCommand::kSettings),
-        settings_label);
+    if (features::kGlicSelectionEnableSiteSettings.Get()) {
+      auto settings_label = gfx::LocateAndRemoveAcceleratorChar(
+          l10n_util::GetStringUTF16(IDS_SETTINGS), nullptr, nullptr);
+      menu_model_->AddItem(
+          static_cast<int>(GlicSelectionWidgetDelegate::MenuCommand::kSettings),
+          settings_label);
+    }
 
     int visual_top_of_chip = control_pill_->GetBoundsInScreen().y() +
                              control_pill_->GetInsets().top();

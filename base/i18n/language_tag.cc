@@ -4,9 +4,14 @@
 
 #include "base/i18n/language_tag.h"
 
+#include <algorithm>
 #include <utility>
 
+#include "base/check_op.h"
+#include "base/i18n/bcp47_extensions.h"
+#include "base/i18n/internal/legacy_icu_converter.h"
 #include "base/numerics/safe_conversions.h"
+#include "base/strings/strcat.h"
 #include "base/strings/string_util.h"
 
 namespace base {
@@ -68,9 +73,27 @@ LanguageTag::LanguageTag(const LanguageTag&) = default;
 LanguageTag& LanguageTag::operator=(const LanguageTag&) = default;
 
 std::string LanguageTag::ToLegacyICUFormat() const {
-  std::string legacy_tag(tag_string());
-  base::ReplaceSubstringsAfterOffset(&legacy_tag, 0, "-", "_");
-  return legacy_tag;
+  size_t first_extension_pos = FindNextSingleton(tag_.AsString());
+  CHECK_GT(first_extension_pos, 0u);
+  std::string legacy_code;
+  base::ReplaceChars(tag_string().substr(0, first_extension_pos - 1u), "-", "_",
+                     &legacy_code);
+  // If there are no extensions, there is nothing left to do.
+  if (first_extension_pos == std::string_view::npos) {
+    return legacy_code;
+  }
+  std::optional<i18n_extensions::UnicodeExtension> unicode_extension =
+      GetExtension(i18n_extensions::unicode());
+  // There is only support to converting unicode extensions to the legacy
+  // format. The rest is ignored.
+  if (!unicode_extension) {
+    return legacy_code;
+  }
+
+  base::StrAppend(&legacy_code,
+                  {"@", i18n::internal::ConvertBcp47UnicodeKeywordsToLegacyCode(
+                            unicode_extension->keywords())});
+  return legacy_code;
 }
 
 std::string_view LanguageTag::tag_string() const {
@@ -138,22 +161,8 @@ std::optional<RegionSubtag> LanguageTag::region_subtag() const {
   return std::nullopt;
 }
 
-template <typename R>
-std::optional<R> LanguageTag::GetExtensionInternal(char key) const {
-  std::string_view extension_string = GetExtensionString(tag_.AsString(), key);
-  if (extension_string.empty()) {
-    return std::nullopt;
-  }
-  return R(base::PassKey<LanguageTag>(), extension_string);
+std::string_view LanguageTag::GetExtensionStringInternal(char key) const {
+  return GetExtensionString(tag_.AsString(), key);
 }
-
-template BASE_I18N_EXPORT std::optional<i18n_extensions::UnicodeExtension>
-LanguageTag::GetExtensionInternal(char) const;
-
-template BASE_I18N_EXPORT std::optional<i18n_extensions::PrivateUseSubtags>
-LanguageTag::GetExtensionInternal(char) const;
-
-template BASE_I18N_EXPORT std::optional<i18n_extensions::Extension>
-LanguageTag::GetExtensionInternal(char) const;
 
 }  // namespace base

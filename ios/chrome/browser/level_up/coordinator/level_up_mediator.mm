@@ -80,10 +80,24 @@
   return self;
 }
 
+- (void)setProfileConsumer:(id<LevelUpProfileConsumer>)profileConsumer {
+  _profileConsumer = profileConsumer;
+
+  // Skip doing unnecessary work if there's no consumer for it.
+  if (!self.profileConsumer) {
+    return;
+  }
+
+  [self updateProfileInfo];
+}
+
 - (void)setConsumer:(id<LevelUpConsumer>)consumer {
   _consumer = consumer;
 
-  [self updateProfileInfo];
+  // Skip doing unnecessary work if there's no consumer for it.
+  if (!self.consumer) {
+    return;
+  }
 
   if ([self.consumer
           respondsToSelector:@selector(setProgressUpdatesEnabled:)]) {

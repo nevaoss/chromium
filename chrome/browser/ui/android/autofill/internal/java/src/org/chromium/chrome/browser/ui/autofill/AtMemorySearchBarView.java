@@ -6,7 +6,6 @@ package org.chromium.chrome.browser.ui.autofill;
 
 import android.content.Context;
 import android.text.Editable;
-import android.text.TextWatcher;
 import android.util.AttributeSet;
 import android.view.KeyEvent;
 import android.view.View;
@@ -20,6 +19,7 @@ import org.chromium.base.ui.KeyboardUtils;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.ui.autofill.internal.R;
+import org.chromium.ui.text.EmptyTextWatcher;
 import org.chromium.ui.widget.LoadingView;
 
 /** Custom View representing the reusable search bar for AtMemory components. */
@@ -30,12 +30,11 @@ public class AtMemorySearchBarView extends LinearLayout {
     private LoadingView mSearchSpinner;
     private View mClearButton;
 
+    private Callback<String> mOnQuerySubmittedCallback = s -> {};
+    private Callback<String> mOnQueryTextChangedCallback = s -> {};
+
     public AtMemorySearchBarView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
-    }
-
-    public AtMemorySearchBarView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
-        super(context, attrs, defStyleAttr);
     }
 
     @Override
@@ -47,19 +46,27 @@ public class AtMemorySearchBarView extends LinearLayout {
         mClearButton = findViewById(R.id.search_clear_button);
 
         mClearButton.setOnClickListener(v -> clearSearchText());
+
         mSearchEditText.addTextChangedListener(
-                new TextWatcher() {
-                    @Override
-                    public void beforeTextChanged(
-                            CharSequence s, int start, int count, int after) {}
-
-                    @Override
-                    public void onTextChanged(CharSequence s, int start, int before, int count) {}
-
+                new EmptyTextWatcher() {
                     @Override
                     public void afterTextChanged(Editable s) {
                         mClearButton.setVisibility(s.length() > 0 ? View.VISIBLE : View.GONE);
+                        mOnQueryTextChangedCallback.onResult(s.toString());
                     }
+                });
+
+        mSearchEditText.setOnEditorActionListener(
+                (v, actionId, event) -> {
+                    if (actionId == EditorInfo.IME_ACTION_SEARCH
+                            || (event != null
+                                    && event.getAction() == KeyEvent.ACTION_DOWN
+                                    && event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
+                        hideKeyboardAndClearFocus();
+                        mOnQuerySubmittedCallback.onResult(v.getText().toString());
+                        return true;
+                    }
+                    return false;
                 });
     }
 
@@ -71,22 +78,22 @@ public class AtMemorySearchBarView extends LinearLayout {
     }
 
     public void clearSearchText() {
-        mSearchEditText.setText("");
+        if (mSearchEditText.getText().length() > 0) {
+            mSearchEditText.setText("");
+        }
     }
 
     public void setOnQuerySubmittedCallback(Callback<String> callback) {
-        mSearchEditText.setOnEditorActionListener(
-                (v, actionId, event) -> {
-                    if (actionId == EditorInfo.IME_ACTION_SEARCH
-                            || (event != null
-                                    && event.getAction() == KeyEvent.ACTION_DOWN
-                                    && event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
-                        KeyboardUtils.hideAndroidSoftKeyboard(mSearchEditText);
-                        callback.onResult(v.getText().toString());
-                        return true;
-                    }
-                    return false;
-                });
+        mOnQuerySubmittedCallback = callback;
+    }
+
+    public void setOnQueryTextChangedCallback(Callback<String> callback) {
+        mOnQueryTextChangedCallback = callback;
+    }
+
+    public void hideKeyboardAndClearFocus() {
+        KeyboardUtils.hideAndroidSoftKeyboard(mSearchEditText);
+        mSearchEditText.clearFocus();
     }
 
     public void setIsLoading(boolean isLoading) {

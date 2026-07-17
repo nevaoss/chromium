@@ -581,6 +581,7 @@
 <translation id="1902576642799138955">ବୈଧତା ସମୟ</translation>
 <translation id="1908217026282415406">କ୍ୟାମେରାର ବ୍ୟବହାର ଓ ଗତିବିଧି</translation>
 <translation id="1908690643053136980">ଆପଣଙ୍କ ଆଡମିନିଷ୍ଟ୍ରେଟର ଏହି ସାଇଟ ପାଇଁ <ph name="PERMISSION" />କୁ ଅନୁମତି ଦେଇନାହାଁନ୍ତି</translation>
+<translation id="1912750443952232242">Google Walletରେ ID କାର୍ଡ ସେଭ କରନ୍ତୁ</translation>
 <translation id="1913037223029790376">ଏହି ଭର୍ଚୁଆଲ କାର୍ଡ ପାଇଁ CVC ବ୍ୟବହାର କରନ୍ତୁ</translation>
 <translation id="191374271204266022">JSON ଭାବେ କପି କରନ୍ତୁ</translation>
 <translation id="1914326953223720820">ଅନ୍‍ଜିପ୍‌ ସେବା</translation>
@@ -1491,6 +1492,7 @@
 <translation id="3325568918769906282">ବଡ଼ରୁ ସାନ କ୍ରମରେ</translation>
 <translation id="3325662270238538525">ଫାଇଲଗୁଡ଼ିକର ନାମ, ଫାଇଲର ବିଷୟବସ୍ତୁର ଡିଜିଟାଲ ଫିଙ୍ଗରପ୍ରିଣ୍ଟ, ଡାଉନଲୋଡ ସୋର୍ସ ଏବଂ ମେଟାଡାଟା ସମେତ ବର୍ତ୍ତମାନର ଫାଇଲର ଆକ୍ସେସ ଏବଂ ପରିବର୍ତ୍ତନ</translation>
 <translation id="3329013043687509092">ସମ୍ପୃକ୍ତି</translation>
+<translation id="3330483197654063678">ଚାଲୁ ଥିବା ସମୟରେ, ଅଧିକ ପ୍ରାସଙ୍ଗିକ ଉତ୍ତର ପାଇବାରେ ଆପଣଙ୍କୁ ସାହାଯ୍ୟ କରିବା ପାଇଁ Chrome ଏହି ୱିଣ୍ଡୋରେ ଥିବା ସମସ୍ତ ଟାବକୁ ସେୟାର କରିବ।</translation>
 <translation id="3333762389743153920">ଭର୍ଚୁଆଲ୍ କାର୍ଡ ପାଇଁ ଯୋଗ୍ୟ ନୁହେଁ</translation>
 <translation id="3338095232262050444">ସୁରକ୍ଷିତ</translation>
 <translation id="333839153442689579">ଉଚ୍ଚ ତୀବ୍ରତାର ଇଣ୍ଟରଭାଲ ଟ୍ରେନିଂ</translation>
@@ -2843,6 +2845,7 @@
 <translation id="5458150163479425638">{CONTACT,plural, =0{<ph name="CONTACT_PREVIEW" />}=1{<ph name="CONTACT_PREVIEW" /> ଏବଂ ଅଧିକ <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />ଜଣ}other{<ph name="CONTACT_PREVIEW" /> ଏବଂ ଅଧିକ <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />ଜଣ}}</translation>
 <translation id="5463625433003343978">ଡିଭାଇସ୍ ଖୋଜାଯାଉଛି…</translation>
 <translation id="5464236009658034488">ଅଫିସ ସାମଗ୍ରୀ</translation>
+<translation id="5465128270485645058">ଯଦି ଏହି ୱିଣ୍ଡୋରେ ଖୋଲା ଟାବଗୁଡ଼ିକ ଏହି ଥ୍ରେଡ ସହ ସମ୍ବନ୍ଧିତ ଅଟେ, ତେବେ ସେଗୁଡ଼ିକୁ ସ୍ୱତଃ ସେୟାର କରି ଅଧିକ ଉପଯୋଗୀ ଉତ୍ତରଗୁଡ଼ିକ ପାଆନ୍ତୁ।</translation>
 <translation id="5465724643247062031">କାଚ (ଅସ୍ପଷ୍ଟ)</translation>
 <translation id="5466018172325111652">ଆପଣଙ୍କ କୋଡ ପାଇନାହାଁନ୍ତି? <ph name="BEGIN_LINK" />ନୂଆ କୋଡ ପାଆନ୍ତୁ<ph name="END_LINK" /></translation>
 <translation id="5466818462212249084">ପେମେଣ୍ଟ ଆପ୍ସ</translation>
@@ -3125,6 +3128,7 @@
 <translation id="5911020115933784199">ଇଭେଣ୍ଟ ଏବଂ ତାଲିକା</translation>
 <translation id="5911110632211230665">ଖୋଲିବା ବ୍ଲକ କରାଯାଇଛି</translation>
 <translation id="5912796581727968237">Google Wallet ଖୋଲନ୍ତୁ</translation>
+<translation id="5914185423510719251">Google Walletରେ KTN ସେଭ କରନ୍ତୁ</translation>
 <translation id="5914465277418006379"><ph name="MEMBER_FIRST_NAME" /> ଏହି ଟାବ ଯୋଗ କରିଛନ୍ତି</translation>
 <translation id="5915189366813702112">ସୁବିଧାଜନକ କାର୍ଯ୍ୟ ବ୍ୟବସ୍ଥାଗୁଡ଼ିକ</translation>
 <translation id="59174027418879706">ସାମର୍ଥ୍ୟ ହୋଇଛି</translation>
@@ -3647,6 +3651,7 @@
 <translation id="6702851555558236418">ଅଡିଓ ଏବଂ ମ୍ୟୁଜିକ ସଫ୍ଟୱେର</translation>
 <translation id="6702919718839027939">ବର୍ତ୍ତମାନ</translation>
 <translation id="6704458454638854812">"custom_size" ପ୍ରପର୍ଟି ସେଟ ହୋଇଛି, ଆଶା କରାଯାଉଥିବା ନାମ "କଷ୍ଟମ" ହେବା ଆବଶ୍ୟକ।</translation>
+<translation id="670477556876354552">ରିଷ୍ଟାର୍ଟ କରିବା ଆବଶ୍ୟକ</translation>
 <translation id="6706005862292023715">ପରଦା ଏବଂ ଝରକା ପାଇଁ ସାଜସଜ୍ଜା ସାମଗ୍ରୀ</translation>
 <translation id="6706210727756204531">ସ୍କୋପ୍</translation>
 <translation id="6706678697074905703">ଆପଣଙ୍କ Google ଆକାଉଣ୍ଟରେ ଏହି IBANକୁ ସେଭ କରାଯାଇପାରିଲା ନାହିଁ। ଏହା ପରିବର୍ତ୍ତେ ଏହାକୁ ଏହି ଡିଭାଇସରେ Chromeରେ ସେଭ କରାଯାଇଛି।</translation>
@@ -3904,6 +3909,7 @@
 <translation id="7110116949943042888">ଅସ୍ଥାୟୀ ଏବଂ ସିଜନାଲ ଚାକିରି</translation>
 <translation id="7110368079836707726">କଲେଜ ଏବଂ ବିଶ୍ୱବିଦ୍ୟାଳୟଗୁଡ଼ିକ</translation>
 <translation id="7111507312244504964">ସମ୍ପତ୍ତି ଯାଞ୍ଚ ଏବଂ ମୂଲ୍ୟାଙ୍କନ</translation>
+<translation id="7117290130383718594">ଟେକ୍ସଟ ଏନୋଟେସନ</translation>
 <translation id="7118618213916969306">କ୍ଲିପ୍‌ବୋର୍ଡ URL, <ph name="SHORT_URL" />କୁ ଖୋଜନ୍ତୁ</translation>
 <translation id="7118852830504022370">ଏହି ସାଇଟ HTTPSକୁ ସପୋର୍ଟ କରୁନଥିବା ଯୋଗୁଁ ଆପଣ ଏହି ଚେତାବନୀ ଦେଖୁଛନ୍ତି। <ph name="BEGIN_LEARN_MORE_LINK" />ଏହି ଚେତାବନୀ ବିଷୟରେ ଅଧିକ ଜାଣନ୍ତୁ<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="7119063404975271297">ଟିଭି ଡ୍ରାମାଗୁଡ଼ିକ</translation>

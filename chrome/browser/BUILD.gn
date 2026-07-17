@@ -1131,8 +1131,8 @@ source_set("core") {
     "//components/embedder_support:user_agent",
     "//components/enterprise/data_controls/content/browser",
     "//components/enterprise/data_controls/core/browser:features",
+    "//components/enterprise/net",
     "//components/enterprise/network_header_injection/core",
-    "//components/enterprise/networking",
     "//components/error_page/content/browser",
     "//components/facilitated_payments/core/features",
     "//components/feature_engagement/public:feature_constants",
@@ -1246,6 +1246,7 @@ source_set("core") {
 
   if (!is_android) {
     public_deps = [
+      "//chrome/browser/ui/webui/omnibox_everywhere",
       "//chrome/browser/ui/webui/omnibox_popup",
       "//chrome/browser/ui/webui/omnibox_popup/mojom",
     ]
@@ -1322,12 +1323,14 @@ source_set("core") {
   if (is_win || is_mac || is_linux || is_chromeos) {
     deps += [
       "//chrome/browser/captive_portal",
+      "//chrome/browser/enterprise/network_header_injection",
       "//chrome/browser/headless:headless_extra_parts",
       "//chrome/browser/hid",
       "//chrome/browser/indigo/onboarding",
       "//chrome/browser/media/router/discovery/access_code:access_code_sink_service",
       "//chrome/browser/printing",
       "//chrome/browser/record_replay:impl",
+      "//chrome/browser/sensor",
       "//chrome/browser/sharing_hub",
       "//chrome/browser/themes",
       "//chrome/browser/ui/apps",
@@ -2602,8 +2605,8 @@ source_set("browser") {
     "//components/enterprise/device_trust",
     "//components/enterprise/encryption/cache",
     "//components/enterprise/isolated_mode",
+    "//components/enterprise/net",
     "//components/enterprise/network_header_injection/core",
-    "//components/enterprise/networking",
     "//components/enterprise/obfuscation/core:enterprise_obfuscation",
     "//components/error_page/common",
     "//components/error_page/content/browser",
@@ -3265,6 +3268,7 @@ source_set("browser") {
       "//chrome/browser/ui/webui/new_tab_footer:impl",
       "//chrome/browser/ui/webui/omnibox",
       "//chrome/browser/ui/webui/omnibox/logging:mojo_bindings",
+      "//chrome/browser/ui/webui/omnibox_everywhere",
       "//chrome/browser/ui/webui/omnibox_popup",
       "//chrome/browser/ui/webui/omnibox_popup/mojom",
       "//chrome/browser/ui/webui/searchbox",

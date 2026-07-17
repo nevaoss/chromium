@@ -824,7 +824,8 @@ void TabStripSceneLayer::PutStripTabLayer(
     float folio_foot_length,
     bool is_pinned,
     float pinned_icon_offset_x,
-    bool is_underlined,
+    float underline_opacity,
+    float underline_shimmer_offset,
     int32_t underline_start_color,
     int32_t underline_end_color,
     int32_t underline_width_threshold) {
@@ -898,7 +899,8 @@ void TabStripSceneLayer::PutStripTabLayer(
       spinner_rotation, opacity, is_keyboard_focused,
       keyboard_focus_ring_drawable, keyboard_focus_ring_offset, stroke_width,
       folio_foot_length, width_to_hide_tab_title, pinned_icon_offset_x,
-      is_underlined, static_cast<SkColor>(underline_start_color),
+      underline_opacity, underline_shimmer_offset,
+      static_cast<SkColor>(underline_start_color),
       static_cast<SkColor>(underline_end_color), underline_width_threshold);
 }
 

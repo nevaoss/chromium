@@ -4899,6 +4899,33 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_PDF_DOCUMENT_PROPERTIES" desc="Menu option to view PDF document properties.">
         Document properties
       </message>
+      <message name="IDS_PDF_PROPERTIES_FILE_NAME" desc="Label for file name in PDF document properties">
+        File name
+      </message>
+      <message name="IDS_PDF_PROPERTIES_FILE_SIZE" desc="Label for file size in PDF document properties">
+        File size
+      </message>
+      <message name="IDS_PDF_PROPERTIES_TITLE" desc="Label for title in PDF document properties">
+        Title
+      </message>
+      <message name="IDS_PDF_PROPERTIES_CREATED" desc="Label for creation date and time in PDF document properties">
+        Created
+      </message>
+      <message name="IDS_PDF_PROPERTIES_MODIFIED" desc="Label for modification date and time in PDF document properties">
+        Modified
+      </message>
+      <message name="IDS_PDF_PROPERTIES_PAGE_COUNT" desc="Label for page count in PDF document properties">
+        Page count
+      </message>
+      <message name="IDS_PDF_PROPERTIES_PAGE_SIZE" desc="Label for page size in PDF document properties">
+        Page size
+      </message>
+      <message name="IDS_PDF_PROPERTIES_VALUE_UNKNOWN" desc="Value used when a PDF property is unknown">
+        Unknown
+      </message>
+      <message name="IDS_PDF_PROPERTIES_CLOSE" desc="Button text to close the PDF properties dialog [CHAR_LIMIT=20]">
+        Close
+      </message>
       <message name="IDS_PDF_DOWNLOAD" desc="Menu option to download the PDF document.">
         Download
       </message>
@@ -4987,6 +5014,9 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       </message>
       <message name="IDS_ACCESSIBILITY_TOOLBAR_BTN_HOME" desc="Content description for the home button.">
         Open the home page
+      </message>
+      <message name="IDS_ACCESSIBILITY_BOTTOM_BAR_AI_MODE_BUTTON" desc="Content description for the AI search button in the bottom bar.">
+        Ask AI Mode
       </message>
       <message name="IDS_ACCESSIBILITY_BTN_REFRESH" desc="Content description for the refresh page button.">
         Reload this page
@@ -5478,15 +5508,13 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
         To restore a new window, reduce the total number of active windows to <ph name="MAX_WINDOW_COUNT_MINUS_ONE">%1$d</ph> or fewer. Inactive windows are deleted after 6 months.
       </message>
       <message name="IDS_CRASH_RECOVERY_DIALOG_TITLE" desc="Title of the crash recovery dialog that prompts the user to restore windows that were active during a crash.">
-        Restore all windows?
+        Restore windows?
       </message>
       <message name="IDS_CRASH_RECOVERY_DIALOG_MESSAGE" desc="Message on the crash recovery dialog that prompts the user to restore windows that were active during a crash.">
         Chrome didn’t shut down correctly and can try to restore your lost windows and tabs. Some windows may be minimized when restored.
       </message>
-      <message name="IDS_CRASH_RECOVERY_DIALOG_POSITIVE_BUTTON_TEXT" desc="Positive button text on the crash recovery dialog. [ICU Syntax]">
-        {NUM_WINDOWS, plural,
-          =1 {Restore 1 window}
-          other {Restore # windows}}
+      <message name="IDS_CRASH_RECOVERY_DIALOG_POSITIVE_BUTTON_TEXT" desc="Positive button text on the crash recovery dialog.">
+        Restore windows
       </message>
       <message name="IDS_TAB_DROPPED_DIFFERENT_MODEL" desc="Toast that appears when a tab is dropped into tab strip with a different profile (regular v.s. incognito).">
         You can find all open tabs in the tab switcher

@@ -103,6 +103,7 @@
 <translation id="1335767868357998043">Wybierz pozycję paska adresu</translation>
 <translation id="1347468774581902829">Zarządzaj aktywnością</translation>
 <translation id="1348596747084433075">https://www.amazon.com/Wife-Gifts/s?k=for+Wife+Gifts</translation>
+<translation id="1353169676553627502">Wyłącz aktualizacje postępów</translation>
 <translation id="1355337783640312381">Aby przełączyć się między kontami, kliknij ikonę konta</translation>
 <translation id="135806768612505061">Wszystkie karty</translation>
 <translation id="1358106883354237005">Konto zarządzane</translation>
@@ -609,6 +610,7 @@
 <translation id="3073633853887034268">OK</translation>
 <translation id="3080525922482950719">Możesz zapisać strony, by przeczytać je później lub offline</translation>
 <translation id="3081338492074632642">Upewnij się, że zapisujesz hasło do witryny <ph name="WEBSITE" />.</translation>
+<translation id="3084484227247071193">Włącz aktualizacje postępów</translation>
 <translation id="3087734570205094154">Na dół</translation>
 <translation id="309710370695886264">Masz 1 ponownie użyte hasło. Dla bezpieczeństwa zmień je jak najszybciej.</translation>
 <translation id="3099402981545350675">Spowoduje to usunięcie adresów zapisanych na tym urządzeniu. Wybrane informacje zostaną też usunięte z Chrome, ale nie z konta Google.</translation>
@@ -708,6 +710,7 @@
 <translation id="3449029510150690417">Utwórz nową grupę kart, nadając jej nazwę i kolor</translation>
 <translation id="345348365500626747">Adres znaleziony</translation>
 <translation id="3459644598174926977">Rozmawiaj w trybie Live z Gemini, aby zadawać pytania o stronę, przeprowadzać burzę mózgów i prowadzić dyskusje.</translation>
+<translation id="3462768334899086950">Oznacza to, że utracisz niezapisany plik i bieżące karty</translation>
 <translation id="3464194322481586217">Wystąpił błąd monitorowania ceny.</translation>
 <translation id="3469117812148449995">Opcje zapisania hasła</translation>
 <translation id="3472469028191701821">Otwiera się w nowej karcie</translation>
@@ -965,6 +968,7 @@
 <translation id="4326912346867677256">Aby się bezpiecznie zalogować, kliknij „Użyj hasła”.</translation>
 <translation id="4328843285884395590">Mój dysk</translation>
 <translation id="4331177082088332784">Tymi informacjami możesz zarządzać w START_LINKUstawieniach treściEND_LINK</translation>
+<translation id="4331712008356052424">Aby wysłać ten link, zaloguj się na innym urządzeniu na konto <ph name="USER_EMAIL" /></translation>
 <translation id="4334428914252001502">Jeden nieprzeczytany artykuł.</translation>
 <translation id="4338258232580025606">Nie mogę się zalogować</translation>
 <translation id="4338650699862464074">Adresy URL odwiedzanych stron będą wysyłane do Google.</translation>
@@ -1471,6 +1475,7 @@ Funkcja Handoff musi być też włączona w sekcji Ogólne w Ustawieniach, a urz
 <translation id="6040143037577758943">Zamknij</translation>
 <translation id="6042308850641462728">Więcej</translation>
 <translation id="6045460247888249350">Dodaj tytuł</translation>
+<translation id="6050237559175440178">Potwierdź swoją tożsamość, aby korzystać ze swoich danych i je zapisywać na wszystkich swoich urządzeniach</translation>
 <translation id="6052269326659653305">Przełącz profil</translation>
 <translation id="605721222689873409">RR</translation>
 <translation id="6059830886158432458">Tutaj możesz zarządzać wyświetlanymi wiadomościami i aktywnością</translation>
@@ -1846,6 +1851,7 @@ Aby kontynuować na komputerze, przełącz się na <ph name="OTHER_EMAIL" />. B�
 <translation id="722339453342442311">Sprawdź teraz</translation>
 <translation id="7227235818314667565">Zarządzaj udostępnianiem</translation>
 <translation id="7233006041370588369">Wybierz hasło do wpisania.</translation>
+<translation id="723874023660911012">Przełącz profile</translation>
 <translation id="7241135764990439166">Tryb incognito jest niedostępny</translation>
 <translation id="7248046129087111453"><ph name="BEGIN_LINK" />Historia wyszukiwania<ph name="END_LINK" /> i <ph name="BEGIN_LINK" />inne formy aktywności<ph name="END_LINK" /> mogą być zapisywane na Twoim koncie Google.</translation>
 <translation id="7253951228444156601">Sprawdzam hasła…</translation>
@@ -2072,6 +2078,7 @@ Aby kontynuować na komputerze, przełącz się na <ph name="OTHER_EMAIL" />. B�
 <translation id="7996239959906074962">Skonfiguruj…</translation>
 <translation id="800361585186029508">Otwiera wpisane adresy URL w Google Chrome.</translation>
 <translation id="8005666035647241369">W menedżerze haseł Google w przypadku tego urządzenia</translation>
+<translation id="8007106936382123905">{count,plural, =1{1 ukończone zadanie}few{# ukończone zadania}many{# ukończonych zadań}other{# ukończonego zadania}}</translation>
 <translation id="8010488806779226127">Poznaj funkcje, które ułatwią Ci korzystanie z przeglądarki</translation>
 <translation id="8011489434346330032">Inspektor sieci</translation>
 <translation id="8014007212279733632">Potwierdzaj tożsamość w celu autouzupełniania informacji poufnych</translation>
@@ -2155,6 +2162,7 @@ Aby kontynuować na komputerze, przełącz się na <ph name="OTHER_EMAIL" />. B�
 <translation id="826614135184049678">W ramach resetowania iPada nastąpiło wylogowanie z konta <ph name="USER_NAME" />. Aby ponownie się zalogować, kliknij „Dalej” poniżej.</translation>
 <translation id="8270320981823560179">Dysk</translation>
 <translation id="8273982424131314219">Informacje zostaną podane na stronie <ph name="URL" /></translation>
+<translation id="8274795744553482834">Zamierzasz przełączyć profile</translation>
 <translation id="8275068909952022340">Więcej…</translation>
 <translation id="8280797717392145626">Odebrane linki</translation>
 <translation id="8281781826761538115">Domyślny – <ph name="DEFAULT_LOCALE" /></translation>

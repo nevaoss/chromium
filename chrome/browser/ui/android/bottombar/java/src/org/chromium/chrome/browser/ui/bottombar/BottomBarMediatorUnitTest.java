@@ -45,6 +45,7 @@ import org.chromium.chrome.browser.glic.GlicEnablingJni;
 import org.chromium.chrome.browser.glic.GlicKeyedService;
 import org.chromium.chrome.browser.glic.GlicKeyedServiceFactory;
 import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabObserver;
 import org.chromium.chrome.browser.theme.ThemeColorProvider;
@@ -58,6 +59,8 @@ import org.chromium.chrome.browser.user_education.UserEducationHelper;
 import org.chromium.components.browser_ui.widget.highlight.ViewHighlighter.HighlightShape;
 import org.chromium.components.feature_engagement.FeatureConstants;
 import org.chromium.components.feature_engagement.Tracker;
+import org.chromium.components.search_engines.TemplateUrlService;
+import org.chromium.components.search_engines.TemplateUrlService.TemplateUrlServiceObserver;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.url.GURL;
 import org.chromium.url.JUnitTestGURLs;
@@ -80,6 +83,7 @@ public class BottomBarMediatorUnitTest {
     @Mock private Tracker mTracker;
     @Mock private ActionRegistry mActionRegistry;
     @Mock private UserEducationHelper mUserEducationHelper;
+    @Mock private TemplateUrlService mTemplateUrlService;
     @Mock private View mView;
     @Mock private Context mContext;
     @Mock private Resources mResources;
@@ -89,6 +93,8 @@ public class BottomBarMediatorUnitTest {
 
     @Captor
     private ArgumentCaptor<GlicKeyedService.AllowedChangedObserver> mAllowedChangedObserverCaptor;
+
+    @Captor private ArgumentCaptor<TemplateUrlServiceObserver> mTemplateUrlObserverCaptor;
 
     private SettableNullableObservableSupplier<Profile> mProfileSupplier;
 
@@ -114,6 +120,8 @@ public class BottomBarMediatorUnitTest {
                 .thenReturn(BrandedColorScheme.APP_DEFAULT);
         GlicEnablingJni.setInstanceForTesting(mGlicEnablingJniMock);
         when(mGlicEnablingJniMock.isEnabledForProfile(any())).thenReturn(false);
+        TemplateUrlServiceFactory.setInstanceForTesting(mTemplateUrlService);
+        when(mTemplateUrlService.isDefaultSearchEngineGoogle()).thenReturn(true);
         GlicKeyedServiceFactory.setForTesting(mGlicKeyedService);
 
         when(mPromoDialogCoordinator.maybeShowPromoDialog(any())).thenReturn(true);
@@ -498,6 +506,20 @@ public class BottomBarMediatorUnitTest {
         assertNotNull(newTabIph);
         assertEquals(
                 FeatureConstants.ANDROID_BOTTOM_BAR_NEW_TAB, newTabIph.getFeatureNameForTesting());
+    }
+
+    @Test
+    public void testDseChangedDynamically() {
+        createMediator(/* shouldIncludeHomeButton= */ false);
+
+        // Capture the registered TemplateUrlServiceObserver.
+        verify(mTemplateUrlService).addObserver(mTemplateUrlObserverCaptor.capture());
+        TemplateUrlServiceObserver observer = mTemplateUrlObserverCaptor.getValue();
+        assertNotNull(observer);
+
+        // Trigger the DSE change observer and verify it updates GLIC/fallback visibility.
+        observer.onTemplateURLServiceChanged();
+        verify(mButtonManager, times(2)).setButtonVisibility(ActionId.GLIC, false);
     }
 
     private void createMediator(boolean shouldIncludeHomeButton) {

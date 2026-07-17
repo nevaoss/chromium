@@ -218,6 +218,8 @@ class ExecutionEngine : public ToolDelegate,
       std::vector<autofill::ActorFormFillingRequest> requests,
       base::WeakPtr<AutofillSelectionDialogEventHandler> event_handler,
       AutofillSuggestionSelectedCallback callback) override;
+  void RequestToShowGmailOtpOptInDialog(
+      GmailOtpOptInCallback callback) override;
   void InterruptFromTool() override;
   void InterruptFromTool(bool retain_user_control) override;
   void UninterruptFromTool() override;

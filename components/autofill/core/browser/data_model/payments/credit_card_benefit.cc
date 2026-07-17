@@ -8,6 +8,7 @@
 #include <utility>
 #include <variant>
 
+#include "base/containers/fixed_flat_set.h"
 #include "base/containers/flat_set.h"
 #include "components/autofill/core/common/autofill_clock.h"
 #include "third_party/abseil-cpp/absl/functional/overload.h"
@@ -83,6 +84,16 @@ CreditCardFlatRateBenefit::~CreditCardFlatRateBenefit() = default;
 
 bool CreditCardFlatRateBenefit::IsValidForWriteFromSync() const {
   return CreditCardBenefitBase::IsValidForWriteFromSync();
+}
+
+// static
+bool CreditCardCategoryBenefit::IsTravelSubcategory(
+    BenefitCategory benefit_category) {
+  static constexpr auto kTravelSubcategories =
+      base::MakeFixedFlatSet<BenefitCategory>({BenefitCategory::kFlights,
+                                               BenefitCategory::kHotels,
+                                               BenefitCategory::kCarRentals});
+  return kTravelSubcategories.contains(benefit_category);
 }
 
 CreditCardCategoryBenefit::CreditCardCategoryBenefit(

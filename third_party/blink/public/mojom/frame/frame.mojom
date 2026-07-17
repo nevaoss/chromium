@@ -1408,10 +1408,19 @@ interface LocalMainFrameHost {
   // Frame unload handlers should have already been called before this method is called.
   RequestClose();
 
-  // Request that the browser change the bounds of the window.
-  // This corresponds to the window.resizeTo() and window.moveTo() APIs, and the browser
-  // may ignore this message.
+  // Request that the browser change the bounds of the window. This is the
+  // legacy window.move*/resize* path used while kMoveResizeWindowToIPCs is
+  // disabled; when that feature is enabled, move*/resize* use the dedicated
+  // MoveWindowTo/ResizeWindowTo messages below instead.
+  // TODO(crbug.com/512533947): Remove this message once the
+  // kMoveResizeWindowToIPCs kill switch is removed.
   SetWindowRect(gfx.mojom.Rect bounds) => ();
+
+  // window.moveTo() / window.moveBy(): change the outer window origin only.
+  MoveWindowTo(gfx.mojom.Point origin) => ();
+
+  // window.resizeTo() / window.resizeBy(): change the outer window size only.
+  ResizeWindowTo(gfx.mojom.Size size) => ();
 
   // Sent once a paint happens after the first non empty layout. In other words,
   // after the frame has painted something.

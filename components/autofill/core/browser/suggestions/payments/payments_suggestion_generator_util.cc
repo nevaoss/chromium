@@ -910,7 +910,9 @@ bool ShouldCreateBnplSuggestionForTouchToFill(BrowserAutofillManager& manager,
          payments::IsEligibleForBnpl(manager.client()) &&
          base::FeatureList::IsEnabled(
              features::kAutofillEnableAmountExtraction) &&
-         passes_credit_card_number_check;
+         (base::FeatureList::IsEnabled(
+              features::kAutofillEnablePayNowPayLaterTabs) ||
+          passes_credit_card_number_check);
 }
 
 std::vector<Suggestion> GetCreditCardSuggestionsForTouchToFill(
@@ -1094,12 +1096,14 @@ bool IsCreditCardFooterSuggestion(
     case SuggestionType::kScanCreditCard:
     case SuggestionType::kUndoOrClear:
     case SuggestionType::kBnplFootnote:
+    case SuggestionType::kMaximizeCreditCardBenefitsEntry:
       return true;
     case SuggestionType::kAllLoyaltyCardsEntry:
     case SuggestionType::kAllSavedPasswordsEntry:
     case SuggestionType::kManageAddress:
     case SuggestionType::kManageAutofillAi:
     case SuggestionType::kManageAutofillAiIdentityDocs:
+    case SuggestionType::kManageAutofillAiShopping:
     case SuggestionType::kManageAutofillAiTravel:
     case SuggestionType::kManageIban:
     case SuggestionType::kManageLoyaltyCard:
@@ -1152,6 +1156,7 @@ bool IsCreditCardFooterSuggestion(
     case SuggestionType::kOneTimePasswordEntry:
     case SuggestionType::kLoadingThrobber:
     case SuggestionType::kFetchingAmbientData:
+    case SuggestionType::kAutofillAiOtherOrders:
     case SuggestionType::kAutocompleteAtMemoryButton:
     case SuggestionType::kPersonalContextNotice:
       return false;

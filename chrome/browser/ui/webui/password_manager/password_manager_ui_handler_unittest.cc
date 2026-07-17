@@ -43,6 +43,12 @@ class MockPage : public mojom::Page {
   MockPage() = default;
   ~MockPage() override = default;
 
+  MOCK_METHOD(void,
+              OnPasswordsExportProgress,
+              (password_manager::mojom::ExportProgressStatus,
+               const std::optional<std::string>&),
+              (override));
+
   mojo::PendingRemote<mojom::Page> BindAndGetRemote() {
     DCHECK(!receiver_.is_bound());
     return receiver_.BindNewPipeAndPassRemote();
@@ -375,6 +381,32 @@ TEST_F(PasswordManagerUIHandlerUnitTest,
   handler().UndoRemoveSavedPasswordOrException();
   EXPECT_TRUE(
       test_delegate().get_undo_remove_saved_password_or_exception_called());
+}
+
+TEST_F(PasswordManagerUIHandlerUnitTest, RequestPasswordsExport_CallsDelegate) {
+  base::test::TestFuture<mojom::ExportPasswordsResult> future;
+  handler().RequestPasswordsExport(future.GetCallback());
+  EXPECT_TRUE(test_delegate().ExportPasswordsTriggered());
+  EXPECT_EQ(mojom::ExportPasswordsResult::kSuccess, future.Get());
+}
+
+TEST_F(PasswordManagerUIHandlerUnitTest,
+       GetPasswordsExportProgress_CallsDelegate) {
+  base::test::TestFuture<mojom::ExportProgressStatus> future;
+  handler().GetPasswordsExportProgress(future.GetCallback());
+  // TestPasswordsPrivateDelegate returns kInProgress by default.
+  EXPECT_EQ(mojom::ExportProgressStatus::kInProgress, future.Get());
+}
+
+TEST_F(PasswordManagerUIHandlerUnitTest,
+       OnPasswordsExportProgress_CallsMojoObserver) {
+  EXPECT_CALL(mock_page_,
+              OnPasswordsExportProgress(
+                  mojom::ExportProgressStatus::kSucceeded,
+                  testing::Eq(std::optional<std::string>("folder"))));
+  handler().OnPasswordsExportProgress(
+      password_manager::ExportProgressStatus::kSucceeded, "folder");
+  mock_page_.FlushForTesting();
 }
 
 }  // namespace password_manager

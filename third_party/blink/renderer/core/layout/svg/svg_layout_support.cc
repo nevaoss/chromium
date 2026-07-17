@@ -24,6 +24,8 @@
 
 #include "third_party/blink/renderer/core/layout/svg/svg_layout_support.h"
 
+#include <algorithm>
+
 #include "third_party/blink/renderer/core/layout/geometry/transform_state.h"
 #include "third_party/blink/renderer/core/layout/hit_test_location.h"
 #include "third_party/blink/renderer/core/layout/svg/layout_svg_inline_text.h"
@@ -419,8 +421,7 @@ static SearchCandidate SearchTreeForFindClosestLayoutSVGText(
   if (closest_text.layout_object && candidates.empty())
     return closest_text;
 
-  std::stable_sort(candidates.begin(), candidates.end(),
-                   CompareCandidateDistance);
+  std::ranges::stable_sort(candidates, CompareCandidateDistance);
 
   // Find the closest LayoutSVGText in the sub-trees in |candidates|.
   // If a LayoutSVGText is found that is strictly closer than any previous

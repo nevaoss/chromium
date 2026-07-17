@@ -189,6 +189,8 @@ class BrowserFrameViewChromeOS
   // Updates the icon that indicates a teleported window.
   void UpdateProfileIcons();
 
+  void MaybeAddAppIconToLayoutParams(BrowserLayoutParams& params) const;
+
   void LayoutProfileIndicator();
 
   void UpdateUnframedModeEnabled();

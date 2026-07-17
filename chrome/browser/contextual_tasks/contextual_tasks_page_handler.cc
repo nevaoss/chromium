@@ -5,6 +5,7 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_page_handler.h"
 
 #include "base/check_deref.h"
+#include "base/feature_list.h"
 #include "base/logging.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
@@ -671,7 +672,9 @@ void ContextualTasksPageHandler::OnReceivedUpdatedThreadContextLibrary(
 
   // Populate restored tabs in the composebox.
   if (contextual_tasks_service_ &&
-      base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox)) {
+      base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox) &&
+      web_ui_controller_->is_history_thread_loading()) {
+    web_ui_controller_->set_is_history_thread_loading(false);
     contextual_tasks_service_->GetContextForTask(
         *task_id, {},
         std::make_unique<contextual_tasks::ContextDecorationParams>(),
@@ -895,6 +898,12 @@ void ContextualTasksPageHandler::MaybeTriggerPinningPromo() {
 
   Profile* profile = web_ui_controller_->GetProfile();
   if (!profile) {
+    return;
+  }
+
+  if (!contextual_tasks::IsContextualTasksPinButtonInToolbarEnabled() ||
+      base::FeatureList::IsEnabled(
+          contextual_tasks::kContextualTasksHideMenuOnAiPage)) {
     return;
   }
 

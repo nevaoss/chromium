@@ -19,6 +19,7 @@
 #include "components/accessibility_annotator/core/annotation_reducer/memory_search_result.h"
 #include "components/accessibility_annotator/core/at_memory_query_service_delegate.h"
 #include "components/personal_context/core/context_memory_error.h"
+#include "net/base/mock_network_change_notifier.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -147,6 +148,28 @@ TEST_F(AtMemoryQueryServiceTest, Query_NoProviders) {
   const auto& result = future.Get();
   EXPECT_TRUE(result.entries.empty());
   EXPECT_EQ(result.status, MemorySearchStatus::kInternalFailure);
+}
+
+// Tests that the query service returns a data fetch failure immediately when
+// the network is offline.
+TEST_F(AtMemoryQueryServiceTest, Query_Offline) {
+  net::test::ScopedMockNetworkChangeNotifier notifier;
+  notifier.mock_network_change_notifier()->SetConnectionType(
+      net::NetworkChangeNotifier::CONNECTION_NONE);
+
+  auto service = std::make_unique<AtMemoryQueryService>(
+      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<FakeMemoryDataProvider>(),
+      /*personal_context_resolver=*/nullptr,
+      /*remote_model_executor=*/nullptr);
+
+  base::test::TestFuture<MemorySearchResults> future;
+  service->Query(u"what is my name", future.GetRepeatingCallback());
+
+  ASSERT_TRUE(future.Wait());
+  const auto& result = future.Get();
+  EXPECT_TRUE(result.entries.empty());
+  EXPECT_EQ(result.status, MemorySearchStatus::kNoConnectionFailure);
 }
 
 // Tests that the query service returns the expected results when the intent is
@@ -546,7 +569,7 @@ TEST_F(AtMemoryQueryServiceTest, Query_PersonalContextResolverError) {
 
   ASSERT_TRUE(future.Wait());
   const auto& result = future.Get();
-  EXPECT_EQ(result.status, MemorySearchStatus::kDataFetchFailure);
+  EXPECT_EQ(result.status, MemorySearchStatus::kInternalFailure);
   EXPECT_TRUE(result.entries.empty());
 }
 
@@ -588,7 +611,7 @@ TEST_F(AtMemoryQueryServiceTest,
   // Then we should get the final result indicating the error, but containing
   // the fallback local entries.
   MemorySearchResults final_result = future.Take();
-  EXPECT_EQ(final_result.status, MemorySearchStatus::kDataFetchFailure);
+  EXPECT_EQ(final_result.status, MemorySearchStatus::kInternalFailure);
   EXPECT_THAT(final_result.entries,
               testing::UnorderedElementsAre(
                   testing::Field(&MemorySearchResult::value, u"John Doe")));

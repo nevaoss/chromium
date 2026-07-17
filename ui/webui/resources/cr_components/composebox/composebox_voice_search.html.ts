@@ -26,13 +26,13 @@ export function getHtml(this: ComposeboxVoiceSearchElement) {
           >${this.i18n('voiceDetails')}
         </a>
       </div>
-      ${this.isPermissionPromptOpen_ ? html`
+      ${this.isPermissionPromptOpen ? html`
           <textarea id="input"
               class="${this.shouldShowErrorScrim_() ? 'hidden' : ''}"
               placeholder="${this.i18n('voiceWaiting')}" disabled
           ></textarea>`
       : ''}
-      ${this.liveTranscriptEnabled && !this.isPermissionPromptOpen_ ?
+      ${this.liveTranscriptEnabled && !this.isPermissionPromptOpen ?
           html`<textarea id="input"
               .value="${this.transcript_}"
               placeholder="${this.listeningPlaceholder_}"

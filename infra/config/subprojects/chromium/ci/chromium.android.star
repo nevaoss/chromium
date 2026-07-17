@@ -37,8 +37,10 @@ ci.defaults.set(
     health_spec = health_spec.default(),
     service_account = ci_constants.DEFAULT_SERVICE_ACCOUNT,
     shadow_service_account = ci_constants.DEFAULT_SHADOW_SERVICE_ACCOUNT,
+    siso_output_local_strategy = "greedy",
     siso_project = siso.project.DEFAULT_TRUSTED,
     siso_remote_jobs = siso.remote_jobs.HIGH_JOBS_FOR_CI,
+    siso_remote_linking = True,
 )
 
 targets.builder_defaults.set(
@@ -325,13 +327,6 @@ ci.builder(
     cq_mirrors_console_view = "mirrors",
     contact_team_email = "clank-engprod@google.com",
     execution_timeout = 7 * time.hour,
-    # prevent from bot died by OOM. https://crbug.com/425441534
-    siso_experiments = [
-        "oom-score-adj",
-    ],
-    # enable remote link to mitigate bot died https://crbug.com/418817397
-    siso_output_local_strategy = "greedy",
-    siso_remote_linking = True,
 )
 
 ci.builder(
@@ -3584,11 +3579,6 @@ ci.builder(
         short_name = "14T-L",
     ),
     contact_team_email = "clank-engprod@google.com",
-    # crbug.com/372192123 - downloading with "minimum" strategy doesn't work
-    # well for Android builds because some steps have additional inputs/outputs
-    # they are not configured in the build graph.
-    siso_output_local_strategy = "greedy",
-    siso_remote_linking = True,
 )
 
 ci.builder(
@@ -4225,6 +4215,64 @@ ci.builder(
         short_name = "16",
     ),
     contact_team_email = "clank-engprod@google.com",
+)
+
+ci.builder(
+    name = "android-16-x64-leakcanary-rel",
+    description_html = "Runs Java instrumentation tests with LeakCanary enabled.",
+    builder_spec = builder_config.builder_spec(
+        gclient_config = builder_config.gclient_config(
+            config = "chromium",
+            apply_configs = [
+                "android",
+            ],
+        ),
+        chromium_config = builder_config.chromium_config(
+            config = "main_builder",
+            apply_configs = ["mb"],
+            build_config = builder_config.build_config.RELEASE,
+            target_arch = builder_config.target_arch.INTEL,
+            target_bits = 64,
+            target_platform = builder_config.target_platform.ANDROID,
+        ),
+        android_config = builder_config.android_config(
+            config = "base_config",
+        ),
+    ),
+    gn_args = gn_args.config(
+        configs = [
+            "android_builder",
+            "release_builder",
+            "remoteexec",
+            "minimal_symbols",
+            "x64",
+            "android_fastbuild",
+            "webview_trichrome",
+            "webview_shell",
+        ],
+    ),
+    targets = targets.bundle(
+        targets = [
+            "android_leakcanary_tests",
+        ],
+        mixins = [
+            "16-x64-emulator",
+            "emulator-8-cores",
+            "has_native_resultdb_integration",
+            "linux-jammy",
+            "x86-64",
+        ],
+    ),
+    # TODO(crbug.com/508711260): Enable gardener rotation and tree closing once
+    # this builder is stable.
+    gardener_rotations = args.ignore_default(None),
+    tree_closing = False,
+    console_view_entry = consoles.console_view_entry(
+        category = "emulator|x64|rel",
+        short_name = "leak",
+    ),
+    contact_team_email = "clank-engprod@google.com",
+    execution_timeout = 4 * time.hour,
 )
 
 ci.builder(

@@ -236,9 +236,6 @@ void GlicSidePanelUi::SetModalDialogDelegate(
   if (!web_contents) {
     return;
   }
-  if (glic_view_) {
-    glic_view_->SetWebContents(web_contents);
-  }
   if (auto* dialog_manager =
           web_modal::WebContentsModalDialogManager::FromWebContents(
               web_contents)) {
@@ -249,6 +246,10 @@ void GlicSidePanelUi::SetModalDialogDelegate(
 }
 
 void GlicSidePanelUi::OnReload() {
+  content::WebContents* web_contents = delegate_->host().webui_contents();
+  if (web_contents && glic_view_) {
+    glic_view_->SetWebContents(web_contents);
+  }
   SetModalDialogDelegate(this);
 }
 

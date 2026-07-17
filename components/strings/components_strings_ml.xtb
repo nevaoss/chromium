@@ -581,6 +581,7 @@
 <translation id="1902576642799138955">സാധുതാ കാലാവധി</translation>
 <translation id="1908217026282415406">ക്യാമറയുടെ ഉപയോഗവും ചലനവും</translation>
 <translation id="1908690643053136980">നിങ്ങളുടെ അഡ്‌മിൻ ഈ സൈറ്റിന് <ph name="PERMISSION" /> അനുവദിക്കുന്നില്ല</translation>
+<translation id="1912750443952232242">Google Wallet-ൽ ഐഡി കാർഡ് സംരക്ഷിക്കുക</translation>
 <translation id="1913037223029790376">ഈ വെർച്വൽ കാർഡിനുള്ള CVC ഉപയോഗിക്കുക</translation>
 <translation id="191374271204266022">JSON ഫോർമാറ്റിൽ പകർത്തുക</translation>
 <translation id="1914326953223720820">അൺസിപ്പ് സേവനം</translation>
@@ -1492,6 +1493,7 @@
 <translation id="3325568918769906282">അവരോഹണക്രമത്തിൽ</translation>
 <translation id="3325662270238538525">ഫയലിന്റെ പേരുകളും ഫയൽ ഉള്ളടക്കത്തിന്റെ ഡിജിറ്റൽ ഫിംഗർപ്രിന്റുകളും ഡൗൺലോഡ് ഉറവിടവും മെറ്റാഡാറ്റയും ഉൾപ്പെടെ, അടുത്തിടെയുള്ള ഫയൽ ആക്‌സസും പരിഷ്‌ക്കരണങ്ങളും</translation>
 <translation id="3329013043687509092">സാച്ചുറേഷൻ</translation>
+<translation id="3330483197654063678">ഓണായിരിക്കുമ്പോൾ, കൂടുതൽ പ്രസക്തമായ പ്രതികരണങ്ങൾ ലഭിക്കാൻ നിങ്ങളെ സഹായിക്കുന്നതിന് ഈ വിൻഡോയിൽ തുറന്നിരിക്കുന്ന ടാബുകൾ Chrome പങ്കിടും.</translation>
 <translation id="3333762389743153920">വെർച്വൽ കാർഡിന് യോഗ്യമല്ല</translation>
 <translation id="3338095232262050444">സുരക്ഷിതം</translation>
 <translation id="333839153442689579">ഹെെ ഇന്റൻസിറ്റി ഇന്റർവെൽ ട്രെയ്‌നിംഗ്</translation>
@@ -2845,6 +2847,7 @@
 <translation id="5458150163479425638">{CONTACT,plural, =0{<ph name="CONTACT_PREVIEW" />}=1{<ph name="CONTACT_PREVIEW" /> എന്നതും മറ്റ് <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> എണ്ണവും}other{<ph name="CONTACT_PREVIEW" /> എന്നതും മറ്റ് <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> എണ്ണവും}}</translation>
 <translation id="5463625433003343978">ഉപകരണങ്ങൾ കണ്ടെത്തുന്നു...</translation>
 <translation id="5464236009658034488">ഓഫീസ് സപ്ലൈകൾ</translation>
+<translation id="5465128270485645058">ഈ ത്രെഡുമായി ബന്ധപ്പെട്ടതാണെങ്കിൽ, ഈ വിൻഡോയിലെ തുറന്ന ടാബുകൾ സ്വയമേവ പങ്കിടുന്നതിലൂടെ കൂടുതൽ അനുയോജ്യമായ പ്രതികരണങ്ങൾ നേടുക.</translation>
 <translation id="5465724643247062031">ഗ്ലാസ് (അതാര്യം)</translation>
 <translation id="5466018172325111652">നിങ്ങളുടെ കോഡ് ലഭിച്ചില്ലേ? <ph name="BEGIN_LINK" />പുതിയ കോഡ് നേടുക<ph name="END_LINK" /></translation>
 <translation id="5466818462212249084">പേയ്‌മെന്റ് ആപ്പുകൾ</translation>
@@ -3127,6 +3130,7 @@
 <translation id="5911020115933784199">ഇവന്റുകളും ലിസ്റ്റിംഗുകളും</translation>
 <translation id="5911110632211230665">തുറക്കുന്നത് ബ്ലോക്ക് ചെയ്തിരിക്കുന്നു</translation>
 <translation id="5912796581727968237">Google Wallet തുറക്കുക</translation>
+<translation id="5914185423510719251">Google Wallet-ൽ KTN സംരക്ഷിക്കുക</translation>
 <translation id="5914465277418006379"><ph name="MEMBER_FIRST_NAME" />, ഈ ടാബ് ചേർത്തു</translation>
 <translation id="5915189366813702112">സൗകര്യപ്രദമായ ജോലി ക്രമീകരണങ്ങൾ</translation>
 <translation id="59174027418879706">പ്രവർത്തനക്ഷമമാക്കി</translation>
@@ -3650,6 +3654,7 @@
 <translation id="6702851555558236418">ഓഡിയോ, സംഗീത സോഫ്റ്റ്‌വെയർ</translation>
 <translation id="6702919718839027939">ദൃശ്യമാക്കുക</translation>
 <translation id="6704458454638854812">"custom_size" പ്രോപ്പർട്ടി സജ്ജീകരിച്ചതിനാൽ, പേര് ചേർക്കേണ്ടത് "custom" എന്നാണ്.</translation>
+<translation id="670477556876354552">റീസ്‌റ്റാർട്ട് ചെയ്യേണ്ടതുണ്ട്</translation>
 <translation id="6706005862292023715">കർട്ടനുകളും വിൻഡോ ട്രീറ്റ്മെന്റുകളും</translation>
 <translation id="6706210727756204531">വ്യാപ്‌തി</translation>
 <translation id="6706678697074905703">ഈ IBAN നിങ്ങളുടെ Google Account-ൽ സംരക്ഷിക്കാനായില്ല. പകരം, ഈ ഉപകരണത്തിലെ Chrome-ൽ സംരക്ഷിച്ചു.</translation>
@@ -3907,6 +3912,7 @@
 <translation id="7110116949943042888">താൽക്കാലികവും സീസണലുമായ ജോലികൾ</translation>
 <translation id="7110368079836707726">കോളേജുകളും സർവകലാശാലകളും</translation>
 <translation id="7111507312244504964">പ്രോപ്പർട്ടി പരിശോധനകളും മൂല്യനിർണ്ണയങ്ങളും</translation>
+<translation id="7117290130383718594">ടെക്സ്റ്റ് കുറിപ്പുകൾ</translation>
 <translation id="7118618213916969306">ക്ലിപ്പ്ബോർഡ് URL-നുള്ള തിരയൽ, <ph name="SHORT_URL" /></translation>
 <translation id="7118852830504022370">ഈ സൈറ്റ് HTTPS പിന്തുണയ്‌ക്കാത്തതിനാലാണ് നിങ്ങൾ ഈ മുന്നറിയിപ്പ് കാണുന്നത്. <ph name="BEGIN_LEARN_MORE_LINK" />ഈ മുന്നറിയിപ്പിനെ കുറിച്ച് കൂടുതലറിയുക<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="7119063404975271297">ടിവി നാടകങ്ങൾ</translation>

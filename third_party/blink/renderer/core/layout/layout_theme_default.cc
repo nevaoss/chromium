@@ -50,46 +50,6 @@ LayoutThemeDefault::LayoutThemeDefault() : painter_(*this) {}
 
 LayoutThemeDefault::~LayoutThemeDefault() = default;
 
-void LayoutThemeDefault::AdjustSliderThumbSize(
-    ComputedStyleBuilder& builder) const {
-  gfx::Size size = WebThemeEngineHelper::GetNativeThemeEngine()->GetSize(
-      WebThemeEngine::kPartSliderThumb);
-
-  float zoom_level = builder.EffectiveZoom();
-  if (builder.EffectiveAppearance() ==
-      AppearanceValue::kSliderThumbHorizontal) {
-    builder.SetWidth(Length::Fixed(size.width() * zoom_level));
-    builder.SetHeight(Length::Fixed(size.height() * zoom_level));
-  } else if (builder.EffectiveAppearance() ==
-             AppearanceValue::kSliderThumbVertical) {
-    builder.SetWidth(Length::Fixed(size.height() * zoom_level));
-    builder.SetHeight(Length::Fixed(size.width() * zoom_level));
-  }
-}
-
-void LayoutThemeDefault::AdjustInnerSpinButtonStyle(
-    ComputedStyleBuilder& style) const {
-  gfx::Size size = WebThemeEngineHelper::GetNativeThemeEngine()->GetSize(
-      WebThemeEngine::kPartInnerSpinButton);
-
-  float zoom_level = style.EffectiveZoom();
-  if (IsHorizontalWritingMode(style.GetWritingMode())) {
-    style.SetWidth(Length::Fixed(size.width() * zoom_level));
-    style.SetMinWidth(Length::Fixed(size.width() * zoom_level));
-  } else {
-    style.SetHeight(Length::Fixed(size.width() * zoom_level));
-    style.SetMinHeight(Length::Fixed(size.width() * zoom_level));
-  }
-}
-
-void LayoutThemeDefault::AdjustButtonStyle(
-    ComputedStyleBuilder& builder) const {
-  // Ignore line-height.
-  if (builder.EffectiveAppearance() == AppearanceValue::kPushButton) {
-    builder.SetLineHeight(ComputedStyleInitialValues::InitialLineHeight());
-  }
-}
-
 void LayoutThemeDefault::AdjustSearchFieldCancelButtonStyle(
     ComputedStyleBuilder& builder) const {
   // Scale the button size based on the font size

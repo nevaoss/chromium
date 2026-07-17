@@ -32,8 +32,8 @@ MATCHER_P(OptionalRegionToString, expected, "") {
 }
 
 TEST(LanguageTagTest, ParseAndToString) {
-  EXPECT_THAT(LanguageTagConverter::GetInstance().FromString("en-US"),
-              Optional(language_tags::ENGLISH_US()));
+  EXPECT_THAT(language_tags::GetKnownTag<"en-US">(),
+              language_tags::ENGLISH_US());
 
   EXPECT_THAT(LanguageTagConverter::GetInstance().FromString("EN-us"),
               OptionalToString("en-US"));
@@ -64,7 +64,33 @@ TEST(LanguageTagTest, ValidButUnknowLocales) {
 }
 
 TEST(LanguageTagTest, ToLegacyICUFormat) {
-  EXPECT_EQ(language_tags::BRAZILIAN_PORTUGUESE().ToLegacyICUFormat(), "pt_BR");
+  EXPECT_EQ(language_tags::GetKnownTag<"pt-BR">().ToLegacyICUFormat(), "pt_BR");
+
+  {
+    ASSERT_OK_AND_ASSIGN(
+        LanguageTag lt,
+        LanguageTagConverter::GetInstance().FromString("en-US-u-cu-usd"));
+    EXPECT_EQ(lt.ToLegacyICUFormat(), "en_US@currency=USD");
+  }
+  {
+    ASSERT_OK_AND_ASSIGN(LanguageTag lt,
+                         LanguageTagConverter::GetInstance().FromString(
+                             "de-DE-u-ca-gregory-co-phonebk"));
+    EXPECT_EQ(lt.ToLegacyICUFormat(),
+              "de_DE@calendar=gregorian;collation=phonebook");
+  }
+  {
+    ASSERT_OK_AND_ASSIGN(
+        LanguageTag lt,
+        LanguageTagConverter::GetInstance().FromString("ca-ES-u-va-valencia"));
+    EXPECT_EQ(lt.ToLegacyICUFormat(), "ca_ES@valencia");
+  }
+  {
+    ASSERT_OK_AND_ASSIGN(LanguageTag lt,
+                         LanguageTagConverter::GetInstance().FromString(
+                             "ja-u-lb-normal-lw-phrase"));
+    EXPECT_EQ(lt.ToLegacyICUFormat(), "ja@lb=normal;lw=phrase");
+  }
 }
 
 TEST(LanguageTagTest, ComplexLocales) {
@@ -80,6 +106,8 @@ TEST(LanguageTagTest, NumericRegions) {
   // Locales with numeric regions.
   EXPECT_THAT(LanguageTagConverter::GetInstance().FromString("es-419"),
               Optional(language_tags::SPANISH_LATIN_AMERICAN()));
+  EXPECT_THAT(LanguageTagConverter::GetInstance().FromString("es-419"),
+              Optional(language_tags::GetKnownTag<"es-419">()));
 }
 
 TEST(LanguageTagTest, ThreeLetterLanguages) {
@@ -90,6 +118,76 @@ TEST(LanguageTagTest, ThreeLetterLanguages) {
   // Asturian (ast).
   EXPECT_THAT(LanguageTagConverter::GetInstance().FromString("ast-ES"),
               OptionalToString("ast-ES"));
+}
+
+TEST(LanguageTagIso639_2Test, German) {
+  // German: ISO 639-2/T is "deu", ISO 639-2/B is "ger".
+  EXPECT_THAT(LanguageTagConverter::GetInstance().FromString("deu"),
+              Optional(language_tags::GERMAN()));
+  EXPECT_THAT(LanguageTagConverter::GetInstance().FromString("ger"),
+              Optional(language_tags::GERMAN()));
+}
+
+TEST(LanguageTagIso639_2Test, Spanish) {
+  // Spanish: ISO 639-2/T and /B are both "spa".
+  EXPECT_THAT(LanguageTagConverter::GetInstance().FromString("spa"),
+              Optional(language_tags::SPANISH()));
+}
+
+TEST(LanguageTagIso639_2Test, Portuguese) {
+  // Portuguese: ISO 639-2/T and /B are both "por".
+  EXPECT_THAT(LanguageTagConverter::GetInstance().FromString("por"),
+              Optional(language_tags::PORTUGUESE()));
+  EXPECT_THAT(LanguageTagConverter::GetInstance().FromString("por-BR"),
+              Optional(language_tags::BRAZILIAN_PORTUGUESE()));
+}
+
+TEST(LanguageTagIso639_2Test, French) {
+  // French: ISO 639-2/T is "fra", ISO 639-2/B is "fre".
+  EXPECT_THAT(LanguageTagConverter::GetInstance().FromString("fra"),
+              Optional(language_tags::FRENCH()));
+  EXPECT_THAT(LanguageTagConverter::GetInstance().FromString("fre"),
+              Optional(language_tags::FRENCH()));
+}
+
+TEST(LanguageTagIso639_2Test, Chinese) {
+  // Chinese: ISO 639-2/T is "zho", ISO 639-2/B is "chi".
+  EXPECT_THAT(LanguageTagConverter::GetInstance().FromString("zho"),
+              Optional(language_tags::CHINESE()));
+  EXPECT_THAT(LanguageTagConverter::GetInstance().FromString("chi"),
+              Optional(language_tags::CHINESE()));
+}
+
+TEST(LanguageTagIso639_2SpecialCodesTest, SpecialCodes) {
+  // Special ISO 639-2 codes.
+  EXPECT_THAT(LanguageTagConverter::GetInstance().FromString("mis"),
+              OptionalToString("mis"));  // Uncoded languages
+  EXPECT_THAT(LanguageTagConverter::GetInstance().FromString("mul"),
+              OptionalToString("mul"));  // Multiple languages
+  EXPECT_THAT(LanguageTagConverter::GetInstance().FromString("zxx"),
+              OptionalToString("zxx"));  // No linguistic content
+}
+
+TEST(LanguageTagIso639_2PrivateUseTest, PrivateUseRanges) {
+  // Private use codes (qaa-qtz).
+  EXPECT_THAT(LanguageTagConverter::GetInstance().FromString("qaa"),
+              OptionalToString("qaa"));
+  EXPECT_THAT(LanguageTagConverter::GetInstance().FromString("qtz"),
+              OptionalToString("qtz"));
+}
+
+TEST(LanguageTagIso639_2Test, OtherCommonLanguages) {
+  // English: ISO 639-2/T and /B are both "eng".
+  EXPECT_THAT(LanguageTagConverter::GetInstance().FromString("eng"),
+              Optional(language_tags::ENGLISH()));
+
+  // Hawaiian (no 2-letter equivalent).
+  EXPECT_THAT(LanguageTagConverter::GetInstance().FromString("haw"),
+              Optional(language_tags::HAWAIIAN()));
+
+  // Asturian (no 2-letter equivalent).
+  EXPECT_THAT(LanguageTagConverter::GetInstance().FromString("ast"),
+              Optional(language_tags::ASTURIAN()));
 }
 
 TEST(LanguageTagTest, Variants) {
@@ -285,6 +383,17 @@ TEST(LanguageTagTest, LocaleWithAtSign) {
   EXPECT_THAT(
       LanguageTagConverter::GetInstance().FromString("en-US@timezone=est5edt"),
       OptionalToString("en-US-u-tz-usnyc"));
+}
+
+TEST(LanguageTagTest, LegacyIcuIgnoresPosixEncoding) {
+  EXPECT_THAT(LanguageTagConverter::GetInstance().FromString("en.UTF8@"),
+              OptionalToString("en"));
+  EXPECT_THAT(
+      LanguageTagConverter::GetInstance().FromString("ca.UTF8@valencia"),
+      OptionalToString("ca-u-va-valencia"));
+  EXPECT_THAT(
+      LanguageTagConverter::GetInstance().FromString("ca_ES.UTF8@valencia"),
+      OptionalToString("ca-ES-u-va-valencia"));
 }
 
 TEST(LanguageTagTest, LegacyIcuRobustness) {

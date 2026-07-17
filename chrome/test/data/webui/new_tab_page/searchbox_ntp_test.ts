@@ -211,6 +211,53 @@ suite('SearchboxTest', () => {
     await whenOpenVoiceSearch;
   });
 
+  test('input wrapper is hidden when in voice search mode', async () => {
+    // Arrange: Create and append realbox element to DOM with active theme.
+    realbox = await createAndAppendRealbox();
+    await microtasksFinished();
+
+    const inputWrapper =
+        realbox.shadowRoot.querySelector<HTMLElement>('#inputWrapper');
+    assertTrue(!!inputWrapper);
+    const searchboxInput =
+        realbox.shadowRoot.querySelector<HTMLElement>('#input');
+    assertTrue(!!searchboxInput);
+    const dropdownContainer =
+        realbox.shadowRoot.querySelector<HTMLElement>('.dropdownContainer');
+
+    // Assert steady state: container layout and active input are visible.
+    assertNotEquals('none', getComputedStyle(inputWrapper).display);
+    assertEquals('flex', getComputedStyle(inputWrapper).display);
+    assertTrue(isVisible(inputWrapper));
+    assertTrue(isVisible(searchboxInput));
+    assertFalse(realbox.inVoiceSearchMode);
+
+    // Act: Transition component into active voice search listening mode.
+    realbox.inVoiceSearchMode = true;
+    await microtasksFinished();
+
+    // Assert voice state: wrapper container is removed from visual layout via
+    // display: none, concealing background box, shadow, and search input.
+    assertEquals('none', getComputedStyle(inputWrapper).display);
+    assertFalse(isVisible(inputWrapper));
+    assertFalse(isVisible(searchboxInput));
+    if (dropdownContainer) {
+      assertFalse(isVisible(dropdownContainer));
+    }
+    assertTrue(realbox.inVoiceSearchMode);
+
+    // Act: Exit voice search mode and return to standard NTP search layout.
+    realbox.inVoiceSearchMode = false;
+    await microtasksFinished();
+
+    // Assert restored state: wrapper container layout and input return visible.
+    assertNotEquals('none', getComputedStyle(inputWrapper).display);
+    assertEquals('flex', getComputedStyle(inputWrapper).display);
+    assertTrue(isVisible(inputWrapper));
+    assertTrue(isVisible(searchboxInput));
+    assertFalse(realbox.inVoiceSearchMode);
+  });
+
   // TODO(crbug.com/453570027): Test is flaky.
   test.skip('realbox default Google G icon', async () => {
     // Arrange.

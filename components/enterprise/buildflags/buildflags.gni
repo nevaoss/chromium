@@ -37,6 +37,9 @@ declare_args() {
   # Support on all platforms except for iOS since it uses `WKWebView` cache.
   enterprise_cache_encryption =
       is_win || is_mac || is_linux || is_chromeos || is_android
+
+  # Indicates support for Enterprise Proxy policy and service.
+  enterprise_proxy = is_win || is_mac || is_linux || is_android
 }
 
 declare_args() {

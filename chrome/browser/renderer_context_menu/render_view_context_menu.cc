@@ -44,6 +44,10 @@
 #include "chrome/browser/autocomplete/autocomplete_classifier_factory.h"
 #include "chrome/browser/browser_features.h"
 #include "chrome/browser/browser_process.h"
+#include "chrome/browser/context_hub/context_hub_service.h"
+#include "chrome/browser/context_hub/context_hub_service_factory.h"
+#include "chrome/browser/context_hub/features.h"
+#include "chrome/browser/context_hub/memory_bank/memory_bank.h"
 #include "chrome/browser/custom_handlers/protocol_handler_registry_factory.h"
 #include "chrome/browser/devtools/devtools_window.h"
 #include "chrome/browser/devtools/features.h"
@@ -239,6 +243,7 @@
 #include "printing/buildflags/buildflags.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "services/metrics/public/cpp/ukm_recorder.h"
+#include "services/network/public/cpp/constants.h"
 #include "services/service_manager/public/cpp/interface_provider.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
 #include "third_party/blink/public/common/context_menu_data/context_menu_data.h"
@@ -617,13 +622,14 @@ const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
        {IDC_CONTENT_CONTEXT_DICTATION, 165},
        {IDC_CONTENT_CONTEXT_ADD_LINK_TO_READING_LIST, 166},
        {IDC_SPELLCHECK_REMOVE_FROM_DICTIONARY, 167},
+       {IDC_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS, 168},
        // To add new items:
        //   - Add one more line above this comment block, using the UMA value
        //     from the line below this comment block.
        //   - Increment the UMA value in that latter line.
        //   - Add the new item to the RenderViewContextMenuItem enum in
        //     tools/metrics/histograms/metadata/ui/enums.xml.
-       {0, 168}});
+       {0, 169}});
   // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:RenderViewContextMenuItem)
 
   // LINT.IfChange(ContextMenuOptionDesktop)
@@ -1170,9 +1176,9 @@ void RenderViewContextMenu::IssuePreconnectionToUrl(
   auto network_anonymization_key =
       net::NetworkAnonymizationKey::CreateCrossSite(
           std::move(anonymization_key_schemeful_site));
-  loading_predictor->PreconnectURLIfAllowed(GURL(preconnect_url),
-                                            /*allow_credentials=*/true,
-                                            network_anonymization_key);
+  loading_predictor->PreconnectURLIfAllowed(
+      GURL(preconnect_url), /*allow_credentials=*/true,
+      network_anonymization_key, network::GetNoOpNetworkRestrictionsId());
 }
 
 ui::IsNewFeatureAtValue RenderViewContextMenu::GetIsNewFeatureAtValue(
@@ -1327,6 +1333,11 @@ void RenderViewContextMenu::InitMenu() {
        params_.page_url != chrome::kChromeUIPasswordManagerCheckupURL &&
        params_.page_url != chrome::kChromeUIPasswordManagerSettingsURL)) {
     AppendSearchProvider();
+  }
+
+  if (!use_simplified_menu_for_text_selection &&
+      !params_.selection_text.empty()) {
+    AppendSaveToMemoryBanksItem();
   }
 
   bool show_glic = false;
@@ -2753,6 +2764,13 @@ void RenderViewContextMenu::AppendReadAnythingItem() {
   }
 }
 
+void RenderViewContextMenu::AppendSaveToMemoryBanksItem() {
+  if (base::FeatureList::IsEnabled(context_hub::features::kMemoryBanks)) {
+    menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS,
+                                    IDS_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS);
+  }
+}
+
 void RenderViewContextMenu::AppendGlicItems() {
   if (IsGlicWindow(this, browser_context_)) {
     menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_RELOAD_GLIC,
@@ -3512,6 +3530,9 @@ bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
     case IDC_CONTENT_CONTEXT_START_SMART_SELECTION_ACTION5:
       return true;
 
+    case IDC_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS:
+      return true;
+
     case IDC_CONTENT_PASTE_FROM_CLIPBOARD:
 #if BUILDFLAG(IS_CHROMEOS)
       return ash::ClipboardHistoryController::Get()->HasAvailableHistoryItems();
@@ -3778,6 +3799,10 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
 
     case IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE:
       ExecListenToThisPage();
+      break;
+
+    case IDC_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS:
+      ExecSaveToMemoryBanks();
       break;
 
     case IDC_CONTENT_CONTEXT_RELOAD_GLIC:
@@ -4082,7 +4107,7 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
           GetBrowser() ? GetBrowser()->GetBrowserForMigrationOnly() : nullptr;
       if (browser) {
         // TODO(crbug.com/514547038): Move this to BrowserWindowFeatures.
-        browser->window()->ShowEmojiPanel();
+        BrowserWindow::FromBrowser(browser)->ShowEmojiPanel();
       } else {
         // TODO(crbug.com/40608277): Ensure this is called in the correct
         // process. This fails in print preview for PWA windows on Mac.
@@ -4755,6 +4780,22 @@ void RenderViewContextMenu::ExecListenToThisPage() {
       GetBrowser(), ReadAnythingOpenTrigger::kReadAnythingContextMenu);
 }
 
+void RenderViewContextMenu::ExecSaveToMemoryBanks() {
+  context_hub::ContextHubService* context_hub_service =
+      ContextHubServiceFactory::GetForProfile(GetProfile());
+  if (!context_hub_service) {
+    return;
+  }
+
+  std::string tab_title = base::UTF16ToUTF8(source_web_contents_->GetTitle());
+  std::string selected_text = base::UTF16ToUTF8(params_.selection_text);
+
+  if (!selected_text.empty()) {
+    context_hub_service->SaveTextSelection(params_.page_url, tab_title,
+                                           selected_text, base::DoNothing());
+  }
+}
+
 void RenderViewContextMenu::ExecInspectElement() {
   base::RecordAction(UserMetricsAction("DevTools_InspectElement"));
   RenderFrameHost* render_frame_host = GetRenderFrameHost();
@@ -5316,6 +5357,10 @@ void RenderViewContextMenu::ExecProtocolHandlerSettings(int event_flags) {
 }
 
 void RenderViewContextMenu::MaybeAppendOpenGlicItem() {
+  if (!content_type_->SupportsGroup(ContextMenuContentType::ITEM_GROUP_GLIC)) {
+    return;
+  }
+
   // Append an item for opening Glic
   if (!IsNormalBrowser()) {
     return;
@@ -5743,6 +5788,7 @@ void RenderViewContextMenu::AppendRevisedTextSelectionSection() {
     AppendCopyItem();
     AppendLinkToTextItems();
     AppendSearchProvider();
+    AppendSaveToMemoryBanksItem();
     AppendPrintItem();
 
     if (CanPartiallyTranslateTargetLanguage()) {
@@ -5760,6 +5806,7 @@ void RenderViewContextMenu::AppendRevisedTextSelectionSection() {
 
     AppendSearchProvider();
     AppendReadAnythingItem();
+    AppendSaveToMemoryBanksItem();
 
     if (CanPartiallyTranslateTargetLanguage()) {
       AppendPartialTranslateItem();

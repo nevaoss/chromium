@@ -74,7 +74,7 @@ void InputKeys(Browser* browser, const std::vector<ui::KeyboardCode>& keys) {
 }
 
 LocationBar* GetLocationBar(Browser* browser) {
-  return browser->window()->GetLocationBar();
+  return BrowserWindow::FromBrowser(browser)->GetLocationBar();
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
 

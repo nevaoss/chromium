@@ -103,6 +103,7 @@
 <translation id="1335767868357998043">Escolle a posición da barra de enderezos</translation>
 <translation id="1347468774581902829">Xestionar actividade</translation>
 <translation id="1348596747084433075">https://www.amazon.com/Wife-Gifts/s?k=for+Wife+Gifts</translation>
+<translation id="1353169676553627502">Desactivar as actualizacións de progreso</translation>
 <translation id="1355337783640312381">Para cambiar de conta, toca a icona da túa conta</translation>
 <translation id="135806768612505061">Todas as pestanas</translation>
 <translation id="1358106883354237005">Conta xestionada</translation>
@@ -609,6 +610,7 @@
 <translation id="3073633853887034268">Entendido</translation>
 <translation id="3080525922482950719">Podes gardar páxinas para lelas máis tarde ou sen conexión</translation>
 <translation id="3081338492074632642">Asegúrate de que o contrasinal que gardas coincida co de <ph name="WEBSITE" /></translation>
+<translation id="3084484227247071193">Activar as actualizacións do progreso</translation>
 <translation id="3087734570205094154">Parte inferior</translation>
 <translation id="309710370695886264">Tes 1 contrasinal reutilizado. Cámbiao xa para non correr riscos.</translation>
 <translation id="3099402981545350675">Con esta acción, elimínanse os enderezos gardados neste dispositivo. Tamén se elimina información seleccionada de Chrome, pero non se elimina esta información da túa Conta de Google.</translation>
@@ -708,6 +710,7 @@
 <translation id="3449029510150690417">Crea un grupo de pestanas e asígnalle un nome e unha cor</translation>
 <translation id="345348365500626747">Enderezo atopado</translation>
 <translation id="3459644598174926977">Usa Live con Gemini para facer preguntas sobre unha páxina, intercambiar ideas en voz alta e manter unha conversa.</translation>
+<translation id="3462768334899086950">Perderás o ficheiro sen gardar e as pestanas actuais</translation>
 <translation id="3464194322481586217">Non se puido facer un seguimento do prezo.</translation>
 <translation id="3469117812148449995">Opcións para gardar un contrasinal</translation>
 <translation id="3472469028191701821">Ábrese nunha pestana nova</translation>
@@ -965,6 +968,7 @@
 <translation id="4326912346867677256">Toca Usar contrasinal para iniciar sesión de maneira segura.</translation>
 <translation id="4328843285884395590">A miña unidade</translation>
 <translation id="4331177082088332784">Podes xestionalo en BEGIN_LINK Configuración de contido END_LINK</translation>
+<translation id="4331712008356052424">Para enviar esta ligazón, inicia sesión no teu outro dispositivo con <ph name="USER_EMAIL" /></translation>
 <translation id="4334428914252001502">1 artigo non lido.</translation>
 <translation id="4338258232580025606">Non se puido iniciar sesión</translation>
 <translation id="4338650699862464074">Envía a Google os URL das páxinas que visitas.</translation>
@@ -1471,6 +1475,7 @@ Handoff tamén debe estar activado na sección Xeral da configuración e os teus
 <translation id="6040143037577758943">Pechar</translation>
 <translation id="6042308850641462728">Máis</translation>
 <translation id="6045460247888249350">Engade un título</translation>
+<translation id="6050237559175440178">Verifica a túa identidade para usar e gardar a túa información en todos os teus dispositivos</translation>
 <translation id="6052269326659653305">Cambiar de perfil</translation>
 <translation id="605721222689873409">AA</translation>
 <translation id="6059830886158432458">Controla as túas historias e a túa actividade aquí</translation>
@@ -1846,6 +1851,7 @@ Para continuar desde o ordenador, cambia a <ph name="OTHER_EMAIL" />. Obterás o
 <translation id="722339453342442311">Comprobar agora</translation>
 <translation id="7227235818314667565">Xestionar uso compartido</translation>
 <translation id="7233006041370588369">Selecciona un contrasinal para inserilo.</translation>
+<translation id="723874023660911012">Cambiar de perfil</translation>
 <translation id="7241135764990439166">O modo de incógnito non está dispoñible</translation>
 <translation id="7248046129087111453">O <ph name="BEGIN_LINK" />historial de busca<ph name="END_LINK" /> e <ph name="BEGIN_LINK" />outros tipos de actividade<ph name="END_LINK" /> poden gardarse na túa Conta de Google.</translation>
 <translation id="7253951228444156601">Comprobando contrasinais…</translation>
@@ -2072,6 +2078,7 @@ Para continuar desde o ordenador, cambia a <ph name="OTHER_EMAIL" />. Obterás o
 <translation id="7996239959906074962">Configurar…</translation>
 <translation id="800361585186029508">Abre os URL introducidos en Google Chrome.</translation>
 <translation id="8005666035647241369">No xestor de contrasinais de Google neste dispositivo</translation>
+<translation id="8007106936382123905">{count,plural, =1{1 tarefa completada}other{# tarefas completadas}}</translation>
 <translation id="8010488806779226127">Explora funcións que che poden axudar a facer máis cousas mentres navegas</translation>
 <translation id="8011489434346330032">Web Inspector</translation>
 <translation id="8014007212279733632">Verifica a túa identidade para autocompletar a información confidencial</translation>
@@ -2155,6 +2162,7 @@ Para continuar desde o ordenador, cambia a <ph name="OTHER_EMAIL" />. Obterás o
 <translation id="826614135184049678">Para poder restablecer o iPad, pechouse a sesión da túa conta (<ph name="USER_NAME" />). Se queres volver iniciar a sesión, toca Continuar máis abaixo.</translation>
 <translation id="8270320981823560179">Drive</translation>
 <translation id="8273982424131314219">Completarás a información en <ph name="URL" /></translation>
+<translation id="8274795744553482834">Estás a piques de cambiar de perfil</translation>
 <translation id="8275068909952022340">Máis…</translation>
 <translation id="8280797717392145626">Ligazóns recibidas</translation>
 <translation id="8281781826761538115">Idioma predeterminado: <ph name="DEFAULT_LOCALE" /></translation>

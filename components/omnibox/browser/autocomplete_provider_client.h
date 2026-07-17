@@ -17,14 +17,14 @@
 #include "components/omnibox/browser/lens_suggest_inputs_utils.h"
 #include "third_party/metrics_proto/omnibox_event.pb.h"
 
+class AiModeButtonService;
+class AimEligibilityService;
 class AutocompleteClassifier;
 class AutocompleteSchemeClassifier;
 class AutocompleteScoringModelService;
 class DocumentSuggestionsService;
-class GeolocationHeaderService;
-class UnscopedExtensionProvider;
-class UnscopedExtensionProviderDelegate;
 class GURL;
+class GeolocationHeaderService;
 class InMemoryURLIndex;
 class KeywordExtensionsDelegate;
 class KeywordProvider;
@@ -35,10 +35,12 @@ class PrefService;
 class RemoteSuggestionsService;
 class ShortcutsBackend;
 class TabMatcher;
+class UnscopedExtensionProvider;
+class UnscopedExtensionProviderDelegate;
 class ZeroSuggestCacheService;
+
 struct AutocompleteMatch;
 struct ProviderStateService;
-class AimEligibilityService;
 
 namespace bookmarks {
 class BookmarkModel;
@@ -125,6 +127,7 @@ class AutocompleteProviderClient : public OmniboxAction::Client {
   virtual tab_groups::TabGroupSyncService* GetTabGroupSyncService() const = 0;
   virtual sync_sessions::SessionSyncService* GetSessionSyncService() const = 0;
   virtual AimEligibilityService* GetAimEligibilityService() const = 0;
+  virtual AiModeButtonService* GetAiModeButtonService() const;
 
   // The value to use for Accept-Languages HTTP header when making an HTTP
   // request.

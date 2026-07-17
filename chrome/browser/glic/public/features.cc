@@ -14,7 +14,7 @@ namespace features {
 
 BASE_FEATURE(kGlicAndroidSidePanel, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kGlicChromeStatusIcon, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicChromeStatusIcon, base::FEATURE_ENABLED_BY_DEFAULT);
 const base::FeatureParam<int> kGlicChromeStatusIconSizePx{
     &kGlicChromeStatusIcon, "glic-chrome-status-icon-size-px", 20};
 const base::FeatureParam<bool> kGlicChromeStatusIconUseAltIcon{
@@ -130,8 +130,6 @@ const base::FeatureParam<GlicToolbarButtonLocation>
         &kGlicToolbarButtonLocation, "glic-toolbar-button-location",
         GlicToolbarButtonLocation::kLeftOfProfileChip,
         &kGlicButtonLocationOptions};
-
-BASE_FEATURE(kGlicButtonAutoSummarize, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicGetTabFaviconById, base::FEATURE_ENABLED_BY_DEFAULT);
 

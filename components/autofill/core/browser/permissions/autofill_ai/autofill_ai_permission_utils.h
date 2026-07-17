@@ -12,6 +12,7 @@
 #include "components/autofill/core/browser/country_type.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_type.h"
 
+class GURL;
 class PrefService;
 
 namespace signin {
@@ -194,6 +195,11 @@ bool SetAutofillAiOptInStatus(
 [[nodiscard]] bool HasSetLocalAutofillAiOptInStatus(
     const PrefService* prefs,
     const signin::IdentityManager* identity_manager);
+
+// Returns true if `entity_type` is blocked by enterprise policy on `url`.
+bool IsAutofillAiEntityTypeBlockedByPolicy(const AutofillClient& client,
+                                           const GURL& url,
+                                           EntityType entity_type);
 
 // Checks whether Autofill AI is disabled by enterprise policy.
 [[nodiscard]] bool IsAutofillAiDisabledByEnterprisePolicy(

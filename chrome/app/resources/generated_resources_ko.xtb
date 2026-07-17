@@ -2314,6 +2314,7 @@
 <translation id="2710883118091822664">모든 기기에서 간편하게 이어 가려면 로그인하세요.</translation>
 <translation id="2713106313042589954">카메라 끄기</translation>
 <translation id="2713444072780614174">흰색</translation>
+<translation id="2713529429175549458">비밀번호, PIN 또는 지문</translation>
 <translation id="2714180132046334502">어두운 배경</translation>
 <translation id="2714393097308983682">Google Play 스토어</translation>
 <translation id="2714617928488200509">모델</translation>
@@ -2764,6 +2765,7 @@
 <translation id="3023204744987201088">연락처 정보(&amp;C)</translation>
 <translation id="3023464535986383522">텍스트 읽어주기</translation>
 <translation id="3024374909719388945">24시간 단위 사용</translation>
+<translation id="3025905136198521738">분할 뷰 정렬 - 왼쪽 뷰 활성 상태</translation>
 <translation id="3027296729579831126">Nearby Share 사용 설정</translation>
 <translation id="3027644380269727216">사이트 내 활동을 기반으로 추천됩니다. 이 설정을 사용하고 있습니다.</translation>
 <translation id="3028445648481691885">다운로드가 취소됨</translation>
@@ -3294,6 +3296,7 @@
 <translation id="3436118221454753036">AI 모드로 검색하기</translation>
 <translation id="3437072258256045988">Gemini 앱 활동 관리</translation>
 <translation id="3437397693214267762">Outlook Calendar 및 SharePoint/OneDrive 파일 보기</translation>
+<translation id="3437494162908353428">이 URL에는 DevTools가 허용되지 않습니다</translation>
 <translation id="3438633801274389918">닌자</translation>
 <translation id="3439153939049640737"><ph name="HOST" />에서 마이크에 액세스하도록 항상 허용</translation>
 <translation id="3439970425423980614">미리보기에서 PDF 여는 중</translation>
@@ -3507,6 +3510,7 @@
 <translation id="3596012367874587041">앱 설정</translation>
 <translation id="3599221874935822507">양각</translation>
 <translation id="3600051066689725006">웹 요청 정보</translation>
+<translation id="3600181948754917646">Chrome Enterprise 출시 노트</translation>
 <translation id="3600956933576601730">이 기능을 사용하려면 약관을 검토하고 수락해야 합니다.</translation>
 <translation id="3601374594714740284">고품질 음성을 사용하려면 기기의 저장공간을 확보하세요</translation>
 <translation id="360180734785106144">새로운 기능이 출시되면 즉시 제공합니다.</translation>
@@ -4317,6 +4321,7 @@
 <translation id="4177501066905053472">광고 주제</translation>
 <translation id="4177668342649553942"><ph name="SHORTCUT_NAME" /> - <ph name="APP_NAME" /> 열기</translation>
 <translation id="4177731895051842298">확장 프로그램은 Chrome에 추가되는 부가기능으로, 정리, 작업 간소화, 탐색 맞춤설정에 도움이 됩니다.</translation>
+<translation id="4177860704813504507">비밀번호 또는 지문</translation>
 <translation id="4178220097446335546">이 구독 및 연결된 네트워크를 삭제하려면 Passpoint 구독 페이지로 이동하여 구독을 삭제하세요</translation>
 <translation id="4181376007499455822">재정의 안 함</translation>
 <translation id="4181602000363099176">20배</translation>
@@ -4952,6 +4957,7 @@
 <translation id="4660540330091848931">크기 조정 중</translation>
 <translation id="4662373422909645029">닉네임에 숫자를 포함할 수 없음</translation>
 <translation id="4663373278480897665">카메라 허용됨</translation>
+<translation id="4664375726751122009">시각 뷰로 전환</translation>
 <translation id="4665014895760275686">제조업체</translation>
 <translation id="4665446389743427678"><ph name="SITE" />에서 저장한 모든 데이터가 삭제됩니다.</translation>
 <translation id="4666472247053585787"><ph name="DEVICE_TYPE" />에서 휴대전화 알림 보기</translation>
@@ -5655,6 +5661,7 @@
 <translation id="5186381005592669696">지원되는 앱의 표시 언어 맞춤설정</translation>
 <translation id="5186788525428341874">이 패스키를 사용하여 모든 기기에서 더 빠르게 로그인할 수 있습니다. 비밀번호가 <ph name="ACCOUNT_NAME" />의 Google 비밀번호 관리자에 저장됩니다.</translation>
 <translation id="5186792064936776005">가능한 경우 기본값 사용</translation>
+<translation id="5186931074173692059">비밀번호가 <ph name="EMAIL" />의 <ph name="GOOGLE_PASSWORD_MANAGER" />에 저장됩니다.</translation>
 <translation id="5187641678926990264">&amp;페이지를 앱으로 설치(&amp;I)...</translation>
 <translation id="5187826826541650604"><ph name="KEY_NAME" />(<ph name="DEVICE" />)</translation>
 <translation id="5188242000716462162"><ph name="USER_NAME" />님이 공유함</translation>
@@ -6024,6 +6031,7 @@
 <translation id="5473075389972733037">IBM</translation>
 <translation id="5473099001878321374">계속하면 이 기기에서 Google, 자녀의 이동통신사, 기기 제조업체로부터 업데이트와 앱을 자동으로 다운로드하고 설치하는 데 동의하는 것으로 간주됩니다(이때 모바일 데이터가 사용될 수도 있음). 일부 앱에서는 인앱 구매가 제공될 수도 있습니다.</translation>
 <translation id="5473156705047072749">{NUM_CHARACTERS,plural, =1{PIN은 1자 이상이어야 합니다.}other{PIN은 #자 이상이어야 합니다.}}</translation>
+<translation id="5475744834448251260">PIN 또는 지문</translation>
 <translation id="547615291475756075">최대화(X)</translation>
 <translation id="5476957746413745956">각 방향에 개별적으로 속도 조정</translation>
 <translation id="5477089831058413614"><ph name="DEVICE_TYPE" /> 핫스팟 구성</translation>
@@ -6607,6 +6615,7 @@
 <translation id="5933376509899483611">시간대</translation>
 <translation id="5933522550144185133"><ph name="APP_NAME" />에서 카메라와 마이크를 사용 중입니다.</translation>
 <translation id="5935158534896975820">인증서 로그인 요청 준비 중(서버에서 대기 중)</translation>
+<translation id="5935554994339565449">새로운 '텍스트 추가' 도구로 텍스트를 추가하세요</translation>
 <translation id="5936065461722368675">전체 페이지 번역</translation>
 <translation id="5937977334791924341"><ph name="APP" /> 로고</translation>
 <translation id="5938002010494270685">보안 업그레이드 사용 가능</translation>
@@ -7878,6 +7887,7 @@
 <translation id="6883319974225028188">시스템에서 기기 구성을 저장하지 못했습니다.</translation>
 <translation id="6883606786470492001">사이트에서 개인 맞춤 광고를 표시할 때 나에 관해 알아볼 수 있는 정보를 제한하기 위해 광고 주제 및 기타 설정을 관리하세요.</translation>
 <translation id="6884474387073389421">선택한 로그인 데이터를 삭제하시겠습니까?</translation>
+<translation id="6884763350679569586">PIN만</translation>
 <translation id="6885338910541974777">애플리케이션의 설치 프로그램을 완료할 수 없습니다.</translation>
 <translation id="6885771755599377173">시스템 정보 미리보기</translation>
 <translation id="6886871292305414135">새 탭에서 링크 열기(&amp;T)</translation>
@@ -8045,6 +8055,7 @@
 <translation id="7003844668372540529"><ph name="VENDOR_NAME" />의 알 수 없는 제품 <ph name="PRODUCT_ID" /></translation>
 <translation id="7004402701596653846">사이트에서 MIDI를 사용할 수 있습니다.</translation>
 <translation id="7004499039102548441">최근 탭</translation>
+<translation id="7004791323196577460">분할 뷰 정렬 - 오른쪽 뷰 활성 상태</translation>
 <translation id="7004923218520748660">탭 검색 고정</translation>
 <translation id="7004969808832734860">최대 <ph name="DISCOUNT_UP_TO_AMOUNT" /> 할인</translation>
 <translation id="7005496624875927304">추가 권한</translation>
@@ -8233,6 +8244,7 @@
 <translation id="7159695867335480590">재생/일시중지</translation>
 <translation id="7159953856712257647">기본적으로 설치됨</translation>
 <translation id="7160182524506337403">이제 휴대전화의 알림을 확인할 수 있습니다.</translation>
+<translation id="7160835047878907171">분할 뷰 정렬 - 하단 뷰 활성 상태</translation>
 <translation id="7160911207516219534">측면 패널</translation>
 <translation id="716210145227921528">패스키가 삭제되었습니다</translation>
 <translation id="7165263843655074092">이 기기에 표준 보안 보호 조치가 적용되고 있습니다.</translation>
@@ -8367,6 +8379,7 @@
 <translation id="7261217796641151584">그룹 공유</translation>
 <translation id="7261612856573623172">시스템 TTS(텍스트 음성 변환) 음성</translation>
 <translation id="7262004276116528033">이 로그인 서비스는 <ph name="SAML_DOMAIN" />에서 호스팅됩니다.</translation>
+<translation id="7262162806583378242">탐색 중에 화면에서 원하는 항목을 선택한 다음 AI를 활용해 쇼핑하고, 번역하고, 검색해 보세요</translation>
 <translation id="7262564444061174264">탐색 단축키에 대해 자세히 알아보기</translation>
 <translation id="7262919421769447042"><ph name="PROFILE_MANAGER" />에서 이 프로필을 관리하며 다음과 같은 정보를 볼 수 있습니다</translation>
 <translation id="7264695323040866038">지원되는 웹 링크를 열 때 항상 <ph name="APP" /> 앱을 사용할까요?</translation>
@@ -9054,6 +9067,7 @@
 <translation id="7768507955883790804">사이트를 방문할 때 이 설정을 자동으로 따릅니다.</translation>
 <translation id="7768770796815395237">변경</translation>
 <translation id="7768784765476638775">텍스트 읽어주기</translation>
+<translation id="7769063984980522348">간단한 뷰로 전환</translation>
 <translation id="7769709635093101687">일시중지 키보드 단축키</translation>
 <translation id="7769748505895274502">최근에 닫은 탭 접기</translation>
 <translation id="7770072242481632881">측면 패널 선택기</translation>
@@ -9224,7 +9238,7 @@
 <translation id="7904526211178107182">네트워크에 있는 다른 기기에서 Linux 포트를 사용할 수 있도록 설정합니다.</translation>
 <translation id="7907312522152480478">다른 기기에서 탭을 가져오려면 본인 인증을 하고 방문 기록 및 탭을 동기화하세요. 언제든지 설정에서 동기화를 중지할 수 있습니다. Google에서는 사용자의 방문 기록을 기반으로 Google 검색 및 기타 서비스를 맞춤설정할 수 있습니다.</translation>
 <translation id="7907502219904644296">액세스 권한 변경</translation>
-<translation id="7907837847548254634">포커스된 객체를 빠르게 강조표시</translation>
+<translation id="7907837847548254634">포커스된 객체를 빠르게 강조 표시</translation>
 <translation id="7908835530772972485">모든 창을 닫으면 데이터 삭제</translation>
 <translation id="7909324225945368569">프로필 이름 바꾸기</translation>
 <translation id="7909969815743704077">시크릿 모드에서 다운로드됨</translation>
@@ -10298,6 +10312,7 @@
 <translation id="8687774873995698516"><ph name="HOST" />에서 보호된 콘텐츠를 재생하기 위해 식별자를 사용하지 못하도록 항상 차단</translation>
 <translation id="8688672835843460752">사용 가능</translation>
 <translation id="8689811383248488428">거부하고 프로필 닫기</translation>
+<translation id="8689957514193802371">Chromium에서 <ph name="WEBSITE" />의 비밀번호를 자동으로 변경하도록 허용</translation>
 <translation id="8689998525144040851">100</translation>
 <translation id="8690129572193755009">사이트에서 프로토콜 처리를 요청할 수 있음</translation>
 <translation id="869144235543261764">이 탭에서는 PIP 모드로 동영상이 재생되고 있습니다</translation>
@@ -10835,6 +10850,7 @@
 <translation id="9068878141610261315">지원되지 않는 파일 형식입니다.</translation>
 <translation id="9069417381769492963">검색어와 일치하는 북마크가 없습니다.</translation>
 <translation id="9070342919388027491">왼쪽으로 탭을 이동함</translation>
+<translation id="9071664234353284876">인증 요소가 없음</translation>
 <translation id="9072220108592671115">설치된 버전: <ph name="VERSION" /></translation>
 <translation id="9072918088200875065">Gemini가 이러한 사이트에 자동으로 로그인하여 작업을 완료할 수 있도록 허용했습니다.</translation>
 <translation id="9074618195273027322">{CORE_COUNT,plural, =1{코어 1개}other{코어 {CORE_COUNT}개}}</translation>
@@ -11016,6 +11032,7 @@
 <translation id="9203904171912129171">기기를 선택하세요.</translation>
 <translation id="9204881338516142227">비밀번호 자동 변경</translation>
 <translation id="9205304506427975617">머리를 약간 움직여도 커서가 안정적으로 유지됩니다. 이 경우 커서를 움직이려면 더 많은 노력이 필요합니다.</translation>
+<translation id="9205396811802112046">분할 뷰 정렬 - 상단 뷰 활성 상태</translation>
 <translation id="9207434080086272167">화창</translation>
 <translation id="9207669213427469593">화면 분할을 사용하기 위해 창을 한쪽으로 옮기면 다른 쪽에 창 추천이 표시됩니다</translation>
 <translation id="9212565256020141627">Gemini와 이미지를 공유할 수 없습니다. 다시 시도하거나 다른 이미지를 사용해 보세요.</translation>

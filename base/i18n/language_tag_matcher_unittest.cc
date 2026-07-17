@@ -24,6 +24,27 @@ LanguageTag LanguageTagOrDie(std::string_view tag) {
   return *LanguageTagConverter::GetInstance().FromString(tag);
 }
 
+TEST(LanguageTagMatcherTest, EnglishRegionalFallback) {
+  std::vector<LanguageTag> supported = {LanguageTagOrDie("en-US"),
+                                        LanguageTagOrDie("en-GB")};
+  LanguageTagMatcher matcher = LanguageTagMatcher::Create(supported);
+
+  // Liberian and Filipino English should fallback to US English.
+  EXPECT_THAT(matcher.Match(LanguageTagOrDie("en-LR")),
+              Optional(LanguageTagOrDie("en-US")));
+  EXPECT_THAT(matcher.Match(LanguageTagOrDie("en-PH")),
+              Optional(LanguageTagOrDie("en-US")));
+  EXPECT_THAT(matcher.Match(LanguageTagOrDie("en-CA")),
+              Optional(LanguageTagOrDie("en-US")));
+
+  // Other English regions (like Australia or New Zeland) should fallback to
+  // British English.
+  EXPECT_THAT(matcher.Match(LanguageTagOrDie("en-AU")),
+              Optional(LanguageTagOrDie("en-GB")));
+  EXPECT_THAT(matcher.Match(LanguageTagOrDie("en-NZ")),
+              Optional(LanguageTagOrDie("en-GB")));
+}
+
 TEST(LanguageTagMatcherTest, ExactMatch) {
   std::vector<LanguageTag> supported = {LanguageTagOrDie("en-US"),
                                         LanguageTagOrDie("fr-FR")};
@@ -31,6 +52,29 @@ TEST(LanguageTagMatcherTest, ExactMatch) {
 
   EXPECT_THAT(matcher.Match(LanguageTagOrDie("en-US")),
               Optional(LanguageTagOrDie("en-US")));
+}
+
+TEST(LanguageTagMatcherTest, Catalan) {
+  std::vector<LanguageTag> supported = {LanguageTagOrDie("ca-u-va-valencia"),
+                                        LanguageTagOrDie("es")};
+  LanguageTagMatcher matcher = LanguageTagMatcher::Create(supported);
+
+  EXPECT_THAT(matcher.Match(LanguageTagOrDie("ca@valencia")),
+              Optional(LanguageTagOrDie("ca-u-va-valencia")));
+  EXPECT_THAT(matcher.Match(LanguageTagOrDie("ca-ES-u-va-valencia")),
+              Optional(LanguageTagOrDie("ca-u-va-valencia")));
+  EXPECT_THAT(matcher.Match(LanguageTagOrDie("ca")),
+              Optional(LanguageTagOrDie("ca-u-va-valencia")));
+}
+
+TEST(LanguageTagMatcherTest, CatalanLegacy) {
+  std::vector<LanguageTag> supported = {LanguageTagOrDie("ca@valencia"),
+                                        LanguageTagOrDie("es")};
+  LanguageTagMatcher matcher = LanguageTagMatcher::Create(supported);
+
+  // en-US should fallback to en
+  EXPECT_THAT(matcher.Match(LanguageTagOrDie("ca_ES.UTF8@valencia")),
+              Optional(LanguageTagOrDie("ca-u-va-valencia")));
 }
 
 TEST(LanguageTagMatcherTest, FallbackMatch) {
@@ -118,13 +162,23 @@ TEST(LanguageTagMatcherTest, MultipleEnglishLocales) {
   }
 }
 
-TEST(LanguageTagMatcherTest, ChineseLanguages) {
+TEST(LanguageTagMatcherTest, ChineseLanguagesChina) {
   std::vector<LanguageTag> supported = {language_tags::TAIWAN_CHINESE(),
                                         language_tags::CHINA_CHINESE()};
   LanguageTagMatcher matcher = LanguageTagMatcher::Create(supported);
 
   EXPECT_THAT(matcher.Match(language_tags::CHINESE()),
               Optional(language_tags::CHINA_CHINESE()));
+}
+
+TEST(LanguageTagMatcherTest, ChineseLanguagesHantToTaiwan) {
+  std::vector<LanguageTag> supported = {language_tags::TAIWAN_CHINESE(),
+                                        language_tags::HONGKONG_CHINESE(),
+                                        language_tags::CHINA_CHINESE()};
+  LanguageTagMatcher matcher = LanguageTagMatcher::Create(supported);
+
+  EXPECT_THAT(matcher.Match(language_tags::CHINESE_TRADITIONAL()),
+              Optional(language_tags::TAIWAN_CHINESE()));
 }
 
 TEST(LanguageTagMatcherTest, TaiwanChineseDoesNotMatchChinese) {
@@ -243,10 +297,10 @@ TEST(LanguageTagMatcherTest, LikelySubtagsMatch) {
 }
 
 TEST(LanguageTagMatcherTest, LikelySubtagsNoMatch) {
-  std::vector<LanguageTag> supported = {language_tags::ENGLISH_UK()};
+  std::vector<LanguageTag> supported = {language_tags::BRITISH_ENGLISH()};
   LanguageTagMatcher matcher = LanguageTagMatcher::Create(supported);
   EXPECT_THAT(matcher.Match(LanguageTagOrDie("en")),
-              Optional(language_tags::ENGLISH_UK()));
+              Optional(language_tags::BRITISH_ENGLISH()));
 }
 
 TEST(LanguageTagMatcherTest, SerboCroatian) {

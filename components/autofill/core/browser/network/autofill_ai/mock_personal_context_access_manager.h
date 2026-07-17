@@ -34,6 +34,10 @@ class MockPersonalContextAccessManager : public PersonalContextAccessManager {
               GetPrefetchStatusByEntityType,
               (EntityType type),
               (const, override));
+  MOCK_METHOD(bool,
+              ServerHasDataAvailable,
+              (EntityType type),
+              (const, override));
 };
 
 }  // namespace autofill

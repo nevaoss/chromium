@@ -96,7 +96,6 @@
 #include "content/browser/browser_main_loop.h"
 #include "content/browser/buckets/bucket_manager.h"
 #include "content/browser/child_process_host_impl.h"
-#include "content/browser/child_process_security_policy_impl.h"
 #include "content/browser/code_cache/generated_code_cache_context.h"
 #include "content/browser/compositor/surface_utils.h"
 #include "content/browser/cpu_performance/cpu_performance.h"
@@ -131,6 +130,7 @@
 #include "content/browser/renderer_host/render_widget_helper.h"
 #include "content/browser/renderer_host/renderer_sandboxed_process_launcher_delegate.h"
 #include "content/browser/renderer_host/spare_render_process_host_manager_impl.h"
+#include "content/browser/security/cpsp/child_process_security_policy_impl.h"
 #include "content/browser/service_worker/service_worker_context_wrapper.h"
 #include "content/browser/site_info.h"
 #include "content/browser/site_instance_impl.h"
@@ -200,6 +200,7 @@
 #include "services/resource_coordinator/public/mojom/memory_instrumentation/memory_instrumentation.mojom.h"
 #include "services/service_manager/public/cpp/interface_provider.h"
 #include "services/tracing/public/cpp/trace_startup.h"
+#include "services/webnn/webnn_switches.h"
 #include "skia/ext/switches.h"
 #include "storage/browser/quota/quota_manager.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_registry.h"
@@ -1711,9 +1712,8 @@ RenderProcessHostImpl::RenderProcessHostImpl(
           perfetto::NamedTrack::FromPointer("RenderProcessHostImpl",
                                             this,
                                             GetChildProcessTracingTrack(id_))) {
-  // TODO(https://crbug.com/497761255): CHECK-exclusion: Convert to CHECK once
-  // we are sure this isn't hit.
-  DCHECK(!browser_context->ShutdownStarted());
+
+  CHECK(!browser_context->ShutdownStarted());
   TRACE_EVENT("shutdown", "RenderProcessHostImpl",
               ChromeTrackEvent::kRenderProcessHost, *this);
   TRACE_EVENT_BEGIN("shutdown", "Browser.RenderProcessHostImpl", tracing_track_,
@@ -2271,7 +2271,7 @@ void RenderProcessHostImpl::InitializeSharedMemoryRegionsOnceChannelIsUp() {
         base::AtomicSharedMemory<base::TimeTicks>::Create(
             priority_.is_background() ? base::TimeTicks()
                                       : base::TimeTicks::Now());
-    // TODO(https://crbug.com/497761255): CHECK-exclusion: Convert to CHECK once
+    // TODO(https://crbug.com/526542975): CHECK-exclusion: Convert to CHECK once
     // we are sure this isn't hit.
     DCHECK(last_foreground_time_region_.has_value());
   }
@@ -3417,12 +3417,14 @@ void RenderProcessHostImpl::OnImmersiveXrSessionStarted() {
   // TODO(https://crbug.com/397907158): Evaluate upgrading to CHECK.
   DUMP_WILL_BE_CHECK(!has_immersive_xr_session_);
   has_immersive_xr_session_ = true;
+  UpdateProcessPriority();
 }
 
 void RenderProcessHostImpl::OnImmersiveXrSessionStopped() {
   // TODO(https://crbug.com/397907158): Evaluate upgrading to CHECK.
   DUMP_WILL_BE_CHECK(has_immersive_xr_session_);
   has_immersive_xr_session_ = false;
+  UpdateProcessPriority();
 }
 
 bool RenderProcessHostImpl::HasImmersiveXrSessionForTesting() const {
@@ -3923,6 +3925,7 @@ void RenderProcessHostImpl::PropagateBrowserCommandLineToRenderer(
       switches::kMSEVideoBufferSizeLimitMb,
       switches::kNoZygote,
       switches::kOverrideLanguageDetection,
+      switches::kPartitionAllocSchedulerLoopQuarantine,
       switches::kPerfettoDisableInterning,
       switches::kProfilingAtStart,
       switches::kProfilingFile,
@@ -4048,6 +4051,10 @@ void RenderProcessHostImpl::PropagateBrowserCommandLineToRenderer(
 #endif
   };
   renderer_cmd->CopySwitchesFrom(browser_cmd, kSwitchNames);
+
+  // Propagate WebNN switches needed by backends that run in the renderer.
+  renderer_cmd->CopySwitchesFrom(
+      browser_cmd, switches::GetWebNNSwitchesForRendererProcess());
 
   // |switches::kGaiaConfig| can be set via browser command-line arguments,
   // usually by developers working on signin code. The switch, however, cannot
@@ -4653,7 +4660,7 @@ void RenderProcessHostImpl::Cleanup() {
   // Use `DeleteSoon` to delete `this` RenderProcessHost *after* the tasks
   // that are *already* queued on the UI thread have been given a chance to run
   // (this may include IPC handling tasks that depend on the existence of
-  // RenderProcessHost and/or ChildProcessSecurityPolicyImpl::SecurityState).
+  // RenderProcessHost and/or ChildProcessSecurityPolicyImpl::ProcessState).
 #ifndef NDEBUG
   is_self_deleted_ = true;
 #endif

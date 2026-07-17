@@ -103,6 +103,7 @@
 <translation id="1335767868357998043">Выбирайте место для адресной строки</translation>
 <translation id="1347468774581902829">Управление историей</translation>
 <translation id="1348596747084433075">https://www.amazon.com/Wife-Gifts/s?k=for+Wife+Gifts</translation>
+<translation id="1353169676553627502">Отключить уведомления о повышении уровня</translation>
 <translation id="1355337783640312381">Чтобы переключить аккаунт, нажмите на его значок</translation>
 <translation id="135806768612505061">Все вкладки</translation>
 <translation id="1358106883354237005">Управляемый аккаунт</translation>
@@ -609,6 +610,7 @@
 <translation id="3073633853887034268">ОК</translation>
 <translation id="3080525922482950719">Сохраняйте страницы, чтобы продолжить чтение позже или в офлайн-режиме.</translation>
 <translation id="3081338492074632642">Убедитесь, что пароль, который вы сохраняете, совпадает с паролем для сайта <ph name="WEBSITE" />.</translation>
+<translation id="3084484227247071193">Включить уведомления о повышении уровня</translation>
 <translation id="3087734570205094154">Снизу</translation>
 <translation id="309710370695886264">У вас есть повторяющийся пароль. Устраните проблему.</translation>
 <translation id="3099402981545350675">Адреса, сохраненные на этом устройстве, будут удалены. Также выбранные данные будут удалены из Chrome, но не из аккаунта Google</translation>
@@ -708,6 +710,7 @@
 <translation id="3449029510150690417">Создайте новую группу вкладок, укажите ее название и цвет.</translation>
 <translation id="345348365500626747">Адрес найден</translation>
 <translation id="3459644598174926977">В режиме Live можно задавать вопросы о странице, обсуждать идеи и просто общаться</translation>
+<translation id="3462768334899086950">Несохраненный файл и текущие вкладки будут потеряны.</translation>
 <translation id="3464194322481586217">Не удалось отследить цену.</translation>
 <translation id="3469117812148449995">Параметры сохранения пароля</translation>
 <translation id="3472469028191701821">Откроется в новой вкладке</translation>
@@ -965,6 +968,7 @@
 <translation id="4326912346867677256">Нажмите "Использовать пароль", чтобы выполнить безопасный вход.</translation>
 <translation id="4328843285884395590">Мой диск</translation>
 <translation id="4331177082088332784">Изменить выбор можно в BEGIN_LINKНастройках контентаEND_LINK.</translation>
+<translation id="4331712008356052424">Чтобы отправить эту ссылку, войдите в аккаунт <ph name="USER_EMAIL" /> на другом устройстве.</translation>
 <translation id="4334428914252001502">1 непрочитанная статья.</translation>
 <translation id="4338258232580025606">Не удается войти</translation>
 <translation id="4338650699862464074">Отправлять URL посещаемых страниц в Google</translation>
@@ -1471,6 +1475,7 @@
 <translation id="6040143037577758943">Закрыть</translation>
 <translation id="6042308850641462728">Ещё</translation>
 <translation id="6045460247888249350">Добавьте название</translation>
+<translation id="6050237559175440178">Подтвердите личность, чтобы сохранять и использовать информацию на всех своих устройствах.</translation>
 <translation id="6052269326659653305">Смена профиля</translation>
 <translation id="605721222689873409">ГГ</translation>
 <translation id="6059830886158432458">Управление рекомендациями</translation>
@@ -1846,6 +1851,7 @@
 <translation id="722339453342442311">Выполнить проверку</translation>
 <translation id="7227235818314667565">Общий доступ</translation>
 <translation id="7233006041370588369">Выберите, какой пароль использовать.</translation>
+<translation id="723874023660911012">Выбрать другой профиль</translation>
 <translation id="7241135764990439166">Режим инкогнито недоступен.</translation>
 <translation id="7248046129087111453"><ph name="BEGIN_LINK" />История поиска<ph name="END_LINK" /> и <ph name="BEGIN_LINK" />сведения о других действиях<ph name="END_LINK" /> могут сохраняться в аккаунте Google.</translation>
 <translation id="7253951228444156601">Проверка паролей…</translation>
@@ -2072,6 +2078,7 @@
 <translation id="7996239959906074962">Настроить…</translation>
 <translation id="800361585186029508">Введенные URL будут открываться в Google Chrome.</translation>
 <translation id="8005666035647241369">В Google Менеджере паролей на этом устройстве</translation>
+<translation id="8007106936382123905">{count,plural, =1{1 выполненная задача}one{# выполненная задача}few{# выполненные задачи}many{# выполненных задач}other{# выполненной задачи}}</translation>
 <translation id="8010488806779226127">Попробуйте функции, которые расширяют ваши возможности в интернете.</translation>
 <translation id="8011489434346330032">Веб-инспектор</translation>
 <translation id="8014007212279733632">Подтверждать личность при автозаполнении конфиденциальной информации</translation>
@@ -2155,6 +2162,7 @@
 <translation id="826614135184049678">В результате сброса настроек iPad произошел выход из аккаунта <ph name="USER_NAME" />. Чтобы войти, нажмите "Продолжить" ниже.</translation>
 <translation id="8270320981823560179">Диск</translation>
 <translation id="8273982424131314219">Данные будут вставлены на сайте <ph name="URL" /></translation>
+<translation id="8274795744553482834">Вы собираетесь сменить профиль</translation>
 <translation id="8275068909952022340">Ещё…</translation>
 <translation id="8280797717392145626">Получены ссылки</translation>
 <translation id="8281781826761538115">Язык по умолчанию: <ph name="DEFAULT_LOCALE" /></translation>

@@ -41,7 +41,14 @@ if (use_unified_system_module) {
   if (current_toolchain == default_toolchain) {
     # Note: ios doesn't support hermetic xcode, so we do this unconditionally.
     need_mac_sysroot =
-        (host_os == "mac" || target_os == "mac") && use_system_xcode
+        (host_os == "mac" || target_os == "mac") && use_system_xcode &&
+        defined(mac_sdk_path) &&
+        filter_exclude([ rebase_path(mac_sdk_path, root_build_dir) ],
+                       [
+                         "../*",
+                         "/*",
+                       ]) != []
+
     if (need_mac_sysroot) {
       action("mac_sysroot") {
         script = "//build/noop.py"
@@ -50,16 +57,26 @@ if (use_unified_system_module) {
                 # Avoid overlap with //build/config/mac:sdk_inputs
                 [ "*.defs" ])
       }
+    } else {
+      group("mac_sysroot") {
+      }
     }
     if (is_ios) {
       if (need_mac_sysroot && ios_sdk_path == mac_sdk_path) {
         group("ios_sysroot") {
           public_deps = [ ":mac_sysroot" ]
         }
-      } else {
+      } else if (filter_exclude([ rebase_path(ios_sdk_path, root_build_dir) ],
+                                [
+                                  "../*",
+                                  "/*",
+                                ]) != []) {
         action("ios_sysroot") {
           script = "//build/noop.py"
           outputs = expand_directory(ios_sdk_path + "/usr/include", true)
+        }
+      } else {
+        group("ios_sysroot") {
         }
       }
     }

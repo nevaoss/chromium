@@ -1155,6 +1155,20 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Browser.Shortcuts.TriggeredCommandId"
+    enum="MappedChromeCommandId" expires_after="2027-06-01">
+  <owner>dljames@chromium.org</owner>
+  <owner>top-chrome-desktop-ui@google.com</owner>
+  <summary>
+    Records the browser command ID (from chrome_command_ids.h) whenever a
+    registered keyboard shortcut is pressed (excluding auto-repeat events).
+
+    Note: Command IDs in chrome_command_ids.h are not strictly guaranteed to be
+    stable version-to-version. When analyzing historical trends across multiple
+    milestones, filter by specific Chrome milestone versions.
+  </summary>
+</histogram>
+
 <histogram name="Browser.SupportTool.SupportToolWebUIAction"
     enum="SupportToolWebUIActionType" expires_after="2025-04-06">
   <owner>iremuguz@google.com</owner>

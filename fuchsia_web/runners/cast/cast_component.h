@@ -116,7 +116,6 @@ class CastComponent final
   chromium::cast::ApplicationConfig application_config_;
   chromium::cast::UrlRequestRewriteRulesProviderPtr url_rewrite_rules_provider_;
   std::vector<fuchsia::web::UrlRequestRewriteRule> initial_url_rewrite_rules_;
-  const std::vector<std::string> allowed_origins_;
 
   bool constructor_active_ = false;
   std::unique_ptr<NamedMessagePortConnectorFuchsia> connector_;

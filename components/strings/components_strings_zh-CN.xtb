@@ -581,6 +581,7 @@
 <translation id="1902576642799138955">有效期</translation>
 <translation id="1908217026282415406">使用和移动摄像头</translation>
 <translation id="1908690643053136980">您的管理员不允许此网站使用<ph name="PERMISSION" /></translation>
+<translation id="1912750443952232242">将身份证件保存到 Google 钱包</translation>
 <translation id="1913037223029790376">使用此虚拟卡的银行卡验证码 (CVC)</translation>
 <translation id="191374271204266022">以 JSON 格式复制</translation>
 <translation id="1914326953223720820">解压缩服务</translation>
@@ -1491,6 +1492,7 @@
 <translation id="3325568918769906282">按降序</translation>
 <translation id="3325662270238538525">近期文件访问和修改活动，包括文件名、文件内容的数字指纹、下载来源和元数据</translation>
 <translation id="3329013043687509092">饱和度</translation>
+<translation id="3330483197654063678">开启后，Chrome 会分享此窗口中打开的标签页，以便提供更贴合需求的回答。</translation>
 <translation id="3333762389743153920">无法用作虚拟卡</translation>
 <translation id="3338095232262050444">安全</translation>
 <translation id="333839153442689579">高强度间歇训练</translation>
@@ -2842,6 +2844,7 @@
 <translation id="5458150163479425638">{CONTACT,plural, =0{<ph name="CONTACT_PREVIEW" />}=1{<ph name="CONTACT_PREVIEW" />以及另外 <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> 名联系人}other{<ph name="CONTACT_PREVIEW" />以及另外 <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> 名联系人}}</translation>
 <translation id="5463625433003343978">正在查找设备…</translation>
 <translation id="5464236009658034488">办公用品</translation>
+<translation id="5465128270485645058">如果此窗口中打开的标签页与此对话串相关，系统会自动分享这些标签页，从而提供更贴合需求的回答。</translation>
 <translation id="5465724643247062031">玻璃（不透明）</translation>
 <translation id="5466018172325111652">没收到验证码？<ph name="BEGIN_LINK" />获取新验证码<ph name="END_LINK" /></translation>
 <translation id="5466818462212249084">支付应用</translation>
@@ -3124,6 +3127,7 @@
 <translation id="5911020115933784199">活动与演出</translation>
 <translation id="5911110632211230665">禁止打开</translation>
 <translation id="5912796581727968237">打开 Google 钱包</translation>
+<translation id="5914185423510719251">将 KTN 保存到 Google 钱包</translation>
 <translation id="5914465277418006379"><ph name="MEMBER_FIRST_NAME" />添加了此标签页</translation>
 <translation id="5915189366813702112">弹性工作安排</translation>
 <translation id="59174027418879706">已启用</translation>
@@ -3646,6 +3650,7 @@
 <translation id="6702851555558236418">音频与音乐软件</translation>
 <translation id="6702919718839027939">演示</translation>
 <translation id="6704458454638854812">已设置“custom_size”属性，但名称本应为“custom”。</translation>
+<translation id="670477556876354552">需要重新启动</translation>
 <translation id="6706005862292023715">窗帘与窗饰</translation>
 <translation id="6706210727756204531">范围</translation>
 <translation id="6706678697074905703">此 IBAN 无法保存到您的 Google 账号中，已改为保存到此设备上的 Chrome 中。</translation>
@@ -3903,6 +3908,7 @@
 <translation id="7110116949943042888">临时和季节性职位</translation>
 <translation id="7110368079836707726">学院与大学</translation>
 <translation id="7111507312244504964">不动产检测与评估</translation>
+<translation id="7117290130383718594">文本注释</translation>
 <translation id="7118618213916969306">搜索剪贴板上的网址：<ph name="SHORT_URL" /></translation>
 <translation id="7118852830504022370">您之所以会看到此警告，是因为该网站不支持 HTTPS。<ph name="BEGIN_LEARN_MORE_LINK" />详细了解此警告<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="7119063404975271297">电视剧</translation>

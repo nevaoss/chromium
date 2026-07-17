@@ -35,8 +35,11 @@ class UnboundedElementBrowserTest : public ContentBrowserTest {
   UnboundedElementBrowserTest() = default;
   ~UnboundedElementBrowserTest() override = default;
   void SetUp() override {
-#if BUILDFLAG(IS_ANDROID)
-    // TODO(crbug.com/508672616): Not yet implemented on Android.
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
+    // TODO(crbug.com/508672616): Not yet implemented on Android/iOS.
+    GTEST_SKIP();
+#elif BUILDFLAG(IS_LINUX)
+    // TODO(crbug.com/525899641): Flaky/failing on Linux Aura/Wayland.
     GTEST_SKIP();
 #else
     feature_list_.InitWithFeatures(

@@ -8,6 +8,7 @@
 #include <optional>
 #include <utility>
 
+#include "base/i18n/rtl.h"
 #include "chrome/browser/actor/ui/actor_overlay_web_view.h"
 #include "chrome/browser/devtools/devtools_contents_resizing_strategy.h"
 #include "chrome/browser/enterprise/data_protection/data_protection_overlay_view.h"
@@ -689,7 +690,12 @@ views::ProposedLayout ContentsContainerView::CalculateProposedLayout(
     content_layout->bounds.Outset(*target_content_bounds_);
     contents_clip_rect_ =
         gfx::Rect(gfx::Point(), content_layout->bounds.size());
-    contents_clip_rect_.Inset(-target_content_bounds_->ToInsets());
+    gfx::Insets insets = -target_content_bounds_->ToInsets();
+    // Rendering layer isn't mirrored, so need to manually mirror insets.
+    if (base::i18n::IsRTL()) {
+      insets.set_left_right(insets.right(), insets.left());
+    }
+    contents_clip_rect_.Inset(insets);
   } else {
     contents_clip_rect_ = gfx::Rect();
   }

@@ -38,6 +38,8 @@
 #include "testing/gtest/include/gtest/gtest.h"
 
 #if !BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/ui/actions/chrome_action_id.h"
+#include "chrome/browser/ui/actions/chrome_actions.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/hats/hats_service_factory.h"
 #include "chrome/browser/ui/hats/mock_hats_service.h"
@@ -45,6 +47,8 @@
 #include "chrome/browser/ui/tabs/tab_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/test_tab_strip_model_delegate.h"
+#include "chrome/browser/ui/toolbar/pinned_toolbar/pinned_toolbar_actions_model.h"
+#include "ui/actions/actions.h"
 #endif
 
 using testing::_;
@@ -106,6 +110,9 @@ class ContextualTasksSidePanelCoordinatorTest : public testing::Test {
  public:
   void SetUp() override {
     profile_ = std::make_unique<TestingProfile>();
+#if !BUILDFLAG(IS_ANDROID)
+    InitializeActionIdStringMapping();
+#endif
 
     ContextualTasksServiceFactory::GetInstance()->SetTestingFactory(
         profile_.get(),
@@ -200,6 +207,9 @@ class ContextualTasksSidePanelCoordinatorTest : public testing::Test {
     tabs_.clear();
 
     profile_.reset();
+#if !BUILDFLAG(IS_ANDROID)
+    actions::ActionIdMap::ResetMapsForTesting();
+#endif
   }
 
   tabs::TabInterface* CreateMockTab() {
@@ -511,6 +521,36 @@ TEST_F(ContextualTasksSidePanelCoordinatorTest, OpenInZeroStateCreatesNewTask) {
 
   coordinator_->OpenInZeroState();
 }
+
+#if !BUILDFLAG(IS_ANDROID)
+TEST_F(ContextualTasksSidePanelCoordinatorTest,
+       OpenInZeroState_PinnedToolbarButton) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(kEnableContextualTasksPinButtonInToolbar);
+
+  // Pin the action in the PinnedToolbarActionsModel.
+  auto* model = PinnedToolbarActionsModel::Get(profile_.get());
+  ASSERT_TRUE(model);
+  model->UpdatePinnedState(kActionSidePanelShowContextualTasks,
+                           /*should_pin=*/true);
+
+  ContextualTask task(base::Uuid::GenerateRandomV4());
+  ON_CALL(*mock_controller_, GetContextualTaskForTab(_))
+      .WillByDefault(Return(task));
+
+  auto* mock_ui_service = static_cast<MockContextualTasksUiService*>(
+      ContextualTasksUiServiceFactory::GetForBrowserContext(profile_.get()));
+
+  EXPECT_CALL(
+      *mock_ui_service,
+      SetInitialEntryPointForTask(
+          task.GetTaskId(), omnibox::ChromeAimEntryPoint::
+                                DESKTOP_CHROME_COBROWSE_PINNED_TOOLBAR_BUTTON))
+      .Times(1);
+
+  coordinator_->OpenInZeroState();
+}
+#endif
 
 }  // namespace contextual_tasks
 

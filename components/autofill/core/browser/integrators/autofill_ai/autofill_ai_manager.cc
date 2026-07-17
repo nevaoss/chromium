@@ -61,6 +61,7 @@
 #include "components/autofill/core/browser/suggestions/autofill_ai/autofill_ai_suggestion_generator.h"
 #include "components/autofill/core/browser/suggestions/suggestion.h"
 #include "components/autofill/core/browser/suggestions/suggestion_generator.h"
+#include "components/autofill/core/common/autofill_debug_features.h"
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/autofill/core/common/autofill_internals/log_message.h"
 #include "components/autofill/core/common/autofill_internals/logging_scope.h"
@@ -184,6 +185,23 @@ bool IsSaveAsynchronous(EntityType type,
                         EntityInstance::RecordType record_type) {
   return GetWalletPassType(type, record_type) ==
          EntityInstance::WalletPassType::kPrivate;
+}
+
+void PrefetchAmbientAutofillContext(AutofillClient& client,
+                                    AutofillManager& manager) {
+  DenseSet<EntityType> relevant_types;
+  manager.ForEachCachedForm([&](const FormStructure& form) {
+    relevant_types.insert_all(GetRelevantEntityTypesForFields(form.fields()));
+  });
+  if (relevant_types.empty()) {
+    return;
+  }
+
+  if (PersonalContextAccessManager* access_manager =
+          client.GetPersonalContextAccessManager()) {
+    base::flat_set<EntityType> requested_types(std::from_range, relevant_types);
+    access_manager->PrefetchContext(requested_types);
+  }
 }
 
 }  // namespace
@@ -341,24 +359,15 @@ void AutofillAiManager::OnEditedAutofilledField(const FormStructure& form,
 
 void AutofillAiManager::OnAfterLoadedServerPredictions(
     AutofillManager& manager) {
-  DenseSet<EntityType> relevant_types;
-  manager.ForEachCachedForm([&](const FormStructure& form) {
-    relevant_types.insert_all(GetRelevantEntityTypesForFields(form.fields()));
-  });
-  if (relevant_types.empty()) {
-    return;
-  }
-
-  if (PersonalContextAccessManager* access_manager =
-          client_->GetPersonalContextAccessManager()) {
-    base::flat_set<EntityType> requested_types(std::from_range, relevant_types);
-    access_manager->PrefetchContext(requested_types);
+  if (MayPerformAutofillAiAction(*client_,
+                                 AutofillAiAction::kAmbientAutofill)) {
+    PrefetchAmbientAutofillContext(*client_, manager);
   }
 }
 
 void AutofillAiManager::OnPrefetchContextComplete(
     const PersonalContextAccessManager& manager,
-    bool success) {
+    base::span<const EntityInstance> entities) {
   if (!std::ranges::contains(client_->GetAutofillSuggestions(),
                              SuggestionType::kFetchingAmbientData,
                              &Suggestion::type)) {

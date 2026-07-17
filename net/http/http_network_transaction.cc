@@ -2174,15 +2174,12 @@ int HttpNetworkTransaction::HandleIOError(int error) {
           if (retry_attempts_on_connection_errors_ ==
               kAsyncRetryThresholdOnConnectionErrors) {
             base::UmaHistogramBoolean(
-                "Net.NetworkTransaction.AsyncRetryOnTooManyConnectionErrors."
-                "First",
-                true);
+                kAsyncRetryOnTooManyConnectionErrorsFirstHistogram, true);
             base::UmaHistogramBoolean(
-                base::StrCat({"Net.NetworkTransaction."
-                              "AsyncRetryOnTooManyConnectionErrors."
-                              "First.",
-                              NegotiatedProtocolToHistogramSuffix(
-                                  negotiated_protocol_)}),
+                base::StrCat(
+                    {kAsyncRetryOnTooManyConnectionErrorsFirstHistogram, ".",
+                     NegotiatedProtocolToHistogramSuffix(
+                         negotiated_protocol_)}),
                 true);
             base::UmaHistogramSparse(
                 "Net.NetworkTransaction.InitialErrorOnAsyncRetry",

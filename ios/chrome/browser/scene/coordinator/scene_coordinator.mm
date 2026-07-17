@@ -82,6 +82,7 @@
 #import "ios/chrome/browser/shared/coordinator/scene/scene_state.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/incognito_state.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/layout_state.h"
+#import "ios/chrome/browser/shared/coordinator/scene/state/layout_state_passkey.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/tab_grid_state.h"
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
 #import "ios/chrome/browser/shared/model/browser/browser.h"
@@ -122,12 +123,21 @@
 
 // Used to create PassKey to access the UIViewController through the
 // BrowserProvider interface (crbug.com/40606165).
-class SceneCoordinatorHelper {
+class SceneCoordinatorPassKeyFactory {
  public:
   static BrowserProviderPassKey CreateKey() {
-    return base::PassKey<SceneCoordinatorHelper>();
+    return base::PassKey<SceneCoordinatorPassKeyFactory>();
   }
 };
+
+namespace layout_state {
+class SceneCoordinatorPassKeyFactory {
+ public:
+  static base::PassKey<SceneCoordinatorPassKeyFactory> CreateKey() {
+    return base::PassKey<SceneCoordinatorPassKeyFactory>();
+  }
+};
+}  // namespace layout_state
 
 namespace {
 
@@ -167,6 +177,11 @@ void OnListFamilyMembersResponse(
       break;
     }
   }
+}
+
+// Helper function to return the domain passkey used to mutate the layout state.
+inline LayoutStateScenePassKey PassKey() {
+  return layout_state::SceneCoordinatorPassKeyFactory::CreateKey();
 }
 
 }  // namespace
@@ -317,7 +332,8 @@ void OnListFamilyMembersResponse(
         GeminiServiceFactory::GetForProfile(self.profile);
     if (IsChromeNextIaEnabled()) {
       [_layoutState updateAppBarPositionWithView:_viewController.view
-                                     coordinator:nil];
+                                     coordinator:nil
+                                         passKey:PassKey()];
       _sceneMediator.appBarPositionAtLaunch = _layoutState.appBarPosition;
     }
     _viewController.mutator = _sceneMediator;
@@ -1145,7 +1161,7 @@ void OnListFamilyMembersResponse(
     id<BrowserProvider> presentingInterface =
         self.sceneState.browserProviderInterface.currentBrowserProvider;
     baseViewController = [presentingInterface
-        viewController:SceneCoordinatorHelper::CreateKey()];
+        viewController:SceneCoordinatorPassKeyFactory::CreateKey()];
   }
   __weak __typeof(self) weakSelf = self;
   _guidedTourCoordinator =

@@ -510,7 +510,6 @@ class HostProcess : public ConfigWatcher::Delegate,
 
   DesktopEnvironmentOptions desktop_environment_options_;
   bool security_key_auth_policy_enabled_ = false;
-  bool security_key_extension_supported_ = true;
 
   // Used to specify which window to stream, if enabled.
   webrtc::WindowId window_id_ = 0;
@@ -1121,10 +1120,13 @@ void HostProcess::StartOnUiThread() {
   if (!security_key_socket_name.empty()) {
     remoting::SecurityKeyAuthHandlerPosix::SetSecurityKeySocketName(
         security_key_socket_name);
-  } else if (!multi_process_) {
-    security_key_extension_supported_ = false;
+    desktop_environment_options_.set_enable_security_key(true);
+  } else if (multi_process_) {
+    desktop_environment_options_.set_enable_security_key(true);
   }
-#endif  // BUILDFLAG(IS_POSIX)
+#elif BUILDFLAG(IS_WIN)
+  desktop_environment_options_.set_enable_security_key(true);
+#endif
 
   // Create a desktop environment factory appropriate to the build type &
   // platform.
@@ -1688,6 +1690,10 @@ bool HostProcess::OnPairingPolicyUpdate(const base::DictValue& policies) {
   return true;
 }
 
+// TODO(crbug.com/517007701): This callback and the associated host restart
+// logic will be completely removed once the SecurityKeyExtension lifecycle
+// is moved into ClientSession in the upcoming parallel transport refactoring
+// CL, which will enable 100% dynamic policy enforcement without restarts.
 bool HostProcess::OnGnubbyAuthPolicyUpdate(const base::DictValue& policies) {
   DCHECK(context_->network_task_runner()->BelongsToCurrentThread());
 
@@ -2044,9 +2050,9 @@ void HostProcess::StartHost() {
                           base::Unretained(this)),
       &local_session_policies_provider_);
 
-  if (security_key_auth_policy_enabled_ && security_key_extension_supported_) {
-    host_->AddExtension(
-        std::make_unique<SecurityKeyExtension>(context_->file_task_runner()));
+  if (security_key_auth_policy_enabled_ &&
+      desktop_environment_options_.enable_security_key()) {
+    host_->AddExtension(std::make_unique<SecurityKeyExtension>());
   }
 
   host_->AddExtension(std::make_unique<TestEchoExtension>());

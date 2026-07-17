@@ -26,8 +26,6 @@
 #include "fuchsia_web/runners/cast/cast_runner.h"
 #include "fuchsia_web/runners/cast/cast_streaming.h"
 #include "fuchsia_web/runners/common/web_component.h"
-#include "url/gurl.h"
-#include "url/origin.h"
 
 namespace {
 
@@ -53,14 +51,6 @@ fuchsia::web::ConsoleLogLevel SeverityToConsoleLogLevel(
 
   // The safest thing to do for unrecognized values is to not log.
   return fuchsia::web::ConsoleLogLevel::NONE;
-}
-
-std::string GetAllowedOrigin(
-    const chromium::cast::ApplicationConfig& application_config) {
-  if (IsAppConfigForCastStreaming(application_config)) {
-    return GetMessagePortOriginForAppId(application_config.id());
-  }
-  return url::Origin::Create(GURL(application_config.web_url())).Serialize();
 }
 
 }  // namespace
@@ -91,7 +81,6 @@ CastComponent::CastComponent(std::string_view debug_name,
       url_rewrite_rules_provider_(std::move(params.url_rewrite_rules_provider)),
       initial_url_rewrite_rules_(
           std::move(params.initial_url_rewrite_rules.value())),
-      allowed_origins_({GetAllowedOrigin(application_config_)}),
       api_bindings_client_(std::move(params.api_bindings_client)),
       application_context_(std::move(params.application_context),
                            async_get_default_dispatcher()),
@@ -118,8 +107,7 @@ void CastComponent::StartComponent() {
 
   WebComponent::StartComponent();
 
-  connector_ = std::make_unique<NamedMessagePortConnectorFuchsia>(
-      frame(), allowed_origins_);
+  connector_ = std::make_unique<NamedMessagePortConnectorFuchsia>(frame());
 
   url_rewrite_rules_provider_.set_error_handler([this](zx_status_t status) {
     ZX_LOG_IF(ERROR, status != ZX_OK, status)
@@ -158,7 +146,7 @@ void CastComponent::StartComponent() {
   }
 
   api_bindings_client_->AttachToFrame(
-      frame(), connector_.get(), allowed_origins_,
+      frame(), connector_.get(),
       base::BindOnce(&CastComponent::DestroyComponent, base::Unretained(this),
                      kBindingsFailureExitCode));
 
@@ -179,7 +167,7 @@ void CastComponent::StartComponent() {
     // TODO(crbug.com/40724536): Replace this with the PermissionManager API
     // when available.
     const std::string origin =
-        url::Origin::Create(GURL(application_config_.web_url())).Serialize();
+        GURL(application_config_.web_url()).DeprecatedGetOriginAsURL().spec();
     for (auto& permission : application_config_.permissions()) {
       fuchsia::web::PermissionDescriptor permission_clone;
       zx_status_t status = permission.Clone(&permission_clone);
@@ -259,11 +247,8 @@ void CastComponent::OnNavigationStateChanged(
     connector_->GetConnectMessage(&connect_message, &connect_port);
 
     // Send the NamedMessagePortConnector handshake to the page.
-    // We expect only one allowed origin to be initialized in the constructor.
-    CHECK_EQ(allowed_origins_.size(), 1u);
     frame()->PostMessage(
-        allowed_origins_[0],
-        CreateWebMessage(connect_message, std::move(connect_port)),
+        "*", CreateWebMessage(connect_message, std::move(connect_port)),
         [](fuchsia::web::Frame_PostMessage_Result result) {
           DCHECK(result.is_response());
         });

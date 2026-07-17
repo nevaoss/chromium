@@ -6,6 +6,7 @@
 
 #include "chrome/browser/ui/tabs/tab_drag_api/desktop_tab_drag_impl/tab_drag_session_input_adapter_impl.h"
 #include "components/browser_apis/tab_drag/adapters/tab_drag_session_input_adapter.h"
+#include "components/browser_apis/tab_drag/sessions/drop_target_registry.h"
 #include "components/browser_apis/tab_drag/sessions/drop_target_registry_impl.h"
 #include "components/browser_apis/tab_drag/sessions/tab_drag_event_router.h"
 #include "components/browser_apis/tab_drag/sessions/tab_drag_session_listener.h"

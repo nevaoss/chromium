@@ -383,14 +383,7 @@ TEST_F(
   // Produce a resource. The created resource should be an overlay candidate.
   EXPECT_TRUE(drawing_buffer_->PrepareTransferableResource(&resource,
                                                            &release_callback));
-#if BUILDFLAG(IS_WIN)
-  // Note: On Windows, DrawingBuffer does not query UseOverlaysForWebGL() at
-  // all but adds SCANOUT only via directly querying whether swapchain-backed
-  // SIs are supported when low-latency is enabled.
-  EXPECT_FALSE(resource.GetIsOverlayCandidate());
-#else
   EXPECT_TRUE(resource.GetIsOverlayCandidate());
-#endif
 
   drawing_buffer_->BeginDestruction();
 }
@@ -626,8 +619,8 @@ TEST_F(DrawingBufferTest, packedDepthStencilSupported) {
         std::move(provider), context_info, nullptr, gfx::Size(10, 10),
         premultiplied_alpha, want_alpha_channel, want_depth_buffer,
         want_stencil_buffer, want_antialiasing, desynchronized, preserve,
-        Platform::kWebGL1ContextType, /*is_offscreen_canvas=*/false,
-        PredefinedColorSpace::kSRGB, gl::GpuPreference::kHighPerformance);
+        Platform::kWebGL1ContextType, PredefinedColorSpace::kSRGB,
+        gl::GpuPreference::kHighPerformance);
 
     // When we request a depth or a stencil buffer, we will get both.
     EXPECT_EQ(cases[i].request_depth || cases[i].request_stencil,
@@ -709,8 +702,8 @@ TEST_F(DrawingBufferTest,
       nullptr, context_info, nullptr, too_big_size, false, false, false, false,
       false,
       /*desynchronized=*/false, DrawingBuffer::kDiscard,
-      Platform::kWebGL1ContextType, /*is_offscreen_canvas=*/false,
-      PredefinedColorSpace::kSRGB, gl::GpuPreference::kHighPerformance);
+      Platform::kWebGL1ContextType, PredefinedColorSpace::kSRGB,
+      gl::GpuPreference::kHighPerformance);
   EXPECT_EQ(too_big_drawing_buffer, nullptr);
   drawing_buffer_->BeginDestruction();
 }

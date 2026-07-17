@@ -439,8 +439,9 @@ Suggestion CreateNoDataSuggestion() {
       l10n_util::GetStringUTF16(IDS_AUTOFILL_AT_MEMORY_NO_DATA),
       SuggestionType::kAtMemorySearchResult);
   suggestion.acceptability =
-      Suggestion::Acceptability::kUnacceptableWithDeactivatedStyle;
+      Suggestion::Acceptability::kUnacceptable;
   suggestion.filtration_policy = Suggestion::FiltrationPolicy::kStatic;
+  suggestion.icon = Suggestion::Icon::kSadTab;
   return suggestion;
 }
 
@@ -451,7 +452,7 @@ Suggestion CreateNoConnectionSuggestion() {
       l10n_util::GetStringUTF16(IDS_AUTOFILL_AT_MEMORY_NO_CONNECTION),
       SuggestionType::kAtMemoryNoConnection);
   suggestion.acceptability =
-      Suggestion::Acceptability::kUnacceptableWithDeactivatedStyle;
+      Suggestion::Acceptability::kUnacceptable;
   suggestion.filtration_policy = Suggestion::FiltrationPolicy::kStatic;
   suggestion.icon = Suggestion::Icon::kSadTab;
   return suggestion;
@@ -463,8 +464,7 @@ Suggestion CreateGenericErrorSuggestion() {
   Suggestion suggestion(
       l10n_util::GetStringUTF16(IDS_AUTOFILL_AT_MEMORY_GENERIC_ERROR),
       SuggestionType::kAtMemoryGenericError);
-  suggestion.acceptability =
-      Suggestion::Acceptability::kUnacceptableWithDeactivatedStyle;
+  suggestion.acceptability = Suggestion::Acceptability::kUnacceptable;
   suggestion.filtration_policy = Suggestion::FiltrationPolicy::kStatic;
   suggestion.icon = Suggestion::Icon::kSadTab;
   return suggestion;
@@ -700,6 +700,7 @@ Suggestion AtMemoryManager::CreateUnsupportedQuerySuggestion(
   suggestion.acceptability = Suggestion::Acceptability::kAcceptable;
   suggestion.filtration_policy = Suggestion::FiltrationPolicy::kStatic;
   suggestion.payload = Suggestion::OpenGeminiPayload(query);
+  suggestion.icon = Suggestion::Icon::kSpark;
   return suggestion;
 }
 
@@ -782,7 +783,7 @@ void AtMemoryManager::OnSearchResultsReceived(
       break;
     case accessibility_annotator::MemorySearchStatus::kPartialResponseSuccess:
       break;
-    case accessibility_annotator::MemorySearchStatus::kDataFetchFailure:
+    case accessibility_annotator::MemorySearchStatus::kNoConnectionFailure:
       suggestions.push_back(CreateNoConnectionSuggestion());
       break;
     case accessibility_annotator::MemorySearchStatus::kInferenceFailure:

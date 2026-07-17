@@ -81,8 +81,6 @@ inline constexpr char
     kGlicToolbarButtonLocationLeftOfProfileChipWithBackground[] =
         "LeftOfProfileChipWithBackground";
 
-BASE_DECLARE_FEATURE(kGlicButtonAutoSummarize);
-
 BASE_DECLARE_FEATURE(kGlicGetTabFaviconById);
 
 BASE_DECLARE_FEATURE(kGlicSkipCookieSyncOnOpen);

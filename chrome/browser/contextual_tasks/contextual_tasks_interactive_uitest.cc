@@ -2560,4 +2560,35 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksInteractiveUiTestParameterized,
   RunTestSequence(std::move(sequence));
 }
 
+IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
+                       ComposeboxLensButtonIsEnabled) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelId);
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kOpenedTab);
+  const GURL kThreadUrl("https://www.google.com/search?q=thread");
+  // #lensIcon is in the inner cr-composebox nested under the contextual tasks
+  // composebox, hence the doubled #composebox.
+  const DeepQuery kLensIcon = {"contextual-tasks-app", "#composebox",
+                               "#composebox", "#lensIcon"};
+  RunTestSequence(
+      InstrumentTab(kPrimaryTab, 0), SelectTab(kTabStripElementId, 0),
+      OpenContextualTasksInCurrentTab(GURL(kCujInterceptionUrl)),
+      InstrumentNextTab(kOpenedTab),
+      SimulateThreadLinkAndOpenPanel(kSidePanelId),
+      WaitForWebContentsReady(kOpenedTab),
+      CheckElement(
+          kOpenedTab,
+          [kThreadUrl](ui::TrackedElement* el) {
+            auto* web_contents = AsInstrumentedWebContents(el)->web_contents();
+            const GURL& url = web_contents->GetLastCommittedURL();
+            std::string actual_q;
+            std::string expected_q;
+            return url.host() == chrome::kChromeUIContextualTasksHost &&
+                   net::GetValueForKeyInQuery(url, "q", &actual_q) &&
+                   net::GetValueForKeyInQuery(kThreadUrl, "q", &expected_q) &&
+                   actual_q == expected_q;
+          }),
+      WaitForElementExists(kSidePanelId, kLensIcon),
+      WaitForJsResultAt(kSidePanelId, kLensIcon, "el => !el.disabled", true));
+}
+
 }  // namespace contextual_tasks

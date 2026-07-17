@@ -1154,7 +1154,7 @@ TEST_F(HTMLSelectElementTest, DescendantCounters) {
   };
   auto options_slot = [select]() {
     return select->GetShadowRoot()->getElementById(
-        shadow_element_names::kSelectOptions);
+        shadow_element_names::kPseudoSelectOptionsSlot);
   };
 
   EXPECT_EQ(select->ChildrenDescendantCounts().at(c1).num_options, 0);

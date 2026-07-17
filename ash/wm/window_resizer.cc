@@ -93,7 +93,9 @@ WindowResizer::WindowResizer(WindowState* window_state)
   DCHECK(window_state_->drag_details());
 }
 
-WindowResizer::~WindowResizer() = default;
+WindowResizer::~WindowResizer() {
+  CHECK_EQ(delete_block_count_, 0u);
+}
 
 // static
 int WindowResizer::GetBoundsChangeForWindowComponent(int component) {

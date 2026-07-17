@@ -32,6 +32,7 @@
 
 #include "third_party/blink/renderer/platform/fonts/font_custom_platform_data.h"
 
+#include "base/containers/heap_array.h"
 #include "base/logging.h"
 #include "build/build_config.h"
 #include "third_party/blink/renderer/platform/fonts/font_cache.h"
@@ -261,18 +262,19 @@ const FontPlatformData* FontCustomPlatformData::GetFontPlatformData(
       palette_index = palette_interpolation.RetrievePaletteIndex(palette);
     }
 
-    std::unique_ptr<SkFontArguments::Palette::Override[]> sk_overrides;
+    base::HeapArray<SkFontArguments::Palette::Override> sk_overrides;
     if (palette_index.has_value()) {
       sk_palette.index = *palette_index;
 
       if (color_overrides.size()) {
-        sk_overrides = std::make_unique<SkFontArguments::Palette::Override[]>(
-            color_overrides.size());
+        sk_overrides =
+            base::HeapArray<SkFontArguments::Palette::Override>::Uninit(
+                color_overrides.size());
         for (wtf_size_t i = 0; i < color_overrides.size(); i++) {
           SkColor sk_color = color_overrides[i].color.toSkColor4f().toSkColor();
-          UNSAFE_TODO(sk_overrides[i]) = {color_overrides[i].index, sk_color};
+          sk_overrides[i] = {color_overrides[i].index, sk_color};
         }
-        sk_palette.overrides = sk_overrides.get();
+        sk_palette.overrides = sk_overrides.data();
         sk_palette.overrideCount = color_overrides.size();
       }
 

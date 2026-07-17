@@ -210,7 +210,8 @@ class QuicChromiumClientSessionTest
     }
     std::unique_ptr<DatagramClientSocket> socket =
         socket_factory_.CreateDatagramClientSocket(
-            DatagramSocket::DEFAULT_BIND, NetLog::Get(), NetLogSource());
+            DatagramSocket::DEFAULT_BIND, handles::kInvalidNetworkHandle,
+            NetLog::Get(), NetLogSource());
     if (default_network_ != handles::kInvalidNetworkHandle) {
       socket->ConnectUsingNetwork(default_network_, kIpEndPoint);
     } else {
@@ -1921,6 +1922,7 @@ TEST_P(QuicChromiumClientSessionTest, MigrateToSocket) {
   // Create connected socket.
   std::unique_ptr<DatagramClientSocket> new_socket =
       socket_factory_.CreateDatagramClientSocket(DatagramSocket::RANDOM_BIND,
+                                                 handles::kInvalidNetworkHandle,
                                                  NetLog::Get(), NetLogSource());
   EXPECT_THAT(new_socket->Connect(kIpEndPoint), IsOk());
 
@@ -2019,7 +2021,8 @@ TEST_P(QuicChromiumClientSessionTest, MigrateToSocketMaxReaders) {
     // Create connected socket.
     std::unique_ptr<DatagramClientSocket> new_socket =
         socket_factory_.CreateDatagramClientSocket(
-            DatagramSocket::RANDOM_BIND, NetLog::Get(), NetLogSource());
+            DatagramSocket::RANDOM_BIND, handles::kInvalidNetworkHandle,
+            NetLog::Get(), NetLogSource());
     EXPECT_THAT(new_socket->Connect(kIpEndPoint), IsOk());
 
     // Create reader and writer.
@@ -2063,6 +2066,7 @@ TEST_P(QuicChromiumClientSessionTest, MigrateToSocketMaxReaders) {
   // Create connected socket.
   std::unique_ptr<DatagramClientSocket> new_socket =
       socket_factory_.CreateDatagramClientSocket(DatagramSocket::RANDOM_BIND,
+                                                 handles::kInvalidNetworkHandle,
                                                  NetLog::Get(), NetLogSource());
   EXPECT_THAT(new_socket->Connect(kIpEndPoint), IsOk());
 
@@ -2133,6 +2137,7 @@ TEST_P(QuicChromiumClientSessionTest, MigrateToSocketReadError) {
   // Create connected socket.
   std::unique_ptr<DatagramClientSocket> new_socket =
       socket_factory_.CreateDatagramClientSocket(DatagramSocket::RANDOM_BIND,
+                                                 handles::kInvalidNetworkHandle,
                                                  NetLog::Get(), NetLogSource());
   EXPECT_THAT(new_socket->Connect(kIpEndPoint), IsOk());
 

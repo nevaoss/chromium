@@ -24,9 +24,11 @@
 #include "chrome/browser/compose/compose_enabling.h"
 #include "chrome/browser/contextual_cueing/features.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_context_service.h"
+#include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/history_embeddings/history_embeddings_utils.h"
+#include "chrome/browser/metrics/variations/google_groups_manager_factory.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/password_manager/chrome_password_change_service.h"
@@ -582,6 +584,11 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
       base::FeatureList::IsEnabled(
           autofill::features::kAutofillAiWalletPrivatePasses));
 
+  html_source->AddBoolean(
+      "enableInlineCueMenuContentSetting",
+      base::FeatureList::IsEnabled(features::kGlicSelectionPrompt) &&
+          features::kGlicSelectionEnableSiteSettings.Get());
+
   // AI
   bool show_glic_section = false;
   bool glic_disallowed_by_admin = false;
@@ -686,7 +693,12 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
       PersonalContextEnablementServiceFactory::GetForProfile(profile);
   html_source->AddBoolean(
       "showSuggestionsFromGeminiSettings",
-      autofill::ShouldShowPersonalContextAutofillSetting(enablement_service));
+      autofill::ShouldShowPersonalContextAutofillSetting(
+          enablement_service,
+          subscription_eligibility::SubscriptionEligibilityServiceFactory::
+              GetForProfile(profile),
+          profile->GetPrefs(),
+          GoogleGroupsManagerFactory::GetForBrowserContext(profile)));
   html_source->AddBoolean(
       "showPersonalContextSettingsLink",
       enablement_service &&

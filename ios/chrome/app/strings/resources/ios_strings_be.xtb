@@ -103,6 +103,7 @@
 <translation id="1335767868357998043">Выбар размяшчэння адраснага радка</translation>
 <translation id="1347468774581902829">Кіраваць дзеяннямі</translation>
 <translation id="1348596747084433075">https://www.amazon.com/Wife-Gifts/s?k=for+Wife+Gifts</translation>
+<translation id="1353169676553627502">Выключыць абнаўленні аб прагрэсе</translation>
 <translation id="1355337783640312381">Каб змяніць уліковы запіс, націсніце на значок уліковага запісу</translation>
 <translation id="135806768612505061">Усе ўкладкі</translation>
 <translation id="1358106883354237005">Уліковы запіс пад кіраваннем</translation>
@@ -609,6 +610,7 @@
 <translation id="3073633853887034268">Зразумела</translation>
 <translation id="3080525922482950719">Захоўвайце старонкі, каб прачытаць іх пазней або без падключэння да інтэрнэту</translation>
 <translation id="3081338492074632642">Праверце, ці супадае пароль, які вы захоўваеце, з паролем для сайта <ph name="WEBSITE" /></translation>
+<translation id="3084484227247071193">Уключыць абнаўленні аб прагрэсе</translation>
 <translation id="3087734570205094154">Знізу</translation>
 <translation id="309710370695886264">У вас ёсць 1 ужыты раней пароль. У мэтах бяспекі выправіце гэта.</translation>
 <translation id="3099402981545350675">Будуць выдалены адрасы, захаваныя на гэтай прыладзе. Таксама выбраная інфармацыя будзе выдалена з Chrome, але не з вашага Уліковага запісу Google.</translation>
@@ -708,6 +710,7 @@
 <translation id="3449029510150690417">Стварыце новую групу ўкладак, дайце ёй назву і выберыце колер для яе.</translation>
 <translation id="345348365500626747">Знойдзены адрас</translation>
 <translation id="3459644598174926977">Задавайце пытанні пра старонку, абмяркоўвайце і дапрацоўвайце ідэі ў рэжыме Live з Gemini.</translation>
+<translation id="3462768334899086950">Вы страціце незахаваны файл і бягучыя ўкладкі</translation>
 <translation id="3464194322481586217">Не ўдалося адсачыць цану.</translation>
 <translation id="3469117812148449995">Варыянты захавання пароля</translation>
 <translation id="3472469028191701821">Адкрыецца ў новай укладцы</translation>
@@ -965,6 +968,7 @@
 <translation id="4326912346867677256">Націсніце "Выкарыстаць пароль", каб бяспечна выканаць уваход.</translation>
 <translation id="4328843285884395590">Мой Дыск</translation>
 <translation id="4331177082088332784">Змяніць выбар можна ў BEGIN_LINK наладах змесціва END_LINK</translation>
+<translation id="4331712008356052424">Каб адправіць гэту спасылку, увайдзіце на іншай прыладзе ва ўліковы запіс "<ph name="USER_EMAIL" />"</translation>
 <translation id="4334428914252001502">1 непрачытаны артыкул.</translation>
 <translation id="4338258232580025606">Не ўдалося ўвайсці</translation>
 <translation id="4338650699862464074">Адпраўляць URL-адрасы наведаных вамі старонак у Google.</translation>
@@ -1471,6 +1475,7 @@
 <translation id="6040143037577758943">Закрыць</translation>
 <translation id="6042308850641462728">Яшчэ</translation>
 <translation id="6045460247888249350">Дадайце назву</translation>
+<translation id="6050237559175440178">Пацвердзіце сваю асобу, каб выкарыстоўваць і захоўваць сваю інфармацыю на ўсіх сваіх прыладах</translation>
 <translation id="6052269326659653305">Пераключыцца на іншы профіль</translation>
 <translation id="605721222689873409">ГГ</translation>
 <translation id="6059830886158432458">Кіруйце паказам артыкулаў і гісторыяй дзеянняў тут</translation>
@@ -1846,6 +1851,7 @@
 <translation id="722339453342442311">Праверыць</translation>
 <translation id="7227235818314667565">Кіраваць абагульваннем</translation>
 <translation id="7233006041370588369">Выберыце пароль для аўтазапаўнення.</translation>
+<translation id="723874023660911012">Пераключыць профілі</translation>
 <translation id="7241135764990439166">Рэжым інкогніта недаступны</translation>
 <translation id="7248046129087111453"><ph name="BEGIN_LINK" />Гісторыя пошуку<ph name="END_LINK" /> і <ph name="BEGIN_LINK" />звесткі пра іншыя дзеянні<ph name="END_LINK" /> могуць захоўвацца ва Уліковым запісе Google.</translation>
 <translation id="7253951228444156601">Ідзе праверка пароляў…</translation>
@@ -2072,6 +2078,7 @@
 <translation id="7996239959906074962">Наладзіць…</translation>
 <translation id="800361585186029508">Адкрывае ўведзеныя URL-адрасы ў Google Chrome.</translation>
 <translation id="8005666035647241369">У Менеджары пароляў Google на гэтай прыладзе</translation>
+<translation id="8007106936382123905">{count,plural, =1{1 выкананая задача}one{# выкананая задача}few{# выкананыя задачы}many{# выкананых задач}other{# выкананай задачы}}</translation>
 <translation id="8010488806779226127">Паспрабуйце функцыі, якія зробяць ваш прагляд у інтэрнэце больш эфектыўным</translation>
 <translation id="8011489434346330032">Web Inspector</translation>
 <translation id="8014007212279733632">Каб выкарыстоўваць функцыю аўтаматычнага запаўнення канфідэнцыяльнай інфармацыі, вам трэба пацвердзіць сваю асобу</translation>
@@ -2155,6 +2162,7 @@
 <translation id="826614135184049678">У выніку скіду налад iPad адбыўся выхад з уліковага запісу <ph name="USER_NAME" />. Каб увайсці зноў, націсніце "Працягнуць" ніжэй.</translation>
 <translation id="8270320981823560179">Дыск</translation>
 <translation id="8273982424131314219">Інфармацыя будзе запоўнена на старонцы <ph name="URL" /></translation>
+<translation id="8274795744553482834">Вы збіраецеся пераключыць профілі</translation>
 <translation id="8275068909952022340">Яшчэ…</translation>
 <translation id="8280797717392145626">Атрыманы спасылкі</translation>
 <translation id="8281781826761538115">Стандартная мова: <ph name="DEFAULT_LOCALE" /></translation>

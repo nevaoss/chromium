@@ -281,6 +281,27 @@ TEST_F(AtMemoryManagerTest,
   EXPECT_EQ(final_suggestions[0].main_text.value, u"Full Address");
 }
 
+// Tests that when the user is offline, the manager displays the no connection
+// suggestion.
+TEST_F(AtMemoryManagerTest,
+       OnSearchSubmitted_QueryServiceReturnsNoConnectionFailure) {
+  manager().OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory,
+                         /*is_context_secure=*/true, update_callback_.Get());
+
+  std::vector<Suggestion> final_suggestions;
+  MockQueryResultsAndExpectCallback(
+      u"query",
+      accessibility_annotator::MemorySearchStatus::kNoConnectionFailure,
+      /*entries=*/{}, final_suggestions);
+
+  manager().OnSearchSubmitted(u"query");
+
+  ASSERT_EQ(final_suggestions.size(), 1u);
+  EXPECT_EQ(final_suggestions[0].type, SuggestionType::kAtMemoryNoConnection);
+  EXPECT_EQ(final_suggestions[0].main_text.value,
+            l10n_util::GetStringUTF16(IDS_AUTOFILL_AT_MEMORY_NO_CONNECTION));
+}
+
 // Tests that when filling an attribute (e.g. Passport Number), the manager
 // fetches the unmasked entity instance from AutofillAiAccessManager and fills
 // the unmasked attribute value correctly.

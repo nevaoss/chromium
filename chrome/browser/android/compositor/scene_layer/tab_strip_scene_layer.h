@@ -221,7 +221,8 @@ class TabStripSceneLayer : public SceneLayer {
                         float folio_foot_length,
                         bool is_pinned,
                         float pinned_icon_offset_x,
-                        bool is_underlined,
+                        float underline_opacity,
+                        float underline_shimmer_offset,
                         int32_t underline_start_color,
                         int32_t underline_end_color,
                         int32_t underline_width_threshold);

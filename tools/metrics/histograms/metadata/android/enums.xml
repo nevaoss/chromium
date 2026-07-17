@@ -769,10 +769,14 @@ chromium-metrics-reviews@google.com.
   <int value="181" label="WebSettingsCompat.setPrefetchTtlSeconds"/>
   <int value="182" label="BackForwardCacheSettings.getKeepForwardEntries"/>
   <int value="183" label="BackForwardCacheSettings.setKeepForwardEntries"/>
-  <int value="184" label="WebSettingsCompat.setIgnoreDuplicateNavEnabled"/>
-  <int value="185" label="WebSettingsCompat.getIgnoreDuplicateNavEnabled"/>
-  <int value="186" label="WebSettingsCompat.setIgnoreDuplicateNavThreshold"/>
-  <int value="187" label="WebSettingsCompat.getIgnoreDuplicateNavThreshold"/>
+  <int value="184"
+      label="(Obsolete) WebSettingsCompat.setIgnoreDuplicateNavEnabled"/>
+  <int value="185"
+      label="(Obsolete) WebSettingsCompat.getIgnoreDuplicateNavEnabled"/>
+  <int value="186"
+      label="(Obsolete) WebSettingsCompat.setIgnoreDuplicateNavThreshold"/>
+  <int value="187"
+      label="(Obsolete) WebSettingsCompat.getIgnoreDuplicateNavThreshold"/>
   <int value="188" label="WebSettingsCompat.getMaxPrerenders"/>
   <int value="189" label="WebSettingsCompat.getMaxPrefetches"/>
   <int value="190" label="WebSettingsCompat.getPrefetchTtlSeconds"/>
@@ -2955,6 +2959,34 @@ chromium-metrics-reviews@google.com.
   <int value="112" label="profileStoreGetOrCreateProfile"/>
   <int value="113" label="profileStoreGetAllProfileNames"/>
   <int value="114" label="profileStoreDeleteProfile"/>
+  <int value="115" label="profilePreconnect"/>
+  <int value="116" label="profileGetCookieManager"/>
+  <int value="117" label="profileGetWebStorage"/>
+  <int value="118" label="profileGetGeolocationPermissions"/>
+  <int value="119" label="profileGetServiceWorkerController"/>
+  <int value="120" label="profilePrefetchUrl"/>
+  <int value="121" label="profilePrefetchUrlAsync"/>
+  <int value="122" label="profileCancelPrefetch"/>
+  <int value="123" label="profileSetMaxPrerenders"/>
+  <int value="124" label="profileClearMaxPrerenders"/>
+  <int value="125" label="profileGetMaxPrerenders"/>
+  <int value="126" label="profileSetMaxPrefetches"/>
+  <int value="127" label="profileClearMaxPrefetches"/>
+  <int value="128" label="profileGetMaxPrefetches"/>
+  <int value="129" label="profileSetPrefetchTtlSeconds"/>
+  <int value="130" label="profileClearPrefetchTtl"/>
+  <int value="131" label="profileGetPrefetchTtlSeconds"/>
+  <int value="132" label="profileSetSpeculativeLoadingConfig"/>
+  <int value="133" label="profileGetBrowserContext"/>
+  <int value="134" label="profileWarmUpRendererProcess"/>
+  <int value="135" label="profileSetOriginMatchedHeader"/>
+  <int value="136" label="profileAddOriginMatchedHeader"/>
+  <int value="137" label="profileHasOriginMatchedHeader"/>
+  <int value="138" label="profileFindOriginMatchedHeaders"/>
+  <int value="139" label="profileClearOriginMatchedHeader"/>
+  <int value="140" label="profileClearAllOriginMatchedHeaders"/>
+  <int value="141" label="profileAddQuicHints"/>
+  <int value="142" label="profileGetHttpCacheManager"/>
 </enum>
 
 <!-- LINT.ThenChange(//base/tracing/protos/chrome_track_event.proto:WebViewStartup) -->

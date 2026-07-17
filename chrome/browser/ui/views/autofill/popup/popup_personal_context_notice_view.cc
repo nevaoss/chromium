@@ -12,6 +12,7 @@
 #include "components/strings/grit/components_strings.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
+#include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/controls/button/md_text_button.h"
 #include "ui/views/controls/label.h"
 #include "ui/views/controls/styled_label.h"
@@ -51,6 +52,9 @@ PopupPersonalContextNoticeView::PopupPersonalContextNoticeView(
   description_ =
       text_container->AddChildView(std::make_unique<views::StyledLabel>());
   description_->SetText(description_text);
+  // TODO(crbug.com/515651588): Update accessibility names.
+  GetContentView().GetViewAccessibility().SetName(description_text);
+  GetViewAccessibility().SetName(description_text);
 
   // Make the link substring in the description clickable.
   description_->AddStyleRange(

@@ -26,8 +26,8 @@ import org.chromium.chrome.browser.ui.side_panel_container.dev.SidePanelDevFeatu
 import org.chromium.chrome.browser.ui.side_ui.SideUiContainer;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.AnchorSide;
-import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiContainerProperties;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiId;
+import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.UiUpdateRequest;
 import org.chromium.ui.base.ViewUtils;
 
 /** Implementation of {@link SidePanelContainerCoordinator}. */
@@ -69,6 +69,10 @@ final class SidePanelContainerCoordinatorImpl
                                 .inflate(R.layout.side_panel_container, /* root= */ null);
     }
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    //              Start of SidePanelContainerCoordinator Implementation                        //
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
     @Override
     public void init(
             SidePanelCoordinatorAndroid sidePanelCoordinatorAndroid,
@@ -101,9 +105,7 @@ final class SidePanelContainerCoordinatorImpl
         mContainerView.removeAllViews();
         mContainerView.addView(content.mView);
 
-        mSideUiCoordinator.requestUpdateContainer(
-                new SideUiContainerProperties(SideUiId.SIDE_PANEL, SIDE_PANEL_DEFAULT_ANCHOR_SIDE),
-                suppressAnimations);
+        mSideUiCoordinator.updateUi(new UiUpdateRequest(SideUiId.SIDE_PANEL, suppressAnimations));
         // TODO(crbug.com/496407828): Move this around so it actually runs after the animation is
         //  finished.
         onContentPopulated.run();
@@ -114,9 +116,7 @@ final class SidePanelContainerCoordinatorImpl
         log(TAG, "startRemovingContent", suppressAnimations);
         ThreadUtils.assertOnUiThread();
 
-        mSideUiCoordinator.requestUpdateContainer(
-                new SideUiContainerProperties(SideUiId.SIDE_PANEL, SIDE_PANEL_DEFAULT_ANCHOR_SIDE),
-                suppressAnimations);
+        mSideUiCoordinator.updateUi(new UiUpdateRequest(SideUiId.SIDE_PANEL, suppressAnimations));
         // TODO(crbug.com/496407828): Move this around so it actually runs after the animation is
         //  finished.
         onContentRemoved.run();
@@ -130,17 +130,16 @@ final class SidePanelContainerCoordinatorImpl
     }
 
     @Override
+    public @Nullable View getContentView() {
+        ThreadUtils.assertOnUiThread();
+        return mCurrentContent != null ? mCurrentContent.mView : null;
+    }
+
+    @Override
     public void destroy() {
         log(TAG, "destroy");
         ThreadUtils.assertOnUiThread();
         mSideUiCoordinator.unregisterSideUiContainer(this);
-    }
-
-    @Override
-    public View getView() {
-        log(TAG, "getView");
-        ThreadUtils.assertOnUiThread();
-        return mContainerView;
     }
 
     @Override
@@ -150,15 +149,32 @@ final class SidePanelContainerCoordinatorImpl
         return mContainerView;
     }
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    //              End of SidePanelContainerCoordinator Implementation                          //
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    //              Start of SideUiContainer Implementation                                      //
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
     @Override
-    public @Nullable View getContentView() {
+    public View getView() {
+        log(TAG, "getView");
         ThreadUtils.assertOnUiThread();
-        return mCurrentContent != null ? mCurrentContent.mView : null;
+        return mContainerView;
     }
 
     @Override
     public @SideUiId int getSideUiId() {
         return SideUiId.SIDE_PANEL;
+    }
+
+    @Override
+    @AnchorSide
+    public int getAnchorSide() {
+        log(TAG, "getAnchorSide");
+        ThreadUtils.assertOnUiThread();
+        return SIDE_PANEL_DEFAULT_ANCHOR_SIDE;
     }
 
     @Override
@@ -171,14 +187,6 @@ final class SidePanelContainerCoordinatorImpl
         int windowWidthDp = ViewUtils.pxToDp(mParentActivity, windowWidth);
         int showableWidthDp = determineShowableWidthDp(availableWidthDp, windowWidthDp);
         return ViewUtils.dpToPx(mParentActivity, showableWidthDp);
-    }
-
-    @Override
-    @AnchorSide
-    public int getAnchorSide() {
-        log(TAG, "getAnchorSide");
-        ThreadUtils.assertOnUiThread();
-        return SIDE_PANEL_DEFAULT_ANCHOR_SIDE;
     }
 
     @Override
@@ -235,6 +243,10 @@ final class SidePanelContainerCoordinatorImpl
             mSidePanelCoordinatorAndroid.onWindowResized(canShowSideUi);
         }
     }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    //              End of SideUiContainer Implementation                                        //
+    ///////////////////////////////////////////////////////////////////////////////////////////////
 
     /**
      * Returns the final width (in dp) of the side panel given the available width in the window.

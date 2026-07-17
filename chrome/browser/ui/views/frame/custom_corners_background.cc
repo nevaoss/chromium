@@ -17,7 +17,6 @@
 #include "chrome/browser/ui/views/frame/themed_background.h"
 #include "third_party/skia/include/core/SkPath.h"
 #include "third_party/skia/include/core/SkPathBuilder.h"
-#include "ui/base/ui_base_features.h"
 #include "ui/color/color_id.h"
 #include "ui/color/color_variant.h"
 #include "ui/compositor/layer.h"
@@ -53,8 +52,8 @@ DEFINE_SAFE_CAST_TARGET(CustomCornersBackground)
 CustomCornersBackground::CustomCornersBackground(
     views::View& view,
     BrowserView& browser_view,
-    ColorChoice primary_color,
-    ColorChoice corner_color,
+    ColorChoiceWithAlpha primary_color,
+    ColorChoiceWithAlpha corner_color,
     std::optional<int> default_radius)
     : CustomCorners(browser_view),
       primary_color_(primary_color),
@@ -62,6 +61,18 @@ CustomCornersBackground::CustomCornersBackground(
       default_radius_(default_radius.value_or(
           GetLayoutConstant(LayoutConstant::kToolbarCornerRadius))),
       view_(view) {}
+
+CustomCornersBackground::CustomCornersBackground(
+    views::View& view,
+    BrowserView& browser_view,
+    ColorChoice primary_color,
+    ColorChoice corner_color,
+    std::optional<int> default_radius)
+    : CustomCornersBackground(view,
+                              browser_view,
+                              ColorChoiceWithAlpha(primary_color),
+                              ColorChoiceWithAlpha(corner_color),
+                              default_radius) {}
 
 CustomCornersBackground::~CustomCornersBackground() = default;
 
@@ -74,7 +85,8 @@ void CustomCornersBackground::SetVisible(bool visible) {
   view_->SchedulePaint();
 }
 
-void CustomCornersBackground::SetPrimaryColor(ColorChoice primary_color) {
+void CustomCornersBackground::SetPrimaryColor(
+    ColorChoiceWithAlpha primary_color) {
   if (primary_color_ == primary_color) {
     return;
   }
@@ -83,7 +95,8 @@ void CustomCornersBackground::SetPrimaryColor(ColorChoice primary_color) {
   view_->SchedulePaint();
 }
 
-void CustomCornersBackground::SetCornerColor(ColorChoice corner_color) {
+void CustomCornersBackground::SetCornerColor(
+    ColorChoiceWithAlpha corner_color) {
   if (corner_color == corner_color_) {
     return;
   }
@@ -139,25 +152,79 @@ SkPath CustomCornersBackground::GetBackgroundPath(const gfx::Rect& in_bounds,
       SkRRect::MakeRectRadii(gfx::RectToSkRect(in_bounds), radii->data()));
 }
 
-void CustomCornersBackground::SetCutoutFrom(
-    const std::vector<const views::View*>& views) {
+std::vector<SkPath> CustomCornersBackground::GetCornerPaths(
+    const gfx::Rect& in_bounds) const {
+  std::vector<SkPath> result;
+  const Corners corners = GetMirroredCorners();
+
+  // Bump out the corners by 1 DIP to avoid cracking/subpixel issues.
+  // (This is why the insets are applied below.)
+  if (corners.upper_leading.type != CornerType::kSquare) {
+    const int radius = corners.upper_leading.radius.value_or(default_radius());
+    gfx::Rect bounds(in_bounds.x(), in_bounds.y(), radius, radius);
+    const gfx::Insets insets = gfx::Insets::TLBR(1, 1, 0, 0);
+    bounds.Inset(-insets);
+    result.push_back(
+        GetCornerPath(VisualCornerOrientation::kTopLeft, bounds, insets));
+  }
+  if (corners.upper_trailing.type != CornerType::kSquare) {
+    const int radius = corners.upper_trailing.radius.value_or(default_radius());
+    gfx::Rect bounds(in_bounds.right() - radius, in_bounds.y(), radius, radius);
+    const gfx::Insets insets = gfx::Insets::TLBR(1, 0, 0, 1);
+    bounds.Inset(-insets);
+    result.push_back(
+        GetCornerPath(VisualCornerOrientation::kTopRight, bounds, insets));
+  }
+  if (corners.lower_trailing.type != CornerType::kSquare) {
+    const int radius = corners.lower_trailing.radius.value_or(default_radius());
+    gfx::Rect bounds(in_bounds.right() - radius, in_bounds.bottom() - radius,
+                     radius, radius);
+    const gfx::Insets insets = gfx::Insets::TLBR(0, 0, 1, 1);
+    bounds.Inset(-insets);
+    result.push_back(
+        GetCornerPath(VisualCornerOrientation::kBottomRight, bounds, insets));
+  }
+  if (corners.lower_leading.type != CornerType::kSquare) {
+    const int radius = corners.lower_leading.radius.value_or(default_radius());
+    gfx::Rect bounds(in_bounds.x(), in_bounds.bottom() - radius, radius,
+                     radius);
+    const gfx::Insets insets = gfx::Insets::TLBR(0, 1, 1, 0);
+    bounds.Inset(-insets);
+    result.push_back(
+        GetCornerPath(VisualCornerOrientation::kBottomLeft, bounds, insets));
+  }
+  return result;
+}
+
+void CustomCornersBackground::SetCutoutFrom(const Cutouts& cutouts) {
   cutout_paths_.clear();
-  for (const auto* view : views) {
-    gfx::Rect bounds = view->GetLocalBounds();
-    views::View::ConvertRectToScreen(&*view, &bounds);
-    bounds = views::View::ConvertRectFromScreen(&*view_, bounds);
-    SkPath cutout_path;
-    if (auto* const corner = views::AsViewClass<CustomFloatingCorner>(view)) {
-      cutout_path = corner->GetBackgroundPath(bounds);
-    } else if (view->background() &&
-               view->background()->IsA<CustomCornersBackground>()) {
-      cutout_path =
-          view->background()->AsA<CustomCornersBackground>()->GetBackgroundPath(
-              bounds, nullptr);
+  for (const auto& cutout : cutouts) {
+    if (const views::View* const* view_ptr =
+            std::get_if<const views::View*>(&cutout)) {
+      const views::View* const view = *view_ptr;
+      const gfx::Rect bounds = views::View::ConvertRectFromScreen(
+          &*view_, view->GetBoundsInScreen());
+      SkPath cutout_path;
+      if (auto* const corner = views::AsViewClass<CustomFloatingCorner>(view)) {
+        cutout_path = corner->GetBackgroundPath(bounds);
+      } else if (view->background() &&
+                 view->background()->IsA<CustomCornersBackground>()) {
+        cutout_path = view->background()
+                          ->AsA<CustomCornersBackground>()
+                          ->GetBackgroundPath(bounds, nullptr);
+      } else {
+        cutout_path = SkPath::Rect(gfx::RectToSkRect(bounds));
+      }
+      cutout_paths_.push_back(cutout_path);
     } else {
-      cutout_path = SkPath::Rect(gfx::RectToSkRect(bounds));
+      const auto* const background =
+          std::get<InverseOf>(cutout).background.get();
+      const gfx::Rect bounds = views::View::ConvertRectFromScreen(
+          &*view_, background->view_->GetBoundsInScreen());
+      for (SkPath& path : background->GetCornerPaths(bounds)) {
+        cutout_paths_.push_back(path);
+      }
     }
-    cutout_paths_.push_back(cutout_path);
   }
 }
 
@@ -172,10 +239,6 @@ void CustomCornersBackground::Paint(gfx::Canvas* canvas,
   }
 
   gfx::ScopedCanvas scoped_canvas(canvas);
-
-  if (alpha_ < 1.0f) {
-    canvas->SaveLayerAlpha(static_cast<uint8_t>(255 * alpha_));
-  }
 
   for (auto& cutout_path : cutout_paths_) {
     canvas->ClipPath(cutout_path, true, SkClipOp::kDifference);
@@ -228,23 +291,9 @@ void CustomCornersBackground::Paint(gfx::Canvas* canvas,
   if (outline.has_strokes()) {
     cc::PaintFlags stroke_flags;
     stroke_flags.setStrokeWidth(views::Separator::kThickness);
-    SkColor color = GetView().GetColorProvider()->GetColor(outline.color);
-    if (features::IsGlassFrameEnabled() &&
-        std::holds_alternative<FrameTheme>(primary_color_)) {
-      const SkAlpha frame_alpha =
-          color_utils::IsDark(
-              GetView().GetColorProvider()->GetColor(ui::kColorFrameActive))
-              ? kBrowserFrameAlphaDark
-              : kBrowserFrameAlphaLight;
-      color = SkColorSetA(
-          color,
-          std::clamp(static_cast<int>(SkColorGetA(color) * outline.opacity *
-                                      (frame_alpha / 255.0f)),
-                     0, 255));
-    } else {
-      color = SkColorSetA(
-          color, base::ClampRound(SkColorGetA(color) * outline.opacity));
-    }
+    SkColor color = GetView().GetColorProvider()->GetColor(outline.color.color);
+    color = SkColorSetA(
+        color, base::ClampRound(SkColorGetA(color) * outline.color.opacity));
     stroke_flags.setColor(color);
     stroke_flags.setStyle(cc::PaintFlags::kStroke_Style);
     stroke_flags.setAntiAlias(true);
@@ -336,10 +385,6 @@ void CustomCornersBackground::Paint(gfx::Canvas* canvas,
       canvas->DrawPath(stroke_path.detach(), stroke_flags);
     }
   }
-
-  if (alpha_ < 1.0f) {
-    canvas->Restore();
-  }
 }
 
 void CustomCornersBackground::OnViewThemeChanged(views::View* view) {
@@ -363,8 +408,8 @@ const views::View& CustomCornersBackground::GetView() const {
 }
 
 void CustomCornersBackground::OnBrowserPaintAsActiveChanged() {
-  if (std::holds_alternative<FrameTheme>(primary_color_) ||
-      std::holds_alternative<FrameTheme>(corner_color_)) {
+  if (std::holds_alternative<FrameTheme>(primary_color_.color) ||
+      std::holds_alternative<FrameTheme>(corner_color_.color)) {
     view_->SchedulePaint();
   }
 }

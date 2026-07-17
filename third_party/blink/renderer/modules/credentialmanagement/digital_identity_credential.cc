@@ -258,6 +258,13 @@ void DiscoverDigitalIdentityCredentialFromExternalSource(
     return;
   }
 
+  if (resolver->GetExecutionContext()->GetSecurityOrigin()->IsOpaque()) {
+    resolver->Reject(MakeGarbageCollected<DOMException>(
+        DOMExceptionCode::kNotAllowedError,
+        "The credential operation is not allowed in an opaque origin."));
+    return;
+  }
+
   if (!resolver->GetExecutionContext()->IsFeatureEnabled(
           network::mojom::PermissionsPolicyFeature::kDigitalCredentialsGet)) {
     resolver->Reject(MakeGarbageCollected<DOMException>(
@@ -376,6 +383,13 @@ void CreateDigitalIdentityCredentialInExternalSource(
 
   if (!CheckGenericSecurityRequirementsForCredentialsContainerRequest(
           resolver)) {
+    return;
+  }
+
+  if (resolver->GetExecutionContext()->GetSecurityOrigin()->IsOpaque()) {
+    resolver->Reject(MakeGarbageCollected<DOMException>(
+        DOMExceptionCode::kNotAllowedError,
+        "The credential operation is not allowed in an opaque origin."));
     return;
   }
 

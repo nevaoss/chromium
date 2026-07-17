@@ -215,6 +215,8 @@ try_.orchestrator_builder(
         "chromium.add_one_test_shard": 10,
         # crbug/940930
         "chromium.enable_cleandead": 100,
+        # TODO(https://crbug.com/521401232): Increase to 100
+        "luci.buildbucket.run_in_turboci": 1,
     },
     main_list_view = "try",
     use_clang_coverage = True,
@@ -369,7 +371,7 @@ try_.builder(
     main_list_view = "try",
 )
 
-try_.orchestrator_builder(
+try_.builder(
     name = "mac15-arm64-rel",
     branch_selector = branches.selector.MAC_BRANCHES,
     description_html = "Compiles and runs MacOS 15 tests on ARM machines",
@@ -387,19 +389,34 @@ try_.orchestrator_builder(
             "mac",
         ],
     ),
-    compilator = "mac15-arm64-rel-compilator",
+    builderless = True,
+    cores = None,
+    cpu = cpu.ARM64,
     contact_team_email = "bling-engprod@google.com",
     main_list_view = "try",
 )
 
-try_.compilator_builder(
-    name = "mac15-arm64-rel-compilator",
+try_.builder(
+    name = "mac26-arm64-rel-tests",
     branch_selector = branches.selector.MAC_BRANCHES,
-    description_html = "compilator for mac15-arm64-rel",
+    mirrors = [
+        "ci/mac-arm64-rel",
+        "ci/mac26-arm64-rel-tests",
+    ],
+    gn_args = gn_args.config(
+        configs = [
+            "arm64",
+            "gpu_tests",
+            "release_try_builder",
+            "remoteexec",
+            "no_symbols",
+            "mac",
+        ],
+    ),
+    builderless = True,
+    cores = None,
     cpu = cpu.ARM64,
     contact_team_email = "bling-engprod@google.com",
-    # TODO (crbug.com/1245171): Revert when root issue is fixed
-    grace_period = 4 * time.minute,
     main_list_view = "try",
 )
 

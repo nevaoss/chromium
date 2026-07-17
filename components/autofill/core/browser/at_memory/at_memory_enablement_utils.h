@@ -14,6 +14,10 @@ namespace personal_context {
 class PersonalContextEnablementService;
 }  // namespace personal_context
 
+namespace subscription_eligibility {
+class SubscriptionEligibilityService;
+}  // namespace subscription_eligibility
+
 namespace autofill {
 
 // An AtMemory-related action that a user may take (directly or indirectly).
@@ -34,6 +38,8 @@ enum class AtMemoryAction {
   kAllowCustomizeAtMemoryShortcut,
   // Show the In-Product Help (IPH) Promo Bubble for AtMemory.
   kShowIph,
+  // Show the AtMemory button in the Autocomplete dialog.
+  kShowAutocompleteAtMemoryButton,
 };
 
 // Returns whether all permission-related requirements are met for `action`.
@@ -48,6 +54,8 @@ enum class AtMemoryAction {
     AtMemoryAction action,
     personal_context::PersonalContextEnablementService*
         personal_context_service,
+    const subscription_eligibility::SubscriptionEligibilityService*
+        subscription_eligibility_service,
     const PrefService* pref_service,
     const GoogleGroupsManager* google_groups_manager);
 

@@ -530,7 +530,8 @@ void OnRequestToken(std::unique_ptr<ScopedPromiseResolver> scoped_resolver,
         return;
       }
       resolver->Reject(MakeGarbageCollected<IdentityCredentialError>(
-          "Error retrieving a token.", error->code, error->url));
+          "Error retrieving a token.", error->code,
+          error->url ? error->url->GetString() : String()));
       return;
     }
     case RequestTokenStatus::kSuccess: {

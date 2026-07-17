@@ -3077,8 +3077,12 @@ const char kChromeAppStoreUrl[] =
 }
 
 - (void)dismissMultimodalActionsMenu {
-  [_composeboxMenuCoordinator stop];
-  _composeboxMenuCoordinator = nil;
+  if (_composeboxMenuCoordinator) {
+    [_composeboxMenuCoordinator stop];
+    _composeboxMenuCoordinator = nil;
+  } else {
+    [_composeboxCoordinator hideComposeboxMenu];
+  }
 }
 
 - (void)showComposebox {

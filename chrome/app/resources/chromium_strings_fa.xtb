@@ -55,6 +55,7 @@
 <translation id="1574377791422810894">‏ابزارهای ایمنی Chromium</translation>
 <translation id="1594928384848033697">‏‫Chromium می‌خواهد داده‌های «مدیر گذرواژه» شما را حذف کند. برای مجاز کردن این کار، گذرواژه Windows خود را تایپ کنید.</translation>
 <translation id="1607715478322902680">{COUNT,plural, =0{‏سرپرست سیستم لازم می‌داند برای اعمال به‌روزرسانی، Chromium را راه‌اندازی مجدد کنید}=1{‏سرپرست سیستم لازم می‌داند برای اعمال به‌روزرسانی، Chromium را راه‌اندازی مجدد کنید. پنجره ناشناس بازگشایی نمی‌شود.}one{‏سرپرست سیستم لازم می‌داند برای اعمال به‌روزرسانی، Chromium را راه‌اندازی مجدد کنید. # پنجره ناشناس بازگشایی نمی‌شود.}other{‏سرپرست سیستم لازم می‌داند برای اعمال به‌روزرسانی، Chromium را راه‌اندازی مجدد کنید. # پنجره ناشناس بازگشایی نمی‌شود.}}</translation>
+<translation id="1623563412065267963">‏با برنامه Chromium در تلفنتان، بیشترین بهره را از Google ببرید</translation>
 <translation id="1625909126243026060">‏مرور کنترل‌های اصلی امنیت و حریم خصوصی در Chromium</translation>
 <translation id="1640672724030957280">در حال بارگیری…</translation>
 <translation id="1680687534629375545">پرسیدن از «جستجوی تصویر» درباره این صفحه</translation>
@@ -145,6 +146,7 @@
 <translation id="2572494885440352020">Chromium Helper</translation>
 <translation id="2575822587468774919">هرچیزی را می‌خواهید انتخاب کنید تا با «جستجوی تصویر» جستجو شود</translation>
 <translation id="2576118232315942160">‏برای دریافت گذرواژه‌ها و موارد دیگر در همه دستگاه‌هایتان، به سیستم Chromium وارد شوید</translation>
+<translation id="2587622539943955767">‏برای بارگیری Chromium و ورود به سیستم «حساب Google»، رمزینه پاسخ‌سریع را با تلفنتان اسکن کنید.</translation>
 <translation id="2592940277904433508">‏ادامه استفاده از Chromium</translation>
 <translation id="259935314519650377">نصب‌کننده بارگیری‌شده در حافظه نهان ذخیره نشد. خطا: <ph name="UNPACK_CACHING_ERROR_CODE" />.</translation>
 <translation id="2620436844016719705">سیستم</translation>
@@ -359,6 +361,7 @@
 <translation id="4987820182225656817">‏مهمان‌ها می توانند از Chromium استفاده کنند بدون این‌که اثری از خود به جا بگذارند.</translation>
 <translation id="4992938037305302429">‏حساب شما در Chromium</translation>
 <translation id="4994636714258228724">‏افرودن خودتان به Chromium</translation>
+<translation id="504699503110800016">باز کردن منو سرریز</translation>
 <translation id="5123973130450702873">‏‫Chromium برای ردیابی کردن دست‌های شما به اجازه نیاز دارد</translation>
 <translation id="5141988424377517949">‏اخیراً بازدیدی نداشته‌اید. ‫Chromium ‏<ph name="PERMISSION_1" />،‏ <ph name="PERMISSION_2" />،‏ و <ph name="PERMISSION_3" /> را برداشت.</translation>
 <translation id="5174969993834422967">معمولاً اعلان‌ها را مسدود می‌کنید. برای اینکه اجازه دهید این سایت اعلان ارسال کند، روی نماد اعلان در گوشه چپ نوار نشانی کلیک کنید.</translation>
@@ -468,6 +471,7 @@
 <translation id="6245734527075554892">‏نشانی‌های وب را با فهرست سایت‌های ناامنی که در Chromium ذخیره شده است مقایسه می‌کند</translation>
 <translation id="6248213926982192922">‏Chromium  مرورگر پیش‌فرض شود</translation>
 <translation id="6248988683584659830">تنظیمات جستجو</translation>
+<translation id="6261803579884938625">‏با برنامه Chromium در تلفنتان، بهترین ویژگی‌های ایمنی Google را درحال حرکت دریافت کنید</translation>
 <translation id="6268381023930128611">‏از Chromium خارج می‌شوید؟</translation>
 <translation id="6270547683008298381">‏این زبانه‌ها از منابع بیشتری استفاده می‌کنند. برای بهبود عملکرد، اجازه دهید Chromium آن‌ها را غیرفعال کند.</translation>
 <translation id="6281746429495226318">‏سفارشی کردن نمایه Chromium</translation>
@@ -538,6 +542,7 @@
 <translation id="6873893289264747459">‏Chromium متوجه شده است که «<ph name="EXTENSION_NAME" />» حاوی بدافزار است</translation>
 <translation id="6877155553248388166">‏گوشه پایین سمت چپ ناحیه جستجو: ‎٪<ph name="RIGHT" /> سمت چپ، ‎٪<ph name="BOTTOM" /> پایین</translation>
 <translation id="6896758677409633944">کپی کردن</translation>
+<translation id="6898028264630240901">می‌توانید «تکالیف بافت‌محور» را سنجاق کنید تا هنگام مرور کردن به‌راحتی سؤالات خود را بپرسید</translation>
 <translation id="6901631050894301805">‏‫Chromium را به‌عنوان مرورگر پیش‌فرض خود تنظیم کنید و آن را به نوار وظیفه‌تان سنجاق کنید</translation>
 <translation id="6909503629704372277">‏مدیریت نمایه‌های Chromium</translation>
 <translation id="6919942714452658456">‏این کنش:
@@ -566,6 +571,7 @@
 <translation id="7047386856539490735">این نتایج مفیدند؟</translation>
 <translation id="705851970750939768">‏به‌روزرسانی Chromium</translation>
 <translation id="7067091210845072982">‏اگر تصویری توضیح مفیدی نداشته باشد، Chromium توضیحی برای شما ارائه خواهد کرد. برای ایجاد توضیحات، تصاویر به Google ارسال می‌شود.</translation>
+<translation id="7134687062119989071">‏با برنامه Chromium در تلفنتان، گذرواژه‌ها، زبانه‌ها، و موارد دیگر را درحال حرکت همراه خود داشته باشید</translation>
 <translation id="7141270731789036260">‏سفارشی‌سازی Chrome for Testing</translation>
 <translation id="7147227333672430807">‏می‌توانید پیوندهای موجود در پیام‌ها، سندها، و برنامه‌های دیگر را همیشه بااستفاده از Chromium باز کنید</translation>
 <translation id="7163519456498498587">‏حذف <ph name="EXTENSION_NAME" /> از Chromium</translation>
@@ -658,6 +664,7 @@ Chromium قادر به بازیابی تنظیمات شما نیست.</translati
 <translation id="8096472344908884505"><ph name="PAGE_TITLE" /> - Google Chrome for Testing</translation>
 <translation id="8105840573057009683">‏Chromium برای این سایت به اجازه مکان نیاز دارد</translation>
 <translation id="8107060931443639922">‏دفعه بعد که Chromium را در <ph name="DEVICE_TYPE" /> باز می‌کنید، پیام‌واره‌ای برای فعال کردن هشدارهای ردگیری قیمت خواهید دید.</translation>
+<translation id="8117908349476699973">‏با برنامه Chromium در تلفنتان، برای کالاهایی که به آن‌ها علاقه‌مندید هشدار کاهش قیمت دریافت کنید</translation>
 <translation id="8118331347066725040">درباره جستجو با «لنز»، بازخورد ارسال کنید</translation>
 <translation id="8133124826068723441">‏ChromiumOS نتوانست داده‌هایتان را همگام‌سازی کند زیرا «همگام‌سازی» برای دامنه شما دردسترس نیست.</translation>
 <translation id="813913629614996137">درحال مقداردهی اولیه…</translation>
@@ -750,6 +757,7 @@ Chromium قادر به بازیابی تنظیمات شما نیست.</translati
 <translation id="9022552996538154597">‏ورود به سیستم Chromium</translation>
 <translation id="904366664621834601">‏‫Chromium این بارگیری را مسدود کرد زیرا فایل بایگانی حاوی فایل‌های دیگری است که ممکن است بدافزار باشد</translation>
 <translation id="9053882453960391422">‏گذرواژه‌ها، نشانک‌ها، و سابقه را در همه دستگاه‌ها کاملاً همگام‌سازی کنید. با به‌روز کردن مرورگر پیش‌فرض به Chromium، به‌راحتی به ویژگی‌هایی که می‌شناسید و دوست دارید دسترسی داشته باشید. ‫Chromium برای دسترسی سریع به نوار وظیفه سنجاق خواهد شد.</translation>
+<translation id="9056398481763999048">‏با برنامه Chromium در تلفنتان از بهترین ابزارهای هوشواره Google استفاده کنید</translation>
 <translation id="9062666675513499497">‏ورود به سیستم Chromium هنگام وارد شدن به سیستم دیگر سرویس‌های Google</translation>
 <translation id="9078733879136747090">‏Chromium به‌طور خودکار بسته شد</translation>
 <translation id="9089354809943900324">‏نسخه Chromium قدیمی است</translation>

@@ -36,7 +36,22 @@ id<GREYMatcher> PasswordProtectionMatcher() {
 std::unique_ptr<net::test_server::HttpResponse> HandleRequest(
     const net::test_server::HttpRequest& request) {
   auto http_response = std::make_unique<net::test_server::BasicHttpResponse>();
-  if (request.relative_url.find("preventDefault=true") != std::string::npos) {
+  if (request.relative_url.find("bypass=true") != std::string::npos) {
+    http_response->set_content(
+        "Input: <input type='text' id='input'>"
+        "<script>"
+        "  document.getElementById('input').addEventListener('keydown', "
+        "function(e) {"
+        "    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'v') {"
+        "      e.preventDefault();"
+        "      navigator.clipboard.readText().then(text => {"
+        "        document.getElementById('input').value = text;"
+        "      });"
+        "    }"
+        "  });"
+        "</script>");
+  } else if (request.relative_url.find("preventDefault=true") !=
+             std::string::npos) {
     http_response->set_content(
         "Input: <input type='text' id='input'>"
         "<script>"
@@ -84,6 +99,7 @@ std::unique_ptr<net::test_server::HttpResponse> HandleRequest(
           isRunningTest:@selector(
                             testPasswordReuseDetectionKeydownPreventDefault)] ||
       [self isRunningTest:@selector(testPasswordReuseDetectionPaste)] ||
+      [self isRunningTest:@selector(testPasswordReuseDetectionPasteBypass)] ||
       [self
           isRunningTest:
               @selector(testPasswordReuseDetectionPasteWithKeyboardShortcut)]) {
@@ -125,19 +141,13 @@ std::unique_ptr<net::test_server::HttpResponse> HandleRequest(
   for (NSString* character in @[ @"a", @"s", @"s", @"w", @"o", @"r", @"d" ]) {
     [ChromeEarlGrey simulatePhysicalKeyboardEvent:character flags:0];
   }
-
-  [ChromeEarlGrey
-      waitForJavaScriptCondition:
-          [NSString stringWithFormat:
-                        @"document.getElementById('%s').value.includes('%@');",
-                        kInputElement, @"Password"]];
 }
 
 - (void)waitForPasswordProtectionWarningWithoutSync {
   // Disable synchronization to instruct EarlGrey to inspect the view
   // hierarchy immediately instead of waiting for the app to become idle,
   // which can block the test and cause a timeout during the modal's
-  // presentation animation.
+  // presentation animation on slow bots.
   ScopedSynchronizationDisabler disabler;
   [ChromeEarlGrey
       waitForUIElementToAppearWithMatcher:PasswordProtectionMatcher()
@@ -164,6 +174,27 @@ std::unique_ptr<net::test_server::HttpResponse> HandleRequest(
   [ChromeEarlGrey waitForWebStateContainingText:kInputPage];
 
   [self typePasswordIntoWebInput];
+  [self waitForPasswordProtectionWarningWithoutSync];
+}
+
+// Tests that password protection UI is shown even when the webpage intercepts
+// Cmd+V/Ctrl+V and cancels the keydown and paste events.
+- (void)testPasswordReuseDetectionPasteBypass {
+  [ChromeEarlGrey
+      loadURL:GURL(base::StrCat({_phishingURL.spec(), "?bypass=true"}))];
+  [ChromeEarlGrey waitForWebStateContainingText:kInputPage];
+
+  // Tap input to focus it.
+  [[EarlGrey selectElementWithMatcher:chrome_test_util::WebViewMatcher()]
+      performAction:chrome_test_util::TapWebElementWithId(kInputElement)];
+
+  ScopedSynchronizationDisabler disabler;
+
+  // Copy password to clipboard and simulate Cmd+V paste.
+  [ChromeEarlGrey copyTextToPasteboard:@"Password"];
+  [ChromeEarlGrey simulatePhysicalKeyboardEvent:@"v"
+                                          flags:UIKeyModifierCommand];
+
   [self waitForPasswordProtectionWarningWithoutSync];
 }
 

@@ -69,10 +69,13 @@
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/glic/browser_ui/glic_nudge_controller.h"
+#include "chrome/browser/ui/actions/chrome_action_id.h"
+#include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/hats/hats_service.h"
 #include "chrome/browser/ui/hats/hats_service_factory.h"
 #include "chrome/browser/ui/hats/survey_config.h"
 #include "chrome/browser/ui/lens/lens_search_controller.h"
+#include "ui/actions/actions.h"
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
@@ -354,9 +357,15 @@ void ContextualTasksSidePanelCoordinator::OpenInZeroState() {
   }
 
   CleanUpUnusedWebContents();
+  bool is_pinned =
+      contextual_tasks::IsContextualTasksPinButtonInToolbarEnabled() &&
+      contextual_tasks::GetEffectivePinState(browser_window_->GetProfile());
 
   Show(/*transition_from_tab=*/false,
-       omnibox::ChromeAimEntryPoint::DESKTOP_CHROME_COBROWSE_TOOLBAR_BUTTON);
+       is_pinned ? omnibox::ChromeAimEntryPoint::
+                       DESKTOP_CHROME_COBROWSE_PINNED_TOOLBAR_BUTTON
+                 : omnibox::ChromeAimEntryPoint::
+                       DESKTOP_CHROME_COBROWSE_TOOLBAR_BUTTON);
 }
 
 bool ContextualTasksSidePanelCoordinator::IsPanelOpenForContextualTask() const {
@@ -869,6 +878,11 @@ void ContextualTasksSidePanelCoordinator::UpdateContextualTaskUI() {
   if (auto* web_ui_interface = GetWebUiInterface(web_contents)) {
     web_ui_interface->OnActiveTabContextStatusChanged();
   }
+
+  std::optional<ContextualTask> task = GetCurrentTask();
+  if (task) {
+    contextual_tasks_service_->SetLastActiveTask(task->GetTaskId());
+  }
 }
 
 void ContextualTasksSidePanelCoordinator::MaybeDetachWebContents(
@@ -1046,6 +1060,15 @@ void ContextualTasksSidePanelCoordinator::OnEligibilityChange(
     }
     task_id_to_web_contents_cache_.clear();
   }
+#if !BUILDFLAG(IS_ANDROID)
+  if (browser_window_ && browser_window_->GetActions()) {
+    if (auto* action_item = actions::ActionManager::Get().FindAction(
+            kActionSidePanelShowContextualTasks,
+            browser_window_->GetActions()->root_action_item())) {
+      action_item->SetVisible(is_eligible);
+    }
+  }
+#endif
 }
 
 void ContextualTasksSidePanelCoordinator::AddObserver(

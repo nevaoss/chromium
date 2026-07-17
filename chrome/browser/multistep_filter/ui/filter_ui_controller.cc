@@ -11,6 +11,7 @@
 #include "base/notreached.h"
 #include "base/strings/strcat.h"
 #include "base/strings/utf_string_conversions.h"
+#include "chrome/browser/contextual_cueing/prefs.h"
 #include "chrome/browser/favicon/favicon_service_factory.h"
 #include "chrome/browser/multistep_filter/core/multistep_filter_log_router_factory.h"
 #include "chrome/browser/multistep_filter/core/multistep_filter_service_factory.h"
@@ -26,6 +27,7 @@
 #include "components/multistep_filter/core/logging/log_entry.h"
 #include "components/multistep_filter/core/logging/multistep_filter_logger.h"
 #include "components/multistep_filter/core/multistep_filter_service.h"
+#include "components/optimization_guide/core/feature_registry/feature_registration.h"
 #include "components/optimization_guide/core/model_execution/feature_keys.h"
 #include "components/optimization_guide/core/optimization_guide_prefs.h"
 #include "components/prefs/pref_service.h"
@@ -58,6 +60,7 @@ void LogSuggestionUiDecision(
       event_type = LogEventType::kSuggestionDismissed;
       break;
     case FilterUiController::SuggestionUserDecision::kIgnored:
+    case FilterUiController::SuggestionUserDecision::kSettingsOpened:
       event_type = LogEventType::kSuggestionIgnored;
       break;
   }
@@ -69,6 +72,8 @@ void LogSuggestionUiDecision(
       trigger_source = "Cue";
       break;
     case FilterUiController::SuggestionViewState::kCollapsedInOmnibox:
+    case FilterUiController::SuggestionViewState::
+        kCollapsedInOmniboxAfterReopen:
       trigger_source = "Omnibox";
       break;
     case FilterUiController::SuggestionViewState::kInactive:
@@ -202,6 +207,7 @@ void FilterUiController::OnActionInvoked() {
     case SuggestionViewState::kInactive:
       NOTREACHED();
     case SuggestionViewState::kCollapsedInOmnibox:
+    case SuggestionViewState::kCollapsedInOmniboxAfterReopen:
       ShowCue(suggestion_state_->suggestion);
       break;
   }
@@ -239,7 +245,7 @@ void FilterUiController::ExecuteCommand(int command_id, int event_flags) {
       ClearSuggestion(SuggestionUserDecision::kDismissed);
       break;
     case internal::kSettingsCommand:
-      ClearSuggestion(SuggestionUserDecision::kIgnored);
+      ClearSuggestion(SuggestionUserDecision::kSettingsOpened);
       OpenSettings();
       break;
   }
@@ -267,9 +273,21 @@ bool FilterUiController::ShouldShowCue() const {
   int opt_in_state = pref_service_->GetInteger(
       optimization_guide::prefs::GetSettingEnabledPrefName(
           optimization_guide::UserVisibleFeatureKey::kContextualCueing));
-  return opt_in_state !=
-         std::to_underlying(
-             optimization_guide::prefs::FeatureOptInState::kDisabled);
+  if (opt_in_state ==
+      std::to_underlying(
+          optimization_guide::prefs::FeatureOptInState::kDisabled)) {
+    return false;
+  }
+
+  // Check enterprise policy.
+  if (pref_service_->GetInteger(
+          optimization_guide::prefs::kChromeSuggestionsSettings) ==
+      std::to_underlying(
+          contextual_cueing::ChromeSuggestionsSettingsValue::kDisabled)) {
+    return false;
+  }
+
+  return true;
 }
 
 void FilterUiController::ShowCue(const UrlFilterSuggestion& suggestion) {
@@ -318,6 +336,7 @@ void FilterUiController::OnPageActionAnchoredMessageShown(
       }
       break;
     case SuggestionViewState::kCollapsedInOmnibox:
+    case SuggestionViewState::kCollapsedInOmniboxAfterReopen:
       if (page_action_controller_) {
         page_action_controller_->OverrideText(
             kActionMultistepFilter,
@@ -340,7 +359,6 @@ void FilterUiController::OnPageActionAnchoredMessageHidden(
 
   switch (suggestion_state_->view_state) {
     case SuggestionViewState::kShowingInitialCue:
-    case SuggestionViewState::kReopenedFromOmnibox:
       LogSuggestionUiDecision(log_router_, *suggestion_state_,
                               SuggestionUserDecision::kIgnored);
       suggestion_state_->view_state = SuggestionViewState::kCollapsedInOmnibox;
@@ -350,8 +368,20 @@ void FilterUiController::OnPageActionAnchoredMessageHidden(
             suggestion_state_->suggestion.short_suggestion_message);
       }
       break;
+    case SuggestionViewState::kReopenedFromOmnibox:
+      LogSuggestionUiDecision(log_router_, *suggestion_state_,
+                              SuggestionUserDecision::kIgnored);
+      suggestion_state_->view_state =
+          SuggestionViewState::kCollapsedInOmniboxAfterReopen;
+      if (page_action_controller_) {
+        page_action_controller_->OverrideText(
+            kActionMultistepFilter,
+            suggestion_state_->suggestion.short_suggestion_message);
+      }
+      break;
     case SuggestionViewState::kInactive:
     case SuggestionViewState::kCollapsedInOmnibox:
+    case SuggestionViewState::kCollapsedInOmniboxAfterReopen:
       NOTREACHED();
   }
 }

@@ -2498,6 +2498,9 @@ chromium-metrics-reviews@google.com.
   <int value="1462" label="DefaultAutomaticDownloadsSetting"/>
   <int value="1463" label="AutomaticDownloadsAllowedForUrls"/>
   <int value="1464" label="AutomaticDownloadsBlockedForUrls"/>
+  <int value="1465" label="VoiceTypingSettings"/>
+  <int value="1466" label="ProxyProvisioningDomains"/>
+  <int value="1467" label="ThirdPartyAiChatSettings"/>
 </enum>
 
 <enum name="EnterprisePoliciesSources">

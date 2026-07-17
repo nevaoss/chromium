@@ -12,24 +12,28 @@ import {PageCallbackRouter, PageHandlerRemote} from 'chrome://resources/cr_compo
 import type {ComposeboxFaviconGroupElement} from 'chrome://resources/cr_components/composebox/composebox_favicon_group.js';
 import {ContextUploadErrorType, ContextUploadStatus, InputType, ToolMode} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
 import type {InputState} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
-import type {ContextualEntrypointButtonElement} from 'chrome://resources/cr_components/composebox/contextual_entrypoint_button.js';
 import type {ComposeboxFileCarouselElement} from 'chrome://resources/cr_components/composebox/file_carousel.js';
 import {WindowProxy} from 'chrome://resources/cr_components/composebox/window_proxy.js';
 import {GlowAnimationState} from 'chrome://resources/cr_components/search/constants.js';
 import {createAutocompleteResultForTesting, createSearchMatchForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
-import type {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote, SearchContext} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import type {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote, SearchContext, SelectedFileInfo} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {SuggestInventory} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
-import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
+import {assertEquals, assertFalse, assertNotEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {TestMock} from 'chrome://webui-test/test_mock.js';
 import {microtasksFinished} from 'chrome://webui-test/test_util.js';
 
 import {TestSearchboxBrowserProxy} from './test_searchbox_browser_proxy.js';
 
-interface TestOmniboxComposeboxElement extends OmniboxComposeboxElement {
-  keepMenuOpenForMultiSelection: () => void;
-  keepMenuOpenOnTabSelectForRealbox: boolean;
-  composeboxSource: string;
+declare global {
+  interface SpeechRecognition extends EventTarget {
+    interimResults: boolean;
+    lang: string;
+    continuous: boolean;
+    abort(): void;
+    start(): void;
+    stop(): void;
+  }
 }
 
 suite('OmniboxComposeboxTest', () => {
@@ -978,6 +982,14 @@ suite('OmniboxComposeboxTest', () => {
       async () => {
         const windowProxy = TestMock.fromClass(WindowProxy);
         windowProxy.setResultFor('hasWebkitSpeechRecognition', true);
+        windowProxy.setResultMapperFor('createSpeechRecognition', () => {
+          const mock = new EventTarget();
+          const speechMock = mock as unknown as SpeechRecognition;
+          speechMock.abort = () => {};
+          speechMock.start = () => {};
+          speechMock.stop = () => {};
+          return speechMock;
+        });
         windowProxy.setResultMapperFor(
             'matchMedia', (query: string) => window.matchMedia(query));
         WindowProxy.setInstance(windowProxy);
@@ -1004,6 +1016,14 @@ suite('OmniboxComposeboxTest', () => {
       async () => {
         const windowProxy = TestMock.fromClass(WindowProxy);
         windowProxy.setResultFor('hasWebkitSpeechRecognition', true);
+        windowProxy.setResultMapperFor('createSpeechRecognition', () => {
+          const mock = new EventTarget();
+          const speechMock = mock as unknown as SpeechRecognition;
+          speechMock.abort = () => {};
+          speechMock.start = () => {};
+          speechMock.stop = () => {};
+          return speechMock;
+        });
         windowProxy.setResultMapperFor(
             'matchMedia', (query: string) => window.matchMedia(query));
         WindowProxy.setInstance(windowProxy);
@@ -1027,6 +1047,14 @@ suite('OmniboxComposeboxTest', () => {
       async () => {
         const windowProxy = TestMock.fromClass(WindowProxy);
         windowProxy.setResultFor('hasWebkitSpeechRecognition', true);
+        windowProxy.setResultMapperFor('createSpeechRecognition', () => {
+          const mock = new EventTarget();
+          const speechMock = mock as unknown as SpeechRecognition;
+          speechMock.abort = () => {};
+          speechMock.start = () => {};
+          speechMock.stop = () => {};
+          return speechMock;
+        });
         windowProxy.setResultMapperFor(
             'matchMedia', (query: string) => window.matchMedia(query));
         WindowProxy.setInstance(windowProxy);
@@ -1069,8 +1097,8 @@ suite('OmniboxComposeboxTest', () => {
             }));
         await voiceSearchOverlay.updateComplete;
 
-        assertTrue(voiceSearchOverlay.classList.contains(
-            'embedded-permission-prompt-showing'));
+        assertTrue(
+            voiceSearchOverlay.classList.contains('permission-prompt-showing'));
         assertEquals('0', window.getComputedStyle(bottomActions).opacity);
       });
 
@@ -1079,6 +1107,14 @@ suite('OmniboxComposeboxTest', () => {
       async () => {
         const windowProxy = TestMock.fromClass(WindowProxy);
         windowProxy.setResultFor('hasWebkitSpeechRecognition', true);
+        windowProxy.setResultMapperFor('createSpeechRecognition', () => {
+          const mock = new EventTarget();
+          const speechMock = mock as unknown as SpeechRecognition;
+          speechMock.abort = () => {};
+          speechMock.start = () => {};
+          speechMock.stop = () => {};
+          return speechMock;
+        });
         windowProxy.setResultMapperFor(
             'matchMedia', (query: string) => window.matchMedia(query));
         WindowProxy.setInstance(windowProxy);
@@ -1133,8 +1169,7 @@ suite('OmniboxComposeboxTest', () => {
         await omniboxComposebox.updateComplete;
 
         // Verify the class was added and opacity turned to 0.
-        assertTrue(
-            glow.classList.contains('embedded-permission-prompt-showing'));
+        assertTrue(glow.classList.contains('permission-prompt-showing'));
         assertEquals('0', window.getComputedStyle(audioWave).opacity);
       });
 
@@ -1143,6 +1178,14 @@ suite('OmniboxComposeboxTest', () => {
       async () => {
         const windowProxy = TestMock.fromClass(WindowProxy);
         windowProxy.setResultFor('hasWebkitSpeechRecognition', true);
+        windowProxy.setResultMapperFor('createSpeechRecognition', () => {
+          const mock = new EventTarget();
+          const speechMock = mock as unknown as SpeechRecognition;
+          speechMock.abort = () => {};
+          speechMock.start = () => {};
+          speechMock.stop = () => {};
+          return speechMock;
+        });
         windowProxy.setResultMapperFor(
             'matchMedia', (query: string) => window.matchMedia(query));
         WindowProxy.setInstance(windowProxy);
@@ -1197,8 +1240,7 @@ suite('OmniboxComposeboxTest', () => {
         await omniboxComposebox.updateComplete;
 
         // Verify the class was added and opacity turned to 0.
-        assertTrue(
-            glow.classList.contains('embedded-permission-prompt-showing'));
+        assertTrue(glow.classList.contains('permission-prompt-showing'));
         assertEquals('0', window.getComputedStyle(recordingWave).opacity);
       });
 
@@ -1295,7 +1337,12 @@ suite('OmniboxComposeboxTest', () => {
   }
 
   async function dispatchDragAndDropEvent(hostElement: Element, files: File[]) {
-    const dropZone = hostElement.shadowRoot!.querySelector('#composebox');
+    const shadowRoot = hostElement.shadowRoot;
+    assertTrue(!!shadowRoot);
+    if (!shadowRoot) {
+      return;
+    }
+    const dropZone = shadowRoot.querySelector('#composebox');
 
     if (!dropZone) {
       throw new Error(
@@ -1760,76 +1807,6 @@ suite('OmniboxComposeboxTest', () => {
     });
   });
 
-  test(
-      'keepMenuOpenForMultiSelection called on add/delete tab context',
-      async () => {
-        let keepMenuOpenCalled = false;
-        const testElement = omniboxComposebox as TestOmniboxComposeboxElement;
-        testElement.keepMenuOpenForMultiSelection = () => {
-          keepMenuOpenCalled = true;
-        };
-
-        await omniboxComposebox.onAddTabContext(
-            new CustomEvent('add-tab-context', {
-              detail: {
-                id: 1,
-                title: 'Test',
-                url: 'about:blank',  // Mojo converts obj to str.
-                delayUpload: false,
-                origin: TabUploadOrigin.CONTEXT_MENU,
-              },
-            }));
-        assertTrue(keepMenuOpenCalled);
-
-        keepMenuOpenCalled = false;
-        await omniboxComposebox.onDeleteTabContext(
-            new CustomEvent('delete-tab-context', {
-              detail: {
-                uuid: '0',
-              },
-            }));
-        assertTrue(keepMenuOpenCalled);
-      });
-
-  test('onContextMenuClosed sets shareTabsFlyoutOpen to false', async () => {
-    omniboxComposebox.shareTabsFlyoutOpen = true;
-    await omniboxComposebox.onContextMenuClosed();
-    assertFalse(omniboxComposebox.shareTabsFlyoutOpen);
-  });
-
-  test(
-      'keepMenuOpenForMultiSelection is gated' +
-          ' by keepMenuOpenOnTabSelectForRealbox',
-      () => {
-        let openMenuCalled = false;
-        omniboxComposebox.getContextEntrypointElement = () => {
-          return {
-            openMenuForMultiSelection: () => {
-              openMenuCalled = true;
-            },
-          } as unknown as ContextualEntrypointButtonElement;
-        };
-
-        const testElement = omniboxComposebox as TestOmniboxComposeboxElement;
-
-        // Omnibox source: always returns early
-        testElement.composeboxSource = 'Omnibox';
-        testElement.keepMenuOpenForMultiSelection();
-        assertFalse(openMenuCalled);
-
-        // NewTabPage source, flag off: returns early
-        testElement.composeboxSource = 'NewTabPage';
-        testElement.keepMenuOpenOnTabSelectForRealbox = false;
-        testElement.keepMenuOpenForMultiSelection();
-        assertFalse(openMenuCalled);
-
-        // NewTabPage source, flag on: calls openMenuForMultiSelection
-        testElement.composeboxSource = 'NewTabPage';
-        testElement.keepMenuOpenOnTabSelectForRealbox = true;
-        testElement.keepMenuOpenForMultiSelection();
-        assertTrue(openMenuCalled);
-      });
-
   suite('SmartCompose', () => {
     setup(async () => {
       loadTimeData.overrideValues({composeboxSmartComposeEnabled: true});
@@ -2052,5 +2029,412 @@ suite('OmniboxComposeboxTest', () => {
       assertTrue(!!faviconGroup);
       assertEquals(1, faviconGroup.tabs.length);
     });
+  });
+
+  suite('voice search', () => {
+    setup(async () => {
+      const windowProxy = TestMock.fromClass(WindowProxy);
+      windowProxy.setResultFor('hasWebkitSpeechRecognition', true);
+      windowProxy.setResultMapperFor('createSpeechRecognition', () => {
+        const mock = new EventTarget();
+        const speechMock = mock as unknown as SpeechRecognition;
+        speechMock.abort = () => {};
+        speechMock.start = () => {};
+        speechMock.stop = () => {};
+        return speechMock;
+      });
+      windowProxy.setResultMapperFor(
+          'matchMedia', (query: string) => window.matchMedia(query));
+      WindowProxy.setInstance(windowProxy);
+
+      testProxy.handler.setPromiseResolveFor('getPageClassification', {
+        metricSource: 'NTP_OMNIBOX_COMPOSEBOX',
+      });
+
+      omniboxComposebox.showVoiceSearch = true;
+      await omniboxComposebox.updateComplete;
+    });
+
+    async function enterVoiceSearchMode() {
+      const voiceSearchButton =
+          omniboxComposebox.shadowRoot.querySelector<HTMLElement>(
+              '#voiceSearchButton');
+      assertTrue(!!voiceSearchButton);
+      voiceSearchButton.click();
+      await microtasksFinished();
+      await omniboxComposebox.updateComplete;
+    }
+
+    async function submitVoiceSearch() {
+      const voiceSearch = omniboxComposebox.shadowRoot.querySelector(
+          'cr-composebox-voice-search');
+      assertTrue(!!voiceSearch);
+
+      const mockVoiceSearch = voiceSearch as unknown as {
+        finalResult_: string,
+        transcript_: string,
+      };
+      mockVoiceSearch.finalResult_ = 'test query';
+      mockVoiceSearch.transcript_ = 'test query';
+      voiceSearch.requestUpdate();
+      await voiceSearch.updateComplete;
+
+      const submitButton =
+          voiceSearch.shadowRoot.querySelector('cr-composebox-submit');
+      assertTrue(!!submitButton);
+      await submitButton.updateComplete;
+
+      const submitContainer =
+          submitButton.shadowRoot.querySelector<HTMLElement>('#submitContainer');
+      assertTrue(!!submitContainer);
+      submitContainer.click();
+
+      await microtasksFinished();
+      await omniboxComposebox.updateComplete;
+      await testProxy.handler.whenCalled('submitQuery');
+    }
+
+    test(
+        'voice error scrim is absolute when not hidden; display none otherwise',
+        async () => {
+          // When no error: errorScrim should be absent:
+          let errorScrim =
+              omniboxComposebox.shadowRoot.querySelector('#errorScrim');
+          assertFalse(!!errorScrim);
+
+          // When error: errorScrim is shown, must be position absolute:
+          omniboxComposebox.inVoiceSearchMode = true;
+          omniboxComposebox.errorMessage = 'Network error';
+          await omniboxComposebox.updateComplete;
+
+          errorScrim =
+              omniboxComposebox.shadowRoot.querySelector('#errorScrim');
+          assertTrue(!!errorScrim);
+          assertEquals(
+              'absolute', window.getComputedStyle(errorScrim).position);
+
+          // When dismissed (hidden again):
+          const shadowRoot = errorScrim.shadowRoot;
+          assertTrue(!!shadowRoot);
+          if (!shadowRoot) {
+            return;
+          }
+          const dismissErrorButton =
+              shadowRoot.querySelector<HTMLElement>('#dismissErrorButton');
+          assertTrue(!!dismissErrorButton);
+          dismissErrorButton.click();
+          await microtasksFinished();
+          await omniboxComposebox.updateComplete;
+
+          errorScrim =
+              omniboxComposebox.shadowRoot.querySelector('#errorScrim');
+          // Equivalent to checking 'display none':
+          assertFalse(!!errorScrim);
+        });
+
+    test('toolchip and image added, then removed in voice search', async () => {
+      // Add tool chip
+      omniboxComposebox.contextMenuEnabled = true;
+      omniboxComposebox.inToolMode = true;
+      omniboxComposebox.voiceSearchCoherenceEnabled = true;
+
+      // Add image
+      const thumbnailUrl = 'data:image/png;base64,sometestdata';
+      const testToken = '12345678901234567890123456789012';
+      testProxy.page.addFileContext(testToken, {
+        fileName: 'test.png',
+        mimeType: 'image/png',
+        imageDataUrl: thumbnailUrl,
+        isDeletable: true,
+        selectionTime: new Date(),
+      } as SelectedFileInfo);
+      await testProxy.page.$.flushForTesting();
+      await microtasksFinished();
+      await omniboxComposebox.updateComplete;
+
+      // Enter voice search mode:
+      await enterVoiceSearchMode();
+
+      // Ensure carousel and toolchip are visible in voice search:
+      const animatedGlow =
+          omniboxComposebox.shadowRoot.querySelector('search-animated-glow');
+      assertTrue(!!animatedGlow);
+      const voiceCarouselContainer =
+          animatedGlow.querySelector('#voiceCarouselContainer');
+      assertTrue(!!voiceCarouselContainer);
+      const voiceCarousel =
+          voiceCarouselContainer.querySelector('#voiceSearchCarousel');
+      assertTrue(!!voiceCarousel);
+      const voiceToolChip =
+          animatedGlow.querySelector('#voiceToolChipsContainer');
+      assertTrue(!!voiceToolChip);
+
+      // Verify CSS order
+      assertFalse(voiceCarousel.classList.contains('top'));
+      assertEquals('2', window.getComputedStyle(voiceCarouselContainer).order);
+      assertEquals('3', window.getComputedStyle(voiceToolChip).order);
+      const recordingWave =
+          animatedGlow.shadowRoot.querySelector('#recordingWave');
+      assertTrue(!!recordingWave);
+      assertEquals('1', window.getComputedStyle(recordingWave).order);
+
+      // Remove image:
+      const shadowRoot = voiceCarousel.shadowRoot;
+      assertTrue(!!shadowRoot);
+      if (!shadowRoot) {
+        return;
+      }
+      const fileThumbnail = shadowRoot.querySelector(
+          'cr-composebox-file-thumbnail');
+      assertTrue(!!fileThumbnail);
+      const removeImgButton =
+          fileThumbnail.shadowRoot.querySelector<HTMLElement>(
+              '#removeImgButton');
+      removeImgButton!.click();
+      await microtasksFinished();
+      await omniboxComposebox.updateComplete;
+      assertEquals(0, omniboxComposebox.files.size);
+
+      // Remove toolchip:
+      omniboxComposebox.inToolMode = false;
+      await omniboxComposebox.updateComplete;
+      assertFalse(!!animatedGlow.querySelector('#voiceToolChipsContainer'));
+    });
+
+    test('remove image but submit toolchip in voice search mode', async () => {
+      // Add tool chip and image
+      omniboxComposebox.contextMenuEnabled = true;
+      omniboxComposebox.inToolMode = true;
+      omniboxComposebox.voiceSearchCoherenceEnabled = true;
+      const thumbnailUrl = 'data:image/png;base64,sometestdata';
+      const testToken = '12345678901234567890123456789012';
+      testProxy.page.addFileContext(testToken, {
+        fileName: 'test.png',
+        mimeType: 'image/png',
+        imageDataUrl: thumbnailUrl,
+        isDeletable: true,
+        selectionTime: new Date(),
+      } as SelectedFileInfo);
+      await testProxy.page.$.flushForTesting();
+      await microtasksFinished();
+      await omniboxComposebox.updateComplete;
+
+      await enterVoiceSearchMode();
+
+      const animatedGlow =
+          omniboxComposebox.shadowRoot.querySelector('search-animated-glow');
+      assertTrue(!!animatedGlow);
+      const voiceCarouselContainer =
+          animatedGlow.querySelector('#voiceCarouselContainer');
+      assertTrue(!!voiceCarouselContainer);
+      const voiceCarousel =
+          voiceCarouselContainer.querySelector('#voiceSearchCarousel');
+      assertTrue(!!voiceCarousel);
+
+      // Remove image from voice carousel:
+      const shadowRoot = voiceCarousel.shadowRoot;
+      assertTrue(!!shadowRoot);
+      if (!shadowRoot) {
+        return;
+      }
+      const fileThumbnail = shadowRoot.querySelector(
+          'cr-composebox-file-thumbnail');
+      assertTrue(!!fileThumbnail);
+      const removeImgButton =
+          fileThumbnail.shadowRoot.querySelector<HTMLElement>(
+              '#removeImgButton');
+      removeImgButton!.click();
+      await microtasksFinished();
+      await omniboxComposebox.updateComplete;
+      assertEquals(0, omniboxComposebox.files.size);
+
+      // Submit:
+      await submitVoiceSearch();
+
+      assertTrue(omniboxComposebox.inToolMode);
+      assertEquals(0, omniboxComposebox.files.size);
+    });
+
+    test('remove toolchip but submit image in voice search mode', async () => {
+      // Add tool chip and image:
+      omniboxComposebox.contextMenuEnabled = true;
+      omniboxComposebox.inToolMode = true;
+      omniboxComposebox.voiceSearchCoherenceEnabled = true;
+      const thumbnailUrl = 'data:image/png;base64,sometestdata';
+      const testToken = '12345678901234567890123456789012';
+      testProxy.page.addFileContext(testToken, {
+        fileName: 'test.png',
+        mimeType: 'image/png',
+        imageDataUrl: thumbnailUrl,
+        isDeletable: true,
+        selectionTime: new Date(),
+      } as SelectedFileInfo);
+      await testProxy.page.$.flushForTesting();
+      await microtasksFinished();
+      await omniboxComposebox.updateComplete;
+
+      await enterVoiceSearchMode();
+
+      const animatedGlow =
+          omniboxComposebox.shadowRoot.querySelector('search-animated-glow');
+      assertTrue(!!animatedGlow);
+      const voiceToolChip =
+          animatedGlow.querySelector('#voiceToolChipsContainer');
+      assertTrue(!!voiceToolChip);
+
+      // Remove tool chip from voice tool chips container:
+      const toolChip = voiceToolChip.querySelector('cr-composebox-tool-chip');
+      assertTrue(!!toolChip);
+      const toolEnabledButton =
+          toolChip.shadowRoot.querySelector<HTMLElement>('#toolEnabledButton');
+      assertTrue(!!toolEnabledButton);
+      toolEnabledButton.click();
+      // Prevent the image file from being cleared on component
+      // updates (follows `inputState`):
+      testProxy.page.onInputStateChanged({
+        ...createDefaultInputState(),
+        activeTool: ToolMode.kUnspecified,
+        allowedInputTypes: [InputType.kLensImage],
+      });
+      await microtasksFinished();
+      await omniboxComposebox.updateComplete;
+      assertFalse(omniboxComposebox.inToolMode);
+
+      // Submit:
+      await submitVoiceSearch();
+
+      assertFalse(omniboxComposebox.inToolMode);
+      assertEquals(1, omniboxComposebox.files.size);
+    });
+
+    test(
+        'removing chips in voice carousel removes them from main carousel after' +
+            ' stopping recording',
+        async () => {
+          // Add tool chip and image
+          omniboxComposebox.contextMenuEnabled = true;
+          omniboxComposebox.inToolMode = true;
+          omniboxComposebox.voiceSearchCoherenceEnabled = true;
+          const thumbnailUrl = 'data:image/png;base64,sometestdata';
+          const testToken = '12345678901234567890123456789012';
+          testProxy.page.addFileContext(testToken, {
+            fileName: 'test.png',
+            mimeType: 'image/png',
+            imageDataUrl: thumbnailUrl,
+            isDeletable: true,
+            selectionTime: new Date(),
+          } as SelectedFileInfo);
+          await testProxy.page.$.flushForTesting();
+          await microtasksFinished();
+          await omniboxComposebox.updateComplete;
+
+          // Enter voice search mode by clicking voice search button:
+          await enterVoiceSearchMode();
+
+          const animatedGlow = omniboxComposebox.shadowRoot.querySelector(
+              'search-animated-glow');
+          assertTrue(!!animatedGlow);
+          const voiceCarouselContainer =
+              animatedGlow.querySelector('#voiceCarouselContainer');
+          assertTrue(!!voiceCarouselContainer);
+          const voiceCarousel =
+              voiceCarouselContainer.querySelector('#voiceSearchCarousel');
+          assertTrue(!!voiceCarousel);
+          const voiceToolChip =
+              animatedGlow.querySelector('#voiceToolChipsContainer');
+          assertTrue(!!voiceToolChip);
+
+          // Remove image from voice carousel:
+          const shadowRoot = voiceCarousel.shadowRoot;
+          assertTrue(!!shadowRoot);
+          if (!shadowRoot) {
+            return;
+          }
+          const fileThumbnail = shadowRoot.querySelector(
+              'cr-composebox-file-thumbnail');
+          assertTrue(!!fileThumbnail);
+          const removeImgButton =
+              fileThumbnail.shadowRoot.querySelector<HTMLElement>(
+                  '#removeImgButton');
+          removeImgButton!.click();
+          await microtasksFinished();
+          await omniboxComposebox.updateComplete;
+          assertEquals(0, omniboxComposebox.files.size);
+
+          // Remove tool chip from voice tool chips container:
+          const toolChip =
+              voiceToolChip.querySelector('cr-composebox-tool-chip');
+          assertTrue(!!toolChip);
+          const toolEnabledButton =
+              toolChip.shadowRoot.querySelector<HTMLElement>(
+                  '#toolEnabledButton');
+          assertTrue(!!toolEnabledButton);
+          toolEnabledButton.click();
+          testProxy.page.onInputStateChanged({
+            ...createDefaultInputState(),
+            activeTool: ToolMode.kUnspecified,
+            allowedInputTypes: [InputType.kLensImage],
+          });
+          await microtasksFinished();
+          await omniboxComposebox.updateComplete;
+          assertFalse(omniboxComposebox.inToolMode);
+
+          // Stop recording:
+          const voiceSearch = omniboxComposebox.shadowRoot.querySelector(
+              'cr-composebox-voice-search');
+          assertTrue(!!voiceSearch);
+          const stopButton =
+              voiceSearch.shadowRoot.querySelector<HTMLElement>('#stopButton');
+          assertTrue(!!stopButton);
+          stopButton.click();
+          await microtasksFinished();
+          await omniboxComposebox.updateComplete;
+
+          assertFalse(omniboxComposebox.inToolMode);
+          assertEquals(0, omniboxComposebox.files.size);
+        });
+
+    test(
+        'voice search and its container are absolute when not waiting and not in error',
+        async () => {
+          omniboxComposebox.showVoiceSearch = true;
+          await omniboxComposebox.updateComplete;
+
+          const voiceSearch = omniboxComposebox.shadowRoot.querySelector(
+              'cr-composebox-voice-search');
+          assertTrue(!!voiceSearch);
+
+          // Not waiting and not in error:
+          omniboxComposebox.inVoiceSearchMode = true;
+          omniboxComposebox.isListening = true;
+          await omniboxComposebox.updateComplete;
+          voiceSearch.isPermissionPromptOpen = false;
+          await voiceSearch.updateComplete;
+
+          const voiceSearchContainer =
+              voiceSearch.shadowRoot.querySelector('#container');
+          assertTrue(!!voiceSearchContainer);
+
+          assertEquals(
+              'absolute', window.getComputedStyle(voiceSearch).position);
+          assertEquals(
+              'absolute',
+              window.getComputedStyle(voiceSearchContainer).position);
+
+          // Waiting (permission prompt open):
+          voiceSearch.isPermissionPromptOpen = true;
+          await voiceSearch.updateComplete;
+          assertNotEquals(
+              'absolute',
+              window.getComputedStyle(voiceSearchContainer).position);
+
+          // In error:
+          voiceSearch.isPermissionPromptOpen = false;
+          (voiceSearch as unknown as {errorMessage_: string}).errorMessage_ = 'Voice error';
+          await voiceSearch.updateComplete;
+          assertNotEquals(
+              'absolute',
+              window.getComputedStyle(voiceSearchContainer).position);
+        });
   });
 });

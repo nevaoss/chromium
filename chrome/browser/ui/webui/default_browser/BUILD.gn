@@ -50,6 +50,8 @@ if (is_win) {
     sources = [
       "guided_setter_overlay_window_win.cc",
       "guided_setter_overlay_window_win.h",
+      "visual_guided_setter_layout_utils.cc",
+      "visual_guided_setter_layout_utils.h",
       "visual_guided_setter_ui.cc",
       "visual_guided_setter_ui.h",
     ]
@@ -68,6 +70,8 @@ if (is_win) {
       "//chrome/common",
       "//content/public/browser",
       "//ui/base/interaction",
+      "//ui/display",
+      "//ui/gfx/geometry",
       "//ui/views",
       "//ui/web_dialogs",
       "//ui/webui",
@@ -77,7 +81,12 @@ if (is_win) {
 
   source_set("unit_tests") {
     testonly = true
-    sources = [ "guided_setter_overlay_window_win_unittest.cc" ]
+
+    sources = [
+      "guided_setter_overlay_window_win_unittest.cc",
+      "visual_guided_setter_layout_utils_unittest.cc",
+    ]
+
     deps = [
       ":visual_guided_setter",
       "//base",

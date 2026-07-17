@@ -43,8 +43,7 @@ class ColorProviderBrowserHelper;
 class CommentsSidePanelCoordinator;
 class ContentsBorderController;
 class ContextHighlightWindowFeature;
-class ContextualTasksCloseButtonController;
-class ContextualTasksEphemeralButtonController;
+
 class CookieControlsBubbleCoordinator;
 class DataSharingBubbleController;
 class DesktopBrowserWindowCapabilities;
@@ -142,9 +141,7 @@ class ContextualCueingController;
 }  // namespace contextual_cueing
 
 namespace contextual_tasks {
-class ActiveTaskContextProvider;
-class ContextualTasksSidePanelCoordinator;
-class EntryPointEligibilityManager;
+class ContextualTasksBrowserController;
 }  // namespace contextual_tasks
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
@@ -573,16 +570,8 @@ class BrowserWindowFeatures {
 
   std::unique_ptr<contextual_cueing::ContextualCueingController>
       contextual_cueing_controller_;
-  std::unique_ptr<contextual_tasks::ActiveTaskContextProvider>
-      contextual_tasks_active_task_context_provider_;
-  std::unique_ptr<ContextualTasksCloseButtonController>
-      contextual_tasks_close_button_controller_;
-  std::unique_ptr<contextual_tasks::EntryPointEligibilityManager>
-      contextual_tasks_entry_point_eligibility_manager_;
-  std::unique_ptr<ContextualTasksEphemeralButtonController>
-      contextual_tasks_ephemeral_button_controller_;
-  std::unique_ptr<contextual_tasks::ContextualTasksSidePanelCoordinator>
-      contextual_tasks_side_panel_coordinator_;
+  std::unique_ptr<contextual_tasks::ContextualTasksBrowserController>
+      contextual_tasks_browser_controller_;
   std::unique_ptr<CookieControlsBubbleCoordinator>
       cookie_controls_bubble_coordinator_;
   std::unique_ptr<content_settings::CookieControlsController>

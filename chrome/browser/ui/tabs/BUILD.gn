@@ -527,6 +527,7 @@ if (!is_android) {
       "//components/enterprise",
       "//components/favicon/content",
       "//components/favicon/core",
+      "//components/history/core/common",
       "//components/image_fetcher/core",
       "//components/lens",
       "//components/metrics:content",

@@ -10,8 +10,8 @@
 #include "base/no_destructor.h"
 #include "base/notreached.h"
 #include "base/task/bind_post_task.h"
-#include "content/browser/child_process_security_policy_impl.h"  // nogncheck
 #include "content/browser/dom_storage/session_storage_namespace_impl.h"  // nogncheck
+#include "content/browser/security/cpsp/child_process_security_policy_impl.h"  // nogncheck
 #include "content/browser/storage_partition_impl.h"              // nogncheck
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/test/test_browser_context.h"

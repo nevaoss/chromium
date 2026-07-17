@@ -52,6 +52,7 @@
 #include "components/autofill/core/common/form_field_data.h"
 #include "components/consent_auditor/fake_consent_auditor.h"
 #include "components/signin/public/base/consent_level.h"
+#include "components/subscription_eligibility/subscription_eligibility_prefs.h"
 #include "components/sync/protocol/user_consent_types.pb.h"
 #include "components/sync/test/test_sync_service.h"
 #include "components/wallet/core/common/wallet_features.h"
@@ -323,19 +324,45 @@ TEST_F(AutofillAiManagerTest,
                           HasType(kManageAutofillAi)));
 }
 
+// Tests that PrefetchContext is executed.
 TEST_F(AutofillAiManagerTest, OnAfterLoadedServerPredictions_TriggersFetch) {
-  test::FormDescription form_description = {
-      .fields = {{.role = PASSPORT_NUMBER}}};
-  FormData form = test::GetFormData(form_description);
-  auto form_structure = std::make_unique<FormStructure>(form);
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(
+      features::kAutofillAmbientAutofill,
+      {{"ambient_autofill_eligible_tiers", "1"}});
+  autofill_client().GetPrefs()->SetInteger(
+      subscription_eligibility::prefs::kAiSubscriptionTier, 1);
+  auto form_structure = std::make_unique<FormStructure>(
+      test::GetFormData({.fields = {{.role = PASSPORT_NUMBER}}}));
   AddPredictionsToFormStructure(*form_structure, {{PASSPORT_NUMBER}});
   test_api(autofill_manager()).AddSeenFormStructure(std::move(form_structure));
 
-  std::vector<EntityType> expected_types = {
-      EntityType(EntityTypeName::kPassport)};
-  EXPECT_CALL(pcontext_manager(),
-              PrefetchContext(testing::ElementsAreArray(expected_types)));
+  EXPECT_CALL(
+      pcontext_manager(),
+      PrefetchContext(ElementsAre(EntityType(EntityTypeName::kPassport))));
 
+  manager().OnAfterLoadedServerPredictions(autofill_manager());
+}
+
+// Tests that PrefetchContext is not executed if the enablement state is
+// disabled.
+TEST_F(AutofillAiManagerTest,
+       OnAfterLoadedServerPredictions_EnablementDisabled_DoesNotTriggerFetch) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(
+      features::kAutofillAmbientAutofill,
+      {{"ambient_autofill_eligible_tiers", "1"}});
+  autofill_client().GetPrefs()->SetInteger(
+      subscription_eligibility::prefs::kAiSubscriptionTier, 1);
+  autofill_client().set_personal_context_enablement_state(
+      personal_context::PersonalContextEnablementState::kDisabledNotEligible);
+
+  auto form_structure = std::make_unique<FormStructure>(
+      test::GetFormData({.fields = {{.role = PASSPORT_NUMBER}}}));
+  AddPredictionsToFormStructure(*form_structure, {{PASSPORT_NUMBER}});
+  test_api(autofill_manager()).AddSeenFormStructure(std::move(form_structure));
+
+  EXPECT_CALL(pcontext_manager(), PrefetchContext).Times(0);
   manager().OnAfterLoadedServerPredictions(autofill_manager());
 }
 
@@ -2309,8 +2336,7 @@ TEST_F(AutofillAiManagerTest, OnPrefetchContextComplete_RunCallback) {
 
   EXPECT_CALL(callback, Run);
 
-  manager().OnPrefetchContextComplete(pcontext_manager(),
-                                      /*success=*/true);
+  manager().OnPrefetchContextComplete(pcontext_manager(), {});
 }
 
 // Tests that the update callback is not run if the loading suggestion was not
@@ -2336,8 +2362,7 @@ TEST_F(AutofillAiManagerTest, OnPrefetchContextComplete_NoFetchingSuggestion) {
 
   EXPECT_CALL(callback, Run).Times(0);
 
-  manager().OnPrefetchContextComplete(pcontext_manager(),
-                                      /*success=*/true);
+  manager().OnPrefetchContextComplete(pcontext_manager(), {});
 }
 
 // Tests that the update callback is not run if the form that triggered
@@ -2365,8 +2390,7 @@ TEST_F(AutofillAiManagerTest, OnPrefetchContextComplete_FormNotFound) {
 
   EXPECT_CALL(callback, Run).Times(0);
 
-  manager().OnPrefetchContextComplete(pcontext_manager(),
-                                      /*success=*/true);
+  manager().OnPrefetchContextComplete(pcontext_manager(), {});
 }
 
 }  // namespace

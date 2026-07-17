@@ -38,6 +38,8 @@
 #include "chrome/browser/glic/test_support/test_result.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/side_panel/side_panel_ui.h"
+#include "chrome/browser/ui/side_panel/side_panel_ui_provider.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/test/base/platform_browser_test.h"
 #include "components/feature_engagement/test/scoped_iph_feature_list.h"
@@ -51,7 +53,6 @@
 #include "url/gurl.h"
 
 #if BUILDFLAG(IS_ANDROID)
-#include "base/android/android_info.h"
 #include "base/android/device_info.h"
 #include "chrome/browser/flags/android/chrome_feature_list.h"
 #include "chrome/browser/ui/android/tab_model/tab_model.h"
@@ -196,12 +197,9 @@ class GlicBrowserTestMixin : public T {
   }
 
   void SetUp() override {
-#if BUILDFLAG(IS_ANDROID)
-    if (base::android::android_info::sdk_int() <
-        base::android::android_info::SDK_VERSION_S) {
-      GTEST_SKIP() << "Glic requires Android S+ to run";
+    if (!glic::GlicEnabling::IsOsVersionSupported()) {
+      GTEST_SKIP() << "OS version not supported by Glic";
     }
-#endif
     T::SetUp();
   }
 
@@ -211,8 +209,18 @@ class GlicBrowserTestMixin : public T {
     activation_controller_ =
         std::make_unique<views::test::MockActivationController>();
 #endif
-#if defined(TOOLKIT_VIEWS)
-    SidePanelCoordinator::From(GetBrowser())->DisableAnimationsForTesting();
+
+    // Disable side panel animations on supported platforms. Note that the
+    // constructor only enables `kEnableAndroidSidePanel` on _desktop_ Android.
+    //
+    // We CHECK() instead of silently skipping the animation configuration for a
+    // null `side_panel_ui` because a CHECK() makes tests easier to debug.
+#if defined(TOOLKIT_VIEWS) || BUILDFLAG(IS_DESKTOP_ANDROID)
+    SidePanelUI* side_panel_ui =
+        SidePanelUIProvider::From(T::GetBrowserWindowInterface());
+    CHECK(side_panel_ui);
+    side_panel_ui->SetNoDelaysForTesting(true);
+    side_panel_ui->DisableAnimationsForTesting();
 #endif
 
     CHECK(glic_test_environment_.SetupEmbeddedTestServers(
@@ -222,6 +230,7 @@ class GlicBrowserTestMixin : public T {
         ->GetBrowserWindowInterface()
         ->GetWindow()
         ->Activate();
+
     LOG(INFO) << "GlicBrowserTest: done setting up";
   }
 

@@ -140,9 +140,6 @@ const base::FeatureParam<bool>
 // production.
 BASE_FEATURE(kAttachUnownedInnerWebContents, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Launches the audio service on the browser startup.
-BASE_FEATURE(kAudioServiceLaunchOnStartup, base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Runs the audio service in a separate process.
 BASE_FEATURE(kAudioServiceOutOfProcess,
 // NOTE(neva): Set kAudioServiceOutOfProcess to false by default for
@@ -236,9 +233,18 @@ BASE_FEATURE(kBypassRedirectChecksPerRequest, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCacheControlNoStoreEnterBackForwardCache,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Enables the experimental Rust implementation of
-// ChildProcessSecurityPolicy. See https://crbug.com/482216433.
+// Enables the experimental Rust implementation of ChildProcessSecurityPolicy.
+// This includes managing global state but not per-process ProcessState (which
+// is handled by the ChildProcessSecurityPolicyRustProcessState feature). See
+// https://crbug.com/482216433.
 BASE_FEATURE(kChildProcessSecurityPolicyRust,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Controls whether the Rust implementation of ChildProcessSecurityPolicy
+// manages per-process ProcessState. Only takes effect if
+// ChildProcessSecurityPolicyRust is also enabled (for the global state). See
+// https://crbug.com/522872468
+BASE_FEATURE(kChildProcessSecurityPolicyRustProcessState,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Clear the window.name property for the top-level cross-site navigations that
@@ -787,6 +793,13 @@ BASE_FEATURE(kPrefetchRequestStatusListenerAsync,
 // Killswitch for UA override issue fix (crbug.com/441612842) in preloading.
 BASE_FEATURE(kPreloadingRespectUserAgentOverride,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Triggers prefetch ahead of prerender for Speculation Rules.
+// See https://crbug.com/342089123 for more details.
+//
+// Enabled except for Android WebView.
+BASE_FEATURE(kPrerender2FallbackPrefetchSpecRules,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // If enabled, the feature allows the prerender host to be reused for the
 // future same-site page prerender if marked as reusable.

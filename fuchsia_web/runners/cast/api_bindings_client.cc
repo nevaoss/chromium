@@ -48,7 +48,6 @@ ApiBindingsClient::~ApiBindingsClient() {
 void ApiBindingsClient::AttachToFrame(
     fuchsia::web::Frame* frame,
     cast_api_bindings::NamedMessagePortConnector* connector,
-    std::vector<std::string> allowed_origins,
     base::OnceClosure on_error_callback) {
   DCHECK(!frame_) << "AttachToFrame() was called twice.";
   DCHECK(frame);
@@ -82,8 +81,7 @@ void ApiBindingsClient::AttachToFrame(
   uint64_t bindings_id = kBindingsIdStart;
   for (chromium::cast::ApiBinding& entry : *bindings_) {
     frame_->AddBeforeLoadJavaScript(
-        bindings_id++, allowed_origins,
-        std::move(*entry.mutable_before_load_script()),
+        bindings_id++, {"*"}, std::move(*entry.mutable_before_load_script()),
         [](fuchsia::web::Frame_AddBeforeLoadJavaScript_Result result) {
           CHECK(result.is_response()) << "JavaScript injection error: "
                                       << static_cast<uint32_t>(result.err());

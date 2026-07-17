@@ -79,6 +79,7 @@ struct BnplTosModel;
 class BnplUiDelegate;
 class MandatoryReauthManager;
 class MultipleRequestPaymentsNetworkInterface;
+class PaymentsChurnedUsersManager;
 class PaymentsWindowManager;
 
 // Chrome implementation of PaymentsAutofillClient. Used for Chrome Desktop
@@ -383,6 +384,11 @@ class ChromePaymentsAutofillClient : public PaymentsAutofillClient,
       save_and_fill_dialog_controller_;
 
   std::unique_ptr<SaveAndFillManager> save_and_fill_manager_;
+
+  // Manages the flows related to getting users that have payments autofill
+  // turned off back. Initiated upon construction of `this`.
+  std::unique_ptr<payments::PaymentsChurnedUsersManager>
+      payments_churned_users_manager_;
 
   // The BnplStrategy used to determine the next step in a BNPL flow depending
   // on the platform.

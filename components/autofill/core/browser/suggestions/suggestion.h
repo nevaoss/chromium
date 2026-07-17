@@ -103,6 +103,10 @@ struct Suggestion {
     AutofillAiPayload& operator=(AutofillAiPayload&&);
     ~AutofillAiPayload();
 
+#if BUILDFLAG(IS_ANDROID)
+    base::android::ScopedJavaLocalRef<jobject> CreateJavaObject() const;
+#endif  // BUILDFLAG(IS_ANDROID)
+
     friend bool operator==(const AutofillAiPayload&,
                            const AutofillAiPayload&) = default;
 

@@ -174,6 +174,8 @@ void WebUILocationBar::UpdateContentSettingsIcons() {
   }
 
   bool permission_dashboard_changed = false;
+  bool dashboard_updated = false;
+
   if (base::FeatureList::IsEnabled(
           content_settings::features::kLeftHandSideActivityIndicators)) {
     ContentSettingImageModel* media_stream_model =
@@ -182,6 +184,21 @@ void WebUILocationBar::UpdateContentSettingsIcons() {
     if (media_stream_model) {
       permission_dashboard_changed |=
           permission_dashboard_controller_->Update(media_stream_model);
+      if (media_stream_model->is_visible()) {
+        dashboard_updated = true;
+      }
+    }
+  }
+
+  if (!dashboard_updated &&
+      base::FeatureList::IsEnabled(
+          content_settings::features::kLeftHandSideSensorActivityIndicators)) {
+    ContentSettingImageModel* sensors_model =
+        content_setting_image_control_.GetModel(
+            ContentSettingImageModel::ImageType::kSensors);
+    if (sensors_model) {
+      permission_dashboard_changed |=
+          permission_dashboard_controller_->Update(sensors_model);
     }
   }
 

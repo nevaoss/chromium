@@ -228,7 +228,7 @@ public class TabVerticalViewBinderRenderTest {
     @Test
     @MediumTest
     @Feature({"RenderTest"})
-    public void testStandardTab_ActorIndicator() throws IOException {
+    public void testStandardTab_ActorIndicator_Dynamic() throws IOException {
         ViewGroup[] view = new ViewGroup[1];
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
@@ -252,13 +252,43 @@ public class TabVerticalViewBinderRenderTest {
                 });
         CriteriaHelper.pollUiThread(() -> view[0].getHeight() > 0);
 
-        mRenderTestRule.render(mRenderView, "standard_tab_actor_indicator");
+        mRenderTestRule.render(mRenderView, "standard_tab_actor_indicator_dynamic");
     }
 
     @Test
     @MediumTest
     @Feature({"RenderTest"})
-    public void testStandardTab_Active_ActorIndicator() throws IOException {
+    public void testStandardTab_ActorIndicator_Static() throws IOException {
+        ViewGroup[] view = new ViewGroup[1];
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    view[0] = inflateAndAttachView(R.layout.vertical_tab_item);
+                    PropertyModel model =
+                            new PropertyModel.Builder(TabProperties.ALL_KEYS_VERTICAL_TAB)
+                                    .with(TabProperties.IS_INCOGNITO, false)
+                                    .build();
+                    PropertyModelChangeProcessor.create(
+                            model, view[0], TabVerticalViewBinder::bindTab);
+                    model.set(TabProperties.TITLE, "AI Tab");
+                    model.set(TabProperties.IS_SELECTED, false);
+                    UiTabState uiTabState =
+                            new UiTabState(0, null, null, TabIndicatorStatus.STATIC, false);
+                    model.set(TabProperties.ACTOR_UI_STATE, uiTabState);
+                    model.set(TabProperties.FAVICON_FETCHER, createFaviconFetcher());
+                    model.set(
+                            TabProperties.TAB_ACTION_BUTTON_DATA,
+                            new TabActionButtonData(
+                                    TabActionButtonType.CLOSE, /* tabActionListener= */ null));
+                });
+        CriteriaHelper.pollUiThread(() -> view[0].getHeight() > 0);
+
+        mRenderTestRule.render(mRenderView, "standard_tab_actor_indicator_static");
+    }
+
+    @Test
+    @MediumTest
+    @Feature({"RenderTest"})
+    public void testStandardTab_Active_ActorIndicator_Dynamic() throws IOException {
         ViewGroup[] view = new ViewGroup[1];
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
@@ -282,7 +312,37 @@ public class TabVerticalViewBinderRenderTest {
                 });
         CriteriaHelper.pollUiThread(() -> view[0].getHeight() > 0);
 
-        mRenderTestRule.render(mRenderView, "standard_tab_active_actor_indicator");
+        mRenderTestRule.render(mRenderView, "standard_tab_active_actor_indicator_dynamic");
+    }
+
+    @Test
+    @MediumTest
+    @Feature({"RenderTest"})
+    public void testStandardTab_Active_ActorIndicator_Static() throws IOException {
+        ViewGroup[] view = new ViewGroup[1];
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    view[0] = inflateAndAttachView(R.layout.vertical_tab_item);
+                    PropertyModel model =
+                            new PropertyModel.Builder(TabProperties.ALL_KEYS_VERTICAL_TAB)
+                                    .with(TabProperties.IS_INCOGNITO, false)
+                                    .build();
+                    PropertyModelChangeProcessor.create(
+                            model, view[0], TabVerticalViewBinder::bindTab);
+                    model.set(TabProperties.TITLE, "Active AI Tab");
+                    model.set(TabProperties.IS_SELECTED, true);
+                    UiTabState uiTabState =
+                            new UiTabState(0, null, null, TabIndicatorStatus.STATIC, false);
+                    model.set(TabProperties.ACTOR_UI_STATE, uiTabState);
+                    model.set(TabProperties.FAVICON_FETCHER, createFaviconFetcher());
+                    model.set(
+                            TabProperties.TAB_ACTION_BUTTON_DATA,
+                            new TabActionButtonData(
+                                    TabActionButtonType.CLOSE, /* tabActionListener= */ null));
+                });
+        CriteriaHelper.pollUiThread(() -> view[0].getHeight() > 0);
+
+        mRenderTestRule.render(mRenderView, "standard_tab_active_actor_indicator_static");
     }
 
     @Test

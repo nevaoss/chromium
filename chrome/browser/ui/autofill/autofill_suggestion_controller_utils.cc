@@ -56,6 +56,7 @@ SuggestionSection GetSuggestionSection(SuggestionType type) {
     case SuggestionType::kManageAddress:
     case SuggestionType::kManageAutofillAi:
     case SuggestionType::kManageAutofillAiIdentityDocs:
+    case SuggestionType::kManageAutofillAiShopping:
     case SuggestionType::kManageAutofillAiTravel:
     case SuggestionType::kManageCreditCard:
     case SuggestionType::kManageIban:
@@ -67,7 +68,6 @@ SuggestionSection GetSuggestionSection(SuggestionType type) {
     case SuggestionType::kPendingStateSignin:
     case SuggestionType::kBnplFootnote:
     case SuggestionType::kAutocompleteAtMemoryButton:
-    case SuggestionType::kPersonalContextNotice:
       return SuggestionSection::kFooter;
 
     // Body items.
@@ -105,6 +105,7 @@ SuggestionSection GetSuggestionSection(SuggestionType type) {
     case SuggestionType::kWebauthnPasskeyQrCode:
     case SuggestionType::kAtMemorySearchResult:
     case SuggestionType::kFillAutofillAi:
+    case SuggestionType::kAutofillAiOtherOrders:
     case SuggestionType::kBnplEntry:
     case SuggestionType::kOneTimePasswordEntry:
     case SuggestionType::kLoadingThrobber:
@@ -114,6 +115,8 @@ SuggestionSection GetSuggestionSection(SuggestionType type) {
     case SuggestionType::kAtMemoryNoConnection:
     case SuggestionType::kAtMemoryGenericError:
     case SuggestionType::kAtMemorySearchAffordance:
+    case SuggestionType::kMaximizeCreditCardBenefitsEntry:
+    case SuggestionType::kPersonalContextNotice:
       return SuggestionSection::kBody;
 
     case SuggestionType::kWebauthnSignInWithAnotherDevice:

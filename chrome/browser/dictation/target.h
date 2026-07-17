@@ -5,12 +5,21 @@
 #ifndef CHROME_BROWSER_DICTATION_TARGET_H_
 #define CHROME_BROWSER_DICTATION_TARGET_H_
 
+#include <string>
+
 namespace dictation {
 
 // Represents a dictation target into which transcriptions will be written.
 class Target {
  public:
-  virtual ~Target() = default;
+  Target();
+  explicit Target(const std::string& selected_text);
+  virtual ~Target();
+
+  virtual const std::string& GetSelectedText() const;
+
+ private:
+  const std::string selected_text_;
 };
 
 }  // namespace dictation

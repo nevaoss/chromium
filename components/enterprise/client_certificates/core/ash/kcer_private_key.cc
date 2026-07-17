@@ -19,6 +19,7 @@
 #include "chromeos/ash/components/kcer/ssl_private_key_kcer.h"
 #include "components/enterprise/client_certificates/core/constants.h"
 #include "components/enterprise/client_certificates/core/private_key_types.h"
+#include "net/cert/x509_certificate.h"
 #include "net/ssl/ssl_private_key.h"
 
 namespace client_certificates {
@@ -86,17 +87,24 @@ KcerPrivateKey::~KcerPrivateKey() = default;
 void KcerPrivateKey::BindCert(scoped_refptr<const kcer::Cert> cert,
                               kcer::KeyInfo key_info) {
   CHECK(cert);
+  // Retain the X509 cert so GetBoundCert() can hand it to the certificate
+  // store, which would otherwise re-list Kcer's certs to recover it.
+  bound_cert_ = cert->GetX509Cert();
   // A Kcer-managed cert and its KeyInfo are available, build the TLS
   // surface and hand it to the base class. GetSSLPrivateKey() returns this.
   // Before BindCert(), `ssl_private_key_` is nullptr, so the TLS
   // surface is unusable; SignSlowly() (used for CSR upload) still works because
-  // it only needs the PublicKey. The cert and KeyInfo are consumed here and not
-  // retained: only `ssl_private_key_` needs them.
+  // it only needs the PublicKey. The KeyInfo is consumed here and not retained:
+  // only `ssl_private_key_` needs it.
   ssl_private_key_ = base::MakeRefCounted<kcer::SSLPrivateKeyKcer>(
       kcer_, std::move(cert), key_info.key_type,
       base::flat_set<kcer::SigningScheme>(
           key_info.supported_signing_schemes.begin(),
           key_info.supported_signing_schemes.end()));
+}
+
+scoped_refptr<net::X509Certificate> KcerPrivateKey::GetBoundCert() const {
+  return bound_cert_;
 }
 
 std::optional<std::vector<uint8_t>> KcerPrivateKey::SignSlowly(

@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "base/memory/raw_ptr.h"
+#include "base/memory/safe_ref.h"
 #include "base/memory/weak_ptr.h"
 #include "base/time/time.h"
 #include "base/version.h"
@@ -75,7 +76,7 @@ class PermissionUmaUtil {
                                       bool clicked);
 
   static void RecordDismissalType(
-      const std::vector<base::WeakPtr<permissions::PermissionRequest>>&
+      const std::vector<base::SafeRef<permissions::PermissionRequest>>&
           requests,
       PermissionPromptDisposition ui_disposition,
       DismissalType dismissalType);
@@ -301,7 +302,7 @@ class PermissionUmaUtil {
   // PermissionUtil::IsPermission(permission) returns true.
   static void RecordElementAnchoredPermissionPromptAction(
       const std::vector<std::unique_ptr<PermissionRequest>>& requests,
-      const std::vector<base::WeakPtr<permissions::PermissionRequest>>&
+      const std::vector<base::SafeRef<permissions::PermissionRequest>>&
           screen_requests,
       ElementAnchoredBubbleAction action,
       ElementAnchoredBubbleVariant variant,

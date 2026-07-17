@@ -704,8 +704,7 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
   }
 
   source->AddBoolean("keepMenuOpenOnTabSelectForRealbox",
-                     base::FeatureList::IsEnabled(
-                         omnibox::kKeepMenuOpenOnTabSelectForRealbox));
+                     omnibox::kKeepMenuOpenOnTabSelectForRealbox.Get());
   source->AddBoolean("composeboxShowContextMenu",
                      ntp_composebox::kShowContextMenu.Get());
   source->AddBoolean("composeboxShowContextMenuTabPreviews",

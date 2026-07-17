@@ -118,6 +118,7 @@ source_set("unit_tests") {
   ]
   deps = [
     ":omnibox_internal",
+    ":omnibox_popup_shared",
     ":omnibox_util",
     ":resources_unit_tests",
     ":ui",

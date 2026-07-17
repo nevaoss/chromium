@@ -78,9 +78,6 @@ enum class BlinkAnimationType : int {
   kAnimationTypeEnumMax = 6
 };
 
-// Enum indicating why we're calling StartAnimationOnCompositor.
-enum class StartOnCompositorReason { kGeneric, kAnimationTrigger };
-
 class CORE_EXPORT Animation : public EventTarget,
                               public ActiveScriptWrappable<Animation>,
                               public ExecutionContextLifecycleObserver,

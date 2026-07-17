@@ -321,7 +321,7 @@ TEST_F(IOSChromeSavePasswordInfoBarDelegateTest,
        GetButtonLabel_ButtonOk_WhenActionableError) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeature(
-      password_manager::features::kInFlowTrustedVaultKeyRetrievalIos);
+      password_manager::features::kPasswordSaveInContextErrorResolution);
 
   InitializeDelegate(/*password_update=*/false,
                      password_manager::ActionableError::kSignInNeeded);
@@ -333,7 +333,7 @@ TEST_F(IOSChromeSavePasswordInfoBarDelegateTest,
        GetButtonLabel_ButtonCancel_WhenActionableError) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeature(
-      password_manager::features::kInFlowTrustedVaultKeyRetrievalIos);
+      password_manager::features::kPasswordSaveInContextErrorResolution);
 
   InitializeDelegate(/*password_update=*/false,
                      password_manager::ActionableError::kSignInNeeded);
@@ -345,7 +345,7 @@ TEST_F(IOSChromeSavePasswordInfoBarDelegateTest,
        GetButtonLabel_WhenActionableErrorAndFeatureDisabled) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndDisableFeature(
-      password_manager::features::kInFlowTrustedVaultKeyRetrievalIos);
+      password_manager::features::kPasswordSaveInContextErrorResolution);
 
   InitializeDelegate(/*password_update=*/false,
                      password_manager::ActionableError::kSignInNeeded);
@@ -905,7 +905,7 @@ TEST_F(IOSChromeSavePasswordInfoBarDelegateTest,
        Accept_ActionableError_SignInNeeded) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeature(
-      password_manager::features::kInFlowTrustedVaultKeyRetrievalIos);
+      password_manager::features::kPasswordSaveInContextErrorResolution);
 
   InitializeDelegate(
       /*password_update=*/false,
@@ -925,7 +925,7 @@ TEST_F(IOSChromeSavePasswordInfoBarDelegateTest,
        Accept_ActionableError_NeedsPassphrase) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeature(
-      password_manager::features::kInFlowTrustedVaultKeyRetrievalIos);
+      password_manager::features::kPasswordSaveInContextErrorResolution);
 
   InitializeDelegate(
       /*password_update=*/false,
@@ -957,7 +957,7 @@ TEST_F(IOSChromeSavePasswordInfoBarDelegateTest,
        Accept_ActionableError_TrustedVaultKeyNeeded) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeature(
-      password_manager::features::kInFlowTrustedVaultKeyRetrievalIos);
+      password_manager::features::kPasswordSaveInContextErrorResolution);
 
   InitializeDelegate(
       /*password_update=*/false,
@@ -980,7 +980,7 @@ TEST_F(IOSChromeSavePasswordInfoBarDelegateTest,
        Accept_ActionableError_SignInNeeded_FeatureDisabled) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndDisableFeature(
-      password_manager::features::kInFlowTrustedVaultKeyRetrievalIos);
+      password_manager::features::kPasswordSaveInContextErrorResolution);
 
   InitializeDelegate(
       /*password_update=*/false,
@@ -997,7 +997,7 @@ TEST_F(IOSChromeSavePasswordInfoBarDelegateTest,
        Accept_ActionableError_SignInNeeded_ResolveErrorOnCompletion) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeature(
-      password_manager::features::kInFlowTrustedVaultKeyRetrievalIos);
+      password_manager::features::kPasswordSaveInContextErrorResolution);
 
   InitializeDelegate(
       /*password_update=*/false,
@@ -1035,7 +1035,7 @@ TEST_F(IOSChromeSavePasswordInfoBarDelegateTest,
        Accept_ActionableError_SignInNeeded_ErrorUnresolvedOnCompletion) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeature(
-      password_manager::features::kInFlowTrustedVaultKeyRetrievalIos);
+      password_manager::features::kPasswordSaveInContextErrorResolution);
 
   InitializeDelegate(
       /*password_update=*/false,
@@ -1073,7 +1073,7 @@ TEST_F(IOSChromeSavePasswordInfoBarDelegateTest,
 TEST_F(IOSChromeSavePasswordInfoBarDelegateTest, IsHandlingPasswordError) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeature(
-      password_manager::features::kInFlowTrustedVaultKeyRetrievalIos);
+      password_manager::features::kPasswordSaveInContextErrorResolution);
 
   InitializeDelegate(
       /*password_update=*/false,

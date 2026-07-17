@@ -6,6 +6,7 @@
 
 #import "base/apple/foundation_util.h"
 #import "base/check.h"
+#import "base/metrics/user_metrics.h"
 #import "ios/chrome/browser/authentication/ui_bundled/cells/signin_promo_view_configurator.h"
 #import "ios/chrome/browser/authentication/ui_bundled/cells/signin_promo_view_delegate.h"
 #import "ios/chrome/browser/authentication/ui_bundled/cells/table_view_signin_promo_item.h"
@@ -226,7 +227,13 @@
 }
 
 - (void)setShouldShowAutofillAIFeatures:(BOOL)shouldShow {
+  if (_shouldShowAutofillAIFeatures == shouldShow) {
+    return;
+  }
   _shouldShowAutofillAIFeatures = shouldShow;
+  if (self.isViewLoaded) {
+    [self reloadData];
+  }
 }
 
 #pragma mark - AutofillAndPasswordsSigninPromoConsumer
@@ -303,11 +310,13 @@
 #pragma mark - SettingsControllerProtocol
 
 - (void)reportDismissalUserAction {
-  // TODO(crbug.com/500341282): Add missing metric.
+  base::RecordAction(
+      base::UserMetricsAction("MobileAutofillAndPasswordsSettingsClose"));
 }
 
 - (void)reportBackUserAction {
-  // TODO(crbug.com/500341282): Add missing metric.
+  base::RecordAction(
+      base::UserMetricsAction("MobileAutofillAndPasswordsSettingsBack"));
 }
 
 - (void)settingsWillBeDismissed {

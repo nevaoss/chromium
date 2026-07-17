@@ -254,6 +254,8 @@ public class LocationBarMediatorTest {
                     ObservableSuppliers.createNonNull(FuseboxLayoutMode.TOOLBAR);
     private final SettableNonNullObservableSupplier<Boolean> mActivationChipVisibilitySupplier =
             ObservableSuppliers.createNonNull(false);
+    private final SettableNonNullObservableSupplier<Boolean> mHasAttachmentsSupplier =
+            ObservableSuppliers.createNonNull(false);
     private final UserDataHost mTabUserDataHost = new UserDataHost();
     private final FuseboxSessionState mSessionState = new FuseboxSessionState();
     private final SettableNullableObservableSupplier<GURL> mExactMatchUrlSupplier =
@@ -332,6 +334,7 @@ public class LocationBarMediatorTest {
                 .setNavigateButtonVisibility(anyBoolean());
 
         doReturn(mFuseboxStateSupplier).when(mFuseboxCoordinator).getFuseboxStateSupplier();
+        doReturn(mHasAttachmentsSupplier).when(mFuseboxCoordinator).getHasAttachmentsSupplier();
         doReturn(mFuseboxLayoutModeSupplier)
                 .when(mFuseboxCoordinator)
                 .getFuseboxLayoutModeSupplier();
@@ -675,6 +678,30 @@ public class LocationBarMediatorTest {
         mMediator.onSuggestionsChanged(null, false);
         assertNull(mMediator.getExactMatchUrlSupplier().get());
         verify(mUrlCoordinator).setAutocompleteText("text", null, null, null);
+    }
+
+    @Test
+    public void testSuspendInput_clearsExactMatchUrlSupplier() {
+        mMediator.onFinishNativeInitialization();
+        mProfileSupplier.set(mProfile);
+
+        AutocompleteInput input = new AutocompleteInput();
+        input.setUserText("text");
+        input.setRequestType(AutocompleteRequestType.SEARCH);
+        mMediator.beginInput(input);
+
+        AutocompleteMatch defaultMatch =
+                AutocompleteMatchBuilder.searchWithType(OmniboxSuggestionType.URL_WHAT_YOU_TYPED)
+                        .setDisplayText("text")
+                        .setIsSearch(false)
+                        .setAllowedToBeDefaultMatch(true)
+                        .setUrl(JUnitTestGURLs.RED_1)
+                        .build();
+        mMediator.onSuggestionsChanged(defaultMatch, true);
+        assertNotNull(mMediator.getExactMatchUrlSupplier().get());
+
+        mMediator.suspendInput();
+        assertNull(mMediator.getExactMatchUrlSupplier().get());
     }
 
     @Test
@@ -2278,9 +2305,22 @@ public class LocationBarMediatorTest {
         mMediator.onUrlFocusChange(true);
         mFuseboxStateSupplier.set(FuseboxState.EXPANDED);
         doReturn("").when(mUrlCoordinator).getTextWithAutocomplete();
+        mHasAttachmentsSupplier.set(false);
 
         mMediator.updateButtonVisibility();
         assertFalse(mNavigateButtonIsVisible);
+    }
+
+    @Test
+    @EnableFeatures(OmniboxFeatureList.OMNIBOX_MULTIMODAL_INPUT)
+    public void testNavigateButton_showsWhenExpandedAndFocusedWithoutTextButWithAttachments() {
+        mMediator.onUrlFocusChange(true);
+        mFuseboxStateSupplier.set(FuseboxState.EXPANDED);
+        doReturn("").when(mUrlCoordinator).getTextWithAutocomplete();
+        mHasAttachmentsSupplier.set(true);
+
+        mMediator.updateButtonVisibility();
+        assertTrue(mNavigateButtonIsVisible);
     }
 
     @Test

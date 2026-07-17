@@ -45,6 +45,15 @@ chromium-metrics-reviews@google.com.
   <variant name="OpenFailure"/>
 </variants>
 
+<variants name="DomStorageSqliteRolloutStage">
+  <variant name=""
+      summary="on-disk database not participating in the SQLite rollout
+               experiment"/>
+  <variant name=".OnDiskExperimental"
+      summary="experimental (belongs to the treatment or control group of the
+               SQLite rollout experiment)"/>
+</variants>
+
 <variants name="DomStorageType">
   <variant name="LocalStorage" summary="local storage"/>
   <variant name="SessionStorage" summary="session storage"/>
@@ -1044,14 +1053,6 @@ chromium-metrics-reviews@google.com.
     Profile. Recorded once per LocalStorage backend per attempt to open the
     on-disk database in the Storage process, regardless of open outcome.
   </summary>
-  <token key="DomStorageSqliteRolloutStage">
-    <variant name=""
-        summary="on-disk database not participating in the SQLite rollout
-                 experiment"/>
-    <variant name=".OnDiskExperimental"
-        summary="experimental (belongs to the treatment or control group of
-                 the SQLite rollout experiment)"/>
-  </token>
 </histogram>
 
 <histogram name="LocalStorage.DaysSinceLastModified" units="days"
@@ -1296,6 +1297,18 @@ chromium-metrics-reviews@google.com.
   <owner>chrome-owp-storage@google.com</owner>
   <summary>
     A Clear-Site-Data response header was seen with the given values.
+  </summary>
+</histogram>
+
+<histogram name="Storage.DeclarativePerformanceObserver.StoreReportResult"
+    enum="DeclarativePerformanceObserverStoreReportResult"
+    expires_after="2026-12-19">
+  <owner>sisidovski@chromium.org</owner>
+  <owner>chrome-loading@google.com</owner>
+  <summary>
+    Records the outcome of attempting to serialize and store an early failure
+    report in the Declarative Performance Observer SQLite database. Recorded on
+    the database sequence for each write attempt.
   </summary>
 </histogram>
 
@@ -1819,6 +1832,19 @@ chromium-metrics-reviews@google.com.
     partition initialization. True means the database was destroyed and
     recreated because no session restore was needed. Emitted once per storage
     partition during initialization.
+  </summary>
+</histogram>
+
+<histogram
+    name="Storage.SessionStorage.DatabaseOnDiskSizeKB{DomStorageSqliteRolloutStage}"
+    units="KB" expires_after="2026-11-22">
+  <owner>fergal@chromium.org</owner>
+  <owner>rahsin@microsoft.com</owner>
+  <owner>chrome-owp-storage@google.com</owner>
+  <summary>
+    Records the on disk size of the SessionStorage database for a given browser
+    Profile. Recorded once per SessionStorage backend per attempt to open the
+    on-disk database in the Storage process, regardless of open outcome.
   </summary>
 </histogram>
 
@@ -2416,7 +2442,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Storage.SharedStorage.OnShutdown.NumSqlErrors" units="Errors"
-    expires_after="2026-10-18">
+    expires_after="2026-12-20">
   <owner>cammie@chromium.org</owner>
   <owner>yaoxia@chromium.org</owner>
   <owner>chrome-ads-histograms@google.com</owner>
@@ -2607,7 +2633,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Storage.SharedStorage.Worklet.Error.Type"
-    enum="SharedStorageWorkletErrorType" expires_after="2026-10-18">
+    enum="SharedStorageWorkletErrorType" expires_after="2026-12-20">
   <owner>cammie@chromium.org</owner>
   <owner>yaoxia@chromium.org</owner>
   <owner>chrome-ads-histograms@google.com</owner>
@@ -2826,7 +2852,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Storage.SharedStorage.Worklet.Timing.Set" units="ms"
-    expires_after="2026-10-18">
+    expires_after="2026-12-20">
   <owner>cammie@chromium.org</owner>
   <owner>yaoxia@chromium.org</owner>
   <owner>chrome-ads-histograms@google.com</owner>

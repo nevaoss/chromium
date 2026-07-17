@@ -6,7 +6,6 @@
 
 #include <algorithm>
 
-#include "base/compiler_specific.h"
 #include "base/trace_event/trace_event.h"
 #include "third_party/blink/renderer/core/layout/svg/layout_svg_inline_text.h"
 #include "third_party/blink/renderer/core/layout/svg/layout_svg_text_path.h"
@@ -177,12 +176,16 @@ void SvgTextLayoutAlgorithm::SetFlags(
     // later character that corresponds to a typographic character.
     CodePointIterator iterator = item_string.begin();
     const CodePointIterator end = item_string.end();
-    for (UNSAFE_TODO(++iterator); iterator != end; UNSAFE_TODO(++iterator)) {
+    if (iterator != end) {
+      ++iterator;  // Skip the first code point.
+    }
+    while (iterator != end) {
       SvgPerCharacterInfo middle_info;
       middle_info.middle = true;
       middle_info.item_index = info.item_index;
       result_.push_back(middle_info);
       css_positions_.push_back(css_positions_.back());
+      ++iterator;
     }
   }
   addressable_count_ = result_.size();
@@ -362,10 +365,9 @@ void SvgTextLayoutAlgorithm::ResolveTextLength(
       visual_indexes.push_back(k);
     }
     if (inline_node_.IsBidiEnabled()) {
-      std::sort(visual_indexes.begin(), visual_indexes.end(),
-                [&](wtf_size_t a, wtf_size_t b) {
-                  return result_[a].item_index < result_[b].item_index;
-                });
+      std::ranges::sort(visual_indexes, [&](wtf_size_t a, wtf_size_t b) {
+        return result_[a].item_index < result_[b].item_index;
+      });
     }
 
     for (wtf_size_t k : visual_indexes) {
@@ -411,13 +413,11 @@ void SvgTextLayoutAlgorithm::ResolveTextLength(
 
   // Remove resolved_descendant_node_starts entries for descendant nodes,
   // and register an entry for this node.
-  auto new_end =
-      std::remove_if(resolved_descendant_node_starts.begin(),
-                     resolved_descendant_node_starts.end(),
-                     [i, j_plus_1](const auto& start_index) {
-                       return i <= start_index && start_index < j_plus_1;
-                     });
-  resolved_descendant_node_starts.erase(new_end,
+  auto removed = std::ranges::remove_if(
+      resolved_descendant_node_starts, [i, j_plus_1](const auto& start_index) {
+        return i <= start_index && start_index < j_plus_1;
+      });
+  resolved_descendant_node_starts.erase(removed.begin(),
                                         resolved_descendant_node_starts.end());
   resolved_descendant_node_starts.push_back(i);
 }

@@ -12,6 +12,7 @@
 #import <string_view>
 #import <vector>
 
+#import "base/containers/flat_map.h"
 #import "base/files/file_path.h"
 #import "base/sequence_checker.h"
 #import "ios/chrome/browser/download/model/download_filter_util.h"
@@ -26,6 +27,16 @@ class DownloadRecordDatabase;
 // sequence (the SequencedTaskRunner that the owning service binds at
 // construction). Thread safety is achieved by sequence affinity, not locks.
 //
+// Sync/async contract: every public method below is SYNCHRONOUS — it runs
+// inline on the bound database sequence and returns its result by value.
+// The owning service (`DownloadRecordServiceImpl`) is the only intended
+// caller and invokes them off the main thread via
+// `base::SequenceBound<DownloadRecordStore>::AsyncCall(...)`, which is what
+// makes calls appear asynchronous from the service's perspective. Return
+// values flow back to the main thread via `.Then(callback)`; void-returning
+// methods are fire-and-forget from the service's POV but still execute
+// inline (and FIFO-ordered with all other calls) on the database sequence.
+//
 // Lifetime: DownloadRecordServiceImpl owns a
 // `base::SequenceBound<DownloadRecordStore>`. SequenceBound posts both the
 // store's construction and destruction onto the bound sequence, so any
@@ -36,7 +47,13 @@ class DownloadRecordDatabase;
 // addresses.
 class DownloadRecordStore {
  public:
-  DownloadRecordStore();
+  // `pagination_enabled` is the snapshot of `IsDownloadListPaginationEnabled()`
+  // taken by the owning service at its construction time. The store stores the
+  // value verbatim and uses it to gate every behavior that differs between the
+  // legacy (flag-OFF) and pagination (flag-ON) paths. The flag is sampled once
+  // and never re-read from Finch so any in-process flip during the store's
+  // lifetime cannot change the path chosen at startup.
+  explicit DownloadRecordStore(bool pagination_enabled);
 
   DownloadRecordStore(const DownloadRecordStore&) = delete;
   DownloadRecordStore& operator=(const DownloadRecordStore&) = delete;
@@ -99,14 +116,35 @@ class DownloadRecordStore {
   // erased. Returns true on success (or if the record never existed).
   bool DeleteRecord(std::string_view id);
 
-  // ---- Cache reads -------------------------------------------------------
+  // Posted by the service from `OnDownloadDestroyed` to evict an id from
+  // the in-memory hot caches once its `web::DownloadTask` is gone (flag-
+  // ON only). Runs on the database sequence so it is FIFO-ordered with
+  // every other CRUD task — meaning a still-pending `UpdateRecord` for the
+  // same id finishes first and can never resurrect the entry. The two
+  // erase calls are idempotent: a concurrent `RemoveDownloadByIdAsync`
+  // may have already evicted this id from the DB sequence. No-op when
+  // `pagination_enabled_` is false (legacy path keeps records in
+  // `record_cache_` for the full session and never evicts on task
+  // destruction).
+  void EvictOnDestroy(const std::string& download_id);
+
+  // ---- Hot-cache + single-row reads --------------------------------------
 
   // Returns a snapshot of all records currently in the in-memory cache.
+  // On the legacy flag-OFF path this snapshots `record_cache_`; on the
+  // flag-ON path the in-memory layer holds only hot rows so the snapshot
+  // covers `active_records_cache_` + `incognito_records_` and is NOT a
+  // full history snapshot. Paginated readers must use
+  // `GetDownloadsPage` / `GetDownloadsCount` instead.
   std::vector<DownloadRecord> GetAllFromCache();
 
-  // Returns the cached record for `download_id`, or std::nullopt if not in
-  // the cache.
-  std::optional<DownloadRecord> GetByIdFromCache(std::string_view download_id);
+  // Returns the record for `download_id`, or std::nullopt if not found.
+  // On the legacy flag-OFF path this is a pure cache lookup against
+  // `record_cache_`. On the flag-ON path it probes the active hot cache
+  // and the incognito cache first, then falls back to a single-row DB
+  // lookup so a persisted-but-not-cached row (e.g. cold DB row from a
+  // previous session) is still reachable.
+  std::optional<DownloadRecord> GetById(std::string_view download_id);
 
   // ---- Database paginated reads ------------------------------------------
 
@@ -115,6 +153,9 @@ class DownloadRecordStore {
   // download histories without paying the O(N) load cost of
   // LoadHistoricalRecords. Returns an empty vector / 0 if the DB is not
   // initialized.
+  //
+  // Requires `kDownloadListPagination` to be enabled.
+  // Legacy flag-OFF UI must read from the cache via `GetAllFromCache`.
   std::vector<DownloadRecord> GetDownloadsPage(
       const DownloadRecordQuery& query) const;
   size_t GetDownloadsCount(const DownloadRecordQuery& query) const;
@@ -124,15 +165,52 @@ class DownloadRecordStore {
   // check used by every mutator below.
   bool IsDatabaseReady() const;
 
-  // In-memory cache of download records. On the legacy flag-OFF path it
-  // mirrors every persisted row plus any incognito-only records. On the
-  // flag-ON path this map stays empty by design — paginated readers go
-  // cold-DB instead. Accessed only on `sequence_checker_`.
+  // Flag-ON only. Inserts or overwrites `record` in the appropriate hot
+  // cache: `incognito_records_` if `record.is_incognito`, otherwise
+  // `active_records_cache_`. No lock is taken — the store is sequence-
+  // bound and the maps are mutated only on `sequence_checker_`.
+  void WriteThroughToActiveCache(const DownloadRecord& record);
+
+  // Snapshot of `IsDownloadListPaginationEnabled()` taken by the owning
+  // service at its construction time. Stored as a const member so any in-
+  // process Finch flip during the store's lifetime cannot change the path
+  // chosen at startup. Every code path that branches on the pagination
+  // mode reads this member, not the live function.
+  const bool pagination_enabled_;
+
+  // Legacy in-memory cache of download records (flag-OFF path only).
+  // Mirrors every persisted row plus any incognito-only records. On the
+  // flag-ON path this map stays empty by design — hot rows live in
+  // `active_records_cache_` / `incognito_records_` instead and paginated
+  // readers go cold-DB. Accessed only on `sequence_checker_`.
   // `std::less<>` enables heterogeneous lookup (e.g. `find(std::string_view)`)
   // without constructing a temporary `std::string`.
   // TODO(crbug.com/524790428): Remove this map and its legacy population
   // path once the pagination flag has shipped to stable and is retired.
   std::map<std::string, DownloadRecord, std::less<>> record_cache_;
+
+  // Hot path for persisted records (flag-ON only). Mirrors live
+  // `web::DownloadTask` values whose volatile fields (`received_bytes`,
+  // `progress_percent`) are not always flushed to disk on every update —
+  // the cache holds the freshest copy so the UI sees fresh byte progress
+  // even when nothing was written to disk.
+  //
+  // By design, this cache has NO hard cap. It is correctness-bearing:
+  // silently evicting an entry — via a size cap, LRU, or any other
+  // policy — would cause the corresponding row's UI byte progress to
+  // freeze at the last persisted value until the next forced flush. The
+  // true bound is the live `web::DownloadTask` count, itself bounded by
+  // process memory. Eviction happens only when its `DownloadTask` is
+  // destroyed (`EvictOnDestroy`) or the row is deleted via
+  // `DeleteRecord`. Empty when `pagination_enabled_` is false.
+  base::flat_map<std::string, DownloadRecord> active_records_cache_;
+
+  // Incognito records (flag-ON only). Never persisted; cleared on OTR
+  // profile destruction or explicit `DeleteRecord`. Same no-hard-cap
+  // rationale as `active_records_cache_`. Empty when
+  // `pagination_enabled_` is false; in that case incognito records live
+  // in `record_cache_` instead.
+  base::flat_map<std::string, DownloadRecord> incognito_records_;
 
   // SQLite-backed database. Owned and accessed only on
   // `sequence_checker_`. Held by unique_ptr so that an Init() failure

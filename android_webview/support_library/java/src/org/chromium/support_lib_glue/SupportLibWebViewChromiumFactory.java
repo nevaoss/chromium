@@ -140,7 +140,6 @@ public class SupportLibWebViewChromiumFactory implements WebViewProviderFactoryB
                 Features.JS_INJECTION_IN_FRAME_AND_WORLD,
                 Features.NAVIGATION_GET_WEB_RESOURCE_ERROR,
                 Features.BACK_FORWARD_CACHE_SETTINGS_V4,
-                Features.IGNORE_DUPLICATE_NAV + Features.DEV_SUFFIX,
                 Features.WEBVIEW_NAVIGATE_V1,
                 Features.DOWNLOAD_FAVICONS_ENABLED + Features.DEV_SUFFIX,
                 Features.HTTP_CACHE_MANAGER,
@@ -539,10 +538,10 @@ public class SupportLibWebViewChromiumFactory implements WebViewProviderFactoryB
         int SET_PREFETCH_TTL_SECONDS = 181;
         int BACK_FORWARD_CACHE_SETTINGS_GET_KEEP_FORWARD_ENTRIES = 182;
         int BACK_FORWARD_CACHE_SETTINGS_SET_KEEP_FORWARD_ENTRIES = 183;
-        int SET_IGNORE_DUPLICATE_NAV_ENABLED = 184;
-        int GET_IGNORE_DUPLICATE_NAV_ENABLED = 185;
-        int SET_IGNORE_DUPLICATE_NAV_THRESHOLD_MS = 186;
-        int GET_IGNORE_DUPLICATE_NAV_THRESHOLD_MS = 187;
+        @Deprecated int SET_IGNORE_DUPLICATE_NAV_ENABLED = 184;
+        @Deprecated int GET_IGNORE_DUPLICATE_NAV_ENABLED = 185;
+        @Deprecated int SET_IGNORE_DUPLICATE_NAV_THRESHOLD_MS = 186;
+        @Deprecated int GET_IGNORE_DUPLICATE_NAV_THRESHOLD_MS = 187;
         int GET_MAX_PRERENDERS = 188;
         int GET_MAX_PREFETCHES = 189;
         int GET_PREFETCH_TTL_SECONDS = 190;

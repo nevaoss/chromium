@@ -374,6 +374,15 @@ void ResetAuthentication() {
   return gStartupTest;
 }
 
+- (void)backgroundAndForegroundApp {
+  // Dismiss the keyboard.
+  NSError* keyboardError = nil;
+  [EarlGrey dismissKeyboardWithError:&keyboardError];
+
+  // Close the tab we opened, returning the browser to its previous state.
+  [[AppLaunchManager sharedManager] backgroundAndForegroundApp];
+}
+
 #pragma mark - Private methods
 
 + (void)disableMockAuthentication {

@@ -752,7 +752,7 @@ export class PdfViewerElement extends PdfViewerBaseElement {
     this.pluginController_.setPresentationMode(false);
 
     // Ensure that directional keys still work after exiting.
-    this.shadowRoot.querySelector('embed')!.focus();
+    this.focusPlugin_();
 
     // Set zoom back to original zoom before presentation mode.
     this.viewport.restoreZoomState();
@@ -766,6 +766,15 @@ export class PdfViewerElement extends PdfViewerBaseElement {
       this.restoreAnnotationMode_ = AnnotationMode.OFF;
     }
     // </if>
+  }
+
+  private focusPlugin_() {
+    // Focus the embed in this frame, so the browser routes keyboard events to
+    // the plugin.
+    this.shadowRoot.querySelector('embed')!.focus();
+    // Send a 'focus' message to the plugin frame, so it internally focuses its
+    // own elements.
+    this.pluginController_.focus();
   }
 
   protected async onPresentClick_() {
@@ -2013,7 +2022,9 @@ export class PdfViewerElement extends PdfViewerBaseElement {
 
   protected onTextBoxStateChanged_(e: CustomEvent<TextBoxState>) {
     this.textboxState_ = e.detail;
-    if (e.detail === TextBoxState.EDITED) {
+    if (e.detail === TextBoxState.INACTIVE) {
+      this.focusPlugin_();
+    } else if (e.detail === TextBoxState.EDITED) {
       this.setShowBeforeUnloadDialog_(true);
     }
   }

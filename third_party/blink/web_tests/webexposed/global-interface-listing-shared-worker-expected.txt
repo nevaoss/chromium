@@ -3448,6 +3448,8 @@ Starting worker: resources/global-interface-listing-worker.js
 [Worker]     method constructor
 [Worker] interface WebTransport
 [Worker]     attribute @@toStringTag
+[Worker]     getter anticipatedConcurrentIncomingBidirectionalStreams
+[Worker]     getter anticipatedConcurrentIncomingUnidirectionalStreams
 [Worker]     getter closed
 [Worker]     getter congestionControl
 [Worker]     getter datagrams
@@ -3461,6 +3463,8 @@ Starting worker: resources/global-interface-listing-worker.js
 [Worker]     method createSendGroup
 [Worker]     method createUnidirectionalStream
 [Worker]     method getStats
+[Worker]     setter anticipatedConcurrentIncomingBidirectionalStreams
+[Worker]     setter anticipatedConcurrentIncomingUnidirectionalStreams
 [Worker] interface WebTransportBidirectionalStream
 [Worker]     attribute @@toStringTag
 [Worker]     getter readable

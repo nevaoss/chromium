@@ -581,6 +581,7 @@
 <translation id="1902576642799138955">Жарамдылық мерзімі</translation>
 <translation id="1908217026282415406">Камераны пайдалану және жылжыту</translation>
 <translation id="1908690643053136980">Әкімшіңіз осы сайт үшін <ph name="PERMISSION" /> рұқсатын бермейді.</translation>
+<translation id="1912750443952232242">Жеке куәлікті Google Wallet-ке сақтаңыз</translation>
 <translation id="1913037223029790376">Бұл виртуалдық карта үшін CVC кодын пайдаланыңыз.</translation>
 <translation id="191374271204266022">JSON етіп көшіру</translation>
 <translation id="1914326953223720820">Мұрағаттан шығару қызметі</translation>
@@ -1492,6 +1493,7 @@
 <translation id="3325568918769906282">кему ретімен</translation>
 <translation id="3325662270238538525">Файл атауларын, файл мазмұнының цифрлық саусақ іздерін, жүктеп алу көзін және метадеректерді қоса, соңғы файлға қол жеткізу және оның өзгертулері</translation>
 <translation id="3329013043687509092">Қанықтық</translation>
+<translation id="3330483197654063678">Қосылған кезде, Chrome сәйкестігі жоғары жауаптар алуға көмектесу үшін осы терезедегі ашық қойындыларды бөліседі.</translation>
 <translation id="3333762389743153920">Виртуалдық карта үшін жарамсыз</translation>
 <translation id="3338095232262050444">Қауіпсіз</translation>
 <translation id="333839153442689579">Жоғары қарқынды аралық жаттығу</translation>
@@ -2845,6 +2847,7 @@
 <translation id="5458150163479425638">{CONTACT,plural, =0{<ph name="CONTACT_PREVIEW" />}=1{<ph name="CONTACT_PREVIEW" /> және тағы <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}other{<ph name="CONTACT_PREVIEW" /> және тағы <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}}</translation>
 <translation id="5463625433003343978">Құрылғылар ізделуде...</translation>
 <translation id="5464236009658034488">Кеңсе жабдықтары</translation>
+<translation id="5465128270485645058">Осы терезедегі ашық қойындылар осы тізбекке қатысты болса, оларды автоматты түрде бөлісу арқылы бейімделген жауаптар алыңыз.</translation>
 <translation id="5465724643247062031">Шыны (анық емес)</translation>
 <translation id="5466018172325111652">Кодыңызды алған жоқсыз ба? <ph name="BEGIN_LINK" />Жаңа код алыңыз<ph name="END_LINK" /></translation>
 <translation id="5466818462212249084">Төлем қолданбалары</translation>
@@ -3127,6 +3130,7 @@
 <translation id="5911020115933784199">Іс-шаралар мен сипаттамалар</translation>
 <translation id="5911110632211230665">Ашуға тыйым салынған</translation>
 <translation id="5912796581727968237">Google Wallet-ті ашу</translation>
+<translation id="5914185423510719251">KTN нөмірін Google Wallet-ке сақтаңыз</translation>
 <translation id="5914465277418006379"><ph name="MEMBER_FIRST_NAME" /> осы қойындыны қосты.</translation>
 <translation id="5915189366813702112">Икемді жұмыс кестесі</translation>
 <translation id="59174027418879706">Қосылған</translation>
@@ -3650,6 +3654,7 @@
 <translation id="6702851555558236418">Аудио мен музыкаға арналған бағдарламалық құралдар</translation>
 <translation id="6702919718839027939">Презентация</translation>
 <translation id="6704458454638854812">"Custom_size" сипаты орнатылды. Болжалды атауы — "custom".</translation>
+<translation id="670477556876354552">Өшіріп қосу қажет.</translation>
 <translation id="6706005862292023715">Перделер және терезе перделері</translation>
 <translation id="6706210727756204531">Қолданыс аясы</translation>
 <translation id="6706678697074905703">Бұл IBAN нөмірін Google аккаунтыңызға сақтау мүмкін болмады. Ол осы құрылғыдағы Chrome-ға сақталды.</translation>
@@ -3907,6 +3912,7 @@
 <translation id="7110116949943042888">Уақытша және маусымдық жұмыстар</translation>
 <translation id="7110368079836707726">Жоғары оқу орындары</translation>
 <translation id="7111507312244504964">Меншік тексерістері мен бағалаулары</translation>
+<translation id="7117290130383718594">Мәтіндік аннотациялар</translation>
 <translation id="7118618213916969306">Буфердегі URL сілтемесін (<ph name="SHORT_URL" />) іздеу</translation>
 <translation id="7118852830504022370">Бұл сайт HTTPS протоколына қолдау көрсетпейтіндіктен, осы ескерту көрсетілді. <ph name="BEGIN_LEARN_MORE_LINK" />Бұл ескерту туралы толық ақпарат<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="7119063404975271297">Теледрамалар</translation>

@@ -176,7 +176,7 @@ static void CompleteURLs(DocumentFragment& fragment, const String& base_url) {
 static bool IsHTMLBlockElement(const Node* node) {
   DCHECK(node);
   return IsA<HTMLTableCellElement>(*node) ||
-         IsNonTableCellHTMLBlockElement(node);
+         IsNonTableCellHtmlBlockElement(node);
 }
 
 // Helper function to check if a node is a MathML math element
@@ -197,8 +197,9 @@ static HTMLElement* AncestorToRetainStructureAndAppearanceForBlock(
       IsA<HTMLTableRowElement>(*common_ancestor_block))
     return Traversal<HTMLTableElement>::FirstAncestor(*common_ancestor_block);
 
-  if (IsNonTableCellHTMLBlockElement(common_ancestor_block))
+  if (IsNonTableCellHtmlBlockElement(common_ancestor_block)) {
     return To<HTMLElement>(common_ancestor_block);
+  }
 
   return nullptr;
 }
@@ -255,8 +256,9 @@ static Element* HighestAncestorToWrapMarkup(
               EnclosingNodeOfType(first_node_position, IsListItem)) {
         if (AreSameRanges(parent_list_node, start_position, end_position)) {
           ContainerNode* ancestor = parent_list_node->parentNode();
-          while (ancestor && !IsHTMLListElement(ancestor))
+          while (ancestor && !IsHtmlListElement(ancestor)) {
             ancestor = ancestor->parentNode();
+          }
           special_common_ancestor = To<Element>(ancestor);
         }
       }
@@ -265,7 +267,7 @@ static Element* HighestAncestorToWrapMarkup(
       // quotes.
       if (auto* highest_mail_blockquote =
               To<HTMLQuoteElement>(HighestEnclosingNodeOfType(
-                  first_node_position, IsMailHTMLBlockquoteElement,
+                  first_node_position, IsMailHtmlBlockquoteElement,
                   kCanCrossEditingBoundary))) {
         special_common_ancestor = highest_mail_blockquote;
       }
@@ -299,22 +301,23 @@ static Element* HighestAncestorToWrapMarkup(
             : EnclosingBlock(check_ancestor);
     auto* new_special_common_ancestor = To<Element>(HighestEnclosingNodeOfType(
         Position::FirstPositionInNode(*check_ancestor),
-        &IsPresentationalHTMLElement, kCanCrossEditingBoundary,
+        &IsPresentationalHtmlElement, kCanCrossEditingBoundary,
         constraining_ancestor));
-    if (new_special_common_ancestor)
+    if (new_special_common_ancestor) {
       special_common_ancestor = new_special_common_ancestor;
+    }
   }
 
   // If a single tab is selected, commonAncestor will be a text node inside a
   // tab span. If two or more tabs are selected, commonAncestor will be the tab
   // span. In either case, if there is a specialCommonAncestor already, it will
   // necessarily be above any tab span that needs to be included.
-  if (!special_common_ancestor &&
-      IsTabHTMLSpanElementTextNode(common_ancestor)) {
+  if (!special_common_ancestor && IsTabSpanElementTextNode(common_ancestor)) {
     special_common_ancestor = To<Element>(Strategy::Parent(*common_ancestor));
   }
-  if (!special_common_ancestor && IsTabHTMLSpanElement(common_ancestor))
+  if (!special_common_ancestor && IsTabSpanElement(common_ancestor)) {
     special_common_ancestor = To<Element>(common_ancestor);
+  }
 
   if (auto* enclosing_anchor = To<Element>(EnclosingElementWithTag(
           Position::FirstPositionInNode(special_common_ancestor
@@ -522,8 +525,8 @@ String CreateMarkup(const Node* node,
 
   MarkupAccumulator accumulator(should_resolve_urls,
                                 IsA<HTMLDocument>(node->GetDocument())
-                                    ? SerializationType::kHTML
-                                    : SerializationType::kXML,
+                                    ? SerializationType::kHtml
+                                    : SerializationType::kXml,
                                 shadow_root_inclusion);
   return accumulator.SerializeNodes<EditingStrategy>(*node, children_only);
 }
@@ -585,7 +588,7 @@ bool IsPlainTextMarkup(Node* node) {
   }
 
   return element->HasChildCount(2) &&
-         IsTabHTMLSpanElementTextNode(element->firstChild()->firstChild()) &&
+         IsTabSpanElementTextNode(element->firstChild()->firstChild()) &&
          element->lastChild()->IsTextNode();
 }
 

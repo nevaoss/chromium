@@ -5150,6 +5150,17 @@ Called by update_autofill_enums.py. This is a manual comment.-->
   </summary>
 </histogram>
 
+<histogram name="Autofill.iOS.FormSubmission.BlockedReason"
+    enum="SubmissionBlockedReasonIOS" expires_after="2026-11-29">
+  <owner>sugoi@chromium.org</owner>
+  <owner>bling-transactions@google.com</owner>
+  <summary>
+    Records the reason why a form submission was blocked or ignored by Autofill
+    on iOS. Recorded when the browser process decides to ignore a form
+    submission.
+  </summary>
+</histogram>
+
 <histogram name="Autofill.iOS.FormSubmission.IsProgrammatic" enum="Boolean"
     expires_after="2026-11-29">
   <owner>eic@google.com</owner>
@@ -10037,14 +10048,27 @@ Called by update_autofill_enums.py. This is a manual comment.-->
 
 <!-- TODO(crbug.com/491115361): Rename YourSavedInfoSettingsPage to AddressesSettingsPage -->
 
+<histogram
+    name="Autofill.YourSavedInfoSettingsPage.AutofillSettingsCategoryClick"
+    enum="Boolean" expires_after="2026-10-28">
+  <owner>jsobiech@google.com</owner>
+  <owner>chrome-autofill-team@google.com</owner>
+  <summary>
+    Records when the user clicks on the Autofill Settings category link on the
+    'Your saved info' settings page. iOS only.
+  </summary>
+</histogram>
+
+<!-- TODO(crbug.com/491115361): Rename YourSavedInfoSettingsPage to AddressesSettingsPage -->
+
 <histogram name="Autofill.YourSavedInfoSettingsPage.CategoryLinkClick"
     enum="YourSavedInfoDataCategory" expires_after="2026-10-28">
   <owner>mikhe@google.com</owner>
   <owner>chrome-autofill-alerts@google.com</owner>
   <summary>
     Records clicks on data categories in the 'Your saved info' settings page.
-    Emitted on every click on such a data category. Recorded on Desktop and
-    Android.
+    Emitted on every click on such a data category. Recorded on Desktop,
+    Android, and iOS.
   </summary>
 </histogram>
 

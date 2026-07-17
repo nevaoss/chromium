@@ -3723,6 +3723,10 @@ class CONTENT_EXPORT NavigationRequest
   // for browser intiiated navigations.
   scoped_refptr<InitiatorNavigationState> initiator_navigation_state_;
 
+  // Set to true if an early navigation failure has already been recorded
+  // for this navigation, preventing duplicate recordings in the destructor.
+  bool early_navigation_failure_recorded_ = false;
+
   base::WeakPtrFactory<NavigationRequest> weak_factory_{this};
 };
 

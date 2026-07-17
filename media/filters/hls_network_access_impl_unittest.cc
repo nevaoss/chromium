@@ -168,12 +168,14 @@ TEST_F(HlsNetworkAccessImplUnittest, TestReadSegmentWithInit) {
   // When there is an init segment, it'll make two requests each starting at 0
   // and then concatenate them
   auto segment = MakeSegment(std::nullopt, std::nullopt, InitMode::kPresent);
-  factory_->AddReadExpectation(0, 16384, 1000);
-  factory_->AddReadExpectation(1000, 16384, 0);
-  factory_->PregenerateNextMock();
-  factory_->AddReadExpectation(0, 16384, 1000);
-  factory_->AddReadExpectation(1000, 16384, 0);
-  factory_->PregenerateNextMock();
+  ASSERT_TRUE(segment->GetInitializationSegment());
+  const GURL& init_uri = segment->GetInitializationSegment()->GetUri();
+  const GURL& media_uri = segment->GetUri();
+
+  factory_->AddReadExpectation(init_uri, 0, 16384, 1000);
+  factory_->AddReadExpectation(init_uri, 1000, 16384, 0);
+  factory_->AddReadExpectation(media_uri, 0, 16384, 1000);
+  factory_->AddReadExpectation(media_uri, 1000, 16384, 0);
 
   network_access_->ReadMediaSegment(
       *segment, /*read_chunked=*/false, /*include_init_segment=*/true,
@@ -190,15 +192,17 @@ TEST_F(HlsNetworkAccessImplUnittest, TestReadSegmentWithInit) {
 
 TEST_F(HlsNetworkAccessImplUnittest, TestReadLongerInitSegment) {
   auto segment = MakeSegment(std::nullopt, std::nullopt, InitMode::kPresent);
+  ASSERT_TRUE(segment->GetInitializationSegment());
+  const GURL& init_uri = segment->GetInitializationSegment()->GetUri();
+  const GURL& media_uri = segment->GetUri();
+
   // When there is an init segment, it'll make two requests each starting at 0
   // and then concatenate them
-  factory_->AddReadExpectation(0, 16384, 16384);
-  factory_->AddReadExpectation(16384, 16384, 100);
-  factory_->AddReadExpectation(16484, 16384, 0);
-  factory_->PregenerateNextMock();
-  factory_->AddReadExpectation(0, 16384, 1000);
-  factory_->AddReadExpectation(1000, 16384, 0);
-  factory_->PregenerateNextMock();
+  factory_->AddReadExpectation(init_uri, 0, 16384, 16384);
+  factory_->AddReadExpectation(init_uri, 16384, 16384, 100);
+  factory_->AddReadExpectation(init_uri, 16484, 16384, 0);
+  factory_->AddReadExpectation(media_uri, 0, 16384, 1000);
+  factory_->AddReadExpectation(media_uri, 1000, 16384, 0);
 
   network_access_->ReadMediaSegment(
       *segment, /*read_chunked=*/false, /*include_init_segment=*/true,
@@ -277,23 +281,28 @@ TEST_F(HlsNetworkAccessImplUnittest, TestSegmentWithKey) {
   auto segment = MakeSegment(std::nullopt, std::nullopt, InitMode::kAbsent,
                              "https://example.com/enc.key");
 
-  // This actually has to be 16 non-zero bytes.
-  auto* ds_for_keyfetch = factory_->PregenerateNextMock();
-  EXPECT_CALL(*ds_for_keyfetch, Initialize)
-      .WillOnce(base::test::RunOnceCallback<0>(true));
-  EXPECT_CALL(*ds_for_keyfetch, Read(0, SpanSizeEq(16384), _))
-      .WillOnce([](int64_t, base::span<uint8_t> data, DataSource::ReadCB cb) {
-        std::ranges::fill(data.first<16>(), 'x');
-        std::move(cb).Run(16);
+  const GURL key_uri("https://example.com/enc.key");
+  const GURL media_uri("https://example.com/content.mp4");
+
+  EXPECT_CALL(*factory_, Setup(_, key_uri, _, _))
+      .WillOnce([](MockDataSource* mock, const GURL& uri, ...) {
+        MockDataSourceFactory::ConfigureAsSuccess(mock, uri);
+        EXPECT_CALL(*mock, Read(0, SpanSizeEq(16384), _))
+            .WillOnce(
+                [](int64_t, base::span<uint8_t> data, DataSource::ReadCB cb) {
+                  std::ranges::fill(data.first<16>(), 'x');
+                  std::move(cb).Run(16);
+                });
+        EXPECT_CALL(*mock, Read(16, SpanSizeEq(16384), _))
+            .WillOnce(base::test::RunOnceCallback<2>(0));
+        EXPECT_CALL(*mock, WouldTaintOrigin())
+            .WillRepeatedly(testing::Return(true));
       });
-  EXPECT_CALL(*ds_for_keyfetch, Read(16, SpanSizeEq(16384), _))
-      .WillOnce(base::test::RunOnceCallback<2>(0));
-  EXPECT_CALL(*ds_for_keyfetch, WouldTaintOrigin())
-      .WillRepeatedly(testing::Return(true));
 
   // Then expect media content to be read.
-  factory_->AddReadExpectation(0, 16384, 1000);
-  factory_->AddReadExpectation(1000, 16384, 0);
+  EXPECT_CALL(*factory_, Setup(_, media_uri, _, _)).Times(1);
+  factory_->AddReadExpectation(media_uri, 0, 16384, 1000);
+  factory_->AddReadExpectation(media_uri, 1000, 16384, 0);
 
   ASSERT_NE(segment->GetEncryptionData(), nullptr);
   ASSERT_TRUE(segment->GetEncryptionData()->NeedsKeyFetch());
@@ -319,24 +328,28 @@ TEST_F(HlsNetworkAccessImplUnittest, TestSegmentWithCORSKey) {
   auto segment = MakeSegment(std::nullopt, std::nullopt, InitMode::kAbsent,
                              "https://example.net/enc.key");
 
-  // This actually has to be 16 non-zero bytes.
-  auto* ds_for_keyfetch =
-      factory_->PregenerateNextMock("https://example.net/enc.key");
-  EXPECT_CALL(*ds_for_keyfetch, Initialize)
-      .WillOnce(base::test::RunOnceCallback<0>(true));
-  EXPECT_CALL(*ds_for_keyfetch, Read(0, SpanSizeEq(16384), _))
-      .WillOnce([](int64_t, base::span<uint8_t> data, DataSource::ReadCB cb) {
-        std::ranges::fill(data.first<16>(), 'x');
-        std::move(cb).Run(16);
+  const GURL key_uri("https://example.net/enc.key");
+  const GURL media_uri("https://example.com/content.mp4");
+
+  EXPECT_CALL(*factory_, Setup(_, key_uri, _, _))
+      .WillOnce([](MockDataSource* mock, const GURL& uri, ...) {
+        MockDataSourceFactory::ConfigureAsSuccess(mock, uri);
+        EXPECT_CALL(*mock, Read(0, SpanSizeEq(16384), _))
+            .WillOnce(
+                [](int64_t, base::span<uint8_t> data, DataSource::ReadCB cb) {
+                  std::ranges::fill(data.first<16>(), 'x');
+                  std::move(cb).Run(16);
+                });
+        EXPECT_CALL(*mock, Read(16, SpanSizeEq(16384), _))
+            .WillOnce(base::test::RunOnceCallback<2>(0));
+        EXPECT_CALL(*mock, WouldTaintOrigin())
+            .WillRepeatedly(testing::Return(true));
       });
-  EXPECT_CALL(*ds_for_keyfetch, Read(16, SpanSizeEq(16384), _))
-      .WillOnce(base::test::RunOnceCallback<2>(0));
-  EXPECT_CALL(*ds_for_keyfetch, WouldTaintOrigin())
-      .WillRepeatedly(testing::Return(true));
 
   // Then expect media content to be read.
-  factory_->AddReadExpectation(0, 16384, 1000);
-  factory_->AddReadExpectation(1000, 16384, 0);
+  EXPECT_CALL(*factory_, Setup(_, media_uri, _, _)).Times(1);
+  factory_->AddReadExpectation(media_uri, 0, 16384, 1000);
+  factory_->AddReadExpectation(media_uri, 1000, 16384, 0);
 
   ASSERT_NE(segment->GetEncryptionData(), nullptr);
   ASSERT_TRUE(segment->GetEncryptionData()->NeedsKeyFetch());
@@ -361,35 +374,36 @@ TEST_F(HlsNetworkAccessImplUnittest, SegmentWithRedirectedManifest) {
   auto segment = MakeSegment(std::nullopt, std::nullopt, InitMode::kAbsent,
                              "https://example.com/enc.key");
 
-  // This actually has to be 16 non-zero bytes.
-  EXPECT_CALL(*factory_, MockCreate(GURL("https://example.com/enc.key"),
-                                    DataSource::CacheMode::kHitCache,
-                                    DataSource::EncodingMode::kIdentity))
-      .Times(1);
-  auto* ds_for_keyfetch =
-      factory_->PregenerateNextMock("https://example.com/enc.key");
-  EXPECT_CALL(*ds_for_keyfetch, Initialize)
-      .WillOnce(base::test::RunOnceCallback<0>(true));
-  EXPECT_CALL(*ds_for_keyfetch, Read(0, SpanSizeEq(16384), _))
-      .WillOnce([](int64_t, base::span<uint8_t> data, DataSource::ReadCB cb) {
-        std::ranges::fill(data.first<16>(), 'x');
-        std::move(cb).Run(16);
+  const GURL key_uri("https://example.com/enc.key");
+  const GURL media_uri("https://example.com/content.mp4");
+
+  EXPECT_CALL(*factory_, Setup(_, key_uri, _, _))
+      .WillOnce([](MockDataSource* mock, const GURL& uri, ...) {
+        MockDataSourceFactory::ConfigureAsSuccess(mock, uri);
+        EXPECT_CALL(*mock, Read(0, SpanSizeEq(16384), _))
+            .WillOnce(
+                [](int64_t, base::span<uint8_t> data, DataSource::ReadCB cb) {
+                  std::ranges::fill(data.first<16>(), 'x');
+                  std::move(cb).Run(16);
+                });
+        EXPECT_CALL(*mock, Read(16, SpanSizeEq(16384), _))
+            .WillOnce(base::test::RunOnceCallback<2>(0));
+        EXPECT_CALL(*mock, WouldTaintOrigin())
+            .WillRepeatedly(testing::Return(false));
       });
-  EXPECT_CALL(*ds_for_keyfetch, Read(16, SpanSizeEq(16384), _))
-      .WillOnce(base::test::RunOnceCallback<2>(0));
-  EXPECT_CALL(*ds_for_keyfetch, WouldTaintOrigin())
-      .WillRepeatedly(testing::Return(false));
 
-  EXPECT_CALL(*factory_, MockCreate(GURL("https://example.com/content.mp4"),
-                                    DataSource::CacheMode::kHitCache,
-                                    DataSource::EncodingMode::kIdentity))
-      .Times(1)
-      .WillOnce(
-          Return(std::make_tuple("https://example.net/content.mp4", true)));
-
-  // Then expect media content to be read.
-  factory_->AddReadExpectation(0, 16384, 1000);
-  factory_->AddReadExpectation(1000, 16384, 0);
+  EXPECT_CALL(*factory_, Setup(_, media_uri, _, _))
+      .WillOnce([](MockDataSource* mock, const GURL& uri, ...) {
+        const GURL redirected_media_uri("https://example.net/content.mp4");
+        MockDataSourceFactory::ConfigureAsRedirect(mock, redirected_media_uri);
+        // The redirected data source will be read.
+        EXPECT_CALL(*mock, Read(0, SpanSizeEq(16384), _))
+            .WillOnce(base::test::RunOnceCallback<2>(1000));
+        EXPECT_CALL(*mock, Read(1000, SpanSizeEq(16384), _))
+            .WillOnce(base::test::RunOnceCallback<2>(0));
+        EXPECT_CALL(*mock, WouldTaintOrigin())
+            .WillRepeatedly(testing::Return(true));
+      });
 
   ASSERT_NE(segment->GetEncryptionData(), nullptr);
   ASSERT_TRUE(segment->GetEncryptionData()->NeedsKeyFetch());
@@ -412,25 +426,31 @@ TEST_F(HlsNetworkAccessImplUnittest, TestSegmentWithRedirectionKey) {
   auto segment = MakeSegment(std::nullopt, std::nullopt, InitMode::kAbsent,
                              "https://example.com/enc.key");
 
-  // This actually has to be 16 non-zero bytes. Note that it also redirects to
-  // an off-host key service.
-  auto* ds_for_keyfetch =
-      factory_->PregenerateNextMock("https://crypto-r-us.net/enc.key");
-  EXPECT_CALL(*ds_for_keyfetch, Initialize)
-      .WillOnce(base::test::RunOnceCallback<0>(true));
-  EXPECT_CALL(*ds_for_keyfetch, Read(0, SpanSizeEq(16384), _))
-      .WillOnce([](int64_t, base::span<uint8_t> data, DataSource::ReadCB cb) {
-        std::ranges::fill(data.first<16>(), 'x');
-        std::move(cb).Run(16);
+  const GURL key_uri("https://example.com/enc.key");
+  const GURL redirected_key_uri("https://crypto-r-us.net/enc.key");
+  const GURL media_uri("https://example.com/content.mp4");
+
+  EXPECT_CALL(*factory_, Setup(_, key_uri, _, _))
+      .WillOnce([redirected_key_uri](MockDataSource* mock, const GURL& uri,
+                                     ...) {
+        MockDataSourceFactory::ConfigureAsRedirect(mock, redirected_key_uri);
+        EXPECT_CALL(*mock, Read(0, SpanSizeEq(16384), _))
+            .WillOnce(
+                [](int64_t, base::span<uint8_t> data, DataSource::ReadCB cb) {
+                  std::ranges::fill(data.first<16>(), 'x');
+                  std::move(cb).Run(16);
+                });
+        EXPECT_CALL(*mock, Read(16, SpanSizeEq(16384), _))
+            .WillOnce(base::test::RunOnceCallback<2>(0));
+        // It redirects to crypto-r-us.net, which taints origin.
+        EXPECT_CALL(*mock, WouldTaintOrigin())
+            .WillRepeatedly(testing::Return(true));
       });
-  EXPECT_CALL(*ds_for_keyfetch, Read(16, SpanSizeEq(16384), _))
-      .WillOnce(base::test::RunOnceCallback<2>(0));
-  EXPECT_CALL(*ds_for_keyfetch, WouldTaintOrigin())
-      .WillRepeatedly(testing::Return(true));
 
   // Then expect media content to be read.
-  factory_->AddReadExpectation(0, 16384, 1000);
-  factory_->AddReadExpectation(1000, 16384, 0);
+  EXPECT_CALL(*factory_, Setup(_, media_uri, _, _)).Times(1);
+  factory_->AddReadExpectation(media_uri, 0, 16384, 1000);
+  factory_->AddReadExpectation(media_uri, 1000, 16384, 0);
 
   ASSERT_NE(segment->GetEncryptionData(), nullptr);
   ASSERT_TRUE(segment->GetEncryptionData()->NeedsKeyFetch());
@@ -453,9 +473,9 @@ TEST_F(HlsNetworkAccessImplUnittest, TestReadManifestAllowsGzip) {
   factory_->AddReadExpectation(0, 16384, 800);
   factory_->AddReadExpectation(800, 16384, 0);
 
-  EXPECT_CALL(*factory_, MockCreate(GURL("https://example.com/manifest.m3u8"),
-                                    DataSource::CacheMode::kBypassCache,
-                                    DataSource::EncodingMode::kAllowGzip))
+  EXPECT_CALL(*factory_, Setup(_, GURL("https://example.com/manifest.m3u8"),
+                               DataSource::CacheMode::kBypassCache,
+                               DataSource::EncodingMode::kAllowGzip))
       .Times(1);
 
   network_access_->ReadManifest(
@@ -470,30 +490,31 @@ TEST_F(HlsNetworkAccessImplUnittest, TestReadKeyDisallowsGzip) {
   auto segment = MakeSegment(std::nullopt, std::nullopt, InitMode::kAbsent,
                              "https://example.com/enc.key");
 
-  auto* ds_for_keyfetch = factory_->PregenerateNextMock();
-  EXPECT_CALL(*ds_for_keyfetch, Initialize)
-      .WillOnce(base::test::RunOnceCallback<0>(true));
-  EXPECT_CALL(*ds_for_keyfetch, Read(0, SpanSizeEq(16384), _))
-      .WillOnce([](int64_t, base::span<uint8_t> data, DataSource::ReadCB cb) {
-        std::ranges::fill(data.first<16>(), 'x');
-        std::move(cb).Run(16);
+  const GURL key_uri("https://example.com/enc.key");
+  const GURL media_uri("https://example.com/content.mp4");
+
+  EXPECT_CALL(*factory_, Setup(_, key_uri, DataSource::CacheMode::kHitCache,
+                               DataSource::EncodingMode::kIdentity))
+      .WillOnce([](MockDataSource* mock, const GURL& uri, ...) {
+        MockDataSourceFactory::ConfigureAsSuccess(mock, uri);
+        EXPECT_CALL(*mock, Read(0, SpanSizeEq(16384), _))
+            .WillOnce(
+                [](int64_t, base::span<uint8_t> data, DataSource::ReadCB cb) {
+                  std::ranges::fill(data.first<16>(), 'x');
+                  std::move(cb).Run(16);
+                });
+        EXPECT_CALL(*mock, Read(16, SpanSizeEq(16384), _))
+            .WillOnce(base::test::RunOnceCallback<2>(0));
+        EXPECT_CALL(*mock, WouldTaintOrigin())
+            .WillRepeatedly(testing::Return(true));
       });
-  EXPECT_CALL(*ds_for_keyfetch, Read(16, SpanSizeEq(16384), _))
-      .WillOnce(base::test::RunOnceCallback<2>(0));
-  EXPECT_CALL(*ds_for_keyfetch, WouldTaintOrigin())
-      .WillRepeatedly(testing::Return(true));
 
-  EXPECT_CALL(*factory_, MockCreate(GURL("https://example.com/enc.key"),
-                                    DataSource::CacheMode::kHitCache,
-                                    DataSource::EncodingMode::kIdentity))
-      .Times(1);
-  EXPECT_CALL(*factory_, MockCreate(GURL("https://example.com/content.mp4"),
-                                    DataSource::CacheMode::kHitCache,
-                                    DataSource::EncodingMode::kIdentity))
+  EXPECT_CALL(*factory_, Setup(_, media_uri, DataSource::CacheMode::kHitCache,
+                               DataSource::EncodingMode::kIdentity))
       .Times(1);
 
-  factory_->AddReadExpectation(0, 16384, 1000);
-  factory_->AddReadExpectation(1000, 16384, 0);
+  factory_->AddReadExpectation(media_uri, 0, 16384, 1000);
+  factory_->AddReadExpectation(media_uri, 1000, 16384, 0);
 
   ASSERT_NE(segment->GetEncryptionData(), nullptr);
   ASSERT_TRUE(segment->GetEncryptionData()->NeedsKeyFetch());

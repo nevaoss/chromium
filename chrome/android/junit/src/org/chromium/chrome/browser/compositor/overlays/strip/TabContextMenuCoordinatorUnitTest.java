@@ -418,7 +418,8 @@ public class TabContextMenuCoordinatorUnitTest {
                         mActivity,
                         mSnackbarManager,
                         mActivityResultTracker,
-                        mModalDialogManager);
+                        mModalDialogManager,
+                        TabClosingSource.TABLET_TAB_STRIP);
         mTabContextMenuCoordinator =
                 TabContextMenuCoordinator.createContextMenuCoordinator(
                         () -> mTabModel,
@@ -432,7 +433,8 @@ public class TabContextMenuCoordinatorUnitTest {
                         mReorderFunction,
                         mSnackbarManager,
                         mActivityResultTracker,
-                        mModalDialogManager);
+                        mModalDialogManager,
+                        TabClosingSource.TABLET_TAB_STRIP);
     }
 
     @Test
@@ -2770,7 +2772,8 @@ public class TabContextMenuCoordinatorUnitTest {
                         mockMenuActivity,
                         mSnackbarManager,
                         mActivityResultTracker,
-                        mModalDialogManager);
+                        mModalDialogManager,
+                        TabClosingSource.TABLET_TAB_STRIP);
 
         mTabModel.addTab(
                 mTab1,

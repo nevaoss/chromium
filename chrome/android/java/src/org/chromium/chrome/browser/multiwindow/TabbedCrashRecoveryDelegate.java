@@ -309,15 +309,6 @@ public class TabbedCrashRecoveryDelegate {
                     }
                 };
 
-        int pendingWindows = mWindowIdsPendingRecovery.size();
-        String positiveButtonText =
-                hostActivity
-                        .getResources()
-                        .getQuantityString(
-                                R.plurals.crash_recovery_dialog_positive_button_text,
-                                pendingWindows,
-                                pendingWindows);
-
         PropertyModel model =
                 new PropertyModel.Builder(ModalDialogProperties.ALL_KEYS)
                         .with(ModalDialogProperties.CONTROLLER, controller)
@@ -327,7 +318,10 @@ public class TabbedCrashRecoveryDelegate {
                         .with(
                                 ModalDialogProperties.MESSAGE_PARAGRAPH_1,
                                 hostActivity.getString(R.string.crash_recovery_dialog_message))
-                        .with(ModalDialogProperties.POSITIVE_BUTTON_TEXT, positiveButtonText)
+                        .with(
+                                ModalDialogProperties.POSITIVE_BUTTON_TEXT,
+                                hostActivity.getString(
+                                        R.string.crash_recovery_dialog_positive_button_text))
                         .with(
                                 ModalDialogProperties.NEGATIVE_BUTTON_TEXT,
                                 hostActivity.getString(R.string.cancel))

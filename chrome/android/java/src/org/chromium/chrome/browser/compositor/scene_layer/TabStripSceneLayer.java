@@ -446,7 +446,8 @@ public class TabStripSceneLayer extends SceneOverlayLayer {
                             Math.round(FOLIO_FOOT_LENGTH_DP * mDpToPx),
                             isPinned,
                             Math.round(st.getPinnedTabFaviconOffsetX() * mDpToPx),
-                            st.isUnderlined(),
+                            st.getUnderlineOpacity(),
+                            st.getUnderlineShimmerOffset(),
                             underlineStartColor,
                             underlineEndColor,
                             Math.round(StripLayoutTab.FAVICON_WIDTH * 2 * mDpToPx));
@@ -685,7 +686,8 @@ public class TabStripSceneLayer extends SceneOverlayLayer {
                 float folioFootLength,
                 boolean isPinned,
                 float pinnedIconOffsetX,
-                boolean isUnderlined,
+                float underlineOpacity,
+                float underlineShimmerOffset,
                 @ColorInt int underlineStartColor,
                 @ColorInt int underlineEndColor,
                 int underlineWidthThreshold);

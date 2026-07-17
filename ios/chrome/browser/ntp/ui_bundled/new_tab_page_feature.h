@@ -100,4 +100,10 @@ bool IsNTPBackgroundImageCacheEnabled();
 // Whether the NTP Logo and Doodle should have a consistent height.
 bool IsConsistentLogoDoodleHeightEnabled();
 
+// Feature flag to enable the New Tab Page Redesign.
+BASE_DECLARE_FEATURE(kNewTabPageRedesign);
+
+// Whether the New Tab Page Redesign is enabled.
+bool IsNTPRedesignEnabled();
+
 #endif  // IOS_CHROME_BROWSER_NTP_UI_BUNDLED_NEW_TAB_PAGE_FEATURE_H_

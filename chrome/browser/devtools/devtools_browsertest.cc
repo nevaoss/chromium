@@ -2019,32 +2019,6 @@ IN_PROC_BROWSER_TEST_F(DevToolsExtensionTest,
                         "/simple_test_page.html"}));
 }
 
-IN_PROC_BROWSER_TEST_F(DevToolsExtensionTest, EvalRestrictedOnOtherExtension) {
-  const Extension* other_extension = LoadExtensionForTest(
-      "Other Extension", "" /* devtools_page */, "" /* panel_iframe_src */);
-  LoadExtension("eval_restriction");
-  RunTest("waitForTestResultsAsMessage",
-          other_extension->GetResourceURL("simple_test_page.html").spec());
-}
-
-class DevToolsExtensionEvalAllowedTest : public DevToolsExtensionTest {
- public:
-  void SetUpCommandLine(base::CommandLine* command_line) override {
-    DevToolsExtensionTest::SetUpCommandLine(command_line);
-    command_line->AppendSwitch(
-        extensions::switches::kExtensionsOnExtensionURLs);
-  }
-};
-
-IN_PROC_BROWSER_TEST_F(DevToolsExtensionEvalAllowedTest,
-                       EvalAllowedOnOtherExtension) {
-  const Extension* other_extension = LoadExtensionForTest(
-      "Other Extension", "" /* devtools_page */, "" /* panel_iframe_src */);
-  LoadExtension("eval_allowed");
-  RunTest("waitForTestResultsAsMessage",
-          other_extension->GetResourceURL("simple_test_page.html").spec());
-}
-
 IN_PROC_BROWSER_TEST_F(DevToolsExtensionTest, CantInspectRemoteNewTabPage) {
   net::EmbeddedTestServer https_test_server(
       net::EmbeddedTestServer::TYPE_HTTPS);

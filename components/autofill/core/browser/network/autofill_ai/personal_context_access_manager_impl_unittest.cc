@@ -91,10 +91,6 @@ class MockPersonalContextAccessManagerObserver
 
   MOCK_METHOD(void,
               OnPrefetchContextComplete,
-              (const PersonalContextAccessManager& manager, bool success),
-              (override));
-  MOCK_METHOD(void,
-              OnMaskedEntitiesPrefetched,
               (const PersonalContextAccessManager& manager,
                base::span<const EntityInstance> entities),
               (override));
@@ -186,9 +182,8 @@ class PersonalContextAccessManagerImplTest : public testing::Test {
       observation_{&mock_observer_};
 };
 
-// Tests that PrefetchAmbientAutofillContext successfully requests context from
-// the backend and parses the returned entities, notifying observers about the
-// result.
+// Tests that PrefetchContext successfully requests context from the backend and
+// parses the returned entities, notifying observers about the result.
 TEST_F(PersonalContextAccessManagerImplTest, PrefetchContextSuccess) {
   const std::vector<EntityType> requested_types = {
       EntityType(EntityTypeName::kOrder)};
@@ -200,7 +195,7 @@ TEST_F(PersonalContextAccessManagerImplTest, PrefetchContextSuccess) {
   entity->mutable_order()->set_merchant_name("Amazon");
 
   std::vector<EntityInstance> entities;
-  EXPECT_CALL(mock_observer(), OnMaskedEntitiesPrefetched)
+  EXPECT_CALL(mock_observer(), OnPrefetchContextComplete)
       .WillOnce(SaveSpanToVector<1>(&entities));
   PrefetchContextSync(requested_types, expected_response);
 
@@ -215,8 +210,8 @@ TEST_F(PersonalContextAccessManagerImplTest, PrefetchContextSuccess) {
                                         u"Amazon"))));
 }
 
-// Tests that PrefetchAmbientAutofillContext filters out and only requests
-// entity types that don't have a valid prefetching result available.
+// Tests that PrefetchContext filters out and only requests entity types that
+// don't have a valid prefetching result available.
 TEST_F(PersonalContextAccessManagerImplTest,
        PrefetchContextOnlyRequestsUnfetchedTypes) {
   // 1. First, prefetch Passport.
@@ -262,8 +257,8 @@ TEST_F(PersonalContextAccessManagerImplTest,
       EntityType(EntityTypeName::kDriversLicense)));
 }
 
-// Tests that PrefetchAmbientAutofillContext immediately returns and triggers
-// no network requests when all requested entity types are already prefetched.
+// Tests that PrefetchContext immediately returns and triggers no network
+// requests when all requested entity types are already prefetched.
 TEST_F(PersonalContextAccessManagerImplTest,
        PrefetchContextAllPrefetchedNoRequest) {
   // 1. Prefetch Passport.
@@ -284,8 +279,8 @@ TEST_F(PersonalContextAccessManagerImplTest,
   access_manager().PrefetchContext(requested_types);
 }
 
-// Tests that PrefetchAmbientAutofillContext does not notify observers or mark
-// types as prefetched when the fetch context request fails.
+// Tests that PrefetchContext does not mark types as prefetched when the fetch
+// context request fails.
 TEST_F(PersonalContextAccessManagerImplTest, PrefetchContextFailure) {
   const std::vector<EntityType> requested_types = {
       EntityType(EntityTypeName::kOrder)};
@@ -302,14 +297,14 @@ TEST_F(PersonalContextAccessManagerImplTest, PrefetchContextFailure) {
           _, _))
       .WillOnce(RunOnceCallback<3>(personal_context::FetchContextResult(
           base::unexpected(expected_error))));
-  EXPECT_CALL(mock_observer(), OnMaskedEntitiesPrefetched).Times(0);
+  EXPECT_CALL(mock_observer(), OnPrefetchContextComplete(_, IsEmpty()));
   access_manager().PrefetchContext(requested_types);
   EXPECT_FALSE(
       access_manager().IsTypePrefetched(EntityType(EntityTypeName::kOrder)));
 }
 
-// Tests that `PrefetchAmbientAutofillContext` marks requested types as
-// prefetched even when the response is empty.
+// Tests that PrefetchContext marks requested types as prefetched even when the
+// response is empty.
 TEST_F(PersonalContextAccessManagerImplTest, PrefetchContextEmptyResponse) {
   const std::vector<EntityType> requested_types = {
       EntityType(EntityTypeName::kOrder),
@@ -374,6 +369,40 @@ TEST_F(PersonalContextAccessManagerImplTest, PrefetchedEntities_TTL) {
       EntityType(EntityTypeName::kDriversLicense)));
 }
 
+// Tests that a follow-up prefetch request for an already prefetched type
+// does nothing, and the original eviction timer correctly clears the cache
+// when it expires.
+TEST_F(PersonalContextAccessManagerImplTest,
+       PrefetchContext_FollowUpRequestNoOp) {
+  // 1. Prefetch Passport at T = 0.
+  personal_context::proto::ContextMemoryAmbientAutofillResponse
+      passport_response;
+  passport_response.add_entities()->mutable_passport()->set_number("P123");
+  PrefetchContextSync({EntityType(EntityTypeName::kPassport)},
+                      passport_response);
+  EXPECT_TRUE(
+      access_manager().IsTypePrefetched(EntityType(EntityTypeName::kPassport)));
+
+  // Fast forward 20 minutes (Passport still valid).
+  FastForwardBy(base::Minutes(20));
+  EXPECT_TRUE(
+      access_manager().IsTypePrefetched(EntityType(EntityTypeName::kPassport)));
+
+  // 2. Trigger a follow-up prefetch request for Passport at T = 20.
+  // Since the cache is still valid, no network request should be made.
+  EXPECT_CALL(mock_personal_context_service(), FetchContext).Times(0);
+  access_manager().PrefetchContext({EntityType(EntityTypeName::kPassport)});
+
+  // Fast forward another 15 minutes (Total T = 35, past the original 30-min
+  // TTL). The original eviction task should have fired at T = 30 and cleared
+  // the cache.
+  EXPECT_CALL(mock_observer(), OnMaskedEntityTypeEvicted(
+                                   _, EntityType(EntityTypeName::kPassport)));
+  FastForwardBy(base::Minutes(15));
+  EXPECT_FALSE(
+      access_manager().IsTypePrefetched(EntityType(EntityTypeName::kPassport)));
+}
+
 // Tests that unmasked SPII entities are cached with a 1-minute TTL.
 TEST_F(PersonalContextAccessManagerImplTest, CacheUnmaskedSpiiEntity_TTL) {
   EntityInstance passport = test::GetPassportEntityInstance(
@@ -423,7 +452,7 @@ TEST_F(PersonalContextAccessManagerImplTest,
   passport_response.add_entities()->mutable_passport()->set_number("P123");
 
   std::vector<EntityInstance> entities;
-  EXPECT_CALL(mock_observer(), OnMaskedEntitiesPrefetched)
+  EXPECT_CALL(mock_observer(), OnPrefetchContextComplete)
       .WillOnce(SaveSpanToVector<1>(&entities));
   PrefetchContextSync({EntityType(EntityTypeName::kPassport)},
                       passport_response);
@@ -481,7 +510,7 @@ TEST_F(PersonalContextAccessManagerImplTest,
   response.add_entities()->mutable_passport()->set_number("P123");
 
   std::vector<EntityInstance> entities;
-  EXPECT_CALL(mock_observer(), OnMaskedEntitiesPrefetched)
+  EXPECT_CALL(mock_observer(), OnPrefetchContextComplete)
       .WillOnce(SaveSpanToVector<1>(&entities));
   PrefetchContextSync({EntityType(EntityTypeName::kPassport)}, response);
   ASSERT_TRUE(
@@ -544,7 +573,7 @@ TEST_F(PersonalContextAccessManagerImplTest,
   personal_context::proto::ContextMemoryAmbientAutofillResponse response;
   response.add_entities()->mutable_passport()->set_number("P123");
   std::vector<EntityInstance> entities;
-  EXPECT_CALL(mock_observer(), OnMaskedEntitiesPrefetched)
+  EXPECT_CALL(mock_observer(), OnPrefetchContextComplete)
       .WillOnce(SaveSpanToVector<1>(&entities));
   PrefetchContextSync({EntityType(EntityTypeName::kPassport)}, response);
   ASSERT_EQ(entities.size(), 1u);
@@ -561,77 +590,6 @@ TEST_F(PersonalContextAccessManagerImplTest,
   EXPECT_EQ(GetUnmaskedSpiiEntitySync(passport_guid), std::nullopt);
 }
 
-// Tests that PrefetchAmbientAutofillContext is not executed if the
-// kAutofillAmbientAutofill flag is disabled.
-TEST_F(PersonalContextAccessManagerImplTest, PrefetchContext_FlagDisabled) {
-  base::test::ScopedFeatureList local_feature_list;
-  local_feature_list.InitAndDisableFeature(features::kAutofillAmbientAutofill);
-
-  const std::vector<EntityType> requested_types = {
-      EntityType(EntityTypeName::kOrder)};
-
-  EXPECT_CALL(mock_personal_context_service(), FetchContext).Times(0);
-  access_manager().PrefetchContext(requested_types);
-  EXPECT_FALSE(
-      access_manager().IsTypePrefetched(EntityType(EntityTypeName::kOrder)));
-}
-
-// Tests that PrefetchAmbientAutofillContext is not executed if the
-// enablement state does not return an enabled state.
-TEST_F(PersonalContextAccessManagerImplTest,
-       PrefetchContext_EnablementDisabled) {
-  EXPECT_CALL(mock_enablement_service(), GetEnablementState)
-      .WillRepeatedly(
-          testing::Return(personal_context::PersonalContextEnablementState::
-                              kDisabledNotEligible));
-
-  const std::vector<EntityType> requested_types = {
-      EntityType(EntityTypeName::kOrder)};
-
-  EXPECT_CALL(mock_personal_context_service(), FetchContext).Times(0);
-  access_manager().PrefetchContext(requested_types);
-  EXPECT_FALSE(
-      access_manager().IsTypePrefetched(EntityType(EntityTypeName::kOrder)));
-}
-
-// Tests that PrefetchAmbientAutofillContext is executed if the
-// enablement state is kEnabledShouldShowNotice.
-TEST_F(PersonalContextAccessManagerImplTest,
-       PrefetchContext_EnabledShouldShowNotice) {
-  EXPECT_CALL(mock_enablement_service(), GetEnablementState)
-      .WillRepeatedly(
-          testing::Return(personal_context::PersonalContextEnablementState::
-                              kEnabledShouldShowNotice));
-
-  const std::vector<EntityType> requested_types = {
-      EntityType(EntityTypeName::kOrder)};
-
-  auto create_expected_response = []() -> personal_context::proto::Any {
-    personal_context::proto::ContextMemoryAmbientAutofillResponse
-        expected_response;
-    personal_context::proto::Entity* entity = expected_response.add_entities();
-    entity->mutable_order()->set_order_id("12345");
-    entity->mutable_order()->set_merchant_name("Amazon");
-
-    personal_context::proto::Any any_response;
-    expected_response.SerializeToString(any_response.mutable_value());
-    return any_response;
-  };
-
-  EXPECT_CALL(
-      mock_personal_context_service(),
-      FetchContext(
-          personal_context::proto::CONTEXT_MEMORY_FEATURE_AMBIENT_AUTOFILL, _,
-          _, _))
-      .WillOnce(RunOnceCallback<3>(personal_context::FetchContextResult(
-          base::ok(create_expected_response()))));
-
-  access_manager().PrefetchContext(requested_types);
-
-  EXPECT_TRUE(
-      access_manager().IsTypePrefetched(EntityType(EntityTypeName::kOrder)));
-}
-
 // Tests that when OnEnablementStateChanged is called with a disabled state, all
 // state is wiped.
 TEST_F(PersonalContextAccessManagerImplTest, WipeStateOnDisablement) {
@@ -640,7 +598,7 @@ TEST_F(PersonalContextAccessManagerImplTest, WipeStateOnDisablement) {
       passport_response;
   passport_response.add_entities()->mutable_passport()->set_number("P123");
   std::vector<EntityInstance> entities;
-  EXPECT_CALL(mock_observer(), OnMaskedEntitiesPrefetched)
+  EXPECT_CALL(mock_observer(), OnPrefetchContextComplete)
       .WillOnce(SaveSpanToVector<1>(&entities));
   PrefetchContextSync({EntityType(EntityTypeName::kPassport)},
                       passport_response);
@@ -846,7 +804,7 @@ TEST_F(PersonalContextAccessManagerImplTest, PrefetchStatusAndObserverSuccess) {
   personal_context::proto::Any any_response;
   response.SerializeToString(any_response.mutable_value());
 
-  EXPECT_CALL(mock_observer(), OnPrefetchContextComplete(_, true));
+  EXPECT_CALL(mock_observer(), OnPrefetchContextComplete(_, IsEmpty()));
   future.Take().Run(
       personal_context::FetchContextResult(base::ok(std::move(any_response))));
 
@@ -880,7 +838,7 @@ TEST_F(PersonalContextAccessManagerImplTest, PrefetchStatusAndObserverFailure) {
 
   // 2. Resolve request with failure. Status should transition to `kFailure`,
   // and observer should be notified with success = false.
-  EXPECT_CALL(mock_observer(), OnPrefetchContextComplete(_, false));
+  EXPECT_CALL(mock_observer(), OnPrefetchContextComplete(_, IsEmpty()));
   ContextMemoryError expected_error = ContextMemoryError::FromExecutionError(
       ContextMemoryError::ExecutionError::kGenericFailure);
   future.Take().Run(
@@ -910,7 +868,7 @@ TEST_F(PersonalContextAccessManagerImplTest,
   PrefetchContextSync({EntityType(EntityTypeName::kPassport)}, response);
 
   // 2. Call Prefetch again. Expect observer to be notified synchronously.
-  EXPECT_CALL(observer, OnPrefetchContextComplete(_, true));
+  EXPECT_CALL(observer, OnPrefetchContextComplete(_, IsEmpty()));
   access_manager().PrefetchContext({EntityType(EntityTypeName::kPassport)});
 }
 
@@ -922,7 +880,7 @@ TEST_F(PersonalContextAccessManagerImplTest,
   response.add_entities()->mutable_passport()->set_number("P123");
 
   std::vector<EntityInstance> entities;
-  EXPECT_CALL(mock_observer(), OnMaskedEntitiesPrefetched)
+  EXPECT_CALL(mock_observer(), OnPrefetchContextComplete)
       .WillOnce(SaveSpanToVector<1>(&entities));
   PrefetchContextSync({EntityType(EntityTypeName::kPassport)}, response);
   ASSERT_TRUE(

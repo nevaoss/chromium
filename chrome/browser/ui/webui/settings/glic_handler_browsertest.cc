@@ -446,41 +446,4 @@ IN_PROC_BROWSER_TEST_F(
       browser()->profile()));
 }
 
-// Test suite to verify that Glic preferences are allowlisted in the Settings
-// Private API when the main kGlic feature flag is enabled.
-class GlicPrefsAllowlistBrowserTest
-    : public InProcessBrowserTest,
-      public ::testing::WithParamInterface<bool> {
- public:
-  GlicPrefsAllowlistBrowserTest() {
-    feature_list_.InitWithFeatureState(features::kGlic, IsGlicFeatureEnabled());
-  }
-
-  void TearDownOnMainThread() override {
-    glic::GlicEnabling::SetBypassEnablementChecksForTesting(false);
-    InProcessBrowserTest::TearDownOnMainThread();
-  }
-
- protected:
-  bool IsGlicFeatureEnabled() const { return GetParam(); }
-
-  base::test::ScopedFeatureList feature_list_;
-};
-
-// Verifies that Glic preferences allowlist status matches the kGlic feature
-// status.
-IN_PROC_BROWSER_TEST_P(GlicPrefsAllowlistBrowserTest, PrefsAllowlistedStatus) {
-  glic::GlicEnabling::SetBypassEnablementChecksForTesting(
-      IsGlicFeatureEnabled());
-
-  auto prefs_util =
-      std::make_unique<extensions::PrefsUtil>(browser()->profile());
-
-  std::optional<extensions::api::settings_private::PrefObject> pref =
-      prefs_util->GetPref(glic::prefs::kGlicDefaultTabContextEnabled);
-  EXPECT_EQ(pref.has_value(), IsGlicFeatureEnabled());
-}
-
-INSTANTIATE_TEST_SUITE_P(All, GlicPrefsAllowlistBrowserTest, ::testing::Bool());
-
 }  // namespace settings

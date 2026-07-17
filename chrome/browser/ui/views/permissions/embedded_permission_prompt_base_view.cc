@@ -137,13 +137,13 @@ EmbeddedPermissionPromptBaseView::EmbeddedPermissionPromptBaseView(
 EmbeddedPermissionPromptBaseView::~EmbeddedPermissionPromptBaseView() {
   permissions::PermissionUmaUtil::RecordBrowserAlwaysActiveWhilePrompting(
       request_type(), /*embedded_permission_element_initiated*/ true,
-      record_browser_always_active_value());
+      record_host_always_active_value());
 }
 
 void EmbeddedPermissionPromptBaseView::Show() {
   permissions::PermissionUmaUtil::RecordPromptShownInActiveBrowser(
       request_type(), /*embedded_permission_element_initiated*/ true,
-      record_browser_always_active_value());
+      record_host_always_active_value());
   CreateWidget();
   ShowWidget();
 }
@@ -226,15 +226,14 @@ void EmbeddedPermissionPromptBaseView::AddedToWidget() {
   GetBubbleFrameView()->SetTitleView(std::move(title_container));
 
   // Observe size changes of embedded permission prompt widget.
-  if (GetWidget()) {
-    GetWidget()->AddObserver(this);
-  }
+  widget_observation_.Observe(GetWidget());
 }
 
 void EmbeddedPermissionPromptBaseView::OnWidgetBoundsChanged(
     views::Widget* widget,
     const gfx::Rect& new_bounds) {
-  if (!delegate_) {
+  if (!delegate_ || !widget_observation_.IsObserving() ||
+      !widget_observation_.IsObservingSource(widget)) {
     return;
   }
 
@@ -253,16 +252,15 @@ void EmbeddedPermissionPromptBaseView::OnWidgetBoundsChanged(
   }
 }
 
-void EmbeddedPermissionPromptBaseView::OnWidgetDestroying(
-    views::Widget* widget) {
-  // Remove observer of widget.
-  widget->RemoveObserver(this);
-}
-
 // For going out of focus of the PEPC permission prompt:
 void EmbeddedPermissionPromptBaseView::OnWidgetVisibilityChanged(
     views::Widget* widget,
     bool visible) {
+  if (!widget_observation_.IsObserving() ||
+      !widget_observation_.IsObservingSource(widget)) {
+    return;
+  }
+
   // `web_contents_` is a WeakPtr and could be null if the tab/WebContents was
   // destroyed. Additionally, we check it defensively in case visibility changes
   // before the first layout bounds change occurs.

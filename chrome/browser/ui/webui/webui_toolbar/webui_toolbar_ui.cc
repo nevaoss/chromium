@@ -19,6 +19,7 @@
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/frame/browser_widget.h"
 #include "chrome/browser/ui/views/permissions/chip/permission_chip_view.h"
+#include "chrome/browser/ui/views/toolbar/avatar_toolbar_button_interface.h"
 #include "chrome/browser/ui/webui/metrics_handler.h"
 #include "chrome/browser/ui/webui/metrics_reporter/metrics_reporter_service.h"
 #include "chrome/browser/ui/webui/theme_colors_source_manager.h"
@@ -106,8 +107,12 @@ WebUIToolbarUI::WebUIToolbarUI(content::WebUI* web_ui)
                      features::IsWebUIPinnedToolbarActionsEnabled());
   source->AddBoolean("enableAppMenuButton",
                      features::IsWebUIAppMenuButtonEnabled());
-  source->AddBoolean("enableAvatarButton",
-                     features::IsWebUIAvatarButtonEnabled());
+  source->AddBoolean(
+      "enableAvatarButton",
+      features::IsWebUIAvatarButtonEnabled() &&
+          AvatarToolbarButtonInterface::CanShowForProfile(
+              Profile::FromBrowserContext(
+                  web_ui->GetWebContents()->GetBrowserContext())));
   source->AddBoolean("enableExtensionsContainer",
                      features::IsWebUIExtensionsContainerEnabled());
   source->AddBoolean(

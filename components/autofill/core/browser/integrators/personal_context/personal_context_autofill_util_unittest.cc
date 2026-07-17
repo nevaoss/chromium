@@ -5,6 +5,7 @@
 #include "components/autofill/core/browser/integrators/personal_context/personal_context_autofill_util.h"
 
 #include "base/test/scoped_feature_list.h"
+#include "build/branding_buildflags.h"
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/personal_context/core/personal_context_enablement_service.h"
 #include "components/personal_context/core/personal_context_types.h"
@@ -18,6 +19,8 @@ namespace {
 
 using personal_context::PersonalContextEnablementService;
 using personal_context::PersonalContextEnablementState;
+using ::testing::NiceMock;
+using ::testing::Return;
 
 class MockPersonalContextEnablementService
     : public PersonalContextEnablementService {
@@ -35,11 +38,16 @@ class MockPersonalContextEnablementService
 TEST(PersonalContextAutofillUtilTest,
      ShouldShowPersonalContextAutofillSetting) {
   using enum PersonalContextEnablementState;
-  MockPersonalContextEnablementService service;
+  NiceMock<MockPersonalContextEnablementService> service;
+
+  base::test::ScopedFeatureList feature_list(
+      features::kAutofillAmbientAutofill);
 
   auto check_state = [&](PersonalContextEnablementState state) {
-    EXPECT_CALL(service, GetEnablementState()).WillOnce(testing::Return(state));
-    return ShouldShowPersonalContextAutofillSetting(&service);
+    ON_CALL(service, GetEnablementState()).WillByDefault(Return(state));
+    return ShouldShowPersonalContextAutofillSetting(
+        &service, /*subscription_eligibility_service=*/nullptr,
+        /*pref_service=*/nullptr, /*google_groups_manager=*/nullptr);
   };
 
   EXPECT_FALSE(check_state(kDisabledNotEligible));
@@ -48,52 +56,58 @@ TEST(PersonalContextAutofillUtilTest,
   EXPECT_TRUE(check_state(kEnabledShouldShowNotice));
   EXPECT_TRUE(check_state(kEnabled));
 
-  EXPECT_FALSE(ShouldShowPersonalContextAutofillSetting(nullptr));
+  EXPECT_FALSE(ShouldShowPersonalContextAutofillSetting(
+      /*enablement_service=*/nullptr,
+      /*subscription_eligibility_service=*/nullptr,
+      /*pref_service=*/nullptr, /*google_groups_manager=*/nullptr));
 }
 
 TEST(PersonalContextAutofillUtilTest,
-     AreAutofillPersonalContextFeaturesSupported) {
-  // 1. Both disabled
-  {
-    base::test::ScopedFeatureList feature_list;
-    feature_list.InitWithFeatures(
-        /*enabled_features=*/{},
-        /*disabled_features=*/{features::kAutofillAmbientAutofill,
-                               features::kAutofillAtMemory});
-    EXPECT_FALSE(AreAutofillPersonalContextFeaturesSupported(
-        /*google_groups_manager=*/nullptr));
-  }
+     ShouldShowPersonalContextAutofillSetting_BothDisabled) {
+  NiceMock<MockPersonalContextEnablementService> service;
+  ON_CALL(service, GetEnablementState())
+      .WillByDefault(Return(PersonalContextEnablementState::kEnabled));
 
-  // 2. AmbientAutofill enabled
-  {
-    base::test::ScopedFeatureList feature_list;
-    feature_list.InitWithFeatures(
-        /*enabled_features=*/{features::kAutofillAmbientAutofill},
-        /*disabled_features=*/{features::kAutofillAtMemory});
-    EXPECT_TRUE(AreAutofillPersonalContextFeaturesSupported(
-        /*google_groups_manager=*/nullptr));
-  }
-
-  // 3. AtMemory enabled
-  {
-    base::test::ScopedFeatureList feature_list;
-    feature_list.InitWithFeatures(
-        /*enabled_features=*/{features::kAutofillAtMemory},
-        /*disabled_features=*/{features::kAutofillAmbientAutofill});
-    EXPECT_TRUE(AreAutofillPersonalContextFeaturesSupported(
-        /*google_groups_manager=*/nullptr));
-  }
-
-  // 4. Both enabled
-  {
-    base::test::ScopedFeatureList feature_list;
-    feature_list.InitWithFeatures(
-        /*enabled_features=*/{features::kAutofillAmbientAutofill,
-                              features::kAutofillAtMemory},
-        /*disabled_features=*/{});
-    EXPECT_TRUE(AreAutofillPersonalContextFeaturesSupported(
-        /*google_groups_manager=*/nullptr));
-  }
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeatures(
+      /*enabled_features=*/{},
+      /*disabled_features=*/{features::kAutofillAmbientAutofill,
+                             features::kAutofillAtMemory});
+  EXPECT_FALSE(ShouldShowPersonalContextAutofillSetting(
+      &service, /*subscription_eligibility_service=*/nullptr,
+      /*pref_service=*/nullptr, /*google_groups_manager=*/nullptr));
 }
+
+TEST(PersonalContextAutofillUtilTest,
+     ShouldShowPersonalContextAutofillSetting_AmbientAutofillEnabled) {
+  NiceMock<MockPersonalContextEnablementService> service;
+  ON_CALL(service, GetEnablementState())
+      .WillByDefault(Return(PersonalContextEnablementState::kEnabled));
+
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeatures(
+      /*enabled_features=*/{features::kAutofillAmbientAutofill},
+      /*disabled_features=*/{features::kAutofillAtMemory});
+  EXPECT_TRUE(ShouldShowPersonalContextAutofillSetting(
+      &service, /*subscription_eligibility_service=*/nullptr,
+      /*pref_service=*/nullptr, /*google_groups_manager=*/nullptr));
+}
+
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+TEST(PersonalContextAutofillUtilTest,
+     ShouldShowPersonalContextAutofillSetting_AtMemoryEnabled) {
+  NiceMock<MockPersonalContextEnablementService> service;
+  ON_CALL(service, GetEnablementState())
+      .WillByDefault(Return(PersonalContextEnablementState::kEnabled));
+
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeatures(
+      /*enabled_features=*/{features::kAutofillAtMemory},
+      /*disabled_features=*/{features::kAutofillAmbientAutofill});
+  EXPECT_TRUE(ShouldShowPersonalContextAutofillSetting(
+      &service, /*subscription_eligibility_service=*/nullptr,
+      /*pref_service=*/nullptr, /*google_groups_manager=*/nullptr));
+}
+#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
 }  // namespace autofill

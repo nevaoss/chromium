@@ -99,11 +99,6 @@ found in the LICENSE file.
     <dimen name="inactive_tab_hover_card_x_offset">16dp</dimen>
 
     <!-- Dimens for TabGroupParity features -->
-    <dimen name="color_picker_color_item_size">24dp</dimen>
-    <dimen name="color_picker_color_item_horizontal_padding">8dp</dimen>
-    <dimen name="color_picker_color_item_vertical_padding">12dp</dimen>
-    <dimen name="color_picker_inner_layer_inset">5dp</dimen>
-    <dimen name="color_picker_selection_layer_inset">2dp</dimen>
     <dimen name="tab_group_color_icon_stroke">2dp</dimen>
     <dimen name="tab_group_color_icon_item_size">18dp</dimen>
     <dimen name="tab_group_nested_menu_color_icon_size">12dp</dimen>
@@ -212,6 +207,7 @@ found in the LICENSE file.
     <dimen name="vertical_tab_item_favicon_margin_end">8dp</dimen>
     <dimen name="vertical_tab_item_media_indicator_margin_end">12dp</dimen>
     <dimen name="vertical_tab_item_ai_indicator_margin_vertical">2dp</dimen>
+    <dimen name="vertical_tab_item_actuation_icon_size">20dp</dimen>
     <dimen name="vertical_tab_item_corner_radius">8dp</dimen>
     <dimen name="vertical_tab_item_margin_bottom">4dp</dimen>
     <dimen name="vertical_tab_child_nesting_margin">8dp</dimen>

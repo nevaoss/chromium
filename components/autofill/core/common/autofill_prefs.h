@@ -121,6 +121,16 @@ inline constexpr char kAutofillHasSeenIban[] = "autofill.has_seen_iban";
 // was run. This routine will be run once per version.
 inline constexpr char kAutofillLastVersionDeduped[] =
     "autofill.last_version_deduped";
+
+// Boolean that is true if the user enabled fetching OTPs from the signed in
+// Gmail account.
+inline constexpr char kAutofillGmailOtpFillingEnabled[] =
+    "autofill.gmail_otp_filling.enabled";
+// Timestamp the user dismissed the activation dialog to enable fetching Gmail
+// OTPs the last time.
+inline constexpr char kAutofillGmailOtpFillingActivationDismissalTimestamp[] =
+    "autofill.gmail_otp_filling.activation_dismissal_timestamp";
+
 // Boolean that is true, when users can save their CVCs.
 inline constexpr char kAutofillPaymentCvcStorage[] =
     "autofill.payment_cvc_storage";
@@ -284,6 +294,14 @@ bool IsAutofillTypesBlockedManaged(const PrefService* prefs);
 bool IsAutofillProfileEnabled(const PrefService* prefs);
 
 void SetAutofillProfileEnabled(PrefService* prefs, bool enabled);
+
+bool IsAutofillGmailOtpFillingEnabled(const PrefService* prefs);
+void SetAutofillGmailOtpFillingEnabled(PrefService* prefs, bool enabled);
+
+base::Time GetAutofillGmailOtpFillingActivationDismissalTimestamp(
+    const PrefService* prefs);
+void SetAutofillGmailOtpFillingActivationDismissalTimestamp(PrefService* prefs,
+                                                            base::Time time);
 
 bool IsAutofillAiSyncedOptInStatusEnabled(const PrefService* prefs);
 

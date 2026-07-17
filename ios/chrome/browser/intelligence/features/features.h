@@ -380,6 +380,12 @@ BASE_DECLARE_FEATURE(kAppSwitcherAISummarization);
 // Returns true if App Switcher AI summarization is enabled.
 bool IsAppSwitcherAISummarizationEnabled();
 
+// Feature flag controlling Gemini contextual suggestions cues framework.
+BASE_DECLARE_FEATURE(kGeminiContextualSuggestionsCues);
+
+// Returns true if Gemini contextual suggestions cues framework is enabled.
+bool IsGeminiContextualSuggestionsCuesEnabled();
+
 #pragma mark - Debugging Features
 
 // Holds the variations of the BWG Promo Consent flow for debugging.

@@ -733,4 +733,75 @@ chrome.test.runTests([
 
     chrome.test.succeed();
   },
+
+  async function testPlaceholderFocusedScroll3Pages() {
+    const {manager, viewport} = setUpTest();
+
+    const dimensions = new MockDocumentDimensions(0, 0);
+    dimensions.addPage(400, 500);  // Page 0: 400x500
+    dimensions.addPage(400, 500);  // Page 1: 400x500
+    dimensions.addPage(400, 500);  // Page 2: 400x500
+    viewport.setDocumentDimensions(dimensions);
+
+    const annotation1 = {
+      ...getTestAnnotation(1),
+      pageIndex: 0,
+      text: 'Page 1 Annotation',
+      // Rectangle is in screen coordinates. y = 403 is on page 1 at 400.
+      textBoxRect: {height: 20, locationX: 105, locationY: 403, width: 100},
+    };
+
+    const annotation2 = {
+      ...getTestAnnotation(2),
+      pageIndex: 1,
+      text: 'Page 2 Annotation',
+      // Rectangle is in screen coordinates. y = 603 is on page 2 at 100.
+      textBoxRect: {height: 20, locationX: 105, locationY: 603, width: 100},
+    };
+
+    const annotation3 = {
+      ...getTestAnnotation(3),
+      pageIndex: 2,
+      text: 'Page 3 Annotation',
+      // Rectangle is in screen coordinates. y = 1103 is on page 3 at 100.
+      textBoxRect: {height: 20, locationX: 105, locationY: 1103, width: 100},
+    };
+
+    manager.commitTextAnnotation(annotation1, true, []);
+    manager.commitTextAnnotation(annotation2, true, []);
+    manager.commitTextAnnotation(annotation3, true, []);
+
+    const annotationsElement = createAnnotationsElement(viewport);
+    await microtasksFinished();
+
+    const placeholders = getPlaceholders(annotationsElement);
+    chrome.test.assertEq(3, placeholders.length);
+
+    placeholders[0]!.focus();
+    placeholders[0]!.dispatchEvent(new FocusEvent('focus'));
+    await microtasksFinished();
+    chrome.test.assertEq(0, viewport.position.y);
+
+    placeholders[1]!.focus();
+    placeholders[1]!.dispatchEvent(new FocusEvent('focus'));
+    await microtasksFinished();
+    chrome.test.assertEq(553, viewport.position.y);
+
+    const rect1 = placeholders[0]!.getBoundingClientRect();
+    const rect2 = placeholders[1]!.getBoundingClientRect();
+    const rect3 = placeholders[2]!.getBoundingClientRect();
+
+    // Annotation 1 is off screen, annotation 2 is near top left of the
+    // viewport, and annotation 3 is still beyond the end of the viewport.
+    chrome.test.assertEq(-160, rect1.top);
+    chrome.test.assertEq(40, rect2.top);
+    chrome.test.assertEq(540, rect3.top);
+
+    chrome.test.assertEq(0, annotationsElement.scrollTop);
+    chrome.test.assertEq(0, annotationsElement.$.container.scrollTop);
+    chrome.test.assertEq(0, document.body.scrollTop);
+    chrome.test.assertEq(0, document.documentElement.scrollTop);
+
+    chrome.test.succeed();
+  },
 ]);

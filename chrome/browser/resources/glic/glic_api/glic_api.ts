@@ -1095,6 +1095,12 @@ export declare interface GlicBrowserHost {
     (): Observable<SelectAutofillSuggestionsDialogRequest>;
 
   /**
+   * Returns an observable that emits when the browser wants the web client to
+   * show a Gmail OTP opt-in dialog.
+   */
+  selectGmailOtpOptInRequestHandler?(): Observable<GmailOtpOptInRequest>;
+
+  /**
    * Switches to a use a different instance that shows the conversation
    * represented by the provided id. If `info` is not provided, a new instance
    * will be created with an empty conversation. When a new conversation is
@@ -2636,6 +2642,21 @@ export declare interface SelectAutofillSuggestionsDialogResponse {
   selectedSuggestions: FormFillingResponse[];
 }
 
+export declare interface GmailOtpOptInRequest {
+  // ID of the actor's task.
+  taskId: number;
+
+  // The WebClient must call this function to respond back to the browser when
+  // the dialog is closed.
+  onDialogClosed(response: GmailOtpOptInResponse): void;
+}
+
+export declare interface GmailOtpOptInResponse {
+  // True if the user clicked the opt-in button, false if they
+  // cancelled/closed it.
+  permissionGranted: boolean;
+}
+
 //
 // Types used in presubmit check.
 //
@@ -3093,6 +3114,7 @@ export enum InvocationSource {
   // User clicked on text selection widget.
   TEXT_SELECTION_WIDGET = 25,
   // Automatic summarization upon opening.
+  // Deprecated.
   ZERO_STATE_AUTO_SUMMARIZE = 26,
   // From the universal cart.
   UNIVERSAL_CART = 27,

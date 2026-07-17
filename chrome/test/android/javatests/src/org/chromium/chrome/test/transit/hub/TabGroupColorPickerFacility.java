@@ -8,7 +8,6 @@ import static androidx.test.espresso.matcher.ViewMatchers.withContentDescription
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 
 import static org.hamcrest.Matchers.allOf;
-import static org.hamcrest.Matchers.anyOf;
 
 import android.view.View;
 
@@ -67,9 +66,7 @@ public class TabGroupColorPickerFacility<
                     declareView(
                             allOf(
                                     withId(R.id.color_picker_icon),
-                                    anyOf(
-                                            withContentDescription(colorName + " Selected"),
-                                            withContentDescription(colorName + " Not selected"))));
+                                    withContentDescription(colorName)));
         }
     }
 

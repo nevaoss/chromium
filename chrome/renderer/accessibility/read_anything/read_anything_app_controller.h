@@ -187,6 +187,7 @@ class ReadAnythingAppController
                      const std::string& content) override;
   void OnReadabilityDistillationStateChanged(
       read_anything::mojom::ReadAnythingDistillationState new_state) override;
+  void OnMainFrameSameDocumentNavigation(const GURL& url) override;
 
 #if BUILDFLAG(IS_CHROMEOS)
   void OnDeviceLocked() override;
@@ -458,6 +459,10 @@ class ReadAnythingAppController
   // new distillation if the tree is ready.
   void DistillNewTree();
 
+  // Helper function that resets the distillation state and metrics in
+  // preparation for a new content distillation.
+  void PrepareForNewContentDistillation();
+
   // Returns the initial distillation method state based on feature flags and
   // page type (e.g. if it's PDF).
   ReadAnythingAppModel::DistillationMethod GetInitialDistillationMethod(
@@ -515,7 +520,9 @@ class ReadAnythingAppController
   // accurate for voices that don't support word boundaries.
   void RecordEstimatedWordsHeard();
 
-  void RecordDistillationSuccess();
+  void RecordScreen2xDistillationStatus();
+  void RecordDistillationStatus(
+      read_anything::mojom::DistillationStatus status);
 
   // Given a boundary position within the current granularity, identifies the
   // nodes that needs to be highlighted (e.g. until the word boundary), and
@@ -615,11 +622,13 @@ class ReadAnythingAppController
   // drawing instead.
   std::unique_ptr<base::RetainingOneShotTimer> pdf_draw_debouncer_;
 
-  base::OneShotTimer timer_;
+  // Since Screen2x distillation takes some time to occur, distillation success
+  // and failure occurs after kDistillationLoggingDelayMs.
+  base::OneShotTimer distillation_status_logging_delay_timer_;
 
   // The number of times distillation completes successfully after a page
   // change. Used for logging.
-  int distillationsCompleted_;
+  int distillations_completed_;
 
   // The distilled title result of DOM distiller distillation.
   std::string dom_distiller_title_;

@@ -3,6 +3,17 @@
 # found in the LICENSE file.
 
 static_library("core") {
-  sources = []
-  deps = [ "//base" ]
+  public = [
+    "features.h",
+    "prefs.h",
+  ]
+  sources = [
+    "features.cc",
+    "prefs.cc",
+  ]
+  public_deps = [
+    "//base",
+    "//components/enterprise/buildflags",
+  ]
+  deps = [ "//components/prefs" ]
 }

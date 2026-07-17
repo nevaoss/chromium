@@ -126,7 +126,7 @@ class MODULES_EXPORT BaseRenderingContext2D : public CanvasRenderingContext,
                     ExceptionState&);
 
   virtual bool CanCreateResourceProvider() = 0;
-  virtual CanvasResourceProvider* GetOrCreateResourceProvider() = 0;
+  virtual bool InitializeResourceProvider() = 0;
 
   String lang() const;
   void setLang(const String&);
@@ -281,9 +281,6 @@ class MODULES_EXPORT BaseRenderingContext2D : public CanvasRenderingContext,
   void DispatchContextRestoredEvent(TimerBase*);
   void TryRestoreContextEvent(TimerBase*);
   void RestoreFromInvalidSizeIfNeeded() override;
-
-  virtual std::unique_ptr<CanvasResourceProvider> ReplaceResourceProvider(
-      std::unique_ptr<CanvasResourceProvider>) = 0;
 
   static const char kInheritString[];
 

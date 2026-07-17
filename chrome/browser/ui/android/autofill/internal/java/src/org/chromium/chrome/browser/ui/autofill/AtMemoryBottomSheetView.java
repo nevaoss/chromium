@@ -19,7 +19,10 @@ import androidx.recyclerview.widget.RecyclerView.Adapter;
 import org.chromium.base.Callback;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.chrome.browser.ui.autofill.internal.R;
+import org.chromium.components.autofill.AutofillSuggestion;
 import org.chromium.components.browser_ui.styles.SemanticColorUtils;
+
+import java.util.List;
 
 /** View wrapper for the @memory bottom sheet. */
 @NullMarked
@@ -27,6 +30,7 @@ public class AtMemoryBottomSheetView {
     private final View mContentView;
     private final RecyclerView mRecyclerView;
     private final AtMemorySearchBarView mSearchBarView;
+    private final AtMemoryFlyoutView mFlyoutView;
 
     public AtMemoryBottomSheetView(Context context) {
         mContentView = LayoutInflater.from(context).inflate(R.layout.at_memory_bottom_sheet, null);
@@ -36,6 +40,7 @@ public class AtMemoryBottomSheetView {
         mRecyclerView.addItemDecoration(new AtMemoryDividerItemDecoration(context));
 
         mSearchBarView = mContentView.findViewById(R.id.search_query_input_container);
+        mFlyoutView = mContentView.findViewById(R.id.at_memory_flyout_screen);
     }
 
     public View getContentView() {
@@ -58,8 +63,28 @@ public class AtMemoryBottomSheetView {
         mSearchBarView.setOnQuerySubmittedCallback(callback);
     }
 
+    public void setOnQueryTextChangedCallback(Callback<String> callback) {
+        mSearchBarView.setOnQueryTextChangedCallback(callback);
+    }
+
     public void setIsLoading(boolean isLoading) {
         mSearchBarView.setIsLoading(isLoading);
+    }
+
+    public void setShowSuggestionsBackground(boolean showBackground) {
+        if (showBackground) {
+            mRecyclerView.setBackgroundResource(R.drawable.at_memory_suggestions_bg);
+        } else {
+            mRecyclerView.setBackground(null);
+        }
+    }
+
+    public void hideKeyboardAndClearFocus() {
+        mSearchBarView.hideKeyboardAndClearFocus();
+    }
+
+    public void setFlyoutSuggestions(List<AutofillSuggestion> suggestions) {
+        mFlyoutView.setSuggestions(suggestions);
     }
 
     /** Draws a divider line below each item in the list except for the last item. */

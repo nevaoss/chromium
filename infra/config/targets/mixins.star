@@ -1408,6 +1408,21 @@ targets.mixin(
 )
 
 targets.mixin(
+    name = "mac_26_vm_optional",
+    swarming = targets.swarming(
+        dimensions = {
+            "cpu": "arm64",  # fallback on bare metal if no VMs are available
+            "os": "Mac-26",
+        },
+        optional_dimensions = {
+            30: {
+                "cpu": "Apple_(Virtual)",
+            },
+        },
+    ),
+)
+
+targets.mixin(
     name = "mac_10.15",
     swarming = targets.swarming(
         dimensions = {
@@ -1673,7 +1688,7 @@ targets.mixin(
         dimensions = {
             "cpu": "x86-64",
             "gpu": "8086:3e9b",
-            "os": "Mac-14.5",
+            "os": "Mac-15.5",
             "display_attached": "1",
         },
     ),
@@ -2298,12 +2313,12 @@ targets.mixin(
     name = "xcode_27_beta",
     args = [
         "--xcode-build-version",
-        "27a5194q",
+        "27a5209h",
     ],
     swarming = targets.swarming(
         named_caches = [
             swarming.cache(
-                name = "xcode_ios_27a5194q",
+                name = "xcode_ios_27a5209h",
                 path = "Xcode.app",
             ),
         ],

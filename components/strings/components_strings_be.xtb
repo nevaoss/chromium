@@ -581,6 +581,7 @@
 <translation id="1902576642799138955">Тэрмін дзеяння</translation>
 <translation id="1908217026282415406">Выкарыстоўванне і рух камеры</translation>
 <translation id="1908690643053136980">Ваш адміністратар не дае гэтаму сайту дазвол "<ph name="PERMISSION" />"</translation>
+<translation id="1912750443952232242">Захавайце пасведчанне асобы ў Google Кашальку</translation>
 <translation id="1913037223029790376">Выкарыстайце код CVC гэтай віртуальнай карткі</translation>
 <translation id="191374271204266022">Скапіраваць як JSON</translation>
 <translation id="1914326953223720820">Сэрвіс распакоўвання архіваў</translation>
@@ -1494,6 +1495,7 @@
 <translation id="3325568918769906282">па ўбыванні</translation>
 <translation id="3325662270238538525">Інфармацыя пра доступ да файлаў і іх змяненне, у тым ліку назвы файлаў, лічбавыя адбіткі змесціва файлаў, крыніцы спампавання, а таксама метаданыя</translation>
 <translation id="3329013043687509092">Насычанасць</translation>
+<translation id="3330483197654063678">Калі гэта функцыя ўключана, Chrome будзе абагульваць адкрытыя ўкладкі ў гэтым акне, каб вы атрымлівалі больш рэлевантныя адказы.</translation>
 <translation id="3333762389743153920">Нумар не падыходзіць для віртуальнай карткі</translation>
 <translation id="3338095232262050444">Бяспечны сайт</translation>
 <translation id="333839153442689579">Інтэнсіўная інтэрвальная трэніроўка</translation>
@@ -2845,6 +2847,7 @@
 <translation id="5458150163479425638">{CONTACT,plural, =0{<ph name="CONTACT_PREVIEW" />}=1{<ph name="CONTACT_PREVIEW" /> і яшчэ <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}one{<ph name="CONTACT_PREVIEW" /> і яшчэ <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}few{<ph name="CONTACT_PREVIEW" /> і яшчэ <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}many{<ph name="CONTACT_PREVIEW" /> і яшчэ <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}other{<ph name="CONTACT_PREVIEW" /> і яшчэ <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}}</translation>
 <translation id="5463625433003343978">Ідзе пошук прылад...</translation>
 <translation id="5464236009658034488">Канцылярскія прылады і абсталяванне для офіса</translation>
+<translation id="5465128270485645058">Абагульвайце адкрытыя ўкладкі ў гэтым акне, калі яны звязаны з гэтым ланцужком, і атрымлівайце больш персаналізаваныя адказы.</translation>
 <translation id="5465724643247062031">Непразрыстае шкло</translation>
 <translation id="5466018172325111652">Не атрымалі код? Паспрабуйце <ph name="BEGIN_LINK" />атрымаць новы<ph name="END_LINK" /></translation>
 <translation id="5466818462212249084">Плацежныя праграмы</translation>
@@ -3127,6 +3130,7 @@
 <translation id="5911020115933784199">Календары мерапрыемстваў</translation>
 <translation id="5911110632211230665">Магчымасць адкрываць файлы заблакіравана</translation>
 <translation id="5912796581727968237">Адкрыць Google Кашалёк</translation>
+<translation id="5914185423510719251">Захавайце нумар KTN у Google Кашальку</translation>
 <translation id="5914465277418006379">Карыстальнік (<ph name="MEMBER_FIRST_NAME" />) дадаў гэту ўкладку</translation>
 <translation id="5915189366813702112">Рухомы графік працы</translation>
 <translation id="59174027418879706">Уключана</translation>
@@ -3650,6 +3654,7 @@
 <translation id="6702851555558236418">Праграмнае забеспячэнне для работы з аўдыя і музыкай</translation>
 <translation id="6702919718839027939">Прэзентацыя</translation>
 <translation id="6704458454638854812">Зададзена ўласцівасць custom_size. Назва павінна быць "custom".</translation>
+<translation id="670477556876354552">Патрабуецца перазапуск</translation>
 <translation id="6706005862292023715">Шторы і дэкор для акон</translation>
 <translation id="6706210727756204531">Ахоп</translation>
 <translation id="6706678697074905703">Не ўдалося захаваць гэты нумар IBAN ва Уліковым запісе Google. Ён захаваны ў Chrome на гэтай прыладзе.</translation>
@@ -3907,6 +3912,7 @@
 <translation id="7110116949943042888">Часовая і сезонная праца</translation>
 <translation id="7110368079836707726">Вышэйшыя навучальныя ўстановы</translation>
 <translation id="7111507312244504964">Ацэнка кошту і экспертыза нерухомай маёмасці</translation>
+<translation id="7117290130383718594">Тэкставыя анатацыі</translation>
 <translation id="7118618213916969306">Пошук URL-адраса з буфера абмену: <ph name="SHORT_URL" /></translation>
 <translation id="7118852830504022370">Гэта папярэджанне паказана вам, бо дадзены сайт не падтрымлівае HTTPS. <ph name="BEGIN_LEARN_MORE_LINK" />Даведацца больш пра гэта папярэджанне<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="7119063404975271297">Тэлевізійныя драмы</translation>

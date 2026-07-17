@@ -40,7 +40,7 @@
  * Must have static positioning otherwise so the error and placeholder
  * voice search text change the height of voice_search and thus composebox.
  */
-:host(:not([is-permission-prompt-open_])) #container:not(.has-error) {
+:host(:not([is-permission-prompt-open])) #container:not(.has-error) {
   inset: 0;
   position: absolute;
 }
@@ -179,7 +179,7 @@
 /* Hide submit/stop buttons (if applicable) via fade if permission
  * prompt is showing.
  */
-:host(.embedded-permission-prompt-showing) #bottomActions {
+:host(.permission-prompt-showing) #bottomActions {
   opacity: 0;
   pointer-events: none;
 }

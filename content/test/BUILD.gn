@@ -1457,6 +1457,10 @@ if (is_android) {
     input =
         "//content/shell/android/browsertests_apk/AndroidManifest.xml.jinja2"
     output = content_browsertests_manifest
+    variables = [
+      "javaless_renderers=$enable_javaless_renderers",
+      "library_name=content_browsertests__library",
+    ]
   }
 
   android_library("content_browsertests_java") {
@@ -1569,7 +1573,6 @@ test("content_browsertests") {
     "../browser/btm/btm_test_utils_browsertest.cc",
     "../browser/cache_storage/cache_storage_blob_browsertest.cc",
     "../browser/child_process_launcher_browsertest.cc",
-    "../browser/child_process_security_policy_browsertest.cc",
     "../browser/closewatcher/close_listener_host_browsertest.cc",
     "../browser/code_cache/generated_code_cache_browsertest.cc",
     "../browser/code_cache/inline_script_code_cache_browsertest.cc",
@@ -1778,6 +1781,7 @@ test("content_browsertests") {
     "../browser/screen_details/screen_details_browsertest.cc",
     "../browser/screen_orientation/screen_orientation_browsertest.cc",
     "../browser/security/coop/cross_origin_opener_policy_browsertest.cc",
+    "../browser/security/cpsp/child_process_security_policy_browsertest.cc",
     "../browser/security/dip/document_isolation_policy_browsertest.cc",
     "../browser/security/local_network_access/local_network_access_browsertest.cc",
     "../browser/security/local_network_access/local_network_access_deprecation_browsertest.cc",
@@ -2225,7 +2229,7 @@ test("content_browsertests") {
     deps += [ "//third_party/libyuv" ]
     data += [
       "//net/tools/testserver/",
-      "//third_party/pywebsocket3/src/mod_pywebsocket/",
+      "//third_party/pywebsocket3/src/pywebsocket3/",
     ]
   }
 
@@ -2335,6 +2339,9 @@ test("content_browsertests") {
       "//ui/events:motionevent_jni_headers",
       "//ui/touch_selection",
     ]
+    if (enable_javaless_renderers) {
+      deps += [ "//content/app:javaless_renderer" ]
+    }
     android_manifest =
         "${target_gen_dir}/content_browsertests_manifest/AndroidManifest.xml"
     android_manifest_dep = ":content_browsertests_manifest"
@@ -2708,7 +2715,6 @@ test("content_unittests") {
     "../browser/cache_storage/cache_storage_index_unittest.cc",
     "../browser/cache_storage/cache_storage_manager_unittest.cc",
     "../browser/cache_storage/cache_storage_scheduler_unittest.cc",
-    "../browser/child_process_security_policy_unittest.cc",
     "../browser/client_hints/client_hints_unittest.cc",
     "../browser/code_cache/dedicated_task_runner_for_resource_unittest.cc",
     "../browser/code_cache/generated_code_cache_unittest.cc",
@@ -2717,6 +2723,7 @@ test("content_unittests") {
     "../browser/content_index/content_index_service_impl_unittest.cc",
     "../browser/cookie_store/cookie_store_manager_unittest.cc",
     "../browser/cpu_performance/cpu_performance_unittest.cc",
+    "../browser/declarative_performance_observer/declarative_performance_observer_store_unittest.cc",
     "../browser/declarative_performance_observer/declarative_performance_observer_unittest.cc",
     "../browser/devtools/devtools_background_services_context_impl_unittest.cc",
     "../browser/devtools/devtools_frontend_host_impl_unittest.cc",
@@ -3015,6 +3022,7 @@ test("content_unittests") {
     "../browser/screenlock_monitor/screenlock_monitor_unittest.cc",
     "../browser/security/coop/cross_origin_opener_policy_reporter_unittest.cc",
     "../browser/security/coop/cross_origin_opener_policy_status_unittest.cc",
+    "../browser/security/cpsp/child_process_security_policy_unittest.cc",
     "../browser/security/dip/document_isolation_policy_reporter_unittest.cc",
     "../browser/serial/serial_unittest.cc",
     "../browser/service_host/service_process_observer_hub_unittest.cc",
@@ -3520,6 +3528,7 @@ test("content_unittests") {
     "//ui/gl:gl_headers",
     "//ui/gl:test_support",
     "//ui/latency:test_support",
+    "//ui/native_theme",
     "//ui/shell_dialogs",
     "//ui/webui:test_support",
     "//url",

@@ -432,11 +432,7 @@ public class PermissionDialogMediator
             mModalDialogManager.dismissDialog(mDialogModel, DialogDismissalCause.UNKNOWN);
         }
 
-        if (mLocationPrecisionChooserController != null) {
-            mLocationPrecisionChooserController.hide();
-            mLocationPrecisionChooserController = null;
-        }
-
+        mLocationPrecisionChooserController = null;
         mDialogModel = null;
         mDialogDelegate = null;
         mModalDialogManager = null;

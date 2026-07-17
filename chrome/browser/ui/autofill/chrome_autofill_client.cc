@@ -364,6 +364,11 @@ void ChromeAutofillClient::ShowAutofillAtMemoryPromo() {
         feature_engagement::kIPHAutofillAtMemoryFeature);
   }
 }
+
+ChromeAutofillClient::AtMemoryPromoObserver&
+ChromeAutofillClient::at_memory_promo_observer() {
+  return at_memory_promo_observer_;
+}
 #endif
 
 base::WeakPtr<AutofillClient> ChromeAutofillClient::GetWeakPtr() {

@@ -24,6 +24,7 @@
 #import "ios/chrome/browser/discover_feed/model/discover_feed_visibility_observer.h"
 #import "ios/chrome/browser/favicon/model/ios_chrome_large_icon_service_factory.h"
 #import "ios/chrome/browser/history/model/history_service_factory.h"
+#import "ios/chrome/browser/metrics/model/activity_reporter.h"
 #import "ios/chrome/browser/ntp/model/new_tab_page_tab_helper.h"
 #import "ios/chrome/browser/ntp/shared/metrics/home_metrics.h"
 #import "ios/chrome/browser/ntp/shared/metrics/new_tab_page_metrics_constants.h"
@@ -823,4 +824,29 @@ TEST_F(NewTabPageCoordinatorTest, NTPShortcutsMetricLogging) {
                                        IOSHomeActionType::kPlusButton, 1);
 
   [coordinator_ stop];
+}
+
+TEST_F(NewTabPageCoordinatorTest, ActivityReporting) {
+  CreateCoordinator(/*off_the_record=*/false);
+  SetupCommandHandlerMocks();
+
+  id mockInstance = OCMClassMock([ActivityReporterWithIncognito class]);
+  [coordinator_ setValue:mockInstance forKey:@"activityReporter"];
+
+  // Starting coordinator.
+  [coordinator_ start];
+
+  // Navigate to NTP -> reports active.
+  OCMExpect([mockInstance reportActiveWithIncognito:NO]);
+  [coordinator_ didNavigateToNTPInWebState:web_state_];
+  [mockInstance verify];
+
+  // Navigate away -> reports inactive.
+  OCMExpect([mockInstance reportInactive]);
+  [coordinator_ didNavigateAwayFromNTP];
+  [mockInstance verify];
+
+  [coordinator_ stop];
+  [coordinator_ setValue:nil forKey:@"activityReporter"];
+  [mockInstance stopMocking];
 }

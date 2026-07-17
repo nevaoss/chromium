@@ -27,6 +27,7 @@
 #include "chrome/browser/ui/lens/lens_overlay_side_panel_coordinator.h"
 #include "chrome/browser/ui/lens/lens_search_controller.h"
 #include "chrome/browser/ui/lens/lens_url_matcher.h"
+#include "chrome/browser/ui/omnibox/ai_mode_button_service_factory.h"
 #include "chrome/browser/ui/page_action/page_action_controller.h"
 #include "chrome/browser/ui/page_action/page_action_icon_type.h"
 #include "chrome/browser/ui/page_action/page_action_triggers.h"
@@ -250,10 +251,7 @@ void LensOverlayEntryPointController::UpdateEntryPointsState(
     }
   } else {
     // Update the homework action chip.
-    // TODO(crbug.com/433813408): Remove GetBrowserForMigrationOnly after Page
-    // Actions migration.
-    browser_window_interface_->GetBrowserForMigrationOnly()
-        ->window()
+    BrowserWindow::FromBrowser(browser_window_interface_)
         ->UpdatePageActionIcon(PageActionIconType::kLensOverlayHomework);
   }
 }
@@ -471,8 +469,14 @@ bool LensOverlayEntryPointController::ShouldShowPageAction(
   const auto* aim_eligibility_service =
       AimEligibilityServiceFactory::GetForProfile(
           browser_window_interface_->GetProfile());
-  if (OmniboxFieldTrial::IsAimOmniboxEntrypointEnabled(
-          aim_eligibility_service)) {
+  const auto* ai_mode_button_service =
+      AiModeButtonServiceFactory::GetForProfile(
+          browser_window_interface_->GetProfile());
+  const auto* template_url_service = TemplateURLServiceFactory::GetForProfile(
+      browser_window_interface_->GetProfile());
+  if (OmniboxFieldTrial::IsAimOmniboxEntrypointEnabled(aim_eligibility_service,
+                                                       ai_mode_button_service,
+                                                       template_url_service)) {
     return false;
   }
 

@@ -8,6 +8,7 @@ import {assertDeepEquals, assertEquals} from './chai_assert.js';
  * Create a mock function that records function calls and validates against
  * expectations.
  * @extends Function
+ * @property {*} returnValue
  */
 export class MockMethod {
   constructor() {

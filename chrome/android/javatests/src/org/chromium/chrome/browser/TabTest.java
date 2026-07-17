@@ -58,10 +58,9 @@ import org.chromium.chrome.browser.tabmodel.TabModelUtils;
 import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
 import org.chromium.chrome.test.transit.AutoResetCtaTransitTestRule;
 import org.chromium.chrome.test.transit.ChromeTransitTestRules;
+import org.chromium.chrome.test.transit.page.RecentTabsPageStation;
 import org.chromium.chrome.test.util.ChromeApplicationTestUtils;
 import org.chromium.chrome.test.util.ChromeTabUtils;
-import org.chromium.chrome.test.util.RecentTabsPageTestUtils;
-import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.ui.base.WindowAndroid;
@@ -212,16 +211,20 @@ public class TabTest {
     @SmallTest
     @Feature({"Tab"})
     public void testTabAttachment() {
-        assertNotNull(mTab.getWebContents());
-        assertFalse(mTab.isDetachedFromActivity());
+        Tab tab =
+                mActivityTestRule.startOnBlankPage().openFakeLinkToWebPage("about:blank").getTab();
+        mExtraTabs.add(tab);
 
-        detachOnUiThread(mTab);
-        assertNotNull(mTab.getWebContents());
-        assertTrue(mTab.isDetachedFromActivity());
+        assertNotNull(tab.getWebContents());
+        assertFalse(tab.isDetachedFromActivity());
 
-        attachOnUiThread(mTab);
-        assertNotNull(mTab.getWebContents());
-        assertFalse(mTab.isDetachedFromActivity());
+        detachOnUiThread(tab);
+        assertNotNull(tab.getWebContents());
+        assertTrue(tab.isDetachedFromActivity());
+
+        attachOnUiThread(tab);
+        assertNotNull(tab.getWebContents());
+        assertFalse(tab.isDetachedFromActivity());
     }
 
     @Test
@@ -230,22 +233,25 @@ public class TabTest {
     @RequiresRestart(
             "crbug.com/358190587, causes BlankCTATabInitialStateRule state reset to fail flakily.")
     public void testNativePageTabAttachment() {
-        mActivityTestRule.loadUrl(UrlConstants.RECENT_TABS_URL);
-        RecentTabsPageTestUtils.waitForRecentTabsPageLoaded(mTab);
-        assertNotNull(mTab.getWebContents());
-        assertFalse(mTab.isDetachedFromActivity());
+        Tab tab =
+                mActivityTestRule
+                        .startOnBlankPage()
+                        .openFakeLink(
+                                RecentTabsPageStation.RECENT_TABS_URL,
+                                RecentTabsPageStation.newBuilder())
+                        .getTab();
+        mExtraTabs.add(tab);
 
-        detachOnUiThread(mTab);
-        assertNotNull(mTab.getWebContents());
-        assertTrue(mTab.isDetachedFromActivity());
+        assertNotNull(tab.getWebContents());
+        assertFalse(tab.isDetachedFromActivity());
 
-        attachOnUiThread(mTab);
-        assertNotNull(mTab.getWebContents());
-        assertFalse(mTab.isDetachedFromActivity());
+        detachOnUiThread(tab);
+        assertNotNull(tab.getWebContents());
+        assertTrue(tab.isDetachedFromActivity());
 
-        // Clean up the tab since it was removed from the model and won't be destroyed
-        // automatically.
-        ThreadUtils.runOnUiThreadBlocking(() -> mTab.destroy());
+        attachOnUiThread(tab);
+        assertNotNull(tab.getWebContents());
+        assertFalse(tab.isDetachedFromActivity());
     }
 
     @Test

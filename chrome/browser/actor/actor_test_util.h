@@ -396,6 +396,11 @@ class MockActorTaskDelegate : public ActorTaskDelegate {
                AutofillSuggestionSelectedCallback callback),
               (override));
 
+  MOCK_METHOD(void,
+              RequestToShowGmailOtpOptInDialog,
+              (TaskId task_id, GmailOtpOptInCallback callback),
+              (override));
+
   base::WeakPtr<MockActorTaskDelegate> GetWeakPtr() {
     return weak_factory_.GetWeakPtr();
   }

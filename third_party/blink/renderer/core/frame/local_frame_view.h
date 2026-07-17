@@ -799,6 +799,14 @@ class CORE_EXPORT LocalFrameView final
   LocalFrameUkmAggregator* GetUkmAggregator();
   void ResetUkmAggregatorForTesting();
 
+  // Checks whether paint holding should be released without FCP.
+  // If the page has been painted and the document has finished parsing,
+  // but FCP hasn't fired (i.e., the page has no text or images), stops
+  // deferred commits so the page doesn't wait for the full paint holding
+  // timeout. Called from both the First Paint and FinishedParsing paths
+  // to handle either ordering.
+  void MaybeStopDeferringCommitsWithoutContentfulPaint();
+
   // Report the First Contentful Paint signal to the LocalFrameView.
   // This causes Deferred Commits to be restarted and tells the UKM
   // aggregator that FCP has been reached.

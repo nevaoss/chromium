@@ -857,6 +857,7 @@ export class TabSearchPageElement extends TabSearchSearchFieldBase {
   }
 
   private async updateFilteredTabs_() {
+    const updateStartTime = Date.now();
     this.openTabs_.sort((a, b) => {
       const tabA = (a instanceof TabData ? a.tab : a.tabs![0]) as Tab;
       const tabB = (b instanceof TabData ? b.tab : b.tabs![0]) as Tab;
@@ -1016,6 +1017,10 @@ export class TabSearchPageElement extends TabSearchSearchFieldBase {
     }
     tabsList.setSelected(
         Math.min(Math.max(selectedIndex, 0), this.lastSelectableIndex_()));
+
+    chrome.metricsPrivate.recordTime(
+        'Tabs.TabSearch.WebUI.SearchUpdateDuration',
+        Math.round(Date.now() - updateStartTime));
   }
 
   getSearchTextForTesting(): string {

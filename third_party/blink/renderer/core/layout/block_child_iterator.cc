@@ -66,7 +66,7 @@ BlockChildIterator::Entry BlockChildIterator::NextChild(
         const BreakToken* token = tokens[child_token_idx_++];
         if (const auto* block_token = DynamicTo<BlockBreakToken>(token)) {
           // Out-of-flow positioned node in inline formatting context.
-          auto node = block_token->InputNode();
+          BlockNode node = block_token->InputNode();
           DCHECK(node.IsOutOfFlowPositioned());
           DCHECK(RuntimeEnabledFeatures::FragmentedOofInCbEnabled());
           return Entry(node, block_token);
@@ -85,7 +85,7 @@ BlockChildIterator::Entry BlockChildIterator::NextChild(
         // We reached the last child break token. Prepare for the next unstarted
         // sibling, and forget the container break token.
         if (!container_break_token_->HasSeenAllChildren()) {
-          auto last_resumed_child =
+          BlockNode last_resumed_child =
               To<BlockBreakToken>(
                   child_break_tokens[child_token_idx_ - 1].Get())
                   ->InputNode();

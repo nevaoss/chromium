@@ -10,6 +10,8 @@
 
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
+#include "base/memory/raw_ref.h"
+#include "base/memory/weak_ptr.h"
 #include "chrome/browser/dictation/dictation_multiplexer.h"
 #include "chrome/browser/dictation/stream_provider.h"
 
@@ -20,12 +22,14 @@ class BrowserContext;
 namespace dictation {
 
 class Target;
+class StreamProviderDelegate;
 
 // A StreamProvider implementation that listens to dictation input via the
 // dictation private extension API.
 class ListenerStreamProvider : public StreamProvider {
  public:
-  explicit ListenerStreamProvider(content::BrowserContext* browser_context);
+  explicit ListenerStreamProvider(content::BrowserContext* browser_context,
+                                  StreamProviderDelegate& delegate);
   ~ListenerStreamProvider() override;
 
   ListenerStreamProvider(const ListenerStreamProvider&) = delete;
@@ -36,15 +40,22 @@ class ListenerStreamProvider : public StreamProvider {
   void Stop() override;
   void OnTranscriptionUpdated(const std::string& data, bool is_final) override;
   void OnStreamStateChanged(StreamState state) override;
+  StreamState GetState() const override;
+  const Target* GetTarget() const override;
 
   void SetOnUpdateForTesting(base::RepeatingClosure callback);
   const std::string& GetLatestTranscriptionForTesting() const;
   bool IsTranscriptionFinalForTesting() const;
-  StreamState GetStateForTesting() const;
+  DictationMultiplexer::StreamId stream_id_for_testing() const {
+    return stream_id_;
+  }
+  base::WeakPtr<ListenerStreamProvider> GetWeakPtr();
 
  private:
   DictationMultiplexer& GetMultiplexer() const;
 
+  // Owns this
+  const base::raw_ref<StreamProviderDelegate> delegate_;
   std::unique_ptr<Target> target_;
   raw_ptr<content::BrowserContext> browser_context_;
   bool needs_end_stream_ = false;
@@ -54,6 +65,8 @@ class ListenerStreamProvider : public StreamProvider {
   StreamState state_ = StreamState::kInitializing;
 
   base::RepeatingClosure update_callback_for_testing_;
+
+  base::WeakPtrFactory<ListenerStreamProvider> weak_ptr_factory_{this};
 };
 
 }  // namespace dictation

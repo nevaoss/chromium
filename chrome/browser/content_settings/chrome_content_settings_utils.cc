@@ -29,6 +29,9 @@ void RecordPopupsAction(PopupsAction action) {
 
 void UpdateLocationBarUiForWebContents(content::WebContents* web_contents) {
 #if !BUILDFLAG(IS_ANDROID)
+  if (!web_contents) {
+    return;
+  }
   BrowserWindowInterface* browser =
       GlobalBrowserCollection::GetInstance()->FindBrowserWithTab(web_contents);
   if (!browser) {
@@ -47,7 +50,7 @@ void UpdateLocationBarUiForWebContents(content::WebContents* web_contents) {
   }
 
   LocationBar* location_bar =
-      browser->GetBrowserForMigrationOnly()->window()->GetLocationBar();
+      BrowserWindow::FromBrowser(browser)->GetLocationBar();
   if (location_bar)
     location_bar->UpdateContentSettingsIcons();
 

@@ -14,8 +14,22 @@
 namespace autofill {
 
 bool ShouldShowPersonalContextAutofillSetting(
-    personal_context::PersonalContextEnablementService* enablement_service) {
+    personal_context::PersonalContextEnablementService* enablement_service,
+    const subscription_eligibility::SubscriptionEligibilityService*
+        subscription_eligibility_service,
+    const PrefService* pref_service,
+    const GoogleGroupsManager* google_groups_manager) {
   if (!enablement_service) {
+    return false;
+  }
+  // TODO(crbug.com/523168644) Replace the simple feature check with a call to
+  // `MayPerformAutofillAiAction(kAmbientAutofill)`.
+  const bool ambient_autofill_enabled =
+      base::FeatureList::IsEnabled(features::kAutofillAmbientAutofill);
+  const bool at_memory_enabled = MayPerformAtMemoryAction(
+      AtMemoryAction::kShowAtMemoryInSettings, enablement_service,
+      subscription_eligibility_service, pref_service, google_groups_manager);
+  if (!ambient_autofill_enabled && !at_memory_enabled) {
     return false;
   }
 
@@ -29,12 +43,6 @@ bool ShouldShowPersonalContextAutofillSetting(
     case kEnabled:
       return true;
   }
-}
-
-bool AreAutofillPersonalContextFeaturesSupported(
-    const GoogleGroupsManager* google_groups_manager) {
-  return base::FeatureList::IsEnabled(features::kAutofillAmbientAutofill) ||
-         IsAtMemoryFeatureEnabled(google_groups_manager);
 }
 
 }  // namespace autofill

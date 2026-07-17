@@ -4,9 +4,6 @@
 
 #include "remoting/host/security_key/security_key_extension.h"
 
-#include "base/memory/ptr_util.h"
-#include "base/memory/ref_counted.h"
-#include "base/task/single_thread_task_runner.h"
 #include "remoting/host/security_key/security_key_extension_session.h"
 
 namespace remoting {
@@ -14,9 +11,7 @@ namespace remoting {
 // static
 const char SecurityKeyExtension::kCapability[] = "securityKey";
 
-SecurityKeyExtension::SecurityKeyExtension(
-    scoped_refptr<base::SingleThreadTaskRunner> file_task_runner)
-    : file_task_runner_(file_task_runner) {}
+SecurityKeyExtension::SecurityKeyExtension() = default;
 
 SecurityKeyExtension::~SecurityKeyExtension() = default;
 
@@ -31,8 +26,7 @@ SecurityKeyExtension::CreateExtensionSession(
   // TODO(joedow): Update this mechanism to allow for multiple sessions.  The
   //               extension will only send messages through the initial
   //               |client_stub| and |details| with the current design.
-  return base::WrapUnique(
-      new SecurityKeyExtensionSession(details, client_stub, file_task_runner_));
+  return std::make_unique<SecurityKeyExtensionSession>(details, client_stub);
 }
 
 }  // namespace remoting

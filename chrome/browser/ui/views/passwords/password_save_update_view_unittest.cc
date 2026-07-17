@@ -602,8 +602,7 @@ TEST_F(PasswordDropdownExperimentTest,
 
 TEST_P(PasswordSaveUpdateViewTest, TrustedVaultErrorUiState) {
   base::test::ScopedFeatureList scoped_feature_list{
-      password_manager::features::
-          kPasswordSaveInContextErrorResolutionOnDesktop};
+      password_manager::features::kPasswordSaveInContextErrorResolution};
   SimulateSignIn();
   ON_CALL(*model_delegate_mock(), IsSavingBlockedByTrustedVaultError)
       .WillByDefault(Return(true));

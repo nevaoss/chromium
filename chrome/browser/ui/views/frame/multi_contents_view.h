@@ -97,6 +97,11 @@ class MultiContentsView
   // and resize handle.
   void CloseSplitView();
 
+  // Visually swaps the two contents of the active split view by doing an
+  // in-place swap of contents_container_views_, while also reordering the view
+  // hierarchy and updating active_index_.
+  void SwapContentsInSplitView();
+
   // Assigns the given |web_contents| to the ContentsContainerView's
   // ContentsWebView at |index| in contents_container_views_. |index| must be
   // either 0 or 1 as we currently only support two contents. If |index| is 1
@@ -123,7 +128,7 @@ class MultiContentsView
   void ExecuteOnEachVisibleContentsView(
       base::RepeatingCallback<void(ContentsWebView*)> callback);
 
-  // If in a split view, swaps the order of the two contents views.
+  // If in a split view, swaps the positions of the two active tabs.
   void OnSwap();
 
   // If non-null, specifies an increase in target size so that web contents

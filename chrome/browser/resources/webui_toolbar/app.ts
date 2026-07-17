@@ -10,6 +10,7 @@ import './home_button.js';
 import './battery_saver_button.js';
 import './pinned_toolbar_actions.js';
 import './extensions.js';
+import './app_menu_button.js';
 import './avatar_button.js';
 import '/shared/icon_table.js';
 import '/shared/icon_from_table.js';
@@ -21,13 +22,12 @@ import {TrackedElementManager} from '//resources/js/tracked_element/tracked_elem
 import {CrLitElement, nothing} from '//resources/lit/v3_0/lit.rollup.js';
 import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
 import {IconTable} from '/shared/icon_table.js';
-import {AppMenuIconType, AppMenuSeverity, AvatarToolbarButtonState} from '/shared/toolbar_ui_api_data_model.mojom-webui.js';
 import {ColorChangeUpdater} from 'chrome://resources/cr_components/color_change_listener/colors_css_updater.js';
 import {HelpBubbleMixinLit} from 'chrome://resources/cr_components/help_bubble/help_bubble_mixin_lit.js';
 
 import {getCss} from './app.css.js';
 import {getHtml} from './app.html.js';
-import {BrowserProxyImpl, ContextMenuType, EventDispositionFlag, INVALID_NAVIGATION_CONTROLS_STATE_LISTENER_HANDLE} from './browser_proxy.js';
+import {BrowserProxyImpl, EventDispositionFlag, INVALID_NAVIGATION_CONTROLS_STATE_LISTENER_HANDLE} from './browser_proxy.js';
 import type {BrowserProxy, IconUpdate, NavigationControlsState, NavigationControlsStateListenerHandle} from './browser_proxy.js';
 import {MetricsRecorder} from './metrics_recorder.js';
 import {setHasHelpBubble} from './toolbar_button.js';
@@ -38,7 +38,11 @@ import {setHasHelpBubble} from './toolbar_button.js';
 // same code that we ship in optimized builds.
 import type {IconFromTableElement} from '/shared/icon_from_table.js';
 import {
+  AppMenuIconType,
+  AppMenuSeverity,
+  AvatarToolbarButtonState,
   ContentSettingImageType,
+  ContextMenuType,
   LhsChipIdentifier,
   OmniboxTextColor,
   PermissionAction,
@@ -50,6 +54,7 @@ import {IconType} from '/shared/icon_handle.mojom-webui.js';
 import type {OmniboxAction, LocationBarState, PermissionChipState} from '/shared/toolbar_ui_api_data_model.mojom-webui.js';
 
 import {INVALID_FOCUS_REQUEST_HANDLE} from './browser_proxy.js';
+import {AppMenuButtonElement} from './app_menu_button.js';
 import {ContentSettingIconElement} from './content_setting_icon.js';
 import {ContentSettingsIconsElement} from './content_settings_icons.js';
 import {LocationBarElement} from './location_bar.js';
@@ -59,8 +64,12 @@ import type {PointerProxy} from './pointer_proxy.js';
 import {PermissionChipElement} from './permission_chip.js';
 import {ReadonlyOmniboxElement} from './readonly_omnibox.js';
 import {getClickSourceType, getContextMenuSourceType, PressHandler} from './toolbar_button.js';
+import {ToolbarChipButtonElement} from './toolbar_chip_button.js';
 
 export {
+  AppMenuButtonElement,
+  AppMenuIconType,
+  AppMenuSeverity,
   BrowserProxyImpl,
   ContextMenuType,
   ContentSettingIconElement,
@@ -84,6 +93,7 @@ export {
   PermissionPromptStyle,
   PointerProxyImpl,
   ReadonlyOmniboxElement,
+  ToolbarChipButtonElement,
   TrackedElementManager,
 };
 export type {
@@ -102,6 +112,7 @@ const TRACKED_ELEMENTS: Array<{selector: string, id: string}> = [
   {selector: '#split-tabs', id: 'kToolbarSplitTabsToolbarButtonElementId'},
   {selector: '#location-bar', id: 'kLocationBarElementId'},
   {selector: '#home', id: 'kToolbarHomeButtonElementId'},
+  {selector: '#app-menu', id: 'kToolbarAppMenuButtonElementId'},
   {selector: '#avatar', id: 'kToolbarAvatarButtonElementId'},
   {selector: '#battery-saver', id: 'kToolbarBatterySaverButtonElementId'},
 ];
@@ -132,6 +143,7 @@ export class ToolbarAppElement extends AppElementBase {
   static override get properties() {
     return {
       isReloadButtonEnabled_: {type: Boolean},
+      isAppMenuButtonEnabled_: {type: Boolean},
       isSplitTabsButtonEnabled_: {type: Boolean},
       isHomeButtonEnabled_: {type: Boolean},
       isBatterySaverButtonEnabled_: {type: Boolean},
@@ -147,6 +159,8 @@ export class ToolbarAppElement extends AppElementBase {
 
   protected accessor isReloadButtonEnabled_: boolean =
       loadTimeData.getBoolean('enableReloadButton');
+  protected accessor isAppMenuButtonEnabled_: boolean =
+      loadTimeData.getBoolean('enableAppMenuButton');
   protected accessor isSplitTabsButtonEnabled_: boolean =
       loadTimeData.getBoolean('enableSplitTabsButton');
   protected accessor isHomeButtonEnabled_: boolean =
@@ -249,6 +263,7 @@ export class ToolbarAppElement extends AppElementBase {
       tooltip: '',
       accessibilityName: '',
       accessibilityDescription: '',
+      enabled: true,
     },
     layoutConstantsVersion: 0,
     touchUi: false,
@@ -354,8 +369,15 @@ export class ToolbarAppElement extends AppElementBase {
       }
     }
 
-    const waitSelectors =
-        ['#back', '#forward', '#reload', '#split-tabs', '#home', '#avatar'];
+    const waitSelectors = [
+      '#back',
+      '#forward',
+      '#reload',
+      '#split-tabs',
+      '#home',
+      '#app-menu',
+      '#avatar',
+    ];
     const promises =
         waitSelectors.map(s => this.shadowRoot.querySelector<CrLitElement>(s))
             .filter(el => !!el)

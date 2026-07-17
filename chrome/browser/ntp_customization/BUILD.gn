@@ -418,7 +418,10 @@ source_set("unit_tests") {
   deps = [
     ":ntp_customization",
     "//base",
+    "//base/test:test_support",
     "//chrome/common:constants",
+    "//chrome/test:test_support",
+    "//components/application_locale_storage",
     "//components/prefs:test_support",
     "//testing/gtest",
   ]

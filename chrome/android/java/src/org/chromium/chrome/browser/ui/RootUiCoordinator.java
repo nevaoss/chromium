@@ -780,6 +780,16 @@ public class RootUiCoordinator
                                         mActivity.findViewById(R.id.page_zoom_container);
                                 return viewStub.inflate();
                             }
+
+                            @Override
+                            public boolean isSheetActingAsBrowserControls() {
+                                BottomSheetController controller =
+                                        mBottomSheetControllerSupplier.get();
+                                return controller != null
+                                        && BottomSheetUtils.isContentActingAsBrowserControls(
+                                                controller)
+                                        && controller.isFullWidth();
+                            }
                         },
                         mPageZoomManager,
                         /* useSlider= */ true,

@@ -20,7 +20,9 @@ class ActorTaskListBubbleRowButton : public views::Button {
                                actor::ActorTask::State state,
                                std::u16string title_text,
                                bool requires_processing,
-                               bool has_tab);
+                               bool has_tab,
+                               glic::mojom::FeatureMode feature_mode =
+                                   glic::mojom::FeatureMode::kUnspecified);
   ActorTaskListBubbleRowButton(const ActorTaskListBubbleRowButton&) = delete;
   ActorTaskListBubbleRowButton& operator=(const ActorTaskListBubbleRowButton&) =
       delete;

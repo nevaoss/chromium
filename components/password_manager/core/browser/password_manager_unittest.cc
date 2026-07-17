@@ -86,6 +86,7 @@
 #include "services/network/test/test_network_context.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "url/origin.h"
 
 #if BUILDFLAG(IS_ANDROID)
 #include "components/password_manager/core/browser/first_cct_page_load_passwords_ukm_recorder.h"
@@ -241,7 +242,10 @@ class MockPasswordManagerClient : public StubPasswordManagerClient {
               IsSavingAndFillingEnabled,
               (const GURL&),
               (const, override));
-  MOCK_METHOD(bool, IsFillingEnabled, (const GURL&), (const, override));
+  MOCK_METHOD(bool,
+              IsFillingEnabled,
+              (const url::Origin&, base::optional_ref<const GURL>),
+              (const, override));
   MOCK_METHOD(net::CertStatus, GetMainFrameCertStatus, (), (const, override));
   MOCK_METHOD(void,
               AutofillHttpAuth,
@@ -365,7 +369,11 @@ class MockPasswordManagerDriver : public StubPasswordManagerDriver {
   MockPasswordManagerDriver() {
     ON_CALL(*this, GetId()).WillByDefault(Return(DriverId(1)));
     ON_CALL(*this, IsInPrimaryMainFrame()).WillByDefault(Return(true));
+    ON_CALL(*this, GetLastCommittedOrigin())
+        .WillByDefault(testing::ReturnRef(origin_));
   }
+
+  void set_origin(const url::Origin& origin) { origin_ = origin; }
 
   MOCK_METHOD(DriverId, GetId, (), (const, override));
   MOCK_METHOD(void,
@@ -395,6 +403,9 @@ class MockPasswordManagerDriver : public StubPasswordManagerDriver {
               GetPasswordGenerationHelper,
               (),
               (override));
+
+ private:
+  url::Origin origin_ = url::Origin::Create(GURL("https://example.com"));
 };
 
 // Invokes the password store consumer with a single copy of |form|.
@@ -2008,7 +2019,7 @@ TEST_P(
     PasswordManagerTest,
     FormSubmitWhenPasswordsCannotBeSavedToAccountStoreBecauseOfTrustedVaultKey) {
   base::test::ScopedFeatureList feature_list{
-      password_manager::features::kInFlowTrustedVaultKeyRetrievalAndroid};
+      password_manager::features::kPasswordSaveInContextErrorResolution};
 
   // Set up the sync service to sync passwords such that the account store would
   // be used.
@@ -3655,8 +3666,7 @@ TEST_P(PasswordManagerTest, AutofillingOfAffiliatedCredentials) {
   EXPECT_EQ(android_form.password_value,
             form_data.preferred_login.password_value);
   // On Android Touch To Fill will prevent autofilling credentials on page load.
-  // On Linux kFillOnAccountSelect feature is enabled.
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS) || BUILDFLAG(IS_LINUX)
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
   EXPECT_TRUE(form_data.wait_for_username);
 #else
   EXPECT_FALSE(form_data.wait_for_username);
@@ -5780,6 +5790,7 @@ TEST_P(PasswordManagerTest, FormSubmittedOnIFrame) {
 
   // Submit |form| on an iframe.
   MockPasswordManagerDriver iframe_driver;
+  iframe_driver.set_origin(url::Origin::Create(form_data.url()));
   ON_CALL(iframe_driver, IsInPrimaryMainFrame()).WillByDefault(Return(false));
   ON_CALL(iframe_driver, GetId()).WillByDefault(Return(DriverId(123)));
   manager()->OnPasswordFormsParsed(&iframe_driver, {form_data});
@@ -5788,6 +5799,7 @@ TEST_P(PasswordManagerTest, FormSubmittedOnIFrame) {
 
   // Simulate finish loading of another iframe.
   MockPasswordManagerDriver another_iframe_driver;
+  another_iframe_driver.set_origin(url::Origin::Create(form_data.url()));
   EXPECT_CALL(another_iframe_driver, IsInPrimaryMainFrame())
       .WillRepeatedly(Return(false));
   EXPECT_CALL(another_iframe_driver, GetId())
@@ -5811,6 +5823,7 @@ TEST_P(PasswordManagerTest, FormSubmittedOnIFramePrimaryMainFrameLoaded) {
 
   // Simulate a form submission on an iframe.
   MockPasswordManagerDriver iframe_driver;
+  iframe_driver.set_origin(url::Origin::Create(form_data.url()));
   ON_CALL(iframe_driver, IsInPrimaryMainFrame()).WillByDefault(Return(false));
   ON_CALL(iframe_driver, GetId()).WillByDefault(Return(DriverId(123)));
   manager()->OnPasswordFormsParsed(&iframe_driver, {form_data});
@@ -6495,6 +6508,8 @@ TEST_P(PasswordManagerTest, HaveFormManagersReceivedDataDependsOnDriver) {
 
   FormData observed_form_data_other_frame = MakeSimpleFormData();
   MockPasswordManagerDriver other_driver;
+  other_driver.set_origin(
+      url::Origin::Create(observed_form_data_other_frame.url()));
   manager()->OnPasswordFormsParsed(&other_driver,
                                    {observed_form_data_other_frame});
 
@@ -7018,7 +7033,7 @@ TEST_P(PasswordManagerTest, LoginFormClearingIsConsideredFailedLoginAttempt) {
 TEST_P(PasswordManagerTest,
        DisabledFillingFormManagerNotCreatedWhenFillingIsDisabled) {
   FormData form(MakeSimpleFormData());
-  EXPECT_CALL(client_, IsFillingEnabled(form.url()))
+  EXPECT_CALL(client_, IsFillingEnabled(url::Origin::Create(form.url()), _))
       .WillRepeatedly(Return(false));
 
   manager()->OnPasswordFormsParsed(&driver_, {form});
@@ -7034,7 +7049,7 @@ TEST_P(PasswordManagerTest,
 TEST_P(PasswordManagerTest,
        DisabledFillingFormManagerNotCreatedOnServerPredictionsArrival) {
   FormData form(MakeSingleUsernameFormData());
-  EXPECT_CALL(client_, IsFillingEnabled(form.url()))
+  EXPECT_CALL(client_, IsFillingEnabled(url::Origin::Create(form.url()), _))
       .WillRepeatedly(Return(false));
 
   manager()->ProcessAutofillPredictions(
@@ -7048,7 +7063,7 @@ TEST_P(PasswordManagerTest,
 TEST_P(PasswordManagerTest,
        DisabledFillingFormManagerNotCreatedOnModelPredictionsArrival) {
   FormData form(MakeFormDataWithOnlyNewPasswordField());
-  EXPECT_CALL(client_, IsFillingEnabled(form.url()))
+  EXPECT_CALL(client_, IsFillingEnabled(url::Origin::Create(form.url()), _))
       .WillRepeatedly(Return(false));
 
   manager()->ProcessClassificationModelPredictions(

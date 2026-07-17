@@ -232,6 +232,11 @@ public class UrlBar extends AutocompleteEditText {
                 String currentText, TextSelection selection) {
             return null;
         }
+
+        /** Returns the UrlBarData representing the current input session. */
+        default UrlBarData getUrlBarDataForCurrentInput() {
+            return UrlBarData.EMPTY;
+        }
     }
 
     /** Delegate that provides the additional functionality to the textual context menus. */

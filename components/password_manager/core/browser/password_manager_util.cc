@@ -46,10 +46,8 @@
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "url/url_util.h"
 
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
 #include "components/password_manager/core/browser/password_sync_util.h"
-
-using password_manager::sync_util::IsSyncFeatureEnabledIncludingPasswords;
 #endif
 
 using autofill::password_generation::PasswordGenerationType;
@@ -71,18 +69,6 @@ bool IsBetterMatchStored(const StoredCredential& lhs,
                          const StoredCredential& rhs) {
   return GetPriorityProperties(lhs) > GetPriorityProperties(rhs);
 }
-
-#if BUILDFLAG(IS_ANDROID)
-// Returns true if the password saving should be allowed for the in-flow
-// Trusted Vault key recovery.
-bool ShouldAllowSavingPasswordsWithInFlowRecovery(
-    password_manager::ActionableError error) {
-  return error == password_manager::ActionableError::kTrustedVaultKeyNeeded &&
-         base::FeatureList::IsEnabled(
-             password_manager::features::
-                 kInFlowTrustedVaultKeyRetrievalAndroid);
-}
-#endif
 
 }  // namespace
 
@@ -146,13 +132,7 @@ bool IsAbleToSavePasswords(password_manager::PasswordManagerClient* client) {
           client->GetSyncService())) {
     const password_manager::PasswordStoreInterface* account_store =
         client->GetAccountPasswordStore();
-    password_manager::ActionableError error =
-        account_store ? account_store->GetError()
-                      : password_manager::ActionableError::kNoError;
-    const bool is_able_to_save =
-        IsAbleToSavePasswords(error) ||
-        ShouldAllowSavingPasswordsWithInFlowRecovery(error);
-    return account_store && is_able_to_save;
+    return account_store && IsAbleToSavePasswords(account_store->GetError());
   }
 #endif
   // TODO(b/324054761): Check AccountPasswordStore store when needed.
@@ -165,9 +145,18 @@ bool IsSavingBlockedByTrustedVaultError(
     const password_manager::PasswordManagerClient* client,
     const password_manager::PasswordFormManagerForUI* form_manager) {
 #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
-  // TODO(crbug.com/484367376): Implement this function for all platforms.
-  return false;
-#else
+  if (!password_manager::sync_util::HasChosenToSyncPasswords(
+          client->GetSyncService())) {
+    return false;
+  }
+  const password_manager::PasswordStoreInterface* account_store =
+      client->GetAccountPasswordStore();
+  return account_store &&
+         account_store->GetError() ==
+             password_manager::ActionableError::kTrustedVaultKeyNeeded &&
+         base::FeatureList::IsEnabled(
+             password_manager::features::kPasswordSaveInContextErrorResolution);
+#else  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
   bool has_trusted_vault_error = false;
   bool has_other_blocking_errors = false;
   // It might be that the credential is updated in both stores. In this case
@@ -196,8 +185,7 @@ bool IsSavingBlockedByTrustedVaultError(
   }
   return has_trusted_vault_error && !has_other_blocking_errors &&
          base::FeatureList::IsEnabled(
-             password_manager::features::
-                 kPasswordSaveInContextErrorResolutionOnDesktop);
+             password_manager::features::kPasswordSaveInContextErrorResolution);
 #endif
 }
 

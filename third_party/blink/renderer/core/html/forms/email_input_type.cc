@@ -27,6 +27,8 @@
 #include <unicode/unistr.h>
 #include <unicode/uvernum.h>
 
+#include <string_view>
+
 #include "base/compiler_specific.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/strings/grit/blink_strings.h"
@@ -89,8 +91,7 @@ String EmailInputType::ConvertEmailAddressToAscii(const ScriptRegexp& regexp,
   // 8bit and non-8bit strings separately.
   host.Ensure16Bit();
 
-  auto host_span = host.Span16();
-  icu::UnicodeString idn_domain_name(host_span.data(), host_span.size());
+  icu::UnicodeString idn_domain_name{std::u16string_view(host.Span16())};
   icu::UnicodeString domain_name;
 
   // Leak |idna| at the end.

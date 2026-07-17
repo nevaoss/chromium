@@ -320,6 +320,11 @@ AutofillSettingsPage SuggestionToAutofillSettingsPage(
 - (void)startManualFillFromButton:(UIButton*)button
                       forDataType:(manual_fill::ManualFillDataType)dataType
          invokedOnObfuscatedField:(BOOL)invokedOnObfuscatedField {
+  if (dataType == manual_fill::ManualFillDataType::kAtMemory) {
+    // TODO(crbug.com/522326512): Handle AtMemory.
+    return;
+  }
+
   manual_fill::ManualFillDataType focusedFieldDataType = [ManualFillUtil
       manualFillDataTypeFromFillingProduct:
           [_formInputAccessoryMediator currentProviderMainFillingProduct]];

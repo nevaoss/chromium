@@ -31,7 +31,7 @@ static_library("net") {
   ]
 
   if (!is_chromeos) {
-    deps += [ "//third_party/boringssl" ]
+    deps += [ "//crypto" ]
   }
 
   if (use_blink) {

@@ -658,6 +658,10 @@ inline constexpr char kCtrlTabMru[] = "browser.ctrl_tab_mru";
 // by enterprise policy.
 inline constexpr char kGeminiSettings[] = "browser.gemini_settings";
 
+// An int pref that controls the voice typing feature. This is managed by
+// enterprise policy.
+inline constexpr char kVoiceTypingSettings[] = "browser.voice_typing_settings";
+
 // Comma separated list of domain names (e.g. "google.com,school.edu").
 // When this pref is set, the user will be able to access Google Apps
 // only using an account that belongs to one of the domains from this pref.
@@ -735,11 +739,6 @@ inline constexpr char kExtensionCommands[] = "extensions.commands";
 // Whether Chrome should use its internal PDF viewer or not.
 inline constexpr char kPluginsAlwaysOpenPdfExternally[] =
     "plugins.always_open_pdf_externally";
-
-// Int64 containing the internal value of the time at which the default browser
-// infobar was last dismissed by the user.
-inline constexpr char kDefaultBrowserInfobarLastDeclined[] =
-    "browser.default_browser_infobar_last_declined";
 
 // base::Time containing time at which the default browser infobar was last
 // dismissed by the user.

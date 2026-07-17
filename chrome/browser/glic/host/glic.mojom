@@ -597,6 +597,8 @@ struct WebClientInitialState {
   bool enable_process_counter_abuse_verdict;
   // Settings for Gemini Enterprise.
   GeminiEnterpriseSettings? gemini_enterprise_settings;
+  // Whether features::kGlicActorAutofillOneTimePassword is enabled.
+  bool enable_gmail_otp_opt_in;
 };
 
 // @generate glic_api
@@ -1031,6 +1033,10 @@ interface ActorClient {
   // Notify that the actor task with the given id has changed to the indicated
   // state.
   NotifyActorTaskStateChanged(int32 task_id, ActorTaskState state);
+
+  // Requests the web client to show the Gmail OTP opt-in dialog to the user.
+  RequestToShowGmailOtpOptInDialog(int32 task_id)
+      => (actor.webui.mojom.GmailOtpOptInResult result);
 };
 
 // Interface for actor-related functionality.
@@ -1705,6 +1711,7 @@ enum InvocationSource {
   // User clicked on text selection widget.
   [MinVersion=16] kTextSelectionWidget = 25,
   // Automatic summarization upon opening.
+  // Deprecated.
   [MinVersion=17] kZeroStateAutoSummarize = 26,
   // From the universal cart.
   [MinVersion=18] kUniversalCart = 27,
@@ -1725,7 +1732,7 @@ enum InvocationSource {
   [MinVersion=25] kPromotionPage = 34,
 };
 
-// LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicInvocationSource, //chrome/browser/glic/service/metrics/metrics_types.h:ResponseSegmentation)
+// LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicInvocationSource, //tools/metrics/histograms/metadata/glic/histograms.xml:GlicInvocationSource, //chrome/browser/glic/service/metrics/metrics_types.h:ResponseSegmentation)
 
 // @generate glic_api
 // Target for actuation.

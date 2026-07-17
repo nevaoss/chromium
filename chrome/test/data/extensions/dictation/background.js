@@ -4,6 +4,11 @@
 
 const OFFSCREEN_PATH = 'offscreen.html';
 
+async function isManualTest() {
+  const options = await chrome.storage.local.get({manualTest: false});
+  return options.manualTest;
+}
+
 async function hasOffscreenDocument() {
   const offscreenUrl = chrome.runtime.getURL(OFFSCREEN_PATH);
   const existingContexts = await chrome.runtime.getContexts({
@@ -79,11 +84,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-chrome.dictationPrivate.onStartStream.addListener((details) => {
+chrome.dictationPrivate.onStartStream.addListener(async (details) => {
+  // In a manual test, the test code itself simulates the extension API calls
+  // so avoid calling into any of the extension code.
+  if (await isManualTest()) {
+    return;
+  }
+
+  console.info(
+      '[onStartStream] Selected text received from Chrome:',
+      details.editableContent);
   startStream(details.streamId);
 });
 
 chrome.dictationPrivate.onEndStream.addListener(async (details) => {
+  // In a manual test, the test code itself simulates the extension API calls
+  // so avoid calling into any of the extension code.
+  if (await isManualTest()) {
+    return;
+  }
+
   const {streamId} = details;
 
   await endStream(streamId);

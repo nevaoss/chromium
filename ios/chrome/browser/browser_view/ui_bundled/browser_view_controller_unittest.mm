@@ -36,6 +36,7 @@
 #import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_controller.h"
 #import "ios/chrome/browser/history/model/history_service_factory.h"
 #import "ios/chrome/browser/incognito_reauth/ui_bundled/incognito_reauth_commands.h"
+#import "ios/chrome/browser/metrics/model/activity_reporter.h"
 #import "ios/chrome/browser/metrics/model/tab_usage_recorder_browser_agent.h"
 #import "ios/chrome/browser/ntp/model/new_tab_page_tab_helper.h"
 #import "ios/chrome/browser/ntp/ui_bundled/logo_animation_controller.h"
@@ -329,6 +330,7 @@ class BrowserViewControllerTest : public BlockCleanupTest {
     dependencies.safeAreaProvider = safe_area_provider_;
     dependencies.sceneHandler = mock_application_handler_;
     dependencies.ntpCoordinator = NTPCoordinator_;
+    dependencies.isOffTheRecord = browser_->GetProfile()->IsOffTheRecord();
 
     bvc_ = [[BrowserViewController alloc]
         initWithBrowserContentViewController:container_
@@ -611,4 +613,36 @@ TEST_F(BrowserViewControllerTest, ViewOnInsert) {
 TEST_F(BrowserViewControllerTest, LogoAnimationControllerOwnerOwner) {
   EXPECT_TRUE(
       [bvc_ conformsToProtocol:@protocol(LogoAnimationControllerOwnerOwner)]);
+}
+
+TEST_F(BrowserViewControllerTest, ActivityReporting) {
+  id mockInstance = OCMClassMock([ActivityReporterWithIncognito class]);
+  [bvc_ setValue:mockInstance forKey:@"activityReporter"];
+
+  // Initial state is active, non-incognito standard web state.
+  OCMExpect([mockInstance reportActiveWithIncognito:NO]);
+  [bvc_ setActive:YES];
+  [mockInstance verify];
+
+  // Making BVC inactive -> reports inactive.
+  OCMExpect([mockInstance reportInactive]);
+  [bvc_ setActive:NO];
+  [mockInstance verify];
+
+  // Making BVC active again -> reports active.
+  OCMExpect([mockInstance reportActiveWithIncognito:NO]);
+  [bvc_ setActive:YES];
+  [mockInstance verify];
+
+  // Simulating navigating to NTP -> reports inactive.
+  OCMExpect([mockInstance reportInactive]);
+  auto ntp_web_state = CreateWebState();
+  NewTabPageTabHelper::FromWebState(ntp_web_state.get())
+      ->SetDelegate(tab_events_mediator_);
+  LoadNTP(ntp_web_state.get());
+  InsertWebState(std::move(ntp_web_state));
+  [mockInstance verify];
+
+  [bvc_ setActive:NO];
+  [mockInstance stopMocking];
 }

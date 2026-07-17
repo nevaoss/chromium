@@ -441,7 +441,13 @@ public class AccessibilityContentShellActivityTestRule extends ContentShellActiv
      * @return boolean return value of setting selection.
      */
     public boolean setSelectionOnUiThread(
-            int viewId, int startNodeId, int startNodeOffset, int endNodeId, int endNodeOffset)
+            int viewId,
+            int startNodeId,
+            int startNodeOffset,
+            int startOffsetType,
+            int endNodeId,
+            int endNodeOffset,
+            int endOffsetType)
             throws ExecutionException {
         return ThreadUtils.runOnUiThreadBlocking(
                 () ->
@@ -451,8 +457,10 @@ public class AccessibilityContentShellActivityTestRule extends ContentShellActiv
                                         viewId,
                                         startNodeId,
                                         startNodeOffset,
+                                        startOffsetType,
                                         endNodeId,
-                                        endNodeOffset));
+                                        endNodeOffset,
+                                        endOffsetType));
     }
 
     /**

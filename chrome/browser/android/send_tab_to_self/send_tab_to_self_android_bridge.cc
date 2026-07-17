@@ -170,12 +170,16 @@ JNI_SendTabToSelfAndroidBridge_GetEntryPointDisplayReason(
 
 static void JNI_SendTabToSelfAndroidBridge_RecordTargetDeviceCount(
     JNIEnv* env,
+    jint j_entry_point,
     jint j_display_reason,
     jint j_device_count) {
+  CHECK_LE(0, j_entry_point);
+  CHECK_LE(j_entry_point, static_cast<jint>(ShareEntryPoint::kMaxValue));
   CHECK_LE(0, j_display_reason);
   CHECK_LE(j_display_reason,
            static_cast<jint>(EntryPointDisplayReason::kMaxValue));
   RecordTargetDeviceCount(
+      static_cast<ShareEntryPoint>(j_entry_point),
       static_cast<EntryPointDisplayReason>(j_display_reason),
       static_cast<size_t>(j_device_count));
 }

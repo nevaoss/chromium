@@ -172,7 +172,8 @@ int TcpConnectJob::Connector::DoTcpConnect() {
   const NetLogWithSource& net_log = parent_->net_log();
   transport_socket_ =
       parent_->client_socket_factory()->CreateTransportClientSocket(
-          AddressList(*current_address_), std::move(socket_performance_watcher),
+          AddressList(*current_address_), parent_->params_->target_network(),
+          std::move(socket_performance_watcher),
           parent_->network_quality_estimator(), net_log.net_log(),
           net_log.source());
 

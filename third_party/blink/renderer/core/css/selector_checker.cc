@@ -746,7 +746,6 @@ SelectorChecker::FeaturelessMatch SelectorChecker::MatchShadowHost(
     case CSSSelector::kPseudoOnlyChild:
     case CSSSelector::kPseudoOnlyOfType:
     case CSSSelector::kPseudoOptional:
-    case CSSSelector::kPseudoOverscrollTarget:
     case CSSSelector::kPseudoOverscrollOpen:
     case CSSSelector::kPseudoPart:
     case CSSSelector::kPseudoPermissionGranted:
@@ -770,6 +769,7 @@ SelectorChecker::FeaturelessMatch SelectorChecker::MatchShadowHost(
     case CSSSelector::kPseudoSearchText:
     case CSSSelector::kPseudoPickerIcon:
     case CSSSelector::kPseudoPicker:
+    case CSSSelector::kPseudoSelectListbox:
     case CSSSelector::kPseudoSelection:
     case CSSSelector::kPseudoSingleButton:
     case CSSSelector::kPseudoStart:
@@ -843,6 +843,7 @@ SelectorChecker::FeaturelessMatch SelectorChecker::MatchShadowHost(
     case CSSSelector::kPseudoScrollMarkerGroup:
     case CSSSelector::kPseudoScrollButton:
     case CSSSelector::kPseudoOverscrollAreaParent:
+    case CSSSelector::kPseudoSelectContainsInput:
     case CSSSelector::kPseudoSelectHasSlottedButton:
       // These pseudos are not allowed to match featureless elements. When
       // adding new pseudos here, they would typically be allowed if they are
@@ -2499,6 +2500,12 @@ bool SelectorChecker::CheckPseudoClass(const SelectorCheckingContext& context,
       }
       return selector.MatchNth(NthIndexCache::NthLastOfTypeIndex(element));
     }
+    case CSSSelector::kPseudoSelectContainsInput:
+      DCHECK(RuntimeEnabledFeatures::FilterableSelectEnabled());
+      if (auto* select = DynamicTo<HTMLSelectElement>(element)) {
+        return select->NumDescendantInputs() > 0;
+      }
+      return false;
     case CSSSelector::kPseudoSelectHasSlottedButton:
       if (auto* select = DynamicTo<HTMLSelectElement>(element)) {
         return select->SlottedButton();
@@ -3237,8 +3244,7 @@ bool SelectorChecker::CheckPseudoClass(const SelectorCheckingContext& context,
         return false;
       }
       return context.search_text_request_is_current;
-    case CSSSelector::kPseudoOverscrollTarget:
-      return SelectorChecker::MatchesOverscrollTarget(element);
+
     case CSSSelector::kPseudoUnknown:
     default:
       NOTREACHED();
@@ -3340,6 +3346,10 @@ bool SelectorChecker::CheckPseudoElement(const SelectorCheckingContext& context,
       } else {
         return false;
       }
+    case CSSSelector::kPseudoSelectListbox:
+      DCHECK(RuntimeEnabledFeatures::FilterableSelectEnabled());
+      return MatchesUAShadowElement(element,
+                                    shadow_element_names::kSelectListbox);
     case CSSSelector::kPseudoPlaceholder:
       return MatchesUAShadowElement(
           element, shadow_element_names::kPseudoInputPlaceholder);
@@ -3788,10 +3798,6 @@ bool SelectorChecker::MatchesActiveViewTransitionPseudoClass(
   return GetTransitionForScope(element) != nullptr;
 }
 
-bool SelectorChecker::MatchesOverscrollTarget(const Element& element) {
-  return RuntimeEnabledFeatures::OverscrollGesturesEnabled() &&
-         element.FastHasAttribute(html_names::kOverscrollareaAttr);
-}
 
 bool SelectorChecker::MatchesFocusPseudoClass(
     const Element& element,

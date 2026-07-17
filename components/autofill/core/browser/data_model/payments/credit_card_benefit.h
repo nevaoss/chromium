@@ -136,6 +136,9 @@ class CreditCardCategoryBenefit : public CreditCardBenefitBase {
  public:
   using BenefitCategory = mojom::BenefitCategory;
 
+  // Returns true if the given `benefit_category` is a travel subcategory.
+  static bool IsTravelSubcategory(BenefitCategory benefit_category);
+
   CreditCardCategoryBenefit(BenefitId benefit_id,
                             LinkedCardInstrumentId linked_card_instrument_id,
                             BenefitCategory benefit_category,

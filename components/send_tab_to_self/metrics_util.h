@@ -87,6 +87,43 @@ enum class AutoOpenOutcome {
 // Records the outcome of an auto-open attempt.
 void RecordAutoOpenOutcome(AutoOpenOutcome outcome);
 
+// Entry point from which a received Send Tab to Self tab was activated.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+//
+// GENERATED_JAVA_ENUM_PACKAGE: (
+//   org.chromium.chrome.browser.share.send_tab_to_self)
+// LINT.IfChange(SendTabToSelfShareActivatedEntryPoint)
+enum class ShareActivatedEntryPoint {
+  // Automatically activated in the foreground (no user interaction required).
+  kAutoOpened = 0,
+  // Activated by clicking the action button on the desktop toast (for tabs
+  // auto-opened in the background).
+  kDesktopToast = 1,
+  // Activated via the "Open in New Tab" button in the desktop toolbar promo
+  // bubble (when auto-open is disabled).
+  kDesktopToolbarBubble = 2,
+  // Activated by tapping the system notification on mobile.
+  kMobileNotification = 3,
+  // Activated manually by selecting the tab in the tab strip on desktop/tablet,
+  // or from the tab switcher on mobile (for tabs auto-opened in the
+  // background).
+  // Note: On desktop, this is only recorded if the tab is activated before
+  // Chrome is shut down or restarted.
+  kTabStrip = 4,
+  // Activated from the ChromeOS Birch suggestion chip.
+  kChromeOSBirch = 5,
+  // The tab was closed or the browser was shut down/restarted before the tab
+  // was
+  // activated.
+  kTabOrBrowserClosedWithoutActivation = 6,
+  kMaxValue = kTabOrBrowserClosedWithoutActivation,
+};
+// LINT.ThenChange(/tools/metrics/histograms/metadata/sharing/enums.xml:SendTabToSelfShareActivatedEntryPoint)
+
+// Records the entry point from which a received tab was opened.
+void RecordActivatedEntryPoint(ShareActivatedEntryPoint entry_point);
+
 // Outcome of matching a received form field to a field on the page.
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
@@ -200,7 +237,8 @@ enum class SendTabToSelfDeviceCount {
 };
 // LINT.ThenChange(/tools/metrics/histograms/enums.xml:SendTabToSelfDeviceCount)
 
-void RecordTargetDeviceCount(EntryPointDisplayReason display_reason,
+void RecordTargetDeviceCount(ShareEntryPoint entry_point,
+                             EntryPointDisplayReason display_reason,
                              size_t device_count);
 
 }  // namespace send_tab_to_self

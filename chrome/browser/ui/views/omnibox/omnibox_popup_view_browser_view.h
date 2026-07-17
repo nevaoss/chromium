@@ -21,7 +21,7 @@ class RoundedOmniboxResultsFrame;
 // `BrowserView`. This is used for the next-gen Omnibox experience where the
 // full WebUI (input and suggestions) is rendered inside `BrowserView` to avoid
 // overlapping and window management issues associated with separate widgets.
-// Gated behind `omnibox::kWebUIOmniboxFullPopupV2` with
+// Gated behind `omnibox::kWebUIOmniboxFullPopup` with
 // `Omnibox_UseBrowserView` param.
 class OmniboxPopupViewBrowserView : public OmniboxPopupView,
                                     public OmniboxEditModel::Observer {

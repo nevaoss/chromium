@@ -237,7 +237,7 @@ public class SendTabToSelfCoordinator
                     SendTabToSelfAndroidBridge.getAllTargetDeviceInfos(mProfile);
             deviceCount = targetDevices.size();
         }
-        SendTabToSelfAndroidBridge.recordTargetDeviceCount(displayReason, deviceCount);
+        SendTabToSelfAndroidBridge.recordTargetDeviceCount(mEntryPoint, displayReason, deviceCount);
 
         SendTabToSelfMetricsRecorder.recordCrossDeviceTabJourney();
         SendTabToSelfMetricsRecorder.recordEntryPointInvoked(mEntryPoint);

@@ -93,7 +93,7 @@ void GlicSidePanelCoordinatorImpl::Show(const ShowOptions& options) {
   SidePanelUIBase::UniqueKey unique_key{
       .tab_handle = tab_->GetHandle(),
       .key = SidePanelEntry::Key(SidePanelEntry::Id::kGlic)};
-  window_side_panel_coordinator->Show(unique_key, std::nullopt,
+  window_side_panel_coordinator->Show(unique_key, options.open_trigger,
                                       options.suppress_animations);
 }
 

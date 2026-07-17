@@ -8,6 +8,8 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.RectF;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 
 import androidx.recyclerview.widget.RecyclerView;
@@ -19,6 +21,7 @@ import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.tabmodel.TabGroupObserver;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
+import org.chromium.chrome.browser.tasks.tab_management.TabListItemAnimator;
 import org.chromium.chrome.browser.tasks.tab_management.TabListModel;
 import org.chromium.chrome.browser.tasks.tab_management.TabProperties;
 import org.chromium.chrome.tab_ui.R;
@@ -27,25 +30,34 @@ import org.chromium.components.tab_groups.TabGroupColorPickerUtils;
 import org.chromium.ui.base.LocalizationUtils;
 import org.chromium.ui.modelutil.PropertyModel;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
-import java.util.Map;
+import java.util.List;
 import java.util.Set;
-import java.util.WeakHashMap;
 
 /** Draws a vertical line to the side of tab items that belong to a tab group. */
 @NullMarked
 class VerticalTabGroupSpineDecoration extends RecyclerView.ItemDecoration {
+    // TabListItemAnimator sequences removals before moves, so the spine's collapse duration
+    // must account for both.
+    private static final long COLLAPSE_DURATION_MS =
+            TabListItemAnimator.DEFAULT_REMOVE_DURATION + TabListItemAnimator.DEFAULT_MOVE_DURATION;
+
     private final TabListModel mModel;
     private final TabModelSelector mTabModelSelector;
     private final Runnable mInvalidationTrigger;
-    private final Map<View, GroupInfo> mViewToGroupInfo = new WeakHashMap<>();
     private final Set<Token> mDrawnGroupIds = new HashSet<>();
+    private final Set<Token> mCollapsingGroupIds = new HashSet<>();
+    private final Handler mHandler = new Handler(Looper.getMainLooper());
     private final Callback<TabModel> mCurrentTabModelObserver;
     private final Paint mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF mRectF = new RectF();
     private final int mSpineRadius;
     private final float mSpineWidth;
     private final int mMarginBottom;
+    private final List<View> mSortedChildren = new ArrayList<>();
+    private final ChildPositionComparator mChildPositionComparator = new ChildPositionComparator();
 
     private @Nullable TabModel mCurrentTabModel;
 
@@ -55,6 +67,20 @@ class VerticalTabGroupSpineDecoration extends RecyclerView.ItemDecoration {
                 public void didChangeTabGroupColor(
                         Token tabGroupId, @TabGroupColorId int newColor) {
                     mInvalidationTrigger.run();
+                }
+
+                @Override
+                public void didChangeTabGroupCollapsed(
+                        Token tabGroupId, boolean isCollapsed, boolean animate) {
+                    if (isCollapsed) {
+                        mCollapsingGroupIds.add(tabGroupId);
+                        mHandler.postDelayed(
+                                () -> {
+                                    mCollapsingGroupIds.remove(tabGroupId);
+                                    mInvalidationTrigger.run();
+                                },
+                                COLLAPSE_DURATION_MS);
+                    }
                 }
             };
 
@@ -89,6 +115,7 @@ class VerticalTabGroupSpineDecoration extends RecyclerView.ItemDecoration {
     public void onDraw(Canvas c, RecyclerView parent, RecyclerView.State state) {
         TabModel tabModel = mTabModelSelector.getCurrentModel();
         if (tabModel == null || mModel.isEmpty()) return;
+
         boolean isIncognito = tabModel.isIncognitoBranded();
         boolean isRtl = LocalizationUtils.isLayoutRtl();
         float left;
@@ -101,60 +128,36 @@ class VerticalTabGroupSpineDecoration extends RecyclerView.ItemDecoration {
             right = left + mSpineWidth;
         }
 
-        int childCount = parent.getChildCount();
         mDrawnGroupIds.clear();
+        collectAndSortChildren(parent);
 
-        // Cache group IDs for live views. When a tab is closed via 'X', RecyclerView detaches it
-        // (adapter position becomes NO_POSITION) during its exit animation. This map remembers
-        // which group the fading view belonged to so the spine curve wraps it until it vanishes.
-        for (int i = 0; i < childCount; i++) {
-            View v = parent.getChildAt(i);
-            int pos = parent.getChildAdapterPosition(v);
-            if (pos != RecyclerView.NO_POSITION && pos < mModel.size()) {
-                PropertyModel model = mModel.get(pos).model;
-                Token headerId = model.get(TabProperties.TAB_GROUP_HEADER_ID);
-                Token groupId = headerId != null ? headerId : model.get(TabProperties.TAB_GROUP_ID);
-                if (groupId != null) {
-                    mViewToGroupInfo.put(
-                            v,
-                            new GroupInfo(
-                                    groupId,
-                                    headerId != null,
-                                    model.get(TabProperties.IS_COLLAPSED)));
-                } else {
-                    mViewToGroupInfo.remove(v);
-                }
-            }
-        }
-
-        for (int i = 0; i < childCount; i++) {
-            View child = parent.getChildAt(i);
+        int sortedChildCount = mSortedChildren.size();
+        for (int i = 0; i < sortedChildCount; i++) {
+            View child = mSortedChildren.get(i);
             int pos = parent.getChildAdapterPosition(child);
-            if (pos == RecyclerView.NO_POSITION || pos >= mModel.size()) continue;
 
-            GroupInfo info = mViewToGroupInfo.get(child);
-            if (info == null
-                    || (info.isHeader && info.isCollapsed)
-                    || !mDrawnGroupIds.add(info.groupId)) {
+            PropertyModel childModel = mModel.get(pos).model;
+            Token headerId = childModel.get(TabProperties.TAB_GROUP_HEADER_ID);
+            boolean isHeader = headerId != null;
+            Token groupId = isHeader ? headerId : childModel.get(TabProperties.TAB_GROUP_ID);
+            if (groupId == null || !mDrawnGroupIds.add(groupId)) {
                 continue;
             }
 
-            float top = calculateTop(child, info.isHeader);
-            float bottom = calculateBottom(parent, childCount, child, i, info.groupId);
-
+            float top = calculateTop(child, isHeader);
+            boolean isCollapsed = isHeader && childModel.get(TabProperties.IS_COLLAPSED);
+            float bottom = calculateBottom(parent, groupId, sortedChildCount, i, isCollapsed);
             if (bottom <= top) continue;
 
-            PropertyModel model = mModel.get(pos).model;
-            @Nullable Integer cardColorId = model.get(TabProperties.TAB_GROUP_CARD_COLOR);
+            @Nullable Integer cardColorId = childModel.get(TabProperties.TAB_GROUP_CARD_COLOR);
             int colorId =
                     cardColorId != null
                             ? cardColorId
-                            : tabModel.getTabGroupColorWithFallback(info.groupId);
+                            : tabModel.getTabGroupColorWithFallback(groupId);
             int color =
                     TabGroupColorPickerUtils.getTabGroupColorPickerItemColor(
                             parent.getContext(), colorId, isIncognito);
             mPaint.setColor(color);
-            mPaint.setAlpha(Math.round(child.getAlpha() * 255f));
 
             mRectF.set(left, top, right, bottom);
             c.drawRoundRect(mRectF, mSpineRadius, mSpineRadius, mPaint);
@@ -162,6 +165,7 @@ class VerticalTabGroupSpineDecoration extends RecyclerView.ItemDecoration {
     }
 
     public void destroy() {
+        mHandler.removeCallbacksAndMessages(null);
         mTabModelSelector.getCurrentTabModelSupplier().removeObserver(mCurrentTabModelObserver);
         if (mCurrentTabModel != null) {
             mCurrentTabModel.removeTabGroupObserver(mTabGroupObserver);
@@ -179,6 +183,29 @@ class VerticalTabGroupSpineDecoration extends RecyclerView.ItemDecoration {
         }
     }
 
+    private void collectAndSortChildren(RecyclerView parent) {
+        mSortedChildren.clear();
+        int childCount = parent.getChildCount();
+        for (int i = 0; i < childCount; i++) {
+            View child = parent.getChildAt(i);
+            int pos = parent.getChildAdapterPosition(child);
+            if (pos != RecyclerView.NO_POSITION && pos < mModel.size()) {
+                mSortedChildren.add(child);
+            }
+        }
+
+        // RecyclerView heavily recycles and reorders views during fast scrolling and
+        // group expand/collapse animations. Because of this, `parent.getChildAt(i)`
+        // often returns views out of their logical adapter order (e.g. newly bound
+        // child tabs are appended to the end of the ViewGroup). We must sort the
+        // attached views by their adapter position to guarantee we can accurately
+        // identify the "first" and "last" visible tabs for each group and properly
+        // connect the spine to subsequent items.
+        mChildPositionComparator.setParent(parent);
+        mSortedChildren.sort(mChildPositionComparator);
+        mChildPositionComparator.setParent(null);
+    }
+
     private float calculateTop(View child, boolean isHeader) {
         if (!isHeader) {
             // For a normal child tab (meaning the group header scrolled off-screen),
@@ -191,44 +218,84 @@ class VerticalTabGroupSpineDecoration extends RecyclerView.ItemDecoration {
     }
 
     private float calculateBottom(
-            RecyclerView parent, int childCount, View child, int childIndex, Token groupId) {
-        float totalGroupHeight = child.getHeight() + mMarginBottom;
-        float renderedBottom = child.getBottom() + child.getTranslationY();
+            RecyclerView parent,
+            Token groupId,
+            int sortedChildCount,
+            int childIndex,
+            boolean isCollapsed) {
+        View child = mSortedChildren.get(childIndex);
+        View lastGroupView = child;
+        View lastStableGroupView = child;
+        View nextSiblingView = null;
 
-        // We scan downstream visible siblings. For cards belonging to our group, we track:
-        // 1. renderedBottom: Deepest physical GPU render boundary (including closing/fading cards),
-        // for shrinking smoothly when tabs close.
-        // 2. totalGroupHeight: Aggregate un-animated structural layout height of surviving cards,
-        // for holding spine steady while dragging cards.
-        for (int j = childIndex + 1; j < childCount; j++) {
-            View nextView = parent.getChildAt(j);
+        // Scan subsequent visible items in the sorted array to find:
+        // 1. lastGroupView: The last visible child tab belonging to this group.
+        // 2. lastStableGroupView: The last fully visible tab, for expanding/adding tab animation if
+        // the tab group is the last one on the screen
+        // 3. nextSiblingView: The first visible tab belonging to a DIFFERENT group.
+        for (int j = childIndex + 1; j < sortedChildCount; j++) {
+            View v = mSortedChildren.get(j);
+            int pos = parent.getChildAdapterPosition(v);
 
-            // Break early if we hit a different group or unassigned card
-            GroupInfo nextInfo = mViewToGroupInfo.get(nextView);
-            if (nextInfo == null || !groupId.equals(nextInfo.groupId)) break;
-
-            float itemBottom = nextView.getBottom() + nextView.getTranslationY();
-            if (itemBottom > renderedBottom) renderedBottom = itemBottom;
-
-            if (parent.getChildAdapterPosition(nextView) != RecyclerView.NO_POSITION) {
-                totalGroupHeight += nextView.getHeight() + mMarginBottom;
+            PropertyModel nextModel = mModel.get(pos).model;
+            @Nullable Token headerId = nextModel.get(TabProperties.TAB_GROUP_HEADER_ID);
+            Token nextGroupId =
+                    headerId != null ? headerId : nextModel.get(TabProperties.TAB_GROUP_ID);
+            if (groupId.equals(nextGroupId)) {
+                if (v.getAlpha() >= 1f) {
+                    lastStableGroupView = v;
+                }
+                lastGroupView = v;
+            } else {
+                nextSiblingView = v;
+                break;
             }
         }
 
-        float staticBottom =
-                child.getTop() + child.getTranslationY() + totalGroupHeight - mMarginBottom;
-        return Math.max(staticBottom, renderedBottom);
+        // Case 1: Fully collapsed or actively collapsing group.
+        if (isCollapsed) {
+            // If this group is in mCollapsingGroupIds, it is actively collapsing. Connect its spine
+            // bottom to the next group.
+            if (mCollapsingGroupIds.contains(groupId) && nextSiblingView != null) {
+                return nextSiblingView.getTop() + nextSiblingView.getTranslationY() - mMarginBottom;
+            }
+            return child.getBottom() + child.getTranslationY();
+        }
+
+        // Case 2: Middle group with items below it.
+        // Always connect the spine bottom to the top of the next group.
+        if (nextSiblingView != null) {
+            return nextSiblingView.getTop() + nextSiblingView.getTranslationY() - mMarginBottom;
+        }
+
+        // Case 3: The last group shown on the list.
+        float targetBottom = lastGroupView.getBottom() + lastGroupView.getTranslationY();
+
+        int lastPos = parent.getChildAdapterPosition(lastGroupView);
+        boolean hasSubsequentItems = lastPos < mModel.size() - 1;
+        if (hasSubsequentItems) {
+            // If there are more items in the adapter that are pushed off-screen, the spine should
+            // seamlessly continue to the bottom without shrinking.
+            return targetBottom;
+        }
+
+        float startBottom = lastStableGroupView.getBottom() + lastStableGroupView.getTranslationY();
+        float t = lastGroupView.getAlpha();
+        return startBottom + ((targetBottom - startBottom) * t);
     }
 
-    private static class GroupInfo {
-        public final Token groupId;
-        public final boolean isHeader;
-        public final boolean isCollapsed;
+    private static class ChildPositionComparator implements Comparator<View> {
+        private @Nullable RecyclerView mParent;
 
-        public GroupInfo(Token groupId, boolean isHeader, boolean isCollapsed) {
-            this.groupId = groupId;
-            this.isHeader = isHeader;
-            this.isCollapsed = isCollapsed;
+        public void setParent(@Nullable RecyclerView parent) {
+            mParent = parent;
+        }
+
+        @Override
+        public int compare(View v1, View v2) {
+            assert mParent != null;
+            return Integer.compare(
+                    mParent.getChildAdapterPosition(v1), mParent.getChildAdapterPosition(v2));
         }
     }
 }

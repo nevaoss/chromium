@@ -1203,6 +1203,7 @@ Di <ph name="MAC_OS_NAME" />, kebijakan ini hanya tersedia di instance yang dike
 <translation id="1781356041596378058">Kebijakan ini juga mengontrol akses ke Opsi Developer Android. Jika Anda menyetel kebijakan ini ke true, pengguna tidak dapat mengakses Opsi Developer. Jika Anda menyetel kebijakan ini ke false atau tidak menyetel kebijakan ini, pengguna dapat mengakses Opsi Developer dengan mengetuk tujuh kali nomor versi di aplikasi setelan Android.</translation>
 <translation id="1781720543185538098">Menentukan apakah survei <ph name="PRODUCT_NAME" /> dalam produk ditampilkan kepada pengguna.</translation>
 <translation id="1787790976045065845">Kebijakan ini hanya berlaku jika kebijakan <ph name="SECURITY_TOKEN_SESSION_BEHAVIOR_POLICY_NAME" /> disetel ke <ph name="SECURITY_TOKEN_SESSION_BEHAVIOR_LOCK" /> atau <ph name="SECURITY_TOKEN_SESSION_BEHAVIOR_LOGOUT" />, dan pengguna yang melakukan autentikasi melalui smart card menghapus smart card tersebut. Kemudian, kebijakan ini menentukan berapa detik notifikasi yang memberi tahu pengguna tentang tindakan mendatang akan ditampilkan. Notifikasi ini memblokir layar. Tindakan hanya akan dilakukan setelah notifikasi ini berakhir. Pengguna dapat mencegah tindakan terjadi dengan memasukkan kembali smart card sebelum notifikasi berakhir. Jika kebijakan ini disetel ke nol, tidak akan ada notifikasi yang ditampilkan dan tindakan akan segera dilakukan.</translation>
+<translation id="1788597893274674447">Mengaktifkan Isolasi Situs untuk origin tertentu di perangkat Android (dihentikan)</translation>
 <translation id="1793346220873697538">Nonaktifkan pencetakan PIN secara default</translation>
 <translation id="1794457906032475749">Jika kebijakan ini disetel ke Aktif, opsi untuk menyimpan data penjelajahan yang ada saat membuat profil perusahaan akan dicentang secara default.
 
@@ -2033,6 +2034,26 @@ Jika kebijakan disetel ke Nonaktif atau tidak disetel, pengguna akan dapat mentr
       Pengguna tidak dapat mengubah atau mengganti setelan ini.
 
       Catatan: Kebijakan ini menyebabkan header X-GoogApps-Allowed-Domains ditambahkan ke semua permintaan HTTP dan HTTPS di semua domain google.com, seperti yang dijelaskan di https://support.google.com/a/answer/1668854.</translation>
+<translation id="2282968242492236886">Jika kebijakan ini disetel, Anda dapat menentukan jenis data Isi Otomatis yang diblokir pada pola URL tertentu.
+
+Kebijakan ini disusun dalam bentuk daftar kamus. Setiap kamus harus berisi:
+* "url_pattern": Pola URL setelan konten (misalnya, "https://[*.]example.com").
+* "blocked_types": Daftar string yang mewakili kategori data Isi Otomatis yang akan diblokir.
+
+Nilai yang didukung untuk "blocked_types" adalah:
+* "contact_info": Memblokir pengisian dan penyimpanan informasi kontak.
+* "payments": Memblokir pengisian dan penyimpanan kartu kredit serta metode pembayaran.
+* "identity_docs": Memblokir pengisian dan penyimpanan dokumen identitas (misalnya, paspor, surat izin mengemudi, kartu identitas nasional).
+* "travel": Memblokir pengisian dan penyimpanan informasi perjalanan (misalnya, reservasi penerbangan, pendaftaran kendaraan).
+
+Jika jenis data diblokir untuk suatu situs, pembuatan saran maupun perintah untuk menyimpan/mengimpor data baru dari jenis tersebut akan dinonaktifkan di situs tersebut.
+
+Jika URL cocok dengan beberapa entri pola dalam daftar, jenis data yang diblokir dari semua entri yang cocok akan digabungkan (union-merged). Pola URL yang tidak valid dalam daftar akan diabaikan.
+
+Jika kebijakan ini tidak disetel, tidak ada jenis data Isi Otomatis yang diblokir berdasarkan domain.
+
+Untuk mengetahui informasi selengkapnya tentang pola URL yang valid, buka:
+https://chromeenterprise.google/policies/url-patterns. Karakter pengganti * didukung. Pola ini cocok dengan URL apa pun, dengan skema, port, dan jalur apa pun.</translation>
 <translation id="2287414160388710497">Mengizinkan administrator menyesuaikan tampilan watermark yang diterapkan oleh aturan Pencegahan Kebocoran Data (DLP). Kebijakan ini mencakup menyetel opasitas isian/garis tepi, dan menentukan ukuran font.
 Jika kebijakan ini atau beberapa nilainya tidak disetel, Chrome akan menggunakan perilaku watermark default.
 Nilai default: opasitas isian 4, opasitas garis tepi 6, dan ukuran font 24.
@@ -3480,6 +3501,19 @@ Jika kebijakan ini disetel ke nonaktif atau tidak disetel, menu aksesibilitas me
 <translation id="3150351525324499342">Jangan tampilkan ikon <ph name="PRODUCT_NAME" /> di toolbar secara default, tetapi izinkan pengguna memilih</translation>
 <translation id="3152135410085709340">Mengizinkan akses file lokal ke URL file:// di situs ini di Penampil PDF</translation>
 <translation id="3152425128389603870">Membuat Desktop Terpadu tersedia dan aktif secara default</translation>
+<translation id="3157506194753687842">Mengontrol apakah agen <ph name="GEMINI_SPARK_PRODUCT_NAME" /> diizinkan untuk terhubung ke <ph name="PRODUCT_NAME" /> dan menggunakan fitur penjelajahan otomatis.
+
+Nilai 0 = <ph name="GEMINI_SPARK_PRODUCT_NAME" /> diizinkan untuk terhubung ke dan menggunakan fitur penjelajahan otomatis <ph name="PRODUCT_NAME" />
+
+Nilai 1 = <ph name="GEMINI_SPARK_PRODUCT_NAME" /> tidak diizinkan untuk terhubung ke atau menggunakan fitur penjelajahan otomatis <ph name="PRODUCT_NAME" />
+
+Peringatan: Mengizinkan <ph name="GEMINI_SPARK_PRODUCT_NAME" /> terhubung ke <ph name="PRODUCT_NAME" /> dan menggunakan fitur penjelajahan otomatis akan mengizinkan agen <ph name="GEMINI_SPARK_PRODUCT_NAME" /> melakukan tindakan multilangkah otonom di klien <ph name="PRODUCT_NAME" /> menggunakan sesi penjelajahan aktif. Hal ini menimbulkan risiko keamanan yang signifikan, termasuk risiko kredensial, Ingress Jaringan Lokal, dan hilangnya sinyal kontekstual. Kontrol pengelolaan dan keamanan yang ada mungkin tidak dipatuhi.
+
+Administrator disarankan untuk mengevaluasi dengan cermat model ancaman jaringan, kepatuhan, dan panduan privasi organisasi sebelum mengaktifkan fitur ini.
+
+Kebijakan ini tidak akan berpengaruh jika kebijakan aplikasi <ph name="GOOGLE_GEMINI_PRODUCT_NAME" /> atau penjelajahan otomatis <ph name="PRODUCT_NAME" /> dinonaktifkan. Misalnya, aplikasi <ph name="GOOGLE_GEMINI_PRODUCT_NAME" /> dapat dinonaktifkan oleh kebijakan <ph name="GEMINI_SETTINGS_POLICY_NAME" />. Untuk mengetahui informasi selengkapnya tentang <ph name="GOOGLE_GEMINI_PRODUCT_NAME" /> di <ph name="PRODUCT_NAME" />, lihat https://support.google.com/chrome/a?p=gemini_in_chrome.
+
+Penjelajahan otomatis <ph name="PRODUCT_NAME" /> dan <ph name="GEMINI_SPARK_PRODUCT_NAME" /> hanya tersedia di negara atau bahasa tertentu. Jika kebijakan ini disetel ke nilai 0 - Aktif, tidak ada jaminan bahwa fitur akan diaktifkan; fitur tetap bergantung pada ketersediaan. Untuk mengetahui info selengkapnya tentang peluncuran, baca Catatan Rilis Enterprise: https://chromeenterprise.google/resources/release-notes/.</translation>
 <translation id="3159375329008977062">Pengguna diaktifkan untuk mengekspor/mengimpor container Crostini melalui UI</translation>
 <translation id="3163167792874598128">Jika kebijakan disetel ke Aktif atau tidak disetel, pop-up Rating App Store dapat ditampilkan kepada pengguna, paling banyak setahun sekali.
 Jika kebijakan disetel ke Nonaktif, pop-up Rating App Store tidak akan ditampilkan kepada pengguna.</translation>
@@ -4999,6 +5033,21 @@ Jika kebijakan disetel ke <ph name="DISABLE_UNPUBLISHED" /> (1), ekstensi yang t
 
           Jika kebijakan ini tidak ditetapkan, respons lisan mula-mula akan dinonaktifkan di layar login, tetapi dapat diaktifkan oleh pengguna kapan saja.</translation>
 <translation id="4173974507809462880">Tampilkan layar arah scroll touchpad selama login</translation>
+<translation id="4175846494150407472">Tentukan daftar origin yang berjalan dalam proses khusus pada platform dengan resource terbatas.
+
+Kebijakan ini hanya berfungsi di perangkat dengan memori terbatas (RAM antara 1 GB dan 3,2 GB), karena mengisolasi terlalu banyak situs di perangkat dengan resource terbatas dapat menyebabkan masalah performa. Untuk lingkungan berperforma tinggi (termasuk perangkat <ph name="ANDROID_NAME" /> kelas atas), gunakan <ph name="ISOLATE_ORIGINS_POLICY_NAME" />.
+
+Konfigurasi isolasi proses secara khusus tidak direkomendasikan untuk perangkat dengan memori kurang dari 1 GB.
+
+Setiap proses origin bernama hanya akan diizinkan untuk memuat dokumen dari origin tersebut dan subdomainnya. Misalnya, menentukan https://a1.example.com/ akan mengizinkan https://a2.a1.example.com/ dalam proses yang sama, tetapi tidak mengizinkan https://example.com atau https://b.example.com.
+
+Anda juga dapat menentukan rentang origin yang akan diisolasi menggunakan karakter pengganti. Misalnya, menentukan https://[*.]corp.example.com akan memberikan proses khusus tersendiri bagi setiap origin di bawah https://corp.example.com, termasuk https://corp.example.com itu sendiri, https://a1.corp.example.com, dan https://a2.a1.corp.example.com.
+
+Perhatikan bahwa <ph name="ANDROID_NAME" /> mengisolasi situs sensitif tertentu secara default mulai dari <ph name="PRODUCT_NAME" /> versi 77, dan kebijakan ini memperluas mode tersebut untuk mengisolasi origin tambahan tertentu.
+
+Perhatikan bahwa origin yang diisolasi oleh kebijakan ini tidak akan dapat menjalankan skrip pada origin lain di situs yang sama, yang sebenarnya dapat dilakukan jika dua dokumen dari situs yang sama mengubah nilai document.domain masing-masing agar cocok. Administrator sebaiknya memastikan bahwa perilaku yang tidak lazim ini tidak digunakan pada suatu origin sebelum mengisolasinya.
+
+Jika kebijakan ini disetel ke string kosong atau tidak disetel, isolasi situs tidak akan diperlukan untuk origin tertentu. Pengguna masih dapat mengaktifkan isolasi proses secara manual melalui tanda command line.</translation>
 <translation id="417956245902013347">Mengaktifkan fitur aksesibilitas sorotan kursor teks di layar login.
 
           Jika kebijakan ini ditetapkan ke true, sorotan kursor teks akan selalu diaktifkan di layar login.
@@ -6362,6 +6411,7 @@ Jika kebijakan ini tidak disetel, fitur Teks Otomatis mula-mula akan dinonaktifk
 <translation id="4970046075219007744">Izinkan aplikasi web meminta pengguna memberikan akses ke berbagai jenis file melalui File Handling API</translation>
 <translation id="4970855112942626932">Nonaktifkan login browser</translation>
 <translation id="4974091268178043378">Mode warna ChromeOS</translation>
+<translation id="4976824366963631628">Memblokir jenis data Isi Otomatis untuk situs tertentu</translation>
 <translation id="4976825008579439428">Jangan izinkan Penelusuran Histori AI.</translation>
 <translation id="4978533099939732984">Selalu tampilkan peringatan ruang penyimpanan hampir penuh</translation>
 <translation id="4979614740553442831">Kebijakan ini mengontrol ketersediaan integrasi Lens di Aplikasi Galeri di <ph name="PRODUCT_OS_NAME" />
@@ -6386,6 +6436,15 @@ Jika kebijakan ini dinonaktifkan, fitur ini akan dinonaktifkan.</translation>
 
       Untuk informasi selengkapnya terkait penghentian penggunaan U2F Security Key API, buka https://groups.google.com/a/chromium.org/g/blink-dev/c/xHC3AtU_65A.</translation>
 <translation id="4988291787868618635">Tindakan yang akan diambil saat penundaan waktu menganggur tercapai</translation>
+<translation id="4988587935113718108">Jika kebijakan ini disetel, setiap origin bernama dalam daftar yang dipisahkan koma akan berjalan dalam proses khusus di <ph name="ANDROID_NAME" />. Setiap proses origin bernama hanya akan diizinkan untuk memuat dokumen dari origin tersebut dan subdomainnya. Misalnya, menentukan https://a1.example.com/ akan mengizinkan https://a2.a1.example.com/ dalam proses yang sama, tetapi tidak mengizinkan https://example.com atau https://b.example.com. Perhatikan bahwa <ph name="ANDROID_NAME" /> mengisolasi situs sensitif tertentu secara default mulai dari <ph name="PRODUCT_NAME" /> versi 77, dan kebijakan ini memperluas mode tersebut untuk mengisolasi origin tambahan tertentu.
+
+Sejak <ph name="PRODUCT_NAME" /> versi 77, Anda juga dapat menentukan rentang origin yang akan diisolasi menggunakan karakter pengganti. Misalnya, menentukan https://[*.]corp.example.com akan memberikan proses khusus tersendiri bagi setiap origin di bawah https://corp.example.com, termasuk https://corp.example.com itu sendiri, https://a1.corp.example.com, dan https://a2.a1.corp.example.com.
+
+Perhatikan bahwa origin yang diisolasi oleh kebijakan ini tidak akan dapat menjalankan skrip pada origin lain di situs yang sama, yang sebenarnya dapat dilakukan jika dua dokumen dari situs yang sama mengubah nilai document.domain masing-masing agar cocok. Administrator sebaiknya memastikan bahwa perilaku yang tidak lazim ini tidak digunakan pada suatu origin sebelum mengisolasinya.
+
+Jika kebijakan ini disetel ke string kosong atau tidak disetel, isolasi situs tidak akan diperlukan untuk origin tertentu. Pengguna masih dapat mengaktifkan isolasi proses secara manual melalui tanda command line.
+
+Catatan: Kebijakan ini sudah tidak digunakan lagi. Sebagai gantinya, gunakan <ph name="ISOLATE_ORIGINS_POLICY_NAME" /> (untuk perangkat performa tinggi) atau <ph name="ISOLATE_ORIGINS_SHORTLIST_POLICY_NAME" />. Kebijakan ini hanya berlaku untuk Chrome di <ph name="ANDROID_NAME" /> yang berjalan pada perangkat dengan RAM lebih dari 1 GB yang tidak disarankan untuk mengonfigurasi isolasi proses secara khusus.</translation>
 <translation id="4991786313466977061">Mengontrol visibilitas badge perusahaan</translation>
 <translation id="4995123966071996433">Jangan izinkan penerusan port ke mesin virtual Linux</translation>
 <translation id="4996068111491152684">Kredensial login <ph name="PRODUCT_OS_NAME" /> tidak akan digunakan untuk autentikasi jaringan.</translation>
@@ -8873,6 +8932,7 @@ CATATAN: Perilaku default bagi perangkat konsumen dan perusahaan berbeda: P2P ak
 
       Catatan: Jika metode input saat ini tidak didukung, metode akan beralih ke tata letak keyboard hardware (jika diizinkan) atau entri pertama yang valid dalam daftar ini. Metode yang tidak valid atau tidak didukung akan diabaikan.</translation>
 <translation id="6483115462650732746">Tampilkan menu aksesibilitas mengambang dalam mode kios</translation>
+<translation id="6488321500788319000">Mengaktifkan Isolasi Situs untuk origin tertentu di perangkat dengan resource terbatas</translation>
 <translation id="6491139795995924304">Izinkan bluetooth di perangkat</translation>
 <translation id="6491305972928809525">Jangan tampilkan menu aksesibilitas mengambang dalam mode kios</translation>
 <translation id="6492177700737407141">Pengguna yang terdaftar dalam Program Perlindungan Lanjutan hanya akan menerima perlindungan konsumen standar</translation>
@@ -8930,6 +8990,23 @@ Waktu tunggu tidak ada aktivitas untuk memulai screensaver dan interval saat gam
 <translation id="651248769129998376">Jangan membuat atau mengupload permintaan penginstalan ekstensi ke konsol Admin</translation>
 <translation id="6513453889192806240">Latensi HTTPS</translation>
 <translation id="6515357889978918016">Gambar <ph name="PLUGIN_VM_NAME" /></translation>
+<translation id="6515520014183265350">Tentukan daftar origin yang berjalan dalam proses khusus.
+
+Di <ph name="ANDROID_NAME" />, kebijakan ini hanya berfungsi di perangkat dengan memori yang cukup (lebih dari 3,2 GB RAM), karena mengisolasi terlalu banyak situs di perangkat dengan resource terbatas dapat menyebabkan masalah performa. Untuk perangkat <ph name="ANDROID_NAME" /> yang memiliki resource terbatas, gunakan <ph name="ISOLATE_ORIGINS_SHORTLIST_POLICY_NAME" />.
+
+Konfigurasi isolasi proses secara khusus tidak direkomendasikan untuk perangkat dengan memori kurang dari 1 GB.
+
+Setiap proses origin bernama hanya akan diizinkan untuk memuat dokumen dari origin tersebut dan subdomainnya. Misalnya, menentukan https://a1.example.com/ akan mengizinkan https://a2.a1.example.com/ dalam proses yang sama, tetapi tidak mengizinkan https://example.com atau https://b.example.com.
+
+Sejak <ph name="PRODUCT_NAME" /> versi 77, Anda juga dapat menentukan rentang origin yang akan diisolasi menggunakan karakter pengganti. Misalnya, menentukan https://[*.]corp.example.com akan memberikan proses khusus tersendiri bagi setiap origin di bawah https://corp.example.com, termasuk https://corp.example.com itu sendiri, https://a1.corp.example.com, dan https://a2.a1.corp.example.com.
+
+Perhatikan bahwa semua situs (yaitu, skema plus eTLD+1, seperti https://example.com) sudah diisolasi secara default di platform desktop, sebagaimana tercantum dalam kebijakan <ph name="SITE_PER_PROCESS_POLICY_NAME" />. Kebijakan <ph name="ISOLATE_ORIGINS_POLICY_NAME" /> ini berguna untuk mengisolasi origin tertentu pada tingkat perincian yang lebih jauh (misalnya, https://a.example.com).
+
+Perhatikan bahwa <ph name="ANDROID_NAME" /> mengisolasi situs sensitif tertentu secara default mulai dari <ph name="PRODUCT_NAME" /> versi 77, dan kebijakan ini memperluas mode tersebut untuk mengisolasi origin tambahan tertentu.
+
+Perhatikan juga bahwa origin yang diisolasi oleh kebijakan ini tidak akan dapat menjalankan skrip pada origin lain di situs yang sama, yang sebenarnya dapat dilakukan jika dua dokumen dari situs yang sama mengubah nilai document.domain masing-masing agar cocok. Administrator sebaiknya memastikan bahwa perilaku yang tidak lazim ini tidak digunakan pada suatu origin sebelum mengisolasinya.
+
+Jika kebijakan ini disetel ke string kosong atau tidak disetel, isolasi situs tidak akan diperlukan untuk origin tertentu. Pengguna masih dapat mengaktifkan isolasi proses secara manual melalui tanda command line.</translation>
 <translation id="6517859209214570623">Jika kebijakan ini disetel, Anda akan dapat membuat daftar pola URL yang menentukan situs mana yang tidak dapat menyetel cookie.
 
       Jika kebijakan ini tidak disetel, <ph name="DEFAULT_COOKIES_SETTINGS_POLICY_NAME" /> akan digunakan untuk semua situs, jika disetel. Jika tidak disetel, setelan pribadi pengguna akan berlaku.

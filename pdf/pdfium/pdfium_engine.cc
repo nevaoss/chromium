@@ -1090,12 +1090,19 @@ void PDFiumEngine::AppendPage(PDFiumEngine* engine, int index) {
 }
 
 std::vector<uint8_t> PDFiumEngine::GetSaveData() {
+  FPDF_DWORD save_flags = 0;
 #if BUILDFLAG(ENABLE_PDF_INK2)
   RegenerateContents();
+
+  // Iterating through `ink_text_data_` will give a more accurate answer, but
+  // this is probably good enough.
+  if (!ink_text_data_.empty() && !font_map_.empty()) {
+    save_flags |= FPDF_SUBSET_NEW_FONTS;
+  }
 #endif
 
   PDFiumMemBufferFileWrite output_file_write;
-  if (!FPDF_SaveAsCopy(doc(), &output_file_write, 0)) {
+  if (!FPDF_SaveAsCopy(doc(), &output_file_write, save_flags)) {
     return std::vector<uint8_t>();
   }
   return output_file_write.TakeBuffer();
@@ -1689,10 +1696,7 @@ std::unique_ptr<AccessibilityStructureElement> PDFiumEngine::GetStructureTree()
   auto structure_tree_root = std::make_unique<AccessibilityStructureElement>();
   structure_tree_root->type = PdfTagType::kDocument;
   structure_tree_root->children.reserve(pages_.size());
-  structure_tree_root->language =
-      base::UTF16ToUTF8(CallPDFiumWideStringBufferApi(
-          base::BindRepeating(&FPDFCatalog_GetLanguage, doc()),
-          /*check_expected_size=*/true));
+  structure_tree_root->language = GetDocumentLanguage(doc());
 
   for (const std::unique_ptr<PDFiumPage>& page : pages_) {
     auto page_structure = page->GetStructureTree();

@@ -50,8 +50,6 @@ class RenderFrameHost;
 
 namespace webid {
 
-class DisconnectRequest;
-class UserInfoRequest;
 class RequestService;
 
 using blink::mojom::IdentityProviderGetParametersPtr;
@@ -79,8 +77,7 @@ class CONTENT_EXPORT Request
       FederatedIdentityApiPermissionContextDelegate* api_permission_delegate,
       FederatedIdentityAutoReauthnPermissionContextDelegate*
           auto_reauthn_permission_delegate,
-      FederatedIdentityPermissionContextDelegate* permission_delegate,
-      IdentityRegistry* identity_registry);
+      FederatedIdentityPermissionContextDelegate* permission_delegate);
 
   Request(const Request&) = delete;
   Request& operator=(const Request&) = delete;
@@ -119,6 +116,7 @@ class CONTENT_EXPORT Request
           idp_get_params_ptrs,
       MediationRequirement requirement,
       NavigationHandle* navigation_handle,
+      const GURL& intercepted_url,
       RequestTokenCallback);
 
   // blink::mojom::FederatedAuthRequest:
@@ -154,6 +152,8 @@ class CONTENT_EXPORT Request
   void SetDialogControllerForTests(
       std::unique_ptr<IdentityRequestDialogController> controller);
 
+  base::WeakPtr<Request> GetWeakPtr();
+
   // content::FederatedIdentityModalDialogViewDelegate:
   void OnClose() override;
   bool OnResolve(GURL idp_config_url,
@@ -171,15 +171,6 @@ class CONTENT_EXPORT Request
       const std::string& account_id,
       bool show_modal,
       OnFederatedTokenReceivedCallback callback) override;
-
-  // To be called on the FederatedAuthRequest object corresponding to a
-  // popup opened by ShowModalDialog, specifically for the case when
-  // ShowModalDialog returned null (particularly Android). In that case,
-  // we can only set up the IdentityRegistry object when we get a call
-  // from the popup context.
-  // Returns false when no identity registry could be created (e.g. this
-  // is not in a context created by ShowModalDialog).
-  bool SetupIdentityRegistryFromPopup();
 
   // Returns whether the API is enabled or not.
   FederatedIdentityApiPermissionContextDelegate::PermissionStatus
@@ -415,12 +406,6 @@ class CONTENT_EXPORT Request
   void MarkUserAsSignedIn(const GURL& idp_config_url,
                           const std::string& account_id);
 
-  void CompleteUserInfoRequest(
-      UserInfoRequest* request,
-      RequestUserInfoCallback callback,
-      blink::mojom::RequestUserInfoStatus status,
-      std::optional<std::vector<blink::mojom::IdentityUserInfoPtr>> user_info);
-
   // Validates the input from the renderer and signals to terminate the request
   // if needed.
   bool ShouldTerminateRequest(
@@ -490,9 +475,6 @@ class CONTENT_EXPORT Request
                   const GURL& idp_config_url,
                   GURL login_url);
 
-  void CompleteDisconnectRequest(DisconnectCallback callback,
-                                 blink::mojom::DisconnectStatus status);
-
   void RecordErrorMetrics(
       blink::mojom::IdentityProviderRequestOptionsPtr idp,
       IdpNetworkRequestManager::FedCmTokenResponseType token_response_type,
@@ -520,7 +502,6 @@ class CONTENT_EXPORT Request
 
   std::unique_ptr<IdpNetworkRequestManager> network_manager_;
   std::unique_ptr<IdentityRequestDialogController> request_dialog_controller_;
-  std::unique_ptr<IdentityRequestDialogController> mock_dialog_controller_;
 
   // Helper that records FedCM UMA and UKM metrics. Initialized in the
   // RequestToken() method, so all metrics must be recorded after that.
@@ -557,7 +538,6 @@ class CONTENT_EXPORT Request
       auto_reauthn_permission_delegate_ = nullptr;
   raw_ptr<FederatedIdentityPermissionContextDelegate> permission_delegate_ =
       nullptr;
-  raw_ptr<IdentityRegistry> identity_registry_ = nullptr;
   raw_ptr<RenderFrameHost> render_frame_host_;
   // RequestService owns `this`, so it is expected to outlive it.
   const raw_ref<RequestService> request_service_;
@@ -596,12 +576,6 @@ class CONTENT_EXPORT Request
   std::unique_ptr<AccountsFetcher> fedcm_accounts_fetcher_;
 
   std::unique_ptr<FederatedSdJwtHandler> federated_sdjwt_handler_;
-
-  // Set of pending user info requests.
-  base::flat_set<std::unique_ptr<UserInfoRequest>> user_info_requests_;
-
-  // Pending disconnect request.
-  std::unique_ptr<DisconnectRequest> disconnect_request_;
 
   // TODO(crbug.com/40238075): Refactor these member variables introduced
   // through the multi IDP prototype implementation to make them less confusing.

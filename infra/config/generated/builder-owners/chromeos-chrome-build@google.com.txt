@@ -8,4 +8,3 @@ ci/chromeos-arm64-generic-rel
 ci/linux-chromeos-dbg
 ci/linux-chromeos-rel
 try/chromeos-amd64-generic-rel
-try/chromeos-amd64-generic-rel-gtest

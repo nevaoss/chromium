@@ -12,6 +12,7 @@
 #include "base/numerics/safe_conversions.h"
 #include "base/strings/strcat.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/test/metrics/histogram_tester.h"
 #include "build/build_config.h"
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
@@ -465,6 +466,22 @@ TEST_F(BrowserViewTest, DISABLED_RepeatedAccelerators) {
   const ui::Accelerator kNextTabRepeatAccel(
       ui::VKEY_TAB, ui::EF_CONTROL_DOWN | ui::EF_IS_REPEAT);
   EXPECT_TRUE(browser_view()->AcceleratorPressed(kNextTabRepeatAccel));
+}
+
+TEST_F(BrowserViewTest, RecordShortcutMetrics) {
+  base::HistogramTester histogram_tester;
+
+  const ui::Accelerator kLocationAccel(ui::VKEY_L, ui::EF_PLATFORM_ACCELERATOR);
+  EXPECT_TRUE(browser_view()->AcceleratorPressed(kLocationAccel));
+  histogram_tester.ExpectUniqueSample("Browser.Shortcuts.TriggeredCommandId",
+                                      IDC_FOCUS_LOCATION, 1);
+
+  // Repeated key events should be excluded from telemetry.
+  const ui::Accelerator kLocationRepeatAccel(
+      ui::VKEY_L, ui::EF_PLATFORM_ACCELERATOR | ui::EF_IS_REPEAT);
+  browser_view()->AcceleratorPressed(kLocationRepeatAccel);
+  histogram_tester.ExpectUniqueSample("Browser.Shortcuts.TriggeredCommandId",
+                                      IDC_FOCUS_LOCATION, 1);
 }
 #endif  // !BUILDFLAG(IS_MAC)
 

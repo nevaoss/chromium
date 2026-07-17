@@ -885,7 +885,7 @@ void PermissionUmaUtil::RecordActivityIndicator(
 }
 
 void PermissionUmaUtil::RecordDismissalType(
-    const std::vector<base::WeakPtr<permissions::PermissionRequest>>& requests,
+    const std::vector<base::SafeRef<permissions::PermissionRequest>>& requests,
     PermissionPromptDisposition ui_disposition,
     DismissalType dismissalType) {
   RequestTypeForUma type = PermissionUtil::GetUmaValueForRequests(requests);
@@ -2263,7 +2263,7 @@ PermissionUmaUtil::GetDaysSinceUnusedSitePermissionRevocation(
 // static
 void PermissionUmaUtil::RecordElementAnchoredPermissionPromptAction(
     const std::vector<std::unique_ptr<PermissionRequest>>& requests,
-    const std::vector<base::WeakPtr<permissions::PermissionRequest>>&
+    const std::vector<base::SafeRef<permissions::PermissionRequest>>&
         screen_requests,
     ElementAnchoredBubbleAction action,
     ElementAnchoredBubbleVariant variant,

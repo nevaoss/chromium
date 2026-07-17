@@ -16,7 +16,9 @@
 #include "base/files/file_path.h"
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
+#include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
+#include "base/observer_list.h"
 #include "base/scoped_observation.h"
 #include "build/build_config.h"
 #include "chrome/browser/extensions/api/passwords_private/password_access_auth_timeout_handler.h"
@@ -35,25 +37,58 @@
 #include "components/password_manager/core/browser/sharing/recipients_fetcher.h"
 #include "components/password_manager/core/browser/ui/credential_ui_entry.h"
 #include "components/password_manager/core/browser/ui/passwords_provider.h"
+#include "components/password_manager/core/browser/ui/saved_passwords_presenter.h"
 #include "components/sync/service/sync_service.h"
 #include "components/sync/service/sync_service_observer.h"
 #include "extensions/browser/extension_function.h"
 
-class Profile;
+class ChromePasswordChangeService;
+class EnclaveManagerInterface;
+class PrefService;
+class TrustSafetySentimentService;
+
+namespace affiliations {
+class AffiliationService;
+}  // namespace affiliations
 
 namespace content {
 class WebContents;
-}
+}  // namespace content
+
+namespace device_reauth {
+class DeviceAuthParams;
+class DeviceAuthenticator;
+}  // namespace device_reauth
+
+namespace network {
+class SharedURLLoaderFactory;
+}  // namespace network
+
+namespace password_manager {
+class BulkLeakCheckServiceInterface;
+class PasswordSenderService;
+class RecipientsFetcher;
+}  // namespace password_manager
+
+namespace signin {
+class IdentityManager;
+}  // namespace signin
+
+namespace syncer {
+class SyncService;
+}  // namespace syncer
 
 namespace web_app {
 class WebAppInstallManager;
-}
+}  // namespace web_app
 
-namespace password_manager {
-class RecipientsFetcher;
-}
+namespace webauthn {
+class PasskeyModel;
+}  // namespace webauthn
 
 namespace extensions {
+
+class PasswordsPrivateEventRouter;
 
 // Concrete PasswordsPrivateDelegate implementation.
 class PasswordsPrivateDelegateImpl
@@ -64,14 +99,41 @@ class PasswordsPrivateDelegateImpl
       public web_app::WebAppInstallManagerObserver {
  public:
   using AuthResultCallback = base::OnceCallback<void(bool)>;
+  using DeviceAuthenticatorFactory = base::RepeatingCallback<
+      std::unique_ptr<device_reauth::DeviceAuthenticator>(
+          const device_reauth::DeviceAuthParams& params)>;
 
-  explicit PasswordsPrivateDelegateImpl(Profile* profile);
+  // LINT.IfChange(Dependencies)
+  PasswordsPrivateDelegateImpl(
+      PrefService* prefs,
+      signin::IdentityManager* identity_manager,
+      scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
+      password_manager::PasswordSenderService* password_sender_service,
+      syncer::SyncService* sync_service,
+      TrustSafetySentimentService* trust_safety_sentiment_service,
+      ChromePasswordChangeService* password_change_service,
+      affiliations::AffiliationService* affiliation_service,
+      scoped_refptr<password_manager::PasswordStoreInterface>
+          profile_password_store,
+      scoped_refptr<password_manager::PasswordStoreInterface>
+          account_password_store,
+      webauthn::PasskeyModel* passkey_model,
+      password_manager::BulkLeakCheckServiceInterface* bulk_leak_check_service,
+      PasswordsPrivateEventRouter* event_router,
+      web_app::WebAppInstallManager* web_app_install_manager,
+      EnclaveManagerInterface* enclave_manager,
+      const DeviceAuthenticatorFactory& device_authenticator_factory,
+      const base::RepeatingClosure& maybe_show_profile_switch_iph_cb);
+  // LINT.ThenChange(//chrome/browser/extensions/api/passwords_private/passwords_private_delegate_factory.cc:Dependencies)
 
   PasswordsPrivateDelegateImpl(const PasswordsPrivateDelegateImpl&) = delete;
   PasswordsPrivateDelegateImpl& operator=(const PasswordsPrivateDelegateImpl&) =
       delete;
 
   // PasswordsPrivateDelegate implementation.
+  void AddObserver(PasswordsPrivateDelegate::Observer* observer) override;
+  void RemoveObserver(PasswordsPrivateDelegate::Observer* observer) override;
+
   password_manager::SavedPasswordsPresenter* GetSavedPasswordsPresenter()
       override;
   void GetSavedPasswordsList(UiEntriesCallback callback) override;
@@ -111,7 +173,7 @@ class PasswordsPrivateDelegateImpl
                       ImportResultsCallback results_callback) override;
   void ResetImporter(bool delete_file) override;
   void ExportPasswords(
-      base::OnceCallback<void(const std::string&)> accepted_callback,
+      base::OnceCallback<void(ExportPasswordsResult)> accepted_callback,
       content::WebContents* web_contents) override;
   api::passwords_private::ExportProgressStatus GetExportProgressStatus()
       override;
@@ -237,7 +299,7 @@ class PasswordsPrivateDelegateImpl
 
   // Callback for ExportPasswords() after authentication check.
   void OnExportPasswordsAuthResult(
-      base::OnceCallback<void(const std::string&)> accepted_callback,
+      base::OnceCallback<void(ExportPasswordsResult)> accepted_callback,
       base::WeakPtr<content::WebContents> web_contents,
       bool authenticated);
 
@@ -280,8 +342,22 @@ class PasswordsPrivateDelegateImpl
   CreatePasswordUiEntryFromCredentialUiEntry(
       password_manager::CredentialUIEntry credential);
 
-  // Not owned by this class.
-  raw_ptr<Profile> profile_;
+  const raw_ptr<PrefService> prefs_;
+  const raw_ptr<signin::IdentityManager> identity_manager_;
+  const scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory_;
+  const raw_ptr<password_manager::PasswordSenderService>
+      password_sender_service_;
+  const raw_ptr<syncer::SyncService> sync_service_;
+  const raw_ptr<TrustSafetySentimentService> trust_safety_sentiment_service_;
+  const raw_ptr<ChromePasswordChangeService> password_change_service_;
+  const scoped_refptr<password_manager::PasswordStoreInterface>
+      profile_password_store_;
+  const scoped_refptr<password_manager::PasswordStoreInterface>
+      account_password_store_;
+  const raw_ptr<PasswordsPrivateEventRouter> event_router_;
+  const raw_ptr<EnclaveManagerInterface> enclave_manager_;
+  const DeviceAuthenticatorFactory device_authenticator_factory_;
+  const base::RepeatingClosure maybe_show_profile_switch_iph_cb_;
 
   // Used to add/edit passwords and to create |password_check_delegate_|.
   password_manager::SavedPasswordsPresenter saved_passwords_presenter_;
@@ -301,6 +377,8 @@ class PasswordsPrivateDelegateImpl
   // having to request them from |password_manager_presenter_| again.
   UiEntries current_entries_;
   ExceptionEntries current_exceptions_;
+
+  base::ObserverList<PasswordsPrivateDelegate::Observer> observers_;
 
   // An id generator for saved passwords and blocked websites.
   IdGenerator credential_id_generator_;

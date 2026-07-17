@@ -124,11 +124,8 @@ class TaskManagerView : public TableViewDelegate,
   // controls a specific deviation from the original TaskManager UI.
   // TODO(crbug.com/364926055): Remove after feature is enabled by default.
   struct TableConfigs {
-    bool table_has_border;
     bool table_refresh;
-    bool scroll_view_rounded;
     bool dialog_button_disabled;
-    bool sort_on_cpu_by_default;
   };
 
   friend class TaskManagerViewTest;
@@ -157,8 +154,7 @@ class TaskManagerView : public TableViewDelegate,
   std::unique_ptr<views::View> CreateSearchBar(
       const ChromeLayoutProvider* provider);
   std::unique_ptr<views::ScrollView> CreateProcessView(
-      std::unique_ptr<views::TableView> tab_table,
-      bool table_has_border);
+      std::unique_ptr<views::TableView> tab_table);
 
   // Creates the child controls (header, table, etc).
   void Init();

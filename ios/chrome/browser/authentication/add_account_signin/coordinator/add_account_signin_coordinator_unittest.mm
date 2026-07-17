@@ -95,7 +95,7 @@ class AddAccountSigninCoordinatorTest : public PlatformTest {
 // Tests that AddAccountSigninCoordinator doesn't call its signinCompletion
 // block when being stopped while showing an alert dialog.
 TEST_F(AddAccountSigninCoordinatorTest, StopCoordinatorWhileShowingErrorAlert) {
-  // Open the coordiantor.
+  // Open the coordinator.
   OCMExpect([add_account_signin_manager_mock_
       showSigninWithIntent:AddAccountSigninIntent::kAddAccount]);
   __block BOOL signinCompletionCalled = NO;

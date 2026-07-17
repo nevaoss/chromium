@@ -9,10 +9,11 @@
 #include <string>
 #include <vector>
 
-#include "base/containers/flat_map.h"
-#include "components/sync_device_info/device_info.h"
+#include "base/memory/raw_ptr.h"
 
 namespace syncer {
+
+class DeviceInfo;
 
 // Holds candidates for the display name of a device, computed using heuristics.
 // The `preferred_name_if_unique` is usually a more user-friendly representation

@@ -120,6 +120,8 @@ const base::TimeDelta kProgressBarEndAnimationDuration =
 
   // Page load progress bar on the edge of the toolbar.
   ToolbarProgressBar* _progressBar;
+  // Container for the `_progressBar`.
+  UIView* _progressBarContainer;
 
   // The inner separator line for the toolbar. Positioned at the top edge of the
   // bottom toolbar or bottom edge of the top toolbar to separate the toolbar
@@ -436,6 +438,10 @@ const base::TimeDelta kProgressBarEndAnimationDuration =
 - (void)setAssistantButtonVisible:(BOOL)visible enabled:(BOOL)enabled {
   _assistantButton.forceHidden = !visible;
   _assistantButton.enabled = enabled;
+  if (self.isViewLoaded) {
+    [self updateButtons:@[ _assistantButton ]
+        forFullscreenProgress:_fullscreenProgress];
+  }
 }
 
 - (void)setCanGoBack:(BOOL)canGoBack {
@@ -476,35 +482,6 @@ const base::TimeDelta kProgressBarEndAnimationDuration =
       }];
 }
 
-- (void)setIsLoading:(BOOL)isLoading {
-  if (_isLoading == isLoading) {
-    return;
-  }
-
-  _isLoading = isLoading;
-  _reloadButton.forceHidden = isLoading;
-  _stopButton.forceHidden = !isLoading;
-
-  if (!_progressBar) {
-    return;
-  }
-
-  if (_isLoading) {
-    [_progressBar setProgress:0 animated:NO];
-  }
-  [self updateProgressBarVisibility];
-}
-
-- (void)setLoadingProgress:(double)progress {
-  if (!_progressBar || progress == _progressBar.progress) {
-    return;
-  }
-
-  BOOL isGoingBackward = progress < _progressBar.progress;
-  [_progressBar setProgress:progress
-                   animated:!_progressBar.hidden && !isGoingBackward];
-}
-
 - (void)setShareEnabled:(BOOL)enabled {
   _shareButton.enabled = enabled;
 }
@@ -520,13 +497,38 @@ const base::TimeDelta kProgressBarEndAnimationDuration =
   [self updateLayoutGuides];
 }
 
-- (void)setNTPVisible:(BOOL)NTPVisible isStartSurface:(BOOL)isStartSurface {
+- (void)setNTPVisible:(BOOL)NTPVisible
+       isStartSurface:(BOOL)isStartSurface
+            isLoading:(BOOL)isLoading
+      loadingProgress:(double)progress {
   _isStartSurface = isStartSurface;
-  if (NTPVisible == _NTPVisible) {
-    return;
+
+  BOOL ntpVisibilityChanged = (NTPVisible != _NTPVisible);
+  BOOL loadingStateChanged = (isLoading != _isLoading);
+
+  if (loadingStateChanged || ntpVisibilityChanged) {
+    if (ntpVisibilityChanged) {
+      _NTPVisible = NTPVisible;
+      [self updateToolbarVisibility];
+    }
+
+    // Loading UI should not be shown on the NTP.
+    BOOL mustHideLoadingUI = !isLoading || NTPVisible;
+    _isLoading = !mustHideLoadingUI;
+    _reloadButton.forceHidden = !mustHideLoadingUI;
+    _stopButton.forceHidden = mustHideLoadingUI;
+
+    if (loadingStateChanged && isLoading) {
+      [_progressBar setProgress:0.0 animated:NO];
+    }
+    [self updateProgressBarVisibility];
   }
-  _NTPVisible = NTPVisible;
-  [self updateToolbarVisibility];
+
+  if (progress != _progressBar.progress) {
+    BOOL isGoingBackward = progress < _progressBar.progress;
+    [_progressBar setProgress:progress
+                     animated:!_progressBar.isHidden && !isGoingBackward];
+  }
 }
 
 - (void)updateTabCount:(NSUInteger)tabCount {
@@ -1054,6 +1056,18 @@ const base::TimeDelta kProgressBarEndAnimationDuration =
   return progressBar;
 }
 
+// Creates a container with a given `progressBar`. This allows a
+// `ToolbarProgressBar` to be shown and hidden without conflicting with its
+// internal visibility logic.
+- (UIView*)createContainerForProgressBar:(ToolbarProgressBar*)progressBar {
+  UIView* progressBarContainer = [[UIView alloc] init];
+  progressBarContainer.translatesAutoresizingMaskIntoConstraints = NO;
+  progressBarContainer.hidden = YES;
+  [progressBarContainer addSubview:progressBar];
+  AddSameConstraints(progressBarContainer, progressBar);
+  return progressBarContainer;
+}
+
 // Creates the views.
 - (void)createView {
   CHECK(self.buttonFactory);
@@ -1066,6 +1080,7 @@ const base::TimeDelta kProgressBarEndAnimationDuration =
     _fakeOmniboxTarget = [self createFakeOmniboxTarget];
   }
   _progressBar = [self createProgressBar];
+  _progressBarContainer = [self createContainerForProgressBar:_progressBar];
   _collapsedToolbarButton = [self createCollapsedToolbarButton];
 
   _innerSeparator = [self createSeparator];
@@ -1209,23 +1224,24 @@ const base::TimeDelta kProgressBarEndAnimationDuration =
   }
 
   [self.view addSubview:_trailingStackView];
-  [self.view addSubview:_progressBar];
+  [self.view addSubview:_progressBarContainer];
   [self.view addSubview:_innerSeparator];
   [self.view addSubview:_collapsedToolbarButton];
   AddSameConstraints(self.view, _collapsedToolbarButton);
 
   NSLayoutConstraint* progressBarEdgeConstraint =
-      _topPosition ? [_progressBar.bottomAnchor
+      _topPosition ? [_progressBarContainer.bottomAnchor
                          constraintEqualToAnchor:self.view.bottomAnchor]
-                   : [_progressBar.topAnchor
+                   : [_progressBarContainer.topAnchor
                          constraintEqualToAnchor:self.view.topAnchor];
 
   [NSLayoutConstraint activateConstraints:@[
-    [_progressBar.leadingAnchor
+    [_progressBarContainer.leadingAnchor
         constraintEqualToAnchor:self.view.leadingAnchor],
-    [_progressBar.trailingAnchor
+    [_progressBarContainer.trailingAnchor
         constraintEqualToAnchor:self.view.trailingAnchor],
-    [_progressBar.heightAnchor constraintEqualToConstant:kProgressBarHeight],
+    [_progressBarContainer.heightAnchor
+        constraintEqualToConstant:kProgressBarHeight],
     progressBarEdgeConstraint
   ]];
 
@@ -1556,19 +1572,16 @@ const base::TimeDelta kProgressBarEndAnimationDuration =
   _leadingStackView.hidden = !_visible;
   _locationBarContainer.hidden = !_visible;
   _trailingStackView.hidden = !_visible;
+  _progressBarContainer.hidden = !_visible || CanShowTabStrip(self);
   [self updateSeparatorVisibility];
   [self.toolbarHeightDelegate toolbarsHeightChanged];
 }
 
 // Starts or stops the loading progress bar.
 - (void)updateProgressBarVisibility {
-  CHECK(_progressBar);
-
-  if (![self hasOmnibox]) {
-    _progressBar.hidden = YES;
+  if (!_progressBar) {
     return;
   }
-
   [self.view layoutIfNeeded];
 
   // Cancel any pending task to hide the progress bar.
@@ -1577,15 +1590,14 @@ const base::TimeDelta kProgressBarEndAnimationDuration =
   __weak __typeof(self) weakSelf = self;
 
   // Start and unhide the progress bar.
-  if (_isLoading && !_NTPVisible && !CanShowTabStrip(self) &&
-      (_progressBar.isHidden || _progressBar.alpha < 1.0)) {
+  if (_isLoading && (_progressBar.isHidden || _progressBar.alpha < 1.0)) {
     [_progressBar setProgress:0 animated:NO];
     [_progressBar setHidden:NO
                    animated:YES
                  completion:^(BOOL) {
                    [weakSelf updateProgressBarVisibility];
                  }];
-  } else if (!_isLoading && !_progressBar.hidden) {
+  } else if (!_isLoading && !_progressBar.isHidden) {
     // Stop and hide the progress bar.
     __weak ToolbarProgressBar* progressBar = _progressBar;
     [_progressBar setProgress:1 animated:YES];
@@ -1608,6 +1620,7 @@ const base::TimeDelta kProgressBarEndAnimationDuration =
 - (void)sizeClassDidChange {
   [self updateForFullscreenProgress:_fullscreenProgress];
   [self updateLayoutConstraints];
+  [self updateToolbarElementsVisibility];
   [self updateToolbarVisibility];
   [self updateTabGroupIndicatorAvailability];
   [self updateTabSwitcherGuide];

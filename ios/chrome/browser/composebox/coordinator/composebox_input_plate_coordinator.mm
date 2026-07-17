@@ -356,6 +356,11 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
   [_omniboxCoordinator endEditing];
 }
 
+- (void)hideComposeboxMenu {
+  [_menuCoorinator stop];
+  _menuCoorinator = nil;
+}
+
 #pragma mark - ComposeboxInputPlateViewControllerDelegate
 
 - (void)composeboxViewController:
@@ -894,8 +899,7 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
 
 - (void)composeboxMenuCoordinatorDidDismissMenu:
     (ComposeboxMenuCoordinator*)composeboxMenuCoordinator {
-  [_menuCoorinator stop];
-  _menuCoorinator = nil;
+  [self hideComposeboxMenu];
 }
 
 @end

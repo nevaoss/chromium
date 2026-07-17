@@ -676,6 +676,21 @@ public class StripLayoutHelperManager
                     public void fadeCompositorButtons(boolean fade) {
                         mTrailingButtonsCoordinator.fadeCompositorButtons(fade);
                     }
+
+                    @Override
+                    public boolean isGlicButtonVisible() {
+                        return mTrailingButtonsCoordinator.isGlicButtonVisible();
+                    }
+
+                    @Override
+                    public boolean isGlicUiVisible() {
+                        return mTrailingButtonsCoordinator.isGlicUiVisible();
+                    }
+
+                    @Override
+                    public @Nullable CompositorButton getGlicButton() {
+                        return mTrailingButtonsCoordinator.getGlicButton();
+                    }
                 };
 
         mNormalHelper =
@@ -1638,6 +1653,14 @@ public class StripLayoutHelperManager
                     @Override
                     public void onCrash(Tab tab) {
                         getStripLayoutHelper(tab.isIncognitoBranded()).tabLoadFinished(tab.getId());
+                    }
+
+                    @Override
+                    public void onPageLoadFinished(Tab tab, GURL url) {
+                        if (tab == mTabModelSelector.getCurrentTab()) {
+                            getStripLayoutHelper(tab.isIncognitoBranded())
+                                    .attemptToQueueGlicIph(tab);
+                        }
                     }
 
                     @Override

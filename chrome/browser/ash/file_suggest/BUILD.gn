@@ -16,8 +16,6 @@ static_library("file_suggest") {
     "file_suggest_util.h",
     "file_suggestion_provider.cc",
     "file_suggestion_provider.h",
-    "item_suggest_cache.cc",
-    "item_suggest_cache.h",
     "local_file_suggestion_provider.cc",
     "local_file_suggestion_provider.h",
   ]
@@ -80,7 +78,6 @@ source_set("unit_tests") {
   sources = [
     "drive_recent_file_suggestion_provider_unittest.cc",
     "file_suggest_keyed_service_unittest.cc",
-    "item_suggest_cache_unittest.cc",
     "local_file_suggestion_provider_unittest.cc",
   ]
 

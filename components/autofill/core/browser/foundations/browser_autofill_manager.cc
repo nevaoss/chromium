@@ -276,6 +276,7 @@ FillDataType GetEventTypeFromSingleFieldSuggestionType(SuggestionType type) {
     case SuggestionType::kManageAddress:
     case SuggestionType::kManageAutofillAi:
     case SuggestionType::kManageAutofillAiIdentityDocs:
+    case SuggestionType::kManageAutofillAiShopping:
     case SuggestionType::kManageAutofillAiTravel:
     case SuggestionType::kManageCreditCard:
     case SuggestionType::kManageIban:
@@ -328,6 +329,8 @@ FillDataType GetEventTypeFromSingleFieldSuggestionType(SuggestionType type) {
     case SuggestionType::kAtMemorySearchAffordance:
     case SuggestionType::kPersonalContextNotice:
     case SuggestionType::kFetchingAmbientData:
+    case SuggestionType::kMaximizeCreditCardBenefitsEntry:
+    case SuggestionType::kAutofillAiOtherOrders:
       NOTREACHED();
   }
   NOTREACHED();
@@ -714,6 +717,7 @@ bool IsManagementFooterOption(const Suggestion& suggestion) {
     case SuggestionType::kManageAddress:
     case SuggestionType::kManageAutofillAi:
     case SuggestionType::kManageAutofillAiIdentityDocs:
+    case SuggestionType::kManageAutofillAiShopping:
     case SuggestionType::kManageAutofillAiTravel:
     case SuggestionType::kManageCreditCard:
     case SuggestionType::kManageIban:
@@ -769,12 +773,14 @@ bool IsManagementFooterOption(const Suggestion& suggestion) {
     case SuggestionType::kPendingStateSignin:
     case SuggestionType::kLoadingThrobber:
     case SuggestionType::kFetchingAmbientData:
+    case SuggestionType::kAutofillAiOtherOrders:
     case SuggestionType::kBnplFootnote:
     case SuggestionType::kAutocompleteAtMemoryButton:
     case SuggestionType::kAtMemoryNoConnection:
     case SuggestionType::kAtMemoryGenericError:
     case SuggestionType::kAtMemorySearchAffordance:
     case SuggestionType::kPersonalContextNotice:
+    case SuggestionType::kMaximizeCreditCardBenefitsEntry:
       return false;
   }
 }
@@ -1243,13 +1249,8 @@ void BrowserAutofillManager::OnAskForValuesToFillImpl(
     return;
   }
 
-  // TODO(crbug.com/519061643): Rely on central atMemory eligibility logic
-  // instead.
   if (IsAtMemoryTriggerSource(trigger_source) &&
-      (client().GetPersonalContextEnablementState() ==
-           personal_context::PersonalContextEnablementState::
-               kDisabledNotEligible ||
-       !IsAtMemoryFeatureEnabled(client().GetGoogleGroupsManager()))) {
+      !MayPerformAtMemoryAction(AtMemoryAction::kTriggerSearchUI, client())) {
     return;
   }
 
@@ -3482,7 +3483,8 @@ void BrowserAutofillManager::InitializeSuggestionGenerators(
     suggestion_generators_.push_back(
         std::make_unique<AutocompleteSuggestionGenerator>(
             client().GetAutocompleteHistoryManager()->GetProfileDatabase(),
-            IsAtMemoryFeatureEnabled(client().GetGoogleGroupsManager())));
+            MayPerformAtMemoryAction(AtMemoryAction::kTriggerSearchUI,
+                                     client())));
   }
   if (relevant_filling_products.contains(FillingProduct::kLoyaltyCard) &&
       client().GetValuablesDataManager()) {

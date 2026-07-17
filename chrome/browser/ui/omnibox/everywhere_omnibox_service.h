@@ -45,7 +45,6 @@ class EverywhereOmniboxService : public KeyedService,
   void TogglePopup();
   void HidePopup();
   bool IsPopupVisible() const;
-  bool IsEverywherePopup(content::WebContents* web_contents) const;
   void OpenUrl(const GURL& url,
                WindowOpenDisposition disposition,
                ui::PageTransition transition = ui::PAGE_TRANSITION_LINK);
@@ -88,7 +87,6 @@ class EverywhereOmniboxService : public KeyedService,
 
   bool is_navigating_ = false;
   bool was_active_before_popup_ = false;
-  bool creating_everywhere_popup_ = false;
   base::TimeTicks last_key_press_time_;
 
   base::ScopedObservation<views::Widget, views::WidgetObserver>

@@ -10,15 +10,20 @@
 
 #include "base/functional/bind.h"
 #include "base/notreached.h"
+#include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/mock_callback.h"
 #include "base/test/task_environment.h"
 #include "components/omnibox/browser/ai_mode_button_config.h"
+#include "components/omnibox/browser/test_ai_mode_button_service.h"
+#include "components/search_engines/search_engine_type.h"
 #include "components/search_engines/search_engines_test_environment.h"
 #include "components/search_engines/template_url.h"
 #include "components/search_engines/template_url_service.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+
+namespace {
 
 class AiModeButtonServiceTest : public testing::Test {
  public:
@@ -64,7 +69,7 @@ TEST_F(AiModeButtonServiceTest, ConfigWithGoogleDse) {
   const auto* config = service_->GetCurrentConfig();
   ASSERT_TRUE(config);
   EXPECT_EQ(config->id, SearchEngineType::SEARCH_ENGINE_GOOGLE);
-  EXPECT_EQ(config->text, u"Google AI");
+  EXPECT_EQ(std::u16string_view(config->text), u"Google AI");
 }
 
 TEST_F(AiModeButtonServiceTest, NoConfigWithNonGoogleDse) {
@@ -118,3 +123,156 @@ TEST_F(AiModeButtonServiceTest, CallbackCalledWhenDseChange) {
   template_url_service()->SetUserSelectedDefaultSearchProvider(
       FindTurl(u"google2"));
 }
+
+TEST_F(AiModeButtonServiceTest, IsValidConfig) {
+  // Helper to mutate the const pointers of AiModeButtonConfig.
+  auto mutate = []<typename T>(const T& field, T new_value) {
+    const_cast<T&>(field) = new_value;
+  };
+
+  // Test empty config.
+  ai_mode_button_config::AiModeButtonConfig empty_config = {
+      .id = SearchEngineType::SEARCH_ENGINE_UNKNOWN,
+      .text = nullptr,
+      .tooltip = nullptr,
+      .a11y_label = nullptr,
+      .context_menu_label = nullptr,
+      .placeholder_text = nullptr,
+      .favicon_url = nullptr,
+      .navigation_url = nullptr,
+      .navigation_url_empty = nullptr,
+  };
+  EXPECT_FALSE(TestAiModeButtonService::IsValidConfig(empty_config));
+
+  // Test valid config.
+  ai_mode_button_config::AiModeButtonConfig valid_config{
+      SearchEngineType::SEARCH_ENGINE_BING,
+      u"Bing text",
+      u"Bing tooltip",
+      u"Bing a11y",
+      u"Bing menu",
+      u"Bing placeholder",
+      "https://bing.com/favicon.ico",
+      "https://bing.com/search?q={searchTerms}",
+      "https://bing.com/chat",
+  };
+  EXPECT_TRUE(TestAiModeButtonService::IsValidConfig(valid_config));
+
+  // Test individual fields missing.
+  {
+    auto config_copy = valid_config;
+    mutate(config_copy.text, u"");
+    EXPECT_FALSE(TestAiModeButtonService::IsValidConfig(config_copy));
+  }
+  {
+    auto config_copy = valid_config;
+    mutate(config_copy.tooltip, u"");
+    EXPECT_FALSE(TestAiModeButtonService::IsValidConfig(config_copy));
+  }
+  {
+    auto config_copy = valid_config;
+    mutate(config_copy.a11y_label, u"");
+    EXPECT_FALSE(TestAiModeButtonService::IsValidConfig(config_copy));
+  }
+  {
+    auto config_copy = valid_config;
+    mutate(config_copy.context_menu_label, u"");
+    EXPECT_FALSE(TestAiModeButtonService::IsValidConfig(config_copy));
+  }
+  {
+    auto config_copy = valid_config;
+    mutate(config_copy.placeholder_text, u"");
+    EXPECT_FALSE(TestAiModeButtonService::IsValidConfig(config_copy));
+  }
+  {
+    auto config_copy = valid_config;
+    mutate(config_copy.favicon_url, "");
+    EXPECT_FALSE(TestAiModeButtonService::IsValidConfig(config_copy));
+  }
+  {
+    auto config_copy = valid_config;
+    mutate(config_copy.navigation_url, "");
+    EXPECT_FALSE(TestAiModeButtonService::IsValidConfig(config_copy));
+  }
+  {
+    auto config_copy = valid_config;
+    mutate(config_copy.navigation_url_empty, "");
+    EXPECT_FALSE(TestAiModeButtonService::IsValidConfig(config_copy));
+  }
+
+  // Test string fields too long.
+  {
+    auto config_copy = valid_config;
+    std::u16string long_str(17, 'a');
+    mutate(config_copy.text, long_str.c_str());
+    EXPECT_FALSE(TestAiModeButtonService::IsValidConfig(config_copy));
+  }
+  {
+    auto config_copy = valid_config;
+    std::u16string long_str(65, 'a');
+    mutate(config_copy.tooltip, long_str.c_str());
+    EXPECT_FALSE(TestAiModeButtonService::IsValidConfig(config_copy));
+  }
+  {
+    auto config_copy = valid_config;
+    std::u16string long_str(65, 'a');
+    mutate(config_copy.a11y_label, long_str.c_str());
+    EXPECT_FALSE(TestAiModeButtonService::IsValidConfig(config_copy));
+  }
+  {
+    auto config_copy = valid_config;
+    std::u16string long_str(65, 'a');
+    mutate(config_copy.context_menu_label, long_str.c_str());
+    EXPECT_FALSE(TestAiModeButtonService::IsValidConfig(config_copy));
+  }
+  {
+    auto config_copy = valid_config;
+    std::u16string long_str(65, 'a');
+    mutate(config_copy.placeholder_text, long_str.c_str());
+    EXPECT_FALSE(TestAiModeButtonService::IsValidConfig(config_copy));
+  }
+
+  // Test invalid urls.
+  {
+    auto config_copy = valid_config;
+    mutate(config_copy.favicon_url, "bad");
+    EXPECT_FALSE(TestAiModeButtonService::IsValidConfig(config_copy));
+  }
+  {
+    auto config_copy = valid_config;
+    mutate(config_copy.navigation_url, "bad");
+    EXPECT_FALSE(TestAiModeButtonService::IsValidConfig(config_copy));
+  }
+  {
+    auto config_copy = valid_config;
+    mutate(config_copy.navigation_url_empty, "bad");
+    EXPECT_FALSE(TestAiModeButtonService::IsValidConfig(config_copy));
+  }
+
+  // Test missing search placeholder in `navigation_url`.
+  {
+    auto config_copy = valid_config;
+    mutate(config_copy.navigation_url,
+           "https://bing.com/search?q=no_placeholder");
+    EXPECT_FALSE(TestAiModeButtonService::IsValidConfig(config_copy));
+  }
+
+  // Test the tests above were actually making copies and not mutating the
+  // original.
+  {
+    auto config_copy = valid_config;
+    EXPECT_TRUE(TestAiModeButtonService::IsValidConfig(config_copy));
+  }
+}
+
+TEST(AiModeButtonConfigTest, AllCompiledThirdPartyConfigsAreValid) {
+  // Verify that every single 3p config defined in ai_mode_button_config.json is
+  // valid.
+  for (const auto* config : ai_mode_button_config::kAiModeButtonConfigs) {
+    SCOPED_TRACE(
+        base::StringPrintf("Testing ID %d", static_cast<int>(config->id)));
+    EXPECT_TRUE(TestAiModeButtonService::IsValidConfig(*config));
+  }
+}
+
+}  // namespace

@@ -144,19 +144,10 @@ inline constexpr char kAutofillAiNoFillingIconsExperimentName[] =
 inline constexpr char kAutofillAiNoFillingIconsExperimentDescription[] =
     "If enabled, Autofill AI filling suggestions do not have an icon.";
 
-inline constexpr char kAutofillAiOrderName[] = "Autofill AI Order entities";
-inline constexpr char kAutofillAiOrderDescription[] =
-    "Enables Autofill AI support for order entities.";
-
 inline constexpr char kAutofillAiReauthRequiredName[] =
     "Autofill AI Reauth Required";
 inline constexpr char kAutofillAiReauthRequiredDescription[] =
     "Enables Autofill AI Reauth Required.";
-
-inline constexpr char kAutofillAiShipmentName[] =
-    "Autofill AI Shipment entities";
-inline constexpr char kAutofillAiShipmentDescription[] =
-    "Enables Autofill AI support for shipment entities.";
 
 inline constexpr char kAutofillAiValuablesIPHName[] =
     "IPH Autofill AI Valuables";
@@ -289,6 +280,13 @@ inline constexpr char kAutofillPruneSuggestionsName[] =
     "Autofill Prune Suggestions";
 inline constexpr char kAutofillPruneSuggestionsDescription[] =
     "Further limits the number of suggestions in the Autofill dropdown.";
+
+inline constexpr char kAutofillRejectFormSubmissionsWithoutUserGestureName[] =
+    "Reject autofill form submissions without a user gesture";
+inline constexpr char
+    kAutofillRejectFormSubmissionsWithoutUserGestureDescription[] =
+        "When enabled, form submission events will be ignored if they lack a "
+        "user gesture.";
 
 inline constexpr char kAutofillSupportDateInputName[] =
     "Autofill support for date input";
@@ -825,6 +823,11 @@ inline constexpr char kGeminiClientMigrationDescription[] =
     "Enables the client migration for Gemini, adding the infrastructure for "
     "several key features that render more than just text.";
 
+inline constexpr char kGeminiContextualSuggestionsCuesName[] =
+    "Gemini Contextual Suggestions Cues";
+inline constexpr char kGeminiContextualSuggestionsCuesDescription[] =
+    "Enables Gemini contextual suggestions cues framework.";
+
 inline constexpr char kGeminiImageRemixToolName[] = "Gemini Image Remix Tool";
 inline constexpr char kGeminiImageRemixToolDescription[] =
     "Enables the image remix tool in the Gemini floaty.";
@@ -1108,11 +1111,6 @@ inline constexpr char kIdentityConfirmationSnackbarName[] =
 inline constexpr char kIdentityConfirmationSnackbarDescription[] =
     "When enabled, the identity confirmation snackbar will show on startup.";
 
-inline constexpr char kInFlowTrustedVaultKeyRetrievalIosName[] =
-    "In-flow Trusted Vault key retrieval";
-inline constexpr char kInFlowTrustedVaultKeyRetrievalIosDescription[] =
-    "Starts the key retrieval flow after offering to save a password.";
-
 inline constexpr char kInProductHelpDemoModeName[] =
     "In-Product Help Demo Mode";
 inline constexpr char kInProductHelpDemoModeDescription[] =
@@ -1126,6 +1124,10 @@ inline constexpr char kIndicateIdentityErrorInOverflowMenuName[] =
 inline constexpr char kIndicateIdentityErrorInOverflowMenuDescription[] =
     "When enabled, the Overflow Menu indicates the identity error with an "
     "error badge on the Settings destination";
+
+inline constexpr char kInfobarBannerRevampName[] = "Infobar Banner Revamp";
+inline constexpr char kInfobarBannerRevampDescription[] =
+    "Enables the revamped UI design for Infobar Banner.";
 
 inline constexpr char
     kInvalidateSearchEngineChoiceOnDeviceRestoreDetectionName[] =
@@ -1374,6 +1376,10 @@ inline constexpr char kNewTabPageFieldTrialDescription[] =
     "Enables new tab page features that are available on first run for new "
     "Chrome iOS users.";
 
+inline constexpr char kNewTabPageRedesignName[] = "New Tab Page Redesign";
+inline constexpr char kNewTabPageRedesignDescription[] =
+    "Enables the redesigned New Tab Page on iOS (iPhone only).";
+
 inline constexpr char kNoAccountWebSigninName[] =
     "Enable no account web sigin bottom sheet";
 inline constexpr char kNoAccountWebSigninDescription[] =
@@ -1595,6 +1601,12 @@ inline constexpr char kPasswordReuseDetectionDescription[] =
     "Displays warning when user types or pastes a saved password into a "
     "phishing website.";
 
+inline constexpr char kPasswordSaveInContextErrorResolutionName[] =
+    "In-flow resolution of errors during password saving";
+inline constexpr char kPasswordSaveInContextErrorResolutionDescription[] =
+    "Starts the password manager error resolution flow after offering to save "
+    "a password.";
+
 inline constexpr char kPasswordSharingName[] = "Enables password sharing";
 inline constexpr char kPasswordSharingDescription[] =
     "Enables password sharing between members of the same family.";
@@ -1650,12 +1662,6 @@ inline constexpr char kProvisionalNotificationAlertName[] =
 inline constexpr char kProvisionalNotificationAlertDescription[] =
     "Shows an alert to the user when app notification settings are changed but "
     "only provisonal notifications are enabled";
-
-inline constexpr char kRcapsDynamicProfileCountryName[] =
-    "Dynamic Profile Country";
-inline constexpr char kRcapsDynamicProfileCountryDescription[] =
-    "When enabled, Chrome updates the country associated with "
-    "the profile on open";
 
 inline constexpr char kReaderModeContentSettingsForLinksName[] =
     "Enables Content Settings options for Reading Mode";

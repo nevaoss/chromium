@@ -200,8 +200,17 @@ class FakeContextualSearchboxHandler : public ContextualSearchboxHandler {
     ContextualSearchboxHandler::OnDrivePickerDisconnected();
   }
 
+  bool IsContextualSearchTabSharingEligible() const override {
+    return tab_sharing_eligible_;
+  }
+
+  void set_tab_sharing_eligible(bool eligible) {
+    tab_sharing_eligible_ = eligible;
+  }
+
  private:
   std::optional<bool> smart_tab_sharing_active_override_;
+  bool tab_sharing_eligible_ = true;
 };
 
 class MockDrivePickerHostController : public DrivePickerHostController {

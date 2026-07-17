@@ -356,6 +356,8 @@ String ToString(PseudoId pseudo_id) {
       return "kPseudoIdDetailsContent";
     case kPseudoIdPickerSelect:
       return "kPseudoIdPickerSelect";
+    case kPseudoIdSelectListbox:
+      return "kPseudoIdSelectListbox";
     case kPseudoIdPermissionIcon:
       return "kPseudoIdPermissionIcon";
     case kAfterLastInternalPseudoId:

@@ -14,11 +14,18 @@ component("private_insights") {
     "private_insights_service.cc",
   ]
   defines = [ "IS_PRIVATE_INSIGHTS_IMPL" ]
+  public_deps = [
+    "//components/keyed_service/core",
+    "//components/metrics",
+    "//components/prefs",
+  ]
   deps = [
     ":fcp_event_publisher",
+    ":fcp_files",
     ":fcp_log_manager",
+    ":fcp_simple_task_environment",
     "//base",
-    "//components/keyed_service/core",
+    "//google_apis",
     "//third_party/federated_compute:fl_runner",
   ]
 }
@@ -39,13 +46,39 @@ source_set("fcp_log_manager") {
   deps = [ "//base" ]
 }
 
+source_set("fcp_simple_task_environment") {
+  visibility = [ ":*" ]
+  public = [ "fcp_simple_task_environment.h" ]
+  sources = [ "fcp_simple_task_environment.cc" ]
+  public_deps = [
+    "//third_party/federated_compute:client_proto",
+    "//third_party/federated_compute:fl_runner",
+  ]
+}
+
+source_set("fcp_files") {
+  visibility = [ ":*" ]
+  public = [ "fcp_files.h" ]
+  sources = [ "fcp_files.cc" ]
+  public_deps = [ "//third_party/federated_compute:fl_runner" ]
+  deps = [ "//base" ]
+}
+
 source_set("unit_tests") {
   testonly = true
-  sources = [ "private_insights_service_unittest.cc" ]
+  sources = [
+    "fcp_files_unittest.cc",
+    "fcp_simple_task_environment_unittest.cc",
+    "private_insights_service_unittest.cc",
+  ]
   deps = [
+    ":fcp_files",
+    ":fcp_simple_task_environment",
     ":private_insights",
     "//base",
     "//base/test:test_support",
+    "//components/metrics",
+    "//components/prefs:test_support",
     "//testing/gtest",
   ]
 }

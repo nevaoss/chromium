@@ -204,11 +204,9 @@ GlicInstanceImpl::EmbedderEntry& GlicInstanceImpl::EmbedderEntry::operator=(
     EmbedderEntry&&) = default;
 
 GlicInstanceImpl::GlicInstanceImpl(
-    Profile* profile,
-    InstanceId instance_id,
+    Profile* profile, InstanceId instance_id,
     base::WeakPtr<InstanceCoordinatorDelegate> coordinator_delegate,
-    GlicMetrics* metrics,
-    ContextualCueingService* contextual_cueing_service)
+    GlicMetrics* metrics, ContextualCueingService* contextual_cueing_service)
     : profile_(profile),
       service_(GlicKeyedService::Get(profile)),
       coordinator_delegate_(coordinator_delegate),
@@ -217,13 +215,10 @@ GlicInstanceImpl::GlicInstanceImpl(
       sharing_manager_coordinator_(profile, this, metrics),
       instance_metrics_(ProfileMetricsServiceFactory::GetForProfile(profile),
                         &sharing_manager_coordinator_.GetActiveSharingManager(),
-                        GetSaasUsageReportingController(profile),
-                        profile->GetPrefs()),
+                        GetSaasUsageReportingController(profile), profile),
       zero_state_suggestions_manager_(
           std::make_unique<GlicZeroStateSuggestionsManager>(
-              &GetSharingManagerInternal(),
-              this,
-              contextual_cueing_service)),
+              &GetSharingManagerInternal(), this, contextual_cueing_service)),
       last_activation_timestamp_(base::Time::Now()),
       last_deactivation_timestamp_(base::TimeTicks::Now()) {
   VLOG(1) << "Glic [InstanceImpl] Constructor, id=" << id_.value();
@@ -1122,7 +1117,9 @@ void GlicInstanceImpl::OnBoundTabActivated(tabs::TabInterface* tab) {
   if (embedder && embedder->IsShowingOrBackgrounded()) {
     // Ensure that the side panel in this tab becomes the active embedder.
     SidePanelShowOptions side_panel_options{*tab};
+    side_panel_options.suppress_opening_animation = true;
     side_panel_options.prefer_peek = true;
+    side_panel_options.open_trigger = SidePanelOpenTrigger::kTabChanged;
     Show(ShowOptions{side_panel_options});
   }
 }
@@ -1337,8 +1334,11 @@ void GlicInstanceImpl::MaybeActivateForegroundEmbedder() {
         auto* coordinator = GlicSidePanelCoordinator::GetForTab(*tab);
         if (coordinator &&
             coordinator->state() == GlicSidePanelCoordinator::State::kShown) {
-          // Note that this will only happen for full show, not peek.
-          Show(ShowOptions::ForSidePanel(**tab));
+          // Note that this will only happen for a fully showing panel, not
+          // peek.
+          SidePanelShowOptions side_panel_options{**tab};
+          side_panel_options.open_trigger = SidePanelOpenTrigger::kTabChanged;
+          Show(ShowOptions{side_panel_options});
           return;
         }
       }

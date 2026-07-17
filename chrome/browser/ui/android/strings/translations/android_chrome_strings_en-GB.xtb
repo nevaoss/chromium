@@ -17,9 +17,11 @@
 <translation id="1052842760770519282">Some of your passwords aren't accessible</translation>
 <translation id="1057623954802068161">Scroll to top of page</translation>
 <translation id="1066338698580889414">Tips notifications promo opened at full height</translation>
+<translation id="1067048845568873861">Created</translation>
 <translation id="1070689840697074178">You can download PDFs here</translation>
 <translation id="107147699690128016">If you change the file extension, the file may open in a different application and potentially be a hazard to your device.</translation>
 <translation id="1073328695547557412">Tap the Google Lens icon</translation>
+<translation id="1075811647922107217">Page size</translation>
 <translation id="1080116354587839789">Fit to width</translation>
 <translation id="1086486568852410168">Search with Google Lens</translation>
 <translation id="1087799850623149508">You can touch and hold to move the address bar to the bottom</translation>
@@ -642,6 +644,7 @@ Only someone with your passphrase can read your encrypted data. The passphrase i
 <translation id="3739899004075612870">Bookmarked in <ph name="PRODUCT_NAME" /></translation>
 <translation id="3740290940447881599">Make sure that you trust this site</translation>
 <translation id="3740525748616366977">Voice search is not available on this device</translation>
+<translation id="3749289110408117711">File name</translation>
 <translation id="3756823472711156529">Restore group</translation>
 <translation id="3763110477555836428">A virtual card number will be filled when you check out with this card to protect your actual details. Manage in Google Wallet. <ph name="BEGIN_LINK1" />Learn more about virtual cards<ph name="END_LINK1" /></translation>
 <translation id="376561056759077985">Some data isn't saved yet</translation>
@@ -673,6 +676,7 @@ Only someone with your passphrase can read your encrypted data. The passphrase i
 <translation id="3870538285500327859"><ph name="TAB_TITLE" />, selected picture-in-picture tab</translation>
 <translation id="3870908470613821006">Everyone will immediately lose access to the '<ph name="GROUP_NAME" />' tab group, and it will be deleted from all devices</translation>
 <translation id="3873174561423636563">To continue, <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> will share your <ph name="FIELDS_STRING" /> with this site. See this site's <ph name="BEGIN_LINK1" />Terms of Service<ph name="END_LINK1" />.</translation>
+<translation id="3882323608730650973">Modified</translation>
 <translation id="3892148308691398805">Copy text</translation>
 <translation id="3893858854379998374">To save bookmarks in your account, delete your unused bookmarks</translation>
 <translation id="3898498281932368596">Block and leave</translation>
@@ -703,6 +707,7 @@ Only someone with your passphrase can read your encrypted data. The passphrase i
 <translation id="399788104667917863">Pin to toolbar</translation>
 <translation id="4000212216660919741">Offline Home</translation>
 <translation id="4000670338830950598">Customise and control Google Chrome with a highlighted item</translation>
+<translation id="4002066346123236978">Title</translation>
 <translation id="4015643064997321279">{NUM_PASSWORDS,plural, =1{1 compromised password in your Google Account}other{# compromised passwords in your Google Account}}</translation>
 <translation id="4023638601467301498">To get your bookmarks and more on all your devices, sign in to Chrome</translation>
 <translation id="4024768890073681126">Your browser is managed by your parent</translation>
@@ -1987,6 +1992,7 @@ To change this setting, <ph name="BEGIN_LINK" />delete the Chrome data in your a
 <translation id="9093915805850895575">Open in Chrome window</translation>
 <translation id="909756639352028172">To get the most personalised experience, include Chrome in Web &amp; App Activity and linked Google services</translation>
 <translation id="9099220545925418560">Based on your browsing history. This setting is off.</translation>
+<translation id="9099674669267916096">Page count</translation>
 <translation id="9100610230175265781">Passphrase required</translation>
 <translation id="9101137867221042551">Management</translation>
 <translation id="9102803872260866941">Preview tab is opened</translation>

@@ -42,7 +42,8 @@ std::unique_ptr<net::CanonicalCookie> CanonicalCookieFromSystemCookie(
   }
 
   if ([[cookie.sameSitePolicy lowercaseString]
-          isEqual:kNSHTTPCookieSameSiteNone]) {
+          isEqual:kNSHTTPCookieSameSiteNone] &&
+      cookie.isSecure) {
     same_site = net::CookieSameSite::NO_RESTRICTION;
   }
 

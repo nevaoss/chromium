@@ -22,6 +22,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
@@ -71,6 +72,13 @@ public class AtMemorySearchBarViewTest {
     }
 
     @Test
+    public void testClearSearchText_emptyTextIsNoOp() {
+        mView.setOnQueryTextChangedCallback(mMockCallback);
+        mView.clearSearchText();
+        Mockito.verifyNoInteractions(mMockCallback);
+    }
+
+    @Test
     public void testClearButtonVisibilityOnTextChange() {
         assertEquals(View.GONE, mClearButton.getVisibility());
 
@@ -100,5 +108,12 @@ public class AtMemorySearchBarViewTest {
 
         mSearchEditText.onEditorAction(EditorInfo.IME_ACTION_SEARCH);
         verify(mMockCallback).onResult("test query");
+    }
+
+    @Test
+    public void testOnQueryTextChangedCallback() {
+        mView.setOnQueryTextChangedCallback(mMockCallback);
+        mSearchEditText.setText("abc");
+        verify(mMockCallback).onResult("abc");
     }
 }

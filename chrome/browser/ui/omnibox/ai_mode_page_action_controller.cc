@@ -15,6 +15,7 @@
 #include "chrome/browser/bitmap_fetcher/bitmap_fetcher_service_factory.h"
 #include "chrome/browser/favicon/favicon_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
@@ -150,8 +151,9 @@ AiModePageActionController* AiModePageActionController::From(
 void AiModePageActionController::OpenAiMode(
     OmniboxController& omnibox_controller,
     bool via_keyboard) {
-  omnibox_controller.edit_model()->OpenAiMode(via_keyboard,
-                                              /*via_context_menu=*/false);
+  omnibox_controller.edit_model()->OpenAiMode(
+      via_keyboard ? OmniboxEditModel::AimActivation::kKeyboard
+                   : OmniboxEditModel::AimActivation::kClickOrGesture);
 }
 
 // static
@@ -169,23 +171,19 @@ void AiModePageActionController::NotifyOmniboxTriggeredFeatureService(
 bool AiModePageActionController::ShouldShowPageAction(
     Profile* profile,
     LocationBarView& location_bar_view) {
-  auto* service = AiModeButtonServiceFactory::GetForProfile(profile);
-  if (!service) {
-    return false;
-  }
-  auto* config = service->GetCurrentConfig();
-  if (!config || !config->IsValid()) {
-    return false;
-  }
-
   if (!profile->GetPrefs()->GetBoolean(omnibox::kShowAiModeOmniboxButton)) {
     return false;
   }
 
   const auto* aim_eligibility_service =
       AimEligibilityServiceFactory::GetForProfile(profile);
-  if (!OmniboxFieldTrial::IsAimOmniboxEntrypointEnabled(
-          aim_eligibility_service)) {
+  auto* ai_mode_button_service =
+      AiModeButtonServiceFactory::GetForProfile(profile);
+  const auto* template_url_service =
+      TemplateURLServiceFactory::GetForProfile(profile);
+  if (!OmniboxFieldTrial::IsAimOmniboxEntrypointEnabled(aim_eligibility_service,
+                                                        ai_mode_button_service,
+                                                        template_url_service)) {
     return false;
   }
 

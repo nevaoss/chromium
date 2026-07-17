@@ -10,9 +10,9 @@
 #include "base/files/file_path.h"
 #include "base/hash/hash.h"
 #include "chrome/browser/ntp_customization/jni_headers/NtpThemeCollectionBridge_jni.h"
+#include "chrome/browser/ntp_customization/ntp_android_custom_background_service.h"
+#include "chrome/browser/ntp_customization/ntp_android_custom_background_service_factory.h"
 #include "chrome/browser/search/background/ntp_background_service_factory.h"
-#include "chrome/browser/search/background/ntp_custom_background_service.h"
-#include "chrome/browser/search/background/ntp_custom_background_service_factory.h"
 #include "components/themes/ntp_background_data.h"
 #include "components/themes/ntp_background_service.h"
 #include "url/android/gurl_android.h"
@@ -38,7 +38,7 @@ NtpThemeCollectionBridge::NtpThemeCollectionBridge(
       ntp_background_service_(
           NtpBackgroundServiceFactory::GetForProfile(profile)),
       ntp_custom_background_service_(
-          NtpCustomBackgroundServiceFactory::GetForProfile(profile)),
+          NtpAndroidCustomBackgroundServiceFactory::GetForProfile(profile)),
       j_java_obj_(env, j_java_obj) {
   CHECK(ntp_background_service_);
   CHECK(ntp_custom_background_service_);

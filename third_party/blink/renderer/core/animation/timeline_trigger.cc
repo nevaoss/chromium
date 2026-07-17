@@ -21,6 +21,7 @@
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
+#include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
 #include "third_party/blink/renderer/core/style/computed_style_constants.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
@@ -192,12 +193,18 @@ void TimelineTrigger::CreateCompositorTrigger() {
     return;
   }
 
+  Document* document = GetDocument();
+  if (!document || !document->View() ||
+      !document->View()->GetCompositorAnimationHost()) {
+    return;
+  }
+
   cc::AnimationTimeline* cc_timeline =
       Timeline() ? Timeline()->EnsureCompositorTimeline() : nullptr;
   if (!cc_timeline) {
     return;
   }
-  GetDocument()->AttachCompositorTimeline(cc_timeline);
+  document->AttachCompositorTimeline(cc_timeline);
 
   std::optional<CcBoundaries> cc_boundaries = ComputeCcBoundaries(cc_timeline);
   if (!cc_boundaries) {
@@ -205,7 +212,9 @@ void TimelineTrigger::CreateCompositorTrigger() {
   }
 
   cc::AnimationHost* host = cc_timeline->animation_host();
-  CHECK(host);
+  if (!host) {
+    return;
+  }
 
   scoped_refptr<cc::AnimationTimeline> scopedref_cc_timeline =
       host->GetScopedRefTimelineById(cc_timeline->id());

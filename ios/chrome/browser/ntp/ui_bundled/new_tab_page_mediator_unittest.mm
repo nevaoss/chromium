@@ -137,9 +137,6 @@ class NewTabPageMediatorTest : public PlatformTest {
     profile_ = std::move(test_profile_builder).Build();
     browser_ = std::make_unique<TestBrowser>(profile_.get());
 
-    std::unique_ptr<ToolbarTestNavigationManager> navigation_manager =
-        std::make_unique<ToolbarTestNavigationManager>();
-    navigation_manager_ = navigation_manager.get();
     initial_web_state_ = CreateWebStateWithURL(GURL("chrome://newtab"), 0.0);
 
     UrlLoadingNotifierBrowserAgent::CreateForBrowser(browser_.get());
@@ -273,7 +270,6 @@ class NewTabPageMediatorTest : public PlatformTest {
       discover_feed_visibility_browser_agent_;
   FakeDiscoverFeedEligibilityHandler* eligibility_handler_;
   NewTabPageMediator* mediator_;
-  raw_ptr<ToolbarTestNavigationManager, DanglingUntriaged> navigation_manager_;
   raw_ptr<FakeUrlLoadingBrowserAgent> url_loader_;
   raw_ptr<BrowserViewVisibilityNotifierBrowserAgent>
       browser_view_visibility_notifier_;

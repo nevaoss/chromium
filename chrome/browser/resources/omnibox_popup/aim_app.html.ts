@@ -26,8 +26,8 @@ export function getHtml(this: OmniboxAimAppElement) {
       .webuiOmniboxSimplificationEnabled="${this.webuiOmniboxSimplificationEnabled_}"
       .showVoiceSearch="${true}"
       .disableVoiceSearchAnimation="${this.disableVoiceSearchAnimation_}"
-      @embedded-voice-permission-prompt-changed=
-          "${this.onEmbeddedVoicePermissionPromptChanged}"
+      @voice-permission-prompt-changed=
+          "${this.onVoicePermissionPromptChanged}"
       @context-menu-entrypoint-click="${this.onContextMenuEntrypointClick_}"
       @close-composebox="${this.onCloseComposebox_}"
       @composebox-submit="${this.onComposeboxSubmit_}">

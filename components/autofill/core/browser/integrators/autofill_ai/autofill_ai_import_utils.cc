@@ -46,9 +46,14 @@ namespace autofill {
 
 namespace {
 
-bool EntitySatisfiesImportConstraints(const EntityInstance& entity) {
-  return AttributesMeetImportConstraints(
-      entity.type(), DenseSet(entity.attributes(), &AttributeInstance::type));
+bool EntitySatisfiesImportConstraints(const AutofillClient& client,
+                                      const EntityInstance& entity) {
+  return !IsAutofillAiEntityTypeBlockedByPolicy(
+             client, client.GetLastCommittedPrimaryMainFrameURL(),
+             entity.type()) &&
+         AttributesMeetImportConstraints(
+             entity.type(),
+             DenseSet(entity.attributes(), &AttributeInstance::type));
 }
 
 }  // namespace
@@ -220,7 +225,7 @@ std::vector<EntityInstance> GetPossibleEntitiesFromSubmittedForm(
           /*use_date=*/base::Time::Now(), record_type,
           EntityInstance::AreAttributesReadOnly(false),
           /*frecency_override=*/"");
-      if (!EntitySatisfiesImportConstraints(entity)) {
+      if (!EntitySatisfiesImportConstraints(client, entity)) {
         continue;
       }
       entities_found_in_form.push_back(std::move(entity));

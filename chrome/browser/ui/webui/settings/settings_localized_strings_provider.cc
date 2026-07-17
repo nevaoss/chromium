@@ -635,10 +635,6 @@ void AddAppearanceStrings(content::WebUIDataSource* html_source,
                           tabs::IsVerticalTabsFeatureEnabled());
   html_source->AddBoolean("showVerticalTabsExpandOnHoverEnabled",
                           tabs::IsVerticalTabsExpandOnHoverFeatureEnabled());
-  html_source->AddBoolean(
-      "showTabSearchEnabled",
-      tabs::IsVerticalTabsFeatureEnabled() ||
-          base::FeatureList::IsEnabled(tabs::kHorizontalTabStripComboButton));
   html_source->AddBoolean("showProjectsPanelEnabled",
                           tab_groups::IsProjectsPanelFeatureEnabled());
   html_source->AddBoolean(
@@ -1909,6 +1905,10 @@ void AddAutofillStrings(content::WebUIDataSource* html_source,
       "autofillAiAvailableByDefault",
       base::FeatureList::IsEnabled(
           autofill::features::kAutofillAiAvailableByDefault));
+  html_source->AddBoolean(
+      "isAutofillAiWalletPassBranding2026Enabled",
+      base::FeatureList::IsEnabled(
+          autofill::features::kAutofillAiWalletPassBranding2026));
   html_source->AddBoolean("isWalletServerStorageEnabled",
                           IsWalletServerStorageEnabled());
   html_source->AddBoolean("AutofillAddOtherDatatypesPrefIsEnabled",
@@ -3505,6 +3505,14 @@ void AddSiteSettingsStrings(content::WebUIDataSource* html_source,
        IDS_SETTINGS_SITE_SETTINGS_AR_ALLOWED_EXCEPTIONS},
       {"siteSettingsArBlockedExceptions",
        IDS_SETTINGS_SITE_SETTINGS_AR_BLOCKED_EXCEPTIONS},
+      {"siteSettingsInlineCueMenuDescription",
+       IDS_SETTINGS_SITE_SETTINGS_INLINE_CUE_MENU_DESCRIPTION},
+      {"siteSettingsInlineCueMenuBlockedExceptions",
+       IDS_SETTINGS_SITE_SETTINGS_INLINE_CUE_MENU_BLOCKED_EXCEPTIONS},
+      {"siteSettingsInlineCueMenuAllowed",
+       IDS_SETTINGS_SITE_SETTINGS_INLINE_CUE_MENU_ALLOWED},
+      {"siteSettingsInlineCueMenuBlocked",
+       IDS_SETTINGS_SITE_SETTINGS_INLINE_CUE_MENU_BLOCKED},
       {"siteSettingsAutomaticDownloadsDescription",
        IDS_SETTINGS_SITE_SETTINGS_AUTOMATIC_DOWNLOADS_DESCRIPTION},
       {"siteSettingsAutomaticDownloadsAsk",
@@ -3871,6 +3879,9 @@ void AddSiteSettingsStrings(content::WebUIDataSource* html_source,
       {"siteSettingsArMidSentence", IDS_SITE_SETTINGS_TYPE_AR_MID_SENTENCE},
       {"siteSettingsArAsk", IDS_SETTINGS_SITE_SETTINGS_AR_ASK},
       {"siteSettingsArBlock", IDS_SETTINGS_SITE_SETTINGS_AR_BLOCK},
+      {"siteSettingsInlineCueMenu", IDS_SITE_SETTINGS_TYPE_INLINE_CUE_MENU},
+      {"siteSettingsInlineCueMenuMidSentence",
+       IDS_SITE_SETTINGS_TYPE_INLINE_CUE_MENU_MID_SENTENCE},
       {"siteSettingsVr", IDS_SITE_SETTINGS_TYPE_VR},
       {"siteSettingsVrMidSentence", IDS_SITE_SETTINGS_TYPE_VR_MID_SENTENCE},
       {"siteSettingsWebAppInstallation",

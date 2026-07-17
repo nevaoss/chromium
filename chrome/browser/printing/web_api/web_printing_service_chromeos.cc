@@ -367,7 +367,7 @@ void WebPrintingServiceChromeOS::OnPdfReadAndFlattened(
   print_job_controller_->CreatePrintJob(
       std::move(flatten_pdf_result->flattened_pdf), std::move(settings),
       flatten_pdf_result->page_count,
-      /*source=*/crosapi::mojom::PrintJob::Source::kIsolatedWebApp,
+      /*source=*/::printing::PrintJob::Source::kIsolatedWebApp,
       /*source_id=*/app_id_,
       base::BindOnce(&WebPrintingServiceChromeOS::OnPrintJobCreated,
                      weak_factory_.GetWeakPtr(), std::move(observer),

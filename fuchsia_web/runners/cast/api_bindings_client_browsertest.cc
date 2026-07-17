@@ -24,8 +24,6 @@
 #include "fuchsia_web/runners/cast/test/fake_api_bindings.h"
 #include "fuchsia_web/webengine/test/web_engine_browser_test.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "url/gurl.h"
-#include "url/origin.h"
 
 namespace {
 
@@ -56,17 +54,15 @@ class ApiBindingsClientTest : public WebEngineBrowserTest {
     ASSERT_TRUE(client_->HasBindings());
 
     frame_ = FrameForTest::Create(context(), fuchsia::web::CreateFrameParams());
-    std::vector<std::string> allowed_origins = {
-        url::Origin::Create(embedded_test_server()->GetURL("/")).Serialize()};
-    connector_ = std::make_unique<NamedMessagePortConnectorFuchsia>(
-        frame_.get(), allowed_origins);
+    connector_ =
+        std::make_unique<NamedMessagePortConnectorFuchsia>(frame_.get());
 
     if (disconnect_before_attach)
       api_service_binding_.Unbind();
 
     base::RunLoop().RunUntilIdle();
 
-    client_->AttachToFrame(frame_.get(), connector_.get(), allowed_origins,
+    client_->AttachToFrame(frame_.get(), connector_.get(),
                            std::move(on_error_closure));
   }
 
@@ -125,8 +121,7 @@ IN_PROC_BROWSER_TEST_F(ApiBindingsClientTest, EndToEnd) {
   std::unique_ptr<cast_api_bindings::MessagePort> connect_port;
   connector_->GetConnectMessage(&connect_message, &connect_port);
   frame_->PostMessage(
-      url::Origin::Create(test_url).Serialize(),
-      CreateWebMessage(connect_message, std::move(connect_port)),
+      "*", CreateWebMessage(connect_message, std::move(connect_port)),
       [&post_message_response_closure](
           fuchsia::web::Frame_PostMessage_Result result) {
         ASSERT_TRUE(result.is_response());

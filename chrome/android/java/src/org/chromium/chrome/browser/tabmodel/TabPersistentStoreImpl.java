@@ -1216,6 +1216,12 @@ public class TabPersistentStoreImpl implements TabPersistentStore {
     }
 
     private void saveTabListAsynchronously() {
+        // For headless mode only save after initialization is complete to prevent tabs from
+        // possibly ending up in a shuffled order. Keep regular mode behavior as is for now. We
+        // should try to reduce saving during restoration, but that is a riskier change.
+        if (CLIENT_TAG_HEADLESS.equals(mClientTag) && !mTabModelSelector.isTabStateInitialized()) {
+            return;
+        }
         if (ChromeFeatureList.sAndroidTabSkipSaveTabsKillswitch.isEnabled()
                 && mMetadataSaveMode != MetadataSaveMode.SAVING_ALLOWED) {
             if (mMetadataSaveMode == MetadataSaveMode.PAUSED_AND_CLEAN) {

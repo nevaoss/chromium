@@ -9,7 +9,6 @@
 #include <fuchsia/web/cpp/fidl.h>
 
 #include <optional>
-#include <string>
 #include <string_view>
 #include <vector>
 
@@ -41,7 +40,6 @@ class ApiBindingsClient {
   // remain valid for the entire lifetime of |this|.
   void AttachToFrame(fuchsia::web::Frame* frame,
                      cast_api_bindings::NamedMessagePortConnector* connector,
-                     std::vector<std::string> allowed_origins,
                      base::OnceClosure on_error_callback);
 
   // Indicates that the Frame is no longer live, preventing the API bindings

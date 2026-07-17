@@ -344,6 +344,25 @@ class ChromeAutofillClient : public ContentAutofillClient {
   one_time_tokens::OneTimeTokenService* GetOneTimeTokenService() const final;
 
  protected:
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
+    BUILDFLAG(IS_CHROMEOS)
+  class AtMemoryPromoObserver : public content::WebContentsObserver {
+   public:
+    explicit AtMemoryPromoObserver(ChromeAutofillClient* client);
+    ~AtMemoryPromoObserver() override = default;
+
+    // content::WebContentsObserver:
+    void OnTextCopiedToClipboard(content::RenderFrameHost* render_frame_host,
+                                 const std::u16string& copied_text) override;
+    void OnPaste() override;
+
+   private:
+    const base::raw_ref<ChromeAutofillClient> client_;
+  };
+
+  AtMemoryPromoObserver& at_memory_promo_observer();
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
+        // BUILDFLAG(IS_CHROMEOS)
   explicit ChromeAutofillClient(content::WebContents* web_contents);
 
  private:
@@ -430,22 +449,9 @@ class ChromeAutofillClient : public ContentAutofillClient {
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS)
-  class AtMemoryPromoObserver : public content::WebContentsObserver {
-   public:
-    explicit AtMemoryPromoObserver(ChromeAutofillClient* client);
-    ~AtMemoryPromoObserver() override = default;
-
-    // content::WebContentsObserver:
-    void OnTextCopiedToClipboard(content::RenderFrameHost* render_frame_host,
-                                 const std::u16string& copied_text) override;
-    void OnPaste() override;
-
-   private:
-    const base::raw_ref<ChromeAutofillClient> client_;
-  };
-
   AtMemoryPromoObserver at_memory_promo_observer_{this};
-#endif
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
+        // BUILDFLAG(IS_CHROMEOS)
 
   SEQUENCE_CHECKER(sequence_checker_);
 

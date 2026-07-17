@@ -57,6 +57,7 @@
 <translation id="1574377791422810894">Chromium алатке за безбедност</translation>
 <translation id="1594928384848033697">Chromium жели да избрише податке Менаџера лозинки. Унесите лозинку за Windows да бисте то омогућили.</translation>
 <translation id="1607715478322902680">{COUNT,plural, =0{Администратор захтева да поново покренете Chromium да бисте применили ажурирање}=1{Администратор захтева да поново покренете Chromium да бисте применили ажурирање. Прозор без архивирања се неће поново отворити.}one{Администратор захтева да поново покренете Chromium да бисте применили ажурирање. # прозор без архивирања се неће поново отворити.}few{Администратор захтева да поново покренете Chromium да бисте применили ажурирање. # прозора без архивирања се неће поново отворити.}other{Администратор захтева да поново покренете Chromium да бисте применили ажурирање. # прозора без архивирања се неће поново отворити.}}</translation>
+<translation id="1623563412065267963">Користите Google на најбољи начин уз апликацију Chromium на телефону</translation>
 <translation id="1625909126243026060">Прегледајте кључне контроле приватности и безбедности у Chromium-у</translation>
 <translation id="1640672724030957280">Преузимање...</translation>
 <translation id="1680687534629375545">Поставите питање претрази слика о овој страници</translation>
@@ -147,6 +148,7 @@
 <translation id="2572494885440352020">Chromium помагач</translation>
 <translation id="2575822587468774919">Изаберите било шта за претрагу помоћу претраге слика</translation>
 <translation id="2576118232315942160">Да би вам лозинке и други садржај били доступни на свим уређајима, пријавите се у Chromium</translation>
+<translation id="2587622539943955767">Скенирајте QR кôд телефоном да бисте преузели Chromium и пријавили се на Google налог.</translation>
 <translation id="2592940277904433508">Настави са коришћењем Chromium-а</translation>
 <translation id="259935314519650377">Кеширање преузетог инсталационог програма није успело. Грешка: <ph name="UNPACK_CACHING_ERROR_CODE" />.</translation>
 <translation id="2620436844016719705">Систем</translation>
@@ -362,6 +364,7 @@
 <translation id="4987820182225656817">Гости могу да користе Chromium а да не остављају никакве трагове.</translation>
 <translation id="4992938037305302429">Ваш налог у Chromium-у</translation>
 <translation id="4994636714258228724">Додајте себе у Chromium</translation>
+<translation id="504699503110800016">Отворите преклопни мени</translation>
 <translation id="5123973130450702873">Chromium-у треба дозвола за праћење руку</translation>
 <translation id="5141988424377517949">Нисте скоро посећивали сајт. Chromium је уклонио дозволе <ph name="PERMISSION_1" />, <ph name="PERMISSION_2" />, <ph name="PERMISSION_3" />.</translation>
 <translation id="5174969993834422967">Обично блокирате обавештења. Да бисте дозволили овом сајту да вас обавештава, кликните на икону обавештења у десном углу траке за локацију.</translation>
@@ -471,6 +474,7 @@
 <translation id="6245734527075554892">Проверава URL-ове са листом небезбедних сајтова који се чувају у Chromium-у</translation>
 <translation id="6248213926982192922">Подеси Chromium за подразумевани прегледач</translation>
 <translation id="6248988683584659830">Подешавања претраге</translation>
+<translation id="6261803579884938625">Користите најбоље Google безбедносне функције у покрету уз апликацију Chromium на телефону</translation>
 <translation id="6268381023930128611">Желите ли да се одјавите из Chromium-а?</translation>
 <translation id="6270547683008298381">Ове картице користе додатне ресурсе. Да бисте побољшали перформансе, дозволите Chromium-у да их учини неактивним.</translation>
 <translation id="6281746429495226318">Прилагодите Chromium профил</translation>
@@ -541,6 +545,7 @@
 <translation id="6873893289264747459">Chromium је открио да <ph name="EXTENSION_NAME" /> садржи малвер</translation>
 <translation id="6877155553248388166">доњи десни угао области претраге: удесно <ph name="RIGHT" />%, надоле <ph name="BOTTOM" />%</translation>
 <translation id="6896758677409633944">Копирај</translation>
+<translation id="6898028264630240901">Можете да закачите контекстуалне задатке да бисте постављали питања током прегледања</translation>
 <translation id="6901631050894301805">Подесите Chromium као подразумевани прегледач и закачите га на траку задатака</translation>
 <translation id="6909503629704372277">&amp;Управљајте Chromium профилима</translation>
 <translation id="6919942714452658456">Овом радњом:
@@ -569,6 +574,7 @@
 <translation id="7047386856539490735">Да ли су ови резултати корисни?</translation>
 <translation id="705851970750939768">Ажурирај Chromium</translation>
 <translation id="7067091210845072982">Ако слика нема користан опис, Chromium ће пробати да вам га пружи. Слике се шаљу Google-у ради прављења описа.</translation>
+<translation id="7134687062119989071">Носите своје лозинке, картице и друго са собом помоћу апликације Chromium на телефону</translation>
 <translation id="7141270731789036260">Прилагодите Chrome for Testing</translation>
 <translation id="7147227333672430807">Можете да користите Chromium сваки пут када кликнете на линкове у порукама, документима и другим апликацијама</translation>
 <translation id="7163519456498498587">Уклони додатак <ph name="EXTENSION_NAME" /> из Chromium-а</translation>
@@ -662,6 +668,7 @@ Chromium не може да врати подешавања.</translation>
 <translation id="8096472344908884505"><ph name="PAGE_TITLE" /> – Google Chrome for Testing</translation>
 <translation id="8105840573057009683">Chromium-у треба дозвола за локацију за овај сајт</translation>
 <translation id="8107060931443639922">Следећи пут када отворите Chromium на уређају <ph name="DEVICE_TYPE" />, видећете упит да омогућите обавештења о праћењу цена.</translation>
+<translation id="8117908349476699973">Добијајте обавештења о снижењу цена за артикле који вас занимају помоћу апликације Chromium на телефону</translation>
 <translation id="8118331347066725040">Пошаљите повратне информације за претрагу помоћу Објектива</translation>
 <translation id="8133124826068723441">Chromium ОС не може да синхронизује податке јер Синхронизација није доступна за домен.</translation>
 <translation id="813913629614996137">Покреће се…</translation>
@@ -754,6 +761,7 @@ Chromium не може да врати подешавања.</translation>
 <translation id="9022552996538154597">Пријављивање на Chromium</translation>
 <translation id="904366664621834601">Chromium је блокирао ово преузимање јер фајл архиве садржи друге фајлове који могу да крију малвер</translation>
 <translation id="9053882453960391422">Синхронизујте лозинке, обележиваче и историју на свим уређајима. Ажурирајте подразумевани прегледач на Chromium да бисте лако приступали функцијама које знате и волите. Chromium ће бити закачен на траку задатака ради брзог приступа.</translation>
+<translation id="9056398481763999048">Користите најбоље Google алатке вештачке интелигенције помоћу апликације Chromium на телефону</translation>
 <translation id="9062666675513499497">Пријавите се у Chromium када се пријавите у друге Google услуге</translation>
 <translation id="9078733879136747090">Chromium је аутоматски затворен</translation>
 <translation id="9089354809943900324">Chromium је застарео</translation>

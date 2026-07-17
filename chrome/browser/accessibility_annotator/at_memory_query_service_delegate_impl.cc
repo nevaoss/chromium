@@ -21,6 +21,7 @@
 #endif
 #include "components/accessibility_annotator/content/live_tab_context/live_tab_retriever.h"
 #include "components/accessibility_annotator/core/live_tab_context/search.h"
+#include "components/passage_embeddings/core/passage_embeddings_service_controller.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/page.h"
 #include "content/public/browser/web_contents.h"
@@ -29,13 +30,13 @@ namespace accessibility_annotator {
 
 using ::page_content_annotations::PageContentExtractionServiceFactory;
 using ::page_content_annotations::PageEmbeddingsServiceFactory;
-using ::passage_embeddings::ChromePassageEmbeddingsServiceController;
+
 using ::passage_embeddings::Embedder;
 
 namespace {
 Embedder* GetEmbedder(Profile* profile) {
-  ChromePassageEmbeddingsServiceController* controller =
-      ChromePassageEmbeddingsServiceController::Get();
+  passage_embeddings::PassageEmbeddingsServiceController* controller =
+      passage_embeddings::GetChromePassageEmbeddingsServiceController();
   return controller ? controller->GetEmbedder() : nullptr;
 }
 }  // namespace

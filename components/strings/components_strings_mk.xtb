@@ -581,6 +581,7 @@
 <translation id="1902576642799138955">Период на важност</translation>
 <translation id="1908217026282415406">Користење и движење на камерата</translation>
 <translation id="1908690643053136980">Администраторот не дозволува <ph name="PERMISSION" /> за сајтов</translation>
+<translation id="1912750443952232242">Зачувајте го документот за идентификација во Google Wallet</translation>
 <translation id="1913037223029790376">Користете CVC за оваа виртуелна картичка</translation>
 <translation id="191374271204266022">Копирај како JSON</translation>
 <translation id="1914326953223720820">Услуга за отпакување</translation>
@@ -1493,6 +1494,7 @@
 <translation id="3325568918769906282">по опаѓачки редослед</translation>
 <translation id="3325662270238538525">неодамнешен пристап до датотеките и измени во нив, вклучувајќи имиња на датотеки, дигитални отпечатоци на содржините на датотеките, извор на преземање и метаподатоци</translation>
 <translation id="3329013043687509092">Заситеност</translation>
+<translation id="3330483197654063678">Кога е вклучено, Chrome ќе ги споделува отворените картички во прозорецов за да ви помогне да добивате порелевантни одговори.</translation>
 <translation id="3333762389743153920">Не е подобна за виртуелна картичка</translation>
 <translation id="3338095232262050444">Безбедно</translation>
 <translation id="333839153442689579">Тренинг на интервали со висок интензитет</translation>
@@ -2846,6 +2848,7 @@
 <translation id="5458150163479425638">{CONTACT,plural, =0{<ph name="CONTACT_PREVIEW" />}=1{<ph name="CONTACT_PREVIEW" /> и уште <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}one{<ph name="CONTACT_PREVIEW" /> и уште <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}other{<ph name="CONTACT_PREVIEW" /> и уште <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}}</translation>
 <translation id="5463625433003343978">Се бараат уреди…</translation>
 <translation id="5464236009658034488">Канцелариски материjали</translation>
+<translation id="5465128270485645058">Добивајте поприспособени одговори така што автоматски ќе ги споделувате отворените картички во прозорецов ако се поврзани со нишкава.</translation>
 <translation id="5465724643247062031">Стакло (непроѕирно)</translation>
 <translation id="5466018172325111652">Не го примивте кодот? <ph name="BEGIN_LINK" />Побарајте нов код<ph name="END_LINK" /></translation>
 <translation id="5466818462212249084">Апликации за плаќање</translation>
@@ -3128,6 +3131,7 @@
 <translation id="5911020115933784199">Настани и огласи</translation>
 <translation id="5911110632211230665">Отворањето е блокирано</translation>
 <translation id="5912796581727968237">Отворете ја Google Wallet</translation>
+<translation id="5914185423510719251">Зачувајте го KTN во Google Wallet</translation>
 <translation id="5914465277418006379"><ph name="MEMBER_FIRST_NAME" /> ја додаде картичкава</translation>
 <translation id="5915189366813702112">Флексибилни работни аранжмани</translation>
 <translation id="59174027418879706">Овозможено</translation>
@@ -3651,6 +3655,7 @@
 <translation id="6702851555558236418">Софтвер за аудио и музика</translation>
 <translation id="6702919718839027939">Презентација</translation>
 <translation id="6704458454638854812">Својството „custom_size“ е поставено, се очекува името да е „custom“.</translation>
+<translation id="670477556876354552">Потребно е рестартирање</translation>
 <translation id="6706005862292023715">Завеси и украси на прозорци</translation>
 <translation id="6706210727756204531">Опсег</translation>
 <translation id="6706678697074905703">Овој IBAN не можеше да се зачува во вашата сметка на Google. Наместо тоа, се зачува во Chrome на уредов.</translation>
@@ -3908,6 +3913,7 @@
 <translation id="7110116949943042888">Привремени и сезонски вработувања</translation>
 <translation id="7110368079836707726">Колеџи и универзитети</translation>
 <translation id="7111507312244504964">Проверки и процени на имот</translation>
+<translation id="7117290130383718594">Текстуални прибелешки</translation>
 <translation id="7118618213916969306">Пребарајте URL-адреса во привремената меморија, <ph name="SHORT_URL" /></translation>
 <translation id="7118852830504022370">Ја гледате опоменава бидејќи сајтов не поддржува HTTPS. <ph name="BEGIN_LEARN_MORE_LINK" />Дознајте повеќе за предупредувањево<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="7119063404975271297">ТВ-драми</translation>

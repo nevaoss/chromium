@@ -10,6 +10,8 @@
 #import <vector>
 
 #import "base/functional/callback_helpers.h"
+#import "base/run_loop.h"
+#import "base/task/sequenced_task_runner.h"
 #import "base/test/scoped_feature_list.h"
 #import "base/test/simple_test_clock.h"
 #import "components/feature_engagement/public/event_constants.h"
@@ -28,6 +30,7 @@
 #import "ios/chrome/browser/intelligence/bwg/metrics/gemini_metrics.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_page_context.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_service_factory.h"
+#import "ios/chrome/browser/intelligence/bwg/utils/gemini_prefs.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/intelligence/proto_wrappers/page_context_wrapper.h"
 #import "ios/chrome/browser/intelligence/zero_state_suggestions/zero_state_suggestions_service.h"
@@ -189,16 +192,37 @@ class GeminiTabHelperTest : public PlatformTest {
     ForceFirstRunRecency(days);
   }
 
+  // Flushes the current task runner. Used to wait for posted tasks to complete.
+  void FlushTaskRunner() {
+    base::RunLoop run_loop;
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, run_loop.QuitClosure());
+    run_loop.Run();
+  }
+
   void SimulateGeminiEligibilityDecisionReceived(
       const GURL& url,
       const optimization_guide::OptimizationMetadata& metadata) {
-    tab_helper_->gemini_contextual_eligibility_ = true;
     tab_helper_->current_url_ = url;
     bool user_enabled = profile_->GetPrefs()->GetBoolean(
         unified_consent::prefs::kUrlKeyedAnonymizedDataCollectionEnabled);
-    tab_helper_->OnGeminiEligibilityDecision(
-        url, user_enabled, optimization_guide::OptimizationGuideDecision::kTrue,
-        metadata);
+    if (user_enabled) {
+      tab_helper_->OnGeminiEligibilityDecision(
+          url, /*was_proactive_fetch_used=*/true,
+          optimization_guide::OptimizationGuideDecision::kTrue, metadata);
+    } else {
+      base::flat_map<optimization_guide::proto::OptimizationType,
+                     optimization_guide::OptimizationGuideDecisionWithMetadata>
+          decisions;
+      decisions[optimization_guide::proto::GLIC_ZERO_STATE_SUGGESTIONS] = {
+          optimization_guide::OptimizationGuideDecision::kTrue, metadata};
+      tab_helper_->OnGeminiEligibilityOnDemandDecision(url, decisions);
+    }
+  }
+
+  void CreateOrUpdateSessionInStorage(const std::string& server_id) {
+    gemini::CreateOrUpdateConversationIdPrefs(
+        server_id, web_state_->GetVisibleURL().spec(), profile_->GetPrefs());
   }
 };
 
@@ -244,7 +268,7 @@ TEST_F(GeminiTabHelperTest, TestIsLastInteractionUrlDifferent_SameURL) {
       /*enabled_features=*/{kPageActionMenu}, /*disabled_features=*/{});
   GURL url("https://www.chromium.org");
   web_state_->SetCurrentURL(url);
-  tab_helper_->CreateOrUpdateGeminiSessionInStorage("server_id");
+  CreateOrUpdateSessionInStorage("server_id");
   ASSERT_FALSE(tab_helper_->IsLastInteractionUrlDifferent());
 }
 
@@ -253,7 +277,7 @@ TEST_F(GeminiTabHelperTest, TestIsLastInteractionUrlDifferent_DifferentURL) {
       /*enabled_features=*/{kPageActionMenu}, /*disabled_features=*/{});
   GURL url1("https://www.chromium.org");
   web_state_->SetCurrentURL(url1);
-  tab_helper_->CreateOrUpdateGeminiSessionInStorage("server_id");
+  CreateOrUpdateSessionInStorage("server_id");
 
   GURL url2("https://www.google.com");
   web_state_->SetCurrentURL(url2);
@@ -267,7 +291,7 @@ TEST_F(GeminiTabHelperTest,
       /*disabled_features=*/{});
   GURL url("https://www.chromium.org");
   web_state_->SetCurrentURL(url);
-  tab_helper_->CreateOrUpdateGeminiSessionInStorage("server_id");
+  CreateOrUpdateSessionInStorage("server_id");
   ASSERT_FALSE(tab_helper_->IsLastInteractionUrlDifferent());
 }
 
@@ -278,7 +302,7 @@ TEST_F(GeminiTabHelperTest,
       /*disabled_features=*/{});
   GURL url1("https://www.chromium.org");
   web_state_->SetCurrentURL(url1);
-  tab_helper_->CreateOrUpdateGeminiSessionInStorage("server_id");
+  CreateOrUpdateSessionInStorage("server_id");
 
   GURL url2("https://www.google.com");
   web_state_->SetCurrentURL(url2);
@@ -294,61 +318,9 @@ TEST_F(GeminiTabHelperTest, TestShouldShowSuggestionChips) {
   ASSERT_TRUE(tab_helper_->ShouldShowSuggestionChips());
 }
 
-TEST_F(GeminiTabHelperTest, TestCreateOrUpdateGeminiSessionInStorage) {
-  std::string server_id = "test_server_id";
-  tab_helper_->CreateOrUpdateGeminiSessionInStorage(server_id);
-  std::optional<std::string> retrieved_server_id = tab_helper_->GetServerId();
-  ASSERT_TRUE(retrieved_server_id.has_value());
-  ASSERT_EQ(server_id, retrieved_server_id.value());
-}
 
-TEST_F(GeminiTabHelperTest, TestDeleteGeminiSessionInStorage) {
-  tab_helper_->CreateOrUpdateGeminiSessionInStorage("test_server_id");
-  ASSERT_TRUE(tab_helper_->GetServerId().has_value());
-  tab_helper_->DeleteGeminiSessionInStorage();
-  ASSERT_FALSE(tab_helper_->GetServerId().has_value());
-}
 
-TEST_F(GeminiTabHelperTest, TestGetServerId) {
-  ASSERT_FALSE(tab_helper_->GetServerId().has_value());
-  std::string server_id = "test_server_id";
-  tab_helper_->CreateOrUpdateGeminiSessionInStorage(server_id);
-  ASSERT_TRUE(tab_helper_->GetServerId().has_value());
-  ASSERT_EQ(server_id, tab_helper_->GetServerId().value());
-}
-
-TEST_F(GeminiTabHelperTest, TestGetServerId_Expired) {
-  std::string server_id = "test_server_id";
-  tab_helper_->CreateOrUpdateGeminiSessionInStorage(server_id);
-  ASSERT_TRUE(tab_helper_->GetServerId().has_value());
-
-  // Fast forward time to expire the session.
-  task_environment_.FastForwardBy(GetGeminiSessionValidityDuration() +
-                                  base::Seconds(1));
-
-  ASSERT_FALSE(tab_helper_->GetServerId().has_value());
-}
-
-TEST_F(GeminiTabHelperTest, TestGetServerId_Expired_CustomDuration) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitAndEnableFeatureWithParameters(
-      kGeminiConfigParams, {{kGeminiSessionValidityDuration, "5"}});
-
-  std::string server_id = "test_server_id";
-  tab_helper_->CreateOrUpdateGeminiSessionInStorage(server_id);
-  ASSERT_TRUE(tab_helper_->GetServerId().has_value());
-  ASSERT_EQ(GetGeminiSessionValidityDuration(), base::Minutes(5));
-
-  // Fast forward by 4 minutes -> should still be valid.
-  task_environment_.FastForwardBy(base::Minutes(4));
-  ASSERT_TRUE(tab_helper_->GetServerId().has_value());
-
-  // Fast forward by another 1 minute + 1 second -> should expire.
-  task_environment_.FastForwardBy(base::Minutes(1) + base::Seconds(1));
-  ASSERT_FALSE(tab_helper_->GetServerId().has_value());
-}
-
-TEST_F(GeminiTabHelperTest, TestDidStartNavigation_ShowsImageRemixIPH) {
+TEST_F(GeminiTabHelperTest, TestDidStartNavigation_ShowsImageRemixTooltip) {
   feature_engagement::test::ScopedIphFeatureList iph_feature_list;
   iph_feature_list.InitAndEnableFeatures(
       {feature_engagement::kIPHiOSGeminiImageRemixFeature, kPageActionMenu,
@@ -364,6 +336,8 @@ TEST_F(GeminiTabHelperTest, TestDidStartNavigation_ShowsImageRemixIPH) {
   tab_helper_->SetHelpCommandsHandler(mock_help_handler_);
   web_state_->SetCurrentURL(GURL("https://www.chromium.org"));
   web_state_->SetContentsMimeType("text/html");
+  web_state_->SetLoading(false);
+  web_state_->WasShown();
 
   feature_engagement::Tracker* tracker = InitializeTracker();
   SimulateFirstRunRecency(tracker, 2);
@@ -375,12 +349,13 @@ TEST_F(GeminiTabHelperTest, TestDidStartNavigation_ShowsImageRemixIPH) {
       presentInProductHelpWithType:InProductHelpType::kGeminiImageRemix]);
 
   AddZeroStateSuggestionsHint(web_state_->GetVisibleURL(), true);
+  FlushTaskRunner();
 
   EXPECT_OCMOCK_VERIFY(mock_help_handler_);
 }
 
 TEST_F(GeminiTabHelperTest,
-       TestDidStartNavigation_DoesNotShowImageRemixIPH_WhenNotMSBB) {
+       TestDidStartNavigation_DoesNotShowImageRemixTooltip_WhenNotMSBB) {
   feature_engagement::test::ScopedIphFeatureList iph_feature_list;
   iph_feature_list.InitAndEnableFeatures(
       {feature_engagement::kIPHiOSGeminiImageRemixFeature, kPageActionMenu,
@@ -395,6 +370,9 @@ TEST_F(GeminiTabHelperTest,
       mock_location_bar_badge_handler_);
   tab_helper_->SetHelpCommandsHandler(mock_help_handler_);
   web_state_->SetCurrentURL(GURL("https://www.chromium.org"));
+  web_state_->SetContentsMimeType("text/html");
+  web_state_->SetLoading(false);
+  web_state_->WasShown();
 
   feature_engagement::Tracker* tracker = InitializeTracker();
   SimulateFirstRunRecency(tracker, 2);
@@ -406,6 +384,60 @@ TEST_F(GeminiTabHelperTest,
       presentInProductHelpWithType:InProductHelpType::kGeminiImageRemix]);
 
   AddZeroStateSuggestionsHint(web_state_->GetVisibleURL(), true);
+  FlushTaskRunner();
+
+  EXPECT_OCMOCK_VERIFY(mock_help_handler_);
+}
+
+TEST_F(GeminiTabHelperTest,
+       TestImageRemixTooltip_DelayedUntilVisibleAndLoaded) {
+  feature_engagement::test::ScopedIphFeatureList iph_feature_list;
+  iph_feature_list.InitAndEnableFeatures(
+      {feature_engagement::kIPHiOSGeminiImageRemixFeature, kPageActionMenu,
+       kGeminiImageRemixTool, kZeroStateSuggestions});
+
+  web_state_ = std::make_unique<web::FakeWebState>();
+  web_state_->SetBrowserState(profile_.get());
+  GeminiTabHelper::CreateForWebState(web_state_.get());
+  tab_helper_ = GeminiTabHelper::FromWebState(web_state_.get());
+  tab_helper_->SetHelpCommandsHandler(mock_help_handler_);
+  web_state_->SetCurrentURL(GURL("https://www.chromium.org"));
+  web_state_->SetContentsMimeType("text/html");
+
+  // WebState is not visible and is loading by default.
+  web_state_->SetLoading(true);
+
+  feature_engagement::Tracker* tracker = InitializeTracker();
+  SimulateFirstRunRecency(tracker, 2);
+
+  profile_->GetPrefs()->SetBoolean(
+      unified_consent::prefs::kUrlKeyedAnonymizedDataCollectionEnabled, true);
+
+  // The decision arrives but the UI is not ready. IPH should not be shown.
+  id early_mock_help_handler = OCMProtocolMock(@protocol(HelpCommands));
+  tab_helper_->SetHelpCommandsHandler(early_mock_help_handler);
+  OCMReject([early_mock_help_handler
+      presentInProductHelpWithType:InProductHelpType::kGeminiImageRemix]);
+  AddZeroStateSuggestionsHint(web_state_->GetVisibleURL(), true);
+  FlushTaskRunner();
+  EXPECT_OCMOCK_VERIFY(early_mock_help_handler);
+
+  // Now, the tab becomes visible, but still loading.
+  web_state_->WasShown();
+  FlushTaskRunner();
+  EXPECT_OCMOCK_VERIFY(early_mock_help_handler);
+
+  // Now, the page finishes loading. The IPH should be triggered!
+  tab_helper_->SetHelpCommandsHandler(mock_help_handler_);
+  OCMExpect([mock_help_handler_
+      presentInProductHelpWithType:InProductHelpType::kGeminiImageRemix]);
+  web_state_->SetLoading(false);
+  auto navigation_context = std::make_unique<web::FakeNavigationContext>();
+  navigation_context->SetUrl(web_state_->GetVisibleURL());
+  navigation_context->SetHasCommitted(true);
+  tab_helper_->PageLoaded(web_state_.get(),
+                          web::PageLoadCompletionStatus::SUCCESS);
+  FlushTaskRunner();
 
   EXPECT_OCMOCK_VERIFY(mock_help_handler_);
 }
@@ -564,8 +596,8 @@ TEST_F(GeminiTabHelperTest,
        WebStateDestroyed_DoesNotCleanUpSession_GeminiCrossTabEnabled) {
   feature_list_.InitWithFeatures({kPageActionMenu}, {});
   std::string server_id = "test_server_id";
-  tab_helper_->CreateOrUpdateGeminiSessionInStorage(server_id);
-  ASSERT_EQ(tab_helper_->GetServerId().value(), server_id);
+  CreateOrUpdateSessionInStorage(server_id);
+  ASSERT_EQ(gemini::GetConversationId(profile_->GetPrefs()).value(), server_id);
 
   // Destroy the webstate.
   web_state_.reset();
@@ -576,7 +608,7 @@ TEST_F(GeminiTabHelperTest,
   GeminiTabHelper::CreateForWebState(web_state_.get());
   tab_helper_ = GeminiTabHelper::FromWebState(web_state_.get());
 
-  ASSERT_EQ(tab_helper_->GetServerId().value(), server_id);
+  ASSERT_EQ(gemini::GetConversationId(profile_->GetPrefs()).value(), server_id);
 }
 
 @interface FakePageContextWrapper : PageContextWrapper
@@ -643,8 +675,9 @@ TEST_F(GeminiTabHelperTest, TestGeneratePageContext_WaitsForLoad) {
   EXPECT_TRUE(fakeWrapper.populateCalled);
 }
 
-TEST_F(GeminiTabHelperTest,
-       TestDidStartNavigation_DoesNotShowImageRemixIPH_WhenBwgNotAvailable) {
+TEST_F(
+    GeminiTabHelperTest,
+    TestDidStartNavigation_DoesNotShowImageRemixTooltip_WhenBwgNotAvailable) {
   feature_engagement::test::ScopedIphFeatureList iph_feature_list;
   iph_feature_list.InitAndEnableFeatures(
       {feature_engagement::kIPHiOSGeminiImageRemixFeature, kPageActionMenu,

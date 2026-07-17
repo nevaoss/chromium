@@ -246,6 +246,11 @@ constexpr CGFloat kThresholdForCompleteVisibility = 0.3;
                     selector:@selector(keyboardDidHide:)
                         name:UIKeyboardDidHideNotification
                       object:nil];
+
+  [defaultCenter addObserver:self
+                    selector:@selector(textViewDidBeginEditing:)
+                        name:UITextViewTextDidBeginEditingNotification
+                      object:nil];
 }
 
 #pragma mark - AssistantAIMConsumer
@@ -485,6 +490,23 @@ constexpr CGFloat kThresholdForCompleteVisibility = 0.3;
   [self.delegate assistantAIMViewController:self
                 didShowKeyboardWithDuration:duration
                                       curve:curve];
+}
+
+// Called when the text view begins editing.
+- (void)textViewDidBeginEditing:(NSNotification*)notification {
+  if (![notification.object isKindOfClass:[UITextView class]]) {
+    return;
+  }
+  UITextView* textView = (UITextView*)notification.object;
+  if (![textView isDescendantOfView:self.view]) {
+    return;
+  }
+
+  // If the software keyboard is showing, `keyboardWillShow:` handles the
+  // synced animation. We only fallback if the hardware keyboard is used.
+  if (CGRectGetHeight(_keyboardFrameInWindow) == 0) {
+    [self keyboardWillShow:notification];
+  }
 }
 
 // Called when the keyboard is hidden.

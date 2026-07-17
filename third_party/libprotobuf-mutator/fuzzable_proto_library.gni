@@ -170,7 +170,11 @@ template("fuzzable_proto_library") {
                              [
                                "proto_library_deps",
                                "component_build_force_source_set",
+                               "visibility",
                              ])
+      if (defined(invoker.visibility)) {
+        visibility = invoker.visibility + [ ":${target_name}" ]
+      }
       component_build_force_source_set = true
 
       if (defined(invoker.proto_library_deps)) {
@@ -208,6 +212,9 @@ template("fuzzable_proto_library") {
     component(target_name) {
       if (defined(invoker.testonly)) {
         testonly = invoker.testonly
+      }
+      if (defined(invoker.visibility)) {
+        visibility = invoker.visibility
       }
       sources = [ "//third_party/libprotobuf-mutator/dummy.cc" ]
       public_deps = [

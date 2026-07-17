@@ -10,6 +10,7 @@
 #import "components/autofill/core/common/autofill_features.h"
 #import "ios/chrome/browser/authentication/test/signin_earl_grey.h"
 #import "ios/chrome/browser/autofill/ui_bundled/autofill_app_interface.h"
+#import "ios/chrome/browser/device_reauth/test/reauthentication_app_interface.h"
 #import "ios/chrome/browser/settings/autofill/autofill_ai/public/autofill_ai_settings_constants.h"
 #import "ios/chrome/browser/settings/autofill/autofill_ai/test/autofill_ai_settings_test_util.h"
 #import "ios/chrome/browser/settings/ui_bundled/autofill/autofill_settings_constants.h"
@@ -99,6 +100,62 @@ NSString* const kNewOwnerName = @"autofilltestuser2";
 
   // Clean up the created entity.
   [AutofillAppInterface removeEntityWithUUID:uuidString];
+}
+
+// Tests that the verification switch does not change if reauthentication fails.
+- (void)testVerificationSwitchReauthFailure {
+  [ReauthenticationAppInterface mockReauthenticationModuleExpectedResult:
+                                    ReauthenticationResult::kFailure];
+  [ReauthenticationAppInterface mockReauthenticationModuleCanAttempt:YES];
+
+  [AutofillAISettingsTestUtil openPreHoTLocation];
+
+  // Try to toggle the verification switch off.
+  [[[EarlGrey
+      selectElementWithMatcher:chrome_test_util::TableViewSwitchCell(
+                                   kAutofillVerificationSwitchTableViewId,
+                                   /*is_toggled_on=*/YES,
+                                   /*is_enabled=*/YES)]
+         usingSearchAction:grey_scrollInDirection(kGREYDirectionDown, 200)
+      onElementWithMatcher:grey_allOf(grey_kindOfClass([UITableView class]),
+                                      grey_sufficientlyVisible(), nil)]
+      performAction:chrome_test_util::TurnTableViewSwitchOn(NO)];
+
+  // Verify the switch remains toggled on.
+  [[EarlGrey
+      selectElementWithMatcher:chrome_test_util::TableViewSwitchCell(
+                                   kAutofillVerificationSwitchTableViewId,
+                                   /*is_toggled_on=*/YES,
+                                   /*is_enabled=*/YES)]
+      assertWithMatcher:grey_sufficientlyVisible()];
+}
+
+// Tests that the verification switch changes if reauthentication succeeds.
+- (void)testVerificationSwitchReauthSuccess {
+  [ReauthenticationAppInterface mockReauthenticationModuleExpectedResult:
+                                    ReauthenticationResult::kSuccess];
+  [ReauthenticationAppInterface mockReauthenticationModuleCanAttempt:YES];
+
+  [AutofillAISettingsTestUtil openPreHoTLocation];
+
+  // Toggle the verification switch off.
+  [[[EarlGrey
+      selectElementWithMatcher:chrome_test_util::TableViewSwitchCell(
+                                   kAutofillVerificationSwitchTableViewId,
+                                   /*is_toggled_on=*/YES,
+                                   /*is_enabled=*/YES)]
+         usingSearchAction:grey_scrollInDirection(kGREYDirectionDown, 200)
+      onElementWithMatcher:grey_allOf(grey_kindOfClass([UITableView class]),
+                                      grey_sufficientlyVisible(), nil)]
+      performAction:chrome_test_util::TurnTableViewSwitchOn(NO)];
+
+  // Verify the switch is now toggled off.
+  [[EarlGrey
+      selectElementWithMatcher:chrome_test_util::TableViewSwitchCell(
+                                   kAutofillVerificationSwitchTableViewId,
+                                   /*is_toggled_on=*/NO,
+                                   /*is_enabled=*/YES)]
+      assertWithMatcher:grey_sufficientlyVisible()];
 }
 
 @end

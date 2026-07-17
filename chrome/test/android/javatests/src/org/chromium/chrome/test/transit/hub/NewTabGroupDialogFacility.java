@@ -6,12 +6,13 @@ package org.chromium.chrome.test.transit.hub;
 
 import static androidx.test.espresso.action.ViewActions.replaceText;
 import static androidx.test.espresso.matcher.ViewMatchers.isAssignableFrom;
+import static androidx.test.espresso.matcher.ViewMatchers.isChecked;
 import static androidx.test.espresso.matcher.ViewMatchers.withContentDescription;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 
 import static org.hamcrest.CoreMatchers.allOf;
-import static org.hamcrest.CoreMatchers.startsWith;
+import static org.hamcrest.CoreMatchers.not;
 
 import static org.chromium.base.ThreadUtils.runOnUiThreadBlocking;
 import static org.chromium.base.test.transit.ViewElement.inDialogOption;
@@ -161,13 +162,10 @@ public class NewTabGroupDialogFacility<
                 context.getString(
                         TabGroupColorPickerUtils.getTabGroupColorPickerItemColorAccessibilityString(
                                 color));
-        Matcher<View> contentDescriptionMatcher;
+        Matcher<View> contentDescriptionMatcher = withContentDescription(colorName);
         if (selected != null) {
             contentDescriptionMatcher =
-                    withContentDescription(
-                            colorName + " " + (selected ? "Selected" : "Not selected"));
-        } else {
-            contentDescriptionMatcher = withContentDescription(startsWith(colorName));
+                    allOf(contentDescriptionMatcher, selected ? isChecked() : not(isChecked()));
         }
         return viewSpec(withId(R.id.color_picker_icon), contentDescriptionMatcher);
     }

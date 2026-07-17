@@ -64,11 +64,12 @@ std::string ToString(WebRtcTextLogHandler::LoggingState state) {
 // static
 void WebRtcLoggingController::AttachToRenderProcessHost(
     content::RenderProcessHost* host) {
+  // WebRtcLoggingController has a private ctor.
   host->SetUserData(
       kRenderProcessHostKey,
       std::make_unique<base::UserDataAdapter<WebRtcLoggingController>>(
-          new WebRtcLoggingController(host->GetDeprecatedID(),
-                                      host->GetBrowserContext())));
+          base::WrapRefCounted(new WebRtcLoggingController(
+              host->GetDeprecatedID(), host->GetBrowserContext()))));
 }
 
 // static

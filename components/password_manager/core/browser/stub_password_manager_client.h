@@ -7,6 +7,7 @@
 
 #include <optional>
 
+#include "base/types/optional_ref.h"
 #include "components/autofill/core/browser/logging/stub_log_manager.h"
 #include "components/device_reauth/device_authenticator.h"
 #include "components/metrics/profile_metrics_service.h"
@@ -32,8 +33,10 @@ class StubPasswordManagerClient : public PasswordManagerClient {
   ~StubPasswordManagerClient() override;
 
   // PasswordManagerClient:
+  using PasswordManagerClient::IsFillingEnabled;
   bool IsSavingAndFillingEnabled(const GURL& url) const override;
-  bool IsFillingEnabled(const GURL& url) const override;
+  bool IsFillingEnabled(const url::Origin& origin,
+                        base::optional_ref<const GURL> url) const override;
   bool IsFieldFilledWithOtp(autofill::FormGlobalId form_id,
                             autofill::FieldGlobalId field_id) override;
   bool PromptUserToSaveOrUpdatePassword(

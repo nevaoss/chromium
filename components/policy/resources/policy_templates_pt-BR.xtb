@@ -1202,6 +1202,7 @@ No <ph name="MAC_OS_NAME" />, essa política só está disponível em instância
 <translation id="1781356041596378058">Esta política também controla o acesso às Opções do desenvolvedor Android. Se você configurar essa política como true, os usuários não poderão acessar as Opções do desenvolvedor. Se configurá-la como false ou deixá-la sem definição, os usuários poderão acessar as Opções do desenvolvedor tocado sete vezes no número da versão no app Config. do Android.</translation>
 <translation id="1781720543185538098">Especifica se as pesquisas do <ph name="PRODUCT_NAME" /> no produto são mostradas aos usuários.</translation>
 <translation id="1787790976045065845">Esta política só terá efeito quando a <ph name="SECURITY_TOKEN_SESSION_BEHAVIOR_POLICY_NAME" /> estiver definida como <ph name="SECURITY_TOKEN_SESSION_BEHAVIOR_LOCK" /> ou <ph name="SECURITY_TOKEN_SESSION_BEHAVIOR_LOGOUT" /> e um usuário que faz a autenticação por um cartão inteligente remover o cartão. Esta política especificará por quantos segundos uma notificação que informa o usuário sobre a ação futura será exibida. Essa notificação bloqueia a tela, e a ação só acontecerá depois que a notificação expirar. O usuário pode evitar o acontecimento da ação reinserindo o cartão inteligente antes que a notificação expire. Se esta política for definida como zero, nenhuma notificação será exibida e a ação acontecerá imediatamente.</translation>
+<translation id="1788597893274674447">Ativar o isolamento de sites para origens específicas em dispositivos Android (descontinuado)</translation>
 <translation id="1793346220873697538">Desativar impressão com PIN como padrão</translation>
 <translation id="1794457906032475749">Se esta política for ativada, a opção de manter os dados de navegação existentes ao criar um perfil de trabalho vai ser marcada por padrão.
 
@@ -2030,6 +2031,26 @@ Se a política for definida como desativada ou não for definida, o usuário pod
       Os usuários não poderão mudar ou substituir essa configuração.
 
       Observação: essa política faz com que o cabeçalho X-GoogApps-Allowed-Domains seja anexado a todas as solicitações HTTP e HTTPS de todos os domínios google.com, como descrito em https://support.google.com/a/answer/1668854.</translation>
+<translation id="2282968242492236886">Ao definir essa política, é possível especificar quais tipos de dados de preenchimento automático são bloqueados em padrões de URL específicos.
+
+A política é estruturada como uma lista de dicionários. Cada um deles precisa conter:
+* "url_pattern": um padrão do URL de configuração de conteúdo (por exemplo, "https://[*.]example.com").
+* "blocked_types": uma lista de strings que representam as categorias de dados de preenchimento automático a serem bloqueadas.
+
+Os valores aceitos para "blocked_types" são:
+* "contact_info": bloqueia o preenchimento e o salvamento de dados de contato.
+* "payments": impede o preenchimento e o salvamento de cartões de crédito e formas de pagamento.
+* "identity_docs": impede o preenchimento e o salvamento de documentos de identificação (por exemplo, passaporte, carteira de habilitação, documento de identidade nacional).
+* "travel": impede o preenchimento e o salvamento de informações de viagem (por exemplo, reserva de voo, registro de veículo).
+
+Se um tipo de dados for bloqueado para um site, a geração de sugestões e o comando para salvar/importar novos dados desse tipo serão desativados nesse site.
+
+Se um URL corresponder a várias entradas de padrão na lista, os tipos bloqueados de todas as entradas correspondentes serão combinados (mesclados por união). Os padrões de URL inválidos na lista são ignorados.
+
+Se a política for deixada sem definição, nenhum tipo de dados de preenchimento automático será bloqueado por domínio.
+
+Para informações mais detalhadas sobre padrões de URL válidos, consulte:
+https://chromeenterprise.google/policies/url-patterns. O caractere curinga * é compatível. Esse padrão corresponde a qualquer URL, com qualquer esquema, porta e caminho.</translation>
 <translation id="2287414160388710497">Permite que os administradores personalizem a aparência das marcas-d'água aplicadas pelas regras de Prevenção Contra Perda de Dados (DLP). Isso inclui definir a opacidade do preenchimento e contorno e o tamanho da fonte.
 Se a política ou alguns valores não forem definidos, o Chrome vai usar o comportamento padrão de marca-d'água: opacidade do preenchimento em 4, opacidade do contorno em 6 e tamanho da fonte em 24.
 
@@ -3473,6 +3494,19 @@ Se a política for definida como desativada ou não for definida, o menu de aces
 <translation id="3150351525324499342">Não mostrar o ícone do <ph name="PRODUCT_NAME" /> na barra de ferramentas por padrão, mas permitir que os usuários escolham</translation>
 <translation id="3152135410085709340">Permitir que os arquivos locais sejam acessados pelos URLs file:// nesses sites no Visualizador de PDF</translation>
 <translation id="3152425128389603870">Disponibilizar e ativar por padrão a área de trabalho unificada</translation>
+<translation id="3157506194753687842">Controla se o agente do <ph name="GEMINI_SPARK_PRODUCT_NAME" /> tem permissão para se conectar ao <ph name="PRODUCT_NAME" /> e usar a navegação automática.
+
+0 = <ph name="GEMINI_SPARK_PRODUCT_NAME" /> tem permissão para se conectar e usar a navegação automática do <ph name="PRODUCT_NAME" />
+
+1 = <ph name="GEMINI_SPARK_PRODUCT_NAME" /> não tem permissão para se conectar ou usar a navegação automática do <ph name="PRODUCT_NAME" />
+
+Aviso: permitir que o <ph name="GEMINI_SPARK_PRODUCT_NAME" /> se conecte ao <ph name="PRODUCT_NAME" /> e use a navegação automática habilita o agente do <ph name="GEMINI_SPARK_PRODUCT_NAME" /> a realizar ações autônomas de várias etapas nos clientes do <ph name="PRODUCT_NAME" /> usando a sessão ativa do navegador. Isso envolve riscos significativos de segurança, incluindo riscos relacionados a credenciais, invasão da rede local e perda de sinais contextuais. Os controles de segurança e gerenciamento atuais podem não ser respeitados.
+
+Os admins devem avaliar com cuidado o modelo de ameaças à rede e as diretrizes de conformidade e privacidade da organização antes de ativar esse recurso.
+
+Essa política não tem efeito quando o app <ph name="GOOGLE_GEMINI_PRODUCT_NAME" /> ou as políticas de navegação automática do <ph name="PRODUCT_NAME" /> estão desativados. Por exemplo, o app <ph name="GOOGLE_GEMINI_PRODUCT_NAME" /> pode ser desativado pela política de <ph name="GEMINI_SETTINGS_POLICY_NAME" />. Para mais informações sobre o <ph name="GOOGLE_GEMINI_PRODUCT_NAME" /> no <ph name="PRODUCT_NAME" />, acesse https://support.google.com/chrome/a?p=gemini_in_chrome.
+
+A navegação automática do <ph name="PRODUCT_NAME" /> e o <ph name="GEMINI_SPARK_PRODUCT_NAME" /> não estão disponíveis em todos os países ou idiomas. Definir essa política como 0 (ativada) não garante que o recurso será ativado. Ele ainda vai ficar sujeito à disponibilidade. Para mais informações sobre o lançamento, consulte as notas da versão do Enterprise: https://chromeenterprise.google/resources/release-notes/.</translation>
 <translation id="3159375329008977062">O usuário tem permissão para exportar/importar contêineres do Crostini por meio da interface</translation>
 <translation id="3163167792874598128">Quando a política é ativada ou deixada sem definição, a promoção de avaliação na App Store pode ser mostrada para o usuário, no máximo uma vez por ano.
 Se a política for desativada, a promoção de avaliação na App Store não vai ser mostrada ao usuário.</translation>
@@ -4986,6 +5020,21 @@ Se a política for definida como <ph name="DISABLE_UNPUBLISHED" /> (1), as exten
 
           Se ela não for definida, a resposta falada fica inicialmente desativada na tela de login, mas pode ser ativada pelo usuário a qualquer momento.</translation>
 <translation id="4173974507809462880">Mostrar a tela de direção de rolagem do touchpad durante o login</translation>
+<translation id="4175846494150407472">Especifique uma lista de origens que são executadas em um processo dedicado em plataformas com restrição de recursos.
+
+Essa política só funciona em dispositivos com memória limitada (entre 1 GB e 3,2 GB de RAM), porque o isolamento de muitos sites em dispositivos com poucos recursos pode causar problemas de desempenho. No caso de ambientes de alto desempenho (incluindo dispositivos <ph name="ANDROID_NAME" /> sofisticados), use <ph name="ISOLATE_ORIGINS_POLICY_NAME" />.
+
+Não é recomendado configurar o isolamento de processos em dispositivos com menos de 1 GB de memória.
+
+Cada processo de uma origem indicada só poderá conter documentos da origem em questão e dos subdomínios dela. Por exemplo, se https://a1.example.com/ for especificada, https://a2.a1.example.com/ será permitida no mesmo processo, mas https://example.com ou https://b.example.com não serão.
+
+Também é possível especificar um intervalo de origens isoladas usando um caractere curinga. Por exemplo, se https://[*.]corp.example.com for especificada, todas as origens abaixo de https://corp.example.com ganharão um processo dedicado, incluindo a própria https://corp.example.com, a https://a1.corp.example.com e a https://a2.a1.corp.example.com.
+
+Observe que o <ph name="ANDROID_NAME" /> isola certos sites sensíveis por padrão a partir da versão 77 do <ph name="PRODUCT_NAME" />, e essa política estende esse modo para isolar outras origens específicas.
+
+Observe também que as origens isoladas por essa política não poderão criar scripts de outras origens no mesmo site, ação que é possível quando dois documentos do mesmo site modificam os valores de document.domain para que sejam correspondentes. Os admins precisam confirmar se esse comportamento incomum não está sendo usado em uma origem antes de isolá-la.
+
+Se a política for definida como uma string vazia ou deixada sem definição, o isolamento de sites não será exigido para nenhuma origem específica. Os usuários ainda poderão ativar o isolamento de processos de forma manual com a flag de linha de comando.</translation>
 <translation id="417956245902013347">Ativar o recurso de acessibilidade de destaque de circunflexos na tela de login.
 
           Se esta política for definida como verdadeira, o destaque de circunflexos sempre ficará ativado na tela de login.
@@ -6347,6 +6396,7 @@ Se for deixada sem definição, a legenda instantânea vai ficar desativada inic
 <translation id="4970046075219007744">Permitir que apps da Web solicitem acesso a tipos de arquivos usando a API File Handling</translation>
 <translation id="4970855112942626932">Desativar login no navegador</translation>
 <translation id="4974091268178043378">Modo de cor do ChromeOS</translation>
+<translation id="4976824366963631628">Bloquear tipos de dados de preenchimento automático para sites específicos</translation>
 <translation id="4976825008579439428">Não permitir a pesquisa no histórico com tecnologia de IA.</translation>
 <translation id="4978533099939732984">Sempre mostrar alertas de pouco espaço em disco</translation>
 <translation id="4979614740553442831">Esta política controla a disponibilidade da integração do Lens no app Galeria no <ph name="PRODUCT_OS_NAME" />
@@ -6371,6 +6421,15 @@ Quando a política é desativada, o recurso também é.</translation>
 
       Para acessar mais informações sobre a descontinuação da API U2F Security Key, consulte https://groups.google.com/a/chromium.org/g/blink-dev/c/xHC3AtU_65A.</translation>
 <translation id="4988291787868618635">Ação a ser realizada quando o intervalo de inatividade for atingido</translation>
+<translation id="4988587935113718108">Se a política for definida, cada uma das origens indicadas em uma lista separada por vírgulas será executada no próprio processo no <ph name="ANDROID_NAME" />. Cada processo de uma origem indicada só poderá conter documentos da origem em questão e dos subdomínios dela. Por exemplo, se https://a1.example.com/ for especificada, https://a2.a1.example.com/ será permitida no mesmo processo, mas https://example.com ou https://b.example.com não serão. Observe que o <ph name="ANDROID_NAME" /> isola alguns sites confidenciais por padrão no <ph name="PRODUCT_NAME" /> 77 e em versões mais recentes, e essa política estende esse modo para isolar outras origens específicas.
+
+Desde o <ph name="PRODUCT_NAME" /> 77, também é possível especificar um intervalo de origens isoladas usando um caractere curinga. Por exemplo, se https://[*.]corp.example.com for especificada, todas as origens abaixo de https://corp.example.com ganharão um processo dedicado, incluindo a própria https://corp.example.com, a https://a1.corp.example.com e a https://a2.a1.corp.example.com.
+
+Observe que as origens isoladas por essa política não poderão criar scripts de outras origens no mesmo site, ação que é possível quando dois documentos do mesmo site modificam os valores de document.domain para que sejam correspondentes. Os admins precisam confirmar se esse comportamento incomum não está sendo usado em uma origem antes de isolá-la.
+
+Se a política for definida como uma string vazia ou deixada sem definição, o isolamento de sites não será exigido para nenhuma origem específica. Os usuários ainda poderão ativar o isolamento de processos de forma manual com a flag de linha de comando.
+
+Observação: essa política foi descontinuada. Use <ph name="ISOLATE_ORIGINS_POLICY_NAME" /> (para dispositivos de alto desempenho) ou <ph name="ISOLATE_ORIGINS_SHORTLIST_POLICY_NAME" />. Essa política se aplica apenas ao Chrome no <ph name="ANDROID_NAME" /> sendo executado em dispositivos com mais de 1 GB de RAM, que não são recomendados para configurar o isolamento de processos de maneira específica.</translation>
 <translation id="4991786313466977061">Controlar a visibilidade dos selos de empresas</translation>
 <translation id="4995123966071996433">Não permitir o encaminhamento de portas a máquinas virtuais Linux</translation>
 <translation id="4996068111491152684">As credenciais de login do <ph name="PRODUCT_OS_NAME" /> não serão usadas para a autenticação de rede.</translation>
@@ -8848,6 +8907,7 @@ OBSERVAÇÃO: o comportamento padrão para dispositivos corporativos ou de consu
 
       Observação: se não houver suporte para o método de entrada atual, ele vai ser alternado para o layout de teclado de hardware (se permitido) ou para a primeira entrada válida da lista. Métodos de entrada sem suporte ou inválidos são ignorados.</translation>
 <translation id="6483115462650732746">Mostrar o menu flutuante de acessibilidade no modo quiosque</translation>
+<translation id="6488321500788319000">Ativar o isolamento de sites para origens específicas em dispositivos com recursos limitados</translation>
 <translation id="6491139795995924304">Permitir o Bluetooth no dispositivo</translation>
 <translation id="6491305972928809525">Não mostrar o menu flutuante de acessibilidade no modo quiosque</translation>
 <translation id="6492177700737407141">Os usuários inscritos no Programa Proteção Avançada só vão receber as proteções padrão ao consumidor</translation>
@@ -8905,6 +8965,23 @@ O tempo limite de inatividade para iniciar o protetor de tela e o intervalo de e
 <translation id="651248769129998376">Não criar nem fazer upload de solicitações para instalar extensões no Admin Console</translation>
 <translation id="6513453889192806240">Latência de HTTPS</translation>
 <translation id="6515357889978918016">Imagem de <ph name="PLUGIN_VM_NAME" /></translation>
+<translation id="6515520014183265350">Especifique uma lista de origens que são executadas em um processo dedicado.
+
+No <ph name="ANDROID_NAME" />, essa política só funciona em dispositivos com memória suficiente (mais de 3,2 GB de RAM), porque o isolamento de muitos sites em dispositivos com recursos limitados pode causar problemas de desempenho. Para dispositivos <ph name="ANDROID_NAME" /> com recursos limitados, use <ph name="ISOLATE_ORIGINS_SHORTLIST_POLICY_NAME" />.
+
+Não é recomendado configurar o isolamento de processos em dispositivos com menos de 1 GB de memória.
+
+Cada processo de uma origem indicada só poderá conter documentos da origem em questão e dos subdomínios dela. Por exemplo, se https://a1.example.com/ for especificada, https://a2.a1.example.com/ será permitida no mesmo processo, mas https://example.com ou https://b.example.com não serão.
+
+Desde o <ph name="PRODUCT_NAME" /> 77, também é possível especificar um intervalo de origens isoladas usando um caractere curinga. Por exemplo, se https://[*.]corp.example.com for especificada, todas as origens abaixo de https://corp.example.com ganharão um processo dedicado, incluindo a própria https://corp.example.com, a https://a1.corp.example.com e a https://a2.a1.corp.example.com.
+
+Observe que todos os sites (ou seja, esquema + eTLD+1, como https://example.com) já são isolados por padrão em plataformas para computador, conforme definido na política <ph name="SITE_PER_PROCESS_POLICY_NAME" />. A política <ph name="ISOLATE_ORIGINS_POLICY_NAME" /> é útil para isolar origens específicas com uma granularidade mais refinada (por exemplo, https://a.example.com).
+
+Observe que o <ph name="ANDROID_NAME" /> isola certos sites sensíveis por padrão a partir da versão 77 do <ph name="PRODUCT_NAME" />, e essa política estende esse modo para isolar outras origens específicas.
+
+Observe também que as origens isoladas por essa política não poderão criar scripts de outras origens no mesmo site, ação que é possível quando dois documentos do mesmo site modificam os valores de document.domain para que sejam correspondentes. Os admins precisam confirmar se esse comportamento incomum não está sendo usado em uma origem antes de isolá-la.
+
+Se a política for definida como uma string vazia ou deixada sem definição, o isolamento de sites não será exigido para nenhuma origem específica. Os usuários ainda poderão ativar o isolamento de processos de forma manual com a flag de linha de comando.</translation>
 <translation id="6517859209214570623">Se a política for definida, você poderá fazer uma lista de padrões de URL que especificam sites que não podem configurar cookies.
 
       Se a política ficar sem definição, <ph name="DEFAULT_COOKIES_SETTINGS_POLICY_NAME" /> será usada para todos os sites, se ela estiver definida. Caso contrário, a configuração pessoal do usuário será aplicada.

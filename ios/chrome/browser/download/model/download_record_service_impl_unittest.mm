@@ -59,11 +59,21 @@ class MockDownloadRecordObserver : public DownloadRecordObserver {
 }  // namespace
 
 class DownloadRecordServiceImplTest : public PlatformTest {
+ public:
+  // Default for standard tests.
+  DownloadRecordServiceImplTest()
+      : DownloadRecordServiceImplTest({kDownloadList}, {}) {}
+
+  // For subclasses to inject features.
+  DownloadRecordServiceImplTest(
+      const std::vector<base::test::FeatureRef>& enabled,
+      const std::vector<base::test::FeatureRef>& disabled) {
+    feature_list_.InitWithFeatures(enabled, disabled);
+  }
+
  protected:
   void SetUp() override {
     PlatformTest::SetUp();
-
-    feature_list_.InitAndEnableFeature(kDownloadList);
 
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
 
@@ -162,6 +172,16 @@ class DownloadRecordServiceImplTest : public PlatformTest {
   // Containers to maintain object lifetimes during tests
   std::vector<std::unique_ptr<TestProfileIOS>> profiles_;
   std::vector<std::unique_ptr<web::FakeWebState>> web_states_;
+};
+
+// Sub-fixture for paginated read APIs. Enables kDownloadListPagination
+// before the service is constructed.
+class DownloadRecordServiceImplPaginationTest
+    : public DownloadRecordServiceImplTest {
+ public:
+  DownloadRecordServiceImplPaginationTest()
+      : DownloadRecordServiceImplTest(
+            {kDownloadList, kDownloadListPagination}, {}) {}
 };
 
 TEST_F(DownloadRecordServiceImplTest, RecordDownload) {
@@ -528,7 +548,7 @@ TEST_F(DownloadRecordServiceImplTest, RecordDownloadTaskDestroyedBeforeReply) {
   service_->RecordDownload(task.get());
 
   // Destroy the task before the posted InsertRecord reply runs. The service
-  // is not yet observing the task, so it receives no OnDownloadDestroyed.
+  // is not yet observing the task, so it receives no `OnDownloadDestroyed`.
   task.reset();
 
   // Issue a follow-up query and wait for its callback. The database task
@@ -556,7 +576,8 @@ TEST_F(DownloadRecordServiceImplTest, RecordDownloadTaskDestroyedBeforeReply) {
 // `GetDownloadsPageAsync` posts a non-empty vector to the calling
 // sequence asynchronously. Locks in the async contract; broader
 // coverage (cursor / filter / ordering) lands in a follow-up CL.
-TEST_F(DownloadRecordServiceImplTest, GetDownloadsPageAsync_AsyncRoundTrip) {
+TEST_F(DownloadRecordServiceImplPaginationTest,
+       GetDownloadsPageAsync_AsyncRoundTrip) {
   std::unique_ptr<web::FakeDownloadTask> task =
       CreateFakeDownloadTask("page_async_1");
   RecordDownloadAndValidate(task.get());
@@ -575,7 +596,8 @@ TEST_F(DownloadRecordServiceImplTest, GetDownloadsPageAsync_AsyncRoundTrip) {
 }
 
 // Mirrors `GetDownloadsPageAsync_AsyncRoundTrip` for the count API.
-TEST_F(DownloadRecordServiceImplTest, GetDownloadsCountAsync_AsyncRoundTrip) {
+TEST_F(DownloadRecordServiceImplPaginationTest,
+       GetDownloadsCountAsync_AsyncRoundTrip) {
   std::unique_ptr<web::FakeDownloadTask> task =
       CreateFakeDownloadTask("count_async_1");
   RecordDownloadAndValidate(task.get());
@@ -595,7 +617,7 @@ TEST_F(DownloadRecordServiceImplTest, GetDownloadsCountAsync_AsyncRoundTrip) {
 // =======================================================================
 
 // With no records in the DB, the page API returns an empty vector.
-TEST_F(DownloadRecordServiceImplTest, GetDownloadsPageAsync_EmptyDB) {
+TEST_F(DownloadRecordServiceImplPaginationTest, GetDownloadsPageAsync_EmptyDB) {
   base::test::TestFuture<std::vector<DownloadRecord>> future;
   DownloadRecordQuery query;
   service_->GetDownloadsPageAsync(query, future.GetCallback());
@@ -604,7 +626,7 @@ TEST_F(DownloadRecordServiceImplTest, GetDownloadsPageAsync_EmptyDB) {
 
 // Page results are ordered DESC by (created_time, download_id), so the
 // most recently recorded download appears first.
-TEST_F(DownloadRecordServiceImplTest,
+TEST_F(DownloadRecordServiceImplPaginationTest,
        GetDownloadsPageAsync_OrderedByCreatedTimeDesc) {
   std::unique_ptr<web::FakeDownloadTask> t1 = CreateFakeDownloadTask("id_1");
   std::unique_ptr<web::FakeDownloadTask> t2 = CreateFakeDownloadTask("id_2");
@@ -629,7 +651,7 @@ TEST_F(DownloadRecordServiceImplTest,
 
 // A cursor pointing at row N returns only rows strictly past it (cursor
 // row itself is not duplicated on the next page).
-TEST_F(DownloadRecordServiceImplTest,
+TEST_F(DownloadRecordServiceImplPaginationTest,
        GetDownloadsPageAsync_CursorReturnsNextPage) {
   std::unique_ptr<web::FakeDownloadTask> t1 = CreateFakeDownloadTask("id_1");
   std::unique_ptr<web::FakeDownloadTask> t2 = CreateFakeDownloadTask("id_2");
@@ -662,7 +684,7 @@ TEST_F(DownloadRecordServiceImplTest,
 }
 
 // A filter narrows results to matching MIME types only.
-TEST_F(DownloadRecordServiceImplTest,
+TEST_F(DownloadRecordServiceImplPaginationTest,
        GetDownloadsPageAsync_FilterTypeNarrowsResults) {
   std::unique_ptr<web::FakeDownloadTask> pdf_task =
       CreateFakeDownloadTask("pdf_doc", /*is_incognito=*/false,
@@ -684,7 +706,7 @@ TEST_F(DownloadRecordServiceImplTest,
 }
 
 // A name_query case-insensitively substring-matches the file name.
-TEST_F(DownloadRecordServiceImplTest,
+TEST_F(DownloadRecordServiceImplPaginationTest,
        GetDownloadsPageAsync_NameQueryMatchesSubstring) {
   std::unique_ptr<web::FakeDownloadTask> report = CreateFakeDownloadTask(
       "report_doc", /*is_incognito=*/false,
@@ -710,14 +732,16 @@ TEST_F(DownloadRecordServiceImplTest,
 }
 
 // With no records in the DB, the count API returns 0.
-TEST_F(DownloadRecordServiceImplTest, GetDownloadsCountAsync_EmptyDB) {
+TEST_F(DownloadRecordServiceImplPaginationTest,
+       GetDownloadsCountAsync_EmptyDB) {
   base::test::TestFuture<size_t> future;
   service_->GetDownloadsCountAsync(std::nullopt, future.GetCallback());
   EXPECT_EQ(size_t{0}, future.Get());
 }
 
 // Without a filter (or with kAll) the count returns every persisted row.
-TEST_F(DownloadRecordServiceImplTest, GetDownloadsCountAsync_AllReturnsTotal) {
+TEST_F(DownloadRecordServiceImplPaginationTest,
+       GetDownloadsCountAsync_AllReturnsTotal) {
   std::unique_ptr<web::FakeDownloadTask> t1 = CreateFakeDownloadTask("id_1");
   std::unique_ptr<web::FakeDownloadTask> t2 = CreateFakeDownloadTask("id_2");
   std::unique_ptr<web::FakeDownloadTask> t3 = CreateFakeDownloadTask("id_3");
@@ -731,7 +755,7 @@ TEST_F(DownloadRecordServiceImplTest, GetDownloadsCountAsync_AllReturnsTotal) {
 }
 
 // A filter narrows the count to matching MIME types only.
-TEST_F(DownloadRecordServiceImplTest,
+TEST_F(DownloadRecordServiceImplPaginationTest,
        GetDownloadsCountAsync_FilterNarrowsCount) {
   std::unique_ptr<web::FakeDownloadTask> pdf1 =
       CreateFakeDownloadTask("pdf_1", /*is_incognito=*/false,
@@ -844,4 +868,149 @@ TEST_F(DownloadRecordServiceImplTest, StartupCleanup_PaginationPathEmptyDB) {
   base::test::TestFuture<size_t> count;
   service_->GetDownloadsCountAsync(std::nullopt, count.GetCallback());
   EXPECT_EQ(size_t{0}, count.Get());
+}
+
+// Active records cache — covers the flag-ON in-memory hot cache
+// (`active_records_cache_` + `incognito_records_` in the store). Reads
+// use `GetById`, writes flow via `WriteThroughToActiveCache`,
+// eviction via `EvictOnDestroy`. None of these paths fire under the
+// flag-OFF fixture default.
+
+// Flag-ON: `RecordDownload` for a persisted task must populate the
+// active cache so a subsequent `GetDownloadByIdAsync` resolves through
+// the pagination read path. The id round-trip is the contract: cache
+// miss would still hit the DB and return the same record, but if the
+// row is reachable it proves the write-through wired up at insert time.
+TEST_F(DownloadRecordServiceImplTest,
+       ActiveCache_RecordDownload_PopulatesCache_FlagOn) {
+  RecreateServiceWithPaginationEnabled();
+
+  const std::string kId = "active_cache_record";
+  std::unique_ptr<web::FakeDownloadTask> task = CreateFakeDownloadTask(kId);
+  RecordDownloadAndValidate(task.get());
+
+  base::test::TestFuture<std::optional<DownloadRecord>> got;
+  service_->GetDownloadByIdAsync(kId, got.GetCallback());
+  ASSERT_TRUE(got.Get().has_value());
+  EXPECT_EQ(kId, got.Get()->download_id);
+}
+
+// Flag-ON: a volatile-only update (`SetReceivedBytes`) does not persist
+// to the DB (`ShouldPersistUpdate` returns false for progress fields),
+// but it MUST refresh the active cache so subsequent reads see the
+// freshest byte count. Without write-through on the no-persist branch
+// the UI byte progress would freeze at the last persisted value.
+TEST_F(DownloadRecordServiceImplTest,
+       ActiveCache_OnDownloadUpdated_HotPath_RefreshesCache_FlagOn) {
+  RecreateServiceWithPaginationEnabled();
+
+  const std::string kId = "active_cache_update";
+  std::unique_ptr<web::FakeDownloadTask> task = CreateFakeDownloadTask(kId);
+  RecordDownloadAndValidate(task.get());
+
+  // Volatile-only mutation: progress field, no state transition.
+  constexpr int64_t kBytes = 4096;
+  task->SetReceivedBytes(kBytes);
+
+  base::test::TestFuture<std::optional<DownloadRecord>> got;
+  service_->GetDownloadByIdAsync(kId, got.GetCallback());
+  ASSERT_TRUE(got.Get().has_value());
+  EXPECT_EQ(kBytes, got.Get()->received_bytes);
+}
+
+// Flag-ON: destroying the underlying task posts a FIFO `EvictOnDestroy`
+// task to the database sequence. The cold path (cache miss → DB
+// fallback) then returns the last persisted value, which for a volatile-
+// only update is the pre-bytes record. Anchors both:
+//   - the `OnDownloadDestroyed` eviction wiring, and
+//   - the DB-version-wins fallback after eviction.
+TEST_F(DownloadRecordServiceImplTest,
+       ActiveCache_OnDownloadDestroyed_EvictsAndDbFallback_FlagOn) {
+  RecreateServiceWithPaginationEnabled();
+
+  const std::string kId = "active_cache_evict";
+  std::unique_ptr<web::FakeDownloadTask> task = CreateFakeDownloadTask(kId);
+  RecordDownloadAndValidate(task.get());
+
+  // Make the cache strictly hotter than the DB.
+  constexpr int64_t kHotBytes = 8192;
+  task->SetReceivedBytes(kHotBytes);
+
+  // Sanity: hot value visible while task is alive.
+  base::test::TestFuture<std::optional<DownloadRecord>> hot;
+  service_->GetDownloadByIdAsync(kId, hot.GetCallback());
+  ASSERT_TRUE(hot.Get().has_value());
+  EXPECT_EQ(kHotBytes, hot.Get()->received_bytes);
+
+  // Destroy the task. `OnDownloadDestroyed` posts an `EvictOnDestroy` task
+  // to the database sequence, which is FIFO-ordered with subsequent
+  // `GetDownloadByIdAsync` work — by the time the next read runs, the
+  // cache entry is gone and the DB-version wins.
+  task.reset();
+
+  // GetDownloadByIdAsync now misses the cache and falls back to the DB,
+  // which only ever saw the pre-bytes (no-progress-persisted) record.
+  base::test::TestFuture<std::optional<DownloadRecord>> cold;
+  service_->GetDownloadByIdAsync(kId, cold.GetCallback());
+  ASSERT_TRUE(cold.Get().has_value());
+  EXPECT_EQ(kId, cold.Get()->download_id);
+  EXPECT_EQ(int64_t{0}, cold.Get()->received_bytes);
+}
+
+// Flag-ON: incognito records live only in `incognito_records_` (never
+// in the DB), so `OnDownloadDestroyed` eviction makes them disappear
+// entirely. There is no DB row to fall back to.
+TEST_F(DownloadRecordServiceImplTest,
+       ActiveCache_OnDownloadDestroyed_EvictsIncognito_FlagOn) {
+  RecreateServiceWithPaginationEnabled();
+
+  const std::string kId = "incognito_evict";
+  std::unique_ptr<web::FakeDownloadTask> task =
+      CreateFakeDownloadTask(kId, /*is_incognito=*/true);
+  RecordDownloadAndValidate(task.get());
+
+  // Sanity: reachable while alive.
+  base::test::TestFuture<std::optional<DownloadRecord>> alive;
+  service_->GetDownloadByIdAsync(kId, alive.GetCallback());
+  ASSERT_TRUE(alive.Get().has_value());
+  EXPECT_TRUE(alive.Get()->is_incognito);
+
+  task.reset();
+
+  // After eviction the incognito row is gone everywhere: never persisted,
+  // and cache entry removed by EvictOnDestroy.
+  base::test::TestFuture<std::optional<DownloadRecord>> gone;
+  service_->GetDownloadByIdAsync(kId, gone.GetCallback());
+  EXPECT_FALSE(gone.Get().has_value());
+}
+
+// Flag-OFF (default fixture): none of the new active-cache write-through
+// or eviction logic should fire. Exercise the same Record + volatile
+// update + destroy sequence as the flag-ON eviction test and assert the
+// legacy `record_cache_` behavior: the in-memory record reflects the
+// volatile bytes (legacy cache is always written through), the destroy
+// hook is a pure no-op for cache state, and the row remains reachable
+// via `GetDownloadByIdAsync` because `record_cache_` keeps it.
+TEST_F(DownloadRecordServiceImplTest, ActiveCache_FlagOff_NoActiveCacheUsage) {
+  // Default fixture: kDownloadListPagination is OFF.
+  const std::string kId = "legacy_noop";
+  std::unique_ptr<web::FakeDownloadTask> task = CreateFakeDownloadTask(kId);
+  RecordDownloadAndValidate(task.get());
+
+  constexpr int64_t kBytes = 2048;
+  task->SetReceivedBytes(kBytes);
+
+  base::test::TestFuture<std::optional<DownloadRecord>> hot;
+  service_->GetDownloadByIdAsync(kId, hot.GetCallback());
+  ASSERT_TRUE(hot.Get().has_value());
+  EXPECT_EQ(kBytes, hot.Get()->received_bytes);
+
+  // Destroy the task. Under flag-OFF, `OnDownloadDestroyed` does NOT
+  // post any eviction work; `record_cache_` keeps the entry.
+  task.reset();
+
+  base::test::TestFuture<std::optional<DownloadRecord>> still_there;
+  service_->GetDownloadByIdAsync(kId, still_there.GetCallback());
+  ASSERT_TRUE(still_there.Get().has_value());
+  EXPECT_EQ(kBytes, still_there.Get()->received_bytes);
 }

@@ -126,84 +126,6 @@ FillDataType GetFillDataTypeFromFillingPayload(
       filling_payload);
 }
 
-// Given `filling_product`, returns the types supported for filling by this
-// FillingProduct, or std::nullopt if `filling_product` is independent of field
-// classifications.
-std::optional<FieldTypeSet> GetFieldTypesToFillFromFillingProduct(
-    FillingProduct filling_product) {
-  switch (filling_product) {
-    case FillingProduct::kAddress: {
-      static constexpr FieldTypeSet kFieldTypes = []() {
-        FieldTypeSet field_types;
-        for (FieldType field_type : FieldTypeSet::all()) {
-          if (IsAddressType(field_type)) {
-            field_types.insert(field_type);
-          }
-        }
-        return field_types;
-      }();
-      return kFieldTypes;
-    }
-    case FillingProduct::kCreditCard: {
-      static constexpr FieldTypeSet kFieldTypes = []() {
-        FieldTypeSet field_types;
-        for (FieldType field_type : FieldTypeSet::all()) {
-          if (FieldTypeGroupSet({FieldTypeGroup::kCreditCard,
-                                 FieldTypeGroup::kStandaloneCvcField})
-                  .contains(GroupTypeOfFieldType(field_type))) {
-            field_types.insert(field_type);
-          }
-        }
-        return field_types;
-      }();
-      return kFieldTypes;
-    }
-    case FillingProduct::kAutofillAi: {
-      static constexpr auto kFieldTypes = []() {
-        FieldTypeSet result;
-        for (AttributeType type : DenseSet<AttributeType>::all()) {
-          result.insert_all(type.field_subtypes());
-        }
-        return result;
-      }();
-      return kFieldTypes;
-    }
-    case FillingProduct::kPassword: {
-      static constexpr FieldTypeSet kFieldTypes = []() {
-        FieldTypeSet field_types;
-        for (FieldType field_type : FieldTypeSet::all()) {
-          if (FieldTypeGroupSet({FieldTypeGroup::kUsernameField,
-                                 FieldTypeGroup::kPasswordField})
-                  .contains(GroupTypeOfFieldType(field_type))) {
-            field_types.insert(field_type);
-          }
-        }
-        return field_types;
-      }();
-      return kFieldTypes;
-    }
-    case FillingProduct::kMerchantPromoCode:
-      return FieldTypeSet{MERCHANT_PROMO_CODE};
-    case FillingProduct::kIban:
-      return FieldTypeSet{IBAN_VALUE};
-    case FillingProduct::kLoyaltyCard:
-      return FieldTypeSet{LOYALTY_MEMBERSHIP_ID};
-    case FillingProduct::kIdentityCredential:
-      return FieldTypeSet{EMAIL_ADDRESS, NAME_FIRST, NAME_FULL};
-    case FillingProduct::kAutocomplete:
-    case FillingProduct::kCompose:
-    case FillingProduct::kDataList:
-    case FillingProduct::kPasskey:
-    case FillingProduct::kAtMemory:
-      return std::nullopt;
-    case FillingProduct::kOneTimePassword:
-      return FieldTypeSet{ONE_TIME_CODE};
-    case FillingProduct::kNone:
-      NOTREACHED();
-  }
-  NOTREACHED();
-}
-
 // Returns how many fields with type |field_type| may be filled in a form at
 // maximum.
 size_t TypeValueFormFillingLimit(FieldType field_type) {
@@ -503,28 +425,32 @@ struct FormFiller::RefillContext {
         filled_origin(field.origin()),
         original_fill_time(base::TimeTicks::Now()),
         types_originally_filled(std::move(filled_types)),
-        blocked_fields(std::move(blocked_fields)) {
-    profile_or_credit_card = std::visit(
-        absl::Overload{
-            // Autofill with AI doesn't support refills.
-            [](const AugmentedFillingPayload::EntityPayload&)
-                -> std::variant<CreditCard, AutofillProfile> {
-              // Beware that `EntityPayload::second` holds raw_refs to
-              // AutofillFields. These references must not be stored in a
-              // RefillContext because they would dangle.
-              NOTREACHED();
-            },
-            // Verified Profiles doesn't support refills.
-            [](const VerifiedProfile*)
-                -> std::variant<CreditCard, AutofillProfile> { NOTREACHED(); },
-            // OTP filling doesn't support refills.
-            [](const OtpFillData*)
-                -> std::variant<CreditCard, AutofillProfile> { NOTREACHED(); },
-            [](const auto* x) {
-              return std::variant<CreditCard, AutofillProfile>(*x);
-            }},
-        filling_payload.variant);
-  }
+        blocked_fields(std::move(blocked_fields)),
+        profile_or_credit_card(std::visit(
+            absl::Overload{// Autofill with AI doesn't support refills.
+                           [](const AugmentedFillingPayload::EntityPayload&)
+                               -> std::variant<CreditCard, AutofillProfile> {
+                             // Beware that `EntityPayload::second` holds
+                             // raw_refs to AutofillFields. These references
+                             // must not be stored in a RefillContext because
+                             // they would dangle.
+                             NOTREACHED();
+                           },
+                           // Verified Profiles doesn't support refills.
+                           [](const VerifiedProfile*)
+                               -> std::variant<CreditCard, AutofillProfile> {
+                             NOTREACHED();
+                           },
+                           // OTP filling doesn't support refills.
+                           [](const OtpFillData*)
+                               -> std::variant<CreditCard, AutofillProfile> {
+                             NOTREACHED();
+                           },
+                           [](const auto* x) {
+                             return std::variant<CreditCard, AutofillProfile>(
+                                 *x);
+                           }},
+            filling_payload.variant)) {}
 
   ~RefillContext() = default;
 
@@ -532,19 +458,13 @@ struct FormFiller::RefillContext {
   const FillId fill_id;
   // The form filled in the first attempt for filling. Used to check whether
   // a refill should be attempted upon parsing an updated FormData.
-  FormData filled_form;
-  // The profile or credit card that was used for the initial fill. This is
-  // slightly different from `filling_payload` that is used by the filling
-  // function: This contains actual objects because this needs to survive
-  // potential storage mutation, and this only contains payloads that support
-  // refills.
-  std::variant<CreditCard, AutofillProfile> profile_or_credit_card;
+  const FormData filled_form;
   // Possible identifiers of the field that was focused when the form was
   // initially filled. A refill shall be triggered from the same field.
   const FieldGlobalId filled_field_id;
   const FieldSignature filled_field_signature;
   // The security origin from which the field was filled.
-  url::Origin filled_origin;
+  const url::Origin filled_origin;
   // The time at which the initial fill occurred.
   // TODO(crbug.com/41490871): Remove in favor of
   // FormStructure::last_filling_timestamp_.
@@ -554,7 +474,7 @@ struct FormFiller::RefillContext {
   // The timer used to trigger a refill.
   base::OneShotTimer on_refill_timer;
   // The field types that were initially filled.
-  FieldTypeSet types_originally_filled;
+  const FieldTypeSet types_originally_filled;
   // If populated, this map determines which values will be filled into a
   // field (it does not matter whether the field already contains a value).
   std::map<FieldGlobalId, FillingValueAndType> forced_fill_values;
@@ -565,7 +485,13 @@ struct FormFiller::RefillContext {
   // can change between original fill and refill, for example if a field has
   // been added to the form. A refill will currently fail to block those fields
   // even if it should.
-  base::flat_set<FieldGlobalId> blocked_fields;
+  const base::flat_set<FieldGlobalId> blocked_fields;
+  // The profile or credit card that was used for the initial fill. This is
+  // slightly different from `filling_payload` that is used by the filling
+  // function: This contains actual objects because this needs to survive
+  // potential storage mutation, and this only contains payloads that support
+  // refills.
+  const std::variant<CreditCard, AutofillProfile> profile_or_credit_card;
 };
 
 FormFiller::RefillOptions::RefillOptions() = default;
@@ -618,7 +544,6 @@ DenseSet<FieldFillingSkipReason> FormFiller::GetFillingSkipReasonsForField(
     const RefillOptions& refill_options,
     base::flat_map<FieldType, size_t>& type_count,
     const base::flat_set<FieldGlobalId>& blocked_fields,
-    FillingProduct filling_product,
     AutofillTriggerSource trigger_source,
     AutocompleteUnrecognizedBehavior ac_unrecognized_behavior) {
   DenseSet<FieldFillingSkipReason> skip_reasons;
@@ -694,13 +619,6 @@ DenseSet<FieldFillingSkipReason> FormFiller::GetFillingSkipReasonsForField(
            FieldFillingSkipReason::kFillingLimitReachedType);
   }
 
-  std::optional<FieldTypeSet> supported_types =
-      GetFieldTypesToFillFromFillingProduct(filling_product);
-  // This ensures that a filling product only operates on fields of supported
-  // types.
-  add_if(supported_types && !supported_types->contains_any(field_types),
-         FieldFillingSkipReason::kFieldTypeUnrelated);
-
   // Don't fill meaningfully pre-filled fields but overwrite placeholders.
   add_if(
       ShouldSkipFieldBecauseOfMeaningfulInitialValue(field, is_trigger_field),
@@ -758,7 +676,7 @@ FormFiller::GetFieldFillingSkipReasons(
     DenseSet<FieldFillingSkipReason> field_skip_reasons =
         GetFillingSkipReasonsForField(
             *field, trigger_field, refill_options, type_count, blocked_fields,
-            filling_product, trigger_source, GetAcUnrecognizedBehavior(client));
+            trigger_source, GetAcUnrecognizedBehavior(client));
 
     // Usually, `skip_reasons[field_id].empty()` before executing the line
     // below. It may not be the case though because FieldGlobalIds may not be

@@ -73,7 +73,10 @@
 #endif
 
 #if BUILDFLAG(ENABLE_WEBUI_NTP)
+#include "chrome/browser/new_tab_page/modules/file_suggestion/drive_suggestion.mojom.h"
+#include "chrome/browser/new_tab_page/modules/v2/calendar/google_calendar.mojom.h"
 #include "chrome/browser/new_tab_page/modules/v2/most_relevant_tab_resumption/most_relevant_tab_resumption.mojom.h"
+#include "chrome/browser/new_tab_page/new_tab_page_util.h"
 #include "chrome/browser/ui/webui/new_tab_page/action_chips/action_chips.mojom.h"
 #include "chrome/browser/ui/webui/new_tab_page/new_tab_page_ui.h"
 #include "components/search/ntp_features.h"
@@ -281,6 +284,14 @@ void PopulateChromeWebUIFrameBindersPartsAllPlatforms(
     content::RegisterWebUIControllerInterfaceBinder<
         ntp::most_relevant_tab_resumption::mojom::PageHandler, NewTabPageUI>(
         map);
+  }
+  if (IsDriveModuleEnabled()) {
+    content::RegisterWebUIControllerInterfaceBinder<
+        file_suggestion::mojom::DriveSuggestionHandler, NewTabPageUI>(map);
+  }
+  if (base::FeatureList::IsEnabled(ntp_features::kNtpCalendarModule)) {
+    content::RegisterWebUIControllerInterfaceBinder<
+        ntp::calendar::mojom::GoogleCalendarPageHandler, NewTabPageUI>(map);
   }
 #endif  // BUILDFLAG(ENABLE_WEBUI_NTP)
 

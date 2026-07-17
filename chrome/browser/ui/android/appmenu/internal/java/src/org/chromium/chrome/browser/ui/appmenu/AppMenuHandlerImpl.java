@@ -490,6 +490,13 @@ class AppMenuHandlerImpl
         if (!model.get(AppMenuItemProperties.ENABLED)) return;
 
         int itemId = model.get(AppMenuItemProperties.MENU_ITEM_ID);
+
+        // Empty menu items are technically enabled for keyboard navigation, but clicks should be
+        // ignored.
+        if (itemId == R.id.empty_item_menu_id) {
+            return;
+        }
+
         mAppMenu.setSelectedItemBeforeDismiss(true);
         mAppMenu.dismiss();
 
@@ -506,6 +513,12 @@ class AppMenuHandlerImpl
     public boolean onItemLongClick(PropertyModel model, View view) {
         if (mAppMenu == null) return false;
         if (!model.get(AppMenuItemProperties.ENABLED)) return false;
+
+        // Empty menu items are technically enabled for keyboard navigation, but long clicks should
+        // be ignored.
+        if (model.get(AppMenuItemProperties.MENU_ITEM_ID) == R.id.empty_item_menu_id) {
+            return false;
+        }
 
         mAppMenu.setSelectedItemBeforeDismiss(true);
 
@@ -627,6 +640,10 @@ class AppMenuHandlerImpl
         adapter.registerType(
                 AppMenuItemType.RECENT_ENTRY,
                 new LayoutViewBuilder<>(standardItemResId),
+                AppMenuItemViewBinder::bindStandardItem);
+        adapter.registerType(
+                AppMenuItemType.RECENT_ENTRY_NO_ICON,
+                new LayoutViewBuilder<>(R.layout.menu_item_no_icon),
                 AppMenuItemViewBinder::bindStandardItem);
         adapter.registerType(
                 AppMenuItemType.EMPTY,

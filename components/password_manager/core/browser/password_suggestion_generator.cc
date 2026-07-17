@@ -33,6 +33,7 @@
 #include "components/password_manager/core/browser/webauthn_credentials_delegate.h"
 #include "components/password_manager/core/common/password_manager_constants.h"
 #include "components/signin/public/base/consent_level.h"
+#include "components/signin/public/base/signin_switches.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/sync/base/features.h"
 #include "components/sync/service/sync_service.h"
@@ -478,16 +479,18 @@ std::vector<Suggestion> PasswordSuggestionGenerator::GetSuggestionsForDomain(
                      autofill::FieldType::PASSWORD));
   }
 
-  // TODO(crbug.com/333945816): Restrict QR code autofill to the Chrome Sign-in
-  // page.
-  bool has_qr =
-      base::FeatureList::IsEnabled(features::kMagiChromeQrCodeAutofill) &&
+  bool has_qr = false;
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+  has_qr =
+      password_client_->IsChromeSigninPage() &&
+      switches::IsMagiChromePasskeyAutofillEnabled() &&
       password_client_->GetWebAuthnCredentialsDelegateForDriver(
           password_manager_driver_) &&
       password_client_
           ->GetWebAuthnCredentialsDelegateForDriver(password_manager_driver_)
           ->GetCableQrString()
           .has_value();
+#endif
 
   // Don't return early if there is a QR code suggestion. It still needs to be
   // appended later in the footer section.
@@ -683,11 +686,9 @@ PasswordSuggestionGenerator::GetWebauthnSignInWithAnotherDeviceSuggestion(
   if (!delegate) {
     return std::nullopt;
   }
-  if (base::FeatureList::IsEnabled(features::kMagiChromeQrCodeAutofill)) {
-    // Offer the inlined QR code suggestion instead of the standard hybrid
-    // suggestion if possible.
-    // TODO(crbug.com/333945816): Restrict QR code autofill to the Chrome
-    // Sign-in page.
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+  if (password_client_->IsChromeSigninPage() &&
+      switches::IsMagiChromePasskeyAutofillEnabled()) {
     std::optional<std::string> qr_string = delegate->GetCableQrString();
     if (qr_string.has_value()) {
       autofill::Suggestion suggestion(
@@ -702,6 +703,7 @@ PasswordSuggestionGenerator::GetWebauthnSignInWithAnotherDeviceSuggestion(
       return suggestion;
     }
   }
+#endif
   if (!delegate->GetPasskeys().has_value() ||
       !delegate->IsSecurityKeyOrHybridFlowAvailable()) {
     return std::nullopt;

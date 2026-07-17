@@ -22,7 +22,6 @@
 #include "chrome/browser/extensions/api/settings_private/generated_prefs_factory.h"
 #include "chrome/browser/extensions/settings_api_helpers.h"
 #include "chrome/browser/glic/glic_pref_names.h"
-#include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/metrics/profile_pref_names.h"
 #include "chrome/browser/nearby_sharing/common/nearby_share_prefs.h"
 #include "chrome/browser/password_manager/generated_password_leak_detection_pref.h"
@@ -34,6 +33,7 @@
 #include "chrome/browser/ui/safety_hub/safety_hub_prefs.h"
 #include "chrome/browser/ui/tabs/tab_strip_prefs.h"
 #include "chrome/browser/ui/toolbar/toolbar_pref_names.h"
+#include "chrome/common/chrome_features.h"
 #include "chrome/common/extensions/api/settings_private.h"
 #include "chrome/common/pref_names.h"
 #include "components/autofill/core/common/autofill_prefs.h"
@@ -204,11 +204,11 @@ PrefsUtil::PrefsUtil(Profile* profile) : profile_(profile) {}
 PrefsUtil::~PrefsUtil() = default;
 
 const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
-  if (allowlist_) {
-    return *allowlist_;
+  static PrefsUtil::TypedPrefMap* s_allowlist = nullptr;
+  if (s_allowlist) {
+    return *s_allowlist;
   }
-  allowlist_ = std::make_unique<TypedPrefMap>();
-  TypedPrefMap* s_allowlist = allowlist_.get();
+  s_allowlist = new PrefsUtil::TypedPrefMap();
 
   // Miscellaneous
   (*s_allowlist)[::embedder_support::kAlternateErrorPagesEnabled] =
@@ -247,6 +247,11 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
         // BUILDFLAG(IS_CHROMEOS)
   (*s_allowlist)[payments::kCanMakePaymentEnabled] =
       settings_api::PrefType::kBoolean;
+  if (base::FeatureList::IsEnabled(
+          features::kGlicActorAutofillOneTimePassword)) {
+    (*s_allowlist)[autofill::prefs::kAutofillGmailOtpFillingEnabled] =
+        settings_api::PrefType::kBoolean;
+  }
   (*s_allowlist)[bookmarks::prefs::kShowBookmarkBar] =
       settings_api::PrefType::kBoolean;
   (*s_allowlist)[bookmarks::prefs::kBookmarkBarVisibilityState] =
@@ -1351,28 +1356,25 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
       settings_api::PrefType::kNumber;
 
   // Glic prefs
-  if (glic::GlicEnabling::EnablementForProfile(profile_)
-          .ShouldShowSettingsPage()) {
-    (*s_allowlist)[glic::prefs::kGlicPinnedToTabstrip] =
-        settings_api::PrefType::kBoolean;
-    (*s_allowlist)[glic::prefs::kGlicLauncherEnabled] =
-        settings_api::PrefType::kBoolean;
-    (*s_allowlist)[glic::prefs::kGlicClosedCaptioningEnabled] =
-        settings_api::PrefType::kBoolean;
-    (*s_allowlist)[glic::prefs::kGlicGeolocationEnabled] =
-        settings_api::PrefType::kBoolean;
-    (*s_allowlist)[glic::prefs::kGlicMicrophoneEnabled] =
-        settings_api::PrefType::kBoolean;
-    (*s_allowlist)[glic::prefs::kGlicTabContextEnabled] =
-        settings_api::PrefType::kBoolean;
-    (*s_allowlist)[glic::prefs::kGlicDefaultTabContextEnabled] =
-        settings_api::PrefType::kBoolean;
-    (*s_allowlist)[glic::prefs::kGlicUserStatus] =
-        settings_api::PrefType::kDictionary;
-    (*s_allowlist)[prefs::kGeminiSettings] = settings_api::PrefType::kNumber;
-    (*s_allowlist)[glic::prefs::kGlicKeepSidepanelOpenOnNewTabsEnabled] =
-        settings_api::PrefType::kBoolean;
-  }
+  (*s_allowlist)[glic::prefs::kGlicPinnedToTabstrip] =
+      settings_api::PrefType::kBoolean;
+  (*s_allowlist)[glic::prefs::kGlicLauncherEnabled] =
+      settings_api::PrefType::kBoolean;
+  (*s_allowlist)[glic::prefs::kGlicClosedCaptioningEnabled] =
+      settings_api::PrefType::kBoolean;
+  (*s_allowlist)[glic::prefs::kGlicGeolocationEnabled] =
+      settings_api::PrefType::kBoolean;
+  (*s_allowlist)[glic::prefs::kGlicMicrophoneEnabled] =
+      settings_api::PrefType::kBoolean;
+  (*s_allowlist)[glic::prefs::kGlicTabContextEnabled] =
+      settings_api::PrefType::kBoolean;
+  (*s_allowlist)[glic::prefs::kGlicDefaultTabContextEnabled] =
+      settings_api::PrefType::kBoolean;
+  (*s_allowlist)[glic::prefs::kGlicUserStatus] =
+      settings_api::PrefType::kDictionary;
+  (*s_allowlist)[prefs::kGeminiSettings] = settings_api::PrefType::kNumber;
+  (*s_allowlist)[glic::prefs::kGlicKeepSidepanelOpenOnNewTabsEnabled] =
+      settings_api::PrefType::kBoolean;
 
   return *s_allowlist;
 }

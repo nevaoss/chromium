@@ -100,10 +100,7 @@ source_set("impl") {
 source_set("unit_tests") {
   testonly = true
 
-  sources = [
-    "default_browser_prompt_manager_unittest.cc",
-    "default_browser_prompt_unittest.cc",
-  ]
+  sources = [ "default_browser_prompt_manager_unittest.cc" ]
 
   deps = [
     ":default_browser_prompt",

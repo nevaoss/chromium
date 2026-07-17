@@ -678,6 +678,9 @@ void GlicInternalsPageHandler::TriggerInvokeFromInternalsAction(
           case GlicInvokeError::kInstanceNotFound:
             error_msg = "Instance Not Found";
             break;
+          case GlicInvokeError::kProfileNotEnabled:
+            error_msg = "Profile Not Enabled";
+            break;
           case GlicInvokeError::kUnknown:
             error_msg = "Unknown Error";
             break;

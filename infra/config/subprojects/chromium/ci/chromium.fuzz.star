@@ -411,21 +411,6 @@ browser_asan_builder(
 )
 
 browser_asan_builder(
-    name = "ASan Debug (32-bit x86 with V8-ARM)",
-    build_config = builder_config.build_config.DEBUG,
-    target_bits = 32,
-    target_platform = builder_config.target_platform.LINUX,
-    clusterfuzz_archive_name_prefix = "asan-v8-arm",
-    clusterfuzz_archive_subdir = "v8-arm",
-    console_category = "linux asan|x64 v8-ARM",
-    contact_team_email = "v8-infra@google.com",
-    gn_extra_configs = [
-        "v8_heap",
-        "v8_hybrid",
-    ],
-)
-
-browser_asan_builder(
     name = "ASAN Release",
     build_config = builder_config.build_config.RELEASE,
     target_bits = 64,

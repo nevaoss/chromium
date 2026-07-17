@@ -118,7 +118,7 @@
 }
 
 - (void)handleReauthResult:(ReauthenticationResult)result {
-  if (result == ReauthenticationResult::kSuccess) {
+  if (result != ReauthenticationResult::kFailure) {
     [self performPasskeyCreation];
   } else {
     // TODO(crbug.com/479249845): The correct behavior when reauthentication

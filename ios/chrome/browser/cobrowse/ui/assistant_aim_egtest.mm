@@ -5,6 +5,7 @@
 #import <XCTest/XCTest.h>
 
 #import "base/strings/sys_string_conversions.h"
+#import "base/test/ios/wait_util.h"
 #import "components/omnibox/browser/aim_eligibility_service_features.h"
 #import "ios/chrome/browser/assistant/ui/assistant_container_detent.h"
 #import "ios/chrome/browser/cobrowse/ui/assistant_aim_ui_constants.h"
@@ -13,6 +14,7 @@
 #import "ios/chrome/browser/composebox/shared/ui/composebox_ui_constants.h"
 #import "ios/chrome/browser/scene/ui/scene_ui_constants.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
+#import "ios/chrome/browser/shared/public/snackbar/snackbar_constants.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_grid/tab_grid_constants.h"
 #import "ios/chrome/grit/ios_strings.h"
 #import "ios/chrome/test/earl_grey/chrome_earl_grey.h"
@@ -24,6 +26,8 @@
 #import "net/test/embedded_test_server/embedded_test_server.h"
 #import "ui/base/l10n/l10n_util.h"
 #import "url/gurl.h"
+
+using chrome_test_util::OmniboxText;
 
 namespace {
 
@@ -199,6 +203,21 @@ id<GREYMatcher> CloseButton() {
                  grey_descendant(grey_accessibilityLabel(snackbarTitle)), nil);
   // Verify the undo snackbar is shown.
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:snackbarMatcher];
+
+  // Press undo.
+  [[EarlGrey
+      selectElementWithMatcher:grey_allOf(
+                                   grey_accessibilityID(
+                                       kSnackbarButtonAccessibilityId),
+                                   grey_accessibilityLabel(
+                                       l10n_util::GetNSString(
+                                           IDS_IOS_AIM_SNACKBAR_UNDO_BUTTON)),
+                                   nil)] performAction:grey_tap()];
+
+  // Verify it's back.
+  id<GREYMatcher> composeboxMatcher =
+      grey_accessibilityID(kComposeboxAccessibilityIdentifier);
+  [ChromeEarlGrey waitForUIElementToAppearWithMatcher:composeboxMatcher];
 }
 
 // Tests that the assistant can be dismissed and reopened multiple times.
@@ -696,6 +715,13 @@ id<GREYMatcher> CloseButton() {
   [[EarlGrey selectElementWithMatcher:CloseButton()]
       assertWithMatcher:grey_nil()];
 
+  // Wait for the snackbar to appear.
+  id<GREYMatcher> snackbarMatcher = chrome_test_util::SnackbarViewMatcher();
+  [ChromeEarlGrey testUIElementAppearanceWithMatcher:snackbarMatcher];
+  // Tap the snackbar to make it disappear.
+  [[EarlGrey selectElementWithMatcher:snackbarMatcher]
+      performAction:grey_tap()];
+
   // 4. Reopen Co-browse.
   OpenCoBrowse(self.testServer);
 
@@ -706,6 +732,10 @@ id<GREYMatcher> CloseButton() {
 
 // Tests that Co-browse Assistant is hidden when toolbars are hidden.
 - (void)testCobrowseHidesWhenToolbarsHide {
+  // TODO(crbug.com/526935460): Fix this test for ChromeNext.
+  if ([ChromeEarlGrey isChromeNextEnabled]) {
+    EARL_GREY_TEST_SKIPPED(@"Skipped when chromeNext is enabled.");
+  }
   if ([ComposeboxAppInterface isServerSideStateEnabled]) {
     EARL_GREY_TEST_SKIPPED(
         @"Skipped when kComposeboxServerSideState is enabled.");
@@ -749,6 +779,103 @@ id<GREYMatcher> CloseButton() {
       waitForUIElementToAppearWithMatcher:grey_allOf(CloseButton(),
                                                      grey_sufficientlyVisible(),
                                                      nil)];
+}
+
+// Tests that pressing Return in the composebox text view sends the query,
+// and Shift+Return adds a newline.
+- (void)testComposeboxReturnKeys {
+  if ([ComposeboxAppInterface isServerSideStateEnabled]) {
+    EARL_GREY_TEST_SKIPPED(
+        @"Skipped when kComposeboxServerSideState is enabled.");
+  }
+
+  OpenCoBrowse(self.testServer);
+
+  // Wait for the assistant to appear.
+  [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
+
+  // Locate the composebox text input and focus it.
+  id<GREYMatcher> composeboxInput = chrome_test_util::Omnibox();
+  [[EarlGrey selectElementWithMatcher:composeboxInput]
+      performAction:grey_tap()];
+
+  // Type some text using simulated physical keyboard events.
+  [ChromeEarlGrey simulatePhysicalKeyboardEvent:@"line 1" flags:0];
+
+  // Spin the run loop to allow the async keyboard events to process.
+  base::test::ios::SpinRunLoopWithMinDelay(base::Seconds(1));
+
+  // Press Shift+Return.
+  [ChromeEarlGrey simulatePhysicalKeyboardEvent:@"\r" flags:UIKeyModifierShift];
+
+  // Type more text.
+  [ChromeEarlGrey simulatePhysicalKeyboardEvent:@"line 2" flags:0];
+
+  // Spin the run loop to allow the async keyboard events to process.
+  base::test::ios::SpinRunLoopWithMinDelay(base::Seconds(1));
+
+  // Verify that the text now contains a newline.
+  [[EarlGrey selectElementWithMatcher:composeboxInput]
+      assertWithMatcher:OmniboxText("line 1\nline 2")];
+
+  // Press Cmd+Return.
+  [ChromeEarlGrey simulatePhysicalKeyboardEvent:@"\r"
+                                          flags:UIKeyModifierCommand];
+
+  // Verify that the text is still the same (Cmd+Return did nothing).
+  [[EarlGrey selectElementWithMatcher:composeboxInput]
+      assertWithMatcher:OmniboxText("line 1\nline 2")];
+
+  // Now press Return (without shift) to send the query.
+  [ChromeEarlGrey simulatePhysicalKeyboardEvent:@"\r" flags:0];
+
+  // Verify that the query is sending (e.g. the text is cleared).
+  [ChromeEarlGrey
+      waitForUIElementToAppearWithMatcher:grey_allOf(composeboxInput,
+                                                     OmniboxText(""), nil)];
+}
+
+// Tests that focusing the Cobrowse input plate automatically attaches the
+// active tab.
+- (void)testCobrowseAutoAttachesActiveTabWhenTyping {
+  if ([ComposeboxAppInterface isServerSideStateEnabled]) {
+    EARL_GREY_TEST_SKIPPED(
+        @"Skipped when kComposeboxServerSideState is enabled.");
+  }
+
+  // 1. Open Co-browse. This loads /echo and opens the Assistant.
+  OpenCoBrowse(self.testServer);
+
+  // Wait for the assistant to appear.
+  [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
+  WaitForDetent(AssistantContainerDetent::kMedium);
+
+  // 2. Focus the input plate inside the Cobrowse assistant.
+  // We match the omnibox inside the Assistant container.
+  id<GREYMatcher> cobrowseOmnibox = grey_allOf(
+      chrome_test_util::Omnibox(),
+      grey_ancestor(
+          grey_accessibilityID(kAssistantContainerDetentMediumIdentifier)),
+      nil);
+
+  [[EarlGrey selectElementWithMatcher:cobrowseOmnibox]
+      performAction:grey_tap()];
+  WaitForDetent(AssistantContainerDetent::kLarge);
+
+  // 3. Verify that an attachment appears in the Cobrowse carousel.
+  id<GREYMatcher> cobrowseCarousel = grey_allOf(
+      grey_accessibilityID(kComposeboxCarouselAccessibilityIdentifier),
+      grey_ancestor(
+          grey_accessibilityID(kAssistantContainerDetentLargeIdentifier)),
+      nil);
+
+  [ChromeEarlGrey waitForUIElementToAppearWithMatcher:cobrowseCarousel];
+
+  id<GREYMatcher> attachedItem = grey_allOf(
+      grey_accessibilityID(kComposeboxCarouselItemAccessibilityIdentifier),
+      grey_ancestor(cobrowseCarousel), nil);
+
+  [ChromeEarlGrey waitForUIElementToAppearWithMatcher:attachedItem];
 }
 
 @end

@@ -14,6 +14,7 @@ import android.view.InputDevice;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -39,6 +40,8 @@ import org.chromium.base.ThreadUtils;
 import org.chromium.base.test.BaseActivityTestRule;
 import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.CallbackHelper;
+import org.chromium.base.test.util.Features.EnableFeatures;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuHandler.AppMenuItemType;
 import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
 import org.chromium.components.browser_ui.util.motion.MotionEventInfo;
@@ -229,7 +232,6 @@ public class AppMenuItemViewBinderTest {
         ChromeImageView itemIcon = view.findViewById(R.id.menu_item_icon);
 
         Assert.assertEquals("Incorrect title text for item 1", TITLE_1, titleView.getText());
-        Assert.assertEquals("Incorrect tooltip text for item 1", TITLE_1, view.getTooltipText());
         Assert.assertNull("Should not have icon for item 1", itemIcon.getDrawable());
     }
 
@@ -387,7 +389,6 @@ public class AppMenuItemViewBinderTest {
         TextView titleView = view1.findViewById(R.id.menu_item_text);
 
         Assert.assertEquals("Incorrect title text for item 1", TITLE_2, titleView.getText());
-        Assert.assertEquals("Incorrect tooltip text for item 1", TITLE_2, view1.getTooltipText());
 
         ImageView iconView = view1.findViewById(R.id.menu_item_icon);
         Assert.assertNotNull(iconView);
@@ -396,7 +397,6 @@ public class AppMenuItemViewBinderTest {
         View view2 = mModelListAdapter.getView(1, view1, parentView);
         Assert.assertEquals("Convert view should have been re-used", view1, view2);
         Assert.assertEquals("Title should have been updated", TITLE_5, titleView.getText());
-        Assert.assertEquals("Tooltip should have been updated", TITLE_5, view2.getTooltipText());
     }
 
     @Test
@@ -770,5 +770,89 @@ public class AppMenuItemViewBinderTest {
 
         Assert.assertEquals(
                 expectedHeight, AppMenuItemViewBinder.getHeaderPixelHeight(mActivity, model));
+    }
+
+    private MaterialButton getFirstButtonForIconModel(PropertyModel itemModel) {
+        PropertyModel model =
+                new PropertyModel.Builder(AppMenuItemProperties.ALL_KEYS)
+                        .with(AppMenuItemProperties.MENU_ITEM_ID, 1)
+                        .build();
+        MVCListAdapter.ModelList subList = new MVCListAdapter.ModelList();
+        subList.add(new MVCListAdapter.ListItem(0, itemModel));
+        model.set(AppMenuItemProperties.ADDITIONAL_ICONS, subList);
+        mMenuList.add(new MVCListAdapter.ListItem(AppMenuItemType.BUTTON_ROW, model));
+
+        ViewGroup parentView = mActivity.findViewById(android.R.id.content);
+        View view = mModelListAdapter.getView(0, null, parentView);
+        return view.findViewById(R.id.button_one);
+    }
+
+    @Test
+    @UiThreadTest
+    @MediumTest
+    @EnableFeatures(ChromeFeatureList.ANDROID_THEME_MODULE)
+    public void testIconRowViewBinders_DefaultItem_NotCheckableSelected() {
+        Drawable icon =
+                AppCompatResources.getDrawable(mActivity, R.drawable.test_ic_vintage_filter);
+        PropertyModel item =
+                new PropertyModel.Builder(AppMenuItemProperties.ALL_ICON_KEYS)
+                        .with(AppMenuItemProperties.MENU_ITEM_ID, MENU_ID1)
+                        .with(AppMenuItemProperties.TITLE_CONDENSED, TITLE_1)
+                        .with(AppMenuItemProperties.ICON, icon)
+                        .build();
+
+        MaterialButton button = getFirstButtonForIconModel(item);
+
+        Assert.assertFalse("Button should not be checkable", button.isCheckable());
+        Assert.assertFalse("Button should not be checked", button.isChecked());
+        Assert.assertFalse("Button should not be selected", button.isSelected());
+    }
+
+    @Test
+    @UiThreadTest
+    @MediumTest
+    @EnableFeatures(ChromeFeatureList.ANDROID_THEME_MODULE)
+    public void testIconRowViewBinders_ModelCheckableTrue_Ignored() {
+        Drawable icon =
+                AppCompatResources.getDrawable(mActivity, R.drawable.test_ic_vintage_filter);
+        PropertyModel item =
+                new PropertyModel.Builder(AppMenuItemProperties.ALL_ICON_KEYS)
+                        .with(AppMenuItemProperties.MENU_ITEM_ID, MENU_ID1)
+                        .with(AppMenuItemProperties.TITLE_CONDENSED, TITLE_1)
+                        .with(AppMenuItemProperties.ICON, icon)
+                        .with(AppMenuItemProperties.CHECKABLE, true)
+                        .build();
+
+        MaterialButton button = getFirstButtonForIconModel(item);
+
+        Assert.assertFalse("Button should not be checkable", button.isCheckable());
+        Assert.assertFalse("Button should not be checked", button.isChecked());
+        Assert.assertFalse("Button should not be selected", button.isSelected());
+    }
+
+    @Test
+    @UiThreadTest
+    @MediumTest
+    @EnableFeatures(ChromeFeatureList.ANDROID_THEME_MODULE)
+    public void testIconRowViewBinders_ModelCheckedTrue_SelectedButNotAccessibilitySelected() {
+        Drawable icon =
+                AppCompatResources.getDrawable(mActivity, R.drawable.test_ic_vintage_filter);
+        PropertyModel item =
+                new PropertyModel.Builder(AppMenuItemProperties.ALL_ICON_KEYS)
+                        .with(AppMenuItemProperties.MENU_ITEM_ID, MENU_ID1)
+                        .with(AppMenuItemProperties.TITLE_CONDENSED, TITLE_1)
+                        .with(AppMenuItemProperties.ICON, icon)
+                        .with(AppMenuItemProperties.CHECKED, true)
+                        .build();
+
+        MaterialButton button = getFirstButtonForIconModel(item);
+
+        Assert.assertFalse("Button should not be checkable", button.isCheckable());
+        Assert.assertFalse("Button should not be checked", button.isChecked());
+        Assert.assertTrue("Button should be selected", button.isSelected());
+
+        AccessibilityNodeInfo info = AccessibilityNodeInfo.obtain();
+        button.onInitializeAccessibilityNodeInfo(info);
+        Assert.assertFalse("Accessibility should not show selected", info.isSelected());
     }
 }

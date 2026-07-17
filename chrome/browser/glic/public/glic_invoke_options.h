@@ -182,7 +182,9 @@ enum class GlicInvokeError {
   kAdditionalContextNoClipboardMetadata = 14,
   // The targeted Glic InstanceId could not be found or has closed.
   kInstanceNotFound = 15,
-  kMaxValue = kInstanceNotFound,
+  // Profile is not enabled for Glic.
+  kProfileNotEnabled = 16,
+  kMaxValue = kProfileNotEnabled,
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicInvokeResult,//chrome/browser/glic/host/glic_internals_page_handler.cc:GlicInvokeError)
 

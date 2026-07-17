@@ -49,6 +49,8 @@ class KcerPrivateKey : public PrivateKey {
   crypto::SignatureVerifier::SignatureAlgorithm GetAlgorithm() const override;
   client_certificates_pb::PrivateKey ToProto() const override;
   base::DictValue ToDict() const override;
+  // Returns the cert bound by BindCert(), or nullptr if none has been bound.
+  scoped_refptr<net::X509Certificate> GetBoundCert() const override;
 
  private:
   friend class base::RefCountedThreadSafe<KcerPrivateKey>;
@@ -60,6 +62,10 @@ class KcerPrivateKey : public PrivateKey {
   // accessors and to rebuild a kcer::PrivateKeyHandle when signing.
   kcer::PublicKeySpki spki_;
   scoped_refptr<base::SequencedTaskRunner> kcer_task_runner_;
+  // The cert bound by BindCert(), exposed via GetBoundCert() so the certificate
+  // store can build a ClientIdentity without re-listing Kcer's certs. Null
+  // until a cert is bound.
+  scoped_refptr<net::X509Certificate> bound_cert_;
 };
 
 }  // namespace client_certificates

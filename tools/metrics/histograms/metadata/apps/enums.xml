@@ -558,25 +558,6 @@ chromium-metrics-reviews@google.com.
   <int value="4" label="Language Not Supported Error"/>
 </enum>
 
-<enum name="ItemSuggestCacheStatus">
-  <int value="0" label="Ok"/>
-  <int value="1" label="Disabled by experiment"/>
-  <int value="2" label="Disabled by policy"/>
-  <int value="3" label="Invalid server URL"/>
-  <int value="4" label="No identity manager"/>
-  <int value="5" label="Google auth error"/>
-  <int value="6" label="Net error"/>
-  <int value="7" label="Response too large"/>
-  <int value="8" label="3xx status"/>
-  <int value="9" label="4xx status"/>
-  <int value="10" label="5xx status"/>
-  <int value="11" label="Empty response"/>
-  <int value="12" label="No results in response"/>
-  <int value="13" label="JSON parse failure"/>
-  <int value="14" label="JSON conversion failure"/>
-  <int value="15" label="Post launch update ignored"/>
-</enum>
-
 <enum name="LauncherContinueSectionResultType">
   <int value="0" label="Local file"/>
   <int value="1" label="Drive file"/>

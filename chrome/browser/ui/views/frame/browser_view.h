@@ -868,11 +868,6 @@ class BrowserView : public BrowserWindow,
   // contents.
   void UpdateActiveTabInSplitView();
 
-  // Updates the contents in the active split view.
-  void UpdateContentsInSplitView(
-      const std::vector<std::pair<tabs::TabInterface*, int>>& prev_tabs,
-      const std::vector<std::pair<tabs::TabInterface*, int>>& new_tabs);
-
   // True if an activation from `old_contents` to `new_contents` happens between
   // tabs that are already in a split-view configuration.
   bool IsTabChangeInSplitView(content::WebContents* old_contents,

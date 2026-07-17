@@ -205,6 +205,8 @@ class GlicInstanceCoordinatorImpl
   GlicInstanceImpl* GetInstanceImplFor(const InstanceId& id) const;
   GlicInstanceImpl* GetInstanceImplForTab(const tabs::TabInterface* tab) const;
 
+  void RemoveInstance(InstanceId id) override;
+
  private:
   void RemoveAllInstances();
   base::WeakPtr<GlicInstance> InvokeInternal(
@@ -251,8 +253,6 @@ class GlicInstanceCoordinatorImpl
 
   void OnMemoryPressure(base::MemoryPressureLevel level) override;
   void ApplyMaxAwakeInstancesLimit();
-
-  void RemoveInstance(InstanceId id) override;
 
   void NotifyActiveInstanceChanged();
   void ComputeContentAccessIndicator();

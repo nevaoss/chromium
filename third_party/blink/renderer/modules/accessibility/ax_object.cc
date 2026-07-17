@@ -1352,6 +1352,34 @@ void AXObject::PopulateAXRelativeBounds(ui::AXRelativeBounds& bounds,
   gfx::Transform container_transform;
   GetRelativeBounds(&offset_container, bounds_in_container, container_transform,
                     clips_children);
+
+  // CSS math functions can produce infinities or NaNs which must be sanitized
+  // before reaching Mojo to avoid security validation errors.
+  if (!std::isfinite(bounds_in_container.x())) {
+    bounds_in_container.set_x(0);
+  }
+  if (!std::isfinite(bounds_in_container.y())) {
+    bounds_in_container.set_y(0);
+  }
+  if (!std::isfinite(bounds_in_container.width())) {
+    bounds_in_container.set_width(0);
+  }
+  if (!std::isfinite(bounds_in_container.height())) {
+    bounds_in_container.set_height(0);
+  }
+
+  if (!container_transform.IsIdentity()) {
+    for (int i = 0; i < 4; ++i) {
+      for (int j = 0; j < 4; ++j) {
+        if (!std::isfinite(container_transform.rc(i, j))) {
+          container_transform.MakeIdentity();
+          goto done;
+        }
+      }
+    }
+  }
+done:
+
   bounds.bounds = bounds_in_container;
   if (offset_container && !offset_container->IsDetached())
     bounds.offset_container_id = offset_container->AXObjectID();

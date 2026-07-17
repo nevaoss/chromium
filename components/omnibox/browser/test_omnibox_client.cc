@@ -25,7 +25,12 @@ TestOmniboxClient::TestOmniboxClient()
     : session_id_(SessionID::FromSerializedValue(1)),
       ai_mode_button_service_(std::make_unique<TestAiModeButtonService>(
           GetTemplateURLService(),
-          AiModeButtonService::GoogleStrings())),
+          []() {
+            AiModeButtonService::GoogleStrings strings;
+            strings.entrypoint_label = u"Google AI";
+            strings.context_menu_label = u"Show Google AI";
+            return strings;
+          }())),
       autocomplete_classifier_(
           std::make_unique<AutocompleteController>(
               CreateAutocompleteProviderClient(),

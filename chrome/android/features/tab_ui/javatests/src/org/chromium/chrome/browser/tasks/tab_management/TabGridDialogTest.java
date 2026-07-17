@@ -116,6 +116,7 @@ import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.Criteria;
 import org.chromium.base.test.util.CriteriaHelper;
 import org.chromium.base.test.util.DisableIf;
+import org.chromium.base.test.util.DisableLeakChecks;
 import org.chromium.base.test.util.DisabledTest;
 import org.chromium.base.test.util.Feature;
 import org.chromium.base.test.util.Features.DisableFeatures;
@@ -142,7 +143,6 @@ import org.chromium.chrome.browser.tab_ui.ActionConfirmationManager;
 import org.chromium.chrome.browser.tabmodel.TabClosureParams;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
-import org.chromium.chrome.browser.theme.ThemeModuleUtils;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.test.ChromeJUnit4RunnerDelegate;
 import org.chromium.chrome.test.transit.AutoResetCtaTransitTestRule;
@@ -177,6 +177,7 @@ import java.util.concurrent.TimeoutException;
 @EnableFeatures({DATA_SHARING, DATA_SHARING_JOIN_ONLY})
 @Batch(Batch.PER_CLASS)
 @DisableIf.Device(DeviceFormFactor.DESKTOP) // crbug.com/394671175
+@DisableLeakChecks("crbug.com/527130525")
 public class TabGridDialogTest {
     private static final String CUSTOMIZED_TITLE1 = "wfh tips";
     private static final String CUSTOMIZED_TITLE2 = "wfh funs";
@@ -580,13 +581,7 @@ public class TabGridDialogTest {
         final ChromeTabbedActivity cta = mActivityTestRule.getActivity();
 
         String blueColor = cta.getString(R.string.tab_group_color_blue);
-        String blueColorContentDescription =
-                ThemeModuleUtils.isEnabled()
-                        ? blueColor
-                        : cta.getString(
-                                R.string
-                                        .accessibility_tab_group_color_picker_color_item_not_selected_description,
-                                blueColor);
+        String blueColorContentDescription = blueColor;
 
         createTabs(cta, false, 2);
         enterTabSwitcher(cta);
@@ -642,13 +637,7 @@ public class TabGridDialogTest {
         final ChromeTabbedActivity cta = mActivityTestRule.getActivity();
 
         String blueColor = cta.getString(R.string.tab_group_color_blue);
-        String blueColorContentDescription =
-                ThemeModuleUtils.isEnabled()
-                        ? blueColor
-                        : cta.getString(
-                                R.string
-                                        .accessibility_tab_group_color_picker_color_item_not_selected_description,
-                                blueColor);
+        String blueColorContentDescription = blueColor;
 
         createTabs(cta, false, 2);
         enterTabSwitcher(cta);
@@ -1496,18 +1485,7 @@ public class TabGridDialogTest {
         final ChromeTabbedActivity cta = mActivityTestRule.getActivity();
 
         String blueColor = cta.getString(R.string.tab_group_color_blue);
-        String notSelectedStringBlue =
-                cta.getString(
-                        R.string
-                                .accessibility_tab_group_color_picker_color_item_not_selected_description,
-                        blueColor);
-
         String redColor = cta.getString(R.string.tab_group_color_red);
-        String notSelectedStringRed =
-                cta.getString(
-                        R.string
-                                .accessibility_tab_group_color_picker_color_item_not_selected_description,
-                        redColor);
 
         createTabs(cta, false, 2);
         enterTabSwitcher(cta);
@@ -1527,7 +1505,7 @@ public class TabGridDialogTest {
                 .check(matches(isDisplayed()));
 
         // Select a non default color and assert the pop up closes.
-        onView(withContentDescription(notSelectedStringBlue)).perform(click());
+        onView(withContentDescription(blueColor)).perform(click());
         onView(
                         allOf(
                                 instanceOf(TabGroupColorPickerContainer.class),
@@ -1555,7 +1533,7 @@ public class TabGridDialogTest {
                 .check(matches(isDisplayed()));
 
         // Select a non default color and assert the pop up closes.
-        onView(withContentDescription(notSelectedStringRed)).perform(click());
+        onView(withContentDescription(redColor)).perform(click());
         onView(
                         allOf(
                                 instanceOf(TabGroupColorPickerContainer.class),

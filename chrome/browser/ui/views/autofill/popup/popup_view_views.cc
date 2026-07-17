@@ -1221,6 +1221,15 @@ void PopupViewViews::CreateSuggestionViews() {
                       .expected_number_of_suggestions.value_or(1))));
           break;
         }
+        case SuggestionType::kPersonalContextNotice: {
+          rows_.push_back(body_container->AddChildView(
+              std::make_unique<PopupPersonalContextNoticeView>(
+                  /*a11y_selection_delegate=*/*this,
+                  /*selection_delegate=*/*this, controller(),
+                  current_line_number,
+                  std::make_unique<PopupRowContentView>())));
+          break;
+        }
         // The default section contains all selectable rows and includes
         // autocomplete, address, credit cards and passwords.
         default:
@@ -1372,13 +1381,6 @@ void PopupViewViews::CreateSuggestionViews() {
           std::make_unique<PopupBnplFootnoteView>(
               controller(), /*a11y_selection_delegate=*/*this,
               base::BindRepeating(&DefaultA11yAnnouncer))));
-    } else if (suggestions[current_line_number].type ==
-               SuggestionType::kPersonalContextNotice) {
-      auto view = std::make_unique<PopupRowContentView>();
-      rows_.push_back(footer_container_->AddChildView(
-          std::make_unique<PopupPersonalContextNoticeView>(
-              /*a11y_selection_delegate=*/*this, /*selection_delegate=*/*this,
-              controller(), current_line_number, std::move(view))));
     } else {
       rows_.push_back(footer_container_->AddChildView(CreatePopupRowView(
           controller(), /*a11y_selection_delegate=*/*this,

@@ -198,10 +198,10 @@ class FileSuggestKeyedServiceBrowserTest
   base::test::ScopedFeatureList scoped_feature_list_;
 };
 
-// Verifies that the file suggest keyed service works as expected when the item
-// suggest cache is empty.
+// Verifies that the file suggest keyed service works as expected when the Drive
+// recent files are empty.
 IN_PROC_BROWSER_TEST_F(FileSuggestKeyedServiceBrowserTest,
-                       QueryWithEmptyCache) {
+                       QueryWithEmptyDriveRecentFiles) {
   base::HistogramTester histogram_tester;
 
   auto* fake_drivefs = GetFakeDriveFsForProfile(browser()->profile());
@@ -239,10 +239,10 @@ IN_PROC_BROWSER_TEST_F(FileSuggestKeyedServiceBrowserTest,
       "Ash.Search.FileSuggestions.DriveRecents.ItemCount.Total", 0, 1);
 }
 
-// Verifies that the file suggest keyed service responds to the update in
-// the item suggest cache correctly.
+// Verifies that the file suggest keyed service responds to the updates of
+// Drive recent files correctly.
 IN_PROC_BROWSER_TEST_F(FileSuggestKeyedServiceBrowserTest,
-                       RespondToItemSuggestCacheUpdate) {
+                       RespondToDriveRecentFilesUpdate) {
   base::HistogramTester histogram_tester;
 
   Profile* profile = browser()->profile();
@@ -327,10 +327,10 @@ IN_PROC_BROWSER_TEST_F(FileSuggestKeyedServiceBrowserTest,
       "Ash.Search.FileSuggestions.DriveRecents.ItemCount.Total", 2, 1);
 }
 
-// Verifies that the file suggest keyed service responds to the update in
-// the item suggest cache correctly when item fetch fails.
+// Verifies that the file suggest keyed service responds correctly when Drive
+// recent files fetch fails.
 IN_PROC_BROWSER_TEST_F(FileSuggestKeyedServiceBrowserTest,
-                       RespondToItemSuggestCacheInvalidUpdate) {
+                       RespondToDriveRecentFilesInvalidUpdate) {
   base::HistogramTester histogram_tester;
 
   Profile* profile = browser()->profile();
@@ -373,10 +373,10 @@ IN_PROC_BROWSER_TEST_F(FileSuggestKeyedServiceBrowserTest,
       "Ash.Search.FileSuggestions.DriveRecents.ItemCount.Total", 0, 1);
 }
 
-// Verifies that the file suggest keyed service responds to the update in
-// the item suggest cache correctly if some item fetches fail.
+// Verifies that the file suggest keyed service responds correctly if some Drive
+// recent files fetches fail.
 IN_PROC_BROWSER_TEST_F(FileSuggestKeyedServiceBrowserTest,
-                       RespondToItemSuggestCachePartiallyInvalidUpdate) {
+                       RespondToDriveRecentFilesPartiallyInvalidUpdate) {
   base::HistogramTester histogram_tester;
 
   Profile* profile = browser()->profile();

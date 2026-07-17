@@ -4,14 +4,10 @@
 
 package org.chromium.chrome.browser.tasks.tab_management;
 
-import static org.chromium.chrome.browser.tasks.tab_management.color_picker.ColorPickerItemViewBinder.SELECTION_LAYER;
-
 import android.app.Activity;
-import android.graphics.drawable.LayerDrawable;
 import android.view.LayoutInflater;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 
 import androidx.test.InstrumentationRegistry;
@@ -37,10 +33,8 @@ import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.Criteria;
 import org.chromium.base.test.util.CriteriaHelper;
 import org.chromium.base.test.util.Feature;
-import org.chromium.base.test.util.Features;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.chrome.R;
-import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.tasks.tab_management.color_picker.ColorPickerContainer;
 import org.chromium.chrome.browser.tasks.tab_management.color_picker.ColorPickerCoordinator;
 import org.chromium.chrome.browser.tasks.tab_management.color_picker.ColorPickerCoordinator.ColorPickerLayoutType;
@@ -245,9 +239,6 @@ public class TabGroupColorPickerTest {
 
     @Test
     @MediumTest
-    @Features.DisableFeatures({
-        ChromeFeatureList.ANDROID_THEME_MODULE,
-    })
     public void testColorPicker_dynamicSingleRow() {
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
@@ -258,23 +249,19 @@ public class TabGroupColorPickerTest {
 
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
-                    int selectedIndex = 1;
                     LinearLayout firstRow =
                             mContainerView.findViewById(R.id.color_picker_first_row);
                     Assert.assertEquals(mColorList.size(), firstRow.getChildCount());
 
+                    int selectedIndex = 1;
                     for (int color : mColorList) {
-                        FrameLayout colorView = (FrameLayout) firstRow.getChildAt(color);
-                        ImageView imageView = colorView.findViewById(R.id.color_picker_icon);
-                        LayerDrawable layerDrawable = (LayerDrawable) imageView.getBackground();
-
-                        // Check that the default item's selection layer indicates a selection.
-                        if (color == mColorList.get(selectedIndex)) {
-                            Assert.assertEquals(
-                                    0xFF, layerDrawable.getDrawable(SELECTION_LAYER).getAlpha());
+                        MaterialButton materialButton = (MaterialButton) firstRow.getChildAt(color);
+                        Assert.assertNotNull(materialButton.getBackgroundTintList());
+                        Assert.assertNotNull(materialButton.getRippleColor());
+                        if (color == selectedIndex) {
+                            Assert.assertTrue(materialButton.isChecked());
                         } else {
-                            Assert.assertEquals(
-                                    0, layerDrawable.getDrawable(SELECTION_LAYER).getAlpha());
+                            Assert.assertFalse(materialButton.isChecked());
                         }
                     }
                 });
@@ -282,9 +269,6 @@ public class TabGroupColorPickerTest {
 
     @Test
     @MediumTest
-    @Features.DisableFeatures({
-        ChromeFeatureList.ANDROID_THEME_MODULE,
-    })
     public void testColorPicker_dynamicAlternateSelection() {
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
@@ -303,45 +287,12 @@ public class TabGroupColorPickerTest {
                     mCoordinator.setSelectedColorItem(mColorList.get(selectedIndex));
 
                     for (int color : mColorList) {
-                        FrameLayout colorView = (FrameLayout) firstRow.getChildAt(color);
-                        ImageView imageView = colorView.findViewById(R.id.color_picker_icon);
-                        LayerDrawable layerDrawable = (LayerDrawable) imageView.getBackground();
-
-                        // Check that the default item's selection layer indicates a selection.
-                        if (color == mColorList.get(selectedIndex)) {
-                            Assert.assertEquals(
-                                    0xFF, layerDrawable.getDrawable(SELECTION_LAYER).getAlpha());
+                        MaterialButton button = (MaterialButton) firstRow.getChildAt(color);
+                        if (color == selectedIndex) {
+                            Assert.assertTrue(button.isChecked());
                         } else {
-                            Assert.assertEquals(
-                                    0, layerDrawable.getDrawable(SELECTION_LAYER).getAlpha());
+                            Assert.assertFalse(button.isChecked());
                         }
-                    }
-                });
-    }
-
-    @Test
-    @MediumTest
-    @Features.EnableFeatures({
-        ChromeFeatureList.ANDROID_THEME_MODULE,
-    })
-    public void testColorPicker_dynamicSingleRow_androidThemeModule() {
-        ThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    mRootView.addView(mContainerView);
-                });
-
-        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-
-        ThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    LinearLayout firstRow =
-                            mContainerView.findViewById(R.id.color_picker_first_row);
-                    Assert.assertEquals(mColorList.size(), firstRow.getChildCount());
-
-                    for (int color : mColorList) {
-                        MaterialButton materialButton = (MaterialButton) firstRow.getChildAt(color);
-                        Assert.assertNotNull(materialButton.getBackgroundTintList());
-                        Assert.assertNotNull(materialButton.getRippleColor());
                     }
                 });
     }

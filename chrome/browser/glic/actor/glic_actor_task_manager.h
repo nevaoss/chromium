@@ -207,6 +207,9 @@ class GlicActorClientSession : public GlicActorClientSessionInterface {
       std::vector<autofill::ActorFormFillingRequest> requests,
       base::WeakPtr<actor::AutofillSelectionDialogEventHandler> event_handler,
       AutofillSuggestionSelectedCallback callback) override;
+  void RequestToShowGmailOtpOptInDialog(
+      actor::TaskId task_id,
+      actor::ActorTaskDelegate::GmailOtpOptInCallback callback) override;
   void AutofillSuggestionDialogOnFormPresented(
       int32_t task_id,
       actor::webui::mojom::AutofillSuggestionDialogOnFormPresentedParamsPtr

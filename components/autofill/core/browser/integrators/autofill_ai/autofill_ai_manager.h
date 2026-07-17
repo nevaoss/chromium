@@ -103,8 +103,9 @@ class AutofillAiManager : public AutofillManager::Observer,
   void OnAfterLoadedServerPredictions(AutofillManager& manager) override;
 
   // PersonalContextAccessManager::Observer:
-  void OnPrefetchContextComplete(const PersonalContextAccessManager& manager,
-                                 bool success) override;
+  void OnPrefetchContextComplete(
+      const PersonalContextAccessManager& manager,
+      base::span<const EntityInstance> entities) override;
 
   // Updates `logger_`'s information about data stored for AutofillAi for
   // `form`.

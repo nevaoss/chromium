@@ -188,6 +188,7 @@ TEST_F(ChromeFilterNavigationObserverTest, SameDocumentNavigation) {
   // controller.
   const GURL same_doc_url("https://www.example.com/#test");
   EXPECT_CALL(*mock_controller, ClearSuggestion(_)).Times(0);
+  EXPECT_CALL(*mock_service(), GenerateFilterSuggestions(_, same_doc_url, _));
   auto navigation = content::NavigationSimulator::CreateRendererInitiated(
       same_doc_url, main_rfh());
   navigation->CommitSameDocument();

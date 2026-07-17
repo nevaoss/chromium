@@ -46,9 +46,9 @@ if (is_android) {
     ]
     deps = [
       "//components/vrp_flags:buildflags",
-      "//third_party/rust/font_types/v0_11:lib",
-      "//third_party/rust/read_fonts/v0_39:lib",
-      "//third_party/rust/skrifa/v0_42:lib",
+      "//third_party/rust/font_types/v0_12:lib",
+      "//third_party/rust/read_fonts/v0_40:lib",
+      "//third_party/rust/skrifa/v0_43:lib",
     ]
   }
 }
@@ -59,9 +59,9 @@ rust_static_library("child_process_security_policy_impl") {
   # finer-grained controls that allow unsafe code only for FFI code while
   # disallowing it by default for other code.
   allow_unsafe = true
-  crate_root = "child_process_security_policy_impl.rs"
-  sources = [ "child_process_security_policy_impl.rs" ]
-  cxx_bindings = [ "child_process_security_policy_impl.rs" ]
+  crate_root = "security/cpsp/child_process_security_policy_impl.rs"
+  sources = [ "security/cpsp/child_process_security_policy_impl.rs" ]
+  cxx_bindings = [ "security/cpsp/child_process_security_policy_impl.rs" ]
   visibility = [ ":browser" ]
   configs += [ "//content:content_implementation" ]
   deps = [
@@ -833,8 +833,6 @@ source_set("browser") {
     "child_process_launcher.h",
     "child_process_launcher_helper.cc",
     "child_process_launcher_helper.h",
-    "child_process_security_policy_impl.cc",
-    "child_process_security_policy_impl.h",
     "client_hints/client_hints.cc",
     "client_hints/client_hints.h",
     "client_hints/critical_client_hints_throttle.cc",
@@ -876,6 +874,8 @@ source_set("browser") {
     "declarative_performance_observer/declarative_performance_observer.h",
     "declarative_performance_observer/declarative_performance_observer_coordinator.cc",
     "declarative_performance_observer/declarative_performance_observer_coordinator.h",
+    "declarative_performance_observer/declarative_performance_observer_store.cc",
+    "declarative_performance_observer/declarative_performance_observer_store.h",
     "device/device_service.cc",
     "device_posture/device_posture_platform_provider.cc",
     "device_posture/device_posture_platform_provider.h",
@@ -2179,6 +2179,8 @@ source_set("browser") {
     "security/coop/cross_origin_opener_policy_reporter.h",
     "security/coop/cross_origin_opener_policy_status.cc",
     "security/coop/cross_origin_opener_policy_status.h",
+    "security/cpsp/child_process_security_policy_impl.cc",
+    "security/cpsp/child_process_security_policy_impl.h",
     "security/dip/document_isolation_policy_reporter.cc",
     "security/dip/document_isolation_policy_reporter.h",
     "serial/serial_service.cc",

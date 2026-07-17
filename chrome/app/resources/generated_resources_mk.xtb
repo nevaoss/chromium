@@ -2313,6 +2313,7 @@
 <translation id="2710883118091822664">Најавете се за да продолжите лесно на сите ваши уреди</translation>
 <translation id="2713106313042589954">Исклучи ја камерата</translation>
 <translation id="2713444072780614174">Бела</translation>
+<translation id="2713529429175549458">Лозинка, PIN или отпечаток</translation>
 <translation id="2714180132046334502">Темна заднина</translation>
 <translation id="2714393097308983682">Google Play Store</translation>
 <translation id="2714617928488200509">Модели</translation>
@@ -2763,6 +2764,7 @@
 <translation id="3023204744987201088">&amp;Податоци за контакт</translation>
 <translation id="3023464535986383522">Изберете за говор</translation>
 <translation id="3024374909719388945">Користи 24-часовен часовник</translation>
+<translation id="3025905136198521738">Подреди го поделениот приказ – активен е приказот одлево</translation>
 <translation id="3027296729579831126">Вклучете „Споделување во близина“</translation>
 <translation id="3027644380269727216">Според вашата активност на сајт. Оваа поставка е вклучена.</translation>
 <translation id="3028445648481691885">Преземањето е откажано</translation>
@@ -3293,6 +3295,7 @@
 <translation id="3436118221454753036">Прашајте го „AI-режимот“</translation>
 <translation id="3437072258256045988">Управувајте со вашата активност во апликациите Gemini</translation>
 <translation id="3437397693214267762">Погледнете ги вашиот Outlook Calendar и датотеки во SharePoint и OneDrive</translation>
+<translation id="3437494162908353428">DevTools не се дозволени за URL-адресава.</translation>
 <translation id="3438633801274389918">Нинџа</translation>
 <translation id="3439153939049640737">Секогаш дозволувај <ph name="HOST" /> да пристапи до микрофонот</translation>
 <translation id="3439970425423980614">Отворање ПДФ во Преглед</translation>
@@ -3506,6 +3509,7 @@
 <translation id="3596012367874587041">Поставки за апликацијата</translation>
 <translation id="3599221874935822507">Со подигнат раб</translation>
 <translation id="3600051066689725006">Информации за веб-барањето</translation>
+<translation id="3600181948754917646">Белешки за изданието на Chrome Enterprise</translation>
 <translation id="3600956933576601730">Треба да ги прегледате и да ги прифатите „Условите“ за да ги користите функцииве</translation>
 <translation id="3601374594714740284">За гласови со повисок квалитет, ослободете простор на уредот</translation>
 <translation id="360180734785106144">Да ви нуди нови функции кога ќе станат достапни</translation>
@@ -4318,6 +4322,7 @@
 <translation id="4177501066905053472">Теми на реклами</translation>
 <translation id="4177668342649553942">Отвори <ph name="SHORTCUT_NAME" /> - <ph name="APP_NAME" /></translation>
 <translation id="4177731895051842298">Екстензиите се додатоци за Chrome што може да ви помогнат да се организирате, да ги поедноставувате задачите и да го приспособувате прелистувањето</translation>
+<translation id="4177860704813504507">Лозинка или отпечаток</translation>
 <translation id="4178220097446335546">За да ја заборавите претплатава и нејзините поврзани мрежи, одете на страницата со претплата на Passpoint за да ја отстраните претплатата.</translation>
 <translation id="4181376007499455822">Не отфрлај</translation>
 <translation id="4181602000363099176">20x</translation>
@@ -4953,6 +4958,7 @@
 <translation id="4660540330091848931">Се менува големината</translation>
 <translation id="4662373422909645029">Прекарот не може да содржи броеви</translation>
 <translation id="4663373278480897665">Камерата е дозволена</translation>
+<translation id="4664375726751122009">Смени на „Визуелен приказ“</translation>
 <translation id="4665014895760275686">Производител</translation>
 <translation id="4665446389743427678">Сите податоци складирани од <ph name="SITE" /> ќе се избришат.</translation>
 <translation id="4666472247053585787">Прегледувајте ги известувањата од телефонот на вашиот <ph name="DEVICE_TYPE" /></translation>
@@ -5656,6 +5662,7 @@
 <translation id="5186381005592669696">Приспособување на јазикот на прикажување за поддржаните апликации</translation>
 <translation id="5186788525428341874">Може да го користите овој криптографски клуч за да се најавувате побрзо на вашите уреди. Ќе се зачува во Google Password Manager за <ph name="ACCOUNT_NAME" />.</translation>
 <translation id="5186792064936776005">Користи ја стандардната опција ако е достапна</translation>
+<translation id="5186931074173692059">Вашите лозинки се зачувани во <ph name="GOOGLE_PASSWORD_MANAGER" /> за <ph name="EMAIL" />.</translation>
 <translation id="5187641678926990264">&amp;Инсталирај страница како апликација…</translation>
 <translation id="5187826826541650604"><ph name="KEY_NAME" /> (<ph name="DEVICE" />)</translation>
 <translation id="5188242000716462162">Споделено од <ph name="USER_NAME" /></translation>
@@ -6025,6 +6032,7 @@
 <translation id="5473075389972733037">IBM</translation>
 <translation id="5473099001878321374">Ако продолжите, се согласувате дека уредов може автоматски да презема и инсталира ажурирања и апликации од Google, од операторот на детето и од производителот на уредов, веројатно со користење мобилен интернет. Некои од апликацииве може да нудат купувања во апликација.</translation>
 <translation id="5473156705047072749">{NUM_CHARACTERS,plural, =1{PIN-кодот мора да содржи најмалку еден знак}one{PIN-кодот мора да содржи најмалку # знак}other{PIN-кодот мора да содржи најмалку # знака}}</translation>
+<translation id="5475744834448251260">PIN или отпечаток</translation>
 <translation id="547615291475756075">Мак&amp;симизирај</translation>
 <translation id="5476957746413745956">Приспособувај ја брзината одделно за секоја насока</translation>
 <translation id="5477089831058413614">Конфигурирање точка на пристап на <ph name="DEVICE_TYPE" /></translation>
@@ -6608,6 +6616,7 @@
 <translation id="5933376509899483611">Временска зона</translation>
 <translation id="5933522550144185133"><ph name="APP_NAME" /> ги користи камерата и микрофонот</translation>
 <translation id="5935158534896975820">Се подготвува барање за најавување со сертификат (се чека серверот)</translation>
+<translation id="5935554994339565449">Додајте текст со новата алатка „Додајте текст“</translation>
 <translation id="5936065461722368675">Преведи ја целата страница</translation>
 <translation id="5937977334791924341">Лого на <ph name="APP" /></translation>
 <translation id="5938002010494270685">Достапна е надградба за безбедност</translation>
@@ -7881,6 +7890,7 @@
 <translation id="6883319974225028188">Системот не успеа да ја зачува конфигурацијата на уредот.</translation>
 <translation id="6883606786470492001">Управувајте со темите на реклами и другите поставки за да ограничите што може да дознаат сајтовите за вас за да ви прикажуваат персонализирани реклами</translation>
 <translation id="6884474387073389421">Дали сте сигурни дека сакате да ги избришете избраните податоци за најавување?</translation>
+<translation id="6884763350679569586">Само PIN</translation>
 <translation id="6885338910541974777">Настана грешка при инсталирањето на апликацијата.</translation>
 <translation id="6885771755599377173">Преглед на информациите за системот</translation>
 <translation id="6886871292305414135">Отвори ја врската во нова &amp;картичка</translation>
@@ -8048,6 +8058,7 @@
 <translation id="7003844668372540529">Непознат производ <ph name="PRODUCT_ID" /> од <ph name="VENDOR_NAME" /></translation>
 <translation id="7004402701596653846">Сајтот може да користи MIDI</translation>
 <translation id="7004499039102548441">Неодамнешни картички</translation>
+<translation id="7004791323196577460">Подреди го поделениот приказ – активен е приказот оддесно</translation>
 <translation id="7004923218520748660">Закачи го пребарувањето картички</translation>
 <translation id="7004969808832734860">До <ph name="DISCOUNT_UP_TO_AMOUNT" /> попуст</translation>
 <translation id="7005496624875927304">Дополнителни дозволи</translation>
@@ -8235,6 +8246,7 @@
 <translation id="7159695867335480590">Пушти/паузирај</translation>
 <translation id="7159953856712257647">Стандардно инсталирана</translation>
 <translation id="7160182524506337403">Сега можете да ги прегледувате известувањата од телефонот</translation>
+<translation id="7160835047878907171">Подреди го поделениот приказ – активен е приказот долу</translation>
 <translation id="7160911207516219534">Странични табли</translation>
 <translation id="716210145227921528">Криптографскиот клуч е избришан</translation>
 <translation id="7165263843655074092">Добивате стандардна безбедносна заштита на уредов</translation>
@@ -8369,6 +8381,7 @@
 <translation id="7261217796641151584">Споделете ја групата</translation>
 <translation id="7261612856573623172">Глас на системот за „Од текст во говор“</translation>
 <translation id="7262004276116528033">Хост на услугата за најавување е <ph name="SAML_DOMAIN" /></translation>
+<translation id="7262162806583378242">Изберете што било на екранот додека прелистувате за да купувате, да преведувате и да пребарувате со AI</translation>
 <translation id="7262564444061174264">Дознајте повеќе за кратенката за навигација</translation>
 <translation id="7262919421769447042"><ph name="PROFILE_MANAGER" /> управува со профилот, па може да прегледува некои податоци, меѓу кои и</translation>
 <translation id="7264695323040866038">Секогаш да се користи апликацијата <ph name="APP" /> за отворање поддржани веб-линкови?</translation>
@@ -9057,6 +9070,7 @@
 <translation id="7768507955883790804">Сајтовите автоматски ја следат оваа поставка кога ги посетувате</translation>
 <translation id="7768770796815395237">Промени</translation>
 <translation id="7768784765476638775">Изберете за говор</translation>
+<translation id="7769063984980522348">Смени на „Компактен приказ“</translation>
 <translation id="7769709635093101687">Кратенката од тастатурата за да паузирате</translation>
 <translation id="7769748505895274502">Соберете ги неодамна затворените</translation>
 <translation id="7770072242481632881">Избирач на странична табла</translation>
@@ -10301,6 +10315,7 @@
 <translation id="8687774873995698516">Секогаш блокирај го сајтот <ph name="HOST" /> да користи идентификатори за да пушта заштитени содржини</translation>
 <translation id="8688672835843460752">Достапно</translation>
 <translation id="8689811383248488428">Одбиј и затвори го профилот</translation>
+<translation id="8689957514193802371">Дозволете му на Chromium автоматски да ја промени лозинката за <ph name="WEBSITE" /></translation>
 <translation id="8689998525144040851">100</translation>
 <translation id="8690129572193755009">Сајтовите може да прашуваат за да ракуваат со протоколи</translation>
 <translation id="869144235543261764">Картичкава пушта видео во режимот „Слика во слика“.</translation>
@@ -10838,6 +10853,7 @@
 <translation id="9068878141610261315">Неподдржан тип датотека</translation>
 <translation id="9069417381769492963">Нема обележувачи што се совпаѓаат со вашето пребарување</translation>
 <translation id="9070342919388027491">Картичката е преместена налево</translation>
+<translation id="9071664234353284876">Нема автентикација</translation>
 <translation id="9072220108592671115">Верзијата <ph name="VERSION" /> е инсталирана</translation>
 <translation id="9072918088200875065">Му дадовте дозвола на Gemini да се најавува на сајтовиве за да ги завршува задачите наместо вас</translation>
 <translation id="9074618195273027322">{CORE_COUNT,plural, =1{1 јадро}one{{CORE_COUNT} јадро}other{{CORE_COUNT} јадра}}</translation>
@@ -11019,6 +11035,7 @@
 <translation id="9203904171912129171">Изберете уред</translation>
 <translation id="9204881338516142227">Автоматизирана промена на лозинката</translation>
 <translation id="9205304506427975617">Може да го држите курсорот стабилен дури и ако ја движите главата малку. Ова бара повеќе труд за да се премести курсорот.</translation>
+<translation id="9205396811802112046">Подреди го поделениот приказ – активен е приказот горе</translation>
 <translation id="9207434080086272167">Сончево</translation>
 <translation id="9207669213427469593">Ако преместите прозорец на едната страна за да користите поделен екран, ќе гледате предлози за прозорци за другата страна</translation>
 <translation id="9212565256020141627">Сликата не можеше да се сподели со Gemini. Обидете се повторно или обидете се со друга слика.</translation>

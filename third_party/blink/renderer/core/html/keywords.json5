@@ -110,6 +110,11 @@
     // command for overscroll
     "toggle-overscroll",
 
+    // colorspace attribute on <input type=color>
+    // https://html.spec.whatwg.org/multipage/input.html#dom-input-colorspace
+    "limited-srgb",
+    "display-p3",
+
     // loading attribute
     // https://github.com/scott-little/lazyload#ways-the-loading-attribute-can-be-used
     "lazy",

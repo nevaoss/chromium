@@ -406,6 +406,8 @@ PseudoId CSSSelector::GetPseudoId(PseudoType type) {
       // need to refactor something here (possibly the callers of this method)
       // to account for this.
       return kPseudoIdPickerSelect;
+    case kPseudoSelectListbox:
+      return kPseudoIdSelectListbox;
     case kPseudoViewTransition:
       return kPseudoIdViewTransition;
     case kPseudoViewTransitionGroup:
@@ -500,7 +502,6 @@ PseudoId CSSSelector::GetPseudoId(PseudoType type) {
     case kPseudoOpen:
     case kPseudoOptional:
     case kPseudoOutOfRange:
-    case kPseudoOverscrollTarget:
     case kPseudoOverscrollOpen:
     case kPseudoParent:
     case kPseudoPart:
@@ -520,6 +521,7 @@ PseudoId CSSSelector::GetPseudoId(PseudoType type) {
     case kPseudoRoot:
     case kPseudoScope:
     case kPseudoSeeking:
+    case kPseudoSelectContainsInput:
     case kPseudoSelectHasSlottedButton:
     case kPseudoSingleButton:
     case kPseudoSlotted:
@@ -607,9 +609,10 @@ constexpr static NameToPseudoStruct kPseudoTypeWithoutArgumentsMap[] = {
     {"-internal-menulist-popover-with-menulist-anchor",
      CSSSelector::kPseudoMenulistPopoverWithMenulistAnchor},
     {"-internal-multi-select-focus", CSSSelector::kPseudoMultiSelectFocus},
-    {"-internal-overscroll-target", CSSSelector::kPseudoOverscrollTarget},
     {"-internal-popover-in-top-layer", CSSSelector::kPseudoPopoverInTopLayer},
     {"-internal-relative-anchor", CSSSelector::kPseudoRelativeAnchor},
+    {"-internal-select-contains-input",
+     CSSSelector::kPseudoSelectContainsInput},
     {"-internal-select-has-slotted-button",
      CSSSelector::kPseudoSelectHasSlottedButton},
     {"-internal-shadow-host-has-non-auto-appearance",
@@ -719,6 +722,7 @@ constexpr static NameToPseudoStruct kPseudoTypeWithoutArgumentsMap[] = {
     {"scroll-marker-group", CSSSelector::kPseudoScrollMarkerGroup},
     {"search-text", CSSSelector::kPseudoSearchText},
     {"seeking", CSSSelector::kPseudoSeeking},
+    {"select-listbox", CSSSelector::kPseudoSelectListbox},
     {"selection", CSSSelector::kPseudoSelection},
     {"single-button", CSSSelector::kPseudoSingleButton},
     {"spelling-error", CSSSelector::kPseudoSpellingError},
@@ -1010,6 +1014,7 @@ void CSSSelector::UpdatePseudoType(const AtomicString& value,
     case kPseudoScrollButton:
     case kPseudoColumn:
     case kPseudoPicker:
+    case kPseudoSelectListbox:
     case kPseudoSelection:
     case kPseudoWebKitCustomElement:
     case kPseudoSlotted:
@@ -1046,6 +1051,7 @@ void CSSSelector::UpdatePseudoType(const AtomicString& value,
     case kPseudoIsHtml:
     case kPseudoListBox:
     case kPseudoMultiSelectFocus:
+    case kPseudoSelectContainsInput:
     case kPseudoSpatialNavigationFocus:
     case kPseudoUnboundedElementInactive:
     case kPseudoVideoPersistent:
@@ -1126,7 +1132,6 @@ void CSSSelector::UpdatePseudoType(const AtomicString& value,
     case kPseudoOpen:
     case kPseudoOptional:
     case kPseudoOutOfRange:
-    case kPseudoOverscrollTarget:
     case kPseudoOverscrollOpen:
     case kPseudoParent:
     case kPseudoPastCue:
@@ -1793,7 +1798,7 @@ bool CSSSelector::IsTreeAbidingPseudoElement() const {
 /* static */ bool CSSSelector::IsElementBackedPseudoElement(
     CSSSelector::PseudoType pseudo) {
   return pseudo == kPseudoDetailsContent || pseudo == kPseudoPicker ||
-         pseudo == kPseudoPermissionIcon;
+         pseudo == kPseudoPermissionIcon || pseudo == kPseudoSelectListbox;
 }
 
 bool CSSSelector::IsElementBackedPseudoElement() const {
@@ -1822,6 +1827,7 @@ bool CSSSelector::IsAllowedAfterPart() const {
     case kPseudoFirstLine:
     case kPseudoFirstLetter:
     case kPseudoPicker:
+    case kPseudoSelectListbox:
     case kPseudoSelection:
     case kPseudoSearchText:
     case kPseudoTargetText:
@@ -1906,7 +1912,6 @@ bool CSSSelector::IsAllowedAfterPart() const {
     case kPseudoModal:
     case kPseudoMuted:
     case kPseudoOptional:
-    case kPseudoOverscrollTarget:
     case kPseudoOverscrollOpen:
     case kPseudoPermissionGranted:
     case kPseudoPlaceholderShown:
@@ -1914,6 +1919,7 @@ bool CSSSelector::IsAllowedAfterPart() const {
     case kPseudoReadWrite:
     case kPseudoRequired:
     case kPseudoSeeking:
+    case kPseudoSelectContainsInput:
     case kPseudoSelectHasSlottedButton:
     case kPseudoStalled:
     case kPseudoState:
@@ -2292,7 +2298,6 @@ bool CSSSelector::SupportsPseudoStateChange(PseudoType type) {
     case CSSSelector::kPseudoOpen:
     case CSSSelector::kPseudoOptional:
     case CSSSelector::kPseudoOutOfRange:
-    case CSSSelector::kPseudoOverscrollTarget:
     case CSSSelector::kPseudoPaused:
     case CSSSelector::kPseudoPermissionGranted:
     case CSSSelector::kPseudoPictureInPicture:
@@ -2303,6 +2308,7 @@ bool CSSSelector::SupportsPseudoStateChange(PseudoType type) {
     case CSSSelector::kPseudoReadWrite:
     case CSSSelector::kPseudoRequired:
     case CSSSelector::kPseudoSeeking:
+    case CSSSelector::kPseudoSelectContainsInput:
     case CSSSelector::kPseudoSelectHasSlottedButton:
     case CSSSelector::kPseudoSelection:
     case CSSSelector::kPseudoStalled:

@@ -304,7 +304,6 @@ ci.thin_tester(
     targets = targets.bundle(
         targets = [
             "gpu_chromeos_telemetry_tests",
-            "chromeos_vm_gtests",
             "chromeos_isolated_scripts",
         ],
         mixins = [
@@ -515,7 +514,7 @@ ci.builder(
             ),
             "browser_tests": targets.mixin(
                 swarming = targets.swarming(
-                    shards = 160,
+                    shards = 200,
                 ),
             ),
             "content_browsertests": targets.mixin(

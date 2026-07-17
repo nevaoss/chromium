@@ -33,6 +33,9 @@ class ChromiumDepGraph {
             com_android_extensions_xr_extensions_xr: new PropertyOverride(
                     licenseUrl: 'https://www.apache.org/licenses/LICENSE-2.0.txt',
                     licenseName: 'Apache-2.0'),
+            com_github_kevinstern_software_and_algorithms: new PropertyOverride(
+                    licenseUrl: 'https://raw.githubusercontent.com/KevinStern/software-and-algorithms/master/LICENSE',
+                    licenseName: 'MIT'),
             com_google_android_datatransport_transport_api: new PropertyOverride(
                     description: 'Interfaces for data logging in gmscore SDKs.'),
             com_google_android_gms_play_services_cloud_messaging: new PropertyOverride(
@@ -92,6 +95,9 @@ class ChromiumDepGraph {
                     cpePrefix: 'cpe:/a:google:guava',
                     licenseUrl: 'https://www.apache.org/licenses/LICENSE-2.0.txt',
                     licenseName: 'Apache 2.0'),
+            com_google_jimfs_jimfs: new PropertyOverride(
+                    licenseUrl: 'https://raw.githubusercontent.com/google/jimfs/refs/heads/master/LICENSE',
+                    licenseName: 'Apache 2.0'),
             com_google_mlkit_common: new PropertyOverride(
                     licenseUrl: 'https://www.apache.org/licenses/LICENSE-2.0.txt',
                     licenseName: 'Apache 2.0'),
@@ -128,6 +134,9 @@ class ChromiumDepGraph {
                     cpePrefix: 'cpe:/a:google:protobuf-javalite',
                     licenseUrl: 'https://raw.githubusercontent.com/protocolbuffers/protobuf/master/LICENSE',
                     licenseName: 'BSD'),
+            io_github_java_diff_utils_java_diff_utils: new PropertyOverride(
+                    licenseUrl: 'https://raw.githubusercontent.com/java-diff-utils/java-diff-utils/refs/heads/master/LICENSE',
+                    licenseName: 'Apache 2.0'),
             io_grpc_grpc_api: new PropertyOverride(
                     cpePrefix: 'cpe:/a:grpc:grpc',
                     licenseUrl: 'https://raw.githubusercontent.com/grpc/grpc-java/refs/heads/master/LICENSE',
@@ -286,6 +295,7 @@ class ChromiumDepGraph {
             'https://scripts.sil.org/cms/scripts/page.php?item_id=OFL_web': 'licenses/SIL_Open_Font.txt',
             'https://www.unicode.org/copyright.html#License': 'licenses/Unicode.txt',
             'https://www.unicode.org/license.html': 'licenses/Unicode.txt',
+            'https://www.gnu.org/software/classpath/license.html': 'licenses/GNU_v2_with_Classpath_Exception_1991.txt',
     ]
 
     final Map<String, DependencyDescription> dependencies = [:] as ConcurrentHashMap<String, DependencyDescription>

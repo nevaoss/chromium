@@ -3482,10 +3482,6 @@ interface GeolocationCoordinates
     getter speed
     method constructor
     method toJSON
-interface GeolocationPermissionStatus : PermissionStatus
-    attribute @@toStringTag
-    getter accuracyMode
-    method constructor
 interface GeolocationPosition
     attribute @@toStringTag
     getter coords
@@ -3831,6 +3827,7 @@ interface HTMLElement : Element
     getter accessKeyLabel
     getter attributeStyleMap
     getter autocapitalize
+    getter autocorrect
     getter autofocus
     getter contentEditable
     getter dataset
@@ -3985,6 +3982,7 @@ interface HTMLElement : Element
     method togglePopover
     setter accessKey
     setter autocapitalize
+    setter autocorrect
     setter autofocus
     setter contentEditable
     setter dir
@@ -4435,10 +4433,12 @@ interface HTMLInputElement : HTMLElement
     attribute @@toStringTag
     getter accept
     getter align
+    getter alpha
     getter alt
     getter autocomplete
     getter capture
     getter checked
+    getter colorSpace
     getter defaultChecked
     getter defaultValue
     getter dirName
@@ -4496,10 +4496,12 @@ interface HTMLInputElement : HTMLElement
     method stepUp
     setter accept
     setter align
+    setter alpha
     setter alt
     setter autocomplete
     setter capture
     setter checked
+    setter colorSpace
     setter defaultChecked
     setter defaultValue
     setter dirName
@@ -7523,6 +7525,12 @@ interface PopStateEvent : Event
     getter hasUAVisualTransition
     getter state
     method constructor
+interface PreconnectData
+    attribute @@toStringTag
+    getter crossorigin
+    getter earlyhint
+    getter origin
+    method constructor
 interface PreferenceManager
     attribute @@toStringTag
     getter colorScheme
@@ -7545,7 +7553,7 @@ interface PreloadData
     attribute @@toStringTag
     getter as
     getter crossorigin
-    getter earlyHints
+    getter earlyhint
     getter url
     getter used
     method constructor
@@ -9007,6 +9015,7 @@ interface SVGPathElement : SVGGeometryElement
     attribute @@toStringTag
     method constructor
     method getPathData
+    method setPathData
 interface SVGPatternElement : SVGElement
     attribute @@toStringTag
     getter height
@@ -9631,6 +9640,7 @@ interface SpeculationData
     attribute @@toStringTag
     getter navigationDestinationURL
     getter navigations
+    getter preconnects
     getter preloads
     method constructor
 interface SpeculationNavigationData
@@ -11896,6 +11906,8 @@ interface WebSocketStream
     method constructor
 interface WebTransport
     attribute @@toStringTag
+    getter anticipatedConcurrentIncomingBidirectionalStreams
+    getter anticipatedConcurrentIncomingUnidirectionalStreams
     getter closed
     getter congestionControl
     getter datagrams
@@ -11909,6 +11921,8 @@ interface WebTransport
     method createSendGroup
     method createUnidirectionalStream
     method getStats
+    setter anticipatedConcurrentIncomingBidirectionalStreams
+    setter anticipatedConcurrentIncomingUnidirectionalStreams
 interface WebTransportBidirectionalStream
     attribute @@toStringTag
     getter readable

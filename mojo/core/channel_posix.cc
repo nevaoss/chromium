@@ -67,7 +67,6 @@ class MessageView {
     if (message_ && base::ShouldRecordSubsampledMetric(
                         Channel::kMetricSubsamplingProbability)) {
       base::TimeDelta latency = base::TimeTicks::Now() - start_time_;
-      UMA_HISTOGRAM_TIMES("Mojo.Channel.WriteMessageLatency", latency);
       UMA_HISTOGRAM_CUSTOM_MICROSECONDS_TIMES("Mojo.Channel.WriteLatencyUs",
                                               latency, base::Microseconds(1),
                                               base::Seconds(1), 100);

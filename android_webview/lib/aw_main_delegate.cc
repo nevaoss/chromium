@@ -436,6 +436,10 @@ void AwMainDelegate::InitializeMemorySystem(const bool is_browser_process) {
       // TODO(crbug.com/40150046): If webview ever supports extensions, exclude
       // extension renderers.
       profiler_process_type = sampling_profiler::ProfilerProcessType::kRenderer;
+    } else if (process_type == switches::kUtilityProcess) {
+      // TODO(crbug.com/41412949): If webview ever runs the network service OOP,
+      // detect it and use ProfilerProcessType::kNetworkService.
+      profiler_process_type = sampling_profiler::ProfilerProcessType::kUtility;
     } else if (process_type == switches::kZygoteProcess) {
       profiler_process_type = sampling_profiler::ProfilerProcessType::kZygote;
     } else {

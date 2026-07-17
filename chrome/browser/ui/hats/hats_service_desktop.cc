@@ -135,15 +135,27 @@ HatsServiceDesktop::DelayedSurveyTask::GetWeakPtr() {
 }
 
 void HatsServiceDesktop::DelayedSurveyTask::Launch() {
-  // web_contents() might be null here despite removing the task in
-  // WebContentsDestroyed.
-  if (web_contents() &&
-      web_contents()->GetVisibility() == content::Visibility::VISIBLE) {
-    hats_service_->LaunchSurveyForWebContents(
-        trigger_, web_contents(), product_specific_bits_data_,
-        product_specific_string_data_, std::move(success_callback_),
-        std::move(failure_callback_), supplied_trigger_id_, SurveyOptions());
+  if (!web_contents() ||
+      web_contents()->GetVisibility() != content::Visibility::VISIBLE) {
+    if (!failure_callback_.is_null()) {
+      std::move(failure_callback_).Run();
+    }
+    hats_service_->RemoveTask(*this);
+    return;
   }
+
+  BrowserWindowInterface* browser_interface =
+      GlobalBrowserCollection::GetInstance()->FindBrowserWithTab(
+          web_contents());
+  Browser* browser = browser_interface
+                         ? browser_interface->GetBrowserForMigrationOnly()
+                         : nullptr;
+
+  LaunchError error = hats_service_->ShowSurvey(
+      browser, trigger_, std::move(success_callback_),
+      std::move(failure_callback_), product_specific_bits_data_,
+      product_specific_string_data_, supplied_trigger_id_);
+  std::ignore = error;
 
   hats_service_->RemoveTask(*this);
 }
@@ -181,7 +193,7 @@ void HatsServiceDesktop::RegisterProfilePrefs(
       user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
 }
 
-void HatsServiceDesktop::LaunchSurvey(
+HatsService::LaunchError HatsServiceDesktop::LaunchSurvey(
     const std::string& trigger,
     base::OnceClosure success_callback,
     base::OnceClosure failure_callback,
@@ -193,23 +205,19 @@ void HatsServiceDesktop::LaunchSurvey(
         !survey_options.message_identifier.has_value())
       << "Custom invitation strings and message types are not supported on "
          "desktop.";
-  if (!ShouldShowSurvey(trigger)) {
-    if (!failure_callback.is_null()) {
-      std::move(failure_callback).Run();
-    }
-    return;
-  }
+
   BrowserWindowInterface* const browser =
       ProfileBrowserCollection::GetForProfile(profile())
           ->GetLastActiveBrowser();
-  LaunchSurveyForBrowser(
-      browser ? browser->GetBrowserForMigrationOnly() : nullptr, trigger,
-      std::move(success_callback), std::move(failure_callback),
-      product_specific_bits_data, product_specific_string_data,
-      supplied_trigger_id);
+  Browser* raw_browser =
+      browser ? browser->GetBrowserForMigrationOnly() : nullptr;
+
+  return ShowSurvey(raw_browser, trigger, std::move(success_callback),
+                    std::move(failure_callback), product_specific_bits_data,
+                    product_specific_string_data, supplied_trigger_id);
 }
 
-void HatsServiceDesktop::LaunchSurveyForWebContents(
+HatsService::LaunchError HatsServiceDesktop::LaunchSurveyForWebContents(
     const std::string& trigger,
     content::WebContents* web_contents,
     const SurveyBitsData& product_specific_bits_data,
@@ -222,42 +230,56 @@ void HatsServiceDesktop::LaunchSurveyForWebContents(
         !survey_options.message_identifier.has_value())
       << "Custom invitation strings and message types are not supported on "
          "desktop.";
-  if (ShouldShowSurvey(trigger) && web_contents &&
-      web_contents->GetVisibility() == content::Visibility::VISIBLE) {
-    BrowserWindowInterface* browser =
-        GlobalBrowserCollection::GetInstance()->FindBrowserWithTab(
-            web_contents);
-    if (!browser) {
-      return;
+
+  if (!web_contents ||
+      web_contents->GetVisibility() != content::Visibility::VISIBLE) {
+    if (!failure_callback.is_null()) {
+      std::move(failure_callback).Run();
     }
-    LaunchSurveyForBrowser(browser->GetBrowserForMigrationOnly(), trigger,
-                           std::move(success_callback),
-                           std::move(failure_callback),
-                           product_specific_bits_data,
-                           product_specific_string_data, supplied_trigger_id);
+    return LaunchError::kNotVisible;
   }
+
+  BrowserWindowInterface* browser =
+      GlobalBrowserCollection::GetInstance()->FindBrowserWithTab(web_contents);
+  Browser* raw_browser =
+      browser ? browser->GetBrowserForMigrationOnly() : nullptr;
+
+  return ShowSurvey(raw_browser, trigger, std::move(success_callback),
+                    std::move(failure_callback), product_specific_bits_data,
+                    product_specific_string_data, supplied_trigger_id);
 }
 
-bool HatsServiceDesktop::LaunchDelayedSurvey(
+HatsService::LaunchError HatsServiceDesktop::LaunchDelayedSurvey(
     const std::string& trigger,
     int timeout_ms,
     const SurveyBitsData& product_specific_bits_data,
     const SurveyStringData& product_specific_string_data) {
-  void (HatsServiceDesktop::*launch_survey)(
-      const std::string&, base::OnceClosure, base::OnceClosure,
-      const SurveyBitsData&, const SurveyStringData&,
-      const std::optional<std::string>&, const SurveyOptions&) =
-      &HatsServiceDesktop::LaunchSurvey;
-  return base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
-      FROM_HERE,
-      base::BindOnce(launch_survey, weak_ptr_factory_.GetWeakPtr(), trigger,
-                     base::DoNothing(), base::DoNothing(),
-                     product_specific_bits_data, product_specific_string_data,
-                     std::nullopt, SurveyOptions()),
-      base::Milliseconds(timeout_ms));
+  if (survey_configs_by_triggers_.find(trigger) ==
+      survey_configs_by_triggers_.end()) {
+    return LaunchError::kNoTriggerConfig;
+  }
+  bool success =
+      base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
+          FROM_HERE,
+          base::BindOnce(
+              [](base::WeakPtr<HatsServiceDesktop> hats_service,
+                 const std::string& trigger,
+                 const SurveyBitsData& product_specific_bits_data,
+                 const SurveyStringData& product_specific_string_data) {
+                if (hats_service) {
+                  hats_service->LaunchSurvey(
+                      trigger, base::DoNothing(), base::DoNothing(),
+                      product_specific_bits_data, product_specific_string_data,
+                      std::nullopt, SurveyOptions());
+                }
+              },
+              weak_ptr_factory_.GetWeakPtr(), trigger,
+              product_specific_bits_data, product_specific_string_data),
+          base::Milliseconds(timeout_ms));
+  return success ? LaunchError::kNone : LaunchError::kError;
 }
 
-bool HatsServiceDesktop::LaunchDelayedSurveyForWebContents(
+HatsService::LaunchError HatsServiceDesktop::LaunchDelayedSurveyForWebContents(
     const std::string& trigger,
     content::WebContents* web_contents,
     int timeout_ms,
@@ -279,22 +301,31 @@ bool HatsServiceDesktop::LaunchDelayedSurveyForWebContents(
     if (!failure_callback.is_null()) {
       std::move(failure_callback).Run();
     }
-    return false;
+    return LaunchError::kNoTriggerConfig;
   }
   if (!web_contents) {
     if (!failure_callback.is_null()) {
       std::move(failure_callback).Run();
     }
-    return false;
+    return LaunchError::kError;
+  }
+  // Check for duplicate task before moving callbacks.
+  auto duplicate_it =
+      std::ranges::find_if(pending_tasks_, [&](const DelayedSurveyTask& task) {
+        return task.web_contents() == web_contents && task.trigger() == trigger;
+      });
+  if (duplicate_it != pending_tasks_.end()) {
+    if (!failure_callback.is_null()) {
+      std::move(failure_callback).Run();
+    }
+    return LaunchError::kSurveyInProgress;
   }
   auto result = pending_tasks_.emplace(
       this, trigger, web_contents, product_specific_bits_data,
       product_specific_string_data, navigation_behavior,
       std::move(success_callback), std::move(failure_callback),
       supplied_trigger_id);
-  if (!result.second) {
-    return false;
-  }
+  CHECK(result.second);
   auto success =
       base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
           FROM_HERE,
@@ -305,8 +336,9 @@ bool HatsServiceDesktop::LaunchDelayedSurveyForWebContents(
           base::Milliseconds(timeout_ms));
   if (!success) {
     pending_tasks_.erase(result.first);
+    return LaunchError::kError;
   }
-  return success;
+  return LaunchError::kNone;
 }
 
 void HatsServiceDesktop::SetSurveyMetadataForTesting(
@@ -406,6 +438,11 @@ bool HatsServiceDesktop::HasPendingTasks() {
 }
 
 bool HatsServiceDesktop::CanShowSurvey(const std::string& trigger) const {
+  return GetCommonLaunchError(trigger) == LaunchError::kNone;
+}
+
+HatsService::LaunchError HatsServiceDesktop::GetCommonLaunchError(
+    const std::string& trigger) const {
   // Survey should not be loaded if the corresponding survey config is
   // unavailable.
   const auto config_iterator = survey_configs_by_triggers_.find(trigger);
@@ -414,7 +451,7 @@ bool HatsServiceDesktop::CanShowSurvey(const std::string& trigger) const {
     UMA_HISTOGRAM_ENUMERATION(
         kHatsShouldShowSurveyReasonHistogram,
         ShouldShowSurveyReasons::kNoTriggerStringMismatch);
-    return false;
+    return LaunchError::kNoTriggerConfig;
   }
   const hats::SurveyConfig config = config_iterator->second;
 
@@ -423,7 +460,7 @@ bool HatsServiceDesktop::CanShowSurvey(const std::string& trigger) const {
     UMA_HISTOGRAM_ENUMERATION(
         kHatsShouldShowSurveyReasonHistogram,
         ShouldShowSurveyReasons::kNoSurveyAlreadyInProgress);
-    return false;
+    return LaunchError::kSurveyInProgress;
   }
 
   // Always show the survey in demo mode. This check is duplicated in
@@ -431,11 +468,11 @@ bool HatsServiceDesktop::CanShowSurvey(const std::string& trigger) const {
   // be included here.
   if (base::FeatureList::IsEnabled(
           features::kHappinessTrackingSurveysForDesktopDemo)) {
-    return true;
+    return LaunchError::kNone;
   }
 
   if (!CanShowAnySurvey(config.user_prompted)) {
-    return false;
+    return LaunchError::kCooldownActive;
   }
 
   // Check the profile age requirements for this survey. Some surveys (e.g.
@@ -449,7 +486,7 @@ bool HatsServiceDesktop::CanShowSurvey(const std::string& trigger) const {
       if ((now - creation_time) < kMinimumProfileAge) {
         UMA_HISTOGRAM_ENUMERATION(kHatsShouldShowSurveyReasonHistogram,
                                   ShouldShowSurveyReasons::kNoProfileTooNew);
-        return false;
+        return LaunchError::kProfileTooNew;
       }
       break;
     }
@@ -461,18 +498,28 @@ bool HatsServiceDesktop::CanShowSurvey(const std::string& trigger) const {
     UMA_HISTOGRAM_ENUMERATION(
         kHatsShouldShowSurveyReasonHistogram,
         HatsServiceDesktop::ShouldShowSurveyReasons::kNoAnyLastSurveyTooRecent);
-    return false;
+    return LaunchError::kCooldownActive;
   }
 
   // Survey can not be loaded and shown if there is no network connection.
   if (net::NetworkChangeNotifier::IsOffline()) {
     UMA_HISTOGRAM_ENUMERATION(kHatsShouldShowSurveyReasonHistogram,
                               ShouldShowSurveyReasons::kNoOffline);
-    return false;
+    return LaunchError::kOffline;
   }
 
   const base::DictValue& pref_data =
       GetPrefsForHatsMetadata()->GetDict(prefs::kHatsSurveyMetadata);
+
+  // Check if the survey is full.
+  std::optional<int> is_full =
+      pref_data.FindBoolByDottedPath(GetIsSurveyFull(trigger));
+  if (is_full.has_value() && is_full) {
+    UMA_HISTOGRAM_ENUMERATION(kHatsShouldShowSurveyReasonHistogram,
+                              ShouldShowSurveyReasons::kNoSurveyOverCapacity);
+    return LaunchError::kOverCapacity;
+  }
+
   std::optional<int> last_major_version =
       pref_data.FindIntByDottedPath(GetMajorVersionPath(trigger));
   if (last_major_version.has_value() &&
@@ -481,7 +528,7 @@ bool HatsServiceDesktop::CanShowSurvey(const std::string& trigger) const {
     UMA_HISTOGRAM_ENUMERATION(
         kHatsShouldShowSurveyReasonHistogram,
         ShouldShowSurveyReasons::kNoReceivedSurveyInCurrentMilestone);
-    return false;
+    return LaunchError::kCooldownActive;
   }
 
   if (!config.user_prompted) {
@@ -494,7 +541,7 @@ bool HatsServiceDesktop::CanShowSurvey(const std::string& trigger) const {
         UMA_HISTOGRAM_ENUMERATION(
             kHatsShouldShowSurveyReasonHistogram,
             ShouldShowSurveyReasons::kNoLastSurveyTooRecent);
-        return false;
+        return LaunchError::kCooldownActive;
       }
     }
   }
@@ -510,10 +557,10 @@ bool HatsServiceDesktop::CanShowSurvey(const std::string& trigger) const {
       UMA_HISTOGRAM_ENUMERATION(
           kHatsShouldShowSurveyReasonHistogram,
           ShouldShowSurveyReasons::kNoLastSurveyCheckTooRecent);
-      return false;
+      return LaunchError::kCheckTooRecent;
     }
   }
-  return true;
+  return LaunchError::kNone;
 }
 
 bool HatsServiceDesktop::CanShowAnySurvey(bool user_prompted) const {
@@ -601,20 +648,46 @@ void HatsServiceDesktop::RemoveTask(const DelayedSurveyTask& task) {
   pending_tasks_.erase(task);
 }
 
-bool HatsServiceDesktop::ShouldShowSurvey(const std::string& trigger) const {
-  if (!CanShowSurvey(trigger)) {
-    return false;
+HatsService::LaunchError HatsServiceDesktop::GetLaunchError(
+    Browser* browser,
+    const std::string& trigger) const {
+  LaunchError error = GetCommonLaunchError(trigger);
+  if (error != LaunchError::kNone) {
+    return error;
   }
 
-  auto probability = survey_configs_by_triggers_.at(trigger).probability;
-  bool should_show_survey = base::RandDouble() < probability;
-  if (!should_show_survey) {
-    UMA_HISTOGRAM_ENUMERATION(
-        kHatsShouldShowSurveyReasonHistogram,
-        ShouldShowSurveyReasons::kNoBelowProbabilityLimit);
+  if (!browser || browser->IsAttemptingToCloseBrowser()) {
+    return LaunchError::kError;
   }
 
-  return should_show_survey;
+  const hats::SurveyConfig config =
+      survey_configs_by_triggers_.find(trigger)->second;
+  if (!IsRightBrowserType(browser, config.requested_browser_type)) {
+    UMA_HISTOGRAM_ENUMERATION(kHatsShouldShowSurveyReasonHistogram,
+                              ShouldShowSurveyReasons::kNoWrongBrowserType);
+    return LaunchError::kWrongBrowserType;
+  }
+
+  if (IncognitoModePrefs::GetAvailability(profile()->GetPrefs()) ==
+      policy::IncognitoModeAvailability::kDisabled) {
+    UMA_HISTOGRAM_ENUMERATION(kHatsShouldShowSurveyReasonHistogram,
+                              ShouldShowSurveyReasons::kNoIncognitoDisabled);
+    return LaunchError::kIncognitoDisabled;
+  }
+
+  if (!base::FeatureList::IsEnabled(
+          features::kHappinessTrackingSurveysForDesktopDemo)) {
+    auto probability = config.probability;
+    bool should_show_survey = base::RandDouble() < probability;
+    if (!should_show_survey) {
+      UMA_HISTOGRAM_ENUMERATION(
+          kHatsShouldShowSurveyReasonHistogram,
+          ShouldShowSurveyReasons::kNoBelowProbabilityLimit);
+      return LaunchError::kBelowProbability;
+    }
+  }
+
+  return LaunchError::kNone;
 }
 
 bool HatsServiceDesktop::IsRightBrowserType(
@@ -633,7 +706,7 @@ bool HatsServiceDesktop::IsRightBrowserType(
   }
 }
 
-void HatsServiceDesktop::LaunchSurveyForBrowser(
+HatsService::LaunchError HatsServiceDesktop::ShowSurvey(
     Browser* browser,
     const std::string& trigger,
     base::OnceClosure success_callback,
@@ -641,63 +714,12 @@ void HatsServiceDesktop::LaunchSurveyForBrowser(
     const SurveyBitsData& product_specific_bits_data,
     const SurveyStringData& product_specific_string_data,
     const std::optional<std::string_view>& supplied_trigger_id) {
-  if (!browser || browser->IsAttemptingToCloseBrowser()) {
-    // Don't launch surveys during browser closure.
-    return;
-  }
-
-  CHECK(survey_configs_by_triggers_.find(trigger) !=
-        survey_configs_by_triggers_.end());
-  auto survey_config = survey_configs_by_triggers_[trigger];
-  if (!IsRightBrowserType(browser, survey_config.requested_browser_type)) {
-    UMA_HISTOGRAM_ENUMERATION(kHatsShouldShowSurveyReasonHistogram,
-                              ShouldShowSurveyReasons::kNoWrongBrowserType);
+  LaunchError error = GetLaunchError(browser, trigger);
+  if (error != LaunchError::kNone) {
     if (!failure_callback.is_null()) {
       std::move(failure_callback).Run();
     }
-    return;
-  }
-
-  if (IncognitoModePrefs::GetAvailability(profile()->GetPrefs()) ==
-      policy::IncognitoModeAvailability::kDisabled) {
-    // Incognito mode needs to be enabled to create an off-the-record profile
-    // for HaTS dialog.
-    UMA_HISTOGRAM_ENUMERATION(kHatsShouldShowSurveyReasonHistogram,
-                              ShouldShowSurveyReasons::kNoIncognitoDisabled);
-    if (!failure_callback.is_null()) {
-      std::move(failure_callback).Run();
-    }
-    return;
-  }
-
-  // Checking survey's status could be costly due to a network request, so
-  // we check it at the last.
-  CheckSurveyStatusAndMaybeShow(
-      browser, trigger, std::move(success_callback),
-      std::move(failure_callback), product_specific_bits_data,
-      product_specific_string_data, supplied_trigger_id);
-}
-
-void HatsServiceDesktop::CheckSurveyStatusAndMaybeShow(
-    Browser* browser,
-    const std::string& trigger,
-    base::OnceClosure success_callback,
-    base::OnceClosure failure_callback,
-    const SurveyBitsData& product_specific_bits_data,
-    const SurveyStringData& product_specific_string_data,
-    const std::optional<std::string_view>& supplied_trigger_id) {
-  // Check the survey status in profile first.
-  // We record the survey's over capacity information in user profile to avoid
-  // duplicated checks since the survey won't change once it is full.
-  const base::DictValue& pref_data =
-      GetPrefsForHatsMetadata()->GetDict(prefs::kHatsSurveyMetadata);
-  std::optional<int> is_full =
-      pref_data.FindBoolByDottedPath(GetIsSurveyFull(trigger));
-  if (is_full.has_value() && is_full) {
-    if (!failure_callback.is_null()) {
-      std::move(failure_callback).Run();
-    }
-    return;
+    return error;
   }
 
   CHECK(survey_configs_by_triggers_.find(trigger) !=
@@ -734,11 +756,12 @@ void HatsServiceDesktop::CheckSurveyStatusAndMaybeShow(
     survey_configs_by_triggers_[trigger].trigger_id =
         std::string(supplied_trigger_id.value());
   }
-  browser->window()->ShowHatsDialog(
+  BrowserWindow::FromBrowser(browser)->ShowHatsDialog(
       survey_configs_by_triggers_[trigger].trigger_id,
       survey_configs_by_triggers_[trigger].hats_histogram_name,
       survey_configs_by_triggers_[trigger].hats_survey_ukm_id,
       std::move(success_callback), std::move(failure_callback),
       product_specific_bits_data, product_specific_string_data);
   hats_next_dialog_exists_ = true;
+  return LaunchError::kNone;
 }

@@ -4,7 +4,7 @@
 
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import type {CustomizeColorSchemeModeClientRemote, SettingsAppearancePageElement, SettingsDropdownMenuElement, SettingsToggleButtonElement} from 'chrome://settings/settings.js';
-import {AppearanceBrowserProxyImpl, ColorSchemeMode, CustomizeColorSchemeModeBrowserProxy, CustomizeColorSchemeModeClientCallbackRouter, CustomizeColorSchemeModeHandlerRemote, loadTimeData, MetricsBrowserProxyImpl, SystemTheme} from 'chrome://settings/settings.js';
+import {AppearanceBrowserProxyImpl, ColorSchemeMode, customizeColorSchemeModeBrowserProxyFactory, CustomizeColorSchemeModeHandlerRemote, loadTimeData, MetricsBrowserProxyImpl, SystemTheme} from 'chrome://settings/settings.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {TestMock} from 'chrome://webui-test/test_mock.js';
 import {isVisible, microtasksFinished} from 'chrome://webui-test/test_util.js';
@@ -27,10 +27,11 @@ function createAppearancePage() {
 
   colorSchemeHandler =
       TestMock.fromClass(CustomizeColorSchemeModeHandlerRemote);
-  CustomizeColorSchemeModeBrowserProxy.setInstance(
-      colorSchemeHandler, new CustomizeColorSchemeModeClientCallbackRouter());
-  colorSchemeCallbackRouter = CustomizeColorSchemeModeBrowserProxy.getInstance()
-                                  .callbackRouter.$.bindNewPipeAndPassRemote();
+  const {instance, remote} =
+      customizeColorSchemeModeBrowserProxyFactory.createForTest(
+          colorSchemeHandler);
+  customizeColorSchemeModeBrowserProxyFactory.setInstance(instance);
+  colorSchemeCallbackRouter = remote;
 
   appearancePage = document.createElement('settings-appearance-page');
   appearancePage.set('prefs', {
@@ -735,7 +736,6 @@ suite('TabStripComboButtonSettings', () => {
 
   setup(async () => {
     loadTimeData.overrideValues({
-      showTabSearchEnabled: true,
       showProjectsPanelEnabled: true,
     });
 
@@ -808,7 +808,6 @@ suite('TabStripComboButtonSettings', () => {
 
   test('Everything menu toggle updates correct pref', async function() {
     loadTimeData.overrideValues({
-      showTabSearchEnabled: true,
       showProjectsPanelEnabled: false,
       showEverythingMenuEnabled: true,
     });
@@ -832,7 +831,6 @@ suite('TabStripComboButtonSettings', () => {
 
   test('Everything menu toggle records metrics', async function() {
     loadTimeData.overrideValues({
-      showTabSearchEnabled: true,
       showProjectsPanelEnabled: false,
       showEverythingMenuEnabled: true,
     });
@@ -856,15 +854,12 @@ suite('TabStripComboButtonSettings', () => {
 
   test('Toggles hidden when disabled', async function() {
     loadTimeData.overrideValues({
-      showTabSearchEnabled: false,
       showProjectsPanelEnabled: false,
       showEverythingMenuEnabled: false,
     });
     createAppearancePage();
     await microtasksFinished();
 
-    assertFalse(
-        !!appearancePage.shadowRoot!.querySelector('#showTabSearchButton'));
     assertFalse(
         !!appearancePage.shadowRoot!.querySelector('#showProjectsPanelButton'));
     assertFalse(!!appearancePage.shadowRoot!.querySelector(

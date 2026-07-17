@@ -854,7 +854,7 @@ inline const LayoutResult* BlockLayoutAlgorithm::Layout(
 
   PreviousInflowPosition previous_inflow_position = {
       LayoutUnit(), constraint_space.GetMarginStrut(),
-      is_resuming_ ? LayoutUnit() : container_builder_.Padding().block_start,
+      is_resuming_ ? LayoutUnit() : ComputeInitialBlockStartAnnotationSpace(),
       /* self_collapsing_child_had_clearance */ false};
 
   if (GetBreakToken()) {
@@ -4056,6 +4056,25 @@ LogicalOffset BlockLayoutAlgorithm::AdjustSliderThumbInlineOffset(
       To<HTMLInputElement>(Node().GetDOMNode()->OwnerShadowHost());
   LayoutUnit offset(input->RatioValue().ToDouble() * available_extent);
   return {logical_offset.inline_offset + offset, logical_offset.block_offset};
+}
+
+LayoutUnit BlockLayoutAlgorithm::ComputeInitialBlockStartAnnotationSpace()
+    const {
+  LayoutUnit padding_start = container_builder_.Padding().block_start;
+  // Allow ruby annotations to overflow to the block-start margin if the
+  // container has no block-start border.
+  // TODO(crbug.com/445727139): We'd like to add block-end annotation space of
+  // the previous sibling IFC.
+  if (RuntimeEnabledFeatures::AnnotationSpaceOnStartEnabled() &&
+      Borders().block_start == 0 &&
+      Style().OverflowBlockDirection() == EOverflow::kVisible) {
+    MarginStrut margin_strut = GetConstraintSpace().GetMarginStrut();
+    margin_strut.Append(
+        ComputeMarginsForSelf(GetConstraintSpace(), Style()).block_start,
+        Style().HasMarginBlockStartQuirk());
+    return margin_strut.Sum() + padding_start;
+  }
+  return padding_start;
 }
 
 NOINLINE void BlockLayoutAlgorithm::SetupLineClamp() {

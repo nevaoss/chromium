@@ -634,6 +634,11 @@
       name: "AnimationWorklet",
     },
     {
+      // crbug.com/445727139
+      name: "AnnotationSpaceOnStart",
+      status: "experimental",
+    },
+    {
       name: "AnonymousIframe",
       status: "stable",
     },
@@ -688,7 +693,7 @@
     },
     {
       name: "AriaActions",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "AriaNotify",
@@ -780,6 +785,13 @@
       origin_trial_allows_third_party: true,
       status: "experimental",
       public: true,
+    },
+    {
+      // Pins a generic font-family on the autofill preview pseudo-elements so
+      // an author @font-face cannot oracle the previewed text.
+      // crbug.com/517710554.
+      name: "AutofillPreviewGenericFontFamily",
+      status: "stable",
     },
     {
       name: "AutomationControlled",
@@ -1275,10 +1287,6 @@
       public: true,
     },
     {
-      name: "CompositedAnimationsCancelledAsynchronously",
-      status: "stable"
-    },
-    {
       name: "CompositedSelectionUpdate",
       public: true,
       status: {"Android": "stable"},
@@ -1305,6 +1313,7 @@
       // objects that live on the compositor thread.
       // [1] https://drafts.csswg.org/css-animations-2/#timeline-triggers
       name: "CompositorTimelineTrigger",
+      status: "stable",
     },
     {
       name: "CompressionDictionaryTransport",
@@ -2184,6 +2193,12 @@
     {
       name: "DeclarativeCSSModulesStyleTag",
       status: "experimental",
+    },
+    {
+      name: "DeclarativePerformanceObserver",
+      origin_trial_feature_name: "DeclarativePerformanceObserver",
+      status: "experimental",
+      base_feature: "none",
     },
     {
       name: "DeclarativeSkeletons",
@@ -3536,7 +3551,8 @@
       name: "IncomingCallNotifications",
       origin_trial_feature_name: "IncomingCallNotifications",
       origin_trial_os: [ "win" ],
-      base_feature: "IncomingCallNotifications",
+      base_feature: "none",
+      public: true,
     },
     {
       name: "InertElementNonEditable",
@@ -3597,6 +3613,15 @@
       // No plan to support complex UI for date/time INPUT types on Android and
       // iOS.
       status: {"Android": "test", "iOS": "test", "default": "stable"},
+    },
+    // Enables the `alpha` and `colorspace` content/IDL attributes on
+    // <input type=color>, allowing alpha and Display P3 color values.
+    // https://html.spec.whatwg.org/multipage/input.html#dom-input-colorspace
+    // https://html.spec.whatwg.org/multipage/input.html#dom-input-alpha
+    // https://chromestatus.com/feature/5736024861966336
+    {
+      name: "InputTypeColorEnhancements",
+      status: "experimental",
     },
     // Insert a blockquote before a outer block after creating the blockquote
     // when indenting a node whose outer block is a blockquote. See
@@ -3661,6 +3686,10 @@
       name: "JavaScriptCompileHintsPerFunctionMagicRuntime",
       status: "experimental",
       origin_trial_feature_name: "JavaScriptCompileHintsPerFunctionMagic",
+    },
+    {
+      name: "JavaScriptImportText",
+      status: "experimental",
     },
     {
       name: "JavaScriptSourcePhaseImports",
@@ -3803,14 +3832,6 @@
       public: true,
     },
     {
-      // When the start-of-line position cannot be determined (e.g., because
-      // the caret is in an empty inline element with no layout information),
-      // fall back to the start of the enclosing block rather than the start
-      // of the entire editable root. See https://crbug.com/41053053.
-      name: "LogicalStartOfLineBlockFallback",
-      status: "stable",
-    },
-    {
       name: "LoginElement",
       depends_on: ["FedCm"],
       status: "experimental",
@@ -3893,6 +3914,11 @@
     {
       name: "MaskDeserializationTimeForCrossOriginMessages",
       status: "stable",
+    },
+    {
+      // Enables MathMLAnchorElement
+      name: "MathMLAnchorElement",
+      status: "test",
     },
     {
       // Enables mirroring for stretchy and large MathML operators when
@@ -4132,6 +4158,16 @@
       implied_by: ["SoftNavigationHeuristics"],
     },
     {
+      // Exposes navigation redirect timing (redirectCount, redirectStart and
+      // redirectEnd) for cross-origin redirect chains when every redirect opts
+      // in to the navigation's destination origin via Timing-Allow-Origin and
+      // the navigation is not a no-referrer navigation.
+      // https://github.com/whatwg/fetch/pull/1931
+      // https://github.com/whatwg/html/pull/12513
+      name: "NavigationTimingRedirectTimingViaTAO",
+      status: "experimental",
+    },
+    {
       name: "NavigatorContentUtils",
       // Android does not yet support NavigatorContentUtils.
       status: {"Android": "", "default": "stable"},
@@ -4296,6 +4332,7 @@
       // their ancestor select element is disabled.
       // https://github.com/w3c/csswg-drafts/issues/13383
       // https://issues.chromium.org/issues/490082172
+      // Enabled in M149, modified in M151, safe to remove in M153.
       name: "OptionDisablednessCheckAncestors",
       status: "stable",
     },
@@ -4885,7 +4922,7 @@
       status: "stable",
     },
     {
-      // Shipping in M148, so should be removed around M150.
+      // Shipping in M148, revised in M151, so should be removed around M153.
       name: "RecheckParentDuringNodeVectorInsertion",
       status: "stable",
     },
@@ -5005,10 +5042,6 @@
       status: "test",
     },
     {
-      name: "RenderBlockingStatus",
-      status: "stable",
-    },
-    {
       // The renderpriority attribute feature.
       // https://github.com/WICG/display-locking/blob/main/explainers/update-rendering.md
       name: "RenderPriorityAttribute",
@@ -5037,14 +5070,6 @@
     },
     {
       name: "ResolveVarStylesOnCopy",
-      status: "stable",
-    },
-    {
-      name: "ResourceTimingContentEncoding",
-      status: "stable",
-    },
-    {
-      name: "ResourceTimingContentType",
       status: "stable",
     },
     {
@@ -5101,7 +5126,8 @@
     },
     {
       name: "RTCDiagnosticLogging",
-      status: "test",
+      origin_trial_feature_name: "RTCDiagnosticLogging",
+      status: "experimental",
       base_feature_status: "enabled",
       copied_from_base_feature_if: "overridden",
     },
@@ -5677,15 +5703,6 @@
       status: "stable",
     },
     {
-      // Skip lines that contain only pseudo-element content (like ::before
-      // or ::after) when determining valid caret positions for line
-      // navigation. Pseudo-elements don't have DOM nodes for caret positioning,
-      // so including them caused incorrect selection behavior.
-      // See crbug.com/357889508
-      name: "SkipPseudoOnlyLinesInLineNavigation",
-      status: "stable",
-    },
-    {
       // Skips the browser touch event filter, ensuring that events that reach
       // the queue and would otherwise be filtered out will instead be passed
       // onto the renderer compositor process as long as the page hasn't timed
@@ -5787,6 +5804,14 @@
       name: "SpellCheckCustomDictionaryAPI",
       status: "experimental",
       public: true,
+    },
+    {
+      // Historically, the parser split Text nodes at ~64k boundaries. This
+      // behavior is no longer necessary; by default the parser keeps each run
+      // of text in a single Text node. Enabling this flag restores the legacy
+      // behavior of splitting Text nodes at 64k boundaries. Shipping in M151
+      // and can be removed in M153.
+      name: "SplitLargeTextNodes",
     },
     {
       // Splits a qualified name on its first colon, per the DOM "validate and
@@ -5895,14 +5920,7 @@
       name: "SuppressPointerStreamAfterDrag",
       status: "stable",
     },
-    {
-      name: "SvgAnchorElementAttributes",
-      status: "stable",
-    },
-    {
-      name: "SvgAnchorElementDownloadAttribute",
-      status: "stable",
-    },
+
     {
       name: "SvgAnimateMotionDiscreteCalcMode",
       status: "stable",
@@ -6027,6 +6045,10 @@
       status: "experimental",
     },
     {
+      name: "TabAlignmentWithFloats",
+      status: "stable",
+    },
+    {
       // Don't trigger table border rendering with only bordercolor attribute.
       // This shipped in M146 and can be removed in M148.
       name: "TableBorderColorNoImplicitBorder",
@@ -6128,6 +6150,12 @@
       status: "stable",
     },
     {
+      // crbug.com/523134883: Ignore ruby annotation text when computing
+      // text-autospace boundaries.
+      name: "TextAutoSpaceIgnoreRubyAnnotation",
+      status: "stable",
+    },
+    {
       name: "TextBoxTrimForNestedList",
       status: "stable",
     },
@@ -6136,9 +6164,9 @@
       status: "experimental",
     },
     {
-      // crbug.com/522298908
+      // crbug.com/488458870, crbug.com/522298908, and crbug.com/522298908
       name: "TextEmphasisAsRuby",
-      status: "experimental",
+      status: "stable",
     },
     {
       // crbug.com/40812040
@@ -6516,12 +6544,8 @@
     },
     {
       name: "UserMediaElement",
-      status: "experimental",
-      origin_trial_feature_name: "UserMediaElement",
+      status: "stable",
       public: true,
-      origin_trial_os: ["win", "mac", "linux", "fuchsia", "chromeos", "android"],
-      base_feature_status: "enabled",
-      copied_from_base_feature_if: "overridden",
     },
     {
       // Allowing legacy compatibility paths for usermedia element (such as
@@ -6832,9 +6856,6 @@
       origin_trial_feature_name: "WebCryptoAdditionalAlgorithms202606",
     },
     {
-      name: "WebFontResizeLCP",
-    },
-    {
       name: "WebGLDeveloperExtensions",
       public: true,
       status: "experimental",
@@ -7046,6 +7067,11 @@
       },
     },
     {
+      name: "WebTransportAnticipatedConcurrentIncomingStreams",
+      status: "experimental",
+      base_feature: "none",
+    },
+    {
       name: "WebTransportApplicationProtocol",
       status: "stable",
       base_feature: "none",
@@ -7213,7 +7239,7 @@
     // https://crbug.com/40704952
     {
       name: "WheelEventMomentum",
-      status: "experimental",
+      status: "stable",
     },
     // If enabled, window.default[Ss]tatus will be supported. This is disabled
     // by default, and is here to allow this behavior to be re-enabled via Finch
@@ -7257,6 +7283,10 @@
     {
       name: "XMLSerializerConsistentDefaultNsDeclMatching",
       status: "test",
+    },
+    {
+      name: "XMLViewerForIframes",
+      status: "experimental",
     },
     {
       // Support XPath evaluation within Shadow DOM.

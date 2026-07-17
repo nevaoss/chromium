@@ -395,6 +395,12 @@ EntityInstance GetOrderEntityInstance(OrderOptions options) {
   return GetEntityInstance(std::move(attributes), ToEntityOptions(options));
 }
 
+EntityInstance GetOrderEntityInstanceWithRandomGuid(OrderOptions options) {
+  base::Uuid guid = base::Uuid::GenerateRandomV4();
+  options.guid = guid.AsLowercaseString();
+  return GetOrderEntityInstance(options);
+}
+
 EntityInstance GetShipmentEntityInstance(ShipmentOptions options) {
   using enum AttributeTypeName;
   std::vector<AttributeInstance> attributes;
@@ -433,6 +439,13 @@ EntityInstance GetShipmentEntityInstance(ShipmentOptions options) {
         VerificationStatus::kNoStatus);
   }
   return GetEntityInstance(std::move(attributes), ToEntityOptions(options));
+}
+
+EntityInstance GetShipmentEntityInstanceWithRandomGuid(
+    ShipmentOptions options) {
+  base::Uuid guid = base::Uuid::GenerateRandomV4();
+  options.guid = guid.AsLowercaseString();
+  return GetShipmentEntityInstance(options);
 }
 
 EntityInstance GetEntityInstance(std::vector<AttributeInstance> attributes,

@@ -312,6 +312,7 @@ source_set("unit_tests") {
       "iban_bubble_controller_impl_unittest.cc",
       "mandatory_reauth_bubble_controller_impl_unittest.cc",
       "offer_notification_bubble_controller_impl_unittest.cc",
+      "omnibox_autofill_bubble_controller_unittest.cc",
       "omnibox_autofill_page_action_controller_unittest.cc",
       "save_card_bubble_controller_impl_unittest.cc",
     ]

@@ -29,7 +29,6 @@
 #include "content/browser/devtools/devtools_instrumentation.h"
 #include "content/browser/renderer_host/render_frame_host_impl.h"
 #include "content/browser/web_contents/web_contents_impl.h"
-#include "content/browser/webid/disconnect_request.h"
 #include "content/browser/webid/fake_identity_request_dialog_controller.h"
 #include "content/browser/webid/flags.h"
 #include "content/browser/webid/identity_registry.h"
@@ -163,12 +162,10 @@ Request::Request(
     FederatedIdentityApiPermissionContextDelegate* api_permission_delegate,
     FederatedIdentityAutoReauthnPermissionContextDelegate*
         auto_reauthn_permission_delegate,
-    FederatedIdentityPermissionContextDelegate* permission_delegate,
-    IdentityRegistry* identity_registry)
+    FederatedIdentityPermissionContextDelegate* permission_delegate)
     : api_permission_delegate_(api_permission_delegate),
       auto_reauthn_permission_delegate_(auto_reauthn_permission_delegate),
       permission_delegate_(permission_delegate),
-      identity_registry_(identity_registry),
       render_frame_host_(rfh),
       request_service_(request_service),
       perfetto_track_(CreatePerfettoTrackForFedCM(this)) {
@@ -185,17 +182,6 @@ Request::~Request() {
                              TokenStatus::kUnhandledRequest,
                              /*should_delay_callback=*/false);
   }
-  // Calls |UserInfoRequest|'s destructor to complete the user
-  // info request. This is needed because otherwise some resources like
-  // `fedcm_metrics_` may no longer be usable when the destructor get invoked
-  // naturally.
-  user_info_requests_.clear();
-
-  // Calls |DisconnectRequest|'s destructor to complete the
-  // revocation request. This is needed because otherwise some resources like
-  // `fedcm_metrics_` may no longer be usable when the destructor get invoked
-  // naturally.
-  disconnect_request_.reset();
 }
 
 void Request::BindReceiver(
@@ -219,11 +205,9 @@ void Request::ResetAndDeleteThisForTesting() {
   // and is what our tests expect.
   auth_request_receivers_.Clear();
   receivers_.Clear();
-  // TODO(crbug.com/519217823): Refactor this to avoid "delete this" pattern by
-  // having tests request destruction via RequestService directly.
-  // WARNING: Calling OnRequestDestroyed(this) will destroy 'this' immediately
-  // because the request is owned by request_service_. Do not add any code
-  // after this call!
+  // TODO(crbug.com/519217823): Refactor the test harness to avoid having the
+  // Request object request its own destruction, by transitioning tests to
+  // trigger destruction via RequestService directly.
   request_service_->OnRequestDestroyed(this);
 }
 
@@ -270,13 +254,14 @@ void Request::RequestToken(
     RequestTokenCallback callback) {
   // This call is coming from Mojo, so we have no navigation handle.
   RequestToken(std::move(idp_get_params_ptrs), requirement,
-               /*navigation_handle=*/nullptr, std::move(callback));
+               /*navigation_handle=*/nullptr, GURL(), std::move(callback));
 }
 
 void Request::RequestToken(
     std::vector<IdentityProviderGetParametersPtr> idp_get_params_ptrs,
     MediationRequirement requirement,
     NavigationHandle* navigation_handle,
+    const GURL& intercepted_url,
     RequestTokenCallback callback) {
   if (ShouldTerminateRequest(idp_get_params_ptrs, requirement,
                              navigation_handle)) {
@@ -342,7 +327,7 @@ void Request::RequestToken(
        DidNavigationHandleHaveActivation(navigation_handle)) ||
       render_frame_host().HasTransientUserActivation();
   if (navigation_handle) {
-    intercepted_url_ = navigation_handle->GetURL();
+    intercepted_url_ = intercepted_url;
   }
 
   // Store the previous `idp_order_` value from this class. Note that this is {}
@@ -581,32 +566,20 @@ void Request::RequestToken(
 
 void Request::RequestUserInfo(blink::mojom::IdentityProviderConfigPtr provider,
                               RequestUserInfoCallback callback) {
-  // Enforce identity-credentials-get Permissions Policy browser-side.
-  // The renderer checks this, but a compromised renderer can bypass it.
-  if (!render_frame_host().IsFeatureEnabled(
-          network::mojom::PermissionsPolicyFeature::kIdentityCredentialsGet)) {
-    ReportBadMessage("identity-credentials-get permissions policy not enabled");
-    return;
-  }
-
-  if (!render_frame_host().GetPage().IsPrimary()) {
-    ReportBadMessage("FedCM should not be allowed in nested frame trees.");
-    return;
-  }
-  // FedCmMetrics class is currently not used for UserInfo API. If we log UKM
-  // metrics later on, we should call CreateFedCmMetrics() here.
-
-  auto network_manager = IdpNetworkRequestManager::Create(
-      static_cast<RenderFrameHostImpl*>(&render_frame_host()));
-  auto user_info_request = UserInfoRequest::Create(
-      std::move(network_manager), permission_delegate_,
-      api_permission_delegate_, &render_frame_host(), std::move(provider));
-  UserInfoRequest* user_info_request_ptr = user_info_request.get();
-  user_info_requests_.insert(std::move(user_info_request));
-
-  user_info_request_ptr->SetCallbackAndStart(base::BindOnce(
-      &Request::CompleteUserInfoRequest, weak_ptr_factory_.GetWeakPtr(),
-      user_info_request_ptr, std::move(callback)));
+  request_service_->RequestUserInfo(
+      std::move(provider),
+      base::BindOnce(
+          [](RequestUserInfoCallback callback,
+             blink::mojom::RequestUserInfoResultPtr result) {
+            if (result->is_status()) {
+              std::move(callback).Run(result->get_status(), std::nullopt);
+            } else {
+              std::move(callback).Run(
+                  blink::mojom::RequestUserInfoStatus::kSuccess,
+                  std::move(result->get_user_info()));
+            }
+          },
+          std::move(callback)));
 }
 
 void Request::CancelTokenRequest() {
@@ -627,24 +600,8 @@ void Request::CancelTokenRequest() {
 void Request::ResolveTokenRequest(const std::optional<std::string>& account_id,
                                   blink::mojom::ResolveTokenParamsPtr params,
                                   ResolveTokenRequestCallback callback) {
-  if (params->is_redirect_to()) {
-    const blink::mojom::RedirectParamsPtr& redirect_to =
-        params->get_redirect_to();
-    if (redirect_to->is_post() &&
-        redirect_to->get_post()->request_body.empty()) {
-      ReportBadMessage("POST redirects must have a body");
-      return;
-    }
-  }
-
-  if (!identity_registry_ && !SetupIdentityRegistryFromPopup()) {
-    std::move(callback).Run(false);
-    return;
-  }
-
-  bool accepted = identity_registry_->NotifyResolve(origin(), account_id,
-                                                    std::move(params));
-  std::move(callback).Run(accepted);
+  request_service_->ResolveTokenRequest(account_id, std::move(params),
+                                        std::move(callback));
 }
 
 void Request::SetIdpSigninStatus(
@@ -652,46 +609,8 @@ void Request::SetIdpSigninStatus(
     blink::mojom::IdpSigninStatus status,
     const std::optional<blink::common::webid::LoginStatusOptions>& options,
     SetIdpSigninStatusCallback callback) {
-  auto scoped_closure = base::ScopedClosureRunner(std::move(callback));
-
-  if (render_frame_host().IsNestedWithinFencedFrame()) {
-    RecordSetLoginStatusIgnoredReason(
-        SetLoginStatusIgnoredReason::kInFencedFrame);
-    return;
-  }
-  // We only allow setting the IDP signin status when the subresource is loaded
-  // from the same site as the document, and the document is same site with
-  // all ancestors. This is to protect from an RP embedding a tracker resource
-  // that would set this signin status for the tracker, enabling the FedCM
-  // request.
-  if (!IsSameSiteWithAncestors(idp_origin, &render_frame_host())) {
-    RecordSetLoginStatusIgnoredReason(
-        SetLoginStatusIgnoredReason::kCrossOrigin);
-    return;
-  }
-
-  if (!IsLightweightModeEnabled()) {
-    permission_delegate_->SetIdpSigninStatus(
-        idp_origin, status == blink::mojom::IdpSigninStatus::kSignedIn,
-        std::nullopt);
-  } else {
-    if (options.has_value()) {
-      std::vector<GURL> picture_urls;
-      for (const blink::common::webid::LoginStatusAccount& account :
-           options->accounts) {
-        if (account.picture.has_value() && account.picture->is_valid()) {
-          picture_urls.emplace_back(account.picture.value());
-        }
-      }
-      if (!network_manager_) {
-        network_manager_ = CreateNetworkManager();
-      }
-      network_manager_->CacheAccountPictures(idp_origin, picture_urls);
-    }
-    permission_delegate_->SetIdpSigninStatus(
-        idp_origin, status == blink::mojom::IdpSigninStatus::kSignedIn,
-        options);
-  }
+  request_service_->SetIdpSigninStatus(idp_origin, status, options,
+                                       std::move(callback));
 }
 
 void Request::RegisterIdP(const GURL& idp, RegisterIdPCallback callback) {
@@ -827,20 +746,6 @@ void Request::OnAccountsResultsReceived(
     OnFetchDataForIdpSucceeded(std::move(*result.accounts),
                                std::move(result.idp_info));
   }
-}
-
-void Request::CompleteDisconnectRequest(DisconnectCallback callback,
-                                        blink::mojom::DisconnectStatus status) {
-  // `disconnect_request_` may be null here if the completion is invoked from
-  // the Request destructor, which destroys
-  // `disconnect_request_`. The DisconnectRequest destructor would
-  // trigger the callback.
-  if (!disconnect_request_ &&
-      status == blink::mojom::DisconnectStatus::kSuccess) {
-    NOTREACHED() << "The successful disconnect request is nowhere to be found";
-  }
-  std::move(callback).Run(status);
-  disconnect_request_.reset();
 }
 
 bool Request::CanShowContinueOnPopup() const {
@@ -1446,13 +1351,7 @@ void Request::ShowSingleIdpFailureDialog() {
 }
 
 void Request::CloseModalDialogView() {
-#if BUILDFLAG(IS_ANDROID)
-  SetupIdentityRegistryFromPopup();
-#endif
-  // Invoke OnClose on the opener.
-  if (identity_registry_) {
-    identity_registry_->NotifyClose(origin());
-  }
+  request_service_->CloseModalDialogView();
 }
 
 void Request::OnAccountSelected(const GURL& idp_config_url,
@@ -2185,7 +2084,7 @@ void Request::CompleteRequestInternal(
   if (token_error) {
     error = blink::mojom::TokenError::New();
     error->code = token_error->code;
-    error->url = token_error->url.spec();
+    error->url = token_error->url;
   }
   RequestTokenStatus status =
       FederatedAuthRequestResultToRequestTokenStatus(result);
@@ -2274,56 +2173,13 @@ url::Origin Request::GetEmbeddingOrigin() const {
   return render_frame_host().GetMainFrame()->GetLastCommittedOrigin();
 }
 
-void Request::CompleteUserInfoRequest(
-    UserInfoRequest* request,
-    RequestUserInfoCallback callback,
-    blink::mojom::RequestUserInfoStatus status,
-    std::optional<std::vector<blink::mojom::IdentityUserInfoPtr>> user_info) {
-  auto it =
-      std::find_if(user_info_requests_.begin(), user_info_requests_.end(),
-                   [request](const std::unique_ptr<UserInfoRequest>& ptr) {
-                     return ptr.get() == request;
-                   });
-  // The request may not be found if the completion is invoked from
-  // Request destructor. The destructor clears
-  // `user_info_requests_`, which destroys the FederatedAuthUserInfoRequests it
-  // contains. The FederatedAuthUserInfoRequest destructor invokes this
-  // callback.
-  if (it == user_info_requests_.end() &&
-      status == blink::mojom::RequestUserInfoStatus::kSuccess) {
-    NOTREACHED() << "The successful user info request is nowhere to be found";
-  }
-  std::move(callback).Run(status, std::move(user_info));
-  if (it != user_info_requests_.end()) {
-    user_info_requests_.erase(it);
-  }
-}
-
 std::unique_ptr<IdpNetworkRequestManager> Request::CreateNetworkManager() {
   return request_service_->CreateNetworkManager();
 }
 
 std::unique_ptr<IdentityRequestDialogController>
 Request::CreateDialogController() {
-  if (mock_dialog_controller_) {
-    return std::move(mock_dialog_controller_);
-  }
-
-  WebContents* web_contents =
-      WebContents::FromRenderFrameHost(&render_frame_host());
-  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
-          switches::kUseFakeUIForFedCM)) {
-    std::string selected_account =
-        base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
-            switches::kUseFakeUIForFedCM);
-    return std::make_unique<FakeIdentityRequestDialogController>(
-        selected_account.empty() ? std::nullopt
-                                 : std::optional<std::string>(selected_account),
-        web_contents);
-  }
-
-  return GetContentClient()->browser()->CreateIdentityRequestDialogController(
-      web_contents);
+  return request_service_->CreateDialogController();
 }
 
 void Request::SetNetworkManagerForTests(
@@ -2333,7 +2189,11 @@ void Request::SetNetworkManagerForTests(
 
 void Request::SetDialogControllerForTests(
     std::unique_ptr<IdentityRequestDialogController> controller) {
-  mock_dialog_controller_ = std::move(controller);
+  request_service_->SetDialogControllerForTests(std::move(controller));
+}
+
+base::WeakPtr<Request> Request::GetWeakPtr() {
+  return weak_ptr_factory_.GetWeakPtr();
 }
 
 void Request::OnClose() {
@@ -2445,44 +2305,6 @@ void Request::OnOriginMismatch(Method method,
       method_string, actual.Serialize().c_str(), expected.Serialize().c_str());
   render_frame_host().AddMessageToConsole(
       blink::mojom::ConsoleMessageLevel::kError, error_messsage);
-}
-
-bool Request::SetupIdentityRegistryFromPopup() {
-#if BUILDFLAG(IS_ANDROID)
-  if (identity_registry_) {
-    return true;
-  }
-
-  if (!request_dialog_controller_) {
-    request_dialog_controller_ = CreateDialogController();
-    CHECK(request_dialog_controller_);
-  }
-
-  // Because ShowModalDialog does not return the web contents on Android, we
-  // need to set up the IdentityRegistry now.
-  WebContents* rp_web_contents = request_dialog_controller_->GetRpWebContents();
-  // This can be null if resolve was called in a regular tab (as opposed to
-  // a CCT opened from ShowModalDialog).
-  if (!rp_web_contents) {
-    return false;
-  }
-  Request* rp_auth_request = GetPageData(rp_web_contents->GetPrimaryPage())
-                                 ->PendingWebIdentityRequest();
-  if (!rp_auth_request) {
-    return false;
-  }
-
-  WebContents* web_contents =
-      WebContents::FromRenderFrameHost(&render_frame_host());
-  IdentityRegistry::CreateForWebContents(
-      web_contents, rp_auth_request->weak_ptr_factory_.GetWeakPtr(),
-      rp_auth_request->config_url_);
-  identity_registry_ = IdentityRegistry::FromWebContents(web_contents);
-
-  return true;
-#else
-  return false;
-#endif
 }
 
 FederatedApiPermissionStatus Request::GetApiPermissionStatus() {
@@ -2737,47 +2559,7 @@ void Request::PreventSilentAccess(PreventSilentAccessCallback callback) {
 void Request::Disconnect(
     blink::mojom::IdentityCredentialDisconnectOptionsPtr options,
     DisconnectCallback callback) {
-  // Enforce identity-credentials-get Permissions Policy browser-side.
-  // The renderer checks this, but a compromised renderer can bypass it.
-  if (!render_frame_host().IsFeatureEnabled(
-          network::mojom::PermissionsPolicyFeature::kIdentityCredentialsGet)) {
-    ReportBadMessage("identity-credentials-get permissions policy not enabled");
-    return;
-  }
-
-  std::unique_ptr<Metrics> disconnect_metrics = CreateFedCmMetrics();
-  if (disconnect_request_) {
-    // Since we do not send any fetches in this case, consider the request to be
-    // instant, e.g. duration is 0.
-    render_frame_host().AddMessageToConsole(
-        blink::mojom::ConsoleMessageLevel::kError,
-        GetDisconnectConsoleErrorMessage(DisconnectStatus::kTooManyRequests));
-    disconnect_metrics->RecordDisconnectMetrics(
-        DisconnectStatus::kTooManyRequests, std::nullopt,
-        ComputeRequesterFrameType(render_frame_host(), origin(),
-                                  GetEmbeddingOrigin()),
-        options->config->config_url);
-    std::move(callback).Run(
-        blink::mojom::DisconnectStatus::kErrorTooManyRequests);
-    return;
-  }
-
-  bool intercept = false;
-  bool should_complete_request_immediately = false;
-  devtools_instrumentation::WillSendFedCmRequest(
-      render_frame_host(), &intercept, &should_complete_request_immediately);
-
-  auto network_manager = CreateNetworkManager();
-
-  disconnect_request_ = DisconnectRequest::Create(
-      std::move(network_manager), permission_delegate_, &render_frame_host(),
-      std::move(disconnect_metrics), std::move(options));
-  DisconnectRequest* disconnect_request_ptr = disconnect_request_.get();
-
-  disconnect_request_ptr->SetCallbackAndStart(
-      base::BindOnce(&Request::CompleteDisconnectRequest,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)),
-      api_permission_delegate_);
+  request_service_->Disconnect(std::move(options), std::move(callback));
 }
 
 void Request::RecordErrorMetrics(

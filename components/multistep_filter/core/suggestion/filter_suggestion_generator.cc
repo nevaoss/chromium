@@ -12,7 +12,7 @@
 #include <utility>
 #include <vector>
 
-#include "base/logging.h"
+#include "base/command_line.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/thread_pool.h"
@@ -23,7 +23,8 @@
 #include "components/multistep_filter/core/logging/multistep_filter_logger.h"
 #include "components/multistep_filter/core/multistep_filter_util.h"
 #include "components/multistep_filter/core/storage/filter_store.h"
-#include "url/origin.h"
+#include "components/multistep_filter/core/switches.h"
+#include "url/url_constants.h"
 
 namespace multistep_filter {
 
@@ -170,12 +171,26 @@ void FilterSuggestionGenerator::OnFilterSuggestionCandidatesFetched(
   // candidate.
   FilterSuggestionCandidate& candidate = candidates->front();
 
-  const url::Origin triggering_origin = url::Origin::Create(url);
+  // Validate that the candidate URL uses a secure cryptographic scheme and
+  // shares the same eTLD+1 as the triggering URL. A strict same-origin check is
+  // avoided here because many websites use distinct subdomains for different
+  // pages.
+  const bool is_cryptographic =
+      candidate.navigation_url.SchemeIsCryptographic();
+  const bool is_http_allowed_for_testing =
+      candidate.navigation_url.SchemeIs(url::kHttpScheme) &&
+      base::CommandLine::ForCurrentProcess()->HasSwitch(
+          switches::kMultistepFilterAllowHttpForTesting);
 
-  if (!url::Origin::Create(candidate.navigation_url)
-           .IsSameOriginWith(triggering_origin)) {
+  if (!is_cryptographic && !is_http_allowed_for_testing) {
     LogSuggestionSuppressed(log_router_, navigation_id, url.GetHost(),
-                            "cross_origin");
+                            "insecure_scheme");
+    return;
+  }
+
+  if (GetEtldPlusOne(candidate.navigation_url) != GetEtldPlusOne(url)) {
+    LogSuggestionSuppressed(log_router_, navigation_id, url.GetHost(),
+                            "cross_domain");
     return;
   }
 

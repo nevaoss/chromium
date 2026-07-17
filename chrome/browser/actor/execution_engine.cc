@@ -62,6 +62,7 @@
 #include "components/optimization_guide/proto/features/actions_data.pb.h"
 #include "components/password_manager/core/browser/actor_login/actor_login_service.h"
 #include "components/password_manager/core/browser/actor_login/actor_login_service_impl.h"
+#include "components/password_manager/core/browser/actor_login/actor_login_types.h"
 #include "components/password_manager/core/browser/features/password_features.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/navigation_handle.h"
@@ -1284,6 +1285,19 @@ void ExecutionEngine::RequestToShowAutofillSuggestions(
   task_->action_tracker_for_metrics().OnAutofillAttentionDialogPresented();
 }
 
+void ExecutionEngine::RequestToShowGmailOtpOptInDialog(
+    ToolDelegate::GmailOtpOptInCallback callback) {
+  TRACE_EVENT0("actor", "ExecutionEngine::RequestToShowGmailOtpOptInDialog");
+  if (!task_->delegate()) {
+    auto result = webui::mojom::GmailOtpOptInResult::NewErrorReason(
+        webui::mojom::GmailOtpOptInErrorReason::kRequestPromiseNoSubscriber);
+    std::move(callback).Run(std::move(result));
+    return;
+  }
+  task_->delegate()->RequestToShowGmailOtpOptInDialog(task_->id(),
+                                                      std::move(callback));
+}
+
 void ExecutionEngine::InterruptFromTool() {
   InterruptFromTool(/*retain_user_control=*/false);
 }
@@ -1331,8 +1345,7 @@ base::CallbackListSubscription ExecutionEngine::RegisterActionSequenceEnded(
 void ExecutionEngine::OnFederatedLoginOutcome(
     actor_login::LoginStatusResult result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  mojom::ActionResultCode code =
-      AttemptLoginTool::LoginResultToActorResult(result);
+  mojom::ActionResultCode code = actor_login::LoginResultToActorResult(result);
   if (!IsOk(code)) {
     FailCurrentTool(code);
   }

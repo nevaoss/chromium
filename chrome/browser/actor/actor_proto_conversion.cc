@@ -191,6 +191,11 @@ CreateClickRequest(const ClickAction& action) {
     case apc::ClickAction_ClickType_RIGHT:
       type = mojom::ClickType::kRight;
       break;
+    case apc::ClickAction_ClickType_LEFT_ON_OCCLUDED_TARGET:
+      // The model-side action explicitly asked for click-behind activation.
+      // The renderer still performs the stricter live occluder validation.
+      type = mojom::ClickType::kLeftOnOccludedTarget;
+      break;
     case apc::
         ClickAction_ClickType_ClickAction_ClickType_INT_MIN_SENTINEL_DO_NOT_USE_:
     case apc::
@@ -917,6 +922,10 @@ void FillInTabObservation(
       // TODO(bokan): Can we avoid a copy here?
       tab_observation.set_screenshot(data.data(), data.size());
     }
+  }
+
+  if (fetch_result.screenshot_info.has_value()) {
+    *tab_observation.mutable_screenshot_info() = *fetch_result.screenshot_info;
   }
 
   if (fetch_result.annotated_page_content_result.has_value()) {

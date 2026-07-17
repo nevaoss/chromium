@@ -1058,7 +1058,6 @@ public class TabCollectionTabModelImplTest {
         Tab tab2 = createTab();
         assertTabsInOrderAre(List.of(tab0, tab1, tab2));
 
-        CallbackHelper didMoveTabGroupHelper = new CallbackHelper();
         CallbackHelper didMoveTabHelper = new CallbackHelper();
 
         TabGroupObserver groupObserver =
@@ -1070,10 +1069,7 @@ public class TabCollectionTabModelImplTest {
 
                     @Override
                     public void didMoveTabGroup(Tab movedTab, int oldIndex, int newIndex) {
-                        assertEquals(tab1, movedTab);
-                        assertEquals(2, newIndex);
-                        assertEquals(1, oldIndex);
-                        didMoveTabGroupHelper.notifyCalled();
+                        fail("didMoveTabGroup should not be called for individual tab.");
                     }
                 };
         TabModelObserver modelObserver =
@@ -1097,7 +1093,6 @@ public class TabCollectionTabModelImplTest {
                     mCollectionModel.removeObserver(modelObserver);
                 });
 
-        didMoveTabGroupHelper.waitForOnly();
         didMoveTabHelper.waitForOnly();
 
         assertTabsInOrderAre(List.of(tab0, tab2, tab1));
@@ -4541,5 +4536,11 @@ public class TabCollectionTabModelImplTest {
         ThreadUtils.runOnUiThreadBlocking(() -> mCollectionModel.removeTab(tab2));
         verifyCacheInSync();
         assertTabsInOrderAre(List.of(tab0, tab1));
+
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    tab2.destroy();
+                    tab3.destroy();
+                });
     }
 }

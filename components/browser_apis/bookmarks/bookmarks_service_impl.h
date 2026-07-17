@@ -19,6 +19,7 @@
 namespace bookmarks {
 class BookmarkModel;
 class BookmarkNode;
+class ManagedBookmarkService;
 }  // namespace bookmarks
 
 namespace bookmarks_api {
@@ -26,7 +27,9 @@ namespace bookmarks_api {
 class BookmarksServiceImpl : public BookmarksService,
                              public BookmarkEventTranslator::Subscriber {
  public:
-  explicit BookmarksServiceImpl(bookmarks::BookmarkModel* bookmark_model);
+  BookmarksServiceImpl(
+      bookmarks::BookmarkModel* bookmark_model,
+      bookmarks::ManagedBookmarkService* managed_bookmark_service);
   BookmarksServiceImpl(const BookmarksServiceImpl&) = delete;
   BookmarksServiceImpl& operator=(const BookmarksServiceImpl&) = delete;
   ~BookmarksServiceImpl() override;
@@ -63,6 +66,7 @@ class BookmarksServiceImpl : public BookmarksService,
   mojom::BookmarksServiceBridge bridge_{this};
 
   raw_ptr<bookmarks::BookmarkModel> bookmark_model_;
+  raw_ptr<bookmarks::ManagedBookmarkService> managed_bookmark_service_;
   BookmarkNodeFinder finder_;
   mojo::ReceiverSet<mojom::BookmarksService> receivers_;
   mojo::AssociatedRemoteSet<mojom::BookmarksObserver> observers_;

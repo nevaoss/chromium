@@ -14,7 +14,6 @@
 
 #include "base/containers/flat_map.h"
 #include "base/functional/callback.h"
-#include "base/time/time.h"
 
 // Simple implementation of the ApiBindings service, for use by tests.
 class FakeApiBindingsImpl : public chromium::cast::ApiBindings {
@@ -29,8 +28,7 @@ class FakeApiBindingsImpl : public chromium::cast::ApiBindings {
   // if a port of the specified name has not yet been received, and returns an
   // invalid handle if that times out before a |Connect()| call is received.
   fidl::InterfaceHandle<fuchsia::web::MessagePort> RunAndReturnConnectedPort(
-      std::string_view name,
-      base::TimeDelta timeout = base::TimeDelta::Max());
+      std::string_view name);
 
   // Sets the list of bindings which will be returned by GetAll().
   void set_bindings(std::vector<chromium::cast::ApiBinding> bindings) {

@@ -2693,6 +2693,10 @@ class CONTENT_EXPORT RenderFrameHostImpl
   void RequestClose() override;
   void SetWindowRect(const gfx::Rect& bounds,
                      SetWindowRectCallback callback) override;
+  void MoveWindowTo(const gfx::Point& origin,
+                    MoveWindowToCallback callback) override;
+  void ResizeWindowTo(const gfx::Size& size,
+                      ResizeWindowToCallback callback) override;
   void DidFirstVisuallyNonEmptyPaint() override;
   void DidAccessInitialMainDocument() override;
   void DidChangeThemeColor(std::optional<SkColor> theme_color) override;
@@ -3614,6 +3618,7 @@ class CONTENT_EXPORT RenderFrameHostImpl
       const ResourceTimingInfo& resource_timing);
   void OnSetNeedsOcclusionTracking(bool needs_tracking);
   void OnSaveImageFromDataURL(const std::string& url_str);
+  bool ValidateOutermostMainFrameWindowChange(std::string_view method_name);
 
   // Computes the IsolationInfo for both navigations and subresources.
   //

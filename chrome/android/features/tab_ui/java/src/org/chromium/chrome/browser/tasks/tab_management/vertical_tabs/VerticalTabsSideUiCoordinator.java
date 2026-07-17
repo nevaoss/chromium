@@ -16,8 +16,8 @@ import org.chromium.build.annotations.NullMarked;
 import org.chromium.chrome.browser.ui.side_ui.SideUiContainer;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.AnchorSide;
-import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiContainerProperties;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiId;
+import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.UiUpdateRequest;
 import org.chromium.ui.base.ViewUtils;
 
 /**
@@ -67,9 +67,8 @@ public class VerticalTabsSideUiCoordinator implements SideUiContainer {
 
     public void setVisible(boolean show) {
         mManualVisible = show;
-        mSideUiCoordinator.requestUpdateContainer(
-                new SideUiContainerProperties(getSideUiId(), mAnchorSide),
-                /* suppressAnimations= */ false);
+        mSideUiCoordinator.updateUi(
+                new UiUpdateRequest(getSideUiId(), /* suppressAnimations= */ false));
     }
 
     @Override

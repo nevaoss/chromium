@@ -45,6 +45,7 @@ using ash::language_packs::PackResult;
 #endif
 
 namespace content {
+class NavigationHandle;
 class ScopedAccessibilityMode;
 }
 
@@ -111,6 +112,8 @@ class ReadAnythingWebContentsObserver : public content::WebContentsObserver {
   void WebContentsDestroyed() override;
   void DidStopLoading() override;
   void DidUpdateAudioMutingState(bool muted) override;
+  void DidFinishNavigation(
+      content::NavigationHandle* navigation_handle) override;
 
   // base::SafeRef used since the lifetime of ReadAnythingWebContentsObserver is
   // completely contained by page_handler_. See
@@ -184,6 +187,7 @@ class ReadAnythingUntrustedPageHandler :
   void DidStopLoading();
   void DidUpdateAudioMutingState(bool muted);
   void WebContentsDestroyed();
+  void DidFinishNavigation(content::NavigationHandle* navigation_handle);
   void OnActiveAXTreeIDChanged();
   bool CheckForPdfContentAfterLoad();
 
@@ -224,6 +228,7 @@ class ReadAnythingUntrustedPageHandler :
   void OnDistillationStateChanged(
       read_anything::mojom::ReadAnythingDistillationState new_state) override;
   void OnSpeechEngineStalled() override;
+  void RequestReadabilityDistillation() override;
 
   // PinnedToolbarModel::Observer
   void OnActionsChanged() override;

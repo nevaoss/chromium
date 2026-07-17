@@ -47,7 +47,6 @@ namespace autofill {
 class AddressDataManager;
 class AutofillDriver;
 class BrowserAutofillManager;
-class CreditCard;
 class FormStructure;
 
 // Retrieves a copy of the profile that the `payload` refers to.
@@ -186,20 +185,6 @@ class AutofillExternalDelegate : public AutofillSuggestionDelegate {
   void DidAcceptPaymentsSuggestion(const Suggestion& suggestion,
                                    const SuggestionMetadata& metadata);
 
-  // Fills the queried form with the provided credit card using the specified
-  // trigger source. Used as a callback for asynchronous card fetches.
-  void OnCreditCardFetched(AutofillTriggerSource trigger_source,
-                           const CreditCard& card);
-
-  // Fills the queried form with the provided `EntityInstance` in `result`,
-  // unless a `FailureReason` is present.
-  void OnEntityInstanceFetched(
-      AutofillTriggerSource trigger_source,
-      const FieldTypeSet& ai_field_types,
-      base::expected<EntityInstance, AutofillAiAccessManager::FailureReason>
-          result,
-      bool reauth_attempted);
-
   // Returns the last Autofill triggering field. Derived from the `form` and
   // `field` parameters of `OnQuery(). Returns nullptr if called before
   // `OnQuery()` or if the `form` becomes outdated, see crbug.com/1117028.
@@ -259,13 +244,12 @@ class AutofillExternalDelegate : public AutofillSuggestionDelegate {
 
   const raw_ref<BrowserAutofillManager> manager_;
 
-  // The ID of the form last queried by Autofill.
-  FormGlobalId query_form_id_;
-
-  // Information about the field last queried by Autofill.
-  FieldGlobalId query_field_id_;
-  std::u16string query_field_name_;
-  std::vector<SelectOption> query_field_datalist_options_;
+  // Holds information about the last autofill query made.
+  struct LastQueryInfo {
+    FormGlobalId form_id;
+    FieldGlobalId field_id;
+    std::vector<SelectOption> field_datalist_options;
+  } last_query_;
 
   // The method how suggestions were triggered on the current form.
   AutofillSuggestionTriggerSource trigger_source_ =

@@ -24,7 +24,21 @@
 
 struct CoreAccountInfo;
 enum class IntroChoice;
+class FeatureShowcaseStepController;
 class Profile;
+
+// Exposed for testing purposes only.
+// These values are persisted to UMA logs. Entries should not be renumbered and
+// numeric values should never be reused.
+// LINT.IfChange(FeatureShowcaseStep)
+enum class FeatureShowcaseStep {
+  kDefaultBrowser = 0,
+  kGoogleLens = 1,
+  kPasswordManager = 2,
+  kThemesAndCustomization = 3,
+  kMaxValue = kThemesAndCustomization,
+};
+// LINT.ThenChange(//tools/metrics/histograms/metadata/profile/enums.xml:FeatureShowcaseStep)
 
 // Creates a step to represent the intro. Exposed for testing.
 std::unique_ptr<ProfileManagementStepController> CreateIntroStep(
@@ -96,6 +110,8 @@ class FirstRunFlowController : public ProfileManagementFlowControllerImpl {
       PostHostClearedCallback post_host_cleared_callback) override;
 
  private:
+  bool is_feature_showcase_eligible() const;
+
   void HandleIntroSigninChoice(IntroChoice choice);
 
   void PlaySignInCelebrationSound();
@@ -120,6 +136,9 @@ class FirstRunFlowController : public ProfileManagementFlowControllerImpl {
   base::OnceClosure finish_flow_callback_;
 
   std::unique_ptr<audio::SoundsManager> sounds_manager_;
+
+  base::WeakPtr<FeatureShowcaseStepController>
+      feature_showcase_step_controller_;
 
   base::WeakPtrFactory<FirstRunFlowController> weak_ptr_factory_{this};
 };

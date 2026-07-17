@@ -582,6 +582,7 @@
 <translation id="1902576642799138955">သက်တမ်း ကာလ</translation>
 <translation id="1908217026282415406">ကင်မရာအသုံးပြုမှုနှင့် ရွေ့လျားမှု</translation>
 <translation id="1908690643053136980">ဤဝဘ်ဆိုက်အတွက် <ph name="PERMISSION" /> ကို သင်၏စီမံခန့်ခွဲသူက ခွင့်မပြုပါ</translation>
+<translation id="1912750443952232242">Google Wallet တွင် ID ကတ် သိမ်းပါ</translation>
 <translation id="1913037223029790376">ဤပကတိအသွင်ကတ်အတွက် CVC နံပါတ် သုံးပါ</translation>
 <translation id="191374271204266022">JSON အဖြစ် မိတ္တူကူးရန်</translation>
 <translation id="1914326953223720820">ဝန်ဆောင်မှုကို အထုပ်ဖြေရန်</translation>
@@ -1495,6 +1496,7 @@
 <translation id="3325568918769906282">ကြီးစဉ်ငယ်လိုက်</translation>
 <translation id="3325662270238538525">ဖိုင်အမည်များ၊ ဖိုင်အကြောင်းအရာ၏ ဒစ်ဂျစ်တယ် လက်ဗွေများ၊ ဒေါင်းလုဒ်ရင်းမြစ်နှင့် မက်တာဒေတာ အပါအဝင် လတ်တလော ဖိုင်သုံးခွင့်နှင့် မွမ်းမံမှုများ</translation>
 <translation id="3329013043687509092">စိုရွှဲမှု</translation>
+<translation id="3330483197654063678">ဖွင့်ထားပါက Chrome သည် ပိုမိုသက်ဆိုင်သော တုံ့ပြန်မှုများ ရရှိစေရန် ဤဝင်းဒိုးရှိ ဖွင့်ထားသောတဘ်များကို မျှဝေပါမည်။</translation>
 <translation id="3333762389743153920">ပကတိအသွင်ကတ်အတွက် သတ်မှတ်ချက်မပြည့်မီပါ</translation>
 <translation id="3338095232262050444">လုံခြုံမှုရှိသည်</translation>
 <translation id="333839153442689579">ပြင်းထန် လှည့်ပြောင်းလေ့ကျင့်ခန်း</translation>
@@ -2847,6 +2849,7 @@
 <translation id="5458150163479425638">{CONTACT,plural, =0{<ph name="CONTACT_PREVIEW" />}=1{<ph name="CONTACT_PREVIEW" /> နှင့် နောက်ထပ် <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}other{<ph name="CONTACT_PREVIEW" /> နှင့် နောက်ထပ် <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}}</translation>
 <translation id="5463625433003343978">စက်များ ရှာနေသည်...</translation>
 <translation id="5464236009658034488">ရုံးသုံးပစ္စည်း</translation>
+<translation id="5465128270485645058">ဤဝင်းဒိုးရှိ ဖွင့်ထားသောတဘ်များသည် ဤစာတွဲနှင့် သက်ဆိုင်ပါက ၎င်းတို့ကို အလိုအလျောက်မျှဝေခြင်းဖြင့် ပိုမိုစိတ်ကြိုက်ပြင်ဆင်ထားသော တုံ့ပြန်မှုများ ရယူနိုင်သည်။</translation>
 <translation id="5465724643247062031">မှန် (အလင်းပိတ်)</translation>
 <translation id="5466018172325111652">ကုဒ်မရဘူးလား။ <ph name="BEGIN_LINK" />ကုဒ်အသစ် ရယူရန်<ph name="END_LINK" /></translation>
 <translation id="5466818462212249084">ငွေပေးချေသည့် အက်ပ်များ</translation>
@@ -3129,6 +3132,7 @@
 <translation id="5911020115933784199">အစီအစဉ်နှင့် ဖော်ပြချက်</translation>
 <translation id="5911110632211230665">ဖွင့်ခွင့် ပိတ်ထားသည်</translation>
 <translation id="5912796581727968237">Google Wallet ဖွင့်ရန်</translation>
+<translation id="5914185423510719251">Google Wallet တွင် KTN သိမ်းပါ</translation>
 <translation id="5914465277418006379"><ph name="MEMBER_FIRST_NAME" /> က ဤတဘ်ကို ထည့်လိုက်သည်</translation>
 <translation id="5915189366813702112">လိုက်လျောညီထွေ အလုပ်စီစဉ်ပေးမှု</translation>
 <translation id="59174027418879706">ဖွင့်ထားသည်</translation>
@@ -3651,6 +3655,7 @@
 <translation id="6702851555558236418">အသံ၊ တေးဂီတ ဆော့ဖ်ဝဲ</translation>
 <translation id="6702919718839027939">တင်ပြရန်</translation>
 <translation id="6704458454638854812">“custom_size” သတ်မှတ်ချက်ထည့်ထားသည်၊ အမည်သည် “စိတ်ကြိုက်” ဖြစ်ရမည်။</translation>
+<translation id="670477556876354552">ပြန်စရန် လိုအပ်သည်</translation>
 <translation id="6706005862292023715">ခန်းဆီးနှင့် ပြတင်းအကာ</translation>
 <translation id="6706210727756204531">ပါဝင်မှု</translation>
 <translation id="6706678697074905703">ဤအိုင်ဘီအေအန် (IBAN) ကို သင်၏ Google Account တွင် သိမ်း၍မရလိုက်ပါ။ ယင်းအစား ဤစက်ပေါ်ရှိ Chrome တွင် ၎င်းကို သိမ်းလိုက်သည်။</translation>
@@ -3908,6 +3913,7 @@
 <translation id="7110116949943042888">ယာယီနှင့် ရာသီပေါ် အလုပ်</translation>
 <translation id="7110368079836707726">ကောလိပ်၊ တက္ကသိုလ်</translation>
 <translation id="7111507312244504964">အဆောက်အအုံ စစ်ဆေးခြင်းနှင့် သုံးသပ်ချက်</translation>
+<translation id="7117290130383718594">စာသား မှတ်ချက်များ</translation>
 <translation id="7118618213916969306">ကလစ်ဘုတ် URL <ph name="SHORT_URL" /> အတွက် ရှာဖွေမှု</translation>
 <translation id="7118852830504022370">ဤဝဘ်ဆိုက်သည် HTTPS ကို မပံ့ပိုးသောကြောင့် သင်သည် ဤသတိပေးချက်ကို မြင်ရခြင်းဖြစ်သည်။ <ph name="BEGIN_LEARN_MORE_LINK" />ဤသတိပေးချက်အကြောင်း ပိုမိုလေ့လာရန်<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="7119063404975271297">အချစ်အလွမ်း TV ဇာတ်လမ်း</translation>

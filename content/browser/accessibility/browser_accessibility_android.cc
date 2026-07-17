@@ -875,7 +875,6 @@ bool BrowserAccessibilityAndroid::ComputeIsLeaf() const {
 
   // Focusable nodes with name from attribute should never drop children.
   if (HasState(ax::mojom::State::kFocusable) &&
-      HasIntAttribute(ax::mojom::IntAttribute::kNameFrom) &&
       GetNameFrom() == ax::mojom::NameFrom::kAttribute) {
     // We exclude menuItems and comboBoxMenuButtons to prevent double utterance.
     if (GetRole() != ax::mojom::Role::kMenuItem &&
@@ -893,23 +892,23 @@ bool BrowserAccessibilityAndroid::ComputeIsLeaf() const {
     return true;
   }
 
-  // Headings with text can drop their children (with exceptions).
-  std::u16string name = GetSubstringTextContentUTF16(1);
-  if (GetRole() == ax::mojom::Role::kHeading && !name.empty()) {
-    return IsLeafConsideringChildren();
-  }
-
-  // Focusable nodes with text can drop their children (with exceptions).
-  if (HasState(ax::mojom::State::kFocusable) && !name.empty()) {
-    return IsLeafConsideringChildren();
-  }
-
   // Nodes with only static text can drop their children, with the exception
   // that list markers have a different role and should not be dropped.
   if (HasOnlyTextChildren() && !HasListMarkerChild()) {
     return true;
   }
 
+  // Headings and focusable nodes can drop their children if the name comes from
+  // the node's contents in order to avoid announcing the contents twice. There
+  // are some exceptions where we want nodes to be navigatable despite the
+  // screen reader reading the contents twice such as a heading which contains a
+  // grid.
+  std::u16string name = GetSubstringTextContentUTF16(1);
+  if (!name.empty() && GetNameFrom() == ax::mojom::NameFrom::kContents &&
+      (HasState(ax::mojom::State::kFocusable) ||
+       GetRole() == ax::mojom::Role::kHeading)) {
+    return IsLeafConsideringChildren();
+  }
   return false;
 }
 

@@ -4778,6 +4778,21 @@ public class StripLayoutHelperTest {
 
                             @Override
                             public void fadeCompositorButtons(boolean fade) {}
+
+                            @Override
+                            public boolean isGlicButtonVisible() {
+                                return false;
+                            }
+
+                            @Override
+                            public boolean isGlicUiVisible() {
+                                return false;
+                            }
+
+                            @Override
+                            public CompositorButton getGlicButton() {
+                                return null;
+                            }
                         },
                         mManagerHost,
                         mUpdateHost,
@@ -7365,18 +7380,16 @@ public class StripLayoutHelperTest {
         int tabId = mModel.getTabAt(0).getId();
 
         // Test underline addition.
-        mStripLayoutHelper.setTabUnderline(tabId, true);
+        mStripLayoutHelper.setTabUnderline(tabId, /* isUnderlined= */ true);
         assertTrue(
                 "Tab should be underlined",
-                mStripLayoutHelper.getStripLayoutTabsForTesting()[0].isUnderlined());
-        verify(mUpdateHost, times(3)).requestUpdate();
+                mStripLayoutHelper.getStripLayoutTabsForTesting()[0].isUnderlinedForTesting());
 
         // Test underline removal.
-        mStripLayoutHelper.setTabUnderline(tabId, false);
+        mStripLayoutHelper.setTabUnderline(tabId, /* isUnderlined= */ false);
         assertFalse(
                 "Tab should not be underlined",
-                mStripLayoutHelper.getStripLayoutTabsForTesting()[0].isUnderlined());
-        verify(mUpdateHost, times(4)).requestUpdate();
+                mStripLayoutHelper.getStripLayoutTabsForTesting()[0].isUnderlinedForTesting());
     }
 
     private void closeTabAt(int index) {

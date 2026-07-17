@@ -66,10 +66,10 @@ class BringAndroidTabsPromptMediatorTest : public PlatformTest {
  private:
   // Environment mocks.
   web::WebTaskEnvironment task_environment_;
-  raw_ptr<FakeBringAndroidTabsToIOSService, DanglingUntriaged>
-      fake_bring_android_tabs_service_;
   // Mediator dependencies.
   std::unique_ptr<TestProfileIOS> profile_;
+  raw_ptr<FakeBringAndroidTabsToIOSService>
+      fake_bring_android_tabs_service_;
   BringAndroidTabsPromptMediator* mediator_;
   IOSChromeScopedTestingLocalState scoped_testing_local_state_;
 };

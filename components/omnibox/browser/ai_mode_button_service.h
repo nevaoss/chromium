@@ -43,7 +43,7 @@ class AiModeButtonService : public KeyedService,
   // Returns a pointer to prevent callsites accidentally making copies passing
   // optionals around.
   const ai_mode_button_config::AiModeButtonConfig* GetCurrentConfig() const {
-    return current_config_ ? &*current_config_ : nullptr;
+    return current_config_;
   }
 
  private:
@@ -55,16 +55,35 @@ class AiModeButtonService : public KeyedService,
   void OnTemplateURLServiceChanged() override;
   void OnTemplateURLServiceShuttingDown() override;
 
-  // Computes the config for the current DSE.
-  std::optional<ai_mode_button_config::AiModeButtonConfig>
-  ComputeCurrentConfig() const;
+  // Lookup the config for the current DSE.
+  const ai_mode_button_config::AiModeButtonConfig* LookupCurrentConfig() const;
+
+  // Checks all fields are populated as expected.
+  static bool IsValidConfig(
+      const ai_mode_button_config::AiModeButtonConfig& config);
 
   raw_ptr<TemplateURLService> template_url_service_;
   base::ScopedObservation<TemplateURLService, TemplateURLServiceObserver>
       template_url_service_observer{this};
 
-  GoogleStrings google_strings_;
-  std::optional<ai_mode_button_config::AiModeButtonConfig> current_config_;
+  // `AiModeButtonConfig` contains raw pointers that can't own their data.
+  // `google_config_owned_` owns the data for `google_config_`.
+  struct GoogleConfigOwned {
+    std::u16string entrypoint_label;
+    std::u16string action_suggestion_contents;
+    std::u16string accessibility_focused_description;
+    std::u16string context_menu_label;
+    std::u16string placeholder_text;
+  } google_config_owned_;
+
+  // The non-owning view struct that's compatible with `GetCurrentConfig()`.
+  ai_mode_button_config::AiModeButtonConfig google_config_;
+
+  // Non-owning pointer into the `ai_mode_button_config::kAiModeButtonConfigs`
+  // array.
+  raw_ptr<const ai_mode_button_config::AiModeButtonConfig> current_config_ =
+      nullptr;
+
   base::RepeatingCallbackList<void(
       const ai_mode_button_config::AiModeButtonConfig*)>
       callbacks_;

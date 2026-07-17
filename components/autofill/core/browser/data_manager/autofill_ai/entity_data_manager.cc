@@ -40,6 +40,7 @@
 #include "components/sync/service/sync_service.h"
 #include "components/webdata/common/web_data_results.h"
 #include "components/webdata/common/web_data_service_base.h"
+#include "third_party/abseil-cpp/absl/container/flat_hash_set.h"
 
 namespace autofill {
 
@@ -125,6 +126,7 @@ void EntityDataManager::LoadEntitiesFromDatabase() {
           self->entities_.insert(std::make_move_iterator(entities.begin()),
                                  std::make_move_iterator(entities.end()));
           self->EnforceEntityReauthRequirements();
+          self->DedupePersonalContextEntities();
           self->NotifyEntityInstancesChanged();
 
           if (!self->database_loaded_) {
@@ -161,6 +163,7 @@ void EntityDataManager::AddOrUpdateEntityInstance(EntityInstance entity) {
                 // entries.
                 self->entities_.erase(entity.guid());
                 self->entities_.insert(std::move(entity));
+                self->DedupePersonalContextEntities();
                 self->NotifyEntityInstancesChanged();
               },
               GetWeakPtr()));
@@ -172,6 +175,10 @@ void EntityDataManager::AddOrUpdateEntityInstance(EntityInstance entity) {
 }
 
 void EntityDataManager::RemoveEntityInstance(EntityInstance::EntityId guid) {
+  // TODO(crbug.com/519175075): If a non-pContext entity is removed, a
+  // previously deduped pContext entity might become relevant again.
+  // We should come up with a way to handle this, by e.g. triggering a prefetch
+  // call here.
   base::optional_ref<const EntityInstance> entity_instance =
       GetEntityInstance(guid);
   if (!entity_instance) {
@@ -248,15 +255,19 @@ void EntityDataManager::OnHistoryDeletions(
   }
 }
 
-void EntityDataManager::OnMaskedEntitiesPrefetched(
+void EntityDataManager::OnPrefetchContextComplete(
     const PersonalContextAccessManager& manager,
     base::span<const EntityInstance> entities) {
+  if (entities.empty()) {
+    return;
+  }
   CHECK(std::ranges::all_of(entities, [](const EntityInstance& entity) {
     return entity.record_type() == EntityInstance::RecordType::kPersonalContext;
   }));
   // insert() doesn't replace existing values. This suffices, because previously
   // fetched entities are evicted before new ones are broadcast.
   entities_.insert(entities.begin(), entities.end());
+  DedupePersonalContextEntities();
   NotifyEntityInstancesChanged();
 }
 
@@ -324,6 +335,35 @@ void EntityDataManager::EnforceEntityReauthRequirements() {
   for (const EntityInstance::EntityId& id : entities_to_remove) {
     RemoveEntityInstance(id);
   }
+}
+
+void EntityDataManager::DedupePersonalContextEntities() {
+  // TODO(crbug.com/519175075): Move this method to a background thread.
+  absl::flat_hash_set<EntityInstance::EntityId> duplicate_guids;
+  for (const EntityInstance& entity : entities_) {
+    if (entity.record_type() != EntityInstance::RecordType::kPersonalContext) {
+      continue;
+    }
+
+    const bool is_duplicate =
+        std::ranges::any_of(entities_, [&](const EntityInstance& other) {
+          switch (other.record_type()) {
+            case EntityInstance::RecordType::kLocal:
+            case EntityInstance::RecordType::kServerWallet:
+              return entity.MatchesMergeConstraintsOf(other);
+            case EntityInstance::RecordType::kPersonalContext:
+              return false;
+          }
+        });
+
+    if (is_duplicate) {
+      duplicate_guids.insert(entity.guid());
+    }
+  }
+
+  base::EraseIf(entities_, [&](const EntityInstance& entity) {
+    return duplicate_guids.contains(entity.guid());
+  });
 }
 
 const GeoIpCountryCode& EntityDataManager::GetVariationCountryCode() const {

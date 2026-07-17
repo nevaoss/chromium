@@ -25,7 +25,7 @@
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/views/omnibox/rounded_omnibox_results_frame.h"
 #include "chrome/browser/ui/webui/cr_components/searchbox/searchbox_omnibox_client.h"
-#include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_ui.h"
+#include "chrome/browser/ui/webui/omnibox_everywhere/omnibox_everywhere_ui.h"
 #include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_web_contents_helper.h"
 #include "chrome/browser/ui/webui/top_chrome/webui_contents_wrapper.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
@@ -200,14 +200,10 @@ void EverywhereOmniboxService::ExecuteCommand(
 
 void EverywhereOmniboxService::CreateAndShowWidget() {
   if (!contents_wrapper_) {
-    creating_everywhere_popup_ = true;
-    // TODO: Replace IDS_TASK_MANAGER_OMNIBOX with a new string to distinguish
-    //       between this and the other Omnibox popups.
-    contents_wrapper_ = std::make_unique<WebUIContentsWrapperT<OmniboxPopupUI>>(
-        GURL(chrome::kChromeUIOmniboxPopupURL)
-            .Resolve("omnibox_popup_everywhere.html"),
-        profile_, IDS_TASK_MANAGER_OMNIBOX);
-    creating_everywhere_popup_ = false;
+    contents_wrapper_ =
+        std::make_unique<WebUIContentsWrapperT<OmniboxEverywhereUI>>(
+            GURL(chrome::kChromeUIOmniboxEverywhereURL), profile_,
+            IDS_TASK_MANAGER_OMNIBOX);
 
     OmniboxPopupWebContentsHelper::CreateForWebContents(
         contents_wrapper_->web_contents());
@@ -340,15 +336,4 @@ void EverywhereOmniboxService::OpenUrl(const GURL& url,
     params.window_action = NavigateParams::WindowAction::kShowWindow;
     Navigate(&params);
   }
-}
-
-bool EverywhereOmniboxService::IsEverywherePopup(
-    content::WebContents* web_contents) const {
-  // TODO: This is a bit hacky and potentially error-prone. Before shipping we
-  //       should likely separate out the everywhere popup from the UI class so
-  //       that this check is not needed.
-  if (creating_everywhere_popup_) {
-    return true;
-  }
-  return contents_wrapper_ && contents_wrapper_->web_contents() == web_contents;
 }

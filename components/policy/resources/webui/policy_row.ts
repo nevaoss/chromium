@@ -34,6 +34,7 @@ export interface Policy {
   warning: string;
   info: string;
   value: unknown;
+  restartRequired?: boolean;
   deprecated?: boolean;
   future?: boolean;
   allSourcesMerged?: boolean;
@@ -183,6 +184,7 @@ export class PolicyRowElement extends CrLitElement {
       isExtension,
       deprecated,
       future,
+      restartRequired,
     } = this.policy;
     const isMergedValue = !!allSourcesMerged;
 
@@ -191,6 +193,7 @@ export class PolicyRowElement extends CrLitElement {
       deprecated ? loadTimeData.getString('deprecated') : '',
       future ? loadTimeData.getString('future') : '',
       warning ? loadTimeData.getString('warning') : '',
+      restartRequired ? loadTimeData.getString('restartRequired') : '',
       ignored ? loadTimeData.getString(
                     isExtension ? 'ignoredByExtension' : 'ignored') :
                 '',

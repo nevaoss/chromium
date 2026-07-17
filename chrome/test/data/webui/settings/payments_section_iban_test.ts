@@ -156,6 +156,28 @@ suite('PaymentsSectionIban', function() {
         'BA39 **** **** **** 1234', ibanItemSubLabel.textContent.trim());
   });
 
+  test('verifyNicknameCharacterCount', async function() {
+    const iban = createIbanEntry('', '');
+    const ibanDialog = createIbanDialog(iban);
+
+    await whenAttributeIs(ibanDialog.$.dialog, 'open', '');
+
+    const charCount =
+        ibanDialog.shadowRoot!.querySelector<HTMLElement>('#charCount');
+    assertTrue(!!charCount);
+    assertTrue(charCount.hidden);
+
+    // It should be visible when nickname is present.
+    const nicknameInput = ibanDialog.$.nicknameInput;
+    await updateIbanTextboxValue(nicknameInput, 'NickName');
+    assertFalse(charCount.hidden);
+    assertEquals('8/25', charCount.textContent.trim());
+
+    // It should be hidden when nickname is empty.
+    await updateIbanTextboxValue(nicknameInput, '');
+    assertTrue(charCount.hidden);
+  });
+
   test('verifySavingNewIBAN', async function() {
     // Creates an IBAN with empty value and nickname.
     const iban = createIbanEntry('', '');

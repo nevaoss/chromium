@@ -203,6 +203,11 @@ int ContextualSearchboxHandler::GetContextMenuMaxTabSuggestions() {
 }
 
 void ContextualSearchboxHandler::GetRecentTabs(GetRecentTabsCallback callback) {
+  if (!IsContextualSearchTabSharingEligible()) {
+    std::move(callback).Run({});
+    return;
+  }
+
   auto* browser_window_interface =
       webui::GetBrowserWindowInterface(web_contents_);
   if (!browser_window_interface) {
@@ -309,6 +314,11 @@ void ContextualSearchboxHandler::GetRecentTabs(GetRecentTabsCallback callback) {
 
 void ContextualSearchboxHandler::GetTabPreview(int32_t tab_id,
                                                GetTabPreviewCallback callback) {
+  if (!IsContextualSearchTabSharingEligible()) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+
   const tabs::TabHandle handle = tabs::TabHandle(tab_id);
   tabs::TabInterface* const tab = handle.Get();
   if (!tab) {
@@ -543,6 +553,9 @@ std::string ContextualSearchboxHandler::GetPreviousQuery() {
 }
 
 bool ContextualSearchboxHandler::IsSmartTabSharingActive() const {
+  if (!IsContextualSearchTabSharingEligible()) {
+    return false;
+  }
   if (smart_tab_sharing_active_for_thread_.has_value()) {
     return *smart_tab_sharing_active_for_thread_;
   }
@@ -828,6 +841,12 @@ void ContextualSearchboxHandler::ContinueAddTabContext(
 void ContextualSearchboxHandler::AddTabContext(int32_t tab_id,
                                                bool delay_upload,
                                                AddTabContextCallback callback) {
+  if (!IsContextualSearchTabSharingEligible()) {
+    std::move(callback).Run(base::unexpected(
+        contextual_search::ContextUploadErrorType::kBrowserProcessingError));
+    return;
+  }
+
   if (!contextual_search::ContextualSearchService::IsContextSharingEnabled(
           profile_->GetPrefs())) {
     std::move(callback).Run(base::unexpected(
@@ -1137,6 +1156,11 @@ void ContextualSearchboxHandler::InitializeInputStateModel() {
     input_state_model_->SetPrefService(profile_->GetPrefs());
   }
 
+  if (!IsContextualSearchTabSharingEligible()) {
+    input_state_model_->SetPermanentlyDisabledInputTypes(
+        {omnibox::InputType::INPUT_TYPE_BROWSER_TAB});
+  }
+
   input_state_subscription_ = input_state_model_->subscribe(
       base::BindRepeating(&ContextualSearchboxHandler::OnInputStateChanged,
                           weak_ptr_factory_.GetWeakPtr()));
@@ -1155,6 +1179,13 @@ void ContextualSearchboxHandler::InitializeInputStateModel() {
     }
   }
 #endif
+}
+
+bool ContextualSearchboxHandler::IsContextualSearchTabSharingEligible() const {
+  // The default implementation returns true. Inheritors (such as the side
+  // panel composebox) can override this to enforce custom or dynamic
+  // eligibility.
+  return true;
 }
 
 void ContextualSearchboxHandler::RecordTabAddedMetric(
@@ -1529,6 +1560,9 @@ void ContextualSearchboxHandler::SubmitQuery(const std::string& query_text,
 void ContextualSearchboxHandler::MaybeTriggerSmartTabSharingPromo(
     const std::string& query,
     content::WebContents* web_contents_for_window) {
+  if (!IsContextualSearchTabSharingEligible()) {
+    return;
+  }
   if (!contextual_tasks_context_service_) {
     return;
   }
@@ -1647,7 +1681,6 @@ void ContextualSearchboxHandler::ComputeAndOpenQueryUrl(
     std::map<std::string, std::string> additional_params,
     bool is_voice_search) {
   auto* contextual_session_handle = GetContextualSessionHandle();
-  std::vector<const contextual_search::FileInfo*> file_info_list;
   if (contextual_session_handle) {
     // Upload the cached tab context if it exists.
     UploadSnapshotTabContextIfPresent();
@@ -1672,8 +1705,6 @@ void ContextualSearchboxHandler::ComputeAndOpenQueryUrl(
     search_url_request_info->aim_entry_point = aim_entry_point;
     search_url_request_info->is_voice_search = is_voice_search;
 
-    file_info_list =
-        contextual_session_handle->GetController()->GetFileInfoList();
     // Do not keep tabs in composebox's 'future context to use' since this searchbox handler
     // will be destroyed when this query is submitted and AIM/cobrowsing opens via
     // `CreateSearchUrl`. Tabs are passed to cobrowse composebox through web contents instead.
@@ -1759,10 +1790,14 @@ void ContextualSearchboxHandler::OpenUrl(
   // When the everywhere Omnibox is enabled, check to see if the current web
   // contents is the everywhere omnibox popup -- if so redirect the open to
   // the everywhere service.
+  // TODO(crbug.com/526405104): This should probably be moved to the client and
+  // be based on the page classification. The service's impl should also
+  // correctly pass on context like done below.
   if (base::FeatureList::IsEnabled(omnibox::kEverywhereOmnibox)) {
-    if (auto* service =
-            EverywhereOmniboxServiceFactory::GetForProfile(profile_)) {
-      if (service->IsEverywherePopup(web_contents_)) {
+    if (web_contents_->GetVisibleURL().host() ==
+        chrome::kChromeUIOmniboxEverywhereHost) {
+      if (auto* service =
+              EverywhereOmniboxServiceFactory::GetForProfile(profile_)) {
         service->OpenUrl(url, disposition);
         return;
       }
@@ -1876,7 +1911,7 @@ void ContextualSearchboxHandler::OpenUrl(
   contextual_session_handle->ClearSubmittedContextTokens();
 }
 
-std::optional<base::Uuid> ContextualSearchboxHandler::GetTaskId() {
+std::optional<base::Uuid> ContextualSearchboxHandler::GetTaskId() const {
   if (!web_contents_) {
     return std::nullopt;
   }

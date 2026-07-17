@@ -14,6 +14,7 @@
 #include "components/bookmarks/browser/bookmark_node.h"
 #include "components/bookmarks/browser/bookmark_utils.h"
 #include "components/bookmarks/common/bookmark_metrics.h"
+#include "components/bookmarks/managed/managed_bookmark_service.h"
 #include "mojo/public/cpp/bindings/associated_remote.h"
 #include "mojo/public/cpp/bindings/pending_associated_receiver.h"
 
@@ -41,12 +42,15 @@ mojo_base::mojom::ErrorPtr MakeError(mojo_base::mojom::Code code,
 }  // namespace
 
 BookmarksServiceImpl::BookmarksServiceImpl(
-    bookmarks::BookmarkModel* bookmark_model)
-    : bookmark_model_(bookmark_model), finder_(bookmark_model) {
+    bookmarks::BookmarkModel* bookmark_model,
+    bookmarks::ManagedBookmarkService* managed_bookmark_service)
+    : bookmark_model_(bookmark_model),
+      managed_bookmark_service_(managed_bookmark_service),
+      finder_(bookmark_model) {
   CHECK(bookmark_model_);
   CHECK(bookmark_model_->loaded());
-  translator_ =
-      std::make_unique<BookmarkEventTranslator>(bookmark_model_, this);
+  translator_ = std::make_unique<BookmarkEventTranslator>(
+      bookmark_model_, managed_bookmark_service_, this);
 }
 
 BookmarksServiceImpl::~BookmarksServiceImpl() = default;
@@ -79,7 +83,8 @@ mojom::BookmarksService::GetBookmarkResult BookmarksServiceImpl::GetBookmark(
 
 mojom::BookmarkNodePtr BookmarksServiceImpl::ConvertNode(
     const bookmarks::BookmarkNode* node) {
-  return BookmarkEventTranslator::ConvertNode(node);
+  return BookmarkEventTranslator::ConvertNode(bookmark_model_,
+                                              managed_bookmark_service_, node);
 }
 
 mojom::BookmarksService::CreateBookmarkNodeResult

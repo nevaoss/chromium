@@ -80,12 +80,8 @@ class IntentChipButtonBrowserTest
   }
 
   bool LinkCapturingEnabledByDefault() const {
-#if BUILDFLAG(IS_CHROMEOS)
-    return false;
-#else
     return std::get<0>(GetParam()) ==
            apps::test::LinkCapturingFeatureVersion::kV2DefaultOn;
-#endif  // BUILDFLAG(IS_CHROMEOS)
   }
 
   void SetUpOnMainThread() override {
@@ -183,6 +179,15 @@ class IntentChipButtonBrowserTest
 
 IN_PROC_BROWSER_TEST_P(IntentChipButtonBrowserTest,
                        NavigationToInScopeLinkShowsIntentChip) {
+#if BUILDFLAG(IS_CHROMEOS)
+  // TODO(b/521860617): Under kV2DefaultOn, navigation to an in-scope URL
+  // directly launches the app on ChromeOS. Skip this test under kV2DefaultOn
+  // until the default-on behavior is resolved.
+  if (LinkCapturingEnabledByDefault()) {
+    GTEST_SKIP() << "Skipping due to default-on auto-launch on ChromeOS";
+  }
+#endif
+
   const GURL in_scope_url =
       embedded_https_test_server().GetURL(GetAppUrlHost(), GetInScopeUrlPath());
   EXPECT_TRUE(DoAndWaitForIntentPickerIconUpdate([this, in_scope_url] {
@@ -280,12 +285,8 @@ INSTANTIATE_TEST_SUITE_P(
     ,
     IntentChipButtonBrowserTest,
     testing::Combine(
-#if BUILDFLAG(IS_CHROMEOS)
-        testing::Values(apps::test::LinkCapturingFeatureVersion::kV2DefaultOff),
-#else
         testing::Values(apps::test::LinkCapturingFeatureVersion::kV2DefaultOff,
                         apps::test::LinkCapturingFeatureVersion::kV2DefaultOn),
-#endif  // BUILDFLAG(IS_CHROMEOS)
         testing::Bool()),
     [](const auto& param_info) {
       return IntentChipButtonTestBase::GenerateIntentChipTestName(param_info);
@@ -370,12 +371,7 @@ INSTANTIATE_TEST_SUITE_P(
     ,
     IntentChipButtonBrowserUiTest,
     testing::Combine(
-#if BUILDFLAG(IS_CHROMEOS)
-        testing::Values(apps::test::LinkCapturingFeatureVersion::kV2DefaultOff)
-#else
-        testing::Values(apps::test::LinkCapturingFeatureVersion::kV2DefaultOn)
-#endif  // BUILDFLAG(IS_CHROMEOS)
-            ,
+        testing::Values(apps::test::LinkCapturingFeatureVersion::kV2DefaultOn),
         testing::Bool()),
     [](const auto& param_info) {
       return IntentChipButtonTestBase::GenerateIntentChipTestName(param_info);

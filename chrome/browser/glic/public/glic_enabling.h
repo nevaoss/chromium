@@ -87,7 +87,7 @@ class GlicGlobalEnabling {
   ~GlicGlobalEnabling();
   bool IsEnabledByGlobalCriteria();
   bool IsSystemRequirementMet() const;
-  bool IsOsVersionSupported() const;
+  static bool IsOsVersionSupported();
   bool IsLocaleEnabled() const { return locale_enablement_.value_or(true); }
   bool IsCountryEnabled() const { return country_enablement_.value_or(true); }
 
@@ -146,6 +146,8 @@ class GlicEnabling final : public signin::IdentityManager::Observer,
   static signin::Tribool IsAccountManaged(Profile* profile);
   static bool IsEnterpriseAccount(Profile* profile);
 
+  // Returns whether the OS version is supported.
+  static bool IsOsVersionSupported();
   // Checks whether this client is likely a dogfooder, taking the ignore dogfood
   // feature into account.
   static bool IsLikelyDogfoodClient();

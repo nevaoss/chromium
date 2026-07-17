@@ -823,15 +823,10 @@ void WebAppUiManagerImpl::OnIconsReadForUninstall(
     return;
   }
 
-  // If disk icon reading returned an empty map or missing base icon asset
-  // (`kIconSizeInDip` for the uninstall dialog view), fallback to generating
-  // monogram icons. This is needed to generate icons of larger sizes using the
-  // display scale factor on high-DPI screens.
-  //
-  // See `WebAppInfoImageSource::GetImageForScale()` for how this behavior
-  // works.
-  if (icon_metadata.icons_map.empty() ||
-      !icon_metadata.icons_map.contains(icon_size::k32)) {
+  // If icon reading returned an empty map because of disk I/O operations
+  // failing from the WebAppIconManager side, fallback to generating monogram
+  // icons.
+  if (icon_metadata.icons_map.empty()) {
     WebAppProvider* provider = WebAppProvider::GetForWebApps(profile_);
     CHECK(provider);
     WebAppRegistrar& registrar = provider->registrar_unsafe();
@@ -851,9 +846,7 @@ void WebAppUiManagerImpl::OnIconsReadForUninstall(
 
     for (const auto& [size, bitmap] :
          GenerateIcons(base::UTF8ToUTF16(name_to_use_for_icon))) {
-      if (!icon_metadata.icons_map.contains(size)) {
-        icon_metadata.icons_map[size] = bitmap;
-      }
+      icon_metadata.icons_map[size] = bitmap;
     }
   }
 

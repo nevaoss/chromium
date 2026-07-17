@@ -2313,6 +2313,7 @@ Puwede mong pamahalaan ang mga setting ng account na ito sa pamamagitan ng pag-i
 <translation id="2710883118091822664">Mag-sign in para madaling makapagpatuloy sa lahat ng iyong device</translation>
 <translation id="2713106313042589954">I-off ang camera</translation>
 <translation id="2713444072780614174">Puti</translation>
+<translation id="2713529429175549458">Password, PIN, o fingerprint</translation>
 <translation id="2714180132046334502">Madilim na background</translation>
 <translation id="2714393097308983682">Google Play Store</translation>
 <translation id="2714617928488200509">Mga Modelo</translation>
@@ -2763,6 +2764,7 @@ Puwede mong pamahalaan ang mga setting ng account na ito sa pamamagitan ng pag-i
 <translation id="3023204744987201088">&amp;Impormasyon sa pakikipag-ugnayan</translation>
 <translation id="3023464535986383522">Select to speak</translation>
 <translation id="3024374909719388945">Gamitin ang 24-oras na orasan</translation>
+<translation id="3025905136198521738">Isaayos ang split view - aktibo ang view sa kaliwa</translation>
 <translation id="3027296729579831126">I-on ang Nearby Share</translation>
 <translation id="3027644380269727216">Batay sa iyong aktibidad sa isang site. Naka-on ang setting na ito.</translation>
 <translation id="3028445648481691885">Kinansela ang pag-download</translation>
@@ -3293,6 +3295,7 @@ Puwede mong pamahalaan ang mga setting ng account na ito sa pamamagitan ng pag-i
 <translation id="3436118221454753036">Ask AI Mode</translation>
 <translation id="3437072258256045988">Pamahalaan ang iyong aktibidad sa Mga Gemini App</translation>
 <translation id="3437397693214267762">Tingnan ang iyong Outlook Calendar at mga SharePoint at OneDrive file</translation>
+<translation id="3437494162908353428">Hindi pinapayagan ang DevTools para sa URL na ito.</translation>
 <translation id="3438633801274389918">Ninja</translation>
 <translation id="3439153939049640737">Palaging pahintulutan ang <ph name="HOST" /> na i-access ang iyong mikropono</translation>
 <translation id="3439970425423980614">Binubuksan ang PDF sa Preview</translation>
@@ -3506,6 +3509,7 @@ Puwede mong pamahalaan ang mga setting ng account na ito sa pamamagitan ng pag-i
 <translation id="3596012367874587041">Mga setting ng app</translation>
 <translation id="3599221874935822507">Raised</translation>
 <translation id="3600051066689725006">Impormasyon ng kahilingan sa web</translation>
+<translation id="3600181948754917646">Mga tala sa pag-release ng Chrome Enterprise</translation>
 <translation id="3600956933576601730">Kailangan mong suriin at tanggapin ang mga tuntunin para magamit ang mga feature na ito</translation>
 <translation id="3601374594714740284">Para sa mga boses na may mas mataas na kalidad, mag-clear ng space sa iyong device</translation>
 <translation id="360180734785106144">Mag-alok ng mga bagong feature kapag naging available ang mga ito</translation>
@@ -4318,6 +4322,7 @@ Puwede mong pamahalaan ang mga setting ng account na ito sa pamamagitan ng pag-i
 <translation id="4177501066905053472">Mga paksa ng ad</translation>
 <translation id="4177668342649553942">Buksan ang <ph name="SHORTCUT_NAME" /> - <ph name="APP_NAME" /></translation>
 <translation id="4177731895051842298">Ang mga extension ay mga add-on sa Chrome na makakatulong sa iyong manatiling organisado, padaliin ang mga gawain, at i-customize ang pag-browse mo</translation>
+<translation id="4177860704813504507">Password o fingerprint</translation>
 <translation id="4178220097446335546">Para kalimutan ang subscription na ito at ang mga nauugnay na network nito, pumunta sa page ng subscription ng Passpoint para alisin ang subscription.</translation>
 <translation id="4181376007499455822">Huwag i-override</translation>
 <translation id="4181602000363099176">20x</translation>
@@ -4953,6 +4958,7 @@ Puwede mong pamahalaan ang mga setting ng account na ito sa pamamagitan ng pag-i
 <translation id="4660540330091848931">Nire-resize</translation>
 <translation id="4662373422909645029">Bawal numero sa nickname</translation>
 <translation id="4663373278480897665">Pinapayagan ang camera</translation>
+<translation id="4664375726751122009">Lumipat sa visual view</translation>
 <translation id="4665014895760275686">Manufacturer</translation>
 <translation id="4665446389743427678">Ide-delete ang lahat ng data na naka-store sa <ph name="SITE" />.</translation>
 <translation id="4666472247053585787">Tingnan ang mga notification mula sa iyong telepono sa <ph name="DEVICE_TYPE" /> mo</translation>
@@ -5656,6 +5662,7 @@ Gamitin ang Ctrl + Alt + Bawasan ang Liwanag para mag-zoom out.</translation>
 <translation id="5186381005592669696">I-customize ang wika ng display para sa mga sinusuportahang app</translation>
 <translation id="5186788525428341874">Puwede mong gamitin ang passkey na ito para mas mabilis na makapag-sign sa lahat ng iyong device. Mase-save ito sa Google Password Manager para sa <ph name="ACCOUNT_NAME" />.</translation>
 <translation id="5186792064936776005">Gamitin ang default kung available</translation>
+<translation id="5186931074173692059">Sine-save ang iyong mga password sa <ph name="GOOGLE_PASSWORD_MANAGER" /> para sa <ph name="EMAIL" />.</translation>
 <translation id="5187641678926990264">&amp;I-install ang Page bilang App...</translation>
 <translation id="5187826826541650604"><ph name="KEY_NAME" /> (<ph name="DEVICE" />)</translation>
 <translation id="5188242000716462162">Na-share ni <ph name="USER_NAME" /></translation>
@@ -6025,6 +6032,7 @@ Puwede kang magtalaga ng maraming switch sa pagkilos na ito.</translation>
 <translation id="5473075389972733037">IBM</translation>
 <translation id="5473099001878321374">Sa pamamagitan ng pagpapatuloy, sumasang-ayon kang ang device na ito ay posible ring awtomatikong mag-download at mag-install ng mga update at app mula sa Google, carrier ng iyong anak, at manufacturer ng device na ito, na posibleng gamit ang cellular data. Posibleng mag-alok ang ilan sa mga app na ito ng mga in-app na pagbili.</translation>
 <translation id="5473156705047072749">{NUM_CHARACTERS,plural, =1{Dapat ay hindi bababa sa isang character ang PIN}one{Dapat ay hindi bababa sa # character ang PIN}other{Dapat ay hindi bababa sa # na character ang PIN}}</translation>
+<translation id="5475744834448251260">PIN o fingerprint</translation>
 <translation id="547615291475756075">Pa&amp;lakihin</translation>
 <translation id="5476957746413745956">Hiwalay na i-adjust ang bilis para sa bawat direksyon</translation>
 <translation id="5477089831058413614">I-configure ang hotspot ng <ph name="DEVICE_TYPE" /></translation>
@@ -6608,6 +6616,7 @@ Puwede kang magtalaga ng maraming switch sa pagkilos na ito.</translation>
 <translation id="5933376509899483611">Timezone</translation>
 <translation id="5933522550144185133">Ginagamit ng <ph name="APP_NAME" /> ang iyong camera at mikropono</translation>
 <translation id="5935158534896975820">Inihahanda ang certificate signing request (hinihintay sa server)</translation>
+<translation id="5935554994339565449">Magdagdag ng text gamit ang bagong tool na "Magdagdag ng text"</translation>
 <translation id="5936065461722368675">Isalin ang buong page</translation>
 <translation id="5937977334791924341">Logo ng <ph name="APP" /></translation>
 <translation id="5938002010494270685">May available na upgrade sa seguridad</translation>
@@ -7881,6 +7890,7 @@ May # ka pang nakompromisong password. Inirerekomenda ng Google Password Manager
 <translation id="6883319974225028188">Oops!  Hindi na-save ng system ang configuration ng device.</translation>
 <translation id="6883606786470492001">Pamahalaan ang iyong mga paksa ng ad at iba pang setting para limitahan ang puwedeng malaman ng mga site tungkol sa iyo para makapagpakita ang mga ito sa iyo ng mga naka-personalize na ad</translation>
 <translation id="6884474387073389421">Sigurado ka bang gusto mong i-delete ang napiling data sa pag-sign in?</translation>
+<translation id="6884763350679569586">PIN lang</translation>
 <translation id="6885338910541974777">Hindi gumana ang installer program ng application.</translation>
 <translation id="6885771755599377173">Preview ng Impormasyon ng System</translation>
 <translation id="6886871292305414135">Buksan ang link sa bagong &amp;tab</translation>
@@ -8048,6 +8058,7 @@ May # ka pang nakompromisong password. Inirerekomenda ng Google Password Manager
 <translation id="7003844668372540529">Hindi kilalang produkto na <ph name="PRODUCT_ID" /> mula sa <ph name="VENDOR_NAME" /></translation>
 <translation id="7004402701596653846">Puwedeng gumamit ang site ng MIDI</translation>
 <translation id="7004499039102548441">Mga Kamakailang Tab</translation>
+<translation id="7004791323196577460">Isaayos ang split view - aktibo ang view sa kanan</translation>
 <translation id="7004923218520748660">I-pin ang Paghahanap sa Tab</translation>
 <translation id="7004969808832734860">Hanggang <ph name="DISCOUNT_UP_TO_AMOUNT" /> diskwento</translation>
 <translation id="7005496624875927304">Mga karagdagang pahintulot</translation>
@@ -8236,6 +8247,7 @@ May # ka pang nakompromisong password. Inirerekomenda ng Google Password Manager
 <translation id="7159695867335480590">I-play/i-pause</translation>
 <translation id="7159953856712257647">Naka-install bilang default</translation>
 <translation id="7160182524506337403">Puwede mo nang tingnan ang mga notificataion ng iyong telepono</translation>
+<translation id="7160835047878907171">Isaayos ang split view - aktibo ang view sa ibaba</translation>
 <translation id="7160911207516219534">Mga Panel sa Gilid</translation>
 <translation id="716210145227921528">Na-delete na passkey</translation>
 <translation id="7165263843655074092">Mayroon kang standard na proteksyon sa seguridad sa device na ito</translation>
@@ -8370,6 +8382,7 @@ May # ka pang nakompromisong password. Inirerekomenda ng Google Password Manager
 <translation id="7261217796641151584">I-share ang Grupo</translation>
 <translation id="7261612856573623172">Text-to-Speech voice ng system</translation>
 <translation id="7262004276116528033">Hino-host ng <ph name="SAML_DOMAIN" /> ang serbisyo sa pag-sign in</translation>
+<translation id="7262162806583378242">Pumili ng kahit ano sa iyong screen habang nagba-browse ka para mamili, magsalin, at maghanap gamit ang AI</translation>
 <translation id="7262564444061174264">Matuto pa tungkol sa shortcut sa pag-navigate</translation>
 <translation id="7262919421769447042">Ang iyong profile ay pinapamahalaan ng <ph name="PROFILE_MANAGER" />, na puwedeng tumingin ng ilang impormasyon, kabilang ang</translation>
 <translation id="7264695323040866038">Palaging gamitin ang <ph name="APP" /> app para buksan ang mga sinusuportahang link ng web?</translation>
@@ -9058,6 +9071,7 @@ Pumindot ng nakatalagang switch o key para alisin ang pagtatalaga.</translation>
 <translation id="7768507955883790804">Awtomatikong susundin ng mga site ang setting na ito kapag bumisita ka sa mga ito</translation>
 <translation id="7768770796815395237">Baguhin</translation>
 <translation id="7768784765476638775">Select to Speak</translation>
+<translation id="7769063984980522348">Lumipat sa compact view</translation>
 <translation id="7769709635093101687">Keyboard shortcut para mag-pause</translation>
 <translation id="7769748505895274502">I-collapse ang kamakailang isinara</translation>
 <translation id="7770072242481632881">Selector ng Panel sa Gilid</translation>
@@ -10303,6 +10317,7 @@ Ilagay ang iyong key file sa ligtas na lugar. Kailangan mo ito upang lumikha ng 
 <translation id="8687774873995698516">Palaging i-block ang <ph name="HOST" /> na gamitin ang mga identifier para mag-play ng pinoprotektahang content</translation>
 <translation id="8688672835843460752">Available</translation>
 <translation id="8689811383248488428">Tanggihan at isara ang profile</translation>
+<translation id="8689957514193802371">Hayaan ang Chromium na awtomatikong palitan ang password para sa <ph name="WEBSITE" /></translation>
 <translation id="8689998525144040851">100</translation>
 <translation id="8690129572193755009">Puwedeng hilingin ng mga site na mangasiwa ng mga protocol</translation>
 <translation id="869144235543261764">Nagpe-play ng video ang tab na ito sa picture-in-picture mode</translation>
@@ -10841,6 +10856,7 @@ Puwedeng kasama rito ang impormasyon tungkol sa naka-install na software, mga fi
 <translation id="9068878141610261315">Hindi sinusuportahang uri ng file</translation>
 <translation id="9069417381769492963">Walang bookmark na tumutugma sa iyong paghahanap</translation>
 <translation id="9070342919388027491">Inilipat sa kaliwa ang Tab</translation>
+<translation id="9071664234353284876">Walang pag-authenticate</translation>
 <translation id="9072220108592671115">In-install ang bersyon <ph name="VERSION" /></translation>
 <translation id="9072918088200875065">Binigyan mo ng pahintulot ang Gemini na mag-sign in sa mga site na ito para kumpletuhin ang mga gawain para sa iyo</translation>
 <translation id="9074618195273027322">{CORE_COUNT,plural, =1{1 core}one{{CORE_COUNT} core}other{{CORE_COUNT} na core}}</translation>
@@ -11022,6 +11038,7 @@ Puwedeng kasama rito ang impormasyon tungkol sa naka-install na software, mga fi
 <translation id="9203904171912129171">Pumili ng device</translation>
 <translation id="9204881338516142227">Naka-automate na Pagpapalit ng Password</translation>
 <translation id="9205304506427975617">Mapapanatili mong stable ang cursor kahit na igalaw mo nang kaunti ang iyong ulo. Nagre-require ito ng higit pang pagsisikap para igalaw ang cursor.</translation>
+<translation id="9205396811802112046">Isaayos ang split view - aktibo ang view sa itaas</translation>
 <translation id="9207434080086272167">Maaraw</translation>
 <translation id="9207669213427469593">Kung magsa-snap ka ng window sa isang bahagi para gumamit ng split screen, makakakita ka ng mga suhestyon sa window para sa kabilang bahagi</translation>
 <translation id="9212565256020141627">Hindi ma-share ang larawan sa Gemini. Subukan ulit o subukan ang ibang larawan.</translation>

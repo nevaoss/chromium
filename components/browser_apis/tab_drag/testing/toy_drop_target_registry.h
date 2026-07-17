@@ -10,7 +10,7 @@
 #include "base/memory/raw_ptr.h"
 #include "components/browser_apis/tab_drag/adapters/tab_drag_window_adapter.h"
 #include "components/browser_apis/tab_drag/sessions/drop_target_id.h"
-#include "components/browser_apis/tab_drag/sessions/tab_drag_session_injector.h"
+#include "components/browser_apis/tab_drag/sessions/drop_target_registry.h"
 
 namespace gfx {
 class Point;
@@ -29,6 +29,7 @@ class ToyDropTargetRegistry : public DropTargetRegistry {
   // DropTargetRegistry:
   DropTargetId RegisterDropTarget(
       TabDragWindowAdapter* window,
+      gfx::NativeView native_view,
       mojo::PendingAssociatedRemote<mojom::DropTarget> target,
       mojo::PendingAssociatedReceiver<mojom::DropTargetRegistration>
           registration) override;
@@ -41,6 +42,11 @@ class ToyDropTargetRegistry : public DropTargetRegistry {
 
   DropTarget* GetDropTarget(DropTargetId target_id) const override;
 
+  std::optional<gfx::Rect> GetCachedBounds(
+      DropTargetId target_id) const override;
+  void UpdateTargetBounds(DropTargetId target_id,
+                          const gfx::Rect& bounds) override;
+
   void set_target_window(ToyTabDragWindowAdapter* window);
   void set_source_window(ToyTabDragWindowAdapter* window);
 
@@ -52,7 +58,8 @@ class ToyDropTargetRegistry : public DropTargetRegistry {
   const DropTargetId source_id_{2};
   raw_ptr<ToyTabDragWindowAdapter> target_window_ = nullptr;
   raw_ptr<ToyTabDragWindowAdapter> source_window_ = nullptr;
-  mutable std::unique_ptr<DropTarget> target_object_;
+  std::unique_ptr<DropTarget> target_object_;
+  std::unique_ptr<DropTarget> source_object_;
 };
 
 }  // namespace tabs_api

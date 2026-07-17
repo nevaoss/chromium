@@ -96,9 +96,8 @@ TEST_F(SceneStatePrefsTest, StorePrefsInNSUserDefaultsIfNoSession) {
   NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
   EXPECT_NSEQ([defaults objectForKey:kBoolKey], nil);
   EXPECT_NSEQ([defaults objectForKey:kTimeKey], nil);
-  EXPECT_EQ([prefs boolForKey:kBoolKey], std::optional<bool>(std::nullopt));
-  EXPECT_EQ([prefs timeForKey:kTimeKey],
-            std::optional<base::Time>(std::nullopt));
+  EXPECT_EQ([prefs boolForKey:kBoolKey], false);
+  EXPECT_EQ([prefs timeForKey:kTimeKey], base::Time());
 
   // Set bool and time preferences.
   const base::Time time = base::Time::Now();
@@ -106,8 +105,8 @@ TEST_F(SceneStatePrefsTest, StorePrefsInNSUserDefaultsIfNoSession) {
   [prefs setTime:time forKey:kTimeKey];
 
   // Check that the prefs can be read, and that they are stored in userInfo.
-  EXPECT_EQ([prefs boolForKey:kBoolKey], std::optional<bool>(true));
-  EXPECT_EQ([prefs timeForKey:kTimeKey], std::optional<base::Time>(time));
+  EXPECT_EQ([prefs boolForKey:kBoolKey], true);
+  EXPECT_EQ([prefs timeForKey:kTimeKey], time);
   EXPECT_NSEQ([defaults objectForKey:kBoolKey], @YES);
   EXPECT_NSEQ([defaults objectForKey:kTimeKey], time.ToNSDate());
 }
@@ -128,9 +127,8 @@ TEST_F(SceneStatePrefsTest, StorePrefsInUISceneSessionIfNotNil) {
   EXPECT_NSEQ([defaults objectForKey:kTimeKey], nil);
   EXPECT_NSEQ([wrapper.dict objectForKey:kBoolKey], nil);
   EXPECT_NSEQ([wrapper.dict objectForKey:kTimeKey], nil);
-  EXPECT_EQ([prefs boolForKey:kBoolKey], std::optional<bool>(std::nullopt));
-  EXPECT_EQ([prefs timeForKey:kTimeKey],
-            std::optional<base::Time>(std::nullopt));
+  EXPECT_EQ([prefs boolForKey:kBoolKey], false);
+  EXPECT_EQ([prefs timeForKey:kTimeKey], base::Time());
 
   // Set bool and time preferences.
   const base::Time time = base::Time::Now();
@@ -138,8 +136,8 @@ TEST_F(SceneStatePrefsTest, StorePrefsInUISceneSessionIfNotNil) {
   [prefs setTime:time forKey:kTimeKey];
 
   // Check that the prefs can be read, and that they are stored in userInfo.
-  EXPECT_EQ([prefs boolForKey:kBoolKey], std::optional<bool>(true));
-  EXPECT_EQ([prefs timeForKey:kTimeKey], std::optional<base::Time>(time));
+  EXPECT_EQ([prefs boolForKey:kBoolKey], true);
+  EXPECT_EQ([prefs timeForKey:kTimeKey], time);
   EXPECT_NSEQ([wrapper.dict objectForKey:kBoolKey], @YES);
   EXPECT_NSEQ([wrapper.dict objectForKey:kTimeKey], time.ToNSDate());
   EXPECT_NSEQ([defaults objectForKey:kBoolKey], nil);
@@ -163,8 +161,8 @@ TEST_F(SceneStatePrefsTest, MigratePrefsFromNSUserDefaults) {
   [defaults setObject:time1.ToNSDate() forKey:kTimeKey];
 
   // Check that the prefs can be read.
-  EXPECT_EQ([prefs boolForKey:kBoolKey], std::optional<bool>(true));
-  EXPECT_EQ([prefs timeForKey:kTimeKey], std::optional<base::Time>(time1));
+  EXPECT_EQ([prefs boolForKey:kBoolKey], true);
+  EXPECT_EQ([prefs timeForKey:kTimeKey], time1);
 
   // Check that preferences have not yet been migrated.
   EXPECT_NSEQ([wrapper.dict objectForKey:kBoolKey], nil);
@@ -184,8 +182,8 @@ TEST_F(SceneStatePrefsTest, MigratePrefsFromNSUserDefaults) {
   EXPECT_NSEQ([defaults objectForKey:kTimeKey], time1.ToNSDate());
 
   // Check that the preferences are migrated when read.
-  EXPECT_EQ([prefs boolForKey:kBoolKey], std::optional<bool>(false));
-  EXPECT_EQ([prefs timeForKey:kTimeKey], std::optional<base::Time>(time2));
+  EXPECT_EQ([prefs boolForKey:kBoolKey], false);
+  EXPECT_EQ([prefs timeForKey:kTimeKey], time2);
 
   EXPECT_NSEQ([wrapper.dict objectForKey:kBoolKey], @NO);
   EXPECT_NSEQ([wrapper.dict objectForKey:kTimeKey], time2.ToNSDate());

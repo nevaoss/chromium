@@ -100,6 +100,7 @@ export function getHtml(this: EverywhereComposeboxElement) {
                       .tabSuggestions="${this.tabSuggestions}"
                       .hasImageFiles="${this.hasImageFiles()}"
                       .disabledTabIds="${this.addedTabsIds}"
+                      .aimThreadRestoredTabs="${this.aimThreadRestoredTabs}"
                       .fileNum="${this.files.size}"
                       .sharedTabs="${this.getSharedTabs()}"
                       ?upload-button-disabled="${this.uploadButtonDisabled}"

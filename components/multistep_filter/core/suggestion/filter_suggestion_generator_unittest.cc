@@ -7,6 +7,7 @@
 #include <optional>
 #include <vector>
 
+#include "base/command_line.h"
 #include "base/functional/callback.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/gmock_callback_support.h"
@@ -21,6 +22,7 @@
 #include "components/multistep_filter/core/data_models/url_filter_suggestion.h"
 #include "components/multistep_filter/core/features.h"
 #include "components/multistep_filter/core/storage/filter_store.h"
+#include "components/multistep_filter/core/switches.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "url/gurl.h"
@@ -276,6 +278,197 @@ TEST_F(FilterSuggestionGeneratorTest,
                                   future.GetCallback(), kTestNavigationId);
 
   EXPECT_EQ(future.Get(), std::nullopt);
+}
+
+// Tests that suggestion generation is suppressed if the candidate URL uses an
+// insecure scheme (HTTP).
+TEST_F(FilterSuggestionGeneratorTest,
+       GenerateSuggestion_SuppressesInsecureScheme) {
+  const GURL url("https://example.com/search?category=shoes&size=large");
+
+  std::vector<FilterAttribute> attributes = {
+      {kTestAttributeKey, kTestAttributeValue},
+      {kTestAttributeKey2, kTestAttributeValue2}};
+  FilterAnnotation annotation =
+      CreateDummyAnnotation(kShoppingTask, kTestDomain, attributes);
+
+  EXPECT_CALL(*store(), GetAnnotationsForTasksSortedByCreationTimestamp(
+                            kSupportedTaskTypes, _, 10u, _))
+      .WillOnce(
+          [annotation](
+              std::vector<std::string> task_types,
+              base::OnceCallback<void(std::vector<FilterAnnotation>)> callback,
+              size_t max_count, base::Time min_creation_time) {
+            std::move(callback).Run(std::vector<FilterAnnotation>{annotation});
+          });
+
+  // Insecure (HTTP) URL should be suppressed.
+  FilterSuggestionCandidate candidate(
+      annotation.id,
+      GURL("http://example.com/search?category=shoes&size=large"),
+      {FilterSuggestionCandidateAttribute(kTestAttributeKey,
+                                          kTestAttributeValue16),
+       FilterSuggestionCandidateAttribute(kTestAttributeKey2,
+                                          kTestAttributeValue2_16)});
+
+  EXPECT_CALL(mock_client(),
+              GetFilterSuggestionCandidates(url, _, _, kTestNavigationId))
+      .WillOnce([candidate](
+                    const GURL& u,
+                    base::span<const FilterAnnotation> filter_annotations,
+                    base::OnceCallback<void(
+                        std::optional<std::vector<FilterSuggestionCandidate>>)>
+                        callback,
+                    int64_t navigation_id) {
+        std::move(callback).Run(
+            std::vector<FilterSuggestionCandidate>{candidate});
+      });
+
+  base::test::TestFuture<std::optional<UrlFilterSuggestion>> future;
+  generator()->GenerateSuggestion(url, kSupportedTaskTypes,
+                                  future.GetCallback(), kTestNavigationId);
+
+  EXPECT_EQ(future.Get(), std::nullopt);
+}
+
+// Tests that suggestion generation succeeds for an HTTP candidate URL if the
+// allow-http-for-testing switch is enabled.
+TEST_F(FilterSuggestionGeneratorTest,
+       GenerateSuggestion_AllowsHttpWithTestingSwitch) {
+  base::CommandLine::ForCurrentProcess()->AppendSwitch(
+      switches::kMultistepFilterAllowHttpForTesting);
+
+  const GURL url("http://example.com/search?category=shoes");
+
+  std::vector<FilterAttribute> attributes = {
+      {kTestAttributeKey, kTestAttributeValue},
+      {kTestAttributeKey2, kTestAttributeValue2}};
+  FilterAnnotation annotation =
+      CreateDummyAnnotation(kShoppingTask, kTestDomain, attributes);
+
+  EXPECT_CALL(*store(), GetAnnotationsForTasksSortedByCreationTimestamp(
+                            kSupportedTaskTypes, _, 10u, _))
+      .WillOnce(
+          [annotation](
+              std::vector<std::string> task_types,
+              base::OnceCallback<void(std::vector<FilterAnnotation>)> callback,
+              size_t max_count, base::Time min_creation_time) {
+            std::move(callback).Run(std::vector<FilterAnnotation>{annotation});
+          });
+
+  FilterSuggestionCandidate expected_candidate(
+      annotation.id,
+      GURL("http://example.com/search?category=shoes&size=large"),
+      {FilterSuggestionCandidateAttribute(kTestAttributeKey,
+                                          kTestAttributeValue16),
+       FilterSuggestionCandidateAttribute(kTestAttributeKey2,
+                                          kTestAttributeValue2_16)},
+      u"Template", u"Template");
+
+  std::vector<FilterAttributeUiLabel> attribute_ui_labels;
+  attribute_ui_labels.emplace_back(expected_candidate.attributes[0],
+                                   attributes[0]);
+  attribute_ui_labels.emplace_back(expected_candidate.attributes[1],
+                                   attributes[1]);
+
+  UrlFilterSuggestion expected_suggestion(UrlFilterSuggestion::Params{
+      .navigation_url = expected_candidate.navigation_url,
+      .source_host = base::UTF8ToUTF16(annotation.source_host),
+      .extraction_timestamp = annotation.creation_timestamp,
+      .attribute_ui_labels = std::move(attribute_ui_labels),
+      .triggering_navigation_id = kTestNavigationId,
+      .triggering_host = url.GetHost(),
+      .task_type = kShoppingTask,
+      .suggestion_message = u"Template",
+      .short_suggestion_message = u"Template"});
+
+  EXPECT_CALL(mock_client(),
+              GetFilterSuggestionCandidates(url, _, _, kTestNavigationId))
+      .WillOnce([expected_candidate](
+                    const GURL& u,
+                    base::span<const FilterAnnotation> filter_annotations,
+                    base::OnceCallback<void(
+                        std::optional<std::vector<FilterSuggestionCandidate>>)>
+                        callback,
+                    int64_t navigation_id) {
+        std::move(callback).Run(
+            std::vector<FilterSuggestionCandidate>{expected_candidate});
+      });
+
+  base::test::TestFuture<std::optional<UrlFilterSuggestion>> future;
+  generator()->GenerateSuggestion(url, kSupportedTaskTypes,
+                                  future.GetCallback(), kTestNavigationId);
+
+  EXPECT_EQ(future.Get(), expected_suggestion);
+}
+
+// Tests that suggestion generation succeeds when the candidate URL is on a
+// different subdomain but shares the same eTLD+1 and uses HTTPS.
+TEST_F(FilterSuggestionGeneratorTest,
+       GenerateSuggestion_AllowsCrossSubdomainCandidates) {
+  const GURL url("https://example.com/search?category=shoes");
+
+  std::vector<FilterAttribute> attributes = {
+      {kTestAttributeKey, kTestAttributeValue},
+      {kTestAttributeKey2, kTestAttributeValue2}};
+  FilterAnnotation annotation =
+      CreateDummyAnnotation(kShoppingTask, kTestDomain, attributes);
+
+  EXPECT_CALL(*store(), GetAnnotationsForTasksSortedByCreationTimestamp(
+                            kSupportedTaskTypes, _, 10u, _))
+      .WillOnce(
+          [annotation](
+              std::vector<std::string> task_types,
+              base::OnceCallback<void(std::vector<FilterAnnotation>)> callback,
+              size_t max_count, base::Time min_creation_time) {
+            std::move(callback).Run(std::vector<FilterAnnotation>{annotation});
+          });
+
+  // Different subdomain but same eTLD+1 and HTTPS should be allowed.
+  FilterSuggestionCandidate expected_candidate(
+      annotation.id,
+      GURL("https://sub.example.com/search?category=shoes&size=large"),
+      {FilterSuggestionCandidateAttribute(kTestAttributeKey,
+                                          kTestAttributeValue16),
+       FilterSuggestionCandidateAttribute(kTestAttributeKey2,
+                                          kTestAttributeValue2_16)},
+      u"Template", u"Template");
+
+  std::vector<FilterAttributeUiLabel> attribute_ui_labels;
+  attribute_ui_labels.emplace_back(expected_candidate.attributes[0],
+                                   attributes[0]);
+  attribute_ui_labels.emplace_back(expected_candidate.attributes[1],
+                                   attributes[1]);
+
+  UrlFilterSuggestion expected_suggestion(UrlFilterSuggestion::Params{
+      .navigation_url = expected_candidate.navigation_url,
+      .source_host = base::UTF8ToUTF16(annotation.source_host),
+      .extraction_timestamp = annotation.creation_timestamp,
+      .attribute_ui_labels = std::move(attribute_ui_labels),
+      .triggering_navigation_id = kTestNavigationId,
+      .triggering_host = url.GetHost(),
+      .task_type = kShoppingTask,
+      .suggestion_message = u"Template",
+      .short_suggestion_message = u"Template"});
+
+  EXPECT_CALL(mock_client(),
+              GetFilterSuggestionCandidates(url, _, _, kTestNavigationId))
+      .WillOnce([expected_candidate](
+                    const GURL& u,
+                    base::span<const FilterAnnotation> filter_annotations,
+                    base::OnceCallback<void(
+                        std::optional<std::vector<FilterSuggestionCandidate>>)>
+                        callback,
+                    int64_t navigation_id) {
+        std::move(callback).Run(
+            std::vector<FilterSuggestionCandidate>{expected_candidate});
+      });
+
+  base::test::TestFuture<std::optional<UrlFilterSuggestion>> future;
+  generator()->GenerateSuggestion(url, kSupportedTaskTypes,
+                                  future.GetCallback(), kTestNavigationId);
+
+  EXPECT_EQ(future.Get(), expected_suggestion);
 }
 
 // Tests that suggestion generation is suppressed if the candidate URL's query

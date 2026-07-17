@@ -1,4 +1,5 @@
 include_rules = [
+  "+google_apis/google_api_keys.h",
   "+third_party/federated_compute",
 ]
 
@@ -7,5 +8,8 @@ specific_include_rules = {
   "fcp_event_publisher\\.(cc|h)": [
     "+third_party/abseil-cpp/absl/strings",
     "+third_party/abseil-cpp/absl/time",
+  ],
+  "private_insights_service\\.cc": [
+    "+third_party/abseil-cpp/absl/status",
   ],
 }

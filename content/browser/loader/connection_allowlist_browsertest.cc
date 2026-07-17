@@ -3325,4 +3325,78 @@ IN_PROC_BROWSER_TEST_F(
   }));
 }
 
+// TODO(crbug.com/40256092): Re-enable this test when we can resolve the
+// flakiness.
+IN_PROC_BROWSER_TEST_F(ConnectionAllowlistTest,
+                       DISABLED_LinkHeaderRecursivePrefetch) {
+  auto server_handle = embedded_https_test_server().StartAndReturnHandle();
+  ASSERT_TRUE(server_handle);
+
+  const char prefetch_path[] = "/prefetch.html";
+  const char preload_path[] = "/preload.js";
+
+  GURL main_url =
+      embedded_https_test_server().GetURL("a.test", kSameOriginAllowlistedPage);
+  GURL prefetch_url =
+      embedded_https_test_server().GetURL("b.test", prefetch_path);
+  GURL preload_url =
+      embedded_https_test_server().GetURL("c.test", preload_path);
+
+  // Register the main page response, which performs a prefetch to our
+  // cross-origin prefetch_url as a main resource. This satisfies the
+  // prerequisite for recursive prefetch to occur. This URL satisfies the
+  // provided allowlist because it matches the b.test URLPattern, so this
+  // cross-origin main resource prefetch should succeed.
+  RegisterResponse(
+      kSameOriginAllowlistedPage,
+      ResponseEntry(
+          "<html><body>Hello</body></html>",
+          {
+              {"Connection-Allowlist",
+               R"((response-origin "*://b.test:*/prefetch.html"))"},
+              {"Link", absl::StrFormat("<%s>; rel=prefetch; as=document",
+                                       prefetch_url.spec())},
+          }));
+
+  // Register the prefetch URL response, which performs a preload to the
+  // cross-origin preload_url. This gets converted to a prefetch. It should not
+  // be allowed because its origin (c.test) does not satisfy the allowlist.
+  RegisterResponse(
+      prefetch_path,
+      ResponseEntry("<html><body>Prefetch</body></html>",
+                    {{"Link", absl::StrFormat("<%s>; rel=preload; as=script",
+                                              preload_url.spec())},
+                     {"Access-Control-Allow-Origin", "*"}}));
+
+  // Register the preload URL response, which would be fetched by the above
+  // recursive prefetch, but that should fail.
+  RegisterResponse(preload_path,
+                   ResponseEntry("console.log('recursive prefetch')",
+                                 {{"Access-Control-Allow-Origin", "*"}}));
+
+  URLLoaderMonitor monitor;
+  EXPECT_TRUE(NavigateToURL(shell(), main_url));
+
+  // Two cross-origin prefetches fire: the main one, and the recursive one.
+  monitor.WaitForUrls({prefetch_url, preload_url});
+
+  // Main prefetch
+  EXPECT_EQ(monitor.WaitForRequestCompletion(prefetch_url).error_code, net::OK);
+  std::optional<network::ResourceRequest> prefetch_request =
+      monitor.GetRequestInfo(prefetch_url);
+  ASSERT_TRUE(prefetch_request.has_value());
+  EXPECT_EQ(prefetch_request->resource_type,
+            static_cast<int>(blink::mojom::ResourceType::kPrefetch));
+
+  // Recursive prefetch, which fails because it doesn't match the Connection
+  // Allowlist.
+  EXPECT_EQ(monitor.WaitForRequestCompletion(preload_url).error_code,
+            net::ERR_NETWORK_ACCESS_REVOKED);
+  std::optional<network::ResourceRequest> preload_request =
+      monitor.GetRequestInfo(preload_url);
+  ASSERT_TRUE(preload_request.has_value());
+  EXPECT_EQ(preload_request->resource_type,
+            static_cast<int>(blink::mojom::ResourceType::kPrefetch));
+}
+
 }  // namespace content

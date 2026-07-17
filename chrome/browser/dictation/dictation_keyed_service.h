@@ -6,6 +6,7 @@
 #define CHROME_BROWSER_DICTATION_DICTATION_KEYED_SERVICE_H_
 
 #include <memory>
+#include <string>
 
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
@@ -13,6 +14,7 @@
 #include "chrome/browser/dictation/session_controller.h"
 #include "chrome/browser/dictation/session_controller_delegate.h"
 #include "components/keyed_service/core/keyed_service.h"
+#include "components/prefs/pref_change_registrar.h"
 
 class BrowserWindowInterface;
 class Profile;
@@ -64,7 +66,8 @@ class DictationKeyedService : public KeyedService,
   bool ShouldShowContextMenuItem() const;
 
   // Handles the context menu item click.
-  void ContextMenuHandler(BrowserWindowInterface& window);
+  void ContextMenuHandler(BrowserWindowInterface& window,
+                          const std::u16string& selected_text);
 
   // Returns null when no session is in progress.
   SessionController* session_controller() {
@@ -77,7 +80,14 @@ class DictationKeyedService : public KeyedService,
   DictationMultiplexer& multiplexer() { return multiplexer_; }
 
  private:
+  void OnPrefChanged();
+
+  // Returns true if the service is disabled by enterprise policy.
+  bool IsDisabledByPolicy() const;
+
   raw_ptr<Profile> profile_;
+
+  PrefChangeRegistrar pref_change_registrar_;
 
   DictationMultiplexer multiplexer_;
 

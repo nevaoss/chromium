@@ -8,6 +8,7 @@
 
 #include "base/containers/span.h"
 #include "base/test/bind.h"
+#include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "chrome/browser/send_tab_to_self/send_tab_to_self_client_service.h"
 #include "chrome/browser/send_tab_to_self/send_tab_to_self_client_service_factory.h"
@@ -15,6 +16,7 @@
 #include "chrome/browser/ui/views/frame/test_with_browser_view.h"
 #include "components/send_tab_to_self/fake_send_tab_to_self_model.h"
 #include "components/send_tab_to_self/features.h"
+#include "components/send_tab_to_self/metrics_util.h"
 #include "components/send_tab_to_self/page_context.h"
 #include "components/send_tab_to_self/send_tab_to_self_entry.h"
 #include "components/send_tab_to_self/send_tab_to_self_sync_service.h"
@@ -118,6 +120,7 @@ class SendTabToSelfToolbarBubbleViewScrollPositionDisabledTest
 };
 
 TEST_F(SendTabToSelfToolbarBubbleViewTest, ButtonNavigatesToPage) {
+  base::HistogramTester histogram_tester;
   GURL url("https://www.example.com");
   SendTabToSelfEntry entry("guid", url, "Example", base::Time::Now(),
                            "Example Device", "sync_guid", PageContext(),
@@ -134,6 +137,10 @@ TEST_F(SendTabToSelfToolbarBubbleViewTest, ButtonNavigatesToPage) {
   TabStripModel* tab_strip = browser()->tab_strip_model();
   ASSERT_EQ(1, tab_strip->count());
   EXPECT_EQ(url, tab_strip->GetActiveWebContents()->GetVisibleURL());
+
+  histogram_tester.ExpectUniqueSample(
+      "Sharing.SendTabToSelf.ActivatedEntryPoint",
+      ShareActivatedEntryPoint::kDesktopToolbarBubble, 1);
 }
 
 TEST_F(SendTabToSelfToolbarBubbleViewTest, ButtonNavigatesWithScrollPosition) {

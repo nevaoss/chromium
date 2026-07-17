@@ -89,8 +89,6 @@ class AutofillProfileImportProcessTest : public testing::Test {
   }
 
  private:
-  base::test::ScopedFeatureList scoped_feature_list_{
-      features::kAutofillSupportPhoneticNameForJP};
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   TestAddressDataManager address_data_manager_;

@@ -149,7 +149,8 @@ struct EligibleMatchesAndActions {
     // in the Omnibox.
     bool is_aim_page_action_enabled =
         OmniboxFieldTrial::IsAimOmniboxEntrypointEnabled(
-            client->GetAimEligibilityService());
+            client->GetAimEligibilityService(),
+            client->GetAiModeButtonService(), client->GetTemplateURLService());
     toolbelt_ai_mode =
         toolbelt &&
         ToolbeltActionEligible(

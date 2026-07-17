@@ -66,6 +66,10 @@ class FilterUiController : public tabs::ContentsObservingTabFeature,
     // The user clicked the page action icon in the omnibox to reopen the
     // cue bubble.
     kReopenedFromOmnibox,
+    // The reopened cue bubble went away (timed out or user clicked outside),
+    // leaving
+    // only the page action icon visible inside the location bar / omnibox.
+    kCollapsedInOmniboxAfterReopen,
   };
 
   // The user's decision upon interacting with the suggestion.
@@ -73,6 +77,7 @@ class FilterUiController : public tabs::ContentsObservingTabFeature,
     kAccepted,
     kDismissed,
     kIgnored,
+    kSettingsOpened,
   };
 
   // Holds the suggestion details and presentation state for the current tab.

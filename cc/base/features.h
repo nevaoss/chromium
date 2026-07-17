@@ -46,6 +46,11 @@ CC_BASE_EXPORT extern const base::FeatureParam<int> kReclaimDelayInSeconds;
 // that it doesn't wait for resource releases that will never come.
 CC_BASE_EXPORT BASE_DECLARE_FEATURE(kTileOOMFreezeMitigation);
 
+// When enabled, CompositeForTest unconditionally stops deferring commits before
+// running the main frame. Disable in tests that need to observe paint holding
+// state through BeginFrame.
+CC_BASE_EXPORT BASE_DECLARE_FEATURE(kStopDeferringCommitsInCompositeForTest);
+
 // When a LayerTreeHostImpl is not visible, clear its transferable resources
 // that haven't been imported into viz.
 CC_BASE_EXPORT BASE_DECLARE_FEATURE(kClearCanvasResourcesInBackground);
@@ -157,6 +162,22 @@ CC_BASE_EXPORT BASE_DECLARE_FEATURE(kInitImageDecodeLastUseTime);
 // When enabled, throttles the framerate after a certain number of no-damage
 // frames in a row.
 CC_BASE_EXPORT BASE_DECLARE_FEATURE(kThrottleRepeatedNoDamageFrames);
+// Number of frames after which we start throttling.
+CC_BASE_EXPORT extern const base::FeatureParam<int>
+    kThrottleRepeatedNoDamageFramesThreshold1;
+// Number of frames beyond |Threshhold1| after which we increase throttling.
+CC_BASE_EXPORT extern const base::FeatureParam<int>
+    kThrottleRepeatedNoDamageFramesThreshold2;
+// Factor by which we throttle after |Threshold1| frames have passed. E.g. a
+// value of 2 would throttle the framerate to 1/2.
+CC_BASE_EXPORT extern const base::FeatureParam<int>
+    kThrottleRepeatedNoDamageFramesIntervalFactor1;
+// Factor by which we increase the throttling after |Threshold1 + Threshold2|
+// frames have passed. Compounds on the throttling from |Factor1|. E.g. with
+// |Factor1 = 2| and |Factor2 = 3|, we would throttle to 1/6 the original
+// (unthrottled) framerate.
+CC_BASE_EXPORT extern const base::FeatureParam<int>
+    kThrottleRepeatedNoDamageFramesIntervalFactor2;
 
 // On devices with a high refresh rate, whether to throttle main (not impl)
 // frame production to 60Hz.

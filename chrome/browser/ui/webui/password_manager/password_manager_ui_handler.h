@@ -5,6 +5,8 @@
 #ifndef CHROME_BROWSER_UI_WEBUI_PASSWORD_MANAGER_PASSWORD_MANAGER_UI_HANDLER_H_
 #define CHROME_BROWSER_UI_WEBUI_PASSWORD_MANAGER_PASSWORD_MANAGER_UI_HANDLER_H_
 
+#include "base/scoped_observation.h"
+#include "chrome/browser/extensions/api/passwords_private/passwords_private_delegate.h"
 #include "chrome/browser/ui/webui/password_manager/password_manager.mojom.h"
 #include "components/password_manager/core/browser/ui/saved_passwords_presenter.h"
 #include "mojo/public/cpp/bindings/receiver.h"
@@ -31,7 +33,9 @@ class WebContents;
 //    extensions API. In the future, the backend logic should be broken down
 //    and delegated to cohesive domain services instead.
 
-class PasswordManagerUIHandler : public password_manager::mojom::PageHandler {
+class PasswordManagerUIHandler
+    : public password_manager::mojom::PageHandler,
+      public extensions::PasswordsPrivateDelegate::Observer {
  public:
   PasswordManagerUIHandler(
       mojo::PendingReceiver<password_manager::mojom::PageHandler> receiver,
@@ -96,12 +100,25 @@ class PasswordManagerUIHandler : public password_manager::mojom::PageHandler {
 
   void UndoRemoveSavedPasswordOrException() override;
 
+  void RequestPasswordsExport(RequestPasswordsExportCallback callback) override;
+
+  void GetPasswordsExportProgress(
+      GetPasswordsExportProgressCallback callback) override;
+
+  // extensions::PasswordsPrivateDelegate::Observer:
+  void OnPasswordsExportProgress(password_manager::ExportProgressStatus status,
+                                 const std::string& folder_name) override;
+
  private:
   password_manager::SavedPasswordsPresenter* GetSavedPasswordsPresenter();
 
   raw_ptr<content::WebContents> web_contents_;
   scoped_refptr<extensions::PasswordsPrivateDelegate>
       passwords_private_delegate_;
+
+  base::ScopedObservation<extensions::PasswordsPrivateDelegate,
+                          extensions::PasswordsPrivateDelegate::Observer>
+      passwords_private_delegate_observation_{this};
 
   // NOTE: These are located at the end of the list of member variables to
   // ensure the WebUI page is disconnected before other members are destroyed.

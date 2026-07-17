@@ -25,7 +25,13 @@ bool PasswordManagerClient::IsSavingAndFillingEnabled(const GURL& url) const {
   return true;
 }
 
-bool PasswordManagerClient::IsFillingEnabled(const GURL& url) const {
+bool PasswordManagerClient::IsFillingEnabled(const url::Origin& origin) const {
+  return IsFillingEnabled(origin, std::nullopt);
+}
+
+bool PasswordManagerClient::IsFillingEnabled(
+    const url::Origin& origin,
+    base::optional_ref<const GURL> url) const {
   return true;
 }
 
@@ -214,6 +220,10 @@ PasswordManagerClient::GetUndoPasswordChangeController() {
 }
 
 bool PasswordManagerClient::IsActorTaskActive() {
+  return false;
+}
+
+bool PasswordManagerClient::IsChromeSigninPage() const {
   return false;
 }
 

@@ -375,7 +375,8 @@ public class TabStripSceneLayerTest {
                                         * mContext.getResources().getDisplayMetrics().density),
                         anyBoolean(),
                         anyFloat(),
-                        anyBoolean(),
+                        anyFloat(),
+                        anyFloat(),
                         anyInt(),
                         anyInt(),
                         anyInt());
@@ -451,7 +452,8 @@ public class TabStripSceneLayerTest {
                                         * mContext.getResources().getDisplayMetrics().density),
                         anyBoolean(),
                         anyFloat(),
-                        anyBoolean(),
+                        anyFloat(),
+                        anyFloat(),
                         anyInt(),
                         anyInt(),
                         anyInt());
@@ -529,7 +531,8 @@ public class TabStripSceneLayerTest {
                                         * mContext.getResources().getDisplayMetrics().density),
                         anyBoolean(),
                         anyFloat(),
-                        anyBoolean(),
+                        anyFloat(),
+                        anyFloat(),
                         anyInt(),
                         anyInt(),
                         anyInt());
@@ -606,7 +609,8 @@ public class TabStripSceneLayerTest {
                                         * mContext.getResources().getDisplayMetrics().density),
                         anyBoolean(),
                         anyFloat(),
-                        anyBoolean(),
+                        anyFloat(),
+                        anyFloat(),
                         anyInt(),
                         anyInt(),
                         anyInt());

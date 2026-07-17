@@ -141,7 +141,6 @@ class PLATFORM_EXPORT DrawingBuffer : public cc::TextureLayerClient,
       bool desynchronized,
       PreserveDrawingBuffer,
       Platform::WebGLContextType,
-      bool is_offscreen_canvas,
       PredefinedColorSpace,
       gl::GpuPreference);
 
@@ -339,7 +338,6 @@ class PLATFORM_EXPORT DrawingBuffer : public cc::TextureLayerClient,
                 Platform::WebGLContextType,
                 bool wants_depth,
                 bool wants_stencil,
-                bool is_offscreen_canvas,
                 PredefinedColorSpace,
                 gl::GpuPreference);
 
@@ -697,9 +695,6 @@ class PLATFORM_EXPORT DrawingBuffer : public cc::TextureLayerClient,
   // DrawingBuffer.
   Deque<scoped_refptr<ColorBuffer>> recycled_color_buffer_queue_;
   base::flat_set<scoped_refptr<ColorBuffer>> exported_color_buffers_;
-
-  // Whether it's an offscreen canvas.
-  bool is_offscreen_canvas_;
 
   bool opengl_flip_y_extension_;
 

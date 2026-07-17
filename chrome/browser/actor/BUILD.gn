@@ -206,6 +206,7 @@ source_set("impl") {
     "//components/content_settings/core/common",
     "//components/favicon/core",
     "//components/lookalikes/core",
+    "//components/optimization_guide/proto:optimization_guide_proto",
     "//components/page_load_metrics/browser",
     "//components/password_manager/core/browser",
     "//components/password_manager/core/browser/actor_login:actor_login_service_impl",
@@ -218,11 +219,13 @@ source_set("impl") {
     "//content/public/browser",
     "//net",
     "//pdf:features",
+    "//skia",
     "//third_party/abseil-cpp:absl",
     "//third_party/perfetto:libperfetto",
     "//third_party/perfetto/protos/perfetto/config:zero_gen",
     "//third_party/perfetto/protos/perfetto/trace/perfetto:zero_gen",
     "//ui/base/metadata",
+    "//ui/gfx/codec",
     "//url",
   ]
 
@@ -343,6 +346,7 @@ source_set("unit_tests") {
     "tools/attempt_form_filling_tool_request_unittest.cc",
     "tools/attempt_login_tool_request_unittest.cc",
     "tools/attempt_otp_filling_tool_request_unittest.cc",
+    "tools/click_tool_request_unittest.cc",
   ]
   deps = [
     ":actor",
@@ -420,6 +424,7 @@ source_set("browser_tests") {
     "ui:event_dispatcher",
     "//chrome/browser:chrome_content_browser_client",
     "//chrome/browser/affiliations",
+    "//chrome/browser/autofill/actor",
     "//chrome/browser/glic",
     "//chrome/browser/glic/actor:browser_tests",
     "//chrome/browser/glic/test_support",

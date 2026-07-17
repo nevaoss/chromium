@@ -40,4 +40,8 @@ class SampleProxyEdgeCases<E extends Enum<E>> {
         @SomeClass.EnumType
         int setStringBuilder(@MyThing int sb);
     }
+
+    // Non-proxy natives in same file.
+    native void nativeInstanceMethod(long nativeInstance);
+    static native void nativeStaticMethod();
 }

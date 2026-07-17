@@ -132,12 +132,7 @@ function toError(webkitError: string): VoiceSearchError {
   }
 }
 
-// TODO(crbug.com/40449919): Remove when bug is fixed.
-declare global {
-  interface Window {
-    webkitSpeechRecognition: typeof SpeechRecognition;
-  }
-}
+
 
 export interface ComposeboxVoiceSearchElement {
   $: {
@@ -177,7 +172,7 @@ export class ComposeboxVoiceSearchElement extends
       detailsUrl_: {type: String},
       detailedError_: {type: Number},
       hasErrorTimer: {type: Boolean},
-      isPermissionPromptOpen_: {
+      isPermissionPromptOpen: {
         type: Boolean,
         reflect: true,
       },
@@ -226,7 +221,7 @@ export class ComposeboxVoiceSearchElement extends
   protected accessor detailsUrl_: string =
       `https://support.google.com/chrome/?p=ui_voice_search&hl=${
           window.navigator.language}`;
-  protected accessor isPermissionPromptOpen_: boolean = false;
+  accessor isPermissionPromptOpen: boolean = false;
 
   private accessor state_: State = State.UNINITIALIZED;
   private metricSource_: string = '';
@@ -255,7 +250,8 @@ export class ComposeboxVoiceSearchElement extends
 
   constructor() {
     super();
-    this.voiceRecognition_ = new window.webkitSpeechRecognition();
+    this.voiceRecognition_ =
+        WindowProxy.getInstance().createSpeechRecognition();
     this.voiceRecognition_.interimResults = true;
     this.voiceRecognition_.lang = window.navigator.language;
     this.voiceRecognition_.onresult = this.onResult_.bind(this);
@@ -348,7 +344,7 @@ export class ComposeboxVoiceSearchElement extends
       // If permission prompt is open currently, ignore the blur event,
       // as the blur is from the permission prompt, and need voice search
       // to stay open during prompt.
-      if (this.isPermissionPromptOpen_) {
+      if (this.isPermissionPromptOpen) {
         return;
       }
 
@@ -357,7 +353,7 @@ export class ComposeboxVoiceSearchElement extends
       // (~15ms). This way, it is certain that this blur event is not due to
       // a permission prompt popping up.
       this.blurTimeoutId_ = WindowProxy.getInstance().setTimeout(() => {
-        if (!this.isPermissionPromptOpen_) {
+        if (!this.isPermissionPromptOpen) {
           this.onStopClick_();
         }
         this.blurTimeoutId_ = null;
@@ -400,7 +396,7 @@ export class ComposeboxVoiceSearchElement extends
   private onVoicePermissionPromptChanged(isOpened: boolean, promptSize: Size) {
     // Track the state for the blur event handler to ignore if
     // permission prompt open.
-    this.isPermissionPromptOpen_ = isOpened;
+    this.isPermissionPromptOpen = isOpened;
 
     // If the prompt just opened, cancel any pending closure triggered by a
     // premature blur event.

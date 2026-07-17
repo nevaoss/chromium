@@ -36,6 +36,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
+import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.ui.base.TestActivity;
@@ -43,7 +44,7 @@ import org.chromium.ui.widget.ChromePopupWindow;
 import org.chromium.ui.widget.UiWidgetFactory;
 
 @RunWith(BaseRobolectricTestRunner.class)
-@EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+@EnableFeatures({ChromeFeatureList.INLINE_PDF_V2, ChromeFeatureList.INLINE_PDF_V2_DOWNLOAD})
 public class PdfToolbarCoordinatorUnitTest {
     @Rule
     public ActivityScenarioRule<TestActivity> mActivityScenarioRule =
@@ -407,5 +408,39 @@ public class PdfToolbarCoordinatorUnitTest {
         org.junit.Assert.assertNotNull("Print button should not be null", printButton);
         printButton.performClick();
         verify(mDelegate).print();
+    }
+
+    @Test
+    public void testEditButtonClick() {
+        View editButton = mPdfPageView.findViewById(R.id.edit_button);
+        org.junit.Assert.assertNotNull("Edit button should not be null", editButton);
+
+        // Initial state: EDIT_MODE_ACTIVE is false (default)
+        // Click should toggle it to true, calling setEditMode(true)
+        editButton.performClick();
+        verify(mDelegate).setEditMode(true);
+
+        // Now set the model to active (simulating delegate callback -> coordinator -> model update)
+        mPdfToolbarCoordinator.setEditModeActive(true);
+
+        // Click again should toggle it to false, calling setEditMode(false)
+        editButton.performClick();
+        verify(mDelegate).setEditMode(false);
+    }
+
+    @Test
+    @DisableFeatures(ChromeFeatureList.INLINE_PDF_V2_DOWNLOAD)
+    public void testDownloadButton_FeatureDisabled() {
+        PdfToolbar toolbar = mPdfPageView.findViewById(R.id.pdf_toolbar);
+        org.junit.Assert.assertNotNull("Toolbar should not be null", toolbar);
+
+        View downloadButton = mPdfPageView.findViewById(R.id.download_button);
+        float density = mActivity.getResources().getDisplayMetrics().density;
+
+        // Wide screen (e.g. 900dp) -> Should still be GONE because feature is disabled
+        int widthPx = (int) (900 * density);
+        toolbar.layout(0, 0, widthPx, 56);
+
+        assertEquals(View.GONE, downloadButton.getVisibility());
     }
 }

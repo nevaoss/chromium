@@ -576,6 +576,7 @@
 <translation id="1902576642799138955">చెల్లుబాటు కాలం</translation>
 <translation id="1908217026282415406">కెమెరా ఉపయోగం &amp; తరలింపు</translation>
 <translation id="1908690643053136980">మీ అడ్మినిస్ట్రేటర్ ఈ సైట్‌కు <ph name="PERMISSION" />‌ను అనుమతించరు</translation>
+<translation id="1912750443952232242">Google Walletలో ID కార్డ్‌ను సేవ్ చేసుకోండి</translation>
 <translation id="1913037223029790376">ఈ వర్చువల్ కార్డ్‌కు CVCని ఉపయోగించండి</translation>
 <translation id="191374271204266022">JSONగా కాపీ చేయి</translation>
 <translation id="1914326953223720820">సేవను అన్‌జిప్ చేయండి</translation>
@@ -1488,6 +1489,7 @@
 <translation id="3325568918769906282">అవరోహణ క్రమంలో</translation>
 <translation id="3325662270238538525">ఫైల్ పేర్లు, ఫైల్ కంటెంట్‌కు సంబంధించిన డిజిటల్ వేలిముద్రలు, డౌన్‌లోడ్ సోర్స్, మెటాడేటాతో సహా ఇటీవలి ఫైల్ యాక్సెస్, దానికి జరిగిన మార్పులు</translation>
 <translation id="3329013043687509092">సంతృప్తత</translation>
+<translation id="3330483197654063678">ఆన్‌లో ఉన్నప్పుడు, మరింత సందర్భోచితమైన సమాధానాలను పొందడంలో మీకు సహాయపడటానికి Chrome ఈ విండోలో తెరిచి ఉన్న ట్యాబ్‌లను షేర్ చేస్తుంది.</translation>
 <translation id="3333762389743153920">వర్చువల్ కార్డ్ కోసం అర్హత లేదు</translation>
 <translation id="3338095232262050444">సురక్షితం</translation>
 <translation id="333839153442689579">అధిక తీవ్రత కలిగిన, తక్కువ విరామాలు ఉండే శిక్షణ</translation>
@@ -2841,6 +2843,7 @@
 <translation id="5458150163479425638">{CONTACT,plural, =0{<ph name="CONTACT_PREVIEW" />}=1{<ph name="CONTACT_PREVIEW" /> మరియు మరో <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}other{<ph name="CONTACT_PREVIEW" /> మరియు మరో <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}}</translation>
 <translation id="5463625433003343978">పరికరాలను కనుగొంటోంది...</translation>
 <translation id="5464236009658034488">కార్యాలయ సామగ్రి</translation>
+<translation id="5465128270485645058">ఈ విండోలో ఓపెన్ చేసి ఉన్న ట్యాబ్‌లు ఈ థ్రెడ్‌కు సంబంధించినవి అయితే, వాటిని ఆటోమేటిక్‌గా షేర్ చేయడం ద్వారా మీకు మరింత అనుకూలంగా ఉండే సమాధానాలను పొందండి.</translation>
 <translation id="5465724643247062031">గ్లాస్ (ఒపేక్)</translation>
 <translation id="5466018172325111652">మీ కోడ్ అందలేదా? <ph name="BEGIN_LINK" />కొత్త కోడ్‌ను పొందండి<ph name="END_LINK" /></translation>
 <translation id="5466818462212249084">పేమెంట్‌ల యాప్‌లు</translation>
@@ -3123,6 +3126,7 @@
 <translation id="5911020115933784199">ఈవెంట్‌లు &amp; లిస్టింగ్‌లు</translation>
 <translation id="5911110632211230665">తెరవకుండా బ్లాక్ చేసింది</translation>
 <translation id="5912796581727968237">Google Walletను తెరవండి</translation>
+<translation id="5914185423510719251">KTNను Google Walletలో సేవ్ చేసుకోండి</translation>
 <translation id="5914465277418006379"><ph name="MEMBER_FIRST_NAME" /> ఈ ట్యాబ్‌ను జోడించారు</translation>
 <translation id="5915189366813702112">సౌకర్యవంతంగా పని చేసే ఏర్పాట్లు</translation>
 <translation id="59174027418879706">ప్రారంభించబడింది</translation>
@@ -3646,6 +3650,7 @@
 <translation id="6702851555558236418">ఆడియో &amp; మ్యూజిక్ సాఫ్ట్‌వేర్</translation>
 <translation id="6702919718839027939">పిన్ చేయండి</translation>
 <translation id="6704458454638854812">ప్రాపర్టీ "custom_size" సెట్ చేయబడింది, పేరు "అనుకూలం" అవ్వవచ్చని ఊహించాము.</translation>
+<translation id="670477556876354552">రీస్టార్ట్ చేయాలి</translation>
 <translation id="6706005862292023715">కర్టెయిన్‌లు &amp; కిటికీలకు సంబంధించిన అలంకరణ</translation>
 <translation id="6706210727756204531">పరిధి</translation>
 <translation id="6706678697074905703">ఈ IBANను మీ Google ఖాతాలో సేవ్ చేయడం సాధ్యం కాలేదు. బదులుగా, ఈ పరికరంలోని Chromeలో సేవ్ అయింది.</translation>
@@ -3903,6 +3908,7 @@
 <translation id="7110116949943042888">తాత్కాలిక &amp; సీజనల్ ఉద్యోగాలు</translation>
 <translation id="7110368079836707726">కాలేజీలు &amp; యూనివర్సిటీలు</translation>
 <translation id="7111507312244504964">ఆస్తి తనిఖీలు &amp; అంచనాలు</translation>
+<translation id="7117290130383718594">టెక్స్ట్ అదనపు గమనికలు</translation>
 <translation id="7118618213916969306">క్లిప్‌బోర్డ్ URL, <ph name="SHORT_URL" /> కోసం వెతకండి</translation>
 <translation id="7118852830504022370">ఈ సైట్ HTTPS‌ను సపోర్ట్ చేయనందున మీకు ఈ హెచ్చరిక కనిపిస్తోంది. <ph name="BEGIN_LEARN_MORE_LINK" />ఈ హెచ్చరిక గురించి మరింత తెలుసుకోండి<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="7119063404975271297">TV డ్రామా షోలు</translation>

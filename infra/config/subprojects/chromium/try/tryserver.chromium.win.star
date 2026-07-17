@@ -215,6 +215,8 @@ try_.orchestrator_builder(
         "chromium.add_one_test_shard": 5,
         # crbug/940930
         "chromium.enable_cleandead": 100,
+        # TODO(https://crbug.com/521401232): Increase to 100
+        "luci.buildbucket.run_in_turboci": 1,
     },
     main_list_view = "try",
     use_clang_coverage = True,

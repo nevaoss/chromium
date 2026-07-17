@@ -9,17 +9,12 @@
 #include <string>
 
 #include "base/memory/raw_ptr.h"
-#include "base/memory/scoped_refptr.h"
 #include "base/threading/thread_checker.h"
 #include "base/values.h"
 #include "build/build_config.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "remoting/host/host_extension_session.h"
 #include "remoting/host/mojom/remote_security_key.mojom.h"
-
-namespace base {
-class SingleThreadTaskRunner;
-}  // namespace base
 
 namespace remoting {
 
@@ -33,10 +28,8 @@ class ClientStub;
 // A HostExtensionSession implementation that enables Security Key support.
 class SecurityKeyExtensionSession : public HostExtensionSession {
  public:
-  SecurityKeyExtensionSession(
-      ClientSessionDetails* client_session_details,
-      protocol::ClientStub* client_stub,
-      scoped_refptr<base::SingleThreadTaskRunner> file_task_runner);
+  SecurityKeyExtensionSession(ClientSessionDetails* client_session_details,
+                              protocol::ClientStub* client_stub);
 
   SecurityKeyExtensionSession(const SecurityKeyExtensionSession&) = delete;
   SecurityKeyExtensionSession& operator=(const SecurityKeyExtensionSession&) =

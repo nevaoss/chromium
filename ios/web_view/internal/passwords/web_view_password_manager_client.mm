@@ -261,7 +261,7 @@ bool WebViewPasswordManagerClient::IsSavingAndFillingEnabled(
     const GURL& url) const {
   return *saving_passwords_enabled_ && !IsOffTheRecord() &&
          !net::IsCertStatusError(GetMainFrameCertStatus()) &&
-         IsFillingEnabled(url);
+         IsFillingEnabled(url::Origin::Create(url));
 }
 
 bool WebViewPasswordManagerClient::IsCommittedMainFrameSecure() const {

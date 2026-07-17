@@ -152,6 +152,7 @@ const FeatureEntry::Choice kSendTabToSelfEnhancedHandoffChoices[] = {
      "SyncSimplifyDeviceNaming,"
      "SyncUseServerDeterminedDeviceName,"
      "SendTabToSelfEnhancedBottomsheet,"
+     "SendTabToSelfIOSShareSheetDeviceList,"
      "SyncSessionsUsePreferredDisplayName"},
     {flags_ui::kGenericExperimentChoiceDisabled, switches::kDisableFeatures,
      "SendTabToSelfAutoOpen,"
@@ -163,6 +164,7 @@ const FeatureEntry::Choice kSendTabToSelfEnhancedHandoffChoices[] = {
      "SyncSimplifyDeviceNaming,"
      "SyncUseServerDeterminedDeviceName,"
      "SendTabToSelfEnhancedBottomsheet,"
+     "SendTabToSelfIOSShareSheetDeviceList,"
      "SyncSessionsUsePreferredDisplayName"},
 };
 
@@ -1420,6 +1422,9 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kNtpAlphaBackgroundCollectionsDescription,
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(ntp_features::kNtpAlphaBackgroundCollections)},
+    {"new-tab-page-redesign", flag_descriptions::kNewTabPageRedesignName,
+     flag_descriptions::kNewTabPageRedesignDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kNewTabPageRedesign)},
     {"confirmation-button-swap-order",
      flag_descriptions::kConfirmationButtonSwapOrderName,
      flag_descriptions::kConfirmationButtonSwapOrderDescription,
@@ -1772,6 +1777,12 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      FEATURE_WITH_PARAMS_VALUE_TYPE(kBackgroundRefreshRegressionTest,
                                     kBackgroundRefreshRegressionTestVariations,
                                     "BackgroundRefreshRegressionTest")},
+    {"autofill-reject-form-submissions-without-user-gesture",
+     flag_descriptions::kAutofillRejectFormSubmissionsWithoutUserGestureName,
+     flag_descriptions::
+         kAutofillRejectFormSubmissionsWithoutUserGestureDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kAutofillRejectFormSubmissionsWithoutUserGesture)},
     {"autofill-support-date-input",
      flag_descriptions::kAutofillSupportDateInputName,
      flag_descriptions::kAutofillSupportDateInputDescription, flags_ui::kOsIos,
@@ -2170,10 +2181,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"omnibox-drs-prototype", flag_descriptions::kOmniboxDRSPrototypeName,
      flag_descriptions::kOmniboxDRSPrototypeDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kOmniboxDRSPrototype)},
-    {"rcaps-dynamic-profile-country",
-     flag_descriptions::kRcapsDynamicProfileCountryName,
-     flag_descriptions::kRcapsDynamicProfileCountryDescription,
-     flags_ui::kOsIos, FEATURE_VALUE_TYPE(switches::kDynamicProfileCountry)},
     {"ios-skip-fre-default-browser-promo-in-eea",
      flag_descriptions::kSkipDefaultBrowserPromoInFirstRunName,
      flag_descriptions::kSkipDefaultBrowserPromoInFirstRunDescription,
@@ -2539,12 +2546,12 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"gemini-multi-tab-context", flag_descriptions::kGeminiMultiTabContextName,
      flag_descriptions::kGeminiMultiTabContextDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kGeminiMultiTabContext)},
-    {"in-flow-trusted-vault-key-retrieval-ios",
-     flag_descriptions::kInFlowTrustedVaultKeyRetrievalIosName,
-     flag_descriptions::kInFlowTrustedVaultKeyRetrievalIosDescription,
+    {"password-save-in-context-error-resolution",
+     flag_descriptions::kPasswordSaveInContextErrorResolutionName,
+     flag_descriptions::kPasswordSaveInContextErrorResolutionDescription,
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(
-         password_manager::features::kInFlowTrustedVaultKeyRetrievalIos)},
+         password_manager::features::kPasswordSaveInContextErrorResolution)},
     {"sync-themes-ios", flag_descriptions::kSyncThemesIosName,
      flag_descriptions::kSyncThemesIosDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(syncer::kSyncThemesIos)},
@@ -2638,12 +2645,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(
          autofill::features::kAutofillAiNoFillingIconsExperiment)},
-    {"autofill-ai-order", flag_descriptions::kAutofillAiOrderName,
-     flag_descriptions::kAutofillAiOrderDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(autofill::features::kAutofillAiOrder)},
-    {"autofill-ai-shipment", flag_descriptions::kAutofillAiShipmentName,
-     flag_descriptions::kAutofillAiShipmentDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(autofill::features::kAutofillAiShipment)},
     {"autofill-ai-valuables-iph",
      flag_descriptions::kAutofillAiValuablesIPHName,
      flag_descriptions::kAutofillAiValuablesIPHDescription, flags_ui::kOsIos,
@@ -2845,6 +2846,13 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"ai-avatar-ring-ios", flag_descriptions::kAiAvatarRingIosName,
      flag_descriptions::kAiAvatarRingIosDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kAiAvatarRingIos)},
+    {"gemini-contextual-suggestions-cues",
+     flag_descriptions::kGeminiContextualSuggestionsCuesName,
+     flag_descriptions::kGeminiContextualSuggestionsCuesDescription,
+     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kGeminiContextualSuggestionsCues)},
+    {"infobar-banner-revamp", flag_descriptions::kInfobarBannerRevampName,
+     flag_descriptions::kInfobarBannerRevampDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kInfobarBannerRevamp)},
 });
 
 bool SkipConditionalFeatureEntry(const flags_ui::FeatureEntry& entry) {

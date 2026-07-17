@@ -2770,7 +2770,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="ClientHints.AcceptCHFrame" enum="AcceptCHFrameRestart"
-    expires_after="2026-10-18">
+    expires_after="2026-12-20">
   <owner>victortan@chromium.org</owner>
   <owner>miketaylr@chromium.org</owner>
   <owner>katabolism-finch@google.com</owner>
@@ -2964,7 +2964,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="ComponentUpdater.UpdateCompleteTime" units="ms"
-    expires_after="2026-10-18">
+    expires_after="2026-12-20">
   <owner>sorin@chromium.org</owner>
   <owner>src/components/component_updater/OWNERS</owner>
   <summary>
@@ -3779,12 +3779,14 @@ chromium-metrics-reviews@google.com.
   <token key="SurveyName">
     <variant name="BeforeFirstRunDesktopRefreshSurvey"/>
     <variant name="FirstRunDesktopRefreshSurvey"/>
+    <variant name="FirstRunDesktopRevampNoFeatureShowcaseSurvey"/>
+    <variant name="FirstRunDesktopRevampSurvey"/>
     <variant name="PerformanceControlsPPMSurvey"/>
   </token>
 </histogram>
 
 <histogram name="Feedback.NotAllowed.RequestSource" enum="FeedbackSource"
-    expires_after="2026-10-18">
+    expires_after="2026-12-20">
   <owner>jlebel@chromium.org</owner>
   <owner>chrome-regionalcapabilities@google.com</owner>
   <summary>
@@ -4970,27 +4972,13 @@ chromium-metrics-reviews@google.com.
     expires_after="2027-05-22">
   <owner>nafisabedin@google.com</owner>
   <owner>pasko@chromium.org</owner>
+  <owner>bgeffon@chromium.org</owner>
   <improvement direction="LOWER_IS_BETTER"/>
   <summary>
     Measures the time taken to write a channel message to the underlying
     transport in Mojo. The metric is downsampled to reduce its costs.
 
     This is only recorded on clients with high-resolution clocks.
-  </summary>
-</histogram>
-
-<histogram name="Mojo.Channel.WriteMessageLatency" units="ms"
-    expires_after="2026-11-29">
-  <owner>amistry@chromium.org</owner>
-  <owner>bgeffon@chromium.org</owner>
-  <owner>rockot@google.com</owner>
-  <improvement direction="LOWER_IS_BETTER"/>
-  <summary>
-    Measures the time taken to fully write a channel message to the underlying
-    channel.
-
-    On some clients this metric is logged only one time out of one thousand to
-    reduce measurment overhead.
   </summary>
 </histogram>
 
@@ -5009,16 +4997,6 @@ chromium-metrics-reviews@google.com.
   <summary>
     The number queued messages waiting to be written, measured when a channel
     flush is attempted.
-  </summary>
-</histogram>
-
-<histogram name="Mojo.Channel.WriteReceiveMessageProcessType"
-    enum="ShortProcessType" expires_after="2026-11-15">
-  <owner>amanvr@chromium.org</owner>
-  <owner>woa-performance@google.com</owner>
-  <summary>
-    Records the number of received Mojo IPCs, split per process. Emitted each
-    time a mojo IPC is received.
   </summary>
 </histogram>
 
@@ -7106,6 +7084,20 @@ useful for Chirp alerts (go/crca-alerts). -->
   </summary>
 </histogram>
 
+<histogram name="Spellcheck.DocumentCustomDictionary.WordCount" units="words"
+    expires_after="2027-06-01">
+  <owner>shend@chromium.org</owner>
+  <owner>zsun@igalia.com</owner>
+  <summary>
+    Number of words accepted into a single RenderFrame's per-document custom
+    dictionary, which is populated via the SpellCheckCustomDictionary web API.
+
+    Recorded once per document, when the document is replaced by a new document
+    (navigation) or the frame is torn down. Documents that never added a word
+    through the API are not recorded.
+  </summary>
+</histogram>
+
 <histogram name="SpellCheck.Enabled2" enum="BooleanEnabled"
     expires_after="2024-12-01">
   <owner>shend@chromium.org</owner>
@@ -8164,7 +8156,7 @@ regressions. -->
 </histogram>
 
 <histogram name="WebUsb.DetachKernelDriverOutcome"
-    enum="DetachKernelDriverOutcome" expires_after="2026-10-18">
+    enum="DetachKernelDriverOutcome" expires_after="2026-12-20">
   <owner>ovn@google.com</owner>
   <owner>lt-web-apps-team@google.com</owner>
   <summary>

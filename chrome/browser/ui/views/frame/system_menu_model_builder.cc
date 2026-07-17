@@ -162,21 +162,15 @@ void SystemMenuModelBuilder::BuildSystemMenuForBrowserWindow(
   AddItemWithIconMaybe(model, IDC_NAME_WINDOW, IDS_NAME_WINDOW,
                        kNameWindowOldIcon);
 #endif  // BUILDFLAG(IS_MAC)
-
-  if (base::FeatureList::IsEnabled(tabs::kHorizontalTabStripComboButton)) {
-    model->AddSeparator(ui::NORMAL_SEPARATOR);
-    model->AddItemWithStringId(IDC_TAB_SEARCH_TOGGLE_PIN,
-                               IDS_TAB_STRIP_PIN_TAB_SEARCH);
-  }
+  model->AddSeparator(ui::NORMAL_SEPARATOR);
+  model->AddItemWithStringId(IDC_TAB_SEARCH_TOGGLE_PIN,
+                             IDS_TAB_STRIP_PIN_TAB_SEARCH);
 
 #if BUILDFLAG(IS_WIN)
   // On Windows we can not remove an item when showing the menu. So only add
   // the glic toggle option if glic is enabled when building the menu.
   if (glic::GlicEnabling::IsEnabledForProfile(browser()->profile())) {
 #endif  // BUILDFLAG(IS_WIN)
-    if (!base::FeatureList::IsEnabled(tabs::kHorizontalTabStripComboButton)) {
-      model->AddSeparator(ui::NORMAL_SEPARATOR);
-    }
     model->AddItemWithStringId(IDC_GLIC_TOGGLE_PIN, IDS_GLIC_PIN);
 #if BUILDFLAG(IS_WIN)
   }

@@ -760,6 +760,16 @@ bool IsAppSwitcherAISummarizationEnabled() {
   return base::FeatureList::IsEnabled(kAppSwitcherAISummarization);
 }
 
+BASE_FEATURE(kGeminiContextualSuggestionsCues,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsGeminiContextualSuggestionsCuesEnabled() {
+  if (!IsPageActionMenuEnabled()) {
+    return false;
+  }
+  return base::FeatureList::IsEnabled(kGeminiContextualSuggestionsCues);
+}
+
 #pragma mark - Debugging Features
 
 const char kBWGPromoConsentParams[] = "BWGPromoConsentVariations";

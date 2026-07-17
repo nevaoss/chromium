@@ -132,6 +132,7 @@
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
+#include "ui/accessibility/accessibility_features.h"
 #include "ui/base/resource/resource_scale_factor.h"
 #include "ui/gfx/geometry/rect_conversions.h"
 #include "ui/gfx/geometry/size_conversions.h"
@@ -2109,7 +2110,7 @@ RespectImageOrientationEnum HTMLCanvasElement::RespectImageOrientation() const {
 
 void HTMLCanvasElement::OnAxObjectIgnoredStateChanged(bool is_ignored) {
   if (accessibility_manager_) {
-    accessibility_manager_->SetIgnored(is_ignored);
+    accessibility_manager_->SetIsIgnored(is_ignored);
     return;
   }
   // If the canvas is ignored, it doesn't need accessibility support.
@@ -2117,15 +2118,15 @@ void HTMLCanvasElement::OnAxObjectIgnoredStateChanged(bool is_ignored) {
     return;
   }
   accessibility_manager_ = MakeGarbageCollected<HTMLCanvasAccessibilityManager>(
-      GetDocument().GetTaskRunner(TaskType::kInternalDefault), is_ignored,
-      this);
-  UpdateCaptureRenderedText();
+      GetDocument().GetTaskRunner(TaskType::kInternalDefault), is_ignored, this,
+      HTMLCanvasAccessibilityManager::kAll);
 }
 
 // TODO(crbug.com/475512055): Remove this function once UKM collection is
 // not needed anymore.
 bool HTMLCanvasElement::GetNeedsAccessibilitySupportHeuristic() {
   if (accessibility_manager_) {
+    accessibility_manager_->EnableUpdatingHeuristicResults();
     return accessibility_manager_->NeedsA11ySupport();
   }
 
@@ -2138,7 +2139,7 @@ bool HTMLCanvasElement::GetNeedsAccessibilitySupportHeuristic() {
 
   auto* manager = MakeGarbageCollected<HTMLCanvasAccessibilityManager>(
       GetDocument().GetTaskRunner(TaskType::kInternalDefault), is_ignored, this,
-      /*is_for_ukm_only=*/true);
+      HTMLCanvasAccessibilityManager::kUpdateHeuristicResults);
 
   // The temporary manager is a GarbageCollected object allocated via Oilpan.
   // Since we do not retain a persistent reference to it, it will automatically
@@ -2149,6 +2150,7 @@ bool HTMLCanvasElement::GetNeedsAccessibilitySupportHeuristic() {
 void HTMLCanvasElement::RecordRenderedText(const String& text,
                                            const gfx::RectF& bounds,
                                            float font_height) {
+  EnsureAccessibilityManager();
   if (accessibility_manager_) {
     accessibility_manager_->RecordRenderedText(text, bounds, font_height);
   }
@@ -2166,17 +2168,38 @@ void HTMLCanvasElement::ClearRenderedText() {
   }
 }
 
-void HTMLCanvasElement::UpdateCaptureRenderedText() {
-  should_capture_rendered_text_ =
-      accessibility_manager_ &&
-      accessibility_manager_->ShouldCaptureRenderedText();
+void HTMLCanvasElement::UpdateCaptureRenderedText(bool capture) {
+  should_capture_rendered_text_ = capture;
+}
+
+bool HTMLCanvasElement::ShouldCaptureRenderedText() {
+  EnsureAccessibilityManager();
+  return should_capture_rendered_text_;
 }
 
 String HTMLCanvasElement::CanvasAnnotation() const {
-  if (accessibility_manager_) {
+  if (accessibility_manager_ && accessibility_manager_->NeedsA11ySupport()) {
     return accessibility_manager_->CanvasAnnotation();
   }
   return String();
+}
+
+void HTMLCanvasElement::EnsureAccessibilityManager() {
+  if (accessibility_manager_) {
+    return;
+  }
+
+  // If accessibility is enabled but `accessibility_manager_` is not created yet
+  // (AXObject is not created), create `accessibility_manager_` and assume the
+  // canvas is not ignored to start capturing rendered text.
+  if (base::FeatureList::IsEnabled(::features::kAccessibilityCanvas) &&
+      GetDocument().ExistingAXObjectCache()) {
+    accessibility_manager_ =
+        MakeGarbageCollected<HTMLCanvasAccessibilityManager>(
+            GetDocument().GetTaskRunner(TaskType::kInternalDefault),
+            /*is_ignored=*/false, this,
+            HTMLCanvasAccessibilityManager::kCollectTextRuns);
+  }
 }
 
 }  // namespace blink

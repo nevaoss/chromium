@@ -8,12 +8,7 @@
 #include <memory>
 #include <string>
 
-#include "base/memory/scoped_refptr.h"
 #include "remoting/host/host_extension.h"
-
-namespace base {
-class SingleThreadTaskRunner;
-}  // namespace base
 
 namespace remoting {
 
@@ -25,8 +20,7 @@ class SecurityKeyExtension : public HostExtension {
  public:
   static const char kCapability[];
 
-  explicit SecurityKeyExtension(
-      scoped_refptr<base::SingleThreadTaskRunner> file_task_runner);
+  SecurityKeyExtension();
 
   SecurityKeyExtension(const SecurityKeyExtension&) = delete;
   SecurityKeyExtension& operator=(const SecurityKeyExtension&) = delete;
@@ -38,10 +32,6 @@ class SecurityKeyExtension : public HostExtension {
   std::unique_ptr<HostExtensionSession> CreateExtensionSession(
       ClientSessionDetails* client_session_details,
       protocol::ClientStub* client_stub) override;
-
- private:
-  // Allows underlying auth handler to perform blocking file IO.
-  scoped_refptr<base::SingleThreadTaskRunner> file_task_runner_;
 };
 
 }  // namespace remoting

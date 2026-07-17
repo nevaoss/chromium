@@ -46,6 +46,7 @@
 #include "components/sync/service/sync_service.h"
 #include "components/sync/service/sync_user_settings.h"
 #include "google_apis/gaia/gaia_id.h"
+#include "url/gurl.h"
 
 #if !BUILDFLAG(IS_FUCHSIA)
 #include "components/variations/service/google_groups_manager.h"  // nogncheck
@@ -400,7 +401,13 @@ base::flat_set<int32_t> GetAutofillAmbientAutofillEligibleTiers() {
           case EntityTypeName::kKnownTravelerNumber:
             return false;
         }
+        if (base::FeatureList::IsEnabled(
+                features::debug::
+                    kAutofillAmbientAutofillSkipEligibilityChecks)) {
+          return true;
+        }
       }
+
       if (!EntityTypeIsEnabledInSettings(*prefs, *entity_type)) {
         return false;
       }
@@ -410,6 +417,10 @@ base::flat_set<int32_t> GetAutofillAmbientAutofillEligibleTiers() {
       }
       return policy_pref_enabled && autofill_ai_available;
     case AutofillAiAction::kAmbientAutofill:
+      if (base::FeatureList::IsEnabled(
+              features::debug::kAutofillAmbientAutofillSkipEligibilityChecks)) {
+        return true;
+      }
       // TODO(crbug.com/523168644): Check `kGeminiSettings` pref enablement.
       if (base::FeatureList::IsEnabled(
               features::kAutofillAiAvailableByDefault)) {
@@ -520,6 +531,10 @@ base::flat_set<int32_t> GetAutofillAmbientAutofillEligibleTiers() {
       break;
     }
     case AutofillAiAction::kAmbientAutofill: {
+      if (base::FeatureList::IsEnabled(
+              features::debug::kAutofillAmbientAutofillSkipEligibilityChecks)) {
+        return true;
+      }
       if (!subscription_service) {
         MaybeOutputReason(debug_message,
                           "Subscription eligibility service not available.");
@@ -637,6 +652,10 @@ base::flat_set<int32_t> GetAutofillAmbientAutofillEligibleTiers() {
       break;
     case AutofillAiAction::kAmbientAutofill:
     case AutofillAiAction::kTypeSupportsAmbientAutofillData: {
+      if (base::FeatureList::IsEnabled(
+              features::debug::kAutofillAmbientAutofillSkipEligibilityChecks)) {
+        return true;
+      }
       if (!IsPersonalContextEligible(personal_context_enablement_state)) {
         return false;
       }
@@ -878,6 +897,28 @@ bool SetAutofillAiOptInStatus(
          (signed_in_hash &&
           syncer::GetAccountKeyedPrefValue(prefs, prefs::kAutofillAiOptInStatus,
                                            *signed_in_hash));
+}
+
+bool IsAutofillAiEntityTypeBlockedByPolicy(const AutofillClient& client,
+                                           const GURL& url,
+                                           EntityType entity_type) {
+  switch (entity_type.name()) {
+    case EntityTypeName::kNationalIdCard:
+    case EntityTypeName::kPassport:
+    case EntityTypeName::kDriversLicense:
+      return client.IsAutofillTypeBlockedByPolicy(
+          url, AutofillClient::AutofillPolicyDataCategory::kIdentityDocs);
+    case EntityTypeName::kVehicle:
+    case EntityTypeName::kFlightReservation:
+    case EntityTypeName::kRedressNumber:
+    case EntityTypeName::kKnownTravelerNumber:
+      return client.IsAutofillTypeBlockedByPolicy(
+          url, AutofillClient::AutofillPolicyDataCategory::kTravel);
+    case EntityTypeName::kOrder:
+    case EntityTypeName::kShipment:
+      return false;
+  }
+  return false;
 }
 
 [[nodiscard]] bool IsAutofillAiDisabledByEnterprisePolicy(

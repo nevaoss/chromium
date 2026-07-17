@@ -8,6 +8,7 @@
 #include "base/run_loop.h"
 #include "base/test/task_environment.h"
 #include "base/uuid.h"
+#include "build/build_config.h"
 #include "components/bookmarks/browser/bookmark_model.h"
 #include "components/bookmarks/test/bookmark_test_helpers.h"
 #include "components/bookmarks/test/test_bookmark_client.h"
@@ -28,7 +29,7 @@ class BookmarksServiceImplTest : public testing::Test {
     client_ = client.get();
     model_ = std::make_unique<bookmarks::BookmarkModel>(std::move(client));
     model_->LoadEmptyForTest();
-    service_ = std::make_unique<BookmarksServiceImpl>(model_.get());
+    service_ = std::make_unique<BookmarksServiceImpl>(model_.get(), nullptr);
 
     mojo::PendingRemote<mojom::BookmarksService> pending_remote;
     service_->Accept(pending_remote.InitWithNewPipeAndPassReceiver());
@@ -44,7 +45,14 @@ class BookmarksServiceImplTest : public testing::Test {
   mojo::Remote<mojom::BookmarksService> remote_service_;
 };
 
-TEST_F(BookmarksServiceImplTest, GetBookmarks_Empty) {
+#if BUILDFLAG(IS_ANDROID)
+// TODO(crbug.com/527150892): Permanent folders are handled differently on
+// Android.
+#define MAYBE_GetBookmarks_Empty DISABLED_GetBookmarks_Empty
+#else
+#define MAYBE_GetBookmarks_Empty GetBookmarks_Empty
+#endif
+TEST_F(BookmarksServiceImplTest, MAYBE_GetBookmarks_Empty) {
   base::RunLoop run_loop;
   remote_service_->GetBookmarks(base::BindOnce(
       [](base::OnceClosure quit_closure, const bookmarks::BookmarkModel* model,
@@ -57,10 +65,19 @@ TEST_F(BookmarksServiceImplTest, GetBookmarks_Empty) {
         ASSERT_EQ(root_folder->children.size(), 3u);
         ASSERT_TRUE(root_folder->children[0]->is_folder());
         EXPECT_TRUE(root_folder->children[0]->get_folder()->children.empty());
+        // TODO(ffred): Add unit tests for `is_synced` field. We currently don't
+        // test it because we don't have a way to mock the managed bookmarks
+        // service.
+        EXPECT_EQ(root_folder->children[0]->get_folder()->permanent_folder_type,
+                  mojom::PermanentFolderType::kBookmarkBar);
         ASSERT_TRUE(root_folder->children[1]->is_folder());
         EXPECT_TRUE(root_folder->children[1]->get_folder()->children.empty());
+        EXPECT_EQ(root_folder->children[1]->get_folder()->permanent_folder_type,
+                  mojom::PermanentFolderType::kOther);
         ASSERT_TRUE(root_folder->children[2]->is_folder());
         EXPECT_TRUE(root_folder->children[2]->get_folder()->children.empty());
+        EXPECT_EQ(root_folder->children[2]->get_folder()->permanent_folder_type,
+                  mojom::PermanentFolderType::kMobile);
 
         EXPECT_TRUE(result.value()->stream.is_valid());
         std::move(quit_closure).Run();
@@ -139,6 +156,7 @@ TEST_F(BookmarksServiceImplTest, CreateBookmarkNode_Folder_Success) {
   const auto& created_folder_node = result.value()->get_folder();
   EXPECT_EQ(created_folder_node->title, "New Folder");
   EXPECT_TRUE(created_folder_node->children.empty());
+  EXPECT_FALSE(created_folder_node->permanent_folder_type.has_value());
 
   // Verify it was actually added to the model.
   const bookmarks::BookmarkNode* model_node = model_->GetNodeByUuid(

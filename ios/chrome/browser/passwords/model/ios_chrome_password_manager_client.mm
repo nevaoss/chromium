@@ -21,6 +21,7 @@
 #import "components/enterprise/connectors/core/features.h"
 #import "components/enterprise/connectors/core/reporting_event_router.h"
 #import "components/keyed_service/core/service_access_type.h"
+#import "components/password_manager/core/browser/features/password_features.h"
 #import "components/password_manager/core/browser/password_form.h"
 #import "components/password_manager/core/browser/password_form_manager_for_ui.h"
 #import "components/password_manager/core/browser/password_manager.h"
@@ -297,12 +298,26 @@ bool IOSChromePasswordManagerClient::IsSavingAndFillingEnabled(
     const GURL& url) const {
   return *saving_passwords_enabled_ && !IsOffTheRecord() &&
          !net::IsCertStatusError(GetMainFrameCertStatus()) &&
-         IsFillingEnabled(url);
+         IsFillingEnabled(url::Origin::Create(url), url);
 }
 
-bool IOSChromePasswordManagerClient::IsFillingEnabled(const GURL& url) const {
-  return url.DeprecatedGetOriginAsURL() !=
-         GURL(password_manager::kPasswordManagerAccountDashboardURL);
+bool IOSChromePasswordManagerClient::IsFillingEnabled(
+    const url::Origin& origin,
+    base::optional_ref<const GURL> url) const {
+  if (origin.opaque() &&
+      base::FeatureList::IsEnabled(
+          password_manager::features::kPasswordBlockOpaqueOrigins)) {
+    return false;
+  }
+
+  if (url && !base::FeatureList::IsEnabled(
+                 password_manager::features::kPasswordBlockOpaqueOrigins)) {
+    return url->DeprecatedGetOriginAsURL() !=
+           GURL(password_manager::kPasswordManagerAccountDashboardURL);
+  }
+
+  return origin != url::Origin::Create(GURL(
+                       password_manager::kPasswordManagerAccountDashboardURL));
 }
 
 bool IOSChromePasswordManagerClient::IsFieldFilledWithOtp(

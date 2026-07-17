@@ -985,7 +985,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Media.Audio.Android.DevicesChanged" enum="DeviceChangeKind"
-    expires_after="2026-10-20">
+    expires_after="2026-12-20">
   <owner>mjel@google.com</owner>
   <owner>tguilbert@chromium.org</owner>
   <owner>media-dev-uma@chromium.org</owner>
@@ -3261,6 +3261,17 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Media.CodedSizeGuessing" enum="CodedSizeGuessStatus"
+    expires_after="2026-12-23">
+  <owner>vasilyt@chromium.org</owner>
+  <owner>media-dev-uma@chromium.org</owner>
+  <summary>
+    Records if the guessed coded size and/or
+    MediaFormat.KEY_WIDTH/MediaFormat.KEY_HEIGHT were correct. Recorded once per
+    resolution change (including the first frame).
+  </summary>
+</histogram>
+
 <histogram name="Media.ContentAudioDecoder.CreateReaderSuccess"
     enum="BooleanSuccess" expires_after="2026-12-05">
   <owner>jophba@chromium.org</owner>
@@ -5504,7 +5515,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Media.MediaDevices.FindExistingRequestedDevice.NameMatched"
-    enum="Boolean" expires_after="2026-10-18">
+    enum="Boolean" expires_after="2026-12-20">
   <owner>agpalak@chromium.org</owner>
   <owner>olka@chromium.org</owner>
   <owner>rtc-meet-in-chrome@google.com</owner>
@@ -6621,6 +6632,27 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Media.PictureInPicture.AllowedVideoEncodedSize"
+    units="encoded" expires_after="2027-06-18">
+  <owner>bkeen@google.com</owner>
+  <owner>media-dev-uma@chromium.org</owner>
+  <summary>
+    Records the visual size in DIPs of the video that was allowed to enter
+    Picture-in-Picture after meeting the minimum size constraint.
+
+    The logged value is a 32-bit integer encoding width and height, both in DIPs
+    (Device Independent Pixels): - Upper 16 bits: Width in DIPs. - Lower 16
+    bits: Height in DIPs.
+
+    To decode the value: - width = sample &gt;&gt; 16 - height = sample &amp;
+    0xFFFF
+
+    Recorded when HTMLVideoElement::RequestEnterPictureInPicture() is called
+    with a minimum size constraint and the video's visual size is larger than or
+    equal to the requested minimum size.
+  </summary>
+</histogram>
+
 <histogram name="Media.PictureInPicture.Android.Action"
     enum="PictureInPictureButtonAction" expires_after="2026-11-29">
   <owner>philyan@chromium.org</owner>
@@ -6628,6 +6660,27 @@ chromium-metrics-reviews@google.com.
   <summary>
     Records which Picture-in-Picture button was clicked. This is recorded when
     the user clicks on a button in the Android Picture-in-Picture window.
+  </summary>
+</histogram>
+
+<histogram name="Media.PictureInPicture.BlockedVideoEncodedSize"
+    units="encoded" expires_after="2027-06-18">
+  <owner>bkeen@google.com</owner>
+  <owner>media-dev-uma@chromium.org</owner>
+  <summary>
+    Records the visual size in DIPs of the video that was blocked from entering
+    Picture-in-Picture due to a minimum size constraint.
+
+    The logged value is a 32-bit integer encoding width and height, both in DIPs
+    (Device Independent Pixels): - Upper 16 bits: Width in DIPs. - Lower 16
+    bits: Height in DIPs.
+
+    To decode the value: - width = sample &gt;&gt; 16 - height = sample &amp;
+    0xFFFF
+
+    Recorded when HTMLVideoElement::RequestEnterPictureInPicture() is called
+    with a minimum size constraint and the video's visual size is smaller than
+    the requested minimum size.
   </summary>
 </histogram>
 
@@ -6640,6 +6693,24 @@ chromium-metrics-reviews@google.com.
     ScopedDisallowPictureInPicture object. Records whether the closed
     picture-in-picture window was just opened or already existed when the
     ScopedDisallowPictureInPicture was created.
+  </summary>
+</histogram>
+
+<histogram name="Media.PictureInPicture.SizeConstraintResult"
+    enum="PictureInPictureSizeConstraintResult" expires_after="2027-06-18">
+  <owner>bkeen@google.com</owner>
+  <owner>media-dev-uma@chromium.org</owner>
+  <summary>
+    Records whether a Picture-in-Picture request, that carries a minimum size
+    constraint, meets the size constraint (SizeConstraintMet) or is blocked
+    because of it (SizeConstraintNotMet).
+
+    Note that this metric only tells us information about the size constraint. A
+    Picture-in-Picture request that meets the size constraint can still fail due
+    to other unrelated constraints.
+
+    Recorded when HTMLVideoElement::RequestEnterPictureInPicture() is called
+    with a minimum size constraint.
   </summary>
 </histogram>
 
@@ -7758,7 +7829,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Media.Ui.GetDisplayMedia.{Flow}.DialogDuration" units="ms"
-    expires_after="2026-06-28">
+    expires_after="2027-06-28">
   <owner>tovep@chromium.org</owner>
   <owner>eladalon@chromium.org</owner>
   <summary>

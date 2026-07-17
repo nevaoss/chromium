@@ -13,6 +13,8 @@
 #include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
 #include "base/metrics/histogram_functions.h"
+#include "base/metrics/user_metrics.h"
+#include "base/metrics/user_metrics_action.h"
 #include "base/notimplemented.h"
 #include "base/observer_list.h"
 #include "base/observer_list_types.h"
@@ -2012,15 +2014,26 @@ void GlicPageHandler::Zoom(mojom::ZoomAction zoom_action) {
   GlicZoomAction action_metric;
   switch (zoom_action) {
     case mojom::ZoomAction::kZoomIn:
-      action_metric = current_zoom >= 200 ? GlicZoomAction::kZoomInAtMax
-                                          : GlicZoomAction::kZoomIn;
+      if (current_zoom >= 200) {
+        action_metric = GlicZoomAction::kZoomInAtMax;
+        base::RecordAction(base::UserMetricsAction("Glic.ZoomInAtMax"));
+      } else {
+        action_metric = GlicZoomAction::kZoomIn;
+        base::RecordAction(base::UserMetricsAction("Glic.ZoomIn"));
+      }
       break;
     case mojom::ZoomAction::kZoomOut:
-      action_metric = current_zoom <= 100 ? GlicZoomAction::kZoomOutAtMin
-                                          : GlicZoomAction::kZoomOut;
+      if (current_zoom <= 100) {
+        action_metric = GlicZoomAction::kZoomOutAtMin;
+        base::RecordAction(base::UserMetricsAction("Glic.ZoomOutAtMin"));
+      } else {
+        action_metric = GlicZoomAction::kZoomOut;
+        base::RecordAction(base::UserMetricsAction("Glic.ZoomOut"));
+      }
       break;
     case mojom::ZoomAction::kReset:
       action_metric = GlicZoomAction::kReset;
+      base::RecordAction(base::UserMetricsAction("Glic.ZoomReset"));
       break;
   }
 

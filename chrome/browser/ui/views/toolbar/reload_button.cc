@@ -324,7 +324,7 @@ void ReloadButton::SetVisibleMode(Mode mode) {
         animated_image_container().PlayAnimation(
             {IDR_RELOAD_LOTTIE, GetForegroundColor(GetState()),
              views::SingleAnimatedImageContainer::AnimationDirection::kForward,
-             views::SingleAnimatedImageContainer::AnimationEndBehavior::kPause},
+             views::SingleAnimatedImageContainer::AnimationEndBehavior::kReset},
             config);
       }
       SetVectorIcons(*stop_icon_, *stop_touch_icon_);

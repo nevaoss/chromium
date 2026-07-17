@@ -20,19 +20,15 @@
 #include "third_party/blink/renderer/bindings/modules/v8/v8_gpu_texel_copy_texture_info.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_union_htmlcanvaselement_htmlimageelement_htmlvideoelement_imagebitmap_imagedata_offscreencanvas_videoframe.h"
 #include "third_party/blink/renderer/core/dom/dom_exception.h"
+#include "third_party/blink/renderer/core/dom/dom_node_ids.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
-#include "third_party/blink/renderer/core/html/canvas/canvas_rendering_context.h"
-#include "third_party/blink/renderer/core/html/canvas/canvas_rendering_context_host.h"
 #include "third_party/blink/renderer/core/html/canvas/element_image.h"
 #include "third_party/blink/renderer/core/html/canvas/html_canvas_element.h"
-#include "third_party/blink/renderer/core/html/canvas/image_data.h"
 #include "third_party/blink/renderer/core/html/canvas/predefined_color_space.h"
-#include "third_party/blink/renderer/core/html/html_image_element.h"
-#include "third_party/blink/renderer/core/imagebitmap/image_bitmap.h"
 #include "third_party/blink/renderer/core/offscreencanvas/offscreen_canvas.h"
 #include "third_party/blink/renderer/core/typed_arrays/dom_array_buffer.h"
-#include "third_party/blink/renderer/modules/webcodecs/video_frame.h"
 #include "third_party/blink/renderer/modules/webgpu/dawn_conversions.h"
+#include "third_party/blink/renderer/modules/webgpu/external_image_utils.h"
 #include "third_party/blink/renderer/modules/webgpu/external_texture_helper.h"
 #include "third_party/blink/renderer/modules/webgpu/gpu_adapter.h"
 #include "third_party/blink/renderer/modules/webgpu/gpu_buffer.h"
@@ -41,7 +37,6 @@
 #include "third_party/blink/renderer/modules/webgpu/gpu_texture.h"
 #include "third_party/blink/renderer/modules/webgpu/texture_utils.h"
 #include "third_party/blink/renderer/platform/graphics/accelerated_static_bitmap_image.h"
-#include "third_party/blink/renderer/platform/graphics/gpu/image_extractor.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/webgpu_callback.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/webgpu_mailbox_texture.h"
 #include "third_party/blink/renderer/platform/graphics/skia/skia_utils.h"
@@ -117,261 +112,33 @@ uint64_t AlignBytesPerRow(uint64_t bytesPerRow) {
          << kDawnBytesPerRowAlignmentBits;
 }
 
-struct ExternalSource {
-  ExternalTextureSource external_texture_source;
-  scoped_refptr<StaticBitmapImage> image = nullptr;
-  uint32_t width = 0;
-  uint32_t height = 0;
-  bool valid = false;
-};
-
-struct ExternalImageDstInfo {
-  bool premultiplied_alpha;
-  PredefinedColorSpace color_space;
-};
-
-// TODO(crbug.com/1471372): Avoid extra copy.
-scoped_refptr<StaticBitmapImage> GetImageFromImageData(
-    const ImageData* image_data) {
-  SkPixmap image_data_pixmap = image_data->GetSkPixmap();
-  SkImageInfo info = image_data_pixmap.info().makeColorType(kN32_SkColorType);
-  size_t image_pixels_size = info.computeMinByteSize();
-  if (SkImageInfo::ByteSizeOverflowed(image_pixels_size)) {
-    return nullptr;
-  }
-  sk_sp<SkData> image_pixels = TryAllocateSkData(image_pixels_size);
-  if (!image_pixels) {
-    return nullptr;
-  }
-  if (!image_data_pixmap.readPixels(info, image_pixels->writable_data(),
-                                    info.minRowBytes(), 0, 0)) {
-    return nullptr;
-  }
-  return StaticBitmapImage::Create(std::move(image_pixels), info,
-                                   gfx::HDRMetadata());
-}
-
-ExternalSource GetExternalSourceFromExternalImage(
+std::optional<ExternalImageSource> GetExternalSourceFromExternalImage(
     const V8GPUImageCopyExternalImageSource* external_image,
-    const ExternalImageDstInfo& external_image_dst_info,
+    const ExternalImageDstInfo& dst_info,
     ExceptionState& exception_state) {
-  ExternalSource external_source;
-  ExternalTextureSource external_texture_source;
-  CanvasImageSource* canvas_image_source = nullptr;
-  CanvasRenderingContextHost* canvas = nullptr;
-  VideoFrame* video_frame = nullptr;
-
   switch (external_image->GetContentType()) {
     case V8GPUImageCopyExternalImageSource::ContentType::kHTMLVideoElement:
-      external_texture_source = GetExternalTextureSourceFromVideoElement(
-          external_image->GetAsHTMLVideoElement(), exception_state);
-      if (external_texture_source.valid) {
-        external_source.external_texture_source = external_texture_source;
-        CHECK(external_texture_source.media_video_frame);
-
-        // Use display size to handle rotated video frame.
-        auto media_video_frame = external_texture_source.media_video_frame;
-
-        const auto transform =
-            media_video_frame->metadata().transformation.value_or(
-                media::kNoTransformation);
-        if (transform == media::kNoTransformation ||
-            transform.rotation == media::VIDEO_ROTATION_0 ||
-            transform.rotation == media::VIDEO_ROTATION_180) {
-          external_source.width =
-              static_cast<uint32_t>(media_video_frame->natural_size().width());
-          external_source.height =
-              static_cast<uint32_t>(media_video_frame->natural_size().height());
-        } else {
-          external_source.width =
-              static_cast<uint32_t>(media_video_frame->natural_size().height());
-          external_source.height =
-              static_cast<uint32_t>(media_video_frame->natural_size().width());
-        }
-        external_source.valid = true;
-      }
-      return external_source;
+      return GetExternalImageSourceFrom(external_image->GetAsHTMLVideoElement(),
+                                        dst_info, exception_state);
     case V8GPUImageCopyExternalImageSource::ContentType::kVideoFrame:
-      video_frame = external_image->GetAsVideoFrame();
-      external_texture_source =
-          GetExternalTextureSourceFromVideoFrame(video_frame, exception_state);
-      if (external_texture_source.valid) {
-        external_source.external_texture_source = external_texture_source;
-        CHECK(external_texture_source.media_video_frame);
-        external_source.width = video_frame->displayWidth();
-        external_source.height = video_frame->displayHeight();
-        external_source.valid = true;
-      }
-      return external_source;
+      return GetExternalImageSourceFrom(external_image->GetAsVideoFrame(),
+                                        dst_info, exception_state);
     case V8GPUImageCopyExternalImageSource::ContentType::kHTMLCanvasElement:
-      canvas_image_source = external_image->GetAsHTMLCanvasElement();
-      canvas = external_image->GetAsHTMLCanvasElement();
-      break;
+      return GetExternalImageSourceFrom(
+          external_image->GetAsHTMLCanvasElement(), dst_info, exception_state);
     case V8GPUImageCopyExternalImageSource::ContentType::kImageBitmap:
-      canvas_image_source = external_image->GetAsImageBitmap();
-      break;
-    case V8GPUImageCopyExternalImageSource::ContentType::kImageData: {
-      auto image = GetImageFromImageData(external_image->GetAsImageData());
-      if (!image) {
-        exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
-                                          "Cannot get image.");
-        return external_source;
-      }
-      external_source.image = image;
-      external_source.width = static_cast<uint32_t>(image->width());
-      external_source.height = static_cast<uint32_t>(image->height());
-      external_source.valid = true;
-      return external_source;
-    }
+      return GetExternalImageSourceFrom(external_image->GetAsImageBitmap(),
+                                        dst_info, exception_state);
+    case V8GPUImageCopyExternalImageSource::ContentType::kImageData:
+      return GetExternalImageSourceFrom(external_image->GetAsImageData(),
+                                        dst_info, exception_state);
     case V8GPUImageCopyExternalImageSource::ContentType::kHTMLImageElement:
-      canvas_image_source = external_image->GetAsHTMLImageElement();
-      break;
+      return GetExternalImageSourceFrom(external_image->GetAsHTMLImageElement(),
+                                        dst_info, exception_state);
     case V8GPUImageCopyExternalImageSource::ContentType::kOffscreenCanvas:
-      canvas_image_source = external_image->GetAsOffscreenCanvas();
-      canvas = external_image->GetAsOffscreenCanvas();
-      break;
+      return GetExternalImageSourceFrom(external_image->GetAsOffscreenCanvas(),
+                                        dst_info, exception_state);
   }
-
-  // Neutered external image.
-  if (canvas_image_source->IsNeutered()) {
-    exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
-                                      "External Image has been detached.");
-    return external_source;
-  }
-
-  // Placeholder source is not allowed.
-  if (canvas_image_source->IsPlaceholder()) {
-    exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
-                                      "Cannot copy from a canvas that has had "
-                                      "transferControlToOffscreen() called.");
-    return external_source;
-  }
-
-  // Canvas element contains cross-origin data and may not be loaded
-  if (canvas_image_source->WouldTaintOrigin()) {
-    exception_state.ThrowSecurityError(
-        "The external image is tainted by cross-origin data.");
-    return external_source;
-  }
-
-  if (canvas &&
-      !(canvas->IsWebGL() || canvas->IsRenderingContext2D() ||
-        canvas->IsWebGPU() || canvas->IsImageBitmapRenderingContext())) {
-    exception_state.ThrowDOMException(
-        DOMExceptionCode::kOperationError,
-        "CopyExternalImageToTexture doesn't support canvas without rendering "
-        "context");
-    return external_source;
-  }
-
-  // HTMLCanvasElement and OffscreenCanvas won't care image orientation. But for
-  // ImageBitmap, use kRespectImageOrientation will make ElementSize() behave
-  // as Size().
-  gfx::SizeF image_size = canvas_image_source->ElementSize(
-      gfx::SizeF(),  // It will be ignored and won't affect size.
-      kRespectImageOrientation);
-
-  // The alpha op will happen at CopyTextureForBrowser() and
-  // CopyContentFromCPU(). This will help combine more transforms (e.g. flipY,
-  // color-space) into a single blit.
-  // TODO(https://crbug.com/40760113): Ensure unpremultiplied images will live
-  // on GPU if possible.
-  SourceImageStatus source_image_status = kInvalidSourceImageStatus;
-  auto image_for_canvas = canvas_image_source->GetSourceImageForCanvas(
-      &source_image_status, image_size);
-  if (source_image_status != kNormalSourceImageStatus) {
-    // Canvas back resource is broken, zero size, incomplete or invalid.
-    // but developer can do nothing. Return nullptr and issue an noop.
-    return external_source;
-  }
-
-  // TODO(crbug.com/1471372): It would be better if GetSourceImageForCanvas()
-  // would always return a StaticBitmapImage.
-  sk_sp<SkImage> sk_image = nullptr;
-  bool image_is_default_orientation = image_for_canvas->HasDefaultOrientation();
-  if (auto* image = DynamicTo<StaticBitmapImage>(image_for_canvas.get())) {
-    if (image_is_default_orientation) {
-      external_source.image = image;
-    } else {
-      // Handle non default orientation for StaticBitmapImage and ensure
-      // it is not texture backed.
-      sk_image = image->PaintImageForCurrentFrame().GetSwSkImage();
-
-      if (!sk_image) {
-        return external_source;
-      }
-    }
-  } else {
-    // HTMLImageElement input.
-    // Below logic refs to ImageBitmap creation with ImageElementBase.
-    // ImageExtractor recruit ImageDecoder to do decoder when:
-    // - image is a BitmapImage, it usually happens when image contains coded
-    // data.
-    //   e.g. loaded image files *.png, *.jpg, *.bmp, *.ico, *.webp, *.avif,
-    //   *.gif.
-    // - alphaType, colorSpace are not equal to dst. Issuing a redecode to
-    // generate
-    //   required results.
-    ImageExtractor image_extractor(image_for_canvas.get(),
-                                   external_image_dst_info.premultiplied_alpha
-                                       ? kPremul_SkAlphaType
-                                       : kUnpremul_SkAlphaType,
-                                   PredefinedColorSpaceToSkColorSpace(
-                                       external_image_dst_info.color_space));
-    sk_image = image_extractor.GetSkImage();
-
-    if (!sk_image) {
-      return external_source;
-    }
-    // It is possible that some HTMLImageElement contains content which cannot
-    // be decoded. e.g svg files. Using this path to handle them by converting
-    // it to SkBitmap first and raster it.
-    if (sk_image->isLazyGenerated()) {
-      SkBitmap bitmap;
-      auto image_info = sk_image->imageInfo();
-      bitmap.allocPixels(image_info, image_info.minRowBytes());
-      if (!sk_image->readPixels(bitmap.pixmap(), 0, 0)) {
-        return external_source;
-      }
-
-      sk_image = SkImages::RasterFromBitmap(bitmap);
-    }
-  }
-
-  if (sk_image) {
-    CHECK(!external_source.image);
-
-    // Create UnacceleratedStaticBitmapImage to create a most suitable
-    // PaintImageBuilder. Use the builder to create PaintImage internally.
-    // Store the orientation metadata but no transforms apply to the content.
-    auto image = UnacceleratedStaticBitmapImage::Create(
-        std::move(sk_image), image_for_canvas->Orientation());
-
-    // Recruit Image::ResizeAndOrientImage() to apply transformation based on
-    // orientation metadata. This API helps rotate contents based on orientation
-    // metadata. After the transformation, reading content in default
-    // orientation get the transformed results. Recreate unaccelerated static
-    // bitmap with the transformed content with default orientation for post
-    // processing.
-    if (!image_is_default_orientation) {
-      PaintImage paint_image = image->PaintImageForCurrentFrame();
-      paint_image = Image::ResizeAndOrientImage(
-          paint_image, image_for_canvas->Orientation(), gfx::Vector2dF(1, 1), 1,
-          kInterpolationNone);
-
-      // Have default orientation now.
-      image = UnacceleratedStaticBitmapImage::Create(std::move(paint_image));
-    }
-
-    external_source.image = image;
-  }
-
-  external_source.width = static_cast<uint32_t>(external_source.image->width());
-  external_source.height =
-      static_cast<uint32_t>(external_source.image->height());
-  external_source.valid = true;
-
-  return external_source;
 }
 
 // CopyExternalImageToTexture() needs to set src/dst AlphaMode, flipY and color
@@ -686,10 +453,15 @@ void GPUQueue::copyExternalImageToTexture(
     return;
   }
 
-  ExternalSource source = GetExternalSourceFromExternalImage(
-      copyImage->source(), {destination->premultipliedAlpha(), color_space},
-      exception_state);
-  if (!source.valid) {
+  std::optional<ExternalImageSource> source =
+      GetExternalSourceFromExternalImage(
+          copyImage->source(), {destination->premultipliedAlpha(), color_space},
+          exception_state);
+  if (!source) {
+    if (!exception_state.HadException()) {
+      exception_state.ThrowDOMException(DOMExceptionCode::kOperationError,
+                                        "Could not get the source image");
+    }
     device_->AddConsoleWarning(
         "CopyExternalImageToTexture(): Browser fails extracting valid resource"
         "from external image. This API call will return early.");
@@ -711,10 +483,10 @@ void GPUQueue::copyExternalImageToTexture(
   }
 
   const bool copyRectOutOfBounds =
-      source.width < origin_in_external_image.x ||
-      source.height < origin_in_external_image.y ||
-      source.width - origin_in_external_image.x < dawn_copy_size.width ||
-      source.height - origin_in_external_image.y < dawn_copy_size.height;
+      source->width < origin_in_external_image.x ||
+      source->height < origin_in_external_image.y ||
+      source->width - origin_in_external_image.x < dawn_copy_size.width ||
+      source->height - origin_in_external_image.y < dawn_copy_size.height;
 
   if (copyRectOutOfBounds) {
     exception_state.ThrowDOMException(
@@ -742,18 +514,18 @@ void GPUQueue::copyExternalImageToTexture(
         "({width|height|depthOrArrayLayers} equals to 0).");
   }
 
-  if (source.external_texture_source.valid) {
+  if (source->external_texture_source.valid) {
     // Use display size which is based on natural size but considering
     // transformation metadata.
-    wgpu::Extent2D video_frame_display_size = {source.width, source.height};
+    wgpu::Extent2D video_frame_display_size = {source->width, source->height};
     CopyFromVideoElement(
-        source.external_texture_source, video_frame_display_size,
+        source->external_texture_source, video_frame_display_size,
         origin_in_external_image, dawn_copy_size, dawn_destination,
         destination->premultipliedAlpha(), color_space, copyImage->flipY());
     return;
   }
 
-  if (!CopyFromCanvasSourceImage(source.image.get(), origin_in_external_image,
+  if (!CopyFromCanvasSourceImage(source->image.get(), origin_in_external_image,
                                  dawn_copy_size, dawn_destination,
                                  destination->premultipliedAlpha(), color_space,
                                  copyImage->flipY())) {
@@ -951,8 +723,7 @@ void GPUQueue::CopyFromVideoElement(
   // Create External Texture with dst color space. No color space conversion
   // happens during copy step.
   ExternalTexture external_texture =
-      CreateExternalTexture(device_, dst_color_space, source.media_video_frame,
-                            source.video_renderer);
+      CreateExternalTexture(device_, dst_color_space, source.media_video_frame);
 
   wgpu::CopyTextureForBrowserOptions options = {
       // Extracting contents from HTMLVideoElement (e.g.

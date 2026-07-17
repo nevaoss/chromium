@@ -592,7 +592,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Security.iOS.KeychainMigration.Result"
-    enum="IOSKeychainMigrationResult" expires_after="2026-10-20">
+    enum="IOSKeychainMigrationResult" expires_after="2026-12-20">
   <owner>marq@chromium.org</owner>
   <owner>bling-flags@google.com</owner>
   <summary>
@@ -601,16 +601,6 @@ chromium-metrics-reviews@google.com.
     kSecAttrAccessibleWhenUnlocked but should have
     kSecAttrAccessibleAfterFirstUnlock. Recorded on iOS only, after a migration
     attempt has finished.
-  </summary>
-</histogram>
-
-<histogram name="Security.iOS.KeychainMigration.UserStatus"
-    enum="IOSKeychainMigrationUserStatus" expires_after="2026-10-20">
-  <owner>marq@chromium.org</owner>
-  <owner>bling-flags@google.com</owner>
-  <summary>
-    Tracks the overall migration status of the keychain for a user. Recorded
-    once per cold start on iOS.
   </summary>
 </histogram>
 
@@ -1075,7 +1065,7 @@ chromium-metrics-reviews@google.com.
   <summary>
     The maximum number of BrowsingInstances seen in a RenderProcessHost over its
     lifetime. Recorded once when
-    ChildProcessImpl::SecurityState::~SecurityState() is invoked.
+    ChildProcessSecurityPolicyImpl::ProcessState::~ProcessState() is invoked.
   </summary>
 </histogram>
 
@@ -1273,7 +1263,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="SiteIsolation.ProxyCount" units="proxies"
-    expires_after="2026-10-18">
+    expires_after="2026-12-20">
   <owner>alexmos@chromium.org</owner>
   <owner>creis@chromium.org</owner>
   <owner>lukasza@chromium.org</owner>

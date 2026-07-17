@@ -58,10 +58,8 @@ after discussions on the right group.
       <annotation id="help_content_provider"/>
       <annotation id="ime_url_downloader"/>
       <annotation id="kiosk_app_icon"/>
-      <annotation id="launcher_item_suggest"/>
       <annotation id="management_ui_customer_logo"/>
       <annotation id="nearby_connections_wifi_lan"/>
-      <annotation id="network_traversal_ice_config_fetcher"/>
       <annotation id="quick_answers_spellchecker"/>
       <annotation id="remote_apps_image_downloader"/>
       <annotation id="remote_command_screenshot"/>
@@ -409,6 +407,7 @@ after discussions on the right group.
       <annotation id="drive_thumbnail_source"/>
       <annotation id="partial_translate_one_platform"/>
       <annotation id="contextual_search_fpop_service"/>
+      <annotation id="web_install_manifest_fetcher"/>
     </sender>
   </group>
   <group name="Admin Features">

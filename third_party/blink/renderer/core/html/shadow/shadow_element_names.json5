@@ -89,6 +89,10 @@
       name: "select-input",
       Symbol: "kSelectInput",
     },
+    {
+      name: "select-listbox",
+      Symbol: "kSelectListbox",
+    },
 
     //
     // Pseudo names for UA shadow elements.
@@ -125,6 +129,10 @@
     {
       name: "-internal-select-autofill-preview-text",
       Symbol: "kSelectAutofillPreviewText",
+    },
+    {
+      name: "-internal-select-options-slot",
+      Symbol: "kPseudoSelectOptionsSlot",
     },
     {
       name: "-webkit-calendar-picker-indicator",

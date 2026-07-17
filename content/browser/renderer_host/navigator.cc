@@ -15,7 +15,6 @@
 #include "base/strings/string_util.h"
 #include "base/time/time.h"
 #include "base/types/optional_util.h"
-#include "content/browser/child_process_security_policy_impl.h"
 #include "content/browser/interest_group/interest_group_features.h"
 #include "content/browser/process_lock.h"
 #include "content/browser/renderer_host/debug_urls.h"
@@ -31,6 +30,7 @@
 #include "content/browser/renderer_host/render_frame_host_delegate.h"
 #include "content/browser/renderer_host/render_frame_host_impl.h"
 #include "content/browser/renderer_host/render_view_host_impl.h"
+#include "content/browser/security/cpsp/child_process_security_policy_impl.h"
 #include "content/browser/site_info.h"
 #include "content/browser/site_instance_impl.h"
 #include "content/browser/web_package/prefetched_signed_exchange_cache.h"
@@ -875,8 +875,6 @@ void Navigator::Navigate(std::unique_ptr<NavigationRequest> request,
   base::TimeDelta nav_start_diff;
   bool is_on_target_origin =
       GetContentClient()->IsUrlInIgnoreDuplicateNavsOrigins(request->GetURL());
-  auto prefs =
-      frame_tree_node->current_frame_host()->GetOrCreateWebPreferences();
   if (ongoing_navigation_request &&
       ongoing_navigation_request->IsRendererInitiated() ==
           request->IsRendererInitiated() &&
@@ -923,7 +921,7 @@ void Navigator::Navigate(std::unique_ptr<NavigationRequest> request,
         (request->common_params().navigation_start -
          ongoing_navigation_request->common_params().navigation_start);
     start_diff_under_threshold =
-        nav_start_diff <= prefs.duplicate_nav_threshold;
+        nav_start_diff <= GetContentClient()->GetIgnoreDuplicateNavsThreshold();
     if (start_diff_under_threshold) {
       base::UmaHistogramEnumeration(
           "Navigation.BrowserInitiated.DuplicateNavCookieStatus.UnderThreshold",
@@ -995,7 +993,7 @@ void Navigator::Navigate(std::unique_ptr<NavigationRequest> request,
         }
       }
     }
-    if (prefs.ignore_duplicate_nav_enabled && start_diff_under_threshold &&
+    if (start_diff_under_threshold &&
         GetContentClient()->ShouldIgnoreDuplicateNavs(
             request->GetURL(), request->IsRendererInitiated())) {
       request->set_navigation_discard_reason(

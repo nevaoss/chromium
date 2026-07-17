@@ -32,6 +32,8 @@ BASE_FEATURE(kEnableNTPBackgroundImageCache, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kConsistentLogoDoodleHeight, base::FEATURE_DISABLED_BY_DEFAULT);
 
+BASE_FEATURE(kNewTabPageRedesign, base::FEATURE_DISABLED_BY_DEFAULT);
+
 #pragma mark - Feature parameters
 
 // Feature parameters for `kOverrideFeedSettings`.
@@ -105,4 +107,9 @@ bool IsConsistentLogoDoodleHeightEnabled() {
 
 bool IsNTPHeaderTransformsForAnimationsEnabled() {
   return base::FeatureList::IsEnabled(kNTPHeaderUseTransformsForAnimations);
+}
+
+bool IsNTPRedesignEnabled() {
+  return base::FeatureList::IsEnabled(kNewTabPageRedesign) &&
+         ui::GetDeviceFormFactor() != ui::DEVICE_FORM_FACTOR_TABLET;
 }

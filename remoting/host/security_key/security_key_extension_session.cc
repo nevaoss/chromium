@@ -11,7 +11,6 @@
 #include "base/json/json_reader.h"
 #include "base/json/json_writer.h"
 #include "base/logging.h"
-#include "base/task/single_thread_task_runner.h"
 #include "base/values.h"
 #include "remoting/base/logging.h"
 #include "remoting/host/client_session_details.h"
@@ -65,16 +64,14 @@ namespace remoting {
 
 SecurityKeyExtensionSession::SecurityKeyExtensionSession(
     ClientSessionDetails* client_session_details,
-    protocol::ClientStub* client_stub,
-    scoped_refptr<base::SingleThreadTaskRunner> file_task_runner)
+    protocol::ClientStub* client_stub)
     : client_stub_(client_stub) {
   DCHECK(client_stub_);
 
   security_key_auth_handler_ = remoting::SecurityKeyAuthHandler::Create(
       client_session_details,
       base::BindRepeating(&SecurityKeyExtensionSession::SendMessageToClient,
-                          base::Unretained(this)),
-      file_task_runner);
+                          base::Unretained(this)));
 }
 
 SecurityKeyExtensionSession::~SecurityKeyExtensionSession() {

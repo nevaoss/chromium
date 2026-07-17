@@ -31,6 +31,9 @@
   <div id="target2" overscrollarea>Target 2</div>
   <div id="dup" class="one" overscrollarea>Dup 1</div>
   <div id="dup" class="two" overscrollarea>Dup 2</div>
+  <div>
+    <div id="nested" overscrollarea>Nested</div>
+  </div>
 </div>
 <button id="invoker" command="toggle-overscroll"></button>
 
@@ -156,4 +159,17 @@ test((t) => {
   container.insertBefore(dup2, dup1);
   verifyTarget(invoker, dup2); // New first element wins after DOM move, old loses
 }, "Multiple elements matching idref, first one in DOM order wins");
+
+test((t) => {
+  const nested = document.getElementById('nested');
+  assert_not_equals(getComputedStyle(nested).interactivity, "inert", "nested element should not be inert initially");
+
+  t.add_cleanup(() => invoker.removeAttribute('commandfor'));
+  invoker.setAttribute('commandfor', 'nested');
+
+  invoker.click();
+  document.body.offsetTop;
+
+  assert_not_equals(getComputedStyle(nested).interactivity, "inert", "nested element should stay non-inert after toggle");
+}, "Nested element with overscrollarea attribute is ignored and does not become inert");
 </script>

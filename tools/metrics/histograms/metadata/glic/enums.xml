@@ -556,7 +556,7 @@ chromium-metrics-reviews@google.com.
   <int value="23" label="Context menu"/>
   <int value="24" label="Text selection nudge"/>
   <int value="25" label="Text selection widget"/>
-  <int value="26" label="Zero-state Auto-summarize"/>
+  <int value="26" label="(Obsolete) Zero-state Auto-summarize"/>
   <int value="27" label="From the universal cart"/>
   <int value="28" label="Experimental triggering"/>
   <int value="29" label="Password change"/>
@@ -588,6 +588,7 @@ chromium-metrics-reviews@google.com.
   <int value="13" label="Additional context no client frame"/>
   <int value="14" label="Additional context no clipboard metadata"/>
   <int value="15" label="Instance not found"/>
+  <int value="16" label="Profile not enabled"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/glic/public/glic_invoke_options.h:GlicInvokeError) -->
@@ -670,6 +671,7 @@ chromium-metrics-reviews@google.com.
   <int value="17" label="Not Pinned To Tabstrip"/>
   <int value="18" label="Profile Not Eligible (Location Mismatch)"/>
   <int value="19" label="Profile Not Eligible (Account Capabilities)"/>
+  <int value="20" label="Device low memory"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/glic/glic_profile_manager.h:GlicPrewarmingChecksResult) -->
@@ -886,10 +888,14 @@ chromium-metrics-reviews@google.com.
   <int value="102" label="Text selection widget, attached, audio mode."/>
   <int value="103" label="Text selection widget, detached, text mode."/>
   <int value="104" label="Text selection widget, detached, audio mode."/>
-  <int value="105" label="Zero-state Auto-summarize, attached, text mode."/>
-  <int value="106" label="Zero-state Auto-summarize, attached, audio mode."/>
-  <int value="107" label="Zero-state Auto-summarize, detached, text mode."/>
-  <int value="108" label="Zero-state Auto-summarize, detached, audio mode."/>
+  <int value="105"
+      label="(Obsolete) Zero-state Auto-summarize, attached, text mode."/>
+  <int value="106"
+      label="(Obsolete) Zero-state Auto-summarize, attached, audio mode."/>
+  <int value="107"
+      label="(Obsolete) Zero-state Auto-summarize, detached, text mode."/>
+  <int value="108"
+      label="(Obsolete) Zero-state Auto-summarize, detached, audio mode."/>
   <int value="109" label="Universal cart, attached, text mode."/>
   <int value="110" label="Universal cart, attached, audio mode."/>
   <int value="111" label="Universal cart, detached, text mode."/>

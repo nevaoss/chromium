@@ -1804,22 +1804,33 @@ INSTANTIATE_TEST_SUITE_P(,
                          &ParamToTestSuffix);
 
 struct HatsTestParams {
-  bool enable_refreshed_view = false;
+  FirstRunVersion::Value flow_version = FirstRunVersion::Legacy{};
   base::test::FeatureRef hats_feature;
   std::string_view hats_trigger;
   std::string_view test_suffix;
+  std::vector<std::string> forced_showcase_steps;
 };
 
-// TODO(crbug.com/497677517): Add tests for HaTS surveys in the revamped FRE.
 const HatsTestParams kHatsTestParams[] = {
-    {.enable_refreshed_view = false,
+    {.flow_version = FirstRunVersion::Legacy{},
      .hats_feature = switches::kBeforeFirstRunDesktopRefreshSurvey,
      .hats_trigger = kHatsSurveyTriggerIdentityFirstRunCompleted,
      .test_suffix = "BeforeRefreshSurvey"},
-    {.enable_refreshed_view = true,
+    {.flow_version = FirstRunVersion::Refreshed{},
      .hats_feature = switches::kFirstRunDesktopRefreshSurvey,
      .hats_trigger = kHatsSurveyTriggerIdentityRefreshedFirstRunCompleted,
-     .test_suffix = "RefreshSurvey"}};
+     .test_suffix = "RefreshSurvey"},
+    {.flow_version = FirstRunVersion::Revamped{},
+     .hats_feature = switches::kFirstRunDesktopRevampSurvey,
+     .hats_trigger = kHatsSurveyTriggerFirstRunDesktopRevampCompleted,
+     .test_suffix = "RevampSurvey",
+     .forced_showcase_steps = {"default-browser"}},
+    {.flow_version = FirstRunVersion::Revamped{},
+     .hats_feature = switches::kFirstRunDesktopRevampNoFeatureShowcaseSurvey,
+     .hats_trigger =
+         kHatsSurveyTriggerFirstRunDesktopRevampNoFeatureShowcaseCompleted,
+     .test_suffix = "RevampNoFeatureShowcaseSurvey",
+     .forced_showcase_steps = {}}};
 
 class FirstRunWithHatsInteractiveUiTest
     : public WithParamInterface<HatsTestParams>,
@@ -1827,12 +1838,8 @@ class FirstRunWithHatsInteractiveUiTest
  public:
   FirstRunWithHatsInteractiveUiTest()
       : FirstRunInteractiveUiBaseTest(
-            TestParam{
-                .flow_version =
-                    GetParam().enable_refreshed_view
-                        ? FirstRunVersion::Value{FirstRunVersion::Refreshed{}}
-                        : FirstRunVersion::Value{FirstRunVersion::Legacy{}}},
-            /*fixture_enabled_features=*/{{*GetParam().hats_feature, {}}}) {}
+            TestParam{.flow_version = GetParam().flow_version},
+            {{*GetParam().hats_feature, {}}}) {}
 
   void SetUpOnMainThread() override {
     FirstRunInteractiveUiBaseTest::SetUpOnMainThread();
@@ -1854,6 +1861,14 @@ class FirstRunWithHatsInteractiveUiTest
 
   std::string hats_trigger() const {
     return std::string(GetParam().hats_trigger);
+  }
+
+  std::vector<std::string> GetForcedFeatureShowcaseSteps() const override {
+    return GetParam().forced_showcase_steps;
+  }
+
+  bool IsFeatureShowcaseEligible() const {
+    return !GetParam().forced_showcase_steps.empty();
   }
 
   InteractiveTestApi::MultiStep DeclineHistorySync() {
@@ -1903,7 +1918,11 @@ IN_PROC_BROWSER_TEST_P(FirstRunWithHatsInteractiveUiTest,
       views::ElementTrackerViews::GetContextForView(view()),
       WaitForShow(kProfilePickerViewId),
       InstrumentNonTabWebView(kWebContentsId, web_view()),
-      CompleteIntroStep(/*sign_in=*/false));
+      CompleteIntroStep(/*sign_in=*/false),
+      If([this]() { return IsFeatureShowcaseEligible(); },
+         Then(Steps(
+             WaitForShow(kProfilePickerToolbarStartBrowsingButtonElementId),
+             PressButton(kProfilePickerToolbarStartBrowsingButtonElementId)))));
 
   WaitForPickerClosed();
 
@@ -1985,7 +2004,22 @@ IN_PROC_BROWSER_TEST_P(FirstRunWithHatsInteractiveUiTestWithSyncService,
 
   RunTestSequenceInContext(
       views::ElementTrackerViews::GetContextForView(view()),
-      DeclineHistorySync());
+      If(
+          [this]() {
+            return UseRevampedView() &&
+                   // TODO(crbug.com/500274413): Remove this condition once the
+                   // 'Sign-in celebration' is shown to sync users too.
+                   syncer::IsReplaceSyncPromosWithSignInPromosEnabled();
+          },
+          Then(WaitForWebContentsNavigation(
+              kWebContentsId,
+              GURL(chrome::kChromeUIIntroURL)
+                  .Resolve(chrome::kChromeUIIntroSignInCelebrationSubPage)))),
+      DeclineHistorySync(),
+      If([this]() { return IsFeatureShowcaseEligible(); },
+         Then(Steps(
+             WaitForShow(kProfilePickerToolbarStartBrowsingButtonElementId),
+             PressButton(kProfilePickerToolbarStartBrowsingButtonElementId)))));
 
   WaitForPickerClosed();
 
@@ -2061,7 +2095,11 @@ IN_PROC_BROWSER_TEST_P(FirstRunWithHatsInteractiveUiTestWithSyncService,
               : GURL(chrome::kChromeUIManagedUserProfileNoticeUrl)),
       EnsurePresent(kWebContentsId, GetAcceptManagementButtonQuery()),
       PressJsButton(kWebContentsId, GetAcceptManagementButtonQuery()),
-      DeclineHistorySync());
+      DeclineHistorySync(),
+      If([this]() { return IsFeatureShowcaseEligible(); },
+         Then(Steps(
+             WaitForShow(kProfilePickerToolbarStartBrowsingButtonElementId),
+             PressButton(kProfilePickerToolbarStartBrowsingButtonElementId)))));
 
   WaitForPickerClosed();
 
@@ -2113,7 +2151,22 @@ IN_PROC_BROWSER_TEST_P(FirstRunWithHatsAndUnrelatedFeatureSetInteractiveUiTest,
 
   RunTestSequenceInContext(
       views::ElementTrackerViews::GetContextForView(view()),
-      DeclineHistorySync());
+      If(
+          [this]() {
+            return UseRevampedView() &&
+                   // TODO(crbug.com/500274413): Remove this condition once the
+                   // 'Sign-in celebration' is shown to sync users too.
+                   syncer::IsReplaceSyncPromosWithSignInPromosEnabled();
+          },
+          Then(WaitForWebContentsNavigation(
+              kWebContentsId,
+              GURL(chrome::kChromeUIIntroURL)
+                  .Resolve(chrome::kChromeUIIntroSignInCelebrationSubPage)))),
+      DeclineHistorySync(),
+      If([this]() { return IsFeatureShowcaseEligible(); },
+         Then(Steps(
+             WaitForShow(kProfilePickerToolbarStartBrowsingButtonElementId),
+             PressButton(kProfilePickerToolbarStartBrowsingButtonElementId)))));
 
   WaitForPickerClosed();
 
@@ -2127,15 +2180,25 @@ INSTANTIATE_TEST_SUITE_P(
     FirstRunWithHatsAndUnrelatedFeatureSetInteractiveUiTest,
     Values(
         HatsTestParams{
-            .enable_refreshed_view = true,
+            .flow_version = FirstRunVersion::Refreshed{},
             .hats_feature = switches::kBeforeFirstRunDesktopRefreshSurvey,
             .hats_trigger = kHatsSurveyTriggerIdentityFirstRunCompleted,
             .test_suffix = "BeforeRefreshSurvey"},
-        HatsTestParams{.enable_refreshed_view = false,
+        HatsTestParams{.flow_version = FirstRunVersion::Legacy{},
                        .hats_feature = switches::kFirstRunDesktopRefreshSurvey,
                        .hats_trigger =
                            kHatsSurveyTriggerIdentityRefreshedFirstRunCompleted,
-                       .test_suffix = "RefreshSurvey"}),
+                       .test_suffix = "RefreshSurvey"},
+        HatsTestParams{.flow_version = FirstRunVersion::Revamped{},
+                       .hats_feature = switches::kFirstRunDesktopRefreshSurvey,
+                       .hats_trigger =
+                           kHatsSurveyTriggerIdentityRefreshedFirstRunCompleted,
+                       .test_suffix = "RefreshSurveyWithRevampFlow"},
+        HatsTestParams{
+            .flow_version = FirstRunVersion::Refreshed{},
+            .hats_feature = switches::kFirstRunDesktopRevampSurvey,
+            .hats_trigger = kHatsSurveyTriggerFirstRunDesktopRevampCompleted,
+            .test_suffix = "RevampSurveyWithRefreshedFlow"}),
     [](const TestParamInfo<HatsTestParams>& info) {
       return std::string(info.param.test_suffix);
     });
@@ -2291,6 +2354,12 @@ class FirstRunRevampInteractiveUiTest : public FirstRunInteractiveUiBaseTest {
             {{syncer::kReplaceSyncPromosWithSignInPromos, {}}}) {}
 
  protected:
+  GURL GetFeatureShowcaseUrl() const {
+    return net::AppendQueryParameter(
+        GURL(chrome::kChromeUIFeatureShowcaseURL), "steps",
+        base::JoinString(GetForcedFeatureShowcaseSteps(), ","));
+  }
+
   // FirstRunInteractiveUiBaseTest:
   std::vector<std::string> GetForcedFeatureShowcaseSteps() const override {
     return {"default-browser"};
@@ -2394,6 +2463,9 @@ IN_PROC_BROWSER_TEST_F(FirstRunRevampInteractiveUiTest,
 
   Mock::VerifyAndClearExpectations(mock_sounds_manager_ptr);
 
+  histogram_tester().ExpectUniqueSample(
+      "ProfilePicker.FREFlow.MediaEffects.Disable", Step::kIntro, 1);
+
   // Verify that clicking on the effects control button resumes the ambient
   // sound, and DOES NOT play the one-shot sound(s) again.
   EXPECT_CALL(*mock_sounds_manager_ptr,
@@ -2403,6 +2475,9 @@ IN_PROC_BROWSER_TEST_F(FirstRunRevampInteractiveUiTest,
   RunTestSequenceInContext(
       views::ElementTrackerViews::GetContextForView(view()),
       PressButton(kProfilePickerToolbarEffectsControlButtonElementId));
+
+  histogram_tester().ExpectUniqueSample(
+      "ProfilePicker.FREFlow.MediaEffects.Enable", Step::kIntro, 1);
 }
 
 class FirstRunRevampPostSignInInteractiveUiTest
@@ -2566,6 +2641,16 @@ IN_PROC_BROWSER_TEST_F(FirstRunRevampInteractiveUiTest,
       InstrumentNonTabWebView(kWebContentsId, web_view()),
       // Do not sign in to proceed to the feature showcase immediately.
       CompleteIntroStep(/*sign_in=*/false),
+      WaitForWebContentsNavigation(kWebContentsId, GetFeatureShowcaseUrl()));
+
+  histogram_tester().ExpectUniqueSample(
+      "ProfilePicker.FREFlow.FeatureShowcase.StepShown",
+      FeatureShowcaseStep::kDefaultBrowser, 1);
+  histogram_tester().ExpectTotalCount(
+      "ProfilePicker.FREFlow.FeatureShowcase.StartBrowsing", 0);
+
+  RunTestSequenceInContext(
+      views::ElementTrackerViews::GetContextForView(view()),
       WaitForShow(kProfilePickerToolbarStartBrowsingButtonElementId),
       PressButton(kProfilePickerToolbarStartBrowsingButtonElementId));
 
@@ -2575,4 +2660,11 @@ IN_PROC_BROWSER_TEST_F(FirstRunRevampInteractiveUiTest,
   ExpectStepHistograms(Step::kIntro, /*shown=*/true);
   ExpectStepHistograms(Step::kFeatureShowcase, /*shown=*/true);
   ExpectStepHistograms(Step::kFinishFlow, /*shown=*/true, /*with_exit=*/true);
+
+  histogram_tester().ExpectUniqueSample(
+      "ProfilePicker.FREFlow.FeatureShowcase.StepShown",
+      FeatureShowcaseStep::kDefaultBrowser, 1);
+  histogram_tester().ExpectUniqueSample(
+      "ProfilePicker.FREFlow.FeatureShowcase.StartBrowsing",
+      FeatureShowcaseStep::kDefaultBrowser, 1);
 }

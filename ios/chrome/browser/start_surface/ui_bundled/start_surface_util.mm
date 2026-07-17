@@ -47,7 +47,9 @@ void SetStartSurfaceSessionObjectForSceneStateForTesting(  // IN-TEST
 std::optional<base::Time> GetTimeMostRecentTabWasOpenForSceneState(
     SceneState* scene_state) {
   SceneStatePrefs* prefs = scene_state.prefs;
-  return [prefs timeForKey:kStartSurfaceSceneEnterIntoBackgroundTime];
+  const base::Time time =
+      [prefs timeForKey:kStartSurfaceSceneEnterIntoBackgroundTime];
+  return time != base::Time() ? std::make_optional(time) : std::nullopt;
 }
 
 std::optional<base::TimeDelta> GetTimeSinceMostRecentTabWasOpenForSceneState(

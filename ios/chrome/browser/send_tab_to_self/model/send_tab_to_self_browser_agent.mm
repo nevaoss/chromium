@@ -26,6 +26,7 @@
 #import "ios/chrome/browser/infobars/model/infobar_utils.h"
 #import "ios/chrome/browser/send_tab_to_self/model/ios_send_tab_to_self_infobar_delegate.h"
 #import "ios/chrome/browser/send_tab_to_self/model/send_tab_to_self_load_navigation_user_data.h"
+#import "ios/chrome/browser/send_tab_to_self/model/send_tab_to_self_tab_card_label_data.h"
 #import "ios/chrome/browser/send_tab_to_self/model/send_tab_to_self_util.h"
 #import "ios/chrome/browser/shared/model/browser/browser.h"
 #import "ios/chrome/browser/shared/model/profile/profile_ios.h"
@@ -289,6 +290,17 @@ void SendTabToSelfBrowserAgent::TabWillLoadUrl(
   if (params.is_from_send_tab_to_self()) {
     SendTabToSelfLoadNavigationUserData::CreateForWebState(
         web_state.get(), params.send_tab_to_self_entry_guid);
+
+    if (base::FeatureList::IsEnabled(
+            send_tab_to_self::kSendTabToSelfAutoOpen)) {
+      // Attach a tab card label to the web state for the tab switcher UI.
+      const send_tab_to_self::SendTabToSelfEntry* entry =
+          model_->GetEntryByGUID(params.send_tab_to_self_entry_guid);
+      if (entry) {
+        SendTabToSelfTabCardLabelData::CreateForWebState(
+            web_state.get(), entry->GetDeviceName());
+      }
+    }
   }
 }
 

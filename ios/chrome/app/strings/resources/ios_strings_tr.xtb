@@ -103,6 +103,7 @@
 <translation id="1335767868357998043">Adres Çubuğu Konumunu Seçin</translation>
 <translation id="1347468774581902829">Etkinliği yönet</translation>
 <translation id="1348596747084433075">https://www.amazon.com/Wife-Gifts/s?k=for+Wife+Gifts</translation>
+<translation id="1353169676553627502">İlerleme güncellemelerini devre dışı bırak</translation>
 <translation id="1355337783640312381">Hesaplar arasında geçiş yapmak için hesap simgenize dokunun</translation>
 <translation id="135806768612505061">Tüm Sekmeler</translation>
 <translation id="1358106883354237005">Yönetilen Hesap</translation>
@@ -609,6 +610,7 @@
 <translation id="3073633853887034268">Anladım</translation>
 <translation id="3080525922482950719">Sayfaları daha sonra veya çevrimdışı okumak için kaydedebilirsiniz</translation>
 <translation id="3081338492074632642">Kaydettiğiniz şifrenin <ph name="WEBSITE" /> için kullandığınız şifreyle eşleştiğinden emin olun</translation>
+<translation id="3084484227247071193">İlerleme güncellemelerini etkinleştir</translation>
 <translation id="3087734570205094154">Altta</translation>
 <translation id="309710370695886264">Yeniden kullanılan 1 şifreniz var. Güvende kalmak için sorunu hemen giderin.</translation>
 <translation id="3099402981545350675">Bu işlem, bu cihaza kaydedilen adresleri siler. Ayrıca, seçilen bilgiler Chrome'dan kaldırılır ancak Google Hesabınızdan silinmez.</translation>
@@ -708,6 +710,7 @@
 <translation id="3449029510150690417">Adını belirleyip rengini seçerek yeni sekme grubunuzu oluşturun.</translation>
 <translation id="345348365500626747">Adres bulundu</translation>
 <translation id="3459644598174926977">Bir sayfa hakkında soru sormak, sesli olarak beyin fırtınası yapmak ve karşılıklı konuşmak için Gemini ile Live'a geçin.</translation>
+<translation id="3462768334899086950">Bu durumda, kaydedilmemiş dosyanızı ve mevcut sekmelerinizi kaybedersiniz</translation>
 <translation id="3464194322481586217">Fiyat takip edilemedi.</translation>
 <translation id="3469117812148449995">Şifre kaydetme seçenekleri</translation>
 <translation id="3472469028191701821">Yeni sekmede açılır</translation>
@@ -965,6 +968,7 @@
 <translation id="4326912346867677256">Güvenli bir şekilde oturum açmak için "Şifre Kullan"a dokunun.</translation>
 <translation id="4328843285884395590">Drive'ım</translation>
 <translation id="4331177082088332784">Bunu BEGIN_LINK İçerik Ayarları END_LINK bölümünden yönetebilirsiniz</translation>
+<translation id="4331712008356052424">Bu bağlantıyı göndermek için <ph name="USER_EMAIL" /> adresini kullanarak diğer cihazınızda oturum açın</translation>
 <translation id="4334428914252001502">1 okunmamış makale.</translation>
 <translation id="4338258232580025606">Oturum açamıyorum</translation>
 <translation id="4338650699862464074">Ziyaret ettiğiniz sayfaların URL'lerini Google'a gönderir.</translation>
@@ -1471,6 +1475,7 @@ Handoff'un ayrıca, Ayarlar'ın Genel bölümünde de etkinleştirilmesi ve ciha
 <translation id="6040143037577758943">Kapat</translation>
 <translation id="6042308850641462728">Daha fazla</translation>
 <translation id="6045460247888249350">Başlık ekle</translation>
+<translation id="6050237559175440178">Bilgilerinizi tüm cihazlarınızda kullanıp kaydetmek için kimliğinizi doğrulayın</translation>
 <translation id="6052269326659653305">Profil değiştir</translation>
 <translation id="605721222689873409">YY</translation>
 <translation id="6059830886158432458">Haberlerinizi ve aktivitenizi buradan yönetin</translation>
@@ -1846,6 +1851,7 @@ Bilgisayarınızdan devam etmek için <ph name="OTHER_EMAIL" /> hesabına geçin
 <translation id="722339453342442311">Şimdi denetle</translation>
 <translation id="7227235818314667565">Paylaşımı Yönet</translation>
 <translation id="7233006041370588369">Doldurulmasını istediğiniz bir şifre seçin.</translation>
+<translation id="723874023660911012">Profil Değiştir</translation>
 <translation id="7241135764990439166">Gizli mod kullanılamıyor</translation>
 <translation id="7248046129087111453"><ph name="BEGIN_LINK" />Arama geçmişi<ph name="END_LINK" /> ve <ph name="BEGIN_LINK" />diğer etkinlik biçimleri<ph name="END_LINK" /> Google Hesabınıza kaydedilmiş olabilir.</translation>
 <translation id="7253951228444156601">Şifreler kontrol ediliyor…</translation>
@@ -2072,6 +2078,7 @@ Bilgisayarınızdan devam etmek için <ph name="OTHER_EMAIL" /> hesabına geçin
 <translation id="7996239959906074962">Kur…</translation>
 <translation id="800361585186029508">Girilen URL'leri Google Chrome'da açar.</translation>
 <translation id="8005666035647241369">Bu cihazdaki Google Şifre Yöneticisi'ne</translation>
+<translation id="8007106936382123905">{count,plural, =1{Tamamlanmış 1 görev}other{Tamamlanmış # görev}}</translation>
 <translation id="8010488806779226127">İnternette gezinirken daha fazla işlem yapmanıza yardımcı olabilecek özellikleri keşfedin</translation>
 <translation id="8011489434346330032">Web Denetleyicisi</translation>
 <translation id="8014007212279733632">Hassas bilgileri otomatik doldurmak için kimliğimi doğrula</translation>
@@ -2155,6 +2162,7 @@ Bilgisayarınızdan devam etmek için <ph name="OTHER_EMAIL" /> hesabına geçin
 <translation id="826614135184049678">iPad sıfırlama işleminin bir parçası olarak <ph name="USER_NAME" /> hesabınızın oturumu kapatıldı. Yeniden oturum açmak için aşağıda "İlerle"ye dokunun.</translation>
 <translation id="8270320981823560179">Drive</translation>
 <translation id="8273982424131314219">Bilgileriniz <ph name="URL" /> adresinde doldurulacak</translation>
+<translation id="8274795744553482834">Profil değiştirmek üzeresiniz</translation>
 <translation id="8275068909952022340">Diğer…</translation>
 <translation id="8280797717392145626">Bağlantılar alındı</translation>
 <translation id="8281781826761538115">Varsayılan - <ph name="DEFAULT_LOCALE" /></translation>

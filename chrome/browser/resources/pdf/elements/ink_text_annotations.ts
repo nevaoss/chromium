@@ -26,6 +26,12 @@ export interface InkTextAnnotationsElement {
   };
 }
 
+interface Placeholder {
+  screenRect: TextBoxRect;
+  rotations: number;
+  label: string;
+}
+
 export class InkTextAnnotationsElement extends CrLitElement {
   static get is() {
     return 'ink-text-annotations';
@@ -41,17 +47,18 @@ export class InkTextAnnotationsElement extends CrLitElement {
 
   static override get properties() {
     return {
-      annotations_: {type: Array},
       viewport: {type: Object},
       activeAnnotation_: {type: Object},
       activePageDimensions_: {type: Object},
+      placeholders_: {type: Array},
     };
   }
 
-  protected accessor annotations_: TextAnnotation[] = [];
   accessor viewport: Viewport|null = null;
   protected accessor activeAnnotation_: TextAnnotation|null = null;
   protected accessor activePageDimensions_: ViewportRect|null = null;
+  protected accessor placeholders_: Placeholder[] = [];
+  private annotations_: TextAnnotation[] = [];
   private eventTracker_: EventTracker = new EventTracker();
 
   override connectedCallback() {
@@ -77,15 +84,6 @@ export class InkTextAnnotationsElement extends CrLitElement {
     this.$.textBox.viewportChanged();
   }
 
-  protected getPlaceholderRotations_(annotation: TextAnnotation): number {
-    if (!this.viewport) {
-      return 0;
-    }
-    return (this.viewport.getClockwiseRotations() +
-            annotation.textOrientation) %
-        4;
-  }
-
   private updateAnnotations_() {
     const manager = Ink2Manager.getInstance();
     const allAnnotations: TextAnnotation[] = [];
@@ -108,43 +106,40 @@ export class InkTextAnnotationsElement extends CrLitElement {
       allAnnotations.push(...pageAnnotations);
     }
     this.annotations_ = allAnnotations;
-    this.updateComplete.then(() => this.updatePlaceholders_());
+    this.updatePlaceholders_();
   }
 
   private updatePlaceholders_() {
-    if (!this.viewport) {
-      return;
-    }
-
-    const placeholders =
-        this.$.container.querySelectorAll<HTMLElement>('.placeholder');
-    for (const placeholder of placeholders) {
-      const index = Number(placeholder.dataset['index']!);
-      const annotation = this.annotations_[index];
-      if (!annotation) {
-        continue;
-      }
-
+    assert(this.viewport);
+    this.placeholders_ = this.annotations_.map(annotation => {
       const screenRect = pageToScreenCoordinates(
-          annotation.pageIndex, annotation.textBoxRect, this.viewport);
+          annotation.pageIndex, annotation.textBoxRect, this.viewport!);
+      return {
+        screenRect,
+        label: annotation.text,
+        rotations: (this.viewport!.getClockwiseRotations() +
+                    annotation.textOrientation) %
+            4,
+      };
+    });
+  }
 
-      placeholder.style.setProperty('--left', `${screenRect.locationX}px`);
-      placeholder.style.setProperty('--top', `${screenRect.locationY}px`);
-      placeholder.style.setProperty('--width', `${screenRect.width}px`);
-      placeholder.style.setProperty('--height', `${screenRect.height}px`);
-    }
+  protected getStyles_(placeholder: Placeholder) {
+    return `
+      --left: ${placeholder.screenRect.locationX}px;
+      --top: ${placeholder.screenRect.locationY}px;
+      --width: ${placeholder.screenRect.width}px;
+      --height: ${placeholder.screenRect.height}px;
+    `;
   }
 
   protected onPlaceholderFocus_(e: FocusEvent) {
     const currentTarget = e.currentTarget as HTMLElement;
     const index = Number(currentTarget.dataset['index']);
-    const annotation = this.annotations_[index];
-    assert(annotation);
-    assert(this.viewport);
+    const placeholder = this.placeholders_[index];
+    assert(placeholder);
 
-    const screenRect = pageToScreenCoordinates(
-        annotation.pageIndex, annotation.textBoxRect, this.viewport);
-    this.scrollToShowTextBox_(screenRect);
+    this.scrollToShowTextBox_(placeholder.screenRect);
   }
 
   protected async onPlaceholderClick_(e: MouseEvent) {
@@ -222,6 +217,13 @@ export class InkTextAnnotationsElement extends CrLitElement {
   }
 
   private scrollToShowTextBox_(textBoxRect: TextBoxRect) {
+    // The viewport handles scrolling, so prevent the browser from
+    // auto-scrolling.
+    this.$.container.scrollTop = 0;
+    this.$.container.scrollLeft = 0;
+    this.scrollTop = 0;
+    this.scrollLeft = 0;
+
     assert(this.viewport);
     const viewportPosition = this.viewport.position;
     const viewportSize = this.viewport.size;

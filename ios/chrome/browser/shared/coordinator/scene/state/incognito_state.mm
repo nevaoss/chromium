@@ -50,15 +50,10 @@ NSString* const kIncognitoCurrentKey = @"IncognitoActive";
 }
 
 - (void)preferencesDidLoad {
-  const std::optional<bool> value =
+  const bool incognitoContentVisible =
       [_sceneState.prefs boolForKey:kIncognitoCurrentKey];
-
-  if (value.has_value()) {
-    self.incognitoContentVisible = *value;
-  } else {
-    [_sceneState.prefs setBool:_incognitoContentVisible
-                        forKey:kIncognitoCurrentKey];
-  }
+  [self setIncognitoContentVisible:incognitoContentVisible
+             saveInSceneStatePrefs:NO];
 }
 
 - (BOOL)incognitoContentVisible {
@@ -66,17 +61,8 @@ NSString* const kIncognitoCurrentKey = @"IncognitoActive";
 }
 
 - (void)setIncognitoContentVisible:(BOOL)incognitoContentVisible {
-  if (_incognitoContentVisible == incognitoContentVisible) {
-    return;
-  }
-  _incognitoContentVisible = incognitoContentVisible;
-  if (incognitoContentVisible) {
-    [_observers willEnterIncognitoForState:self];
-  } else {
-    [_observers willExitIncognitoForState:self];
-  }
-  [_sceneState.prefs setBool:_incognitoContentVisible
-                      forKey:kIncognitoCurrentKey];
+  [self setIncognitoContentVisible:incognitoContentVisible
+             saveInSceneStatePrefs:YES];
 }
 
 - (BOOL)isAuthenticationRequired {
@@ -93,6 +79,27 @@ NSString* const kIncognitoCurrentKey = @"IncognitoActive";
     [_observers didUpdateIncognitoLockStateForState:self];
   } else if (wasAuthenticationRequired != self.isAuthenticationRequired) {
     [_observers didUpdateAuthenticationRequirementForState:self];
+  }
+}
+
+// Helper method that sets the property `-incognitoContentVisible`, notify
+// the observers and optionally update the value in the SceneStatePrefs if
+// `saveInSceneStatePrefs` is true.
+- (void)setIncognitoContentVisible:(BOOL)incognitoContentVisible
+             saveInSceneStatePrefs:(BOOL)saveInSceneStatePrefs {
+  if (_incognitoContentVisible == incognitoContentVisible) {
+    return;
+  }
+
+  _incognitoContentVisible = incognitoContentVisible;
+  if (_incognitoContentVisible) {
+    [_observers willEnterIncognitoForState:self];
+  } else {
+    [_observers willExitIncognitoForState:self];
+  }
+  if (saveInSceneStatePrefs) {
+    [_sceneState.prefs setBool:_incognitoContentVisible
+                        forKey:kIncognitoCurrentKey];
   }
 }
 

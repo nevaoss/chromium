@@ -664,6 +664,10 @@ bool HomeBackgroundCustomizationService::
          pref_service_->IsManagedPreference(themes::prefs::kPolicyThemeColor);
 }
 
+bool HomeBackgroundCustomizationService::IsThemeSyncActive() {
+  return theme_syncable_service_ && theme_syncable_service_->IsSyncing();
+}
+
 syncer::SyncableService*
 HomeBackgroundCustomizationService::GetThemeSyncableService() {
   if (!theme_syncable_service_) {

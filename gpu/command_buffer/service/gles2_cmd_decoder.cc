@@ -13096,6 +13096,10 @@ error::Error GLES2DecoderImpl::HandleTexImage2D(uint32_t immediate_data_size,
   // Set as failed for now, but if it successed, this will be set to not failed.
   texture_state_.tex_image_failed = true;
   GLenum target = static_cast<GLenum>(c.target);
+  if (!validators_->texture_target.IsValid(target)) {
+    LOCAL_SET_GL_ERROR_INVALID_ENUM(func_name, target, "target");
+    return error::kNoError;
+  }
   TextureRef* texture_ref =
       texture_manager()->GetTextureInfoForTarget(&state_, target);
   ScopedDepthStencilReattacher reattacher(this, texture_ref);
@@ -13192,6 +13196,10 @@ error::Error GLES2DecoderImpl::HandleTexImage3D(uint32_t immediate_data_size,
   // Set as failed for now, but if it successed, this will be set to not failed.
   texture_state_.tex_image_failed = true;
   GLenum target = static_cast<GLenum>(c.target);
+  if (!validators_->texture_3_d_target.IsValid(target)) {
+    LOCAL_SET_GL_ERROR_INVALID_ENUM(func_name, target, "target");
+    return error::kNoError;
+  }
   TextureRef* texture_ref =
       texture_manager()->GetTextureInfoForTarget(&state_, target);
   ScopedDepthStencilReattacher reattacher(this, texture_ref);

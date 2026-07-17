@@ -271,6 +271,7 @@ class RenderFrameHost;
 class RenderProcessHost;
 class ResponsivenessCalculatorDelegate;
 class SecurityPrincipal;
+class SensorDelegate;
 class SerialDelegate;
 class ServiceWorkerContext;
 class SiteInstance;
@@ -2418,6 +2419,9 @@ class CONTENT_EXPORT ContentBrowserClient {
 
   // Allows the embedder to provide an implementation of the WebUSB API.
   virtual UsbDelegate* GetUsbDelegate();
+
+  // Allows the embedder to provide an implementation of the Generic Sensor API.
+  virtual SensorDelegate* GetSensorDelegate();
 
   // Allows the embedder to provide an implementation of the Local Font Access
   // API.

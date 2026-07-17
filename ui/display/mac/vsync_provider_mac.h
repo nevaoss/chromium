@@ -55,6 +55,8 @@ class DISPLAY_EXPORT VSyncProviderMac {
 
   std::vector<int64_t> GetSupportedDisplayLinkIds();
 
+  bool IsConnectedToBrowser() { return !needs_begin_frame_callback_.is_null(); }
+
  private:
   friend class base::NoDestructor<VSyncProviderMac>;
 

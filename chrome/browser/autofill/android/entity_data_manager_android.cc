@@ -91,13 +91,9 @@ EntityDataManagerAndroid::EntityDataManagerAndroid(
 EntityDataManagerAndroid::~EntityDataManagerAndroid() = default;
 
 bool EntityDataManagerAndroid::IsPersonalContextPreferenceVisible(JNIEnv* env) {
-  if (!autofill::AreAutofillPersonalContextFeaturesSupported(
-          google_groups_manager_)) {
-    return false;
-  }
-
   return autofill::ShouldShowPersonalContextAutofillSetting(
-      personal_context_enablement_service_);
+      personal_context_enablement_service_, subscription_eligibility_service_,
+      prefs_, google_groups_manager_);
 }
 
 bool EntityDataManagerAndroid::IsPersonalContextEnabled(JNIEnv* env) {

@@ -465,6 +465,19 @@ void HTMLSelectElement::ParseAttribute(
   }
 }
 
+void HTMLSelectElement::DisabledAttributeChanged() {
+  HTMLFormControlElementWithState::DisabledAttributeChanged();
+  if (RuntimeEnabledFeatures::OptionDisablednessCheckAncestorsEnabled()) {
+    for (auto& item : GetListItems()) {
+      // This will unnecessarily call PseudoStateChanged on <hr> elements, but
+      // that is preferable to checking whether the item is an option or
+      // optgroup.
+      item->PseudoStateChanged(CSSSelector::kPseudoDisabled);
+      item->PseudoStateChanged(CSSSelector::kPseudoEnabled);
+    }
+  }
+}
+
 bool HTMLSelectElement::MayTriggerVirtualKeyboard() const {
   return !IsAppearanceBase();
 }
@@ -2160,6 +2173,7 @@ void HTMLSelectElement::InputInserted(HTMLInputElement* input,
   // some input elements, hence the == 1 check here.
   if (num_descendant_inputs_ == 1) {
     UpdateUserAgentShadowTree(*UserAgentShadowRoot());
+    PseudoStateChanged(CSSSelector::kPseudoSelectContainsInput);
   }
 }
 
@@ -2168,6 +2182,7 @@ void HTMLSelectElement::InputRemoved(HTMLInputElement* input,
   CountedElementRemoved(input, nearest_ancestor_select_child);
   if (!num_descendant_inputs_) {
     UpdateUserAgentShadowTree(*UserAgentShadowRoot());
+    PseudoStateChanged(CSSSelector::kPseudoSelectContainsInput);
   }
 }
 

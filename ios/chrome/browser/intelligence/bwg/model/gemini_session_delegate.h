@@ -51,6 +51,9 @@ typedef NS_ENUM(NSInteger, GeminiCancelType) {
 // SessionDelegate.
 @protocol GeminiSessionDelegate
 
+// Whether the current session is the first session.
+@property(nonatomic, assign) BOOL isFirstSession;
+
 // Called when a new session is created.
 - (void)newSessionCreatedWithClientID:(NSString*)clientID
                              serverID:(NSString*)serverID;
@@ -100,6 +103,13 @@ typedef NS_ENUM(NSInteger, GeminiCancelType) {
                    sessionID:(NSString*)sessionID
               conversationID:(NSString*)conversationID;
 @optional
+// Called when the processing status changes with a dormant reason.
+- (void)didUpdateProcessingStatus:(ios::provider::GeminiClientMode)processStatus
+                    dormantReason:
+                        (ios::provider::GeminiDormantReason)dormantReason
+                        sessionID:(NSString*)sessionID
+                   conversationID:(NSString*)conversationID;
+
 // Called when the processing status changes.
 - (void)didUpdateProcessingStatus:(ios::provider::GeminiClientMode)processStatus
                         sessionID:(NSString*)sessionID
@@ -137,6 +147,9 @@ typedef NS_ENUM(NSInteger, GeminiCancelType) {
             (gemini::RegenerateOptionType)optionType
                                           sessionID:(NSString*)sessionID
                                      conversationID:(NSString*)conversationID;
+
+// Called when a request to detach a tab with a specific ID is made.
+- (void)didRequestToDetachTabWithID:(NSString*)tabID;
 
 #pragma mark - Gemini Live
 

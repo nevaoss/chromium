@@ -8,6 +8,7 @@
 
 #include "base/command_line.h"
 #include "base/not_fatal_until.h"
+#include "content/browser/devtools/devtools_instrumentation.h"
 #include "content/browser/renderer_host/render_frame_host_impl.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/render_frame_host.h"
@@ -17,6 +18,7 @@
 #include "content/public/common/content_client.h"
 #include "content/public/common/content_switches.h"
 #include "mojo/public/cpp/bindings/message.h"
+#include "net/http/http_request_headers.h"
 #include "net/storage_access_api/status.h"
 #include "services/network/public/cpp/features.h"
 #include "services/network/public/cpp/websocket_utils.h"
@@ -117,10 +119,17 @@ void WebSocketConnectorImpl::Connect(
         std::move(handshake_client));
     return;
   }
-  std::vector<network::mojom::HttpHeaderPtr> headers;
+
+  net::HttpRequestHeaders headers;
   if (user_agent) {
-    headers.push_back(network::mojom::HttpHeader::New(
-        net::HttpRequestHeaders::kUserAgent, *user_agent));
+    headers.SetHeader(net::HttpRequestHeaders::kUserAgent, *user_agent);
+  }
+  devtools_instrumentation::ApplyExtraHeadersForWebSocket(frame_id_, &headers);
+
+  std::vector<network::mojom::HttpHeaderPtr> additional_headers;
+  for (net::HttpRequestHeaders::Iterator it(headers); it.GetNext();) {
+    additional_headers.push_back(
+        network::mojom::HttpHeader::New(it.name(), it.value()));
   }
 
   content::StoragePartition* storage_partition = process->GetStoragePartition();
@@ -136,8 +145,8 @@ void WebSocketConnectorImpl::Connect(
 
   storage_partition->GetNetworkContext()->CreateWebSocket(
       url, requested_protocols, storage_access_api_status, isolation_info_,
-      std::move(headers), ToOriginatingProcessId(frame_id_.child_id), origin_,
-      client_security_state_->Clone(), options,
+      std::move(additional_headers), ToOriginatingProcessId(frame_id_.child_id),
+      origin_, client_security_state_->Clone(), options,
       net::MutableNetworkTrafficAnnotationTag(kTrafficAnnotation),
       std::move(handshake_client),
       std::move(url_loader_network_service_observer), mojo::NullRemote(),
@@ -168,6 +177,18 @@ void WebSocketConnectorImpl::ConnectCalledByContentBrowserClient(
   if (!process) {
     return;
   }
+
+  net::HttpRequestHeaders extra_headers;
+  devtools_instrumentation::ApplyExtraHeadersForWebSocket(frame_id,
+                                                          &extra_headers);
+  std::erase_if(additional_headers, [&](const auto& header) {
+    return extra_headers.HasHeader(header->name);
+  });
+  for (net::HttpRequestHeaders::Iterator it(extra_headers); it.GetNext();) {
+    additional_headers.push_back(
+        network::mojom::HttpHeader::New(it.name(), it.value()));
+  }
+
   process->GetStoragePartition()->GetNetworkContext()->CreateWebSocket(
       url, requested_protocols, storage_access_api_status, isolation_info,
       std::move(additional_headers), ToOriginatingProcessId(frame_id.child_id),

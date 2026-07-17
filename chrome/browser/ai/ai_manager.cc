@@ -90,17 +90,17 @@ constexpr float kMinTemperature = 0.0f;
 constexpr float kMostPredictableTemperature = 0.0f;
 constexpr uint32_t kMostPredictableTopK = 1;
 
-constexpr float kPredictableTemperature = 0.2f;
-constexpr uint32_t kPredictableTopK = 2;
+constexpr float kPredictableTemperature = 0.3f;
+constexpr uint32_t kPredictableTopK = 30;
 
-constexpr float kBalancedTemperature = 1.0f;
-constexpr uint32_t kBalancedTopK = 3;
+constexpr float kBalancedTemperature = 0.7f;
+constexpr uint32_t kBalancedTopK = 64;
 
 constexpr float kCreativeTemperature = 1.1f;
-constexpr uint32_t kCreativeTopK = 10;
+constexpr uint32_t kCreativeTopK = 80;
 
 constexpr float kMostCreativeTemperature = 1.2f;
-constexpr uint32_t kMostCreativeTopK = 25;
+constexpr uint32_t kMostCreativeTopK = 100;
 
 const char kUnsupportedLanguageError[] =
     "Unsupported %s API languages were specified, and the request was aborted. "
@@ -655,6 +655,19 @@ void CheckAndLogEligibility(
              optimization_guide::GetVariantName(feature)}),
         service->GetOnDeviceModelEligibility(feature));
   }
+}
+
+template <typename OptionsPtr>
+uint32_t GetInputContextLimit(const OptionsPtr& options) {
+  if constexpr (std::is_same_v<OptionsPtr,
+                               blink::mojom::AISummarizerCreateOptionsPtr>) {
+    return AISummarizer::GetInputContextLimit(options);
+  }
+  if constexpr (std::is_same_v<OptionsPtr,
+                               blink::mojom::AIProofreaderCreateOptionsPtr>) {
+    return AIProofreader::GetInputContextLimit(options);
+  }
+  return blink::mojom::kWritingAssistanceMaxInputTokenSize;
 }
 
 }  // namespace
@@ -1710,12 +1723,12 @@ void AIManager::OnGotExecutionInputSizeInTokens(
         blink::mojom::AIManagerCreateClientError::kUnableToCalculateTokenSize);
     return;
   }
-  uint32_t quota = blink::mojom::kWritingAssistanceMaxInputTokenSize;
-  if (result.value() > quota) {
+  uint32_t context_window_size = GetInputContextLimit(options);
+  if (result.value() > context_window_size) {
     on_device_ai::SendClientRemoteError(
         client_remote,
         blink::mojom::AIManagerCreateClientError::kInitialInputTooLarge,
-        blink::mojom::QuotaErrorInfo::New(result.value(), quota));
+        blink::mojom::QuotaErrorInfo::New(result.value(), context_window_size));
     return;
   }
   mojo::PendingRemote<ContextBoundObjectReceiverInterface> pending_remote;

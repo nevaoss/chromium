@@ -23,6 +23,7 @@
 #include "components/accessibility_annotator/core/annotation_reducer/memory_data_type.h"
 #include "components/accessibility_annotator/core/annotation_reducer/personal_context_resolver.h"
 #include "components/accessibility_annotator/core/annotation_reducer/query_classifier.h"
+#include "net/base/network_change_notifier.h"
 
 namespace accessibility_annotator {
 
@@ -118,7 +119,6 @@ MemorySearchStatus MapContextMemoryError(
     case personal_context::ContextMemoryError::ExecutionError::
         kNonRetryableError:
     case personal_context::ContextMemoryError::ExecutionError::kCancelled:
-      return MemorySearchStatus::kDataFetchFailure;
     case personal_context::ContextMemoryError::ExecutionError::
         kResponseParseError:
     case personal_context::ContextMemoryError::ExecutionError::kInvalidRequest:
@@ -153,6 +153,12 @@ void AtMemoryQueryService::Query(
   // Invalidate any in-flight queries.
   weak_ptr_factory_.InvalidateWeakPtrs();
   personal_context_weak_ptr_factory_.InvalidateWeakPtrs();
+
+  if (net::NetworkChangeNotifier::IsOffline()) {
+    update_callback.Run(
+        MemorySearchResults(MemorySearchStatus::kNoConnectionFailure));
+    return;
+  }
 
   // We can't query if we don't have any data providers configured.
   if (!data_provider_) {

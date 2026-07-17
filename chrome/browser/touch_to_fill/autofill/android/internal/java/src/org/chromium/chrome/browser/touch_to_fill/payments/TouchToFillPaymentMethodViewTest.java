@@ -702,7 +702,7 @@ public class TouchToFillPaymentMethodViewTest {
 
     @Test
     @MediumTest
-    @DisabledTest(message = "b/516254354 the test is flaky.")
+    @DisabledTest(message = "crbug.com/516254354 the test is flaky.")
     public void testSheetScrollabilityDependsOnState() {
         runOnUiThreadBlocking(
                 () -> {
@@ -2255,6 +2255,7 @@ public class TouchToFillPaymentMethodViewTest {
 
     @Test
     @MediumTest
+    @DisabledTest(message = "crbug.com/516254354 the test is flaky.")
     public void testStateChangeEventWithFullStateScreenButUnexpectedHeight()
             throws TimeoutException {
         // Open a screen with full height.

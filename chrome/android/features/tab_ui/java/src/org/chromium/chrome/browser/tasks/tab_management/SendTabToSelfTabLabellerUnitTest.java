@@ -8,7 +8,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -43,6 +45,7 @@ import org.chromium.chrome.browser.tabmodel.TabModel;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /** Unit tests for {@link SendTabToSelfTabLabeller}. */
 @RunWith(BaseRobolectricTestRunner.class)
@@ -144,19 +147,21 @@ public class SendTabToSelfTabLabellerUnitTest {
         mLabeller.showAll(Collections.singletonList(mTab));
         RobolectricUtil.runAllBackgroundAndUi();
 
-        verifyTabCardLabelUpdated(null, 1);
+        // No updates are pushed since a label was never set.
+        verify(mTabListNotificationHandler, never()).updateTabCardLabels(any());
     }
 
     @Test
     public void testShowAll_Expired() {
         SendTabToSelfTabCardLabelData sttsData = createAndSetLabelData();
         sttsData.setAdditionTimestampMsForTesting(
-                System.currentTimeMillis() - 6L * 24 * 60 * 60 * 1000); // 6 days old
+                System.currentTimeMillis() - TimeUnit.DAYS.toMillis(6)); // 6 days old
 
         mLabeller.showAll(Collections.singletonList(mTab));
         RobolectricUtil.runAllBackgroundAndUi();
 
-        verifyTabCardLabelUpdated(null, 1);
+        // Verify that we do NOT push any updates (since we never set a label)
+        verify(mTabListNotificationHandler, never()).updateTabCardLabels(any());
     }
 
     @Test
@@ -216,13 +221,21 @@ public class SendTabToSelfTabLabellerUnitTest {
     }
 
     @Test
-    public void testShowAll_NegativeCache_Synchronous() {
-        // Create and set negative cache in memory.
-        SendTabToSelfTabCardLabelData sttsData =
+    public void testShowAll_NegativeCache_Synchronous_ClearsExisting() {
+        // Set valid data and show it so it is marked as labelled.
+        createAndSetLabelData();
+        mLabeller.showAll(Collections.singletonList(mTab));
+        RobolectricUtil.runAllBackgroundAndUi();
+        verifyTabCardLabelUpdated("From Example Phone", 1);
+
+        // Replace it with a negative cache (simulating invalidation/clear).
+        SendTabToSelfTabCardLabelData negativeCache =
                 new SendTabToSelfTabCardLabelData(
                         mTab, /* senderDeviceName= */ "", /* additionTimestampMs= */ 0);
-        mUserDataHost.setUserData(SendTabToSelfTabCardLabelData.class, sttsData);
+        mUserDataHost.setUserData(SendTabToSelfTabCardLabelData.class, negativeCache);
 
+        // Call showAll again.
+        reset(mTabListNotificationHandler);
         mLabeller.showAll(Collections.singletonList(mTab));
 
         // Idle the main looper to execute the posted showAll task.
@@ -231,6 +244,96 @@ public class SendTabToSelfTabLabellerUnitTest {
 
         // Verify the label was updated to null (cleared) synchronously.
         verifyTabCardLabelUpdated(null, 1);
+    }
+
+    @Test
+    public void testShowAll_NegativeCache_NoPriorLabel_DoesNothing() {
+        // Set negative cache immediately (no prior valid label).
+        SendTabToSelfTabCardLabelData negativeCache =
+                new SendTabToSelfTabCardLabelData(
+                        mTab, /* senderDeviceName= */ "", /* additionTimestampMs= */ 0);
+        mUserDataHost.setUserData(SendTabToSelfTabCardLabelData.class, negativeCache);
+
+        mLabeller.showAll(Collections.singletonList(mTab));
+        RobolectricUtil.runAllBackgroundAndUi();
+
+        verify(mTabListNotificationHandler, never()).updateTabCardLabels(any());
+    }
+
+    @Test
+    public void testShowAll_MultipleTabs_OnlyPushesValidLabels() {
+        // tabA (mTab, ID=1) has valid STTS data.
+        createAndSetLabelData();
+
+        // Set up tabB (ID=2) with no STTS data.
+        Tab tabB = mock(Tab.class);
+        UserDataHost userDataHostB = new UserDataHost();
+        when(tabB.getId()).thenReturn(2);
+        when(tabB.isInitialized()).thenReturn(true);
+        when(tabB.getUserDataHost()).thenReturn(userDataHostB);
+
+        // Update tab model to contain both tabs.
+        when(mTabModel.getCount()).thenReturn(2);
+        when(mTabModel.getTabAt(0)).thenReturn(mTab);
+        when(mTabModel.getTabAt(1)).thenReturn(tabB);
+
+        // Call showAll(null) to process all tabs in the model.
+        mLabeller.showAll(null);
+        RobolectricUtil.runAllBackgroundAndUi();
+
+        // Verify updateTabCardLabels was called, and capture the map.
+        verify(mTabListNotificationHandler).updateTabCardLabels(mLabelDataCaptor.capture());
+        Map<Integer, TabCardLabelData> labelDataMap = mLabelDataCaptor.getValue();
+
+        // Assert that ONLY tabA (TAB_ID) is in the map, and tabB (ID=2) is completely omitted.
+        assertEquals(1, labelDataMap.size());
+        assertTrue(labelDataMap.containsKey(TAB_ID));
+        assertNotNull(labelDataMap.get(TAB_ID));
+        assertEquals("From Example Phone", labelDataMap.get(TAB_ID).textResolver.resolve(mContext));
+
+        // Cleanup tabB's UserDataHost
+        userDataHostB.destroy();
+    }
+
+    @Test
+    public void testShowAll_MultipleTabs_LoadFromDB_OnlyUpdatesValidLabels() {
+        // Tab A (mTab, ID=1) has valid STTS data in DB (restarted/removed from memory).
+        SendTabToSelfTabCardLabelData sttsData = createAndSetLabelData();
+        RobolectricUtil.runAllBackgroundAndUi();
+        mUserDataHost.removeUserData(SendTabToSelfTabCardLabelData.class);
+
+        // Set up Tab B (ID=2) with no STTS data (restarted/removed from memory).
+        Tab tabB = mock(Tab.class);
+        UserDataHost userDataHostB = new UserDataHost();
+        when(tabB.getId()).thenReturn(2);
+        when(tabB.isInitialized()).thenReturn(true);
+        when(tabB.getUserDataHost()).thenReturn(userDataHostB);
+
+        // Update tab model to contain both tabs.
+        when(mTabModel.getCount()).thenReturn(2);
+        when(mTabModel.getTabAt(0)).thenReturn(mTab);
+        when(mTabModel.getTabAt(1)).thenReturn(tabB);
+
+        // Call showAll(null) to process all tabs in the model (triggers async DB load for both).
+        mLabeller.showAll(null);
+        RobolectricUtil.runAllBackgroundAndUi();
+
+        // Verify updateTabCardLabels was called EXACTLY once (for Tab A only).
+        // If Tab B had also pushed a null update (bug), it would have been called twice.
+        verify(mTabListNotificationHandler, times(1))
+                .updateTabCardLabels(mLabelDataCaptor.capture());
+        Map<Integer, TabCardLabelData> labelDataMap = mLabelDataCaptor.getValue();
+        assertTrue(labelDataMap.containsKey(TAB_ID));
+        assertNotNull(labelDataMap.get(TAB_ID));
+        assertEquals("From Example Phone", labelDataMap.get(TAB_ID).textResolver.resolve(mContext));
+
+        // Cleanup.
+        userDataHostB.destroy();
+        PersistedTabDataConfiguration.TEST_CONFIG
+                .getStorage()
+                .delete(
+                        TAB_ID,
+                        PersistedTabDataConfiguration.SEND_TAB_TO_SELF_TAB_CARD_LABEL_DATA.getId());
     }
 
     @Test

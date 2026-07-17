@@ -14,6 +14,7 @@ import androidx.annotation.StringRes;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
+import org.chromium.chrome.browser.compositor.layouts.components.CompositorButton;
 import org.chromium.chrome.browser.user_education.IphCommand;
 import org.chromium.chrome.browser.user_education.IphCommandBuilder;
 import org.chromium.chrome.browser.user_education.UserEducationHelper;
@@ -35,7 +36,8 @@ public class TabStripIphController {
         IphType.TAB_GROUP_SYNC,
         IphType.GROUP_TITLE_NOTIFICATION_BUBBLE,
         IphType.TAB_NOTIFICATION_BUBBLE,
-        IphType.TAB_TEARING_XR
+        IphType.TAB_TEARING_XR,
+        IphType.GLIC_PROMO
     })
     @Retention(RetentionPolicy.SOURCE)
     public @interface IphType {
@@ -52,6 +54,9 @@ public class TabStripIphController {
 
         /** Indicates the IPH is triggered for tab tearing on XR. */
         int TAB_TEARING_XR = 3;
+
+        /** Indicates the IPH is triggered for the Glic entry point. */
+        int GLIC_PROMO = 4;
     }
 
     private static final int IPH_AUTO_DISMISS_WAIT_TIME_MS = 5 * 1000;
@@ -94,13 +99,42 @@ public class TabStripIphController {
             boolean enableSnoozeMode) {
         Rect anchorRect =
                 calculateAnchorRect(toolbarContainerView, groupTitle, tab, iphType, tabStripHeight);
+
+        showIph(toolbarContainerView, anchorRect, iphType, enableSnoozeMode);
+    }
+
+    /**
+     * Calculates the anchor rect and display an In-Product Help (IPH) on the tab strip. Overload
+     * for CompositorButtons.
+     *
+     * @param button The compositor button where the IPH should be anchored.
+     * @param toolbarContainerView Used to get the anchor view for the IPH.
+     * @param iphType The type of IPH to display.
+     * @param enableSnoozeMode Whether to enable snooze mode on the IPH.
+     */
+    public void showIphOnCompositorButton(
+            CompositorButton button,
+            View toolbarContainerView,
+            @IphType int iphType,
+            boolean enableSnoozeMode) {
+        Rect anchorRect = new Rect();
+        button.getAnchorRect(anchorRect);
+        int[] toolbarCoordinates = new int[2];
+        toolbarContainerView.getLocationInWindow(toolbarCoordinates);
+        anchorRect.offset(toolbarCoordinates[0], toolbarCoordinates[1]);
+
+        showIph(toolbarContainerView, anchorRect, iphType, enableSnoozeMode);
+    }
+
+    private void showIph(
+            View anchorView, Rect anchorRect, @IphType int iphType, boolean enableSnoozeMode) {
         IphCommand iphCommand =
                 new IphCommandBuilder(
                                 mResources,
                                 getIphFeature(iphType),
                                 getIphString(iphType),
                                 getIphString(iphType))
-                        .setAnchorView(toolbarContainerView)
+                        .setAnchorView(anchorView)
                         .setAnchorRect(anchorRect)
                         .setDismissOnTouch(true)
                         .setAutoDismissTimeout(IPH_AUTO_DISMISS_WAIT_TIME_MS)
@@ -200,6 +234,8 @@ public class TabStripIphController {
                 return FeatureConstants.TAB_GROUP_SHARE_NOTIFICATION_BUBBLE_ON_STRIP_FEATURE;
             case IphType.TAB_TEARING_XR:
                 return FeatureConstants.IPH_TAB_TEARING_XR;
+            case IphType.GLIC_PROMO:
+                return FeatureConstants.GLIC_PROMO_ANDROID_FEATURE;
             default:
                 throw new IllegalArgumentException("Invalid IPH type");
         }
@@ -214,6 +250,8 @@ public class TabStripIphController {
                 return R.string.tab_group_share_notification_bubble_iph;
             case IphType.TAB_TEARING_XR:
                 return R.string.iph_tab_tearing_xr;
+            case IphType.GLIC_PROMO:
+                return R.string.iph_glic_promo_text;
             default:
                 throw new IllegalArgumentException("Invalid IPH type");
         }

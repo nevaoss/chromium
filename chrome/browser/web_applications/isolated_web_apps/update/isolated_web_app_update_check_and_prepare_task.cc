@@ -43,6 +43,7 @@
 #include "components/webapps/isolated_web_apps/download/bundle_downloader.h"
 #include "components/webapps/isolated_web_apps/types/source.h"
 #include "components/webapps/isolated_web_apps/types/update_channel.h"
+#include "content/public/browser/storage_partition.h"
 #include "content/public/browser/web_contents.h"
 #include "net/base/net_errors.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
@@ -249,7 +250,9 @@ void IsolatedWebAppUpdateCheckAndPrepareTask::Start(
 
   update_manifest_fetcher_ = std::make_unique<UpdateManifestFetcher>(
       task_params_.update_manifest_url(), kUpdateManifestFetchTrafficAnnotation,
-      url_loader_factory_, /*report_histogram_manifest_result=*/true);
+      url_loader_factory_,
+      profile_->GetDefaultStoragePartition()->GetNetworkContext(),
+      /*report_histogram_manifest_result=*/true);
   update_manifest_fetcher_->FetchUpdateManifest(base::BindOnce(
       &IsolatedWebAppUpdateCheckAndPrepareTask::OnUpdateManifestFetched,
       weak_factory_.GetWeakPtr()));
@@ -376,7 +379,9 @@ void IsolatedWebAppUpdateCheckAndPrepareTask::OnUpdateManifestFetched(
     return;
   }
 
-  bundle_downloader_ = IsolatedWebAppDownloader::Create(url_loader_factory_);
+  bundle_downloader_ = IsolatedWebAppDownloader::Create(
+      url_loader_factory_,
+      profile_->GetDefaultStoragePartition()->GetNetworkContext());
   if (!rotated_key) {
     CreateTempFile(std::move(*version_entry));
     return;

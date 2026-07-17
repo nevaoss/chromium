@@ -35,6 +35,11 @@ export const DEFAULT_CELLULAR_PIN = '1111';
 
 /**
  * @implements {CrosNetworkConfigInterface}
+ * @property {string} testPin
+ * @property {Function|null} beforeGetDeviceStateList
+ * @property {Function|null} beforeGetManagedProperties
+ * @property {!Array<!{guid: string, properties: ConfigProperties}>}
+ * setPropertiesCalls
  */
 export class FakeNetworkConfig {
   constructor() {
@@ -836,18 +841,20 @@ export class FakeNetworkConfig {
   /**
    * @param {string} guid
    * @param {?UInt32Value} resetDay
+   * @return {!Promise<{success: boolean}>}
    */
   setTrafficCountersResetDay(guid, resetDay) {
     return new Promise(resolve => {
       this.methodCalled('setTrafficCountersResetDay');
       this.setResetDay_(guid, resetDay);
-      resolve(true);
+      resolve({success: true});
     });
   }
 
   /**
    * @param {!string} guid
    * @param {!ApnProperties} apn
+   * @return {!Promise<{success: boolean}>}
    */
   createCustomApn(guid, apn) {
     return new Promise(resolve => {
@@ -859,13 +866,14 @@ export class FakeNetworkConfig {
       }
       properties.typeProperties.cellular.customApnList.unshift(apn);
       this.methodCalled('createCustomApn');
-      resolve(true);
+      resolve({success: true});
     });
   }
 
   /**
    * @param {!string} guid
    * @param {!ApnProperties} apn
+   * @return {!Promise<{success: boolean}>}
    */
   createExclusivelyEnabledCustomApn(guid, apn) {
     return new Promise(resolve => {
@@ -881,7 +889,7 @@ export class FakeNetworkConfig {
       apn.state = ApnState.kEnabled;
       properties.typeProperties.cellular.customApnList.unshift(apn);
       this.methodCalled('createExclusivelyEnabledCustomApn');
-      resolve(true);
+      resolve({success: true});
     });
   }
 

@@ -1766,6 +1766,26 @@ chromium-metrics-reviews@google.com.
              device anymore; the user did opt-in to skip the account picker"/>
 </enum>
 
+<!-- LINT.IfChange(IOSSaveToPhotosSignInResultType) -->
+
+<enum name="IOSSaveToPhotosSignInResultType">
+  <int value="0" label="Success"/>
+  <int value="1" label="Cancelled"/>
+  <int value="2" label="Failed"/>
+</enum>
+
+<!-- LINT.ThenChange(/ios/chrome/browser/photos/model/photos_metrics.h:SaveToPhotosSignInResult) -->
+
+<!-- LINT.IfChange(IOSSaveToPhotosSignInStatusType) -->
+
+<enum name="IOSSaveToPhotosSignInStatusType">
+  <int value="0" label="Signed In"/>
+  <int value="1" label="Signed Out Without Account On Device"/>
+  <int value="2" label="Signed Out With Account On Device"/>
+</enum>
+
+<!-- LINT.ThenChange(/ios/chrome/browser/photos/model/photos_metrics.h:SaveToPhotosSignInStatus) -->
+
 <enum name="IOSSaveToPhotosType">
   <int value="0" label="Failure - WebState destroyed"/>
   <int value="1" label="Failure - User signed-out"/>

@@ -581,6 +581,7 @@
 <translation id="1902576642799138955">有效期間</translation>
 <translation id="1908217026282415406">使用和移動相機</translation>
 <translation id="1908690643053136980">管理員不允許此網站使用<ph name="PERMISSION" />權限</translation>
+<translation id="1912750443952232242">將身分證儲存至「Google 錢包」</translation>
 <translation id="1913037223029790376">使用此虛擬卡的 CVC</translation>
 <translation id="191374271204266022">以 JSON 格式複製</translation>
 <translation id="1914326953223720820">解壓縮服務</translation>
@@ -1493,6 +1494,7 @@
 <translation id="3325568918769906282">按遞減排序</translation>
 <translation id="3325662270238538525">最近存取及修改的檔案，包括檔案名稱、檔案內容的數碼指紋、下載來源和元數據</translation>
 <translation id="3329013043687509092">飽和度</translation>
+<translation id="3330483197654063678">開啟後，Chrome 會分享此視窗中已開啟的分頁，助你取得更相關的答覆。</translation>
 <translation id="3333762389743153920">不符合虛擬卡設定資格</translation>
 <translation id="3338095232262050444">安全</translation>
 <translation id="333839153442689579">高強度間歇訓練</translation>
@@ -2845,6 +2847,7 @@
 <translation id="5458150163479425638">{CONTACT,plural, =0{<ph name="CONTACT_PREVIEW" />}=1{「<ph name="CONTACT_PREVIEW" />」和另外 <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> 項聯絡資料}other{「<ph name="CONTACT_PREVIEW" />」和另外 <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> 項聯絡資料}}</translation>
 <translation id="5463625433003343978">正在尋找裝置…</translation>
 <translation id="5464236009658034488">辦公室設備供應</translation>
+<translation id="5465128270485645058">如果此視窗中開啟的分頁與此對話串相關，便自動分享以獲得更合適的答覆。</translation>
 <translation id="5465724643247062031">玻璃 (不透明)</translation>
 <translation id="5466018172325111652">沒有收到驗證碼嗎？<ph name="BEGIN_LINK" />取得新的驗證碼<ph name="END_LINK" /></translation>
 <translation id="5466818462212249084">付款應用程式</translation>
@@ -3127,6 +3130,7 @@
 <translation id="5911020115933784199">活動和節目資訊</translation>
 <translation id="5911110632211230665">已禁止開啟</translation>
 <translation id="5912796581727968237">開啟「Google 錢包」</translation>
+<translation id="5914185423510719251">將 KTN 儲存至「Google 錢包」</translation>
 <translation id="5914465277418006379"><ph name="MEMBER_FIRST_NAME" />已加入此分頁</translation>
 <translation id="5915189366813702112">彈性工作安排</translation>
 <translation id="59174027418879706">已啟用</translation>
@@ -3650,6 +3654,7 @@
 <translation id="6702851555558236418">音訊和音樂軟件</translation>
 <translation id="6702919718839027939">簡報</translation>
 <translation id="6704458454638854812">屬性已設定為「custom_size」，請將名稱設定為「自訂」。</translation>
+<translation id="670477556876354552">需要重新啟動</translation>
 <translation id="6706005862292023715">窗簾及窗飾</translation>
 <translation id="6706210727756204531">範圍</translation>
 <translation id="6706678697074905703">此 IBAN 無法儲存至 Google 帳戶，因此已改為儲存至此裝置上的 Chrome。</translation>
@@ -3907,6 +3912,7 @@
 <translation id="7110116949943042888">臨時和季節性職位</translation>
 <translation id="7110368079836707726">大專和大學</translation>
 <translation id="7111507312244504964">物業檢查和估值</translation>
+<translation id="7117290130383718594">文字註解</translation>
 <translation id="7118618213916969306">搵剪貼簿網址 <ph name="SHORT_URL" /></translation>
 <translation id="7118852830504022370">此網站不支援 HTTPS，因此瀏覽器顯示此警告訊息。<ph name="BEGIN_LEARN_MORE_LINK" />進一步瞭解此警告訊息<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="7119063404975271297">電視劇</translation>

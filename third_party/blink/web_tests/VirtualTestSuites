@@ -436,7 +436,7 @@
       "http/tests/inspector-protocol/issues/connection-allowlists"
     ],
     "exclusive_tests": "ALL",
-    "args": [ "--enable-features=ConnectionAllowlists,OverrideConnectionAllowlistOriginTrial" ],
+    "args": [ "--enable-features=ConnectionAllowlists:ConnectionAllowlistsEarlyHints/true,OverrideConnectionAllowlistOriginTrial" ],
     "expires": "Dec 1, 2026"
   },
   {
@@ -2676,9 +2676,7 @@
   {
     "prefix": "prerender2-fallback-prefetch-spec-rules",
     "platforms": [
-      "Linux",
-      "Mac",
-      "Win"
+      "Webview"
     ],
     "bases": [
       "http/tests/inspector-protocol/prefetch",
@@ -5007,7 +5005,7 @@
     "expires": "Feb 1, 2027"
   },
   {
-    "prefix": "dom_storage_sqlite",
+    "prefix": "dom_storage_leveldb",
     "owners": [
       "evanstade@microsoft.com",
       "stevebe@microsoft.com",
@@ -5022,8 +5020,8 @@
       "external/wpt/webstorage",
       "storage/domstorage"
     ],
-    "args": ["--enable-features=DomStorageSqlite"],
-    "expires": "Aug 13, 2026"
+    "args": ["--enable-features=DomStorageSqliteNewDatabases:DomStorageSqliteNewDatabasesStage/UseLevelDbOnly"],
+    "expires": "Feb 1, 2027"
   },
   {
     "prefix": "durable-messages",

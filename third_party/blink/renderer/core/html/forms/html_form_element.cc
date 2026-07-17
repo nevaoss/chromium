@@ -745,6 +745,9 @@ void HTMLFormElement::PrepareForSubmission(const Event* event,
       submit_event_init->setBubbles(true);
       submit_event_init->setCancelable(true);
       submit_event_init->setSubmitter(DynamicTo<HTMLElement>(submitter));
+      submit_event_init->setComposed(
+          submitter && RuntimeEnabledFeatures::ShadowRootReferenceTargetEnabled(
+                           submitter->GetExecutionContext()));
       if (declarative_webmcp_call) {
         CHECK(RuntimeEnabledFeatures::WebMCPEnabled(GetExecutionContext()));
         submit_event_init->setAgentInvoked(true);

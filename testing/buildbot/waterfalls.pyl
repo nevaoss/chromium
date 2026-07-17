@@ -127,14 +127,6 @@
         'cros_board': 'betty',
         'cros_dut_pool': 'vmlab',
       },
-      'chromeos-betty-chrome-tests': {
-        'test_suites': {
-          'skylab_tests': 'chromeos_vmlab_tests',
-        },
-        'os_type': 'chromeos',
-        'cros_board': 'betty',
-        'cros_dut_pool': 'vmlab',
-      },
       'chromeos-brya-chrome': {
         'additional_compile_targets': [
           'chromiumos_preflight',

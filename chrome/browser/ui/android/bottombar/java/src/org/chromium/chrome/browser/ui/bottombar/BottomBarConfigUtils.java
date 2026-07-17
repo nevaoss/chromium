@@ -87,4 +87,14 @@ public class BottomBarConfigUtils {
     public static boolean alwaysUseFilledIcon() {
         return ChromeFeatureList.sAndroidBottomBarAlwaysUseFilledGlicIcon.getValue();
     }
+
+    /** Whether to bypass geofencing country check for GLIC. */
+    public static boolean bypassGlicGeofencing() {
+        return ChromeFeatureList.sAndroidBottomBarBypassGlicGeofencing.getValue();
+    }
+
+    /** Whether to bypass geofencing country check for AI Mode. */
+    public static boolean bypassAimGeofencing() {
+        return ChromeFeatureList.sAndroidBottomBarBypassAimGeofencing.getValue();
+    }
 }

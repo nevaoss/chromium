@@ -22,6 +22,7 @@
 #import "ios/chrome/browser/shared/public/commands/gemini_commands.h"
 #import "ios/chrome/browser/shared/public/commands/settings_commands.h"
 #import "ios/public/provider/chrome/browser/bwg/gemini_api.h"
+#import "ios/web/public/web_state.h"
 
 namespace {
 
@@ -161,12 +162,31 @@ IOSGeminiSessionCancellationReason HistogramEnumFromGeminiCancelType(
   [self.geminiViewStateDelegate didSwitchToViewState:viewState];
 }
 
+// TODO(crbug.com/526669545): Remove this method once the dormantReason is fully
+// plugged in.
 - (void)didUpdateProcessingStatus:(ios::provider::GeminiClientMode)processStatus
                         sessionID:(NSString*)sessionID
                    conversationID:(NSString*)conversationID {
   [self.geminiViewStateDelegate didUpdateProcessingStatus:processStatus
                                                 sessionID:sessionID
                                            conversationID:conversationID];
+}
+
+- (void)didUpdateProcessingStatus:(ios::provider::GeminiClientMode)processStatus
+                    dormantReason:
+                        (ios::provider::GeminiDormantReason)dormantReason
+                        sessionID:(NSString*)sessionID
+                   conversationID:(NSString*)conversationID {
+  if (IsGeminiLiveDormantReasonsEnabled()) {
+    [self.geminiViewStateDelegate didUpdateProcessingStatus:processStatus
+                                              dormantReason:dormantReason
+                                                  sessionID:sessionID
+                                             conversationID:conversationID];
+  } else {
+    [self.geminiViewStateDelegate didUpdateProcessingStatus:processStatus
+                                                  sessionID:sessionID
+                                             conversationID:conversationID];
+  }
 }
 
 // TODO(crbug.com/504596190): Remove this method when internal code doesn't use
@@ -193,26 +213,12 @@ IOSGeminiSessionCancellationReason HistogramEnumFromGeminiCancelType(
   // Reset prompt counters for new session.
   _totalPromptsInSession = 0;
 
-  [self dismissOtherActiveSessionsUsingClientID:clientID];
+  [self.geminiViewStateDelegate geminiUIDidAppear];
 }
 
 - (void)UIDidDisappearWithClientID:(NSString*)clientID
                           serverID:(NSString*)serverID {
   [_geminiHandler dismissGeminiFlowWithCompletion:nil];
-
-  web::WebState* webState = [self webStateWithClientID:clientID];
-  if (!webState) {
-    return;
-  }
-  // Get the GeminiTabHelper from the WebState.
-  GeminiTabHelper* geminiTabHelper = GeminiTabHelper::FromWebState(webState);
-  // WebState should always be valid as long as the tab is open.
-  if (!geminiTabHelper) {
-    // Early exit if no valid tab helper is found.
-    return;
-  }
-  bool isFirstSession = geminiTabHelper->GetIsFirstRun();
-  geminiTabHelper->SetIsFirstRun(false);
 
   // Record session duration.
   if (!_sessionStartTime.is_null()) {
@@ -227,7 +233,7 @@ IOSGeminiSessionCancellationReason HistogramEnumFromGeminiCancelType(
       session_type = IOSGeminiSessionType::kAbandoned;
     }
 
-    RecordGeminiSessionLengthByType(session_duration, isFirstSession,
+    RecordGeminiSessionLengthByType(session_duration, _isFirstSession,
                                     session_type);
     RecordGeminiSessionTime(session_duration);
     _sessionStartTime = base::TimeTicks();
@@ -314,12 +320,8 @@ IOSGeminiSessionCancellationReason HistogramEnumFromGeminiCancelType(
 // Called when a new chat button is tapped.
 - (void)didTapNewChatButtonWithSessionID:(NSString*)sessionID
                           conversationID:(NSString*)conversationID {
-  web::WebState* webState = [self webStateWithClientID:sessionID];
-  if (!webState) {
-    return;
-  }
-  GeminiTabHelper* geminiTabHelper = GeminiTabHelper::FromWebState(webState);
-  geminiTabHelper->DeleteGeminiSessionInStorage();
+  gemini::DeleteGeminiSessionInStorage(_prefService);
+
   // Ensure page context is attached for a new chat.
   ios::provider::UpdatePageAttachmentState(
       ios::provider::GeminiPageContextAttachmentState::kAttached);
@@ -380,6 +382,10 @@ IOSGeminiSessionCancellationReason HistogramEnumFromGeminiCancelType(
   RecordGeminiRegenerateButtonTapped(optionType);
 }
 
+- (void)didRequestToDetachTabWithID:(NSString*)tabID {
+  // TODO(crbug.com/525782842): Implement tab detachment logic.
+}
+
 - (void)geminiLiveUserDidBargeIn {
   [self.geminiViewStateDelegate geminiLiveUserDidBargeIn];
 }
@@ -431,33 +437,15 @@ IOSGeminiSessionCancellationReason HistogramEnumFromGeminiCancelType(
 // Updates the session state in storage with the given client ID and server ID.
 - (void)updateSessionWithClientID:(NSString*)clientID
                          serverID:(NSString*)serverID {
-  web::WebState* webState = [self webStateWithClientID:clientID];
+  // Get the visible URL of the current tab for user prefs update.
+  web::WebState* webState = _webStateList->GetActiveWebState();
   if (!webState) {
     return;
   }
 
-  GeminiTabHelper* geminiTabHelper = GeminiTabHelper::FromWebState(webState);
-  geminiTabHelper->CreateOrUpdateGeminiSessionInStorage(
-      base::SysNSStringToUTF8(serverID));
-}
-
-// Sets all BWG sessions inactive other than for the WebState matching
-// `clientID`.
-- (void)dismissOtherActiveSessionsUsingClientID:(NSString*)clientID {
-  // TODO(crbug.com/437338434): Keep track of last known active instance to not
-  // have to iterate over all WebStates.
-  for (int i = 0; i < _webStateList->count(); i++) {
-    web::WebState* webState = _webStateList->GetWebStateAt(i);
-    NSString* webStateUniqueID = base::SysUTF8ToNSString(
-        base::NumberToString(webState->GetUniqueIdentifier().identifier()));
-    if (!webState->IsRealized() ||
-        [webStateUniqueID isEqualToString:clientID]) {
-      continue;
-    }
-
-    GeminiTabHelper* geminiTabHelper = GeminiTabHelper::FromWebState(webState);
-    geminiTabHelper->DeactivateGeminiSession();
-  }
+  gemini::CreateOrUpdateConversationIdPrefs(base::SysNSStringToUTF8(serverID),
+                                            webState->GetVisibleURL().spec(),
+                                            _prefService);
 }
 
 @end

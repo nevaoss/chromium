@@ -23,11 +23,11 @@
 
 DownloadRecordServiceImpl::DownloadRecordServiceImpl(
     const base::FilePath& profile_path)
-    : database_task_runner_(base::ThreadPool::CreateSequencedTaskRunner(
+    : pagination_enabled_(IsDownloadListPaginationEnabled()),
+      database_task_runner_(base::ThreadPool::CreateSequencedTaskRunner(
           {base::MayBlock(), base::TaskPriority::USER_VISIBLE,
            base::TaskShutdownBehavior::BLOCK_SHUTDOWN})),
-      store_(database_task_runner_),
-      pagination_enabled_(IsDownloadListPaginationEnabled()) {
+      store_(database_task_runner_, pagination_enabled_) {
   CHECK(IsDownloadListEnabled());
   CHECK(!profile_path.empty());
 
@@ -100,7 +100,7 @@ void DownloadRecordServiceImpl::GetDownloadByIdAsync(
     const std::string& download_id,
     DownloadRecordCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(main_sequence_checker_);
-  store_.AsyncCall(&DownloadRecordStore::GetByIdFromCache)
+  store_.AsyncCall(&DownloadRecordStore::GetById)
       .WithArgs(download_id)
       .Then(std::move(callback));
 }
@@ -135,6 +135,8 @@ void DownloadRecordServiceImpl::GetDownloadsPageAsync(
     const DownloadRecordQuery& query,
     DownloadRecordsPageCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(main_sequence_checker_);
+  // Paginated readers require kDownloadListPagination.
+  DCHECK(pagination_enabled_);
   store_.AsyncCall(&DownloadRecordStore::GetDownloadsPage)
       .WithArgs(query)
       .Then(std::move(callback));
@@ -144,6 +146,7 @@ void DownloadRecordServiceImpl::GetDownloadsCountAsync(
     std::optional<DownloadFilterType> filter,
     DownloadRecordsCountCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(main_sequence_checker_);
+  DCHECK(pagination_enabled_);
 
   // Translate the optional filter into a count-only query. The cursor
   // fields are ignored by the DB layer for count queries.
@@ -225,6 +228,17 @@ void DownloadRecordServiceImpl::OnDownloadUpdated(web::DownloadTask* task) {
 
 void DownloadRecordServiceImpl::OnDownloadDestroyed(web::DownloadTask* task) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(main_sequence_checker_);
+  CHECK(task);
+  if (pagination_enabled_) {
+    // Extract the id BEFORE `RemoveObservation`, which may drop the
+    // last handle on `task`. `EvictOnDestroy` is FIFO-ordered with every
+    // other CRUD task on the database sequence (see
+    // download_record_store.h), so a still-pending `UpdateRecord` for
+    // the same id finishes first and cannot resurrect the entry.
+    std::string download_id = base::SysNSStringToUTF8(task->GetIdentifier());
+    store_.AsyncCall(&DownloadRecordStore::EvictOnDestroy)
+        .WithArgs(std::move(download_id));
+  }
   download_task_observations_.RemoveObservation(task);
 }
 

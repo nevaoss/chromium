@@ -1322,8 +1322,6 @@ class AddressLabelSuggestionGeneratorTest
 // as the main text.
 TEST_F(AddressLabelSuggestionGeneratorTest,
        CreateSuggestionsFromProfiles_AlternativeNameFieldMainText) {
-  base::test::ScopedFeatureList features{
-      features::kAutofillSupportPhoneticNameForJP};
   AutofillProfile profile(AddressCountryCode("JP"));
   test::SetProfileInfo(&profile, test::SetProfileInfoOptionsBuilder()
                                      .with_first_name("firstName")
@@ -1361,8 +1359,6 @@ TEST_F(AddressLabelSuggestionGeneratorTest,
 TEST_F(
     AddressLabelSuggestionGeneratorTest,
     CreateSuggestionsFromProfiles_TransliteratesHiraganaToKatakana_WhenLabelInKatakana) {
-  base::test::ScopedFeatureList features{
-      features::kAutofillSupportPhoneticNameForJP};
   AutofillProfile profile(AddressCountryCode("JP"));
   test::SetProfileInfo(&profile, test::SetProfileInfoOptionsBuilder()
                                      .with_first_name("firstName")
@@ -1401,8 +1397,6 @@ TEST_F(
 TEST_F(
     AddressLabelSuggestionGeneratorTest,
     CreateSuggestionsFromProfiles_DoesNotTransliterateHiraganaToKatakana_WhenLabelInHiragana) {
-  base::test::ScopedFeatureList features{
-      features::kAutofillSupportPhoneticNameForJP};
   AutofillProfile profile(AddressCountryCode("JP"));
   test::SetProfileInfo(&profile, test::SetProfileInfoOptionsBuilder()
                                      .with_first_name("firstName")

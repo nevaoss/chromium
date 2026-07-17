@@ -465,6 +465,7 @@ if (is_android) {
       ":usage_stats_proto",
       "//cc/slim",
       "//chrome/android:jni_headers",
+      "//chrome/app:command_ids",
       "//chrome/browser:profile_key_startup_accessor",
       "//chrome/browser/accessibility/settings",
       "//chrome/browser/android/content:jni_headers",
@@ -726,6 +727,9 @@ if (is_android) {
       "//services/device/public/cpp/geolocation",
       "//services/proxy_resolver:lib",
       "//third_party/android_opengl/etc1",
+      "//third_party/androidx/local_modifications/graphics_core:graphics_core_native",
+      "//third_party/androidx/local_modifications/ink:ink_native",
+      "//third_party/androidx/third_party/ink",
       "//third_party/blink/public/common",
       "//third_party/blink/public/mojom:android_mojo_bindings_blink_headers",
       "//third_party/cpu_features:ndk_compat",
@@ -734,6 +738,7 @@ if (is_android) {
       "//third_party/libphonenumber",
       "//ui/accessibility",
       "//ui/base/unowned_user_data",
+      "//ui/menus",
       "//url",
 
       # TODO(crbug.com/372647115): When c/b/android/oom_intervention gets

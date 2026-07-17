@@ -11,15 +11,13 @@
 #include "base/auto_reset.h"
 #include "base/fuchsia/fuchsia_logging.h"
 #include "base/run_loop.h"
-#include "base/task/single_thread_task_runner.h"
 
 FakeApiBindingsImpl::FakeApiBindingsImpl() = default;
 
 FakeApiBindingsImpl::~FakeApiBindingsImpl() = default;
 
 fidl::InterfaceHandle<::fuchsia::web::MessagePort>
-FakeApiBindingsImpl::RunAndReturnConnectedPort(std::string_view name,
-                                               base::TimeDelta timeout) {
+FakeApiBindingsImpl::RunAndReturnConnectedPort(std::string_view name) {
   base::AutoReset<std::string_view> store_name(&expected_port_name_, name);
 
   auto it = ports_.find(expected_port_name_);
@@ -27,13 +25,7 @@ FakeApiBindingsImpl::RunAndReturnConnectedPort(std::string_view name,
     base::RunLoop run_loop;
     base::AutoReset<base::OnceClosure> store_closure(
         &on_expected_port_received_, run_loop.QuitClosure());
-    if (timeout.is_max()) {
-      run_loop.Run();
-    } else {
-      base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-          FROM_HERE, run_loop.QuitClosure(), timeout);
-      run_loop.Run();
-    }
+    run_loop.Run();
     it = ports_.find(expected_port_name_);
   }
 

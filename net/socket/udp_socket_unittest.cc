@@ -272,7 +272,12 @@ void UDPSocketTest::ConnectTest(bool use_nonblocking_io, bool use_async) {
 
   // Setup the client.
   auto client = std::make_unique<UDPClientSocket>(
-      DatagramSocket::DEFAULT_BIND, NetLog::Get(), NetLogSource());
+      DatagramSocket::DEFAULT_BIND, NetLog::Get(), NetLogSource(),
+      // Currently no tests that rely on this test multi-network scenarios.
+      // This makes it safe to always target the default network. Consider
+      // exposing a `target_network` parameter to this method if
+      // this changes.
+      handles::kInvalidNetworkHandle);
   if (use_nonblocking_io)
     client->UseNonBlockingIO();
 
@@ -397,7 +402,8 @@ TEST_F(UDPSocketTest, ConnectRestrictedPort) {
   ReloadLocalhostRestrictedPortsForTesting();
   // Setup the client.
   auto client = std::make_unique<UDPClientSocket>(
-      DatagramSocket::DEFAULT_BIND, NetLog::Get(), NetLogSource());
+      DatagramSocket::DEFAULT_BIND, NetLog::Get(), NetLogSource(),
+      handles::kInvalidNetworkHandle);
   EXPECT_THAT(client->Connect(server_address), IsError(ERR_UNSAFE_PORT));
   histogram_tester.ExpectTotalCount("Net.RestrictedLocalhostPorts", 1);
   histogram_tester.ExpectBucketCount("Net.RestrictedLocalhostPorts",
@@ -419,7 +425,7 @@ TEST_F(UDPSocketTest, PartialRecv) {
   ASSERT_THAT(server_socket.GetLocalAddress(&server_address), IsOk());
 
   UDPClientSocket client_socket(DatagramSocket::DEFAULT_BIND, nullptr,
-                                NetLogSource());
+                                NetLogSource(), handles::kInvalidNetworkHandle);
   ASSERT_THAT(client_socket.Connect(server_address), IsOk());
 
   std::string test_packet("hello world!");
@@ -511,8 +517,8 @@ TEST_F(UDPSocketTest, ConnectRandomBind) {
 
   std::vector<int> used_ports;
   for (int i = 0; i < kIterations; ++i) {
-    UDPClientSocket socket(DatagramSocket::RANDOM_BIND, nullptr,
-                           NetLogSource());
+    UDPClientSocket socket(DatagramSocket::RANDOM_BIND, nullptr, NetLogSource(),
+                           handles::kInvalidNetworkHandle);
     EXPECT_THAT(socket.Connect(IPEndPoint(IPAddress::IPv4Localhost(), 53)),
                 IsOk());
 
@@ -636,7 +642,8 @@ TEST_F(UDPSocketTest, VerifyConnectBindsAddr) {
   ASSERT_THAT(server2.Listen(server2_address), IsOk());
 
   // Setup the client, connected to server 1.
-  UDPClientSocket client(DatagramSocket::DEFAULT_BIND, nullptr, NetLogSource());
+  UDPClientSocket client(DatagramSocket::DEFAULT_BIND, nullptr, NetLogSource(),
+                         handles::kInvalidNetworkHandle);
   EXPECT_THAT(client.Connect(server1_address), IsOk());
 
   // Client sends to server1.
@@ -692,7 +699,7 @@ TEST_F(UDPSocketTest, ClientGetLocalPeerAddresses) {
     IPEndPoint local_address(ip_address, 80);
 
     UDPClientSocket client(DatagramSocket::DEFAULT_BIND, nullptr,
-                           NetLogSource());
+                           NetLogSource(), handles::kInvalidNetworkHandle);
     int rv = client.Connect(remote_address);
     if (test.may_fail && rv == ERR_ADDRESS_UNREACHABLE) {
       // Connect() may return ERR_ADDRESS_UNREACHABLE for IPv6
@@ -749,7 +756,7 @@ TEST_F(UDPSocketTest, ServerGetPeerAddress) {
 TEST_F(UDPSocketTest, ClientSetDoNotFragment) {
   for (std::string ip : {"127.0.0.1", "::1"}) {
     UDPClientSocket client(DatagramSocket::DEFAULT_BIND, nullptr,
-                           NetLogSource());
+                           NetLogSource(), handles::kInvalidNetworkHandle);
     IPAddress ip_address;
     EXPECT_TRUE(ip_address.AssignFromIPLiteral(ip));
     IPEndPoint remote_address(ip_address, 80);
@@ -896,7 +903,7 @@ TEST_F(UDPSocketTest, MAYBE_SharedMulticastAddress) {
   // Setup client socket.
   IPEndPoint send_address(group_ip, receive_address.port());
   UDPClientSocket client_socket(DatagramSocket::DEFAULT_BIND, nullptr,
-                                NetLogSource());
+                                NetLogSource(), handles::kInvalidNetworkHandle);
   ASSERT_THAT(client_socket.Connect(send_address), IsOk());
 
 #if !BUILDFLAG(IS_CHROMEOS)
@@ -973,7 +980,8 @@ TEST_F(UDPSocketTest, VerifyDscpAndEcnExchangeV4) {
   ASSERT_THAT(server.Listen(server_address), IsOk());
   // Get bound port.
   ASSERT_THAT(server.GetLocalAddress(&server_address), IsOk());
-  UDPClientSocket client(DatagramSocket::DEFAULT_BIND, nullptr, NetLogSource());
+  UDPClientSocket client(DatagramSocket::DEFAULT_BIND, nullptr, NetLogSource(),
+                         handles::kInvalidNetworkHandle);
   client.Connect(server_address);
   EXPECT_EQ(client.SetRecvTos(), 0);
   EXPECT_EQ(server.SetRecvTos(), 0);
@@ -1038,7 +1046,8 @@ TEST_F(UDPSocketTest, VerifyDscpAndEcnExchangeV6) {
   ASSERT_THAT(server.Listen(server_address), IsOk());
   // Get bound port.
   ASSERT_THAT(server.GetLocalAddress(&server_address), IsOk());
-  UDPClientSocket client(DatagramSocket::DEFAULT_BIND, nullptr, NetLogSource());
+  UDPClientSocket client(DatagramSocket::DEFAULT_BIND, nullptr, NetLogSource(),
+                         handles::kInvalidNetworkHandle);
   EXPECT_THAT(client.Connect(server_address), IsOk());
   EXPECT_EQ(client.SetRecvTos(), 0);
   EXPECT_EQ(server.SetRecvTos(), 0);
@@ -1107,7 +1116,8 @@ TEST_F(UDPSocketTest, VerifyDscpAndEcnExchangeDualStack) {
   // to localhost.
   IPEndPoint server_v4_address(IPAddress::IPv4Localhost(),
                                server_v6_address.port());
-  UDPClientSocket client(DatagramSocket::DEFAULT_BIND, nullptr, NetLogSource());
+  UDPClientSocket client(DatagramSocket::DEFAULT_BIND, nullptr, NetLogSource(),
+                         handles::kInvalidNetworkHandle);
   EXPECT_THAT(client.Connect(server_v4_address), IsOk());
   EXPECT_EQ(server.SetRecvTos(), 0);
 
@@ -1178,7 +1188,8 @@ TEST_F(UDPSocketTest, VerifyDscpAndEcnExchangeDualStackV4Mapped) {
   ASSERT_THAT(server.GetLocalAddress(&server_v6_address), IsOk());
   IPEndPoint server_v4_address(IPAddress::IPv4Localhost(),
                                server_v6_address.port());
-  UDPClientSocket client(DatagramSocket::DEFAULT_BIND, nullptr, NetLogSource());
+  UDPClientSocket client(DatagramSocket::DEFAULT_BIND, nullptr, NetLogSource(),
+                         handles::kInvalidNetworkHandle);
   EXPECT_THAT(client.Connect(server_v4_address), IsOk());
   EXPECT_EQ(server.SetRecvTos(), 0);
 
@@ -1246,7 +1257,8 @@ TEST_F(UDPSocketTest, VerifyDscpAndEcnExchangeNonBlocking) {
   ASSERT_THAT(server.Listen(server_address), IsOk());
   // Get bound port.
   ASSERT_THAT(server.GetLocalAddress(&server_address), IsOk());
-  UDPClientSocket client(DatagramSocket::DEFAULT_BIND, nullptr, NetLogSource());
+  UDPClientSocket client(DatagramSocket::DEFAULT_BIND, nullptr, NetLogSource(),
+                         handles::kInvalidNetworkHandle);
   client.UseNonBlockingIO();
   client.Connect(server_address);
   EXPECT_EQ(client.SetRecvTos(), 0);
@@ -1315,8 +1327,8 @@ TEST_F(UDPSocketTest, ConnectUsingNetwork) {
   {
     // Connecting using a not existing network should fail but not report
     // ERR_NOT_IMPLEMENTED when network handles are supported.
-    UDPClientSocket socket(DatagramSocket::RANDOM_BIND, nullptr,
-                           NetLogSource());
+    UDPClientSocket socket(DatagramSocket::RANDOM_BIND, nullptr, NetLogSource(),
+                           handles::kInvalidNetworkHandle);
     int rv =
         socket.ConnectUsingNetwork(wrong_network_handle, fake_server_address);
     EXPECT_NE(ERR_NOT_IMPLEMENTED, rv);
@@ -1327,8 +1339,8 @@ TEST_F(UDPSocketTest, ConnectUsingNetwork) {
   {
     // Connecting using an existing network should succeed when
     // NetworkChangeNotifier returns a valid default network.
-    UDPClientSocket socket(DatagramSocket::RANDOM_BIND, nullptr,
-                           NetLogSource());
+    UDPClientSocket socket(DatagramSocket::RANDOM_BIND, nullptr, NetLogSource(),
+                           handles::kInvalidNetworkHandle);
     const handles::NetworkHandle network_handle =
         NetworkChangeNotifier::GetDefaultNetwork();
     if (network_handle != handles::kInvalidNetworkHandle) {
@@ -1338,7 +1350,8 @@ TEST_F(UDPSocketTest, ConnectUsingNetwork) {
     }
   }
 #else
-  UDPClientSocket socket(DatagramSocket::RANDOM_BIND, nullptr, NetLogSource());
+  UDPClientSocket socket(DatagramSocket::RANDOM_BIND, nullptr, NetLogSource(),
+                         handles::kInvalidNetworkHandle);
   EXPECT_EQ(
       ERR_NOT_IMPLEMENTED,
       socket.ConnectUsingNetwork(wrong_network_handle, fake_server_address));
@@ -1361,8 +1374,8 @@ TEST_F(UDPSocketTest, ConnectUsingNetworkAsync) {
   {
     // Connecting using a not existing network should fail but not report
     // ERR_NOT_IMPLEMENTED when network handles are supported.
-    UDPClientSocket socket(DatagramSocket::RANDOM_BIND, nullptr,
-                           NetLogSource());
+    UDPClientSocket socket(DatagramSocket::RANDOM_BIND, nullptr, NetLogSource(),
+                           handles::kInvalidNetworkHandle);
     TestCompletionCallback callback;
     int rv = socket.ConnectUsingNetworkAsync(
         wrong_network_handle, fake_server_address, callback.callback());
@@ -1377,8 +1390,8 @@ TEST_F(UDPSocketTest, ConnectUsingNetworkAsync) {
   {
     // Connecting using an existing network should succeed when
     // NetworkChangeNotifier returns a valid default network.
-    UDPClientSocket socket(DatagramSocket::RANDOM_BIND, nullptr,
-                           NetLogSource());
+    UDPClientSocket socket(DatagramSocket::RANDOM_BIND, nullptr, NetLogSource(),
+                           handles::kInvalidNetworkHandle);
     TestCompletionCallback callback;
     const handles::NetworkHandle network_handle =
         NetworkChangeNotifier::GetDefaultNetwork();
@@ -1393,7 +1406,8 @@ TEST_F(UDPSocketTest, ConnectUsingNetworkAsync) {
     }
   }
 #else
-  UDPClientSocket socket(DatagramSocket::RANDOM_BIND, nullptr, NetLogSource());
+  UDPClientSocket socket(DatagramSocket::RANDOM_BIND, nullptr, NetLogSource(),
+                         handles::kInvalidNetworkHandle);
   TestCompletionCallback callback;
   EXPECT_EQ(ERR_NOT_IMPLEMENTED, socket.ConnectUsingNetworkAsync(
                                      wrong_network_handle, fake_server_address,
@@ -1785,7 +1799,8 @@ TEST_F(UDPSocketTest, ReadWithSocketOptimization) {
 
   // Setup the client, enable experimental optimization and connected to the
   // server.
-  UDPClientSocket client(DatagramSocket::DEFAULT_BIND, nullptr, NetLogSource());
+  UDPClientSocket client(DatagramSocket::DEFAULT_BIND, nullptr, NetLogSource(),
+                         handles::kInvalidNetworkHandle);
   client.EnableRecvOptimization();
   EXPECT_THAT(client.Connect(server_address), IsOk());
 
@@ -1826,7 +1841,8 @@ TEST_F(UDPSocketTest, ReadWithSocketOptimizationTruncation) {
 
   // Setup the client, enable experimental optimization and connected to the
   // server.
-  UDPClientSocket client(DatagramSocket::DEFAULT_BIND, nullptr, NetLogSource());
+  UDPClientSocket client(DatagramSocket::DEFAULT_BIND, nullptr, NetLogSource(),
+                         handles::kInvalidNetworkHandle);
   client.EnableRecvOptimization();
   EXPECT_THAT(client.Connect(server_address), IsOk());
 
@@ -1904,7 +1920,8 @@ TEST_F(UDPSocketTest, Tag) {
   IPEndPoint server_address;
   ASSERT_THAT(server.GetLocalAddress(&server_address), IsOk());
 
-  UDPClientSocket client(DatagramSocket::DEFAULT_BIND, nullptr, NetLogSource());
+  UDPClientSocket client(DatagramSocket::DEFAULT_BIND, nullptr, NetLogSource(),
+                         handles::kInvalidNetworkHandle);
   ASSERT_THAT(client.Connect(server_address), IsOk());
 
   // Verify UDP packets are tagged and counted properly.
@@ -2063,10 +2080,12 @@ TEST_F(UDPSocketTest, LimitClientSocket) {
   EXPECT_EQ(GetGlobalUDPSocketCountForTesting(),
             OwnedUDPSocketCount::kMaxUdpSockets - 2);
 
-  auto socket1 = std::make_unique<UDPClientSocket>(DatagramSocket::DEFAULT_BIND,
-                                                   nullptr, NetLogSource());
-  auto socket2 = std::make_unique<UDPClientSocket>(DatagramSocket::DEFAULT_BIND,
-                                                   nullptr, NetLogSource());
+  auto socket1 = std::make_unique<UDPClientSocket>(
+      DatagramSocket::DEFAULT_BIND, nullptr, NetLogSource(),
+      handles::kInvalidNetworkHandle);
+  auto socket2 = std::make_unique<UDPClientSocket>(
+      DatagramSocket::DEFAULT_BIND, nullptr, NetLogSource(),
+      handles::kInvalidNetworkHandle);
 
   // Simply constructing a UDPClientSocket does not increase the limit (no
   // Connect() or Bind() has been called yet).
@@ -2089,8 +2108,9 @@ TEST_F(UDPSocketTest, LimitClientSocket) {
             OwnedUDPSocketCount::kMaxUdpSockets);
 
   // Attempting a third Connect() should fail with ERR_INSUFFICIENT_RESOURCES.
-  auto socket3 = std::make_unique<UDPClientSocket>(DatagramSocket::DEFAULT_BIND,
-                                                   nullptr, NetLogSource());
+  auto socket3 = std::make_unique<UDPClientSocket>(
+      DatagramSocket::DEFAULT_BIND, nullptr, NetLogSource(),
+      handles::kInvalidNetworkHandle);
   EXPECT_THAT(socket3->Connect(server_address),
               IsError(ERR_INSUFFICIENT_RESOURCES));
   EXPECT_EQ(GetGlobalUDPSocketCountForTesting(),
@@ -2108,8 +2128,9 @@ TEST_F(UDPSocketTest, LimitClientSocket) {
 
   // Now that the count is below limit, try to connect another socket. This time
   // it will work.
-  auto socket4 = std::make_unique<UDPClientSocket>(DatagramSocket::DEFAULT_BIND,
-                                                   nullptr, NetLogSource());
+  auto socket4 = std::make_unique<UDPClientSocket>(
+      DatagramSocket::DEFAULT_BIND, nullptr, NetLogSource(),
+      handles::kInvalidNetworkHandle);
   EXPECT_THAT(socket4->Connect(server_address), IsOk());
   EXPECT_EQ(GetGlobalUDPSocketCountForTesting(),
             OwnedUDPSocketCount::kMaxUdpSockets);
@@ -2175,7 +2196,8 @@ TEST_F(UDPSocketTest, LimitConnectMultithreaded) {
           IPEndPoint server_address(IPAddress::IPv4Localhost(), 8080);
 
           UDPClientSocket socket(DatagramSocket::DEFAULT_BIND, nullptr,
-                                 NetLogSource());
+                                 NetLogSource(),
+                                 handles::kInvalidNetworkHandle);
           EXPECT_THAT(socket.Connect(server_address), IsOk());
         }));
   }

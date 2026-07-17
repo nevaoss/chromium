@@ -582,6 +582,7 @@
 <translation id="1902576642799138955">বৈধতা পর্ব</translation>
 <translation id="1908217026282415406">ক্যামেরা ব্যবহার এবং গতিবিধি</translation>
 <translation id="1908690643053136980">অ্যাডমিনিস্ট্রেটর এই সাইটের জন্য <ph name="PERMISSION" /> ব্যবহারের অনুমতি দেয় না</translation>
+<translation id="1912750443952232242">Google Wallet-এ আইডি কার্ড সেভ করুন</translation>
 <translation id="1913037223029790376">এই ভার্চুয়াল কার্ডে CVC ব্যবহার করুন</translation>
 <translation id="191374271204266022">JSON ফর্ম্যাটে কপি করুন</translation>
 <translation id="1914326953223720820">পরিষেবা আনজিপ করুন</translation>
@@ -1494,6 +1495,7 @@
 <translation id="3325568918769906282">বড় থেকে ছোট ক্রমানুসারে</translation>
 <translation id="3325662270238538525">ফাইলের নাম, ফাইল কন্টেন্টের ডিজিটাল ফিঙ্গারপ্রিন্ট, ডাউনলোড সোর্স ও মেটাডেটা সহ ফাইলে করা সাম্প্রতিক অ্যাক্সেস ও পরিবর্তন সংক্রান্ত তথ্য</translation>
 <translation id="3329013043687509092">পরিপৃক্তি</translation>
+<translation id="3330483197654063678">চালু করা থাকলে, আরও প্রাসঙ্গিক উত্তর পেতে সাহায্য করার জন্য Chrome এই উইন্ডোয় খোলা ট্যাবগুলি শেয়ার করবে।</translation>
 <translation id="3333762389743153920">ভার্চুয়াল কার্ডের জন্য যোগ্য নয়</translation>
 <translation id="3338095232262050444">সুরক্ষিত</translation>
 <translation id="333839153442689579">হাই ইনটেনসিটি ইন্টারভ্যাল ট্রেনিং</translation>
@@ -2847,6 +2849,7 @@
 <translation id="5458150163479425638">{CONTACT,plural, =0{<ph name="CONTACT_PREVIEW" />}=1{<ph name="CONTACT_PREVIEW" /> এবং আরও <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />টি}one{<ph name="CONTACT_PREVIEW" /> এবং আরও <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />টি}other{<ph name="CONTACT_PREVIEW" /> এবং আরও <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />টি}}</translation>
 <translation id="5463625433003343978">ডিভাইস খোঁজা হচ্ছে...</translation>
 <translation id="5464236009658034488">অফিসের জিনিসপত্রের সরবরাহকারী</translation>
+<translation id="5465128270485645058">এই উইন্ডোতে খোলা ট্যাবগুলি এই থ্রেডের সাথে যুক্ত থাকলে, সেগুলি অটোমেটিক শেয়ার করার মাধ্যমে আরও বেশি কাস্টমাইজ করা উত্তর পান।</translation>
 <translation id="5465724643247062031">গ্লাস (ওপাক)</translation>
 <translation id="5466018172325111652">আপনি কি কোনও কোড পাননি? <ph name="BEGIN_LINK" />নতুন কোড পান<ph name="END_LINK" /></translation>
 <translation id="5466818462212249084">পেমেন্ট অ্যাপ</translation>
@@ -3129,6 +3132,7 @@
 <translation id="5911020115933784199">ইভেন্ট ও তালিকা</translation>
 <translation id="5911110632211230665">ফাইল খোলার অনুমতি নেই</translation>
 <translation id="5912796581727968237">Google Wallet খুলুন</translation>
+<translation id="5914185423510719251">Google Wallet-এ KTN সেভ করুন</translation>
 <translation id="5914465277418006379"><ph name="MEMBER_FIRST_NAME" /> এই ট্যাব যোগ করেছেন</translation>
 <translation id="5915189366813702112">কাজের ফ্লেক্সিবল ব্যবস্থা</translation>
 <translation id="59174027418879706">সক্ষমিত</translation>
@@ -3651,6 +3655,7 @@
 <translation id="6702851555558236418">অডিও ও মিউজিক সফ্টওয়্যার</translation>
 <translation id="6702919718839027939">প্রেজেন্টেশন মোড</translation>
 <translation id="6704458454638854812">প্রপার্টি "custom_size" সেট আছে, নামটি "কাস্টম" হতে পারে।</translation>
+<translation id="670477556876354552">রিস্টার্ট করা প্রয়োজন</translation>
 <translation id="6706005862292023715">পর্দা ও জানলা সম্পর্কিত সুরক্ষা</translation>
 <translation id="6706210727756204531">সুযোগ</translation>
 <translation id="6706678697074905703">এই IBAN আপনার Google অ্যাকাউন্টে সেভ করা যায়নি। পরিবর্তে এই ডিভাইসের Chrome-এ সেটি সেভ করা হয়েছে।</translation>
@@ -3908,6 +3913,7 @@
 <translation id="7110116949943042888">অস্থায়ী ও সিজনাল চাকরি</translation>
 <translation id="7110368079836707726">কলেজ ও বিশ্ববিদ্যালয়</translation>
 <translation id="7111507312244504964">প্রপার্টি পরিদর্শন ও মূল্যায়ন</translation>
+<translation id="7117290130383718594">টেক্সট অ্যানোটেশন</translation>
 <translation id="7118618213916969306">ক্লিপবোর্ড ইউআরএল <ph name="SHORT_URL" /> সার্চ করুন</translation>
 <translation id="7118852830504022370">আপনি এই সতর্কতা দেখছেন কারণ, এই সাইটে HTTPS কাজ করে না। <ph name="BEGIN_LEARN_MORE_LINK" />এই সতর্কতা সম্পর্কে আরও জানুন<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="7119063404975271297">টিভিতে নাটক</translation>

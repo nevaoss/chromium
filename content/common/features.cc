@@ -752,9 +752,6 @@ BASE_FEATURE(kServiceWorkerClientUrlIsCreationUrl,
 BASE_FEATURE(kServiceWorkerOptionalTimeoutIterator,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kServiceWorkerWindowClientInitiator,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // If enabled, the browser process verifies that the URL of a main script
 // request matches the service worker's script URL.
 // See https://crbug.com/497983180.

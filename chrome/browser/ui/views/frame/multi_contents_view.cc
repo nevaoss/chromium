@@ -279,23 +279,7 @@ void MultiContentsView::CloseSplitView() {
   }
 
   if (active_index_ != 0) {
-    ContentsContainerView* start_view = contents_container_views_[0];
-    ContentsContainerView* active_view =
-        contents_container_views_[active_index_];
-
-    // Move the active WebContents so that the first ContentsContainerView in
-    // contents_container_views_ can always be visible.
-    std::iter_swap(contents_container_views_.begin(),
-                   contents_container_views_.begin() + active_index_);
-
-    // Reorder the child views so that focus order will be consistent with
-    // contents_container_views_.
-    size_t start_view_child_index = GetIndexOf(start_view).value();
-    size_t active_view_child_index = GetIndexOf(active_view).value();
-    ReorderChildView(start_view, active_view_child_index);
-    ReorderChildView(active_view, start_view_child_index);
-
-    active_index_ = 0;
+    SwapContentsInSplitView();
   }
   contents_container_views_[1]->contents_view()->SetWebContents(nullptr);
   contents_container_views_[1]->SetVisible(false);
@@ -307,6 +291,21 @@ void MultiContentsView::CloseSplitView() {
       sad_tab_helper->ReinstallInWebView();
     }
   }
+}
+
+void MultiContentsView::SwapContentsInSplitView() {
+  // Reorder the child views so that focus order will be consistent with
+  // contents_container_views_.
+  ContentsContainerView* start_view = contents_container_views_[0];
+  ContentsContainerView* end_view = contents_container_views_[1];
+  size_t start_view_child_index = GetIndexOf(start_view).value();
+  size_t end_view_child_index = GetIndexOf(end_view).value();
+  ReorderChildView(start_view, end_view_child_index);
+  ReorderChildView(end_view, start_view_child_index);
+
+  std::swap(contents_container_views_[0], contents_container_views_[1]);
+
+  active_index_ = active_index_ == 0 ? 1 : 0;
 }
 
 void MultiContentsView::SetActiveIndex(int index) {

@@ -39,28 +39,6 @@ using RoutineObserverProxy =
 
 }  // namespace
 
-// static
-TelemetryDiagnosticsRoutineServiceAsh::Factory*
-    TelemetryDiagnosticsRoutineServiceAsh::Factory::test_factory_ = nullptr;
-
-// static
-std::unique_ptr<crosapi::TelemetryDiagnosticRoutinesService>
-TelemetryDiagnosticsRoutineServiceAsh::Factory::Create() {
-  if (test_factory_) {
-    return test_factory_->CreateInstance();
-  }
-
-  return std::make_unique<TelemetryDiagnosticsRoutineServiceAsh>();
-}
-
-// static
-void TelemetryDiagnosticsRoutineServiceAsh::Factory::SetForTesting(
-    Factory* test_factory) {
-  test_factory_ = test_factory;
-}
-
-TelemetryDiagnosticsRoutineServiceAsh::Factory::~Factory() = default;
-
 TelemetryDiagnosticsRoutineServiceAsh::TelemetryDiagnosticsRoutineServiceAsh() =
     default;
 

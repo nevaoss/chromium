@@ -28,6 +28,7 @@ gfx::Rect ToyTabDragWindowAdapter::GetBoundsInScreen() const {
 }
 
 gfx::Point ToyTabDragWindowAdapter::ConvertScreenPointToLocal(
+    gfx::NativeView target_view,
     const gfx::Point& screen_point) const {
   return screen_point - bounds_.OffsetFromOrigin();
 }

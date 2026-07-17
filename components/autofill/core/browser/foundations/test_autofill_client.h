@@ -22,7 +22,9 @@
 #include "base/no_destructor.h"
 #include "base/notreached.h"
 #include "base/scoped_observation.h"
-#include "build/build_config.h"
+#if !BUILDFLAG(IS_FUCHSIA)
+#include "components/variations/service/google_groups_manager.h"  // nogncheck
+#endif  // !BUILDFLAG(IS_FUCHSIA)
 #include "components/accessibility_annotator/core/at_memory_query_service.h"
 #include "components/autofill/core/browser/country_type.h"
 #include "components/autofill/core/browser/crowdsourcing/autofill_crowdsourcing_manager.h"
@@ -549,6 +551,29 @@ class TestAutofillClientTemplate : public T {
     return is_personal_context_notice_acknowledged_;
   }
 
+  personal_context::PersonalContextEnablementService*
+  GetPersonalContextEnablementService() const override {
+    return personal_context_enablement_service_;
+  }
+  void set_personal_context_enablement_service(
+      personal_context::PersonalContextEnablementService* service) {
+    personal_context_enablement_service_ = service;
+  }
+
+  const GoogleGroupsManager* GetGoogleGroupsManager() const override {
+#if !BUILDFLAG(IS_FUCHSIA)
+    return google_groups_manager_.get();
+#else   // !BUILDFLAG(IS_FUCHSIA)
+    return nullptr;
+#endif  // !BUILDFLAG(IS_FUCHSIA)
+  }
+
+#if !BUILDFLAG(IS_FUCHSIA)
+  void set_google_groups_manager(std::unique_ptr<GoogleGroupsManager> manager) {
+    google_groups_manager_ = std::move(manager);
+  }
+#endif  // !BUILDFLAG(IS_FUCHSIA)
+
   void SetAutofillProfileEnabled(bool autofill_profile_enabled) {
     autofill_profile_enabled_ = autofill_profile_enabled;
     if (PrefService* prefs = GetPrefs()) {
@@ -773,6 +798,11 @@ class TestAutofillClientTemplate : public T {
   raw_ptr<syncer::SyncService> test_sync_service_ = nullptr;
   raw_ptr<PersonalContextAccessManager> personal_context_access_manager_ =
       nullptr;
+  raw_ptr<personal_context::PersonalContextEnablementService>
+      personal_context_enablement_service_ = nullptr;
+#if !BUILDFLAG(IS_FUCHSIA)
+  std::unique_ptr<GoogleGroupsManager> google_groups_manager_;
+#endif
   std::unique_ptr<OtpPhishGuardDelegate> otp_phish_guard_delegate_;
   std::unique_ptr<accessibility_annotator::AtMemoryQueryService>
       at_memory_query_service_;

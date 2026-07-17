@@ -5,6 +5,7 @@
 import 'chrome://feature-showcase/app.js';
 import 'chrome://feature-showcase/feature_showcase_stepper.js';
 import 'chrome://feature-showcase/password_manager/password_manager_step.js';
+import 'chrome://feature-showcase/themes_and_customization/themes_and_customization_step.js';
 
 import type {FeatureShowcaseAppElement} from 'chrome://feature-showcase/app.js';
 import {DefaultBrowserPageHandlerRemote} from 'chrome://feature-showcase/default_browser.mojom-webui.js';
@@ -16,7 +17,8 @@ import type {FeatureShowcaseStepperElement} from 'chrome://feature-showcase/feat
 import {PasswordManagerPageHandlerRemote} from 'chrome://feature-showcase/password_manager.mojom-webui.js';
 import {PasswordManagerBrowserProxyImpl} from 'chrome://feature-showcase/password_manager/password_manager_browser_proxy.js';
 import type {FeatureShowcasePasswordManagerStepElement} from 'chrome://feature-showcase/password_manager/password_manager_step.js';
-import {assertEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
+import type {FeatureShowcaseThemesAndCustomizationStepElement} from 'chrome://feature-showcase/themes_and_customization/themes_and_customization_step.js';
+import {assertDeepEquals, assertEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {TestMock} from 'chrome://webui-test/test_mock.js';
 import {microtasksFinished} from 'chrome://webui-test/test_util.js';
 
@@ -24,16 +26,27 @@ suite('FeatureShowcaseAppTest', function() {
   let appElement: FeatureShowcaseAppElement;
   let testHandler: TestMock<FeatureShowcasePageHandlerRemote>&
       FeatureShowcasePageHandlerRemote;
+  let originalMatchMedia: (query: string) => MediaQueryList;
+  let mockMediaQueryList: EventTarget&{matches: boolean};
 
   setup(function() {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
     window.history.replaceState({}, '', '?steps=example');
+
+    originalMatchMedia = window.matchMedia;
+    mockMediaQueryList = new EventTarget() as EventTarget & {matches: boolean};
+    mockMediaQueryList.matches = false;
+    window.matchMedia = () => mockMediaQueryList as unknown as MediaQueryList;
 
     testHandler = TestMock.fromClass(FeatureShowcasePageHandlerRemote);
     FeatureShowcaseBrowserProxyImpl.setInstance({handler: testHandler});
 
     appElement = document.createElement('feature-showcase-app');
     document.body.appendChild(appElement);
+  });
+
+  teardown(function() {
+    window.matchMedia = originalMatchMedia;
   });
 
   test('continue button clicked', async function() {
@@ -49,6 +62,78 @@ suite('FeatureShowcaseAppTest', function() {
     button.click();
 
     await testHandler.whenCalled('finishFeatureShowcase');
+  });
+
+  test('nextStepShown called on init', async function() {
+    await testHandler.whenCalled('nextStepShown');
+  });
+
+  test('nextStepShown called on transition', async function() {
+    // Setup app with 2 steps.
+    document.body.innerHTML = window.trustedTypes!.emptyHTML;
+    window.history.replaceState({}, '', '?steps=example,password-manager');
+
+    testHandler = TestMock.fromClass(FeatureShowcasePageHandlerRemote);
+    FeatureShowcaseBrowserProxyImpl.setInstance({handler: testHandler});
+
+    appElement = document.createElement('feature-showcase-app');
+    document.body.appendChild(appElement);
+
+    await testHandler.whenCalled('nextStepShown');
+
+    testHandler.resetResolver('nextStepShown');
+
+    const exampleStep =
+        appElement.shadowRoot.querySelector('feature-showcase-example-step');
+    assertTrue(!!exampleStep);
+
+    const button =
+        exampleStep.shadowRoot.querySelector<HTMLElement>('#confirm-button');
+    assertTrue(!!button);
+    button.click();
+
+    await testHandler.whenCalled('nextStepShown');
+  });
+
+  test('animation stays at correct frame on theme change', async function() {
+    document.body.innerHTML = window.trustedTypes!.emptyHTML;
+    window.history.replaceState({}, '', '?steps=example,password-manager');
+    appElement = document.createElement('feature-showcase-app');
+    document.body.appendChild(appElement);
+    await microtasksFinished();
+
+    const rightAnimation = appElement.$.rightAnimation;
+    let rightSegments: [number, number]|null = null;
+    rightAnimation.playSegments = (segments: [number, number]) => {
+      rightSegments = segments;
+    };
+
+    const bottomAnimation = appElement.$.bottomAnimation;
+    let bottomSegments: [number, number]|null = null;
+    bottomAnimation.playSegments = (segments: [number, number]) => {
+      bottomSegments = segments;
+    };
+
+    mockMediaQueryList.matches = true;
+    mockMediaQueryList.dispatchEvent(new Event('change'));
+
+    await microtasksFinished();
+
+    assertDeepEquals([0, 1], rightSegments);
+    assertDeepEquals([0, 1], bottomSegments);
+
+    const exampleStep =
+        appElement.shadowRoot.querySelector('feature-showcase-example-step');
+    exampleStep!.dispatchEvent(new CustomEvent('step-completed'));
+    await microtasksFinished();
+
+    // Trigger another theme change
+    mockMediaQueryList.matches = false;
+    mockMediaQueryList.dispatchEvent(new Event('change'));
+    await microtasksFinished();
+
+    assertDeepEquals([120, 121], rightSegments);
+    assertDeepEquals([120, 121], bottomSegments);
   });
 });
 
@@ -197,5 +282,31 @@ suite('FeatureShowcasePasswordManagerStepTest', function() {
 
     await stepCompletedEvent;
     assertEquals(0, testHandler.getCallCount('pinPasswordManager'));
+  });
+});
+
+suite('FeatureShowcaseThemesAndCustomizationStepTest', function() {
+  let stepElement: FeatureShowcaseThemesAndCustomizationStepElement;
+    setup(function() {
+      document.body.innerHTML = window.trustedTypes!.emptyHTML;
+      stepElement = document.createElement(
+        'feature-showcase-themes-and-customization-step');
+    document.body.appendChild(stepElement);
+  });
+
+  test('confirm button clicked', async function() {
+    await microtasksFinished();
+
+    const button =
+        stepElement.shadowRoot.querySelector<HTMLElement>('#confirm-button');
+    assertTrue(!!button);
+
+    const stepCompletedEvent = new Promise((resolve) => {
+      stepElement.addEventListener('step-completed', resolve);
+    });
+
+    button.click();
+
+    await stepCompletedEvent;
   });
 });

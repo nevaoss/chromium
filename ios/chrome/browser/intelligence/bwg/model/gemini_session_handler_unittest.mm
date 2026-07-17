@@ -12,6 +12,7 @@
 #import "ios/chrome/browser/feature_engagement/model/tracker_factory.h"
 #import "ios/chrome/browser/intelligence/bwg/metrics/gemini_metrics.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_tab_helper.h"
+#import "ios/chrome/browser/intelligence/bwg/utils/gemini_prefs.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/optimization_guide/model/optimization_guide_service.h"
 #import "ios/chrome/browser/optimization_guide/model/optimization_guide_service_factory.h"
@@ -219,9 +220,7 @@ TEST_F(GeminiSessionHandlerTest, TestFirstRunFlag) {
   NSString* client_id = GetClientID();
 
   // Set first run flag.
-  web::WebState* web_state = web_state_list_->GetWebStateAt(0);
-  GeminiTabHelper* tab_helper = GeminiTabHelper::FromWebState(web_state);
-  tab_helper->SetIsFirstRun(true);
+  session_handler_.isFirstSession = YES;
 
   [session_handler_ UIDidAppearWithClientID:client_id serverID:kTestServerID];
   [session_handler_ didSendQueryWithInputType:gemini::InputType::kText
@@ -233,10 +232,9 @@ TEST_F(GeminiSessionHandlerTest, TestFirstRunFlag) {
   [session_handler_ UIDidDisappearWithClientID:client_id
                                       serverID:kTestServerID];
 
-  // Verify first run flag was cleared.
-  EXPECT_FALSE(tab_helper->GetIsFirstRun());
-
   // Session metrics should reflect first session.
+  histogram_tester_.ExpectTotalCount(
+      kGeminiSessionLengthFirstRunWithPromptHistogram, 1);
   histogram_tester_.ExpectTotalCount(kGeminiSessionTimeHistogram, 1);
 }
 
@@ -396,17 +394,18 @@ TEST_F(GeminiSessionHandlerTest, TestUpdateSessionWithClientID) {
   NSString* client_id = GetClientID();
   NSString* server_id = @"test_server_id";
 
-  web::WebState* web_state = web_state_list_->GetWebStateAt(0);
-  GeminiTabHelper* tab_helper = GeminiTabHelper::FromWebState(web_state);
+  web_state_list_->ActivateWebStateAt(0);
 
   // Check initial state - no server ID should exist.
-  std::optional<std::string> initial_server_id = tab_helper->GetServerId();
+  std::optional<std::string> initial_server_id =
+      gemini::GetConversationId(profile_->GetPrefs());
   EXPECT_FALSE(initial_server_id.has_value());
 
   [session_handler_ UIDidAppearWithClientID:client_id serverID:server_id];
 
   // Verify server ID was stored correctly.
-  std::optional<std::string> stored_server_id = tab_helper->GetServerId();
+  std::optional<std::string> stored_server_id =
+      gemini::GetConversationId(profile_->GetPrefs());
   EXPECT_TRUE(stored_server_id.has_value());
   EXPECT_EQ(stored_server_id.value(), "test_server_id");
 }
@@ -417,6 +416,8 @@ TEST_F(GeminiSessionHandlerTest, TestNewChatButtonTapped) {
   NSString* conversation_id = @"conversation_123";
   NSString* server_id = @"test_server_123";
 
+  web_state_list_->ActivateWebStateAt(0);
+
   // Create a session with stored server ID.
   [session_handler_ UIDidAppearWithClientID:client_id serverID:server_id];
 
@@ -424,7 +425,8 @@ TEST_F(GeminiSessionHandlerTest, TestNewChatButtonTapped) {
   GeminiTabHelper* tab_helper = GeminiTabHelper::FromWebState(web_state);
 
   // Verify session exists with server ID.
-  std::optional<std::string> initial_server_id = tab_helper->GetServerId();
+  std::optional<std::string> initial_server_id =
+      gemini::GetConversationId(profile_->GetPrefs());
   EXPECT_TRUE(initial_server_id.has_value());
   EXPECT_EQ(initial_server_id.value(), "test_server_123");
 

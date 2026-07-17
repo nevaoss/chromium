@@ -264,6 +264,16 @@ public class BottomBarButtonManager implements Destroyable {
         for (int i = 0; i < mButtons.size(); i++) {
             ButtonBinding state = mButtons.valueAt(i);
             boolean visible = isVisible(state);
+
+            // Bind the PropertyModelChangeProcessor when the button first becomes visible.
+            // Once bound, we keep it active for the rest of the session to prevent unnecessary
+            // churn, ensuring only one action is active on a shared slot.
+            if (visible && state.mMcp == null && state.mModel != null) {
+                state.mMcp =
+                        PropertyModelChangeProcessor.create(
+                                state.mModel, state.mContainer, state.mBinder);
+            }
+
             mBottomBarModel.set(state.mVisibilityPropertyKey, visible);
             if (visible) {
                 balance += state.mPosition;
@@ -305,8 +315,6 @@ public class BottomBarButtonManager implements Destroyable {
         state.mModel = model;
 
         if (model != null) {
-            state.mMcp =
-                    PropertyModelChangeProcessor.create(model, state.mContainer, state.mBinder);
             model.addObserver(mModelObserver);
         }
         recomputeState();

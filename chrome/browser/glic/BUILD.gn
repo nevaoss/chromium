@@ -63,6 +63,7 @@ source_set("glic") {
     "public/glic_passkeys.h",
     "public/glic_side_panel_coordinator.cc",
     "public/glic_side_panel_coordinator.h",
+    "public/service/glic_instance_coordinator.h",
     "service/glic_instance_helper.h",
     "service/metrics/metrics_types.cc",
     "service/metrics/metrics_types.h",
@@ -241,6 +242,7 @@ source_set("private_types") {
     ":mojo_bindings",
     "//base",
     "//chrome/browser/ui/browser_window",
+    "//chrome/browser/ui/side_panel",
     "//chrome/browser/ui/tabs:tabs_public",
   ]
 }

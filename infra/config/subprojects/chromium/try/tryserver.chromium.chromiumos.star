@@ -76,28 +76,8 @@ try_.builder(
     main_list_view = "try",
 )
 
-# TODO(crbug.com/xxxx): Remove chromeos-amd64-generic-rel-gtest and keep
-# chromeos-amd64-generic-rel as the only try builder.
 try_.builder(
     name = "chromeos-amd64-generic-rel",
-    branch_selector = branches.selector.CROS_LTS_BRANCHES,
-    description_html = "This is an Ash chrome builder which runs gtests.",
-    mirrors = [
-        "ci/chromeos-amd64-generic-rel",
-        "ci/chromeos-amd64-generic-rel-gtest",
-    ],
-    gn_args = gn_args.config(
-        configs = [
-            "ci/chromeos-amd64-generic-rel",
-            "dcheck_always_on",
-        ],
-    ),
-    contact_team_email = "chromeos-chrome-build@google.com",
-    main_list_view = "try",
-)
-
-try_.builder(
-    name = "chromeos-amd64-generic-rel-gtest",
     branch_selector = branches.selector.CROS_LTS_BRANCHES,
     description_html = "This is an Ash chrome builder which runs gtests.",
     mirrors = [

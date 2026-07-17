@@ -23,8 +23,8 @@ String InnerHtmlBuilder::Build(LocalFrame& frame) {
 
 InnerHtmlBuilder::InnerHtmlBuilder(Document& d)
     : MarkupAccumulator(ResolveUrls::kNone,
-                        IsA<HTMLDocument>(d) ? SerializationType::kHTML
-                                             : SerializationType::kXML,
+                        IsA<HTMLDocument>(d) ? SerializationType::kHtml
+                                             : SerializationType::kXml,
                         ShadowRootInclusion()) {}
 
 String InnerHtmlBuilder::Build(HTMLElement& body) {

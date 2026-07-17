@@ -13,21 +13,31 @@ namespace tabs_api {
 
 DropTarget::DropTarget(DropTargetId id,
                        TabDragWindowAdapter* window,
+                       gfx::NativeView native_view,
                        mojo::PendingAssociatedRemote<mojom::DropTarget> remote)
-    : id_(id), window_(window), remote_(std::move(remote)) {
+    : id_(id),
+      window_(window),
+      native_view_(native_view),
+      remote_(std::move(remote)) {
   CHECK(window_);
 }
 
 DropTarget::~DropTarget() = default;
 
+gfx::Point DropTarget::ConvertScreenPointToLocal(
+    const gfx::Point& screen_point) const {
+  return window_->ConvertScreenPointToLocal(native_view_, screen_point);
+}
+
 void DropTarget::DragEnter(const std::vector<tabs_api::NodeId>& dragged_tabs,
                            const gfx::Point& screen_point) {
-  remote_->OnDragEntered(dragged_tabs,
-                         window_->ConvertScreenPointToLocal(screen_point));
+  remote_->OnDragEntered(dragged_tabs, window_->ConvertScreenPointToLocal(
+                                           native_view_, screen_point));
 }
 
 void DropTarget::DragOver(const gfx::Point& screen_point) {
-  remote_->OnDrag(window_->ConvertScreenPointToLocal(screen_point));
+  remote_->OnDrag(
+      window_->ConvertScreenPointToLocal(native_view_, screen_point));
 }
 
 void DropTarget::DragLeave() {
@@ -40,8 +50,8 @@ void DropTarget::DragCancel() {
 
 void DropTarget::Drop(const std::vector<tabs_api::NodeId>& dragged_tabs,
                       const gfx::Point& screen_point) {
-  remote_->OnDrop(dragged_tabs,
-                  window_->ConvertScreenPointToLocal(screen_point));
+  remote_->OnDrop(dragged_tabs, window_->ConvertScreenPointToLocal(
+                                    native_view_, screen_point));
 }
 
 }  // namespace tabs_api

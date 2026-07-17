@@ -746,4 +746,29 @@ suite('TopToolbarTest', () => {
     assertTrue(!!newThreadButton);
     assertTrue(newThreadButton.hidden);
   });
+
+  test('highlights overflow menu button when menu is open', async () => {
+    document.body.innerHTML = window.trustedTypes!.emptyHTML;
+    topToolbar = document.createElement('top-toolbar');
+    document.body.appendChild(topToolbar);
+    await microtasksFinished();
+
+    const overflowMenuButton =
+        topToolbar.shadowRoot.querySelector<HTMLElement>('#overflowMenuButton');
+    assertTrue(!!overflowMenuButton);
+    assertFalse(overflowMenuButton.classList.contains('active'));
+
+    // Open overflow menu
+    overflowMenuButton.click();
+    await microtasksFinished();
+
+    assertTrue(overflowMenuButton.classList.contains('active'));
+
+    // Close overflow menu
+    const menu = topToolbar.$.overflowMenu.get();
+    menu.close();
+    await microtasksFinished();
+
+    assertFalse(overflowMenuButton.classList.contains('active'));
+  });
 });

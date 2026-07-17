@@ -33,6 +33,7 @@ export function getHtml(this: ContextualActionMenuElement) {
                   role="menuitem"
                   aria-haspopup="menu"
                   aria-expanded="${this.shareTabsFlyoutOpen}"
+                  ?disabled="${this.isShareTabsTriggerDisabled_()}"
                   @pointerenter="${this.onShareTabsRowPointerenter_}"
                   @pointerleave="${this.onShareTabsRowPointerleave_}"
                   @keydown="${this.onShareTabsRowKeydown_}">
