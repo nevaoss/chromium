@@ -129,6 +129,15 @@ if (!is_android && enable_extensions) {
       "//net:test_support",
       "//testing/gtest",
     ]
+    # NOTE(neva): enable_print_preview is disabled for webOS/OSE.
+    import("//printing/buildflags/buildflags.gni")
+    if (!enable_print_preview) {
+      deps -= [
+        "//chrome/browser/printing:test_support",
+        "//chrome/browser/ui/webui/print_preview",
+        "//components/guest_view/browser:test_support",
+      ]
+    }
   }
 
   source_set("interactive_ui_tests") {
