@@ -192,28 +192,12 @@ constexpr std::string_view kMaskedBankAccountsMetadataTable =
 // kInstrumentId = "instrument_id"
 // kUseCount = "use_count"
 // kUseDate = "use_date"
-<<<<<<< HEAD
-// TODO(neva): Remove this when Neva GCC version upgraded to 12+.
-#if defined(COMPILER_GCC) && (__GNUC__ < 12)
-constexpr std::string_view INTEGER_NOT_NULL = "INTEGER NOT NULL";
-constexpr std::string_view INTEGER_NOT_NULL_DEFAULT_0 =
-    "INTEGER NOT NULL DEFAULT 0";
-constexpr std::initializer_list<std::pair<std::string_view, std::string_view>>
-    kMaskedBankAccountsMetadataColumnNamesAndTypes = {
-        {kInstrumentId, INTEGER_NOT_NULL},
-        {kUseCount, INTEGER_NOT_NULL_DEFAULT_0},
-        {kUseDate, INTEGER_NOT_NULL_DEFAULT_0}};
-#else   // defined(COMPILER_GCC) && (__GNUC__ < 12)
-constexpr std::initializer_list<std::pair<std::string_view, std::string_view>>
-=======
 constexpr std::initializer_list<
     const std::pair<const std::string_view, const std::string_view>>
->>>>>>> 149.0.7827.0~1
     kMaskedBankAccountsMetadataColumnNamesAndTypes = {
         {kInstrumentId, "INTEGER NOT NULL"},
         {kUseCount, "INTEGER NOT NULL DEFAULT 0"},
         {kUseDate, "INTEGER NOT NULL DEFAULT 0"}};
-#endif  // !defined(COMPILER_GCC) && (__GNUC__ < 12)
 
 constexpr std::string_view kMaskedBankAccountsTable = "masked_bank_accounts";
 // kInstrumentId = "instrument_id"
@@ -222,27 +206,8 @@ constexpr std::string_view kAccountNumberSuffix = "account_number_suffix";
 constexpr std::string_view kAccountType = "account_type";
 // kNickname = "nickname"
 constexpr std::string_view kDisplayIconUrl = "display_icon_url";
-<<<<<<< HEAD
-// TODO(neva): Remove this when Neva GCC version upgraded to 12+.
-#if defined(COMPILER_GCC) && (__GNUC__ < 12)
-constexpr std::string_view INTEGER_PRIMARY_KEY_NOT_NULL =
-    "INTEGER PRIMARY KEY NOT NULL";
-constexpr std::string_view VARCHAR = "VARCHAR";
-constexpr std::string_view INTEGER_DEFAULT_0 = "INTEGER DEFAULT 0";
-constexpr std::initializer_list<std::pair<std::string_view, std::string_view>>
-    kMaskedBankAccountsColumnNamesAndTypes = {
-        {kInstrumentId, INTEGER_PRIMARY_KEY_NOT_NULL},
-        {kBankName, VARCHAR},
-        {kAccountNumberSuffix, VARCHAR},
-        {kAccountType, INTEGER_DEFAULT_0},
-        {kDisplayIconUrl, VARCHAR},
-        {kNickname, VARCHAR}};
-#else   // defined(COMPILER_GCC) && (__GNUC__ < 12)
-constexpr std::initializer_list<std::pair<std::string_view, std::string_view>>
-=======
 constexpr std::initializer_list<
     const std::pair<const std::string_view, const std::string_view>>
->>>>>>> 149.0.7827.0~1
     kMaskedBankAccountsColumnNamesAndTypes = {
         {kInstrumentId, "INTEGER PRIMARY KEY NOT NULL"},
         {kBankName, "VARCHAR"},
@@ -250,7 +215,6 @@ constexpr std::initializer_list<
         {kAccountType, "INTEGER DEFAULT 0"},
         {kDisplayIconUrl, "VARCHAR"},
         {kNickname, "VARCHAR"}};
-#endif  // !defined(COMPILER_GCC) && (__GNUC__ < 12)
 
 constexpr std::string_view kMaskedCreditCardBenefitsTable =
     "masked_credit_card_benefits";
@@ -261,28 +225,8 @@ constexpr std::string_view kBenefitCategory = "benefit_category";
 constexpr std::string_view kBenefitDescription = "benefit_description";
 constexpr std::string_view kStartTime = "start_time";
 constexpr std::string_view kEndTime = "end_time";
-<<<<<<< HEAD
-// TODO(neva): Remove this when Neva GCC version upgraded to 12+.
-#if defined(COMPILER_GCC) && (__GNUC__ < 12)
-constexpr std::string_view VARCHAR_PRIMARY_KEY_NOT_NULL =
-  "VARCHAR PRIMARY KEY NOT NULL";
-constexpr std::string_view VARCHAR_NOT_NULL = "VARCHAR NOT NULL";
-constexpr std::string_view INTEGER = "INTEGER";
-constexpr std::initializer_list<std::pair<std::string_view, std::string_view>>
-    kMaskedCreditCardBenefitsColumnNamesAndTypes = {
-        {kBenefitId, VARCHAR_PRIMARY_KEY_NOT_NULL},
-        {kInstrumentId, INTEGER_NOT_NULL_DEFAULT_0},
-        {kBenefitType, INTEGER_NOT_NULL_DEFAULT_0},
-        {kBenefitCategory, INTEGER_NOT_NULL_DEFAULT_0},
-        {kBenefitDescription, VARCHAR_NOT_NULL},
-        {kStartTime, INTEGER},
-        {kEndTime, INTEGER}};
-#else   // defined(COMPILER_GCC) && (__GNUC__ < 12)
-constexpr std::initializer_list<std::pair<std::string_view, std::string_view>>
-=======
 constexpr std::initializer_list<
     const std::pair<const std::string_view, const std::string_view>>
->>>>>>> 149.0.7827.0~1
     kMaskedCreditCardBenefitsColumnNamesAndTypes = {
         {kBenefitId, "VARCHAR PRIMARY KEY NOT NULL"},
         {kInstrumentId, "INTEGER NOT NULL DEFAULT 0"},
@@ -291,52 +235,27 @@ constexpr std::initializer_list<
         {kBenefitDescription, "VARCHAR NOT NULL"},
         {kStartTime, "INTEGER"},
         {kEndTime, "INTEGER"}};
-#endif  // !defined(COMPILER_GCC) && (__GNUC__ < 12)
 
 constexpr std::string_view kBenefitMerchantDomainsTable =
     "benefit_merchant_domains";
 // kBenefitId = "benefit_id"
 // kMerchantDomain = "merchant_domain";
-<<<<<<< HEAD
-// TODO(neva): Remove this when Neva GCC version upgraded to 12+.
-#if defined(COMPILER_GCC) && (__GNUC__ < 12)
-constexpr std::initializer_list<std::pair<std::string_view, std::string_view>>
-    kBenefitMerchantDomainsColumnNamesAndTypes = {
-        {kBenefitId, VARCHAR_NOT_NULL},
-        {kMerchantDomain, VARCHAR_NOT_NULL}};
-#else   // defined(COMPILER_GCC) && (__GNUC__ < 12)
-constexpr std::initializer_list<std::pair<std::string_view, std::string_view>>
-=======
 constexpr std::initializer_list<
     const std::pair<const std::string_view, const std::string_view>>
->>>>>>> 149.0.7827.0~1
     kBenefitMerchantDomainsColumnNamesAndTypes = {
         {kBenefitId, "VARCHAR NOT NULL"},
         {kMerchantDomain, "VARCHAR NOT NULL"}};
-#endif  // !defined(COMPILER_GCC) && (__GNUC__ < 12)
 
 constexpr std::string_view kGenericPaymentInstrumentsTable =
     "generic_payment_instruments";
 // kInstrumentId = "instrument_id"
 constexpr std::string_view kSerializedValueEncrypted =
     "serialized_value_encrypted";
-<<<<<<< HEAD
-// TODO(neva): Remove this when Neva GCC version upgraded to 12+.
-#if defined(COMPILER_GCC) && (__GNUC__ < 12)
-constexpr std::initializer_list<std::pair<std::string_view, std::string_view>>
-    kGenericPaymentInstrumentsColumnNamesAndTypes = {
-        {kInstrumentId, INTEGER_PRIMARY_KEY_NOT_NULL},
-        {kSerializedValueEncrypted, VARCHAR_NOT_NULL}};
-#else   // defined(COMPILER_GCC) && (__GNUC__ < 12)
-constexpr std::initializer_list<std::pair<std::string_view, std::string_view>>
-=======
 constexpr std::initializer_list<
     const std::pair<const std::string_view, const std::string_view>>
->>>>>>> 149.0.7827.0~1
     kGenericPaymentInstrumentsColumnNamesAndTypes = {
         {kInstrumentId, "INTEGER PRIMARY KEY NOT NULL"},
         {kSerializedValueEncrypted, "VARCHAR NOT NULL"}};
-#endif  // !defined(COMPILER_GCC) && (__GNUC__ < 12)
 
 constexpr std::string_view kPaymentInstrumentCreationOptionsTable =
     "payment_instrument_creation_options";

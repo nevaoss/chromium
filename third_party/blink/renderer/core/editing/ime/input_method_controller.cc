@@ -1896,7 +1896,6 @@ int InputMethodController::TextInputFlags() const {
       flags |= kWebTextInputFlagHasBeenPasswordField;
   }
 
-<<<<<<< HEAD
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
   if (IsA<HTMLInputElement>(element)) {
     const AtomicString& sensitive =
@@ -1917,7 +1916,7 @@ int InputMethodController::TextInputFlags() const {
       flags |= kWebTextInputFlagSystemKeyboardOn;
   }
 #endif
-=======
+
   if (element->HasBeenHeuristicCustomPasswordCSS()) {
     flags |= kWebTextInputFlagHasBeenCustomPassword;
   }
@@ -1927,7 +1926,6 @@ int InputMethodController::TextInputFlags() const {
       flags |= kWebTextInputFlagHasBeenCustomPassword;
     }
   }
->>>>>>> 149.0.7827.0~1
 
   return flags;
 }
