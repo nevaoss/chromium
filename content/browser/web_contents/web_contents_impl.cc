@@ -69,6 +69,7 @@
 #include "content/browser/attribution_reporting/attribution_host.h"
 #include "content/browser/attribution_reporting/attribution_manager.h"
 #include "content/browser/attribution_reporting/attribution_os_level_manager.h"
+#include "content/browser/back_forward_cache/back_forward_cache_impl.h"
 #include "content/browser/bad_message.h"
 #include "content/browser/browser_context_impl.h"
 #include "content/browser/browser_main_loop.h"
@@ -1365,6 +1366,7 @@ WebContentsImpl::WebContentsImpl(BrowserContext* browser_context)
       prerender_host_registry_(std::make_unique<PrerenderHostRegistry>(*this)),
       compositor_frame_sink_grouping_id_(base::UnguessableToken::Create()) {
   TRACE_EVENT0("content", "WebContentsImpl::WebContentsImpl");
+  back_forward_cache_ = std::make_unique<BackForwardCacheImpl>(*this);
   WebContentsOfBrowserContext::Attach(*this);
   node_.SetFocusedFrameTree(&primary_frame_tree_);
 #if BUILDFLAG(IS_ANDROID)
@@ -5738,11 +5740,19 @@ FrameTree* WebContentsImpl::CreateNewWindow(
   bool was_blocked = false;
   base::WeakPtr<WebContentsImpl> weak_new_contents =
       new_contents_impl->weak_factory_.GetWeakPtr();
+  base::WeakPtr<WebContentsImpl> weak_this = weak_factory_.GetWeakPtr();
   WebContentsImpl* contents_to_load = new_contents_impl;
   if (delegate_) {
     WebContents* web_contents_navigated = delegate_->AddNewContents(
         this, std::move(new_contents), params.target_url, params.disposition,
         *params.features, has_user_gesture, &was_blocked);
+
+    if (!weak_this) {
+      // `this` may be deleted after AddNewContents() due to a nested message
+      // loop (e.g. the window hosting the opener is closed). See
+      // crbug.com/527676561.
+      return nullptr;
+    }
 
     if (base::FeatureList::IsEnabled(features::kPwaNavigationCapturing)) {
       // The delegate may delete |new_contents_impl| during AddNewContents().
@@ -8083,6 +8093,11 @@ bool WebContentsImpl::ShouldPreserveAbortedURLs() {
     return false;
   }
   return delegate_->ShouldPreserveAbortedURLs(this);
+}
+
+BackForwardCacheImpl& WebContentsImpl::GetBackForwardCache() {
+  CHECK(back_forward_cache_);
+  return *back_forward_cache_;
 }
 
 void WebContentsImpl::NotifyNavigationStateChangedFromController(

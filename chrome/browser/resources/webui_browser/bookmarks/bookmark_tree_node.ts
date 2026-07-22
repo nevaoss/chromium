@@ -137,7 +137,7 @@ export class BookmarkTreeNodeElement extends CrLitElement {
 
     const id = this.node.url ? this.node.url.id! : this.node.folder!.id!;
 
-    this.bookmarksService_.deleteBookmarkNode(id);
+    this.bookmarksService_.deleteBookmarkNodes([id]);
   }
 }
 

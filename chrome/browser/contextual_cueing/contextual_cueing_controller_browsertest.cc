@@ -242,7 +242,8 @@ class ContextualCueingControllerBrowserTest
     scoped_feature_list_.InitWithFeaturesAndParameters(
         {{kContextualCueingV2,
           {{"ContextualCueingV2DiscardShoppingPdfs", "true"},
-           {"ContextualCueingV2TabListVisibility", "always"}}}},
+           {"ContextualCueingV2TabListVisibility", "always"},
+           {"ContextualCueingV2EnablePrivateInsightsLogging", "true"}}}},
         /*disabled_features=*/{kContextualCueingV2EnforceAgeRestriction});
   }
 };

@@ -14,7 +14,7 @@
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
-namespace base {
+namespace base::i18n {
 namespace {
 
 using ::testing::Eq;
@@ -308,32 +308,31 @@ TEST(LanguageTagMatcherTest, SerboCroatian) {
   // Serbo-Croatian (sh) is an older macro-language tag, often mapped to
   // sr-Latn.
 
-  // Test 1: Preferred "sh" (Serbo-Croatian), Supported "sr-Latn".
-  // "sh" is canonicalized to "sr-Latn" by LanguageTagConverter/Rust bridge.
+  // Test 1: Preferred "sh" (Serbo-Croatian), Supported "sh".
+  // "sh" is no longer canonicalized to "sr-Latn" by LanguageTagConverter.
   {
     std::vector<LanguageTag> supported = {language_tags::SERBO_CROATIAN()};
     LanguageTagMatcher matcher = LanguageTagMatcher::Create(supported);
     LanguageTag lc_sh = LanguageTagOrDie("sh");
-    // "sh" matches "sr-Latn" because LanguageTagConverter canonicalizes it.
-    EXPECT_THAT(matcher.Match(lc_sh), Optional(LanguageTagOrDie("sr-Latn")));
+    EXPECT_THAT(matcher.Match(lc_sh), Optional(LanguageTagOrDie("sh")));
   }
 
-  // Test 2: Preferred "sr-Latn" (Serbo-Croatian), Supported "hr" (Croatian).
+  // Test 2: Preferred "sr-Latn" (Serbian Latin), Supported "hr" (Croatian).
   // These are distinct languages in ICU/CLDR, so they should NOT match
   // via fallback or maximization.
   {
     std::vector<LanguageTag> supported = {language_tags::CROATIAN()};
     LanguageTagMatcher matcher = LanguageTagMatcher::Create(supported);
-    EXPECT_THAT(matcher.Match(language_tags::SERBO_CROATIAN()),
+    EXPECT_THAT(matcher.Match(language_tags::SERBIAN_LATIN()),
                 Eq(std::nullopt));
   }
 
   // Test 3: Preferred "sr-HR" (Serbian as spoken in Croatia), Supported
-  // "sr-Latn" (Serbian). "sr-HR" fallsback to "sr", but it is not able to
+  // "sr-Latn" (Serbian Latin). "sr-HR" fallsback to "sr", but it is not able to
   // matcch "sr-Latn".
   {
     LanguageTagMatcher matcher =
-        LanguageTagMatcher::Create({language_tags::SERBO_CROATIAN()});
+        LanguageTagMatcher::Create({language_tags::SERBIAN_LATIN()});
     EXPECT_THAT(matcher.Match(LanguageTagOrDie("sr-HR")), Eq(std::nullopt));
   }
 }
@@ -398,4 +397,4 @@ TEST(LanguageTagMatcherTest, ChineseVariantsAndExtensions) {
 }
 
 }  // namespace
-}  // namespace base
+}  // namespace base::i18n

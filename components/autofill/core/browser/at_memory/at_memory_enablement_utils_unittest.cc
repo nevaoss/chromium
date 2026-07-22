@@ -181,8 +181,8 @@ TEST_F(AtMemoryEnablementUtilsTest, MayPerformAtMemoryAction_States) {
   autofill_client().GetPrefs()->SetUserPref(
       personal_context::prefs::kPersonalContextInAutofillSettingsToggleStatus,
       base::Value(false));
-  EXPECT_TRUE(MayPerformAtMemoryAction(AtMemoryAction::kShowAtMemoryInSettings,
-                                       autofill_client()));
+  EXPECT_FALSE(MayPerformAtMemoryAction(AtMemoryAction::kShowAtMemoryInSettings,
+                                        autofill_client()));
 
   // State: kDisabledNotEligible
   EXPECT_CALL(personal_context_service_, GetEnablementState)

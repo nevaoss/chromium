@@ -292,15 +292,19 @@ MinMaxSizesResult GridLayoutAlgorithm::ComputeMinMaxSizes(
     CompleteTrackSizingAlgorithm(kForColumns, sizing_constraint,
                                  &grid_sizing_tree, &needs_additional_pass);
 
+    const bool needs_additional_pass_for_column_subtree =
+        grid_sizing_tree.HasSubgridWithIndefiniteStandaloneAxis() &&
+        grid_sizing_tree.HasBlockSizeDependentGridItem();
+
     if (needs_additional_pass ||
-        HasBlockSizeDependentGridItem(grid_sizing_tree.GetGridItems())) {
+        grid_sizing_tree.HasBlockSizeDependentGridItem()) {
       // If we need to calculate the row geometry, then we have a dependency on
       // our block constraints.
       depends_on_block_constraints = true;
       CompleteTrackSizingAlgorithm(kForRows, sizing_constraint,
                                    &grid_sizing_tree, &needs_additional_pass);
 
-      if (needs_additional_pass) {
+      if (needs_additional_pass || needs_additional_pass_for_column_subtree) {
         InitializeTrackSizes(&grid_sizing_tree, kForColumns);
         CompleteTrackSizingAlgorithm(kForColumns, sizing_constraint,
                                      &grid_sizing_tree);
@@ -481,6 +485,16 @@ const GridLayoutSubtree* GridLayoutAlgorithm::ComputeGridGeometry(
     InitializeTrackSizes(&grid_sizing_tree, kForRows);
     CompleteTrackSizingAlgorithm(kForRows, SizingConstraint::kLayout,
                                  &grid_sizing_tree);
+  } else if (grid_sizing_tree.HasSubgridWithIndefiniteStandaloneAxis() &&
+             grid_sizing_tree.HasBlockSizeDependentGridItem()) {
+    // If any subgrid in the tree has an indefinite standalone-axis track
+    // collection at first-pass init, item contributions that fed into the
+    // initial column sizing were computed against indefinite subgrid rows.
+    // The first kForRows pass has now sized those subgrid standalone tracks,
+    // so re-run only the column pass with the now-resolved row sizes.
+    InitializeTrackSizes(&grid_sizing_tree, kForColumns);
+    CompleteTrackSizingAlgorithm(kForColumns, SizingConstraint::kLayout,
+                                 &grid_sizing_tree);
   }
 
   // Calculate final alignment baselines of the entire grid sizing tree.
@@ -634,6 +648,7 @@ LayoutUnit GridLayoutAlgorithm::ContributionSizeForGridItem(
     if (grid_item->is_parallel_with_root_grid &&
         result.depends_on_block_constraints) {
       grid_item->is_sizing_dependent_on_block_size = true;
+      sizing_subtree.SetHasBlockSizeDependentGridItem();
     }
 
     const auto content_size =
@@ -668,8 +683,10 @@ LayoutUnit GridLayoutAlgorithm::ContributionSizeForGridItem(
 
     // TODO(ikilpatrick): This check is potentially too broad, i.e. a fixed
     // inline size with no %-padding doesn't need the additional pass.
-    if (is_for_columns)
+    if (is_for_columns) {
       grid_item->is_sizing_dependent_on_block_size = true;
+      sizing_subtree.SetHasBlockSizeDependentGridItem();
+    }
 
     const LayoutResult* result = nullptr;
     if (space.AvailableSize().inline_size == kIndefiniteSize) {
@@ -838,7 +855,8 @@ void GridLayoutAlgorithm::BuildSizingCollection(
 
 GridLineResolver GridLayoutAlgorithm::BuildGridLineResolver(
     const GridArea& subgrid_area,
-    const GridLineResolver* opt_parent_line_resolver) const {
+    const GridLineResolver* opt_parent_line_resolver,
+    bool can_inherit_line_names_from_parent) const {
   const auto& style = Style();
   const auto column_auto_repetitions =
       ComputeAutomaticRepetitions(subgrid_area.columns, kForColumns);
@@ -847,7 +865,8 @@ GridLineResolver GridLayoutAlgorithm::BuildGridLineResolver(
 
   if (opt_parent_line_resolver) {
     return GridLineResolver(style, *opt_parent_line_resolver, subgrid_area,
-                            column_auto_repetitions, row_auto_repetitions);
+                            column_auto_repetitions, row_auto_repetitions,
+                            can_inherit_line_names_from_parent);
   }
   return GridLineResolver(style, column_auto_repetitions, row_auto_repetitions);
 }

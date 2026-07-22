@@ -7,19 +7,40 @@
 
 #include <string>
 
+#include "content/public/browser/global_routing_id.h"
+
+namespace content {
+class RenderFrameHost;
+class RenderWidgetHost;
+}  // namespace content
+
 namespace dictation {
 
 // Represents a dictation target into which transcriptions will be written.
 class Target {
  public:
   Target();
-  explicit Target(const std::string& selected_text);
+  explicit Target(content::RenderFrameHost* rfh,
+                  const std::string& selected_text);
   virtual ~Target();
 
   virtual const std::string& GetSelectedText() const;
 
+  // Returns the RenderFrameHost associated with this target, or nullptr if it
+  // no longer exists.
+  content::RenderFrameHost* GetRenderFrameHost() const;
+
+  // Sets the composition text in the target.
+  void SetComposition(const std::u16string& text, bool is_final);
+
+  // Commits the text in the target.
+  void CommitComposition(const std::u16string& text);
+
  private:
+  content::RenderWidgetHost* GetRenderWidgetHost() const;
+
   const std::string selected_text_;
+  content::GlobalRenderFrameHostId rfh_id_;
 };
 
 }  // namespace dictation

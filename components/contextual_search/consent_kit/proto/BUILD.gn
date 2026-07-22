@@ -5,5 +5,8 @@
 import("//third_party/protobuf/proto_library.gni")
 
 proto_library("privacy_primitive_config_proto") {
-  sources = [ "privacy_primitive_config.proto" ]
+  sources = [
+    "iframe_interface.proto",
+    "privacy_primitive_config.proto",
+  ]
 }

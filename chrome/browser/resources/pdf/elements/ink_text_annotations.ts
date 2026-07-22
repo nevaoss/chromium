@@ -30,6 +30,7 @@ interface Placeholder {
   screenRect: TextBoxRect;
   rotations: number;
   label: string;
+  zIndex: number;
 }
 
 export class InkTextAnnotationsElement extends CrLitElement {
@@ -120,6 +121,7 @@ export class InkTextAnnotationsElement extends CrLitElement {
         rotations: (this.viewport!.getClockwiseRotations() +
                     annotation.textOrientation) %
             4,
+        zIndex: annotation.id,
       };
     });
   }
@@ -130,6 +132,7 @@ export class InkTextAnnotationsElement extends CrLitElement {
       --top: ${placeholder.screenRect.locationY}px;
       --width: ${placeholder.screenRect.width}px;
       --height: ${placeholder.screenRect.height}px;
+      z-index: ${placeholder.zIndex};
     `;
   }
 

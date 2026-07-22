@@ -1944,6 +1944,14 @@ void ContextualTasksUiService::OnBackButtonExpandsSidePanel(
   auto* controller =
       contextual_tasks::ContextualTasksPanelController::From(browser);
   if (controller && controller->IsPanelOpenForContextualTask()) {
+    base::RecordAction(
+        base::UserMetricsAction("ContextualTasks.BackButton.UserAction."
+                                "NavigatedFromSidePanelToFullTab"));
+    base::UmaHistogramBoolean(
+        "ContextualTasks.BackButton.UserAction."
+        "NavigatedFromSidePanelToFullTab",
+        true);
+
     content::WebContents* side_panel_contents =
         controller->GetActiveWebContents();
     controller->MoveTaskUiToNewTab();
@@ -2469,10 +2477,11 @@ void ContextualTasksUiService::StartTaskUiInSidePanel(
     tabs::TabInterface* tab_interface,
     const GURL& url,
     std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
-        session_handle) {
+        session_handle,
+    omnibox::ChromeAimEntryPoint entry_point) {
   StartTaskUiInSidePanel(browser_window_interface, tab_interface, url,
                          std::move(session_handle),
-                         /*associate_web_contents=*/true);
+                         /*associate_web_contents=*/true, entry_point);
 }
 
 void ContextualTasksUiService::StartTaskUiInSidePanel(
@@ -2481,7 +2490,8 @@ void ContextualTasksUiService::StartTaskUiInSidePanel(
     const GURL& url,
     std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
         session_handle,
-    bool associate_web_contents) {
+    bool associate_web_contents,
+    omnibox::ChromeAimEntryPoint entry_point) {
   CHECK(!url.is_empty());
   CHECK(contextual_tasks_service_);
 
@@ -2514,7 +2524,7 @@ void ContextualTasksUiService::StartTaskUiInSidePanel(
       pending_session_handles_.emplace(task.GetTaskId(),
                                        std::move(session_handle));
     }
-    controller->Show();
+    controller->Show(/*transition_from_tab=*/false, entry_point);
 
     InitializeTaskInSidePanel(controller->GetActiveWebContents(),
                               task.GetTaskId(), nullptr);
@@ -2565,7 +2575,8 @@ void ContextualTasksUiService::InitSidePanelWithGhostLoader(
     BrowserWindowInterface* browser_window_interface,
     tabs::TabInterface* tab_interface,
     std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
-        session_handle) {
+        session_handle,
+    omnibox::ChromeAimEntryPoint entry_point) {
   CHECK(contextual_tasks_service_);
 
   // Get the controller for the current window.
@@ -2587,7 +2598,7 @@ void ContextualTasksUiService::InitSidePanelWithGhostLoader(
     pending_session_handles_.emplace(task.GetTaskId(),
                                      std::move(session_handle));
   }
-  controller->Show();
+  controller->Show(/*transition_from_tab=*/false, entry_point);
 
   InitializeTaskInSidePanel(controller->GetActiveWebContents(),
                             task.GetTaskId(), nullptr);
@@ -2597,7 +2608,8 @@ void ContextualTasksUiService::StartTaskUiInSidePanelWithErrorPage(
     BrowserWindowInterface* browser_window_interface,
     tabs::TabInterface* tab_interface,
     std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
-        session_handle) {
+        session_handle,
+    omnibox::ChromeAimEntryPoint entry_point) {
   // Abort if the tab is no longer active to prevent opening the panel on the
   // wrong tab.
   if (!tab_interface || !tab_interface->IsActivated()) {
@@ -2625,7 +2637,7 @@ void ContextualTasksUiService::StartTaskUiInSidePanelWithErrorPage(
       pending_session_handles_.emplace(task.GetTaskId(),
                                        std::move(session_handle));
     }
-    controller->Show();
+    controller->Show(/*transition_from_tab=*/false, entry_point);
   }
 
   content::WebContents* web_contents = controller->GetActiveWebContents();

@@ -96,6 +96,7 @@
 <translation id="1838374766361614909">সার্চ সাফ করুন</translation>
 <translation id="1843347690926158494">Google Lens ব্যবহার করে এই ট্যাব সার্চ করুন</translation>
 <translation id="1849248141818021764">এমন কোনও ব্যক্তি যার কাছে আপনার পাসফ্রেজ রয়েছে, শুধুমাত্র তিনিই আপনার এনক্রিপটেড ডেটা পড়তে পারবেন। পাসফ্রেজ Google-এ পাঠানো বা তার মাধ্যমে সেভ করা হয় না। আপনি নিজের পাসফ্রেজ ভুলে গেলে অথবা এই সেটিং পরিবর্তন করতে চাইলে, আপনাকে <ph name="BEGIN_LINK" />নিজের অ্যাকাউন্ট থেকে Chrome ডেটা মুছে দিতে হবে<ph name="END_LINK" />।</translation>
+<translation id="1856809424654973980">যেকোনও সময় ও জায়গায় ব্রাউজ করা চালিয়ে যেতে Chrome অ্যাপ ব্যবহার করুন</translation>
 <translation id="1860536484129686729">এই সাইটটির জন্য Chrome কে আপনার ক্যামেরায় অ্যাক্সেস দিতে হবে</translation>
 <translation id="1867503717113754604"><ph name="START_GLIC_STYLING" />Gemini<ph name="END_GLIC_STYLING" /> ব্যবহার করতে, আপনার Google অ্যাকাউন্ট দিয়ে Chrome-এ সাইন-ইন করুন</translation>
 <translation id="1873233029667955273">Google Chrome আপনার ডিফল্ট ব্রাউজার নয়</translation>
@@ -105,8 +106,10 @@
 <translation id="1896602904211344018">Chrome অ্যাপ ডাউনলোড করুন</translation>
 <translation id="1919130412786645364">Chrome-এ সাইন-ইন করতে দিন</translation>
 <translation id="1953553007165777902">ডাউনলোড হচ্ছে... <ph name="MINUTE" /> মিনিট বাকি আছে</translation>
+<translation id="1975400514743766362">আপনার <ph name="DEVICE_TYPE" />-এ Chromium অ্যাপের মাধ্যমে যেকোনও সময় ও জায়গায় Google-এর নিরাপত্তা পান</translation>
 <translation id="1979600810166324878">iOS-এর জন্য Chrome-এ উন্নত Safe Browsing সুবিধার সাহায্যে যেতে যেতে সুরক্ষিত থাকুন</translation>
 <translation id="2001586581944147178">আপনি যে ইন্টারনেট ট্রাফিক ব্যবহার করছেন, সেটির অ্যাক্সেস থাকা লোকজনেরা যাতে আপনি কোন কোন সাইট দেখেন তা দেখতে না পারেন তার ব্যবস্থা করুন। Chrome সুরক্ষিত কানেকশন ব্যবহার করে ডিএনএস (ডোমেন নেম সিস্টেম)-এ কোনও সাইটের IP অ্যাড্রেস দেখে।</translation>
+<translation id="2005658457661191636">যেকোনও সময় ও জায়গায় সেরা শপিং টুলের জন্য Chrome অ্যাপ ব্যবহার করুন</translation>
 <translation id="2018528049276128029">প্রতিটি প্রোফাইলে বুকমার্ক, ইতিহাস, পাসওয়ার্ড ও আরও অনেক কিছুর মতো তার নিজস্ব Chrome তথ্য আছে</translation>
 <translation id="2018879682492276940">ইনস্টল করা যায়নি। আবার চেষ্টা করুন।</translation>
 <translation id="2024959665595762054">আপনার Google অ্যাকাউন্টে Chrome ডেটা ব্যবহার এবং সেভ করতে, নিজের পরিচয় যাচাই করুন</translation>
@@ -238,6 +241,7 @@
 <translation id="3222857603094643834">Google Lens ব্যবহার করে এই পৃষ্ঠায় যেকোনও কিছু সার্চ করুন</translation>
 <translation id="3226612997184048185">এছাড়াও, আপনি বুকমার্ক Google অ্যাকাউন্টে সেভ করলে Chrome-এ প্রোডাক্টের দাম ট্র্যাক করার সুবিধা পাবেন এবং সেই সাথে প্রোডাক্টের দাম কমলে আপনাকে বিজ্ঞপ্তি দিয়ে জানানো হবে।</translation>
 <translation id="3242123554343253302">Chrome প্রোফাইল যোগ করুন</translation>
+<translation id="3242486428260808857">আপনার <ph name="DEVICE_TYPE" />-এ Chrome অ্যাপ ব্যবহার করে অনলাইন শপিংয়ের সবচেয়ে বেশি সুবিধা পান</translation>
 <translation id="3245429137663807393">আপনি Chrome ব্যবহারের রিপোর্ট শেয়ার করলেও, আপনার দেখা URL তার মধ্যে অন্তর্ভুক্ত থাকে</translation>
 <translation id="3259748324892322072">Chrome অ্যাপ ডাউনলোড করুন</translation>
 <translation id="3282568296779691940">Chrome-এ সাইন-ইন করুন</translation>
@@ -261,6 +265,7 @@
 <translation id="3503306920980160878">এই সাইটটির সাথে আপনার লোকেশন শেয়ার করার জন্য Chrome কে আপনার লোকেশনের তথ্যে অ্যাক্সেস দিতে হবে</translation>
 <translation id="3512495006767217696">আপনাকে শক্তিশালী পাসওয়ার্ড তৈরি, সেভ ও অটোফিল করতে সাহায্য করার জন্য Chrome-এ ইন-বিল্ট রয়েছে। সহজে অ্যাক্সেস করার জন্য শর্টকাট যোগ করুন</translation>
 <translation id="3539955434060988644">Chrome-এ ছদ্ম&amp;বেশী উইন্ডোতে লিঙ্ক খুলুন</translation>
+<translation id="354621070532799440">রিমাইন্ডার: Google-এর সেরা নিরাপত্তা ফিচার এখন আপনার হাতের মুঠোয়</translation>
 <translation id="3576528680708590453"><ph name="TARGET_URL_HOSTNAME" /> অ্যাক্সেস করতে অন্য ব্রাউজার খোলার জন্য আপনার সিস্টেম অ্যাডমিনিস্ট্রেটর Google Chrome কনফিগার করেছেন।</translation>
 <translation id="3582972582564653026">আপনার সব ডিভাইস জুড়ে Chrome সিঙ্ক করুন এবং নিজের মতো সাজিয়ে নিন</translation>
 <translation id="3583751698304738917">আপনি আগে থেকেই অন্য Chrome প্রোফাইলে <ph name="USER_EMAIL_ADDRESS" /> হিসেবে সাইন-ইন করেছেন</translation>
@@ -299,6 +304,7 @@
 <translation id="3885770153807205175">ভাষা বাছাইকারী</translation>
 <translation id="3889417619312448367">Google Chrome আনইনস্টল করুন</translation>
 <translation id="3892148308691398805">টেক্সট কপি করুন</translation>
+<translation id="3893650521827656233">Chrome-এর সাথে যেকোনও সময় ও জায়গায় Google-এর সেরা নিরাপত্তা ফিচার পান।</translation>
 <translation id="3941890832296813527">ইনস্টল সংক্রান্ত সমস্যা: ইনস্টলার ফাইলের নাম ভুল বা সেটি কাজ করে না।</translation>
 <translation id="395904275706073188">সুরক্ষিত পৃষ্ঠা পড়া যাবে না। অন্য কোনও পৃষ্ঠা পড়ার চেষ্টা করুন।</translation>
 <translation id="3965532487635448963">সিস্টেম ট্রেতে Chrome-এ Gemini দেখানো এবং কীবোর্ড শর্টকাট চালু করা</translation>
@@ -331,6 +337,7 @@
 <translation id="4242034826641750751">এই সাইটের জন্য Chrome-এর ক্যামেরা ও মাইক্রোফোন অ্যাক্সেসের অনুমতি প্রয়োজন</translation>
 <translation id="424864128008805179">Chrome থেকে সাইন-আউট করবেন?</translation>
 <translation id="4251615635259297716">এই অ্যাকাউন্টে আপনার Chrome ডেটা লিঙ্ক করবেন?</translation>
+<translation id="4252262470181310206">Chrome-এর সাহায্যে যেকোনও সময় ও জায়গায় Google Drive ও YouTube-এর মতো আপনার পছন্দের অ্যাপে নির্বিঘ্নে কাজ করুন।</translation>
 <translation id="4266456958461406346">আরও <ph name="THREE_DOTS_ICON" /> মেনুটি খুলুন</translation>
 <translation id="4280647692742956593">যেকোনও জায়গা থেকে নতুন ট্যাব গ্রুপ খুলতে বা তৈরি করতে, আপনার ফোনে Chrome ডাউনলোড করুন।</translation>
 <translation id="4281844954008187215">পরিষেবার শর্তাদি</translation>
@@ -436,6 +443,7 @@
 <translation id="5386244825306882791">আপনি Chrome শুরু করলে বা Omnibox থেকে সার্চ করলে কোন পৃষ্ঠাটি দেখানো হবে তাও এটি নিয়ন্ত্রণ করে।</translation>
 <translation id="5394833366792865639">একটি Chrome ট্যাব শেয়ার করুন</translation>
 <translation id="5402307365844630024">Chrome Beta-তে Gemini টগল করুন</translation>
+<translation id="541844421954567481"><ph name="DEVICE_TYPE" />-এ Chrome অ্যাপের সাহায্যে যেকোনও সময় ও জায়গায় আপনার পাসওয়ার্ড, ট্যাব সহ আরও অনেক কিছু অ্যাক্সেস করুন</translation>
 <translation id="5430073640787465221">আপনার পছন্দের ফাইল ক্ষতিকর অথবা ভুল৷\n\nGoogle Chrome আপনার সেটিংস পুনরুদ্ধার করতে পারছে না৷</translation>
 <translation id="5465210843490471889"><ph name="START_GLIC_STYLING" />Gemini<ph name="END_GLIC_STYLING" />-র সাথে ব্যবহার করার জন্য Chrome প্রোফাইল বেছে নিন</translation>
 <translation id="547202872422499512">Windows চালু হওয়ার সাথে সাথে Chrome চালু হয়, যাতে আপনি ইনস্ট্যান্ট ব্রাউজ করা শুরু করতে পারেন। আপনি সেটিংস থেকে এটি বন্ধ করতে পারবেন।</translation>
@@ -451,6 +459,7 @@
 <translation id="5602351063754773347">Chrome আপনাকে এটি সরিয়ে দেওয়ার সাজেশন দেয়। <ph name="BEGIN_LINK" />ব্যবহার করা যায় এমন এক্সটেনশন সম্পর্কে আরও জানুন<ph name="END_LINK" /></translation>
 <translation id="5610759359710387751">Chrome-কে নিজের করুন</translation>
 <translation id="5649156266046089790">Chrome প্রোফাইলের সাহায্যে আপনি সব Chrome সব জিনিস আলাদা করে রাখতে পারবেন। বন্ধু এবং পরিবারের জন্য প্রোফাইল তৈরি করুন অথবা অফিস এবং বিনোদনের প্রোফাইল আলাদা আলাদা রাখুন।</translation>
+<translation id="5655063652337498476">iOS-এ Chrome ব্যবহার করে আপনার ক্যামেরা দিয়ে প্রোডাক্ট ডিসকভার করুন, এছাড়াও দাম কমার বিষয়টি ট্র্যাক করা সহ যেকোনও সময় ও জায়গায় আরও অনেক কিছু করুন।</translation>
 <translation id="565744775970812598"><ph name="FILE_NAME" /> বিপজ্জনক হতে পারে, তাই Chrome এটিকে অবরুদ্ধ করেছে।</translation>
 <translation id="566040795510471729">আপনার কা&amp;স্টমাইজ ম্যানেজ করুন</translation>
 <translation id="566568153320186256">স্মুথ স্ক্রলিং ও ভিডিও ফ্রেম রেটের মতো ব্যাকগ্রাউন্ড অ্যাক্টিভিটি ও ভিজ্যুয়াল এফেক্টকে সীমিত করার মাধ্যমে Chrome ব্যাটারির চার্জ সাশ্রয় করে। <ph name="BEGIN_LINK" />পাওয়ার সেভার সম্পর্কে আরও জানুন<ph name="END_LINK" /></translation>
@@ -462,6 +471,7 @@
 <translation id="5709557627224531708">Chrome-কে আপনার ডিফল্ট ব্রাউজার হিসেবে সেট করুন</translation>
 <translation id="5719246646468301581">Google Chrome ও Chrome OS-এর পরিষেবার অতিরিক্ত শর্তাবলী</translation>
 <translation id="5736850870166430177">যদি কোনও সাইট আপনার পাসওয়ার্ড চুরি করার চেষ্টা করে বা আপনি কোনও ক্ষতিকারক ফাইল ডাউনলোড করলে, Chrome, পৃষ্ঠার কিছু কন্টেন্ট সহ URL ও হয়ত Safe Browsing-এ পাঠাতে পারে</translation>
+<translation id="5742003800414899269">যেকোনও সময় ও জায়গায় সেরা সব AI টুলের জন্য Chrome অ্যাপ ব্যবহার করুন</translation>
 <translation id="5756509061973259733">এই ডিভাইসে এই অ্যাকাউন্টের সাথে Chrome প্রোফাইল আগে থেকেই আছে</translation>
 <translation id="5759947850379142561">Google Lens ব্যবহার করে সার্চ করতে যেকোনও টেক্সট বা ছবি বেছে নিন অথবা Escape বোতাম প্রেস করে Google Lens থেকে বেরিয়ে আসুন</translation>
 <translation id="5779427581965287859">Chrome-কে ডিফল্ট হিসেবে সেট করুন এবং টাস্কবারে পিন করুন</translation>
@@ -501,6 +511,7 @@
 <translation id="6113794647360055231">Chrome আরও ভাল হয়ে উঠেছে</translation>
 <translation id="6116004140911290070">Chrome-এ স্কিল চালু করুন</translation>
 <translation id="6116252277240876590">Chrome-এ মেনু, সেটিংস, অ্যালার্ট ও অন্যান্য টেক্সট দেখানোর জন্য এই ভাষা ব্যবহার করা হবে</translation>
+<translation id="6117557075995890082">যেকোনও সময় ও জায়গায় Google-এর নিরাপত্তা নিজের সাথে রাখতে Chrome অ্যাপ ব্যবহার করুন</translation>
 <translation id="6127237283587442951">ডিফল্ট হিসেবে Chrome ব্যবহার করুন এবং এটি পিন করুন</translation>
 <translation id="6134085236017727171">আপনার মাইক্রোফোন ব্যবহার করতে, Chrome-কে <ph name="BEGIN_LINK" />সিস্টেম সেটিংস<ph name="END_LINK" /> অ্যাক্সেস করতে দিন</translation>
 <translation id="6135456723633883042">এইসব ট্যাব অতিরিক্ত রিসোর্স ব্যবহার করছে। আপনার পারফর্ম্যান্স উন্নত করতে, Chrome-কে এগুলি বন্ধ করতে দিন।</translation>
@@ -588,6 +599,7 @@
 <translation id="6881299373831449287">Chrome আপডেট হচ্ছে</translation>
 <translation id="6885412569789873916">Chrome বিটা অ্যাপ</translation>
 <translation id="6893363893008038481">Chrome থেকে অ্যাকাউন্ট সরান</translation>
+<translation id="689368324615299626">আপনার <ph name="DEVICE_TYPE" />-এ Chrome অ্যাপের মাধ্যমে Google-এর সেরা সুবিধা পান</translation>
 <translation id="6896758677409633944">কপি</translation>
 <translation id="6908182077349113099">আপনার সব ডিভাইস জুড়ে পাসওয়ার্ড, বুকমার্ক ও ইতিহাস সিঙ্ক করে রাখুন। আপনার ডিফল্ট ব্রাউজার Chrome-এ আপডেট করে, আপনার পরিচিত ও পছন্দের ফিচারগুলি সহজেই অ্যাক্সেস করুন।</translation>
 <translation id="6930294499209825">আপনার Google সফ্টওয়্যারকে আপ-টু-ডেট রাখে। এই পরিষেবা যদি অ্যাক্টিভ না থাকে বা বন্ধ থাকে তাহলে Google সফ্টওয়্যার আপ-টু-ডেট থাকবে না যার মানে নিরাপত্তার ঝুঁকি থাকতে পারে যা সমাধান করা যাবে না এবং ফিচার কাজ নাও করতে পারে। কোনও Google সফ্টওয়্যার এই পরিষেবাকে ব্যবহার না করলে এটি নিজে থেকেই আনইনস্টল হয়।</translation>
@@ -611,6 +623,7 @@
 <translation id="7071827361006050863">Chrome শীঘ্রই ব্রাউজ করা ডেটা মুছে ফেলবে</translation>
 <translation id="7085332316435785646">Google পরিষেবাতে আরও পছন্দমতো অভিজ্ঞতার জন্য Chrome ইতিহাস অন্তর্ভুক্ত করবেন কিনা তা বেছে নিন</translation>
 <translation id="7088681679121566888">Chrome আপ-টু-ডেট আছে</translation>
+<translation id="708972073591616506">iOS-এ Chrome-এর সাহায্যে যেকোনও সময় ও জায়গায় আপনার প্রিয় Google AI টুল ব্যবহার করুন।</translation>
 <translation id="7096221564931416126">Google Lens ব্যবহার করে সার্চ করতে যেকোনও টেক্সট বা ছবি বেছে নিন</translation>
 <translation id="7098166902387133879">Google Chrome আপনার মাইক্রোফোন ব্যবহার করছে৷</translation>
 <translation id="7099479769133613710">&amp;ChromeOS আপডেট করতে আবার লঞ্চ করুন</translation>
@@ -645,6 +658,7 @@
 <translation id="7481213027396403996">Chrome-এ সবচেয়ে বেশি সুরক্ষা পান</translation>
 <translation id="749228101751499733">আপনি সাইন-ইন করার সময়, Chrome-এ আপনার Google অ্যাকাউন্ট থেকে পাসওয়ার্ড এবং আরও অনেক কিছু ব্যবহার করতে পারবেন। <ph name="SHORTCUT" /> আপনার Google পরিষেবা সম্পর্কিত সেটিংস পরিবর্তন করতে পারবে।</translation>
 <translation id="7496017508659652909">Chrome পৃষ্ঠা প্রিলোড করে যার ফলে আরও ঝটপট ব্রাউজ ও সার্চ করা যায়। <ph name="BEGIN_LINK" />পৃষ্ঠা প্রিলোড করা সম্পর্কে আরও জানুন<ph name="END_LINK" /></translation>
+<translation id="7510190804000607802">রিমাইন্ডার: Google-এর সেরা সবকিছু এখন আপনার হাতের মুঠোয়</translation>
 <translation id="7514258452813684157">Google আপডেটার পরিষেবা</translation>
 <translation id="7515191208480168435">সহজে অ্যাক্সেস করার জন্য আপনি Google Lens পিন করে রাখতে পারেন</translation>
 <translation id="7535429826459677826">Google Chrome ডেভেলপার</translation>
@@ -712,6 +726,7 @@
 <translation id="8010081455002666927">অটোমেটিক শনাক্ত করা</translation>
 <translation id="8013993649590906847">যদি ছবিতে প্রয়োজনীয় বিবরণ দেওয়া না থাকে, তাহলে Chrome আপনাকে একটি বিবরণ দেওয়ার চেষ্টা করবে। বিবরণ তৈরির জন্য, Google-এ ছবি পাঠানো হয়।</translation>
 <translation id="8019103195866286235">ডেভেলপার এই এক্সটেনশনটি প্রকাশনা থেকে সরিয়ে নিয়েছেন এবং এটি নিরাপদ নাও হতে পারে। Chrome থেকে এটি সরান যাতে আপনার ভিজিট করা সাইটের ডেটা এটি আর দেখতে না পায় এবং তা পরিবর্তন না করতে পারে, এর মধ্যে আপনার ব্যক্তিগত তথ্যও রয়েছে।</translation>
+<translation id="8038678618803403071">আপনার <ph name="DEVICE_TYPE" />-এ Chrome-এর সাহায্যে Google-এ সব পছন্দের জিনিস অ্যাক্সেস করুন</translation>
 <translation id="8040768861829554732">এক্সটেনশন ব্যবহার করতে Chrome-এ সাইন-ইন করতে হবে</translation>
 <translation id="8041795619940733262">এই ট্যাব সম্পর্কে<ph name="LINE_BREAK" />Google-কে জিজ্ঞাসা করুন</translation>
 <translation id="80471789339884597">ইনস্টল করার জন্য ধন্যবাদ। <ph name="BUNDLE_NAME" /> ব্যবহার করার আগে আপনাকে অবশ্যই সমস্ত ব্রাউজার রিস্টার্ট করতে হবে।</translation>
@@ -800,6 +815,7 @@
 <translation id="8865415417596392024">আপনার অ্যাকাউন্টের Chrome ডেটা</translation>
 <translation id="8883862939660515976">Google Lens-কে এই ছবির ব্যাপারে জিজ্ঞাসা করুন</translation>
 <translation id="8914504000324227558">Chrome আবার লঞ্চ করুন</translation>
+<translation id="8920304659326707347">iOS-এ Chrome-এ ঠিক আগের জায়গা থেকেই আবার শুরু করুন।</translation>
 <translation id="8922193594870374009"><ph name="ORIGIN" /> থেকে আপনার Android ফোনে একটি নম্বর পাঠাতে, উভয় ডিভাইসের Chrome-এ সাইন-ইন করুন।</translation>
 <translation id="8922998289262614701">Chrome থেকে এই অ্যাপের ডেটা সরিয়ে দিন</translation>
 <translation id="8925636929359899517">এই পরিষেবা উন্নত করতে আমরা তথ্য ব্যবহার করি। <ph name="BEGIN_LINK1" />গোপনীয়তা নীতি<ph name="END_LINK1" /> ও <ph name="BEGIN_LINK2" />পরিষেবার শর্তাবলী<ph name="END_LINK2" /> দেখুন।</translation>
@@ -815,6 +831,7 @@
             বুকমার্ক, ইতিহাস ও সেভ করা পাসওয়ার্ডে কোনও প্রভাব পড়বে না।</translation>
 <translation id="8948460679427074738">এই এক্সটেনশন গোপনীয়তা অনুশীলন প্রকাশ করেনি, যেমন কীভাবে এটি ডেটা সংগ্রহ ও ব্যবহার করে। Chrome আপনাকে এটি সরিয়ে দেওয়ার সাজেশন দেয়।</translation>
 <translation id="8958307504142971576">Chrome-এ এখন আপনার কাছে আরও ফিচার উপলভ্য আছে</translation>
+<translation id="8987061207681586800">Chrome-কে নিজের করে নিন</translation>
 <translation id="8991530961471831170">Chrome-এ Gemini খুলুন</translation>
 <translation id="8992769679401294069">পাসফ্রেজ ব্যবহার করে আপনার ডেটা এনক্রিপ্ট করা হয়েছে। আপনার Google অ্যাকাউন্টে Chrome সম্পর্কিত ডেটা ব্যবহার ও সেভ করতে এটি লিখুন।</translation>
 <translation id="8999117580775242387">HTTPS উপলভ্য না থাকলে, Chrome আপনাকে সতর্ক না করেই অসুরক্ষিত কানেকশন ব্যবহার করবে</translation>
@@ -830,6 +847,7 @@
 <translation id="9134482777260927479">হোমওয়ার্কে সহায়তা</translation>
 <translation id="9138603949443464873">আপনার পরিবর্তনগুলি প্রয়োগ করতে, Chrome রিলঞ্চ করুন</translation>
 <translation id="9148058034647219655">প্রস্থান করুন</translation>
+<translation id="9150331942025550505">আপনার <ph name="DEVICE_TYPE" />-এ Chromium অ্যাপ ব্যবহার করার সময় AI-এর সুবিধা পান</translation>
 <translation id="919706545465235479">সিঙ্ক শুরু করতে Chrome আপডেট করুন</translation>
 <translation id="922152298093051471">Chrome কাস্টমাইজ করুন</translation>
 <translation id="93760716455950538">ChromeOS Flex রিস্টার্ট করুন</translation>

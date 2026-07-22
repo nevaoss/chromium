@@ -101,6 +101,7 @@
 #import "ios/chrome/browser/omnibox/model/placeholder_service/placeholder_service_factory.h"
 #import "ios/chrome/browser/overscroll_actions/ui_bundled/overscroll_actions_controller.h"
 #import "ios/chrome/browser/policy/model/policy_util.h"
+#import "ios/chrome/browser/popup_menu/overflow_menu/public/features.h"
 #import "ios/chrome/browser/safari_data_import/coordinator/safari_data_import_child_coordinator_delegate.h"
 #import "ios/chrome/browser/safari_data_import/coordinator/safari_data_import_export_coordinator.h"
 #import "ios/chrome/browser/search_engines/model/template_url_service_factory.h"
@@ -349,10 +350,7 @@
   // Start observing SceneState changes.
   SceneState* sceneState = self.browser->GetSceneState();
   [sceneState addObserver:self];
-
-  if (IsNTPBackgroundCustomizationEnabled()) {
-    [sceneState.tabGridState addObserver:self];
-  }
+  [sceneState.tabGridState addObserver:self];
 
   // Configures incognito NTP if user is in incognito mode.
   if (self.isOffTheRecord) {
@@ -402,11 +400,9 @@
           _identityManager);
   [self updateFeedWithIsSupervisedUser:(capability == signin::Tribool::kTrue)];
 
-  if (IsNTPBackgroundCustomizationEnabled()) {
-    // Ensure the initial background is applied after all components have been
-    // set up.
-    [self.NTPMediator updateBackground];
-  }
+  // Ensure the initial background is applied after all components have been
+  // set up.
+  [self.NTPMediator updateBackground];
 
   self.started = YES;
 }
@@ -422,10 +418,7 @@
 
   SceneState* sceneState = self.browser->GetSceneState();
   [sceneState removeObserver:self];
-
-  if (IsNTPBackgroundCustomizationEnabled()) {
-    [sceneState.tabGridState removeObserver:self];
-  }
+  [sceneState.tabGridState removeObserver:self];
 
   if (self.isOffTheRecord) {
     self.incognitoViewController = nil;
@@ -552,6 +545,8 @@
   _fakeboxTapped = NO;
   if (!IsNTPRedesignEnabled()) {
     [self.NTPViewController focusOmnibox];
+  } else if (self.NTPRedesignViewController) {
+    [self.NTPRedesignViewController focusOmnibox];
   }
 }
 
@@ -798,8 +793,14 @@
       [self.toolbarDelegate fakeboxScribbleForwardingTarget];
   headerView.mutator = self.NTPMediator;
   [headerView setupSubviews];
-  headerView.searchEngineLogoView = _searchEngineLogoMediator.view;
-  _searchEngineLogoMediator.consumer = headerView;
+  if (IsNTPRedesignEnabled()) {
+    self.NTPRedesignViewController.searchEngineLogoView =
+        _searchEngineLogoMediator.view;
+    _searchEngineLogoMediator.consumer = self.NTPRedesignViewController;
+  } else {
+    headerView.searchEngineLogoView = _searchEngineLogoMediator.view;
+    _searchEngineLogoMediator.consumer = headerView;
+  }
 }
 
 // Configures `self.contentSuggestionsCoordinator`.
@@ -864,6 +865,7 @@
 // managed by this Coordinator.
 - (void)configureNTPViewController {
   if (IsNTPRedesignEnabled()) {
+    self.NTPRedesignViewController.NTPContentDelegate = self;
     [self configureMainViewControllerUsing:self.NTPRedesignViewController];
     return;
   }
@@ -1007,6 +1009,7 @@
 }
 
 - (void)customizationMenuWasTapped:(UIView*)customizationMenu {
+  CHECK(!IsOverflowMenuHomeCustomizationEntrypointEnabled());
   if (_customizationCoordinator) {
     // The menu is already opened, so tapping an entrypoint again should close
     // it.
@@ -1016,6 +1019,21 @@
 
   // Hide the 'new' badge for the current session after being tapped.
   [self.headerView hideBadgeOnCustomizationMenu];
+
+  [self.NTPMetricsRecorder recordHomeCustomizationMenuOpenedFromEntrypoint:
+                               HomeCustomizationEntrypoint::kMain];
+
+  [self openCustomizationMenuAtPage:CustomizationMenuPage::kMain animated:YES];
+}
+
+- (void)customizationMenuWasTapped {
+  CHECK(IsOverflowMenuHomeCustomizationEntrypointEnabled());
+  if (_customizationCoordinator) {
+    // The menu is already opened, so tapping an entrypoint again should close
+    // it.
+    [self dismissCustomizationMenu];
+    return;
+  }
 
   [self.NTPMetricsRecorder recordHomeCustomizationMenuOpenedFromEntrypoint:
                                HomeCustomizationEntrypoint::kMain];
@@ -1905,8 +1923,7 @@
       feature_engagement::TrackerFactory::GetForProfile(self.profile);
 
   tracker->NotifyEvent(feature_engagement::events::kHomeCustomizationMenuUsed);
-  if (page == CustomizationMenuPage::kMain &&
-      IsNTPBackgroundCustomizationEnabled()) {
+  if (page == CustomizationMenuPage::kMain) {
     tracker->NotifyEvent(
         feature_engagement::events::kHomeBackgroundCustomizationMenuUsed);
   }

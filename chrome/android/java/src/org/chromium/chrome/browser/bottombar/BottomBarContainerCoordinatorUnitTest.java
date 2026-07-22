@@ -40,6 +40,7 @@ import org.chromium.chrome.browser.browser_controls.BottomControlsStacker.LayerS
 import org.chromium.chrome.browser.glic.GlicEnabling;
 import org.chromium.chrome.browser.glic.GlicKeyedService;
 import org.chromium.chrome.browser.glic.GlicKeyedServiceFactory;
+import org.chromium.chrome.browser.layouts.LayoutStateProvider;
 import org.chromium.chrome.browser.omaha.UpdateMenuItemHelper;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
@@ -79,6 +80,7 @@ public class BottomBarContainerCoordinatorUnitTest {
     @Mock private UpdateMenuItemHelper mUpdateMenuItemHelper;
     @Mock private GlicKeyedService mGlicKeyedService;
     @Mock private TemplateUrlService mTemplateUrlService;
+    @Mock private LayoutStateProvider mLayoutStateProvider;
 
     private final SettableNullableObservableSupplier<Tab> mTabSupplier =
             ObservableSuppliers.createNullable();
@@ -128,7 +130,8 @@ public class BottomBarContainerCoordinatorUnitTest {
                                             mProfileSupplier,
                                             mOmniboxFocusStateSupplier,
                                             mModalDialogManagerSupplier,
-                                            new OneshotSupplierImpl<AppMenuCoordinator>());
+                                            new OneshotSupplierImpl<AppMenuCoordinator>(),
+                                            mLayoutStateProvider);
                         });
     }
 

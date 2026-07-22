@@ -288,7 +288,8 @@ TEST_F(PrivateVerificationTokensStoreTest, DeleteTokens_TimeOnly) {
 
   // Delete tokens created on/after t2.
   base::test::TestFuture<void> future;
-  store()->DeleteTokens(t2, std::nullopt, future.GetCallback());
+  store()->DeleteTokens(t2, base::Time::Max(), std::nullopt,
+                        future.GetCallback());
   EXPECT_TRUE(future.Wait());
 
   // "b.tri" token was created at t2, so it should be gone.
@@ -305,6 +306,37 @@ TEST_F(PrivateVerificationTokensStoreTest, DeleteTokens_TimeOnly) {
     sql::Database database(sql::test::kTestTag);
     ASSERT_TRUE(database.Open(database_path));
     VerifyTableRowCount(database, kTokenTableName, 1u);
+  }
+}
+
+TEST_F(PrivateVerificationTokensStoreTest,
+       DeleteTokens_EmptyOriginVectorTerminatesEarly) {
+  const base::FilePath database_path = DbPath(TempDir());
+  std::map<url::Origin, PrivateVerificationTokensPublicKey> keys;
+  std::map<url::Origin, std::vector<PrivateVerificationTokensToken>> tokens;
+  CreateTestData(keys, tokens);
+  StoreInDatabase(database_path, keys, tokens);
+
+  CreateStore(database_path);
+  ASSERT_EQ(store()->tokens().size(), 3u);
+
+  // Passing an empty vector of origins should terminate early and delete
+  // nothing.
+  base::test::TestFuture<void> future;
+  store()->DeleteTokens(base::Time(), base::Time::Max(),
+                        std::vector<url::Origin>{}, future.GetCallback());
+  EXPECT_TRUE(future.Wait());
+
+  // Memory cache and DB should remain unchanged.
+  EXPECT_EQ(store()->tokens().size(), 3u);
+
+  store_.reset();
+  base::ThreadPoolInstance::Get()->FlushForTesting();
+
+  {
+    sql::Database database(sql::test::kTestTag);
+    ASSERT_TRUE(database.Open(database_path));
+    VerifyTableRowCount(database, kTokenTableName, 5u);
   }
 }
 
@@ -343,7 +375,9 @@ TEST_F(PrivateVerificationTokensStoreTest, DeleteTokens_OriginOnly) {
 
   // Delete by site.
   base::test::TestFuture<void> future;
-  store()->DeleteTokens(std::nullopt, kOriginBTri, future.GetCallback());
+  store()->DeleteTokens(base::Time(), base::Time::Max(),
+                        std::vector<url::Origin>{kOriginBTri},
+                        future.GetCallback());
   EXPECT_TRUE(future.Wait());
 
   // "b.tri" token should be gone.
@@ -399,7 +433,9 @@ TEST_F(PrivateVerificationTokensStoreTest, DeleteTokens_TimeAndOrigin) {
   // Delete by time and site.
   // Delete tokens created on/after t1 for "a.com".
   base::test::TestFuture<void> future;
-  store()->DeleteTokens(t1, kOriginA, future.GetCallback());
+  store()->DeleteTokens(t1, base::Time::Max(),
+                        std::vector<url::Origin>{kOriginA},
+                        future.GetCallback());
   EXPECT_TRUE(future.Wait());
 
   // "a.com" token was created at t1, so it should be gone.
@@ -416,6 +452,141 @@ TEST_F(PrivateVerificationTokensStoreTest, DeleteTokens_TimeAndOrigin) {
     sql::Database database(sql::test::kTestTag);
     ASSERT_TRUE(database.Open(database_path));
     VerifyTableRowCount(database, kTokenTableName, 1u);
+  }
+}
+
+TEST_F(PrivateVerificationTokensStoreTest, DeleteTokens_MultipleOrigins) {
+  const base::FilePath database_path = DbPath(TempDir());
+  std::map<url::Origin, PrivateVerificationTokensPublicKey> keys;
+
+  const auto expiration = base::Time::UnixEpoch() + base::Seconds(27);
+  base::Time t1 = base::Time::UnixEpoch() + base::Seconds(10);
+  base::Time t2 = base::Time::UnixEpoch() + base::Seconds(20);
+  base::Time t3 = base::Time::UnixEpoch() + base::Seconds(30);
+
+  keys = {
+      {kOriginA,
+       PrivateVerificationTokensPublicKey(kOriginA, {1, 2, 3}, /*key_id=*/3,
+                                          expiration, /*version=*/1)},
+      {kOriginBTri,
+       PrivateVerificationTokensPublicKey(kOriginBTri, {4, 5, 6}, /*key_id=*/4,
+                                          expiration, /*version=*/2)},
+      {kOriginCEee,
+       PrivateVerificationTokensPublicKey(kOriginCEee, {7, 8, 9}, /*key_id=*/5,
+                                          expiration, /*version=*/3)},
+  };
+
+  std::map<url::Origin, std::vector<PrivateVerificationTokensToken>> tokens = {
+      {kOriginA,
+       {PrivateVerificationTokensToken(kOriginA, {11, 22, 33}, /*key_id=*/3,
+                                       expiration, /*version=*/3,
+                                       /*creation_time=*/t1)}},
+      {kOriginBTri,
+       {PrivateVerificationTokensToken(kOriginBTri, {11, 22, 55}, /*key_id=*/3,
+                                       expiration, /*version=*/3,
+                                       /*creation_time=*/t2)}},
+      {kOriginCEee,
+       {PrivateVerificationTokensToken(kOriginCEee, {11, 22, 77}, /*key_id=*/3,
+                                       expiration, /*version=*/3,
+                                       /*creation_time=*/t3)}},
+  };
+
+  StoreInDatabase(database_path, keys, tokens);
+
+  CreateStore(database_path);
+  ASSERT_EQ(store()->tokens().size(), 3u);
+
+  // Delete two out of three sites.
+  base::test::TestFuture<void> future;
+  store()->DeleteTokens(base::Time(), base::Time::Max(),
+                        std::vector<url::Origin>{kOriginA, kOriginCEee},
+                        future.GetCallback());
+  EXPECT_TRUE(future.Wait());
+
+  // "a.com" and "c.eee" should be gone.
+  EXPECT_EQ(store()->tokens().size(), 1u);
+  EXPECT_TRUE(store()->tokens().contains(kOriginBTri));
+  EXPECT_FALSE(store()->tokens().contains(kOriginA));
+  EXPECT_FALSE(store()->tokens().contains(kOriginCEee));
+
+  // Reset store to close DB connection before reading DB.
+  store_.reset();
+  base::ThreadPoolInstance::Get()->FlushForTesting();
+
+  // Re-read DB.
+  {
+    sql::Database database(sql::test::kTestTag);
+    ASSERT_TRUE(database.Open(database_path));
+    VerifyTableRowCount(database, kTokenTableName, 1u);
+  }
+}
+
+TEST_F(PrivateVerificationTokensStoreTest, DeleteTokens_TimeRange) {
+  const base::FilePath database_path = DbPath(TempDir());
+  std::map<url::Origin, PrivateVerificationTokensPublicKey> keys;
+  std::map<url::Origin, std::vector<PrivateVerificationTokensToken>> tokens;
+
+  const auto expiration = base::Time::UnixEpoch() + base::Seconds(27);
+  base::Time t1 = base::Time::UnixEpoch() + base::Seconds(10);
+  base::Time t2 = base::Time::UnixEpoch() + base::Seconds(20);
+  base::Time t3 = base::Time::UnixEpoch() + base::Seconds(30);
+
+  keys = {
+      {kOriginA,
+       PrivateVerificationTokensPublicKey(kOriginA, {1, 2, 3}, /*key_id=*/3,
+                                          expiration, /*version=*/1)},
+      {kOriginBTri,
+       PrivateVerificationTokensPublicKey(kOriginBTri, {4, 5, 6}, /*key_id=*/4,
+                                          expiration, /*version=*/2)},
+      {kOriginCEee,
+       PrivateVerificationTokensPublicKey(kOriginCEee, {7, 8, 9}, /*key_id=*/5,
+                                          expiration, /*version=*/3)},
+  };
+
+  std::map<url::Origin, std::vector<PrivateVerificationTokensToken>>
+      test_tokens = {
+          {kOriginA,
+           {PrivateVerificationTokensToken(kOriginA, {11, 22, 33}, /*key_id=*/3,
+                                           expiration, /*version=*/3,
+                                           /*creation_time=*/t1)}},
+          {kOriginBTri,
+           {PrivateVerificationTokensToken(kOriginBTri, {11, 22, 55},
+                                           /*key_id=*/3, expiration,
+                                           /*version=*/3,
+                                           /*creation_time=*/t2)}},
+          {kOriginCEee,
+           {PrivateVerificationTokensToken(kOriginCEee, {11, 22, 77},
+                                           /*key_id=*/3, expiration,
+                                           /*version=*/3,
+                                           /*creation_time=*/t3)}},
+      };
+
+  StoreInDatabase(database_path, keys, test_tokens);
+
+  CreateStore(database_path);
+  ASSERT_EQ(store()->tokens().size(), 3u);
+
+  // Delete by range [t2, t3).
+  // "b.tri" token was created at t2, so it should be gone.
+  // "a.com" (@ t1) and "c.eee" (@ t3) should remain.
+  base::test::TestFuture<void> future;
+  store()->DeleteTokens(t2, t3, std::nullopt, future.GetCallback());
+  EXPECT_TRUE(future.Wait());
+
+  EXPECT_EQ(store()->tokens().size(), 2u);
+  EXPECT_TRUE(store()->tokens().contains(kOriginA));
+  EXPECT_FALSE(store()->tokens().contains(kOriginBTri));
+  EXPECT_TRUE(store()->tokens().contains(kOriginCEee));
+
+  // Reset store to close DB connection before reading DB.
+  store_.reset();
+  base::ThreadPoolInstance::Get()->FlushForTesting();
+
+  // Re-read DB.
+  {
+    sql::Database database(sql::test::kTestTag);
+    ASSERT_TRUE(database.Open(database_path));
+    VerifyTableRowCount(database, kTokenTableName, 2u);
   }
 }
 

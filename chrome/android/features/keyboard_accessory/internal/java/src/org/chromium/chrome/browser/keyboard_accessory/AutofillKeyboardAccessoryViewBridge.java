@@ -250,6 +250,7 @@ public class AutofillKeyboardAccessoryViewBridge implements AutofillDelegate {
             @JniType("std::u16string") String iphDescriptionText,
             GURL customIconUrl,
             boolean applyDeactivatedStyle,
+            boolean isLoading,
             @Nullable Payload payload) {
         int drawableId = iconId == 0 ? DropdownItem.NO_ICON : iconId;
         return new AutofillSuggestion.Builder()
@@ -263,6 +264,7 @@ public class AutofillKeyboardAccessoryViewBridge implements AutofillDelegate {
                 .setIphDescriptionText(iphDescriptionText)
                 .setCustomIconUrl(customIconUrl)
                 .setApplyDeactivatedStyle(applyDeactivatedStyle)
+                .setIsLoading(isLoading)
                 .setPayload(payload)
                 .build();
     }

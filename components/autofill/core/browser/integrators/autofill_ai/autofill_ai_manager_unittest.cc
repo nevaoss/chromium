@@ -183,6 +183,7 @@ class MockAutofillClient : public TestAutofillClient {
               (override));
   MOCK_METHOD(void, CloseEntityImportBubble, (), (override));
   MOCK_METHOD(void, ShowAutofillAiLocalSaveNotification, (), (override));
+  MOCK_METHOD(void, ShowAutofillAiPreFetchFailureNotification, (), (override));
   MOCK_METHOD(void,
               TriggerAutofillAiSavePromptSurvey,
               (bool prompt_accepted,
@@ -2336,7 +2337,8 @@ TEST_F(AutofillAiManagerTest, OnPrefetchContextComplete_RunCallback) {
 
   EXPECT_CALL(callback, Run);
 
-  manager().OnPrefetchContextComplete(pcontext_manager(), {});
+  manager().OnPrefetchContextComplete(pcontext_manager(),
+                                      base::span<const EntityInstance>());
 }
 
 // Tests that the update callback is not run if the loading suggestion was not
@@ -2362,7 +2364,8 @@ TEST_F(AutofillAiManagerTest, OnPrefetchContextComplete_NoFetchingSuggestion) {
 
   EXPECT_CALL(callback, Run).Times(0);
 
-  manager().OnPrefetchContextComplete(pcontext_manager(), {});
+  manager().OnPrefetchContextComplete(pcontext_manager(),
+                                      base::span<const EntityInstance>());
 }
 
 // Tests that the update callback is not run if the form that triggered
@@ -2390,7 +2393,39 @@ TEST_F(AutofillAiManagerTest, OnPrefetchContextComplete_FormNotFound) {
 
   EXPECT_CALL(callback, Run).Times(0);
 
-  manager().OnPrefetchContextComplete(pcontext_manager(), {});
+  manager().OnPrefetchContextComplete(pcontext_manager(),
+                                      base::span<const EntityInstance>());
+}
+
+TEST_F(AutofillAiManagerTest, OnPrefetchContextComplete_Failure_ShowsToast) {
+  EXPECT_CALL(autofill_client(), ShowAutofillAiPreFetchFailureNotification());
+  manager().OnPrefetchContextComplete(pcontext_manager(), std::nullopt);
+}
+
+TEST_F(AutofillAiManagerTest,
+       OnPrefetchContextComplete_Failure_WithLoadingSuggestion_RunsCallback) {
+  test::FormDescription form_description = {
+      .fields = {{.role = PASSPORT_NUMBER}}};
+  FormData form = test::GetFormData(form_description);
+  autofill_manager().AddSeenForm(form, {PASSPORT_NUMBER});
+  const FormStructure* form_structure =
+      autofill_manager().FindCachedFormById(form.global_id());
+  ASSERT_TRUE(form_structure);
+  const AutofillField* field = form_structure->field(0);
+  ASSERT_TRUE(field);
+
+  Suggestion fetching_suggestion(SuggestionType::kFetchingAmbientData);
+  autofill_client().SetAutofillSuggestions({fetching_suggestion});
+
+  base::MockCallback<AutofillAiManager::UpdateSuggestionsCallback> callback;
+  manager().OnAutofillAiSuggestionsShown(*form_structure, *field,
+                                         {fetching_suggestion},
+                                         /*ukm_source_id=*/{}, callback.Get());
+
+  EXPECT_CALL(callback, Run);
+  EXPECT_CALL(autofill_client(), ShowAutofillAiPreFetchFailureNotification());
+
+  manager().OnPrefetchContextComplete(pcontext_manager(), std::nullopt);
 }
 
 }  // namespace

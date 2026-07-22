@@ -34,7 +34,10 @@ class StubPasswordManagerClient : public PasswordManagerClient {
 
   // PasswordManagerClient:
   using PasswordManagerClient::IsFillingEnabled;
-  bool IsSavingAndFillingEnabled(const GURL& url) const override;
+  using PasswordManagerClient::IsSavingAndFillingEnabled;
+  bool IsSavingAndFillingEnabled(
+      const url::Origin& origin,
+      base::optional_ref<const GURL> url) const override;
   bool IsFillingEnabled(const url::Origin& origin,
                         base::optional_ref<const GURL> url) const override;
   bool IsFieldFilledWithOtp(autofill::FormGlobalId form_id,
@@ -92,7 +95,7 @@ class StubPasswordManagerClient : public PasswordManagerClient {
     BUILDFLAG(IS_CHROMEOS)
   void OpenPasswordDetailsBubble(
       const password_manager::PasswordForm& form) override;
-  void MaybeShowSavePasswordPrimingPromo(const GURL& current_url) override;
+  void MaybeShowSavePasswordPrimingPromo(const url::Origin& origin) override;
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) ||
         // BUILDFLAG(IS_CHROMEOS)
 #if !BUILDFLAG(IS_IOS)

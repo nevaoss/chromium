@@ -9,7 +9,9 @@ android_resources("java_resources") {
   sources = [
     "java/res/color-night/bottom_bar_promo_glow_transparent.xml",
     "java/res/color/bottom_bar_promo_glow_transparent.xml",
+    "java/res/drawable-night/bottom_bar_aim_promo_illustration.xml",
     "java/res/drawable-night/bottom_bar_promo_illustration.xml",
+    "java/res/drawable/bottom_bar_aim_promo_illustration.xml",
     "java/res/drawable/bottom_bar_new_tab_background.xml",
     "java/res/drawable/bottom_bar_promo_illustration.xml",
     "java/res/layout/bottom_bar_app_menu_template.xml",
@@ -53,6 +55,7 @@ android_library("metrics_java") {
 
 android_library("java") {
   sources = [
+    "java/src/org/chromium/chrome/browser/ui/bottombar/AiModeActionCoordinator.java",
     "java/src/org/chromium/chrome/browser/ui/bottombar/AppMenuActionButtonBinder.java",
     "java/src/org/chromium/chrome/browser/ui/bottombar/BottomBar.java",
     "java/src/org/chromium/chrome/browser/ui/bottombar/BottomBarActionEligibility.java",
@@ -85,6 +88,7 @@ android_library("java") {
     "//chrome/browser/tab:java",
     "//chrome/browser/ui/android/actions:java",
     "//chrome/browser/ui/android/bars_common:java",
+    "//chrome/browser/ui/android/layouts:java",
     "//chrome/browser/ui/android/strings:ui_strings_grd",
     "//chrome/browser/ui/android/theme:java",
     "//chrome/browser/ui/android/toolbar:adaptive_features_java",
@@ -114,6 +118,7 @@ android_library("java") {
 
 robolectric_library("junit") {
   sources = [
+    "java/src/org/chromium/chrome/browser/ui/bottombar/AiModeActionCoordinatorUnitTest.java",
     "java/src/org/chromium/chrome/browser/ui/bottombar/AppMenuActionButtonBinderUnitTest.java",
     "java/src/org/chromium/chrome/browser/ui/bottombar/BottomBarActionEligibilityUnitTest.java",
     "java/src/org/chromium/chrome/browser/ui/bottombar/BottomBarButtonContainerUnitTest.java",
@@ -142,6 +147,7 @@ robolectric_library("junit") {
     "//chrome/browser/tab:java",
     "//chrome/browser/ui/android/actions:java",
     "//chrome/browser/ui/android/bars_common:java",
+    "//chrome/browser/ui/android/layouts:java",
     "//chrome/browser/ui/android/native_page:java",
     "//chrome/browser/ui/android/theme:java",
     "//chrome/browser/user_education:java",

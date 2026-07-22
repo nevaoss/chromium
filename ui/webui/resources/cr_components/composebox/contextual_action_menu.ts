@@ -187,6 +187,7 @@ export class ContextualActionMenuElement extends
   private pointerOverTrigger_: boolean = false;
   private pointerOverFlyout_: boolean = false;
   private firstTabBeingAdded_: boolean = false;
+  private pendingTabAddId_: number|null = null;
 
   private onScroll_ = (e: Event) => {
     if (!this.shareTabsFlyoutOpen) {
@@ -267,6 +268,25 @@ export class ContextualActionMenuElement extends
   override disconnectedCallback() {
     super.disconnectedCallback();
     this.resetShareTabsFlyout_();
+  }
+
+  override willUpdate(changedProperties: PropertyValues<this>) {
+    super.willUpdate(changedProperties);
+
+    if (!this.closeMenuOnSelect && changedProperties.has('disabledTabIds') &&
+        this.pendingTabAddId_ !== null) {
+      if (this.disabledTabIds.has(this.pendingTabAddId_)) {
+        // Tab was added. Start the timer now to ignore pointerleave.
+        this.firstTabBeingAdded_ = true;
+        WindowProxy.getInstance().setTimeout(() => {
+          this.firstTabBeingAdded_ = false;
+          if (!this.pointerOverTrigger_ && !this.pointerOverFlyout_) {
+            this.scheduleCloseTimer_();
+          }
+        }, FIRST_TAB_DELAY);
+        this.pendingTabAddId_ = null;
+      }
+    }
   }
 
   override updated(changedProperties: PropertyValues<this>) {
@@ -656,7 +676,7 @@ export class ContextualActionMenuElement extends
     const isRestored =
         (this.aimThreadRestoredTabs)
             .some(restoredTab => restoredTab.tabId === tab.tabId);
-    if (isRestored || this.isInputTypeDisabled_(InputType.kBrowserTab)) {
+    if (isRestored) {
       return true;
     }
 
@@ -664,6 +684,10 @@ export class ContextualActionMenuElement extends
     const isCurrentlySelected = this.disabledTabIds.has(tab.tabId);
     if (isCurrentlySelected) {
       return false;
+    }
+
+    if (this.isInputTypeDisabled_(InputType.kBrowserTab)) {
+      return true;
     }
 
     if (this.enableMultiTabSelection_) {
@@ -740,12 +764,21 @@ export class ContextualActionMenuElement extends
 
     assert(tabInfo);
 
-    // First tab takes ~1000ms to be added. During this time, ignore
-    // `pointerLeave` events caused by adding the first tab.
-    this.firstTabBeingAdded_ = true;
-    WindowProxy.getInstance().setTimeout(() => {
-      this.firstTabBeingAdded_ = false;
-    }, FIRST_TAB_DELAY);
+    if (!this.closeMenuOnSelect) {
+      // First tab takes ~1000ms to be added. During this time, ignore
+      // `pointerLeave` events caused by adding the first tab.
+      this.pendingTabAddId_ = tabInfo.tabId;
+      this.firstTabBeingAdded_ = true;
+      WindowProxy.getInstance().setTimeout(() => {
+        if (this.pendingTabAddId_ === tabInfo.tabId) {
+          this.firstTabBeingAdded_ = false;
+          this.pendingTabAddId_ = null;
+          if (!this.pointerOverTrigger_ && !this.pointerOverFlyout_) {
+            this.scheduleCloseTimer_();
+          }
+        }
+      }, FIRST_TAB_DELAY * 5);
+    }
 
 
     if (this.enableMultiTabSelection_ && this.isTabSelected_(tabInfo.tabId)) {
@@ -799,10 +832,10 @@ export class ContextualActionMenuElement extends
     if (!this.hasTabSuggestions_) {
       return;
     }
+    this.pointerOverTrigger_ = false;
     if (this.firstTabBeingAdded_) {
       return;
     }
-    this.pointerOverTrigger_ = false;
     this.scheduleCloseTimer_();
   }
 
@@ -810,7 +843,7 @@ export class ContextualActionMenuElement extends
     if (!this.hasTabSuggestions_) {
       return;
     }
-    this.firstTabBeingAdded_ = false;
+    // Do NOT reset firstTabBeingAdded_ here, it should only be reset by timers.
     this.pointerOverFlyout_ = true;
     this.cancelCloseTimer_();
   }
@@ -819,10 +852,10 @@ export class ContextualActionMenuElement extends
     if (!this.hasTabSuggestions_) {
       return;
     }
+    this.pointerOverFlyout_ = false;
     if (this.firstTabBeingAdded_) {
       return;
     }
-    this.pointerOverFlyout_ = false;
     this.scheduleCloseTimer_();
   }
 

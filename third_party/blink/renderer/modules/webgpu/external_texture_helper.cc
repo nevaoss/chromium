@@ -231,8 +231,12 @@ ExternalTexture CreateExternalTexture(
 
   // TODO(crbug.com/1306753): Use SharedImageProducer and CompositeSharedImage
   // rather than check 'is_webgpu_compatible'.
-  bool device_support_zero_copy =
-      device->adapter()->SupportsMultiPlanarFormats();
+  // Note that the feature is checked on the adapter and not the device, because
+  // we assume that the GPU-process side automatically adds
+  // DawnMultiPlanarFormats to the requested extension list (since we don't do
+  // it in gpu_device.cc).
+  bool device_support_zero_copy = device->GetHandle().GetAdapter().HasFeature(
+      wgpu::FeatureName::DawnMultiPlanarFormats);
 
   wgpu::ExternalTextureDescriptor external_texture_desc = {};
 

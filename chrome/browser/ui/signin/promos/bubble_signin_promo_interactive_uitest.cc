@@ -7,6 +7,7 @@
 #include "base/test/test_future.h"
 #include "base/version.h"
 #include "base/version_info/version_info.h"
+#include "build/build_config.h"
 #include "chrome/browser/bookmarks/bookmark_model_factory.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/extensions/chrome_test_extension_loader.h"
@@ -98,6 +99,8 @@ std::unique_ptr<KeyedService> BuildTestSyncService(
   return std::make_unique<testing::NiceMock<syncer::TestSyncService>>();
 }
 
+// TODO(crbug.com/528193769): Re-enable this test on Mac.
+#if !BUILDFLAG(IS_MAC)
 // UI variations of the password save/update bubble to test.
 enum PasswordBubbleTestFeature : uint32_t {
   // Standard 2-button dialog (Save/Update and Cancel).
@@ -120,6 +123,7 @@ std::string GetPasswordSignInPromoSaveUiInteractiveUITestName(
       return "DropdownMenuExperiment";
   }
 }
+#endif  // !BUILDFLAG(IS_MAC)
 
 }  // namespace
 
@@ -462,6 +466,8 @@ void BubbleSignInPromoInteractiveUITest::ExtendAccountInfo(AccountInfo& info) {
  * ensures that pixel tests (Screenshot) verify promo rendering across all
  * possible bubble width variations.
  */
+// TODO(crbug.com/528193769): Re-enable this test on Mac.
+#if !BUILDFLAG(IS_MAC)
 class BubbleSignInPromoPasswordSaveUiInteractiveUITest
     : public BubbleSignInPromoInteractiveUITest,
       public ::testing::WithParamInterface<PasswordBubbleTestFeature> {
@@ -744,6 +750,7 @@ INSTANTIATE_TEST_SUITE_P(All,
                                          kThreeButtonSaveDialog,
                                          kDropdownMenuExperiment),
                          GetPasswordSignInPromoSaveUiInteractiveUITestName);
+#endif  // !BUILDFLAG(IS_MAC)
 
 /////////////////////////////////////////////////////////////////
 ///// Address Sign in Promo

@@ -133,7 +133,6 @@ Catatan: Baca selengkapnya tentang kebijakan mitigasi proses ( https://chromium.
 <translation id="1076751984131277498">Daftar perangkat USB dapat dilepas yang diizinkan</translation>
 <translation id="1077675271127011209">Nonaktifkan pelaporan data penggunaan dan yang terkait error</translation>
 <translation id="1079498696402787191">Gunakan Nilai Default untuk Hash yang Diizinkan di Handshake TLS.</translation>
-<translation id="1079801999187584280">Larang penggunaan Developer Tools</translation>
 <translation id="1081470306474387129">Controlled Frame API, yang tersedia untuk konteks terisolasi tertentu seperti Aplikasi Web Terisolasi (IWA), memungkinkan aplikasi menyematkan dan memanipulasi konten arbitrer.
 Lihat https://github.com/WICG/controlled-frame untuk mengetahui detail selengkapnya.
 
@@ -1706,6 +1705,11 @@ Jika kebijakan disetel ke 1, grup tab tidak dapat dibagikan.</translation>
       Jika kebijakan ini ditetapkan ke salah (false), pengguna tidak akan dapat mengirim beberapa informasi sistem dan konten halaman ke server Google. Jika ditetapkan ke benar (true) atau tidak dikonfigurasi, pengguna akan diizinkan mengirim beberapa informasi sistem dan konten halaman ke Safe Browsing untuk membantu mendeteksi situs dan aplikasi berbahaya.
 
       Lihat https://developers.google.com/safe-browsing untuk mengetahui info selengkapnya tentang Safe Browsing.</translation>
+<translation id="2126895531607538755">Jika kebijakan ini disetel, jumlah milidetik tidak ada aktivitas sebelum perangkat menerapkan kembali tindakan penangguhan selama interval <ph name="DEVICE_WEEKLY_SCHEDULED_SUSPEND_POLICY_NAME" /> akan ditentukan.
+
+Jika perangkat diaktifkan secara manual (misalnya, dengan input keyboard) selama periode tidur terjadwal, perangkat akan menunggu selama jumlah milidetik ini sebelum menangguhkan ke RAM lagi. Setiap aktivitas pengguna akan mereset timer penangguhan ulang selama aktivitas tersebut masih berada dalam interval penangguhan.
+
+Jika kebijakan ini tidak disetel, perangkat tidak akan otomatis ditangguhkan kembali selama interval tersebut setelah diaktifkan.</translation>
 <translation id="2127599828444728326">Izinkan pemberitahuan di situs ini</translation>
 <translation id="2131902621292742709">Penundaan peredupan layar saat menggunakan daya baterai</translation>
 <translation id="2131915994539959070">Mengaktifkan penghalangan jendela di <ph name="PRODUCT_NAME" />.
@@ -1845,21 +1849,6 @@ Kebijakan ini merupakan tindakan sementara dan akan dihapus tidak lama setelah <
 <translation id="2180958780733364832">Mengontrol penggunaan Mode Headless</translation>
 <translation id="2182291258410176649">Pengguna memutuskan apakah akan mengaktifkan opsi pencadangan dan pemulihan</translation>
 <translation id="2183338188392346527">Jangan laporkan penghitung runtime perangkat</translation>
-<translation id="2183838844225082873">Jika kebijakan ini disetel ke 0 (default), Anda akan dapat mengakses alat developer dan konsol JavaScript. Namun, hal ini tidak berlaku dalam konteks ekstensi yang diinstal oleh kebijakan perusahaan atau, sejak versi 114 dan jika pengguna adalah pengguna terkelola, ekstensi bawaan browser. Jika kebijakan disetel ke 1, Anda akan dapat mengakses alat developer dan konsol JavaScript di semua konteks, termasuk dalam konteks ekstensi yang diinstal oleh kebijakan perusahaan. Jika kebijakan disetel ke 2, Anda tidak akan dapat mengakses alat developer, dan Anda tidak dapat memeriksa elemen situs.
-
-Setelan ini juga menonaktifkan pintasan keyboard dan entri menu atau menu konteks untuk membuka alat developer atau konsol JavaScript.
-
-Mulai <ph name="PRODUCT_NAME" /> versi 99, setelan ini juga mengontrol titik entri untuk fitur 'Lihat sumber halaman'. Jika Anda menyetel kebijakan ini ke 'DeveloperToolsDisallowed' (nilai 2), pengguna tidak dapat mengakses tampilan sumber melalui pintasan keyboard atau menu konteks. Untuk memblokir tampilan sumber sepenuhnya, Anda juga harus menambahkan 'view-source:*' ke kebijakan <ph name="URL_BLOCKLIST_POLICY_NAME" />.
-
-Mulai <ph name="PRODUCT_NAME" /> versi 119, setelan ini juga mengontrol apakah mode developer untuk Aplikasi Web Terisolasi (IWA) dapat diaktifkan dan digunakan.
-
-Mulai <ph name="PRODUCT_NAME" /> versi 128, setelan ini tidak akan mengontrol mode developer di halaman ekstensi jika kebijakan <ph name="EXTENSION_DEVELOPER_MODE_SETTINGS_POLICY_NAME" /> disetel.
-
-Ketersediaan Alat Developer ditentukan dalam urutan prioritas berikut:
-1. Jika URL cocok dengan pola di kebijakan <ph name="DEVELOPER_TOOLS_AVAILABILITY_ALLOWLIST_POLICY_NAME" />, Alat Developer akan diizinkan.
-2. Jika <ph name="DEVELOPER_TOOLS_AVAILABILITY_ALLOWLIST_POLICY_NAME" /> disetel dan <ph name="DEVELOPER_TOOLS_AVAILABILITY_BLOCKLIST_POLICY_NAME" /> tidak disetel, URL apa pun yang tidak ada dalam daftar yang diizinkan akan diblokir.
-3. Jika URL cocok dengan pola di kebijakan <ph name="DEVELOPER_TOOLS_AVAILABILITY_BLOCKLIST_POLICY_NAME" />, Alat Developer akan diblokir.
-4. Jika URL tidak tercakup dalam daftar yang diizinkan atau daftar yang tidak diizinkan, kebijakan ini (<ph name="DEVELOPER_TOOLS_AVAILABILITY_POLICY_NAME" />) adalah penggantinya.</translation>
 <translation id="2187361040843865450">Terima permintaan penyambungan Bluetooth "Just Works"</translation>
 <translation id="2187372280917024033">Template URI pada resolver DNS-over-HTTPS yang diinginkan. Untuk menentukan beberapa resolver DNS-over-HTTPS, pisahkan template URI terkait dengan spasi. Kebijakan ini sangat mirip dengan <ph name="DOH_TEMPLATES_POLICY_NAME" /> yang akan diganti jika ditentukan.
 Berbeda dengan kebijakan <ph name="DOH_TEMPLATES_POLICY_NAME" />, kebijakan ini mendukung penentuan informasi identitas.
@@ -3412,6 +3401,7 @@ Jika disetel ke Nonaktif atau tidak disetel, kebijakan ini tidak akan memicu pen
 Laporan berisi status dan informasi penggunaan profil, termasuk tetapi tidak terbatas pada versi OS, versi browser, ekstensi yang diinstal, dan kebijakan yang berlaku.
 
 Kebijakan ini hanya dapat disetel sebagai kebijakan pengguna cloud.</translation>
+<translation id="3060733249129331512">Tanyakan setiap kali situs ingin mendownload beberapa file secara otomatis</translation>
 <translation id="3062559845875011810">Jangan izinkan fitur</translation>
 <translation id="3063302084011279315">Nonaktifkan Screencast</translation>
 <translation id="3063307261083019730">Larang halaman dengan header <ph name="CACHE_CONTROL_NO_STORE_NAME" /> disimpan di back-forward cache.</translation>
@@ -4854,6 +4844,13 @@ Nilai 2 = Tidak mengizinkan penggunaan fitur ini.
 Jika kebijakan ini tidak disetel, perilakunya akan ditentukan oleh kebijakan GenAiDefaultSettings.
 
 Untuk mengetahui informasi selengkapnya tentang penanganan data untuk fitur AI generatif, lihat https://support.google.com/chrome/a?p=generative_ai_settings.</translation>
+<translation id="4049815236567245576">Memungkinkan Anda menetapkan daftar pola URL yang menentukan situs yang diizinkan mendownload beberapa file secara otomatis.
+
+Untuk mengetahui informasi selengkapnya tentang pola URL yang valid, buka https://chromeenterprise.google/policies/url-patterns.
+
+Jika URL cocok dengan <ph name="AUTOMATIC_DOWNLOADS_ALLOWED_FOR_URLS_POLICY_NAME" /> dan <ph name="AUTOMATIC_DOWNLOADS_BLOCKED_FOR_URLS_POLICY_NAME" />, AutomaticDownloadsBlockedForUrls akan diprioritaskan.
+
+Jika kebijakan ini tidak disetel, <ph name="DEFAULT_AUTOMATIC_DOWNLOADS_SETTING_POLICY_NAME" /> akan berlaku untuk semua situs, jika disetel. Jika tidak, setelan pribadi pengguna akan digunakan.</translation>
 <translation id="4051723201852944592">Mengaktifkan Penghalangan Jendela</translation>
 <translation id="4052529125939620019">Memuat ekstensi komponen CryptoToken saat browser dimulai</translation>
 <translation id="4053157306171963473">Nonaktifkan pelaporan waktu aktivitas perangkat</translation>
@@ -4953,6 +4950,9 @@ Ketersediaan ekstensi masih dikontrol oleh kebijakan lainnya.</translation>
 
       Catatan: Pembaruan Kebijakan Dinamis hanya didukung di <ph name="PRODUCT_NAME" /> versi 123 dan yang lebih baru. Menonaktifkan "autofill" juga akan menonaktifkan "payments". "typedUrls" merujuk pada semua histori penjelajahan.</translation>
 <translation id="4115501011761259824">Aktifkan Set Pihak Pertama untuk semua pengguna yang terpengaruh</translation>
+<translation id="4119598167427266156">Jika kebijakan ini disetel ke 1, situs akan dapat mendownload beberapa file secara otomatis. Jika kebijakan disetel ke 2, izin ini akan ditolak. Anda dapat menyetel kebijakan untuk menanyakan setiap kali situs ingin mendownload beberapa file secara otomatis.
+
+Jika kebijakan tidak disetel, kebijakan AskAutomaticDownloads akan berlaku, tetapi pengguna dapat mengubah setelan ini.</translation>
 <translation id="4120401094617902941">Interval pada saat penghitung runtime diambil sampelnya dan dikumpulkan. Batas minimum yang diizinkan adalah 1 hari.
 
 Jika tidak disetel, interval default 1 hari akan berlaku.</translation>
@@ -5655,7 +5655,6 @@ Untuk mengetahui informasi selengkapnya tentang pola URL yang valid, lihat https
 <translation id="4561940244682063697">Jangan izinkan situs meminta pengguna untuk membagikan streaming video dari layar mereka</translation>
 <translation id="4562165737444703281">Mengizinkan pengguna untuk [mengaktifkan/mengonfigurasi] penerusan port Crostini</translation>
 <translation id="456450545863578630">Aktifkan transfer file di koneksi dukungan jarak jauh dari admin perusahaan</translation>
-<translation id="4567137030726189378">Izinkan penggunaan Developer Tools</translation>
 <translation id="4570859815763368584">Tidak digunakan lagi di M68. Sebagai gantinya, gunakan DefaultPopupsSetting.
 
       Untuk penjelasan selengkapnya, lihat https://www.chromestatus.com/feature/5675755719622656.
@@ -6502,6 +6501,7 @@ Jika kebijakan ini disetel ke <ph name="POLICY_ENUM_RESTOREONSTARTUP_RESTOREONST
 Di <ph name="MS_WIN_NAME" />, kebijakan ini hanya tersedia di instance yang dihubungkan ke domain <ph name="MS_AD_NAME" />, dihubungkan ke <ph name="MS_AAD_NAME" />, atau didaftarkan di <ph name="CHROME_ENTERPRISE_CORE_NAME" />.
 
 Di <ph name="MAC_OS_NAME" />, kebijakan ini hanya tersedia di instance yang dikelola melalui MDM, dihubungkan ke domain melalui MCX, atau didaftarkan di <ph name="CHROME_ENTERPRISE_CORE_NAME" />.</translation>
+<translation id="5036662165765606524">Jangan izinkan situs apa pun mendownload beberapa file secara otomatis</translation>
 <translation id="5037749623252479780">Setelan PageUp/PageDown dinonaktifkan</translation>
 <translation id="5039110755072335605">Dukungan header permintaan non-karakter pengganti CORS</translation>
 <translation id="5039804452771397117">Izinkan</translation>
@@ -7019,6 +7019,7 @@ Akun terkelola tidak memenuhi syarat untuk bergabung atau membuat grup keluarga,
 <translation id="5345892164332459671">Nonaktifkan SSO Mengambang dan jangan pindahkan autentikasi layanan web pengguna ke perangkat baru</translation>
 <translation id="5345910753471481870">Jangan tampilkan tombol Google Lens di kotak penelusuran pada halaman Tab Baru.</translation>
 <translation id="5346587320074666194">Memblokir akses ke sensor di situs ini</translation>
+<translation id="534702079563980696">Izinkan download otomatis di situs ini</translation>
 <translation id="5347735051291224683">Kebijakan ini mengontrol apakah konten web latar belakang dipaksa berjalan pada
 prioritas latar depan.
 
@@ -7461,6 +7462,7 @@ Jika kebijakan ini tidak disetel atau disetel ke daftar kosong, dialog konfirmas
 <translation id="5599461642204007579">Setelan pengelolaan <ph name="MS_AD_NAME" /></translation>
 <translation id="5601503069213153581">PIN</translation>
 <translation id="5605676983184673391">Izinkan Aplikasi Chrome berjalan dalam sesi Kiosk.</translation>
+<translation id="5606477661985737162">Setelan Download Otomatis</translation>
 <translation id="5607021831414604820">Aktifkan pelaporan status penyimpanan perangkat</translation>
 <translation id="5607808178576647930">Izinkan integrasi Mode AI.</translation>
 <translation id="5608114828230655271">Perilaku default perangkat</translation>
@@ -7559,6 +7561,7 @@ Kebijakan ini adalah solusi sementara. Mulai M139, kebijakan ini tidak digunakan
 <translation id="5660950553460381588">Tetapkan penyimpanan default pembuatan kunci sandi ke Rantai Kunci iCloud jika memungkinkan.</translation>
 <translation id="566569751231933416">Gunakan Perilaku default.</translation>
 <translation id="5666457529647159548">Mengizinkan pengguna mengelola sertifikat klien yang terinstal.</translation>
+<translation id="566962283082154427">Jeda penangguhan ulang untuk interval penangguhan terjadwal mingguan dalam milidetik</translation>
 <translation id="5670249935663090320">Jika kebijakan disetel ke Aktif atau tidak disetel, <ph name="PRODUCT_NAME" /> akan diaktifkan dan pengguna dapat meluncurkannya dari menu aplikasi, menu konteks halaman, kontrol media di situs yang kompatibel untuk Cast, dan ikon toolbar Cast (jika ditampilkan).
 
 Jika kebijakan disetel ke Nonaktif, <ph name="PRODUCT_NAME" /> akan dinonaktifkan.</translation>
@@ -8023,6 +8026,13 @@ Mulai <ph name="PRODUCT_NAME" /> 147, kebijakan ini tidak akan digunakan lagi. A
 <translation id="5965344524743236327">ID atau nomor project <ph name="GOOGLE_CLOUD_PRODUCT_NAME" /> yang sesuai dengan instance <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> yang akan diaktifkan. Pelajari lebih lanjut project ID di https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects.</translation>
 <translation id="5966615072639944554">Ekstensi yang diizinkan untuk menggunakan API pengesahan jarak jauh</translation>
 <translation id="596732417280023843">Nama profil sertifikat.</translation>
+<translation id="5972475504452039694">Memungkinkan Anda menetapkan daftar pola URL yang menentukan situs yang tidak diizinkan mendownload beberapa file secara otomatis.
+
+Untuk mengetahui informasi selengkapnya tentang pola URL yang valid, buka https://chromeenterprise.google/policies/url-patterns.
+
+Jika URL cocok dengan <ph name="AUTOMATIC_DOWNLOADS_ALLOWED_FOR_URLS_POLICY_NAME" /> dan <ph name="AUTOMATIC_DOWNLOADS_BLOCKED_FOR_URLS_POLICY_NAME" />, AutomaticDownloadsBlockedForUrls akan diprioritaskan.
+
+Jika kebijakan ini tidak disetel, <ph name="DEFAULT_AUTOMATIC_DOWNLOADS_SETTING_POLICY_NAME" /> akan berlaku untuk semua situs, jika disetel. Jika tidak, setelan pribadi pengguna akan digunakan.</translation>
 <translation id="5972538402066550344">Izinkan kontrol pelaporan terperinci</translation>
 <translation id="5973437409890460481">Mengizinkan koneksi akses jarak jauh perusahaan ke perangkat ini</translation>
 <translation id="5975765799383881158">Jika kebijakan disetel ke Aktif atau tidak disetel, pengguna akan dapat mengirimkan masukan ke Google melalui Menu &gt; Bantuan &gt; Laporkan Masalah atau kombinasi tombol.
@@ -8288,6 +8298,7 @@ Waktu tunggu tidak ada aktivitas untuk memulai screensaver dan interval saat gam
 <translation id="6181783961196084973">Nilai tombol alih pengumpulan data aktivitas aplikasi. Jika disetel ke benar (true), aktivitas aplikasi pengguna akan dilaporkan ke server dengan tujuan untuk ditampilkan di aplikasi <ph name="PRODUCT_NAME" /> anak dan orang tua. Jika disetel ke salah (false), fitur Batas waktu per aplikasi akan tetap berfungsi, tetapi tidak ada data yang akan dilaporkan ke server dan oleh karena itu, tidak ada data yang akan ditampilkan di <ph name="PRODUCT_NAME" />.</translation>
 <translation id="6182206125906000651">Nonaktifkan Upgrade HTTPS.</translation>
 <translation id="6182563940865917569">Izinkan Chrome memutar media secara otomatis</translation>
+<translation id="618588573990666077">Setelan download otomatis default</translation>
 <translation id="618635925649844912">Kebijakan ini mengontrol apakah layar pengantar untuk fitur AI dalam sesi akan ditampilkan kepada pengguna selama alur login pertama.
 
       Jika disetel ke nonaktif, layar pengantar AI tidak akan ditampilkan.
@@ -8473,6 +8484,7 @@ tetap dapat disetel secara default. Perilaku ini cocok dengan perilaku lama.
 
 Lihat https://developer.chrome.com/blog/immutable-document-domain/ untuk
 mengetahui detail tambahan.</translation>
+<translation id="626942726350419209">Izinkan situs mendownload beberapa file secara otomatis</translation>
 <translation id="6270615143812355589">Aktifkan input audio</translation>
 <translation id="6270791075656665237">Larang QUIC</translation>
 <translation id="6273015149273504999">
@@ -10802,6 +10814,7 @@ Jika kebijakan ini dikosongkan, tidak akan ada pengecualian untuk <ph name="FLOA
 <translation id="759957074386651883">Setelan Safe Browsing</translation>
 <translation id="7602621823177962064">Nonaktifkan pelaporan info memori perangkat</translation>
 <translation id="7604169113182304895">Aplikasi Android dapat memilih untuk menerima daftar ini secara sukarela. Anda tidak dapat memaksa aplikasi untuk menerimanya.</translation>
+<translation id="7607831126797434329">Blokir download otomatis di situs ini</translation>
 <translation id="7608186022704392724">Fitur kirim otomatis PIN akan mengubah cara memasukkan PIN di <ph name="PRODUCT_OS_NAME" />.
           Fitur ini akan menampilkan UI khusus yang dengan jelas memperlihatkan kepada pengguna berapa
           digit yang diperlukan untuk PIN mereka,
@@ -11958,7 +11971,6 @@ Ada beberapa kebijakan yang mencantumkan origin yang memengaruhi permintaan ke p
 
           Jika kebijakan ini tidak disetel, 'BlockKeygen' akan digunakan dan pengguna dapat mengubahnya.</translation>
 <translation id="8314214821702356835">Memungkinkan pengguna memutar media saat perangkat terkunci</translation>
-<translation id="8314308739926578606">Larang penggunaan Developer Tools pada aplikasi dan ekstensi yang diinstal oleh kebijakan perusahaan atau, sejak versi 114 dan jika ini adalah pengguna terkelola, ekstensi akan disertakan dalam browser. Izinkan penggunaan Developer Tools dalam konteks lainnya</translation>
 <translation id="8316940611391250886">Larang sertifikat yang tidak dilengkapi ekstensi subjectAlternativeName</translation>
 <translation id="8319678975002906774">Menyetel nilai konfigurasi terkelola bagi situs untuk sumber tertentu</translation>
 <translation id="8320149248919453401">Mode pengisian daya baterai</translation>

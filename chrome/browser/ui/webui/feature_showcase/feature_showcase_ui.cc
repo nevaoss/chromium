@@ -13,12 +13,14 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/regional_capabilities/regional_capabilities_service_factory.h"
 #include "chrome/browser/search/background/ntp_custom_background_service_factory.h"
+#include "chrome/browser/themes/theme_service_factory.h"
 #include "chrome/browser/ui/webui/cr_components/customize_color_scheme_mode/customize_color_scheme_mode_handler.h"
 #include "chrome/browser/ui/webui/cr_components/theme_color_picker/theme_color_picker_handler.h"
 #include "chrome/browser/ui/webui/feature_showcase/default_browser_handler.h"
 #include "chrome/browser/ui/webui/feature_showcase/feature_showcase_handler.h"
 #include "chrome/browser/ui/webui/feature_showcase/google_lens_handler.h"
 #include "chrome/browser/ui/webui/feature_showcase/password_manager_handler.h"
+#include "chrome/browser/ui/webui/feature_showcase/themes_and_customization_handler.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/branded_strings.h"
 #include "chrome/grit/chrome_unscaled_resources.h"
@@ -217,6 +219,14 @@ void FeatureShowcaseUI::BindInterface(
 
 void FeatureShowcaseUI::BindInterface(
     mojo::PendingReceiver<
+        feature_showcase::mojom::ThemesAndCustomizationPageHandlerFactory>
+        receiver) {
+  themes_and_customization_factory_receiver_.reset();
+  themes_and_customization_factory_receiver_.Bind(std::move(receiver));
+}
+
+void FeatureShowcaseUI::BindInterface(
+    mojo::PendingReceiver<
         theme_color_picker::mojom::ThemeColorPickerHandlerFactory> receiver) {
   theme_color_picker_handler_factory_receiver_.reset();
   theme_color_picker_handler_factory_receiver_.Bind(std::move(receiver));
@@ -262,6 +272,15 @@ void FeatureShowcaseUI::CreatePasswordManagerPageHandler(
         handler) {
   password_manager_handler_ = std::make_unique<PasswordManagerHandler>(
       std::move(handler), Profile::FromWebUI(web_ui()));
+}
+
+void FeatureShowcaseUI::CreateThemesAndCustomizationPageHandler(
+    mojo::PendingReceiver<
+        feature_showcase::mojom::ThemesAndCustomizationPageHandler> handler) {
+  themes_and_customization_handler_ =
+      std::make_unique<ThemesAndCustomizationHandler>(
+          std::move(handler),
+          ThemeServiceFactory::GetForProfile(Profile::FromWebUI(web_ui())));
 }
 
 void FeatureShowcaseUI::CreateThemeColorPickerHandler(

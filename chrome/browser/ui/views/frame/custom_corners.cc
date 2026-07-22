@@ -104,27 +104,23 @@ void CustomCorners::PaintPath(gfx::Canvas* canvas,
 }
 
 // static
-CustomCorners::VisualCornerOrientation CustomCorners::GetVisualOrientation(
+CustomCorners::VisualCorner CustomCorners::ToVisualCorner(
     CornerOrientation orientation) {
   const bool mirror = base::i18n::IsRTL();
   switch (orientation) {
     case CornerOrientation::kTopLeading:
-      return mirror ? VisualCornerOrientation::kTopRight
-                    : VisualCornerOrientation::kTopLeft;
+      return mirror ? VisualCorner::kTopRight : VisualCorner::kTopLeft;
     case CornerOrientation::kTopTrailing:
-      return mirror ? VisualCornerOrientation::kTopLeft
-                    : VisualCornerOrientation::kTopRight;
+      return mirror ? VisualCorner::kTopLeft : VisualCorner::kTopRight;
     case CornerOrientation::kBottomLeading:
-      return mirror ? VisualCornerOrientation::kBottomRight
-                    : VisualCornerOrientation::kBottomLeft;
+      return mirror ? VisualCorner::kBottomRight : VisualCorner::kBottomLeft;
     case CornerOrientation::kBottomTrailing:
-      return mirror ? VisualCornerOrientation::kBottomLeft
-                    : VisualCornerOrientation::kBottomRight;
+      return mirror ? VisualCorner::kBottomLeft : VisualCorner::kBottomRight;
   }
 }
 
 // static
-SkPath CustomCorners::GetCornerPath(VisualCornerOrientation orientation,
+SkPath CustomCorners::GetCornerPath(VisualCorner orientation,
                                     const gfx::Rect& inbounds,
                                     const gfx::Insets& insets) {
   const gfx::Rect border_rect = inbounds;
@@ -135,7 +131,7 @@ SkPath CustomCorners::GetCornerPath(VisualCornerOrientation orientation,
   // Set up a clip path.
   SkPathBuilder clip_path;
   switch (orientation) {
-    case VisualCornerOrientation::kTopLeft:
+    case VisualCorner::kTopLeft:
       clip_path.moveTo(border_rect.x(), border_rect.y());
       clip_path.lineTo(curve_rect.right(), border_rect.y());
       if (insets.top()) {
@@ -149,7 +145,7 @@ SkPath CustomCorners::GetCornerPath(VisualCornerOrientation orientation,
       }
       clip_path.lineTo(border_rect.x(), border_rect.y());
       break;
-    case VisualCornerOrientation::kTopRight:
+    case VisualCorner::kTopRight:
       clip_path.moveTo(curve_rect.x(), border_rect.y());
       clip_path.lineTo(border_rect.right(), border_rect.y());
       clip_path.lineTo(border_rect.right(), curve_rect.bottom());
@@ -163,7 +159,7 @@ SkPath CustomCorners::GetCornerPath(VisualCornerOrientation orientation,
         clip_path.lineTo(curve_rect.x(), border_rect.y());
       }
       break;
-    case VisualCornerOrientation::kBottomLeft:
+    case VisualCorner::kBottomLeft:
       clip_path.moveTo(border_rect.x(), curve_rect.y());
       if (insets.left()) {
         clip_path.lineTo(curve_rect.x(), curve_rect.y());
@@ -177,7 +173,7 @@ SkPath CustomCorners::GetCornerPath(VisualCornerOrientation orientation,
       clip_path.lineTo(border_rect.x(), border_rect.bottom());
       clip_path.lineTo(border_rect.x(), curve_rect.y());
       break;
-    case VisualCornerOrientation::kBottomRight:
+    case VisualCorner::kBottomRight:
       clip_path.moveTo(border_rect.right(), curve_rect.y());
       clip_path.lineTo(border_rect.right(), border_rect.bottom());
       clip_path.lineTo(curve_rect.x(), border_rect.bottom());

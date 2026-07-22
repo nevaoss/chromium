@@ -21,6 +21,7 @@ import android.widget.FrameLayout;
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
 
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.shape.ShapeAppearance;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -84,32 +85,32 @@ public class ColorPickerItemViewBinderUnitTest {
     public void testColorPickerItem_color() {
         mModel.get(COLOR_ID);
 
-        View colorButton = mColorPickerItemView.findViewById(R.id.color_picker_icon);
+        View colorButton = mColorPickerItemView;
         assertThat(colorButton, instanceOf(MaterialButton.class));
+        MaterialButton button = (MaterialButton) colorButton;
 
         assertEquals(
                 ColorStateList.valueOf(
                         TabGroupColorPickerUtils.getTabGroupColorPickerItemColor(
                                 mActivity, TabGroupColorId.BLUE, false)),
-                colorButton.getBackgroundTintList());
+                button.getBackgroundTintList());
     }
 
     @Test
     public void testColorPickerItem_onClickListener() {
         mModel.get(ON_CLICK_LISTENER);
 
-        View onClickListener = mColorPickerItemView.findViewById(R.id.color_picker_icon);
+        View onClickListener = mColorPickerItemView;
         Assert.assertNotNull(onClickListener);
         onClickListener.performClick();
     }
 
     @Test
     public void testColorPickerItem_accessibilityDelegate() {
-        View colorIcon = mColorPickerItemView.findViewById(R.id.color_picker_icon);
         AccessibilityNodeInfoCompat info = AccessibilityNodeInfoCompat.obtain();
-        colorIcon
+        mColorPickerItemView
                 .getAccessibilityDelegate()
-                .onInitializeAccessibilityNodeInfo(colorIcon, info.unwrap());
+                .onInitializeAccessibilityNodeInfo(mColorPickerItemView, info.unwrap());
 
         AccessibilityNodeInfoCompat.CollectionItemInfoCompat itemInfo =
                 info.getCollectionItemInfo();
@@ -121,9 +122,9 @@ public class ColorPickerItemViewBinderUnitTest {
         Assert.assertFalse(itemInfo.isSelected());
 
         mModel.set(IS_SELECTED, true);
-        colorIcon
+        mColorPickerItemView
                 .getAccessibilityDelegate()
-                .onInitializeAccessibilityNodeInfo(colorIcon, info.unwrap());
+                .onInitializeAccessibilityNodeInfo(mColorPickerItemView, info.unwrap());
         itemInfo = info.getCollectionItemInfo();
         Assert.assertTrue(itemInfo.isSelected());
     }
@@ -141,11 +142,10 @@ public class ColorPickerItemViewBinderUnitTest {
         PropertyModelChangeProcessor.create(
                 model, mColorPickerItemView, ColorPickerItemViewBinder::bind);
 
-        View colorIcon = mColorPickerItemView.findViewById(R.id.color_picker_icon);
         AccessibilityNodeInfoCompat info = AccessibilityNodeInfoCompat.obtain();
-        colorIcon
+        mColorPickerItemView
                 .getAccessibilityDelegate()
-                .onInitializeAccessibilityNodeInfo(colorIcon, info.unwrap());
+                .onInitializeAccessibilityNodeInfo(mColorPickerItemView, info.unwrap());
 
         AccessibilityNodeInfoCompat.CollectionItemInfoCompat itemInfo =
                 info.getCollectionItemInfo();
@@ -155,13 +155,24 @@ public class ColorPickerItemViewBinderUnitTest {
 
     @Test
     public void testColorPickerItem_isSelected() {
-        MaterialButton view = mColorPickerItemView.findViewById(R.id.color_picker_icon);
+        MaterialButton view = (MaterialButton) mColorPickerItemView;
         String color = mActivity.getString(R.string.tab_group_color_blue);
 
         assertEquals(color, view.getContentDescription());
 
+        ShapeAppearance originalShape =
+                (ShapeAppearance) view.getTag(R.id.tag_original_shape_appearance);
+        Assert.assertNotNull(originalShape);
+        assertEquals(originalShape, view.getShapeAppearance());
+
         mModel.set(IS_SELECTED, true);
 
         assertEquals(color, view.getContentDescription());
+        Assert.assertTrue(view.isChecked());
+        assertEquals(originalShape, view.getShapeAppearance());
+
+        mModel.set(IS_SELECTED, false);
+        Assert.assertFalse(view.isChecked());
+        assertEquals(originalShape, view.getShapeAppearance());
     }
 }

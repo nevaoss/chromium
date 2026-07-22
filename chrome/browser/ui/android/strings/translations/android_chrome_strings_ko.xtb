@@ -34,7 +34,6 @@
 <translation id="1108938384783527433">방문 기록 동기화</translation>
 <translation id="1111673857033749125">다른 기기에서 저장한 북마크가 여기에 표시됩니다.</translation>
 <translation id="1123537484474186311"><ph name="TAB_TITLE" />, PIP 모드 탭</translation>
-<translation id="1124357650933674597">{NUM_WINDOWS,plural, =1{창 1개 복원}other{창 #개 복원}}</translation>
 <translation id="1126696498560056882">이 기기에서 계정 관리</translation>
 <translation id="1135018701024399762">시크릿 모드를 사용하면 내 기기를 사용하는 다른 사용자에게 내 탐색 기록을 비공개로 유지할 수 있습니다</translation>
 <translation id="113752097246673894">모든 기기에서 북마크 등을 사용하려면 Chrome에 <ph name="EMAIL" /> 계정을 사용하여 로그인하세요</translation>
@@ -185,6 +184,7 @@ Chrome 환경을 개선하는 데 데이터를 사용하는 설정을 더 보려
 <translation id="1792959175193046959">언제든지 기본 다운로드 위치 변경 가능</translation>
 <translation id="1796666869097395659">나중에 다시 보려면 탭 최소화</translation>
 <translation id="1799920918471566157">Chrome 사용 팁</translation>
+<translation id="1803799720926799756">파일 크기</translation>
 <translation id="1807246157184219062">밝게</translation>
 <translation id="1807709131360304325">새 창 열기</translation>
 <translation id="1812027881030482584"><ph name="SITE_ETLD_PLUS_ONE" />에서 ID 공급업체(<ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" />)를 사용하여 계속할 수 없음</translation>
@@ -520,7 +520,6 @@ Chrome 환경을 개선하는 데 데이터를 사용하는 설정을 더 보려
 <translation id="3166827708714933426">탭 및 창 단축키</translation>
 <translation id="3167258285411721858"><ph name="HOST_NAME" />의 모바일 사이트를 요청할 수 있습니다.</translation>
 <translation id="3181145110929454111"><ph name="TAB_TITLE" />, 여러 개 선택되고 고정되고 음소거된 시크릿 탭</translation>
-<translation id="3183941812169784232">모든 창을 복원하시겠습니까?</translation>
 <translation id="3187472288455401631">광고 측정</translation>
 <translation id="3189635831478931757"><ph name="GROUP_TITLE" /> 탭 그룹</translation>
 <translation id="3200536777393523575">현재 창을 닫으시겠습니까?</translation>
@@ -569,6 +568,7 @@ Chrome 환경을 개선하는 데 데이터를 사용하는 설정을 더 보려
 <translation id="3435575784518354875">비밀번호에 대한 액세스를 유지하려면 지금 비밀번호를 내보내고 Google Play 서비스를 업데이트한 후 Google 비밀번호 관리자로 다시 가져오세요. <ph name="BEGIN_LINK" />전체 안내 보기<ph name="END_LINK" /></translation>
 <translation id="3435738964857648380">보안</translation>
 <translation id="3435914367318771664">새 그룹에 탭 추가</translation>
+<translation id="3436118221454753036">AI 모드로 검색하기</translation>
 <translation id="3438681572027105609">모든 기기에서 비밀번호 등을 사용하려면 Chrome에 로그인하세요</translation>
 <translation id="3439276997620616816">여기에서 최근 탭을 확인할 수 있습니다.</translation>
 <translation id="3443221991560634068">현재 페이지 새로고침</translation>
@@ -2039,7 +2039,6 @@ Chrome 환경을 개선하는 데 데이터를 사용하는 설정을 더 보려
 <translation id="939598580284253335">암호 입력</translation>
 <translation id="94161319503679839"><ph name="TAB_TITLE" />, 고정된 PIP 모드 시크릿 탭</translation>
 <translation id="945522503751344254">의견 보내기</translation>
-<translation id="949667118776341807">회전</translation>
 <translation id="95817756606698420">중국에서 검색할 때 Chrome에서 <ph name="BEGIN_BOLD" />Sogou<ph name="END_BOLD" />를 사용할 수 있습니다. <ph name="BEGIN_LINK" />설정<ph name="END_LINK" />에서 변경할 수 있습니다.</translation>
 <translation id="961856697154696964">인터넷 사용 기록 삭제</translation>
 <translation id="963246339335003378">작업 관리자 열기</translation>

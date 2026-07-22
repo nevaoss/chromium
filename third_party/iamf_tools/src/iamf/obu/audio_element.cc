@@ -258,20 +258,22 @@ absl::Status AudioElementParam::ReadAndValidate(uint32_t audio_element_id,
     }
     case ParamDefinition::kParameterDefinitionReconGain: {
       auto& recon_gain_param_definition =
-          param_definition.emplace<ReconGainParamDefinition>(audio_element_id);
+          param_definition.emplace<ReconGainParamDefinition>(
+              ParamDefinition::BaseArgs{}, audio_element_id);
       RETURN_IF_NOT_OK(recon_gain_param_definition.ReadAndValidate(rb));
       return absl::OkStatus();
     }
     case ParamDefinition::kParameterDefinitionDemixing: {
       auto& demixing_param_definition =
-          param_definition.emplace<DemixingParamDefinition>();
+          param_definition.emplace<DemixingParamDefinition>(
+              ParamDefinition::BaseArgs{});
       RETURN_IF_NOT_OK(demixing_param_definition.ReadAndValidate(rb));
       return absl::OkStatus();
     }
     default:
       auto& extended_param_definition =
           param_definition.emplace<ExtendedParamDefinition>(
-              param_definition_type);
+              param_definition_type, ParamDefinition::BaseArgs{});
       RETURN_IF_NOT_OK(extended_param_definition.ReadAndValidate(rb));
       return absl::OkStatus();
   }
@@ -384,6 +386,9 @@ absl::StatusOr<AudioElementObu> AudioElementObu::CreateForScalableChannelLayout(
     DecodedUleb128 codec_config_id,
     absl::Span<const DecodedUleb128> audio_substream_ids,
     const ScalableChannelLayoutConfig& scalable_channel_layout_config) {
+  RETURN_IF_NOT_OK(ValidateUnique(audio_substream_ids.begin(),
+                                  audio_substream_ids.end(),
+                                  "Audio substream IDs"));
   RETURN_IF_NOT_OK(
       scalable_channel_layout_config.Validate(audio_substream_ids.size()));
   return AudioElementObu(header, audio_element_id, kAudioElementChannelBased,
@@ -400,6 +405,9 @@ absl::StatusOr<AudioElementObu> AudioElementObu::CreateForMonoAmbisonics(
   uint8_t num_substreams;
   RETURN_IF_NOT_OK(StaticCastIfInRange<size_t, uint8_t>(
       "Audio substream count", audio_substream_ids.size(), num_substreams));
+  RETURN_IF_NOT_OK(ValidateUnique(audio_substream_ids.begin(),
+                                  audio_substream_ids.end(),
+                                  "Audio substream IDs"));
   absl::StatusOr<AmbisonicsMonoConfig> mono_config =
       AmbisonicsMonoConfig::Create(num_substreams, channel_mapping);
   if (!mono_config.ok()) {
@@ -421,6 +429,9 @@ absl::StatusOr<AudioElementObu> AudioElementObu::CreateForProjectionAmbisonics(
   uint8_t substream_count;
   RETURN_IF_NOT_OK(StaticCastIfInRange<size_t, uint8_t>(
       "Audio substream count", audio_substream_ids.size(), substream_count));
+  RETURN_IF_NOT_OK(ValidateUnique(audio_substream_ids.begin(),
+                                  audio_substream_ids.end(),
+                                  "Audio substream IDs"));
   absl::StatusOr<AmbisonicsProjectionConfig> projection_config =
       AmbisonicsProjectionConfig::Create(output_channel_count, substream_count,
                                          coupled_substream_count,
@@ -450,6 +461,9 @@ absl::StatusOr<AudioElementObu> AudioElementObu::CreateForExtension(
     DecodedUleb128 codec_config_id,
     absl::Span<const DecodedUleb128> audio_substream_ids,
     absl::Span<const uint8_t> audio_element_config_bytes) {
+  RETURN_IF_NOT_OK(ValidateUnique(audio_substream_ids.begin(),
+                                  audio_substream_ids.end(),
+                                  "Audio substream IDs"));
   ExtensionConfig extension_config = {
       .audio_element_config_bytes = {audio_element_config_bytes.begin(),
                                      audio_element_config_bytes.end()}};
@@ -561,6 +575,9 @@ absl::Status AudioElementObu::ReadAndValidatePayloadDerived(
     RETURN_IF_NOT_OK(rb.ReadULeb128(audio_substream_id));
     audio_substream_ids_.push_back(audio_substream_id);
   }
+  RETURN_IF_NOT_OK(ValidateUnique(audio_substream_ids_.begin(),
+                                  audio_substream_ids_.end(),
+                                  "Audio substream IDs"));
 
   DecodedUleb128 num_parameters;
   RETURN_IF_NOT_OK(rb.ReadULeb128(num_parameters));

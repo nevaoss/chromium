@@ -149,6 +149,7 @@
 #include "chrome/browser/ui/webui/app_settings/web_app_settings_ui.h"
 // The intro mojom targets exist on ChromeOS but these headers are only
 // compiled on Win/Mac/Linux; gn check is static, so suppress it on ChromeOS.
+#include "chrome/browser/ui/webui/intro/finish_or_continue.mojom.h" // nogncheck
 #include "chrome/browser/ui/webui/intro/intro.mojom.h"  // nogncheck
 #include "chrome/browser/ui/webui/intro/intro_ui.h"
 #include "chrome/browser/ui/webui/intro/sign_in_celebration.mojom.h"  // nogncheck
@@ -360,6 +361,9 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
       FeatureShowcaseUI>(map);
   RegisterWebUIControllerInterfaceBinder<
       feature_showcase::mojom::PasswordManagerPageHandlerFactory,
+      FeatureShowcaseUI>(map);
+  RegisterWebUIControllerInterfaceBinder<
+      feature_showcase::mojom::ThemesAndCustomizationPageHandlerFactory,
       FeatureShowcaseUI>(map);
   RegisterWebUIControllerInterfaceBinder<
       feature_showcase::mojom::GoogleLensPageHandlerFactory, FeatureShowcaseUI>(
@@ -601,6 +605,8 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
                                          IntroUI>(map);
   RegisterWebUIControllerInterfaceBinder<
       intro::mojom::SignInPromoPageHandlerFactory, IntroUI>(map);
+  RegisterWebUIControllerInterfaceBinder<
+      intro::mojom::FinishOrContinuePageHandlerFactory, IntroUI>(map);
   RegisterWebUIControllerInterfaceBinder<::app_home::mojom::PageHandlerFactory,
                                          webapps::AppHomeUI>(map);
 #endif

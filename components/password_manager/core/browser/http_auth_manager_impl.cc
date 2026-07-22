@@ -148,7 +148,7 @@ void HttpAuthManagerImpl::OnReauthCompleted(
 
 void HttpAuthManagerImpl::OnPasswordFormSubmitted(
     const PasswordForm& password_form) {
-  if (client_->IsSavingAndFillingEnabled(password_form.url) &&
+  if (client_->IsSavingAndFillingEnabled(observed_origin_, password_form.url) &&
       !password_form.password_value.empty()) {
     ProvisionallySaveForm(password_form);
   }
@@ -185,8 +185,8 @@ void HttpAuthManagerImpl::OnDidFinishMainFrameNavigation() {
 
 void HttpAuthManagerImpl::OnLoginSuccesfull() {
   LogMessage(Logger::STRING_HTTPAUTH_ON_ASK_USER_OR_SAVE_PASSWORD);
-  if (!form_manager_ ||
-      !client_->IsSavingAndFillingEnabled(form_manager_->GetURL())) {
+  if (!form_manager_ || !client_->IsSavingAndFillingEnabled(
+                            observed_origin_, form_manager_->GetURL())) {
     return;
   }
 

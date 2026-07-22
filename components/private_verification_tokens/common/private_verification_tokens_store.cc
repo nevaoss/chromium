@@ -104,16 +104,18 @@ PrivateVerificationTokensStore::tokens() const {
 }
 
 void PrivateVerificationTokensStore::DeleteAllTokens() {
-  DeleteTokens(std::nullopt, std::nullopt, base::DoNothing());
+  DeleteTokens(base::Time(), base::Time::Max(), std::nullopt,
+               base::DoNothing());
   tokens_.clear();
 }
 
 void PrivateVerificationTokensStore::DeleteTokens(
-    std::optional<base::Time> delete_begin,
-    std::optional<url::Origin> issuer,
+    base::Time delete_begin,
+    base::Time delete_end,
+    std::optional<std::vector<url::Origin>> issuers,
     base::OnceClosure callback) {
   database_.AsyncCall(&PrivateVerificationTokensDatabase::DeleteTokens)
-      .WithArgs(delete_begin, issuer)
+      .WithArgs(delete_begin, delete_end, std::move(issuers))
       .Then(base::BindOnce(&PrivateVerificationTokensStore::OnTokensDeleted,
                            weak_ptr_factory_.GetWeakPtr(),
                            std::move(callback)));

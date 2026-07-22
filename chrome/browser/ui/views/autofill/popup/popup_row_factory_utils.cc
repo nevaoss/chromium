@@ -755,18 +755,18 @@ std::unique_ptr<PopupRowView> CreatePopupRowView(
 
   switch (type) {
     // These `type` should never be displayed in a `PopupRowView`.
-    case SuggestionType::kSeparator:
-    case SuggestionType::kMixedFormMessage:
     case SuggestionType::kInsecureContextPaymentDisabledMessage:
+    case SuggestionType::kMixedFormMessage:
+    case SuggestionType::kSeparator:
       NOTREACHED();
     case SuggestionType::kWebauthnPasskeyQrCode:
       return std::make_unique<PopupRowView>(
           a11y_selection_delegate, selection_delegate, controller, line_number,
           popup_cell_utils::CreatePasskeyQrCodePopupRowContentView(suggestion));
-    case SuggestionType::kPasswordEntry:
-    case SuggestionType::kBackupPasswordEntry:
-    case SuggestionType::kTroubleSigningInEntry:
     case SuggestionType::kAccountStoragePasswordEntry:
+    case SuggestionType::kBackupPasswordEntry:
+    case SuggestionType::kPasswordEntry:
+    case SuggestionType::kTroubleSigningInEntry:
       return std::make_unique<PopupRowView>(
           a11y_selection_delegate, selection_delegate, controller, line_number,
           CreatePasswordPopupRowContentView(suggestion, show_new_badge,
@@ -811,7 +811,6 @@ std::unique_ptr<PopupRowView> CreatePopupRowView(
     case SuggestionType::kAddressEntry:
     case SuggestionType::kAddressEntryOnTyping:
     case SuggestionType::kAddressFieldByFieldFilling:
-    case SuggestionType::kAutofillAiOtherOrders:
     case SuggestionType::kAllLoyaltyCardsEntry:
     case SuggestionType::kAllSavedPasswordsEntry:
     case SuggestionType::kAtMemoryGenericError:
@@ -821,6 +820,7 @@ std::unique_ptr<PopupRowView> CreatePopupRowView(
     case SuggestionType::kAtMemorySearchResult:
     case SuggestionType::kAutocompleteAtMemoryButton:
     case SuggestionType::kAutocompleteEntry:
+    case SuggestionType::kAutofillAiOtherOrders:
     case SuggestionType::kBnplFootnote:
     case SuggestionType::kComposeDisable:
     case SuggestionType::kComposeGoToSettings:

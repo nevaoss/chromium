@@ -965,6 +965,17 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="ProfilePicker.FREFlow.FeatureShowcase.StepEligible"
+    enum="FeatureShowcaseStep" expires_after="2026-12-31">
+  <owner>ernn@google.com</owner>
+  <owner>chrome-signin-desktop-team@google.com</owner>
+  <summary>
+    Records the Feature Showcase step when it is eligible to be shown to the
+    user during the first run experience. Recorded when the user first enter the
+    Feature Showcase step. Records each step the user is eligible for.
+  </summary>
+</histogram>
+
 <histogram name="ProfilePicker.FREFlow.FeatureShowcase.StepShown"
     enum="FeatureShowcaseStep" expires_after="2026-12-31">
   <owner>ernn@google.com</owner>

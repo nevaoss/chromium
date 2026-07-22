@@ -64,6 +64,9 @@ class GlicActorTaskManager {
         actor::TaskId task_id,
         const tabs::TabInterface::Handle& tab_handle) = 0;
 
+    virtual void OnTaskTabsVisibilityChanged(actor::TaskId task_id,
+                                             bool has_visible_tab) = 0;
+
     virtual void OnTaskIdChanged(std::optional<int> task_id) = 0;
   };
   explicit GlicActorTaskManager(
@@ -186,6 +189,8 @@ class GlicActorClientSession : public GlicActorClientSessionInterface {
   // ActorTaskDelegate:
   void OnTabAddedToTask(actor::TaskId task_id,
                         const tabs::TabInterface::Handle& tab_handle) override;
+  void OnTaskTabsVisibilityChanged(actor::TaskId task_id,
+                                   bool has_visible_tab) override;
   void RequestToShowCredentialSelectionDialog(
       actor::TaskId task_id,
       const base::flat_map<std::string, gfx::Image>& icons,

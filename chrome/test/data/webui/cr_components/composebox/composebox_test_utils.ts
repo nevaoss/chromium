@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 import type {ComposeboxElement} from 'chrome://resources/cr_components/composebox/composebox.js';
-import type {ComposeboxVoiceSearchElement} from 'chrome://resources/cr_components/composebox/composebox_voice_search.js';
+import type {ComposeboxVoiceSearchElement, VoiceSearchError} from 'chrome://resources/cr_components/composebox/composebox_voice_search.js';
 import type {InputState} from 'chrome://resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
 import {InputType, ModelMode, ToolMode} from 'chrome://resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
 import {assertEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
@@ -177,19 +177,29 @@ export function createValidInputState(): InputState {
   });
 }
 
-export type MockComposebox =
-    Omit<ComposeboxElement, 'transcript'|'inVoiceSearchMode'>&{
-      inVoiceSearchMode: boolean,
-      transcript: string,
-    };
+import type {PageCallbackRouter as SearchboxPageCallbackRouter} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 
+export type MockComposebox = Omit<
+    ComposeboxElement,
+    'transcript'|'inVoiceSearchMode'|'searchboxCallbackRouter_'>&{
+  inVoiceSearchMode: boolean,
+  transcript: string,
+  searchboxCallbackRouter_: SearchboxPageCallbackRouter,
+};
+
+// Chose type extension instead of just making separate mock public interface.
+// This is done to keep the rest of the class.
 export type MockComposeboxVoiceSearch = Omit<
     ComposeboxVoiceSearchElement,
     'state_'|'voiceRecognition_'|'onFinalResult_'|'onCloseClick_'|'onEnd_'|
-    'onTryAgainClick_'|'onLinkClick_'>&{
+    'onTryAgainClick_'|'onLinkClick_'|'errorMessage_'|'voiceModeEndCleanup_'|
+    'detailedError_'>&{
   state_: number,
   metricSource_: string,
   voiceRecognition_: MockSpeechRecognition,
+  errorMessage_: string,
+  detailedError_: VoiceSearchError | null,
+  voiceModeEndCleanup_: () => void,
   onFinalResult_: (result: string, forceSubmit?: boolean) => void,
   onCloseClick_: () => void,
   onEnd_: () => void,

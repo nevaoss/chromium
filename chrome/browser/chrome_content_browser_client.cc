@@ -46,6 +46,7 @@
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
+#include "base/supports_user_data.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/types/expected.h"
 #include "base/types/expected_macros.h"
@@ -253,6 +254,8 @@
 #include "components/enterprise/content/clipboard_restriction_service.h"
 #include "components/enterprise/content/pref_names.h"
 #include "components/enterprise/data_controls/content/browser/last_replaced_clipboard_data.h"
+#include "components/enterprise/network_header_injection/core/features.h"
+#include "components/enterprise/network_header_injection/core/http_header_injection_service.h"
 #include "components/error_page/common/error.h"
 #include "components/error_page/common/error_page_switches.h"
 #include "components/error_page/common/localized_error.h"
@@ -419,6 +422,7 @@
 #include "services/network/public/mojom/network_service.mojom.h"
 #include "services/network/public/mojom/url_loader_factory.mojom.h"
 #include "services/network/public/mojom/web_transport.mojom.h"
+#include "services/network/public/mojom/websocket.mojom.h"
 #include "third_party/blink/public/common/chrome_debug_urls.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/loader/url_loader_throttle.h"
@@ -640,6 +644,7 @@
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 #include "chrome/browser/extensions/chrome_content_browser_client_extensions_part.h"
 #include "chrome/browser/extensions/chrome_extension_cookies.h"
+#include "chrome/browser/extensions/extension_util.h"
 #include "extensions/browser/api/web_request/web_request_api.h"
 #include "extensions/browser/extension_protocols.h"
 #include "extensions/browser/extension_registry.h"
@@ -674,7 +679,6 @@
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
 #include "chrome/browser/accessibility/animation_policy_prefs.h"
-#include "chrome/browser/extensions/extension_util.h"
 #include "chrome/browser/speech/extension_api/tts_engine_extension_api.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/browser/web_applications/web_app_utils.h"
@@ -2248,6 +2252,18 @@ bool ChromeContentBrowserClient::IsWebUIAllowedToMakeNetworkRequests(
       origin);
 }
 
+bool ChromeContentBrowserClient::ShouldAllowMojoJsBindingsForSite(
+    content::BrowserContext* browser_context,
+    const GURL& site_url) {
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+  if (site_url.SchemeIs(extensions::kExtensionScheme)) {
+    return extensions::util::IsMojoJsEnabledForExtension(
+        extensions::ExtensionId(site_url.host()), browser_context);
+  }
+#endif
+  return false;
+}
+
 bool ChromeContentBrowserClient::IsHandledURL(const GURL& url) {
   return ProfileIOData::IsHandledURL(url);
 }
@@ -2474,6 +2490,16 @@ bool ChromeContentBrowserClient::ShouldEmbeddedFramesTryToReuseExistingProcess(
 #endif
 }
 
+namespace {
+
+class NTPUserData : public base::SupportsUserData::Data {
+ public:
+  NTPUserData() = default;
+  ~NTPUserData() override = default;
+};
+
+}  // namespace
+
 void ChromeContentBrowserClient::SiteInstanceGotProcessAndSite(
     SiteInstance* site_instance) {
   CHECK(site_instance->HasProcess());
@@ -2482,6 +2508,13 @@ void ChromeContentBrowserClient::SiteInstanceGotProcessAndSite(
       Profile::FromBrowserContext(site_instance->GetBrowserContext());
   if (!profile) {
     return;
+  }
+
+  const GURL& site_url =
+      site_instance->GetSecurityPrincipal().GetDeprecatedSiteURL();
+  if (search::IsNTPURL(site_url)) {
+    site_instance->GetProcess()->SetUserData(search::kIsNTPProcessKey,
+                                             std::make_unique<NTPUserData>());
   }
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -4949,7 +4982,6 @@ void ChromeContentBrowserClient::OverrideWebPreferences(
       IsFileOrDirectoryPickerWithoutGestureAllowed(web_contents);
 #endif  // !BUILDFLAG(IS_ANDROID)
 
-
   web_prefs->preferred_contrast = GetPreferredContrast();
 
   std::tie(web_prefs->in_forced_colors, web_prefs->is_forced_colors_disabled) =
@@ -5095,7 +5127,6 @@ bool ChromeContentBrowserClient::OverrideWebPreferencesAfterNavigation(
         WebPreferences::kShrinksViewportContentsToFit;
   }
 #endif
-
 
   return prefs_changed;
 }
@@ -6832,6 +6863,22 @@ bool ChromeContentBrowserClient::WillInterceptWebSocket(
 #endif
 }
 
+content::ContentBrowserClient::WebSocketOptions
+ChromeContentBrowserClient::GetWebSocketOptions(
+    content::RenderFrameHost* frame) {
+  content::ContentBrowserClient::WebSocketOptions options;
+  options.options = network::mojom::kWebSocketOptionNone;
+
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
+    BUILDFLAG(IS_CHROMEOS)
+  if (frame) {
+    enterprise_custom_headers::MaybeCreateWebSocketHeaderClient(
+        frame->GetBrowserContext(), &options.header_client);
+  }
+#endif
+  return options;
+}
+
 void ChromeContentBrowserClient::CreateWebSocket(
     content::RenderFrameHost* frame,
     WebSocketFactory factory,
@@ -6839,7 +6886,8 @@ void ChromeContentBrowserClient::CreateWebSocket(
     const net::SiteForCookies& site_for_cookies,
     const std::optional<std::string>& user_agent,
     mojo::PendingRemote<network::mojom::WebSocketHandshakeClient>
-        handshake_client) {
+        handshake_client,
+    content::ContentBrowserClient::WebSocketOptions options) {
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   // TODO(crbug.com/40195467): Request w/o a frame also should be proxied.
   if (!frame) {
@@ -6850,9 +6898,9 @@ void ChromeContentBrowserClient::CreateWebSocket(
           frame->GetBrowserContext());
 
   DCHECK(web_request_api);
-  web_request_api->ProxyWebSocket(frame, std::move(factory), url,
-                                  site_for_cookies, user_agent,
-                                  std::move(handshake_client));
+  web_request_api->ProxyWebSocket(
+      frame, std::move(factory), url, site_for_cookies, user_agent,
+      std::move(handshake_client), std::move(options.header_client));
 #endif
 }
 
@@ -7808,7 +7856,6 @@ bool ChromeContentBrowserClient::ShouldBlockRendererDebugURL(
 #if BUILDFLAG(IS_ANDROID)
 content::ContentBrowserClient::WideColorGamutHeuristic
 ChromeContentBrowserClient::GetWideColorGamutHeuristic() {
-
   if (display::HasForceDisplayColorProfile() &&
       display::GetForcedDisplayColorProfile() ==
           gfx::ColorSpace::CreateDisplayP3D65()) {

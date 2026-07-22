@@ -55,8 +55,7 @@ ${this.isBackForwardButtonEnabled_ ? html`
   ` : ''}
   ${this.isPinnedToolbarActionsEnabled_ ? html`
     <pinned-toolbar-actions id="pinnedToolbarActions"
-        .state="${this.navigationControlsState_.pinnedToolbarActionsState}"
-        .hidden="${this.navigationControlsState_.pinnedToolbarActionsState.length === 0}">
+        .state="${this.navigationControlsState_.pinnedToolbarActionsState}">
     </pinned-toolbar-actions>
   ` : ''}
   ${this.isBatterySaverButtonEnabled_ ? html`

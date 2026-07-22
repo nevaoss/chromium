@@ -839,7 +839,6 @@
 <translation id="391904960191284041">Tuotearvostelut</translation>
 <translation id="3921585859122905677">Osoitepalkin sijainti</translation>
 <translation id="3922185497376658606">Verkkosivujen esilataus</translation>
-<translation id="3922395466317605522">Muokkaa valikkoa</translation>
 <translation id="3926703470020109118">Lataus peruttu</translation>
 <translation id="3929457972718048006">Osoitteet</translation>
 <translation id="3931215329146376310">{count,plural, =1{Uusi salasana tälle sivustolle}other{Uusia salasanoja tälle sivustolle}}</translation>
@@ -1273,6 +1272,7 @@
 <translation id="5336910966955551309">Kiinnitä suosikkisivustosi koskettamalla pitkään</translation>
 <translation id="5338512273860059533">Kirjautuminen käynnissä.</translation>
 <translation id="5343472494710226394">Kiinnostuksen kohteisiisi perustuvia uutisia, urheilua ja sisältöä.</translation>
+<translation id="5351613737248079168">Level Upin käyttö edellyttää sisäänkirjautumista</translation>
 <translation id="5352128922772839949">Tallenna tiedosto</translation>
 <translation id="5355191726083956201">Parannettu suojaus on päällä</translation>
 <translation id="536067926684072644">Näytä kirjanmerkit</translation>
@@ -1695,7 +1695,6 @@ Handoff täytyy ottaa käyttöön myös Asetusten Yleiset-osiossa. Lisäksi mole
 <translation id="6674917187596384849">Voit vaihtaa tiliä helposti</translation>
 <translation id="6676349090816247042">Kirjautumisvaihtoehdot.</translation>
 <translation id="667999046851023355">Dokumentti</translation>
-<translation id="6680416467695217368">Muokkaa valikkoa</translation>
 <translation id="6681791404926413601">{count,plural, =1{Näppäimistön yläpuolella on saatavilla {count} maksutapa.}other{Näppäimistön yläpuolella on saatavilla {count} maksutapaa.}}</translation>
 <translation id="6682680306647339111">Muistutus poistettu</translation>
 <translation id="6684262542644248484">Kirjaudu sisään sivustolle</translation>
@@ -2242,6 +2241,7 @@ Jos haluat jatkaa tietokoneella, vaihda tiliksi <ph name="OTHER_EMAIL" />. Saat 
 <translation id="8534481786647257214">Google+ -viesti julkaistu.</translation>
 <translation id="8535368836838588657">Näytä salasana</translation>
 <translation id="8540426897269305488">Kirjaudu sisään: <ph name="CELL_ACCESSIBILITY_LABEL" /></translation>
+<translation id="8542331710562073430">Jotain meni pieleen. Yritä uudelleen napauttamalla Live-painiketta.</translation>
 <translation id="8545276357312221485">Tarkista oletusselaimen asetukset</translation>
 <translation id="854938212724803178">Sinulla on 1 vaarantunut salasana. Korjaa se nyt, jotta pysyt turvassa.</translation>
 <translation id="8551311254462607218">Napauta Google Lens ‐kamerakuvaketta osoitepalkista</translation>

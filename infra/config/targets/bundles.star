@@ -1509,9 +1509,15 @@ targets.bundle(
 targets.bundle(
     name = "chromium_gtests_for_linux_only",
     targets = [
+        "gtk_unittests",
         "ozone_unittests",
         "ozone_x11_unittests",
     ],
+    per_test_modifications = {
+        "gtk_unittests": targets.mixin(
+            experiment_percentage = 100,
+        ),
+    },
 )
 
 targets.bundle(
@@ -2911,9 +2917,18 @@ targets.bundle(
     targets = [
         "chromium_blink_isolated_scripts",
         "component_storage_test",
-        # TODO(crbug.com/40821367): Enable content_shell_crash_test
+        "content_shell_crash_test",
         "gpu_angle_fuchsia_unittests_isolated_scripts",
     ],
+    per_test_modifications = {
+        "content_shell_crash_test": targets.mixin(
+            args = [
+                "--platform=fuchsia",
+            ],
+            # TODO(crbug.com/40821367): Remove once it's stable.
+            ci_only = True,
+        ),
+    },
 )
 
 targets.bundle(

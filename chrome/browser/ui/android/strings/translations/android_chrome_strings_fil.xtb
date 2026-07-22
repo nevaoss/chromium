@@ -34,7 +34,6 @@
 <translation id="1108938384783527433">Pag-sync ng history</translation>
 <translation id="1111673857033749125">Dito lalabas ang mga naka-save na bookmark sa iba mo pang mga device.</translation>
 <translation id="1123537484474186311"><ph name="TAB_TITLE" />, Picture-in-Picture na Tab</translation>
-<translation id="1124357650933674597">{NUM_WINDOWS,plural, =1{I-restore ang 1 window}one{I-restore ang # window}other{I-restore ang # na window}}</translation>
 <translation id="1126696498560056882">Pamahalaan ang mga account sa device na ito</translation>
 <translation id="1135018701024399762">Pinapanatiling pribado ng Incognito mode ang pag-browse mo sa ibang taong gumagamit ng iyong device</translation>
 <translation id="113752097246673894">Para makuha ang iyong mga password at higit pa sa lahat ng device mo, mag-sign in sa Chrome bilang <ph name="EMAIL" /></translation>
@@ -185,6 +184,7 @@ Ang taong may passphrase mo lang ang makakabasa ng iyong naka-encrypt na data. H
 <translation id="1792959175193046959">Baguhin ang default na lokasyon ng pag-download anumang oras</translation>
 <translation id="1796666869097395659">I-minimize ang tab para mabalikan ito sa ibang pagkakataon</translation>
 <translation id="1799920918471566157">Mga Tip sa Chrome</translation>
+<translation id="1803799720926799756">Laki ng file</translation>
 <translation id="1807246157184219062">Maliwanag</translation>
 <translation id="1807709131360304325">Magbukas ng bagong window</translation>
 <translation id="1812027881030482584">Hindi makapagpatuloy ang <ph name="SITE_ETLD_PLUS_ONE" /> gamit ang <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /></translation>
@@ -327,6 +327,7 @@ Ang taong may passphrase mo lang ang makakabasa ng iyong naka-encrypt na data. H
 <translation id="2411239243988279592"><ph name="TAB_TITLE" />, Piniling Tab na May Naririnig na Audio</translation>
 <translation id="2413014528833954543">Hindi masuri ang mga password sa device na ito</translation>
 <translation id="2414886740292270097">Madilim</translation>
+<translation id="2415037988255164008">I-restore ang mga window?</translation>
 <translation id="2421705177906985956">Walang site na maipapakita sa ngayon</translation>
 <translation id="2426805022920575512">Pumili ng ibang account</translation>
 <translation id="2427025860753516072">{FILE_COUNT,plural, =1{Mga Video, may 1 video sa listahan}one{Mga Video, may # video sa listahan}other{Mga Video, may # na video sa listahan}}</translation>
@@ -520,7 +521,6 @@ Ang taong may passphrase mo lang ang makakabasa ng iyong naka-encrypt na data. H
 <translation id="3166827708714933426">Mga shortcut ng tab at window</translation>
 <translation id="3167258285411721858">Puwede mong i-request ang pang-mobile na site para sa <ph name="HOST_NAME" /></translation>
 <translation id="3181145110929454111"><ph name="TAB_TITLE" />, Naka-multiselect na Naka-pin at Naka-mute na Tab na Incognito</translation>
-<translation id="3183941812169784232">I-restore ang lahat ng window?</translation>
 <translation id="3187472288455401631">Pagsukat ng ad</translation>
 <translation id="3189635831478931757">Grupo ng tab na <ph name="GROUP_TITLE" /></translation>
 <translation id="3200536777393523575">Isara ang iyong kasalukuyang window?</translation>
@@ -569,6 +569,7 @@ Ang taong may passphrase mo lang ang makakabasa ng iyong naka-encrypt na data. H
 <translation id="3435575784518354875">Para mapanatili ang access sa iyong mga password, i-export na ngayon ang mga ito, i-update ang Mga Serbisyo ng Google Play, at pagkatapos ay i-import ulit ang mga ito sa Google Password Manager. <ph name="BEGIN_LINK" />Tingnan ang mga kumpletong tagubilin<ph name="END_LINK" />.</translation>
 <translation id="3435738964857648380">Seguridad</translation>
 <translation id="3435914367318771664">Magdagdag ng tab sa bagong grupo</translation>
+<translation id="3436118221454753036">Ask AI Mode</translation>
 <translation id="3438681572027105609">Para makuha ang iyong mga password at higit pa sa lahat ng device mo, mag-sign in sa Chrome</translation>
 <translation id="3439276997620616816">Makikita mo rito ang iyong mga kamakailang tab</translation>
 <translation id="3443221991560634068">I-reload ang kasalukuyang page</translation>
@@ -1338,6 +1339,7 @@ Halimbawa, puwedeng tumugon ang ilang website sa kahilingang ito sa pamamagitan 
 <translation id="6556501700899673703">Lexend</translation>
 <translation id="6560414384669816528">Maghanap gamit ang Sogou</translation>
 <translation id="656065428026159829">Tumingin pa</translation>
+<translation id="6565781844089373403">I-restore ang mga window</translation>
 <translation id="6565959834589222080">Ginagamit ang Wi-Fi kapag available</translation>
 <translation id="657177046675873214">Para makuha ang iyong mga bookmark sa lahat ng device mo, i-on ang “Mga Bookmark” sa mga setting</translation>
 <translation id="6573096386450695060">Payagan sa lahat ng oras</translation>
@@ -2039,7 +2041,6 @@ Para baguhin ang setting na ito, <ph name="BEGIN_LINK" />i-delete ang data sa Ch
 <translation id="939598580284253335">Ilagay ang passphrase</translation>
 <translation id="94161319503679839"><ph name="TAB_TITLE" />, Naka-pin na Picture-in-Picture na Tab na Incognito</translation>
 <translation id="945522503751344254">Magpadala ng feedback</translation>
-<translation id="949667118776341807">I-rotate</translation>
 <translation id="95817756606698420">Maaaring gamitin ng Chrome ang <ph name="BEGIN_BOLD" />Sogou<ph name="END_BOLD" /> para sa paghahanap sa China. Maaari mo itong baguhin sa <ph name="BEGIN_LINK" />Mga Setting<ph name="END_LINK" />.</translation>
 <translation id="961856697154696964">I-delete ang browsing data</translation>
 <translation id="963246339335003378">Buksan ang Task Manager</translation>

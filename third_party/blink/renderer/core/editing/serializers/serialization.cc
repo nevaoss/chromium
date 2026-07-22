@@ -173,7 +173,7 @@ static void CompleteURLs(DocumentFragment& fragment, const String& base_url) {
     change.Apply();
 }
 
-static bool IsHTMLBlockElement(const Node* node) {
+static bool IsHtmlBlockElement(const Node* node) {
   DCHECK(node);
   return IsA<HTMLTableCellElement>(*node) ||
          IsNonTableCellHtmlBlockElement(node);
@@ -214,7 +214,7 @@ static inline HTMLElement*
 AncestorToRetainStructureAndAppearanceWithNoLayoutObject(
     const Node& common_ancestor) {
   auto* common_ancestor_block = To<HTMLElement>(EnclosingNodeOfType(
-      FirstPositionInOrBeforeNode(common_ancestor), IsHTMLBlockElement));
+      FirstPositionInOrBeforeNode(common_ancestor), IsHtmlBlockElement));
   return AncestorToRetainStructureAndAppearanceForBlock(common_ancestor_block);
 }
 

@@ -34,7 +34,6 @@
 <translation id="1108938384783527433">Sinkronizimi i historikut</translation>
 <translation id="1111673857033749125">Faqeshënuesit e ruajtur në pajisjet e tua të tjera do të shfaqen këtu.</translation>
 <translation id="1123537484474186311"><ph name="TAB_TITLE" />, skeda e "Figurë brenda figurës"</translation>
-<translation id="1124357650933674597">{NUM_WINDOWS,plural, =1{Restauro 1 dritare}other{Restauro # dritare}}</translation>
 <translation id="1126696498560056882">Menaxho llogaritë në këtë pajisje</translation>
 <translation id="1135018701024399762">Modaliteti "I fshehtë" ruan privatësinë e shfletimit tënd nga personat e tjerë që përdorin pajisjen tënde</translation>
 <translation id="113752097246673894">Për të marrë faqeshënuesit etj. në të gjitha pajisjet e tua, identifikohu në Chrome si <ph name="EMAIL" /></translation>
@@ -185,6 +184,7 @@ Vetëm dikush me frazën tënde të kalimit mund të lexojë të dhënat e tua t
 <translation id="1792959175193046959">Ndrysho në çdo moment vendndodhjen e parazgjedhur të shkarkimit</translation>
 <translation id="1796666869097395659">Minimizo skedën për t'u kthyer më vonë tek ajo</translation>
 <translation id="1799920918471566157">Këshilla për Chrome</translation>
+<translation id="1803799720926799756">Madhësia e skedarit</translation>
 <translation id="1807246157184219062">I lehtë</translation>
 <translation id="1807709131360304325">Hap një dritare të re</translation>
 <translation id="1812027881030482584"><ph name="SITE_ETLD_PLUS_ONE" /> nuk mund të vazhdojë të përdorë <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /></translation>
@@ -327,6 +327,7 @@ Vetëm dikush me frazën tënde të kalimit mund të lexojë të dhënat e tua t
 <translation id="2411239243988279592"><ph name="TAB_TITLE" />, skeda e zgjedhur duke luajtur audion</translation>
 <translation id="2413014528833954543">Nuk mund të kontrollohen fjalëkalimet në këtë pajisje</translation>
 <translation id="2414886740292270097">E errët</translation>
+<translation id="2415037988255164008">Të restaurohen dritaret?</translation>
 <translation id="2421705177906985956">Nuk ka sajte për të shfaqur për momentin</translation>
 <translation id="2426805022920575512">Zgjidh llogari tjetër</translation>
 <translation id="2427025860753516072">{FILE_COUNT,plural, =1{Videot, 1 video në listë}other{Videot, # video në listë}}</translation>
@@ -520,7 +521,6 @@ Vetëm dikush me frazën tënde të kalimit mund të lexojë të dhënat e tua t
 <translation id="3166827708714933426">Shkurtoret e skedës dhe dritares</translation>
 <translation id="3167258285411721858">Mund të kërkosh sajtin për celular për <ph name="HOST_NAME" /></translation>
 <translation id="3181145110929454111"><ph name="TAB_TITLE" />, skeda "e fshehtë" e gozhduar e vendosur në heshtje dhe e zgjedhur me shumë të tjera</translation>
-<translation id="3183941812169784232">Të restaurohen të gjitha dritaret?</translation>
 <translation id="3187472288455401631">Matja e reklamave</translation>
 <translation id="3189635831478931757">Grupi i skedave "<ph name="GROUP_TITLE" />"</translation>
 <translation id="3200536777393523575">Të mbyllet dritarja aktuale?</translation>
@@ -569,6 +569,7 @@ Vetëm dikush me frazën tënde të kalimit mund të lexojë të dhënat e tua t
 <translation id="3435575784518354875">Për të mbajtur qasjen te fjalëkalimet e tua, eksportoji ato tani, përditëso shërbimet e Google Play dhe më pas importoji fjalëkalimet sërish te "Menaxheri i fjalëkalimeve i Google". <ph name="BEGIN_LINK" />Shiko udhëzimet e plota<ph name="END_LINK" />.</translation>
 <translation id="3435738964857648380">Siguria</translation>
 <translation id="3435914367318771664">Shto skedën te grupi i ri</translation>
+<translation id="3436118221454753036">Pyet "Modalitetin e IA-së"</translation>
 <translation id="3438681572027105609">Për të marrë fjalëkalimet etj. në të gjitha pajisjet e tua, identifikohu në Chrome</translation>
 <translation id="3439276997620616816">Këtu do të gjesh skedat e tua të fundit</translation>
 <translation id="3443221991560634068">Ringarko faqen aktuale</translation>
@@ -1338,6 +1339,7 @@ Për shembull, disa uebsajte mund t'i përgjigjen kësaj kërkese duke të tregu
 <translation id="6556501700899673703">Lexend</translation>
 <translation id="6560414384669816528">Kërko me Sogou</translation>
 <translation id="656065428026159829">Shiko më shumë</translation>
+<translation id="6565781844089373403">Restauro dritaret</translation>
 <translation id="6565959834589222080">Wi-Fi përdoret kur ofrohet</translation>
 <translation id="657177046675873214">Për të marrë faqeshënuesit e tu në të gjitha pajisjet e tua, aktivizo "Faqeshënuesit" te cilësimet</translation>
 <translation id="6573096386450695060">Lejo gjithmonë</translation>
@@ -2039,7 +2041,6 @@ Për ta ndryshuar këtë cilësim, <ph name="BEGIN_LINK" />fshi të dhënat e Ch
 <translation id="939598580284253335">Fut frazën e kalimit</translation>
 <translation id="94161319503679839"><ph name="TAB_TITLE" />, skeda "e fshehtë" e gozhduar e "Figurë brenda figurës"</translation>
 <translation id="945522503751344254">Dërgo komente</translation>
-<translation id="949667118776341807">Rrotullo</translation>
 <translation id="95817756606698420">Chrome mund të përdorë <ph name="BEGIN_BOLD" />Sogou<ph name="END_BOLD" /> për kërkimin në Kinë. Mund ta ndryshosh këtë te <ph name="BEGIN_LINK" />Cilësimet<ph name="END_LINK" />.</translation>
 <translation id="961856697154696964">Fshi të dhënat e shfletimit</translation>
 <translation id="963246339335003378">Hap "Menaxherin e detyrave"</translation>

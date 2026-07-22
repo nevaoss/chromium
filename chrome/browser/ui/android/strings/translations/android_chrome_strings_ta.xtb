@@ -34,7 +34,6 @@
 <translation id="1108938384783527433">தேடல் விவரங்களை ஒத்திசை</translation>
 <translation id="1111673857033749125">உங்கள் பிற சாதனங்களில் சேமிக்கும் புக்மார்க்குகள் இங்கே தோன்றும்.</translation>
 <translation id="1123537484474186311"><ph name="TAB_TITLE" />, பிக்ச்சர்-இன்-பிக்ச்சர் பக்கம்</translation>
-<translation id="1124357650933674597">{NUM_WINDOWS,plural, =1{1 சாளரத்தை மீட்டெடு}other{# சாளரங்களை மீட்டெடு}}</translation>
 <translation id="1126696498560056882">இந்தச் சாதனத்தில் உள்ள கணக்குகளை நிர்வகியுங்கள்</translation>
 <translation id="1135018701024399762">உங்கள் சாதனத்தைப் பயன்படுத்தும் பிறரிடம் இருந்து உங்கள் உலாவலை மறைநிலைப் பயன்முறை தனிப்பட்டதாக வைத்திருக்கும்</translation>
 <translation id="113752097246673894">புக்மார்க்குகள் மற்றும் பலவற்றை உங்கள் சாதனங்கள் எல்லாவற்றிலும் பெற Chromeமில் <ph name="EMAIL" /> என்ற கணக்கில் உள்நுழையுங்கள்</translation>
@@ -185,6 +184,7 @@
 <translation id="1792959175193046959">எப்போது வேண்டுமானாலும் இயல்புப் பதிவிறக்க இடத்தை மாற்றலாம்</translation>
 <translation id="1796666869097395659">பிறகு வந்து பார்க்கும் வகையில் பக்கத்தைச் சிறிதாக்கலாம்</translation>
 <translation id="1799920918471566157">Chrome உதவிக்குறிப்புகள்</translation>
+<translation id="1803799720926799756">ஃபைல் அளவு</translation>
 <translation id="1807246157184219062">வெளிச்சம்</translation>
 <translation id="1807709131360304325">புதிய சாளரத்தைத் திறக்க</translation>
 <translation id="1812027881030482584"><ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> ஐப் பயன்படுத்தி <ph name="SITE_ETLD_PLUS_ONE" /> ஐத் தொடர முடியாது</translation>
@@ -327,6 +327,7 @@
 <translation id="2411239243988279592"><ph name="TAB_TITLE" />, தேர்ந்தெடுக்கப்பட்ட ஒலியடக்கப்படாத பக்கம்</translation>
 <translation id="2413014528833954543">இந்தச் சாதனத்தில் உள்ள கடவுச்சொற்களைச் சரிபார்க்க முடியவில்லை</translation>
 <translation id="2414886740292270097">அடர்</translation>
+<translation id="2415037988255164008">சாளரங்களை மீட்டெடுக்கவா?</translation>
 <translation id="2421705177906985956">தற்சமயம் காட்ட தளங்கள் எதுவுமில்லை</translation>
 <translation id="2426805022920575512">மற்றொரு கணக்கைத் தேர்வுசெய்க</translation>
 <translation id="2427025860753516072">{FILE_COUNT,plural, =1{வீடியோக்கள், பட்டியலில் 1 வீடியோ உள்ளது}other{வீடியோக்கள், பட்டியலில் # வீடியோக்கள் உள்ளன}}</translation>
@@ -520,7 +521,6 @@
 <translation id="3166827708714933426">தாவல் மற்றும் சாளரத்திற்கான ஷார்ட்கட்கள்</translation>
 <translation id="3167258285411721858">நீங்கள் <ph name="HOST_NAME" />க்கான மொபைல் தளத்தைக் கோரலாம்</translation>
 <translation id="3181145110929454111"><ph name="TAB_TITLE" />, தேர்ந்தெடுத்தவற்றில் பின் செய்யப்பட்ட ஒலியடக்கப்பட்டுள்ள மறைநிலைப் பக்கம்</translation>
-<translation id="3183941812169784232">எல்லாச் சாளரங்களையும் மீட்டெடுக்கவா?</translation>
 <translation id="3187472288455401631">விளம்பர அளவீடு</translation>
 <translation id="3189635831478931757"><ph name="GROUP_TITLE" /> பக்கக் குழு</translation>
 <translation id="3200536777393523575">தற்போதைய சாளரத்தை மூடவா?</translation>
@@ -569,6 +569,7 @@
 <translation id="3435575784518354875">உங்கள் கடவுச்சொற்களைத் தொடர்ந்து அணுக, இப்போதே அவற்றைப் பதிவிறக்கி Google Play சேவைகளைப் புதுப்பித்துவிட்டு, மீண்டும் அவற்றை Google Password Managerரில் பதிவேற்றவும். <ph name="BEGIN_LINK" />எல்லா வழிமுறைகளையும் காட்டு<ph name="END_LINK" />.</translation>
 <translation id="3435738964857648380">பாதுகாப்பு</translation>
 <translation id="3435914367318771664">புதிய குழுவில் பக்கத்தைச் சேர்</translation>
+<translation id="3436118221454753036">AI மோடில் கேட்கலாம்</translation>
 <translation id="3438681572027105609">கடவுச்சொற்கள் மற்றும் பலவற்றை உங்கள் சாதனங்கள் அனைத்திலும் பெற Chromeமில் உள்நுழையுங்கள்</translation>
 <translation id="3439276997620616816">உங்களின் சமீபத்திய பக்கங்கள் இங்கே காட்டப்படும்</translation>
 <translation id="3443221991560634068">தற்போதைய பக்கத்தை மீண்டும் ஏற்றும்</translation>
@@ -1338,6 +1339,7 @@
 <translation id="6556501700899673703">Lexend</translation>
 <translation id="6560414384669816528">Sogou மூலம் தேடுக</translation>
 <translation id="656065428026159829">மேலும் காட்டு</translation>
+<translation id="6565781844089373403">சாளரங்களை மீட்டெடு</translation>
 <translation id="6565959834589222080">வைஃபை இணைப்பு கிடைக்கும்போது பயன்படுத்தப்படும்</translation>
 <translation id="657177046675873214">உங்களின் எல்லாச் சாதனங்களிலும் உங்கள் புக்மார்க்குகளைப் பெற அமைப்புகளில் “புக்மார்க்குகள்” என்பதை இயக்கவும்</translation>
 <translation id="6573096386450695060">எப்போதும் அனுமதி</translation>
@@ -2039,7 +2041,6 @@
 <translation id="939598580284253335">கடவுச்சொற்றொடரை உள்ளிடுக</translation>
 <translation id="94161319503679839"><ph name="TAB_TITLE" />, பின் செய்யப்பட்ட பிக்ச்சர்-இன்-பிக்ச்சர் மறைநிலைப் பக்கம்</translation>
 <translation id="945522503751344254">கருத்தை அனுப்பு</translation>
-<translation id="949667118776341807">சுழற்று</translation>
 <translation id="95817756606698420">சீனாவில் தேடுவதற்கு, Chromeமில் <ph name="BEGIN_BOLD" />Sogou<ph name="END_BOLD" />ஐப் பயன்படுத்தலாம். இதை <ph name="BEGIN_LINK" />அமைப்புகளுக்குச்<ph name="END_LINK" /> சென்று மாற்றலாம்.</translation>
 <translation id="961856697154696964">உலாவிய தரவை நீக்கு</translation>
 <translation id="963246339335003378">செயல் நிர்வாகியைத் திறக்கும்</translation>

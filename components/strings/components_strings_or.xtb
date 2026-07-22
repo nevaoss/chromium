@@ -314,6 +314,7 @@
 <translation id="1463793142714244641">ଟାଇମସେୟାର ଏବଂ ଛୁଟି କାଟିବା ପାଇଁ ପ୍ରପର୍ଟିଗୁଡ଼ିକ</translation>
 <translation id="1465457928007067810">IBANକୁ ଆପଣଙ୍କ Google ଆକାଉଣ୍ଟରେ ସେଭ କରାଯାଇଛି</translation>
 <translation id="1467432559032391204">ବାମ</translation>
+<translation id="1471514598850585811">ଲାପଟପ</translation>
 <translation id="1472675084647422956">ଅଧିକ ଦେଖାନ୍ତୁ</translation>
 <translation id="1473183651233018052">JIS B10</translation>
 <translation id="1473495410389165587">ଲେଖିବାରେ ସହାୟତା ପାଇବାକୁ 3 କିମ୍ବା ଅଧିକ ଶବ୍ଦ ଲେଖନ୍ତୁ</translation>
@@ -477,6 +478,7 @@
 <translation id="173080396488393970">ଏହି ପ୍ରକାର କାର୍ଡ ସମର୍ଥିତ ନୁହେଁ</translation>
 <translation id="1731563515262205847">ML-DSA-65</translation>
 <translation id="1732445923934584865">ଏହା ପରିବର୍ତ୍ତେ ବ୍ୟକ୍ତିଗତ ରୂପେ ପଚାରନ୍ତୁ</translation>
+<translation id="1732796940245838248">Google Walletରେ ରିଡ୍ରେସ ନମ୍ବରକୁ ଅପଡେଟ କରନ୍ତୁ</translation>
 <translation id="1733064249834771892">ଫଣ୍ଟଗୁଡ଼ିକ</translation>
 <translation id="1733631169686303142">ଅଡିଓ ଇକ୍ୟୁପମେଣ୍ଟ</translation>
 <translation id="1733762317901693627">ସାଧାରଣତଃ ସୁରକ୍ଷିତ ଥିବା ସାଇଟଗୁଡ଼ିକ ମଧ୍ୟ ବେଳେବେଳେ ଆକ୍ରମଣକାରୀଙ୍କ ଦ୍ୱାରା ଚୋରି ହୋଇଯାଇଥାଏ। ଯଦି ଆପଣ ବିପଦକୁ ବୁଝିଥିବା ନିଶ୍ଚିତ ଅଟନ୍ତି ତେବେ ହିଁ <ph name="BEGIN_LINK" />ଏହି ଅସୁରକ୍ଷିତ ସାଇଟ<ph name="END_LINK" />କୁ ଭିଜିଟ କରନ୍ତୁ।</translation>
@@ -712,6 +714,7 @@
 <translation id="2122165854541876335">ଉପଭୋକ୍ତା ରିସୋର୍ସଗୁଡ଼ିକ</translation>
 <translation id="2122214041802369259">ମୂଲ୍ୟ ଅଧିକ ଅଟେ</translation>
 <translation id="2122719317867821810">ଏହି ନୀତି ଆଶାନୁରୂପ ଭାବେ କାର୍ଯ୍ୟ କରୁଛି କିନ୍ତୁ ଏକ ଦ୍ୱନ୍ଦ୍ୱ ସୃଷ୍ଟି କରୁଥିବା ମୂଲ୍ୟ ଅନ୍ୟ କୌଣସି ସ୍ଥାନରେ ସେଟ୍ କରାଯାଇଛି ଏବଂ ଏହି ନୀତି ଦ୍ୱାରା ଓଭରରାଇଡ୍ ହୋଇଛି।</translation>
+<translation id="2124081665399116863">Google Walletରେ ଗାଡ଼ିକୁ ଅପଡେଟ କରନ୍ତୁ</translation>
 <translation id="2126374524350484896">PDF ପ୍ରଯୋଜକ:</translation>
 <translation id="2127090458081644412">ଏହି ଡିଭାଇସରେ ପାସୱାର୍ଡ ସେଭ କରାଯାଇଛି</translation>
 <translation id="2127747486437921899">ଇଟାଲିକ୍</translation>
@@ -994,6 +997,7 @@
 <translation id="2524962131655207565"><ph name="BEGIN_BOLD" />ଏହି ବିକଳ୍ପଗୁଡ଼ିକୁ ଅଫର କରିବା ପାଇଁ ଚେକଆଉଟ ପୃଷ୍ଠାରୁ ବିଷୟବସ୍ତୁକୁ Google ସହ ସେୟାର କରାଯାଏ।<ph name="END_BOLD" /> ପେମେଣ୍ଟ ପ୍ଲାନଗୁଡ଼ିକ ଯୋଗ୍ୟତାର ଅଧୀନ ଅଟେ। ପରେ ପେମେଣ୍ଟ କରନ୍ତୁ ବିକଳ୍ପଗୁଡ଼ିକୁ ଲୁଚାଇବା ପାଇଁ <ph name="BEGIN_LINK" />ପେମେଣ୍ଟ ସେଟିଂସ<ph name="END_LINK" />କୁ ଯାଆନ୍ତୁ।</translation>
 <translation id="2526062290525841862">ଏହି ଆପ ଚଲାଇବାକୁ Isolated Web App ଡେଭେଲପର ମୋଡକୁ ପୁଣି-ସକ୍ଷମ କରନ୍ତୁ</translation>
 <translation id="2526280916094749336">ସେଭ କରାଯାଇଥିବା ଠିକଣାଗୁଡ଼ିକୁ ଆପଣ ସମଗ୍ର Google ପ୍ରଡକ୍ଟରେ ବ୍ୟବହାର କରିପାରିବେ। ଏହି ଠିକଣାକୁ ଆପଣଙ୍କ Google ଆକାଉଣ୍ଟ, <ph name="ACCOUNT" />ରେ ସେଭ କରାଯିବ।</translation>
+<translation id="2526590354069164005">ଡେସ୍କଟପ୍</translation>
 <translation id="2527451058878391043">ଆପଣଙ୍କର CVC ଆପଣଙ୍କ କାର୍ଡର ସାମ୍ନାପଟେ ଅଛି। ଏହା ଆପଣଙ୍କ କାର୍ଡ ନମ୍ବର ଉପରେ ଶୀର୍ଷ ଡାହାଣରେ ଥିବା 4-ଅଙ୍କ ବିଶିଷ୍ଟ କୋଡ ଅଟେ।</translation>
 <translation id="2529899080962247600">ଏହି ଫିଲ୍ଡରେ <ph name="MAX_ITEMS_LIMIT" />ରୁ ଅଧିକ ଏଣ୍ଟ୍ରି ରହିବା ଉଚିତ ନୁହେଁ। ସମସ୍ତ ପରବର୍ତ୍ତୀ ଏଣ୍ଟ୍ରିକୁ ଅଣଦେଖା କରାଯିବ।</translation>
 <translation id="2530042584066815841">ମାଉସ ଲକ ଏବଂ ବ୍ୟବହାର</translation>
@@ -1546,6 +1550,7 @@
 <translation id="3422472998109090673">ବର୍ତ୍ତମାନ <ph name="HOST_NAME" />ରେ ପହଞ୍ଚି ହେଉନାହିଁ।</translation>
 <translation id="3422794267539320056">ପ୍ଲେ କରିବାକୁ ଡାଇନୋସରରେ ଟାପ କରନ୍ତୁ କିମ୍ବା ସ୍ପେସ ଦବାନ୍ତୁ</translation>
 <translation id="3423742043356668186">ସିଷ୍ଟମ୍ ଦ୍ୱାରା ନିର୍ଦ୍ଦିଷ୍ଟ କରାଯାଇଥିବା</translation>
+<translation id="3426672782316020729">Google Walletରେ ପାସପୋର୍ଟକୁ ଅପଡେଟ କରନ୍ତୁ</translation>
 <translation id="3427342743765426898">&amp;ଏଡିଟ୍‍ ପୁନଃବତ୍ କରନ୍ତୁ</translation>
 <translation id="342781501876943858">ଆପଣ ଯଦି ନିଜର ପାସ୍‌ୱର୍ଡକୁ ଅନ୍ୟ ୱେବ୍‌ସାଇଟ୍‌ଗୁଡ଼ିକରେ ପୁନଃ ବ୍ୟବହାର କରିଛନ୍ତି, ତେବେ Chromium ଆପଣଙ୍କୁ ଏହି ପାସ୍‌ୱର୍ଡକୁ ରିସେଟ୍ କରିବା ପାଇଁ ସୁପାରିଶ କରୁଛି।</translation>
 <translation id="3428151540071562330">DnsOverHttpsTemplates ସର୍ଭର୍ ଟେମ୍ପଲେଟ୍‍ର ଏକ କିମ୍ବା ଏକାଧିକ URI ଅବୈଧ ଅଟେ ଏବଂ ଏହା ବ୍ୟବହାର କରାଯିବ ନାହିଁ।</translation>
@@ -2405,6 +2410,7 @@
 <translation id="4766713847338118463">ତଳ ପଟରେ ଦୁଇଟି ଷ୍ଟାପଲ୍</translation>
 <translation id="4768816584204270288">ଆପଣ ସମୟ ଅନୁସାରେ ପେମେଣ୍ଟ କଲେ, ଗୋଟିଏ-ଥର ପାଇଁ ଭର୍ଚୁଆଲ କାର୍ଡ ନମ୍ବର ପୂରଣ କରାଯାଏ। ଆପଣ ଏହି କ୍ରୟ ପାଇଁ କାର୍ଡ ବିବରଣୀକୁ କପି କରି ପେଷ୍ଟ କରିବାକୁ କ୍ଲିକ କରିପାରିବେ।</translation>
 <translation id="4768864802656530630">ବିସ୍ତୃତ ସିଷ୍ଟମ ଲଗ। <ph name="BEGIN_LINK" />ଅଧିକ ଜାଣନ୍ତୁ<ph name="END_LINK" /></translation>
+<translation id="4770909831299304090">Google Walletରେ KTNକୁ ଅପଡେଟ କରନ୍ତୁ</translation>
 <translation id="4771249073710170730">ରେଡିଓ ନିୟନ୍ତ୍ରଣ ଏବଂ ମଡେଲିଂ</translation>
 <translation id="4771973620359291008">ଏକ ଅଜ୍ଞାତ ତୃଟି ସଂଘଟିତ ହୋଇଅଛି ।</translation>
 <translation id="4774055414220872623">ଆର୍ଟ ଏବଂ କ୍ରାଫ୍ଟ ସାମଗ୍ରୀ</translation>
@@ -4218,6 +4224,7 @@
 <translation id="7569490014721427265">ଗଲ୍ଫ</translation>
 <translation id="7569952961197462199">Chromeରୁ କ୍ରେଡିଟ୍‍ କାର୍ଡ କାଢ଼ିବେ?</translation>
 <translation id="7569983096843329377">କଳା</translation>
+<translation id="7570524564113479209">Google Walletରେ ID କାର୍ଡକୁ ଅପଡେଟ କରନ୍ତୁ</translation>
 <translation id="7570862164055912832">ରିଡ୍ରେସ ନମ୍ବର</translation>
 <translation id="7571813784389228510">Google AI ମୋଡ</translation>
 <translation id="7574998639136359461">ଶୀତକାଳୀନ ସ୍ପୋର୍ଟ୍ସ ଇକ୍ୟୁପମେଣ୍ଟ</translation>
@@ -4739,6 +4746,7 @@
 <translation id="8389940864052787379">କଷ୍ଟମ ଏବଂ ପରଫରମାନ୍ସ ଗାଡ଼ିଗୁଡ଼ିକ</translation>
 <translation id="8390725133630534698">ଆଡମିନିଷ୍ଟ୍ରେଟର୍ ନୀତି ଦ୍ୱାରା <ph name="ORIGIN_NAME" />ରୁ <ph name="VM_NAME" />କୁ ସେୟାର୍ କରିବା ବ୍ଲକ୍ କରାଯାଇଛି</translation>
 <translation id="8392783408127179588">ନୀତିଗୁଡ଼ିକ ପୁଣି ଲୋଡ ହେଉଛି</translation>
+<translation id="8393948304336153065">Google Walletରେ ଡ୍ରାଇଭିଂ ଲାଇସେନ୍ସକୁ ଅପଡେଟ କରନ୍ତୁ</translation>
 <translation id="8396522675989118466">ଏହା <ph name="SIDE_OF_CARD" />ରେ ଥିବା <ph name="NUMBER_OF_DIGITS" />-ଅଙ୍କ ବିଷିଷ୍ଟ କୋଡ ଅଟେ</translation>
 <translation id="8398335999901363925">ସ୍ପର୍ଶ ମାଧ୍ୟମରେ ପୂରଣ ହେବାକୁ ଥିବା ଉପଲବ୍ଧ ପେମେଣ୍ଟ ପଦ୍ଧତିଗୁଡ଼ିକର ତାଲିକା ପୂର୍ଣ୍ଣ ସ୍କ୍ରିନରେ ଖୋଲେ।</translation>
 <translation id="8398446215576328011">ଲାଗୁ କରାଯାଇଥିବା ନୀତିଗୁଡ଼ିକୁ ପୂର୍ବ ଅବସ୍ଥାକୁ ଫେରାଇ ଆଣନ୍ତୁ</translation>
@@ -4900,7 +4908,6 @@
 <translation id="8671519637524426245"><ph name="SECURE_DNS_SALT" /> ମୂଲ୍ୟ ଆକାର ଆବଶ୍ୟକତାକୁ ପୂରଣ କରେ ନାହିଁ।</translation>
 <translation id="867224526087042813">ଦସ୍ତଖତ</translation>
 <translation id="8672535691554698269">କମ୍ପ୍ୟୁଟର ନେଟୱାର୍କଗୁଡ଼ିକ</translation>
-<translation id="8673710317985154384">{NUM_TABS,plural, =1{ଟାବ ସେୟାରିଂ ବିବରଣୀ ଦେଖାନ୍ତୁ। {WEBSITE_LIST_STR}ରୁ 1 ଟାବ ସେୟାର କରାଯାଉଛି}other{ଟାବ ସେୟାରିଂ ବିବରଣୀ ଦେଖାନ୍ତୁ। {WEBSITE_LIST_STR}ରୁ {NUM_TABS} ଟାବ ସେୟାର କରାଯାଉଛି}}</translation>
 <translation id="8675446170353411473">ଆପଣଙ୍କ ଫାଇଲଗୁଡ଼ିକୁ <ph name="CLOUD_PROVIDER" />ରେ ଅପଲୋଡ କରାଯାଉଛି</translation>
 <translation id="8676424191133491403">କୌଣସି ବିଳମ୍ବ ନାହିଁ</translation>
 <translation id="8680536109547170164"><ph name="QUERY" />, ଉତ୍ତର ଦିଅନ୍ତୁ, <ph name="ANSWER" /></translation>

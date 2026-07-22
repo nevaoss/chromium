@@ -76,6 +76,15 @@ inline constexpr char kAppBackgroundRefreshDescription[] =
     "Schedules app background refresh after some minimum period of time has "
     "passed after the last refresh.";
 
+inline constexpr char kAppBarHideInFullscreenName[] =
+    "AppBar Hide in Fullscreen";
+inline constexpr char kAppBarHideInFullscreenDescription[] =
+    "Completely hides the AppBarViewController when in fullscreen.";
+
+inline constexpr char kAppBarHideLabelsName[] = "AppBar Hide Labels";
+inline constexpr char kAppBarHideLabelsDescription[] =
+    "Hides the labels for the buttons in the App Bar.";
+
 inline constexpr char kAppSwitcherAISummarizationName[] =
     "App Switcher AI summarization";
 inline constexpr char kAppSwitcherAISummarizationDescription[] =
@@ -652,6 +661,12 @@ inline constexpr char kEnableAutofillAddressSavePromptName[] =
 inline constexpr char kEnableAutofillAddressSavePromptDescription[] =
     "Enable the Autofill address save prompts.";
 
+inline constexpr char kEnableBulkDataEntryConnectorIOSName[] =
+    "Enable bulk data entry connectors on iOS";
+inline constexpr char kEnableBulkDataEntryConnectorIOSDescription[] =
+    "When enabled, the enterprise pasted content DLP feature is available on "
+    "iOS.";
+
 inline constexpr char kEnableClientCertificateProvisioningOnIOSName[] =
     "Enable client certificate provisioning on iOS";
 inline constexpr char kEnableClientCertificateProvisioningOnIOSDescription[] =
@@ -663,6 +678,11 @@ inline constexpr char kEnableCompromisedPasswordsMutingName[] =
 inline constexpr char kEnableCompromisedPasswordsMutingDescription[] =
     "Enable the compromised password alert mutings in Password Manager to be "
     "respected in the app.";
+
+inline constexpr char kEnableDiscoverBackgroundRefreshName[] =
+    "Enable Discover Feed Background Refresh";
+inline constexpr char kEnableDiscoverBackgroundRefreshDescription[] =
+    "Enables background refresh for the Discover feed.";
 
 inline constexpr char kEnableFamilyLinkControlsName[] =
     "Family Link parental controls";
@@ -1335,11 +1355,6 @@ inline constexpr char kModelBasedPageClassificationName[] =
 inline constexpr char kModelBasedPageClassificationDescription[] =
     "Enables the model based page classification.";
 
-inline constexpr char kMostVisitedTilesCustomizationName[] =
-    "Most Visited Tiles Customization on iOS";
-inline constexpr char kMostVisitedTilesCustomizationDescription[] =
-    "Enables customization of Most Visited tiles on the New Tab Page.";
-
 inline constexpr char kMostVisitedTilesHorizontalRenderGroupName[] =
     "MVTiles Horizontal Render Group";
 inline constexpr char kMostVisitedTilesHorizontalRenderGroupDescription[] =
@@ -1543,6 +1558,19 @@ inline constexpr char kOptimizationGuideDebugLogsName[] =
 inline constexpr char kOptimizationGuideDebugLogsDescription[] =
     "Enables the optimization guide to log and save debug messages that can be "
     "shown in the internals page.";
+
+inline constexpr char kOverflowMenuHomeCustomizationEntrypointName[] =
+    "Enable Overflow Menu Entrypoint for Home Customization ";
+inline constexpr char kOverflowMenuHomeCustomizationEntrypointDescription[] =
+    "When enabled, the entrypoint for home customization on the NTP is moved "
+    "from the NTP header to the overflow menu.";
+
+inline constexpr char kOverflowMenuNTPRefactorName[] =
+    "NTP Overflow Menu Refactor";
+inline constexpr char kOverflowMenuNTPRefactorDescription[] =
+    "When enabled, the overflow menu on the NTP is pared down and the entry "
+    "point for homepage customization is moved from the NTP header to the "
+    "overflow menu.";
 
 inline constexpr char kPageActionMenuAuthFlowName[] =
     "Page Action Menu Auth Flow";
@@ -1791,12 +1819,6 @@ inline constexpr char kShowAutofillTypePredictionsDescription[] =
     "Annotates web forms with Autofill field type predictions as placeholder "
     "text.";
 
-inline constexpr char kShowTabGroupInGridOnStartName[] =
-    "Show tab group in grid on start";
-inline constexpr char kShowTabGroupInGridOnStartDescription[] =
-    "Show tab group in grid on start if the last activation is within a "
-    "specific time interval";
-
 inline constexpr char kSkipDefaultBrowserPromoInFirstRunName[] =
     "Skip the FRE Default Browser Promo in EEA";
 inline constexpr char kSkipDefaultBrowserPromoInFirstRunDescription[] =
@@ -1857,6 +1879,11 @@ inline constexpr char kSupervisedUserUseUrlFilteringServiceDescription[] =
     "directly from supervision services instead of using PrefService (no "
     "user-visible effect).";
 
+inline constexpr char kSupportGoogleOneDeepLinkName[] =
+    "Support Google One Deep Link";
+inline constexpr char kSupportGoogleOneDeepLinkDescription[] =
+    "Enables deep linking to Google One management screen on startup.";
+
 inline constexpr char kSyncAIThreadsName[] = "Sync AI Threads";
 inline constexpr char kSyncAIThreadsDescription[] =
     "Enables syncing of AI threads across devices.";
@@ -1901,11 +1928,6 @@ inline constexpr char kSyncWalletVehicleRegistrationsName[] =
     "Sync wallet vehicle registrations";
 inline constexpr char kSyncWalletVehicleRegistrationsDescription[] =
     "Enables syncing vehicle registrations in the wallet to the server.";
-
-inline constexpr char kTabGroupColorOnSurfaceName[] =
-    "Tab group color on surfaces";
-inline constexpr char kTabGroupColorOnSurfaceDescription[] =
-    "Adds the tab group color to the tab group and tab grid surfaces.";
 
 inline constexpr char kTabGroupInOverflowMenuName[] =
     "Enable the Tab Group button in the overflow menu";

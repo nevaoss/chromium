@@ -466,6 +466,11 @@ const base::FeatureParam<int> kContextualTasksOnboardingTooltipImpressionDelay(
     "ContextualTasksOnboardingTooltipImpressionDelay",
     3000);
 
+const base::FeatureParam<int> kContextualTasksNumSessionsBeforeRequestPinPromo(
+    &kContextualTasks,
+    "ContextualTasksPinPromoSessionDelay",
+    2);
+
 const base::FeatureParam<bool> kEnableContextualTasksSmartCompose(
     &kContextualTasks,
     "ContextualTasksEnableContextualTasksSmartCompose",
@@ -533,6 +538,10 @@ int ContextualTasksInactiveSidePanelKeepInCacheMinutes() {
 
 bool IsContextualTasksPinButtonInToolbarEnabled() {
   return base::FeatureList::IsEnabled(kEnableContextualTasksPinButtonInToolbar);
+}
+
+int GetContextualTasksNumSessionsBeforeRequestPinPromo() {
+  return kContextualTasksNumSessionsBeforeRequestPinPromo.Get();
 }
 
 bool GetIsProtectedPageErrorEnabled() {
@@ -621,7 +630,7 @@ const base::FeatureParam<std::string>
 
 const base::FeatureParam<int> kContextualTasksNextboxMaxFileSize{
     &kContextualTasksContextMenu, "ContextualTasksNextboxMaxFileSize",
-    20 * 1024 * 1024};
+    100 * 1024 * 1024};
 
 bool GetIsContextualTasksSuggestionsEnabled() {
   return base::FeatureList::IsEnabled(kContextualTasksSuggestionsEnabled);

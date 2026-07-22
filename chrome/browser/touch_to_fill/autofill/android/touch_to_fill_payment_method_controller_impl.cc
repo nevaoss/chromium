@@ -15,7 +15,7 @@
 #include "base/functional/callback_helpers.h"
 #include "base/strings/strcat.h"
 #include "chrome/browser/android/resource_mapper.h"
-#include "chrome/browser/touch_to_fill/autofill/android/touch_to_fill_delegate_android_impl.h"
+#include "chrome/browser/touch_to_fill/autofill/android/touch_to_fill_payment_method_delegate_android_impl.h"
 #include "chrome/browser/touch_to_fill/autofill/android/touch_to_fill_payment_method_view.h"
 #include "chrome/browser/ui/android/tab_model/tab_model.h"
 #include "chrome/browser/ui/android/tab_model/tab_model_list.h"
@@ -43,9 +43,10 @@
 namespace autofill {
 
 namespace {
-TouchToFillDelegateAndroidImpl* GetDelegate(AutofillManager& manager) {
+TouchToFillPaymentMethodDelegateAndroidImpl* GetDelegate(
+    AutofillManager& manager) {
   auto& bam = static_cast<BrowserAutofillManager&>(manager);
-  return static_cast<TouchToFillDelegateAndroidImpl*>(
+  return static_cast<TouchToFillPaymentMethodDelegateAndroidImpl*>(
       bam.touch_to_fill_payment_method_delegate());
 }
 }  // namespace
@@ -324,7 +325,7 @@ void TouchToFillPaymentMethodControllerImpl::OnContentAutofillDriverCreated(
   auto& manager =
       static_cast<BrowserAutofillManager&>(driver.GetAutofillManager());
   manager.set_touch_to_fill_payment_method_delegate(
-      std::make_unique<TouchToFillDelegateAndroidImpl>(&manager));
+      std::make_unique<TouchToFillPaymentMethodDelegateAndroidImpl>(&manager));
 }
 
 void TouchToFillPaymentMethodControllerImpl::OnDismissed(JNIEnv* env,

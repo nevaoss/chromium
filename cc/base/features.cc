@@ -75,7 +75,7 @@ BASE_FEATURE(kPreserveDiscardableImageMapQuality,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kScrollEndRepaintFollowsScrollUpdate,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kCCSlimming, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -94,10 +94,13 @@ constexpr const char kScrollEventDispatchModeUseScrollPredictorForEmptyQueue[] =
     "UseScrollPredictorForEmptyQueue";
 constexpr const char kScrollEventDispatchModeUseScrollPredictorForDeadline[] =
     "UseScrollPredictorForDeadline";
+constexpr const char
+    kScrollEventDispatchModeDispatchScrollEventsUntilDeadline[] =
+        "DispatchScrollEventsUntilDeadline";
 const base::FeatureParam<std::string> kScrollEventDispatchMode(
     &kWaitForLateScrollEvents,
     "mode",
-    kScrollEventDispatchModeDispatchScrollEventsImmediately);
+    kScrollEventDispatchModeDispatchScrollEventsUntilDeadline);
 
 BASE_FEATURE(kTreesInViz, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -252,7 +255,7 @@ BASE_FEATURE_PARAM(double,
                    0.2);
 
 BASE_FEATURE(kUseScrollIdToCalculateScrollJankV4FrameStages,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kManualBeginFrame, base::FEATURE_DISABLED_BY_DEFAULT);
 

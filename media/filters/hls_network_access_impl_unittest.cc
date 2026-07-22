@@ -262,16 +262,38 @@ TEST_F(HlsNetworkAccessImplUnittest, TestSegmentWithLargeRange) {
 TEST_F(HlsNetworkAccessImplUnittest, TestSegmentReadNoChunk) {
   auto segment = MakeSegment(std::nullopt, std::make_tuple(100000, 100),
                              InitMode::kPresent);
-  factory_->AddReadExpectation(100, 16384, 16384);
+
+  const GURL init_uri("https://foo.com");
+  const GURL media_uri("https://example.com/content.mp4");
+
+  EXPECT_CALL(*factory_, Setup(_, init_uri, _, _))
+      .WillOnce([](MockDataSource* mock, const GURL& uri, ...) {
+        MockDataSourceFactory::ConfigureAsSuccess(mock, uri);
+        EXPECT_CALL(*mock, Read(100, SpanSizeEq(16384), _))
+            .WillOnce(base::test::RunOnceCallback<2>(100));
+        EXPECT_CALL(*mock, Read(200, SpanSizeEq(16384), _))
+            .WillOnce(base::test::RunOnceCallback<2>(0));
+        EXPECT_CALL(*mock, WouldTaintOrigin())
+            .WillRepeatedly(testing::Return(false));
+      });
+
+  EXPECT_CALL(*factory_, Setup(_, media_uri, _, _))
+      .WillOnce([](MockDataSource* mock, const GURL& uri, ...) {
+        MockDataSourceFactory::ConfigureAsSuccess(mock, uri);
+        EXPECT_CALL(*mock, Read(0, SpanSizeEq(16384), _))
+            .WillOnce(base::test::RunOnceCallback<2>(500));
+        EXPECT_CALL(*mock, WouldTaintOrigin())
+            .WillRepeatedly(testing::Return(false));
+      });
 
   network_access_->ReadMediaSegment(
       *segment, /*read_chunked=*/true, /*include_init_segment=*/true,
       base::BindOnce([&](HlsDataSourceProvider::ReadResult result) {
         ASSERT_TRUE(result.has_value());
         auto stream = std::move(result).value();
-        ASSERT_EQ(stream->read_position(), 16484lu);
-        ASSERT_EQ(stream->buffer_size(), 16384lu);
-        ASSERT_EQ(stream->max_read_position(), 100100lu);
+        ASSERT_EQ(stream->read_position(), 500lu);
+        ASSERT_EQ(stream->buffer_size(), 16484lu);
+        ASSERT_EQ(stream->max_read_position(), std::nullopt);
         ASSERT_TRUE(stream->CanReadMore());
       }));
   task_environment_.RunUntilIdle();
@@ -524,6 +546,245 @@ TEST_F(HlsNetworkAccessImplUnittest, TestReadKeyDisallowsGzip) {
         ASSERT_TRUE(result.has_value());
       }));
   task_environment_.RunUntilIdle();
+}
+
+TEST_F(HlsNetworkAccessImplUnittest, TestSegmentReadInitConnectionFailure) {
+  auto segment =
+      MakeSegment(std::nullopt, std::make_tuple(100, 100), InitMode::kPresent);
+
+  const GURL init_uri("https://foo.com");
+  const GURL media_uri("https://example.com/content.mp4");
+
+  // Init segment fails to connect
+  EXPECT_CALL(*factory_, Setup(_, init_uri, _, _))
+      .WillOnce([](MockDataSource* mock, const GURL& uri, ...) {
+        MockDataSourceFactory::ConfigureAsFailure(mock);
+      });
+
+  // Media segment succeeds to connect, and we mock its read.
+  // Even if Init fails, Media might still be created and read in parallel.
+  EXPECT_CALL(*factory_, Setup(_, media_uri, _, _))
+      .WillOnce([](MockDataSource* mock, const GURL& uri, ...) {
+        MockDataSourceFactory::ConfigureAsSuccess(mock, uri);
+        EXPECT_CALL(*mock, Read(0, SpanSizeEq(16384), _))
+            .WillOnce(base::test::RunOnceCallback<2>(500));
+        EXPECT_CALL(*mock, WouldTaintOrigin())
+            .WillRepeatedly(testing::Return(false));
+      });
+
+  bool callback_called = false;
+  network_access_->ReadMediaSegment(
+      *segment, /*read_chunked=*/true, /*include_init_segment=*/true,
+      base::BindOnce(
+          [](bool* cb_called, HlsDataSourceProvider::ReadResult result) {
+            *cb_called = true;
+            EXPECT_FALSE(result.has_value());
+            EXPECT_EQ(std::move(result).error().code(),
+                      HlsDataSourceProvider::ReadStatus::Codes::kStopped);
+          },
+          &callback_called));
+  task_environment_.RunUntilIdle();
+  EXPECT_TRUE(callback_called);
+}
+
+TEST_F(HlsNetworkAccessImplUnittest, TestSegmentReadMediaReadFailure) {
+  auto segment =
+      MakeSegment(std::nullopt, std::make_tuple(100, 100), InitMode::kPresent);
+
+  const GURL init_uri("https://foo.com");
+  const GURL media_uri("https://example.com/content.mp4");
+
+  // Init segment succeeds
+  EXPECT_CALL(*factory_, Setup(_, init_uri, _, _))
+      .WillOnce([](MockDataSource* mock, const GURL& uri, ...) {
+        MockDataSourceFactory::ConfigureAsSuccess(mock, uri);
+        EXPECT_CALL(*mock, Read(100, SpanSizeEq(100), _))
+            .WillOnce(base::test::RunOnceCallback<2>(100));
+        EXPECT_CALL(*mock, WouldTaintOrigin())
+            .WillRepeatedly(testing::Return(false));
+      });
+
+  // Media segment fails read
+  EXPECT_CALL(*factory_, Setup(_, media_uri, _, _))
+      .WillOnce([](MockDataSource* mock, const GURL& uri, ...) {
+        MockDataSourceFactory::ConfigureAsSuccess(mock, uri);
+        EXPECT_CALL(*mock, Read(0, SpanSizeEq(16384), _))
+            .WillOnce(base::test::RunOnceCallback<2>(DataSource::kReadError));
+        EXPECT_CALL(*mock, WouldTaintOrigin())
+            .WillRepeatedly(testing::Return(false));
+      });
+
+  bool callback_called = false;
+  network_access_->ReadMediaSegment(
+      *segment, /*read_chunked=*/true, /*include_init_segment=*/true,
+      base::BindOnce(
+          [](bool* cb_called, HlsDataSourceProvider::ReadResult result) {
+            *cb_called = true;
+            EXPECT_FALSE(result.has_value());
+            EXPECT_EQ(std::move(result).error().code(),
+                      HlsDataSourceProvider::ReadStatus::Codes::kError);
+          },
+          &callback_called));
+  task_environment_.RunUntilIdle();
+  EXPECT_TRUE(callback_called);
+}
+
+TEST_F(HlsNetworkAccessImplUnittest,
+       TestSegmentReadInitReadFailureMediaSucceeds) {
+  auto segment =
+      MakeSegment(std::nullopt, std::make_tuple(100, 100), InitMode::kPresent);
+
+  const GURL init_uri("https://foo.com");
+  const GURL media_uri("https://example.com/content.mp4");
+
+  // Init segment fails read
+  EXPECT_CALL(*factory_, Setup(_, init_uri, _, _))
+      .WillOnce([](MockDataSource* mock, const GURL& uri, ...) {
+        MockDataSourceFactory::ConfigureAsSuccess(mock, uri);
+        EXPECT_CALL(*mock, Read(100, SpanSizeEq(100), _))
+            .WillOnce(base::test::RunOnceCallback<2>(DataSource::kReadError));
+        EXPECT_CALL(*mock, WouldTaintOrigin())
+            .WillRepeatedly(testing::Return(false));
+      });
+
+  // Media segment succeeds
+  EXPECT_CALL(*factory_, Setup(_, media_uri, _, _))
+      .WillOnce([](MockDataSource* mock, const GURL& uri, ...) {
+        MockDataSourceFactory::ConfigureAsSuccess(mock, uri);
+        EXPECT_CALL(*mock, Read(0, SpanSizeEq(16384), _))
+            .WillOnce(base::test::RunOnceCallback<2>(500));
+        EXPECT_CALL(*mock, WouldTaintOrigin())
+            .WillRepeatedly(testing::Return(false));
+      });
+
+  bool callback_called = false;
+  network_access_->ReadMediaSegment(
+      *segment, /*read_chunked=*/true, /*include_init_segment=*/true,
+      base::BindOnce(
+          [](bool* cb_called, HlsDataSourceProvider::ReadResult result) {
+            *cb_called = true;
+            EXPECT_FALSE(result.has_value());
+            EXPECT_EQ(std::move(result).error().code(),
+                      HlsDataSourceProvider::ReadStatus::Codes::kError);
+          },
+          &callback_called));
+  task_environment_.RunUntilIdle();
+  EXPECT_TRUE(callback_called);
+}
+
+TEST_F(HlsNetworkAccessImplUnittest, TestSegmentReadKeyFailure) {
+  auto segment = MakeSegment(std::nullopt, std::nullopt, InitMode::kAbsent,
+                             "https://example.com/enc.key");
+
+  const GURL key_uri("https://example.com/enc.key");
+  const GURL media_uri("https://example.com/content.mp4");
+
+  // Key segment fails read
+  EXPECT_CALL(*factory_, Setup(_, key_uri, _, _))
+      .WillOnce([](MockDataSource* mock, const GURL& uri, ...) {
+        MockDataSourceFactory::ConfigureAsSuccess(mock, uri);
+        EXPECT_CALL(*mock, Read(0, SpanSizeEq(16384), _))
+            .WillOnce(base::test::RunOnceCallback<2>(DataSource::kReadError));
+        EXPECT_CALL(*mock, WouldTaintOrigin())
+            .WillRepeatedly(testing::Return(false));
+      });
+
+  // Media segment succeeds (but it might be aborted/ignored after key fails)
+  // Actually, they start in parallel. Key and Media.
+  EXPECT_CALL(*factory_, Setup(_, media_uri, _, _))
+      .WillOnce([](MockDataSource* mock, const GURL& uri, ...) {
+        MockDataSourceFactory::ConfigureAsSuccess(mock, uri);
+        EXPECT_CALL(*mock, Read(0, SpanSizeEq(16384), _))
+            .WillOnce(base::test::RunOnceCallback<2>(500));
+        EXPECT_CALL(*mock, WouldTaintOrigin())
+            .WillRepeatedly(testing::Return(false));
+      });
+
+  bool callback_called = false;
+  network_access_->ReadMediaSegment(
+      *segment, /*read_chunked=*/true, /*include_init_segment=*/true,
+      base::BindOnce(
+          [](bool* cb_called, HlsDataSourceProvider::ReadResult result) {
+            *cb_called = true;
+            EXPECT_FALSE(result.has_value());
+            EXPECT_EQ(std::move(result).error().code(),
+                      HlsDataSourceProvider::ReadStatus::Codes::kError);
+          },
+          &callback_called));
+  task_environment_.RunUntilIdle();
+  EXPECT_TRUE(callback_called);
+}
+
+TEST_F(HlsNetworkAccessImplUnittest, TestSegmentReadKeyFailureLater) {
+  auto segment = MakeSegment(std::nullopt, std::make_tuple(100, 100),
+                             InitMode::kPresent, "https://example.com/enc.key");
+
+  const GURL init_uri("https://foo.com");
+  const GURL media_uri("https://example.com/content.mp4");
+  const GURL key_uri("https://example.com/enc.key");
+
+  DataSource::ReadCB key_read_cb;
+
+  // Key segment Setup. It will capture the ReadCB and NOT run it immediately.
+  EXPECT_CALL(*factory_, Setup(_, key_uri, _, _))
+      .WillOnce([&](MockDataSource* mock, const GURL& uri, ...) {
+        MockDataSourceFactory::ConfigureAsSuccess(mock, uri);
+        EXPECT_CALL(*mock, Read(0, SpanSizeEq(16384), _))
+            .WillOnce([&](int64_t, base::span<uint8_t>, DataSource::ReadCB cb) {
+              key_read_cb = std::move(cb);
+            });
+        EXPECT_CALL(*mock, WouldTaintOrigin())
+            .WillRepeatedly(testing::Return(false));
+      });
+
+  // Init segment Setup. Succeeds synchronously.
+  EXPECT_CALL(*factory_, Setup(_, init_uri, _, _))
+      .WillOnce([](MockDataSource* mock, const GURL& uri, ...) {
+        MockDataSourceFactory::ConfigureAsSuccess(mock, uri);
+        EXPECT_CALL(*mock, Read(100, SpanSizeEq(100), _))
+            .WillOnce(base::test::RunOnceCallback<2>(100));
+        EXPECT_CALL(*mock, WouldTaintOrigin())
+            .WillRepeatedly(testing::Return(false));
+      });
+
+  // Media segment Setup. Succeeds synchronously.
+  EXPECT_CALL(*factory_, Setup(_, media_uri, _, _))
+      .WillOnce([](MockDataSource* mock, const GURL& uri, ...) {
+        MockDataSourceFactory::ConfigureAsSuccess(mock, uri);
+        EXPECT_CALL(*mock, Read(0, SpanSizeEq(16384), _))
+            .WillOnce(base::test::RunOnceCallback<2>(500));
+        EXPECT_CALL(*mock, WouldTaintOrigin())
+            .WillRepeatedly(testing::Return(false));
+      });
+
+  bool callback_called = false;
+  network_access_->ReadMediaSegment(
+      *segment, /*read_chunked=*/true, /*include_init_segment=*/true,
+      base::BindOnce(
+          [](bool* cb_called, HlsDataSourceProvider::ReadResult result) {
+            *cb_called = true;
+            EXPECT_FALSE(result.has_value());
+            EXPECT_EQ(std::move(result).error().code(),
+                      HlsDataSourceProvider::ReadStatus::Codes::kError);
+          },
+          &callback_called));
+
+  // Run until idle. This will run Key Setup (capturing callback),
+  // and run Init and Media Setup and their reads to completion.
+  task_environment_.RunUntilIdle();
+
+  // The overall callback should NOT have run yet because Key is still pending.
+  EXPECT_FALSE(callback_called);
+  ASSERT_TRUE(key_read_cb);
+
+  // Now fail the key read.
+  std::move(key_read_cb).Run(DataSource::kReadError);
+
+  // Run until idle again to process the key failure and trigger overall
+  // callback.
+  task_environment_.RunUntilIdle();
+
+  EXPECT_TRUE(callback_called);
 }
 
 }  // namespace media

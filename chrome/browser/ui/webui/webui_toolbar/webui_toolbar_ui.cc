@@ -44,6 +44,7 @@
 #include "components/browser_apis/ui_controllers/toolbar/toolbar_ui_api.mojom.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/user_education/webui/help_bubble_handler.h"
+#include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/render_widget_host.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_ui.h"
@@ -61,6 +62,7 @@ WebUIToolbarUI::WebUIToolbarUI(content::WebUI* web_ui)
     : TopChromeWebUIController(web_ui,
                                /*enable_chrome_send=*/true,
                                /*enable_chrome_histograms=*/true),
+      content::WebContentsObserver(web_ui->GetWebContents()),
       toolbar_channel_service_end_(
           toolbar_channel_client_end_.InitWithNewPipeAndPassReceiver()),
       browser_controls_channel_service_end_(
@@ -226,7 +228,8 @@ void WebUIToolbarUI::InitBrowserControlsService(
               webui::GetBrowserWindowInterface(web_contents),
               dependency_provider.GetCommandUpdater(), web_contents),
           metrics_service->metrics_reporter(),
-          dependency_provider.GetBrowserControlsDelegate());
+          dependency_provider.GetBrowserControlsDelegate(),
+          web_ui()->GetRenderFrameHost());
 }
 
 void WebUIToolbarUI::InitToolbarUIService(
@@ -266,6 +269,17 @@ void WebUIToolbarUI::WebUIRenderFrameCreated(
 content::WebUIController::DisplayDisposition
 WebUIToolbarUI::GetDisplayDisposition() const {
   return content::WebUIController::DisplayDisposition::kUIElement;
+}
+
+void WebUIToolbarUI::DidFinishNavigation(
+    content::NavigationHandle* navigation_handle) {
+  if (navigation_handle->HasCommitted() &&
+      navigation_handle->IsInPrimaryMainFrame() &&
+      !navigation_handle->IsSameDocument()) {
+    // Cache the navigation start time. This is the single source of truth
+    // for the active document's time origin.
+    navigation_start_ticks_ = navigation_handle->NavigationStart();
+  }
 }
 
 void WebUIToolbarUI::PopulateLocalResourceLoaderConfig(

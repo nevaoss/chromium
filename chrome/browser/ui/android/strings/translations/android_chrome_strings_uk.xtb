@@ -34,7 +34,6 @@
 <translation id="1108938384783527433">Синхронізація історії</translation>
 <translation id="1111673857033749125">Тут відображатимуться закладки, збережені на інших ваших пристроях.</translation>
 <translation id="1123537484474186311"><ph name="TAB_TITLE" /> (вкладка в режимі "картинка в картинці")</translation>
-<translation id="1124357650933674597">{NUM_WINDOWS,plural, =1{Відновити 1 вікно}one{Відновити # вікно}few{Відновити # вікна}many{Відновити # вікон}other{Відновити # вікна}}</translation>
 <translation id="1126696498560056882">Керувати обліковими записами на цьому пристрої</translation>
 <translation id="1135018701024399762">Режим анонімного перегляду забезпечує приватний перегляд вебсторінок, щоб їх не бачили інші користувачі, які мають доступ до вашого пристрою.</translation>
 <translation id="113752097246673894">Щоб отримати доступ до закладок і інших даних на всіх своїх пристроях, увійдіть у Chrome як <ph name="EMAIL" /></translation>
@@ -185,6 +184,7 @@
 <translation id="1792959175193046959">Будь-коли змінюйте папку для завантажень за умовчанням</translation>
 <translation id="1796666869097395659">Згорнути вкладку, щоб повернутися на неї пізніше</translation>
 <translation id="1799920918471566157">Поради щодо Chrome</translation>
+<translation id="1803799720926799756">Розмір файлу</translation>
 <translation id="1807246157184219062">Світла</translation>
 <translation id="1807709131360304325">Відкрити нове вікно</translation>
 <translation id="1812027881030482584">Не вдається ввійти на сайті <ph name="SITE_ETLD_PLUS_ONE" /> за допомогою сервісу "<ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" />"</translation>
@@ -520,7 +520,6 @@
 <translation id="3166827708714933426">Комбінації клавіш для роботи з вкладками та вікнами</translation>
 <translation id="3167258285411721858">Ви можете переключитися на мобільний сайт <ph name="HOST_NAME" /></translation>
 <translation id="3181145110929454111"><ph name="TAB_TITLE" /> (одна з вибраних анонімних вкладок, яку закріплено й на якій вимкнено звук)</translation>
-<translation id="3183941812169784232">Відновити всі вікна?</translation>
 <translation id="3187472288455401631">Оцінка ефективності реклами</translation>
 <translation id="3189635831478931757"><ph name="GROUP_TITLE" /> (група вкладок)</translation>
 <translation id="3200536777393523575">Закрити поточне вікно?</translation>
@@ -569,6 +568,7 @@
 <translation id="3435575784518354875">Щоб зберегти доступ до своїх паролів, експортуйте їх зараз, оновіть сервіси Google Play і знову імпортуйте паролі в Google Менеджер паролів. <ph name="BEGIN_LINK" />Переглянути докладні вказівки.<ph name="END_LINK" /></translation>
 <translation id="3435738964857648380">Безпека</translation>
 <translation id="3435914367318771664">Додати вкладку в нову групу</translation>
+<translation id="3436118221454753036">Запитати в режимі ШІ</translation>
 <translation id="3438681572027105609">Щоб отримати доступ до паролів і інших даних на всіх своїх пристроях, увійдіть у Chrome</translation>
 <translation id="3439276997620616816">Тут відображатимуться останні вкладки</translation>
 <translation id="3443221991560634068">Оновити поточну сторінку</translation>
@@ -2039,7 +2039,6 @@
 <translation id="939598580284253335">Ввести парольну фразу</translation>
 <translation id="94161319503679839"><ph name="TAB_TITLE" /> (закріплена анонімна вкладка в режимі "картинка в картинці")</translation>
 <translation id="945522503751344254">Надіслати відгук</translation>
-<translation id="949667118776341807">Обернути</translation>
 <translation id="95817756606698420">Chrome може використовувати <ph name="BEGIN_BOLD" />Sogou<ph name="END_BOLD" /> для пошуку в Китаї. Це можна змінити в <ph name="BEGIN_LINK" />Налаштуваннях<ph name="END_LINK" />.</translation>
 <translation id="961856697154696964">Видалити дані вебперегляду</translation>
 <translation id="963246339335003378">Відкрити Диспетчер завдань</translation>

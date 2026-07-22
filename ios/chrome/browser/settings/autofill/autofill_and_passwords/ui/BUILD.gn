@@ -26,6 +26,7 @@ source_set("autofill_and_passwords") {
   deps = [
     "//base",
     "//components/autofill/core/browser",
+    "//components/autofill/core/common:features",
     "//components/strings",
     "//ios/chrome/app/strings",
     "//ios/chrome/browser/authentication/ui_bundled/cells",
@@ -58,6 +59,7 @@ source_set("unit_tests") {
     ":autofill_and_passwords",
     "//base",
     "//base/test:test_support",
+    "//components/autofill/core/common:features",
     "//components/strings",
     "//ios/chrome/app/strings",
     "//ios/chrome/browser/authentication/ui_bundled/cells",

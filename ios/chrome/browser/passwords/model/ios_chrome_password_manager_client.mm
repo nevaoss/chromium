@@ -295,10 +295,11 @@ void IOSChromePasswordManagerClient::NotifyUserCredentialsWereLeaked(
 void IOSChromePasswordManagerClient::NotifyKeychainError() {}
 
 bool IOSChromePasswordManagerClient::IsSavingAndFillingEnabled(
-    const GURL& url) const {
+    const url::Origin& origin,
+    base::optional_ref<const GURL> url) const {
   return *saving_passwords_enabled_ && !IsOffTheRecord() &&
          !net::IsCertStatusError(GetMainFrameCertStatus()) &&
-         IsFillingEnabled(url::Origin::Create(url), url);
+         IsFillingEnabled(origin, url);
 }
 
 bool IOSChromePasswordManagerClient::IsFillingEnabled(

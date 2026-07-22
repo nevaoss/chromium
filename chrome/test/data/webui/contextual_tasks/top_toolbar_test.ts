@@ -97,6 +97,23 @@ suite('TopToolbarTest', () => {
       assertFalse(historyButton.hidden);
     });
 
+    test('history button visibility with eligibility and signin', async () => {
+      const historyButton = topToolbar.$.threadHistoryButton;
+      assertTrue(!!historyButton);
+
+      topToolbar.isAiPage = true;
+
+      // Case 1: Signed In -> Visible
+      topToolbar.isUserSignedIn = true;
+      await microtasksFinished();
+      assertFalse(historyButton.hidden);
+
+      // Case 2: Signed Out -> Hidden
+      topToolbar.isUserSignedIn = false;
+      await microtasksFinished();
+      assertTrue(historyButton.hidden);
+    });
+
     test('handles close button click', async () => {
       const closeButton = topToolbar.$.closeButton;
       assertTrue(!!closeButton);

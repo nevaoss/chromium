@@ -69,8 +69,7 @@ class WebUIToolbarWebViewInteractiveTest : public InteractiveBrowserTest {
         {features::kInitialWebUI, features::kWebUIReloadButton,
          features::kWebUILocationBar,
          features::kSkipIPCChannelPausingForNonGuests,
-         features::kWebUIInProcessResourceLoadingV2,
-         features::kInitialWebUISyncNavStartToCommit},
+         features::kWebUIInProcessResourceLoadingV2},
         {});
   }
 
@@ -139,7 +138,6 @@ class WebUIPinnedToolbarActionsInteractiveTest : public InteractiveBrowserTest {
         {features::kInitialWebUI, features::kWebUIPinnedToolbarActions,
          features::kSkipIPCChannelPausingForNonGuests,
          features::kWebUIInProcessResourceLoadingV2,
-         features::kInitialWebUISyncNavStartToCommit,
          features::kWebUIReloadButton},
         {});
   }

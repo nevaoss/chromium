@@ -1372,6 +1372,7 @@ void GridLanesLayoutAlgorithm::MeasureVirtualGridLanesItems(
                                                        MinMaxSizesFunc);
         if (result.depends_on_block_constraints) {
           item_data.is_sizing_dependent_on_block_size = true;
+          sizing_subtree.SetHasBlockSizeDependentGridItem();
         }
         min_max_contribution = result.sizes;
 
@@ -1392,6 +1393,15 @@ void GridLanesLayoutAlgorithm::MeasureVirtualGridLanesItems(
           baseline_shim = std::max(min_shim, max_shim);
         }
       } else {
+        // This is the orthogonal item case: the item contributes its block
+        // size to the grid (column) axis. That block size is measured against
+        // the subgrid's standalone (row) axis, which is itself resolved from
+        // the column tracks. Mark as dependent on block size similar to Grid.
+        if (is_for_columns && !item_data.IsSubgrid()) {
+          item_data.is_sizing_dependent_on_block_size = true;
+          sizing_subtree.SetHasBlockSizeDependentGridItem();
+        }
+
         LayoutUnit block_contribution = ComputeGridLanesItemBlockContribution(
             sizing_subtree, grid_axis_direction, sizing_constraint, space,
             &item_data, needs_intrinsic_track_size, margins, shared_baseline,
@@ -1634,6 +1644,7 @@ const LayoutResult* GridLanesLayoutAlgorithm::LayoutItemForMeasureWithFallback(
     // the correct contribution from this item.
     if (min_max_sizes_result.depends_on_block_constraints) {
       grid_lanes_item->is_sizing_dependent_on_block_size = true;
+      sizing_subtree.SetHasBlockSizeDependentGridItem();
     }
     const MinMaxSizes sizes = min_max_sizes_result.sizes;
     const SubgriddedItemData subgridded_item =
@@ -1791,12 +1802,10 @@ GridSizingTree GridLanesLayoutAlgorithm::ComputeGridLanesSizingTree(
   // (column) axis only. During the first pass the subgrids' standalone-axis
   // sizes are unresolved, so item measurements that feed into the column
   // sizing algorithm are inaccurate, which can result in incorrect track sizes.
-  //
-  // TODO(layout-dev): We may be able to scope this check down further in
-  // the future if needed.
   const bool needs_additional_pass_for_column_subtree =
       grid_axis_direction == kForColumns &&
-      sizing_tree.HasSubgridWithIndefiniteStandaloneAxis();
+      sizing_tree.HasSubgridWithIndefiniteStandaloneAxis() &&
+      sizing_tree.HasBlockSizeDependentGridItem();
 
   if (needs_additional_pass || needs_additional_pass_for_column_subtree) {
     // TODO(layout-dev): The auto-repeat count is preserved from the first

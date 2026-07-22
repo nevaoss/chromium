@@ -446,6 +446,7 @@ public class TabBottomSheetManagerImpl implements TabBottomSheetManager {
             layoutStateProvider.removeObserver(mLayoutStateObserver);
         }
 
+        mNativeInterfaceDelegate = null;
         TabBottomSheetUtils.detachManagerFromWindow(mWindowAndroid);
     }
 
@@ -522,6 +523,10 @@ public class TabBottomSheetManagerImpl implements TabBottomSheetManager {
 
     public @Nullable NativeInterfaceDelegate getNativeInterfaceDelegateForTesting() {
         return mNativeInterfaceDelegate;
+    }
+
+    public void attachNativeInterfaceDelegateForTesting(NativeInterfaceDelegate delegate) {
+        mNativeInterfaceDelegate = delegate;
     }
 
     private boolean mSuppressBottomSheetForTesting;

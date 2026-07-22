@@ -10,5 +10,5 @@ found in the LICENSE file.
     style="@style/ColorPickerButtonStyle"
     android:layout_width="?attr/minInteractTargetSize"
     android:layout_height="?attr/minInteractTargetSize"
-    android:layout_gravity="center"
+    android:layout_gravity="top|center_horizontal"
     android:checkable="true" />

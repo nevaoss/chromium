@@ -366,6 +366,11 @@ class MockActorTaskDelegate : public ActorTaskDelegate {
               (override));
 
   MOCK_METHOD(void,
+              OnTaskTabsVisibilityChanged,
+              (TaskId task_id, bool has_visible_tab),
+              (override));
+
+  MOCK_METHOD(void,
               RequestToShowCredentialSelectionDialog,
               (TaskId task_id,
                (const base::flat_map<std::string, gfx::Image>&)icons,

@@ -4,9 +4,11 @@
 
 #import <XCTest/XCTest.h>
 
+#import "base/files/file_path.h"
 #import "base/strings/sys_string_conversions.h"
 #import "base/test/ios/wait_util.h"
 #import "components/omnibox/browser/aim_eligibility_service_features.h"
+#import "ios/chrome/browser/assistant/ui/assistant_container_constants.h"
 #import "ios/chrome/browser/assistant/ui/assistant_container_detent.h"
 #import "ios/chrome/browser/cobrowse/ui/assistant_aim_ui_constants.h"
 #import "ios/chrome/browser/composebox/eg_tests/composebox_app_interface.h"
@@ -52,11 +54,11 @@ void WaitForDetent(AssistantContainerDetent detent) {
 
 // Opens the composebox, attaches the current tab, and waits for the send button
 // to be enabled.
-void OpenCoBrowse(net::EmbeddedTestServer* testServer) {
+void OpenCoBrowse(const GURL& url) {
   [ComposeboxAppInterface setFuseboxEligible:YES];
   [ComposeboxAppInterface setTabUploadAutoSucceed:YES];
 
-  [ChromeEarlGrey loadURL:testServer->GetURL("/echo")];
+  [ChromeEarlGrey loadURL:url];
   [ChromeEarlGrey waitForPageToFinishLoading];
 
   // Focus the omnibox. Tapping fake omnibox might not be enough on all pages.
@@ -94,10 +96,10 @@ void OpenCoBrowse(net::EmbeddedTestServer* testServer) {
 
 // Returns the matcher for the Main WebState scroll view, ignoring Co-browse's.
 id<GREYMatcher> MainWebStateScrollView() {
-  return grey_allOf(
-      chrome_test_util::WebStateScrollViewMatcher(),
-      grey_ancestor(grey_accessibilityID(kAppContentAccessibilityIdentifier)),
-      nil);
+  return grey_allOf(chrome_test_util::WebStateScrollViewMatcher(),
+                    grey_not(grey_ancestor(grey_accessibilityID(
+                        kAssistantContainerAccessibilityIdentifier))),
+                    nil);
 }
 
 // Returns the matcher for the Assistant AIM close button.
@@ -110,7 +112,9 @@ id<GREYMatcher> CloseButton() {
 @interface AssistantAIMTestCase : ChromeTestCase
 @end
 
-@implementation AssistantAIMTestCase
+@implementation AssistantAIMTestCase {
+  GURL _defaultURL;
+}
 
 - (AppLaunchConfiguration)appConfigurationForTestCase {
   AppLaunchConfiguration config = [super appConfigurationForTestCase];
@@ -119,6 +123,7 @@ id<GREYMatcher> CloseButton() {
   config.features_enabled.push_back(kComposeboxIpad);
   config.features_enabled.push_back(kAimCobrowse);
   config.features_enabled.push_back(kAssistantContainer);
+  config.features_enabled.push_back(kComposeboxPhysicalKeyboardReturnKeys);
   config.features_disabled.push_back(kComposeboxAIMDisabled);
   config.features_disabled.push_back(omnibox::kAimServerEligibilityEnabled);
   config.features_disabled.push_back(kAssistantAimMinimizedState);
@@ -158,7 +163,10 @@ id<GREYMatcher> CloseButton() {
   }];
   [super setUp];
   [ComposeboxAppInterface enableAllTools];
+  self.testServer->ServeFilesFromSourceDirectory(
+      base::FilePath("ios/testing/data/http_server_files"));
   GREYAssertTrue(self.testServer->Start(), @"Test server failed to start.");
+  _defaultURL = self.testServer->GetURL("/echo");
 }
 
 - (void)testCloseButtonDismissesAssistant {
@@ -166,7 +174,7 @@ id<GREYMatcher> CloseButton() {
     EARL_GREY_TEST_SKIPPED(
         @"Skipped when kComposeboxServerSideState is enabled.");
   }
-  OpenCoBrowse(self.testServer);
+  OpenCoBrowse(_defaultURL);
 
   // Wait for the assistant to appear.
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
@@ -184,7 +192,7 @@ id<GREYMatcher> CloseButton() {
     EARL_GREY_TEST_SKIPPED(
         @"Skipped when kComposeboxServerSideState is enabled.");
   }
-  OpenCoBrowse(self.testServer);
+  OpenCoBrowse(_defaultURL);
 
   // Wait for the assistant to appear.
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
@@ -228,14 +236,14 @@ id<GREYMatcher> CloseButton() {
   }
 
   // First presentation & dismissal.
-  OpenCoBrowse(self.testServer);
+  OpenCoBrowse(_defaultURL);
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
   [[EarlGrey selectElementWithMatcher:CloseButton()] performAction:grey_tap()];
   [[EarlGrey selectElementWithMatcher:CloseButton()]
       assertWithMatcher:grey_nil()];
 
   // Second presentation & dismissal.
-  OpenCoBrowse(self.testServer);
+  OpenCoBrowse(_defaultURL);
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
   [[EarlGrey selectElementWithMatcher:CloseButton()] performAction:grey_tap()];
   [[EarlGrey selectElementWithMatcher:CloseButton()]
@@ -247,7 +255,7 @@ id<GREYMatcher> CloseButton() {
     EARL_GREY_TEST_SKIPPED(
         @"Skipped when kComposeboxServerSideState is enabled.");
   }
-  OpenCoBrowse(self.testServer);
+  OpenCoBrowse(_defaultURL);
 
   // Wait for the assistant to appear.
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
@@ -282,7 +290,7 @@ id<GREYMatcher> CloseButton() {
     EARL_GREY_TEST_SKIPPED(@"Secondary toolbar is not present on iPad.");
   }
 
-  OpenCoBrowse(self.testServer);
+  OpenCoBrowse(_defaultURL);
 
   // Wait for the assistant to appear.
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
@@ -313,7 +321,7 @@ id<GREYMatcher> CloseButton() {
     EARL_GREY_TEST_SKIPPED(
         @"Skipped when kComposeboxServerSideState is enabled.");
   }
-  OpenCoBrowse(self.testServer);
+  OpenCoBrowse(_defaultURL);
 
   // Wait for the assistant to appear.
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
@@ -347,7 +355,7 @@ id<GREYMatcher> CloseButton() {
     EARL_GREY_TEST_SKIPPED(
         @"Skipped when kComposeboxServerSideState is enabled.");
   }
-  OpenCoBrowse(self.testServer);
+  OpenCoBrowse(_defaultURL);
 
   // Wait for the assistant to appear.
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
@@ -397,7 +405,7 @@ id<GREYMatcher> CloseButton() {
     EARL_GREY_TEST_SKIPPED(
         @"Skipped when kComposeboxServerSideState is enabled.");
   }
-  OpenCoBrowse(self.testServer);
+  OpenCoBrowse(_defaultURL);
 
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
 
@@ -494,7 +502,7 @@ id<GREYMatcher> CloseButton() {
   config.relaunch_policy = ForceRelaunchByKilling;
   [[AppLaunchManager sharedManager] ensureAppLaunchedWithConfiguration:config];
 
-  OpenCoBrowse(self.testServer);
+  OpenCoBrowse(_defaultURL);
 
   // Wait for the assistant to appear and be visible.
   [ChromeEarlGrey
@@ -516,7 +524,7 @@ id<GREYMatcher> CloseButton() {
 }
 
 - (void)testAssistantPersistsOnBackground {
-  OpenCoBrowse(self.testServer);
+  OpenCoBrowse(_defaultURL);
 
   // Wait for the assistant to appear.
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
@@ -529,7 +537,7 @@ id<GREYMatcher> CloseButton() {
 }
 
 - (void)testAssistantDoesNotReappearAfterExplicitClose {
-  OpenCoBrowse(self.testServer);
+  OpenCoBrowse(_defaultURL);
 
   // Wait for the assistant to appear.
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
@@ -558,7 +566,7 @@ id<GREYMatcher> CloseButton() {
 }
 
 - (void)testAssistantPersistsOnColdStart {
-  OpenCoBrowse(self.testServer);
+  OpenCoBrowse(_defaultURL);
 
   // Wait for the assistant to appear.
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
@@ -597,7 +605,7 @@ id<GREYMatcher> CloseButton() {
     EARL_GREY_TEST_DISABLED(@"Multiple windows can't be opened.");
   }
 
-  OpenCoBrowse(self.testServer);
+  OpenCoBrowse(_defaultURL);
 
   // Wait for the assistant to appear in the first window.
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
@@ -656,7 +664,7 @@ id<GREYMatcher> CloseButton() {
 
   // 2. Open a second tab and start Co-browse.
   [ChromeEarlGrey openNewTab];
-  OpenCoBrowse(self.testServer);
+  OpenCoBrowse(_defaultURL);
 
   // Wait for Assistant to appear and start in Medium state.
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
@@ -697,7 +705,7 @@ id<GREYMatcher> CloseButton() {
   }
 
   // 1. Open Co-browse.
-  OpenCoBrowse(self.testServer);
+  OpenCoBrowse(_defaultURL);
 
   // Wait for Assistant to appear and start in Medium state.
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
@@ -723,7 +731,7 @@ id<GREYMatcher> CloseButton() {
       performAction:grey_tap()];
 
   // 4. Reopen Co-browse.
-  OpenCoBrowse(self.testServer);
+  OpenCoBrowse(_defaultURL);
 
   // 5. Verify it starts in the default Medium detent (NOT Large).
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
@@ -740,7 +748,7 @@ id<GREYMatcher> CloseButton() {
     EARL_GREY_TEST_SKIPPED(
         @"Skipped when kComposeboxServerSideState is enabled.");
   }
-  OpenCoBrowse(self.testServer);
+  OpenCoBrowse(self.testServer->GetURL("/tall_page.html"));
 
   // Wait for the assistant to appear.
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
@@ -750,15 +758,15 @@ id<GREYMatcher> CloseButton() {
       selectElementWithMatcher:grey_accessibilityID(
                                    kAssistantContainerDetentMediumIdentifier)]
       performAction:grey_swipeFastInDirection(kGREYDirectionDown)];
+  // Wait for the minimized detent.
   WaitForDetent(AssistantContainerDetent::kMinimized);
 
-  // Make the Main page tall so we can scroll to hide the toolbar.
-  NSString* script = @"document.body.style.height = '2000px';";
-  [ChromeEarlGrey evaluateJavaScriptForSideEffect:script];
-
-  // Scroll down on the Main page to hide the toolbar.
+  // Scroll down on the Main page to hide the toolbar. We start the swipe from
+  // the middle of the screen to avoid accidentally swiping up on the bottom
+  // toolbar, which would open the Tab Grid.
   [[EarlGrey selectElementWithMatcher:MainWebStateScrollView()]
-      performAction:grey_swipeSlowInDirection(kGREYDirectionUp)];
+      performAction:grey_swipeSlowInDirectionWithStartPoint(kGREYDirectionUp,
+                                                            0.5, 0.2)];
 
   // Verify that the toolbar is hidden.
   [ChromeEarlGreyUI waitForToolbarVisible:NO];
@@ -789,7 +797,7 @@ id<GREYMatcher> CloseButton() {
         @"Skipped when kComposeboxServerSideState is enabled.");
   }
 
-  OpenCoBrowse(self.testServer);
+  OpenCoBrowse(_defaultURL);
 
   // Wait for the assistant to appear.
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];
@@ -844,7 +852,7 @@ id<GREYMatcher> CloseButton() {
   }
 
   // 1. Open Co-browse. This loads /echo and opens the Assistant.
-  OpenCoBrowse(self.testServer);
+  OpenCoBrowse(_defaultURL);
 
   // Wait for the assistant to appear.
   [ChromeEarlGrey waitForUIElementToAppearWithMatcher:CloseButton()];

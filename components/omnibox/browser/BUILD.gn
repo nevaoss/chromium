@@ -11,7 +11,6 @@ import("//extensions/buildflags/buildflags.gni")
 import("//mojo/public/tools/bindings/mojom.gni")
 import("//testing/libfuzzer/fuzzer_test.gni")
 import("//third_party/protobuf/proto_library.gni")
-import("//tools/json_to_struct/json_to_struct.gni")
 import("//ui/webui/webui_features.gni")
 
 if (is_android) {
@@ -151,13 +150,6 @@ proto_library("partner_location_descriptor_proto") {
   sources = [ "proto/partner_location_descriptor.proto" ]
 }
 
-json_to_struct("ai_mode_button_config") {
-  source = "ai_mode_button_config.json"
-  schema_file = "ai_mode_button_config_schema.json"
-  namespace = "ai_mode_button_config"
-  deps = [ "//components/search_engines" ]
-}
-
 static_library("browser") {
   _configs = configs
   configs = []
@@ -183,8 +175,6 @@ static_library("browser") {
     "actions/omnibox_pedal_provider.h",
     "actions/tab_switch_action.cc",
     "actions/tab_switch_action.h",
-    "ai_mode_button_service.cc",
-    "ai_mode_button_service.h",
     "aim_eligibility_service.cc",
     "aim_eligibility_service.h",
     "answers_cache.cc",
@@ -386,7 +376,6 @@ static_library("browser") {
   ]
 
   public_deps = [
-    ":ai_mode_button_config",
     ":aim_eligibility_service_features",
     ":buildflags",
     ":location_bar",
@@ -814,7 +803,6 @@ static_library("test_support") {
     "mock_unscoped_extension_provider_delegate.h",
     "shortcuts_provider_test_util.cc",
     "shortcuts_provider_test_util.h",
-    "test_ai_mode_button_service.h",
     "test_location_bar_model.cc",
     "test_location_bar_model.h",
     "test_omnibox_client.cc",
@@ -888,7 +876,6 @@ source_set("unit_tests") {
     "actions/omnibox_extension_action_unittest.cc",
     "actions/omnibox_pedal_provider_unittest.cc",
     "actions/omnibox_pedal_unittest.cc",
-    "ai_mode_button_service_unittest.cc",
     "aim_eligibility_service_unittest.cc",
     "answers_cache_unittest.cc",
     "autocomplete_controller_metrics_unittest.cc",

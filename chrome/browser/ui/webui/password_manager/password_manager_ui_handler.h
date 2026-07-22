@@ -61,6 +61,14 @@ class PasswordManagerUIHandler
 
   void RemoveBackupPassword(int id) override;
 
+  void RemovePasswordException(int id) override;
+
+  void StartBulkPasswordCheck() override;
+
+  void MovePasswordsToAccount(const std::vector<int>& ids) override;
+
+  void ResetImporter(bool delete_file, ResetImporterCallback callback) override;
+
   void GetActorLoginPermissions(
       GetActorLoginPermissionsCallback callback) override;
 

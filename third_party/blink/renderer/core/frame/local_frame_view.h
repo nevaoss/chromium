@@ -488,6 +488,7 @@ class CORE_EXPORT LocalFrameView final
   void SetIsVisuallyNonEmpty() { is_visually_non_empty_ = true; }
   void EnableAutoSizeMode(const gfx::Size& min_size, const gfx::Size& max_size);
   void DisableAutoSizeMode();
+  bool IsBeingAutoSized() const { return is_being_auto_sized_; }
 
   void ForceLayoutForPagination(float maximum_shrink_factor);
 
@@ -1217,6 +1218,8 @@ class CORE_EXPORT LocalFrameView final
   gfx::Size layout_size_;
   std::optional<gfx::Size> layout_size_for_natural_size_;
   bool layout_size_fixed_to_frame_size_;
+
+  bool is_being_auto_sized_ = false;
 
   bool needs_update_geometries_;
 

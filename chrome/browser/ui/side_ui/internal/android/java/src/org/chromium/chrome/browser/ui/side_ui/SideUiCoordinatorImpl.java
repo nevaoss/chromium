@@ -66,6 +66,13 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
     private final SideUiShowabilityNotifier mShowabilityNotifier = new SideUiShowabilityNotifier();
 
     /**
+     * Whether {@link #updateUiInternal} is in progress.
+     *
+     * <p>This is used to prevent re-entrancy into {@link #updateUiInternal}.
+     */
+    private boolean mIsUpdatingUi;
+
+    /**
      * Constructor for a {@link SideUiCoordinatorImpl}.
      *
      * @param parentActivity The {@link Activity} containing all Side UIs.
@@ -206,77 +213,7 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
     // ConfigurationChangedObserver Implementation
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
-        ThreadUtils.assertOnUiThread();
-        if (mSideUiContainers.isEmpty()) {
-            return;
-        }
-
-        // TODO(crbug.com/478338737): Update to account for multiple side containers.
-        if (mSideUiContainers.size() != 1) {
-            return;
-        }
-        var sideUiContainer = mSideUiContainers.get(0);
-        if (sideUiContainer.getSideUiId() != SideUiId.SIDE_PANEL) {
-            return;
-        }
-
-        // 1. End any existing transitions still in progress. This needs to be done before checking
-        // the current specs, since specs aren't fully updated until after all transitions have
-        // finished.
-        TransitionManager.endTransitions(getRootView());
-
-        // 2. Get the current SideUiSpecs.
-        SideUiSpecs currentSideUiSpecs = getCurrentSideUiSpecsInternal();
-        @AnchorSide int currentAnchorSide = sideUiContainer.getAnchorSide();
-        @Px
-        int currentSideUiWidth =
-                currentAnchorSide == AnchorSide.LEFT
-                        ? currentSideUiSpecs.getWidth(AnchorSide.LEFT)
-                        : currentSideUiSpecs.getWidth(AnchorSide.RIGHT);
-
-        // 3. Check if we need to close/re-open SideUi.
-        @Px int windowWidth = getWindowWidth();
-        @Px int minWebContentsWidth = ViewUtils.dpToPx(mParentActivity, MIN_WEB_CONTENTS_WIDTH_DP);
-        SideUiSpecs newSideUiSpecs = determineSideUiSpecs(windowWidth, minWebContentsWidth);
-        boolean canShowSideUi = newSideUiSpecs.getWidth(currentAnchorSide) > 0;
-
-        List<@SideUiId Integer> showableSideUiIds = new ArrayList<>();
-        List<@SideUiId Integer> unshowableSideUiIds = new ArrayList<>();
-        if (canShowSideUi) {
-            showableSideUiIds.add(SideUiId.SIDE_PANEL);
-        } else {
-            unshowableSideUiIds.add(SideUiId.SIDE_PANEL);
-        }
-        SideUiShowability sideUiShowability =
-                new SideUiShowability(showableSideUiIds, unshowableSideUiIds);
-
-        mShowabilityNotifier.notify(mSideUiObservers, sideUiShowability);
-
-        // 3.1. Check if we need to close side UI.
-        if (currentSideUiWidth != 0 && !canShowSideUi) {
-            // Don't simply close the side UI by calling commitNewSpecsForStaticResize() with a
-            // zero width. SideUiContainer may need to save states so that it can restore its UI
-            // when the window becomes large enough again.
-            //
-            // So we should notify SideUiContainer, which should then call updateUi().
-            sideUiContainer.onWindowResized(/* canShowSideUi= */ false);
-            return;
-        }
-
-        // 3.2 Check if we need to re-open side UI.
-        if (currentSideUiWidth == 0 && canShowSideUi) {
-            // Similarly, we shouldn't call commitNewSpecsForStaticResize() here.
-            // SideUiContainer needs to check whether there actually exists side UI to restore,
-            // based on its internal states.
-            sideUiContainer.onWindowResized(/* canShowSideUi= */ true);
-            return;
-        }
-
-        // 4. At this point, we don't need to close or re-open side UI, so we'll just resize side
-        // UI.
-        if (!newSideUiSpecs.equals(currentSideUiSpecs)) {
-            commitNewSpecsForStaticResize(newSideUiSpecs, newSideUiSpecs);
-        }
+        updateUiInternal(new UiUpdateRequest(/* sideUiId= */ null, /* suppressAnimations= */ true));
     }
 
     @VisibleForTesting
@@ -308,6 +245,9 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
     }
 
     private void updateUiInternal(UiUpdateRequest request) {
+        assert !mIsUpdatingUi : "another UI update is still in progress";
+        mIsUpdatingUi = true;
+
         // 1. End any existing transitions still in progress. This needs to be done before checking
         // the current specs, since specs aren't fully updated until after all transitions have
         // finished.
@@ -331,7 +271,7 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
 
         // 5. Handle auto-close/auto-restore.
         for (var container : mSideUiContainers) {
-            if (container.getSideUiId() == request.mSideUiId) {
+            if (request.mSideUiId != null && container.getSideUiId() == request.mSideUiId) {
                 // No need to auto-close/auto-restore the requesting SideUi.
                 continue;
             }
@@ -356,6 +296,8 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
                     suppressAnimations ? null : collectTransitions(newSideUiSpecs, sideUiSpecsDiff);
             commitNewSideUiSpecs(newSideUiSpecs, sideUiSpecsDiff, transitionSet);
         }
+
+        mIsUpdatingUi = false;
     }
 
     private SideUiSpecs getCurrentSideUiSpecsInternal() {

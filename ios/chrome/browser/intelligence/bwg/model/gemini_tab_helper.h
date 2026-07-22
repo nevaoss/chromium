@@ -92,6 +92,10 @@ class GeminiTabHelper : public web::WebStateObserver,
   // Whether Gemini is available for the current web state.
   bool IsGeminiAvailableForWebState();
 
+  // Whether contextual entry points are allowed to be accessed for the current
+  // web state.
+  bool IsContextualEntryPointAllowed();
+
   // Returns the current type of page or WebState.
   IOSGeminiInvocationPageType GetCurrentPageType();
 

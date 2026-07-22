@@ -118,10 +118,38 @@ mojom::ProfileEnablementPtr BuildProfileEnablement(
           NOTREACHED();
       }
     }
+
+    if (actor_policy_checker->GlicApiCanActOnWeb()) {
+      result->glic_api_actuation_eligibility =
+          mojom::ActuationEligibility::kEligible;
+    } else {
+      switch (actor_policy_checker->GlicApiCannotActOnWebReason()) {
+        case CannotActReason::kAccountCapabilityIneligible:
+          result->glic_api_actuation_eligibility =
+              mojom::ActuationEligibility::kMissingAccountCapability;
+          break;
+        case CannotActReason::kAccountMissingChromeBenefits:
+          result->glic_api_actuation_eligibility =
+              mojom::ActuationEligibility::kMissingChromeBenefits;
+          break;
+        case CannotActReason::kDisabledByPolicy:
+          result->glic_api_actuation_eligibility =
+              mojom::ActuationEligibility::kDisabledByPolicy;
+          break;
+        case CannotActReason::kEnterpriseWithoutManagement:
+          result->glic_api_actuation_eligibility =
+              mojom::ActuationEligibility::kEnterpriseWithoutManagement;
+          break;
+        case CannotActReason::kNone:
+          NOTREACHED();
+      }
+    }
   } else {
     // If there is no GlicKeyedService (e.g., due to country filter),
     // default to missing capability or disabled by policy.
     result->actuation_eligibility =
+        mojom::ActuationEligibility::kMissingAccountCapability;
+    result->glic_api_actuation_eligibility =
         mojom::ActuationEligibility::kMissingAccountCapability;
   }
 

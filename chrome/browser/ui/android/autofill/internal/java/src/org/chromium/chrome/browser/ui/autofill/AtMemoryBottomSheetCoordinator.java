@@ -7,6 +7,7 @@ package org.chromium.chrome.browser.ui.autofill;
 import android.content.Context;
 
 import org.chromium.build.annotations.NullMarked;
+import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.ui.autofill.internal.R;
 import org.chromium.components.autofill.AutofillSuggestion;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
@@ -48,11 +49,18 @@ public class AtMemoryBottomSheetCoordinator {
 
         void onQuerySubmitted(String query);
 
+        void onQueryTextChanged(String query);
+
         void onSuggestionClicked(int position);
+
+        boolean isSearching();
     }
 
     AtMemoryBottomSheetCoordinator(
-            Context context, BottomSheetController sheetController, Delegate delegate) {
+            Context context,
+            BottomSheetController sheetController,
+            Delegate delegate,
+            Profile profile) {
         mBottomSheetController = sheetController;
 
         AtMemoryBottomSheetView view = new AtMemoryBottomSheetView(context);
@@ -60,7 +68,7 @@ public class AtMemoryBottomSheetCoordinator {
         ModelList modelList = new ModelList();
         mMediator =
                 new AtMemoryBottomSheetMediator(
-                        context, delegate, modelList, view::hideKeyboardAndClearFocus);
+                        profile, delegate, modelList, view::hideKeyboardAndClearFocus);
 
         SimpleRecyclerViewAdapter adapter = new SimpleRecyclerViewAdapter(modelList);
         adapter.registerType(

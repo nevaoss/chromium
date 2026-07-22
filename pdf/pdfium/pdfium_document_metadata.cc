@@ -104,7 +104,7 @@ DocumentMetadata GetPDFiumDocumentMetadata(FPDF_DOCUMENT doc,
   doc_metadata.mod_date =
       ParsePdfDate(GetTrimmedMetadataByField(doc, "ModDate"));
   doc_metadata.language_tag =
-      base::LanguageTagConverter::GetInstance().FromString(
+      base::i18n::LanguageTagConverter::GetInstance().FromString(
           GetDocumentLanguage(doc));
 
   return doc_metadata;

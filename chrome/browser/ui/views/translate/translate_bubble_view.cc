@@ -1147,6 +1147,16 @@ void TranslateBubbleView::SwitchView(
 
   UpdateChildVisibilities();
 
+  // When the bubble menu transitions to the target language search view,
+  // request focus on the search bar instead of keeping it on the previous
+  // focused element.
+  if (view_state == TranslateBubbleModel::VIEW_STATE_TARGET_LANGUAGE &&
+      base::FeatureList::IsEnabled(translate::kTranslateLanguageSearchUI)) {
+    if (translate_language_search_view_) {
+      translate_language_search_view_->RequestFocus();
+    }
+  }
+
   if (view_state == TranslateBubbleModel::VIEW_STATE_AFTER_TRANSLATE) {
     AnnounceTextToScreenReader(l10n_util::GetStringFUTF16(
         IDS_TRANSLATE_BUBBLE_TRANSLATION_COMPLETE_ANNOUNCEMENT,

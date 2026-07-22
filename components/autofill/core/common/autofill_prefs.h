@@ -146,6 +146,17 @@ inline constexpr char kAutofillSyncTransportOptIn[] =
 // A list of GURL wildcard patterns and data categories that are blocked
 // from Autofill by enterprise policy.
 inline constexpr char kAutofillTypesBlocked[] = "autofill.types_blocked";
+
+// Keys and values used in `kAutofillTypesBlocked` preference.
+inline constexpr char kAutofillBlockedTypesUrlPatternKey[] = "url_pattern";
+inline constexpr char kAutofillBlockedTypesBlockedTypesKey[] = "blocked_types";
+
+inline constexpr char kAutofillBlockedTypesContactInfoValue[] = "contact_info";
+inline constexpr char kAutofillBlockedTypesPaymentsValue[] = "payments";
+inline constexpr char kAutofillBlockedTypesIdentityDocsValue[] =
+    "identity_docs";
+inline constexpr char kAutofillBlockedTypesTravelValue[] = "travel";
+inline constexpr char kAutofillBlockedTypesShoppingValue[] = "shopping";
 // The file path where the autofill states data is downloaded to.
 inline constexpr char kAutofillStatesDataDir[] = "autofill.states_data_dir";
 // The (randomly inititialied) seed value to use when encoding form/field

@@ -309,4 +309,21 @@ public class TabStripIphControllerUnitTest {
         assertEquals(30, cmd.anchorRect.right);
         assertEquals(40, cmd.anchorRect.bottom);
     }
+
+    @Test
+    public void testIphProperties_VerticalTabsPromo() {
+        mController.showIphOnTabStrip(
+                null, mTab, mContainerView, IphType.VERTICAL_TABS_PROMO, TAB_STRIP_HEIGHT, false);
+        var captor = ArgumentCaptor.forClass(IphCommand.class);
+        verify(mUserEducationHelper).requestShowIph(captor.capture());
+        var cmd = captor.getValue();
+
+        // Assert: feature name and iph string.
+        assertEquals(FeatureConstants.ANDROID_VERTICAL_TABS_PROMO_FEATURE, cmd.featureName);
+        assertEquals(R.string.iph_android_vertical_tabs_promo_touch, cmd.stringId);
+
+        // Assert: anchor rect bounds.
+        Rect anchorRect = cmd.anchorRect;
+        assertEquals("Iph anchor rect bottom bound is incorrect ", 40, anchorRect.bottom);
+    }
 }

@@ -147,8 +147,6 @@ source_set("web_applications") {
     "isolated_web_apps/isolated_web_app_error_page.h",
     "isolated_web_apps/isolated_web_app_features.cc",
     "isolated_web_apps/isolated_web_app_features.h",
-    "isolated_web_apps/isolated_web_app_integrity_block_data.cc",
-    "isolated_web_apps/isolated_web_app_integrity_block_data.h",
     "isolated_web_apps/isolated_web_app_throttle.cc",
     "isolated_web_apps/isolated_web_app_throttle.h",
     "isolated_web_apps/isolated_web_app_trust_checker.cc",
@@ -157,8 +155,6 @@ source_set("web_applications") {
     "isolated_web_apps/isolated_web_app_url_info.h",
     "isolated_web_apps/isolated_web_app_user_installed_manager.cc",
     "isolated_web_apps/isolated_web_app_user_installed_manager.h",
-    "isolated_web_apps/isolation_data.cc",
-    "isolated_web_apps/isolation_data.h",
     "isolated_web_apps/iwa_permissions_policy_cache.cc",
     "isolated_web_apps/iwa_permissions_policy_cache.h",
     "isolated_web_apps/jobs/get_isolated_web_app_size_job.cc",
@@ -273,6 +269,8 @@ source_set("web_applications") {
     "model/migration_source.h",
     "model/pending_migration_info.cc",
     "model/pending_migration_info.h",
+    "model/safe_url_pattern_to_value.cc",
+    "model/safe_url_pattern_to_value.h",
     "model/web_app_comparison.cc",
     "model/web_app_comparison.h",
     "model/web_app_icon_types.cc",
@@ -752,6 +750,7 @@ source_set("web_applications") {
   }
 
   public_deps = [
+    ":iwa_types",
     "//chrome/browser:browser_public_dependencies",
     "//chrome/browser/web_applications/isolated_web_apps/key_distribution",
     "//chrome/browser/web_applications/mojom:mojom_web_apps_enum",
@@ -806,6 +805,22 @@ source_set("features") {
     "//content/public/common",
   ]
   public_deps = [ "//base" ]
+}
+
+source_set("iwa_types") {
+  sources = [
+    "model/integrity_block_data.cc",
+    "model/integrity_block_data.h",
+    "model/isolation_data.cc",
+    "model/isolation_data.h",
+  ]
+  public_deps = [
+    "//base",
+    "//chrome/browser/web_applications/proto",
+    "//components/web_package",
+    "//components/webapps/isolated_web_apps/types",
+    "//url",
+  ]
 }
 
 if (!is_android) {
@@ -1288,6 +1303,7 @@ source_set("web_applications_browser_tests") {
     "commands/web_install_from_url_command_browsertest.cc",
     "get_installed_related_apps_browsertest.cc",
     "install_element_browsertest.cc",
+    "isolated_web_apps/browser_navigator_iwa_browsertest.cc",
     "isolated_web_apps/commands/garbage_collect_storage_partitions_command_browsertest.cc",
     "isolated_web_apps/commands/get_isolated_web_app_browsing_data_command_browsertest.cc",
     "isolated_web_apps/commands/install_isolated_web_app_from_command_line_browsertest.cc",
@@ -1404,6 +1420,7 @@ source_set("web_applications_browser_tests") {
     "//chrome/browser/push_messaging:service_impl_public",
     "//chrome/browser/ui:simple_message_box_internal",
     "//chrome/browser/ui/navigator",
+    "//chrome/browser/ui/navigator:browser_tests",
     "//chrome/browser/ui/profiles",
     "//chrome/browser/ui/views/location_bar",
     "//chrome/browser/ui/views/toolbar",

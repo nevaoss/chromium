@@ -55,8 +55,6 @@
 #include "components/omnibox/browser/actions/omnibox_action.h"
 #include "components/omnibox/browser/actions/omnibox_pedal.h"
 #include "components/omnibox/browser/actions/omnibox_pedal_concepts.h"
-#include "components/omnibox/browser/ai_mode_button_config.h"
-#include "components/omnibox/browser/ai_mode_button_service.h"
 #include "components/omnibox/browser/autocomplete_classifier.h"
 #include "components/omnibox/browser/autocomplete_enums.h"
 #include "components/omnibox/browser/autocomplete_match.h"
@@ -64,6 +62,7 @@
 #include "components/omnibox/browser/autocomplete_provider.h"
 #include "components/omnibox/browser/autocomplete_provider_client.h"
 #include "components/omnibox/browser/contextual_search_provider.h"
+#include "components/omnibox/browser/geolocation_header_service.h"
 #include "components/omnibox/browser/history_fuzzy_provider.h"
 #include "components/omnibox/browser/history_url_provider.h"
 #include "components/omnibox/browser/keyword_provider.h"
@@ -88,6 +87,8 @@
 #include "components/omnibox/common/omnibox_feature_configs.h"
 #include "components/omnibox/common/omnibox_features.h"
 #include "components/omnibox/common/omnibox_focus_state.h"
+#include "components/search_engines/ai_mode_button_config.h"
+#include "components/search_engines/ai_mode_button_service.h"
 #include "components/search_engines/search_engine_type.h"
 #include "components/search_engines/template_url.h"
 #include "components/search_engines/template_url_prepopulate_data.h"
@@ -389,6 +390,14 @@ bool OmniboxEditModel::ResetDisplayTexts() {
   url_for_editing_ = controller_->client()->GetFormattedFullURL();
   display_text_ = controller_->client()->GetURLForDisplay();
 
+  // Under V2, if there is an active user draft (user_input_in_progress_), we
+  // treat the user as active/interacting to prevent background page loads or
+  // async tab updates from wiping out the restored draft.
+  const bool user_interacting =
+      has_focus() ||
+      (base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup) &&
+       user_input_in_progress_);
+
   // When there's new permanent text, and the user isn't interacting with the
   // omnibox, we want to revert the edit to show the new text.  We could simply
   // define "interacting" as "the omnibox has focus", but we still allow updates
@@ -400,7 +409,7 @@ bool OmniboxEditModel::ResetDisplayTexts() {
   // URL" (which sounds as if it might be persistent) from seeing just that URL
   // forever afterwards.
   return (GetPermanentDisplayText() != old_display_text) &&
-         (!has_focus() ||
+         (!user_interacting ||
           (!user_input_in_progress_ && !controller_->IsPopupOpen()));
 }
 
@@ -700,12 +709,9 @@ void OmniboxEditModel::StartAutocomplete(bool prevent_inline_autocomplete) {
   input_.set_prevent_inline_autocomplete(prevent_inline_autocomplete ||
                                          just_deleted_text_ ||
                                          paste_state_ != PasteState::kNone);
-  input_.set_prefer_keyword(is_keyword_selected());
+  input_.set_in_keyword_mode(is_keyword_selected());
   input_.set_allow_exact_keyword_match(is_keyword_selected() ||
                                        allow_exact_keyword_match_);
-  input_.set_in_keyword_mode(
-      keyword_mode_entry_method_ !=
-      metrics::OmniboxEventProto_KeywordModeEntryMethod_INVALID);
   if (std::optional<lens::proto::LensOverlaySuggestInputs> suggest_inputs =
           controller_->client()->GetLensOverlaySuggestInputs()) {
     input_.set_lens_overlay_suggest_inputs(*suggest_inputs);
@@ -1926,46 +1932,8 @@ gfx::Image OmniboxEditModel::GetMatchIconIfExtension(
 
 std::u16string OmniboxEditModel::GetSuggestionGroupHeaderText(
     const std::optional<omnibox::GroupId>& suggestion_group_id) const {
-  if (suggestion_group_id.has_value()) {
-    const auto& input = autocomplete_controller()->input();
-    bool force_hide_row_header =
-        OmniboxFieldTrial::IsHideSuggestionGroupHeadersEnabledInContext(
-            input.current_page_classification());
-    auto header_text =
-        autocomplete_controller()->result().GetHeaderForSuggestionGroup(
-            suggestion_group_id.value());
-
-    bool has_toolbelt_lens_action =
-        autocomplete_controller()->contextual_search_provider() &&
-        autocomplete_controller()
-            ->contextual_search_provider()
-            ->HasToolbeltLensAction();
-    const auto* client =
-        autocomplete_controller()->autocomplete_provider_client();
-    bool has_lens_search_chip =
-        client->IsOmniboxNextLensSearchChipEnabled() &&
-        ContextualSearchProvider::LensEntrypointEligible(input, client);
-    // Show contextual search suggestion group header if the Lens action has
-    // been moved to the Omnibox toolbelt OR the "Omnibox Next" Lens search chip
-    // is currently active.
-    // TODO (crbug.com/510907230) - Clean up this logic once it's confirmed that
-    // a header is not needed for the omnibox contextual search results.
-    if (suggestion_group_id.value() == omnibox::GROUP_CONTEXTUAL_SEARCH &&
-        (has_toolbelt_lens_action || has_lens_search_chip)) {
-      if (base::FeatureList::IsEnabled(omnibox::kHideContextualGroupHeaders) ||
-          has_lens_search_chip) {
-        return u"";
-      }
-      // TODO(khalidpeer): Make direct use of `header_text` once we start
-      //     receiving a non-empty contextual search header from the server.
-      return header_text.empty()
-                 ? l10n_util::GetStringUTF16(
-                       IDS_CONTEXTUAL_SEARCH_OPEN_LENS_ACTION_LABEL)
-                 : header_text;
-    }
-    return force_hide_row_header ? u"" : header_text;
-  }
-  return u"";
+  return autocomplete_controller()->GetSuggestionGroupHeaderText(
+      suggestion_group_id);
 }
 
 void OmniboxEditModel::ResetPopupToInitialState() {
@@ -1983,7 +1951,7 @@ void OmniboxEditModel::ResetPopupToInitialState() {
 
 OmniboxPopupSelection OmniboxEditModel::GetPopupSelection() const {
   DCHECK(BUILDFLAG(IS_ANDROID) || popup_view_ ||
-         base::FeatureList::IsEnabled(omnibox::kEverywhereOmnibox));
+         base::FeatureList::IsEnabled(omnibox::kOmniboxEverywhere));
   return popup_selection_;
 }
 
@@ -1992,7 +1960,7 @@ void OmniboxEditModel::SetPopupSelection(OmniboxPopupSelection new_selection,
                                          bool force_update_ui,
                                          bool native_update) {
   DCHECK(BUILDFLAG(IS_ANDROID) || popup_view_ ||
-         base::FeatureList::IsEnabled(omnibox::kEverywhereOmnibox));
+         base::FeatureList::IsEnabled(omnibox::kOmniboxEverywhere));
   // Special case for updating the focus ring around the AIM button.
   if (view_) {
     view_->ApplyFocusRingToAimButton(new_selection.state ==
@@ -2078,7 +2046,7 @@ void OmniboxEditModel::SetPopupSelection(OmniboxPopupSelection new_selection,
 
 bool OmniboxEditModel::IsPopupSelectionOnInitialLine() const {
   DCHECK(BUILDFLAG(IS_ANDROID) || popup_view_ ||
-         base::FeatureList::IsEnabled(omnibox::kEverywhereOmnibox));
+         base::FeatureList::IsEnabled(omnibox::kOmniboxEverywhere));
   size_t initial_line = autocomplete_controller()->result().default_match()
                             ? 0
                             : OmniboxPopupSelection::kNoMatch;
@@ -2088,13 +2056,13 @@ bool OmniboxEditModel::IsPopupSelectionOnInitialLine() const {
 bool OmniboxEditModel::IsPopupControlPresentOnMatch(
     OmniboxPopupSelection selection) const {
   DCHECK(BUILDFLAG(IS_ANDROID) || popup_view_ ||
-         base::FeatureList::IsEnabled(omnibox::kEverywhereOmnibox));
+         base::FeatureList::IsEnabled(omnibox::kOmniboxEverywhere));
   return selection.IsControlPresentOnMatch(autocomplete_controller()->result());
 }
 
 void OmniboxEditModel::TryDeletingPopupLine(size_t line) {
   DCHECK(BUILDFLAG(IS_ANDROID) || popup_view_ ||
-         base::FeatureList::IsEnabled(omnibox::kEverywhereOmnibox));
+         base::FeatureList::IsEnabled(omnibox::kOmniboxEverywhere));
 
   // When called with line == GetPopupSelection().line, we could use
   // GetInfoForCurrentText() here, but it seems better to try and delete the
@@ -2564,7 +2532,6 @@ void OmniboxEditModel::AcceptInput(WindowOpenDisposition disposition,
         controller_->client()->ShouldDefaultTypedNavigationsToHttps(), 0,
         false);
     input.set_prevent_inline_autocomplete(input_.prevent_inline_autocomplete());
-    input.set_prefer_keyword(input_.prefer_keyword());
     input.set_in_keyword_mode(input_.in_keyword_mode());
     input.set_allow_exact_keyword_match(input_.allow_exact_keyword_match());
     input.set_omit_asynchronous_matches(input_.omit_asynchronous_matches());
@@ -2919,19 +2886,13 @@ void OmniboxEditModel::OpenMatch(OmniboxPopupSelection selection,
   TemplateURLService* template_url_service =
       controller_->client()->GetTemplateURLService();
   if (action) {
-    OmniboxAction::ExecutionContext context(
-        *(autocomplete_controller()->autocomplete_provider_client()),
-        base::BindOnce(&OmniboxClient::OnAutocompleteAccept,
-                       controller_->client()->AsWeakPtr()),
-        match_selection_timestamp, disposition);
-    base::UmaHistogramMicrosecondsTimes(
-        "Omnibox.InputToExecuteAction",
-        base::TimeTicks::Now() - match_selection_timestamp);
-    action->Execute(context);
-    if (context.enter_starter_pack_id_ != 0 && template_url_service) {
+    int enter_starter_pack_id = controller_->client()->ExecuteAction(
+        action, disposition, match_selection_timestamp,
+        *(autocomplete_controller()->autocomplete_provider_client()));
+    if (enter_starter_pack_id != 0 && template_url_service) {
       template_url_starter_pack_data::StarterPackId starter_pack_id =
           static_cast<template_url_starter_pack_data::StarterPackId>(
-              context.enter_starter_pack_id_);
+              enter_starter_pack_id);
       if (const TemplateURL* starter_pack_turl =
               template_url_service->FindStarterPackTemplateURL(
                   starter_pack_id)) {
@@ -2989,6 +2950,12 @@ void OmniboxEditModel::OpenMatch(OmniboxPopupSelection selection,
               autocomplete_controller()->autocomplete_provider_client(),
               alternate_input, alternate_nav_url, false));
     }
+  }
+
+  if (auto* geolocation_header_service = autocomplete_controller()
+                                             ->autocomplete_provider_client()
+                                             ->GetGeolocationHeaderService()) {
+    geolocation_header_service->RecordInlineLocationSuggestionClicked(match);
   }
 }
 

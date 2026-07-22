@@ -120,8 +120,9 @@ class ContextualSearchboxHandler
       mojo::PendingRemote<searchbox::mojom::Page> pending_page,
       Profile* profile,
       content::WebContents* web_contents,
-      std::unique_ptr<OmniboxController> controller,
+      std::unique_ptr<OmniboxClient> client,
       GetSessionHandleCallback get_session_callback);
+
   ~ContextualSearchboxHandler() override;
 
   // searchbox::mojom::PageHandler:

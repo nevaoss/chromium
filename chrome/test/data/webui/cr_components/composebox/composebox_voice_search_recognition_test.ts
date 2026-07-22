@@ -120,6 +120,10 @@ suite('ComposeboxVoiceSearchRecognition', () => {
     }
     composeboxElement = document.createElement('cr-composebox');
     composeboxElement.showVoiceSearch = showVoiceSearch;
+    composeboxElement.composeboxSource =
+        loadTimeData.valueExists('composeboxSource') ?
+        loadTimeData.getString('composeboxSource') :
+        'NTP_REALBOX';
     document.body.appendChild(composeboxElement);
     await microtasksFinished();
     disableTransitionsRecursively(composeboxElement);
@@ -179,6 +183,7 @@ suite('ComposeboxVoiceSearchRecognition', () => {
       'Records QUERY_SUBMITTED action and fires event on submit click',
       async () => {
         loadTimeData.overrideValues({
+          composeboxSource: 'NTP_REALBOX',
           voiceSearchCoherenceComposeboxesEnabled: true,
         });
 
@@ -440,6 +445,9 @@ suite('ComposeboxVoiceSearchRecognition', () => {
 
   test('idle timeout with final result submits query', async () => {
     loadTimeData.overrideValues({composeboxSource: 'NewTabPage'});
+    searchboxHandler.setResultFor(
+        'getPageClassification',
+        Promise.resolve({metricSource: 'NewTabPage'}));
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
     await createComposeboxElement();
 

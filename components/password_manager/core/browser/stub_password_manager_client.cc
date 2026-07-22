@@ -22,7 +22,8 @@ StubPasswordManagerClient::StubPasswordManagerClient()
 StubPasswordManagerClient::~StubPasswordManagerClient() = default;
 
 bool StubPasswordManagerClient::IsSavingAndFillingEnabled(
-    const GURL& url) const {
+    const url::Origin& origin,
+    base::optional_ref<const GURL> url) const {
   return true;
 }
 
@@ -238,7 +239,7 @@ version_info::Channel StubPasswordManagerClient::GetChannel() const {
 void StubPasswordManagerClient::OpenPasswordDetailsBubble(
     const password_manager::PasswordForm& form) {}
 void StubPasswordManagerClient::MaybeShowSavePasswordPrimingPromo(
-    const GURL& current_url) {}
+    const url::Origin& origin) {}
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) ||
         // BUILDFLAG(IS_CHROMEOS)
 

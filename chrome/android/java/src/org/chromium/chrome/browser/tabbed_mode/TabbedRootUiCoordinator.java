@@ -55,6 +55,7 @@ import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ActivityTabProvider;
 import org.chromium.chrome.browser.ActivityTabProvider.ActivityTabTabObserver;
+import org.chromium.chrome.browser.ChromeActivitySessionTracker;
 import org.chromium.chrome.browser.ChromeInactivityTracker;
 import org.chromium.chrome.browser.ChromeInactivityTracker.InactivityObserver;
 import org.chromium.chrome.browser.SwipeRefreshHandler;
@@ -225,6 +226,7 @@ import org.chromium.chrome.browser.ui.actions.ActionUtils;
 import org.chromium.chrome.browser.ui.app_rating.AppRatingPromoController;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuBlocker;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuDelegate;
+import org.chromium.chrome.browser.ui.bottombar.BottomBarActionEligibility;
 import org.chromium.chrome.browser.ui.bottombar.BottomBarConfigUtils;
 import org.chromium.chrome.browser.ui.bottombar.BottomBarHostManager;
 import org.chromium.chrome.browser.ui.browser_window.ChromeAndroidTask;
@@ -609,6 +611,13 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                 bottomBarHostManager);
 
         if (BottomBarConfigUtils.isBottomBarEnabled(activity)) {
+            BottomBarActionEligibility.setCountrySupplier(
+                    () -> {
+                        String country =
+                                ChromeActivitySessionTracker.getInstance()
+                                        .getVariationsLatestCountry();
+                        return country != null ? country : "";
+                    });
             mActionRegistry = new ActionRegistry();
             ActionUtils.registerBottomBarActions(mActionRegistry);
         }
@@ -2309,10 +2318,17 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
     public void toggleTabStrip() {
         boolean shouldShowVerticalTabs =
                 !ChromeSharedPreferences.getInstance()
-                        .readBoolean(ChromePreferenceKeys.VERTICAL_TABS_ENABLED, true);
-
+                        .readBoolean(ChromePreferenceKeys.VERTICAL_TABS_ENABLED, false);
         ChromeSharedPreferences.getInstance()
                 .writeBoolean(ChromePreferenceKeys.VERTICAL_TABS_ENABLED, shouldShowVerticalTabs);
+
+        if (shouldShowVerticalTabs) {
+            Profile profile = mProfileSupplier.get();
+            if (profile != null) {
+                TrackerFactory.getTrackerForProfile(profile)
+                        .notifyEvent(EventConstants.ANDROID_VERTICAL_TABS_PROMO_USED);
+            }
+        }
     }
 
     private void destroySideUi() {

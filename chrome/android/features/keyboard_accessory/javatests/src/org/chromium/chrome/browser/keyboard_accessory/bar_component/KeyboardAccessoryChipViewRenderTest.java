@@ -65,6 +65,7 @@ import org.chromium.ui.test.util.BlankUiTestActivity;
 import org.chromium.ui.test.util.NightModeTestUtils;
 import org.chromium.ui.test.util.RenderTestRule;
 import org.chromium.ui.test.util.RenderTestRule.Component;
+import org.chromium.ui.widget.LoadingView;
 import org.chromium.url.GURL;
 
 import java.util.ArrayList;
@@ -122,6 +123,9 @@ public class KeyboardAccessoryChipViewRenderTest {
 
     @Before
     public void setUp() throws Exception {
+        // Disabling animations is necessary to avoid running into issues with
+        // delayed hiding of loading views.
+        LoadingView.setDisableAnimationForTest(true);
         mActivityTestRule.launchActivity(/* startIntent= */ null);
         Activity activity = mActivityTestRule.getActivity();
         activity.setTheme(R.style.Theme_BrowserUI_DayNight);
@@ -265,6 +269,14 @@ public class KeyboardAccessoryChipViewRenderTest {
                         .setIconId(R.drawable.ic_history_24dp)
                         .build();
 
+        AutofillSuggestion loadingSuggestion =
+                new AutofillSuggestion.Builder()
+                        .setLabel("Homer Simpson")
+                        .setSubLabel("hsimpson@gmail.com")
+                        .setSuggestionType(SuggestionType.ADDRESS_ENTRY)
+                        .setIsLoading(true)
+                        .build();
+
         return List.of(
                 addressSuggestion,
                 loyaltyCardSuggestion,
@@ -273,7 +285,8 @@ public class KeyboardAccessoryChipViewRenderTest {
                 creditCardSuggestion,
                 offerSuggestion,
                 otpSuggestion,
-                passwordHistorySuggestion);
+                passwordHistorySuggestion,
+                loadingSuggestion);
     }
 
     // KeyboardAccessoryViewBinder.create() returns a raw BarItemViewHolder.

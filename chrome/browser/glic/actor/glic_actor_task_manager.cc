@@ -1077,6 +1077,11 @@ void GlicActorClientSession::OnTabAddedToTask(
   manager_->delegate_->OnTabAddedToTask(task_id, tab_handle);
 }
 
+void GlicActorClientSession::OnTaskTabsVisibilityChanged(actor::TaskId task_id,
+                                                         bool has_visible_tab) {
+  manager_->delegate_->OnTaskTabsVisibilityChanged(task_id, has_visible_tab);
+}
+
 void GlicActorClientSession::RequestToShowCredentialSelectionDialog(
     actor::TaskId task_id,
     const base::flat_map<std::string, gfx::Image>& icons,

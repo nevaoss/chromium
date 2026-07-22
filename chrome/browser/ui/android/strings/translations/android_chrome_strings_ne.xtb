@@ -34,7 +34,6 @@
 <translation id="1108938384783527433">ब्राउजिङ इतिहास सिंक गर्नुहोस्</translation>
 <translation id="1111673857033749125">तपाईँका अन्य डिभाइसमा सुरक्षित गरिएका पुस्तक चिन्हहरू यहाँ देखिनेछन्।</translation>
 <translation id="1123537484474186311"><ph name="TAB_TITLE" />, Picture-in-Picture ट्याब</translation>
-<translation id="1124357650933674597">{NUM_WINDOWS,plural, =1{एउटा विन्डो रिस्टोर गर्नुहोस्}other{# वटा विन्डो रिस्टोर गर्नुहोस्}}</translation>
 <translation id="1126696498560056882">यो डिभाइसका खाताहरू व्यवस्थापन गर्नुहोस्</translation>
 <translation id="1135018701024399762">तपाईंले इन्कोग्निटो मोड प्रयोग गर्नुभयो भने तपाईंको डिभाइस प्रयोग गर्ने अन्य मान्छेहरू तपाईंको ब्राउजिङ डेटा हेर्न पाउँदैनन्</translation>
 <translation id="113752097246673894">आफ्ना सबै डिभाइसमा आफ्ना डिभाइसलगायतका थप कुराहरू प्राप्त गर्न <ph name="EMAIL" /> मार्फत Chrome मा साइन इन गर्नुहोस्</translation>
@@ -520,7 +519,6 @@ Chrome मा तपाईंलाई अझ राम्रो ब्राउ
 <translation id="3166827708714933426">ट्याब र विन्डोका सर्टकटहरू</translation>
 <translation id="3167258285411721858">तपाईं <ph name="HOST_NAME" /> को मोबाइल साइटको लिंक माग्न सक्नुहुन्छ</translation>
 <translation id="3181145110929454111"><ph name="TAB_TITLE" />, एकभन्दा बढी विकल्प चयन गरिएको पिन गरिएको म्युट गरिएको इन्कोग्निटो ट्याब</translation>
-<translation id="3183941812169784232">सबै विन्डोहरू रिस्टोर गर्ने हो?</translation>
 <translation id="3187472288455401631">विज्ञापनको पर्फर्मेन्स मापन</translation>
 <translation id="3189635831478931757"><ph name="GROUP_TITLE" /> नामक ट्याब समूह</translation>
 <translation id="3200536777393523575">आफ्नो हालको विन्डो बन्द गर्ने हो?</translation>
@@ -569,6 +567,7 @@ Chrome मा तपाईंलाई अझ राम्रो ब्राउ
 <translation id="3435575784518354875">आफ्ना पासवर्डहरूको एक्सेस प्राप्त गरिराख्न तिनलाई अहिले नै एक्स्पोर्ट गर्नुहोस्, Google Play services अपडेट गर्नुहोस् अनि आफ्नो रोजाइको पासवर्ड म्यानेजरमा फेरि इम्पोर्ट गर्नुहोस्। <ph name="BEGIN_LINK" />सम्पूर्ण निर्देशनहरू हेर्नुहोस्<ph name="END_LINK" />।</translation>
 <translation id="3435738964857648380">सुरक्षा</translation>
 <translation id="3435914367318771664">यो ट्याब समूहमा हाल्नुहोस्</translation>
+<translation id="3436118221454753036">AI मोडलाई सोध्नुहोस्</translation>
 <translation id="3438681572027105609">आफ्ना सबै डिभाइसमा आफ्ना पासवर्डलगायतका थप कुराहरू प्राप्त गर्न Chrome मा साइन इन गर्नुहोस्</translation>
 <translation id="3439276997620616816">तपाईंले हालसालै बन्द गरेका ट्याबहरू यहाँ देखिने छन्</translation>
 <translation id="3443221991560634068">हालको पृष्ठलाई पुनःलोड गर्नुहोस्</translation>
@@ -2038,7 +2037,6 @@ Chrome मा तपाईंलाई अझ राम्रो ब्राउ
 <translation id="939598580284253335">पासफ्रेज प्रविष्टि गर्नुहोस्</translation>
 <translation id="94161319503679839"><ph name="TAB_TITLE" />, पिन गरिएको Picture-in-Picture इन्कोग्निटो ट्याब</translation>
 <translation id="945522503751344254">पृष्ठपोषण पठाउनुहोस्</translation>
-<translation id="949667118776341807">रोटेट गर्नुहोस्</translation>
 <translation id="95817756606698420">Chrome ले चीनमा खोज गर्नका लागि <ph name="BEGIN_BOLD" />Sogou<ph name="END_BOLD" /> को प्रयोग गर्न सक्छ। तपाईं <ph name="BEGIN_LINK" />सेटिङहरू<ph name="END_LINK" />मा गई यसलाई बदल्न सक्नुहुन्छ।</translation>
 <translation id="961856697154696964">ब्राउजिङ डेटा मेटाउनुहोस्</translation>
 <translation id="963246339335003378">टास्क म्यानेजर खोल्नुहोस्</translation>

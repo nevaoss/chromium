@@ -57,6 +57,7 @@
 #include "components/payments/core/payment_prefs.h"
 #include "components/performance_manager/public/user_tuning/prefs.h"
 #include "components/permissions/pref_names.h"
+#include "components/personal_context/core/personal_context_prefs.h"
 #include "components/prefs/pref_service.h"
 #include "components/privacy_sandbox/privacy_sandbox_prefs.h"
 #include "components/proxy_config/proxy_config_pref_names.h"
@@ -242,6 +243,9 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
   (*s_allowlist)[autofill::prefs::kAutofillAiOptInStatus] =
       settings_api::PrefType::kBoolean;
   (*s_allowlist)[autofill::prefs::kAutofillAiTravelEntitiesEnabled] =
+      settings_api::PrefType::kBoolean;
+  (*s_allowlist)[personal_context::prefs::
+                     kPersonalContextInAutofillSettingsToggleStatus] =
       settings_api::PrefType::kBoolean;
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS)
@@ -1361,6 +1365,8 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
   (*s_allowlist)[glic::prefs::kGlicLauncherEnabled] =
       settings_api::PrefType::kBoolean;
   (*s_allowlist)[glic::prefs::kGlicClosedCaptioningEnabled] =
+      settings_api::PrefType::kBoolean;
+  (*s_allowlist)[glic::prefs::kGlicMediaUnderstandingEnabled] =
       settings_api::PrefType::kBoolean;
   (*s_allowlist)[glic::prefs::kGlicGeolocationEnabled] =
       settings_api::PrefType::kBoolean;

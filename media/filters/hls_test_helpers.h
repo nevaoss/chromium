@@ -62,8 +62,8 @@ class MockHlsDataSourceProvider : public HlsDataSourceProvider {
   MockHlsDataSourceProvider();
   ~MockHlsDataSourceProvider() override;
   MOCK_METHOD(void,
-              ReadFromCombinedUrlQueue,
-              (HlsDataSourceProvider::SegmentQueue,
+              ReadFromUrl,
+              (HlsDataSourceProvider::UrlDataSegment,
                HlsDataSourceProvider::ReadCb),
               (override));
   MOCK_METHOD(void,

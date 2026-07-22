@@ -314,6 +314,7 @@
 <translation id="1463793142714244641">Некретнине за тајмшер и одмор</translation>
 <translation id="1465457928007067810">IBAN је сачуван на Google налогу</translation>
 <translation id="1467432559032391204">Улево</translation>
+<translation id="1471514598850585811">Лаптоп</translation>
 <translation id="1472675084647422956">Прикажи више</translation>
 <translation id="1473183651233018052">JIS B10</translation>
 <translation id="1473495410389165587">Унесите 3 или више речи да бисте добили помоћ при писању</translation>
@@ -996,6 +997,7 @@
 <translation id="2524962131655207565"><ph name="BEGIN_BOLD" />Садржај са странице за плаћање дели се са Google-ом да би Google пружао ове опције<ph name="END_BOLD" />. Планови плаћања подлежу условима. Да бисте сакрили опције за касније плаћање, идите у <ph name="BEGIN_LINK" />подешавања плаћања<ph name="END_LINK" />.</translation>
 <translation id="2526062290525841862">Да бисте покренули ову апликацију, поново омогућите режим програмера за изоловану веб-апликацију</translation>
 <translation id="2526280916094749336">Можете да користите сачуване адресе у свим Google производима. Ова адреса ће бити сачувана на Google налогу <ph name="ACCOUNT" />.</translation>
+<translation id="2526590354069164005">Радна површина</translation>
 <translation id="2527451058878391043">CVC је на предњој страни картице. То је 4-цифрени кôд у горњем десном углу изнад броја картице.</translation>
 <translation id="2529899080962247600">Ово поље не сме да има више од <ph name="MAX_ITEMS_LIMIT" /> уноса. Сви будући уноси ће се занемарити.</translation>
 <translation id="2530042584066815841">Закључавање и коришћење миша</translation>
@@ -4911,7 +4913,6 @@
 <translation id="8671519637524426245">Вредност <ph name="SECURE_DNS_SALT" /> не испуњава услове за величину.</translation>
 <translation id="867224526087042813">Потпис</translation>
 <translation id="8672535691554698269">Рачунарске мреже</translation>
-<translation id="8673710317985154384">{NUM_TABS,plural, =1{Прикажи детаље дељења картице. Дели се 1 картица са {WEBSITE_LIST_STR}}one{Прикажи детаље дељења картице. Дели се {NUM_TABS} картица са {WEBSITE_LIST_STR}}few{Прикажи детаље дељења картице. Деле се {NUM_TABS} картице са {WEBSITE_LIST_STR}}other{Прикажи детаље дељења картице. Дели се {NUM_TABS} картица са {WEBSITE_LIST_STR}}}</translation>
 <translation id="8675446170353411473">Фајлови се оптремају у <ph name="CLOUD_PROVIDER" /></translation>
 <translation id="8676424191133491403">Без одлагања</translation>
 <translation id="8680536109547170164"><ph name="QUERY" />, одговор, <ph name="ANSWER" /></translation>

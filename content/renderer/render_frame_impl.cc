@@ -2804,8 +2804,7 @@ void RenderFrameImpl::CommitNavigation(
         });
   }
 
-  if (IsForInitialWebUI() && base::FeatureList::IsEnabled(
-                                 features::kInitialWebUISyncNavStartToCommit)) {
+  if (IsForInitialWebUI()) {
     CHECK(subresource_loader_factories);
     CHECK(subresource_loader_factories->local_resource_loader_config());
     // Initial WebUI navigations loads the response body locally within the

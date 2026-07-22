@@ -438,8 +438,11 @@ template("proto_library") {
           include_dirs += [ _cc_out_dir ]
         }
         if (defined(invoker.import_dirs)) {
-          foreach(path, invoker.import_dirs) {
-            include_dirs += [ "$root_gen_dir/" + rebase_path(path, "//") ]
+          _import_dirs_abspaths = rebase_path(invoker.import_dirs, "//")
+          foreach(_abspath, _import_dirs_abspaths) {
+            _rebased_root_gen_dir = rebase_path(root_gen_dir, "//") + "/"
+            _base_path = string_replace(_abspath, _rebased_root_gen_dir, "")
+            include_dirs += [ "$root_gen_dir/$_base_path" ]
           }
         }
       }

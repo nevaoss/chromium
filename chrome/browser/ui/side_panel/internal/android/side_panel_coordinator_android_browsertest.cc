@@ -530,15 +530,14 @@ IN_PROC_BROWSER_TEST_F(
 }
 
 IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorAndroidBrowserTest,
-                       Show_Blocked_WhenWindowTooSmall) {
+                       Show_InsufficientSpace_Blocked) {
   // Arrange:
-
   auto entry_key = SidePanelEntryKey(SidePanelEntryId::kAboutThisSite);
   SidePanelRegistry::From(browser_)->Register(
       CreateSidePanelEntry(entry_key, browser_));
 
-  // Set window to too small.
-  coordinator_->OnWindowResized(/*env=*/nullptr, /*can_show_side_panel=*/false);
+  // Arrange: Make the space insufficient.
+  coordinator_->OnWillAutoClose(/*env=*/nullptr);
 
   // Act: Try to show.
   coordinator_->SidePanelUIBase::Show(
@@ -1245,7 +1244,7 @@ IN_PROC_BROWSER_TEST_F(
 
 IN_PROC_BROWSER_TEST_F(
     SidePanelCoordinatorAndroidBrowserTest,
-    MaybeShowEntryOnTabStripModelChanged_Blocked_WhenWindowTooSmall) {
+    MaybeShowEntryOnTabStripModelChanged_InsufficientSpace_Blocked) {
   // Arrange: Open 2 tabs, both with their own entries.
   tabs::TabInterface* tab_1 = tab_list_->GetActiveTab();
   tabs::TabInterface* tab_2 =
@@ -1273,12 +1272,12 @@ IN_PROC_BROWSER_TEST_F(
   WaitUntilOpened(coordinator_);
   ASSERT_TRUE(coordinator_->IsSidePanelShowing());
 
-  // Make the window too small. This will hide the panel.
-  coordinator_->OnWindowResized(/*env=*/nullptr, /*can_show_side_panel=*/false);
+  // Make the space insufficient. This will auto-close the panel.
+  coordinator_->OnWillAutoClose(/*env=*/nullptr);
   WaitUntilClosed(coordinator_);
   ASSERT_FALSE(coordinator_->IsSidePanelShowing());
 
-  // Act: Switch to Tab 1 while the window is still small.
+  // Act: Switch to Tab 1 while the space is still insufficient.
   tab_list_->ActivateTab(tab_1->GetHandle());
 
   // Assert: Side panel should NOT be shown even though Tab 1 has an entry.
@@ -1489,7 +1488,7 @@ IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorAndroidBrowserTest,
 }
 
 IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorAndroidBrowserTest,
-                       OnWindowResized_RestoresTabScopedSidePanels) {
+                       OnWillAutoRestore_RestoresTabScopedSidePanels) {
   // Arrange
   tabs::TabInterface* tab_1 = tab_list_->GetActiveTab();
   tabs::TabInterface* tab_2 =
@@ -1517,8 +1516,8 @@ IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorAndroidBrowserTest,
   WaitUntilOpened(coordinator_);
   ASSERT_TRUE(coordinator_->IsSidePanelShowing());
 
-  // Make the window too narrow.
-  coordinator_->OnWindowResized(/*env=*/nullptr, /*can_show_side_panel=*/false);
+  // Make the space insufficient.
+  coordinator_->OnWillAutoClose(/*env=*/nullptr);
   WaitUntilClosed(coordinator_);
 
   // Tab 2's side panel is hidden (here we'll clear the active entry in Tab 2's
@@ -1529,11 +1528,12 @@ IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorAndroidBrowserTest,
   // Go to Tab 1.
   tab_list_->ActivateTab(tab_1->GetHandle());
 
-  // Tab 1's side panel shouldn't appear because the window is still too narrow.
+  // Tab 1's side panel shouldn't appear because the space is still
+  // insufficient.
   ASSERT_FALSE(coordinator_->IsSidePanelShowing());
 
-  // Now make the window wide enough.
-  coordinator_->OnWindowResized(/*env=*/nullptr, /*can_show_side_panel=*/true);
+  // Now make the space sufficient.
+  coordinator_->OnWillAutoRestore(/*env=*/nullptr);
   WaitUntilOpened(coordinator_);
 
   // Tab 1's side panel should appear (note that this is not the side panel
@@ -1552,7 +1552,7 @@ IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorAndroidBrowserTest,
 }
 
 IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorAndroidBrowserTest,
-                       OnWindowResized_RestoresMixedScopedSidePanels) {
+                       OnWillAutoRestore_RestoresMixedScopedSidePanels) {
   // Arrange
   tabs::TabInterface* tab_1 = tab_list_->GetActiveTab();
   tabs::TabInterface* tab_2 =
@@ -1585,8 +1585,8 @@ IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorAndroidBrowserTest,
   tab_list_->ActivateTab(tab_1->GetHandle());
   WaitUntilOpened(coordinator_);
 
-  // Make the window too narrow.
-  coordinator_->OnWindowResized(/*env=*/nullptr, /*can_show_side_panel=*/false);
+  // Make the space insufficient.
+  coordinator_->OnWillAutoClose(/*env=*/nullptr);
   WaitUntilClosed(coordinator_);
   ASSERT_FALSE(coordinator_->IsSidePanelShowing());
 
@@ -1594,8 +1594,8 @@ IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorAndroidBrowserTest,
   tab_list_->ActivateTab(tab_2->GetHandle());
   ASSERT_FALSE(coordinator_->IsSidePanelShowing());
 
-  // Make the window wide enough.
-  coordinator_->OnWindowResized(/*env=*/nullptr, /*can_show_side_panel=*/true);
+  // Make the space sufficient.
+  coordinator_->OnWillAutoRestore(/*env=*/nullptr);
   WaitUntilOpened(coordinator_);
 
   // Tab 2’s window-scoped panel should appear.
@@ -1604,7 +1604,7 @@ IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorAndroidBrowserTest,
 }
 
 IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorAndroidBrowserTest,
-                       OnWindowResized_False_ClosesSidePanel) {
+                       OnWillAutoClose_ClosesSidePanel) {
   // Arrange:
 
   auto entry_key = SidePanelEntryKey(SidePanelEntryId::kAboutThisSite);
@@ -1623,8 +1623,7 @@ IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorAndroidBrowserTest,
       coordinator_->SidePanelUIBase::IsSidePanelEntryShowing(entry_key));
 
   // Act:
-  coordinator_->OnWindowResized(/*env=*/nullptr,
-                                /*should_show_side_panel=*/false);
+  coordinator_->OnWillAutoClose(/*env=*/nullptr);
   WaitUntilClosed(coordinator_);
 
   // Assert:
@@ -1637,44 +1636,37 @@ IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorAndroidBrowserTest,
 }
 
 IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorAndroidBrowserTest,
-                       OnWindowResized_True_NoActiveEntry_DoesNothing) {
-  // Arrange:
-
-  // Set window to small first.
-  coordinator_->OnWindowResized(/*env=*/nullptr,
-                                /*should_show_side_panel=*/false);
+                       OnWillAutoRestore_NoActiveEntry_DoesNothing) {
+  // Arrange: Make the space insufficient first.
+  coordinator_->OnWillAutoClose(/*env=*/nullptr);
   ASSERT_FALSE(coordinator_->IsSidePanelShowing());
 
-  // Act: Make window large again.
-  coordinator_->OnWindowResized(/*env=*/nullptr,
-                                /*should_show_side_panel=*/true);
+  // Act: Make the space sufficient again.
+  coordinator_->OnWillAutoRestore(/*env=*/nullptr);
 
   // Assert: Panel should stay closed.
   EXPECT_FALSE(coordinator_->IsSidePanelShowing());
 }
 
 IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorAndroidBrowserTest,
-                       OnWindowResized_True_RestoresPreviousEntry) {
+                       OnWillAutoRestore_RestoresPreviousEntry) {
   // Arrange:
-
   auto entry_key = SidePanelEntryKey(SidePanelEntryId::kAboutThisSite);
   SidePanelRegistry::From(browser_)->Register(
       CreateSidePanelEntry(entry_key, browser_));
 
-  // Show and then hide due to resize.
+  // Show and then hide due to insufficient space.
   coordinator_->SidePanelUIBase::Show(entry_key,
                                       SidePanelOpenTrigger::kToolbarButton,
                                       /*suppress_animations=*/true);
   WaitUntilOpened(coordinator_);
   ASSERT_TRUE(coordinator_->IsSidePanelShowing());
-  coordinator_->OnWindowResized(/*env=*/nullptr,
-                                /*should_show_side_panel=*/false);
+  coordinator_->OnWillAutoClose(/*env=*/nullptr);
   WaitUntilClosed(coordinator_);
   ASSERT_FALSE(coordinator_->IsSidePanelShowing());
 
   // Act:
-  coordinator_->OnWindowResized(/*env=*/nullptr,
-                                /*should_show_side_panel=*/true);
+  coordinator_->OnWillAutoRestore(/*env=*/nullptr);
   WaitUntilOpened(coordinator_);
 
   // Assert:
@@ -1684,7 +1676,7 @@ IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorAndroidBrowserTest,
 
 IN_PROC_BROWSER_TEST_F(
     SidePanelCoordinatorAndroidBrowserTest,
-    OnWindowResized_TabIsolation_DoesNotRestoreOnDifferentTab) {
+    OnWillAutoRestore_TabIsolation_DoesNotRestoreOnDifferentTab) {
   // Arrange: Open 2 tabs.
   tabs::TabInterface* tab_with_entry = tab_list_->GetActiveTab();
   tabs::TabInterface* empty_tab =
@@ -1702,18 +1694,16 @@ IN_PROC_BROWSER_TEST_F(
   WaitUntilOpened(coordinator_);
   ASSERT_TRUE(coordinator_->IsSidePanelShowing());
 
-  // Hide the panel due to a resize.
-  coordinator_->OnWindowResized(/*env=*/nullptr,
-                                /*should_show_side_panel=*/false);
+  // Hide the panel due to insufficient space.
+  coordinator_->OnWillAutoClose(/*env=*/nullptr);
   WaitUntilClosed(coordinator_);
   ASSERT_FALSE(coordinator_->IsSidePanelShowing());
 
   // Switch to the empty tab.
   tab_list_->ActivateTab(empty_tab->GetHandle());
 
-  // Act: Try to "restore" visibility due to resize while on the wrong tab.
-  coordinator_->OnWindowResized(/*env=*/nullptr,
-                                /*should_show_side_panel=*/true);
+  // Act: Try to restore visibility while on the wrong tab.
+  coordinator_->OnWillAutoRestore(/*env=*/nullptr);
 
   // Assert: The panel should NOT restore on the empty tab.
   EXPECT_FALSE(coordinator_->IsSidePanelShowing());
@@ -1731,7 +1721,7 @@ IN_PROC_BROWSER_TEST_F(
 
 IN_PROC_BROWSER_TEST_F(
     SidePanelCoordinatorAndroidBrowserTest,
-    OnWindowResized_TabIsolation_SameEntryKeyOnMultipleTabs) {
+    OnWillAutoRestore_TabIsolation_SameEntryKeyOnMultipleTabs) {
   // Arrange: Open 2 tabs, both with the SAME entry key registered.
   tabs::TabInterface* tab_1 = tab_list_->GetActiveTab();
   tabs::TabInterface* tab_2 =
@@ -1750,16 +1740,16 @@ IN_PROC_BROWSER_TEST_F(
   WaitUntilOpened(coordinator_);
   ASSERT_TRUE(coordinator_->IsSidePanelShowing());
 
-  // 2. Window gets small -> Hides.
-  coordinator_->OnWindowResized(/*env=*/nullptr, /*can_show_side_panel=*/false);
+  // 2. Hide due to insufficient space.
+  coordinator_->OnWillAutoClose(/*env=*/nullptr);
   WaitUntilClosed(coordinator_);
   ASSERT_FALSE(coordinator_->IsSidePanelShowing());
 
   // 3. Switch to Tab 2.
   tab_list_->ActivateTab(tab_2->GetHandle());
 
-  // 4. Window gets wide again.
-  coordinator_->OnWindowResized(/*env=*/nullptr, /*can_show_side_panel=*/true);
+  // 4. Make space sufficient.
+  coordinator_->OnWillAutoRestore(/*env=*/nullptr);
 
   // Assert: Entry should NOT show in Tab 2 even though it has the same key.
   // This proves that UniqueKey (tab-aware) is used for restoration.
@@ -2191,8 +2181,8 @@ IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorAndroidBrowserTest,
   WaitUntilOpened(coordinator_);
   ASSERT_TRUE(coordinator_->IsSidePanelShowing());
 
-  // Make the window small. This defers the entry.
-  coordinator_->OnWindowResized(/*env=*/nullptr, /*can_show_side_panel=*/false);
+  // Make the space insufficient. This defers the entry.
+  coordinator_->OnWillAutoClose(/*env=*/nullptr);
   WaitUntilClosed(coordinator_);
   ASSERT_FALSE(coordinator_->IsSidePanelShowing());
 
@@ -2238,8 +2228,8 @@ IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorAndroidBrowserTest,
   // CRITICAL: The entry remains active in Tab 1's background registry!
   EXPECT_TRUE(SidePanelRegistry::From(tab_1)->GetActiveEntry().has_value());
 
-  // 3. Shrink the window.
-  coordinator_->OnWindowResized(/*env=*/nullptr, /*can_show_side_panel=*/false);
+  // 3. Make the space insufficient.
+  coordinator_->OnWillAutoClose(/*env=*/nullptr);
 
   // 4. Switch back to Tab A.
   // This triggers MaybeShowEntryOnTabStripModelChanged -> Show() -> AddEntry().
@@ -2345,9 +2335,9 @@ IN_PROC_BROWSER_TEST_F(
                                       /*suppress_animations=*/true);
   WaitUntilOpened(coordinator_);
 
-  // Arrange: Make window too small, which will create a deferred entry and
-  // close the side panel.
-  coordinator_->OnWindowResized(/*env=*/nullptr, /*can_show_side_panel=*/false);
+  // Arrange: Make the space insufficient, which will create a deferred entry
+  // and close the side panel.
+  coordinator_->OnWillAutoClose(/*env=*/nullptr);
   WaitUntilClosed(coordinator_);
 
   // Assert:

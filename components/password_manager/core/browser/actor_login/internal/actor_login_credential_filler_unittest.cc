@@ -143,6 +143,7 @@ class MockStubPasswordManagerDriver
               CheckViewAreaVisible,
               (autofill::FieldRendererId, base::OnceCallback<void(bool)>),
               (override));
+  MOCK_METHOD(int, GetFrameId, (), (const, override));
 };
 
 class MockPasswordManagerClient
@@ -215,6 +216,7 @@ class ActorLoginCredentialFillerTest : public ::testing::TestWithParam<bool> {
         .WillByDefault(Return(true));
     ON_CALL(mock_driver_, GetPasswordManager)
         .WillByDefault(Return(&mock_password_manager_));
+    ON_CALL(mock_driver_, GetFrameId).WillByDefault(Return(42));
     ON_CALL(mock_driver_, GetLastCommittedOrigin())
         .WillByDefault(ReturnRef(main_frame_origin_));
     // Assume that by default all fields are visible.
@@ -2929,9 +2931,12 @@ TEST_P(ActorLoginCredentialFillerTest,
         execution_order.push_back("attempt_login_done");
         attempt_login_future.SetValue(result);
       });
+  std::vector<int> captured_frame_ids;
   auto on_frame_filling_started_cb =
       base::BindLambdaForTesting([&](base::span<const int> global_frame_ids) {
         execution_order.push_back("frame_filling_started");
+        captured_frame_ids.assign(global_frame_ids.begin(),
+                                  global_frame_ids.end());
       });
 
   ActorLoginCredentialFiller filler(
@@ -2944,6 +2949,78 @@ TEST_P(ActorLoginCredentialFillerTest,
   EXPECT_THAT(execution_order,
               ElementsAre("frame_filling_started", "fill_field", "fill_field",
                           "attempt_login_done"));
+  EXPECT_THAT(captured_frame_ids, ElementsAre(mock_driver_.GetFrameId()));
+}
+
+TEST_P(ActorLoginCredentialFillerTest,
+       AttemptLoginInvokesFrameFillingStartedCallbackWithSomeFramesFiltered) {
+  const url::Origin origin =
+      url::Origin::Create(GURL("https://example.com/login"));
+  Credential credential =
+      CreateTestCredential(kTestUsername, origin.GetURL(), origin);
+  const FormData form_data = CreateSigninFormData(origin.GetURL());
+  PasswordForm exact_match =
+      CreateSavedPasswordForm(origin.GetURL(), kTestUsername);
+  exact_match.match_type = password_manager::PasswordForm::MatchType::kExact;
+  FakeFormFetcher& exact_match_fetcher = form_fetcher_;
+  exact_match_fetcher.SetBestMatches({exact_match});
+
+  PasswordForm affiliated_match =
+      CreateSavedPasswordForm(origin.GetURL(), kTestUsername);
+  affiliated_match.match_type =
+      password_manager::PasswordForm::MatchType::kAffiliated;
+  FakeFormFetcher affiliated_match_fetcher;
+  affiliated_match_fetcher.SetBestMatches({affiliated_match});
+
+  MockStubPasswordManagerDriver iframe_driver_1;
+  ON_CALL(iframe_driver_1, GetFrameId).WillByDefault(Return(101));
+  ON_CALL(iframe_driver_1, IsInPrimaryMainFrame).WillByDefault(Return(false));
+  ON_CALL(iframe_driver_1, CheckViewAreaVisible)
+      .WillByDefault(WithArg<1>(&PostResponse<true>));
+  MockStubPasswordManagerDriver iframe_driver_2;
+  ON_CALL(iframe_driver_2, GetFrameId).WillByDefault(Return(102));
+  ON_CALL(iframe_driver_2, IsInPrimaryMainFrame).WillByDefault(Return(false));
+  ON_CALL(iframe_driver_2, CheckViewAreaVisible)
+      .WillByDefault(WithArg<1>(&PostResponse<true>));
+  MockStubPasswordManagerDriver iframe_driver_3;
+  ON_CALL(iframe_driver_3, GetFrameId).WillByDefault(Return(103));
+  ON_CALL(iframe_driver_3, IsInPrimaryMainFrame).WillByDefault(Return(false));
+  ON_CALL(iframe_driver_3, CheckViewAreaVisible)
+      .WillByDefault(WithArg<1>(&PostResponse<true>));
+
+  std::vector<std::unique_ptr<PasswordFormManager>> form_managers;
+
+  // The main frame manager is added first but it is affiliated, so the iframe
+  // manager 1 (which is exact match) will be preferred as reference.
+  form_managers.push_back(CreateFormManagerWithParsedForm(
+      origin, form_data, mock_driver_, affiliated_match_fetcher));
+  form_managers.push_back(CreateFormManagerWithParsedForm(
+      origin, form_data, iframe_driver_1, exact_match_fetcher));
+  form_managers.push_back(CreateFormManagerWithParsedForm(
+      origin, form_data, iframe_driver_2, exact_match_fetcher));
+  form_managers.push_back(CreateFormManagerWithParsedForm(
+      origin, form_data, iframe_driver_3, affiliated_match_fetcher));
+
+  EXPECT_CALL(mock_form_cache_, GetFormManagers)
+      .WillRepeatedly(Return(base::span(form_managers)));
+
+  base::test::TestFuture<std::vector<int>> frame_filling_started_future;
+  auto on_frame_filling_started_cb =
+      base::BindLambdaForTesting([&](base::span<const int> global_frame_ids) {
+        frame_filling_started_future.SetValue(
+            std::vector<int>(global_frame_ids.begin(), global_frame_ids.end()));
+      });
+
+  ActorLoginCredentialFiller filler(
+      origin, credential, should_store_permission(), &mock_client_,
+      mqls_logger(), base::TimeTicks::Now(), mock_is_task_in_focus_.Get(),
+      std::move(on_frame_filling_started_cb),
+      /*on_login_done_cb=*/base::DoNothing());
+
+  filler.AttemptLogin(&mock_password_manager_);
+  EXPECT_THAT(
+      frame_filling_started_future.Get(),
+      ElementsAre(iframe_driver_1.GetFrameId(), iframe_driver_2.GetFrameId()));
 }
 
 INSTANTIATE_TEST_SUITE_P(All,

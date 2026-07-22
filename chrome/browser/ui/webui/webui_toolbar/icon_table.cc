@@ -48,6 +48,10 @@ struct IconInfo {
 const base::flat_map<const gfx::VectorIcon*, IconInfo>& KnownIcons() {
   static base::NoDestructor<base::flat_map<const gfx::VectorIcon*, IconInfo>>
       table({
+          {{&kAccountBoxIcon},
+           {"webui-toolbar:account_box", IconType::kIconSet}},
+          {{&kAccountBoxOldIcon},
+           {"webui-toolbar:account_box", IconType::kIconSet}},
           {{&kBookmarksSidePanelRefreshOldIcon},
            {"webui-toolbar:bookmarks_side_panel_refresh_old",
             IconType::kIconSet}},

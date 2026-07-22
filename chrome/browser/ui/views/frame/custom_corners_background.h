@@ -46,16 +46,7 @@ class CustomCornersBackground : public views::Background, public CustomCorners {
 
     bool operator==(const Corner&) const = default;
   };
-
-  // Specifies how all corners should be rendered.
-  struct Corners {
-    Corner upper_leading;
-    Corner upper_trailing;
-    Corner lower_leading;
-    Corner lower_trailing;
-
-    bool operator==(const Corners&) const = default;
-  };
+  using Corners = CornerMapT<CornerOrientation, Corner>;
 
   // Specifies whether outline strokes should be drawn.
   struct Outline {
@@ -150,6 +141,8 @@ class CustomCornersBackground : public views::Background, public CustomCorners {
   // Hide this as it should not be used directly.
   using Background::SetColor;
 
+  using VisualCorners = CornerMapT<VisualCorner, Corner>;
+
   // Returns a path containing the entire painted background region.
   SkPath GetBackgroundPath(const gfx::Rect& in_bounds,
                            CornerRadii* corners = nullptr) const;
@@ -158,7 +151,7 @@ class CustomCornersBackground : public views::Background, public CustomCorners {
   std::vector<SkPath> GetCornerPaths(const gfx::Rect& in_bounds) const;
 
   // Possibly mirrors corners for RtL.
-  Corners GetMirroredCorners() const;
+  VisualCorners GetMirroredCorners() const;
 
   // Possibly mirrors outline for RtL.
   Outline GetMirroredOutline() const;

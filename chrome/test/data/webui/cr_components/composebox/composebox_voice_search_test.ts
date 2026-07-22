@@ -23,7 +23,7 @@ import type {TestMock} from 'chrome://webui-test/test_mock.js';
 import {$$, isVisible, microtasksFinished} from 'chrome://webui-test/test_util.js';
 
 import {assertStyle, disableTransitionsRecursively, installMock, MockSpeechRecognition, mockSpeechRecognition} from './composebox_test_utils.js';
-import type {MockComposeboxVoiceSearch} from './composebox_test_utils.js';
+import type {MockComposebox, MockComposeboxVoiceSearch} from './composebox_test_utils.js';
 
 // Returns a promise that resolves when CSS style has transitioned.
 function getTransitionEndPromise(
@@ -106,6 +106,7 @@ suite('ComposeboxVoiceSearch', () => {
       voiceSearchCoherenceAnySearchboxExperimentEnabled: false,
       voiceSearchCoherenceCobrowsingComposeboxEnabled: false,
       isSystemVoiceSearchEnabled: false,
+      composeboxSource: 'NTP_REALBOX',
     });
 
     windowProxy.setResultMapperFor(
@@ -113,6 +114,18 @@ suite('ComposeboxVoiceSearch', () => {
         () => new MockSpeechRecognition() as unknown as SpeechRecognition);
 
     await createComposeboxElement();
+  });
+
+  teardown(async () => {
+    const el = composeboxElement?.shadowRoot?.querySelector<HTMLElement>(
+        'cr-composebox-voice-search');
+    if (el) {
+      const mockVoiceSearch = el as any;
+      mockVoiceSearch.state_ = -1;
+      mockVoiceSearch.voiceRecognition_?.abort();
+      mockVoiceSearch.voiceModeEndCleanup_();
+    }
+    await microtasksFinished();
   });
 
   async function createComposeboxElement(showVoiceSearch: boolean = true) {
@@ -128,8 +141,9 @@ suite('ComposeboxVoiceSearch', () => {
 
   function getVoiceSearchButton(composeboxElement: ComposeboxElement):
       HTMLElement|null {
-    return composeboxElement.shadowRoot.querySelector<HTMLElement>(
-        '#voiceSearchButton');
+    return composeboxElement?.shadowRoot?.querySelector<HTMLElement>(
+               '#voiceSearchButton') ??
+        null;
   }
 
   function getVoiceSearchElement(composeboxElement: ComposeboxElement):
@@ -328,38 +342,38 @@ suite('ComposeboxVoiceSearch', () => {
       'NO_MATCH error auto-closes immediately when hasErrorTimer is false',
       async () => {
         const voiceSearchElement = await openVoiceSearchUI();
+        const mockVoiceSearch =
+            voiceSearchElement as unknown as MockComposeboxVoiceSearch;
         // Simulate Composebox behavior.
-        voiceSearchElement.hasErrorTimer = false;
+        mockVoiceSearch.hasErrorTimer = false;
 
         let cancelEventFired = false;
         voiceSearchElement.addEventListener('voice-search-cancel', () => {
           cancelEventFired = true;
         });
 
-        voiceSearchElement['voiceRecognition_'].onnomatch!
-            (new Event('nomatch'));
+        mockVoiceSearch.voiceRecognition_.onnomatch!(new Event('nomatch'));
         await microtasksFinished();
 
         // Verify immediate closure with no error message and no timer.
         assertTrue(cancelEventFired);
-        assertEquals('', voiceSearchElement['errorMessage_']);
+        assertEquals('', mockVoiceSearch.errorMessage_);
         assertEquals(0, windowProxy.getCallCount('setTimeout'));
         assertEquals(
             1,
             metrics.count(
                 'VoiceSearch.Action.NTP_REALBOX',
                 VoiceSearchAction.ERROR_CANCELING));
-        // Clean up internal state to prevent leaking into the next test.
-        voiceSearchElement['voiceModeEndCleanup_']();
-        await microtasksFinished();
       });
 
   test(
       'Other errors keep UI open permanently when hasErrorTimer is false',
       async () => {
         const voiceSearchElement = await openVoiceSearchUI();
+        const mockVoiceSearch =
+            voiceSearchElement as unknown as MockComposeboxVoiceSearch;
         // Simulate Composebox behavior.
-        voiceSearchElement.hasErrorTimer = false;
+        mockVoiceSearch.hasErrorTimer = false;
 
         mockSpeechRecognition.onerror!
             ({error: 'network'} as SpeechRecognitionErrorEvent);
@@ -374,7 +388,7 @@ suite('ComposeboxVoiceSearch', () => {
         assertStyle(inputElement!, 'opacity', '0');
         assertEquals(
             loadTimeData.getString('networkError'),
-            voiceSearchElement['errorMessage_']);
+            mockVoiceSearch.errorMessage_);
 
         assertStyle(composeboxElement.$.composebox, 'display', 'none');
         assertStyle(voiceSearchElement, 'display', 'block');
@@ -384,9 +398,6 @@ suite('ComposeboxVoiceSearch', () => {
             metrics.count(
                 'VoiceSearch.Action.NTP_REALBOX',
                 VoiceSearchAction.ERROR_NON_CANCELING));
-        // Clean up internal state to prevent leaking into the next test.
-        voiceSearchElement['voiceModeEndCleanup_']();
-        await microtasksFinished();
       });
 
   test(
@@ -400,8 +411,8 @@ suite('ComposeboxVoiceSearch', () => {
         await microtasksFinished();
         await hidePromise;
 
-        const voiceSearchElement =
-            getVoiceSearchElement(composeboxElement) as any;
+        const voiceSearchElement = getVoiceSearchElement(composeboxElement) as
+            unknown as MockComposeboxVoiceSearch;
         // Simulate Composebox behavior where timer is disabled.
         voiceSearchElement.hasErrorTimer = false;
 
@@ -428,7 +439,7 @@ suite('ComposeboxVoiceSearch', () => {
 
         // Assert: UI closes instantly with no error message and no new timers.
         assertTrue(cancelEventFired);
-        assertEquals('', voiceSearchElement['errorMessage_']);
+        assertEquals('', voiceSearchElement.errorMessage_);
         assertEquals(0, windowProxy.getCallCount('setTimeout'));
 
         // Assert: The action is logged as ERROR_CANCELING.
@@ -437,10 +448,6 @@ suite('ComposeboxVoiceSearch', () => {
             metrics.count(
                 'VoiceSearch.Action.NTP_REALBOX',
                 VoiceSearchAction.ERROR_CANCELING));
-
-        // Clean up internal state to prevent leaking into the next test.
-        voiceSearchElement['voiceModeEndCleanup_']();
-        await microtasksFinished();
       });
 
   test(
@@ -474,9 +481,6 @@ suite('ComposeboxVoiceSearch', () => {
             metrics.count(
                 'VoiceSearch.Action.NTP_REALBOX',
                 VoiceSearchAction.ERROR_CANCELING));
-        // Clean up internal state to prevent leaking into the next test.
-        voiceSearchElement['voiceModeEndCleanup_']();
-        await microtasksFinished();
       });
 
   test(
@@ -511,9 +515,6 @@ suite('ComposeboxVoiceSearch', () => {
             metrics.count(
                 'VoiceSearch.Action.NTP_REALBOX',
                 VoiceSearchAction.ERROR_CANCELING));
-        // Clean up internal state to prevent leaking into the next test.
-        voiceSearchElement['voiceModeEndCleanup_']();
-        await microtasksFinished();
       });
 
   test('voice search button does not show when disabled', async () => {
@@ -571,8 +572,7 @@ suite('ComposeboxVoiceSearch', () => {
         await microtasksFinished();
 
         const voiceSearchElement = getVoiceSearchElement(composeboxElement);
-        const mockVoiceSearch =
-            voiceSearchElement as unknown as MockComposeboxVoiceSearch;
+
 
         // Simulate speech recognition result (user is speaking).
         const speechRes = createResults(1);
@@ -608,11 +608,6 @@ suite('ComposeboxVoiceSearch', () => {
                 'VoiceSearch.Action.NTP_REALBOX',
                 VoiceSearchAction.QUERY_SUBMITTED),
             'QUERY_SUBMITTED metric should be recorded');
-
-        //  Cleanup.
-        mockVoiceSearch.state_ = -1;
-        mockVoiceSearch.voiceRecognition_.abort();
-        await microtasksFinished();
       });
 
   test(
@@ -668,10 +663,6 @@ suite('ComposeboxVoiceSearch', () => {
             metrics.count(
                 'VoiceSearch.Action.NTP_REALBOX',
                 VoiceSearchAction.STOP_BUTTON_CLICKED));
-
-        // Clean up internal state.
-        voiceSearchElement['voiceModeEndCleanup_']();
-        await microtasksFinished();
       });
 
   test('Stops voice search on outside pointerdown event', async () => {
@@ -721,13 +712,6 @@ suite('ComposeboxVoiceSearch', () => {
     assertTrue(stoppedEventFired, 'Event should fire on outside pointerdown');
     assertFalse(
         mockSpeechRecognition.voiceSearchInProgress, 'Engine should stop');
-
-    // Cleanup.
-    const mockVoiceSearch =
-        voiceSearchElement as unknown as MockComposeboxVoiceSearch;
-    mockVoiceSearch.state_ = -1;
-    mockVoiceSearch.voiceRecognition_.abort();
-    await microtasksFinished();
   });
 
   test('Does not stop voice search on pointerdown inside composebox', async () => {
@@ -774,13 +758,6 @@ suite('ComposeboxVoiceSearch', () => {
     assertFalse(stoppedEventFired, 'Event should not fire on inside pointerdown');
     assertTrue(
         mockSpeechRecognition.voiceSearchInProgress, 'Engine should not stop');
-
-    // Cleanup.
-    const mockVoiceSearch =
-        voiceSearchElement as unknown as MockComposeboxVoiceSearch;
-    mockVoiceSearch.state_ = -1;
-    mockVoiceSearch.voiceRecognition_.abort();
-    await microtasksFinished();
   });
 
   test('Stops voice search on window blur event', async () => {
@@ -824,13 +801,6 @@ suite('ComposeboxVoiceSearch', () => {
     assertTrue(stoppedEventFired, 'Event should fire on window blur');
     assertFalse(
         mockSpeechRecognition.voiceSearchInProgress, 'Engine should stop');
-
-    // Cleanup
-    const mockVoiceSearch =
-        voiceSearchElement as unknown as MockComposeboxVoiceSearch;
-    mockVoiceSearch.state_ = -1;
-    mockVoiceSearch.voiceRecognition_.abort();
-    await microtasksFinished();
   });
 
   test(
@@ -852,8 +822,8 @@ suite('ComposeboxVoiceSearch', () => {
         windowProxy.getArgs('setTimeout').length = 0;
         windowProxy.getArgs('clearTimeout').length = 0;
 
-        const voiceSearchElement =
-            getVoiceSearchElement(composeboxElement) as any;
+        const voiceSearchElement = getVoiceSearchElement(composeboxElement) as
+            unknown as MockComposeboxVoiceSearch;
         const hidePromise =
             getTransitionEndPromise(composeboxElement.$.composebox, 'opacity');
         const voiceSearchButton = getVoiceSearchButton(composeboxElement);
@@ -907,7 +877,8 @@ suite('ComposeboxVoiceSearch', () => {
 
         // Simulate Mojo notification: prompt is showing with size 0,0
         const pageCallbackRouter =
-            composeboxElement['searchboxCallbackRouter_'];
+            (composeboxElement as unknown as MockComposebox)
+                .searchboxCallbackRouter_;
         assertTrue(!!pageCallbackRouter);
         const pageRemote = pageCallbackRouter.$.bindNewPipeAndPassRemote();
         pageRemote.onPermissionPromptChanged(true, {width: 0, height: 0});
@@ -971,13 +942,6 @@ suite('ComposeboxVoiceSearch', () => {
         assertFalse(
             mockSpeechRecognition.voiceSearchInProgress,
             'Voice search should now stop');
-
-        // Cleanup.
-        const mockVoiceSearch =
-            voiceSearchElement as unknown as MockComposeboxVoiceSearch;
-        mockVoiceSearch.state_ = -1;
-        mockVoiceSearch.voiceRecognition_.abort();
-        await microtasksFinished();
       });
 
   test('Emits clean transcript without duplicates on stop click', async () => {
@@ -1030,11 +994,6 @@ suite('ComposeboxVoiceSearch', () => {
 
     // Verify transcript has no duplicate text (e.g. 'hellohello world').
     assertEquals('hello world', firedTranscript);
-
-    // Cleanup.
-    mockVoiceSearch.state_ = -1;
-    mockVoiceSearch.voiceRecognition_.abort();
-    await microtasksFinished();
   });
 
   test('Submits the voice transcript accurately after stop click', async () => {
@@ -1203,7 +1162,7 @@ suite('ComposeboxVoiceSearch', () => {
         // Fire `onPermissionPromptChanged(true, promptSize)`.
         const searchboxCallbackRouterRemote =
             ComposeboxProxyImpl.getInstance()
-                .searchboxCallbackRouter.$.bindNewPipeAndPassRemote() as any;
+                .searchboxCallbackRouter.$.bindNewPipeAndPassRemote();
         searchboxCallbackRouterRemote.onPermissionPromptChanged(
             true, {width: 100, height: 200});
         await searchboxCallbackRouterRemote.$.flushForTesting();
@@ -1230,10 +1189,6 @@ suite('ComposeboxVoiceSearch', () => {
 
         // Verify state is reset.
         assertFalse(voiceSearchElement.isPermissionPromptOpen);
-
-        // Clean up internal state to prevent leaking into the next test.
-        voiceSearchElement['voiceModeEndCleanup_']();
-        await microtasksFinished();
       });
 
   test(
@@ -1275,10 +1230,6 @@ suite('ComposeboxVoiceSearch', () => {
 
         // Verify the recording did NOT stop.
         assertTrue(mockSpeechRecognition.voiceSearchInProgress);
-
-        // Cleanup.
-        voiceSearchElement['voiceModeEndCleanup_']();
-        await microtasksFinished();
       });
 
   test('blur event is ignored if permission prompt is open', async () => {
@@ -1315,10 +1266,6 @@ suite('ComposeboxVoiceSearch', () => {
     const blurTimeoutCall =
         setTimeoutCallsAfterBlur.find((call: any) => call[1] === 100);
     assertFalse(!!blurTimeoutCall, 'No blur timeout should be scheduled');
-
-    // Cleanup.
-    voiceSearchElement['voiceModeEndCleanup_']();
-    await microtasksFinished();
   });
 
   test(
@@ -1378,10 +1325,6 @@ suite('ComposeboxVoiceSearch', () => {
 
         // Recording should stop.
         assertFalse(mockSpeechRecognition.voiceSearchInProgress);
-
-        // Cleanup.
-        voiceSearchElement['voiceModeEndCleanup_']();
-        await microtasksFinished();
       });
 
   test(

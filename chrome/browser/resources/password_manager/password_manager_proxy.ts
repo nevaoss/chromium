@@ -175,7 +175,7 @@ export interface PasswordManagerProxy {
   /**
    * Requests the start of the bulk password check.
    */
-  startBulkPasswordCheck(): Promise<void>;
+  startBulkPasswordCheck(): void;
 
   /**
    * Records a given interaction on the Password Check page.
@@ -616,7 +616,11 @@ export class PasswordManagerImpl implements PasswordManagerProxy {
   }
 
   startBulkPasswordCheck() {
-    return chrome.passwordsPrivate.startPasswordCheck();
+    if (!loadTimeData.getBoolean('enablePasswordManagerMojoApi')) {
+      chrome.passwordsPrivate.startPasswordCheck().catch(() => {});
+      return;
+    }
+    this.handler.startBulkPasswordCheck();
   }
 
   recordPasswordCheckInteraction(interaction: PasswordCheckInteraction) {
@@ -667,7 +671,11 @@ export class PasswordManagerImpl implements PasswordManagerProxy {
   }
 
   removeBlockedSite(id: number) {
-    chrome.passwordsPrivate.removePasswordException(id);
+    if (!loadTimeData.getBoolean('enablePasswordManagerMojoApi')) {
+      chrome.passwordsPrivate.removePasswordException(id);
+      return;
+    }
+    this.handler.removePasswordException(id);
   }
 
   muteInsecureCredential(insecureCredential:
@@ -706,7 +714,10 @@ export class PasswordManagerImpl implements PasswordManagerProxy {
   }
 
   resetImporter(deleteFile: boolean) {
-    return chrome.passwordsPrivate.resetImporter(deleteFile);
+    if (!loadTimeData.getBoolean('enablePasswordManagerMojoApi')) {
+      return chrome.passwordsPrivate.resetImporter(deleteFile);
+    }
+    return this.handler.resetImporter(deleteFile).then(() => {});
   }
 
   requestExportProgressStatus() {
@@ -825,7 +836,11 @@ export class PasswordManagerImpl implements PasswordManagerProxy {
   }
 
   movePasswordsToAccount(ids: number[]) {
-    chrome.passwordsPrivate.movePasswordsToAccount(ids);
+    if (!loadTimeData.getBoolean('enablePasswordManagerMojoApi')) {
+      chrome.passwordsPrivate.movePasswordsToAccount(ids);
+      return;
+    }
+    this.handler.movePasswordsToAccount(ids);
   }
 
   dismissSafetyHubPasswordMenuNotification() {

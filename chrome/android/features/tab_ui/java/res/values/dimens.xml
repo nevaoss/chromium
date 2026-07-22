@@ -199,6 +199,10 @@ found in the LICENSE file.
 
     <!-- Dimens for vertical tabs -->
     <dimen name="vertical_tabs_rail_horizontal_margin">12dp</dimen>
+    <dimen name="vertical_tabs_scrollbar_margin_end">-9dp</dimen>
+    <dimen name="vertical_tabs_scrollbar_padding_end">9dp</dimen>
+    <dimen name="vertical_tabs_scrollbar_width">3dp</dimen>
+    <dimen name="vertical_tabs_scrollbar_radius">100dp</dimen>
     <dimen name="vertical_tab_item_icon_size">16dp</dimen>
     <dimen name="vertical_tab_item_loading_spinner_thickness">2dp</dimen>
     <dimen name="vertical_tab_item_padding_horizontal">8dp</dimen>

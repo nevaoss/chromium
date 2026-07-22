@@ -314,6 +314,7 @@ Jika tidak, ini akan disekat oleh tetapan privasi anda. Kebenaran ini akan membo
 <translation id="1463793142714244641">Hartanah Kongsi Masa &amp; Percutian</translation>
 <translation id="1465457928007067810">IBAN telah disimpan pada Google Account anda</translation>
 <translation id="1467432559032391204">Kiri</translation>
+<translation id="1471514598850585811">Komputer riba</translation>
 <translation id="1472675084647422956">Tunjukkan lagi</translation>
 <translation id="1473183651233018052">JIS B10</translation>
 <translation id="1473495410389165587">Masukkan 3 atau lebih perkataan untuk mendapatkan bantuan penulisan</translation>
@@ -996,6 +997,7 @@ Jika tidak, ini akan disekat oleh tetapan privasi anda. Kebenaran ini akan membo
 <translation id="2524962131655207565"><ph name="BEGIN_BOLD" />Kandungan daripada halaman semak keluar dikongsi dengan Google untuk menawarkan pilihan ini.<ph name="END_BOLD" /> Pelan pembayaran tertakluk pada kelayakan. Untuk menyembunyikan pilihan bayar kemudian, akses <ph name="BEGIN_LINK" />tetapan pembayaran<ph name="END_LINK" />.</translation>
 <translation id="2526062290525841862">Untuk menjalankan apl ini, dayakan semula Mod Pembangun Apl Web Terpencil</translation>
 <translation id="2526280916094749336">Anda boleh menggunakan alamat yang disimpan pada seluruh produk Google. Alamat ini akan disimpan dalam Google Account anda, <ph name="ACCOUNT" />.</translation>
+<translation id="2526590354069164005">Desktop</translation>
 <translation id="2527451058878391043">CVC tertera pada bahagian hadapan kad anda. CVC ialah kod 4 digit pada bahagian atas sebelah kanan, di atas nombor kad anda.</translation>
 <translation id="2529899080962247600">Medan ini tidak boleh mengandungi lebih daripada <ph name="MAX_ITEMS_LIMIT" /> entri. Semua entri berikutnya akan diabaikan.</translation>
 <translation id="2530042584066815841">Kunci dan penggunaan tetikus</translation>
@@ -3536,6 +3538,7 @@ Untuk menyembunyikan pilihan bayar kemudian, akses <ph name="BEGIN_LINK" />tetap
 <translation id="6494750904506170417">tetingkap timbul dan ubah hala</translation>
 <translation id="6495664197699704593">Kata laluan ini disimpan pada peranti ini sahaja. Untuk menggunakan kata laluan itu pada peranti anda yang lain, <ph name="GOOGLE_PASSWORD_MANAGER" />.</translation>
 <translation id="649611364763911650">Untuk menggunakan perkhidmatan autolengkap lain dalam Chrome, pilih penyedia autolengkap anda dalam tetapan Android</translation>
+<translation id="6496531801333278234">Ditemukan oleh Kecerdasan Peribadi. Anda boleh mengurus maklumat anda dalam tetapan.</translation>
 <translation id="6499038740797743453">Tetapkan semula kata laluan?</translation>
 <translation id="6502510275417601303">Makluman tentang tetapan pembayaran baharu ditutup</translation>
 <translation id="6502991525169604759">Tanpa perubahan anda</translation>
@@ -4913,7 +4916,6 @@ Butiran tambahan:
 <translation id="8671519637524426245">Nilai <ph name="SECURE_DNS_SALT" /> tidak memenuhi keperluan saiz.</translation>
 <translation id="867224526087042813">Tandatangan</translation>
 <translation id="8672535691554698269">Rangkaian Komputer</translation>
-<translation id="8673710317985154384">{NUM_TABS,plural, =1{Tunjukkan butiran perkongsian tab. Berkongsi 1 tab daripada {WEBSITE_LIST_STR}}other{Tunjukkan butiran perkongsian tab. Berkongsi {NUM_TABS} tab daripada {WEBSITE_LIST_STR}}}</translation>
 <translation id="8675446170353411473">Fail anda sedang dimuat naik kepada <ph name="CLOUD_PROVIDER" /></translation>
 <translation id="8676424191133491403">Tiada kelewatan</translation>
 <translation id="8680536109547170164"><ph name="QUERY" />, jawapan, <ph name="ANSWER" /></translation>

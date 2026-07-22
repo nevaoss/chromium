@@ -37,6 +37,7 @@
 #include "components/signin/public/base/signin_switches.h"
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 #include "chrome/browser/signin/dice_tab_helper.h"
+#include "chrome/browser/ui/signin/signin_qrcode_model.h"
 #endif
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/sync/sync_service_factory.h"
@@ -84,7 +85,6 @@
 #include "device/fido/fido_discovery_base.h"
 #include "device/fido/fido_discovery_factory.h"
 #include "device/fido/fido_request_handler_base.h"
-#include "device/fido/public/cable_discovery_data.h"
 #include "device/fido/public/features.h"
 #include "device/fido/public/fido_constants.h"
 #include "device/fido/public/fido_transport_protocol.h"
@@ -288,6 +288,18 @@ ChromeAuthenticatorRequestDelegate::~ChromeAuthenticatorRequestDelegate() {
   // this delegate.
   dialog_model_->OnRequestComplete();
   dialog_model_->observers.RemoveObserver(this);
+
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+  content::WebContents* web_contents =
+      content::WebContents::FromRenderFrameHost(
+          content::RenderFrameHost::FromID(render_frame_host_id_));
+  if (web_contents) {
+    auto* model = SigninQRCodeModel::FromWebContents(web_contents);
+    if (model) {
+      model->Reset();
+    }
+  }
+#endif
 
   if (g_observer) {
     g_observer->OnDestroy(this);
@@ -540,32 +552,40 @@ void ChromeAuthenticatorRequestDelegate::ConfigureDiscoveries(
     }
   }
 
-  std::optional<std::array<uint8_t, device::cablev2::kQRKeySize>>
-      qr_generator_key;
-  std::optional<std::string> qr_string;
-    // A QR key is generated for all caBLEv2 cases but whether the QR code is
-    // displayed is up to the UI.
-    qr_generator_key.emplace();
-    crypto::RandBytes(*qr_generator_key);
-    qr_string = device::cablev2::qr::Encode(*qr_generator_key, request_type);
+  std::array<uint8_t, device::cablev2::kQRKeySize> qr_generator_key;
+  crypto::RandBytes(qr_generator_key);
+  std::string qr_string =
+      device::cablev2::qr::Encode(qr_generator_key, request_type);
 
-    auto linking_handler =
-        std::make_unique<CableLinkingEventHandler>(profile());
-    discovery_factory->set_cable_event_callback(
-        base::BindRepeating(&ChromeAuthenticatorRequestDelegate::OnCableEvent,
-                            weak_ptr_factory_.GetWeakPtr()));
+  auto linking_handler = std::make_unique<CableLinkingEventHandler>(profile());
+  discovery_factory->set_cable_event_callback(
+      base::BindRepeating(&ChromeAuthenticatorRequestDelegate::OnCableEvent,
+                          weak_ptr_factory_.GetWeakPtr()));
 
-    dialog_controller_->set_cable_transport_info(qr_string);
-    discovery_factory->set_cable_data(request_type, qr_generator_key);
+  dialog_controller_->set_cable_transport_info(qr_string);
 
-    if (SystemNetworkContextManager::GetInstance()) {
-      // caBLE and the enclave depend on the network context factory.
-      // TODO(nsatragno): this should probably use a storage partition network
-      // context instead. See the SystemNetworkContextManager class comments.
-      discovery_factory->set_network_context_factory(base::BindRepeating([]() {
-        return SystemNetworkContextManager::GetInstance()->GetContext();
-      }));
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+  if (IsChromeSigninPage(GetRenderFrameHost())) {
+    content::WebContents* web_contents =
+        content::WebContents::FromRenderFrameHost(
+            content::RenderFrameHost::FromID(render_frame_host_id_));
+    if (web_contents) {
+      SigninQRCodeModel::GetOrCreateForWebContents(web_contents)
+          ->SetQrCode(qr_string);
     }
+  }
+#endif
+
+  discovery_factory->set_cable_data(request_type, qr_generator_key);
+
+  if (SystemNetworkContextManager::GetInstance()) {
+    // caBLE and the enclave depend on the network context factory.
+    // TODO(nsatragno): this should probably use a storage partition network
+    // context instead. See the SystemNetworkContextManager class comments.
+    discovery_factory->set_network_context_factory(base::BindRepeating([]() {
+      return SystemNetworkContextManager::GetInstance()->GetContext();
+    }));
+  }
 
 #if BUILDFLAG(IS_MAC)
   ConfigureNSWindow(discovery_factory);

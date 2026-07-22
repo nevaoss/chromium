@@ -227,8 +227,7 @@ public class AtMemoryBottomSheetViewRenderTest {
                     PropertyModel searchTileModel =
                             createSearchTileModel(
                                     "flight",
-                                    mActivity.getString(
-                                            R.string.autofill_at_memory_search_tile_details),
+                                    "Powered by Personal Intelligence with Gemini",
                                     R.drawable.ic_spark_24dp);
                     modelList.add(
                             new ListItem(

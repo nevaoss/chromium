@@ -367,7 +367,10 @@ void AutofillAiManager::OnAfterLoadedServerPredictions(
 
 void AutofillAiManager::OnPrefetchContextComplete(
     const PersonalContextAccessManager& manager,
-    base::span<const EntityInstance> entities) {
+    std::optional<base::span<const EntityInstance>> entities) {
+  if (!entities.has_value()) {
+    client_->ShowAutofillAiPreFetchFailureNotification();
+  }
   if (!std::ranges::contains(client_->GetAutofillSuggestions(),
                              SuggestionType::kFetchingAmbientData,
                              &Suggestion::type)) {
@@ -665,7 +668,8 @@ bool AutofillAiManager::ShouldDisplayIph(const FormStructure& form,
   }
 
   return std::ranges::any_of(attributes_in_form, [](const auto& p) {
-    return AttributesMeetImportConstraints(p.first, p.second);
+    return !p.first.read_only() &&
+           AttributesMeetImportConstraints(p.first, p.second);
   });
 }
 

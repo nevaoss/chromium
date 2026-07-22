@@ -839,7 +839,6 @@
 <translation id="391904960191284041">Рецензије производа</translation>
 <translation id="3921585859122905677">Позиција траке за адресу</translation>
 <translation id="3922185497376658606">Унапред учитавај веб-странице</translation>
-<translation id="3922395466317605522">Прилагодите мени</translation>
 <translation id="3926703470020109118">Преузимање је отказано</translation>
 <translation id="3929457972718048006">Адресе</translation>
 <translation id="3931215329146376310">{count,plural, =1{Нова лозинка за овај сајт}one{Нове лозинке за овај сајт}few{Нове лозинке за овај сајт}other{Нове лозинке за овај сајт}}</translation>
@@ -1273,6 +1272,7 @@
 <translation id="5336910966955551309">Додирните и задржите да бисте закачили омиљене сајтове</translation>
 <translation id="5338512273860059533">Пријављивање је у току.</translation>
 <translation id="5343472494710226394">Вести, спорт и садржај на основу интересовања.</translation>
+<translation id="5351613737248079168">Морате да будете пријављени да бисте користили Level Up</translation>
 <translation id="5352128922772839949">Сачувајте фајл</translation>
 <translation id="5355191726083956201">Побољшана заштита је укључена</translation>
 <translation id="536067926684072644">Прикажи обележиваче</translation>
@@ -1695,7 +1695,6 @@ Handoff треба да се омогући у одељку General (Опште)
 <translation id="6674917187596384849">Можете лако да прелазите са једног налога на други</translation>
 <translation id="6676349090816247042">Опције за пријављивање.</translation>
 <translation id="667999046851023355">Документ</translation>
-<translation id="6680416467695217368">Прилагоди мени</translation>
 <translation id="6681791404926413601">{count,plural, =1{{count} опција за начин плаћања је доступна изнад тастатуре.}one{{count} опција за начин плаћања је доступна изнад тастатуре.}few{{count} опције за начин плаћања су доступне изнад тастатуре.}other{{count} опција за начин плаћања је доступно изнад тастатуре.}}</translation>
 <translation id="6682680306647339111">Подсетник је уклоњен</translation>
 <translation id="6684262542644248484">Пријавите се на веб-сајт</translation>
@@ -2242,6 +2241,7 @@ Handoff треба да се омогући у одељку General (Опште)
 <translation id="8534481786647257214">Google+ пост је довршен.</translation>
 <translation id="8535368836838588657">Прикажите лозинку</translation>
 <translation id="8540426897269305488">Пријави ме помоћу акредитива <ph name="CELL_ACCESSIBILITY_LABEL" /></translation>
+<translation id="8542331710562073430">Дошло је до грешке. Додирните дугме Live да бисте пробали поново да покренете Live.</translation>
 <translation id="8545276357312221485">Проверите подешавања подразумеваног прегледача</translation>
 <translation id="854938212724803178">Имате 1 угрожену лозинку. Решите проблем одмах да бисте били безбедни.</translation>
 <translation id="8551311254462607218">На траци за адресу додирните икону камере Google објектива</translation>

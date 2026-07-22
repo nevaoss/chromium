@@ -8,7 +8,7 @@
 
 #include "base/memory/raw_ptr.h"
 #include "base/test/task_environment.h"
-#include "chrome/browser/search/background/ntp_background_service_factory.h"
+#include "chrome/browser/ntp_customization/ntp_android_background_service_factory.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/test/base/testing_profile.h"
 #include "components/application_locale_storage/application_locale_storage.h"
@@ -62,7 +62,7 @@ std::unique_ptr<TestingProfile> MakeTestingProfile(
     scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory) {
   TestingProfile::Builder profile_builder;
   profile_builder.AddTestingFactory(
-      NtpBackgroundServiceFactory::GetInstance(),
+      NtpAndroidBackgroundServiceFactory::GetInstance(),
       base::BindRepeating(
           [](ApplicationLocaleStorage* application_locale_storage,
              scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
@@ -89,7 +89,7 @@ class NtpAndroidCustomBackgroundServiceTest : public testing::Test {
             &test_url_loader_factory_));
 
     mock_background_service_ = static_cast<MockNtpBackgroundService*>(
-        NtpBackgroundServiceFactory::GetForProfile(profile_.get()));
+        NtpAndroidBackgroundServiceFactory::GetForProfile(profile_.get()));
 
     service_ =
         std::make_unique<NtpAndroidCustomBackgroundService>(profile_.get());

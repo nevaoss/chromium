@@ -43,7 +43,10 @@ source_set("model") {
 
 source_set("unit_tests") {
   testonly = true
-  sources = [ "level_up_scene_agent_unittest.mm" ]
+  sources = [
+    "level_up_scene_agent_unittest.mm",
+    "level_up_service_unittest.mm",
+  ]
   deps = [
     ":model",
     "//base",
@@ -52,6 +55,7 @@ source_set("unit_tests") {
     "//ios/chrome/app/application_delegate:test_support",
     "//ios/chrome/app/profile",
     "//ios/chrome/browser/shared/coordinator/scene",
+    "//ios/chrome/browser/shared/model/prefs:pref_names",
     "//ios/chrome/browser/shared/model/profile/test",
     "//ios/chrome/browser/shared/public/features",
     "//ios/web/public/test",

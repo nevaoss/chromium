@@ -192,22 +192,50 @@ bool HasAutofillSuggestionsForA11y(SuggestionType type) {
 
   switch (type) {
     case SuggestionType::kAddressEntry:
-    case SuggestionType::kAddressFieldByFieldFilling:
     case SuggestionType::kAddressEntryOnTyping:
+    case SuggestionType::kAddressFieldByFieldFilling:
     case SuggestionType::kCreditCardEntry:
-    case SuggestionType::kVirtualCreditCardEntry:
-    case SuggestionType::kIbanEntry:
-    case SuggestionType::kSaveAndFillCreditCardEntry:
-    case SuggestionType::kMerchantPromoCodeEntry:
-    case SuggestionType::kIdentityCredential:
-    case SuggestionType::kLoyaltyCardEntry:
-    case SuggestionType::kOneTimePasswordEntry:
     case SuggestionType::kDevtoolsTestAddresses:
     case SuggestionType::kFillAutofillAi:
+    case SuggestionType::kIbanEntry:
+    case SuggestionType::kIdentityCredential:
+    case SuggestionType::kLoyaltyCardEntry:
+    case SuggestionType::kMerchantPromoCodeEntry:
+    case SuggestionType::kOneTimePasswordEntry:
+    case SuggestionType::kSaveAndFillCreditCardEntry:
+    case SuggestionType::kVirtualCreditCardEntry:
       return true;
     case SuggestionType::kAutocompleteEntry:
     // Autocomplete entries are handled separately by the caller. The other
     // entries should not have announcements.
+    case SuggestionType::kAccountStoragePasswordEntry:
+    case SuggestionType::kAllLoyaltyCardsEntry:
+    case SuggestionType::kAllSavedPasswordsEntry:
+    case SuggestionType::kAtMemoryGenericError:
+    case SuggestionType::kAtMemoryInactivityNudge:
+    case SuggestionType::kAtMemoryNoConnection:
+    case SuggestionType::kAtMemorySearchAffordance:
+    case SuggestionType::kAtMemorySearchResult:
+    case SuggestionType::kAutocompleteAtMemoryButton:
+    case SuggestionType::kAutofillAiOtherOrders:
+    case SuggestionType::kBackupPasswordEntry:
+    case SuggestionType::kBnplEntry:
+    case SuggestionType::kBnplFootnote:
+    case SuggestionType::kComposeDisable:
+    case SuggestionType::kComposeGoToSettings:
+    case SuggestionType::kComposeNeverShowOnThisSiteAgain:
+    case SuggestionType::kComposeProactiveNudge:
+    case SuggestionType::kComposeResumeNudge:
+    case SuggestionType::kComposeSavedStateNotification:
+    case SuggestionType::kDatalistEntry:
+    case SuggestionType::kDevtoolsTestAddressByCountry:
+    case SuggestionType::kDevtoolsTestAddressEntry:
+    case SuggestionType::kFetchingAmbientData:
+    case SuggestionType::kFillPassword:
+    case SuggestionType::kFreeformFooter:
+    case SuggestionType::kGeneratePasswordEntry:
+    case SuggestionType::kInsecureContextPaymentDisabledMessage:
+    case SuggestionType::kLoadingThrobber:
     case SuggestionType::kManageAddress:
     case SuggestionType::kManageAutofillAi:
     case SuggestionType::kManageAutofillAiIdentityDocs:
@@ -216,51 +244,23 @@ bool HasAutofillSuggestionsForA11y(SuggestionType type) {
     case SuggestionType::kManageCreditCard:
     case SuggestionType::kManageIban:
     case SuggestionType::kManageLoyaltyCard:
-    case SuggestionType::kComposeProactiveNudge:
-    case SuggestionType::kComposeResumeNudge:
-    case SuggestionType::kComposeSavedStateNotification:
-    case SuggestionType::kComposeDisable:
-    case SuggestionType::kComposeGoToSettings:
-    case SuggestionType::kComposeNeverShowOnThisSiteAgain:
-    case SuggestionType::kSeePromoCodeDetails:
-    case SuggestionType::kDatalistEntry:
-    case SuggestionType::kPasswordEntry:
-    case SuggestionType::kBackupPasswordEntry:
-    case SuggestionType::kTroubleSigningInEntry:
-    case SuggestionType::kAllSavedPasswordsEntry:
-    case SuggestionType::kGeneratePasswordEntry:
-    case SuggestionType::kAccountStoragePasswordEntry:
-    case SuggestionType::kPasswordFieldByFieldFilling:
-    case SuggestionType::kFillPassword:
-    case SuggestionType::kViewPasswordDetails:
-    case SuggestionType::kFreeformFooter:
-    case SuggestionType::kInsecureContextPaymentDisabledMessage:
-    case SuggestionType::kScanCreditCard:
-    case SuggestionType::kBnplEntry:
-    case SuggestionType::kAllLoyaltyCardsEntry:
-    case SuggestionType::kWebauthnCredential:
-    case SuggestionType::kWebauthnSignInWithAnotherDevice:
-    case SuggestionType::kWebauthnPasskeyQrCode:
-    case SuggestionType::kTitle:
-    case SuggestionType::kSeparator:
-    case SuggestionType::kUndoOrClear:
-    case SuggestionType::kMixedFormMessage:
-    case SuggestionType::kDevtoolsTestAddressEntry:
-    case SuggestionType::kDevtoolsTestAddressByCountry:
-    case SuggestionType::kPendingStateSignin:
-    case SuggestionType::kLoadingThrobber:
-    case SuggestionType::kFetchingAmbientData:
-    case SuggestionType::kAutofillAiOtherOrders:
-    case SuggestionType::kAtMemorySearchResult:
-    case SuggestionType::kBnplFootnote:
-    case SuggestionType::kAtMemoryInactivityNudge:
-    case SuggestionType::kAutocompleteAtMemoryButton:
-    case SuggestionType::kOpenGemini:
-    case SuggestionType::kAtMemoryNoConnection:
-    case SuggestionType::kAtMemoryGenericError:
-    case SuggestionType::kAtMemorySearchAffordance:
-    case SuggestionType::kPersonalContextNotice:
     case SuggestionType::kMaximizeCreditCardBenefitsEntry:
+    case SuggestionType::kMixedFormMessage:
+    case SuggestionType::kOpenGemini:
+    case SuggestionType::kPasswordEntry:
+    case SuggestionType::kPasswordFieldByFieldFilling:
+    case SuggestionType::kPendingStateSignin:
+    case SuggestionType::kPersonalContextNotice:
+    case SuggestionType::kScanCreditCard:
+    case SuggestionType::kSeePromoCodeDetails:
+    case SuggestionType::kSeparator:
+    case SuggestionType::kTitle:
+    case SuggestionType::kTroubleSigningInEntry:
+    case SuggestionType::kUndoOrClear:
+    case SuggestionType::kViewPasswordDetails:
+    case SuggestionType::kWebauthnCredential:
+    case SuggestionType::kWebauthnPasskeyQrCode:
+    case SuggestionType::kWebauthnSignInWithAnotherDevice:
       return false;
   }
 }
@@ -295,19 +295,28 @@ bool AutofillExternalDelegate::IsAutofillAndFirstLayerSuggestionId(
     case SuggestionType::kAddressFieldByFieldFilling:
     case SuggestionType::kCreditCardEntry:
     case SuggestionType::kDevtoolsTestAddresses:
-    case SuggestionType::kSaveAndFillCreditCardEntry:
-      // Virtual cards can appear on their own when filling the CVC for a card
-      // that a merchant has saved. This indicates there could be Autofill
-      // suggestions related to standalone CVC fields.
-    case SuggestionType::kVirtualCreditCardEntry:
     case SuggestionType::kLoyaltyCardEntry:
     case SuggestionType::kOneTimePasswordEntry:
+    case SuggestionType::kSaveAndFillCreditCardEntry:
+    // Virtual cards can appear on their own when filling the CVC for a card
+    // that a merchant has saved. This indicates there could be Autofill
+    // suggestions related to standalone CVC fields.
+    case SuggestionType::kVirtualCreditCardEntry:
       return true;
     case SuggestionType::kAccountStoragePasswordEntry:
     case SuggestionType::kAllLoyaltyCardsEntry:
     case SuggestionType::kAllSavedPasswordsEntry:
+    case SuggestionType::kAtMemoryGenericError:
+    case SuggestionType::kAtMemoryInactivityNudge:
+    case SuggestionType::kAtMemoryNoConnection:
+    case SuggestionType::kAtMemorySearchAffordance:
+    case SuggestionType::kAtMemorySearchResult:
+    case SuggestionType::kAutocompleteAtMemoryButton:
     case SuggestionType::kAutocompleteEntry:
+    case SuggestionType::kAutofillAiOtherOrders:
+    case SuggestionType::kBackupPasswordEntry:
     case SuggestionType::kBnplEntry:
+    case SuggestionType::kBnplFootnote:
     case SuggestionType::kComposeDisable:
     case SuggestionType::kComposeGoToSettings:
     case SuggestionType::kComposeNeverShowOnThisSiteAgain:
@@ -317,11 +326,15 @@ bool AutofillExternalDelegate::IsAutofillAndFirstLayerSuggestionId(
     case SuggestionType::kDatalistEntry:
     case SuggestionType::kDevtoolsTestAddressByCountry:
     case SuggestionType::kDevtoolsTestAddressEntry:
+    case SuggestionType::kFetchingAmbientData:
     case SuggestionType::kFillAutofillAi:
     case SuggestionType::kFillPassword:
+    case SuggestionType::kFreeformFooter:
     case SuggestionType::kGeneratePasswordEntry:
     case SuggestionType::kIbanEntry:
+    case SuggestionType::kIdentityCredential:
     case SuggestionType::kInsecureContextPaymentDisabledMessage:
+    case SuggestionType::kLoadingThrobber:
     case SuggestionType::kManageAddress:
     case SuggestionType::kManageAutofillAi:
     case SuggestionType::kManageAutofillAiIdentityDocs:
@@ -330,37 +343,24 @@ bool AutofillExternalDelegate::IsAutofillAndFirstLayerSuggestionId(
     case SuggestionType::kManageCreditCard:
     case SuggestionType::kManageIban:
     case SuggestionType::kManageLoyaltyCard:
+    case SuggestionType::kMaximizeCreditCardBenefitsEntry:
     case SuggestionType::kMerchantPromoCodeEntry:
     case SuggestionType::kMixedFormMessage:
+    case SuggestionType::kOpenGemini:
     case SuggestionType::kPasswordEntry:
-    case SuggestionType::kBackupPasswordEntry:
-    case SuggestionType::kTroubleSigningInEntry:
-    case SuggestionType::kFreeformFooter:
     case SuggestionType::kPasswordFieldByFieldFilling:
+    case SuggestionType::kPendingStateSignin:
+    case SuggestionType::kPersonalContextNotice:
     case SuggestionType::kScanCreditCard:
     case SuggestionType::kSeePromoCodeDetails:
     case SuggestionType::kSeparator:
     case SuggestionType::kTitle:
+    case SuggestionType::kTroubleSigningInEntry:
     case SuggestionType::kUndoOrClear:
     case SuggestionType::kViewPasswordDetails:
-    case SuggestionType::kIdentityCredential:
     case SuggestionType::kWebauthnCredential:
-    case SuggestionType::kWebauthnSignInWithAnotherDevice:
     case SuggestionType::kWebauthnPasskeyQrCode:
-    case SuggestionType::kPendingStateSignin:
-    case SuggestionType::kLoadingThrobber:
-    case SuggestionType::kFetchingAmbientData:
-    case SuggestionType::kAutofillAiOtherOrders:
-    case SuggestionType::kAtMemorySearchResult:
-    case SuggestionType::kAtMemoryInactivityNudge:
-    case SuggestionType::kBnplFootnote:
-    case SuggestionType::kAutocompleteAtMemoryButton:
-    case SuggestionType::kOpenGemini:
-    case SuggestionType::kAtMemoryNoConnection:
-    case SuggestionType::kAtMemoryGenericError:
-    case SuggestionType::kAtMemorySearchAffordance:
-    case SuggestionType::kPersonalContextNotice:
-    case SuggestionType::kMaximizeCreditCardBenefitsEntry:
+    case SuggestionType::kWebauthnSignInWithAnotherDevice:
       return false;
   }
 }
@@ -369,16 +369,13 @@ void AutofillExternalDelegate::OnQuery(
     const FormData& form,
     const FormFieldData& field,
     const gfx::Rect& caret_bounds,
-    AutofillSuggestionTriggerSource trigger_source,
-    bool update_datalist) {
+    AutofillSuggestionTriggerSource trigger_source) {
   last_query_ = {.form_id = form.global_id(),
                  .field_id = field.global_id(),
                  .field_datalist_options = field.datalist_options()};
   caret_bounds_ = caret_bounds;
   trigger_source_ = trigger_source;
-  if (update_datalist) {
-    manager_->client().UpdateAutofillDataListValues(field.datalist_options());
-  }
+  manager_->client().UpdateAutofillDataListValues(field.datalist_options());
 }
 
 const AutofillField* AutofillExternalDelegate::GetQueriedField() const {
@@ -723,19 +720,19 @@ void AutofillExternalDelegate::DidSelectSuggestion(
           mojom::ActionPersistence::kPreview, last_query_.form_id,
           last_query_.field_id, suggestion);
       break;
-    case SuggestionType::kWebauthnSignInWithAnotherDevice:
     case SuggestionType::kWebauthnPasskeyQrCode:
+    case SuggestionType::kWebauthnSignInWithAnotherDevice:
       manager_->DelegateSelectToPasswordManager(suggestion,
                                                 last_query_.field_id);
       break;
     case SuggestionType::kAllLoyaltyCardsEntry:
-    case SuggestionType::kAtMemoryInactivityNudge:
-    case SuggestionType::kAutocompleteAtMemoryButton:
-    case SuggestionType::kOpenGemini:
-    case SuggestionType::kAtMemoryNoConnection:
     case SuggestionType::kAtMemoryGenericError:
+    case SuggestionType::kAtMemoryInactivityNudge:
+    case SuggestionType::kAtMemoryNoConnection:
     case SuggestionType::kAtMemorySearchAffordance:
-    case SuggestionType::kPersonalContextNotice:
+    case SuggestionType::kAutocompleteAtMemoryButton:
+    case SuggestionType::kAutofillAiOtherOrders:
+    case SuggestionType::kBnplEntry:
     case SuggestionType::kComposeDisable:
     case SuggestionType::kComposeGoToSettings:
     case SuggestionType::kComposeNeverShowOnThisSiteAgain:
@@ -754,35 +751,35 @@ void AutofillExternalDelegate::DidSelectSuggestion(
     case SuggestionType::kManageCreditCard:
     case SuggestionType::kManageIban:
     case SuggestionType::kManageLoyaltyCard:
+    case SuggestionType::kMaximizeCreditCardBenefitsEntry:
     case SuggestionType::kMixedFormMessage:
-    case SuggestionType::kSaveAndFillCreditCardEntry:
-    case SuggestionType::kScanCreditCard:
-    case SuggestionType::kSeePromoCodeDetails:
-    case SuggestionType::kBnplEntry:
-    case SuggestionType::kAutofillAiOtherOrders:
     // So far OTP suggestions are only available on Android, so no preview
     // is needed. This needs to be changed once Desktop suggestions and UI
     // are implemented.
     case SuggestionType::kOneTimePasswordEntry:
-    case SuggestionType::kMaximizeCreditCardBenefitsEntry:
+    case SuggestionType::kOpenGemini:
+    case SuggestionType::kPersonalContextNotice:
+    case SuggestionType::kSaveAndFillCreditCardEntry:
+    case SuggestionType::kScanCreditCard:
+    case SuggestionType::kSeePromoCodeDetails:
       break;
-    case SuggestionType::kTitle:
-    case SuggestionType::kSeparator:
-    case SuggestionType::kPasswordEntry:
-    case SuggestionType::kBackupPasswordEntry:
-    case SuggestionType::kTroubleSigningInEntry:
-    case SuggestionType::kFreeformFooter:
     case SuggestionType::kAccountStoragePasswordEntry:
     case SuggestionType::kAllSavedPasswordsEntry:
-    case SuggestionType::kGeneratePasswordEntry:
-    case SuggestionType::kWebauthnCredential:
-    case SuggestionType::kPasswordFieldByFieldFilling:
-    case SuggestionType::kFillPassword:
-    case SuggestionType::kViewPasswordDetails:
-    case SuggestionType::kPendingStateSignin:
-    case SuggestionType::kLoadingThrobber:
-    case SuggestionType::kFetchingAmbientData:
+    case SuggestionType::kBackupPasswordEntry:
     case SuggestionType::kBnplFootnote:
+    case SuggestionType::kFetchingAmbientData:
+    case SuggestionType::kFillPassword:
+    case SuggestionType::kFreeformFooter:
+    case SuggestionType::kGeneratePasswordEntry:
+    case SuggestionType::kLoadingThrobber:
+    case SuggestionType::kPasswordEntry:
+    case SuggestionType::kPasswordFieldByFieldFilling:
+    case SuggestionType::kPendingStateSignin:
+    case SuggestionType::kSeparator:
+    case SuggestionType::kTitle:
+    case SuggestionType::kTroubleSigningInEntry:
+    case SuggestionType::kViewPasswordDetails:
+    case SuggestionType::kWebauthnCredential:
       NOTREACHED();  // Should be handled elsewhere.
   }
 }
@@ -808,15 +805,22 @@ void AutofillExternalDelegate::DidAcceptSuggestion(
       DidAcceptAddressSuggestion(suggestion, metadata);
       break;
     case SuggestionType::kCreditCardEntry:
-    case SuggestionType::kVirtualCreditCardEntry:
     case SuggestionType::kIbanEntry:
+    case SuggestionType::kMaximizeCreditCardBenefitsEntry:
     case SuggestionType::kMerchantPromoCodeEntry:
     case SuggestionType::kSaveAndFillCreditCardEntry:
-    case SuggestionType::kSeePromoCodeDetails:
     case SuggestionType::kScanCreditCard:
-    case SuggestionType::kBnplEntry:
-    case SuggestionType::kMaximizeCreditCardBenefitsEntry:
+    case SuggestionType::kSeePromoCodeDetails:
+    case SuggestionType::kVirtualCreditCardEntry:
       DidAcceptPaymentsSuggestion(suggestion, metadata);
+      break;
+    case SuggestionType::kBnplEntry:
+      DidAcceptPaymentsSuggestion(suggestion, metadata);
+      if (base::FeatureList::IsEnabled(
+              features::kAutofillEnablePayNowPayLaterTabs)) {
+        // The popup will instead be closed by `BnplManager`.
+        return;
+      }
       break;
     case SuggestionType::kManageAddress:
     case SuggestionType::kManageAutofillAi:
@@ -851,8 +855,8 @@ void AutofillExternalDelegate::DidAcceptSuggestion(
       manager_->OnSingleFieldSuggestionSelected(suggestion, last_query_.form_id,
                                                 last_query_.field_id);
       break;
-    case SuggestionType::kComposeResumeNudge:
     case SuggestionType::kComposeProactiveNudge:
+    case SuggestionType::kComposeResumeNudge:
     case SuggestionType::kComposeSavedStateNotification:
       if (AutofillComposeDelegate* delegate =
               manager_->client().GetComposeDelegate()) {
@@ -1012,50 +1016,40 @@ void AutofillExternalDelegate::DidAcceptSuggestion(
 #else
       NOTREACHED();
 #endif
-    case SuggestionType::kWebauthnSignInWithAnotherDevice:
     case SuggestionType::kWebauthnPasskeyQrCode:
+    case SuggestionType::kWebauthnSignInWithAnotherDevice:
       manager_->DelegateAcceptToPasswordManager(suggestion, metadata,
                                                 last_query_.field_id);
       break;
     case SuggestionType::kAtMemorySearchAffordance:
       manager_->GetAtMemoryManager().OnSearchSubmitted(
           suggestion.main_text.value);
-      break;
-    case SuggestionType::kTitle:
-    case SuggestionType::kSeparator:
-    case SuggestionType::kPasswordEntry:
-    case SuggestionType::kBackupPasswordEntry:
-    case SuggestionType::kTroubleSigningInEntry:
-    case SuggestionType::kFreeformFooter:
+      // The popup remains open to show search results once the query completes.
+      return;
     case SuggestionType::kAccountStoragePasswordEntry:
     case SuggestionType::kAllSavedPasswordsEntry:
-    case SuggestionType::kGeneratePasswordEntry:
-    case SuggestionType::kDevtoolsTestAddresses:
-    case SuggestionType::kDevtoolsTestAddressByCountry:
-    case SuggestionType::kWebauthnCredential:
-    case SuggestionType::kPasswordFieldByFieldFilling:
-    case SuggestionType::kFillPassword:
-    case SuggestionType::kViewPasswordDetails:
-    case SuggestionType::kPendingStateSignin:
-    case SuggestionType::kLoadingThrobber:
-    case SuggestionType::kFetchingAmbientData:
-    case SuggestionType::kAutofillAiOtherOrders:
-    case SuggestionType::kBnplFootnote:
-    case SuggestionType::kAtMemoryNoConnection:
     case SuggestionType::kAtMemoryGenericError:
+    case SuggestionType::kAtMemoryNoConnection:
+    case SuggestionType::kAutofillAiOtherOrders:
+    case SuggestionType::kBackupPasswordEntry:
+    case SuggestionType::kBnplFootnote:
+    case SuggestionType::kDevtoolsTestAddressByCountry:
+    case SuggestionType::kDevtoolsTestAddresses:
+    case SuggestionType::kFetchingAmbientData:
+    case SuggestionType::kFillPassword:
+    case SuggestionType::kFreeformFooter:
+    case SuggestionType::kGeneratePasswordEntry:
+    case SuggestionType::kLoadingThrobber:
+    case SuggestionType::kPasswordEntry:
+    case SuggestionType::kPasswordFieldByFieldFilling:
+    case SuggestionType::kPendingStateSignin:
     case SuggestionType::kPersonalContextNotice:
+    case SuggestionType::kSeparator:
+    case SuggestionType::kTitle:
+    case SuggestionType::kTroubleSigningInEntry:
+    case SuggestionType::kViewPasswordDetails:
+    case SuggestionType::kWebauthnCredential:
       NOTREACHED();  // Should be handled elsewhere.
-  }
-
-  if (suggestion.type == SuggestionType::kAtMemorySearchAffordance ||
-      (suggestion.type == SuggestionType::kBnplEntry &&
-       base::FeatureList::IsEnabled(
-           features::kAutofillEnablePayNowPayLaterTabs))) {
-    // Return early to prevent the popup from hiding.
-    // For `kBnplEntry`, the popup will instead be closed by `BnplManager`.
-    // For `kAtMemorySearchAffordance`, the popup remains open to show search
-    // results once the query completes.
-    return;
   }
 
   manager_->client().HideSuggestions(SuggestionHidingReason::kAcceptSuggestion,
@@ -1110,7 +1104,40 @@ bool AutofillExternalDelegate::RemoveSuggestion(const Suggestion& suggestion) {
       manager_->client().MarkPersonalContextInAutofillNoticeAsAcknowledged();
       return true;
     }
+    case SuggestionType::kAccountStoragePasswordEntry:
     case SuggestionType::kAddressEntryOnTyping:
+    case SuggestionType::kAllLoyaltyCardsEntry:
+    case SuggestionType::kAllSavedPasswordsEntry:
+    case SuggestionType::kAtMemoryGenericError:
+    case SuggestionType::kAtMemoryInactivityNudge:
+    case SuggestionType::kAtMemoryNoConnection:
+    case SuggestionType::kAtMemorySearchAffordance:
+    case SuggestionType::kAtMemorySearchResult:
+    case SuggestionType::kAutocompleteAtMemoryButton:
+    case SuggestionType::kAutofillAiOtherOrders:
+    case SuggestionType::kBackupPasswordEntry:
+    case SuggestionType::kBnplEntry:
+    case SuggestionType::kBnplFootnote:
+    case SuggestionType::kComposeDisable:
+    case SuggestionType::kComposeGoToSettings:
+    case SuggestionType::kComposeNeverShowOnThisSiteAgain:
+    case SuggestionType::kComposeProactiveNudge:
+    case SuggestionType::kComposeResumeNudge:
+    case SuggestionType::kComposeSavedStateNotification:
+    case SuggestionType::kDatalistEntry:
+    case SuggestionType::kDevtoolsTestAddressByCountry:
+    case SuggestionType::kDevtoolsTestAddressEntry:
+    case SuggestionType::kDevtoolsTestAddresses:
+    case SuggestionType::kFetchingAmbientData:
+    case SuggestionType::kFillAutofillAi:
+    case SuggestionType::kFillPassword:
+    case SuggestionType::kFreeformFooter:
+    case SuggestionType::kGeneratePasswordEntry:
+    case SuggestionType::kIbanEntry:
+    case SuggestionType::kIdentityCredential:
+    case SuggestionType::kInsecureContextPaymentDisabledMessage:
+    case SuggestionType::kLoadingThrobber:
+    case SuggestionType::kLoyaltyCardEntry:
     case SuggestionType::kManageAddress:
     case SuggestionType::kManageAutofillAi:
     case SuggestionType::kManageAutofillAiIdentityDocs:
@@ -1119,59 +1146,26 @@ bool AutofillExternalDelegate::RemoveSuggestion(const Suggestion& suggestion) {
     case SuggestionType::kManageCreditCard:
     case SuggestionType::kManageIban:
     case SuggestionType::kManageLoyaltyCard:
-    case SuggestionType::kInsecureContextPaymentDisabledMessage:
+    case SuggestionType::kMaximizeCreditCardBenefitsEntry:
+    case SuggestionType::kMerchantPromoCodeEntry:
+    case SuggestionType::kMixedFormMessage:
+    case SuggestionType::kOneTimePasswordEntry:
+    case SuggestionType::kOpenGemini:
+    case SuggestionType::kPasswordEntry:
+    case SuggestionType::kPasswordFieldByFieldFilling:
+    case SuggestionType::kPendingStateSignin:
     case SuggestionType::kSaveAndFillCreditCardEntry:
     case SuggestionType::kScanCreditCard:
-    case SuggestionType::kVirtualCreditCardEntry:
-    case SuggestionType::kIbanEntry:
-    case SuggestionType::kBnplEntry:
-    case SuggestionType::kPasswordEntry:
-    case SuggestionType::kBackupPasswordEntry:
-    case SuggestionType::kTroubleSigningInEntry:
-    case SuggestionType::kFreeformFooter:
-    case SuggestionType::kAllLoyaltyCardsEntry:
-    case SuggestionType::kAllSavedPasswordsEntry:
-    case SuggestionType::kGeneratePasswordEntry:
-    case SuggestionType::kAccountStoragePasswordEntry:
-    case SuggestionType::kComposeResumeNudge:
-    case SuggestionType::kComposeDisable:
-    case SuggestionType::kComposeGoToSettings:
-    case SuggestionType::kComposeNeverShowOnThisSiteAgain:
-    case SuggestionType::kComposeProactiveNudge:
-    case SuggestionType::kComposeSavedStateNotification:
-    case SuggestionType::kDatalistEntry:
-    case SuggestionType::kMerchantPromoCodeEntry:
     case SuggestionType::kSeePromoCodeDetails:
-    case SuggestionType::kIdentityCredential:
-    case SuggestionType::kWebauthnCredential:
-    case SuggestionType::kWebauthnSignInWithAnotherDevice:
-    case SuggestionType::kWebauthnPasskeyQrCode:
-    case SuggestionType::kTitle:
     case SuggestionType::kSeparator:
+    case SuggestionType::kTitle:
+    case SuggestionType::kTroubleSigningInEntry:
     case SuggestionType::kUndoOrClear:
-    case SuggestionType::kMixedFormMessage:
-    case SuggestionType::kDevtoolsTestAddresses:
-    case SuggestionType::kDevtoolsTestAddressEntry:
-    case SuggestionType::kDevtoolsTestAddressByCountry:
-    case SuggestionType::kPasswordFieldByFieldFilling:
-    case SuggestionType::kFillPassword:
     case SuggestionType::kViewPasswordDetails:
-    case SuggestionType::kFillAutofillAi:
-    case SuggestionType::kPendingStateSignin:
-    case SuggestionType::kLoyaltyCardEntry:
-    case SuggestionType::kOneTimePasswordEntry:
-    case SuggestionType::kLoadingThrobber:
-    case SuggestionType::kFetchingAmbientData:
-    case SuggestionType::kAutofillAiOtherOrders:
-    case SuggestionType::kAtMemorySearchResult:
-    case SuggestionType::kAtMemoryInactivityNudge:
-    case SuggestionType::kBnplFootnote:
-    case SuggestionType::kAutocompleteAtMemoryButton:
-    case SuggestionType::kOpenGemini:
-    case SuggestionType::kAtMemoryNoConnection:
-    case SuggestionType::kAtMemoryGenericError:
-    case SuggestionType::kAtMemorySearchAffordance:
-    case SuggestionType::kMaximizeCreditCardBenefitsEntry:
+    case SuggestionType::kVirtualCreditCardEntry:
+    case SuggestionType::kWebauthnCredential:
+    case SuggestionType::kWebauthnPasskeyQrCode:
+    case SuggestionType::kWebauthnSignInWithAnotherDevice:
       return false;
   }
 }

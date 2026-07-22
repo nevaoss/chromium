@@ -3361,6 +3361,12 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       <message name="IDS_IOS_GEMINI_LIVE_ACCESSIBILITY_LABEL" desc="Accessibility label for the Gemini Live entry point. [iOS only]">
         Gemini Live
       </message>
+      <message name="IDS_IOS_GEMINI_LIVE_BUTTON_ACCESSIBILITY_LABEL" desc="The accessibility label for the Gemini Live button.">
+        Go Live with Gemini in Chrome
+      </message>
+      <message name="IDS_IOS_GEMINI_LIVE_BUTTON_NEW_BADGE_ACCESSIBILITY_LABEL" desc="The accessibility label for the new badge next to the Gemini Live button.">
+        Live is a new feature on Gemini in Chrome
+      </message>
       <message name="IDS_IOS_GEMINI_LIVE_CONSENT_FIRST_BOX_BODY" desc="Body text for the first box of the Gemini Live Consent page.">
         Live will use your microphone. Tapping the Live button turns on the mic. To turn off the mic, tap the stop button or close Gemini.
       </message>
@@ -6471,9 +6477,6 @@ Handoff must also be enabled in the General section of Settings, and your device
       <message name="IDS_IOS_REMOVE_ACCOUNT_LABEL" desc="Button label for removing an account.">
         Remove
       </message>
-      <message name="IDS_IOS_REMOVE_ACTION_TITLE" desc="Title of the action used to remove a selected item. [iOS only]">
-        Remove
-      </message>
       <message name="IDS_IOS_REMOVE_GOOGLE_ACCOUNT_TITLE" desc="Title for the button that removes a Google account from the device">
         Remove from this device
       </message>
@@ -7384,7 +7387,7 @@ Handoff must also be enabled in the General section of Settings, and your device
         Site address copied
       </message>
       <message name="IDS_IOS_SETTINGS_START_SURFACE_TITLE" desc="Title for the setting to show the start surface after period of inactivity. [iOS only]">
-        Show start page after period of inactivity
+        Open a new tab when you return to Chrome after 4 hours
       </message>
       <message name="IDS_IOS_SETTINGS_SWIPE_DOWN_DISCARD" desc="Button displayed along with a message alert whenever a user tries to dismiss a Settings screen which is being edited, or information is being added to it. Selecting this option will discard the current changes and dismiss the screen.">
         Discard changes
@@ -8526,6 +8529,9 @@ Handoff must also be enabled in the General section of Settings, and your device
       </message>
       <message name="IDS_IOS_TOOLS_MENU_CUSTOMIZATION_IPH" desc="The text on an IPH for the iOS menu telling users they can customize the menu">
         Customize your menu
+      </message>
+      <message name="IDS_IOS_TOOLS_MENU_CUSTOMIZE_HOME_PAGE" desc="The iOS menu item to open the Home Customization menu [iOS only]" meaning="[Length: unlimited]">
+        Customize home page
       </message>
       <message name="IDS_IOS_TOOLS_MENU_DOWNLOADS" desc="The iOS menu item for opening the downloads folder [iOS only]" meaning="[Length: 16em] [iOS only] This is a feature name in title case.">
         Downloads

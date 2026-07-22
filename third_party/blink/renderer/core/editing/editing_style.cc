@@ -1294,7 +1294,7 @@ bool EditingStyle::StyleIsPresentInComputedStyleOfNode(Node* node) const {
              ->IsEmpty();
 }
 
-bool EditingStyle::ElementIsStyledSpanOrHTMLEquivalent(
+bool EditingStyle::ElementIsStyledSpanOrHtmlEquivalent(
     const HTMLElement* element) {
   DCHECK(element);
   bool element_is_span_or_element_equivalent = false;

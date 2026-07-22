@@ -47,8 +47,8 @@
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 
 #if !BUILDFLAG(IS_ANDROID)
-#include "chrome/browser/ui/omnibox/everywhere_omnibox_service.h"
-#include "chrome/browser/ui/omnibox/everywhere_omnibox_service_factory.h"
+#include "chrome/browser/ui/omnibox/omnibox_everywhere_service.h"
+#include "chrome/browser/ui/omnibox/omnibox_everywhere_service_factory.h"
 #endif
 #include "chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_tab_favicon_helper.h"
 #include "chrome/browser/ui/webui/cr_components/searchbox/searchbox_utils.h"
@@ -372,13 +372,13 @@ ContextualSearchboxHandler::ContextualSearchboxHandler(
     mojo::PendingRemote<searchbox::mojom::Page> pending_page,
     Profile* profile,
     content::WebContents* web_contents,
-    std::unique_ptr<OmniboxController> controller,
+    std::unique_ptr<OmniboxClient> client,
     GetSessionHandleCallback get_session_callback)
     : SearchboxHandler(std::move(pending_searchbox_handler),
                        std::move(pending_page),
                        profile,
                        web_contents,
-                       std::move(controller)),
+                       std::move(client)),
       get_session_callback_(std::move(get_session_callback)) {
   InitializeInputStateModel();
   tab_favicon_helper_ = std::make_unique<ContextualSearchboxTabFaviconHelper>();
@@ -1413,8 +1413,7 @@ void ContextualSearchboxHandler::OpenAutocompleteMatch(uint8_t line,
   auto* recorder = GetMetricsRecorder();
   bool record_composebox_metric =
       omnibox::IsComposebox(
-          omnibox_controller()->client()->GetPageClassification(
-              /*is_prefetch=*/false)) &&
+          client()->GetPageClassification(/*is_prefetch=*/false)) &&
       match && recorder;
 
   if (record_composebox_metric) {
@@ -1550,8 +1549,7 @@ void ContextualSearchboxHandler::SubmitQuery(const std::string& query_text,
   // for now since this is handled in `ComposeboxHandler`.
   omnibox::ChromeAimEntryPoint aim_entry_point =
       PageClassificationToAimEntryPoint(
-          omnibox_controller()->client()->GetPageClassification(
-              /*is_prefetch=*/false));
+          client()->GetPageClassification(/*is_prefetch=*/false));
 
   ContextualizeQueryAndOpenUrl(query_text, disposition, aim_entry_point,
                                /*additional_params=*/{}, is_voice_search);
@@ -1793,11 +1791,11 @@ void ContextualSearchboxHandler::OpenUrl(
   // TODO(crbug.com/526405104): This should probably be moved to the client and
   // be based on the page classification. The service's impl should also
   // correctly pass on context like done below.
-  if (base::FeatureList::IsEnabled(omnibox::kEverywhereOmnibox)) {
+  if (base::FeatureList::IsEnabled(omnibox::kOmniboxEverywhere)) {
     if (web_contents_->GetVisibleURL().host() ==
         chrome::kChromeUIOmniboxEverywhereHost) {
       if (auto* service =
-              EverywhereOmniboxServiceFactory::GetForProfile(profile_)) {
+              OmniboxEverywhereServiceFactory::GetForProfile(profile_)) {
         service->OpenUrl(url, disposition);
         return;
       }
@@ -1815,6 +1813,8 @@ void ContextualSearchboxHandler::OpenUrl(
           contextual_session_handle->invocation_source());
   new_contextual_session_handle->set_submitted_context_tokens(
       contextual_session_handle->GetSubmittedContextTokens());
+  new_contextual_session_handle->set_submitted_tabs(
+      contextual_session_handle->submitted_tabs());
 
   // TODO(crbug.com/470404040): Determine what to do with the return
   // value of this call, or move this call to a different location.

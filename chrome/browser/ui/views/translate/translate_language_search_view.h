@@ -38,6 +38,9 @@ class TranslateLanguageSearchView : public views::View,
       delete;
   ~TranslateLanguageSearchView() override;
 
+  // views::View:
+  void RequestFocus() override;
+
   // views::TextfieldController:
   void ContentsChanged(views::Textfield* sender,
                        const std::u16string& new_contents) override;

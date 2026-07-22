@@ -135,7 +135,8 @@ class TouchToFillPaymentMethodControllerImpl
   content::WebContents* web_contents();
 
   // Observes creation of ContentAutofillDrivers to inject a
-  // TouchToFillDelegateAndroidImpl into the BrowserAutofillManager.
+  // TouchToFillPaymentMethodDelegateAndroidImpl into the
+  // BrowserAutofillManager.
   base::ScopedObservation<ContentAutofillDriverFactory,
                           ContentAutofillDriverFactory::Observer>
       driver_factory_observation_{this};

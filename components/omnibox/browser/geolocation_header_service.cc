@@ -15,6 +15,7 @@
 #include "components/content_settings/core/common/content_settings_types.h"
 #include "components/content_settings/core/common/content_settings_utils.h"
 #include "components/google/core/common/google_util.h"
+#include "components/omnibox/browser/autocomplete_match.h"
 #include "components/omnibox/browser/proto/partner_location_descriptor.pb.h"
 #include "components/omnibox/common/omnibox_features.h"
 #include "components/permissions/permissions_client.h"
@@ -38,10 +39,15 @@ constexpr base::TimeDelta kMaxLocationAgeForHeader = base::Hours(24);
 // as defined by the X-Geo protocol.
 constexpr std::string_view kLocationProtoPrefix = "w ";
 
-constexpr char kHistogramInlineLocationSuggestionDenyShown[] =
-    "Omnibox.InlineLocationSuggestion.Deny.ShownState";
-constexpr char kHistogramInlineLocationSuggestionAskShown[] =
-    "Omnibox.InlineLocationSuggestion.Ask.ShownState";
+constexpr char kHistogramInlineLocationSuggestionDenyPrefix[] =
+    "Omnibox.InlineLocationSuggestion.Deny";
+constexpr char kHistogramInlineLocationSuggestionAskPrefix[] =
+    "Omnibox.InlineLocationSuggestion.Ask";
+constexpr char kHistogramInlineLocationSuggestionShownSuffix[] = ".ShownState";
+constexpr char kHistogramInlineLocationSuggestionClickedSuffix[] = ".Clicked";
+constexpr char kHistogramInlineLocationSuggestionParentClickedSuffix[] =
+    ".ParentClicked";
+
 constexpr char kHistogramInlineLocationSuggestionIndex[] =
     "Omnibox.InlineLocationSuggestion.Index";
 
@@ -238,8 +244,9 @@ void GeolocationHeaderService::RecordInlineLocationSuggestionShown(
   }
 
   base::UmaHistogramEnumeration(
-      is_denied ? kHistogramInlineLocationSuggestionDenyShown
-                : kHistogramInlineLocationSuggestionAskShown,
+      base::StrCat({is_denied ? kHistogramInlineLocationSuggestionDenyPrefix
+                              : kHistogramInlineLocationSuggestionAskPrefix,
+                    kHistogramInlineLocationSuggestionShownSuffix}),
       shown_state);
 
   if (shown_state ==
@@ -299,6 +306,41 @@ bool GeolocationHeaderService::IsUrlEligibleForLocationHeader(
   // non-search Google properties (like google.com/maps) or cross-TLD
   // navigations (like google.ca when the DSE is google.com).
   return is_google_dse && is_dse_origin && google_util::IsGoogleSearchUrl(url);
+}
+
+void GeolocationHeaderService::RecordInlineLocationSuggestionClicked(
+    const AutocompleteMatch& match) const {
+  if (!match.subtypes.contains(omnibox::SUBTYPE_LOCATION_SUGGEST_TRIGGER)) {
+    return;
+  }
+
+  std::optional<PermissionSetting> permission = GetDSEPermissionSetting();
+  if (!permission.has_value()) {
+    return;
+  }
+
+  const auto& delegate =
+      content_settings::PermissionSettingsRegistry::GetInstance()
+          ->Get(content_settings::GeolocationContentSettingsType())
+          ->delegate();
+
+  bool is_denied = delegate.IsBlocked(*permission);
+  bool is_ask = delegate.IsUndecided(*permission);
+
+  if (!is_ask && !is_denied) {
+    return;
+  }
+
+  bool parent_clicked = !match.extra_headers.contains(kXGeoHeader);
+
+  // Build the histogram name with the right prefix and the right suffix.
+  base::UmaHistogramBoolean(
+      base::StrCat({is_denied ? kHistogramInlineLocationSuggestionDenyPrefix
+                              : kHistogramInlineLocationSuggestionAskPrefix,
+                    parent_clicked
+                        ? kHistogramInlineLocationSuggestionParentClickedSuffix
+                        : kHistogramInlineLocationSuggestionClickedSuffix}),
+      true);
 }
 
 bool GeolocationHeaderService::IsAllowedByPermission(const GURL& url) const {

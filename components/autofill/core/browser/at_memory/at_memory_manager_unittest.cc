@@ -281,6 +281,30 @@ TEST_F(AtMemoryManagerTest,
   EXPECT_EQ(final_suggestions[0].main_text.value, u"Full Address");
 }
 
+// Tests that when a search result has an empty type name and no metadata, the
+// generated suggestion has no labels.
+TEST_F(AtMemoryManagerTest, OnSearchSubmitted_SchemalessResultHasEmptyLabels) {
+  manager().OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory,
+                         /*is_context_secure=*/true, update_callback_.Get());
+
+  std::vector<Suggestion> final_suggestions;
+  std::vector<accessibility_annotator::MemorySearchResult> entries;
+  entries.emplace_back(accessibility_annotator::MemoryDataType::kUnknown, u"",
+                       u"Some Value");
+
+  MockQueryResultsAndExpectCallback(
+      u"query",
+      accessibility_annotator::MemorySearchStatus::kFinalResponseSuccess,
+      std::move(entries), final_suggestions);
+
+  manager().OnSearchSubmitted(u"query");
+
+  ASSERT_EQ(final_suggestions.size(), 1u);
+  EXPECT_EQ(final_suggestions[0].type, SuggestionType::kAtMemorySearchResult);
+  EXPECT_EQ(final_suggestions[0].main_text.value, u"Some Value");
+  EXPECT_TRUE(final_suggestions[0].labels.empty());
+}
+
 // Tests that when the user is offline, the manager displays the no connection
 // suggestion.
 TEST_F(AtMemoryManagerTest,

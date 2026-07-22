@@ -747,7 +747,9 @@ class PaintHoldingSimTest : public SimTest {
  public:
   PaintHoldingSimTest() {
     feature_list_.InitWithFeatures(
-        /*enabled_features=*/{blink::features::kPaintHolding},
+        /*enabled_features=*/{blink::features::kPaintHolding,
+                              blink::features::
+                                  kReleasePaintHoldingWithoutContentfulPaint},
         /*disabled_features=*/{
             ::features::kStopDeferringCommitsInCompositeForTest});
   }

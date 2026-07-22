@@ -445,16 +445,16 @@ inline LayoutStateScenePassKey PassKey() {
 
 // Called when the view's trait collection changes.
 - (void)viewTraitDidChange {
-  [self.layoutState
-      setContainedLayoutSupported:IsSidePanelLayout(self.view.traitCollection)
-                          passKey:PassKey()];
-  [self.layoutState setWindowedMode:IsWindowedMode(self.view.window)
-                            passKey:PassKey()];
   if (IsChromeNextIaEnabled()) {
     [self.layoutState updateAppBarPositionWithView:self.view
                                        coordinator:nil
                                            passKey:PassKey()];
   }
+  [self.layoutState
+      setContainedLayoutSupported:IsSidePanelLayout(self.view.traitCollection)
+                          passKey:PassKey()];
+  [self.layoutState setWindowedMode:IsWindowedMode(self.view.window)
+                            passKey:PassKey()];
 }
 
 // Helper to update app content constraints for panel layout.
@@ -619,17 +619,19 @@ inline LayoutStateScenePassKey PassKey() {
   UIEdgeInsets insets = UIEdgeInsetsZero;
   switch (position) {
     case AppBarPosition::kLeft:
-      insets.left += kAppBarHeightLandscape;
+      insets.left += AppBarHeightLandscape();
       break;
 
     case AppBarPosition::kRight:
-      insets.right += kAppBarHeightLandscape;
+      insets.right += AppBarHeightLandscape();
       break;
 
     case AppBarPosition::kBottom: {
+      CGFloat minHeight =
+          IsAppBarHiddenInFullscreen() ? 0 : kAppBarHeightFullscreen;
       CGFloat appBarHeight =
-          kAppBarHeightFullscreen -
-          _fullscreenProgress * (kAppBarHeightFullscreen - kAppBarHeight);
+          minHeight -
+          _fullscreenProgress * (minHeight - AppBarHeightPortrait());
       insets.bottom += appBarHeight;
       break;
     }

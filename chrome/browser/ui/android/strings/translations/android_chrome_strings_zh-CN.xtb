@@ -34,7 +34,6 @@
 <translation id="1108938384783527433">历史记录同步</translation>
 <translation id="1111673857033749125">您在其他设备上保存的书签将列在此处。</translation>
 <translation id="1123537484474186311"><ph name="TAB_TITLE" />，画中画标签页</translation>
-<translation id="1124357650933674597">{NUM_WINDOWS,plural, =1{恢复 1 个窗口}other{恢复 # 个窗口}}</translation>
 <translation id="1126696498560056882">管理此设备上的账号</translation>
 <translation id="1135018701024399762">无痕模式可实现私密浏览，与您共用设备的其他人无法知晓您浏览了什么内容</translation>
 <translation id="113752097246673894">如需在您的所有设备上获取书签等信息，请以 <ph name="EMAIL" /> 的身份登录 Chrome</translation>
@@ -185,6 +184,7 @@
 <translation id="1792959175193046959">随时更改默认的下载内容保存位置</translation>
 <translation id="1796666869097395659">将标签页最小化以便稍后返回</translation>
 <translation id="1799920918471566157">Chrome 提示</translation>
+<translation id="1803799720926799756">文件大小</translation>
 <translation id="1807246157184219062">浅色调</translation>
 <translation id="1807709131360304325">打开新窗口</translation>
 <translation id="1812027881030482584"><ph name="SITE_ETLD_PLUS_ONE" /> 无法继续使用 <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /></translation>
@@ -520,7 +520,6 @@
 <translation id="3166827708714933426">标签页和窗口快捷键</translation>
 <translation id="3167258285411721858">您可以请求访问 <ph name="HOST_NAME" /> 的移动网站</translation>
 <translation id="3181145110929454111"><ph name="TAB_TITLE" />，已选择的多个固定无痕式标签页之一，已设为静音</translation>
-<translation id="3183941812169784232">要恢复所有窗口吗？</translation>
 <translation id="3187472288455401631">广告效果衡量</translation>
 <translation id="3189635831478931757">“<ph name="GROUP_TITLE" />”标签页分组</translation>
 <translation id="3200536777393523575">关闭当前窗口？</translation>
@@ -569,6 +568,7 @@
 <translation id="3435575784518354875">如需继续使用您的密码，请立即将其导出，更新 Google Play 服务，然后将其重新导入 Google 密码管理工具。<ph name="BEGIN_LINK" />查看完整说明<ph name="END_LINK" />。</translation>
 <translation id="3435738964857648380">安全</translation>
 <translation id="3435914367318771664">向新分组添加标签页</translation>
+<translation id="3436118221454753036">问问 AI 模式</translation>
 <translation id="3438681572027105609">如需将密码等信息同步到您的所有设备上，请登录 Chrome</translation>
 <translation id="3439276997620616816">此处会显示您近期关闭的标签页</translation>
 <translation id="3443221991560634068">重新加载当前网页</translation>
@@ -2037,7 +2037,6 @@
 <translation id="939598580284253335">输入口令</translation>
 <translation id="94161319503679839"><ph name="TAB_TITLE" />，固定的画中画无痕式标签页</translation>
 <translation id="945522503751344254">发送反馈</translation>
-<translation id="949667118776341807">旋转</translation>
 <translation id="95817756606698420">在中国，Chrome 可以使用<ph name="BEGIN_BOLD" />搜狗<ph name="END_BOLD" />作为搜索引擎。如果需要，您可以在<ph name="BEGIN_LINK" />设置<ph name="END_LINK" />中进行更改。</translation>
 <translation id="961856697154696964">删除浏览数据</translation>
 <translation id="963246339335003378">打开任务管理器</translation>

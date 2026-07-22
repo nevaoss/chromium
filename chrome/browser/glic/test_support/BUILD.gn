@@ -67,11 +67,15 @@ source_set("test_support") {
     ]
   } else {
     deps += [
+      "//chrome/browser/ui/side_panel/android",
       "//components/signin/public/android:jni_headers",
       "//google_apis/gaia/android:jni_headers",
     ]
   }
-  public_deps = [ "//chrome/test:test_support" ]
+  public_deps = [
+    "//chrome/browser/glic:impl",
+    "//chrome/test:test_support",
+  ]
 
   # TODO(crbug.com/432285114): Fix code that adds exit-time destructors and
   # enable the diagnostic by removing this line.

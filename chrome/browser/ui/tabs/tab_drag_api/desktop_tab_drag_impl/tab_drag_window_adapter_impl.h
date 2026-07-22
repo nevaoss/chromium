@@ -30,6 +30,7 @@ class TabDragWindowAdapterImpl : public tabs_api::TabDragWindowAdapter {
   tabs_api::TabDragWindowId GetWindowId() const override;
   gfx::NativeWindow GetNativeWindow() const override;
   gfx::Rect GetBoundsInScreen() const override;
+  bool IsDraggingEntireWindow(size_t dragged_tab_count) const override;
   gfx::Point ConvertScreenPointToLocal(
       gfx::NativeView target_view,
       const gfx::Point& screen_point) const override;
@@ -47,12 +48,13 @@ class TabDragWindowAdapterImpl : public tabs_api::TabDragWindowAdapter {
       const gfx::Point& screen_point,
       const gfx::Vector2d& drag_offset) override;
 
- private:
-  base::expected<void, mojo_base::mojom::ErrorPtr> MigrateTabs(
-      BrowserWindowInterface* source_window,
-      BrowserWindowInterface* target_window,
-      const std::vector<tabs_api::NodeId>& tab_ids) const;
+  void EndWindowMoveLoop() override;
 
+  base::expected<void, mojo_base::mojom::ErrorPtr> MigrateTabs(
+      tabs_api::TabDragWindowId target_window_id,
+      const std::vector<tabs_api::NodeId>& tab_ids) override;
+
+ private:
   raw_ptr<BrowserWindowInterface> browser_window_;
   raw_ptr<tabs_api::TabDragWindowRegistry> registry_;
   tabs_api::TabDragWindowId id_;

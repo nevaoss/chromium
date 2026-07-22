@@ -237,6 +237,18 @@ void RecordTimeSentToOpened(base::TimeDelta delay) {
                                 base::Milliseconds(100), base::Days(10), 100);
 }
 
+void RecordTimeOpenedToActivated(base::TimeDelta delay) {
+  base::UmaHistogramCustomTimes("Sharing.SendTabToSelf.TimeOpenedToActivated",
+                                delay, base::Milliseconds(100), base::Days(10),
+                                100);
+}
+
+void RecordTimeSentToActivated(base::TimeDelta delay) {
+  base::UmaHistogramCustomTimes("Sharing.SendTabToSelf.TimeSentToActivated",
+                                delay, base::Milliseconds(100), base::Days(10),
+                                100);
+}
+
 void RecordDeviceFormFactorCombination(
     syncer::DeviceInfo::FormFactor sender_form_factor,
     syncer::DeviceInfo::FormFactor target_form_factor) {

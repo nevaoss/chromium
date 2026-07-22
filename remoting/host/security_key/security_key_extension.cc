@@ -11,7 +11,9 @@ namespace remoting {
 // static
 const char SecurityKeyExtension::kCapability[] = "securityKey";
 
-SecurityKeyExtension::SecurityKeyExtension() = default;
+SecurityKeyExtension::SecurityKeyExtension(
+    base::WeakPtr<SecurityKeyAuthHandler> auth_handler)
+    : auth_handler_(auth_handler) {}
 
 SecurityKeyExtension::~SecurityKeyExtension() = default;
 
@@ -23,10 +25,8 @@ std::unique_ptr<HostExtensionSession>
 SecurityKeyExtension::CreateExtensionSession(
     ClientSessionDetails* details,
     protocol::ClientStub* client_stub) {
-  // TODO(joedow): Update this mechanism to allow for multiple sessions.  The
-  //               extension will only send messages through the initial
-  //               |client_stub| and |details| with the current design.
-  return std::make_unique<SecurityKeyExtensionSession>(details, client_stub);
+  return std::make_unique<SecurityKeyExtensionSession>(auth_handler_,
+                                                       client_stub);
 }
 
 }  // namespace remoting

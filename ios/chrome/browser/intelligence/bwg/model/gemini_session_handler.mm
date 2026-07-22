@@ -218,32 +218,7 @@ IOSGeminiSessionCancellationReason HistogramEnumFromGeminiCancelType(
 
 - (void)UIDidDisappearWithClientID:(NSString*)clientID
                           serverID:(NSString*)serverID {
-  [_geminiHandler dismissGeminiFlowWithCompletion:nil];
-
-  // Record session duration.
-  if (!_sessionStartTime.is_null()) {
-    base::TimeDelta session_duration =
-        base::TimeTicks::Now() - _sessionStartTime;
-
-    // Determine session type.
-    IOSGeminiSessionType session_type;
-    if (_hasSubmittedFirstPrompt) {
-      session_type = IOSGeminiSessionType::kWithPrompt;
-    } else {
-      session_type = IOSGeminiSessionType::kAbandoned;
-    }
-
-    RecordGeminiSessionLengthByType(session_duration, _isFirstSession,
-                                    session_type);
-    RecordGeminiSessionTime(session_duration);
-    _sessionStartTime = base::TimeTicks();
-  }
-  // Reset latency tracking on session end.
-  _waitingForResponse = NO;
-  _lastPromptSentTime = base::TimeTicks();
-  // Record prompt counts for the session.
-  RecordSessionPromptCount(_totalPromptsInSession);
-  RecordSessionFirstPrompt(_hasSubmittedFirstPrompt);
+  [self dismissAndRecordMetrics];
 }
 
 - (void)startReceivingResponseWithSessionID:(NSString*)sessionID
@@ -418,6 +393,10 @@ IOSGeminiSessionCancellationReason HistogramEnumFromGeminiCancelType(
                                          }];
 }
 
+- (void)didRequestDismissal {
+  [self dismissAndRecordMetrics];
+}
+
 #pragma mark - Private
 
 // Finds the web state with the given client ID as unique identifier.
@@ -446,6 +425,35 @@ IOSGeminiSessionCancellationReason HistogramEnumFromGeminiCancelType(
   gemini::CreateOrUpdateConversationIdPrefs(base::SysNSStringToUTF8(serverID),
                                             webState->GetVisibleURL().spec(),
                                             _prefService);
+}
+
+- (void)dismissAndRecordMetrics {
+  [_geminiHandler dismissGeminiFlowWithCompletion:nil];
+
+  // Record session duration.
+  if (!_sessionStartTime.is_null()) {
+    base::TimeDelta session_duration =
+        base::TimeTicks::Now() - _sessionStartTime;
+
+    // Determine session type.
+    IOSGeminiSessionType session_type;
+    if (_hasSubmittedFirstPrompt) {
+      session_type = IOSGeminiSessionType::kWithPrompt;
+    } else {
+      session_type = IOSGeminiSessionType::kAbandoned;
+    }
+
+    RecordGeminiSessionLengthByType(session_duration, _isFirstSession,
+                                    session_type);
+    RecordGeminiSessionTime(session_duration);
+    _sessionStartTime = base::TimeTicks();
+  }
+  // Reset latency tracking on session end.
+  _waitingForResponse = NO;
+  _lastPromptSentTime = base::TimeTicks();
+  // Record prompt counts for the session.
+  RecordSessionPromptCount(_totalPromptsInSession);
+  RecordSessionFirstPrompt(_hasSubmittedFirstPrompt);
 }
 
 @end

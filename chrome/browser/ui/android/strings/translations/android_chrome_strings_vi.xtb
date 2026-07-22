@@ -34,7 +34,6 @@
 <translation id="1108938384783527433">Đồng bộ hoá nhật ký</translation>
 <translation id="1111673857033749125">Dấu trang được lưu trên thiết bị khác của bạn sẽ xuất hiện tại đây.</translation>
 <translation id="1123537484474186311"><ph name="TAB_TITLE" />: Thẻ đang ở chế độ hình trong hình</translation>
-<translation id="1124357650933674597">{NUM_WINDOWS,plural, =1{Khôi phục 1 cửa sổ}other{Khôi phục # cửa sổ}}</translation>
 <translation id="1126696498560056882">Quản lý các tài khoản trên thiết bị này</translation>
 <translation id="1135018701024399762">Chế độ ẩn danh giúp ẩn hoạt động duyệt web của bạn với người dùng thiết bị của bạn</translation>
 <translation id="113752097246673894">Để sử dụng dấu trang và các dữ liệu khác trên mọi thiết bị của bạn, hãy đăng nhập vào Chrome bằng <ph name="EMAIL" /></translation>
@@ -185,6 +184,7 @@ Chỉ những người có cụm mật khẩu mới đọc được dữ liệu 
 <translation id="1792959175193046959">Thay đổi vị trí tải xuống mặc định bất cứ lúc nào</translation>
 <translation id="1796666869097395659">Thu nhỏ thẻ để quay lại sau</translation>
 <translation id="1799920918471566157">Mẹo dùng Chrome</translation>
+<translation id="1803799720926799756">Kích thước tệp</translation>
 <translation id="1807246157184219062">Sáng</translation>
 <translation id="1807709131360304325">Mở một cửa sổ mới</translation>
 <translation id="1812027881030482584"><ph name="SITE_ETLD_PLUS_ONE" /> không thể tiếp tục dùng <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /></translation>
@@ -327,6 +327,7 @@ Chỉ những người có cụm mật khẩu mới đọc được dữ liệu 
 <translation id="2411239243988279592"><ph name="TAB_TITLE" />, Thẻ đang phát âm thanh được chọn</translation>
 <translation id="2413014528833954543">Không kiểm tra được mật khẩu trên thiết bị này</translation>
 <translation id="2414886740292270097">Tối</translation>
+<translation id="2415037988255164008">Khôi phục cửa sổ?</translation>
 <translation id="2421705177906985956">Hiện không có trang web nào để hiển thị</translation>
 <translation id="2426805022920575512">Chọn một tài khoản khác</translation>
 <translation id="2427025860753516072">{FILE_COUNT,plural, =1{Video, 1 video trong danh sách}other{Video, # video trong danh sách}}</translation>
@@ -520,7 +521,6 @@ Chỉ những người có cụm mật khẩu mới đọc được dữ liệu 
 <translation id="3166827708714933426">Lối tắt cho thẻ và cửa sổ</translation>
 <translation id="3167258285411721858">Bạn có thể yêu cầu trang web dành cho thiết bị di động cho <ph name="HOST_NAME" /></translation>
 <translation id="3181145110929454111"><ph name="TAB_TITLE" />, Thẻ ẩn danh đã tắt tiếng, được ghim và được chọn cùng với nhiều thẻ khác</translation>
-<translation id="3183941812169784232">Khôi phục tất cả các cửa sổ?</translation>
 <translation id="3187472288455401631">Đo lường quảng cáo</translation>
 <translation id="3189635831478931757">Nhóm thẻ <ph name="GROUP_TITLE" /></translation>
 <translation id="3200536777393523575">Đóng cửa sổ hiện tại?</translation>
@@ -569,6 +569,7 @@ Chỉ những người có cụm mật khẩu mới đọc được dữ liệu 
 <translation id="3435575784518354875">Để tiếp tục sử dụng mật khẩu của bạn, hãy xuất mật khẩu ngay bây giờ, cập nhật Dịch vụ Google Play rồi nhập lại mật khẩu vào Trình quản lý mật khẩu của Google. <ph name="BEGIN_LINK" />Xem toàn bộ hướng dẫn<ph name="END_LINK" />.</translation>
 <translation id="3435738964857648380">Bảo mật</translation>
 <translation id="3435914367318771664">Thêm thẻ vào nhóm mới</translation>
+<translation id="3436118221454753036">Chế độ Hỏi AI</translation>
 <translation id="3438681572027105609">Để sử dụng mật khẩu và các dữ liệu khác trên mọi thiết bị của bạn, hãy đăng nhập vào Chrome</translation>
 <translation id="3439276997620616816">Các thẻ bạn đóng gần đây sẽ xuất hiện ở đây</translation>
 <translation id="3443221991560634068">Tải lại trang hiện tại</translation>
@@ -1338,6 +1339,7 @@ Ví dụ: một số trang web có thể phản hồi yêu cầu này bằng cá
 <translation id="6556501700899673703">Lexend</translation>
 <translation id="6560414384669816528">Tìm kiếm với Sogou</translation>
 <translation id="656065428026159829">Xem thêm</translation>
+<translation id="6565781844089373403">Khôi phục cửa sổ</translation>
 <translation id="6565959834589222080">Dùng mạng Wi-Fi khi có sẵn</translation>
 <translation id="657177046675873214">Để sử dụng dấu trang trên tất cả các thiết bị của bạn, hãy bật "Dấu trang" trong phần cài đặt</translation>
 <translation id="6573096386450695060">Luôn cho phép</translation>
@@ -2039,7 +2041,6 @@ Ví dụ: một số trang web có thể phản hồi yêu cầu này bằng cá
 <translation id="939598580284253335">Nhập cụm mật khẩu</translation>
 <translation id="94161319503679839"><ph name="TAB_TITLE" />: Thẻ ẩn danh được ghim đang ở chế độ hình trong hình</translation>
 <translation id="945522503751344254">Gửi phản hồi</translation>
-<translation id="949667118776341807">Xoay</translation>
 <translation id="95817756606698420">Chrome có thể sử dụng <ph name="BEGIN_BOLD" />Sogou<ph name="END_BOLD" /> để tìm kiếm tại Trung Quốc. Bạn có thể thay đổi điều này trong <ph name="BEGIN_LINK" />Cài đặt<ph name="END_LINK" />.</translation>
 <translation id="961856697154696964">Xoá dữ liệu duyệt web</translation>
 <translation id="963246339335003378">Mở Trình quản lý tác vụ</translation>

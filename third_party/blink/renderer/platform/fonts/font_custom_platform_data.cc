@@ -94,7 +94,7 @@ FontCustomPlatformData::FontCustomPlatformData(PassKey,
 
 FontCustomPlatformData::~FontCustomPlatformData() {
   if (v8::Isolate* isolate = v8::Isolate::TryGetCurrent()) {
-    // Safe cast since WebFontDecoder has max decompressed size of 128MB.
+    // Safe cast since DecodedWebFont has max decompressed size of 128MB.
     external_memory_accounter_.Decrease(isolate, data_size_);
   }
 }
@@ -328,13 +328,14 @@ FontCustomPlatformData* FontCustomPlatformData::Create(
     SharedBuffer* buffer,
     String& ots_parse_message) {
   DCHECK(buffer);
-  WebFontDecoder decoder;
-  sk_sp<SkTypeface> typeface = decoder.Decode(buffer);
-  if (!typeface) {
-    ots_parse_message = decoder.GetErrorString();
+  base::expected<DecodedWebFont, String> decode_result =
+      DecodedWebFont::Create(buffer);
+  if (!decode_result.has_value()) {
+    ots_parse_message = std::move(decode_result).error();
     return nullptr;
   }
-  return Create(std::move(typeface), decoder.DecodedSize());
+  return Create(std::move(decode_result->sk_typeface),
+                decode_result->decoded_size);
 }
 
 FontCustomPlatformData* FontCustomPlatformData::Create(

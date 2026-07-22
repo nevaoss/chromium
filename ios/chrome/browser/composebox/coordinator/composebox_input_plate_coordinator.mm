@@ -361,6 +361,16 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
   _menuCoorinator = nil;
 }
 
+- (void)focusComposebox {
+  [_omniboxCoordinator focusOmnibox];
+}
+
+- (void)processContextLibraryWebpageSignalWithURL:(const GURL&)url
+                                            title:(NSString*)title {
+  CHECK(_entrypoint == ComposeboxEntrypoint::kCobrowse);
+  [_mediator processContextLibraryWebpageSignalWithURL:url title:title];
+}
+
 #pragma mark - ComposeboxInputPlateViewControllerDelegate
 
 - (void)composeboxViewController:
@@ -695,10 +705,6 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
     }
     [_metricsRecorder recordToolSelected:toolMode];
   }
-}
-
-- (void)focusComposebox {
-  [_omniboxCoordinator focusOmnibox];
 }
 
 /// Dismisses the composebox via a command to the browser coordinator.

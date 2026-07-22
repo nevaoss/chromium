@@ -477,6 +477,7 @@
 <translation id="173080396488393970">የዚህ ዓይነቱ ካርድ አይደገፍም</translation>
 <translation id="1731563515262205847">ML-DSA-65</translation>
 <translation id="1732445923934584865">በምትኩ በአካል ተገኝተው ይጠይቁ</translation>
+<translation id="1732796940245838248">የማስተካከያ ቁጥርን በGoogle Wallet ውስጥ ያዘምኑ</translation>
 <translation id="1733064249834771892">ቅርጸ-ቁምፊዎች</translation>
 <translation id="1733631169686303142">የድምጽ መሣሪያዎች</translation>
 <translation id="1733762317901693627">በተለምዶ ደህንነታቸው የተጠበቀ ጣቢያዎች እንኳን አንዳንድ ጊዜ በጥቃት አድራሾች ይጠለፋሉ። ስጋቶቹን መረዳትዎን እርግጠኛ ከሆኑ ብቻ <ph name="BEGIN_LINK" />ይህ ደህንነቱ ያልተጠበቀ ጣቢያ<ph name="END_LINK" /> የሚለውን ይጎብኙ።</translation>
@@ -712,6 +713,7 @@
 <translation id="2122165854541876335">የሸማቾች መርጃዎች</translation>
 <translation id="2122214041802369259">ዋጋ ከፍተኛ ነው</translation>
 <translation id="2122719317867821810">ይህ መመሪያ እንደታሰበው እየሰራ ነው ነገር ግን የሚጋጭ እሴት በሌላ ቦታ የተቀናበረ ሲሆን በዚህ መመሪያ ተሽሯል።</translation>
+<translation id="2124081665399116863">ተሽከርካሪን Google Wallet ውስጥ ያዘምኑ</translation>
 <translation id="2126374524350484896">የPDF አዘጋጅ፦</translation>
 <translation id="2127090458081644412">የይለፍ ቃል በዚህ መሣሪያ ላይ ተቀምጧል</translation>
 <translation id="2127747486437921899">ሰያፍ</translation>
@@ -994,6 +996,7 @@
 <translation id="2524962131655207565"><ph name="BEGIN_BOLD" />እነዚህን አማራጮች ለማቅረብ ከክፍያ ማጠናቀቂያ ገጽ ላይ የመጣ ይዘት ከGoogle ጋር ይጋራል።<ph name="END_BOLD" /> የክፍያ ዕቅዶች ለብቁነት ተገዢ ናቸው። የበኋላ ላይ መክፈል አማራጮችን ለመደበቅ ወደ <ph name="BEGIN_LINK" />የክፍያ ቅንብሮች<ph name="END_LINK" /> ይሂዱ።</translation>
 <translation id="2526062290525841862">ይህን መተግበሪያ ለማሄድ ገለልተኛ የድር መተግበሪያ የገንቢ ሁነታን በድጋሚ ያንቁ</translation>
 <translation id="2526280916094749336">በመላው የGoogle ምርቶች ላይ የተቀመጡ አድራሻዎችን መጠቀም ይችላሉ። ይህ አድራሻ በGoogle መለያዎ፣ <ph name="ACCOUNT" /> ውስጥ ይቀመጣል።</translation>
+<translation id="2526590354069164005">ዴስክቶፕ</translation>
 <translation id="2527451058878391043">ካርድ ማረጋገጫ ኮድዎ በካርድዎ ፊት ለፊት ላይ ነው። ከላይ በስተቀኝ በኩል ከካርድዎ ቁጥር በላይ ባለ4 አሃዙ ኮድ ነው።</translation>
 <translation id="2529899080962247600">ይህ መስክ ከ<ph name="MAX_ITEMS_LIMIT" /> ግቤቶች በላይ ሊኖሩት አይገባም። ሁሉም ተጨማሪ ግቤቶች ችላ ይባላሉ።</translation>
 <translation id="2530042584066815841">የመዳፊት መቆለፊያ እና አጠቃቀም</translation>
@@ -1547,6 +1550,7 @@
 <translation id="3422472998109090673"><ph name="HOST_NAME" /> አሁን ላይ ሊደረስበት አይችልም።</translation>
 <translation id="3422794267539320056">ለመጫወት ዳይኖውን መታ ያድርጉ ወይም ክፍተትን ይጫኑ</translation>
 <translation id="3423742043356668186">ስርዓቱ የተገለጸ</translation>
+<translation id="3426672782316020729">ፓስፖርትን በGoogle Wallet ውስጥ ያዘምኑ</translation>
 <translation id="3427342743765426898">&amp;አርትዕን ድገም</translation>
 <translation id="342781501876943858">Chromium የእርስዎን ይለፍ ቃል በሌሎች ጣቢያዎች ላይ ዳግም ከተጠቀሙበት እንደገና እንዲያዋቅሩት ይመክራል።</translation>
 <translation id="3428151540071562330">አንድ ወይም ተጨማሪ የDnsOverHttpsTemplates አገልጋይ ቅንብር ደንብ ዩአርአዮች ልክ ያልሆኑ ናቸው፣ እና ሥራ ላይ አይውሉም።</translation>
@@ -2407,6 +2411,7 @@
 <translation id="4766713847338118463">ድርብ ከታች ስቴፕለር ምታ</translation>
 <translation id="4768816584204270288">በጊዜ ሂደት ሲከፍሉ የአንድ ጊዜ ምናባዊ ካርድ ቁጥር ይሞላል። ለዚህ ግዢ የካርድ ዝርዝሮችን ለመቅዳት እና ለመለጠፍ ጠቅ ማድረግ ይችላሉ።</translation>
 <translation id="4768864802656530630">ዝርዝር የሥርዓት ምዝግብ ማስታወሻዎች። <ph name="BEGIN_LINK" />የበለጠ ለመረዳት<ph name="END_LINK" /></translation>
+<translation id="4770909831299304090">KTNን በGoogle Wallet ውስጥ ያዘምኑ</translation>
 <translation id="4771249073710170730">የሬዲዮ ቁጥጥር እና ሞዴሊንግ</translation>
 <translation id="4771973620359291008">ያልታወቀ ስህተት ተከስቷል።</translation>
 <translation id="4774055414220872623">የሥነ ጥበባት እና የዕደ ጥበብ ግብዓቶች</translation>
@@ -4222,6 +4227,7 @@
 <translation id="7569490014721427265">ጎልፍ</translation>
 <translation id="7569952961197462199">ክሬዲት ካርድ ከChrome ይወገድ?</translation>
 <translation id="7569983096843329377">ጥቁር</translation>
+<translation id="7570524564113479209">የመታወቂያ ካርድን በGoogle Wallet ውስጥ ያዘምኑ</translation>
 <translation id="7570862164055912832">የማስተካከያ ቁጥሮች</translation>
 <translation id="7571813784389228510">Google ሰው ሠራሽ አስተውሎት ሁነታ</translation>
 <translation id="7574998639136359461">የክረምት ስፖርቶች መሣሪያ</translation>
@@ -4743,6 +4749,7 @@
 <translation id="8389940864052787379">ብጁ እና የከፍተኛ ሥራ ተሽከርካሪዎች</translation>
 <translation id="8390725133630534698">ከ<ph name="ORIGIN_NAME" />ወደ <ph name="VM_NAME" /> ማጋራት በአስተዳዳሪ መመሪያ ታግዷል</translation>
 <translation id="8392783408127179588">መመሪያዎችን እንደገና በመጫን ላይ</translation>
+<translation id="8393948304336153065">የመንጃ ፈቃድን Google Wallet ውስጥ ያዘምኑ</translation>
 <translation id="8396522675989118466">ይህ በ<ph name="SIDE_OF_CARD" /> ላይ ያለው ባለ<ph name="NUMBER_OF_DIGITS" /> አሃዙ ኮድ ነው</translation>
 <translation id="8398335999901363925">በንክኪ ለመሞላት የሚገኙ የመክፈያ ዘዴዎች በሙሉ ቁመት ተከፍተዋል።</translation>
 <translation id="8398446215576328011">የተተገበሩ መመሪያዎችን አድህር</translation>
@@ -4905,7 +4912,6 @@
 <translation id="8671519637524426245">የ<ph name="SECURE_DNS_SALT" /> እሴቱ የመጠን መስፈርቶቹን አያሟላም።</translation>
 <translation id="867224526087042813">ፊርማ</translation>
 <translation id="8672535691554698269">የኮምፒዩተር አውታረ መረቦች</translation>
-<translation id="8673710317985154384">{NUM_TABS,plural, =1{የትር ማጋራት ዝርዝሮችን አሳይ። ከ{WEBSITE_LIST_STR} ላይ 1 ትር በማጋራት ላይ}one{የትር ማጋራት ዝርዝሮችን አሳይ። ከ{WEBSITE_LIST_STR} ላይ {NUM_TABS} ትር በማጋራት ላይ}other{የትር ማጋራት ዝርዝሮችን አሳይ። ከ{WEBSITE_LIST_STR} ላይ {NUM_TABS} ትሮችን በማጋራት ላይ}}</translation>
 <translation id="8675446170353411473">ፋይሎችዎ ወደ <ph name="CLOUD_PROVIDER" /> እየተሰቀሉ ነው</translation>
 <translation id="8676424191133491403">የዘገየ የለም</translation>
 <translation id="8680536109547170164"><ph name="QUERY" />፣ መልስ፣ <ph name="ANSWER" /></translation>

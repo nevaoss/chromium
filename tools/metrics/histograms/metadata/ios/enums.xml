@@ -1403,6 +1403,7 @@ chromium-metrics-reviews@google.com.
   <int value="23" label="ShareThisPage"/>
   <int value="24" label="Signin"/>
   <int value="25" label="Identity"/>
+  <int value="26" label="CustomizeHomePage"/>
 </enum>
 
 <!-- LINT.ThenChange(

@@ -314,6 +314,7 @@
 <translation id="1463793142714244641">Таймшер и недвижимость для отдыха</translation>
 <translation id="1465457928007067810">Код IBAN сохранен в аккаунте Google.</translation>
 <translation id="1467432559032391204">Слева</translation>
+<translation id="1471514598850585811">Ноутбук</translation>
 <translation id="1472675084647422956">Показать больше</translation>
 <translation id="1473183651233018052">JIS B10</translation>
 <translation id="1473495410389165587">Добавьте ещё три слова или более, чтобы получить помощь с написанием.</translation>
@@ -996,6 +997,7 @@
 <translation id="2524962131655207565"><ph name="BEGIN_BOLD" />Для показа этих вариантов данные о контенте на странице покупки передаются в Google.<ph name="END_BOLD" /> Платежи в рассрочку доступны при соответствии требованиям. Чтобы скрыть варианты оплаты в рассрочку, перейдите в <ph name="BEGIN_LINK" />платежные настройки<ph name="END_LINK" />.</translation>
 <translation id="2526062290525841862">Чтобы запустить это приложение, включите режим разработчика изолированных веб-приложений.</translation>
 <translation id="2526280916094749336">Сохраненные адреса можно использовать в разных продуктах Google. Этот адрес будет сохранен в вашем аккаунте Google, <ph name="ACCOUNT" />.</translation>
+<translation id="2526590354069164005">Рабочий стол</translation>
 <translation id="2527451058878391043">CVC-код находится на лицевой стороне вашей карты. Это 4 цифры справа над номером карты.</translation>
 <translation id="2529899080962247600">Максимальное число записей в этом поле: <ph name="MAX_ITEMS_LIMIT" />. Остальные записи будут игнорироваться.</translation>
 <translation id="2530042584066815841">Управление мышью</translation>
@@ -3534,6 +3536,7 @@
 <translation id="6494750904506170417">всплывающие окна и переадресация</translation>
 <translation id="6495664197699704593">Пароль сохранен только на этом устройстве. Чтобы он был доступен на других ваших устройствах, <ph name="GOOGLE_PASSWORD_MANAGER" />.</translation>
 <translation id="649611364763911650">Чтобы использовать в Chrome другой сервис автозаполнения, выберите его в настройках Android</translation>
+<translation id="6496531801333278234">Найдено с помощью персонального ИИ. Вы можете управлять своими данными в настройках.</translation>
 <translation id="6499038740797743453">Сбросить пароль?</translation>
 <translation id="6502510275417601303">Оповещение о новых платежных настройках закрыто</translation>
 <translation id="6502991525169604759">Без ваших изменений</translation>
@@ -4910,7 +4913,6 @@
 <translation id="8671519637524426245">Значение правила <ph name="SECURE_DNS_SALT" /> не соответствует требованиям по длине.</translation>
 <translation id="867224526087042813">Подпись</translation>
 <translation id="8672535691554698269">Компьютерные сети</translation>
-<translation id="8673710317985154384">{NUM_TABS,plural, =1{Показать сведения о доступе к вкладкам. Открыт доступ к 1 вкладке из {WEBSITE_LIST_STR}}one{Показать сведения о доступе к вкладкам. Открыт доступ к {NUM_TABS} вкладке из {WEBSITE_LIST_STR}}few{Показать сведения о доступе к вкладкам. Открыт доступ к {NUM_TABS} вкладкам из {WEBSITE_LIST_STR}}many{Показать сведения о доступе к вкладкам. Открыт доступ к {NUM_TABS} вкладкам из {WEBSITE_LIST_STR}}other{Показать сведения о доступе к вкладкам. Открыт доступ к {NUM_TABS} вкладки из {WEBSITE_LIST_STR}}}</translation>
 <translation id="8675446170353411473">Файлы загружаются в сервис "<ph name="CLOUD_PROVIDER" />"</translation>
 <translation id="8676424191133491403">Без задержки</translation>
 <translation id="8680536109547170164"><ph name="QUERY" />, ответ, <ph name="ANSWER" /></translation>

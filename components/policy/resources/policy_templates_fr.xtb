@@ -131,7 +131,6 @@ Remarque : pour en savoir plus sur les règles d'atténuation des risques liés
 <translation id="1076751984131277498">Liste d'autorisation des appareils USB amovibles</translation>
 <translation id="1077675271127011209">Désactiver la création de rapports sur l'utilisation et les plantages</translation>
 <translation id="1079498696402787191">Utilisez la valeur par défaut pour les hachages autorisés lors de handshakes TLS.</translation>
-<translation id="1079801999187584280">Interdire l'utilisation des outils pour les développeurs</translation>
 <translation id="1081470306474387129">L'API Controlled Frame, disponible pour certains contextes isolés tels que les applications Web isolées (AWI), permet à une appli d'intégrer et de manipuler du contenu arbitraire.
 Pour en savoir plus, veuillez consulter https://github.com/WICG/controlled-frame.
 
@@ -1655,6 +1654,11 @@ Si cette règle est définie sur "1", les groupes d'onglets ne peuvent pas être
       Si cette règle est définie sur "False", les utilisateurs ne peuvent pas envoyer d'informations système ni de contenu de pages aux serveurs Google. Si ce paramètre est défini sur "True" ou s'il n'est pas configuré, les utilisateurs sont autorisés à envoyer des informations système et du contenu de pages au service de navigation sécurisée pour contribuer à la détection d'applications et de sites dangereux.
 
       Pour en savoir plus sur la navigation privée, consultez la page https://developers.google.com/safe-browsing.</translation>
+<translation id="2126895531607538755">Cette règle permet de définir le nombre de millisecondes d'inactivité avant que l'appareil applique de nouveau l'action de suspension pendant un intervalle <ph name="DEVICE_WEEKLY_SCHEDULED_SUSPEND_POLICY_NAME" />.
+
+Si un appareil est réactivé manuellement (par exemple, en saisissant du texte au clavier) pendant sa période de veille programmée, il attendra ce nombre de millisecondes avant de se mettre à nouveau en veille RAM. Toute activité de l'utilisateur réinitialisera le minuteur de suspension tant qu'elle restera dans l'intervalle de suspension.
+
+Si cette règle n'est pas configurée, l'appareil ne se mettra pas automatiquement en veille pendant l'intervalle suivant sa réactivation.</translation>
 <translation id="2127599828444728326">Autoriser les notifications sur ces sites</translation>
 <translation id="2131902621292742709">Délai d'assombrissement de l'écran (batterie)</translation>
 <translation id="2131915994539959070">Cette règle permet de détecter une fenêtre recouverte dans <ph name="PRODUCT_NAME" />.
@@ -1782,21 +1786,6 @@ Cette règle est une mesure temporaire qui sera supprimée après la version 14
 <translation id="2180958780733364832">Contrôler l'utilisation du mode headless</translation>
 <translation id="2182291258410176649">L'utilisateur décide d'activer ou non le service de sauvegarde et de restauration</translation>
 <translation id="2183338188392346527">Ne pas signaler les compteurs d'exécution de l'appareil</translation>
-<translation id="2183838844225082873">Si cette règle est définie sur 0 (valeur par défaut), vous pouvez accéder aux outils pour les développeurs et à la Console JavaScript, sauf dans le cas d'extensions installées dans le cadre des règles de l'entreprise ou, depuis la version 114 et s'il s'agit d'un utilisateur géré, d'extensions intégrées au navigateur. Si elle est définie sur 1, vous pouvez accéder à ces outils et à cette console dans tous les cas, y compris si des extensions ont été installées dans le cadre des règles de l'entreprise. Si elle est définie sur 2, vous ne pouvez pas accéder aux outils pour les développeurs ni examiner des éléments de sites Web.
-
-En outre, les raccourcis clavier, ainsi que les options de menu ou de menu contextuel permettant d'ouvrir ces outils ou cette console sont désactivés.
-
-Depuis <ph name="PRODUCT_NAME" /> version 99, ce paramètre contrôle également les points d'entrée de la fonctionnalité "Afficher le code source de la page". Si cette règle est définie sur "DeveloperToolsDisallowed" (valeur 2), les utilisateurs ne peuvent pas accéder à l'affichage du code source via le raccourci clavier ou le menu contextuel. Pour empêcher complètement l'affichage du code source, vous devez également ajouter "view-source:*" à la règle <ph name="URL_BLOCKLIST_POLICY_NAME" />.
-
-Depuis <ph name="PRODUCT_NAME" /> version 119, ce paramètre contrôle également si le mode développeur peut être activé et utilisé pour les applis Web isolées.
-
-Depuis <ph name="PRODUCT_NAME" /> version 128, ce paramètre ne contrôle plus le mode développeur sur la page des extensions si la règle <ph name="EXTENSION_DEVELOPER_MODE_SETTINGS_POLICY_NAME" /> est configurée.
-
-La disponibilité des outils pour les développeurs est déterminée selon l'ordre de priorité suivant :
-1. Si une URL correspond à un format dans la règle <ph name="DEVELOPER_TOOLS_AVAILABILITY_ALLOWLIST_POLICY_NAME" />, les outils sont autorisés.
-2. Si la règle <ph name="DEVELOPER_TOOLS_AVAILABILITY_ALLOWLIST_POLICY_NAME" /> est configurée et que la règle <ph name="DEVELOPER_TOOLS_AVAILABILITY_BLOCKLIST_POLICY_NAME" /> ne l'est pas, toute URL ne figurant pas dans la liste d'autorisation est bloquée.
-3. Si une URL correspond à un format dans la règle <ph name="DEVELOPER_TOOLS_AVAILABILITY_BLOCKLIST_POLICY_NAME" />, les outils sont bloqués.
-4. Si une URL ne figure ni dans la liste d'autorisation, ni dans la liste de blocage, cette règle (<ph name="DEVELOPER_TOOLS_AVAILABILITY_POLICY_NAME" />) est utilisée en remplacement.</translation>
 <translation id="2187361040843865450">Accepter les demandes d'association Bluetooth "Just Works"</translation>
 <translation id="2187372280917024033">Modèle URI du résolveur DNS-over-HTTPS souhaité. Pour définir plusieurs résolveurs DNS-over-HTTPS, vous devez séparer les modèles URI correspondants à l'aide d'espaces. Cette règle est très semblable à <ph name="DOH_TEMPLATES_POLICY_NAME" /> et l'ignore lorsqu'elle est spécifiée.
 Contrairement à <ph name="DOH_TEMPLATES_POLICY_NAME" />, cette règle permet de spécifier des informations d'identification.
@@ -3284,6 +3273,7 @@ Si cette règle est désactivée ou n'est pas configurée, la collecte et l'impo
 Le rapport contient l'état du profil ainsi que des informations sur l'utilisation, y compris, mais sans s'y limiter, la version de l'OS et du navigateur, les extensions installées et les règles applicables.
 
 Cette règle ne peut être configurée que comme règle relative aux utilisateurs du cloud.</translation>
+<translation id="3060733249129331512">Demander l'autorisation chaque fois qu'un site veut télécharger automatiquement plusieurs fichiers</translation>
 <translation id="3062559845875011810">Ne pas autoriser la fonctionnalité</translation>
 <translation id="3063302084011279315">Désactiver l'enregistreur d'écran</translation>
 <translation id="3063307261083019730">Interdire le stockage des pages avec un en-tête <ph name="CACHE_CONTROL_NO_STORE_NAME" /> dans le cache back/forward.</translation>
@@ -4682,6 +4672,13 @@ Si elle est activée, un utilisateur peut déclencher un processus lors duquel l
 Si la règle n'est pas configurée, son comportement est déterminé par la règle GenAiDefaultSettings.
 
 Pour en savoir plus sur la gestion des données pour les fonctionnalités d'IA générative, veuillez consulter https://support.google.com/chrome/a?p=generative_ai_settings.</translation>
+<translation id="4049815236567245576">Vous permet de définir une liste de formats d'URL indiquant les sites autorisés à télécharger automatiquement plusieurs fichiers.
+
+Pour en savoir plus sur les formats d'URL valides, veuillez consulter https://chromeenterprise.google/policies/url-patterns.
+
+Si une URL correspond à la fois à <ph name="AUTOMATIC_DOWNLOADS_ALLOWED_FOR_URLS_POLICY_NAME" /> et à <ph name="AUTOMATIC_DOWNLOADS_BLOCKED_FOR_URLS_POLICY_NAME" />, AutomaticDownloadsBlockedForUrls est prioritaire.
+
+Si cette règle n'est pas configurée, la règle <ph name="DEFAULT_AUTOMATIC_DOWNLOADS_SETTING_POLICY_NAME" /> s'applique pour tous les sites, à condition qu'elle soit définie. Si ce n'est pas le cas, le paramètre défini par l'utilisateur s'applique.</translation>
 <translation id="4051723201852944592">Détecter les fenêtres recouvertes</translation>
 <translation id="4052529125939620019">Charger l'extension du composant CryptoToken au démarrage</translation>
 <translation id="4053157306171963473">Désactiver les rapports sur le temps d'activité de l'appareil</translation>
@@ -4776,6 +4773,9 @@ La disponibilité des extensions est toujours contrôlée par d'autres règles.<
 
       Remarques : L'actualisation dynamique des stratégies n'est disponible qu'à partir de la version 123 de <ph name="PRODUCT_NAME" />. La désactivation du type de données "autofill" désactive également le type "payments". "typedUrls" fait référence à tout l'historique de navigation.</translation>
 <translation id="4115501011761259824">Activer les ensembles propriétaires pour tous les utilisateurs concernés</translation>
+<translation id="4119598167427266156">Si cette règle est définie sur "1", les sites Web peuvent télécharger automatiquement plusieurs fichiers. Si cette règle est définie sur "2", cette autorisation est refusée. Vous pouvez définir cette règle afin qu'un site Web demande systématiquement l'autorisation de télécharger automatiquement plusieurs fichiers.
+
+Si cette règle n'est pas configurée, la règle AskAutomaticDownloads s'applique. Toutefois, les utilisateurs peuvent modifier ce paramètre.</translation>
 <translation id="4120401094617902941">Fréquence d'échantillonnage et de collecte des compteurs d'exécution. La valeur minimale autorisée est de 1 jour.
 
 Si cette règle n'est pas configurée, la fréquence par défaut (1 jour) est appliquée.</translation>
@@ -5464,7 +5464,6 @@ Pour en savoir plus sur les formats d'URL valides, veuillez consulter https://ch
 <translation id="4561940244682063697">Ne pas autoriser les sites à inviter l'utilisateur à partager un flux vidéo de son écran</translation>
 <translation id="4562165737444703281">Autoriser les utilisateurs à [activer/configurer] le transfert de port Crostini</translation>
 <translation id="456450545863578630">Activer le transfert de fichiers dans les connexions d'assistance à distance avec les administrateurs de l'entreprise</translation>
-<translation id="4567137030726189378">Autoriser l'utilisation des outils pour les développeurs</translation>
 <translation id="4570859815763368584">Règle abandonnée dans la version M68. Utilisez à la place la règle DefaultPopupsSetting.
 
       Pour obtenir une explication complète, consultez la page https://www.chromestatus.com/feature/5675755719622656.
@@ -6268,6 +6267,7 @@ Si cette règle est définie sur <ph name="POLICY_ENUM_RESTOREONSTARTUP_RESTOREO
 Sous <ph name="MS_WIN_NAME" />, cette règle n'est disponible que sur les instances associées à un domaine <ph name="MS_AD_NAME" />, à <ph name="MS_AAD_NAME" /> ou qui bénéficient de <ph name="CHROME_ENTERPRISE_CORE_NAME" />.
 
 Sous <ph name="MAC_OS_NAME" />, cette règle n'est disponible que sur les instances gérées via MDM, associées à un domaine via MCX ou qui bénéficient de <ph name="CHROME_ENTERPRISE_CORE_NAME" />.</translation>
+<translation id="5036662165765606524">N'autoriser aucun site à télécharger automatiquement plusieurs fichiers</translation>
 <translation id="5037749623252479780">Les paramètres Page précédente/Page suivante sont désactivés</translation>
 <translation id="5039110755072335605">Prise en charge des en-têtes de requêtes CORS sans caractères génériques</translation>
 <translation id="5039804452771397117">Autoriser</translation>
@@ -6765,6 +6765,7 @@ Les comptes gérés ne peuvent pas rejoindre ni créer de groupe familial, et ne
 <translation id="5345892164332459671">Désactiver le SSO flottant et ne pas déplacer les authentifications des services Web de l'utilisateur vers un nouvel appareil</translation>
 <translation id="5345910753471481870">Ne pas afficher le bouton Google Lens dans le champ de recherche de la page "Nouvel onglet".</translation>
 <translation id="5346587320074666194">Bloquer l'accès aux capteurs sur ces sites</translation>
+<translation id="534702079563980696">Autoriser les téléchargements automatiques sur ces sites</translation>
 <translation id="5347735051291224683">Cette règle permet de définir si le contenu Web en arrière-plan doit être exécuté avec la priorité au premier plan.
 
 Par défaut, le navigateur optimise les ressources en réduisant la priorité du contenu des onglets en arrière-plan. L'activation de cette règle remplace ce comportement. Les onglets en arrière-plan sont donc traités de la même manière que l'onglet actif.
@@ -7193,6 +7194,7 @@ Si cette règle n'est pas configurée ou si elle est définie sur une liste vide
 <translation id="5599461642204007579">Paramètres de gestion de <ph name="MS_AD_NAME" /></translation>
 <translation id="5601503069213153581">Code</translation>
 <translation id="5605676983184673391">Autoriser les applis Chrome à s'exécuter en sessions Kiosque.</translation>
+<translation id="5606477661985737162">Paramètres des téléchargements automatiques</translation>
 <translation id="5607021831414604820">Activer les rapports sur l'état de stockage de l'appareil</translation>
 <translation id="5607808178576647930">Autoriser les intégrations du Mode IA.</translation>
 <translation id="5608114828230655271">Comportement par défaut de l'appareil</translation>
@@ -7290,6 +7292,7 @@ Cette règle est une solution temporaire qui sera obsolète à compter de M139.
 <translation id="5660950553460381588">Si possible, créer les clés d'accès dans le trousseau iCloud par défaut.</translation>
 <translation id="566569751231933416">Utiliser le comportement par défaut.</translation>
 <translation id="5666457529647159548">Autoriser les utilisateurs à gérer les certificats client installés.</translation>
+<translation id="566962283082154427">Délai de nouvelle suspension pour les intervalles de suspension hebdomadaires planifiés en millisecondes</translation>
 <translation id="5670249935663090320">Si cette règle est activée ou qu'elle n'est pas configurée, <ph name="PRODUCT_NAME" /> est activé. Les utilisateurs pourront le lancer depuis le menu de l'application, les menus contextuels des pages, les commandes multimédias sur les sites Web compatibles Cast et l'icône Cast de la barre d'outils (si elle est affichée).
 
 Si cette règle est désactivée, <ph name="PRODUCT_NAME" /> le sera également.</translation>
@@ -7746,6 +7749,13 @@ Si vous définissez cette valeur sur <ph name="DISPLAY_MANAGEMENT_LABEL_TRANSIEN
 <translation id="5965344524743236327">ID ou numéro du projet <ph name="GOOGLE_CLOUD_PRODUCT_NAME" /> correspondant à l'instance <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> à activer. Pour en savoir plus sur les ID de projet, consultez https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects.</translation>
 <translation id="5966615072639944554">Extensions autorisées à utiliser l'API d'attestation à distance</translation>
 <translation id="596732417280023843">Nom du profil du certificat.</translation>
+<translation id="5972475504452039694">Vous permet de définir une liste de formats d'URL indiquant les sites non autorisés à télécharger automatiquement plusieurs fichiers.
+
+Pour en savoir plus sur les formats d'URL valides, veuillez consulter https://chromeenterprise.google/policies/url-patterns.
+
+Si une URL correspond à la fois à <ph name="AUTOMATIC_DOWNLOADS_ALLOWED_FOR_URLS_POLICY_NAME" /> et à <ph name="AUTOMATIC_DOWNLOADS_BLOCKED_FOR_URLS_POLICY_NAME" />, AutomaticDownloadsBlockedForUrls est prioritaire.
+
+Si cette règle n'est pas configurée, la règle <ph name="DEFAULT_AUTOMATIC_DOWNLOADS_SETTING_POLICY_NAME" /> s'applique pour tous les sites, à condition qu'elle soit définie. Si ce n'est pas le cas, le paramètre défini par l'utilisateur s'applique.</translation>
 <translation id="5972538402066550344">Autoriser les contrôles de rapports précis</translation>
 <translation id="5973437409890460481">Autoriser les connexions d'accès à distance d'entreprise à cet ordinateur</translation>
 <translation id="5975765799383881158">Si cette règle est activée ou qu'elle n'est pas configurée, les utilisateurs peuvent envoyer des commentaires à Google en sélectionnant Menu &gt; Aide &gt; Signaler un problème, ou via un raccourci clavier.
@@ -7999,6 +8009,7 @@ Vous pouvez modifier le délai d'inactivité avant l'affichage de l'économiseur
 <translation id="6181783961196084973">Valeur du paramètre de collecte de l'activité dans les applis. Si la règle est définie sur "True", l'activité de l'utilisateur dans les applications est transmise au serveur afin d'être affichée dans l'appli <ph name="PRODUCT_NAME" /> utilisée par l'enfant et les parents. Si la règle est définie sur "False", les limites de temps spécifiques à chaque application sont quand même applicables, mais aucune donnée n'est transmise au serveur ni affichée dans <ph name="PRODUCT_NAME" />.</translation>
 <translation id="6182206125906000651">Désactiver les mises à niveau HTTPS</translation>
 <translation id="6182563940865917569">Autoriser Chrome à lire automatiquement le contenu multimédia</translation>
+<translation id="618588573990666077">Paramètre des téléchargements automatiques par défaut</translation>
 <translation id="618635925649844912">Cette règle détermine si l'utilisateur voit l'écran d'introduction des fonctionnalités d'IA en cours de session pendant la première procédure de connexion.
 
       Si elle est désactivée, l'écran d'introduction de l'IA ne s'affiche pas.
@@ -8169,6 +8180,7 @@ Si cette règle est activée ou qu'elle n'est pas configurée, le navigateur app
 Si elle est désactivée, ce changement est annulé et les documents sans en-têtes Origin-Agent-Cluster sont affectés aux clusters d'agents selon le site. L'accesseur document.domain reste donc configurable par défaut. Cela correspond à l'ancien comportement.
 
 Pour en savoir plus, consultez https://developer.chrome.com/blog/immutable-document-domain/.</translation>
+<translation id="626942726350419209">Autoriser les sites à télécharger automatiquement plusieurs fichiers</translation>
 <translation id="6270615143812355589">Activer l'entrée audio</translation>
 <translation id="6270791075656665237">Interdire le protocole QUIC</translation>
 <translation id="6273015149273504999">
@@ -10348,6 +10360,7 @@ Si cette règle est vide, aucune exception à <ph name="FLOATING_SSO_DOMAIN_BLOC
 <translation id="759957074386651883">Paramètres de navigation sécurisée</translation>
 <translation id="7602621823177962064">Désactiver les rapports sur la mémoire de l'appareil</translation>
 <translation id="7604169113182304895">Les applications Android peuvent avoir été volontairement conçues pour respecter cette liste, mais vous ne pouvez pas les forcer à effectuer cette opération.</translation>
+<translation id="7607831126797434329">Bloquer les téléchargements automatiques sur ces sites</translation>
 <translation id="7608186022704392724">La fonctionnalité d'envoi automatique du code modifie la façon dont celui-ci est saisi dans <ph name="PRODUCT_OS_NAME" />.
           Au lieu d'afficher le champ de texte utilisé pour la saisie du mot de passe, cette fonctionnalité présente une interface utilisateur spéciale qui indique clairement à l'utilisateur le nombre de chiffres à saisir pour son code. De ce fait, la longueur du code de l'utilisateur est stockée en dehors des données chiffrées de l'utilisateur. Les codes compatibles comptent entre 6 et 12 chiffres.
 
@@ -11471,7 +11484,6 @@ Plusieurs règles listent des origines qui ont un impact sur les requêtes adres
 
           Si cette règle n'est pas définie, le paramètre "BlockKeygen" est utilisé, et l'utilisateur est en mesure de le modifier.</translation>
 <translation id="8314214821702356835">Autoriser les utilisateurs à lire des contenus multimédias lorsque l'appareil est verrouillé</translation>
-<translation id="8314308739926578606">Interdire l'utilisation des Outils pour les développeurs avec les applis et les extensions installées par les règles d'entreprise ou, depuis la version 114 et s'il s'agit d'un utilisateur géré, les extensions intégrées au navigateur. Autoriser l'utilisation des Outils pour les développeurs dans les autres cas</translation>
 <translation id="8316940611391250886">Interdire les certificats sans extension subjectAlternativeName</translation>
 <translation id="8319678975002906774">Définit des valeurs de configuration gérée pour des sites Web aux origines spécifiques.</translation>
 <translation id="8320149248919453401">Mode de recharge de la batterie</translation>

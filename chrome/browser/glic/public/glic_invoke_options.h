@@ -282,6 +282,9 @@ struct GlicInvokeOptions {
   // triggered, this flag is ignored.
   bool wait_for_panel_open = false;
 
+  // Whether to focus the side panel when shown.
+  bool focus_on_show = true;
+
   // Specifies how to wait for the First Run Experience (FRE) to complete
   // before proceeding with the invocation.
   FreCompletionWaitMode fre_completion_wait_mode =

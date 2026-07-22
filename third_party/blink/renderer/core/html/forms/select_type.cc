@@ -49,6 +49,7 @@
 #include "third_party/blink/renderer/core/html/forms/html_button_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_data_list_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_form_element.h"
+#include "third_party/blink/renderer/core/html/forms/html_input_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_opt_group_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_select_element.h"
 #include "third_party/blink/renderer/core/html/forms/menu_list_inner_element.h"
@@ -693,6 +694,10 @@ void MenuListSelectType::ManuallyAssignSlots() {
     if (RuntimeEnabledFeatures::FilterableSelectEnabled() &&
         select_->NumDescendantInputs()) {
       CHECK(popover_input_slot_);
+      if (IsA<HTMLInputElement>(child)) {
+        children_with_descendant_input.push_back(child);
+        continue;
+      }
       auto it = select_->ChildrenDescendantCounts().find(&child);
       if (it != select_->ChildrenDescendantCounts().end()) {
         if (it->value.num_inputs && !it->value.num_options) {
@@ -2000,6 +2005,11 @@ void ListBoxSelectType::ManuallyAssignSlots() {
   for (Node& child : NodeTraversal::ChildrenOf(*select_)) {
     if (RuntimeEnabledFeatures::FilterableSelectEnabled() &&
         select_->NumDescendantInputs()) {
+      if (IsA<HTMLInputElement>(child)) {
+        CHECK(input_slot_);
+        children_with_descendant_input.push_back(child);
+        continue;
+      }
       auto it = select_->ChildrenDescendantCounts().find(&child);
       if (it != select_->ChildrenDescendantCounts().end()) {
         if (it->value.num_inputs && !it->value.num_options) {

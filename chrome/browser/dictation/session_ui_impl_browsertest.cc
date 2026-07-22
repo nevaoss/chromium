@@ -6,6 +6,7 @@
 
 #include "base/memory/weak_ptr.h"
 #include "base/test/scoped_feature_list.h"
+#include "chrome/browser/dictation/dictation_interactive_browser_test_base.h"
 #include "chrome/browser/dictation/dictation_keyed_service.h"
 #include "chrome/browser/dictation/features.h"
 #include "chrome/browser/dictation/listener_stream_provider.h"
@@ -27,102 +28,11 @@
 
 namespace dictation {
 
-using ExtensionStreamState = extensions::api::dictation_private::StreamState;
-using ExtensionTranscriptionType =
-    extensions::api::dictation_private::TranscriptionType;
-
-class DictationSessionUiImplBrowserTest : public InteractiveBrowserTest {
+class DictationSessionUiImplBrowserTest
+    : public DictationInteractiveBrowserTestBase {
  public:
-  DictationSessionUiImplBrowserTest() {
-    scoped_feature_list_.InitAndEnableFeature(kDictation);
-  }
+  DictationSessionUiImplBrowserTest() = default;
   ~DictationSessionUiImplBrowserTest() override = default;
-
-  void SetUpCommandLine(base::CommandLine* command_line) override {
-    InteractiveBrowserTest::SetUpCommandLine(command_line);
-    command_line->AppendSwitchASCII(
-        extensions::switches::kAllowlistedExtensionID,
-        kDictationTestExtensionId);
-  }
-
-  void SetUpOnMainThread() override {
-    InteractiveBrowserTest::SetUpOnMainThread();
-    LoadTestExtensionInManualMode(profile());
-  }
-
-  void TearDownOnMainThread() override {
-    dictation_service().EndSession();
-    InteractiveBrowserTest::TearDownOnMainThread();
-  }
-
-  Profile* profile() { return chrome_test_utils::GetProfile(this); }
-
-  DictationKeyedService& dictation_service() {
-    return *DictationKeyedService::Get(profile());
-  }
-
-  SessionUiImpl* session_ui() {
-    if (!dictation_service().session_controller()) {
-      return nullptr;
-    }
-
-    return static_cast<SessionUiImpl*>(
-        dictation_service().session_controller()->ui_for_testing());
-  }
-
-  auto StartSession() {
-    // clang-format off
-    return Steps(
-      Do([this]{
-        dictation_service().StartSession(
-            *browser(),
-            std::make_unique<Target>());
-        last_started_provider_ = static_cast<ListenerStreamProvider*>(
-            dictation_service()
-                .session_controller()
-                ->attached_stream_provider())->GetWeakPtr();
-        ASSERT_NE(last_started_provider_, nullptr);
-      }),
-      Check([this]{ return session_ui() != nullptr; })
-    );
-    // clang-format on
-  }
-
-  auto ExtensionAPISetStreamState(ExtensionStreamState state) {
-    return Steps(Do([this, state] {
-      ASSERT_NE(last_started_provider_, nullptr);
-      ExtensionSendStreamStateUpdate(
-          profile(), last_started_provider_->stream_id_for_testing(), state);
-    }));
-  }
-
-  auto ExtensionAPIUpdateTranscription(ExtensionTranscriptionType type,
-                                       std::string_view text) {
-    return Steps(Do([this, type, text_str = std::string(text)] {
-      ASSERT_NE(last_started_provider_, nullptr);
-      ExtensionSendTranscriptUpdate(
-          profile(), last_started_provider_->stream_id_for_testing(), type,
-          text_str);
-    }));
-  }
-
-  auto GetSessionState() {
-    return [this]() {
-      return dictation_service().session_controller()->GetState();
-    };
-  }
-
-  auto HasAttachedStreamProvider() {
-    return [this]() {
-      return dictation_service()
-                 .session_controller()
-                 ->attached_stream_provider() != nullptr;
-    };
-  }
-
- private:
-  base::WeakPtr<ListenerStreamProvider> last_started_provider_ = nullptr;
-  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
 IN_PROC_BROWSER_TEST_F(DictationSessionUiImplBrowserTest,
@@ -131,6 +41,7 @@ IN_PROC_BROWSER_TEST_F(DictationSessionUiImplBrowserTest,
   RunTestSequence(
     StartSession(),
     WaitForShow(DictationBubbleUi::kViewElementIdForTesting),
+    WaitForShow(DictationBubbleUi::kWaveformElementIdForTesting),
 
     // kStreamInitializing.
     CheckResult(GetSessionState(), SessionState::kStreamInitializing),

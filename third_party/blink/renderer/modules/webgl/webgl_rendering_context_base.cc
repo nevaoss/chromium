@@ -922,6 +922,23 @@ scoped_refptr<StaticBitmapImage> WebGLRenderingContextBase::GetImage() {
 
   ScopedPixelLocalStorageInterrupt scoped_pls_interrupt(this);
   ScopedFramebufferRestorer fbo_restorer(this);
+
+  if (base::FeatureList::IsEnabled(features::kWebGLDiscardBackBuffer)) {
+    // Conceptually, getting an image from an uninitialized canvas or one that
+    // has completed its draw should get a cleared one. See the WebGL spec,
+    // section 2.2 (https://registry.khronos.org/webgl/specs/latest/1.0/#2.2):
+    //
+    // "If this [preserveDrawingBuffer] flag is false, attempting to perform
+    // operations using this context as a source image after the rendering
+    // function has returned can lead to undefined behavior. This includes
+    // readPixels or toDataURL calls"
+    //
+    // This is only done when the feature is active to test compatibility, and
+    // because it is required in this case: this indirectly ensures that the
+    // back buffer is recreated.
+    ClearIfComposited(kClearCallerOther);
+  }
+
   // In rare situations on macOS the drawing buffer can be destroyed
   // during the resolve process, specifically during automatic
   // graphics switching. Guard against this.
@@ -1769,6 +1786,13 @@ WebGLRenderingContextBase::ClearIfComposited(
   if (isContextLost()) {
     // Unlikely, but context was lost.
     return kSkipped;
+  }
+
+  if (!framebuffer_binding_) {
+    // DrawingBuffer may have discarded the back buffer, and we are about to use
+    // it, recreate it. Note: we don't call MarkContentsChanged(), because it
+    // hasn't (there is no new content to present).
+    GetDrawingBuffer()->EnsureBackColorBuffer();
   }
 
   ScopedPixelLocalStorageInterrupt scoped_pls_interrupt(this);

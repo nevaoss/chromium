@@ -48,6 +48,7 @@
 #include "components/contextual_tasks/public/contextual_task.h"
 #include "components/contextual_tasks/public/features.h"
 #include "components/contextual_tasks/public/mock_contextual_tasks_service.h"
+#include "components/contextual_tasks/public/prefs.h"
 #include "components/contextual_tasks/public/query_contextualizer.h"
 #include "components/feature_engagement/public/feature_constants.h"
 #include "components/lens/lens_url_utils.h"
@@ -657,6 +658,10 @@ TEST_F(ContextualTasksPageHandlerTest, MaybeTriggerPinningPromo_PanelClosed) {
 }
 
 TEST_F(ContextualTasksPageHandlerTest, MaybeTriggerPinningPromo_Success) {
+  // Set the post-onboarding session count to meet the default threshold (2).
+  profile()->GetPrefs()->SetInteger(
+      contextual_tasks::kContextualTasksSessionCountPostOnboarding, 2);
+
   NiceMock<MockBrowserWindowInterface> mock_browser_window;
   ui::UnownedUserDataHost window_user_data_host;
   ON_CALL(mock_browser_window, GetUnownedUserDataHost())
@@ -679,6 +684,39 @@ TEST_F(ContextualTasksPageHandlerTest, MaybeTriggerPinningPromo_Success) {
   // The pinning promo is expected to be tried.
   EXPECT_CALL(mock_user_education, MaybeShowFeaturePromo(testing::Matcher<user_education::FeaturePromoParams>(testing::_)))
       .WillOnce(testing::Return(true));
+
+  page_handler_->MaybeTriggerPinningPromo();
+}
+
+TEST_F(ContextualTasksPageHandlerTest,
+       MaybeTriggerPinningPromo_SessionsLessThanThreshold) {
+  // Set the count to 1 (less than the default threshold of 2).
+  profile()->GetPrefs()->SetInteger(
+      contextual_tasks::kContextualTasksSessionCountPostOnboarding, 1);
+
+  NiceMock<MockBrowserWindowInterface> mock_browser_window;
+  ui::UnownedUserDataHost window_user_data_host;
+  ON_CALL(mock_browser_window, GetUnownedUserDataHost())
+      .WillByDefault(ReturnRef(window_user_data_host));
+  ON_CALL(mock_browser_window, GetProfile()).WillByDefault(Return(profile()));
+
+  MockBrowserUserEducationInterface mock_user_education(&mock_browser_window);
+
+  EXPECT_CALL(*mock_panel_controller_, IsPanelOpenForContextualTask())
+      .WillOnce(testing::Return(true));
+  EXPECT_CALL(*contextual_tasks_ui_, GetBrowser())
+      .WillRepeatedly(testing::Return(&mock_browser_window));
+
+  EXPECT_CALL(*mock_contextual_tasks_ui_service_, IsAiUrl(testing::_))
+      .WillOnce(testing::Return(true));
+
+  // The pinning promo is NOT expected to be tried because threshold (2) is not
+  // met.
+  EXPECT_CALL(
+      mock_user_education,
+      MaybeShowFeaturePromo(
+          testing::Matcher<user_education::FeaturePromoParams>(testing::_)))
+      .Times(0);
 
   page_handler_->MaybeTriggerPinningPromo();
 }

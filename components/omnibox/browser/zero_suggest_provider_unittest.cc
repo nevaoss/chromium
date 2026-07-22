@@ -102,7 +102,7 @@ class FakeAutocompleteProviderClient : public MockAutocompleteProviderClient {
 
   void Classify(
       const std::u16string& text,
-      bool prefer_keyword,
+      bool in_keyword_mode,
       bool allow_exact_keyword_match,
       metrics::OmniboxEventProto::PageClassification page_classification,
       AutocompleteMatch* match,

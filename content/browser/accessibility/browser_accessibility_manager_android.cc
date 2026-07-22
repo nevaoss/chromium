@@ -975,7 +975,8 @@ BrowserAccessibilityManagerAndroid::ConvertChromeSelectionPositionToAndroid(
       ui::AXNodePosition::CreatePosition(*node, offset, affinity);
   position = position->AsUnignoredSelectionPosition(
       is_backward ? ui::AXPositionAdjustmentBehavior::kMoveForward
-                  : ui::AXPositionAdjustmentBehavior::kMoveBackward);
+                  : ui::AXPositionAdjustmentBehavior::kMoveBackward,
+      /*force_convert_leaf_to_text=*/false);
   if (position->IsNullPosition()) {
     return std::nullopt;
   }
@@ -1031,6 +1032,14 @@ BrowserAccessibilityManagerAndroid::ConvertChromeSelectionPositionToAndroid(
         position->GetAnchor()->GetChildAtIndex(position->child_index() - 1);
     at_end_of_anchor = true;
   }
+  CHECK(target_node);
+
+  // If `target_node` is not in the Android accessibility tree (ignored or
+  // uninteresting), move it up to the lowest platform ancestor.
+  BrowserAccessibilityAndroid* target_android_node =
+      static_cast<BrowserAccessibilityAndroid*>(GetFromAXNode(target_node));
+  target_node =
+      target_android_node->PlatformGetLowestPlatformAncestor()->node();
   CHECK(target_node);
 
   offset = target_node->GetUnignoredIndexInParent();

@@ -31,6 +31,7 @@
 
 class HostContentSettingsMap;
 class TemplateURLService;
+struct AutocompleteMatch;
 
 // LINT.IfChange(OmniboxInlineLocationSuggestionShown)
 enum class OmniboxInlineLocationSuggestionShown {
@@ -92,10 +93,13 @@ class GeolocationHeaderService : public KeyedService {
   std::optional<std::string> GetLocationHeader(const GURL& url,
                                                bool for_automatic_sending);
 
-  // Records metrics about when the inline location suggestion is shown.
+  // Records metrics about when the inline location suggestion is shown and
+  // clicked.
   void RecordInlineLocationSuggestionShown(
       OmniboxInlineLocationSuggestionShown shown_state,
       size_t match_index) const;
+  void RecordInlineLocationSuggestionClicked(
+      const AutocompleteMatch& match) const;
 
   // Returns true if the given URL is eligible for the X-Geo header.
   bool IsUrlEligibleForLocationHeader(const GURL& url) const;

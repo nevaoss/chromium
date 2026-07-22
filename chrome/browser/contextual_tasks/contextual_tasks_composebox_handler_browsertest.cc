@@ -368,7 +368,8 @@ class ContextualTasksComposeboxHandlerTest
     service_ = std::make_unique<contextual_search::ContextualSearchService>(
         /*identity_manager=*/nullptr, url_loader_factory(),
         template_url_service(), fake_variations_client(),
-        version_info::Channel::UNKNOWN, "en-US");
+        version_info::Channel::UNKNOWN, "en-US",
+        /*tab_validator=*/nullptr);
     auto contextual_session_handle = service_->CreateSessionForTesting(
         std::move(mock_controller),
         std::make_unique<contextual_search::ContextualSearchMetricsRecorder>(
@@ -571,6 +572,8 @@ class ContextualTasksComposeboxHandlerTestWithContextManagementEnabled
 };
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksComposeboxHandlerTest, SubmitQuery) {
+  base::UserActionTester user_action_tester;
+
   ASSERT_NE(mock_contextual_tasks_service_ptr_, nullptr)
       << "Mock controller is NULL in SubmitQuery!";
   EXPECT_CALL(*mock_controller_, CreateClientToAimRequest(testing::_))
@@ -584,6 +587,8 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksComposeboxHandlerTest, SubmitQuery) {
   handler_->SubmitQuery("test query", 0, false, false, false, false,
                         /*is_voice_search=*/false);
   EXPECT_EQ(session_handle_->previous_turns().back().query, "test query");
+  EXPECT_EQ(1, user_action_tester.GetActionCount(
+                   "ContextualTasks.Composebox.UserAction.QuerySubmitted"));
 }
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksComposeboxHandlerTest,
@@ -728,7 +733,7 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksComposeboxHandlerTest,
                   callback) { std::move(callback).Run(std::move(context)); });
 
   // Setup FileInfo with expired status.
-  std::vector<const contextual_search::FileInfo*> file_info_list;
+  std::vector<raw_ptr<const contextual_search::FileInfo>> file_info_list;
   contextual_search::FileInfo file_info;
   file_info.tab_session_id = session_id;
   file_info.upload_status =
@@ -822,7 +827,7 @@ IN_PROC_BROWSER_TEST_F(
                   callback) { std::move(callback).Run(std::move(context)); });
 
   // Setup context with uploaded status and some previous content.
-  std::vector<const contextual_search::FileInfo*> file_info_list;
+  std::vector<raw_ptr<const contextual_search::FileInfo>> file_info_list;
   contextual_search::FileInfo file_info;
   file_info.tab_session_id = session_id;
   file_info.upload_status =
@@ -920,7 +925,7 @@ IN_PROC_BROWSER_TEST_F(
                   callback) { std::move(callback).Run(std::move(context)); });
 
   // Setup FileInfo with uploaded status and SAME content.
-  std::vector<const contextual_search::FileInfo*> file_info_list;
+  std::vector<raw_ptr<const contextual_search::FileInfo>> file_info_list;
   contextual_search::FileInfo file_info;
   file_info.tab_session_id = session_id;
   file_info.upload_status =
@@ -1178,7 +1183,7 @@ IN_PROC_BROWSER_TEST_F(
                   callback) { std::move(callback).Run(std::move(context)); });
 
   // Setup FileInfo with uploaded status and OLD bitmap.
-  std::vector<const contextual_search::FileInfo*> file_info_list;
+  std::vector<raw_ptr<const contextual_search::FileInfo>> file_info_list;
   contextual_search::FileInfo file_info;
   file_info.tab_session_id = session_id;
   file_info.upload_status =
@@ -1281,7 +1286,7 @@ IN_PROC_BROWSER_TEST_F(
                   callback) { std::move(callback).Run(std::move(context)); });
 
   // Setup FileInfo with uploaded status and SAME bitmap.
-  std::vector<const contextual_search::FileInfo*> file_info_list;
+  std::vector<raw_ptr<const contextual_search::FileInfo>> file_info_list;
   contextual_search::FileInfo file_info;
   file_info.tab_session_id = session_id;
   file_info.upload_status =
@@ -1335,25 +1340,38 @@ IN_PROC_BROWSER_TEST_F(
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksComposeboxHandlerTest,
                        OnAutocompleteAccept) {
+  base::UserActionTester user_action_tester;
+
   EXPECT_CALL(*mock_controller_, CreateClientToAimRequest(testing::_))
       .WillOnce(testing::Return(lens::ClientToAimMessage()));
   EXPECT_CALL(*mock_ui_, PostMessageToWebview(testing::_));
 
   AutocompleteMatch match;
-  handler_->GetOmniboxControllerForTesting()->client()->OnAutocompleteAccept(
+  handler_->GetOmniboxClientForTesting()->OnAutocompleteAccept(
       GURL("https://www.google.com/search?q=test query"), nullptr,
       WindowOpenDisposition::CURRENT_TAB, ui::PAGE_TRANSITION_TYPED,
       AutocompleteMatchType::SEARCH_SUGGEST, base::TimeTicks::Now(), false,
       false, u"test query", match, match);
+
+  EXPECT_EQ(1, user_action_tester.GetActionCount(
+                   "ContextualTasks.Composebox.UserAction.QuerySubmitted"));
 }
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksComposeboxHandlerTest,
                        HandleLensButtonClick) {
+  base::UserActionTester user_action_tester;
+  base::HistogramTester histogram_tester;
+
   EXPECT_CALL(
       *mock_lens_controller_,
       OpenLensOverlay(
           lens::LensOverlayInvocationSource::kContextualTasksComposebox, true));
   handler_->HandleLensButtonClick();
+
+  EXPECT_EQ(1, user_action_tester.GetActionCount(
+                   "ContextualTasks.Composebox.UserAction.LensButtonClicked"));
+  histogram_tester.ExpectUniqueSample(
+      "ContextualTasks.Composebox.UserAction.LensButtonClicked", true, 1);
 }
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksComposeboxHandlerTest,
@@ -1368,7 +1386,7 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksComposeboxHandlerTest,
   EXPECT_CALL(*mock_ui_, PostMessageToWebview(testing::_));
 
   AutocompleteMatch match;
-  handler_->GetOmniboxControllerForTesting()->client()->OnAutocompleteAccept(
+  handler_->GetOmniboxClientForTesting()->OnAutocompleteAccept(
       GURL("https://www.google.com/search?q=extracted%20query"), nullptr,
       WindowOpenDisposition::CURRENT_TAB, ui::PAGE_TRANSITION_TYPED,
       AutocompleteMatchType::SEARCH_SUGGEST, base::TimeTicks::Now(), false,
@@ -1387,7 +1405,7 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksComposeboxHandlerTest,
   EXPECT_CALL(*mock_ui_, PostMessageToWebview(testing::_));
 
   AutocompleteMatch match;
-  handler_->GetOmniboxControllerForTesting()->client()->OnAutocompleteAccept(
+  handler_->GetOmniboxClientForTesting()->OnAutocompleteAccept(
       GURL("https://www.google.com/search?other=param"), nullptr,
       WindowOpenDisposition::CURRENT_TAB, ui::PAGE_TRANSITION_TYPED,
       AutocompleteMatchType::SEARCH_SUGGEST, base::TimeTicks::Now(), false,
@@ -3277,7 +3295,7 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksComposeboxHandlerTest,
                           base::Unretained(mock_ui_.get())));
 
   auto* client = static_cast<ContextualOmniboxClient*>(
-      custom_handler->GetOmniboxControllerForTesting()->client());
+      custom_handler->GetOmniboxClientForTesting());
 
   auto result = client->GetLensOverlaySuggestInputsForTesting();
 
@@ -3383,7 +3401,7 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksComposeboxHandlerTest,
                   callback) { std::move(callback).Run(std::move(context)); });
 
   // Setup FileInfo with expired status.
-  std::vector<const contextual_search::FileInfo*> file_info_list;
+  std::vector<raw_ptr<const contextual_search::FileInfo>> file_info_list;
   contextual_search::FileInfo file_info;
   file_info.tab_session_id = session_id;
   file_info.upload_status =
@@ -3494,7 +3512,7 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksComposeboxHandlerTest,
                   callback) { std::move(callback).Run(std::move(context)); });
 
   // Setup FileInfo with expired status.
-  std::vector<const contextual_search::FileInfo*> file_info_list;
+  std::vector<raw_ptr<const contextual_search::FileInfo>> file_info_list;
   contextual_search::FileInfo file_info;
   file_info.tab_session_id = session_id;
   file_info.upload_status =
@@ -3743,6 +3761,7 @@ IN_PROC_BROWSER_TEST_F(
   tab_info1.tab_url = GURL("about:blank#1");
   tab_info1.tab_title = "About Blank 1";
   tab_info1.tab_session_id = SessionID::FromSerializedValue(42);
+  tab_info1.mime_type = lens::MimeType::kHtml;
   tab_info1.selection_time = now;
   submitted_file_infos.push_back(tab_info1);
 
@@ -3750,6 +3769,7 @@ IN_PROC_BROWSER_TEST_F(
   tab_info2.tab_url = GURL("about:blank#2");
   tab_info2.tab_title = "About Blank 2";
   tab_info2.tab_session_id = SessionID::FromSerializedValue(43);
+  tab_info2.mime_type = lens::MimeType::kHtml;
   tab_info2.selection_time = now + base::Seconds(1);
   submitted_file_infos.push_back(tab_info2);
 

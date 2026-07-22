@@ -9,18 +9,18 @@
 #include "chrome/browser/profiles/profile_selections.h"
 #include "chrome/browser/sync/data_type_store_service_factory.h"
 #include "chrome/browser/sync/device_info_sync_service_factory.h"
-#include "chrome/browser/themes/cross_device/cross_device_theme_tracker_desktop.h"
 #include "chrome/common/channel_info.h"
 #include "components/sync/base/report_unrecoverable_error.h"
 #include "components/sync/model/client_tag_based_data_type_processor.h"
 #include "components/sync/model/data_type_store_service.h"
 #include "components/sync_device_info/device_info_sync_service.h"
 #include "components/themes/cross_device/cross_device_theme_sync_bridge.h"
+#include "components/themes/cross_device/theme_translation.h"
 
 // static
-themes::CrossDeviceThemeTrackerDesktop*
+themes::CrossDeviceThemeTracker<sync_pb::ThemeSpecifics>*
 CrossDeviceThemeTrackerFactory::GetForProfile(Profile* profile) {
-  return static_cast<themes::CrossDeviceThemeTrackerDesktop*>(
+  return static_cast<themes::CrossDeviceThemeTracker<sync_pb::ThemeSpecifics>*>(
       GetInstance()->GetServiceForBrowserContext(profile, true));
 }
 
@@ -59,60 +59,36 @@ CrossDeviceThemeTrackerFactory::BuildServiceInstanceForBrowserContext(
       DataTypeStoreServiceFactory::GetForProfile(profile);
   version_info::Channel channel = chrome::GetChannel();
 
-  auto android_bridge_factory = base::BindOnce(
-      [](syncer::DataTypeStoreService* store_service,
-         version_info::Channel channel,
-         themes::CrossDeviceThemeTrackerDesktop* tracker)
-          -> std::unique_ptr<
-              themes::CrossDeviceThemeTrackerDesktop::AndroidBridge> {
-        syncer::RepeatingDataTypeStoreFactory store_factory =
-            store_service->GetStoreFactory();
-        auto android_processor =
-            std::make_unique<syncer::ClientTagBasedDataTypeProcessor>(
-                syncer::THEMES_ANDROID,
-                base::BindRepeating(&syncer::ReportUnrecoverableError,
-                                    channel));
-        return std::make_unique<themes::CrossDeviceThemeSyncBridge<
-            sync_pb::ThemeAndroidSpecifics, sync_pb::ThemeSpecifics>>(
-            syncer::THEMES_ANDROID,
-            base::BindRepeating(&themes::TranslateAndroid),
-            base::BindRepeating(
-                &themes::CrossDeviceThemeTrackerDesktop::UpdateThemeInfo,
-                base::Unretained(tracker)),
-            base::BindRepeating(
-                &themes::CrossDeviceThemeTrackerDesktop::RemoveThemeInfo,
-                base::Unretained(tracker)),
-            std::move(android_processor), store_factory);
-      },
-      base::Unretained(store_service), channel);
+  auto tracker = std::make_unique<
+      themes::CrossDeviceThemeTracker<sync_pb::ThemeSpecifics>>(
+      device_info_tracker);
 
-  auto ios_bridge_factory = base::BindOnce(
-      [](syncer::DataTypeStoreService* store_service,
-         version_info::Channel channel,
-         themes::CrossDeviceThemeTrackerDesktop* tracker)
-          -> std::unique_ptr<
-              themes::CrossDeviceThemeTrackerDesktop::IosBridge> {
-        syncer::RepeatingDataTypeStoreFactory store_factory =
-            store_service->GetStoreFactory();
-        auto ios_processor =
-            std::make_unique<syncer::ClientTagBasedDataTypeProcessor>(
-                syncer::THEMES_IOS,
-                base::BindRepeating(&syncer::ReportUnrecoverableError,
-                                    channel));
-        return std::make_unique<themes::CrossDeviceThemeSyncBridge<
-            sync_pb::ThemeIosSpecifics, sync_pb::ThemeSpecifics>>(
-            syncer::THEMES_IOS, base::BindRepeating(&themes::TranslateIos),
-            base::BindRepeating(
-                &themes::CrossDeviceThemeTrackerDesktop::UpdateThemeInfo,
-                base::Unretained(tracker)),
-            base::BindRepeating(
-                &themes::CrossDeviceThemeTrackerDesktop::RemoveThemeInfo,
-                base::Unretained(tracker)),
-            std::move(ios_processor), store_factory);
-      },
-      base::Unretained(store_service), channel);
+  syncer::RepeatingDataTypeStoreFactory store_factory =
+      store_service->GetStoreFactory();
 
-  return std::make_unique<themes::CrossDeviceThemeTrackerDesktop>(
-      device_info_tracker, std::move(android_bridge_factory),
-      std::move(ios_bridge_factory));
+  // Construct Android Bridge
+  auto android_processor =
+      std::make_unique<syncer::ClientTagBasedDataTypeProcessor>(
+          syncer::THEMES_ANDROID,
+          base::BindRepeating(&syncer::ReportUnrecoverableError, channel));
+  auto android_bridge = std::make_unique<themes::CrossDeviceThemeSyncBridge<
+      sync_pb::ThemeAndroidSpecifics, sync_pb::ThemeSpecifics>>(
+      syncer::THEMES_ANDROID, base::BindRepeating(&themes::TranslateAndroid),
+      tracker.get(), std::move(android_processor), store_factory);
+
+  tracker->RegisterBridge(syncer::THEMES_ANDROID, std::move(android_bridge));
+
+  // Construct iOS Bridge
+  auto ios_processor =
+      std::make_unique<syncer::ClientTagBasedDataTypeProcessor>(
+          syncer::THEMES_IOS,
+          base::BindRepeating(&syncer::ReportUnrecoverableError, channel));
+  auto ios_bridge = std::make_unique<themes::CrossDeviceThemeSyncBridge<
+      sync_pb::ThemeIosSpecifics, sync_pb::ThemeSpecifics>>(
+      syncer::THEMES_IOS, base::BindRepeating(&themes::TranslateIos),
+      tracker.get(), std::move(ios_processor), store_factory);
+
+  tracker->RegisterBridge(syncer::THEMES_IOS, std::move(ios_bridge));
+
+  return tracker;
 }

@@ -35,11 +35,6 @@ export const DEFAULT_CELLULAR_PIN = '1111';
 
 /**
  * @implements {CrosNetworkConfigInterface}
- * @property {string} testPin
- * @property {Function|null} beforeGetDeviceStateList
- * @property {Function|null} beforeGetManagedProperties
- * @property {!Array<!{guid: string, properties: ConfigProperties}>}
- * setPropertiesCalls
  */
 export class FakeNetworkConfig {
   constructor() {
@@ -85,9 +80,9 @@ export class FakeNetworkConfig {
      * When updating or changing cellular pin, |testPin| is used to store
      * the updated pin, if not set DEFAULT_CELLULAR_PIN is used to check pin
      * value in |setCellularSimState()|
-     * @type {string}
+     * @private {string}
      */
-    this.testPin = '';
+    this.testPin_ = '';
 
     /**
      * @private {AlwaysOnVpnProperties}
@@ -97,11 +92,11 @@ export class FakeNetworkConfig {
       serviceGuid: '',
     };
 
-    /** @type {Function} */
-    this.beforeGetDeviceStateList = null;
+    /** @private {Function} */
+    this.beforeGetDeviceStateList_ = null;
 
-    /** @type {Function} */
-    this.beforeGetManagedProperties = null;
+    /** @private {Function} */
+    this.beforeGetManagedProperties_ = null;
 
     /** @private {!Array<VpnProvider>} */
     this.vpnProviders_ = [];
@@ -112,10 +107,46 @@ export class FakeNetworkConfig {
     /** @private {!number} */
     this.apnIdCounter_ = 0;
 
-    /** @type {!Array<!{guid: string, properties: ConfigProperties}>} */
-    this.setPropertiesCalls = [];
+    /** @private {!Array<!{guid: string, properties: ConfigProperties}>} */
+    this.setPropertiesCalls_ = [];
 
     this.resetForTest();
+  }
+
+  /** @return {string} */
+  get testPin() {
+    return this.testPin_ || '';
+  }
+  /** @param {string} val */
+  set testPin(val) {
+    this.testPin_ = val;
+  }
+
+  /** @return {?Function} */
+  get beforeGetDeviceStateList() {
+    return this.beforeGetDeviceStateList_ || null;
+  }
+  /** @param {?Function} val */
+  set beforeGetDeviceStateList(val) {
+    this.beforeGetDeviceStateList_ = val;
+  }
+
+  /** @return {?Function} */
+  get beforeGetManagedProperties() {
+    return this.beforeGetManagedProperties_ || null;
+  }
+  /** @param {?Function} val */
+  set beforeGetManagedProperties(val) {
+    this.beforeGetManagedProperties_ = val;
+  }
+
+  /** @return {!Array<!{guid: string, properties: ConfigProperties}>} */
+  get setPropertiesCalls() {
+    return this.setPropertiesCalls_;
+  }
+  /** @param {!Array<!{guid: string, properties: ConfigProperties}>} val */
+  set setPropertiesCalls(val) {
+    this.setPropertiesCalls_ = val || [];
   }
 
   /**
@@ -931,3 +962,15 @@ export class FakeNetworkConfig {
     this.methodCalled('modifyCustomApn');
   }
 }
+
+/** @type {string} */
+FakeNetworkConfig.prototype.testPin;
+
+/** @type {Function|null} */
+FakeNetworkConfig.prototype.beforeGetDeviceStateList;
+
+/** @type {Function|null} */
+FakeNetworkConfig.prototype.beforeGetManagedProperties;
+
+/** @type {!Array<!{guid: string, properties: ConfigProperties}>} */
+FakeNetworkConfig.prototype.setPropertiesCalls;

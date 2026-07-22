@@ -127,7 +127,7 @@ source_set("browser_tests") {
     }
   }
 
-  if (!is_android || enable_webui_contextual_tasks_composebox) {
+  if (!is_android || is_desktop_android) {
     sources += [ "cr_components/cr_components_browsertest.cc" ]
     deps += [
       "//components/contextual_tasks/public:feature_list",
@@ -738,7 +738,7 @@ generate_grd("build_grd") {
     }
   }
 
-  if (!is_android || enable_webui_contextual_tasks_composebox) {
+  if (!is_android || is_desktop_android) {
     deps += [
       "cr_components:build_grdp",
       "cr_components/composebox:build_grdp",

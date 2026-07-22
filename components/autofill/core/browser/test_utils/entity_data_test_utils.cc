@@ -430,11 +430,10 @@ EntityInstance GetShipmentEntityInstance(ShipmentOptions options) {
         UNKNOWN_TYPE, options.carrier_domain, std::string(options.app_locale),
         /*format_string=*/std::nullopt, VerificationStatus::kNoStatus);
   }
-  if (options.estimated_delivery_date) {
-    attributes.emplace_back(AttributeType(kShipmentEstimatedDeliveryDate));
+  if (options.shipped_date) {
+    attributes.emplace_back(AttributeType(kShipmentShippedDate));
     attributes.back().SetInfo(
-        UNKNOWN_TYPE, options.estimated_delivery_date,
-        std::string(options.app_locale),
+        UNKNOWN_TYPE, options.shipped_date, std::string(options.app_locale),
         AutofillFormatString(u"YYYY-MM-DD", FormatString_Type_DATE),
         VerificationStatus::kNoStatus);
   }

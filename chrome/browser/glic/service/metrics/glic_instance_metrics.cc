@@ -868,7 +868,7 @@ void GlicInstanceMetrics::OnWebUiStateChanged(mojom::WebUiState state) {
       break;
     case mojom::WebUiState::kWarmed:
       base::RecordAction(
-          base::UserMetricsAction("Glic.Instance.WebUiStateChanged.kWarmed"));
+          base::UserMetricsAction("Glic.Instance.WebUiStateChanged.Warmed"));
       LogEvent(GlicInstanceEvent::kWebUiStateWarmed);
       break;
     case mojom::WebUiState::kLocationMismatch:

@@ -7,6 +7,7 @@
 #include <memory>
 #include <vector>
 
+#include "base/memory/raw_ptr.h"
 #include "base/test/mock_callback.h"
 #include "base/test/scoped_feature_list.h"
 #include "components/contextual_search/contextual_search_session_handle.h"
@@ -57,7 +58,8 @@ class InputStateModelTest : public testing::Test {
   omnibox::SearchboxConfig config_;
   GURL active_url_;
   InputState state_;
-  const std::vector<const contextual_search::FileInfo*> empty_file_info_list_;
+  const std::vector<raw_ptr<const contextual_search::FileInfo>>
+      empty_file_info_list_;
 };
 
 TEST_F(InputStateModelTest, DoesNotRemoveDriveInputWhenSignedInAndFlagEnabled) {

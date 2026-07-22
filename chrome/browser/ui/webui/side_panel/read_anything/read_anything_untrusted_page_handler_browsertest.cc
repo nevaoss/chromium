@@ -994,6 +994,26 @@ IN_PROC_BROWSER_TEST_P(
 }
 
 IN_PROC_BROWSER_TEST_P(ReadAnythingUntrustedPageHandlerTest,
+                       Activate_RestoresSettingsFromPrefs) {
+  handler_ = CreateHandler();
+  page_.receiver_.FlushForTesting();
+
+  // Change a preference.
+  PrefService* prefs = browser()->profile()->GetPrefs();
+  prefs->SetInteger(prefs::kAccessibilityReadAnythingColorInfo,
+                    static_cast<int>(read_anything::mojom::Colors::kDark));
+
+  // Re-activating the handler should restore settings.
+  EXPECT_CALL(page_, OnSettingsRestoredFromPrefs(
+                         _, _, _, _, _, _, read_anything::mojom::Colors::kDark,
+                         _, _, _, _, _, _))
+      .Times(1);
+
+  Activate(true);
+  page_.receiver_.FlushForTesting();
+}
+
+IN_PROC_BROWSER_TEST_P(ReadAnythingUntrustedPageHandlerTest,
                        OnVoiceChange_StoresInPrefs) {
   const char kLang1[] = "hi";
   const char kLang2[] = "ja";

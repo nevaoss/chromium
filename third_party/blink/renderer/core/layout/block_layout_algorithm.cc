@@ -966,7 +966,20 @@ inline const LayoutResult* BlockLayoutAlgorithm::Layout(
   // |previous_inflow_position| and |BreakToken()|.
   const InlineBreakToken* previous_inline_break_token = nullptr;
 
-  BlockChildIterator child_iterator(Node().FirstChild(), GetBreakToken());
+  // TODO(crbug.com/527144302): Need to grab the first child *before* actually
+  // iterating over children (since we might need it during child layout), due
+  // to display-locking inconsistencies.
+  //
+  // This container may suddenly become display-locked during child layout.
+  // Accessibility requires more stuff to be laid out, and will therefore
+  // prevent display-locking in some cases, for instance if some style recalc
+  // was initially skipped due to container queries. If these styles then get
+  // calculated (during layout now), that might remove the one and only reason
+  // for preventing display-locking, which means that FirstChild() would then
+  // return nullptr all of a sudden.
+  LayoutInputNode first_child = Node().FirstChild();
+
+  BlockChildIterator child_iterator(first_child, GetBreakToken());
 
   // If this layout is blocked by a display-lock, then we pretend this node has
   // no children and that there are no break tokens. Due to this, we skip layout
@@ -979,10 +992,13 @@ inline const LayoutResult* BlockLayoutAlgorithm::Layout(
   for (entry = child_iterator.NextChild(); !entry.AtEnd();
        entry = child_iterator.NextChild(previous_inline_break_token)) {
     const BreakToken* child_break_token = entry.token;
+    // If there's no block node, it means that this is an inline formatting
+    // context, and then the child is always the first and only InlineNode
+    // child.
     DCHECK(entry.block_node || !child_break_token ||
            child_break_token->IsInlineType());
-    LayoutInputNode child =
-        entry.block_node ? entry.block_node : Node().FirstChild();
+    DCHECK(entry.block_node || first_child.IsInline());
+    LayoutInputNode child = entry.block_node ? entry.block_node : first_child;
 
     if (child.IsOutOfFlowPositioned()) {
       HandleOutOfFlowPositioned(previous_inflow_position, To<BlockNode>(child),
@@ -4066,6 +4082,7 @@ LayoutUnit BlockLayoutAlgorithm::ComputeInitialBlockStartAnnotationSpace()
   // TODO(crbug.com/445727139): We'd like to add block-end annotation space of
   // the previous sibling IFC.
   if (RuntimeEnabledFeatures::AnnotationSpaceOnStartEnabled() &&
+      !GetConstraintSpace().IsNewFormattingContext() &&
       Borders().block_start == 0 &&
       Style().OverflowBlockDirection() == EOverflow::kVisible) {
     MarginStrut margin_strut = GetConstraintSpace().GetMarginStrut();

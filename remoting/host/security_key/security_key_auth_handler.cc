@@ -31,8 +31,7 @@ void SecurityKeyAuthHandler::set_use_mojo_handler(bool use_mojo_handler) {
 
 // static
 std::unique_ptr<SecurityKeyAuthHandler> SecurityKeyAuthHandler::Create(
-    ClientSessionDetails* client_session_details,
-    const SendMessageCallback& send_message_callback) {
+    ClientSessionDetails* client_session_details) {
   std::unique_ptr<SecurityKeyAuthHandler> auth_handler;
   if (g_use_mojo_handler) {
     auth_handler =
@@ -43,10 +42,6 @@ std::unique_ptr<SecurityKeyAuthHandler> SecurityKeyAuthHandler::Create(
 #else
     NOTIMPLEMENTED();
 #endif
-  }
-
-  if (auth_handler) {
-    auth_handler->SetSendMessageCallback(send_message_callback);
   }
   return auth_handler;
 }

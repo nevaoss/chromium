@@ -396,11 +396,7 @@ TEST_P(SessionStorageImplTest, StartupShutdownSave) {
   // ReadAllMetadata is called once per database open.
   histograms.ExpectUniqueSample("Storage.SessionStorage.ReadAllMetadata.OnDisk",
                                 /*sample=*/0, 3);
-  // Each BindStorageArea triggers an async PutMetadata on the DB thread.
-  // Wait for those to complete before asserting histogram counts.
-  WaitForDatabaseTasks();
-  histograms.ExpectUniqueSample("Storage.SessionStorage.PutMetadata.OnDisk",
-                                /*sample=*/0, 2);
+
   // Only the GetAllSync after the first restart reads from disk; the others
   // operate on in-memory maps or empty namespaces.
   histograms.ExpectUniqueSample(
@@ -416,9 +412,9 @@ TEST_P(SessionStorageImplTest, StartupShutdownSave) {
   // ReadAllMetadata duration fires for each database open.
   histograms.ExpectTotalCount(
       "Storage.SessionStorage.Duration.ReadAllMetadata.OnDisk", 3);
-  // PutMetadata duration fires for each BindStorageArea.
+  // Only shallow map cloning uses `PutMetadata()`.
   histograms.ExpectTotalCount(
-      "Storage.SessionStorage.Duration.PutMetadata.OnDisk", 2);
+      "Storage.SessionStorage.Duration.PutMetadata.OnDisk", 0);
 
   ShutDownSessionStorage();
   ++expected_storage_areas_shutdown;
@@ -704,6 +700,10 @@ TEST_P(SessionStorageImplTest, Cloning) {
                                 /*sample=*/0, 1);
   histograms.ExpectTotalCount("Storage.SessionStorage.Duration.CloneMap.OnDisk",
                               1);
+  histograms.ExpectUniqueSample("Storage.SessionStorage.PutMetadata.OnDisk",
+                                /*sample=*/0, 1);
+  histograms.ExpectTotalCount(
+      "Storage.SessionStorage.Duration.PutMetadata.OnDisk", 1);
 }
 
 TEST_P(SessionStorageImplTest, ImmediateCloning) {

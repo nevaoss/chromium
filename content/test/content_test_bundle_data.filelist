@@ -901,6 +901,9 @@ data/accessibility/aria/aria-feed-expected-auralinux.txt
 data/accessibility/aria/aria-feed-expected-mac.txt
 data/accessibility/aria/aria-feed-expected-win.txt
 data/accessibility/aria/aria-feed.html
+data/accessibility/aria/aria-fieldset-describedby-expected-blink.txt
+data/accessibility/aria/aria-fieldset-describedby-expected-mac.txt
+data/accessibility/aria/aria-fieldset-describedby.html
 data/accessibility/aria/aria-figure-expected-android-assist-data.txt
 data/accessibility/aria/aria-figure-expected-android-external.txt
 data/accessibility/aria/aria-figure-expected-android.txt
@@ -6339,6 +6342,8 @@ data/accessibility/mac/attributes/ax-selected-rows.html
 data/accessibility/mac/attributes/ax-selected.html
 data/accessibility/mac/attributes/ax-size-expected.txt
 data/accessibility/mac/attributes/ax-size.html
+data/accessibility/mac/attributes/ax-subrole-expected.txt
+data/accessibility/mac/attributes/ax-subrole.html
 data/accessibility/mac/attributes/ax-title-expected.txt
 data/accessibility/mac/attributes/ax-title-ui-element-expected.txt
 data/accessibility/mac/attributes/ax-title-ui-element.html
@@ -6543,10 +6548,10 @@ data/accessibility/mathml/annotation-xml-node-expected-auralinux.txt
 data/accessibility/mathml/annotation-xml-node-expected-mac.txt
 data/accessibility/mathml/annotation-xml.html
 data/accessibility/mathml/annotation.html
-data/accessibility/mathml/intent.html
-data/accessibility/mathml/intent-expected-android.txt
 data/accessibility/mathml/intent-expected-android-external.txt
+data/accessibility/mathml/intent-expected-android.txt
 data/accessibility/mathml/intent-expected-blink.txt
+data/accessibility/mathml/intent.html
 data/accessibility/mathml/maction-expected-blink.txt
 data/accessibility/mathml/maction-expected-uia-win.txt
 data/accessibility/mathml/maction-node-expected-auralinux.txt

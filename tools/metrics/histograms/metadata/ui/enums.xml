@@ -239,7 +239,8 @@ chromium-metrics-reviews@google.com.
   <int value="57" label="IDC_CONTENT_CONTEXT_SEARCHWEBFORIMAGE"/>
   <int value="58" label="IDC_SPELLCHECK_SUGGESTION"/>
   <int value="59" label="IDC_SPELLCHECK_ADD_TO_DICTIONARY"/>
-  <int value="60" label="IDC_SPELLPANEL_TOGGLE"/>
+  <int value="60"
+      label="(Obsolete) IDC_SPELLPANEL_TOGGLE. Removed in 2026/06."/>
   <int value="61" label="IDC_CONTENT_CONTEXT_OPENORIGINALIMAGENEWTAB"/>
   <int value="62" label="IDC_WRITING_DIRECTION_MENU"/>
   <int value="63" label="IDC_WRITING_DIRECTION_DEFAULT"/>

@@ -7,17 +7,19 @@
 #include "base/feature_list.h"
 #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/ui/omnibox/omnibox_everywhere_service_factory.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
-#include "chrome/browser/ui/webui/cr_components/composebox/composebox_handler.h"
 #include "chrome/browser/ui/webui/cr_components/searchbox/searchbox_handler.h"
 #include "chrome/browser/ui/webui/favicon_source.h"
 #include "chrome/browser/ui/webui/metrics_reporter/metrics_reporter_service.h"
-#include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_web_contents_helper.h"
+#include "chrome/browser/ui/webui/omnibox_everywhere/composebox_everywhere_handler.h"
+#include "chrome/browser/ui/webui/omnibox_everywhere/omnibox_everywhere_handler.h"
+#include "chrome/browser/ui/webui/plural_string_handler.h"
 #include "chrome/browser/ui/webui/sanitized_image/sanitized_image_source.h"
-#include "chrome/browser/ui/webui/searchbox/webui_omnibox_handler.h"
 #include "chrome/common/webui_url_constants.h"
-#include "chrome/grit/omnibox_popup_resources.h"
-#include "chrome/grit/omnibox_popup_resources_map.h"
+#include "chrome/grit/generated_resources.h"
+#include "chrome/grit/omnibox_everywhere_resources.h"
+#include "chrome/grit/omnibox_everywhere_resources_map.h"
 #include "components/contextual_search/contextual_search_metrics_recorder.h"
 #include "components/contextual_search/contextual_search_service.h"
 #include "components/favicon_base/favicon_url_parser.h"
@@ -31,7 +33,7 @@
 
 bool OmniboxEverywhereUIConfig::IsWebUIEnabled(
     content::BrowserContext* browser_context) {
-  return base::FeatureList::IsEnabled(omnibox::kEverywhereOmnibox);
+  return base::FeatureList::IsEnabled(omnibox::kOmniboxEverywhere);
 }
 
 bool OmniboxEverywhereUIConfig::ShouldCrashOnJavascriptErrorInDevelopmentBuild()
@@ -47,8 +49,8 @@ OmniboxEverywhereUI::OmniboxEverywhereUI(content::WebUI* web_ui)
   content::WebUIDataSource* source = content::WebUIDataSource::CreateAndAdd(
       profile_, chrome::kChromeUIOmniboxEverywhereHost);
 
-  webui::SetupWebUIDataSource(source, kOmniboxPopupResources,
-                              IDR_OMNIBOX_POPUP_OMNIBOX_POPUP_EVERYWHERE_HTML);
+  webui::SetupWebUIDataSource(source, kOmniboxEverywhereResources,
+                              IDR_OMNIBOX_EVERYWHERE_OMNIBOX_EVERYWHERE_HTML);
 
   // Sanitized image and favicon source initialization
   content::URLDataSource::Add(profile_,
@@ -168,6 +170,12 @@ OmniboxEverywhereUI::OmniboxEverywhereUI(content::WebUI* web_ui)
       base::FeatureList::IsEnabled(omnibox::kEnergyEffectInOmnibox));
   source->AddBoolean("contextButtonShapeIsOblong",
                      omnibox::kContextButtonShapeIsOblong.Get());
+
+  // Add a handler to provide pluralized strings.
+  auto plural_string_handler = std::make_unique<PluralStringHandler>();
+  plural_string_handler->AddLocalizedString("sharingTabs",
+                                            IDS_COMPOSE_SHARING_TABS);
+  web_ui->AddMessageHandler(std::move(plural_string_handler));
 }
 
 OmniboxEverywhereUI::~OmniboxEverywhereUI() = default;
@@ -190,7 +198,7 @@ void OmniboxEverywhereUI::CreatePageHandler(
 
   // TODO(crbug.com/526629960): Create new EverywhereComposeboxHandler or allow
   // the ComposeboxHandler to parameterize the OmniboxClient.
-  composebox_handler_ = std::make_unique<ComposeboxHandler>(
+  composebox_handler_ = std::make_unique<ComposeboxEverywhereHandler>(
       std::move(pending_page_handler), std::move(pending_page),
       std::move(pending_searchbox_handler), std::move(pending_searchbox_page),
       profile_, web_ui()->GetWebContents(),
@@ -214,18 +222,14 @@ void OmniboxEverywhereUI::BindInterface(
 void OmniboxEverywhereUI::CreatePageHandler(
     mojo::PendingRemote<searchbox::mojom::Page> page,
     mojo::PendingReceiver<searchbox::mojom::PageHandler> pending_page_handler) {
-  auto* omnibox_controller =
-      OmniboxPopupWebContentsHelper::GetOrCreateForWebContents(
-          web_ui()->GetWebContents())
-          ->get_omnibox_controller();
-  CHECK(omnibox_controller);
+  auto* service = OmniboxEverywhereServiceFactory::GetForProfile(profile_);
+  CHECK(service);
 
   MetricsReporterService* metrics_reporter_service =
       MetricsReporterService::GetFromWebContents(web_ui()->GetWebContents());
-  omnibox_handler_ = std::make_unique<WebuiOmniboxHandler>(
+  omnibox_handler_ = std::make_unique<OmniboxEverywhereHandler>(
       std::move(pending_page_handler), std::move(page),
-      metrics_reporter_service->metrics_reporter(), omnibox_controller,
-      web_ui(),
+      metrics_reporter_service->metrics_reporter(), web_ui(), service,
       base::BindRepeating(
           &OmniboxEverywhereUI::GetOrCreateContextualSessionHandle,
           base::Unretained(this)));

@@ -43,6 +43,8 @@ BASE_DECLARE_FEATURE(kInfoBarInlineLinks);
 // ui_base_features.h
 BASE_DECLARE_FEATURE(kTabStripDeclutter);
 BASE_DECLARE_FEATURE(kToolbarGlowUp);
+BASE_DECLARE_FEATURE_PARAM(bool, kToolbarGlowUpReloadEnabled);
+BASE_DECLARE_FEATURE_PARAM(bool, kToolbarGlowUpBackForwardEnabled);
 BASE_DECLARE_FEATURE(kMenuSimplification);
 BASE_DECLARE_FEATURE(kTabGroupColorRefresh);
 BASE_DECLARE_FEATURE(kWebuiRefresh2026);
@@ -50,6 +52,8 @@ BASE_DECLARE_FEATURE(kAppMenuGlowUp);
 
 bool IsTabStripDeclutterEnabled();
 bool IsToolbarGlowUpEnabled();
+bool IsToolbarGlowUpReloadEnabled();
+bool IsToolbarGlowUpBackForwardEnabled();
 bool IsMenuSimplificationEnabled();
 bool IsTabGroupColorRefreshEnabled();
 bool IsWebuiRefresh2026Enabled();

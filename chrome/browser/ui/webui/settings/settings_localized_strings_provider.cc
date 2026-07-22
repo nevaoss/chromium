@@ -88,6 +88,7 @@
 #include "components/google/core/common/google_util.h"
 #include "components/history/core/common/pref_names.h"
 #include "components/lens/lens_features.h"
+#include "components/live_caption/caption_util.h"
 #include "components/password_manager/core/browser/features/password_features.h"
 #include "components/password_manager/core/browser/leak_detection_dialog_utils.h"
 #include "components/password_manager/core/browser/manage_passwords_referrer.h"
@@ -959,6 +960,9 @@ void AddGlicStrings(content::WebUIDataSource* html_source, Profile* profile) {
        IDS_SETTINGS_GLIC_EXPERIMENTAL_TRIGGERING_CONSIDER_1},
       {"glicExperimentalTriggeringConsider2",
        IDS_SETTINGS_GLIC_EXPERIMENTAL_TRIGGERING_CONSIDER_2},
+      {"glicMediaUnderstandingToggle", IDS_SETTINGS_GLIC_MEDIA_UNDERSTANDING},
+      {"glicMediaUnderstandingToggleSublabel",
+       IDS_SETTINGS_GLIC_MEDIA_UNDERSTANDING_SUBLABEL},
   };
   html_source->AddLocalizedStrings(kLocalizedStrings);
 
@@ -1057,6 +1061,8 @@ void AddGlicStrings(content::WebUIDataSource* html_source, Profile* profile) {
   html_source->AddBoolean(
       "glicCanUseLive",
       glic::GlicEnabling::EnablementForProfile(profile).EligibleForLive());
+  html_source->AddBoolean("headlessCaptionsEnabled",
+                          captions::IsHeadlessCaptionFeatureSupported());
   html_source->AddBoolean(
       "actorLoginFederatedLoginSupportEnabled",
       base::FeatureList::IsEnabled(features::kFedCmEmbedderInitiatedLogin));
@@ -1465,6 +1471,16 @@ void AddAutofillStrings(content::WebUIDataSource* html_source,
                         Profile* profile,
                         content::WebContents* web_contents) {
   static constexpr webui::LocalizedString kLocalizedStrings[] = {
+      {"atMemoryTriggerSettingLabel",
+       IDS_SETTINGS_AUTOFILL_AT_MEMORY_TRIGGER_SETTING_LABEL},
+      {"atMemoryTriggerSettingSecondaryLabel",
+       IDS_SETTINGS_AUTOFILL_AT_MEMORY_TRIGGER_SETTING_SECONDARY_LABEL},
+      {"atMemoryTriggerSettingInputAreaLabel",
+       IDS_SETTINGS_AUTOFILL_AT_MEMORY_TRIGGER_SETTING_INPUT_AREA_LABEL},
+      {"atMemoryTriggerSettingEditButtonLabel",
+       IDS_SETTINGS_AUTOFILL_AT_MEMORY_TRIGGER_SETTING_EDIT_BUTTON_LABEL},
+      {"atMemoryTriggerSettingClearButtonLabel",
+       IDS_SETTINGS_AUTOFILL_AT_MEMORY_TRIGGER_SETTING_CLEAR_BUTTON_LABEL},
       {"autofillPageTitle", IDS_SETTINGS_AUTOFILL_AND_PASSWORDS},
       {"yourSavedInfoPageDescription",
        IDS_SETTINGS_YOUR_SAVED_INFO_DESCRIPTION},
@@ -1702,6 +1718,18 @@ void AddAutofillStrings(content::WebUIDataSource* html_source,
       {"autofillAiDescription", IDS_SETTINGS_AUTOFILL_AI_DESCRIPTION},
       {"autofillAiManageYourInfo", IDS_AUTOFILL_MANAGE_YOUR_INFO_LINK},
       {"autofillAiToggleSubLabel", IDS_SETTINGS_AUTOFILL_AI_TOGGLE_SUB_LABEL},
+      {"suggestionsFromGeminiQualityLoggingTitle",
+       IDS_SETTINGS_SUGGESTIONS_FROM_GEMINI_QUALITY_LOGGING_TITLE},
+      {"suggestionsFromGeminiWhenUsed1",
+       IDS_SETTINGS_SUGGESTIONS_FROM_GEMINI_WHEN_USED_1},
+      {"suggestionsFromGeminiWhenUsed2",
+       IDS_SETTINGS_SUGGESTIONS_FROM_GEMINI_WHEN_USED_2},
+      {"suggestionsFromGeminiConsider1",
+       IDS_SETTINGS_SUGGESTIONS_FROM_GEMINI_CONSIDER_1},
+      {"suggestionsFromGeminiConsider2",
+       IDS_SETTINGS_SUGGESTIONS_FROM_GEMINI_CONSIDER_2},
+      {"suggestionsFromGeminiConsider3",
+       IDS_SETTINGS_SUGGESTIONS_FROM_GEMINI_CONSIDER_3},
       {"autofillAiWhenOnSavedInfo",
        IDS_SETTINGS_AUTOFILL_AI_WHEN_ON_SAVED_INFO},
       {"autofillAiWhenOnCanFillDifficultFields",

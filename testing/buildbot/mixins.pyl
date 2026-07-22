@@ -827,10 +827,10 @@
       ],
     },
   },
-  'mac_x64_wpt_child_processes': {
-    'args': [
-      '--child-processes=3',
-    ],
+  'mac_x64_ai_wpt_shards': {
+    'swarming': {
+      'shards': 8,
+    },
   },
   'no_gpu': {
     'fail_if_unused': False,
@@ -925,6 +925,10 @@
       ],
       'cros_test_names_from_file': [
         'chromeos/tast_control_cq_tests.txt',
+      ],
+      'cros_test_names_exclude_from_file': [
+        'chromeos/tast_control_disabled_tests.txt',
+        'chromeos/tast_control_flaky_tests.txt',
       ],
       'cros_test_max_in_shard': 20
     },

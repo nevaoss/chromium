@@ -13,12 +13,16 @@
 
 @class NewTabPageHeaderView;
 @protocol NewTabPageMutator;
+@protocol NewTabPageContentDelegate;
 
 // View controller shell for the New Tab Page Redesign.
 @interface NewTabPageRedesignViewController
     : UIViewController <NewTabPageConsumer,
                         SearchEngineLogoConsumer,
                         NewTabPageHeaderViewDelegate>
+
+// Delegate for actions relating to the NTP content.
+@property(nonatomic, weak) id<NewTabPageContentDelegate> NTPContentDelegate;
 
 // The mutator to provide updates to the NTP mediator.
 @property(nonatomic, weak) id<NewTabPageMutator> mutator;
@@ -36,6 +40,9 @@
 // Properties conformed to by NewTabPageConsumer.
 @property(nonatomic, assign) BOOL mostVisitedVisible;
 @property(nonatomic, assign) BOOL magicStackVisible;
+
+// Indicates to the receiver to update its state to focus the omnibox.
+- (void)focusOmnibox;
 
 // Clears state and delegates.
 - (void)invalidate;

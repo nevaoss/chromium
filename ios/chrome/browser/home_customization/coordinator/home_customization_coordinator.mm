@@ -125,8 +125,7 @@ CGFloat const kSheetCornerRadius = 30;
                                              GetForProfile(self.profile)];
   _mediator.navigationDelegate = self;
 
-  if (IsNTPBackgroundCustomizationEnabled() &&
-      !_backgroundService->IsCustomizationDisabledOrColorManagedByPolicy()) {
+  if (!_backgroundService->IsCustomizationDisabledOrColorManagedByPolicy()) {
     UserUploadedImageManager* userUploadedImageManager =
         UserUploadedImageManagerFactory::GetForProfile(self.profile);
     image_fetcher::ImageFetcherService* imageFetcherService =
@@ -219,8 +218,7 @@ CGFloat const kSheetCornerRadius = 30;
 - (void)presentCustomizationMenuPage:(CustomizationMenuPage)page {
   UIViewController* menuPage = [self createMenuPage:page];
 
-  if (IsNTPBackgroundCustomizationEnabled() &&
-      page == CustomizationMenuPage::kMain) {
+  if (page == CustomizationMenuPage::kMain) {
     feature_engagement::Tracker* tracker =
         feature_engagement::TrackerFactory::GetForProfile(self.profile);
     if (tracker) {

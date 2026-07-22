@@ -162,6 +162,36 @@ public class Profile {
                 .preconnect(new GURL(url));
     }
 
+    /**
+     * Enqueues a preconnect request for the given URL.
+     *
+     * <p>Unlike {@link #preconnect(String)}, this method is non-blocking and does not trigger
+     * synchronous native Chromium initialization. The preconnect task is added to the WebView
+     * startup queue and will execute asynchronously once native library initialization completes.
+     *
+     * @param url The target URL destination to preconnect to.
+     */
+    public void enqueuePreconnect(@NonNull String url) {
+        if (url == null) {
+            throw new IllegalArgumentException("URL cannot be null for enqueuePreconnect.");
+        }
+        validatePreconnectUrl(url);
+        mAwInit.getRunQueue().addTask(() -> preconnect(url));
+    }
+
+    /**
+     * Validates the URL synchronously to ensure the exception is thrown on the calling thread,
+     * avoiding an uncatchable crash if validation were deferred to the background task.
+     */
+    private void validatePreconnectUrl(@NonNull String url) {
+        GURL gurl = new GURL(url);
+        if (!gurl.isValid()
+                || (!gurl.getOrigin().getScheme().equals("http")
+                        && !gurl.getOrigin().getScheme().equals("https"))) {
+            throw new IllegalArgumentException("Invalid URL: " + gurl.getPossiblyInvalidSpec());
+        }
+    }
+
     @NonNull
     public CookieManager getCookieManager() {
         State state = getInitializedState(CallSite.PROFILE_GET_COOKIE_MANAGER);

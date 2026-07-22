@@ -408,6 +408,7 @@ after discussions on the right group.
       <annotation id="partial_translate_one_platform"/>
       <annotation id="contextual_search_fpop_service"/>
       <annotation id="web_install_manifest_fetcher"/>
+      <annotation id="private_insights_fcp_http"/>
     </sender>
   </group>
   <group name="Admin Features">

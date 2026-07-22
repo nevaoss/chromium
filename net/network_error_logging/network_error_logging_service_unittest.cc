@@ -1322,6 +1322,32 @@ TEST_P(NetworkErrorLoggingServiceTest, FailureReportQueued_SignedExchange) {
                             base::ListValue().Append(kCertUrl_.spec()))))));
 }
 
+TEST_P(NetworkErrorLoggingServiceTest,
+       SignedExchangeFragmentAndCredentialsStrippedFromReportBody) {
+  service()->OnHeader(kNak_, kOrigin_, kServerIP_, kHeader_);
+
+  // Make the rest of the test run synchronously.
+  FinishLoading(true /* load_success */);
+
+  const GURL outer_url("https://example.com/path#fragment");
+  const GURL inner_url("https://user:pass@example.net/path#fragment");
+  const GURL cert_url("https://example.com/cert_path#fragment");
+
+  service()->QueueSignedExchangeReport(MakeSignedExchangeReportDetails(
+      kNak_, false, "sxg.failed", outer_url, inner_url, cert_url, kServerIP_));
+  ASSERT_EQ(1u, reports().size());
+
+  EXPECT_THAT(
+      reports()[0].body,
+      Pointee(IsSupersetOfValue(base::DictValue().Set(
+          NetworkErrorLoggingService::kSignedExchangeBodyKey,
+          base::DictValue()
+              .Set(NetworkErrorLoggingService::kOuterUrlKey, kUrl_.spec())
+              .Set(NetworkErrorLoggingService::kInnerUrlKey, kInnerUrl_.spec())
+              .Set(NetworkErrorLoggingService::kCertUrlKey,
+                   base::ListValue().Append(kCertUrl_.spec()))))));
+}
+
 TEST_P(NetworkErrorLoggingServiceTest, MismatchingSubdomain_SignedExchange) {
   service()->OnHeader(kNak_, kOrigin_, kServerIP_, kHeaderIncludeSubdomains_);
 

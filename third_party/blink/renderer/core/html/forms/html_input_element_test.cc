@@ -703,4 +703,57 @@ TEST_F(HTMLInputElementTest, SuggestedValueFontFamilyIsGeneric) {
   EXPECT_TRUE(style->GetFontDescription().Family().FamilyIsGeneric());
 }
 
+TEST_F(HTMLInputElementTest, EmailVerificationIndicator) {
+  // Case 1: EmailVerificationStatusIndicator is disabled.
+  {
+    ScopedEmailVerificationProtocolForTest scoped_protocol(true);
+    ScopedEmailVerificationStatusIndicatorForTest scoped_indicator(false);
+    GetDocument().documentElement()->SetInnerHTMLWithoutTrustedTypes(
+        "<input id=test type=email>");
+    GetDocument().UpdateStyleAndLayoutTree();
+    HTMLInputElement& input = TestElement();
+
+    // Shadow tree shouldn't contain the indicator.
+    Element* indicator =
+        input.UserAgentShadowRoot()
+            ? input.UserAgentShadowRoot()->getElementById(
+                  shadow_element_names::kIdEmailVerificationIndicator)
+            : nullptr;
+    EXPECT_FALSE(indicator);
+  }
+
+  // Case 2: Both features are enabled.
+  {
+    ScopedEmailVerificationProtocolForTest scoped_protocol(true);
+    ScopedEmailVerificationStatusIndicatorForTest scoped_indicator(true);
+    GetDocument().documentElement()->SetInnerHTMLWithoutTrustedTypes(
+        "<input id=test type=email>");
+    GetDocument().UpdateStyleAndLayoutTree();
+    HTMLInputElement& input = TestElement();
+
+    // Shadow tree should contain the indicator.
+    Element* indicator =
+        input.UserAgentShadowRoot()
+            ? input.UserAgentShadowRoot()->getElementById(
+                  shadow_element_names::kIdEmailVerificationIndicator)
+            : nullptr;
+    ASSERT_TRUE(indicator);
+
+    // Default state should be none (represented by null or "none").
+    String initial_state = indicator->getAttribute(AtomicString("data-state"));
+    EXPECT_TRUE(initial_state.IsNull() || initial_state == "none");
+
+    // Setting state to verified.
+    input.SetEmailVerificationState(EmailVerificationState::kVerified);
+    EXPECT_EQ(input.GetEmailVerificationState(),
+              EmailVerificationState::kVerified);
+    EXPECT_EQ(indicator->getAttribute(AtomicString("data-state")), "verified");
+
+    // Setting state to none.
+    input.SetEmailVerificationState(EmailVerificationState::kNone);
+    EXPECT_EQ(input.GetEmailVerificationState(), EmailVerificationState::kNone);
+    EXPECT_EQ(indicator->getAttribute(AtomicString("data-state")), "none");
+  }
+}
+
 }  // namespace blink

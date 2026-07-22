@@ -620,6 +620,8 @@ chromium-metrics-reviews@google.com.
   <int value="7"
       label="User selected an account, in the share extension, different from
              the one used in the app."/>
+  <int value="8"
+      label="User is opening GoogleOne settings for another account"/>
 </enum>
 
 <!-- LINT.ThenChange(//ios/chrome/app/change_profile_commands.h:IOSChangeProfileReason) -->

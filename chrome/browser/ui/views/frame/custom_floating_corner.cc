@@ -135,24 +135,28 @@ SkPath CustomFloatingCorner::GetBackgroundPath(
   gfx::Insets stroke_insets;
 
   // Because we're painting, we have to account for RTL.
-  const auto visual_orientation = GetVisualOrientation(orientation_);
+  const auto visual_corner = ToVisualCorner(orientation_);
 
-  switch (visual_orientation) {
-    case VisualCornerOrientation::kTopLeft:
+  switch (visual_corner) {
+    case VisualCorner::kTopLeft:
       stroke_insets = gfx::Insets::TLBR(vertical, horizontal, 0, 0);
       break;
-    case VisualCornerOrientation::kTopRight:
+    case VisualCorner::kTopRight:
       stroke_insets = gfx::Insets::TLBR(vertical, 0, 0, horizontal);
       break;
-    case VisualCornerOrientation::kBottomRight:
+    case VisualCorner::kBottomRight:
       stroke_insets = gfx::Insets::TLBR(0, 0, vertical, horizontal);
       break;
-    case VisualCornerOrientation::kBottomLeft:
+    case VisualCorner::kBottomLeft:
       stroke_insets = gfx::Insets::TLBR(0, horizontal, vertical, 0);
       break;
   }
 
-  return GetCornerPath(visual_orientation, in_bounds, stroke_insets);
+  return GetCornerPath(visual_corner, in_bounds, stroke_insets);
+}
+
+int CustomFloatingCorner::GetCornerRadius() const {
+  return GetLayoutProvider()->GetCornerRadiusMetric(corner_radius_token_);
 }
 
 gfx::Size CustomFloatingCorner::CalculatePreferredSize(
@@ -161,8 +165,7 @@ gfx::Size CustomFloatingCorner::CalculatePreferredSize(
   // http://crbug.com/40178332). The nullptr dereference does not always
   // crash due to compiler optimizations, so CHECKing here ensures we crash.
   CHECK(GetLayoutProvider());
-  const float corner_radius =
-      GetLayoutProvider()->GetCornerRadiusMetric(corner_radius_token_);
+  const float corner_radius = GetCornerRadius();
   const float horizontal_size =
       corner_radius + (stroke_ ? views::Separator::kThickness : 0);
   const float vertical_size =
@@ -186,9 +189,6 @@ void CustomFloatingCorner::OnPaint(gfx::Canvas* canvas) {
       has_stroke ? width() - kStrokeSize : width(),
       extend_vertical ? height() - kStrokeSize : height());
 
-  // Because we're painting, we have to account for RTL.
-  const auto visual_orientation = GetVisualOrientation(orientation_);
-
   canvas->ClipPath(GetBackgroundPath(rect), /*do_anti_alias=*/true);
 
   // Fill the clipped canvas.
@@ -210,20 +210,20 @@ void CustomFloatingCorner::OnPaint(gfx::Canvas* canvas) {
     flags.setAntiAlias(true);
 
     SkPathBuilder stroke_path;
-    switch (visual_orientation) {
-      case VisualCornerOrientation::kTopLeft:
+    switch (ToVisualCorner(orientation_)) {
+      case VisualCorner::kTopLeft:
         stroke_path.moveTo(rect.width(), extend_vertical ? kStrokeSize : 0);
         stroke_path.arcTo(corner_radius, 0, SkPathBuilder::kSmall_ArcSize,
                           SkPathDirection::kCCW,
                           SkPoint(kStrokeSize, rect.height()));
         break;
-      case VisualCornerOrientation::kTopRight:
+      case VisualCorner::kTopRight:
         stroke_path.moveTo(rect.width() - kStrokeSize, rect.height());
         stroke_path.arcTo(corner_radius, 0, SkPathBuilder::kSmall_ArcSize,
                           SkPathDirection::kCCW,
                           SkPoint(0, extend_vertical ? kStrokeSize : 0));
         break;
-      case VisualCornerOrientation::kBottomLeft:
+      case VisualCorner::kBottomLeft:
         stroke_path.moveTo(kStrokeSize, 0);
         stroke_path.arcTo(
             corner_radius, 0, SkPathBuilder::kSmall_ArcSize,
@@ -231,7 +231,7 @@ void CustomFloatingCorner::OnPaint(gfx::Canvas* canvas) {
             SkPoint(rect.width(), extend_vertical ? rect.height() - kStrokeSize
                                                   : rect.height()));
         break;
-      case VisualCornerOrientation::kBottomRight:
+      case VisualCorner::kBottomRight:
         stroke_path.moveTo(rect.width() - kStrokeSize, 0);
         stroke_path.arcTo(
             corner_radius, 0, SkPathBuilder::kSmall_ArcSize,

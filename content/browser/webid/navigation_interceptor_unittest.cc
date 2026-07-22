@@ -65,7 +65,7 @@ class MockFederatedAuthRequest : public Request {
   }
 
   MOCK_METHOD(
-      void,
+      bool,
       RequestToken,
       (std::vector<blink::mojom::IdentityProviderGetParametersPtr>
            idp_get_params,
@@ -273,6 +273,7 @@ TEST_F(NavigationInterceptorTest, WillProcessResponse) {
   EXPECT_CALL(*federated_auth_request.get(), RequestToken).WillOnce([&]() {
     // When RequestToken is finally called, quit the RunLoop.
     run_loop.Quit();
+    return true;
   });
 
   interceptor.WillStartRequest();
@@ -326,6 +327,7 @@ TEST_F(NavigationInterceptorTest,
   EXPECT_CALL(*federated_auth_request.get(), RequestToken).WillOnce([&]() {
     // When RequestToken is finally called, quit the RunLoop.
     run_loop.Quit();
+    return true;
   });
 
   interceptor.WillStartRequest();
@@ -383,6 +385,7 @@ TEST_F(NavigationInterceptorTest, WillProcessResponseWithRedirect) {
   EXPECT_CALL(*federated_auth_request.get(), RequestToken).WillOnce([&]() {
     // When RequestToken is finally called, quit the RunLoop.
     run_loop.Quit();
+    return true;
   });
 
   interceptor.WillStartRequest();
@@ -524,6 +527,7 @@ TEST_F(NavigationInterceptorTest, WillProcessResponseTokenRequestFails) {
                 /*token=*/std::nullopt,
                 /*error=*/nullptr,
                 /*is_auto_selected=*/false);
+            return false;
           }));
 
   base::RunLoop run_loop;
@@ -1117,6 +1121,7 @@ TEST_F(NavigationInterceptorTest,
       .WillOnce([&]() {
         request_token_called = true;
         run_loop.Quit();
+        return true;
       });
 
   bool was_cancelled = false;
@@ -1190,6 +1195,7 @@ TEST_F(NavigationInterceptorTest,
       .WillRepeatedly([&]() {
         request_token_called = true;
         run_loop.Quit();
+        return true;
       });
 
   bool was_cancelled = false;

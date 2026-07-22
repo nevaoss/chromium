@@ -604,11 +604,6 @@ BASE_FEATURE_PARAM(base::TimeDelta,
                    "views_ui_delay_duration",
                    base::Seconds(3));
 
-// Whether initial WebUI navigations should synchronously go from navigation
-// start to commit, by doing e.g. in-renderer body loading.
-BASE_FEATURE(kInitialWebUISyncNavStartToCommit,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Kill switch for the GetInstalledRelatedApps API.
 BASE_FEATURE(kInstalledApp, base::FEATURE_ENABLED_BY_DEFAULT);
 

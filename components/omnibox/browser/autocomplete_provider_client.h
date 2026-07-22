@@ -194,7 +194,7 @@ class AutocompleteProviderClient : public OmniboxAction::Client {
   // determines how it should be interpreted.
   virtual void Classify(
       const std::u16string& text,
-      bool prefer_keyword,
+      bool in_keyword_mode,
       bool allow_exact_keyword_match,
       metrics::OmniboxEventProto::PageClassification page_classification,
       AutocompleteMatch* match,

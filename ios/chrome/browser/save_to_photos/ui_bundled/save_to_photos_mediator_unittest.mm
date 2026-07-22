@@ -15,6 +15,7 @@
 #import "components/prefs/pref_service.h"
 #import "components/signin/public/identity_manager/identity_test_utils.h"
 #import "components/strings/grit/components_strings.h"
+#import "components/sync/test/test_sync_service.h"
 #import "components/variations/scoped_variations_ids_provider.h"
 #import "ios/chrome/browser/account_picker/ui_bundled/account_picker_configuration.h"
 #import "ios/chrome/browser/photos/model/photos_metrics.h"
@@ -38,6 +39,8 @@
 #import "ios/chrome/browser/signin/model/fake_system_identity_manager.h"
 #import "ios/chrome/browser/signin/model/identity_manager_factory.h"
 #import "ios/chrome/browser/signin/model/identity_test_environment_browser_state_adaptor.h"
+#import "ios/chrome/browser/sync/model/sync_service_factory.h"
+#import "ios/chrome/browser/sync/model/test_sync_service_utils.h"
 #import "ios/chrome/browser/web/model/image_fetch/image_fetch_tab_helper.h"
 #import "ios/chrome/grit/ios_strings.h"
 #import "ios/chrome/test/ios_chrome_scoped_testing_local_state.h"
@@ -142,6 +145,8 @@ class SaveToPhotosMediatorTest : public PlatformTest {
         IdentityManagerFactory::GetInstance(),
         base::BindRepeating(IdentityTestEnvironmentBrowserStateAdaptor::
                                 BuildIdentityManagerForTests));
+    builder.AddTestingFactory(SyncServiceFactory::GetInstance(),
+                              base::BindRepeating(&CreateTestSyncService));
     builder.AddTestingFactory(PhotosServiceFactory::GetInstance(),
                               PhotosServiceFactory::GetDefaultFactory());
     profile_ = std::move(builder).Build();
@@ -329,7 +334,6 @@ TEST_F(SaveToPhotosMediatorTest, ShowsAccountPickerIfNoDefaultAccountInPrefs) {
 // default account choice for Save to Photos.
 TEST_F(SaveToPhotosMediatorTest,
        DoesNotShowAccountPickerIfDefaultAccountInPrefs) {
-
   // This test assumes there is a default account memorized for Save to Photos
   // and that the user opted-in skipping the account picker.
   profile_->GetPrefs()->SetString(prefs::kIosSaveToPhotosDefaultGaiaId,
@@ -372,7 +376,6 @@ TEST_F(SaveToPhotosMediatorTest,
 // snackbar message when the PhotosService reports upload completion.
 TEST_F(SaveToPhotosMediatorTest,
        DidSelectIdentityUploadsImageAndShowsSnackbarMessage) {
-
   // This test assumes there is no default account memorized for Save to Photos.
   profile_->GetPrefs()->ClearPref(prefs::kIosSaveToPhotosDefaultGaiaId);
   profile_->GetPrefs()->ClearPref(prefs::kIosSaveToPhotosSkipAccountPicker);
@@ -440,7 +443,6 @@ TEST_F(SaveToPhotosMediatorTest,
 // Tests after the account picker has been displayed, the user can dismiss it
 // using the "Cancel" button.
 TEST_F(SaveToPhotosMediatorTest, DidCancelBeforeUploadDismissesAccountPicker) {
-
   // This test assumes there is no default account memorized for Save to Photos.
   profile_->GetPrefs()->ClearPref(prefs::kIosSaveToPhotosDefaultGaiaId);
   profile_->GetPrefs()->ClearPref(prefs::kIosSaveToPhotosSkipAccountPicker);
@@ -488,7 +490,6 @@ TEST_F(SaveToPhotosMediatorTest, DidCancelBeforeUploadDismissesAccountPicker) {
 // detects that it is installed and the user taps "Open" in the success
 // snackbar.
 TEST_F(SaveToPhotosMediatorTest, SnackbarOpenButtonOpensPhotosAppIfInstalled) {
-
   // Create a mediator and set up with mock delegate.
   SaveToPhotosMediator* mediator = CreateSaveToPhotosMediator();
   id mock_save_to_photos_mediator_delegate =
@@ -576,7 +577,6 @@ TEST_F(SaveToPhotosMediatorTest, SnackbarOpenButtonOpensPhotosAppIfInstalled) {
 // success snackbar.
 TEST_F(SaveToPhotosMediatorTest,
        SnackbarOpenButtonOpensStoreKitIfAppNotInstalled) {
-
   // Create a mediator and set up with mock delegate.
   SaveToPhotosMediator* mediator = CreateSaveToPhotosMediator();
   id mock_save_to_photos_mediator_delegate =

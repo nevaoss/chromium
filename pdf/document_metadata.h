@@ -95,7 +95,7 @@ struct DocumentMetadata {
   base::Time mod_date;
 
   // The document's language tag.
-  std::optional<base::LanguageTag> language_tag;
+  std::optional<base::i18n::LanguageTag> language_tag;
 };
 
 }  // namespace chrome_pdf

@@ -32,6 +32,13 @@
   --toolbar-chip-padding-start: 0px;
   --toolbar-chip-padding-end: 0px;
 
+  /* External margins implemented as host padding to expand the clickable
+   * hit target to the screen edges (Fitts's Law) without stretching the
+   * internal visual button. Defaults to 0; currently used by the App Menu
+   * button to extend its hit target to the screen corner. */
+  padding-inline-end: var(--toolbar-chip-trailing-margin, 0);
+  padding-inline-start: var(--toolbar-chip-leading-margin, 0);
+
   /* Animation durations matching Native Views parity. */
   /* (see views::kHighlightFadeOutOnHoverChangeDuration in views/animation/ink_drop_host.cc) */
   --toolbar-chip-highlight-fade-duration: 250ms;
@@ -98,14 +105,14 @@
 
 /* HOVER STATE: Highlight layer fade-in.
  * SHOW_ON_RIPPLE compositing: Hover layer stays visible during active/menu states. */
-#button:hover::before,
+:host(:hover) #button::before,
 :host([is-menu-open]) #button::before {
   opacity: 1;
 }
 
 /* --- PRESSED/MENU STATE ---
  * Pressed highlight layer fade-in. This layer composites on top of the hover layer. */
-#button:active::after,
+:host(:active) #button::after,
 :host([is-menu-open]) #button::after {
   opacity: 1;
   transition-duration: 0s; /* Instant for pressed state */

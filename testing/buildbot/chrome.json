@@ -18,7 +18,8 @@
         "cros_ctp_suite_name": "chrome-uprev-hw",
         "cros_test_max_in_shard": 40,
         "cros_test_names_exclude_from_file": [
-          "chromeos/tast_control_disabled_tests.txt"
+          "chromeos/tast_control_disabled_tests.txt",
+          "chromeos/tast_control_flaky_tests.txt"
         ],
         "cros_test_tags": [
           "group:mainline",
@@ -47,7 +48,8 @@
         "cros_board": "betty",
         "cros_test_max_in_shard": 40,
         "cros_test_names_exclude_from_file": [
-          "chromeos/tast_control_disabled_tests.txt"
+          "chromeos/tast_control_disabled_tests.txt",
+          "chromeos/tast_control_flaky_tests.txt"
         ],
         "cros_test_tags": [
           "group:mainline",
@@ -98,6 +100,30 @@
         "variant_id": "LKGM"
       },
       {
+        "args": [
+          "-retries=2"
+        ],
+        "ci_only": true,
+        "cros_board": "betty",
+        "cros_test_max_in_shard": 20,
+        "cros_test_names_from_file": [
+          "chromeos/tast_control_flaky_tests.txt"
+        ],
+        "dut_pool": "vmlab",
+        "experiment_percentage": 100,
+        "module_name": "//chromeos:chrome_flaky_tast_tests",
+        "module_scheme": "tast",
+        "name": "chrome_flaky_tast_tests LKGM",
+        "resultdb": {
+          "result_format": "tast"
+        },
+        "test": "chrome_flaky_tast_tests",
+        "test_id_prefix": "ninja://chromeos:chrome_flaky_tast_tests/",
+        "timeout_sec": 7200,
+        "use_lkgm": true,
+        "variant_id": "LKGM"
+      },
+      {
         "autotest_name": "chromium",
         "cros_board": "betty",
         "dut_pool": "vmlab",
@@ -128,7 +154,8 @@
         "cros_ctp_suite_name": "chrome-uprev-hw",
         "cros_test_max_in_shard": 20,
         "cros_test_names_exclude_from_file": [
-          "chromeos/tast_control_disabled_tests.txt"
+          "chromeos/tast_control_disabled_tests.txt",
+          "chromeos/tast_control_flaky_tests.txt"
         ],
         "cros_test_names_from_file": [
           "chromeos/tast_control_cq_tests.txt"
@@ -151,6 +178,30 @@
         "test": "chrome_all_tast_tests",
         "test_id_prefix": "ninja://chromeos:chrome_all_tast_tests/",
         "timeout_sec": 5400,
+        "use_lkgm": true,
+        "variant_id": "LKGM"
+      },
+      {
+        "args": [
+          "-retries=2"
+        ],
+        "ci_only": true,
+        "cros_board": "betty",
+        "cros_test_max_in_shard": 20,
+        "cros_test_names_from_file": [
+          "chromeos/tast_control_flaky_tests.txt"
+        ],
+        "dut_pool": "vmlab",
+        "experiment_percentage": 100,
+        "module_name": "//chromeos:chrome_flaky_tast_tests",
+        "module_scheme": "tast",
+        "name": "chrome_flaky_tast_tests LKGM",
+        "resultdb": {
+          "result_format": "tast"
+        },
+        "test": "chrome_flaky_tast_tests",
+        "test_id_prefix": "ninja://chromeos:chrome_flaky_tast_tests/",
+        "timeout_sec": 7200,
         "use_lkgm": true,
         "variant_id": "LKGM"
       }
@@ -241,7 +292,8 @@
         "cros_ctp_suite_name": "chrome-uprev-hw",
         "cros_test_max_in_shard": 40,
         "cros_test_names_exclude_from_file": [
-          "chromeos/tast_control_disabled_tests.txt"
+          "chromeos/tast_control_disabled_tests.txt",
+          "chromeos/tast_control_flaky_tests.txt"
         ],
         "cros_test_tags": [
           "group:mainline",
@@ -270,7 +322,8 @@
         "cros_board": "betty",
         "cros_test_max_in_shard": 40,
         "cros_test_names_exclude_from_file": [
-          "chromeos/tast_control_disabled_tests.txt"
+          "chromeos/tast_control_disabled_tests.txt",
+          "chromeos/tast_control_flaky_tests.txt"
         ],
         "cros_test_tags": [
           "group:mainline",
@@ -317,6 +370,30 @@
         "test": "chrome_disabled_tast_tests",
         "test_id_prefix": "ninja://chromeos:chrome_disabled_tast_tests/",
         "timeout_sec": 14400,
+        "use_lkgm": true,
+        "variant_id": "LKGM"
+      },
+      {
+        "args": [
+          "-retries=2"
+        ],
+        "ci_only": true,
+        "cros_board": "betty",
+        "cros_test_max_in_shard": 20,
+        "cros_test_names_from_file": [
+          "chromeos/tast_control_flaky_tests.txt"
+        ],
+        "dut_pool": "vmlab",
+        "experiment_percentage": 100,
+        "module_name": "//chromeos:chrome_flaky_tast_tests",
+        "module_scheme": "tast",
+        "name": "chrome_flaky_tast_tests LKGM",
+        "resultdb": {
+          "result_format": "tast"
+        },
+        "test": "chrome_flaky_tast_tests",
+        "test_id_prefix": "ninja://chromeos:chrome_flaky_tast_tests/",
+        "timeout_sec": 7200,
         "use_lkgm": true,
         "variant_id": "LKGM"
       },
@@ -1310,7 +1387,8 @@
         "cros_ctp_suite_name": "chrome-uprev-hw",
         "cros_test_max_in_shard": 40,
         "cros_test_names_exclude_from_file": [
-          "chromeos/tast_control_disabled_tests.txt"
+          "chromeos/tast_control_disabled_tests.txt",
+          "chromeos/tast_control_flaky_tests.txt"
         ],
         "cros_test_tags": [
           "group:mainline",
@@ -1339,7 +1417,8 @@
         "cros_board": "betty",
         "cros_test_max_in_shard": 40,
         "cros_test_names_exclude_from_file": [
-          "chromeos/tast_control_disabled_tests.txt"
+          "chromeos/tast_control_disabled_tests.txt",
+          "chromeos/tast_control_flaky_tests.txt"
         ],
         "cros_test_tags": [
           "group:mainline",
@@ -1386,6 +1465,30 @@
         "test": "chrome_disabled_tast_tests",
         "test_id_prefix": "ninja://chromeos:chrome_disabled_tast_tests/",
         "timeout_sec": 14400,
+        "use_lkgm": true,
+        "variant_id": "LKGM"
+      },
+      {
+        "args": [
+          "-retries=2"
+        ],
+        "ci_only": true,
+        "cros_board": "betty",
+        "cros_test_max_in_shard": 20,
+        "cros_test_names_from_file": [
+          "chromeos/tast_control_flaky_tests.txt"
+        ],
+        "dut_pool": "vmlab",
+        "experiment_percentage": 100,
+        "module_name": "//chromeos:chrome_flaky_tast_tests",
+        "module_scheme": "tast",
+        "name": "chrome_flaky_tast_tests LKGM",
+        "resultdb": {
+          "result_format": "tast"
+        },
+        "test": "chrome_flaky_tast_tests",
+        "test_id_prefix": "ninja://chromeos:chrome_flaky_tast_tests/",
+        "timeout_sec": 7200,
         "use_lkgm": true,
         "variant_id": "LKGM"
       }
@@ -1478,7 +1581,8 @@
         "cros_model": "kano",
         "cros_test_max_in_shard": 50,
         "cros_test_names_exclude_from_file": [
-          "chromeos/tast_control_disabled_tests.txt"
+          "chromeos/tast_control_disabled_tests.txt",
+          "chromeos/tast_control_flaky_tests.txt"
         ],
         "cros_test_tags": [
           "group:mainline",
@@ -1507,7 +1611,8 @@
         "cros_model": "kano",
         "cros_test_max_in_shard": 40,
         "cros_test_names_exclude_from_file": [
-          "chromeos/tast_control_disabled_tests.txt"
+          "chromeos/tast_control_disabled_tests.txt",
+          "chromeos/tast_control_flaky_tests.txt"
         ],
         "cros_test_tags": [
           "group:mainline",
@@ -1553,6 +1658,30 @@
         "test": "chrome_disabled_tast_tests",
         "test_id_prefix": "ninja://chromeos:chrome_disabled_tast_tests/",
         "timeout_sec": 14400,
+        "use_lkgm": true,
+        "variant_id": "LKGM"
+      },
+      {
+        "args": [
+          "-retries=2"
+        ],
+        "ci_only": true,
+        "cros_board": "brya",
+        "cros_model": "kano",
+        "cros_test_max_in_shard": 20,
+        "cros_test_names_from_file": [
+          "chromeos/tast_control_flaky_tests.txt"
+        ],
+        "experiment_percentage": 100,
+        "module_name": "//chromeos:chrome_flaky_tast_tests",
+        "module_scheme": "tast",
+        "name": "chrome_flaky_tast_tests LKGM",
+        "resultdb": {
+          "result_format": "tast"
+        },
+        "test": "chrome_flaky_tast_tests",
+        "test_id_prefix": "ninja://chromeos:chrome_flaky_tast_tests/",
+        "timeout_sec": 7200,
         "use_lkgm": true,
         "variant_id": "LKGM"
       },
@@ -2045,7 +2174,8 @@
         "cros_model": "kano",
         "cros_test_max_in_shard": 50,
         "cros_test_names_exclude_from_file": [
-          "chromeos/tast_control_disabled_tests.txt"
+          "chromeos/tast_control_disabled_tests.txt",
+          "chromeos/tast_control_flaky_tests.txt"
         ],
         "cros_test_tags": [
           "group:mainline",
@@ -2074,7 +2204,8 @@
         "cros_model": "kano",
         "cros_test_max_in_shard": 40,
         "cros_test_names_exclude_from_file": [
-          "chromeos/tast_control_disabled_tests.txt"
+          "chromeos/tast_control_disabled_tests.txt",
+          "chromeos/tast_control_flaky_tests.txt"
         ],
         "cros_test_tags": [
           "group:mainline",
@@ -2120,6 +2251,30 @@
         "test": "chrome_disabled_tast_tests",
         "test_id_prefix": "ninja://chromeos:chrome_disabled_tast_tests/",
         "timeout_sec": 14400,
+        "use_lkgm": true,
+        "variant_id": "LKGM"
+      },
+      {
+        "args": [
+          "-retries=2"
+        ],
+        "ci_only": true,
+        "cros_board": "brya",
+        "cros_model": "kano",
+        "cros_test_max_in_shard": 20,
+        "cros_test_names_from_file": [
+          "chromeos/tast_control_flaky_tests.txt"
+        ],
+        "experiment_percentage": 100,
+        "module_name": "//chromeos:chrome_flaky_tast_tests",
+        "module_scheme": "tast",
+        "name": "chrome_flaky_tast_tests LKGM",
+        "resultdb": {
+          "result_format": "tast"
+        },
+        "test": "chrome_flaky_tast_tests",
+        "test_id_prefix": "ninja://chromeos:chrome_flaky_tast_tests/",
+        "timeout_sec": 7200,
         "use_lkgm": true,
         "variant_id": "LKGM"
       },
@@ -2560,7 +2715,8 @@
         "cros_ctp_suite_name": "chrome-uprev-hw",
         "cros_test_max_in_shard": 40,
         "cros_test_names_exclude_from_file": [
-          "chromeos/tast_control_disabled_tests.txt"
+          "chromeos/tast_control_disabled_tests.txt",
+          "chromeos/tast_control_flaky_tests.txt"
         ],
         "cros_test_tags": [
           "group:mainline",
@@ -2588,7 +2744,8 @@
         "cros_board": "jacuzzi",
         "cros_test_max_in_shard": 40,
         "cros_test_names_exclude_from_file": [
-          "chromeos/tast_control_disabled_tests.txt"
+          "chromeos/tast_control_disabled_tests.txt",
+          "chromeos/tast_control_flaky_tests.txt"
         ],
         "cros_test_tags": [
           "group:mainline",
@@ -2633,6 +2790,29 @@
         "test": "chrome_disabled_tast_tests",
         "test_id_prefix": "ninja://chromeos:chrome_disabled_tast_tests/",
         "timeout_sec": 14400,
+        "use_lkgm": true,
+        "variant_id": "LKGM"
+      },
+      {
+        "args": [
+          "-retries=2"
+        ],
+        "ci_only": true,
+        "cros_board": "jacuzzi",
+        "cros_test_max_in_shard": 20,
+        "cros_test_names_from_file": [
+          "chromeos/tast_control_flaky_tests.txt"
+        ],
+        "experiment_percentage": 100,
+        "module_name": "//chromeos:chrome_flaky_tast_tests",
+        "module_scheme": "tast",
+        "name": "chrome_flaky_tast_tests LKGM",
+        "resultdb": {
+          "result_format": "tast"
+        },
+        "test": "chrome_flaky_tast_tests",
+        "test_id_prefix": "ninja://chromeos:chrome_flaky_tast_tests/",
+        "timeout_sec": 7200,
         "use_lkgm": true,
         "variant_id": "LKGM"
       },
@@ -2681,7 +2861,8 @@
         "cros_ctp_suite_name": "chrome-uprev-hw",
         "cros_test_max_in_shard": 50,
         "cros_test_names_exclude_from_file": [
-          "chromeos/tast_control_disabled_tests.txt"
+          "chromeos/tast_control_disabled_tests.txt",
+          "chromeos/tast_control_flaky_tests.txt"
         ],
         "cros_test_tags": [
           "group:mainline",
@@ -2718,7 +2899,8 @@
         "cros_ctp_suite_name": "chrome-uprev-hw",
         "cros_test_max_in_shard": 40,
         "cros_test_names_exclude_from_file": [
-          "chromeos/tast_control_disabled_tests.txt"
+          "chromeos/tast_control_disabled_tests.txt",
+          "chromeos/tast_control_flaky_tests.txt"
         ],
         "cros_test_tags": [
           "group:mainline",
@@ -2747,7 +2929,8 @@
         "cros_board": "reven-vmtest",
         "cros_test_max_in_shard": 40,
         "cros_test_names_exclude_from_file": [
-          "chromeos/tast_control_disabled_tests.txt"
+          "chromeos/tast_control_disabled_tests.txt",
+          "chromeos/tast_control_flaky_tests.txt"
         ],
         "cros_test_tags": [
           "group:mainline",
@@ -2794,6 +2977,30 @@
         "test": "chrome_disabled_tast_tests",
         "test_id_prefix": "ninja://chromeos:chrome_disabled_tast_tests/",
         "timeout_sec": 14400,
+        "use_lkgm": true,
+        "variant_id": "LKGM"
+      },
+      {
+        "args": [
+          "-retries=2"
+        ],
+        "ci_only": true,
+        "cros_board": "reven-vmtest",
+        "cros_test_max_in_shard": 20,
+        "cros_test_names_from_file": [
+          "chromeos/tast_control_flaky_tests.txt"
+        ],
+        "dut_pool": "vmlab",
+        "experiment_percentage": 100,
+        "module_name": "//chromeos:chrome_flaky_tast_tests",
+        "module_scheme": "tast",
+        "name": "chrome_flaky_tast_tests LKGM",
+        "resultdb": {
+          "result_format": "tast"
+        },
+        "test": "chrome_flaky_tast_tests",
+        "test_id_prefix": "ninja://chromeos:chrome_flaky_tast_tests/",
+        "timeout_sec": 7200,
         "use_lkgm": true,
         "variant_id": "LKGM"
       },
@@ -2846,7 +3053,8 @@
         "cros_ctp_suite_name": "chrome-uprev-hw",
         "cros_test_max_in_shard": 40,
         "cros_test_names_exclude_from_file": [
-          "chromeos/tast_control_disabled_tests.txt"
+          "chromeos/tast_control_disabled_tests.txt",
+          "chromeos/tast_control_flaky_tests.txt"
         ],
         "cros_test_tags": [
           "group:mainline",
@@ -2874,7 +3082,8 @@
         "cros_board": "trogdor",
         "cros_test_max_in_shard": 40,
         "cros_test_names_exclude_from_file": [
-          "chromeos/tast_control_disabled_tests.txt"
+          "chromeos/tast_control_disabled_tests.txt",
+          "chromeos/tast_control_flaky_tests.txt"
         ],
         "cros_test_tags": [
           "group:mainline",
@@ -2919,6 +3128,29 @@
         "test": "chrome_disabled_tast_tests",
         "test_id_prefix": "ninja://chromeos:chrome_disabled_tast_tests/",
         "timeout_sec": 14400,
+        "use_lkgm": true,
+        "variant_id": "LKGM"
+      },
+      {
+        "args": [
+          "-retries=2"
+        ],
+        "ci_only": true,
+        "cros_board": "trogdor",
+        "cros_test_max_in_shard": 20,
+        "cros_test_names_from_file": [
+          "chromeos/tast_control_flaky_tests.txt"
+        ],
+        "experiment_percentage": 100,
+        "module_name": "//chromeos:chrome_flaky_tast_tests",
+        "module_scheme": "tast",
+        "name": "chrome_flaky_tast_tests LKGM",
+        "resultdb": {
+          "result_format": "tast"
+        },
+        "test": "chrome_flaky_tast_tests",
+        "test_id_prefix": "ninja://chromeos:chrome_flaky_tast_tests/",
+        "timeout_sec": 7200,
         "use_lkgm": true,
         "variant_id": "LKGM"
       },
@@ -2970,7 +3202,8 @@
         "cros_ctp_suite_name": "chrome-uprev-hw",
         "cros_test_max_in_shard": 50,
         "cros_test_names_exclude_from_file": [
-          "chromeos/tast_control_disabled_tests.txt"
+          "chromeos/tast_control_disabled_tests.txt",
+          "chromeos/tast_control_flaky_tests.txt"
         ],
         "cros_test_tags": [
           "group:mainline",
@@ -2998,7 +3231,8 @@
         "cros_board": "volteer",
         "cros_test_max_in_shard": 40,
         "cros_test_names_exclude_from_file": [
-          "chromeos/tast_control_disabled_tests.txt"
+          "chromeos/tast_control_disabled_tests.txt",
+          "chromeos/tast_control_flaky_tests.txt"
         ],
         "cros_test_tags": [
           "group:mainline",
@@ -3043,6 +3277,29 @@
         "test": "chrome_disabled_tast_tests",
         "test_id_prefix": "ninja://chromeos:chrome_disabled_tast_tests/",
         "timeout_sec": 14400,
+        "use_lkgm": true,
+        "variant_id": "LKGM"
+      },
+      {
+        "args": [
+          "-retries=2"
+        ],
+        "ci_only": true,
+        "cros_board": "volteer",
+        "cros_test_max_in_shard": 20,
+        "cros_test_names_from_file": [
+          "chromeos/tast_control_flaky_tests.txt"
+        ],
+        "experiment_percentage": 100,
+        "module_name": "//chromeos:chrome_flaky_tast_tests",
+        "module_scheme": "tast",
+        "name": "chrome_flaky_tast_tests LKGM",
+        "resultdb": {
+          "result_format": "tast"
+        },
+        "test": "chrome_flaky_tast_tests",
+        "test_id_prefix": "ninja://chromeos:chrome_flaky_tast_tests/",
+        "timeout_sec": 7200,
         "use_lkgm": true,
         "variant_id": "LKGM"
       },
@@ -3086,7 +3343,8 @@
         "cros_ctp_suite_name": "chrome-uprev-hw",
         "cros_test_max_in_shard": 50,
         "cros_test_names_exclude_from_file": [
-          "chromeos/tast_control_disabled_tests.txt"
+          "chromeos/tast_control_disabled_tests.txt",
+          "chromeos/tast_control_flaky_tests.txt"
         ],
         "cros_test_tags": [
           "group:mainline",
@@ -3114,7 +3372,8 @@
         "cros_board": "volteer",
         "cros_test_max_in_shard": 40,
         "cros_test_names_exclude_from_file": [
-          "chromeos/tast_control_disabled_tests.txt"
+          "chromeos/tast_control_disabled_tests.txt",
+          "chromeos/tast_control_flaky_tests.txt"
         ],
         "cros_test_tags": [
           "group:mainline",
@@ -3159,6 +3418,29 @@
         "test": "chrome_disabled_tast_tests",
         "test_id_prefix": "ninja://chromeos:chrome_disabled_tast_tests/",
         "timeout_sec": 14400,
+        "use_lkgm": true,
+        "variant_id": "LKGM"
+      },
+      {
+        "args": [
+          "-retries=2"
+        ],
+        "ci_only": true,
+        "cros_board": "volteer",
+        "cros_test_max_in_shard": 20,
+        "cros_test_names_from_file": [
+          "chromeos/tast_control_flaky_tests.txt"
+        ],
+        "experiment_percentage": 100,
+        "module_name": "//chromeos:chrome_flaky_tast_tests",
+        "module_scheme": "tast",
+        "name": "chrome_flaky_tast_tests LKGM",
+        "resultdb": {
+          "result_format": "tast"
+        },
+        "test": "chrome_flaky_tast_tests",
+        "test_id_prefix": "ninja://chromeos:chrome_flaky_tast_tests/",
+        "timeout_sec": 7200,
         "use_lkgm": true,
         "variant_id": "LKGM"
       },

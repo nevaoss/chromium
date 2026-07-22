@@ -487,6 +487,7 @@ chromium-metrics-reviews@google.com.
     of the provider's execution.
   </summary>
   <token key="ProviderID">
+    <variant name="Discover"/>
     <variant name="TestRefresher"/>
   </token>
 </histogram>
@@ -1744,6 +1745,40 @@ chromium-metrics-reviews@google.com.
     <variant name="SecondImpression" summary="second"/>
     <variant name="ThirdImpression" summary="third"/>
   </token>
+</histogram>
+
+<histogram name="IOS.Discover.BackgroundRefresh.Outcome"
+    enum="DiscoverFeedBackgroundRefreshOutcome" expires_after="2026-12-15">
+  <owner>sadhvikch@google.com</owner>
+  <owner>sreeshmanair@google.com</owner>
+  <owner>iga-discover-bld@google.com</owner>
+  <summary>
+    The final outcome of the Discover feed background refresh task execution.
+    Recorded when the task completes execution (either success or failure).
+  </summary>
+</histogram>
+
+<histogram name="IOS.Discover.BackgroundRefresh.ServiceAvailability"
+    enum="DiscoverFeedServiceAvailability" expires_after="2026-12-15">
+  <owner>sadhvikch@google.com</owner>
+  <owner>sreeshmanair@google.com</owner>
+  <owner>iga-discover-bld@google.com</owner>
+  <summary>
+    The availability of the DiscoverFeedService when the background refresh task
+    is triggered. Recorded at the start of the task execution.
+  </summary>
+</histogram>
+
+<histogram name="IOS.Discover.BackgroundRefresh.SystemExpired" enum="Boolean"
+    expires_after="2026-12-15">
+  <owner>sadhvikch@google.com</owner>
+  <owner>sreeshmanair@google.com</owner>
+  <owner>iga-discover-bld@google.com</owner>
+  <summary>
+    Whether the iOS system background task expired before the Discover feed
+    background refresh task could finish execution. Recorded when the system
+    expiration handler is triggered.
+  </summary>
 </histogram>
 
 <histogram name="IOS.DistantTab.TimeSinceLastUse" units="ms"
@@ -3124,6 +3159,7 @@ chromium-metrics-reviews@google.com.
     The outcome of the GoogleOne flow initiated from {EntryPoint}.
   </summary>
   <token key="EntryPoint">
+    <variant name="DeepLink" summary="a deep link"/>
     <variant name="Drive" summary="Google Drive save error"/>
     <variant name="Photos" summary="Google Photos save error"/>
     <variant name="Settings" summary="the settings"/>

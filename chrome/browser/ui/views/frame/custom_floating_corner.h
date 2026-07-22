@@ -49,6 +49,7 @@ class CustomFloatingCorner : public views::View, public CustomCorners {
 
   // Set the corner radius.
   void SetCornerRadius(views::ShapeContextTokens corner_radius_token);
+  int GetCornerRadius() const;
 
   // Sets a stroke, or no stroke (std::nullopt). If `is_vertical_window_edge` is
   // true, the stroke ends outside the vertical bounds of the corner.

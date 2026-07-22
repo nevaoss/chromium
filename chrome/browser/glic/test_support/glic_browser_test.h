@@ -113,9 +113,10 @@ template <typename T>
     return base::ok();
   }
   std::stringstream ss;
-  ss << message << " Expected: " << expected_value << ", saw values: {";
+  ss << message << " Expected: " << base::ToString(expected_value)
+     << ", saw values: {";
   for (const auto& value : ignored_values) {
-    ss << value << ", ";
+    ss << base::ToString(value) << ", ";
   }
   ss << "}";
   return base::unexpected(ss.str());
@@ -210,18 +211,13 @@ class GlicBrowserTestMixin : public T {
         std::make_unique<views::test::MockActivationController>();
 #endif
 
-    // Disable side panel animations on supported platforms. Note that the
-    // constructor only enables `kEnableAndroidSidePanel` on _desktop_ Android.
-    //
-    // We CHECK() instead of silently skipping the animation configuration for a
-    // null `side_panel_ui` because a CHECK() makes tests easier to debug.
-#if defined(TOOLKIT_VIEWS) || BUILDFLAG(IS_DESKTOP_ANDROID)
-    SidePanelUI* side_panel_ui =
-        SidePanelUIProvider::From(T::GetBrowserWindowInterface());
-    CHECK(side_panel_ui);
-    side_panel_ui->SetNoDelaysForTesting(true);
-    side_panel_ui->DisableAnimationsForTesting();
-#endif
+    // Disable side panel animations on supported platforms.
+    if (IsSidePanelEnabled()) {
+      SidePanelUI* side_panel_ui = SidePanelUIProvider::From(GetBrowser());
+      CHECK(side_panel_ui);
+      side_panel_ui->SetNoDelaysForTesting(true);
+      side_panel_ui->DisableAnimationsForTesting();
+    }
 
     CHECK(glic_test_environment_.SetupEmbeddedTestServers(
         T::embedded_test_server(), &T::embedded_https_test_server()));
@@ -230,7 +226,6 @@ class GlicBrowserTestMixin : public T {
         ->GetBrowserWindowInterface()
         ->GetWindow()
         ->Activate();
-
     LOG(INFO) << "GlicBrowserTest: done setting up";
   }
 
@@ -397,21 +392,8 @@ class GlicBrowserTestMixin : public T {
     RETURN_IF_ERROR(
         WaitForSidePanelState(tab, GlicSidePanelCoordinator::State::kClosed));
 
-    // TODO(crbug.com/513209932): Actuating instances intentionally keep the
-    // WebContents visible on Android to make progress. On other platforms, the
-    // WebContents is hidden on close because the WebView is detached from the
-    // views hierarchy. Android doesn't seem to have the same automatic
-    // visibility change.
-#if BUILDFLAG(IS_ANDROID)
-    content::Visibility expected_visibility = instance->IsActuating()
-                                                  ? content::Visibility::VISIBLE
-                                                  : content::Visibility::HIDDEN;
-#else
-    content::Visibility expected_visibility = content::Visibility::HIDDEN;
-#endif
-
     return WaitForWebUiContentsVisibility(weak_instance.get(),
-                                          expected_visibility);
+                                          content::Visibility::HIDDEN);
   }
 
   [[nodiscard]] TestResult<GlicInstanceImpl*> WaitForGlicInstanceBoundToTab(

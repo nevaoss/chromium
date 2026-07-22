@@ -34,7 +34,6 @@
 <translation id="1108938384783527433">Συγχρονισμός ιστορικού</translation>
 <translation id="1111673857033749125">Οι σελιδοδείκτες που είναι αποθηκευμένοι σε άλλες συσκευές θα εμφανίζονται εδώ.</translation>
 <translation id="1123537484474186311"><ph name="TAB_TITLE" />, Καρτέλα Picture-in-Picture</translation>
-<translation id="1124357650933674597">{NUM_WINDOWS,plural, =1{Επαναφορά 1 παραθύρου}other{Επαναφορά # παραθύρων}}</translation>
 <translation id="1126696498560056882">Διαχείριση λογαριασμών σε αυτή τη συσκευή</translation>
 <translation id="1135018701024399762">Η κατάσταση ανώνυμης περιήγησης διατηρεί την περιήγησή σας ιδιωτική από άλλα άτομα που χρησιμοποιούν τη συσκευή σας</translation>
 <translation id="113752097246673894">Για να έχετε πρόσβαση στους σελιδοδείκτες σας και σε άλλα στοιχεία σε όλες τις συσκευές σας, συνδεθείτε στο Chrome ως <ph name="EMAIL" /></translation>
@@ -185,6 +184,7 @@
 <translation id="1792959175193046959">Αλλάξτε την προεπιλεγμένη τοποθεσία λήψης ανά πάσα στιγμή</translation>
 <translation id="1796666869097395659">Ελαχιστοποιήστε την καρτέλα για να την επισκεφτείτε ξανά αργότερα</translation>
 <translation id="1799920918471566157">Συμβουλές για το Chrome</translation>
+<translation id="1803799720926799756">Μέγεθος αρχείου</translation>
 <translation id="1807246157184219062">Ανοιχτόχρωμο</translation>
 <translation id="1807709131360304325">Άνοιγμα νέου παραθύρου</translation>
 <translation id="1812027881030482584">Το <ph name="SITE_ETLD_PLUS_ONE" /> δεν μπορεί να συνεχίσει να χρησιμοποιεί το <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /></translation>
@@ -520,7 +520,6 @@
 <translation id="3166827708714933426">Συντομεύσεις καρτέλας και παραθύρου</translation>
 <translation id="3167258285411721858">Μπορείτε να ζητήσετε τον ιστότοπο για κινητά του <ph name="HOST_NAME" /></translation>
 <translation id="3181145110929454111"><ph name="TAB_TITLE" />, Καρφιτσωμένη καρτέλα ανώνυμης περιήγησης από πολλαπλή επιλογή που είναι σε σίγαση</translation>
-<translation id="3183941812169784232">Επαναφορά όλων των παραθύρων;</translation>
 <translation id="3187472288455401631">Μέτρηση διαφημίσεων</translation>
 <translation id="3189635831478931757">Ομάδα καρτελών <ph name="GROUP_TITLE" /></translation>
 <translation id="3200536777393523575">Θέλετε να κλείσετε το τρέχον παράθυρο;</translation>
@@ -569,6 +568,7 @@
 <translation id="3435575784518354875">Για να διατηρήσετε την πρόσβαση στους κωδικούς πρόσβασης, εξαγάγετε τους τώρα, ενημερώστε τις υπηρεσίες Google Play και, στη συνέχεια, εισαγάγετέ τους στη Διαχείριση κωδικών πρόσβασης Google. <ph name="BEGIN_LINK" />Δείτε τις πλήρεις οδηγίες<ph name="END_LINK" />.</translation>
 <translation id="3435738964857648380">Ασφάλεια</translation>
 <translation id="3435914367318771664">Προσθήκη καρτέλας σε νέα ομάδα</translation>
+<translation id="3436118221454753036">Ερώτηση στη Λειτουργία AI</translation>
 <translation id="3438681572027105609">Για να έχετε πρόσβαση στους κωδικούς πρόσβασής σας και σε άλλα στοιχεία σε όλες τις συσκευές σας, συνδεθείτε στο Chrome</translation>
 <translation id="3439276997620616816">Εδώ θα βρείτε τις πρόσφατες καρτέλες σας</translation>
 <translation id="3443221991560634068">Επαναφόρτωση της τρέχουσας σελίδας</translation>
@@ -2039,7 +2039,6 @@
 <translation id="939598580284253335">Εισαγωγή φράσης πρόσβασης</translation>
 <translation id="94161319503679839"><ph name="TAB_TITLE" />, Καρφιτσωμένη καρτέλα ανώνυμης περιήγησης Picture-in-Picture</translation>
 <translation id="945522503751344254">Αποστολή σχολίων</translation>
-<translation id="949667118776341807">Περιστροφή</translation>
 <translation id="95817756606698420">Το Chrome μπορεί να χρησιμοποιήσει το <ph name="BEGIN_BOLD" />Sogou<ph name="END_BOLD" /> για την αναζήτηση στην Κίνα. Μπορείτε να αλλάξετε αυτή την επιλογή στις <ph name="BEGIN_LINK" />Ρυθμίσεις<ph name="END_LINK" />.</translation>
 <translation id="961856697154696964">Διαγραφή δεδομένων περιήγησης</translation>
 <translation id="963246339335003378">Άνοιγμα Διαχείρισης Εργασιών</translation>

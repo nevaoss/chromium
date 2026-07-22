@@ -4,11 +4,11 @@
 
 #include "components/private_verification_tokens/common/private_verification_tokens_database.h"
 
-#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
 
+#include "base/containers/span.h"
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
 #include "base/logging.h"
@@ -16,6 +16,7 @@
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/string_util.h"
 #include "base/threading/sequence_bound.h"
+#include "base/types/optional_ref.h"
 #include "base/types/pass_key.h"
 #include "components/private_verification_tokens/common/private_verification_tokens_token.h"
 #include "sql/database.h"
@@ -90,6 +91,11 @@ static constexpr char kDeleteKeysForSql[] =
 
 static constexpr char kDeleteKeySql[] =
     "DELETE FROM keys WHERE issuer = ? AND key_id = ?";
+
+// SQLite in Chromium has a limit of 32k placeholders per query. We use
+// anywhere between 0-2 placeholders for the time range, plus one for
+// each origin in the filter. Setting to a conservative 16k should be safe.
+static constexpr size_t kDeleteMaximumOriginsPerQuery = 16384;
 
 // clang-format on
 
@@ -269,19 +275,46 @@ bool PrivateVerificationTokensDatabase::DeleteRedeemedTokens() {
 }
 
 bool PrivateVerificationTokensDatabase::DeleteTokens(
-    std::optional<base::Time> delete_begin,
-    std::optional<url::Origin> issuer) {
+    base::Time delete_begin,
+    base::Time delete_end,
+    base::optional_ref<const std::vector<url::Origin>> issuers) {
+  if (!issuers.has_value()) {
+    return DeleteTokenBatch(delete_begin, delete_end, {});
+  }
+
+  base::span<const url::Origin> issuers_span(*issuers);
+  bool result = true;
+  for (size_t i = 0; i < issuers_span.size();
+       i += kDeleteMaximumOriginsPerQuery) {
+    size_t current_chunk_size =
+        std::min(kDeleteMaximumOriginsPerQuery, issuers_span.size() - i);
+    result &= DeleteTokenBatch(delete_begin, delete_end,
+                               issuers_span.subspan(i, current_chunk_size));
+  }
+  return result;
+}
+
+bool PrivateVerificationTokensDatabase::DeleteTokenBatch(
+    base::Time delete_begin,
+    base::Time delete_end,
+    base::span<const url::Origin> issuers) {
+  DCHECK(issuers.size() <= kDeleteMaximumOriginsPerQuery);
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!EnsureDBInitialized()) {
     return false;
   }
 
   std::vector<std::string> where_clauses;
-  if (delete_begin.has_value()) {
+  if (!delete_begin.is_null() && delete_begin != base::Time::Min()) {
     where_clauses.push_back("creation_time >= ?");
   }
-  if (issuer.has_value()) {
-    where_clauses.push_back("issuer = ?");
+  if (!delete_end.is_null() && delete_end != base::Time::Max()) {
+    where_clauses.push_back("creation_time < ?");
+  }
+  if (!issuers.empty()) {
+    std::vector<std::string> placeholders(issuers.size(), "?");
+    where_clauses.push_back("issuer IN (" +
+                            base::JoinString(placeholders, ", ") + ")");
   }
 
   std::string sql = "DELETE FROM tokens";
@@ -293,13 +326,16 @@ bool PrivateVerificationTokensDatabase::DeleteTokens(
   DCHECK(statement.is_valid());
 
   int param_index = 0;
-  if (delete_begin.has_value()) {
-    statement.BindInt64(
-        param_index++,
-        (delete_begin.value() - base::Time::UnixEpoch()).InSeconds());
+  if (!delete_begin.is_null() && delete_begin != base::Time::Min()) {
+    statement.BindInt64(param_index++,
+                        (delete_begin - base::Time::UnixEpoch()).InSeconds());
   }
-  if (issuer.has_value()) {
-    statement.BindString(param_index++, issuer.value().Serialize());
+  if (!delete_end.is_null() && delete_end != base::Time::Max()) {
+    statement.BindInt64(param_index++,
+                        (delete_end - base::Time::UnixEpoch()).InSeconds());
+  }
+  for (const url::Origin& issuer : issuers) {
+    statement.BindString(param_index++, issuer.Serialize());
   }
 
   DCHECK_EQ(static_cast<size_t>(param_index),

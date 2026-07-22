@@ -5,6 +5,7 @@
 #include "components/payments/content/payment_request.h"
 
 #include <algorithm>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -48,6 +49,7 @@
 #include "services/metrics/public/cpp/ukm_source_id.h"
 #include "services/network/public/cpp/is_potentially_trustworthy.h"
 #include "third_party/blink/public/common/features.h"
+#include "url/origin.h"
 
 namespace payments {
 namespace {
@@ -973,11 +975,8 @@ void PaymentRequest::OnPaymentResponseError(
 
   reject_show_error_message_ = error_message;
 
-  if (base::FeatureList::IsEnabled(
-          features::kPaymentRequestSupportReportingAppError)) {
-    reject_show_error_reason_ =
-        ConvertPaymentEventResponseTypeToErrorReason(error);
-  }
+  reject_show_error_reason_ =
+      ConvertPaymentEventResponseTypeToErrorReason(error);
 
   ShowErrorMessageAndAbortPayment();
 }
@@ -1152,6 +1151,9 @@ void PaymentRequest::Pay() {
 
   // Log the correct "selected method".
   journey_logger_.SetSelectedMethod(GetSelectedMethodCategory());
+
+  display_handle_->SetPaymentHandlerOrigin(
+      state_->selected_app()->GetPaymentHandlerOrigin());
 
   state_->selected_app()->SetPaymentHandlerHost(
       payment_handler_host_->AsWeakPtr());

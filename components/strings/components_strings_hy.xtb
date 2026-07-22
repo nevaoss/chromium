@@ -1000,6 +1000,7 @@
 <translation id="2524962131655207565"><ph name="BEGIN_BOLD" />Վճարման էջի բովանդակությունը փոխանցվում է Google-ին՝ այս տարբերակներն առաջարկելու համար։<ph name="END_BOLD" /> Վճարային պլանները հասանելի են միայն պահանջները բավարարելու դեպքում։ Տարաժամկետ վճարման տարբերակները թաքցնելու համար անցեք <ph name="BEGIN_LINK" />վճարման կարգավորումներ<ph name="END_LINK" />։</translation>
 <translation id="2526062290525841862">Այս հավելվածը գործարկելու համար նորից միացրեք մեկուսացված վեբ հավելվածների՝ մշակողի ռեժիմը։</translation>
 <translation id="2526280916094749336">Դուք կարող եք օգտագործել պահված հասցեները Google-ի արտադրանքներում։ Այս հասցեն կպահվի ձեր Google հաշվում (<ph name="ACCOUNT" />)։</translation>
+<translation id="2526590354069164005">Աշխատասեղան</translation>
 <translation id="2527451058878391043">CVC կոդը նշված է քարտի դիմերեսին։ Այն քառանիշ կոդ է, որը գտնվում է քարտի համարի վերևի աջ կողմում։</translation>
 <translation id="2529899080962247600">Այս դաշտում գրառումների առավելագույն քանակը՝ <ph name="MAX_ITEMS_LIMIT" />: Ավել գրառումները կանտեսվեն:</translation>
 <translation id="2530042584066815841">Մկնիկի կողպում և օգտագործում</translation>
@@ -2372,6 +2373,7 @@
 <translation id="4705573018059932476">Դուք ընտրել եք, որ կայքերում, որոնք օգտվում են <ph name="PROVIDER_ORIGIN" /> մատակարարից, հաստատումը կատարվի <ph name="AUTHENTICATOR" />ի միջոցով։ Հնարավոր է՝ այս մատակարարը տեղեկություններ է պահել ձեր վճարման եղանակի մասին։ Դուք կարող եք այդ տեղեկությունների <ph name="LINK_TEXT" />։</translation>
 <translation id="4708268264240856090">Ձեր կապն ընդհատվել է</translation>
 <translation id="4708276642004148190">Ջրամատակարարում և ջրի մաքրում</translation>
+<translation id="4710249055485272920">Չհաջողվեց գտնել այս տեղեկությունները</translation>
 <translation id="4711628883879888561">Համատեղ աշխատեք ներդիրների խմբի վրա</translation>
 <translation id="4712404868219726379">Windows Hello</translation>
 <translation id="471880041731876836">Դուք այս կայք այցելելու թույլտվություն չունեք</translation>
@@ -3025,6 +3027,7 @@
 <translation id="5707154300732650394">Շարունակել որոնումը</translation>
 <translation id="57094364128775171">Ստեղծել հուսալի գաղտնաբառ…</translation>
 <translation id="570953204696852961">Կարմիր 3</translation>
+<translation id="5710907191777451677">Փոխարենը հարցրեք Gemini-ին Chrome-ում</translation>
 <translation id="571403275720188526">(arm64)</translation>
 <translation id="571510845185711675">Անասնաբույժներ</translation>
 <translation id="5715150588940290235">Ջնջե՞լ անվտանգության պահված կոդերը</translation>
@@ -4919,7 +4922,6 @@
 <translation id="8671519637524426245"><ph name="SECURE_DNS_SALT" /> կանոնի արժեքը չի համապատասխանում չափսի պահանջներին։</translation>
 <translation id="867224526087042813">Ստորագրություն</translation>
 <translation id="8672535691554698269">Համակարգչային ցանցեր</translation>
-<translation id="8673710317985154384">{NUM_TABS,plural, =1{Ցույց տալ ներդիրի փոխանցման մանրամասները։ Փոխանցվում է 1 ներդիր հետևյալ կայք(եր)ից՝ {WEBSITE_LIST_STR}}one{Ցույց տալ ներդիրի փոխանցման մանրամասները։ Փոխանցվում է {NUM_TABS} ներդիր հետևյալ կայք(եր)ից՝ {WEBSITE_LIST_STR}}other{Ցույց տալ ներդիրի փոխանցման մանրամասները։ Փոխանցվում է {NUM_TABS} ներդիր հետևյալ կայք(եր)ից՝ {WEBSITE_LIST_STR}}}</translation>
 <translation id="8675446170353411473">Ձեր ֆայլերը վերբեռնվում են <ph name="CLOUD_PROVIDER" /></translation>
 <translation id="8676424191133491403">Առանց հետաձգման</translation>
 <translation id="8680536109547170164"><ph name="QUERY" />, պատասխան, <ph name="ANSWER" /></translation>

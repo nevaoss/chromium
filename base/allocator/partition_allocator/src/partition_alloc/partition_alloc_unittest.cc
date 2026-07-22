@@ -4383,8 +4383,8 @@ TEST_P(PartitionAllocTest, OverrideHooks) {
       memset(overridden_allocation, kOverriddenChar, kOverriddenSize));
 
   PartitionAllocHooks::SetOverrideHooks(
-      [](void** out, AllocFlags flags, size_t size,
-         const char* type_name) -> bool {
+      [](void** out, AllocFlags flags, size_t size, const char* type_name,
+         std::optional<size_t> alignment) -> bool {
         if (size == kOverriddenSize && type_name == kOverriddenType) {
           *out = overridden_allocation;
           return true;

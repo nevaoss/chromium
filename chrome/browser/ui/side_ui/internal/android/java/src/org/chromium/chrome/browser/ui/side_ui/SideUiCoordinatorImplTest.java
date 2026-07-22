@@ -8,6 +8,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -357,6 +358,66 @@ public class SideUiCoordinatorImplTest {
                         SideUiId.SIDE_UI_FOR_TESTING_LOW_PRIORITY),
                 showabilityCaptor.getValue().mShowableSideUiIds);
         assertTrue(showabilityCaptor.getValue().mUnshowableSideUiIds.isEmpty());
+    }
+
+    @Test
+    public void testUpdateUi_preventsReentrancy() {
+        int windowWidthDp = ViewUtils.pxToDp(mTestActivity, WINDOW_SIZE_PX.getWidth());
+
+        // Arrange: Register the right SideUiContainer.
+        // Note that the container's max & min widths ensure the window will only have enough space
+        // for this container.
+        View rightUiContainerView = new FrameLayout(mTestActivity);
+        var rightUiContainer =
+                new TestSideUiContainer(
+                        mCoordinator,
+                        rightUiContainerView,
+                        SideUiId.SIDE_UI_FOR_TESTING_LOW_PRIORITY,
+                        AnchorSide.RIGHT);
+        rightUiContainer.mMinWidthDp = windowWidthDp - SideUiCoordinator.MIN_WEB_CONTENTS_WIDTH_DP;
+        rightUiContainer.mMaxWidthDp = rightUiContainer.mMinWidthDp;
+        @Px
+        int expectedRightSideUiWidth =
+                ViewUtils.dpToPx(mTestActivity, rightUiContainer.mMaxWidthDp);
+        mCoordinator.registerSideUiContainer(rightUiContainer);
+
+        // Arrange: Register the left SideUiContainer.
+        // Note that the container's max & min widths ensure the window will only have enough space
+        // for this container.
+        View leftUiContainerView = new FrameLayout(mTestActivity);
+        var leftUiContainer =
+                new TestSideUiContainer(
+                        mCoordinator,
+                        leftUiContainerView,
+                        SideUiId.SIDE_UI_FOR_TESTING_HIGH_PRIORITY,
+                        AnchorSide.LEFT);
+        leftUiContainer.mMinWidthDp = windowWidthDp - SideUiCoordinator.MIN_WEB_CONTENTS_WIDTH_DP;
+        leftUiContainer.mMaxWidthDp = leftUiContainer.mMinWidthDp;
+        mCoordinator.registerSideUiContainer(leftUiContainer);
+
+        // Act: Show only the right SideUiContainer.
+        rightUiContainer.mHasContentToShow = true;
+        leftUiContainer.mHasContentToShow = false;
+        mCoordinator.updateUi(
+                new UiUpdateRequest(
+                        rightUiContainer.getSideUiId(), /* suppressAnimations= */ true));
+        RobolectricUtil.runAllBackgroundAndUi();
+
+        // Assert: The right SideUiContainer is shown.
+        SideUiSpecs expectedSideUiSpecs = new SideUiSpecs(0, expectedRightSideUiWidth);
+        SideUiSpecs currentSideUiSpecs = mCoordinator.getCurrentSideUiSpecs();
+        assertEquals(expectedSideUiSpecs, currentSideUiSpecs);
+
+        // Act & Assert: Attempt to show both SideUiContainers.
+        // This will cause the right SideUiContainer to auto-close.
+        // The right SideUiContainer is configured to call updateUi() in onWillAutoClose(), which
+        // will cause re-entrancy into updateUi().
+        rightUiContainer.mRequestUiUpdateOnWillAutoClose = true;
+        rightUiContainer.mHasContentToShow = true;
+        leftUiContainer.mHasContentToShow = true;
+        var request =
+                new UiUpdateRequest(leftUiContainer.getSideUiId(), /* suppressAnimations= */ true);
+        assertThrows(AssertionError.class, () -> mCoordinator.updateUi(request));
     }
 
     @Test

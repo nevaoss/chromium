@@ -1103,6 +1103,9 @@ void RenderWidgetHostViewMac::SetShowingContextMenu(bool showing) {
   ns_view_->SetShowingContextMenu(showing);
 }
 
+void RenderWidgetHostViewMac::SetSupportsAutoFill(bool supports) {
+  ns_view_->SetSupportsAutoFill(supports);
+}
 
 void RenderWidgetHostViewMac::CopyFromSurface(
     const gfx::Rect& src_subrect,

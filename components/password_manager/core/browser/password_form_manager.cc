@@ -1068,7 +1068,9 @@ bool PasswordFormManager::ProvisionallySave(
         *form_parsing_result.password_form);
   }
 
-  if (!client_->IsSavingAndFillingEnabled(submitted_form.url())) {
+  url::Origin origin = driver_ ? driver_->GetLastCommittedOrigin()
+                               : url::Origin::Create(submitted_form.url());
+  if (!client_->IsSavingAndFillingEnabled(origin, submitted_form.url())) {
     RecordSavingIsDisabled(client_);
     is_saving_allowed_ = false;
   }

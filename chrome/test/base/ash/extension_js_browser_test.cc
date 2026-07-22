@@ -25,6 +25,7 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/test/base/ash/javascript_browser_test.h"
 #include "chrome/test/base/test_switches.h"
+#include "content/public/browser/browser_accessibility_state.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_test_utils.h"
 #include "extensions/browser/background_script_executor.h"
@@ -63,6 +64,8 @@ ExtensionJSBrowserTest::~ExtensionJSBrowserTest() = default;
 
 void ExtensionJSBrowserTest::SetUpOnMainThread() {
   JavaScriptBrowserTest::SetUpOnMainThread();
+  content::BrowserAccessibilityState::GetInstance()
+      ->SetActivationFromPlatformEnabled(true);
 
   // Set up coverage collection.
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();

@@ -270,31 +270,37 @@ void SidePanelCoordinatorAndroid::OnTabReparented(tabs::TabInterface* tab) {
   }
 }
 
-void SidePanelCoordinatorAndroid::OnWindowResized(JNIEnv* env,
-                                                  bool can_show_side_panel) {
-  SPLOG("OnWindowResized - can_show_side_panel: " << can_show_side_panel);
+void SidePanelCoordinatorAndroid::OnWillAutoClose(JNIEnv* env) {
+  SPLOG("OnWillAutoClose");
 
-  if (is_window_too_small_ == !can_show_side_panel) {
+  if (has_insufficient_space_) {
     return;
   }
 
-  is_window_too_small_ = !can_show_side_panel;
+  has_insufficient_space_ = true;
 
-  // Case 1: Window became too small. Hide the current side panel.
-  if (!can_show_side_panel) {
-    if (IsSidePanelShowing() && state_ != SidePanelState::kClosing) {
-      deferred_entry_tracker_.AddActiveEntries();
+  if (IsSidePanelShowing() && state_ != SidePanelState::kClosing) {
+    deferred_entry_tracker_.AddActiveEntries();
 
-      Close(SidePanelEntryHideReason::kWindowResized,
-            /*suppress_animations=*/true);
-    }
+    // TODO(crbug.com/527985639): Rename `kWindowResized` as
+    // `kInsufficientSpace`.
+    Close(SidePanelEntryHideReason::kWindowResized,
+          /*suppress_animations=*/true);
+  }
+}
+
+void SidePanelCoordinatorAndroid::OnWillAutoRestore(JNIEnv* env) {
+  SPLOG("OnWillAutoRestore");
+
+  if (!has_insufficient_space_) {
     return;
   }
 
-  // Case 2: Window became large enough. Restore deferred entries.
+  has_insufficient_space_ = false;
+
   CHECK(!IsSidePanelShowing() || state_ == SidePanelState::kClosing)
-      << "Side panel should not be visible when the window changes from "
-         "being too small to being large enough.";
+      << "Side panel should not be visible when the available space changes"
+         " from insufficient to sufficient.";
 
   tabs::TabInterface* active_tab =
       TabListInterface::From(browser())->GetActiveTab();
@@ -399,9 +405,10 @@ void SidePanelCoordinatorAndroid::Show(
     return;
   }
 
-  // Defer the show request if the window is too small to show the side panel.
-  if (is_window_too_small_) {
-    SPLOG("Show - window is too small, skipping.");
+  // Defer the show request if there is insufficient space to show the side
+  // panel.
+  if (has_insufficient_space_) {
+    SPLOG("Show - insufficient space, skipping.");
     deferred_entry_tracker_.AddEntry(key);
     return;
   }
@@ -573,9 +580,10 @@ void SidePanelCoordinatorAndroid::MaybeShowEntryOnTabStripModelChanged(
         // If there is no active entry in the new tab's registry, check if there
         // is a deferred entry saved in the tracker for this tab or this window.
         // This handles cases where a side panel was hidden due to constraints
-        // like a narrow window size.
-        // `Show()` handles `is_window_too_small_ == true`, and adds the entry
-        // to `SidePanelDeferredEntryTracker` if needed.
+        // like insufficient space.
+        //
+        // `Show()` handles `has_insufficient_space_ == true`, and adds the
+        // entry to `SidePanelDeferredEntryTracker` if needed.
         std::optional<UniqueKey> key_to_show = deferred_entry_tracker_.GetEntry(
             new_contextual_registry->GetTabInterface().GetHandle());
         if (key_to_show) {
@@ -603,8 +611,8 @@ void SidePanelCoordinatorAndroid::MaybeShowEntryOnTabStripModelChanged(
     // If there is no active entry in the new tab's registry, check if there
     // is a deferred entry saved in the tracker for this tab or this window.
     // This handles cases where a side panel was hidden due to constraints
-    // like a narrow window size.
-    // `Show()` handles `is_window_too_small_ == true`, and adds the entry
+    // like insufficient space.
+    // `Show()` handles `has_insufficient_space_ == true`, and adds the entry
     // to `SidePanelDeferredEntryTracker` if needed.
     std::optional<UniqueKey> key_to_show = deferred_entry_tracker_.GetEntry(
         new_contextual_registry->GetTabInterface().GetHandle());

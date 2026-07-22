@@ -185,6 +185,7 @@
 #import "ios/chrome/browser/picture_in_picture/coordinator/picture_in_picture_coordinator.h"
 #import "ios/chrome/browser/picture_in_picture/public/picture_in_picture_configuration.h"
 #import "ios/chrome/browser/popup_menu/coordinator/popup_menu_coordinator.h"
+#import "ios/chrome/browser/popup_menu/overflow_menu/public/features.h"
 #import "ios/chrome/browser/prerender/model/prerender_browser_agent.h"
 #import "ios/chrome/browser/prerender/model/prerender_browser_agent_delegate.h"
 #import "ios/chrome/browser/presenters/ui_bundled/vertical_animation_container.h"
@@ -5137,6 +5138,11 @@ const char kChromeAppStoreUrl[] =
   [_NTPCoordinator handleFeedModelDidEndUpdates:updateType];
 }
 
+- (void)customizationMenuWasTapped {
+  CHECK(IsOverflowMenuHomeCustomizationEntrypointEnabled());
+  [_NTPCoordinator customizationMenuWasTapped];
+}
+
 - (void)presentLensIconBubble {
   __weak NewTabPageCoordinator* weakNTPCoordinator = _NTPCoordinator;
   [HandlerForProtocol(self.dispatcher, SceneCommands)
@@ -5659,12 +5665,23 @@ const char kChromeAppStoreUrl[] =
 - (void)showGoogleOneForIdentity:(id<SystemIdentity>)identity
                       entryPoint:(GoogleOneEntryPoint)entryPoint
               baseViewController:(UIViewController*)baseViewController {
+  [self hideGoogleOne];
   UIViewController* viewController = baseViewController ?: self.viewController;
   _googleOneCoordinator =
       [[GoogleOneCoordinator alloc] initWithBaseViewController:viewController
                                                        browser:self.browser
                                                     entryPoint:entryPoint
                                                       identity:identity];
+  [_googleOneCoordinator start];
+}
+
+- (void)showGoogleOneForURL:(const GURL&)inputURL {
+  [self hideGoogleOne];
+  _googleOneCoordinator = [[GoogleOneCoordinator alloc]
+      initWithBaseViewController:self.viewController
+                         browser:self.browser
+                      entryPoint:GoogleOneEntryPoint::kDeepLink
+                        inputURL:inputURL];
   [_googleOneCoordinator start];
 }
 

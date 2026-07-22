@@ -839,7 +839,6 @@
 <translation id="391904960191284041">Бүтээгдэхүүний шүүмж</translation>
 <translation id="3921585859122905677">Хаяг оруулах хэсгийн байрлал</translation>
 <translation id="3922185497376658606">Веб хуудаснуудыг урьдчилан ачаалах</translation>
-<translation id="3922395466317605522">Цэсийг өөрчлөх</translation>
 <translation id="3926703470020109118">Татахыг цуцалсан</translation>
 <translation id="3929457972718048006">Хаягууд</translation>
 <translation id="3931215329146376310">{count,plural, =1{Энэ сайтын шинэ нууц үг}other{Энэ сайтын шинэ нууц үгнүүд}}</translation>
@@ -1273,6 +1272,7 @@
 <translation id="5336910966955551309">Дуртай сайтуудаа бэхлэхийн тулд товшоод удаан дарна уу</translation>
 <translation id="5338512273860059533">Нэвтэрч байна.</translation>
 <translation id="5343472494710226394">Таны сонирхолд тулгуурласан мэдээ, спорт болон контент</translation>
+<translation id="5351613737248079168">Та Level Up-г ашиглахын тулд нэвтэрсэн байх ёстой</translation>
 <translation id="5352128922772839949">Файлыг хадгалах</translation>
 <translation id="5355191726083956201">Сайжруулсан хамгаалалт асаалттай байна</translation>
 <translation id="536067926684072644">Хавчуурга харуулах</translation>
@@ -1695,7 +1695,6 @@ Handoff-ыг Тохиргооны ерөнхий хэсэгт идэвхижүү
 <translation id="6674917187596384849">Та бүртгэлүүдийн хооронд хялбархан сэлгэх боломжтой</translation>
 <translation id="6676349090816247042">Нэвтрэх сонголтууд.</translation>
 <translation id="667999046851023355">Бичиг баримт</translation>
-<translation id="6680416467695217368">Цэсийг өөрчлөх</translation>
 <translation id="6681791404926413601">{count,plural, =1{Таны гарын дээр төлбөрийн хэрэгслийн {count} сонголт боломжтой байна.}other{Таны гарын дээр төлбөрийн хэрэгслийн {count} сонголт боломжтой байна.}}</translation>
 <translation id="6682680306647339111">Сануулагчийг хассан</translation>
 <translation id="6684262542644248484">Вебсайтад нэвтэрнэ үү</translation>
@@ -2242,6 +2241,7 @@ Handoff-ыг Тохиргооны ерөнхий хэсэгт идэвхижүү
 <translation id="8534481786647257214">Google+ пост дууссан.</translation>
 <translation id="8535368836838588657">Нууц үгийг ил болгох</translation>
 <translation id="8540426897269305488"><ph name="CELL_ACCESSIBILITY_LABEL" />-р нэвтрэх</translation>
+<translation id="8542331710562073430">Ямар нэг алдаа гарлаа. Live-г дахин ашиглахаар оролдохын тулд Live товчин дээр товшино уу.</translation>
 <translation id="8545276357312221485">Өгөгдмөл хөтчийн тохиргоогоо шалгах</translation>
 <translation id="854938212724803178">Танд алдагдсан 1 нууц үг байна. Аюулгүй байхын тулд үүнийг одоо засна уу.</translation>
 <translation id="8551311254462607218">Хаяг оруулах хэсэгт Google Lens-н камерын дүрс тэмдэг дээр товшино уу</translation>

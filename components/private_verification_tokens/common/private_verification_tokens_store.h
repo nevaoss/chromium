@@ -45,8 +45,9 @@ class PrivateVerificationTokensStore {
   bool is_initialized() const { return initialized_; }
 
   void DeleteAllTokens();
-  void DeleteTokens(std::optional<base::Time> delete_begin,
-                    std::optional<url::Origin> issuer,
+  void DeleteTokens(base::Time delete_begin,
+                    base::Time delete_end,
+                    std::optional<std::vector<url::Origin>> issuers,
                     base::OnceClosure callback);
 
  private:

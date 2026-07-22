@@ -477,6 +477,7 @@ Aksi halde bu işlem gizlilik ayarlarınız tarafından engellenecek. Buna izin 
 <translation id="173080396488393970">Bu kart türü desteklenmiyor</translation>
 <translation id="1731563515262205847">ML-DSA-65</translation>
 <translation id="1732445923934584865">Bunun yerine yüz yüze sor</translation>
+<translation id="1732796940245838248">Google Cüzdan'daki redress numarasını güncelleyin</translation>
 <translation id="1733064249834771892">yazı tipleri</translation>
 <translation id="1733631169686303142">Ses Donanımı</translation>
 <translation id="1733762317901693627">Normalde güvenli olan siteler bile bazen saldırganlar tarafından ele geçirilebilir. <ph name="BEGIN_LINK" />Güvenli olmayan bu siteyi<ph name="END_LINK" /> yalnızca riskleri anladığınızdan eminseniz ziyaret edin.</translation>
@@ -712,6 +713,7 @@ Aksi halde bu işlem gizlilik ayarlarınız tarafından engellenecek. Buna izin 
 <translation id="2122165854541876335">Tüketici Kaynakları</translation>
 <translation id="2122214041802369259">Yüksek Fiyatlı</translation>
 <translation id="2122719317867821810">Bu politika beklendiği gibi çalışıyor, ancak başka bir yerde ayarlanmış çakışan bir değeri geçersiz kılıyor.</translation>
+<translation id="2124081665399116863">Google Cüzdan'daki aracı güncelleyin</translation>
 <translation id="2126374524350484896">PDF üreticisi:</translation>
 <translation id="2127090458081644412">Şifre bu cihaza kaydedildi</translation>
 <translation id="2127747486437921899">İtalik</translation>
@@ -994,6 +996,7 @@ Aksi halde bu işlem gizlilik ayarlarınız tarafından engellenecek. Buna izin 
 <translation id="2524962131655207565"><ph name="BEGIN_BOLD" />Bu seçenekleri sunmak için ödeme sayfasındaki sayfa içeriği Google ile paylaşılır.<ph name="END_BOLD" /> Ödeme planları, uygunluk durumuna bağlıdır. Sonra ödeme seçeneklerini gizlemek için <ph name="BEGIN_LINK" />ödeme ayarlarına<ph name="END_LINK" /> gidin.</translation>
 <translation id="2526062290525841862">Bu uygulamayı çalıştırmak için Yalıtılmış Web Uygulaması Geliştirici Modu'nu yeniden etkinleştirin</translation>
 <translation id="2526280916094749336">Kayıtlı adresleri tüm Google ürünlerinde kullanabilirsiniz. Bu adres Google Hesabınıza (<ph name="ACCOUNT" />) kaydedilir.</translation>
+<translation id="2526590354069164005">Masaüstü</translation>
 <translation id="2527451058878391043">CVC'niz, kartınızın ön tarafında yer alır. Bu, kart numaranızın sağ üst tarafında bulunan 4 haneli koddur.</translation>
 <translation id="2529899080962247600">Bu alanda en çok <ph name="MAX_ITEMS_LIMIT" /> giriş olabilir. Bundan sonraki tüm girişler yok sayılacak.</translation>
 <translation id="2530042584066815841">Fare kilidi ve kullanımı</translation>
@@ -1548,6 +1551,7 @@ Sonra ödeme seçeneklerini gizlemek için <ph name="BEGIN_LINK" />ödeme ayarla
 <translation id="3422472998109090673"><ph name="HOST_NAME" /> ana makinesine şu anda ulaşılamıyor.</translation>
 <translation id="3422794267539320056">Oynamak için dinozora dokunun veya boşluk tuşuna basın</translation>
 <translation id="3423742043356668186">Sistem tarafından belirtilen</translation>
+<translation id="3426672782316020729">Google Cüzdan'daki pasaportu güncelleyin</translation>
 <translation id="3427342743765426898">&amp;Düzenlemeyi Yeniden Yap</translation>
 <translation id="342781501876943858">Chromium, şifrenizi başka sitelerde kullandıysanız sıfırlamanızı önerir.</translation>
 <translation id="3428151540071562330">DnsOverHttpsTemplates sunucu şablonu URI'larından biri veya daha fazlası geçersiz olduğundan kullanılmayacak.</translation>
@@ -2408,6 +2412,7 @@ Sonra ödeme seçeneklerini gizlemek için <ph name="BEGIN_LINK" />ödeme ayarla
 <translation id="4766713847338118463">Altta ikili tel zımba</translation>
 <translation id="4768816584204270288">Taksitle ödeme yaptığınızda tek seferlik sanal kart numarası doldurulur. Bu satın alma işlemi için kart ayrıntılarını kopyalayıp yapıştırmak üzere tıklayabilirsiniz.</translation>
 <translation id="4768864802656530630">Ayrıntılı sistem günlükleri. <ph name="BEGIN_LINK" />Daha fazla bilgi<ph name="END_LINK" /></translation>
+<translation id="4770909831299304090">Google Cüzdan'daki KTN'yi güncelleyin</translation>
 <translation id="4771249073710170730">Radyo Kontrolü ve Modellemesi</translation>
 <translation id="4771973620359291008">Bilinmeyen bir hata oluştu.</translation>
 <translation id="4774055414220872623">Sanat ve El İşi Malzemeleri</translation>
@@ -4223,6 +4228,7 @@ Ek ayrıntılar:
 <translation id="7569490014721427265">Golf</translation>
 <translation id="7569952961197462199">Kredi kartı Chrome'dan kaldırılsın mı?</translation>
 <translation id="7569983096843329377">Siyah</translation>
+<translation id="7570524564113479209">Google Cüzdan'daki kimlik kartını güncelleyin</translation>
 <translation id="7570862164055912832">Redress numaraları</translation>
 <translation id="7571813784389228510">Google AI Modu</translation>
 <translation id="7574998639136359461">Kış Sporları Gereçleri</translation>
@@ -4744,6 +4750,7 @@ Ek ayrıntılar:
 <translation id="8389940864052787379">Özel Araçlar ve Performans Araçları</translation>
 <translation id="8390725133630534698"><ph name="ORIGIN_NAME" /> sitesinden <ph name="VM_NAME" /> ile paylaşma işlevi, yönetici politikası tarafından engellendi</translation>
 <translation id="8392783408127179588">Politikalar yeniden yükleniyor</translation>
+<translation id="8393948304336153065">Sürücü belgesini Google Cüzdan'a kaydedin</translation>
 <translation id="8396522675989118466">Bu, <ph name="SIDE_OF_CARD" /> bulunan <ph name="NUMBER_OF_DIGITS" /> basamaklı koddur</translation>
 <translation id="8398335999901363925">Dokunarak doldurulabilen ödeme yöntemleri tam ekranda açıldı.</translation>
 <translation id="8398446215576328011">Geçerli politikaları geri döndür</translation>
@@ -4906,7 +4913,6 @@ Ek ayrıntılar:
 <translation id="8671519637524426245"><ph name="SECURE_DNS_SALT" /> değeri, boyut şartlarını karşılamıyor.</translation>
 <translation id="867224526087042813">İmza</translation>
 <translation id="8672535691554698269">Bilgisayar Ağları</translation>
-<translation id="8673710317985154384">{NUM_TABS,plural, =1{Sekme paylaşımı ayrıntılarını göster. {WEBSITE_LIST_STR} cihazındaki 1 sekme paylaşılıyor}other{Sekme paylaşımı ayrıntılarını göster. {WEBSITE_LIST_STR} cihazındaki {NUM_TABS} sekme paylaşılıyor}}</translation>
 <translation id="8675446170353411473">Dosyalarınız <ph name="CLOUD_PROVIDER" /> konumuna yükleniyor</translation>
 <translation id="8676424191133491403">Gecikme yok</translation>
 <translation id="8680536109547170164"><ph name="QUERY" />, yanıt, <ph name="ANSWER" /></translation>

@@ -314,6 +314,7 @@ Fel arall, bydd eich gosodiadau preifatrwydd yn rhwystro hyn. Bydd hyn yn caniat
 <translation id="1463793142714244641">Eiddo Cyfran Gyfnodol a Gwyliau</translation>
 <translation id="1465457928007067810">IBAN wedi'i gadw i'ch Cyfrif Google</translation>
 <translation id="1467432559032391204">Wedi gadael</translation>
+<translation id="1471514598850585811">Gliniadur</translation>
 <translation id="1472675084647422956">Dangos mwy</translation>
 <translation id="1473183651233018052">JIS B10</translation>
 <translation id="1473495410389165587">Rhowch 3 gair neu fwy i gael cymorth ysgrifennu</translation>
@@ -996,6 +997,7 @@ Fel arall, bydd eich gosodiadau preifatrwydd yn rhwystro hyn. Bydd hyn yn caniat
 <translation id="2524962131655207565"><ph name="BEGIN_BOLD" />Mae cynnwys o'r dudalen dalu yn cael ei rannu â Google i gynnig yr opsiynau hyn.<ph name="END_BOLD" /> Mae cynlluniau talu yn amodol ar gymhwysedd. I guddio opsiynau talu'n ddiweddarach, ewch i'r <ph name="BEGIN_LINK" />gosodiadau talu<ph name="END_LINK" />.</translation>
 <translation id="2526062290525841862">I redeg yr ap hwn, ail-alluogwch y Modd Datblygwr Ap Gwe Ynysig</translation>
 <translation id="2526280916094749336">Gallwch ddefnyddio cyfeiriadau sydd wedi'u cadw ar draws cynhyrchion Google. Bydd y cyfeiriad hwn yn cael ei gadw yn eich Cyfrif Google, <ph name="ACCOUNT" />.</translation>
+<translation id="2526590354069164005">Bwrdd gwaith</translation>
 <translation id="2527451058878391043">Mae eich CVC ar flaen eich cerdyn. Dyma'r cod 4 digid ar y dde uchaf, uwchben rhif eich cerdyn.</translation>
 <translation id="2529899080962247600">Ni ddylai'r maes hwn gynnwys mwy na <ph name="MAX_ITEMS_LIMIT" /> o gofnodion. Bydd pob cofnod arall yn cael ei anwybyddu.</translation>
 <translation id="2530042584066815841">Clo llygoden a defnydd</translation>
@@ -1235,6 +1237,7 @@ Fel arall, bydd eich gosodiadau preifatrwydd yn rhwystro hyn. Bydd hyn yn caniat
 <translation id="2929525460561903222">{SHIPPING_ADDRESS,plural, =0{<ph name="SHIPPING_ADDRESS_PREVIEW" />}=1{<ph name="SHIPPING_ADDRESS_PREVIEW" /> ac <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> arall}two{<ph name="SHIPPING_ADDRESS_PREVIEW" /> a <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> arall}few{<ph name="SHIPPING_ADDRESS_PREVIEW" /> a <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> arall}many{<ph name="SHIPPING_ADDRESS_PREVIEW" /> a <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> arall}other{<ph name="SHIPPING_ADDRESS_PREVIEW" /> a <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> arall}}</translation>
 <translation id="2930531075747147366">Tab o'ch Dyfais Arall</translation>
 <translation id="2930577230479659665">Tocio ar ôl pob copi</translation>
+<translation id="2931453528659195355">Rheoli gwybodaeth siopa</translation>
 <translation id="2933624813161016821">Ffoil Boglynnu</translation>
 <translation id="2935726091208500473">wrthi'n rhannu eich tabiau</translation>
 <translation id="293796669683825859">Sylwadau</translation>
@@ -1727,6 +1730,7 @@ I guddio opsiynau talu'n ddiweddarach, ewch i'r <ph name="BEGIN_LINK" />gosodiad
 <translation id="3681841880472207951">Fideo QuickTime</translation>
 <translation id="3687920599421452763">Faniau a Faniau Bach</translation>
 <translation id="3693327506115126094">Dewiswch sut y byddwch yn cadarnhau mai chi sydd yno</translation>
+<translation id="3693516565203081475">Dewis dull talu</translation>
 <translation id="3698353241727597930">Mae eich gweinyddwr wedi ffurfweddu i gadw <ph name="FILES" /> yn eich storfa <ph name="CLOUD_STORAGE" /> a reolir gan Enterprise. Mae'n bosib y bydd y ffeiliau hyn yn cael eu monitro, eu harchwilio, a'u cadw pan fyddwch yn eu dileu.</translation>
 <translation id="3698629142018988477">Botwm creu gwefan, gweithredwch i greu gwefan newydd yn Google Sites yn gyflym</translation>
 <translation id="3700094625653511150">I guddio opsiynau talu'n ddiweddarach, ewch i <ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT" /></translation>
@@ -3535,6 +3539,7 @@ I guddio opsiynau talu'n ddiweddarach, ewch i'r <ph name="BEGIN_LINK" />gosodiad
 <translation id="6494750904506170417">ffenestri naid ac ailgyfeiriadau</translation>
 <translation id="6495664197699704593">Mae'r cyfrinair hwn yn cael ei gadw i'r ddyfais hon yn unig. I'w ddefnyddio ar eich dyfeisiau eraill, <ph name="GOOGLE_PASSWORD_MANAGER" />.</translation>
 <translation id="649611364763911650">I ddefnyddio gwasanaeth awtolenwi arall yn Chrome, dewiswch eich darparwr awtolenwi yn y gosodiadau Android</translation>
+<translation id="6496531801333278234">Wedi'i ddarganfod gan Ddeallusrwydd Personol. Gallwch reoli eich gwybodaeth yn y gosodiadau.</translation>
 <translation id="6499038740797743453">Ailosod y cyfrinair?</translation>
 <translation id="6502510275417601303">Rhybudd am y gosodiad talu newydd ar gau</translation>
 <translation id="6502991525169604759">Heb eich newidiadau</translation>
@@ -4910,7 +4915,6 @@ Manylion ychwanegol:
 <translation id="8671519637524426245">Nid yw'r gwerth <ph name="SECURE_DNS_SALT" /> yn bodloni'r gofynion maint.</translation>
 <translation id="867224526087042813">Llofnod</translation>
 <translation id="8672535691554698269">Rhwydweithiau Cyfrifiadurol</translation>
-<translation id="8673710317985154384">{NUM_TABS,plural, =1{Dangos manylion rhannu tabiau. Wrthi'n rhannu 1 tab o {WEBSITE_LIST_STR}}zero{Dangos manylion rhannu tabiau. Wrthi'n rhannu {NUM_TABS} tabiau o {WEBSITE_LIST_STR}}two{Dangos manylion rhannu tabiau. Wrthi'n rhannu {NUM_TABS} dab o {WEBSITE_LIST_STR}}few{Dangos manylion rhannu tabiau. Wrthi'n rhannu {NUM_TABS} tab o {WEBSITE_LIST_STR}}many{Dangos manylion rhannu tabiau. Wrthi'n rhannu {NUM_TABS} tab o {WEBSITE_LIST_STR}}other{Dangos manylion rhannu tabiau. Wrthi'n rhannu {NUM_TABS} tab o {WEBSITE_LIST_STR}}}</translation>
 <translation id="8675446170353411473">Mae eich ffeiliau'n cael eu huwchlwytho i <ph name="CLOUD_PROVIDER" /></translation>
 <translation id="8676424191133491403">Dim oedi</translation>
 <translation id="8680536109547170164"><ph name="QUERY" />, ateb, <ph name="ANSWER" /></translation>
@@ -5150,6 +5154,7 @@ Manylion ychwanegol:
 <translation id="9063800855227801443">Methu â thynnu sgrinlun o gynnwys cyfrinachol</translation>
 <translation id="9065203028668620118">Golygu</translation>
 <translation id="9065745800631924235">Chwiliad <ph name="TEXT" /> o'r hanes</translation>
+<translation id="9066116644715286230">{NUM_TABS,plural, =1{Manylion rhannu tabiau. Wrthi'n rhannu 1 tab o {WEBSITE_LIST_STR}}zero{Manylion rhannu tabiau. Wrthi'n rhannu {NUM_TABS} tab o {WEBSITE_LIST_STR}}two{Manylion rhannu tabiau. Wrthi'n rhannu {NUM_TABS} dab o {WEBSITE_LIST_STR}}few{Manylion rhannu tabiau. Wrthi'n rhannu {NUM_TABS} tab o {WEBSITE_LIST_STR}}many{Manylion rhannu tabiau. Wrthi'n rhannu {NUM_TABS} tab o {WEBSITE_LIST_STR}}other{Manylion rhannu tabiau. Wrthi'n rhannu {NUM_TABS} tab o {WEBSITE_LIST_STR}}}</translation>
 <translation id="90695670378604968">Plastig (Matte)</translation>
 <translation id="9069693763241529744">Rhwystrwyd gan estyniad</translation>
 <translation id="9073799351042754113">Rydych wedi dewis diffodd rhybuddion diogelwch ar gyfer y wefan hon.</translation>

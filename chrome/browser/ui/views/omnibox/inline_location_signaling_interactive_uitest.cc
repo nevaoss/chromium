@@ -76,6 +76,7 @@ struct InlineLocationSignalingTestCase {
   std::vector<std::pair<std::u16string, std::u16string>> expected_results;
   std::optional<OmniboxInlineLocationSuggestionShown> expected_shown_state;
   std::optional<size_t> expected_position_metric;
+  bool test_parent_click = false;
 };
 
 }  // namespace
@@ -315,6 +316,72 @@ IN_PROC_BROWSER_TEST_P(InlineLocationSignalingE2EInteractiveUiTest,
     histogram_tester.ExpectTotalCount("Omnibox.InlineLocationSuggestion.Index",
                                       0);
   }
+
+  if (permission_str.empty()) {
+    return;
+  }
+
+  // Trigger omnibox click navigation to verify click telemetry.
+  // 1. Find the parent or the ills suggestion (based on test_parent_click).
+  size_t target_line = 0;
+  bool suggestion_found = false;
+
+  if (GetParam().test_parent_click) {
+    auto parent_it = std::ranges::find_if(result, [](const auto& match) {
+      return match.subtypes.contains(
+                 omnibox::SUBTYPE_LOCATION_SUGGEST_TRIGGER) &&
+             !match.extra_headers.contains(kXGeoHeader);
+    });
+    if (parent_it != result.end()) {
+      target_line = std::distance(result.begin(), parent_it);
+      suggestion_found = true;
+    }
+  } else {
+    auto duplicate_it = std::ranges::find_if(result, [](const auto& match) {
+      return match.subtypes.contains(
+                 omnibox::SUBTYPE_LOCATION_SUGGEST_TRIGGER) &&
+             match.extra_headers.contains(kXGeoHeader);
+    });
+    if (duplicate_it != result.end()) {
+      target_line = std::distance(result.begin(), duplicate_it);
+      suggestion_found = true;
+    }
+  }
+
+  // Select and simulate clicking (pressing Return) on the selected match.
+  omnibox_controller->edit_model()->SetPopupSelection(
+      OmniboxPopupSelection(target_line));
+  ASSERT_EQ(omnibox_controller->edit_model()->GetPopupSelection().line,
+            target_line);
+
+  ASSERT_TRUE(ui_test_utils::SendKeyPressSync(browser(), ui::VKEY_RETURN, false,
+                                              false, false, false));
+
+  // Verify click telemetry bucket counts.
+  if (suggestion_found) {
+    // 2. If the suggestion is found click it and check metrics
+    std::string expected_logged_metric =
+        "Omnibox.InlineLocationSuggestion." + permission_str +
+        (GetParam().test_parent_click ? ".ParentClicked" : ".Clicked");
+    std::string expected_empty_metric =
+        "Omnibox.InlineLocationSuggestion." + permission_str +
+        (GetParam().test_parent_click ? ".Clicked" : ".ParentClicked");
+
+    // Verify the expected click metric records exactly 1.
+    EXPECT_TRUE(base::test::RunUntil([&]() {
+      return histogram_tester.GetBucketCount(expected_logged_metric, true) == 1;
+    }));
+
+    // Verify the other click metric records 0.
+    histogram_tester.ExpectTotalCount(expected_empty_metric, 0);
+  } else {
+    // 3. If the suggestion is not found click 0 and check no metrics.
+    histogram_tester.ExpectTotalCount(
+        "Omnibox.InlineLocationSuggestion." + permission_str + ".Clicked", 0);
+    histogram_tester.ExpectTotalCount(
+        "Omnibox.InlineLocationSuggestion." + permission_str + ".ParentClicked",
+        0);
+  }
 }
 
 const InlineLocationSignalingTestCase kTestCases[] = {
@@ -353,7 +420,8 @@ const InlineLocationSignalingTestCase kTestCases[] = {
                           {u"a-location-relevant-suggestion", u"Use location"}},
      .expected_shown_state =
          OmniboxInlineLocationSuggestionShown::kLocationSuggestionShown,
-     .expected_position_metric = 2},
+     .expected_position_metric = 2,
+     .test_parent_click = true},
 
     // 3. Tests Above placement + Approximate wording
     {.test_name = "DisplayAbove_UseApproximateLocation",
@@ -372,7 +440,8 @@ const InlineLocationSignalingTestCase kTestCases[] = {
                           {u"a-location-relevant-suggestion", u""}},
      .expected_shown_state =
          OmniboxInlineLocationSuggestionShown::kLocationSuggestionShown,
-     .expected_position_metric = 1},
+     .expected_position_metric = 1,
+     .test_parent_click = true},
 
     // 4. Tests Above placement + Location wording
     {.test_name = "DisplayAbove_UseLocation",
@@ -645,7 +714,8 @@ const InlineLocationSignalingTestCase kTestCases[] = {
                            u"Use approximate location"}},
      .expected_shown_state =
          OmniboxInlineLocationSuggestionShown::kLocationSuggestionShown,
-     .expected_position_metric = 2},
+     .expected_position_metric = 2,
+     .test_parent_click = true},
 };
 
 INSTANTIATE_TEST_SUITE_P(

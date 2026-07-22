@@ -19,11 +19,9 @@
 #include "base/strings/string_util.h"
 #include "base/types/pass_key.h"
 
-namespace base {
+namespace base::i18n {
 
 class BASE_I18N_EXPORT LanguageTag;
-
-namespace i18n_extensions {
 
 // Represents a BCP47 extension subtag.
 // BCP47 extensions consist of a single-character singleton followed by one or
@@ -35,7 +33,7 @@ class BASE_I18N_EXPORT Extension {
   // These objects are managed by LanguageTag and cannot be constructed
   // manually.
   // |extension| must be a valid BCP47 extension string (e.g., "a-myext").
-  Extension(base::PassKey<base::LanguageTag>, std::string_view extension);
+  Extension(base::PassKey<LanguageTag>, std::string_view extension);
   ~Extension() = default;
 
   Extension(const Extension&) = default;
@@ -62,8 +60,7 @@ class BASE_I18N_EXPORT Extension {
 // (https://www.rfc-editor.org/info/rfc5646/#section-2.2.7).
 class BASE_I18N_EXPORT PrivateUseSubtags {
  public:
-  PrivateUseSubtags(base::PassKey<base::LanguageTag>,
-                    std::string_view private_use);
+  PrivateUseSubtags(base::PassKey<LanguageTag>, std::string_view private_use);
   ~PrivateUseSubtags() = default;
 
   PrivateUseSubtags(const PrivateUseSubtags&) = default;
@@ -165,6 +162,8 @@ class BASE_I18N_EXPORT UnicodeExtension {
   base::flat_map<std::string, std::string, std::less<>> keywords_;
 };
 
+namespace bcp47_extensions {
+
 // A traits used to map an extension key (e.g., 'u') to its corresponding
 // result type (e.g., UnicodeExtension).
 template <char extid>
@@ -234,7 +233,7 @@ inline constexpr auto priv() {
   return ext<'x'>();
 }
 
-}  // namespace i18n_extensions
-}  // namespace base
+}  // namespace bcp47_extensions
+}  // namespace base::i18n
 
 #endif  // BASE_I18N_BCP47_EXTENSIONS_H_

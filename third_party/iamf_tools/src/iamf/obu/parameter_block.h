@@ -19,47 +19,17 @@
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
-#include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
+#include "iamf/obu/param_definitions/subblock_schedule.h"
 #include "iamf/obu/parameter_data.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
-
-/*!\brief An element of the Parameter Block OBU's `subblocks` vector. */
-struct ParameterSubblock {
-  /*!\brief Reads and validates the parameter subblock.
-   *
-   * \param param_definition Parameter definition.
-   * \param rb Buffer to read from.
-   * \return `absl::OkStatus()`. Or a specific error code on failure.
-   */
-  absl::Status ReadAndValidate(const ParamDefinition& param_definition,
-                               ReadBitBuffer& rb);
-
-  /*!\brief Validates and writes to a buffer.
-   *
-   * \param wb Buffer to write to.
-   * \return `absl::OkStatus()` if successful. A specific status on failure.
-   */
-  absl::Status Write(WriteBitBuffer& wb) const;
-
-  /*!\brief Prints the parameter subblock.
-   */
-  void Print() const;
-
-  // `subblock_duration` is conditionally included based on
-  // `param_definition_mode` and `constant_subblock_duration`.
-  std::optional<DecodedUleb128> subblock_duration;
-
-  // The active field depends on `param_definition_type` in the metadata.
-  std::unique_ptr<ParameterData> param_data;
-};
 
 /*!\brief A Parameter Block OBU.
  *
@@ -71,12 +41,8 @@ struct ParameterSubblock {
  *
  *   - `CreateMode0`, when the associated param definition has
  *       `param_definition_mode` of 0.
- *   - `CreateMode1ConstantSubblockDuration`, when the associated param
- *       definition has `param_definition_mode` of 1 and a
- *       non-zero`constant_subblock_duration`.
- *   - `CreateMode1VariableSubblockDuration`, when the associated param
- *       definition has `param_definition_mode` of 1 and a zero
- *       `constant_subblock_duration`.
+ *   - `CreateMode1`, when the associated param definition has
+ *       `param_definition_mode` of 1 and a `SubblockSchedule` is available.
  *   - `CreateFromBuffer`, from a raw binary representation.
  */
 class ParameterBlockObu : public ObuBase {
@@ -104,34 +70,15 @@ class ParameterBlockObu : public ObuBase {
 
   /*!\brief Creates a `ParameterBlockObu` with `param_definition_mode` of 1.
    *
-   * Used when the constant subblock duration is non-zero.
-   *
    * \param header `ObuHeader` of the OBU.
    * \param param_definition Parameter definition to use.
-   * \param duration Duration of the parameter block.
-   * \param constant_subblock_duration Constant subblock duration of the
-   *        parameter block.
+   * \param schedule Schedule of the parameter block.
    * \return Unique pointer to a `ParameterBlockObu` on success, or `nullptr`
    *         on failure.
    */
-  static std::unique_ptr<ParameterBlockObu> CreateMode1ConstantSubblockDuration(
+  static std::unique_ptr<ParameterBlockObu> CreateMode1(
       const ObuHeader& header, const ParamDefinition& param_definition,
-      DecodedUleb128 duration, DecodedUleb128 constant_subblock_duration);
-
-  /*!\brief Creates a `ParameterBlockObu` with `param_definition_mode` of 1.
-   *
-   * Used when the constant subblock duration would be zero in the bistream,
-   * which implies that subblock durations are explicitly specified.
-   *
-   * \param header `ObuHeader` of the OBU.
-   * \param param_definition Parameter definition to use.
-   * \param subblock_durations Durations of the subblocks.
-   * \return Unique pointer to a `ParameterBlockObu` on success, or `nullptr`
-   *         on failure.
-   */
-  static std::unique_ptr<ParameterBlockObu> CreateMode1VariableSubblockDuration(
-      const ObuHeader& header, const ParamDefinition& param_definition,
-      absl::Span<const DecodedUleb128> subblock_durations);
+      const SubblockSchedule& schedule);
 
   /*!\brief Creates a `ParameterBlockObu` from a `ReadBitBuffer`.
    *
@@ -216,16 +163,18 @@ class ParameterBlockObu : public ObuBase {
   const DecodedUleb128 parameter_id_;
 
   // Length `num_subblocks_`.
-  std::vector<ParameterSubblock> subblocks_;
+  std::vector<std::unique_ptr<ParameterData>> subblocks_;
 
  private:
-  /*!\brief Constructor.
+  /*!\brief Private constructor.
    *
    * \param header `ObuHeader` of the OBU.
    * \param param_definition Parameter definition.
+   * \param schedule Schedule of the parameter block.
    */
   ParameterBlockObu(const ObuHeader& header,
-                    const ParamDefinition& param_definition);
+                    const ParamDefinition& param_definition,
+                    const std::optional<SubblockSchedule>& schedule);
 
   /*!\brief Writes the OBU payload to the buffer.
    *
@@ -245,14 +194,9 @@ class ParameterBlockObu : public ObuBase {
   absl::Status ReadAndValidatePayloadDerived(int64_t payload_size,
                                              ReadBitBuffer& rb) override;
 
-  // `duration` and `constant_subblock_duration` are conditionally included
-  // based on `param_definition_mode`.
-  DecodedUleb128 duration_;
-  DecodedUleb128 constant_subblock_duration_;
-
-  // `num_subblocks` is only included if `param_definition_mode == 0` and
-  // `constant_subblock_duration_ == 0`.
-  DecodedUleb128 num_subblocks_;
+  // The schedule is conditionally included if `param_definition_mode` is
+  // `kModeScheduleInParameterBlock`.
+  std::optional<SubblockSchedule> schedule_;
 
   // Parameter definition corresponding to this parameter block.
   const ParamDefinition& param_definition_;

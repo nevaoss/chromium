@@ -255,6 +255,7 @@
 #include "third_party/blink/renderer/core/page/scrolling/root_scroller_controller.h"
 #include "third_party/blink/renderer/core/page/scrolling/sync_scroll_attempt_heuristic.h"
 #include "third_party/blink/renderer/core/page/spatial_navigation.h"
+#include "third_party/blink/renderer/core/paint/object_paint_invalidator.h"
 #include "third_party/blink/renderer/core/paint/paint_layer.h"
 #include "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.h"
 #include "third_party/blink/renderer/core/probe/core_probes.h"
@@ -4404,6 +4405,18 @@ void Element::SetIsCanvasOrInCanvasSubtree(bool value) {
   DidChangeIsCanvasOrInCanvasSubtree();
 }
 
+void Element::DidChangeIsCanvasOrInCanvasSubtree() {
+  if (auto* layout_object = GetLayoutObject()) {
+    layout_object->SetNeedsPaintPropertyUpdate();
+    if (layout_object->HasLayer()) {
+      To<LayoutBoxModelObject>(layout_object)->Layer()->SetNeedsRepaint();
+    }
+    ObjectPaintInvalidator(*layout_object)
+        .InvalidateDisplayItemClient(*layout_object,
+                                     PaintInvalidationReason::kUncacheable);
+  }
+}
+
 void Element::RemovedFrom(ContainerNode& insertion_point) {
   bool was_in_document = insertion_point.isConnected();
   if (Element* parent = DynamicTo<Element>(insertion_point)) {
@@ -5234,6 +5247,7 @@ void Element::RecalcStyle(const StyleRecalcChange change,
     // TODO: When the OverlayProperty feature flag is removed,
     // this can probably be moved inside the if.
     UpdateBackdropPseudoElement(child_change, child_recalc_context);
+    UpdateOverscrollBackdropPseudoElement(child_change, child_recalc_context);
 
     // ::marker ignores the ComputedStyle bits and checks IsDisplayListItem().
     UpdatePseudoElement(kPseudoIdMarker, child_change, child_recalc_context);
@@ -5715,11 +5729,11 @@ StyleRecalcChange Element::RecalcOwnStyle(
                                   styles_changed, 1);
     probe::DidUpdateComputedStyle(this, old_style, new_style);
     if (this == GetDocument().documentElement()) {
-      if (GetDocument().GetStyleEngine().UpdateRootFontRelativeUnits(
-              old_style, new_style)) {
-        // Trigger a full document recalc on root font units changes. We could
-        // keep track of which elements depend on root font units like we do for
-        // viewport styles, but we assume root font size changes are rare and
+      if (GetDocument().GetStyleEngine().UpdateRootRelativeUnits(old_style,
+                                                                 new_style)) {
+        // Trigger a full document recalc on root font and lh unit changes.
+        // We could keep track of which elements depend on these units like we
+        // do for viewport styles, but we assume root unit changes are rare and
         // just recalculate everything.
         child_change =
             child_change.EnsureAtLeast(StyleRecalcChange::kRecalcDescendants);
@@ -6014,6 +6028,8 @@ void Element::RebuildLayoutTree(WhitespaceAttacher& whitespace_attacher) {
       RebuildPseudoElementLayoutTree(kPseudoIdScrollMarkerGroupBefore,
                                      local_attacher);
       RebuildPseudoElementLayoutTree(kPseudoIdBackdrop, *child_attacher);
+      RebuildPseudoElementLayoutTree(kPseudoIdOverscrollBackdrop,
+                                     *child_attacher);
     }
     RebuildFirstLetterLayoutTree();
     if (has_pseudo_elements) {
@@ -6105,7 +6121,9 @@ void Element::RebuildOverscrollAreaLayoutTree(
        overscroll_area_tracker->DOMSortedElements()) {
     PseudoElement* pseudo_element =
         overscroll_area->GetPseudoElement(kPseudoIdOverscrollAreaParent);
-    pseudo_element->RebuildLayoutTree(whitespace_attacher);
+    if (pseudo_element) {
+      pseudo_element->RebuildLayoutTree(whitespace_attacher);
+    }
   }
 }
 
@@ -6122,7 +6140,9 @@ void Element::AttachOverscrollPseudoElements(AttachContext& context) {
        overscroll_area_tracker->DOMSortedElements()) {
     PseudoElement* pseudo_element =
         overscroll_area->GetPseudoElement(kPseudoIdOverscrollAreaParent);
-    pseudo_element->AttachLayoutTree(context);
+    if (pseudo_element) {
+      pseudo_element->AttachLayoutTree(context);
+    }
   }
 }
 
@@ -6136,7 +6156,9 @@ void Element::DetachOverscrollPseudoElements(bool performing_reattach) {
        overscroll_area_tracker->DOMSortedElements()) {
     PseudoElement* pseudo_element =
         overscroll_area->GetPseudoElement(kPseudoIdOverscrollAreaParent);
-    pseudo_element->DetachLayoutTree(performing_reattach);
+    if (pseudo_element) {
+      pseudo_element->DetachLayoutTree(performing_reattach);
+    }
   }
 }
 
@@ -10510,6 +10532,43 @@ void Element::UpdateBackdropPseudoElement(
   }
 }
 
+bool Element::ShouldUpdateOverscrollBackdropPseudoElement(
+    const StyleRecalcChange change) {
+  if (!RuntimeEnabledFeatures::OverscrollGesturesEnabled()) {
+    return false;
+  }
+  PseudoElement* element =
+      GetPseudoElement(PseudoId::kPseudoIdOverscrollBackdrop,
+                       /* pseudo_argument */ g_null_atom);
+  bool generate_pseudo =
+      CanGeneratePseudoElement(PseudoId::kPseudoIdOverscrollBackdrop);
+
+  if (element) {
+    return !generate_pseudo || change.ShouldUpdatePseudoElement(*element);
+  }
+
+  return generate_pseudo;
+}
+
+void Element::UpdateOverscrollBackdropPseudoElement(
+    const StyleRecalcChange change,
+    const StyleRecalcContext& style_recalc_context) {
+  if (!ShouldUpdateOverscrollBackdropPseudoElement(change)) {
+    return;
+  }
+
+  if (GetDocument().GetStyleEngine().GetInterleavingRecalcRoot() != this) {
+    UpdatePseudoElement(PseudoId::kPseudoIdOverscrollBackdrop, change,
+                        style_recalc_context);
+    return;
+  }
+
+  if (PostStyleUpdateScope::PseudoData* pseudo_data =
+          PostStyleUpdateScope::CurrentPseudoData()) {
+    pseudo_data->AddPendingBackdrop(/* originating_element */ *this);
+  }
+}
+
 void Element::ApplyPendingBackdropPseudoElementUpdate() {
   // Mark for style recalc, in order to trigger creation of a ::backdrop pseudo-
   // element if needed. There's no way of telling if there'll be any need for it
@@ -11311,7 +11370,11 @@ bool Element::CanGeneratePseudoElement(PseudoId pseudo_id) const {
     }
     if (!RuntimeEnabledFeatures::OverlayPropertyEnabled() &&
         pseudo_id == kPseudoIdBackdrop) {
-      return IsInTopLayer() || GetOverscrollContainer();
+      return IsInTopLayer();
+    }
+    if (pseudo_id == kPseudoIdOverscrollBackdrop) {
+      return RuntimeEnabledFeatures::OverscrollGesturesEnabled() &&
+             GetOverscrollContainer() != nullptr;
     }
     return style->CanGeneratePseudoElement(pseudo_id);
   }

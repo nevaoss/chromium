@@ -14,6 +14,7 @@
 #include "chrome/browser/ui/tabs/tab_model.h"
 #include "chrome/test/base/chrome_render_view_host_test_harness.h"
 #include "components/multistep_filter/core/annotation_index/mock_annotation_index_client.h"
+#include "components/multistep_filter/core/data_models/suggestion_user_decision.h"
 #include "components/multistep_filter/core/features.h"
 #include "components/multistep_filter/core/multistep_filter_service.h"
 #include "components/multistep_filter/core/multistep_filter_util.h"
@@ -202,9 +203,8 @@ TEST_F(ChromeFilterNavigationObserverTest, NavigationClearsSuggestion) {
 
   // Navigate to a new URL, which should trigger ClearSuggestion on the
   // delegate.
-  EXPECT_CALL(
-      *mock_controller,
-      ClearSuggestion(FilterUiController::SuggestionUserDecision::kIgnored));
+  EXPECT_CALL(*mock_controller,
+              ClearSuggestion(SuggestionUserDecision::kIgnored));
   EXPECT_CALL(*mock_service(), GenerateFilterSuggestions(
                                    _, GURL("https://www.example2.com"), _));
   auto simulator = content::NavigationSimulator::CreateRendererInitiated(

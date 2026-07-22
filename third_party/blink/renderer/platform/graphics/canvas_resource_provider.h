@@ -18,6 +18,7 @@
 #include "components/viz/common/gpu/raster_context_provider.h"
 #include "gpu/command_buffer/client/client_shared_image.h"
 #include "gpu/command_buffer/common/shared_image_usage.h"
+#include "third_party/blink/renderer/platform/graphics/canvas_2d_bitmap_provider.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_2d_color_params.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_snapshot_info.h"
@@ -56,15 +57,12 @@ namespace blink {
 PLATFORM_EXPORT BASE_DECLARE_FEATURE(kCanvas2DAutoFlushParams);
 PLATFORM_EXPORT BASE_DECLARE_FEATURE(kCanvas2DReclaimUnusedResources);
 
-class CanvasRenderingContext2D;
 class CanvasResource;
 class CanvasResourceSharedImage;
-class Canvas2DResourceProviderBitmap;
 class CanvasNon2DResourceProviderSharedImage;
 class Canvas2DResourceProviderSharedImage;
 class CanvasImageProvider;
 class MemoryManagedPaintCanvas;
-class OffscreenCanvasRenderingContext2D;
 class StaticBitmapImage;
 class WebGraphicsSharedImageInterfaceProvider;
 
@@ -140,131 +138,7 @@ PLATFORM_EXPORT void NotifyImageBitmapWillTransfer(
     cc::PaintImage::ContentId content_id);
 
 
-// Renders canvas2D ops to a Skia RAM-backed bitmap. Mailboxing is not
-// supported : cannot be directly composited. For usage by (Offscreen)Canvas2D
-// as a last-case resort when it is not possible to create
-// CanvasResourceProviderSharedImage.
-class PLATFORM_EXPORT Canvas2DResourceProviderBitmap final
-    : public CanvasMemoryDumpClient,
-      public MemoryManagedPaintRecorder::Client,
-      public ScopedRasterTimer::Host {
- public:
-  ~Canvas2DResourceProviderBitmap();
 
-  bool IsValid() const { return GetSkSurface(); }
-  bool IsGpuContextLost() const { return true; }
-  void SetDelegate(CanvasResourceProviderDelegate* delegate) {
-    delegate_ = delegate;
-  }
-  bool IsPrinting() const { return delegate_ && delegate_->IsPrinting(); }
-  scoped_refptr<StaticBitmapImage> Snapshot(
-      ImageOrientation = ImageOrientationEnum::kDefault);
-  std::optional<cc::PaintRecord> Flush(FlushReason = FlushReason::kOther);
-  const std::optional<cc::PaintRecord>& LastRecording();
-
-  void SetAnimatedImageFrameIndexes(
-      scoped_refptr<const cc::AnimatedImageFrameIndexMap>);
-
-  void RasterRecord(cc::PaintRecord last_recording);
-  bool WritePixels(const SkImageInfo& orig_info,
-                   const void* pixels,
-                   size_t row_bytes,
-                   int x,
-                   int y);
-
-  void RasterRecord(base::FunctionRef<void(cc::PaintCanvas&)>);
-
-  // CanvasMemoryDumpClient implementation.
-  void OnMemoryDump(base::trace_event::ProcessMemoryDump*) override;
-  size_t GetSize() const override;
-
-  static std::unique_ptr<Canvas2DResourceProviderBitmap> CreateForTesting(
-      gfx::Size size,
-      const Canvas2DColorParams& color_params);
-
-  viz::SharedImageFormat GetSharedImageFormat() const { return format_; }
-  const gfx::ColorSpace& GetColorSpace() const { return color_space_; }
-  const gfx::HDRMetadata& GetHdrMetadata() const { return hdr_metadata_; }
-  SkAlphaType GetAlphaType() const { return alpha_type_; }
-  gfx::Size Size() const { return size_; }
-  base::ByteSize EstimatedSizeInBytes() const {
-    return base::ByteSize(format_.EstimatedSizeInBytes(size_));
-  }
-
-  void FlushIfRecordingLimitExceeded();
-
-  const MemoryManagedPaintRecorder& Recorder() const { return *recorder_; }
-  MemoryManagedPaintRecorder& Recorder() { return *recorder_; }
-  std::unique_ptr<MemoryManagedPaintRecorder> ReleaseRecorder();
-  void SetRecorder(std::unique_ptr<MemoryManagedPaintRecorder> recorder);
-  // MemoryManagedPaintRecorder::Client implementation.
-  void InitializeForRecording(cc::PaintCanvas* canvas) const override;
-  ScopedRasterTimer CreateScopedRasterTimer();
-  void RestoreBackBuffer(const cc::PaintImage&);
-  void ApplyAnimatedImageFrameIndexesForId(SkCanvas* canvas, uint32_t id);
-
- private:
-  friend class CanvasRenderingContext;
-  friend class CanvasRenderingContext2D;
-  friend class OffscreenCanvasRenderingContext2D;
-
-  // Should only be called from static Create*() methods.
-  // TODO(crbug.com/352263194): Eliminate this method by inlining its body at
-  // callsites.
-  void ClearAtCreation();
-
-  // The returned instance will have been cleared at creation.
-  static std::unique_ptr<Canvas2DResourceProviderBitmap> CreateWithClear(
-      gfx::Size size,
-      viz::SharedImageFormat format,
-      SkAlphaType alpha_type,
-      const gfx::ColorSpace& color_space,
-      const gfx::HDRMetadata& hdr_metadata,
-      CanvasResourceProviderDelegate* delegate = nullptr);
-  static std::unique_ptr<Canvas2DResourceProviderBitmap> CreateWithClear(
-      gfx::Size size,
-      viz::SharedImageFormat format,
-      SkAlphaType alpha_type,
-      const gfx::ColorSpace& color_space,
-      CanvasResourceProviderDelegate* delegate = nullptr) {
-    return CreateWithClear(size, format, alpha_type, color_space,
-                           gfx::HDRMetadata(), delegate);
-  }
-  Canvas2DResourceProviderBitmap(gfx::Size size,
-                                 viz::SharedImageFormat format,
-                                 SkAlphaType alpha_type,
-                                 const gfx::ColorSpace& color_space,
-                                 const gfx::HDRMetadata& hdr_metadata,
-                                 CanvasResourceProviderDelegate* delegate);
-
-  SkSurfaceProps GetSkSurfaceProps() const;
-  SkSurface* GetSkSurface() const;
-  sk_sp<SkSurface> CreateSkSurface() const;
-
-  // MemoryManagedPaintRecorder::Client implementation.
-  void RecordingCleared() override;
-  CanvasImageProvider* GetOrCreateSWCanvasImageProvider();
-
-  std::unique_ptr<CanvasImageProvider> canvas_image_provider_;
-  gfx::Size size_;
-  viz::SharedImageFormat format_;
-  SkAlphaType alpha_type_;
-  gfx::ColorSpace color_space_;
-  gfx::HDRMetadata hdr_metadata_;
-  std::unique_ptr<MemoryManagedPaintRecorder> recorder_;
-  size_t max_recorded_op_bytes_;
-  size_t max_pinned_image_bytes_;
-  raw_ptr<CanvasResourceProviderDelegate> delegate_ = nullptr;
-  mutable sk_sp<SkSurface> surface_;
-  std::unique_ptr<cc::SkiaPaintCanvas> skia_canvas_;
-  const cc::PaintImage::Id snapshot_paint_image_id_;
-  cc::PaintImage::ContentId snapshot_paint_image_content_id_ =
-      cc::PaintImage::kInvalidContentId;
-  uint32_t snapshot_sk_image_id_ = 0u;
-
-  bool clear_frame_ = true;
-  std::optional<cc::PaintRecord> last_recording_;
-};
 
 // * Subclass of CanvasResourceProvider that is specialized for usage
 // * by Canvas2D.

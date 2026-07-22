@@ -2105,7 +2105,9 @@ void LocationBarView::OnOmniboxFocused() {
   // The AI mode page action icon view should only be visible when the omnibox
   // is focused, so if there is a change in focus, refresh the icon.
   RefreshAiModePageActionIconView();
+}
 
+void LocationBarView::OpenOmniboxPopup() {
   if (base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup) &&
       !in_popup_state_transition_) {
     if (auto* popup_view = GetOmniboxPopupView()) {
@@ -2166,6 +2168,10 @@ bool LocationBarView::ShouldChipOverrideLocationIcon() {
 
 bool LocationBarView::IsEditingOrEmpty() const {
   return omnibox_view_ && omnibox_view_->IsEditingOrEmpty();
+}
+
+bool LocationBarView::IsMouseHovered() const {
+  return views::View::IsMouseHovered();
 }
 
 bool LocationBarView::OpenContextMenu() {

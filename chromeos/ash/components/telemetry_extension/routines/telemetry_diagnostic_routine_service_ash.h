@@ -10,6 +10,7 @@
 
 #include "base/memory/weak_ptr.h"
 #include "chromeos/ash/components/telemetry_extension/common/self_owned_mojo_proxy.h"
+#include "chromeos/ash/services/cros_healthd/public/mojom/cros_healthd_routines.mojom.h"
 #include "chromeos/crosapi/mojom/telemetry_diagnostic_routine_service.mojom.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
@@ -72,18 +73,16 @@ class TelemetryDiagnosticsRoutineServiceAsh {
       crosapi::mojom::TelemetryDiagnosticRoutineArgumentPtr routine_argument,
       mojo::PendingReceiver<crosapi::mojom::TelemetryDiagnosticRoutineControl>
           routine_receiver,
-      mojo::PendingRemote<crosapi::mojom::TelemetryDiagnosticRoutineObserver>
-          observer);
+      mojo::PendingRemote<ash::cros_healthd::mojom::RoutineObserver> observer);
 
  private:
-  // Called when a routine controller or observer connection is closed. This
-  // removes the controller / observer from our list.
+  // Called when a routine controller connection is closed. This removes the
+  // controller from our list.
   void OnConnectionClosed(
       base::WeakPtr<SelfOwnedMojoProxyInterface> closed_connection);
 
-  // The routine controls and observers created for each running routine.
-  std::vector<base::WeakPtr<SelfOwnedMojoProxyInterface>>
-      routine_controls_and_observers_;
+  // The routine controls created for each running routine.
+  std::vector<base::WeakPtr<SelfOwnedMojoProxyInterface>> routine_controls_;
 };
 
 }  // namespace ash

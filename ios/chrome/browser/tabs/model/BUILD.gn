@@ -61,7 +61,6 @@ source_set("tabs_internal") {
     "//components/language/ios/browser",
     "//components/omnibox/common",
     "//components/optimization_guide/core",
-    "//components/password_manager/core/browser/features:password_features",
     "//components/safe_browsing/core/common",
     "//components/safe_browsing/ios/browser:allow_list",
     "//components/saved_tab_groups/public",

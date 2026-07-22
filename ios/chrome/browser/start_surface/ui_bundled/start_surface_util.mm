@@ -4,6 +4,8 @@
 
 #import "ios/chrome/browser/start_surface/ui_bundled/start_surface_util.h"
 
+#import <string_view>
+
 #import "base/apple/foundation_util.h"
 #import "base/check.h"
 #import "base/i18n/number_formatting.h"
@@ -22,8 +24,8 @@
 namespace {
 
 // The key to store the timestamp when the scene enters into background.
-NSString* const kStartSurfaceSceneEnterIntoBackgroundTime =
-    @"StartSurfaceSceneEnterIntoBackgroundTime";
+constexpr std::string_view kStartSurfaceSceneEnterIntoBackgroundTime =
+    "StartSurfaceSceneEnterIntoBackgroundTime";
 
 // Shared implementation to set the surface start time to a specific value.
 void SetStartSurfaceSessionObjectForSceneStateImpl(SceneState* scene_state,

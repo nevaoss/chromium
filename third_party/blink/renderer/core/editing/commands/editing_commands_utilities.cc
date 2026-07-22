@@ -544,7 +544,7 @@ const String& NonBreakingSpaceString() {
 // TODO(tkent): This is a workaround of some crash bugs in the editing code,
 // which assumes a document has a valid HTML structure. We should make the
 // editing code more robust, and should remove this hack. crbug.com/580941.
-void TidyUpHTMLStructure(Document& document) {
+void TidyUpHtmlStructure(Document& document) {
   // IsEditable() needs up-to-date ComputedStyle.
   document.UpdateStyleAndLayoutTree();
   const bool needs_valid_structure =

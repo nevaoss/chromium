@@ -34,7 +34,6 @@
 <translation id="1108938384783527433">​សម​កាល​កម្មប្រវត្តិ</translation>
 <translation id="1111673857033749125">ចំណាំដែលបានរក្សាទុកនៅលើឧបករណ៍ផ្សេងទៀតរបស់អ្នកនឹងបង្ហាញនៅទីនេះ</translation>
 <translation id="1123537484474186311"><ph name="TAB_TITLE" />, ផ្ទាំងរូបក្នុងរូប</translation>
-<translation id="1124357650933674597">{NUM_WINDOWS,plural, =1{ស្ដារ​វិនដូ 1}other{ស្ដារ​វិនដូ #}}</translation>
 <translation id="1126696498560056882">គ្រប់គ្រង​គណនី​នៅ​លើ​ឧបករណ៍​នេះ</translation>
 <translation id="1135018701024399762">មុខងារ​ឯកជន​រក្សាការរុករក​របស់អ្នក​ជាលក្ខណៈ​ឯកជន​ពីអ្នកផ្សេងទៀត​ដែលប្រើ​ឧបករណ៍​របស់អ្នក</translation>
 <translation id="113752097246673894">ដើម្បី​ទទួលបាន​ចំណាំ​របស់អ្នក និង​អ្វីៗជាច្រើនទៀត​នៅលើ​ឧបករណ៍​ទាំងអស់​របស់អ្នក សូម​ចូលគណនី Chrome ជា <ph name="EMAIL" /></translation>
@@ -185,6 +184,7 @@
 <translation id="1792959175193046959">ប្ដូរ​ទីតាំង​ទាញយក​លំនាំដើម​បាន​គ្រប់ពេល</translation>
 <translation id="1796666869097395659">បង្រួម​ផ្ទាំង ដើម្បី​ត្រឡប់មកផ្ទាំងនេះ​វិញ​នៅពេលក្រោយ</translation>
 <translation id="1799920918471566157">គន្លឹះ Chrome</translation>
+<translation id="1803799720926799756">ទំហំ​ឯកសារ</translation>
 <translation id="1807246157184219062">ភ្លឺ</translation>
 <translation id="1807709131360304325">បើក​វិនដូ​ថ្មី</translation>
 <translation id="1812027881030482584"><ph name="SITE_ETLD_PLUS_ONE" /> មិនអាច​បន្តប្រើ <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> បានទេ</translation>
@@ -327,6 +327,7 @@
 <translation id="2411239243988279592"><ph name="TAB_TITLE" />, ផ្ទាំង​ដែលឮសំឡេង​ដែលបាន​ជ្រើសរើស</translation>
 <translation id="2413014528833954543">មិនអាច​ពិនិត្យមើល​ពាក្យ​សម្ងាត់​នៅលើ​ឧបករណ៍នេះ​បានទេ</translation>
 <translation id="2414886740292270097">ងងឹត</translation>
+<translation id="2415037988255164008">ស្ដារវិនដូឬ?</translation>
 <translation id="2421705177906985956">គ្មាន​គេហទំព័រ​សម្រាប់​បង្ហាញ​ឥឡូវនេះទេ</translation>
 <translation id="2426805022920575512">ជ្រើសរើស​គណនី​ផ្សេងទៀត</translation>
 <translation id="2427025860753516072">{FILE_COUNT,plural, =1{វីដេអូ, វីដេអូ 1 នៅក្នុង​បញ្ជី}other{វីដេអូ, វីដេអូ # នៅក្នុង​បញ្ជី}}</translation>
@@ -520,7 +521,6 @@
 <translation id="3166827708714933426">ផ្លូវកាត់ផ្ទាំង និងផ្ទាំងវិនដូ</translation>
 <translation id="3167258285411721858">អ្នកអាចស្នើសុំគេហទំព័រសម្រាប់​ឧបករណ៍​ចល័តសម្រាប់ <ph name="HOST_NAME" /></translation>
 <translation id="3181145110929454111"><ph name="TAB_TITLE" />, ផ្ទាំងឯកជន​ដែលបានបិទសំឡេងដែលបាន​ខ្ទាស់ និងបានជ្រើសរើស​ច្រើន</translation>
-<translation id="3183941812169784232">ស្ដារ​វិនដូ​ទាំងអស់​ឬ?</translation>
 <translation id="3187472288455401631">ការវាស់ស្ទង់ការផ្សាយពាណិជ្ជកម្ម</translation>
 <translation id="3189635831478931757">ក្រុមផ្ទាំង <ph name="GROUP_TITLE" /></translation>
 <translation id="3200536777393523575">បិទ​វិនដូ​បច្ចុប្បន្ន​របស់អ្នកឬ?</translation>
@@ -569,6 +569,7 @@
 <translation id="3435575784518354875">ដើម្បី​រក្សាសិទ្ធិ​ចូលប្រើ​ពាក្យ​សម្ងាត់​របស់អ្នក សូម​នាំចេញ​ពាក្យ​សម្ងាត់​ទាំងនោះ​ឥឡូវនេះ, ដំឡើងកំណែ​សេវាកម្ម Google Play, បន្ទាប់មក​នាំចូល​ពាក្យ​សម្ងាត់​ទាំងនោះ​ទៅក្នុង​កម្មវិធី​គ្រប់គ្រង​ពាក្យសម្ងាត់​វិញ។ <ph name="BEGIN_LINK" />មើល​ការណែនាំ​ពេញលេញ<ph name="END_LINK" />។</translation>
 <translation id="3435738964857648380">សុវត្ថិភាព</translation>
 <translation id="3435914367318771664">បញ្ចូលផ្ទាំង​ទៅក្រុមថ្មី</translation>
+<translation id="3436118221454753036">សួរមុខងារ AI</translation>
 <translation id="3438681572027105609">ដើម្បី​ទទួលបាន​ពាក្យ​សម្ងាត់​របស់អ្នក និង​អ្វីៗជាច្រើនទៀត​នៅលើ​ឧបករណ៍​ទាំងអស់​របស់អ្នក សូម​ចូលគណនី​លើ Chrome</translation>
 <translation id="3439276997620616816">អ្នក​នឹងឃើញ​ផ្ទាំង​ថ្មីៗ​របស់អ្នក​នៅទីនេះ</translation>
 <translation id="3443221991560634068">ផ្ទុកទំព័របច្ចុប្បន្នឡើងវិញ</translation>
@@ -1338,6 +1339,7 @@
 <translation id="6556501700899673703">Lexend</translation>
 <translation id="6560414384669816528">ស្វែងរកដោយប្រើ Sogou</translation>
 <translation id="656065428026159829">មើលច្រើនទៀត</translation>
+<translation id="6565781844089373403">ស្ដារវិនដូ</translation>
 <translation id="6565959834589222080">ប្រើ Wi-Fi នៅពេលដែលអាចប្រើបាន</translation>
 <translation id="657177046675873214">ដើម្បី​ទទួលបាន​ចំណាំ​របស់អ្នក​នៅលើ​ឧបករណ៍​ទាំងអស់​របស់អ្នក សូមបើក “ចំណាំ” នៅក្នុង​ការកំណត់</translation>
 <translation id="6573096386450695060">អនុញ្ញាត​ជា​និច្ច</translation>
@@ -2039,7 +2041,6 @@
 <translation id="939598580284253335">បញ្ចូលឃ្លាសម្ងាត់</translation>
 <translation id="94161319503679839"><ph name="TAB_TITLE" />, ផ្ទាំងឯកជនរូបក្នុងរូបដែលបានខ្ទាស់</translation>
 <translation id="945522503751344254">ផ្ញើមតិ</translation>
-<translation id="949667118776341807">បង្វិល</translation>
 <translation id="95817756606698420">Chrome អាចប្រើ <ph name="BEGIN_BOLD" />Sogou<ph name="END_BOLD" /> សម្រាប់ការស្វែងរកនៅក្នុងប្រទេសចិន។ អ្នកអាចផ្លាស់ប្តូរវាបាននៅក្នុង <ph name="BEGIN_LINK" />ការកំណត់<ph name="END_LINK" />។</translation>
 <translation id="961856697154696964">លុប​ទិន្នន័យរុករក</translation>
 <translation id="963246339335003378">បើក​កម្មវិធីគ្រប់គ្រងកិច្ចការ</translation>

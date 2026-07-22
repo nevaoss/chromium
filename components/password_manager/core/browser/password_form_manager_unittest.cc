@@ -220,7 +220,7 @@ class MockPasswordManagerClient : public StubPasswordManagerClient {
  public:
   MOCK_METHOD(bool,
               IsSavingAndFillingEnabled,
-              (const GURL&),
+              (const url::Origin&, base::optional_ref<const GURL>),
               (const, override));
   MOCK_METHOD(bool,
               IsFieldFilledWithOtp,
@@ -948,7 +948,9 @@ TEST_P(PasswordFormManagerTest, SetSubmitted) {
 }
 
 TEST_P(PasswordFormManagerTest, TestSaveFormAllowedNegative) {
-  EXPECT_CALL(client_, IsSavingAndFillingEnabled(submitted_form_.url()))
+  EXPECT_CALL(client_,
+              IsSavingAndFillingEnabled(
+                  _, base::optional_ref<const GURL>(submitted_form_.url())))
       .WillRepeatedly(Return(false));
   form_manager_->ProvisionallySave(submitted_form_, &driver_,
                                    possible_usernames_);
@@ -956,7 +958,9 @@ TEST_P(PasswordFormManagerTest, TestSaveFormAllowedNegative) {
 }
 
 TEST_P(PasswordFormManagerTest, TestSaveFormAllowed) {
-  EXPECT_CALL(client_, IsSavingAndFillingEnabled(submitted_form_.url()))
+  EXPECT_CALL(client_,
+              IsSavingAndFillingEnabled(
+                  _, base::optional_ref<const GURL>(submitted_form_.url())))
       .WillRepeatedly(Return(true));
   form_manager_->ProvisionallySave(submitted_form_, &driver_,
                                    possible_usernames_);

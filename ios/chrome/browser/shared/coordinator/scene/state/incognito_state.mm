@@ -4,6 +4,8 @@
 
 #import "ios/chrome/browser/shared/coordinator/scene/state/incognito_state.h"
 
+#import <string_view>
+
 #import "base/apple/foundation_util.h"
 #import "base/ios/crb_protocol_observers.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_state.h"
@@ -14,7 +16,7 @@
 namespace {
 
 // Preference key used to store which profile is current.
-NSString* const kIncognitoCurrentKey = @"IncognitoActive";
+constexpr std::string_view kIncognitoCurrentKey = "IncognitoActive";
 
 }  // namespace
 

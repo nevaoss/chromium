@@ -420,6 +420,18 @@ TEST_F(AutofillAiImportUtilsTest, EnterprisePolicyBlocked) {
               IsEmpty());
 }
 
+// Tests that read-only entity is not offered for import.
+TEST_F(AutofillAiImportUtilsTest, DoNotImportReadOnlyEntities) {
+  base::test::ScopedFeatureList feature_list{
+      features::kAutofillAiWalletFlightReservation};
+
+  std::vector<std::unique_ptr<AutofillField>> fields;
+  fields.push_back(CreateInput(FormControlType::kInputText,
+                               FLIGHT_RESERVATION_FLIGHT_NUMBER, "LH123"));
+  EXPECT_THAT(GetPossibleEntitiesFromSubmittedForm(fields, autofill_client()),
+              IsEmpty());
+}
+
 TEST_F(AutofillAiImportUtilsTest, MaybeGetLocalizedDate) {
   using enum AttributeTypeName;
   base::test::ScopedRestoreICUDefaultLocale restore_default_locale;

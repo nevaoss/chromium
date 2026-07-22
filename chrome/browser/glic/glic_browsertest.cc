@@ -146,7 +146,7 @@ IN_PROC_BROWSER_TEST_F(GlicBrowserTest, GlicEnablingDismissed) {
 
 IN_PROC_BROWSER_TEST_F(GlicBrowserTest, InvokeFailsWhenProfileNotEnabled) {
   auto* profile = browser()->profile();
-  SetGlicCapability(profile, false);
+  ScopedGlicCapability scoped_glic_capability(profile, false);
   ASSERT_FALSE(GlicEnabling::IsEnabledForProfile(profile));
 
   auto* glic_service = GlicKeyedServiceFactory::GetGlicKeyedService(profile);

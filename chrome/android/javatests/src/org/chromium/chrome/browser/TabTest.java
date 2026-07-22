@@ -38,7 +38,6 @@ import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.CriteriaHelper;
 import org.chromium.base.test.util.Feature;
 import org.chromium.base.test.util.Features.DisableFeatures;
-import org.chromium.base.test.util.RequiresRestart;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
 import org.chromium.chrome.browser.tab.EmptyTabObserver;
@@ -230,8 +229,6 @@ public class TabTest {
     @Test
     @SmallTest
     @Feature({"Tab"})
-    @RequiresRestart(
-            "crbug.com/358190587, causes BlankCTATabInitialStateRule state reset to fail flakily.")
     public void testNativePageTabAttachment() {
         Tab tab =
                 mActivityTestRule

@@ -1398,7 +1398,8 @@ void RenderFrameHostManager::UnloadOldFrame(
   // If the old RenderFrameHost can be stored in the BackForwardCache, return
   // early without unloading and running unload handlers, as the document may
   // be restored later.
-  if (!old_render_frame_host->GetParentOrOuterDocument()) {
+  if (!old_render_frame_host->GetParentOrOuterDocument() &&
+      frame_tree_node_->frame_tree().is_primary()) {
     BackForwardCacheImpl& back_forward_cache =
         GetNavigationController().GetBackForwardCache();
 
@@ -4590,9 +4591,11 @@ RenderFrameHostManager::CreateSpeculativeRenderFrame(
   // about to create.
   // TODO(https://crbug.com/354382462): Make this a proper fix with a repro
   // test and delete the debugging code around this.
-  GetNavigationController()
-      .GetBackForwardCache()
-      .EvictFramesInRelatedSiteInstances(instance);
+  if (frame_tree_node_->frame_tree().is_primary()) {
+    GetNavigationController()
+        .GetBackForwardCache()
+        .EvictFramesInRelatedSiteInstances(instance);
+  }
 
   // Since CreateSpeculativeRenderFrameHost should have already called
   // GetOrCreateProcess(), a process allocation is not expected in
@@ -5675,6 +5678,38 @@ void RenderFrameHostManager::CommitPending(
       render_frame_host_->GetSiteInstance()->group()));
 }
 
+namespace {
+void CheckForRenderFrameHostSetCollisionsForDebugging(
+    FrameTree* frame_tree,
+    RenderFrameHostImpl* render_frame_host) {
+  if (!render_frame_host || !frame_tree->is_primary()) {
+    return;
+  }
+
+  SiteInstanceGroupId sig_id =
+      render_frame_host->GetSiteInstance()->group()->GetId();
+  auto& bfcache = frame_tree->controller().GetBackForwardCache();
+  bool rfh_in_bfcache =
+      bfcache.IsRenderFrameHostWithSIGInBackForwardCacheForDebugging(sig_id);
+  bool rfph_in_bfcache =
+      bfcache.IsRenderFrameProxyHostWithSIGInBackForwardCacheForDebugging(
+          sig_id);
+  bool rvh_in_bfcache =
+      bfcache.IsRenderViewHostWithMapIdInBackForwardCacheForDebugging(
+          *static_cast<RenderViewHostImpl*>(
+              render_frame_host->GetRenderViewHost()));
+  if (rfh_in_bfcache || rfph_in_bfcache || rvh_in_bfcache) {
+    SCOPED_CRASH_KEY_BOOL("rvh-double", "rfh_in_bfcache", rfh_in_bfcache);
+    SCOPED_CRASH_KEY_BOOL("rvh-double", "rfph_in_bfcache", rfph_in_bfcache);
+    SCOPED_CRASH_KEY_BOOL("rvh-double", "rvh_in_bfcache", rvh_in_bfcache);
+    SCOPED_CRASH_KEY_NUMBER(
+        "rvh-double", "related_active_contents",
+        render_frame_host->GetSiteInstance()->GetRelatedActiveContentsCount());
+    base::debug::DumpWithoutCrashing();
+  }
+}
+}  // namespace
+
 std::unique_ptr<RenderFrameHostImpl> RenderFrameHostManager::SetRenderFrameHost(
     std::unique_ptr<RenderFrameHostImpl> render_frame_host) {
   // Swap the two.
@@ -5775,32 +5810,8 @@ std::unique_ptr<RenderFrameHostImpl> RenderFrameHostManager::SetRenderFrameHost(
   }
 
   if (render_frame_host_) {
-    SiteInstanceGroupId sig_id =
-        render_frame_host_->GetSiteInstance()->group()->GetId();
-    bool rfh_in_bfcache =
-        GetNavigationController()
-            .GetBackForwardCache()
-            .IsRenderFrameHostWithSIGInBackForwardCacheForDebugging(sig_id);
-    bool rfph_in_bfcache =
-        GetNavigationController()
-            .GetBackForwardCache()
-            .IsRenderFrameProxyHostWithSIGInBackForwardCacheForDebugging(
-                sig_id);
-    bool rvh_in_bfcache =
-        GetNavigationController()
-            .GetBackForwardCache()
-            .IsRenderViewHostWithMapIdInBackForwardCacheForDebugging(
-                *static_cast<RenderViewHostImpl*>(
-                    render_frame_host_->GetRenderViewHost()));
-    if (rfh_in_bfcache || rfph_in_bfcache || rvh_in_bfcache) {
-      SCOPED_CRASH_KEY_BOOL("rvh-double", "rfh_in_bfcache", rfh_in_bfcache);
-      SCOPED_CRASH_KEY_BOOL("rvh-double", "rfph_in_bfcache", rfph_in_bfcache);
-      SCOPED_CRASH_KEY_BOOL("rvh-double", "rvh_in_bfcache", rvh_in_bfcache);
-      SCOPED_CRASH_KEY_NUMBER("rvh-double", "related_active_contents",
-                              render_frame_host_->GetSiteInstance()
-                                  ->GetRelatedActiveContentsCount());
-      base::debug::DumpWithoutCrashing();
-    }
+    CheckForRenderFrameHostSetCollisionsForDebugging(&frame_tree,
+                                                     render_frame_host_.get());
   }
   return old_render_frame_host;
 }

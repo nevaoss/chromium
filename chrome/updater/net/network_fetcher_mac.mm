@@ -30,7 +30,6 @@
 #include "base/process/process.h"
 #include "base/sequence_checker.h"
 #include "base/strings/string_util.h"
-#include "base/strings/stringprintf.h"
 #include "base/strings/sys_string_conversions.h"
 #include "base/task/bind_post_task.h"
 #include "base/task/sequenced_task_runner.h"
@@ -63,6 +62,7 @@
 #include "mojo/public/cpp/system/simple_watcher.h"
 #include "mojo/public/cpp/system/wait.h"
 #import "net/base/apple/url_conversions.h"
+#include "third_party/abseil-cpp/absl/strings/str_format.h"
 #include "url/gurl.h"
 
 using ResponseStartedCallback =
@@ -954,7 +954,7 @@ int OutOfProcessNetworkFetcher::DialFetchService() {
   base::LaunchOptions options;
   mojo::PlatformChannel channel;
   channel.PrepareToPassRemoteEndpoint(&options, &launch_command);
-  launch_command.PrependWrapper(base::StringPrintf("%d", *user_id));
+  launch_command.PrependWrapper(absl::StrFormat("%d", *user_id));
   launch_command.PrependWrapper("asuser");
   launch_command.PrependWrapper("/bin/launchctl");
   VLOG(2) << "Starting net-worker: " << launch_command.GetCommandLineString();

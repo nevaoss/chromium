@@ -15,6 +15,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
+#include <utility>
 #include <vector>
 
 #include "absl/log/absl_log.h"
@@ -22,50 +24,20 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
-#include "absl/types/span.h"
 #include "iamf/common/read_bit_buffer.h"
 #include "iamf/common/utils/macros.h"
-#include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/obu_util.h"
+#include "iamf/common/utils/validation_utils.h"
 #include "iamf/common/write_bit_buffer.h"
 #include "iamf/obu/mix_gain_parameter_data.h"
 #include "iamf/obu/obu_base.h"
 #include "iamf/obu/obu_header.h"
 #include "iamf/obu/param_definitions/param_definition_base.h"
+#include "iamf/obu/param_definitions/subblock_schedule.h"
 #include "iamf/obu/parameter_data.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
-
-absl::Status ParameterSubblock::ReadAndValidate(
-    const ParamDefinition& param_definition, ReadBitBuffer& rb) {
-  if (subblock_duration.has_value()) {
-    RETURN_IF_NOT_OK(rb.ReadULeb128(*subblock_duration));
-  }
-
-  param_data = param_definition.CreateParameterData();
-  RETURN_IF_NOT_OK(param_data->ReadAndValidate(rb));
-
-  return absl::OkStatus();
-}
-
-absl::Status ParameterSubblock::Write(WriteBitBuffer& wb) const {
-  if (subblock_duration.has_value()) {
-    RETURN_IF_NOT_OK(wb.WriteUleb128(*subblock_duration));
-  }
-
-  // Write the specific parameter data depending on the specific type.
-  RETURN_IF_NOT_OK(param_data->Write(wb));
-
-  return absl::OkStatus();
-}
-
-void ParameterSubblock::Print() const {
-  if (subblock_duration.has_value()) {
-    ABSL_LOG(INFO) << "    subblock_duration= " << *subblock_duration;
-  }
-  param_data->Print();
-}
 
 absl::StatusOr<DecodedUleb128> ParameterBlockObu::PeekParameterId(
     ReadBitBuffer& rb) {
@@ -81,87 +53,28 @@ absl::StatusOr<DecodedUleb128> ParameterBlockObu::PeekParameterId(
 
 std::unique_ptr<ParameterBlockObu> ParameterBlockObu::CreateMode0(
     const ObuHeader& header, const ParamDefinition& param_definition) {
-  if (param_definition.param_definition_mode_ != 0) {
+  if (param_definition.GetParamDefinitionMode() !=
+      ParamDefinition::kModeScheduleInParamDefinition) {
     ABSL_LOG(WARNING) << "CreateMode0() should only be called when "
                          "param_definition_mode == 0.";
     return nullptr;
   }
 
-  auto parameter_block_obu =
-      absl::WrapUnique(new ParameterBlockObu(header, param_definition));
-  parameter_block_obu->subblocks_.resize(
-      static_cast<size_t>(parameter_block_obu->GetNumSubblocks()));
-
-  return parameter_block_obu;
+  return absl::WrapUnique(new ParameterBlockObu(header, param_definition,
+                                                /*schedule=*/std::nullopt));
 }
 
-std::unique_ptr<ParameterBlockObu>
-ParameterBlockObu::CreateMode1ConstantSubblockDuration(
+std::unique_ptr<ParameterBlockObu> ParameterBlockObu::CreateMode1(
     const ObuHeader& header, const ParamDefinition& param_definition,
-    DecodedUleb128 duration, DecodedUleb128 constant_subblock_duration) {
-  if (param_definition.param_definition_mode_ != 1) {
-    ABSL_LOG(WARNING)
-        << "CreateMode1ConstantSubblockDuration() should only be called when "
-           "param_definition_mode == 1.";
+    const SubblockSchedule& schedule) {
+  if (param_definition.GetParamDefinitionMode() !=
+      ParamDefinition::kModeScheduleInParameterBlock) {
+    ABSL_LOG(WARNING) << "CreateMode1() should only be called when "
+                         "param_definition_mode == 1.";
     return nullptr;
   }
-  if (constant_subblock_duration == 0) {
-    ABSL_LOG(WARNING) << "CreateMode1ConstantSubblockDuration() should only be "
-                         "called when constant_subblock_duration != 0.";
-    return nullptr;
-  }
-  auto parameter_block_obu =
-      absl::WrapUnique(new ParameterBlockObu(header, param_definition));
-
-  // Under param definition mode 1, several fields are explicitly in the OBU.
-  parameter_block_obu->duration_ = duration;
-  parameter_block_obu->constant_subblock_duration_ = constant_subblock_duration;
-  parameter_block_obu->subblocks_.resize(
-      static_cast<size_t>(parameter_block_obu->GetNumSubblocks()));
-
-  return parameter_block_obu;
-}
-
-std::unique_ptr<ParameterBlockObu>
-ParameterBlockObu::CreateMode1VariableSubblockDuration(
-    const ObuHeader& header, const ParamDefinition& param_definition,
-    absl::Span<const DecodedUleb128> subblock_durations) {
-  if (param_definition.param_definition_mode_ != 1) {
-    ABSL_LOG(WARNING) << "CreateMode1VariableSubblockDuration() should only be "
-                         "called when `param_definition_mode` is 1.";
-    return nullptr;
-  }
-  if (subblock_durations.empty()) {
-    ABSL_LOG(WARNING) << "CreateMode1VariableSubblockDuration() requires at "
-                         "least one subblock duration.";
-    return nullptr;
-  }
-
-  // Pre-calculate duration to ensure it does not overflow.
-  DecodedUleb128 duration = 0;
-  for (const auto subblock_duration : subblock_durations) {
-    if (!AddUint32CheckOverflow(duration, subblock_duration, duration).ok()) {
-      ABSL_LOG(WARNING)
-          << "CreateMode1VariableSubblockDuration() overflowed when "
-             "calculating the total duration.";
-      return nullptr;
-    }
-  }
-
-  auto parameter_block_obu =
-      absl::WrapUnique(new ParameterBlockObu(header, param_definition));
-
-  // Under param definition mode 1, several fields are explicitly in the OBU.
-  parameter_block_obu->duration_ = duration;
-  parameter_block_obu->constant_subblock_duration_ = 0;
-  parameter_block_obu->num_subblocks_ = subblock_durations.size();
-  parameter_block_obu->subblocks_.reserve(subblock_durations.size());
-  for (const auto subblock_duration : subblock_durations) {
-    parameter_block_obu->subblocks_.emplace_back(
-        ParameterSubblock{.subblock_duration = subblock_duration});
-  }
-
-  return parameter_block_obu;
+  return absl::WrapUnique(
+      new ParameterBlockObu(header, param_definition, schedule));
 }
 
 absl::StatusOr<std::unique_ptr<ParameterBlockObu>>
@@ -170,25 +83,29 @@ ParameterBlockObu::CreateFromBuffer(const ObuHeader& header,
                                     const ParamDefinition& param_definition,
                                     ReadBitBuffer& rb) {
   // TODO(b/338474387): Test reading in extension parameters.
-  auto parameter_block_obu =
-      absl::WrapUnique(new ParameterBlockObu(header, param_definition));
+  auto parameter_block_obu = absl::WrapUnique(new ParameterBlockObu(
+      header, param_definition, /*schedule=*/std::nullopt));
   RETURN_IF_NOT_OK(
       parameter_block_obu->ReadAndValidatePayload(payload_size, rb));
   return parameter_block_obu;
 }
 
-ParameterBlockObu::ParameterBlockObu(const ObuHeader& header,
-                                     const ParamDefinition& param_definition)
+ParameterBlockObu::ParameterBlockObu(
+    const ObuHeader& header, const ParamDefinition& param_definition,
+    const std::optional<SubblockSchedule>& schedule)
     : ObuBase(header, kObuIaParameterBlock),
-      parameter_id_(param_definition.parameter_id_),
-      param_definition_(param_definition) {}
+      parameter_id_(param_definition.GetParameterId()),
+      schedule_(schedule),
+      param_definition_(param_definition) {
+  subblocks_.resize(static_cast<size_t>(GetNumSubblocks()));
+}
 
 absl::Status ParameterBlockObu::InterpolateMixGainParameterData(
     const MixGainParameterData* mix_gain_parameter_data,
     InternalTimestamp start_time, InternalTimestamp end_time,
     InternalTimestamp target_time, float& target_mix_gain_db) {
   return InterpolateMixGainValue(
-      mix_gain_parameter_data->animation_type,
+      mix_gain_parameter_data->GetAnimationType(),
       MixGainParameterData::kAnimateStep, MixGainParameterData::kAnimateLinear,
       MixGainParameterData::kAnimateBezier,
       [&mix_gain_parameter_data]() {
@@ -229,53 +146,27 @@ absl::Status ParameterBlockObu::InterpolateMixGainParameterData(
 }
 
 DecodedUleb128 ParameterBlockObu::GetDuration() const {
-  if (param_definition_.param_definition_mode_ == 1) {
-    return duration_;
-  } else {
-    return param_definition_.duration_;
-  }
+  return schedule_.has_value() ? schedule_->GetDuration()
+                               : param_definition_.GetDuration();
 }
 
 DecodedUleb128 ParameterBlockObu::GetConstantSubblockDuration() const {
-  if (param_definition_.param_definition_mode_ == 1) {
-    return constant_subblock_duration_;
-  } else {
-    return param_definition_.constant_subblock_duration_;
-  }
+  return schedule_.has_value()
+             ? schedule_->GetConstantSubblockDuration()
+             : param_definition_.GetConstantSubblockDuration();
 }
 
 DecodedUleb128 ParameterBlockObu::GetNumSubblocks() const {
-  const DecodedUleb128 duration = GetDuration();
-  const DecodedUleb128 constant_subblock_duration =
-      GetConstantSubblockDuration();
-
-  DecodedUleb128 num_subblocks;
-  if (constant_subblock_duration != 0) {
-    // Get the implicit value of `num_subblocks` using `ceil(duration /
-    // constant_subblock_duration)`. Integer division with ceil is equivalent.
-    num_subblocks = duration / constant_subblock_duration;
-    if (duration % constant_subblock_duration != 0) {
-      num_subblocks += 1;
-    }
-    return num_subblocks;
-  }
-
-  // The subblocks is explicitly in the OBU or `param_definition_`.
-  if (param_definition_.param_definition_mode_ == 1) {
-    num_subblocks = num_subblocks_;
-  } else {
-    num_subblocks = param_definition_.GetNumSubblocks();
-  }
-  return num_subblocks;
+  return schedule_.has_value() ? schedule_->GetNumSubblocks()
+                               : param_definition_.GetNumSubblocks();
 }
 
 absl::StatusOr<DecodedUleb128> ParameterBlockObu::GetSubblockDuration(
     int subblock_index) const {
-  return GetParameterSubblockDuration<DecodedUleb128>(
-      subblock_index, GetNumSubblocks(), GetConstantSubblockDuration(),
-      GetDuration(), param_definition_.param_definition_mode_,
-      [this](int i) { return *this->subblocks_[i].subblock_duration; },
-      [this](int i) { return this->param_definition_.GetSubblockDuration(i); });
+  return schedule_.has_value()
+             ? schedule_->GetSubblockDuration(subblock_index)
+             : param_definition_.GetSchedule()->GetSubblockDuration(
+                   subblock_index);
 }
 
 absl::Status ParameterBlockObu::GetLinearMixGain(
@@ -316,7 +207,7 @@ absl::Status ParameterBlockObu::GetLinearMixGain(
   float mix_gain_db = 0;
   RETURN_IF_NOT_OK(InterpolateMixGainParameterData(
       static_cast<const MixGainParameterData*>(
-          subblocks_[target_subblock_index].param_data.get()),
+          subblocks_[target_subblock_index].get()),
       subblock_relative_start_time, subblock_relative_end_time,
       obu_relative_time, mix_gain_db));
 
@@ -331,19 +222,14 @@ void ParameterBlockObu::PrintObu() const {
   param_definition_.Print();
 
   ABSL_LOG(INFO) << "  parameter_id= " << parameter_id_;
-  if (param_definition_.param_definition_mode_ == 1) {
-    ABSL_LOG(INFO) << "  duration= " << duration_;
-    ABSL_LOG(INFO) << "  constant_subblock_duration= "
-                   << constant_subblock_duration_;
-    if (constant_subblock_duration_ == 0) {
-      ABSL_LOG(INFO) << "  num_subblocks= " << num_subblocks_;
-    }
+  if (schedule_.has_value()) {
+    schedule_->Print();
   }
 
   const DecodedUleb128 num_subblocks = GetNumSubblocks();
   for (DecodedUleb128 i = 0; i < num_subblocks; i++) {
     ABSL_LOG(INFO) << "  subblocks[" << i << "]";
-    subblocks_[i].Print();
+    subblocks_[i]->Print();
   }
 }
 
@@ -351,38 +237,16 @@ absl::Status ParameterBlockObu::ValidateAndWritePayload(
     WriteBitBuffer& wb) const {
   RETURN_IF_NOT_OK(wb.WriteUleb128(parameter_id_));
 
-  // Initialized from OBU or `param_definition_` depending on
-  // `param_definition_mode_`.
-  // Write fields that are conditional on `param_definition_mode_`.
-  bool validate_total_subblock_durations = false;
-  if (param_definition_.param_definition_mode_ != 0) {
-    RETURN_IF_NOT_OK(wb.WriteUleb128(duration_));
-    RETURN_IF_NOT_OK(wb.WriteUleb128(constant_subblock_duration_));
-    if (constant_subblock_duration_ == 0) {
-      RETURN_IF_NOT_OK(wb.WriteUleb128(num_subblocks_));
-      validate_total_subblock_durations = true;
-    }
-  }
-
   // Validate the associated `param_definition`.
   RETURN_IF_NOT_OK(param_definition_.Validate());
 
-  // Loop through to write the `subblocks_` vector and validate the total
-  // subblock duration if needed.
-  int64_t total_subblock_durations = 0;
-  for (const auto& subblock : subblocks_) {
-    if (validate_total_subblock_durations) {
-      total_subblock_durations += *subblock.subblock_duration;
-    }
-    RETURN_IF_NOT_OK(subblock.Write(wb));
+  if (schedule_.has_value()) {
+    return schedule_->Write(subblocks_, wb);
   }
 
-  // Check total duration matches expected duration.
-  if (validate_total_subblock_durations &&
-      total_subblock_durations != duration_) {
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Expected total_subblock_durations = ", total_subblock_durations,
-        " to match the expected duration_ = ", duration_));
+  for (const auto& subblock : subblocks_) {
+    RETURN_IF_NOT_OK(ValidateNotNull(subblock, "`parameter_data`"));
+    RETURN_IF_NOT_OK(subblock->Write(wb));
   }
 
   return absl::OkStatus();
@@ -402,51 +266,33 @@ absl::Status ParameterBlockObu::ReadAndValidatePayloadDerived(
                      parameter_id_));
   }
 
-  if (param_definition_.param_definition_mode_) {
-    RETURN_IF_NOT_OK(rb.ReadULeb128(duration_));
-    RETURN_IF_NOT_OK(rb.ReadULeb128(constant_subblock_duration_));
-    if (constant_subblock_duration_ == 0) {
-      RETURN_IF_NOT_OK(rb.ReadULeb128(num_subblocks_));
+  if (param_definition_.GetParamDefinitionMode() ==
+      ParamDefinition::kModeScheduleInParamDefinition) {
+    // Mode 0 in the spec. The schedule is in ParamDefinition. Only parameter
+    // data is in the block.
+    schedule_ = std::nullopt;
+
+    const DecodedUleb128 num_subblocks = param_definition_.GetNumSubblocks();
+    subblocks_.clear();
+    subblocks_.reserve(static_cast<size_t>(num_subblocks));
+    for (DecodedUleb128 i = 0; i < num_subblocks; ++i) {
+      auto param_data = param_definition_.CreateParameterData();
+      RETURN_IF_NOT_OK(param_data->ReadAndValidate(rb));
+      subblocks_.push_back(std::move(param_data));
     }
+    return absl::OkStatus();
   }
 
-  const auto num_subblocks = GetNumSubblocks();
-  if (num_subblocks > GetDuration()) {
-    // As a worst case, each subblock could have a duration of 1 sample.
-    return absl::InvalidArgumentError(
-        absl::StrCat("Implausible number of subblocks = ", num_subblocks,
-                     "is greater than the total duration = ", GetDuration()));
-  }
-  // A static limit on num_subblocks prevents OOMs from implausible values.
-  // The maximum sample rate is 192000 Hz and maximum duration is 1 second.
-  // Therefore the theoretical maximum number of subblocks is 192000.
-  if (num_subblocks > 192000) {
-    return absl::InvalidArgumentError("num_subblocks > 192000");
+  // Mode 1 in the spec. Portions of the schedule are interlaced with the
+  // parameter data in the block.
+  auto schedule_and_data = SubblockSchedule::CreateFromBufferWithParameterData(
+      [this]() { return param_definition_.CreateParameterData(); }, rb);
+  if (!schedule_and_data.ok()) {
+    return schedule_and_data.status();
   }
 
-  subblocks_.resize(num_subblocks);
-
-  // `subblock_duration` is conditionally included based on
-  // `param_definition_mode_` and `constant_subblock_duration_`.
-  const bool include_subblock_duration =
-      param_definition_.param_definition_mode_ &&
-      constant_subblock_duration_ == 0;
-  int64_t total_subblock_durations = 0;
-  for (auto& subblock : subblocks_) {
-    if (include_subblock_duration) {
-      // First make `subblock_duration` contain a value so it will be read in.
-      subblock.subblock_duration = 0;
-    }
-    RETURN_IF_NOT_OK(subblock.ReadAndValidate(param_definition_, rb));
-    if (include_subblock_duration) {
-      total_subblock_durations += *subblock.subblock_duration;
-    }
-  }
-
-  if (include_subblock_duration && total_subblock_durations != duration_) {
-    return absl::InvalidArgumentError(
-        "Subblock durations do not match the total duration.");
-  }
+  schedule_ = std::move(schedule_and_data->schedule);
+  subblocks_ = std::move(schedule_and_data->parameter_data);
 
   return absl::OkStatus();
 }

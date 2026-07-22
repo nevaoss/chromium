@@ -29,6 +29,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
 
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.shape.ShapeAppearance;
 
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.chrome.tab_ui.R;
@@ -48,16 +49,27 @@ public class ColorPickerItemViewBinder {
     // (selected), a BorderDrawable is added to the button's overlay to draw a border matching the
     // background color, creating the "cut out" visual effect.
     static View createItemView(ViewGroup parent) {
-        return LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.color_picker_item, parent, false);
+        Context context = parent.getContext();
+        View view = LayoutInflater.from(context).inflate(R.layout.color_picker_item, parent, false);
+        MaterialButton button = (MaterialButton) view;
+        button.setCheckable(true);
+
+        // Save the original shape appearance (which includes state-list from style)
+        // so we can restore it after the parent group overrides it.
+        ShapeAppearance originalShape = button.getShapeAppearance();
+        button.setTag(R.id.tag_original_shape_appearance, originalShape);
+
+        // This is required because the MaterialButtonToggleGroup needs each child button to have a
+        // distinct ID.
+        button.setId(View.generateViewId());
+        return view;
     }
 
     static void bind(PropertyModel model, View view, PropertyKey propertyKey) {
         if (propertyKey == COLOR_ID) {
             setColorOnColorIcon(model, view);
         } else if (propertyKey == ON_CLICK_LISTENER) {
-            view.findViewById(R.id.color_picker_icon)
-                    .setOnClickListener((v) -> model.get(ON_CLICK_LISTENER).run());
+            view.setOnClickListener((v) -> model.get(ON_CLICK_LISTENER).run());
         } else if (propertyKey == IS_SELECTED) {
             refreshColorIconOnSelection(model, view);
             setAccessibilityContent(
@@ -74,7 +86,7 @@ public class ColorPickerItemViewBinder {
         final @ColorInt int color = getColor(context, colorPickerType, colorId, isIncognito);
 
         // Update the color icon with the indicated color id.
-        MaterialButton colorIcon = view.findViewById(R.id.color_picker_icon);
+        MaterialButton colorIcon = (MaterialButton) view;
         colorIcon.setBackgroundTintList(ColorStateList.valueOf(color));
         colorIcon.setRippleColor(
                 TabGroupColorPickerUtils.buildTabGroupColorPickerRippleColorStateList(
@@ -82,14 +94,13 @@ public class ColorPickerItemViewBinder {
     }
 
     private static void refreshColorIconOnSelection(PropertyModel model, View view) {
-        final View colorIcon = view.findViewById(R.id.color_picker_icon);
         boolean isSelected = model.get(IS_SELECTED);
 
-        var button = (MaterialButton) colorIcon;
+        var button = (MaterialButton) view;
         button.setToggleCheckedStateOnClick(false);
         button.setChecked(isSelected);
 
-        ViewOverlay overlay = colorIcon.getOverlay();
+        ViewOverlay overlay = view.getOverlay();
 
         if (isSelected) {
             BorderDrawable borderDrawable = getBorderDrawable(model, button);
@@ -99,7 +110,7 @@ public class ColorPickerItemViewBinder {
         }
 
         // Refresh the color item view.
-        colorIcon.invalidate();
+        view.invalidate();
     }
 
     private static BorderDrawable getBorderDrawable(PropertyModel model, MaterialButton button) {
@@ -111,12 +122,15 @@ public class ColorPickerItemViewBinder {
         // Inset of the background from the button's bounds.
         int insetPx = button.getInsetTop();
         // ShapeAppearanceModel for the checked state.
+        ShapeAppearance shapeAppearance =
+                (ShapeAppearance) button.getTag(R.id.tag_original_shape_appearance);
+        if (shapeAppearance == null) {
+            assert false : "Expected shape appearance tag to be present";
+            shapeAppearance = button.getShapeAppearance();
+        }
         var shapeAppearanceModel =
-                button.getShapeAppearance()
-                        .getShapeForState(
-                                new int[] {
-                                    android.R.attr.state_checkable, android.R.attr.state_checked
-                                });
+                shapeAppearance.getShapeForState(
+                        new int[] {android.R.attr.state_checkable, android.R.attr.state_checked});
         // Corner size of the checked (rounded rect) background. The reason we pass a RectF to
         // #getCornerSize is because the corner size is calculated based on the bounds of the
         // drawable, e.g. it could be a percentage.
@@ -127,6 +141,7 @@ public class ColorPickerItemViewBinder {
         int borderWidthPx = res.getDimensionPixelSize(R.dimen.color_picker_button_stroke_width);
         int borderOuterWidthPx =
                 res.getDimensionPixelSize(R.dimen.color_picker_button_stroke_outer_width);
+
         // The border's corner size needs to be smaller to align with the outer corner radius.
         int borderCornerSizePx = Math.round(cornerSize) - borderWidthPx - borderOuterWidthPx;
         // We want to leave an outline around the button.
@@ -160,7 +175,6 @@ public class ColorPickerItemViewBinder {
 
     private static void setAccessibilityContent(
             View view, boolean isSelected, int colorId, int position) {
-        View colorIcon = view.findViewById(R.id.color_picker_icon);
         Resources res = view.getContext().getResources();
 
         final @StringRes int colorDescRes =
@@ -170,10 +184,10 @@ public class ColorPickerItemViewBinder {
 
         // Since the buttons are "checkable", specifying their selected state in the content
         // description is redundant.
-        colorIcon.setContentDescription(colorDesc);
+        view.setContentDescription(colorDesc);
 
         ViewCompat.setAccessibilityDelegate(
-                colorIcon,
+                view,
                 new AccessibilityDelegateCompat() {
                     @Override
                     public void onInitializeAccessibilityNodeInfo(

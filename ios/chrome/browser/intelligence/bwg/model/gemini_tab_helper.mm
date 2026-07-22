@@ -330,6 +330,15 @@ bool GeminiTabHelper::IsGeminiAvailableForWebState() {
   return IsGeminiChatAvailableForWebState();
 }
 
+bool GeminiTabHelper::IsContextualEntryPointAllowed() {
+  // Block context-based entry points on protected URLs.
+  if (web_state_ &&
+      ios::provider::IsProtectedUrl(web_state_->GetLastCommittedURL().spec())) {
+    return false;
+  }
+  return true;
+}
+
 bool GeminiTabHelper::IsGeminiChatAvailableForWebState() {
   // With NextIA, all URLs are eligible, including when there's no web state.
   if (IsChromeNextIaEnabled()) {

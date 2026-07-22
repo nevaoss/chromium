@@ -407,6 +407,11 @@ if (!limit_android_deps) {
   }
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  androidx_java_group("androidx_compose_ui_ui_graphics_java") {
+    deps = [ ":androidx_compose_ui_ui_graphics_android_java" ]
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
   androidx_android_aar_prebuilt("androidx_compose_ui_ui_test_android_java") {
     aar_path = "../androidx/cipd/libs/androidx_compose_ui_ui_test_android/ui-test-android.aar"
     info_path = "../androidx/committed/libs/androidx_compose_ui_ui_test_android/androidx_compose_ui_ui_test_android.info"
@@ -468,6 +473,11 @@ if (!limit_android_deps) {
       ":androidx_core_core_java",
       "//third_party/kotlin_stdlib:kotlin_stdlib_java",
     ]
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  androidx_java_group("androidx_compose_ui_ui_unit_java") {
+    deps = [ ":androidx_compose_ui_ui_unit_android_java" ]
   }
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
@@ -1024,6 +1034,11 @@ if (!limit_android_deps) {
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
   androidx_java_group("androidx_lifecycle_lifecycle_runtime_java") {
     deps = [ ":androidx_lifecycle_lifecycle_runtime_android_java" ]
+  }
+
+  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
+  androidx_java_group("androidx_lifecycle_lifecycle_runtime_compose_java") {
+    deps = [ ":androidx_lifecycle_lifecycle_runtime_compose_android_java" ]
   }
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
@@ -2453,17 +2468,6 @@ if (!limit_android_deps) {
   }
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
-  androidx_java_group("androidx_compose_ui_ui_graphics_java") {
-    # To remove visibility constraint, add this dependency to
-    # //third_party/androidx/build.gradle.template
-    visibility = [
-      ":*",
-      "//third_party/android_deps:*",
-    ]
-    deps = [ ":androidx_compose_ui_ui_graphics_android_java" ]
-  }
-
-  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
   androidx_android_aar_prebuilt(
       "androidx_compose_ui_ui_graphics_android_java") {
     aar_path = "../androidx/cipd/libs/androidx_compose_ui_ui_graphics_android/ui-graphics-android.aar"
@@ -2560,17 +2564,6 @@ if (!limit_android_deps) {
       "//third_party/android_deps:org_jetbrains_kotlinx_kotlinx_coroutines_core_java",
       "//third_party/kotlin_stdlib:kotlin_stdlib_java",
     ]
-  }
-
-  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
-  androidx_java_group("androidx_compose_ui_ui_unit_java") {
-    # To remove visibility constraint, add this dependency to
-    # //third_party/androidx/build.gradle.template
-    visibility = [
-      ":*",
-      "//third_party/android_deps:*",
-    ]
-    deps = [ ":androidx_compose_ui_ui_unit_android_java" ]
   }
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
@@ -3306,17 +3299,6 @@ if (!limit_android_deps) {
       "//third_party/android_deps:org_jspecify_jspecify_java",
       "//third_party/kotlin_stdlib:kotlin_stdlib_java",
     ]
-  }
-
-  # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.
-  androidx_java_group("androidx_lifecycle_lifecycle_runtime_compose_java") {
-    # To remove visibility constraint, add this dependency to
-    # //third_party/androidx/build.gradle.template
-    visibility = [
-      ":*",
-      "//third_party/android_deps:*",
-    ]
-    deps = [ ":androidx_lifecycle_lifecycle_runtime_compose_android_java" ]
   }
 
   # This is generated, do not edit. Update BuildConfigGenerator.groovy instead.

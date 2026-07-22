@@ -35,6 +35,8 @@ class PrefService;
 
 namespace multistep_filter {
 
+enum class SuggestionUserDecision;
+
 namespace internal {
 inline constexpr int kDismissCommand = 1;
 inline constexpr int kSettingsCommand = 2;
@@ -70,14 +72,6 @@ class FilterUiController : public tabs::ContentsObservingTabFeature,
     // leaving
     // only the page action icon visible inside the location bar / omnibox.
     kCollapsedInOmniboxAfterReopen,
-  };
-
-  // The user's decision upon interacting with the suggestion.
-  enum class SuggestionUserDecision {
-    kAccepted,
-    kDismissed,
-    kIgnored,
-    kSettingsOpened,
   };
 
   // Holds the suggestion details and presentation state for the current tab.

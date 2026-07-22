@@ -45,6 +45,16 @@ class BookmarkEventTranslator : public bookmarks::BookmarkModelObserver {
       bookmarks::ManagedBookmarkService* managed,
       const bookmarks::BookmarkNode* node);
 
+  static mojom::RootNodePtr ConvertRootNode(
+      bookmarks::BookmarkModel* model,
+      bookmarks::ManagedBookmarkService* managed,
+      const bookmarks::BookmarkNode* node);
+
+  static mojom::FolderPtr ConvertFolderNode(
+      bookmarks::BookmarkModel* model,
+      bookmarks::ManagedBookmarkService* managed,
+      const bookmarks::BookmarkNode* node);
+
   // bookmarks::BookmarkModelObserver:
   void BookmarkModelLoaded(bool ids_reassigned) override {}
   void BookmarkNodeMoved(const bookmarks::BookmarkNode* old_parent,
@@ -66,11 +76,13 @@ class BookmarkEventTranslator : public bookmarks::BookmarkModelObserver {
       const bookmarks::BookmarkNode* node) override;
   void BookmarkAllUserNodesRemoved(const std::set<GURL>& removed_urls,
                                    const base::Location& location) override;
+  void ExtensiveBookmarkChangesBeginning() override;
+  void ExtensiveBookmarkChangesEnded() override;
 
  private:
   void RefreshFoldersSnapshot();
   void PopulateFoldersSnapshot(const bookmarks::BookmarkNode* node);
-  void Notify(const std::vector<mojom::BookmarksEventPtr>& events);
+  void Notify(std::vector<mojom::BookmarksEventPtr> events);
 
   raw_ptr<bookmarks::BookmarkModel> model_;
   raw_ptr<bookmarks::ManagedBookmarkService> managed_;
@@ -81,6 +93,8 @@ class BookmarkEventTranslator : public bookmarks::BookmarkModelObserver {
   // performs several move operations at once. We need to keep an old snapshot
   // to compute individual move events.
   std::map<base::Uuid, std::vector<base::Uuid>> folders_snapshot_;
+
+  std::vector<mojom::BookmarksEventPtr> queued_events_;
 };
 
 }  // namespace bookmarks_api

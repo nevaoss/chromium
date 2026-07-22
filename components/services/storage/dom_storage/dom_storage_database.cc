@@ -609,13 +609,6 @@ DbStatus MigrateDatabase(DomStorageDatabase& source,
   ASSIGN_OR_RETURN(DomStorageDatabase::Metadata source_metadata,
                    source.ReadAllMetadata());
 
-  // Migrate the `next_map_id` metadata.
-  if (source_metadata.next_map_id) {
-    DomStorageDatabase::Metadata map_id_metadata;
-    map_id_metadata.next_map_id = source_metadata.next_map_id;
-    destination.PutMetadata(std::move(map_id_metadata));
-  }
-
   // Migrate each map in `source_metadata`.
   for (DomStorageDatabase::MapMetadata& source_map :
        source_metadata.map_metadata) {

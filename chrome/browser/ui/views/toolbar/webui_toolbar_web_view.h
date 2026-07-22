@@ -201,9 +201,12 @@ class WebUIToolbarWebView
   void ShowAvatarMenu() override;
   void SetAvatarButtonHovered(bool hovered) override;
   void SetAvatarButtonFocused(bool focused) override;
+  void SetAvatarButtonIPHPromoShowing(bool showing) override;
+  void OnAppMenuFocusChanged(bool focused) override;
 
   // BrowserControlsService::BrowserControlsServiceDelegate:
   void PermitLaunchUrl() override;
+  base::TimeTicks GetNavigationStartTicks() const override;
 
   // views::View:
   void AddedToWidget() override;
@@ -351,7 +354,9 @@ class WebUIToolbarWebView
   // Resolves the initial deadline from features and applies it if enabled.
   void ApplyInitialSurfaceSyncDeadline();
 
-  WebUIToolbarUI* GetWebUIToolbarUI();
+  // Returns the active WebUI toolbar controller (const-safe).
+  // Robust against teardown as it uses the observed WebContents.
+  WebUIToolbarUI* GetWebUIToolbarUI() const;
 
   void OnTouchUiChanged();
   void PostPushNavigationState();

@@ -123,6 +123,8 @@ GlicInstanceCoordinatorImpl::GlicInstanceCoordinatorImpl(
                                     weak_ptr_factory_.GetWeakPtr()));
   hotkey_manager_ =
       std::make_unique<InstanceIndependentHotkeyManager>(this, profile_);
+  onboarding_tracker_ =
+      std::make_unique<GlicOnboardingTracker>(profile_, enabling);
   metrics_.StartPeriodicMemoryMetricsRecording();
 }
 
@@ -177,6 +179,18 @@ void GlicInstanceCoordinatorImpl::OnInstanceVisibilityChanged(
     ComputeContentAccessIndicator();
   }
   metrics_.OnInstanceVisibilityChanged();
+}
+
+void GlicInstanceCoordinatorImpl::OnInvoked() {
+  if (onboarding_tracker_) {
+    onboarding_tracker_->OnInvoke();
+  }
+}
+
+void GlicInstanceCoordinatorImpl::OnUserInputSubmitted() {
+  if (onboarding_tracker_) {
+    onboarding_tracker_->OnPrompt();
+  }
 }
 
 void GlicInstanceCoordinatorImpl::OnPrimaryAccountChanged(

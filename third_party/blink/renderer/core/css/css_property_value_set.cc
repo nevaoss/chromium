@@ -838,20 +838,6 @@ void MutableCSSPropertyValueSet::RemoveEquivalentProperties(
   }
 }
 
-void MutableCSSPropertyValueSet::RemoveEquivalentProperties(
-    const CSSStyleDeclaration* style) {
-  Vector<CSSPropertyID> properties_to_remove;
-  for (const CSSPropertyValue& property : property_vector_) {
-    if (style->CssPropertyMatches(property.PropertyID(), property.Value())) {
-      properties_to_remove.push_back(property.PropertyID());
-    }
-  }
-  // FIXME: This should use mass removal.
-  for (CSSPropertyID id : properties_to_remove) {
-    RemoveProperty(id);
-  }
-}
-
 void MutableCSSPropertyValueSet::RemoveEquivalentPropertiesPreservingShorthands(
     const CSSStyleDeclaration* style) {
   HashSet<CSSPropertyID> properties_to_remove;

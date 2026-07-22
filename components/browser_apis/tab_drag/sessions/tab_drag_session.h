@@ -74,6 +74,12 @@ class TabDragSession {
   void HandleMoveWhileAttached(const gfx::Point& screen_point);
   void HandleMoveWhileDetached(const gfx::Point& screen_point);
 
+  bool IsDraggingEntireWindow() const;
+  bool ShouldTearOff(const gfx::Point& screen_point) const;
+  void StartWindowDrag(TabDragWindowId window_id,
+                       const gfx::Point& screen_point);
+  void DetachAndStartWindowDrag(const gfx::Point& screen_point);
+
   std::vector<tabs_api::NodeId> dragged_tabs_;
   const raw_ref<TabDragSessionInjector> injector_;
 

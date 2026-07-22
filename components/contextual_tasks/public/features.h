@@ -254,6 +254,10 @@ extern const base::FeatureParam<std::string>
 // The maximum size of a file that can be attached to a Nextbox.
 extern const base::FeatureParam<int> kContextualTasksNextboxMaxFileSize;
 
+// The number of sessions after onboarding before triggering the pinning IPH.
+extern const base::FeatureParam<int>
+    kContextualTasksNumSessionsBeforeRequestPinPromo;
+
 // The user agent suffix to use for requests from the contextual tasks UI.
 extern const base::FeatureParam<std::string> kContextualTasksUserAgentSuffix;
 
@@ -413,6 +417,10 @@ extern bool IsRoundedClipPathEnabled();
 
 // Returns whether the pin button in toolbar is enabled.
 extern bool IsContextualTasksPinButtonInToolbarEnabled();
+
+// Returns the number of sessions after onboarding before triggering the pinning
+// IPH.
+extern int GetContextualTasksNumSessionsBeforeRequestPinPromo();
 
 // Returns whether the webpage APC comparison is enabled.
 extern bool GetIsWebpageApcComparisonEnabled();

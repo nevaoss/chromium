@@ -3280,10 +3280,14 @@ ci.thin_tester(
         os_type = targets.os_type.WINDOWS,
     ),
     # Uncomment this entry when this experimental tester is actually in use.
-    console_view_entry = consoles.console_view_entry(
-        category = "ToT|Windows|x86|Nvidia",
-        short_name = "exp",
-    ),
+    # NEXT TIME THIS IS ENABLED: Remove this builder from the GPU UPF's
+    # GetFakeCiBuilders list. Buildbucket builds are only kept for ~2 years and
+    # this experimental builder has been unused for long enough that all of its
+    # builds have aged out, which then breaks the UPF.
+    # console_view_entry = consoles.console_view_entry(
+    #     category = "ToT|Windows|x86|Nvidia",
+    #     short_name = "exp",
+    # ),
     list_view = "chromium.gpu.experimental",
 )
 

@@ -66,7 +66,7 @@ class AudioElementRendererBase {
    * \return `absl::OkStatus()` on success. A specific status on failure.
    */
   virtual absl::Status Finalize() {
-    absl::MutexLock lock(&mutex_);
+    absl::MutexLock lock(mutex_);
     is_finalized_ = true;
     return absl::OkStatus();
   }
@@ -79,8 +79,17 @@ class AudioElementRendererBase {
    * \return `true` if the render is finalized. `false` otherwise.
    */
   virtual bool IsFinalized() const {
-    absl::MutexLock lock(&mutex_);
+    absl::MutexLock lock(mutex_);
     return is_finalized_;
+  }
+
+  /*!\brief Sets the trimming settings for this renderer.
+   *
+   * \param trimming_settings Trimming configuration to use.
+   */
+  void SetTrimmingSettings(TrimmingSettings trimming_settings) {
+    absl::MutexLock lock(mutex_);
+    trimming_settings_ = trimming_settings;
   }
 
  protected:
@@ -124,6 +133,9 @@ class AudioElementRendererBase {
 
   bool is_finalized_ ABSL_GUARDED_BY(mutex_) = false;
   const LabeledFrame* current_labeled_frame_ ABSL_GUARDED_BY(mutex_) = nullptr;
+  // Determines whether frame start/end sample trimming is applied when
+  // arranging samples.
+  TrimmingSettings trimming_settings_ ABSL_GUARDED_BY(mutex_);
 };
 
 }  // namespace iamf_tools

@@ -36,6 +36,24 @@ class IdpNetworkRequestManager;
 class UserInfoRequest;
 class DisconnectRequest;
 
+using ResolveTokenRequestCallback =
+    blink::mojom::FederatedRequestService::ResolveTokenRequestCallback;
+using SetIdpSigninStatusCallback =
+    blink::mojom::FederatedRequestService::SetIdpSigninStatusCallback;
+using RegisterIdPCallback =
+    blink::mojom::FederatedRequestService::RegisterIdPCallback;
+using UnregisterIdPCallback =
+    blink::mojom::FederatedRequestService::UnregisterIdPCallback;
+using PreventSilentAccessCallback =
+    blink::mojom::FederatedRequestService::PreventSilentAccessCallback;
+using DisconnectCallback =
+    blink::mojom::FederatedRequestService::DisconnectCallback;
+using RequestUserInfoCallback =
+    blink::mojom::FederatedRequestService::RequestUserInfoCallback;
+using StartTokenRequestCallback =
+    blink::mojom::FederatedRequestService::StartTokenRequestCallback;
+using MediationRequirement = ::password_manager::CredentialMediationRequirement;
+
 // RequestService is a document-scoped manager class that coordinates
 // Federated Credential Management (FedCM) requests for a given RenderFrameHost.
 // It owns the active Request session.
@@ -51,6 +69,13 @@ class CONTENT_EXPORT RequestService
   RequestService(const RequestService&) = delete;
   RequestService& operator=(const RequestService&) = delete;
 
+  void SetForceAllowRedirectToForTesting(bool allow) {
+    force_allow_redirect_to_for_testing_ = allow;
+  }
+  bool force_allow_redirect_to_for_testing() const {
+    return force_allow_redirect_to_for_testing_;
+  }
+
   // Binds a new receiver to a request session.
   void BindFederatedAuthRequest(
       mojo::PendingReceiver<blink::mojom::FederatedAuthRequest> receiver);
@@ -59,6 +84,12 @@ class CONTENT_EXPORT RequestService
       mojo::PendingReceiver<blink::mojom::FederatedRequestService> receiver);
 
   // blink::mojom::FederatedRequestService:
+  void StartTokenRequest(
+      std::vector<blink::mojom::IdentityProviderGetParametersPtr>
+          idp_get_params,
+      MediationRequirement requirement,
+      mojo::PendingReceiver<blink::mojom::FederatedRequest> request_receiver,
+      StartTokenRequestCallback callback) override;
   void RequestUserInfo(blink::mojom::IdentityProviderConfigPtr provider,
                        RequestUserInfoCallback callback) override;
   void RegisterIdP(const GURL& idp, RegisterIdPCallback callback) override;
@@ -85,24 +116,24 @@ class CONTENT_EXPORT RequestService
       std::unique_ptr<IdpNetworkRequestManager> manager);
   std::unique_ptr<IdpNetworkRequestManager> CreateNetworkManager();
   void CloseModalDialogView();
-  std::unique_ptr<IdentityRequestDialogController> CreateDialogController();
+  IdentityRequestDialogController* GetOrCreateDialogController();
+  IdentityRequestDialogController* GetDialogController() const;
   void SetDialogControllerForTests(
       std::unique_ptr<IdentityRequestDialogController> controller);
 
   // Returns the active Request if one exists, or instantiates a new one if not.
   Request* GetOrCreateActiveRequest();
+  Request* GetActiveRequestForTesting() const;
 
-  // Creates a Request for testing.
-  Request& CreateRequestForTesting(
-      mojo::PendingReceiver<blink::mojom::FederatedAuthRequest> receiver,
+  void SetDelegatesForTesting(
       FederatedIdentityApiPermissionContextDelegate* api_permission_delegate,
       FederatedIdentityAutoReauthnPermissionContextDelegate*
           auto_reauthn_permission_delegate,
       FederatedIdentityPermissionContextDelegate* permission_delegate,
       IdentityRegistry* identity_registry);
 
-  // Called by Request when it has completed or finished.
-  void OnRequestDestroyed(Request* request);
+  // Destroys the active request. Strictly for use in tests.
+  void DestroyActiveRequestForTesting();
 
   void IncrementNumRequests() { ++num_requests_; }
 
@@ -119,23 +150,34 @@ class CONTENT_EXPORT RequestService
       RegisterIdPCallback callback,
       const GURL& idp,
       std::vector<ConfigFetcher::FetchResult> fetch_results);
-  void CompleteUserInfoRequest(
-      UserInfoRequest* request,
-      RequestUserInfoCallback callback,
-      blink::mojom::RequestUserInfoStatus status,
-      std::optional<std::vector<blink::mojom::IdentityUserInfoPtr>> user_info);
+  void CompleteUserInfoRequest(UserInfoRequest* request,
+                               RequestUserInfoCallback callback,
+                               blink::mojom::RequestUserInfoResultPtr result);
   void CompleteDisconnectRequest(DisconnectCallback callback,
                                  blink::mojom::DisconnectStatus status);
+  void OnTokenRequestComplete(
+      Request* request,
+      StartTokenRequestCallback callback,
+      blink::mojom::RequestTokenStatus status,
+      const std::optional<GURL>& selected_idp_config_url,
+      std::optional<base::Value> token,
+      blink::mojom::TokenErrorPtr error,
+      bool is_auto_selected);
   void CleanUpCompletedRequest(Request* request);
   std::unique_ptr<Metrics> CreateFedCmMetrics();
+  std::unique_ptr<IdentityRequestDialogController> CreateDialogController();
+  void MaybeDestroyDialogController();
 
   std::unique_ptr<Request> active_request_;
+  // Temporary storage for completed requests pending destruction.
   std::vector<std::unique_ptr<Request>> completed_requests_;
 
   // Number of navigator.credentials.get() requests made for metrics purposes.
   // Requests made when there is a pending FedCM request or for the purpose of
   // Wallets or multi-IDP are not counted.
   int num_requests_{0};
+
+  bool force_allow_redirect_to_for_testing_ = false;
 
   raw_ptr<IdentityRegistry> identity_registry_ = nullptr;
 
@@ -155,6 +197,8 @@ class CONTENT_EXPORT RequestService
   raw_ptr<FederatedIdentityPermissionContextDelegate> permission_delegate_ =
       nullptr;
   std::unique_ptr<DisconnectRequest> disconnect_request_;
+
+  std::unique_ptr<IdentityRequestDialogController> dialog_controller_;
   std::unique_ptr<IdentityRequestDialogController> mock_dialog_controller_;
 
   base::WeakPtrFactory<RequestService> weak_ptr_factory_{this};

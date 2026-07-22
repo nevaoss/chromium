@@ -1147,6 +1147,7 @@ html element style
     property sheet
     property type
 html element sub
+html element submenu
 html element summary
 html element sup
 html element table

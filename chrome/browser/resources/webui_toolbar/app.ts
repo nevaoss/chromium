@@ -43,6 +43,7 @@ import {
   AvatarToolbarButtonState,
   ContentSettingImageType,
   ContextMenuType,
+  FocusRequestTarget,
   LhsChipIdentifier,
   OmniboxTextColor,
   PermissionAction,
@@ -51,7 +52,7 @@ import {
   SplitTabActiveLocation,
 } from '/shared/toolbar_ui_api_data_model.mojom-webui.js';
 import {IconType} from '/shared/icon_handle.mojom-webui.js';
-import type {OmniboxAction, LocationBarState, PermissionChipState} from '/shared/toolbar_ui_api_data_model.mojom-webui.js';
+import type {OmniboxAction, LocationBarState, PermissionChipState, PermissionDashboardState} from '/shared/toolbar_ui_api_data_model.mojom-webui.js';
 
 import {INVALID_FOCUS_REQUEST_HANDLE} from './browser_proxy.js';
 import {AppMenuButtonElement} from './app_menu_button.js';
@@ -62,6 +63,7 @@ import {LocationIconElement} from './location_icon.js';
 import {PointerProxyImpl} from './pointer_proxy.js';
 import type {PointerProxy} from './pointer_proxy.js';
 import {PermissionChipElement} from './permission_chip.js';
+import type {PermissionDashboardElement} from './permission_dashboard.js';
 import {ReadonlyOmniboxElement} from './readonly_omnibox.js';
 import {getClickSourceType, getContextMenuSourceType, PressHandler} from './toolbar_button.js';
 import {ToolbarChipButtonElement} from './toolbar_chip_button.js';
@@ -76,6 +78,7 @@ export {
   ContentSettingImageType,
   ContentSettingsIconsElement,
   EventDispositionFlag,
+  FocusRequestTarget,
   getClickSourceType,
   getContextMenuSourceType,
   PressHandler,
@@ -101,6 +104,8 @@ export type {
   LocationBarState,
   OmniboxAction,
   PermissionChipState,
+  PermissionDashboardElement,
+  PermissionDashboardState,
   PointerProxy,
 };
 // clang-format on
@@ -226,11 +231,13 @@ export class ToolbarAppElement extends AppElementBase {
       omniboxViewState: {
         browserVersion: 0,
         uiVersion: 0,
+        formattedFullUrl: '',
         textPieces: [],
         inlineAutocompletion: '',
         additionalText: '',
         selection: null,
         textIsUrl: false,
+        userInputInProgress: false,
       },
       locationBarFlags: {
         userInputInProgress: false,
@@ -258,7 +265,7 @@ export class ToolbarAppElement extends AppElementBase {
     },
     avatarControlState: {
       state: AvatarToolbarButtonState.kNormal,
-      iconUrl: '',
+      icon: {handleId: 0n},
       text: '',
       tooltip: '',
       accessibilityName: '',

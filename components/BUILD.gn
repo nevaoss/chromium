@@ -279,6 +279,7 @@ test("components_unittests") {
     "//components/open_from_clipboard:unit_tests",
     "//components/openscreen_platform:unittests",
     "//components/optimization_guide/core:unit_tests",
+    "//components/origin_gating/core:unit_tests",
     "//components/os_crypt/async/browser:unit_tests",
     "//components/os_crypt/async/common:unit_tests",
     "//components/os_crypt/common:unit_tests",
@@ -1329,9 +1330,6 @@ if (use_blink) {
         ":components_browsertests_assets",
         ":components_browsertests_java",
       ]
-      if (enable_javaless_renderers) {
-        deps += [ "//content/app:javaless_renderer" ]
-      }
     }
 
     if (is_linux || is_chromeos) {

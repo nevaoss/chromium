@@ -263,6 +263,8 @@ void WindowResizer::SetBoundsDuringResize(const gfx::Rect& bounds) {
   aura::Window* window = GetTarget();
   DCHECK(window);
 
+  aura::Window::ScopedDeleteBlocker blocker(window);
+
   auto ptr = weak_ptr_factory_.GetWeakPtr();
   const gfx::Size original_size = window->bounds().size();
 

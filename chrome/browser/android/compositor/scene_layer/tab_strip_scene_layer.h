@@ -160,6 +160,20 @@ class TabStripSceneLayer : public SceneLayer {
                                  int32_t keyboard_focus_ring_resource_id,
                                  int32_t keyboard_focus_ring_color);
 
+  void UpdateTabSearchButton(JNIEnv* env,
+                             int32_t resource_id,
+                             int32_t bg_resource_id,
+                             float x,
+                             float y,
+                             bool visible,
+                             bool should_apply_hover_highlight,
+                             int32_t tint,
+                             int32_t background_tint,
+                             float button_alpha,
+                             bool is_keyboard_focused,
+                             int32_t keyboard_focus_ring_resource_id,
+                             int32_t keyboard_focus_ring_color);
+
   void UpdateTabStripFade(JNIEnv* env,
                           bool is_left,
                           int32_t fade_color,
@@ -347,6 +361,11 @@ class TabStripSceneLayer : public SceneLayer {
   scoped_refptr<cc::slim::UIResourceLayer> model_selector_button_background_;
   scoped_refptr<cc::slim::UIResourceLayer>
       model_selector_button_keyboard_focus_ring_;
+
+  scoped_refptr<cc::slim::UIResourceLayer> tab_search_button_;
+  scoped_refptr<cc::slim::UIResourceLayer> tab_search_button_background_;
+  scoped_refptr<cc::slim::UIResourceLayer>
+      tab_search_button_keyboard_focus_ring_;
   scoped_refptr<cc::slim::SolidColorLayer> scrim_layer_;
 
   unsigned write_index_ = 0;

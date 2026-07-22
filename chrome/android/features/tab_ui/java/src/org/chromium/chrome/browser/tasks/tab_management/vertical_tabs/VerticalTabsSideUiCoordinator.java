@@ -18,6 +18,7 @@ import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.AnchorSide;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiId;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.UiUpdateRequest;
+import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils;
 import org.chromium.ui.base.ViewUtils;
 
 /**
@@ -27,7 +28,7 @@ import org.chromium.ui.base.ViewUtils;
  */
 @NullMarked
 public class VerticalTabsSideUiCoordinator implements SideUiContainer {
-    static final int VIEW_WIDTH_DP = 206;
+    static final int VIEW_WIDTH_DP = VerticalTabUtils.SIDE_UI_CONTAINER_WIDTH_DP;
 
     private final SideUiCoordinator mSideUiCoordinator;
     private final FrameLayout mRootView;

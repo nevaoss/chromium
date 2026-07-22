@@ -127,7 +127,6 @@
 <translation id="1076751984131277498">取り外し可能な USB デバイスの許可リスト</translation>
 <translation id="1077675271127011209">使用状況とクラッシュ関連データのレポートを無効にする</translation>
 <translation id="1079498696402787191">TLS ハンドシェイクで許可されるデフォルトのハッシュ値を使用する。</translation>
-<translation id="1079801999187584280">デベロッパー ツールの使用を禁止する</translation>
 <translation id="1081470306474387129">Controlled Frame API を使用すると、独立したウェブアプリ（IWA）といった特定の独立したコンテキストで、任意のコンテンツを埋め込んだり操作したりできます。詳細については、https://github.com/WICG/controlled-frame をご覧ください。
 
 このポリシーでは、Controlled Frame API の使用を許可しないサイトの URL パターンのリストを指定できます。
@@ -1611,6 +1610,9 @@ accounts.google.com など一部の URL は認証に必要です。オンライ�
       このポリシーを false に設定した場合、Google サーバーに一部のシステム情報やページのコンテンツを送信するよう指定できなくなります。このポリシーを true に設定するか未設定のままにした場合、危険なアプリやサイトの検出に役立つセーフ ブラウジングに、一部のシステム情報やページのコンテンツを送信されます。
 
       セーフ ブラウジングについて詳しくは、https://developers.google.com/safe-browsing をご覧ください。</translation>
+<translation id="2126895531607538755">このポリシーでは、<ph name="DEVICE_WEEKLY_SCHEDULED_SUSPEND_POLICY_NAME" /> で指定された期間中、無操作状態になってからデバイスがサスペンド アクションを再適用するまでの時間をミリ秒単位で指定します。
+
+設定されたスリープ期間中にデバイスが手動で起動された場合（キーボード入力など）、デバイスは指定されたミリ秒単位の時間が経過したのち、再度 RAM へのサスペンド状態に戻ります。サスペンドの期間中にユーザーの操作があった場合、再サスペンド タイマーはリセットされます。このポリシーが未設定の場合、デバイスは起動後、所定の期間中は自動的に再サスペンドしません。</translation>
 <translation id="2127599828444728326">これらのサイトの通知を許可する</translation>
 <translation id="2131902621292742709">画面が暗くなるまでの時間（バッテリー電源での実行時）</translation>
 <translation id="2131915994539959070"><ph name="PRODUCT_NAME" /> でウィンドウ オクルージョンを有効にします。
@@ -1732,21 +1734,6 @@ accounts.google.com など一部の URL は認証に必要です。オンライ�
 <translation id="2180958780733364832">ヘッドレス モードの使用を管理する</translation>
 <translation id="2182291258410176649">バックアップと復元を有効にするかどうかをユーザーに確認する</translation>
 <translation id="2183338188392346527">デバイスのランタイム カウンタを報告しない</translation>
-<translation id="2183838844225082873">このポリシーを 0（デフォルト）に設定した場合、デベロッパー ツールと JavaScript コンソールにアクセスできますが、企業ポリシーによりインストールされた拡張機能または M114 以降、および管理対象ユーザーの場合はブラウザに組み込まれた拡張機能では、アクセスは許可されません。このポリシーを 1 に設定した場合、あらゆる状況でデベロッパー ツールと JavaScript コンソールにアクセスできます。企業ポリシーによってインストールされた拡張機能でのアクセスも許可されます。このポリシーを 2 に設定した場合、デベロッパー ツールにアクセスできず、ウェブサイト要素も検査できなくなります。
-
-この設定では、デベロッパー ツールや JavaScript コンソールを開くためのキーボード ショートカット、メニューのエントリ、コンテキスト メニューのエントリも無効になります。
-
-<ph name="PRODUCT_NAME" /> バージョン 99 ではさらに、この設定により「ページのソースを表示」機能のエントリ ポイントも制御されます。このポリシーを「DeveloperToolsDisallowed」（値 2）に設定した場合、ユーザーはキーボード ショートカットまたはコンテキスト メニューを介してソースを表示することはできません。なお、ソースの表示を完全にブロックするには、<ph name="URL_BLOCKLIST_POLICY_NAME" /> ポリシーに「view-source:*」を追加することも必要です。
-
-<ph name="PRODUCT_NAME" /> バージョン 119 以降では、この設定により、独立したウェブアプリのデベロッパー モードを有効にして使用できるかどうかも制御されます。
-
-<ph name="PRODUCT_NAME" /> バージョン 128 以降では、<ph name="EXTENSION_DEVELOPER_MODE_SETTINGS_POLICY_NAME" /> ポリシーが設定されている場合、この設定により拡張機能ページのデベロッパー モードは制御されません。
-
-デベロッパー ツールの使用の可否は、次の優先順位で決まります。
-1. URL が <ph name="DEVELOPER_TOOLS_AVAILABILITY_ALLOWLIST_POLICY_NAME" /> ポリシーのパターンに一致する場合、デベロッパー ツールの使用が許可されます。
-2. <ph name="DEVELOPER_TOOLS_AVAILABILITY_ALLOWLIST_POLICY_NAME" /> を設定し、<ph name="DEVELOPER_TOOLS_AVAILABILITY_BLOCKLIST_POLICY_NAME" /> を未設定のままにした場合、許可リストで指定されていない URL はブロックされます。
-3. URL が <ph name="DEVELOPER_TOOLS_AVAILABILITY_BLOCKLIST_POLICY_NAME" /> ポリシーのパターンに一致する場合、デベロッパー ツールの使用はブロックされます。
-4. URL が許可リストまたはブロックリストで指定されていない場合、こちらのポリシー（<ph name="DEVELOPER_TOOLS_AVAILABILITY_POLICY_NAME" />）が代わりに使用されます。</translation>
 <translation id="2187361040843865450">「Just Works」Bluetooth ペア設定リクエストを受け入れる</translation>
 <translation id="2187372280917024033">希望の DNS-over-HTTPS リゾルバの URI テンプレートを指定します。複数の DNS-over-HTTPS リゾルバを指定するには、対応する URI テンプレートをスペースで区切ります。このポリシーを設定した場合は、よく似ている <ph name="DOH_TEMPLATES_POLICY_NAME" /> より優先されます。
 <ph name="DOH_TEMPLATES_POLICY_NAME" /> ポリシーとは異なり、このポリシーでは ID 情報を指定できます。
@@ -3178,6 +3165,7 @@ false に設定した場合、教師はこの機能にアクセスできませ�
 レポートには、プロファイルの状態と使用状況に関する情報が含められます。これには、OS バージョン、ブラウザ バージョン、インストールされている拡張機能と適用されているポリシーが含まれます（ただしこれらに限定されません）。
 
 このポリシーは、クラウド ユーザー ポリシーとしてのみ設定できます。</translation>
+<translation id="3060733249129331512">サイトが複数のファイルを自動的にダウンロードしようとしたときに毎回確認する</translation>
 <translation id="3062559845875011810">機能を許可しない</translation>
 <translation id="3063302084011279315">スクリーンキャストを無効にする</translation>
 <translation id="3063307261083019730"><ph name="CACHE_CONTROL_NO_STORE_NAME" /> ヘッダーを含むページのバックフォワード キャッシュへの保存を許可しない。</translation>
@@ -4577,6 +4565,13 @@ Protected Audience API のサポート終了により、このポリシーは <p
 このポリシーを未設定のままにした場合、動作は GenAiDefaultSettings ポリシーによって決まります。
 
 生成 AI 機能のデータ処理について詳しくは、https://support.google.com/chrome/a?p=generative_ai_settings をご覧ください。</translation>
+<translation id="4049815236567245576">複数ファイルの自動ダウンロードを許可するサイトを指定する URL パターンのリストを設定できます。
+
+有効な URL パターンについて詳しくは、https://chromeenterprise.google/policies/url-patterns をご覧ください。
+
+URL が <ph name="AUTOMATIC_DOWNLOADS_ALLOWED_FOR_URLS_POLICY_NAME" /> と <ph name="AUTOMATIC_DOWNLOADS_BLOCKED_FOR_URLS_POLICY_NAME" /> の両方に一致する場合は、AutomaticDownloadsBlockedForUrls が優先されます。
+
+このポリシーを設定しない場合は、<ph name="DEFAULT_AUTOMATIC_DOWNLOADS_SETTING_POLICY_NAME" /> が設定されていればその設定がすべてのサイトに対して使用されます。設定されていなければユーザーの個人設定が適用されます。</translation>
 <translation id="4051723201852944592">ウィンドウ オクルージョンを有効にします</translation>
 <translation id="4052529125939620019">起動時に CryptoToken コンポーネント拡張機能を読み込む</translation>
 <translation id="4053157306171963473">デバイスのアクティビティ時間の報告を無効にする</translation>
@@ -4669,6 +4664,9 @@ Manifest V2 を使用した拡張機能はサポートの終了が予定され�
 
       注: 動的なポリシー更新は <ph name="PRODUCT_NAME" /> バージョン 123 以降でのみサポートされます。"autofill" を無効にすると、"payments" も無効になります。"typedUrls" はすべての閲覧履歴を指します。</translation>
 <translation id="4115501011761259824">対象となるすべてのユーザーに対して First-Party Sets を有効にする</translation>
+<translation id="4119598167427266156">このポリシーを 1 に設定した場合は、ウェブサイトによる複数ファイルの自動ダウンロードが許可されます。2 に設定した場合は許可されません。ウェブサイトが複数のファイルを自動的にダウンロードしようとしたときに毎回確認するよう、このポリシーを設定することもできます。
+
+このポリシーを未設定のままにした場合は AskAutomaticDownloads ポリシーが適用されます。ユーザーはこの設定を変更できます。</translation>
 <translation id="4120401094617902941">ランタイム カウンタのサンプリングおよび収集の間隔です。指定できる最小値は 1 日です。
 
 設定しない場合は、デフォルトの 1 日が適用されます。</translation>
@@ -5339,7 +5337,6 @@ URL パターンは、<ph name="CONTROLLED_FRAME_BLOCKED_FOR_URLS_POLICY_NAME" /
 <translation id="4561940244682063697">画面の動画ストリームの共有をユーザーに求めることをサイトに許可しない</translation>
 <translation id="4562165737444703281">Crostini ポート転送の [有効化 / 設定] をユーザーに許可する</translation>
 <translation id="456450545863578630">企業の管理者がリモート サポート接続でファイルを転送できるようにする</translation>
-<translation id="4567137030726189378">デベロッパー ツールの使用を許可する</translation>
 <translation id="4570859815763368584">M68 でサポートを終了します。代わりに DefaultPopupsSetting を使用してください。
 
       詳しくは、https://www.chromestatus.com/feature/5675755719622656 をご覧ください。
@@ -6074,6 +6071,7 @@ Chrome 114 までは、このポリシーを使用するには <ph name="SYNC_DI
 <ph name="MS_WIN_NAME" /> では、<ph name="MS_AD_NAME" /> ドメインに追加されたインスタンス、<ph name="MS_AAD_NAME" /> に追加されたインスタンス、または <ph name="CHROME_ENTERPRISE_CORE_NAME" /> に登録されているインスタンスでのみこのポリシーを使用できます。
 
 <ph name="MAC_OS_NAME" /> では、MDM を介して管理されるインスタンス、MCX を介してドメインに追加されたインスタンス、または <ph name="CHROME_ENTERPRISE_CORE_NAME" /> に登録されているインスタンスでのみこのポリシーを使用できます。</translation>
+<translation id="5036662165765606524">複数ファイルの自動ダウンロードをどのサイトにも許可しない</translation>
 <translation id="5037749623252479780">PageUp / PageDown の設定は無効</translation>
 <translation id="5039110755072335605">CORS 非ワイルドカード リクエスト ヘッダーのサポート</translation>
 <translation id="5039804452771397117">許可</translation>
@@ -6550,6 +6548,7 @@ Attribution Reporting API のサポート終了により、このポリシーは
 <translation id="5345892164332459671">フローティング SSO を無効にして、ユーザーのウェブサービス認証を新しいデバイスに移動しない</translation>
 <translation id="5345910753471481870">新しいタブページの検索ボックスに Google レンズのボタンを表示しない。</translation>
 <translation id="5346587320074666194">センサーへのアクセスをブロックするサイトを指定します</translation>
+<translation id="534702079563980696">自動ダウンロードを許可するサイトを指定する</translation>
 <translation id="5347735051291224683">このポリシーでは、バックグラウンドのウェブ コンテンツをフォアグラウンドの優先度で強制的に実行するかどうかを制御します。
 
 デフォルトでは、ブラウザはバックグラウンドのタブのコンテンツの優先度を下げて、リソースを最適化しています。このポリシーを有効にした場合、その動作がオーバーライドされ、バックグラウンドのタブがアクティブなタブと同じようにスケジュールされます。
@@ -6961,6 +6960,7 @@ https://wiki.samba.org/index.php/Samba_4.6_Features_added/changed#Kerberos_clien
 <translation id="5599461642204007579"><ph name="MS_AD_NAME" /> 管理設定</translation>
 <translation id="5601503069213153581">PIN</translation>
 <translation id="5605676983184673391">キオスク セッションでの Chrome アプリの実行を許可する。</translation>
+<translation id="5606477661985737162">自動ダウンロードの設定</translation>
 <translation id="5607021831414604820">デバイスのストレージ ステータス レポートを有効にする</translation>
 <translation id="5607808178576647930">AI モードの統合を許可する。</translation>
 <translation id="5608114828230655271">デフォルトのデバイスの動作</translation>
@@ -7057,6 +7057,7 @@ https://wiki.samba.org/index.php/Samba_4.6_Features_added/changed#Kerberos_clien
 <translation id="5660950553460381588">可能であれば、パスキーの作成にデフォルトで iCloud キーチェーンを使用します。</translation>
 <translation id="566569751231933416">デフォルトの動作を使用する。</translation>
 <translation id="5666457529647159548">インストール済みクライアント証明書の管理をユーザーに許可する。</translation>
+<translation id="566962283082154427">毎週スケジュールされたサスペンド期間における再サスペンドまでの遅延時間（ミリ秒）</translation>
 <translation id="5670249935663090320">このポリシーを有効に設定するか未設定のままにした場合、<ph name="PRODUCT_NAME" /> はオンになり、ユーザーはアプリメニュー、ページ コンテキスト メニュー、Cast 対応ウェブサイトのメディア コントロール、Cast ツールバー アイコン（表示されている場合）から起動できます。
 
 このポリシーを無効に設定した場合、<ph name="PRODUCT_NAME" /> はオフになります。</translation>
@@ -7498,6 +7499,13 @@ IP アドレス空間のオーバーライドには次の 2 つの形式があ�
 <translation id="5965344524743236327">有効にする <ph name="GEMINI_ENTERPRISE_PRODUCT_NAME" /> インスタンスに対応する <ph name="GOOGLE_CLOUD_PRODUCT_NAME" /> プロジェクトの ID または番号。プロジェクト ID の詳細については、https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects をご覧ください。</translation>
 <translation id="5966615072639944554">Remote Attestation API の使用が許可されている拡張機能</translation>
 <translation id="596732417280023843">証明書プロファイルの名前です。</translation>
+<translation id="5972475504452039694">複数ファイルの自動ダウンロードを許可しないサイトを指定する URL パターンのリストを設定できます。
+
+有効な URL パターンについて詳しくは、https://chromeenterprise.google/policies/url-patterns をご覧ください。
+
+URL が <ph name="AUTOMATIC_DOWNLOADS_ALLOWED_FOR_URLS_POLICY_NAME" /> と <ph name="AUTOMATIC_DOWNLOADS_BLOCKED_FOR_URLS_POLICY_NAME" /> の両方に一致する場合は、AutomaticDownloadsBlockedForUrls が優先されます。
+
+このポリシーを設定しない場合は、<ph name="DEFAULT_AUTOMATIC_DOWNLOADS_SETTING_POLICY_NAME" /> が設定されていればその設定がすべてのサイトに対して使用されます。設定されていなければユーザーの個人設定が適用されます。</translation>
 <translation id="5972538402066550344">詳細なレポート コントロールを許可する</translation>
 <translation id="5973437409890460481">このパソコンへの企業のリモート アクセス接続を許可する</translation>
 <translation id="5975765799383881158">このポリシーを有効に設定するか未設定のままにした場合、ユーザーは [メニュー] &gt; [ヘルプ] &gt; [問題を報告] またはキーの組み合わせを使用して、Google にフィードバックを送信できます。
@@ -7747,6 +7755,7 @@ false に設定した場合、教師はこの機能にアクセスできませ�
 <translation id="6181783961196084973">アプリのアクティビティを収集するかどうかの切り替え値です。true に設定した場合、ユーザーによるアプリのアクティビティ レポートがサーバーに送信され、お子様と保護者の <ph name="PRODUCT_NAME" /> アプリに表示されます。false に設定した場合、アプリごとの利用時間の上限は引き続き有効ですが、レポートデータはサーバーに送信されず、<ph name="PRODUCT_NAME" /> にも表示されません。</translation>
 <translation id="6182206125906000651">HTTPS アップグレードを無効にする。</translation>
 <translation id="6182563940865917569">Chrome にメディアの自動再生を許可する</translation>
+<translation id="618588573990666077">デフォルトの自動ダウンロード設定</translation>
 <translation id="618635925649844912">このポリシーでは、最初のログインフロー中にセッション内 AI 機能の紹介画面をユーザーに表示するかどうかを管理します。
 
       無効に設定した場合、AI の紹介画面は表示されません。
@@ -7911,6 +7920,7 @@ Origin-Agent-Cluster HTTP ヘッダーは、オリジンキー エージェン�
       デフォルトの動作 - Origin-Agent-Cluster ヘッダーが設定されていない場合の動作が M111 でサイトキーからオリジンキーに変更されます。このポリシーを有効に設定するか未設定のままにした場合、バージョン M111 以降、ブラウザにこの新しいデフォルトの動作が適用されます。このポリシーを無効に設定した場合、この変更は元に戻され、Origin-Agent-Cluster ヘッダーのないドキュメントは、サイトキー エージェント クラスタに割り当てられます。結果として、document.domain アクセサーは引き続きデフォルトで設定可能となります。これは従来の動作と同じです。
 
 詳しくは、https://developer.chrome.com/blog/immutable-document-domain/ をご覧ください。</translation>
+<translation id="626942726350419209">複数ファイルの自動ダウンロードをサイトに許可する</translation>
 <translation id="6270615143812355589">オーディオ入力を有効にする</translation>
 <translation id="6270791075656665237">QUIC を許可しない</translation>
 <translation id="6273015149273504999">
@@ -9986,6 +9996,7 @@ URL パターンは、<ph name="DIRECT_SOCKETS_PRIVATE_NETWORK_ACCESS_BLOCKED_FO
 <translation id="759957074386651883">セーフ ブラウジングの設定</translation>
 <translation id="7602621823177962064">デバイスのメモリ情報レポートを無効にする</translation>
 <translation id="7604169113182304895">このリストを使用するかどうかは Android アプリ側の選択となります。Android アプリにリストの使用を強制することはできません。</translation>
+<translation id="7607831126797434329">自動ダウンロードをブロックするサイトを指定する</translation>
 <translation id="7608186022704392724">PIN の自動送信機能を使用すると、<ph name="PRODUCT_OS_NAME" /> での PIN の入力方法を変更できます。
           パスワード入力に使用するのと同じテキスト欄を表示する代わりに、この機能では特別な UI を表示して、PIN に必要な桁数をユーザーに明示します。その結果、ユーザーの PIN の桁数は暗号化されたユーザーデータとは別に保存されます。6 桁～12 桁の PIN のみがサポートされます。このポリシーを true に設定した場合、ユーザーはロック画面とログイン画面で PIN を自動送信できます。
           このポリシーを false に設定するか未設定のままにした場合、ユーザーはロック画面とログイン画面で PIN を自動送信できません。
@@ -11070,7 +11081,6 @@ false に設定した場合、管理対象のネットワークに接続され�
 
           このポリシーが未設定の場合は「BlockKeygen」が使用されます。ユーザーはこの設定を変更できます。</translation>
 <translation id="8314214821702356835">デバイスのロック時にユーザーのメディア再生を許可する</translation>
-<translation id="8314308739926578606">企業ポリシーによりインストールされたアプリと拡張機能または M114 以降、および管理対象ユーザーの場合はブラウザに組み込まれた拡張機能では、デベロッパー ツールの使用を禁止し、それ以外の状況ではデベロッパー ツールの使用を許可する</translation>
 <translation id="8316940611391250886">subjectAlternativeName 拡張がない証明書を許可しない</translation>
 <translation id="8319678975002906774">Managed Configuration API で特定のオリジンのウェブサイトに返す値を設定します</translation>
 <translation id="8320149248919453401">バッテリー充電モード</translation>

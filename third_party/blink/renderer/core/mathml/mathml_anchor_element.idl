@@ -6,4 +6,8 @@
 [RuntimeEnabled=MathMLAnchorElement]
 interface MathMLAnchorElement : MathMLElement {
     [CEReactions, Reflect] attribute USVString href;
+    [CEReactions, Reflect] attribute DOMString target;
+
 };
+
+MathMLAnchorElement includes HyperlinkElementUtils;

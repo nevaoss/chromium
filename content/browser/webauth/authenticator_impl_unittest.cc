@@ -106,7 +106,6 @@
 #include "device/fido/multiple_virtual_fido_device_factory.h"
 #include "device/fido/pin.h"
 #include "device/fido/public/authenticator_selection_criteria.h"
-#include "device/fido/public/cable_discovery_data.h"
 #include "device/fido/public/features.h"
 #include "device/fido/public/fido_constants.h"
 #include "device/fido/public/fido_transport_protocol.h"
@@ -1002,6 +1001,16 @@ TEST_F(AuthenticatorImplTest, ReportOriginAndRpIds) {
     EXPECT_EQ(AuthenticatorReport(std::move(options)),
               test_case.expected_status);
   }
+}
+
+TEST_F(AuthenticatorImplTest, PdfProcessBlocked) {
+  process()->SetIsPdf(true);
+
+  mojo::Remote<blink::mojom::Authenticator> authenticator;
+  static_cast<RenderFrameHostImpl*>(main_rfh())
+      ->GetWebAuthenticationService(authenticator.BindNewPipeAndPassReceiver());
+
+  EXPECT_EQ(1, process()->bad_msg_count());
 }
 
 constexpr auto kValidAppIdCases = std::to_array<OriginClaimedAuthorityPair>({

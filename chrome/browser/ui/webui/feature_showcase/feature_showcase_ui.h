@@ -10,6 +10,7 @@
 #include "chrome/browser/ui/webui/feature_showcase/feature_showcase.mojom.h"
 #include "chrome/browser/ui/webui/feature_showcase/google_lens.mojom.h"
 #include "chrome/browser/ui/webui/feature_showcase/password_manager.mojom.h"
+#include "chrome/browser/ui/webui/feature_showcase/themes_and_customization.mojom.h"
 #include "chrome/common/webui_url_constants.h"
 #include "content/public/browser/web_ui_controller.h"
 #include "content/public/browser/webui_config.h"
@@ -25,6 +26,7 @@ class FeatureShowcaseHandler;
 class DefaultBrowserHandler;
 class GoogleLensHandler;
 class PasswordManagerHandler;
+class ThemesAndCustomizationHandler;
 class CustomizeColorSchemeModeHandler;
 class ThemeColorPickerHandler;
 
@@ -47,6 +49,7 @@ class FeatureShowcaseUI
       public feature_showcase::mojom::FeatureShowcasePageHandlerFactory,
       public feature_showcase::mojom::GoogleLensPageHandlerFactory,
       public feature_showcase::mojom::PasswordManagerPageHandlerFactory,
+      public feature_showcase::mojom::ThemesAndCustomizationPageHandlerFactory,
       public customize_color_scheme_mode::mojom::
           CustomizeColorSchemeModeHandlerFactory,
       public theme_color_picker::mojom::ThemeColorPickerHandlerFactory {
@@ -90,6 +93,14 @@ class FeatureShowcaseUI
           feature_showcase::mojom::PasswordManagerPageHandlerFactory> receiver);
 
   // Instantiates the implementor of the
+  // feature_showcase::mojom::ThemesAndCustomizationPageHandlerFactory mojo
+  // interface passing the pending receiver that will be internally bound.
+  void BindInterface(
+      mojo::PendingReceiver<
+          feature_showcase::mojom::ThemesAndCustomizationPageHandlerFactory>
+          receiver);
+
+  // Instantiates the implementor of the
   // customize_color_scheme_mode::mojom::CustomizeColorSchemeModeHandlerFactory
   // mojo interface passing the pending receiver that will be internally bound.
   void BindInterface(mojo::PendingReceiver<
@@ -124,6 +135,12 @@ class FeatureShowcaseUI
       mojo::PendingReceiver<feature_showcase::mojom::PasswordManagerPageHandler>
           handler) override;
 
+  // feature_showcase::mojom::ThemesAndCustomizationPageHandlerFactory:
+  void CreateThemesAndCustomizationPageHandler(
+      mojo::PendingReceiver<
+          feature_showcase::mojom::ThemesAndCustomizationPageHandler> handler)
+      override;
+
   // customize_color_scheme_mode::mojom::CustomizeColorSchemeModeHandlerFactory:
   void CreateCustomizeColorSchemeModeHandler(
       mojo::PendingRemote<
@@ -150,6 +167,8 @@ class FeatureShowcaseUI
   std::unique_ptr<DefaultBrowserHandler> default_browser_page_handler_;
   std::unique_ptr<GoogleLensHandler> google_lens_handler_;
   std::unique_ptr<PasswordManagerHandler> password_manager_handler_;
+  std::unique_ptr<ThemesAndCustomizationHandler>
+      themes_and_customization_handler_;
   std::unique_ptr<CustomizeColorSchemeModeHandler>
       customize_color_scheme_mode_handler_;
   std::unique_ptr<ThemeColorPickerHandler> theme_color_picker_handler_;
@@ -162,6 +181,9 @@ class FeatureShowcaseUI
       google_lens_factory_receiver_{this};
   mojo::Receiver<feature_showcase::mojom::PasswordManagerPageHandlerFactory>
       password_manager_factory_receiver_{this};
+  mojo::Receiver<
+      feature_showcase::mojom::ThemesAndCustomizationPageHandlerFactory>
+      themes_and_customization_factory_receiver_{this};
   mojo::Receiver<customize_color_scheme_mode::mojom::
                      CustomizeColorSchemeModeHandlerFactory>
       customize_color_scheme_mode_handler_factory_receiver_{this};

@@ -36,9 +36,12 @@ dependencies {
     compileLatest 'androidx.compose.ui:ui:+'
     compileLatest 'androidx.compose.ui:ui-text:+'
     compileLatest 'androidx.compose.ui:ui-text-google-fonts:+'
+    compileLatest 'androidx.compose.ui:ui-graphics:+'
+    compileLatest 'androidx.compose.ui:ui-unit:+'
     compileLatest 'androidx.activity:activity-compose:+'
     compileLatest 'androidx.fragment:fragment-compose:+'
     compileLatest 'androidx.lifecycle:lifecycle-viewmodel-compose:+'
+    compileLatest 'androidx.lifecycle:lifecycle-runtime-compose:+'
 
     compileLatest 'androidx.lifecycle:lifecycle-runtime:+'
     compileLatest 'androidx.lifecycle:lifecycle-runtime-ktx:+'

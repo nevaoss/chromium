@@ -714,6 +714,9 @@ ci.builder(
     contact_team_email = "clank-engprod@google.com",
     execution_timeout = 7 * time.hour,
     notifies = ["Deterministic Android"],
+    # crbug.com/528174631: Deterministic builder needs to download all remote
+    # outputs to compare them.
+    siso_output_local_strategy = "full",
 )
 
 ci.builder(
@@ -739,6 +742,9 @@ ci.builder(
     contact_team_email = "clank-engprod@google.com",
     execution_timeout = 6 * time.hour,
     notifies = ["Deterministic Android"],
+    # crbug.com/528174631: Deterministic builder needs to download all remote
+    # outputs to compare them.
+    siso_output_local_strategy = "full",
     siso_remote_jobs = siso.remote_jobs.DEFAULT,
 )
 
@@ -4263,10 +4269,7 @@ ci.builder(
             "x86-64",
         ],
     ),
-    # TODO(crbug.com/508711260): Enable gardener rotation and tree closing once
-    # this builder is stable.
-    gardener_rotations = args.ignore_default(None),
-    tree_closing = False,
+    tree_closing = True,
     console_view_entry = consoles.console_view_entry(
         category = "emulator|x64|rel",
         short_name = "leak",

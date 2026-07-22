@@ -87,8 +87,9 @@ class ProfileMenuViewBase : public content::WebContentsDelegate,
     kBatchUploadAsPrimaryButton = 29,
     kBatchUploadWindows10DepreciationAsPrimaryButton = 30,
     kPasskeyUnlockButton = 31,
+    kSigninOnPhoneButton = 32,
 
-    kMaxValue = kPasskeyUnlockButton,
+    kMaxValue = kSigninOnPhoneButton,
   };
   // LINT.ThenChange(//tools/metrics/histograms/metadata/profile/enums.xml:ProfileMenuActionableItem)
 

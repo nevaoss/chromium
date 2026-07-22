@@ -67,7 +67,7 @@ bool OmniboxPopupUIConfig::IsWebUIEnabled(
   return omnibox::IsAimPopupFeatureEnabled() ||
          omnibox::IsWebUIOmniboxFullPopupEnabled() ||
          omnibox::IsWebUIOmniboxPopupEnabled() ||
-         base::FeatureList::IsEnabled(omnibox::kEverywhereOmnibox) ||
+         base::FeatureList::IsEnabled(omnibox::kOmniboxEverywhere) ||
          features::IsWebUILocationBarEnabled();
 }
 
@@ -108,6 +108,10 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
   source->AddBoolean("webuiOmniboxPopupSelectionControlEnabled",
                      base::FeatureList::IsEnabled(
                          omnibox::kWebUIOmniboxPopupSelectionControl));
+  source->AddBoolean(
+      "searchboxMultiline",
+      base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup) &&
+          omnibox::kWebUIOmniboxFullPopupMultiline.Get());
 
   source->AddBoolean("reportMetrics", true);
   source->AddString("charTypedToPaintMetricName",
@@ -255,8 +259,15 @@ void OmniboxPopupUI::BindInterface(
 void OmniboxPopupUI::CreatePageHandler(
     mojo::PendingRemote<omnibox_popup::mojom::Page> page,
     mojo::PendingReceiver<omnibox_popup::mojom::PageHandler> receiver) {
+  auto* omnibox_controller =
+      OmniboxPopupWebContentsHelper::GetOrCreateForWebContents(
+          web_ui()->GetWebContents())
+          ->get_omnibox_controller();
+  CHECK(omnibox_controller);
+
   popup_handler_ = std::make_unique<OmniboxPopupHandler>(
-      std::move(receiver), std::move(page), web_ui()->GetWebContents());
+      std::move(receiver), std::move(page), web_ui()->GetWebContents(),
+      omnibox_controller);
   popup_handler_->set_embedder(embedder());
 }
 

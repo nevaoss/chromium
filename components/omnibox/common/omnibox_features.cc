@@ -178,6 +178,9 @@ BASE_FEATURE(kMostVisitedTilesHorizontalRenderGroup,
 // accommodate the autocompletions.
 BASE_FEATURE(kRichAutocompletion, "OmniboxRichAutocompletion", ENABLED);
 
+// Enables the AIM eligibility diagnostic component extension.
+BASE_FEATURE(kAimEligibilityComponentExtension, DISABLED);
+
 // Whether the aim button should dynamically change to portray the submission
 // type.
 BASE_FEATURE(kDynamicAimSubmit, DISABLED);
@@ -228,6 +231,10 @@ BASE_FEATURE(kOmniboxWebUIDetachWebContentsOnHide, ENABLED);
 // When enabled, the Omnibox WebUI popup will mark its web contents as hidden
 // when hidden, to unlock frames from compositor cache.
 BASE_FEATURE(kOmniboxWebUIPopupMarkAsHidden, DISABLED);
+
+// When enabled, the WebUI searchbox will bypass OmniboxController and
+// OmniboxEditModel.
+BASE_FEATURE(kWebUISearchboxWithoutModelController, DISABLED);
 
 // Feature used to default typed navigations to use HTTPS instead of HTTP.
 // This only applies to navigations that don't have a scheme such as
@@ -391,6 +398,8 @@ BASE_FEATURE(kComposeboxAttachmentsTypedState, DISABLED);
 
 // Whether to enable Google Drive context menu option in the composebox.
 BASE_FEATURE(kComposeboxDriveContextMenuOption, DISABLED);
+const base::FeatureParam<bool> kComposeboxDriveIdentityFallback{
+    &kComposeboxDriveContextMenuOption, "enable_identity_fallback", true};
 
 // Whether to enable Google Drive context menu option's disclaimer flow in the
 // composebox.
@@ -467,7 +476,6 @@ BASE_FEATURE(kDiagnostics, "OmniboxDiagnostics", DISABLED);
 
 // Force the realbox on Android regardless of platform/configuration checks.
 BASE_FEATURE(kForceAndroidRealbox, DISABLED);
-
 
 // If enabled, disables ligatures in the URL bar on Android.
 BASE_FEATURE(kUrlBarWithoutLigatures, ENABLED);

@@ -818,7 +818,8 @@ void AccessibilityManager::OnSpokenFeedbackChanged() {
   if (enabled) {
     screen_reader_mode_ =
         content::BrowserAccessibilityState::GetInstance()
-            ->CreateScopedModeForProcess(ui::AXMode::kScreenReader);
+            ->CreateScopedModeForProcess(ui::AXMode::kScreenReader |
+                                         ui::AXMode::kFromPlatform);
   } else {
     screen_reader_mode_.reset();
   }

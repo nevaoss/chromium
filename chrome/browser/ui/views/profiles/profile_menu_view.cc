@@ -112,6 +112,10 @@
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/widget/widget.h"
 
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+#include "chrome/browser/signin/cross_device_signin_promo_manager.h"
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
+
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
 #include "chrome/browser/enterprise/signin/enterprise_signin_prefs.h"
 #endif
@@ -1210,6 +1214,9 @@ void ProfileMenuView::MaybeBuildSignoutButton() {
 
 void ProfileMenuView::BuildFeatureButtons() {
   CHECK(!profile().IsGuestSession());
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+  MaybeBuildCrossDeviceSigninButton();
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
   signin::IdentityManager* identity_manager =
       IdentityManagerFactory::GetForProfile(&profile());
   // May add the button asynchronously, order is not be guaranteed.
@@ -1228,6 +1235,32 @@ void ProfileMenuView::BuildFeatureButtons() {
   MaybeBuildCloseBrowsersButton();
   MaybeBuildSignoutButton();
 }
+
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+void ProfileMenuView::MaybeBuildCrossDeviceSigninButton() {
+  if (ShouldShowCrossDeviceSigninPromo(
+          CrossDeviceSigninPromoEntryPoint::kProfileMenu, &profile())) {
+    AddFeatureButton(
+        l10n_util::GetStringUTF16(
+            IDS_PROFILE_MENU_SIGNIN_ON_PHONE_BUTTON_LABEL),
+        base::BindRepeating(&ProfileMenuView::OnCrossDeviceSigninButtonClicked,
+                            base::Unretained(this)),
+        kMobileIcon);
+  }
+}
+
+void ProfileMenuView::OnCrossDeviceSigninButtonClicked() {
+  OnActionableItemClicked(ActionableItem::kSigninOnPhoneButton);
+  if (!perform_menu_actions()) {
+    return;
+  }
+  Browser* browser_ptr = &browser();
+  GetWidget()->CloseWithReason(views::Widget::ClosedReason::kUnspecified);
+  OpenSigninToPhoneQrCodeBubble(browser_ptr,
+                                CrossDeviceSigninPromoEntryPoint::kProfileMenu,
+                                base::DoNothing());
+}
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
 void ProfileMenuView::GetProfilesForOtherProfilesSection(
     std::vector<ProfileAttributesEntry*>& available_profiles) const {

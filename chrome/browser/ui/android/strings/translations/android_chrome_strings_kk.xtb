@@ -34,7 +34,6 @@
 <translation id="1108938384783527433">Тарихты синхрондау</translation>
 <translation id="1111673857033749125">Басқа құрылғыларда сақталған бетбелгілер осы жерде шығады.</translation>
 <translation id="1123537484474186311"><ph name="TAB_TITLE" />, "Суреттегі сурет" режиміндегі қойынды</translation>
-<translation id="1124357650933674597">{NUM_WINDOWS,plural, =1{1 терезені қалпына келтіру}other{# терезені қалпына келтіру}}</translation>
 <translation id="1126696498560056882">Осы құрылғыдағы аккаунттарды басқару</translation>
 <translation id="1135018701024399762">Инкогнито режимі браузерді қолдану әрекетін құрылғыңызды пайдаланатын басқа адамдардан құпия сақтайды.</translation>
 <translation id="113752097246673894">Бетбелгілер мен басқа ақпаратты барлық құрылғыдан алу үшін Chrome аккаунтына <ph name="EMAIL" /> ретінде кіріңіз.</translation>
@@ -185,6 +184,7 @@ Chrome тәжірибесін жақсарту үшін деректерді қ�
 <translation id="1792959175193046959">Әдепкі жүктеп алу орнын кез келген уақытта өзгертіңіз</translation>
 <translation id="1796666869097395659">Қойындыны жиып қойып, кейін қайта оралуға болады.</translation>
 <translation id="1799920918471566157">Chrome-ды пайдалану кеңестері</translation>
+<translation id="1803799720926799756">Файл өлшемі</translation>
 <translation id="1807246157184219062">Ашық</translation>
 <translation id="1807709131360304325">Жаңа терезе ашу</translation>
 <translation id="1812027881030482584"><ph name="SITE_ETLD_PLUS_ONE" /> сайты <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> провайдерін пайдалануды жалғастыра алмайды.</translation>
@@ -520,7 +520,6 @@ Chrome тәжірибесін жақсарту үшін деректерді қ�
 <translation id="3166827708714933426">Қойынды мен терезенің пернелер тіркесімі</translation>
 <translation id="3167258285411721858"><ph name="HOST_NAME" /> мобильдік сайтын сұрауға болады</translation>
 <translation id="3181145110929454111"><ph name="TAB_TITLE" />, көп рет таңдалған, бекітілген, дыбысы өшірілген инкогнито қойындысы</translation>
-<translation id="3183941812169784232">Барлық терезені қалпына келтіру керек пе?</translation>
 <translation id="3187472288455401631">Жарнама көрсеткіштерін өлшеу</translation>
 <translation id="3189635831478931757"><ph name="GROUP_TITLE" /> қойындылар тобы</translation>
 <translation id="3200536777393523575">Қазіргі терезені жабу қажет пе?</translation>
@@ -569,6 +568,7 @@ Chrome тәжірибесін жақсарту үшін деректерді қ�
 <translation id="3435575784518354875">Құпия сөздерді пайдалану рұқсатын сақтау үшін оларды қазір экспорттап, Google Play қызметтерін жаңартыңыз. Содан кейін оларды Google Password Manager-ге қайта импорттаңыз. <ph name="BEGIN_LINK" />Толық нұсқауларды қараңыз<ph name="END_LINK" />.</translation>
 <translation id="3435738964857648380">Қауіпсіздік</translation>
 <translation id="3435914367318771664">Жаңа топқа қойынды қосу</translation>
+<translation id="3436118221454753036">AI режимінде сұрау</translation>
 <translation id="3438681572027105609">Құпия сөздер мен басқа ақпаратты барлық құрылғыдан алу үшін Chrome аккаунтына кіріңіз.</translation>
 <translation id="3439276997620616816">Соңғы қойындыларды осы жерден табасыз</translation>
 <translation id="3443221991560634068">Ағымдағы бетті жаңарту</translation>
@@ -2039,7 +2039,6 @@ Google аккаунтының шолу тарихы басқа Google қызме
 <translation id="939598580284253335">Құпия фразаны енгізу</translation>
 <translation id="94161319503679839"><ph name="TAB_TITLE" />, "Cуреттегі сурет" режиміндегі бекітілген инкогнито қойындысы</translation>
 <translation id="945522503751344254">Пікір жіберу</translation>
-<translation id="949667118776341807">Бұру</translation>
 <translation id="95817756606698420">Chrome браузері <ph name="BEGIN_BOLD" />Sogou<ph name="END_BOLD" /> жүйесін Қытайда іздеу үшін пайдалана алады. Мұны <ph name="BEGIN_LINK" />Параметрлер<ph name="END_LINK" /> бөлімінен өзгертуге болады.</translation>
 <translation id="961856697154696964">Браузер деректерін жою</translation>
 <translation id="963246339335003378">Тапсырмалар реттегішін ашу</translation>

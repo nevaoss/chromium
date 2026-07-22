@@ -8,7 +8,6 @@ import {assertDeepEquals, assertEquals} from './chai_assert.js';
  * Create a mock function that records function calls and validates against
  * expectations.
  * @extends Function
- * @property {*} returnValue
  */
 export class MockMethod {
   constructor() {
@@ -50,9 +49,9 @@ export class MockMethod {
 
     /**
      * Value returned from call to function.
-     * @type {*}
+     * @private {*}
      */
-    this.returnValue = undefined;
+    this.returnValue_ = undefined;
 
     /**
      * List of arguments for callback function.
@@ -123,6 +122,15 @@ export class MockMethod {
    */
   notFunction_(arg) {
     return typeof arg !== 'function';
+  }
+
+  /** @return {*} */
+  get returnValue() {
+    return this.returnValue_;
+  }
+  /** @param {*} val */
+  set returnValue(val) {
+    this.returnValue_ = val;
   }
 }
 

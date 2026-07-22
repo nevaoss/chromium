@@ -839,7 +839,6 @@
 <translation id="391904960191284041">প্রোডাক্টের রিভিউ</translation>
 <translation id="3921585859122905677">অ্যাড্রেস বারের পজিশন</translation>
 <translation id="3922185497376658606">ওয়েবপেজ প্রিলোড করুন</translation>
-<translation id="3922395466317605522">মেনু কাস্টমাইজ করুন</translation>
 <translation id="3926703470020109118">ডাউনলোড বাতিল করা হয়েছে</translation>
 <translation id="3929457972718048006">ঠিকানা</translation>
 <translation id="3931215329146376310">{count,plural, =1{এই সাইটের জন্য নতুন পাসওয়ার্ড}one{এই সাইটের জন্য নতুন পাসওয়ার্ড}other{এই সাইটের জন্য নতুন পাসওয়ার্ড}}</translation>
@@ -1273,6 +1272,7 @@
 <translation id="5336910966955551309">আপনার পছন্দের সাইট পিন করতে ট্যাপ করে ধরে থাকুন</translation>
 <translation id="5338512273860059533">সাইন-ইন করার কাজ চলছে।</translation>
 <translation id="5343472494710226394">আপনার আগ্রহ অনুযায়ী খবর, খেলাধূলা ও কন্টেন্ট।</translation>
+<translation id="5351613737248079168">Level Up ব্যবহার করতে হলে আপনাকে সাইন-ইন করে রাখতে হবে</translation>
 <translation id="5352128922772839949">ফাইল সেভ করুন</translation>
 <translation id="5355191726083956201">"উন্নত সুরক্ষা" ফিচার চালু করা আছে</translation>
 <translation id="536067926684072644">বুকমার্ক দেখান</translation>
@@ -1696,7 +1696,6 @@
 <translation id="6674917187596384849">আপনি সহজেই অ্যাকাউন্টের মধ্যে পরিবর্তন করতে পারবেন</translation>
 <translation id="6676349090816247042">সাইন-ইন করার বিকল্প।</translation>
 <translation id="667999046851023355">দস্তাবেজ</translation>
-<translation id="6680416467695217368">মেনু কাস্টমাইজ করুন</translation>
 <translation id="6681791404926413601">{count,plural, =1{আপনার কীবোর্ডের উপরে পেমেন্ট পদ্ধতির জন্য {count}টি বিকল্প উপলভ্য আছে।}one{আপনার কীবোর্ডের উপরে পেমেন্ট পদ্ধতির জন্য {count}টি বিকল্প উপলভ্য আছে।}other{আপনার কীবোর্ডের উপরে পেমেন্ট পদ্ধতির জন্য {count}টি বিকল্প উপলভ্য আছে।}}</translation>
 <translation id="6682680306647339111">রিমাইন্ডার সরানো হয়েছে</translation>
 <translation id="6684262542644248484">ওয়েবসাইটে সাইন-ইন করুন</translation>
@@ -2243,6 +2242,7 @@
 <translation id="8534481786647257214">Google+ পোষ্ট সম্পূর্ণ হয়েছে৷</translation>
 <translation id="8535368836838588657">পাসওয়ার্ড দেখুন</translation>
 <translation id="8540426897269305488"><ph name="CELL_ACCESSIBILITY_LABEL" /> দিয়ে সাইন-ইন করুন</translation>
+<translation id="8542331710562073430">কোনও সমস্যা হয়েছে। আবার Live শুরু করার চেষ্টা করতে Live বোতামে ট্যাপ করুন।</translation>
 <translation id="8545276357312221485">আপনার ডিফল্ট ব্রাউজার সেটিংস চেক করুন</translation>
 <translation id="854938212724803178">আপনার ১টি চুরি হয়ে যাওয়া পাসওয়ার্ড আছে। নিরাপদ থাকতে এই সমস্যার সমাধান করুন।</translation>
 <translation id="8551311254462607218">অ্যাড্রেস বারে, Google Lens ক্যামেরা আইকনে ট্যাপ করুন</translation>

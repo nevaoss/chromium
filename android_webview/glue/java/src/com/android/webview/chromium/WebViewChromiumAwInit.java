@@ -71,6 +71,8 @@ import java.util.ArrayDeque;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -208,7 +210,7 @@ public class WebViewChromiumAwInit {
     // This is only accessed during WebViewChromiumFactoryProvider.initialize() which is guarded by
     // the WebViewFactory lock in the framework, and on the UI thread during startChromium
     // which cannot be called before initialize() has completed.
-    private Thread mSetUpResourcesThread;
+    private FutureTask<Void> mSetUpResourcesTask;
 
     // Guards access to fields that are initialized on first use rather than by startChromium.
     // This lock is used across WebViewChromium startup classes ie WebViewChromiumAwInit,
@@ -222,6 +224,8 @@ public class WebViewChromiumAwInit {
     private boolean mThreadIsSet;
 
     private final CountDownLatch mStartupFinished = new CountDownLatch(1);
+
+    private final CountDownLatch mNonUiThreadCapableStartupTasksLatch = new CountDownLatch(1);
 
     // mInitState should only transition from INIT_NOT_STARTED to INIT_FINISHED with possibly
     // INIT_POSTED as an intermediate state. INIT_POSTED is set right before posting `startChromium`
@@ -632,20 +636,35 @@ public class WebViewChromiumAwInit {
     // This is extracted out so that we can experiment with calling this in either of these
     // locations.
     public void runNonUiThreadCapableStartupTasks() {
-        ResourceBundle.setAvailablePakLocales(AwLocaleConfig.getWebViewSupportedPakLocales());
+        try {
+            ResourceBundle.setAvailablePakLocales(AwLocaleConfig.getWebViewSupportedPakLocales());
 
-        try (DualTraceEvent ignored2 = DualTraceEvent.scoped("LibraryLoader.ensureInitialized")) {
-            LibraryLoader.getInstance().ensureInitialized();
+            try (DualTraceEvent ignored2 =
+                    DualTraceEvent.scoped("LibraryLoader.ensureInitialized")) {
+                LibraryLoader.getInstance().ensureInitialized();
+            }
+
+            // TODO(crbug.com/400414092): PathService overrides should be obsolete now.
+            PathService.override(PathService.DIR_MODULE, "/system/lib/");
+            PathService.override(DIR_RESOURCE_PAKS_ANDROID, "/system/framework/webview/paks");
+
+            initPlatSupportLibrary();
+            AwContentsStatics.setCheckClearTextPermitted(
+                    ContextUtils.getApplicationContext().getApplicationInfo().targetSdkVersion
+                            >= Build.VERSION_CODES.O);
+        } finally {
+            mNonUiThreadCapableStartupTasksLatch.countDown();
         }
+    }
 
-        // TODO(crbug.com/400414092): PathService overrides should be obsolete now.
-        PathService.override(PathService.DIR_MODULE, "/system/lib/");
-        PathService.override(DIR_RESOURCE_PAKS_ANDROID, "/system/framework/webview/paks");
-
-        initPlatSupportLibrary();
-        AwContentsStatics.setCheckClearTextPermitted(
-                ContextUtils.getApplicationContext().getApplicationInfo().targetSdkVersion
-                        >= Build.VERSION_CODES.O);
+    private void waitForNonUiThreadCapableStartupTasks() {
+        try (DualTraceEvent e2 =
+                DualTraceEvent.scoped(
+                        "WebViewChromiumAwInit.waitForNonUiThreadCapableStartupTasks")) {
+            mNonUiThreadCapableStartupTasksLatch.await();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     // Initializes a new StartupTaskRunner with a list of tasks to run for chromium startup.
@@ -679,9 +698,11 @@ public class WebViewChromiumAwInit {
                         TrackExitReasons.startTrackingStartup();
                     }
 
-                    if (!WebViewCachedFlags.get()
+                    if (WebViewCachedFlags.get()
                             .isCachedFeatureEnabled(
                                     AwFeatures.WEBVIEW_MOVE_WORK_TO_PROVIDER_INIT)) {
+                        waitForNonUiThreadCapableStartupTasks();
+                    } else {
                         runNonUiThreadCapableStartupTasks();
                     }
                     waitUntilSetUpResources();
@@ -967,7 +988,7 @@ public class WebViewChromiumAwInit {
     void setUpResourcesOnBackgroundThread(int packageId, Context context) {
         try (DualTraceEvent e =
                 DualTraceEvent.scoped("WebViewChromiumAwInit.setUpResourcesOnBackgroundThread")) {
-            assert mSetUpResourcesThread == null : "This method shouldn't be called twice.";
+            assert mSetUpResourcesTask == null : "This method shouldn't be called twice.";
 
             Runnable setUpResourcesRunnable =
                     new Runnable() {
@@ -985,16 +1006,16 @@ public class WebViewChromiumAwInit {
                     };
 
             // Make sure that ResourceProvider is initialized before starting the browser process.
-            mSetUpResourcesThread = new Thread(setUpResourcesRunnable);
-            mSetUpResourcesThread.start();
+            mSetUpResourcesTask = new FutureTask<>(setUpResourcesRunnable, null);
+            PostTask.postTask(TaskTraits.USER_VISIBLE, mSetUpResourcesTask);
         }
     }
 
     private void waitUntilSetUpResources() {
         try (DualTraceEvent e =
                 DualTraceEvent.scoped("WebViewChromiumAwInit.waitUntilSetUpResources")) {
-            mSetUpResourcesThread.join();
-        } catch (InterruptedException e) {
+            mSetUpResourcesTask.get();
+        } catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException(e);
         }
     }

@@ -33,7 +33,8 @@ namespace blink {
 
 inline unsigned AttributeHash(
     const Vector<Attribute, kAttributePrealloc>& attributes) {
-  return StringHasher::HashMemory(base::as_byte_span(attributes));
+  return static_cast<unsigned>(
+      StringHasher::HashMemory(base::as_byte_span(attributes)));
 }
 
 inline bool HasSameAttributes(

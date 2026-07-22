@@ -34,7 +34,6 @@
 <translation id="1108938384783527433">Պատմության համաժամացում</translation>
 <translation id="1111673857033749125">Ձեր մյուս սարքերում պահված էջանիշները կտեսնեք այստեղ:</translation>
 <translation id="1123537484474186311"><ph name="TAB_TITLE" />, «Նկար նկարի մեջ» ներդիր</translation>
-<translation id="1124357650933674597">{NUM_WINDOWS,plural, =1{Վերականգնել 1 պատուհան}one{Վերականգնել # պատուհան}other{Վերականգնել # պատուհան}}</translation>
 <translation id="1126696498560056882">Հաշիվների կառավարում այս սարքում</translation>
 <translation id="1135018701024399762">Ինկոգնիտո ռեժիմը թույլ է տալիս գաղտնի պահել ձեր դիտարկումները այս սարքի մյուս օգտագործողներից</translation>
 <translation id="113752097246673894">Էջանիշները և մյուս տվյալները ձեր բոլոր սարքերում օգտագործելու համար մուտք գործեք Chrome որպես <ph name="EMAIL" /></translation>
@@ -185,6 +184,7 @@
 <translation id="1792959175193046959">Դուք ցանկացած ժամանակ կարող եք փոխել ներբեռնումների կանխադրված պանակը</translation>
 <translation id="1796666869097395659">Ծալեք ներդիրը՝ դրան ավելի ուշ վերադառնալու համար</translation>
 <translation id="1799920918471566157">Chrome-ին վերաբերող խորհուրդներ</translation>
+<translation id="1803799720926799756">Ֆայլի չափը</translation>
 <translation id="1807246157184219062">Բաց</translation>
 <translation id="1807709131360304325">Բացել նոր պատուհան</translation>
 <translation id="1812027881030482584"><ph name="SITE_ETLD_PLUS_ONE" /> կայքը չի կարող շարունակել<ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" />-ի օգտագործումը</translation>
@@ -520,7 +520,6 @@
 <translation id="3166827708714933426">Ներդիրների և պատուհանների դյուրանցումներ</translation>
 <translation id="3167258285411721858">Դուք կարող եք <ph name="HOST_NAME" /> կայքի բջջային տարբերակը խնդրել</translation>
 <translation id="3181145110929454111"><ph name="TAB_TITLE" />, ընտրված մի քանի ինկոգնիտո ներդիրներից մեկը, որն ամրացված է, և որի ձայնն անջատված է</translation>
-<translation id="3183941812169784232">Վերականգնե՞լ բոլոր պատուհանները</translation>
 <translation id="3187472288455401631">Գովազդի արդյունավետության գնահատում</translation>
 <translation id="3189635831478931757"><ph name="GROUP_TITLE" /> ներդիրների խումբ</translation>
 <translation id="3200536777393523575">Փակե՞լ ընթացիկ պատուհանը</translation>
@@ -569,6 +568,7 @@
 <translation id="3435575784518354875">Ձեր գաղտնաբառերի հասանելիությունը պահպանելու համար արտահանեք դրանք հիմա, թարմացրեք Google Play ծառայությունները և այնուհետև նորից ներմուծեք դրանք Google գաղտնաբառերի կառավարիչում։ <ph name="BEGIN_LINK" />Դիտել բոլոր ցուցումները<ph name="END_LINK" />։</translation>
 <translation id="3435738964857648380">Անվտանգություն</translation>
 <translation id="3435914367318771664">Ավելացնել ներդիր նոր խմբում</translation>
+<translation id="3436118221454753036">Հարցրեք ԱԲ-ին ռեժիմում</translation>
 <translation id="3438681572027105609">Գաղտնաբառերը և մյուս տվյալները ձեր բոլոր սարքերում օգտագործելու համար մուտք գործեք Chrome</translation>
 <translation id="3439276997620616816">Այստեղ կցուցադրվեն ձեր վերջին ներդիրները</translation>
 <translation id="3443221991560634068">Վերաբեռնել ընթացիկ էջը</translation>
@@ -2039,7 +2039,6 @@
 <translation id="939598580284253335">Մուտքագրեք անցաբառը</translation>
 <translation id="94161319503679839"><ph name="TAB_TITLE" />, ամրացված ինկոգնիտո ներդիր, որում նկարը նկարի մեջ է</translation>
 <translation id="945522503751344254">Կարծիք հայտնել</translation>
-<translation id="949667118776341807">Պտտել</translation>
 <translation id="95817756606698420">Չինաստանում որոնում կատարելու համար Chrome-ը կարող է օգտագործել <ph name="BEGIN_BOLD" />Sogou<ph name="END_BOLD" /> որոնման համակարգը: Սա կարող եք փոխել <ph name="BEGIN_LINK" />կարգավորումներում<ph name="END_LINK" />:</translation>
 <translation id="961856697154696964">Ջնջել այցելությունները</translation>
 <translation id="963246339335003378">Բացել խնդիրների կառավարիչը</translation>

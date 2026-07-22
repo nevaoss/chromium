@@ -888,8 +888,8 @@ void MediaStreamDispatcherHost::ReceivedBadMessage(
 void MediaStreamDispatcherHost::SetBadMessageCallbackForTesting(
     base::RepeatingCallback<void(ChildProcessId, bad_message::BadMessageReason)>
         callback) {
-  DCHECK_CURRENTLY_ON(BrowserThread::IO);
-  DCHECK(!bad_message_callback_for_testing_);
+  CHECK_CURRENTLY_ON(BrowserThread::IO, base::NotFatalUntil::M152);
+  CHECK(!bad_message_callback_for_testing_, base::NotFatalUntil::M152);
   bad_message_callback_for_testing_ = std::move(callback);
 }
 

@@ -1715,6 +1715,7 @@ _CONFIG = [
         ],
         'allowed': [
             'color_utils::GetContrastRatio',
+            'color_utils::GetRelativeLuminance4f',
         ],
     },
     {
@@ -2302,11 +2303,12 @@ _CONFIG = [
     },
     {
         'paths': [
+            'third_party/blink/renderer/platform/bindings/parkable_string_manager.cc',
             'third_party/blink/renderer/platform/bindings/parkable_string_manager.h',
         ],
         'allowed': [
             # ParkableStringManager is not garbage-collected, so is safe to use the base version.
-            'base::AsyncMemoryPressureListenerRegistration',
+            'base::AsyncMemoryConsumerRegistration',
         ],
     },
     {

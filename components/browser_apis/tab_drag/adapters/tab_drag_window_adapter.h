@@ -36,6 +36,9 @@ class TabDragWindowAdapter {
   // Returns the window bounds in screen coordinates.
   virtual gfx::Rect GetBoundsInScreen() const = 0;
 
+  // Returns true if the given dragged tab count represents the entire window.
+  virtual bool IsDraggingEntireWindow(size_t dragged_tab_count) const = 0;
+
   // Converts a point in screen coordinates to local coordinates relative to the
   // given `target_view`.
   virtual gfx::Point ConvertScreenPointToLocal(
@@ -62,6 +65,14 @@ class TabDragWindowAdapter {
   virtual DragMoveLoopResult RunWindowMoveLoop(
       const gfx::Point& screen_point,
       const gfx::Vector2d& drag_offset) = 0;
+
+  // Signals the native window manager to end the blocking window move loop.
+  virtual void EndWindowMoveLoop() = 0;
+
+  // Migrates the given tabs from this window to the target window.
+  virtual base::expected<void, mojo_base::mojom::ErrorPtr> MigrateTabs(
+      TabDragWindowId target_window_id,
+      const std::vector<tabs_api::NodeId>& tab_ids) = 0;
 };
 
 }  // namespace tabs_api

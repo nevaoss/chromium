@@ -56,11 +56,20 @@ UIImage* DefaultIconForAutofillAiEntityType(EntityTypeName entity_type_name,
       }
       break;
     case EntityTypeName::kShipment:
-      symbol_name = kBoxTruckFillSymbol;
+      if (is_personal_context) {
+        return SymbolWithPalette(
+            CustomSymbolWithPointSize(kTruckBoxSparkSymbol, symbol_point_size),
+            @[ color ]);
+      }
+      symbol_name = kTruckBoxSymbol;
       break;
     case EntityTypeName::kOrder:
-      // TODO(crbug.com/523320919): Map to shopping bag symbol when available.
-      symbol_name = kCartSymbol;
+      if (is_personal_context) {
+        return SymbolWithPalette(
+            CustomSymbolWithPointSize(kBagSparkSymbol, symbol_point_size),
+            @[ color ]);
+      }
+      symbol_name = kBagSymbol;
       break;
     default:
       return nil;

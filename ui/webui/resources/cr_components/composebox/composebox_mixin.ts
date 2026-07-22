@@ -1229,12 +1229,14 @@ export const ComposeboxEmbedderMixin =
           }
         }
 
-        keepMenuOpenForMultiSelection() {
+        async keepMenuOpenForMultiSelection() {
           if ((this.composeboxSource === 'NewTabPage' &&
                !this.keepMenuOpenOnTabSelectForRealbox) ||
               (this.composeboxSource === 'Omnibox')) {
             return;
           }
+          this.shareTabsFlyoutOpen = true;
+          await this.updateComplete;
           const entrypointAndMenu = this.getContextEntrypointElement();
           if (entrypointAndMenu) {
             (entrypointAndMenu as ContextualEntrypointAndMenuElement)

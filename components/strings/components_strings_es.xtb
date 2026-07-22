@@ -477,6 +477,7 @@ De lo contrario, lo impedirá tu configuración de privacidad. Permitirá que el
 <translation id="173080396488393970">No se admite este tipo de tarjeta</translation>
 <translation id="1731563515262205847">ML-DSA-65</translation>
 <translation id="1732445923934584865">Preguntar en persona</translation>
+<translation id="1732796940245838248">Actualiza el número Redress en Google Wallet</translation>
 <translation id="1733064249834771892">fuentes</translation>
 <translation id="1733631169686303142">Equipos de sonido</translation>
 <translation id="1733762317901693627">En ocasiones, los atacantes vulneran sitios que normalmente son seguros. Solo accede a <ph name="BEGIN_LINK" />este sitio no seguro<ph name="END_LINK" /> si tienes la certeza de entender los riesgos.</translation>
@@ -712,6 +713,7 @@ De lo contrario, lo impedirá tu configuración de privacidad. Permitirá que el
 <translation id="2122165854541876335">Recursos para consumidores</translation>
 <translation id="2122214041802369259">Precio alto</translation>
 <translation id="2122719317867821810">Esta política funciona según lo previsto, pero ha anulado un valor en conflicto definido en otra parte.</translation>
+<translation id="2124081665399116863">Actualiza el vehículo en Google Wallet</translation>
 <translation id="2126374524350484896">Proveedor de PDF:</translation>
 <translation id="2127090458081644412">Contraseña guardada en este dispositivo</translation>
 <translation id="2127747486437921899">Cursiva</translation>
@@ -994,6 +996,7 @@ De lo contrario, lo impedirá tu configuración de privacidad. Permitirá que el
 <translation id="2524962131655207565"><ph name="BEGIN_BOLD" />El contenido de la página de tramitación de la compra se comparte con Google para ofrecer estas opciones.<ph name="END_BOLD" /> Los planes de pago están sujetos a requisitos. Para ocultar las opciones de pago aplazado, ve a la <ph name="BEGIN_LINK" />configuración de pago<ph name="END_LINK" />.</translation>
 <translation id="2526062290525841862">Para ejecutar esta aplicación, vuelve a habilitar el modo Desarrollador de aplicaciones web aisladas</translation>
 <translation id="2526280916094749336">Puedes usar las direcciones guardadas en los productos de Google. Esta dirección se guardará en tu cuenta de Google <ph name="ACCOUNT" />.</translation>
+<translation id="2526590354069164005">Escritorio</translation>
 <translation id="2527451058878391043">El CVC se encuentra en el anverso de tu tarjeta. Es el código de 4 dígitos situado encima del número de la tarjeta, en la parte superior derecha.</translation>
 <translation id="2529899080962247600">Este campo no debe tener más de <ph name="MAX_ITEMS_LIMIT" /> entradas. Se ignorarán las demás entradas.</translation>
 <translation id="2530042584066815841">Bloqueo y uso del ratón</translation>
@@ -1548,6 +1551,7 @@ Para ocultar las opciones de pago aplazado, ve a la <ph name="BEGIN_LINK" />conf
 <translation id="3422472998109090673">No se puede acceder a la página <ph name="HOST_NAME" /> en este momento.</translation>
 <translation id="3422794267539320056">Toca el dinosaurio o pulsa la barra espaciadora para jugar</translation>
 <translation id="3423742043356668186">Especificado por el sistema</translation>
+<translation id="3426672782316020729">Actualiza tu pasaporte en Google Wallet</translation>
 <translation id="3427342743765426898">&amp;Rehacer edición</translation>
 <translation id="342781501876943858">Chromium te recomienda que cambies tu contraseña si la has vuelto a utilizar en otros sitios.</translation>
 <translation id="3428151540071562330">Una o varias URI de plantilla del servidor DnsOverHttpsTemplates no son válidas y no se utilizarán.</translation>
@@ -2408,6 +2412,7 @@ Para ocultar las opciones de pago aplazado, ve a la <ph name="BEGIN_LINK" />conf
 <translation id="4766713847338118463">Grapado doble en la parte inferior</translation>
 <translation id="4768816584204270288">Cuando pagas a plazos, se rellena un número de tarjeta virtual de un solo uso. Puedes hacer clic para copiar y pegar los detalles de la tarjeta de esta compra.</translation>
 <translation id="4768864802656530630">Registros detallados del sistema. <ph name="BEGIN_LINK" />Más información<ph name="END_LINK" /></translation>
+<translation id="4770909831299304090">Actualiza el KTN en Google Wallet</translation>
 <translation id="4771249073710170730">Radiocontrol y modelismo</translation>
 <translation id="4771973620359291008">Se ha producido un error desconocido.</translation>
 <translation id="4774055414220872623">Productos de plástica y manualidades</translation>
@@ -4223,6 +4228,7 @@ Más información:
 <translation id="7569490014721427265">Golf</translation>
 <translation id="7569952961197462199">¿Eliminar tarjeta de crédito de Chrome?</translation>
 <translation id="7569983096843329377">Negro</translation>
+<translation id="7570524564113479209">Actualiza tu documento de identidad en Google Wallet</translation>
 <translation id="7570862164055912832">Números Redress</translation>
 <translation id="7571813784389228510">Modo IA de Google</translation>
 <translation id="7574998639136359461">Equipamiento de deportes de invierno</translation>
@@ -4744,6 +4750,7 @@ Más información:
 <translation id="8389940864052787379">Vehículos personalizados y de alto rendimiento</translation>
 <translation id="8390725133630534698">La política del administrador no permite compartir entre <ph name="ORIGIN_NAME" /> y <ph name="VM_NAME" />.</translation>
 <translation id="8392783408127179588">Volviendo a cargar políticas</translation>
+<translation id="8393948304336153065">Actualiza tu carné de conducir en Google Wallet</translation>
 <translation id="8396522675989118466">Es el código de <ph name="NUMBER_OF_DIGITS" /> dígitos que aparece en el <ph name="SIDE_OF_CARD" /></translation>
 <translation id="8398335999901363925">Los métodos de pago que puedes rellenar con un toque están abiertos a altura completa.</translation>
 <translation id="8398446215576328011">Deshacer políticas aplicadas</translation>
@@ -4905,7 +4912,6 @@ Más información:
 <translation id="8671519637524426245">El valor <ph name="SECURE_DNS_SALT" /> no cumple los requisitos de tamaño.</translation>
 <translation id="867224526087042813">Firma</translation>
 <translation id="8672535691554698269">Redes informáticas</translation>
-<translation id="8673710317985154384">{NUM_TABS,plural, =1{Mostrar detalles de la pestaña compartida. Compartiendo 1 pestaña de {WEBSITE_LIST_STR}.}other{Mostrar detalles de las pestañas compartidas. Compartiendo {NUM_TABS} pestañas de {WEBSITE_LIST_STR}.}}</translation>
 <translation id="8675446170353411473">Tus archivos se están subiendo a <ph name="CLOUD_PROVIDER" /></translation>
 <translation id="8676424191133491403">Sin retraso</translation>
 <translation id="8680536109547170164"><ph name="QUERY" />, respuesta: <ph name="ANSWER" /></translation>

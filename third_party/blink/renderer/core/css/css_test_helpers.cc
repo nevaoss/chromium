@@ -364,6 +364,8 @@ String ToString(PseudoId pseudo_id) {
       return "kAfterLastInternalPseudoId";
     case kPseudoIdOverscrollAreaParent:
       return "kPseudoIdOverscrollAreaParent";
+    case kPseudoIdOverscrollBackdrop:
+      return "kPseudoIdOverscrollBackdrop";
     case kPseudoIdSkeleton:
       return "kPseudoIdSkeleton";
     case kPseudoIdInvalid:

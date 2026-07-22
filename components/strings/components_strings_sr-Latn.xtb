@@ -314,6 +314,7 @@ To inače blokiraju podešavanja privatnosti. To omogućava da sadržaj sa koji
 <translation id="1463793142714244641">Nekretnine za tajmšer i odmor</translation>
 <translation id="1465457928007067810">IBAN je sačuvan na Google nalogu</translation>
 <translation id="1467432559032391204">Ulevo</translation>
+<translation id="1471514598850585811">Laptop</translation>
 <translation id="1472675084647422956">Prikaži više</translation>
 <translation id="1473183651233018052">JIS B10</translation>
 <translation id="1473495410389165587">Unesite 3 ili više reči da biste dobili pomoć pri pisanju</translation>
@@ -996,6 +997,7 @@ To inače blokiraju podešavanja privatnosti. To omogućava da sadržaj sa koji
 <translation id="2524962131655207565"><ph name="BEGIN_BOLD" />Sadržaj sa stranice za plaćanje deli se sa Google-om da bi Google pružao ove opcije<ph name="END_BOLD" />. Planovi plaćanja podležu uslovima. Da biste sakrili opcije za kasnije plaćanje, idite u <ph name="BEGIN_LINK" />podešavanja plaćanja<ph name="END_LINK" />.</translation>
 <translation id="2526062290525841862">Da biste pokrenuli ovu aplikaciju, ponovo omogućite režim programera za izolovanu veb-aplikaciju</translation>
 <translation id="2526280916094749336">Možete da koristite sačuvane adrese u svim Google proizvodima. Ova adresa će biti sačuvana na Google nalogu <ph name="ACCOUNT" />.</translation>
+<translation id="2526590354069164005">Radna površina</translation>
 <translation id="2527451058878391043">CVC je na prednjoj strani kartice. To je 4-cifreni kôd u gornjem desnom uglu iznad broja kartice.</translation>
 <translation id="2529899080962247600">Ovo polje ne sme da ima više od <ph name="MAX_ITEMS_LIMIT" /> unosa. Svi budući unosi će se zanemariti.</translation>
 <translation id="2530042584066815841">Zaključavanje i korišćenje miša</translation>
@@ -4911,7 +4913,6 @@ Dodatni detalji:
 <translation id="8671519637524426245">Vrednost <ph name="SECURE_DNS_SALT" /> ne ispunjava uslove za veličinu.</translation>
 <translation id="867224526087042813">Potpis</translation>
 <translation id="8672535691554698269">Računarske mreže</translation>
-<translation id="8673710317985154384">{NUM_TABS,plural, =1{Prikaži detalje deljenja kartice. Deli se 1 kartica sa {WEBSITE_LIST_STR}}one{Prikaži detalje deljenja kartice. Deli se {NUM_TABS} kartica sa {WEBSITE_LIST_STR}}few{Prikaži detalje deljenja kartice. Dele se {NUM_TABS} kartice sa {WEBSITE_LIST_STR}}other{Prikaži detalje deljenja kartice. Deli se {NUM_TABS} kartica sa {WEBSITE_LIST_STR}}}</translation>
 <translation id="8675446170353411473">Fajlovi se optremaju u <ph name="CLOUD_PROVIDER" /></translation>
 <translation id="8676424191133491403">Bez odlaganja</translation>
 <translation id="8680536109547170164"><ph name="QUERY" />, odgovor, <ph name="ANSWER" /></translation>

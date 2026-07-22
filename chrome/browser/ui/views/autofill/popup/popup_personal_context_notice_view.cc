@@ -18,6 +18,7 @@
 #include "ui/views/controls/styled_label.h"
 #include "ui/views/layout/box_layout.h"
 #include "ui/views/layout/box_layout_view.h"
+#include "ui/views/view.h"
 
 namespace autofill {
 
@@ -34,13 +35,12 @@ PopupPersonalContextNoticeView::PopupPersonalContextNoticeView(
                    std::move(content_view)),
       controller_(std::move(controller)),
       line_number_(line_number) {
-  SetLayoutManager(std::make_unique<views::BoxLayout>(
-      views::BoxLayout::Orientation::kVertical));
-
   // Text container (Title + Description)
   // TODO(crbug.com/517520354): Add styling and the title.
-  auto* text_container =
-      AddChildView(views::Builder<views::BoxLayoutView>().Build());
+  views::View& text_container = GetContentView();
+  auto* layout =
+      static_cast<views::BoxLayout*>(text_container.GetLayoutManager());
+  layout->SetOrientation(views::BoxLayout::Orientation::kVertical);
 
   // Description (with link)
   // TODO(crbug.com/517520354): Add styling and strings.
@@ -50,10 +50,10 @@ PopupPersonalContextNoticeView::PopupPersonalContextNoticeView(
   link_offset = description_text.find(link_text);
 
   description_ =
-      text_container->AddChildView(std::make_unique<views::StyledLabel>());
+      text_container.AddChildView(std::make_unique<views::StyledLabel>());
   description_->SetText(description_text);
   // TODO(crbug.com/515651588): Update accessibility names.
-  GetContentView().GetViewAccessibility().SetName(description_text);
+  text_container.GetViewAccessibility().SetName(description_text);
   GetViewAccessibility().SetName(description_text);
 
   // Make the link substring in the description clickable.

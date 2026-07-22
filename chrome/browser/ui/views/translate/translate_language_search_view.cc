@@ -78,6 +78,13 @@ TranslateLanguageSearchView::TranslateLanguageSearchView(
 
 TranslateLanguageSearchView::~TranslateLanguageSearchView() = default;
 
+// Focus on the search field when TranslateLanguageSearchView is focused.
+void TranslateLanguageSearchView::RequestFocus() {
+  if (search_field_) {
+    search_field_->RequestFocus();
+  }
+}
+
 void TranslateLanguageSearchView::ContentsChanged(
     views::Textfield* sender,
     const std::u16string& new_contents) {

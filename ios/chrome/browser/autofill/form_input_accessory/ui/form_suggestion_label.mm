@@ -375,6 +375,21 @@ bool ShouldShowEditAction(FormSuggestion* suggestion) {
   }
 }
 
+// Configures the suggestion label when the suggestion is of type
+// SuggestionType::kFetchingAmbientData.
+void ConfigureFetchingAmbientDataSuggestion(UIStackView* stackView,
+                                            NSString* value) {
+  UIActivityIndicatorView* spinner = GetMediumUIActivityIndicatorView();
+  [spinner startAnimating];
+  [stackView addArrangedSubview:spinner];
+
+  UILabel* text_label =
+      TextLabel(value, [UIColor colorNamed:kTextSecondaryColor],
+                /*bold=*/NO, /*is_title=*/YES);
+  text_label.font = [UIFont preferredFontForTextStyle:UIFontTextStyleFootnote];
+  [stackView addArrangedSubview:text_label];
+}
+
 }  // namespace
 
 @interface FormSuggestionLabel () <UIContextMenuInteractionDelegate>
@@ -433,6 +448,12 @@ bool ShouldShowEditAction(FormSuggestion* suggestion) {
           .active = YES;
     } else {
       AddSameConstraints(stackView, self);
+    }
+
+    if (suggestion.type == SuggestionType::kFetchingAmbientData) {
+      ConfigureFetchingAmbientDataSuggestion(stackView, suggestion.value);
+      [self setUserInteractionEnabled:NO];
+      return self;
     }
 
     if (suggestion.icon) {

@@ -148,10 +148,9 @@
     return;
   }
 
-  BOOL showFeatures =
-      base::FeatureList::IsEnabled(
-          autofill::features::kAutofillAiWithDataSchema) ||
-      !_entityDataManager->GetEntityInstances().empty();
+  BOOL showFeatures = base::FeatureList::IsEnabled(
+                          autofill::features::kAutofillAiWithDataSchema) ||
+                      !_entityDataManager->GetEntityInstances().empty();
   [_consumer setShouldShowAutofillAIFeatures:showFeatures];
 }
 

@@ -511,12 +511,8 @@ bool BrowserAccessibilityAndroid::IsTableHeader() const {
 }
 
 bool BrowserAccessibilityAndroid::IsTextSelectable() const {
-  // This property tells Android if the node has selectable text, and is used as
-  // a heuristic to decide if extended selection should be communicated by text
-  // offset or child offset.
+  // This property tells Android if the node has selectable text, see:
   // https://developer.android.com/reference/android/view/accessibility/AccessibilityNodeInfo#isTextSelectable%28%29
-  // TODO(crbug.com/498376490): Update the above comment after Selection API
-  // with offset type is released.
   if (IsText() || IsAndroidTextView() || IsTextField()) {
     return true;
   }
@@ -1261,7 +1257,16 @@ std::u16string BrowserAccessibilityAndroid::GetAndroidContentDescription()
     return name;
   }
 
-  return GetImageAnnotationText();
+  // A canvas annotation serves as the primary label for the canvas element
+  // if no developer-specified name (author intent) is present.
+  if (GetRole() == ax::mojom::Role::kCanvas) {
+    return GetCanvasAnnotationText();
+  }
+  if (ui::IsImage(GetRole())) {
+    return GetImageAnnotationText();
+  }
+
+  return u"";
 }
 
 std::u16string BrowserAccessibilityAndroid::GetAndroidSupplementalDescription()
@@ -1285,7 +1290,14 @@ std::u16string BrowserAccessibilityAndroid::GetAndroidSupplementalDescription()
   // as the name in GetAndroidContentDescription(), so we don't want it here as
   // well.
   if (!GetNameAsString16().empty()) {
-    return GetImageAnnotationText();
+    // If the canvas already has a developer name, expose the annotation
+    // as supplemental description.
+    if (GetRole() == ax::mojom::Role::kCanvas) {
+      return GetCanvasAnnotationText();
+    }
+    if (ui::IsImage(GetRole())) {
+      return GetImageAnnotationText();
+    }
   }
 
   return u"";
@@ -2784,8 +2796,11 @@ BrowserAccessibilityAndroid::ComputeAndroidNameTo() const {
       // For images, the generated annotation should map to contentDescription.
       if (ui::IsImage(GetRole()) && !GetImageAnnotationText().empty()) {
         name_to_cache_ = AndroidNameTo::kContentDescription;
+      } else if (GetRole() == ax::mojom::Role::kCanvas &&
+                 !GetCanvasAnnotationText().empty() &&
+                 GetNameAsString16().empty()) {
+        name_to_cache_ = AndroidNameTo::kContentDescription;
       } else {
-        // TODO(crbug.com/498093320): Add support for Canvas accessibility.
         name_to_cache_ = AndroidNameTo::kText;
       }
       break;
@@ -2819,6 +2834,13 @@ std::u16string BrowserAccessibilityAndroid::GetImageAnnotationText() const {
     case ax::mojom::ImageAnnotationStatus::kSilentlyEligibleForAnnotation:
       return std::u16string();
   }
+}
+
+std::u16string BrowserAccessibilityAndroid::GetCanvasAnnotationText() const {
+  if (GetRole() == ax::mojom::Role::kCanvas) {
+    return GetString16Attribute(ax::mojom::StringAttribute::kCanvasAnnotation);
+  }
+  return std::u16string();
 }
 
 std::u16string

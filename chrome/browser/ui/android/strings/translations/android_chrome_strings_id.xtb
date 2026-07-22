@@ -34,7 +34,6 @@
 <translation id="1108938384783527433">Sinkronisasi histori</translation>
 <translation id="1111673857033749125">Bookmark yang tersimpan di perangkat lainnya akan muncul di sini.</translation>
 <translation id="1123537484474186311"><ph name="TAB_TITLE" />, Tab Picture-in-Picture</translation>
-<translation id="1124357650933674597">{NUM_WINDOWS,plural, =1{Pulihkan 1 jendela}other{Pulihkan # jendela}}</translation>
 <translation id="1126696498560056882">Kelola akun di perangkat ini</translation>
 <translation id="1135018701024399762">Mode Samaran membuat penjelajahan Anda tetap bersifat pribadi dari orang lain yang menggunakan perangkat Anda</translation>
 <translation id="113752097246673894">Untuk mendapatkan bookmark dan info Anda yang lain di semua perangkat Anda, login ke Chrome sebagai <ph name="EMAIL" /></translation>
@@ -185,6 +184,7 @@ Hanya orang yang memiliki frasa sandi Anda yang dapat membaca data terenkripsi A
 <translation id="1792959175193046959">Ubah lokasi download default kapan saja</translation>
 <translation id="1796666869097395659">Perkecil tab untuk membukanya kembali pada lain waktu</translation>
 <translation id="1799920918471566157">Tips untuk Chrome</translation>
+<translation id="1803799720926799756">Ukuran file</translation>
 <translation id="1807246157184219062">Terang</translation>
 <translation id="1807709131360304325">Membuka jendela baru</translation>
 <translation id="1812027881030482584"><ph name="SITE_ETLD_PLUS_ONE" /> tidak dapat melanjutkan dengan menggunakan <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /></translation>
@@ -520,7 +520,6 @@ Hanya orang yang memiliki frasa sandi Anda yang dapat membaca data terenkripsi A
 <translation id="3166827708714933426">Pintasan tab dan jendela</translation>
 <translation id="3167258285411721858">Anda dapat meminta situs seluler untuk <ph name="HOST_NAME" /></translation>
 <translation id="3181145110929454111"><ph name="TAB_TITLE" />, Beberapa Tab Samaran yang Disematkan, Dibisukan, dan Dipilih</translation>
-<translation id="3183941812169784232">Pulihkan semua jendela?</translation>
 <translation id="3187472288455401631">Pengukuran iklan</translation>
 <translation id="3189635831478931757">Grup tab <ph name="GROUP_TITLE" /></translation>
 <translation id="3200536777393523575">Tutup jendela saat ini?</translation>
@@ -569,6 +568,7 @@ Hanya orang yang memiliki frasa sandi Anda yang dapat membaca data terenkripsi A
 <translation id="3435575784518354875">Untuk mempertahankan akses ke sandi Anda, ekspor sandi sekarang, update Layanan Google Play, lalu impor sandi tersebut kembali ke Pengelola Sandi Google. <ph name="BEGIN_LINK" />Lihat petunjuk lengkap<ph name="END_LINK" />.</translation>
 <translation id="3435738964857648380">Keamanan</translation>
 <translation id="3435914367318771664">Tambahkan tab ke grup baru</translation>
+<translation id="3436118221454753036">Mode Tanya AI</translation>
 <translation id="3438681572027105609">Untuk mendapatkan sandi dan info Anda yang lain di semua perangkat Anda, login ke Chrome</translation>
 <translation id="3439276997620616816">Tab yang baru-baru ini ditutup akan ditampilkan di sini</translation>
 <translation id="3443221991560634068">Memuat ulang halaman saat ini</translation>
@@ -888,7 +888,7 @@ Akun Google Anda mungkin memiliki bentuk histori penjelajahan lain seperti penel
 <translation id="4720556299488643018">Berhenti berlangganan</translation>
 <translation id="4732120983431207637">Stack Unwinder</translation>
 <translation id="4736934858538408121">Kartu virtual</translation>
-<translation id="473775607612524610">Update</translation>
+<translation id="473775607612524610">Perbarui</translation>
 <translation id="4738065825338914557">Berhenti berlangganan…</translation>
 <translation id="4738836084190194332">Terakhir disinkronkan: <ph name="WHEN" /></translation>
 <translation id="474121291218385686">Filter menurut aplikasi</translation>
@@ -2039,7 +2039,6 @@ Untuk mengubah setelan ini, <ph name="BEGIN_LINK" />hapus data Chrome di akun An
 <translation id="939598580284253335">Masukkan frasa sandi</translation>
 <translation id="94161319503679839"><ph name="TAB_TITLE" />, Tab Samaran Picture-in-Picture yang Disematkan</translation>
 <translation id="945522503751344254">Kirim masukan</translation>
-<translation id="949667118776341807">Putar</translation>
 <translation id="95817756606698420">Chrome dapat menggunakan <ph name="BEGIN_BOLD" />Sogou<ph name="END_BOLD" /> sebagai mesin telusur di Tiongkok. Anda dapat mengubahnya di <ph name="BEGIN_LINK" />Setelan<ph name="END_LINK" />.</translation>
 <translation id="961856697154696964">Hapus data penjelajahan</translation>
 <translation id="963246339335003378">Buka Pengelola Tugas</translation>

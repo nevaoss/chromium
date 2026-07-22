@@ -893,6 +893,7 @@ component("platform") {
     "graphics/blend_mode.h",
     "graphics/box_reflection.cc",
     "graphics/box_reflection.h",
+    "graphics/canvas_2d_bitmap_provider.h",
     "graphics/canvas_2d_color_params.cc",
     "graphics/canvas_2d_color_params.h",
     "graphics/canvas_child_paint_record.h",

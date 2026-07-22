@@ -595,7 +595,7 @@ bool ReplaceSelectionCommand::ShouldMergeEnd(
          ShouldMerge(end_of_inserted_content, next);
 }
 
-static bool IsHTMLHeaderElement(const Node* a) {
+static bool IsHtmlHeaderElement(const Node* a) {
   const auto* element = DynamicTo<HTMLElement>(a);
   if (!element)
     return false;
@@ -628,7 +628,7 @@ bool ReplaceSelectionCommand::ShouldMerge(const VisiblePosition& source,
              EnclosingListChild(destination_node) &&
          EnclosingTableCell(source.DeepEquivalent()) ==
              EnclosingTableCell(destination.DeepEquivalent()) &&
-         (!IsHTMLHeaderElement(source_block) ||
+         (!IsHtmlHeaderElement(source_block) ||
           HaveSameTagName(source_block, destination_block))
          // Don't merge to or from a position before or after a block because it
          // would be a no-op and cause infinite recursion.
@@ -1020,9 +1020,9 @@ void ReplaceSelectionCommand::
       }
     }
 
-    if (IsHTMLHeaderElement(element)) {
+    if (IsHtmlHeaderElement(element)) {
       if (auto* header_element = To<HTMLElement>(HighestEnclosingNodeOfType(
-              Position::InParentBeforeNode(*element), IsHTMLHeaderElement))) {
+              Position::InParentBeforeNode(*element), IsHtmlHeaderElement))) {
         MoveElementOutOfAncestor(element, header_element, editing_state);
         if (editing_state->IsAborted())
           return;
@@ -1334,7 +1334,7 @@ static bool IsInlineHTMLElementWithStyle(const Node* node) {
 
   // We can skip over elements whose class attribute is
   // one of our internal classes.
-  return EditingStyle::ElementIsStyledSpanOrHTMLEquivalent(element);
+  return EditingStyle::ElementIsStyledSpanOrHtmlEquivalent(element);
 }
 
 static inline HTMLElement*
@@ -2067,7 +2067,7 @@ void ReplaceSelectionCommand::DoApply(EditingState* editing_state) {
   if (plain_text_fragment)
     match_style_ = false;
 
-  CompleteHTMLReplacement(last_position_to_select, editing_state);
+  CompleteHtmlReplacement(last_position_to_select, editing_state);
 
   // Remove the placeholder after the replacement is complete
   if (placeholder.IsNotNull()) {
@@ -2214,7 +2214,7 @@ void ReplaceSelectionCommand::AddSpacesForSmartReplace(
   }
 }
 
-void ReplaceSelectionCommand::CompleteHTMLReplacement(
+void ReplaceSelectionCommand::CompleteHtmlReplacement(
     const Position& last_position_to_select,
     EditingState* editing_state) {
   Position start = PositionAtStartOfInsertedContent().DeepEquivalent();

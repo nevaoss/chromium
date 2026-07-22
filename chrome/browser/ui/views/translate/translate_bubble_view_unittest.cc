@@ -895,3 +895,18 @@ TEST_F(TranslateBubbleViewTest, InitialFocus) {
   ASSERT_TRUE(tabbed_pane);
   EXPECT_EQ(tabbed_pane->GetTabAt(0), initially_focused);
 }
+
+TEST_F(TranslateBubbleViewTest,
+       SearchFieldFocusedOnSwitchToTargetLanguageView) {
+  base::test::ScopedFeatureList features(translate::kTranslateLanguageSearchUI);
+  CreateAndShowBubble();
+  SwitchView(TranslateBubbleModel::VIEW_STATE_TARGET_LANGUAGE);
+
+  TranslateLanguageSearchView* search_view = translate_language_search_view();
+  ASSERT_TRUE(search_view);
+
+  views::Textfield* search_field = GetSearchField(search_view);
+  ASSERT_TRUE(search_field);
+
+  EXPECT_TRUE(search_field->HasFocus());
+}

@@ -2129,4 +2129,19 @@ PrerenderHostRegistry::FindAndTakePrerenderHostToReuse(
   return nullptr;
 }
 
+int PrerenderHostRegistry::GetProcessReuseCount() const {
+  return process_reuse_count_;
+}
+
+base::ScopedClosureRunner PrerenderHostRegistry::IncrementProcessReuseCount() {
+  process_reuse_count_++;
+  return base::ScopedClosureRunner(
+      base::BindOnce(&PrerenderHostRegistry::DecrementProcessReuseCount,
+                     weak_factory_.GetWeakPtr()));
+}
+
+void PrerenderHostRegistry::DecrementProcessReuseCount() {
+  process_reuse_count_--;
+}
+
 }  // namespace content

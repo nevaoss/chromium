@@ -224,7 +224,8 @@ class GlicEnabling final : public signin::IdentityManager::Observer,
   static bool IsAutoOpenForPdfEnabled(Profile* profile);
 
   // Whether the tab web contents contextual menu item is enabled.
-  static bool IsContextualMenuItemEnabled(Profile* profile);
+  static bool IsContextualMenuItemEnabled(Profile* profile,
+                                          const std::u16string& selection_text);
 
   // Whether the selection prompt is enabled.
   static bool IsSelectionPromptEnabledForProfile(Profile* profile);

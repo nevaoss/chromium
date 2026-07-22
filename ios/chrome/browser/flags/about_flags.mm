@@ -117,6 +117,7 @@
 #import "ios/chrome/browser/page_info/certificate/features/features.h"
 #import "ios/chrome/browser/policy/model/policy_util.h"
 #import "ios/chrome/browser/policy/model/reporting/features.h"
+#import "ios/chrome/browser/popup_menu/overflow_menu/public/features.h"
 #import "ios/chrome/browser/reader_mode/model/features.h"
 #import "ios/chrome/browser/settings/clear_browsing_data/public/features.h"
 #import "ios/chrome/browser/settings/ui_bundled/password/password_manager_ui_features.h"
@@ -2276,10 +2277,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"enable-ac-prefetch", flag_descriptions::kEnableACPrefetchName,
      flag_descriptions::kEnableACPrefetchDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(switches::kEnableACPrefetch)},
-    {"show-tab-group-in-grid-on-start",
-     flag_descriptions::kShowTabGroupInGridOnStartName,
-     flag_descriptions::kShowTabGroupInGridOnStartDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kShowTabGroupInGridOnStart)},
     {"start-surface-user-setting",
      flag_descriptions::kStartSurfaceUserSettingName,
      flag_descriptions::kStartSurfaceUserSettingDescription, flags_ui::kOsIos,
@@ -2373,14 +2370,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      FEATURE_WITH_PARAMS_VALUE_TYPE(kFRESignInHeaderTextUpdate,
                                     kFRESignInHeaderTextUpdateVariations,
                                     "FRESignInHeaderTextUpdate")},
-    {"most-visited-tiles-customization-ios",
-     flag_descriptions::kMostVisitedTilesCustomizationName,
-     flag_descriptions::kMostVisitedTilesCustomizationDescription,
-     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kMostVisitedTilesCustomizationIOS)},
-    {"tab-group-color-on-surface",
-     flag_descriptions::kTabGroupColorOnSurfaceName,
-     flag_descriptions::kTabGroupColorOnSurfaceDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kTabGroupColorOnSurface)},
     {"gemini-live", flag_descriptions::kGeminiLiveName,
      flag_descriptions::kGeminiLiveDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kGeminiLive)},
@@ -2597,6 +2586,9 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"fullscreen-refactoring", flag_descriptions::kFullscreenRefactoringName,
      flag_descriptions::kFullscreenRefactoringDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kFullscreenRefactoring)},
+    {"app-bar-hide-labels", flag_descriptions::kAppBarHideLabelsName,
+     flag_descriptions::kAppBarHideLabelsDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kAppBarHideLabels)},
     {"autofill-ai-available-by-default",
      flag_descriptions::kAutofillAiAvailableByDefaultName,
      flag_descriptions::kAutofillAiAvailableByDefaultDescription,
@@ -2846,6 +2838,10 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"ai-avatar-ring-ios", flag_descriptions::kAiAvatarRingIosName,
      flag_descriptions::kAiAvatarRingIosDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kAiAvatarRingIos)},
+    {"app-bar-hide-in-fullscreen",
+     flag_descriptions::kAppBarHideInFullscreenName,
+     flag_descriptions::kAppBarHideInFullscreenDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kAppBarHideInFullscreen)},
     {"gemini-contextual-suggestions-cues",
      flag_descriptions::kGeminiContextualSuggestionsCuesName,
      flag_descriptions::kGeminiContextualSuggestionsCuesDescription,
@@ -2853,6 +2849,29 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"infobar-banner-revamp", flag_descriptions::kInfobarBannerRevampName,
      flag_descriptions::kInfobarBannerRevampDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kInfobarBannerRevamp)},
+    {"overflow-menu-ntp-refactor",
+     flag_descriptions::kOverflowMenuNTPRefactorName,
+     flag_descriptions::kOverflowMenuNTPRefactorDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kOverflowMenuNTPRefactor)},
+    {"overflow-menu-home-customization-entrypoint",
+     flag_descriptions::kOverflowMenuHomeCustomizationEntrypointName,
+     flag_descriptions::kOverflowMenuHomeCustomizationEntrypointDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kOverflowMenuHomeCustomizationEntrypoint)},
+    {"support-google-one-deep-link",
+     flag_descriptions::kSupportGoogleOneDeepLinkName,
+     flag_descriptions::kSupportGoogleOneDeepLinkDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kSupportGoogleOneDeepLink)},
+    {"enable-discover-background-refresh",
+     flag_descriptions::kEnableDiscoverBackgroundRefreshName,
+     flag_descriptions::kEnableDiscoverBackgroundRefreshDescription,
+     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kEnableDiscoverBackgroundRefresh)},
+    {"enable-bulk-data-entry-connector-ios",
+     flag_descriptions::kEnableBulkDataEntryConnectorIOSName,
+     flag_descriptions::kEnableBulkDataEntryConnectorIOSDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(
+         enterprise_connectors::kEnableBulkDataEntryConnectorIOS)},
 });
 
 bool SkipConditionalFeatureEntry(const flags_ui::FeatureEntry& entry) {

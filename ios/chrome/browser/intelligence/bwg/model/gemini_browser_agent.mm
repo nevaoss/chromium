@@ -797,7 +797,7 @@ CGFloat GeminiBrowserAgent::GetFloatyOffset() {
   if (IsChromeNextIaEnabled() && scene_state &&
       scene_state.tabGridState.tabGridVisible) {
     if (scene_state.layoutState.appBarPosition == AppBarPosition::kBottom) {
-      max_bottom_inset = kAppBarHeight;
+      max_bottom_inset = AppBarHeightPortrait();
     } else {
       max_bottom_inset = 0;
     }
@@ -818,7 +818,7 @@ CGFloat GeminiBrowserAgent::GetFloatyOffset() {
         [layout_guide_center referencedViewUnderName:kAppBarGuide];
     if (app_bar_view &&
         scene_state.layoutState.appBarPosition == AppBarPosition::kBottom) {
-      max_bottom_inset += kAppBarHeight;
+      max_bottom_inset += AppBarHeightPortrait();
     }
   }
 
@@ -854,7 +854,7 @@ CGFloat GeminiBrowserAgent::GetFullyExpandedFloatyOffset() {
         [layout_guide_center referencedViewUnderName:kAppBarGuide];
     if (app_bar_view &&
         scene_state.layoutState.appBarPosition == AppBarPosition::kBottom) {
-      max_bottom_inset += kAppBarHeight;
+      max_bottom_inset += AppBarHeightPortrait();
     }
   }
 

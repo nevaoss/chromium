@@ -64,6 +64,17 @@ std::optional<ExternalImageSource> GetExternalImageSourceFrom(
     ExternalImageDstInfo dst_info,
     ExceptionState& exception_state);
 
+// Helper method to copy ExternalImages to wgpu::Textures
+bool CopyStaticImagBitmapToWGPUTexture(
+    const scoped_refptr<DawnControlClientHolder>& dawn_control_client,
+    const wgpu::Device& device,
+    StaticBitmapImage* image,
+    const wgpu::Origin2D& origin,
+    const wgpu::Extent3D& copy_size,
+    const wgpu::TexelCopyTextureInfo& destination,
+    bool dst_premultiplied_alpha,
+    PredefinedColorSpace dst_color_space,
+    bool flipY);
 }  // namespace blink
 
 #endif  // THIRD_PARTY_BLINK_RENDERER_MODULES_WEBGPU_EXTERNAL_IMAGE_UTILS_H_

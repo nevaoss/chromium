@@ -134,6 +134,9 @@ class ChromiumDepGraph {
                     cpePrefix: 'cpe:/a:google:protobuf-javalite',
                     licenseUrl: 'https://raw.githubusercontent.com/protocolbuffers/protobuf/master/LICENSE',
                     licenseName: 'BSD'),
+            io_github_eisop_dataflow_errorprone: new PropertyOverride(
+                    licenseName: 'GPL-2.0-with-classpath-exception',
+                    licenseUrl: 'https://www.gnu.org/software/classpath/license.html'),
             io_github_java_diff_utils_java_diff_utils: new PropertyOverride(
                     licenseUrl: 'https://raw.githubusercontent.com/java-diff-utils/java-diff-utils/refs/heads/master/LICENSE',
                     licenseName: 'Apache 2.0'),
@@ -643,18 +646,6 @@ class ChromiumDepGraph {
     }
 
     private void customizeLicenses(DependencyDescription dep, PropertyOverride overrides) {
-        for (LicenseSpec license : dep.licenses) {
-            if (!license.url) {
-                continue
-            }
-            String normalizedLicenseUrl = license.url.replace('http://', 'https://')
-            String licenseOverridePath = LICENSE_OVERRIDES[normalizedLicenseUrl]
-            if (licenseOverridePath) {
-                license.url = ''
-                license.path = licenseOverridePath
-            }
-        }
-
         if (dep.id?.startsWith('com_google_android_')) {
             logger.debug("Using Android license for $dep.id")
             dep.licenses.clear()
@@ -677,6 +668,21 @@ class ChromiumDepGraph {
                     throw new IllegalStateException('PropertyOverride must specify "licenseName" if either ' +
                             '"licensePath" or "licenseUrl" is specified.')
                 }
+            }
+        }
+
+        for (LicenseSpec license : dep.licenses) {
+            if (license.path) {
+                continue
+            }
+            if (!license.url) {
+                continue
+            }
+            String normalizedLicenseUrl = license.url.replace('http://', 'https://')
+            String licenseOverridePath = LICENSE_OVERRIDES[normalizedLicenseUrl]
+            if (licenseOverridePath) {
+                license.url = ''
+                license.path = licenseOverridePath
             }
         }
     }

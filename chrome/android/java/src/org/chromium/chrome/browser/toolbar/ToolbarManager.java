@@ -211,6 +211,7 @@ import org.chromium.chrome.browser.ui.actions.tabswitcher.TabSwitcherActionProvi
 import org.chromium.chrome.browser.ui.appmenu.AppMenuCoordinator;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuDelegate;
 import org.chromium.chrome.browser.ui.appmenu.MenuButtonDelegate;
+import org.chromium.chrome.browser.ui.bottombar.AiModeActionCoordinator;
 import org.chromium.chrome.browser.ui.bottombar.BottomBarConfigUtils;
 import org.chromium.chrome.browser.ui.bottombar.BottomBarHostManager;
 import org.chromium.chrome.browser.ui.browser_window.ChromeAndroidTask;
@@ -443,6 +444,7 @@ public class ToolbarManager
     private final OneshotSupplier<Boolean> mPromoShownOneshotSupplier;
     private final GlicButtonDelegate mToggleGlicCallback;
     private @Nullable GlicActionCoordinator mGlicActionCoordinator;
+    private @Nullable AiModeActionCoordinator mAiModeActionCoordinator;
 
     private final TabStripTopControlLayer mTabStripTopControlLayer;
     private final @Nullable DesktopWindowStateManager mDesktopWindowStateManager;
@@ -2464,7 +2466,8 @@ public class ToolbarManager
                         mProfileSupplier,
                         mOmniboxFocusStateSupplier,
                         mModalDialogManagerSupplier,
-                        mAppMenuCoordinatorSupplier);
+                        mAppMenuCoordinatorSupplier,
+                        mLayoutManager);
         bottomBarContainerOneshotSupplier.set(bottomBarContainerCoordinator);
 
         if (mBottomBarHostManager != null) {
@@ -2578,6 +2581,12 @@ public class ToolbarManager
                             mBrowserControlsSizer,
                             mTabModelSelectorSupplier,
                             mSnackbarManager,
+                            mUserEducationHelper);
+            mAiModeActionCoordinator =
+                    new AiModeActionCoordinator(
+                            mActivity,
+                            mActionRegistry,
+                            mActivityTabProvider.asObservable(),
                             mUserEducationHelper);
         }
 
@@ -2984,6 +2993,11 @@ public class ToolbarManager
         if (mGlicActionCoordinator != null) {
             mGlicActionCoordinator.destroy();
             mGlicActionCoordinator = null;
+        }
+
+        if (mAiModeActionCoordinator != null) {
+            mAiModeActionCoordinator.destroy();
+            mAiModeActionCoordinator = null;
         }
 
         if (mExtensionsToolbarCoordinator != null) {

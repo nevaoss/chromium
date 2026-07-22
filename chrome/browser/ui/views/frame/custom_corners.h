@@ -5,6 +5,7 @@
 #ifndef CHROME_BROWSER_UI_VIEWS_FRAME_CUSTOM_CORNERS_H_
 #define CHROME_BROWSER_UI_VIEWS_FRAME_CUSTOM_CORNERS_H_
 
+#include <array>
 #include <optional>
 #include <variant>
 
@@ -18,15 +19,46 @@
 
 class BrowserView;
 
+// Specifies which corner something refers to.
+enum class CornerOrientation {
+  kTopLeading,
+  kTopTrailing,
+  kBottomLeading,
+  kBottomTrailing,
+};
+
 // Shared base class for custom corners in the UI.
 class CustomCorners : public views::ViewObserver {
  public:
-  // Specifies which corner something refers to.
-  enum class CornerOrientation {
-    kTopLeading,
-    kTopTrailing,
-    kBottomLeading,
-    kBottomTrailing,
+  // Represents a mapping from corner enum `C` to some data `T`.
+  template <typename C, typename T>
+  class CornerMapT {
+   public:
+    CornerMapT() = default;
+    CornerMapT(const CornerMapT&) = default;
+    CornerMapT& operator=(const CornerMapT&) = default;
+    ~CornerMapT() = default;
+
+    // Dereference by corner.
+    T& operator[](C selector) {
+      return corners_[static_cast<size_t>(selector)];
+    }
+    const T& operator[](C selector) const {
+      return corners_[static_cast<size_t>(selector)];
+    }
+
+    // Comparison operator to detect changes.
+    bool operator==(const CornerMapT& other) {
+      for (size_t i = 0; i < corners_.size(); ++i) {
+        if (corners_[i] != other.corners_[i]) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+   private:
+    std::array<T, 4> corners_;
   };
 
   // Designates that the current frame color (either active or inactive) should
@@ -113,25 +145,18 @@ class CustomCorners : public views::ViewObserver {
   // CornerOrientation because the latter is expressed as leading/trailing,
   // which can change between LtR/RtL.
   //
-  // Use GetVisualOrientation to convert from CornerOrientation to
-  // VisualCornerOrientation.
-  enum class VisualCornerOrientation {
-    kTopLeft,
-    kTopRight,
-    kBottomRight,
-    kBottomLeft
-  };
+  // Use ToVisualCorner to convert from CornerOrientation to VisualCorner.
+  enum class VisualCorner { kTopLeft, kTopRight, kBottomRight, kBottomLeft };
 
   // Possibly mirrors a corner for RtL.
-  static VisualCornerOrientation GetVisualOrientation(
-      CornerOrientation orientation);
+  static VisualCorner ToVisualCorner(CornerOrientation orientation);
 
   // Gets the outline path for a corner.
   //
   // The entire shape will be drawn `in_bounds`, with the actual curve of the
   // corner drawn in `in_bounds` - `insets`. (Flat edges will be extended out to
   // the edge of `in_bounds`).
-  static SkPath GetCornerPath(VisualCornerOrientation corner,
+  static SkPath GetCornerPath(VisualCorner corner,
                               const gfx::Rect& in_bounds,
                               const gfx::Insets& insets);
 

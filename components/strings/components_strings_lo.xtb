@@ -314,6 +314,7 @@
 <translation id="1463793142714244641">ສະຖານທີ່ພັກຜ່ອນໃນມື້ພັກ ແລະ ສະຖານທີ່ແບບແບ່ງເວລາ</translation>
 <translation id="1465457928007067810">ບັນທຶກ IBAN ໄວ້ໃນບັນຊີ Google ຂອງທ່ານແລ້ວ</translation>
 <translation id="1467432559032391204">ເບື້ອງຊ້າຍ</translation>
+<translation id="1471514598850585811">ແລັບທັອບ</translation>
 <translation id="1472675084647422956">ສະແດງເພີ່ມເຕີມ</translation>
 <translation id="1473183651233018052">JIS B10</translation>
 <translation id="1473495410389165587">ລະບຸຢ່າງໜ້ອຍ 3 ຄຳ ເພື່ອຮັບຄວາມຊ່ວຍເຫຼືອໃນການຂຽນ</translation>
@@ -477,6 +478,7 @@
 <translation id="173080396488393970">ບໍ່ຮອງຮັບປະເພດບັດນີ້</translation>
 <translation id="1731563515262205847">ML-DSA-65</translation>
 <translation id="1732445923934584865">ຖາມດ້ວຍຕົນເອງແທນ</translation>
+<translation id="1732796940245838248">ອັບເດດໝາຍເລກແກ້ໄຂບັນຫາຜູ້ເດີນທາງໃນ Google Wallet</translation>
 <translation id="1733064249834771892">ຟອນ</translation>
 <translation id="1733631169686303142">ເຄື່ອງສຽງ</translation>
 <translation id="1733762317901693627">ແມ່ນແຕ່ເວັບໄຊທີ່ປົກກະຕິແລ້ວສາມາດໃຊ້ໄດ້ຢ່າງປອດໄພກໍອາດຕົກຢູ່ໃນອັນຕະລາຍຈາກຜູ້ໂຈມຕີໄດ້ໃນບາງຄັ້ງ. ເຂົ້າເບິ່ງ <ph name="BEGIN_LINK" />ເວັບໄຊທີ່ບໍ່ປອດໄພນີ້<ph name="END_LINK" /> ຫາກທ່ານໝັ້ນໃຈວ່າທ່ານເຂົ້າໃຈເຖິງຄວາມສ່ຽງແລ້ວເທົ່ານັ້ນ.</translation>
@@ -712,6 +714,7 @@
 <translation id="2122165854541876335">ແຫຼ່ງຂໍ້ມູນສຳລັບຜູ້ບໍລິໂພກ</translation>
 <translation id="2122214041802369259">ລາຄາສູງ</translation>
 <translation id="2122719317867821810">ນະໂຍບາຍນີ້ກຳລັງເຮັດວຽກຕາມທີ່ກຳນົດໄວ້ ແຕ່ມີການຕັ້ງຄ່າທີ່ຂັດແຍ່ງກັນຢູ່ບ່ອນອື່ນ ແລະ ນະໂຍບາຍນີ້ກຳລັງລົບລ້າງມັນ.</translation>
+<translation id="2124081665399116863">ອັບເດດພາຫະນະໃນ Google Wallet</translation>
 <translation id="2126374524350484896">ໂປຣແກຣມສ້າງ PDF:</translation>
 <translation id="2127090458081644412">ລະຫັດຜ່ານທີ່ບັນທຶກໄວ້ໃນອຸປະກອນເຄື່ອງນີ້</translation>
 <translation id="2127747486437921899">ໂຕອຽງ</translation>
@@ -994,6 +997,7 @@
 <translation id="2524962131655207565"><ph name="BEGIN_BOLD" />ລະບົບຈະແບ່ງປັນເນື້ອຫາຈາກໜ້າຈ່າຍເງິນກັບ Google ເພື່ອສະເໜີຕົວເລືອກເຫຼົ່ານີ້.<ph name="END_BOLD" /> ແພັກເກດການຈ່າຍເງິນຂຶ້ນຢູ່ກັບການມີສິດ. ເພື່ອເຊື່ອງຕົວເລືອກຈ່າຍພາຍຫຼັງ, ໃຫ້ເຂົ້າໄປ <ph name="BEGIN_LINK" />ການຕັ້ງຄ່າການຈ່າຍເງິນ<ph name="END_LINK" />.</translation>
 <translation id="2526062290525841862">ເພື່ອເອີ້ນໃຊ້ແອັບນີ້, ໃຫ້ເປີດການນຳໃຊ້ໂໝດຜູ້​ພັດ​ທະ​ນາ​ເວັບແອັບທີ່ແຍກໄວ້ຄືນໃໝ່</translation>
 <translation id="2526280916094749336">ທ່ານສາມາດໃຊ້ທີ່ຢູ່ທີ່ບັນທຶກໄວ້ທົ່ວຜະລິດຕະພັນ Google ໄດ້. ທີ່ຢູ່ນີ້ຈະຖືກບັນທຶກໄວ້ໃນບັນຊີ Google ຂອງທ່ານ, <ph name="ACCOUNT" />.</translation>
+<translation id="2526590354069164005">ເດັສທັອບ</translation>
 <translation id="2527451058878391043">CVC ຂອງທ່ານແມ່ນສະແດງຢູ່ດ້ານໜ້າບັດຂອງທ່ານ. ໂດຍເປັນລະຫັດ 4 ຕົວເລກທີ່ຢູ່ດ້ານຂວາເທິງເລກບັດຂອງທ່ານ.</translation>
 <translation id="2529899080962247600">ຊ່ອງຂໍ້ມູນນີ້ບໍ່ຄວນມີຫຼາຍກວ່າ <ph name="MAX_ITEMS_LIMIT" /> ລາຍການ. ລາຍການເພີ່ມເຕີມທັງໝົດຈະຖືກລະເວັ້ນ.</translation>
 <translation id="2530042584066815841">ການລັອກ ແລະ ການໃຊ້ເມົ້າ</translation>
@@ -1548,6 +1552,7 @@
 <translation id="3422472998109090673"><ph name="HOST_NAME" /> ບໍ່ສາມາດເຂົ້າເຖິງໄດ້ໃນຂະນະນີ້.</translation>
 <translation id="3422794267539320056">ແຕະໄດໂນເສົາ ຫຼື ກົດ Space ເພື່ອຫຼິ້ນ</translation>
 <translation id="3423742043356668186">ລະບຸລະບົບແລ້ວ</translation>
+<translation id="3426672782316020729">ອັບເດດໜັງສືຜ່ານແດນໃນ Google Wallet</translation>
 <translation id="3427342743765426898">ເຮັດຄືນຄໍາສັ່ງແກ້ໄຂ</translation>
 <translation id="342781501876943858">Chromium ແນະນຳໃຫ້ຣີເຊັດລະຫັດຜ່ານຂອງທ່ານ ຖ້າທ່ານນຳມັນມາໃຊ້ໃໝ່ໃນເວັບໄຊອື່ນ.</translation>
 <translation id="3428151540071562330">ໜຶ່ງ ຫຼື ຫຼາຍ URI ຂອງແມ່ແບບເຊີບເວີ DnsOverHttpsTemplates ບໍ່ຖືກຕ້ອງ ແລະ ຈະບໍ່ຖືກນຳໃຊ້.</translation>
@@ -2408,6 +2413,7 @@
 <translation id="4766713847338118463">ໜີບກະຫຼັບເຟີຢູ່ລຸ່ມສຸດສອງເທື່ອ</translation>
 <translation id="4768816584204270288">ເມື່ອທ່ານຈ່າຍເງິນແບບຜ່ອນຈ່າຍ, ລະບົບຈະຕື່ມໝາຍເລກບັດສະເໝືອນແບບໃຊ້ເທື່ອດຽວ. ທ່ານສາມາດຄລິກເພື່ອສຳເນົາ ແລະ ວາງລາຍລະອຽດບັດສຳລັບການຊື້ນີ້ໄດ້.</translation>
 <translation id="4768864802656530630">ບັນທຶກຂອງລະບົບໂດຍລະອຽດ. <ph name="BEGIN_LINK" />ສຶກສາເພີ່ມເຕີມ<ph name="END_LINK" /></translation>
+<translation id="4770909831299304090">ອັບເດດ KTN ໃນ Google Wallet</translation>
 <translation id="4771249073710170730">ວິທະຍຸບັງຄັບ ແລະ ຫຸ່ນຈໍາລອງ</translation>
 <translation id="4771973620359291008">ເກີດຄວາມຜິດພາດທີ່ບໍ່ຮູ້ຈັກ.</translation>
 <translation id="4774055414220872623">ອຸປະກອນສິລະປະ ແລະ ຫັດຖະກຳ</translation>
@@ -4222,6 +4228,7 @@
 <translation id="7569490014721427265">ກັອບ</translation>
 <translation id="7569952961197462199">ເອົາ​ບັດ​ເຄ​ຣ​ດິດ​ອອກ​ໄປ​ຈາກ Chrome ບໍ?</translation>
 <translation id="7569983096843329377">ສີ​ດໍາ</translation>
+<translation id="7570524564113479209">ອັບເດດບັດປະຈຳຕົວໃນ Google Wallet</translation>
 <translation id="7570862164055912832">ໝາຍເລກປະຈຳຕົວຜູ້ທີ່ຢູ່ໃນກຸ່ມສ່ຽງ</translation>
 <translation id="7571813784389228510">ໂໝດ Google AI</translation>
 <translation id="7574998639136359461">ອຸປະກອນກິລາລະດູໜາວ</translation>
@@ -4743,6 +4750,7 @@
 <translation id="8389940864052787379">ລົດຍົນສັ່ງຜະລິດ ແລະ ປະສິດທິພາບສູງ</translation>
 <translation id="8390725133630534698">ນະໂຍບາຍຂອງຜູ້ເບິ່ງແຍງລະບົບໄດ້ບລັອກການແບ່ງປັນຈາກ <ph name="ORIGIN_NAME" /> ກັບ <ph name="VM_NAME" /> ໄວ້ແລ້ວ</translation>
 <translation id="8392783408127179588">ກຳລັງໂຫຼດນະໂຍບາຍຄືນໃໝ່</translation>
+<translation id="8393948304336153065">ອັບເດດໃບອະນຸຍາດຂັບຂີ່ໃນ Google Wallet</translation>
 <translation id="8396522675989118466">ນີ້ແມ່ນລະຫັດ <ph name="NUMBER_OF_DIGITS" /> ຕົວເລກຢູ່ <ph name="SIDE_OF_CARD" /></translation>
 <translation id="8398335999901363925">ວິທີການຈ່າຍເງິນທີ່ພ້ອມນຳໃຊ້ສຳລັບການຕື່ມຂໍ້ມູນເມື່ອສຳຜັດເປີດຢູ່ທີ່ລະດັບຄວາມສູງເຕັມຂອງໜ້າຈໍ</translation>
 <translation id="8398446215576328011">ຍົກເລີກນະໂຍບາຍທີ່ນຳໃຊ້</translation>
@@ -4904,7 +4912,6 @@
 <translation id="8671519637524426245">ຄ່າ <ph name="SECURE_DNS_SALT" /> ບໍ່ເປັນໄປຕາມຂໍ້ກຳນົດດ້ານຂະໜາດ.</translation>
 <translation id="867224526087042813">ລາຍເຊັນ</translation>
 <translation id="8672535691554698269">ລະບົບເຄືອຂ່າຍຄອມພິວເຕີ</translation>
-<translation id="8673710317985154384">{NUM_TABS,plural, =1{ສະແດງລາຍລະອຽດການແບ່ງປັນແຖບ. ກຳລັງແບ່ງປັນ 1 ແຖບຈາກ {WEBSITE_LIST_STR}}other{ສະແດງລາຍລະອຽດການແບ່ງປັນແຖບ. ກຳລັງແບ່ງປັນ {NUM_TABS} ແຖບຈາກ {WEBSITE_LIST_STR}}}</translation>
 <translation id="8675446170353411473">ກຳລັງອັບໂຫຼດໄຟລ໌ຂອງທ່ານໄປໃສ່ <ph name="CLOUD_PROVIDER" /></translation>
 <translation id="8676424191133491403">ບໍ່ໜ່ວງເວລາ</translation>
 <translation id="8680536109547170164"><ph name="QUERY" />, ຄຳ​ຕອບ, <ph name="ANSWER" /></translation>

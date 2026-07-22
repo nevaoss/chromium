@@ -114,10 +114,11 @@ enum class ShareActivatedEntryPoint {
   // Activated from the ChromeOS Birch suggestion chip.
   kChromeOSBirch = 5,
   // The tab was closed or the browser was shut down/restarted before the tab
-  // was
-  // activated.
+  // was activated.
   kTabOrBrowserClosedWithoutActivation = 6,
-  kMaxValue = kTabOrBrowserClosedWithoutActivation,
+  // The entry expired in the database before it was activated.
+  kSTTSEntryExpiredWithoutActivation = 7,
+  kMaxValue = kSTTSEntryExpiredWithoutActivation,
 };
 // LINT.ThenChange(/tools/metrics/histograms/metadata/sharing/enums.xml:SendTabToSelfShareActivatedEntryPoint)
 
@@ -190,6 +191,15 @@ void RecordTimeSentToReceived(base::TimeDelta delay);
 // it was opened by the user on the target device. Note: this involves clocks
 // on two different devices so the value may be skewed.
 void RecordTimeSentToOpened(base::TimeDelta delay);
+
+// Records the time from when a tab was opened to when it was activated on the
+// target device.
+void RecordTimeOpenedToActivated(base::TimeDelta delay);
+
+// Records the time from when a tab was shared (on the sending device) to when
+// it was activated by the user on the target device. Note: this involves
+// clocks on two different devices so the value may be skewed.
+void RecordTimeSentToActivated(base::TimeDelta delay);
 
 // Form factor combinations for sending/receiving devices.
 // These values are persisted to logs. Entries should not be renumbered and

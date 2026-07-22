@@ -10,6 +10,8 @@
 #include <string_view>
 
 #include "base/memory/raw_ptr.h"
+#include "base/test/scoped_feature_list.h"
+#include "chrome/browser/dictation/dictation_context.h"
 #include "chrome/browser/dictation/dictation_multiplexer.h"
 #include "chrome/browser/dictation/session_controller_delegate.h"
 #include "chrome/browser/dictation/session_ui.h"
@@ -19,6 +21,11 @@
 #include "testing/gmock/include/gmock/gmock.h"
 
 class Profile;
+
+namespace content {
+class RenderFrameHost;
+}
+
 namespace extensions {
 class Extension;
 }
@@ -27,6 +34,10 @@ namespace dictation {
 
 inline constexpr std::string_view kDictationTestExtensionId =
     "dfihfgggpgemecjdjahibncmmjlfjggp";
+
+// Returns a ScopedFeatureList that enables Dictation with common params for
+// testing.
+base::test::ScopedFeatureList CreateEnablingFeatureList();
 
 // Loads an extension that provides an implementation of the connector
 // extension in a "manual" mode usable from tests which prevents the extension
@@ -49,6 +60,25 @@ void ExtensionSendStreamStateUpdate(
     Profile* profile,
     DictationMultiplexer::StreamId stream_id,
     extensions::api::dictation_private::StreamState state);
+
+// Blocks until the extension has received the OnStartStream event for the given
+// stream ID.
+void ExtensionWaitForStreamStart(Profile* profile,
+                                 DictationMultiplexer::StreamId stream_id);
+
+// Blocks until the extension has received the OnStartStream event for the given
+// stream ID, and returns the DictationContext containing the page context
+// passed to the extension, or nullopt if no context was passed.
+std::optional<DictationContext> ExtensionGetStartStreamDetails(
+    Profile* profile,
+    DictationMultiplexer::StreamId stream_id);
+
+// Blocks until the extension has received the OnContextUpdate event for the
+// given stream ID, and returns the DictationContext containing the page context
+// passed to the extension.
+DictationContext ExtensionGetUpdatedContext(
+    Profile* profile,
+    DictationMultiplexer::StreamId stream_id);
 
 class MockStreamProvider : public StreamProvider {
  public:
@@ -93,7 +123,8 @@ class MockSessionControllerDelegate : public SessionControllerDelegate {
 
 class MockTarget : public Target {
  public:
-  MockTarget();
+  explicit MockTarget(content::RenderFrameHost* rfh = nullptr,
+                      const std::string& selected_text = "");
   ~MockTarget() override;
 };
 

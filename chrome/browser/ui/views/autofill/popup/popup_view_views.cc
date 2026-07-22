@@ -1208,8 +1208,8 @@ void PopupViewViews::CreateSuggestionViews() {
               body_container->AddChildView(std::make_unique<PopupTitleView>(
                   suggestions[current_line_number].main_text.value)));
           break;
-        case SuggestionType::kMixedFormMessage:
         case SuggestionType::kInsecureContextPaymentDisabledMessage:
+        case SuggestionType::kMixedFormMessage:
           rows_.push_back(
               body_container->AddChildView(std::make_unique<PopupWarningView>(
                   suggestions[current_line_number])));

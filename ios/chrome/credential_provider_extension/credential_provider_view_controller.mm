@@ -48,6 +48,7 @@
 #import "ios/components/credential_provider_extension/password_util.h"
 
 using app_group::UserDefaultsStringForKey;
+using webauthn::PasskeyUserVerificationStatus;
 
 namespace {
 
@@ -74,12 +75,6 @@ enum class PasskeyCreationEligibility {
   kSignedOut,
   kUnsupportedAlgorithm,
   kExcludedPasskey,
-};
-
-enum class PasskeyUserVerificationStatus {
-  kNotRequired,
-  kRequired,
-  kCompleted
 };
 
 }  // namespace

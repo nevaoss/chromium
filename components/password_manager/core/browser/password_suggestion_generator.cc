@@ -308,8 +308,10 @@ void AppendManualFallbackSuggestions(
     suggestion.filtration_policy = filtration_policy;
 
     if (!replaced) {
-      suggestion.children.emplace_back(
-          maybe_username, SuggestionType::kPasswordFieldByFieldFilling);
+      Suggestion fill_username_suggestion{
+          maybe_username, SuggestionType::kPasswordFieldByFieldFilling};
+      fill_username_suggestion.payload = payload;
+      suggestion.children.emplace_back(std::move(fill_username_suggestion));
     }
     suggestion.children.push_back(
         CreateFillPasswordChildSuggestion(credential, is_cross_origin));
@@ -606,7 +608,6 @@ PasswordSuggestionGenerator::GetManualFallbackSuggestions(
       sync_service->GetUserSettings()->IsUsingExplicitPassphrase();
   std::set<std::string> suggested_signon_realms;
   for (const auto& form : suggested_credentials) {
-    suggested_signon_realms.insert(form.signon_realm);
     const CredentialUIEntry ui_entry = CredentialUIEntry(form);
     const bool is_from_account =
         ui_entry.stored_in.contains(PasswordForm::Store::kAccountStore);
@@ -619,6 +620,10 @@ PasswordSuggestionGenerator::GetManualFallbackSuggestions(
       is_cross_domain = form.match_type.has_value() &&
                         password_manager_util::GetMatchType(form) ==
                             password_manager_util::GetLoginMatchType::kGrouped;
+    }
+    if (!is_cross_domain) {
+      // Insert only same site or affiliated signon realms.
+      suggested_signon_realms.insert(form.signon_realm);
     }
     AppendManualFallbackSuggestions(
         ui_entry, on_password_form, IsCrossDomain(is_cross_domain),

@@ -66,6 +66,7 @@ suite('IPH', function() {
         isVisible: true,
         accessibilityDescription: 'Avatar',
         tooltip: 'Avatar',
+        icon: {handleId: 0n},
       };
     });
   });

@@ -1571,6 +1571,66 @@ suite('ContextualActionMenu', () => {
         assertTrue(tabButton.disabled);
       });
 
+  test(
+      'Disables unselected tabs and enable selected tabs if max files reached',
+      async () => {
+        // Recreate actionMenu with maxFileCount = 1.
+        actionMenu.remove();
+        loadTimeData.overrideValues({
+          composeboxFileMaxCount: 1,
+        });
+        actionMenu =
+            document.createElement('cr-composebox-contextual-action-menu');
+        actionMenu.fileNum = 1;  // Set fileNum to 1 (limit reached)
+
+        // Provide 2 tab suggestions.
+        const tabInfo1 = createTabSuggestion({
+          tabId: 1,
+          title: 'Google',
+        });
+        const tabInfo2 = createTabSuggestion({
+          tabId: 2,
+          title: 'YouTube',
+        });
+        actionMenu.tabSuggestions = [tabInfo1, tabInfo2];
+        // Select tab 1.
+        actionMenu.disabledTabIds = new Map([[1, 'uuid-1']]);
+
+        // inputState allows everything and disables nothing.
+        actionMenu.inputState = new MockInputState({
+          allowedInputTypes: [
+            InputType.kLensImage,
+            InputType.kLensFile,
+            InputType.kDrive,
+            InputType.kBrowserTab,
+          ],
+          disabledInputTypes: [],
+          toolsSectionConfig: {header: ''},
+          modelSectionConfig: {header: ''},
+        });
+
+        document.body.appendChild(actionMenu);
+        await microtasksFinished();
+
+        actionMenu.showAt(actionMenu);
+        await microtasksFinished();
+
+        // Verify tabs items.
+        const tabButtons =
+            actionMenu.$.menu.querySelectorAll<HTMLButtonElement>(
+                '.suggestion-container button');
+        assertEquals(2, tabButtons.length);
+
+        const tabButton1 = tabButtons[0]!;  // Tab 1 (Selected)
+        const tabButton2 = tabButtons[1]!;  // Tab 2 (Unselected)
+
+        // Tab 1 should be enabled so it can be deselected.
+        assertFalse(tabButton1.disabled);
+
+        // Tab 2 should be disabled since the limit is reached.
+        assertTrue(tabButton2.disabled);
+      });
+
   test('Disables all items when uploadButtonDisabled is true', async () => {
     actionMenu.uploadButtonDisabled = true;
 
@@ -1940,13 +2000,15 @@ suite('ContextualActionMenu', () => {
         actionMenu.isSidePanel = true;
         await microtasksFinished();
         assertEquals(
-            actionMenu.i18n('currentTabSuffix'), suffix.textContent.trim(),
+            `· ${actionMenu.i18n('currentTabSuffix')}`,
+            suffix.textContent.trim(),
             'Should render "Current tab" in side panel contextual tasks');
 
         actionMenu.isSidePanel = false;
         await microtasksFinished();
         assertEquals(
-            actionMenu.i18n('recentTabsSuffix'), suffix.textContent.trim(),
+            `· ${actionMenu.i18n('recentTabsSuffix')}`,
+            suffix.textContent.trim(),
             'Should fall back to "Recent tab" on the NTP');
       });
 
@@ -2679,6 +2741,7 @@ suite('ContextualActionMenu', () => {
     test(
         'pointerLeave is ignored for 1 second after 1st tab added',
         async () => {
+          asInternal(actionMenu).closeMenuOnSelect = false;
           actionMenu.showAt(actionMenu);
           await microtasksFinished();
 

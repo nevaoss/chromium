@@ -387,7 +387,7 @@ public class PdfUtils {
      *     otherwise.
      */
     public static boolean isInlinePdfV2DownloadEnabled() {
-        return ChromeFeatureList.sInlinePdfV2Download.isEnabled();
+        return isInlinePdfV2Enabled() && ChromeFeatureList.sInlinePdfV2Download.isEnabled();
     }
 
     /** Returns {@code true} if {@link PdfViewFragment} is reused on activity restart. */

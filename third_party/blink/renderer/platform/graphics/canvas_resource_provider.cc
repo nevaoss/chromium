@@ -174,7 +174,7 @@ class CanvasImageProvider : public cc::ImageProvider {
   base::WeakPtrFactory<CanvasImageProvider> weak_factory_{this};
 };
 
-Canvas2DResourceProviderBitmap::Canvas2DResourceProviderBitmap(
+Canvas2DBitmapProvider::Canvas2DBitmapProvider(
     gfx::Size size,
     viz::SharedImageFormat format,
     SkAlphaType alpha_type,
@@ -194,18 +194,22 @@ Canvas2DResourceProviderBitmap::Canvas2DResourceProviderBitmap(
   CanvasMemoryDumpProvider::Instance()->RegisterClient(this);
 }
 
-Canvas2DResourceProviderBitmap::~Canvas2DResourceProviderBitmap() {
+Canvas2DBitmapProvider::~Canvas2DBitmapProvider() {
   CanvasMemoryDumpProvider::Instance()->UnregisterClient(this);
 }
 
-SkSurface* Canvas2DResourceProviderBitmap::GetSkSurface() const {
+bool Canvas2DBitmapProvider::IsPrinting() const {
+  return delegate_ && delegate_->IsPrinting();
+}
+
+SkSurface* Canvas2DBitmapProvider::GetSkSurface() const {
   if (!surface_) {
     surface_ = CreateSkSurface();
   }
   return surface_.get();
 }
 
-void Canvas2DResourceProviderBitmap::OnMemoryDump(
+void Canvas2DBitmapProvider::OnMemoryDump(
     base::trace_event::ProcessMemoryDump* pmd) {
   if (!surface_) {
     return;
@@ -229,7 +233,7 @@ void Canvas2DResourceProviderBitmap::OnMemoryDump(
   }
 }
 
-size_t Canvas2DResourceProviderBitmap::GetSize() const {
+size_t Canvas2DBitmapProvider::GetSize() const {
   if (!surface_) {
     return 0;
   }
@@ -237,19 +241,19 @@ size_t Canvas2DResourceProviderBitmap::GetSize() const {
   return info.computeByteSize(info.minRowBytes());
 }
 
-void Canvas2DResourceProviderBitmap::InitializeForRecording(
+void Canvas2DBitmapProvider::InitializeForRecording(
     cc::PaintCanvas* canvas) const {
   if (delegate_) {
     delegate_->InitializeForRecording(canvas);
   }
 }
 
-void Canvas2DResourceProviderBitmap::RecordingCleared() {
+void Canvas2DBitmapProvider::RecordingCleared() {
   clear_frame_ = true;
 }
 
 CanvasImageProvider*
-Canvas2DResourceProviderBitmap::GetOrCreateSWCanvasImageProvider() {
+Canvas2DBitmapProvider::GetOrCreateSWCanvasImageProvider() {
   if (canvas_image_provider_) {
     return canvas_image_provider_.get();
   }
@@ -269,27 +273,27 @@ Canvas2DResourceProviderBitmap::GetOrCreateSWCanvasImageProvider() {
   return canvas_image_provider_.get();
 }
 
-void Canvas2DResourceProviderBitmap::SetAnimatedImageFrameIndexes(
+void Canvas2DBitmapProvider::SetAnimatedImageFrameIndexes(
     scoped_refptr<const cc::AnimatedImageFrameIndexMap> map) {
   CHECK(canvas_image_provider_);
   canvas_image_provider_->SetAnimatedImageFrameIndexes(map);
 }
 
 std::unique_ptr<MemoryManagedPaintRecorder>
-Canvas2DResourceProviderBitmap::ReleaseRecorder() {
+Canvas2DBitmapProvider::ReleaseRecorder() {
   auto recorder = std::make_unique<MemoryManagedPaintRecorder>(Size(), this);
   recorder_->SetClient(nullptr);
   recorder_.swap(recorder);
   return recorder;
 }
 
-void Canvas2DResourceProviderBitmap::SetRecorder(
+void Canvas2DBitmapProvider::SetRecorder(
     std::unique_ptr<MemoryManagedPaintRecorder> recorder) {
   recorder->SetClient(this);
   recorder_ = std::move(recorder);
 }
 
-void Canvas2DResourceProviderBitmap::FlushIfRecordingLimitExceeded() {
+void Canvas2DBitmapProvider::FlushIfRecordingLimitExceeded() {
   if (IsPrinting() && clear_frame_) {
     return;
   }
@@ -300,14 +304,12 @@ void Canvas2DResourceProviderBitmap::FlushIfRecordingLimitExceeded() {
   }
 }
 
-scoped_refptr<StaticBitmapImage> Canvas2DResourceProviderBitmap::Snapshot(
+scoped_refptr<StaticBitmapImage> Canvas2DBitmapProvider::Snapshot(
     ImageOrientation orientation) {
-  TRACE_EVENT0("blink", "Canvas2DResourceProviderBitmap::Snapshot");
+  TRACE_EVENT0("blink", "Canvas2DBitmapProvider::Snapshot");
   if (!IsValid()) {
     return nullptr;
   }
-
-  Flush();
 
   cc::PaintImage paint_image;
 
@@ -337,7 +339,7 @@ scoped_refptr<StaticBitmapImage> Canvas2DResourceProviderBitmap::Snapshot(
                                                 orientation);
 }
 
-std::optional<cc::PaintRecord> Canvas2DResourceProviderBitmap::Flush(
+std::optional<cc::PaintRecord> Canvas2DBitmapProvider::Flush(
     FlushReason reason) {
   if (!Recorder().HasReleasableDrawOps()) {
     return std::nullopt;
@@ -366,17 +368,16 @@ std::optional<cc::PaintRecord> Canvas2DResourceProviderBitmap::Flush(
   return recording;
 }
 
-const std::optional<cc::PaintRecord>&
-Canvas2DResourceProviderBitmap::LastRecording() {
+const std::optional<cc::PaintRecord>& Canvas2DBitmapProvider::LastRecording() {
   return last_recording_;
 }
 
-ScopedRasterTimer Canvas2DResourceProviderBitmap::CreateScopedRasterTimer() {
+ScopedRasterTimer Canvas2DBitmapProvider::CreateScopedRasterTimer() {
   return ScopedRasterTimer(nullptr, *this, false);
 }
 
-sk_sp<SkSurface> Canvas2DResourceProviderBitmap::CreateSkSurface() const {
-  TRACE_EVENT0("blink", "Canvas2DResourceProviderBitmap::CreateSkSurface");
+sk_sp<SkSurface> Canvas2DBitmapProvider::CreateSkSurface() const {
+  TRACE_EVENT0("blink", "Canvas2DBitmapProvider::CreateSkSurface");
 
   const auto info = SkImageInfo::Make(
       size_.width(), size_.height(), viz::ToClosestSkColorType(format_),
@@ -385,13 +386,12 @@ sk_sp<SkSurface> Canvas2DResourceProviderBitmap::CreateSkSurface() const {
   return SkSurfaces::Raster(info, &props);
 }
 
-SkSurfaceProps Canvas2DResourceProviderBitmap::GetSkSurfaceProps() const {
+SkSurfaceProps Canvas2DBitmapProvider::GetSkSurfaceProps() const {
   const bool can_use_lcd_text = GetAlphaType() == kOpaque_SkAlphaType;
   return skia::LegacyDisplayGlobals::ComputeSurfaceProps(can_use_lcd_text);
 }
 
-void Canvas2DResourceProviderBitmap::RestoreBackBuffer(
-    const cc::PaintImage& image) {
+void Canvas2DBitmapProvider::RestoreBackBuffer(const cc::PaintImage& image) {
   DCHECK_EQ(image.height(), Size().height());
   DCHECK_EQ(image.width(), Size().width());
 
@@ -402,14 +402,14 @@ void Canvas2DResourceProviderBitmap::RestoreBackBuffer(
   WritePixels(map.info(), map.addr(), map.rowBytes(), /*x=*/0, /*y=*/0);
 }
 
-void Canvas2DResourceProviderBitmap::ApplyAnimatedImageFrameIndexesForId(
+void Canvas2DBitmapProvider::ApplyAnimatedImageFrameIndexesForId(
     SkCanvas* canvas,
     uint32_t id) {
   CHECK(delegate_);
   SetAnimatedImageFrameIndexes(delegate_->GetAnimatedImageFrameIndexes(id));
 }
 
-void Canvas2DResourceProviderBitmap::ClearAtCreation() {
+void Canvas2DBitmapProvider::ClearAtCreation() {
   DCHECK(IsValid());
   MemoryManagedPaintRecorder recorder(Size(), this);
   if (GetAlphaType() == kOpaque_SkAlphaType) {
@@ -421,22 +421,21 @@ void Canvas2DResourceProviderBitmap::ClearAtCreation() {
   RasterRecord(recorder.ReleaseMainRecording());
 }
 
-void Canvas2DResourceProviderBitmap::RasterRecord(
-    cc::PaintRecord last_recording) {
+void Canvas2DBitmapProvider::RasterRecord(cc::PaintRecord last_recording) {
   RasterRecord([this, &last_recording](cc::PaintCanvas& canvas) {
     cc::PlaybackCallbacks::CustomDataRasterCallback custom_callback;
     if (this->delegate_) {
       // base::Unretained(this) is safe here because the callback will only be
       // invoked during the scope of skia_canvas_->drawPicture().
       custom_callback = base::BindRepeating(
-          &Canvas2DResourceProviderBitmap::ApplyAnimatedImageFrameIndexesForId,
+          &Canvas2DBitmapProvider::ApplyAnimatedImageFrameIndexesForId,
           base::Unretained(this));
     }
     skia_canvas_->drawPicture(std::move(last_recording), custom_callback);
   });
 }
 
-void Canvas2DResourceProviderBitmap::RasterRecord(
+void Canvas2DBitmapProvider::RasterRecord(
     base::FunctionRef<void(cc::PaintCanvas&)> draw_callback) {
   if (!skia_canvas_) {
     skia_canvas_ = std::make_unique<cc::SkiaPaintCanvas>(
@@ -445,12 +444,12 @@ void Canvas2DResourceProviderBitmap::RasterRecord(
   draw_callback(*skia_canvas_);
 }
 
-bool Canvas2DResourceProviderBitmap::WritePixels(const SkImageInfo& orig_info,
-                                                 const void* pixels,
-                                                 size_t row_bytes,
-                                                 int x,
-                                                 int y) {
-  TRACE_EVENT0("blink", "Canvas2DResourceProviderBitmap::WritePixels");
+bool Canvas2DBitmapProvider::WritePixels(const SkImageInfo& orig_info,
+                                         const void* pixels,
+                                         size_t row_bytes,
+                                         int x,
+                                         int y) {
+  TRACE_EVENT0("blink", "Canvas2DBitmapProvider::WritePixels");
   DCHECK(IsValid());
   DCHECK(!Recorder().HasRecordedDrawOps());
 
@@ -1256,7 +1255,6 @@ scoped_refptr<StaticBitmapImage> Canvas2DResourceProviderSharedImage::Snapshot(
   }
 
   if (!cached_snapshot_) {
-    Flush(FlushReason::kOther);
     EndWriteAccess();
     cached_snapshot_ = resource_->Bitmap();
 
@@ -1319,8 +1317,6 @@ Canvas2DResourceProviderSharedImage::UnacceleratedSnapshot(
   if (!IsValid()) {
     return nullptr;
   }
-
-  Flush();
 
   cc::PaintImage paint_image;
 
@@ -1647,20 +1643,19 @@ size_t Canvas2DResourceProviderSharedImage::GetSize() const {
   return info.computeByteSize(info.minRowBytes());
 }
 
-std::unique_ptr<Canvas2DResourceProviderBitmap>
-Canvas2DResourceProviderBitmap::CreateWithClear(
+std::unique_ptr<Canvas2DBitmapProvider> Canvas2DBitmapProvider::CreateWithClear(
     gfx::Size size,
     viz::SharedImageFormat format,
     SkAlphaType alpha_type,
     const gfx::ColorSpace& color_space,
     const gfx::HDRMetadata& hdr_metadata,
     CanvasResourceProviderDelegate* delegate) {
-  auto provider = base::WrapUnique<Canvas2DResourceProviderBitmap>(
-      new Canvas2DResourceProviderBitmap(size, format, alpha_type, color_space,
-                                         hdr_metadata, delegate));
+  auto provider =
+      base::WrapUnique<Canvas2DBitmapProvider>(new Canvas2DBitmapProvider(
+          size, format, alpha_type, color_space, hdr_metadata, delegate));
   if (provider->IsValid()) {
     provider->ClearAtCreation();
-    // The ClearAtCreation() call cannot turn a CRPBitmap invalid.
+    // The ClearAtCreation() call cannot turn a Canvas2DBitmapProvider invalid.
     CHECK(provider->IsValid());
     return provider;
   }
@@ -2880,11 +2875,11 @@ sk_sp<SkSurface> CanvasNon2DResourceProviderSharedImage::CreateSkSurface()
   return SkSurfaces::Raster(resource_->CreateSkImageInfo(), &props);
 }
 
-std::unique_ptr<Canvas2DResourceProviderBitmap>
-Canvas2DResourceProviderBitmap::CreateForTesting(
+std::unique_ptr<Canvas2DBitmapProvider>
+Canvas2DBitmapProvider::CreateForTesting(
     gfx::Size size,
     const Canvas2DColorParams& color_params) {
-  return Canvas2DResourceProviderBitmap::CreateWithClear(
+  return Canvas2DBitmapProvider::CreateWithClear(
       size, color_params.GetSharedImageFormat(), color_params.GetAlphaType(),
       color_params.GetGfxColorSpace(), color_params.GetGfxHdrMetadata());
 }

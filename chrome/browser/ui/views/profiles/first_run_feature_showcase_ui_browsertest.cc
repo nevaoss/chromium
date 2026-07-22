@@ -109,14 +109,18 @@ class FirstRunFeatureShowcasePixelTest
         base::BindRepeating(
             [](Profile* profile, ProfilePickerWebContentsHost* host)
                 -> std::unique_ptr<ProfileManagementStepController> {
-              return CreateFeatureShowcaseStep(
-                  host, profile,
-                  /*step_completed_callback=*/base::DoNothing());
+              return CreateFeatureShowcaseStep(host, profile);
             },
             browser()->profile()));
 
     profile_picker_view_->views::View::AddObserver(this);
     profile_picker_view_->ShowAndWait(GetParam().pixel_test_param.window_size);
+
+    // Wait for all cr-lotties to initialize to prevent flakiness.
+    CHECK_EQ(
+        content::EvalJs(profile_picker_view_->GetPickerContents(),
+                        GetWaitForAnimationsScript("feature-showcase-app")),
+        true);
   }
 
   bool VerifyUi() override {
@@ -160,14 +164,8 @@ class FirstRunFeatureShowcasePixelTest
       gfx::ScopedAnimationDurationScaleMode::ZERO_DURATION};
 };
 
-// TODO(crbug.com/519129009): Flaky on Windows.
-#if BUILDFLAG(IS_WIN)
-#define MAYBE_InvokeUi_default DISABLED_InvokeUi_default
-#else
-#define MAYBE_InvokeUi_default InvokeUi_default
-#endif
 IN_PROC_BROWSER_TEST_P(FirstRunFeatureShowcasePixelTest,
-                       MAYBE_InvokeUi_default) {
+                       InvokeUi_default) {
   ShowAndVerifyUi();
 }
 

@@ -2337,8 +2337,11 @@ inline LayoutStateScenePassKey PassKey() {
   [_geminiEntryFlowCoordinator stop];
   _geminiEntryFlowCoordinator = nil;
 
-  UIViewController* presenter =
-      baseViewController ? baseViewController : _viewController;
+  UIViewController* presenter = baseViewController;
+  if (!presenter) {
+    presenter = IsUseSceneViewControllerEnabled() ? _viewController
+                                                  : self.activeViewController;
+  }
 
   __weak __typeof(self) weakSelf = self;
   _geminiEntryFlowCoordinator = [[GeminiEntryFlowCoordinator alloc]
@@ -2433,8 +2436,11 @@ inline LayoutStateScenePassKey PassKey() {
             (void (^)(BOOL success))completion
                                       fromEntryPoint:
                                           (gemini::EntryPoint)entryPoint {
+  UIViewController* baseViewController = IsUseSceneViewControllerEnabled()
+                                             ? _viewController
+                                             : self.activeViewController;
   _geminiFirstRunCoordinator = [[GeminiFirstRunCoordinator alloc]
-      initWithBaseViewController:_viewController
+      initWithBaseViewController:baseViewController
                          browser:_regularBrowser.get()
                   fromEntryPoint:entryPoint
                     firstRunType:GeminiFirstRunType::kNewUser
@@ -2567,6 +2573,9 @@ inline LayoutStateScenePassKey PassKey() {
 
 // Starts the Gemini session directly via the browser agent.
 - (void)startGeminiSessionWithStartupState:(GeminiStartupState*)startupState {
+  UIViewController* baseViewController = IsUseSceneViewControllerEnabled()
+                                             ? _viewController
+                                             : self.activeViewController;
   if (IsIOSGeminiBottomSheetMigrationEnabled()) {
     // TODO(crbug.com/522834015): Start the First Run coordinator if needed.
     if (_geminiContainerCoordinator) {
@@ -2574,7 +2583,7 @@ inline LayoutStateScenePassKey PassKey() {
     }
 
     _geminiContainerCoordinator = [[GeminiContainerCoordinator alloc]
-        initWithBaseViewController:_viewController
+        initWithBaseViewController:baseViewController
                            browser:_regularBrowser.get()
                       startupState:startupState];
     [_geminiContainerCoordinator start];
@@ -2588,7 +2597,7 @@ inline LayoutStateScenePassKey PassKey() {
     return;
   }
 
-  geminiBrowserAgent->StartGeminiFlow(_viewController, startupState);
+  geminiBrowserAgent->StartGeminiFlow(baseViewController, startupState);
 }
 
 // Stops the existing first run coordinator (if any) and runs `startBlock`.

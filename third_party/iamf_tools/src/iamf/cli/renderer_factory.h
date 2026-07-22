@@ -20,6 +20,7 @@
 #include "iamf/cli/renderer/audio_element_renderer_base.h"
 #include "iamf/obu/audio_element.h"
 #include "iamf/obu/mix_presentation.h"
+#include "iamf/obu/rendering_config.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -89,8 +90,19 @@ class RendererFactory : public RendererFactoryBase {
       const RenderingConfig& rendering_config, const Layout& loudness_layout,
       size_t num_samples_per_frame, size_t sample_rate) const override;
 
+  /*!\brief Constructor.
+   *
+   * \param trimming_settings Trimming settings to configure renderers with.
+   */
+  explicit RendererFactory(TrimmingSettings trimming_settings = {})
+      : trimming_settings_(trimming_settings) {}
+
   /*!\brief Destructor. */
   ~RendererFactory() override = default;
+
+ private:
+  // Cached trimming settings to apply to each generated audio element renderer.
+  const TrimmingSettings trimming_settings_;
 };
 
 }  // namespace iamf_tools

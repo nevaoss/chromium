@@ -51,10 +51,9 @@ enum class AllocFlags {
   kFastPathOrReturnNull = 1 << 5,  // Internal.
   // An allocation override hook should tag the allocated memory for MTE.
   kMemoryShouldBeTaggedForMte = 1 << 6,  // Internal.
-  // Only used when MEMORY_TOOL_REPLACES_ALLOCATOR is defined, we will attempt
-  // to use an aligned allocation function.
-  kAlignedAllocForMemoryTool = 1 << 7,  // Internal.
-  kMaxValue = kAlignedAllocForMemoryTool,
+  // An explicitly aligned allocation.
+  kAlignedAlloc = 1 << 7,  // Internal.
+  kMaxValue = kAlignedAlloc,
 };
 PA_DEFINE_OPERATORS_FOR_FLAGS(AllocFlags);
 

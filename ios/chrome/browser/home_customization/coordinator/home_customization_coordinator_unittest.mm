@@ -35,8 +35,7 @@
 class HomeCustomizationCoordinatorUnitTest : public PlatformTest {
  public:
   void SetUp() override {
-    scoped_feature_list_.InitWithFeatures(
-        {kNTPBackgroundCustomization, syncer::kSyncThemesIos}, {});
+    scoped_feature_list_.InitAndEnableFeature(syncer::kSyncThemesIos);
     profile_ = TestProfileIOS::Builder().Build();
     browser_ = std::make_unique<TestBrowser>(profile_.get());
     DiscoverFeedVisibilityBrowserAgent::CreateForBrowser(browser_.get());

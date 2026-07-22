@@ -9,6 +9,7 @@ import("//build/util/process_version.gni")
 import("//chrome/enterprise_companion/branding.gni")
 import("//chrome/updater/apply_updater_branding.gni")
 import("//chrome/updater/branding.gni")
+import("//chrome/updater/updater.gni")
 import("//components/crx_file/crx3.gni")
 import("//testing/test.gni")
 
@@ -41,7 +42,7 @@ group("updater") {
 
   # These packages have problematic license files that we need to avoid for
   # updater redistribution.
-  assert_no_deps = [ "//third_party/libaom" ]
+  assert_no_deps = updater_assert_no_deps
 }
 
 group("all") {

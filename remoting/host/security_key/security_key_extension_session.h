@@ -9,6 +9,7 @@
 #include <string>
 
 #include "base/memory/raw_ptr.h"
+#include "base/memory/weak_ptr.h"
 #include "base/threading/thread_checker.h"
 #include "base/values.h"
 #include "build/build_config.h"
@@ -28,8 +29,9 @@ class ClientStub;
 // A HostExtensionSession implementation that enables Security Key support.
 class SecurityKeyExtensionSession : public HostExtensionSession {
  public:
-  SecurityKeyExtensionSession(ClientSessionDetails* client_session_details,
-                              protocol::ClientStub* client_stub);
+  SecurityKeyExtensionSession(
+      base::WeakPtr<SecurityKeyAuthHandler> auth_handler,
+      protocol::ClientStub* client_stub);
 
   SecurityKeyExtensionSession(const SecurityKeyExtensionSession&) = delete;
   SecurityKeyExtensionSession& operator=(const SecurityKeyExtensionSession&) =
@@ -42,12 +44,6 @@ class SecurityKeyExtensionSession : public HostExtensionSession {
                           protocol::ClientStub* client_stub,
                           const protocol::ExtensionMessage& message) override;
 
-  void BindSecurityKeyForwarder(
-      mojo::PendingReceiver<mojom::SecurityKeyForwarder> receiver);
-
-  // Allows overriding SecurityKeyAuthHandler for unit testing.
-  void SetSecurityKeyAuthHandlerForTesting(
-      std::unique_ptr<SecurityKeyAuthHandler> security_key_auth_handler);
 
  private:
   // These methods process specific security key extension message types.
@@ -55,7 +51,7 @@ class SecurityKeyExtensionSession : public HostExtensionSession {
   void ProcessDataMessage(const base::DictValue& message_data) const;
   void ProcessErrorMessage(const base::DictValue& message_data) const;
 
-  void SendMessageToClient(int connection_id, const std::string& data) const;
+  void SendMessageToClient(int connection_id, const std::string& data);
 
   // Ensures SecurityKeyExtensionSession methods are called on the same thread.
   base::ThreadChecker thread_checker_;
@@ -64,7 +60,9 @@ class SecurityKeyExtensionSession : public HostExtensionSession {
   raw_ptr<protocol::ClientStub> client_stub_ = nullptr;
 
   // Handles platform specific security key operations.
-  std::unique_ptr<SecurityKeyAuthHandler> security_key_auth_handler_;
+  base::WeakPtr<SecurityKeyAuthHandler> auth_handler_;
+
+  base::WeakPtrFactory<SecurityKeyExtensionSession> weak_factory_{this};
 };
 
 }  // namespace remoting

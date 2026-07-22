@@ -2,10 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// TODO(crbug.com/497887993): Remove this when cleaning up the shared composebox
-// component.
-// eslint-disable-next-line no-restricted-imports
-import {SubmitButtonIconType} from '//resources/cr_components/composebox/composebox.js';
+import {SubmitButtonIconType} from '//resources/cr_components/composebox/composebox_mixin.js';
 import {html} from '//resources/lit/v3_0/lit.rollup.js';
 
 import type {OmniboxAimAppElement} from './aim_app.js';

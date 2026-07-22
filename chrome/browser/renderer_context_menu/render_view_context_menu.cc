@@ -511,15 +511,15 @@ const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
        {IDC_CONTENT_CONTEXT_PROTOCOL_HANDLER_SETTINGS, 47},
        {IDC_CONTENT_CONTEXT_OPENLINKWITH, 52},
        {IDC_CHECK_SPELLING_WHILE_TYPING, 53},
-       {IDC_SPELLCHECK_MENU, 54},
+       {kSpellcheckMenuId, 54},
        {IDC_CONTENT_CONTEXT_SPELLING_TOGGLE, 55},
        {IDC_SPELLCHECK_LANGUAGES_FIRST, 56},
        {IDC_CONTENT_CONTEXT_SEARCHWEBFORIMAGE, 57},
        {IDC_SPELLCHECK_SUGGESTION_0, 58},
        {IDC_SPELLCHECK_ADD_TO_DICTIONARY, 59},
-       {IDC_SPELLPANEL_TOGGLE, 60},
+       // Removed: {IDC_SPELLPANEL_TOGGLE, 60},
        {IDC_CONTENT_CONTEXT_OPEN_ORIGINAL_IMAGE_NEW_TAB, 61},
-       {IDC_WRITING_DIRECTION_MENU, 62},
+       {kWritingDirectionMenuId, 62},
        {IDC_WRITING_DIRECTION_DEFAULT, 63},
        {IDC_WRITING_DIRECTION_LTR, 64},
        {IDC_WRITING_DIRECTION_RTL, 65},
@@ -1324,6 +1324,17 @@ void RenderViewContextMenu::InitMenu() {
     AppendSharingItems();
   }
 
+  bool show_glic = false;
+  if (features::IsMenuSimplificationEnabled()) {
+    show_glic = !params_.selection_text.empty();
+  } else {
+    show_glic = !params_.selection_text.empty() || !params_.link_url.is_empty();
+  }
+
+  if (show_glic && !use_simplified_menu_for_text_selection) {
+    MaybeAppendOpenGlicItem(/*add_separator=*/false);
+  }
+
   if (!use_simplified_menu_for_text_selection &&
       !(features::IsMenuSimplificationEnabled() && editable) &&
       content_type_->SupportsGroup(
@@ -1338,17 +1349,6 @@ void RenderViewContextMenu::InitMenu() {
   if (!use_simplified_menu_for_text_selection &&
       !params_.selection_text.empty()) {
     AppendSaveToMemoryBanksItem();
-  }
-
-  bool show_glic = false;
-  if (features::IsMenuSimplificationEnabled()) {
-    show_glic = !params_.selection_text.empty();
-  } else {
-    show_glic = !params_.selection_text.empty() || !params_.link_url.is_empty();
-  }
-
-  if (show_glic) {
-    MaybeAppendOpenGlicItem();
   }
 
   if (!use_simplified_menu_for_text_selection && !media_image &&
@@ -2888,6 +2888,11 @@ void RenderViewContextMenu::AppendSpellingAndSearchSuggestionItems() {
 
   if (!params_.misspelled_word.empty() &&
       !features::IsMenuSimplificationEnabled()) {
+    bool show_glic =
+        !params_.selection_text.empty() || !params_.link_url.is_empty();
+    if (show_glic) {
+      MaybeAppendOpenGlicItem(/*add_separator=*/false);
+    }
     AppendSearchProvider();
     menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
   }
@@ -2994,6 +2999,7 @@ void RenderViewContextMenu::AppendOtherEditableItems() {
   if (features::IsMenuSimplificationEnabled() &&
       !params_.selection_text.empty()) {
     menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
+    MaybeAppendOpenGlicItem(/*add_separator=*/false);
     AppendSearchProvider();
     AppendPrintItem();
     if (CanPartiallyTranslateTargetLanguage()) {
@@ -3464,7 +3470,6 @@ bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
       return navigation_allowed &&
              IsOpenLinkAllowedByDlp(selection_navigation_url_);
 
-    case IDC_SPELLPANEL_TOGGLE:
     case IDC_CONTENT_CONTEXT_LANGUAGE_SETTINGS:
     case IDC_SEND_TAB_TO_SELF:
       return true;
@@ -3478,7 +3483,7 @@ bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
     case IDC_CONTENT_CONTEXT_GENERATE_QR_CODE:
       return IsQRCodeGeneratorEnabled();
 
-    case IDC_CONTENT_CONTEXT_SHARING_SUBMENU:
+    case kSharingSubmenuMenuId:
       return true;
 
     case IDC_CHECK_SPELLING_WHILE_TYPING:
@@ -3486,12 +3491,12 @@ bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
 
 #if !BUILDFLAG(IS_MAC) && BUILDFLAG(IS_POSIX)
     // TODO(suzhe): this should not be enabled for password fields.
-    case IDC_INPUT_METHODS_MENU:
+    case kLinuxInputMethodsMenuId:
       return true;
 #endif
 
     case IDC_CONTENT_CONTEXT_VIDEO_FRAME:
-    case IDC_SPELLCHECK_MENU:
+    case kSpellcheckMenuId:
     case IDC_CONTENT_CONTEXT_OPENLINKWITH:
     case IDC_CONTENT_CONTEXT_PROTOCOL_HANDLER_SETTINGS:
     case IDC_CONTENT_CONTEXT_GENERATEPASSWORD:
@@ -4950,10 +4955,12 @@ void RenderViewContextMenu::ExecSaveAs() {
 }
 
 void RenderViewContextMenu::ExecGlic() {
-  if (glic::GlicEnabling::IsContextualMenuItemEnabled(GetProfile())) {
+  if (glic::GlicEnabling::IsContextualMenuItemEnabled(GetProfile(),
+                                                      params_.selection_text)) {
     glic_item_executed_ = true;
     glic::GlicContextMenuInvocationHelper::HandleContextualMenuClick(
-        tabs::TabInterface::MaybeGetFromContents(source_web_contents_));
+        tabs::TabInterface::MaybeGetFromContents(source_web_contents_),
+        params_.selection_text, GetRenderFrameHost()->GetGlobalId());
   }
 }
 
@@ -5356,7 +5363,10 @@ void RenderViewContextMenu::ExecProtocolHandlerSettings(int event_flags) {
   OpenURL(url, GURL(), {}, disposition, ui::PAGE_TRANSITION_LINK);
 }
 
-void RenderViewContextMenu::MaybeAppendOpenGlicItem() {
+void RenderViewContextMenu::MaybeAppendOpenGlicItem(bool add_separator) {
+  if (glic_item_shown_) {
+    return;
+  }
   if (!content_type_->SupportsGroup(ContextMenuContentType::ITEM_GROUP_GLIC)) {
     return;
   }
@@ -5371,28 +5381,46 @@ void RenderViewContextMenu::MaybeAppendOpenGlicItem() {
     return;
   }
 
-  if (features::IsMenuSimplificationEnabled() &&
-      !params_.selection_text.empty() && IsPasswordField()) {
+  if (IsPasswordField()) {
     return;
   }
 
-  if (glic::GlicEnabling::IsContextualMenuItemEnabled(GetProfile()) &&
+  if (glic::GlicEnabling::IsContextualMenuItemEnabled(GetProfile(),
+                                                      params_.selection_text) &&
       !IsGlicWindow(this, browser_context_)) {
-    std::string arm = features::kGlicContextMenuArm.Get();
-    bool show_summarize_page = (arm == "arm2");
-    menu_model_.AddItemWithStringIdAndIcon(
-        IDC_CONTENT_CONTEXT_GLIC,
-        show_summarize_page ? IDS_GLIC_CONTEXT_MENU_SUMMARIZE_PAGE_WITH_GEMINI
-                            : IDS_GLIC_BUTTON_ENTRYPOINT_ASK_GEMINI_LABEL,
-        ui::ImageModel::FromVectorIcon(
-            glic::GlicVectorIconManager::GetVectorIcon(
-                IDR_GLIC_BUTTON_VECTOR_ICON),
-            ui::kColorMenuIcon, kTabMenuIconSize));
+    const bool show_text_selection_menu_item =
+        base::FeatureList::IsEnabled(features::kGlicTextSelectionContextMenu) &&
+        !params_.selection_text.empty();
+
+    const std::string arm = features::kGlicContextMenuArm.Get();
+    const bool show_summarize_page = (arm == "arm2");
+
+    std::u16string label;
+    if (show_text_selection_menu_item) {
+      std::u16string printable_selection_text = PrintableSelectionText();
+      EscapeAmpersands(&printable_selection_text);
+      label = l10n_util::GetStringFUTF16(IDS_GLIC_CONTEXT_MENU_ASK_GEMINI_ABOUT,
+                                         printable_selection_text);
+    } else if (show_summarize_page) {
+      label = l10n_util::GetStringUTF16(
+          IDS_GLIC_CONTEXT_MENU_SUMMARIZE_PAGE_WITH_GEMINI);
+    } else {
+      label = l10n_util::GetStringUTF16(
+          IDS_GLIC_BUTTON_ENTRYPOINT_ASK_GEMINI_LABEL);
+    }
+
+    menu_model_.AddItemWithIcon(IDC_CONTENT_CONTEXT_GLIC, label,
+                                ui::ImageModel::FromVectorIcon(
+                                    glic::GlicVectorIconManager::GetVectorIcon(
+                                        IDR_GLIC_BUTTON_VECTOR_ICON),
+                                    ui::kColorMenuIcon, kTabMenuIconSize));
     menu_model_.SetIsNewFeatureAt(
         menu_model_.GetItemCount() - 1,
         UserEducationService::MaybeShowNewBadge(GetBrowserContext(),
                                                 features::kGlicContextMenu));
-    menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
+    if (add_separator) {
+      menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
+    }
     glic_item_shown_ = true;
   }
 }
@@ -5787,6 +5815,7 @@ void RenderViewContextMenu::AppendRevisedTextSelectionSection() {
     // Link + Selection case
     AppendCopyItem();
     AppendLinkToTextItems();
+    MaybeAppendOpenGlicItem(/*add_separator=*/false);
     AppendSearchProvider();
     AppendSaveToMemoryBanksItem();
     AppendPrintItem();
@@ -5804,6 +5833,7 @@ void RenderViewContextMenu::AppendRevisedTextSelectionSection() {
 
     menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
 
+    MaybeAppendOpenGlicItem(/*add_separator=*/false);
     AppendSearchProvider();
     AppendReadAnythingItem();
     AppendSaveToMemoryBanksItem();

@@ -360,4 +360,54 @@ TEST_F(TabDragSessionTest, CaptureLostDuringDetachIgnored) {
   toy_adapter.SendToyEvent(TabDragInputEvent::Type::kDropped);
 }
 
+TEST_F(TabDragSessionTest, SingleTabDragImmediateWindowDrag) {
+  ToyTabDragSessionInputAdapter toy_adapter;
+  base::MockOnceClosure end_callback;
+  ToyTabDragSessionListener listener;
+  ToyDropTargetRegistry registry;
+  registry.set_source_window(&dummy_window_);
+  ToyTabDragSessionInjector injector(toy_adapter, listener, registry,
+                                     &registry_);
+
+  // Set tab count to 1 to simulate single-tab window.
+  dummy_window_.set_tab_count(1);
+
+  std::vector<tabs_api::NodeId> tab_ids = {
+      NodeId(NodeId::Type::kContent, "tab1")};
+  TabDragSessionParams params{.source_window_id = dummy_window_.GetWindowId(),
+                              .source_tab_ids = tab_ids,
+                              .start_point = gfx::Point(),
+                              .end_callback = end_callback.Get()};
+  TabDragSession session(std::move(params), &injector);
+
+  EXPECT_TRUE(session.Start().has_value());
+
+  // Move mouse. This should immediately trigger window drag on the source
+  // window, call RunWindowMoveLoop (returns kSuccess), and immediately drop and
+  // end the session.
+  EXPECT_CALL(end_callback, Run()).Times(1);
+  gfx::Point move_point(10, 10);
+  toy_adapter.SendToyEvent(TabDragInputEvent::Type::kMoved, move_point);
+
+  // We expect 3 events: kStarted, kDetached, kDropped.
+  ASSERT_EQ(listener.events().size(), 3u);
+  EXPECT_EQ(listener.events()[0].type,
+            ToyTabDragSessionListener::Event::Type::kStarted);
+  EXPECT_EQ(listener.events()[1].type,
+            ToyTabDragSessionListener::Event::Type::kDetached);
+  EXPECT_EQ(listener.events()[1].point, move_point);
+  EXPECT_EQ(listener.events()[2].type,
+            ToyTabDragSessionListener::Event::Type::kDropped);
+  EXPECT_EQ(listener.events()[2].point, move_point);
+
+  // Verify that DetachToNewWindow was NOT called (we bypassed it).
+  EXPECT_FALSE(dummy_window_.detach_to_new_window_called());
+
+  // Verify that RunWindowMoveLoop was called on the SOURCE window
+  // (dummy_window_).
+  EXPECT_TRUE(dummy_window_.run_window_move_loop_called());
+  EXPECT_EQ(dummy_window_.last_move_loop_point(), move_point);
+  EXPECT_FALSE(dummy_detached_window_.run_window_move_loop_called());
+}
+
 }  // namespace tabs_api

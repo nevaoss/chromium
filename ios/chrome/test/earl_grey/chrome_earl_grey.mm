@@ -27,6 +27,7 @@
 #import "ios/testing/nserror_util.h"
 #import "ios/web/public/test/element_selector.h"
 #import "net/base/apple/url_conversions.h"
+#import "ui/base/device_form_factor.h"
 
 using base::test::ios::kWaitForActionTimeout;
 using base::test::ios::kWaitForJSCompletionTimeout;
@@ -137,17 +138,11 @@ id<GREYAction> grey_longPressWithDuration(base::TimeDelta duration) {
 #pragma mark - Device Utilities
 
 - (BOOL)isIPadIdiom {
-  UIUserInterfaceIdiom idiom =
-      [[GREY_REMOTE_CLASS_IN_APP(UIDevice) currentDevice] userInterfaceIdiom];
-
-  return idiom == UIUserInterfaceIdiomPad;
+  return ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_TABLET;
 }
 
 - (BOOL)isIPhoneIdiom {
-  UIUserInterfaceIdiom idiom =
-      [[GREY_REMOTE_CLASS_IN_APP(UIDevice) currentDevice] userInterfaceIdiom];
-
-  return idiom == UIUserInterfaceIdiomPhone;
+  return ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_PHONE;
 }
 
 - (BOOL)isTabGridSetUp {
@@ -1576,6 +1571,10 @@ id<GREYAction> grey_longPressWithDuration(base::TimeDelta duration) {
   return [ChromeEarlGreyAppInterface isUseLensToSearchForImageEnabled];
 }
 
+- (BOOL)isYourSavedInfoSettingsPageIosEnabled {
+  return [ChromeEarlGreyAppInterface isYourSavedInfoSettingsPageIosEnabled];
+}
+
 - (BOOL)isUnfocusedOmniboxAtBottom {
   return !self.isIPadIdiom && self.isSplitToolbarMode &&
          [self localStateBooleanPref:omnibox::kIsOmniboxInBottomPosition];
@@ -1583,6 +1582,10 @@ id<GREYAction> grey_longPressWithDuration(base::TimeDelta duration) {
 
 - (BOOL)isChromeNextEnabled {
   return [ChromeEarlGreyAppInterface isChromeNextEnabled];
+}
+
+- (BOOL)isOverflowMenuNTPRefactorEnabled {
+  return [ChromeEarlGreyAppInterface isOverflowMenuNTPRefactorEnabled];
 }
 
 - (BOOL)isChromeNextShareIconVisible {
@@ -1953,10 +1956,14 @@ id<GREYAction> grey_longPressWithDuration(base::TimeDelta duration) {
 
   NSString* hostString = base::SysUTF8ToNSString(URL.GetHost());
   XCUIApplication* currentApplication = [[XCUIApplication alloc] init];
-  BOOL hostStringPresent = [currentApplication.otherElements[hostString]
-      waitForExistenceWithTimeout:kWaitForUIElementTimeout.InSecondsF()];
-  BOOL pageTitlePresent = [currentApplication.otherElements[pageTitle]
-      waitForExistenceWithTimeout:kWaitForUIElementTimeout.InSecondsF()];
+  XCUIElementQuery* elementsQuery =
+      [currentApplication descendantsMatchingType:XCUIElementTypeAny];
+  BOOL hostStringPresent =
+      [[elementsQuery matchingIdentifier:hostString].firstMatch
+          waitForExistenceWithTimeout:kWaitForUIElementTimeout.InSecondsF()];
+  BOOL pageTitlePresent =
+      [[elementsQuery matchingIdentifier:pageTitle].firstMatch
+          waitForExistenceWithTimeout:kWaitForUIElementTimeout.InSecondsF()];
   GREYAssert(hostStringPresent || pageTitlePresent,
              @"Either hostString %d or pageTitle %d was not present",
              hostStringPresent, pageTitlePresent);

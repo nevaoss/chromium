@@ -403,6 +403,38 @@ class GlicActorTaskLifecycleFunctionalBrowserTest extends ApiTestFixtureBase {
     assertTrue(this.host.selectGmailOtpOptInRequestHandler === undefined);
     await this.advanceToNextStep();
   }
+
+  async testActuatingPriorityChange() {
+    assertDefined(this.host.createTask);
+    assertDefined(this.host.performActions);
+    assertDefined(this.host.stopActorTask);
+
+    const taskId = await this.host.createTask();
+    assertTrue(taskId > 0);
+
+    // Perform a navigate action first to associate the active tab with the
+    // actor task. This ensures has_visible_tab is computed as true.
+    const targetUrl = this.getUrl('/actor/blank.html?target');
+    const navBuffer = await this.browser.makeNavigateAction(taskId, targetUrl);
+    const navResult = await this.host.performActions(navBuffer);
+    const resultCode = await this.browser.parseActionsResult(navResult);
+    assertEquals('kOk', resultCode);
+
+    // Start a long wait action to ensure there is enough time for checks.
+    const waitBuffer =
+        await this.browser.makeWaitAction(taskId, longWaitTimeMs);
+    const waitPromise = this.host.performActions(waitBuffer);
+
+    // Wait for the task to start acting before yielding to C++ check.
+    await this.waitForTaskState(taskId, ActorTaskState.ACTING);
+
+    await this.advanceToNextStep();
+
+    await this.host.stopActorTask(taskId, ActorTaskStopReason.TASK_COMPLETE);
+    const waitResult = await waitPromise;
+    const resultCode2 = await this.browser.parseActionsResult(waitResult);
+    assertEquals('kTaskWentAway', resultCode2);
+  }
 }
 
 testMain([

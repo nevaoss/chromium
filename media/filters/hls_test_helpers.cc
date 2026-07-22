@@ -49,9 +49,10 @@ std::unique_ptr<HlsDataSourceStream>
 StringHlsDataSourceStreamFactory::CreateStream(
     std::string content,
     std::optional<hls::SecurityMetadata> info) {
-  HlsDataSourceProvider::SegmentQueue segments;
+  HlsDataSourceProvider::UrlDataSegment segment(GURL("http://dummy.com"),
+                                                std::nullopt);
   auto stream = std::make_unique<HlsDataSourceStream>(
-      HlsDataSourceStream::StreamId::FromUnsafeValue(42), std::move(segments),
+      HlsDataSourceStream::StreamId::FromUnsafeValue(42), std::move(segment),
       base::DoNothing());
   base::span<uint8_t> buffer = stream->LockStreamForWriting(content.length());
   buffer.copy_from(base::as_byte_span(content));
@@ -71,9 +72,10 @@ FileHlsDataSourceStreamFactory::CreateStream(
   std::optional<int64_t> file_size = base::GetFileSize(file_path);
   CHECK(file_size.has_value())
       << "Failed to get file size for '" << filename << "'";
-  HlsDataSourceProvider::SegmentQueue segments;
+  HlsDataSourceProvider::UrlDataSegment segment(GURL("http://dummy.com"),
+                                                std::nullopt);
   auto stream = std::make_unique<HlsDataSourceStream>(
-      HlsDataSourceStream::StreamId::FromUnsafeValue(42), std::move(segments),
+      HlsDataSourceStream::StreamId::FromUnsafeValue(42), std::move(segment),
       base::DoNothing());
   base::span<uint8_t> buffer = stream->LockStreamForWriting(
       base::checked_cast<size_t>(file_size.value()));

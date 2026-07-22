@@ -20,6 +20,7 @@ def _CommonChecks(input_api, output_api):
         path.join(cwd, 'download_fuzz_corpora_test.py'),
         path.join(cwd, 'find_affected_coverage_guided_fuzzers_test.py'),
         path.join(cwd, 'measure_fuzzilli_coverage_test.py'),
+        path.join(cwd, 'test_suite_mapper_test.py'),
     ]
     return input_api.canned_checks.RunUnitTests(input_api, output_api, tests)
 

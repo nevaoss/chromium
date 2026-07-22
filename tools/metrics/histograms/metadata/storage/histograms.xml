@@ -2917,6 +2917,19 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Storage.{DomStorageType}.Database.Error"
+    enum="SqliteErrorCode" expires_after="2027-06-01">
+  <owner>leimy@chromium.org</owner>
+  <owner>fergal@chromium.org</owner>
+  <owner>rahsin@microsoft.com</owner>
+  <owner>chrome-owp-storage@google.com</owner>
+  <summary>
+    Records the SQLite result code reported via the {DomStorageType} database's
+    error callback whenever a SQLite operation fails. Recorded once per error.
+  </summary>
+  <token key="DomStorageType" variants="DomStorageType"/>
+</histogram>
+
 <histogram
     name="Storage.{DomStorageType}.Duration.{Operation}.{DomStorageBackingStoreLifetime}"
     units="ms" expires_after="2027-02-28">

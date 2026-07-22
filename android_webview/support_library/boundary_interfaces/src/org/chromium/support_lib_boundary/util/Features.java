@@ -447,6 +447,9 @@ public class Features {
     // Profile.preconnect
     public static final String PRECONNECT = "PRECONNECT";
 
+    // Profile.enqueuePreconnect
+    public static final String ENQUEUE_PRECONNECT = "ENQUEUE_PRECONNECT";
+
     // WebSettingsCompat#setHyperlinkContextMenuItems
     public static final String HYPERLINK_CONTEXT_MENU_ITEMS = "HYPERLINK_CONTEXT_MENU_ITEMS";
 

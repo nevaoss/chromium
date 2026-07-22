@@ -1265,11 +1265,10 @@ public class ToolbarControlContainer extends OptimizedFrameLayout
                 && appHeaderState.isInDesktopWindow()
                 && mTabStripHeight == 0
                 && getWidth() > 0) {
-            int left = appHeaderState.getLeftPadding();
             int right = getWidth() - appHeaderState.getRightPadding();
             int top = appHeaderState.getCaptionControlsTopOffset();
             int bottom = top + appHeaderState.getCaptionControlsHeight();
-            Rect exclusionRect = new Rect(left, top, right, bottom);
+            Rect exclusionRect = new Rect(/* left= */ 0, top, right, bottom);
             super.setSystemGestureExclusionRects(List.of(exclusionRect));
         } else {
             super.setSystemGestureExclusionRects(rects);

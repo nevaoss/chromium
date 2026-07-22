@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_set.h"
+#include "absl/log/absl_check.h"
 #include "absl/memory/memory.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -44,6 +45,16 @@ namespace api {
 
 enum class DecoderStatus { kAcceptingData, kEndOfStream };
 
+namespace {
+iamf_tools::TrimmingSettings TranslateTrimmingSettings(
+    api::TrimmingSettings api_settings) {
+  return iamf_tools::TrimmingSettings{
+      .trim_beginning = api_settings.trim_beginning,
+      .trim_end = api_settings.trim_end,
+  };
+}
+}  // namespace
+
 // Holds the internal state of the decoder to hide it and necessary includes
 // from API users.
 struct IamfDecoder::DecoderState {
@@ -59,10 +70,12 @@ struct IamfDecoder::DecoderState {
   DecoderState(std::unique_ptr<StreamBasedReadBitBuffer> read_bit_buffer,
                const RequestedMix& requested_mix,
                const absl::flat_hash_set<::iamf_tools::ProfileVersion>&
-                   requested_profile_versions)
+                   requested_profile_versions,
+               api::TrimmingSettings api_trimming_settings)
       : read_bit_buffer(std::move(read_bit_buffer)),
         requested_mix(requested_mix),
-        desired_profile_versions(requested_profile_versions) {}
+        desired_profile_versions(requested_profile_versions),
+        trimming_settings(TranslateTrimmingSettings(api_trimming_settings)) {}
 
   /*!\brief Creates an ObuProcessor and maintains related bookkeeping. */
   absl::Status CreateObuProcessor();
@@ -101,6 +114,8 @@ struct IamfDecoder::DecoderState {
   const absl::flat_hash_set<::iamf_tools::ProfileVersion>
       desired_profile_versions;
 
+  const iamf_tools::TrimmingSettings trimming_settings;
+
   // Once descriptors have been processed, they are stored here. This is useful
   // for Reset() purposes, in which we can recreate the ObuProcessor with the
   // original descriptors in order to ensure that the state of the processor is
@@ -123,7 +138,7 @@ absl::Status IamfDecoder::DecoderState::CreateObuProcessor() {
   auto temp_obu_processor = ObuProcessor::CreateForRendering(
       desired_profile_versions, requested_mix.mix_presentation_id,
       ApiToInternalType(requested_mix.output_layout), created_from_descriptors,
-      read_bit_buffer.get(), insufficient_data);
+      read_bit_buffer.get(), trimming_settings, insufficient_data);
   if (temp_obu_processor == nullptr) {
     // `insufficient_data` is true iff everything so far is valid but more data
     // is needed.
@@ -219,7 +234,7 @@ IamfStatus DecodeOneTemporalUnit(
     rendered_samples = std::vector(rendered_samples_for_temporal_unit->begin(),
                                    rendered_samples_for_temporal_unit->end());
     if (channel_reorderer.has_value()) {
-      channel_reorderer->Reorder(rendered_samples);
+      ABSL_CHECK_OK(channel_reorderer->Reorder(rendered_samples));
     }
   }
   // Empty the buffer of the data that was processed thus far.
@@ -311,7 +326,7 @@ IamfStatus IamfDecoder::Create(const Settings& settings,
 
   std::unique_ptr<DecoderState> state = std::make_unique<DecoderState>(
       std::move(read_bit_buffer), settings.requested_mix,
-      desired_profile_versions);
+      desired_profile_versions, settings.trimming_settings);
   state->channel_rearrangement_scheme =
       ChannelOrderingApiToInternalType(settings.channel_ordering);
   state->output_sample_type = settings.requested_output_sample_type;
@@ -498,6 +513,9 @@ IamfStatus IamfDecoder::Reset() {
 
   // Clear the rendered samples.
   state_->rendered_samples = {};
+
+  // Clear the channel reorderer.
+  state_->channel_reorderer = std::nullopt;
 
   // Set state.
   state_->status = DecoderStatus::kAcceptingData;

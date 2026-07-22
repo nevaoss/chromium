@@ -9,6 +9,7 @@
 #include "chrome/browser/global_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/create_browser_window.h"
+#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/tabs/tab_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "components/browser_apis/tab_drag/sessions/tab_drag_session_manager.h"
@@ -45,6 +46,13 @@ gfx::NativeWindow TabDragWindowAdapterImpl::GetNativeWindow() const {
 
 gfx::Rect TabDragWindowAdapterImpl::GetBoundsInScreen() const {
   return browser_window_->GetWindow()->GetBounds();
+}
+
+bool TabDragWindowAdapterImpl::IsDraggingEntireWindow(
+    size_t dragged_tab_count) const {
+  return browser_window_ &&
+         dragged_tab_count ==
+             static_cast<size_t>(browser_window_->GetTabStripModel()->count());
 }
 
 namespace {
@@ -138,13 +146,6 @@ TabDragWindowAdapterImpl::DetachToNewWindow(
                                      "Failed to create new browser window"));
   }
 
-  auto migration_result = MigrateTabs(browser_window_, new_window, tab_ids);
-  if (!migration_result.has_value()) {
-    new_window->GetWindow()->Close();
-    return base::unexpected(std::move(migration_result.error()));
-  }
-
-  new_window->GetWindow()->Show();
   CHECK(registry_);
   gfx::NativeWindow native_window = new_window->GetWindow()->GetNativeWindow();
   tabs_api::TabDragWindowId new_window_id =
@@ -155,6 +156,13 @@ TabDragWindowAdapterImpl::DetachToNewWindow(
         mojo_base::mojom::Code::kInternal, "New window was not registered"));
   }
 
+  auto migration_result = MigrateTabs(new_window_id, tab_ids);
+  if (!migration_result.has_value()) {
+    new_window->GetWindow()->Close();
+    return base::unexpected(std::move(migration_result.error()));
+  }
+
+  new_window->GetWindow()->Show();
   return new_window_id;
 }
 
@@ -185,12 +193,41 @@ tabs_api::DragMoveLoopResult TabDragWindowAdapterImpl::RunWindowMoveLoop(
              : tabs_api::DragMoveLoopResult::kCanceled;
 }
 
+void TabDragWindowAdapterImpl::EndWindowMoveLoop() {
+  if (!browser_window_) {
+    return;
+  }
+  views::Widget* widget = views::Widget::GetWidgetForNativeWindow(
+      browser_window_->GetWindow()->GetNativeWindow());
+  if (widget) {
+    widget->EndMoveLoop();
+  }
+}
+
 // TODO(crbug.com/501070793) Implement this using the TabStripAPI.
 base::expected<void, mojo_base::mojom::ErrorPtr>
 TabDragWindowAdapterImpl::MigrateTabs(
-    BrowserWindowInterface* source_window,
-    BrowserWindowInterface* target_window,
-    const std::vector<tabs_api::NodeId>& tab_ids) const {
+    tabs_api::TabDragWindowId target_window_id,
+    const std::vector<tabs_api::NodeId>& tab_ids) {
+  if (!registry_) {
+    return base::unexpected(mojo_base::mojom::Error::New(
+        mojo_base::mojom::Code::kFailedPrecondition, "Registry is null"));
+  }
+
+  tabs_api::TabDragWindowAdapter* target_adapter =
+      registry_->Get(target_window_id);
+  if (!target_adapter) {
+    return base::unexpected(mojo_base::mojom::Error::New(
+        mojo_base::mojom::Code::kNotFound, "Target window not found"));
+  }
+
+  gfx::NativeWindow target_native_window = target_adapter->GetNativeWindow();
+  BrowserWindowInterface* target_window =
+      GlobalBrowserCollection::GetInstance()->FindBrowserWithWindow(
+          target_native_window);
+
+  BrowserWindowInterface* source_window = browser_window_;
+
   if (!source_window) {
     return base::unexpected(mojo_base::mojom::Error::New(
         mojo_base::mojom::Code::kInvalidArgument, "Source window is null"));

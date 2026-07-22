@@ -143,15 +143,28 @@ class PasswordManagerClient {
 
   virtual ~PasswordManagerClient() = default;
 
+  // Convenience helper that calls the 2-argument version with std::nullopt.
+  // TODO(crbug.com/523735038): Clean up the helper and remove the `url`
+  // fallback parameter from the 2-argument version.
+  bool IsSavingAndFillingEnabled(const url::Origin& origin) const;
+
   // Is saving new data for password autofill and filling of saved data enabled
   // for the current profile and page? For example, saving is disabled in
-  // Incognito mode. |url| describes the URL to save the password for. It is not
-  // necessary the URL of the current page but can be a URL of a proxy or the
-  // page that hosted the form.
-  virtual bool IsSavingAndFillingEnabled(const GURL& url) const;
+  // Incognito mode. `origin` describes the origin to save the password for.
+  //
+  // Opaque origins (e.g., sandboxed iframes or data URLs) are blocked from
+  // saving and filling for security reasons.
+  // For an interim period, this behavior is gated by a kill-switch
+  // (`kBlockOpaqueOriginPasswordFilling`). During that period, continue to
+  // pass `url` if `url != origin.GetURL()`.
+  virtual bool IsSavingAndFillingEnabled(
+      const url::Origin& origin,
+      base::optional_ref<const GURL> url) const;
 
   // Checks if filling is enabled on the current page.
   // Convenience helper that calls the 2-argument version with std::nullopt.
+  // TODO(crbug.com/523735038): Clean up the helper and remove the `url`
+  // fallback parameter from the 2-argument version.
   bool IsFillingEnabled(const url::Origin& origin) const;
 
   // Checks if filling is enabled on the current page. Filling is disabled in
@@ -574,7 +587,7 @@ class PasswordManagerClient {
 
   // Possibly shows a promo priming the user to engage with password saving,
   // based on the current URL.
-  virtual void MaybeShowSavePasswordPrimingPromo(const GURL& current_url) = 0;
+  virtual void MaybeShowSavePasswordPrimingPromo(const url::Origin& origin) = 0;
 
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) ||
         // BUILDFLAG(IS_CHROMEOS)

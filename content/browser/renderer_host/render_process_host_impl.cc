@@ -4717,11 +4717,16 @@ void RenderProcessHostImpl::RemovePriorityClient(
   UpdateProcessPriorityInputs();
 }
 
-#if !BUILDFLAG(IS_ANDROID)
 void RenderProcessHostImpl::SetPriorityOverride(
     base::Process::Priority priority) {
   priority_override_ = priority;
+#if !BUILDFLAG(IS_ANDROID)
   UpdateProcessPriority();
+#else
+  // On Android, the priority override might boost the effective importance,
+  // which is calculated based on the client inputs.
+  UpdateProcessPriorityInputs();
+#endif
 }
 
 bool RenderProcessHostImpl::HasPriorityOverride() {
@@ -4730,9 +4735,14 @@ bool RenderProcessHostImpl::HasPriorityOverride() {
 
 void RenderProcessHostImpl::ClearPriorityOverride() {
   priority_override_.reset();
+#if !BUILDFLAG(IS_ANDROID)
   UpdateProcessPriority();
+#else
+  // On Android, the priority override might boost the effective importance,
+  // which is calculated based on the client inputs.
+  UpdateProcessPriorityInputs();
+#endif
 }
-#endif  // !BUILDFLAG(IS_ANDROID)
 
 void RenderProcessHostImpl::SetSuddenTerminationAllowed(bool allowed) {
   sudden_termination_allowed_ = allowed;
@@ -5916,7 +5926,8 @@ void RenderProcessHostImpl::UpdateProcessPriorityInputs() {
   bool new_is_discarding = false;
 #if BUILDFLAG(IS_ANDROID)
   ChildProcessImportance new_effective_importance =
-      ChildProcessImportance::NORMAL;
+      priority_override_ ? PriorityToChildProcessImportance(*priority_override_)
+                         : ChildProcessImportance::NORMAL;
 #endif
   for (RenderProcessHostPriorityClient* client : priority_clients_) {
     RenderProcessHostPriorityClient::Priority priority = client->GetPriority();

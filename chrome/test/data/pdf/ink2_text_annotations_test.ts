@@ -132,6 +132,13 @@ chrome.test.runTests([
     chrome.test.assertEq('43px', style2.top);
     chrome.test.assertEq('124px', style2.width);
     chrome.test.assertEq('40px', style2.height);
+    chrome.test.assertEq('2', style2.zIndex);
+
+    const style1 = window.getComputedStyle(placeholders[1]!);
+    chrome.test.assertEq('1', style1.zIndex);
+
+    const style3 = window.getComputedStyle(placeholders[2]!);
+    chrome.test.assertEq('3', style3.zIndex);
 
     chrome.test.succeed();
   },

@@ -18,8 +18,8 @@
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "ui/webui/resources/cr_components/composebox/composebox.mojom.h"
 
-class ComposeboxHandler;
-class WebuiOmniboxHandler;
+class ComposeboxEverywhereHandler;
+class OmniboxEverywhereHandler;
 class Profile;
 
 namespace contextual_search {
@@ -71,8 +71,10 @@ class OmniboxEverywhereUI : public TopChromeWebUIController,
       mojo::PendingRemote<searchbox::mojom::Page> page,
       mojo::PendingReceiver<searchbox::mojom::PageHandler> handler) override;
 
-  ComposeboxHandler* composebox_handler() { return composebox_handler_.get(); }
-  WebuiOmniboxHandler* omnibox_handler() { return omnibox_handler_.get(); }
+  ComposeboxEverywhereHandler* composebox_handler() {
+    return composebox_handler_.get();
+  }
+  OmniboxEverywhereHandler* omnibox_handler() { return omnibox_handler_.get(); }
 
  private:
   contextual_search::ContextualSearchSessionHandle*
@@ -81,8 +83,8 @@ class OmniboxEverywhereUI : public TopChromeWebUIController,
 
   raw_ptr<Profile> profile_;
 
-  std::unique_ptr<ComposeboxHandler> composebox_handler_;
-  std::unique_ptr<WebuiOmniboxHandler> omnibox_handler_;
+  std::unique_ptr<ComposeboxEverywhereHandler> composebox_handler_;
+  std::unique_ptr<OmniboxEverywhereHandler> omnibox_handler_;
 
   std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
       shared_session_handle_;

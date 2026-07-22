@@ -2463,10 +2463,18 @@ TEST_F(BlockLayoutAlgorithmTest, ComputeInitialBlockStartAnnotationSpace) {
         border-top: 0 solid black;
         overflow: hidden;
       }
+      #target4 {
+        margin-top: 20px;
+        padding-top: 10px;
+        border-top: 0 solid black;
+        overflow: visible;
+        contain: paint;
+      }
     </style>
     <div id="target1"></div>
     <div id="target2"></div>
     <div id="target3"></div>
+    <div id="target4"></div>
   )HTML");
 
   BlockNode node1(GetLayoutBoxByElementId("target1"));
@@ -2524,6 +2532,23 @@ TEST_F(BlockLayoutAlgorithmTest, ComputeInitialBlockStartAnnotationSpace) {
     FragmentGeometry fragment_geometry3 = CalculateInitialFragmentGeometry(
         space3, node3, /* break_token */ nullptr, /* is_intrinsic */ false);
     BlockLayoutAlgorithm algorithm({node3, fragment_geometry3, space3});
+    // Should fallback to padding-top (10)
+    EXPECT_EQ(LayoutUnit(10),
+              algorithm.ComputeInitialBlockStartAnnotationSpace());
+  }
+
+  // 5. Flag ON & paint containment (is_new_formatting_context) test
+  {
+    ScopedAnnotationSpaceOnStartForTest enable_flag(true);
+    BlockNode node4(GetLayoutBoxByElementId("target4"));
+    ConstraintSpace space4 = ConstructBlockLayoutTestConstraintSpace(
+        {WritingMode::kHorizontalTb, TextDirection::kLtr},
+        LogicalSize(LayoutUnit(1000), kIndefiniteSize),
+        /* stretch_inline_size_if_auto */ true,
+        /* is_new_formatting_context */ node4.CreatesNewFormattingContext());
+    FragmentGeometry fragment_geometry4 = CalculateInitialFragmentGeometry(
+        space4, node4, /* break_token */ nullptr, /* is_intrinsic */ false);
+    BlockLayoutAlgorithm algorithm({node4, fragment_geometry4, space4});
     // Should fallback to padding-top (10)
     EXPECT_EQ(LayoutUnit(10),
               algorithm.ComputeInitialBlockStartAnnotationSpace());

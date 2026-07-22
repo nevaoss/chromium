@@ -3438,8 +3438,19 @@ void LocalFrameView::UpdateStyleAndLayout() {
 
   // Second pass: run autosize until it stabilizes
   if (auto_size_info_) {
-    while (auto_size_info_->AutoSizeIfNeeded())
+    while (auto_size_info_->AutoSizeIfNeeded()) {
+      base::AutoReset<bool> reset(&is_being_auto_sized_, true);
       did_layout |= UpdateStyleAndLayoutInternal();
+    }
+    // We may have a mismatch as we impose an additional min-content constraint
+    // while auto-sizing, set the view as needing layout which will then fall
+    // through to the third-pass below.
+    if (const LayoutView* view = GetLayoutView()) {
+      if (RuntimeEnabledFeatures::AutoSizeUsesScrollWidthForOverflowEnabled() &&
+          view->InitialContainingBlockSize() != view->StitchedSize()) {
+        SetNeedsLayout();
+      }
+    }
     auto_size_info_->Clear();
   }
 
@@ -5047,6 +5058,10 @@ void LocalFrameView::ResetUkmAggregatorForTesting() {
 }
 
 void LocalFrameView::MaybeStopDeferringCommitsWithoutContentfulPaint() {
+  if (!RuntimeEnabledFeatures::
+          ReleasePaintHoldingWithoutContentfulPaintEnabled()) {
+    return;
+  }
   if (!frame_->IsMainFrame()) {
     return;
   }

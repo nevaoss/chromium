@@ -778,6 +778,9 @@ void ReadAnythingAppController::SetDistillationState(
       model_.set_should_map_rendered_text_to_tree_for_readability(false);
     }
     model_.ResetAXTreeAnchors();
+  } else if (state == read_anything::mojom::ReadAnythingDistillationState::
+                          kDistillationWithContent) {
+    model_.set_page_start_time(base::TimeTicks::Now());
   }
 }
 
@@ -822,6 +825,7 @@ void ReadAnythingAppController::OnActiveAXTreeIDChanged(
   model_.ClearPendingUpdates();
   model_.set_requires_distillation(false);
   model_.set_page_finished_loading(false);
+  model_.set_page_start_time(std::nullopt);
 
   // Reset the distillation method for the new page. Every navigation
   // starts with the flag-determined distillation method before potentially
@@ -1392,6 +1396,8 @@ gin::ObjectTemplateBuilder ReadAnythingAppController::GetObjectTemplateBuilder(
       .SetProperty("lineFocusCursorLine",
                    &ReadAnythingAppController::LineFocusCursorLine)
       .SetProperty("maxLineWidth", &ReadAnythingAppController::MaxLineWidth)
+      .SetProperty("activePresentationState",
+                   &ReadAnythingAppController::ActivePresentationState)
       .SetProperty("inHiddenPresentationState",
                    &ReadAnythingAppController::InHiddenPresentationState)
       .SetProperty("inSidePanelPresentationState",
@@ -1401,6 +1407,7 @@ gin::ObjectTemplateBuilder ReadAnythingAppController::GetObjectTemplateBuilder(
           &ReadAnythingAppController::InImmersiveOverlayPresentationState)
       .SetProperty("speechRate", &ReadAnythingAppController::SpeechRate)
       .SetProperty("isGoogleDocs", &ReadAnythingAppController::IsGoogleDocs)
+      .SetProperty("isPdf", &ReadAnythingAppController::IsPdf)
       .SetProperty("isImmersiveEnabled",
                    &ReadAnythingAppController::IsImmersiveEnabled)
       .SetProperty("isImprovedReadAloudEnabled",
@@ -1839,6 +1846,10 @@ int ReadAnythingAppController::MaxLineWidth() const {
   return a11y::kMaxLineWidth;
 }
 
+int ReadAnythingAppController::ActivePresentationState() const {
+  return std::to_underlying(model_.active_presentation_state());
+}
+
 int ReadAnythingAppController::InHiddenPresentationState() const {
   return std::to_underlying(
       read_anything::mojom::ReadAnythingPresentationState::kInactive);
@@ -2121,6 +2132,10 @@ bool ReadAnythingAppController::IsChromeOsAsh() const {
 
 bool ReadAnythingAppController::IsGoogleDocs() const {
   return model_.IsDocs();
+}
+
+bool ReadAnythingAppController::IsPdf() const {
+  return model_.is_pdf();
 }
 
 std::vector<std::string> ReadAnythingAppController::GetSupportedFonts() {
@@ -2895,6 +2910,7 @@ void ReadAnythingAppController::RecordSessionMetricsIfShownOrRecentlyHidden(
     return;
   }
 
+  LogPageDuration();
   LogLineFocusSession();
   RecordNumSelections();
   RecordEstimatedWordsHeard();
@@ -2929,6 +2945,27 @@ void ReadAnythingAppController::LogLineFocusSession() {
         model_.line_focus_speech_lines());
     model_.ResetLineFocusSession();
   }
+}
+
+void ReadAnythingAppController::LogPageDuration() {
+  if (!model_.page_start_time().has_value()) {
+    return;
+  }
+
+  base::TimeDelta duration =
+      base::TimeTicks::Now() - model_.page_start_time().value();
+  model_.set_page_start_time(std::nullopt);
+  std::string page_type = model_.is_pdf() ? "Pdf" : "WebPage";
+  std::string view_mode =
+      (model_.active_presentation_state() ==
+       read_anything::mojom::ReadAnythingPresentationState::kInImmersiveOverlay)
+          ? "FullPage"
+          : "SidePanel";
+  std::string histogram_name =
+      absl::StrFormat("Accessibility.ReadAnything.PageDuration.%sIn%s",
+                      page_type.c_str(), view_mode.c_str());
+  base::UmaHistogramCustomTimes(histogram_name, duration, base::Seconds(1),
+                                base::Hours(24), /*buckets=*/100);
 }
 
 void ReadAnythingAppController::AddLineFocusScrollDistance(int distance) {

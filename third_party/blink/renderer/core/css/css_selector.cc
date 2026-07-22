@@ -422,6 +422,8 @@ PseudoId CSSSelector::GetPseudoId(PseudoType type) {
       return kPseudoIdViewTransitionNew;
     case kPseudoOverscrollAreaParent:
       return kPseudoIdOverscrollAreaParent;
+    case kPseudoOverscrollBackdrop:
+      return kPseudoIdOverscrollBackdrop;
     case kPseudoAnimatedImage:
     case kPseudoActive:
     case kPseudoActiveNavigation:
@@ -538,7 +540,7 @@ PseudoId CSSSelector::GetPseudoId(PseudoType type) {
     case kPseudoToolSubmitActive:
     case kPseudoTriggerLink:
     case kPseudoUnknown:
-    case kPseudoUnboundedElementInactive:
+    case kPseudoUnbounded:
     case kPseudoUnparsed:
     case kPseudoUserInvalid:
     case kPseudoUserValid:
@@ -620,8 +622,6 @@ constexpr static NameToPseudoStruct kPseudoTypeWithoutArgumentsMap[] = {
     {"-internal-spatial-navigation-focus",
      CSSSelector::kPseudoSpatialNavigationFocus},
     {"-internal-text-field", CSSSelector::kPseudoTextField},
-    {"-internal-unbounded-element-inactive",
-     CSSSelector::kPseudoUnboundedElementInactive},
     {"-internal-video-persistent", CSSSelector::kPseudoVideoPersistent},
     {"-internal-video-persistent-ancestor",
      CSSSelector::kPseudoVideoPersistentAncestor},
@@ -702,6 +702,7 @@ constexpr static NameToPseudoStruct kPseudoTypeWithoutArgumentsMap[] = {
     {"open", CSSSelector::kPseudoOpen},
     {"optional", CSSSelector::kPseudoOptional},
     {"out-of-range", CSSSelector::kPseudoOutOfRange},
+    {"overscroll-backdrop", CSSSelector::kPseudoOverscrollBackdrop},
     {"overscroll-open", CSSSelector::kPseudoOverscrollOpen},
     {"past", CSSSelector::kPseudoPastCue},
     {"paused", CSSSelector::kPseudoPaused},
@@ -736,6 +737,7 @@ constexpr static NameToPseudoStruct kPseudoTypeWithoutArgumentsMap[] = {
     {"tool-form-active", CSSSelector::kPseudoToolFormActive},
     {"tool-submit-active", CSSSelector::kPseudoToolSubmitActive},
     {"trigger-link", CSSSelector::kPseudoTriggerLink},
+    {"unbounded", CSSSelector::kPseudoUnbounded},
     {"user-invalid", CSSSelector::kPseudoUserInvalid},
     {"user-valid", CSSSelector::kPseudoUserValid},
     {"valid", CSSSelector::kPseudoValid},
@@ -886,12 +888,18 @@ CSSSelector::PseudoType CSSSelector::NameToPseudoType(
     return CSSSelector::kPseudoUnknown;
   }
 
+  if (match->type == CSSSelector::kPseudoUnbounded &&
+      !RuntimeEnabledFeatures::UnboundedElementEnabled()) {
+    return CSSSelector::kPseudoUnknown;
+  }
+
   if (match->type == CSSSelector::kPseudoHasSlotted &&
       !RuntimeEnabledFeatures::CSSPseudoHasSlottedEnabled()) {
     return CSSSelector::kPseudoUnknown;
   }
 
   if ((match->type == CSSSelector::kPseudoOverscrollAreaParent ||
+       match->type == CSSSelector::kPseudoOverscrollBackdrop ||
        match->type == CSSSelector::kPseudoOverscrollOpen) &&
       !RuntimeEnabledFeatures::OverscrollGesturesEnabled()) {
     return CSSSelector::kPseudoUnknown;
@@ -997,6 +1005,7 @@ void CSSSelector::UpdatePseudoType(const AtomicString& value,
     case kPseudoInterestButton:
     case kPseudoCheckMark:
     case kPseudoBackdrop:
+    case kPseudoOverscrollBackdrop:
     case kPseudoCue:
     case kPseudoMarker:
     case kPseudoPart:
@@ -1053,7 +1062,6 @@ void CSSSelector::UpdatePseudoType(const AtomicString& value,
     case kPseudoMultiSelectFocus:
     case kPseudoSelectContainsInput:
     case kPseudoSpatialNavigationFocus:
-    case kPseudoUnboundedElementInactive:
     case kPseudoVideoPersistent:
     case kPseudoVideoPersistentAncestor:
       if (mode != kUASheetMode) {
@@ -1161,6 +1169,7 @@ void CSSSelector::UpdatePseudoType(const AtomicString& value,
     case kPseudoTextField:
     case kPseudoTriggerLink:
     case kPseudoUnknown:
+    case kPseudoUnbounded:
     case kPseudoUnparsed:
     case kPseudoUserInvalid:
     case kPseudoUserValid:
@@ -1785,6 +1794,7 @@ bool CSSSelector::IsTreeAbidingPseudoElement() const {
           GetPseudoType() == kPseudoPlaceholder ||
           GetPseudoType() == kPseudoFileSelectorButton ||
           GetPseudoType() == kPseudoBackdrop ||
+          GetPseudoType() == kPseudoOverscrollBackdrop ||
           GetPseudoType() == kPseudoViewTransition ||
           GetPseudoType() == kPseudoViewTransitionGroup ||
           GetPseudoType() == kPseudoViewTransitionGroupChildren ||
@@ -1835,6 +1845,7 @@ bool CSSSelector::IsAllowedAfterPart() const {
     case kPseudoSpellingError:
     case kPseudoGrammarError:
     case kPseudoBackdrop:
+    case kPseudoOverscrollBackdrop:
     case kPseudoCue:
     case kPseudoMarker:
     case kPseudoResizer:
@@ -1959,7 +1970,7 @@ bool CSSSelector::IsAllowedAfterPart() const {
     case kPseudoToolFormActive:
     case kPseudoToolSubmitActive:
     case kPseudoTriggerLink:
-    case kPseudoUnboundedElementInactive:
+    case kPseudoUnbounded:
     case kPseudoVideoPersistent:
     case kPseudoVideoPersistentAncestor:
       return true;
@@ -2321,6 +2332,7 @@ bool CSSSelector::SupportsPseudoStateChange(PseudoType type) {
     case CSSSelector::kPseudoToolFormActive:
     case CSSSelector::kPseudoToolSubmitActive:
     case CSSSelector::kPseudoTriggerLink:
+    case CSSSelector::kPseudoUnbounded:
     case CSSSelector::kPseudoUserInvalid:
     case CSSSelector::kPseudoUserValid:
     case CSSSelector::kPseudoValid:

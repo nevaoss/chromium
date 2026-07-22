@@ -13,9 +13,11 @@ export function getHtml(this: AppMenuButtonElement) {
     ?is-menu-open="${this.state.isContextMenuVisible}"
     ?has-label="${!!this.state.labelText}"
     @pointerdown="${this.onPointerdown_}" @click="${this.onClick_}"
+    @focusin="${this.onFocusin_}" @focusout="${this.onFocusout_}"
     .ariaLabel="${this.state.accessibilityText}"
     .ariaHasPopup="${'menu'}"
-    title="${this.getTooltip_()}">
+    title="${this.getTooltip_()}"
+    style="--toolbar-chip-trailing-margin: ${this.state.trailingMargin}px">
   ${this.state.labelText ? html`<span>${this.state.labelText}</span>` : ''}
   <cr-icon id="icon" icon="cr:more-vert" slot="suffix-icon"></cr-icon>
 </toolbar-chip-button>

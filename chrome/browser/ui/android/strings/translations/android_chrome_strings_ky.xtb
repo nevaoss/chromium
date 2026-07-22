@@ -34,7 +34,6 @@
 <translation id="1108938384783527433">Таржымалды шайкештирүү</translation>
 <translation id="1111673857033749125">Башка түзмөктөрүңүздө сакталган кыстармалар ушул жерден көрүнөт.</translation>
 <translation id="1123537484474186311"><ph name="TAB_TITLE" />, Сүрөттөгү сүрөт өтмөгү</translation>
-<translation id="1124357650933674597">{NUM_WINDOWS,plural, =1{1 терезени калыбына келтирүү}other{# терезени калыбына келтирүү}}</translation>
 <translation id="1126696498560056882">Ушул түзмөктөгү аккаунттарды тескөө</translation>
 <translation id="1135018701024399762">Жашыруун режим ушул түзмөктү колдонгон башка кишилерге сиз баш баккан сайттарды көрсөтпөйт</translation>
 <translation id="113752097246673894">Бардык түзмөктөрүңүздө кыстармаларды жана башка нерселерди пайдалануу үчүн Chrome'го <ph name="EMAIL" /> аккаунту менен кириңиз</translation>
@@ -185,6 +184,7 @@ Chrome'дун ишин жакшыртуу үчүн маалыматтарды к
 <translation id="1792959175193046959">Жүктөлүп алынгандар үчүн демейки папканы каалаган убакта өзгөртүңүз</translation>
 <translation id="1796666869097395659">Ага кийинчерээк кайтуу үчүн өтмөктү кичирейтиңиз</translation>
 <translation id="1799920918471566157">Chrome'ду колдонуу кеңештери</translation>
+<translation id="1803799720926799756">Файлдын өлчөмү</translation>
 <translation id="1807246157184219062">Ачык</translation>
 <translation id="1807709131360304325">Жаңы терезе ачуу</translation>
 <translation id="1812027881030482584"><ph name="SITE_ETLD_PLUS_ONE" /> <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> аркылуу уланта албайт</translation>
@@ -327,6 +327,7 @@ Chrome'дун ишин жакшыртуу үчүн маалыматтарды к
 <translation id="2411239243988279592">Тандалган <ph name="TAB_TITLE" /> өтмөгүндө үн иштетилген</translation>
 <translation id="2413014528833954543">Бул түзмөктө сырсөздөрдү текшерүү мүмкүн эмес</translation>
 <translation id="2414886740292270097">Кочкул</translation>
+<translation id="2415037988255164008">Терезелер калыбына келтирилсинби?</translation>
 <translation id="2421705177906985956">Учурда көрсөтүлө турган сайттар жок</translation>
 <translation id="2426805022920575512">Башка аккаунтту тандоо</translation>
 <translation id="2427025860753516072">{FILE_COUNT,plural, =1{Видеолор, тизмеде 1 видео}other{Видеолор, тизмеде # видео}}</translation>
@@ -520,7 +521,6 @@ Chrome'дун ишин жакшыртуу үчүн маалыматтарды к
 <translation id="3166827708714933426">Өтмөктүн жана терезенин кыска жолдору</translation>
 <translation id="3167258285411721858"><ph name="HOST_NAME" /> мобилдик түзмөктөгү сайтын сурана аласыз</translation>
 <translation id="3181145110929454111"><ph name="TAB_TITLE" />, көп жолу тандалган жана кадалган жашыруун өтмөктө үн басылган</translation>
-<translation id="3183941812169784232">Бардык терезелер калыбына келтирилсинби?</translation>
 <translation id="3187472288455401631">Жарнамалардын майнаптуулугун талдоо</translation>
 <translation id="3189635831478931757"><ph name="GROUP_TITLE" /> өтмөктөр тобу</translation>
 <translation id="3200536777393523575">Учурдагы терезе жабылсынбы?</translation>
@@ -569,6 +569,7 @@ Chrome'дун ишин жакшыртуу үчүн маалыматтарды к
 <translation id="3435575784518354875">Сырсөздөрдү колдоно берүү үчүн аларды азыр экспорттоп, Google Play кызматтарын жаңыртып, Сырсөздөрдү башкаргычка кайра импорттоп алыңыз. <ph name="BEGIN_LINK" />Толук нускамаларды көрүңүз<ph name="END_LINK" />.</translation>
 <translation id="3435738964857648380">Коопсуздук</translation>
 <translation id="3435914367318771664">Өтмөктү жаңы топко кошуу</translation>
+<translation id="3436118221454753036">ЖИден суроо режими</translation>
 <translation id="3438681572027105609">Бардык түзмөктөрүңүздө сырсөздөрдү жана башка нерселерди алуу үчүн Chrome'го кириңиз</translation>
 <translation id="3439276997620616816">Акыркы өтмөктөрүңүздү ушул жерден табасыз</translation>
 <translation id="3443221991560634068">Учурдагы баракты кайра жүктөө</translation>
@@ -1338,6 +1339,7 @@ Google аккаунтуңуздун башка Google кызматтарынан
 <translation id="6556501700899673703">Lexend</translation>
 <translation id="6560414384669816528">Sogou менен издөө</translation>
 <translation id="656065428026159829">Дагы көрүү</translation>
+<translation id="6565781844089373403">Терезелерди калыбына келтирүү</translation>
 <translation id="6565959834589222080">Wi-Fi жеткиликтүү болгондо колдонулат</translation>
 <translation id="657177046675873214">Бардык түзмөктөрүңүздө кыстармаларыңызды алуу үчүн параметрлерден "Кыстармаларды" күйгүзүңүз</translation>
 <translation id="6573096386450695060">Дайым уруксат берүү</translation>
@@ -2039,7 +2041,6 @@ Google аккаунтуңуздун башка Google кызматтарынан
 <translation id="939598580284253335">Купуя сөз айкашын киргизиңиз</translation>
 <translation id="94161319503679839"><ph name="TAB_TITLE" />, Кадалган жашыруун өтмөктө сүрөттөгү сүрөт режими</translation>
 <translation id="945522503751344254">Пикириңизди билдириңиз</translation>
-<translation id="949667118776341807">Буруу</translation>
 <translation id="95817756606698420">Chrome Кытай жергесинде издөө үчүн <ph name="BEGIN_BOLD" />Sogou'ду<ph name="END_BOLD" /> колдоно алат. Аны <ph name="BEGIN_LINK" />Параметрлерден<ph name="END_LINK" /> өзгөртүп койсоңуз болот.</translation>
 <translation id="961856697154696964">Серептөө дайындарын өчүрүү</translation>
 <translation id="963246339335003378">Маселелерди башкаргычты ачуу</translation>

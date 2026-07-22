@@ -160,7 +160,8 @@ class AutofillAiSuggestionGeneratorTest : public testing::Test {
           edm().AddOrUpdateEntityInstance(entity);
           break;
         case EntityInstance::RecordType::kPersonalContext:
-          edm().OnPrefetchContextComplete(pcontext_manager_, {entity});
+          edm().OnPrefetchContextComplete(pcontext_manager_,
+                                          std::vector<EntityInstance>{entity});
           break;
       }
     }

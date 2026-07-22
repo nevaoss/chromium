@@ -687,10 +687,6 @@ are declared in tools/grit/grit_args.gni.
           <message name="IDS_CONTENT_CONTEXT_ARCHIVE_GLIC" desc="Context menu item to archive Glic conversation">
            Archive
           </message>
-          <!-- TODO(b/510738735) Placeholder for now so mark translateable=false -->
-          <message name="IDS_CONTENT_CONTEXT_DICTATION" desc="Context menu item to start dictation" translateable="false">
-           Start dictation
-          </message>
           <message name="IDS_CONTENT_CONTEXT_RELOAD" desc="The name of the Reload command in the content area context menu">
             &amp;Reload
           </message>
@@ -8621,7 +8617,7 @@ Keep your key file in a safe place. You will need it to create new versions of y
         Share tabs
       </message>
       <message name="IDS_NTP_COMPOSEBOX_RECENT_TAB_SUFFIX" desc="Suffix label appended after the title of the most recently active tab in the Share tabs flyout. Visual separation from the title is handled by CSS, not by leading white space in this string.">
-        · Recent tab
+        Recent tab
       </message>
       <message name="IDS_NTP_COMPOSE_ADD_IMAGE"  desc="Text for a button label that opens a menu so users can add an image to their search.">
         Add image
@@ -8710,6 +8706,10 @@ Keep your key file in a safe place. You will need it to create new versions of y
        <message name="IDS_COMPOSE_CURRENT_TAB" desc="Label for the row in the Composebox context menu flyout that shows the current tab the user has open.">
         Current tab
       </message>
+      <message name="IDS_COMPOSE_MAX_FILE_UPLOAD_ERROR" desc="Error message shown in toast when file limit maximum is reached.">
+        You can only add up to <ph name="COUNT">$1<ex>10</ex></ph> files
+      </message>
+
       <message name="IDS_NTP_ACTION_CHIP_TAB_HEADING_1" desc="Heading of the tab action chip on the NTP." >
         Ask about previous tab
       </message>
@@ -19138,6 +19138,15 @@ Please help our engineers fix this problem. Tell us what happened right before y
       </message>
       <message name="IDS_SPLIT_VIEW_UNDO_SPLIT_ACTION_BUTTON" desc="Text for the action button on a split view toast notification to undo creating the split view.">
         Undo
+      </message>
+      <message name="IDS_TAB_STRIP_SWITCH_DELAYED_TO_HORIZONTAL_TOAST_BODY" desc="Text on a toast notification shown when the tab strip mode switch to horizontal is delayed because the browser is in immersive fullscreen.">
+        Exit full screen to show tabs horizontally
+      </message>
+      <message name="IDS_TAB_STRIP_SWITCH_DELAYED_TO_VERTICAL_TOAST_BODY" desc="Text on a toast notification shown when the tab strip mode switch to vertical is delayed because the browser is in immersive fullscreen.">
+        Exit full screen to show tabs vertically
+      </message>
+      <message name="IDS_TAB_STRIP_SWITCH_DELAYED_EXIT_FULLSCREEN_ACTION" desc="Action button on a toast notification that exits immersive fullscreen mode.">
+        Exit full screen
       </message>
     </if>
 

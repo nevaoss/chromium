@@ -31,9 +31,9 @@
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
 #include "chrome/browser/ui/exclusive_access/fullscreen_controller.h"
+#include "chrome/browser/ui/immersive/immersive_mode_controller.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/browser_widget.h"
-#include "chrome/browser/ui/views/frame/immersive_mode_controller.h"
 #include "chrome/browser/ui/views/frame/tab_strip_region_view.h"
 #include "chrome/browser/ui/views/frame/top_container_view.h"
 #include "chrome/browser/ui/views/profiles/profile_indicator_icon.h"
@@ -1003,10 +1003,20 @@ void BrowserFrameViewChromeOS::UpdateProfileIcons() {
     if (needs_layout && root_view) {
       // Adding a child does not invalidate the layout.
       InvalidateLayout();
+      if (GetBrowserView()->GetIsWebAppType()) {
+        // We must invalidate the BrowserView layout as it is responsible for
+        // painting the window title in web apps (See
+        // `BrowserView::web_app_window_title_`).
+        GetBrowserView()->InvalidateLayout();
+      }
       root_view->DeprecatedLayoutImmediately();
     }
   } else if (profile_indicator_icon_) {
     RemoveChildViewT(std::exchange(profile_indicator_icon_, nullptr));
+    InvalidateLayout();
+    if (GetBrowserView()->GetIsWebAppType()) {
+      GetBrowserView()->InvalidateLayout();
+    }
     if (root_view) {
       root_view->DeprecatedLayoutImmediately();
     }

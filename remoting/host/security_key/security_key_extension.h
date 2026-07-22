@@ -8,9 +8,12 @@
 #include <memory>
 #include <string>
 
+#include "base/memory/weak_ptr.h"
 #include "remoting/host/host_extension.h"
 
 namespace remoting {
+
+class SecurityKeyAuthHandler;
 
 class ClientSessionDetails;
 class HostExtensionSession;
@@ -20,7 +23,8 @@ class SecurityKeyExtension : public HostExtension {
  public:
   static const char kCapability[];
 
-  SecurityKeyExtension();
+  explicit SecurityKeyExtension(
+      base::WeakPtr<SecurityKeyAuthHandler> auth_handler);
 
   SecurityKeyExtension(const SecurityKeyExtension&) = delete;
   SecurityKeyExtension& operator=(const SecurityKeyExtension&) = delete;
@@ -32,6 +36,9 @@ class SecurityKeyExtension : public HostExtension {
   std::unique_ptr<HostExtensionSession> CreateExtensionSession(
       ClientSessionDetails* client_session_details,
       protocol::ClientStub* client_stub) override;
+
+ private:
+  base::WeakPtr<SecurityKeyAuthHandler> auth_handler_;
 };
 
 }  // namespace remoting

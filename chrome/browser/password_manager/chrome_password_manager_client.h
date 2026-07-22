@@ -138,7 +138,10 @@ class ChromePasswordManagerClient
 
   // PasswordManagerClient implementation.
   using password_manager::PasswordManagerClient::IsFillingEnabled;
-  bool IsSavingAndFillingEnabled(const GURL& url) const override;
+  using password_manager::PasswordManagerClient::IsSavingAndFillingEnabled;
+  bool IsSavingAndFillingEnabled(
+      const url::Origin& origin,
+      base::optional_ref<const GURL> url) const override;
   bool IsFillingEnabled(const url::Origin& origin,
                         base::optional_ref<const GURL> url) const override;
   bool IsFieldFilledWithOtp(autofill::FormGlobalId form_id,
@@ -488,7 +491,7 @@ class ChromePasswordManagerClient
       autofill::password_generation::PasswordGenerationType type,
       password_manager::ContentPasswordManagerDriver* driver,
       const autofill::password_generation::PasswordGenerationUIData& ui_data);
-  void MaybeShowSavePasswordPrimingPromo(const GURL& current_url) override;
+  void MaybeShowSavePasswordPrimingPromo(const url::Origin& origin) override;
 #endif  // !BUILDFLAG(IS_ANDROID)
 
   gfx::RectF TransformToRootCoordinates(

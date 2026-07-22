@@ -12,17 +12,18 @@
 #include "base/memory/raw_ptr.h"
 #include "base/memory/raw_ref.h"
 #include "base/memory/weak_ptr.h"
+#include "chrome/browser/dictation/dictation_context.h"
 #include "chrome/browser/dictation/dictation_multiplexer.h"
 #include "chrome/browser/dictation/stream_provider.h"
 
 namespace content {
 class BrowserContext;
-}
+}  // namespace content
 
 namespace dictation {
-
-class Target;
+class DictationContextFetcher;
 class StreamProviderDelegate;
+class Target;
 
 // A StreamProvider implementation that listens to dictation input via the
 // dictation private extension API.
@@ -53,18 +54,24 @@ class ListenerStreamProvider : public StreamProvider {
 
  private:
   DictationMultiplexer& GetMultiplexer() const;
+  void StartStream(std::optional<DictationContext> context);
+  void OnStartContextCaptured(DictationContext result);
+  void OnAsyncContextCaptured(DictationContext result);
 
   // Owns this
   const base::raw_ref<StreamProviderDelegate> delegate_;
   std::unique_ptr<Target> target_;
   raw_ptr<content::BrowserContext> browser_context_;
+
   bool needs_end_stream_ = false;
   DictationMultiplexer::StreamId stream_id_;
   std::string latest_transcription_;
-  bool is_final_ = false;
   StreamState state_ = StreamState::kInitializing;
 
+  bool is_final_for_testing_ = false;
   base::RepeatingClosure update_callback_for_testing_;
+
+  std::unique_ptr<DictationContextFetcher> context_fetcher_;
 
   base::WeakPtrFactory<ListenerStreamProvider> weak_ptr_factory_{this};
 };

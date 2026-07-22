@@ -217,6 +217,25 @@ chromium-metrics-reviews@google.com.
   <int value="3" label="Link"/>
 </enum>
 
+<!-- LINT.IfChange(AndroidExternalBeginFrameSourceAChoreographerImplVsyncIntervalSource) -->
+
+<enum
+    name="AndroidExternalBeginFrameSourceAChoreographerImplVsyncIntervalSource">
+  <int value="0" label="OS-provided: timeline-derived not supported"/>
+  <int value="1" label="OS-provided: only one timeline"/>
+  <int value="2" label="OS-provided: always"/>
+  <int value="3" label="OS-provided: timeline-derived too short"/>
+  <int value="4" label="OS-provided: longer than or equal to timeline-derived"/>
+  <int value="5" label="Snapped timeline-derived: longer than OS-provided"/>
+  <int value="6" label="Unsnapped timeline-derived: longer than OS-provided"/>
+  <int value="7" label="Snapped timeline-derived: always"/>
+  <int value="8" label="Unsnapped timeline-derived: always"/>
+</enum>
+
+<!-- LINT.ThenChange(
+  //components/viz/service/frame_sinks/external_begin_frame_source_android.h:VsyncIntervalSource
+) -->
+
 <enum name="AndroidKernelVersion">
   <int value="131078" label="2.6"/>
   <int value="196608" label="3.0"/>
@@ -312,6 +331,7 @@ chromium-metrics-reviews@google.com.
       label="Previous attempt to persist search engine metadata failed"/>
   <int value="7" label="Request success"/>
   <int value="8" label="Choice was already applied"/>
+  <int value="9" label="Choice renewal was skipped"/>
 </enum>
 
 <enum name="AndroidSeccompSandboxStatus">
@@ -792,6 +812,7 @@ chromium-metrics-reviews@google.com.
   <int value="200" label="HttpCache.useDefaultQuota"/>
   <int value="201" label="HttpCache.getQuotaBytes"/>
   <int value="202" label="HttpCache.setQuotaBytes"/>
+  <int value="203" label="Profile.enqueuePreconnect"/>
 <!-- LINT.ThenChange(/android_webview/support_library/java/src/org/chromium/support_lib_glue/SupportLibWebViewChromiumFactory.java:ApiCall) -->
 
 </enum>
@@ -1337,12 +1358,6 @@ chromium-metrics-reviews@google.com.
   <int value="2" label="AllowedInsecure"/>
 </enum>
 
-<enum name="IntentTransitionType">
-  <int value="0" label="Ignored"/>
-  <int value="1" label="AllowedTyped"/>
-  <int value="2" label="AllowedInsecure"/>
-</enum>
-
 <!-- LINT.IfChange(LauncherShortcutUpdateFailure) -->
 
 <enum name="LauncherShortcutUpdateFailure">
@@ -1481,6 +1496,7 @@ chromium-metrics-reviews@google.com.
   <int value="71" label="SendTabToSelf"/>
   <int value="72" label="GlicWindowResized"/>
   <int value="73" label="ExtensionDevTools"/>
+  <int value="74" label="PersonalContextFetchingFailure"/>
 </enum>
 
 <!-- LINT.ThenChange(//components/messages/android/message_enums.h:MessageIdentifier) -->
@@ -1608,6 +1624,7 @@ chromium-metrics-reviews@google.com.
   <int value="18" label="Location bar state restoration on tab change"/>
   <int value="19" label="NTP AI Mode button."/>
   <int value="20" label="NTP plus button."/>
+  <int value="21" label="Keyboard navigation focus."/>
 </enum>
 
 <!-- LINT.ThenChange(//components/omnibox/browser/android/java/src/org/chromium/components/omnibox/OmniboxFocusReason.java:OmniboxFocusReason) -->

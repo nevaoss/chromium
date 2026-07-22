@@ -129,7 +129,12 @@ class VerticalTabGroupSpineDecoration extends RecyclerView.ItemDecoration {
         }
 
         mDrawnGroupIds.clear();
-        collectAndSortChildren(parent);
+        boolean anyTabBeingDragged = sortAndCheckDragging(parent);
+
+        float deferredTop = 0;
+        float deferredBottom = 0;
+        int deferredColor = 0;
+        boolean hasDeferredSpine = false;
 
         int sortedChildCount = mSortedChildren.size();
         for (int i = 0; i < sortedChildCount; i++) {
@@ -144,9 +149,11 @@ class VerticalTabGroupSpineDecoration extends RecyclerView.ItemDecoration {
                 continue;
             }
 
-            float top = calculateTop(child, isHeader);
             boolean isCollapsed = isHeader && childModel.get(TabProperties.IS_COLLAPSED);
-            float bottom = calculateBottom(parent, groupId, sortedChildCount, i, isCollapsed);
+            float top = calculateTop(parent, sortedChildCount, i, groupId, isHeader);
+            float bottom =
+                    calculateBottom(
+                            parent, sortedChildCount, i, groupId, isCollapsed, anyTabBeingDragged);
             if (bottom <= top) continue;
 
             @Nullable Integer cardColorId = childModel.get(TabProperties.TAB_GROUP_CARD_COLOR);
@@ -157,10 +164,21 @@ class VerticalTabGroupSpineDecoration extends RecyclerView.ItemDecoration {
             int color =
                     TabGroupColorPickerUtils.getTabGroupColorPickerItemColor(
                             parent.getContext(), colorId, isIncognito);
-            mPaint.setColor(color);
 
-            mRectF.set(left, top, right, bottom);
-            c.drawRoundRect(mRectF, mSpineRadius, mSpineRadius, mPaint);
+            boolean isDragging = isHeader && childModel.get(TabProperties.IS_BEING_DRAGGED);
+            if (isDragging) {
+                deferredTop = top;
+                deferredBottom = bottom;
+                deferredColor = color;
+                hasDeferredSpine = true;
+                continue;
+            }
+
+            drawSpine(c, left, top, right, bottom, color);
+        }
+
+        if (hasDeferredSpine) {
+            drawSpine(c, left, deferredTop, right, deferredBottom, deferredColor);
         }
     }
 
@@ -173,6 +191,12 @@ class VerticalTabGroupSpineDecoration extends RecyclerView.ItemDecoration {
         }
     }
 
+    private void drawSpine(Canvas c, float left, float top, float right, float bottom, int color) {
+        mPaint.setColor(color);
+        mRectF.set(left, top, right, bottom);
+        c.drawRoundRect(mRectF, mSpineRadius, mSpineRadius, mPaint);
+    }
+
     private void onCurrentTabModelChanged(@Nullable TabModel tabModel) {
         if (mCurrentTabModel != null) {
             mCurrentTabModel.removeTabGroupObserver(mTabGroupObserver);
@@ -183,7 +207,14 @@ class VerticalTabGroupSpineDecoration extends RecyclerView.ItemDecoration {
         }
     }
 
-    private void collectAndSortChildren(RecyclerView parent) {
+    /**
+     * Collects and sorts the visible child views of the recycler view.
+     *
+     * @param parent The recycler view containing child views.
+     * @return True if any of the collected visible tabs are currently being dragged.
+     */
+    private boolean sortAndCheckDragging(RecyclerView parent) {
+        boolean anyVisibleTabDragging = false;
         mSortedChildren.clear();
         int childCount = parent.getChildCount();
         for (int i = 0; i < childCount; i++) {
@@ -191,6 +222,12 @@ class VerticalTabGroupSpineDecoration extends RecyclerView.ItemDecoration {
             int pos = parent.getChildAdapterPosition(child);
             if (pos != RecyclerView.NO_POSITION && pos < mModel.size()) {
                 mSortedChildren.add(child);
+
+                // Check if this child is being dragged
+                PropertyModel model = mModel.get(pos).model;
+                if (model != null && model.get(TabProperties.IS_BEING_DRAGGED)) {
+                    anyVisibleTabDragging = true;
+                }
             }
         }
 
@@ -204,48 +241,82 @@ class VerticalTabGroupSpineDecoration extends RecyclerView.ItemDecoration {
         mChildPositionComparator.setParent(parent);
         mSortedChildren.sort(mChildPositionComparator);
         mChildPositionComparator.setParent(null);
+        return anyVisibleTabDragging;
     }
 
-    private float calculateTop(View child, boolean isHeader) {
-        if (!isHeader) {
-            // For a normal child tab (meaning the group header scrolled off-screen),
-            // start the vertical line directly from the top edge of this card.
-            return child.getTop() + child.getTranslationY();
-        }
+    private float calculateTop(
+            RecyclerView parent,
+            int sortedChildCount,
+            int childIndex,
+            Token groupId,
+            boolean isHeader) {
+        View child = mSortedChildren.get(childIndex);
+        if (isHeader) {
+            PropertyModel model = mModel.get(parent.getChildAdapterPosition(child)).model;
 
-        // For a group header, start the line right below the header card (plus trailing margin).
-        return child.getBottom() + child.getTranslationY() + mMarginBottom;
+            boolean isGroupBeingDragged =
+                    model != null && model.get(TabProperties.IS_BEING_DRAGGED);
+            View firstGroupView = null;
+            int nextIndex = childIndex + 1;
+            if (nextIndex < sortedChildCount) {
+                View v = mSortedChildren.get(nextIndex);
+                int pos = parent.getChildAdapterPosition(v);
+                Token nextTabId = mModel.get(pos).model.get(TabProperties.TAB_GROUP_ID);
+                if (groupId.equals(nextTabId)) {
+                    firstGroupView = v;
+                }
+            }
+
+            if (isGroupBeingDragged && firstGroupView != null) {
+                // TODO(b/521987032): Remove this - check why header's translationY is not stable
+                // when dragging the whole group, so that we have to use firstGroupView's. Maybe due
+                // to early return in VerticalTabListItemTouchHelperCallback#onChildDraw, the
+                // viewHolder's end animation is not ended?
+                // TODO(b/521987032): check why firstGroupView's translationY is not stable when
+                // dragging an internal tab in this tab group
+                return firstGroupView.getTop() + firstGroupView.getTranslationY();
+            } else {
+                // For a group header, start the line right below the header card (plus trailing
+                // margin).
+                return child.getBottom() + child.getTranslationY() + mMarginBottom;
+            }
+        }
+        // For a normal child tab (meaning the group header scrolled off-screen),
+        // start the vertical line directly from the top edge of this card.
+        return child.getTop() + child.getTranslationY();
     }
 
     private float calculateBottom(
             RecyclerView parent,
-            Token groupId,
             int sortedChildCount,
             int childIndex,
-            boolean isCollapsed) {
+            Token groupId,
+            boolean isCollapsed,
+            boolean anyTabBeingDragged) {
         View child = mSortedChildren.get(childIndex);
         View lastGroupView = child;
         View lastStableGroupView = child;
         View nextSiblingView = null;
+        boolean isChildBeingDragged = false;
 
         // Scan subsequent visible items in the sorted array to find:
         // 1. lastGroupView: The last visible child tab belonging to this group.
         // 2. lastStableGroupView: The last fully visible tab, for expanding/adding tab animation if
         // the tab group is the last one on the screen
-        // 3. nextSiblingView: The first visible tab belonging to a DIFFERENT group.
+        // 3. isChildBeingDragged: Whether any of the child is being dragged
+        // 4. nextSiblingView: The first visible tab belonging to a DIFFERENT group.
         for (int j = childIndex + 1; j < sortedChildCount; j++) {
             View v = mSortedChildren.get(j);
-            int pos = parent.getChildAdapterPosition(v);
-
-            PropertyModel nextModel = mModel.get(pos).model;
-            @Nullable Token headerId = nextModel.get(TabProperties.TAB_GROUP_HEADER_ID);
-            Token nextGroupId =
-                    headerId != null ? headerId : nextModel.get(TabProperties.TAB_GROUP_ID);
-            if (groupId.equals(nextGroupId)) {
+            PropertyModel nextModel = mModel.get(parent.getChildAdapterPosition(v)).model;
+            Token nextTabId =
+                    (nextModel == null) ? null : nextModel.get(TabProperties.TAB_GROUP_ID);
+            if (groupId.equals(nextTabId)) {
                 if (v.getAlpha() >= 1f) {
                     lastStableGroupView = v;
                 }
                 lastGroupView = v;
+                isChildBeingDragged =
+                        isChildBeingDragged || nextModel.get(TabProperties.IS_BEING_DRAGGED);
             } else {
                 nextSiblingView = v;
                 break;
@@ -259,26 +330,31 @@ class VerticalTabGroupSpineDecoration extends RecyclerView.ItemDecoration {
             if (mCollapsingGroupIds.contains(groupId) && nextSiblingView != null) {
                 return nextSiblingView.getTop() + nextSiblingView.getTranslationY() - mMarginBottom;
             }
-            return child.getBottom() + child.getTranslationY();
+            // If it's fully collapsed, do not draw spine
+            return Integer.MIN_VALUE;
         }
 
         // Case 2: Middle group with items below it.
-        // Always connect the spine bottom to the top of the next group.
-        if (nextSiblingView != null) {
+        // When static (no tabs are being dragged, or only the internal tab is being dragged),
+        // connect the spine bottom to the top of the next group to eliminate sub-pixel gaps.
+        if ((!anyTabBeingDragged || isChildBeingDragged) && nextSiblingView != null) {
             return nextSiblingView.getTop() + nextSiblingView.getTranslationY() - mMarginBottom;
         }
 
-        // Case 3: The last group shown on the list.
+        // Case 3: The tab group is being dragged, or if there are more items in the adapter that
+        // are being pushed off-screen,  the spine should stick to the bottom without shrinking/any
+        // animation.
         float targetBottom = lastGroupView.getBottom() + lastGroupView.getTranslationY();
 
         int lastPos = parent.getChildAdapterPosition(lastGroupView);
         boolean hasSubsequentItems = lastPos < mModel.size() - 1;
-        if (hasSubsequentItems) {
-            // If there are more items in the adapter that are pushed off-screen, the spine should
-            // seamlessly continue to the bottom without shrinking.
+        if (anyTabBeingDragged || hasSubsequentItems) {
             return targetBottom;
         }
 
+        // Case 4: The last group shown on the list.
+        // TODO(b/521987032): check why lastGroupView's translationY is not stable when dragging an
+        // internal tab in this tab group
         float startBottom = lastStableGroupView.getBottom() + lastStableGroupView.getTranslationY();
         float t = lastGroupView.getAlpha();
         return startBottom + ((targetBottom - startBottom) * t);

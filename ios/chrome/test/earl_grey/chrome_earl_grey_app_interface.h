@@ -606,6 +606,9 @@ enum class TipsNotificationType;
 // Returns whether the UseLensToSearchForImage feature is enabled.
 + (BOOL)isUseLensToSearchForImageEnabled;
 
+// Returns whether the YourSavedInfoSettingsPageIos feature is enabled.
++ (BOOL)isYourSavedInfoSettingsPageIosEnabled;
+
 // Returns whether the current layout is showing the bottom omnibox.
 + (BOOL)isCurrentLayoutBottomOmnibox;
 
@@ -614,6 +617,9 @@ enum class TipsNotificationType;
 
 // Returns whether chrome next is enabled.
 + (BOOL)isChromeNextEnabled;
+
+// Returns whether overflow menu refactoring on the NTP is enabled.
++ (BOOL)isOverflowMenuNTPRefactorEnabled;
 
 // Returns whether the chrome next share icon is visible.
 + (BOOL)isChromeNextShareIconVisible;

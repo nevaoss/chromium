@@ -23,6 +23,7 @@
   overflow: hidden;
   position: relative;
   width: 100%;
+  z-index: 0; /* Give the container its own stacking context. */
 }
 
 .placeholder {

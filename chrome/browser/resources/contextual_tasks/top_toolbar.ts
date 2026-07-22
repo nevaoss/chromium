@@ -87,6 +87,7 @@ export class TopToolbarElement extends TopToolbarElementBase {
         type: Boolean,
         reflect: true,
       },
+      isUserSignedIn: {type: Boolean},
       onboardingTooltipShowing: {type: Boolean},
       contextualTasksEnableSpatialModelToolbarLayout_: {type: Boolean},
       contextualTasksEnableSpatialModelToolbarLayoutNewThreadInOverflow_:
@@ -100,6 +101,7 @@ export class TopToolbarElement extends TopToolbarElementBase {
   accessor darkMode: boolean = false;
   accessor isAiPage: boolean = loadTimeData.getBoolean('isAiPage');
   accessor isAimEligible: boolean = loadTimeData.getBoolean('isAimEligible');
+  accessor isUserSignedIn: boolean = true;
   accessor enableOpenInNewTabButton: boolean = false;
   accessor showReopenTabs_: boolean = false;
   accessor onboardingTooltipShowing: boolean = false;

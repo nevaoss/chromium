@@ -222,11 +222,6 @@ export class TestPasswordManagerProxy extends TestBrowserProxy implements
 
   startBulkPasswordCheck() {
     this.methodCalled('startBulkPasswordCheck');
-    if (this.data.checkStatus.state ===
-        chrome.passwordsPrivate.PasswordCheckState.NO_PASSWORDS) {
-      return Promise.reject(new Error('error'));
-    }
-    return Promise.resolve();
   }
 
   recordPasswordCheckInteraction(interaction: PasswordCheckInteraction) {

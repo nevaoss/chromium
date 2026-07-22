@@ -18,6 +18,7 @@
 #import "components/omnibox/browser/autocomplete_input.h"
 #import "components/open_from_clipboard/clipboard_async_wrapper_ios.h"
 #import "ios/chrome/browser/autocomplete/model/autocomplete_scheme_classifier_impl.h"
+#import "ios/chrome/browser/composebox/public/features.h"
 #import "ios/chrome/browser/omnibox/public/omnibox_constants.h"
 #import "ios/chrome/browser/omnibox/public/omnibox_ui_features.h"
 #import "ios/chrome/browser/omnibox/public/omnibox_util.h"
@@ -681,8 +682,10 @@ const CGFloat kVerticalOffset = 1;
     return [self.omniboxKeyboardDelegate canPerformKeyboardAction:kRightArrow];
   }
 
-  if (action == @selector(forwardKeyCommandShiftReturn:)) {
-    return YES;
+  if (IsComposeboxPhysicalKeyboardReturnKeysEnabled()) {
+    if (action == @selector(forwardKeyCommandShiftReturn:)) {
+      return YES;
+    }
   }
 
   // Handle pre-edit shortcuts.
@@ -830,8 +833,9 @@ const CGFloat kVerticalOffset = 1;
   NSMutableArray<UIKeyCommand*>* commands = [NSMutableArray
       arrayWithObjects:commandUp, commandDown, commandLeft, commandRight, nil];
 
-  if (_presentationContext == OmniboxPresentationContext::kComposebox ||
-      _presentationContext == OmniboxPresentationContext::kCobrowse) {
+  if (IsComposeboxPhysicalKeyboardReturnKeysEnabled() &&
+      (_presentationContext == OmniboxPresentationContext::kComposebox ||
+       _presentationContext == OmniboxPresentationContext::kCobrowse)) {
     UIKeyCommand* commandShiftReturn = [UIKeyCommand
         keyCommandWithInput:@"\r"
               modifierFlags:UIKeyModifierShift

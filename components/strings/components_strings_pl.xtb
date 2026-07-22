@@ -996,6 +996,7 @@ Jeśli się nie zgodzisz, zostaną one zablokowane ze względu na Twoje ustawien
 <translation id="2524962131655207565"><ph name="BEGIN_BOLD" />Aby oferować te opcje, Google otrzymuje informacje o zawartości strony płatności.<ph name="END_BOLD" /> Subskrypcje podlegają kryteriom kwalifikacji. Aby ukryć opcje płatności odroczonej, otwórz <ph name="BEGIN_LINK" />ustawienia płatności<ph name="END_LINK" />.</translation>
 <translation id="2526062290525841862">Aby uruchomić tę aplikację, ponownie włącz tryb programisty izolowanych aplikacji internetowych</translation>
 <translation id="2526280916094749336">Zapisanych adresów możesz używać w różnych usługach Google. Ten adres zostanie zapisany na Twoim koncie Google <ph name="ACCOUNT" />.</translation>
+<translation id="2526590354069164005">Pulpit</translation>
 <translation id="2527451058878391043">Kod CVC znajduje się z przodu karty. To 4-cyfrowy kod widoczny w prawym górnym rogu, nad numerem karty.</translation>
 <translation id="2529899080962247600">Maksymalna liczba wpisów w tym polu to <ph name="MAX_ITEMS_LIMIT" />. Wszystkie następne wpisy będą ignorowane.</translation>
 <translation id="2530042584066815841">Blokowanie i używanie myszy</translation>
@@ -4911,7 +4912,6 @@ Dodatkowe informacje:
 <translation id="8671519637524426245">Wartość <ph name="SECURE_DNS_SALT" /> nie spełnia wymagań dotyczących rozmiaru.</translation>
 <translation id="867224526087042813">Podpis</translation>
 <translation id="8672535691554698269">Sieci komputerowe</translation>
-<translation id="8673710317985154384">{NUM_TABS,plural, =1{Pokaż szczegóły udostępniania karty. Udostępniam 1 kartę z witryn {WEBSITE_LIST_STR}}few{Pokaż szczegóły udostępniania kart. Udostępniam {NUM_TABS} karty z witryn {WEBSITE_LIST_STR}}many{Pokaż szczegóły udostępniania kart. Udostępniam {NUM_TABS} kart z witryn {WEBSITE_LIST_STR}}other{Pokaż szczegóły udostępniania kart. Udostępniam {NUM_TABS} karty z witryn {WEBSITE_LIST_STR}}}</translation>
 <translation id="8675446170353411473">Twoje pliki są przesyłane do usługi <ph name="CLOUD_PROVIDER" /></translation>
 <translation id="8676424191133491403">Bez opóźnienia</translation>
 <translation id="8680536109547170164"><ph name="QUERY" />, odpowiedź, <ph name="ANSWER" /></translation>

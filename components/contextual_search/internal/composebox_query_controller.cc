@@ -13,6 +13,7 @@
 
 #include "base/base64url.h"
 #include "base/debug/dump_without_crashing.h"
+#include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted_memory.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/metrics/histogram_functions.h"
@@ -962,6 +963,10 @@ lens::ClientToAimMessage ComposeboxQueryController::CreateClientToAimRequest(
     (*submit_query->mutable_payload()->add_context_turn_metadata()) =
         context_turn_metadata;
   }
+
+  // TODO(crbug.com/514803722): Tracked removed contexts are available in
+  // create_client_to_aim_request_info->removed_contexts, but we don't send them
+  // to the server yet until the proto changes are finalized.
 
   // Add the request id data for each file token.
   if (!active_files_.empty() && cluster_info_.has_value()) {
@@ -2561,9 +2566,9 @@ const contextual_search::FileInfo* ComposeboxQueryController::GetFileInfo(
   return GetMutableFileInfo(file_token);
 }
 
-std::vector<const contextual_search::FileInfo*>
+std::vector<raw_ptr<const contextual_search::FileInfo>>
 ComposeboxQueryController::GetFileInfoList() {
-  std::vector<const contextual_search::FileInfo*> file_infos;
+  std::vector<raw_ptr<const contextual_search::FileInfo>> file_infos;
   file_infos.reserve(active_files_.size());
   for (const auto& [file_token, file_info] : active_files_) {
     file_infos.push_back(file_info.get());

@@ -269,6 +269,7 @@ class ReadAnythingAppController
   int LineFocusStaticLine() const;
   int LineFocusCursorLine() const;
   int MaxLineWidth() const;
+  int ActivePresentationState() const;
   int InHiddenPresentationState() const;
   int InSidePanelPresentationState() const;
   int InImmersiveOverlayPresentationState() const;
@@ -320,6 +321,7 @@ class ReadAnythingAppController
   void OnRenderedTextBlocksAvailable(const std::vector<std::u16string>& blocks);
   v8::Local<v8::Value> GetAXMapping(int index);
   bool IsGoogleDocs() const;
+  bool IsPdf() const;
   bool IsImmersiveEnabled() const;
   bool IsImprovedReadAloudEnabled() const;
   bool IsTsTextSegmentationEnabled() const;
@@ -545,6 +547,10 @@ class ReadAnythingAppController
   void IncrementMetricCount(const std::string& metric);
 
   void LogSpeechStop(int source);
+
+  // Logs the duration a user spent reading a page, broken down by page type
+  // (PDF vs WebPage) and view mode (FullPage overlay vs SidePanel).
+  void LogPageDuration();
 
   // Methods for logging line focus session info.
   void StartLineFocusSession();

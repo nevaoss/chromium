@@ -1803,6 +1803,7 @@ StyleAdjuster::ElementTypeForCache StyleAdjuster::GetElementTypeCacheKey(
     case ElementType::kHTMLSourceElement:
     case ElementType::kHTMLSpanElement:
     case ElementType::kHTMLStyleElement:
+    case ElementType::kHTMLSubMenuElement:
     case ElementType::kHTMLSummaryElement:
     case ElementType::kHTMLTableCaptionElement:
     case ElementType::kHTMLTableCellElement:

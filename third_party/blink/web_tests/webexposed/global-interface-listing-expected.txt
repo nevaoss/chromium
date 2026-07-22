@@ -5268,6 +5268,9 @@ interface HTMLStyleElement : HTMLElement
     setter disabled
     setter media
     setter type
+interface HTMLSubMenuElement : HTMLElement
+    attribute @@toStringTag
+    method constructor
 interface HTMLSubmitButtonBehavior : ElementBehavior
     attribute @@toStringTag
     getter disabled

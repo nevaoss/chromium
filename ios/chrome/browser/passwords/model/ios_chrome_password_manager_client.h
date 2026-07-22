@@ -136,7 +136,10 @@ class IOSChromePasswordManagerClient
       password_manager::LeakedPasswordDetails details) override;
   void NotifyKeychainError() override;
   using password_manager::PasswordManagerClient::IsFillingEnabled;
-  bool IsSavingAndFillingEnabled(const GURL& url) const override;
+  using password_manager::PasswordManagerClient::IsSavingAndFillingEnabled;
+  bool IsSavingAndFillingEnabled(
+      const url::Origin& origin,
+      base::optional_ref<const GURL> url) const override;
   bool IsFillingEnabled(const url::Origin& origin,
                         base::optional_ref<const GURL> url) const override;
   bool IsFieldFilledWithOtp(autofill::FormGlobalId form_id,

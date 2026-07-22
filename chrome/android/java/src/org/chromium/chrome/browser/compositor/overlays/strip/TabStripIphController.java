@@ -20,6 +20,7 @@ import org.chromium.chrome.browser.user_education.IphCommandBuilder;
 import org.chromium.chrome.browser.user_education.UserEducationHelper;
 import org.chromium.components.feature_engagement.FeatureConstants;
 import org.chromium.components.feature_engagement.Tracker;
+import org.chromium.ui.base.DeviceInput;
 import org.chromium.ui.base.LocalizationUtils;
 
 import java.lang.annotation.Retention;
@@ -37,7 +38,8 @@ public class TabStripIphController {
         IphType.GROUP_TITLE_NOTIFICATION_BUBBLE,
         IphType.TAB_NOTIFICATION_BUBBLE,
         IphType.TAB_TEARING_XR,
-        IphType.GLIC_PROMO
+        IphType.GLIC_PROMO,
+        IphType.VERTICAL_TABS_PROMO
     })
     @Retention(RetentionPolicy.SOURCE)
     public @interface IphType {
@@ -57,6 +59,9 @@ public class TabStripIphController {
 
         /** Indicates the IPH is triggered for the Glic entry point. */
         int GLIC_PROMO = 4;
+
+        /** Indicates the IPH is triggered for promoting Vertical Tabs. */
+        int VERTICAL_TABS_PROMO = 5;
     }
 
     private static final int IPH_AUTO_DISMISS_WAIT_TIME_MS = 5 * 1000;
@@ -194,6 +199,7 @@ public class TabStripIphController {
 
         switch (iphType) {
             case IphType.TAB_GROUP_SYNC:
+            case IphType.VERTICAL_TABS_PROMO:
                 // Adjust the bottom boundary to match the tab strip's lower edge.
                 anchorRect.bottom = (int) (tabStripHeight * dpToPx);
                 break;
@@ -236,6 +242,8 @@ public class TabStripIphController {
                 return FeatureConstants.IPH_TAB_TEARING_XR;
             case IphType.GLIC_PROMO:
                 return FeatureConstants.GLIC_PROMO_ANDROID_FEATURE;
+            case IphType.VERTICAL_TABS_PROMO:
+                return FeatureConstants.ANDROID_VERTICAL_TABS_PROMO_FEATURE;
             default:
                 throw new IllegalArgumentException("Invalid IPH type");
         }
@@ -252,6 +260,10 @@ public class TabStripIphController {
                 return R.string.iph_tab_tearing_xr;
             case IphType.GLIC_PROMO:
                 return R.string.iph_glic_promo_text;
+            case IphType.VERTICAL_TABS_PROMO:
+                return DeviceInput.supportsPrecisionPointer()
+                        ? R.string.iph_android_vertical_tabs_promo_mouse
+                        : R.string.iph_android_vertical_tabs_promo_touch;
             default:
                 throw new IllegalArgumentException("Invalid IPH type");
         }

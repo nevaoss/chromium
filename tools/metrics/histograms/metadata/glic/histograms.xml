@@ -26,6 +26,7 @@ chromium-metrics-reviews@google.com.
 
 <variants name="ApiRequestType">
   <variant name="ActivateTab"/>
+  <variant name="ActivateTabWithUrl"/>
   <variant name="AttachPanel"/>
   <variant name="AutofillSuggestionDialogOnFormConfirmed"/>
   <variant name="AutofillSuggestionDialogOnFormPresented"/>
@@ -1857,6 +1858,32 @@ chromium-metrics-reviews@google.com.
   <summary>Records the onboarding flow source shown to the user.</summary>
 </histogram>
 
+<histogram name="Glic.Onboarding.Profiles.Status" enum="GlicOnboardingStatus"
+    expires_after="2027-06-01">
+  <owner>perrier@chromium.org</owner>
+  <owner>glic+metrics@google.com</owner>
+  <summary>
+    Records the highest onboarding status across all loaded Glic-enabled
+    profiles. Recorded during periodic metrics provider session collection.
+  </summary>
+</histogram>
+
+<histogram name="Glic.Onboarding.Profiles.{Status}"
+    enum="GlicProfilesAllSomeNone" expires_after="2027-06-01">
+  <owner>perrier@chromium.org</owner>
+  <owner>glic+metrics@google.com</owner>
+  <summary>
+    Records the count of loaded Glic-enabled profiles that have have a status
+    which includes the {Status} state. Recorded during periodic metrics provider
+    session collection.
+  </summary>
+  <token key="Status">
+    <variant name="Invoked"/>
+    <variant name="OptIn"/>
+    <variant name="UserSubmit"/>
+  </token>
+</histogram>
+
 <histogram name="Glic.Onboarding.WebUiLoadTime.{Visibility}" units="ms"
     expires_after="2026-12-31">
   <owner>sanaakbani@google.com</owner>
@@ -2820,7 +2847,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Glic.TieredRolloutEnablementStatus"
-    enum="GlicTieredRolloutEnablementStatus" expires_after="2026-11-29">
+    enum="GlicProfilesAllSomeNone" expires_after="2026-11-29">
   <owner>sophiechang@chromium.org</owner>
   <owner>dewittj@chromium.org</owner>
   <summary>

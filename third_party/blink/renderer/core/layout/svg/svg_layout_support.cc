@@ -37,6 +37,7 @@
 #include "third_party/blink/renderer/core/paint/paint_layer.h"
 #include "third_party/blink/renderer/core/svg/svg_element.h"
 #include "third_party/blink/renderer/core/svg/svg_length_functions.h"
+#include "third_party/blink/renderer/core/svg/svg_zoom_migration.h"
 #include "third_party/blink/renderer/platform/geometry/infinite_int_rect.h"
 #include "third_party/blink/renderer/platform/geometry/stroke_data.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/clear_collection_scope.h"
@@ -260,7 +261,8 @@ gfx::RectF SVGLayoutSupport::ExtendTextBBoxWithStroke(
     // TODO(fs): This approximation doesn't appear to be conservative enough
     // since while text (usually?) won't have caps it could have joins and thus
     // miters.
-    bounds.Outset(ValueForLength(style.StrokeWidth(), viewport_resolver));
+    bounds.Outset(ValueForLength(style.StrokeWidth(), viewport_resolver,
+                                 style.EffectiveZoom()));
   }
   return bounds;
 }
@@ -297,8 +299,8 @@ void SVGLayoutSupport::ApplyStrokeStyleToStrokeData(StrokeData& stroke_data,
   DCHECK(object.GetNode()->IsSVGElement());
 
   const SVGViewportResolver viewport_resolver(object);
-  stroke_data.SetThickness(
-      ValueForLength(style.StrokeWidth(), viewport_resolver));
+  stroke_data.SetThickness(ValueForLength(
+      style.StrokeWidth(), viewport_resolver, style.EffectiveZoom()));
   stroke_data.SetLineCap(style.CapStyle());
   stroke_data.SetLineJoin(style.JoinStyle());
   stroke_data.SetMiterLimit(style.StrokeMiterLimit());

@@ -512,6 +512,10 @@ public class ToolbarTablet extends ToolbarLayout {
         return mLocationBar;
     }
 
+    public LocationBarCoordinator getLocationBarCoordinatorForTesting() {
+        return mLocationBar;
+    }
+
     @Override
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
         // After the first layout, button visibility changes should be animated. On the first

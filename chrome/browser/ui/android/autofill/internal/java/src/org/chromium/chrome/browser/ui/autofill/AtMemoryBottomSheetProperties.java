@@ -28,13 +28,19 @@ class AtMemoryBottomSheetProperties {
     static final WritableObjectPropertyKey<List<AutofillSuggestion>> FLYOUT_SUGGESTIONS =
             new WritableObjectPropertyKey<>();
 
+    static final WritableBooleanPropertyKey IS_NOTICE_VISIBLE = new WritableBooleanPropertyKey();
+    static final ReadableObjectPropertyKey<Runnable> NOTICE_OK_CLICK_LISTENER =
+            new ReadableObjectPropertyKey<>();
+
     static final PropertyKey[] ALL_KEYS = {
         VISIBLE,
         ON_QUERY_SUBMITTED_CALLBACK,
         IS_LOADING,
         SHOW_SUGGESTIONS_BACKGROUND,
         ON_QUERY_TEXT_CHANGED_CALLBACK,
-        FLYOUT_SUGGESTIONS
+        FLYOUT_SUGGESTIONS,
+        IS_NOTICE_VISIBLE,
+        NOTICE_OK_CLICK_LISTENER
     };
 
     private AtMemoryBottomSheetProperties() {}

@@ -149,6 +149,8 @@ IN_PROC_BROWSER_TEST_F(OmniboxContextMenuControllerBrowserTest,
   GURL url2(embedded_test_server()->GetURL("/title2.html"));
   ASSERT_TRUE(AddTabAtIndex(2, url2, ui::PAGE_TRANSITION_TYPED));
 
+  browser()->tab_strip_model()->ActivateTabAt(0);
+
   OmniboxContextMenuController controller(omnibox_popup_file_selector.get(),
                                           web_contents);
   model = controller.menu_model();
@@ -164,6 +166,10 @@ IN_PROC_BROWSER_TEST_F(OmniboxContextMenuControllerBrowserTest,
   EXPECT_EQ(7u, GetVisibleItemCount(model));
   ASSERT_TRUE(controller.shared_tabs_menu_model());
   EXPECT_EQ(2u, GetVisibleItemCount(controller.shared_tabs_menu_model()));
+  EXPECT_EQ(l10n_util::GetStringUTF16(IDS_NTP_COMPOSEBOX_RECENT_TAB_SUFFIX),
+            controller.shared_tabs_menu_model()->GetMinorTextAt(0));
+  EXPECT_EQ(std::u16string(),
+            controller.shared_tabs_menu_model()->GetMinorTextAt(1));
 }
 
 // TODO(crbug.com/460910010): Flaky, especially on ASAN/LSAN bots and certain

@@ -673,6 +673,40 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="PageActionController.Chip.CollapsedDueToSpace.ActionType"
+    enum="PageActionIconType" expires_after="2027-06-01">
+  <owner>yeroshkin@chromium.org</owner>
+  <owner>top-chrome-desktop-ui@google.com</owner>
+  <summary>
+    The type of Page Action suggestion chip that was shown in a collapsed state
+    (icon only) due to insufficient space in the omnibox. Logged once when the
+    chip is originally shown.
+  </summary>
+</histogram>
+
+<histogram name="PageActionController.Chip.CollapsedDueToSpace.PreferredWidth"
+    units="DIPs" expires_after="2027-06-01">
+  <owner>yeroshkin@chromium.org</owner>
+  <owner>top-chrome-desktop-ui@google.com</owner>
+  <summary>
+    The preferred width of the Page Action suggestion chip that was shown in a
+    collapsed state due to insufficient space in the omnibox. Logged once when
+    the chip is originally shown.
+  </summary>
+</histogram>
+
+<histogram name="PageActionController.ChipCollapseAnalysisCount.ActionType"
+    enum="PageActionIconType" expires_after="2027-06-01">
+  <owner>yeroshkin@chromium.org</owner>
+  <owner>top-chrome-desktop-ui@google.com</owner>
+  <summary>
+    The type of Page Action suggestion chip that was shown. Logged once when the
+    chip is originally shown, regardless of whether it was collapsed or
+    expanded. Used as a denominator for CollapsedDueToSpace.ActionType to
+    calculate the collapse rate.
+  </summary>
+</histogram>
+
 <histogram name="PageActionController.ChipTypeShown" enum="PageActionIconType"
     expires_after="2026-12-01">
   <owner>emshack@chromium.org</owner>

@@ -117,6 +117,7 @@ class OmniboxEditModel {
   void set_view(OmniboxView* view) { view_ = view; }
   OmniboxView* view() const { return view_; }
   void set_popup_view(OmniboxPopupView* popup_view);
+  OmniboxPopupView* popup_view() const { return popup_view_; }
   void AddObserver(Observer* observer);
   void RemoveObserver(Observer* observer);
 

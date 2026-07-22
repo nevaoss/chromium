@@ -64,6 +64,10 @@ TabStripSceneLayer::TabStripSceneLayer(JNIEnv* env,
       model_selector_button_background_(cc::slim::UIResourceLayer::Create()),
       model_selector_button_keyboard_focus_ring_(
           cc::slim::UIResourceLayer::Create()),
+      tab_search_button_(cc::slim::UIResourceLayer::Create()),
+      tab_search_button_background_(cc::slim::UIResourceLayer::Create()),
+      tab_search_button_keyboard_focus_ring_(
+          cc::slim::UIResourceLayer::Create()),
       scrim_layer_(cc::slim::SolidColorLayer::Create()),
       content_tree_(nullptr) {
   new_tab_button_->SetIsDrawable(true);
@@ -77,6 +81,8 @@ TabStripSceneLayer::TabStripSceneLayer(JNIEnv* env,
   glic_actor_button_text_->SetIsDrawable(true);
   model_selector_button_->SetIsDrawable(true);
   model_selector_button_background_->SetIsDrawable(true);
+  tab_search_button_->SetIsDrawable(true);
+  tab_search_button_background_->SetIsDrawable(true);
 
   left_fade_->SetIsDrawable(true);
   right_fade_->SetIsDrawable(true);
@@ -156,6 +162,10 @@ TabStripSceneLayer::TabStripSceneLayer(JNIEnv* env,
   tab_strip_layer_->AddChild(model_selector_button_background_);
   tab_strip_layer_->AddChild(model_selector_button_);
   tab_strip_layer_->AddChild(model_selector_button_keyboard_focus_ring_);
+
+  tab_strip_layer_->AddChild(tab_search_button_background_);
+  tab_strip_layer_->AddChild(tab_search_button_);
+  tab_strip_layer_->AddChild(tab_search_button_keyboard_focus_ring_);
   tab_strip_layer_->AddChild(window_controls_divider_);
 
   layer()->AddChild(background_layer_);
@@ -478,6 +488,37 @@ void TabStripSceneLayer::UpdateModelSelectorButton(
                          background_resource, x, y, visible,
                          should_apply_hover_highlight, button_alpha,
                          model_selector_button_keyboard_focus_ring_,
+                         is_keyboard_focused, keyboard_focus_ring_drawable);
+}
+
+void TabStripSceneLayer::UpdateTabSearchButton(
+    JNIEnv* env,
+    int32_t resource_id,
+    int32_t bg_resource_id,
+    float x,
+    float y,
+    bool visible,
+    bool should_apply_hover_highlight,
+    int32_t tint,
+    int32_t background_tint,
+    float button_alpha,
+    bool is_keyboard_focused,
+    int32_t keyboard_focus_ring_resource_id,
+    int32_t keyboard_focus_ring_color) {
+  DCHECK(resource_manager_);
+  ui::Resource* button_resource =
+      resource_manager_->GetStaticResourceWithTint(resource_id, tint);
+  ui::Resource* background_resource =
+      resource_manager_->GetStaticResourceWithTint(bg_resource_id,
+                                                   background_tint, true);
+  ui::Resource* keyboard_focus_ring_drawable =
+      resource_manager_->GetStaticResourceWithTint(
+          keyboard_focus_ring_resource_id, keyboard_focus_ring_color, true);
+
+  UpdateCompositorButton(tab_search_button_, tab_search_button_background_,
+                         button_resource, background_resource, x, y, visible,
+                         should_apply_hover_highlight, button_alpha,
+                         tab_search_button_keyboard_focus_ring_,
                          is_keyboard_focused, keyboard_focus_ring_drawable);
 }
 

@@ -314,6 +314,7 @@
 <translation id="1463793142714244641">Эс алуучу жайлар жана бөлүшүп эс алуу</translation>
 <translation id="1465457928007067810">IBAN Google аккаунтуңузга сакталды</translation>
 <translation id="1467432559032391204">Сол</translation>
+<translation id="1471514598850585811">Ноутбук</translation>
 <translation id="1472675084647422956">Дагы көрсөтүү</translation>
 <translation id="1473183651233018052">JIS B10 (32mm x 45mm)</translation>
 <translation id="1473495410389165587">Жазуу боюнча жардам алуу үчүн 3 же андан көп сөздү киргизиңиз</translation>
@@ -477,6 +478,7 @@
 <translation id="173080396488393970">Мындай карточка колдоого алынбайт</translation>
 <translation id="1731563515262205847">ML-DSA-65</translation>
 <translation id="1732445923934584865">Анын ордуна өзүнөн суроо</translation>
+<translation id="1732796940245838248">Google Капчыктагы даттанууларды кароо номерин жаңыртыңыз</translation>
 <translation id="1733064249834771892">ариптер</translation>
 <translation id="1733631169686303142">Аудио жабдык</translation>
 <translation id="1733762317901693627">Адатта коопсуз болгон сайттар да кээде чабуулга дуушар болушат. Бул <ph name="BEGIN_LINK" />кооптуу сайтка<ph name="END_LINK" /> тобокелдерди түшүнгөндө гана кириңиз.</translation>
@@ -712,6 +714,7 @@
 <translation id="2122165854541876335">Керектөөчү ресурстары</translation>
 <translation id="2122214041802369259">Баасы жогору</translation>
 <translation id="2122719317867821810">Бул эреже талаптагыдай иштеп жатат, бирок ал башка жерде коюлган карама-каршы мааниге өзгөртүп койду.</translation>
+<translation id="2124081665399116863">Google Капчыктагы унаа тууралуу маалыматты жаңыртыңыз</translation>
 <translation id="2126374524350484896">PDF форматына өзгөртүүчү кызмат:</translation>
 <translation id="2127090458081644412">Сырсөз бул түзмөккө сакталды</translation>
 <translation id="2127747486437921899">Жантык</translation>
@@ -994,6 +997,7 @@
 <translation id="2524962131655207565"><ph name="BEGIN_BOLD" />Бул варианттарды сунуштоо үчүн төлөө бетиндеги нерселер Google менен бөлүшүлөт.<ph name="END_BOLD" /> Төлөм пландары жарамдуулукка жараша жеткиликтүү болот. Кийинчерээк төлөө параметрлерин жашыруу үчүн <ph name="BEGIN_LINK" />төлөм параметрлерине<ph name="END_LINK" /> өтүңүз.</translation>
 <translation id="2526062290525841862">Бул колдонмону иштетүү үчүн Обочолонгон веб-колдонмонун иштеп чыгуучу режимин кайра иштетиңиз</translation>
 <translation id="2526280916094749336">Сакталган даректериңизди Google кызматтарында колдоно аласыз. Бул дарек Google аккаунтуңузда (<ph name="ACCOUNT" />) сакталат.</translation>
+<translation id="2526590354069164005">Иштакта</translation>
 <translation id="2527451058878391043">CVC кодуңуз картаңыздын маңдайкы бетинде жайгашкан. Ал картанын номеринен өйдө турган оң жактагы 4 орундуу сан.</translation>
 <translation id="2529899080962247600">Бул талаага киргизилген маанилердин саны <ph name="MAX_ITEMS_LIMIT" /> ашпашы керек. Бардык андан кийинки жазмалар четке кагылат.</translation>
 <translation id="2530042584066815841">Чычканды кулпулап, колдонуу</translation>
@@ -1548,6 +1552,7 @@
 <translation id="3422472998109090673"><ph name="HOST_NAME" /> сайты учурда жеткиликсиз.</translation>
 <translation id="3422794267539320056">Ойноо үчүн динозаврды таптап же боштук баскычын басыңыз</translation>
 <translation id="3423742043356668186">Система белгиленди</translation>
+<translation id="3426672782316020729">Google Капчыктагы паспортту жаңыртыңыз</translation>
 <translation id="3427342743765426898">Түзөтүүнү &amp;кайталоо</translation>
 <translation id="342781501876943858">Сырсөзүңүздү башка сайттарда колдонгон болсоңуз, Chromium аны өзгөртүүнү сунуштайт.</translation>
 <translation id="3428151540071562330">Бир же бир нече DnsOverHttpsTemplates серверлериндеги URI даректеринин үлгүлөрү жараксыз жана колдонулбайт.</translation>
@@ -2407,6 +2412,7 @@
 <translation id="4766713847338118463">Төмөн жагын эки жолу илмек менен бекитүү</translation>
 <translation id="4768816584204270288">Кийинчерээк төлөгөндө, бир жолку виртуалдык картанын номери толтурулат. Бул сатып алууга карата картанын чоо-жайын көчүрүп жана чаптоо үчүн чыкылдатсаңыз болот.</translation>
 <translation id="4768864802656530630">Чоо-жайы көрсөтүлгөн тутум таржымалдары. <ph name="BEGIN_LINK" />Кеңири маалымат<ph name="END_LINK" /></translation>
+<translation id="4770909831299304090">Google Капчыктагы KTN номерин жаңыртыңыз</translation>
 <translation id="4771249073710170730">Радио аркылуу башкаруу жана моделдөө</translation>
 <translation id="4771973620359291008">Белгисиз ката кетти.</translation>
 <translation id="4774055414220872623">Көркөм өнөрчүлүк жана чеберчилик буюмдары</translation>
@@ -4221,6 +4227,7 @@
 <translation id="7569490014721427265">Гольф</translation>
 <translation id="7569952961197462199">Насыя картасын Chrome'дон өчүрөсүзбү?</translation>
 <translation id="7569983096843329377">Кара</translation>
+<translation id="7570524564113479209">Google Капчыктагы ID картаны жаңыртыңыз</translation>
 <translation id="7570862164055912832">Redress номерлери</translation>
 <translation id="7571813784389228510">Google ЖИ режими</translation>
 <translation id="7574998639136359461">Кышкы спорттук жабдуулар</translation>
@@ -4742,6 +4749,7 @@
 <translation id="8389940864052787379">Жеке жана спорт унаалары</translation>
 <translation id="8390725133630534698"><ph name="ORIGIN_NAME" /> сайтынан <ph name="VM_NAME" /> тутуму менен бөлүшүү аракети администратордун эрежеси боюнча бөгөттөлгөн</translation>
 <translation id="8392783408127179588">Эрежелер кайра жүктөлүүдө</translation>
+<translation id="8393948304336153065">Google Капчыктагы айдоочунун күбөлүгүн жаңыртыңыз</translation>
 <translation id="8396522675989118466">Бул <ph name="NUMBER_OF_DIGITS" /> сандан турган <ph name="SIDE_OF_CARD" /> жайгашкан код</translation>
 <translation id="8398335999901363925">Тийип толтурула турган төлөм ыкмалары толугу менен ачылды.</translation>
 <translation id="8398446215576328011">Колдонулган эрежелерди артка кайтаруу</translation>
@@ -4903,7 +4911,6 @@
 <translation id="8671519637524426245"><ph name="SECURE_DNS_SALT" /> мааниси өлчөмгө коюлган талаптарга жооп бербейт.</translation>
 <translation id="867224526087042813">Колтамга</translation>
 <translation id="8672535691554698269">Компьютер тармактары</translation>
-<translation id="8673710317985154384">{NUM_TABS,plural, =1{Өтмөктү бөлүшүүгө байланыштуу маалыматты көрсөтүү. {WEBSITE_LIST_STR} түзмөгүндөгү 1 өтмөк бөлүшүлүүдө}other{Өтмөктү бөлүшүүгө байланыштуу маалыматты көрсөтүү. {WEBSITE_LIST_STR} түзмөгүндөгү {NUM_TABS} өтмөк бөлүшүлүүдө}}</translation>
 <translation id="8675446170353411473">Файлдарыңыз <ph name="CLOUD_PROVIDER" /> кызматына жүктөлүүдө</translation>
 <translation id="8676424191133491403">Дароо</translation>
 <translation id="8680536109547170164"><ph name="QUERY" />, жооп, <ph name="ANSWER" /></translation>

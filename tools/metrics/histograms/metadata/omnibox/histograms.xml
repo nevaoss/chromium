@@ -259,6 +259,7 @@ chromium-metrics-reviews@google.com.
   <variant name="BLANK" summary="about:blank"/>
   <variant name="CHROMEOS_APP_LIST" summary="ChromeOS app list"/>
   <variant name="CO_BROWSING_COMPOSEBOX" summary="Co-browsing composebox"/>
+  <variant name="COMPOSEBOX_EVERYWHERE" summary="Composebox everywhere"/>
   <variant name="CONTEXTUAL_SEARCHBOX" summary="Contextual searchbox"/>
   <variant name="HOME_PAGE" summary="the user's home page"/>
   <variant name="INSTANT_NTP_WITH_OMNIBOX_AS_STARTING_FOCUS"
@@ -292,6 +293,7 @@ chromium-metrics-reviews@google.com.
                in Aug 2024. Shouldn't be reported on any platform as of M129."/>
   <variant name="OBSOLETE_SEARCH_RESULT_PAGE_DOING_SEARCH_TERM_REPLACEMENT"
       summary="obsolete: search results page with search term replacement"/>
+  <variant name="OMNIBOX_EVERYWHERE" summary="omnibox everywhere"/>
   <variant name="OTHER"
       summary="other (typically an arbitrary URL, not a search results page,
                new tab page, etc.)"/>
@@ -2272,6 +2274,28 @@ Keep consistent with active providers. Doesn't need to include every provider in
     Recorded when a duplicate inline location suggestion is shown. Tracks the
     0-based position index of the suggestion in the matches list.
   </summary>
+</histogram>
+
+<histogram
+    name="Omnibox.InlineLocationSuggestion.{DSEPermissionState}.{ClickType}"
+    enum="Boolean" expires_after="2026-11-12">
+  <owner>andypaicu@chromium.org</owner>
+  <owner>chrome-permissions@google.com</owner>
+  <summary>
+    Recorded when the user performs a click on an inline location suggestion or
+    its parent. Always emits true.
+  </summary>
+  <token key="DSEPermissionState">
+    <variant name="Ask" summary="DSE permission status is 'Ask'"/>
+    <variant name="Deny" summary="DSE permission status is 'Deny'"/>
+  </token>
+  <token key="ClickType">
+    <variant name="Clicked"
+        summary="Click directly on the location suggestion"/>
+    <variant name="ParentClicked"
+        summary="Click on the parent suggestion instead of the location
+                 suggestion"/>
+  </token>
 </histogram>
 
 <histogram name="Omnibox.InputToAcceptNonAction" units="microseconds"

@@ -264,6 +264,7 @@ class ChromePaymentsAutofillClient : public PaymentsAutofillClient,
           did_accept_suggestion) override;
   void HideOmniboxAutofillChip() override;
 #endif
+  void ShowPaymentsChurnedUsersUI() final;
 
   // Begin ChromePaymentsAutofillClient-specific section.
 

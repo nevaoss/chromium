@@ -2721,8 +2721,7 @@ AXObject* AXObject::GetCommandForElementForDetailsRelation() const {
       html_element->command(), html_element->GetExecutionContext());
   if (action != CommandEventType::kTogglePopover &&
       action != CommandEventType::kShowPopover &&
-      action != CommandEventType::kHidePopover &&
-      action != CommandEventType::kToggleMenu) {
+      action != CommandEventType::kHidePopover) {
     return nullptr;
   }
 
@@ -3632,6 +3631,11 @@ void AXObject::UpdateCachedAttributeValuesIfNeeded(
     DCHECK(false)
         << AXObjectCache() << "\n* Object: " << this << parent_chain;
   }
+
+  // Queue children-changed dispatch while this update is on the stack; see
+  // ScopedCachedAttributeValuesUpdate.
+  AXObjectCacheImpl::ScopedCachedAttributeValuesUpdate
+      cached_attribute_values_update_guard(AXObjectCache());
 
 #if DCHECK_IS_ON()  // Required in order to get Lifecycle().ToString()
   DCHECK(!is_computing_role_)
@@ -6947,6 +6951,11 @@ void AXObject::UpdateChildrenIfNecessary() {
   }
 
   UpdateCachedAttributeValuesIfNeeded();
+
+  // The cached-value update can remove |this|.
+  if (IsDetached()) {
+    return;
+  }
 
   ClearChildren();
   AddChildren();

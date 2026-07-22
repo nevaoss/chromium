@@ -7,7 +7,9 @@
 #include "base/memory/raw_ptr.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/browser/ui/views/chrome_typography.h"
+#include "chrome/browser/ui/views/dictation/waveform_view.h"
 #include "chrome/browser/ui/views/interaction/browser_elements_views.h"
+#include "chrome/grit/branded_strings.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/vector_icons/vector_icons.h"
 #include "ui/base/interaction/element_identifier.h"
@@ -41,6 +43,8 @@ DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(DictationBubbleUi,
                                       kCloseButtonElementIdForTesting);
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(DictationBubbleUi,
                                       kToggleButtonElementIdForTesting);
+DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(DictationBubbleUi,
+                                      kWaveformElementIdForTesting);
 
 namespace {
 
@@ -59,7 +63,8 @@ class DictationToastView : public views::View {
  private:
   base::RepeatingClosure close_callback_;
   base::RepeatingClosure toggle_active_stream_callback_;
-  raw_ptr<views::Label> label_view_ = nullptr;
+  raw_ptr<views::ImageView> mic_view_ = nullptr;
+  raw_ptr<WaveformView> waveform_view_ = nullptr;
   raw_ptr<views::MdTextButton> toggle_button_ = nullptr;
 };
 
@@ -82,7 +87,8 @@ void DictationToastView::Init() {
   ChromeLayoutProvider* lp = ChromeLayoutProvider::Get();
 
   SetLayoutManager(std::make_unique<views::FlexLayout>())
-      ->SetOrientation(views::LayoutOrientation::kHorizontal);
+      ->SetOrientation(views::LayoutOrientation::kHorizontal)
+      .SetCrossAxisAlignment(views::LayoutAlignment::kCenter);
 
   // TODO(b/510778034): Determine what we need to make this accessibility
   // friendly.
@@ -95,24 +101,16 @@ void DictationToastView::Init() {
       vector_icons::kMicIcon, ui::kColorSysOnSurface,
       lp->GetDistanceMetric(DISTANCE_TOAST_BUBBLE_ICON_SIZE)));
 
-  // TODO(b/527101202): Replace this placeholder label with the actual waveform
-  // icon once it is implemented.
-  views::Label* label_view = AddChildView(
-      std::make_unique<views::Label>(u"<placehold>", CONTEXT_TOAST_BODY_TEXT));
-  label_view_ = label_view;
-  label_view->SetEnabledColor(ui::kColorSysOnSurface);
-  label_view->SetMultiLine(false);
-  label_view->SetHorizontalAlignment(gfx::ALIGN_LEFT);
-  label_view->SetAllowCharacterBreak(false);
-  label_view->SetAutoColorReadabilityEnabled(false);
-  label_view->SetLineHeight(
-      lp->GetDistanceMetric(DISTANCE_TOAST_BUBBLE_HEIGHT_CONTENT));
-  label_view->SetProperty(
+  WaveformView* waveform_view = AddChildView(std::make_unique<WaveformView>());
+  waveform_view_ = waveform_view;
+  waveform_view->SetProperty(views::kElementIdentifierKey,
+                             DictationBubbleUi::kWaveformElementIdForTesting);
+  waveform_view->SetProperty(
       views::kMarginsKey,
       gfx::Insets::TLBR(
           0, lp->GetDistanceMetric(DISTANCE_TOAST_BUBBLE_BETWEEN_CHILD_SPACING),
           0, 0));
-  label_view->SetProperty(
+  waveform_view->SetProperty(
       views::kFlexBehaviorKey,
       views::FlexSpecification(views::LayoutOrientation::kHorizontal,
                                views::MinimumFlexSizeRule::kPreferred,
@@ -161,30 +159,16 @@ void DictationToastView::Init() {
 }
 
 void DictationToastView::UpdateForState(DictationBubbleUi::State state) {
-  if (label_view_) {
-    // TODO(b/525859441): Replace the placeholder label_view_
-    // with the waveform animated icon.
-    switch (state) {
-      case DictationBubbleUi::State::kInactive:
-        label_view_->SetText(u"Inactive");
-        break;
-      case DictationBubbleUi::State::kInitializing:
-        label_view_->SetText(u"Initializing...");
-        break;
-      case DictationBubbleUi::State::kTranscribing:
-        label_view_->SetText(u"Listening...");
-        break;
-      case DictationBubbleUi::State::kFinalizing:
-        label_view_->SetText(u"Finalizing...");
-        break;
-    }
+  if (waveform_view_) {
+    waveform_view_->SetState(state);
   }
 
   if (toggle_button_) {
     switch (state) {
       case DictationBubbleUi::State::kInactive:
         // TODO(b/510738735): Finalize placeholder strings.
-        toggle_button_->SetText(u"Start");
+        toggle_button_->SetText(
+            l10n_util::GetStringUTF16(IDS_DICTATION_BUTTON_START));
         toggle_button_->SetEnabled(true);
         break;
       case DictationBubbleUi::State::kInitializing:
@@ -236,6 +220,9 @@ void DictationBubbleUi::Show() {
 }
 
 void DictationBubbleUi::SetState(State state) {
+  if (state_ == state) {
+    return;
+  }
   state_ = state;
   if (GetContentsView()) {
     views::AsViewClass<DictationToastView>(GetContentsView())

@@ -609,6 +609,14 @@ export declare interface GlicBrowserHost {
   createTab?(url: string, options: CreateTabOptions): Promise<TabData>;
 
   /**
+   * Activates an existing tab matching the exact url or the wildcard pattern in
+   * options (if provided) across browser windows, or creates a new tab if no
+   * matching tab is found.
+   */
+  activateTabWithUrl?
+      (exactUrl: string, options?: ActivateTabOptions): Promise<TabData>;
+
+  /**
    * Opens a tab with the glic settings page, optionally highlighting a specific
    * field in it. If an open tab already has the glic settings page loaded, it
    * is focused instead.
@@ -1254,6 +1262,20 @@ export declare interface CreateTabOptions {
   openInBackground?: boolean;
   /** The windowId of the window where the new tab should be created at. */
   windowId?: string;
+}
+
+/** Holds optional parameters for `GlicBrowserHost#activateTabWithUrl`. */
+export declare interface ActivateTabOptions {
+  /**
+   * Wildcard pattern (using '*' and '?') matched against tab URLs. If empty or
+   * undefined, wildcard matching is not performed.
+   */
+  pattern?: string;
+  /**
+   * The windowId of the window where the tab should be created if no matching
+   * tab is found.
+   */
+  fallbackWindowId?: string;
 }
 
 /** Holds optional parameters for `GlicBrowserHost#createActorTab`. */

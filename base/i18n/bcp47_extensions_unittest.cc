@@ -14,7 +14,7 @@
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
-namespace base::i18n_extensions {
+namespace base::i18n {
 
 namespace {
 
@@ -35,7 +35,7 @@ std::optional<UnicodeExtension> CreateUnicodeExtension(
     return std::nullopt;
   }
 
-  return lc->GetExtension(unicode());
+  return lc->GetExtension(bcp47_extensions::unicode());
 }
 
 PrivateUseSubtags CreatePrivateUseSubtags(std::string_view subtags) {
@@ -43,7 +43,7 @@ PrivateUseSubtags CreatePrivateUseSubtags(std::string_view subtags) {
   std::optional<LanguageTag> lc =
       LanguageTagConverter::GetInstance().FromString(locale_id);
   // Using .value() here since we expect the test inputs to be valid.
-  return lc->GetExtension(priv()).value();
+  return lc->GetExtension(bcp47_extensions::priv()).value();
 }
 
 // Helper to create a generic Extension for testing.
@@ -62,12 +62,12 @@ Extension CreateExtension(char singleton, std::string_view subtags) {
   // Fortunately, we can use the ext<c> template.
 
   if (singleton == 'a') {
-    return lc->GetExtension(ext<'a'>()).value();
+    return lc->GetExtension(bcp47_extensions::ext<'a'>()).value();
   }
 
   // Fallback for other singletons if needed, but 'a' and 'x' are enough for
   // basics.
-  return lc->GetExtension(ext<'a'>()).value();
+  return lc->GetExtension(bcp47_extensions::ext<'a'>()).value();
 }
 
 }  // namespace
@@ -418,4 +418,4 @@ TEST(Bcp47ExtensionTest, UnicodeExtensionCaseInsensitivity) {
   EXPECT_FALSE(ext2.has_keyword("co"));
 }
 
-}  // namespace base::i18n_extensions
+}  // namespace base::i18n

@@ -431,11 +431,6 @@ struct TelemetryDiagnosticMemoryRoutineDetail {
   TelemetryDiagnosticMemtesterResult result@1;
 };
 
-// Details regarding volume button routine.
-//
-// NextMinVersion: 1, NextIndex: 0
-struct TelemetryDiagnosticVolumeButtonRoutineDetail {};
-
 // Whether the given hardware probed matches the hardware description recorded.
 //
 // NextMinVersion: 1, NextIndex: 4
@@ -531,8 +526,6 @@ union TelemetryDiagnosticRoutineDetail {
   // Details of a completed memory routine.
   [MinVersion=1] TelemetryDiagnosticMemoryRoutineDetail memory@1;
   // Details of a completed volume button routine.
-  [MinVersion=2] TelemetryDiagnosticVolumeButtonRoutineDetail volume_button@2;
-  // Details of a completed fan routine.
   [MinVersion=3] TelemetryDiagnosticFanRoutineDetail fan@3;
   // Details of a completed network bandwidth routine.
   [MinVersion=4]
@@ -605,16 +598,4 @@ interface TelemetryDiagnosticRoutineControl {
   // state or the reply does not match the inquiry in the waiting state (see
   // `TelemetryDiagnosticRoutineStateWaiting`).
   [MinVersion=2] ReplyToInquiry@2(TelemetryDiagnosticRoutineInquiryReply reply);
-};
-
-// Implemented by clients who desire routine update notifications.
-//
-// NextMinVersion: 1, NextIndex: 1
-interface TelemetryDiagnosticRoutineObserver {
-  // Called when the routine state has changed. This is also called as soon
-  // as a routine is initialized (right after calling `CreateRoutine`).
-  // Note that if the routine fails to initialize, the
-  // TelemetryDiagnosticRoutineControl may disconnect before the first
-  // invocation of this observer method.
-  [MinVersion=1] OnRoutineStateChange@0(TelemetryDiagnosticRoutineState state);
 };

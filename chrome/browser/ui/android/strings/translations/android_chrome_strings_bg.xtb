@@ -34,7 +34,6 @@
 <translation id="1108938384783527433">Синхронизиране на историята</translation>
 <translation id="1111673857033749125">Тук ще се показват отметките, които сте запазили на другите си устройства.</translation>
 <translation id="1123537484474186311"><ph name="TAB_TITLE" /> – раздел „картина в картината“</translation>
-<translation id="1124357650933674597">{NUM_WINDOWS,plural, =1{Възстановяване на 1 прозорец}other{Възстановяване на # прозореца}}</translation>
 <translation id="1126696498560056882">Управление на профилите на това устройство</translation>
 <translation id="1135018701024399762">Режим „инкогнито“ скрива сърфирането ви от другите хора, които използват устройството ви</translation>
 <translation id="113752097246673894">Влезте в Chrome с профила <ph name="EMAIL" />, за да получите отметките си и др. на всичките си устройства</translation>
@@ -185,6 +184,7 @@
 <translation id="1792959175193046959">Променете стандартното местоположение за изтегляне по всяко време</translation>
 <translation id="1796666869097395659">Намалете раздела, за да се върнете към него по-късно</translation>
 <translation id="1799920918471566157">Съвети за Chrome</translation>
+<translation id="1803799720926799756">Файлов размер</translation>
 <translation id="1807246157184219062">Светло</translation>
 <translation id="1807709131360304325">Отваряне на нов прозорец</translation>
 <translation id="1812027881030482584"><ph name="SITE_ETLD_PLUS_ONE" /> не може да продължи да използва <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /></translation>
@@ -327,6 +327,7 @@
 <translation id="2411239243988279592"><ph name="TAB_TITLE" /> – избран раздел, който възпроизвежда звук</translation>
 <translation id="2413014528833954543">Паролите не могат да се проверяват на това устройство</translation>
 <translation id="2414886740292270097">Тъмно</translation>
+<translation id="2415037988255164008">Да се възстановят ли прозорците?</translation>
 <translation id="2421705177906985956">В момента няма сайтове, които да бъдат показани</translation>
 <translation id="2426805022920575512">Избиране на друг профил</translation>
 <translation id="2427025860753516072">{FILE_COUNT,plural, =1{Видеоклипове, 1 видеоклип в списъка}other{Видеоклипове, # видеоклипа в списъка}}</translation>
@@ -520,7 +521,6 @@
 <translation id="3166827708714933426">Комбинации за раздели и прозорци</translation>
 <translation id="3167258285411721858">Можете да заявите мобилната версия на сайта <ph name="HOST_NAME" /></translation>
 <translation id="3181145110929454111"><ph name="TAB_TITLE" /> – фиксиран раздел в режим „инкогнито“, чийто звук е спрян и който е избран заедно с други</translation>
-<translation id="3183941812169784232">Да се възстановят ли всички прозорци?</translation>
 <translation id="3187472288455401631">Измерване на рекламите</translation>
 <translation id="3189635831478931757"><ph name="GROUP_TITLE" /> – група раздели</translation>
 <translation id="3200536777393523575">Да се затвори ли текущият прозорец?</translation>
@@ -569,6 +569,7 @@
 <translation id="3435575784518354875">За да запазите достъпа до паролите си, експортирайте ги сега, актуализирайте услугите за Google Play и след това импортирайте паролите отново в Google Мениджър на пароли. <ph name="BEGIN_LINK" />Преглед на пълните инструкции<ph name="END_LINK" />.</translation>
 <translation id="3435738964857648380">Сигурност</translation>
 <translation id="3435914367318771664">Добавяне на раздела към нова група</translation>
+<translation id="3436118221454753036">Режим „Попитайте AI“</translation>
 <translation id="3438681572027105609">Влезте в Chrome, за да получите паролите си и др. на всичките си устройства</translation>
 <translation id="3439276997620616816">Тук ще се показват скорошните ви раздели</translation>
 <translation id="3443221991560634068">Презареждане на текущата страница</translation>
@@ -1338,6 +1339,7 @@
 <translation id="6556501700899673703">Lexend</translation>
 <translation id="6560414384669816528">Търсене със Sogou</translation>
 <translation id="656065428026159829">Вижте още</translation>
+<translation id="6565781844089373403">Възстановяване на прозорците</translation>
 <translation id="6565959834589222080">Wi-Fi се използва, когато е налице</translation>
 <translation id="657177046675873214">За да имате достъп до отметките си на всичките си устройства, включете „Отметки“ в настройките</translation>
 <translation id="6573096386450695060">Разрешаване винаги</translation>
@@ -2039,7 +2041,6 @@
 <translation id="939598580284253335">Въведете пропуск</translation>
 <translation id="94161319503679839"><ph name="TAB_TITLE" /> – фиксиран раздел „картина в картината“ в режим „инкогнито“</translation>
 <translation id="945522503751344254">Изпращане на отзиви</translation>
-<translation id="949667118776341807">Завъртане</translation>
 <translation id="95817756606698420">Chrome може да използва <ph name="BEGIN_BOLD" />Sogou<ph name="END_BOLD" /> за търсене в Китай. Можете да промените това от <ph name="BEGIN_LINK" />Настройки<ph name="END_LINK" />.</translation>
 <translation id="961856697154696964">Данни за сърфир.: Изтриване</translation>
 <translation id="963246339335003378">Отваряне на „Диспечер на задачите“</translation>

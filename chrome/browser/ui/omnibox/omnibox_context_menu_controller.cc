@@ -392,6 +392,10 @@ void OmniboxContextMenuController::AddRecentTabItems() {
   }
 
   // Add tabs to the target destination in UI.
+  bool has_active_tab = std::ranges::any_of(
+      tabs, [](const TabInfo& tab) { return tab.is_active_tab; });
+
+  size_t tab_index = 0;
   for (const auto& tab : tabs) {
     target_menu_model->AddItemWithIcon(next_command_id_, tab.title,
                                        favicon::GetDefaultFaviconModel());
@@ -399,6 +403,10 @@ void OmniboxContextMenuController::AddRecentTabItems() {
       target_menu_model->SetMinorText(
           target_menu_model->GetItemCount() - 1,
           l10n_util::GetStringUTF16(IDS_COMPOSE_CURRENT_TAB));
+    } else if (!has_active_tab && tab_index == 0) {
+      target_menu_model->SetMinorText(
+          target_menu_model->GetItemCount() - 1,
+          l10n_util::GetStringUTF16(IDS_NTP_COMPOSEBOX_RECENT_TAB_SUFFIX));
     }
     AddTabFavicon(next_command_id_, tab.url, tab.title);
     input_type_for_command_id_[next_command_id_] =
@@ -420,6 +428,7 @@ void OmniboxContextMenuController::AddRecentTabItems() {
     }
 
     next_command_id_ += 1;
+    tab_index++;
   }
 
   // Add submenu name and icon.

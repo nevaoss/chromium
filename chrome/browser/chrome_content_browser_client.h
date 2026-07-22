@@ -247,6 +247,9 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
   void LogWebUIUsage(
       std::variant<content::WebUI*, GURL> webui_variant) override;
   bool IsWebUIAllowedToMakeNetworkRequests(const url::Origin& origin) override;
+  bool ShouldAllowMojoJsBindingsForSite(
+      content::BrowserContext* browser_context,
+      const GURL& site_url) override;
   bool IsHandledURL(const GURL& url) override;
   bool HasCustomSchemeHandler(content::BrowserContext* browser_context,
                               const std::string& scheme) override;
@@ -740,6 +743,8 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
       content::FrameTreeNodeId frame_tree_node_id,
       const network::ResourceRequest& resource_request) override;
   bool WillInterceptWebSocket(content::RenderFrameHost* frame) override;
+  content::ContentBrowserClient::WebSocketOptions GetWebSocketOptions(
+      content::RenderFrameHost* frame) override;
   void CreateWebSocket(
       content::RenderFrameHost* frame,
       WebSocketFactory factory,
@@ -747,7 +752,8 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
       const net::SiteForCookies& site_for_cookies,
       const std::optional<std::string>& user_agent,
       mojo::PendingRemote<network::mojom::WebSocketHandshakeClient>
-          handshake_client) override;
+          handshake_client,
+      content::ContentBrowserClient::WebSocketOptions options) override;
   void WillCreateWebTransport(
       int process_id,
       int frame_routing_id,

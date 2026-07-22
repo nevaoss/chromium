@@ -39,12 +39,12 @@
 #include "base/no_destructor.h"
 #include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
 
-namespace base {
+namespace base::i18n {
 namespace {
 
-using ::base::i18n::internal::create_icu_fallbacker;
-using ::base::i18n::internal::Icu4xLocale;
-using ::base::i18n::internal::IcuFallbacker;
+using internal::create_icu_fallbacker;
+using internal::Icu4xLocale;
+using internal::IcuFallbacker;
 
 // Returns the sequence of fallback locales using ICU4X logic, excluding the
 // original locale and the root locale ("und").
@@ -272,10 +272,10 @@ std::optional<LanguageTag> LanguageTagMatcher::Match(
 
 LanguageTagMatcher::LanguageTagMatcher(
     base::flat_map<LanguageTag, LanguageTag> closest_supported_tag,
-    rust::Box<i18n::internal::IcuFallbacker> icu_fallbacker)
+    rust::Box<internal::IcuFallbacker> icu_fallbacker)
     : closest_supported_tag_(std::move(closest_supported_tag)),
       icu_fallbacker_(std::move(icu_fallbacker)) {}
 
 LanguageTagMatcher::~LanguageTagMatcher() = default;
 
-}  // namespace base
+}  // namespace base::i18n

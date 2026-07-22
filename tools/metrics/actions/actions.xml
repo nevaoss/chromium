@@ -239,6 +239,11 @@ should be able to be added at any place in this file.
       summary="For AddToHomescreen IPH feature using text bubble (obsolete)."/>
   <variant name="_AimActivationHint"
       summary="A hint to activate AI Mode on Android Desktop via keystrokes."/>
+  <variant name="_AndroidBottomBarAim"
+      summary="Describes the AI Mode button added in the bottom bar."/>
+  <variant name="_AndroidBottomBarAimPromoDialog"
+      summary="For the promo dialog shown to introduce AI Mode with the
+               bottom bar."/>
   <variant name="_AndroidBottomBarGlic"
       summary="Describes the GLIC button added in the bottom bar."/>
   <variant name="_AndroidBottomBarNewTab"
@@ -246,6 +251,8 @@ should be able to be added at any place in this file.
   <variant name="_AndroidBottomBarPromoDialog"
       summary="For the promo dialog shown to introduce the bottom bar."/>
   <variant name="_AndroidTabDeclutter" summary="For archived tabs on android."/>
+  <variant name="_AndroidVerticalTabsPromo"
+      summary="For the vertical tabs promo on android horizontal tab strip."/>
   <variant name="_AppRatingPrompt" summary="For App Rating Prompt feature."/>
   <variant name="_AppSpecificHistory"
       summary="For App Specific History feature."/>
@@ -912,7 +919,6 @@ should be able to be added at any place in this file.
 
 <variants name="PersonalContextManageTarget">
   <variant name="ConnectedApps" summary="'Manage connected apps'"/>
-  <variant name="Suggestions" summary="'Manage suggestions'"/>
 </variants>
 
 <variants name="PersonalContextToggleState">
@@ -5107,6 +5113,15 @@ should be able to be added at any place in this file.
     User tapped 'Save' on the dialog opened via the tab strip context menu to
     successfully save (with or without changing) the name of a Chrome window and
     dismiss the dialog.
+  </description>
+</action>
+
+<action name="Android.TabStripMenu.TaskManager">
+  <owner>mwoj@google.com</owner>
+  <owner>cros-ui-foundations@google.com</owner>
+  <description>
+    User tapped 'Task Manager' on the tab strip context menu to launch the Task
+    Manager.
   </description>
 </action>
 
@@ -11455,12 +11470,76 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="ContextualTasks.Composebox.UserAction.LensButtonClicked">
+  <owner>nguyenbryan@chromium.org</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <description>
+    Recorded when the user clicks the Lens Overlay button inside the Cobrowse
+    composebox.
+  </description>
+</action>
+
+<action name="ContextualTasks.Composebox.UserAction.QuerySubmitted">
+  <owner>nguyenbryan@chromium.org</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <description>
+    Recorded when the user submits a query from the Cobrowse composebox.
+  </description>
+</action>
+
 <action name="ContextualTasks.HistoryNavigation.UserAction.NavigatedInFullTab">
   <owner>hujasonx@google.com</owner>
   <owner>chrome-contextual-tasks-eng@google.com</owner>
   <description>
     Logged when the back or forward button is clicked in the Contextual Tasks
     full tab and results in a task switch.
+  </description>
+</action>
+
+<action name="ContextualTasks.SidePanel.UserAction.Close.AiModeLinkClick">
+  <owner>nguyenbryan@chromium.org</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <description>
+    Recorded when the user closes the side panel for a session entered via an AI
+    mode link click.
+  </description>
+</action>
+
+<action name="ContextualTasks.SidePanel.UserAction.Close.LensOverlay">
+  <owner>nguyenbryan@chromium.org</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <description>
+    Recorded when the user closes the side panel for a session entered via the
+    Lens Overlay.
+  </description>
+</action>
+
+<action name="ContextualTasks.SidePanel.UserAction.Close.Other">
+  <owner>nguyenbryan@chromium.org</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <description>
+    Recorded when the user closes the side panel for a session with an entry
+    point not covered by another action.
+  </description>
+</action>
+
+<action name="ContextualTasks.Tab.UserAction.ClosedActiveTabWithSidePanelOpen">
+  <owner>nguyenbryan@google.com</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <description>
+    The user closed an active content tab that had the contextual tasks side
+    panel open.
+  </description>
+</action>
+
+<action
+    name="ContextualTasks.Tab.UserAction.ClosedBackgroundTabWithSidePanelOpen">
+  <owner>nguyenbryan@google.com</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <description>
+    The user closed a background tab that had a contextual task and logically
+    had the side panel open (i.e., the panel was open before the tab was
+    backgrounded and would restore upon activation).
   </description>
 </action>
 
@@ -18618,8 +18697,8 @@ should be able to be added at any place in this file.
     Recorded when the user clicks on the intent picker icon that pops up
     whenever a navigation occurs to a site that is already installed by a PWA
     and controlled by the PWA's scope. This is measured regardless of whether
-    the intent picker icon is extended or not. This is currently measured only
-    on Windows, Mac and Linux platforms.
+    the intent picker icon is extended or not. This is currently measured on all
+    desktop platforms (ChromeOS, Mac, Windows and Linux).
   </description>
 </action>
 
@@ -18629,7 +18708,8 @@ should be able to be added at any place in this file.
   <description>
     Recorded when the user clicks on a PWA that shows up in the intent picker,
     and clicks on Open, leading to the current site being launched in the PWA.
-    This is currently measured only on Windows, Mac and Linux platforms.
+    This is currently measured on all desktop platforms (ChromeOS, Mac, Windows
+    and Linux).
   </description>
 </action>
 
@@ -18650,7 +18730,7 @@ should be able to be added at any place in this file.
   <description>
     Recorded when the user manually closes the intent picker bubble view,
     leading to the site not being launched in a PWA. This is currently measured
-    only on Windows, Mac and Linux platforms.
+    on all desktop platforms (ChromeOS, Mac, Windows and Linux).
   </description>
 </action>
 
@@ -18660,7 +18740,7 @@ should be able to be added at any place in this file.
   <description>
     Recorded when the user navigates away from the current site with an open
     intent picker bubble view, leading to it being closed. This is currently
-    only meaasured on Windows, Mac and Linux.
+    measured on all desktop platforms (ChromeOS, Mac, Windows and Linux).
   </description>
 </action>
 

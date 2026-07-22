@@ -81,6 +81,9 @@ export class FakeReadingMode {
   inSidePanelPresentationState: number = 2;
   inImmersiveOverlayPresentationState: number = 3;
 
+  // The active presentation state of Reading mode.
+  activePresentationState: number = 1;
+
   // Current Read Anything distilled values.
   htmlContent: string = '';
   title: string = '';
@@ -110,6 +113,9 @@ export class FakeReadingMode {
 
   // Returns true if the webpage corresponds to a Google Doc.
   isGoogleDocs: boolean = false;
+
+  // Returns true if the webpage corresponds to a PDF.
+  isPdf: boolean = false;
 
   // Fonts supported by the browser's preferred language.
   supportedFonts: string[] = ['roboto'];

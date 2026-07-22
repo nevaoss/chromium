@@ -202,6 +202,8 @@ UIColor* AssistantHighlightBackgroundColor() {
   NSArray<NSLayoutConstraint*>* _buttonWidthConstraints;
   // Stack view for buttons.
   UIStackView* _stackView;
+  // Constraint for height of the app bar view.
+  NSLayoutConstraint* _heightConstraint;
   // Constraints for vertical positioning of the stack view.
   NSLayoutConstraint* _stackViewBottomConstraint;
   NSLayoutConstraint* _stackViewLeadingConstraint;
@@ -242,7 +244,9 @@ UIColor* AssistantHighlightBackgroundColor() {
   AppBarPosition appBarPosition = self.layoutState.appBarPosition;
 
   CGFloat targetAlpha = 1;
-  if (appBarPosition == AppBarPosition::kBottom) {
+  if (IsAppBarLabelsHidden()) {
+    targetAlpha = 0;
+  } else if (appBarPosition == AppBarPosition::kBottom) {
     targetAlpha = buttonsTitleAlpha;
   } else if (appBarPosition == AppBarPosition::kLeft ||
              appBarPosition == AppBarPosition::kRight) {
@@ -282,8 +286,8 @@ UIColor* AssistantHighlightBackgroundColor() {
     [NSLayoutConstraint activateConstraints:_buttonWidthConstraints];
     _leadingSpacer.hidden = NO;
     _trailingSpacer.hidden = NO;
-    _stackViewBottomConstraint.constant =
-        -(kAppBarHeight - kAppBarHeightLandscape);
+    _heightConstraint.constant = AppBarHeightLandscape();
+    _stackViewBottomConstraint.constant = 0;
     _stackViewLeadingConstraint.constant = 0;
     _stackViewTrailingConstraint.constant = 0;
   } else {
@@ -291,15 +295,17 @@ UIColor* AssistantHighlightBackgroundColor() {
     [NSLayoutConstraint deactivateConstraints:_buttonWidthConstraints];
     _leadingSpacer.hidden = YES;
     _trailingSpacer.hidden = YES;
+    _heightConstraint.constant = AppBarHeightPortrait();
     _stackViewBottomConstraint.constant = 0;
     _stackViewLeadingConstraint.constant = kStackViewHorizontalMargin;
     _stackViewTrailingConstraint.constant = -kStackViewHorizontalMargin;
   }
+  [self.view setNeedsLayout];
+  [self.view layoutIfNeeded];
+
   [self setNeedsUpdateConfiguration:_assistantButton animationDuration:0];
   [self setNeedsUpdateConfiguration:_openNewTabButton animationDuration:0];
   [self setNeedsUpdateConfiguration:_tabGridButton animationDuration:0];
-  [_stackView setNeedsLayout];
-  [_stackView layoutIfNeeded];
 }
 
 - (void)updateCornerRadius:(CGFloat)cornerRadius {
@@ -413,6 +419,8 @@ UIColor* AssistantHighlightBackgroundColor() {
       constraintEqualToAnchor:view.trailingAnchor
                      constant:-kStackViewHorizontalMargin];
 
+  _heightConstraint =
+      [view.heightAnchor constraintEqualToConstant:AppBarHeightPortrait()];
   [NSLayoutConstraint activateConstraints:@[
     [_backgroundView.leadingAnchor constraintEqualToAnchor:view.leadingAnchor],
     [_backgroundView.trailingAnchor
@@ -426,7 +434,7 @@ UIColor* AssistantHighlightBackgroundColor() {
     [_stackView.topAnchor constraintEqualToAnchor:view.topAnchor],
     _stackViewTrailingConstraint,
     _stackViewBottomConstraint,
-    [view.heightAnchor constraintEqualToConstant:kAppBarHeight],
+    _heightConstraint,
   ]];
 
   [self.layoutGuideCenter referenceView:_stackView underName:kAppBarGuide];
@@ -764,6 +772,8 @@ UIColor* AssistantHighlightBackgroundColor() {
     configuration.baseForegroundColor = ButtonsForegroundColor();
   }
 
+  _assistantButton.accessibilityLabel = title;
+
   _assistantButton.configuration = configuration;
 
   // Update constraints to point to the current imageView
@@ -788,6 +798,7 @@ UIColor* AssistantHighlightBackgroundColor() {
 
   _assistantButton.enabled =
       _buttonsEnabled && _assistantButtonEnabled && !_incognito;
+  [self updateAssistantButtonAccessibilityLabel];
   // Force a configuration update to refresh accessibility traits.
   [_assistantButton setNeedsUpdateConfiguration];
   [_assistantButton layoutIfNeeded];
@@ -932,6 +943,10 @@ UIColor* AssistantHighlightBackgroundColor() {
 
   [self updateVerticalInsetsForButtonConfiguration:config];
 
+  if (IsAppBarLabelsHidden()) {
+    config.title = nil;
+  }
+
   button.configuration = config;
 }
 
@@ -960,6 +975,10 @@ UIColor* AssistantHighlightBackgroundColor() {
       [baseLabelColor colorWithAlphaComponent:highlightAlpha];
 
   [self updateVerticalInsetsForButtonConfiguration:config];
+
+  if (IsAppBarLabelsHidden()) {
+    config.title = nil;
+  }
 
   button.configuration = config;
 }
@@ -1127,6 +1146,31 @@ UIColor* AssistantHighlightBackgroundColor() {
   // the tab groups page is not visible.
   _openNewTabButton.menu = nil;
   _openNewTabButton.showsMenuAsPrimaryAction = NO;
+}
+
+// Updates the accessibility label for the assistant button based on the current
+// state.
+- (void)updateAssistantButtonAccessibilityLabel {
+  if (!_assistantButton) {
+    return;
+  }
+  NSString* label;
+  switch (_assistantButtonState) {
+    case AppBarAssistantButtonState::kAsk:
+      label = l10n_util::GetNSString(IDS_IOS_APP_BAR_ASK_GEMINI);
+      break;
+    case AppBarAssistantButtonState::kAIM:
+      label = l10n_util::GetNSString(IDS_OMNIBOX_AI_MODE_SCOPE_PLACEHOLDER_TEXT);
+      break;
+    case AppBarAssistantButtonState::kLens:
+      label = l10n_util::GetNSString(IDS_IOS_LENS_PRODUCT_NAME);
+      break;
+    case AppBarAssistantButtonState::kAccount:
+      label = _signedIn ? l10n_util::GetNSString(IDS_IOS_APP_BAR_ACCOUNT)
+                        : l10n_util::GetNSString(IDS_IOS_APP_BAR_SIGN_IN);
+      break;
+  }
+  _assistantButton.accessibilityLabel = label;
 }
 
 // Updates the accessibility label for the new tab button based on the current

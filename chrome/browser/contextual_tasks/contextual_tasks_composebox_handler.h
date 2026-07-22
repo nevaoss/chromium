@@ -139,9 +139,10 @@ class ContextualTasksComposeboxHandler
   void OnTabProcessedForQueryContextualization(
       contextual_tasks::QueryContextualizer::TabId id);
 
-  OmniboxController* GetOmniboxControllerForTesting() const {
-    return omnibox_controller();
+  AutocompleteController* GetAutocompleteControllerForTesting() const {
+    return autocomplete_controller();
   }
+  OmniboxClient* GetOmniboxClientForTesting() const { return client(); }
   // ui::SelectFileDialog::Listener:
   void FileSelected(const ui::SelectedFileInfo& file, int index) override;
   void MultiFilesSelected(

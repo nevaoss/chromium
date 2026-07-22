@@ -17,7 +17,6 @@
 #include <variant>
 #include <vector>
 
-#include "absl/log/absl_check.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/span.h"
@@ -49,7 +48,7 @@ struct AudioElementParam {
   // One of the parameter definition subclasses allowed in an Audio Element.
   std::variant<DemixingParamDefinition, ReconGainParamDefinition,
                ExtendedParamDefinition>
-      param_definition;
+      param_definition = DemixingParamDefinition(ParamDefinition::BaseArgs{});
 
   /*!\brief Gets the actual type of parameter definition.
    *
@@ -58,12 +57,7 @@ struct AudioElementParam {
   ParamDefinition::ParameterDefinitionType GetType() const {
     return std::visit(
         [](const auto& concrete_param_definition) {
-          const auto param_definition_type =
-              concrete_param_definition.GetType();
-
-          // All alternatives have well-defined types.
-          ABSL_CHECK(param_definition_type.has_value());
-          return *param_definition_type;
+          return concrete_param_definition.GetType();
         },
         param_definition);
   }

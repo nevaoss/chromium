@@ -392,7 +392,7 @@ class CORE_EXPORT CSSSelector {
     kPseudoSpatialNavigationFocus,
     kPseudoSpellingError,
     kPseudoTargetText,
-    kPseudoUnboundedElementInactive,
+    kPseudoUnbounded,
     kPseudoVideoPersistent,
     kPseudoVideoPersistentAncestor,
 
@@ -421,6 +421,7 @@ class CORE_EXPORT CSSSelector {
 
     // Overscroll gesture support.
     kPseudoOverscrollAreaParent,
+    kPseudoOverscrollBackdrop,
     kPseudoOverscrollOpen,
 
     // :link-to(<route-location>)

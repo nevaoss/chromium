@@ -109,7 +109,6 @@
 #include "remoting/host/pin_hash.h"
 #include "remoting/host/policy_watcher.h"
 #include "remoting/host/security_key/security_key_auth_handler.h"
-#include "remoting/host/security_key/security_key_extension.h"
 #include "remoting/host/session_policies_from_dict.h"
 #include "remoting/host/shutdown_watchdog.h"
 #include "remoting/host/test_echo_extension.h"
@@ -400,7 +399,6 @@ class HostProcess : public ConfigWatcher::Delegate,
   bool OnClientDomainListPolicyUpdate(const base::DictValue& policies);
   bool OnHostDomainListPolicyUpdate(const base::DictValue& policies);
   bool OnPairingPolicyUpdate(const base::DictValue& policies);
-  bool OnGnubbyAuthPolicyUpdate(const base::DictValue& policies);
   bool OnEnableUserInterfacePolicyUpdate(const base::DictValue& policies);
   bool OnAllowRemoteAccessConnections(const base::DictValue& policies);
   bool OnAllowPinAuthenticationUpdate(const base::DictValue& policies);
@@ -509,7 +507,6 @@ class HostProcess : public ConfigWatcher::Delegate,
   LocalSessionPoliciesProvider local_session_policies_provider_;
 
   DesktopEnvironmentOptions desktop_environment_options_;
-  bool security_key_auth_policy_enabled_ = false;
 
   // Used to specify which window to stream, if enabled.
   webrtc::WindowId window_id_ = 0;
@@ -1544,7 +1541,6 @@ void HostProcess::OnPolicyUpdate(base::DictValue policies) {
   restart_required |= OnClientDomainListPolicyUpdate(policies);
   restart_required |= OnHostDomainListPolicyUpdate(policies);
   restart_required |= OnPairingPolicyUpdate(policies);
-  restart_required |= OnGnubbyAuthPolicyUpdate(policies);
   restart_required |= OnEnableUserInterfacePolicyUpdate(policies);
   restart_required |= OnAllowRemoteAccessConnections(policies);
   restart_required |= OnAllowPinAuthenticationUpdate(policies);
@@ -1690,28 +1686,6 @@ bool HostProcess::OnPairingPolicyUpdate(const base::DictValue& policies) {
   return true;
 }
 
-// TODO(crbug.com/517007701): This callback and the associated host restart
-// logic will be completely removed once the SecurityKeyExtension lifecycle
-// is moved into ClientSession in the upcoming parallel transport refactoring
-// CL, which will enable 100% dynamic policy enforcement without restarts.
-bool HostProcess::OnGnubbyAuthPolicyUpdate(const base::DictValue& policies) {
-  DCHECK(context_->network_task_runner()->BelongsToCurrentThread());
-
-  std::optional<bool> security_key_auth_policy_enabled =
-      policies.FindBool(policy::key::kRemoteAccessHostAllowGnubbyAuth);
-  if (!security_key_auth_policy_enabled.has_value()) {
-    return false;
-  }
-
-  security_key_auth_policy_enabled_ = *security_key_auth_policy_enabled;
-  if (security_key_auth_policy_enabled_) {
-    HOST_LOG << "Policy enables security key auth.";
-  } else {
-    HOST_LOG << "Policy disables security key auth.";
-  }
-
-  return true;
-}
 
 bool HostProcess::OnAllowPinAuthenticationUpdate(
     const base::DictValue& policies) {
@@ -2050,10 +2024,6 @@ void HostProcess::StartHost() {
                           base::Unretained(this)),
       &local_session_policies_provider_);
 
-  if (security_key_auth_policy_enabled_ &&
-      desktop_environment_options_.enable_security_key()) {
-    host_->AddExtension(std::make_unique<SecurityKeyExtension>());
-  }
 
   host_->AddExtension(std::make_unique<TestEchoExtension>());
 

@@ -317,6 +317,11 @@ bool WebUILocationBar::IsEditingOrEmpty() const {
   return omnibox_view_ && omnibox_view_->IsEditingOrEmpty();
 }
 
+bool WebUILocationBar::IsMouseHovered() const {
+  return IsVisible() && BoundsInScreen().Contains(
+                            display::Screen::Get()->GetCursorScreenPoint());
+}
+
 void WebUILocationBar::InvalidateLayout() {
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(&WebUILocationBar::OnChanged,

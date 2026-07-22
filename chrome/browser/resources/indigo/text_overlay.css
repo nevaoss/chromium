@@ -17,6 +17,7 @@
   --indigo-entry-icon-pulse-size:
       calc(var(--indigo-entry-icon-base-size) * 1.8);
   --indigo-icon-transition-duration: 300ms;
+  --indigo-icon-rotation-loop-duration: 2s;
   --indigo-text-transition-duration: 300ms;
   --indigo-text-transition-delay: 100ms;
   --indigo-wipe-in-start: inset(0 100% 0 0);
@@ -86,6 +87,23 @@
   }
 }
 
+@keyframes icon-rotate-loop {
+  /* The first 50% of the animation is spent in 0deg to create a gap before the
+   * next rotation. */
+  0% {
+    transform: rotate(0deg);
+  }
+
+  50% {
+    transform: rotate(0deg);
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
 #icon {
   background-image: url(text_layer_entry_icon.png);
   background-size: contain;
@@ -94,7 +112,9 @@
   opacity: 0;
   transition: height var(--indigo-icon-transition-duration) ease-out,
       width var(--indigo-icon-transition-duration) ease-out;
-  animation: icon-entry var(--indigo-text-entry-delay) ease-out forwards;
+  animation: icon-entry var(--indigo-text-entry-delay) ease-out forwards,
+      icon-rotate-loop var(--indigo-icon-rotation-loop-duration) linear
+          var(--indigo-text-entry-delay) infinite;
 }
 
 #steps {

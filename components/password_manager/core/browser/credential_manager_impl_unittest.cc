@@ -86,7 +86,7 @@ class MockPasswordManagerClient : public StubPasswordManagerClient {
  public:
   MOCK_METHOD(bool,
               IsSavingAndFillingEnabled,
-              (const GURL&),
+              (const url::Origin&, base::optional_ref<const GURL>),
               (const, override));
   MOCK_METHOD(bool,
               IsFillingEnabled,
@@ -822,7 +822,8 @@ TEST_P(CredentialManagerImplTest, CredentialManagerGetOverwriteZeroClick) {
 TEST_P(CredentialManagerImplTest,
        CredentialManagerSignInWithSavingDisabledForCurrentPage) {
   auto info = PasswordFormToCredentialInfo(form_);
-  EXPECT_CALL(*client_, IsSavingAndFillingEnabled(form_.url))
+  EXPECT_CALL(*client_,
+              IsSavingAndFillingEnabled(url::Origin::Create(form_.url), _))
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*client_, PromptUserToSaveOrUpdatePassword).Times(0);
   EXPECT_CALL(*client_, NotifyStorePasswordCalled).Times(0);

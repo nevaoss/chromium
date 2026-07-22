@@ -7,7 +7,7 @@
 #include <climits>
 
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/search/background/ntp_background_service_factory.h"
+#include "chrome/browser/ntp_customization/ntp_android_background_service_factory.h"
 #include "chrome/common/pref_names.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/pref_service.h"
@@ -26,7 +26,7 @@ NtpAndroidCustomBackgroundService::NtpAndroidCustomBackgroundService(
     Profile* profile)
     : NtpCustomBackgroundServiceBase(
           profile->GetPrefs(),
-          NtpBackgroundServiceFactory::GetForProfile(profile),
+          NtpAndroidBackgroundServiceFactory::GetForProfile(profile),
           prefs::kNtpAndroidCustomBackgroundDict,
           prefs::kNtpAndroidCustomBackgroundLocalToDevice) {}
 

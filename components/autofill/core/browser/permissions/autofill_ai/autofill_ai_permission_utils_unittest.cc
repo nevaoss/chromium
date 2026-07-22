@@ -80,6 +80,8 @@ std::string GetTestSuffix(
       return "kWalletDataSharingPromotion";
     case AutofillAiAction::kAmbientAutofill:
       return "kAmbientAutofill";
+    case AutofillAiAction::kShowAmbientAutofillInSettings:
+      return "kShowAmbientAutofillInSettings";
     case AutofillAiAction::kTypeSupportsAmbientAutofillData:
       return "kTypeSupportsAmbientAutofillData";
   }
@@ -574,14 +576,14 @@ TEST_P(AutofillAiMayPerformActionTest,
 TEST_F(AutofillAiPermissionUtilsTest, kTypeSupportsAmbientAutofillData) {
   client().set_personal_context_enablement_state(
       personal_context::PersonalContextEnablementState::kEnabled);
-  for (const EntityTypeName type : {kPassport, kDriversLicense, kNationalIdCard,
-                                    kFlightReservation, kShipment, kOrder}) {
+  for (const EntityTypeName type :
+       {kPassport, kDriversLicense, kNationalIdCard, kFlightReservation,
+        kShipment, kOrder, kVehicle}) {
     EXPECT_TRUE(MayPerformAutofillAiAction(
         client(), AutofillAiAction::kTypeSupportsAmbientAutofillData,
         EntityType(type)));
   }
-  for (const EntityTypeName type :
-       {kVehicle, kRedressNumber, kKnownTravelerNumber}) {
+  for (const EntityTypeName type : {kRedressNumber, kKnownTravelerNumber}) {
     EXPECT_FALSE(MayPerformAutofillAiAction(
         client(), AutofillAiAction::kTypeSupportsAmbientAutofillData,
         EntityType(type)));

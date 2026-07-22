@@ -2398,7 +2398,6 @@ interface Element : Node
     attribute @@toStringTag
     attribute @@unscopables
     getter activeViewTransition
-    getter ariaActionsElements
     getter ariaActiveDescendantElement
     getter ariaAtomic
     getter ariaAutoComplete
@@ -2580,7 +2579,6 @@ interface Element : Node
     method webkitMatchesSelector
     method webkitRequestFullScreen
     method webkitRequestFullscreen
-    setter ariaActionsElements
     setter ariaActiveDescendantElement
     setter ariaAtomic
     setter ariaAutoComplete
@@ -2666,7 +2664,6 @@ interface ElementImage
     method constructor
 interface ElementInternals
     attribute @@toStringTag
-    getter ariaActionsElements
     getter ariaActiveDescendantElement
     getter ariaAtomic
     getter ariaAutoComplete
@@ -2733,7 +2730,6 @@ interface ElementInternals
     method setFormValue
     method setToolParamSchema
     method setValidity
-    setter ariaActionsElements
     setter ariaActiveDescendantElement
     setter ariaAtomic
     setter ariaAutoComplete
@@ -5044,6 +5040,9 @@ interface HTMLStyleElement : HTMLElement
     setter disabled
     setter media
     setter type
+interface HTMLSubMenuElement : HTMLElement
+    attribute @@toStringTag
+    method constructor
 interface HTMLSubmitButtonBehavior : ElementBehavior
     attribute @@toStringTag
     getter disabled

@@ -526,10 +526,10 @@ class CONTENT_EXPORT NavigationRequest
   // NOTE: Read function comments in NavigationHandle before use!
   std::optional<url::Origin> GetOriginToCommit() override;
   bool NeedsUrlLoader() override;
-  bool IsInitialWebUISyncNavigation() override;
   bool IsInitialWebUINavigation() override;
   bool IsPageActivation() const override;
   bool IsNavigatingFromInitialEmptyDocument() const override;
+  bool IsBlockedByConnectionAllowlist() const override;
   // End of NavigationHandle implementation.
 
   // Returns a perfetto Track that represents this navigation, nested under the
@@ -3662,6 +3662,14 @@ class CONTENT_EXPORT NavigationRequest
   // cross-document navigations.
   base::UnguessableToken network_restrictions_id_ =
       network::GetNoOpNetworkRestrictionsId();
+
+  // Connection-Allowlist feature: set to true when this navigation is blocked
+  // because the initiator's Connection-Allowlist disallows the destination URL
+  // (see IsAllowedByConnectionAllowlist()). Exposed via
+  // IsBlockedByConnectionAllowlist() so that observers (e.g. //chrome's
+  // LoadingPredictor) can suppress speculative network activity for the doomed
+  // navigation.
+  bool is_blocked_by_connection_allowlist_ = false;
 
   // Tracks frames in the navigating subtree that are running `beforeunload`
   // handlers asynchronously.

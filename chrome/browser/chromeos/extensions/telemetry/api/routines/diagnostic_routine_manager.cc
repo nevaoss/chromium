@@ -110,7 +110,7 @@ DiagnosticRoutineManager::CreateRoutine(
 
   mojo::PendingRemote<crosapi::TelemetryDiagnosticRoutineControl>
       control_remote;
-  mojo::PendingReceiver<crosapi::TelemetryDiagnosticRoutineObserver>
+  mojo::PendingReceiver<ash::cros_healthd::mojom::RoutineObserver>
       observer_receiver;
 
   GetService().CreateRoutine(std::move(routine_argument),

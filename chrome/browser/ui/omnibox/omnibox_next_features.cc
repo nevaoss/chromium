@@ -11,8 +11,8 @@
 #include "base/metrics/field_trial_params.h"
 #include "base/metrics/histogram_functions.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
+#include "chrome/browser/search_engines/ai_mode_button_service_factory.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
-#include "chrome/browser/ui/omnibox/ai_mode_button_service_factory.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/contextual_search/contextual_search_metrics_recorder.h"
 #include "components/contextual_search/contextual_search_service.h"
@@ -79,8 +79,8 @@ BASE_FEATURE(kWebUIOmniboxFullPopup, DISABLED);
 // Enables the double click mechanism of sending selection set by
 // passing click events through the WebView.
 BASE_FEATURE(kWebUIOmniboxFullPopupDoubleClick, ENABLED);
-// If enabled, enables EverywhereOmnibox popup triggered by shortcut.
-BASE_FEATURE(kEverywhereOmnibox, DISABLED);
+// If enabled, enables OmniboxEverywhere popup triggered by shortcut.
+BASE_FEATURE(kOmniboxEverywhere, DISABLED);
 // Enables the WebUI for omnibox suggestions without modifying the popup UI.
 BASE_FEATURE(kWebUIOmniboxPopupDebug, DISABLED);
 // Enables side-by-side comparison omnibox suggestions in WebUI and Views.
@@ -370,6 +370,8 @@ const base::FeatureParam<bool> kContextButtonShowSuggestionLabel{
     "Omnibox_ContextButtonShowSuggestionLabel", false};
 const base::FeatureParam<bool> kWebUIOmniboxFullPopupUseBrowserView{
     &kWebUIOmniboxFullPopup, "Omnibox_UseBrowserView", false};
+const base::FeatureParam<bool> kWebUIOmniboxFullPopupMultiline{
+    &kWebUIOmniboxFullPopup, "Omnibox_Multiline", false};
 
 const base::FeatureParam<bool> kAskGCoBrowse{
     &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGCoBrowse", false};

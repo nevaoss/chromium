@@ -17,6 +17,7 @@ enum class ComposeboxEntrypoint;
 @class ComposeboxTheme;
 @protocol ComposeboxURLLoader;
 class Browser;
+class GURL;
 @protocol OmniboxPopupPresenterDelegate;
 
 // The coordinator for the compose box input plate.
@@ -53,8 +54,16 @@ class Browser;
 /// Ends omnibox editing / defocus the omnibox.
 - (void)endEditing;
 
-// Hides the menu managed by this composebox instance.
+/// Hides the menu managed by this composebox instance.
 - (void)hideComposeboxMenu;
+
+// Focuses the Composebox;
+- (void)focusComposebox;
+
+/// Processes a webpage context from a context library signal. Called on the
+/// cobrowse context only.
+- (void)processContextLibraryWebpageSignalWithURL:(const GURL&)url
+                                            title:(NSString*)title;
 
 @end
 

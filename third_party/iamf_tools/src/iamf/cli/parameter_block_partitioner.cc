@@ -18,15 +18,18 @@
 
 #include "absl/log/absl_log.h"
 #include "absl/status/status.h"
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "iamf/cli/cli_util.h"
 #include "iamf/cli/proto/ia_sequence_header.pb.h"
 #include "iamf/cli/proto/obu_header.pb.h"
 #include "iamf/cli/proto/parameter_block.pb.h"
 #include "iamf/cli/proto/parameter_data.pb.h"
+#include "iamf/cli/proto_conversion/proto_utils.h"
 #include "iamf/common/utils/macros.h"
 #include "iamf/common/utils/numeric_utils.h"
 #include "iamf/common/utils/obu_util.h"
+#include "iamf/obu/param_definitions/subblock_schedule.h"
 #include "iamf/obu/types.h"
 
 namespace iamf_tools {
@@ -41,10 +44,11 @@ absl::Status InterpolateMixGainParameterData(
     InternalTimestamp target_time, int16_t& target_mix_gain) {
   const auto& param_data = mix_gain_parameter_data.param_data();
   float target_mix_gain_db = 0;
+  using enum iamf_tools_cli_proto::AnimatedParameterDataInt16::
+      ParameterDataCase;
   RETURN_IF_NOT_OK(InterpolateMixGainValue(
-      mix_gain_parameter_data.animation_type(),
-      iamf_tools_cli_proto::ANIMATE_STEP, iamf_tools_cli_proto::ANIMATE_LINEAR,
-      iamf_tools_cli_proto::ANIMATE_BEZIER,
+      mix_gain_parameter_data.param_data().parameter_data_case(), kStep,
+      kLinear, kBezier,
       [&param_data]() {
         return static_cast<int16_t>(param_data.step().start_point_value());
       },
@@ -96,15 +100,14 @@ absl::Status PartitionMixGain(
     InternalTimestamp partitioned_start_time,
     InternalTimestamp partitioned_end_time,
     iamf_tools_cli_proto::ParameterSubblock& partitioned_subblock) {
-  // Copy over the animation type.
   auto* mix_gain_param_data =
       partitioned_subblock.mutable_mix_gain_parameter_data();
-  mix_gain_param_data->set_animation_type(subblock_mix_gain.animation_type());
 
   // Partition the animated parameter.
-  switch (subblock_mix_gain.animation_type()) {
-    using enum iamf_tools_cli_proto::AnimationType;
-    case ANIMATE_STEP: {
+  switch (subblock_mix_gain.param_data().parameter_data_case()) {
+    using enum iamf_tools_cli_proto::AnimatedParameterDataInt16::
+        ParameterDataCase;
+    case kStep: {
       int16_t start_point_value;
       RETURN_IF_NOT_OK(InterpolateMixGainParameterData(
           subblock_mix_gain, subblock_start_time, subblock_end_time,
@@ -114,7 +117,7 @@ absl::Status PartitionMixGain(
           ->set_start_point_value(static_cast<int32_t>(start_point_value));
       return absl::OkStatus();
     }
-    case ANIMATE_LINEAR: {
+    case kLinear: {
       // Set partitioned start time to the value of the parameter at that time.
       ABSL_LOG_FIRST_N(INFO, 3)
           << subblock_start_time << " " << subblock_end_time << " "
@@ -144,7 +147,7 @@ absl::Status PartitionMixGain(
       linear->set_end_point_value(static_cast<int32_t>(end_point_value));
       return absl::OkStatus();
     }
-    case ANIMATE_BEZIER: {
+    case kBezier: {
       if (subblock_start_time == partitioned_start_time &&
           subblock_end_time == partitioned_end_time) {
         // Handle the simplest case where the subblock is aligned and does not
@@ -161,8 +164,8 @@ absl::Status PartitionMixGain(
     }
     default:
       return absl::InvalidArgumentError(
-          absl::StrCat("Unrecognized animation type = ",
-                       subblock_mix_gain.animation_type()));
+          absl::StrCat("Unrecognized parameter data case = ",
+                       subblock_mix_gain.param_data().parameter_data_case()));
   }
 }
 
@@ -195,28 +198,20 @@ absl::Status GetPartitionedSubblocks(
   // Track that the split subblocks cover the whole partition.
   InternalTimestamp total_covered_duration = 0;
 
+  // Get the `SubblockSchedule` for this OBU, this implies the OBU is mode 1.
+  // The partitioner is only designed to work on mode 1 parameter blocks.
+  auto schedule = CreateSubblockScheduleFromMetadata(full_parameter_block);
+  if (!schedule.ok()) {
+    return schedule.status();
+  }
+
   // Loop through all subblocks in the original Parameter Block.
   const auto num_subblocks = full_parameter_block.subblocks_size();
   for (int i = 0; i < num_subblocks; ++i) {
     // Get the start and end time of this subblock.
     const InternalTimestamp subblock_start_time = current_time;
 
-    // The partitioner works directly on the parameter block OBU metadata and
-    // assumes all needed information (e.g. subblock duration) is in the
-    // metadata themselves and does not support getting the information from
-    // parameter definitions (i.e. parameter definition mode == 0).
-    constexpr uint8_t kParamDefinitionModeOne = 1;
-    const auto subblock_duration = GetParameterSubblockDuration<uint32_t>(
-        i, num_subblocks, full_parameter_block.constant_subblock_duration(),
-        full_parameter_block.duration(), kParamDefinitionModeOne,
-        [&full_parameter_block](int i) {
-          return full_parameter_block.subblocks(i).subblock_duration();
-        },
-        [](int i) {
-          return absl::InvalidArgumentError(
-              "Parameter Block Partitioner does not support the case where "
-              "`param_definition_mode == 0");
-        });
+    const auto subblock_duration = schedule->GetSubblockDuration(i);
     if (!subblock_duration.ok()) {
       return subblock_duration.status();
     }

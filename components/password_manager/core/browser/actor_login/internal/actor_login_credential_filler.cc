@@ -10,6 +10,7 @@
 
 #include "base/check.h"
 #include "base/containers/span.h"
+#include "base/containers/to_vector.h"
 #include "base/feature_list.h"
 #include "base/functional/concurrent_closures.h"
 #include "base/notimplemented.h"
@@ -105,14 +106,6 @@ LoginStatusResult GetEndFillingResult(bool username_filled,
   }
 
   return LoginStatusResult::kErrorNoFillableFields;
-}
-
-std::vector<int> GetTargetFrameIds(
-    const password_manager::StoredCredential& stored_credential,
-    base::span<password_manager::PasswordFormManager*> eligible_managers) {
-  // TODO(crbug.com/504573041): Implement
-  NOTIMPLEMENTED();
-  return {};
 }
 
 }  // namespace
@@ -477,12 +470,18 @@ void ActorLoginCredentialFiller::FillAllEligibleFields(
                     return !form_manager->GetDriver()->IsInPrimaryMainFrame();
                   });
   }
+  std::erase_if(eligible_managers, [&](const PasswordFormManager* manager) {
+    return !DoesStoredCredentialBelongToManager(manager, stored_credential);
+  });
 
   // TODO(crbug.com/504573041): Consider removing frames where we failed to
   // fill. This would need to be done after filling is done though.
   if (on_frame_filling_started_cb_) {
     std::move(on_frame_filling_started_cb_)
-        .Run(GetTargetFrameIds(stored_credential, eligible_managers));
+        .Run(
+            base::ToVector(eligible_managers, [](PasswordFormManager* manager) {
+              return manager->GetFrameId();
+            }));
   }
 
   for (PasswordFormManager* manager : eligible_managers) {
@@ -493,9 +492,6 @@ void ActorLoginCredentialFiller::FillAllEligibleFields(
           attempt_login_start_time_);
     }
 
-    if (!DoesStoredCredentialBelongToManager(manager, stored_credential)) {
-      continue;
-    }
     if (should_store_permission_) {
       manager->SetShouldStoreActorLoginPermission();
     }

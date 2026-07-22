@@ -87,6 +87,7 @@
 #import "components/subscription_eligibility/subscription_eligibility_prefs.h"
 #import "components/supervised_user/core/browser/supervised_user_metrics_service.h"
 #import "components/supervised_user/core/browser/supervised_user_preferences.h"
+#import "components/sync/base/account_pref_utils.h"
 #import "components/sync/service/device_statistics_scheduler.h"
 #import "components/sync/service/glue/sync_transport_data_prefs.h"
 #import "components/sync/service/sync_prefs.h"
@@ -1047,6 +1048,10 @@ void MigrateObsoleteProfilePrefs(PrefService* prefs) {
   prefs->ClearPref(kPreallocatedAddressesNext);
   prefs->ClearPref(kFirstPlusAddressCreationTime);
   prefs->ClearPref(kLastPlusAddressFillingTime);
+
+  // Added 06/2026.
+  syncer::ClearAccountKeyedPrefValue(
+      prefs, autofill::prefs::kAutofillAiOptInStatus, {});
 }
 
 void MigrateObsoleteUserDefault() {

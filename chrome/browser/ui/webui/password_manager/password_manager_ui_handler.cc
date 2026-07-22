@@ -7,6 +7,7 @@
 #include <optional>
 #include <utility>
 
+#include "base/functional/callback_helpers.h"
 #include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/extensions/api/passwords_private/passwords_private_delegate.h"
 #include "chrome/browser/profiles/profile.h"
@@ -132,6 +133,25 @@ void PasswordManagerUIHandler::CopyPlaintextBackupPassword(
 
 void PasswordManagerUIHandler::RemoveBackupPassword(int id) {
   passwords_private_delegate_->RemoveBackupPassword(id);
+}
+
+void PasswordManagerUIHandler::RemovePasswordException(int id) {
+  passwords_private_delegate_->RemovePasswordException(id);
+}
+
+void PasswordManagerUIHandler::StartBulkPasswordCheck() {
+  passwords_private_delegate_->StartPasswordCheck(base::DoNothing());
+}
+
+void PasswordManagerUIHandler::MovePasswordsToAccount(
+    const std::vector<int>& ids) {
+  passwords_private_delegate_->MovePasswordsToAccount(ids);
+}
+
+void PasswordManagerUIHandler::ResetImporter(bool delete_file,
+                                             ResetImporterCallback callback) {
+  passwords_private_delegate_->ResetImporter(delete_file);
+  std::move(callback).Run();
 }
 
 void PasswordManagerUIHandler::GetActorLoginPermissions(

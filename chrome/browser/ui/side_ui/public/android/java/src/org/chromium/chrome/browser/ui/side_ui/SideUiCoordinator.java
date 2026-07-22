@@ -119,17 +119,15 @@ public interface SideUiCoordinator extends SideUiStateProvider {
         /**
          * ID of the {@link SideUiContainer} that requested the UI update.
          *
-         * <p>TODO(crbug.com/478338737): Make {@code mSideUiId} nullable since a UI update isn't
-         * always requested by a {@link SideUiContainer}. For example, when the window size is
-         * changed, the UI update won't have a {@code mSideUiId}.
+         * <p>This should be null if the request isn't from a {@link SideUiContainer}.
          */
-        final @SideUiId int mSideUiId;
+        final @Nullable @SideUiId Integer mSideUiId;
 
         /** Whether animations should be suppressed during the UI update. */
         final boolean mSuppressAnimations;
 
-        public UiUpdateRequest(@SideUiId int id, boolean suppressAnimations) {
-            mSideUiId = id;
+        public UiUpdateRequest(@Nullable @SideUiId Integer sideUiId, boolean suppressAnimations) {
+            mSideUiId = sideUiId;
             mSuppressAnimations = suppressAnimations;
         }
     }

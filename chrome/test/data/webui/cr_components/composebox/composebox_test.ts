@@ -26,7 +26,7 @@ import {getTrustedHtml} from 'chrome://webui-test/trusted_html.js';
 import {installMock} from './composebox_test_utils.js';
 
 interface TestComposeboxElement extends ComposeboxElement {
-  keepMenuOpenForMultiSelection: () => void;
+  keepMenuOpenForMultiSelection: () => Promise<void>;
   keepMenuOpenOnTabSelectForRealbox: boolean;
   composeboxSource: string;
 }
@@ -501,7 +501,7 @@ suite('Composebox tab flyout', () => {
   test(
       'keepMenuOpenForMultiSelection is gated' +
           ' by keepMenuOpenOnTabSelectForRealbox',
-      () => {
+      async () => {
         let openMenuCalled = false;
         composebox.getContextEntrypointElement = () => {
           return {
@@ -515,19 +515,19 @@ suite('Composebox tab flyout', () => {
 
         // Omnibox source: always returns early
         testElement.composeboxSource = 'Omnibox';
-        testElement.keepMenuOpenForMultiSelection();
+        await testElement.keepMenuOpenForMultiSelection();
         assertFalse(openMenuCalled);
 
         // NewTabPage source, flag off: returns early
         testElement.composeboxSource = 'NewTabPage';
         testElement.keepMenuOpenOnTabSelectForRealbox = false;
-        testElement.keepMenuOpenForMultiSelection();
+        await testElement.keepMenuOpenForMultiSelection();
         assertFalse(openMenuCalled);
 
         // NewTabPage source, flag on: calls openMenuForMultiSelection
         testElement.composeboxSource = 'NewTabPage';
         testElement.keepMenuOpenOnTabSelectForRealbox = true;
-        testElement.keepMenuOpenForMultiSelection();
+        await testElement.keepMenuOpenForMultiSelection();
         assertTrue(openMenuCalled);
       });
 
@@ -538,6 +538,7 @@ suite('Composebox tab flyout', () => {
         const testElement = composebox as TestComposeboxElement;
         testElement.keepMenuOpenForMultiSelection = () => {
           keepMenuOpenCalled = true;
+          return Promise.resolve();
         };
 
         await composebox.onAddTabContext(new CustomEvent('add-tab-context', {

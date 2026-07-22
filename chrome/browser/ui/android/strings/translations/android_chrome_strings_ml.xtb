@@ -34,7 +34,6 @@
 <translation id="1108938384783527433">ചരിത്രം സമന്വയിപ്പിക്കൽ</translation>
 <translation id="1111673857033749125">നിങ്ങളുടെ മറ്റ് ഉപകരണങ്ങളിൽ സംരക്ഷിച്ച ബുക്ക്‌മാർക്കുകൾ ഇവിടെ ദൃശ്യമാകും.</translation>
 <translation id="1123537484474186311"><ph name="TAB_TITLE" />, ചിത്രത്തിനുള്ളിൽ ചിത്രം ടാബ്</translation>
-<translation id="1124357650933674597">{NUM_WINDOWS,plural, =1{ഒരു വിൻഡോ പുനഃസ്ഥാപിക്കുക}other{# വിൻഡോകൾ പുനഃസ്ഥാപിക്കുക}}</translation>
 <translation id="1126696498560056882">ഈ ഉപകരണത്തിലെ അക്കൗണ്ടുകൾ മാനേജ് ചെയ്യുക</translation>
 <translation id="1135018701024399762">അദൃശ്യ മോഡ്, നിങ്ങളുടെ ഉപകരണം ഉപയോഗിക്കുന്ന മറ്റുള്ളവരിൽ നിന്ന് നിങ്ങളുടെ ബ്രൗസിംഗിനെ സ്വകാര്യമായി സൂക്ഷിക്കുന്നു</translation>
 <translation id="113752097246673894">ബുക്ക്‌മാർക്കുകളും മറ്റും നിങ്ങളുടെ എല്ലാ ഉപകരണങ്ങളിലും ലഭിക്കാൻ <ph name="EMAIL" /> എന്നയാളായി Chrome-ലേക്ക് സൈൻ ഇൻ ചെയ്യുക</translation>
@@ -185,6 +184,7 @@
 <translation id="1792959175193046959">ഏതുസമയത്തും ഡിഫോൾട്ട് ഡൗൺലോഡ് ലൊക്കേഷൻ മാറ്റുക</translation>
 <translation id="1796666869097395659">പിന്നീട് അതിലേക്ക് തിരികെ വരാൻ ടാബ് ചെറുതാക്കുക</translation>
 <translation id="1799920918471566157">Chrome നുറുങ്ങുകൾ</translation>
+<translation id="1803799720926799756">ഫയൽ വലുപ്പം</translation>
 <translation id="1807246157184219062">ലൈറ്റ്</translation>
 <translation id="1807709131360304325">ഒരു പുതിയ വിൻഡോ തുറക്കുക</translation>
 <translation id="1812027881030482584"><ph name="SITE_ETLD_PLUS_ONE" /> എന്നതിന് <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> ഉപയോഗിക്കുന്നത് തുടരാനാകുന്നില്ല</translation>
@@ -327,6 +327,7 @@
 <translation id="2411239243988279592"><ph name="TAB_TITLE" />, തിരഞ്ഞെടുത്ത, ഓഡിയോ പ്ലേ ചെയ്യുന്ന ടാബ്</translation>
 <translation id="2413014528833954543">ഈ ഉപകരണത്തിൽ പാസ്‌വേഡ് പരിശോധിക്കാനാകുന്നില്ല</translation>
 <translation id="2414886740292270097">ഇരുണ്ടത്</translation>
+<translation id="2415037988255164008">വിൻഡോകൾ പുനഃസ്ഥാപിക്കണോ?</translation>
 <translation id="2421705177906985956">ഇപ്പോൾ കാണിക്കാൻ സൈറ്റുകളൊന്നുമില്ല</translation>
 <translation id="2426805022920575512">മറ്റൊരു അക്കൗണ്ട് തിരഞ്ഞെടുക്കൂ</translation>
 <translation id="2427025860753516072">{FILE_COUNT,plural, =1{വീഡിയോകൾ, ലിസ്റ്റിൽ ഒരു വീഡിയോ}other{വീഡിയോകൾ, ലിസ്റ്റിൽ # വീഡിയോകൾ}}</translation>
@@ -520,7 +521,6 @@
 <translation id="3166827708714933426">ടാബ്, വിൻഡോ കുറുക്കുവഴികൾ</translation>
 <translation id="3167258285411721858">നിങ്ങൾക്ക് <ph name="HOST_NAME" /> എന്നതിനുള്ള മൊബൈൽ സൈറ്റ് അഭ്യർത്ഥിക്കാം</translation>
 <translation id="3181145110929454111"><ph name="TAB_TITLE" />, മൾട്ടിസെലക്റ്റ് ചെയ്ത, പിൻ ചെയ്ത, മ്യൂട്ട് ചെയ്ത അദൃശ്യ ടാബ്</translation>
-<translation id="3183941812169784232">എല്ലാ വിൻഡോകളും പുനഃസ്ഥാപിക്കണോ?</translation>
 <translation id="3187472288455401631">ആഡ് മെഷർമെന്റ്</translation>
 <translation id="3189635831478931757"><ph name="GROUP_TITLE" /> ടാബ് ഗ്രൂപ്പ്</translation>
 <translation id="3200536777393523575">നിങ്ങളുടെ നിലവിലെ വിൻഡോ അടയ്ക്കണോ?</translation>
@@ -569,6 +569,7 @@
 <translation id="3435575784518354875">നിങ്ങളുടെ പാസ്‌വേഡുകളിലേക്കുള്ള ആക്‌സസ് നിലനിർത്താൻ, അവ ഇപ്പോൾ എക്‌സ്‌പോർട്ട് ചെയ്യുക, Google Play സേവനങ്ങൾ അപ്‌ഡേറ്റ് ചെയ്യുക, തുടർന്ന് Google Password Manager-ലേക്ക് തിരികെ ഇമ്പോർട്ട് ചെയ്യുക. <ph name="BEGIN_LINK" />പൂർണ്ണമായ നിർദ്ദേശങ്ങൾ കാണുക<ph name="END_LINK" />.</translation>
 <translation id="3435738964857648380">സുരക്ഷ</translation>
 <translation id="3435914367318771664">പുതിയ ഗ്രൂപ്പിലേക്ക് ടാബ് ചേർക്കുക</translation>
+<translation id="3436118221454753036">AI-യോട് ചോദിക്കൂ മോഡ്</translation>
 <translation id="3438681572027105609">പാസ്‌വേഡുകളും മറ്റും നിങ്ങളുടെ എല്ലാ ഉപകരണങ്ങളിലും ലഭിക്കാൻ Chrome-ലേക്ക് സൈൻ ഇൻ ചെയ്യുക</translation>
 <translation id="3439276997620616816">നിങ്ങളുടെ സമീപകാല ടാബുകൾ ഇവിടെ കാണാം</translation>
 <translation id="3443221991560634068">നിലവിലെ പേജ് റീലോഡ് ചെയ്യുക</translation>
@@ -1338,6 +1339,7 @@
 <translation id="6556501700899673703">Lexend</translation>
 <translation id="6560414384669816528">Sogou ഉപയോഗിച്ച് തിരയുക</translation>
 <translation id="656065428026159829">കൂടുതൽ കാണുക</translation>
+<translation id="6565781844089373403">വിൻഡോകൾ പുനഃസ്ഥാപിക്കുക</translation>
 <translation id="6565959834589222080">ലഭ്യമാകുമ്പോൾ വൈഫൈ ഉപയോഗിക്കും</translation>
 <translation id="657177046675873214">നിങ്ങളുടെ എല്ലാ ഉപകരണങ്ങളിലും ബുക്ക്‌മാർക്കുകൾ ലഭിക്കാൻ, ക്രമീകരണത്തിൽ “ബുക്ക്‌മാർക്കുകൾ” ഓണാക്കുക</translation>
 <translation id="6573096386450695060">എല്ലായ്‌പ്പോഴും അനുവദിക്കുക</translation>
@@ -2039,7 +2041,6 @@
 <translation id="939598580284253335">പാസ്ഫ്രെയ്‍സ് നല്‍കുക</translation>
 <translation id="94161319503679839"><ph name="TAB_TITLE" />, പിൻ ചെയ്ത 'പിക്ച്ചർ-ഇൻ-പിക്ച്ചർ' അദൃശ്യ ടാബ്</translation>
 <translation id="945522503751344254">ഫീഡ്‌ബാക്ക് അയയ്‌ക്കുക</translation>
-<translation id="949667118776341807">റൊട്ടേറ്റ് ചെയ്യുക</translation>
 <translation id="95817756606698420"><ph name="BEGIN_BOLD" />Sogou<ph name="END_BOLD" /> ഉപയോഗിച്ച് Chrome-ന് ചൈനയിൽ തിരയാനാവും. നിങ്ങൾക്കിത്‌ <ph name="BEGIN_LINK" />ക്രമീകരണത്തിൽ<ph name="END_LINK" /> മാറ്റാനാവും.</translation>
 <translation id="961856697154696964">ബ്രൗസിംഗ് ഡാറ്റ ഇല്ലാതാക്കൂ</translation>
 <translation id="963246339335003378">ടാസ്‌ക് മാനേജർ തുറക്കുക</translation>

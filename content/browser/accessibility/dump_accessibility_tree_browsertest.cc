@@ -1043,6 +1043,11 @@ IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
 }
 
 IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
+                       AccessibilityAriaFieldsetDescribedBy) {
+  RunAriaTest(FILE_PATH_LITERAL("aria-fieldset-describedby.html"));
+}
+
+IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
                        AccessibilityAriaDescribedByTargetIdChange) {
   RunAriaTest(FILE_PATH_LITERAL("aria-describedby-target-id-change.html"));
 }

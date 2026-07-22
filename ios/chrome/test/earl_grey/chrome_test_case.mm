@@ -131,6 +131,9 @@ bool IsAppInAllowedCrashState() {
 }
 
 bool IsMockAuthenticationSetUp() {
+  if (![[AppLaunchManager sharedManager] appIsLaunched]) {
+    return false;
+  }
   // `SetUpMockAuthentication` enables the fake sync server so checking
   // `isFakeSyncServerSetUp` here is sufficient to determine mock authentication
   // state.

@@ -30,6 +30,10 @@ class ActorTaskDelegate {
       TaskId task_id,
       const tabs::TabInterface::Handle& tab_handle) = 0;
 
+  // Called when the visibility of the controlled tabs changes.
+  virtual void OnTaskTabsVisibilityChanged(TaskId task_id,
+                                           bool has_visible_tab) = 0;
+
   using CredentialSelectedCallback =
       base::OnceCallback<void(webui::mojom::SelectCredentialDialogResponsePtr)>;
   virtual void RequestToShowCredentialSelectionDialog(

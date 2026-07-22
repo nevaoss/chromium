@@ -315,6 +315,7 @@
 <translation id="1463793142714244641">អចលនទ្រព្យ​វិស្សមកាល និង​អចលនទ្រព្យ​រួម</translation>
 <translation id="1465457928007067810">បានរក្សាទុក IBAN ទៅក្នុងគណនី Google របស់អ្នក</translation>
 <translation id="1467432559032391204">ឆ្វេង</translation>
+<translation id="1471514598850585811">កុំព្យូទ័រយួរដៃ</translation>
 <translation id="1472675084647422956">បង្ហាញ​ច្រើនទៀត</translation>
 <translation id="1473183651233018052">JIS B10</translation>
 <translation id="1473495410389165587">បញ្ចូល 3 ឬច្រើនពាក្យ ដើម្បីទទួលបានជំនួយក្នុងការសរសេរ</translation>
@@ -999,6 +1000,7 @@
 <translation id="2524962131655207565"><ph name="BEGIN_BOLD" />ខ្លឹមសារ​ពី​ទំព័របង់ប្រាក់ចេញ​ត្រូវបាន​ចែករំលែក​ជាមួយ Google ដើម្បី​ផ្ដល់ជូន​ជម្រើស​ទាំងនេះ។<ph name="END_BOLD" /> គម្រោង​បង់ប្រាក់​អាស្រ័យលើ​សិទ្ធិទទួលបាន។ ដើម្បី​លាក់​ជម្រើស​ទូទាត់​ពេលក្រោយ សូម​ចូលទៅកាន់<ph name="BEGIN_LINK" />ការកំណត់​ការបង់ប្រាក់<ph name="END_LINK" />។</translation>
 <translation id="2526062290525841862">ដើម្បី​ដំណើរការ​កម្មវិធីនេះ សូម​បើក​មុខងារអ្នក​អភិវឌ្ឍន៍​កម្មវិធីវេបដាច់តែឯង​ឡើងវិញ</translation>
 <translation id="2526280916094749336">អ្នកអាចប្រើអាសយដ្ឋានដែលបានរក្សាទុកនៅលើផលិតផល Google នានា។ អាសយដ្ឋាននេះ​នឹង​ត្រូវ​បាន​រក្សាទុក​នៅ​ក្នុង​គណនី Google (<ph name="ACCOUNT" />) របស់​អ្នក។</translation>
+<translation id="2526590354069164005">ដេស៍ថប</translation>
 <translation id="2527451058878391043">CVC របស់អ្នកស្ថិតនៅផ្នែកខាងមុខនៃកាតរបស់អ្នក។ វាជាកូដ 4 ខ្ទង់នៅខាងស្ដាំផ្នែកខាងលើពីលើលេខកាតរបស់អ្នក។</translation>
 <translation id="2529899080962247600">កន្លែងបញ្ចូលនេះ​មិន​គួរមានច្រើនជាង <ph name="MAX_ITEMS_LIMIT" /> ធាតុ​ទេ។ ធាតុទាំងអស់​ដែលលើសពីនេះ​នឹងមិនត្រូវបាន​អើពើទេ។</translation>
 <translation id="2530042584066815841">ការចាក់សោ និងការប្រើម៉ៅស៍</translation>
@@ -1238,6 +1240,7 @@
 <translation id="2929525460561903222">{SHIPPING_ADDRESS,plural, =0{<ph name="SHIPPING_ADDRESS_PREVIEW" />}=1{<ph name="SHIPPING_ADDRESS_PREVIEW" /> និង <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> ទៀត}other{<ph name="SHIPPING_ADDRESS_PREVIEW" /> និង <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> ទៀត}}</translation>
 <translation id="2930531075747147366">ផ្ទាំង​ពីឧបករណ៍​ផ្សេងទៀត​របស់អ្នក</translation>
 <translation id="2930577230479659665">តម្រឹម​បន្ទាប់ពី​ច្បាប់ចម្លង​នីមួយៗ</translation>
+<translation id="2931453528659195355">គ្រប់គ្រងព័ត៌មានអំពីការទិញទំនិញ</translation>
 <translation id="2933624813161016821">សន្លឹកអាលុយមីញ៉ូមសម្រាប់ការបោះពុម្ពផុស</translation>
 <translation id="2935726091208500473">ការចែករំលែក​ផ្ទាំង​របស់អ្នក</translation>
 <translation id="293796669683825859">មតិ</translation>
@@ -1730,6 +1733,7 @@
 <translation id="3681841880472207951">វីដេអូ QuickTime</translation>
 <translation id="3687920599421452763">ឡាន​ដឹក​ទំនិញ និង​ឡាន​ដឹក​ទំនិញ​តូច</translation>
 <translation id="3693327506115126094">ជ្រើសរើស​របៀប​ដែលអ្នកនឹងផ្ទៀងផ្ទាត់​ថាជាអ្នក</translation>
+<translation id="3693516565203081475">ជ្រើសរើស​វិធី​បង់​ប្រាក់</translation>
 <translation id="3698353241727597930">អ្នកគ្រប់គ្រងរបស់អ្នកបានកំណត់រចនាសម្ព័ន្ធ ដើម្បីរក្សាទុក<ph name="FILES" />នៅក្នុងទំហំ​ផ្ទុក <ph name="CLOUD_STORAGE" /> ដែលគ្រប់គ្រងដោយសហគ្រាសរបស់អ្នក។ ឯកសារទាំងនេះអាចត្រូវបានត្រួតពិនិត្យ ធ្វើសវនកម្ម និងរក្សាទុកនៅពេលអ្នកលុបឯកសារទាំងនោះ។</translation>
 <translation id="3698629142018988477">ប៊ូតុង "បង្កើតគេហទំព័រ", បើកដំណើរការដើម្បីបង្កើត​គេហទំព័រថ្មី​នៅក្នុង Google Sites បានរហ័ស</translation>
 <translation id="3700094625653511150">ដើម្បីលាក់​ជម្រើស​ទូទាត់​ពេលក្រោយ សូម​ចូលទៅកាន់<ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT" /></translation>
@@ -3539,6 +3543,7 @@
 <translation id="6494750904506170417">ផ្ទាំង​លោតឡើង និង​ការបញ្ជូនបន្ត</translation>
 <translation id="6495664197699704593">ពាក្យសម្ងាត់នេះត្រូវបានរក្សាទុកតែនៅក្នុងឧបករណ៍នេះប៉ុណ្ណោះ។ ដើម្បី​ប្រើវា​នៅលើ​ឧបករណ៍​ផ្សេងទៀត​របស់អ្នក សូម<ph name="GOOGLE_PASSWORD_MANAGER" />។</translation>
 <translation id="649611364763911650">ដើម្បីប្រើ​សេវាកម្ម​បំពេញ​ស្វ័យប្រវត្តិ​ផ្សេងទៀត​នៅក្នុង Chrome សូម​ជ្រើសរើស​ក្រុមហ៊ុន​ផ្ដល់សេវា​បំពេញ​ស្វ័យប្រវត្តិ​របស់អ្នក​នៅក្នុង​ការ​កំណត់</translation>
+<translation id="6496531801333278234">បានរកឃើញដោយបញ្ញាផ្ទាល់ខ្លួន។ អ្នកអាចគ្រប់គ្រង​ព័ត៌មាន​របស់អ្នកនៅក្នុងការកំណត់។</translation>
 <translation id="6499038740797743453">កំណត់​ពាក្យសម្ងាត់​ឡើងវិញ​?</translation>
 <translation id="6502510275417601303">ការជូនដំណឹង​អំពី​ការកំណត់ការបង់ប្រាក់​ថ្មី​ត្រូវបានបិទ</translation>
 <translation id="6502991525169604759">ដោយគ្មានការផ្លាស់ប្ដូររបស់អ្នក</translation>
@@ -4916,7 +4921,6 @@
 <translation id="8671519637524426245">តម្លៃ <ph name="SECURE_DNS_SALT" /> មិន​បំពេញ​តាម​លក្ខខណ្ឌ​តម្រូវទំហំ​ទេ។</translation>
 <translation id="867224526087042813">ហត្ថលេខា</translation>
 <translation id="8672535691554698269">បណ្ដាញ​កុំព្យូទ័រ</translation>
-<translation id="8673710317985154384">{NUM_TABS,plural, =1{បង្ហាញ​ព័ត៌មានលម្អិត​អំពី​ការបង្ហាញ​ផ្ទាំង។ កំពុង​បង្ហាញ 1 ផ្ទាំងពី {WEBSITE_LIST_STR}}other{បង្ហាញ​ព័ត៌មានលម្អិត​អំពី​ការបង្ហាញ​ផ្ទាំង។ កំពុង​បង្ហាញ {NUM_TABS} ផ្ទាំង​ពី {WEBSITE_LIST_STR}}}</translation>
 <translation id="8675446170353411473">ឯកសាររបស់​អ្នក​កំពុងត្រូវបាន​បង្ហោះ​ទៅ <ph name="CLOUD_PROVIDER" /></translation>
 <translation id="8676424191133491403">គ្មាន​ការ​ពន្យារពេល</translation>
 <translation id="8680536109547170164"><ph name="QUERY" />, ចមើ្លយ៖ <ph name="ANSWER" /></translation>
@@ -5156,6 +5160,7 @@
 <translation id="9063800855227801443">មិនអាចថតខ្លឹមសារសម្ងាត់បានទេ</translation>
 <translation id="9065203028668620118">កែប្រែ</translation>
 <translation id="9065745800631924235">ការស្វែងរក <ph name="TEXT" /> ពីប្រវត្តិ</translation>
+<translation id="9066116644715286230">{NUM_TABS,plural, =1{ព័ត៌មានលម្អិត​អំពី​ការបង្ហាញ​ផ្ទាំង។ កំពុង​បង្ហាញ 1 ផ្ទាំងពី {WEBSITE_LIST_STR}}other{ព័ត៌មានលម្អិតអំពីការបង្ហាញផ្ទាំង។ កំពុង​បង្ហាញ {NUM_TABS} ផ្ទាំង​ពី {WEBSITE_LIST_STR}}}</translation>
 <translation id="90695670378604968">ប្លាស្ទិក (គ្រើម)</translation>
 <translation id="9069693763241529744">ទប់ស្កាត់ដោយកម្មវិធីបន្ថែម</translation>
 <translation id="9073799351042754113">អ្នកបាន​ជ្រើសរើសបិទ​ការព្រមាន​អំពីសុវត្ថិភាព​សម្រាប់គេហទំព័រនេះ។</translation>

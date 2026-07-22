@@ -606,7 +606,7 @@ TEST_F(ChromePasswordManagerClientTest,
           IsSettingEnabled(PasswordManagerSetting::kOfferToSavePasswords))
       .WillByDefault(Return(true));
   const GURL kUrlOn("https://accounts.google.com");
-  EXPECT_TRUE(client->IsSavingAndFillingEnabled(kUrlOn));
+  EXPECT_TRUE(client->IsSavingAndFillingEnabled(url::Origin::Create(kUrlOn)));
 }
 
 TEST_F(ChromePasswordManagerClientTest,
@@ -617,7 +617,7 @@ TEST_F(ChromePasswordManagerClientTest,
               IsSettingEnabled(PasswordManagerSetting::kOfferToSavePasswords))
       .WillOnce(Return(false));
   const GURL kUrlOn("https://accounts.google.com");
-  EXPECT_FALSE(client->IsSavingAndFillingEnabled(kUrlOn));
+  EXPECT_FALSE(client->IsSavingAndFillingEnabled(url::Origin::Create(kUrlOn)));
 }
 
 TEST_F(ChromePasswordManagerClientTest, SavingAndFillingEnabledConditionsTest) {
@@ -633,7 +633,7 @@ TEST_F(ChromePasswordManagerClientTest, SavingAndFillingEnabledConditionsTest) {
   EXPECT_CALL(*client, GetMainFrameCertStatus())
       .WillRepeatedly(Return(net::CERT_STATUS_AUTHORITY_INVALID));
   const GURL kUrlOn("https://accounts.google.com");
-  EXPECT_FALSE(client->IsSavingAndFillingEnabled(kUrlOn));
+  EXPECT_FALSE(client->IsSavingAndFillingEnabled(url::Origin::Create(kUrlOn)));
   EXPECT_FALSE(client->IsFillingEnabled(url::Origin::Create(kUrlOn)));
 
   // Disable password saving.
@@ -643,13 +643,13 @@ TEST_F(ChromePasswordManagerClientTest, SavingAndFillingEnabledConditionsTest) {
 
   // Functionality disabled if there are SSL errors and the manager itself is
   // disabled.
-  EXPECT_FALSE(client->IsSavingAndFillingEnabled(kUrlOn));
+  EXPECT_FALSE(client->IsSavingAndFillingEnabled(url::Origin::Create(kUrlOn)));
   EXPECT_FALSE(client->IsFillingEnabled(url::Origin::Create(kUrlOn)));
 
   // Saving disabled if there are no SSL errors, but the manager itself is
   // disabled.
   EXPECT_CALL(*client, GetMainFrameCertStatus()).WillRepeatedly(Return(0));
-  EXPECT_FALSE(client->IsSavingAndFillingEnabled(kUrlOn));
+  EXPECT_FALSE(client->IsSavingAndFillingEnabled(url::Origin::Create(kUrlOn)));
   EXPECT_TRUE(client->IsFillingEnabled(url::Origin::Create(kUrlOn)));
 
   // Enable password saving.
@@ -660,7 +660,7 @@ TEST_F(ChromePasswordManagerClientTest, SavingAndFillingEnabledConditionsTest) {
   // Functionality enabled if there are no SSL errors and the manager is
   // enabled.
   EXPECT_CALL(*client, GetMainFrameCertStatus()).WillRepeatedly(Return(0));
-  EXPECT_TRUE(client->IsSavingAndFillingEnabled(kUrlOn));
+  EXPECT_TRUE(client->IsSavingAndFillingEnabled(url::Origin::Create(kUrlOn)));
   EXPECT_TRUE(client->IsFillingEnabled(url::Origin::Create(kUrlOn)));
 }
 
@@ -681,7 +681,7 @@ TEST_F(ChromePasswordManagerClientTest,
 
   // Saving disabled in Incognito mode.
   const GURL kUrlOn("https://accounts.google.com");
-  EXPECT_FALSE(client->IsSavingAndFillingEnabled(kUrlOn));
+  EXPECT_FALSE(client->IsSavingAndFillingEnabled(url::Origin::Create(kUrlOn)));
   EXPECT_TRUE(client->IsFillingEnabled(url::Origin::Create(kUrlOn)));
 
   // In guest mode saving, filling and manual filling are disabled.
@@ -690,7 +690,7 @@ TEST_F(ChromePasswordManagerClientTest,
       ->GetPrimaryOTRProfile(/*create_if_needed=*/true)
       ->AsTestingProfile()
       ->SetGuestSession(true);
-  EXPECT_FALSE(client->IsSavingAndFillingEnabled(kUrlOn));
+  EXPECT_FALSE(client->IsSavingAndFillingEnabled(url::Origin::Create(kUrlOn)));
   EXPECT_FALSE(client->IsFillingEnabled(url::Origin::Create(kUrlOn)));
 }
 
@@ -813,8 +813,8 @@ TEST_F(ChromePasswordManagerClientTest, PasswordManagerBlocklistPolicy) {
                    .empty());
   // Expect the password manager to be disallowed for the URL
   // and thus saving passwords should be disallowed.
-  EXPECT_FALSE(
-      GetClient()->IsSavingAndFillingEnabled(GURL("https://example.com")));
+  EXPECT_FALSE(GetClient()->IsSavingAndFillingEnabled(
+      url::Origin::Create(GURL("https://example.com"))));
   // Clear the blocklist pref.
   profile()->GetTestingPrefService()->ClearPref(
       password_manager::prefs::kPasswordManagerBlocklist);
@@ -824,8 +824,8 @@ TEST_F(ChromePasswordManagerClientTest, PasswordManagerBlocklistPolicy) {
                   ->GetList(password_manager::prefs::kPasswordManagerBlocklist)
                   .empty());
   // Password manager and saving passwords should be allowed again
-  EXPECT_TRUE(
-      GetClient()->IsSavingAndFillingEnabled(GURL("https://example.com")));
+  EXPECT_TRUE(GetClient()->IsSavingAndFillingEnabled(
+      url::Origin::Create(GURL("https://example.com"))));
 }
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS)
@@ -846,7 +846,7 @@ TEST_F(ChromePasswordManagerClientTest,
         {autofill::AutofillManagerEvent::kFormsSeen});
     autofill_driver->renderer_events().FormsSeen(/*updated_forms=*/{form},
                                                  /*removed_forms=*/{});
-    ASSERT_TRUE(waiter.Wait(/*num_awaiting_calls=*/1));
+    ASSERT_TRUE(waiter.Wait(/*num_expected_relevant_events=*/1));
   }
 
   // Simulate that the field types have been determined, since server
@@ -962,7 +962,7 @@ TEST_F(ChromePasswordManagerClientTest,
                                              /*removed_forms=*/{});
     child_driver->renderer_events().FormsSeen(/*updated_forms=*/{child_form},
                                               /*removed_forms=*/{});
-    ASSERT_TRUE(waiter.Wait(/*num_awaiting_calls=*/2));
+    ASSERT_TRUE(waiter.Wait(/*num_expected_relevant_events=*/2));
   }
 
   // Simulate that the field types have been determined, since server
@@ -991,6 +991,72 @@ TEST_F(ChromePasswordManagerClientTest,
           Key(testing::Pair(CalculateFormSignature(main_form), main_driver_id)),
           Key(testing::Pair(CalculateFormSignature(child_form),
                             child_driver_id))));
+}
+
+TEST_F(ChromePasswordManagerClientTest,
+       PasswordManagerDoesNotReceiveAutofillPredictionsFromOpaqueOriginFrame) {
+  constexpr char kUrl1[] = "https://www.foo.com/login.html";
+  constexpr char kUrl2[] = "data:text/html,<html></html>";
+
+  NavigateAndCommit(GURL(kUrl1));
+  content::RenderFrameHost* child_rfh =
+      content::RenderFrameHostTester::For(main_rfh())
+          ->AppendChild(std::string("child"));
+  child_rfh = content::NavigationSimulator::NavigateAndCommitFromDocument(
+      GURL(kUrl2), child_rfh);
+  ContentAutofillDriver* main_driver =
+      ContentAutofillDriver::GetForRenderFrameHost(main_rfh());
+  ContentAutofillDriver* child_driver =
+      ContentAutofillDriver::GetForRenderFrameHost(child_rfh);
+  ASSERT_TRUE(main_driver);
+  ASSERT_TRUE(child_driver);
+
+  FormData main_form = CreateFormDataForRenderFrameHost(
+      *main_rfh(), {CreateTestFormField("Username", "username", "",
+                                        FormControlType::kInputText),
+                    CreateTestFormField("Password", "password", "",
+                                        FormControlType::kInputPassword)});
+  FormData child_form = CreateFormDataForRenderFrameHost(
+      *child_rfh,
+      {CreateTestFormField("OTP", "OTP", "", FormControlType::kInputText)});
+
+  // Ensure that the child frame is picked up as a child frame of `main_form`.
+  {
+    autofill::FrameTokenWithPredecessor child_frame_information;
+    child_frame_information.token = child_form.host_frame();
+    main_form.set_child_frames({child_frame_information});
+  }
+
+  {
+    autofill::TestAutofillManagerWaiter waiter(
+        main_driver->GetAutofillManager(),
+        {autofill::AutofillManagerEvent::kFormsSeen});
+    main_driver->renderer_events().FormsSeen(/*updated_forms=*/{main_form},
+                                             /*removed_forms=*/{});
+    child_driver->renderer_events().FormsSeen(/*updated_forms=*/{child_form},
+                                              /*removed_forms=*/{});
+    ASSERT_TRUE(waiter.Wait(/*num_expected_relevant_events=*/2));
+  }
+
+  // Simulate that the field types have been determined, since server
+  // communication is turned off.
+  using Observer = autofill::AutofillManager::Observer;
+  main_driver->GetAutofillManager().NotifyObservers(
+      &Observer::OnFieldTypesDetermined, main_form.global_id(),
+      Observer::FieldTypeSource::kAutofillServer,
+      /*small_forms_were_parsed=*/false);
+
+  ContentPasswordManagerDriver* main_password_driver =
+      ContentPasswordManagerDriver::GetForRenderFrameHost(main_rfh());
+  password_manager::DriverId main_driver_id = main_password_driver->GetId();
+
+  // Since the child frame is a data URL (opaque origin), predictions should NOT
+  // be propagated for it. Thus, only the main form's predictions are received.
+  EXPECT_THAT(static_cast<const password_manager::PasswordManager*>(
+                  GetClient()->GetPasswordManager())
+                  ->GetServerPredictionsForTesting(),
+              UnorderedElementsAre(Key(testing::Pair(
+                  CalculateFormSignature(main_form), main_driver_id))));
 }
 
 TEST_F(ChromePasswordManagerClientTest,
@@ -1092,7 +1158,8 @@ TEST_P(ChromePasswordManagerClientAutomatedTest, SavingDependsOnAutomation) {
           IsSettingEnabled(PasswordManagerSetting::kOfferToSavePasswords))
       .WillByDefault(Return(true));
   const GURL kUrlOn("https://accounts.google.com");
-  EXPECT_NE(client->IsSavingAndFillingEnabled(kUrlOn), GetParam());
+  EXPECT_NE(client->IsSavingAndFillingEnabled(url::Origin::Create(kUrlOn)),
+            GetParam());
 }
 
 // Check that password manager is disabled on about:blank pages.
@@ -1101,7 +1168,8 @@ TEST_F(ChromePasswordManagerClientTest, SavingAndFillingDisabledForAboutBlank) {
   const GURL kUrl(url::kAboutBlankURL);
   NavigateAndCommit(kUrl);
   EXPECT_TRUE(GetClient()->GetLastCommittedOrigin().opaque());
-  EXPECT_FALSE(GetClient()->IsSavingAndFillingEnabled(kUrl));
+  EXPECT_FALSE(
+      GetClient()->IsSavingAndFillingEnabled(url::Origin::Create(kUrl)));
   EXPECT_FALSE(GetClient()->IsFillingEnabled(url::Origin::Create(kUrl)));
 }
 
@@ -1152,7 +1220,7 @@ TEST_F(ChromePasswordManagerClientTest,
        IsFillingAndSavingOnGooglePasswordPage) {
   PasswordManagerClient* client = GetClient();
   EXPECT_FALSE(client->IsSavingAndFillingEnabled(
-      GURL("https://passwords.google.com/path?query=1")));
+      url::Origin::Create(GURL("https://passwords.google.com/path?query=1"))));
   EXPECT_FALSE(client->IsFillingEnabled(
       url::Origin::Create(GURL("https://passwords.google.com/path?query=1"))));
 }
@@ -1391,7 +1459,7 @@ TEST_P(ChromePasswordManagerClientSchemeTest,
       .WillByDefault(Return(true));
   ASSERT_FALSE(it == std::end(kSchemeTestCases));
   EXPECT_EQ(it->password_manager_works,
-            GetClient()->IsSavingAndFillingEnabled(url));
+            GetClient()->IsSavingAndFillingEnabled(url::Origin::Create(url)));
   EXPECT_EQ(it->password_manager_works,
             GetClient()->IsFillingEnabled(url::Origin::Create(url)));
 }
@@ -1583,7 +1651,7 @@ TEST_F(ChromePasswordManagerClientTest,
   ON_CALL(*client, GetMainFrameCertStatus()).WillByDefault(Return(0));
   // Saving is disabled when the page has a delayed SafeBrowsing warning.
   const GURL kUrlOn("https://accounts.google.com");
-  EXPECT_FALSE(client->IsSavingAndFillingEnabled(kUrlOn));
+  EXPECT_FALSE(client->IsSavingAndFillingEnabled(url::Origin::Create(kUrlOn)));
   EXPECT_FALSE(client->IsFillingEnabled(url::Origin::Create(kUrlOn)));
 }
 #endif
@@ -2266,7 +2334,7 @@ TEST_F(ChromePasswordManagerClientAndroidTest,
         {autofill::AutofillManagerEvent::kFormsSeen});
     autofill_driver->renderer_events().FormsSeen(/*updated_forms=*/{form},
                                                  /*removed_forms=*/{});
-    ASSERT_TRUE(waiter.Wait(/*num_awaiting_calls=*/1));
+    ASSERT_TRUE(waiter.Wait(/*num_expected_relevant_events=*/1));
   }
 
   GetClient()->ShowKeyboardReplacingSurface(
@@ -2317,7 +2385,7 @@ TEST_F(ChromePasswordManagerClientAndroidTest,
         {autofill::AutofillManagerEvent::kFormsSeen});
     autofill_driver->renderer_events().FormsSeen(/*updated_forms=*/{form},
                                                  /*removed_forms=*/{});
-    ASSERT_TRUE(waiter.Wait(/*num_awaiting_calls=*/1));
+    ASSERT_TRUE(waiter.Wait(/*num_expected_relevant_events=*/1));
   }
 
   GetClient()->ShowKeyboardReplacingSurface(
@@ -2382,7 +2450,7 @@ TEST_F(ChromePasswordManagerClientAndroidTest,
         {autofill::AutofillManagerEvent::kFormsSeen});
     autofill_driver->renderer_events().FormsSeen(/*updated_forms=*/{form},
                                                  /*removed_forms=*/{});
-    ASSERT_TRUE(waiter.Wait(/*num_awaiting_calls=*/1));
+    ASSERT_TRUE(waiter.Wait(/*num_expected_relevant_events=*/1));
   }
 
   auto* driver =

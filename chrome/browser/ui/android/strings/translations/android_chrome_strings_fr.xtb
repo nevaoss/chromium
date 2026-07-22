@@ -34,7 +34,6 @@
 <translation id="1108938384783527433">Synchronisation de l'historique</translation>
 <translation id="1111673857033749125">Les favoris enregistrés sur vos autres appareils s'affichent ici.</translation>
 <translation id="1123537484474186311"><ph name="TAB_TITLE" />, onglet en Picture-in-picture</translation>
-<translation id="1124357650933674597">{NUM_WINDOWS,plural, =1{Restaurer 1 fenêtre}one{Restaurer # fenêtre}other{Restaurer # fenêtres}}</translation>
 <translation id="1126696498560056882">Gérer les comptes sur cet appareil</translation>
 <translation id="1135018701024399762">Le mode navigation privée maintient votre navigation privée vis-à-vis des autres utilisateurs de votre appareil</translation>
 <translation id="113752097246673894">Pour accéder à vos favoris et plus encore sur tous vos appareils, connectez-vous à Chrome en tant que <ph name="EMAIL" /></translation>
@@ -185,6 +184,7 @@ Seule une personne connaissant votre phrase secrète peut lire vos données chif
 <translation id="1792959175193046959">Modifier à tout moment l'emplacement de téléchargement par défaut</translation>
 <translation id="1796666869097395659">Réduire l'onglet pour y revenir plus tard</translation>
 <translation id="1799920918471566157">Astuces Chrome</translation>
+<translation id="1803799720926799756">Taille du fichier</translation>
 <translation id="1807246157184219062">Clair</translation>
 <translation id="1807709131360304325">Ouvre une nouvelle fenêtre</translation>
 <translation id="1812027881030482584"><ph name="SITE_ETLD_PLUS_ONE" /> ne peut pas poursuivre avec <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /></translation>
@@ -520,7 +520,6 @@ Seule une personne connaissant votre phrase secrète peut lire vos données chif
 <translation id="3166827708714933426">Raccourcis liés aux onglets et aux fenêtres</translation>
 <translation id="3167258285411721858">Vous pouvez demander le site mobile de <ph name="HOST_NAME" /></translation>
 <translation id="3181145110929454111"><ph name="TAB_TITLE" />, onglet de navigation privée épinglé multisélectionné avec son coupé</translation>
-<translation id="3183941812169784232">Restaurer toutes les fenêtres ?</translation>
 <translation id="3187472288455401631">Mesure des annonces</translation>
 <translation id="3189635831478931757">Groupe d'onglets <ph name="GROUP_TITLE" /></translation>
 <translation id="3200536777393523575">Fermer la fenêtre active ?</translation>
@@ -569,6 +568,7 @@ Seule une personne connaissant votre phrase secrète peut lire vos données chif
 <translation id="3435575784518354875">Pour conserver l'accès à vos mots de passe, exportez-les maintenant, mettez à jour les services Google Play, puis importez les mots de passe à nouveau dans le Gestionnaire de mots de passe de Google. <ph name="BEGIN_LINK" />Voir les instructions détaillées<ph name="END_LINK" /></translation>
 <translation id="3435738964857648380">Sécurité</translation>
 <translation id="3435914367318771664">Ajouter onglet à nouv. groupe</translation>
+<translation id="3436118221454753036">Demander au Mode IA</translation>
 <translation id="3438681572027105609">Pour accéder à vos mots de passe et plus encore sur tous vos appareils, connectez-vous à Chrome</translation>
 <translation id="3439276997620616816">Vos onglets récents s'afficheront ici</translation>
 <translation id="3443221991560634068">Actualiser la page active</translation>
@@ -2039,7 +2039,6 @@ Pour modifier ce paramètre, <ph name="BEGIN_LINK" />supprimez les données Chro
 <translation id="939598580284253335">Saisir la phrase secrète</translation>
 <translation id="94161319503679839"><ph name="TAB_TITLE" />, onglet de navigation privée épinglé en Picture-in-picture</translation>
 <translation id="945522503751344254">Envoyer un commentaire</translation>
-<translation id="949667118776341807">Faire pivoter</translation>
 <translation id="95817756606698420">Chrome peut utiliser <ph name="BEGIN_BOLD" />Sogou<ph name="END_BOLD" /> pour les recherches effectuées en Chine. Vous pouvez modifier cette option dans les <ph name="BEGIN_LINK" />paramètres<ph name="END_LINK" />.</translation>
 <translation id="961856697154696964">Supprimer les données de navigation</translation>
 <translation id="963246339335003378">Ouvrir le gestionnaire de tâches</translation>

@@ -9,6 +9,7 @@
 
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
+#include "base/types/expected.h"
 #include "components/ukm/test_ukm_recorder.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
@@ -357,7 +358,8 @@ class MockFederatedAuthRequest : public mojom::blink::FederatedAuthRequest,
   bool IsDisconnected() const { return disconnected_; }
 
   size_t GetTotalPendingCallbacks() const {
-    return request_token_callbacks_.size();
+    return request_token_callbacks_.size() +
+           start_token_request_callbacks_.size();
   }
 
   void WaitForCallToRequestToken(size_t count = 1) {
@@ -371,25 +373,54 @@ class MockFederatedAuthRequest : public mojom::blink::FederatedAuthRequest,
   }
 
   void InvokeRequestTokenCallback(wtf_size_t index = 0) {
-    EXPECT_TRUE(auth_request_receiver_.is_bound());
-    EXPECT_LT(index, request_token_callbacks_.size());
-    auto callback = std::move(request_token_callbacks_[index]);
-    request_token_callbacks_.EraseAt(index);
-    std::move(callback).Run(mojom::RequestTokenStatus::kSuccess,
-                            KURL("https://idp.example"), base::Value("token"),
-                            /*error=*/nullptr,
-                            /*is_auto_selected=*/false);
+    if (!start_token_request_callbacks_.empty()) {
+      EXPECT_TRUE(request_service_receiver_.is_bound());
+      EXPECT_LT(index, start_token_request_callbacks_.size());
+      auto [callback, receiver] =
+          std::move(start_token_request_callbacks_[index]);
+      start_token_request_callbacks_.EraseAt(index);
+
+      auto success = mojom::blink::TokenRequestSuccess::New();
+      success->selected_idp_config_url = KURL("https://idp.example");
+      success->token = base::Value("token");
+      success->is_auto_selected = false;
+
+      std::move(callback).Run(std::move(success));
+    } else {
+      EXPECT_TRUE(auth_request_receiver_.is_bound());
+      EXPECT_LT(index, request_token_callbacks_.size());
+      auto callback = std::move(request_token_callbacks_[index]);
+      request_token_callbacks_.EraseAt(index);
+      std::move(callback).Run(mojom::RequestTokenStatus::kSuccess,
+                              KURL("https://idp.example"), base::Value("token"),
+                              /*error=*/nullptr,
+                              /*is_auto_selected=*/false);
+    }
   }
 
   void InvokeRequestTokenCallbackWithError(mojom::RequestTokenStatus status,
                                            wtf_size_t index = 0) {
-    EXPECT_TRUE(auth_request_receiver_.is_bound());
-    EXPECT_LT(index, request_token_callbacks_.size());
-    auto callback = std::move(request_token_callbacks_[index]);
-    request_token_callbacks_.EraseAt(index);
-    std::move(callback).Run(status, std::nullopt, std::nullopt,
-                            /*error=*/nullptr,
-                            /*is_auto_selected=*/false);
+    if (!start_token_request_callbacks_.empty()) {
+      EXPECT_TRUE(request_service_receiver_.is_bound());
+      EXPECT_LT(index, start_token_request_callbacks_.size());
+      auto [callback, receiver] =
+          std::move(start_token_request_callbacks_[index]);
+      start_token_request_callbacks_.EraseAt(index);
+
+      auto failure = mojom::blink::TokenRequestFailure::New();
+      failure->status = status;
+      failure->error = nullptr;
+
+      std::move(callback).Run(base::unexpected(std::move(failure)));
+    } else {
+      EXPECT_TRUE(auth_request_receiver_.is_bound());
+      EXPECT_LT(index, request_token_callbacks_.size());
+      auto callback = std::move(request_token_callbacks_[index]);
+      request_token_callbacks_.EraseAt(index);
+      std::move(callback).Run(status, std::nullopt, std::nullopt,
+                              /*error=*/nullptr,
+                              /*is_auto_selected=*/false);
+    }
   }
 
  protected:
@@ -399,6 +430,20 @@ class MockFederatedAuthRequest : public mojom::blink::FederatedAuthRequest,
       mojom::CredentialMediationRequirement requirement,
       RequestTokenCallback callback) override {
     request_token_callbacks_.push_back(std::move(callback));
+
+    if (GetTotalPendingCallbacks() >= expected_callbacks_ && quit_closure_) {
+      std::move(quit_closure_).Run();
+    }
+  }
+
+  void StartTokenRequest(
+      Vector<blink::mojom::blink::IdentityProviderGetParametersPtr>
+          idp_get_params_ptrs,
+      mojom::CredentialMediationRequirement requirement,
+      mojo::PendingReceiver<mojom::blink::FederatedRequest> request_receiver,
+      StartTokenRequestCallback callback) override {
+    start_token_request_callbacks_.push_back(
+        std::make_pair(std::move(callback), std::move(request_receiver)));
 
     if (GetTotalPendingCallbacks() >= expected_callbacks_ && quit_closure_) {
       std::move(quit_closure_).Run();
@@ -450,6 +495,9 @@ class MockFederatedAuthRequest : public mojom::blink::FederatedAuthRequest,
       request_service_receiver_{this};
 
   Vector<RequestTokenCallback> request_token_callbacks_;
+  Vector<std::pair<StartTokenRequestCallback,
+                   mojo::PendingReceiver<mojom::blink::FederatedRequest>>>
+      start_token_request_callbacks_;
   size_t expected_callbacks_ = 1;
   base::OnceClosure quit_closure_;
   bool disconnected_ = false;

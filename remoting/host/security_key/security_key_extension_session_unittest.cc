@@ -196,7 +196,7 @@ class SecurityKeyExtensionSessionTest : public testing::Test {
   // Object under test.
   std::unique_ptr<SecurityKeyExtensionSession> security_key_extension_session_;
 
-  raw_ptr<MockSecurityKeyAuthHandler> mock_security_key_auth_handler_ = nullptr;
+  std::unique_ptr<MockSecurityKeyAuthHandler> mock_security_key_auth_handler_;
 
   TestClientStub client_stub_;
   TestClientSessionDetails client_details_;
@@ -211,16 +211,12 @@ SecurityKeyExtensionSessionTest::SecurityKeyExtensionSessionTest() {
       temp_dir_.GetPath().AppendASCII("test_socket"));
 #endif
 
-  security_key_extension_session_ =
-      std::make_unique<SecurityKeyExtensionSession>(&client_details_,
-                                                    &client_stub_);
+  mock_security_key_auth_handler_ =
+      std::make_unique<MockSecurityKeyAuthHandler>();
 
-  // We want to retain ownership of mock object so we can use it to inject
-  // events into the extension session.  The mock object should not be used
-  // once |security_key_extension_session_| is destroyed.
-  mock_security_key_auth_handler_ = new MockSecurityKeyAuthHandler();
-  security_key_extension_session_->SetSecurityKeyAuthHandlerForTesting(
-      base::WrapUnique(mock_security_key_auth_handler_.get()));
+  security_key_extension_session_ =
+      std::make_unique<SecurityKeyExtensionSession>(
+          mock_security_key_auth_handler_->GetWeakPtr(), &client_stub_);
 }
 
 SecurityKeyExtensionSessionTest::~SecurityKeyExtensionSessionTest() {

@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "absl/strings/string_view.h"
@@ -22,7 +23,6 @@
 #include "gtest/gtest.h"
 // [internal] Placeholder for FLAC fuzzing include.
 #include "iamf/api/decoder/iamf_decoder.h"
-#include "iamf/cli/tests/iamf_status_adl.h"
 #include "iamf/cli/tests/portable/get_test_path.h"
 #include "iamf/include/iamf_tools/iamf_tools_api_types.h"
 
@@ -61,9 +61,13 @@ void OutputAllTemporalUnits(api::IamfDecoder& iamf_decoder) {
   const int bytes_per_sample =
       GetBytesPerSample(iamf_decoder.GetOutputSampleType());
   uint32_t frame_size;
-  ASSERT_TRUE(iamf_decoder.GetFrameSize(frame_size).ok());
+  if (!iamf_decoder.GetFrameSize(frame_size).ok()) {
+    return;
+  }
   int num_output_channels;
-  ASSERT_TRUE(iamf_decoder.GetNumberOfOutputChannels(num_output_channels).ok());
+  if (!iamf_decoder.GetNumberOfOutputChannels(num_output_channels).ok()) {
+    return;
+  }
   // Extract and throw away all temporal units.
   std::vector<uint8_t> output_buffer(bytes_per_sample * frame_size *
                                      num_output_channels);
@@ -145,18 +149,19 @@ void DoesNotDieReset(const std::string& descriptor_data,
 
 FUZZ_TEST(IamfDecoderFuzzTest_Reset, DoesNotDieReset);
 
-void DoesNotDieAllParams(std::optional<api::OutputLayout> output_layout,
-                         api::OutputSampleType output_sample_type,
-                         std::optional<uint32_t> mix_presentation_id,
-                         api::ChannelOrdering channel_ordering,
-                         std::string data) {
+void DoesNotDieAllParams(
+    api::RequestedMix requested_mix, api::ChannelOrdering channel_ordering,
+    std::unordered_set<api::ProfileVersion> requested_profile_versions,
+    api::OutputSampleType output_sample_type,
+    api::TrimmingSettings trimming_settings, std::string data) {
   std::vector<uint8_t> bitstream(data.begin(), data.end());
   std::unique_ptr<api::IamfDecoder> iamf_decoder;
   const api::IamfDecoder::Settings kSettings = {
-      .requested_mix = {.mix_presentation_id = mix_presentation_id,
-                        .output_layout = output_layout},
+      .requested_mix = requested_mix,
       .channel_ordering = channel_ordering,
+      .requested_profile_versions = requested_profile_versions,
       .requested_output_sample_type = output_sample_type,
+      .trimming_settings = trimming_settings,
   };
   ASSERT_TRUE(api::IamfDecoder::Create(kSettings, iamf_decoder).ok());
 
@@ -185,11 +190,11 @@ auto AnyOutputLayout() {
   });
 }
 
-auto AnyOutputSampleType() {
-  return ElementOf<api::OutputSampleType>({
-      api::OutputSampleType::kInt16LittleEndian,
-      api::OutputSampleType::kInt32LittleEndian,
-  });
+auto AnyRequestedMix() {
+  return fuzztest::StructOf<api::RequestedMix>(
+      fuzztest::OptionalOf(Arbitrary<uint32_t>()),  // mix_presentation_id,
+      fuzztest::OptionalOf(AnyOutputLayout())       // output_layout,
+  );
 }
 
 auto AnyChannelOrdering() {
@@ -197,6 +202,30 @@ auto AnyChannelOrdering() {
       api::ChannelOrdering::kIamfOrdering,
       api::ChannelOrdering::kOrderingForAndroid,
   });
+}
+
+// The ProfileVersion should be any combination of values from the
+// ProfileVersion enum (from empty to all of them).
+auto AnyProfileVersion() {
+  return fuzztest::UnorderedSetOf(ElementOf<api::ProfileVersion>({
+      api::ProfileVersion::kIamfSimpleProfile,
+      api::ProfileVersion::kIamfBaseProfile,
+      api::ProfileVersion::kIamfBaseEnhancedProfile,
+  }));
+}
+
+auto AnyOutputSampleType() {
+  return ElementOf<api::OutputSampleType>({
+      api::OutputSampleType::kInt16LittleEndian,
+      api::OutputSampleType::kInt32LittleEndian,
+  });
+}
+
+auto AnyTrimmingSettings() {
+  return fuzztest::StructOf<api::TrimmingSettings>(
+      fuzztest::Arbitrary<bool>(),  // trim_beginning
+      fuzztest::Arbitrary<bool>()   // trim_end
+  );
 }
 
 enum class OperationType {
@@ -347,11 +376,9 @@ FUZZ_TEST(IamfDecoderFuzzTest_RandomSequence,
     .WithSeeds(GetSeeds);
 
 FUZZ_TEST(IamfDecoderFuzzTest_AllArbitraryParams, DoesNotDieAllParams)
-    .WithDomains(OptionalOf(AnyOutputLayout()),      // output_layout,
-                 AnyOutputSampleType(),              // output_sample_type,
-                 OptionalOf(Arbitrary<uint32_t>()),  // mix_presentation_id,
-                 AnyChannelOrdering(),               // channel_ordering,
-                 Arbitrary<std::string>());          // data
+    .WithDomains(AnyRequestedMix(), AnyChannelOrdering(), AnyProfileVersion(),
+                 AnyOutputSampleType(), AnyTrimmingSettings(),
+                 Arbitrary<std::string>());
 
 }  // namespace
 }  // namespace iamf_tools

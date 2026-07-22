@@ -173,6 +173,11 @@ typedef NS_ENUM(NSInteger, GeminiCancelType) {
 - (void)geminiLive:(UIViewController*)viewController
     showConsentScreenWithCompletion:(void (^)(BOOL accepted))completion;
 
+#pragma mark - Gemini View Delegate
+
+// Called when request is received from SDK to dismiss the UI.
+- (void)didRequestDismissal;
+
 @end
 
 #endif  // IOS_CHROME_BROWSER_INTELLIGENCE_BWG_MODEL_GEMINI_SESSION_DELEGATE_H_

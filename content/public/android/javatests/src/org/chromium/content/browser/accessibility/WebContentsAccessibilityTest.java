@@ -2075,6 +2075,62 @@ public class WebContentsAccessibilityTest {
         Assert.assertTrue(lastParagraphNodeInfo.isAccessibilityFocused());
     }
 
+    /** Tests initializeMovementAtGranularityOnSetAccessibilityFocus with selection offset types. */
+    @Test
+    @SmallTest
+    public void testEvent_initializeMovementAtGranularity_withExtendedSelectionOffsetTypes()
+            throws Throwable {
+        // Build a simple web page with a focused container node containing children.
+        setupTestWithHTML(
+                """
+                <p id="text">Some text</p>
+                <img id="image" src="pipe.jpg" alt="pipe" />
+                """);
+
+        int rootVvid = waitForNodeMatching(sClassNameMatcher, "android.webkit.WebView");
+        int textVvId = waitForNodeMatching(sViewIdResourceNameMatcher, "text");
+        int imageVvid = waitForNodeMatching(sViewIdResourceNameMatcher, "image");
+
+        // 1. Set extended selection on the text node.
+        setAndAssertExtendedSelection(
+                rootVvid, textVvId, 1, OFFSET_TYPE_TEXT, textVvId, 3, OFFSET_TYPE_TEXT);
+
+        // Perform focus action to trigger initializeMovementAtGranularityOnSetAccessibilityFocus.
+        performActionOnUiThread(textVvId, ACTION_ACCESSIBILITY_FOCUS, null);
+
+        // Setup GRANULARITY args.
+        Bundle args = new Bundle();
+        args.putInt(ACTION_ARGUMENT_MOVEMENT_GRANULARITY_INT, MOVEMENT_GRANULARITY_CHARACTER);
+        args.putBoolean(ACTION_ARGUMENT_EXTEND_SELECTION_BOOLEAN, false);
+
+        // Swipe forward. Since selection was on the text node, start index should be initialized to
+        // 3.
+        performTextActionOnUiThreadAndWaitForTraversalEvent(
+                textVvId, ACTION_NEXT_AT_MOVEMENT_GRANULARITY, args);
+        Assert.assertEquals(3, mTestData.getTraverseFromIndex());
+        Assert.assertEquals(4, mTestData.getTraverseToIndex());
+
+        // Focus away to clean up.
+        performActionOnUiThread(rootVvid, ACTION_ACCESSIBILITY_FOCUS, null);
+
+        // 2. Set selection on the image node with child offset types.
+        setAndAssertExtendedSelection(
+                rootVvid, rootVvid, 1, OFFSET_TYPE_CHILD, rootVvid, 2, OFFSET_TYPE_CHILD);
+
+        // Focus on the text node.
+        performActionOnUiThread(textVvId, ACTION_ACCESSIBILITY_FOCUS, null);
+
+        // Clear previous event stats.
+        mTestData.setReceivedTraversalEvent(false);
+
+        // Swipe forward on the text node. Since the selection focus node was the image node,
+        // it shouldn't initialize the granularity index (which remains -1).
+        performTextActionOnUiThreadAndWaitForTraversalEvent(
+                textVvId, ACTION_NEXT_AT_MOVEMENT_GRANULARITY, args);
+        Assert.assertEquals(0, mTestData.getTraverseFromIndex());
+        Assert.assertEquals(1, mTestData.getTraverseToIndex());
+    }
+
     // ------------------ Tests of AccessibilityNodeInfo objects ------------------ //
     // These tests are included here rather than in WebContentsAccessibilityTreeTest because
     // they test the AccessibilityNodeInfo over a series of actions/events, rather than statically.
@@ -3222,13 +3278,7 @@ public class WebContentsAccessibilityTest {
                 OFFSET_TYPE_CHILD,
                 rootVvid,
                 imageIndex + 1,
-                OFFSET_TYPE_CHILD,
-                imageVvid,
-                0,
-                OFFSET_TYPE_TEXT,
-                buttonVvid,
-                0,
-                OFFSET_TYPE_TEXT);
+                OFFSET_TYPE_CHILD);
 
         // Button, although it is a non-text node, selecting by text offset as it
         // is a leaf.
@@ -3300,13 +3350,7 @@ public class WebContentsAccessibilityTest {
                 OFFSET_TYPE_CHILD,
                 rootVvid,
                 input2Index + 1,
-                OFFSET_TYPE_CHILD,
-                input1Vvid,
-                0,
-                OFFSET_TYPE_TEXT,
-                paragraph2Vvid,
-                0,
-                OFFSET_TYPE_TEXT);
+                OFFSET_TYPE_CHILD);
 
         // Selection from non-editable to the beginning of the editable.
         setAndAssertExtendedSelection(
@@ -3316,13 +3360,7 @@ public class WebContentsAccessibilityTest {
                 OFFSET_TYPE_TEXT,
                 rootVvid,
                 input1Index,
-                OFFSET_TYPE_CHILD,
-                paragraph1Vvid,
-                1,
-                OFFSET_TYPE_TEXT,
-                input1Vvid,
-                0,
-                OFFSET_TYPE_TEXT);
+                OFFSET_TYPE_CHILD);
 
         // Selection from non-editable to the end of the editable.
         setAndAssertExtendedSelection(
@@ -3332,13 +3370,7 @@ public class WebContentsAccessibilityTest {
                 OFFSET_TYPE_TEXT,
                 rootVvid,
                 input2Index + 1,
-                OFFSET_TYPE_CHILD,
-                paragraph1Vvid,
-                1,
-                OFFSET_TYPE_TEXT,
-                paragraph2Vvid,
-                0,
-                OFFSET_TYPE_TEXT);
+                OFFSET_TYPE_CHILD);
 
         // Selection from the beginning of the editable to to a non-editable.
         setAndAssertExtendedSelection(
@@ -3346,12 +3378,6 @@ public class WebContentsAccessibilityTest {
                 rootVvid,
                 input1Index,
                 OFFSET_TYPE_CHILD,
-                paragraph2Vvid,
-                10,
-                OFFSET_TYPE_TEXT,
-                input1Vvid,
-                0,
-                OFFSET_TYPE_TEXT,
                 paragraph2Vvid,
                 10,
                 OFFSET_TYPE_TEXT);
@@ -3494,13 +3520,7 @@ public class WebContentsAccessibilityTest {
                 OFFSET_TYPE_TEXT,
                 rootVvid,
                 contenteditable1Index,
-                OFFSET_TYPE_CHILD,
-                p1Vvid,
-                1,
-                OFFSET_TYPE_TEXT,
-                contenteditable1Vvid,
-                0,
-                OFFSET_TYPE_TEXT);
+                OFFSET_TYPE_CHILD);
 
         // From the end of a contenteditable to outside it.
         setAndAssertExtendedSelection(
@@ -3508,12 +3528,6 @@ public class WebContentsAccessibilityTest {
                 rootVvid,
                 contenteditable1Index + 1,
                 OFFSET_TYPE_CHILD,
-                p2Vvid,
-                5,
-                OFFSET_TYPE_TEXT,
-                p2Vvid,
-                0,
-                OFFSET_TYPE_TEXT,
                 p2Vvid,
                 5,
                 OFFSET_TYPE_TEXT);
@@ -3595,7 +3609,6 @@ public class WebContentsAccessibilityTest {
         int imageIndex = 1;
 
         // Select before and after the image using root child offsets.
-        // TODO(crbug.com/443078007): Selection end is wrong, fix it.
         setAndAssertExtendedSelection(
                 rootVvid,
                 rootVvid,
@@ -3603,13 +3616,7 @@ public class WebContentsAccessibilityTest {
                 OFFSET_TYPE_CHILD,
                 rootVvid,
                 imageIndex + 1,
-                OFFSET_TYPE_CHILD,
-                imageVvid,
-                0,
-                OFFSET_TYPE_TEXT,
-                imageVvid,
-                0,
-                OFFSET_TYPE_TEXT);
+                OFFSET_TYPE_CHILD);
     }
 
     /** Test extended selection with a leaf node at the end of root to trigger at_end_of_anchor. */
@@ -5357,62 +5364,6 @@ public class WebContentsAccessibilityTest {
         Assert.assertNotNull(NODE_TIMEOUT_ERROR, mNodeInfo);
 
         histogramWatcher.assertExpected();
-    }
-
-    @Test
-    @SmallTest
-    public void testAccessibilityTreeSizeWithIframe() throws Throwable {
-        // Iframe content with 12 additional nodes
-        final String iframeContent =
-                """
-                <html>
-                  <body>
-                    <h1>Iframe content</h1>
-                    <p>Node 1</p>
-                    <p>Node 2</p>
-                    <p>Node 3</p>
-                    <p>Node 4</p>
-                    <p>Node 5</p>
-                    <p>Node 6</p>
-                    <p>Node 7</p>
-                    <p>Node 8</p>
-                    <p>Node 9</p>
-                    <p>Node 10</p>
-                    <p>Node 11</p>
-                  </body>
-                </html>
-                """;
-        // Main page content with an iframe
-        final String html =
-                """
-                <html>
-                  <body>
-                    <p>Main content</p>
-                    <iframe src='data:text/html,\
-                """
-                        + iframeContent
-                        + """
-                        '></iframe>
-                          </body>
-                        </html>
-                        """;
-
-        setupTestWithHTML(html);
-
-        // Wait for a node in the main frame to ensure it's loaded.
-        waitForNodeMatching(sTextMatcher, "Main content");
-
-        // Wait for nodes in the iframe to ensure it's loaded.
-        waitForNodeMatching(sTextMatcher, "Iframe content");
-        waitForNodeMatching(sTextMatcher, "Node 11");
-
-        // Get the total size of the accessibility tree.
-        long treeSize =
-                ThreadUtils.runOnUiThreadBlocking(
-                        () -> mActivityTestRule.mWcax.getAccessibilityTreeSizeForExperiment());
-        // 28 nodes in the iframe + 5 node in the main frame = 33 nodes.
-        Assert.assertTrue(
-                "Tree size should be greater than 15, but was " + treeSize, treeSize == 33L);
     }
 
     private void assertActionsContainNoScrolls(AccessibilityNodeInfoCompat nodeInfo) {

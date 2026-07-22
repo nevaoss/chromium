@@ -231,7 +231,7 @@ import java.util.function.Consumer;
                 "Some tests are Testing CCT start up behavior. "
                         + "Unit test conversion tracked in crbug.com/40185034")
 @Features.DisableFeatures({ChromeFeatureList.EDGE_TO_EDGE_EVERYWHERE})
-@DisableLeakChecks("crbug.com/527131543")
+@DisableLeakChecks("crbug.com/528413345")
 public class CustomTabActivityTest {
     private static final int TIMEOUT_PAGE_LOAD_SECONDS = 10;
     private static final String TEST_PACKAGE = "org.chromium.chrome.tests";

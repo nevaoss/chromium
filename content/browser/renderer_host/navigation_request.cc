@@ -1022,7 +1022,7 @@ bool IsSharedStorageWritableEligibleForNavigationRequest(
 std::optional<base::SafeRef<RenderFrameHostImpl>>
 GetRenderFrameHostForBackForwardCacheRestore(FrameTreeNode* frame_tree_node,
                                              NavigationEntryImpl* entry) {
-  if (!entry) {
+  if (!entry || !frame_tree_node->frame_tree().is_primary()) {
     return std::nullopt;
   }
 
@@ -1493,7 +1493,7 @@ std::unique_ptr<NavigationRequest> NavigationRequest::CreateRendererInitiated(
           /*lcpp_hint=*/nullptr, blink::CreateDefaultRendererContentSettings(),
           /*visited_link_salt=*/std::nullopt,
           /*local_surface_id=*/std::nullopt,
-          /*initial_permission_statuses=*/std::nullopt,
+          frame_tree_node->current_frame_host()->GetCachedPermissionStatuses(),
           /*should_skip_screenshot=*/false,
           /*force_new_document_sequence_number=*/false,
           /*navigation_metrics_token=*/base::UnguessableToken::Create(),
@@ -1667,7 +1667,7 @@ NavigationRequest::CreateForSynchronousRendererCommit(
           /*lcpp_hint=*/nullptr, blink::CreateDefaultRendererContentSettings(),
           /*visited_link_salt=*/std::nullopt,
           /*local_surface_id=*/std::nullopt,
-          /*initial_permission_statuses=*/std::nullopt,
+          render_frame_host->GetCachedPermissionStatuses(),
           /*should_skip_screenshot=*/false,
           /*force_new_document_sequence_number=*/false,
           /*navigation_metrics_token=*/base::UnguessableToken::Create(),
@@ -3120,6 +3120,13 @@ void NavigationRequest::BeginNavigationImpl() {
 
   // Connection Allowlist: check whether navigation to the url is allowed.
   if (!IsAllowedByConnectionAllowlist(/*is_redirect=*/false)) {
+    // Record that this navigation is blocked by the initiator's
+    // Connection-Allowlist before StartNavigation() notifies observers. This
+    // lets observers (e.g. //chrome's LoadingPredictor) suppress speculative
+    // network activity that would otherwise leak the destination host even
+    // though the navigation is blocked. See
+    // https://github.com/WICG/connection-allowlists.
+    is_blocked_by_connection_allowlist_ = true;
     // Create a navigation handle so that the correct error code can be set on
     // it by OnRequestFailedInternal().
     StartNavigation();
@@ -3372,13 +3379,13 @@ bool NavigationRequest::ShouldAddDeviceBoundSessionObserver() {
   // prerendering a main frame, as the device-bound session change information
   // will only be used to determine if a page can be restored from back/forward
   // cache, so subframe navigation can be ignored.
-  return frame_tree_node_->navigator()
-             .controller()
-             .GetBackForwardCache()
-             .should_allow_storing_pages_with_cache_control_no_store() &&
+  return (IsInPrimaryMainFrame() || IsInPrerenderedMainFrame()) &&
          !IsPageActivation() && !IsSameDocument() &&
-         (IsInPrimaryMainFrame() || IsInPrerenderedMainFrame()) &&
-         common_params_->url.SchemeIsHTTPOrHTTPS();
+         common_params_->url.SchemeIsHTTPOrHTTPS() &&
+         frame_tree_node_->current_frame_host()
+             ->delegate()
+             ->GetBackForwardCache()
+             .should_allow_storing_pages_with_cache_control_no_store();
 }
 
 void NavigationRequest::StartNavigation() {
@@ -3520,7 +3527,7 @@ void NavigationRequest::StartNavigation() {
   // For initial WebUI navigations, CommitDeferringConditions and
   // ProcessSelectionDeferringConditions are not run, so that the navigation can
   // run synchronously from start to commit.
-  if (!IsPrerenderedPageActivation() && !IsInitialWebUISyncNavigation()) {
+  if (!IsPrerenderedPageActivation() && !IsInitialWebUINavigation()) {
     commit_deferrer_ = CommitDeferringConditionRunner::Create(
         *this, CommitDeferringCondition::NavigationType::kOther,
         /*candidate_prerender_frame_tree_node_id=*/std::nullopt);
@@ -3804,6 +3811,12 @@ void NavigationRequest::OnRequestRedirected(
 
   if (!was_redirected_ &&
       !IsAllowedByConnectionAllowlist(/*is_redirect=*/true)) {
+    // As in BeginNavigationImpl(), record that this navigation is blocked by
+    // the initiator's Connection-Allowlist so observers can suppress
+    // speculative network activity for it. (Today no speculative work runs
+    // after a blocked redirect, but this keeps IsBlockedByConnectionAllowlist()
+    // truthful for any future post-redirect consumer.)
+    is_blocked_by_connection_allowlist_ = true;
     auto completion_status =
         network::URLLoaderCompletionStatus(net::ERR_UNSAFE_REDIRECT);
     error_navigation_trigger_ = ErrorNavigationTrigger::kRedirectNotAllowed;
@@ -6019,7 +6032,7 @@ void NavigationRequest::OnStartChecksComplete(
     // confident it won't be triggered.
     DCHECK(last_response_head);
     cached_response_head = last_response_head->Clone();
-  } else if (IsInitialWebUISyncNavigation()) {
+  } else if (IsInitialWebUINavigation()) {
     loader_type = NavigationURLLoader::LoaderType::kNoopForInitialWebUI;
   }
 
@@ -6704,7 +6717,7 @@ void NavigationRequest::OnWillProcessResponseChecksComplete(
   // When this request is for prerender activation, `commit_deferrer_` has
   // already been processed. If it's an initial WebUI navigation, commit
   // deferring conditions are skipped.
-  if (IsPrerenderedPageActivation() || IsInitialWebUISyncNavigation()) {
+  if (IsPrerenderedPageActivation() || IsInitialWebUINavigation()) {
     CHECK(!commit_deferrer_);
     CommitNavigation();
     // DO NOT ADD CODE after this. The previous call to CommitNavigation
@@ -6920,6 +6933,7 @@ void NavigationRequest::AddOldPageInfoToCommitParamsIfNeeded() {
   // will send our best guess by checking if the page can be persisted at this
   // point.
   bool can_store_old_page_in_bfcache =
+      frame_tree_node_->frame_tree().is_primary() &&
       frame_tree_node_->frame_tree()
           .controller()
           .GetBackForwardCache()
@@ -11822,6 +11836,10 @@ bool NavigationRequest::IsNavigatingFromInitialEmptyDocument() const {
   return frame_tree_node_->is_on_initial_empty_document();
 }
 
+bool NavigationRequest::IsBlockedByConnectionAllowlist() const {
+  return is_blocked_by_connection_allowlist_;
+}
+
 std::unique_ptr<NavigationEntryImpl>
 NavigationRequest::TakePrerenderNavigationEntry() {
   CHECK(IsPrerenderedPageActivation());
@@ -13067,12 +13085,6 @@ void NavigationRequest::MaybeResumeAsyncBeforeUnloadCommit(
 
 bool NavigationRequest::IsWaitingForAsyncBeforeUnload() const {
   return !async_before_unload_pending_replies_.empty();
-}
-
-bool NavigationRequest::IsInitialWebUISyncNavigation() {
-  return IsInitialWebUINavigation() &&
-         base::FeatureList::IsEnabled(
-             features::kInitialWebUISyncNavStartToCommit);
 }
 
 bool NavigationRequest::IsInitialWebUINavigation() {

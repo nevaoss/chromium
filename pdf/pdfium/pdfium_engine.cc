@@ -5354,11 +5354,13 @@ void PDFiumEngine::DrawText(int page_index,
       CHECK(FPDFPageObj_AddExistingMark(text_object.get(), mark));
     }
 
-    FPDF_PAGEOBJECTMARK span = FPDFPageObj_AddMark(text_object.get(), "Span");
-    CHECK(span);
-    std::vector<unsigned char> blob = ToUTF16BEBlob(item.text);
-    FPDFPageObjMark_SetBlobParam(doc(), text_object.get(), span, "ActualText",
-                                 blob.data(), blob.size());
+    if (!base::IsStringASCII(item.text)) {
+      FPDF_PAGEOBJECTMARK span = FPDFPageObj_AddMark(text_object.get(), "Span");
+      CHECK(span);
+      std::vector<unsigned char> blob = ToUTF16BEBlob(item.text);
+      FPDFPageObjMark_SetBlobParam(doc(), text_object.get(), span, "ActualText",
+                                   blob.data(), blob.size());
+    }
 
     CHECK(FPDFPage_InsertObject(page, text_object.release()));
   }

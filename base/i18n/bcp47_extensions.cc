@@ -16,13 +16,12 @@
 #include "base/check_op.h"
 #include "base/containers/flat_map.h"
 #include "base/i18n/language_tag.h"
-#include "base/logging.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "base/types/pass_key.h"
 
-namespace base::i18n_extensions {
+namespace base::i18n {
 namespace {
 
 bool IsAllAlphaNumeric(std::string_view s) {
@@ -108,8 +107,7 @@ bool AddKeywords(base::span<const std::string_view> keywords_span,
 
 }  // namespace
 
-Extension::Extension(base::PassKey<base::LanguageTag>,
-                     std::string_view extension)
+Extension::Extension(base::PassKey<LanguageTag>, std::string_view extension)
     : extension_(extension) {
   CHECK_GE(extension_.size(), 4u);
   CHECK_EQ(extension_[1], '-');
@@ -218,4 +216,4 @@ PrivateUseSubtags::PrivateUseSubtags(base::PassKey<LanguageTag>,
   CHECK_EQ(private_use[1], '-');
 }
 
-}  // namespace base::i18n_extensions
+}  // namespace base::i18n

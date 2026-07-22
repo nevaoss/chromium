@@ -82,8 +82,12 @@ class MultiContentsView
   // Returns the currently inactive ContentsWebView.
   ContentsWebView* GetInactiveContentsView() const;
 
-  const gfx::RoundedCornersF& background_radii() const;
+  // These are the rounded corner radii to render on the multi-contents view and
+  // (if necessary) the contents views themselves. The radii should already be
+  // adjusted for RtL (so e.g. `radii.upper_left()` is actually the corner that
+  // displays on the upper left regardless of text direction).
   void SetBackgroundRadii(const gfx::RoundedCornersF& radii);
+  const gfx::RoundedCornersF& GetBackgroundRadii() const;
 
   // Returns true if more than one WebContents is displayed.
   bool IsInSplitView() const;

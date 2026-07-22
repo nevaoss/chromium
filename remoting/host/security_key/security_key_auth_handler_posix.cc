@@ -221,6 +221,11 @@ void SecurityKeyAuthHandlerPosix::SetSendMessageCallback(
   send_message_callback_ = callback;
 }
 
+base::WeakPtr<SecurityKeyAuthHandler>
+SecurityKeyAuthHandlerPosix::GetWeakPtr() {
+  return weak_factory_.GetWeakPtr();
+}
+
 size_t SecurityKeyAuthHandlerPosix::GetActiveConnectionCountForTest() const {
   return active_sockets_.size();
 }

@@ -988,7 +988,7 @@ input[type="hidden" i] {
   display: none !important;
 }
 @supports blink-feature(UnboundedElement) {
-  [unbounded]:-internal-unbounded-element-inactive {
+  [unbounded]:not(:unbounded) {
     visibility: hidden;
   }
 }
@@ -1101,6 +1101,23 @@ input[type="color" i]::-webkit-color-swatch {
         block-size: -internal-auto-base(revert-rule, stretch);
         forced-color-adjust: -internal-auto-base(revert-rule, none);
     }
+}
+
+input::-internal-email-verification-indicator {
+    display: none;
+    inline-size: 16px;
+    block-size: 16px;
+    padding: 2px;
+    -webkit-user-modify: read-only !important;
+    cursor: default;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+}
+
+input::-internal-email-verification-indicator[data-state="verified"] {
+    display: inline-block;
+    background-image: url("images/email_verification_verified.svg");
 }
 
 input::-webkit-calendar-picker-indicator {
@@ -2448,23 +2465,27 @@ select optgroup optgroup {
     margin-inline-start: auto;
   }
 
-  /* We can use the direct child selector for menuitems in menubars, because the
-   * menubar content model does not allow for fieldset as an intermediate to
-   * group menuitems in menubars. */
-  menubar > menuitem {
+  submenu {
+    display: contents;
+  }
+
+  menuitem {
     display: inline-flex;
     /* menuitems in a menubar do not open on interest (hover), unless a menu
      * is already open (see below) */
     interest-delay-start: calc(infinity * 1s);
   }
-  menulist menuitem {
-    display: flex;
-  }
 
   /* menuitems in a menubar that has an open menu trigger instantly on
-   * interest (hover) */
-  menubar:-internal-has-open-menuitem > menuitem {
+   * interest (hover).  Uses :where() so that the "menulist menuitem"
+   * selector just below overrides it. */
+  menubar:where(:-internal-has-open-menuitem) menuitem {
     interest-delay-start: 0s;
+  }
+
+  menulist menuitem {
+    display: flex;
+    interest-delay-start: normal;
   }
 
   menubar, menulist {
@@ -2515,14 +2536,14 @@ select optgroup optgroup {
   interactivity: inert;
 }
 
-[overscrollcontainer] > [overscrollarea]::backdrop {
+[overscrollcontainer] > [overscrollarea]::overscroll-backdrop {
   display: none;
   position: absolute;
   inset: 0;
   background-color: rgba(0,0,0,0.1);
 }
 
-[overscrollcontainer] > [overscrollarea]:overscroll-open::backdrop {
+[overscrollcontainer] > [overscrollarea]:overscroll-open::overscroll-backdrop {
   display: block;
 }
 

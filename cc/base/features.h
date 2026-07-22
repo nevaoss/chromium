@@ -88,8 +88,9 @@ CC_BASE_EXPORT BASE_DECLARE_FEATURE(kSlimScheduler);
 // Modes for `kWaitForLateScrollEvents` changing event dispatch. Where the
 // default is to just always enqueue scroll events.
 //
-// The ideal goal for
-// `kScrollEventDispatchModeNameDispatchScrollEventsImmediately` is that it will
+// The ideal goal for both
+// `kScrollEventDispatchModeNameDispatchScrollEventsImmediately` and
+// `kScrollEventDispatchModeDispatchScrollEventsUntilDeadline` is that they will
 // wait for `kWaitForLateScrollEventsDeadlineRatio` of the frame interval for
 // input. During this time the first scroll event will be dispatched
 // immediately. Subsequent scroll events will be enqueued. At the deadline we
@@ -110,6 +111,11 @@ CC_BASE_EXPORT BASE_DECLARE_FEATURE(kSlimScheduler);
 // production, we will first attempt to generate a new prediction to dispatch.
 // As in `kScrollEventDispatchModeUseScrollPredictorForEmptyQueue`. After
 // which we will resume frame production and enqueuing input.
+//
+// `kScrollEventDispatchModeDispatchScrollEventsUntilDeadline` relies on
+// `blink::InputHandlerProxy` to directly enforce the deadline. This isolates us
+// from cc scheduling bugs. Allowing us to no longer dispatch events, even if
+// frame production has yet to complete.
 CC_BASE_EXPORT extern const base::FeatureParam<std::string>
     kScrollEventDispatchMode;
 CC_BASE_EXPORT extern const char
@@ -118,6 +124,8 @@ CC_BASE_EXPORT extern const char
     kScrollEventDispatchModeUseScrollPredictorForEmptyQueue[];
 CC_BASE_EXPORT extern const char
     kScrollEventDispatchModeUseScrollPredictorForDeadline[];
+CC_BASE_EXPORT extern const char
+    kScrollEventDispatchModeDispatchScrollEventsUntilDeadline[];
 
 // Enables Viz service-side layer trees for content rendering.
 CC_BASE_EXPORT BASE_DECLARE_FEATURE(kTreesInViz);

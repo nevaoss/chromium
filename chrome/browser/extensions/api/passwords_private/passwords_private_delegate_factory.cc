@@ -22,8 +22,10 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/sync/sync_service_factory.h"
-#include "chrome/browser/ui/browser.h"
-#include "chrome/browser/ui/browser_window.h"
+// TODO(crbug.com/528209923): //chrome/browser/ui cannot be added to deps
+// because it would cause a circular dependency. Remove this nogncheck once
+// MaybeShowProfileSwitchIPH is moved to //chrome/browser/ui/...
+#include "chrome/browser/ui/browser_window.h"  // nogncheck
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/hats/trust_safety_sentiment_service_factory.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"

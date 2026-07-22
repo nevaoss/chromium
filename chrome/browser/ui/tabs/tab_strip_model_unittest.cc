@@ -2773,6 +2773,9 @@ TEST_F(TabStripModelTest, SplitLayoutTest) {
   histogram_tester.ExpectUniqueSample(
       "TabStrip.SplitView.OrientationOnCreation",
       split_tabs::SplitTabLayout::kSideBySide, 1);
+  histogram_tester.ExpectUniqueSample(
+      "TabStrip.SplitView.ToolbarButton.OrientationOnCreation",
+      split_tabs::SplitTabLayout::kSideBySide, 1);
 
   tabstrip()->UpdateSplitLayout(
       split_tab_id, split_tabs::SplitTabLayout::kStacked,

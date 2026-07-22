@@ -109,6 +109,7 @@ import java.util.function.Supplier;
 
 /** Unit tests for {@link ToolbarControlContainer}. */
 @RunWith(BaseRobolectricTestRunner.class)
+@DisableFeatures({SigninFeatures.SIGNIN_LEVEL_UP_BUTTON})
 public class ToolbarControlContainerTest {
     private static final String BLOCK_NAME = "Android.TopToolbar.BlockCaptureReason";
     private static final String ALLOW_NAME = "Android.TopToolbar.AllowCaptureReason";
@@ -745,7 +746,7 @@ public class ToolbarControlContainerTest {
         // Caption controls height = 100. Top offset = 0.
         // Expected exclusion rect: Rect(10, 0, 200 - 20, 100).
         mControlContainer.onHeightChanged(0, 20, false);
-        List<Rect> expected = List.of(new Rect(10, 0, 180, 100));
+        List<Rect> expected = List.of(new Rect(0, 0, 180, 100));
         assertEquals(
                 "System gesture exclusions should be overridden when tab strip is hidden.",
                 expected,
