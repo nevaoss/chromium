@@ -185,7 +185,12 @@ bool ShouldDisableLegacyExtensions(MV2ExperimentStage stage) {
     return false;
   }
 
+// NOTE(neva): Preserve MV2 extensions support for Neva.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  return false;
+#else
   return true;
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 }
 
 // Returns true if the given `stage` is one in which extension enablement should
