@@ -124,15 +124,10 @@ class CONTENT_EXPORT RenderThreadImpl
     : public RenderThread,
       public ChildThreadImpl,
       public mojom::Renderer,
-<<<<<<< HEAD
 #if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
       public neva::RenderThreadImpl<RenderThreadImpl>,
 #endif
-      public viz::mojom::CompositingModeWatcher,
-      public base::MemoryPressureListener {
-=======
       public viz::mojom::CompositingModeWatcher {
->>>>>>> 150.0.7871.0~1
  public:
   static RenderThreadImpl* current();
 
