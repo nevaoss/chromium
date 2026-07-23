@@ -378,7 +378,7 @@ PageDiscardingHelper::CanDiscardResult PageDiscardingHelper::CanDiscard(
 
   // The enterprise policy to except pages from discarding applies to both
   // proactive and urgent discards.
-  if (IsPageOptedOutOfDiscarding(page_node->GetBrowserContextID().GetTraceValue(),
+  if (IsPageOptedOutOfDiscarding(page_node->GetBrowserContextID().ToString(),
                                  main_frame_url)) {
     return CanDiscardResult::kProtected;
   }
