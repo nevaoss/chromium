@@ -1,0 +1,112 @@
+From 90009e2d438954c6677b81e4c6f48a95f6a92c38 Mon Sep 17 00:00:00 2001
+From: "denis.bechin" <denis.bechin@lge.com>
+Date: Tue, 9 Jun 2026 18:58:51 +0300
+Subject: [PATCH] [build][webos] Rust: Remove libdl/m/c/rt from linked libraries for liblibc_libc.rst for QEMUx86 
+
+Enabling Rust in Neva lead to the following error during build of rust
+toolchain library for webOS/OSE QEMUx86, libc wrapper. Without this CL build
+fails with the error:
+overriding linking modifiers from command line is not supported
+--> ../../../../../../../../chromium_webos/src/third_party/rust-toolchain/lib/rustlib/src/rust/library/vendor/libc-0.2.177/src/unix/mod.rs:478:
+478 |         extern "C" {}
+To avoid this error exclude m, c, rt from linked libs.
+
+Test Scenario:
+1. Run webOS/OSE QEMUx86 build
+2. Check that build successfully completed
+
+Issue: NEVA-10931 NEVA-10774
+---
+ .../vendor/libc-0.2.183/src/unix/mod.rs       | 63 ++++++++++---------
+ 1 file changed, 33 insertions(+), 30 deletions(-)
+
+diff --git a/third_party/rust-toolchain/lib/rustlib/src/rust/library/vendor/libc-0.2.183/src/unix/mod.rs b/third_party/rust-toolchain/lib/rustlib/src/rust/library/vendor/libc-0.2.183/src/unix/mod.rs
+index 5f23744d276cf..bfca0e0ac74b3 100644
+--- a/third_party/rust-toolchain/lib/rustlib/src/rust/library/vendor/libc-0.2.183/src/unix/mod.rs
++++ b/third_party/rust-toolchain/lib/rustlib/src/rust/library/vendor/libc-0.2.183/src/unix/mod.rs
+@@ -437,36 +437,38 @@ cfg_if! {
+             modifiers = "-bundle",
+             cfg(target_feature = "crt-static")
+         )]
+-        #[link(
+-            name = "rt",
+-            kind = "static",
+-            modifiers = "-bundle",
+-            cfg(target_feature = "crt-static")
+-        )]
++// NOTE(neva): Disable because of issue with webOS/OSE QEMUx86 linkage
++//        #[link(
++//            name = "rt",
++//            kind = "static",
++//            modifiers = "-bundle",
++//            cfg(target_feature = "crt-static")
++//        )]
+         #[link(
+             name = "pthread",
+             kind = "static",
+             modifiers = "-bundle",
+             cfg(target_feature = "crt-static")
+         )]
+-        #[link(
+-            name = "m",
+-            kind = "static",
+-            modifiers = "-bundle",
+-            cfg(target_feature = "crt-static")
+-        )]
+-        #[link(
+-            name = "dl",
+-            kind = "static",
+-            modifiers = "-bundle",
+-            cfg(target_feature = "crt-static")
+-        )]
+-        #[link(
+-            name = "c",
+-            kind = "static",
+-            modifiers = "-bundle",
+-            cfg(target_feature = "crt-static")
+-        )]
++// NOTE(neva): Disable because of issue with webOS/OSE QEMUx86 linkage
++//        #[link(
++//            name = "m",
++//            kind = "static",
++//            modifiers = "-bundle",
++//            cfg(target_feature = "crt-static")
++//        )]
++//        #[link(
++//            name = "dl",
++//            kind = "static",
++//            modifiers = "-bundle",
++//            cfg(target_feature = "crt-static")
++//        )]
++//        #[link(
++//            name = "c",
++//            kind = "static",
++//            modifiers = "-bundle",
++//            cfg(target_feature = "crt-static")
++//        )]
+         #[link(
+             name = "gcc_eh",
+             kind = "static",
+@@ -479,12 +481,13 @@ cfg_if! {
+             modifiers = "-bundle",
+             cfg(target_feature = "crt-static")
+         )]
+-        #[link(
+-            name = "c",
+-            kind = "static",
+-            modifiers = "-bundle",
+-            cfg(target_feature = "crt-static")
+-        )]
++// NOTE(neva): Disable because of issue with webOS/OSE QEMUx86 linkage
++//        #[link(
++//            name = "c",
++//            kind = "static",
++//            cfg(target_feature = "crt-static")
++//            modifiers = "-bundle",
++//        )]
+         #[link(name = "util", cfg(not(target_feature = "crt-static")))]
+         #[link(name = "rt", cfg(not(target_feature = "crt-static")))]
+         #[link(name = "pthread", cfg(not(target_feature = "crt-static")))]
+-- 
+2.34.1
+

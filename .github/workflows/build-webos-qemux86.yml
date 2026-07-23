@@ -1,0 +1,25 @@
+name: build-webos-qemux86
+
+on:
+  # discussion_comment:
+  # issue_comment:
+  # pull_request_review_comment:
+  # pull_request_review:
+  # pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: build-webos-qemux86
+    runs-on: self-hosted
+    env:
+      CI_TOKEN: ${{ secrets.CI_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: nevaoss/ci
+          ref: main
+      - name: Run webOS/OSE QEMUx86 builder
+        run: |
+          ./build-webos-qemux86.py

@@ -1,0 +1,89 @@
+name: lint-clang-format
+
+# Coding-style enforcement for pull requests using clang-format.
+#
+# Scope (Phase 1 of NEVA-11205):
+#   - Runs clang-format only. Static analysis (clang-tidy) is intentionally
+#     disabled here (tidy-checks: '-*') and handled separately, because
+#     clang-tidy needs a compilation database (gclient sync + gn gen) that is
+#     not available on GitHub-hosted runners.
+#   - Checks the PR diff ONLY (files-changed-only + lines-changed-only), never
+#     the whole tree. This repo is a Chromium fork; we cannot and must not try
+#     to reformat upstream code that Neva did not write.
+#   - Skipped for upstream/rolling sync PRs (see the job-level `if:` below),
+#     whose diffs are raw Chromium rebase changes, not Neva-authored code.
+
+on:
+  pull_request:
+    # "Newly created PRs" plus re-checks whenever the PR is updated, so the
+    # required status check always reflects the current head commit.
+    types: [opened, reopened, synchronize]
+
+# Least-privilege token: read the code, write the PR review comments.
+permissions:
+  contents: read
+  pull-requests: write
+
+# Only the latest push per PR needs checking; cancel superseded runs.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  clang-format:
+    name: clang-format
+    runs-on: ubuntu-latest
+
+    # Upstream filtering: skip PRs that target the rolling / upstream-sync
+    # branches. Their diffs are Chromium rebase changes (third-party code),
+    # so linting them would produce false positives on code we cannot fix.
+    # A job-level `if` (not a workflow-level branch filter) is used on purpose:
+    # a skipped job reports as "success" to branch protection, whereas a
+    # workflow that never runs would leave a required check stuck pending and
+    # block the merge forever.
+    if: >-
+      github.event.pull_request.base.ref != 'neva-main-rolling' &&
+      !startsWith(github.event.pull_request.base.ref, 'rolling/')
+
+    steps:
+      # Shallow checkout is enough: cpp-linter reads the changed-files diff from
+      # the GitHub REST API, not from local git history. We only need the files
+      # present on disk so clang-format can read their current contents.
+      - name: Checkout PR head
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Run clang-format on the PR diff
+        id: linter
+        uses: cpp-linter/cpp-linter-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Use the repo's Chromium .clang-format at the root.
+          style: file
+          # Phase 1: clang-format only. Disable clang-tidy entirely.
+          tidy-checks: '-*'
+          # Lint only the lines this PR changed, on the files it changed.
+          files-changed-only: true
+          lines-changed-only: true
+          # Exclude vendored / generated trees so an incidental touch there
+          # does not get judged against Chromium style.
+          ignore: 'third_party|out|build/linux/debian'
+          # clang-format version. Chromium's config uses InsertBraces and
+          # InsertNewlineAtEOF, which require clang-format >= 16. Bump this to
+          # track the toolchain version Chromium developers format with.
+          version: '20'
+          # Post a single, self-updating review comment on the PR.
+          thread-comments: update
+          # Also surface a summary in the Actions run page.
+          step-summary: true
+          # Post clang-format fixes as inline, committable PR suggestions.
+          format-review: true
+
+      - name: Fail if clang-format found violations
+        if: steps.linter.outputs.checks-failed > 0
+        run: |
+          echo "::error::clang-format found style violations in the changed lines."
+          echo "See the PR comment / step summary above for the suggested diff."
+          exit 1

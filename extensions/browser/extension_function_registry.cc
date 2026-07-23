@@ -8,6 +8,10 @@
 #include "extensions/browser/extension_function.h"
 #include "extensions/browser/extensions_browser_client.h"
 
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+#include "neva/logging.h"
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
+
 // static
 ExtensionFunctionRegistry& ExtensionFunctionRegistry::GetInstance() {
   static base::NoDestructor<ExtensionFunctionRegistry> instance;
@@ -34,6 +38,20 @@ bool ExtensionFunctionRegistry::OverrideFunctionForTesting(
   iter->second.factory_ = factory;
   return true;
 }
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+bool ExtensionFunctionRegistry::OverrideFunctionForNeva(
+    const std::string& name,
+    ExtensionFunctionFactory factory) {
+  auto iter = factories_.find(name);
+  if (iter == factories_.end()) {
+    return false;
+  }
+
+  LOG(INFO) << __func__ << " name " << name << " overridden";
+  iter->second.factory_ = factory;
+  return true;
+}
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 
 scoped_refptr<ExtensionFunction> ExtensionFunctionRegistry::NewFunction(
     const std::string& name) {
