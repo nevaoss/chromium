@@ -32,7 +32,6 @@ class AbortSignal;
 class Element;
 class ExecuteToolOptions;
 class SourceLocation;
-class ModelContextOptions;
 class ModelContextGetToolOptions;
 class ModelContextRegisterToolOptions;
 class ModelContextTool;
@@ -132,10 +131,10 @@ class CORE_EXPORT ModelContext : public EventTarget,
   void ForEachScriptTool(
       base::FunctionRef<void(const mojom::blink::ScriptTool&)>) const;
 
-  void registerTool(ScriptState* state,
-                    ModelContextTool* tool,
-                    ModelContextRegisterToolOptions* options,
-                    ExceptionState& exception_state);
+  ScriptPromise<IDLUndefined> registerTool(
+      ScriptState* state,
+      ModelContextTool* tool,
+      ModelContextRegisterToolOptions* options);
   ScriptPromise<IDLSequence<RegisteredTool>> getTools(
       ScriptState* script_state,
       const ModelContextGetToolOptions* options = nullptr);
@@ -196,6 +195,8 @@ class CORE_EXPORT ModelContext : public EventTarget,
  private:
   class ToolFunctionFinishedCallback;
   class ToolUnregisterAbortAlgorithm;
+
+  bool IsModelContextAllowed() const;
 
   bool ExecuteV8Tool(V8ToolExecuteCallback* tool_function,
                      const base::UnguessableToken& invocation_id,

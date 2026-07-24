@@ -160,6 +160,8 @@ enum class MessageIdentifier {
   KNOWN_INTERCEPTION_DISCLOSURE = 70,
   SEND_TAB_TO_SELF = 71,
   GLIC_WINDOW_RESIZED = 72,
+  EXTENSION_DEV_TOOLS = 73,
+  PERSONAL_CONTEXT_FETCHING_FAILURE = 74,
   // Insert new values before this line.
   COUNT
 };

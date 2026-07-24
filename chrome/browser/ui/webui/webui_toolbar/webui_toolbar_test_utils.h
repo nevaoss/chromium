@@ -47,6 +47,11 @@ class MockToolbarUIObserver : public toolbar_ui_api::mojom::ToolbarUIObserver {
                toolbar_ui_api::mojom::NavigationControlsStatePtr state),
               (override));
 
+  MOCK_METHOD(void,
+              OnFocusRequested,
+              (toolbar_ui_api::mojom::FocusRequestTarget target),
+              (override));
+
  private:
   mojo::Receiver<toolbar_ui_api::mojom::ToolbarUIObserver> receiver_{this};
 };
@@ -113,6 +118,10 @@ class MockToolbarUIServiceDelegate
               (toolbar_ui_api::mojom::OmniboxActionPtr action_ptr),
               (override));
   MOCK_METHOD(void, ShowAvatarMenu, (), (override));
+  MOCK_METHOD(void, SetAvatarButtonHovered, (bool), (override));
+  MOCK_METHOD(void, SetAvatarButtonFocused, (bool), (override));
+  MOCK_METHOD(void, SetAvatarButtonIPHPromoShowing, (bool), (override));
+  MOCK_METHOD(void, OnAppMenuFocusChanged, (bool), (override));
 };
 
 class MockBrowserControlsServiceDelegate
@@ -161,6 +170,8 @@ class MockCommandUpdater : public CommandUpdater {
               (CommandObserver * observer),
               (override));
   MOCK_METHOD(bool, UpdateCommandEnabled, (int id, bool state), (override));
+  MOCK_METHOD(void, DisableAllCommands, (), (override));
+  MOCK_METHOD(std::vector<int>, GetAllIds, (), (const, override));
 };
 
 MATCHER_P(MatchesIconUpdate, expected, "") {

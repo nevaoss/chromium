@@ -11,12 +11,15 @@
 #include "chrome/browser/actor/android/ui/actor_ui_tab_controller_android.h"
 #include "chrome/browser/android/tab_android.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_tab_visit_tracker.h"
+#include "chrome/browser/enterprise/data_protection/data_protection_navigation_controller.h"
+#include "chrome/browser/enterprise/util/managed_browser_utils.h"
 #include "chrome/browser/flags/android/chrome_feature_list.h"
 #include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/widget/glic_side_panel_coordinator_android.h"
 #include "chrome/browser/glic/public/widget/glic_side_panel_coordinator_desktop_android.h"
 #include "chrome/browser/glic/service/glic_instance_helper.h"
+#include "chrome/browser/glic/suggestions/contextual_cueing_helper.h"
 #include "chrome/browser/net/qwac_web_contents_observer.h"
 #include "chrome/browser/preloading/new_tab_page_preload/new_tab_page_preload_pipeline_manager.h"
 #include "chrome/browser/profiles/profile.h"
@@ -34,6 +37,7 @@
 #include "chrome/common/chrome_features.h"
 #include "components/actor/core/actor_features.h"
 #include "components/contextual_tasks/public/features.h"
+#include "components/enterprise/data_protection/features.h"
 #include "components/favicon/content/content_favicon_driver.h"
 #include "components/security_interstitials/core/features.h"
 #include "components/tabs/public/tab_interface.h"
@@ -111,6 +115,14 @@ TabFeatures::TabFeatures(content::WebContents* web_contents, Profile* profile) {
       GetUserDataFactory().CreateInstance<lens::TabContextualizationController>(
           *tab, tab);
 
+  if (base::FeatureList::IsEnabled(
+          enterprise_data_protection::
+              kEnableAndroidEnterpriseScreenshotProtection) &&
+      enterprise_util::IsBrowserManaged(profile)) {
+    data_protection_tab_controller_ = std::make_unique<
+        enterprise_data_protection::DataProtectionNavigationController>(tab);
+  }
+
   glic_instance_helper_ =
       GetUserDataFactory().CreateInstance<glic::GlicInstanceHelper>(*tab, tab);
   if (base::FeatureList::IsEnabled(features::kGlicAndroidSidePanel) &&
@@ -124,6 +136,8 @@ TabFeatures::TabFeatures(content::WebContents* web_contents, Profile* profile) {
         GetUserDataFactory()
             .CreateInstance<glic::GlicSidePanelCoordinatorAndroid>(*tab, tab);
   }
+
+  glic::ContextualCueingHelper::MaybeCreateForWebContents(web_contents);
 }
 
 TabFeatures::~TabFeatures() = default;

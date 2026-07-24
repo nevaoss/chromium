@@ -26,6 +26,7 @@
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
+#include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/browser/ui/intent_picker_tab_helper.h"
 #include "chrome/browser/ui/navigator/browser_navigator.h"
@@ -37,6 +38,7 @@
 #include "chrome/browser/ui/views/location_bar/intent_chip_button.h"
 #include "chrome/browser/ui/views/location_bar/intent_picker_view.h"
 #include "chrome/browser/ui/views/page_action/page_action_view.h"
+#include "chrome/browser/ui/views/page_action/test_support/page_action_test_support.h"
 #include "chrome/browser/ui/views/web_apps/web_app_link_capturing_test_utils.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/browser/ui/web_applications/test/web_app_browsertest_util.h"
@@ -251,7 +253,10 @@ class IntentPickerBubbleViewBrowserTestChromeOSBase
         BrowserView::GetBrowserViewForBrowser(browser())
             ->toolbar_button_provider();
     if (IsMigrationEnabled()) {
-      return toolbar_button_provider->GetPageActionView(kActionShowIntentPicker);
+      return page_actions::GetIconLabelBubbleViewForTesting(
+          toolbar_button_provider->GetPageActionViewInterface(
+              kActionShowIntentPicker),
+          kActionShowIntentPicker);
     }
     return toolbar_button_provider->GetIntentChipButton();
   }
@@ -293,7 +298,7 @@ class IntentPickerBubbleViewBrowserTestChromeOSBase
     app_info.emplace_back(apps::PickerEntryType::kArc, ui::ImageModel(),
                           "package_2", "dank_app_2");
 
-    browser()->window()->ShowIntentPickerBubble(
+    BrowserWindow::FromBrowser(browser())->ShowIntentPickerBubble(
         std::move(app_info), /*show_stay_in_chrome=*/true,
         /*show_remember_selection=*/true,
         IntentPickerBubbleView::BubbleType::kLinkCapturing, std::nullopt,
@@ -824,12 +829,24 @@ IN_PROC_BROWSER_TEST_P(IntentPickerBubbleViewBrowserTestChromeOSParameterized,
   ASSERT_NO_FATAL_FAILURE(VerifyArcAppLaunched(app_name, test_url));
 }
 
+// TODO(crbug.com/528931249): Fix timeouts under MSAN/ASAN/Debug.
+#if BUILDFLAG(IS_CHROMEOS) && (defined(MEMORY_SANITIZER) || \
+                               defined(ADDRESS_SANITIZER) || !defined(NDEBUG))
+// Disable `MigrationEnabled` variants (`MigrationEnabled_V2DefaultOff` and
+// `MigrationEnabled_V2DefaultOn`) by only instantiating with `false`.
+#define MIGRATION_VALUES testing::Values(false)
+#else
+// Run both `MigrationEnabled` and `MigrationDisabled` variants.
+#define MIGRATION_VALUES testing::Bool()
+#endif
+
 INSTANTIATE_TEST_SUITE_P(
     All,
     IntentPickerBubbleViewBrowserTestChromeOSParameterized,
     testing::Combine(
-        testing::Values(apps::test::LinkCapturingFeatureVersion::kV2DefaultOff),
-        testing::Bool()),
+        testing::Values(apps::test::LinkCapturingFeatureVersion::kV2DefaultOff,
+                        apps::test::LinkCapturingFeatureVersion::kV2DefaultOn),
+        MIGRATION_VALUES),
     [](const testing::TestParamInfo<
         IntentPickerBubbleViewBrowserTestChromeOSParameterized::ParamType>&
            info) {
@@ -837,3 +854,5 @@ INSTANTIATE_TEST_SUITE_P(
           {std::get<1>(info.param) ? kMigrationEnabled : kMigrationDisabled,
            "_", apps::test::ToString(std::get<0>(info.param))});
     });
+
+#undef MIGRATION_VALUES

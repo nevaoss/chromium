@@ -63,7 +63,7 @@ declare_args() {
   # into a single module.
   # TODO(neva): Should be revised when Neva will support
   # use_unified_system_module.
-  use_unified_system_module = is_linux && use_unified_system_module_neva
+  use_unified_system_module = (is_apple || is_fuchsia || is_linux || is_win) && use_unified_system_module_neva
 }
 
 if (enable_strict_deps) {

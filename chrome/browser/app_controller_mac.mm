@@ -47,6 +47,8 @@
 #include "chrome/browser/download/download_core_service_factory.h"
 #include "chrome/browser/extensions/extension_service.h"
 #include "chrome/browser/first_run/first_run.h"
+#include "chrome/browser/global_keyboard_shortcuts_mac.h"
+#include "chrome/browser/lifetime/application_lifetime.h"
 #include "chrome/browser/lifetime/application_lifetime_desktop.h"
 #include "chrome/browser/lifetime/browser_shutdown.h"
 #include "chrome/browser/mac/auth_session_request.h"
@@ -184,26 +186,26 @@ void BeginHandlingWebAuthenticationSessionRequestWithProfile(
 }
 
 // Activates a browser window having the given profile (the last one active) if
-// possible and returns a pointer to the activate |Browser| or NULL if this was
+// possible and returns a pointer to the activated browser or NULL if this was
 // not possible. If the last active browser is minimized (in particular, if
 // there are only minimized windows), it will unminimize it.
-Browser* ActivateBrowser(Profile* profile) {
+BrowserWindowInterface* ActivateBrowser(Profile* profile) {
   ProfileBrowserCollection* collection =
       ProfileBrowserCollection::GetForProfile(
           profile->IsGuestSession()
               ? profile->GetPrimaryOTRProfile(/*create_if_needed=*/true)
               : profile);
-  BrowserWindowInterface* current_browser =
+  BrowserWindowInterface* browser =
       collection ? collection->GetLastActiveBrowser() : nullptr;
-  Browser* browser =
-      current_browser ? current_browser->GetBrowserForMigrationOnly() : nullptr;
 
   if (browser) {
-    browser = browser->GetBrowserForOpeningWebUi();
+    browser =
+        browser->GetBrowserForMigrationOnly()->GetBrowserForOpeningWebUi();
   }
 
-  if (browser)
-    browser->window()->Activate();
+  if (browser) {
+    browser->GetWindow()->Activate();
+  }
   return browser;
 }
 
@@ -262,8 +264,9 @@ BrowserWindowInterface* CreateBrowser(Profile* profile) {
 // possible or creates an empty one if necessary. Returns a pointer to the
 // activated/new |BrowserWindowInterface|.
 BrowserWindowInterface* ActivateOrCreateBrowser(Profile* profile) {
-  if (Browser* browser = ActivateBrowser(profile))
+  if (BrowserWindowInterface* browser = ActivateBrowser(profile)) {
     return browser;
+  }
   return CreateBrowser(profile);
 }
 
@@ -829,7 +832,7 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
 }
 
 - (NSMenu*)fileMenu {
-  return [[NSApp.mainMenu itemWithTag:IDC_FILE_MENU] submenu];
+  return [[NSApp.mainMenu itemWithTag:kMacFileMenuId] submenu];
 }
 
 // Returns the ⌘W menu item in the File menu. Returns nil if no such menu item
@@ -932,6 +935,10 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
 }
 
 - (void)tryToTerminateApplication {
+  if ([self confirmQuitIfNeeded] == ConfirmQuitResultAborted) {
+    return;
+  }
+
   // If termination is already underway (and this is a redundant attempt to
   // quit) then there's nothing to be done.
   if (browser_shutdown::IsTryingToQuit()) {
@@ -999,24 +1006,24 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
   _keepAlive.reset();
 }
 
-- (BOOL)runConfirmQuitPanel {
+- (ConfirmQuitResult)confirmQuitIfNeeded {
   // If there are no windows, quit immediately.
   if (!GetLastActiveBrowserWindowInterfaceWithAnyProfile() &&
       !AppWindowRegistryUtil::IsAppWindowVisibleInAnyProfile(0)) {
-    return YES;
+    return ConfirmQuitResultNotPrompted;
   }
 
   // Check if the preference is turned on.
   const PrefService* prefs = g_browser_process->local_state();
   if (!prefs->GetBoolean(prefs::kConfirmToQuitEnabled)) {
     confirm_quit::RecordHistogram(confirm_quit::kNoConfirm);
-    return YES;
+    return ConfirmQuitResultNotPrompted;
   }
 
   NSEvent* event = [NSApp currentEvent];
   // Run only for keyboard-initiated quits.
-  if (event.type != NSEventTypeKeyDown) {
-    return YES;
+  if (!event || CommandForKeyEvent(event).chrome_command != IDC_EXIT) {
+    return ConfirmQuitResultNotPrompted;
   }
 
   // In the event of a double-quit attempt (holding command and pressing 'Q'
@@ -1027,7 +1034,7 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
   }
 
   __weak AppController* weakSelf = self;
-  return [_confirmQuitPanelController
+  BOOL quitConfirmed = [_confirmQuitPanelController
       runConfirmQuitLoopWithEvent:event
                 dismissedCallback:^{
                   AppController* strongSelf = weakSelf;
@@ -1035,6 +1042,8 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
                     strongSelf->_confirmQuitPanelController = nil;
                   }
                 }];
+
+  return quitConfirmed ? ConfirmQuitResultConfirmed : ConfirmQuitResultAborted;
 }
 
 // Handles the NSApplicationWillTerminateNotification notification. (Note to
@@ -1128,7 +1137,7 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
   if (browser->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL) {
     if (!_tabMenuBridge) {
       _tabMenuBridge = std::make_unique<TabMenuBridge>(
-          [[NSApp mainMenu] itemWithTag:IDC_TAB_MENU]);
+          [[NSApp mainMenu] itemWithTag:kMacTabMenuId]);
     }
     _tabMenuBridge->SetTabStripModel(browser->GetTabStripModel());
 
@@ -1169,7 +1178,7 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
   // Updates the `Tab` menu's "New Tab to the ..." and "Close Tabs to the ..."
   // accordingly.
   if (_tabMenuBridge) {
-    NSMenu* tabSubmenu = [[[NSApp mainMenu] itemWithTag:IDC_TAB_MENU] submenu];
+    NSMenu* tabSubmenu = [[[NSApp mainMenu] itemWithTag:kMacTabMenuId] submenu];
     NSMenuItem* newTabPositionalItem =
         [tabSubmenu itemWithTag:IDC_NEW_TAB_TO_RIGHT];
     NSMenuItem* closeTabsPositionalItem =
@@ -1614,6 +1623,7 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
           enable = canOpenNewBrowser;
           break;
         case IDC_TASK_MANAGER_MAIN_MENU:
+        case IDC_EXIT:
           enable = YES;
           break;
         case IDC_NEW_INCOGNITO_WINDOW:
@@ -1684,6 +1694,12 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
   }
 
   NSInteger tag = [sender tag];
+
+  if (tag == IDC_EXIT) {
+    chrome::AttemptUserExit();
+    return;
+  }
+
   // The task manager can be shown without profile.
   if (tag == IDC_TASK_MANAGER_MAIN_MENU) {
     chrome::OpenTaskManager(nullptr, task_manager::StartAction::kMainMenu);
@@ -1718,7 +1734,7 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
     case IDC_NEW_TAB:
       // Create a new tab in an existing browser window (which we activate) if
       // possible.
-      if (Browser* browser = ActivateBrowser(profile)) {
+      if (BrowserWindowInterface* browser = ActivateBrowser(profile)) {
         chrome::ExecuteCommand(browser, IDC_NEW_TAB);
         break;
       }
@@ -1745,7 +1761,7 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
       break;
     case IDC_CLEAR_BROWSING_DATA: {
       // There may not be a browser open, so use the default profile.
-      if (Browser* browser = ActivateBrowser(profile)) {
+      if (BrowserWindowInterface* browser = ActivateBrowser(profile)) {
         chrome::ShowClearBrowsingDataDialog(browser);
       } else {
         chrome::OpenClearBrowsingDataDialogWindow(profile);
@@ -1753,7 +1769,7 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
       break;
     }
     case IDC_IMPORT_SETTINGS: {
-      if (Browser* browser = ActivateBrowser(profile)) {
+      if (BrowserWindowInterface* browser = ActivateBrowser(profile)) {
         chrome::ShowImportDialog(browser);
       } else {
         chrome::OpenImportSettingsDialogWindow(profile);
@@ -1761,7 +1777,7 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
       break;
     }
     case IDC_SHOW_BOOKMARK_MANAGER:
-      if (Browser* browser = ActivateBrowser(profile)) {
+      if (BrowserWindowInterface* browser = ActivateBrowser(profile)) {
         chrome::ShowBookmarkManager(browser);
       } else {
         // No browser window, so create one for the bookmark manager tab.
@@ -1769,28 +1785,32 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
       }
       break;
     case IDC_SHOW_HISTORY:
-      if (Browser* browser = ActivateBrowser(profile))
+      if (BrowserWindowInterface* browser = ActivateBrowser(profile)) {
         chrome::ShowHistory(browser);
-      else
+      } else {
         chrome::OpenHistoryWindow(profile);
+      }
       break;
     case IDC_SHOW_DOWNLOADS:
-      if (Browser* browser = ActivateBrowser(profile))
+      if (BrowserWindowInterface* browser = ActivateBrowser(profile)) {
         chrome::ShowDownloads(browser);
-      else
+      } else {
         chrome::OpenDownloadsWindow(profile);
+      }
       break;
     case IDC_MANAGE_EXTENSIONS:
-      if (Browser* browser = ActivateBrowser(profile))
+      if (BrowserWindowInterface* browser = ActivateBrowser(profile)) {
         chrome::ShowExtensions(browser);
-      else
+      } else {
         chrome::OpenExtensionsWindow(profile);
+      }
       break;
     case IDC_HELP_PAGE_VIA_MENU:
-      if (Browser* browser = ActivateBrowser(profile))
+      if (BrowserWindowInterface* browser = ActivateBrowser(profile)) {
         chrome::ShowHelp(browser, chrome::HelpSource::kMenu);
-      else
+      } else {
         chrome::OpenHelpWindow(profile, chrome::HelpSource::kMenu);
+      }
       break;
     case IDC_OPTIONS:
       [self showPreferences:sender];
@@ -1917,12 +1937,13 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
   _menuState->UpdateCommandEnabled(IDC_FEEDBACK, true);
 #endif
   _menuState->UpdateCommandEnabled(IDC_TASK_MANAGER_MAIN_MENU, true);
+  _menuState->UpdateCommandEnabled(IDC_EXIT, true);
 }
 
 // Conditionally adds the Profile menu to the main menu bar.
 - (void)initProfileMenu {
   NSMenu* mainMenu = [NSApp mainMenu];
-  NSMenuItem* profileMenu = [mainMenu itemWithTag:IDC_PROFILE_MAIN_MENU];
+  NSMenuItem* profileMenu = [mainMenu itemWithTag:kMacProfileMainMenuId];
 
   if (!profiles::IsMultipleProfilesEnabled()) {
     [mainMenu removeItem:profileMenu];
@@ -2061,10 +2082,11 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
     return;
   }
   // Re-use an existing browser, or create a new one.
-  if (Browser* browser = ActivateBrowser(profile))
+  if (BrowserWindowInterface* browser = ActivateBrowser(profile)) {
     chrome::ShowSettings(browser);
-  else
+  } else {
     chrome::OpenOptionsWindow(profile);
+  }
 }
 
 - (IBAction)orderFrontStandardAboutPanel:(id)sender {
@@ -2082,10 +2104,11 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
     return;
   }
   // Re-use an existing browser, or create a new one.
-  if (Browser* browser = ActivateBrowser(profile))
+  if (BrowserWindowInterface* browser = ActivateBrowser(profile)) {
     chrome::ShowAboutChrome(browser);
-  else
+  } else {
     chrome::OpenAboutWindow(profile);
+  }
 }
 
 - (IBAction)toggleConfirmToQuit:(id)sender {
@@ -2183,7 +2206,7 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
 
   _profilePrefRegistrar.reset();
 
-  NSMenuItem* bookmarkItem = [NSApp.mainMenu itemWithTag:IDC_BOOKMARKS_MENU];
+  NSMenuItem* bookmarkItem = [NSApp.mainMenu itemWithTag:kBookmarksMenuId];
   BOOL hidden = bookmarkItem.hidden;
   if (profile != nullptr) {
     // Rebuild the menus with the new profile. The bookmarks submenu is cached

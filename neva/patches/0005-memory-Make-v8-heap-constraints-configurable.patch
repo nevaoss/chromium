@@ -112,13 +112,13 @@ index 44bde532a62..c3b924315cb 100644
  
  /**
 diff --git a/src/api/api.cc b/src/api/api.cc
-index 02724893553..723be964c2e 100644
+index 2c9bc9efa00..64d1eb771f8 100644
 --- a/src/api/api.cc
 +++ b/src/api/api.cc
-@@ -596,6 +596,19 @@ void ResourceConstraints::ConfigureDefaults(uint64_t physical_memory,
+@@ -600,6 +600,19 @@ void ResourceConstraints::ConfigureDefaults(uint64_t physical_memory,
    }
  }
- 
+
 +#if defined(USE_NEVA_APPRUNTIME)
 +void ResourceConstraints::ConfigureDetails(
 +    size_t min_allocation_limit_growing_step_size,
@@ -135,10 +135,10 @@ index 02724893553..723be964c2e 100644
  #ifdef ENABLE_SLOW_DCHECKS
  namespace api_internal {
  void StackAllocated<true>::VerifyOnStack() const {
-@@ -10138,6 +10151,15 @@ void Isolate::Initialize(Isolate* v8_isolate,
+@@ -10225,6 +10238,15 @@ void Isolate::Initialize(Isolate* v8_isolate,
    }
- 
-   i_isolate->heap()->ConfigureHeap(params.constraints, cpp_heap);
+
+   i_isolate->heap()->ConfigureHeap(params.constraints, *cpp_heap);
 +
 +#if defined(USE_NEVA_APPRUNTIME)
 +  i_isolate->heap()->ConfigureHeapDetails(
@@ -445,13 +445,13 @@ index 21b59e36be0..7b90ee273b1 100644
    size_t first_part =
        std::min(strlen(string), kTraceRingBufferSize - ring_buffer_end_);
 diff --git a/src/heap/heap.h b/src/heap/heap.h
-index 79d69c07415..37c23052f04 100644
+index f984771243c..2fb3605d8f9 100644
 --- a/src/heap/heap.h
 +++ b/src/heap/heap.h
-@@ -722,6 +722,13 @@ class Heap final {
-                      v8::CppHeap* cpp_heap);
+@@ -725,6 +725,13 @@ class Heap final {
+                      v8::CppHeap& cpp_heap);
    void ConfigureHeapDefault();
- 
+
 +#if defined(USE_NEVA_APPRUNTIME)
 +  void ConfigureHeapDetails(size_t min_allocation_limit_growing_step_size,
 +                            size_t high_fragmentation_slack,

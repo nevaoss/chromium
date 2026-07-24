@@ -363,6 +363,10 @@ public class MessagesMetrics {
                 return "KnownInterceptionDisclosure";
             case MessageIdentifier.GLIC_WINDOW_RESIZED:
                 return "GlicWindowResized";
+            case MessageIdentifier.EXTENSION_DEV_TOOLS:
+                return "ExtensionDevTools";
+            case MessageIdentifier.PERSONAL_CONTEXT_FETCHING_FAILURE:
+                return "PersonalContextFetchingFailure";
             default:
                 return "Unknown";
         }

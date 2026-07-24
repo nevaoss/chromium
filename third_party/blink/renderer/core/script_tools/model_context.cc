@@ -4,6 +4,7 @@
 
 #include "third_party/blink/renderer/core/script_tools/model_context.h"
 
+#include "base/functional/callback_helpers.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
@@ -25,6 +26,7 @@
 #include "third_party/blink/renderer/core/execution_context/agent.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+#include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/html/html_script_element.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
 #include "third_party/blink/renderer/core/probe/core_probes.h"
@@ -41,6 +43,7 @@
 #include "third_party/blink/renderer/platform/wtf/text/strcat.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
+#include "url/url_constants.h"
 
 namespace blink {
 
@@ -60,6 +63,8 @@ namespace {
 const char kPermissionPolicyNotEnabledError[] =
     "Access to the feature \"tools\" is disallowed by permissions policy.";
 const char kInactiveDocumentError[] = "The document is not active.";
+const char kDocumentDomainEnabledError[] =
+    "document.modelContext cannot be used when document.domain is enabled.";
 
 String ValidateAndStringifyObject(ScriptState* script_state,
                                   ExceptionState& exception_state,
@@ -172,19 +177,35 @@ class ModelContext::ToolUnregisterAbortAlgorithm final
     : public AbortSignal::Algorithm {
  public:
   ToolUnregisterAbortAlgorithm(ModelContext* model_context,
-                               const String& tool_name)
-      : model_context_(model_context), tool_name_(tool_name) {}
+                               const String& tool_name,
+                               ScriptPromiseResolverBase* resolver,
+                               AbortSignal* signal)
+      : model_context_(model_context),
+        tool_name_(tool_name),
+        resolver_(resolver),
+        signal_(signal) {}
 
-  void Run() override { model_context_->UnregisterTool(tool_name_); }
+  void Run() override {
+    model_context_->UnregisterTool(tool_name_);
+    resolver_->Reject(signal_->reason(resolver_->GetScriptState()));
+  }
 
   void Trace(Visitor* visitor) const override {
     visitor->Trace(model_context_);
+    visitor->Trace(resolver_);
+    visitor->Trace(signal_);
     AbortSignal::Algorithm::Trace(visitor);
   }
 
  private:
   Member<ModelContext> model_context_;
   String tool_name_;
+  // Never null. The `ScriptPromiseResolverBase` that `this` must reject when
+  // `signal_` is aborted (as notified by `Run()` above).
+  Member<ScriptPromiseResolverBase> resolver_;
+  // Never null. We have to store the `signal_` that `this` is associated with
+  // in order to get the abort reason.
+  Member<AbortSignal> signal_;
 };
 
 class ModelContext::ToolFunctionFinishedCallback
@@ -261,70 +282,82 @@ void ModelContext::ForEachScriptTool(
   }
 }
 
-void ModelContext::registerTool(ScriptState* script_state,
-                                ModelContextTool* tool,
-                                ModelContextRegisterToolOptions* options,
-                                ExceptionState& exception_state) {
+ScriptPromise<IDLUndefined> ModelContext::registerTool(
+    ScriptState* script_state,
+    ModelContextTool* tool,
+    ModelContextRegisterToolOptions* options) {
   if (!document_->IsActive()) {
-    exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
-                                      kInactiveDocumentError);
-    return;
+    return ScriptPromise<IDLUndefined>::RejectWithDOMException(
+        script_state,
+        MakeGarbageCollected<DOMException>(DOMExceptionCode::kInvalidStateError,
+                                           kInactiveDocumentError));
+  }
+
+  if (!IsModelContextAllowed()) {
+    return ScriptPromise<IDLUndefined>::RejectWithDOMException(
+        script_state,
+        MakeGarbageCollected<DOMException>(DOMExceptionCode::kSecurityError,
+                                           kDocumentDomainEnabledError));
   }
 
   if (!ExecutionContext::From(script_state)
            ->IsFeatureEnabled(
                network::mojom::PermissionsPolicyFeature::kTools)) {
-    exception_state.ThrowDOMException(DOMExceptionCode::kNotAllowedError,
-                                      kPermissionPolicyNotEnabledError);
-    return;
+    return ScriptPromise<IDLUndefined>::RejectWithDOMException(
+        script_state,
+        MakeGarbageCollected<DOMException>(DOMExceptionCode::kNotAllowedError,
+                                           kPermissionPolicyNotEnabledError));
   }
 
   if (tool_map_.find(tool->name()) != tool_map_.end()) {
-    exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
-                                      "Duplicate tool name");
-    return;
+    return ScriptPromise<IDLUndefined>::RejectWithDOMException(
+        script_state,
+        MakeGarbageCollected<DOMException>(DOMExceptionCode::kInvalidStateError,
+                                           "Duplicate tool name"));
   }
 
   if (!IsValidToolName(tool->name())) {
-    exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
-                                      "Invalid tool name");
-    return;
+    return ScriptPromise<IDLUndefined>::RejectWithDOMException(
+        script_state,
+        MakeGarbageCollected<DOMException>(DOMExceptionCode::kInvalidStateError,
+                                           "Invalid tool name"));
   }
 
   if (!tool->description() || tool->description().empty()) {
-    exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
-                                      "Description is required");
-    return;
+    return ScriptPromise<IDLUndefined>::RejectWithDOMException(
+        script_state,
+        MakeGarbageCollected<DOMException>(DOMExceptionCode::kInvalidStateError,
+                                           "Description is required"));
   }
 
   String input_schema;
   if (tool->hasInputSchema()) {
+    ExceptionState exception_state(script_state->GetIsolate());
     input_schema = ValidateAndStringifyObject(script_state, exception_state,
                                               tool->inputSchema());
     if (!input_schema) {
       // Exception already thrown by ValidateAndStringifyObject
-      return;
+      return EmptyPromise();
     }
   }
+
+  auto* resolver =
+      MakeGarbageCollected<ScriptPromiseResolver<IDLUndefined>>(script_state);
+  ScriptPromise promise = resolver->Promise();
 
   AbortSignal::AlgorithmHandle* abort_handle = nullptr;
   if (options && options->hasSignal()) {
     AbortSignal* signal = options->signal();
     if (signal->aborted()) {
-      ExecutionContext::From(script_state)
-          ->AddConsoleMessage(MakeGarbageCollected<ConsoleMessage>(
-              mojom::blink::ConsoleMessageSource::kJavaScript,
-              mojom::blink::ConsoleMessageLevel::kWarning,
-              "Tool '" + tool->name() +
-                  "' was not registered because its AbortSignal was already "
-                  "aborted."));
-      return;
+      resolver->Reject(signal->reason(script_state));
+      return promise;
     }
 
     // Grab the `AlgorithmHandle` and tie its lifetime to `ToolData` farther
     // below.
-    abort_handle = signal->AddAlgorithm(
-        MakeGarbageCollected<ToolUnregisterAbortAlgorithm>(this, tool->name()));
+    abort_handle =
+        signal->AddAlgorithm(MakeGarbageCollected<ToolUnregisterAbortAlgorithm>(
+            this, tool->name(), resolver, signal));
   }
 
   Vector<scoped_refptr<const SecurityOrigin>> exposed_origins;
@@ -333,9 +366,10 @@ void ModelContext::registerTool(ScriptState* script_state,
       scoped_refptr<const SecurityOrigin> origin =
           SecurityOrigin::CreateFromString(origin_str);
       if (!origin->IsPotentiallyTrustworthy()) {
-        exception_state.ThrowSecurityError(
+        resolver->RejectWithDOMException(
+            DOMExceptionCode::kSecurityError,
             "Only secure origins are allowed in the exposedTo list.");
-        return;
+        return promise;
       }
       exposed_origins.push_back(origin);
     }
@@ -370,9 +404,17 @@ void ModelContext::registerTool(ScriptState* script_state,
 
   tool_map_.insert(tool->name(), tool_data);
   model_context_host_remote_->RegisterScriptTool(
-      tool_data->ScriptTool().Clone());
+      tool_data->ScriptTool().Clone(),
+      blink::BindOnce(
+          [](ScriptPromiseResolver<IDLUndefined>* resolver) {
+            resolver->Resolve();
+          },
+          WrapPersistent(resolver)));
+
   probe::WebMCPToolAdded(document_, *tool_data);
   MaybeRecordToolCount();
+
+  return promise;
 }
 
 void ModelContext::UnregisterTool(const String& name) {
@@ -655,6 +697,16 @@ void ModelContext::RegisterDeclarativeTool(
     return;
   }
 
+  if (!IsModelContextAllowed()) {
+    return;
+  }
+
+  // TODO(https://crbug.com/509983792): Surface an error to the form when tool
+  // registration fails.
+  if (tool_map_.find(declarative_tool->ToolName()) != tool_map_.end()) {
+    return;
+  }
+
   // TODO(https://crbug.com/509983792): Surface an error if the tool's name is
   // not valid.
   UseCounter::Count(document_,
@@ -674,7 +726,7 @@ void ModelContext::RegisterDeclarativeTool(
 
   tool_map_.insert(declarative_tool->ToolName(), tool_data);
   model_context_host_remote_->RegisterScriptTool(
-      tool_data->ScriptTool().Clone());
+      tool_data->ScriptTool().Clone(), base::DoNothing());
   probe::WebMCPToolAdded(document_, *tool_data);
   MaybeRecordToolCount();
 }
@@ -783,6 +835,22 @@ const AtomicString& ModelContext::InterfaceName() const {
   return name;
 }
 
+bool ModelContext::IsModelContextAllowed() const {
+  const Agent* agent = document_->GetExecutionContext()->GetAgent();
+  const AgentClusterKey& key = agent->GetAgentClusterKey();
+  // ModelContext is allowed under any of the following conditions:
+  // 1. The document is in a standard origin-keyed agent cluster.
+  // 2. The document is a local file:// URL and is in the universal file agent
+  // cluster.
+  // 3. Web security is disabled (e.g., via --disable-web-security for testing).
+  return key.IsOriginKeyed() ||
+         (document_->GetExecutionContext()->GetSecurityOrigin()->Protocol() ==
+              url::kFileScheme &&
+          key.IsUniversalFileAgent()) ||
+         (document_->GetSettings() &&
+          !document_->GetSettings()->GetWebSecurityEnabled());
+}
+
 ScriptPromise<IDLSequence<RegisteredTool>> ModelContext::getTools(
     ScriptState* script_state,
     const ModelContextGetToolOptions* options) {
@@ -791,6 +859,13 @@ ScriptPromise<IDLSequence<RegisteredTool>> ModelContext::getTools(
         script_state,
         MakeGarbageCollected<DOMException>(DOMExceptionCode::kInvalidStateError,
                                            kInactiveDocumentError));
+  }
+
+  if (!IsModelContextAllowed()) {
+    return ScriptPromise<IDLSequence<RegisteredTool>>::RejectWithDOMException(
+        script_state,
+        MakeGarbageCollected<DOMException>(DOMExceptionCode::kSecurityError,
+                                           kDocumentDomainEnabledError));
   }
 
   if (!ExecutionContext::From(script_state)
@@ -885,6 +960,13 @@ ScriptPromise<IDLNullable<IDLString>> ModelContext::executeTool(
         script_state,
         MakeGarbageCollected<DOMException>(DOMExceptionCode::kInvalidStateError,
                                            kInactiveDocumentError));
+  }
+
+  if (!IsModelContextAllowed()) {
+    return ScriptPromise<IDLNullable<IDLString>>::RejectWithDOMException(
+        script_state,
+        MakeGarbageCollected<DOMException>(DOMExceptionCode::kSecurityError,
+                                           kDocumentDomainEnabledError));
   }
 
   if (!ExecutionContext::From(script_state)

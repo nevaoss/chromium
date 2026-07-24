@@ -199,7 +199,8 @@ class PageContents : public AppRuntimeWebContentsDelegate,
   void DidStopLoading() override;
   void DidUpdateFaviconURL(
       content::RenderFrameHost* render_frame_host,
-      const std::vector<blink::mojom::FaviconURLPtr>& candidates) override;
+      const std::vector<blink::mojom::FaviconURLPtr>& candidates,
+      blink::mojom::FaviconUpdateReason reason) override;
   void DidGetUserInteraction(const blink::WebInputEvent& event) override;
   void DOMContentLoaded(content::RenderFrameHost* render_frame_host) override;
   void LoadProgressChanged(double progress) override;

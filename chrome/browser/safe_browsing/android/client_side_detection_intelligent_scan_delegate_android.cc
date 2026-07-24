@@ -185,9 +185,13 @@ void ClientSideDetectionIntelligentScanDelegateAndroid::Inquiry::
     return;
   }
 
+  std::optional<float> scam_score;
+  if (scam_detection_response->has_scam_score()) {
+    scam_score = scam_detection_response->scam_score();
+  }
   std::move(callback_).Run(IntelligentScanResult::Success(
       scam_detection_response->brand(), scam_detection_response->intent(),
-      model_version, ModelType::kOnDevice));
+      model_version, ModelType::kOnDevice, scam_score));
 
   // Reset this inquiry immediately so that future inference is not affected by
   // the old context.
@@ -233,9 +237,13 @@ void ClientSideDetectionIntelligentScanDelegateAndroid::Inquiry::
         IntelligentScanInfo::SERVER_SIDE_MODEL_OUTPUT_MISSING));
     return;
   }
+  std::optional<float> scam_score;
+  if (scam_detection_response->has_scam_score()) {
+    scam_score = scam_detection_response->scam_score();
+  }
   std::move(callback_).Run(IntelligentScanResult::Success(
       scam_detection_response->brand(), scam_detection_response->intent(),
-      model_version, ModelType::kServerSide));
+      model_version, ModelType::kServerSide, scam_score));
 
   // Reset this inquiry immediately so that future inference is not affected by
   // the old context.
@@ -392,7 +400,8 @@ bool ClientSideDetectionIntelligentScanDelegateAndroid::ShouldShowScamWarning(
   if (!verdict.has_value() ||
       *verdict ==
           IntelligentScanVerdict::INTELLIGENT_SCAN_VERDICT_UNSPECIFIED ||
-      *verdict == IntelligentScanVerdict::INTELLIGENT_SCAN_VERDICT_SAFE) {
+      *verdict == IntelligentScanVerdict::INTELLIGENT_SCAN_VERDICT_SAFE ||
+      *verdict == IntelligentScanVerdict::SCAM_EXPERIMENT_CATCH_ALL_TELEMETRY) {
     return false;
   }
 

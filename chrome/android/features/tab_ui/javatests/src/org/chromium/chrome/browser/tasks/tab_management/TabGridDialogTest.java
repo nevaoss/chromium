@@ -142,7 +142,6 @@ import org.chromium.chrome.browser.tab_ui.ActionConfirmationManager;
 import org.chromium.chrome.browser.tabmodel.TabClosureParams;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
-import org.chromium.chrome.browser.theme.ThemeModuleUtils;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.test.ChromeJUnit4RunnerDelegate;
 import org.chromium.chrome.test.transit.AutoResetCtaTransitTestRule;
@@ -153,6 +152,7 @@ import org.chromium.chrome.test.util.BookmarkTestUtil;
 import org.chromium.chrome.test.util.ChromeRenderTestRule;
 import org.chromium.components.browser_ui.styles.SemanticColorUtils;
 import org.chromium.components.prefs.PrefService;
+import org.chromium.components.tab_groups.TabGroupsFeatureMap;
 import org.chromium.components.user_prefs.UserPrefs;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.ui.KeyboardVisibilityDelegate;
@@ -175,6 +175,7 @@ import java.util.concurrent.TimeoutException;
 @ParameterAnnotations.UseRunnerDelegate(ChromeJUnit4RunnerDelegate.class)
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
 @EnableFeatures({DATA_SHARING, DATA_SHARING_JOIN_ONLY})
+@DisableFeatures({TabGroupsFeatureMap.UPDATE_TAB_GROUP_COLORS})
 @Batch(Batch.PER_CLASS)
 @DisableIf.Device(DeviceFormFactor.DESKTOP) // crbug.com/394671175
 public class TabGridDialogTest {
@@ -287,8 +288,8 @@ public class TabGridDialogTest {
 
         dismissAllModalDialogs();
 
-        if (cta.getLayoutManager().isLayoutVisible(LayoutType.TAB_SWITCHER)
-                && !cta.getLayoutManager().isLayoutStartingToHide(LayoutType.TAB_SWITCHER)) {
+        if (cta.getLayoutManager().isLayoutVisible(LayoutType.HUB)
+                && !cta.getLayoutManager().isLayoutStartingToHide(LayoutType.HUB)) {
             int tabCount =
                     ThreadUtils.runOnUiThreadBlocking(
                             () -> cta.getTabModelSelectorSupplier().get().getTotalTabCount());
@@ -324,7 +325,7 @@ public class TabGridDialogTest {
         verifyTabSwitcherCardCount(cta, 1);
 
         // Enter first tab page.
-        assertTrue(cta.getLayoutManager().isLayoutVisible(LayoutType.TAB_SWITCHER));
+        assertTrue(cta.getLayoutManager().isLayoutVisible(LayoutType.HUB));
         clickFirstCardFromTabSwitcher(cta);
         clickFirstTabInDialog(cta);
         waitForDialogHidingAnimation(cta);
@@ -373,7 +374,7 @@ public class TabGridDialogTest {
         verifyTabSwitcherCardCount(cta, 1);
 
         // Enter first tab page.
-        assertTrue(cta.getLayoutManager().isLayoutVisible(LayoutType.TAB_SWITCHER));
+        assertTrue(cta.getLayoutManager().isLayoutVisible(LayoutType.HUB));
         clickFirstCardFromTabSwitcher(cta);
         clickFirstTabInDialog(cta);
         waitForDialogHidingAnimation(cta);
@@ -580,13 +581,7 @@ public class TabGridDialogTest {
         final ChromeTabbedActivity cta = mActivityTestRule.getActivity();
 
         String blueColor = cta.getString(R.string.tab_group_color_blue);
-        String blueColorContentDescription =
-                ThemeModuleUtils.isEnabled()
-                        ? blueColor
-                        : cta.getString(
-                                R.string
-                                        .accessibility_tab_group_color_picker_color_item_not_selected_description,
-                                blueColor);
+        String blueColorContentDescription = blueColor;
 
         createTabs(cta, false, 2);
         enterTabSwitcher(cta);
@@ -642,13 +637,7 @@ public class TabGridDialogTest {
         final ChromeTabbedActivity cta = mActivityTestRule.getActivity();
 
         String blueColor = cta.getString(R.string.tab_group_color_blue);
-        String blueColorContentDescription =
-                ThemeModuleUtils.isEnabled()
-                        ? blueColor
-                        : cta.getString(
-                                R.string
-                                        .accessibility_tab_group_color_picker_color_item_not_selected_description,
-                                blueColor);
+        String blueColorContentDescription = blueColor;
 
         createTabs(cta, false, 2);
         enterTabSwitcher(cta);
@@ -1496,18 +1485,7 @@ public class TabGridDialogTest {
         final ChromeTabbedActivity cta = mActivityTestRule.getActivity();
 
         String blueColor = cta.getString(R.string.tab_group_color_blue);
-        String notSelectedStringBlue =
-                cta.getString(
-                        R.string
-                                .accessibility_tab_group_color_picker_color_item_not_selected_description,
-                        blueColor);
-
         String redColor = cta.getString(R.string.tab_group_color_red);
-        String notSelectedStringRed =
-                cta.getString(
-                        R.string
-                                .accessibility_tab_group_color_picker_color_item_not_selected_description,
-                        redColor);
 
         createTabs(cta, false, 2);
         enterTabSwitcher(cta);
@@ -1527,7 +1505,7 @@ public class TabGridDialogTest {
                 .check(matches(isDisplayed()));
 
         // Select a non default color and assert the pop up closes.
-        onView(withContentDescription(notSelectedStringBlue)).perform(click());
+        onView(withContentDescription(blueColor)).perform(click());
         onView(
                         allOf(
                                 instanceOf(TabGroupColorPickerContainer.class),
@@ -1555,7 +1533,7 @@ public class TabGridDialogTest {
                 .check(matches(isDisplayed()));
 
         // Select a non default color and assert the pop up closes.
-        onView(withContentDescription(notSelectedStringRed)).perform(click());
+        onView(withContentDescription(redColor)).perform(click());
         onView(
                         allOf(
                                 instanceOf(TabGroupColorPickerContainer.class),
@@ -1749,7 +1727,7 @@ public class TabGridDialogTest {
         clickThroughConfirmationDialog();
 
         // Rather than destroying the activity the GTS should be showing.
-        LayoutTestUtils.waitForLayout(cta.getLayoutManager(), LayoutType.TAB_SWITCHER);
+        LayoutTestUtils.waitForLayout(cta.getLayoutManager(), LayoutType.HUB);
         verifyTabSwitcherCardCount(cta, 0);
     }
 
@@ -2081,7 +2059,7 @@ public class TabGridDialogTest {
     }
 
     private void showDialogFromStrip(ChromeTabbedActivity cta) {
-        assertFalse(cta.getLayoutManager().isLayoutVisible(LayoutType.TAB_SWITCHER));
+        assertFalse(cta.getLayoutManager().isLayoutVisible(LayoutType.HUB));
         waitForVisibleView(
                 allOf(
                         withId(R.id.tab_list_recycler_view),

@@ -17,6 +17,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import static org.chromium.base.ThreadUtils.runOnUiThreadBlocking;
+import static org.chromium.base.test.util.CriteriaHelper.pollUiThread;
+import static org.chromium.chrome.browser.facilitated_payments.FacilitatedPaymentsPaymentMethodsProperties.AccountLinkingSuccessScreenProperties.PRIMARY_BUTTON_CALLBACK;
 import static org.chromium.chrome.browser.facilitated_payments.FacilitatedPaymentsPaymentMethodsProperties.FopSelectorProperties.SCREEN_ITEMS;
 import static org.chromium.chrome.browser.facilitated_payments.FacilitatedPaymentsPaymentMethodsProperties.ItemType.BANK_ACCOUNT;
 import static org.chromium.chrome.browser.facilitated_payments.FacilitatedPaymentsPaymentMethodsProperties.ItemType.CONTINUE_BUTTON;
@@ -28,6 +30,7 @@ import static org.chromium.chrome.browser.facilitated_payments.FacilitatedPaymen
 import static org.chromium.chrome.browser.facilitated_payments.FacilitatedPaymentsPaymentMethodsProperties.SCREEN;
 import static org.chromium.chrome.browser.facilitated_payments.FacilitatedPaymentsPaymentMethodsProperties.SCREEN_VIEW_MODEL;
 import static org.chromium.chrome.browser.facilitated_payments.FacilitatedPaymentsPaymentMethodsProperties.SURVIVES_NAVIGATION;
+import static org.chromium.chrome.browser.facilitated_payments.FacilitatedPaymentsPaymentMethodsProperties.SequenceScreen.ACCOUNT_LINKING_SUCCESS_SCREEN;
 import static org.chromium.chrome.browser.facilitated_payments.FacilitatedPaymentsPaymentMethodsProperties.SequenceScreen.ERROR_SCREEN;
 import static org.chromium.chrome.browser.facilitated_payments.FacilitatedPaymentsPaymentMethodsProperties.SequenceScreen.FOP_SELECTOR;
 import static org.chromium.chrome.browser.facilitated_payments.FacilitatedPaymentsPaymentMethodsProperties.SequenceScreen.PIX_ACCOUNT_LINKING_PROMPT;
@@ -62,6 +65,8 @@ import org.mockito.quality.Strictness;
 
 import org.chromium.base.ContextUtils;
 import org.chromium.base.test.util.CommandLineFlags;
+import org.chromium.base.test.util.Criteria;
+import org.chromium.base.test.util.DisabledTest;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
@@ -241,6 +246,7 @@ public final class FacilitatedPaymentsPaymentMethodsViewTest {
 
     @Test
     @MediumTest
+    @DisabledTest(message = "crbug.com/523228313")
     public void testViewCanBeHiddenUsingTheModel() {
         runOnUiThreadBlocking(
                 () -> {
@@ -350,7 +356,8 @@ public final class FacilitatedPaymentsPaymentMethodsViewTest {
 
         BottomSheetTestSupport.waitForOpen(mBottomSheetController);
 
-        assertThat(getSheetItems().getChildCount(), is(2));
+        pollUiThread(() -> Criteria.checkThat(getSheetItems().getChildCount(), is(2)));
+
         assertThat(getPaymentAppNameAt(0).getText(), is(PAYMENT_APP_1_NAME));
         assertThat(getPaymentAppNameAt(1).getText(), is(PAYMENT_APP_2_NAME));
     }
@@ -576,7 +583,7 @@ public final class FacilitatedPaymentsPaymentMethodsViewTest {
                     mModel.set(VISIBLE_STATE, SHOWN);
                 });
 
-        assertThat(getSheetItems().getChildCount(), is(1));
+        pollUiThread(() -> Criteria.checkThat(getSheetItems().getChildCount(), is(1)));
         ImageView headerSecurityCheckImage = getHeaderSecurityCheckImageAt(0);
         TextView headerDescription = getHeaderDescriptionAt(0);
 
@@ -880,6 +887,47 @@ public final class FacilitatedPaymentsPaymentMethodsViewTest {
         assertThat(
                 containsViewWithId((ViewGroup) mView.getContentView(), R.id.error_screen),
                 is(true));
+    }
+
+    @Test
+    @MediumTest
+    public void testAccountLinkingSuccessScreenShown() {
+        runOnUiThreadBlocking(
+                () -> {
+                    mModel.set(SCREEN, ACCOUNT_LINKING_SUCCESS_SCREEN);
+                    mModel.set(VISIBLE_STATE, SHOWN);
+                });
+        BottomSheetTestSupport.waitForOpen(mBottomSheetController);
+
+        assertThat(
+                containsViewWithId(
+                        (ViewGroup) mView.getContentView(),
+                        R.id.pix_account_linking_success_screen),
+                is(true));
+    }
+
+    @Test
+    @MediumTest
+    public void testAccountLinkingSuccessScreenContents() {
+        runOnUiThreadBlocking(
+                () -> {
+                    mModel.set(SCREEN, ACCOUNT_LINKING_SUCCESS_SCREEN);
+                    mModel.get(SCREEN_VIEW_MODEL).set(PRIMARY_BUTTON_CALLBACK, v -> {});
+                    mModel.set(VISIBLE_STATE, SHOWN);
+                });
+        BottomSheetTestSupport.waitForOpen(mBottomSheetController);
+
+        TextView title = mView.getContentView().findViewById(R.id.title);
+        assertThat(title.getText(), is("Your Pix account is successfully linked to Google Pay"));
+        ButtonCompat primaryButton = mView.getContentView().findViewById(R.id.primary_button);
+        assertThat(primaryButton.getText(), is("Got it"));
+
+        TextView valueProp1 = mView.getContentView().findViewById(R.id.value_prop_message_1);
+        assertNotNull(valueProp1.getCompoundDrawablesRelative()[0]);
+        TextView valueProp2 = mView.getContentView().findViewById(R.id.value_prop_message_2);
+        assertNotNull(valueProp2.getCompoundDrawablesRelative()[0]);
+        TextView valueProp3 = mView.getContentView().findViewById(R.id.value_prop_message_3);
+        assertNotNull(valueProp3.getCompoundDrawablesRelative()[0]);
     }
 
     @Test

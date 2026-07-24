@@ -472,8 +472,11 @@ class AutofillAgent::DeferringAutofillDriver : public mojom::AutofillDriver {
     DeferMsg(&mojom::AutofillDriver::JavaScriptChangedAutofilledValue, form,
              field_id, old_value);
   }
-  void OnEmailVerificationTokenShared(FieldRendererId field_id) override {
-    DeferMsg(&mojom::AutofillDriver::OnEmailVerificationTokenShared, field_id);
+  void FormWithEmailVerificationTokenSubmitted(
+      const FormData& form,
+      FieldRendererId field_id) override {
+    DeferMsg(&mojom::AutofillDriver::FormWithEmailVerificationTokenSubmitted,
+             form, field_id);
   }
 
   const raw_ref<AutofillAgent> agent_;
@@ -536,6 +539,7 @@ AutofillAgent::AutofillAgent(
   form_tracker_->SetUserGestureRequired(config_.user_gesture_required);
   registry->AddInterface<mojom::AutofillAgent>(base::BindRepeating(
       &AutofillAgent::BindPendingReceiver, base::Unretained(this)));
+  ResetTokenBucket();
 }
 
 // The destructor is not guaranteed to be called. Destruction happens (only)
@@ -566,7 +570,7 @@ void AutofillAgent::DidCreateDocumentElement() {
 
 void AutofillAgent::Reset() {
   // Navigation to a new page or a page refresh.
-  last_queried_element_ = FieldRef();
+  last_queried_element_id_ = {};
   form_cache_.Reset();
   is_dom_content_loaded_ = false;
   select_option_change_batch_timer_.clear();
@@ -580,6 +584,7 @@ void AutofillAgent::Reset() {
   input_warnings_.has_warned = false;
   input_warnings_.remove_listeners.clear();
   email_verification_observer_.Reset();
+  ResetTokenBucket();
 }
 
 void AutofillAgent::DidDispatchDOMContentLoadedEvent() {
@@ -718,7 +723,7 @@ void AutofillAgent::FocusedElementChanged(
                 /*form_cache=*/{})) {
       auto& [form, field] = *form_and_field;
       if (auto* autofill_driver = unsafe_autofill_driver()) {
-        last_queried_element_ = FieldRef(control);
+        last_queried_element_id_ = form_util::GetFieldRendererId(control);
         autofill_driver->FocusOnFormField(form, field->renderer_id());
         handle_focus_change(form);
         return;
@@ -731,7 +736,8 @@ void AutofillAgent::FocusedElementChanged(
             form_util::FindFormForContentEditable(new_focused_element)) {
       CHECK_EQ(form->fields().size(), 1u);
       if (auto* autofill_driver = unsafe_autofill_driver()) {
-        last_queried_element_ = FieldRef(new_focused_element);
+        last_queried_element_id_ =
+            form_util::GetFieldRendererId(new_focused_element);
         autofill_driver->FocusOnFormField(*form,
                                           form->fields().front().renderer_id());
         handle_focus_change();
@@ -882,9 +888,14 @@ void AutofillAgent::EmailVerificationObserver::WillSendSubmitEvent(
       element.SetValue(WebString::FromUtf8(info.token));
 
       if (auto* driver = agent_->unsafe_autofill_driver()) {
-        driver->OnEmailVerificationTokenShared(field_id);
+        if (std::optional<FormData> form_data = form_util::ExtractFormData(
+                form.GetDocument(), form, agent_->field_data_manager(),
+                agent_->GetCallTimerState(
+                    kFormWithEmailVerificationTokenSubmitted),
+                agent_->button_titles_cache())) {
+          driver->FormWithEmailVerificationTokenSubmitted(*form_data, field_id);
+        }
       }
-
       return;
     }
   }
@@ -1314,7 +1325,7 @@ void AutofillAgent::TriggerSuggestions(
     AutofillSuggestionTriggerSource trigger_source) {
   if (WebFormControlElement control_element =
           form_util::GetFormControlByRendererId(field_id)) {
-    last_queried_element_ = FieldRef(control_element);
+    last_queried_element_id_ = form_util::GetFieldRendererId(control_element);
     std::optional<PasswordSuggestionRequest> password_request;
     if (password_autofill_agent_) {
       if (auto input_element = control_element.DynamicTo<WebInputElement>()) {
@@ -1464,6 +1475,18 @@ void AutofillAgent::ApplyFieldAction(
             DCHECK(value.empty());
             content_editable.SelectText(/*select_all=*/true);
             break;
+          case mojom::FieldActionType::kReplaceAtMemoryTrigger:
+            if (auto* frame = unsafe_render_frame()) {
+              WebRange selection = frame->GetWebFrame()
+                                       ->GetInputMethodController()
+                                       ->GetSelectionOffsets();
+              if (ShouldTriggerAtMemorySearchForContentEditable(
+                      frame->GetWebFrame(), selection)) {
+                frame->GetWebFrame()->SetEditableSelectionOffsets(
+                    selection.StartOffset() - 2, selection.StartOffset());
+              }
+            }
+            [[fallthrough]];
           case mojom::FieldActionType::kReplaceAll:
             [[fallthrough]];
           case mojom::FieldActionType::kReplaceSelection:
@@ -1471,18 +1494,6 @@ void AutofillAgent::ApplyFieldAction(
                 WebString::FromUtf16(value),
                 /*replace_all=*/
                 (action_type == mojom::FieldActionType::kReplaceAll));
-            break;
-          case mojom::FieldActionType::kReplaceAtMemoryTrigger:
-            WebLocalFrame* frame = unsafe_render_frame()->GetWebFrame();
-            WebRange selection =
-                frame->GetInputMethodController()->GetSelectionOffsets();
-            if (ShouldTriggerAtMemorySearchForContentEditable(frame,
-                                                              selection)) {
-              frame->SetEditableSelectionOffsets(selection.StartOffset() - 2,
-                                                 selection.StartOffset());
-            }
-            frame->ExecuteCommand(WebString::FromAscii("InsertText"),
-                                  WebString::FromUtf16(value));
             break;
         }
     }
@@ -1548,7 +1559,7 @@ void AutofillAgent::AcceptDataListSuggestion(
 
 void AutofillAgent::PreviewPasswordSuggestion(const std::u16string& username,
                                               const std::u16string& password) {
-  WebFormControlElement last_queried_element = last_queried_element_.GetField();
+  WebFormControlElement last_queried_element = this->last_queried_element();
   if (!last_queried_element) {
     return;
   }
@@ -1565,7 +1576,18 @@ void AutofillAgent::PreviewPasswordGenerationSuggestion(
   password_generation_agent_->PreviewGenerationSuggestion(password);
 }
 
+void AutofillAgent::ResetTokenBucket() {
+  ask_for_values_to_fill_throttle_.tokens =
+      features::kAutofillThrottleBruteForceProbingMaxTokens.Get();
+  ask_for_values_to_fill_throttle_.last_replenish_time = base::TimeTicks::Now();
+}
+
 bool AutofillAgent::ShouldThrottleAskForValuesToFill(FieldRendererId field) {
+  // 1. Apply 100ms *per field* throttle to AskForValuesToFill.
+  // At least on Android, multiple AskForValuesToFill() events may be fired in
+  // short succession. Since getting the event handling right in AutofillAgent
+  // is difficult we ignore duplicate AskForValuesToFill() as a workaround.
+  // See crbug.com/40284788 for details.
   static constexpr base::TimeDelta kThrottle = base::Milliseconds(100);
   base::TimeTicks now = base::TimeTicks::Now();
   if (field == last_ask_for_values_to_fill_.field &&
@@ -1573,6 +1595,43 @@ bool AutofillAgent::ShouldThrottleAskForValuesToFill(FieldRendererId field) {
     return true;
   }
   last_ask_for_values_to_fill_ = {now, field};
+
+  // 2. Apply a *per frame* throttle to AskForValuesToFill.
+  // This exists because malicious web pages can attempt to steal saved
+  // autofill data via a side-channel brute-force attack by rapidly cycling
+  // input prefixes and monitoring :autofill state changes.
+  if (base::FeatureList::IsEnabled(
+          features::kAutofillThrottleBruteForceProbing)) {
+    base::TimeDelta replenish_rate =
+        features::kAutofillThrottleBruteForceProbingReplenishRate.Get();
+    const int max_tokens =
+        features::kAutofillThrottleBruteForceProbingMaxTokens.Get();
+
+    if (replenish_rate.is_positive()) {
+      int64_t earned_tokens =
+          (now - ask_for_values_to_fill_throttle_.last_replenish_time)
+              .IntDiv(replenish_rate);
+      if (earned_tokens > 0) {
+        if (earned_tokens >= max_tokens ||
+            ask_for_values_to_fill_throttle_.tokens + earned_tokens >=
+                max_tokens) {
+          ask_for_values_to_fill_throttle_.tokens = max_tokens;
+          ask_for_values_to_fill_throttle_.last_replenish_time = now;
+        } else {
+          ask_for_values_to_fill_throttle_.tokens +=
+              static_cast<int>(earned_tokens);
+          ask_for_values_to_fill_throttle_.last_replenish_time +=
+              earned_tokens * replenish_rate;
+        }
+      }
+    }
+
+    if (ask_for_values_to_fill_throttle_.tokens <= 0) {
+      return true;  // Throttled due to burst budget exhaustion.
+    }
+    ask_for_values_to_fill_throttle_.tokens--;
+  }
+
   return false;
 }
 
@@ -1625,7 +1684,7 @@ void AutofillAgent::ShowSuggestions(
     return;
   }
 
-  last_queried_element_ = FieldRef(element);
+  last_queried_element_id_ = form_util::GetFieldRendererId(element);
 
   // Password manager takes precedence over Autofill.
   // TODO(crbug.com/333990908): Test manual fallback on different form types.
@@ -1716,8 +1775,21 @@ void AutofillAgent::SendEmailVerificationToken(FieldRendererId email_field_id,
                                                const std::string& email,
                                                FieldRendererId token_field_id,
                                                const std::string& token) {
+  if (token.empty()) {
+    return;
+  }
+
   email_verification_observer_.StoreEmailVerificationToken(
       email_field_id, email, token_field_id, token);
+
+  blink::WebInputElement input_element =
+      form_util::GetFormControlByRendererId(email_field_id)
+          .DynamicTo<blink::WebInputElement>();
+  if (!input_element) {
+    return;
+  }
+  input_element.SetEmailVerificationState(
+      blink::EmailVerificationState::kVerified);
 }
 
 void AutofillAgent::DoFillFieldWithValue(std::u16string_view value,

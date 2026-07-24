@@ -80,10 +80,6 @@ declare namespace chrome {
     let highContrastTheme: number;
     let lowContrastLightTheme: number;
     let lowContrastDarkTheme: number;
-    let undefinedPresentationState: number;
-    let inHiddenPresentationState: number;
-    let inSidePanelPresentationState: number;
-    let inImmersiveOverlayPresentationState: number;
     let autoHighlighting: number;
     let wordHighlighting: number;
     let phraseHighlighting: number;
@@ -133,6 +129,9 @@ declare namespace chrome {
     // Indicates if this page is a Google doc.
     let isGoogleDocs: boolean;
 
+    // Indicates if this page is a PDF.
+    let isPdf: boolean;
+
     // Fonts supported by the user's current language.
     let supportedFonts: string[];
 
@@ -164,6 +163,9 @@ declare namespace chrome {
     // Distiled html content from DOM distiller distillation.
     let htmlContent: string;
 
+    // The active URL of the main panel document.
+    let documentUrl: string;
+
     let axTreeAnchors: Record<string, AxTreeAnchorMetadata[]>;
 
     // The active distillation method currently showing in page content.
@@ -178,6 +180,12 @@ declare namespace chrome {
     // The constant value representing the Readability (HTML string)
     // distillation method.
     let distillationTypeReadability: number;
+
+    // The active presentation state of Reading mode.
+    let activePresentationState: number;
+    let inHiddenPresentationState: number;
+    let inSidePanelPresentationState: number;
+    let inImmersiveOverlayPresentationState: number;
 
     // Returns the AXTree mapping segments for the distilled block at the given
     // index. A segment links a character range within the block to its AXnode.
@@ -222,6 +230,9 @@ declare namespace chrome {
 
     // Returns the url of the AXNode for the provided AXNodeID.
     function getUrl(nodeId: number): string;
+
+    // Returns the HTML id of the AXNode for the provided AXNodeID.
+    function getHtmlId(nodeId: number): string;
 
     // Returns the alt text of the AXNode for the provided AXNodeID.
     function getAltText(nodeId: number): string;
@@ -584,5 +595,9 @@ declare namespace chrome {
     // whereas the other returns a segment (word or phrase) within the sentence.
     function getCurrentTextSegments():
         Array<{nodeId: number, start: number, length: number}>;
+
+    // Called when the main frame undergoes a same document navigation (such as
+    // a fragment navigation).
+    let onMainFrameSameDocumentNavigation: (url: string) => void;
   }
 }

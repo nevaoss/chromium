@@ -277,7 +277,7 @@ class AutofillAgent : public content::RenderFrameObserver,
   bool IsPrerendering() const;
 
   blink::WebFormControlElement last_queried_element() const {
-    return last_queried_element_.GetField();
+    return form_util::GetFormControlByRendererId(last_queried_element_id_);
   }
 
   FieldDataManager& field_data_manager() const {
@@ -334,7 +334,7 @@ class AutofillAgent : public content::RenderFrameObserver,
         std::is_void_v<T>,
         "Beware that the RenderFrame may become nullptr by OnDestruct() "
         "because AutofillAgent destructs itself asynchronously. Use "
-        "unsafe_render_frame() instead and make test that it is non-nullptr.");
+        "unsafe_render_frame() instead and test that it is non-nullptr.");
   }
 
   // To be called when all forms are irretrievably gone, e.g., when a new
@@ -403,11 +403,11 @@ class AutofillAgent : public content::RenderFrameObserver,
   // updating while the scroll signal is dispatched.
   void DidChangeScrollOffsetImpl();
 
-  // At least on Android, multiple AskForValuesToFill() events may be fired in
-  // short succession. Since getting the event handling right in AutofillAgent
-  // is difficult we ignore duplicate AskForValuesToFill() as a workaround.
-  // See crbug.com/40284788 for details.
+  // Returns if a call to `AskForValuesToFill()` should be skipped.
+  // Rate limits exist per field and per frame. See the function
+  // body for further details.
   bool ShouldThrottleAskForValuesToFill(FieldRendererId field);
+  void ResetTokenBucket();
 
   // Shows Password Manager, password generation, or Autofill suggestions for
   // `element`. This call is asynchronous and may or may not lead to the showing
@@ -474,7 +474,7 @@ class AutofillAgent : public content::RenderFrameObserver,
   std::unique_ptr<PasswordGenerationAgent> password_generation_agent_;
 
   // The element corresponding to the last request sent for form field Autofill.
-  FieldRef last_queried_element_;
+  FieldRendererId last_queried_element_id_;
 
   // List of elements that are currently being previewed, along with their
   // autofill state before the preview.
@@ -595,6 +595,14 @@ class AutofillAgent : public content::RenderFrameObserver,
     base::TimeTicks time;
     FieldRendererId field = {};
   } last_ask_for_values_to_fill_;
+
+  struct {
+    // Remaining tokens. Calls to AskForValuesToFill() are only permitted
+    // while tokens remain. Each call consumes a token. Tokens are replenished
+    // at a capped rate.
+    int tokens = 0;
+    base::TimeTicks last_replenish_time;
+  } ask_for_values_to_fill_throttle_;
 
   struct {
     bool has_warned = false;

@@ -94,6 +94,7 @@ copy("gl") {
 
   outputs = [ "$image_path/$browser_shell_data_dir/{{source_file_part}}" ]
   deps = [
+    "//ui/gl:generate_angle_stubs",
     "//third_party/angle:libEGL",
     "//third_party/angle:libGLESv2",
   ]

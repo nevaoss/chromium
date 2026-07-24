@@ -61,8 +61,9 @@ net::RequestPriority GetRequestPriority(
       return net::HIGHEST;
 
     case network::mojom::RequestDestination::kFont:
-    case network::mojom::RequestDestination::kScript:
     case network::mojom::RequestDestination::kJson:
+    case network::mojom::RequestDestination::kScript:
+    case network::mojom::RequestDestination::kText:
       return net::MEDIUM;
 
     case network::mojom::RequestDestination::kEmpty:
@@ -359,6 +360,19 @@ void LoadingPredictorTabHelper::DidStartNavigation(
   TRACE_EVENT("navigation", "LoadingPredictorTabHelper::DidStartNavigation");
 
   if (!predictor_ || predictor_->WasShutdown()) {
+    return;
+  }
+
+  // If the navigation is blocked by the initiator's Connection-Allowlist, it
+  // will not commit. Skip all of this tab helper's work for it -- speculative
+  // network activity (preconnect, preresolve, resource prewarming) as well as
+  // predictor bookkeeping -- since the navigation won't load. Otherwise the
+  // destination host would leak (e.g. via its DNS resolution) even though the
+  // navigation is blocked. See https://github.com/WICG/connection-allowlists.
+  // TODO(crbug.com/447954811): Once the real network_restrictions_id is plumbed
+  // into the speculative preconnect/preresolve path, the network service will
+  // enforce the allowlist directly and this gate can be removed.
+  if (navigation_handle->IsBlockedByConnectionAllowlist()) {
     return;
   }
 

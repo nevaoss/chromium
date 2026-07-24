@@ -226,8 +226,8 @@ void DevToolsSession::AttachToAgent(blink::mojom::DevToolsAgent* agent,
       receiver_.BindNewEndpointAndPassRemote(),
       session_.BindNewEndpointAndPassReceiver(),
       io_session_.BindNewPipeAndPassReceiver(), session_state_cookie_.Clone(),
-      script_to_evaluate_on_load_, client_->UsesBinaryProtocol(),
-      client_->IsTrusted(), session_id_, IsWaitingForDebuggerOnStart());
+      client_->UsesBinaryProtocol(), client_->IsTrusted(), session_id_,
+      IsWaitingForDebuggerOnStart());
   session_.set_disconnect_handler(base::BindOnce(
       &DevToolsSession::MojoConnectionDestroyed, base::Unretained(this)));
 
@@ -237,8 +237,9 @@ void DevToolsSession::AttachToAgent(blink::mojom::DevToolsAgent* agent,
         blink::mojom::RendererOriginatingSessionState::New();
   }
 
-  // Only use script_to_evaluate_on_load_ once.
-  script_to_evaluate_on_load_.clear();
+  // Only use script_to_evaluate_on_load_once once.
+  session_state_cookie_->browser_originating_session_state
+      ->script_to_evaluate_on_load_once.clear();
 
   // We're attaching to a new agent while suspended; therefore, messages that
   // have been sent previously either need to be terminated or re-sent once we
@@ -286,12 +287,12 @@ void DevToolsSession::MojoConnectionDestroyed() {
 void DevToolsSession::DispatchProtocolMessage(
     base::span<const uint8_t> message) {
   if (client_->UsesBinaryProtocol()) {
-    crdtp::Status status =
+    crdtp::StatusOr<size_t> status =
         crdtp::cbor::CheckCBORMessage(crdtp::SpanFrom(message));
     if (!status.ok()) {
       DispatchProtocolMessageToClient(
-          crdtp::CreateErrorNotification(
-              crdtp::DispatchResponse::ParseError(status.ToASCIIString()))
+          crdtp::CreateErrorNotification(crdtp::DispatchResponse::ParseError(
+                                             status.status().ToASCIIString()))
               ->Serialize());
       return;
     }
@@ -572,8 +573,26 @@ void DevToolsSession::DispatchProtocolResponseOrNotification(
     blink::mojom::DevToolsMessagePtr message,
     const std::string& session_id,
     const bool& is_notification) {
-  base::span<const uint8_t> message_span = message->data;
-  if (!ValidateMessage(session_id, /*expected_has_id=*/!is_notification,
+  // If BigBuffer is backed by shared memory, make a copy so that a compromised
+  // renderer wouldn't be able to mess with the message as we validate it.
+  std::vector<uint8_t> message_bytes;
+  base::span<const uint8_t> message_span;
+  switch (message->data.storage_type()) {
+    case mojo_base::BigBuffer::StorageType::kBytes:
+      message_span = message->data.byte_span();
+      break;
+    case mojo_base::BigBuffer::StorageType::kSharedMemory:
+      message_bytes.assign(message->data.begin(), message->data.end());
+      message_span = message_bytes;
+      break;
+    default:
+      // just keep span empty, this will cause renderer killed for invalid
+      // message below.
+      break;
+  }
+
+  if (message_span.empty() ||
+      !ValidateMessage(session_id, /*expected_has_id=*/!is_notification,
                        message_span)) {
     if (RenderProcessHost* process_host = agent_host->GetProcessHost()) {
       bad_message::ReceivedBadMessage(
@@ -703,28 +722,11 @@ void DevToolsSession::RemoveObserver(ChildObserver* obs) {
   child_observers_.RemoveObserver(obs);
 }
 
-void DevToolsSession::AddScriptToEvaluateOnNewDocument(
-    const std::string& identifier,
-    blink::mojom::ScriptToEvaluateOnNewDocumentPtr script,
-    bool run_immediately,
-    base::OnceClosure callback) {
-  if (session_.is_bound()) {
-    session_->AddScriptToEvaluateOnNewDocument(
-        identifier, std::move(script), run_immediately, std::move(callback));
-  } else {
-    std::move(callback).Run();
-  }
-}
 
-void DevToolsSession::RemoveScriptToEvaluateOnNewDocument(
-    const std::string& identifier) {
-  if (session_.is_bound()) {
-    session_->RemoveScriptToEvaluateOnNewDocument(identifier);
-  }
-}
 
 void DevToolsSession::PrepareForReload(std::string script_to_evaluate_on_load) {
-  script_to_evaluate_on_load_ = std::move(script_to_evaluate_on_load);
+  session_state_cookie_->browser_originating_session_state
+      ->script_to_evaluate_on_load_once = std::move(script_to_evaluate_on_load);
   io_session_->UnpauseAndTerminate();
 }
 
@@ -778,6 +780,18 @@ bool DevToolsSession::ValidateMessage(const std::string& expected_session_id,
       return false;  // Safely terminate renderer on malformed JSON
     }
     span_message = crdtp::SpanFrom(cbor_message);
+  } else {
+    // Perform top-level validation of CBOR envelope.
+    crdtp::StatusOr<size_t> status_or_outer_size =
+        crdtp::cbor::CheckCBORMessage(span_message);
+    if (!status_or_outer_size.ok()) {
+      DLOG(ERROR) << status_or_outer_size.status().ToASCIIString();
+      return false;
+    }
+    if (status_or_outer_size.value() != message.size()) {
+      DLOG(ERROR) << "Unexpected trailing data in CBOR message from child";
+      return false;
+    }
   }
 
   // Do NOT use crdtp::Dispatchable here. It enforces the presence of both
@@ -802,20 +816,19 @@ bool DevToolsSession::ValidateMessage(const std::string& expected_session_id,
       return false;
     }
     return true;
-  } else {
-    if (extracted_session_id.empty() ||
-        !crdtp::SpanEquals(crdtp::SpanFrom(expected_session_id),
-                           extracted_session_id)) {
-      DLOG(ERROR) << "Child session expected sessionId: " << expected_session_id
-                  << ", but got: "
-                  << (extracted_session_id.empty()
-                          ? ""
-                          : std::string(extracted_session_id.begin(),
-                                        extracted_session_id.end()));
-      return false;
-    }
-    return true;
   }
+  if (extracted_session_id.empty() ||
+      !crdtp::SpanEquals(crdtp::SpanFrom(expected_session_id),
+                         extracted_session_id)) {
+    DLOG(ERROR) << "Child session expected sessionId: " << expected_session_id
+                << ", but got: "
+                << (extracted_session_id.empty()
+                        ? ""
+                        : std::string(extracted_session_id.begin(),
+                                      extracted_session_id.end()));
+    return false;
+  }
+  return true;
 }
 
 }  // namespace content

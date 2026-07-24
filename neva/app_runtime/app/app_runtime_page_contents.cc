@@ -796,7 +796,8 @@ void PageContents::DidStopLoading() {
 
 void PageContents::DidUpdateFaviconURL(
     content::RenderFrameHost*,
-    const std::vector<blink::mojom::FaviconURLPtr>& candidates) {
+    const std::vector<blink::mojom::FaviconURLPtr>& candidates,
+    blink::mojom::FaviconUpdateReason reason) {
   std::vector<FaviconInfo> sending_info;
   sending_info.reserve(candidates.size());
   for (const auto& candidate : candidates) {

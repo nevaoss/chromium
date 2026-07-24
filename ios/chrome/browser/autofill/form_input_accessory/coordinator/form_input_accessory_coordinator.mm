@@ -32,8 +32,11 @@
 #import "components/password_manager/core/common/password_manager_features.h"
 #import "components/password_manager/ios/password_generation_provider.h"
 #import "components/strings/grit/components_strings.h"
+#import "ios/chrome/browser/autofill/atmemory/coordinator/at_memory_coordinator.h"
+#import "ios/chrome/browser/autofill/atmemory/public/at_memory_commands.h"
 #import "ios/chrome/browser/autofill/form_input_accessory/coordinator/form_input_accessory_mediator.h"
 #import "ios/chrome/browser/autofill/form_input_accessory/coordinator/form_input_accessory_mediator_handler.h"
+#import "ios/chrome/browser/autofill/form_input_accessory/public/autofill_suggestion_context_menu_handler.h"
 #import "ios/chrome/browser/autofill/form_input_accessory/ui/form_input_accessory_view_controller.h"
 #import "ios/chrome/browser/autofill/form_input_accessory/ui/form_input_accessory_view_controller_delegate.h"
 #import "ios/chrome/browser/autofill/manual_fill/coordinator/address_coordinator.h"
@@ -80,7 +83,6 @@
 #import "ios/chrome/grit/ios_branded_strings.h"
 #import "ios/chrome/grit/ios_strings.h"
 #import "ios/web/public/web_state.h"
-#import "ui/base/device_form_factor.h"
 #import "ui/base/l10n/l10n_util_mac.h"
 
 namespace {
@@ -112,10 +114,30 @@ const base::Feature* FetchIPHFeatureFromEnum(
   }
 }
 
+// Returns the AutofillSettingsPage corresponding to the given suggestion.
+AutofillSettingsPage SuggestionToAutofillSettingsPage(
+    FormSuggestion* suggestion) {
+  switch (suggestion.type) {
+    case autofill::SuggestionType::kPasswordEntry:
+    case autofill::SuggestionType::kBackupPasswordEntry:
+      return AutofillSettingsPage::kPasswordManager;
+    case autofill::SuggestionType::kCreditCardEntry:
+    case autofill::SuggestionType::kVirtualCreditCardEntry:
+      return AutofillSettingsPage::kCreditCards;
+    case autofill::SuggestionType::kAddressEntry:
+    case autofill::SuggestionType::kFillAutofillAi:
+      return AutofillSettingsPage::kAddresses;
+    default:
+      NOTREACHED();
+  }
+}
+
 }  // namespace
 
 @interface FormInputAccessoryCoordinator () <
     AddressCoordinatorDelegate,
+    AtMemoryCommands,
+    AutofillSuggestionContextMenuHandler,
     CardCoordinatorDelegate,
     FormInputAccessoryMediatorHandler,
     FormInputAccessoryViewControllerDelegate,
@@ -168,6 +190,8 @@ const base::Feature* FetchIPHFeatureFromEnum(
     CommandDispatcher* dispatcher = browser->GetCommandDispatcher();
     [dispatcher startDispatchingToTarget:self
                              forProtocol:@protocol(SecurityAlertCommands)];
+    [dispatcher startDispatchingToTarget:self
+                             forProtocol:@protocol(AtMemoryCommands)];
 
     _brandingCoordinator =
         [[BrandingCoordinator alloc] initWithBaseViewController:viewController
@@ -219,6 +243,7 @@ const base::Feature* FetchIPHFeatureFromEnum(
                                  self.profile)];
   _formInputAccessoryViewController.formSuggestionClient =
       _formInputAccessoryMediator;
+  _formInputAccessoryViewController.contextMenuHandler = self;
 
   self.layoutGuide =
       [layoutGuideCenter makeLayoutGuideNamed:kAutofillFirstSuggestionGuide];
@@ -300,6 +325,11 @@ const base::Feature* FetchIPHFeatureFromEnum(
 - (void)startManualFillFromButton:(UIButton*)button
                       forDataType:(manual_fill::ManualFillDataType)dataType
          invokedOnObfuscatedField:(BOOL)invokedOnObfuscatedField {
+  if (dataType == manual_fill::ManualFillDataType::kAtMemory) {
+    [self presentAtMemory];
+    return;
+  }
+
   manual_fill::ManualFillDataType focusedFieldDataType = [ManualFillUtil
       manualFillDataTypeFromFillingProduct:
           [_formInputAccessoryMediator currentProviderMainFillingProduct]];
@@ -322,7 +352,7 @@ const base::Feature* FetchIPHFeatureFromEnum(
       expandedManualFillCoordinator;
   [expandedManualFillCoordinator start];
 
-  if (ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_TABLET) {
+  if ([ManualFillUtil shouldUsePopover]) {
     [expandedManualFillCoordinator presentFromButton:button];
   } else {
     self.formInputViewController = expandedManualFillCoordinator.viewController;
@@ -339,7 +369,7 @@ const base::Feature* FetchIPHFeatureFromEnum(
 }
 
 - (void)dismissPopover {
-  if (ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_TABLET) {
+  if ([ManualFillUtil shouldUsePopover]) {
     // Close the popover view.
     [self stopChildren];
   }
@@ -396,7 +426,7 @@ const base::Feature* FetchIPHFeatureFromEnum(
   BOOL invokedOnObfuscatedField =
       [_formInputAccessoryMediator lastFocusedFieldWasObfuscated];
 
-  if (ui::GetDeviceFormFactor() != ui::DEVICE_FORM_FACTOR_TABLET) {
+  if (![ManualFillUtil shouldUsePopover]) {
     [self stopChildren];
   }
 
@@ -443,6 +473,18 @@ const base::Feature* FetchIPHFeatureFromEnum(
   return NO;
 }
 
+#pragma mark - AutofillSuggestionContextMenuHandler
+
+- (void)openSettingsForSuggestion:(FormSuggestion*)suggestion {
+  [self reset];
+  [self.navigator
+      openSettingsForPage:SuggestionToAutofillSettingsPage(suggestion)];
+}
+
+- (void)openEditForSuggestion:(FormSuggestion*)suggestion {
+  // TODO(crbug.com/521517095): Implement edit action.
+}
+
 #pragma mark - FallbackCoordinatorDelegate
 
 - (void)fallbackCoordinatorDidDismissPopover:
@@ -454,7 +496,7 @@ const base::Feature* FetchIPHFeatureFromEnum(
 
 - (void)openPasswordManager {
   [self reset];
-  [self.navigator openPasswordManager];
+  [self.navigator openSettingsForPage:AutofillSettingsPage::kPasswordManager];
 
   UMA_HISTOGRAM_ENUMERATION(
       "PasswordManager.ManagePasswordsReferrer",
@@ -465,7 +507,7 @@ const base::Feature* FetchIPHFeatureFromEnum(
 
 - (void)openPasswordSettings {
   [self reset];
-  [self.navigator openPasswordSettings];
+  [self.navigator openSettingsForPage:AutofillSettingsPage::kPasswordSettings];
 }
 
 - (void)openAllPasswordsPicker {
@@ -514,7 +556,7 @@ const base::Feature* FetchIPHFeatureFromEnum(
 - (void)cardCoordinatorDidTriggerOpenCardSettings:
     (CardCoordinator*)cardCoordinator {
   [self reset];
-  [self.navigator openCreditCardSettings];
+  [self.navigator openSettingsForPage:AutofillSettingsPage::kCreditCards];
 }
 
 - (void)cardCoordinatorDidTriggerOpenAddCreditCard:
@@ -557,37 +599,31 @@ const base::Feature* FetchIPHFeatureFromEnum(
                offerMigrateToAccount:(BOOL)offerMigrateToAccount {
   [self reset];
 
-  if (base::FeatureList::IsEnabled(
-          autofill::features::kAutofillEnableSupportForHomeAndWork)) {
-    autofill::AutofillProfile::RecordType type = address.record_type();
-    id<SceneCommands> sceneHandler =
-        HandlerForProtocol(self.browser->GetCommandDispatcher(), SceneCommands);
-    if (type == autofill::AutofillProfile::RecordType::kAccountHome) {
-      OpenNewTabCommand* command = [OpenNewTabCommand
-          commandWithURLFromChrome:GURL(kGoogleMyAccountHomeAddressURL)];
-      [sceneHandler openURLInNewTab:command];
-      return;
-    }
-
-    if (type == autofill::AutofillProfile::RecordType::kAccountWork) {
-      OpenNewTabCommand* command = [OpenNewTabCommand
-          commandWithURLFromChrome:GURL(kGoogleMyAccountWorkAddressURL)];
-      [sceneHandler openURLInNewTab:command];
-      return;
-    }
+  autofill::AutofillProfile::RecordType type = address.record_type();
+  id<SceneCommands> sceneHandler =
+      HandlerForProtocol(self.browser->GetCommandDispatcher(), SceneCommands);
+  if (type == autofill::AutofillProfile::RecordType::kAccountHome) {
+    OpenNewTabCommand* command = [OpenNewTabCommand
+        commandWithURLFromChrome:GURL(kGoogleMyAccountHomeAddressURL)];
+    [sceneHandler openURLInNewTab:command];
+    return;
   }
 
-  if (base::FeatureList::IsEnabled(
-          autofill::features::kAutofillEnableSupportForNameAndEmail)) {
-    id<SceneCommands> sceneHandler =
-        HandlerForProtocol(self.browser->GetCommandDispatcher(), SceneCommands);
-    if (address.record_type() ==
-        autofill::AutofillProfile::RecordType::kAccountNameEmail) {
-      OpenNewTabCommand* command = [OpenNewTabCommand
-          commandWithURLFromChrome:GURL(kGoogleAccountNameEmailAddressEditURL)];
-      [sceneHandler openURLInNewTab:command];
-      return;
-    }
+  if (type == autofill::AutofillProfile::RecordType::kAccountWork) {
+    OpenNewTabCommand* command = [OpenNewTabCommand
+        commandWithURLFromChrome:GURL(kGoogleMyAccountWorkAddressURL)];
+    [sceneHandler openURLInNewTab:command];
+    return;
+  }
+
+  sceneHandler =
+      HandlerForProtocol(self.browser->GetCommandDispatcher(), SceneCommands);
+  if (address.record_type() ==
+      autofill::AutofillProfile::RecordType::kAccountNameEmail) {
+    OpenNewTabCommand* command = [OpenNewTabCommand
+        commandWithURLFromChrome:GURL(kGoogleAccountNameEmailAddressEditURL)];
+    [sceneHandler openURLInNewTab:command];
+    return;
   }
 
   CommandDispatcher* dispatcher = self.browser->GetCommandDispatcher();
@@ -600,7 +636,7 @@ const base::Feature* FetchIPHFeatureFromEnum(
 
 - (void)openAddressSettings {
   [self reset];
-  [self.navigator openAddressSettings];
+  [self.navigator openSettingsForPage:AutofillSettingsPage::kAddresses];
 }
 
 #pragma mark - ExpandedManualFillCoordinatorDelegate
@@ -613,6 +649,12 @@ const base::Feature* FetchIPHFeatureFromEnum(
 // Called when the user has taken action to dismiss a popover.
 - (void)expandedManualFillCoordinatorDidDismissPopover:
     (ExpandedManualFillCoordinator*)coordinator {
+  [self reset];
+}
+
+#pragma mark - AtMemoryCommands
+
+- (void)dismissAtMemory {
   [self reset];
 }
 
@@ -643,8 +685,8 @@ const base::Feature* FetchIPHFeatureFromEnum(
 #pragma mark - CRWResponderInputView
 
 - (UIView*)inputView {
-  BOOL isIPad = ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_TABLET;
-  return isIPad ? nil : self.formInputViewController.view;
+  return [ManualFillUtil shouldUsePopover] ? nil
+                                           : self.formInputViewController.view;
 }
 
 - (UIView*)inputAccessoryView {
@@ -674,6 +716,16 @@ const base::Feature* FetchIPHFeatureFromEnum(
   [_allPasswordCoordinator stop];
   _allPasswordCoordinator.manualFillAllPasswordCoordinatorDelegate = nil;
   _allPasswordCoordinator = nil;
+}
+
+// Presents the AtMemory Page Sheet (on iPhone) or Form Sheet (on iPad).
+- (void)presentAtMemory {
+  AtMemoryCoordinator* atMemoryCoordinator = [[AtMemoryCoordinator alloc]
+      initWithBaseViewController:self.baseViewController
+                         browser:self.browser];
+  [atMemoryCoordinator start];
+
+  [self.childCoordinators addObject:atMemoryCoordinator];
 }
 
 - (void)dismissAlertCoordinator {
@@ -884,10 +936,9 @@ const base::Feature* FetchIPHFeatureFromEnum(
 // notification to re-present the manual fallback UI if it was temporarily
 // dismissed.
 - (void)cardCoordinatorDidCompleteManualFill:(CardCoordinator*)cardCoordinator {
-  // On iPad, the manual fill view is a popover anchored to a button.
-  // We only re-trigger this automatically on iPhone (where it is an input
-  // view).
-  if (ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_TABLET) {
+  // This is re-triggered automatically only when it is an input view (as
+  // opposed to a popover anchored to a button).
+  if ([ManualFillUtil shouldUsePopover]) {
     return;
   }
 

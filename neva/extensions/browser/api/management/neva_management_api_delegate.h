@@ -85,11 +85,6 @@ class NevaManagementAPIDelegate : public extensions::ManagementAPIDelegate {
                   bool grayscale) const override;
   GURL GetEffectiveUpdateURL(const extensions::Extension& extension,
                              content::BrowserContext* context) const override;
-  void ShowMv2DeprecationReEnableDialog(
-      content::BrowserContext* context,
-      content::WebContents* web_contents,
-      const extensions::Extension& extension,
-      base::OnceCallback<void(bool)> done_callback) const override;
 };
 
 }  // namespace neva

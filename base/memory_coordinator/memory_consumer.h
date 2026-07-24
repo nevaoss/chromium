@@ -100,6 +100,8 @@ class BASE_EXPORT MemoryConsumer : public CheckedObserver {
   MemoryConsumer();
   ~MemoryConsumer() override = default;
 
+  virtual bool IsPassive() const;
+
   // The memory limit, expressed as a percentage.
   int memory_limit() const { return memory_limit_; }
 
@@ -143,6 +145,7 @@ class BASE_EXPORT PassiveMemoryConsumer : public MemoryConsumer {
   // MemoryConsumer:
   void OnReleaseMemory() final {}
   void OnUpdateMemoryLimit() final {}
+  bool IsPassive() const final;
 };
 
 // Similar to ScopedObservation, registers a MemoryConsumer with the global
@@ -152,19 +155,10 @@ class BASE_EXPORT PassiveMemoryConsumer : public MemoryConsumer {
 // registration object is destroyed before the destruction of the global
 // registry. It can be useful to disable this assert for globals that are
 // sometimes leaked.
-//
-// If `check_registry_exists` is kEnabled, this class will assert that the
-// global MemoryConsumerRegistry exists at the time the registration object is
-// created. Useful for MemoryConsumers that are used indirectly in tests where
-// there are no MemoryConsumerRegistry.
 class BASE_EXPORT MemoryConsumerRegistration
     : public MemoryConsumerRegistryDestructionObserver {
  public:
   enum class CheckUnregister {
-    kEnabled,
-    kDisabled,
-  };
-  enum class CheckRegistryExists {
     kEnabled,
     kDisabled,
   };
@@ -176,9 +170,7 @@ class BASE_EXPORT MemoryConsumerRegistration
       std::string_view consumer_name,
       std::optional<MemoryConsumerTraits> traits,
       MemoryConsumer* consumer,
-      CheckUnregister check_unregister = CheckUnregister::kEnabled,
-      CheckRegistryExists check_registry_exists =
-          CheckRegistryExists::kEnabled);
+      CheckUnregister check_unregister = CheckUnregister::kEnabled);
 
   MemoryConsumerRegistration(const MemoryConsumerRegistration&) = delete;
   MemoryConsumerRegistration& operator=(const MemoryConsumerRegistration&) =

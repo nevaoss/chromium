@@ -8,14 +8,17 @@
 #include <set>
 #include <vector>
 
+#include "chrome/browser/indigo/resources/grit/indigo_strings.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/browser/ui/views/controls/hover_button.h"
 #include "testing/gmock/include/gmock/gmock.h"
+#include "ui/base/l10n/l10n_util.h"
 #include "ui/views/controls/button/button.h"
 #include "ui/views/controls/button/image_button.h"
 #include "ui/views/layout/box_layout.h"
 #include "ui/views/test/button_test_api.h"
 #include "ui/views/test/views_test_base.h"
+#include "ui/views/test/views_test_utils.h"
 #include "ui/views/view_utils.h"
 #include "ui/views/widget/widget.h"
 
@@ -81,6 +84,7 @@ TEST_F(IndigoToolbarTest, CloseAndReopen) {
   MockIndigoToolbarDelegate delegate;
   auto toolbar = std::make_unique<IndigoToolbar>(&delegate);
   toolbar->Show(overlay_view());
+  toolbar->UpdateTrackedPosition(gfx::Rect(10, 10, 100, 100));
   EXPECT_CALL(delegate, OnClose(toolbar.get())).Times(1);
 
   views::View* toolbar_view = GetToolbarView();
@@ -95,6 +99,7 @@ TEST_F(IndigoToolbarTest, CloseAndReopen) {
 
   // Show again
   toolbar->Show(overlay_view());
+  toolbar->UpdateTrackedPosition(gfx::Rect(10, 10, 100, 100));
   views::View* toolbar_view_after_close = GetToolbarView();
   ASSERT_NE(toolbar_view_after_close, nullptr);
   EXPECT_TRUE(toolbar_view_after_close->GetVisible());
@@ -104,6 +109,7 @@ TEST_F(IndigoToolbarTest, ExpandCollapseInteractions) {
   MockIndigoToolbarDelegate delegate;
   auto toolbar = std::make_unique<IndigoToolbar>(&delegate);
   toolbar->Show(overlay_view());
+  toolbar->UpdateTrackedPosition(gfx::Rect(10, 10, 100, 100));
   EXPECT_CALL(delegate, OnClose(toolbar.get())).Times(0);
 
   views::View* toolbar_view = GetToolbarView();
@@ -130,15 +136,24 @@ TEST_F(IndigoToolbarTest, ExpandCollapseInteractions) {
   EXPECT_FALSE(replace_photo_button->IsDrawn());
   EXPECT_FALSE(delete_photo_button->IsDrawn());
 
+  std::u16string tooltip_collapsed =
+      expand_button->GetRenderedTooltipText(gfx::Point());
+  EXPECT_EQ(tooltip_collapsed,
+            l10n_util::GetStringUTF16(IDS_INDIGO_TOOLBAR_EXPAND));
+
   // Expand the toolbar.
   gfx::Point initial_origin = toolbar_view->bounds().origin();
   views::test::ButtonTestApi(expand_button).NotifyDefaultMouseClick();
   gfx::Point expanded_origin = toolbar_view->bounds().origin();
   EXPECT_EQ(initial_origin, expanded_origin);
 
+  std::u16string tooltip_expanded =
+      expand_button->GetRenderedTooltipText(gfx::Point());
+  EXPECT_EQ(tooltip_expanded,
+            l10n_util::GetStringUTF16(IDS_INDIGO_TOOLBAR_COLLAPSE));
+
   // Buttons are drawn.
-  // TODO(b/512246764): Update expectation after making button visible.
-  EXPECT_FALSE(regenerate_button->IsDrawn());
+  EXPECT_TRUE(regenerate_button->IsDrawn());
   EXPECT_TRUE(replace_photo_button->IsDrawn());
   EXPECT_TRUE(delete_photo_button->IsDrawn());
 
@@ -152,11 +167,45 @@ TEST_F(IndigoToolbarTest, ExpandCollapseInteractions) {
 
   // Collapse the toolbar.
   views::test::ButtonTestApi(expand_button).NotifyDefaultMouseClick();
+  EXPECT_EQ(expand_button->GetRenderedTooltipText(gfx::Point()),
+            tooltip_collapsed);
 
   // Buttons should be hidden again.
   EXPECT_FALSE(regenerate_button->IsDrawn());
   EXPECT_FALSE(replace_photo_button->IsDrawn());
   EXPECT_FALSE(delete_photo_button->IsDrawn());
+}
+
+TEST_F(IndigoToolbarTest, ToolbarBounds) {
+  MockIndigoToolbarDelegate delegate;
+  auto toolbar = std::make_unique<IndigoToolbar>(&delegate);
+  // Show with empty rect (production initial state)
+  toolbar->Show(overlay_view());
+  overlay_view()->DeprecatedLayoutImmediately();
+
+  views::View* toolbar_view = GetToolbarView();
+  ASSERT_NE(toolbar_view, nullptr);
+
+  // Should be invisible initially
+  EXPECT_FALSE(toolbar_view->GetVisible());
+
+  // Now simulate compositor update with real bounds
+  toolbar->UpdateTrackedPosition(gfx::Rect(100, 100, 400, 300));
+  overlay_view()->DeprecatedLayoutImmediately();
+
+  // Should now be visible and moved away from fallback position
+  EXPECT_TRUE(toolbar_view->GetVisible());
+  EXPECT_NE(toolbar_view->bounds().origin(), gfx::Point(20, 20));
+  // Size should still be correct
+  EXPECT_LT(toolbar_view->bounds().height(), 100);
+  EXPECT_LT(toolbar_view->bounds().width(), 350);
+
+  // Simulate compositor update with empty bounds (image out of view)
+  toolbar->UpdateTrackedPosition(gfx::Rect());
+  overlay_view()->DeprecatedLayoutImmediately();
+
+  // Should be hidden again
+  EXPECT_FALSE(toolbar_view->GetVisible());
 }
 
 }  // namespace indigo

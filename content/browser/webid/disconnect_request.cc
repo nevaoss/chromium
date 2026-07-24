@@ -61,7 +61,7 @@ DisconnectRequest::DisconnectRequest(
 }
 
 void DisconnectRequest::SetCallbackAndStart(
-    blink::mojom::FederatedAuthRequest::DisconnectCallback callback,
+    blink::mojom::FederatedRequestService::DisconnectCallback callback,
     FederatedIdentityApiPermissionContextDelegate* api_permission_delegate) {
   TRACE_EVENT_BEGIN("content.fedcm", "FedCM disconnect", perfetto_track_);
 
@@ -214,7 +214,7 @@ void DisconnectRequest::OnDisconnectResponse(FetchStatus fetch_status,
                                              const std::string& account_id) {
   CHECK(callback_);
   // Matches the GrantSharingPermission() call in
-  // RequestService::CompleteTokenRequest(). Note that the IDP origin
+  // Request::CompleteTokenRequest(). Note that the IDP origin
   // cannot be an arbitrary origin, but rather needs to be a potentially
   // trustworthy one.
   url::Origin idp_origin = url::Origin::Create(options_->config->config_url);

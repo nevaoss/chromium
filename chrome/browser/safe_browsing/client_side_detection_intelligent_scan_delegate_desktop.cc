@@ -10,6 +10,7 @@
 #include "chrome/browser/safe_browsing/client_side_detection_intelligent_scan_delegate_util.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
 #include "components/optimization_guide/public/mojom/model_broker.mojom-shared.h"
+#include "components/policy/core/common/management/management_service.h"
 #include "components/prefs/pref_service.h"
 #include "components/safe_browsing/core/browser/intelligent_scan_delegate.h"
 #include "components/safe_browsing/core/common/features.h"
@@ -172,9 +173,13 @@ void ClientSideDetectionIntelligentScanDelegateDesktop::Inquiry::
   LogOnDeviceModelCallbackStateOnSuccessfulResponse(!!callback_);
 
   if (callback_) {
+    std::optional<float> scam_score = std::nullopt;
+    if (scam_detection_response->has_scam_score()) {
+      scam_score = scam_detection_response->scam_score();
+    }
     std::move(callback_).Run(IntelligentScanResult::Success(
         scam_detection_response->brand(), scam_detection_response->intent(),
-        model_version, kOnDeviceModelType));
+        model_version, kOnDeviceModelType, scam_score));
   }
 
   // Reset session immediately so that future inference is not affected by the
@@ -185,8 +190,11 @@ void ClientSideDetectionIntelligentScanDelegateDesktop::Inquiry::
 ClientSideDetectionIntelligentScanDelegateDesktop::
     ClientSideDetectionIntelligentScanDelegateDesktop(
         PrefService& pref,
-        OptimizationGuideKeyedService* opt_guide)
-    : pref_(pref), opt_guide_(opt_guide) {
+        OptimizationGuideKeyedService* opt_guide,
+        policy::ManagementService* management_service)
+    : pref_(pref),
+      opt_guide_(opt_guide),
+      management_service_(management_service) {
   pref_change_registrar_.Init(&pref);
   pref_change_registrar_.Add(
       prefs::kSafeBrowsingEnhanced,
@@ -232,7 +240,8 @@ bool ClientSideDetectionIntelligentScanDelegateDesktop::ShouldShowScamWarning(
   if (!verdict.has_value() ||
       *verdict ==
           IntelligentScanVerdict::INTELLIGENT_SCAN_VERDICT_UNSPECIFIED ||
-      *verdict == IntelligentScanVerdict::INTELLIGENT_SCAN_VERDICT_SAFE) {
+      *verdict == IntelligentScanVerdict::INTELLIGENT_SCAN_VERDICT_SAFE ||
+      *verdict == IntelligentScanVerdict::SCAM_EXPERIMENT_CATCH_ALL_TELEMETRY) {
     return false;
   }
 
@@ -249,7 +258,9 @@ void ClientSideDetectionIntelligentScanDelegateDesktop::OnPrefsUpdated() {
     return;
   }
 
-  if (IsEnhancedProtectionEnabled(*pref_)) {
+  bool is_managed = management_service_ && management_service_->IsManaged();
+
+  if (IsEnhancedProtectionEnabled(*pref_) && !is_managed) {
     StartListeningToOnDeviceModelUpdate();
   } else {
     StopListeningToOnDeviceModelUpdate();

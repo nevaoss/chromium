@@ -11,13 +11,14 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback_forward.h"
 #include "base/run_loop.h"
-#include "content/browser/webid/request_service.h"
+#include "base/types/expected.h"
+#include "content/browser/webid/request.h"
 #include "third_party/blink/public/mojom/webid/federated_auth_request.mojom.h"
 #include "url/gurl.h"
 
 namespace content {
 
-// Helper class for waiting for the RequestService::RequestToken()
+// Helper class for waiting for the Request::RequestToken()
 // callback.
 class FederatedAuthRequestRequestTokenCallbackHelper {
  public:
@@ -46,7 +47,7 @@ class FederatedAuthRequestRequestTokenCallbackHelper {
   }
 
   // This can only be called once per lifetime of this object.
-  webid::RequestService::RequestTokenCallback callback() {
+  blink::mojom::FederatedRequestService::StartTokenRequestCallback callback() {
     return base::BindOnce(
         &FederatedAuthRequestRequestTokenCallbackHelper::ReceiverMethod,
         base::Unretained(this));
@@ -59,11 +60,9 @@ class FederatedAuthRequestRequestTokenCallbackHelper {
   void WaitForCallback();
 
  private:
-  void ReceiverMethod(blink::mojom::RequestTokenStatus status,
-                      const std::optional<GURL>& selected_idp_config_url,
-                      std::optional<base::Value> token,
-                      blink::mojom::TokenErrorPtr error,
-                      bool is_auto_selected);
+  void ReceiverMethod(
+      base::expected<blink::mojom::TokenRequestSuccessPtr,
+                     blink::mojom::TokenRequestFailurePtr> result);
 
   void Quit();
 

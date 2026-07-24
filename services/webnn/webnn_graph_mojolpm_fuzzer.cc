@@ -84,19 +84,6 @@ class WebnnGraphLPMFuzzer {
       const services::fuzzing::webnn_graph::proto::Testcase& testcase)
       : testcase_(testcase) {
     input_generator_.ReseedForTesting(testcase_->seed_for_input_data());
-
-    init_globals->webnn_test_environment_->BindWebNNContextProvider(
-        provider_remote_.BindNewPipeAndPassReceiver());
-
-    base::test::TestFuture<webnn::mojom::CreateContextResultPtr>
-        create_context_future;
-    provider_remote_->CreateWebNNContext(
-        webnn::mojom::CreateContextOptions::New(),
-        create_context_future.GetCallback());
-    webnn::mojom::CreateContextResultPtr create_context_result =
-        create_context_future.Take();
-    webnn_context_.Bind(
-        std::move(create_context_result->get_success()->context_remote));
   }
 
   void NextAction() {
@@ -135,14 +122,11 @@ class WebnnGraphLPMFuzzer {
   void BuildGraph(const mojolpm::webnn::mojom::GraphInfo& graph_info_proto,
                   webnn::mojom::Device device) {
     mojo::Remote<webnn::mojom::WebNNContextProvider> webnn_provider_remote;
-    mojo::Remote<webnn::mojom::WebNNContext> webnn_context_remote;
-    mojo::Remote<webnn::mojom::WebNNGraphBuilder> webnn_graph_builder_remote;
-    mojo::Remote<webnn::mojom::WebNNGraph> webnn_graph_remote;
-
     init_globals->webnn_test_environment_->BindWebNNContextProvider(
         webnn_provider_remote.BindNewPipeAndPassReceiver());
 
     // Create the ContextImpl through context provider.
+    mojo::Remote<webnn::mojom::WebNNContext> webnn_context_remote;
     base::test::TestFuture<webnn::mojom::CreateContextResultPtr>
         create_context_future;
     webnn_provider_remote->CreateWebNNContext(
@@ -162,6 +146,7 @@ class WebnnGraphLPMFuzzer {
     EXPECT_TRUE(webnn_context_remote.is_bound());
 
     // Create the GraphBuilder through the context.
+    mojo::Remote<webnn::mojom::WebNNGraphBuilder> webnn_graph_builder_remote;
     webnn_context_remote->CreateGraphBuilder(
         webnn_graph_builder_remote.BindNewPipeAndPassReceiver());
 
@@ -210,6 +195,9 @@ class WebnnGraphLPMFuzzer {
     if (!create_graph_result.has_value()) {
       return;
     }
+    webnn_graph_builder_remote.reset();
+
+    mojo::Remote<webnn::mojom::WebNNGraph> webnn_graph_remote;
     webnn_graph_remote.Bind(
         std::move(create_graph_result.value()->graph_remote));
     blink::WebNNGraphToken graph_token =
@@ -300,15 +288,14 @@ class WebnnGraphLPMFuzzer {
       remote->ReadTensor(read_tensor_future.GetCallback());
       EXPECT_TRUE(read_tensor_future.Wait());
     }
+
+    webnn_context_remote->DestroyGraph(graph_token);
   }
 
   const raw_ref<const services::fuzzing::webnn_graph::proto::Testcase>
       testcase_;
   int action_index_ = 0;
   base::test::InsecureRandomGenerator input_generator_;
-
-  mojo::Remote<webnn::mojom::WebNNContextProvider> provider_remote_;
-  mojo::Remote<webnn::mojom::WebNNContext> webnn_context_;
 };
 
 DEFINE_TEXT_PROTO_FUZZER(
@@ -319,9 +306,10 @@ DEFINE_TEXT_PROTO_FUZZER(
       webnn_graph_fuzzer_instance.NextAction();
     }
   }
-  // Ensure that tasks scheduled by destroying the `webnn_graph_fuzzer_instance`
-  // are executed before running the next case. See https://crbug.com/441020155.
-  init_globals->webnn_test_environment_->RunUntilIdle();
+  // Ensure that tasks scheduled by creating and destroying WebNN contexts have
+  // completed before continuing to the next test case.
+  // See https://crbug.com/441020155.
+  init_globals->webnn_test_environment_->WaitForAllContextsToBeDestroyed();
 }
 
 }  // namespace

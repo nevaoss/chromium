@@ -29,6 +29,7 @@ eventlog_provider.dll: %(VersionDir)s\
 icudtl.dat: %(VersionDir)s\
 libEGL.dll: %(VersionDir)s\
 libGLESv2.dll: %(VersionDir)s\
+libLiteRtWebGpuAccelerator.dll: %(VersionDir)s\
 notification_helper.exe: %(VersionDir)s\
 optimization_guide_internal.dll: %(VersionDir)s\
 resources.pak: %(VersionDir)s\
@@ -81,12 +82,6 @@ ffmpeg.dll: %(VersionDir)s\
 elevated_tracing_service.exe: %(VersionDir)s\
 elevation_service.exe: %(VersionDir)s\
 os_update_handler.exe: %(VersionDir)s\
-
-#
-# Sub directories living in the version dir
-#
-default_apps\*.crx: %(VersionDir)s\default_apps\
-default_apps\external_extensions.json: %(VersionDir)s\default_apps\
 
 #
 # VisualElements sub-dir.

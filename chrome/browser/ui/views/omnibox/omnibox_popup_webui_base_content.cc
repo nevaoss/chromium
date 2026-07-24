@@ -16,6 +16,7 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
+#include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/location_bar/location_bar_view.h"
 #include "chrome/browser/ui/views/location_bar/omnibox_popup_file_selector.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_context_menu.h"
@@ -74,6 +75,10 @@ gfx::RoundedCornersF OmniboxPopupWebUIBaseContent::GetRoundedCornerRadii()
   return gfx::RoundedCornersF(top_rounded_corners_ ? corner_radius : 0,
                               top_rounded_corners_ ? corner_radius : 0,
                               corner_radius, corner_radius);
+}
+
+bool OmniboxPopupWebUIBaseContent::EscClosesUI() const {
+  return true;
 }
 
 void OmniboxPopupWebUIBaseContent::OnLocationBarBoundsChanged() {
@@ -141,11 +146,6 @@ void OmniboxPopupWebUIBaseContent::CloseUI() {
   controller()->popup_state_manager()->SetPopupState(OmniboxPopupState::kNone);
 }
 
-void OmniboxPopupWebUIBaseContent::OnActiveTabChanged(
-    content::WebContents* new_contents) {
-  CloseUI();
-}
-
 void OmniboxPopupWebUIBaseContent::ShowUI() {
   // This is a signal from the WebUIContentsWrapper::Host. We use this signal to
   // check if the renderer crashes. If the renderer process has crashed, reset
@@ -160,6 +160,10 @@ void OmniboxPopupWebUIBaseContent::ShowUI() {
         base::StrCat({GetMetricPrefix(), ".CrashRecovery"}), false);
   }
   SetWebContents(contents_wrapper_->web_contents());
+
+#if BUILDFLAG(IS_MAC)
+  UpdateAutoFill();
+#endif
 
   // The View may have changed, so this reinstates auto-resizing to prevent
   // the omnibox from staying collapsed until a resize is observed.
@@ -252,7 +256,8 @@ void OmniboxPopupWebUIBaseContent::SetContentURL(std::string_view url) {
 void OmniboxPopupWebUIBaseContent::LoadContent() {
   DCHECK(!content_url_.is_empty());
   contents_wrapper_ = std::make_unique<WebUIContentsWrapperT<OmniboxPopupUI>>(
-      content_url_, location_bar_->GetProfile(), IDS_TASK_MANAGER_OMNIBOX);
+      content_url_, location_bar_->GetProfile(), IDS_TASK_MANAGER_OMNIBOX,
+      EscClosesUI());
   contents_wrapper_->SetHost(weak_factory_.GetWeakPtr());
   SetWebContents(contents_wrapper_->web_contents());
   // LocationBarView can be instantiated in windows that do not have a
@@ -284,6 +289,18 @@ void OmniboxPopupWebUIBaseContent::LoadContent() {
     GetWebContents()->WasHidden();
   }
 }
+
+#if BUILDFLAG(IS_MAC)
+void OmniboxPopupWebUIBaseContent::UpdateAutoFill() {
+  auto* web_contents = GetWebContents();
+  if (!web_contents) {
+    return;
+  }
+  if (auto* view = web_contents->GetRenderWidgetHostView()) {
+    view->SetSupportsAutoFill(!features::IsMenuSimplificationEnabled());
+  }
+}
+#endif
 
 void OmniboxPopupWebUIBaseContent::Detach() {
   if (!popup_presenter_->ShouldDetachWebContentsOnHide()) {

@@ -67,7 +67,7 @@ class OmniboxPopupComposeboxClient : public ContextualOmniboxClient {
         query_text, disposition,
         PageClassificationToAimEntryPoint(
             GetPageClassification(/*is_prefetch=*/false)),
-        additional_params);
+        additional_params, /*is_voice_search=*/false);
   }
 
  private:
@@ -75,6 +75,27 @@ class OmniboxPopupComposeboxClient : public ContextualOmniboxClient {
 };
 
 }  // namespace
+
+void OmniboxComposeboxHandler::OpenUrl(
+    GURL url,
+    const WindowOpenDisposition disposition) {
+  // The voice permission dialog dirties the OS focus history, especially in
+  // native Windows OS. Explicitly close the Omnibox popup and claim
+  // focus for the WebContents to ensure the Omnibox does not reopen in new
+  // page.
+  if (omnibox_delegate_) {
+    OmniboxController* omnibox_controller =
+        omnibox_delegate_->GetOmniboxController();
+    if (omnibox_controller) {
+      omnibox_controller->StopAutocomplete(/*clear_result=*/true);
+      if (web_contents_) {
+        web_contents_->Focus();
+      }
+    }
+  }
+
+  ComposeboxHandler::OpenUrl(url, disposition);
+}
 
 OmniboxComposeboxHandler::OmniboxComposeboxHandler(
     mojo::PendingReceiver<composebox::mojom::PageHandler> pending_handler,
@@ -86,19 +107,18 @@ OmniboxComposeboxHandler::OmniboxComposeboxHandler(
     content::WebContents* web_contents,
     GetSessionHandleCallback get_session_callback,
     ClearSessionHandleCallback clear_session_callback)
-    : ComposeboxHandler(std::move(pending_handler),
-                       std::move(pending_page),
-                       std::move(pending_searchbox_handler),
-                       std::move(pending_searchbox_page),
-                       profile,
-                       web_contents,
-                       std::make_unique<OmniboxController>(
-                           std::make_unique<OmniboxPopupComposeboxClient>(
-                               profile,
-                               web_contents,
-                               this)),
-                       std::move(get_session_callback),
-                       std::move(clear_session_callback)) {
+    : ComposeboxHandler(
+          std::move(pending_handler),
+          std::move(pending_page),
+          std::move(pending_searchbox_handler),
+          std::move(pending_searchbox_page),
+          profile,
+          web_contents,
+          std::make_unique<OmniboxPopupComposeboxClient>(profile,
+                                                         web_contents,
+                                                         this),
+          std::move(get_session_callback),
+          std::move(clear_session_callback)) {
   auto* aim_eligibility_service =
       AimEligibilityServiceFactory::GetForProfile(profile);
   if (aim_eligibility_service) {
@@ -112,9 +132,9 @@ OmniboxComposeboxHandler::OmniboxComposeboxHandler(
   // Set the callback for getting suggest inputs from the session.
   // The session is owned by WebUI controller and accessed via callback.
   // It is safe to use Unretained because omnibox client is owned by `this`.
-  static_cast<ContextualOmniboxClient*>(omnibox_controller()->client())
-      ->SetSuggestInputsCallback(base::BindRepeating(
-          &OmniboxComposeboxHandler::GetSuggestInputs, base::Unretained(this)));
+  static_cast<ContextualOmniboxClient*>(client())->SetSuggestInputsCallback(
+      base::BindRepeating(&OmniboxComposeboxHandler::GetSuggestInputs,
+                          base::Unretained(this)));
 }
 
 OmniboxComposeboxHandler::~OmniboxComposeboxHandler() = default;

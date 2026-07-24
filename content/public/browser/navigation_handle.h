@@ -69,6 +69,7 @@ struct GlobalRenderFrameHostId;
 struct GlobalRequestID;
 class NavigationEntry;
 class NavigationThrottle;
+class InitiatorNavigationState;
 class NavigationUIData;
 class ProcessSelectionUserData;
 class RenderFrameHost;
@@ -384,6 +385,15 @@ class CONTENT_EXPORT NavigationHandle : public base::SupportsUserData {
   // creation. See |is_on_initial_empty_document_| in FrameTreeNode for details.
   virtual bool IsNavigatingFromInitialEmptyDocument() const = 0;
 
+  // Whether this navigation has been blocked because the initiator document's
+  // Connection-Allowlist policy disallows the destination URL. This is used to
+  // suppress speculative network activity (e.g. preconnect/preresolve/resource
+  // prewarming) for a navigation that is going to be blocked; such activity
+  // would otherwise leak the destination host (e.g. via its DNS resolution)
+  // even though the navigation itself never reaches the network.
+  // See https://github.com/WICG/connection-allowlists.
+  virtual bool IsBlockedByConnectionAllowlist() const = 0;
+
   // Navigation control flow --------------------------------------------------
 
   // The net error code if an error happened prior to commit, or the navigation
@@ -655,6 +665,11 @@ class CONTENT_EXPORT NavigationHandle : public base::SupportsUserData {
   // the base url of the document that has initiated the navigation for this
   // NavigationHandle. The same caveats apply here as for GetInitiatorOrigin().
   virtual const std::optional<GURL>& GetInitiatorBaseUrl() = 0;
+
+  // Returns, if available, a record of the state of the document that initiated
+  // the navigation for this NavigationHandle.
+  virtual scoped_refptr<InitiatorNavigationState>
+  GetInitiatorNavigationState() = 0;
 
   // Retrieves any DNS aliases for the requested URL. Includes all known
   // aliases, e.g. from A, AAAA, or HTTPS, not just from the address used for
@@ -928,11 +943,6 @@ class CONTENT_EXPORT NavigationHandle : public base::SupportsUserData {
   // Note: This is exposed in NavigationHandle because it needs to be present on
   // both NavigationRequest and MockNavigationHandle. It's not actually needed
   // outside of //content.
-  virtual bool IsInitialWebUISyncNavigation() = 0;
-
-  // Different from `IsInitialWebUISyncNavigation()`, this also returns true if
-  // the navigation doesn't go from start -> commit synchronously (i.e. when the
-  // kInitialWebUISyncNavStartToCommit flag is disabled).
   virtual bool IsInitialWebUINavigation() = 0;
 };
 

@@ -186,6 +186,7 @@ class CONTENT_EXPORT NavigationControllerImpl : public NavigationController {
       mojo::PendingAssociatedRemote<mojom::NavigationClient>* navigation_client,
       blink::LocalFrameToken initiator_frame_token,
       int initiator_process_id,
+      scoped_refptr<InitiatorNavigationState> initiator_navigation_state,
       base::TimeTicks actual_navigation_start);
 
   // Reloads the |frame_tree_node| and returns true. In some rare cases, there
@@ -229,7 +230,7 @@ class CONTENT_EXPORT NavigationControllerImpl : public NavigationController {
       const std::optional<url::Origin>& initiator_origin,
       const std::optional<GURL>& initiator_base_url,
       bool is_renderer_initiated,
-      SiteInstance* source_site_instance,
+      scoped_refptr<InitiatorNavigationState> initiator_navigation_state,
       const Referrer& referrer,
       ui::PageTransition page_transition,
       bool should_replace_current_entry,
@@ -717,6 +718,7 @@ class CONTENT_EXPORT NavigationControllerImpl : public NavigationController {
       ReloadType reload_type,
       const std::optional<blink::LocalFrameToken>& initiator_frame_token,
       int initiator_process_id,
+      scoped_refptr<InitiatorNavigationState> initiator_navigation_state,
       std::optional<blink::scheduler::TaskAttributionId>
           soft_navigation_heuristics_task_id,
       base::TimeTicks actual_navigation_start,
@@ -795,6 +797,7 @@ class CONTENT_EXPORT NavigationControllerImpl : public NavigationController {
       bool is_history_navigation_in_new_child_frame,
       const std::optional<blink::LocalFrameToken>& initiator_frame_token,
       int initiator_process_id,
+      scoped_refptr<InitiatorNavigationState> initiator_navigation_state,
       base::TimeTicks actual_navigation_start,
       std::optional<blink::scheduler::TaskAttributionId>
           soft_navigation_heuristics_task_id = std::nullopt);
@@ -1117,6 +1120,11 @@ class CONTENT_EXPORT NavigationControllerImpl : public NavigationController {
   FrameTreeNode* GetTargetFrameTreeNodeForNavigation(
       const LoadURLParams& params);
 
+  // Returns true if the initial entry should be replaced when reloading.
+  // This happens when a reload occurs before the first noninitial navigation
+  // commits and replaces the initial entry.
+  bool ShouldReplaceInitialEntryForReload(ReloadType reload_type);
+
   // ---------------------------------------------------------------------------
 
   // The FrameTree this instance belongs to. Each FrameTree gets its own
@@ -1210,11 +1218,6 @@ class CONTENT_EXPORT NavigationControllerImpl : public NavigationController {
   // the wrong order in the history view.
   TimeSmoother time_smoother_;
 
-  // BackForwardCache:
-  //
-  // Stores frozen RenderFrameHost. Restores them on history navigation.
-  // See BackForwardCache class documentation.
-  BackForwardCacheImpl back_forward_cache_;
 
 #if BUILDFLAG(IS_ANDROID)
   // Stores captured screenshots for this `NavigationController`. The

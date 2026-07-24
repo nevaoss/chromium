@@ -35,11 +35,11 @@ import org.chromium.chrome.browser.fullscreen.BrowserControlsManager;
 import org.chromium.chrome.browser.fullscreen.BrowserControlsManagerSupplier;
 import org.chromium.chrome.browser.notifications.channels.ChromeChannelDefinitions;
 import org.chromium.chrome.browser.notifications.scheduler.TipsAgent;
-import org.chromium.chrome.browser.notifications.scheduler.TipsNotificationsFeatureType;
 import org.chromium.chrome.browser.notifications.tips.TipsPromoProperties.FeatureTipPromoData;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.profiles.ProfileProvider;
+import org.chromium.chrome.browser.tips.TipsNotificationsFeatureType;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.signin.BottomSheetSigninAndHistorySyncConfig;
 import org.chromium.chrome.browser.ui.signin.account_picker.AccountPickerBottomSheetStrings;
@@ -52,6 +52,7 @@ import org.chromium.components.user_prefs.UserPrefs;
 import org.chromium.ui.base.ViewUtils;
 import org.chromium.ui.base.WindowAndroid;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -296,6 +297,7 @@ public class TipsUtils {
 
     private static void maybeScheduleTipsNotification(
             Profile profile, WindowAndroid windowAndroid) {
+        if (windowAndroid.isDestroyed()) return;
         boolean isBottomOmnibox = isBottomOmniboxActive(windowAndroid);
 
         TipsUtils.areTipsNotificationsEnabled(
@@ -313,10 +315,15 @@ public class TipsUtils {
                         // it will be torn down. Note that it is possible that when the notification
                         // is rescheduled, the usage criteria may have changed such that the user is
                         // no longer eligible to receive a notification.
+                        WeakReference<WindowAndroid> windowAndroidRef =
+                                new WeakReference<>(windowAndroid);
                         PostTask.postDelayedTask(
                                 TaskTraits.UI_DEFAULT,
                                 () -> {
-                                    maybeScheduleTipsNotification(profile, windowAndroid);
+                                    WindowAndroid window = windowAndroidRef.get();
+                                    if (window != null && !window.isDestroyed()) {
+                                        maybeScheduleTipsNotification(profile, window);
+                                    }
                                 },
                                 TimeUnit.HOURS.toMillis(1));
                     }

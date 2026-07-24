@@ -116,6 +116,7 @@
 #include "third_party/blink/public/mojom/browser_interface_broker.mojom-blink.h"
 #include "third_party/blink/public/mojom/devtools/inspector_issue.mojom-blink.h"
 #include "third_party/blink/public/mojom/fenced_frame/fenced_frame.mojom-blink.h"
+#include "third_party/blink/public/mojom/frame/frame_owner_properties.mojom-blink.h"
 #include "third_party/blink/public/mojom/frame/frame_replication_state.mojom-blink.h"
 #include "third_party/blink/public/mojom/frame/media_player_action.mojom-blink.h"
 #include "third_party/blink/public/mojom/frame/tree_scope_type.mojom-blink.h"
@@ -324,6 +325,7 @@ class DummyFrameOwner final : public GarbageCollected<DummyFrameOwner>,
   void DispatchLoad() override {}
   void NaturalSizingInfoChanged() override {}
   void ClearLastNaturalSizingInfo() override {}
+  void ClearAllNaturalSizingInfo() override {}
   void SetNeedsOcclusionTracking(bool) override {}
   AtomicString BrowsingContextContainerName() const override {
     return AtomicString();
@@ -336,6 +338,9 @@ class DummyFrameOwner final : public GarbageCollected<DummyFrameOwner>,
   bool AllowFullscreen() const override { return false; }
   bool AllowPaymentRequest() const override { return false; }
   bool IsDisplayNone() const override { return false; }
+  mojom::blink::FrameResponsiveSizing GetResponsiveSizing() const override {
+    return mojom::blink::FrameResponsiveSizing::kNone;
+  }
   mojom::blink::ColorScheme GetColorScheme() const override {
     return mojom::blink::ColorScheme::kLight;
   }
@@ -1389,15 +1394,14 @@ bool WebLocalFrameImpl::SelectionTextDirection(
   // TODO(editing-dev): The use of UpdateStyleAndLayout
   // needs to be audited.  See http://crbug.com/590369 for more details.
   frame_->GetDocument()->UpdateStyleAndLayout(DocumentUpdateReason::kSelection);
-
-  if (selection.ComputeVisibleSelectionInDOMTree()
-          .ToNormalizedEphemeralRange()
-          .IsNull())
+  auto visible_selection = selection.ComputeVisibleSelectionInDomTree();
+  if (visible_selection.ToNormalizedEphemeralRange().IsNull()) {
     return false;
-  start = ToBaseTextDirection(PrimaryDirectionOf(
-      *selection.ComputeVisibleSelectionInDOMTree().Start().AnchorNode()));
-  end = ToBaseTextDirection(PrimaryDirectionOf(
-      *selection.ComputeVisibleSelectionInDOMTree().End().AnchorNode()));
+  }
+  start = ToBaseTextDirection(
+      PrimaryDirectionOf(*visible_selection.Start().AnchorNode()));
+  end = ToBaseTextDirection(
+      PrimaryDirectionOf(*visible_selection.End().AnchorNode()));
   return true;
 }
 
@@ -1408,7 +1412,7 @@ bool WebLocalFrameImpl::IsSelectionAnchorFirst() const {
     return false;
   }
 
-  return selection.GetSelectionInDOMTree().IsAnchorFirst();
+  return selection.GetSelectionInDomTree().IsAnchorFirst();
 }
 
 void WebLocalFrameImpl::SetTextDirectionForTesting(
@@ -1457,7 +1461,7 @@ bool WebLocalFrameImpl::HasSelection() const {
   // needs to be audited.  See http://crbug.com/590369 for more details.
   GetFrame()->GetDocument()->UpdateStyleAndLayout(
       DocumentUpdateReason::kSelection);
-  return GetFrame()->Selection().ComputeVisibleSelectionInDOMTree().IsRange();
+  return GetFrame()->Selection().ComputeVisibleSelectionInDomTree().IsRange();
 }
 
 WebRange WebLocalFrameImpl::SelectionRange() const {
@@ -1468,7 +1472,7 @@ WebRange WebLocalFrameImpl::SelectionRange() const {
 
   return GetFrame()
       ->Selection()
-      .ComputeVisibleSelectionInDOMTree()
+      .ComputeVisibleSelectionInDomTree()
       .ToNormalizedEphemeralRange();
 }
 
@@ -1513,7 +1517,7 @@ WebString WebLocalFrameImpl::SelectionAsMarkup() const {
   GetFrame()->GetDocument()->UpdateStyleAndLayout(
       DocumentUpdateReason::kSelection);
 
-  return GetFrame()->Selection().SelectedHTMLForClipboard();
+  return GetFrame()->Selection().SelectedHtmlForClipboard();
 }
 
 void WebLocalFrameImpl::TextSelectionChanged(const WebString& selection_text,
@@ -1586,7 +1590,7 @@ void WebLocalFrameImpl::SelectRange(
   const bool selection_not_set_focus =
       selection_set_focus_behavior == kSelectionDoNotSetFocus;
   selection.SetSelection(
-      SelectionInDOMTree::Builder()
+      SelectionInDomTree::Builder()
           .SetBaseAndExtent(range)
           .SetAffinity(TextAffinity::kDefault)
           .Build(),
@@ -2450,8 +2454,8 @@ LocalFrame* WebLocalFrameImpl::CreateChildFrame(
       owner_element->ScrollbarMode(), owner_element->MarginWidth(),
       owner_element->MarginHeight(), owner_element->AllowFullscreen(),
       owner_element->AllowPaymentRequest(), owner_element->IsDisplayNone(),
-      owner_element->GetColorScheme(),
-      owner_element->GetPreferredColorScheme());
+      owner_element->GetColorScheme(), owner_element->GetPreferredColorScheme(),
+      owner_element->GetResponsiveSizing());
 
   mojo::PendingAssociatedRemote<mojom::blink::PolicyContainerHost>
       policy_container_remote;

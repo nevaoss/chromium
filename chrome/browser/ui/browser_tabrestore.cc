@@ -19,6 +19,7 @@
 #include "chrome/browser/tab_contents/tab_util.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window.h"
+#include "chrome/browser/ui/send_tab_to_self/send_tab_to_self_activation_tracker.h"
 #include "chrome/browser/ui/tab_ui_helper.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/browser/ui/tabs/tab_enums.h"
@@ -85,6 +86,8 @@ std::unique_ptr<WebContents> CreateRestoredTab(
                                extension_app_id);
 
   glic::RestoreGlicStateFromExtraData(web_contents.get(), extra_data);
+  send_tab_to_self::SendTabToSelfActivationTracker::RestoreFromExtraData(
+      web_contents.get(), extra_data);
 
   std::vector<std::unique_ptr<NavigationEntry>> entries =
       ContentSerializedNavigationBuilder::ToNavigationEntries(
@@ -123,11 +126,12 @@ void LoadRestoredTabIfVisible(Browser* browser,
   // WebUI browser's content size is not available until the WebUI page is
   // loaded.
   if (!webui_browser::IsWebUIBrowserEnabled()) {
-    DCHECK(!browser->window()->GetContentsSize().IsEmpty() ||
-           (browser->window()->GetBounds().IsEmpty() &&
-            browser->window()->GetRestoredBounds().IsEmpty()));
+    DCHECK(!BrowserWindow::FromBrowser(browser)->GetContentsSize().IsEmpty() ||
+           (browser->GetWindow()->GetBounds().IsEmpty() &&
+            browser->GetWindow()->GetRestoredBounds().IsEmpty()));
   }
-  DCHECK_EQ(web_contents->GetSize(), browser->window()->GetContentsSize());
+  DCHECK_EQ(web_contents->GetSize(),
+            BrowserWindow::FromBrowser(browser)->GetContentsSize());
 
   web_contents->GetController().LoadIfNecessary();
 }
@@ -207,15 +211,15 @@ WebContents* AddRestoredTabImpl(std::unique_ptr<WebContents> web_contents,
   //
   // TODO(crbug.com/40113932): There should be a way to ask the browser
   // to perform a layout so that size of the WebContents is right.
-  gfx::Size size = browser->window()->GetContentsSize();
+  gfx::Size size = BrowserWindow::FromBrowser(browser)->GetContentsSize();
   // Fallback to the restore bounds if it's empty as the window is not shown
   // yet and the bounds may not be available on all platforms.
   if (size.IsEmpty()) {
-    size = browser->window()->GetRestoredBounds().size();
+    size = browser->GetWindow()->GetRestoredBounds().size();
   }
   raw_web_contents->Resize(gfx::Rect(size));
 
-  const bool initially_hidden = !select || browser->window()->IsMinimized();
+  const bool initially_hidden = !select || browser->GetWindow()->IsMinimized();
   if (initially_hidden) {
     raw_web_contents->WasHidden();
   } else {
@@ -231,7 +235,7 @@ WebContents* AddRestoredTabImpl(std::unique_ptr<WebContents> web_contents,
         true;
 #endif
     if (should_activate) {
-      browser->window()->Activate();
+      browser->GetWindow()->Activate();
     }
   }
 
@@ -280,7 +284,7 @@ WebContents* AddRestoredTab(
     const std::map<std::string, std::string>& extra_data,
     bool from_session_restore,
     std::optional<bool> is_active_browser) {
-  const bool initially_hidden = !select || browser->window()->IsMinimized();
+  const bool initially_hidden = !select || browser->GetWindow()->IsMinimized();
   std::unique_ptr<WebContents> web_contents = CreateRestoredTab(
       browser, navigations, selected_navigation, extension_app_id,
       last_active_time_ticks, last_active_time, session_storage_namespace,

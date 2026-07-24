@@ -122,7 +122,7 @@ class TabHoverCardInteractiveUiTest
     scoped_feature_list_.InitWithFeatures(
         {features::kTabHoverCardImages,
          data_sharing::features::kDataSharingFeature,
-         features::kTabGroupHoverCards},
+         features::kTabGroupHoverCards, features::kTabStripDeclutter},
         {});
   }
 
@@ -143,7 +143,7 @@ class TabHoverCardInteractiveUiTest
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
     // Because Ozone makes it impossible to target a point not in a window in
     // tests, instead target the extreme upper left of the browser window.
-    upper_left = browser()->window()->GetBounds().origin();
+    upper_left = browser()->GetWindow()->GetBounds().origin();
 #endif
     ui_controls::SendMouseMoveNotifyWhenDone(upper_left.x(), upper_left.y(),
                                              run_loop.QuitClosure());
@@ -472,6 +472,12 @@ IN_PROC_BROWSER_TEST_F(TabHoverCardBubbleViewInterstitialBrowserTest,
 class TabHoverCardFadeFooterInteractiveUiTest
     : public TabHoverCardInteractiveUiTest {
  public:
+  void SetUpOnMainThread() override {
+    TabHoverCardInteractiveUiTest::SetUpOnMainThread();
+    g_browser_process->local_state()->SetBoolean(
+        prefs::kHoverCardMemoryUsageEnabled, true);
+  }
+
   FadeAlertFooterRow* GetPrimaryAlertRowFromHoverCard(
       TabHoverCardBubbleView* bubble) {
     return bubble->GetFooterViewForTesting()
