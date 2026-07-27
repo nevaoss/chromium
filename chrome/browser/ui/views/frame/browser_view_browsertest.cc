@@ -274,6 +274,14 @@ class BrowserViewTest : public InProcessBrowserTest {
         ->GetInactiveContentsContainerView();
   }
 
+  std::u16string GetAccessibleNameForTabAt(int index) {
+    return browser_view()
+        ->tab_strip_view()
+        ->GetTabAnchorViewAt(index)
+        ->GetViewAccessibility()
+        .GetCachedName();
+  }
+
   void OpenDevToolsWindow(bool docked) {
     devtools_ =
         DevToolsWindowTesting::OpenDevToolsWindowSync(browser(), docked);
@@ -1059,13 +1067,13 @@ IN_PROC_BROWSER_TEST_F(BrowserViewTest,
       inactive_contents_container_view()->devtools_web_view()->GetVisible());
 }
 
-// TODO(crbug.com/425715421): Re-enable when wayland supports drag and drop
-#if !BUILDFLAG(SUPPORTS_OZONE_WAYLAND)
-#define MAYBE_DragNotSupportedInFullscreen DragNotSupportedInFullscreen
-#else
-#define MAYBE_DragNotSupportedInFullscreen DISABLED_DragNotSupportedInFullscreen
+IN_PROC_BROWSER_TEST_F(BrowserViewTest, DragNotSupportedInFullscreen) {
+#if BUILDFLAG(IS_OZONE)
+  // TODO(crbug.com/425715421): Re-enable when wayland supports drag and drop
+  if (::ui::OzonePlatform::RunningOnWaylandForTest()) {
+    GTEST_SKIP() << "Wayland doesn't support drag and drop in fullscreen";
+  }
 #endif
-IN_PROC_BROWSER_TEST_F(BrowserViewTest, MAYBE_DragNotSupportedInFullscreen) {
   // Add enough tabs to create two split views.
   chrome::AddTabAt(browser(), GURL(), -1, true);
   // Add tabs to splits.
@@ -1147,8 +1155,7 @@ IN_PROC_BROWSER_TEST_F(BrowserViewTest, AccessibleTabLabel) {
                                                    ->tab_strip_model()
                                                    ->GetTabAtIndex(0)
                                                    ->GetHandle()))),
-            tabs::GetAccessibleTabLabel(
-                browser()->tab_strip_model()->GetTabAtIndex(0), false));
+            GetAccessibleNameForTabAt(0));
   EXPECT_EQ(l10n_util::GetStringFUTF16(
                 IDS_TAB_AX_LABEL_PINNED_FORMAT,
                 l10n_util::GetStringFUTF16(
@@ -1157,8 +1164,7 @@ IN_PROC_BROWSER_TEST_F(BrowserViewTest, AccessibleTabLabel) {
                                                    ->tab_strip_model()
                                                    ->GetTabAtIndex(1)
                                                    ->GetHandle()))),
-            tabs::GetAccessibleTabLabel(
-                browser()->tab_strip_model()->GetTabAtIndex(1), false));
+            GetAccessibleNameForTabAt(1));
 
   // Create a side-by-side split.
   chrome::AddTabAt(browser(), GURL(), -1, true);
@@ -1172,15 +1178,13 @@ IN_PROC_BROWSER_TEST_F(BrowserViewTest, AccessibleTabLabel) {
           IDS_TAB_AX_LABEL_SPLIT_TAB_LEFT_VIEW_FORMAT,
           controller->GetTitleForTab(
               browser()->tab_strip_model()->GetTabAtIndex(2)->GetHandle())),
-      tabs::GetAccessibleTabLabel(
-          browser()->tab_strip_model()->GetTabAtIndex(2), false));
+      GetAccessibleNameForTabAt(2));
   EXPECT_EQ(
       l10n_util::GetStringFUTF16(
           IDS_TAB_AX_LABEL_SPLIT_TAB_RIGHT_VIEW_FORMAT,
           controller->GetTitleForTab(
               browser()->tab_strip_model()->GetTabAtIndex(3)->GetHandle())),
-      tabs::GetAccessibleTabLabel(
-          browser()->tab_strip_model()->GetTabAtIndex(3), false));
+      GetAccessibleNameForTabAt(3));
 
   // Create a grouped split.
   chrome::AddTabAt(browser(), GURL(), -1, true);
@@ -1198,8 +1202,7 @@ IN_PROC_BROWSER_TEST_F(BrowserViewTest, AccessibleTabLabel) {
                                                    ->tab_strip_model()
                                                    ->GetTabAtIndex(4)
                                                    ->GetHandle()))),
-            tabs::GetAccessibleTabLabel(
-                browser()->tab_strip_model()->GetTabAtIndex(4), false));
+            GetAccessibleNameForTabAt(4));
   EXPECT_EQ(l10n_util::GetStringFUTF16(
                 IDS_TAB_AX_LABEL_UNNAMED_GROUP_FORMAT,
                 l10n_util::GetStringFUTF16(
@@ -1208,8 +1211,7 @@ IN_PROC_BROWSER_TEST_F(BrowserViewTest, AccessibleTabLabel) {
                                                    ->tab_strip_model()
                                                    ->GetTabAtIndex(5)
                                                    ->GetHandle()))),
-            tabs::GetAccessibleTabLabel(
-                browser()->tab_strip_model()->GetTabAtIndex(5), false));
+            GetAccessibleNameForTabAt(5));
 
   // Create a stacked split.
   chrome::AddTabAt(browser(), GURL(), -1, true);
@@ -1223,15 +1225,51 @@ IN_PROC_BROWSER_TEST_F(BrowserViewTest, AccessibleTabLabel) {
           IDS_TAB_AX_LABEL_SPLIT_TAB_TOP_VIEW_FORMAT,
           controller->GetTitleForTab(
               browser()->tab_strip_model()->GetTabAtIndex(6)->GetHandle())),
-      tabs::GetAccessibleTabLabel(
-          browser()->tab_strip_model()->GetTabAtIndex(6), false));
+      GetAccessibleNameForTabAt(6));
   EXPECT_EQ(
       l10n_util::GetStringFUTF16(
           IDS_TAB_AX_LABEL_SPLIT_TAB_BOTTOM_VIEW_FORMAT,
           controller->GetTitleForTab(
               browser()->tab_strip_model()->GetTabAtIndex(7)->GetHandle())),
-      tabs::GetAccessibleTabLabel(
-          browser()->tab_strip_model()->GetTabAtIndex(7), false));
+      GetAccessibleNameForTabAt(7));
+}
+
+IN_PROC_BROWSER_TEST_F(BrowserViewTest,
+                       ChangingSplitLayoutUpdatesAccessibleTabLabel) {
+  auto* controller = WindowMetadataController::From(browser());
+
+  // Create a side-by-side split.
+  chrome::AddTabAt(browser(), GURL(), -1, true);
+  split_tabs::SplitTabId split_id = browser()->tab_strip_model()->AddToNewSplit(
+      {0},
+      split_tabs::SplitTabVisualData(split_tabs::SplitTabLayout::kSideBySide),
+      split_tabs::SplitTabCreatedSource::kToolbarButton);
+
+  tabs::TabInterface* start_tab =
+      browser()->tab_strip_model()->GetTabAtIndex(0);
+  tabs::TabInterface* end_tab = browser()->tab_strip_model()->GetTabAtIndex(1);
+
+  EXPECT_EQ(l10n_util::GetStringFUTF16(
+                IDS_TAB_AX_LABEL_SPLIT_TAB_LEFT_VIEW_FORMAT,
+                controller->GetTitleForTab(start_tab->GetHandle())),
+            GetAccessibleNameForTabAt(0));
+  EXPECT_EQ(l10n_util::GetStringFUTF16(
+                IDS_TAB_AX_LABEL_SPLIT_TAB_RIGHT_VIEW_FORMAT,
+                controller->GetTitleForTab(end_tab->GetHandle())),
+            GetAccessibleNameForTabAt(1));
+
+  // Change the split layout to stacked.
+  browser()->tab_strip_model()->UpdateSplitLayout(
+      split_id, split_tabs::SplitTabLayout::kStacked);
+
+  EXPECT_EQ(l10n_util::GetStringFUTF16(
+                IDS_TAB_AX_LABEL_SPLIT_TAB_TOP_VIEW_FORMAT,
+                controller->GetTitleForTab(start_tab->GetHandle())),
+            GetAccessibleNameForTabAt(0));
+  EXPECT_EQ(l10n_util::GetStringFUTF16(
+                IDS_TAB_AX_LABEL_SPLIT_TAB_BOTTOM_VIEW_FORMAT,
+                controller->GetTitleForTab(end_tab->GetHandle())),
+            GetAccessibleNameForTabAt(1));
 }
 
 #if BUILDFLAG(IS_MAC)

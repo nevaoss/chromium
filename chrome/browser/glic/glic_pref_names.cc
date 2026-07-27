@@ -58,7 +58,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
       kGlicRolloutEligibility, false,
       user_prefs::PrefRegistrySyncable::SYNCABLE_PRIORITY_PREF);
   registry->RegisterIntegerPref(
-      kGlicCompletedFre, static_cast<int>(prefs::FreStatus::kNotStarted));
+      kGlicCompletedFre, std::to_underlying(prefs::FreStatus::kNotStarted));
   registry->RegisterIntegerPref(prefs::kGlicZoomLevel, 100);
   registry->RegisterTimePref(kGlicWindowLastDismissedTime, base::Time());
   registry->RegisterIntegerPref(
@@ -113,6 +113,9 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
   registry->RegisterBooleanPref(prefs::kGlicPreviouslyNotAllowed, false);
 
   registry->RegisterDictionaryPref(prefs::kGlicGeminiEnterpriseSettings);
+  registry->RegisterIntegerPref(
+      prefs::kGlicLastProfileReadyState,
+      static_cast<int>(glic::mojom::ProfileReadyState::kReady));
 }
 
 void RegisterLocalStatePrefs(PrefRegistrySimple* registry) {

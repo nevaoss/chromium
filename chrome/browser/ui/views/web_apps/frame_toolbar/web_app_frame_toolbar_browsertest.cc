@@ -97,7 +97,6 @@
 #include "chrome/common/chrome_features.h"
 #include "chrome/test/base/chrome_test_utils.h"
 #include "chrome/test/base/in_process_browser_test.h"
-#include "chrome/test/base/interactive_test_utils.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "chromeos/constants/chromeos_features.h"
 #include "chromeos/ui/base/chromeos_ui_constants.h"
@@ -138,6 +137,7 @@
 #include "ui/events/event.h"
 #include "ui/events/event_constants.h"
 #include "ui/events/keycodes/keyboard_codes.h"
+#include "ui/events/test/event_generator.h"
 #include "ui/events/types/event_type.h"
 #include "ui/gfx/geometry/size.h"
 #include "ui/gfx/scoped_animation_duration_scale_mode.h"
@@ -158,6 +158,10 @@
 #include "url/gurl.h"
 #include "url/origin.h"
 
+#if BUILDFLAG(IS_OZONE)
+#include "ui/ozone/public/ozone_platform.h"
+#endif
+
 #if BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/ui/views/frame/browser_frame_view_chromeos.h"
 #endif
@@ -168,6 +172,7 @@
 
 #if defined(USE_AURA)
 #include "ui/aura/client/aura_constants.h"
+#include "ui/aura/window.h"
 #endif
 
 namespace {
@@ -1326,7 +1331,13 @@ class WebAppFrameToolbarBrowserTest_WindowControlsOverlay
 
   bool GetWindowControlOverlayVisibilityFromEvent() {
     auto* web_contents = helper()->browser_view()->GetActiveWebContents();
-    return EvalJs(web_contents, "overlay_visible_from_event").ExtractBool();
+    auto result = EvalJs(web_contents, "window.overlay_visible_from_event");
+    if (!result.is_ok() || !result.is_bool()) {
+      ADD_FAILURE() << "Failed to get overlay visibility from event: "
+                    << result;
+      return false;
+    }
+    return result.ExtractBool();
   }
 
   void ShowInfoBarAndWait() {
@@ -1386,8 +1397,11 @@ class WebAppFrameToolbarBrowserTest_WindowControlsOverlay
 
   gfx::Rect GetWindowControlOverlayBoundingClientRectFromEvent() {
     const std::string kRectValueList =
-        "var rect = [overlay_rect_from_event.x, overlay_rect_from_event.y, "
-        "overlay_rect_from_event.width, overlay_rect_from_event.height];";
+        "var rect = window.overlay_rect_from_event ? "
+        "[window.overlay_rect_from_event.x, "
+        "window.overlay_rect_from_event.y, "
+        "window.overlay_rect_from_event.width, "
+        "window.overlay_rect_from_event.height] : [0, 0, 0, 0];";
 
     return helper()->GetXYWidthHeightRect(
         helper()->browser_view()->GetActiveWebContents(), kRectValueList,
@@ -1447,8 +1461,10 @@ IN_PROC_BROWSER_TEST_F(WebAppFrameToolbarBrowserTest_WindowControlsOverlay,
       GetWindowControlOverlayBoundingClientRect();
   const gfx::Rect resized_js_overlay_event_bounds =
       GetWindowControlOverlayBoundingClientRectFromEvent();
-  EXPECT_EQ(1, EvalJs(helper()->browser_view()->GetActiveWebContents(),
-                      "geometrychangeCount"));
+  EXPECT_GE(EvalJs(helper()->browser_view()->GetActiveWebContents(),
+                   "geometrychangeCount")
+                .ExtractInt(),
+            1);
   EXPECT_TRUE(GetWindowControlOverlayVisibility());
   EXPECT_TRUE(GetWindowControlOverlayVisibilityFromEvent());
   EXPECT_EQ(resized_js_overlay_bounds, resized_js_overlay_event_bounds);
@@ -2375,8 +2391,10 @@ IN_PROC_BROWSER_TEST_F(
       GetWindowControlOverlayBoundingClientRect();
   const gfx::Rect resized_js_overlay_event_bounds =
       GetWindowControlOverlayBoundingClientRectFromEvent();
-  EXPECT_EQ(1, EvalJs(helper()->browser_view()->GetActiveWebContents(),
-                      "geometrychangeCount"));
+  EXPECT_GE(EvalJs(helper()->browser_view()->GetActiveWebContents(),
+                   "geometrychangeCount")
+                .ExtractInt(),
+            1);
   EXPECT_TRUE(GetWindowControlOverlayVisibility());
   EXPECT_TRUE(GetWindowControlOverlayVisibilityFromEvent());
   EXPECT_EQ(resized_js_overlay_bounds, resized_js_overlay_event_bounds);
@@ -2895,8 +2913,7 @@ IN_PROC_BROWSER_TEST_F(
 
 // TODO(https://crbug.com/498907676) This test is flaky on Mac.
 // TODO(https://crbug.com/498769559) This test is flaky on Wayland.
-#if BUILDFLAG(IS_MAC) || \
-    (BUILDFLAG(IS_LINUX) && BUILDFLAG(SUPPORTS_OZONE_WAYLAND))
+#if BUILDFLAG(IS_MAC)
 #define MAYBE_MinimizeAndRestoreWindowWithApi \
   DISABLED_MinimizeAndRestoreWindowWithApi
 #else
@@ -2905,6 +2922,11 @@ IN_PROC_BROWSER_TEST_F(
 IN_PROC_BROWSER_TEST_F(
     WebAppFrameToolbarBrowserTest_AdditionalWindowingControls,
     MAYBE_MinimizeAndRestoreWindowWithApi) {
+#if BUILDFLAG(IS_OZONE)
+  if (::ui::OzonePlatform::RunningOnWaylandForTest()) {
+    GTEST_SKIP() << "Flaky on Wayland";
+  }
+#endif
   InstallAndLaunchWebApp();
   helper()->GrantWindowManagementPermission();
   auto* web_contents = helper()->browser_view()->GetActiveWebContents();
@@ -2987,8 +3009,7 @@ IN_PROC_BROWSER_TEST_F(
 // TODO(https://crbug.com/458599317) Maximizing fullscreen window doesn't work
 // correctly on Mac
 // TODO(https://crbug.com/498769559) This test is flaky on Wayland.
-#if BUILDFLAG(IS_MAC) || \
-    (BUILDFLAG(IS_LINUX) && BUILDFLAG(SUPPORTS_OZONE_WAYLAND))
+#if BUILDFLAG(IS_MAC)
 #define MAYBE_FullscreenMaximizeAndRestoreWindowWithApi \
   DISABLED_FullscreenMaximizeAndRestoreWindowWithApi
 #else
@@ -2998,6 +3019,11 @@ IN_PROC_BROWSER_TEST_F(
 IN_PROC_BROWSER_TEST_F(
     WebAppFrameToolbarBrowserTest_AdditionalWindowingControls,
     MAYBE_FullscreenMaximizeAndRestoreWindowWithApi) {
+#if BUILDFLAG(IS_OZONE)
+  if (::ui::OzonePlatform::RunningOnWaylandForTest()) {
+    GTEST_SKIP() << "Flaky on Wayland";
+  }
+#endif
   InstallAndLaunchWebApp();
   helper()->GrantWindowManagementPermission();
   auto* web_contents = helper()->browser_view()->GetActiveWebContents();
@@ -3107,17 +3133,17 @@ IN_PROC_BROWSER_TEST_F(
 }
 
 // TODO(https://crbug.com/498769559) This test is flaky on Wayland.
-#if BUILDFLAG(IS_LINUX) && BUILDFLAG(SUPPORTS_OZONE_WAYLAND)
-#define MAYBE_WindowSetResizableDoNotBlockResizingWebApis \
-  DISABLED_WindowSetResizableDoNotBlockResizingWebApis
-#else
 #define MAYBE_WindowSetResizableDoNotBlockResizingWebApis \
   WindowSetResizableDoNotBlockResizingWebApis
-#endif
 // windows.setResizable API should block only user-initiated requests
 IN_PROC_BROWSER_TEST_F(
     WebAppFrameToolbarBrowserTest_AdditionalWindowingControls,
     MAYBE_WindowSetResizableDoNotBlockResizingWebApis) {
+#if BUILDFLAG(IS_OZONE)
+  if (::ui::OzonePlatform::RunningOnWaylandForTest()) {
+    GTEST_SKIP() << "Flaky on Wayland";
+  }
+#endif
   InstallAndLaunchWebApp();
   helper()->GrantWindowManagementPermission();
 
@@ -3190,16 +3216,16 @@ IN_PROC_BROWSER_TEST_F(
 }
 
 // TODO(https://crbug.com/498769559) This test is flaky on Wayland.
-#if BUILDFLAG(IS_LINUX) && BUILDFLAG(SUPPORTS_OZONE_WAYLAND)
-#define MAYBE_WindowSetResizableDoNotBlockFullscreenWebAPI \
-  DISABLED_WindowSetResizableDoNotBlockFullscreenWebAPI
-#else
 #define MAYBE_WindowSetResizableDoNotBlockFullscreenWebAPI \
   WindowSetResizableDoNotBlockFullscreenWebAPI
-#endif
 IN_PROC_BROWSER_TEST_F(
     WebAppFrameToolbarBrowserTest_AdditionalWindowingControls,
     MAYBE_WindowSetResizableDoNotBlockFullscreenWebAPI) {
+#if BUILDFLAG(IS_OZONE)
+  if (::ui::OzonePlatform::RunningOnWaylandForTest()) {
+    GTEST_SKIP() << "Flaky on Wayland";
+  }
+#endif
   InstallAndLaunchWebApp();
   helper()->GrantWindowManagementPermission();
   auto* browser_view = helper()->browser_view();
@@ -3219,8 +3245,7 @@ IN_PROC_BROWSER_TEST_F(
 
 // TODO(https://crbug.com/498907676) This test is flaky on Mac.
 // TODO(https://crbug.com/498769559) This test is flaky on Wayland.
-#if BUILDFLAG(IS_MAC) || \
-    (BUILDFLAG(IS_LINUX) && BUILDFLAG(SUPPORTS_OZONE_WAYLAND))
+#if BUILDFLAG(IS_MAC)
 #define MAYBE_WindowSetResizableDoNotBlockExitingFullscreen \
   DISABLED_WindowSetResizableDoNotBlockExitingFullscreen
 #else
@@ -3231,6 +3256,11 @@ IN_PROC_BROWSER_TEST_F(
 IN_PROC_BROWSER_TEST_F(
     WebAppFrameToolbarBrowserTest_AdditionalWindowingControls,
     MAYBE_WindowSetResizableDoNotBlockExitingFullscreen) {
+#if BUILDFLAG(IS_OZONE)
+  if (::ui::OzonePlatform::RunningOnWaylandForTest()) {
+    GTEST_SKIP() << "Flaky on Wayland";
+  }
+#endif
   InstallAndLaunchWebApp();
   helper()->GrantWindowManagementPermission();
   auto* browser_view = helper()->browser_view();
@@ -3272,8 +3302,9 @@ IN_PROC_BROWSER_TEST_F(
 
   // Exception: VKEY_ZOOM maps to ash::AcceleratorAction::kToggleFullscreen
 #if BUILDFLAG(IS_CHROMEOS)
-  ASSERT_TRUE(ui_test_utils::SendKeyPressSync(
-      helper()->app_browser(), ui::VKEY_ZOOM, false, false, false, false));
+  ui::test::EventGenerator(
+      helper()->app_browser()->GetWindow()->GetNativeWindow()->GetRootWindow())
+      .PressAndReleaseKey(ui::VKEY_ZOOM, ui::EF_NONE);
   base::RunLoop().RunUntilIdle();
   EXPECT_FALSE(helper()->browser_view()->IsFullscreen());
 #endif

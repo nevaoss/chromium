@@ -817,7 +817,7 @@ bool FindNavigatorShouldBePresentedInBrowser(Browser* browser) {
                 (BOOL)shouldDisplayBringAndroidTabsPrompt {
   _viewController.childViewControllerForStatusBarStyle = nil;
 
-  if (!IsChromeNextIaEnabled()) {
+  if (IsPageActionMenuEnabled() && !IsChromeNextIaEnabled()) {
     id<GeminiCommands> geminiHandler = HandlerForProtocol(
         self.regularBrowser->GetCommandDispatcher(), GeminiCommands);
     [geminiHandler
@@ -1005,6 +1005,7 @@ bool FindNavigatorShouldBePresentedInBrowser(Browser* browser) {
 
   _viewController = [[TabGridViewController alloc]
       initWithPageConfiguration:_pageConfiguration];
+  _viewController.tabGridState = sceneState.tabGridState;
   _viewController.layoutState =
       self.regularBrowser->GetSceneState().layoutState;
   _viewController.handler = sceneHandler;

@@ -13,6 +13,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -101,6 +102,7 @@ public class TabBottomSheetManagerTest {
     private WindowAndroid mWindowAndroid;
     private BottomSheetController mBottomSheetController;
     private TabBottomSheetManagerImpl mManager;
+    private PeekViewManager mPeekViewManager;
 
     @Before
     public void setUp() throws InterruptedException {
@@ -114,6 +116,9 @@ public class TabBottomSheetManagerTest {
 
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
+                    mPeekViewManager = new TestPeekViewManager();
+                    TestCoBrowseComponentProvider.setPeekViewManager(mPeekViewManager);
+
                     mWindowAndroid = mActivity.getWindowAndroid();
                     TabbedRootUiCoordinator tabbedRootUiCoordinator =
                             (TabbedRootUiCoordinator) mActivity.getRootUiCoordinatorForTesting();
@@ -129,7 +134,8 @@ public class TabBottomSheetManagerTest {
                                     null,
                                     null,
                                     Color.WHITE,
-                                    new TestCoBrowseComponentProvider());
+                                    new TestCoBrowseComponentProvider(),
+                                    mPeekViewManager);
                     mManager =
                             (TabBottomSheetManagerImpl)
                                     tabbedRootUiCoordinator.getTabBottomSheetManagerForTesting();
@@ -215,6 +221,60 @@ public class TabBottomSheetManagerTest {
                 });
 
         verify(mockBottomSheetController).hideContent(any(), anyBoolean(), anyInt());
+    }
+
+    @Test
+    @SmallTest
+    @SuppressWarnings("unchecked")
+    public void testOmniboxFocusChangeDoesNotCloseShowingSheet() {
+        BottomSheetController mockBottomSheetController = mock(BottomSheetController.class);
+        OneshotSupplier<LayoutStateProvider> mockLayoutStateProviderSupplier =
+                mock(OneshotSupplier.class);
+        TouchEventProvider mockTouchEventProvider = mock(TouchEventProvider.class);
+        // requestShowContent returns true to simulate successful display
+        when(mockBottomSheetController.requestShowContent(any(), anyBoolean())).thenReturn(true);
+
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    SettableNonNullObservableSupplier<Boolean> omniboxFocusSupplier =
+                            ObservableSuppliers.createNonNull(false);
+                    TabBottomSheetManager oldManager =
+                            TabBottomSheetUtils.getManagerFromWindow(mWindowAndroid);
+                    TabBottomSheetManagerImpl manager =
+                            new TabBottomSheetManagerImpl(
+                                    mActivity,
+                                    mWindowAndroid,
+                                    mockBottomSheetController,
+                                    mockLayoutStateProviderSupplier,
+                                    mockTouchEventProvider,
+                                    omniboxFocusSupplier);
+
+                    // Show the bottom sheet. State becomes SHOWING.
+                    manager.tryToShowBottomSheet(
+                            mDelegate,
+                            mCoBrowseViews,
+                            /* animate= */ false,
+                            /* startsExpanded= */ true);
+
+                    // Verify it requested show.
+                    verify(mockBottomSheetController, times(1))
+                            .requestShowContent(any(), anyBoolean());
+                    verify(mockBottomSheetController, never())
+                            .hideContent(any(), anyBoolean(), anyInt());
+
+                    // Simulate Omnibox losing focus (hasFocus = false).
+                    // This triggers maybeShowBottomSheet().
+                    // If the bug is present, it will try to show, fail (since it is showing),
+                    // and call notifyOnClose() which calls hideContent().
+                    omniboxFocusSupplier.set(false);
+
+                    // Verify that hideContent was NEVER called during the focus change.
+                    verify(mockBottomSheetController, never())
+                            .hideContent(any(), anyBoolean(), anyInt());
+
+                    manager.destroy();
+                    TabBottomSheetUtils.attachManagerToWindow(mWindowAndroid, oldManager);
+                });
     }
 
     @Test
@@ -471,54 +531,9 @@ public class TabBottomSheetManagerTest {
 
     @Test
     @SmallTest
-    public void testSetPeekView_BeforeShow() {
-        ThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    PropertyModel model =
-                            new PropertyModel.Builder(TabBottomSheetPeekProperties.ALL_KEYS)
-                                    .build();
-                    mManager.setPeekViewModel(model);
-                });
-        showBottomSheetAndBlockUntilReady();
-
-        CriteriaHelper.pollUiThread(() -> mCoBrowseViews.hasPeekView());
-    }
-
-    @Test
-    @SmallTest
-    public void testSetPeekView_AfterShow() {
-        showBottomSheetAndBlockUntilReady();
-
-        ThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    PropertyModel model =
-                            new PropertyModel.Builder(TabBottomSheetPeekProperties.ALL_KEYS)
-                                    .build();
-                    mManager.setPeekViewModel(model);
-                });
-
-        CriteriaHelper.pollUiThread(() -> mCoBrowseViews.hasPeekView());
-    }
-
-    @Test
-    @SmallTest
-    public void testRemovePeekView() {
-        ThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    PropertyModel model =
-                            new PropertyModel.Builder(TabBottomSheetPeekProperties.ALL_KEYS)
-                                    .build();
-                    mManager.setPeekViewModel(model);
-                });
+    public void testPeekViewCreatedAndAttached() {
         showBottomSheetAndBlockUntilReady();
         CriteriaHelper.pollUiThread(() -> mCoBrowseViews.hasPeekView());
-
-        ThreadUtils.runOnUiThreadBlocking(
-                () -> {
-                    mManager.removePeekViewModel();
-                });
-
-        CriteriaHelper.pollUiThread(() -> !mCoBrowseViews.hasPeekView());
     }
 
     @Test
@@ -574,6 +589,14 @@ public class TabBottomSheetManagerTest {
         when(otherContent.getBackPressStateChangedSupplier()).thenReturn(alwaysFalse);
         View otherView = ThreadUtils.runOnUiThreadBlocking(() -> new View(mActivity));
         when(otherContent.getContentView()).thenReturn(otherView);
+        when(otherContent.getSheetClosedAccessibilityStringId())
+                .thenReturn(R.string.tab_bottom_sheet_closed);
+        when(otherContent.getSheetHiddenAccessibilityStringId())
+                .thenReturn(R.string.tab_bottom_sheet_closed);
+        when(otherContent.getSheetHalfHeightAccessibilityStringId())
+                .thenReturn(R.string.tab_bottom_sheet_half_height);
+        when(otherContent.getSheetFullHeightAccessibilityStringId())
+                .thenReturn(R.string.tab_bottom_sheet_full_height);
 
         // Request showing the other content. This will suppress the Tab Bottom Sheet.
         ThreadUtils.runOnUiThreadBlocking(
@@ -615,12 +638,13 @@ public class TabBottomSheetManagerTest {
                                 new CoBrowseViews(
                                         LayoutInflater.from(mActivity)
                                                 .inflate(R.layout.tab_bottom_sheet, null),
-                                        CoBrowseContainerType.BOTTOM_SHEET,
                                         TabBottomSheetClientType.UNKNOWN,
+                                        CoBrowseContainerType.BOTTOM_SHEET,
                                         null,
                                         null,
                                         Color.WHITE,
-                                        new TestCoBrowseComponentProvider()));
+                                        new TestCoBrowseComponentProvider(),
+                                        mPeekViewManager));
 
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
@@ -819,6 +843,36 @@ public class TabBottomSheetManagerTest {
         blockUntilSheetFullyRestored();
     }
 
+    @Test
+    @SmallTest
+    public void testTryToShowBottomSheet_ReuseExistingSheetAndExpand() {
+        NativeInterfaceDelegate mockDelegate = mock(NativeInterfaceDelegate.class);
+
+        // 1. Show the bottom sheet starting in peek mode.
+        showBottomSheetAndBlockUntilReady(
+                mockDelegate, /* animate= */ false, /* startsExpanded= */ false);
+        assertTrue(mManager.isSheetShowing());
+        assertTrue(mManager.isInPeekMode());
+
+        // 2. Call tryToShowBottomSheet again with the same delegate to expand the sheet.
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    mManager.tryToShowBottomSheet(
+                            mockDelegate,
+                            mCoBrowseViews,
+                            /* animate= */ false,
+                            /* startsExpanded= */ true);
+                });
+
+        // 3. Verify the sheet is still showing, but is no longer in peek mode (i.e. it expanded).
+        CriteriaHelper.pollUiThread(() -> mManager.isSheetShowing());
+        CriteriaHelper.pollUiThread(() -> !mManager.isInPeekMode());
+
+        // 4. Crucially, verify that the delegate's onBottomSheetClosed() was NEVER called,
+        // confirming we reused the sheet instead of tearing it down.
+        verify(mockDelegate, times(0)).onBottomSheetClosed();
+    }
+
     private static class TestManualFillingComponent extends EmptyManualFillingComponent {
         private final NonNullObservableSupplier<Boolean> mAccessoryRequestedSupplier;
 
@@ -830,5 +884,18 @@ public class TabBottomSheetManagerTest {
         public NonNullObservableSupplier<Boolean> getIsAccessoryRequestedSupplier() {
             return mAccessoryRequestedSupplier;
         }
+    }
+
+    private static class TestPeekViewManager implements PeekViewManager {
+        private final PropertyModel mModel =
+                new PropertyModel.Builder(TabBottomSheetPeekProperties.ALL_KEYS).build();
+
+        @Override
+        public PropertyModel getModel() {
+            return mModel;
+        }
+
+        @Override
+        public void destroy() {}
     }
 }

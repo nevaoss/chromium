@@ -4,6 +4,8 @@
 
 package org.chromium.chrome.browser.ui.browser_window;
 
+import static org.chromium.base.ApplicationStatus.getTaskId;
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.role.RoleManager;
@@ -33,7 +35,6 @@ import org.chromium.base.ThreadUtils;
 import org.chromium.base.TimeUtils;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
-import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher.ActivityState;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcherProvider;
@@ -466,15 +467,6 @@ final class ChromeAndroidTaskImpl
                                                     .getDisplay()));
                 }
             };
-
-    // TODO(https://crbug.com/518763461): remove flag once verified
-    private static int getTaskId(Activity activity) {
-        if (ChromeFeatureList.sTaskGetIdAnrFix.isEnabled()) {
-            return ApplicationStatus.getTaskId(activity);
-        } else {
-            return activity.getTaskId();
-        }
-    }
 
     private static Activity getActivity(ActivityWindowAndroid activityWindowAndroid) {
         Activity activity = activityWindowAndroid.getActivity().get();
@@ -1377,9 +1369,33 @@ final class ChromeAndroidTaskImpl
 
             if (activityScopedObjects.mSupportedProfileType == SupportedProfileType.MIXED) {
                 internalActivityScopedObjects.addIncognitoTabModelObserver(this);
+
+                // If the activity was recreated in Incognito mode, the current model is Incognito.
+                // However, the regular TabModel also exists. We need to explicitly create its
+                // AndroidBrowserWindow here to reflect this reality, since it won't be caught by
+                // the normal startup path (which only creates a window for the current model).
+                if (profile.isOffTheRecord()) {
+                    var regularModel =
+                            activityScopedObjects.mTabModelSelector.getModel(
+                                    /* incognito= */ false);
+                    if (regularModel != null && regularModel.getProfile() != null) {
+                        var regularProfile = regularModel.getProfile();
+                        var regularBrowserWindow =
+                                new AndroidBrowserWindow(
+                                        /* chromeAndroidTask= */ this,
+                                        regularProfile,
+                                        activityScopedObjects.mBrowserWindowType,
+                                        activityWindowAndroid);
+                        internalActivityScopedObjects.addBrowserWindow(regularBrowserWindow);
+                        regularModel.associateWithBrowserWindow(
+                                regularBrowserWindow.getOrCreateNativePtr());
+                        mAndroidBrowserWindowObserverNotifier.notifyBrowserWindowAdded(
+                                regularBrowserWindow);
+                    }
+                }
             }
 
-            // Notify observers of new window creation.
+            // Notify observers of new window creation (for the primary window).
             mAndroidBrowserWindowObserverNotifier.notifyBrowserWindowAdded(newBrowserWindow);
             mAndroidBrowserWindowObserverNotifier.updateActiveBrowserWindow(
                     getActiveBrowserWindow());

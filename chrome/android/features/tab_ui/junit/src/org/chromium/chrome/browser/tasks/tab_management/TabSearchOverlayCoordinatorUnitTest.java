@@ -95,7 +95,7 @@ public class TabSearchOverlayCoordinatorUnitTest {
                         mWindowAndroid,
                         profileSupplier,
                         mSnackbarManager,
-                        () -> mModalDialogManager,
+                        ObservableSuppliers.createNonNull(mModalDialogManager),
                         mActivityLifecycleDispatcher,
                         mTabModelSelectorSupplier,
                         /* edgeToEdgeSystemBarColorHelper= */ null);
@@ -146,6 +146,8 @@ public class TabSearchOverlayCoordinatorUnitTest {
                         any(),
                         any(),
                         any());
+        verify(mSearchUiCoordinator)
+                .setDefaultStatusIconOverrideResId(R.drawable.ic_suggestion_magnifier);
         verify(mSearchUiCoordinator)
                 .beginQuery(eq(IntentOrigin.HUB), eq(SearchType.TEXT), eq(""), eq(mWindowAndroid));
     }

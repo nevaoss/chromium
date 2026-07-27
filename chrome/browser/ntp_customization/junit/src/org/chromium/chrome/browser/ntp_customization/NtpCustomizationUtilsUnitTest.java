@@ -91,8 +91,9 @@ import org.chromium.chrome.browser.ntp_customization.theme.chrome_colors.NtpThem
 import org.chromium.chrome.browser.ntp_customization.theme.daily_refresh.NtpThemeDailyRefreshManager;
 import org.chromium.chrome.browser.ntp_customization.theme.theme_collections.CustomBackgroundInfo;
 import org.chromium.chrome.browser.ntp_customization.theme.upload_image.BackgroundImageInfo;
-import org.chromium.chrome.browser.ntp_customization.theme_sync.data.NtpBackgroundDataBase;
 import org.chromium.chrome.browser.ntp_customization.theme_sync.data.NtpBackgroundDataBase.PlatformType;
+import org.chromium.chrome.browser.ntp_customization.theme_sync.data.NtpBackgroundDataImageBase;
+import org.chromium.chrome.browser.ntp_customization.theme_sync.data.NtpBackgroundDataThemeCollection;
 import org.chromium.chrome.browser.ntp_customization.theme_sync.data.NtpBackgroundDataUploadImage;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
 import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
@@ -363,7 +364,8 @@ public class NtpCustomizationUtilsUnitTest {
 
     @Test
     public void testReadNtpBackgroundImage_customPath() {
-        File customFile = NtpCustomizationUtils.createUploadImageFileInDir("customImage.png");
+        File customFile =
+                NtpCustomizationUtils.createUploadImageFileInDirForTesting("customImage.png");
         testReadNtpBackgroundImageImpl(customFile.getAbsolutePath());
     }
 
@@ -515,14 +517,18 @@ public class NtpCustomizationUtilsUnitTest {
         Bitmap bitmap = Bitmap.createBitmap(10, 10, Bitmap.Config.ARGB_8888);
         File imageFile = NtpCustomizationUtils.createBackgroundImageFile();
         File dailyRefreshImageFile = NtpCustomizationUtils.createDailyRefreshBackgroundImageFile();
-        File uploadImageFile = NtpCustomizationUtils.createUploadImageFileInDir("test");
+        File uploadImageFile = NtpCustomizationUtils.createUploadImageFileInDirForTesting("test");
+        File themeCollectionImageFile =
+                NtpCustomizationUtils.createThemeCollectionImageFileInDirForTesting("test_theme");
         NtpCustomizationUtils.saveBitmapImageToFile(bitmap, imageFile);
         NtpCustomizationUtils.saveBitmapImageToFile(bitmap, dailyRefreshImageFile);
         NtpCustomizationUtils.saveBitmapImageToFile(bitmap, uploadImageFile);
+        NtpCustomizationUtils.saveBitmapImageToFile(bitmap, themeCollectionImageFile);
         RobolectricUtil.runAllBackgroundAndUi();
         assertTrue(imageFile.exists());
         assertTrue(dailyRefreshImageFile.exists());
         assertTrue(uploadImageFile.exists());
+        assertTrue(themeCollectionImageFile.exists());
 
         // Call reset.
         NtpCustomizationUtils.resetCustomizedImage(/* deleteImageFile= */ true);
@@ -556,6 +562,8 @@ public class NtpCustomizationUtilsUnitTest {
         assertFalse(dailyRefreshImageFile.exists());
         assertFalse(uploadImageFile.exists());
         assertFalse(uploadImageFile.getParentFile().exists());
+        assertFalse(themeCollectionImageFile.exists());
+        assertFalse(themeCollectionImageFile.getParentFile().exists());
     }
 
     @Test
@@ -586,7 +594,7 @@ public class NtpCustomizationUtilsUnitTest {
         String filePath = "/path/to/image.png";
         SharedPreferencesManager prefsManager = ChromeSharedPreferences.getInstance();
 
-        assertEquals("", NtpCustomizationUtils.getBackgroundImageFilePathFromSharedPreference());
+        assertNull(NtpCustomizationUtils.getBackgroundImageFilePathFromSharedPreference());
 
         NtpCustomizationUtils.setBackgroundImageFilePathToSharedPreference(filePath);
         assertEquals(
@@ -594,7 +602,7 @@ public class NtpCustomizationUtilsUnitTest {
         assertEquals(
                 filePath,
                 prefsManager.readString(
-                        ChromePreferenceKeys.NTP_CUSTOMIZATION_BACKGROUND_IMAGE_FILE_PATH, ""));
+                        ChromePreferenceKeys.NTP_CUSTOMIZATION_BACKGROUND_IMAGE_FILE_PATH, null));
 
         NtpCustomizationUtils.resetSharedPreferenceForTesting();
         assertFalse(
@@ -1289,7 +1297,7 @@ public class NtpCustomizationUtilsUnitTest {
         testSaveBackgroundInfoImpl(
                 customBackgroundInfo,
                 /* skipSavingPrimaryColor= */ false,
-                /* ntpBackgroundData= */ null);
+                /* ntpBackgroundImageData= */ null);
     }
 
     @Test
@@ -1297,7 +1305,7 @@ public class NtpCustomizationUtilsUnitTest {
         testSaveBackgroundInfoImpl(
                 /* customBackgroundInfo= */ null,
                 /* skipSavingPrimaryColor= */ true,
-                /* ntpBackgroundData= */ null);
+                /* ntpBackgroundImageData= */ null);
     }
 
     @Test
@@ -1316,10 +1324,27 @@ public class NtpCustomizationUtilsUnitTest {
                 uploadImageData);
     }
 
+    @Test
+    public void testSaveBackgroundInfo_withThemeCollection() {
+        Bitmap bitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888);
+        NtpBackgroundDataThemeCollection themeCollectionData =
+                new NtpBackgroundDataThemeCollection(
+                        PlatformType.ANDROID_LOCAL,
+                        /* customBackgroundInfo= */ null,
+                        /* backgroundImageInfo= */ null,
+                        bitmap,
+                        /* primaryColor= */ null,
+                        "themeHash");
+        testSaveBackgroundInfoImpl(
+                /* customBackgroundInfo= */ null,
+                /* skipSavingPrimaryColor= */ false,
+                themeCollectionData);
+    }
+
     private void testSaveBackgroundInfoImpl(
             @Nullable CustomBackgroundInfo customBackgroundInfo,
             boolean skipSavingPrimaryColor,
-            @Nullable NtpBackgroundDataBase ntpBackgroundData) {
+            @Nullable NtpBackgroundDataImageBase ntpBackgroundImageData) {
         Bitmap bitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888);
         Matrix portraitMatrix = new Matrix();
         Matrix landscapeMatrix = new Matrix();
@@ -1331,20 +1356,26 @@ public class NtpCustomizationUtilsUnitTest {
                         /* portraitWindowSize= */ null,
                         /* landscapeWindowSize= */ null);
 
+        String filePath =
+                ntpBackgroundImageData != null
+                        ? ntpBackgroundImageData.getLastUploadImageFilePath()
+                        : null;
+
         NtpCustomizationUtils.saveBackgroundInfo(
                 customBackgroundInfo,
                 bitmap,
                 backgroundImageInfo,
                 skipSavingPrimaryColor,
-                ntpBackgroundData);
+                /* primaryColor= */ null,
+                filePath);
         RobolectricUtil.runAllBackgroundAndUi(); // Wait for async file operations.
 
         File expectedSavedFile;
-        if (ntpBackgroundData instanceof NtpBackgroundDataUploadImage uploadImageData
-                && uploadImageData.getFileIdHash() != null) {
+        if (ntpBackgroundImageData != null && ntpBackgroundImageData.getFileIdHash() != null) {
             expectedSavedFile =
-                    NtpCustomizationUtils.createUploadImageFileInDir(
-                            uploadImageData.getFileIdHash());
+                    NtpCustomizationUtils.createThemeImageFileInDir(
+                            ntpBackgroundImageData.getFileIdHash(),
+                            ntpBackgroundImageData.getImageDirName());
         } else {
             expectedSavedFile = NtpCustomizationUtils.createBackgroundImageFile();
         }
@@ -1378,9 +1409,8 @@ public class NtpCustomizationUtilsUnitTest {
         assertEquals(landscapeMatrix, restoredMatrices.getLandscapeMatrix());
 
         // Clean up
-        if (ntpBackgroundData instanceof NtpBackgroundDataUploadImage uploadImageData
-                && uploadImageData.getFileIdHash() != null) {
-            NtpCustomizationUtils.deleteUploadImageFileDir();
+        if (ntpBackgroundImageData != null && ntpBackgroundImageData.getFileIdHash() != null) {
+            NtpCustomizationUtils.deleteThemeImageFileDir(ntpBackgroundImageData.getImageDirName());
         } else {
             NtpCustomizationUtils.maybeDeleteFile(expectedSavedFile);
         }

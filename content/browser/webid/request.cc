@@ -156,23 +156,10 @@ Request::AutoReauthnInfo::AutoReauthnInfo(const AutoReauthnInfo&) = default;
 Request::AutoReauthnInfo& Request::AutoReauthnInfo::operator=(
     const AutoReauthnInfo&) = default;
 
-Request::Request(
-    RenderFrameHost* rfh,
-    RequestService& request_service,
-    FederatedIdentityApiPermissionContextDelegate* api_permission_delegate,
-    FederatedIdentityAutoReauthnPermissionContextDelegate*
-        auto_reauthn_permission_delegate,
-    FederatedIdentityPermissionContextDelegate* permission_delegate)
-    : api_permission_delegate_(api_permission_delegate),
-      auto_reauthn_permission_delegate_(auto_reauthn_permission_delegate),
-      permission_delegate_(permission_delegate),
-      render_frame_host_(rfh),
+Request::Request(RenderFrameHost* rfh, RequestService& request_service)
+    : render_frame_host_(rfh),
       request_service_(request_service),
       perfetto_track_(CreatePerfettoTrackForFedCM(this)) {
-  CHECK(api_permission_delegate_);
-  CHECK(auto_reauthn_permission_delegate_);
-  CHECK(permission_delegate_);
-
   receivers_.set_disconnect_handler(
       base::BindRepeating(&Request::OnConnectionError, base::Unretained(this)));
 }
@@ -188,18 +175,23 @@ Request::~Request() {
 }
 
 void Request::BindReceiver(
-    mojo::PendingReceiver<blink::mojom::FederatedAuthRequest>
-        pending_receiver) {
-  auth_request_receivers_.Add(this, std::move(pending_receiver));
-}
-
-void Request::BindReceiver(
     mojo::PendingReceiver<blink::mojom::FederatedRequest> pending_receiver) {
   receivers_.Add(this, std::move(pending_receiver));
 }
 
 void Request::Abort() {
-  CancelTokenRequest();
+  if (!auth_request_token_callback_) {
+    // This can happen if the renderer requested an abort() after the browser
+    // invoked the callback but before the renderer received the callback.
+    return;
+  }
+
+  // Dialog will be hidden by the destructor of the dialog controller in
+  // RequestService, triggered by CompleteRequest.
+
+  CompleteRequestWithError(FederatedAuthRequestResult::kCanceled,
+                           TokenStatus::kAborted,
+                           /*should_delay_callback=*/false);
 }
 
 void Request::OnConnectionError() {
@@ -226,7 +218,7 @@ Request::MaybeAddRegisteredProviders(
   std::vector<IdentityProviderRequestOptionsPtr> result;
 
   std::vector<GURL> registered_config_urls =
-      permission_delegate_->GetRegisteredIdPs();
+      permission_delegate()->GetRegisteredIdPs();
 
   // TODO(crbug.com/40252825): we insert the registered IdPs to
   // the list of IdPs in a reverse chronological order:
@@ -257,15 +249,6 @@ Request::MaybeAddRegisteredProviders(
   return result;
 }
 
-void Request::RequestToken(
-    std::vector<IdentityProviderGetParametersPtr> idp_get_params_ptrs,
-    MediationRequirement requirement,
-    RequestTokenCallback callback) {
-  // This call is coming from Mojo, so we have no navigation handle.
-  RequestToken(std::move(idp_get_params_ptrs), requirement,
-               /*navigation_handle=*/nullptr, GURL(), std::move(callback));
-}
-
 bool Request::RequestToken(
     std::vector<IdentityProviderGetParametersPtr> idp_get_params_ptrs,
     MediationRequirement requirement,
@@ -287,7 +270,7 @@ bool Request::RequestToken(
       render_frame_host(), &intercept, &should_complete_request_immediately);
   should_complete_request_immediately =
       (intercept && should_complete_request_immediately) ||
-      api_permission_delegate_->ShouldCompleteRequestImmediately();
+      api_permission_delegate()->ShouldCompleteRequestImmediately();
 
   // Expand the providers list with registered providers.
   if (IsIdPRegistrationEnabled()) {
@@ -374,7 +357,7 @@ bool Request::RequestToken(
   auth_request_token_callback_ = std::move(callback);
   GetPageData(render_frame_host().GetPage())
       ->SetPendingWebIdentityRequest(this);
-  network_manager_ = CreateNetworkManager();
+  network_manager_ = request_service_->CreateNetworkManager();
 
   start_time_ = base::TimeTicks::Now();
   if (!fedcm_metrics_) {
@@ -483,7 +466,7 @@ bool Request::RequestToken(
     for (auto& idp_ptr : idp_get_params_ptr->providers) {
       bool has_failing_idp_signin_status =
           ShouldFailAccountsEndpointRequestBecauseNotSignedInWithIdp(
-              idp_ptr->config->config_url, permission_delegate_);
+              idp_ptr->config->config_url, permission_delegate());
 
       if (has_failing_idp_signin_status) {
         if (idp_get_params_ptr->mode == blink::mojom::RpMode::kPassive) {
@@ -565,6 +548,7 @@ bool Request::RequestToken(
                            weak_ptr_factory_.GetWeakPtr()))) {
       return false;
     }
+    did_show_ui_ = true;
   }
 
   fedcm_metrics_->RecordIdentityProvidersCount(idp_order_.size());
@@ -580,63 +564,6 @@ bool Request::RequestToken(
   return true;
 }
 
-void Request::RequestUserInfo(blink::mojom::IdentityProviderConfigPtr provider,
-                              RequestUserInfoCallback callback) {
-  request_service_->RequestUserInfo(
-      std::move(provider),
-      base::BindOnce(
-          [](RequestUserInfoCallback callback,
-             blink::mojom::RequestUserInfoResultPtr result) {
-            if (result->is_status()) {
-              std::move(callback).Run(result->get_status(), std::nullopt);
-            } else {
-              std::move(callback).Run(
-                  blink::mojom::RequestUserInfoStatus::kSuccess,
-                  std::move(result->get_user_info()));
-            }
-          },
-          std::move(callback)));
-}
-
-void Request::CancelTokenRequest() {
-  if (!auth_request_token_callback_) {
-    // This can happen if the renderer requested an abort() after the browser
-    // invoked the callback but before the renderer received the callback.
-    return;
-  }
-
-  // Dialog will be hidden by the destructor of the dialog controller in
-  // RequestService, triggered by CompleteRequest.
-
-  CompleteRequestWithError(FederatedAuthRequestResult::kCanceled,
-                           TokenStatus::kAborted,
-                           /*should_delay_callback=*/false);
-}
-
-void Request::ResolveTokenRequest(const std::optional<std::string>& account_id,
-                                  blink::mojom::ResolveTokenParamsPtr params,
-                                  ResolveTokenRequestCallback callback) {
-  request_service_->ResolveTokenRequest(account_id, std::move(params),
-                                        std::move(callback));
-}
-
-void Request::SetIdpSigninStatus(
-    const url::Origin& idp_origin,
-    blink::mojom::IdpSigninStatus status,
-    const std::optional<blink::common::webid::LoginStatusOptions>& options,
-    SetIdpSigninStatusCallback callback) {
-  request_service_->SetIdpSigninStatus(idp_origin, status, options,
-                                       std::move(callback));
-}
-
-void Request::RegisterIdP(const GURL& idp, RegisterIdPCallback callback) {
-  request_service_->RegisterIdP(idp, std::move(callback));
-}
-
-void Request::UnregisterIdP(const GURL& idp, UnregisterIdPCallback callback) {
-  request_service_->UnregisterIdP(idp, std::move(callback));
-}
-
 void Request::OnIdpSigninStatusReceived(const url::Origin& idp_config_origin,
                                         bool idp_signin_status) {
   if (!idp_signin_status) {
@@ -645,7 +572,7 @@ void Request::OnIdpSigninStatusReceived(const url::Origin& idp_config_origin,
 
   for (const auto& [get_idp_config_url, get_info] : token_request_get_infos_) {
     if (url::Origin::Create(get_idp_config_url) == idp_config_origin) {
-      permission_delegate_->RemoveIdpSigninStatusObserver(this);
+      permission_delegate()->RemoveIdpSigninStatusObserver(this);
       idps_user_tried_to_signin_to_.insert(get_idp_config_url);
       FetchEndpointsForIdps({get_idp_config_url});
       break;
@@ -678,8 +605,8 @@ void Request::FetchEndpointsForIdps(const std::set<GURL>& idp_config_urls) {
   }
 
   fedcm_accounts_fetcher_ = std::make_unique<AccountsFetcher>(
-      render_frame_host(), network_manager_.get(), api_permission_delegate_,
-      permission_delegate_,
+      render_frame_host(), network_manager_.get(), api_permission_delegate(),
+      permission_delegate(),
       AccountsFetcher::FedCmFetchingParams(
           rp_mode_, icon_ideal_size, icon_minimum_size, mediation_requirement_),
       base::BindOnce(&Request::OnAccountsResultsReceived,
@@ -966,19 +893,19 @@ Request::AutoReauthnInfo Request::CheckAutoReauthnEligibility() {
   }
 
   bool is_auto_reauthn_setting_enabled =
-      auto_reauthn_permission_delegate_->IsAutoReauthnSettingEnabled();
+      auto_reauthn_permission_delegate()->IsAutoReauthnSettingEnabled();
   bool is_auto_reauthn_embargoed =
-      auto_reauthn_permission_delegate_->IsAutoReauthnEmbargoed(
+      auto_reauthn_permission_delegate()->IsAutoReauthnEmbargoed(
           GetEmbeddingOrigin());
   bool is_auto_reauthn_blocked_by_embedder =
-      auto_reauthn_permission_delegate_->IsAutoReauthnDisabledByEmbedder(
+      auto_reauthn_permission_delegate()->IsAutoReauthnDisabledByEmbedder(
           WebContents::FromRenderFrameHost(&render_frame_host()));
 
   std::optional<base::TimeDelta> time_from_embargo;
   if (is_auto_reauthn_embargoed) {
     time_from_embargo =
         base::Time::Now() -
-        auto_reauthn_permission_delegate_->GetAutoReauthnEmbargoStartTime(
+        auto_reauthn_permission_delegate()->GetAutoReauthnEmbargoStartTime(
             GetEmbeddingOrigin());
 
     // See `kFederatedIdentityAutoReauthnEmbargoDuration`.
@@ -1243,6 +1170,7 @@ void Request::NotifyAutofillSuggestionAccepted(
                          weak_ptr_factory_.GetWeakPtr()))) {
     return;
   }
+  did_show_ui_ = true;
 
   std::vector<IdentityRequestAccountPtr> selected;
 
@@ -1279,6 +1207,7 @@ void Request::NotifyAutofillSuggestionAccepted(
 
 void Request::OnAccountsDisplayed() {
   accounts_dialog_display_time_ = base::TimeTicks::Now();
+  did_show_ui_ = true;
 }
 
 void Request::OnIdpMismatch(std::unique_ptr<IdentityProviderInfo> idp_info) {
@@ -1356,6 +1285,7 @@ void Request::ShowSingleIdpFailureDialog() {
                               /*can_append_hints=*/true))) {
     return;
   }
+  did_show_ui_ = true;
 
   CHECK_EQ(idp_data_for_display_.size(), 1u);
   fedcm_metrics_->RecordSingleIdpMismatchDialogShown(
@@ -1363,10 +1293,6 @@ void Request::ShowSingleIdpFailureDialog() {
   mismatch_dialog_shown_time_ = base::TimeTicks::Now();
   has_shown_mismatch_ = true;
   devtools_instrumentation::DidShowFedCmDialog(render_frame_host());
-}
-
-void Request::CloseModalDialogView() {
-  request_service_->CloseModalDialogView();
 }
 
 void Request::OnAccountSelected(const GURL& idp_config_url,
@@ -1393,12 +1319,12 @@ void Request::OnAccountSelected(const GURL& idp_config_url,
     // Embargo auto re-authn to mitigate a deadloop where an auto
     // re-authenticated user gets auto re-authenticated again soon after logging
     // out of the active session.
-    auto_reauthn_permission_delegate_->RecordEmbargoForAutoReauthn(
+    auto_reauthn_permission_delegate()->RecordEmbargoForAutoReauthn(
         GetEmbeddingOrigin());
   } else {
     // Once a user has explicitly selected an account, there is no need to block
     // auto re-authn with embargo.
-    auto_reauthn_permission_delegate_->RemoveEmbargoForAutoReauthn(
+    auto_reauthn_permission_delegate()->RemoveEmbargoForAutoReauthn(
         GetEmbeddingOrigin());
 
     // Record page scroll Y-axis position upon account selection to analyse
@@ -1414,7 +1340,7 @@ void Request::OnAccountSelected(const GURL& idp_config_url,
 
   fedcm_metrics_->RecordIsSignInUser(is_sign_in);
 
-  api_permission_delegate_->RemoveEmbargoAndResetCounts(GetEmbeddingOrigin());
+  api_permission_delegate()->RemoveEmbargoAndResetCounts(GetEmbeddingOrigin());
 
   account_id_ = account_id;
   select_account_time_ = base::TimeTicks::Now();
@@ -1494,7 +1420,7 @@ void Request::OnDismissFailureDialog(
 
   should_embargo &= rp_mode_ == RpMode::kPassive && !IsUsingAmbient();
   if (should_embargo) {
-    api_permission_delegate_->RecordDismissAndEmbargo(GetEmbeddingOrigin());
+    api_permission_delegate()->RecordDismissAndEmbargo(GetEmbeddingOrigin());
   }
 
   CompleteRequestWithError(
@@ -1564,7 +1490,7 @@ void Request::OnDialogDismissed(
 
   should_embargo &= rp_mode_ == RpMode::kPassive && !IsUsingAmbient();
   if (should_embargo) {
-    api_permission_delegate_->RecordDismissAndEmbargo(GetEmbeddingOrigin());
+    api_permission_delegate()->RecordDismissAndEmbargo(GetEmbeddingOrigin());
   }
 
   TokenStatus token_status;
@@ -1617,6 +1543,7 @@ void Request::ShowModalDialog(DialogType dialog_type,
                      weak_ptr_factory_.GetWeakPtr()),
       base::BindOnce(create_registry_async, weak_ptr_factory_.GetWeakPtr(),
                      idp_config_url));
+  did_show_ui_ = true;
   // This may be null on Android, as the method cannot return the WebContents of
   // the CCT that will be created.
   // If the showing of the model dialog was deferred, this will be null, and
@@ -1726,8 +1653,7 @@ void Request::RedirectTo(const GURL& idp_config_url,
   content::NavigationController::LoadURLParams params(redirect_to);
   params.transition_type = ui::PAGE_TRANSITION_LINK;
   params.initiator_frame_token = render_frame_host().GetFrameToken();
-  params.initiator_process_id =
-      render_frame_host().GetProcess()->GetID().value();
+  params.initiator_process_id = render_frame_host().GetProcess()->GetID();
   params.initiator_origin = origin();
   params.source_site_instance = render_frame_host().GetSiteInstance();
   params.referrer =
@@ -1787,6 +1713,7 @@ void Request::ShowErrorDialog(const GURL& idp_config_url,
               : base::NullCallback())) {
     return;
   }
+  did_show_ui_ = true;
   devtools_instrumentation::DidShowFedCmDialog(render_frame_host());
 }
 
@@ -1842,7 +1769,7 @@ void Request::MarkUserAsSignedIn(const GURL& idp_config_url,
   // we shouldn't explicitly grant permission here.
   if (identity_selection_type_ == kAutoPassive ||
       identity_selection_type_ == kAutoActive) {
-    permission_delegate_->RefreshExistingSharingPermission(
+    permission_delegate()->RefreshExistingSharingPermission(
         origin(), GetEmbeddingOrigin(), url::Origin::Create(idp_config_url),
         account_id);
   } else {
@@ -1857,7 +1784,7 @@ void Request::MarkUserAsSignedIn(const GURL& idp_config_url,
         FederatedEmbedderLoginRequest::Get(
             WebContents::FromRenderFrameHost(&render_frame_host()));
     if (!embedder_login_request) {
-      permission_delegate_->GrantSharingPermission(
+      permission_delegate()->GrantSharingPermission(
           origin(), GetEmbeddingOrigin(), url::Origin::Create(idp_config_url),
           account_id);
     }
@@ -2043,12 +1970,12 @@ void Request::RecordMetricsAndConsoleError(
         *token_status, mediation_requirement_, idp_order_, num_idps_mismatch,
         selected_idp_config_url, rp_mode_, use_other_account_result,
         verifying_dialog_result_,
-        api_permission_delegate_->AreThirdPartyCookiesEnabledInSettings()
+        api_permission_delegate()->AreThirdPartyCookiesEnabledInSettings()
             ? ThirdPartyCookiesStatus::kEnabledInSettings
             : ThirdPartyCookiesStatus::kDisabledInSettings,
         ComputeRequesterFrameType(render_frame_host(), origin(),
                                   GetEmbeddingOrigin()),
-        has_signin_account, GetDialogController()->DidShowUi());
+        has_signin_account, did_show_ui_);
   }
 
   if (result == FederatedAuthRequestResult::kSuccess) {
@@ -2063,7 +1990,7 @@ void Request::RecordMetricsAndConsoleError(
           id_assertion_response_time_ - start_time_ -
               (accounts_dialog_display_time_ -
                ready_to_display_accounts_dialog_time_),
-          GetDialogController()->DidShowUi());
+          did_show_ui_);
     }
   } else {
     AddDevToolsIssue(result);
@@ -2072,8 +1999,8 @@ void Request::RecordMetricsAndConsoleError(
     // fedcm_accounts_fetcher_ could be null if configs were not fetched, e.g.
     // because of cooldown.
     if (IsMetricsEndpointEnabled() && fedcm_accounts_fetcher_) {
-      fedcm_accounts_fetcher_->SendAllFailedTokenRequestMetrics(
-          result, GetDialogController()->DidShowUi());
+      fedcm_accounts_fetcher_->SendAllFailedTokenRequestMetrics(result,
+                                                                did_show_ui_);
     }
   }
 
@@ -2114,7 +2041,7 @@ void Request::CompleteRequestInternal(
 void Request::CleanUp() {
   weak_ptr_factory_.InvalidateWeakPtrs();
 
-  permission_delegate_->RemoveIdpSigninStatusObserver(this);
+  permission_delegate()->RemoveIdpSigninStatusObserver(this);
 
   fedcm_accounts_fetcher_.reset();
   federated_sdjwt_handler_.reset();
@@ -2183,21 +2110,6 @@ void Request::AddConsoleErrorMessage(FederatedAuthRequestResult result) {
 
 url::Origin Request::GetEmbeddingOrigin() const {
   return render_frame_host().GetMainFrame()->GetLastCommittedOrigin();
-}
-
-std::unique_ptr<IdpNetworkRequestManager> Request::CreateNetworkManager() {
-  return request_service_->CreateNetworkManager();
-}
-
-
-void Request::SetNetworkManagerForTests(
-    std::unique_ptr<IdpNetworkRequestManager> manager) {
-  request_service_->SetNetworkManagerForTests(std::move(manager));
-}
-
-void Request::SetDialogControllerForTests(
-    std::unique_ptr<IdentityRequestDialogController> controller) {
-  request_service_->SetDialogControllerForTests(std::move(controller));
 }
 
 IdentityRequestDialogController* Request::GetDialogController() {
@@ -2321,8 +2233,9 @@ void Request::OnOriginMismatch(Method method,
 }
 
 FederatedApiPermissionStatus Request::GetApiPermissionStatus() {
-  DCHECK(api_permission_delegate_);
-  return api_permission_delegate_->GetApiPermissionStatus(GetEmbeddingOrigin());
+  DCHECK(api_permission_delegate());
+  return api_permission_delegate()->GetApiPermissionStatus(
+      GetEmbeddingOrigin());
 }
 
 bool Request::ShouldNotifyDevtoolsForDialogType(DialogType type) {
@@ -2420,8 +2333,8 @@ bool Request::GetAccountForAutoReauthn(IdentityProviderDataPtr* out_idp_data,
             render_frame_host(),
             /*provider_url=*/
             account->identity_provider->idp_metadata.config_url,
-            GetEmbeddingOrigin(), origin(), account->id, permission_delegate_,
-            api_permission_delegate_)) {
+            GetEmbeddingOrigin(), origin(), account->id, permission_delegate(),
+            api_permission_delegate())) {
       continue;
     }
 
@@ -2445,7 +2358,7 @@ bool Request::ShouldFailBeforeFetchingAccounts(const GURL& config_url) {
   }
 
   bool is_auto_reauthn_blocked_by_embedder =
-      auto_reauthn_permission_delegate_->IsAutoReauthnDisabledByEmbedder(
+      auto_reauthn_permission_delegate()->IsAutoReauthnDisabledByEmbedder(
           WebContents::FromRenderFrameHost(&render_frame_host()));
   if (is_auto_reauthn_blocked_by_embedder) {
     render_frame_host().AddMessageToConsole(
@@ -2454,7 +2367,7 @@ bool Request::ShouldFailBeforeFetchingAccounts(const GURL& config_url) {
   }
 
   bool is_auto_reauthn_setting_enabled =
-      auto_reauthn_permission_delegate_->IsAutoReauthnSettingEnabled();
+      auto_reauthn_permission_delegate()->IsAutoReauthnSettingEnabled();
   if (!is_auto_reauthn_setting_enabled) {
     render_frame_host().AddMessageToConsole(
         blink::mojom::ConsoleMessageLevel::kError,
@@ -2462,13 +2375,13 @@ bool Request::ShouldFailBeforeFetchingAccounts(const GURL& config_url) {
   }
 
   bool is_auto_reauthn_embargoed =
-      auto_reauthn_permission_delegate_->IsAutoReauthnEmbargoed(
+      auto_reauthn_permission_delegate()->IsAutoReauthnEmbargoed(
           GetEmbeddingOrigin());
   std::optional<base::TimeDelta> time_from_embargo;
   if (is_auto_reauthn_embargoed) {
     time_from_embargo =
         base::Time::Now() -
-        auto_reauthn_permission_delegate_->GetAutoReauthnEmbargoStartTime(
+        auto_reauthn_permission_delegate()->GetAutoReauthnEmbargoStartTime(
             GetEmbeddingOrigin());
     render_frame_host().AddMessageToConsole(
         blink::mojom::ConsoleMessageLevel::kError,
@@ -2479,8 +2392,8 @@ bool Request::ShouldFailBeforeFetchingAccounts(const GURL& config_url) {
   bool has_sharing_permission_for_any_account =
       HasSharingPermissionOrIdpHasThirdPartyCookiesAccess(
           render_frame_host(), config_url, GetEmbeddingOrigin(), origin(),
-          /*account_id=*/std::nullopt, permission_delegate_,
-          api_permission_delegate_);
+          /*account_id=*/std::nullopt, permission_delegate(),
+          api_permission_delegate());
 
   if (!has_sharing_permission_for_any_account) {
     render_frame_host().AddMessageToConsole(
@@ -2513,7 +2426,7 @@ bool Request::ShouldFailBeforeFetchingAccounts(const GURL& config_url) {
 }
 
 bool Request::RequiresUserMediation() {
-  return auto_reauthn_permission_delegate_->RequiresUserMediation(origin());
+  return auto_reauthn_permission_delegate()->RequiresUserMediation(origin());
 }
 
 void Request::SetRequiresUserMediation(bool requires_user_mediation,
@@ -2533,7 +2446,7 @@ void Request::LoginToIdP(bool can_append_hints,
     // needed.
     MaybeAppendQueryParameters(it->second, &login_url);
   }
-  permission_delegate_->AddIdpSigninStatusObserver(this);
+  permission_delegate()->AddIdpSigninStatusObserver(this);
 
   account_ids_before_login_.clear();
   for (const auto& account : accounts_) {
@@ -2563,16 +2476,6 @@ void Request::MaybeShowActiveModeModalDialog(const GURL& idp_config_url,
   // optional instead of empty.
   LoginToIdP(/*can_append_hints=*/false, idp_config_url, idp_login_url);
   return;
-}
-
-void Request::PreventSilentAccess(PreventSilentAccessCallback callback) {
-  request_service_->PreventSilentAccess(std::move(callback));
-}
-
-void Request::Disconnect(
-    blink::mojom::IdentityCredentialDisconnectOptionsPtr options,
-    DisconnectCallback callback) {
-  request_service_->Disconnect(std::move(options), std::move(callback));
 }
 
 void Request::RecordErrorMetrics(
@@ -2699,7 +2602,7 @@ bool Request::HandlePendingRequestAndCancelNewRequest(
             : RpMode::kPassive,
         /*use_other_account_result=*/std::nullopt,
         /*verifying_dialog_result=*/std::nullopt,
-        api_permission_delegate_->AreThirdPartyCookiesEnabledInSettings()
+        api_permission_delegate()->AreThirdPartyCookiesEnabledInSettings()
             ? ThirdPartyCookiesStatus::kEnabledInSettings
             : ThirdPartyCookiesStatus::kDisabledInSettings,
         ComputeRequesterFrameType(render_frame_host(), origin(),
@@ -2788,6 +2691,21 @@ RelyingPartyData Request::CreateRpData(bool client_metadata_received) const {
   return RelyingPartyData(
       base::UTF8ToUTF16(GetTopFrameOriginForDisplay(GetEmbeddingOrigin())),
       iframe_origin, display_strings_may_change);
+}
+
+FederatedIdentityApiPermissionContextDelegate*
+Request::api_permission_delegate() const {
+  return request_service_->api_permission_delegate_;
+}
+
+FederatedIdentityAutoReauthnPermissionContextDelegate*
+Request::auto_reauthn_permission_delegate() const {
+  return request_service_->auto_reauthn_permission_delegate_;
+}
+
+FederatedIdentityPermissionContextDelegate* Request::permission_delegate()
+    const {
+  return request_service_->permission_delegate_;
 }
 
 }  // namespace content::webid

@@ -10,7 +10,6 @@ import android.animation.TimeInterpolator;
 import android.app.Activity;
 import android.content.res.Configuration;
 import android.transition.Transition;
-import android.transition.TransitionListenerAdapter;
 import android.transition.TransitionManager;
 import android.transition.TransitionSet;
 import android.util.ArrayMap;
@@ -26,7 +25,6 @@ import androidx.core.view.animation.PathInterpolatorCompat;
 import androidx.window.layout.WindowMetricsCalculator;
 
 import org.chromium.base.Callback;
-import org.chromium.base.ObserverList;
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.supplier.NonNullObservableSupplier;
 import org.chromium.build.annotations.NullMarked;
@@ -52,8 +50,6 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
 
     private final ViewGroup mAnchorContainerParent;
 
-    private final ObserverList<SideUiObserver> mSideUiObservers = new ObserverList<>();
-
     private final NonNullObservableSupplier<Integer> mTopMarginSupplier;
     private final Callback<Integer> mTopMarginObserver;
 
@@ -63,7 +59,9 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
     /** List of registered {@link SideUiContainer} objects. */
     private final List<SideUiContainer> mSideUiContainers = new ArrayList<>();
 
-    private final SideUiShowabilityNotifier mShowabilityNotifier = new SideUiShowabilityNotifier();
+    private final SideUiObserverNotifier mSideUiObserverNotifier = new SideUiObserverNotifier();
+    private final SideUiTransitionListener mSideUiTransitionListener =
+            new SideUiTransitionListener();
 
     /**
      * Whether {@link #updateUiInternal} is in progress.
@@ -151,6 +149,12 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
     }
 
     @Override
+    public void endAnimations() {
+        ThreadUtils.assertOnUiThread();
+        mSideUiTransitionListener.endTransitions();
+    }
+
+    @Override
     public void destroy() {
         ThreadUtils.assertOnUiThread();
         mSideUiContainers.clear();
@@ -169,13 +173,13 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
     @Override
     public void addObserver(SideUiObserver observer) {
         ThreadUtils.assertOnUiThread();
-        mSideUiObservers.addObserver(observer);
+        mSideUiObserverNotifier.addObserver(observer);
     }
 
     @Override
     public void removeObserver(SideUiObserver observer) {
         ThreadUtils.assertOnUiThread();
-        mSideUiObservers.removeObserver(observer);
+        mSideUiObserverNotifier.removeObserver(observer);
     }
 
     @Override
@@ -231,6 +235,19 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
         return null;
     }
 
+    private void notifyContainersOnUiUpdateCompleted(
+            SideUiSpecs oldSideUiSpecs, SideUiSpecs newSideUiSpecs) {
+        for (var container : mSideUiContainers) {
+            @AnchorSide int anchorSide = container.getAnchorSide();
+            @Px int oldWidth = oldSideUiSpecs.getWidth(anchorSide);
+            @Px int newWidth = newSideUiSpecs.getWidth(anchorSide);
+
+            if (newWidth != oldWidth) {
+                container.onUiUpdateCompleted(oldWidth, newWidth);
+            }
+        }
+    }
+
     private boolean hasConflictingAnchorSides(SideUiContainer sideUiContainer) {
         List<@AnchorSide Integer> allocatedAnchorSide = new ArrayList<>();
         @SideUiId int id = sideUiContainer.getSideUiId();
@@ -251,7 +268,7 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
         // 1. End any existing transitions still in progress. This needs to be done before checking
         // the current specs, since specs aren't fully updated until after all transitions have
         // finished.
-        TransitionManager.endTransitions(getRootView());
+        mSideUiTransitionListener.endTransitions();
 
         // 2. Check if animations should be disabled entirely.
         boolean suppressAnimations =
@@ -287,14 +304,15 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
         }
 
         // 6. Notify SideUiObservers of the new SideUiShowability.
-        mShowabilityNotifier.notify(mSideUiObservers, newSideUiShowability);
+        mSideUiObserverNotifier.notifySideUiShowability(newSideUiShowability);
 
         // 7. Commit the new SideUiSpecs.
         if (!sideUiSpecsDiff.isEmpty()) {
-            // If animating, gather all Transitions into a TransitionSet.
+            var uiUpdateSpecs =
+                    new SideUiUpdateSpecs(currentSideUiSpecs, newSideUiSpecs, sideUiSpecsDiff);
             @Nullable TransitionSet transitionSet =
-                    suppressAnimations ? null : collectTransitions(newSideUiSpecs, sideUiSpecsDiff);
-            commitNewSideUiSpecs(newSideUiSpecs, sideUiSpecsDiff, transitionSet);
+                    suppressAnimations ? null : collectTransitions(uiUpdateSpecs);
+            commitNewSideUiSpecs(uiUpdateSpecs, transitionSet);
         }
 
         mIsUpdatingUi = false;
@@ -385,13 +403,9 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
      * Collects Transitions from the SideUiObservers to animate an update to the containers, and
      * returns a TransitionSet that plays all the Transitions together.
      *
-     * @param newSideUiSpecs The new complete {@link SideUiSpecs}.
-     * @param sideUiSpecsDiff The {@link SideUiSpecs} containing the width of {@link AnchorSide}s
-     *     that need updating only.
+     * @param uiUpdateSpecs See {@link SideUiUpdateSpecs}.
      */
-    // TODO(crbug.com/510059861): Add tests for transition animations.
-    private TransitionSet collectTransitions(
-            SideUiSpecs newSideUiSpecs, SideUiSpecs sideUiSpecsDiff) {
+    private TransitionSet collectTransitions(SideUiUpdateSpecs uiUpdateSpecs) {
         // Rather than use a standard Android or Material interpolator, we instead match the desktop
         // impl's curve found at chrome/browser/ui/views/animations/side_panel_animations.cc.
         TimeInterpolator interpolator = PathInterpolatorCompat.create(0.45f, 0f, 0.12f, 1f);
@@ -401,7 +415,7 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
                         .setOrdering(TransitionSet.ORDERING_TOGETHER)
                         .setInterpolator(interpolator);
 
-        for (Map.Entry<@AnchorSide Integer, Integer> entry : sideUiSpecsDiff.entrySet()) {
+        for (Map.Entry<@AnchorSide Integer, Integer> entry : uiUpdateSpecs.mSpecsDiff.entrySet()) {
             int side = entry.getKey();
             int width = entry.getValue();
             // Add transitions for the side UI containers.
@@ -410,12 +424,11 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
                     SideUiContainerTransition.createContainerTransition(
                             anchorContainer, side, width));
         }
-        for (SideUiObserver observer : mSideUiObservers) {
-            @Nullable Transition observerTransition =
-                    observer.onPreSideUiSpecsChange(newSideUiSpecs);
-            if (observerTransition != null) {
-                transitionSet.addTransition(observerTransition);
-            }
+
+        List<Transition> transitions =
+                mSideUiObserverNotifier.notifyPreSideUiSpecsChange(uiUpdateSpecs.mNewSpecs);
+        for (var transition : transitions) {
+            transitionSet.addTransition(transition);
         }
 
         return transitionSet;
@@ -427,26 +440,24 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
      * <p>This method will perform static resizing or animated resizing, depending on the presence
      * of the given {@code transitionSet}.
      *
-     * @param newSideUiSpecs The new, complete {@link SideUiSpecs}.
-     * @param sideUiSpecsDiff The {@link SideUiSpecs} containing the width of {@link AnchorSide}s
-     *     that need updating only.
+     * @param uiUpdateSpecs See {@link SideUiUpdateSpecs}.
      * @param transitionSet The {@link TransitionSet} directing the animation for the update. If
      *     null, then no animation is happening for the update.
      */
     private void commitNewSideUiSpecs(
-            SideUiSpecs newSideUiSpecs,
-            SideUiSpecs sideUiSpecsDiff,
-            @Nullable TransitionSet transitionSet) {
-        // Update the side containers, with Transitions if available.
+            SideUiUpdateSpecs uiUpdateSpecs, @Nullable TransitionSet transitionSet) {
         if (transitionSet != null) {
-            commitNewSpecsForAnimatedResize(newSideUiSpecs, sideUiSpecsDiff, transitionSet);
+            commitNewSpecsForAnimatedResize(uiUpdateSpecs, transitionSet);
         } else {
-            commitNewSpecsForStaticResize(newSideUiSpecs, sideUiSpecsDiff);
+            commitNewSpecsForStaticResize(uiUpdateSpecs);
         }
     }
 
     private void commitNewSpecsForAnimatedResize(
-            SideUiSpecs newSideUiSpecs, SideUiSpecs sideUiSpecsDiff, TransitionSet transitionSet) {
+            SideUiUpdateSpecs uiUpdateSpecs, TransitionSet transitionSet) {
+        SideUiSpecs newSideUiSpecs = uiUpdateSpecs.mNewSpecs;
+        SideUiSpecs sideUiSpecsDiff = uiUpdateSpecs.mSpecsDiff;
+
         for (Map.Entry<@AnchorSide Integer, Integer> entry : sideUiSpecsDiff.entrySet()) {
             @AnchorSide int anchorSide = entry.getKey();
             int sideUiWidth = entry.getValue();
@@ -458,29 +469,35 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
             if (sideUiWidth != 0) {
                 sideUiContainer.setWidth(sideUiWidth);
             }
-            transitionSet.addListener(
-                    new TransitionListenerAdapter() {
-                        @Override
-                        public void onTransitionEnd(Transition transition) {
-                            // Detach and close the container after the transition is complete.
-                            for (Map.Entry<@AnchorSide Integer, Integer> entry :
-                                    sideUiSpecsDiff.entrySet()) {
-                                @AnchorSide int anchorSide = entry.getKey();
-                                int sideUiWidth = entry.getValue();
-                                SideUiContainer sideUiContainer =
-                                        assumeNonNull(getSideUiContainerBySide(anchorSide));
-                                if (sideUiWidth == 0) {
-                                    detachSideUiContainerView(sideUiContainer);
-                                    sideUiContainer.setWidth(0);
-                                }
-                                sideUiContainer.onContainerResized(sideUiWidth);
-                            }
-                            for (SideUiObserver observer : mSideUiObservers) {
-                                observer.onTransitionEnded(newSideUiSpecs);
+        }
+
+        ViewGroup sceneRoot = getRootView();
+        mSideUiTransitionListener.startListening(
+                sceneRoot,
+                uiUpdateSpecs,
+                /* onTransitionEndCallback= */ new Callback<SideUiUpdateSpecs>() {
+                    @Override
+                    public void onResult(SideUiUpdateSpecs uiUpdateSpecs) {
+                        // Detach and close the container after the transition is complete.
+                        for (Map.Entry<@AnchorSide Integer, Integer> entry :
+                                uiUpdateSpecs.mSpecsDiff.entrySet()) {
+                            @AnchorSide int anchorSide = entry.getKey();
+                            @Px int newSideUiWidth = entry.getValue();
+                            SideUiContainer sideUiContainer =
+                                    assumeNonNull(getSideUiContainerBySide(anchorSide));
+                            if (newSideUiWidth == 0) {
+                                detachSideUiContainerView(sideUiContainer);
+                                sideUiContainer.setWidth(0);
                             }
                         }
-                    });
-        }
+
+                        notifyContainersOnUiUpdateCompleted(
+                                uiUpdateSpecs.mCurrentSpecs, uiUpdateSpecs.mNewSpecs);
+                        mSideUiObserverNotifier.notifyTransitionEnded(uiUpdateSpecs.mNewSpecs);
+                    }
+                });
+        transitionSet.addListener(mSideUiTransitionListener);
+
         // Trigger a synchronous measure and layout pass on the container to ensure that the
         // starting snapshot for the Transition is updated and accurate. If this is not done,
         // the side panel can have visual bugs where it animates from an incorrect starting
@@ -496,13 +513,15 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
             SideUiContainerTransition.triggerContainerTransition(
                     anchorContainer, anchorContainer.getWidth(), anchorSide, sideUiWidth);
         }
-        for (SideUiObserver observer : mSideUiObservers) {
-            observer.onTransitionBegun(newSideUiSpecs);
-        }
+
+        mSideUiObserverNotifier.notifyTransitionBegun(newSideUiSpecs);
     }
 
-    private void commitNewSpecsForStaticResize(
-            SideUiSpecs newSideUiSpecs, SideUiSpecs sideUiSpecsDiff) {
+    private void commitNewSpecsForStaticResize(SideUiUpdateSpecs uiUpdateSpecs) {
+        SideUiSpecs currentSideUiSpecs = uiUpdateSpecs.mCurrentSpecs;
+        SideUiSpecs newSideUiSpecs = uiUpdateSpecs.mNewSpecs;
+        SideUiSpecs sideUiSpecsDiff = uiUpdateSpecs.mSpecsDiff;
+
         // Reset the side UI containers to clear any leftover state from previous Transitions.
         for (var container : mAnchorContainers.values()) {
             SideUiContainerTransition.resetContainer(container);
@@ -510,20 +529,44 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
 
         for (Map.Entry<@AnchorSide Integer, Integer> entry : sideUiSpecsDiff.entrySet()) {
             @AnchorSide int anchorSide = entry.getKey();
-            int sideUiWidth = entry.getValue();
+            int newSideUiWidth = entry.getValue();
             SideUiContainer sideUiContainer = getSideUiContainerBySide(anchorSide);
             if (sideUiContainer == null) continue;
 
-            if (sideUiWidth != 0) {
+            if (newSideUiWidth != 0) {
                 attachSideUiContainerView(sideUiContainer, anchorSide);
             } else {
                 detachSideUiContainerView(sideUiContainer);
             }
-            sideUiContainer.setWidth(sideUiWidth);
-            sideUiContainer.onContainerResized(sideUiWidth);
+            sideUiContainer.setWidth(newSideUiWidth);
         }
 
-        notifySideUiSpecsChanged(newSideUiSpecs);
+        // Trigger a synchronous measure and layout pass to apply the new SideUiSpecs to the layout
+        // before we notify SideUiContainers and SideUiObservers.
+        //
+        // This guarantees the actual layout properties are in sync with the new SideUiSpecs
+        // received by SideUiContainers and SideUiObservers.
+        //
+        // Layout synchronization is also important to support multiple UI update requests in
+        // quick succession. For example, GLiC browser tests (in C++) can:
+        // (1) disable animations,
+        // (2) open the side panel, then
+        // (3) immediately close the side panel.
+        //
+        // Without the synchronous measure and layout pass, (3) can happen before Android's
+        // asynchronous layout pass actually opens the side panel for (2) (i.e., applying the
+        // SideUiSpecs for (2)). Then during the UI update flow for (3), updateUiInternal()
+        // will see the side panel already has 0 width, skip the update, and fail to notify GLiC of
+        // the "closed" event.
+        //
+        // Running a synchronous pass here has little to no overall performance impact since the
+        // mAnchorContainerParent subtree will definitely be changed at this point. The synchronous
+        // pass just does the work sooner, and the subsequent asynchronous pass scheduled by the
+        // Android framework will skip this subtree.
+        ViewUtils.triggerSynchronousMeasureAndLayout(mAnchorContainerParent);
+
+        notifyContainersOnUiUpdateCompleted(currentSideUiSpecs, newSideUiSpecs);
+        mSideUiObserverNotifier.notifySideUiSpecsChanged(newSideUiSpecs);
     }
 
     /**
@@ -591,16 +634,6 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
         anchorContainer.removeView(sideUiContainerView);
         assert anchorContainer.getChildCount() == 0;
         anchorContainer.setVisibility(View.GONE);
-    }
-
-    /**
-     * Notifies each {@link SideUiObserver} of the new {@link SideUiSpecs} that represents the
-     * resting UI state.
-     */
-    private void notifySideUiSpecsChanged(SideUiSpecs sideUiSpecs) {
-        for (SideUiObserver observer : mSideUiObservers) {
-            observer.onSideUiSpecsChanged(sideUiSpecs);
-        }
     }
 
     /**

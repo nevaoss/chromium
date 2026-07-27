@@ -253,7 +253,8 @@ class MockSigninUiDelegate : public signin_ui_util::SigninUiDelegate {
               (Profile*,
                bool,
                signin_metrics::AccessPoint,
-               signin_metrics::PromoAction),
+               signin_metrics::PromoAction,
+               const std::string&),
               (override));
   MOCK_METHOD(void,
               ShowReauthUI,
@@ -267,6 +268,12 @@ class MockSigninUiDelegate : public signin_ui_util::SigninUiDelegate {
               ShowHistorySyncOptinUI,
               (Profile*, const CoreAccountId&, signin_metrics::AccessPoint),
               (override));
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+  MOCK_METHOD(void,
+              ShowCrossDeviceSigninQrBubble,
+              (BrowserWindowInterface*, base::OnceClosure),
+              (override));
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 };
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
@@ -4148,6 +4155,7 @@ IN_PROC_BROWSER_TEST_F(AvatarToolbarButtonAiRingBrowserTest,
           ->toolbar_button_provider()
           ->GetAvatarToolbarButtonInterface());
   ASSERT_TRUE(avatar_button);
+  AvatarToolbarButtonTestAccessor avatar_accessor(browser());
 
   // Assert that AI ring is not enabled initially.
   ASSERT_FALSE(IsAiSubscriptionRingEnabled(browser()->profile()));
@@ -4156,15 +4164,15 @@ IN_PROC_BROWSER_TEST_F(AvatarToolbarButtonAiRingBrowserTest,
       avatar_button->GetImageModel(views::Button::ButtonState::STATE_NORMAL);
   ASSERT_TRUE(normal_icon);
   const int normal_size = normal_icon->Size().width();
+  // Default state: no subscription.
+  // Insets should be standard.
   const gfx::Insets standard_insets =
       avatar_button->GetLayoutInsets().value_or(gfx::Insets());
 
   // Set AI subscription.
+  auto waiter1 = avatar_accessor.CreateUpdateWaiter();
   SetAiSubscriptionTierForProfile(1);
-  // Trigger update.
-  avatar_button->UpdateIcon();
-  avatar_button->UpdateText();
-  avatar_button->GetWidget()->LayoutRootViewIfNecessary();
+  waiter1->Wait();
 
   // The AI ring should be enabled now.
   EXPECT_TRUE(IsAiSubscriptionRingEnabled(browser()->profile()));
@@ -4186,10 +4194,9 @@ IN_PROC_BROWSER_TEST_F(AvatarToolbarButtonAiRingBrowserTest,
   EXPECT_LT(adjusted_insets.right(), standard_insets.right());
 
   // Clear subscription.
+  auto waiter2 = avatar_accessor.CreateUpdateWaiter();
   SetAiSubscriptionTierForProfile(0);
-  avatar_button->UpdateIcon();
-  avatar_button->UpdateText();
-  avatar_button->GetWidget()->LayoutRootViewIfNecessary();
+  waiter2->Wait();
 
   EXPECT_FALSE(IsAiSubscriptionRingEnabled(browser()->profile()));
   std::optional<ui::ImageModel> restored_icon =
@@ -4214,8 +4221,9 @@ IN_PROC_BROWSER_TEST_F(AvatarToolbarButtonAiRingBrowserTest,
   SigninWithImageAndClearGreetingAndSyncPromo(
       browser(), avatar_button, u"test@gmail.com");
 
+  auto waiter1 = avatar_accessor.CreateUpdateWaiter();
   SimulateSigninPending(/*web_sign_out=*/false);
-  avatar_button->GetWidget()->LayoutRootViewIfNecessary();
+  waiter1->Wait();
 
   // Verify we are in Signin Pending state.
   ASSERT_EQ(avatar_accessor.GetState(), AvatarToolbarButtonState::kSigninPending);
@@ -4228,10 +4236,9 @@ IN_PROC_BROWSER_TEST_F(AvatarToolbarButtonAiRingBrowserTest,
 
   // Set AI subscription. This will not trigger the AI ring because SigninPending
   // suppresses it.
+  auto waiter2 = avatar_accessor.CreateUpdateWaiter();
   SetAiSubscriptionTierForProfile(1);
-  // Trigger update manually.
-  avatar_button->UpdateIcon();
-  avatar_button->UpdateText();
+  waiter2->Wait();
 
   // Verify that the AI ring is not enabled for the button.
   std::optional<ui::ImageModel> current_icon =

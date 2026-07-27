@@ -21,9 +21,11 @@
 #import "ios/chrome/browser/bubble/ui_bundled/gesture_iph/gesture_in_product_help_view.h"
 #import "ios/chrome/browser/bubble/ui_bundled/gesture_iph/gesture_in_product_help_view_delegate.h"
 #import "ios/chrome/browser/intelligence/bwg/utils/gemini_constants.h"
+#import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/keyboard/ui_bundled/UIKeyCommand+Chrome.h"
 #import "ios/chrome/browser/menu/ui_bundled/action_factory.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/layout_state.h"
+#import "ios/chrome/browser/shared/coordinator/scene/state/tab_grid_state.h"
 #import "ios/chrome/browser/shared/model/web_state_list/tab_utils.h"
 #import "ios/chrome/browser/shared/public/commands/gemini_commands.h"
 #import "ios/chrome/browser/shared/public/commands/scene_commands.h"
@@ -107,6 +109,7 @@ NSUInteger GetPageIndexFromPage(TabGridPage page) {
                                      GridViewControllerDelegate,
                                      LayoutStateObserver,
                                      PinnedTabsViewControllerDelegate,
+                                     TabGridStateObserving,
                                      TabGroupsPanelViewControllerUIDelegate,
                                      UIGestureRecognizerDelegate,
                                      UIScrollViewAccessibilityDelegate>
@@ -1348,9 +1351,11 @@ NSUInteger GetPageIndexFromPage(TabGridPage page) {
         constraintEqualToAnchor:self.topToolbar.bottomAnchor],
     self.swipeToIncognitoIPHBottomConstraint
   ]];
-  [self.geminiHandler
-      hideFloatyIfInvokedAnimated:NO
-                       fromSource:gemini::FloatyUpdateSource::GestureIph];
+  if (IsPageActionMenuEnabled()) {
+    [self.geminiHandler
+        hideFloatyIfInvokedAnimated:NO
+                         fromSource:gemini::FloatyUpdateSource::GestureIph];
+  }
   [self.swipeToIncognitoIPH startAnimation];
 }
 
@@ -1394,10 +1399,12 @@ NSUInteger GetPageIndexFromPage(TabGridPage page) {
           UISceneActivationStateForegroundActive) {
     return;
   }
-  [self.geminiHandler
-      updateFloatyVisibilityIfEligibleAnimated:NO
-                                    fromSource:gemini::FloatyUpdateSource::
-                                                   ViewTransition];
+  if (IsPageActionMenuEnabled()) {
+    [self.geminiHandler
+        updateFloatyVisibilityIfEligibleAnimated:NO
+                                      fromSource:gemini::FloatyUpdateSource::
+                                                     ViewTransition];
+  }
 }
 
 #pragma mark - UIGestureRecognizerDelegate
@@ -2141,10 +2148,12 @@ NSUInteger GetPageIndexFromPage(TabGridPage page) {
 - (void)gestureInProductHelpView:(GestureInProductHelpView*)view
             didDismissWithReason:(IPHDismissalReasonType)reason {
   [self.delegate tabGridDidDismissSwipeToIncognitoIPHWithReason:reason];
-  [self.geminiHandler
-      updateFloatyVisibilityIfEligibleAnimated:NO
-                                    fromSource:gemini::FloatyUpdateSource::
-                                                   GestureIph];
+  if (IsPageActionMenuEnabled()) {
+    [self.geminiHandler
+        updateFloatyVisibilityIfEligibleAnimated:NO
+                                      fromSource:gemini::FloatyUpdateSource::
+                                                     GestureIph];
+  }
   self.swipeToIncognitoIPH = nil;
   [self updateAccessibilityElements];
 }
@@ -2195,6 +2204,25 @@ NSUInteger GetPageIndexFromPage(TabGridPage page) {
              : nil;
 }
 
+- (void)setTabGridState:(TabGridState*)tabGridState {
+  if (_tabGridState == tabGridState) {
+    return;
+  }
+  [_tabGridState removeObserver:self];
+  _tabGridState = tabGridState;
+  [_tabGridState addObserver:self];
+}
+
+#pragma mark - TabGridStateObserving
+
+- (void)willShowTabGroup:(const TabGroup*)group {
+  [self updateAccessibilityElements];
+}
+
+- (void)willHideTabGroup {
+  [self updateAccessibilityElements];
+}
+
 #pragma mark - Accessibility
 
 // Updates the accessibility elements on the root view to enforce a logical
@@ -2210,6 +2238,12 @@ NSUInteger GetPageIndexFromPage(TabGridPage page) {
     self.view.accessibilityElements = nil;
     return;
   }
+
+  if (self.tabGridState.visibleTabGroup != nullptr) {
+    self.view.accessibilityElements = nil;
+    return;
+  }
+
   NSMutableArray* elements = [[NSMutableArray alloc] init];
   if (self.topToolbar) {
     [elements addObject:self.topToolbar];

@@ -83,6 +83,7 @@
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/web_contents.h"
+#include "content/public/browser/web_contents_observer.h"
 #include "content/public/common/url_constants.h"
 #include "third_party/omnibox_proto/searchbox_config.pb.h"
 #include "ui/base/webui/web_ui_util.h"
@@ -97,8 +98,8 @@
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/views/drive_picker_host/drive_picker_host_controller.h"
 #include "chrome/browser/ui/views/drive_picker_host/drive_picker_sanitizer.h"
-#include "chrome/browser/ui/webui/drive_picker_host/drive_disclaimer_controller.h"
 #include "chrome/browser/ui/webui/drive_picker_host/drive_picker_host_request.h"
+#include "components/contextual_search/footprints/public/drive_disclaimer_controller.h"
 #include "components/contextual_search/footprints/public/fpop_service.h"
 #include "content/public/browser/storage_partition.h"
 #endif  // !BUILDFLAG(IS_ANDROID)
@@ -221,6 +222,12 @@ void ContextualSearchboxHandler::GetRecentTabs(GetRecentTabsCallback callback) {
     std::move(callback).Run({});
     return;
   }
+
+  if (!tab_list_observation_.IsObservingSource(tab_list)) {
+    tab_list_observation_.Reset();
+    tab_list_observation_.Observe(tab_list);
+  }
+
   struct TabTime {
     raw_ptr<tabs::TabInterface> tab;
     base::TimeTicks time;
@@ -231,6 +238,9 @@ void ContextualSearchboxHandler::GetRecentTabs(GetRecentTabsCallback callback) {
       active_tab_interface ? active_tab_interface->GetContents() : nullptr;
   for (tabs::TabInterface* tab : tab_list->GetAllTabs()) {
     content::WebContents* web_contents = tab->GetContents();
+    if (!web_contents) {
+      continue;
+    }
     const GURL& url = web_contents->GetLastCommittedURL();
     if (!url.is_valid()) {
       continue;
@@ -366,6 +376,41 @@ void ContextualSearchboxHandler::WaitForTabFaviconLoad(
   tab_favicon_helper_->WaitForTabFaviconLoad(tab_id, std::move(callback));
 }
 
+// Helper class that observes the WebContents of the active tab for navigation.
+// When a navigation is committed in the primary main frame, it runs
+// a callback to trigger a refresh of tab suggestions in the WebUI.
+class ContextualSearchboxHandler::ActiveTabNavigationObserver
+    : public content::WebContentsObserver {
+ public:
+  explicit ActiveTabNavigationObserver(base::RepeatingClosure on_navigation_cb)
+      : on_navigation_cb_(on_navigation_cb) {}
+  ActiveTabNavigationObserver(const ActiveTabNavigationObserver&) = delete;
+  ActiveTabNavigationObserver& operator=(const ActiveTabNavigationObserver&) =
+      delete;
+  ~ActiveTabNavigationObserver() override = default;
+
+  void ObserveTab(tabs::TabInterface* tab) {
+    if (tab) {
+      Observe(tab->GetContents());
+    } else {
+      Observe(nullptr);
+    }
+  }
+
+  // content::WebContentsObserver:
+  void DidFinishNavigation(
+      content::NavigationHandle* navigation_handle) override {
+    if (navigation_handle->IsInPrimaryMainFrame() &&
+        navigation_handle->HasCommitted() &&
+        !navigation_handle->IsSameDocument()) {
+      on_navigation_cb_.Run();
+    }
+  }
+
+ private:
+  base::RepeatingClosure on_navigation_cb_;
+};
+
 ContextualSearchboxHandler::ContextualSearchboxHandler(
     mojo::PendingReceiver<searchbox::mojom::PageHandler>
         pending_searchbox_handler,
@@ -383,6 +428,10 @@ ContextualSearchboxHandler::ContextualSearchboxHandler(
   InitializeInputStateModel();
   tab_favicon_helper_ = std::make_unique<ContextualSearchboxTabFaviconHelper>();
 
+  active_tab_nav_observer_ = std::make_unique<ActiveTabNavigationObserver>(
+      base::BindRepeating(&ContextualSearchboxHandler::OnActiveTabNavigated,
+                          base::Unretained(this)));
+
   auto* browser_window_interface =
       webui::GetBrowserWindowInterface(web_contents_);
   if (browser_window_interface) {
@@ -394,6 +443,7 @@ ContextualSearchboxHandler::ContextualSearchboxHandler(
       // //chrome. The current implementation is likely brittle, as it's not a
       // supported API for external users.
       tab_list_observation_.Observe(tab_list);
+      active_tab_nav_observer_->ObserveTab(tab_list->GetActiveTab());
     }
   }
 
@@ -435,6 +485,11 @@ void ContextualSearchboxHandler::OnTabAdded(TabListInterface& tab_list,
 
 void ContextualSearchboxHandler::OnActiveTabChanged(TabListInterface& tab_list,
                                                     tabs::TabInterface* tab) {
+  active_tab_nav_observer_->ObserveTab(tab);
+  page_->OnTabStripChanged();
+}
+
+void ContextualSearchboxHandler::OnActiveTabNavigated() {
   page_->OnTabStripChanged();
 }
 
@@ -1169,7 +1224,10 @@ void ContextualSearchboxHandler::InitializeInputStateModel() {
 #if !BUILDFLAG(IS_ANDROID)
   if (base::FeatureList::IsEnabled(
           omnibox::kComposeboxDriveContextMenuOption)) {
-    if (auto* controller = GetDriveDisclaimerController()) {
+    if (base::FeatureList::IsEnabled(omnibox::kForceDriveDisclaimerAccepted)) {
+      OnDriveDisclaimerChecked(
+          drive_picker::DriveDisclaimerController::DisclaimerStatus::kAccepted);
+    } else if (auto* controller = GetDriveDisclaimerController()) {
       controller->CheckDisclaimerStatusAsync(
           base::BindOnce(&ContextualSearchboxHandler::OnDriveDisclaimerChecked,
                          weak_ptr_factory_.GetWeakPtr()));
@@ -1405,7 +1463,8 @@ void ContextualSearchboxHandler::OpenAutocompleteMatch(uint8_t line,
                                                        bool alt_key,
                                                        bool ctrl_key,
                                                        bool meta_key,
-                                                       bool shift_key) {
+                                                       bool shift_key,
+                                                       bool via_keyboard) {
   const AutocompleteMatch* match = GetMatchWithUrl(line, url);
 
   // Record match navigations for composebox matches.
@@ -1431,7 +1490,7 @@ void ContextualSearchboxHandler::OpenAutocompleteMatch(uint8_t line,
 
   SearchboxHandler::OpenAutocompleteMatch(line, url, are_matches_showing,
                                           mouse_button, alt_key, ctrl_key,
-                                          meta_key, shift_key);
+                                          meta_key, shift_key, via_keyboard);
 }
 
 void ContextualSearchboxHandler::SetSmartComposeStats(
@@ -1458,6 +1517,10 @@ void ContextualSearchboxHandler::GetDriveDisclaimerStatus(
 #if BUILDFLAG(IS_ANDROID)
   std::move(callback).Run(searchbox::mojom::DriveDisclaimerStatus::kRestricted);
 #else
+  if (base::FeatureList::IsEnabled(omnibox::kForceDriveDisclaimerAccepted)) {
+    std::move(callback).Run(searchbox::mojom::DriveDisclaimerStatus::kAccepted);
+    return;
+  }
   auto* controller = GetDriveDisclaimerController();
   if (!controller) {
     std::move(callback).Run(
@@ -1494,20 +1557,23 @@ void ContextualSearchboxHandler::GetDriveDisclaimerStatus(
 }
 
 void ContextualSearchboxHandler::OnDriveDisclaimerAccepted() {
-  profile_->GetPrefs()->SetBoolean(contextual_search::kDriveDisclaimerAccepted,
-                                   true);
+  profile_->GetPrefs()->SetInteger(
+      contextual_search::kDriveConsentState,
+      static_cast<int>(contextual_search::DriveConsentState::kConsent));
 }
 
 void ContextualSearchboxHandler::QueryAutocomplete(
+    int32_t query_id,
     const std::u16string& input,
     bool prevent_inline_autocomplete,
     uint32_t cursor_position) {
   QueryAutocompleteWithSuggestInventory(
-      input, prevent_inline_autocomplete, cursor_position,
+      query_id, input, prevent_inline_autocomplete, cursor_position,
       omnibox::SuggestInventory::SUGGEST_INVENTORY_DEFAULT);
 }
 
 void ContextualSearchboxHandler::QueryAutocompleteWithSuggestInventory(
+    int32_t query_id,
     const std::u16string& input,
     bool prevent_inline_autocomplete,
     uint32_t cursor_position,
@@ -1517,7 +1583,8 @@ void ContextualSearchboxHandler::QueryAutocompleteWithSuggestInventory(
   }
 
   SearchboxHandler::QueryAutocompleteWithSuggestInventory(
-      input, prevent_inline_autocomplete, cursor_position, suggest_inventory);
+      query_id, input, prevent_inline_autocomplete, cursor_position,
+      suggest_inventory);
 }
 
 void ContextualSearchboxHandler::OnContextUploadStatusChanged(
@@ -1936,26 +2003,27 @@ void ContextualSearchboxHandler::OnDriveDisclaimerChecked(
   DVLOG(1) << "ContextualSearchboxHandler::OnDriveDisclaimerChecked: status is "
            << drive_picker::DriveDisclaimerController::DisclaimerStatusToString(
                   status);
-  if (!input_state_model_) {
-    return;
-  }
 
+  PrefService* prefs = profile_->GetPrefs();
   contextual_search::DriveConsentState consent_state =
       contextual_search::DriveConsentState::kNotReady;
   switch (status) {
     case drive_picker::DriveDisclaimerController::DisclaimerStatus::kAccepted:
+      // User accepted the disclaimer.
       consent_state = contextual_search::DriveConsentState::kConsent;
       break;
     case drive_picker::DriveDisclaimerController::DisclaimerStatus::
         kNotAccepted:
+      // Disclaimer has not been accepted.
       consent_state = contextual_search::DriveConsentState::kNotConsent;
       break;
     case drive_picker::DriveDisclaimerController::DisclaimerStatus::kRestricted:
+      // Policy restricts access.
       consent_state = contextual_search::DriveConsentState::kRestricted;
       break;
   }
-
-  input_state_model_->SetDriveConsentState(consent_state);
+  prefs->SetInteger(contextual_search::kDriveConsentState,
+                    static_cast<int>(consent_state));
 }
 
 drive_picker::DriveDisclaimerController*

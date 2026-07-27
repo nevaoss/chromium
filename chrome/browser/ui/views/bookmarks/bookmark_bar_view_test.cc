@@ -12,7 +12,6 @@
 #include <vector>
 
 #include "base/auto_reset.h"
-#include "base/compiler_specific.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/location.h"
@@ -50,7 +49,6 @@
 #include "chrome/browser/ui/views/bookmarks/bookmark_context_menu.h"
 #include "chrome/browser/ui/views/bookmarks/bookmark_menu_controller_views.h"
 #include "chrome/browser/ui/views/chrome_constrained_window_views_client.h"
-#include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/browser/ui/views/test/view_event_test_base.h"
 #include "chrome/common/chrome_content_client.h"
 #include "chrome/test/base/interactive_test_utils.h"
@@ -70,8 +68,6 @@
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/ozone_buildflags.h"
 #include "ui/base/test/ui_controls.h"
-#include "ui/base/ui_base_features.h"
-#include "ui/display/display_switches.h"
 #include "ui/events/keycodes/keyboard_codes.h"
 #include "ui/views/background.h"
 #include "ui/views/controls/button/menu_button.h"
@@ -81,11 +77,14 @@
 #include "ui/views/controls/menu/submenu_view.h"
 #include "ui/views/layout/flex_layout.h"
 #include "ui/views/layout/flex_layout_types.h"
-#include "ui/views/layout/layout_provider.h"
 #include "ui/views/view_class_properties.h"
 #include "ui/views/view_utils.h"
 #include "ui/views/widget/drop_helper.h"
 #include "ui/views/widget/widget.h"
+
+#if BUILDFLAG(IS_OZONE)
+#include "ui/ozone/public/ozone_platform.h"
+#endif
 
 #if !BUILDFLAG(IS_MAC)
 #include "ui/aura/env.h"
@@ -958,15 +957,22 @@ class BookmarkBarViewTest6 : public BookmarkBarViewEventTestBase {
   }
 };
 
-#if BUILDFLAG(SUPPORTS_OZONE_WAYLAND) || BUILDFLAG(IS_WIN)
-// TODO (crbug.com/41496199): This test is failing under wayland and Windows.
-// This skips it until it can be fixed.
+#if BUILDFLAG(IS_WIN)
 #define MAYBE_OpenMenuOnClickAndHold DISABLED_OpenMenuOnClickAndHold
 #else
 #define MAYBE_OpenMenuOnClickAndHold OpenMenuOnClickAndHold
-#endif  // BUILDFLAG(SUPPORTS_OZONE_WAYLAND) || BUILDFLAG(IS_WIN)
+#endif  // BUILDFLAG(IS_WIN)
 // If this flakes, disable and log details in http://crbug.com/40432443.
-VIEW_TEST(BookmarkBarViewTest6, MAYBE_OpenMenuOnClickAndHold)
+TEST_F(BookmarkBarViewTest6, MAYBE_OpenMenuOnClickAndHold) {
+#if BUILDFLAG(IS_OZONE)
+  // TODO (crbug.com/41496199): This test is failing under wayland.
+  // This skips it until it can be fixed.
+  if (::ui::OzonePlatform::RunningOnWaylandForTest()) {
+    GTEST_SKIP() << "Skipping for Wayland";
+  }
+#endif
+  StartMessageLoopAndRunTest();
+}
 
 // Tests drag and drop to different menu.
 class BookmarkBarViewTest7 : public BookmarkBarViewDragTestBase {
@@ -1175,12 +1181,19 @@ class BookmarkBarViewTest9 : public BookmarkBarViewEventTestBase {
 // hover the scroll buttons sends the mouse to the wrong location, so it never
 // winds up over the button, so the test times out.
 // TODO(crbug.com/40947483): Flaky on Windows.
-#if BUILDFLAG(SUPPORTS_OZONE_WAYLAND) || BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_WIN)
 #define MAYBE_ScrollButtonScrolls DISABLED_ScrollButtonScrolls
 #else
 #define MAYBE_ScrollButtonScrolls ScrollButtonScrolls
 #endif
-VIEW_TEST(BookmarkBarViewTest9, MAYBE_ScrollButtonScrolls)
+TEST_F(BookmarkBarViewTest9, MAYBE_ScrollButtonScrolls) {
+#if BUILDFLAG(IS_OZONE)
+  if (::ui::OzonePlatform::RunningOnWaylandForTest()) {
+    GTEST_SKIP() << "Skipping for Wayland";
+  }
+#endif
+  StartMessageLoopAndRunTest();
+}
 
 // Tests up/down/left/enter key messages.
 class BookmarkBarViewTest10 : public BookmarkBarViewEventTestBase {
@@ -1916,14 +1929,23 @@ BEGIN_METADATA(BookmarkBarViewTest20, TestViewForMenuExit)
 END_METADATA
 
 // TODO(crbug.com/40947483): Flaky on Windows.
-// TODO (crbug.com/41496199): This test is failing under wayland and Windows.
+// TODO (crbug.com/41496199): This test is failing under Windows.
 // This skips it until it can be fixed.
-#if BUILDFLAG(SUPPORTS_OZONE_WAYLAND) || BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_WIN)
 #define MAYBE_ContextMenuExitTest DISABLED_ContextMenuExitTest
 #else
 #define MAYBE_ContextMenuExitTest ContextMenuExitTest
-#endif  // BUILDFLAG(SUPPORTS_OZONE_WAYLAND) || BUILDFLAG(IS_WIN)
-VIEW_TEST(BookmarkBarViewTest20, MAYBE_ContextMenuExitTest)
+#endif  // BUILDFLAG(IS_WIN)
+TEST_F(BookmarkBarViewTest20, MAYBE_ContextMenuExitTest) {
+#if BUILDFLAG(IS_OZONE)
+  // TODO (crbug.com/41496199): This test is failing under wayland.
+  // This skips it until it can be fixed.
+  if (::ui::OzonePlatform::RunningOnWaylandForTest()) {
+    GTEST_SKIP() << "Skipping for Wayland";
+  }
+#endif
+  StartMessageLoopAndRunTest();
+}
 
 // Tests context menu by way of opening a context menu for a empty folder menu.
 // The opened context menu should behave as it is from the folder button.

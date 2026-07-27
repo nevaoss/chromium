@@ -808,6 +808,12 @@ template("test_runner_script") {
       ]
     }
 
+    if (defined(invoker.device_data_filters)) {
+      foreach(filter, invoker.device_data_filters) {
+        executable_args += [ "--device-data-filter=$filter" ]
+      }
+    }
+
     # apk_target is not used for native executable tests
     # (e.g. breakpad_unittests).
     if (defined(invoker.apk_target)) {
@@ -2381,6 +2387,13 @@ if (enable_java_templates) {
       _args += [
         "--arsc-package-name",
         invoker.arsc_package_name,
+      ]
+    }
+    if (defined(invoker.apk_under_test_rtxt)) {
+      _inputs += [ invoker.apk_under_test_rtxt ]
+      _args += [
+        "--apk-under-test-rtxt",
+        rebase_path(invoker.apk_under_test_rtxt, root_build_dir),
       ]
     }
 

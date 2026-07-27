@@ -70,6 +70,7 @@
 #include "content/public/browser/render_widget_host.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/web_contents.h"
+#include "content/public/common/content_features.h"
 #include "content/public/common/drop_data.h"
 #include "content/public/common/result_codes.h"
 #include "content/public/common/url_constants.h"
@@ -559,6 +560,40 @@ void WebUIToolbarWebView::ShowContentSettingsBubble(
   }
 }
 
+void WebUIToolbarWebView::OnPageActionClick(
+    ::toolbar_ui_api::mojom::PageActionId action_id,
+    ::toolbar_ui_api::mojom::PageActionTrigger trigger,
+    ::toolbar_ui_api::mojom::ToolbarUIService::OnPageActionClickCallback
+        callback) {
+  if (location_bar_) {
+    location_bar_->page_action_control().OnPageActionClick(action_id, trigger,
+                                                           std::move(callback));
+  } else {
+    std::move(callback).Run(base::unexpected(Error::New(
+        Code::kFailedPrecondition,
+        base::StringPrintf("WebUIToolbarWebView: cannot click page action "
+                           "(action_id=%d, trigger=%d) without location_bar_",
+                           static_cast<int>(action_id),
+                           static_cast<int>(trigger)))));
+  }
+}
+
+void WebUIToolbarWebView::OnPageActionChipShowingChanged(
+    ::toolbar_ui_api::mojom::PageActionId action_id,
+    ::toolbar_ui_api::mojom::ToolbarUIService::
+        OnPageActionChipShowingChangedCallback callback) {
+  if (location_bar_) {
+    location_bar_->page_action_control().OnPageActionChipShowingChanged(
+        action_id, std::move(callback));
+  } else {
+    std::move(callback).Run(base::unexpected(Error::New(
+        Code::kFailedPrecondition,
+        base::StringPrintf("WebUIToolbarWebView: cannot change page action "
+                           "chip showing (action_id=%d) without location_bar_",
+                           static_cast<int>(action_id)))));
+  }
+}
+
 void WebUIToolbarWebView::MaybeInitializePageDependentControls() {
   if (!GetWidget() ||
       initialization_state_ != InitializationState::kInitialized) {
@@ -712,6 +747,13 @@ void WebUIToolbarWebView::DidFinishNavigation(
   auto shutting_down = bwi == nullptr;
   if (shutting_down) {
     LOG(WARNING) << "browser is shutting down, aborting Init()";
+    return;
+  }
+
+  // Devtools navigates to about:blank when doing a "reload" in performance
+  // tracing.
+  if (base::FeatureList::IsEnabled(features::kDebugTopChromeWebUI) &&
+      navigation_handle->GetURL().IsAboutBlank()) {
     return;
   }
   auto* ui = GetWebUIToolbarUI();
@@ -1161,6 +1203,16 @@ void WebUIToolbarWebView::OnContentSettingChanged(
   if (!mojo::Equals(state, last_queued_state_.location_bar_state
                                ->content_setting_image_states)) {
     last_queued_state_.location_bar_state->content_setting_image_states =
+        std::move(state);
+    PostPushNavigationState();
+  }
+}
+
+void WebUIToolbarWebView::OnPageActionChanged(
+    std::vector<toolbar_ui_api::mojom::PageActionStatePtr> state) {
+  if (!mojo::Equals(
+          state, last_queued_state_.location_bar_state->page_action_states)) {
+    last_queued_state_.location_bar_state->page_action_states =
         std::move(state);
     PostPushNavigationState();
   }

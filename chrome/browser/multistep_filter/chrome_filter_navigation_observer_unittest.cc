@@ -66,7 +66,9 @@ class MockMultistepFilterService : public MultistepFilterService {
 
   MOCK_METHOD(void,
               ExtractAnnotation,
-              (int64_t navigation_id, const GURL& url),
+              (int64_t navigation_id,
+               const GURL& url,
+               std::optional<UrlFilterSuggestion> applied_suggestion),
               (override));
   MOCK_METHOD(
       void,
@@ -84,11 +86,11 @@ class ChromeFilterNavigationObserverWrapper
  public:
   using ChromeFilterNavigationObserver::ChromeFilterNavigationObserver;
 
-  FilterNavigationObserver* observer() { return observer_.get(); }
+  ContentFilterNavigationObserver* observer() { return observer_.get(); }
 };
 
-// Verifies the lifecycle management of the internal FilterNavigationObserver
-// and tests the real UiDelegateImpl behavior.
+// Verifies the lifecycle management of the internal
+// ContentFilterNavigationObserver and tests the real UiDelegateImpl behavior.
 class ChromeFilterNavigationObserverTest
     : public ChromeRenderViewHostTestHarness {
  public:
@@ -254,13 +256,13 @@ TEST_F(ChromeFilterNavigationObserverTest, NavigationWithController) {
   filter_ui_controller.emplace(*mock_tab_);
 
   const GURL url("https://www.example.com");
-  EXPECT_CALL(*mock_service(), ExtractAnnotation(_, url));
+  EXPECT_CALL(*mock_service(), ExtractAnnotation(_, url, _));
   NavigateAndGetCallback(url);
 }
 
 TEST_F(ChromeFilterNavigationObserverTest, NavigationWithNullController) {
   const GURL url("https://www.example.com");
-  EXPECT_CALL(*mock_service(), ExtractAnnotation(_, url));
+  EXPECT_CALL(*mock_service(), ExtractAnnotation(_, url, _));
   NavigateAndGetCallback(url);
 }
 

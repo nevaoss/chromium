@@ -15,6 +15,8 @@
 #include "third_party/blink/renderer/core/layout/geometry/axis.h"
 #include "third_party/blink/renderer/core/layout/layout_box.h"
 #include "third_party/blink/renderer/core/paint/paint_layer_scrollable_area.h"
+#include "third_party/blink/renderer/platform/geometry/physical_direction.h"
+#include "third_party/blink/renderer/platform/text/writing_direction_mode.h"
 
 namespace blink {
 
@@ -23,7 +25,8 @@ ScrollSnapshotTimeline::ScrollSnapshotTimeline(Document* document)
       PostLayoutSnapshotClient(document->GetFrame()) {}
 
 bool ScrollSnapshotTimeline::IsResolved() const {
-  return ScrollContainer();
+  std::optional<PhysicalDirection> direction = GetResolvedScrollDirection();
+  return direction && ScrollContainer(ToPhysicalAxis(*direction));
 }
 
 bool ScrollSnapshotTimeline::IsActive() const {
@@ -160,12 +163,17 @@ void ScrollSnapshotTimeline::ScheduleNextService() {
   NOTREACHED();
 }
 
+
 LayoutBox* ScrollSnapshotTimeline::ComputeScrollContainer(
-    Node* resolved_source) {
+    Node* resolved_source,
+    PhysicalAxis physical_axis) {
   auto* container_node = DynamicTo<ContainerNode>(resolved_source);
   auto* box =
       container_node ? container_node->GetLayoutBoxForScrolling() : nullptr;
-  if (box && box->GetScrollableArea()->ScrollableAxes()) {
+  const PhysicalAxes axes = physical_axis == PhysicalAxis::kHorizontal
+                                ? kPhysicalAxesHorizontal
+                                : kPhysicalAxesVertical;
+  if (box && (box->GetScrollableArea()->ScrollableAxes() & axes)) {
     return box;
   }
   return nullptr;
@@ -262,16 +270,18 @@ void ScrollSnapshotTimeline::UpdateCompositorTimeline() {
   ToScrollTimeline(compositor_timeline_.get())
       ->UpdateScrollerIdAndScrollOffsets(
           scroll_timeline_util::GetCompositorScrollElementId(ResolvedSource()),
+          scroll_timeline_util::ToCompositorScrollDirection(
+              GetResolvedScrollDirection()),
           GetResolvedScrollOffsets());
 }
 
 void ScrollSnapshotTimeline::CalculateScrollLimits(
     PaintLayerScrollableArea* scrollable_area,
-    ScrollOrientation physical_orientation,
+    PhysicalAxis physical_orientation,
     TimelineState* state) const {
   ScrollOffset scroll_dimensions = scrollable_area->MaximumScrollOffset() -
                                    scrollable_area->MinimumScrollOffset();
-  double end_offset = physical_orientation == kHorizontalScroll
+  double end_offset = physical_orientation == PhysicalAxis::kHorizontal
                           ? scroll_dimensions.x()
                           : scroll_dimensions.y();
   state->scroll_limits = std::make_optional<ScrollOffsets>(0, end_offset);

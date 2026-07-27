@@ -284,13 +284,21 @@ class CORE_EXPORT LayoutBox : public LayoutBoxModelObject {
   PhysicalRect PhysicalContractedBoxRect(ContractionEdge) const;
 
   // Get the padding box rectangle (same as "client rect").
-  PhysicalRect PhysicalPaddingBoxRect() const;
+  PhysicalRect PhysicalPaddingBoxRect() const {
+    NOT_DESTROYED();
+    return PhysicalContractedBoxRect(kContractToPaddingEdge);
+  }
   // Get the content box rectangle.
-  PhysicalRect PhysicalContentBoxRect() const;
-  // Get the content box left/top edge.
-  PhysicalOffset PhysicalContentBoxOffset() const;
-  // Get the content box size.
-  PhysicalSize PhysicalContentBoxSize() const;
+  PhysicalRect PhysicalContentBoxRect() const {
+    NOT_DESTROYED();
+    return PhysicalContractedBoxRect(kContractToContentEdge);
+  }
+
+  LayoutUnit ContentLogicalWidth() const {
+    NOT_DESTROYED();
+    const PhysicalSize size = PhysicalContentBoxRect().size;
+    return IsHorizontalWritingMode() ? size.width : size.height;
+  }
 
   // The content box converted to absolute coords (taking transforms into
   // account).
@@ -370,16 +378,6 @@ class CORE_EXPORT LayoutBox : public LayoutBoxModelObject {
   PhysicalSize ContentSize() const {
     NOT_DESTROYED();
     return PhysicalSize(ContentWidth(), ContentHeight());
-  }
-  LayoutUnit ContentLogicalWidth() const {
-    NOT_DESTROYED();
-    return StyleRef().IsHorizontalWritingMode() ? ContentWidth()
-                                                : ContentHeight();
-  }
-  LayoutUnit ContentLogicalHeight() const {
-    NOT_DESTROYED();
-    return StyleRef().IsHorizontalWritingMode() ? ContentHeight()
-                                                : ContentWidth();
   }
 
   // CSS intrinsic sizing getters.

@@ -934,7 +934,15 @@ void ContextualTasksUI::RemoveObserver(
 }
 
 bool ContextualTasksUI::IsShownInTab() {
-  return tabs::TabInterface::MaybeGetFromContents(web_ui()->GetWebContents());
+  tabs::TabInterface* tab =
+      tabs::TabInterface::MaybeGetFromContents(web_ui()->GetWebContents());
+  bool is_in_tab = (tab != nullptr);
+#if BUILDFLAG(IS_ANDROID)
+  // On Android, verify this WebUI is the primary contents of the tab.
+  is_in_tab = tab && web_ui()->GetWebContents() == tab->GetContents();
+#endif
+
+  return is_in_tab;
 }
 
 BrowserWindowInterface* ContextualTasksUI::GetBrowser() {
@@ -1362,6 +1370,29 @@ bool ContextualTasksUI::CanUpdateSuggestedTabContext(
 
   if (!composebox_handler_) {
     return false;
+  }
+
+  // If the WebUI is hosted in the side panel, ensure context updates are only
+  // suggested if the panel is actively open for the task associated with this
+  // WebUI instance.
+  //
+  // This prevents a race condition when switching to an unrelated tab: the
+  // tab switch triggers the panel to close asynchronously, but during that
+  // transition, events (like task updates) can still notify the WebUI of the
+  // new active tab. If notified, the WebUI would immediately trigger an
+  // automatic screenshot of the unrelated tab.
+  if (!IsShownInTab()) {
+    auto* controller = GetPanelController();
+    if (!controller || !controller->IsPanelOpenForContextualTask()) {
+      return false;
+    }
+    std::optional<contextual_tasks::ContextualTask> current_task =
+        controller->GetCurrentTask();
+    bool task_matches = current_task && task_id_ &&
+                        current_task->GetTaskId() == task_id_.value();
+    if (!task_matches) {
+      return false;
+    }
   }
 
   if (!is_contextual_tasks_eligible_on_init_) {

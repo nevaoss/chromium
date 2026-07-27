@@ -30,8 +30,8 @@
 #include "chrome/browser/signin/signin_ui_delegate.h"
 #include "chrome/browser/signin/signin_util.h"
 #include "chrome/browser/sync/sync_service_factory.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/navigator/browser_navigator.h"
 #include "chrome/browser/ui/navigator/browser_navigator_params.h"
@@ -147,6 +147,14 @@ SigninUiDelegate* GetSigninUiDelegate() {
 
 }  // namespace
 
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+void ShowCrossDeviceSigninQrBubble(BrowserWindowInterface* browser,
+                                   base::OnceClosure closing_callback) {
+  GetSigninUiDelegate()->ShowCrossDeviceSigninQrBubble(
+      browser, std::move(closing_callback));
+}
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
+
 std::u16string GetAuthenticatedUsername(Profile* profile) {
   DCHECK(profile);
   std::string user_display_name;
@@ -234,7 +242,8 @@ void SignInFromSingleAccountPromo(Profile* profile,
             : signin_metrics::PromoAction::
                   PROMO_ACTION_NEW_ACCOUNT_EXISTING_ACCOUNT;
     GetSigninUiDelegate()->ShowSigninUI(profile, /*enable_sync=*/false,
-                                        access_point, new_account_promo_action);
+                                        access_point, new_account_promo_action,
+                                        /*extension_name=*/"");
     return;
   }
 
@@ -307,7 +316,8 @@ void EnableSyncFromMultiAccountPromo(Profile* profile,
             : signin_metrics::PromoAction::
                   PROMO_ACTION_NEW_ACCOUNT_EXISTING_ACCOUNT;
     GetSigninUiDelegate()->ShowSigninUI(profile, /*enable_sync=*/true,
-                                        access_point, new_account_promo_action);
+                                        access_point, new_account_promo_action,
+                                        /*extension_name=*/"");
     return;
   }
 

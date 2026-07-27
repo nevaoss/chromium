@@ -56,13 +56,25 @@ supersedes the autonomous loops in `edit-code`.
 
 ### Scope & Proactivity
 
-- **Strict Scope:** Focus exclusively on the identified histogram. Do NOT
-  suggest removing additional histograms, even if they are related or also
-  expired.
+- **Primary Scope:** Focus exclusively on the identified histogram by default.
+  Do NOT suggest removing random additional histograms across the file or
+  component just because they are expired.
+- **Exception for Coupled/Shared Recording Code:** If you discover that other
+  histograms share the exact same recording logic, helper methods, or calculated
+  variables (e.g., co-located in the same helper function or branching from the
+  same condition) as the target histogram, you MAY bundle their removal into the
+  same cleanup plan IF AND ONLY IF:
+  1. **Expiry Verification:** You confirm in `histograms.xml` that the co-located
+     histograms are also expired and lack the `<expired_intentionally>` tag.
+  2. **Safety Verification:** You perform the same safety checks (no test
+     dependencies, no external repo references) for each bundled histogram.
+  3. **Atomic Benefit:** Removing them together cleanly eliminates shared boilerplate
+     (e.g., timer calculations, string building, parameter passing) that would
+     otherwise be left as dead or awkward code.
 - **Related Dead Code:** If you find dead code (e.g., constants, enums, or
-  helper methods) that is directly and exclusively related to the histogram
-  being removed, include its removal in the cleanup plan. Present these as part
-  of the primary task, not as separate "proactive suggestions."
+  helper methods, or calculated variables like timers) that is directly related
+  to the histogram(s) being removed, include its removal in the cleanup plan.
+  Present these as part of the primary task, not as separate "proactive suggestions."
 
 ## Workflow
 
@@ -136,13 +148,11 @@ supersedes the autonomous loops in `edit-code`.
 
 ### Branch Creation
 
-Inform the user: "Preparing workspace: creating a new branch..."
+1. **Branch Creation**: Follow the **Branch Creation** section in
+   `../hub/references/shared_workflows.md` using the branch name
+   `cleanup-<HistogramName>`.
 
-1. **Branch Creation:** Run `git new-branch cleanup-<HistogramName>` to create a
-   new branch for this specific cleanup, ensuring it doesn't chain with previous
-   commits.
-
-### Implementation
+### Refactoring & Implementation
 
 1. **Apply Changes:** Make the changes directly (do NOT delegate). Apply the
    code modifications for the candidate histogram. When removing recording
@@ -154,7 +164,7 @@ Inform the user: "Preparing workspace: creating a new branch..."
    remain in the codebase. Each individual change must have a corresponding
    'What & Why' explanation provided to the user.
 
-### Review & Validation
+### Verification & Validation
 
 1. **Linting & Formatting:**
 
@@ -164,10 +174,10 @@ Inform the user: "Preparing workspace: creating a new branch..."
    - **Code Formatting:** Execute `git cl format` to format the modified source
      code. Address any errors that are reported.
 
-2. **Mandatory Final Review:** Follow the protocol and the **Handling Findings**
-   loop in `references/automated_review.md` for the removal: `<HistogramName>`.
-   Do NOT skip this step. Do NOT proceed to the Submission phase until the
-   review returns `PASS`.
+2. **Mandatory Final Review:** Execute the **Shared Automated Review Protocol**
+   defined in `../hub/references/shared_automated_review.md`, using the specific
+   prompt overrides in `references/automated_review.md`. Do NOT skip this step.
+   Do NOT proceed to the Submission phase until the review returns `PASS`.
 
 ### Submission
 
@@ -179,22 +189,19 @@ Inform the user: "Preparing workspace: creating a new branch..."
    - **Interactive Pause:** Do NOT proceed until the bug handling is resolved
      and you have a Bug ID (or the user has chosen to skip).
 
-2. **Commit:**
+2. **Commit**: Follow the **Commit** section in
+   `../hub/references/shared_workflows.md` using the following commit message
+   template:
 
-   - **Draft Message:** Draft a commit message following this template:
-     ```
-     [histogram-cleanup] Remove expired histogram: <HistogramName>
+   ```
+   [histogram-cleanup] Remove expired histogram: <HistogramName>
 
-     This histogram expired on <ExpiryDate>.
+   This histogram expired on <ExpiryDate>.
 
-     Bug: <BugID>
-     ```
-   - **Execution:** Display the drafted commit message to the user. Then,
-     autonomously stage ONLY the specific files modified during this task using
-     `git add` and execute the commit:
-     ```bash
-     git commit -m "<drafted message>"
-     ```
+   This change was generated using the skill histogram-cleanup.
+
+   Bug: 499059525, <BugID>
+   ```
 
 3. **Submission Pipeline:** Follow the **Upload to Gerrit** section in
    `../hub/references/shared_workflows.md` to handle the upload.

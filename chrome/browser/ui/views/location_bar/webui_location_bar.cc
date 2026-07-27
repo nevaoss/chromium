@@ -13,6 +13,7 @@
 #include "build/buildflag.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_command_controller.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/interaction/browser_elements.h"
@@ -80,7 +81,9 @@ WebUILocationBar::WebUILocationBar(Browser* browser,
     : LocationBar(browser ? browser->command_controller() : nullptr),
       browser_(browser),
       delegate_(delegate),
-      content_setting_image_control_(this) {
+      content_setting_image_control_(this),
+      page_action_control_(
+          browser ? browser->browser_actions()->root_action_item() : nullptr) {
   permission_dashboard_ = std::make_unique<WebUIPermissionDashboard>(this);
   permission_dashboard_controller_ =
       std::make_unique<PermissionDashboardController>(
@@ -105,6 +108,7 @@ void WebUILocationBar::Init(WebUIToolbarControlDelegate* delegate) {
       /*location_bar=*/this, /*presenter_delegate=*/*this);
 
   content_setting_image_control_.Init(delegate);
+  page_action_control_.Init(delegate);
 
   // Unretained is safe because `this` owns `moved_subscription_`.
   moved_subscription_ =
@@ -168,9 +172,17 @@ void WebUILocationBar::UpdateFocusBehavior(bool toolbar_visible) {
 }
 
 void WebUILocationBar::UpdateContentSettingsIcons() {
+  // If the LHS permission chip models changed visibility or state, propagate
+  // the updated LHS dashboard state to the WebUI.
+  if (UpdateContentSettingModels()) {
+    UpdateLhsChipsState();
+  }
+}
+
+bool WebUILocationBar::UpdateContentSettingModels() {
   content::WebContents* web_contents = GetWebContents();
   if (!web_contents) {
-    return;
+    return false;
   }
 
   bool permission_dashboard_changed = false;
@@ -203,14 +215,12 @@ void WebUILocationBar::UpdateContentSettingsIcons() {
   }
 
   if (!toolbar_delegate_) {
-    return;
+    return permission_dashboard_changed;
   }
   toolbar_delegate_->OnContentSettingChanged(
       content_setting_image_control_.ProcessContentSettingState(web_contents));
 
-  if (permission_dashboard_changed) {
-    UpdateLhsChipsState();
-  }
+  return permission_dashboard_changed;
 }
 
 void WebUILocationBar::SaveStateToContents(content::WebContents* contents) {
@@ -365,6 +375,14 @@ void WebUILocationBar::Update(content::WebContents* contents) {
   } else {
     omnibox_view_->Update();
   }
+
+  UpdateContentSettingModels();
+
+  content::WebContents* active_contents = contents;
+  if (!active_contents && browser_) {
+    active_contents = browser_->tab_strip_model()->GetActiveWebContents();
+  }
+  page_action_control_.UpdateController(active_contents);
 
   OnChanged();
 }

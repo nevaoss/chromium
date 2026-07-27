@@ -646,7 +646,7 @@ BASE_FEATURE_PARAM(int,
                    /*default_value=*/base::MiB(350).InBytes());
 
 BASE_FEATURE(kReportingApiEnableVariationsHeaders,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kNetworkContextDirectReceiver, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -673,7 +673,7 @@ BASE_FEATURE_PARAM(bool,
                    &kRestrictForbiddenSecurityHeaders,
                    false);
 
-BASE_FEATURE(kDeclarativePerformanceObserver,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kBrowserInitiatedFileUploadValidation,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 }  // namespace network::features

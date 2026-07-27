@@ -54,8 +54,9 @@ class SidePanelCoordinatorAndroid : public SidePanelUIBase {
   void Init(JNIEnv* env);
   void Destroy(JNIEnv* env);
   bool HasContentToShow(JNIEnv* env);
-  void OnContentRemoved(JNIEnv* env);
-  void OnContentPopulated(JNIEnv* env);
+  void OnPanelClosed(JNIEnv* env);
+  void OnPanelOpened(JNIEnv* env);
+  void OnPanelContentReplaced(JNIEnv* env);
   void OnWillAutoClose(JNIEnv* env);
   void OnWillAutoRestore(JNIEnv* env);
 
@@ -111,43 +112,70 @@ class SidePanelCoordinatorAndroid : public SidePanelUIBase {
 
   base::android::ScopedJavaLocalRef<jobject> java_coordinator() const;
 
-  // Handles the JNI call to Java to populate the side panel UI.
-  void PopulateJavaSidePanel(const base::android::JavaRef<jobject>& view,
-                             bool suppress_animations);
-
-  // Handles opening a new entry, when none was previously showing.
-  void PopulateNewEntry(
+  // Starts opening the side panel.
+  // This should only be called when the side panel isn't currently shown.
+  // `OnPanelOpened()` will be called when the side panel is fully opened.
+  void StartOpeningPanel(
       SidePanelEntry* entry,
       const UniqueKey& unique_key,
       bool suppress_animations,
       std::unique_ptr<SidePanelNativeViewAndroid> native_view);
 
-  // Handles replacing the active entry with a new one.
-  void ReplaceActiveEntry(
+  // Starts replacing the entry shown in the side panel.
+  // This should only be called when the side panel is already shown.
+  // `OnPanelContentReplaced()` will be called when the side panel content is
+  // fully replaced.
+  void StartReplacingPanelContent(
       SidePanelEntry* new_entry,
       const UniqueKey& new_key,
-      std::optional<SidePanelOpenTrigger> open_trigger,
+      SidePanelOpenTrigger open_trigger,
       std::unique_ptr<SidePanelNativeViewAndroid> native_view);
+
+  // Immediately ends all ongoing animations.
+  //
+  // This will also complete all state updates scheduled at the end of the
+  // animations and ensure the side panel is in a stable state.
+  void EndAnimations();
 
   bool CanShowEntryForKey(const UniqueKey& key) const;
 
   // The current state of the Side Panel.
   //
-  // A SidePanelEntry is considered current/active as soon as the state becomes
-  // `kOpening` and the entry will become inactive when the state becomes
-  // `kClosed`.
+  // `kOpening`: set as soon as the side panel starts opening.
+  // `kShown`: set after the side panel is fully opened.
+  // `kClosing`: set as soon as the side panel starts closing.
+  // `kClosed`: set after the side panel is fully closed.
+  //
+  // State changes always start from a _stable_ state (`kOpening` or `kShown`).
+  // If a `Show()`/`Close()` request is received when the state is `kOpening` or
+  // `kClosing`, we'll always reach a stable state first, then make state
+  // changes for the new request.
+  //
+  // For example, if a `Close()` request is received when the state is
+  // `kOpening`, we'll fast-forward the opening animation to its end so the
+  // state becomes `kShown`, then change it to `kClosing`.
+  //
+  // In other words:
+  // - `kOpening` will always be followed by `kShown`.
+  // - `kClosing` will always be followed by `kClosed`.
+  // - We don't allow state transitions from `kOpening` to `kClosing` or vice
+  //   versa.
+  //
+  // This makes the state transitions easier to reason about and less
+  // error-prone.
   SidePanelState state_ = SidePanelState::kClosed;
 
-  // Tracks the hide reason for the current close operation.
+  // Tracks the `SidePanelEntryHideReason` for the current "close side panel" or
+  // "replace side panel content" operation.
   std::optional<SidePanelEntryHideReason> pending_hide_reason_;
+
+  // Tracks the entry that is being replaced since the "replace side panel
+  // content" operation is async on the Java side.
+  raw_ptr<SidePanelEntry> pending_replaced_entry_ = nullptr;
 
   // A weak reference to the Java `SidePanelCoordinatorAndroid`, which is
   // the sole owner of the C++ `SidePanelCoordinatorAndroid`.
   JavaObjectWeakGlobalRef java_coordinator_;
-
-  // Tracks the previous entry that is being replaced, which we keep in state
-  // until animations have completed and it is fully replaced.
-  raw_ptr<SidePanelEntry> pending_replaced_entry_ = nullptr;
 
   // Whether there is insufficient space to show the side panel.
   bool has_insufficient_space_ = false;

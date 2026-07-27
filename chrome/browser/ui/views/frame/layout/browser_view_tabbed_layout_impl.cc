@@ -25,13 +25,14 @@
 #include "chrome/browser/ui/views/frame/custom_corners.h"
 #include "chrome/browser/ui/views/frame/custom_corners_background.h"
 #include "chrome/browser/ui/views/frame/custom_floating_corner.h"
-#include "chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.h"
 #include "chrome/browser/ui/views/frame/layout/browser_view_layout_delegate.h"
 #include "chrome/browser/ui/views/frame/layout/browser_view_layout_impl.h"
 #include "chrome/browser/ui/views/frame/layout/browser_view_layout_params.h"
 #include "chrome/browser/ui/views/frame/main_background_region_view.h"
 #include "chrome/browser/ui/views/frame/multi_contents_view.h"
 #include "chrome/browser/ui/views/frame/shadow_frame_view.h"
+#include "chrome/browser/ui/views/frame/tab_strip_region_view.h"
+#include "chrome/browser/ui/views/frame/vertical_tab_strip_background_blur_backdrop.h"
 #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
 #include "chrome/browser/ui/views/infobars/infobar_container_view.h"
 #include "chrome/browser/ui/views/side_panel/side_panel.h"
@@ -39,6 +40,7 @@
 #include "chrome/browser/ui/views/tabs/projects/projects_panel_utils.h"
 #include "chrome/browser/ui/views/tabs/projects/projects_panel_view.h"
 #include "ui/base/ui_base_features.h"
+#include "ui/compositor/layer.h"
 #include "ui/gfx/geometry/insets.h"
 #include "ui/gfx/geometry/outsets.h"
 #include "ui/gfx/geometry/rounded_corners_f.h"
@@ -790,6 +792,15 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
                     layout_data_->tab_strip_type == TabStripType::kVertical);
   }
 
+  if (IsParentedTo(views().vertical_tab_strip_background_blur_backdrop,
+                   views().browser_view)) {
+    layout.AddChild(
+        views().vertical_tab_strip_background_blur_backdrop,
+        vertical_tab_strip_bounds,
+        features::kBackgroundBlurOpacity.Get() < 1.0 &&
+            layout_data_->vertical_tab_strip_animation.expand_on_hover > 0.0f);
+  }
+
   // Position the vertical tabstrip top corner.
   if (IsParentedTo(views().vertical_tab_strip_top_corner,
                    views().browser_view)) {
@@ -1413,9 +1424,20 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
 
     if (features::IsGlassFrameEnabled()) {
       if (!is_fullscreen(layout_data_->window_state)) {
-        frame_color.opacity = static_cast<float>(animation.expand_on_hover);
+        frame_color.opacity = 0.0f;
       }
-      vertical_tabs_background->SetPrimaryColor(frame_color);
+      // Use a curve that goes very close to 1 very quickly, but still has a
+      // visible fade. This isn't perfect, but hopefully with glass
+      // expand-on-hover it will improve.
+      const float scaled_percent =
+          std::powf(static_cast<float>(animation.expand_on_hover), 0.2f);
+      auto vertical_tabs_background_color = frame_color;
+      static const float expand_on_hover_opacity =
+          static_cast<float>(features::kBackgroundBlurOpacity.Get());
+      vertical_tabs_background_color.opacity =
+          (1.0f - scaled_percent) * frame_color.opacity +
+          scaled_percent * expand_on_hover_opacity;
+      vertical_tabs_background->SetPrimaryColor(vertical_tabs_background_color);
     }
 
     // Ensure that corners of the window remain rounded.
@@ -1540,6 +1562,17 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
       views().vertical_tab_strip_top_corner->SetAlpha(frame_color.opacity);
       views().vertical_tab_strip_bottom_corner->SetAlpha(frame_color.opacity);
       vertical_tabs_background->SetCutoutFrom(tab_strip_cutout_views);
+
+      // Has to be done after most other adjustments to ensure the correct
+      // outline path.
+      vertical_tabs_background->SetUseBackgroundBlur(animation.expand_on_hover >
+                                                     0.0);
+      if (IsParentedToAndVisible(
+              views().vertical_tab_strip_background_blur_backdrop,
+              views().browser_view)) {
+        views().vertical_tab_strip_background_blur_backdrop->UpdateGeometry(
+            views().vertical_tab_strip_region_view, animation.expand_on_hover);
+      }
     }
   } else if (layout_data_->tab_strip_type == TabStripType::kHorizontal &&
              !is_fullscreen(layout_data_->window_state) &&

@@ -211,6 +211,7 @@ struct SmartComposeStats {
 };
 
 struct AutocompleteResult {
+  int32 query_id;
   uint32 sequence_id;
   mojo_base.mojom.String16 input;
   // Map of suggestion group IDs to their respective info.
@@ -319,12 +320,14 @@ interface PageHandler {
 
   // Queries autocomplete matches from the browser. `cursor_position` is cursor
   // position in `input`.
-  QueryAutocomplete(mojo_base.mojom.String16 input,
+  QueryAutocomplete(int32 query_id,
+                    mojo_base.mojom.String16 input,
                     bool prevent_inline_autocomplete,
                     uint32 cursor_position);
 
   // Queries autocomplete matches from the browser with preferred SuggestInventory.
-  QueryAutocompleteWithSuggestInventory(mojo_base.mojom.String16 input,
+  QueryAutocompleteWithSuggestInventory(int32 query_id,
+                                        mojo_base.mojom.String16 input,
                                         bool prevent_inline_autocomplete,
                                         uint32 cursor_position,
                                         SuggestInventory suggest_inventory);
@@ -345,7 +348,8 @@ interface PageHandler {
                         bool alt_key,
                         bool ctrl_key,
                         bool meta_key,
-                        bool shift_key);
+                        bool shift_key,
+                        bool via_keyboard);
 
   // Sets the Smart Compose stats to be passed during the next navigation.
   SetSmartComposeStats(SmartComposeStats smart_compose_stats);

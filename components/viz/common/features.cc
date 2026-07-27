@@ -408,7 +408,7 @@ BASE_FEATURE(kCrosContentAdjustedRefreshRate,
 BASE_FEATURE(kNoCompositorFrameAcks, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<int> kNumberPendingFramesUntilThrottle{
     &kNoCompositorFrameAcks, "pending_frames", 1};
-BASE_FEATURE(kDisplaySchedulerAsClient, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kDisplaySchedulerAsClient, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables prioritization of the BeginFrame InputClient (like
 // FlingSchedulerAndroid) so it can dispatch events before the renderer
@@ -420,12 +420,6 @@ BASE_FEATURE(kFlingSchedulingImprovements, base::FEATURE_DISABLED_BY_DEFAULT);
 // This is a temporary flag to work as a kill switch for the optimization and
 // should be removed as soon as we confirm that the optimization is stable.
 BASE_FEATURE(kRpdqFilterLookupOptimizations, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Use correct default ColorSpace in `SharedMemoryVideoFramePool::WrapBuffer`
-// when creating a VideoFrame instead of when it is used in
-// `FrameSinkVideoCapturerImpl::MaybeCaptureFrame`.
-BASE_FEATURE(kSharedMemoryVFPoolUseCorrectColorSpace,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, bypasses deadlocks caused by outdated activation dependency
 // tokens when parent frame submission lags behind child surface execution.

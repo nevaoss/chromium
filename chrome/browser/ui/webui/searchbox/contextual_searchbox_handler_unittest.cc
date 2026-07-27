@@ -42,7 +42,6 @@
 #include "chrome/browser/ui/views/drive_picker_host/drive_picker_host_controller.h"
 #include "chrome/browser/ui/views/drive_picker_host/drive_picker_sanitizer.h"
 #include "chrome/browser/ui/webui/cr_components/composebox/composebox_handler.h"
-#include "chrome/browser/ui/webui/drive_picker_host/drive_disclaimer_controller.h"
 #include "chrome/browser/ui/webui/drive_picker_host/drive_picker_host_request.h"
 #include "chrome/browser/ui/webui/new_tab_page/composebox/variations/composebox_fieldtrial.h"
 #include "chrome/browser/ui/webui/searchbox/contextual_searchbox_test_utils.h"
@@ -51,6 +50,7 @@
 #include "chrome/common/webui_url_constants.h"
 #include "components/contextual_search/contextual_search_metrics_recorder.h"
 #include "components/contextual_search/contextual_search_service.h"
+#include "components/contextual_search/footprints/public/drive_disclaimer_controller.h"
 #include "components/contextual_search/footprints/public/fpop_service.h"
 #include "components/contextual_search/footprints/public/proto/footprints_oneplatform.pb.h"
 #include "components/contextual_search/internal/test_composebox_query_controller.h"
@@ -1963,7 +1963,8 @@ TEST_F(ContextualSearchboxHandlerTest, OpenAutocompleteMatch_ZeroSuggestClick) {
 
     handler().OpenAutocompleteMatch(0, GURL("https://www.google.com"),
                                     /*are_matches_showing=*/true, 0, false,
-                                    false, false, false);
+                                    false, false, false,
+                                    /*via_keyboard=*/false);
 
     histogram_tester().ExpectBucketCount(
         "ContextualSearch.ZeroSuggestClickV2.IsContextual.NewTabPage", false,
@@ -1997,7 +1998,8 @@ TEST_F(ContextualSearchboxHandlerTest, OpenAutocompleteMatch_ZeroSuggestClick) {
 
     handler().OpenAutocompleteMatch(0, GURL("https://www.contextual.com"),
                                     /*are_matches_showing=*/true, 0, false,
-                                    false, false, false);
+                                    false, false, false,
+                                    /*via_keyboard=*/false);
 
     histogram_tester().ExpectBucketCount(
         "ContextualSearch.ZeroSuggestClickV2.IsContextual.NewTabPage", true, 1);
@@ -2044,7 +2046,8 @@ TEST_F(ContextualSearchboxHandlerTest,
 
     handler().OpenAutocompleteMatch(0, GURL("https://www.google.com"),
                                     /*are_matches_showing=*/true, 0, false,
-                                    false, false, false);
+                                    false, false, false,
+                                    /*via_keyboard=*/false);
 
     histogram_tester().ExpectBucketCount(
         "ContextualSearch.TypedSuggestNavigation.IsVerbatim.NewTabPage", true,
@@ -2082,7 +2085,8 @@ TEST_F(ContextualSearchboxHandlerTest,
 
     handler().OpenAutocompleteMatch(
         1, GURL("https://www.google.com/search?q=suggestion"),
-        /*are_matches_showing=*/true, 0, false, false, false, false);
+        /*are_matches_showing=*/true, 0, false, false, false, false,
+        /*via_keyboard=*/false);
 
     histogram_tester().ExpectBucketCount(
         "ContextualSearch.TypedSuggestNavigation.IsVerbatim.NewTabPage", false,
@@ -2163,7 +2167,7 @@ TEST_F(ContextualSearchboxHandlerTest, QueryAutocomplete_SetsLensInputs) {
   handler().SetAutocompleteControllerForTesting(
       std::move(autocomplete_controller));
 
-  handler().QueryAutocomplete(u"test", false, 0);
+  handler().QueryAutocomplete(0, u"test", false, 0);
 
   EXPECT_TRUE(input.lens_overlay_suggest_inputs().has_value());
   EXPECT_EQ(input.lens_overlay_suggest_inputs()->encoded_image_signals(),
@@ -2195,7 +2199,7 @@ TEST_F(ContextualSearchboxHandlerTest,
     handler().SetAutocompleteControllerForTesting(
         std::move(autocomplete_controller));
 
-    handler().QueryAutocomplete(u"test", false, 0);
+    handler().QueryAutocomplete(0, u"test", false, 0);
     EXPECT_TRUE(input.lens_overlay_suggest_inputs().has_value());
     EXPECT_EQ(input.lens_overlay_suggest_inputs()->encoded_image_signals(),
               "xyz");
@@ -2218,7 +2222,7 @@ TEST_F(ContextualSearchboxHandlerTest,
     handler().SetAutocompleteControllerForTesting(
         std::move(autocomplete_controller));
 
-    handler().QueryAutocomplete(u"test", false, 0);
+    handler().QueryAutocomplete(0, u"test", false, 0);
     EXPECT_TRUE(input.lens_overlay_suggest_inputs().has_value());
     EXPECT_EQ(input.lens_overlay_suggest_inputs()->encoded_image_signals(),
               "xyz");
@@ -2827,6 +2831,66 @@ TEST_F(ContextualSearchboxHandlerTestTabsTest,
     handler().OnActiveTabChanged(*tab_list(), nullptr);
     mock_searchbox_page_.FlushForTesting();
   }
+}
+
+TEST_F(ContextualSearchboxHandlerTestTabsTest,
+       ActiveTabNavigationObserverNotifies) {
+  tabs::TabInterface* tab = AddTab(GURL("https://example.com"));
+
+  mock_searchbox_page_.receiver_.reset();
+  handler_ = std::make_unique<FakeContextualSearchboxHandler>(
+      mojo::PendingReceiver<searchbox::mojom::PageHandler>(),
+      mock_searchbox_page_.BindAndGetRemote(), profile(), web_contents(),
+      std::make_unique<TestOmniboxClient>(), base::BindLambdaForTesting([&]() {
+        return contextual_session_handle_.get();
+      }));
+
+  EXPECT_CALL(mock_searchbox_page_, OnTabStripChanged).Times(1);
+
+  content::WebContents* active_contents = tab->GetContents();
+  content::WebContentsTester::For(active_contents)
+      ->NavigateAndCommit(GURL("https://example.com/new_path"));
+
+  mock_searchbox_page_.FlushForTesting();
+}
+
+TEST_F(ContextualSearchboxHandlerTestTabsTest,
+       ActiveTabNavigationObserverUpdatesOnActiveTabChanged) {
+  tabs::TabInterface* tab1 = AddTab(GURL("https://example.com/tab1"));
+  tabs::TabInterface* tab2 = AddTab(GURL("https://example.com/tab2"));
+
+  mock_searchbox_page_.receiver_.reset();
+  handler_ = std::make_unique<FakeContextualSearchboxHandler>(
+      mojo::PendingReceiver<searchbox::mojom::PageHandler>(),
+      mock_searchbox_page_.BindAndGetRemote(), profile(), web_contents(),
+      std::make_unique<TestOmniboxClient>(), base::BindLambdaForTesting([&]() {
+        return contextual_session_handle_.get();
+      }));
+
+  EXPECT_CALL(mock_searchbox_page_, OnTabStripChanged).Times(0);
+  content::WebContentsTester::For(tab1->GetContents())
+      ->NavigateAndCommit(GURL("https://example.com/tab1_navigated"));
+  mock_searchbox_page_.FlushForTesting();
+
+  EXPECT_CALL(mock_searchbox_page_, OnTabStripChanged).Times(1);
+  content::WebContentsTester::For(tab2->GetContents())
+      ->NavigateAndCommit(GURL("https://example.com/tab2_navigated"));
+  mock_searchbox_page_.FlushForTesting();
+
+  ON_CALL(*tab_list_, GetActiveTab()).WillByDefault(testing::Return(tab1));
+  EXPECT_CALL(mock_searchbox_page_, OnTabStripChanged).Times(1);
+  handler().OnActiveTabChanged(*tab_list(), tab1);
+  mock_searchbox_page_.FlushForTesting();
+
+  EXPECT_CALL(mock_searchbox_page_, OnTabStripChanged).Times(1);
+  content::WebContentsTester::For(tab1->GetContents())
+      ->NavigateAndCommit(GURL("https://example.com/tab1_navigated_again"));
+  mock_searchbox_page_.FlushForTesting();
+
+  EXPECT_CALL(mock_searchbox_page_, OnTabStripChanged).Times(0);
+  content::WebContentsTester::For(tab2->GetContents())
+      ->NavigateAndCommit(GURL("https://example.com/tab2_navigated_again"));
+  mock_searchbox_page_.FlushForTesting();
 }
 
 // TODO(b:466469292): Figure out how to null-ify the session handle so we can

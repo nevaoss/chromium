@@ -68,12 +68,14 @@ public class AtMemoryBottomSheetBridge implements AtMemoryBottomSheetCoordinator
             @JniType("std::u16string") String label,
             @JniType("std::u16string") String subLabel,
             int iconId,
-            int suggestionType) {
+            int suggestionType,
+            @JniType("std::vector") List<AutofillSuggestion> children) {
         return new AutofillSuggestion.Builder()
                 .setLabel(label)
                 .setSubLabel(subLabel)
                 .setIconId(iconId)
                 .setSuggestionType(suggestionType)
+                .setChildren(children)
                 .build();
     }
 
@@ -112,10 +114,26 @@ public class AtMemoryBottomSheetBridge implements AtMemoryBottomSheetCoordinator
     }
 
     @Override
+    public void onSearchFocus(boolean hasFocus) {
+        if (hasFocus) {
+            mCoordinator.expandSheet();
+        }
+    }
+
+    @Override
     public void onSuggestionClicked(int position) {
         if (mNativeAtMemoryBottomSheetBridge != 0) {
             AtMemoryBottomSheetBridgeJni.get()
                     .onSuggestionSelected(mNativeAtMemoryBottomSheetBridge, position);
+        }
+    }
+
+    @Override
+    public void onChildSuggestionClicked(int parentPosition, int childPosition) {
+        if (mNativeAtMemoryBottomSheetBridge != 0) {
+            AtMemoryBottomSheetBridgeJni.get()
+                    .onChildSuggestionSelected(
+                            mNativeAtMemoryBottomSheetBridge, parentPosition, childPosition);
         }
     }
 
@@ -136,6 +154,9 @@ public class AtMemoryBottomSheetBridge implements AtMemoryBottomSheetCoordinator
                 long nativeAtMemoryBottomSheetBridge, @JniType("std::u16string") String query);
 
         void onSuggestionSelected(long nativeAtMemoryBottomSheetBridge, int position);
+
+        void onChildSuggestionSelected(
+                long nativeAtMemoryBottomSheetBridge, int parentPosition, int childPosition);
 
         boolean isSearching(long nativeAtMemoryBottomSheetBridge);
     }

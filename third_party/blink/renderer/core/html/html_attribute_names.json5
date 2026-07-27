@@ -365,6 +365,7 @@
     "shadowrootdelegatesfocus",
     "shadowrootreferencetarget",
     "shadowrootserializable",
+    "shadowrootslotassignment",
     "shadowrootcustomelementregistry",
     "shape",
     "sharedstoragewritable",

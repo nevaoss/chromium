@@ -145,6 +145,18 @@ url::Origin OriginOrPrecursorIfOpaque(const url::Origin& origin) {
       origin.GetTupleOrPrecursorTupleIfOpaque().GetURL());
 }
 
+ExecutionEngine::GatingDecision MapDecisionSourceToGatingDecision(
+    origin_gating::DecisionSource source) {
+  switch (source) {
+    case origin_gating::DecisionSource::kAllowSameOrigin:
+      return ExecutionEngine::GatingDecision::kAllowSameOrigin;
+    case origin_gating::DecisionSource::kCacheWithUserConfirmation:
+    case origin_gating::DecisionSource::kCacheWithoutUserConfirmation:
+    case origin_gating::DecisionSource::kNoVerdict:
+      return ExecutionEngine::GatingDecision::kNeedsAsyncCheck;
+  }
+}
+
 void OnNavigationConfirmationDecisionInBackground(
     ExecutionEngine::State state,
     ukm::SourceId ukm_source_id,
@@ -225,8 +237,15 @@ ExecutionEngine::ExecutionEngine(
           std::make_unique<autofill::ActorOneTimeTokenFillingServiceImpl>(
               task_->GetProfile())),
       ui_event_dispatcher_(std::move(ui_event_dispatcher)),
-      origin_gating_checker_(*this,
-                             kGlicNavigationGatingUseSiteNotOrigin.Get()),
+      origin_gating_checker_(
+          *this,
+          origin_gating::OriginGatingConfiguration(
+              {
+                  origin_gating::DecisionSource::kCacheWithUserConfirmation,
+                  origin_gating::DecisionSource::kAllowSameOrigin,
+                  origin_gating::DecisionSource::kCacheWithoutUserConfirmation,
+              },
+              kGlicNavigationGatingUseSiteNotOrigin.Get())),
       dark_launch_origin_gating_cache_(
           kGlicNavigationGatingUseSiteNotOrigin.Get()) {
   TRACE_EVENT0("actor", "ExecutionEngine::ExecutionEngine");
@@ -330,7 +349,9 @@ ExecutionEngine::ShouldDeferNavigation(
   const GatingDecision decision = DetermineGatingDecision(
       GetPrimaryMainFrame(navigation_handle)->GetLastCommittedURL(),
       /*destination_url=*/navigation_handle.GetURL());
-  RecordNavigationGatingDecision(decision);
+  if (decision != GatingDecision::kNeedsAsyncCheck) {
+    RecordNavigationGatingDecision(decision);
+  }
 
   const url::Origin source_origin = OriginOrPrecursorIfOpaque(
       GetPrimaryMainFrame(navigation_handle)->GetLastCommittedOrigin());
@@ -356,8 +377,7 @@ ExecutionEngine::ShouldDeferNavigation(
           std::move(context), source_origin.GetURL(),
           navigation_handle.GetURL(),
           base::BindOnce(&ExecutionEngine::OnComputedGatingDecision,
-                         GetActionSequenceWeakPtr(), std::move(callback),
-                         source_origin,
+                         GetWeakPtr(), std::move(callback), source_origin,
                          url::Origin::Create(navigation_handle.GetURL()),
                          state_, navigation_handle.GetInitiatorOrigin()));
       return content::NavigationThrottle::DEFER;
@@ -381,7 +401,13 @@ void ExecutionEngine::OnComputedGatingDecision(
                       /*applied_gate=*/decision.source ==
                           origin_gating::DecisionSource::kNoVerdict);
 
-  if (decision.source == origin_gating::DecisionSource::kCache) {
+  RecordNavigationGatingDecision(
+      MapDecisionSourceToGatingDecision(decision.source));
+
+  if (decision.source ==
+          origin_gating::DecisionSource::kCacheWithoutUserConfirmation ||
+      decision.source ==
+          origin_gating::DecisionSource::kCacheWithUserConfirmation) {
     ukm::builders::Actor_OriginGating builder(actor_context->ukm_source_id);
     builder
         .SetServerConfirmationResult(static_cast<int64_t>(
@@ -435,9 +461,7 @@ ExecutionEngine::GatingDecision ExecutionEngine::DetermineGatingDecision(
 
   switch (SafetyListManager::GetInstance()->Find(source_url, destination_url)) {
     case SafetyListManager::Decision::kNone:
-      return url::IsSameOriginWith(source_url, destination_url)
-                 ? GatingDecision::kAllowSameOrigin
-                 : GatingDecision::kNeedsAsyncCheck;
+      return GatingDecision::kNeedsAsyncCheck;
     case SafetyListManager::Decision::kAllow:
       return GatingDecision::kAllowByStaticList;
     case SafetyListManager::Decision::kBlock:

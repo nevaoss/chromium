@@ -465,6 +465,12 @@
   <message name="IDS_GLIC_BUTTON_ENTRYPOINT_ASK_ABOUT_THIS_PAGE_LABEL" desc="Label on the button used to open Gemini in Chrome.">
     Ask about this page?
   </message>
+  <message name="IDS_GLIC_SELECTION_AUTO_SEND_PROMPT_TELL_ME" desc="Default prompt text sent to Gemini when auto-send prompt is enabled on text selection.">
+    Tell me about this selection
+  </message>
+  <message name="IDS_GLIC_SELECTION_AUTO_SEND_PROMPT_EXPLAIN" desc="Prompt text sent to Gemini when auto-send prompt is enabled on text selection with the Explain CTA arm.">
+    Explain this selection
+  </message>
 
   <!-- Content area context menu. -->
   <if expr="use_titlecase">
@@ -564,7 +570,10 @@
   <message name="IDS_GLIC_TASK_PAUSED_DESCRIPTION" desc="Subtitle description of the snackbar message shown when a Glic task is paused due to window resizing.">
     Increase window size to resume task
   </message>
-  <message name="IDS_GLIC_BOTTOM_SHEET_CLOSED_A11Y_LABEL" desc="Accessibility announcement when the Gemini Bottom Sheet is closed." formatter_data="android_java" is_accessibility_with_no_ui="true">
+  <message name="IDS_GLIC_BOTTOM_SHEET_CLOSED_A11Y_LABEL" desc="Accessibility announcement when the Gemini Bottom Sheet is collapsed." formatter_data="android_java" is_accessibility_with_no_ui="true">
+    Gemini Bottom Sheet collapsed.
+  </message>
+  <message name="IDS_GLIC_BOTTOM_SHEET_HIDDEN_A11Y_LABEL" desc="Accessibility announcement when the Gemini Bottom Sheet is closed." formatter_data="android_java" is_accessibility_with_no_ui="true">
     Gemini Bottom Sheet closed.
   </message>
   <message name="IDS_GLIC_BOTTOM_SHEET_HALF_HEIGHT_A11Y_LABEL" desc="Accessibility announcement when the Gemini Bottom Sheet is opened to half height." formatter_data="android_java" is_accessibility_with_no_ui="true">

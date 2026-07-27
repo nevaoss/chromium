@@ -70,6 +70,11 @@ void AwFieldTrials::RegisterFeatureOverrides(base::FeatureList* feature_list) {
   aw_feature_overrides.DisableFeature(
       input::features::kUpdateScrollPredictorInputMapping);
 
+  // TODO(crbug.com/444669046): Disable ScrollPredictorEnhancements refined
+  // prediction on WebView by default so it can be rolled out via Finch.
+  aw_feature_overrides.DisableFeature(
+      blink::features::kScrollPredictorRefinedHasPrediction);
+
   // InputVizard is disabled on WebView as it is a Chrome-only feature that
   // moves input handling to the VizCompositor thread, which is out of scope
   // for WebView's Synchronous Compositor architecture.
@@ -342,4 +347,8 @@ void AwFieldTrials::RegisterFeatureOverrides(base::FeatureList* feature_list) {
   // workaround for crbug.com/502587667 will break CTS tests for Geolocation.
   aw_feature_overrides.DisableFeature(
       content_settings::features::kApproximateGeolocationPermission);
+
+  // Disable HappyEyeballsV2 for WebView for now.
+  // DISABLED_TEMPORARY: crbug.com/529948671
+  aw_feature_overrides.DisableFeature(net::features::kHappyEyeballsV2);
 }

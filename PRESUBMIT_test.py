@@ -227,6 +227,72 @@ class CheckNoUNIT_TESTInSourceFilesTest(unittest.TestCase):
         self.assertEqual(0, len(errors))
 
 
+class CheckNoOzonePlatformMacrosInTestsTest(unittest.TestCase):
+
+    def testWarning(self):
+        test_files = [
+            MockFile('chrome/browser/foo_unittest.cc', [
+                '#if BUILDFLAG(SUPPORTS_OZONE_WAYLAND)',
+                '#endif',
+            ]),
+            MockFile('chrome/browser/bar_browsertest.cc', [
+                '#if BUILDFLAG(SUPPORTS_OZONE_X11)',
+                '#endif',
+            ]),
+            MockFile('content/test/baz_test.cc', [
+                'BUILDFLAG(SUPPORTS_OZONE_WAYLAND)',
+            ]),
+        ]
+        input_api = MockInputApi()
+        input_api.InitFiles(test_files)
+        warnings = PRESUBMIT.CheckNoOzonePlatformMacrosInTests(
+            input_api, MockOutputApi())
+        self.assertEqual(1, len(warnings))
+        self.assertEqual('warning', warnings[0].type)
+        self.assertEqual(3, len(warnings[0].items))
+        self.assertIn(
+            f'{os.path.normpath("chrome/browser/foo_unittest.cc")}:1',
+            warnings[0].items[0])
+        self.assertIn(
+            f'{os.path.normpath("chrome/browser/bar_browsertest.cc")}:1',
+            warnings[0].items[1])
+        self.assertIn(
+            f'{os.path.normpath("content/test/baz_test.cc")}:1',
+            warnings[0].items[2])
+
+    def testNoWarning(self):
+        non_test_files = [
+            MockFile('chrome/browser/foo.cc', [
+                '#if BUILDFLAG(SUPPORTS_OZONE_WAYLAND)',
+                '#endif',
+            ]),
+            MockFile('ui/ozone/platform/wayland/wayland_window.cc', [
+                'SUPPORTS_OZONE_WAYLAND',
+            ]),
+            MockFile('chrome/browser/baz_unittest.cc', [
+                'SUPPORTS_OZONE_WAYLAND',
+            ]),
+        ]
+        input_api = MockInputApi()
+        input_api.InitFiles(non_test_files)
+        warnings = PRESUBMIT.CheckNoOzonePlatformMacrosInTests(
+            input_api, MockOutputApi())
+        self.assertEqual(0, len(warnings))
+
+    def testCleanTest(self):
+        clean_test_files = [
+            MockFile('chrome/browser/foo_unittest.cc', [
+                '#if BUILDFLAG(IS_CHROMEOS)',
+                '#endif',
+            ]),
+        ]
+        input_api = MockInputApi()
+        input_api.InitFiles(clean_test_files)
+        warnings = PRESUBMIT.CheckNoOzonePlatformMacrosInTests(
+            input_api, MockOutputApi())
+        self.assertEqual(0, len(warnings))
+
+
 class CheckEachPerfettoTestDataFileHasDepsEntry(unittest.TestCase):
 
     def testNewSha256FileNoDEPS(self):
@@ -6137,6 +6203,26 @@ class CheckBaseFeatureMacroTest(unittest.TestCase):
                 '// BASE_FEATURE(kMyToggle, "MyToggle", '
                 'base::FEATURE_ENABLED_BY_DEFAULT);'
             ]),
+            MockAffectedFile('valid1_runtime_mutable.cc', [
+                'BASE_RUNTIME_MUTABLE_FEATURE(kMyToggle,'
+                ' base::FEATURE_ENABLED_BY_DEFAULT);'
+            ]),
+            MockAffectedFile('valid_multiline_runtime_mutable.cc', [
+                'BASE_RUNTIME_MUTABLE_FEATURE(', '    kMyMultilineToggle,',
+                '    base::FEATURE_ENABLED_BY_DEFAULT);'
+            ]),
+            MockAffectedFile('valid_complex_arg_runtime_mutable.cc', [
+                'BASE_RUNTIME_MUTABLE_FEATURE(kMyToggle,'
+                ' GetDefaultState(vector<int>(1)));'
+            ]),
+            MockAffectedFile('valid_comment_runtime_mutable.cc', [
+                '// BASE_RUNTIME_MUTABLE_FEATURE(invalidToggle, '
+                'base::FEATURE_ENABLED_BY_DEFAULT);'
+            ]),
+            MockAffectedFile('valid_3param_comment_runtime_mutable.cc', [
+                '// BASE_RUNTIME_MUTABLE_FEATURE(kMyToggle, "MyToggle", '
+                'base::FEATURE_ENABLED_BY_DEFAULT);'
+            ]),
 
             # #################################################################
             # Cases that should produce warnings.
@@ -6156,6 +6242,22 @@ class CheckBaseFeatureMacroTest(unittest.TestCase):
                 'BASE_FEATURE(kMyToggle,', '             "MyToggle",',
                 '             base::FEATURE_ENABLED_BY_DEFAULT);'
             ]),
+            MockAffectedFile('warning_3param_runtime_mutable.cc', [
+                'BASE_RUNTIME_MUTABLE_FEATURE(kMyToggle, "MyToggle", '
+                'base::FEATURE_ENABLED_BY_DEFAULT);'
+            ]),
+            MockAffectedFile('warning_no_k_runtime_mutable.cc', [
+                'BASE_RUNTIME_MUTABLE_FEATURE('
+                'MyToggle, base::FEATURE_ENABLED_BY_DEFAULT);'
+            ]),
+            MockAffectedFile('warning_lowercase_after_k_runtime_mutable.cc', [
+                'BASE_RUNTIME_MUTABLE_FEATURE(kmyToggle, '
+                'base::FEATURE_ENABLED_BY_DEFAULT);'
+            ]),
+            MockAffectedFile('warning_3param_multiline_runtime_mutable.cc', [
+                'BASE_RUNTIME_MUTABLE_FEATURE(', '    kMyToggle,',
+                '    "MyToggle",', '    base::FEATURE_ENABLED_BY_DEFAULT);'
+            ]),
         ]
         results = PRESUBMIT.CheckBaseFeatureMacro(mock_input_api,
                                                   MockOutputApi())
@@ -6166,18 +6268,33 @@ class CheckBaseFeatureMacroTest(unittest.TestCase):
         warnings = results[0].items
 
         expected_warnings = [
-            '    warning_3param.cc:1: The 3-argument BASE_FEATURE macro with a '
+            '    warning_3param.cc:1: Use of the 3-argument BASE_FEATURE and '
+            'BASE_RUNTIME_MUTABLE_FEATURE macros with a string literal is '
+            'discouraged. Use the 2-argument version instead.',
+            '    warning_3param_multiline.cc:1: Use of the 3-argument '
+            'BASE_FEATURE and BASE_RUNTIME_MUTABLE_FEATURE macros with a '
             'string literal is discouraged. Use the 2-argument version '
             'instead.',
-            '    warning_3param_multiline.cc:1: The 3-argument BASE_FEATURE '
-            'macro with a string literal is discouraged. Use the 2-argument '
-            'version instead.',
             '    warning_no_k.cc:1: Feature identifier "MyToggle" should start '
             'with "k" followed by an uppercase letter.',
             '    warning_lowercase_after_k.cc:1: Feature identifier "kmyToggle"'
             ' should start with "k" followed by an uppercase letter.',
+            '    warning_3param_runtime_mutable.cc:1: Use of the 3-argument '
+            'BASE_FEATURE and BASE_RUNTIME_MUTABLE_FEATURE macros with a '
+            'string literal is discouraged. Use the 2-argument version '
+            'instead.',
+            '    warning_3param_multiline_runtime_mutable.cc:1: Use of the '
+            '3-argument BASE_FEATURE and BASE_RUNTIME_MUTABLE_FEATURE macros '
+            'with a string literal is discouraged. Use the 2-argument version '
+            'instead.',
+            '    warning_no_k_runtime_mutable.cc:1: Feature identifier '
+            '"MyToggle" should start with "k" followed by an uppercase letter.',
+            '    warning_lowercase_after_k_runtime_mutable.cc:1: Feature '
+            'identifier "kmyToggle" should start with "k" followed by an '
+            'uppercase letter.',
         ]
 
+        self.maxDiff = None
         self.assertEqual(len(expected_warnings), len(warnings))
         self.assertCountEqual(expected_warnings, warnings)
 

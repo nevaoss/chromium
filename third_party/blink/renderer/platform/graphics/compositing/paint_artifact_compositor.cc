@@ -1336,12 +1336,6 @@ bool PaintArtifactCompositor::TryFastPathUpdate(
   }
 #endif
 
-  if (scrolling_contents_cull_rect_changed_) {
-    UMA_HISTOGRAM_ENUMERATION(
-        "Blink.Compositor.PACUpdateTypeOnScrollCullRectChange", needs_update_);
-    scrolling_contents_cull_rect_changed_ = false;
-  }
-
   switch (needs_update_) {
     case UpdateType::kNone:
       return true;
@@ -1442,8 +1436,10 @@ bool PaintArtifactCompositor::DirectlyUpdatePageScaleTransform(
 bool PaintArtifactCompositor::DirectlySetScrollOffset(
     CompositorElementId element_id,
     const gfx::PointF& scroll_offset) {
-  if (!root_layer_ || !root_layer_->layer_tree_host())
+  if (!root_layer_ || !root_layer_->layer_tree_host() ||
+      root_layer_->layer_tree_host()->in_will_commit()) {
     return false;
+  }
   auto* property_trees = root_layer_->layer_tree_host()->property_trees();
   if (!property_trees->scroll_tree().FindNodeFromElementId(element_id))
     return false;

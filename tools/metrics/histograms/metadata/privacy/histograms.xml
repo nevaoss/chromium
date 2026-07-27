@@ -134,7 +134,7 @@ Regular profiles start at bucket 1, we don't consider non-regular profiles. -->
 </variants>
 
 <histogram name="Privacy.3PCD.RollbackNotice.Action"
-    enum="RollBack3pcdNoticeAction" expires_after="2026-10-25">
+    enum="RollBack3pcdNoticeAction" expires_after="2026-12-27">
   <owner>fmacintosh@google.com</owner>
   <owner>koilos@google.com</owner>
   <summary>
@@ -183,27 +183,6 @@ Regular profiles start at bucket 1, we don't consider non-regular profiles. -->
   <summary>
     Tracks whether the tabs deletion is disabled in Clear Browsing Data due to
     the user having multiple windows.
-  </summary>
-</histogram>
-
-<histogram name="Privacy.CookieControlsActivated.PageRefreshCount"
-    units="count" expires_after="2026-11-01">
-  <owner>fmacintosh@google.com</owner>
-  <owner>koilos@google.com</owner>
-  <summary>
-    How many times the page was refreshed in the last 30 seconds, recorded when
-    third-party party cookies are allowed using cookie controls UI.
-  </summary>
-</histogram>
-
-<histogram name="Privacy.CookieControlsActivated.SiteDataAccessType"
-    enum="ThirdPartySiteDataAccessType" expires_after="2026-08-30">
-  <owner>fmacintosh@google.com</owner>
-  <owner>koilos@google.com</owner>
-  <summary>
-    Represents if site data was accessed by any third-party sites and if any of
-    those accesses were blocked, recorded when third-party party cookies are
-    allowed using cookie controls UI.
   </summary>
 </histogram>
 

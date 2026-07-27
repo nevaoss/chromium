@@ -39,6 +39,7 @@
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
+#include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/permissions/permission_prompt_observer.h"
 #include "chrome/browser/ui/webui/new_tab_page/composebox/variations/composebox_fieldtrial.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
@@ -487,6 +488,9 @@ base::DictValue SearchboxHandler::GetWebUIDataSourceDict(
            base::FeatureList::IsEnabled(ntp_features::kRealboxCr23Theming));
   dict.Set("searchboxCr23SteadyStateShadow",
            ntp_features::kNtpRealboxCr23SteadyStateShadow.Get());
+  dict.Set(
+      "realboxVirtualFocusNavigation",
+      base::FeatureList::IsEnabled(features::kRealboxVirtualFocusNavigation));
 
   int max_files = omnibox::kDefaultMaxTotalInputs;
   int max_images = max_files;
@@ -754,6 +758,7 @@ std::string SearchboxHandler::AutocompleteIconToResourceName(
 
 searchbox::mojom::AutocompleteResultPtr
 SearchboxHandler::CreateAutocompleteResult(
+    int32_t query_id,
     const std::u16string& input,
     const AutocompleteResult& result,
     const OmniboxEditModel* edit_model,
@@ -761,7 +766,7 @@ SearchboxHandler::CreateAutocompleteResult(
     const PrefService* prefs,
     const TemplateURLService* turl_service) const {
   return searchbox::mojom::AutocompleteResult::New(
-      result.sequence_id(), input,
+      query_id, result.sequence_id(), input,
       CreateSuggestionGroupsMap(result, edit_model, prefs,
                                 result.suggestion_groups_map()),
       CreateAutocompleteMatches(result, edit_model, bookmark_model,
@@ -1070,19 +1075,22 @@ void SearchboxHandler::OnFocusChanged(bool focused) {
   }
 }
 
-void SearchboxHandler::QueryAutocomplete(const std::u16string& input,
+void SearchboxHandler::QueryAutocomplete(int32_t query_id,
+                                         const std::u16string& input,
                                          bool prevent_inline_autocomplete,
                                          uint32_t cursor_position) {
   QueryAutocompleteWithSuggestInventory(
-      input, prevent_inline_autocomplete, cursor_position,
+      query_id, input, prevent_inline_autocomplete, cursor_position,
       omnibox::SuggestInventory::SUGGEST_INVENTORY_DEFAULT);
 }
 
 void SearchboxHandler::QueryAutocompleteWithSuggestInventory(
+    int32_t query_id,
     const std::u16string& input,
     bool prevent_inline_autocomplete,
     uint32_t cursor_position,
     omnibox::SuggestInventory suggest_inventory) {
+  current_query_id_ = query_id;
   // This shouldn't happen, but, e.g., users may do unintended actions in the
   // developer console and crashing with a `CHECK()` doesn't seem warranted.
   cursor_position =
@@ -1200,7 +1208,8 @@ void SearchboxHandler::OpenAutocompleteMatch(uint8_t line,
                                              bool alt_key,
                                              bool ctrl_key,
                                              bool meta_key,
-                                             bool shift_key) {
+                                             bool shift_key,
+                                             bool via_keyboard) {
   const AutocompleteMatch* match = GetMatchWithUrl(line, url);
   if (!match) {
     // This can happen due to asynchronous updates changing the result while
@@ -1216,7 +1225,7 @@ void SearchboxHandler::OpenAutocompleteMatch(uint8_t line,
     OpenMatch(*match, disposition, timestamp);
   } else {
     edit_model()->OpenSelection(OmniboxPopupSelection(line), timestamp,
-                                disposition);
+                                disposition, via_keyboard);
   }
 }
 
@@ -1488,13 +1497,13 @@ void SearchboxHandler::OnResultChanged(AutocompleteController* controller,
   if (base::FeatureList::IsEnabled(
           omnibox::kWebUISearchboxWithoutModelController)) {
     page_->AutocompleteResultChanged(CreateAutocompleteResult(
-        autocomplete_controller()->input().text(),
+        current_query_id_, autocomplete_controller()->input().text(),
         autocomplete_controller()->result(), nullptr,
         BookmarkModelFactory::GetForBrowserContext(profile_),
         profile_->GetPrefs(), client()->GetTemplateURLService()));
   } else {
     page_->AutocompleteResultChanged(CreateAutocompleteResult(
-        autocomplete_controller()->input().text(),
+        current_query_id_, autocomplete_controller()->input().text(),
         autocomplete_controller()->result(), edit_model(),
         BookmarkModelFactory::GetForBrowserContext(profile_),
         profile_->GetPrefs(),

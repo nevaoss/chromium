@@ -165,7 +165,8 @@ class MockSigninUiDelegate : public signin_ui_util::SigninUiDelegate {
               (Profile*,
                bool,
                signin_metrics::AccessPoint,
-               signin_metrics::PromoAction),
+               signin_metrics::PromoAction,
+               const std::string&),
               (override));
   MOCK_METHOD(void,
               ShowReauthUI,
@@ -189,6 +190,12 @@ class MockSigninUiDelegate : public signin_ui_util::SigninUiDelegate {
               ShowHistorySyncOptinUI,
               (Profile*, const CoreAccountId&, signin_metrics::AccessPoint),
               (override));
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+  MOCK_METHOD(void,
+              ShowCrossDeviceSigninQrBubble,
+              (BrowserWindowInterface*, base::OnceClosure),
+              (override));
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 };
 
 Profile* CreateAdditionalProfile() {

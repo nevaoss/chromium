@@ -63,6 +63,10 @@
 #include "ui/views/widget/widget_deletion_observer.h"
 #include "url/origin.h"
 
+#if BUILDFLAG(IS_OZONE)
+#include "ui/ozone/public/ozone_platform.h"
+#endif
+
 namespace {
 DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kWebContentsElementId);
 DEFINE_LOCAL_CUSTOM_ELEMENT_EVENT_TYPE(kPEPCVisibleEvent);
@@ -1029,13 +1033,13 @@ IN_PROC_BROWSER_TEST_P(EmbeddedPermissionPromptInteractiveTest,
 }
 
 // Linux wayland does not support window activation.
-#if (BUILDFLAG(IS_LINUX) && BUILDFLAG(SUPPORTS_OZONE_WAYLAND))
-#define MAYBE_TestOsSystemAutoResolves DISABLED_TestOsSystemAutoResolves
-#else
-#define MAYBE_TestOsSystemAutoResolves TestOsSystemAutoResolves
-#endif
 IN_PROC_BROWSER_TEST_P(EmbeddedPermissionPromptInteractiveTest,
-                       MAYBE_TestOsSystemAutoResolves) {
+                       TestOsSystemAutoResolves) {
+#if BUILDFLAG(IS_OZONE)
+  if (::ui::OzonePlatform::RunningOnWaylandForTest()) {
+    GTEST_SKIP() << "Linux Wayland does not support window activation";
+  }
+#endif
   std::unique_ptr<system_permission_settings::ScopedSettingsForTesting>
       scoped_system_permission_camera = std::make_unique<
           system_permission_settings::ScopedSettingsForTesting>(
@@ -1119,6 +1123,104 @@ IN_PROC_BROWSER_TEST_P(EmbeddedPermissionPromptInteractiveTest,
 
       // Now that both system permissions changed to allowed, clicking the "open
       // settings" button means the prompt progresses to the next screen.
+      InAnyContext(WaitForShow(EmbeddedPermissionPromptAskView::kAllowId)));
+}
+
+// Linux wayland does not support window activation.
+#if (BUILDFLAG(IS_LINUX) && BUILDFLAG(SUPPORTS_OZONE_WAYLAND))
+#define MAYBE_TestOsSystemAutoResolvesOnlyIfAllPermissionsAllowed \
+  DISABLED_TestOsSystemAutoResolvesOnlyIfAllPermissionsAllowed
+#else
+#define MAYBE_TestOsSystemAutoResolvesOnlyIfAllPermissionsAllowed \
+  TestOsSystemAutoResolvesOnlyIfAllPermissionsAllowed
+#endif
+IN_PROC_BROWSER_TEST_P(
+    EmbeddedPermissionPromptInteractiveTest,
+    MAYBE_TestOsSystemAutoResolvesOnlyIfAllPermissionsAllowed) {
+  std::unique_ptr<system_permission_settings::ScopedSettingsForTesting>
+      scoped_system_permission_camera = std::make_unique<
+          system_permission_settings::ScopedSettingsForTesting>(
+          ContentSettingsType::MEDIASTREAM_CAMERA, /*blocked=*/true);
+  std::unique_ptr<system_permission_settings::ScopedSettingsForTesting>
+      scoped_system_permission_mic = std::make_unique<
+          system_permission_settings::ScopedSettingsForTesting>(
+          ContentSettingsType::MEDIASTREAM_MIC, /*blocked=*/true);
+
+  RunTestSequence(
+      InstrumentTab(kWebContentsElementId),
+      NavigateWebContents(kWebContentsElementId, GetURL()),
+      ClickOnPEPCElement("camera-microphone"),
+      InAnyContext(
+          WaitForShow(EmbeddedPermissionPromptSystemSettingsView::kMainViewId)),
+      Do([&]() {
+        // Only allow camera system permission. Mic remains blocked.
+        scoped_system_permission_camera.reset();
+        scoped_system_permission_camera = std::make_unique<
+            system_permission_settings::ScopedSettingsForTesting>(
+            ContentSettingsType::MEDIASTREAM_CAMERA, /*blocked=*/false);
+
+        // Simulate deactivation and reactivation.
+        Browser* focused_window = CreateBrowser(browser()->profile());
+        ASSERT_TRUE(ui_test_utils::BringBrowserWindowToFront(focused_window));
+        ASSERT_FALSE(browser()->GetWindow()->IsActive());
+
+        ui_test_utils::BrowserActivationWaiter waiter(browser());
+        browser()->GetWindow()->Activate();
+        waiter.WaitForActivation();
+      }),
+
+      // The prompt must remain on the system settings view since Mic is still
+      // denied.
+      InAnyContext(
+          EnsureNotPresent(EmbeddedPermissionPromptAskView::kAllowId)));
+}
+
+IN_PROC_BROWSER_TEST_P(EmbeddedPermissionPromptInteractiveTest,
+                       TestOsSystemReentrantActivationDoesNotCrash) {
+  std::unique_ptr<system_permission_settings::ScopedSettingsForTesting>
+      scoped_system_permission_camera = std::make_unique<
+          system_permission_settings::ScopedSettingsForTesting>(
+          ContentSettingsType::MEDIASTREAM_CAMERA, /*blocked=*/true);
+  std::unique_ptr<system_permission_settings::ScopedSettingsForTesting>
+      scoped_system_permission_mic = std::make_unique<
+          system_permission_settings::ScopedSettingsForTesting>(
+          ContentSettingsType::MEDIASTREAM_MIC, /*blocked=*/true);
+
+  RunTestSequence(
+      InstrumentTab(kWebContentsElementId),
+      NavigateWebContents(kWebContentsElementId, GetURL()),
+      ClickOnPEPCElement("camera-microphone"),
+      InAnyContext(
+          WaitForShow(EmbeddedPermissionPromptSystemSettingsView::kMainViewId)),
+      Do([&]() {
+        // Allow both camera and mic system permissions.
+        scoped_system_permission_camera.reset();
+        scoped_system_permission_mic.reset();
+        scoped_system_permission_camera = std::make_unique<
+            system_permission_settings::ScopedSettingsForTesting>(
+            ContentSettingsType::MEDIASTREAM_CAMERA, /*blocked=*/false);
+        scoped_system_permission_mic = std::make_unique<
+            system_permission_settings::ScopedSettingsForTesting>(
+            ContentSettingsType::MEDIASTREAM_MIC, /*blocked=*/false);
+      }),
+
+      // Trigger OnWidgetTreeActivated twice rapidly.
+      Do([this]() {
+        auto* tracker = views::ElementTrackerViews::GetInstance();
+        auto views = tracker->GetAllMatchingViewsInAnyContext(
+            EmbeddedPermissionPromptSystemSettingsView::kMainViewId);
+        ASSERT_FALSE(views.empty());
+        auto* view =
+            static_cast<EmbeddedPermissionPromptSystemSettingsView*>(views[0]);
+        views::Widget* browser_widget =
+            BrowserView::GetBrowserViewForBrowser(browser())->GetWidget();
+        for (int i = 0; i < 5; ++i) {
+          view->OnWidgetTreeActivated(browser_widget, nullptr);
+        }
+      }),
+
+      // Verify that it resolves and transitions to the Ask view without
+      // crashing.
       InAnyContext(WaitForShow(EmbeddedPermissionPromptAskView::kAllowId)));
 }
 

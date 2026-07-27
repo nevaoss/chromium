@@ -28,6 +28,7 @@
 #include "components/sync_device_info/device_info.h"
 #include "content/public/browser/web_contents.h"
 
+class AccountCapabilities;
 class Profile;
 class ProfileAttributesStorage;
 
@@ -146,6 +147,11 @@ class GlicEnabling final : public signin::IdentityManager::Observer,
   static signin::Tribool IsAccountManaged(Profile* profile);
   static bool IsEnterpriseAccount(Profile* profile);
 
+  // Returns whether the account capability permits using Glic features that are
+  // available only to adult users.
+  static bool CanUseAdultFeatures(
+      const AccountCapabilities& capabilities);
+
   // Returns whether the OS version is supported.
   static bool IsOsVersionSupported();
   // Checks whether this client is likely a dogfooder, taking the ignore dogfood
@@ -201,6 +207,10 @@ class GlicEnabling final : public signin::IdentityManager::Observer,
 
   // Same as IsReadyForProfile, but returns a more detailed state.
   static mojom::ProfileReadyState GetProfileReadyState(Profile* profile);
+
+  // If Glic has recovered to a ready state since the last check, logs the
+  // previous unhealthy state as a recovery outcome on user interaction.
+  void MaybeRecordRecoveryOnInteraction();
 
   // Whether the profile is in the Glic tiered rollout population.
   static bool IsEligibleForGlicTieredRollout(Profile* profile);
@@ -304,6 +314,23 @@ class GlicEnabling final : public signin::IdentityManager::Observer,
       kMaxValue = kOsVersionNotSupported,
     };
     // LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicFeatureDisabledReason)
+
+    // LINT.IfChange(GlicAnchoredDespiteEligibilityReason)
+    enum class AnchoredDespiteEligibilityReason {
+      kFeatureFlagDisabled = 0,
+      kCountryDisabled = 1,
+      kLocaleDisabled = 2,
+      kSystemRequirementNotMet = 3,
+      kOsVersionNotSupported = 4,
+      kPrimaryAccountNotCapable = 5,
+      kDisallowedByChromePolicy = 6,
+      kDisallowedByRemoteAdmin = 7,
+      kDisallowedByRemoteOther = 8,
+      kNotRegularProfile = 9,
+      kNotRolledOut = 10,
+      kMaxValue = kNotRolledOut,
+    };
+    // LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicAnchoredDespiteEligibilityReason)
 
     enum class DisabledReason {
       kFeatureDisabled = 0,
@@ -540,6 +567,8 @@ class GlicEnabling final : public signin::IdentityManager::Observer,
   void UpdateEnabledStatus();
   void UpdateConsentStatus();
 
+  void MaybeNotifyProfileReadyStateChanged();
+
 #if BUILDFLAG(IS_CHROMEOS)
   static bool IsChromeOSProfileEligible(Profile* profile);
 #endif  // BUILDFLAG(IS_CHROMEOS)
@@ -583,6 +612,7 @@ class GlicEnabling final : public signin::IdentityManager::Observer,
       subscription_eligibility_service_observation_{this};
   syncer::DeviceInfo::GlicExperimentalTriggeringState
       last_experimental_triggering_state_;
+  mojom::ProfileReadyState last_profile_ready_state_;
 };
 
 }  // namespace glic

@@ -16,6 +16,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/common/chrome_features.h"
+#include "chrome/grit/chrome_unscaled_resources.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/constrained_window/constrained_window_views.h"
 #include "components/tabs/public/tab_interface.h"
@@ -30,6 +31,7 @@
 #include "ui/base/mojom/ui_base_types.mojom-shared.h"
 #include "ui/color/color_id.h"
 #include "ui/events/event.h"
+#include "ui/gfx/geometry/size.h"
 #include "ui/strings/grit/ui_strings.h"
 #include "ui/views/background.h"
 #include "ui/views/border.h"
@@ -299,8 +301,8 @@ ActorTaskTabCloseConfirmDialog::CreateDelegate(
       kIconBadgeBorderColor));
 
   auto icon = std::make_unique<views::ImageView>();
-  icon->SetImage(::ui::ImageModel::FromVectorIcon(
-      vector_icons::kProductIcon, ::ui::kColorIcon, kProductIconSize));
+  icon->SetImage(::ui::ImageModel::FromResourceId(IDR_PRODUCT_LOGO_64));
+  icon->SetImageSize(gfx::Size(kProductIconSize, kProductIconSize));
   icon_container->AddChildView(std::move(icon));
   container->AddChildView(std::move(icon_container));
 
@@ -379,13 +381,13 @@ bool ActorTaskUnloadHandler::ShowCustomConfirmation(
     base::OnceCallback<void(bool)> on_closed) {
   auto stop_and_create_tag_callback = base::BindOnce(
       [](base::WeakPtr<ActorTaskUnloadHandler> handler,
-         content::WebContents* contents,
+         base::WeakPtr<content::WebContents> contents,
          base::OnceCallback<void(bool)> on_closed, bool confirmed) {
         if (confirmed && contents) {
           // Tag the WebContents so that subsequent unload checks skip showing
           // duplicate custom confirmation dialogs or standard website prompts.
           actor::ActorTabCloseSkipBeforeUnloadUserData::CreateForWebContents(
-              contents);
+              contents.get());
         }
         base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
             FROM_HERE, base::BindOnce(
@@ -397,7 +399,8 @@ bool ActorTaskUnloadHandler::ShowCustomConfirmation(
                            handler));
         std::move(on_closed).Run(confirmed);
       },
-      weak_factory_.GetWeakPtr(), contents, std::move(on_closed));
+      weak_factory_.GetWeakPtr(), contents ? contents->GetWeakPtr() : nullptr,
+      std::move(on_closed));
   owned_widget_ = ActorTaskTabCloseConfirmDialog::ShowModalIfActuating(
       contents, std::move(stop_and_create_tag_callback));
   if (owned_widget_) {

@@ -1113,8 +1113,9 @@ suite('ComposeboxVoiceSearch', () => {
 
         const queryArgs = await searchboxHandler.whenCalled(
             'queryAutocompleteWithSuggestInventory');
-        assertEquals('refresh suggestions', queryArgs[0]);
-        assertFalse(queryArgs[1]);  // verify preventInlineAutocomplete is false
+        assertEquals(composeboxElement.activeQueryId, queryArgs[0]);
+        assertEquals('refresh suggestions', queryArgs[1]);
+        assertFalse(queryArgs[2]);  // verify preventInlineAutocomplete is false
       });
 
   test(
@@ -1376,4 +1377,15 @@ suite('ComposeboxVoiceSearch', () => {
         voiceSearchElement['voiceModeEndCleanup_']();
         await microtasksFinished();
       });
+
+  test('transcript input font size uses 16px default', async () => {
+    await createComposeboxElement();
+    const voiceSearchElement = getVoiceSearchElement(composeboxElement);
+    voiceSearchElement.liveTranscriptEnabled = true;
+    await voiceSearchElement.updateComplete;
+
+    const input =
+        voiceSearchElement.shadowRoot.querySelector<HTMLElement>('#input')!;
+    assertEquals('16px', window.getComputedStyle(input).fontSize);
+  });
 });

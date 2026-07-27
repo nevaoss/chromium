@@ -94,7 +94,15 @@ BASE_FEATURE(kUseStructuredDnsErrors, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kUseHostResolverCache, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kHappyEyeballsV2, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kHappyEyeballsV2,
+#if BUILDFLAG(CRONET_BUILD)
+             // Cronet is excluded since StaleHostResolver doesn't support
+             // ServiceEndpointRequest, which the HEv2 feature depends on.
+             base::FEATURE_DISABLED_BY_DEFAULT
+#else
+             base::FEATURE_ENABLED_BY_DEFAULT
+#endif
+);
 
 BASE_FEATURE(kHappyEyeballsV3, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -106,11 +114,17 @@ BASE_FEATURE_PARAM(base::TimeDelta,
                    "fallback_time",
                    TcpConnectJob::kIPv6FallbackTime);
 
+BASE_FEATURE(kCacheControlImmutable, base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kHttpCacheZstdDecompression, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kHttpCacheZstdCompression, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kRendererAccessibleHttpCache, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE_PARAM(bool,
+                   kRendererAccessibleHttpCacheWalMode,
+                   &kRendererAccessibleHttpCache,
+                   true);
 
 const base::FeatureParam<int> kAlternativePortForGloballyReachableCheck{
     &kUseAlternativePortForGloballyReachableCheck,
@@ -807,9 +821,6 @@ BASE_FEATURE_PARAM(bool,
                    "ignore_ip_matching_when_finding_existing_sessions",
                    false);
 
-BASE_FEATURE(kDnsResponseDiscardPartialQuestions,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kDohFallbackAllowedWithLocalNameservers,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -846,20 +857,6 @@ BASE_FEATURE(kPermitTcpSocketPoolConnectBackupJobs,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kLocalNetworkPermissionCheck, base::FEATURE_ENABLED_BY_DEFAULT);
-
-BASE_FEATURE(kTcpSocketPoolProxyLimit, base::FEATURE_ENABLED_BY_DEFAULT);
-
-BASE_FEATURE_PARAM(int,
-                   kTcpSocketPoolProxyLimitNormal,
-                   &kTcpSocketPoolProxyLimit,
-                   "TcpSocketPoolProxyLimitNormal",
-                   128);
-
-BASE_FEATURE_PARAM(int,
-                   kTcpSocketPoolProxyLimitWebSocket,
-                   &kTcpSocketPoolProxyLimit,
-                   "TcpSocketPoolProxyLimitWebSocket",
-                   128);
 
 BASE_FEATURE(kIgnoreQuicCryptoConfigMemoryPressure,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -919,5 +916,7 @@ BASE_FEATURE_PARAM(int,
                    kCacheCertVerificationTtlSecs,
                    &kCacheCertVerification,
                    1800);
+
+BASE_FEATURE(kTlsGreaseSigalgs, base::FEATURE_ENABLED_BY_DEFAULT);
 
 }  // namespace net::features

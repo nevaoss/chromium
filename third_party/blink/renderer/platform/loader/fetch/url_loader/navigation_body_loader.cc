@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <utility>
 
+#include "base/byte_size.h"
 #include "base/containers/heap_array.h"
 #include "base/containers/span.h"
 #include "base/functional/bind.h"
@@ -411,8 +412,10 @@ void NavigationBodyLoader::OnUploadProgress(int64_t current_position,
 void NavigationBodyLoader::OnTransferSizeUpdated(int32_t transfer_size_diff) {
   network::RecordOnTransferSizeUpdatedUMA(
       network::OnTransferSizeUpdatedFrom::kNavigationBodyLoader);
+  // This cast is safe because url_loader.mojom documents that
+  // `transfer_size_diff` must be positive.
   resource_load_info_notifier_wrapper_->NotifyResourceTransferSizeUpdated(
-      transfer_size_diff);
+      base::ByteSize(base::checked_cast<uint32_t>(transfer_size_diff)));
 }
 
 void NavigationBodyLoader::OnComplete(
@@ -567,9 +570,10 @@ void NavigationBodyLoader::NotifyCompletionIfAppropriate() {
   // |this| may be deleted after calling into client_, so clear it in advance.
   WebNavigationBodyLoader::Client* client = client_;
   client_ = nullptr;
-  client->BodyLoadingFinished(
-      status_.completion_time, status_.encoded_data_length,
-      status_.encoded_body_length, status_.decoded_body_length, error);
+  client->BodyLoadingFinished(status_.completion_time,
+                              status_.encoded_data_length.InBytes(),
+                              status_.encoded_body_length.InBytes(),
+                              status_.decoded_body_length.InBytes(), error);
 }
 
 void NavigationBodyLoader::

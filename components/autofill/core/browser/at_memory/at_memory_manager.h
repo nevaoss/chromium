@@ -14,13 +14,15 @@
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/types/expected.h"
+#include "base/types/optional_ref.h"
 #include "components/autofill/core/browser/at_memory/at_memory_data_type.h"
-#include "components/autofill/core/browser/at_memory/at_memory_funnel_metrics.h"
+#include "components/autofill/core/browser/at_memory/at_memory_metrics_recorder.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_instance.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_type.h"
 #include "components/autofill/core/browser/data_model/payments/iban.h"
 #include "components/autofill/core/browser/filling/autofill_ai/autofill_ai_access_manager.h"
 #include "components/autofill/core/browser/suggestions/suggestion.h"
+#include "components/autofill/core/browser/ui/autofill_suggestion_delegate.h"
 #include "components/autofill/core/common/aliases.h"
 #include "components/autofill/core/common/mojom/autofill_types.mojom-shared.h"
 #include "components/autofill/core/common/unique_ids.h"
@@ -54,7 +56,9 @@ class AtMemoryManager {
   // TODO(crbug.com/507770024): Rename to OnSuggestionsShown.
   void OnPopupShown(AutofillSuggestionTriggerSource trigger_source,
                     bool is_context_secure,
-                    UpdateSuggestionsCallback update_callback);
+                    UpdateSuggestionsCallback update_callback,
+                    FormSignature form_signature,
+                    FieldSignature field_signature);
 
   // Called when the user types in the filter/search bar. Returns true if
   // handled by the manager (i.e., the current session is an @memory one).
@@ -68,10 +72,21 @@ class AtMemoryManager {
   void OnPopupHidden();
 
   // Fills or previews the selected search result.
-  void FillOrPreviewSearchResult(mojom::ActionPersistence action_persistence,
-                                 const FormGlobalId& form_id,
-                                 const FieldGlobalId& field_id,
-                                 const Suggestion& suggestion);
+  void FillOrPreviewSearchResult(
+      mojom::ActionPersistence action_persistence,
+      const FormGlobalId& form_id,
+      const FieldGlobalId& field_id,
+      const Suggestion& suggestion,
+      base::optional_ref<const AutofillSuggestionDelegate::SuggestionMetadata>
+          metadata = std::nullopt);
+
+  // Fills the selected search result.
+  void FillSearchResult(
+      const FormGlobalId& form_id,
+      const FieldGlobalId& field_id,
+      const Suggestion& suggestion,
+      base::optional_ref<const AutofillSuggestionDelegate::SuggestionMetadata>
+          metadata);
 
   // Returns true if a search is currently in progress.
   bool IsSearching() const;
@@ -110,14 +125,14 @@ class AtMemoryManager {
                 const FormGlobalId& form_id,
                 const FieldGlobalId& field_id,
                 const Suggestion& suggestion,
-                std::unique_ptr<AtMemoryFunnelMetrics> metrics);
+                std::unique_ptr<AtMemoryMetricsRecorder> metrics);
 
   // Fills the unmasked credit card value after fetching it.
   void FillCreditCard(const std::string& credit_card_guid,
                       const FormGlobalId& form_id,
                       const FieldGlobalId& field_id,
                       const Suggestion& suggestion,
-                      std::unique_ptr<AtMemoryFunnelMetrics> metrics);
+                      std::unique_ptr<AtMemoryMetricsRecorder> metrics);
 
   // Fills the unmasked AutofillAI value after fetching it.
   void FillSensitiveAutofillAiData(
@@ -126,7 +141,7 @@ class AtMemoryManager {
       const FieldGlobalId& field_id,
       const Suggestion& suggestion,
       const AtMemoryDataType& data_type,
-      std::unique_ptr<AtMemoryFunnelMetrics> metrics);
+      std::unique_ptr<AtMemoryMetricsRecorder> metrics);
 
   // Callback handler when the unmasked AutofillAI entity has been fetched.
   void OnAutofillAiFetched(
@@ -134,7 +149,7 @@ class AtMemoryManager {
       const FieldGlobalId& field_id,
       const Suggestion& suggestion,
       const AtMemoryDataType& data_type,
-      std::unique_ptr<AtMemoryFunnelMetrics> metrics,
+      std::unique_ptr<AtMemoryMetricsRecorder> metrics,
       base::expected<EntityInstance, AutofillAiAccessManager::FailureReason>
           result,
       bool reauth_attempted);
@@ -146,7 +161,7 @@ class AtMemoryManager {
 
   UpdateSuggestionsCallback update_callback_;
 
-  std::unique_ptr<AtMemoryFunnelMetrics> at_memory_funnel_metrics_;
+  std::unique_ptr<AtMemoryMetricsRecorder> at_memory_metrics_recorder_;
 
   // Indicates whether the current tab and the form uses a secure connection.
   bool is_context_secure_ = false;

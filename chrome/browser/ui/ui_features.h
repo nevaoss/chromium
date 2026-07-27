@@ -23,6 +23,8 @@ BASE_DECLARE_FEATURE(kUseActionsForBrowserCommands);
 
 BASE_DECLARE_FEATURE(kAllowEyeDropperWGCScreenCapture);
 
+BASE_DECLARE_FEATURE(kChromeDarkNeutrals26);
+
 // Enables a compositor-driven rotation animation for the tab load throbber.
 BASE_DECLARE_FEATURE(kCompositorLoadingThrobber);
 
@@ -234,7 +236,6 @@ inline constexpr char kTabHoverCardImagesCrossfadePreviewAtParameterName[] =
 inline constexpr char kTabHoverCardAdditionalMaxWidthDelay[] =
     "additional_max_width_delay";
 
-BASE_DECLARE_FEATURE(kTabStripSkipSelectionEventOnActivation);
 BASE_DECLARE_FEATURE(kTabStripNewTabButtonFlickerFix);
 
 // If enabled, use desktop widget to show tab modal dialogs.
@@ -287,9 +288,17 @@ BASE_DECLARE_FEATURE(kPageSpecificDataDialogRelatedInstalledAppsSection);
 // Feature for the promotion banner on the top of chrome://management page
 BASE_DECLARE_FEATURE(kEnableManagementPromotionBanner);
 
+// Gates the optimization to cache LocationBarView in
+// LensOverlayHomeworkPageActionController.
+BASE_DECLARE_FEATURE(kLensOverlayHomeworkPageActionFocusOptimization);
+
 // Controls whether the new page actions framework should be displaying page
 // actions.
 BASE_DECLARE_FEATURE(kPageActionsMigration);
+
+// Gates the optimization for AI Mode page action to reduce mouse pressed
+// latency.
+BASE_DECLARE_FEATURE(kAiModePageActionOptimization);
 
 // For development only, set this to enable all page actions.
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationEnableAll);

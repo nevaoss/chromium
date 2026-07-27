@@ -6,9 +6,9 @@
 
 #include <memory>
 
-#include "base/command_line.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
+#include "base/run_loop.h"
 #include "base/test/bind.h"
 #include "base/test/gmock_callback_support.h"
 #include "base/test/metrics/histogram_tester.h"
@@ -18,6 +18,7 @@
 #include "base/test/test_future.h"
 #include "build/build_config.h"
 #include "chrome/browser/component_updater/indigo_component_installer.h"
+#include "chrome/browser/contextual_cueing/features.h"
 #include "chrome/browser/glic/glic_profile_manager.h"
 #include "chrome/browser/glic/public/glic_invoke_options.h"
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
@@ -57,15 +58,19 @@
 #include "components/skills/public/skill.h"
 #include "content/public/test/browser_task_environment.h"
 #include "content/public/test/navigation_simulator.h"
+#include "content/public/test/test_renderer_host.h"
 #include "mojo/public/cpp/bindings/receiver.h"
+#include "services/service_manager/public/cpp/interface_provider.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/blink/public/mojom/document_metadata/document_metadata.mojom.h"
 #include "third_party/blink/public/mojom/image_replacement/image_replacement.mojom.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/models/image_model.h"
 #include "ui/base/resource/resource_bundle.h"
 #include "ui/base/unowned_user_data/unowned_user_data_host.h"
 #include "ui/gfx/image/image_skia.h"
+#include "url/origin.h"
 
 #if BUILDFLAG(IS_CHROMEOS)
 #include "chromeos/ash/components/network/network_handler_test_helper.h"
@@ -113,6 +118,48 @@ auto HasGlicPrompt(std::string_view prompt) {
   return ::testing::Field("prompts", &glic::GlicInvokeOptions::prompts,
                           ::testing::ElementsAre(prompt));
 }
+class FakeDocumentMetadata : public blink::mojom::DocumentMetadata {
+ public:
+  FakeDocumentMetadata() = default;
+  ~FakeDocumentMetadata() override = default;
+
+  void GetEntities(GetEntitiesCallback callback) override {
+    std::move(callback).Run(nullptr);
+  }
+
+  void ClassifyProductDetails(
+      const std::vector<std::string>& allowed_keywords,
+      const std::vector<std::string>& blocked_keywords,
+      ClassifyProductDetailsCallback callback) override {
+    last_allowed_keywords_ = allowed_keywords;
+    last_blocked_keywords_ = blocked_keywords;
+    std::move(callback).Run(result_ ? result_.Clone() : nullptr);
+    if (quit_closure_) {
+      std::move(quit_closure_).Run();
+    }
+  }
+
+  void SetResult(blink::mojom::ProductClassificationResultPtr result) {
+    result_ = std::move(result);
+  }
+
+  void SetQuitClosure(base::OnceClosure quit_closure) {
+    quit_closure_ = std::move(quit_closure);
+  }
+
+  const std::vector<std::string>& last_allowed_keywords() const {
+    return last_allowed_keywords_;
+  }
+  const std::vector<std::string>& last_blocked_keywords() const {
+    return last_blocked_keywords_;
+  }
+
+ private:
+  blink::mojom::ProductClassificationResultPtr result_;
+  std::vector<std::string> last_allowed_keywords_;
+  std::vector<std::string> last_blocked_keywords_;
+  base::OnceClosure quit_closure_;
+};
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 class MockSigninUiDelegate : public signin_ui_util::SigninUiDelegate {
@@ -122,7 +169,8 @@ class MockSigninUiDelegate : public signin_ui_util::SigninUiDelegate {
               (Profile*,
                bool,
                signin_metrics::AccessPoint,
-               signin_metrics::PromoAction),
+               signin_metrics::PromoAction,
+               const std::string&),
               (override));
   MOCK_METHOD(void,
               ShowReauthUI,
@@ -131,6 +179,10 @@ class MockSigninUiDelegate : public signin_ui_util::SigninUiDelegate {
                bool,
                signin_metrics::AccessPoint,
                signin_metrics::PromoAction),
+              (override));
+  MOCK_METHOD(void,
+              ShowCrossDeviceSigninQrBubble,
+              (BrowserWindowInterface*, base::OnceClosure),
               (override));
 };
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
@@ -148,9 +200,13 @@ struct CreateControllerOptions {
 class IndigoPageActionControllerTest : public testing::Test {
  protected:
   void SetUp() override {
-    feature_list_.InitAndEnableFeatureWithParameters(
-        features::kIndigo,
-        {{"indigo_onboarding_url", "https://example.com/onboard"}});
+    feature_list_.InitWithFeaturesAndParameters(
+        {{features::kIndigo,
+          {{"indigo_onboarding_url", "https://example.com/onboard"},
+           {features::kIndigoAllowForEnterprise.name, "true"}}},
+         {features::kIndigoMetadataKeywordHeuristic, {}},
+         {contextual_cueing::kContextualCueingV2, {}}},
+        {});
     scoped_command_line_.GetProcessCommandLine()->AppendSwitchASCII(
         "indigo-script", "/dummy/path");
     glic::GlicEnabling::SetBypassEnablementChecksForTesting(true);
@@ -163,6 +219,7 @@ class IndigoPageActionControllerTest : public testing::Test {
   void TearDown() override {
     controller_.reset();
     page_action_controller_.reset();
+    fake_glic_side_panel_coordinator_.reset();
     tab_interface_.reset();
     mock_optimization_guide_ = nullptr;
     mock_glic_keyed_service_ = nullptr;
@@ -242,8 +299,6 @@ class IndigoPageActionControllerTest : public testing::Test {
         std::make_unique<page_actions::FakeTabInterface>(profile_.get());
     tabs::TabLookupFromWebContents::CreateForWebContents(
         tab_interface_->GetContents(), tab_interface_.get());
-    ON_CALL(*tab_interface_, GetUnownedUserDataHost())
-        .WillByDefault(testing::ReturnRef(unowned_user_data_host_));
     ON_CALL(*tab_interface_, GetBrowserWindowInterface())
         .WillByDefault(testing::Return(&mock_browser_window_interface_));
     ON_CALL(testing::Const(*tab_interface_), GetBrowserWindowInterface())
@@ -279,6 +334,19 @@ class IndigoPageActionControllerTest : public testing::Test {
         std::make_unique<FakeGlicSidePanelCoordinator>(tab_interface_.get());
     controller_ = std::make_unique<IndigoPageActionController>(
         *tab_interface_, *page_action_controller_);
+  }
+
+  void SetupHeuristicConfig() {
+    auto* service = IndigoServiceFactory::GetForProfile(profile_.get());
+    ASSERT_TRUE(service);
+    IndigoService::ConfigData config;
+    config.allowed_origins = {
+        url::Origin::Create(GURL("https://allowed1.com")),
+        url::Origin::Create(GURL("https://allowed2.com")),
+    };
+    config.allowed_keywords = {"keyword1", "keyword2"};
+    config.blocked_keywords = {"blocked1", "blocked2"};
+    service->SetConfigForTesting(std::move(config));
   }
 
   void ExpectOptimizationGuideDecision(const GURL& url,
@@ -364,7 +432,6 @@ class IndigoPageActionControllerTest : public testing::Test {
       identity_test_env_adaptor_;
   raw_ptr<testing::NiceMock<MockOptimizationGuideKeyedService>>
       mock_optimization_guide_;
-  ui::UnownedUserDataHost unowned_user_data_host_;
   ui::UnownedUserDataHost browser_window_user_data_host_;
   testing::NiceMock<MockBrowserWindowInterface> mock_browser_window_interface_;
   std::unique_ptr<page_actions::FakeTabInterface> tab_interface_;
@@ -638,6 +705,11 @@ TEST_F(IndigoPageActionControllerTest, ShowsAnchoredMessageThenSuggestionChip) {
             })));
     EXPECT_CALL(
         *page_action_controller_,
+        SetAnchoredMessageAction(
+            kActionIndigo, page_actions::AnchoredMessageActionIconType::kMenu,
+            testing::NotNull()));
+    EXPECT_CALL(
+        *page_action_controller_,
         ShowAnchoredMessage(
             kActionIndigo,
             page_actions::AnchoredMessageConfig{
@@ -908,6 +980,15 @@ TEST_F(IndigoPageActionControllerTest,
   }
 
   // The first click on the suggestion chip should show the anchored message.
+  EXPECT_CALL(*page_action_controller_,
+              SetAnchoredMessageText(kActionIndigo, _));
+  EXPECT_CALL(*page_action_controller_,
+              SetAnchoredMessageIcon(kActionIndigo, _));
+  EXPECT_CALL(
+      *page_action_controller_,
+      SetAnchoredMessageAction(
+          kActionIndigo, page_actions::AnchoredMessageActionIconType::kClose,
+          testing::_));
   EXPECT_CALL(*page_action_controller_, ShowAnchoredMessage(kActionIndigo, _));
 
   controller_->InvokeAction(EntryPoint::kSuggestionChip);
@@ -1131,7 +1212,7 @@ TEST_F(IndigoPageActionControllerTest, OnPageActionAnchoredMessageShown) {
   CreateController();
 
   auto* service = IndigoServiceFactory::GetForProfile(profile_.get());
-  ASSERT_TRUE(service->CanShowAnchoredMessage());
+  ASSERT_TRUE(service->CanShowContextualCue());
 
   base::UserActionTester user_action_tester;
   EXPECT_EQ(user_action_tester.GetActionCount(
@@ -1150,7 +1231,7 @@ TEST_F(IndigoPageActionControllerTest, OnPageActionAnchoredMessageShown) {
   // Simply attempting to show the anchored message (via UpdateEntryPointsState
   // during navigation) should NOT be enough to record the user action or
   // update the service's state.
-  EXPECT_TRUE(service->CanShowAnchoredMessage());
+  EXPECT_TRUE(service->CanShowContextualCue());
   EXPECT_EQ(user_action_tester.GetActionCount(
                 "Indigo.PageAction.ShowAnchoredMessage"),
             0);
@@ -1163,7 +1244,7 @@ TEST_F(IndigoPageActionControllerTest, OnPageActionAnchoredMessageShown) {
   controller_->OnPageActionAnchoredMessageShown(state);
 
   // Verify that the service was notified and the action was recorded.
-  EXPECT_FALSE(service->CanShowAnchoredMessage());
+  EXPECT_FALSE(service->CanShowContextualCue());
   EXPECT_EQ(user_action_tester.GetActionCount(
                 "Indigo.PageAction.ShowAnchoredMessage"),
             1);
@@ -1372,5 +1453,225 @@ TEST_F(IndigoPageActionControllerTest,
   EXPECT_EQ(user_action_tester.GetActionCount("Indigo.Transformation.Trigger"),
             1);
 }
+
+TEST_F(IndigoPageActionControllerTest, HeuristicShowsActionOnSuccess) {
+  CreateController();
+  SetupHeuristicConfig();
+
+  // URL in allowlist.
+  GURL url("https://allowed1.com/product1");
+  ExpectOptimizationGuideDecision(url, OptimizationGuideDecision::kUnknown);
+
+  FakeDocumentMetadata fake_metadata;
+  auto result = blink::mojom::ProductClassificationResult::New();
+  result->allowed_keyword_found = true;
+  result->blocked_keyword_found = false;
+  fake_metadata.SetResult(std::move(result));
+
+  auto* rfh = tab_interface_->GetContents()->GetPrimaryMainFrame();
+  ASSERT_TRUE(rfh);
+  content::RenderFrameHostTester::For(rfh)->InitializeRenderFrameIfNeeded();
+  auto* remote_interfaces = rfh->GetRemoteInterfaces();
+  ASSERT_TRUE(remote_interfaces);
+
+  mojo::Receiver<blink::mojom::DocumentMetadata> receiver(&fake_metadata);
+  service_manager::InterfaceProvider::TestApi test_api(remote_interfaces);
+  test_api.SetBinderForName(
+      blink::mojom::DocumentMetadata::Name_,
+      base::BindRepeating(
+          [](mojo::Receiver<blink::mojom::DocumentMetadata>* receiver,
+             mojo::ScopedMessagePipeHandle pipe) {
+            receiver->Bind(
+                mojo::PendingReceiver<blink::mojom::DocumentMetadata>(
+                    std::move(pipe)));
+          },
+          base::Unretained(&receiver)));
+
+  base::RunLoop run_loop;
+  // We expect Show to be called when classification succeeds.
+  EXPECT_CALL(*page_action_controller_, Show(kActionIndigo))
+      .WillOnce(base::test::RunClosure(run_loop.QuitClosure()));
+
+  auto navigation = content::NavigationSimulator::CreateBrowserInitiated(
+      url, tab_interface_->GetContents());
+  navigation->Commit();
+
+  run_loop.Run();
+}
+
+TEST_F(IndigoPageActionControllerTest, HeuristicDisabledByFeature) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndDisableFeature(features::kIndigoMetadataKeywordHeuristic);
+
+  CreateController();
+  SetupHeuristicConfig();
+
+  // URL in allowlist.
+  GURL url("https://allowed1.com/product1");
+  ExpectOptimizationGuideDecision(url, OptimizationGuideDecision::kUnknown);
+
+  auto* rfh = tab_interface_->GetContents()->GetPrimaryMainFrame();
+  ASSERT_TRUE(rfh);
+  content::RenderFrameHostTester::For(rfh)->InitializeRenderFrameIfNeeded();
+  auto* remote_interfaces = rfh->GetRemoteInterfaces();
+  ASSERT_TRUE(remote_interfaces);
+
+  bool binder_called = false;
+  service_manager::InterfaceProvider::TestApi test_api(remote_interfaces);
+  test_api.SetBinderForName(
+      blink::mojom::DocumentMetadata::Name_,
+      base::BindRepeating(
+          [](bool* binder_called, mojo::ScopedMessagePipeHandle pipe) {
+            *binder_called = true;
+          },
+          base::Unretained(&binder_called)));
+
+  // We expect Show to NOT be called because the feature is disabled.
+  EXPECT_CALL(*page_action_controller_, Show(_)).Times(0);
+
+  auto navigation = content::NavigationSimulator::CreateBrowserInitiated(
+      url, tab_interface_->GetContents());
+  navigation->Commit();
+
+  EXPECT_FALSE(binder_called);
+}
+
+TEST_F(IndigoPageActionControllerTest, HeuristicHidesActionOnFailure) {
+  CreateController();
+  SetupHeuristicConfig();
+
+  // 1. Show it first using OptGuide.
+  GURL url1("https://example.com");
+  ExpectOptimizationGuideDecision(url1, OptimizationGuideDecision::kTrue);
+
+  base::RunLoop run_loop1;
+  EXPECT_CALL(*page_action_controller_, Show(kActionIndigo))
+      .WillOnce(base::test::RunClosure(run_loop1.QuitClosure()));
+
+  auto navigation1 = content::NavigationSimulator::CreateBrowserInitiated(
+      url1, tab_interface_->GetContents());
+  navigation1->Commit();
+  run_loop1.Run();
+  testing::Mock::VerifyAndClearExpectations(page_action_controller_.get());
+
+  // 2. Navigate to allowed URL but heuristic fails. Should Hide.
+  GURL url2("https://allowed1.com/product1");
+  ExpectOptimizationGuideDecision(url2, OptimizationGuideDecision::kUnknown);
+
+  FakeDocumentMetadata fake_metadata;
+  auto result = blink::mojom::ProductClassificationResult::New();
+  result->allowed_keyword_found = false;
+  result->blocked_keyword_found = true;
+  fake_metadata.SetResult(std::move(result));
+
+  base::RunLoop heuristic_run_loop;
+  fake_metadata.SetQuitClosure(heuristic_run_loop.QuitClosure());
+
+  auto navigation2 = content::NavigationSimulator::CreateBrowserInitiated(
+      url2, tab_interface_->GetContents());
+  navigation2->Start();
+  navigation2->ReadyToCommit();
+
+  auto* rfh2 = navigation2->GetFinalRenderFrameHost();
+  ASSERT_TRUE(rfh2);
+  content::RenderFrameHostTester::For(rfh2)->InitializeRenderFrameIfNeeded();
+  auto* remote_interfaces2 = rfh2->GetRemoteInterfaces();
+  ASSERT_TRUE(remote_interfaces2);
+
+  mojo::Receiver<blink::mojom::DocumentMetadata> receiver(&fake_metadata);
+  service_manager::InterfaceProvider::TestApi test_api(remote_interfaces2);
+  test_api.SetBinderForName(
+      blink::mojom::DocumentMetadata::Name_,
+      base::BindRepeating(
+          [](mojo::Receiver<blink::mojom::DocumentMetadata>* receiver,
+             mojo::ScopedMessagePipeHandle pipe) {
+            receiver->Bind(
+                mojo::PendingReceiver<blink::mojom::DocumentMetadata>(
+                    std::move(pipe)));
+          },
+          base::Unretained(&receiver)));
+
+  // Navigation should synchronously trigger Hide.
+  EXPECT_CALL(*page_action_controller_, Hide(kActionIndigo));
+  // After navigation, Show should NOT be called even after heuristic runs.
+  EXPECT_CALL(*page_action_controller_, Show(_)).Times(0);
+
+  navigation2->Commit();
+
+  // Wait for the heuristic to finish.
+  heuristic_run_loop.Run();
+}
+
+TEST_F(IndigoPageActionControllerTest, HeuristicIgnoredIfUrlNotAllowed) {
+  CreateController();
+  SetupHeuristicConfig();
+
+  // 1. Show it first.
+  GURL url1("https://example.com");
+  ExpectOptimizationGuideDecision(url1, OptimizationGuideDecision::kTrue);
+
+  base::RunLoop run_loop1;
+  EXPECT_CALL(*page_action_controller_, Show(kActionIndigo))
+      .WillOnce(base::test::RunClosure(run_loop1.QuitClosure()));
+
+  auto navigation1 = content::NavigationSimulator::CreateBrowserInitiated(
+      url1, tab_interface_->GetContents());
+  navigation1->Commit();
+  run_loop1.Run();
+  testing::Mock::VerifyAndClearExpectations(page_action_controller_.get());
+
+  // 2. Navigate to NOT allowed URL. Should Hide.
+  GURL url2("https://disallowed.com/product1");
+  ExpectOptimizationGuideDecision(url2, OptimizationGuideDecision::kUnknown);
+
+  auto navigation2 = content::NavigationSimulator::CreateBrowserInitiated(
+      url2, tab_interface_->GetContents());
+  navigation2->Start();
+  navigation2->ReadyToCommit();
+
+  auto* rfh2 = navigation2->GetFinalRenderFrameHost();
+  ASSERT_TRUE(rfh2);
+  content::RenderFrameHostTester::For(rfh2)->InitializeRenderFrameIfNeeded();
+  auto* remote_interfaces2 = rfh2->GetRemoteInterfaces();
+  ASSERT_TRUE(remote_interfaces2);
+
+  bool binder_called = false;
+  service_manager::InterfaceProvider::TestApi test_api(remote_interfaces2);
+  test_api.SetBinderForName(
+      blink::mojom::DocumentMetadata::Name_,
+      base::BindRepeating(
+          [](bool* binder_called, mojo::ScopedMessagePipeHandle pipe) {
+            *binder_called = true;
+          },
+          base::Unretained(&binder_called)));
+
+  EXPECT_CALL(*page_action_controller_, Hide(kActionIndigo));
+
+  navigation2->Commit();
+
+  EXPECT_FALSE(binder_called);
+}
+
+TEST_F(IndigoPageActionControllerTest,
+       SuggestionChipShownWhenContextualCueingV2Disabled) {
+  base::test::ScopedFeatureList local_feature_list;
+  local_feature_list.InitAndDisableFeature(
+      contextual_cueing::kContextualCueingV2);
+
+  CreateController();
+  SetupEligibleAndOnboarded();
+
+  EXPECT_CALL(*page_action_controller_, Show(kActionIndigo));
+  EXPECT_CALL(*page_action_controller_, ShowAnchoredMessage(_, _)).Times(0);
+  EXPECT_CALL(*page_action_controller_, ShowSuggestionChip(kActionIndigo, _));
+
+  GURL url("https://example.com");
+  ExpectOptimizationGuideDecision(url, OptimizationGuideDecision::kTrue);
+
+  auto navigation = content::NavigationSimulator::CreateBrowserInitiated(
+      url, tab_interface_->GetContents());
+  navigation->Commit();
+}
+
 }  // namespace
 }  // namespace indigo

@@ -113,7 +113,8 @@ class FakePageHandler extends TestBrowserProxy implements PageHandlerInterface {
 
   openAutocompleteMatch(
       line: number, url: Url, areMatchesShowing: boolean, mouseButton: number,
-      altKey: boolean, ctrlKey: boolean, metaKey: boolean, shiftKey: boolean) {
+      altKey: boolean, ctrlKey: boolean, metaKey: boolean, shiftKey: boolean,
+      viaKeyboard: boolean) {
     this.methodCalled('openAutocompleteMatch', {
       line,
       url,
@@ -123,6 +124,7 @@ class FakePageHandler extends TestBrowserProxy implements PageHandlerInterface {
       ctrlKey,
       metaKey,
       shiftKey,
+      viaKeyboard,
     });
   }
 
@@ -140,19 +142,23 @@ class FakePageHandler extends TestBrowserProxy implements PageHandlerInterface {
   }
 
   queryAutocomplete(
-      input: String16, preventInlineAutocomplete: boolean,
+      queryId: number, input: String16, preventInlineAutocomplete: boolean,
       cursorPosition: number) {
     this.methodCalled(
         'queryAutocomplete',
-        {input, preventInlineAutocomplete, cursorPosition});
+        {queryId, input, preventInlineAutocomplete, cursorPosition});
   }
 
   queryAutocompleteWithSuggestInventory(
-      input: String16, preventInlineAutocomplete: boolean,
+      queryId: number, input: String16, preventInlineAutocomplete: boolean,
       cursorPosition: number, suggestInventory: SuggestInventory) {
-    this.methodCalled(
-        'queryAutocompleteWithSuggestInventory',
-        {input, preventInlineAutocomplete, cursorPosition, suggestInventory});
+    this.methodCalled('queryAutocompleteWithSuggestInventory', {
+      queryId,
+      input,
+      preventInlineAutocomplete,
+      cursorPosition,
+      suggestInventory,
+    });
   }
 
   stopAutocomplete(clearResult: boolean) {

@@ -74,7 +74,6 @@ import org.chromium.base.ContextUtils;
 import org.chromium.base.IntentUtils;
 import org.chromium.base.Log;
 import org.chromium.base.ResettersForTesting;
-import org.chromium.base.TimeUtils;
 import org.chromium.base.shared_preferences.SharedPreferencesManager;
 import org.chromium.base.task.AsyncTask;
 import org.chromium.base.task.BackgroundOnlyAsyncTask;
@@ -91,7 +90,6 @@ import org.chromium.chrome.browser.ntp_customization.theme.theme_collections.Cus
 import org.chromium.chrome.browser.ntp_customization.theme.upload_image.BackgroundImageInfo;
 import org.chromium.chrome.browser.ntp_customization.theme.upload_image.CropImageUtils;
 import org.chromium.chrome.browser.ntp_customization.theme_sync.data.NtpBackgroundDataBase;
-import org.chromium.chrome.browser.ntp_customization.theme_sync.data.NtpBackgroundDataUploadImage;
 import org.chromium.chrome.browser.ntp_customization.theme_sync.data.NtpBackgroundDataUtils;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
 import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
@@ -170,12 +168,10 @@ public class NtpCustomizationUtils {
         }
     }
 
-    /** The time duration limit to refresh NTP's background. */
-    @VisibleForTesting
-    static final long DEFAULT_DAILY_REFRESH_HOURS_MS = TimeUtils.MILLISECONDS_PER_DAY;
+    public static final String NTP_UPLOAD_IMAGES_DIR = "upload_images";
+    public static final String NTP_THEME_COLLECTION_IMAGES_DIR = "theme_collection_images";
 
     @VisibleForTesting static final String NTP_BACKGROUND_IMAGE_FILE = "ntp_background_image";
-    @VisibleForTesting static final String NTP_UPLOAD_IMAGES_DIR = "upload_images";
 
     @VisibleForTesting
     static final String NTP_BACKGROUND_IMAGE_FILE_FOR_DAILY_REFRESH =
@@ -500,18 +496,11 @@ public class NtpCustomizationUtils {
     /**
      * Saves the background image.
      *
-     * @param backgroundImageBitmap The bitmap of the background image.
-     * @param ntpBackgroundDataBase The instance of {@link NtpBackgroundDataBase}.
+     * @param backgroundImageBitmap The bitmap of the theme collection or uploaded image.
      */
     @VisibleForTesting
     static void saveBackgroundImageFile(
-            @Nullable Bitmap backgroundImageBitmap,
-            @Nullable NtpBackgroundDataBase ntpBackgroundDataBase) {
-        String filePath = null;
-        if (ntpBackgroundDataBase != null
-                && ntpBackgroundDataBase instanceof NtpBackgroundDataUploadImage uploadImageData) {
-            filePath = uploadImageData.getLastUploadImageFilePath();
-        }
+            @Nullable String filePath, @Nullable Bitmap backgroundImageBitmap) {
         File file = getBackgroundImageFileFromPath(filePath);
         saveBitmapImageToFile(backgroundImageBitmap, file);
     }
@@ -632,20 +621,19 @@ public class NtpCustomizationUtils {
     }
 
     /**
-     * Creates a file for the upload image with provided file name. The file will be in the sub
-     * directory NTP_UPLOAD_IMAGES_DIR.
+     * Creates a file for the background theme image with provided file name. The file will be in
+     * the sub directory of dirName.
      *
      * @param fileName The file name of the upload image file to create.
      */
-    public static File createUploadImageFileInDir(String fileName) {
-        File uploadImageDir =
-                new File(ContextUtils.getApplicationContext().getFilesDir(), NTP_UPLOAD_IMAGES_DIR);
+    public static File createThemeImageFileInDir(String fileName, String dirName) {
+        File themeImageDir = new File(ContextUtils.getApplicationContext().getFilesDir(), dirName);
         // Check if the directory already exists; if not, create it.
-        if (!uploadImageDir.exists()) {
-            uploadImageDir.mkdirs();
+        if (!themeImageDir.exists()) {
+            themeImageDir.mkdirs();
         }
 
-        return new File(uploadImageDir, fileName);
+        return new File(themeImageDir, fileName);
     }
 
     /** Returns the file to save the NTP's daily refresh background image. */
@@ -679,12 +667,11 @@ public class NtpCustomizationUtils {
         }
     }
 
-    /** Deletes the entire directory of NTP_UPLOAD_IMAGES_DIR. */
-    public static void deleteUploadImageFileDir() {
-        File uploadImageDir =
-                new File(ContextUtils.getApplicationContext().getFilesDir(), NTP_UPLOAD_IMAGES_DIR);
-        if (uploadImageDir.exists()) {
-            deleteDirectory(uploadImageDir);
+    /** Deletes the entire image file directory. */
+    public static void deleteThemeImageFileDir(String dirName) {
+        File themeImageDir = new File(ContextUtils.getApplicationContext().getFilesDir(), dirName);
+        if (themeImageDir.exists()) {
+            deleteDirectory(themeImageDir);
         }
     }
 
@@ -1053,9 +1040,9 @@ public class NtpCustomizationUtils {
     }
 
     /** Gets the background image file path from SharedPreference. */
-    public static String getBackgroundImageFilePathFromSharedPreference() {
+    public static @Nullable String getBackgroundImageFilePathFromSharedPreference() {
         SharedPreferencesManager prefsManager = ChromeSharedPreferences.getInstance();
-        return prefsManager.readString(NTP_CUSTOMIZATION_BACKGROUND_IMAGE_FILE_PATH, "");
+        return prefsManager.readString(NTP_CUSTOMIZATION_BACKGROUND_IMAGE_FILE_PATH, null);
     }
 
     /** Sets whether the customized NTP theme snackbar has been shown to the SharedPreference. */
@@ -1116,7 +1103,8 @@ public class NtpCustomizationUtils {
         if (deleteImageFile) {
             deleteBackgroundImageFile(createBackgroundImageFile());
             deleteBackgroundImageFile(createDailyRefreshBackgroundImageFile());
-            deleteUploadImageFileDir();
+            deleteThemeImageFileDir(NTP_UPLOAD_IMAGES_DIR);
+            deleteThemeImageFileDir(NTP_THEME_COLLECTION_IMAGES_DIR);
         }
     }
 
@@ -1481,15 +1469,19 @@ public class NtpCustomizationUtils {
      *     landscape transformation matrices of the image.
      * @param skipSavingPrimaryColor True if color selection and saving are deferred until the
      *     bottom sheet is dismissed.
-     * @param ntpBackgroundData The instance of the {@link NtpBackgroundDataBase}.
+     * @param primaryColor The previously picked primary color if not null.
+     * @param filePath The instance of the {@link NtpBackgroundDataBase}.
      */
     public static @Nullable @ColorInt Integer saveBackgroundInfo(
             @Nullable CustomBackgroundInfo customBackgroundInfo,
-            Bitmap bitmap,
+            @Nullable Bitmap bitmap,
             BackgroundImageInfo backgroundImageInfo,
             boolean skipSavingPrimaryColor,
-            @Nullable NtpBackgroundDataBase ntpBackgroundData) {
-        saveBackgroundImageFile(bitmap, ntpBackgroundData);
+            @Nullable @ColorInt Integer primaryColor,
+            @Nullable String filePath) {
+        if (bitmap != null) {
+            saveBackgroundImageFile(filePath, bitmap);
+        }
 
         if (customBackgroundInfo != null) {
             setCustomBackgroundInfoToSharedPreference(customBackgroundInfo);
@@ -1497,13 +1489,15 @@ public class NtpCustomizationUtils {
             removeCustomBackgroundInfoFromSharedPreference();
         }
 
-        @ColorInt Integer primaryColor = null;
-        if (!skipSavingPrimaryColor) {
-            primaryColor = pickAndSavePrimaryColor(bitmap);
+        @ColorInt Integer primaryColorPicked = null;
+        if (!skipSavingPrimaryColor && bitmap != null) {
+            primaryColorPicked = pickAndSavePrimaryColor(bitmap);
+        } else if (primaryColor != null) {
+            setCustomizedPrimaryColorToSharedPreference(primaryColor);
         }
 
         updateBackgroundImageInfo(backgroundImageInfo);
-        return primaryColor;
+        return primaryColorPicked;
     }
 
     /**
@@ -1819,5 +1813,25 @@ public class NtpCustomizationUtils {
     public static boolean isNTPCustomizationSyncEnabled() {
         return ChromeFeatureList.sNewTabPageCustomizationV2.isEnabled()
                 && ChromeFeatureList.sNewTabPageCustomizationThemeSync.isEnabled();
+    }
+
+    /**
+     * Creates a file for the upload image with provided file name. The file will be in the sub
+     * directory NTP_UPLOAD_IMAGES_DIR.
+     *
+     * @param fileName The file name of the upload image file to create.
+     */
+    public static File createUploadImageFileInDirForTesting(String fileName) {
+        return createThemeImageFileInDir(fileName, NTP_UPLOAD_IMAGES_DIR);
+    }
+
+    /**
+     * Creates a file for the theme collection image with provided file name. The file will be in
+     * the sub directory NTP_THEME_COLLECTION_IMAGES_DIR.
+     *
+     * @param fileName The file name of the upload image file to create.
+     */
+    public static File createThemeCollectionImageFileInDirForTesting(String fileName) {
+        return createThemeImageFileInDir(fileName, NTP_THEME_COLLECTION_IMAGES_DIR);
     }
 }

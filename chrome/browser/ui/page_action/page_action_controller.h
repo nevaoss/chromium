@@ -21,6 +21,7 @@
 #include "base/time/time.h"
 #include "base/timer/timer.h"
 #include "base/types/pass_key.h"
+#include "chrome/browser/ui/page_action/page_action_enums.h"
 #include "chrome/browser/ui/page_action/page_action_metrics_recorder_interface.h"
 #include "chrome/browser/ui/page_action/page_action_pass_key.h"
 #include "chrome/browser/ui/page_action/page_action_triggers.h"
@@ -28,6 +29,7 @@
 #include "components/tabs/public/tab_interface.h"
 #include "ui/actions/action_id.h"
 #include "ui/base/models/image_model.h"
+#include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
 #include "ui/gfx/animation/tween.h"
 
 namespace actions {
@@ -61,6 +63,16 @@ enum class PageActionColorSource {
   kForeground,
   // A blend between the focus border color and the background.
   kCascadingAccent,
+};
+
+// Dictates the animation style of the slide animation for the page action view.
+enum class PageActionAnimationStyle {
+  // Animation where the page action view label slides out when the button
+  // enlarges.
+  kStandard = 0,
+  // Animation where the head icon disappears and trailing icon appears as the
+  // label slides.
+  kSlideAndCrossfade = 1,
 };
 
 // These values are used for deciding priority when deciding which Anchored
@@ -179,6 +191,10 @@ std::ostream& operator<<(std::ostream& os, const SuggestionChipConfig& config);
 // receive updates from this controller.
 class PageActionController {
  public:
+  DECLARE_USER_DATA(PageActionController);
+
+  static PageActionController* From(tabs::TabInterface* tab);
+
   // Interface implemented by the View to allow the Controller to push
   // internal callbacks without a direct dependency on the View class.
   class Delegate {
@@ -268,6 +284,17 @@ class PageActionController {
 
   virtual void ClearOverrideImage(actions::ActionId action_id) = 0;
 
+  // Configures the animation transition style.
+  virtual void SetAnimationStyle(actions::ActionId action_id,
+                                 PageActionAnimationStyle style) = 0;
+  // Sets the trailing icon image shown at the end side of the capsule.
+  virtual void SetTrailingImage(actions::ActionId action_id,
+                                const ui::ImageModel& trailing_image) = 0;
+  // Clears the trailing icon image.
+  virtual void ClearTrailingImage(actions::ActionId action_id) = 0;
+  // Toggles visibility of the trailing icon for animations.
+  virtual void SetShowTrailingIcon(actions::ActionId action_id, bool show) = 0;
+
   // By default, the page action will have an tooltip which can be shared in the
   // other places that rely on the same action item. However, features can
   // provide a custom tooltip to use for the page action for a specific context
@@ -351,18 +378,17 @@ class PageActionController {
 class PageActionControllerImpl : public PageActionController,
                                  public PinnedToolbarActionsModel::Observer {
  public:
-  explicit PageActionControllerImpl(
+  PageActionControllerImpl(
+      tabs::TabInterface& tab_interface,
+      const std::vector<actions::ActionId>& action_ids,
+      const PageActionPropertiesProviderInterface& properties_provider,
       PinnedToolbarActionsModel* pinned_actions_model,
       PageActionModelFactory* page_action_model_factory = nullptr,
-      PageActionMetricsRecorderFactory* page_action_metrics_factory = nullptr);
+      PageActionMetricsRecorderFactory* page_action_metrics_recorder_factory =
+          nullptr);
   PageActionControllerImpl(const PageActionControllerImpl&) = delete;
   PageActionControllerImpl& operator=(const PageActionControllerImpl&) = delete;
   ~PageActionControllerImpl() override;
-
-  void Initialize(
-      tabs::TabInterface& tab_interface,
-      const std::vector<actions::ActionId>& action_ids,
-      const PageActionPropertiesProviderInterface& properties_provider);
 
   // PageActionController:
   void Show(actions::ActionId action_id) override;
@@ -393,6 +419,12 @@ class PageActionControllerImpl : public PageActionController,
       PageActionColorSource color_source,
       std::optional<PageActionAnimationParams> animation_parameters) override;
   void ClearOverrideImage(actions::ActionId action_id) override;
+  void SetAnimationStyle(actions::ActionId action_id,
+                         PageActionAnimationStyle style) override;
+  void SetTrailingImage(actions::ActionId action_id,
+                        const ui::ImageModel& trailing_image) override;
+  void ClearTrailingImage(actions::ActionId action_id) override;
+  void SetShowTrailingIcon(actions::ActionId action_id, bool show) override;
   void OverrideTooltip(actions::ActionId action_id,
                        const std::u16string& override_tooltip) override;
   void ClearOverrideTooltip(actions::ActionId action_id) override;
@@ -516,6 +548,8 @@ class PageActionControllerImpl : public PageActionController,
   bool anchored_message_has_timeout_ = false;
   std::optional<actions::ActionId> active_anchored_message_;
   std::map<actions::ActionId, PageActionPriorityCategory> default_priorities_;
+
+  ui::ScopedUnownedUserData<PageActionController> scoped_unowned_user_data_;
 
   base::WeakPtrFactory<PageActionControllerImpl> weak_factory_{this};
 };

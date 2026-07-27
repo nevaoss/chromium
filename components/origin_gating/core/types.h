@@ -11,11 +11,32 @@
 
 namespace origin_gating {
 
+// Enumerate the result of a single predicate check.
+enum class Decision {
+  // The predicate neither explicitly allowed nor explicitly blocked the event.
+  kNoDecision,
+  // The predicate explicitly allowed the event.
+  kAllowed,
+  // The predicate explicitly blocked the event.
+  kBlocked,
+};
+
 // Enumerates the source of any positive/negative decision.
 enum class DecisionSource {
-  kCache,
+  // Predicate that allows if the origins in question are same-origin with each
+  // other.
+  kAllowSameOrigin,
+  // Predicate that allows if the user has already confirmed the origin in
+  // question.
+  kCacheWithUserConfirmation,
+  // Predicate that allows if the origin is already present in the cache and the
+  // delegate does not require user confirmation for that origin.
+  kCacheWithoutUserConfirmation,
+  // No decision was reached before the OriginGating framework ran out of
+  // predicates to run.
   kNoVerdict,
 };
+
 // Struct wrapping the final gating verdict and its resolution metadata.
 struct GatingDecision {
   bool is_allowed = false;
