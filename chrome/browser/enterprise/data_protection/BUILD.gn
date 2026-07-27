@@ -57,6 +57,13 @@ source_set("unit_tests") {
     deps += [ "//chrome/browser/printing:test_support" ]
   }
 
+  # NOTE(neva): enable_print_preview is disabled for webOS/OSE.
+  import("//printing/buildflags/buildflags.gni")
+  if (enable_extensions && enterprise_local_content_analysis &&
+      !enable_print_preview) {
+    deps -= [ "//chrome/browser/printing:test_support" ]
+  }
+
   if (enterprise_data_controls) {
     sources += [ "data_protection_clipboard_utils_unittest.cc" ]
     deps += [ "//components/enterprise/data_controls/core/browser:features" ]
