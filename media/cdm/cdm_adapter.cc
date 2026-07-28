@@ -510,15 +510,9 @@ void CdmAdapter::Decrypt(StreamType stream_type,
                                      ToCdmStreamType(stream_type));
 #else
   cdm::Status status = cdm_->Decrypt(input_buffer, decrypted_block.get());
-<<<<<<< HEAD
 #endif
-  TRACE_EVENT_END2("media", "CdmAdapter::Decrypt", "key ID",
-                   GetHexKeyId(input_buffer), "status",
-                   CdmStatusToString(status));
-=======
   TRACE_EVENT_END("media", "key ID", GetHexKeyId(input_buffer), "status",
                   CdmStatusToString(status));
->>>>>>> 152.0.7936.0~1
 
   if (status != cdm::kSuccess) {
     DVLOG(1) << __func__ << ": status = " << status;
