@@ -169,6 +169,26 @@ To github.com:nevaoss/chromium.git
  + c92264462937e...feb4baaca74e9 doc/NEVA-11021/add-contributing-guidelines -> doc/NEVA-11021/add-contributing-guidelines (forced update)
 ```
 
+## Draft Pull Requests
+
+A Draft Pull Request means the change is back in the author's hands: reviewers
+should skip it, and no manual verification should be run on it.
+
+- Use Draft when the change is incomplete, or when verification failed in a way
+  that puts the approach itself in question.
+- Do not use Draft when an automatic check such as `clang-format` fails. Fix the
+  problem and push again.
+- Once it is decided that another solution will be used, close the Pull Request
+  rather than leaving a Draft behind.
+
+When converting to Draft, put the reason and the condition for going back to
+Ready at the top of the description.
+
+Going back to Ready does not re-run anything on its own, and check runs never
+carry over to a new commit SHA. After a rebase or an amend, re-dispatch the
+`build-*` and `test-*` workflows and note in the Pull Request which commit was
+verified.
+
 ## Neva tag list
 
 | Tag name        | Subtag name | Comment |
