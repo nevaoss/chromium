@@ -172,7 +172,7 @@ To github.com:nevaoss/chromium.git
 ## Draft Pull Requests
 
 A Draft Pull Request means the change is back in the author's hands: reviewers
-should skip it, and no manual verification should be run on it.
+should skip it until it is marked Ready.
 
 - Use Draft when the change is incomplete, or when verification failed in a way
   that puts the approach itself in question.
