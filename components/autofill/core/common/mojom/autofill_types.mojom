@@ -390,6 +390,7 @@ struct FormFieldDataPredictions {
   uint32 rank_in_signature_group;
   uint32 rank_in_host_form;
   uint32 rank_in_host_form_signature_group;
+  bool did_trigger_javascript_autofill;
 };
 
 // autofill::FormDataPredictions
@@ -611,4 +612,11 @@ enum AutofillSuggestionTriggerSource {
   kAtMemoryContextMenu = 23,
   // Suggestions triggered by the inactivity timer.
   kAtMemoryInactivityNudge = 24,
+};
+
+// Represents the visual verification state of an email input element.
+enum EmailVerificationState {
+  kNone,
+  kLoading,
+  kVerified,
 };

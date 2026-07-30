@@ -197,8 +197,8 @@ int HTMLTextAreaElement::scrollWidth() {
   auto* box = GetLayoutBox();
   if (!box || !editor_box)
     return TextControlElement::scrollWidth();
-  LayoutUnit width =
-      editor_box->ClientWidth() + box->PaddingOutsets().HorizontalSum();
+  const LayoutUnit width = editor_box->PhysicalPaddingBoxRect().Width() +
+                           box->PaddingOutsets().HorizontalSum();
   return AdjustForAbsoluteZoom::AdjustLayoutUnit(width, box->StyleRef())
       .Round();
 }
@@ -215,8 +215,8 @@ int HTMLTextAreaElement::scrollHeight() {
   auto* box = GetLayoutBox();
   if (!box || !editor_box)
     return TextControlElement::scrollHeight();
-  LayoutUnit height =
-      editor_box->ClientHeight() + box->PaddingOutsets().VerticalSum();
+  const LayoutUnit height = editor_box->PhysicalPaddingBoxRect().Height() +
+                            box->PaddingOutsets().VerticalSum();
   return AdjustForAbsoluteZoom::AdjustLayoutUnit(height, box->StyleRef())
       .Round();
 }
@@ -552,9 +552,9 @@ void HTMLTextAreaElement::setValueForBinding(const String& value) {
            TextControlSetValueSelection::kSetSelectionToEnd,
            was_autofilled && !value_changed ? WebAutofillState::kAutofilled
                                             : WebAutofillState::kNotFilled);
-  if (Page* page = GetDocument().GetPage(); page && value_changed) {
-    page->GetChromeClient().JavaScriptChangedValue(*this, old_value,
-                                                   was_autofilled);
+  if (Page* page = GetDocument().GetPage(); page) {
+    page->GetChromeClient().JavaScriptSetValue(*this, old_value, was_autofilled,
+                                               value_changed);
   }
 }
 

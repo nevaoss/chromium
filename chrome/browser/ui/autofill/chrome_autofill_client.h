@@ -158,8 +158,8 @@ class ChromeAutofillClient : public ContentAutofillClient {
   AutocompleteHistoryManager* GetAutocompleteHistoryManager() final;
   AutofillComposeDelegate* GetComposeDelegate() final;
   AtMemoryQueryService* GetAtMemoryQueryService() override;
-  personal_context::PersonalContextEnablementState
-  GetPersonalContextEnablementState() const override;
+  personal_context::PersonalContextEligibilityState
+  GetPersonalContextEligibilityState() const override;
   personal_context::PersonalContextEnablementService*
   GetPersonalContextEnablementService() const override;
   PasswordManagerDelegate* GetPasswordManagerDelegate(
@@ -289,6 +289,7 @@ class ChromeAutofillClient : public ContentAutofillClient {
   void ShowAutofillAiSaveToWalletFailureNotification() final;
   void ShowAutofillAiFetchFromWalletFailureNotification() final;
   void ShowAutofillAiPreFetchFailureNotification() final;
+  void ShowAutofillAiPrivateInferenceNotice() final;
   void ShowEmailVerifiedToast(const GURL& issuer) final;
   void ShowEmailVerificationPopup(
       const gfx::RectF& element_bounds,

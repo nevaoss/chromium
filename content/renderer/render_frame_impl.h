@@ -149,6 +149,10 @@ struct FramePolicy;
 struct JavaScriptFrameworkDetectionResult;
 }  // namespace blink
 
+namespace network {
+class PendingSharedURLLoaderFactory;
+}  // namespace network
+
 namespace gfx {
 class Point;
 class Range;
@@ -670,8 +674,6 @@ class CONTENT_EXPORT RenderFrameImpl
   void DidMeaningfulLayout(blink::WebMeaningfulLayout layout_type) override;
   void WasHidden() override;
   void WasShown() override;
-  void OnFrameVisibilityChanged(
-      blink::mojom::FrameVisibility render_status) override;
 
   blink::WebURL LastCommittedUrlForUKM() override;
   void ScriptedPrint() override;
@@ -762,6 +764,11 @@ class CONTENT_EXPORT RenderFrameImpl
 
   // Clones and returns `this` frame's blink::ChildURLLoaderFactoryBundle.
   scoped_refptr<blink::ChildURLLoaderFactoryBundle> CloneLoaderFactories();
+
+  // Clones and returns `this` frame's underlying
+  // network::PendingSharedURLLoaderFactory.
+  std::unique_ptr<network::PendingSharedURLLoaderFactory>
+  CloneLoaderFactoryBundle();
 
   url::Origin GetSecurityOriginOfTopFrame();
 

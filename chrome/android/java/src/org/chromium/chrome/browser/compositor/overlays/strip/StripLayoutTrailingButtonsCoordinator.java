@@ -23,7 +23,6 @@ import org.chromium.base.supplier.OneshotSupplier;
 import org.chromium.build.annotations.EnsuresNonNullIf;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
-import org.chromium.build.annotations.RequiresNonNull;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.actor.ActorKeyedServiceFactory;
 import org.chromium.chrome.browser.actor.ActorTask;
@@ -51,6 +50,7 @@ import org.chromium.chrome.browser.glic.GlicNudgeDelegateBridge;
 import org.chromium.chrome.browser.glic.GlicPrefNames;
 import org.chromium.chrome.browser.glic.GlicTaskMenuCoordinator;
 import org.chromium.chrome.browser.glic.GlicUtils;
+import org.chromium.chrome.browser.incognito.IncognitoUtils;
 import org.chromium.chrome.browser.layouts.animation.CompositorAnimator;
 import org.chromium.chrome.browser.layouts.components.VirtualView;
 import org.chromium.chrome.browser.profiles.Profile;
@@ -74,6 +74,7 @@ import org.chromium.ui.widget.RectProvider;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
 /** Coordinator for the trailing buttons on the tab strip. */
@@ -108,6 +109,17 @@ public class StripLayoutTrailingButtonsCoordinator {
     private static final float GLIC_ACTOR_TEXT_HIDE_THRESHOLD_DP = 700.f;
     private static final float WINDOW_CONTROLS_DIVIDER_WIDTH_DP = 2.f;
 
+    // Model selector button constants.
+    // y-offset for folio = lowered tab container + (tab container size - bg size)/2 -
+    // folio tab title y-offset = 2 + (38 - 32)/2 - 2 = 3dp
+    private static final float MODEL_SELECTOR_BUTTON_BACKGROUND_Y_OFFSET_DP = 3.f;
+    private static final float MODEL_SELECTOR_BUTTON_BACKGROUND_WIDTH_DP = 32.f;
+    private static final float MODEL_SELECTOR_BUTTON_BACKGROUND_HEIGHT_DP = 32.f;
+    private static final float MODEL_SELECTOR_BUTTON_CLICK_SLOP_DP =
+            (StripLayoutHelperManager.BUTTON_DESIRED_TOUCH_TARGET_SIZE
+                            - MODEL_SELECTOR_BUTTON_BACKGROUND_WIDTH_DP)
+                    / 2;
+
     // Slop values used in #updateTouchTargetInsets to ensure at least a 48dp touch target in the
     // Glic and Glic Actor buttons.
     //
@@ -133,7 +145,6 @@ public class StripLayoutTrailingButtonsCoordinator {
     private final WindowAndroid mWindowAndroid;
 
     // Configuration & Delegates
-    private final StripLayoutTrailingButtonsObserver mObserver;
     private final float mDensity;
     private final GlicButtonDelegate mGlicClickHandler;
     private final GlobalShowHideObserver mGlicUiObserver;
@@ -143,6 +154,8 @@ public class StripLayoutTrailingButtonsCoordinator {
     private boolean mIsIncognito;
     private final Supplier<@Nullable TabModelSelector> mTabModelSelectorSupplier;
     private final OneshotSupplier<SideUiStateProvider> mSideUiStateProviderSupplier;
+    private final BooleanSupplier mGlicIphShowingSupplier;
+    private final StripLayoutTrailingButtonsObserver mObserver;
     private @Nullable SideUiStateProvider mSideUiStateProvider;
     private final SideUiObserver mSideUiObserver =
             new SideUiObserver() {
@@ -166,6 +179,10 @@ public class StripLayoutTrailingButtonsCoordinator {
     private @Nullable LayerTitleCache mLayerTitleCache;
     private @Nullable GlicKeyedService mGlicKeyedService;
 
+    // Callbacks
+    private final Runnable mModelSelectorButtonClickHandler;
+    private final StripLayoutViewOnKeyboardFocusHandler mModelSelectorButtonKeyboardFocusHandler;
+
     // UI Components
     private @Nullable TintedCompositorButton mModelSelectorButton;
     private @Nullable TintedCompositorTextButton mGlicButton;
@@ -181,6 +198,12 @@ public class StripLayoutTrailingButtonsCoordinator {
                 @Override
                 public void onTriggerGlicNudgeUi(
                         String label, String anchoredMessageText, String promptSuggestion) {
+                    if (mGlicIphShowingSupplier.getAsBoolean()) {
+                        GlicNudgeDelegateBridge.onNudgeActivity(
+                                mWindowAndroid,
+                                GlicNudgeActivity.NUDGE_NOT_SHOWN_WINDOW_CALL_TO_ACTION_UI);
+                        return;
+                    }
                     mNudgeLabel = label;
                     updateTrailingButtonsState(
                             /* animate= */ true, /* forceLayoutChanged= */ false);
@@ -286,13 +309,23 @@ public class StripLayoutTrailingButtonsCoordinator {
      * @param updateHost The {@link LayoutUpdateHost} for requesting handles layout.
      * @param renderHost The {@link LayoutRenderHost} for requesting renders.
      * @param windowAndroid The {@link WindowAndroid} for the activity.
-     * @param glicClickHandler The {@link GlicButtonDelegate} to execute on Glic button click.
      * @param density The display density.
      * @param toolbarControlContainer The view containing toolbar controls.
-     * @param keyboardFocusHandler The {@link StripLayoutViewOnKeyboardFocusHandler} for the button.
      * @param isAppInDesktopWindow Whether the app is in a desktop window.
      * @param isTopResumedActivity Whether the app is the top resumed activity.
      * @param taskTracker The {@link ChromeAndroidTaskTracker} for tracking tasks.
+     * @param isIncognito Whether the current tab model is incognito.
+     * @param tabModelSelectorSupplier Supplier for the {@link TabModelSelector}.
+     * @param sideUiStateProviderSupplier Supplier for the {@link SideUiStateProvider}.
+     * @param modelSelectorClickHandler The click handler {@link Runnable} for the model selector
+     *     button.
+     * @param modelSelectorKeyboardFocusHandler The {@link StripLayoutViewOnKeyboardFocusHandler}
+     *     for the model selector button.
+     * @param glicClickHandler The {@link GlicButtonDelegate} to execute on Glic button click.
+     * @param glicKeyboardFocusHandler The {@link StripLayoutViewOnKeyboardFocusHandler} for the
+     *     Glic button.
+     * @param glicIphShowingSupplier The supplier returning whether the tab strip Glic IPH is
+     *     showing.
      * @param observer The {@link StripLayoutTrailingButtonsObserver} for layout state changes.
      */
     public StripLayoutTrailingButtonsCoordinator(
@@ -300,32 +333,61 @@ public class StripLayoutTrailingButtonsCoordinator {
             LayoutUpdateHost updateHost,
             LayoutRenderHost renderHost,
             WindowAndroid windowAndroid,
-            GlicButtonDelegate glicClickHandler,
             float density,
             View toolbarControlContainer,
-            StripLayoutViewOnKeyboardFocusHandler keyboardFocusHandler,
             boolean isAppInDesktopWindow,
             boolean isTopResumedActivity,
             ChromeAndroidTaskTracker taskTracker,
             boolean isIncognito,
             Supplier<@Nullable TabModelSelector> tabModelSelectorSupplier,
             OneshotSupplier<SideUiStateProvider> sideUiStateProviderSupplier,
-            @Nullable TintedCompositorButton modelSelectorButton,
+            Runnable modelSelectorClickHandler,
+            StripLayoutViewOnKeyboardFocusHandler modelSelectorKeyboardFocusHandler,
+            GlicButtonDelegate glicClickHandler,
+            StripLayoutViewOnKeyboardFocusHandler glicKeyboardFocusHandler,
+            BooleanSupplier glicIphShowingSupplier,
             StripLayoutTrailingButtonsObserver observer) {
         mContext = context;
         mUpdateHost = updateHost;
         mRenderHost = renderHost;
-        mGlicClickHandler = glicClickHandler;
         mDensity = density;
         mTaskTracker = taskTracker;
         mIsIncognito = isIncognito;
         mTabModelSelectorSupplier = tabModelSelectorSupplier;
         mSideUiStateProviderSupplier = sideUiStateProviderSupplier;
-        mModelSelectorButton = modelSelectorButton;
+        mModelSelectorButtonClickHandler = modelSelectorClickHandler;
+        mModelSelectorButtonKeyboardFocusHandler = modelSelectorKeyboardFocusHandler;
+        mGlicClickHandler = glicClickHandler;
+        mGlicIphShowingSupplier = glicIphShowingSupplier;
         mObserver = observer;
         mWindowAndroid = windowAndroid;
         mToolbarControlContainer = toolbarControlContainer;
         mGlicUiObserver = this::updateIsPanelOpen;
+
+        if (!IncognitoUtils.shouldOpenIncognitoAsWindow()) {
+            mModelSelectorButton =
+                    new TintedCompositorButton(
+                            mContext,
+                            mIsIncognito,
+                            ButtonType.INCOGNITO_SWITCHER,
+                            /* parentView= */ null,
+                            MODEL_SELECTOR_BUTTON_BACKGROUND_WIDTH_DP,
+                            MODEL_SELECTOR_BUTTON_BACKGROUND_HEIGHT_DP,
+                            (tooltipText) -> {
+                                mToolbarControlContainer.setTooltipText(tooltipText);
+                            },
+                            (time, view, motionEventButtonState, modifiers) -> {
+                                mModelSelectorButtonClickHandler.run();
+                            },
+                            mModelSelectorButtonKeyboardFocusHandler,
+                            R.drawable.ic_incognito,
+                            R.drawable.bg_circle_tab_strip_button,
+                            MODEL_SELECTOR_BUTTON_CLICK_SLOP_DP);
+
+            mModelSelectorButton.setDrawY(MODEL_SELECTOR_BUTTON_BACKGROUND_Y_OFFSET_DP);
+            updateModelSelectorButtonProperties();
+            mModelSelectorButton.setVisible(false);
+        }
 
         if (GlicEnabling.isEnabledByFlags() && AndroidSidePanelEnabledFn.isEnabled()) {
             mSideUiStateProviderSupplier.onAvailable(
@@ -351,7 +413,7 @@ public class StripLayoutTrailingButtonsCoordinator {
                             (time, view, motionEventButtonState, modifiers) -> {
                                 handleDismissButtonClick();
                             },
-                            keyboardFocusHandler,
+                            glicKeyboardFocusHandler,
                             R.drawable.btn_tab_close_normal,
                             Resources.ID_NULL,
                             /* clickSlopDp= */ 0.f,
@@ -375,7 +437,7 @@ public class StripLayoutTrailingButtonsCoordinator {
                             GLIC_BUTTON_BACKGROUND_HEIGHT_DP,
                             (tooltipText) -> mToolbarControlContainer.setTooltipText(tooltipText),
                             glicClickHandlerOnButton,
-                            keyboardFocusHandler,
+                            glicKeyboardFocusHandler,
                             R.drawable.ic_spark_4c_16dp,
                             /* clickSlopDp= */ 0.f,
                             /* hasLongClickAction= */ true,
@@ -388,7 +450,7 @@ public class StripLayoutTrailingButtonsCoordinator {
 
             mGlicButton.setText(
                     mContext.getString(R.string.glic_button_entrypoint_ask_gemini_label));
-            updateButtonAccessibilityDescription(/* isActor= */ false);
+            updateGlicButtonAccessibilityDescription();
 
             mGlicActorButton =
                     new TintedCompositorTextButton(
@@ -401,7 +463,7 @@ public class StripLayoutTrailingButtonsCoordinator {
                             (tooltipText) -> mToolbarControlContainer.setTooltipText(tooltipText),
                             (time, view, motionEventButtonState, modifiers) ->
                                     toggleActorTaskMenu(),
-                            keyboardFocusHandler,
+                            glicKeyboardFocusHandler,
                             R.drawable.ic_arrow_selector_spark_16dp,
                             /* clickSlopDp= */ 0.f,
                             /* hasLongClickAction= */ false,
@@ -515,7 +577,7 @@ public class StripLayoutTrailingButtonsCoordinator {
         if (mIsGlicUiVisible == isOpened) return;
 
         mIsGlicUiVisible = isOpened;
-        updateButtonAccessibilityDescription(/* isActor= */ false);
+        updateGlicButtonAccessibilityDescription();
     }
 
     private void onGlicPrefChanged() {
@@ -570,10 +632,8 @@ public class StripLayoutTrailingButtonsCoordinator {
         mLeftPadding = leftPadding;
         mTopPadding = topPadding;
 
-        if (mGlicButton != null) {
+        if (mGlicButton != null || mModelSelectorButton != null) {
             updateTrailingButtonsState(/* animate= */ false, /* forceLayoutChanged= */ true);
-        } else {
-            updateButtonPositions();
         }
 
         // Dismiss trailing buttons' menus, similar to how the app menu is dismissed on
@@ -591,10 +651,8 @@ public class StripLayoutTrailingButtonsCoordinator {
         mIsIncognito = incognito;
         updateButtonTints(incognito);
 
-        if (mGlicButton != null) {
+        if (mGlicButton != null || mModelSelectorButton != null) {
             updateTrailingButtonsState(/* animate= */ false, /* forceLayoutChanged= */ true);
-        } else {
-            updateButtonPositions();
         }
     }
 
@@ -712,7 +770,7 @@ public class StripLayoutTrailingButtonsCoordinator {
 
     @VisibleForTesting
     /* package */ void updateButtonTextProperties(TintedCompositorTextButton button) {
-        boolean isActor = button == mGlicActorButton;
+        boolean isActor = button.getType() == ButtonType.GLIC_ACTOR;
         String text = button.getText();
         if (mLayerTitleCache != null && !TextUtils.isEmpty(text)) {
             button.setTextResourceId(
@@ -720,29 +778,18 @@ public class StripLayoutTrailingButtonsCoordinator {
         } else {
             button.setTextResourceId(Resources.ID_NULL);
         }
-        updateGlicButtonWidth(mLayerTitleCache, isActor);
+        updateGlicButtonWidth(button, mLayerTitleCache);
         updateButtonPositions();
         mObserver.onTrailingButtonsLayoutStateChanged();
     }
 
-    private void updateGlicButtonWidth(@Nullable LayerTitleCache titleCache, boolean isActor) {
-        if (mGlicButton == null || mGlicActorButton == null) return;
-        if (isActor) {
-            float targetWidth = calculateButtonWidth(mGlicActorButton, titleCache);
-            animateGlicButton(
-                    mGlicActorButton,
-                    targetWidth,
-                    1.0f,
-                    /* isActor= */ true,
-                    /* endAction= */ null);
-        } else {
-            float targetWidth = calculateButtonWidth(mGlicButton, titleCache);
-            animateGlicButton(
-                    mGlicButton, targetWidth, 1.0f, /* isActor= */ false, /* endAction= */ null);
-        }
+    private void updateGlicButtonWidth(
+            TintedCompositorTextButton button, @Nullable LayerTitleCache titleCache) {
+        float targetWidth = calculateGlicButtonWidth(button, titleCache);
+        animateGlicButton(button, targetWidth, 1.0f, /* endAction= */ null);
     }
 
-    private float calculateButtonWidth(
+    private float calculateGlicButtonWidth(
             TintedCompositorTextButton button, @Nullable LayerTitleCache titleCache) {
         String text = button.getText();
         float width = GLIC_BUTTON_BACKGROUND_WIDTH_DP;
@@ -754,7 +801,7 @@ public class StripLayoutTrailingButtonsCoordinator {
                             + GLIC_ICON_TEXT_PADDING_DP
                             + (titleCache.getButtonTextWidth(text) / mDensity);
 
-            if (isGlicDismissNudgeButtonVisible() && button == mGlicButton) {
+            if (isGlicDismissNudgeButtonVisible() && button.getType() == ButtonType.GLIC) {
                 width += GLIC_BUTTON_SHORTENED_END_PADDING_DP + GLIC_DISMISS_ICON_WIDTH_DP;
             } else {
                 width += GLIC_BUTTON_STANDARD_END_PADDING_DP;
@@ -768,8 +815,8 @@ public class StripLayoutTrailingButtonsCoordinator {
             TintedCompositorTextButton button,
             float targetWidth,
             float targetOpacity,
-            boolean isActor,
             @Nullable Runnable endAction) {
+        boolean isActor = button.getType() == ButtonType.GLIC_ACTOR;
         CompositorAnimator widthAnimator =
                 isActor ? mGlicActorButtonWidthAnimator : mGlicButtonWidthAnimator;
         if (widthAnimator != null && widthAnimator.isRunning()) {
@@ -931,72 +978,87 @@ public class StripLayoutTrailingButtonsCoordinator {
         }
     }
 
+    /** Updates the visibility and properties of the trailing buttons. */
+    public void updateTrailingButtons() {
+        updateTrailingButtonsState(/* animate= */ false, /* forceLayoutChanged= */ false);
+    }
+
     private void updateTrailingButtonsState(boolean animate, boolean forceLayoutChanged) {
-        if (mGlicButton == null || mGlicActorButton == null) return;
+        boolean layoutChanged = forceLayoutChanged;
 
         // 1. Query target visibilities
-        boolean targetGlicVisible = shouldGlicBeVisible();
-        boolean targetDismissVisible = shouldGlicDismissNudgeBeVisible();
-        boolean targetActorVisible = shouldGlicActorBeVisible();
-
-        // 2. Resolve target text
-        String targetGlicText = null;
-        String targetActorText = null;
-        if (targetActorVisible) {
-            // Glic button collapses its text to let the actor button take focus
-            if (mWidth >= GLIC_ACTOR_TEXT_HIDE_THRESHOLD_DP) {
-                targetActorText =
-                        (mLastGlicActorButtonState == ButtonState.DONE)
-                                ? mContext.getString(R.string.glic_button_status_done)
-                                : null;
+        if (mModelSelectorButton != null) {
+            boolean targetMsbVisible = shouldModelSelectorButtonBeVisible();
+            if (isModelSelectorButtonVisible() != targetMsbVisible) {
+                layoutChanged = true;
+                mModelSelectorButton.setVisible(targetMsbVisible);
             }
-        } else {
-            // When actor is not visible, Glic button keeps its custom text if a nudge is
-            // showing; otherwise, it defaults to the standard label.
-            if (targetDismissVisible) {
-                targetGlicText = mNudgeLabel;
+            updateModelSelectorButtonProperties();
+        }
+
+        if (mGlicButton != null && mGlicActorButton != null) {
+            boolean targetGlicVisible = shouldGlicBeVisible();
+            boolean targetDismissVisible = shouldGlicDismissNudgeBeVisible();
+            boolean targetActorVisible = shouldGlicActorBeVisible();
+
+            // 2. Resolve target text
+            String targetGlicText = null;
+            String targetActorText = null;
+            if (targetActorVisible) {
+                // Glic button collapses its text to let the actor button take focus
+                if (mWidth >= GLIC_ACTOR_TEXT_HIDE_THRESHOLD_DP) {
+                    targetActorText =
+                            (mLastGlicActorButtonState == ButtonState.DONE)
+                                    ? mContext.getString(R.string.glic_button_status_done)
+                                    : null;
+                }
             } else {
-                targetGlicText =
-                        mContext.getString(R.string.glic_button_entrypoint_ask_gemini_label);
+                // When actor is not visible, Glic button keeps its custom text if a nudge is
+                // showing; otherwise, it defaults to the standard label.
+                if (targetDismissVisible) {
+                    targetGlicText = mNudgeLabel;
+                } else {
+                    targetGlicText =
+                            mContext.getString(R.string.glic_button_entrypoint_ask_gemini_label);
+                }
+                targetActorText = null;
             }
-            targetActorText = null;
-        }
 
-        // 3. Apply visibility, tint, text, and width updates
-        boolean layoutChanged = forceLayoutChanged;
-        boolean glicVisibilityChanged = isGlicButtonVisible() != targetGlicVisible;
-        boolean dismissVisibilityChanged =
-                isGlicDismissNudgeButtonVisible() != targetDismissVisible;
-        boolean actorVisibilityChanged = isGlicActorButtonVisible() != targetActorVisible;
+            // 3. Apply visibility, tint, text, and width updates
+            boolean glicVisibilityChanged = isGlicButtonVisible() != targetGlicVisible;
+            boolean dismissVisibilityChanged =
+                    isGlicDismissNudgeButtonVisible() != targetDismissVisible;
+            boolean actorVisibilityChanged = isGlicActorButtonVisible() != targetActorVisible;
 
-        if (glicVisibilityChanged) {
-            layoutChanged = true;
-            setGlicButtonVisible(targetGlicVisible);
-        }
-        if (dismissVisibilityChanged) {
-            layoutChanged = true;
-            setGlicDismissNudgeButtonVisible(targetDismissVisible);
-        }
-        if (actorVisibilityChanged) {
-            layoutChanged = true;
-            setGlicActorButtonVisible(targetActorVisible, animate);
-        }
+            if (glicVisibilityChanged) {
+                layoutChanged = true;
+                setGlicButtonVisible(targetGlicVisible);
+            }
+            if (dismissVisibilityChanged) {
+                layoutChanged = true;
+                setGlicDismissNudgeButtonVisible(targetDismissVisible);
+            }
+            if (actorVisibilityChanged) {
+                layoutChanged = true;
+                setGlicActorButtonVisible(targetActorVisible, animate);
+            }
 
-        setGlicButtonText(targetGlicText, /* isActor= */ false, forceLayoutChanged);
-        setGlicButtonText(targetActorText, /* isActor= */ true, forceLayoutChanged);
+            setGlicButtonText(targetGlicText, forceLayoutChanged);
+            setGlicActorButtonText(targetActorText, forceLayoutChanged);
 
-        // 4. Recalculate button widths and apply transitions
-        float targetGlicWidth = calculateButtonWidth(mGlicButton, mLayerTitleCache);
-        float targetActorWidth =
-                targetActorVisible
-                        ? calculateButtonWidth(mGlicActorButton, mLayerTitleCache)
-                        : 0.0f;
-        float currentGlicWidth = mGlicButton.getWidth();
-        float currentActorWidth = mGlicActorButton.getWidth();
-        if (currentGlicWidth != targetGlicWidth || currentActorWidth != targetActorWidth) {
-            layoutChanged = true;
+            // 4. Recalculate button widths and apply transitions
+            float targetGlicWidth = calculateGlicButtonWidth(mGlicButton, mLayerTitleCache);
+            float targetActorWidth =
+                    targetActorVisible
+                            ? calculateGlicButtonWidth(mGlicActorButton, mLayerTitleCache)
+                            : 0.0f;
+            float currentGlicWidth = mGlicButton.getWidth();
+            float currentActorWidth = mGlicActorButton.getWidth();
+            if (currentGlicWidth != targetGlicWidth || currentActorWidth != targetActorWidth) {
+                layoutChanged = true;
+            }
+            updateGlicButtonsVisualProperties(animate, targetGlicWidth, targetActorWidth);
         }
-        updateGlicButtonsVisualProperties(animate, targetGlicWidth, targetActorWidth);
 
         // 5. Reposition coordinates and notify host
         if (layoutChanged) {
@@ -1018,15 +1080,9 @@ public class StripLayoutTrailingButtonsCoordinator {
         boolean targetActorVisible = shouldGlicActorBeVisible();
 
         if (animate) {
-            animateGlicButton(
-                    mGlicButton, targetGlicWidth, targetOpacity, /* isActor= */ false, null);
+            animateGlicButton(mGlicButton, targetGlicWidth, targetOpacity, null);
             if (targetActorVisible) {
-                animateGlicButton(
-                        mGlicActorButton,
-                        targetActorWidth,
-                        targetOpacity,
-                        /* isActor= */ true,
-                        null);
+                animateGlicButton(mGlicActorButton, targetActorWidth, targetOpacity, null);
             }
         } else {
             // 1. Cancel running animators instantly to prevent property fighting
@@ -1042,48 +1098,66 @@ public class StripLayoutTrailingButtonsCoordinator {
     }
 
     @VisibleForTesting
-    /* package */ void setGlicButtonText(
-            @Nullable String text, boolean isActor, boolean forceUpdate) {
-        TintedCompositorTextButton button = isActor ? mGlicActorButton : mGlicButton;
-        if (button == null) return;
-        if (TextUtils.equals(button.getText(), text) && !forceUpdate) return;
+    /* package */ void setGlicButtonText(@Nullable String text, boolean forceUpdate) {
+        if (mGlicButton == null) return;
+        if (TextUtils.equals(mGlicButton.getText(), text) && !forceUpdate) return;
 
-        button.setText(text);
+        mGlicButton.setText(text);
 
         if (mLayerTitleCache != null && !TextUtils.isEmpty(text)) {
-            button.setTextResourceId(
+            mGlicButton.setTextResourceId(
                     mLayerTitleCache.getUpdatedGlicButtonText(
-                            text, /* isActor= */ button == mGlicActorButton, mIsIncognito));
+                            text, /* isActor= */ false, mIsIncognito));
         } else {
-            button.setTextResourceId(Resources.ID_NULL);
+            mGlicButton.setTextResourceId(Resources.ID_NULL);
         }
 
-        updateButtonAccessibilityDescription(isActor);
+        updateGlicButtonAccessibilityDescription();
     }
 
-    private void updateButtonAccessibilityDescription(boolean isActor) {
-        if (isActor) {
-            if (mGlicActorButton == null) return;
-            String text = mGlicActorButton.getText();
-            String desc =
-                    TextUtils.isEmpty(text)
-                            ? mContext.getString(R.string.actor_task_indicator_tooltip)
-                            : text;
-            mGlicActorButton.setAccessibilityDescription(desc);
+    @VisibleForTesting
+    /* package */ void setGlicActorButtonText(@Nullable String text, boolean forceUpdate) {
+        if (mGlicActorButton == null) return;
+        if (TextUtils.equals(mGlicActorButton.getText(), text) && !forceUpdate) return;
+
+        mGlicActorButton.setText(text);
+
+        if (mLayerTitleCache != null && !TextUtils.isEmpty(text)) {
+            mGlicActorButton.setTextResourceId(
+                    mLayerTitleCache.getUpdatedGlicButtonText(
+                            text, /* isActor= */ true, mIsIncognito));
         } else {
-            if (mGlicButton == null) return;
-            if (mIsGlicUiVisible) {
-                mGlicButton.setAccessibilityDescription(
-                        mContext.getString(R.string.glic_tab_strip_button_tooltip_close));
-            } else {
-                String text = mGlicButton.getText();
-                String desc =
-                        TextUtils.isEmpty(text)
-                                ? mContext.getString(R.string.glic_tab_strip_button_tooltip)
-                                : text;
-                mGlicButton.setAccessibilityDescription(desc);
-            }
+            mGlicActorButton.setTextResourceId(Resources.ID_NULL);
         }
+
+        updateGlicActorButtonAccessibilityDescription();
+    }
+
+    private void updateGlicButtonAccessibilityDescription() {
+        if (mGlicButton == null) return;
+        mGlicButton.setEnabled(!mIsIncognito);
+        if (mIsGlicUiVisible) {
+            mGlicButton.setAccessibilityDescription(
+                    mContext.getString(R.string.glic_tab_strip_button_tooltip_close));
+            // If no tooltip is set, tooltip defaults to a11y description
+            mGlicButton.setTooltipText(null);
+        } else {
+            String defaultTooltip = mContext.getString(R.string.glic_tab_strip_button_tooltip);
+            String buttonText = mGlicButton.getText();
+            String desc = TextUtils.isEmpty(buttonText) ? defaultTooltip : buttonText;
+            mGlicButton.setAccessibilityDescription(desc);
+            mGlicButton.setTooltipText(defaultTooltip);
+        }
+    }
+
+    private void updateGlicActorButtonAccessibilityDescription() {
+        if (mGlicActorButton == null) return;
+        String text = mGlicActorButton.getText();
+        String desc =
+                TextUtils.isEmpty(text)
+                        ? mContext.getString(R.string.actor_task_indicator_tooltip)
+                        : text;
+        mGlicActorButton.setAccessibilityDescription(desc);
     }
 
     /** Updates the position of the trailing buttons based on layout parameters. */
@@ -1110,7 +1184,7 @@ public class StripLayoutTrailingButtonsCoordinator {
                 mGlicButton.setDrawX(rightSideAnchor - mGlicButton.getWidth());
                 rightSideAnchor -= mGlicButton.getWidth() + GLIC_BUTTON_START_SLOP_DP;
             }
-
+            // TODO(crbug.com/482159010): Realign MSB with toolbar buttons
             if (isModelSelectorButtonVisible()) {
                 mModelSelectorButton.setDrawX(
                         rightSideAnchor - stripEndPadding - mModelSelectorButton.getWidth());
@@ -1140,18 +1214,26 @@ public class StripLayoutTrailingButtonsCoordinator {
         }
 
         // 2. Y Positions
+        if (mModelSelectorButton != null) {
+            mModelSelectorButton.setDrawY(MODEL_SELECTOR_BUTTON_BACKGROUND_Y_OFFSET_DP);
+        }
         if (mGlicButton != null && mGlicDismissNudgeButton != null && mGlicActorButton != null) {
             mGlicButton.setDrawY(GLIC_BUTTON_BACKGROUND_Y_OFFSET_DP);
             mGlicDismissNudgeButton.setDrawY(GLIC_DISMISS_BUTTON_Y_OFFSET_DP);
             mGlicActorButton.setDrawY(GLIC_BUTTON_BACKGROUND_Y_OFFSET_DP);
-
-            // 3. Touch Targets
-            updateTouchTargetInsets();
         }
+
+        // 3. Touch Targets
+        updateTouchTargetInsets();
     }
 
-    @RequiresNonNull({"mGlicButton", "mGlicDismissNudgeButton", "mGlicActorButton"})
     private void updateTouchTargetInsets() {
+        if (mModelSelectorButton != null) {
+            mModelSelectorButton.setTouchTargetInsets(null, mTopPadding, null, -mTopPadding);
+        }
+        if (mGlicButton == null || mGlicDismissNudgeButton == null || mGlicActorButton == null) {
+            return;
+        }
         // TODO(crbug.com/509585777): Implement RTL support
         float endSlop =
                 isGlicActorButtonVisible()
@@ -1211,6 +1293,9 @@ public class StripLayoutTrailingButtonsCoordinator {
     /** Returns the total width used by the trailing buttons including padding. */
     public float getTrailingButtonsWidthWithPadding() {
         float width = 0.0f;
+        if (isModelSelectorButtonVisible()) {
+            width += StripLayoutHelperManager.BUTTON_DESIRED_TOUCH_TARGET_SIZE;
+        }
         if (isGlicButtonVisible()) {
             width += mGlicButton.getWidth() + GLIC_BUTTON_START_SLOP_DP + getGlicButtonEndOffset();
 
@@ -1264,12 +1349,11 @@ public class StripLayoutTrailingButtonsCoordinator {
             mGlicActorButton.setVisible(true);
         } else {
             if (animate) {
-                setGlicButtonText(null, /* isActor= */ true, /* forceUpdate= */ false);
+                setGlicActorButtonText(null, /* forceUpdate= */ false);
                 animateGlicButton(
                         mGlicActorButton,
                         0.0f,
                         0.0f,
-                        /* isActor= */ true,
                         () -> {
                             if (mGlicActorButton != null) {
                                 mGlicActorButton.setVisible(false);
@@ -1314,11 +1398,14 @@ public class StripLayoutTrailingButtonsCoordinator {
         }
     }
 
-    /**
-     * Determines whether the Glic button should be visible in the tab strip.
-     *
-     * @return true if the Glic button should be visible.
-     */
+    /** Returns whether the model selector button should be visible. */
+    public boolean shouldModelSelectorButtonBeVisible() {
+        if (mModelSelectorButton == null) return false;
+        TabModelSelector selector = mTabModelSelectorSupplier.get();
+        return selector != null && selector.getModel(true).getCount() != 0;
+    }
+
+    /** Returns whether the Glic button should be visible. */
     public boolean shouldGlicBeVisible() {
         if (mGlicButton == null || mProfile == null) {
             return false;
@@ -1336,11 +1423,7 @@ public class StripLayoutTrailingButtonsCoordinator {
         return mNudgeLabel != null && shouldGlicBeVisible() && !mIsIncognito;
     }
 
-    /**
-     * Determines whether the Glic actor button should be visible in the tab strip.
-     *
-     * @return true if the Glic actor button should be visible.
-     */
+    /** Returns whether the Glic actor button should be visible. */
     public boolean shouldGlicActorBeVisible() {
         GlicButtonStateController stateController = getOrCreateStateController();
         if (!shouldGlicBeVisible()
@@ -1413,6 +1496,9 @@ public class StripLayoutTrailingButtonsCoordinator {
      * @return true if the event was handled.
      */
     public boolean onDown(float x, float y, int buttons) {
+        if (mModelSelectorButton != null && mModelSelectorButton.onDown(x, y, buttons)) {
+            return true;
+        }
         if (mGlicButton != null && mGlicButton.onDown(x, y, buttons)) {
             return true;
         } else if (mGlicActorButton != null && mGlicActorButton.onDown(x, y, buttons)) {
@@ -1427,6 +1513,10 @@ public class StripLayoutTrailingButtonsCoordinator {
      * @return true if the event was handled.
      */
     public boolean onUpOrCancel() {
+        if (mModelSelectorButton != null && mModelSelectorButton.onUpOrCancel()) {
+            mModelSelectorButtonClickHandler.run();
+            return true;
+        }
         if (mGlicButton != null) {
             TintedCompositorButton dismissButton = mGlicButton.getDismissButton();
             if (dismissButton != null && dismissButton.isPressed()) {
@@ -1454,6 +1544,9 @@ public class StripLayoutTrailingButtonsCoordinator {
     public boolean onLongPress(float x, float y, float tabWidthDp) {
         Activity activity = mWindowAndroid.getActivity().get();
         if (activity == null) return false;
+        if (mModelSelectorButton != null && mModelSelectorButton.click(x, y, 0)) {
+            return true;
+        }
         if (mGlicButton != null && mGlicButton.checkClickedOrHovered(x, y)) {
             showMenu(activity, tabWidthDp);
             // Clear the pressed state so a click isn't triggered in addition to the long press.
@@ -1472,11 +1565,17 @@ public class StripLayoutTrailingButtonsCoordinator {
      * @param y The y coordinate of the hover event.
      */
     public boolean onHoverEvent(float x, float y) {
+        boolean msbHovered =
+                mModelSelectorButton != null && mModelSelectorButton.checkClickedOrHovered(x, y);
         boolean glicHovered = mGlicButton != null && mGlicButton.checkClickedOrHovered(x, y);
         boolean actorHovered =
                 mGlicActorButton != null && mGlicActorButton.checkClickedOrHovered(x, y);
         boolean renderNeeded = false;
 
+        if (mModelSelectorButton != null && msbHovered != mModelSelectorButton.isHovered()) {
+            mModelSelectorButton.setHovered(msbHovered);
+            renderNeeded = true;
+        }
         if (mGlicButton != null && glicHovered != mGlicButton.isHovered()) {
             mGlicButton.setHovered(glicHovered);
             renderNeeded = true;
@@ -1489,12 +1588,16 @@ public class StripLayoutTrailingButtonsCoordinator {
         if (renderNeeded) {
             mRenderHost.requestRender();
         }
-        return glicHovered || actorHovered;
+        return msbHovered || glicHovered || actorHovered;
     }
 
     /** Clears hover states on the trailing buttons. */
     public void onHoverExit() {
         boolean renderNeeded = false;
+        if (mModelSelectorButton != null && mModelSelectorButton.isHovered()) {
+            mModelSelectorButton.setHovered(false);
+            renderNeeded = true;
+        }
         if (mGlicButton != null && mGlicButton.isHovered()) {
             mGlicButton.setHovered(false);
             renderNeeded = true;
@@ -1516,6 +1619,9 @@ public class StripLayoutTrailingButtonsCoordinator {
      * @return True if the event coordinates hit a trailing button.
      */
     public boolean checkClickedOrHovered(float x, float y) {
+        if (mModelSelectorButton != null && mModelSelectorButton.checkClickedOrHovered(x, y)) {
+            return true;
+        }
         if (mGlicButton != null && mGlicButton.checkClickedOrHovered(x, y)) {
             return true;
         } else if (mGlicActorButton != null && mGlicActorButton.checkClickedOrHovered(x, y)) {
@@ -1531,6 +1637,9 @@ public class StripLayoutTrailingButtonsCoordinator {
      * @param y The y coordinate of the event.
      */
     public void drag(float x, float y) {
+        if (mModelSelectorButton != null) {
+            mModelSelectorButton.drag(x, y);
+        }
         if (mGlicButton != null) {
             mGlicButton.drag(x, y);
         }
@@ -1552,6 +1661,12 @@ public class StripLayoutTrailingButtonsCoordinator {
      */
     public boolean click(
             long time, float x, float y, int buttons, int modifiers, float tabWidthDp) {
+        if (mModelSelectorButton != null && mModelSelectorButton.checkClickedOrHovered(x, y)) {
+            if (mModelSelectorButton.click(x, y, buttons)) {
+                mModelSelectorButton.handleClick(time, buttons, modifiers);
+                return true;
+            }
+        }
         if (mGlicButton != null && mGlicButton.checkClickedOrHovered(x, y)) {
             if (MotionEventUtils.isSecondaryClick(buttons)) {
                 Activity activity = mWindowAndroid.getActivity().get();
@@ -1604,5 +1719,35 @@ public class StripLayoutTrailingButtonsCoordinator {
     /* package */ void setNudgeLabelForTesting(@Nullable String label) {
         mNudgeLabel = label;
         updateTrailingButtonsState(/* animate= */ true, /* forceLayoutChanged= */ false);
+    }
+
+    /** Returns the model selector button. */
+    public @Nullable TintedCompositorButton getModelSelectorButton() {
+        return mModelSelectorButton;
+    }
+
+    private void updateModelSelectorButtonProperties() {
+        if (mModelSelectorButton == null) return;
+        mModelSelectorButton.setIncognito(mIsIncognito);
+
+        @ColorRes
+        int iconTintRes =
+                mIsIncognito
+                        ? R.color.default_icon_color_secondary_light
+                        : R.color.default_icon_color_tint_list;
+        @ColorRes
+        int bgTintRes =
+                mIsIncognito
+                        ? R.color.tab_strip_msb_bg_incognito_tint_list
+                        : R.color.tab_strip_msb_bg_tint_list;
+        mModelSelectorButton.setTint(mContext.getColor(iconTintRes));
+        mModelSelectorButton.setBackgroundTint(mContext.getColorStateList(bgTintRes));
+
+        mModelSelectorButton.setAccessibilityDescription(
+                mIsIncognito
+                        ? mContext.getString(
+                                R.string.accessibility_tabstrip_btn_incognito_toggle_incognito)
+                        : mContext.getString(
+                                R.string.accessibility_tabstrip_btn_incognito_toggle_standard));
     }
 }

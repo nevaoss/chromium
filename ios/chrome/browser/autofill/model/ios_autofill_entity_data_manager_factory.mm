@@ -13,6 +13,7 @@
 #import "ios/chrome/browser/autofill/model/autofill_ai_util.h"
 #import "ios/chrome/browser/autofill/model/strike_database_factory.h"
 #import "ios/chrome/browser/history/model/history_service_factory.h"
+#import "ios/chrome/browser/personal_context/model/ios_personal_context_access_manager_factory.h"
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
 #import "ios/chrome/browser/shared/model/profile/profile_ios.h"
 #import "ios/chrome/browser/signin/model/identity_manager_factory.h"
@@ -40,6 +41,7 @@ IOSAutofillEntityDataManagerFactory::IOSAutofillEntityDataManagerFactory()
   DependsOn(ios::WebDataServiceFactory::GetInstance());
   DependsOn(ios::HistoryServiceFactory::GetInstance());
   DependsOn(autofill::StrikeDatabaseFactory::GetInstance());
+  DependsOn(IOSPersonalContextAccessManagerFactory::GetInstance());
 }
 
 IOSAutofillEntityDataManagerFactory::~IOSAutofillEntityDataManagerFactory() =
@@ -60,7 +62,7 @@ IOSAutofillEntityDataManagerFactory::BuildServiceInstanceFor(
           profile, ServiceAccessType::EXPLICIT_ACCESS),
       ios::HistoryServiceFactory::GetForProfile(
           profile, ServiceAccessType::EXPLICIT_ACCESS),
-      /*pcontext_manager=*/nullptr,
+      IOSPersonalContextAccessManagerFactory::GetForProfile(profile),
       autofill::StrikeDatabaseFactory::GetForProfile(profile),
       autofill::GeoIpCountryCode(autofill::GetCountryCodeFromVariations()));
 }

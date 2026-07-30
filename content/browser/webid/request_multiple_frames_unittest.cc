@@ -44,17 +44,20 @@
 #include "services/network/public/mojom/permissions_policy/permissions_policy_feature.mojom.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/blink/public/mojom/webid/federated_auth_request.mojom.h"
+#include "third_party/blink/public/mojom/webid/federated_request.mojom.h"
 #include "ui/base/page_transition_types.h"
 #include "url/gurl.h"
 #include "url/origin.h"
 
+namespace content::webid {
+
+using ::testing::NiceMock;
 using ApiPermissionStatus =
-    content::FederatedIdentityApiPermissionContextDelegate::PermissionStatus;
-using AuthRequestCallbackHelper = content::FederatedRequestTokenCallbackHelper;
+    FederatedIdentityApiPermissionContextDelegate::PermissionStatus;
+using AuthRequestCallbackHelper = FederatedRequestTokenCallbackHelper;
 using FedCmEntry = ukm::builders::Blink_FedCm;
 using FedCmIdpEntry = ukm::builders::Blink_FedCmIdp;
-using RequesterFrameType = content::webid::RequesterFrameType;
+using MediationRequirement = ::password_manager::CredentialMediationRequirement;
 using StartTokenRequestCallback =
     blink::mojom::FederatedRequestService::StartTokenRequestCallback;
 using blink::mojom::FederatedRequest;
@@ -62,9 +65,6 @@ using blink::mojom::FederatedRequestService;
 using blink::mojom::RequestTokenStatus;
 using blink::mojom::TokenRequestFailurePtr;
 using blink::mojom::TokenRequestSuccessPtr;
-using ::testing::NiceMock;
-
-namespace content::webid {
 
 namespace {
 
@@ -193,10 +193,11 @@ class TestDialogController
   TestDialogController& operator=(TestDialogController&) = delete;
 
   bool ShowAccountsDialog(
-      content::RelyingPartyData rp_data,
-      const std::vector<IdentityProviderDataPtr>& idp_list,
-      const std::vector<IdentityRequestAccountPtr>& accounts,
-      const std::vector<IdentityRequestAccountPtr>& filtered_accounts,
+      RelyingPartyData rp_data,
+      const std::vector<scoped_refptr<IdentityProviderData>>& idp_list,
+      const std::vector<scoped_refptr<IdentityRequestAccount>>& accounts,
+      const std::vector<scoped_refptr<IdentityRequestAccount>>&
+          filtered_accounts,
       blink::mojom::RpMode rp_mode,
       IdentityRequestDialogController::AccountSelectionCallback on_selected,
       IdentityRequestDialogController::LoginToIdPCallback on_add_account,
@@ -400,8 +401,8 @@ class RequestMultipleFramesTest : public RenderViewHostImplTestHarness {
 
 // Test that test harness can execute successful FedCM flow for iframe.
 TEST_F(RequestMultipleFramesTest, TestHarness) {
-  RenderFrameHost* iframe_rfh = content::RenderFrameHostTester::For(main_rfh())
-                                    ->AppendChild(/*frame_name=*/"");
+  RenderFrameHost* iframe_rfh =
+      RenderFrameHostTester::For(main_rfh())->AppendChild(/*frame_name=*/"");
 
   mojo::Remote<FederatedRequestService> iframe_service_remote;
   mojo::Remote<FederatedRequest> iframe_request_remote;
@@ -432,8 +433,8 @@ TEST_F(RequestMultipleFramesTest, IframeTooManyRequests) {
                  StartTokenRequestCallback());
   EXPECT_TRUE(main_frame_dialog_state.did_show_accounts_dialog);
 
-  RenderFrameHost* iframe_rfh = content::RenderFrameHostTester::For(main_rfh())
-                                    ->AppendChild(/*frame_name=*/"");
+  RenderFrameHost* iframe_rfh =
+      RenderFrameHostTester::For(main_rfh())->AppendChild(/*frame_name=*/"");
   mojo::Remote<FederatedRequestService> iframe_service_remote;
   mojo::Remote<FederatedRequest> iframe_request_remote;
   TestDialogController::State iframe_dialog_state;
@@ -466,8 +467,8 @@ TEST_F(RequestMultipleFramesTest, IframeTooManyRequestsDifferentIdP) {
                  StartTokenRequestCallback());
   EXPECT_TRUE(main_frame_dialog_state.did_show_accounts_dialog);
 
-  RenderFrameHost* iframe_rfh = content::RenderFrameHostTester::For(main_rfh())
-                                    ->AppendChild(/*frame_name=*/"");
+  RenderFrameHost* iframe_rfh =
+      RenderFrameHostTester::For(main_rfh())->AppendChild(/*frame_name=*/"");
   mojo::Remote<FederatedRequestService> iframe_service_remote;
   mojo::Remote<FederatedRequest> iframe_request_remote;
   TestDialogController::State iframe_dialog_state;

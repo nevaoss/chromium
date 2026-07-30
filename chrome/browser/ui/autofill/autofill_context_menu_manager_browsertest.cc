@@ -570,7 +570,7 @@ IN_PROC_BROWSER_TEST_P(PasswordManualFallbackTest,
                        SelectPasswordTriggersSuggestions) {
   password_manager::PasswordStoreInterface* password_store =
       ProfilePasswordStoreFactory::GetForProfile(
-          browser()->profile(), ServiceAccessType::IMPLICIT_ACCESS)
+          browser()->GetProfile(), ServiceAccessType::IMPLICIT_ACCESS)
           .get();
   password_manager::PasswordStoreWaiter add_waiter(password_store);
   password_manager::PasswordForm existing_form;
@@ -802,10 +802,10 @@ class PasswordsFallbackWithPasswordDatabaseEntriesTest
     password_manager::PasswordStoreInterface* password_store =
         use_profile_store()
             ? ProfilePasswordStoreFactory::GetForProfile(
-                  browser()->profile(), ServiceAccessType::IMPLICIT_ACCESS)
+                  browser()->GetProfile(), ServiceAccessType::IMPLICIT_ACCESS)
                   .get()
             : AccountPasswordStoreFactory::GetForProfile(
-                  browser()->profile(), ServiceAccessType::IMPLICIT_ACCESS)
+                  browser()->GetProfile(), ServiceAccessType::IMPLICIT_ACCESS)
                   .get();
 
     password_manager::PasswordForm password_form;
@@ -938,7 +938,7 @@ class PasswordsFallbackWithGuestProfileTest : public PasswordsFallbackTestBase {
     return guest_browser_->tab_strip_model()->GetActiveWebContents();
   }
 
-  Profile* profile() override { return guest_browser_->profile(); }
+  Profile* profile() override { return guest_browser_->GetProfile(); }
 
   void TearDownOnMainThread() override {
     // Release raw_ptr's so they don't become dangling.
@@ -989,7 +989,7 @@ class SelectPasswordFallbackMetricsTest
     // Add a saved password so the manual fallback option shows.
     password_manager::PasswordStoreInterface* password_store =
         ProfilePasswordStoreFactory::GetForProfile(
-            browser()->profile(), ServiceAccessType::IMPLICIT_ACCESS)
+            browser()->GetProfile(), ServiceAccessType::IMPLICIT_ACCESS)
             .get();
     password_manager::PasswordStoreWaiter add_waiter(password_store);
     password_manager::PasswordForm form;
@@ -1089,9 +1089,9 @@ class AtMemoryContextMenuManagerTest
     autofill_client()->GetPrefs()->SetBoolean(
         personal_context::prefs::kPersonalContextInAutofillSettingsToggleStatus,
         true);
-    ON_CALL(mock_personal_context_service_, GetEnablementState())
-        .WillByDefault(
-            Return(personal_context::PersonalContextEnablementState::kEnabled));
+    ON_CALL(mock_personal_context_service_, GetEligibilityState())
+        .WillByDefault(Return(
+            personal_context::PersonalContextEligibilityState::kEligible));
     autofill_client()->set_personal_context_enablement_service(
         &mock_personal_context_service_);
   }
@@ -1132,8 +1132,8 @@ IN_PROC_BROWSER_TEST_F(AtMemoryContextMenuManagerTest, AddAtMemoryFallback) {
 // AtMemory fallback is dropped.
 IN_PROC_BROWSER_TEST_F(AtMemoryContextMenuManagerTest,
                        AtMemoryFallbackDroppedWhenProfileNotEligible) {
-  EXPECT_CALL(mock_personal_context_service_, GetEnablementState())
-      .WillRepeatedly(Return(personal_context::PersonalContextEnablementState::
+  EXPECT_CALL(mock_personal_context_service_, GetEligibilityState())
+      .WillRepeatedly(Return(personal_context::PersonalContextEligibilityState::
                                  kDisabledNotEligible));
 
   autofill_context_menu_manager()->AppendItems();

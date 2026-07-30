@@ -43,11 +43,15 @@
 #import "ios/chrome/browser/intents/model/intents_donation_helper.h"
 #import "ios/chrome/browser/lens/ui_bundled/lens_availability.h"
 #import "ios/chrome/browser/lens/ui_bundled/lens_entrypoint.h"
+#import "ios/chrome/browser/lens_overlay/model/lens_overlay_tab_helper.h"
 #import "ios/chrome/browser/ntp/model/new_tab_page_tab_helper.h"
 #import "ios/chrome/browser/ntp/model/new_tab_page_util.h"
 #import "ios/chrome/browser/policy/model/policy_util.h"
 #import "ios/chrome/browser/search_engines/model/search_engine_observer_bridge.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/incognito_state.h"
+#import "ios/chrome/browser/shared/coordinator/scene/state/layout_state.h"
+#import "ios/chrome/browser/shared/coordinator/scene/state/layout_state_passkey.h"
+#import "ios/chrome/browser/shared/coordinator/scene/state/lens_overlay_state_notifier.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/tab_grid_state.h"
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
 #import "ios/chrome/browser/shared/model/url/chrome_url_constants.h"
@@ -79,10 +83,26 @@
 
 using base::UmaHistogramEnumeration;
 
+namespace layout_state {
+class AppBarMediatorPassKeyFactory {
+ public:
+  static base::PassKey<AppBarMediatorPassKeyFactory> CreateKey() {
+    return base::PassKey<AppBarMediatorPassKeyFactory>();
+  }
+};
+}  // namespace layout_state
+
+namespace {
+inline LayoutStateAssistantPassKey PassKey() {
+  return layout_state::AppBarMediatorPassKeyFactory::CreateKey();
+}
+}  // namespace
+
 @interface AppBarMediator () <GeminiBrowserAgentObserving,
                               GeminiServiceObserving,
                               IdentityManagerObserverBridgeDelegate,
                               IncognitoStateObserver,
+                              LensOverlayStateNotifierObserver,
                               PrefObserverDelegate,
                               SearchEngineObserving,
                               TabGridStateObserving,
@@ -130,6 +150,7 @@ using base::UmaHistogramEnumeration;
   TabGridPage _currentPage;
   TabGridState* _tabGridState;
   IncognitoState* _incognitoState;
+  LensOverlayStateNotifier* _lensOverlayState;
   ToolbarButtonMenuFactory* _regularButtonMenuFactory;
   ToolbarButtonMenuFactory* _incognitoButtonMenuFactory;
   std::unique_ptr<PrefChangeRegistrar> _prefChangeRegistrar;
@@ -163,7 +184,9 @@ using base::UmaHistogramEnumeration;
                   (AimEligibilityService*)aimEligibilityService
                           URLLoader:(UrlLoadingBrowserAgent*)URLLoader
                        tabGridState:(TabGridState*)tabGridState
-                     incognitoState:(IncognitoState*)incognitoState {
+                     incognitoState:(IncognitoState*)incognitoState
+           lensOverlayStateNotifier:
+               (LensOverlayStateNotifier*)lensOverlayStateNotifier {
   self = [super init];
   if (self) {
     _regularWebStateList = regularWebStateList;
@@ -207,6 +230,9 @@ using base::UmaHistogramEnumeration;
 
     _incognitoState = incognitoState;
     [_incognitoState addObserver:self];
+
+    _lensOverlayState = lensOverlayStateNotifier;
+    [_lensOverlayState addObserver:self];
 
     _regularButtonMenuFactory = [[ToolbarButtonMenuFactory alloc]
         initForAppBarWithIncognito:NO
@@ -345,6 +371,7 @@ using base::UmaHistogramEnumeration;
   _lensHandler = nil;
   [_tabGridState removeObserver:self];
   [_incognitoState removeObserver:self];
+  [_lensOverlayState removeObserver:self];
   _observerBridge.reset();
   _regularWebStateList = nullptr;
   _incognitoWebStateList = nullptr;
@@ -361,6 +388,7 @@ using base::UmaHistogramEnumeration;
   _URLLoader = nullptr;
   _incognitoState = nil;
   _tabGridState = nil;
+  _lensOverlayState = nil;
   _identityManagerObserver.reset();
   _identityManager = nullptr;
 }
@@ -620,9 +648,55 @@ using base::UmaHistogramEnumeration;
 
 - (void)geminiFloatyInvokedChanged:(BOOL)isInvoked {
   [self updateAssistantButton];
+  [self.layoutState setGeminiFloatyInvoked:isInvoked passKey:PassKey()];
+
+  if (IsAppBarHiddenInFullscreen()) {
+    if (IsFullscreenRefactoringEnabled()) {
+      if (_regularFullscreenBrowserAgent) {
+        _regularFullscreenBrowserAgent->InvalidateInsetRange();
+      }
+      if (_incognitoFullscreenBrowserAgent) {
+        _incognitoFullscreenBrowserAgent->InvalidateInsetRange();
+      }
+    } else {
+      if (_regularFullscreenController) {
+        _regularFullscreenController->ExitFullscreen();
+      }
+      if (_incognitoFullscreenController) {
+        _incognitoFullscreenController->ExitFullscreen();
+      }
+    }
+  }
 }
 
 - (void)geminiAvailabilityChanged:(BOOL)available {
+  [self updateAssistantButton];
+}
+
+#pragma mark - LensOverlayStateNotifierObserver
+
+- (void)lensOverlayDidPrepare:
+    (LensOverlayStateNotifier*)lensOverlayStateNotifier {
+  [self updateAssistantButton];
+}
+
+- (void)lensOverlayWillAppear:
+    (LensOverlayStateNotifier*)lensOverlayStateNotifier {
+  [self updateAssistantButton];
+}
+
+- (void)lensOverlayWillDisappear:
+    (LensOverlayStateNotifier*)lensOverlayStateNotifier {
+  [self updateAssistantButton];
+}
+
+- (void)lensOverlayDidDisappear:
+    (LensOverlayStateNotifier*)lensOverlayStateNotifier {
+  [self updateAssistantButton];
+}
+
+- (void)lensOverlayDidReadjustPresentation:
+    (LensOverlayStateNotifier*)lensOverlayStateNotifier {
   [self updateAssistantButton];
 }
 
@@ -795,6 +869,23 @@ using base::UmaHistogramEnumeration;
       search::DefaultSearchProviderIsGoogle(_templateURLService));
 }
 
+// Returns whether the Lens overlay is currently visible.
+- (BOOL)isLensOverlayVisible {
+  if (!self.currentWebStateList) {
+    return NO;
+  }
+  web::WebState* activeWebState = self.currentWebStateList->GetActiveWebState();
+
+  if (!activeWebState) {
+    return NO;
+  }
+
+  LensOverlayTabHelper* lensOverlayTabHelper =
+      LensOverlayTabHelper::FromWebState(activeWebState);
+  return lensOverlayTabHelper &&
+         lensOverlayTabHelper->IsLensOverlayInvokedOnCurrentNavigationItem();
+}
+
 // Returns the avatar image for the primary identity, or nil if not signed in
 // or if the avatar is not available.
 - (UIImage*)avatarForPrimaryIdentity {
@@ -831,6 +922,10 @@ using base::UmaHistogramEnumeration;
     case AppBarAssistantButtonState::kAIM:
     case AppBarAssistantButtonState::kLens:
       break;
+  }
+
+  if ([self isLensOverlayVisible]) {
+    enabled = NO;
   }
 
   BOOL signedIn = _authenticationService->HasPrimaryIdentity();

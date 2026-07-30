@@ -2042,6 +2042,7 @@ test("content_browsertests") {
     "//device/bluetooth:mocks",
     "//device/fido",
     "//device/fido:test_support",
+    "//device/gamepad/public/mojom",
     "//gin",
     "//gpu/ipc/host",
     "//ipc",
@@ -2532,6 +2533,7 @@ test("content_browsertests") {
       "//ui/base/dragdrop:types",
       "//ui/touch_selection",
       "//ui/touch_selection:test_support",
+      "//ui/wm",
     ]
   }
 
@@ -2725,6 +2727,7 @@ test("content_unittests") {
     "../browser/cpu_performance/cpu_performance_unittest.cc",
     "../browser/declarative_performance_observer/declarative_performance_observer_store_unittest.cc",
     "../browser/declarative_performance_observer/declarative_performance_observer_unittest.cc",
+    "../browser/device_posture/device_posture_provider_impl_unittest.cc",
     "../browser/devtools/devtools_background_services_context_impl_unittest.cc",
     "../browser/devtools/devtools_frontend_host_impl_unittest.cc",
     "../browser/devtools/devtools_http_handler_unittest.cc",
@@ -3161,6 +3164,7 @@ test("content_unittests") {
     "../child/blink_platform_impl_unittest.cc",
     "../child/child_performance_coordinator_unittest.cc",
     "../child/child_process_synthetic_trial_syncer_unittest.cc",
+    "../child/host_receiver_batcher_unittest.cc",
     "../child/memory_coordinator/browser_memory_coordinator_bridge_unittest.cc",
     "../common/background_fetch/background_fetch_mojom_traits_unittest.cc",
     "../common/color_parser_unittest.cc",

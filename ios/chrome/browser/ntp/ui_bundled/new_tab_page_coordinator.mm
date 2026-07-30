@@ -930,9 +930,6 @@
   if (self.isOffTheRecord) {
     return self.incognitoViewController;
   }
-  if (IsNTPRedesignEnabled()) {
-    return self.NTPRedesignViewController;
-  }
   return self.containerViewController;
 }
 
@@ -1167,6 +1164,7 @@
                                    title:title
                                 scenario:SharingScenario::MostVisitedEntry];
   UIViewController* baseVC = [self activeViewController];
+  [_sharingCoordinator stop];
   _sharingCoordinator =
       [[SharingCoordinator alloc] initWithBaseViewController:baseVC
                                                      browser:self.browser

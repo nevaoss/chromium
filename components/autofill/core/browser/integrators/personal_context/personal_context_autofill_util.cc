@@ -50,18 +50,18 @@ bool ShouldShowPersonalContextAutofillSetting(
 #endif
       prefs, edm, identity_manager, sync_service,
       is_wallet_public_pass_storage_enabled, is_off_the_record, country_code,
-      subscription_service, enablement_service->GetEnablementState(),
+      subscription_service, enablement_service->GetEligibilityState(),
       AutofillAiAction::kShowAmbientAutofillInSettings);
 
   const bool at_memory_enabled =
       MayPerformAtMemoryAction(AtMemoryAction::kShowAtMemoryInSettings,
                                enablement_service, subscription_service, prefs,
 #if !BUILDFLAG(IS_FUCHSIA)
-                               google_groups_manager
+                               google_groups_manager,
 #else
-                               nullptr
+                               /*google_groups_manager=*/nullptr,
 #endif
-      );
+                               /*decider=*/nullptr, /*url=*/std::nullopt);
 
   return ambient_autofill_enabled || at_memory_enabled;
 }

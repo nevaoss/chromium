@@ -144,7 +144,7 @@ BASE_FEATURE(kEnableTLS13EarlyData, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kNetworkQualityEstimator, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kNetworkQualityEstimatorIsPrivateHostCache,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 const base::FeatureParam<int> kRecentHTTPThresholdInSeconds{
     &kNetworkQualityEstimator, "RecentHTTPThresholdInSeconds", -1};
@@ -440,6 +440,9 @@ BASE_FEATURE(kDeviceBoundSessionSigningQuotaAndCaching,
 BASE_FEATURE(kDeviceBoundSessionsForRestrictedSites,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+BASE_FEATURE(kDeviceBoundSessionsClientCertSelection,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 BASE_FEATURE(kDeviceBoundSessionsForSingleSignOn,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -673,9 +676,6 @@ BASE_FEATURE_PARAM(double,
                    "TcpSocketPoolLimitRandomizationNoise",
                    0.2);
 
-BASE_FEATURE(kTcpSocketPoolLimitRandomizationForProxy,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kNetTaskScheduler, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kNetTaskSchedulerHostResolver, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -777,6 +777,8 @@ BASE_FEATURE_PARAM(size_t,
                    &kLowerQuicMaxPacketSize,
                    "mtu",
                    quic::kDefaultMaxPacketSize);
+
+BASE_FEATURE(kQuicUseReadMultiple, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kConfigureQuicHints, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE_PARAM(std::string,

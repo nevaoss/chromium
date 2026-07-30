@@ -55,6 +55,11 @@ inline constexpr char kAiModeEntryPointAlwaysNavigatesDescription[] =
     "If enabled, clicking aim button in omnibox always navigates directly to "
     "google.com/aimode.";
 
+inline constexpr char kDynamicAiModeButtonName[] = "Dynamic AI Mode Button";
+inline constexpr char kDynamicAiModeButtonDescription[] =
+    "Enables dynamic behaviour for the AI mode button in the Omnibox and NTP "
+    "Realbox.";
+
 inline constexpr char kOmniboxDynamicAimSubmitName[] = "Dynamic Aim Submit";
 inline constexpr char kOmniboxDynamicAimSubmitDescription[] =
     "Enables dynamic aim button submission variants.";
@@ -1393,6 +1398,11 @@ inline constexpr char kSettingsInTabName[] = "Settings in Tab";
 inline constexpr char kSettingsInTabDescription[] =
     "Allows the Chrome Settings UI to appear in a tab on Android.";
 
+inline constexpr char kBottomSheetOnDesktopWindowingName[] =
+    "Bottom Sheet on Desktop Windowing";
+inline constexpr char kBottomSheetOnDesktopWindowingDescription[] =
+    "Enables modifications that improve the bottom sheet experience when in "
+    "desktop mode.";
 
 inline constexpr char kSeparateWebAppShortcutBadgeIconName[] =
     "Separate Web App Shortcut Badge Icon";
@@ -3261,9 +3271,8 @@ inline constexpr char
         "Neural "
         "Network (WebNN) API. Requires the \"WebNN API\" flag to be enabled.";
 
-inline constexpr char kWebMCPTestingName[] = "WebMCP for testing";
-inline constexpr char kWebMCPTestingDescription[] =
-    "Enables the WebMCP API and its associated testing interfaces.";
+inline constexpr char kWebMCPName[] = "WebMCP for testing";
+inline constexpr char kWebMCPDescription[] = "Enables the WebMCP API.";
 
 inline constexpr char kWebNNCoreMLName[] = "Core ML backend for WebNN";
 inline constexpr char kWebNNCoreMLDescription[] =
@@ -4841,14 +4850,6 @@ inline constexpr char kWebAuthnAmbientSigninDescription[] =
     "navigator.credentials.get() request. This is similar to conditional UI "
     "with the main difference being it does not use autofill UI.";
 
-inline constexpr char kWebAuthnImmediateGetName[] =
-    "Enable immediate mediation for WebAuthn get requests";
-inline constexpr char kWebAuthnImmediateGetDescription[] =
-    "Enables immediate mediation for WebAuthn and passwords for a "
-    "navigator.credentials.get() request. This will return a NotAllowedError "
-    "if there are no credentials for a given get request. The request can also "
-    "request passwords.";
-
 inline constexpr char kWebAuthnCrossDeviceFallbackUrlName[] =
     "WebAuthn Cross-device fallback URL extension";
 inline constexpr char kWebAuthnCrossDeviceFallbackUrlDescription[] =
@@ -5137,6 +5138,13 @@ inline constexpr char kProofreaderAPIName[] = "Proofreader API";
 inline constexpr char kProofreaderAPIDescription[] =
     "Enables the Proofreader API, allowing you to proofread a piece of text "
     "with a built-in small expert model. "
+    "The API may be subject to changes including the supported options. "
+    "Please refer to the built-in AI documentation [1] for details.";
+
+inline constexpr char kSemanticEmbedderAPIName[] = "Semantic Embedder API";
+inline constexpr char kSemanticEmbedderAPIDescription[] =
+    "Enables the Semantic Embedder API, allowing you to generate semantic "
+    "embeddings with a built-in model in Chrome. "
     "The API may be subject to changes including the supported options. "
     "Please refer to the built-in AI documentation [1] for details.";
 
@@ -5507,6 +5515,12 @@ inline constexpr char kNtpVisionName[] = "New tab page vision";
 inline constexpr char kNtpVisionDescription[] =
     "Enable the new vision of the new tab page";
 
+inline constexpr char kToolbarProgressBarRefactorName[] =
+    "Toolbar Progress Bar Refactor";
+inline constexpr char kToolbarProgressBarRefactorDescription[] =
+    "Enables the Toolbar Progress Bar Refactor feature which decouples the "
+    "progress bar from the Toolbar";
+
 inline constexpr char kUpdatePaddingForDisplayCalculationName[] =
     "Update Padding For Display Calculation";
 inline constexpr char kUpdatePaddingForDisplayCalculationDescription[] =
@@ -5754,6 +5768,12 @@ inline constexpr char kCrossDeviceTaskHandoffName[] =
 inline constexpr char kCrossDeviceTaskHandoffDescription[] =
     "Allows users to pick up where they left off in Chrome by transferring "
     "tasks and states to nearby devices.";
+
+inline constexpr char kCrossWindowTabGroupOperationsName[] =
+    "Cross-window tab group operations";
+inline constexpr char kCrossWindowTabGroupOperationsDescription[] =
+    "Enables tab group synchronization and operations across multi-window "
+    "instances on Android.";
 
 inline constexpr char kDebugToolbarPositioningName[] =
     "Debug Toolbar Positioning";
@@ -6106,11 +6126,6 @@ inline constexpr char kReaderModeToggleLinksName[] = "Reader Mode toggle links";
 inline constexpr char kReaderModeToggleLinksDescription[] =
     "Enables the ability to toggle links in Reader Mode.";
 
-inline constexpr char kReaderModeUseReadabilityName[] =
-    "Reader Mode use readability";
-inline constexpr char kReaderModeUseReadabilityDescription[] =
-    "Use readability as the primary distiller and/or triggering mechanism.";
-
 inline constexpr char kReengagementNotificationName[] =
     "Enable re-engagement notifications";
 inline constexpr char kReengagementNotificationDescription[] =
@@ -6252,6 +6267,12 @@ inline constexpr char kTabClosureMethodRefactorDescription[] =
 inline constexpr char kTabSearchForALName[] = "Tab Search for AL";
 inline constexpr char kTabSearchForALDescription[] =
     "Enable the Tab Search for AL feature.";
+
+inline constexpr char kTabSharingToolbarAndroidName[] =
+    "Tab sharing toolbar on Android";
+inline constexpr char kTabSharingToolbarAndroidDescription[] =
+    "Enables the tab sharing toolbar for quick shared tab switching and "
+    "stopping on Android.";
 
 inline constexpr char kTabStripHeightTransitionGlitchFixName[] =
     "Tab strip height transition glitch fix";

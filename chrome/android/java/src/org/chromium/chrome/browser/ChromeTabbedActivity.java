@@ -1481,9 +1481,6 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                         });
             }
 
-            // The dataset has already been created, we need to initialize our state.
-            mTabModelSelector.notifyChanged();
-
             // Check for incognito tabs to handle the case where Chrome was swiped away in the
             // background.
             if (!IncognitoTabHostUtils.doIncognitoTabsExist()) {
@@ -3816,7 +3813,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                 mHubManagerSupplier,
                 mRootUiCoordinator.getOpenInAppMenuItemProvider(),
                 () -> mRecentlyClosedEntriesManager,
-                ((TabbedRootUiCoordinator) mRootUiCoordinator).getSideUiStateProviderSupplier());
+                ((TabbedRootUiCoordinator) mRootUiCoordinator).getSideUiStateProviderSupplier(),
+                getXrSpaceModeObservableSupplier());
     }
 
     private TabDelegateFactory getTabDelegateFactory() {

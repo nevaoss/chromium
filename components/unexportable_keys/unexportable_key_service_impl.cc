@@ -43,6 +43,15 @@ namespace unexportable_keys {
 
 namespace {
 
+// Concept defining the valid identifier types for the spare key pool.
+// This is used specifically to enable automatic Template Argument Deduction
+// (TAD) at callsites (e.g. for `ServiceErrorOr<KeyIdType>`), because trying
+// to deduce the wrapper class from `ServiceErrorOr<typename KeyType::IdType>`
+// results in a non-deduced context in C++.
+template <typename T>
+concept SparePoolKeyIdType = std::same_as<T, UnexportableSigningKeyId> ||
+                             std::same_as<T, UnexportableAttestationKeyId>;
+
 // The default list of signature algorithms to use for generating spare keys.
 constexpr std::array kSpareKeyAlgorithms = {
     crypto::SignatureVerifier::SignatureAlgorithm::ECDSA_SHA256,
@@ -61,16 +70,13 @@ constexpr base::TimeDelta kSpareKeyPoolDelay = base::Minutes(2);
 // The task_manager and config must outlive the callback as they are stored in
 // the bind state by a reference.
 template <typename KeyType>
+  requires SparePoolKeyType<KeyType>
 base::RepeatingCallback<
     void(crypto::UnexportableKeyProvider::Config,
          base::span<const crypto::SignatureVerifier::SignatureAlgorithm>,
          base::OnceCallback<void(ServiceErrorOr<scoped_refptr<KeyType>>)>)>
 CreateGenerateKeyCallbackForSparePool(UnexportableKeyTaskManager* task_manager,
                                       BackgroundTaskOrigin origin) {
-  static_assert(std::same_as<KeyType, RefCountedUnexportableSigningKey> ||
-                    std::same_as<KeyType, RefCountedUnexportableAttestationKey>,
-                "Unsupported KeyType");
-
   return base::BindRepeating(
       [](UnexportableKeyTaskManager* task_manager, BackgroundTaskOrigin origin,
          crypto::UnexportableKeyProvider::Config config,
@@ -119,9 +125,9 @@ std::string_view GetApplicationTag(
 }
 
 // Convenience method to create a `WrappedKeyAndTag` from a
-// `RefCountedUnexportableKey`.
+// `RefCountedUnexportableSigningKey`.
 std::pair<std::vector<uint8_t>, std::string> GetWrappedKeyAndTag(
-    const RefCountedUnexportableKey& key) {
+    const RefCountedUnexportableSigningKey& key) {
   std::string tag;
   if (const crypto::StatefulKey* stateful_key = key.key().AsStatefulKey()) {
     tag = stateful_key->GetKeyTag();
@@ -135,11 +141,8 @@ std::pair<std::vector<uint8_t>, std::string> GetWrappedKeyAndTag(
 //
 // LINT.IfChange(GetSpareKeyPoolHistogramName)
 template <typename KeyType>
+  requires SparePoolKeyType<KeyType>
 std::string GetSpareKeyPoolHistogramName(std::string_view suffix) {
-  static_assert(std::same_as<KeyType, RefCountedUnexportableSigningKey> ||
-                    std::same_as<KeyType, RefCountedUnexportableAttestationKey>,
-                "Unsupported KeyType for spare key pool metrics");
-
   static constexpr std::string_view kSpareKeyPoolHistogramPrefix =
       "Crypto.UnexportableKeys.SparePool";
   return base::JoinString(
@@ -155,14 +158,10 @@ std::string GetSpareKeyPoolHistogramName(std::string_view suffix) {
 // This records the duration from when the request was initiated until it is
 // fulfilled (either from the spare pool or via hardware generation).
 template <typename KeyIdType>
+  requires SparePoolKeyIdType<KeyIdType>
 base::OnceCallback<void(ServiceErrorOr<KeyIdType>)>
 WrapCallbackWithSpareKeyLatencyHistogram(
     base::OnceCallback<void(ServiceErrorOr<KeyIdType>)> callback) {
-  // Only `UnexportableSigningKeyId` and `UnexportableAttestationKeyId` are
-  // supported by the spare key pool.
-  static_assert(std::same_as<KeyIdType, UnexportableSigningKeyId> ||
-                std::same_as<KeyIdType, UnexportableAttestationKeyId>);
-
   using KeyType =
       std::conditional_t<std::same_as<KeyIdType, UnexportableSigningKeyId>,
                          RefCountedUnexportableSigningKey,
@@ -256,6 +255,7 @@ class MaybePendingKeyId {
 // initiation to completion, reporting this duration via the completion
 // callback.
 template <typename KeyType>
+  requires SparePoolKeyType<KeyType>
 class SpareKeyPoolRequest {
  public:
   void Start(
@@ -456,6 +456,7 @@ class UnexportableKeyServiceImpl::KeyRepository {
 // on-demand Windows TPM key generation. Encapsulates all UMA telemetry
 // logging and algorithm selection logic for the spare pool.
 template <typename KeyType>
+  requires SparePoolKeyType<KeyType>
 class UnexportableKeyServiceImpl::SpareKeyPool {
  public:
   SpareKeyPool(
@@ -493,6 +494,24 @@ class UnexportableKeyServiceImpl::SpareKeyPool {
       return nullptr;
     }
 
+    const size_t total_pool_size = GetPoolSize();
+    base::UmaHistogramCounts100(
+        GetSpareKeyPoolHistogramName<KeyType>("PoolSize"), total_pool_size);
+
+    if (total_pool_size == 0) {
+      if (!inflight_spare_key_pool_requests_.has_value()) {
+        RecordRetrievalResult(SpareKeyPoolRetrievalResult::kMissNotInitialized);
+      } else if (inflight_spare_key_pool_requests_->empty()) {
+        RecordRetrievalResult(
+            SpareKeyPoolRetrievalResult::kMissFailedToCreateSpareKey);
+      } else {
+        RecordRetrievalResult(
+            SpareKeyPoolRetrievalResult::kMissDidNotReplenishFromLastUse);
+      }
+
+      return nullptr;
+    }
+
     // Query the provider to select the most preferred algorithm it supports
     // from the given list, before checking the spare pool. This ensures we
     // don't inadvertently return a spare key for an algorithm that is
@@ -509,10 +528,6 @@ class UnexportableKeyServiceImpl::SpareKeyPool {
 
     auto* keys = base::FindOrNull(spare_keys_pool_, algorithm);
 
-    base::UmaHistogramCounts100(
-        GetSpareKeyPoolHistogramName<KeyType>("PoolSize"),
-        keys ? keys->size() : 0);
-
     if (keys && !keys->empty()) {
       RecordRetrievalResult(SpareKeyPoolRetrievalResult::kHit);
       scoped_refptr<KeyType> spare_key = std::move(keys->back());
@@ -520,19 +535,7 @@ class UnexportableKeyServiceImpl::SpareKeyPool {
       return spare_key;
     }
 
-    const size_t total_pool_size = GetPoolSize();
-
-    SpareKeyPoolRetrievalResult result;
-    if (total_pool_size > 0) {
-      result = SpareKeyPoolRetrievalResult::kMissNoKeyForAlgorithm;
-    } else if (!inflight_spare_key_pool_requests_.has_value()) {
-      result = SpareKeyPoolRetrievalResult::kMissNotInitialized;
-    } else if (inflight_spare_key_pool_requests_->empty()) {
-      result = SpareKeyPoolRetrievalResult::kMissFailedToCreateSpareKey;
-    } else {
-      result = SpareKeyPoolRetrievalResult::kMissDidNotReplenishFromLastUse;
-    }
-    RecordRetrievalResult(result);
+    RecordRetrievalResult(SpareKeyPoolRetrievalResult::kMissNoKeyForAlgorithm);
 
     return nullptr;
   }
@@ -774,8 +777,8 @@ void UnexportableKeyServiceImpl::FromWrappedAttestationKeySlowlyAsync(
 
 void UnexportableKeyServiceImpl::GetAllKeysForGarbageCollectionSlowlyAsync(
     BackgroundTaskPriority priority,
-    base::OnceCallback<void(ServiceErrorOr<std::vector<UnexportableKeyId>>)>
-        callback) {
+    base::OnceCallback<
+        void(ServiceErrorOr<std::vector<UnexportableSigningKeyId>>)> callback) {
   task_manager_->GetAllKeysForGarbageCollectionSlowlyAsync(
       task_origin_, config_, priority,
       WrapCallbackWithErrorIfCancelled(
@@ -828,18 +831,19 @@ void UnexportableKeyServiceImpl::CertifySlowlyAsync(
 }
 
 void UnexportableKeyServiceImpl::DeleteKeysSlowlyAsync(
-    base::span<const UnexportableKeyId> key_ids,
+    base::span<const UnexportableSigningKeyId> key_ids,
     BackgroundTaskPriority priority,
     base::OnceCallback<void(ServiceErrorOr<size_t>)> callback) {
   // Delete the keys from the in-memory maps.
-  std::vector<ServiceErrorOr<scoped_refptr<RefCountedUnexportableKey>>>
-      keys_or_errors = base::ToVector(key_ids, [&](UnexportableKeyId key_id) {
-        return ExtractKeyFromMaps(key_id);
-      });
+  std::vector<ServiceErrorOr<scoped_refptr<RefCountedUnexportableSigningKey>>>
+      keys_or_errors =
+          base::ToVector(key_ids, [&](UnexportableSigningKeyId key_id) {
+            return ExtractKeyFromMaps(key_id);
+          });
 
   // Collect the keys that were successfully deleted.
   std::erase_if(keys_or_errors, [](auto& k) { return !k.has_value(); });
-  std::vector<scoped_refptr<RefCountedUnexportableKey>> keys_to_delete =
+  std::vector<scoped_refptr<RefCountedUnexportableSigningKey>> keys_to_delete =
       base::ToVector(keys_or_errors, [](auto& key) { return *std::move(key); });
 
   // If no keys were deleted, return an error.
@@ -869,40 +873,41 @@ void UnexportableKeyServiceImpl::DeleteAllKeysSlowlyAsync(
 
 ServiceErrorOr<std::vector<uint8_t>>
 UnexportableKeyServiceImpl::GetSubjectPublicKeyInfo(
-    UnexportableKeyId key_id) const {
+    UnexportableSigningKeyId key_id) const {
   ASSIGN_OR_RETURN(const crypto::UnexportableSigningKey* key, GetKey(key_id));
   return key->GetSubjectPublicKeyInfo();
 }
 
 ServiceErrorOr<std::vector<uint8_t>> UnexportableKeyServiceImpl::GetWrappedKey(
-    UnexportableKeyId key_id) const {
+    UnexportableSigningKeyId key_id) const {
   ASSIGN_OR_RETURN(const crypto::UnexportableSigningKey* key, GetKey(key_id));
   return key->GetWrappedKey();
 }
 
 ServiceErrorOr<crypto::SignatureVerifier::SignatureAlgorithm>
-UnexportableKeyServiceImpl::GetAlgorithm(UnexportableKeyId key_id) const {
+UnexportableKeyServiceImpl::GetAlgorithm(
+    UnexportableSigningKeyId key_id) const {
   ASSIGN_OR_RETURN(const crypto::UnexportableSigningKey* key, GetKey(key_id));
   return key->Algorithm();
 }
 
 ServiceErrorOr<std::string> UnexportableKeyServiceImpl::GetKeyTag(
-    UnexportableKeyId key_id) const {
+    UnexportableSigningKeyId key_id) const {
   ASSIGN_OR_RETURN(const crypto::StatefulKey* stateful_key,
                    GetStatefulKey(key_id));
   return stateful_key->GetKeyTag();
 }
 
 ServiceErrorOr<base::Time> UnexportableKeyServiceImpl::GetCreationTime(
-    UnexportableKeyId key_id) const {
+    UnexportableSigningKeyId key_id) const {
   ASSIGN_OR_RETURN(const crypto::StatefulKey* stateful_key,
                    GetStatefulKey(key_id));
   return stateful_key->GetCreationTime();
 }
 
 ServiceErrorOr<const crypto::UnexportableSigningKey*>
-UnexportableKeyServiceImpl::GetKey(UnexportableKeyId key_id) const {
-  if (auto* key = signing_keys_->GetKey(UnexportableSigningKeyId(key_id))) {
+UnexportableKeyServiceImpl::GetKey(UnexportableSigningKeyId key_id) const {
+  if (auto* key = signing_keys_->GetKey(key_id)) {
     return &key->key();
   }
   if (auto* key =
@@ -916,7 +921,8 @@ UnexportableKeyServiceImpl::GetKey(UnexportableKeyId key_id) const {
 }
 
 ServiceErrorOr<const crypto::StatefulKey*>
-UnexportableKeyServiceImpl::GetStatefulKey(UnexportableKeyId key_id) const {
+UnexportableKeyServiceImpl::GetStatefulKey(
+    UnexportableSigningKeyId key_id) const {
   ASSIGN_OR_RETURN(const crypto::UnexportableSigningKey* key, GetKey(key_id));
   if (const crypto::StatefulKey* stateful_key = key->AsStatefulKey()) {
     return stateful_key;
@@ -924,17 +930,18 @@ UnexportableKeyServiceImpl::GetStatefulKey(UnexportableKeyId key_id) const {
   return base::unexpected(ServiceError::kOperationNotSupported);
 }
 
-ServiceErrorOr<scoped_refptr<RefCountedUnexportableKey>>
-UnexportableKeyServiceImpl::ExtractKeyFromMaps(UnexportableKeyId key_id) {
+ServiceErrorOr<scoped_refptr<RefCountedUnexportableSigningKey>>
+UnexportableKeyServiceImpl::ExtractKeyFromMaps(
+    UnexportableSigningKeyId key_id) {
   // Check the garbage collection map first. Ensure the `key_id` can't be
   // present in the other maps.
   if (auto gc_key_handle = all_gc_keys_by_key_id_.extract(key_id)) {
-    CHECK(!signing_keys_->Contains(UnexportableSigningKeyId(key_id)));
+    CHECK(!signing_keys_->Contains(key_id));
     CHECK(!attestation_keys_->Contains(UnexportableAttestationKeyId(key_id)));
     return std::move(gc_key_handle.mapped());
   }
 
-  if (auto key = signing_keys_->ExtractKey(UnexportableSigningKeyId(key_id))) {
+  if (auto key = signing_keys_->ExtractKey(key_id)) {
     return key;
   }
 
@@ -946,12 +953,13 @@ UnexportableKeyServiceImpl::ExtractKeyFromMaps(UnexportableKeyId key_id) {
   return base::unexpected(ServiceError::kKeyNotFound);
 }
 
-ServiceErrorOr<std::vector<UnexportableKeyId>>
+ServiceErrorOr<std::vector<UnexportableSigningKeyId>>
 UnexportableKeyServiceImpl::OnGetAllKeysForGarbageCollectionSlowlyImpl(
-    ServiceErrorOr<std::vector<scoped_refptr<RefCountedUnexportableKey>>>
+    ServiceErrorOr<std::vector<scoped_refptr<RefCountedUnexportableSigningKey>>>
         keys_or_error) {
-  ASSIGN_OR_RETURN(std::vector<scoped_refptr<RefCountedUnexportableKey>> keys,
-                   std::move(keys_or_error));
+  ASSIGN_OR_RETURN(
+      std::vector<scoped_refptr<RefCountedUnexportableSigningKey>> keys,
+      std::move(keys_or_error));
 
   auto key_ids = base::ToVector(keys, [](auto& key) { return key->id(); });
   all_gc_keys_by_key_id_.clear();

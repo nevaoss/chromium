@@ -1190,6 +1190,17 @@ public class TabListMediator implements TabListNotificationHandler {
 
                         mModelList.removeAt(index);
                     }
+
+                    @Override
+                    public void didChangePinState(Tab tab) {
+                        int index = mModelList.indexFromTabId(tab.getId());
+                        if (index != TabModel.INVALID_TAB_INDEX) {
+                            mModelList
+                                    .get(index)
+                                    .model
+                                    .set(TabProperties.IS_PINNED, tab.getIsPinned());
+                        }
+                    }
                 };
 
         mTabClosedListener =
@@ -2396,6 +2407,7 @@ public class TabListMediator implements TabListNotificationHandler {
                         .with(CARD_TYPE, cardType)
                         .with(TabProperties.VISIBILITY, View.VISIBLE)
                         .with(TabProperties.ACTOR_UI_STATE, null)
+                        .with(TabProperties.IS_PINNED, tab.getIsPinned())
                         .build();
 
         ActorUiTabController controller = ActorUiTabController.from(tab);
@@ -2445,7 +2457,6 @@ public class TabListMediator implements TabListNotificationHandler {
                 TabProperties.TITLE,
                 getLatestTitleForTabOrGroup(tab, tabInfo, /* useDefault= */ false));
         tabInfo.set(TabProperties.URL_DOMAIN, getDomainForTab(tab, tabInfo));
-        tabInfo.set(TabProperties.IS_PINNED, tab.getIsPinned());
         tabInfo.set(TabProperties.MEDIA_INDICATOR, getTabGridMediaIndicator(tab, tabInfo));
         tabInfo.set(TabProperties.SHOULD_SHOW_PRICE_DROP_TOOLTIP, false);
         tabInfo.set(TabProperties.USE_SHRINK_CLOSE_ANIMATION, false);
@@ -3284,11 +3295,11 @@ public class TabListMediator implements TabListNotificationHandler {
         Drawable originalForeground = recyclerView.getForeground();
 
         // Prepare the tabs that will be hidden by the animation.
-        TreeMap<Integer, List<Integer>> bottomValuesToTabIndexes = new TreeMap<>();
-        getOrderOfTabsForQuickDeleteAnimation(recyclerView, tabs, bottomValuesToTabIndexes);
+        TreeMap<Integer, List<PropertyModel>> bottomValuesToPropertyModels = new TreeMap<>();
+        getOrderOfTabsForQuickDeleteAnimation(recyclerView, tabs, bottomValuesToPropertyModels);
 
-        setQuickDeleteAnimationStatusForTabIndexes(
-                CollectionUtil.flatten(bottomValuesToTabIndexes.values()),
+        setQuickDeleteAnimationStatusForPropertyModels(
+                CollectionUtil.flatten(bottomValuesToPropertyModels.values()),
                 QuickDeleteAnimationStatus.TAB_PREPARE);
 
         // Create the gradient drawable and prepare the animator.
@@ -3303,15 +3314,15 @@ public class TabListMediator implements TabListNotificationHandler {
 
         wipeAnimation.addUpdateListener(
                 valueAnimator -> {
-                    if (bottomValuesToTabIndexes.isEmpty()) return;
+                    if (bottomValuesToPropertyModels.isEmpty()) return;
 
                     float value = (float) valueAnimator.getAnimatedValue();
-                    int bottomVal = bottomValuesToTabIndexes.lastKey();
+                    int bottomVal = bottomValuesToPropertyModels.lastKey();
                     if (bottomVal >= Math.round(value) + intersectionHeight) {
-                        setQuickDeleteAnimationStatusForTabIndexes(
-                                assumeNonNull(bottomValuesToTabIndexes.get(bottomVal)),
+                        setQuickDeleteAnimationStatusForPropertyModels(
+                                assumeNonNull(bottomValuesToPropertyModels.get(bottomVal)),
                                 QuickDeleteAnimationStatus.TAB_HIDE);
-                        bottomValuesToTabIndexes.remove(bottomVal);
+                        bottomValuesToPropertyModels.remove(bottomVal);
                     }
                 });
 
@@ -3383,23 +3394,27 @@ public class TabListMediator implements TabListNotificationHandler {
     void getOrderOfTabsForQuickDeleteAnimation(
             TabListRecyclerView recyclerView,
             List<Tab> tabs,
-            TreeMap<Integer, List<Integer>> bottomValuesToTabIndexes) {
+            TreeMap<Integer, List<PropertyModel>> bottomValuesToPropertyModels) {
         Set<Tab> filteredTabs = filterQuickDeleteTabsForAnimation(tabs);
 
         for (Tab tab : filteredTabs) {
             int id = tab.getId();
             int index = mModelList.indexFromTabId(id);
+            if (index == TabModel.INVALID_TAB_INDEX) {
+                continue;
+            }
             Rect tabRect = recyclerView.getRectOfCurrentThumbnail(index, id);
 
             // Ignore tabs that are outside the screen view.
             if (tabRect == null) continue;
 
             int bottom = tabRect.bottom;
+            PropertyModel model = mModelList.get(index).model;
 
-            if (bottomValuesToTabIndexes.containsKey(bottom)) {
-                bottomValuesToTabIndexes.get(bottom).add(index);
+            if (bottomValuesToPropertyModels.containsKey(bottom)) {
+                bottomValuesToPropertyModels.get(bottom).add(model);
             } else {
-                bottomValuesToTabIndexes.put(bottom, new ArrayList<>(List.of(index)));
+                bottomValuesToPropertyModels.put(bottom, new ArrayList<>(List.of(model)));
             }
         }
     }
@@ -3441,13 +3456,10 @@ public class TabListMediator implements TabListNotificationHandler {
         return filteredTabs;
     }
 
-    private void setQuickDeleteAnimationStatusForTabIndexes(
-            List<Integer> indexes, @QuickDeleteAnimationStatus int animationStatus) {
-        for (int index : indexes) {
-            mModelList
-                    .get(index)
-                    .model
-                    .set(TabProperties.QUICK_DELETE_ANIMATION_STATUS, animationStatus);
+    private void setQuickDeleteAnimationStatusForPropertyModels(
+            List<PropertyModel> models, @QuickDeleteAnimationStatus int animationStatus) {
+        for (PropertyModel model : models) {
+            model.set(TabProperties.QUICK_DELETE_ANIMATION_STATUS, animationStatus);
         }
     }
 

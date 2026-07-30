@@ -4,8 +4,11 @@
 
 #include "components/autofill/core/browser/at_memory/at_memory_metrics_recorder.h"
 
+#include <memory>
+
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/task_environment.h"
+#include "components/accessibility_annotator/core/annotation_reducer/memory_data_type.h"
 #include "components/accessibility_annotator/core/annotation_reducer/memory_search_result.h"
 #include "components/autofill/core/browser/metrics/autofill_metrics.h"
 #include "components/autofill/core/common/aliases.h"
@@ -29,12 +32,30 @@ using ::accessibility_annotator::MemorySearchStatus;
 
 class AtMemoryMetricsRecorderTest : public testing::Test {
  public:
-  AtMemoryMetricsRecorderTest() = default;
+  AtMemoryMetricsRecorderTest() {
+    optimization_guide::model_execution::prefs::RegisterLocalStatePrefs(
+        local_state_.registry());
+    optimization_guide::model_execution::prefs::RegisterProfilePrefs(
+        local_state_.registry());
+    uploader_service_ =
+        std::make_unique<optimization_guide::TestModelQualityLogsUploaderService>(
+            &local_state_);
+  }
 
  protected:
+  void SendResponse(AtMemoryMetricsRecorder& metrics) {
+    metrics.OnQueryResponseReceived(
+        MemorySearchResults(MemorySearchStatus::kFinalResponseSuccess,
+                            {MemorySearchResult(MemoryDataType::kAddressFull,
+                                                u"Address", u"123 Main St")}));
+  }
+
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   base::HistogramTester histogram_tester_;
+  TestingPrefServiceSimple local_state_;
+  std::unique_ptr<optimization_guide::TestModelQualityLogsUploaderService>
+      uploader_service_;
 };
 
 // Tests that `OnPopupShown` correctly logs the "PopupDisplayed" metric when
@@ -42,7 +63,8 @@ class AtMemoryMetricsRecorderTest : public testing::Test {
 TEST_F(AtMemoryMetricsRecorderTest, OnPopupShown_TypedTrigger) {
   AtMemoryMetricsRecorder metrics(nullptr, GURL(), std::u16string(),
                                   FormSignature(0), FieldSignature(0));
-  metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory);
+  metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory,
+                       std::nullopt);
 
   histogram_tester_.ExpectUniqueSample(
       "Autofill.AtMemory.SearchBarDisplayed",
@@ -54,7 +76,8 @@ TEST_F(AtMemoryMetricsRecorderTest, OnPopupShown_TypedTrigger) {
 TEST_F(AtMemoryMetricsRecorderTest, OnPopupShown_ContextMenu) {
   AtMemoryMetricsRecorder metrics(nullptr, GURL(), std::u16string(),
                                   FormSignature(0), FieldSignature(0));
-  metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemoryContextMenu);
+  metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemoryContextMenu,
+                       std::nullopt);
 
   histogram_tester_.ExpectUniqueSample(
       "Autofill.AtMemory.SearchBarDisplayed",
@@ -66,9 +89,11 @@ TEST_F(AtMemoryMetricsRecorderTest, OnPopupShown_ContextMenu) {
 TEST_F(AtMemoryMetricsRecorderTest, OnPopupShown_Idempotent) {
   AtMemoryMetricsRecorder metrics(nullptr, GURL(), std::u16string(),
                                   FormSignature(0), FieldSignature(0));
-  metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory);
+  metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory,
+                       std::nullopt);
   // Second call should be ignored.
-  metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemoryContextMenu);
+  metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemoryContextMenu,
+                       std::nullopt);
 
   histogram_tester_.ExpectUniqueSample(
       "Autofill.AtMemory.SearchBarDisplayed",
@@ -80,7 +105,8 @@ TEST_F(AtMemoryMetricsRecorderTest, Destructor_QuerySubmitted_True) {
   {
     AtMemoryMetricsRecorder metrics(nullptr, GURL(), std::u16string(),
                                     FormSignature(0), FieldSignature(0));
-    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory);
+    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory,
+                         std::nullopt);
     metrics.OnQuerySubmitted(u"some query");
   }
 
@@ -94,7 +120,8 @@ TEST_F(AtMemoryMetricsRecorderTest, Destructor_QuerySubmitted_False) {
   {
     AtMemoryMetricsRecorder metrics(nullptr, GURL(), std::u16string(),
                                     FormSignature(0), FieldSignature(0));
-    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory);
+    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory,
+                         std::nullopt);
     // No query submitted.
   }
 
@@ -107,13 +134,20 @@ TEST_F(AtMemoryMetricsRecorderTest, Destructor_SuggestionAccepted_True) {
   {
     AtMemoryMetricsRecorder metrics(nullptr, GURL(), std::u16string(),
                                     FormSignature(0), FieldSignature(0));
-    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory);
+    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory,
+                         std::nullopt);
     metrics.OnQuerySubmitted(u"query");
-    metrics.OnSuggestionAccepted();
+    SendResponse(metrics);
+    metrics.OnSuggestionAccepted(MemoryDataType::kAddressFull);
   }
 
   histogram_tester_.ExpectUniqueSample("Autofill.AtMemory.SuggestionAccepted",
                                        true, 1);
+  histogram_tester_.ExpectUniqueSample(
+      "Autofill.AtMemory.AcceptedSuggestionDataType",
+      MemoryDataType::kAddressFull, 1);
+  histogram_tester_.ExpectUniqueSample(
+      "Autofill.AtMemory.SuggestionAcceptedInSession", true, 1);
 }
 
 // Tests that the metric is NOT logged if no query was submitted.
@@ -122,11 +156,16 @@ TEST_F(AtMemoryMetricsRecorderTest,
   {
     AtMemoryMetricsRecorder metrics(nullptr, GURL(), std::u16string(),
                                     FormSignature(0), FieldSignature(0));
-    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory);
+    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory,
+                         std::nullopt);
     // No query submitted, no suggestion accepted.
   }
 
   histogram_tester_.ExpectTotalCount("Autofill.AtMemory.SuggestionAccepted", 0);
+  histogram_tester_.ExpectTotalCount(
+      "Autofill.AtMemory.AcceptedSuggestionDataType", 0);
+  histogram_tester_.ExpectUniqueSample(
+      "Autofill.AtMemory.SuggestionAcceptedInSession", false, 1);
 }
 
 // Tests that the destructor correctly logs that no suggestion was accepted
@@ -136,13 +175,19 @@ TEST_F(AtMemoryMetricsRecorderTest,
   {
     AtMemoryMetricsRecorder metrics(nullptr, GURL(), std::u16string(),
                                     FormSignature(0), FieldSignature(0));
-    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory);
+    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory,
+                         std::nullopt);
     metrics.OnQuerySubmitted(u"query");
+    SendResponse(metrics);
     // No suggestion accepted.
   }
 
   histogram_tester_.ExpectUniqueSample("Autofill.AtMemory.SuggestionAccepted",
                                        false, 1);
+  histogram_tester_.ExpectUniqueSample(
+      "Autofill.AtMemory.SuggestionAcceptedInSession", false, 1);
+  histogram_tester_.ExpectTotalCount(
+      "Autofill.AtMemory.AcceptedSuggestionDataType", 0);
 }
 
 // Tests that suggestion accepted metric is logged for multiple queries.
@@ -153,18 +198,21 @@ TEST_F(AtMemoryMetricsRecorderTest,
   {
     AtMemoryMetricsRecorder metrics(nullptr, GURL(), std::u16string(),
                                     FormSignature(0), FieldSignature(0));
-    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory);
+    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory,
+                         std::nullopt);
 
     // Query 1: suggestion not accepted.
     metrics.OnQuerySubmitted(u"query 1");
+    SendResponse(metrics);
 
     // Query 2: suggestion accepted.
     // Submitting query 2 should log the result of query 1 (false).
     metrics.OnQuerySubmitted(u"query 2");
+    SendResponse(metrics);
     histogram_tester_.ExpectUniqueSample("Autofill.AtMemory.SuggestionAccepted",
                                          false, 1);
 
-    metrics.OnSuggestionAccepted();
+    metrics.OnSuggestionAccepted(MemoryDataType::kAddressFull);
     // Destructor should log the result of query 2 (true).
   }
 
@@ -172,6 +220,27 @@ TEST_F(AtMemoryMetricsRecorderTest,
                                       true, 1);
   histogram_tester_.ExpectBucketCount("Autofill.AtMemory.SuggestionAccepted",
                                       false, 1);
+  histogram_tester_.ExpectUniqueSample(
+      "Autofill.AtMemory.AcceptedSuggestionDataType",
+      MemoryDataType::kAddressFull, 1);
+}
+
+// Tests that AcceptedSuggestionDataType logs the correct memory data type when
+// a suggestion is accepted.
+TEST_F(AtMemoryMetricsRecorderTest, AcceptedSuggestionDataType) {
+  {
+    AtMemoryMetricsRecorder metrics(nullptr, GURL(), std::u16string(),
+                                    FormSignature(0), FieldSignature(0));
+    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory,
+                         std::nullopt);
+    metrics.OnQuerySubmitted(u"query");
+    SendResponse(metrics);
+    metrics.OnSuggestionAccepted(MemoryDataType::kPassportNumber);
+  }
+
+  histogram_tester_.ExpectUniqueSample(
+      "Autofill.AtMemory.AcceptedSuggestionDataType",
+      MemoryDataType::kPassportNumber, 1);
 }
 
 // Tests that QueryCountBeforeAcceptance logs 1 if only one query was submitted
@@ -180,13 +249,18 @@ TEST_F(AtMemoryMetricsRecorderTest, QueryCountBeforeAcceptance_OneQuery) {
   {
     AtMemoryMetricsRecorder metrics(nullptr, GURL(), std::u16string(),
                                     FormSignature(0), FieldSignature(0));
-    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory);
+    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory,
+                         std::nullopt);
     metrics.OnQuerySubmitted(u"query 1");
-    metrics.OnSuggestionAccepted();
+    SendResponse(metrics);
+    metrics.OnSuggestionAccepted(MemoryDataType::kAddressFull);
   }
 
   histogram_tester_.ExpectUniqueSample(
       "Autofill.AtMemory.QueryCountBeforeAcceptance", 1, 1);
+  histogram_tester_.ExpectUniqueSample(
+      "Autofill.AtMemory.AcceptedSuggestionDataType",
+      MemoryDataType::kAddressFull, 1);
 }
 
 // Tests that QueryCountBeforeAcceptance logs the correct count if multiple
@@ -196,14 +270,20 @@ TEST_F(AtMemoryMetricsRecorderTest,
   {
     AtMemoryMetricsRecorder metrics(nullptr, GURL(), std::u16string(),
                                     FormSignature(0), FieldSignature(0));
-    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory);
+    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory,
+                         std::nullopt);
     metrics.OnQuerySubmitted(u"query 1");
+    SendResponse(metrics);
     metrics.OnQuerySubmitted(u"query 2");
-    metrics.OnSuggestionAccepted();
+    SendResponse(metrics);
+    metrics.OnSuggestionAccepted(MemoryDataType::kAddressFull);
   }
 
   histogram_tester_.ExpectUniqueSample(
       "Autofill.AtMemory.QueryCountBeforeAcceptance", 2, 1);
+  histogram_tester_.ExpectUniqueSample(
+      "Autofill.AtMemory.AcceptedSuggestionDataType",
+      MemoryDataType::kAddressFull, 1);
 }
 
 // Tests that QueryCountBeforeAcceptance is not logged if no suggestion was
@@ -212,14 +292,19 @@ TEST_F(AtMemoryMetricsRecorderTest, QueryCountBeforeAcceptance_NoAcceptance) {
   {
     AtMemoryMetricsRecorder metrics(nullptr, GURL(), std::u16string(),
                                     FormSignature(0), FieldSignature(0));
-    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory);
+    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory,
+                         std::nullopt);
     metrics.OnQuerySubmitted(u"query 1");
+    SendResponse(metrics);
     metrics.OnQuerySubmitted(u"query 2");
+    SendResponse(metrics);
     // No suggestion accepted.
   }
 
   histogram_tester_.ExpectTotalCount(
       "Autofill.AtMemory.QueryCountBeforeAcceptance", 0);
+  histogram_tester_.ExpectTotalCount(
+      "Autofill.AtMemory.AcceptedSuggestionDataType", 0);
 }
 
 // Tests that `MarkFilled` correctly logs whether a suggestion was filled.
@@ -227,23 +312,25 @@ TEST_F(AtMemoryMetricsRecorderTest, MarkFilled_Filled) {
   {
     AtMemoryMetricsRecorder metrics(nullptr, GURL(), std::u16string(),
                                     FormSignature(0), FieldSignature(0));
-    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory);
-    metrics.OnSuggestionAccepted();
+    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory,
+                         std::nullopt);
+    metrics.OnSuggestionAccepted(MemoryDataType::kAddressFull);
     metrics.MarkFilled();
   }
 
-  histogram_tester_.ExpectUniqueSample(
-      "Autofill.AtMemory.Funnel.SuggestionFilled", true, 1);
+  histogram_tester_.ExpectUniqueSample("Autofill.AtMemory.SuggestionFilled",
+                                       true, 1);
 
   {
     AtMemoryMetricsRecorder metrics2(nullptr, GURL(), std::u16string(),
                                      FormSignature(0), FieldSignature(0));
-    metrics2.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory);
-    metrics2.OnSuggestionAccepted();
+    metrics2.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory,
+                          std::nullopt);
+    metrics2.OnSuggestionAccepted(MemoryDataType::kAddressFull);
   }
 
-  histogram_tester_.ExpectBucketCount(
-      "Autofill.AtMemory.Funnel.SuggestionFilled", false, 1);
+  histogram_tester_.ExpectBucketCount("Autofill.AtMemory.SuggestionFilled",
+                                      false, 1);
 }
 
 // Tests that the unmasking duration metric is recorded correctly.
@@ -251,8 +338,9 @@ TEST_F(AtMemoryMetricsRecorderTest, TimeToFetchUnmasked) {
   {
     AtMemoryMetricsRecorder metrics(nullptr, GURL(), std::u16string(),
                                     FormSignature(0), FieldSignature(0));
-    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory);
-    metrics.OnSuggestionAccepted();
+    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory,
+                         std::nullopt);
+    metrics.OnSuggestionAccepted(MemoryDataType::kAddressFull);
     metrics.OnFetchPiiStarted();
     task_environment_.FastForwardBy(base::Seconds(2));
     metrics.OnFetchPiiCompleted();
@@ -268,19 +356,12 @@ TEST_F(AtMemoryMetricsRecorderTest, TimeToFetchUnmasked) {
 TEST_F(AtMemoryMetricsRecorderTest, LogEntryUploaded) {
   base::HistogramTester histogram_tester;
 
-  TestingPrefServiceSimple local_state;
-  optimization_guide::model_execution::prefs::RegisterLocalStatePrefs(
-      local_state.registry());
-  optimization_guide::model_execution::prefs::RegisterProfilePrefs(
-      local_state.registry());
-  optimization_guide::TestModelQualityLogsUploaderService uploader_service(
-      &local_state);
-
   {
     AtMemoryMetricsRecorder metrics(
-        &uploader_service, GURL("https://example.com"), u"Example Page",
+        uploader_service_.get(), GURL("https://example.com"), u"Example Page",
         FormSignature(123), FieldSignature(456));
-    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory);
+    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory,
+                         std::nullopt);
     metrics.OnQuerySubmitted(u"test query");
     task_environment_.FastForwardBy(base::Milliseconds(100));
     MemorySearchResult local_suggestion(MemoryDataType::kAddressFull, u"key 1",
@@ -297,7 +378,7 @@ TEST_F(AtMemoryMetricsRecorderTest, LogEntryUploaded) {
                             {local_suggestion, remote_suggestion}));
   }
 
-  const auto& uploaded_logs = uploader_service.uploaded_logs();
+  const auto& uploaded_logs = uploader_service_->uploaded_logs();
   ASSERT_EQ(uploaded_logs.size(), 1u);
   const optimization_guide::proto::AtMemoryQuality& quality =
       uploaded_logs[0]->at_memory().quality();
@@ -323,30 +404,23 @@ TEST_F(AtMemoryMetricsRecorderTest, LogEntryUploaded) {
 // Tests that the ModelQualityLogEntry is correctly filled and uploaded when the
 // uploader service is available and is flushed on next query.
 TEST_F(AtMemoryMetricsRecorderTest, LogEntryUploaded_MultipleQueries) {
-  TestingPrefServiceSimple local_state;
-  optimization_guide::model_execution::prefs::RegisterLocalStatePrefs(
-      local_state.registry());
-  optimization_guide::model_execution::prefs::RegisterProfilePrefs(
-      local_state.registry());
-  optimization_guide::TestModelQualityLogsUploaderService uploader_service(
-      &local_state);
-
   std::string quality1_session_id;
   {
     AtMemoryMetricsRecorder metrics(
-        &uploader_service, GURL("https://example.com"), u"Example Page",
+        uploader_service_.get(), GURL("https://example.com"), u"Example Page",
         FormSignature(123), FieldSignature(456));
-    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory);
+    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory,
+                         std::nullopt);
     metrics.OnQuerySubmitted(u"test query");
 
     // The first query should be pending, not uploaded yet.
-    EXPECT_TRUE(uploader_service.uploaded_logs().empty());
+    EXPECT_TRUE(uploader_service_->uploaded_logs().empty());
 
     // Submitting a new query should flush the first query.
     metrics.OnQuerySubmitted(u"next query");
-    ASSERT_EQ(uploader_service.uploaded_logs().size(), 1u);
+    ASSERT_EQ(uploader_service_->uploaded_logs().size(), 1u);
     const optimization_guide::proto::AtMemoryQuality& quality1 =
-        uploader_service.uploaded_logs()[0]->at_memory().quality();
+        uploader_service_->uploaded_logs()[0]->at_memory().quality();
     quality1_session_id = quality1.session_id();
     EXPECT_EQ(quality1.query(), "test query");
     EXPECT_EQ(quality1.url(), "https://example.com/");
@@ -357,7 +431,7 @@ TEST_F(AtMemoryMetricsRecorderTest, LogEntryUploaded_MultipleQueries) {
   }
 
   // The second query is flushed on destruction of the object.
-  const auto& uploaded_logs = uploader_service.uploaded_logs();
+  const auto& uploaded_logs = uploader_service_->uploaded_logs();
   ASSERT_EQ(uploaded_logs.size(), 2u);
   const optimization_guide::proto::AtMemoryQuality& quality2 =
       uploaded_logs[1]->at_memory().quality();
@@ -370,6 +444,114 @@ TEST_F(AtMemoryMetricsRecorderTest, LogEntryUploaded_MultipleQueries) {
   EXPECT_EQ(quality2.session_id(), quality1_session_id);
 }
 
+// Tests that the ModelQualityLogEntry is correctly filled with the action
+// for a root suggestion acceptance.
+TEST_F(AtMemoryMetricsRecorderTest, LogEntryUploaded_SuggestionAccepted_Root) {
+  {
+    AtMemoryMetricsRecorder metrics(
+        uploader_service_.get(), GURL("https://example.com"), u"Example Page",
+        FormSignature(123), FieldSignature(456));
+    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory,
+                         std::nullopt);
+    metrics.OnQuerySubmitted(u"test query");
+
+    MemorySearchResult local_suggestion(MemoryDataType::kAddressFull, u"key 1",
+                                        u"value1");
+    local_suggestion.sources.push_back(
+        MemoryEntrySource(MemoryEntrySourceType::kAutofill));
+    metrics.OnQueryResponseReceived(MemorySearchResults(
+        MemorySearchStatus::kFinalResponseSuccess, {local_suggestion}));
+
+    metrics.OnSuggestionAccepted(
+        MemoryDataType::kAddressFull,
+        AutofillSuggestionDelegate::SuggestionMetadata{.multi_index = {0}});
+  }
+
+  const auto& uploaded_logs = uploader_service_->uploaded_logs();
+  ASSERT_EQ(uploaded_logs.size(), 1u);
+  const optimization_guide::proto::AtMemoryQuality& quality =
+      uploaded_logs[0]->at_memory().quality();
+
+  ASSERT_EQ(quality.suggestions_size(), 1);
+  EXPECT_EQ(quality.suggestions(0).action(),
+            optimization_guide::proto::AT_MEMORY_SUGGESTION_ACTION_ACCEPTED);
+}
+
+// Tests that the ModelQualityLogEntry is correctly filled with the action
+// for a sub-suggestion (flyout menu) acceptance.
+TEST_F(AtMemoryMetricsRecorderTest, LogEntryUploaded_SuggestionAccepted_Sub) {
+  {
+    AtMemoryMetricsRecorder metrics(
+        uploader_service_.get(), GURL("https://example.com"), u"Example Page",
+        FormSignature(123), FieldSignature(456));
+    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory,
+                         std::nullopt);
+    metrics.OnQuerySubmitted(u"test query");
+
+    MemorySearchResult local_suggestion(MemoryDataType::kAddressFull, u"key 1",
+                                        u"value1");
+    local_suggestion.sources.push_back(
+        MemoryEntrySource(MemoryEntrySourceType::kAutofill));
+    metrics.OnQueryResponseReceived(MemorySearchResults(
+        MemorySearchStatus::kFinalResponseSuccess, {local_suggestion}));
+
+    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory,
+                         AutofillSuggestionDelegate::SuggestionMetadata{
+                             .multi_index = {0}});
+
+    metrics.OnSuggestionAccepted(
+        MemoryDataType::kAddressFull,
+        AutofillSuggestionDelegate::SuggestionMetadata{.multi_index = {0, 1}});
+  }
+
+  const auto& uploaded_logs = uploader_service_->uploaded_logs();
+  ASSERT_EQ(uploaded_logs.size(), 1u);
+  const optimization_guide::proto::AtMemoryQuality& quality =
+      uploaded_logs[0]->at_memory().quality();
+
+  ASSERT_EQ(quality.suggestions_size(), 1);
+  // The action should be set to the flyout menu attribute accepted action.
+  EXPECT_EQ(quality.suggestions(0).action(),
+            optimization_guide::proto::
+                AT_MEMORY_SUGGESTION_ACTION_FLYOUT_MENU_ATTRIBUTE_ACCEPTED);
+}
+
+// Tests that the ModelQualityLogEntry is correctly filled with the action
+// for a sub-suggestion (flyout menu) being opened for a suggestion but not
+// accepted.
+TEST_F(AtMemoryMetricsRecorderTest, LogEntryUploaded_PopupShown) {
+  {
+    AtMemoryMetricsRecorder metrics(
+        uploader_service_.get(), GURL("https://example.com"), u"Example Page",
+        FormSignature(123), FieldSignature(456));
+    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory,
+                         std::nullopt);
+    metrics.OnQuerySubmitted(u"test query");
+
+    MemorySearchResult local_suggestion(MemoryDataType::kAddressFull, u"key 1",
+                                        u"value1");
+    local_suggestion.sources.push_back(
+        MemoryEntrySource(MemoryEntrySourceType::kAutofill));
+    metrics.OnQueryResponseReceived(MemorySearchResults(
+        MemorySearchStatus::kFinalResponseSuccess, {local_suggestion}));
+
+    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory,
+                         AutofillSuggestionDelegate::SuggestionMetadata{
+                             .multi_index = {0}});
+  }
+
+  const auto& uploaded_logs = uploader_service_->uploaded_logs();
+  ASSERT_EQ(uploaded_logs.size(), 1u);
+  const optimization_guide::proto::AtMemoryQuality& quality =
+      uploaded_logs[0]->at_memory().quality();
+
+  ASSERT_EQ(quality.suggestions_size(), 1);
+  // The action should be set to the flyout menu attribute accepted action.
+  EXPECT_EQ(quality.suggestions(0).action(),
+            optimization_guide::proto::
+                AT_MEMORY_SUGGESTION_ACTION_FLYOUT_MENU_OPENED);
+}
+
 // Tests that `OnSuggestionAccepted` correctly logs the accepted suggestion
 // indices to UMA.
 TEST_F(AtMemoryMetricsRecorderTest, OnSuggestionAccepted_LogsIndices) {
@@ -378,8 +560,10 @@ TEST_F(AtMemoryMetricsRecorderTest, OnSuggestionAccepted_LogsIndices) {
     base::HistogramTester histogram_tester;
     AtMemoryMetricsRecorder metrics(nullptr, GURL(), std::u16string(),
                                     FormSignature(0), FieldSignature(0));
-    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory);
+    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory,
+                         std::nullopt);
     metrics.OnSuggestionAccepted(
+        MemoryDataType::kAddressFull,
         AutofillSuggestionDelegate::SuggestionMetadata{.multi_index = {2}});
     histogram_tester.ExpectUniqueSample(
         "Autofill.AtMemory.AcceptedSuggestionIndex", 2, 1);
@@ -392,14 +576,33 @@ TEST_F(AtMemoryMetricsRecorderTest, OnSuggestionAccepted_LogsIndices) {
     base::HistogramTester histogram_tester;
     AtMemoryMetricsRecorder metrics(nullptr, GURL(), std::u16string(),
                                     FormSignature(0), FieldSignature(0));
-    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory);
+    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory,
+                         std::nullopt);
     metrics.OnSuggestionAccepted(
+        MemoryDataType::kAddressFull,
         AutofillSuggestionDelegate::SuggestionMetadata{.multi_index = {2, 1}});
     histogram_tester.ExpectUniqueSample(
         "Autofill.AtMemory.AcceptedSuggestionIndex", 2, 1);
     histogram_tester.ExpectUniqueSample(
         "Autofill.AtMemory.AcceptedSuggestionSecondaryIndex", 1, 1);
   }
+}
+
+// Tests that if we receive an empty response, SuggestionAccepted is not logged.
+TEST_F(AtMemoryMetricsRecorderTest, EmptyResponse_NoSuggestionAcceptedMetric) {
+  {
+    AtMemoryMetricsRecorder metrics(nullptr, GURL(), std::u16string(),
+                                    FormSignature(0), FieldSignature(0));
+    metrics.OnPopupShown(AutofillSuggestionTriggerSource::kAtMemory,
+                         std::nullopt);
+    metrics.OnQuerySubmitted(u"query");
+
+    // Simulate empty response.
+    metrics.OnQueryResponseReceived(
+        MemorySearchResults(MemorySearchStatus::kFinalResponseSuccess, {}));
+  }
+
+  histogram_tester_.ExpectTotalCount("Autofill.AtMemory.SuggestionAccepted", 0);
 }
 
 struct QueryCompletedTestCase {

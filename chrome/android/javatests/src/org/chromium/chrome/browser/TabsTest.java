@@ -63,7 +63,6 @@ import org.chromium.chrome.browser.tabmodel.TabClosureParams;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabModelSelectorImpl;
-import org.chromium.chrome.browser.tabmodel.TabModelSelectorObserver;
 import org.chromium.chrome.browser.tabmodel.TabModelUtils;
 import org.chromium.chrome.browser.tabpersistence.TabStateDirectory;
 import org.chromium.chrome.browser.tabpersistence.TabStateFileManager;
@@ -74,6 +73,7 @@ import org.chromium.chrome.test.transit.ChromeTransitTestRules;
 import org.chromium.chrome.test.transit.ntp.IncognitoNewTabPageStation;
 import org.chromium.chrome.test.transit.page.CtaPageStation;
 import org.chromium.chrome.test.transit.page.WebPageStation;
+import org.chromium.chrome.test.util.BottomBarTestUtils;
 import org.chromium.chrome.test.util.ChromeTabUtils;
 import org.chromium.chrome.test.util.NewTabPageTestUtils;
 import org.chromium.components.javascript_dialogs.JavascriptTabModalDialog;
@@ -242,14 +242,20 @@ public class TabsTest {
                         () -> {
                             return mActivityTestRule.getActivity().getCurrentTabModel().getCount();
                         });
-        onViewWaiting(withId(R.id.tab_switcher_button))
-                .check(matches(isDisplayed()))
-                .perform(click());
+        View tabSwitcherBtn =
+                BottomBarTestUtils.findViewById(
+                        mActivityTestRule.getActivity(), R.id.tab_switcher_button);
+        onViewWaiting(Matchers.is(tabSwitcherBtn)).check(matches(isDisplayed())).perform(click());
         LayoutTestUtils.waitForLayout(
                 mActivityTestRule.getActivity().getLayoutManager(), LayoutType.HUB);
 
-        int newTabButtonId = R.id.toolbar_action_button;
-        onViewWaiting(withId(newTabButtonId)).check(matches(isDisplayed())).perform(click());
+        int newTabButtonId =
+                BottomBarTestUtils.isBottomBarVisible(mActivityTestRule.getActivity())
+                        ? R.id.new_tab_button
+                        : R.id.toolbar_action_button;
+        View newTabBtn =
+                BottomBarTestUtils.findViewById(mActivityTestRule.getActivity(), newTabButtonId);
+        onViewWaiting(Matchers.is(newTabBtn)).check(matches(isDisplayed())).perform(click());
         LayoutTestUtils.waitForLayout(
                 mActivityTestRule.getActivity().getLayoutManager(), LayoutType.BROWSING);
 
@@ -808,7 +814,7 @@ public class TabsTest {
     @Test
     @MediumTest
     @Feature({"Android-TabSwitcher"})
-    public void testLastClosedTabTriggersNotifyChangedCall() {
+    public void testLastClosedTabTriggersCurrentTabSupplierCall() {
         final TabModel model =
                 mActivityTestRule.getActivity().getTabModelSelector().getCurrentModel();
         final Tab tab = mActivityTestRule.getActivityTab();
@@ -817,13 +823,13 @@ public class TabsTest {
 
         runOnUiThreadBlocking(
                 () -> {
-                    selector.addObserver(
-                            new TabModelSelectorObserver() {
-                                @Override
-                                public void onChange() {
-                                    mNotifyChangedCalled = true;
-                                }
-                            });
+                    selector.getCurrentTabSupplier()
+                            .addSyncObserver(
+                                    (t) -> {
+                                        if (t == null) {
+                                            mNotifyChangedCalled = true;
+                                        }
+                                    });
                 });
 
         assertEquals("Too many tabs at startup", 1, getTabCountOnUiThread(model));
@@ -836,7 +842,7 @@ public class TabsTest {
                                                 TabClosureParams.closeTab(tab).build(),
                                                 /* allowDialog= */ false));
 
-        assertTrue("notifyChanged() was not called", mNotifyChangedCalled);
+        assertTrue("getCurrentTabSupplier() was not called with null", mNotifyChangedCalled);
     }
 
     @Test

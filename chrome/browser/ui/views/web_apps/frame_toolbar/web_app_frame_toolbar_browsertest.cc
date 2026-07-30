@@ -177,6 +177,14 @@
 
 namespace {
 
+gfx::NativeWindow GetWindowForEventGenerator(Browser* browser) {
+#if defined(USE_AURA)
+  return browser->GetWindow()->GetNativeWindow()->GetRootWindow();
+#else
+  return browser->GetWindow()->GetNativeWindow();
+#endif
+}
+
 template <typename T>
 T* GetLastVisible(const std::vector<T*>& views) {
   T* visible = nullptr;
@@ -1848,6 +1856,51 @@ IN_PROC_BROWSER_TEST_F(WebAppFrameToolbarBrowserTest_WindowControlsOverlay,
   EXPECT_TRUE(helper()->browser_view()->AppUsesWindowControlsOverlay());
 }
 
+// ChromeOS (immersive) and macOS (https://crbug.com/41431787) disable WCO in
+// fullscreen.
+#if !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_MAC)
+IN_PROC_BROWSER_TEST_F(WebAppFrameToolbarBrowserTest_WindowControlsOverlay,
+                       EnabledAndClickableInFullscreen) {
+  InstallAndLaunchWebApp();
+
+  // Toggle WCO on.
+  ToggleWindowControlsOverlayAndWait();
+  BrowserView* const browser_view = helper()->browser_view();
+  EXPECT_TRUE(browser_view->IsWindowControlsOverlayEnabled());
+
+  // Enter fullscreen.
+  ui_test_utils::FullscreenWaiter waiter(
+      browser_view->browser(),
+      {.browser_fullscreen = true, .tab_fullscreen = false});
+  chrome::ToggleFullscreenMode(browser_view->browser(),
+                               /*user_initiated=*/false);
+  waiter.Wait();
+  ASSERT_TRUE(browser_view->IsFullscreen());
+
+  // WCO stays enabled in fullscreen.
+  EXPECT_TRUE(browser_view->IsWindowControlsOverlayEnabled());
+
+#if BUILDFLAG(IS_WIN)
+  // The top-right overlay area must not hit-test as caption, which would
+  // swallow clicks meant for app UI (https://crbug.com/518849412).
+  gfx::Point top_right(browser_view->width() - 1, 0);
+  views::View::ConvertPointToTarget(browser_view, browser_view->parent(),
+                                    &top_right);
+  EXPECT_NE(browser_view->NonClientHitTest(top_right), HTCAPTION);
+#endif  // BUILDFLAG(IS_WIN)
+
+  // Exiting fullscreen keeps WCO enabled.
+  ui_test_utils::FullscreenWaiter exit_waiter(
+      browser_view->browser(),
+      {.browser_fullscreen = false, .tab_fullscreen = false});
+  chrome::ToggleFullscreenMode(browser_view->browser(),
+                               /*user_initiated=*/false);
+  exit_waiter.Wait();
+  ASSERT_FALSE(browser_view->IsFullscreen());
+  EXPECT_TRUE(browser_view->IsWindowControlsOverlayEnabled());
+}
+#endif  // !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_MAC)
+
 IN_PROC_BROWSER_TEST_F(WebAppFrameToolbarBrowserTest_WindowControlsOverlay,
                        OpenInChrome) {
   InstallAndLaunchWebApp();
@@ -3295,19 +3348,23 @@ IN_PROC_BROWSER_TEST_F(
             "window.setResizable(false) succeeded.");
   EXPECT_FALSE(helper()->browser_view()->IsFullscreen());
 
-  // Most accelerators (e.g., F11, ⛶, Fn+F) maps to IDC_FULLSCREEN command
-  ASSERT_TRUE(chrome::ExecuteCommand(helper()->app_browser(), IDC_FULLSCREEN));
-  base::RunLoop().RunUntilIdle();
-  EXPECT_FALSE(helper()->browser_view()->IsFullscreen());
-
-  // Exception: VKEY_ZOOM maps to ash::AcceleratorAction::kToggleFullscreen
+  // Test the fullscreen shortcut key.
 #if BUILDFLAG(IS_CHROMEOS)
-  ui::test::EventGenerator(
-      helper()->app_browser()->GetWindow()->GetNativeWindow()->GetRootWindow())
-      .PressAndReleaseKey(ui::VKEY_ZOOM, ui::EF_NONE);
+  // On ChromeOS VKEY_ZOOM maps to ash::AcceleratorAction::kToggleFullscreen
+  ui::KeyboardCode fullscreen_key = ui::VKEY_ZOOM;
+  int fullscreen_modifiers = ui::EF_NONE;
+#elif BUILDFLAG(IS_MAC)
+  ui::KeyboardCode fullscreen_key = ui::VKEY_F;
+  int fullscreen_modifiers = ui::EF_COMMAND_DOWN | ui::EF_CONTROL_DOWN;
+#else
+  ui::KeyboardCode fullscreen_key = ui::VKEY_F11;
+  int fullscreen_modifiers = ui::EF_NONE;
+#endif
+
+  ui::test::EventGenerator(GetWindowForEventGenerator(helper()->app_browser()))
+      .PressAndReleaseKey(fullscreen_key, fullscreen_modifiers);
   base::RunLoop().RunUntilIdle();
   EXPECT_FALSE(helper()->browser_view()->IsFullscreen());
-#endif
 }
 
 IN_PROC_BROWSER_TEST_F(

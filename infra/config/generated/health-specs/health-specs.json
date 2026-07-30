@@ -11790,6 +11790,27 @@
           }
         ]
       },
+      "mac-rust-arm64-dbg": {
+        "contact_team_email": "rust-in-chrome@google.com",
+        "problem_specs": [
+          {
+            "name": "Unhealthy",
+            "period_days": 7,
+            "score": 5,
+            "thresholds": {
+              "_default": "_default"
+            }
+          },
+          {
+            "name": "Low Value",
+            "period_days": 90,
+            "score": 1,
+            "thresholds": {
+              "_default": "_default"
+            }
+          }
+        ]
+      },
       "mac-rust-x64-dbg": {
         "problem_specs": [
           {
@@ -13699,6 +13720,29 @@
       },
       "windows-no-initial-webui-rel": {
         "contact_team_email": "chrome-webium-product-eng@google.com",
+        "problem_specs": [
+          {
+            "name": "Unhealthy",
+            "period_days": 7,
+            "score": 5,
+            "thresholds": {
+              "_default": "_default"
+            }
+          },
+          {
+            "name": "Low Value",
+            "period_days": 90,
+            "score": 1,
+            "thresholds": {
+              "_default": "_default"
+            }
+          }
+        ]
+      }
+    },
+    "ssci": {
+      "chromium-ssci-linux-amd64": {
+        "contact_team_email": "chops-security-core@google.com",
         "problem_specs": [
           {
             "name": "Unhealthy",

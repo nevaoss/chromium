@@ -29,6 +29,7 @@ import org.chromium.base.ThreadUtils;
 import org.chromium.base.supplier.NonNullObservableSupplier;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.lifecycle.ConfigurationChangedObserver;
@@ -63,6 +64,8 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
     private final SideUiTransitionListener mSideUiTransitionListener =
             new SideUiTransitionListener();
 
+    private final SideUiWebContentHairlineManager mWebContentsHairlineManager;
+
     /**
      * Whether {@link #updateUiInternal} is in progress.
      *
@@ -76,18 +79,24 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
      * @param parentActivity The {@link Activity} containing all Side UIs.
      * @param activityLifecycleDispatcher The {@link ActivityLifecycleDispatcher} for {@code
      *     parentActivity}.
+     * @param browserControlsStateProvider The {@link BrowserControlsStateProvider} to adjust for
+     *     top controls changes.
      * @param anchorContainerParent The {@link ViewGroup} that is the parent for the side UI
      *     containers.
      * @param leftAnchorContainerStub The {@link ViewStub} for the left-anchored container.
      * @param rightAnchorContainerStub The {@link ViewStub} for the right-anchored container.
+     * @param webContentHairlineContainerStub The {@link ViewStub} for the web content hairline
+     *     container.
      * @param topMarginSupplier The supplier for the Side UI's top margin.
      */
     /* package */ SideUiCoordinatorImpl(
             Activity parentActivity,
             ActivityLifecycleDispatcher activityLifecycleDispatcher,
+            BrowserControlsStateProvider browserControlsStateProvider,
             ViewGroup anchorContainerParent,
             ViewStub leftAnchorContainerStub,
             ViewStub rightAnchorContainerStub,
+            ViewStub webContentHairlineContainerStub,
             NonNullObservableSupplier<Integer> topMarginSupplier) {
         mParentActivity = parentActivity;
         mActivityLifecycleDispatcher = activityLifecycleDispatcher;
@@ -105,6 +114,14 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
         mTopMarginObserver = this::onTopMarginChanged;
         mTopMarginSupplier = topMarginSupplier;
         mTopMarginSupplier.addSyncObserver(mTopMarginObserver);
+
+        webContentHairlineContainerStub.setLayoutResource(
+                R.layout.side_ui_web_content_hairline_container);
+        SideUiWebContentHairlineContainer webContentHairlineContainer =
+                (SideUiWebContentHairlineContainer) webContentHairlineContainerStub.inflate();
+        mWebContentsHairlineManager =
+                new SideUiWebContentHairlineManager(
+                        /* sideUiStateProvider= */ this, webContentHairlineContainer);
 
         mActivityLifecycleDispatcher.register(this);
     }
@@ -159,6 +176,7 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
         ThreadUtils.assertOnUiThread();
         mSideUiContainers.clear();
         mTopMarginSupplier.removeObserver(mTopMarginObserver);
+        mWebContentsHairlineManager.destroy();
         mActivityLifecycleDispatcher.unregister(this);
     }
 

@@ -461,7 +461,8 @@ class LocationBarMediator
 
                     @Override
                     public boolean isVisible() {
-                        return true;
+                        return mAutocompleteCoordinator != null
+                                && mAutocompleteCoordinator.isServingSuggestions();
                     }
 
                     @Override
@@ -474,11 +475,6 @@ class LocationBarMediator
         View urlBar = mLocationBarLayout.getUrlBar();
         SelectableView urlBarSelectableView =
                 new SelectableView() {
-                    @Override
-                    public boolean isAutocompleteList() {
-                        return false;
-                    }
-
                     @Override
                     public boolean isVisible() {
                         return true;
@@ -495,9 +491,12 @@ class LocationBarMediator
                         mAutocompleteCoordinator.loadTypedOmniboxText(event.isAltPressed());
                     }
                 };
+
         List<SelectableView> selectableViews =
                 List.of(
                         urlBarSelectableView,
+                        wrapSelectableView(
+                                mLocationBarLayout.findViewById(R.id.fusebox_activation_chip)),
                         wrapSelectableView(mLocationBarLayout.getDeleteButton()),
                         autocompleteSelectableView,
                         wrapSelectableView(
@@ -514,11 +513,6 @@ class LocationBarMediator
 
     private SelectableView wrapSelectableView(View view) {
         return new SelectableView() {
-            @Override
-            public boolean isAutocompleteList() {
-                return false;
-            }
-
             @Override
             public boolean isVisible() {
                 return view.getVisibility() == View.VISIBLE;
@@ -600,6 +594,13 @@ class LocationBarMediator
                         new AutocompleteInput(OmniboxFocusReason.KEYBOARD_NAVIGATION_FOCUS)
                                 .setAutocompleteState(AutocompleteState.STANDBY)
                                 .setSelection(TextSelection.SELECT_ALL));
+            } else {
+                FuseboxSessionState session = FuseboxSessionState.from(mLocationBarDataProvider);
+                if (session != null
+                        && session.getAutocompleteInput().getAutocompleteState()
+                                == AutocompleteState.DISABLED) {
+                    session.getAutocompleteInput().setAutocompleteState(AutocompleteState.ENABLED);
+                }
             }
         } else {
             mUrlFocusedWithoutAnimations = false;
@@ -753,6 +754,14 @@ class LocationBarMediator
         // to whether Software keyboard would be called up when Physical keyboard is in use on
         // Pixel devices.
         if (KeyboardUtils.shouldShowImeWithHardwareKeyboard(mContext)) return;
+
+        // Do not go to standby for existing NTPs that have already been unfocused.
+        FuseboxSessionState session = FuseboxSessionState.from(mLocationBarDataProvider);
+        if (session != null
+                && session.getAutocompleteInput().getAutocompleteState()
+                        == AutocompleteState.DISABLED) {
+            return;
+        }
 
         mUrlFocusedWithoutAnimations = true;
         // This method should only be called on devices with a hardware keyboard attached, as
@@ -2541,11 +2550,22 @@ class LocationBarMediator
                 mAutocompleteCoordinator.selectLastItem();
             }
         } else {
+            boolean isTypedStateConventionalRequest =
+                    mCurrentInput != null
+                            && !mCurrentInput.isInZeroPrefixContext()
+                            && mCurrentInput.isConventionalRequestType();
             mSelectionController.selectNextItem();
             if (mSelectionController.isAutocompleteSelected()) {
                 // We just moved forwards to the autocomplete list. The first item of that list
                 // should be selected.
                 mAutocompleteCoordinator.selectFirstItem();
+                // Special case for the typed state, where we support nested, simultaneous
+                // selection. The first item of the autocomplete list is selected at the same time
+                // as the url bar. To avoid needing to tab an extra time to go past this view or to
+                // its own nested selection, we re-handle the event.
+                if (isTypedStateConventionalRequest) {
+                    mAutocompleteCoordinator.handleKeyEvent(keyCode, event);
+                }
             }
         }
 
@@ -2623,11 +2643,13 @@ class LocationBarMediator
         mUrlCoordinator.clearFocus();
 
         // Restore the saved tab state.
-        var state = FuseboxSessionState.from(mLocationBarDataProvider);
+        FuseboxSessionState state = FuseboxSessionState.from(mLocationBarDataProvider);
         if (state != null && state.isSessionActive()) {
-            state.getAutocompleteInput()
-                    .setFocusReason(OmniboxFocusReason.LOCATION_BAR_STATE_RESTORATION);
-            beginInput(state.getAutocompleteInput());
+            AutocompleteInput input = state.getAutocompleteInput();
+            input.setFocusReason(OmniboxFocusReason.LOCATION_BAR_STATE_RESTORATION);
+            input.setAutocompleteState(AutocompleteState.STANDBY);
+            mUrlFocusedWithoutAnimations = true;
+            beginInput(input);
         }
 
         // Set zoom indicator tooltip

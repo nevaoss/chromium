@@ -994,7 +994,7 @@ class BrowserAutofillManagerTest
                           size_t field_index = 0,
                           SuggestionType type = SuggestionType::kAddressEntry) {
     autofill_manager().DidShowSuggestions(
-        {Suggestion(type)}, form.global_id(),
+        {Suggestion(type)}, std::nullopt, form.global_id(),
         form.fields()[field_index].global_id(), {});
   }
 
@@ -1327,14 +1327,20 @@ class BrowserAutofillManagerAtMemoryTest : public BrowserAutofillManagerTest {
  public:
   void SetUp() override {
     BrowserAutofillManagerTest::SetUp();
+
+    feature_list_.InitWithFeatures(
+        /*enabled_features=*/{features::kAutofillAtMemory,
+                              features::kShowAutocompleteAtMemoryButton},
+        /*disabled_features=*/{});
+
     personal_context::prefs::RegisterProfilePrefs(
         autofill_client().GetPrefs()->registry());
     autofill_client().GetPrefs()->SetBoolean(
         personal_context::prefs::kPersonalContextInAutofillSettingsToggleStatus,
         true);
-    ON_CALL(mock_personal_context_service_, GetEnablementState())
-        .WillByDefault(
-            Return(personal_context::PersonalContextEnablementState::kEnabled));
+    ON_CALL(mock_personal_context_service_, GetEligibilityState())
+        .WillByDefault(Return(
+            personal_context::PersonalContextEligibilityState::kEligible));
     autofill_client().set_personal_context_enablement_service(
         &mock_personal_context_service_);
   }
@@ -1342,10 +1348,10 @@ class BrowserAutofillManagerAtMemoryTest : public BrowserAutofillManagerTest {
  protected:
   NiceMock<personal_context::MockPersonalContextEnablementService>
       mock_personal_context_service_;
+  base::test::ScopedFeatureList feature_list_;
 };
 
 TEST_F(BrowserAutofillManagerAtMemoryTest, AtMemoryTriggersEmptySuggestions) {
-  base::test::ScopedFeatureList features(features::kAutofillAtMemory);
   FormData form = CreateTestAddressFormData();
   FormsSeen({form});
 
@@ -1356,19 +1362,18 @@ TEST_F(BrowserAutofillManagerAtMemoryTest, AtMemoryTriggersEmptySuggestions) {
   external_delegate()->CheckNoSuggestions(form.fields()[0].global_id());
 }
 
-// Tests that when `PersonalContextEnablementState` is `kDisabledNotEligible`
+// Tests that when `PersonalContextEligibilityState` is `kDisabledNotEligible`
 // for a given profile, the AtMemory popup doesn't trigger.
 TEST_F(BrowserAutofillManagerAtMemoryTest, TriggerDroppedWhenNotEligible) {
-  base::test::ScopedFeatureList features(features::kAutofillAtMemory);
   FormData form = CreateTestAddressFormData();
   FormsSeen({form});
 
-  ON_CALL(mock_personal_context_service_, GetEnablementState())
-      .WillByDefault(Return(personal_context::PersonalContextEnablementState::
+  ON_CALL(mock_personal_context_service_, GetEligibilityState())
+      .WillByDefault(Return(personal_context::PersonalContextEligibilityState::
                                 kDisabledNotEligible));
 
   autofill_client().set_personal_context_enablement_state(
-      personal_context::PersonalContextEnablementState::kDisabledNotEligible);
+      personal_context::PersonalContextEligibilityState::kDisabledNotEligible);
 
   OnAskForValuesToFill(form, form.fields()[0],
                        AutofillSuggestionTriggerSource::kAtMemory);
@@ -1380,7 +1385,6 @@ TEST_F(BrowserAutofillManagerAtMemoryTest, TriggerDroppedWhenNotEligible) {
 // Tests that when the Personal Context toggle is off, the AtMemory popup
 // doesn't trigger.
 TEST_F(BrowserAutofillManagerAtMemoryTest, TriggerDroppedWhenToggleOff) {
-  base::test::ScopedFeatureList features(features::kAutofillAtMemory);
   FormData form = CreateTestAddressFormData();
   FormsSeen({form});
 
@@ -1398,7 +1402,6 @@ TEST_F(BrowserAutofillManagerAtMemoryTest, TriggerDroppedWhenToggleOff) {
 
 TEST_F(BrowserAutofillManagerAtMemoryTest,
        ComposeDelayedNudgeDoesNotHideAtMemory) {
-  base::test::ScopedFeatureList features(features::kAutofillAtMemory);
   const FormData form = CreateTestAddressFormData();
   FormsSeen({form});
 
@@ -1422,6 +1425,56 @@ TEST_F(BrowserAutofillManagerAtMemoryTest,
   EXPECT_TRUE(autofill_client().IsShowingAutofillPopup());
   EXPECT_EQ(external_delegate()->trigger_source(),
             AutofillSuggestionTriggerSource::kAtMemory);
+}
+
+// Tests that if the main frame URL is blocked, AtMemory is blocked.
+TEST_F(BrowserAutofillManagerAtMemoryTest,
+       TriggerDroppedWhenMainFrameUrlBlocked) {
+  GURL main_frame_url("https://blocked-main.com");
+  GURL field_url("https://allowed-field.com");
+
+  autofill_client().set_last_committed_primary_main_frame_url(main_frame_url);
+  const FormData form = test::GetFormData(
+      {.fields = {{.origin = url::Origin::Create(field_url)}}});
+
+  FormsSeen({form});
+
+  MockAutofillOptimizationGuideDecider* decider =
+      autofill_client().GetAutofillOptimizationGuideDecider();
+  ON_CALL(*decider, ShouldBlockAtMemory(main_frame_url))
+      .WillByDefault(Return(true));
+  ON_CALL(*decider, ShouldBlockAtMemory(field_url))
+      .WillByDefault(Return(false));
+
+  OnAskForValuesToFill(form, form.fields()[0],
+                       AutofillSuggestionTriggerSource::kAtMemory);
+
+  // Trigger should be dropped, no suggestions returned.
+  EXPECT_FALSE(external_delegate()->on_suggestions_returned_seen());
+}
+
+// Tests that if the field frame URL is blocked, AtMemory is blocked.
+TEST_F(BrowserAutofillManagerAtMemoryTest, TriggerDroppedWhenFieldUrlBlocked) {
+  GURL main_frame_url("https://allowed-main.com");
+  GURL field_url("https://blocked-field.com");
+
+  autofill_client().set_last_committed_primary_main_frame_url(main_frame_url);
+  const FormData form = test::GetFormData(
+      {.fields = {{.origin = url::Origin::Create(field_url)}}});
+
+  FormsSeen({form});
+
+  MockAutofillOptimizationGuideDecider* decider =
+      autofill_client().GetAutofillOptimizationGuideDecider();
+  ON_CALL(*decider, ShouldBlockAtMemory(main_frame_url))
+      .WillByDefault(Return(false));
+  ON_CALL(*decider, ShouldBlockAtMemory(field_url)).WillByDefault(Return(true));
+
+  OnAskForValuesToFill(form, form.fields()[0],
+                       AutofillSuggestionTriggerSource::kAtMemory);
+
+  // Trigger should be dropped, no suggestions returned.
+  EXPECT_FALSE(external_delegate()->on_suggestions_returned_seen());
 }
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
@@ -4630,8 +4683,8 @@ TEST_F(BrowserAutofillManagerTest,
 
   base::HistogramTester histogram_tester;
   autofill_manager().DidShowSuggestions(
-      {Suggestion(SuggestionType::kAutocompleteEntry)}, form.global_id(),
-      form.fields().back().global_id(), {});
+      {Suggestion(SuggestionType::kAutocompleteEntry)}, std::nullopt,
+      form.global_id(), form.fields().back().global_id(), {});
   // No Autofill logs.
   const std::string histograms = histogram_tester.GetAllHistogramsRecorded();
   EXPECT_THAT(histograms,
@@ -4711,10 +4764,10 @@ TEST_F(BrowserAutofillManagerTest,
 
   base::HistogramTester histogram_tester;
   autofill_manager().DidShowSuggestions(
-      {Suggestion(SuggestionType::kIbanEntry)}, form.global_id(),
+      {Suggestion(SuggestionType::kIbanEntry)}, std::nullopt, form.global_id(),
       form.fields().back().global_id(), {});
   autofill_manager().DidShowSuggestions(
-      {Suggestion(SuggestionType::kIbanEntry)}, form.global_id(),
+      {Suggestion(SuggestionType::kIbanEntry)}, std::nullopt, form.global_id(),
       form.fields().back().global_id(), {});
 
   EXPECT_THAT(
@@ -5228,8 +5281,8 @@ TEST_F(BrowserAutofillManagerTest,
   EXPECT_CALL(cc_access_manager(), PrepareToFetchCreditCard)
       .Times(IsCreditCardFidoAuthenticationEnabled() ? 1 : 0);
   autofill_manager().DidShowSuggestions(
-      {Suggestion(SuggestionType::kCreditCardEntry)}, form.global_id(),
-      form.fields()[0].global_id(), {});
+      {Suggestion(SuggestionType::kCreditCardEntry)}, std::nullopt,
+      form.global_id(), form.fields()[0].global_id(), {});
 }
 
 TEST_F(BrowserAutofillManagerTest,
@@ -5239,8 +5292,8 @@ TEST_F(BrowserAutofillManagerTest,
 
   EXPECT_CALL(cc_access_manager(), PrepareToFetchCreditCard).Times(0);
   autofill_manager().DidShowSuggestions(
-      {Suggestion(SuggestionType::kAddressEntry)}, form.global_id(),
-      form.fields()[0].global_id(), {});
+      {Suggestion(SuggestionType::kAddressEntry)}, std::nullopt,
+      form.global_id(), form.fields()[0].global_id(), {});
 }
 
 // Tests that if the context is insecure, the suggestions are filtered out
@@ -5275,8 +5328,8 @@ TEST_F(BrowserAutofillManagerTest, DidShowSuggestions_FormNonSecureContext) {
         updated_suggestions = std::move(suggestions);
       });
   autofill_manager().DidShowSuggestions(
-      {Suggestion(SuggestionType::kAddressEntry)}, insecure_form.global_id(),
-      test::MakeFieldGlobalId(), update_callback,
+      {Suggestion(SuggestionType::kAddressEntry)}, std::nullopt,
+      insecure_form.global_id(), test::MakeFieldGlobalId(), update_callback,
       AutofillSuggestionTriggerSource::kAtMemory);
 
   // Submit search query. This should invoke Query on mock query service.
@@ -7071,6 +7124,82 @@ TEST_F(BrowserAutofillManagerTest, GeneratedFillingProductMetric) {
       FillingProduct::kPasskey, 1);
   histogram_tester.ExpectTotalCount(
       "Autofill.SuggestionGeneration.GeneratedFillingProduct", 2);
+}
+
+TEST_F(BrowserAutofillManagerTest,
+       OnDidDetectJavaScriptAutofill_ValidAddressAutofill) {
+  FormData form = test::GetFormData({.fields = {{.role = ADDRESS_HOME_LINE1},
+                                                {.role = ADDRESS_HOME_CITY},
+                                                {.role = ADDRESS_HOME_ZIP}}});
+  FormsSeen({form});
+
+  FormStructure* form_structure =
+      test_api(autofill_manager()).FindCachedFormById(form.global_id());
+  ASSERT_TRUE(form_structure);
+  ASSERT_EQ(form_structure->field_count(), 3u);
+  EXPECT_TRUE(form_structure->field(0)->Type().GetGroups().contains(
+      FieldTypeGroup::kAddress));
+  EXPECT_TRUE(form_structure->field(1)->Type().GetGroups().contains(
+      FieldTypeGroup::kAddress));
+  EXPECT_TRUE(form_structure->field(2)->Type().GetGroups().contains(
+      FieldTypeGroup::kAddress));
+
+  std::vector<FieldGlobalId> field_ids = {form.fields()[0].global_id(),
+                                          form.fields()[1].global_id(),
+                                          form.fields()[2].global_id()};
+
+  autofill_manager().OnDidDetectJavaScriptAutofill(
+      form, form.fields()[0].global_id(), field_ids);
+
+  EXPECT_TRUE(form_structure->field(0)->did_trigger_javascript_autofill());
+  EXPECT_FALSE(form_structure->field(1)->did_trigger_javascript_autofill());
+  EXPECT_FALSE(form_structure->field(2)->did_trigger_javascript_autofill());
+}
+
+TEST_F(BrowserAutofillManagerTest,
+       OnDidDetectJavaScriptAutofill_InvalidTooFewFields) {
+  FormData form = test::GetFormData({.fields = {{.role = ADDRESS_HOME_LINE1},
+                                                {.role = ADDRESS_HOME_CITY},
+                                                {.role = ADDRESS_HOME_ZIP}}});
+  FormsSeen({form});
+
+  FormStructure* form_structure =
+      test_api(autofill_manager()).FindCachedFormById(form.global_id());
+  ASSERT_TRUE(form_structure);
+
+  // Only 2 fields in the signal.
+  std::vector<FieldGlobalId> field_ids = {form.fields()[0].global_id(),
+                                          form.fields()[1].global_id()};
+
+  autofill_manager().OnDidDetectJavaScriptAutofill(
+      form, form.fields()[0].global_id(), field_ids);
+
+  EXPECT_FALSE(form_structure->field(0)->did_trigger_javascript_autofill());
+}
+
+TEST_F(BrowserAutofillManagerTest,
+       OnDidDetectJavaScriptAutofill_InvalidNonAddressFields) {
+  // Use credit card fields (FieldTypeGroup::kCreditCard) instead of address.
+  FormData form =
+      test::GetFormData({.fields = {{.role = CREDIT_CARD_NUMBER},
+                                    {.role = CREDIT_CARD_NAME_FULL},
+                                    {.role = CREDIT_CARD_EXP_MONTH}}});
+  FormsSeen({form});
+
+  FormStructure* form_structure =
+      test_api(autofill_manager()).FindCachedFormById(form.global_id());
+  ASSERT_TRUE(form_structure);
+  EXPECT_FALSE(form_structure->field(0)->Type().GetGroups().contains(
+      FieldTypeGroup::kAddress));
+
+  std::vector<FieldGlobalId> field_ids = {form.fields()[0].global_id(),
+                                          form.fields()[1].global_id(),
+                                          form.fields()[2].global_id()};
+
+  autofill_manager().OnDidDetectJavaScriptAutofill(
+      form, form.fields()[0].global_id(), field_ids);
+
+  EXPECT_FALSE(form_structure->field(0)->did_trigger_javascript_autofill());
 }
 
 }  // namespace

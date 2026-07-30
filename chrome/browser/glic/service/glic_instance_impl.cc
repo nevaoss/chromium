@@ -20,6 +20,7 @@
 #include "chrome/browser/background/glic/glic_launcher_configuration.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/glic/common/future_browser_features.h"
+#include "chrome/browser/glic/experimental_triggering/glic_experimental_triggering_manager.h"
 #include "chrome/browser/glic/glic_metrics.h"
 #include "chrome/browser/glic/glic_pref_names.h"
 #include "chrome/browser/glic/glic_zero_state_suggestions_manager.h"
@@ -261,6 +262,9 @@ GlicInstanceImpl::GlicInstanceImpl(
         actor_task_manager_->AddActuatingChangedCallback(
             base::BindRepeating(&Host::OnActuatingChanged, host_.GetWeakPtr()));
   }
+  experimental_triggering_manager_ =
+      std::make_unique<GlicExperimentalTriggeringManager>(
+          this, &GetSharingManagerInternal());
 
   browser_collection_observation_.Observe(
       GlobalBrowserCollection::GetInstance());
@@ -432,7 +436,7 @@ void GlicInstanceImpl::Show(const ShowOptions& options) {
   } else {
     DeactivateCurrentEmbedder();
     // Ensure that there is a WebContents for the embedder to use.
-    host_.CreateContents();
+    EnsureHostContentsCreated();
     embedder_to_show = CreateActiveEmbedder(options);
     CHECK(embedder_to_show);
     host_.SetDelegate(embedder_to_show->GetHostEmbedderDelegate());
@@ -829,13 +833,6 @@ void GlicInstanceImpl::NotifyActorTaskListRowClicked(int32_t task_id) {
   host_.NotifyActorTaskListRowClicked(task_id);
 }
 
-void GlicInstanceImpl::GetExperimentalTriggeringUpdates(
-    mojo::PendingRemote<mojom::ExperimentalTriggeringUpdatesHandler> handler,
-    base::OnceCallback<void(bool)> success_status_callback) {
-  host_.GetExperimentalTriggeringUpdates(std::move(handler),
-                                         std::move(success_status_callback));
-}
-
 const InstanceId& GlicInstanceImpl::id() const {
   return id_;
 }
@@ -863,6 +860,11 @@ void GlicInstanceImpl::CancelTask() {
 
 GlicActorTaskManager* GlicInstanceImpl::GetActorTaskManager() {
   return actor_task_manager_.get();
+}
+
+GlicExperimentalTriggeringManager*
+GlicInstanceImpl::GetExperimentalTriggeringManager() {
+  return experimental_triggering_manager_.get();
 }
 
 GlicSharingManager* GlicInstanceImpl::GetSharingManager() {
@@ -895,7 +897,7 @@ void GlicInstanceImpl::FetchZeroStateSuggestions(
   if (contextual_cueing_service && active_web_contents && IsShowing()) {
     auto suggestions = mojom::ZeroStateSuggestions::New();
     suggestions->tab_id = GetTabId(active_web_contents);
-    suggestions->tab_url = active_web_contents->GetLastCommittedURL();
+    suggestions->url = active_web_contents->GetLastCommittedURL();
     contextual_cueing_service
         ->GetContextualGlicZeroStateSuggestionsForFocusedTab(
             active_web_contents, is_first_run, supported_tools,
@@ -1318,9 +1320,9 @@ void GlicInstanceImpl::SuppressShowOnNextTabAddedToTask(bool suppress) {
 void GlicInstanceImpl::MaybeInitializeHiddenClient(
     mojom::InvocationSource invocation_source,
     mojom::FreOverride fre_override) {
-  if (!host_.webui_contents()) {
+  if (IsHibernated()) {
     host_.SetDelegate(&empty_embedder_delegate_);
-    host_.CreateContents();
+    EnsureHostContentsCreated();
   }
 
   NotifyPanelWillOpen(invocation_source, std::nullopt, fre_override);
@@ -1534,6 +1536,15 @@ base::TimeDelta GlicInstanceImpl::GetTimeSinceLastPromptSubmission() const {
 
 bool GlicInstanceImpl::IsHibernated() const {
   return !host_.webui_contents();
+}
+
+void GlicInstanceImpl::EnsureHostContentsCreated() {
+  if (IsHibernated()) {
+    if (coordinator_delegate_) {
+      coordinator_delegate_->OnInstanceWillAwaken();
+    }
+    host_.CreateContents();
+  }
 }
 
 void GlicInstanceImpl::Hibernate() {

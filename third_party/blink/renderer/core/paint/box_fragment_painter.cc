@@ -1370,7 +1370,6 @@ void BoxFragmentPainter::PaintBoxDecorationBackground(
     const PaintInfo& paint_info,
     const PhysicalOffset& paint_offset,
     bool suppress_box_decoration_background) {
-  // TODO(mstensho): Break dependency on LayoutObject functionality.
   const LayoutObject& layout_object = *box_fragment_.GetLayoutObject();
 
   if (IsA<LayoutView>(layout_object) ||
@@ -1937,7 +1936,7 @@ void BoxFragmentPainter::PaintBackground(
       // If there's no such thing, we have nothing to paint.
       return;
     }
-    style_to_use = document.GetLayoutView()->Style();
+    style_to_use = &document.GetLayoutView()->StyleRef();
     background_color_to_use =
         style_to_use->VisitedDependentColor(GetCSSPropertyBackgroundColor());
   }

@@ -1177,8 +1177,6 @@ source_set("test_support") {
     "view_test_api.h",
     "views_test_suite.cc",
     "views_test_suite.h",
-    "widget/widget_interactive_uitest_utils.cc",
-    "widget/widget_interactive_uitest_utils.h",
   ]
 
   configs += [ "//build/config:precompiled_headers" ]
@@ -1681,7 +1679,7 @@ source_set("views_interactive_ui_tests") {
   testonly = true
 
   sources = [
-    "widget/any_widget_observer_uitest.cc",
+    "widget/any_widget_observer_interactive_uitest.cc",
     "widget/widget_interactive_uitest.cc",
   ]
 
@@ -1704,6 +1702,10 @@ source_set("views_interactive_ui_tests") {
   ]
 
   public_deps = [ "//ui/base/mojom" ]
+
+  if (use_ozone) {
+    deps += [ "//ui/ozone" ]
+  }
 
   if (is_win) {
     sources += [

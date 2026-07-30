@@ -153,17 +153,6 @@ bool IsValidTab(GURL url) {
          !url.IsAboutBlank();
 }
 
-std::optional<lens::ImageEncodingOptions> CreateImageEncodingOptions() {
-  // TODO(crbug.com/457815342): Use omnibox fieldtrial when available.
-  auto image_upload_config =
-      omnibox::FeatureConfig::Get().config.composebox().image_upload();
-  return lens::ImageEncodingOptions{
-      .enable_webp_encoding = image_upload_config.enable_webp_encoding(),
-      .max_size = image_upload_config.downscale_max_image_size(),
-      .max_height = image_upload_config.downscale_max_image_height(),
-      .max_width = image_upload_config.downscale_max_image_width(),
-      .compression_quality = image_upload_config.image_compression_quality()};
-}
 
 bool IsThinkingModel(omnibox::ModelMode model) {
   return model == omnibox::ModelMode::MODEL_MODE_GEMINI_PRO ||
@@ -399,14 +388,16 @@ void OmniboxContextMenuController::AddRecentTabItems() {
   for (const auto& tab : tabs) {
     target_menu_model->AddItemWithIcon(next_command_id_, tab.title,
                                        favicon::GetDefaultFaviconModel());
-    if (tab.is_active_tab) {
-      target_menu_model->SetMinorText(
-          target_menu_model->GetItemCount() - 1,
-          l10n_util::GetStringUTF16(IDS_COMPOSE_CURRENT_TAB));
-    } else if (!has_active_tab && tab_index == 0) {
-      target_menu_model->SetMinorText(
-          target_menu_model->GetItemCount() - 1,
-          l10n_util::GetStringUTF16(IDS_NTP_COMPOSEBOX_RECENT_TAB_SUFFIX));
+    if (include_tabs_submenu) {
+      if (tab.is_active_tab) {
+        target_menu_model->SetMinorText(
+            target_menu_model->GetItemCount() - 1,
+            l10n_util::GetStringUTF16(IDS_COMPOSE_CURRENT_TAB));
+      } else if (!has_active_tab && tab_index == 0) {
+        target_menu_model->SetMinorText(
+            target_menu_model->GetItemCount() - 1,
+            l10n_util::GetStringUTF16(IDS_NTP_COMPOSEBOX_RECENT_TAB_SUFFIX));
+      }
     }
     AddTabFavicon(next_command_id_, tab.url, tab.title);
     input_type_for_command_id_[next_command_id_] =
@@ -1368,7 +1359,8 @@ void OmniboxContextMenuController::ExecuteCommand(int id, int event_flags) {
             web_contents_.get(),
             /*is_image=*/it->second ==
                 omnibox::InputType::INPUT_TYPE_LENS_IMAGE,
-            GetEditModel(), CreateImageEncodingOptions(),
+            GetEditModel(),
+            OmniboxPopupFileSelector::CreateImageEncodingOptions(),
             /*was_ai_mode_open=*/is_aim_popup_open);
         return;
       }
@@ -1410,14 +1402,16 @@ void OmniboxContextMenuController::ExecuteCommand(int id, int event_flags) {
       case IDC_OMNIBOX_CONTEXT_ADD_IMAGE: {
         file_selector_->OpenFileUploadDialog(
             web_contents_.get(),
-            /*is_image=*/true, GetEditModel(), CreateImageEncodingOptions(),
+            /*is_image=*/true, GetEditModel(),
+            OmniboxPopupFileSelector::CreateImageEncodingOptions(),
             /*was_ai_mode_open=*/is_aim_popup_open);
         break;
       }
       case IDC_OMNIBOX_CONTEXT_ADD_FILE:
         file_selector_->OpenFileUploadDialog(
             web_contents_.get(),
-            /*is_image=*/false, GetEditModel(), CreateImageEncodingOptions(),
+            /*is_image=*/false, GetEditModel(),
+            OmniboxPopupFileSelector::CreateImageEncodingOptions(),
             /*was_ai_mode_open=*/is_aim_popup_open);
         break;
       case IDC_OMNIBOX_CONTEXT_CREATE_IMAGES:

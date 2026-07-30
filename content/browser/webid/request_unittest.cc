@@ -78,18 +78,8 @@ using AuthRequestCallbackHelper = content::FederatedRequestTokenCallbackHelper;
 using DismissReason = content::IdentityRequestDialogController::DismissReason;
 using FedCmEntry = ukm::builders::Blink_FedCm;
 using FedCmIdpEntry = ukm::builders::Blink_FedCmIdp;
-using FetchStatus = content::webid::FetchStatus;
-using ParseStatus = content::webid::ParseStatus;
-using TokenStatus = content::webid::RequestIdTokenStatus;
 using LoginState = content::IdentityRequestAccount::LoginState;
 using SignInMode = content::IdentityRequestAccount::SignInMode;
-using SignInStateMatchStatus = content::webid::SignInStateMatchStatus;
-using ErrorDialogType =
-    content::webid::IdpNetworkRequestManager::FedCmErrorDialogType;
-using TokenResponseType =
-    content::webid::IdpNetworkRequestManager::FedCmTokenResponseType;
-using ErrorUrlType =
-    content::webid::IdpNetworkRequestManager::FedCmErrorUrlType;
 using ::testing::_;
 using ::testing::ElementsAre;
 using ::testing::Eq;
@@ -99,6 +89,16 @@ using ::testing::Return;
 using ::testing::StrictMock;
 
 namespace content::webid {
+
+using ErrorDialogType = IdpNetworkRequestManager::FedCmErrorDialogType;
+using ErrorUrlType = IdpNetworkRequestManager::FedCmErrorUrlType;
+using IdentityProviderDataPtr = scoped_refptr<IdentityProviderData>;
+using IdentityRequestAccountPtr = scoped_refptr<IdentityRequestAccount>;
+using MediationRequirement = ::password_manager::CredentialMediationRequirement;
+using RpMode = blink::mojom::RpMode;
+using TokenError = IdentityCredentialTokenError;
+using TokenResponseType = IdpNetworkRequestManager::FedCmTokenResponseType;
+using TokenStatus = RequestIdTokenStatus;
 
 namespace {
 
@@ -665,7 +665,7 @@ class TestDialogController
   }
 
   bool ShowAccountsDialog(
-      content::RelyingPartyData rp_data,
+      RelyingPartyData rp_data,
       const std::vector<IdentityProviderDataPtr>& idp_list,
       const std::vector<IdentityRequestAccountPtr>& accounts,
       const std::vector<IdentityRequestAccountPtr>& filtered_accounts,
@@ -734,7 +734,6 @@ class TestDialogController
         break;
     }
     std::move(accounts_displayed_callback).Run();
-    did_show_ui_ = true;
     return true;
   }
 
@@ -770,7 +769,6 @@ class TestDialogController
         state_->mismatch_dismiss_callback = std::move(dismiss_callback);
         break;
     }
-    did_show_ui_ = true;
     return true;
   }
 
@@ -813,7 +811,6 @@ class TestDialogController
       case ErrorDialogAction::kNone:
         break;
     }
-    did_show_ui_ = true;
     return true;
   }
 
@@ -841,10 +838,10 @@ class TestDialogController
   }
 
   bool ShowVerifyingDialog(
-      const content::RelyingPartyData& rp_data,
+      const RelyingPartyData& rp_data,
       const scoped_refptr<IdentityProviderData>& idp_data,
-      const scoped_refptr<content::IdentityRequestAccount>& account,
-      content::IdentityRequestAccount::SignInMode sign_in_mode,
+      const scoped_refptr<IdentityRequestAccount>& account,
+      IdentityRequestAccount::SignInMode sign_in_mode,
       blink::mojom::RpMode rp_mode,
       IdentityRequestDialogController::AccountsDisplayedCallback
           accounts_displayed_callback) override {
@@ -855,11 +852,8 @@ class TestDialogController
     state_->sign_in_mode = sign_in_mode;
     state_->all_accounts_for_display = {account};
     std::move(accounts_displayed_callback).Run();
-    did_show_ui_ = true;
     return true;
   }
-
-  bool DidShowUi() const override { return did_show_ui_; }
 
   base::WeakPtr<TestDialogController> AsWeakPtr() {
     return weak_ptr_factory_.GetWeakPtr();
@@ -872,7 +866,6 @@ class TestDialogController
       IdpSigninStatusMismatchDialogAction::kNone};
   ErrorDialogAction error_dialog_action_{ErrorDialogAction::kNone};
   LoadingDialogAction loading_dialog_action_{LoadingDialogAction::kNone};
-  bool did_show_ui_ = false;
   IdentityRequestDialogController::PassiveDialogVolume passive_dialog_volume_;
 
   // Pointer so that the state can be queried after Request
@@ -972,7 +965,7 @@ class TestIdentityRegistry : public NiceMock<MockIdentityRegistry> {
   bool notified_{false};
 
   explicit TestIdentityRegistry(
-      content::WebContents* web_contents,
+      WebContents* web_contents,
       base::WeakPtr<IdentityRegistryDelegate> delegate,
       const GURL& idp_config_url)
       : NiceMock<MockIdentityRegistry>(web_contents, delegate, idp_config_url) {
@@ -2141,14 +2134,13 @@ TEST_F(RequestTest, NotifiesFederatedEmbedderLoginRequest) {
   url::Origin idp_origin = url::Origin::Create(idp_url);
   std::string account_id = "account_id123";
 
-  base::MockCallback<base::OnceCallback<void(webid::FederatedLoginResult)>>
+  base::MockCallback<base::OnceCallback<void(FederatedLoginResult)>>
       result_callback;
   // We expect kSuccess because kExpectationSuccess results in kSuccess.
-  EXPECT_CALL(result_callback, Run(webid::FederatedLoginResult::kSuccess))
-      .Times(1);
+  EXPECT_CALL(result_callback, Run(FederatedLoginResult::kSuccess)).Times(1);
 
-  content::webid::FederatedEmbedderLoginRequest::Set(
-      web_contents(), idp_origin, account_id, result_callback.Get());
+  FederatedEmbedderLoginRequest::Set(web_contents(), idp_origin, account_id,
+                                     result_callback.Get());
 
   RunAuthTest(kDefaultRequestParameters, kExpectationSuccess,
               kConfigurationValid);
@@ -3708,7 +3700,7 @@ TEST_F(RequestTest, MetricsForWebContentsVisible) {
   // Sets RenderFrameHost to visible
   test_rvh()->SimulateWasShown();
   ASSERT_EQ(test_rvh()->GetMainRenderFrameHost()->GetVisibilityState(),
-            content::PageVisibilityState::kVisible);
+            PageVisibilityState::kVisible);
 
   // Pretends that the sharing permission has been granted for this account.
   EXPECT_CALL(*test_permission_delegate_,
@@ -3731,12 +3723,12 @@ TEST_F(RequestTest, MetricsForWebContentsInvisible) {
   base::HistogramTester histogram_tester;
   test_rvh()->SimulateWasShown();
   ASSERT_EQ(test_rvh()->GetMainRenderFrameHost()->GetVisibilityState(),
-            content::PageVisibilityState::kVisible);
+            PageVisibilityState::kVisible);
 
   // Sets the RenderFrameHost to invisible
   test_rvh()->SimulateWasHidden();
   ASSERT_NE(test_rvh()->GetMainRenderFrameHost()->GetVisibilityState(),
-            content::PageVisibilityState::kVisible);
+            PageVisibilityState::kVisible);
 
   // Pretends that the sharing permission has been granted for this account.
   EXPECT_CALL(*test_permission_delegate_,
@@ -4036,7 +4028,7 @@ class DisableApiWhenDialogShownDialogController : public TestDialogController {
       DisableApiWhenDialogShownDialogController&) = delete;
 
   bool ShowAccountsDialog(
-      content::RelyingPartyData rp_data,
+      RelyingPartyData rp_data,
       const std::vector<IdentityProviderDataPtr>& idp_list,
       const std::vector<IdentityRequestAccountPtr>& accounts,
       const std::vector<IdentityRequestAccountPtr>& filtered_accounts,
@@ -4354,7 +4346,7 @@ class IdpNetworkRequestManagerClientMetadataTaskRunner
   base::OnceClosure client_metadata_task_;
 };
 
-void NavigateToUrl(content::WebContents* web_contents, const GURL& url) {
+void NavigateToUrl(WebContents* web_contents, const GURL& url) {
   static_cast<TestWebContents*>(web_contents)
       ->NavigateAndCommit(url, ui::PAGE_TRANSITION_LINK);
 }
@@ -8172,7 +8164,7 @@ class TestDialogControllerWithImmediateDismiss : public TestDialogController {
       TestDialogControllerWithImmediateDismiss&) = delete;
 
   bool ShowAccountsDialog(
-      content::RelyingPartyData rp_data,
+      RelyingPartyData rp_data,
       const std::vector<IdentityProviderDataPtr>& idp_list,
       const std::vector<IdentityRequestAccountPtr>& accounts,
       const std::vector<IdentityRequestAccountPtr>& filtered_accounts,
@@ -8888,7 +8880,7 @@ class TestDialogControllerWithIdentityCredentialSource
       TestDialogControllerWithIdentityCredentialSource&) = delete;
 
   bool ShowAccountsDialog(
-      content::RelyingPartyData rp_data,
+      RelyingPartyData rp_data,
       const std::vector<IdentityProviderDataPtr>& idp_list,
       const std::vector<IdentityRequestAccountPtr>& accounts,
       const std::vector<IdentityRequestAccountPtr>& filtered_accounts,
@@ -8907,9 +8899,8 @@ class TestDialogControllerWithIdentityCredentialSource
         base::BindOnce(
             [](const std::vector<IdentityRequestAccountPtr>& all_accounts,
                const std::vector<IdentityRequestAccountPtr>& filtered_accounts,
-               const std::optional<
-                   std::vector<scoped_refptr<content::IdentityRequestAccount>>>&
-                   actual_accounts) {
+               const std::optional<std::vector<
+                   scoped_refptr<IdentityRequestAccount>>>& actual_accounts) {
               ASSERT_TRUE(actual_accounts.has_value());
               std::vector<IdentityRequestAccountPtr> expected_signin_accounts;
               for (const auto& account : all_accounts) {
@@ -9189,9 +9180,9 @@ TEST_F(RequestTest, DismissIgnoredDuringRedirectTo) {
   // Start the request flow.
   RunAuthDontWaitForCallback(kDefaultRequestParameters, config);
 
-  content::MockWebContentsObserver observer(web_contents());
+  MockWebContentsObserver observer(web_contents());
   EXPECT_CALL(observer, DidStartNavigation(_))
-      .WillOnce([&](content::NavigationHandle* handle) { CloseDialog(); });
+      .WillOnce([&](NavigationHandle* handle) { CloseDialog(); });
 
   // Call RedirectTo. This should trigger navigation and thus the observer.
   CallRedirectTo(GURL(kProviderUrlFull),

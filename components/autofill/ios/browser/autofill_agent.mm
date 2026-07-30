@@ -418,9 +418,11 @@ bool HasGuid(const Suggestion::Payload& payload) {
           SysNSStringToUTF16(suggestion.value);
       autofill_suggestion.field_by_field_filling_type_used =
           suggestion.fieldByFieldFillingTypeUsed;
-      autofill_suggestion.payload = HasGuid(suggestion.payload)
-                                        ? suggestion.payload
-                                        : Suggestion::Payload();
+      autofill_suggestion.payload =
+          base::FeatureList::IsEnabled(autofill::features::kAutofillUseOriginalPayloadIos) ||
+                  HasGuid(suggestion.payload)
+              ? suggestion.payload
+              : Suggestion::Payload();
 
       CHECK_GE(index, 0);
       _suggestionDelegate->DidAcceptSuggestion(
@@ -670,6 +672,7 @@ bool HasGuid(const Suggestion::Payload& payload) {
       case SuggestionType::kAtMemorySearchAffordance:
       case SuggestionType::kAtMemorySearchResult:
       case SuggestionType::kAutofillAiOtherOrders:
+      case SuggestionType::kAutofillAiPrivateInferenceNotice:
       case SuggestionType::kBackupPasswordEntry:
       case SuggestionType::kBnplEntry:
       case SuggestionType::kBnplFootnote:
@@ -780,7 +783,7 @@ bool HasGuid(const Suggestion::Payload& payload) {
   // TODO(crbug.com/363958046): Pass the actually shown suggestions instead of
   // `popup_suggestions`.
   if (delegate) {
-    delegate->OnSuggestionsShown(popup_suggestions);
+    delegate->OnSuggestionsShown(popup_suggestions, std::nullopt);
   }
 }
 

@@ -1049,6 +1049,7 @@ void PDFiumEngine::PostPaint() {
 bool PDFiumEngine::HandleDocumentLoad(std::unique_ptr<UrlLoader> loader,
                                       const std::string& original_url) {
   password_tries_remaining_ = kMaxPasswordTries;
+  is_password_protected_ = false;
   process_when_pending_request_complete_ =
       base::FeatureList::IsEnabled(features::kPdfIncrementalLoading);
 
@@ -1481,8 +1482,7 @@ void PDFiumEngine::ContinueFind(bool case_sensitive) {
 }
 
 bool PDFiumEngine::HandleInputEvent(const blink::WebInputEvent& event) {
-  DCHECK(!defer_page_unload_);
-  defer_page_unload_ = true;
+  base::ScopedClosureRunner unload_preventer = CreateScopedDeferredPageUnload();
   bool rv = false;
   switch (event.GetType()) {
     case blink::WebInputEvent::Type::kMouseDown:
@@ -1529,18 +1529,6 @@ bool PDFiumEngine::HandleInputEvent(const blink::WebInputEvent& event) {
       break;
     default:
       break;
-  }
-
-  DCHECK(defer_page_unload_);
-  defer_page_unload_ = false;
-
-  // Store the pages to unload away because the act of unloading pages can cause
-  // there to be more pages to unload. We leave those extra pages to be unloaded
-  // on the next go around.
-  std::vector<int> pages_to_unload;
-  std::swap(pages_to_unload, deferred_page_unloads_);
-  for (int page_index : pages_to_unload) {
-    pages_[page_index]->Unload();
   }
 
   return rv;
@@ -2622,6 +2610,20 @@ const PDFiumRange* PDFiumEngine::GetFindSelection() const {
   return &find_results_[current_find_index_.value()];
 }
 
+void PDFiumEngine::ClearFindResults() {
+  FindResultChangeInvalidator find_change_invalidator(this);
+
+  find_results_.clear();
+  next_page_to_search_ = -1;
+  last_page_to_search_ = -1;
+  last_char_index_to_search_ = -1;
+  current_find_index_.reset();
+  current_find_text_.clear();
+
+  UpdateTickMarks();
+  find_weak_factory_.InvalidateWeakPtrs();
+}
+
 bool PDFiumEngine::SelectFindResult(bool forward) {
   if (find_results_.empty()) {
     return false;
@@ -2668,17 +2670,7 @@ bool PDFiumEngine::SelectFindResult(bool forward) {
 }
 
 void PDFiumEngine::StopFind() {
-  FindResultChangeInvalidator find_change_invalidator(this);
-
-  find_results_.clear();
-  next_page_to_search_ = -1;
-  last_page_to_search_ = -1;
-  last_char_index_to_search_ = -1;
-  current_find_index_.reset();
-  current_find_text_.clear();
-
-  UpdateTickMarks();
-  find_weak_factory_.InvalidateWeakPtrs();
+  ClearFindResults();
 }
 
 std::vector<gfx::Rect> PDFiumEngine::GetAllScreenRectsUnion(
@@ -3137,11 +3129,11 @@ int PDFiumEngine::GetMostVisiblePage() {
     return *in_flight_visible_page_;
   }
 
-  // We can call GetMostVisiblePage through a callback from PDFium. We have
-  // to defer the page deletion otherwise we could potentially delete the page
-  // that originated the calling JS request and destroy the objects that are
+  // GetMostVisiblePage() can be called through a callback from PDFium. Defer
+  // the page deletion, otherwise the page that originated the calling JS
+  // request could potentially be deleted and destroy the objects that are
   // currently being used.
-  base::AutoReset<bool> defer_page_unload_guard(&defer_page_unload_, true);
+  base::ScopedClosureRunner unload_preventer = CreateScopedDeferredPageUnload();
   CalculateVisiblePages();
   return most_visible_page_;
 }
@@ -3331,6 +3323,7 @@ bool PDFiumEngine::TryLoadingDoc(const std::string& password,
 }
 
 void PDFiumEngine::GetPasswordAndLoad() {
+  is_password_protected_ = true;
   getting_password_ = true;
   DCHECK(!doc());
   DCHECK_EQ(static_cast<unsigned long>(FPDF_ERR_PASSWORD), FPDF_GetLastError());
@@ -3465,14 +3458,79 @@ std::vector<gfx::Size> PDFiumEngine::LoadPageSizes(
 
   // Remove pages that do not exist anymore.
   if (pages_.size() > new_page_count) {
+    const size_t deferred_count_before = deferred_page_deletions_.size();
     for (size_t i = new_page_count; i < pages_.size(); ++i) {
-      pages_[i]->Unload();
+      if (defer_page_unload_ || !pages_[i]->Unload()) {
+        deferred_page_deletions_.push_back(std::move(pages_[i]));
+      }
     }
 
     pages_.resize(new_page_count);
+
+    // Reset index-based state that is now out of bounds.
+    if (last_focused_page_ >= static_cast<int>(new_page_count)) {
+      last_focused_page_ = -1;
+    }
+    if (most_visible_page_ >= static_cast<int>(new_page_count)) {
+      most_visible_page_ = -1;
+    }
+    // Clear deferred unloads to prevent stale, out-of-bounds indices. This is
+    // guaranteed to be repopulated by the subsequent CalculateVisiblePages()
+    // call.
+    deferred_page_unloads_.clear();
+
+    // Clear selections and highlights that might now point to invalid page
+    // indices.
+    selection_.clear();
+    saved_selection_.clear();
+    RemoveTextFragments();
+    ClearFindResults();
+
+    if (deferred_page_deletions_.size() > deferred_count_before) {
+      // Post a task to clean up the deferred page deletions. This ensures that
+      // even if no `CreateScopedDeferredPageUnload()` scope is active to
+      // trigger synchronous cleanup, or if the page was deferred due to
+      // temporary stack-allocated preventers that outlive the active scope,
+      // destruction of the pages will be attempted once the stack unwinds.
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+          FROM_HERE, base::BindOnce(&PDFiumEngine::CleanUpDeferredPages,
+                                    weak_factory_.GetWeakPtr()));
+    }
   }
 
   return page_sizes;
+}
+
+void PDFiumEngine::CleanUpDeferredPages() {
+  if (defer_page_unload_) {
+    return;
+  }
+
+  // Unload pages that were deferred from unloading.
+  std::vector<int> pages_to_unload;
+  std::swap(pages_to_unload, deferred_page_unloads_);
+  for (int page_index : pages_to_unload) {
+    if (page_index < static_cast<int>(pages_.size())) {
+      pages_[page_index]->Unload();
+    }
+  }
+
+  // Destroy pages that were deleted.
+  std::erase_if(deferred_page_deletions_,
+                [](const auto& page) { return page->Unload(); });
+}
+
+base::ScopedClosureRunner PDFiumEngine::CreateScopedDeferredPageUnload() {
+  bool prev_defer_page_unload = defer_page_unload_;
+  defer_page_unload_ = true;
+  return base::ScopedClosureRunner(base::BindOnce(
+      [](base::WeakPtr<PDFiumEngine> engine, bool prev_defer_page_unload) {
+        if (engine) {
+          engine->defer_page_unload_ = prev_defer_page_unload;
+          engine->CleanUpDeferredPages();
+        }
+      },
+      weak_factory_.GetWeakPtr(), prev_defer_page_unload));
 }
 
 void PDFiumEngine::LoadBody() {
@@ -5126,6 +5184,14 @@ bool PDFiumEngine::HasJavaScript() const {
   return FPDFDoc_GetJavaScriptActionCount(doc()) > 0;
 }
 
+bool PDFiumEngine::IsPasswordProtected() const {
+  if (!document_loaded_) {
+    return false;
+  }
+
+  return is_password_protected_;
+}
+
 void PDFiumEngine::UpdateLinkUnderCursor(const std::string& target_url) {
   client_->SetLinkUnderCursor(target_url);
 }
@@ -5573,6 +5639,8 @@ PDFiumEngine::LoadV2InkPathsForPage(int page_index) {
 DocumentInkTextBoxesMap PDFiumEngine::LoadTextAnnotationsFromPdf() {
   DocumentInkTextBoxesMap document_textboxes;
   for (size_t i = 0; i < pages_.size(); ++i) {
+    base::ScopedClosureRunner unload_preventer =
+        CreateScopedDeferredPageUnload();
     PDFiumPage* page = pages_[i].get();
     std::vector<ReadInkTextResult> page_results =
         ReadInkTextAnnotationsFromPage(page->GetPage());

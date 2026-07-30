@@ -174,13 +174,11 @@ void GroupLcpCandidatesByContext(const HeapVector<Member<T>>& records,
     if (!context || !context->IsRecordingLargestContentfulPaint()) {
       continue;
     }
-    LcpCandidates* candidates = nullptr;
-    if (auto iter = context_map.find(context); iter != context_map.end()) {
-      candidates = iter->value.Get();
-    } else {
-      candidates = MakeGarbageCollected<LcpCandidates>();
-      context_map.insert(context, candidates);
+    auto add_result = context_map.insert(context, nullptr);
+    if (add_result.is_new_entry) {
+      add_result.stored_value->value = MakeGarbageCollected<LcpCandidates>();
     }
+    LcpCandidates* candidates = add_result.stored_value->value.Get();
     candidates->MaybeUpdateCandidate(record);
   }
 }
@@ -191,10 +189,10 @@ SoftNavigationHeuristics::SoftNavigationHeuristics(LocalDOMWindow* window)
     : window_(window),
       task_attribution_tracker_(
           scheduler::TaskAttributionTracker::From(window->GetIsolate())) {
-  LocalFrame* frame = window->GetFrame();
-  CHECK(frame && frame->View());
+  CHECK(window->document());
   TextPaintTimingDetector* detector =
-      &frame->View()->GetPaintTimingDetector().GetTextPaintTimingDetector();
+      &PaintTimingDetector::From(*window->document())
+           .GetTextPaintTimingDetector();
   paint_attribution_tracker_ =
       MakeGarbageCollected<SoftNavigationPaintAttributionTracker>(detector);
 }

@@ -14,6 +14,7 @@
 #include "base/memory/raw_ptr.h"
 #include "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container_observer.h"
 #include "components/browser_apis/ui_controllers/toolbar/extensions_bar.mojom.h"
+#include "components/browser_apis/ui_controllers/toolbar/extensions_bar_data_model.mojom.h"
 
 class BrowserWindowInterface;
 class ExtensionsContainer;
@@ -46,6 +47,10 @@ class WebUIToolbarExtensionsContainerWrapper
   void Init(content::WebContents* web_contents);
   void OnThemeChanged();
 
+  void ExecuteUserAction(const std::string& extension_id);
+  void ShowContextMenu(ui::mojom::MenuSourceType source,
+                       const std::string& extension_id);
+
   // WebUIToolbarExtensionsContainer::Observer:
   void OnActionsAddedOrUpdated(
       std::vector<toolbar_ui_api::mojom::IconUpdatePtr> icons,
@@ -56,8 +61,17 @@ class WebUIToolbarExtensionsContainerWrapper
   void OnActionPoppedOut(base::OnceClosure callback) override;
 
  private:
+  // This string is used as the extensions_bar::mojom::ExtensionActionInfo::id
+  // value to indicate the extensions button (not actually an extension).
+  // Empty string should not overlap with actual extension IDs.
+  static constexpr char kExtensionsButtonId[] = "";
+
   void OnActiveTabChanged(BrowserWindowInterface* browser_interface);
   void SendExtensionsState();
+  // Returns whether any of `cached_actions_` have access to `web_contents`.
+  bool AnyActionHasCurrentSiteAccess(content::WebContents& web_contents);
+  // Compute WebUI state for extensions button.
+  extensions_bar::mojom::ExtensionActionInfoPtr GetExtensionsButton();
 
   const raw_ptr<WebUIToolbarControlDelegate> delegate_;
 

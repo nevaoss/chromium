@@ -219,6 +219,12 @@ BASE_FEATURE(kEnableDevToolsJsErrorReporting,
              base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
 
+// When enabled, the browser process will terminate a renderer process if it
+// attempts to bind gamepad Mojo interfaces (GamepadMonitor or
+// GamepadHapticsManager) when the "gamepad" Permissions Policy is blocked.
+BASE_FEATURE(kEnforceGamepadPermissionsPolicy,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 // When enabled, enforces that same-document navigations must not change
 // the committed origin, insecure request policy, or insecure navigations set.
 // Any mismatch will result in a renderer kill via bad_message handling.
@@ -632,6 +638,11 @@ BASE_FEATURE(kProcessReuseOnPrerenderCOOPSwap,
 // Causes the browser to progressively disable accessibility for WebContents
 // some time after they become hidden.
 BASE_FEATURE(kProgressiveAccessibilityPhase2,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Minimizes Mojo URLLoaderFactory cloning overhead during navigation and worker
+// startup.
+BASE_FEATURE(kReduceMojoURLLoaderFactoryCloning,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Causes hidden tabs with crashed subframes to be marked for reload, meaning

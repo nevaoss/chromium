@@ -648,7 +648,8 @@ void OffscreenCanvas::DidDraw(const gfx::Rect& rect) {
           if (placeholder_canvas &&
               placeholder_canvas->IsOffscreenCanvasRegistered() &&
               placeholder_canvas->HasCanvasCapture()) {
-            BeginFrame();
+            GetOrCreateResourceDispatcher()->SetNeedsBeginFrame(false);
+            PushFrameIfNeeded();
           }
         }
       }
@@ -659,8 +660,8 @@ void OffscreenCanvas::DidDraw(const gfx::Rect& rect) {
 }
 
 bool OffscreenCanvas::BeginFrame() {
-  DCHECK(HasPlaceholderCanvas());
-  GetOrCreateResourceDispatcher()->SetNeedsBeginFrame(false);
+  CHECK(frame_dispatcher_);
+  frame_dispatcher_->SetNeedsBeginFrame(false);
   return PushFrameIfNeeded();
 }
 
@@ -691,6 +692,7 @@ bool OffscreenCanvas::PushFrame(
   auto exported_resource =
       base::MakeRefCounted<ExportedCanvasResource>(std::move(canvas_resource));
 
+  CHECK(HasPlaceholderCanvas());
   auto* dispatcher = GetOrCreateResourceDispatcher();
   if (placeholder_client_) {
     placeholder_client_->DispatchFrame(exported_resource);

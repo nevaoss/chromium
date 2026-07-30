@@ -493,7 +493,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         mStartupMetricsTracker =
                 new StartupMetricsTracker(
                         mTabModelSelectorSupplier, this::wasPersistentStateRestored);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
             mStartupMetricsTracker.registerApplicationStartInfoListener();
         }
         CachedFlagsSafeMode.getInstance().onStartOrResumeCheckpoint();
@@ -1456,7 +1456,8 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     public @Nullable ActorPictureInPictureController maybeCreateActorPipController() {
         if (getProfileProviderSupplier().get() == null
                 || !GlicEnabling.isProfileEligible(
-                        getProfileProviderSupplier().get().getOriginalProfile())) {
+                        getProfileProviderSupplier().get().getOriginalProfile())
+                || DeviceFormFactor.isNonMultiDisplayContextOnTablet(this)) {
             return null;
         }
 
@@ -2932,10 +2933,12 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         }
 
         if (id == R.id.toggle_bookmarks_bar_menu_id) {
-            BookmarkBarUtils.toggleUserPrefsShowBookmarksBar(
-                    currentTab.getProfile(), /* fromKeyboardShortcut= */ false);
-            RecordUserAction.record("MobileMenuToggleBookmarksBar");
-            return true;
+            if (BookmarkBarUtils.isActivityStateBookmarkBarCompatible(this)) {
+                BookmarkBarUtils.toggleShowBookmarksBar(
+                        currentTab.getProfile(), /* fromKeyboardShortcut= */ false);
+                RecordUserAction.record("MobileMenuToggleBookmarksBar");
+                return true;
+            }
         }
 
         if (id == R.id.back_menu_id) {

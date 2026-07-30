@@ -5,13 +5,12 @@
 import 'chrome://resources/cr_components/composebox/composebox.js';
 import 'chrome://contextual-tasks/strings.m.js';
 
-import {ComposeboxFile, TabUploadOrigin} from 'chrome://resources/cr_components/composebox/common.js';
+import {ComposeboxFile} from 'chrome://resources/cr_components/composebox/common.js';
 import type {ComposeboxElement} from 'chrome://resources/cr_components/composebox/composebox.js';
 import {PageCallbackRouter, PageHandlerRemote} from 'chrome://resources/cr_components/composebox/composebox.mojom-webui.js';
 import type {ComposeboxInputElement} from 'chrome://resources/cr_components/composebox/composebox_input.js';
 import {ComposeboxProxyImpl} from 'chrome://resources/cr_components/composebox/composebox_proxy.js';
 import type {ContextualEntrypointAndMenuElement} from 'chrome://resources/cr_components/composebox/contextual_entrypoint_and_menu.js';
-import type {ContextualEntrypointButtonElement} from 'chrome://resources/cr_components/composebox/contextual_entrypoint_button.js';
 import {WindowProxy} from 'chrome://resources/cr_components/composebox/window_proxy.js';
 import {createAutocompleteResultForTesting, createSearchMatchForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
@@ -25,12 +24,6 @@ import {microtasksFinished} from 'chrome://webui-test/test_util.js';
 import {getTrustedHtml} from 'chrome://webui-test/trusted_html.js';
 
 import {installMock} from './composebox_test_utils.js';
-
-interface TestComposeboxElement extends ComposeboxElement {
-  keepMenuOpenForMultiSelection: () => Promise<void>;
-  keepMenuOpenOnTabSelectForRealbox: boolean;
-  composeboxSource: string;
-}
 
 // LINT.IfChange
 suite('ComposeboxTest', () => {
@@ -451,92 +444,36 @@ suite('ComposeboxTest', () => {
     // Restore
     composebox.deleteFile = originalDeleteFile;
   });
-});
 
-suite('Composebox tab flyout', () => {
-  let composebox: ComposeboxElement;
+  test('UpdateAutoSuggestedTabContext_NullDoesNotDeleteIfSidePanel', () => {
+    loadTimeData.overrideValues({webUIOmniboxAskGAboutThisPageEnabled: false});
+    composebox.isSidePanel = true;
+    const token = {high: 0n, low: 1n} as any;
+    const mockFile =
+        new ComposeboxFile(token, 'Auto Tab', 'tab', InputType.kBrowserTab, {
+          isDeletable: true,
+          tabId: 1,
+          url: 'http://example.com',
+        });
+    composebox.setAutomaticActiveTabForTesting(mockFile);
 
-  setup(async () => {
-    loadTimeData.overrideValues({
-      'contextManagementInComposeboxEnabled': true,
-    });
+    let deleteFileCalled = false;
+    const originalDeleteFile = composebox.deleteFile;
+    composebox.deleteFile = (_uuid) => {
+      deleteFileCalled = true;
+      return null;
+    };
 
-    document.body.innerHTML = window.trustedTypes!.emptyHTML;
-    composebox = document.createElement('cr-composebox');
-    document.body.appendChild(composebox);
-    await composebox.updateComplete;
-  });
+    // Call with null, should NOT delete because isSidePanel is true.
+    composebox.updateAutoSuggestedTabContextForTesting(null);
+    assertFalse(deleteFileCalled);
 
-  test(
-      'keepMenuOpenForMultiSelection is gated' +
-          ' by keepMenuOpenOnTabSelectForRealbox',
-      async () => {
-        let openMenuCalled = false;
-        composebox.getContextEntrypointElement = () => {
-          return {
-            openMenuForMultiSelection: () => {
-              openMenuCalled = true;
-            },
-          } as unknown as ContextualEntrypointButtonElement;
-        };
-
-        const testElement = composebox as TestComposeboxElement;
-
-        // Omnibox source: always returns early
-        testElement.composeboxSource = 'Omnibox';
-        await testElement.keepMenuOpenForMultiSelection();
-        assertFalse(openMenuCalled);
-
-        // NewTabPage source, flag off: returns early
-        testElement.composeboxSource = 'NewTabPage';
-        testElement.keepMenuOpenOnTabSelectForRealbox = false;
-        await testElement.keepMenuOpenForMultiSelection();
-        assertFalse(openMenuCalled);
-
-        // NewTabPage source, flag on: calls openMenuForMultiSelection
-        testElement.composeboxSource = 'NewTabPage';
-        testElement.keepMenuOpenOnTabSelectForRealbox = true;
-        await testElement.keepMenuOpenForMultiSelection();
-        assertTrue(openMenuCalled);
-      });
-
-  test(
-      'keepMenuOpenForMultiSelection called on add/delete tab context',
-      async () => {
-        let keepMenuOpenCalled = false;
-        const testElement = composebox as TestComposeboxElement;
-        testElement.keepMenuOpenForMultiSelection = () => {
-          keepMenuOpenCalled = true;
-          return Promise.resolve();
-        };
-
-        await composebox.onAddTabContext(new CustomEvent('add-tab-context', {
-          detail: {
-            id: 1,
-            title: 'Test',
-            url: 'about:blank',  // Mojo converts obj to str.
-            delayUpload: false,
-            origin: TabUploadOrigin.CONTEXT_MENU,
-          },
-        }));
-        assertTrue(keepMenuOpenCalled);
-
-        keepMenuOpenCalled = false;
-        await composebox.onDeleteTabContext(
-            new CustomEvent('delete-tab-context', {
-              detail: {
-                uuid: '0',
-              },
-            }));
-        assertTrue(keepMenuOpenCalled);
-      });
-
-  test('onContextMenuClosed sets shareTabsFlyoutOpen to false', async () => {
-    composebox.shareTabsFlyoutOpen = true;
-    await composebox.onContextMenuClosed();
-    assertFalse(composebox.shareTabsFlyoutOpen);
+    // Restore
+    composebox.isSidePanel = false;
+    composebox.deleteFile = originalDeleteFile;
   });
 });
+
 
 suite('composeboxSharedMountAutoRepositionDefault', () => {
   let composebox: ComposeboxElement;

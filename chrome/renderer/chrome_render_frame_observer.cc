@@ -34,6 +34,7 @@
 #include "chrome/renderer/actor/tool_executor.h"
 #include "chrome/renderer/benchmarking_bindings.h"
 #include "chrome/renderer/chrome_content_settings_agent_delegate.h"
+#include "chrome/renderer/loadtimes_bindings.h"
 #include "chrome/renderer/media/media_feeds.h"
 #include "chrome/renderer/process_state.h"
 #include "components/crash/core/common/crash_key.h"
@@ -369,10 +370,8 @@ void ChromeRenderFrameObserver::DidClearWindowObject() {
 void ChromeRenderFrameObserver::DidCreateScriptContext(
     v8::Local<v8::Context> context,
     int32_t world_id) {
-  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
-          variations::switches::kEnableBenchmarkingApi)) {
-    BenchmarkingBindings::Install(context);
-  }
+  BenchmarkingBindings::InstallConditionally(context);
+  LoadTimesBindings::Install(context);
 }
 
 void ChromeRenderFrameObserver::DidMeaningfulLayout(

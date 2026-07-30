@@ -129,11 +129,9 @@ class AssistantAIMUIStateProvider
   _containerHandler = HandlerForProtocol(self.browser->GetCommandDispatcher(),
                                          AssistantContainerCommands);
 
-  contextual_tasks::ContextualTasksService* contextualTasksService = nullptr;
-  if (IsCobrowseAimHistoryEnabled()) {
-    contextualTasksService = IOSContextualTasksServiceFactory::GetForProfile(
-        self.browser->GetProfile());
-  }
+  contextual_tasks::ContextualTasksService* contextualTasksService =
+      IOSContextualTasksServiceFactory::GetForProfile(
+          self.browser->GetProfile());
 
   web::WebState::CreateParams params(self.browser->GetProfile());
   std::unique_ptr<web::WebState> webState = web::WebState::Create(params);
@@ -504,6 +502,11 @@ class AssistantAIMUIStateProvider
   return [_viewController shouldPauseScrollView:scrollView
                                      forGesture:otherGesture
                               isInLargestDetent:isInLargestDetent];
+}
+
+- (BOOL)assistantContainer:(AssistantContainerViewController*)container
+    shouldInterceptPanGesture:(UIPanGestureRecognizer*)gesture {
+  return [_viewController shouldInterceptPanGesture:gesture];
 }
 
 #pragma mark - AssistantAIMViewControllerDelegate

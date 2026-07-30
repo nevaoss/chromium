@@ -166,6 +166,7 @@
 #include "components/autofill/core/common/unique_ids.h"
 #include "components/compose/buildflags.h"
 #include "components/compose/core/browser/compose_features.h"
+#include "components/content_extraction/content/browser/inner_text.h"
 #include "components/contextual_tasks/public/features.h"
 #include "components/custom_handlers/protocol_handler.h"
 #include "components/download/public/common/download_url_parameters.h"
@@ -398,6 +399,26 @@ using extensions::MenuManager;
 
 namespace {
 
+constexpr int kMaxContentCustomCommands = 1000;
+constexpr int IDC_CONTENT_CONTEXT_CUSTOM_LAST =
+    IDC_CONTENT_CONTEXT_CUSTOM_FIRST + kMaxContentCustomCommands;
+
+constexpr int kMaxProtocolHandlers = 200;
+constexpr int IDC_CONTENT_CONTEXT_PROTOCOL_HANDLER_LAST =
+    IDC_CONTENT_CONTEXT_PROTOCOL_HANDLER_FIRST + kMaxProtocolHandlers - 1;
+
+constexpr int kMaxOpenLinkInProfileItems = 100;
+constexpr int IDC_OPEN_LINK_IN_PROFILE_LAST =
+    IDC_OPEN_LINK_IN_PROFILE_FIRST + kMaxOpenLinkInProfileItems - 1;
+
+constexpr int kMaxSpellingSuggestionsLimit = 5;
+constexpr int IDC_SPELLCHECK_SUGGESTION_LAST =
+    IDC_SPELLCHECK_SUGGESTION_0 + kMaxSpellingSuggestionsLimit - 1;
+
+constexpr int kMaxLanguages = 100;
+constexpr int IDC_SPELLCHECK_LANGUAGES_LAST =
+    IDC_SPELLCHECK_LANGUAGES_FIRST + kMaxLanguages - 1;
+
 constexpr int kTabMenuIconSize = 16;
 
 base::OnceCallback<void(RenderViewContextMenu*)>* GetMenuShownCallback() {
@@ -492,11 +513,11 @@ const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
        {IDC_VIEW_SOURCE, 28},
        {IDC_CONTENT_CONTEXT_INSPECTELEMENT, 29},
        {IDC_CONTENT_CONTEXT_INSPECTBACKGROUNDPAGE, 30},
-       {IDC_CONTENT_CONTEXT_VIEWPAGEINFO, 31},
+       // Removed: {IDC_CONTENT_CONTEXT_VIEWPAGEINFO, 31},
        {IDC_CONTENT_CONTEXT_TRANSLATE, 32},
        {IDC_CONTENT_CONTEXT_RELOADFRAME, 33},
        {IDC_CONTENT_CONTEXT_VIEWFRAMESOURCE, 34},
-       {IDC_CONTENT_CONTEXT_VIEWFRAMEINFO, 35},
+       // Removed: {IDC_CONTENT_CONTEXT_VIEWFRAMEINFO, 35},
        {IDC_CONTENT_CONTEXT_UNDO, 36},
        {IDC_CONTENT_CONTEXT_REDO, 37},
        {IDC_CONTENT_CONTEXT_CUT, 38},
@@ -509,9 +530,9 @@ const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
        {IDC_CONTENT_CONTEXT_GOTOURL, 45},
        {IDC_CONTENT_CONTEXT_LANGUAGE_SETTINGS, 46},
        {IDC_CONTENT_CONTEXT_PROTOCOL_HANDLER_SETTINGS, 47},
-       {IDC_CONTENT_CONTEXT_OPENLINKWITH, 52},
+       {kOpenLinkWithMenuId, 52},
        {IDC_CHECK_SPELLING_WHILE_TYPING, 53},
-       {IDC_SPELLCHECK_MENU, 54},
+       {kSpellcheckMenuId, 54},
        {IDC_CONTENT_CONTEXT_SPELLING_TOGGLE, 55},
        {IDC_SPELLCHECK_LANGUAGES_FIRST, 56},
        {IDC_CONTENT_CONTEXT_SEARCHWEBFORIMAGE, 57},
@@ -519,8 +540,8 @@ const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
        {IDC_SPELLCHECK_ADD_TO_DICTIONARY, 59},
        // Removed: {IDC_SPELLPANEL_TOGGLE, 60},
        {IDC_CONTENT_CONTEXT_OPEN_ORIGINAL_IMAGE_NEW_TAB, 61},
-       {IDC_WRITING_DIRECTION_MENU, 62},
-       {IDC_WRITING_DIRECTION_DEFAULT, 63},
+       {kWritingDirectionMenuId, 62},
+       {kWritingDirectionDefaultId, 63},
        {IDC_WRITING_DIRECTION_LTR, 64},
        {IDC_WRITING_DIRECTION_RTL, 65},
        {IDC_CONTENT_CONTEXT_LOAD_IMAGE, 66},
@@ -531,36 +552,36 @@ const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
        {IDC_CONTENT_CONTEXT_GENERATEPASSWORD, 72},
        {IDC_SPELLCHECK_MULTI_LINGUAL, 73},
        {IDC_CONTENT_CONTEXT_OPEN_WITH1, 74},
-       {IDC_CONTENT_CONTEXT_OPEN_WITH2, 75},
-       {IDC_CONTENT_CONTEXT_OPEN_WITH3, 76},
-       {IDC_CONTENT_CONTEXT_OPEN_WITH4, 77},
-       {IDC_CONTENT_CONTEXT_OPEN_WITH5, 78},
-       {IDC_CONTENT_CONTEXT_OPEN_WITH6, 79},
-       {IDC_CONTENT_CONTEXT_OPEN_WITH7, 80},
-       {IDC_CONTENT_CONTEXT_OPEN_WITH8, 81},
-       {IDC_CONTENT_CONTEXT_OPEN_WITH9, 82},
-       {IDC_CONTENT_CONTEXT_OPEN_WITH10, 83},
-       {IDC_CONTENT_CONTEXT_OPEN_WITH11, 84},
-       {IDC_CONTENT_CONTEXT_OPEN_WITH12, 85},
-       {IDC_CONTENT_CONTEXT_OPEN_WITH13, 86},
-       {IDC_CONTENT_CONTEXT_OPEN_WITH14, 87},
+       {IDC_CONTENT_CONTEXT_OPEN_WITH1 + 1, 75},
+       {IDC_CONTENT_CONTEXT_OPEN_WITH1 + 2, 76},
+       {IDC_CONTENT_CONTEXT_OPEN_WITH1 + 3, 77},
+       {IDC_CONTENT_CONTEXT_OPEN_WITH1 + 4, 78},
+       {IDC_CONTENT_CONTEXT_OPEN_WITH1 + 5, 79},
+       {IDC_CONTENT_CONTEXT_OPEN_WITH1 + 6, 80},
+       {IDC_CONTENT_CONTEXT_OPEN_WITH1 + 7, 81},
+       {IDC_CONTENT_CONTEXT_OPEN_WITH1 + 8, 82},
+       {IDC_CONTENT_CONTEXT_OPEN_WITH1 + 9, 83},
+       {IDC_CONTENT_CONTEXT_OPEN_WITH1 + 10, 84},
+       {IDC_CONTENT_CONTEXT_OPEN_WITH1 + 11, 85},
+       {IDC_CONTENT_CONTEXT_OPEN_WITH1 + 12, 86},
+       {IDC_CONTENT_CONTEXT_OPEN_WITH1 + 13, 87},
        {IDC_CONTENT_CONTEXT_EXIT_FULLSCREEN, 88},
        {IDC_CONTENT_CONTEXT_OPENLINKBOOKMARKAPP, 89},
        {IDC_CONTENT_CONTEXT_SHOWALLSAVEDPASSWORDS, 90},
        {IDC_CONTENT_CONTEXT_PICTUREINPICTURE, 91},
        {IDC_CONTENT_CONTEXT_EMOJI, 92},
        {IDC_CONTENT_CONTEXT_START_SMART_SELECTION_ACTION1, 93},
-       {IDC_CONTENT_CONTEXT_START_SMART_SELECTION_ACTION2, 94},
-       {IDC_CONTENT_CONTEXT_START_SMART_SELECTION_ACTION3, 95},
-       {IDC_CONTENT_CONTEXT_START_SMART_SELECTION_ACTION4, 96},
-       {IDC_CONTENT_CONTEXT_START_SMART_SELECTION_ACTION5, 97},
+       {IDC_CONTENT_CONTEXT_START_SMART_SELECTION_ACTION1 + 1, 94},
+       {IDC_CONTENT_CONTEXT_START_SMART_SELECTION_ACTION1 + 2, 95},
+       {IDC_CONTENT_CONTEXT_START_SMART_SELECTION_ACTION1 + 3, 96},
+       {IDC_CONTENT_CONTEXT_START_SMART_SELECTION_ACTION1 + 4, 97},
        {IDC_CONTENT_CONTEXT_LOOK_UP, 98},
        {IDC_CONTENT_CONTEXT_ACCESSIBILITY_LABELS_TOGGLE, 99},
        {IDC_CONTENT_CONTEXT_ACCESSIBILITY_LABELS_TOGGLE_ONCE, 100},
-       {IDC_CONTENT_CONTEXT_ACCESSIBILITY_LABELS, 101},
+       {kAccessibilityLabelsMenuId, 101},
        {IDC_SEND_TAB_TO_SELF, 102},
        {IDC_CONTENT_CONTEXT_SHARING_CLICK_TO_CALL_SINGLE_DEVICE, 106},
-       {IDC_CONTENT_CONTEXT_SHARING_CLICK_TO_CALL_MULTIPLE_DEVICES, 107},
+       {kClickToCallMultipleDevicesMenuId, 107},
        {IDC_CONTENT_CONTEXT_SHARING_SHARED_CLIPBOARD_SINGLE_DEVICE, 108},
        {IDC_CONTENT_CONTEXT_SHARING_SHARED_CLIPBOARD_MULTIPLE_DEVICES, 109},
        {IDC_CONTENT_CONTEXT_GENERATE_QR_CODE, 110},
@@ -2491,6 +2512,9 @@ void RenderViewContextMenu::AppendPageItems() {
       menu_model_.RemoveItemAt(menu_model_.GetItemCount() - 1);
     }
 
+    // Save to Memory Banks
+    AppendSaveToMemoryBanksItem();
+
     // Search with google lens
     if (IsRegionSearchEnabled()) {
       AppendRegionSearchItem();
@@ -2567,6 +2591,8 @@ void RenderViewContextMenu::AppendPageItems() {
       AppendReadAnythingItem();
     }
   }
+
+  AppendSaveToMemoryBanksItem();
 
   // Note: `has_sharing_menu_items = true` also implies a separator was added
   // for sharing section.
@@ -3124,7 +3150,7 @@ void RenderViewContextMenu::AppendProtocolHandlerSubMenu() {
       l10n_util::GetStringUTF16(IDS_CONTENT_CONTEXT_OPENLINKWITH_CONFIGURE));
 
   menu_model_.AddSubMenu(
-      IDC_CONTENT_CONTEXT_OPENLINKWITH,
+      kOpenLinkWithMenuId,
       l10n_util::GetStringUTF16(IDS_CONTENT_CONTEXT_OPENLINKWITH),
       &protocol_handler_submenu_model_);
 }
@@ -3299,7 +3325,7 @@ bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
 
   // Allow Spell Check language items on sub menu for text area context menu.
   if ((id >= IDC_SPELLCHECK_LANGUAGES_FIRST) &&
-      (id < IDC_SPELLCHECK_LANGUAGES_LAST)) {
+      (id <= IDC_SPELLCHECK_LANGUAGES_LAST)) {
     return prefs->GetBoolean(spellcheck::prefs::kSpellCheckEnable);
   }
 
@@ -3511,13 +3537,13 @@ bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
 
 #if !BUILDFLAG(IS_MAC) && BUILDFLAG(IS_POSIX)
     // TODO(suzhe): this should not be enabled for password fields.
-    case IDC_INPUT_METHODS_MENU:
+    case kLinuxInputMethodsMenuId:
       return true;
 #endif
 
     case IDC_CONTENT_CONTEXT_VIDEO_FRAME:
-    case IDC_SPELLCHECK_MENU:
-    case IDC_CONTENT_CONTEXT_OPENLINKWITH:
+    case kSpellcheckMenuId:
+    case kOpenLinkWithMenuId:
     case IDC_CONTENT_CONTEXT_PROTOCOL_HANDLER_SETTINGS:
     case IDC_CONTENT_CONTEXT_GENERATEPASSWORD:
     case IDC_CONTENT_CONTEXT_SHOWALLSAVEDPASSWORDS:
@@ -3549,10 +3575,10 @@ bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
       return params_.is_editable;
 
     case IDC_CONTENT_CONTEXT_START_SMART_SELECTION_ACTION1:
-    case IDC_CONTENT_CONTEXT_START_SMART_SELECTION_ACTION2:
-    case IDC_CONTENT_CONTEXT_START_SMART_SELECTION_ACTION3:
-    case IDC_CONTENT_CONTEXT_START_SMART_SELECTION_ACTION4:
-    case IDC_CONTENT_CONTEXT_START_SMART_SELECTION_ACTION5:
+    case IDC_CONTENT_CONTEXT_START_SMART_SELECTION_ACTION1 + 1:
+    case IDC_CONTENT_CONTEXT_START_SMART_SELECTION_ACTION1 + 2:
+    case IDC_CONTENT_CONTEXT_START_SMART_SELECTION_ACTION1 + 3:
+    case IDC_CONTENT_CONTEXT_START_SMART_SELECTION_ACTION1 + 4:
       return true;
 
     case IDC_CONTENT_CONTEXT_SAVE_TO_MEMORY_BANKS:
@@ -4172,7 +4198,7 @@ void RenderViewContextMenu::AddAccessibilityLabelsServiceItem(bool is_checked) {
         IDC_CONTENT_CONTEXT_ACCESSIBILITY_LABELS_TOGGLE_ONCE,
         IDS_CONTENT_CONTEXT_ACCESSIBILITY_LABELS_SEND_ONCE);
     menu_model_.AddSubMenu(
-        IDC_CONTENT_CONTEXT_ACCESSIBILITY_LABELS,
+        kAccessibilityLabelsMenuId,
         l10n_util::GetStringUTF16(
             IDS_CONTENT_CONTEXT_ACCESSIBILITY_LABELS_MENU_OPTION),
         &accessibility_labels_submenu_model_);
@@ -4816,7 +4842,26 @@ void RenderViewContextMenu::ExecSaveToMemoryBanks() {
   if (!selected_text.empty()) {
     context_hub_service->SaveTextSelection(params_.page_url, tab_title,
                                            selected_text, base::DoNothing());
+    return;
   }
+
+  RenderFrameHost* render_frame_host = GetRenderFrameHost();
+  if (!render_frame_host) {
+    return;
+  }
+
+  content_extraction::GetInnerText(
+      *render_frame_host, std::nullopt,
+      base::BindOnce(
+          [](base::WeakPtr<context_hub::ContextHubService> service, GURL url,
+             std::string title,
+             std::unique_ptr<content_extraction::InnerTextResult> result) {
+            if (service && result && !result->inner_text.empty()) {
+              service->SaveTab(url, title, result->inner_text,
+                               base::DoNothing());
+            }
+          },
+          context_hub_service->GetWeakPtr(), params_.page_url, tab_title));
 }
 
 void RenderViewContextMenu::ExecInspectElement() {

@@ -146,6 +146,7 @@ std::u16string GetIconAccessibleName(Suggestion::Icon icon) {
     // Other networks.
     case Suggestion::Icon::kCardGeneric:
     case Suggestion::Icon::kCardGenericSpark:
+    case Suggestion::Icon::kCardGenericVector:
       return l10n_util::GetStringUTF16(IDS_AUTOFILL_CC_GENERIC);
     case Suggestion::Icon::kIban:
       return l10n_util::GetStringUTF16(IDS_AUTOFILL_IBAN_GENERIC);
@@ -343,6 +344,7 @@ bool IsPaymentMethodSuggestion(const Suggestion& suggestion) {
     case SuggestionType::kAutocompleteAtMemoryButton:
     case SuggestionType::kAutocompleteEntry:
     case SuggestionType::kAutofillAiOtherOrders:
+    case SuggestionType::kAutofillAiPrivateInferenceNotice:
     case SuggestionType::kBackupPasswordEntry:
     case SuggestionType::kBnplFootnote:
     case SuggestionType::kComposeDisable:
@@ -423,6 +425,11 @@ std::optional<ui::ImageModel> GetIconImageModelFromIcon(Suggestion::Icon icon) {
     case Suggestion::Icon::kCardGenericSpark:
       return ImageModelFromVectorIcon(vector_icons::kCreditCardSparkIcon,
                                       kChromeRefreshIconSize);
+    case Suggestion::Icon::kCardGenericVector:
+      return ImageModelFromVectorIcon(::features::IsRoundedIconsEnabled()
+                                          ? kCreditCardIcon
+                                          : kCreditCardOldIcon,
+                                      kIconSize);
     case Suggestion::Icon::kClear:
       return ImageModelFromVectorIcon(::features::IsRoundedIconsEnabled()
                                           ? kBackspaceFilledIcon

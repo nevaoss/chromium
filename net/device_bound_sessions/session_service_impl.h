@@ -73,7 +73,9 @@ class NET_EXPORT SessionServiceImpl : public SessionService {
   SessionServiceImpl(unexportable_keys::UnexportableKeyService& key_service,
                      const URLRequestContext* request_context,
                      SessionStore* store,
-                     const std::vector<SchemefulSite>& restricted_sites);
+                     const std::vector<SchemefulSite>& restricted_sites,
+                     CookieAccessCallback has_cookie_access_cb,
+                     SelectClientCertificateHandler client_cert_handler);
   ~SessionServiceImpl() override;
 
   // Loads saved session data from disk if a `SessionStore` object is provided
@@ -142,6 +144,10 @@ class NET_EXPORT SessionServiceImpl : public SessionService {
       DbscRequest& request,
       HttpResponseHeaders* headers,
       const FirstPartySetMetadata& first_party_set_metadata) override;
+  void SelectClientCertificate(
+      const GURL& url,
+      scoped_refptr<SSLCertRequestInfo> cert_info,
+      SelectClientCertificateCallback callback) override;
 
   // The `SessionService` implementation has a const-qualified accessor
   // for sessions. This overload allows for non-const access as well.
@@ -193,10 +199,10 @@ class NET_EXPORT SessionServiceImpl : public SessionService {
   void StartGarbageCollection();
   void OnGetAllKeysForGarbageCollection(
       unexportable_keys::ServiceErrorOr<
-          std::vector<unexportable_keys::UnexportableKeyId>>
+          std::vector<unexportable_keys::UnexportableSigningKeyId>>
           all_key_ids_or_error);
   void DoGarbageCollection(
-      std::vector<unexportable_keys::UnexportableKeyId> all_key_ids);
+      std::vector<unexportable_keys::UnexportableSigningKeyId> all_key_ids);
 
   void AddSession(const SchemefulSite& site,
                   std::unique_ptr<Session> session,
@@ -363,6 +369,11 @@ class NET_EXPORT SessionServiceImpl : public SessionService {
   const raw_ref<unexportable_keys::UnexportableKeyService> key_service_;
   raw_ptr<const URLRequestContext> context_;
   raw_ptr<SessionStore> session_store_ = nullptr;
+  // List of sites that are restricted from starting Device Bound
+  // Session Credential sessions unless
+  // `kDeviceBoundSessionRestrictedSites` is enabled.
+  std::vector<SchemefulSite> restricted_sites_;
+  const SelectClientCertificateHandler client_cert_handler_;
 
   // When true, the refresh quota is not enforced. This is only ever set to
   // true for testing purposes.
@@ -411,10 +422,8 @@ class NET_EXPORT SessionServiceImpl : public SessionService {
   absl::flat_hash_set<std::unique_ptr<RegistrationFetcher>>
       registration_fetchers_;
 
-  // List of sites that are restricted from starting Device Bound
-  // Session Credential sessions unless
-  // `kDeviceBoundSessionRestrictedSites` is enabled.
-  std::vector<SchemefulSite> restricted_sites_;
+  // Callback to check if storage access is allowed.
+  CookieAccessCallback has_cookie_access_cb_;
 
   base::WeakPtrFactory<SessionServiceImpl> weak_factory_{this};
 };

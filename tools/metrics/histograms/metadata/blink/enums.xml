@@ -255,6 +255,7 @@ Called by update_document_policy_enum.py.-->
   <int value="14" label="IncludeJSCallStacksInCrashReports"/>
   <int value="15" label="ExpectNoLinkedResources"/>
   <int value="16" label="NetworkEfficiencyGuardrails"/>
+  <int value="17" label="JSProfilingMode"/>
 </enum>
 
 <!-- LINT.IfChange(EvpAutofillFlowResult) -->
@@ -6530,7 +6531,7 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="5788" label="AudioContextPlaybackStats"/>
   <int value="5789" label="ParseFromStringXML"/>
   <int value="5790" label="NonParentOriginInitiatedNavigationOfSubframe"/>
-  <int value="5791" label="ModelContextRegisterToolIDL"/>
+  <int value="5791" label="ModelContextRegisterTool"/>
   <int value="5792" label="ModelContextRegisterDeclarativeTool"/>
   <int value="5793" label="LanguageModel_ContextUsage"/>
   <int value="5794" label="LanguageModel_ContextWindow"/>
@@ -6538,7 +6539,7 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="5796" label="V8WindowClient_Navigate_Method"/>
   <int value="5797" label="LanguageModel_OnQuotaOverflow"/>
   <int value="5798" label="LanguageModel_OnContextOverflow"/>
-  <int value="5799" label="ModelContextExecuteToolAllExecutions"/>
+  <int value="5799" label="ModelContextExecuteImperativeTool"/>
   <int value="5800" label="ModelContextExecuteDeclarativeTool"/>
   <int value="5801" label="ModelContextExecuteDeclarativeAutosubmit"/>
   <int value="5802" label="Prerender2CrossOriginIframes"/>
@@ -6647,7 +6648,7 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="5901" label="SubtleCryptoGetPublicKey"/>
   <int value="5902" label="CapabilityDelegationOfDigitalCredentialsCreate"/>
   <int value="5903" label="CapabilityDelegationOfDigitalCredentialsGet"/>
-  <int value="5904" label="ModelContextGetToolsIDL"/>
+  <int value="5904" label="ModelContextGetTools"/>
   <int value="5905" label="WebSpeechSttAvailable"/>
   <int value="5906" label="WebSpeechSttStart"/>
   <int value="5907" label="WebSpeechSttResultRetrieved"/>
@@ -6690,7 +6691,7 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="5940" label="RTCSctpSnapNegotiated"/>
   <int value="5941" label="V8RTC_StartDiagnosticLogging_Method"/>
   <int value="5942" label="SpeculationRulesModerateViewportHeuristicsControl"/>
-  <int value="5943" label="ModelContextExecuteToolIDL"/>
+  <int value="5943" label="ModelContextExecuteTool"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom:WebFeature) -->
@@ -7352,16 +7353,6 @@ Called by update_permissions_policy_enum.py.-->
 
 <!-- LINT.ThenChange(//chrome/browser/ui/webid/identity_ui_utils.h:SheetType) -->
 
-<!-- LINT.IfChange(FedCmShowPopupWindowResult) -->
-
-<enum name="FedCmShowPopupWindowResult">
-  <int value="0" label="Successfully opened"/>
-  <int value="1" label="Invalid URL"/>
-  <int value="2" label="Failed for other reasons"/>
-</enum>
-
-<!-- LINT.ThenChange(//chrome/browser/ui/views/webid/fedcm_modal_dialog_view.h:ShowPopupWindowResult) -->
-
 <!-- LINT.IfChange(FedCmSignInStateMatchStatus) -->
 
 <enum name="FedCmSignInStateMatchStatus">
@@ -7477,20 +7468,6 @@ Called by update_permissions_policy_enum.py.-->
 </enum>
 
 <!-- LINT.ThenChange(//content/browser/webid/metrics.h:VerifyingDialogResult) -->
-
-<enum name="FencedFrameBeaconReportingResult">
-  <int value="0" label="Unknown result"/>
-  <int value="1" label="Invalid / missing network request for an enum beacon"/>
-  <int value="2" label="Successful network request for an enum beacon"/>
-  <int value="3" label="Failed network request for an enum beacon"/>
-  <int value="4" label="Invalid / missing network request for a URL beacon"/>
-  <int value="5" label="Successful network request for a URL beacon"/>
-  <int value="6" label="Failed network request for a URL beacon"/>
-  <int value="7"
-      label="Invalid / missing network request for an automatic beacon"/>
-  <int value="8" label="Successful network request for an automatic beacon"/>
-  <int value="9" label="Failed network request for an automatic beacon"/>
-</enum>
 
 <enum name="FencedFrameCreationOutcome">
   <int value="0" label="Success (default mode)"/>
@@ -9165,7 +9142,7 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="424" label="DRAFT_InstallElement"/>
   <int value="425" label="LanguageDetector"/>
   <int value="426" label="Translator"/>
-  <int value="427" label="NavigatorModelcontext"/>
+  <int value="427" label="DocumentModelcontext"/>
   <int value="428" label="LoadingLazyMedia"/>
   <int value="429" label="ManifestLocalization"/>
   <int value="430" label="ContrastColor"/>
@@ -9183,6 +9160,7 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="442" label="DRAFT_HTMLProcessingInstructions"/>
   <int value="443" label="DRAFT_HTMLSetterMethods"/>
   <int value="444" label="DRAFT_HTMLStreamMethods"/>
+  <int value="445" label="CanvasHtml"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/webdx_feature.mojom:WebDXFeature) -->

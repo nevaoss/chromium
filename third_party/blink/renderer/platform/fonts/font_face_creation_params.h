@@ -119,17 +119,20 @@ class FontFaceCreationParams {
         int id;
         uint64_t filename_hash;
       } hash_data = {ttc_index_, fontconfig_interface_id_,
+<<<<<<< HEAD
                      HasFilename() ? StringHasher::HashMemory(
 // NOTE(neva): Change to blink::String from std::string on
 // FontFaceCreationParams to avoid crash.
 #if defined(__GNUC__) && !defined(__clang__)
                                          base::as_byte_span(Filename().Span8()))
 #else   // defined(__GNUC__) && !defined(__clang__)
+=======
+                     HasFilename() ? StringHasher::HashMemory64(
+>>>>>>> 152.0.7940.0~1
                                          base::as_byte_span(Filename()))
 #endif  // !(defined(__GNUC__) && !defined(__clang__))
                                    : 0};
-      return static_cast<unsigned>(
-          StringHasher::HashMemory(base::byte_span_from_ref(hash_data)));
+      return StringHasher::HashMemory32(base::byte_span_from_ref(hash_data));
     }
     return DeprecatedCaseFoldingHash::GetHash(family_.empty() ? g_empty_atom
                                                               : family_);

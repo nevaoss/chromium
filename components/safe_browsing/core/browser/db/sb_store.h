@@ -15,6 +15,7 @@
 #include "base/task/sequenced_task_runner.h"
 #include "base/types/expected.h"
 #include "components/safe_browsing/core/browser/db/sb_protocol_manager_util.h"
+#include "components/safe_browsing/core/common/proto/safebrowsingv5.pb.h"
 #include "components/safe_browsing/core/common/proto/webui.pb.h"
 #include "third_party/protobuf/src/google/protobuf/io/zero_copy_stream.h"
 #include "third_party/protobuf/src/google/protobuf/io/zero_copy_stream_impl_lite.h"
@@ -300,8 +301,8 @@ class SBStore {
   int64_t file_size() const { return file_size_; }
 
   // Records (in kilobytes) and returns the size of the file on disk for this
-  // store using |base_metric| as prefix and the filename as suffix.
-  virtual int64_t RecordAndReturnFileSize(const std::string& base_metric) = 0;
+  // store using `base_metric` as prefix and the filename as suffix.
+  virtual int64_t RecordAndReturnFileSize(const std::string& base_metric);
 
   // Reset internal state.
   virtual void Reset() = 0;
@@ -318,7 +319,7 @@ class SBStore {
 
   // Populates the DatabaseInfo message.
   virtual void CollectStoreInfo(
-      DatabaseManagerInfo::DatabaseInfo::StoreInfo* store_info) = 0;
+      DatabaseManagerInfo::DatabaseInfo::StoreInfo* store_info);
 
   // Updates the SBStore with the response received from the SafeBrowsing
   // service. `response` contains the protocol-specific update payload. `runner`
@@ -371,8 +372,9 @@ class SBStore {
   //    HashPrefixList).
   //  - `set_file_metadata`: Callback to set file-specific metadata (e.g. magic
   //    number, version).
-  //  - `delete_hash_files_on_error`: Callback to delete written hash files if
-  //    writing fails.
+  //  - `cleanup_on_error`: Callback to perform cleanup (e.g. delete written
+  //    hash files, clear container) if writing fails. Takes the temporary
+  //    store file path as argument.
   //  - `get_hash_files_size`: Callback to calculate the total size of the hash
   //    files.
   //  - `cleanup_extra_files`: Callback to clean up any old/temporary files.
@@ -386,7 +388,7 @@ class SBStore {
       FileFormat* file_format,
       Container* container,
       base::FunctionRef<void()> set_file_metadata,
-      base::FunctionRef<void()> delete_hash_files_on_error,
+      base::FunctionRef<void(const base::FilePath&)> cleanup_on_error,
       base::FunctionRef<int64_t()> get_hash_files_size,
       base::FunctionRef<void()> cleanup_extra_files);
 
@@ -428,6 +430,9 @@ class SBStore {
   // True if the file was successfully read+parsed or was populated from
   // a full update.
   bool has_valid_data_;
+
+  // Records the time when the store was last updated.
+  base::Time last_apply_update_time_millis_;
 
   const base::FilePath store_path_;
   const scoped_refptr<base::SequencedTaskRunner> task_runner_;

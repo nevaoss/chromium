@@ -222,10 +222,15 @@ void AutocompleteHistoryManager::OnGetSingleFieldSuggestions(
     std::move(on_suggestions_returned).Run(trigger_field.global_id(), {});
     return;
   }
-  suggestion_generator_ = std::make_unique<AutocompleteSuggestionGenerator>(
-      profile_database_,
+  const GURL& main_frame_url = client.GetLastCommittedPrimaryMainFrameURL();
+  const GURL& field_url = trigger_field.origin().GetURL();
+  const bool is_enabled =
       MayPerformAtMemoryAction(AtMemoryAction::kShowAutocompleteAtMemoryButton,
-                               client));
+                               client, main_frame_url) &&
+      MayPerformAtMemoryAction(AtMemoryAction::kShowAutocompleteAtMemoryButton,
+                               client, field_url);
+  suggestion_generator_ = std::make_unique<AutocompleteSuggestionGenerator>(
+      profile_database_, is_enabled);
 
   auto on_suggestions_generated = base::BindOnce(
       [](SingleFieldFillRouter::OnSuggestionsReturnedCallback callback,
@@ -335,6 +340,9 @@ void AutocompleteHistoryManager::OnAutofillCleanupReturned(
     std::unique_ptr<WDTypedResult> result) {
   DCHECK(result);
   DCHECK_EQ(AUTOFILL_CLEANUP_RESULT, result->GetType());
+  if (!static_cast<const WDResult<bool>*>(result.get())->GetValue()) {
+    DLOG(WARNING) << "Autofill cleanup returned false. This should not happen.";
+  }
 
   // Cleanup was successful, update the latest run milestone.
   pref_service_->SetInteger(prefs::kAutocompleteLastVersionRetentionPolicy,

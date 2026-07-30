@@ -15,6 +15,7 @@
 
 #include "base/atomic_sequence_num.h"
 #include "base/functional/callback.h"
+#include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
 #include "base/observer_list.h"
 #include "base/rand_util.h"
@@ -208,7 +209,9 @@ class GPU_IPC_CLIENT_EXPORT GpuChannelHost
       uint64_t release_count,
       base::OnceCallback<void(bool)> callback);
 #endif  // BUILDFLAG(IS_WIN)
-
+  void GetGLGpuFence(std::vector<SyncToken> sync_token_dependencies,
+                     uint64_t release_count,
+                     base::OnceCallback<void(gfx::GpuFenceHandle)> callback);
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_ANDROID)
   void CopyNativeGmbToSharedMemoryAsync(
       gfx::GpuMemoryBufferHandle buffer_handle,
@@ -290,7 +293,7 @@ class GPU_IPC_CLIENT_EXPORT GpuChannelHost
     // The GpuChannelLost Monitor for LayerTreeFrameSink.
     base::Lock channel_obs_lock_;
     // Note that ObserverList is sequence checked so we can't use that here.
-    std::vector<GpuChannelLostObserver*> GUARDED_BY(channel_obs_lock_)
+    std::vector<raw_ptr<GpuChannelLostObserver>> GUARDED_BY(channel_obs_lock_)
         observer_list_;
   };
 

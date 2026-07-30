@@ -1350,6 +1350,10 @@
       status: "experimental",
     },
     {
+      name: "ConditionalTracingLoAF",
+      status: "experimental",
+    },
+    {
       // When enabled, providing developers control over the resources loaded
       // into their pages' contexts and the endpoints to which their pages can
       // make requests.
@@ -2523,6 +2527,10 @@
       status: "experimental",
     },
     {
+      name: "DocumentPolicyJSProfilingMode",
+      status: "experimental",
+    },
+    {
       name: "DocumentPolicyNegotiation",
       origin_trial_feature_name: "DocumentPolicyNegotiation",
       public: true,
@@ -2704,6 +2712,10 @@
       // Added in M144, can be removed in M146.
       name: "EventTimingInteractionCount",
       status: "stable",
+    },
+    {
+      name: "EventTimingMatchingHTML",
+      status: "experimental",
     },
     {
       name: "EventTimingTargetSelector",
@@ -4665,6 +4677,13 @@
       status: "stable",
     },
     {
+      // Makes showPopover() throw an exception instead of just logging a console
+      // message when calling showPopover() within another popover hide/show
+      // operation. https://crbug.com/527495812
+      name: "PopoverHintNestedShowException",
+      status: "stable",
+    },
+    {
       // Simplifies the behavior and stacking interactions of popover=hint and
       // popover=auto. See https://crbug.com/499019927.
       // This shipped in M150, was disabled via Finch, and was re-enabled in
@@ -5097,8 +5116,9 @@
     {
       // Kill switch for painting non-SVG replaced normal-flow stacking
       // contexts inline with their siblings.
+      // This was set to experimental due to crbug.com/532229489.
       name: "ReplacedNormalFlowStackingInlinePaint",
-      status: "stable",
+      status: "experimental",
     },
     {
       name: "ReportFirstFrameTimeAsRenderTime",
@@ -6106,17 +6126,6 @@
       status: "experimental",
     },
     {
-      // This is used for emoji variation selectors support in system
-      // fallback matching. This is a workaround solution that helps to
-      // avoid incorrect font matching due to lack of cmap format 14
-      // subtable in system emoji fonts on various platforms.
-      // This should be eventually removed when the custom emoji font
-      // is shipped with Chrome or when system emoji fonts will have
-      // cmap format 14 subtable.
-      name: "SystemFallbackEmojiVSSupport",
-      status: "stable",
-    },
-    {
       name: "SystemWakeLock",
       status: "experimental",
     },
@@ -6381,7 +6390,7 @@
     // This feature enables drag and drop using touch input devices. Replaces
     // the old "--enable-touch-drag-drop" and "--disable-touch-drag-drop"
     // switches.
-    // Enabled by default in Android, ChromeOS and Windows.
+    // Enabled by default in Android, ChromeOS, Windows, and Linux.
     {
       name: "TouchDragAndDrop",
       base_feature: "none",
@@ -6884,12 +6893,6 @@
     // Enables `uiMode` enumeration field in CredentialRequestOptions struct.
     // and `get()` requests with `uiMode: 'immediate'`.
     // See https://github.com/w3c/webauthn/issues/2228.
-    {
-      name: "WebAuthenticationImmediateGet",
-      status: "experimental",
-      base_feature: "none",
-      public: true,
-    },
     {
       name: "WebAuthenticationRemoteDesktopSupport",
       base_feature: "none",

@@ -25,6 +25,7 @@
 #include "chrome/browser/glic/common/instance_independent_hotkey_manager.h"
 #include "chrome/browser/glic/glic_pref_names.h"
 #include "chrome/browser/glic/host/context/glic_active_instance_sharing_manager.h"
+#include "chrome/browser/glic/host/context/glic_sharing_utils.h"
 #include "chrome/browser/glic/host/glic.mojom.h"
 #include "chrome/browser/glic/host/glic_web_contents_warming_pool.h"
 #include "chrome/browser/glic/host/guest_util.h"
@@ -76,20 +77,10 @@ GlicTabRestoreData* GetTabRestoreData(const TabCreationEvent& creation_event) {
   return GlicTabRestoreData::FromWebContents(
       creation_event.new_tab->GetContents());
 }
-tabs::TabInterface* GetMostRecentlyActiveTab(
-    const std::vector<tabs::TabInterface*>& tabs) {
-  CHECK(!tabs.empty());
-  tabs::TabInterface* most_recent = tabs[0];
-  base::Time max_active_time = most_recent->GetLastActiveTime();
 
-  for (size_t i = 1; i < tabs.size(); ++i) {
-    base::Time active_time = tabs[i]->GetLastActiveTime();
-    if (active_time > max_active_time) {
-      max_active_time = active_time;
-      most_recent = tabs[i];
-    }
-  }
-  return most_recent;
+bool IsEligibleForHibernation(const GlicInstanceImpl* instance) {
+  return !instance->IsHibernated() && !instance->IsActuating() &&
+         !instance->IsShowing();
 }
 
 }  // namespace
@@ -172,6 +163,13 @@ void GlicInstanceCoordinatorImpl::OnInstanceActivationChanged(
   }
   NotifyActiveInstanceChanged();
   ComputeContentAccessIndicator();
+}
+
+void GlicInstanceCoordinatorImpl::OnInstanceWillAwaken() {
+  // Before an existing instance creates its WebUI container and awakens,
+  // enforce the max awake limit so that older background instances are pruned
+  // to make room for this one if we are already at capacity.
+  ApplyMaxAwakeInstancesLimit();
 }
 
 void GlicInstanceCoordinatorImpl::OnInstanceVisibilityChanged(
@@ -403,9 +401,8 @@ void GlicInstanceCoordinatorImpl::Toggle(BrowserWindowInterface* browser,
   ToggleSidePanel(browser, prevent_close, source);
 }
 
-void GlicInstanceCoordinatorImpl::EnsurePreload() {
-  web_contents_warming_pool_->EnsurePreload(
-      GlicWebContentsWarmingPool::ContainerCreationReason::kInitialColdWarming);
+bool GlicInstanceCoordinatorImpl::MaybeStartInitialWarming() {
+  return web_contents_warming_pool_->MaybeStartInitialWarming();
 }
 
 void GlicInstanceCoordinatorImpl::Shutdown() {
@@ -450,16 +447,6 @@ base::WeakPtr<GlicInstance> GlicInstanceCoordinatorImpl::InvokeWithAutoSubmit(
                         std::move(auto_submit_options));
 }
 
-void GlicInstanceCoordinatorImpl::GetExperimentalTriggeringUpdates(
-    mojo::PendingRemote<mojom::ExperimentalTriggeringUpdatesHandler> handler,
-    base::OnceCallback<void(bool)> success_status_callback) {
-  if (active_instance_) {
-    active_instance_->host().GetExperimentalTriggeringUpdates(
-        std::move(handler), std::move(success_status_callback));
-  } else {
-    std::move(success_status_callback).Run(false);
-  }
-}
 
 base::WeakPtr<GlicInstance> GlicInstanceCoordinatorImpl::InvokeInternal(
     std::optional<InvokeWithAutoSubmitPasskey> auto_submit_passkey,
@@ -743,14 +730,16 @@ void GlicInstanceCoordinatorImpl::ApplyMaxAwakeInstancesLimit() {
       }
     }
 
-    const size_t limit = kGlicMaxAwakeInstancesLimit.Get();
+    // A valid limit must be greater than zero.
+    const size_t limit =
+        static_cast<size_t>(std::max(1, kGlicMaxAwakeInstancesLimit.Get()));
     if (awake_count < limit) {
       return;
     }
 
     std::vector<GlicInstanceImpl*> hibernatable_instances;
     for (auto& [id, instance] : instances_) {
-      if (!instance->IsHibernated() && !instance->IsActuating()) {
+      if (IsEligibleForHibernation(instance.get())) {
         hibernatable_instances.push_back(instance.get());
       }
     }
@@ -763,7 +752,7 @@ void GlicInstanceCoordinatorImpl::ApplyMaxAwakeInstancesLimit() {
               });
 
     // Hibernate until we reach `limit - 1`.
-    int target_count = limit - 1;
+    size_t target_count = limit - 1;
     size_t excess_count = awake_count - target_count;
 
     for (size_t i = 0; i < excess_count && i < hibernatable_instances.size();
@@ -775,8 +764,6 @@ void GlicInstanceCoordinatorImpl::ApplyMaxAwakeInstancesLimit() {
 
 GlicInstanceImpl* GlicInstanceCoordinatorImpl::CreateGlicInstance(
     std::optional<InstanceId> instance_id) {
-  ApplyMaxAwakeInstancesLimit();
-
   auto instance = CreateInstanceImpl(instance_id);
   instance->instance_metrics().OnInstanceCreatedWithoutWarming();
   auto* instance_ptr = instance.get();
@@ -1186,8 +1173,7 @@ void GlicInstanceCoordinatorImpl::OnMemoryPressure(
   }
 
   for (auto& [_, instance] : instances_) {
-    if (instance->IsShowing() || instance->IsActuating() ||
-        instance->IsHibernated()) {
+    if (!IsEligibleForHibernation(instance.get())) {
       continue;
     }
     instance->Hibernate();

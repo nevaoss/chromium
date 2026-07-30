@@ -369,17 +369,6 @@ class CORE_EXPORT LayoutBox : public LayoutBoxModelObject {
 
   virtual void UpdateAfterLayout();
 
-  // Content-box offset and size getters (i.e. what's on the inside of borders,
-  // scrollbars, and padding).
-  LayoutUnit ContentLeft() const;
-  LayoutUnit ContentTop() const;
-  LayoutUnit ContentWidth() const;
-  LayoutUnit ContentHeight() const;
-  PhysicalSize ContentSize() const {
-    NOT_DESTROYED();
-    return PhysicalSize(ContentWidth(), ContentHeight());
-  }
-
   // CSS intrinsic sizing getters.
   // https://drafts.csswg.org/css-sizing-4/#intrinsic-size-override
   LayoutUnit OverrideIntrinsicContentInlineSize() const;
@@ -392,26 +381,6 @@ class CORE_EXPORT LayoutBox : public LayoutBoxModelObject {
       bool children_have_geometry) const;
 
   bool UsesOverlayScrollbars() const;
-
-  // Physical client rect (a.k.a. PhysicalPaddingBoxRect(), defined by
-  // ClientLeft, ClientTop, ClientWidth and ClientHeight) represents the
-  // interior of an object excluding borders and scrollbars.
-  // Clamps the left scrollbar size so it is not wider than the content box.
-  LayoutUnit ClientLeft() const;
-  LayoutUnit ClientTop() const;
-  LayoutUnit ClientWidth() const;
-  LayoutUnit ClientHeight() const;
-  DISABLE_CFI_PERF LayoutUnit ClientLogicalWidth() const {
-    NOT_DESTROYED();
-    return IsHorizontalWritingMode() ? ClientWidth() : ClientHeight();
-  }
-  DISABLE_CFI_PERF LayoutUnit ClientLogicalHeight() const {
-    NOT_DESTROYED();
-    return IsHorizontalWritingMode() ? ClientHeight() : ClientWidth();
-  }
-
-  LayoutUnit ClientWidthWithTableSpecialBehavior() const;
-  LayoutUnit ClientHeightWithTableSpecialBehavior() const;
 
   // scrollWidth/scrollHeight will be the same as clientWidth/clientHeight
   // unless the object has overflow:hidden/scroll/auto specified and also has
@@ -740,11 +709,13 @@ class CORE_EXPORT LayoutBox : public LayoutBoxModelObject {
 
   bool HasScrollableOverflowX() const {
     NOT_DESTROYED();
-    return ScrollsOverflowX() && ScrollWidth() != ClientWidth();
+    return ScrollsOverflowX() &&
+           ScrollWidth() != PhysicalPaddingBoxRect().Width();
   }
   bool HasScrollableOverflowY() const {
     NOT_DESTROYED();
-    return ScrollsOverflowY() && ScrollHeight() != ClientHeight();
+    return ScrollsOverflowY() &&
+           ScrollHeight() != PhysicalPaddingBoxRect().Height();
   }
   bool ScrollsOverflowX() const {
     NOT_DESTROYED();

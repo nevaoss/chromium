@@ -10,6 +10,7 @@
 #include "base/metrics/field_trial_params.h"
 #include "build/build_config.h"
 #include "components/signin/public/base/signin_buildflags.h"
+#include "extensions/buildflags/buildflags.h"
 
 class PrefService;
 
@@ -244,7 +245,18 @@ BASE_DECLARE_FEATURE(kCrossDeviceSigninFromDesktop);
 // Parameter containing the base URL for cross device sign-in from desktop.
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 extern const base::FeatureParam<std::string> kCrossDeviceSigninFromDesktopUrl;
+// Param to control if the "New" badge should be shown.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+extern const base::FeatureParam<bool> kCrossDeviceSigninFromDesktopNewBadge;
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+// Feature flag to send `version=2` in the `X-Chrome-ID-Consistency-Request`
+// header. This signals to Gaia that Chrome supports semicolon-separated (`';'`)
+// key=value pairs in the `X-Chrome-ID-Consistency-Response` header.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kDiceHeaderVersion2);
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 // Feature flag for the Linked Accounts request header support.

@@ -17,7 +17,6 @@
 #include "components/viz/common/gpu/raster_context_provider.h"
 #include "components/viz/common/resources/shared_image_format.h"
 #include "gpu/command_buffer/client/client_shared_image.h"
-#include "gpu/command_buffer/client/shared_image_pool.h"
 #include "gpu/command_buffer/common/shared_image_usage.h"
 #include "gpu/command_buffer/common/sync_token.h"
 #include "gpu/ipc/client/client_shared_image_interface.h"
@@ -26,7 +25,6 @@
 #include "third_party/blink/renderer/platform/graphics/canvas_resource.h"
 #include "third_party/blink/renderer/platform/graphics/image_orientation.h"
 #include "third_party/blink/renderer/platform/graphics/memory_managed_paint_recorder.h"
-#include "third_party/blink/renderer/platform/graphics/scoped_raster_timer.h"
 #include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
 #include "third_party/blink/renderer/platform/graphics/web_graphics_context_3d_provider_wrapper.h"
 #include "third_party/blink/renderer/platform/instrumentation/canvas_memory_dump_provider.h"
@@ -59,8 +57,7 @@ class PLATFORM_EXPORT WebGpuRecyclableResourceProvider
     : public CanvasMemoryDumpClient,
       public CanvasResourceSharedImage::Client,
       public WebGraphicsContext3DProviderWrapper::DestructionObserver,
-      public viz::ContextLostObserver,
-      public ScopedRasterTimer::Host {
+      public viz::ContextLostObserver {
  public:
   static std::unique_ptr<WebGpuRecyclableResourceProvider> Create(
       gfx::Size size,
@@ -75,14 +72,17 @@ class PLATFORM_EXPORT WebGpuRecyclableResourceProvider
   const gfx::ColorSpace& GetColorSpace() const { return color_space_; }
   SkAlphaType GetAlphaType() const { return alpha_type_; }
 
-  scoped_refptr<CanvasResource> ProduceCanvasResource();
+  scoped_refptr<gpu::ClientSharedImage> GetSharedImage() const;
+  gpu::SyncToken GetSyncToken() const;
+
+  void EndWriteAccess();
 
   // NOTE: Can only be used if this instance is accelerated.
   bool UploadToBackingSharedImage(const SkPixmap& pixmap,
                                   uint32_t src_x,
                                   uint32_t src_y);
 
-  scoped_refptr<CanvasResource> DoExternalOverdrawAndProduceResource(
+  void DoExternalOverdraw(
       base::FunctionRef<void(cc::PaintCanvas&)> draw_callback);
 
   // For WebGpu RecyclableCanvasResource.
@@ -127,11 +127,9 @@ class PLATFORM_EXPORT WebGpuRecyclableResourceProvider
       SkAlphaType,
       const gfx::ColorSpace&,
       const gfx::HDRMetadata&,
-      base::WeakPtr<WebGraphicsContext3DProviderWrapper>,
-      gpu::SharedImageUsageSet shared_image_usage_flags);
+      base::WeakPtr<WebGraphicsContext3DProviderWrapper>);
 
   void ClearUnusedResources();
-  bool IsSingleBuffered() const;
   bool IsGpuContextLost() const;
   CanvasImageProvider* GetOrCreateImageProvider();
 
@@ -149,17 +147,12 @@ class PLATFORM_EXPORT WebGpuRecyclableResourceProvider
   size_t GetSize() const override;
 
   void EnsureWriteAccess();
-  void EndWriteAccess();
 
-  scoped_refptr<CanvasResourceSharedImage> NewOrRecycledResource();
   bool IsValid() const;
 
   gpu::raster::RasterInterface* RasterInterface() const;
   base::WeakPtr<WebGpuRecyclableResourceProvider> CreateWeakPtr();
 
-  // The maximum number of in-flight resources waiting to be used for
-  // recycling.
-  static constexpr int kMaxRecycledCanvasResources = 3;
 
   CanvasResourceSharedImage* resource() {
     return static_cast<CanvasResourceSharedImage*>(resource_.get());
@@ -176,8 +169,6 @@ class PLATFORM_EXPORT WebGpuRecyclableResourceProvider
   // viz::ContextLostObserver implementation.
   void OnContextLost() override;
 
-  bool ShouldReplaceTargetBuffer();
-  void FlushRecording(cc::PaintRecord last_recording);
 
   std::unique_ptr<gpu::RasterScopedAccess> WillDrawInternal();
 
@@ -190,9 +181,6 @@ class PLATFORM_EXPORT WebGpuRecyclableResourceProvider
   std::unique_ptr<CanvasImageProvider> canvas_image_provider_;
   std::unique_ptr<MemoryManagedPaintRecorder> recorder_for_external_draws_;
 
-  // If this instance is single-buffered or |resource_recycling_enabled_| is
-  // false, |image_pool_| will not recycle resources.
-  std::unique_ptr<gpu::SharedImagePool<CanvasResourceSharedImage>> image_pool_;
 
   scoped_refptr<CanvasResourceSharedImage> resource_;
 

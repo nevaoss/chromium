@@ -429,6 +429,12 @@ BASE_FEATURE_PARAM(std::string,
                    "at_memory_eligible_tiers",
                    "");
 
+// The timeout for `PersonalContextService` requests in `AtMemoryQueryService`.
+BASE_FEATURE_PARAM(base::TimeDelta,
+                   kAutofillAtMemoryRequestTimeout,
+                   &kAutofillAtMemory,
+                   base::Seconds(30));
+
 // Controls whether the Autosuggest nudging logic is used. If enabled, user are
 // encouraged to use the AtMemory feature.
 BASE_FEATURE(kAutofillAtMemoryInactivityNudge,
@@ -970,6 +976,12 @@ BASE_FEATURE(kAutofillUseINAddressModel, base::FEATURE_DISABLED_BY_DEFAULT);
 // any of the negative patterns matched.
 BASE_FEATURE(kAutofillUseNegativePatternForAllAttributes,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Kill switch: If enabled, use the original suggestion payload. If disabled,
+// use a default GUID for payloads without a GUID [iOS specific].
+// TODO(crbug.com/525996248): Remove after M154 branchpoint if there are no
+// issues.
+BASE_FEATURE(kAutofillUseOriginalPayloadIos, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Replaces the secondary signature with the structural signature for Uploads.
 // For Queries still only the secondary (alternative) signature is used.

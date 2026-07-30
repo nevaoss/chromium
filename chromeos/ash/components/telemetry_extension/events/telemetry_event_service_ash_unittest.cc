@@ -68,9 +68,7 @@ class TelemetryEventServiceAshTest : public testing::Test {
   void SetUp() override { cros_healthd::FakeCrosHealthd::Initialize(); }
   void TearDown() override { cros_healthd::FakeCrosHealthd::Shutdown(); }
 
-  crosapi::mojom::TelemetryEventService& event_service() {
-    return event_service_;
-  }
+  ash::TelemetryEventServiceAsh& event_service() { return event_service_; }
 
  protected:
   TestEventObserver& observer() { return observer_; }
@@ -112,22 +110,6 @@ TEST_F(TelemetryEventServiceAshTest, AddEventObserver) {
                     crosapi::mojom::TelemetryAudioJackEventInfo::State::kRemove,
                     crosapi::mojom::TelemetryAudioJackEventInfo::DeviceType::
                         kHeadphone)));
-}
-
-TEST_F(TelemetryEventServiceAshTest, IsEventSupported) {
-  // Set the expected result in cros_healthd.
-  cros_healthd::FakeCrosHealthd::Get()->SetIsEventSupportedResponseForTesting(
-      cros_healthd::mojom::SupportStatus::NewSupported(
-          cros_healthd::mojom::Supported::New()));
-
-  base::test::TestFuture<crosapi::mojom::TelemetryExtensionSupportStatusPtr>
-      future;
-
-  event_service().IsEventSupported(
-      crosapi::mojom::TelemetryEventCategoryEnum::kAudioJack,
-      future.GetCallback());
-
-  EXPECT_TRUE(future.Get()->is_supported());
 }
 
 TEST_F(TelemetryEventServiceAshTest, OnCrosapiDisconnect) {

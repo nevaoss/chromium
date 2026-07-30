@@ -80,8 +80,8 @@ class PersonalContextAccessManagerImpl
       PersonalContextAccessManager::Observer* observer) override;
 
   // personal_context::PersonalContextEnablementService::Observer:
-  void OnEnablementStateChanged(
-      personal_context::PersonalContextEnablementState new_state) override;
+  void OnEligibilityStateChanged(
+      personal_context::PersonalContextEligibilityState new_state) override;
 
  private:
   friend class PersonalContextAccessManagerImplTestApi;

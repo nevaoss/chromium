@@ -43,6 +43,7 @@
 #include "chrome/browser/glic/actor/glic_actor_task_manager.h"
 #include "chrome/browser/glic/common/future_browser_features.h"
 #include "chrome/browser/glic/common/glic_navigation.h"
+#include "chrome/browser/glic/experimental_triggering/glic_experimental_triggering_manager.h"
 #include "chrome/browser/glic/glic_enums.h"
 #include "chrome/browser/glic/glic_metrics.h"
 #include "chrome/browser/glic/glic_pref_names.h"
@@ -643,9 +644,10 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
   }
 
   void CreateTab(const ::GURL& url,
-                 bool open_in_background,
-                 const std::optional<int32_t> window_id,
+                 glic::mojom::CreateTabOptionsPtr create_options,
                  CreateTabCallback callback) override {
+    bool open_in_background = create_options->open_in_background;
+    std::optional<int32_t> window_id = create_options->window_id;
     if (base::FeatureList::IsEnabled(media::kMediaLinkHelpers)) {
       if (auto* tab = GetSharingManagerInternal().GetFocusedTabData().focus()) {
         const bool replaced =
@@ -712,28 +714,34 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
 
     std::optional<int32_t> win_id =
         options ? options->fallback_window_id : std::nullopt;
-    CreateTab(exact_url, /*open_in_background=*/false, win_id,
-              std::move(callback));
+    auto create_options = mojom::CreateTabOptions::New();
+    create_options->open_in_background = false;
+    create_options->window_id = win_id;
+    CreateTab(exact_url, std::move(create_options), std::move(callback));
   }
 
   void OpenGlicSettingsPage(mojom::OpenSettingsOptionsPtr options) override {
+    std::string_view metric_suffix;
     switch (options->highlightField) {
       case mojom::SettingsPageField::kOsHotkey:
         ::glic::OpenGlicKeyboardShortcutSetting(profile_);
-        base::RecordAction(
-            base::UserMetricsAction("GlicSessionSettingsOpened.OsHotkey"));
+        metric_suffix = "OsHotkey";
         break;
       case mojom::SettingsPageField::kOsEntrypointToggle:
         ::glic::OpenGlicOsToggleSetting(profile_);
-        base::RecordAction(base::UserMetricsAction(
-            "GlicSessionSettingsOpened.OsEntrypointToggle"));
+        metric_suffix = "OsEntrypointToggle";
+        break;
+      case mojom::SettingsPageField::kLocationPermission:
+        ::glic::OpenGlicLocationSetting(profile_);
+        metric_suffix = "LocationPermission";
         break;
       case mojom::SettingsPageField::kNone:  // Default value.
         ::glic::OpenGlicSettingsPage(profile_);
-        base::RecordAction(
-            base::UserMetricsAction("GlicSessionSettingsOpened.Default"));
+        metric_suffix = "Default";
         break;
     }
+    base::RecordComputedAction(
+        base::StrCat({"GlicSessionSettingsOpened.", metric_suffix}));
   }
 
   void OpenPasswordManagerSettingsPage() override {
@@ -780,7 +788,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
   }
 
   void GetContextFromFocusedTab(
-      glic::mojom::GetTabContextOptionsPtr options,
+      glic::mojom::TabContextOptionsPtr options,
       GetContextFromFocusedTabCallback callback) override {
     FocusedTabData ftd = GetSharingManagerInternal().GetFocusedTabData();
     if (ftd.unfocused_tab()) {
@@ -810,7 +818,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
   }
 
   void GetContextFromTab(int32_t tab_id,
-                         glic::mojom::GetTabContextOptionsPtr options,
+                         glic::mojom::TabContextOptionsPtr options,
                          GetContextFromTabCallback callback) override {
     // Extra activation gating is done in this function.
     GetSharingManagerInternal().GetContextFromTab(
@@ -901,6 +909,15 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
                                                   std::move(client));
   }
 
+  void CreateExperimentalTriggeringClient(
+      mojo::PendingRemote<mojom::ExperimentalTriggeringClient> client)
+      override {
+    if (auto* manager =
+            host().instance_delegate().GetExperimentalTriggeringManager()) {
+      manager->Bind(std::move(client));
+    }
+  }
+
   void CreateAnnotationHandler(
       mojo::PendingReceiver<mojom::AnnotationHandler> receiver) override {
     if (!base::FeatureList::IsEnabled(features::kGlicScrollTo)) {
@@ -941,7 +958,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
 #if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL: CaptureRegion (b/494315475)
     std::optional<int32_t> tab_id =
         params ? std::optional<int32_t>(params->tab_id) : std::nullopt;
-    mojom::GetTabContextOptionsPtr tab_context_options =
+    mojom::TabContextOptionsPtr tab_context_options =
         params ? std::move(params->options) : nullptr;
     tabs::TabInterface* tab = nullptr;
     if (tab_id.has_value()) {
@@ -1527,8 +1544,18 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
       int32_t tab_id,
       const std::vector<std::string>& names,
       SubscribeToPageMetadataCallback callback) override {
-    page_metadata_manager_->SubscribeToPageMetadata(tab_id, names,
-                                                    std::move(callback));
+    // TODO(b/480418718): Not sure how this happens but we sometimes get here
+    // with a null page_metadata_manager_. The mojo pipe is cleared on mojo
+    // disconnect and destruction (which also closes the mojo pipe) so suspect
+    // this is more likely because we receive the message before the
+    // WebClientCreated message is received (and thus before a manager is
+    // created). This is a bandaid but better than crashing the browser.
+    if (page_metadata_manager_) {
+      page_metadata_manager_->SubscribeToPageMetadata(tab_id, names,
+                                                      std::move(callback));
+    } else {
+      std::move(callback).Run(/*success=*/false);
+    }
   }
 
   void OnPinnedTabDataChanged(const TabDataChange& change) {
@@ -1571,13 +1598,6 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
   void Invoke(mojom::InvokeOptionsPtr options,
               base::OnceClosure callback) override {
     web_client_->Invoke(std::move(options), std::move(callback));
-  }
-
-  void GetExperimentalTriggeringUpdates(
-      mojo::PendingRemote<mojom::ExperimentalTriggeringUpdatesHandler> handler,
-      base::OnceCallback<void(bool)> success_status_callback) override {
-    web_client_->GetExperimentalTriggeringUpdates(
-        std::move(handler), std::move(success_status_callback));
   }
 
 

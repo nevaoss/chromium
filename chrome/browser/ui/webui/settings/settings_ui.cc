@@ -54,7 +54,6 @@
 #include "chrome/browser/ui/passwords/ui_utils.h"
 #include "chrome/browser/ui/toasts/toast_features.h"
 #include "chrome/browser/ui/ui_features.h"
-#include "chrome/browser/ui/views/side_panel/customize_chrome/customize_chrome_utils.h"
 #include "chrome/browser/ui/webui/cr_components/customize_color_scheme_mode/customize_color_scheme_mode_handler.h"
 #include "chrome/browser/ui/webui/extension_control_handler.h"
 #include "chrome/browser/ui/webui/favicon_source.h"
@@ -698,20 +697,13 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
   html_source->AddBoolean(
       "isAtMemoryEnabled",
       autofill::MayPerformAtMemoryAction(
-          autofill::AtMemoryAction::kShowAtMemoryInSettings, enablement_service,
-          subscription_eligibility::SubscriptionEligibilityServiceFactory::
-              GetForProfile(profile),
-          profile->GetPrefs(),
-          GoogleGroupsManagerFactory::GetForBrowserContext(profile)));
-  // TODO(b:529788949): The old Personal Context settings linkout got superseded
-  // by another Personal Context presence in settings, see
-  // 'showSuggestionsFromGeminiSettings' above. Remove this old linkout here.
-  html_source->AddBoolean("showPersonalContextSettingsLink", false);
-  html_source->AddLocalizedString("personalContextSettingsTitle",
-                                  IDS_PERSONAL_CONTEXT_SETTINGS_TITLE);
-  html_source->AddLocalizedString(
-      "personalContextSettingsDescription",
-      IDS_PERSONAL_CONTEXT_SETTINGS_DESCRIPTION_DESKTOP);
+          autofill::AtMemoryAction::kShowAtMemoryInSettings, autofill_client));
+
+  html_source->AddBoolean(
+      "isAtMemoryTriggerCustomizationAllowed",
+      autofill::MayPerformAtMemoryAction(
+          autofill::AtMemoryAction::kAllowCustomizeAtMemoryShortcut,
+          autofill_client));
 
   html_source->AddString(
       "webuiRefresh2026",

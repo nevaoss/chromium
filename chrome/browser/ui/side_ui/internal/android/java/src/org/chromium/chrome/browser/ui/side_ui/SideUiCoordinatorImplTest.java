@@ -49,6 +49,7 @@ import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.RobolectricUtil;
+import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.AnchorSide;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiId;
@@ -72,8 +73,10 @@ public class SideUiCoordinatorImplTest {
     @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
 
     @Mock private ActivityLifecycleDispatcher mActivityLifecycleDispatcher;
+    @Mock private BrowserControlsStateProvider mBrowserControlsStateProvider;
     @Mock private ViewStub mLeftAnchorContainerStub;
     @Mock private ViewStub mRightAnchorContainerStub;
+    @Mock private ViewStub mWebContentHairlineContainerStub;
     @Mock private SideUiObserver mSideUiObserver;
 
     private final SettableNonNullObservableSupplier<Integer> mTopMarginSupplier =
@@ -114,14 +117,24 @@ public class SideUiCoordinatorImplTest {
         doReturn(mLeftAnchorContainer).when(mLeftAnchorContainerStub).inflate();
         doReturn(mRightAnchorContainer).when(mRightAnchorContainerStub).inflate();
 
+        SideUiWebContentHairlineContainer webContentHairlineContainer =
+                (SideUiWebContentHairlineContainer)
+                        mTestActivity
+                                .getLayoutInflater()
+                                .inflate(R.layout.side_ui_web_content_hairline_container, null);
+        webContentHairlineContainer.setLayoutParams(new MarginLayoutParams(0, 0));
+        doReturn(webContentHairlineContainer).when(mWebContentHairlineContainerStub).inflate();
+
         // Initialize the SideUiCoordinator under test.
         mCoordinator =
                 new SideUiCoordinatorImpl(
                         mTestActivity,
                         mActivityLifecycleDispatcher,
+                        mBrowserControlsStateProvider,
                         anchorContainerParent,
                         mLeftAnchorContainerStub,
                         mRightAnchorContainerStub,
+                        mWebContentHairlineContainerStub,
                         mTopMarginSupplier);
 
         // Initialize the SideUiContainer View.

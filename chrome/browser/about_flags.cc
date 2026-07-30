@@ -17,6 +17,7 @@
 #include "base/allocator/partition_alloc_features.h"
 #include "base/base_switches.h"
 #include "base/command_line.h"
+#include "base/containers/span.h"
 #include "base/feature_list.h"
 #include "base/features.h"
 #include "base/functional/bind.h"
@@ -301,6 +302,7 @@
 #include "chrome/browser/media/router/media_router_feature.h"
 #include "chrome/browser/ui/tabs/features.h"
 #include "chrome/browser/web_applications/preinstalled_app_install_features.h"
+#include "components/component_updater/installer_policies/iwa_key_distribution_component_installer_policy.h"
 #include "components/user_education/common/user_education_features.h"  // nogncheck
 #endif  // BUILDFLAG(IS_ANDROID)
 
@@ -800,20 +802,6 @@ const FeatureEntry::Choice kReaderModeHeuristicsChoices[] = {
 };
 
 
-const FeatureEntry::FeatureParam kReaderModeUseReadabilityDistiller[] = {
-    {"use_distiller", "true"}};
-const FeatureEntry::FeatureParam kReaderModeUseReadabilityHeuristic[] = {
-    {"use_heuristic", "true"}};
-const FeatureEntry::FeatureParam kReaderModeUseReadabilityAll[] = {
-    {"use_distiller", "true"},
-    {"use_heuristic", "true"}};
-
-const FeatureEntry::FeatureVariation kReaderModeUseReadabilityChoices[] = {
-    {"distiller only", kReaderModeUseReadabilityDistiller, nullptr},
-    {"triggering heuristic only", kReaderModeUseReadabilityHeuristic, nullptr},
-    {"both distiller and triggering heuristic", kReaderModeUseReadabilityAll,
-     nullptr}};
-
 const FeatureEntry::Choice kForceUpdateMenuTypeChoices[] = {
     {flags_ui::kGenericExperimentChoiceDefault, "", ""},
     {flag_descriptions::kUpdateMenuTypeNone, switches::kForceUpdateMenuType,
@@ -889,6 +877,15 @@ const FeatureEntry::FeatureVariation
          kDisablePartnerHomepageAndroidForZeroTabsParam, nullptr},
 };
 #endif  // BUILDFLAG(IS_ANDROID)
+
+#if !BUILDFLAG(IS_ANDROID)
+const FeatureEntry::Choice kDynamicAiModeButtonChoices[] = {
+    {flags_ui::kGenericExperimentChoiceDefault, "", ""},
+    {flags_ui::kGenericExperimentChoiceEnabled, switches::kEnableFeatures,
+     "WebUIOmniboxDynamicAiModeButton,NtpRealboxDynamicAiModeButton"},
+    {flags_ui::kGenericExperimentChoiceDisabled, switches::kDisableFeatures,
+     "WebUIOmniboxDynamicAiModeButton,NtpRealboxDynamicAiModeButton"}};
+#endif
 
 const FeatureEntry::FeatureParam
     kWebIdentityDigitalIdentityCredentialNoDialogParam[] = {
@@ -2775,9 +2772,23 @@ const FeatureEntry::Choice kSendTabToSelfEnhancedHandoffChoices[] = {
      "SyncSimplifyDeviceNaming,"
      "SyncUseServerDeterminedDeviceName,"
      "SyncSessionsUsePreferredDisplayName"},
+    {"Enabled with fast-follows", switches::kEnableFeatures,
+     "SendTabToSelfAutoOpen,"
+     "SendTabToSelfExtraEntryPoints,"
+     "SendTabToSelfEnhancedDesktopUIv2,"
+     "SendTabToSelfImprovedLastActiveLabels,"
+     "SendTabToSelfPropagateFormFields,"
+     "SendTabToSelfPropagateScrollPosition,"
+     "SendTabToSelfEnhancedDesktopUI,"
+     "SendTabToSelfPostSendToast,"
+     "SendTabToSelfEnhancedBottomsheet,"
+     "SyncSimplifyDeviceNaming,"
+     "SyncUseServerDeterminedDeviceName,"
+     "SyncSessionsUsePreferredDisplayName"},
     {flags_ui::kGenericExperimentChoiceDisabled, switches::kDisableFeatures,
      "SendTabToSelfAutoOpen,"
      "SendTabToSelfExtraEntryPoints,"
+     "SendTabToSelfEnhancedDesktopUIv2,"
      "SendTabToSelfImprovedLastActiveLabels,"
      "SendTabToSelfPropagateFormFields,"
      "SendTabToSelfPropagateScrollPosition,"
@@ -3727,7 +3738,14 @@ const FeatureEntry::Choice kGlicSelectionPromptChoices[] = {
     {"Enabled with InlineCue and Settings", switches::kEnableFeatures,
      "GlicSelectionPrompt:use_widget/true/enable_site_settings/true"},
     {"Enabled with InlineCue and Copy Buttons", switches::kEnableFeatures,
-     "GlicSelectionPrompt:use_widget/true/show_copy_buttons/true"}};
+     "GlicSelectionPrompt:use_widget/true/show_copy_buttons/true"},
+    {"Enabled with InlineCue (CTA: Tell me about this)",
+     switches::kEnableFeatures,
+     "GlicSelectionPrompt:use_widget/true/enable_site_settings/true/cta/"
+     "tell_me_about_this/auto_send_prompt/true"},
+    {"Enabled with InlineCue (CTA: Explain)", switches::kEnableFeatures,
+     "GlicSelectionPrompt:use_widget/true/enable_site_settings/true/cta/"
+     "explain/auto_send_prompt/true"}};
 
 const FeatureEntry::FeatureParam kAutofillShowTypePredictionsAsTitle[] = {
     {"as-title", "true"}};
@@ -4610,6 +4628,12 @@ const FeatureEntry::Choice kAISummarizationPerformancePreferenceChoices[] = {
      "AISummarizationPerformancePreference,OnDeviceModelLitertLmBackend,"
      "OptimizationGuideManifestBroker"}};
 
+// Semantic Embedder. Enables the API for both Window and Worker contexts.
+const FeatureEntry::Choice kAISemanticEmbedderChoices[] = {
+    {flags_ui::kGenericExperimentChoiceDefault, "", ""},
+    {flags_ui::kGenericExperimentChoiceEnabled, switches::kEnableFeatures,
+     "AIEmbeddingsAPI,AIEmbeddingsAPIForWorkers"}};
+
 // Classifier requires LiteRT-LM.
 const FeatureEntry::Choice kAIClassifierChoices[] = {
     {flags_ui::kGenericExperimentChoiceDefault, "", ""},
@@ -4752,10 +4776,13 @@ const FeatureEntry::FeatureVariation kToolbarGlowUpVariations[] = {
 
 const FeatureEntry::FeatureParam kGlassFrameEoH95[] = {
     {"BackgroundBlurOpacity", "0.95"}};
+const FeatureEntry::FeatureParam kGlassFrameEoH925[] = {
+    {"BackgroundBlurOpacity", "0.925"}};
 const FeatureEntry::FeatureParam kGlassFrameEoH90[] = {
     {"BackgroundBlurOpacity", "0.90"}};
 const FeatureEntry::FeatureVariation kGlassFrameVariations[] = {
     {"expand-on-hover 5% glass", kGlassFrameEoH95, nullptr},
+    {"expand-on-hover 7.5% glass", kGlassFrameEoH925, nullptr},
     {"expand-on-hover 10% glass", kGlassFrameEoH90, nullptr}};
 
 // RECORDING USER METRICS FOR FLAGS:
@@ -5363,7 +5390,7 @@ const FeatureEntry kFeatureEntries[] = {
      MULTI_VALUE_TYPE(kPullToRefreshChoices)},
 #endif  // USE_AURA
     {"enable-touch-drag-drop", flag_descriptions::kTouchDragDropName,
-     flag_descriptions::kTouchDragDropDescription, kOsWin | kOsCrOS,
+     flag_descriptions::kTouchDragDropDescription, kOsLinux | kOsWin | kOsCrOS,
      FEATURE_VALUE_TYPE(features::kTouchDragAndDrop)},
     {"touch-selection-strategy", flag_descriptions::kTouchSelectionStrategyName,
      flag_descriptions::kTouchSelectionStrategyDescription,
@@ -5428,12 +5455,6 @@ const FeatureEntry kFeatureEntries[] = {
     {"reader-mode-toggle-links", flag_descriptions::kReaderModeToggleLinksName,
      flag_descriptions::kReaderModeToggleLinksDescription, kOsAndroid,
      FEATURE_VALUE_TYPE(dom_distiller::kReaderModeToggleLinks)},
-    {"reader-mode-use-readability",
-     flag_descriptions::kReaderModeUseReadabilityName,
-     flag_descriptions::kReaderModeUseReadabilityDescription, kOsAndroid,
-     FEATURE_WITH_PARAMS_VALUE_TYPE(dom_distiller::kReaderModeUseReadability,
-                                    kReaderModeUseReadabilityChoices,
-                                    "Reader Mode use readability")},
     {"submenus-in-app-menu", flag_descriptions::kSubmenusInAppMenuName,
      flag_descriptions::kSubmenusInAppMenuDescription, kOsAndroid,
      FEATURE_VALUE_TYPE(chrome::android::kSubmenusInAppMenu)},
@@ -5873,6 +5894,11 @@ const FeatureEntry kFeatureEntries[] = {
      flag_descriptions::kTabClosureMethodRefactorName,
      flag_descriptions::kTabClosureMethodRefactorDescription, kOsAndroid,
      FEATURE_VALUE_TYPE(chrome::android::kTabClosureMethodRefactor)},
+
+    {"tab-sharing-toolbar-android",
+     flag_descriptions::kTabSharingToolbarAndroidName,
+     flag_descriptions::kTabSharingToolbarAndroidDescription, kOsAndroid,
+     FEATURE_VALUE_TYPE(chrome::android::kTabSharingToolbarAndroid)},
 
     // Home module pref refactor
     {"home-module-pref-refactor",
@@ -9470,6 +9496,12 @@ const FeatureEntry kFeatureEntries[] = {
      flag_descriptions::kAiModeEntryPointAlwaysNavigatesDescription, kOsDesktop,
      FEATURE_VALUE_TYPE(omnibox::kAiModeEntryPointAlwaysNavigates)},
 
+#if !BUILDFLAG(IS_ANDROID)
+    {"dynamic-ai-mode-button", flag_descriptions::kDynamicAiModeButtonName,
+     flag_descriptions::kDynamicAiModeButtonDescription, kOsDesktop,
+     MULTI_VALUE_TYPE(kDynamicAiModeButtonChoices)},
+#endif
+
     {"omnibox-ai-mode-space-does-not-activate",
      flag_descriptions::kOmniboxAiModeSpaceDoesNotActivateName,
      flag_descriptions::kOmniboxAiModeSpaceDoesNotActivateDescription,
@@ -10041,6 +10073,11 @@ const FeatureEntry kFeatureEntries[] = {
          kDisablePartnerHomepageAndroidVariations,
          "DisablePartnerHomepageAndroid")},
 
+    {"bottom-sheet-on-desktop-windowing",
+     flag_descriptions::kBottomSheetOnDesktopWindowingName,
+     flag_descriptions::kBottomSheetOnDesktopWindowingDescription, kOsAndroid,
+     FEATURE_VALUE_TYPE(chrome::android::kBottomSheetOnDesktopWindowing)},
+
     {"tab-bottom-sheet", flag_descriptions::kTabBottomSheetName,
      flag_descriptions::kTabBottomSheetDescription, kOsAndroid,
      FEATURE_WITH_PARAMS_VALUE_TYPE(chrome::android::kTabBottomSheet,
@@ -10078,6 +10115,11 @@ const FeatureEntry kFeatureEntries[] = {
      flag_descriptions::kCrossDeviceTaskHandoffName,
      flag_descriptions::kCrossDeviceTaskHandoffDescription, kOsAndroid,
      FEATURE_VALUE_TYPE(chrome::android::kCrossDeviceTaskHandoff)},
+
+    {"cross-window-tab-group-operations",
+     flag_descriptions::kCrossWindowTabGroupOperationsName,
+     flag_descriptions::kCrossWindowTabGroupOperationsDescription, kOsAndroid,
+     FEATURE_VALUE_TYPE(chrome::android::kCrossWindowTabGroupOperations)},
 
     {"history-pane-android", flag_descriptions::kHistoryPaneAndroidName,
      flag_descriptions::kHistoryPaneAndroidDescription, kOsAndroid,
@@ -10269,6 +10311,11 @@ const FeatureEntry kFeatureEntries[] = {
     {"proofreader-api", flag_descriptions::kProofreaderAPIName,
      flag_descriptions::kProofreaderAPIDescription, kOsDesktop,
      MULTI_VALUE_TYPE(kAIProofreaderChoices), flag_descriptions::kAIAPIsLinks},
+
+    {"semantic-embedder-api", flag_descriptions::kSemanticEmbedderAPIName,
+     flag_descriptions::kSemanticEmbedderAPIDescription, kOsDesktop,
+     MULTI_VALUE_TYPE(kAISemanticEmbedderChoices),
+     flag_descriptions::kAIAPIsLinks},
 
     {"classifier-api", flag_descriptions::kClassifierAPIName,
      flag_descriptions::kClassifierAPIDescription, kOsDesktop,
@@ -11318,11 +11365,6 @@ const FeatureEntry kFeatureEntries[] = {
      flag_descriptions::kBlockCrossPartitionBlobUrlFetchingName,
      flag_descriptions::kBlockCrossPartitionBlobUrlFetchingDescription, kOsAll,
      FEATURE_VALUE_TYPE(features::kBlockCrossPartitionBlobUrlFetching)},
-
-    {"web-authentication-immediate-get",
-     flag_descriptions::kWebAuthnImmediateGetName,
-     flag_descriptions::kWebAuthnImmediateGetDescription, kOsAll,
-     FEATURE_VALUE_TYPE(device::kWebAuthnImmediateGet)},
 
     {"web-authentication-cross-device-fallback-url",
      flag_descriptions::kWebAuthnCrossDeviceFallbackUrlName,
@@ -12667,9 +12709,9 @@ const FeatureEntry kFeatureEntries[] = {
      FEATURE_VALUE_TYPE(extensions_features::kSearchEngineUnconditionalDialog)},
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
 
-    {"enable-webmcp-testing", flag_descriptions::kWebMCPTestingName,
-     flag_descriptions::kWebMCPTestingDescription, kOsAll,
-     FEATURE_VALUE_TYPE(blink::features::kWebMCPTesting)},
+    {"enable-webmcp-testing", flag_descriptions::kWebMCPName,
+     flag_descriptions::kWebMCPDescription, kOsAll,
+     FEATURE_VALUE_TYPE(blink::features::kWebMCP)},
 
 #if BUILDFLAG(IS_ANDROID)
     {"persist-across-reboots-debug-logs",
@@ -13335,6 +13377,12 @@ const FeatureEntry kFeatureEntries[] = {
     {"ntp-vision", flag_descriptions::kNtpVisionName,
      flag_descriptions::kNtpVisionDescription, kOsAndroid,
      FEATURE_VALUE_TYPE(chrome::android::kNtpVision)},
+#endif
+#if BUILDFLAG(IS_ANDROID)
+    {"toolbar-progress-bar-refactor",
+     flag_descriptions::kToolbarProgressBarRefactorName,
+     flag_descriptions::kToolbarProgressBarRefactorDescription, kOsAndroid,
+     FEATURE_VALUE_TYPE(chrome::android::kToolbarProgressBarRefactor)},
 #endif
     // Add new entries above this line.
     // NOTE: Adding a new flag requires adding a corresponding entry to enum

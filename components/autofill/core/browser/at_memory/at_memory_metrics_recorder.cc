@@ -65,26 +65,47 @@ AtMemoryMetricsRecorder::~AtMemoryMetricsRecorder() {
   // This avoids polluting the "No Query Submitted" data with cases where the
   // popup was hidden immediately after initialization (e.g., due to focus
   // loss) before the user could see or interact with it.
-  if (source_.has_value()) {
-    base::UmaHistogramBoolean("Autofill.AtMemory.QuerySubmitted",
-                              query_submitted_);
-    MaybeLogSuggestionAccepted();
-    if (suggestion_accepted_.value_or(false)) {
-      base::UmaHistogramCounts100(
-          "Autofill.AtMemory.QueryCountBeforeAcceptance", query_count_);
-      // TODO(crbug.com/530438524): Fix and rename.
-      base::UmaHistogramBoolean("Autofill.AtMemory.Funnel.SuggestionFilled",
-                                was_filled_);
-      if (fetch_pii_duration_) {
-        base::UmaHistogramTimes("Autofill.AtMemory.Funnel.TimeToFetchUnmasked",
-                                *fetch_pii_duration_);
-      }
+  if (!source_.has_value()) {
+    return;
+  }
+
+  base::UmaHistogramBoolean("Autofill.AtMemory.QuerySubmitted",
+                            query_submitted_);
+  MaybeLogSuggestionAccepted();
+  base::UmaHistogramBoolean("Autofill.AtMemory.SuggestionAcceptedInSession",
+                            suggestion_accepted_in_session_);
+  if (suggestion_acceptance_.accepted_data_type.has_value()) {
+    base::UmaHistogramBoolean("Autofill.AtMemory.SuggestionFilled",
+                              was_filled_);
+    if (fetch_pii_duration_) {
+      base::UmaHistogramTimes("Autofill.AtMemory.Funnel.TimeToFetchUnmasked",
+                              *fetch_pii_duration_);
     }
   }
 }
 
 void AtMemoryMetricsRecorder::OnPopupShown(
-    AutofillSuggestionTriggerSource trigger_source) {
+    AutofillSuggestionTriggerSource trigger_source,
+    base::optional_ref<const AutofillSuggestionDelegate::SuggestionMetadata>
+        parent_suggestion_metadata) {
+  // TODO(crbug.com/526885251): Add metrics for flyout menu.
+  if (parent_suggestion_metadata.has_value()) {
+    if (pending_log_entry_ &&
+        !parent_suggestion_metadata->multi_index.empty()) {
+      optimization_guide::proto::AtMemoryQuality* quality =
+          pending_log_entry_->log_ai_data_request()
+              ->mutable_at_memory()
+              ->mutable_quality();
+      size_t root_index = parent_suggestion_metadata->multi_index[0];
+      if (root_index < static_cast<size_t>(quality->suggestions_size())) {
+        auto* root_suggestion = quality->mutable_suggestions(root_index);
+        root_suggestion->set_action(
+            optimization_guide::proto::
+                AT_MEMORY_SUGGESTION_ACTION_FLYOUT_MENU_OPENED);
+      }
+    }
+    return;
+  }
   if (source_.has_value()) {
     return;
   }
@@ -124,8 +145,6 @@ void AtMemoryMetricsRecorder::OnPopupShown(
 }
 
 void AtMemoryMetricsRecorder::OnQuerySubmitted(std::u16string_view query) {
-  MaybeLogSuggestionAccepted();
-  suggestion_accepted_ = false;
   ++query_count_;
 
   query_to_suggestions_shown_timer_.emplace();
@@ -152,9 +171,12 @@ void AtMemoryMetricsRecorder::OnQuerySubmitted(std::u16string_view query) {
 }
 
 void AtMemoryMetricsRecorder::OnSuggestionAccepted(
+    accessibility_annotator::MemoryDataType memory_data_type,
     base::optional_ref<const AutofillSuggestionDelegate::SuggestionMetadata>
         metadata) {
-  suggestion_accepted_ = true;
+  suggestion_acceptance_.accepted_data_type = memory_data_type;
+  suggestion_accepted_in_session_ = true;
+
   if (metadata.has_value() && !metadata->multi_index.empty()) {
     base::UmaHistogramSparse("Autofill.AtMemory.AcceptedSuggestionIndex",
                              static_cast<int>(metadata->multi_index[0]));
@@ -163,6 +185,25 @@ void AtMemoryMetricsRecorder::OnSuggestionAccepted(
                                     : -1;
     base::UmaHistogramSparse(
         "Autofill.AtMemory.AcceptedSuggestionSecondaryIndex", secondary_index);
+
+    if (pending_log_entry_) {
+      optimization_guide::proto::AtMemoryQuality* quality =
+          pending_log_entry_->log_ai_data_request()
+              ->mutable_at_memory()
+              ->mutable_quality();
+      if (metadata->multi_index[0] >=
+          static_cast<size_t>(quality->suggestions_size())) {
+        // This should never happen, but if it does, we should not crash.
+        return;
+      }
+      auto* accepted_suggestion =
+          quality->mutable_suggestions(metadata->multi_index[0]);
+      accepted_suggestion->set_action(
+          secondary_index == -1
+              ? optimization_guide::proto::AT_MEMORY_SUGGESTION_ACTION_ACCEPTED
+              : optimization_guide::proto::
+                    AT_MEMORY_SUGGESTION_ACTION_FLYOUT_MENU_ATTRIBUTE_ACCEPTED);
+    }
   }
 }
 
@@ -172,6 +213,9 @@ void AtMemoryMetricsRecorder::OnQueryResponseReceived(
           GetQueryCompletedStatus(result)) {
     base::UmaHistogramEnumeration("Autofill.AtMemory.QueryCompleted", *status);
   }
+
+  MaybeLogSuggestionAccepted();
+  suggestion_acceptance_ = {.suggestions_received = !result.entries.empty()};
 
   if (!query_to_suggestions_shown_timer_) {
     return;
@@ -223,9 +267,17 @@ void AtMemoryMetricsRecorder::MarkFilled() {
 }
 
 void AtMemoryMetricsRecorder::MaybeLogSuggestionAccepted() {
-  if (suggestion_accepted_) {
-    base::UmaHistogramBoolean("Autofill.AtMemory.SuggestionAccepted",
-                              *suggestion_accepted_);
+  if (suggestion_acceptance_.suggestions_received) {
+    base::UmaHistogramBoolean(
+        "Autofill.AtMemory.SuggestionAccepted",
+        suggestion_acceptance_.accepted_data_type.has_value());
+  }
+  if (suggestion_acceptance_.accepted_data_type.has_value()) {
+    base::UmaHistogramEnumeration(
+        "Autofill.AtMemory.AcceptedSuggestionDataType",
+        *suggestion_acceptance_.accepted_data_type);
+    base::UmaHistogramCounts100("Autofill.AtMemory.QueryCountBeforeAcceptance",
+                                query_count_);
   }
 }
 

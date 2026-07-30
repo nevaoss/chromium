@@ -27,13 +27,13 @@ namespace {
 
 // Returns the forced enablement state as set via the feature parameter iff
 // it corresponds to a valid enum entry and `std::nullopt` otherwise.
-std::optional<PersonalContextEnablementState> GetForcedEnablementState() {
-  const auto unsafe_type = static_cast<PersonalContextEnablementState>(
+std::optional<PersonalContextEligibilityState> GetForcedEnablementState() {
+  const auto unsafe_type = static_cast<PersonalContextEligibilityState>(
       features::debug::kPersonalContextForceEnablementStateParam.Get());
   switch (unsafe_type) {
-    case PersonalContextEnablementState::kDisabledNotEligible:
-    case PersonalContextEnablementState::kDisabledNeedsOptIn:
-    case PersonalContextEnablementState::kEnabled:
+    case PersonalContextEligibilityState::kDisabledNotEligible:
+    case PersonalContextEligibilityState::kDisabledNeedsOptIn:
+    case PersonalContextEligibilityState::kEligible:
       return unsafe_type;
   }
   return std::nullopt;
@@ -189,8 +189,8 @@ void PersonalContextEnablementServiceImpl::RemoveObserver(
   observers_.RemoveObserver(observer);
 }
 
-PersonalContextEnablementState
-PersonalContextEnablementServiceImpl::GetEnablementState() {
+PersonalContextEligibilityState
+PersonalContextEnablementServiceImpl::GetEligibilityState() {
   if (base::FeatureList::IsEnabled(
           features::debug::kPersonalContextForceEnablementState)) {
     return GetForcedEnablementState().value_or(enablement_state_);
@@ -199,10 +199,10 @@ PersonalContextEnablementServiceImpl::GetEnablementState() {
   return enablement_state_;
 }
 
-std::pair<PersonalContextEnablementState,
+std::pair<PersonalContextEligibilityState,
           std::optional<PersonalContextNonEligibilityReason>>
 PersonalContextEnablementServiceImpl::ComputeEnablementState() {
-  using enum PersonalContextEnablementState;
+  using enum PersonalContextEligibilityState;
 
   if (auto [satisfied, reason] =
           SatisfiesAccountRequirements(identity_manager_.get());
@@ -230,7 +230,7 @@ PersonalContextEnablementServiceImpl::ComputeEnablementState() {
         reason};
   }
 
-  return std::pair{kEnabled, PersonalContextNonEligibilityReason::kEligible};
+  return std::pair{kEligible, PersonalContextNonEligibilityReason::kEligible};
 }
 
 void PersonalContextEnablementServiceImpl::UpdateEnablementState() {
@@ -239,10 +239,12 @@ void PersonalContextEnablementServiceImpl::UpdateEnablementState() {
   if (new_enablement_state != enablement_state_) {
     enablement_state_ = new_enablement_state;
     observers_.Notify(
-        &PersonalContextEnablementService::Observer::OnEnablementStateChanged,
+        &PersonalContextEnablementService::Observer::OnEligibilityStateChanged,
         enablement_state_);
   }
-  if (non_eligibility_reason != last_non_eligibility_reason_) {
+  if (base::FeatureList::IsEnabled(
+          personal_context::features::kPersonalContextLogNonEligibilityUma) &&
+      non_eligibility_reason != last_non_eligibility_reason_) {
     last_non_eligibility_reason_ = non_eligibility_reason;
     MaybeLogPersonalContextNonEligibility(non_eligibility_reason);
   }

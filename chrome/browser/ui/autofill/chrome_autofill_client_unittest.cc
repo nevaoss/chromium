@@ -141,8 +141,8 @@ class MockPersonalContextEnablementService
 
   MOCK_METHOD(void, AddObserver, (Observer*), (override));
   MOCK_METHOD(void, RemoveObserver, (Observer*), (override));
-  MOCK_METHOD(personal_context::PersonalContextEnablementState,
-              GetEnablementState,
+  MOCK_METHOD(personal_context::PersonalContextEligibilityState,
+              GetEligibilityState,
               (),
               (override));
 };
@@ -883,9 +883,9 @@ TEST_F(ChromeAutofillClientTestWithMockWindow,
        ShowAutofillAtMemoryPromo_Enabled) {
   base::test::ScopedFeatureList feature_list(features::kAutofillAtMemory);
   InitializePersonalContextEnablementService();
-  EXPECT_CALL(*personal_context_enablement_service(), GetEnablementState())
+  EXPECT_CALL(*personal_context_enablement_service(), GetEligibilityState())
       .WillRepeatedly(
-          Return(personal_context::PersonalContextEnablementState::kEnabled));
+          Return(personal_context::PersonalContextEligibilityState::kEligible));
 
   MockBrowserUserEducationInterface mock_user_education(
       &mock_browser_window_interface());
@@ -906,8 +906,8 @@ TEST_F(ChromeAutofillClientTestWithMockWindow,
        ShowAutofillAtMemoryPromo_ServiceDisabled) {
   base::test::ScopedFeatureList feature_list(features::kAutofillAtMemory);
   InitializePersonalContextEnablementService();
-  EXPECT_CALL(*personal_context_enablement_service(), GetEnablementState())
-      .WillRepeatedly(Return(personal_context::PersonalContextEnablementState::
+  EXPECT_CALL(*personal_context_enablement_service(), GetEligibilityState())
+      .WillRepeatedly(Return(personal_context::PersonalContextEligibilityState::
                                  kDisabledNotEligible));
 
   MockBrowserUserEducationInterface mock_user_education(
@@ -924,9 +924,9 @@ TEST_F(ChromeAutofillClientTestWithMockWindow,
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndDisableFeature(features::kAutofillAtMemory);
   InitializePersonalContextEnablementService();
-  EXPECT_CALL(*personal_context_enablement_service(), GetEnablementState())
+  EXPECT_CALL(*personal_context_enablement_service(), GetEligibilityState())
       .WillRepeatedly(
-          Return(personal_context::PersonalContextEnablementState::kEnabled));
+          Return(personal_context::PersonalContextEligibilityState::kEligible));
 
   MockBrowserUserEducationInterface mock_user_education(
       &mock_browser_window_interface());
@@ -941,9 +941,9 @@ TEST_F(ChromeAutofillClientTestWithMockWindow,
        ShowAutofillAtMemoryPromo_PersonalContextToggleOff) {
   base::test::ScopedFeatureList feature_list(features::kAutofillAtMemory);
   InitializePersonalContextEnablementService();
-  EXPECT_CALL(*personal_context_enablement_service(), GetEnablementState())
+  EXPECT_CALL(*personal_context_enablement_service(), GetEligibilityState())
       .WillRepeatedly(
-          Return(personal_context::PersonalContextEnablementState::kEnabled));
+          Return(personal_context::PersonalContextEligibilityState::kEligible));
   profile()->GetPrefs()->SetBoolean(
       personal_context::prefs::kPersonalContextInAutofillSettingsToggleStatus,
       false);
@@ -1037,9 +1037,9 @@ TEST_F(ChromeAutofillClientTestWithMockWindow,
        AtMemoryCopyPasteObserver_RegularProfileTracking) {
   base::test::ScopedFeatureList feature_list(features::kAutofillAtMemory);
   InitializePersonalContextEnablementService();
-  EXPECT_CALL(*personal_context_enablement_service(), GetEnablementState())
+  EXPECT_CALL(*personal_context_enablement_service(), GetEligibilityState())
       .WillRepeatedly(
-          Return(personal_context::PersonalContextEnablementState::kEnabled));
+          Return(personal_context::PersonalContextEligibilityState::kEligible));
 
   // Setup a secondary `WebContents` for pasting (so the copy and paste are in
   // different tabs).
@@ -1099,9 +1099,9 @@ TEST_F(ChromeAutofillClientTestWithMockWindow,
        ShowAutofillAtMemoryPromo_NonBrandedBuild) {
   base::test::ScopedFeatureList feature_list(features::kAutofillAtMemory);
   InitializePersonalContextEnablementService();
-  EXPECT_CALL(*personal_context_enablement_service(), GetEnablementState())
+  EXPECT_CALL(*personal_context_enablement_service(), GetEligibilityState())
       .WillRepeatedly(
-          Return(personal_context::PersonalContextEnablementState::kEnabled));
+          Return(personal_context::PersonalContextEligibilityState::kEligible));
 
   MockBrowserUserEducationInterface mock_user_education(
       &mock_browser_window_interface());
@@ -1114,21 +1114,21 @@ TEST_F(ChromeAutofillClientTestWithMockWindow,
 
 // Tests that if there is no enablement service available to the profile, client
 // defaults to kDisabledNotEligible state.
-TEST_F(ChromeAutofillClientTest, GetPersonalContextEnablementState_NoService) {
+TEST_F(ChromeAutofillClientTest, GetPersonalContextEligibilityState_NoService) {
   EXPECT_EQ(
-      client()->GetPersonalContextEnablementState(),
-      personal_context::PersonalContextEnablementState::kDisabledNotEligible);
+      client()->GetPersonalContextEligibilityState(),
+      personal_context::PersonalContextEligibilityState::kDisabledNotEligible);
 }
 
 // Tests that the client correctly pipes the state from the enablement service.
-TEST_F(ChromeAutofillClientTest, GetPersonalContextEnablementState_HappyPath) {
+TEST_F(ChromeAutofillClientTest, GetPersonalContextEligibilityState_HappyPath) {
   InitializePersonalContextEnablementService();
 
-  EXPECT_CALL(*personal_context_enablement_service(), GetEnablementState())
+  EXPECT_CALL(*personal_context_enablement_service(), GetEligibilityState())
       .WillRepeatedly(
-          Return(personal_context::PersonalContextEnablementState::kEnabled));
-  EXPECT_EQ(client()->GetPersonalContextEnablementState(),
-            personal_context::PersonalContextEnablementState::kEnabled);
+          Return(personal_context::PersonalContextEligibilityState::kEligible));
+  EXPECT_EQ(client()->GetPersonalContextEligibilityState(),
+            personal_context::PersonalContextEligibilityState::kEligible);
 }
 
 #if !BUILDFLAG(IS_ANDROID)

@@ -179,13 +179,6 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 GpuFeatures.USE_STRONG_REF_TO_SHARED_IMAGE_INTERFACE,
                 "Allows ClientSharedImage to store a strong reference to SharedImageInterface."),
-        Flag.baseFeature(
-                VizFeatures.WEBVIEW_NEW_INVALIDATE_HEURISTIC,
-                "More robust heuristic for calling Invalidate. Isn't supported for TV, see"
-                        + " WebViewNewInvalidateHeuristicForTV."),
-        Flag.baseFeature(
-                VizFeatures.WEBVIEW_NEW_INVALIDATE_HEURISTIC_FOR_TV,
-                "More robust heuristic for calling Invalidate"),
         Flag.baseFeature(VizFeatures.WEBVIEW_VULKAN_INTERMEDIATE_BUFFER, "For debugging vulkan"),
         Flag.baseFeature(
                 VizFeatures.WEBVIEW_ENABLE_ADPF, "Pass WebView threads to HWUI ADPF session"),
@@ -521,6 +514,9 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 NetFeatures.DISK_CACHE_BACKEND_EXPERIMENT,
                 "Enables the experimental disk cache backend for HTTP Cache"),
+        Flag.baseFeature(
+                NetFeatures.CACHE_CERT_VERIFICATION,
+                "Enables caching of certificate verification results"),
         Flag.baseFeature("MojoIpcz"),
         Flag.baseFeature("MojoFixGeometricBufferGrowth"),
         Flag.baseFeature(
@@ -1111,6 +1107,9 @@ public final class ProductionSupportedFlagList {
                 AwFeatures.WEBVIEW_FASTER_GET_DEFAULT_USER_AGENT,
                 "When enabled, the default user agent string is fetched more quickly without"
                         + " waiting for chromium startup to complete."),
+        Flag.baseFeature(
+                AwFeatures.WEBVIEW_PROFILE_STORE_NOT_TRIGGER_STARTUP,
+                "When enabled, accessing the ProfileStore does not trigger WebView startup."),
         Flag.baseFeature(
                 NetworkServiceFeatures.COMPRESSION_DICTIONARY_LIMIT_EARLY_MATCHING,
                 "When enabled, limits the early loading of compression dictionaries to document"

@@ -100,6 +100,7 @@ import org.chromium.chrome.browser.share.ShareDelegate;
 import org.chromium.chrome.browser.tab.MediaState;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabId;
+import org.chromium.chrome.browser.tab.TabSelectionType;
 import org.chromium.chrome.browser.tab_group_sync.TabGroupSyncServiceFactory;
 import org.chromium.chrome.browser.tab_ui.ActionConfirmationManager;
 import org.chromium.chrome.browser.tabmodel.TabClosingSource;
@@ -493,7 +494,7 @@ public class StripLayoutHelper
         boolean isGlicUiVisible();
 
         /** Returns the Glic button compositor instance. */
-        @Nullable CompositorButton getGlicButton();
+        @Nullable TintedCompositorButton getGlicButton();
     }
 
     public interface LeadingButtonDelegate {
@@ -1222,24 +1223,21 @@ public class StripLayoutHelper
     }
 
     /**
-     * @param trailingButtonsTouchTargetSize The combined touch target size for the trailing
-     *     buttons.
-     * @param msbTouchTargetSize The touch target size for the model selector button.
+     * @param trailingButtonsTouchTargetSize The combined touch target size of all the visible
+     *     trailing buttons.
      */
-    public void updateEndMarginForStripButtons(
-            float trailingButtonsTouchTargetSize, float msbTouchTargetSize) {
-        // There are two additional tab strip buttons: Glic & MSB
-        // When both buttons are not visible we add strip end padding here.
-        // When either is visible, the strip end padding will be included in the visible button(s)
-        // touch target, so just add padding between NTB and visible button(s) here.
-        float stripButtonsTouchTargetSize = trailingButtonsTouchTargetSize + msbTouchTargetSize;
+    public void updateEndMarginForStripButtons(float trailingButtonsTouchTargetSize) {
+        // When there are no trailing buttons visible, we add strip end padding here.
+        // When there are trailing buttons visible, the strip end padding will be included in the
+        // visible button(s) touch target, so just add padding between NTB and visible button(s)
+        // here.
         float padding =
-                stripButtonsTouchTargetSize > 0
+                trailingButtonsTouchTargetSize > 0
                         ? NEW_TAB_BUTTON_WITH_STRIP_BUTTON_PADDING
                         : mFixedEndPadding;
-        mReservedEndMargin = stripButtonsTouchTargetSize + mNewTabButtonWidth + padding;
+        mReservedEndMargin = trailingButtonsTouchTargetSize + mNewTabButtonWidth + padding;
 
-        updateFades(stripButtonsTouchTargetSize);
+        updateFades(trailingButtonsTouchTargetSize);
         updateMargins(true);
     }
 
@@ -1389,7 +1387,11 @@ public class StripLayoutHelper
             computeAndUpdateTabWidth(/* animate= */ false, /* deferAnimations= */ false);
         }
         if (getSelectedTabId() != Tab.INVALID_TAB_ID) {
-            tabSelected(LayoutManagerImpl.time(), getSelectedTabId(), Tab.INVALID_TAB_ID);
+            tabSelected(
+                    LayoutManagerImpl.time(),
+                    getSelectedTabId(),
+                    Tab.INVALID_TAB_ID,
+                    TabSelectionType.FROM_USER);
         }
         mModel.addObserver(mTabModelObserver);
         mModel.addTabGroupObserver(mTabGroupObserver);
@@ -1537,7 +1539,11 @@ public class StripLayoutHelper
         rebuildStripTabs(/* deferAnimations= */ false);
         registerTabsWithUnderlineManager();
         if (getSelectedTabId() != Tab.INVALID_TAB_ID) {
-            tabSelected(LayoutManagerImpl.time(), getSelectedTabId(), Tab.INVALID_TAB_ID);
+            tabSelected(
+                    LayoutManagerImpl.time(),
+                    getSelectedTabId(),
+                    Tab.INVALID_TAB_ID,
+                    TabSelectionType.FROM_USER);
         }
     }
 
@@ -1731,7 +1737,7 @@ public class StripLayoutHelper
         }
         // Checked after tab strip visibility since a hidden strip makes Glic button visibility
         // return false, which would incorrectly discard the IPH instead of postponing it.
-        CompositorButton glicButton = mTrailingButtonDelegate.getGlicButton();
+        TintedCompositorButton glicButton = mTrailingButtonDelegate.getGlicButton();
         if (glicButton == null || !mTrailingButtonDelegate.isGlicButtonVisible()) {
             return true;
         }
@@ -1775,6 +1781,11 @@ public class StripLayoutHelper
                                         /* enableSnoozeMode= */ false));
             }
         }
+    }
+
+    /** Returns whether Glic IPH is currently showing on the tab strip. */
+    public boolean isGlicIphShowing() {
+        return mTabStripIphController != null && mTabStripIphController.isGlicIphShowing();
     }
 
     void setLastSyncedGroupIdForTesting(@Nullable Token tabGroupId) {
@@ -1828,8 +1839,9 @@ public class StripLayoutHelper
      * @param time The current time of the app in ms.
      * @param id The id of the selected tab.
      * @param prevId The id of the previously selected tab.
+     * @param type The type of tab selection.
      */
-    public void tabSelected(long time, int id, int prevId) {
+    public void tabSelected(long time, int id, int prevId, @TabSelectionType int type) {
         StripLayoutTab stripTab = findTabById(id);
         // TODO(crbug.com/469826110): Switch to an assert when we can no longer get a #tabSelected
         //  event before the tab is recreated (e.g. through an undone closure).
@@ -1842,7 +1854,8 @@ public class StripLayoutHelper
         if (tab != null
                 && mModel != null
                 && tab.getTabGroupId() != null
-                && mModel.getTabGroupCollapsed(tab.getTabGroupId())) {
+                && mModel.getTabGroupCollapsed(tab.getTabGroupId())
+                && type != TabSelectionType.FROM_DRAG) {
             mModel.deleteTabGroupCollapsed(tab.getTabGroupId());
         }
 
@@ -2035,7 +2048,9 @@ public class StripLayoutHelper
         // 6. Notify the new tab was selected. This may be needed if we get a tab's selected event
         // before its creation event, such as when a tab is reselected for an undone closure.
         // See crbug.com/469826110.
-        if (selected) tabSelected(time, id, findSelectedStripTabId());
+        if (selected) {
+            tabSelected(time, id, findSelectedStripTabId(), TabSelectionType.FROM_USER);
+        }
 
         mUpdateHost.requestUpdate();
     }

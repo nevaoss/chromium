@@ -14,6 +14,7 @@ import type {ComposeboxDropdownElement} from 'chrome://resources/cr_components/c
 import type {ComposeboxInputElement} from 'chrome://resources/cr_components/composebox/composebox_input.js';
 import {ComposeboxEmbedderMixin} from 'chrome://resources/cr_components/composebox/composebox_mixin.js';
 import {ComposeboxProxyImpl} from 'chrome://resources/cr_components/composebox/composebox_proxy.js';
+import type {ContextualEntrypointAndMenuElement} from 'chrome://resources/cr_components/composebox/contextual_entrypoint_and_menu.js';
 import type {ComposeboxFileCarouselElement} from 'chrome://resources/cr_components/composebox/file_carousel.js';
 import {I18nMixinLit} from 'chrome://resources/cr_elements/i18n_mixin_lit.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
@@ -117,7 +118,8 @@ class TestComposeboxMixinElement extends TestElementBase {
     return ComposeboxProxyImpl.getInstance().searchboxHandler;
   }
 
-  override getContextEntrypointElement() {
+  override getContextEntrypointElement(): ContextualEntrypointAndMenuElement
+      |null {
     return null;
   }
 }
@@ -164,6 +166,9 @@ suite('ComposeboxMixinTest', () => {
 
     element = document.createElement('test-composebox-mixin') as
         TestComposeboxMixinElement;
+    // The mixin queries ZPS on mount by default, which advances the
+    // autocomplete query id; opt out so per-test assertions start clean.
+    element.queryZpsOnLoad = false;
     document.body.appendChild(element);
     await microtasksFinished();
   });
@@ -333,6 +338,36 @@ suite('ComposeboxMixinTest', () => {
         assertDeepEquals(
             args, [0, 'hello world', false, 11, SuggestInventory.kDefault]);
       });
+
+  test('queries autocomplete on load by default', async () => {
+    searchboxHandler.resetResolver('queryAutocompleteWithSuggestInventory');
+    const freshComposebox = document.createElement('test-composebox-mixin') as
+        TestComposeboxMixinElement;
+    document.body.appendChild(freshComposebox);
+    await microtasksFinished();
+
+    assertEquals(
+        1,
+        searchboxHandler.getCallCount('queryAutocompleteWithSuggestInventory'));
+  });
+
+  test('does not query autocomplete on load when queryZpsOnLoad is false',
+       async () => {
+    searchboxHandler.resetResolver('queryAutocompleteWithSuggestInventory');
+    const freshComposebox =
+        document.createElement('test-composebox-mixin') as
+        TestComposeboxMixinElement;
+    // queryZpsOnLoad is read in connectedCallback, so it must be set before
+    // the element connects. Contextual Tasks sets it false and drives
+    // autocomplete from its own zero-state logic instead.
+    freshComposebox.queryZpsOnLoad = false;
+    document.body.appendChild(freshComposebox);
+    await microtasksFinished();
+
+    assertEquals(
+        0,
+        searchboxHandler.getCallCount('queryAutocompleteWithSuggestInventory'));
+  });
 
   test(
       'Shift+Enter allows inserting a newline when input is focused and not empty',
@@ -1341,4 +1376,70 @@ suite('ComposeboxMixinTest', () => {
         assertEquals(0, element.aimThreadRestoredTabs.length);
         assertFalse(element.hasCachedSubmittedTabsThisTurn);
       });
+
+  test(
+      'keepMenuOpenForMultiSelection is gated by keepMenuOpenOnTabSelect',
+      async () => {
+        element.contextManagementInComposeboxEnabled = true;
+        let openMenuCalled = false;
+        element.getContextEntrypointElement = () => {
+          return {
+            openMenuForMultiSelection: () => {
+              openMenuCalled = true;
+            },
+          } as ContextualEntrypointAndMenuElement;
+        };
+
+        // Gating flag off: returns early
+        Object.defineProperty(element, 'keepMenuOpenOnTabSelect', {
+          get: () => false,
+          configurable: true,
+        });
+        await element.keepMenuOpenForMultiSelection();
+        assertFalse(openMenuCalled);
+
+        // Gating flag on: calls openMenuForMultiSelection
+        Object.defineProperty(element, 'keepMenuOpenOnTabSelect', {
+          get: () => true,
+          configurable: true,
+        });
+        await element.keepMenuOpenForMultiSelection();
+        assertTrue(openMenuCalled);
+      });
+
+  test(
+      'keepMenuOpenForMultiSelection called on add/delete tab context',
+      async () => {
+        element.contextManagementInComposeboxEnabled = true;
+        let keepMenuOpenCalled = false;
+        element.keepMenuOpenForMultiSelection = () => {
+          keepMenuOpenCalled = true;
+          return Promise.resolve();
+        };
+
+        await element.onAddTabContext(new CustomEvent('add-tab-context', {
+          detail: {
+            id: 1,
+            title: 'Test',
+            url: 'about:blank',  // Mojo converts obj to str.
+            delayUpload: false,
+            origin: TabUploadOrigin.CONTEXT_MENU,
+          },
+        }));
+        assertTrue(keepMenuOpenCalled);
+
+        keepMenuOpenCalled = false;
+        await element.onDeleteTabContext(new CustomEvent('delete-tab-context', {
+          detail: {
+            uuid: '0',
+          },
+        }));
+        assertTrue(keepMenuOpenCalled);
+      });
+
+  test('onContextMenuClosed sets shareTabsFlyoutOpen to false', async () => {
+    element.shareTabsFlyoutOpen = true;
+    await element.onContextMenuClosed();
+    assertFalse(element.shareTabsFlyoutOpen);
+  });
 });

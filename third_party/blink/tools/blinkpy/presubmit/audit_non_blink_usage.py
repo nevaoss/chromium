@@ -408,6 +408,16 @@ _CONFIG = [
     },
     {
         'paths': [
+            'third_party/blink/common/renderer_preferences/',
+            'third_party/blink/public/common/renderer_preferences/',
+        ],
+        'allowed': [
+            'ui::KeyboardCode',
+            'ui::VKEY_UNKNOWN',
+        ],
+    },
+    {
+        'paths': [
             'third_party/blink/common/context_menu_data/',
             'third_party/blink/common/input/',
         ],
@@ -533,6 +543,17 @@ _CONFIG = [
         ],
         'allowed': [
             'net::SiteForCookies',
+        ],
+    },
+    {
+        'paths': [
+            'third_party/blink/common/service_worker/service_worker_loader_helpers.cc',
+        ],
+        'allowed': [
+            'base::EqualsCaseInsensitiveASCII',
+            'base::MakeFixedFlatSet',
+            'base::ToLowerASCII',
+            'network::mojom::FetchResponseType',
         ],
     },
     {
@@ -3047,6 +3068,9 @@ _CONFIG = [
             'third_party/blink/public/web/',
         ],
         'allowed': [
+            'mojom::DocumentPolicyFeature',
+            'mojom::PolicyValueType',
+            'net::structured_headers::Item',
             'network::GetPermissionsPolicyFeatureList',
             'network::mojom::PermissionsPolicyFeature',
             'network::OriginWithPossibleWildcards',

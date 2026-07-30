@@ -14,6 +14,7 @@
 #import "components/variations/variations_ids_provider.h"
 #import "ios/chrome/app/profile/profile_init_stage.h"
 #import "ios/chrome/app/profile/profile_state.h"
+#import "ios/chrome/app/profile/profile_state_test_utils.h"
 #import "ios/chrome/browser/bookmarks/model/bookmark_model_factory.h"
 #import "ios/chrome/browser/enterprise/data_protection/model/data_protection_scene_agent.h"
 #import "ios/chrome/browser/enterprise/data_protection/public/features.h"
@@ -33,6 +34,7 @@
 #import "ios/chrome/browser/shared/coordinator/layout_guide/layout_guide_scene_agent.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_controller_testing.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_state.h"
+#import "ios/chrome/browser/shared/coordinator/scene/scene_state_options.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_util_test_support.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/incognito_state.h"
 #import "ios/chrome/browser/shared/model/browser/browser_list_factory.h"
@@ -106,8 +108,9 @@ class SceneControllerTest : public PlatformTest {
     scene_state_ = [[SceneStateWithFakeScene alloc] initWithScene:fake_scene_
                                                          appState:nil];
 
-    profile_state_ = CreateMockProfileState(ProfileInitStage::kFinal);
-    scene_state_.profileState = profile_state_;
+    profile_state_ = CreateProfileState(ProfileInitStage::kFinal);
+    [scene_state_ connectWithOptions:{.profile_state = profile_state_,
+                                      .identifier = "scene-id"}];
 
     scene_controller_ =
         [[InternalFakeSceneController alloc] initWithSceneState:scene_state_];
@@ -196,12 +199,12 @@ class SceneControllerTest : public PlatformTest {
     ResetEnableNewStartupFlowEnabledForTesting();
   }
 
-  // Mock & stub a ProfileState object with an arbitrary `init_stage` property.
-  ProfileState* CreateMockProfileState(ProfileInitStage init_stage) {
-    ProfileState* mock_profile_state = OCMClassMock([ProfileState class]);
-    OCMStub([mock_profile_state initStage]).andReturn(init_stage);
-    OCMStub([mock_profile_state profile]).andReturn(profile_.get());
-    return mock_profile_state;
+  // Creates a ProfileState object with an arbitrary `init_stage` property.
+  ProfileState* CreateProfileState(ProfileInitStage init_stage) {
+    ProfileState* profile_state = [[ProfileState alloc] initWithAppState:nil];
+    SetProfileStateInitStage(profile_state, init_stage);
+    profile_state.profile = profile_.get();
+    return profile_state;
   }
 
   // Mock & stub a WrangledBrowser object.
@@ -360,8 +363,9 @@ TEST_F(SceneControllerTest, TestDataProtectionSceneAgentEnabled) {
 
   EXPECT_EQ(nil, [DataProtectionSceneAgent agentFromScene:scene_state]);
 
-  scene_controller.profileState =
-      CreateMockProfileState(ProfileInitStage::kFinal);
+  ProfileState* profile_state = CreateProfileState(ProfileInitStage::kFinal);
+  [scene_controller connectWithOptions:{.profile_state = profile_state,
+                                        .identifier = "other-id"}];
 
   EXPECT_NE(nil, [DataProtectionSceneAgent agentFromScene:scene_state]);
 }
@@ -378,8 +382,9 @@ TEST_F(SceneControllerTest, TestDataProtectionSceneAgentDisabled) {
 
   EXPECT_EQ(nil, [DataProtectionSceneAgent agentFromScene:scene_state]);
 
-  scene_controller.profileState =
-      CreateMockProfileState(ProfileInitStage::kFinal);
+  ProfileState* profile_state = CreateProfileState(ProfileInitStage::kFinal);
+  [scene_controller connectWithOptions:{.profile_state = profile_state,
+                                        .identifier = "other-id"}];
 
   EXPECT_EQ(nil, [DataProtectionSceneAgent agentFromScene:scene_state]);
 }

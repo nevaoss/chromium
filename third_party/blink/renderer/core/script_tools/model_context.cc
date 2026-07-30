@@ -33,6 +33,7 @@
 #include "third_party/blink/renderer/core/script_tools/script_tool_context.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/bindings/source_location.h"
+#include "third_party/blink/renderer/platform/bindings/v8_binding.h"
 #include "third_party/blink/renderer/platform/heap/persistent.h"
 #include "third_party/blink/renderer/platform/json/json_parser.h"
 #include "third_party/blink/renderer/platform/json/json_values.h"
@@ -244,8 +245,22 @@ class ModelContext::ToolFunctionFinishedCallback
       }
       model_context_->OnToolExecuted(invocation_id_, *result);
     } else {
-      V8ScriptRunner::ReportException(script_state->GetIsolate(),
-                                      value.V8Value());
+      v8::Isolate* isolate = script_state->GetIsolate();
+      v8::Local<v8::Message> message =
+          v8::Exception::CreateMessage(isolate, value.V8Value());
+      String message_text = ToCoreStringWithNullCheck(isolate, message->Get());
+      if (message_text.empty()) {
+        message_text = "Unknown error";
+      }
+      SourceLocation* location = CaptureSourceLocation(
+          isolate, message, model_context_->GetExecutionContext());
+
+      model_context_->GetExecutionContext()->AddConsoleMessage(
+          MakeGarbageCollected<ConsoleMessage>(
+              mojom::blink::ConsoleMessageSource::kJavaScript,
+              mojom::blink::ConsoleMessageLevel::kError,
+              "WebMCP tool execution failed: " + message_text, location));
+
       model_context_->OnToolExecuted(
           invocation_id_,
           base::unexpected(std::make_pair(value, script_state)));
@@ -613,8 +628,7 @@ bool ModelContext::ExecuteV8Tool(V8ToolExecuteCallback* tool_function,
                                  const String& input_arguments,
                                  AbortSignal* signal,
                                  ScriptToolExecutedCallback tool_executed_cb) {
-  UseCounter::Count(document_,
-                    WebFeature::kModelContextExecuteToolAllExecutions);
+  UseCounter::Count(document_, WebFeature::kModelContextExecuteImperativeTool);
   ScriptState* script_state = tool_function->CallbackRelevantScriptState();
   ScriptState::Scope scope(script_state);
   v8::TryCatch try_catch(script_state->GetIsolate());
@@ -777,35 +791,27 @@ void ModelContext::PauseExecution() {
 }
 
 void ModelContext::NotifyToolChange() {
-  if (tool_change_closure_) {
-    (*tool_change_closure_).Run();
-  }
-
-  // The above closure fires the `toolchange` on the `ModelContextTesting`
-  // interface. Even if it detaches the document, it is still safe to dispatch
-  // the event on `this` as well.
   DispatchEvent(*Event::Create(event_type_names::kToolchange));
 }
 
-void ModelContext::ExecuteScriptTool(const String& name,
-                                     const String& input_arguments,
-                                     ExecuteScriptToolCallback callback) {
-  // TODO(http://b/485810761): Pass `invocation_id` up from the browser, instead
-  // of generating it in the renderer.
-  ExecuteTool(
-      /*invocation_id=*/base::UnguessableToken::Create(), name, input_arguments,
-      /*signal=*/nullptr,
-      blink::BindOnce(
-          [](ExecuteScriptToolCallback callback,
-             base::expected<String, ScriptToolError> result) {
-            if (result.has_value()) {
-              std::move(callback).Run(result.value(), true);
-            } else {
-              std::move(callback).Run(GetToolErrorMessage(result.error()),
-                                      false);
-            }
-          },
-          std::move(callback)));
+void ModelContext::ExecuteScriptTool(
+    const base::UnguessableToken& invocation_id,
+    const String& name,
+    const String& input_arguments,
+    ExecuteScriptToolCallback callback) {
+  ExecuteTool(invocation_id, name, input_arguments,
+              /*signal=*/nullptr,
+              blink::BindOnce(
+                  [](ExecuteScriptToolCallback callback,
+                     base::expected<String, ScriptToolError> result) {
+                    if (result.has_value()) {
+                      std::move(callback).Run(result.value(), true);
+                    } else {
+                      std::move(callback).Run(
+                          GetToolErrorMessage(result.error()), false);
+                    }
+                  },
+                  std::move(callback)));
 }
 
 HeapVector<Member<const ToolData>> ModelContext::ListTools() const {
@@ -1024,9 +1030,12 @@ ScriptPromise<IDLNullable<IDLString>> ModelContext::executeTool(
     scoped_abort_state = std::make_unique<ScopedAbortState>(signal, handle);
   }
 
+  base::UnguessableToken invocation_id = base::UnguessableToken::Create();
+
   model_context_host_remote_->ExecuteRemoteScriptTool(
-      frame_token, SecurityOrigin::CreateFromString(tool->origin()),
-      tool->name(), input_arguments,
+      invocation_id, frame_token,
+      SecurityOrigin::CreateFromString(tool->origin()), tool->name(),
+      input_arguments,
       blink::BindOnce(
           [](ModelContext* self,
              ScriptPromiseResolver<IDLNullable<IDLString>>* resolver,

@@ -427,9 +427,6 @@ void ToolbarView::Init() {
     toolbar_webview_ = AddChildView(std::make_unique<WebUIToolbarWebView>(
         browser_, browser_->command_controller(),
         std::move(webui_location_bar)));
-
-    toolbar_webview_->SetProperty(views::kFlexBehaviorKey,
-                                  toolbar_webview_->GetFlexSpecification());
   }
 
   if (!features::IsWebUIReloadButtonEnabled() ||
@@ -1519,15 +1516,12 @@ void ToolbarView::InitLayout() {
       .SetCollapseMargins(true)
       .SetDefault(views::kMarginsKey, gfx::Insets::VH(0, default_margin));
 
+  // If the Views location bar is in use, set its properties here.
   if (location_bar_view_) {
     location_bar_view_->SetProperty(views::kFlexBehaviorKey,
                                     location_bar_flex_rule);
     location_bar_view_->SetProperty(views::kMarginsKey,
                                     gfx::Insets::VH(0, location_bar_margin));
-  } else {
-    // If the location bar is part of a WebView, make that stretchable.
-    toolbar_webview_->SetProperty(views::kFlexBehaviorKey,
-                                  location_bar_flex_rule);
   }
 
   if (extensions_container_) {
@@ -1596,6 +1590,14 @@ void ToolbarView::InitLayout() {
       this, toolbar_webview_.get(), overflow_button_, pinned_toolbar_actions_,
       PinnedToolbarActionsModel::Get(browser_view_->GetProfile()));
   overflow_button_->set_toolbar_controller(toolbar_controller_.get());
+
+  if (toolbar_webview_) {
+    toolbar_webview_->SetProperty(
+        views::kFlexBehaviorKey,
+        toolbar_webview_->GetFlexSpecification(
+            toolbar_controller_->webui_toolbar_button_flex_order(),
+            location_bar_flex_order));
+  }
 
   LayoutCommon();
 }
@@ -1735,15 +1737,14 @@ gfx::Rect ToolbarView::GetFindBarBoundingBox(int contents_bottom) {
     return gfx::Rect();
   }
 
-  CHECK(location_bar_view_)
-      << "Alternate location bar impls need to handle this.";
+  CHECK(location_bar_);
 
-  if (!location_bar_view_->IsDrawn()) {
+  if (!location_bar_->IsDrawn()) {
     return gfx::Rect();
   }
 
-  gfx::Rect bounds = location_bar_view_->ConvertRectToWidget(
-      location_bar_view_->GetLocalBounds());
+  gfx::Rect bounds = views::View::ConvertRectFromScreen(
+      GetWidget()->GetRootView(), location_bar_->BoundsInScreen());
   return gfx::Rect(bounds.x(), bounds.bottom(), bounds.width(),
                    contents_bottom - bounds.bottom());
 }

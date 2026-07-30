@@ -50,10 +50,11 @@ class TabInterface;
 
 namespace glic {
 class ContextualCueingService;
-class GlicMetrics;
-class GlicUiEmbedder;
 class EmptyEmbedderDelegate;
+class GlicExperimentalTriggeringManager;
+class GlicMetrics;
 class GlicSkillsManagerImpl;
+class GlicUiEmbedder;
 class GlicZeroStateSuggestionsManager;
 
 BASE_DECLARE_FEATURE(kGlicRemoveDaisyChainingWhenFreShowing);
@@ -108,6 +109,10 @@ class GlicInstanceImpl : public GlicInstance,
     // Called to create a new web contents for the glic instance.
     virtual std::unique_ptr<WebUIContentsContainer>
     CreateWebUIContentsContainer() = 0;
+
+    // Called by an instance just before its WebUI container is created from a
+    // hibernated state.
+    virtual void OnInstanceWillAwaken() = 0;
   };
 
   GlicInstanceImpl(
@@ -192,9 +197,6 @@ class GlicInstanceImpl : public GlicInstance,
   void SendAdditionalContext(mojom::AdditionalContextPtr context) override;
   void FocusIfActive() override;
   void NotifyActorTaskListRowClicked(int32_t task_id) override;
-  void GetExperimentalTriggeringUpdates(
-      mojo::PendingRemote<mojom::ExperimentalTriggeringUpdatesHandler> handler,
-      base::OnceCallback<void(bool)> success_status_callback) override;
   const InstanceId& id() const override;
   void SetIdForRestoration(InstanceId id);
   std::optional<std::string> conversation_id() const override;
@@ -205,6 +207,8 @@ class GlicInstanceImpl : public GlicInstance,
       base::RepeatingCallback<void(const mojom::ConversationInfo&)> callback);
   void CancelTask() override;
   GlicActorTaskManager* GetActorTaskManager() override;
+  GlicExperimentalTriggeringManager* GetExperimentalTriggeringManager()
+      override;
   GlicSharingManager* GetSharingManager() override;
   void UpdateSkillPreviews(
       std::optional<tabs::TabInterface*> updated_tab) override;
@@ -349,6 +353,12 @@ class GlicInstanceImpl : public GlicInstance,
 
   bool ShouldPinOnBind() const;
 
+  // Idempotency helper: if the instance is hibernated
+  // (!host_.webui_contents()), notifies the coordinator via
+  // OnInstanceWillAwaken() and creates the WebUI container. No-op if
+  // contents already exist.
+  void EnsureHostContentsCreated();
+
   void MaybeActivateForegroundEmbedder();
   void MaybeRemoveBlankInstanceOnClose();
 
@@ -425,6 +435,8 @@ class GlicInstanceImpl : public GlicInstance,
       zero_state_suggestions_manager_;
   std::unique_ptr<GlicSkillsManagerImpl> skills_manager_;
   std::unique_ptr<GlicActorTaskManager> actor_task_manager_;
+  std::unique_ptr<GlicExperimentalTriggeringManager>
+      experimental_triggering_manager_;
   base::CallbackListSubscription pinned_tabs_change_subscription_;
   base::CallbackListSubscription actuating_changed_subscription_;
 

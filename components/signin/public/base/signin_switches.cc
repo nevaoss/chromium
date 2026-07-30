@@ -278,7 +278,13 @@ BASE_FEATURE(kCrossDeviceSigninFromDesktop, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<std::string> kCrossDeviceSigninFromDesktopUrl{
     &kCrossDeviceSigninFromDesktop, "url",
     "https://www.google.com/chrome/go-mobile?entry_point_id=1&email=$1"};
+const base::FeatureParam<bool> kCrossDeviceSigninFromDesktopNewBadge{
+    &kCrossDeviceSigninFromDesktop, "show_new_badge", true};
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+BASE_FEATURE(kDiceHeaderVersion2, base::FEATURE_DISABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 BASE_FEATURE(kDiceLinkedAccounts, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -304,8 +310,16 @@ BASE_FEATURE(kEnableAccountPreviewEntityPreviews,
 
 #if BUILDFLAG(IS_ANDROID)
 // Whether activityless sign-in should be used for all entry points.
+// Extensions are not shipped on Android yet. The flow is newly implemented. We
+// enable activityless signin by default on this new userless entrypoint to
+// avoid implementing the legacy flow which will never be shipped.
 BASE_FEATURE(kEnableActivitylessSigninAllEntryPoint,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+#if BUILDFLAG(ENABLE_DESKTOP_ANDROID_EXTENSIONS)
+             base::FEATURE_ENABLED_BY_DEFAULT
+#else
+             base::FEATURE_DISABLED_BY_DEFAULT
+#endif
+);
 #endif
 
 #if BUILDFLAG(IS_ANDROID)

@@ -18,6 +18,7 @@
 #include "base/strings/string_view_util.h"
 #include "components/crx_file/id_util.h"
 #include "components/safe_browsing/core/browser/db/hash_prefix_container.h"
+#include "components/safe_browsing/core/browser/db/hash_prefix_list.h"
 #include "components/safe_browsing/core/browser/db/hash_prefix_map.h"
 #include "components/safe_browsing/core/browser/db/sb_protocol_manager_util.h"
 #include "components/safe_browsing/core/browser/db/v4_store.pb.h"
@@ -29,6 +30,18 @@
 
 namespace safe_browsing {
 
+namespace {
+
+const char kUrlSocengV5UmaSuffix[] = ".UrlSoceng_v5";
+const char kChromeExtMalwareV5UmaSuffix[] = ".ChromeExtMalware_v5";
+const char kUrlMalBinV5UmaSuffix[] = ".UrlMalBin_v5";
+// TODO(crbug.com/372395685): Deprecate v4 versions.
+const char kUrlSocengV4UmaSuffix[] = ".UrlSoceng";
+const char kChromeExtMalwareV4UmaSuffix[] = ".ChromeExtMalware";
+const char kUrlMalBinV4UmaSuffix[] = ".UrlMalBin";
+
+}  // namespace
+
 SBStore::SBStore(const scoped_refptr<base::SequencedTaskRunner>& task_runner,
                  const base::FilePath& store_path,
                  int64_t old_file_size)
@@ -38,6 +51,18 @@ SBStore::SBStore(const scoped_refptr<base::SequencedTaskRunner>& task_runner,
       task_runner_(task_runner) {}
 
 SBStore::~SBStore() = default;
+
+void SBStore::CollectStoreInfo(
+    DatabaseManagerInfo::DatabaseInfo::StoreInfo* store_info) {
+  store_info->set_file_name(GetUmaSuffixForStore(store_path_)
+                                .substr(1));  // Strip the '.' off the front
+  store_info->set_file_size_bytes(file_size_);
+  store_info->set_state(GetStoreState());
+  if (last_apply_update_time_millis_.InMillisecondsSinceUnixEpoch()) {
+    store_info->set_last_apply_update_time_millis(
+        last_apply_update_time_millis_.InMillisecondsSinceUnixEpoch());
+  }
+}
 
 bool SBStore::HasValidData() {
   // Record every 256th time (`record_has_valid_data_counter_` is 8-bit).
@@ -429,16 +454,14 @@ base::expected<int64_t, SBStoreWriteResult> SBStore::WriteToDiskLoop(
     FileFormat* file_format,
     Container* container,
     base::FunctionRef<void()> set_file_metadata,
-    base::FunctionRef<void()> delete_hash_files_on_error,
+    base::FunctionRef<void(const base::FilePath&)> cleanup_on_error,
     base::FunctionRef<int64_t()> get_hash_files_size,
     base::FunctionRef<void()> cleanup_extra_files) {
   // Attempt writing to a temporary file first and at the end, swap the files.
   const base::FilePath new_filename = TemporaryFileForFilename(store_path);
 
-  absl::Cleanup cleanup_on_error = [&new_filename,
-                                    &delete_hash_files_on_error] {
-    base::DeleteFile(new_filename);
-    delete_hash_files_on_error();
+  absl::Cleanup cleanup_on_error_block = [&new_filename, &cleanup_on_error] {
+    cleanup_on_error(new_filename);
   };
 
   int64_t written = 0;
@@ -468,7 +491,7 @@ base::expected<int64_t, SBStoreWriteResult> SBStore::WriteToDiskLoop(
   int64_t file_size = written + get_hash_files_size();
 
   // No cleanup needed, cancel the cleanup.
-  std::move(cleanup_on_error).Cancel();
+  std::move(cleanup_on_error_block).Cancel();
   cleanup_extra_files();
 
   return file_size;
@@ -478,6 +501,32 @@ base::expected<int64_t, SBStoreWriteResult> SBStore::WriteToDiskLoop(
 const base::FilePath SBStore::TemporaryFileForFilename(
     const base::FilePath& filename) {
   return base::FilePath(filename.value() + FILE_PATH_LITERAL("_new"));
+}
+
+int64_t SBStore::RecordAndReturnFileSize(const std::string& base_metric) {
+  std::string suffix = GetUmaSuffixForStore(store_path_);
+  const int64_t file_size_kilobytes = file_size_ / 1024;
+  base::UmaHistogramCounts1M(base_metric + suffix, file_size_kilobytes);
+
+  // Add a linear histogram for UrlSoceng since its size is too large to be
+  // accurately represented by the histogram above.
+  if (suffix == kUrlSocengV4UmaSuffix || suffix == kUrlSocengV5UmaSuffix) {
+    const int64_t file_size_megabytes = file_size_kilobytes / 1024;
+    base::UmaHistogramExactLinear(base_metric + "Linear" + suffix,
+                                  file_size_megabytes, /*value_max=*/50);
+  }
+
+  // Linear histogram for ChromeExtMalware + UrlMalBin, sizes in 100kB, up to
+  // ~5MB.
+  if (suffix == kChromeExtMalwareV4UmaSuffix ||
+      suffix == kChromeExtMalwareV5UmaSuffix ||
+      suffix == kUrlMalBinV4UmaSuffix || suffix == kUrlMalBinV5UmaSuffix) {
+    const int64_t file_size_100_kb = file_size_kilobytes / 100;
+    base::UmaHistogramExactLinear(base_metric + "Linear" + suffix,
+                                  file_size_100_kb, /*value_max=*/50);
+  }
+
+  return file_size_;
 }
 
 // Explicit instantiations.
@@ -501,7 +550,15 @@ template base::expected<int64_t, SBStoreWriteResult> SBStore::WriteToDiskLoop(
     V4StoreFileFormat* file_format,
     HashPrefixMap* container,
     base::FunctionRef<void()> set_file_metadata,
-    base::FunctionRef<void()> delete_hash_files_on_error,
+    base::FunctionRef<void(const base::FilePath&)> cleanup_on_error,
+    base::FunctionRef<int64_t()> get_hash_files_size,
+    base::FunctionRef<void()> cleanup_extra_files);
+template base::expected<int64_t, SBStoreWriteResult> SBStore::WriteToDiskLoop(
+    const base::FilePath& store_path,
+    V5StoreFileFormat* file_format,
+    HashPrefixList* container,
+    base::FunctionRef<void()> set_file_metadata,
+    base::FunctionRef<void(const base::FilePath&)> cleanup_on_error,
     base::FunctionRef<int64_t()> get_hash_files_size,
     base::FunctionRef<void()> cleanup_extra_files);
 

@@ -38,12 +38,14 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.robolectric.annotation.Config;
 
+import org.chromium.base.MathUtils;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheet.ShadowLayerView;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetContent.HeightMode;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController.SheetState;
+import org.chromium.components.browser_ui.bottomsheet.BottomSheetController.StateChangeReason;
 import org.chromium.components.browser_ui.styles.SemanticColorUtils;
 import org.chromium.ui.KeyboardVisibilityDelegate;
 import org.chromium.ui.KeyboardVisibilityDelegate.KeyboardVisibilityListener;
@@ -115,7 +117,7 @@ public class BottomSheetUnitTest {
                 /* alwaysFullWidth= */ false,
                 /* edgeToEdgeBottomInsetSupplier= */ () -> 0,
                 /* appHeaderHeight= */ 0,
-                /* bottomMargin= */ 0,
+                /* bottomControlsOffset= */ 0,
                 mInsetObserver);
 
         mBottomSheet.setSheetBackgroundForTesting(mSheetBackground);
@@ -673,5 +675,86 @@ public class BottomSheetUnitTest {
                 "State before keyboard shown should be reset to NONE.",
                 SheetState.NONE,
                 mBottomSheet.getStateBeforeKeyboardShownForTesting());
+    }
+
+    @Test
+    public void testSetBottomMargin_CompensatesCurrentOffset() {
+        doReturn(SHEET_PEEK_HEIGHT).when(mSheetContent).getPeekHeight();
+        doReturn((float) HeightMode.DISABLED).when(mSheetContent).getHalfHeightRatio();
+        mBottomSheet.showContent(mSheetContent);
+        mBottomSheet.setSheetState(SheetState.PEEK, false);
+
+        assertEquals(SHEET_PEEK_HEIGHT, mBottomSheet.getCurrentOffsetPx(), MathUtils.EPSILON);
+
+        mBottomSheet.setBottomMargin(100);
+
+        assertEquals(SHEET_PEEK_HEIGHT - 100, mBottomSheet.getCurrentOffsetPx(), MathUtils.EPSILON);
+    }
+
+    @Test
+    public void testSetBottomMargin_duringHideFromHalf_stuckInScrolling() {
+        BottomSheet.setSmallScreenForTesting(false);
+        // 1. Set up sheet content with HALF state enabled.
+        doReturn(SHEET_PEEK_HEIGHT).when(mSheetContent).getPeekHeight();
+        doReturn(0.5f).when(mSheetContent).getHalfHeightRatio();
+        doReturn((float) HeightMode.DEFAULT).when(mSheetContent).getFullHeightRatio();
+        doReturn(new View(mActivity)).when(mSheetContent).getContentView();
+
+        doReturn(android.R.string.ok).when(mSheetContent).getSheetHalfHeightAccessibilityStringId();
+        doReturn(android.R.string.ok).when(mSheetContent).getSheetFullHeightAccessibilityStringId();
+        doReturn(android.R.string.ok).when(mSheetContent).getSheetClosedAccessibilityStringId();
+        mBottomSheet.showContent(mSheetContent);
+
+        // 2. Transition to HALF state (unanimated).
+        mBottomSheet.setSheetState(SheetState.HALF, false);
+        assertEquals(SheetState.HALF, mBottomSheet.getSheetState());
+
+        // 3. Start animation to HIDDEN.
+        mBottomSheet.setSheetState(SheetState.HIDDEN, true);
+
+        // If animations run instantly in Robolectric, we might already be HIDDEN here.
+        // Let's see what happens.
+        assertEquals(SheetState.SCROLLING, mBottomSheet.getSheetState());
+
+        // 4. Change bottom margin.
+        mBottomSheet.setBottomMargin(100);
+
+        // 5. Assert we are NOT stuck in SCROLLING and settled to HIDDEN.
+        assertEquals(SheetState.HIDDEN, mBottomSheet.getSheetState());
+    }
+
+    @Test
+    public void testContentContainerHeightUpdated_ConstantTranslationY() {
+        BottomSheet.setSmallScreenForTesting(false);
+        doReturn(new View(mActivity)).when(mSheetContent).getContentView();
+        doReturn((float) HeightMode.RESIZE_CONTENT).when(mSheetContent).getFullHeightRatio();
+        doReturn(0.5f).when(mSheetContent).getHalfHeightRatio();
+        doReturn(HeightMode.DISABLED).when(mSheetContent).getPeekHeight();
+        doReturn(android.R.string.ok).when(mSheetContent).getSheetHalfHeightAccessibilityStringId();
+        doReturn(android.R.string.ok).when(mSheetContent).getSheetFullHeightAccessibilityStringId();
+
+        mBottomSheet.showContent(mSheetContent);
+
+        // Lay out decor view to have a large viewport.
+        View decorView = mActivity.getWindow().getDecorView();
+        decorView.layout(0, 0, 1080, 1000);
+
+        // Set state to HALF. Offset should be HALF height (0.5 * 200 = 100).
+        mBottomSheet.setSheetState(SheetState.HALF, false);
+
+        View contentContainer = mBottomSheet.findViewById(R.id.bottom_sheet_content);
+
+        // Now set offset to 200 (full height). translationY should be 0.
+        mBottomSheet.setSheetOffsetFromBottom(200, StateChangeReason.NONE);
+        assertEquals(200, contentContainer.getLayoutParams().height);
+        assertEquals(0f, mBottomSheet.getTranslationY(), 0.0f);
+
+        // Now set offset to 250. translationY should still be 0 (capped).
+        // Without the fix, this would early return and NOT update the height.
+        mBottomSheet.setSheetOffsetFromBottom(250, StateChangeReason.NONE);
+
+        // Height should be updated to 250 (since viewport is 1000).
+        assertEquals(250, contentContainer.getLayoutParams().height);
+        assertEquals(0f, mBottomSheet.getTranslationY(), 0.0f);
     }
 }

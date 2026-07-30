@@ -17,7 +17,7 @@
 #include "content/public/browser/webid/identity_request_dialog_controller.h"
 #include "third_party/blink/public/mojom/devtools/inspector_issue.mojom-forward.h"
 #include "third_party/blink/public/mojom/webid/email_verification_request.mojom-forward.h"
-#include "third_party/blink/public/mojom/webid/federated_auth_request.mojom-forward.h"
+#include "third_party/blink/public/mojom/webid/federated_request.mojom-forward.h"
 
 namespace content {
 
@@ -90,7 +90,7 @@ LifecycleStateImplLifecycleStateImplToFedCmLifecycleStateFailureReason(
 // FederatedApiPermissionStatus::GRANTED.
 std::pair<blink::mojom::FederatedAuthRequestResult, RequestIdTokenStatus>
 PermissionStatusToRequestResultAndTokenStatus(
-    content::FederatedIdentityApiPermissionContextDelegate::PermissionStatus
+    FederatedIdentityApiPermissionContextDelegate::PermissionStatus
         permission_status);
 
 ErrorDialogResult DismissReasonToErrorDialogResult(
@@ -137,7 +137,7 @@ GetDisclosureFields(const std::optional<std::vector<std::string>>& fields);
 // the login state and the available account data.
 CONTENT_EXPORT void ComputeAccountFields(
     const std::vector<IdentityRequestDialogDisclosureField>& rp_fields,
-    std::vector<IdentityRequestAccountPtr>& accounts);
+    std::vector<scoped_refptr<IdentityRequestAccount>>& accounts);
 
 // Converts a FederatedAuthRequestResult to a FederatedLoginResult. The later is
 // a less granular result type used by the embedder.

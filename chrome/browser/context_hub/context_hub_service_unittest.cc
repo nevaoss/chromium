@@ -13,6 +13,7 @@
 #include "chrome/browser/context_hub/features.h"
 #include "chrome/browser/context_hub/memory_bank/in_memory_memory_bank.h"
 #include "chrome/browser/context_hub/memory_bank/noop_memory_bank.h"
+#include "components/optimization_guide/core/model_execution/test/mock_remote_model_executor.h"
 #include "components/personal_context/core/context_memory_error.h"
 #include "components/personal_context/core/mock_personal_context_service.h"
 #include "components/personal_context/proto/features/auto_todos.pb.h"
@@ -31,6 +32,7 @@ class ContextHubServiceTest : public testing::Test {
  public:
   ContextHubServiceTest()
       : service_(&mock_personal_context_service_,
+                 &mock_remote_model_executor_,
                  std::make_unique<InMemoryMemoryBank>()) {}
   ~ContextHubServiceTest() override = default;
 
@@ -38,6 +40,7 @@ class ContextHubServiceTest : public testing::Test {
   base::test::TaskEnvironment task_environment_;
   base::test::ScopedFeatureList scoped_feature_list_;
   personal_context::MockPersonalContextService mock_personal_context_service_;
+  optimization_guide::MockRemoteModelExecutor mock_remote_model_executor_;
   ContextHubService service_;
 };
 
@@ -130,7 +133,7 @@ TEST_F(ContextHubServiceTest, GenerateAutoTodos_FeatureEnabled_ParseError) {
 
 TEST_F(ContextHubServiceTest, SaveTab) {
   base::test::TestFuture<void> save_tab_future;
-  service_.SaveTab(GURL("https://example.com"), "Title",
+  service_.SaveTab(GURL("https://example.com"), "Title", "Page text",
                    save_tab_future.GetCallback());
   EXPECT_TRUE(save_tab_future.Wait());
 
@@ -158,8 +161,10 @@ TEST_F(ContextHubServiceTest, SaveTextSelection) {
 }
 
 TEST_F(ContextHubServiceTest, DeleteEntries) {
-  service_.SaveTab(GURL("https://example1.com"), "Title1", base::DoNothing());
-  service_.SaveTab(GURL("https://example2.com"), "Title2", base::DoNothing());
+  service_.SaveTab(GURL("https://example1.com"), "Title1", "Page text 1",
+                   base::DoNothing());
+  service_.SaveTab(GURL("https://example2.com"), "Title2", "Page text 2",
+                   base::DoNothing());
 
   base::test::TestFuture<std::vector<MemoryBankEntry>> get_entries_future;
   service_.GetAllEntries(get_entries_future.GetCallback());
@@ -175,6 +180,40 @@ TEST_F(ContextHubServiceTest, DeleteEntries) {
   base::test::TestFuture<std::vector<MemoryBankEntry>> get_entries_future2;
   service_.GetAllEntries(get_entries_future2.GetCallback());
   EXPECT_TRUE(get_entries_future2.Get().empty());
+}
+
+TEST_F(ContextHubServiceTest, GroupTabs_NoTabs) {
+  base::test::TestFuture<std::vector<TabGroupData>, std::vector<TabData>>
+      future;
+  service_.GroupTabs(
+      {},
+      future.GetCallback<std::vector<TabGroupData>, std::vector<TabData>>());
+  auto [groups, ungrouped_tabs] = future.Take();
+  EXPECT_TRUE(groups.empty());
+  EXPECT_TRUE(ungrouped_tabs.empty());
+}
+
+TEST_F(ContextHubServiceTest, GroupTabs_WithTabs) {
+  std::vector<TabData> input_tabs = {
+      {1, "Tab 1", GURL("https://example1.com")},
+      {2, "Tab 2", GURL("https://example2.com")},
+      {3, "Tab 3", GURL("https://example3.com")},
+      {4, "Tab 4", GURL("https://example4.com")},
+      {5, "Tab 5", GURL("https://example5.com")}};
+
+  base::test::TestFuture<std::vector<TabGroupData>, std::vector<TabData>>
+      future;
+  service_.GroupTabs(
+      std::move(input_tabs),
+      future.GetCallback<std::vector<TabGroupData>, std::vector<TabData>>());
+  auto [groups, ungrouped_tabs] = future.Take();
+
+  size_t total_tabs = ungrouped_tabs.size();
+  for (const auto& group : groups) {
+    total_tabs += group.tabs.size();
+    EXPECT_GE(group.tabs.size(), 2u);
+  }
+  EXPECT_EQ(total_tabs, 5u);
 }
 
 }  // namespace

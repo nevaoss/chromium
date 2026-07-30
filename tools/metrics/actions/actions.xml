@@ -209,6 +209,13 @@ should be able to be added at any place in this file.
                Glic Instance's Tab Contents."/>
 </variants>
 
+<variants name="GlicSettingsField">
+  <variant name="Default" summary="Default (no field highlighted)"/>
+  <variant name="LocationPermission" summary="Location Permission field"/>
+  <variant name="OsEntrypointToggle" summary="OS Entrypoint Toggle field"/>
+  <variant name="OsHotkey" summary="OS Hotkey field"/>
+</variants>
+
 <variants name="InProductHelp_Type">
   <variant name="" summary="aggregated"/>
   <variant name="_AccountSettingsHistorySync"
@@ -6529,6 +6536,8 @@ should be able to be added at any place in this file.
   <owner>rainhard@chromium.org</owner>
   <owner>chrome-browser-privacy-team@google.com</owner>
   <description>
+    (Obsolete) This link row did not launch.
+
     Recorded when the user clicks the Personal Context settings link row.
   </description>
 </action>
@@ -11590,6 +11599,7 @@ should be able to be added at any place in this file.
   </description>
   <token key="ActionType">
     <variant name=".CloseSidePanel" summary="The user closed the side panel."/>
+    <variant name=".OpenFeedback" summary="The user opened the feedback page."/>
     <variant name=".OpenHelp" summary="The user opened the help page."/>
     <variant name=".OpenInNewTab"
         summary="The user opened the task in a new tab."/>
@@ -16535,31 +16545,15 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
-<action name="GlicSessionSettingsOpened.Default">
+<action name="GlicSessionSettingsOpened.{GlicSettingsField}">
+  <owner>lindaywang@google.com</owner>
   <owner>pauladedeji@google.com</owner>
   <owner>erikchen@chromium.org</owner>
   <description>
-    Logged when the Glic web client requests the main settings page (no section
-    specified).
+    Recorded when the Glic settings page is opened with the {GlicSettingsField}
+    field highlighted.
   </description>
-</action>
-
-<action name="GlicSessionSettingsOpened.OsEntrypointToggle">
-  <owner>pauladedeji@google.com</owner>
-  <owner>erikchen@chromium.org</owner>
-  <description>
-    Logged when the Glic web client requests the OS entrypoint toggle section of
-    the settings page.
-  </description>
-</action>
-
-<action name="GlicSessionSettingsOpened.OsHotkey">
-  <owner>pauladedeji@google.com</owner>
-  <owner>erikchen@chromium.org</owner>
-  <description>
-    Logged when the Glic web client requests the OS hotkey section of the
-    settings page.
-  </description>
+  <token key="GlicSettingsField" variants="GlicSettingsField"/>
 </action>
 
 <action name="GlicSessionWebClientCrash">
@@ -28366,6 +28360,14 @@ should be able to be added at any place in this file.
   <description>
     Reported when the user receives any response from BWG (Gemini) on iOS.
     Tracks overall conversation engagement and response volume per session.
+  </description>
+</action>
+
+<action name="MobileGeminiSessionOpened">
+  <owner>bling-alchemy@google.com</owner>
+  <description>
+    Reported when the Gemini Floaty/session UI successfully appears on screen.
+    iOS only.
   </description>
 </action>
 

@@ -150,7 +150,6 @@
 #include "third_party/blink/renderer/core/page/validation_message_client.h"
 #include "third_party/blink/renderer/core/page/viewport_description.h"
 #include "third_party/blink/renderer/core/paint/timing/first_meaningful_paint_detector.h"
-#include "third_party/blink/renderer/core/paint/timing/paint_timing.h"
 #include "third_party/blink/renderer/core/paint/timing/paint_timing_detector.h"
 #include "third_party/blink/renderer/core/probe/core_probes.h"
 #include "third_party/blink/renderer/core/scroll/scroll_into_view_util.h"
@@ -1776,6 +1775,14 @@ AnimationFrameTimingInfo* WebFrameWidgetImpl::RecordRenderingUpdateEndTime(
   CHECK(local_root_frame->DomWindow());
   return animation_frame_timing_monitor_->RecordRenderingUpdateEndTime(
       *local_root_frame->DomWindow(), rendering_update_time);
+}
+
+void WebFrameWidgetImpl::MarkConditional(const AtomicString& name,
+                                         base::TimeTicks start_time) {
+  if (!animation_frame_timing_monitor_) {
+    return;
+  }
+  animation_frame_timing_monitor_->MarkConditional(name, start_time);
 }
 
 void WebFrameWidgetImpl::DidBeginMainFrame() {
@@ -3504,6 +3511,12 @@ void WebFrameWidgetImpl::MouseCaptureLost() {
   TRACE_EVENT_END("input", perfetto::NamedTrack::FromPointer(
                                "blink::WebFrameWidgetImpl", this));
   mouse_capture_element_ = nullptr;
+}
+
+void WebFrameWidgetImpl::SetPointerLocked(bool is_locked) {
+  if (auto* manager = widget_base_->widget_input_handler_manager()) {
+    manager->PostSetPointerLockedToInputThread(is_locked);
+  }
 }
 
 void WebFrameWidgetImpl::ApplyVisualProperties(
@@ -5389,12 +5402,13 @@ void WebFrameWidgetImpl::NotifyInputObservers(
   if (!frame)
     return;
 
-  LocalFrameView* frame_view = frame->View();
-  if (!frame_view)
+  Document* document = frame->GetDocument();
+  if (!document) {
     return;
+  }
 
   const WebInputEvent& input_event = coalesced_event.Event();
-  frame_view->GetPaintTimingDetector().NotifyInputEvent(input_event.GetType());
+  PaintTimingDetector::From(*document).NotifyInputEvent(input_event.GetType());
 }
 
 Frame* WebFrameWidgetImpl::FocusedCoreFrame() const {

@@ -366,7 +366,10 @@ void ChromeAutofillClient::AtMemoryCopyPasteObserver::OnPaste() {
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS)
 void ChromeAutofillClient::ShowAutofillAtMemoryPromo() {
-  if (!MayPerformAtMemoryAction(AtMemoryAction::kShowIph, *this)) {
+  // TODO(crbug.com/519061643) Double check if we also need to check a field
+  // url here.
+  if (!MayPerformAtMemoryAction(AtMemoryAction::kShowIph, *this,
+                                GetLastCommittedPrimaryMainFrameURL())) {
     return;
   }
   auto* user_education_interface =
@@ -537,13 +540,13 @@ AtMemoryQueryService* ChromeAutofillClient::GetAtMemoryQueryService() {
   return AtMemoryQueryServiceFactory::GetForProfile(profile);
 }
 
-personal_context::PersonalContextEnablementState
-ChromeAutofillClient::GetPersonalContextEnablementState() const {
+personal_context::PersonalContextEligibilityState
+ChromeAutofillClient::GetPersonalContextEligibilityState() const {
   Profile* profile = GetProfile();
   personal_context::PersonalContextEnablementService* service =
       PersonalContextEnablementServiceFactory::GetForProfile(profile);
-  return service ? service->GetEnablementState()
-                 : personal_context::PersonalContextEnablementState::
+  return service ? service->GetEligibilityState()
+                 : personal_context::PersonalContextEligibilityState::
                        kDisabledNotEligible;
 }
 
@@ -1570,6 +1573,15 @@ void ChromeAutofillClient::ShowAutofillAiPreFetchFailureNotification() {
     ToastParams params(ToastId::kAutofillAiPreFetchErrorMessage);
     toast_controller->MaybeShowToast(std::move(params));
   }
+#endif  // BUILDFLAG(IS_ANDROID)
+}
+
+void ChromeAutofillClient::ShowAutofillAiPrivateInferenceNotice() {
+#if BUILDFLAG(IS_ANDROID)
+  GetAutofillMessageController()->Show(
+      AutofillMessageModel::CreateForPrivateInferenceNotice(web_contents()));
+#else
+  NOTREACHED();
 #endif  // BUILDFLAG(IS_ANDROID)
 }
 

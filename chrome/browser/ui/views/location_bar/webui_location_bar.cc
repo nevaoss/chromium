@@ -100,8 +100,9 @@ void WebUILocationBar::Init(WebUIToolbarControlDelegate* delegate) {
   omnibox_controller_ =
       std::make_unique<OmniboxController>(std::make_unique<ChromeOmniboxClient>(
           /*location_bar=*/this, browser_, browser_->profile()));
-  omnibox_view_ =
-      std::make_unique<WebUIReadOnlyOmnibox>(omnibox_controller_.get(), *this);
+  omnibox_view_ = std::make_unique<WebUIReadOnlyOmnibox>(
+      /*location_bar=*/this, omnibox_controller_.get(),
+      /*update_propagator=*/*this);
 
   omnibox_popup_view_ = std::make_unique<OmniboxPopupViewWebUI>(
       /*omnibox_view=*/omnibox_view_.get(), omnibox_controller_.get(),
@@ -145,6 +146,13 @@ void WebUILocationBar::OnThemeChanged() {
   }
   // Location icon cares about color scheme.
   UpdateLhsChipsState();
+}
+
+void WebUILocationBar::HandleContextMenu(views::Widget* widget,
+                                         const gfx::Point& point,
+                                         ui::mojom::MenuSourceType source_type,
+                                         int edit_flags) {
+  omnibox_view_->HandleContextMenu(widget, point, source_type, edit_flags);
 }
 
 base::expected<std::monostate, mojo_base::mojom::ErrorPtr>
@@ -359,7 +367,7 @@ gfx::Rect WebUILocationBar::BoundsInScreen() const {
 
 gfx::Size WebUILocationBar::MinimumSize() const {
   // TODO(crbug.com/474060468): Proper calculation.
-  return gfx::Size(400, 34);
+  return gfx::Size(300, 34);
 }
 
 gfx::Size WebUILocationBar::PreferredSize() const {

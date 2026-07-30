@@ -98,8 +98,9 @@ class GlicInstanceCoordinator {
                       bool prevent_close,
                       mojom::InvocationSource source) = 0;
 
-  // Readies glic to show.
-  virtual void EnsurePreload() = 0;
+  // Checks resource constraints (e.g., memory pressure) before readying glic to
+  // show. Returns true if preloading proceeded, or false otherwise.
+  virtual bool MaybeStartInitialWarming() = 0;
 
   // Destroy the glic panel and its web contents.
   virtual void Shutdown() = 0;
@@ -139,11 +140,6 @@ class GlicInstanceCoordinator {
   AddActiveInstanceChangedCallbackAndNotifyImmediately(
       ActiveInstanceChangedCallback callback) = 0;
   virtual GlicInstance* GetActiveInstance() = 0;
-
-  // Registers a handler to observe experimental triggering related updates.
-  virtual void GetExperimentalTriggeringUpdates(
-      mojo::PendingRemote<mojom::ExperimentalTriggeringUpdatesHandler> handler,
-      base::OnceCallback<void(bool)> success_status_callback) = 0;
 };
 
 }  // namespace glic

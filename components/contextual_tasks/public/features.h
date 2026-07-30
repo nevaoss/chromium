@@ -14,6 +14,7 @@
 namespace contextual_tasks {
 
 BASE_DECLARE_FEATURE(kContextualTasks);
+BASE_DECLARE_FEATURE(kContextualTasksEphemeralBrandedEntryPoint);
 BASE_DECLARE_FEATURE(kContextualTasksExtraOauthScopes);
 BASE_DECLARE_FEATURE(kEnableContextualTasksPinButtonInToolbar);
 BASE_DECLARE_FEATURE(kContextualTasksContext);
@@ -283,6 +284,14 @@ extern int GetContextualTasksShowOnboardingTooltipSessionImpressionCap();
 // The maximum number of times the onboarding tooltip can be dismissed by the
 // user before it no longer shows up.
 extern int GetContextualTasksOnboardingTooltipDismissedCap();
+
+// The maximum number of times the lens search tooltip can be dismissed by the
+// user before it no longer shows up.
+extern int GetContextualTasksLensSearchTooltipDismissedCap();
+
+// The maximum number of times the lens search tooltip can be shown to the user
+// in a single session before it no longer shows up.
+extern int GetContextualTasksLensSearchTooltipSessionImpressionCap();
 
 // The delay in milliseconds before the onboarding tooltip is considered shown.
 extern int GetContextualTasksOnboardingTooltipImpressionDelay();

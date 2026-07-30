@@ -327,43 +327,52 @@ public class VerticalTabListItemTouchHelperCallback extends TabListItemTouchHelp
             if (destGroupId != null) {
                 boolean isDestGroupHeader =
                         toViewHolder.getItemViewType() == TabProperties.UiType.TAB_GROUP;
-                boolean isDraggingDown = distance > 0;
+                boolean isDestGroupCollapsed =
+                        isDestGroupHeader
+                                && assumeNonNull(((ViewHolder) toViewHolder).model)
+                                        .get(TabProperties.IS_COLLAPSED);
 
-                Tab currentTab = tabModel.getTabById(currentTabId);
-                Tab destinationTab = tabModel.getTabById(destinationTabId);
+                if (!isDestGroupCollapsed) {
+                    boolean isDraggingDown = distance > 0;
 
-                if (currentTab != null && destinationTab != null) {
-                    // Handle grouping when a standalone tab intersects any part of a group.
-                    Integer indexInGroup = 0;
-                    if (!isDestGroupHeader) {
-                        List<Tab> destRelatedTabs = getRelatedTabsForId(destinationTabId);
-                        if (destRelatedTabs != null) {
-                            boolean isDraggingUp = distance < 0;
-                            boolean isTargetLowestTab =
-                                    destRelatedTabs.get(destRelatedTabs.size() - 1).getId()
-                                            == destinationTabId;
-                            if (isDraggingUp && isTargetLowestTab) {
-                                indexInGroup = null;
-                            } else {
-                                indexInGroup = destRelatedTabs.indexOf(destinationTab);
-                                if (isDraggingDown) {
-                                    indexInGroup++;
+                    Tab currentTab = tabModel.getTabById(currentTabId);
+                    Tab destinationTab = tabModel.getTabById(destinationTabId);
+
+                    if (currentTab != null && destinationTab != null) {
+                        // Handle grouping when a standalone tab intersects any part of a group.
+                        Integer indexInGroup = 0;
+                        if (!isDestGroupHeader) {
+                            List<Tab> destRelatedTabs = getRelatedTabsForId(destinationTabId);
+                            if (destRelatedTabs != null) {
+                                boolean isDraggingUp = distance < 0;
+                                boolean isTargetLowestTab =
+                                        destRelatedTabs.get(destRelatedTabs.size() - 1).getId()
+                                                == destinationTabId;
+                                if (isDraggingUp && isTargetLowestTab) {
+                                    indexInGroup = null;
+                                } else {
+                                    indexInGroup = destRelatedTabs.indexOf(destinationTab);
+                                    if (isDraggingDown) {
+                                        indexInGroup++;
+                                    }
                                 }
                             }
                         }
+                        tabModel.mergeListOfTabsToGroup(
+                                List.of(currentTab),
+                                destinationTab,
+                                indexInGroup,
+                                TabGroupMergeNotificationType.NOTIFY_ALWAYS);
+                        return true;
                     }
-                    tabModel.mergeListOfTabsToGroup(
-                            List.of(currentTab),
-                            destinationTab,
-                            indexInGroup,
-                            TabGroupMergeNotificationType.NOTIFY_ALWAYS);
-                    return true;
                 }
             }
         }
 
         int destinationIndex;
-        if (isGroup) {
+        boolean isTraversingGroup =
+                isGroup || (isStandaloneTab && getTabGroupId(toViewHolder) != null);
+        if (isTraversingGroup) {
             // Tab groups should maintain the boundaries of target tab groups
             // so they do not split other groups during drags.
             List<Tab> destinationTabGroup = getRelatedTabsForId(destinationTabId);
@@ -453,8 +462,6 @@ public class VerticalTabListItemTouchHelperCallback extends TabListItemTouchHelp
             if (viewHolder.getItemViewType() == TabProperties.UiType.TAB_GROUP) {
                 // Select the group header, which ensures a tab within the group is active.
                 selectTabForGroup(viewHolder);
-
-                // TODO(crbug.com/518307037): Collapsed groups should not be expanded when dragged.
 
                 int currentSelectedTabId = getCurrentSelectedTabId();
 
@@ -743,7 +750,7 @@ public class VerticalTabListItemTouchHelperCallback extends TabListItemTouchHelp
 
         int tabId = getTabId(viewHolder);
         Tab tab = tabModel.getTabById(tabId);
-        selectTabInternal(tabModel, tab);
+        selectTabInternal(tabModel, tab, TabSelectionType.FROM_USER);
     }
 
     /**
@@ -770,15 +777,16 @@ public class VerticalTabListItemTouchHelperCallback extends TabListItemTouchHelp
             }
         }
 
-        selectTabInternal(tabModel, tabToSelect);
+        selectTabInternal(tabModel, tabToSelect, TabSelectionType.FROM_DRAG);
     }
 
-    private void selectTabInternal(TabModel tabModel, @Nullable Tab tab) {
+    private void selectTabInternal(
+            TabModel tabModel, @Nullable Tab tab, @TabSelectionType int type) {
         if (tab == null) return;
 
         int index = tabModel.indexOf(tab);
         if (index != TabModel.INVALID_TAB_INDEX && index != tabModel.index()) {
-            tabModel.setIndex(index, TabSelectionType.FROM_USER);
+            tabModel.setIndex(index, type);
         }
     }
 

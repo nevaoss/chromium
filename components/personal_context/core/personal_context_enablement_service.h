@@ -11,9 +11,9 @@
 
 namespace personal_context {
 
-// Service that manages the enablement state of the Personal Context
-// feature. It checks eligibility, listens to profile preferences, and
-// broadcasts state changes to observers.
+// TODO(crbug.com/393282247): Rename to PersonalContextEligibilityService.
+// Service that manages the eligibility state of the Personal Context
+// feature. It checks eligibility, and broadcasts state changes to observers.
 //
 // This is a Profile-keyed service (one instance per Profile). It is only
 // available for the original (non-incognito) profile. For Incognito or Guest
@@ -26,10 +26,10 @@ class PersonalContextEnablementService : public KeyedService {
   class Observer : public base::CheckedObserver {
    public:
     // Called whenever the global state changes. Can be used to track the
-    // enablement status changes and show/hide the entrypoint. Notifies
-    // observers of changes to the value returned by GetEnablementState().
-    virtual void OnEnablementStateChanged(
-        PersonalContextEnablementState new_state) = 0;
+    // eligibility status changes and show/hide the entrypoint. Notifies
+    // observers of changes to the value returned by GetEligibilityState().
+    virtual void OnEligibilityStateChanged(
+        PersonalContextEligibilityState new_state) = 0;
   };
 
   ~PersonalContextEnablementService() override = default;
@@ -37,10 +37,9 @@ class PersonalContextEnablementService : public KeyedService {
   virtual void AddObserver(Observer* observer) = 0;
   virtual void RemoveObserver(Observer* observer) = 0;
 
-  // Sync getter for the current enablement state. Checks whether the profile
-  // is enabled to use Personal Context. Includes feature check, eligibility
-  // check, notice acknowledgement OR setup completion.
-  virtual PersonalContextEnablementState GetEnablementState() = 0;
+  // Sync getter for the current eligibility state. Checks whether the profile
+  // is eligible to use Personal Context.
+  virtual PersonalContextEligibilityState GetEligibilityState() = 0;
 };
 
 }  // namespace personal_context

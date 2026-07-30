@@ -36,12 +36,14 @@
 #include "build/build_config.h"
 #include "components/autofill/core/browser/crowdsourcing/autofill_crowdsourcing_manager.h"
 #include "components/autofill/core/browser/field_types.h"
+#include "components/autofill/core/browser/filling/field_filling_skip_reason.h"
 #include "components/autofill/core/browser/filling/form_filler.h"
 #include "components/autofill/core/browser/foundations/autofill_client.h"
 #include "components/autofill/core/browser/foundations/autofill_driver.h"
 #include "components/autofill/core/browser/heuristic_source.h"
 #include "components/autofill/core/browser/suggestions/suggestion_hiding_reason.h"
 #include "components/autofill/core/common/aliases.h"
+#include "components/autofill/core/common/dense_set.h"
 #include "components/autofill/core/common/form_data.h"
 #include "components/autofill/core/common/language_code.h"
 #include "components/autofill/core/common/mojom/autofill_types.mojom.h"
@@ -232,6 +234,8 @@ class AutofillManager
         FieldGlobalId trigger_field_id,
         mojom::ActionPersistence action_persistence,
         const base::flat_set<FieldGlobalId>& filled_field_ids,
+        const base::flat_map<FieldGlobalId, DenseSet<FieldFillingSkipReason>>&
+            skip_reasons,
         const FillingPayload& filling_payload) {}
 
     // Fired when a single field is previewed or filled.
@@ -333,6 +337,13 @@ class AutofillManager
   virtual void OnFormWithEmailVerificationTokenSubmitted(
       const FormData& form,
       const FieldGlobalId& field_id);
+
+  // Invoked when the renderer suspects a custom JavaScript autofill event has
+  // occurred.
+  virtual void OnDidDetectJavaScriptAutofill(
+      const FormData& form,
+      const FieldGlobalId& trigger_field_id,
+      const std::vector<FieldGlobalId>& field_ids);
 
   // Routes calls from external components to FormFiller::FillOrPreviewField.
   // Virtual for testing.
@@ -485,6 +496,10 @@ class AutofillManager
       const FormData& form,
       const FieldGlobalId& field_id,
       const std::u16string& old_value) = 0;
+  virtual void OnDidDetectJavaScriptAutofillImpl(
+      const FormData& form,
+      const FieldGlobalId& trigger_field_id,
+      const std::vector<FieldGlobalId>& field_ids) = 0;
   virtual void OnLoadedServerPredictionsImpl(
       base::span<const raw_ref<FormStructure>> forms) = 0;
 

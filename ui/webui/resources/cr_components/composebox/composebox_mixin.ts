@@ -153,6 +153,7 @@ export const ComposeboxEmbedderMixin =
             clearAllInputsWhenSubmittingQuery: {type: Boolean},
             closeOnEscape: {type: Boolean},
             composeboxNoFlickerSuggestionsFix: {type: Boolean},
+            queryZpsOnLoad: {type: Boolean},
             showFileCarousel: {
               reflect: true,
               type: Boolean,
@@ -247,14 +248,13 @@ export const ComposeboxEmbedderMixin =
             loadTimeData.getString('composeboxAttachmentFileTypes').split(',');
         imageFileTypes: string[] =
             loadTimeData.getString('composeboxImageFileTypes').split(',');
-        queryZpsOnLoad: boolean =
-            getLoadTimeBoolean('queryZpsOnLoad', /*defaultValue=*/ true);
         contextMenuOpened: boolean = false;
         hasCachedSubmittedTabsThisTurn: boolean = false;
-        keepMenuOpenOnTabSelectForRealbox: boolean =
-            this.contextManagementInComposeboxEnabled &&
-            getLoadTimeBoolean('keepMenuOpenOnTabSelectForRealbox', false);
         eventTracker: EventTracker = new EventTracker();
+
+        get keepMenuOpenOnTabSelect(): boolean {
+          return false;
+        }
 
         accessor canSubmitFilesAndInput: boolean = true;
         accessor clearAllInputsWhenSubmittingQuery: boolean = false;
@@ -287,6 +287,7 @@ export const ComposeboxEmbedderMixin =
         accessor shareTabsFlyoutOpen: boolean = false;
         accessor searchboxLayoutMode: string = '';
         accessor searchboxNextEnabled: boolean = false;
+        accessor queryZpsOnLoad: boolean = true;
         selectedMatch: AutocompleteMatch|null = null;
         accessor selectedMatchIndex: number = -1;
         accessor showDropdown: boolean =
@@ -322,8 +323,11 @@ export const ComposeboxEmbedderMixin =
         showTypedSuggest: boolean =
             loadTimeData.getBoolean('composeboxShowTypedSuggest');
         // Tracks the latest query sent for autocompletion. Used to filter out
-        // stale results.
+        // stale results. `activeQueryId` is reset to -1 when the last query
+        // needs to be abandoned. `nextQueryId_` is monotonically increasing to
+        // avoid reusing IDs.
         activeQueryId: number = -1;
+        private nextQueryId_: number = 0;
         lastQueriedInput: string = '';
         haveReceivedSynchronousAutocompleteResponse: boolean = false;
         lensSendRawFileMediaTypesEnabled: boolean =
@@ -579,6 +583,10 @@ export const ComposeboxEmbedderMixin =
         getContextEntrypointElement(): ContextualEntrypointButtonElement|
             ContextualEntrypointAndMenuElement|null {
           assertNotReached();
+        }
+
+        getLensButtonElement(): HTMLElement|null {
+          return null;
         }
 
         // =====================================================================
@@ -1261,9 +1269,7 @@ export const ComposeboxEmbedderMixin =
           // Conditionally keep menu open only if context management is enabled.
           // Otherwise, always keep menu open.
           if (this.contextManagementInComposeboxEnabled &&
-              ((this.composeboxSource === 'NewTabPage' &&
-                !this.keepMenuOpenOnTabSelectForRealbox) ||
-               (this.composeboxSource === 'Omnibox'))) {
+              !this.keepMenuOpenOnTabSelect) {
             return;
           }
           this.shareTabsFlyoutOpen = true;
@@ -1899,7 +1905,7 @@ export const ComposeboxEmbedderMixin =
           if (clearMatches) {
             this.clearAutocompleteMatches();
           }
-          this.activeQueryId++;
+          this.activeQueryId = this.nextQueryId_++;
           this.lastQueriedInput = this.input;
           this.haveReceivedSynchronousAutocompleteResponse = false;
           // Get the cursor position from the DOM. Since DOM updates are async
@@ -1922,8 +1928,7 @@ export const ComposeboxEmbedderMixin =
           this.getDropdownElement().unselect();
           this.getSearchboxHandler().stopAutocomplete(/*clearResult=*/ true);
           // Autocomplete sends updates once it is stopped. Invalidate those
-          // results by setting the |this.lastQueriedInput| to its default
-          // value.
+          // results by setting `activeQueryId` to -1.
           this.activeQueryId = -1;
           this.lastQueriedInput = '';
         }
@@ -2596,6 +2601,7 @@ export interface ComposeboxEmbedderMixinInterface extends
   clearAllInputsWhenSubmittingQuery: boolean;
   hasCachedSubmittedTabsThisTurn: boolean;
   contextMenuOpened: boolean;
+  keepMenuOpenOnTabSelect: boolean;
   eventTracker: EventTracker;
   errorMessage: string;
   files: Map<UnguessableToken, ComposeboxFile>;
@@ -2669,6 +2675,7 @@ export interface ComposeboxEmbedderMixinInterface extends
   getSearchboxHandler(): SearchboxPageHandlerRemote;
   getContextEntrypointElement(): ContextualEntrypointButtonElement
       |ContextualEntrypointAndMenuElement|null;
+  getLensButtonElement(): HTMLElement|null;
   addTabContextHandleCallback(
       tabUpload: TabUpload, replaceAutoActiveTabToken?: boolean,
       onBeforeUpdateFiles?: (attachment: ComposeboxFile) => void):
@@ -2693,6 +2700,7 @@ export interface ComposeboxEmbedderMixinInterface extends
     origin: TabUploadOrigin,
   }>): void;
   onContextMenuClosed(): Promise<void>;
+  keepMenuOpenForMultiSelection(): Promise<void>;
   onContextMenuOpened(): void;
   onRequestTabSuggestionsLoad(): void;
   onVoiceSearchButtonClick(): void;

@@ -24,7 +24,6 @@
 #import "ios/chrome/browser/lens/ui_bundled/lens_entrypoint.h"
 #import "ios/chrome/browser/lens_overlay/coordinator/lens_omnibox_client.h"
 #import "ios/chrome/browser/lens_overlay/coordinator/lens_omnibox_client_delegate.h"
-#import "ios/chrome/browser/lens_overlay/coordinator/lens_overlay_availability.h"
 #import "ios/chrome/browser/lens_overlay/coordinator/lens_overlay_mediator.h"
 #import "ios/chrome/browser/lens_overlay/coordinator/lens_overlay_mediator_delegate.h"
 #import "ios/chrome/browser/lens_overlay/coordinator/lens_overlay_tab_change_audience.h"
@@ -38,6 +37,7 @@
 #import "ios/chrome/browser/lens_overlay/model/lens_overlay_snapshot_controller.h"
 #import "ios/chrome/browser/lens_overlay/model/lens_overlay_tab_helper.h"
 #import "ios/chrome/browser/lens_overlay/model/snapshot_cover_view_controller.h"
+#import "ios/chrome/browser/lens_overlay/public/lens_overlay_availability.h"
 #import "ios/chrome/browser/lens_overlay/ui/lens_overlay_consent_presenter.h"
 #import "ios/chrome/browser/lens_overlay/ui/lens_overlay_consent_view_controller.h"
 #import "ios/chrome/browser/lens_overlay/ui/lens_overlay_container_presenter.h"
@@ -56,6 +56,7 @@
 #import "ios/chrome/browser/overlays/model/public/overlay_presentation_context.h"
 #import "ios/chrome/browser/search_engines/model/template_url_service_factory.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_state.h"
+#import "ios/chrome/browser/shared/coordinator/scene/state/lens_overlay_state_notifier.h"
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
 #import "ios/chrome/browser/shared/model/browser/browser.h"
 #import "ios/chrome/browser/shared/model/prefs/pref_names.h"
@@ -771,19 +772,22 @@ const base::TimeDelta kSearchWithCameraTooltipHintDelay = base::Seconds(2.0);
 - (void)lensOverlayContainerPresenterWillBeginPresentation:
     (LensOverlayContainerPresenter*)containerPresenter {
   [self setInfobarBannerOverlaysEnabled:NO];
-  [self.presentationEnvironment lensOverlayWillAppear];
+  [self.browser->GetSceneState()
+          .lensOverlayStateNotifier lensOverlayWillAppear];
 }
 
 - (void)lensOverlayContainerPresenterWillDismissPresentation:
     (LensOverlayContainerPresenter*)containerPresenter {
   [self setInfobarBannerOverlaysEnabled:YES];
-  [self.presentationEnvironment lensOverlayWillDisappear];
+  [self.browser->GetSceneState()
+          .lensOverlayStateNotifier lensOverlayWillDisappear];
   [self indicateLensOverlayVisible:NO];
 }
 
 - (void)lensOverlayContainerPresenterDidDismissPresentation:
     (LensOverlayContainerPresenter*)containerPresenter {
-  [self.presentationEnvironment lensOverlayDidDisappear];
+  [self.browser->GetSceneState()
+          .lensOverlayStateNotifier lensOverlayDidDisappear];
 }
 
 - (void)lensOverlayContainerPresenterDidCompletePresentation:
@@ -846,7 +850,8 @@ const base::TimeDelta kSearchWithCameraTooltipHintDelay = base::Seconds(2.0);
 - (void)lensOverlayContainerPresenterDidReadjustPresentation:
     (LensOverlayContainerPresenter*)containerPresenter {
   [_resultsPagePresenter readjustPresentationIfNeeded];
-  [self.presentationEnvironment lensOverlayDidReadjustPresentation];
+  [self.browser->GetSceneState()
+          .lensOverlayStateNotifier lensOverlayDidReadjustPresentation];
 }
 
 - (NSDirectionalEdgeInsets)lensOverlayContainerPresenterInsetsForPresentation:
@@ -1206,7 +1211,8 @@ const base::TimeDelta kSearchWithCameraTooltipHintDelay = base::Seconds(2.0);
   _associatedTabHelper->SetLensOverlayCommandsHandler(self);
   _associatedTabHelper->SetLensOverlayUIAttachedAndAlive(true);
 
-  [self.presentationEnvironment lensOverlayDidPrepare];
+  [self.browser->GetSceneState()
+          .lensOverlayStateNotifier lensOverlayDidPrepare];
   return YES;
 }
 

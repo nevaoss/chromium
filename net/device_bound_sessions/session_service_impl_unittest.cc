@@ -39,6 +39,7 @@
 #include "net/device_bound_sessions/test_support.h"
 #include "net/device_bound_sessions/unexportable_key_service_factory.h"
 #include "net/log/test_net_log.h"
+#include "net/ssl/ssl_cert_request_info.h"
 #include "net/test/test_with_task_environment.h"
 #include "net/url_request/device_bound_session_mode.h"
 #include "net/url_request/url_request_context_builder.h"
@@ -182,7 +183,9 @@ class SessionServiceImplTest : public ::testing::Test,
     service_ = std::make_unique<SessionServiceImpl>(
         unexportable_key_service_, context_.get(),
         /*store=*/nullptr,
-        /*restricted_sites=*/std::vector<SchemefulSite>());
+        /*restricted_sites=*/std::vector<SchemefulSite>(),
+        /*has_cookie_access_cb=*/base::NullCallback(),
+        /*client_cert_handler=*/base::DoNothing());
   }
 
   void TearDown() override {
@@ -2578,7 +2581,9 @@ class SessionServiceImplWithStoreTest : public TestWithTaskEnvironment {
         service_(unexportable_key_service_,
                  context_.get(),
                  store_.get(),
-                 /*restricted_sites=*/std::vector<SchemefulSite>()) {
+                 /*restricted_sites=*/std::vector<SchemefulSite>(),
+                 /*has_cookie_access_cb=*/base::NullCallback(),
+                 /*client_cert_handler=*/base::DoNothing()) {
     scoped_feature_list_.InitAndEnableFeature(
         net::features::kDeviceBoundSessionsFederatedRegistration);
   }

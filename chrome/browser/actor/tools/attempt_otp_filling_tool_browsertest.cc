@@ -30,10 +30,12 @@
 #include "components/actor/core/aggregated_journal.h"
 #include "components/actor/core/shared_types.h"
 #include "components/affiliations/core/browser/fake_affiliation_service.h"
+#include "components/autofill/core/common/autofill_prefs.h"
 #include "components/keyed_service/content/browser_context_dependency_manager.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "components/one_time_tokens/core/browser/one_time_token.h"
 #include "components/one_time_tokens/core/browser/one_time_token_service_impl.h"
+#include "components/prefs/pref_service.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -110,6 +112,9 @@ class AttemptOtpFillingToolBrowserTest : public ActorToolsTest {
 
   void SetUpOnMainThread() override {
     ActorToolsTest::SetUpOnMainThread();
+
+    autofill::prefs::SetAutofillGmailOtpFillingEnabled(GetProfile()->GetPrefs(),
+                                                       true);
 
     observer_ = std::make_unique<TestJournalObserver>(
         &actor_keyed_service().GetJournal());
@@ -322,7 +327,7 @@ IN_PROC_BROWSER_TEST_F(AttemptOtpFillingToolBrowserTest,
   ActResultFuture result;
   actor_task().Act(ToRequestList(std::move(request)), result.GetCallback());
 
-  ExpectErrorResult(result, mojom::ActionResultCode::kToolTimeout);
+  ExpectErrorResult(result, mojom::ActionResultCode::kOtpRetrievalError);
   EXPECT_THAT(
       JournalEntries(),
       testing::Contains(testing::ContainsRegex(
@@ -432,8 +437,7 @@ IN_PROC_BROWSER_TEST_F(AttemptOtpFillingToolBrowserTest,
   ActResultFuture result;
   actor_task().Act(ToRequestList(std::move(request)), result.GetCallback());
 
-  ExpectErrorResult(result,
-                    mojom::ActionResultCode::kFormFillingUnknownAutofillError);
+  ExpectErrorResult(result, mojom::ActionResultCode::kOtpSigninContextMismatch);
   EXPECT_THAT(JournalEntries(),
               testing::Contains(testing::ContainsRegex(
                   "AttemptOtpFillingTool::Invoke;.*for_signin=false")));
@@ -513,8 +517,29 @@ IN_PROC_BROWSER_TEST_F(AttemptOtpFillingToolBrowserTest,
   ExpectErrorResult(result, mojom::ActionResultCode::kFormFillingFieldNotFound);
 }
 
-// TODO(crbug.com/502907795): Differentiate between no form on the page and
-// filling insecure and add a test for it.
+// The tool fails when targeting a field (e.g. a button) that is not associated
+// with a form structure in autofill's cache.
+IN_PROC_BROWSER_TEST_F(AttemptOtpFillingToolBrowserTest,
+                       ToolFailsWhenFormNotFoundForField) {
+  const GURL url = embedded_https_test_server().GetURL("example.com",
+                                                       "/actor/otp_page.html");
+  ASSERT_TRUE(content::NavigateToURL(web_contents(), url));
+  ASSERT_NO_FATAL_FAILURE(WaitForTabObservation());
+
+  // Target the submit button instead of the OTP field.
+  ASSERT_OK_AND_ASSIGN(
+      DomNode submit_button,
+      GetDomNodeOnPage(*main_frame(), "#single-submit-button"));
+  std::unique_ptr<ToolRequest> request =
+      std::make_unique<AttemptOtpFillingToolRequest>(
+          active_tab()->GetHandle(), std::vector<PageTarget>{submit_button},
+          /*for_signin=*/true);
+
+  ActResultFuture result;
+  actor_task().Act(ToRequestList(std::move(request)), result.GetCallback());
+
+  ExpectErrorResult(result, mojom::ActionResultCode::kFormFillingFieldNotFound);
+}
 
 // `AttemptOtpFillingTool` fails when the form filling context is insecure (e.g.
 // mixed content form submission).
@@ -538,8 +563,7 @@ IN_PROC_BROWSER_TEST_F(AttemptOtpFillingToolBrowserTest,
   ActResultFuture result;
   actor_task().Act(ToRequestList(std::move(request)), result.GetCallback());
 
-  ExpectErrorResult(result,
-                    mojom::ActionResultCode::kFormFillingUnknownAutofillError);
+  ExpectErrorResult(result, mojom::ActionResultCode::kOtpInsecureContext);
 }
 
 // Tests verifying if the OTP filling attempt is part of an ongoing actor login
@@ -606,8 +630,7 @@ IN_PROC_BROWSER_TEST_F(AttemptOtpFillingToolBrowserTest,
 
   ActResultFuture result;
   actor_task().Act(ToRequestList(std::move(request)), result.GetCallback());
-  ExpectErrorResult(result,
-                    mojom::ActionResultCode::kFormFillingUnknownAutofillError);
+  ExpectErrorResult(result, mojom::ActionResultCode::kOtpSigninContextMismatch);
 
   EXPECT_TRUE(HasJournalEntryWithDetails(
       "AttemptOtpFillingTool::OnActorLoginFlowChecked",
@@ -686,8 +709,7 @@ IN_PROC_BROWSER_TEST_F(AttemptOtpFillingToolBrowserTest,
 
   ActResultFuture result;
   actor_task().Act(ToRequestList(std::move(request)), result.GetCallback());
-  ExpectErrorResult(result,
-                    mojom::ActionResultCode::kFormFillingUnknownAutofillError);
+  ExpectErrorResult(result, mojom::ActionResultCode::kOtpSigninContextMismatch);
 
   EXPECT_TRUE(HasJournalEntryWithDetails(
       "AttemptOtpFillingTool::OnActorLoginFlowChecked",
@@ -769,8 +791,7 @@ IN_PROC_BROWSER_TEST_F(
 
   ActResultFuture result;
   actor_task().Act(ToRequestList(std::move(request)), result.GetCallback());
-  ExpectErrorResult(result,
-                    mojom::ActionResultCode::kFormFillingUnknownAutofillError);
+  ExpectErrorResult(result, mojom::ActionResultCode::kOtpSigninContextMismatch);
 
   EXPECT_TRUE(HasJournalEntryWithDetails(
       "AttemptOtpFillingTool::OnActorLoginFlowChecked",

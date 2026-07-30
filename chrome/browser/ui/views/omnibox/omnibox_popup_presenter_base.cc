@@ -58,6 +58,9 @@ void OmniboxPopupPresenterBase::Show() {
     return;
   }
 
+  if (ShouldPreserveRequestedFocus()) {
+    focus_requested_ = false;
+  }
   has_logged_content_ready_since_open_ = false;
 
   EnsureWidgetCreated();
@@ -131,7 +134,12 @@ void OmniboxPopupPresenterBase::OnVisualStateReady(
 }
 
 void OmniboxPopupPresenterBase::ShowWidget(base::TimeTicks show_request_time) {
-  widget_->ShowInactive();
+  if (ShouldPreserveRequestedFocus() &&
+      (widget_->IsActive() || focus_requested_)) {
+    widget_->Show();
+  } else {
+    widget_->ShowInactive();
+  }
   // If the derived class requests hiding for the initial layout pass, make the
   // widget transparent until we receive a valid content height.
   if (ShouldHideForInitialLayout() && content_height_ == 1) {
@@ -154,10 +162,16 @@ void OmniboxPopupPresenterBase::ShowWidget(base::TimeTicks show_request_time) {
   if (auto* content = GetWebUIContent()) {
     content->GetWebContents()->WasShown();
   }
-  RequestFocus();
+
+  if (!ShouldPreserveRequestedFocus() || focus_requested_) {
+    RequestFocus();
+  }
 }
 
 void OmniboxPopupPresenterBase::RequestFocus() {
+  if (ShouldPreserveRequestedFocus()) {
+    focus_requested_ = true;
+  }
   if (widget_ && ShouldReceiveFocus()) {
     widget_->Activate();
     if (auto* content = GetWebUIContent()) {
@@ -171,14 +185,6 @@ void OmniboxPopupPresenterBase::RequestFocus() {
 
 void OmniboxPopupPresenterBase::LogResultToContentReadyMetric(
     content::WebContents* web_contents) {
-  if (GetPopupMetricPrefix() != kWebUIPopupMetricPrefix &&
-      GetPopupMetricPrefix() != kFullWebUIPopupMetricPrefix) {
-    // TODO(crbug.com/491337216): Measure this for the AIM popup as well, with a
-    // consistent metric prefix for both popup types.
-    // Skipping AIM popups for now to maintain parity with the Views popups.
-    return;
-  }
-
   web_contents->GetPrimaryMainFrame()->InsertVisualStateCallback(base::BindOnce(
       &OmniboxPopupPresenterBase::OnVisualStateReadyForMetrics,
       weak_factory_.GetWeakPtr(),
@@ -190,31 +196,39 @@ void OmniboxPopupPresenterBase::OnVisualStateReadyForMetrics(
     bool success) {
   if (result_ready_time.is_null()) {
     omnibox::LogResultToContentReadyEarlyExitReason(
-        omnibox::ResultToContentReadyEarlyExitReason::kNoResultReadyTime);
+        omnibox::ResultToContentReadyEarlyExitReason::kNoResultReadyTime,
+        GetPopupMetricPrefix());
     return;
   }
 
   if (!success) {
     omnibox::LogResultToContentReadyEarlyExitReason(
-        omnibox::ResultToContentReadyEarlyExitReason::kVisualStateNotReady);
+        omnibox::ResultToContentReadyEarlyExitReason::kVisualStateNotReady,
+        GetPopupMetricPrefix());
     return;
   }
 
   const base::TimeDelta delta = base::TimeTicks::Now() - result_ready_time;
 
   if (!has_logged_content_ready_since_open_) {
-    base::UmaHistogramTimes("Omnibox.Popup.ResultToContentReadyPerShow", delta);
+    base::UmaHistogramTimes(
+        base::StrCat({GetPopupMetricPrefix(), ".ResultToContentReadyPerShow"}),
+        delta);
     has_logged_content_ready_since_open_ = true;
   }
 
   if (!has_logged_first_content_ready_) {
-    base::UmaHistogramTimes("Omnibox.Popup.ResultToContentReadyOnFirstShow",
+    base::UmaHistogramTimes(base::StrCat({GetPopupMetricPrefix(),
+                                          ".ResultToContentReadyOnFirstShow"}),
                             delta);
     has_logged_first_content_ready_ = true;
   }
 }
 
 void OmniboxPopupPresenterBase::Hide() {
+  if (ShouldPreserveRequestedFocus()) {
+    focus_requested_ = false;
+  }
   is_deferred_ = false;
   // Only close if UI DevTools settings allow.
   if (widget_ && widget_->ShouldHandleNativeWidgetActivationChanged(false)) {
@@ -365,6 +379,10 @@ bool OmniboxPopupPresenterBase::ShouldReceiveFocus() const {
 }
 
 bool OmniboxPopupPresenterBase::ShouldHideForInitialLayout() const {
+  return false;
+}
+
+bool OmniboxPopupPresenterBase::ShouldPreserveRequestedFocus() const {
   return false;
 }
 

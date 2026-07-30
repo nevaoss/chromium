@@ -20,7 +20,9 @@
 #include "components/autofill/core/browser/foundations/browser_autofill_manager.h"
 #include "components/autofill/core/browser/foundations/scoped_autofill_managers_observation.h"
 #include "components/autofill/core/browser/integrators/optimization_guide/autofill_optimization_guide_decider.h"
+#include "components/autofill/core/browser/metrics/autofill_metrics.h"
 #include "components/autofill/core/browser/metrics/payments/omnibox_autofill_metrics.h"
+#include "components/autofill/core/browser/metrics/suggestions_list_metrics.h"
 #include "components/autofill/core/browser/payments/payments_autofill_client.h"
 #include "components/autofill/core/browser/suggestions/payments/credit_card_suggestion_generator.h"
 #include "components/autofill/core/browser/suggestions/suggestion_type.h"
@@ -50,6 +52,7 @@ bool IsValidOmniboxAutofillSuggestion(SuggestionType type) {
     case SuggestionType::kAutocompleteAtMemoryButton:
     case SuggestionType::kAutocompleteEntry:
     case SuggestionType::kAutofillAiOtherOrders:
+    case SuggestionType::kAutofillAiPrivateInferenceNotice:
     case SuggestionType::kBackupPasswordEntry:
     case SuggestionType::kBnplEntry:
     case SuggestionType::kBnplFootnote:
@@ -282,7 +285,8 @@ OmniboxAutofillDelegate::GetDriver_DoNotUse() {
 }
 
 void OmniboxAutofillDelegate::OnSuggestionsShown(
-    base::span<const Suggestion> suggestions) {
+    base::span<const Suggestion> suggestions,
+    base::optional_ref<const SuggestionMetadata> parent_suggestion_metadata) {
   // TODO(crbug.com/490214497): Implement when payment method suggestion list is
   // shown.
   NOTIMPLEMENTED();
@@ -369,13 +373,26 @@ void OmniboxAutofillDelegate::OnGetIntersectionObserverInfo(bool is_visible) {
     return !IsValidOmniboxAutofillSuggestion(suggestion.type);
   });
 
+  // Log the number of credit card suggestions generated, maintaining
+  // consistency with standard Autofill suggestion generation logging.
+  autofill_metrics::LogSuggestionsCount(suggestions.size(),
+                                        FillingProduct::kCreditCard);
+
+  // Log security status of the credit card form when suggestions are generated,
+  // similar to standard Autofill suggestions generation.
+  AutofillMetrics::LogIsQueriedCreditCardFormSecure(client_->IsContextSecure());
+
   // Shows the "Autofill payment" chip and initializes the bubble.
   client_->GetPaymentsAutofillClient()->ShowOmniboxAutofillChip(
       std::move(suggestions),
-      base::BindRepeating(static_cast<void (OmniboxAutofillDelegate::*)(
-                              base::span<const Suggestion>)>(
-                              &OmniboxAutofillDelegate::OnSuggestionsShown),
-                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindRepeating(
+          [](base::WeakPtr<OmniboxAutofillDelegate> delegate,
+             base::span<const Suggestion> suggestions) {
+            if (delegate) {
+              delegate->OnSuggestionsShown(suggestions, std::nullopt);
+            }
+          },
+          weak_ptr_factory_.GetWeakPtr()),
       base::BindRepeating(&OmniboxAutofillDelegate::DidSelectSuggestion,
                           weak_ptr_factory_.GetWeakPtr()),
       base::BindRepeating(&OmniboxAutofillDelegate::DidAcceptSuggestion,

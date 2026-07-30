@@ -20,6 +20,7 @@
 #include "base/memory/weak_ptr.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/time/time.h"
+#include "base/types/optional_ref.h"
 #include "build/build_config.h"
 #include "components/autofill/core/browser/at_memory/at_memory_manager.h"
 #include "components/autofill/core/browser/autofill_trigger_source.h"
@@ -205,13 +206,16 @@ class BrowserAutofillManager : public AutofillManager {
       const AutofillSuggestionDelegate::SuggestionMetadata& metadata,
       const FieldGlobalId& trigger_field_id);
 
-  void DidShowSuggestions(base::span<const Suggestion> suggestions,
-                          const FormGlobalId& form_id,
-                          const FieldGlobalId& field_id,
-                          AutofillExternalDelegate::UpdateSuggestionsCallback
-                              update_suggestions_callback,
-                          AutofillSuggestionTriggerSource trigger_source =
-                              AutofillSuggestionTriggerSource::kUnspecified);
+  void DidShowSuggestions(
+      base::span<const Suggestion> suggestions,
+      base::optional_ref<const AutofillSuggestionDelegate::SuggestionMetadata>
+          parent_suggestion_metadata,
+      const FormGlobalId& form_id,
+      const FieldGlobalId& field_id,
+      AutofillExternalDelegate::UpdateSuggestionsCallback
+          update_suggestions_callback,
+      AutofillSuggestionTriggerSource trigger_source =
+          AutofillSuggestionTriggerSource::kUnspecified);
 
   // Invoked when the user selected the `suggestion` in a suggestions list from
   // single field filling.
@@ -268,6 +272,8 @@ class BrowserAutofillManager : public AutofillManager {
       const AutofillField& trigger_field,
       base::span<const AutofillField* const> safe_filled_fields,
       const base::flat_set<FieldGlobalId>& filled_field_ids,
+      const base::flat_map<FieldGlobalId, DenseSet<FieldFillingSkipReason>>&
+          skip_reasons,
       const FillingPayload& filling_payload,
       AutofillTriggerSource trigger_source,
       std::optional<RefillTriggerReason> refill_trigger_reason);
@@ -297,6 +303,10 @@ class BrowserAutofillManager : public AutofillManager {
       const std::u16string& old_value) override;
   void OnLoadedServerPredictionsImpl(
       base::span<const raw_ref<FormStructure>> forms) override;
+  void OnDidDetectJavaScriptAutofillImpl(
+      const FormData& form,
+      const FieldGlobalId& trigger_field_id,
+      const std::vector<FieldGlobalId>& field_ids) override;
   void Reset() override;
 
   base::WeakPtr<BrowserAutofillManager> GetBrowserAutofillManagerWeakPtr();
@@ -642,7 +652,7 @@ class BrowserAutofillManager : public AutofillManager {
   void InitializeSuggestionGenerators(
       AutofillSuggestionTriggerSource trigger_source,
       FormGlobalId form_id,
-      FieldGlobalId field_id);
+      const FormFieldData& field);
 
   // Delegates to perform external processing (display, selection) on
   // our behalf.
