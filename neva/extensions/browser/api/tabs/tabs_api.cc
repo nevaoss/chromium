@@ -641,15 +641,10 @@ void TabsRemoveFunction::TabDestroyed() {
 
 TabsCaptureVisibleTabFunction::TabsCaptureVisibleTabFunction() {}
 
-extensions::WebContentsCaptureClient::ScreenshotAccess
+base::expected<void, extensions::ScreenshotAccessError>
 TabsCaptureVisibleTabFunction::GetScreenshotAccess(
     content::WebContents* web_contents) const {
-  if (extensions::ExtensionsBrowserClient::Get()->IsScreenshotRestricted(
-          web_contents)) {
-    return ScreenshotAccess::kDisabledByDlp;
-  }
-
-  return ScreenshotAccess::kEnabled;
+  return extensions::ExtensionsBrowserClient::Get()->IsScreenshotRestricted(web_contents);
 }
 
 bool TabsCaptureVisibleTabFunction::ClientAllowsTransparency() {
