@@ -60,12 +60,13 @@
 #include "components/autofill/core/browser/metrics/log_event.h"
 #include "components/autofill/core/browser/metrics/payments/save_and_fill_metrics.h"
 #include "components/autofill/core/browser/metrics/suggestions_list_metrics.h"
-#include "components/autofill/core/browser/network/autofill_ai/mock_personal_context_access_manager.h"
+#include "components/autofill/core/browser/network/autofill_ai/mock_autofill_ai_personal_context_access_manager.h"
 #include "components/autofill/core/browser/network/autofill_ai/mock_wallet_pass_access_manager.h"
 #include "components/autofill/core/browser/payments/constants.h"
 #include "components/autofill/core/browser/payments/credit_card_access_manager.h"
 #include "components/autofill/core/browser/payments/mock_iban_access_manager.h"
 #include "components/autofill/core/browser/payments/payments_autofill_client.h"
+#include "components/autofill/core/browser/payments/test/mock_ai_card_recommendation_manager.h"
 #include "components/autofill/core/browser/payments/test/mock_bnpl_manager.h"
 #include "components/autofill/core/browser/payments/test/mock_save_and_fill_manager.h"
 #include "components/autofill/core/browser/payments/test_payments_autofill_client.h"
@@ -120,6 +121,7 @@ using ::testing::ElementsAre;
 using ::testing::Eq;
 using ::testing::Field;
 using ::testing::InSequence;
+using ::testing::IsEmpty;
 using ::testing::Matcher;
 using ::testing::Mock;
 using ::testing::MockFunction;
@@ -320,6 +322,8 @@ class MockBrowserAutofillManager : public TestBrowserAutofillManager {
         std::make_unique<TestCreditCardAccessManager>(this));
     test_api(*this).set_bnpl_manager(
         std::make_unique<NiceMock<MockBnplManager>>(this));
+    test_api(*this).set_ai_card_recommendation_manager(
+        std::make_unique<NiceMock<MockAiCardRecommendationManager>>(this));
   }
   MockBrowserAutofillManager(const MockBrowserAutofillManager&) = delete;
   MockBrowserAutofillManager& operator=(const MockBrowserAutofillManager&) =
@@ -366,14 +370,10 @@ class MockBrowserAutofillManager : public TestBrowserAutofillManager {
               (override));
 
   MOCK_METHOD(void, OnSuggestionsHidden, (SuggestionHidingReason), (override));
-};
 
-class StubAtMemoryQueryServiceDelegate : public AtMemoryQueryServiceDelegate {
- public:
-  void RetrieveLiveTabContext(
-      LiveTabContextQuery query,
-      base::OnceCallback<void(LiveTabContextResponse)> callback) override {
-    std::move(callback).Run({});
+  MockAiCardRecommendationManager* GetMockAiCardRecommendationManager() {
+    return static_cast<MockAiCardRecommendationManager*>(
+        &GetAiCardRecommendationManager());
   }
 };
 
@@ -898,26 +898,26 @@ TEST_F(AutofillExternalDelegateTest, AtMemoryFlyoutChildrenFirstPartySources) {
 
   SetupMockAtMemoryQueryService(u"shoe size", std::move(search_results));
 
-  std::u16string expected_label = l10n_util::GetStringFUTF16(
-      IDS_AUTOFILL_AT_MEMORY_SOURCE_ATTRIBUTION_DESCRIPTION,
-      l10n_util::GetStringUTF16(IDS_AUTOFILL_AT_MEMORY_SOURCE_GMAIL));
-
-  auto matcher = testing::ElementsAre(testing::AllOf(
+  auto matcher = ElementsAre(AllOf(
       HasMainText(u"42"),
-      testing::Field(
+      Field(
           &Suggestion::children,
-          testing::ElementsAre(
-              testing::AllOf(HasMainText(u"example.com"), HasLabel(u"Store")),
-              testing::AllOf(HasMainText(u"Marian Paździoch"),
-                             HasLabel(u"Name")),
-              testing::Field(&Suggestion::type, SuggestionType::kSeparator),
-              testing::AllOf(HasMainText(u"About"),
-                             HasLabel(expected_label))))));
+          ElementsAre(
+              AllOf(HasMainText(u"example.com"), HasLabel(u"Store")),
+              AllOf(HasMainText(u"Marian Paździoch"), HasLabel(u"Name")),
+              Field(&Suggestion::type, SuggestionType::kSeparator),
+              AllOf(
+                  HasMainText(l10n_util::GetStringUTF16(
+                      IDS_AUTOFILL_AT_MEMORY_SOURCE_ATTRIBUTION_PERSONAL_INTELLIGENCE)),
+                  Field(&Suggestion::type,
+                        SuggestionType::kAtMemorySearchResult)),
+              Field(&Suggestion::type, SuggestionType::kSeparator),
+              Field(&Suggestion::type,
+                    SuggestionType::kManageEnhancedAutofill)))));
 
   // The first call notifies the UI that search has started (clearing current
   // suggestions). The second call provides the actual results.
-  EXPECT_CALL(autofill_client(),
-              UpdateAutofillSuggestions(testing::IsEmpty(), _, _, _));
+  EXPECT_CALL(autofill_client(), UpdateAutofillSuggestions(IsEmpty(), _, _, _));
   EXPECT_CALL(autofill_client(), UpdateAutofillSuggestions(matcher, _, _, _));
 
   external_delegate().OnSearchSubmitted(u"shoe size");
@@ -3167,8 +3167,8 @@ class AutofillExternalDelegateWithAmbientAutofillTest
 
   void SetUp() override {
     AutofillExternalDelegateTest::SetUp();
-    personal_context_manager_ =
-        std::make_unique<NiceMock<MockPersonalContextAccessManager>>();
+    personal_context_manager_ = std::make_unique<
+        NiceMock<MockAutofillAiPersonalContextAccessManager>>();
     autofill_client().set_personal_context_access_manager(
         personal_context_manager_.get());
   }
@@ -3178,13 +3178,14 @@ class AutofillExternalDelegateWithAmbientAutofillTest
     AutofillExternalDelegateTest::TearDown();
   }
 
-  MockPersonalContextAccessManager& personal_context_manager() {
+  MockAutofillAiPersonalContextAccessManager& personal_context_manager() {
     return *personal_context_manager_;
   }
 
  private:
   base::test::ScopedFeatureList scoped_feature_list_;
-  std::unique_ptr<MockPersonalContextAccessManager> personal_context_manager_;
+  std::unique_ptr<MockAutofillAiPersonalContextAccessManager>
+      personal_context_manager_;
 };
 
 // Tests that when accepting a `kFillAutofillAi` suggestion for a masked
@@ -3226,7 +3227,8 @@ TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
                   FillingProduct::kAutofillAi, kDefaultSuggestionTriggerSource,
                   AutofillSuggestionsIgnoreFocusLoss(true)));
 
-  PersonalContextAccessManager::GetUnmaskedSpiiEntityCallback callback;
+  AutofillAiPersonalContextAccessManager::GetUnmaskedSpiiEntityCallback
+      callback;
   EXPECT_CALL(personal_context_manager(),
               GetUnmaskedSpiiEntity(masked_passport.guid(), _))
       .WillOnce(MoveArg<1>(&callback));
@@ -3925,14 +3927,43 @@ TEST_F(AutofillExternalDelegateTest, RemoveSuggestion_ServerCard) {
       pdm().payments_data_manager().GetCreditCardByGUID(server_card.guid()));
 }
 
-// Tests that the personal context notice is removed and the pref is updated.
-TEST_F(AutofillExternalDelegateTest, RemoveSuggestion_PersonalContextNotice) {
+// Tests that the personal context notice is removed and the pref is updated for
+// ambient autofill.
+TEST_F(AutofillExternalDelegateTest,
+       RemoveSuggestion_PersonalContextNotice_AmbientAutofill) {
   EXPECT_FALSE(autofill_client()
                    .is_personal_context_ambient_autofill_notice_acknowledged());
   EXPECT_TRUE(external_delegate().RemoveSuggestion(
       Suggestion(SuggestionType::kPersonalContextNotice)));
   EXPECT_TRUE(autofill_client()
                   .is_personal_context_ambient_autofill_notice_acknowledged());
+  EXPECT_FALSE(
+      autofill_client().is_personal_context_at_memory_notice_acknowledged());
+}
+
+// Tests that the personal context notice is removed and the pref is updated for
+// AtMemory.
+TEST_F(AutofillExternalDelegateTest,
+       RemoveSuggestion_PersonalContextNotice_AtMemory) {
+  IssueOnQuery(AutofillSuggestionTriggerSource::kAtMemory);
+  EXPECT_FALSE(
+      autofill_client().is_personal_context_at_memory_notice_acknowledged());
+  EXPECT_TRUE(external_delegate().RemoveSuggestion(
+      Suggestion(SuggestionType::kPersonalContextNotice)));
+  EXPECT_TRUE(
+      autofill_client().is_personal_context_at_memory_notice_acknowledged());
+  EXPECT_FALSE(autofill_client()
+                   .is_personal_context_ambient_autofill_notice_acknowledged());
+}
+
+// Tests that accepting a personal context notice suggestion is a no-op.
+TEST_F(AutofillExternalDelegateTest,
+       DidAcceptSuggestion_PersonalContextNotice_NoOp) {
+  IssueOnQuery();
+  EXPECT_CALL(autofill_client(), HideSuggestions).Times(0);
+  external_delegate().DidAcceptSuggestion(
+      Suggestion(SuggestionType::kPersonalContextNotice),
+      SuggestionPosition{.multi_index = {0}});
 }
 
 TEST_F(AutofillExternalDelegateTest, RecordSuggestionTypeOnSuggestionAccepted) {
@@ -4211,6 +4242,10 @@ TEST_F(AutofillExternalDelegateTest,
   base::test::ScopedFeatureList feature_list{
       features::kAutofillEnableAiCardRecommendation};
   IssueOnQuery();
+
+  // Ensure that MaximizeCreditCardBenefits is triggered
+  EXPECT_CALL(autofill_manager().GetAiCardRecommendationManager(),
+              MaximizeCreditCardBenefits);
 
   // Ensure that the suggestions popup is not hidden.
   EXPECT_CALL(autofill_client(), HideSuggestions).Times(0);

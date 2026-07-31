@@ -146,6 +146,7 @@ class MockToolbarUIDelegate
               InvokePinnedToolbarAction,
               (toolbar_ui_api::mojom::PinnedToolbarAction),
               (override));
+  MOCK_METHOD(void, OnLocationBarFocusWithinChanged, (bool), (override));
   MOCK_METHOD(void,
               OnLhsChipMousePressed,
               (toolbar_ui_api::mojom::LhsChipIdentifier),
@@ -196,6 +197,12 @@ class MockToolbarUIDelegate
               (const std::string& extension_id,
                ui::mojom::MenuSourceType source),
               (override));
+  MOCK_METHOD(
+      (base::expected<toolbar_ui_api::mojom::AdjustOmniboxTextForCopyResultPtr,
+                      mojo_base::mojom::ErrorPtr>),
+      AdjustOmniboxTextForCopy,
+      (const std::u16string&, int32_t),
+      (override));
 };
 
 // Test fixture for WebUIToolbarUI. These tests test the connectivity between

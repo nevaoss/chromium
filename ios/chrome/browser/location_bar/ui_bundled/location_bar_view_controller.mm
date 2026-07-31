@@ -1112,7 +1112,7 @@ const CGFloat kGeminiLiveCircleSize = 20.0;
   }
 
   // Used to easily trigger the Assistant sheet during development.
-  if (IsAssistantContainerEnabled()) {
+  if (IsAssistantContainerDebugEnabled()) {
     UIAction* assistantAction = [UIAction
         actionWithTitle:l10n_util::GetNSString(IDS_IOS_APP_BAR_ASK_GEMINI)
                   image:DefaultSymbolWithPointSize(kMagicStackSymbol,
@@ -1468,6 +1468,13 @@ const CGFloat kGeminiLiveCircleSize = 20.0;
 - (void)setCustomLeadingViewVisible:(BOOL)visible animated:(BOOL)animated {
   [self.locationBarSteadyView updateCustomLeadingViewVisibility:visible
                                                        animated:animated];
+}
+
+- (CGFloat)locationBarTextWidth {
+  if (!IsToolbarGlassPrototypeEnabled()) {
+    return 0.0;
+  }
+  return [self.locationBarSteadyView.locationLabel intrinsicContentSize].width;
 }
 
 @end

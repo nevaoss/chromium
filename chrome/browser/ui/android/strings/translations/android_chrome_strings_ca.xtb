@@ -189,6 +189,7 @@ Només les persones que sàpiguen la teva frase de contrasenya podran llegir les
 <translation id="1807709131360304325">Obre una finestra nova</translation>
 <translation id="1812027881030482584"><ph name="SITE_ETLD_PLUS_ONE" /> no pot continuar utilitzant <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /></translation>
 <translation id="1815975907734103433"><ph name="TAB_TITLE" />, pestanya de gravació</translation>
+<translation id="1819443852740954262">Obre'ls tots en una finestra d'incògnit</translation>
 <translation id="1820408774134375111">Full inferior d'inici de sessió</translation>
 <translation id="1823492026305965829">Inicia la sessió com a <ph name="USER_FULL_NAME" /></translation>
 <translation id="1824902652744048041">Toca Suprimeix les dades de navegació</translation>
@@ -549,7 +550,6 @@ Només les persones que sàpiguen la teva frase de contrasenya podran llegir les
 <translation id="3301936297336370235">Confirmació del suggeriment de contrasenya</translation>
 <translation id="3302615849591357577">Restaura el grup de pestanyes <ph name="TITLE_OF_GROUP" />, de color <ph name="COLOR_NAME" />, com un nou grup de pestanyes en segon pla.</translation>
 <translation id="3303855915957856445">No s'ha trobat cap resultat de la cerca</translation>
-<translation id="3305130791745726624">Envia als dispositius</translation>
 <translation id="3305795716056605962">Tradueix pàgines des del botó Més opcions</translation>
 <translation id="3307355280394823921">Obre l'historial</translation>
 <translation id="3309978850836730073">El mode de lectura sempre està disponible aquí</translation>
@@ -771,7 +771,6 @@ Només les persones que sàpiguen la teva frase de contrasenya podran llegir les
 <translation id="4256782883801055595">Llicències de codi obert</translation>
 <translation id="426652736638196239">Aquest IBAN només es desarà en aquest dispositiu</translation>
 <translation id="4269820728363426813">Copia l'adreça de l'enllaç</translation>
-<translation id="4270730597186910506">Fes o deixa de fer el seguiment d'un producte.</translation>
 <translation id="4277529130885813215">Utilitza un altre dispositiu</translation>
 <translation id="427987768447457592">Grup de pestanyes nou</translation>
 <translation id="4282440837784183472">La teva organització, <ph name="MANAGED_DOMAIN" />, gestiona el compte en què estàs iniciant la sessió i com es pot utilitzar Chrome. L'administrador pot configurar o restringir determinades funcions.</translation>
@@ -1366,7 +1365,7 @@ Per exemple, és possible que alguns llocs web responguin a aquesta sol·licitud
 <translation id="6649642165559792194">Previsualitza la imatge <ph name="BEGIN_NEW" />Novetat<ph name="END_NEW" /></translation>
 <translation id="6659594942844771486">Tab</translation>
 <translation id="666731172850799929">Obre a <ph name="APP_NAME" /></translation>
-<translation id="6669390930482049506">Vull rebre notificacions</translation>
+<translation id="6669390930482049506">Notifica-m'ho</translation>
 <translation id="6671495933530132209">Copia la imatge</translation>
 <translation id="6672697278890207089">Introduïu la vostra contrasenya</translation>
 <translation id="6672917148207387131">Afegeix <ph name="DOMAIN" /></translation>
@@ -1438,6 +1437,7 @@ Per exemple, és possible que alguns llocs web responguin a aquesta sol·licitud
 <translation id="6885933993535178919">{NUM_SITES,plural, =1{S'ha cancel·lat la subscripció a 1 lloc web}other{S'ha cancel·lat la subscripció a # llocs web}}</translation>
 <translation id="6886500155621657325">{ITEMS_COUNT,plural, =1{1 contrasenya}other{# contrasenyes}}</translation>
 <translation id="688730033107341407">Quan tanquis la sessió, les teves adreces d'interès, contrasenyes i altres elements del teu Compte de Google se suprimiran d'aquest dispositiu.</translation>
+<translation id="6892009074348518725">Per utilitzar aquesta extensió, inicia la sessió a Chrome. També podràs utilitzar i desar les teves contrasenyes i altres dades del teu Compte de Google.</translation>
 <translation id="6896758677409633944">Copia</translation>
 <translation id="6898797562238201317">Utilitza la teva frase de contrasenya per encriptar totes les dades de Chrome al teu Compte de Google</translation>
 <translation id="6900532703269623216">Protecció millorada</translation>
@@ -1475,6 +1475,7 @@ Per exemple, és possible que alguns llocs web responguin a aquesta sol·licitud
 <translation id="6983306615164277634">També pots mantenir premuda la barra d'adreces per canviar la posició.</translation>
 <translation id="6987047470128880212">El mode d'incògnit no està disponible en aquest dispositiu</translation>
 <translation id="6996145122199359148">Baixa aquesta pàgina</translation>
+<translation id="7007648447224463482">Obre-ho tot en una finestra nova</translation>
 <translation id="7013762323294215682">Aquesta clau d'accés es desarà al teu gestor de contrasenyes. Qualsevol persona que hi tingui accés podrà utilitzar aquesta clau d'accés.</translation>
 <translation id="7020741890149022655">Inclou a llista de lectura <ph name="BEGIN_NEW" />Nou<ph name="END_NEW" /></translation>
 <translation id="7022756207310403729">Obre al navegador</translation>
@@ -1841,6 +1842,7 @@ Per canviar aquesta opció de configuració, <ph name="BEGIN_LINK" />suprimeix l
 <translation id="8445448999790540984">No es poden exportar les contrasenyes</translation>
 <translation id="8446884382197647889">Més informació</translation>
 <translation id="8449781591250785734">{NUM_SITES,plural, =1{S'han suprimit els permisos d'1 lloc web}other{S'han suprimit els permisos de # llocs web}}</translation>
+<translation id="8449836157089738489">Obre'ls tots en un grup de pestanyes nou</translation>
 <translation id="8453310803815879010">Inicia el joc del dinosaure</translation>
 <translation id="8455675988389029454">Accedeix a les teves adreces d'interès, contrasenyes i més en tots els teus dispositius</translation>
 <translation id="8458341576712814616">Drecera</translation>
@@ -1862,6 +1864,7 @@ Per canviar aquesta opció de configuració, <ph name="BEGIN_LINK" />suprimeix l
 <translation id="8506357771923193001">Trobaràs les baixades aquí</translation>
 <translation id="8512053371384421952">Ja no rebràs notificacions del domini <ph name="DOMAIN" />.</translation>
 <translation id="8516012719330875537">Editor d'imatges</translation>
+<translation id="8517759303731677493">Edita…</translation>
 <translation id="8533670235862049797">La funció Navegació segura està activada</translation>
 <translation id="8538291624121505885"><ph name="TAB_TITLE" />, pestanya fixada i multiseleccionada d'imatge sobre imatge</translation>
 <translation id="8540136935098276800">Introdueix un URL amb el format correcte</translation>

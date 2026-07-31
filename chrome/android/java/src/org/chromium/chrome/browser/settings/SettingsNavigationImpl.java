@@ -11,14 +11,13 @@ import android.os.Bundle;
 
 import androidx.fragment.app.Fragment;
 
+import org.chromium.base.ApplicationStatus;
 import org.chromium.base.IntentUtils;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.about_settings.AboutChromeSettings;
 import org.chromium.chrome.browser.about_settings.LegalInformationSettings;
 import org.chromium.chrome.browser.appearance.settings.AppearanceSettingsFragment;
-import org.chromium.chrome.browser.autofill.options.AutofillOptionsFragment;
-import org.chromium.chrome.browser.autofill.personal_context.AutofillPersonalContextFragment;
 import org.chromium.chrome.browser.autofill.settings.AndroidPaymentAppsFragment;
 import org.chromium.chrome.browser.autofill.settings.AutofillBuyNowPayLaterFragment;
 import org.chromium.chrome.browser.autofill.settings.AutofillCardBenefitsFragment;
@@ -30,6 +29,8 @@ import org.chromium.chrome.browser.autofill.settings.AutofillTravelFragment;
 import org.chromium.chrome.browser.autofill.settings.FinancialAccountsManagementFragment;
 import org.chromium.chrome.browser.autofill.settings.HomeOfTransactionsFragment;
 import org.chromium.chrome.browser.autofill.settings.NonCardPaymentMethodsManagementFragment;
+import org.chromium.chrome.browser.autofill.settings.options.AutofillOptionsFragment;
+import org.chromium.chrome.browser.autofill.settings.personal_context.AutofillPersonalContextFragment;
 import org.chromium.chrome.browser.browsing_data.ClearBrowsingDataFragment;
 import org.chromium.chrome.browser.commerce.PriceNotificationSettingsFragment;
 import org.chromium.chrome.browser.contextualsearch.ContextualSearchSettingsFragment;
@@ -224,6 +225,10 @@ public class SettingsNavigationImpl implements SettingsNavigation {
             @Nullable String tag) {
         if (ChromeFeatureList.sSettingsInTab.isEnabled()) {
             Activity activity = ActivityUtil.getActivityFromContext(context);
+            // Some components pass a non-Activity context (e.g. AccessibilitySettings).
+            if (activity == null) {
+                activity = ApplicationStatus.getLastTrackedFocusedActivity();
+            }
             assert activity != null;
             SettingsHostFragment settingsHostFragment = SettingsHostFragment.get(activity);
             assert settingsHostFragment != null;

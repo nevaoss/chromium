@@ -173,6 +173,8 @@ export class ContextualActionMenuElement extends
   private metricsSource_: string = loadTimeData.getString('composeboxSource');
   protected accessor showContextMenuHeaders_: boolean =
       loadTimeData.getBoolean('ShowContextMenuHeaders');
+  protected enableTabDeselection_: boolean =
+      getLoadTimeBoolean('composeboxContextMenuEnableTabDeselection', false);
   protected accessor shareTabsFlyoutPosition_: string = 'right';
   protected accessor sharingTabsText_: string = '';
   // Only close menu if the context management flag and the
@@ -611,8 +613,9 @@ export class ContextualActionMenuElement extends
 
   protected isTabSelected_(tabOrId: TabInfo|number): boolean {
     const tabId = typeof tabOrId === 'number' ? tabOrId : tabOrId.tabId;
-    const isAimThreadRestored = (this.aimThreadRestoredTabs || []).some(
-        restoredTab => restoredTab.tabId === tabId);
+    const isAimThreadRestored = this.contextManagementInComposeboxEnabled &&
+        (this.aimThreadRestoredTabs ||
+         []).some(restoredTab => restoredTab.tabId === tabId);
     return this.disabledTabIds.has(tabId) || isAimThreadRestored;
   }
 
@@ -722,10 +725,13 @@ export class ContextualActionMenuElement extends
 
   // Checks if a tab item in the context menu should be disabled.
   protected isTabDisabled_(tab: TabInfo): boolean {
-    const isRestored =
-        (this.aimThreadRestoredTabs)
-            .some(restoredTab => restoredTab.tabId === tab.tabId);
+    const isRestored = this.contextManagementInComposeboxEnabled &&
+        (this.aimThreadRestoredTabs ||
+         []).some(restoredTab => restoredTab.tabId === tab.tabId);
     if (isRestored) {
+      if (this.enableTabDeselection_ && this.isTabSelected_(tab)) {
+        return false;
+      }
       return true;
     }
 
@@ -745,7 +751,9 @@ export class ContextualActionMenuElement extends
         maxTotal = this.inputState.maxTotalInputs;
       }
       const totalSelected = this.nonTabFileNum + this.disabledTabIds.size +
-          (this.aimThreadRestoredTabs || []).length;
+          (this.contextManagementInComposeboxEnabled ?
+               (this.aimThreadRestoredTabs || []).length :
+               0);
       const limitReached = totalSelected >= maxTotal;
       // Disable unselected tabs only when the total selected count reaches the limit.
       return limitReached;
@@ -770,7 +778,9 @@ export class ContextualActionMenuElement extends
     const activeRestoredTabs = allSelectedIds.map(id => suggestionsMap.get(id))
                                    .filter((tab): tab is TabInfo => !!tab)
                                    .reverse();
-    const reversedRestored = [...(this.aimThreadRestoredTabs || [])].reverse();
+    const reversedRestored = this.contextManagementInComposeboxEnabled ?
+        [...(this.aimThreadRestoredTabs || [])].reverse() :
+        [];
 
     return activeRestoredTabs.concat(reversedRestored);
   }
@@ -779,20 +789,9 @@ export class ContextualActionMenuElement extends
     return this.recentTabId !== null && tabId === this.recentTabId;
   }
 
-  protected async onSmartTabSharingItemClick_(e: Event) {
-    const target = e.currentTarget as HTMLElement;
-    const isFlyout = target.id === 'smartTabSharingItemFlyout';
+  protected onSmartTabSharingItemClick_() {
     this.toggleSmartTabSharing_();
-    if (isFlyout) {
-      this.$.menu.close();
-    } else {
-      await this.updateComplete;
-      const trigger =
-          this.shadowRoot.querySelector<HTMLElement>('#shareTabsTrigger');
-      if (trigger) {
-        trigger.focus();
-      }
-    }
+    this.$.menu.close();
   }
 
   private toggleSmartTabSharing_() {
@@ -830,9 +829,18 @@ export class ContextualActionMenuElement extends
     }
 
 
-    if (this.enableMultiTabSelection_ && this.isTabSelected_(tabInfo.tabId)) {
-      this.deleteTabContext_(this.disabledTabIds.get(tabInfo.tabId)!);
-      return;
+    const isRestored = this.contextManagementInComposeboxEnabled &&
+        (this.aimThreadRestoredTabs ||
+         []).some(restoredTab => restoredTab.tabId === tabInfo.tabId);
+    if (this.isTabSelected_(tabInfo.tabId)) {
+      // Allow deselecting the tab if the explicit tab deselection feature is
+      // enabled. If disabled, we only allow deselecting newly-added tabs
+      // (non-restored) when multi-tab selection is enabled.
+      if (this.enableTabDeselection_ ||
+          (this.enableMultiTabSelection_ && !isRestored)) {
+        this.deleteTabContext_(tabInfo.tabId);
+        return;
+      }
     }
     this.addTabContext_(tabInfo);
     recordContextAdditionMethod(
@@ -847,8 +855,8 @@ export class ContextualActionMenuElement extends
     }
   }
 
-  protected deleteTabContext_(uuid: UnguessableToken) {
-    this.fire('delete-tab-context', {uuid: uuid, fromUserAction: true});
+  protected deleteTabContext_(tabId: number) {
+    this.fire('delete-tab-context', {tabId: tabId, fromUserAction: true});
     this.maybeCloseMenuBasedOnEntrypoint_();
   }
 

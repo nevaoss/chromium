@@ -309,10 +309,10 @@ DiceWebSigninInterceptionBubbleView::DiceWebSigninInterceptionBubbleView(
     base::OnceCallback<void(SigninInterceptionResult)> callback)
     : views::BubbleDialogDelegateView(anchor, views::BubbleBorder::TOP_RIGHT),
       profile_keep_alive_(
-          browser->profile(),
+          browser->GetProfile(),
           ProfileKeepAliveOrigin::kDiceWebSigninInterceptionBubble),
       browser_(browser->AsWeakPtr()),
-      profile_(browser->profile()),
+      profile_(browser->GetProfile()),
       bubble_parameters_(bubble_parameters),
       callback_(std::move(callback)) {
   DCHECK(browser_);
@@ -321,7 +321,7 @@ DiceWebSigninInterceptionBubbleView::DiceWebSigninInterceptionBubbleView(
 
   // Create the web view in the native bubble.
   std::unique_ptr<views::WebView> web_view =
-      std::make_unique<views::WebView>(browser->profile());
+      std::make_unique<views::WebView>(browser->GetProfile());
   web_view->LoadInitialURL(GetURLForInterceptionType(IsChromeSignin()));
   web_view->GetWebContents()->SetDelegate(this);
   web_view->SetPreferredSize(
@@ -364,7 +364,8 @@ void DiceWebSigninInterceptionBubbleView::SetHeightAndShowWidget(int height) {
   // This has to be done since we removed the margins of the bubble view,
   // which would create an overlap of the web view on top of the bubble empty
   // corners.
-  web_view_->holder()->SetCornerRadii(gfx::RoundedCornersF(GetCornerRadius()));
+  web_view_->holder()->SetNativeViewCornerRadii(
+      gfx::RoundedCornersF(GetCornerRadius()));
 
   ApplyAvatarButtonEffects();
 

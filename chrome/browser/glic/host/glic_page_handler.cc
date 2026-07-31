@@ -114,6 +114,7 @@
 #include "components/password_manager/core/browser/actor_login/actor_login_types.h"
 #include "components/prefs/pref_service.h"
 #include "components/safe_browsing/content/browser/ui_manager.h"
+#include "components/safe_browsing/core/common/safe_browsing_prefs.h"
 #include "components/security_interstitials/core/unsafe_resource.h"
 #include "components/sessions/content/session_tab_helper.h"
 #include "components/sessions/core/session_id.h"
@@ -155,9 +156,6 @@
 #include "components/guest_view/browser/slim_web_view/slim_web_view_guest.h"  // nogncheck
 #endif
 
-#if BUILDFLAG(IS_ANDROID)
-#include "chrome/browser/flags/android/chrome_feature_list.h"
-#endif
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/feedback/system_logs/chrome_system_logs_fetcher.h"
@@ -251,13 +249,15 @@ class ActiveStateCalculator : public PanelStateObserver {
   };
 
   explicit ActiveStateCalculator(Host* host) : host_(host) {
-    host_->AddPanelStateObserver(this);
-    PanelStateChanged(host_->GetPanelState());
+    host_->instance().AddStateObserver(this);
+    PanelStateChanged(host_->instance().GetPanelState());
     // Calculate state immediately to avoid having an outdated state before
     // calc_timer_ triggers recalculation and any observers are attached.
     RecalculateAndNotify();
   }
-  ~ActiveStateCalculator() override { host_->RemovePanelStateObserver(this); }
+  ~ActiveStateCalculator() override {
+    host_->instance().RemoveStateObserver(this);
+  }
 
   bool IsActive() const { return is_active_; }
   void AddObserver(Observer* observer) { observers_.AddObserver(observer); }
@@ -463,8 +463,8 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
 
   void RegisterConversation(glic::mojom::ConversationInfoPtr info,
                             RegisterConversationCallback callback) override {
-    page_handler_->host().RegisterConversation(std::move(info),
-                                               std::move(callback));
+    page_handler_->host().instance_delegate().RegisterConversation(
+        std::move(info), std::move(callback));
   }
 
   void OpenLinkInPopup(const ::GURL& url,
@@ -537,7 +537,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     consent_subscription_ =
         glic_service_->enabling().RegisterOnConsentChanged(base::BindRepeating(
             &GlicWebClientHandler::OnConsentChanged, base::Unretained(this)));
-    host().AddPanelStateObserver(this);
+    host().instance().AddStateObserver(this);
 
     if (base::FeatureList::IsEnabled(
             features::kGlicTabFocusDataDedupDebounce)) {
@@ -590,7 +590,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     auto state = glic::mojom::WebClientInitialState::New();
     PopulateGlobalClientInitialState(state.get(), profile_);
 
-    state->panel_state = host().GetPanelState().Clone();
+    state->panel_state = host().instance().GetPanelState().Clone();
 
     state->focused_tab_data =
         CreateFocusedTabData(GetSharingManagerInternal().GetFocusedTabData());
@@ -600,7 +600,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     OnPinningChanged(GetSharingManagerInternal().GetPinnedTabs());
 
     state->browser_is_open = browser_is_open_calculator_.IsOpen();
-    state->instance_is_active = host().instance_delegate().IsActive();
+    state->instance_is_active = host().instance().IsActive();
 
     local_state_pref_change_registrar_.Init(g_browser_process->local_state());
 #if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL
@@ -625,13 +625,17 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     if (page_handler_->webui_contents() != host().webui_contents()) {
       mojom::PanelOpeningDataPtr panel_opening_data =
           mojom::PanelOpeningData::New();
-      panel_opening_data->panel_state = host().GetPanelState().Clone();
+      panel_opening_data->panel_state =
+          host().instance().GetPanelState().Clone();
       panel_opening_data->invocation_source =
           mojom::InvocationSource::kUnsupported;
       base::UmaHistogramBoolean("Glic.Host.OpenedInRegularTab", true);
       web_client_->NotifyPanelWillOpen(std::move(panel_opening_data),
                                        base::DoNothing());
-      host().skills_manager().NotifyPanelOpenedOrActivated();
+      host()
+          .instance_delegate()
+          .skills_manager()
+          .NotifyPanelOpenedOrActivated();
     }
   }
 
@@ -714,10 +718,9 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
 
     std::optional<int32_t> win_id =
         options ? options->fallback_window_id : std::nullopt;
-    auto create_options = mojom::CreateTabOptions::New();
-    create_options->open_in_background = false;
-    create_options->window_id = win_id;
-    CreateTab(exact_url, std::move(create_options), std::move(callback));
+    host().instance_delegate().CreateTab(
+        exact_url, /*open_in_background=*/false, win_id, std::move(callback),
+        /*show_side_panel=*/false);
   }
 
   void OpenGlicSettingsPage(mojom::OpenSettingsOptionsPtr options) override {
@@ -905,8 +908,11 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
   void CreateActorHandler(
       mojo::PendingReceiver<mojom::ActorHandler> receiver,
       mojo::PendingRemote<mojom::ActorClient> client) override {
-    host().instance_delegate().CreateActorHandler(std::move(receiver),
-                                                  std::move(client));
+    auto* actor_task_manager = host().instance().GetActorTaskManager();
+    if (!actor_task_manager) {
+      return;
+    }
+    actor_task_manager->Bind(std::move(receiver), std::move(client));
   }
 
   void CreateExperimentalTriggeringClient(
@@ -932,7 +938,8 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
   void CreateSkillsHandler(
       mojo::PendingReceiver<mojom::SkillsHandler> receiver,
       mojo::PendingRemote<mojom::SkillsClient> client) override {
-    host().skills_manager().Bind(std::move(receiver), std::move(client));
+    host().instance_delegate().skills_manager().Bind(std::move(receiver),
+                                                     std::move(client));
   }
 
   void ActivateTab(int32_t tab_id) override {
@@ -1040,15 +1047,6 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
   void SetLocationPermissionState(
       bool enabled,
       SetLocationPermissionStateCallback callback) override {
-#if BUILDFLAG(IS_ANDROID)
-    // Glic WebUI should not set location on Android if this flag is disabled.
-    // See b/523326989 for context.
-    if (!base::FeatureList::IsEnabled(
-            chrome::android::kGlicExperimentalLocation)) {
-      std::move(callback).Run();
-      return;
-    }
-#endif
     pref_service_->SetBoolean(prefs::kGlicGeolocationEnabled, enabled);
     if (enabled) {
       base::RecordAction(
@@ -1107,15 +1105,6 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
 
   void ShouldAllowGeolocationPermissionRequest(
       ShouldAllowGeolocationPermissionRequestCallback callback) override {
-#if BUILDFLAG(IS_ANDROID)
-    // This should not be called when the flag is disabled, but added fallback
-    // to be safe.
-    if (!base::FeatureList::IsEnabled(
-            chrome::android::kGlicExperimentalLocation)) {
-      std::move(callback).Run(false);
-      return;
-    }
-#endif
     std::move(callback).Run(
         pref_service_->GetBoolean(prefs::kGlicGeolocationEnabled) &&
         host().IsWidgetShowing(this));
@@ -1201,6 +1190,9 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
             features::kGlicProcessCounterAbuseVerdict)) {
       return;
     }
+    if (!safe_browsing::IsSafeBrowsingEnabled(*pref_service_)) {
+      return;
+    }
     if (!verdict || !verdict->sb_verdict_result) {
       base::UmaHistogramEnumeration(
           "Glic.Api.ProcessCounterAbuseVerdict.Result",
@@ -1273,7 +1265,9 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
 
       if (ui_manager->IsAllowlisted(
               resource.url, resource.rfh_locator, resource.navigation_id,
-              resource.threat_type, resource.threat_source)) {
+              resource.threat_type, resource.threat_source) ||
+          safe_browsing::IsURLAllowlistedByPolicy(resource.url,
+                                                  *pref_service_)) {
         base::UmaHistogramEnumeration(
             "Glic.Api.ProcessCounterAbuseVerdict.Result",
             GlicProcessCounterAbuseVerdictResult::
@@ -1436,7 +1430,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
               std::move(done).Run(std::move(info));
             },
             std::move(done), glic_service_->metrics()));
-    host().skills_manager().NotifyPanelOpenedOrActivated();
+    host().instance_delegate().skills_manager().NotifyPanelOpenedOrActivated();
   }
 
   void PanelWasClosed(base::OnceClosure done) override {
@@ -1470,7 +1464,10 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     if (web_client_) {
       web_client_->NotifyPanelActiveChange(is_active);
       if (is_active) {
-        host().skills_manager().NotifyPanelOpenedOrActivated();
+        host()
+            .instance_delegate()
+            .skills_manager()
+            .NotifyPanelOpenedOrActivated();
       }
     }
   }
@@ -1632,7 +1629,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     host().UnsetWebClient(this);
     pref_change_registrar_.Reset();
     local_state_pref_change_registrar_.Reset();
-    host().RemovePanelStateObserver(this);
+    host().instance().RemoveStateObserver(this);
     focus_changed_subscription_ = {};
     pinned_tabs_changed_subscription_ = {};
     pinned_tab_data_changed_subscription_ = {};
@@ -1773,8 +1770,8 @@ GlicPageHandler::GlicPageHandler(
   CHECK(host_);
   MarkProcessAsGlic(webui_contents->GetPrimaryMainFrame()->GetProcess());
   host_->WebUIPageHandlerAdded(this);
-  host_->AddPanelStateObserver(this);
-  UpdatePageState(host_->GetPanelState().kind);
+  host_->instance().AddStateObserver(this);
+  UpdatePageState(host_->instance().GetPanelState().kind);
   subscriptions_.push_back(
       GetGlicService()->enabling().RegisterProfileReadyStateChanged(
           base::BindRepeating(&GlicPageHandler::UpdateProfileReadyState,
@@ -1784,7 +1781,7 @@ GlicPageHandler::GlicPageHandler(
 
 GlicPageHandler::~GlicPageHandler() {
   VLOG(1) << "Glic [PageHandler] Destructor";
-  host_->RemovePanelStateObserver(this);
+  host_->instance().RemoveStateObserver(this);
   WebUiStateChanged(glic::mojom::WebUiState::kUninitialized);
   // `GlicWebClientHandler` holds a pointer back to us, so delete it first.
   web_client_handler_.reset();

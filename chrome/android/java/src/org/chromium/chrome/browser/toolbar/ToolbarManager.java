@@ -3233,8 +3233,9 @@ public class ToolbarManager
 
     private void updateHairlineVisibility() {
         if (mHairlineVisibilityTokenHolder != null) {
-            setToolbarShadowVisibility(
-                    mHairlineVisibilityTokenHolder.hasTokens() ? View.INVISIBLE : View.VISIBLE);
+            boolean suppressed = mHairlineVisibilityTokenHolder.hasTokens();
+            setToolbarShadowVisibility(suppressed ? View.INVISIBLE : View.VISIBLE);
+            if (mToolbar != null) mToolbar.onToolbarHairlineSuppressedChanged(suppressed);
         }
     }
 
@@ -3622,6 +3623,11 @@ public class ToolbarManager
     public @Nullable OmniboxStub getOmniboxStub() {
         // TODO(crbug.com/40097170): Split fakebox component out of ntp package.
         return mLocationBar.getOmniboxStub();
+    }
+
+    /** Returns the {@link OneshotSupplier} of {@link OmniboxStub}. */
+    public OneshotSupplier<OmniboxStub> getOmniboxStubSupplier() {
+        return mOmniboxStubSupplier;
     }
 
     public @Nullable VoiceRecognitionHandler getVoiceRecognitionHandler() {

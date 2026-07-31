@@ -26,6 +26,7 @@
 #include "components/autofill/core/common/aliases.h"
 #include "components/autofill/core/common/mojom/autofill_types.mojom-shared.h"
 #include "components/autofill/core/common/unique_ids.h"
+#include "services/metrics/public/cpp/ukm_source_id.h"
 
 namespace accessibility_annotator {
 struct MemorySearchResults;
@@ -55,13 +56,14 @@ class AtMemoryManager {
   // session if the `trigger_source` is an @memory one.
   // TODO(crbug.com/507770024): Rename to OnSuggestionsShown.
   void OnPopupShown(
+      const FormGlobalId& form_id,
+      const FieldGlobalId& field_id,
       AutofillSuggestionTriggerSource trigger_source,
       base::optional_ref<const AutofillSuggestionDelegate::SuggestionMetadata>
           parent_suggestion_metadata,
       bool is_context_secure,
       UpdateSuggestionsCallback update_callback,
-      FormSignature form_signature,
-      FieldSignature field_signature);
+      ukm::SourceId ukm_source_id);
 
   // Called when the user types in the filter/search bar. Returns true if
   // handled by the manager (i.e., the current session is an @memory one).
@@ -99,6 +101,8 @@ class AtMemoryManager {
       std::vector<Suggestion>& suggestions) const;
 
  private:
+  friend class AtMemoryManagerTestApi;
+
   // Executes the search query.
   void ExecuteQuery(const std::u16string& filter);
 
@@ -136,6 +140,15 @@ class AtMemoryManager {
                       const FieldGlobalId& field_id,
                       const Suggestion& suggestion,
                       std::unique_ptr<AtMemoryMetricsRecorder> metrics);
+
+  // Fills sensitive identity data by selecting the appropriate filling path
+  // depending on whether the data is sourced from Autofill AI or Personal
+  // Context.
+  void FillSensitiveAutofillAiOrPersonalContextData(
+      const FormGlobalId& form_id,
+      const FieldGlobalId& field_id,
+      const Suggestion& suggestion,
+      std::unique_ptr<AtMemoryMetricsRecorder> metrics);
 
   // Fills the unmasked AutofillAI value after fetching it.
   void FillSensitiveAutofillAiData(

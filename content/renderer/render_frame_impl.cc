@@ -96,6 +96,7 @@
 #include "content/renderer/effective_connection_type_helper.h"
 #include "content/renderer/frame_owner_properties_converter.h"
 #include "content/renderer/gpu_benchmarking_extension.h"
+#include "content/renderer/lazy_shared_url_loader_factory.h"
 #include "content/renderer/local_resource_url_loader_factory.h"
 #include "content/renderer/media/media_permission_dispatcher.h"
 #include "content/renderer/mhtml_handle_writer.h"
@@ -504,7 +505,7 @@ void FillNavigationParamsRequest(
   // We'll replay the redirects afterwards and will eventually arrive at the
   // final URL. For non-redirecting navigations, use the final URL to be
   // committed (as that is the same as the original URL).
-  const bool should_use_original_url = !commit_params.redirect_infos.empty() &&
+  const bool should_use_original_url = !commit_params.redirect_params.empty() &&
                                        !commit_params.original_url.is_empty();
   navigation_params->url =
       should_use_original_url ? commit_params.original_url : common_params.url;
@@ -1018,9 +1019,10 @@ void FillMiscNavigationParams(
   navigation_params->navigation_timings = BuildNavigationTimings(
       common_params.navigation_start, *commit_params.navigation_timing,
       common_params.input_start);
-  if (!commit_params.redirect_infos.empty()) {
+  if (!commit_params.redirect_params.empty()) {
     navigation_params->navigation_timings.critical_ch_restart =
-        commit_params.redirect_infos.back().critical_ch_restart_time;
+        commit_params.redirect_params.back()
+            ->redirect_info.critical_ch_restart_time;
   }
 
   navigation_params->is_user_activated =
@@ -3055,12 +3057,23 @@ void RenderFrameImpl::CommitNavigationWithParams(
     navigation_params->service_worker_network_provider =
         ServiceWorkerNetworkProviderForFrame::CreateInvalidInstance();
   } else {
+    scoped_refptr<network::SharedURLLoaderFactory> fallback_loader_factory;
+    if (base::FeatureList::IsEnabled(
+            features::kReduceMojoURLLoaderFactoryCloning) &&
+        features::kUseLazyURLLoaderFactoryForServiceWorkerFallback.Get()) {
+      fallback_loader_factory = network::SharedURLLoaderFactory::Create(
+          CreateLazyPendingURLLoaderFactory(
+              new_loader_factories,
+              GetTaskRunner(blink::TaskType::kInternalLoading)));
+    } else {
+      fallback_loader_factory = network::SharedURLLoaderFactory::Create(
+          new_loader_factories->Clone());
+    }
     navigation_params->service_worker_network_provider =
         ServiceWorkerNetworkProviderForFrame::Create(
             this, std::move(container_info),
             std::move(controller_service_worker_info),
-            network::SharedURLLoaderFactory::Create(
-                new_loader_factories->Clone()));
+            std::move(fallback_loader_factory));
   }
 
   DCHECK(!pending_loader_factories_);
@@ -3254,7 +3267,7 @@ void RenderFrameImpl::CommitFailedNavigation(
   navigation_params->unreachable_url = error.url();
   if (base::FeatureList::IsEnabled(
           blink::features::kRemoveCommitRedirectUrlsArray)) {
-    if (commit_params->redirect_infos.size()) {
+    if (commit_params->redirect_params.size()) {
       navigation_params->pre_redirect_url_for_failed_navigations =
           common_params->url;
     } else {

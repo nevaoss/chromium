@@ -185,6 +185,25 @@ class X509CertificateModel : public X509CertificateModelBase {
   // grouped by type (DNS, IP, URI, ...). Empty if the extension is absent or
   // cannot be parsed.
   std::vector<GeneralName> GetSubjectAlternativeNames() const;
+
+  // Returns true if the IssuerAlternativeName extension is present and marked
+  // critical.
+  bool IsIssuerAlternativeNameCritical() const;
+
+  // Returns every IssuerAlternativeName entry decoded as a GeneralName, grouped
+  // by type (DNS, IP, URI, ...). Empty if the extension is absent or cannot be
+  // parsed.
+  std::vector<GeneralName> GetIssuerAlternativeNames() const;
+
+  // Returns true if the CRLDistributionPoints extension is present and marked
+  // critical.
+  bool IsCRLDistributionPointsCritical() const;
+
+  // Returns every CRLDistributionPoints fullName entry decoded as a
+  // GeneralName, flattened across all distribution points and grouped by type
+  // (URI, DNS, ...). The relativeName, reasons, and cRLIssuer fields are not
+  // parsed. Empty if the extension is absent or cannot be parsed.
+  std::vector<GeneralName> GetCRLDistributionPointsFullNames() const;
 };
 
 }  // namespace x509_certificate_model

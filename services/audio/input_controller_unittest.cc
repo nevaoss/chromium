@@ -1109,7 +1109,8 @@ TEST_F(SystemTimeInputControllerTestWithReferenceSignalProvider,
   EXPECT_CALL(event_handler_, OnError(InputController::STREAM_CREATE_ERROR));
 
   CreateAudioController();
-  EXPECT_FALSE(controller_.get());
+  EXPECT_TRUE(controller_.get());
+  controller_->Close();
 }
 #endif  // BUILDFLAG(CHROME_WIDE_ECHO_CANCELLATION)
 

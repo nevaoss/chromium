@@ -12,6 +12,8 @@
 #include "ui/base/cursor/cursor.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/gfx/canvas.h"
+#include "ui/gfx/geometry/rect.h"
+#include "ui/gfx/geometry/rounded_corners_f.h"
 #include "ui/gfx/native_ui_types.h"
 #include "ui/views/controls/native/native_view_host_wrapper.h"
 #include "ui/views/painter.h"
@@ -74,11 +76,17 @@ gfx::NativeViewAccessible NativeViewHost::GetParentAccessible() {
   return native_wrapper_->GetParentAccessible();
 }
 
-bool NativeViewHost::SetCornerRadii(const gfx::RoundedCornersF& corner_radii) {
+bool NativeViewHost::SetNativeViewCornerRadii(
+    const gfx::RoundedCornersF& corner_radii) {
   if (!native_wrapper_) {
     return false;
   }
-  return native_wrapper_->SetCornerRadii(corner_radii);
+  return native_wrapper_->SetNativeViewCornerRadii(corner_radii);
+}
+
+gfx::RoundedCornersF NativeViewHost::GetNativeViewCornerRadii() const {
+  return native_wrapper_ ? native_wrapper_->GetNativeViewCornerRadii()
+                         : gfx::RoundedCornersF();
 }
 
 void NativeViewHost::SetHitTestTopInset(int top_inset) {
@@ -130,7 +138,7 @@ void NativeViewHost::SetBackgroundColorWhenClipped(
 }
 
 ui::Layer* NativeViewHost::GetUILayer() {
-  return native_wrapper_->GetUILayer();
+  return layer_managed_by_views() ? layer() : native_wrapper_->GetUILayer();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -297,6 +305,18 @@ bool NativeViewHost::OnMousePressed(const ui::MouseEvent& event) {
 
 ////////////////////////////////////////////////////////////////////////////////
 // NativeViewHost, private:
+
+bool NativeViewHost::SetNativeViewClipRect(const gfx::Rect& clip_rect) {
+  if (native_wrapper_) {
+    return native_wrapper_->SetNativeViewClipRect(clip_rect);
+  }
+  return false;
+}
+
+gfx::Rect NativeViewHost::GetNativeViewClipRect() const {
+  return native_wrapper_ ? native_wrapper_->GetNativeViewClipRect()
+                         : gfx::Rect();
+}
 
 void NativeViewHost::Detach(bool destroyed) {
   if (native_view_) {

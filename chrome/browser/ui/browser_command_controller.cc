@@ -841,24 +841,12 @@ void BrowserCommandController::HandleCommandWithDisposition(
 #endif  // BUILDFLAG(IS_LINUX)
 
 #if BUILDFLAG(IS_WIN)
-    case IDC_MOVE_WINDOW: {
-      HWND hwnd = BrowserView::GetBrowserViewForBrowser(browser_)
-                      ->GetWidget()
-                      ->GetNativeWindow()
-                      ->GetHost()
-                      ->GetAcceleratedWidget();
-      PostMessage(hwnd, WM_SYSCOMMAND, SC_MOVE, 0);
+    case IDC_MOVE_WINDOW:
+      chrome::OpenMoveWindow(browser_);
       break;
-    }
-    case IDC_SIZE_WINDOW: {
-      HWND hwnd = BrowserView::GetBrowserViewForBrowser(browser_)
-                      ->GetWidget()
-                      ->GetNativeWindow()
-                      ->GetHost()
-                      ->GetAcceleratedWidget();
-      PostMessage(hwnd, WM_SYSCOMMAND, SC_SIZE, 0);
+    case IDC_SIZE_WINDOW:
+      chrome::OpenSizeWindow(browser_);
       break;
-    }
 #endif  // BUILDFLAG(IS_WIN)
 
 #if BUILDFLAG(IS_MAC)
@@ -937,9 +925,6 @@ void BrowserCommandController::HandleCommandWithDisposition(
       ShowSyncPassphraseDialogAndDecryptData(*browser_);
       break;
 #endif  // !BUILDFLAG(IS_CHROMEOS)
-    case IDC_SHOW_CONTEXTUAL_TASKS_SIDE_PANEL:
-      ToggleContextualTasksSidePanel(browser_);
-      break;
     case IDC_TURN_ON_SYNC:
       signin_ui_util::EnableSyncFromSingleAccountPromo(
           browser_->GetProfile(),
@@ -1440,6 +1425,8 @@ void BrowserCommandController::HandleCommandWithDisposition(
     case IDC_DEBUG_TOGGLE_TABLET_MODE:
     case IDC_DEBUG_PRINT_VIEW_TREE:
     case IDC_DEBUG_PRINT_VIEW_TREE_DETAILS:
+    case IDC_DEBUG_PRINT_WINDOW_HIERARCHY:
+    case IDC_DEBUG_PRINT_LAYER_HIERARCHY:
       ExecuteUIDebugCommand(id, browser_);
       break;
 
@@ -1957,13 +1944,14 @@ void BrowserCommandController::InitCommandState() {
   command_updater_->UpdateCommandEnabled(IDC_TAB_SEARCH_TOGGLE_PIN,
                                          enable_tab_search_commands);
 
-  command_updater_->UpdateCommandEnabled(IDC_SHOW_CONTEXTUAL_TASKS_SIDE_PANEL,
-                                         true);
-
   if (base::FeatureList::IsEnabled(features::kUIDebugTools)) {
     command_updater_->UpdateCommandEnabled(IDC_DEBUG_TOGGLE_TABLET_MODE, true);
     command_updater_->UpdateCommandEnabled(IDC_DEBUG_PRINT_VIEW_TREE, true);
     command_updater_->UpdateCommandEnabled(IDC_DEBUG_PRINT_VIEW_TREE_DETAILS,
+                                           true);
+    command_updater_->UpdateCommandEnabled(IDC_DEBUG_PRINT_WINDOW_HIERARCHY,
+                                           true);
+    command_updater_->UpdateCommandEnabled(IDC_DEBUG_PRINT_LAYER_HIERARCHY,
                                            true);
   }
 

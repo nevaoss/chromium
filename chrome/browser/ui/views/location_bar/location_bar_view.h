@@ -243,6 +243,7 @@ class LocationBarView
   bool IsDrawn() const override;
   bool IsFullscreen() const override;
   bool IsMouseHovered() const override;
+  bool IsFocusWithin() const override;
   void InvalidateLayout() override;
   gfx::Rect Bounds() const override;
   gfx::Rect BoundsInScreen() const override;
@@ -377,8 +378,8 @@ class LocationBarView
   // actions are available on the current page.
   void RefreshPageActionIconViews();
 
-  // Updates the visibility state of the AIM page action icon view.
-  void RefreshAiModePageActionIconView();
+  // Updates the visibility state of the AIM page action.
+  void RefreshAiModePageAction();
 
   // Updates PageActionContainerView's action controller to the active tab's
   // controller. At the same time, the page actions visibility will be set based

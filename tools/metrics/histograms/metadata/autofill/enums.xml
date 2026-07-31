@@ -2987,9 +2987,12 @@ Called by update_autofill_enums.py.-->
              fragment."/>
   <int value="8"
       label="User entered the autofill options via private inference notice."/>
+  <int value="9"
+      label="User entered the autofill options via personal context atmemory
+             notice."/>
 </enum>
 
-<!-- LINT.ThenChange(//chrome/browser/autofill/android/java/src/org/chromium/chrome/browser/autofill/options/AutofillOptionsFragment.java:AutofillOptionsReferrer) -->
+<!-- LINT.ThenChange(//chrome/browser/autofill/android/java/src/org/chromium/chrome/browser/autofill/settings/options/AutofillOptionsFragment.java:AutofillOptionsReferrer) -->
 
 <enum name="AutofillOtpAuthEvent">
   <int value="0" label="Unknown result"/>
@@ -4298,7 +4301,7 @@ Called by update_autofill_enums.py.-->
   <int value="3" label="Focus removed from field. Follows kEndEditing."/>
   <int value="4"
       label="Scrolling or zooming into the page displaces the popup."/>
-  <int value="5" label="A navigation on the page or frame level."/>
+  <int value="5" label="(Deprecated) A navigation on the page or frame level."/>
   <int value="6" label="The popup is or would become empty."/>
   <int value="7" label="The renderer explicitly requested closing the popup."/>
   <int value="8"
@@ -5888,6 +5891,8 @@ Called by update_autofill_enums.py.-->
   <int value="90" label="Autofill AI other orders"/>
   <int value="91" label="Manage shopping information"/>
   <int value="92" label="Autofill AI private inference notice"/>
+  <int value="93" label="Manage enhanced autofill"/>
+  <int value="94" label="AtMemory AI disclosure"/>
 </enum>
 
 <!-- LINT.ThenChange(/components/autofill/core/browser/suggestions/suggestion_type.h:SuggestionType) -->

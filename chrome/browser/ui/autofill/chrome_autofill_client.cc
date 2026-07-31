@@ -25,22 +25,22 @@
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
-#include "chrome/browser/accessibility_annotator/at_memory_query_service_factory.h"
 #include "chrome/browser/account_settings/account_setting_service_factory.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
 #include "chrome/browser/autofill/actor/actor_key_metrics_recorder.h"
 #include "chrome/browser/autofill/address_normalizer_factory.h"
 #include "chrome/browser/autofill/android/save_update_address_profile_prompt_mode.h"
+#include "chrome/browser/autofill/at_memory/at_memory_query_service_factory.h"
 #include "chrome/browser/autofill/at_memory_cross_tab_copy_paste_tracker_factory.h"
 #include "chrome/browser/autofill/autocomplete_history_manager_factory.h"
 #include "chrome/browser/autofill/autofill_ai_model_cache_factory.h"
 #include "chrome/browser/autofill/autofill_ai_model_executor_factory.h"
+#include "chrome/browser/autofill/autofill_ai_personal_context_access_manager_factory.h"
 #include "chrome/browser/autofill/autofill_entity_data_manager_factory.h"
 #include "chrome/browser/autofill/autofill_field_classification_model_service_factory.h"
 #include "chrome/browser/autofill/autofill_optimization_guide_decider_factory.h"
 #include "chrome/browser/autofill/autofill_policy_service_factory.h"
 #include "chrome/browser/autofill/one_time_token_service_factory.h"
-#include "chrome/browser/autofill/personal_context_access_manager_factory.h"
 #include "chrome/browser/autofill/personal_data_manager_factory.h"
 #include "chrome/browser/autofill/ui/ui_util.h"
 #include "chrome/browser/autofill/valuables_data_manager_factory.h"
@@ -62,7 +62,7 @@
 #include "chrome/browser/password_manager/factories/password_manager_settings_service_factory.h"
 #include "chrome/browser/password_manager/password_field_classification_model_handler_factory.h"
 #include "chrome/browser/personal_context/first_run/personal_context_first_run_service_factory.h"
-#include "chrome/browser/personal_context/personal_context_enablement_service_factory.h"
+#include "chrome/browser/personal_context/personal_context_eligibility_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
@@ -543,17 +543,17 @@ AtMemoryQueryService* ChromeAutofillClient::GetAtMemoryQueryService() {
 personal_context::PersonalContextEligibilityState
 ChromeAutofillClient::GetPersonalContextEligibilityState() const {
   Profile* profile = GetProfile();
-  personal_context::PersonalContextEnablementService* service =
-      PersonalContextEnablementServiceFactory::GetForProfile(profile);
+  personal_context::PersonalContextEligibilityService* service =
+      PersonalContextEligibilityServiceFactory::GetForProfile(profile);
   return service ? service->GetEligibilityState()
                  : personal_context::PersonalContextEligibilityState::
                        kDisabledNotEligible;
 }
 
-personal_context::PersonalContextEnablementService*
-ChromeAutofillClient::GetPersonalContextEnablementService() const {
+personal_context::PersonalContextEligibilityService*
+ChromeAutofillClient::GetPersonalContextEligibilityService() const {
   Profile* profile = GetProfile();
-  return PersonalContextEnablementServiceFactory::GetForProfile(profile);
+  return PersonalContextEligibilityServiceFactory::GetForProfile(profile);
 }
 
 PasswordManagerDelegate* ChromeAutofillClient::GetPasswordManagerDelegate(
@@ -584,12 +584,13 @@ AutofillAiManager* ChromeAutofillClient::GetAutofillAiManager() {
   return autofill_ai_manager_.get();
 }
 
-PersonalContextAccessManager*
-ChromeAutofillClient::GetPersonalContextAccessManager() {
+AutofillAiPersonalContextAccessManager*
+ChromeAutofillClient::GetAutofillAiPersonalContextAccessManager() {
   if (!base::FeatureList::IsEnabled(features::kAutofillAmbientAutofill)) {
     return nullptr;
   }
-  return PersonalContextAccessManagerFactory::GetForProfile(GetProfile());
+  return AutofillAiPersonalContextAccessManagerFactory::GetForProfile(
+      GetProfile());
 }
 
 AutofillAiModelCache* ChromeAutofillClient::GetAutofillAiModelCache() {
@@ -839,6 +840,10 @@ void ChromeAutofillClient::ShowAutofillSettings(
             "wallet?p=loyalty&utm_source=chrome&utm_medium=redirect&utm_"
             "campaign=loyalty";
         ShowSingletonTab(browser, GURL(kValuableManagementUrl));
+        return;
+      case SuggestionType::kManageEnhancedAutofill:
+        chrome::ShowSettingsSubPage(browser,
+                                    chrome::kSuggestionsFromGeminiSubPage);
         return;
       default:
         NOTREACHED();

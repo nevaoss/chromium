@@ -214,6 +214,7 @@
 #include "content/public/browser/download_manager.h"
 #include "content/public/browser/error_navigation_trigger.h"
 #include "content/public/browser/feature_observer_client.h"
+#include "content/public/browser/global_dom_node_id.h"
 #include "content/public/browser/global_routing_id.h"
 #include "content/public/browser/media_device_id.h"
 #include "content/public/browser/network_service_util.h"
@@ -3110,7 +3111,35 @@ void RenderFrameHostImpl::DidEnterBackForwardCache() {
   //
   // We shouldn't BFCache a renderer without a View.
   CHECK(GetView());
-  static_cast<RenderWidgetHostViewBase*>(GetView())->DidEnterBackForwardCache();
+  auto* main_view = static_cast<RenderWidgetHostViewBase*>(GetView());
+  main_view->DidEnterBackForwardCache();
+
+  // If a widget in this page tree was the TextInputManager's active view, drop
+  // it so the IME / text-input observers see the input target go away while
+  // the page is frozen. DOM focus on the renderer side is preserved so the
+  // state can be re-established on restore.
+  if (auto* tim = main_view->GetTextInputManager()) {
+    RenderWidgetHostImpl* active_widget = tim->GetActiveWidget();
+    auto* active_view =
+        active_widget
+            ? static_cast<RenderWidgetHostViewBase*>(active_widget->GetView())
+            : nullptr;
+    if (active_view) {
+      bool active_view_in_page = active_view == main_view;
+      if (!active_view_in_page) {
+        auto nodes = FrameTree::SubtreeAndInnerTreeNodes(
+            this, /*include_delegate_nodes_for_inner_frame_trees=*/true);
+        active_view_in_page =
+            std::find_if(nodes.begin(), nodes.end(), [&](FrameTreeNode* node) {
+              RenderFrameHostImpl* subframe = node->current_frame_host();
+              return subframe && subframe->GetView() == active_view;
+            }) != nodes.end();
+      }
+      if (active_view_in_page) {
+        tim->DidEnterBackForwardCache(active_view);
+      }
+    }
+  }
 
   // Cancel loading memory tracker if it hasn't already recorded loading
   // memory stats, as we would now be including stats from the navigation
@@ -9510,7 +9539,8 @@ void RenderFrameHostImpl::FocusedElementChanged(
     bool is_editable_element,
     bool is_richly_editable_element,
     const gfx::Rect& bounds_in_frame_widget,
-    blink::mojom::FocusType focus_type) {
+    blink::mojom::FocusType focus_type,
+    const blink::DOMNodeIdType& editable_dom_node_id) {
   if (!GetView()) {
     return;
   }
@@ -9524,7 +9554,7 @@ void RenderFrameHostImpl::FocusedElementChanged(
       gfx::Rect(GetView()->TransformPointToRootCoordSpace(
                     bounds_in_frame_widget.origin()),
                 bounds_in_frame_widget.size()),
-      focus_type);
+      focus_type, editable_dom_node_id);
 }
 
 void RenderFrameHostImpl::TextSelectionChanged(const std::u16string& text,
@@ -9832,6 +9862,9 @@ void RenderFrameHostImpl::ShowContextMenu(
         GetProcess(), bad_message::RFH_NEGATIVE_SELECTION_START_OFFSET);
     return;
   }
+
+  validated_params.form_field_dom_node_id =
+      GlobalDOMNodeId{GetWeakDocumentPtr(), validated_params.field_renderer_id};
 
   delegate_->ShowContextMenu(*this, std::move(context_menu_client),
                              validated_params);
@@ -10597,7 +10630,7 @@ void RenderFrameHostImpl::CreateNewWindow(
           reply->widget_screen_rect.emplace(shown_rwhv->GetViewBounds());
           reply->window_screen_rect.emplace(
               static_cast<RenderWidgetHostViewBase*>(shown_rwhv)
-                  ->GetBoundsInRootWindow());
+                  ->GetBoundsInScreen());
           reply->visual_properties =
               static_cast<RenderWidgetHostImpl*>(shown_rwh)
                   ->GetVisualProperties();
@@ -10622,54 +10655,8 @@ void RenderFrameHostImpl::SendLegacyTechEvent(
 
 void RenderFrameHostImpl::SendPrivateAggregationRequestsForFencedFrameEvent(
     const std::string& event_type) {
-  if (!base::FeatureList::IsEnabled(blink::features::kPrivateAggregationApi) ||
-      !blink::features::kPrivateAggregationApiEnabledInProtectedAudience
-           .Get()) {
-    mojo::ReportBadMessage(
-        "Private Aggregation must be enabled in Protected Audience to use "
-        "reportEvent() for private aggregation events.");
-    return;
-  }
-  // Only check if the event type starts with "reserved." - We allow event types
-  // like "myevent.reserved.name".
-  if (base::StartsWith(event_type, blink::kFencedFrameReservedPAEventPrefix)) {
-    mojo::ReportBadMessage("Reserved events cannot be triggered manually.");
-    return;
-  }
-  const std::optional<FencedFrameProperties>& fenced_frame_properties =
-      frame_tree_node_->GetFencedFrameProperties();
-  if (!fenced_frame_properties.has_value()) {
-    // No associated fenced frame properties. This should have been captured
-    // in the renderer process at `Fence::reportEvent`.
-    // This implies there is an inconsistency between the browser and the
-    // renderer.
-    mojo::ReportBadMessage(
-        "This frame had fenced frame properties registered in its renderer "
-        "process but not in its browser process. This should be consistent "
-        "between the two.");
-    return;
-  }
-  if (!fenced_frame_properties->fenced_frame_reporter()) {
-    AddMessageToConsole(
-        blink::mojom::ConsoleMessageLevel::kWarning,
-        "This frame was loaded with a FencedFrameConfig that did not have any "
-        "reporting metadata associated with it (via selectURL()'s "
-        "reportingMetadata or Protected Audience's registerAdBeacon()).");
-    return;
-  }
-  if (!fenced_frame_properties->mapped_url().has_value() ||
-      !GetLastCommittedOrigin().IsSameOriginWith(
-          url::Origin::Create(fenced_frame_properties->mapped_url()
-                                  ->GetValueIgnoringVisibility()))) {
-    AddMessageToConsole(
-        blink::mojom::ConsoleMessageLevel::kError,
-        "This frame is cross-origin to the mapped url of its fenced frame "
-        "config and cannot report a Private Aggregation event.");
-    return;
-  }
-
-  fenced_frame_properties->fenced_frame_reporter()
-      ->SendPrivateAggregationRequestsForEvent(event_type);
+  // TODO(crbug.com/531746235): Remove this method once Mojo interface is
+  // updated.
 }
 
 std::vector<FencedFrame*> RenderFrameHostImpl::GetFencedFrames() const {
@@ -14662,10 +14649,12 @@ FrameTreeNode* RenderFrameHostImpl::GetPrerenderOuterMostMainFrame() {
     return nullptr;
   }
 
-  // If this runs during the WebContents destruction, PrerenderHostRegistry was
-  // already destroyed and bound prerenderings are already cancelled.
-  // We can check the FrameTree status as the tree's shutdown runs first.
-  if (outermost_frame->frame_tree().IsBeingDestroyed()) {
+  // If this runs during WebContents destruction, PrerenderHostRegistry is
+  // already being destroyed and bound prerenderings are being cancelled.
+  // We check `delegate_->IsBeingDestroyed()` or the FrameTree status as
+  // the tree's shutdown runs first.
+  if (outermost_frame->frame_tree().IsBeingDestroyed() ||
+      delegate_->IsBeingDestroyed()) {
     return nullptr;
   }
 
@@ -14822,8 +14811,8 @@ void RenderFrameHostImpl::CreateWebSocketConnector(
   mojo::MakeSelfOwnedReceiver(
       std::make_unique<WebSocketConnectorImpl>(
           GlobalRenderFrameHostId(GetProcess()->GetID(), routing_id_),
-          last_committed_origin_, isolation_info_, BuildClientSecurityState(),
-          GetNetworkRestrictionsID()),
+          GetWeakDocumentPtr(), last_committed_origin_, isolation_info_,
+          BuildClientSecurityState(), GetNetworkRestrictionsID()),
       std::move(receiver));
 }
 
@@ -14836,7 +14825,8 @@ void RenderFrameHostImpl::CreateWebTransportConnector(
   mojo::MakeSelfOwnedReceiver(
       std::make_unique<WebTransportConnectorImpl>(
           GetProcess()->GetDeprecatedID(), weak_ptr_factory_.GetWeakPtr(),
-          last_committed_origin_, isolation_info_.network_anonymization_key(),
+          GetWeakDocumentPtr(), last_committed_origin_,
+          isolation_info_.network_anonymization_key(),
           BuildClientSecurityState(), GetNetworkRestrictionsID()),
       std::move(receiver));
 }
@@ -14887,14 +14877,13 @@ void RenderFrameHostImpl::CreateDedicatedWorkerHostFactory(
 
   // When a dedicated worker is created from the frame script, the frame is both
   // the creator and the ancestor.
-  mojo::MakeSelfOwnedReceiver(
-      std::make_unique<DedicatedWorkerHostFactoryImpl>(
-          worker_process_id,
-          /*creator=*/GetGlobalId(), GetWeakDocumentPtr(), GetStorageKey(),
-          isolation_info_, BuildClientSecurityState(),
-          policy_container_host()->policies(),
-          /*creator_coep_reporter=*/coep_reporter, GetNetworkRestrictionsID()),
-      std::move(receiver));
+  DedicatedWorkerHostFactoryImpl::Create(
+      *this, std::move(receiver), worker_process_id,
+      /*creator=*/GetGlobalId(),
+      /*ancestor_document=*/GetWeakDocumentPtr(), GetStorageKey(),
+      isolation_info_, BuildClientSecurityState(),
+      policy_container_host()->policies(),
+      /*creator_coep_reporter=*/coep_reporter, GetNetworkRestrictionsID());
 }
 
 #if BUILDFLAG(IS_ANDROID) || (BUILDFLAG(IS_IOS) && !BUILDFLAG(IS_IOS_TVOS))

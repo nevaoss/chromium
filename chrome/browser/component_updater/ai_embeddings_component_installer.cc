@@ -11,21 +11,30 @@
 #include <string>
 #include <vector>
 
-#include "base/containers/flat_map.h"
+#include "base/containers/flat_set.h"
+#include "base/feature_list.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
+#include "base/functional/bind.h"
 #include "base/functional/callback.h"
+#include "base/location.h"
 #include "base/memory/ref_counted.h"
+#include "base/task/task_traits.h"
+#include "base/task/thread_pool.h"
 #include "base/values.h"
 #include "base/version.h"
 #include "chrome/browser/ai/ai_semantic_embedder_service_launcher.h"
 #include "components/component_updater/component_installer.h"
 #include "components/component_updater/component_updater_service.h"
 #include "components/optimization_guide/core/delivery/model_info.h"
+#include "components/optimization_guide/core/model_execution/model_execution_prefs.h"
+#include "components/optimization_guide/core/model_execution/model_execution_util.h"
 #include "components/optimization_guide/core/optimization_guide_proto_util.h"
 #include "components/optimization_guide/proto/common_types.pb.h"
 #include "components/optimization_guide/proto/passage_embeddings_model_metadata.pb.h"
 #include "components/passage_embeddings/core/passage_embeddings_service_controller.h"
+#include "components/prefs/pref_service.h"
+#include "third_party/blink/public/common/features_generated.h"
 
 namespace {
 // CRX ID: ddkjpondgmdhgaiodldnoebnfcjbckih
@@ -95,13 +104,12 @@ class AIEmbeddingsComponentInstallerPolicy
       version_num = (version_num << 16) + component;
     }
 
-    base::flat_map<base::FilePath::StringType, base::FilePath>
-        additional_files = {
-            {kSpModelFileName, GetInstalledSpModelPath(install_dir)}};
-
-    optimization_guide::ModelInfo model_info(
-        GetInstalledModelPath(install_dir), additional_files,
-        static_cast<int64_t>(version_num), any_metadata);
+    optimization_guide::ModelInfo model_info{
+        .model_file_path = GetInstalledModelPath(install_dir),
+        .additional_files = {GetInstalledSpModelPath(install_dir)},
+        .version = static_cast<int64_t>(version_num),
+        .model_metadata = any_metadata,
+    };
 
     AISemanticEmbedderServiceLauncher::Get()
         ->controller()
@@ -133,9 +141,32 @@ GetAIEmbeddingsComponentInstallerPolicyForTesting() {
   return std::make_unique<AIEmbeddingsComponentInstallerPolicy>();
 }
 
-void RegisterAIEmbeddingsComponent(ComponentUpdateService* cus) {
+void RegisterAIEmbeddingsComponent(ComponentUpdateService* cus,
+                                   PrefService* local_state) {
+  CHECK(local_state);
+  if (!base::FeatureList::IsEnabled(blink::features::kAIEmbeddingsAPI) &&
+      !base::FeatureList::IsEnabled(
+          blink::features::kAIEmbeddingsAPIForWorkers)) {
+    return;
+  }
+
+  if (optimization_guide::
+          GetGenAILocalFoundationalModelEnterprisePolicySettings(local_state) ==
+      optimization_guide::model_execution::prefs::
+          GenAILocalFoundationalModelEnterprisePolicySettings::kDisallowed) {
+    return;
+  }
+
   auto installer = base::MakeRefCounted<ComponentInstaller>(
       std::make_unique<AIEmbeddingsComponentInstallerPolicy>());
   installer->Register(cus, base::OnceClosure());
 }
+
+void DeleteAIEmbeddingsComponent(const base::FilePath& user_data_dir) {
+  base::ThreadPool::PostTask(
+      FROM_HERE, {base::TaskPriority::BEST_EFFORT, base::MayBlock()},
+      base::BindOnce(base::IgnoreResult(&base::DeletePathRecursively),
+                     user_data_dir.Append(FILE_PATH_LITERAL("AIEmbeddings"))));
+}
+
 }  // namespace component_updater

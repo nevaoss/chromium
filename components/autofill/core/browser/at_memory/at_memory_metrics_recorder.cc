@@ -88,7 +88,6 @@ void AtMemoryMetricsRecorder::OnPopupShown(
     AutofillSuggestionTriggerSource trigger_source,
     base::optional_ref<const AutofillSuggestionDelegate::SuggestionMetadata>
         parent_suggestion_metadata) {
-  // TODO(crbug.com/526885251): Add metrics for flyout menu.
   if (parent_suggestion_metadata.has_value()) {
     if (pending_log_entry_ &&
         !parent_suggestion_metadata->multi_index.empty()) {
@@ -229,6 +228,9 @@ void AtMemoryMetricsRecorder::OnQueryResponseReceived(
 
   if (!pending_log_entry_) {
     return;
+  }
+  if (!result.server_request_id.empty()) {
+    pending_log_entry_->set_model_execution_id(result.server_request_id);
   }
   auto* quality = pending_log_entry_->log_ai_data_request()
                       ->mutable_at_memory()

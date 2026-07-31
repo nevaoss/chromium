@@ -138,6 +138,8 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE_PARAM(FontDataServiceTypefaceType,
                                           kFontDataServiceTypefaceType);
 #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
 
+CONTENT_EXPORT BASE_DECLARE_FEATURE(kFontDataServiceForCSSLocalFonts);
+
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
 bool IsFontDataServiceEnabled();
 #endif
@@ -185,6 +187,7 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kMojoDedicatedThread);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kMultipleSpareRPHs);
 CONTENT_EXPORT BASE_DECLARE_FEATURE_PARAM(size_t, kMultipleSpareRPHsCount);
 
+CONTENT_EXPORT BASE_DECLARE_FEATURE(kNavigationFastFetchDryRun);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kNavigationThrottleRunner2);
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -204,6 +207,9 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kPrivacySandboxAdsAPIsM1Override);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kProcessReuseOnPrerenderCOOPSwap);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kProgressiveAccessibilityPhase2);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kReduceMojoURLLoaderFactoryCloning);
+CONTENT_EXPORT BASE_DECLARE_FEATURE_PARAM(
+    bool,
+    kUseLazyURLLoaderFactoryForServiceWorkerFallback);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kReloadHiddenTabsWithCrashedSubframes);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kPreferWarmRendererProcess);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kReusePrerenderingProcessForMainFrames);
@@ -245,6 +251,7 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kServiceWorkerClientUrlIsCreationUrl);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kServiceWorkerOptionalTimeoutIterator);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kServiceWorkerVerifyMainScriptUrl);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kServiceWorkerSoftUpdateOnFunctionalEvent);
+CONTENT_EXPORT BASE_DECLARE_FEATURE(kServiceWorkerStrictContextValidation);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(
     kSharedWorkerSecureContextDerivationFromBrowser);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(

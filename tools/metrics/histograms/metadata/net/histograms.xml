@@ -1561,7 +1561,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="HttpCache.Pattern{CachedResourceType}" enum="HttpCachePattern"
-    expires_after="2026-11-08">
+    expires_after="2027-01-10">
   <owner>morlovich@chromium.org</owner>
   <owner>jkarlin@chromium.org</owner>
   <summary>
@@ -1851,7 +1851,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.Certificate.TrustAnchor.Request" enum="NetTrustAnchors"
-    expires_after="2026-11-05">
+    expires_after="2027-01-10">
   <owner>mattm@chromium.org</owner>
   <owner>chrome-secure-web-and-net@chromium.org</owner>
   <summary>
@@ -1866,7 +1866,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.Certificate.TrustAnchor.Verify" enum="NetTrustAnchors"
-    expires_after="2026-11-05">
+    expires_after="2027-01-10">
   <owner>mattm@chromium.org</owner>
   <owner>chrome-secure-web-and-net@chromium.org</owner>
   <summary>
@@ -1881,7 +1881,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.Certificate.TrustAnchor.VerifyOutOfDate"
-    enum="BooleanOutOfDate" expires_after="2026-11-05">
+    enum="BooleanOutOfDate" expires_after="2027-01-10">
   <owner>mattm@chromium.org</owner>
   <owner>chrome-secure-web-and-net@chromium.org</owner>
   <summary>
@@ -3517,7 +3517,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.DNS.ResolveFallbackPath" enum="ResolveFallbackPath"
-    expires_after="2026-11-08">
+    expires_after="2027-01-10">
   <owner>bashi@chromium.org</owner>
   <owner>net-dev@chromium.org</owner>
   <summary>
@@ -3726,7 +3726,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.ErrorCodesForIsolatedAppScheme" enum="NetErrorCodes"
-    expires_after="2026-10-25">
+    expires_after="2027-01-10">
   <owner>giovax@chromium.org</owner>
   <owner>pwa-commercial@google.com</owner>
   <owner>src/chrome/browser/web_applications/isolated_web_apps/OWNERS</owner>
@@ -7080,6 +7080,21 @@ chromium-metrics-reviews@google.com.
   </token>
 </histogram>
 
+<histogram name="Net.QuicSession.ReadMultipleNumPackets" units="packets"
+    expires_after="2027-07-14">
+  <owner>aymanm@google.com</owner>
+  <owner>ricea@chromium.org</owner>
+  <summary>
+    The number of UDP packets successfully read in a single batch read
+    (`ReadMultiple` / `recvmmsg`) operation on a QUIC UDP socket. Recorded each
+    time `QuicChromiumPacketReader` processes a successful multi-packet read
+    result when the `QuicUseReadMultiple` feature is enabled.
+
+    Note: Because packet reading occurs at high frequency, this metric is
+    subsampled and recorded for 10% of successful read operations.
+  </summary>
+</histogram>
+
 <histogram name="Net.QuicSession.ReceivedSettings.BlockedStreams" units="units"
     expires_after="2023-09-24">
   <owner>dschinazi@chromium.org</owner>
@@ -8190,7 +8205,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.SharedDictionary.Transaction.Outcome"
-    enum="SharedDictionaryTransactionOutcome" expires_after="2026-11-11">
+    enum="SharedDictionaryTransactionOutcome" expires_after="2027-01-10">
   <owner>wbjacksonjr@chromium.org</owner>
   <owner>src/net/extras/shared_dictionary/OWNERS</owner>
   <summary>
@@ -8323,7 +8338,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Net.SharedDictionaryOnDisk.StorageResult"
-    enum="SharedDictionaryStorageResult" expires_after="2026-11-11">
+    enum="SharedDictionaryStorageResult" expires_after="2027-01-10">
   <owner>wbjacksonjr@chromium.org</owner>
   <owner>src/net/extras/shared_dictionary/OWNERS</owner>
   <summary>
@@ -10497,15 +10512,15 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="SimpleCache.{CacheInstance}SyncOpenPrefetchMode"
-    enum="SimpleCachePrefetchMode" expires_after="2026-01-13">
-  <owner>wanderview@chromium.org</owner>
+    enum="SimpleCachePrefetchMode" expires_after="2026-11-29">
+  <owner>ashleynewson@chromium.org</owner>
   <owner>morlovich@chromium.org</owner>
   <summary>
     The kind of prefetching performed, if any, when executing
     SimpleSynchronousEntry::ReadAndValidateStream0AndMaybe1(). {CacheInstance}
 
-    Warning: this histogram was expired from 2023-12-10 to 2025-10-17; data may
-    be missing.
+    Warning: this histogram was expired from 2023-12-10 to 2025-10-17 and
+    2026-01-13 to 2026-07-07; data may be missing.
   </summary>
 </histogram>
 

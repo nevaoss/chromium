@@ -853,7 +853,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="ServiceWorker.LoadTiming.MainFrame.MainResource.FetchHandlerStartToFetchHandlerEnd{EmbeddedWorkerInitialStatus}"
-    units="ms" expires_after="2026-11-08">
+    units="ms" expires_after="2027-01-10">
   <owner>yyanagisawa@chromium.org</owner>
   <owner>chrome-worker@google.com</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -1301,6 +1301,18 @@ chromium-metrics-reviews@google.com.
     ServiceWorker.MaybeStartWorker.RunningStatus for all attempts).
   </summary>
   <token key="ServiceWorkerEventType" variants="ServiceWorkerEventType"/>
+</histogram>
+
+<histogram name="ServiceWorker.MessageDispatch.ContextValidation"
+    enum="ServiceWorkerMessageDispatchContextValidationResult"
+    expires_after="2026-10-10">
+  <owner>yyanagisawa@chromium.org</owner>
+  <owner>chrome-worker@google.com</owner>
+  <summary>
+    Records the result of context validation when dispatching an extendable
+    message event to a service worker or client. Recorded every time a message
+    is dispatched.
+  </summary>
 </histogram>
 
 <histogram name="ServiceWorker.NumberOfRegisteredFetchHandlers"
@@ -1787,6 +1799,18 @@ chromium-metrics-reviews@google.com.
     The time taken from (a) the start of service worker startup, to (b) the
     browser sending the start worker IPC message. Recorded when
     ServiceWorker.StartTiming.Duration is recorded.
+  </summary>
+</histogram>
+
+<histogram name="ServiceWorker.StartWorker.ContextValidationDifference"
+    enum="ServiceWorkerStartWorkerContextValidationDifference"
+    expires_after="2026-10-10">
+  <owner>yyanagisawa@chromium.org</owner>
+  <owner>chrome-worker@google.com</owner>
+  <summary>
+    Records the difference between the legacy scope-based validation and the
+    newer StorageKey-based validation when starting a service worker. Recorded
+    every time IsStartWorkerAllowed is evaluated.
   </summary>
 </histogram>
 

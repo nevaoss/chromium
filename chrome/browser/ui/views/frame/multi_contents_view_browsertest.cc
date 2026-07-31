@@ -435,17 +435,9 @@ class MultiContentsViewWebContentsReLayoutBrowserTest
   }
 };
 
-// TODO(https://crbug.com/430525043): Flaky on Linux.
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
-#define MAYBE_SwitchingTabsShouldNotTriggerWebContentsReLayout_SplitNoSplit \
-  DISABLED_SwitchingTabsShouldNotTriggerWebContentsReLayout_SplitNoSplit
-#else
-#define MAYBE_SwitchingTabsShouldNotTriggerWebContentsReLayout_SplitNoSplit \
-  SwitchingTabsShouldNotTriggerWebContentsReLayout_SplitNoSplit
-#endif
 IN_PROC_BROWSER_TEST_F(
     MultiContentsViewWebContentsReLayoutBrowserTest,
-    MAYBE_SwitchingTabsShouldNotTriggerWebContentsReLayout_SplitNoSplit) {
+    SwitchingTabsShouldNotTriggerWebContentsReLayout_SplitNoSplit) {
   auto* tab_strip_model = browser()->tab_strip_model();
 
   const GURL test_url = embedded_test_server()->GetURL(kReLayoutTestURL);
@@ -479,10 +471,9 @@ IN_PROC_BROWSER_TEST_F(
   CheckNoResizeHappened();
 }
 
-// TODO(crbug.com/429495554): Fix and re-enable.
 IN_PROC_BROWSER_TEST_F(
     MultiContentsViewWebContentsReLayoutBrowserTest,
-    DISABLED_SwitchingTabsShouldNotTriggerWebContentsReLayout_SplitSplit) {
+    SwitchingTabsShouldNotTriggerWebContentsReLayout_SplitSplit) {
   auto* tab_strip_model = browser()->tab_strip_model();
 
   const GURL test_url = embedded_test_server()->GetURL(kReLayoutTestURL);
@@ -525,16 +516,8 @@ IN_PROC_BROWSER_TEST_F(
   CheckNoResizeHappened();
 }
 
-// TODO(crbug.com/429495554): Flaky on most bots across all platforms.
-IN_PROC_BROWSER_TEST_F(
-    MultiContentsViewWebContentsReLayoutBrowserTest,
-    DISABLED_EnterAndExitFullscreenInSplitTabShouldResizeThreeTimes) {
-#if BUILDFLAG(IS_OZONE)
-  // TODO(crbug.com/429495554): Investigate why this test failed on wayland.
-  if (ui::OzonePlatform::RunningOnWaylandForTest()) {
-    GTEST_SKIP();
-  }
-#endif
+IN_PROC_BROWSER_TEST_F(MultiContentsViewWebContentsReLayoutBrowserTest,
+                       EnterAndExitFullscreenInSplitTabShouldResizeTwoTimes) {
   auto* tab_strip_model = browser()->tab_strip_model();
 
   const GURL test_url = embedded_test_server()->GetURL(kReLayoutTestURL);
@@ -570,10 +553,15 @@ IN_PROC_BROWSER_TEST_F(
       .Wait();
   RunScheduledLayouts();
 
-  EXPECT_TRUE(base::test::RunUntil(
-      [this, split_tab]() { return GetResizeCount(split_tab) >= 2; }));
-  RunScheduledLayouts();
-
+  int expected_resize = 2;
+#if BUILDFLAG(IS_OZONE)
+  if (ui::OzonePlatform::RunningOnWaylandForTest()) {
+    // On Wayland, entering and exiting fullscreen each trigger 2 resizes. There
+    // is an immediate synchronous layout followed by an async layout after the
+    // Wayland compositor responds.
+    expected_resize = 4;
+  }
+#elif BUILDFLAG(IS_MAC)
   // The WebContents is resized three times when entering and exiting fullscreen
   // due to the layout process involving the new `main_container_`:
   // 1. `BrowserViewLayout` sets the bounds of `main_container_`. The default
@@ -584,7 +572,17 @@ IN_PROC_BROWSER_TEST_F(
   // 3. `BrowserViewLayout` also updates separators in `MultiContentsView`,
   //    which calls `InvalidateLayout()`, scheduling a final, asynchronous
   //    layout pass.
-  EXPECT_EQ(GetResizeCount(split_tab), 3);
+  expected_resize = 3;
+#endif
+
+  EXPECT_TRUE(base::test::RunUntil([this, split_tab, expected_resize]() {
+    return GetResizeCount(split_tab) >= expected_resize;
+  }));
+  RunScheduledLayouts();
+
+  // The WebContents is resized two times, one each when entering and exiting
+  // fullscreen.
+  EXPECT_EQ(GetResizeCount(split_tab), expected_resize);
 }
 
 IN_PROC_BROWSER_TEST_F(MultiContentsViewBrowserTest, OnlyFocusTabsInSplitView) {

@@ -7,6 +7,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 
 #include "ash/constants/ash_switches.h"
 #include "base/command_line.h"
@@ -16,7 +17,6 @@
 #include "base/test/metrics/user_action_tester.h"
 #include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
-#include "build/branding_buildflags.h"
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/browser/password_manager/chrome_password_manager_client.h"
 #include "chrome/browser/password_manager/chrome_webauthn_credentials_delegate_factory.h"
@@ -44,6 +44,7 @@
 #include "components/keyed_service/content/browser_context_dependency_manager.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "components/keyed_service/core/service_access_type.h"
+#include "components/optimization_guide/core/feature_registry/feature_registration.h"
 #include "components/password_manager/content/browser/content_password_manager_driver.h"
 #include "components/password_manager/core/browser/manage_passwords_referrer.h"
 #include "components/password_manager/core/browser/password_form.h"
@@ -51,7 +52,7 @@
 #include "components/password_manager/core/browser/password_store/password_form_converters.h"
 #include "components/password_manager/core/browser/password_store/password_store_interface.h"
 #include "components/password_manager/core/common/password_manager_pref_names.h"
-#include "components/personal_context/core/mock_personal_context_enablement_service.h"
+#include "components/personal_context/core/mock_personal_context_eligibility_service.h"
 #include "components/personal_context/core/personal_context_prefs.h"
 #include "components/plus_addresses/core/browser/grit/plus_addresses_strings.h"
 #include "components/plus_addresses/core/browser/plus_address_service.h"
@@ -70,6 +71,7 @@
 #include "content/public/test/test_utils.h"
 #include "net/dns/mock_host_resolver.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/blink/public/common/dom/dom_node_id.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/models/menu_model.h"
 #include "ui/menus/simple_menu_model.h"
@@ -249,9 +251,9 @@ content::ContextMenuParams CreateContextMenuParams(
   rv.page_url = GURL("http://test.page/");
   rv.form_control_type = form_control_type;
   if (form_renderer_id) {
-    rv.form_renderer_id = form_renderer_id->value();
+    rv.form_renderer_id = blink::DOMNodeIdType(form_renderer_id->value());
   }
-  rv.field_renderer_id = field_render_id.value();
+  rv.field_renderer_id = blink::DOMNodeIdType(field_render_id.value());
   return rv;
 }
 
@@ -1074,7 +1076,6 @@ INSTANTIATE_TEST_SUITE_P(
       return info.param.test_name;
     });
 
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
 class AtMemoryContextMenuManagerTest
     : public BaseAutofillContextMenuManagerTest {
  public:
@@ -1084,20 +1085,22 @@ class AtMemoryContextMenuManagerTest
 
   void SetUpOnMainThread() override {
     BaseAutofillContextMenuManagerTest::SetUpOnMainThread();
-    personal_context::prefs::RegisterProfilePrefs(
-        autofill_client()->GetPrefs()->registry());
+    autofill_client()->GetPrefs()->registry()->RegisterIntegerPref(
+        optimization_guide::prefs::kGeminiSettings,
+        std::to_underlying(
+            optimization_guide::prefs::GeminiSettingsPolicyState::kEnabled));
     autofill_client()->GetPrefs()->SetBoolean(
         personal_context::prefs::kPersonalContextInAutofillSettingsToggleStatus,
         true);
     ON_CALL(mock_personal_context_service_, GetEligibilityState())
         .WillByDefault(Return(
             personal_context::PersonalContextEligibilityState::kEligible));
-    autofill_client()->set_personal_context_enablement_service(
+    autofill_client()->set_personal_context_eligibility_service(
         &mock_personal_context_service_);
   }
 
  protected:
-  NiceMock<personal_context::MockPersonalContextEnablementService>
+  NiceMock<personal_context::MockPersonalContextEligibilityService>
       mock_personal_context_service_;
 
  private:
@@ -1126,6 +1129,43 @@ testing::AssertionResult ContainsAtMemoryFallback(
 IN_PROC_BROWSER_TEST_F(AtMemoryContextMenuManagerTest, AddAtMemoryFallback) {
   autofill_context_menu_manager()->AppendItems();
   ASSERT_TRUE(ContainsAtMemoryFallback(*menu_model()));
+}
+
+// Tests that when both password fallback and AtMemory fallback are eligible,
+// they are displayed in the same menu group with no separator between them,
+// followed by a separator at the end of the group.
+IN_PROC_BROWSER_TEST_F(AtMemoryContextMenuManagerTest,
+                       AtMemoryFallbackAndPasswordsFallbackInSameGroup) {
+  // Add a saved credential so "Select password" fallback item is shown.
+  auto* password_store =
+      ProfilePasswordStoreFactory::GetForProfile(
+          browser()->profile(), ServiceAccessType::IMPLICIT_ACCESS)
+          .get();
+  password_manager::PasswordStoreWaiter add_waiter(password_store);
+  password_manager::PasswordForm form;
+  form.signon_realm = "http://test.com";
+  form.url = GURL(form.signon_realm);
+  form.username_value = u"username";
+  form.password_value = u"password";
+  password_store->AddLogin(password_manager::FromPasswordForm(form));
+  add_waiter.WaitOrReturn();
+
+  autofill_context_menu_manager()->AppendItems();
+
+  // Find the positions of both fallback options in the context menu model.
+  std::optional<size_t> select_password_idx = menu_model()->GetIndexOfCommandId(
+      IDC_CONTENT_CONTEXT_AUTOFILL_FALLBACK_PASSWORDS_SELECT_PASSWORD);
+  std::optional<size_t> at_memory_idx = menu_model()->GetIndexOfCommandId(
+      IDC_CONTENT_CONTEXT_AUTOFILL_FALLBACK_AT_MEMORY);
+
+  ASSERT_TRUE(select_password_idx);
+  ASSERT_TRUE(at_memory_idx);
+
+  // Verify that AtMemory immediately follows "Select password" (same group)
+  // and that the group is terminated with a separator.
+  EXPECT_EQ(*at_memory_idx, *select_password_idx + 1);
+  EXPECT_EQ(menu_model()->GetTypeAt(*at_memory_idx + 1),
+            ui::MenuModel::ItemType::TYPE_SEPARATOR);
 }
 
 // Tests that when the accessibility annotator is disabled for the profile,
@@ -1189,7 +1229,7 @@ IN_PROC_BROWSER_TEST_F(AtMemoryContextMenuManagerTest,
   content::ContextMenuParams params = CreateContextMenuParams();
   params.form_control_type = std::nullopt;
   params.is_content_editable_for_autofill = true;
-  params.field_renderer_id = 123;
+  params.field_renderer_id = blink::DOMNodeIdType(123);
   autofill_context_menu_manager()->set_params_for_testing(params);
 
   autofill_context_menu_manager()->AppendItems();
@@ -1219,7 +1259,6 @@ IN_PROC_BROWSER_TEST_F(AtMemoryContextMenuManagerTest,
   autofill_context_menu_manager()->ExecuteCommand(
       IDC_CONTENT_CONTEXT_AUTOFILL_FALLBACK_AT_MEMORY);
 }
-#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
 }  // namespace
 }  // namespace autofill

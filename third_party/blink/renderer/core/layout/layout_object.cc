@@ -127,6 +127,7 @@
 #include "third_party/blink/renderer/core/overscroll/overscroll_area_tracker.h"
 #include "third_party/blink/renderer/core/page/autoscroll_controller.h"
 #include "third_party/blink/renderer/core/page/page.h"
+#include "third_party/blink/renderer/core/paint/clip_path_clipper.h"
 #include "third_party/blink/renderer/core/paint/fragment_data_iterator.h"
 #include "third_party/blink/renderer/core/paint/object_paint_invalidator.h"
 #include "third_party/blink/renderer/core/paint/paint_layer.h"
@@ -1343,6 +1344,43 @@ static inline bool ObjectIsRelayoutBoundary(const LayoutObject* object) {
     return false;
   }
 
+  // Make sure our fragment is safe to use.
+  {
+    const auto& fragment = layout_result->GetPhysicalFragment();
+    if (fragment.IsLayoutObjectDestroyedOrMoved()) {
+      return false;
+    }
+
+    // Fragmented nodes cannot be relayout roots.
+    if (fragment.GetBreakToken()) {
+      return false;
+    }
+
+    // Any propagated layout-objects will affect the our container chain.
+    if (fragment.HasPropagatedLayoutObjects()) {
+      return false;
+    }
+
+    // If a box has any OOF descendants, they are propagated up the tree to
+    // accumulate their static-position.
+    if (fragment.HasOutOfFlowPositionedDescendants()) {
+      return false;
+    }
+
+    // Anchors should be propagated across the layout boundaries, even when
+    // `contain: strict` is explicitly set.
+    if (fragment.HasChildAnchors()) {
+      return false;
+    }
+
+    // A box which doesn't establish a new formatting context can pass a whole
+    // bunch of state (floats, margins) to an arbitrary sibling, causing that
+    // sibling to position/size differently.
+    if (!fragment.IsFormattingContextRoot()) {
+      return false;
+    }
+  }
+
   // Positioned objects always have self-painting layers and are safe to use as
   // relayout boundaries.
   bool is_svg_root = box->IsSVGRoot();
@@ -1361,10 +1399,10 @@ static inline bool ObjectIsRelayoutBoundary(const LayoutObject* object) {
   // TODO(crbug.com/40280256): Ignoring position-area means we may not allow
   // using the object as a relayout boundary even if position-area causes the
   // object to not rely on static position.
-  const ComputedStyle* style = box->Style();
+  const ComputedStyle& style = box->StyleRef();
   if (box->IsOutOfFlowPositioned() &&
-      (style->HasAutoLeftAndRightIgnoringPositionArea() ||
-       style->HasAutoTopAndBottomIgnoringPositionArea())) {
+      (style.HasAutoLeftAndRightIgnoringPositionArea() ||
+       style.HasAutoTopAndBottomIgnoringPositionArea())) {
     return false;
   }
 
@@ -1380,41 +1418,6 @@ static inline bool ObjectIsRelayoutBoundary(const LayoutObject* object) {
   // the grid, as we need the cached information of the grid to recompute the
   // out of flow item's containing block rect.
   if (box->ContainingBlock()->IsLayoutGridOrGridLanes()) {
-    return false;
-  }
-
-  // Make sure our fragment is safe to use.
-  const auto& fragment = layout_result->GetPhysicalFragment();
-  if (fragment.IsLayoutObjectDestroyedOrMoved()) {
-    return false;
-  }
-
-  // Fragmented nodes cannot be relayout roots.
-  if (fragment.GetBreakToken()) {
-    return false;
-  }
-
-  // Any propagated layout-objects will affect the our container chain.
-  if (fragment.HasPropagatedLayoutObjects()) {
-    return false;
-  }
-
-  // If a box has any OOF descendants, they are propagated up the tree to
-  // accumulate their static-position.
-  if (fragment.HasOutOfFlowPositionedDescendants()) {
-    return false;
-  }
-
-  // Anchors should be propagated across the layout boundaries, even when
-  // `contain: strict` is explicitly set.
-  if (fragment.HasChildAnchors()) {
-    return false;
-  }
-
-  // A box which doesn't establish a new formating context can pass a whole
-  // bunch of state (floats, margins) to an arbitrary sibling, causing that
-  // sibling to position/size differently.
-  if (!fragment.IsFormattingContextRoot()) {
     return false;
   }
 
@@ -1439,7 +1442,7 @@ static inline bool ObjectIsRelayoutBoundary(const LayoutObject* object) {
   // height will allow the object to grow and shrink based on the content
   // inside. The same goes for for logical width, if this objects is inside a
   // shrink-to-fit container, for instance.
-  if (!style->Width().IsFixed() || !style->Height().IsFixed()) {
+  if (!style.Width().IsFixed() || !style.Height().IsFixed()) {
     return false;
   }
 
@@ -1685,7 +1688,7 @@ void LayoutObject::ClearIntrinsicLogicalWidthsDirty() {
 bool LayoutObject::IsFontFallbackValid() const {
   NOT_DESTROYED();
   return StyleRef().GetFont()->IsFallbackValid() &&
-         FirstLineStyle()->GetFont()->IsFallbackValid();
+         FirstLineStyleRef().GetFont()->IsFallbackValid();
 }
 
 void LayoutObject::InvalidateSubtreeLayoutForFontUpdates() {
@@ -1987,6 +1990,14 @@ gfx::Rect LayoutObject::AbsoluteBoundingBoxRectForUnboundedElement() const {
   DCHECK(RuntimeEnabledFeatures::UnboundedElementEnabled());
   if (const auto* box_model = DynamicTo<LayoutBoxModelObject>(this)) {
     PhysicalRect overflow = box_model->VisualOverflowRectIncludingFilters();
+    // Intersect with the clip-path bounding box so that the browser-side window
+    // bounds match the clipped/visible area of the element rather than its
+    // unclipped layout size. This prevents size/origin mismatches in the
+    // compositor.
+    if (auto clip_path_bounds =
+            ClipPathClipper::LocalClipPathBoundingBox(*this)) {
+      overflow.Intersect(PhysicalRect::EnclosingRect(*clip_path_bounds));
+    }
     return ToEnclosingRect(LocalToAbsoluteRect(overflow));
   }
   return AbsoluteBoundingBoxRect();
@@ -3170,21 +3181,6 @@ void LayoutObject::StyleWillChange(StyleDifference diff,
       GetDocument().SetDraggableRegionsDirty(true);
     }
 
-    bool background_color_changed =
-        ResolveColorFast(GetCSSPropertyBackgroundColor()) !=
-        ResolveColorFast(new_style, GetCSSPropertyBackgroundColor());
-
-    if (diff.text_decoration_or_color_changed || background_color_changed ||
-        style_->GetFontDescription() != new_style.GetFontDescription() ||
-        style_->GetWritingDirection() != new_style.GetWritingDirection() ||
-        style_->InsideLink() != new_style.InsideLink() ||
-        style_->VerticalAlign() != new_style.VerticalAlign() ||
-        style_->GetTextAlign() != new_style.GetTextAlign() ||
-        style_->TextIndent() != new_style.TextIndent()) {
-      if (AXObjectCache* cache = GetDocument().ExistingAXObjectCache())
-        cache->StyleChanged(this);
-    }
-
     if (style_->ContentVisibility() != new_style.ContentVisibility()) {
       if (AXObjectCache* cache = GetDocument().ExistingAXObjectCache()) {
         if (GetNode()) {
@@ -3341,6 +3337,12 @@ void LayoutObject::StyleDidChange(
   if (diff.ax_visibility_or_inert_changed) {
     if (AXObjectCache* cache = GetDocument().ExistingAXObjectCache()) {
       cache->StyleChanged(this, /*visibility_or_inertness_changed*/ true);
+    }
+  }
+
+  if (diff.ax_style_changed) {
+    if (AXObjectCache* cache = GetDocument().ExistingAXObjectCache()) {
+      cache->StyleChanged(this);
     }
   }
 
@@ -4326,7 +4328,7 @@ void LayoutObject::ScheduleRelayout() {
       layout_view = View();
       if (layout_view) {
         if (LocalFrameView* frame_view = layout_view->GetFrameView())
-          frame_view->ScheduleRelayoutOfSubtree(this);
+          frame_view->ScheduleRelayoutOfSubtree(*this);
       }
     }
   }
@@ -4487,7 +4489,7 @@ void LayoutObject::AddDraggableRegions(Vector<DraggableRegionValue>& regions) {
 
   DraggableRegionValue region;
   region.draggable =
-      StyleRef().DraggableRegionMode() == EDraggableRegionMode::kDrag;
+      StyleRef().DraggableRegionMode() == EDraggableRegionMode::kMove;
   region.bounds = abs_bounds;
   regions.push_back(region);
 }

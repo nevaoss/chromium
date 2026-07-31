@@ -90,6 +90,7 @@
 #include "third_party/blink/renderer/platform/graphics/blend_mode.h"
 #include "third_party/blink/renderer/platform/graphics/compositing/paint_artifact_compositor.h"
 #include "third_party/blink/renderer/platform/graphics/paint/effect_paint_property_node.h"
+#include "third_party/blink/renderer/platform/graphics/paint/geometry_mapper.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/transforms/affine_transform.h"
 #include "third_party/blink/renderer/platform/wtf/casting.h"
@@ -101,24 +102,6 @@
 #include "ui/gfx/geometry/vector2d_conversions.h"
 
 namespace blink {
-
-namespace features {
-
-BASE_FEATURE(kPreventSvgFilterPaint, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE_PARAM(bool,
-                   kPreventSvgFilterPaintOnLocalFrameRestricted,
-                   &kPreventSvgFilterPaint,
-                   true);
-BASE_FEATURE_PARAM(bool,
-                   kPreventSvgFilterPaintOnRemoteFrame,
-                   &kPreventSvgFilterPaint,
-                   true);
-BASE_FEATURE_PARAM(bool,
-                   kPreventSvgFilterPaintOnWebPlugin,
-                   &kPreventSvgFilterPaint,
-                   true);
-
-}  // namespace features
 
 namespace {
 
@@ -211,10 +194,8 @@ void PaintPropertyTreeBuilder::SetupContextForFrame(
   PaintPropertyTreeBuilderFragmentContext& context =
       full_context.fragment_context;
 
-  // Potentially disable svg filter applied to restricted local frame.
-  if (base::FeatureList::IsEnabled(features::kPreventSvgFilterPaint) &&
-      features::kPreventSvgFilterPaintOnLocalFrameRestricted.Get() &&
-      frame_view.GetFrame().IsCrossOriginToParentOrOuterDocument()) {
+  // Disable svg filters applied to restricted local frames.
+  if (frame_view.GetFrame().IsCrossOriginToParentOrOuterDocument()) {
     const blink::EffectPaintPropertyNode* candidate_effect =
         GetFirstParentEffectWithoutReferenceFilter(context.current_effect);
     if (candidate_effect) {
@@ -313,6 +294,7 @@ class FragmentPaintPropertyTreeBuilder {
           TransformPaintPropertyNode::State&&,
           const TransformPaintPropertyNode::AnimationState&),
       bool (ObjectPaintProperties::*clearer)());
+  ALWAYS_INLINE void UpdateUnboundedWrapperNodes(bool is_active);
   ALWAYS_INLINE void UpdateTranslate();
   ALWAYS_INLINE void UpdateRotate();
   ALWAYS_INLINE void UpdateScale();
@@ -1973,6 +1955,76 @@ static void PopulateCanvasChildState(const LayoutObject& object,
       state.canvas_child_state->paint_state);
   state.canvas_child_state->content_effect = canvas_fragment.ContentsEffect();
   state.canvas_child_state->content_clip = canvas_fragment.ContentsClip();
+}
+
+void FragmentPaintPropertyTreeBuilder::UpdateUnboundedWrapperNodes(
+    bool is_active) {
+  if (!RuntimeEnabledFeatures::UnboundedElementEnabled()) {
+    return;
+  }
+  if (!properties_) {
+    return;
+  }
+  if (!is_active) {
+    properties_->ClearUnboundedWrapperTransform();
+    properties_->ClearUnboundedInnerTransform();
+    properties_->ClearUnboundedWrapperEffect();
+    return;
+  }
+
+  // Isolate the unbounded element by creating a wrapper transform and effect.
+  // The wrapper transform represents the native window's absolute position,
+  // while the inner transform applies the ancestor transforms (like rotation)
+  // relative to that window. The wrapper effect escapes all ancestor clips and
+  // forces a separate compositor render surface for the window's content.
+  gfx::Rect absolute_bounds =
+      object_.AbsoluteBoundingBoxRectForUnboundedElement();
+  if (auto* frame = object_.GetFrame()) {
+    if (auto* view = frame->View()) {
+      absolute_bounds = view->FrameToViewport(absolute_bounds);
+    }
+  }
+
+  gfx::Transform parent_to_root = GeometryMapper::SourceToDestinationProjection(
+      *context_.current.transform, TransformPaintPropertyNode::Root());
+
+  TransformPaintPropertyNode::State wrapper_transform_state;
+  wrapper_transform_state.transform_and_origin.matrix.Translate(
+      absolute_bounds.x(), absolute_bounds.y());
+  properties_->UpdateUnboundedWrapperTransform(
+      TransformPaintPropertyNode::Root(), std::move(wrapper_transform_state));
+
+  TransformPaintPropertyNode::State inner_transform_state;
+  gfx::Transform inner_matrix;
+  inner_matrix.Translate(-absolute_bounds.x(), -absolute_bounds.y());
+  inner_matrix.PreConcat(parent_to_root);
+  inner_transform_state.transform_and_origin.matrix = inner_matrix;
+  properties_->UpdateUnboundedInnerTransform(
+      *properties_->UnboundedWrapperTransform(),
+      std::move(inner_transform_state));
+
+  context_.current.transform = properties_->UnboundedInnerTransform();
+
+  EffectPaintPropertyNode::State wrapper_effect_state;
+  wrapper_effect_state.local_transform_space =
+      properties_->UnboundedWrapperTransform();
+  wrapper_effect_state.output_clip = &ClipPaintPropertyNode::Root();
+  wrapper_effect_state.direct_compositing_reasons =
+      CompositingReason::kUnboundedElement;
+  wrapper_effect_state.compositor_element_id =
+      GetCompositorElementId(CompositorElementIdNamespace::kPrimaryEffect);
+  properties_->UpdateUnboundedWrapperEffect(EffectPaintPropertyNode::Root(),
+                                            std::move(wrapper_effect_state));
+  context_.current_effect = properties_->UnboundedWrapperEffect();
+
+  // Clear the kUnboundedElement bit from the direct compositing reasons for the
+  // inner nodes, so that the element's own effect node doesn't duplicate it.
+  full_context_.direct_compositing_reasons &=
+      ~CompositingReason::kUnboundedElement;
+
+  context_.current.paint_offset = PhysicalOffset();
+  context_.current.directly_composited_container_paint_offset_subpixel_delta =
+      PhysicalOffset();
 }
 
 void FragmentPaintPropertyTreeBuilder::UpdateEffect() {
@@ -4024,11 +4076,15 @@ void FragmentPaintPropertyTreeBuilder::UpdateForSelf() {
   }
 
   // For unbounded elements, we re-parent the clip tree to the root node, so
-  // these elements escape ancestor clips.
+  // these elements escape ancestor clips. Also build the wrapper transform
+  // and effect nodes to isolate the unbounded element in its own coordinate
+  // space and render surface.
+  bool is_unbounded_active = false;
   if (auto* html_element = DynamicTo<HTMLElement>(object_.GetNode());
       html_element && html_element->IsUnboundedElementActive()) {
     DCHECK(RuntimeEnabledFeatures::UnboundedElementEnabled());
     context_.current.clip = &ClipPaintPropertyNode::Root();
+    is_unbounded_active = true;
   }
 
   if (&fragment_data_ == &object_.FirstFragment())
@@ -4038,6 +4094,7 @@ void FragmentPaintPropertyTreeBuilder::UpdateForSelf() {
     // Update of PaintOffsetTranslation is checked by
     // FindPaintOffsetNeedingUpdateScope.
     UpdatePaintOffsetTranslation(paint_offset_translation);
+    UpdateUnboundedWrapperNodes(is_unbounded_active);
   }
 
 #if DCHECK_IS_ON()

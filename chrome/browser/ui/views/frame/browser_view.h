@@ -628,9 +628,6 @@ class BrowserView : public BrowserWindow,
   void ShowIncognitoClearBrowsingDataDialog() override;
 
   void ShowIncognitoHistoryDisclaimerDialog() override;
-  bool IsTabModalPopupDeprecated() const override;
-  void SetIsTabModalPopupDeprecated(
-      bool is_tab_modal_popup_deprecated) override;
 
   // TabStripModelObserver:
   void OnTabStripModelChanged(
@@ -1373,9 +1370,7 @@ class BrowserView : public BrowserWindow,
 
   // Bitmask of current combination of reparenting states, e.g. immersive and
   // ChromeOS tablet modes.
-  base::EnumSet<TabStripAndWebAppViewsReparentedState,
-                TabStripAndWebAppViewsReparentedState::kMinValue,
-                TabStripAndWebAppViewsReparentedState::kMaxValue>
+  base::EnumSet<TabStripAndWebAppViewsReparentedState>
       tab_strip_web_apps_reparented_state_;
 
   mutable base::WeakPtrFactory<BrowserView> weak_ptr_factory_{this};

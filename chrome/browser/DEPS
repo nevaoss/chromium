@@ -377,6 +377,7 @@ include_rules = [
   "+components/sync_device_info",
   "+components/sync_preferences",
   "+components/sync_sessions",
+  "+components/sync_tab_context",
   "+components/sync_user_events",
   "+components/tabs",
   "+components/tab_groups",
@@ -641,9 +642,6 @@ specific_include_rules = {
   ],
   "webauth_interactive_uitest.cc": [
     "+device/fido",
-  ],
-  "shared_storage_browsertest.cc": [
-    "+components/services/storage/shared_storage/shared_storage_manager.h",
   ],
   "fake_server_helper_android\\.cc": [
     "+components/saved_tab_groups",

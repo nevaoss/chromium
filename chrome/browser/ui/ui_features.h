@@ -23,8 +23,6 @@ BASE_DECLARE_FEATURE(kUseActionsForBrowserCommands);
 
 BASE_DECLARE_FEATURE(kAllowEyeDropperWGCScreenCapture);
 
-BASE_DECLARE_FEATURE(kChromeDarkNeutrals26);
-
 // Enables a compositor-driven rotation animation for the tab load throbber.
 BASE_DECLARE_FEATURE(kCompositorLoadingThrobber);
 
@@ -94,7 +92,6 @@ BASE_DECLARE_FEATURE(kSessionRestoreInfobar);
 BASE_DECLARE_FEATURE_PARAM(bool, kSetDefaultToContinueSession);
 #endif
 
-BASE_DECLARE_FEATURE(kEnableAiSubscriptionAvatarRing);
 
 BASE_DECLARE_FEATURE(kPreloadTopChromeWebUI);
 // This enum entry values must be in sync with
@@ -307,14 +304,11 @@ BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationEnableAll);
 // have their page actions controlled using the new framework.
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationIntentPicker);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationZoom);
-BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationCookieControls);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationAutofillMandatoryReauth);
-BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationAiMode);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationVirtualCard);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationFilledCardInformation);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationReadingMode);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationSavePayments);
-BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationLensOverlayHomework);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationBookmarkStar);
 
 BASE_DECLARE_FEATURE(kPageActionsPrioritySelector);

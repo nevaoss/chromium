@@ -6,12 +6,14 @@ package org.chromium.chrome.browser.tasks.tab_management;
 
 import static org.chromium.build.NullUtil.assumeNonNull;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.net.Uri;
 import android.provider.Browser;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
@@ -19,6 +21,7 @@ import android.widget.LinearLayout;
 import androidx.annotation.IdRes;
 import androidx.annotation.VisibleForTesting;
 
+import org.chromium.base.Callback;
 import org.chromium.base.CallbackUtils;
 import org.chromium.base.IntentUtils;
 import org.chromium.base.supplier.MonotonicObservableSupplier;
@@ -78,6 +81,7 @@ public class TabSearchOverlayCoordinator {
     private @Nullable LinearLayout mPanelContainer;
     private @Nullable SearchUiCoordinator mSearchUiCoordinator;
     private final SearchBoxDataProvider mSearchBoxDataProvider;
+    private final Callback<Profile> mProfileObserver;
 
     /**
      * Constructs a new TabSearchOverlayCoordinator.
@@ -118,10 +122,14 @@ public class TabSearchOverlayCoordinator {
 
         mSearchBoxDataProvider = new SearchBoxDataProvider();
         mSearchBoxDataProvider.setPageClassification(PageClassification.ANDROID_HUB_VALUE);
+
+        mProfileObserver = this::onProfileChanged;
+        mProfileSupplier.addSyncObserverAndCallIfNonNull(mProfileObserver);
     }
 
     /** Destroys the coordinator, cleaning up resources and child coordinators. */
     public void destroy() {
+        mProfileSupplier.removeObserver(mProfileObserver);
         if (mChangeProcessor != null) {
             mChangeProcessor.destroy();
             mChangeProcessor = null;
@@ -137,6 +145,7 @@ public class TabSearchOverlayCoordinator {
         }
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     @VisibleForTesting
     void ensureInitialized() {
         if (mPanelContainer != null) return;
@@ -154,11 +163,21 @@ public class TabSearchOverlayCoordinator {
         View searchActivityView = panelContainer.findViewById(R.id.search_activity_container);
         mParentContainer.addView(panelContainer);
 
+        // Consume all unhandled touch, hover, generic motion, and context click events to prevent
+        // them from bleeding through to sibling views underneath the overlay (i.e. Vertical Tabs).
+        // This makes the search box have focus the entire time the overlay panel is visible. If the
+        // desire is to remove focus when clicking on empty space on the panel, the bleed through
+        // bug will need to be addressed and input preservation logic added in LocationBarMediator.
+        panelView.setOnTouchListener(this::consumeMotionEvent);
+        panelView.setOnHoverListener(this::consumeMotionEvent);
+        panelView.setOnGenericMotionListener(this::consumeMotionEvent);
+        panelView.setOnContextClickListener(this::consumeContextClick);
+
         if (mSearchUiCoordinator == null) {
-            boolean isIncognito =
-                    mProfileSupplier.get() != null && mProfileSupplier.get().isOffTheRecord();
-            mSearchBoxDataProvider.initialize(mActivity, isIncognito);
             mSearchUiCoordinator = new SearchUiCoordinator(mActivity, mSearchBoxDataProvider);
+            mSearchUiCoordinator.getLocationBarUiOverrides().setVoiceEntrypointAllowed(false);
+            mSearchUiCoordinator.getLocationBarUiOverrides().setLensEntrypointAllowed(false);
+            mSearchUiCoordinator.getLocationBarUiOverrides().setEmbedderControlledHint(true);
         }
 
         LocationBarEmbedder embedder =
@@ -217,13 +236,31 @@ public class TabSearchOverlayCoordinator {
                 /* backPressManager= */ null,
                 embedder,
                 mEdgeToEdgeSystemBarColorHelper);
-        mSearchUiCoordinator.setDefaultStatusIconOverrideResId(R.drawable.ic_suggestion_magnifier);
+        setSearchUiElements();
 
         TabSearchOverlayViewBinder.ViewHolder viewHolder =
-                new TabSearchOverlayViewBinder.ViewHolder(panelContainer, scrim);
+                new TabSearchOverlayViewBinder.ViewHolder(panelContainer, scrim, panelView);
         mChangeProcessor =
                 PropertyModelChangeProcessor.create(
                         mModel, viewHolder, TabSearchOverlayViewBinder::bind);
+    }
+
+    private void setSearchUiElements() {
+        var searchUiCoordinator = assumeNonNull(mSearchUiCoordinator);
+        searchUiCoordinator.setDefaultStatusIconOverrideResId(R.drawable.ic_suggestion_magnifier);
+
+        // If the profile supplier is null (rare), default to the non-incognito state as it is the
+        // safest choice in terms of incognito agnostic wording.
+        boolean isIncognito =
+                mProfileSupplier.get() != null && mProfileSupplier.get().isOffTheRecord();
+        int hintTextRes =
+                isIncognito
+                        ? R.string.hub_search_empty_hint_incognito
+                        : R.string.hub_search_empty_hint;
+        searchUiCoordinator
+                .getLocationBarCoordinator()
+                .getUrlBarCoordinator()
+                .setUrlBarHintText(mActivity.getResources().getString(hintTextRes));
     }
 
     private boolean loadUrl(OmniboxLoadUrlParams params, boolean isIncognito) {
@@ -247,6 +284,14 @@ public class TabSearchOverlayCoordinator {
         IntentUtils.safeStartActivity(mActivity, intent);
 
         hide();
+        return true;
+    }
+
+    private boolean consumeMotionEvent(View v, MotionEvent event) {
+        return true;
+    }
+
+    private boolean consumeContextClick(View v) {
         return true;
     }
 
@@ -278,9 +323,7 @@ public class TabSearchOverlayCoordinator {
         mModel.set(TabSearchOverlayProperties.VISIBLE, false);
         if (mSearchUiCoordinator != null) {
             var locationBar = mSearchUiCoordinator.getLocationBarCoordinator();
-            if (locationBar != null) {
-                locationBar.clearOmniboxFocus();
-            }
+            locationBar.clearOmniboxFocus();
         }
     }
 
@@ -299,5 +342,20 @@ public class TabSearchOverlayCoordinator {
 
     void setSearchUiCoordinatorForTesting(SearchUiCoordinator searchUiCoordinator) {
         mSearchUiCoordinator = searchUiCoordinator;
+    }
+
+    /**
+     * Called when the current {@link Profile} changes. Primarily intended to handle switching
+     * between incognito and non-incognito modes for the current profile. Since this coordinator is
+     * not torn down between context switches, any profile-dependent changes must be added here.
+     */
+    private void onProfileChanged(Profile profile) {
+        // If the profile supplier is null (rare), default to the non-incognito state as it is the
+        // safest choice for coloring since some features still do not support incognito colors.
+        boolean isIncognito = profile != null && profile.isOffTheRecord();
+        mSearchBoxDataProvider.initialize(mActivity, isIncognito);
+        if (mSearchUiCoordinator != null) {
+            mSearchUiCoordinator.setColorScheme(isIncognito);
+        }
     }
 }

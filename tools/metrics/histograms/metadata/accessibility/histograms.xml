@@ -983,7 +983,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Accessibility.Canvas.HeuristicResult"
-    enum="CanvasAccessibilityHeuristicResult" expires_after="2026-08-27">
+    enum="CanvasAccessibilityHeuristicResult" expires_after="2027-06-01">
   <owner>rhalavati@google.com</owner>
   <owner>chrome-a11y-core@google.com</owner>
   <summary>
@@ -3380,6 +3380,36 @@ even if they fit the naming pattern. -->
     <variant name="FullPage" summary="immersive overlay (Full Page)"/>
     <variant name="SidePanel" summary="Side Panel"/>
   </token>
+</histogram>
+
+<histogram
+    name="Accessibility.ReadAnything.PageStructure.EnglishKeyPointsInReadingMode"
+    enum="Boolean" expires_after="2027-07-01">
+  <owner>lwinston@google.com</owner>
+  <owner>chrome-a11y-core@google.com</owner>
+  <summary>
+    Logged when a page is opened in Reading Mode and the page language is
+    English. Estimates whether a section with a heading containing key points
+    related keywords (&quot;Key points&quot;, &quot;Summary&quot;,
+    &quot;TL;DR&quot;, &quot;Takeaways&quot;, &quot;What to Know&quot;) was
+    present in the distilled reading mode content. This is a heuristic guess and
+    not 100% accurate.
+  </summary>
+</histogram>
+
+<histogram
+    name="Accessibility.ReadAnything.PageStructure.EnglishKeyPointsOnPage"
+    enum="Boolean" expires_after="2027-07-01">
+  <owner>lwinston@google.com</owner>
+  <owner>chrome-a11y-core@google.com</owner>
+  <summary>
+    Logged when a page is opened in Reading Mode and the page language is
+    English. Estimates whether a section with a heading containing key points
+    related keywords (&quot;Key points&quot;, &quot;Summary&quot;,
+    &quot;TL;DR&quot;, &quot;Takeaways&quot;, &quot;What to Know&quot;) was
+    present on the original webpage. This is a heuristic guess and not 100%
+    accurate.
+  </summary>
 </histogram>
 
 <histogram name="Accessibility.ReadAnything.Pdf.Headings.{HeadingLevel}"

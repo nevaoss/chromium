@@ -47,6 +47,9 @@ BASE_DECLARE_FEATURE(kSyncContextualTask);
 // Enables syncing of Gemini threads across devices.
 BASE_DECLARE_FEATURE(kSyncGeminiThread);
 
+// Enables syncing of Encrypted Tab Context Containers across devices.
+BASE_DECLARE_FEATURE(kSyncEncryptedTabContextContainer);
+
 // Enables syncing of themes across iOS devices.
 BASE_DECLARE_FEATURE(kSyncThemesIos);
 
@@ -96,11 +99,6 @@ BASE_DECLARE_FEATURE(kReplaceSyncPromosWithSigninPromosNewSignin);
 // enabled. The launch may be controlled by multiple `base::Feature` flags,
 // prefer using this function over checking the feature flags directly.
 bool IsReplaceSyncPromosWithSignInPromosEnabled();
-
-// If enabled, allowlisted priority preferences will be synced even if the
-// preferences user toggle is off. Note that this flag is only meaningful if
-// kEnablePreferencesAccountStorage is enabled.
-BASE_DECLARE_FEATURE(kSyncSupportAlwaysSyncingPriorityPreferences);
 
 // Enables syncing of flight reservations coming from Google Wallet.
 BASE_DECLARE_FEATURE(kSyncWalletFlightReservations);
@@ -255,6 +253,11 @@ BASE_DECLARE_FEATURE(kSyncSimplifyDeviceNaming);
 // preferred name (and fallback name) if available. This provides a more
 // recognizable name for the user.
 BASE_DECLARE_FEATURE(kSyncUseServerDeterminedDeviceName);
+
+// If enabled, copies selected types preferences from global profile preferences
+// to account-keyed preferences upon a DISABLE_SYNC_ON_CLIENT protocol error
+// before entering transport mode.
+BASE_DECLARE_FEATURE(kSyncCopyPreferencesToTransportModeOnServerForcedDisable);
 
 }  // namespace syncer
 

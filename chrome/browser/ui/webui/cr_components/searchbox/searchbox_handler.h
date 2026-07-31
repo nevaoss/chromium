@@ -15,6 +15,7 @@
 #include "base/scoped_observation.h"
 #include "base/time/time.h"
 #include "base/values.h"
+#include "build/build_config.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/views/permissions/permission_prompt_observer.h"
 #include "components/contextual_search/contextual_search_types.h"
@@ -118,13 +119,15 @@ class SearchboxHandler : public searchbox::mojom::PageHandler,
   void QueryAutocomplete(int32_t query_id,
                          const std::u16string& input,
                          bool prevent_inline_autocomplete,
-                         uint32_t cursor_position) override;
+                         uint32_t cursor_position,
+                         bool is_on_focus) override;
   void QueryAutocompleteWithSuggestInventory(
       int32_t query_id,
       const std::u16string& input,
       bool prevent_inline_autocomplete,
       uint32_t cursor_position,
-      omnibox::SuggestInventory suggest_inventory) override;
+      omnibox::SuggestInventory suggest_inventory,
+      bool is_on_focus) override;
   void StopAutocomplete(bool clear_result) override;
   void OpenAutocompleteMatch(uint8_t line,
                              const GURL& url,
@@ -176,6 +179,7 @@ class SearchboxHandler : public searchbox::mojom::PageHandler,
                      AddTabContextCallback) override {}
   void DeleteContext(const base::UnguessableToken& file_token,
                      bool from_automatic_chip) override {}
+  void DeleteTabContext(int32_t tab_id) override {}
   void ClearFiles(bool should_block_auto_suggested_tabs) override {}
   void SubmitQuery(const std::string& query_text,
                    uint8_t mouse_button,
@@ -195,6 +199,11 @@ class SearchboxHandler : public searchbox::mojom::PageHandler,
   void OnDriveDisclaimerAccepted() override;
   void OnDriveUploadClicked(OnDriveUploadClickedCallback callback) override;
   void GetPageClassification(GetPageClassificationCallback callback) override;
+#if !BUILDFLAG(IS_ANDROID)
+  void SetSmartTabSharingActive(bool active) override;
+  void GetSmartTabSharingActive(
+      GetSmartTabSharingActiveCallback callback) override;
+#endif
   void set_delegate(Delegate* delegate) { omnibox_delegate_ = delegate; }
 
  protected:
@@ -223,6 +232,7 @@ class SearchboxHandler : public searchbox::mojom::PageHandler,
   OmniboxClient* client() const;
   AutocompleteController* autocomplete_controller() const;
   OmniboxEditModel* edit_model() const;
+  searchbox::mojom::Page* page() { return page_.get(); }
 
   const AutocompleteMatch* GetMatchWithUrl(size_t index, const GURL& url) const;
 

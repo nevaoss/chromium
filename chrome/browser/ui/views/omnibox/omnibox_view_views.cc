@@ -513,6 +513,9 @@ void OmniboxViewViews::SelectAll(bool reversed) {
 
 void OmniboxViewViews::RevertAll() {
   TRACE_EVENT("omnibox", "OmniboxViewViews::RevertAll");
+  base::ScopedUmaHistogramTimer timer(
+      "Omnibox.Views.RevertAll.Time",
+      base::ScopedUmaHistogramTimer::ScopedHistogramTiming::kMicrosecondTimes);
   saved_selection_for_focus_change_ = gfx::Range::InvalidRange();
   OmniboxView::RevertAll();
   // This will stop the `AutocompleteController`. This should happen after
@@ -605,12 +608,8 @@ IconLabelBubbleView* OmniboxViewViews::GetAiModePageActionIconView() const {
   if (!location_bar_view_ || !location_bar_view_->IsInitialized()) {
     return nullptr;
   }
-  if (IsPageActionMigrated(PageActionIconType::kAiMode)) {
-    return location_bar_view_->page_action_container()->GetPageActionView(
-        kActionAiMode);
-  }
-  return location_bar_view_->page_action_icon_controller()->GetIconView(
-      PageActionIconType::kAiMode);
+  return location_bar_view_->page_action_container()->GetPageActionView(
+      kActionAiMode);
 }
 
 void OmniboxViewViews::ApplyFocusRingToAimButton(bool force_focus) {
@@ -722,34 +721,13 @@ void OmniboxViewViews::ExecuteCommand(int command_id, int event_flags) {
   // executed. Since we are not always calling the base class implementation
   // here, we need to deactivate touch text selection here, too.
   DestroyTouchSelection();
+
+  if (HandleExecuteCommand(command_id, event_flags)) {
+    return;
+  }
+
   switch (command_id) {
-    // These commands don't invoke the popup via OnBefore/AfterPossibleChange().
-    case IDC_PASTE_AND_GO:
-      GetClipboardText(
-          /*notify_if_restricted=*/true,
-          base::BindOnce(
-              [](base::WeakPtr<OmniboxViewViews> self, std::u16string text) {
-                if (self) {
-                  self->controller()->edit_model()->PasteAndGo(text);
-                }
-              },
-              weak_factory_.GetWeakPtr()));
-      return;
-    case IDC_EDIT_SEARCH_ENGINES:
-    case IDC_SHOW_FULL_URLS:
-    case IDC_SHOW_GOOGLE_LENS_SHORTCUT:
-    case IDC_SHOW_AI_MODE_OMNIBOX_BUTTON:
-    case IDC_SHOW_SEARCH_TOOLS:
-      location_bar_view_->command_updater()->ExecuteCommand(command_id);
-      return;
-
-    case IDC_SEND_TAB_TO_SELF:
-      send_tab_to_self::SendTabToSelfBubbleController::
-          GetOrCreateForWebContents(location_bar_view_->GetWebContents())
-              ->ShowBubble(send_tab_to_self::ShareEntryPoint::kOmniboxMenu);
-      return;
-
-    // These commands do invoke the popup.
+    // These commands invoke the popup via OnBefore/AfterPossibleChange().
     case std::to_underlying(ui::TouchEditable::MenuCommands::kPaste):
       ExecuteTextEditCommand(ui::TextEditCommand::PASTE);
       return;
@@ -882,6 +860,17 @@ void OmniboxViewViews::ApplyStyle(gfx::TextStyle style,
 
 void OmniboxViewViews::SetTextAndSelectedRange(const std::u16string& text,
                                                const gfx::Range& selection) {
+  TRACE_EVENT("omnibox", "OmniboxViewViews::SetTextAndSelectedRange");
+  base::ScopedUmaHistogramTimer timer(
+      "Omnibox.Views.SetTextAndSelectedRange.Time",
+      base::ScopedUmaHistogramTimer::ScopedHistogramTiming::kMicrosecondTimes);
+  bool is_idempotent =
+      (GetText() == text && GetSelectedRange() == selection &&
+       (!location_bar_view_ ||
+        location_bar_view_->GetOmniboxAdditionalText().empty()));
+  base::UmaHistogramBoolean(
+      "Omnibox.Views.SetTextAndSelectedRange.IdempotentCall", is_idempotent);
+
   // Will try to fit as much of the text preceding the cursor as possible. If
   // possible, guarantees at least |kPadLeading| chars of the text preceding the
   // the cursor are visible. If possible given the prior guarantee, also

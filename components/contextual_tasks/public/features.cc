@@ -33,10 +33,11 @@ namespace contextual_tasks {
 
 // Enables the contextual tasks side panel while browsing.
 BASE_FEATURE(kContextualTasks, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kContextualTasksPrivateApiNoAnimation,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables the branded entry point for contextual tasks.
 BASE_FEATURE(kContextualTasksEphemeralBrandedEntryPoint,
-             "ContextualTasksEphemeralBrandedEntryPoint",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables extra OAuth scopes for contextual tasks.
@@ -164,11 +165,18 @@ BASE_FEATURE(kContextualTasksEnableSpatialModelToolbarLayout,
 
 BASE_FEATURE(kContextualTasksRearchitecture, base::FEATURE_DISABLED_BY_DEFAULT);
 
+BASE_FEATURE(kContextualTasksSidePanelRearchitecture,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kContextualTasksEnableStickyConversation,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool GetIsContextualTasksPdfCitationsEnabled() {
   return base::FeatureList::IsEnabled(kContextualTasksPdfCitations);
+}
+
+bool ShouldContextualTasksPrivateApiUseNoAnimation() {
+  return base::FeatureList::IsEnabled(kContextualTasksPrivateApiNoAnimation);
 }
 
 bool GetIsContextualTasksLazyFetchClusterInfoEnabled() {
@@ -344,7 +352,7 @@ const base::FeatureParam<SmartTabSharingMegaplusStringOption>
     kSmartTabSharingMegaplusStringOption(
         &kContextualTasksContext,
         "ContextualTasksContextSmartTabSharingMegaplusStringOption",
-        SmartTabSharingMegaplusStringOption::kMegaplusV1,
+        SmartTabSharingMegaplusStringOption::kMegaplusV2,
         &kSmartTabSharingMegaplusOptions);
 const base::FeatureParam<double> kContextualTasksContextLoggingSampleRate{
     &kContextualTasksContextLogging, "ContextualTasksContextLoggingSampleRate",
@@ -774,6 +782,12 @@ bool GetIsWebpageApcComparisonEnabled() {
 
 namespace flag_descriptions {
 
+const char kContextualTasksPrivateApiNoAnimationName[] =
+    "Contextual Tasks Private API No Animation";
+const char kContextualTasksPrivateApiNoAnimationDescription[] =
+    "Disable animation when opening Contextual Tasks side panel from the "
+    "private API.";
+
 const char kContextualTasksName[] = "Contextual Tasks";
 const char kContextualTasksDescription[] =
     "Enable the contextual tasks feature.";
@@ -833,6 +847,15 @@ const char kContextualTasksRearchitectureName[] =
 const char kContextualTasksRearchitectureDescription[] =
     "Enables composebox embedded in AIM main frame, new auth,"
     " and new side panel and ghost loader for contextual tasks.";
+
+const char kContextualTasksEphemeralBrandedEntryPointName[] =
+    "Contextual Tasks Ephemeral Branded Entry Point";
+const char kContextualTasksEphemeralBrandedEntryPointDescription[] =
+    "Enables the ephemeral branded entry point for contextual tasks.";
+const char kContextualTasksSidePanelRearchitectureName[] =
+    "Contextual Tasks Side Panel Rearchitecture";
+const char kContextualTasksSidePanelRearchitectureDescription[] =
+    "Enables the side panel rearchitecture for contextual tasks.";
 
 }  // namespace flag_descriptions
 

@@ -13,6 +13,7 @@
 #include "chrome/browser/ui/tabs/public/tab_dialog_manager.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/grit/branded_strings.h"
+#include "chrome/grit/generated_resources.h"
 #include "chrome/grit/theme_resources.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/tabs/public/tab_interface.h"
@@ -216,10 +217,10 @@ std::unique_ptr<ui::DialogModel> OnboardingDialogController::CreateDialogModel(
       .Build();
 }
 
-// TODO(crbug.com/530948293): add Learn More url here
 void OnboardingDialogController::OnLearnMoreLinkClicked() {
   tab_->GetBrowserWindowInterface()->OpenGURL(
-      GURL("about:blank"), WindowOpenDisposition::NEW_FOREGROUND_TAB);
+      GURL("https://support.google.com/chrome?p=voice_typing"),
+      WindowOpenDisposition::NEW_FOREGROUND_TAB);
 }
 
 void OnboardingDialogController::OnDialogAccepted(

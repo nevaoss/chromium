@@ -82,6 +82,9 @@ BASE_FEATURE(kNtpChromeCartModule,
 // If enabled, customization of Chrome will be promoted on the NTP.
 BASE_FEATURE(kNtpCustomizeChromeAutoOpen, base::FEATURE_ENABLED_BY_DEFAULT);
 
+// If enabled, shows Customize Chrome button on Android.
+BASE_FEATURE(kNtpCustomizeWebUiAndroid, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // When enabled, ChromeContentBrowserClient::OverrideNavigationParams no
 // longer treats NTP-sourced renderer-initiated link clicks as browser-
 // initiated.
@@ -234,6 +237,9 @@ BASE_FEATURE(kNtpNextFeatures, base::FEATURE_DISABLED_BY_DEFAULT);
 // If enabled, the Canvas action chip will be shown.
 BASE_FEATURE(kNtpNextCanvasChip, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// If enabled, the starter chip will be shown.
+BASE_FEATURE(kNtpStarterChip, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // If enabled, the OGB loader will request for the async bar parts payload type.
 BASE_FEATURE(kNtpOneGoogleBarAsyncBarParts, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -297,6 +303,10 @@ BASE_FEATURE(kNtpSimplificationBookmarkBar, base::FEATURE_DISABLED_BY_DEFAULT);
 // If enabled, the bookmark bar time interval and number of times it's shown on
 // the NTP before auto-hiding is decreased for testing.
 BASE_FEATURE(kBookmarkBarUpdatesForTesting, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// If enabled, the Threads Rail will be shown on the left hand side of the NTP
+// when the Composebox dialog is open.
+BASE_FEATURE(kNtpThreadsRail, base::FEATURE_DISABLED_BY_DEFAULT);
 
 const char kNtpModuleIgnoredCriteriaThreshold[] =
     "NtpModuleIgnoredCriteriaThreshold";

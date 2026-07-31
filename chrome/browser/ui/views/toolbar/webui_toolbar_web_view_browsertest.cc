@@ -7,6 +7,7 @@
 #include "base/command_line.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
+#include "base/path_service.h"
 #include "base/run_loop.h"
 #include "base/scoped_observation.h"
 #include "base/strings/strcat.h"
@@ -235,7 +236,7 @@ bool WaitForButtonVisible(content::WebContents* web_contents,
 }
 
 void PinButton(Browser* browser, views::WebView* web_view, const char* pref) {
-  browser->profile()->GetPrefs()->SetBoolean(pref, true);
+  browser->GetProfile()->GetPrefs()->SetBoolean(pref, true);
   content::WaitForCopyableViewInWebContents(web_view->GetWebContents());
 }
 
@@ -506,7 +507,7 @@ class WebUIToolbarWebViewPixelBrowserTest : public InProcessBrowserTest {
     ASSERT_TRUE(embedded_test_server()->Start());
 
     // Force the color mode to light to avoid flakiness.
-    ThemeServiceFactory::GetForProfile(browser()->profile())
+    ThemeServiceFactory::GetForProfile(browser()->GetProfile())
         ->SetBrowserColorScheme(ThemeService::BrowserColorScheme::kLight);
   }
 
@@ -1433,7 +1434,7 @@ class WebUIToolbarWebViewStabilityTest : public InProcessBrowserTest {
   void SetUpOnMainThread() override {
     InProcessBrowserTest::SetUpOnMainThread();
     // Force the color mode to light to avoid flakiness.
-    ThemeServiceFactory::GetForProfile(browser()->profile())
+    ThemeServiceFactory::GetForProfile(browser()->GetProfile())
         ->SetBrowserColorScheme(ThemeService::BrowserColorScheme::kLight);
   }
 
@@ -1640,7 +1641,7 @@ class WebUIToolbarWebViewRaceTest : public InProcessBrowserTest {
 IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewRaceTest,
                        BindInterfaceAfterCloseRace) {
   // 1. Setup: Create a new browser window.
-  Browser* new_browser = CreateBrowser(browser()->profile());
+  Browser* new_browser = CreateBrowser(browser()->GetProfile());
   ui_test_utils::WaitForBrowserSetLastActive(new_browser);
 
   WebUIToolbarWebView* toolbar_view = ::GetWebUIToolbarWebView(new_browser);
@@ -1772,7 +1773,7 @@ class WebUIToolbarLifecycleBrowserTest : public InProcessBrowserTest {
 
   struct LifecycleTestSetup {
     explicit LifecycleTestSetup(Browser* browser) {
-      profile = browser->profile();
+      profile = browser->GetProfile();
       EXPECT_CALL(mock_browser, GetProfile())
           .WillRepeatedly(testing::Return(profile));
       EXPECT_CALL(testing::Const(mock_browser), GetProfile())
@@ -2280,7 +2281,7 @@ class WebUIToolbarWebViewBrowserTest : public InProcessBrowserTest {
 
   void SetUpOnMainThread() override {
     InProcessBrowserTest::SetUpOnMainThread();
-    ThemeServiceFactory::GetForProfile(browser()->profile())
+    ThemeServiceFactory::GetForProfile(browser()->GetProfile())
         ->SetBrowserColorScheme(ThemeService::BrowserColorScheme::kLight);
   }
 
@@ -2309,6 +2310,7 @@ class WebUIToolbarWebViewBrowserTest : public InProcessBrowserTest {
   }
 
   scoped_refptr<const extensions::Extension> LoadAndPinExtension(
+      WebUIToolbarWebView* webui_toolbar_view,
       content::WebContents* web_contents,
       base::ScopedTempDir& temp_dir,
       bool has_background_script = false,
@@ -2354,34 +2356,19 @@ class WebUIToolbarWebViewBrowserTest : public InProcessBrowserTest {
 
     EXPECT_TRUE(base::WriteFile(manifest_path, manifest_content));
 
-    extensions::ChromeTestExtensionLoader loader(browser()->profile());
+    extensions::ChromeTestExtensionLoader loader(browser()->GetProfile());
     scoped_refptr<const extensions::Extension> extension =
         loader.LoadExtension(temp_dir.GetPath());
     EXPECT_TRUE(extension);
 
     // Pin the extension so it becomes visible.
-    ToolbarActionsModel::Get(browser()->profile())
+    ToolbarActionsModel::Get(browser()->GetProfile())
         ->SetActionVisibility(extension->id(), true);
 
-    std::string extension_id = extension->id();
-    // Verify extension is present.
-    EXPECT_TRUE(base::test::RunUntil([&]() {
-      return content::EvalJs(web_contents,
-                             base::StringPrintf(R"(
-        (() => {
-          const app = document.querySelector('toolbar-app');
-          if (!app) return false;
-          const extensionsContainer = app.shadowRoot
-              .querySelector('#extensions');
-          if (!extensionsContainer) return false;
-          const extensionElements = extensionsContainer.shadowRoot
-              .querySelectorAll('webui-toolbar-extension');
-          return Array.from(extensionElements).some(el => el.state.id === '%s');
-        })();
-      )",
-                                                extension_id.c_str()))
-          .ExtractBool();
-    }));
+    base::RunLoop run_loop;
+    webui_toolbar_view->extensions_container_.OnActionPoppedOut(
+        run_loop.QuitClosure());
+    run_loop.Run();
 
     return extension;
   }
@@ -2652,7 +2639,7 @@ IN_PROC_BROWSER_TEST_P(WebUIAppMenuButtonStateTest, VerifyState) {
         break;
     }
     auto error = std::make_unique<MockGlobalError>(severity);
-    GlobalErrorServiceFactory::GetForProfile(browser()->profile())
+    GlobalErrorServiceFactory::GetForProfile(browser()->GetProfile())
         ->AddGlobalError(std::move(error));
   }
 
@@ -3021,7 +3008,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewBrowserTest,
   base::HistogramTester histogram_tester;
 
   // Open a new one to capture the initial metric if it was already recorded.
-  Browser* new_browser = CreateBrowser(browser()->profile());
+  Browser* new_browser = CreateBrowser(browser()->GetProfile());
   ui_test_utils::WaitForBrowserSetLastActive(new_browser);
   WebUIToolbarWebView* webui_toolbar_view = GetWebUIToolbarWebView(new_browser);
   ASSERT_TRUE(webui_toolbar_view);
@@ -3350,7 +3337,7 @@ class WebUIToolbarWebViewSplitTabsBrowserTest : public InProcessBrowserTest {
 
   void SetUpOnMainThread() override {
     InProcessBrowserTest::SetUpOnMainThread();
-    ThemeServiceFactory::GetForProfile(browser()->profile())
+    ThemeServiceFactory::GetForProfile(browser()->GetProfile())
         ->SetBrowserColorScheme(ThemeService::BrowserColorScheme::kLight);
   }
 
@@ -3938,7 +3925,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewBrowserTest, LoadExtension) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
   scoped_refptr<const extensions::Extension> extension =
-      LoadAndPinExtension(web_contents, temp_dir,
+      LoadAndPinExtension(webui_toolbar_view, web_contents, temp_dir,
                           /*has_background_script=*/false);
   ASSERT_TRUE(extension);
 
@@ -4036,7 +4023,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewBrowserTest,
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
   scoped_refptr<const extensions::Extension> extension =
-      LoadAndPinExtension(web_contents, temp_dir,
+      LoadAndPinExtension(webui_toolbar_view, web_contents, temp_dir,
                           /*has_background_script=*/true);
   ASSERT_TRUE(extension);
 
@@ -4109,7 +4096,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewBrowserTest, ExtensionAnchoring) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
   scoped_refptr<const extensions::Extension> extension =
-      LoadAndPinExtension(web_contents, temp_dir,
+      LoadAndPinExtension(webui_toolbar_view, web_contents, temp_dir,
                           /*has_background_script=*/false, /*has_popup=*/true);
   ASSERT_TRUE(extension);
 
@@ -4120,10 +4107,8 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewBrowserTest, ExtensionAnchoring) {
   ASSERT_TRUE(container);
 
   // Verify that appropriate anchors become available.
-  EXPECT_TRUE(base::test::RunUntil([&]() {
-    return container->GetExtensionAnchor(extension_id) != nullptr &&
-           container->GetExtensionAnchor("") != nullptr;
-  }));
+  EXPECT_TRUE(container->GetExtensionAnchor(extension_id));
+  EXPECT_TRUE(container->GetExtensionAnchor(""));
 
   // Verify anchors can be found programmatically.
   ui::TrackedElement* ext_anchor = container->GetExtensionAnchor(extension_id);
@@ -4218,8 +4203,8 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewBrowserTest,
     content::DropData drop_data;
     drop_data.did_originate_from_renderer = true;
     drop_data.text = u"file:///etc/passwd";
-    EXPECT_FALSE(delegate->CanDragEnter(web_contents, drop_data,
-                                        blink::kDragOperationCopy));
+    EXPECT_TRUE(delegate->CanDragEnter(web_contents, drop_data,
+                                       blink::kDragOperationCopy));
   }
 
   // Webpage-initiated file:// link drop.
@@ -4258,8 +4243,8 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewBrowserTest,
     content::DropData drop_data;
     drop_data.did_originate_from_renderer = true;
     drop_data.text = u"chrome://accessibility";
-    EXPECT_FALSE(delegate->CanDragEnter(web_contents, drop_data,
-                                        blink::kDragOperationCopy));
+    EXPECT_TRUE(delegate->CanDragEnter(web_contents, drop_data,
+                                       blink::kDragOperationCopy));
   }
 
   // Local-initiated chrome:// text drop.
@@ -4287,8 +4272,8 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewBrowserTest,
     content::DropData drop_data;
     drop_data.did_originate_from_renderer = true;
     drop_data.text = u"javascript:alert(1)";
-    EXPECT_FALSE(delegate->CanDragEnter(web_contents, drop_data,
-                                        blink::kDragOperationCopy));
+    EXPECT_TRUE(delegate->CanDragEnter(web_contents, drop_data,
+                                       blink::kDragOperationCopy));
   }
 
   // Local-initiated javascript: text drop.
@@ -4296,9 +4281,165 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewBrowserTest,
     content::DropData drop_data;
     drop_data.did_originate_from_renderer = false;
     drop_data.text = u"javascript:alert(1)";
-    EXPECT_FALSE(delegate->CanDragEnter(web_contents, drop_data,
-                                        blink::kDragOperationCopy));
+    EXPECT_TRUE(delegate->CanDragEnter(web_contents, drop_data,
+                                       blink::kDragOperationCopy));
   }
+}
+
+class WebUIReadOnlyOmniboxDragDropBrowserTest
+    : public WebUIToolbarWebViewBrowserTest {
+ public:
+  WebUIReadOnlyOmniboxDragDropBrowserTest()
+      : WebUIToolbarWebViewBrowserTest(
+            {features::kInitialWebUI, features::kWebUILocationBar,
+             features::kSkipIPCChannelPausingForNonGuests,
+             features::kWebUIInProcessResourceLoadingV2},
+            {}) {}
+
+ protected:
+  enum class DropType {
+    kText,
+    kUrl,
+    kFile,
+  };
+
+  void SimulateDropOnOmnibox(content::WebContents* web_contents,
+                             const std::string& data,
+                             DropType drop_type) {
+    if (drop_type == DropType::kFile) {
+      // For file drops, the backend caches the path during
+      // `PreHandleDragUpdate` before the actual drop event. We must simulate
+      // this C++ level behavior first.
+      content::DropData drop_data;
+      drop_data.filenames.push_back(
+          ui::FileInfo(base::FilePath::FromUTF8Unsafe(data), base::FilePath()));
+      web_contents->GetDelegate()->PreHandleDragUpdate(drop_data,
+                                                       gfx::PointF(10, 10));
+
+      EXPECT_TRUE(content::ExecJs(web_contents, R"(
+        const omnibox = document.querySelector('toolbar-app').shadowRoot
+                               .querySelector('#location-bar').shadowRoot
+                               .querySelector('#omnibox');
+        const dataTransfer = new DataTransfer();
+        const file = new File([''], 'test_file', {type: 'application/octet-stream'});
+        dataTransfer.items.add(file);
+        const dropEvent = new DragEvent('drop', {
+          bubbles: true,
+          cancelable: true,
+          dataTransfer: dataTransfer,
+          clientX: 10,
+          clientY: 10
+        });
+        omnibox.dispatchEvent(dropEvent);
+      )"));
+    } else {
+      std::string data_type =
+          (drop_type == DropType::kUrl) ? "text/uri-list" : "text/plain";
+      EXPECT_TRUE(content::ExecJs(
+          web_contents, base::StringPrintf(R"(
+        const omnibox = document.querySelector('toolbar-app').shadowRoot
+                               .querySelector('#location-bar').shadowRoot
+                               .querySelector('#omnibox');
+        const dataTransfer = new DataTransfer();
+        dataTransfer.setData(`%s`, `%s`);
+        if (`%s` === 'text/uri-list') {
+          dataTransfer.setData('text/plain', `%s`);
+        }
+        const dropEvent = new DragEvent('drop', {
+          bubbles: true,
+          cancelable: true,
+          dataTransfer: dataTransfer
+        });
+        omnibox.dispatchEvent(dropEvent);
+      )",
+                                           data_type.c_str(), data.c_str(),
+                                           data_type.c_str(), data.c_str())));
+    }
+  }
+
+  std::string GetOmniboxTextEventually(content::WebContents* web_contents) {
+    return content::EvalJs(web_contents, R"(
+      new Promise(resolve => {
+        const check = () => {
+          const omnibox = document.querySelector('toolbar-app').shadowRoot
+                               .querySelector('#location-bar').shadowRoot
+                               .querySelector('#omnibox');
+          if (omnibox && omnibox.omniboxViewState && omnibox.omniboxViewState.textPieces.length > 0) {
+            const text = omnibox.omniboxViewState.textPieces.map(p => p.text).join('');
+            if (text !== 'about:blank' && text !== '') {
+              resolve(text);
+              return;
+            }
+          }
+          setTimeout(check, 100);
+        };
+        check();
+      });
+    )")
+        .ExtractString();
+  }
+};
+
+IN_PROC_BROWSER_TEST_F(WebUIReadOnlyOmniboxDragDropBrowserTest, DropPlainText) {
+  ui::TrackedElement* element = nullptr;
+  WebUIToolbarWebView* webui_toolbar_view = nullptr;
+  views::WebView* web_view = nullptr;
+  ASSERT_NO_FATAL_FAILURE(SetUpWebUI(kWebUIToolbarElementIdentifier, &element,
+                                     &webui_toolbar_view, &web_view,
+                                     browser()));
+  content::WebContents* web_contents = web_view->GetWebContents();
+
+  SimulateDropOnOmnibox(web_contents, "testing omnibox drop", DropType::kText);
+  EXPECT_EQ("testing omnibox drop", GetOmniboxTextEventually(web_contents));
+}
+
+IN_PROC_BROWSER_TEST_F(WebUIReadOnlyOmniboxDragDropBrowserTest, DropUrl) {
+  ui::TrackedElement* element = nullptr;
+  WebUIToolbarWebView* webui_toolbar_view = nullptr;
+  views::WebView* web_view = nullptr;
+  ASSERT_NO_FATAL_FAILURE(SetUpWebUI(kWebUIToolbarElementIdentifier, &element,
+                                     &webui_toolbar_view, &web_view,
+                                     browser()));
+  content::WebContents* web_contents = web_view->GetWebContents();
+
+  SimulateDropOnOmnibox(web_contents, "https://www.example.test/",
+                        DropType::kUrl);
+  EXPECT_EQ("https://www.example.test/",
+            GetOmniboxTextEventually(web_contents));
+}
+
+IN_PROC_BROWSER_TEST_F(WebUIReadOnlyOmniboxDragDropBrowserTest, DropFilePath) {
+  ui::TrackedElement* element = nullptr;
+  WebUIToolbarWebView* webui_toolbar_view = nullptr;
+  views::WebView* web_view = nullptr;
+  ASSERT_NO_FATAL_FAILURE(SetUpWebUI(kWebUIToolbarElementIdentifier, &element,
+                                     &webui_toolbar_view, &web_view,
+                                     browser()));
+  content::WebContents* web_contents = web_view->GetWebContents();
+
+  base::FilePath test_path;
+  base::ScopedAllowBlockingForTesting allow_blocking;
+  ASSERT_TRUE(base::PathService::Get(base::DIR_TEMP, &test_path));
+  test_path = test_path.AppendASCII("test_file.pdf");
+  std::string expected_url = net::FilePathToFileURL(test_path).spec();
+
+  SimulateDropOnOmnibox(web_contents, test_path.AsUTF8Unsafe(),
+                        DropType::kFile);
+  EXPECT_EQ(expected_url, GetOmniboxTextEventually(web_contents));
+}
+
+IN_PROC_BROWSER_TEST_F(WebUIReadOnlyOmniboxDragDropBrowserTest,
+                       DropJavascriptUrlStripped) {
+  ui::TrackedElement* element = nullptr;
+  WebUIToolbarWebView* webui_toolbar_view = nullptr;
+  views::WebView* web_view = nullptr;
+  ASSERT_NO_FATAL_FAILURE(SetUpWebUI(kWebUIToolbarElementIdentifier, &element,
+                                     &webui_toolbar_view, &web_view,
+                                     browser()));
+  content::WebContents* web_contents = web_view->GetWebContents();
+
+  SimulateDropOnOmnibox(web_contents, "javascript:alert(1)", DropType::kUrl);
+  EXPECT_EQ("alert(1)", GetOmniboxTextEventually(web_contents));
 }
 
 // Tests for the home button. Also serve as the general PressHandler tests.
@@ -4314,7 +4455,7 @@ class WebUIToolbarWebViewHomeButtonBrowserTest : public InProcessBrowserTest {
 
   void SetUpOnMainThread() override {
     InProcessBrowserTest::SetUpOnMainThread();
-    ThemeServiceFactory::GetForProfile(browser()->profile())
+    ThemeServiceFactory::GetForProfile(browser()->GetProfile())
         ->SetBrowserColorScheme(ThemeService::BrowserColorScheme::kLight);
   }
 
@@ -4330,7 +4471,7 @@ class WebUIToolbarWebViewHomeButtonBrowserTest : public InProcessBrowserTest {
 
   GURL GetHomeURL() {
     GURL home_url(
-        browser()->profile()->GetPrefs()->GetString(prefs::kHomePage));
+        browser()->GetProfile()->GetPrefs()->GetString(prefs::kHomePage));
     if (home_url.is_empty()) {
       return chrome::ChromeUINewTabURLAsGURL();
     }
@@ -4825,7 +4966,7 @@ class WebUIPinnedToolbarActionsBrowserTest
         action_item->SetVisible(true);
       }
     }
-    model_ = PinnedToolbarActionsModel::Get(browser()->profile());
+    model_ = PinnedToolbarActionsModel::Get(browser()->GetProfile());
     WebUIToolbarWebView* webui_toolbar_view = GetWebUIToolbarWebView(browser());
     // cast to get to the non-const variant.
     static_cast<views::View*>(webui_toolbar_view)
@@ -6120,7 +6261,7 @@ IN_PROC_BROWSER_TEST_P(WebUIToolbarAlreadyExistsForTheSameProfileOnInitTest,
   // Create a second browser window. This will trigger the creation of a new
   // toolbar process for that window.
   base::HistogramTester histograms;
-  Browser* second_browser = CreateBrowser(browser()->profile());
+  Browser* second_browser = CreateBrowser(browser()->GetProfile());
   ASSERT_TRUE(second_browser);
 
   content::FetchHistogramsFromChildProcesses();

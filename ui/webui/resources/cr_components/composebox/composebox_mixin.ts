@@ -23,6 +23,9 @@ import type {ComposeboxState, DriveUpload, TabUpload} from './common.js';
 import type {PageHandlerRemote} from './composebox.mojom-webui.js';
 import type {ComposeboxDropdownElement} from './composebox_dropdown.js';
 import type {ComposeboxInputElement} from './composebox_input.js';
+// <if expr="not is_android">
+import {ComposeboxProxyImpl} from './composebox_proxy.js';
+// </if>
 import {ContextUploadStatus, InputType, ModelMode, ToolMode} from './composebox_query.mojom-webui.js';
 import type {ContextUploadErrorType, InputState} from './composebox_query.mojom-webui.js';
 import type {ComposeboxVoiceSearchElement, VoicePermissionPromptState} from './composebox_voice_search.js';
@@ -44,22 +47,9 @@ const PERMISSION_PROMPT_CSS_CLASS = 'permission-prompt-showing';
 
 type Constructor<T> = new (...args: any[]) => T;
 
-function getUrlString(url: string|{url: string}|null|undefined): string {
-  if (!url) {
-    return '';
-  }
-  if (typeof url === 'string') {
-    return url;
-  }
-  if (typeof url.url === 'string') {
-    return url.url;
-  }
-  return '';
-}
-
 function dedupeTabs(restoredTabs: TabInfo[], recentTabs: TabInfo[]): TabInfo[] {
-  const restoredUrls = new Set(restoredTabs.map(t => getUrlString(t.url)));
-  return recentTabs.filter(t => !restoredUrls.has(getUrlString(t.url)));
+  const restoredIds = new Set(restoredTabs.map(t => t.tabId));
+  return recentTabs.filter(t => !restoredIds.has(t.tabId));
 }
 
 export const ComposeboxEmbedderMixin =
@@ -160,6 +150,7 @@ export const ComposeboxEmbedderMixin =
             },
             showTypedSuggestWithContext: {type: Boolean},
             showVoiceSearch: {type: Boolean},
+            suggestionActivityEnabled: {type: Boolean},
             usePecApi: {
               type: Boolean,
               reflect: true,
@@ -205,7 +196,11 @@ export const ComposeboxEmbedderMixin =
         // late-arriving autocomplete updates or automatic focus restoration
         // before navigation completes.
         accessor submitting: boolean = false;
+        // Current tabs attached to composebox for this turn (query).
         accessor addedTabsIds: Map<number, UnguessableToken> = new Map();
+        // Persistent tabs from previous queries/turns in this conversation
+        // (that AIM has confirmed that it has received), OR tabs that were part
+        // of a past historical conversation that was loaded.
         accessor aimThreadRestoredTabs: TabInfo[] = [];
         accessor isDraggingFile: boolean = false;
         accessor enableImageContextualSuggestions: boolean =
@@ -213,7 +208,8 @@ export const ComposeboxEmbedderMixin =
         accessor smartComposeEnabled: boolean =
             loadTimeData.getBoolean('composeboxSmartComposeEnabled');
         accessor smartTabSharingActive: boolean = false;
-        accessor smartTabSharingVisible: boolean = false;
+        accessor smartTabSharingVisible: boolean =
+            getLoadTimeBoolean('composeboxSmartTabSharingVisible', false);
         accessor contextManagementInComposeboxEnabled: boolean =
             getLoadTimeBoolean('contextManagementInComposeboxEnabled', false);
         contextMenuDescriptionEnabled: boolean =
@@ -263,6 +259,7 @@ export const ComposeboxEmbedderMixin =
         accessor contextMenuEnabled: boolean =
             loadTimeData.getBoolean('composeboxShowContextMenu');
         accessor errorMessage: string = '';
+        // Files/tabs added by the user for the current turn (query).
         accessor files: Map<UnguessableToken, ComposeboxFile> = new Map();
         accessor fileUploadsComplete: boolean = true;
         accessor hasAllowedInputs: boolean = false;
@@ -285,6 +282,7 @@ export const ComposeboxEmbedderMixin =
         // reset when the context menu is closed, and passed down to keep the
         // child menu's rendering in sync.
         accessor shareTabsFlyoutOpen: boolean = false;
+        accessor suggestionActivityEnabled: boolean = true;
         accessor searchboxLayoutMode: string = '';
         accessor searchboxNextEnabled: boolean = false;
         accessor queryZpsOnLoad: boolean = true;
@@ -360,6 +358,15 @@ export const ComposeboxEmbedderMixin =
                     this.setAimThreadRestoredTabs.bind(this)),
           ];
 
+          // <if expr="not is_android">
+          const listenerId =
+              ComposeboxProxyImpl.getInstance().observeSmartTabSharingActive(
+                  (active: boolean) => {
+                    this.smartTabSharingActive = active;
+                  });
+          this.searchboxListenerIds.push(listenerId);
+          // </if>
+
           this.getSearchboxHandler().notifySessionStarted();
 
           this.initializeInitialState_();
@@ -426,6 +433,19 @@ export const ComposeboxEmbedderMixin =
 
           const changedPrivateProperties =
               changedProperties as Map<PropertyKey, unknown>;
+
+          // <if expr="not is_android">
+          if (changedPrivateProperties.has('smartTabSharingVisible')) {
+            if (this.smartTabSharingVisible) {
+              ComposeboxProxyImpl.getInstance().getSmartTabSharingActive().then(
+                  ({active}) => {
+                    this.smartTabSharingActive = active;
+                  });
+            } else {
+              this.smartTabSharingActive = false;
+            }
+          }
+          // </if>
           // When the result initially gets set check if dropdown should show.
           if (changedPrivateProperties.has('input') ||
               changedPrivateProperties.has('result') ||
@@ -519,7 +539,11 @@ export const ComposeboxEmbedderMixin =
             } else if (!this.lastQueriedInput) {
               // This is for cases when focus leaves the matches/input.
               // If there was already text in the input do not clear it.
-              this.clearInput();
+              // Only clear input when not empty, otherwise this impacts
+              // suggestions getting fetched for zero state.
+              if (this.input) {
+                this.clearInput();
+              }
             } else {
               // For typed queries reset the input back to typed value when
               // focus leaves the match.
@@ -707,7 +731,7 @@ export const ComposeboxEmbedderMixin =
         setAimThreadRestoredTabs(tabs: TabInfo[]) {
           this.aimThreadRestoredTabs = tabs;
           if (tabs.length > 0) {
-            this.refreshTabSuggestions();
+            this.refreshTabSuggestions(/*forceRefresh=*/ true);
           }
           this.requestUpdate();
         }
@@ -1131,7 +1155,10 @@ export const ComposeboxEmbedderMixin =
           // then revokes Drive permissions.
           const {status} =
               await this.getSearchboxHandler().getDriveDisclaimerStatus();
-          if (status !== DriveDisclaimerStatus.kAccepted) {
+          // Abort only if the account is restricted/ineligible. If unconsented
+          // (kNotAccepted), allow the click through so onDriveUploadClicked
+          // can trigger the ConsentKit disclaimer onboarding dialog.
+          if (status === DriveDisclaimerStatus.kRestricted) {
             return;
           }
 
@@ -1140,9 +1167,12 @@ export const ComposeboxEmbedderMixin =
           this.addDriveUploads(response.files, response.error ?? undefined);
         }
 
-        onSmartTabSharingActiveChanged(e: CustomEvent<{active: boolean}>) {
-          this.smartTabSharingActive = e.detail.active;
-          this.getPageHandler().setSmartTabSharingActive(e.detail.active);
+        onSmartTabSharingActiveChanged(_e: CustomEvent<{active: boolean}>) {
+          // <if expr="not is_android">
+          this.smartTabSharingActive = _e.detail.active;
+          ComposeboxProxyImpl.getInstance().setSmartTabSharingActive(
+              _e.detail.active);
+          // </if>
         }
 
         onContextMenuContainerMousedown(e: FocusEvent) {
@@ -1172,9 +1202,18 @@ export const ComposeboxEmbedderMixin =
         }
 
         async onDeleteTabContext(
-            e: CustomEvent<
-                {uuid: UnguessableToken, fromUserAction?: boolean}>) {
-          this.deleteFile(e.detail.uuid, e.detail.fromUserAction);
+            e: CustomEvent<{tabId: number, fromUserAction?: boolean}>) {
+          const tabId = e.detail.tabId;
+          const token = this.addedTabsIds.get(tabId);
+          if (token) {
+            this.deleteFile(token, e.detail.fromUserAction);
+          } else {
+            this.getSearchboxHandler().deleteTabContext(tabId);
+          }
+
+          this.aimThreadRestoredTabs =
+              this.aimThreadRestoredTabs.filter(tab => tab.tabId !== tabId);
+
           await this.updateComplete;
           this.keepMenuOpenForMultiSelection();
         }
@@ -1366,12 +1405,21 @@ export const ComposeboxEmbedderMixin =
           this.contextMenuOpened = true;
           if (this.tabSuggestionsState === TabSuggestionsState.LOADED) {
             const selectedTabIds = new Set(this.addedTabsIds.keys());
-            this.tabSuggestions = [
-              ...this.tabSuggestions.filter(
-                  tab => selectedTabIds.has(tab.tabId)),
-              ...this.tabSuggestions.filter(
-                  tab => !selectedTabIds.has(tab.tabId)),
-            ];
+            const restoredTabIds = this.contextManagementInComposeboxEnabled ?
+                new Set(
+                    (this.aimThreadRestoredTabs || []).map(tab => tab.tabId)) :
+                new Set<number>();
+
+            const selected = this.tabSuggestions.filter(
+                tab => selectedTabIds.has(tab.tabId));
+            const restored = this.tabSuggestions.filter(
+                tab => restoredTabIds.has(tab.tabId) &&
+                    !selectedTabIds.has(tab.tabId));
+            const other = this.tabSuggestions.filter(
+                tab => !selectedTabIds.has(tab.tabId) &&
+                    !restoredTabIds.has(tab.tabId));
+
+            this.tabSuggestions = [...selected, ...restored, ...other];
             if (this.inputState) {
               const {allowedInputTypes, disabledInputTypes} = this.inputState;
               if (allowedInputTypes.includes(InputType.kBrowserTab) &&
@@ -1596,14 +1644,20 @@ export const ComposeboxEmbedderMixin =
           // clearing, clear input here.
           if (!querySubmitted) {
             this.resetModes();
-            this.resetRestoredTabs();
+            // If context management flag is on, do not delete persisted
+            // (restored) tabs unless the source is Omnibox.
+            if (this.composeboxSource === 'Omnibox' ||
+                !this.contextManagementInComposeboxEnabled) {
+              this.resetRestoredTabs();
+            }
           }
-          const undeletableFiles = querySubmitted ?
-              Array.from(this.files.values())
-                  .filter(
-                      file => !file.isDeletable ||
-                          (file.tabId &&
-                           this.contextManagementInComposeboxEnabled)) :
+
+          // `undeletableFiles` is for files; `SubmitCleanup()` still deletes
+          // TABS only after this, regardless of `undeletableFiles`. Adding tabs
+          // to `undeletableFiles` does nothing to prevent deletion from
+          // `this.files`. Adding files to `undeletableFiles` does prevent
+          // deletion.
+          const undeletableFiles =
               Array.from(this.files.values()).filter(file => !file.isDeletable);
           if (undeletableFiles.length !== this.files.size) {
             this.files =
@@ -1620,9 +1674,18 @@ export const ComposeboxEmbedderMixin =
                   .map(file => file.uuid));
           this.smartComposeInlineHint = '';
           this.resetSmartComposeStats();
+          // Ask the searchbox handler to clear its own state when the clear all
+          // button is clicked. Otherwise, it will clear its own state when mojo submit
+          // query is sent.
+          // TODO(crbug.com/532712756): Browser process should fully own
+          // clearing logic, and frontend should listen and follow which files
+          // browser process says to keep. This is better than having to
+          // maintain and align two different hard coded logic for clearing
+          // files across composebox (here) and browser process code (session
+          // handle). `restoredTabs` is the server telling the frontend which tabs
+          // are persistent, but the logic for clearing context on submit/clear all
+          // should still be handled by browser process, not frontend and browser process.
           if (!querySubmitted) {
-            // If the query was submitted, the searchbox handler will clear its
-            // own uploaded file state when the query submission is handled.
             this.getSearchboxHandler().clearFiles(shouldBlockAutoSuggestedTabs);
           }
           this.fileUploadsComplete = this.pendingUploads.size === 0;
@@ -1827,6 +1890,9 @@ export const ComposeboxEmbedderMixin =
         }
 
         cacheSubmittedTabs() {
+          if (!this.contextManagementInComposeboxEnabled) {
+            return;
+          }
           if (this.hasCachedSubmittedTabsThisTurn) {
             return;
           }
@@ -1918,8 +1984,10 @@ export const ComposeboxEmbedderMixin =
               this.getInputElement().inputElement.selectionStart || 0 :
               this.input.length;
           this.getSearchboxHandler().queryAutocompleteWithSuggestInventory(
-              this.activeQueryId, this.input, false, cursorPosition,
-              this.suggestInventory ?? SuggestInventory.kDefault);
+              this.activeQueryId, this.input,
+              /*preventInlineAutocomplete=*/ false, cursorPosition,
+              this.suggestInventory ?? SuggestInventory.kDefault,
+              /*isOnFocus=*/ !this.input);
         }
 
         clearAutocompleteMatches() {
@@ -2314,22 +2382,24 @@ export const ComposeboxEmbedderMixin =
               this.deleteFile(uuid, /*fromUserAction=*/ false);
             });
 
-            const restored = this.aimThreadRestoredTabs || [];
+            const restored = this.contextManagementInComposeboxEnabled ?
+                (this.aimThreadRestoredTabs || []) :
+                [];
 
-            let processedRecentTabs = dedupeTabs(restored, tabs);
+            const processedRecentTabs = dedupeTabs(restored, tabs);
 
-            if (this.contextMenuOpened) {
-              // Order tabs in submenu presubmission: selected tabs are first.
-              const selectedTabIds = new Set(this.addedTabsIds.keys());
-              processedRecentTabs = [
-                ...processedRecentTabs.filter(
-                    tab => selectedTabIds.has(tab.tabId)),
-                ...processedRecentTabs.filter(
-                    tab => !selectedTabIds.has(tab.tabId)),
-              ];
-            }
+            const selectedTabIds = new Set(this.addedTabsIds.keys());
 
-            this.tabSuggestions = [...restored, ...processedRecentTabs];
+            const selectedRecent = processedRecentTabs.filter(
+                tab => selectedTabIds.has(tab.tabId));
+            const unselectedRecent = processedRecentTabs.filter(
+                tab => !selectedTabIds.has(tab.tabId));
+
+            this.tabSuggestions = [
+              ...selectedRecent,
+              ...restored,
+              ...unselectedRecent,
+            ];
             this.tabSuggestionsState = TabSuggestionsState.LOADED;
 
             if (this.inputState) {
@@ -2470,6 +2540,7 @@ export const ComposeboxEmbedderMixin =
               .length;
         }
 
+        // Returns all attached tabs in composebox.
         getSharedTabs(): TabInfo[] {
           return Array.from(this.files.values())
               .filter(file => !!file.url)
@@ -2618,6 +2689,7 @@ export interface ComposeboxEmbedderMixinInterface extends
   receivedSpeech: boolean;
   result: AutocompleteResult|null;
   shareTabsFlyoutOpen: boolean;
+  suggestionActivityEnabled: boolean;
   searchboxLayoutMode: string;
   isOblongShape: boolean;
   webuiOmniboxSimplificationEnabled: boolean;
@@ -2689,8 +2761,8 @@ export interface ComposeboxEmbedderMixinInterface extends
   // Common event handlers
   onContextMenuContainerMousedown(e: FocusEvent): void;
   onContextMenuContainerClick(e: MouseEvent): void;
-  onDeleteTabContext(
-      e: CustomEvent<{uuid: UnguessableToken, fromUserAction?: boolean}>): void;
+  onDeleteTabContext(e: CustomEvent<{tabId: number, fromUserAction?: boolean}>):
+      void;
   onShareTabsFlyoutOpenChanged(e: CustomEvent<{open: boolean}>): void;
   onAddTabContext(e: CustomEvent<{
     id: number,

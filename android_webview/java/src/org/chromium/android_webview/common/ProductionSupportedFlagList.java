@@ -256,9 +256,6 @@ public final class ProductionSupportedFlagList {
                 "Allows autofill to offer filling again on fields that were autofilled and now hold"
                         + " autocomplete=unrecognized value."),
         Flag.baseFeature(
-                AutofillFeatures.AUTOFILL_FIX_FORM_EQUALITY,
-                "Fixes the semantics of Form[Field]Data::DeepEqual()"),
-        Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_FIX_CIVIL_STATE_MISCLASSIFICATION_FOR_ESPT,
                 "When enabled, improves heuristic regexes for state classification to avoid"
                         + " misclassification as civil state."),
@@ -320,10 +317,6 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_GREEK_REGEXES,
                 "When enabled, Greek regexes are used for parsing in branded builds."),
-        Flag.baseFeature(
-                AutofillFeatures.AUTOFILL_ENABLE_CACHE_FOR_REGEX_MATCHING,
-                "When enabled, autofill uses an extra cache for matching regular expressions "
-                        + "while executing local heuristics."),
         Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_STRUCTURED_FIELDS_DISABLE_ADDRESS_LINES,
                 "When enabled, Autofill disable address lines on forms with structured address"
@@ -507,6 +500,13 @@ public final class ProductionSupportedFlagList {
                         + " change."),
         Flag.baseFeature(NetFeatures.HAPPY_EYEBALLS_V2, "Enables Happy Eyeballs V2"),
         Flag.baseFeature(NetFeatures.HAPPY_EYEBALLS_V3, "Enables Happy Eyeballs V3"),
+        Flag.baseFeature(NetFeatures.OPTIMISTIC_DNS_FOR_TCP, "Enables optimistic DNS for TCP"),
+        Flag.baseFeature(
+                NetFeatures.ADJUST_I_PV6_FALLBACK_TIME,
+                "Enables controlling the Happy Eyeballs slow timer (IPv6 fallback time)"),
+        Flag.baseFeature(
+                NetFeatures.I_PV6_FALLBACK_BASED_ON_RTT,
+                "Enables the Happy Eyeballs slow timer to be based on the network RTT"),
         Flag.baseFeature(NetFeatures.ENABLE_TLS13_EARLY_DATA, "Enables TLS 1.3 Early Data"),
         Flag.baseFeature(
                 NetFeatures.HTTP_CACHE_NO_VARY_SEARCH,
@@ -999,6 +999,8 @@ public final class ProductionSupportedFlagList {
                 "Disallow script execution during blink lifecycle update."),
         Flag.baseFeature("ServiceWorkerAutoPreload"),
         Flag.baseFeature(GpuFeatures.WEB_GPU_USE_SPIRV14, "Use WebGPU's SPIR-V 1.4"),
+        Flag.baseFeature(GpuFeatures.WEB_GPU_USE_SPIRV_RECONVERGENCE_MODE,
+                "Use WebGPU's SPIR-V reconvergence mode"),
         Flag.commandLine(
                 AwSwitches.STARTUP_NON_BLOCKING_WEBVIEW_CONSTRUCTOR,
                 "When enabled, WebView constructor will not block on WebView process global"
@@ -1097,6 +1099,10 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 AwFeatures.WEBVIEW_REMOVE_INSTANT_APP_SUPPORT,
                 "When enabled, WebView support for Instant Apps is removed."),
+        Flag.baseFeature(
+                AwFeatures.WEBVIEW_MULTI_PROFILE_SKIP_DEFAULT_PROFILE,
+                "When enabled, accessing multi-profile APIs skips automatic initialization of the"
+                        + " Default profile during startup."),
         Flag.baseFeature(
                 AwFeatures.WEBVIEW_BYPASS_PROVISIONAL_COOKIE_MANAGER,
                 "When enabled, the temporary cookie manager used before WebView startup is"
@@ -1333,9 +1339,6 @@ public final class ProductionSupportedFlagList {
                         + " the main thread. Only takes effect if PREFETCH_OFF_THE_MAIN_THREAD is"
                         + " enabled as well."),
         Flag.baseFeature(
-                "PreventSvgFilterPaint",
-                "Disables SVG filter painting for remote frames and web plugins."),
-        Flag.baseFeature(
                 ContentFeatures.PREFETCH_REQUEST_STATUS_LISTENER_ASYNC,
                 "Make PrefetchRequestStatusListener notifications async."),
         Flag.baseFeature(AwFeatures.WEBVIEW_NAVIGATE, "Enables the WebView navigate method"),
@@ -1393,6 +1396,18 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 AwFeatures.WEBVIEW_AW_CLASS_PRELOADER,
                 "When enabled, WebView will preload a certain list of classes for performance."),
+        Flag.baseFeature(
+                "SimpleCachePrefetchExperiment2",
+                "Enables fixed-size prefetching of simple cache entry data during open."),
+        Flag.baseFeature(
+                "QuicUseReadMultiple", "Utilizes recvmmsg over recvmsg for Quic UDP sockets."),
+        Flag.baseFeature(
+                AwFeatures.WEBVIEW_MIGRATE_VISITED_LINKS,
+                "Migrate WebView's visited links database to the new partitioned database structure"
+                        + " without performing actual partitioning."),
+        Flag.baseFeature(
+                BlinkFeatures.INPUT_CURSOR_ANCHOR_INFO_MIGRATION,
+                "Enable Android IME CursorAnchorInfo updates via compositor frame metadata."),
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.
     };

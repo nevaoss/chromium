@@ -685,6 +685,11 @@ std::string SearchboxHandler::AutocompleteIconToResourceName(
     return kTrendingUpIconResourceName;
   } else if (icon.name ==
              (features::IsRoundedIconsEnabled()
+                  ? vector_icons::kDevicesIcon.name
+                  : vector_icons::kDevicesOldIcon.name)) {
+    return kTabIconResourceName;
+  } else if (icon.name ==
+             (features::IsRoundedIconsEnabled()
                   ? vector_icons::kHistoryIcon.name
                   : vector_icons::kHistoryChromeRefreshOldIcon.name)) {
     return kHistoryIconResourceName;
@@ -756,9 +761,11 @@ std::string SearchboxHandler::AutocompleteIconToResourceName(
   // TODO(446953331): It's error-prone to keep the above if's up to date. When
   //   omnibox input and popup views are replaced with webUI, matches and
   //   actions can store an icon enum instead of `VectorIcon`.
-  NOTREACHED() << "Every autocomplete icon must have an equivalent SVG "
-                  "resource for the NTP Realbox. icon.name: '"
-               << icon.name << "'";
+  DUMP_WILL_BE_NOTREACHED()
+      << "Every autocomplete icon must have an equivalent SVG "
+         "resource for the NTP Realbox. icon.name: '"
+      << icon.name << "'";
+  return "";
 }
 
 searchbox::mojom::AutocompleteResultPtr
@@ -1083,10 +1090,11 @@ void SearchboxHandler::OnFocusChanged(bool focused) {
 void SearchboxHandler::QueryAutocomplete(int32_t query_id,
                                          const std::u16string& input,
                                          bool prevent_inline_autocomplete,
-                                         uint32_t cursor_position) {
+                                         uint32_t cursor_position,
+                                         bool is_on_focus) {
   QueryAutocompleteWithSuggestInventory(
       query_id, input, prevent_inline_autocomplete, cursor_position,
-      omnibox::SuggestInventory::SUGGEST_INVENTORY_DEFAULT);
+      omnibox::SuggestInventory::SUGGEST_INVENTORY_DEFAULT, is_on_focus);
 }
 
 void SearchboxHandler::QueryAutocompleteWithSuggestInventory(
@@ -1094,16 +1102,13 @@ void SearchboxHandler::QueryAutocompleteWithSuggestInventory(
     const std::u16string& input,
     bool prevent_inline_autocomplete,
     uint32_t cursor_position,
-    omnibox::SuggestInventory suggest_inventory) {
+    omnibox::SuggestInventory suggest_inventory,
+    bool is_on_focus) {
   current_query_id_ = query_id;
   // This shouldn't happen, but, e.g., users may do unintended actions in the
   // developer console and crashing with a `CHECK()` doesn't seem warranted.
   cursor_position =
       std::min(static_cast<size_t>(cursor_position), input.length());
-
-  // TODO(tommycli): We use the input being empty as a signal we are requesting
-  // on-focus suggestions. It would be nice if we had a more explicit signal.
-  bool is_on_focus = input.empty();
 
   // Early exit if a query is already in progress for on focus inputs.
   if (!autocomplete_controller()->done() && is_on_focus) {
@@ -1681,6 +1686,15 @@ void SearchboxHandler::OnDefaultSearchExtensionDialogDone(
     client()->FocusWebContents();
   }
 }
+
+#if !BUILDFLAG(IS_ANDROID)
+void SearchboxHandler::SetSmartTabSharingActive(bool active) {}
+
+void SearchboxHandler::GetSmartTabSharingActive(
+    GetSmartTabSharingActiveCallback callback) {
+  std::move(callback).Run(false);
+}
+#endif
 
 OmniboxController* SearchboxHandler::Delegate::GetOmniboxController() {
   return nullptr;

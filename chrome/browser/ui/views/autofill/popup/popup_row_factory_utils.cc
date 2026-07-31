@@ -87,7 +87,8 @@ constexpr auto kPopupItemTypesUsingLeadingIcons = DenseSet<SuggestionType>(
      SuggestionType::kManageAutofillAiIdentityDocs,
      SuggestionType::kManageAutofillAiShopping,
      SuggestionType::kManageAutofillAiTravel, SuggestionType::kManageIban,
-     SuggestionType::kManageLoyaltyCard, SuggestionType::kUndoOrClear,
+     SuggestionType::kManageLoyaltyCard,
+     SuggestionType::kManageEnhancedAutofill, SuggestionType::kUndoOrClear,
      SuggestionType::kViewPasswordDetails, SuggestionType::kPendingStateSignin,
      SuggestionType::kWebauthnSignInWithAnotherDevice});
 
@@ -750,6 +751,7 @@ std::unique_ptr<PopupRowView> CreatePopupRowView(
 
   switch (type) {
     // These `type` should never be displayed in a `PopupRowView`.
+    case SuggestionType::kAtMemoryAiDisclosure:
     case SuggestionType::kInsecureContextPaymentDisabledMessage:
     case SuggestionType::kMixedFormMessage:
     case SuggestionType::kSeparator:
@@ -842,6 +844,7 @@ std::unique_ptr<PopupRowView> CreatePopupRowView(
     case SuggestionType::kManageCreditCard:
     case SuggestionType::kManageIban:
     case SuggestionType::kManageLoyaltyCard:
+    case SuggestionType::kManageEnhancedAutofill:
     case SuggestionType::kMaximizeCreditCardBenefitsEntry:
     case SuggestionType::kMerchantPromoCodeEntry:
     case SuggestionType::kOneTimePasswordEntry:

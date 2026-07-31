@@ -85,6 +85,11 @@ BASE_FEATURE(kAutofillPasswordSurvey, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
 
 #if BUILDFLAG(IS_ANDROID)
+// When enabled, GetUserCacheDirectory on Android will append the relative path
+// of non-default partitions to the cache directory.
+BASE_FEATURE(kAndroidKeepProfilePartitionDirsInCacheDir,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 // Enable boarding pass detector on Chrome Android.
 BASE_FEATURE(kBoardingPassDetector, base::FEATURE_DISABLED_BY_DEFAULT);
 const char kBoardingPassDetectorUrlParamName[] = "boarding_pass_detector_urls";
@@ -113,6 +118,15 @@ BASE_FEATURE(kCrostini, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables stricter cryptography settings for CNSA2 compliance. This is not
 // needed for security, but may be required by some organizations.
 BASE_FEATURE(kCryptographyComplianceCnsa, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Delays BEST_EFFORT tasks during startup until tabs are loaded/idle and first
+// paint.
+BASE_FEATURE(kImprovedStartupBestEffortDelay,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+const base::FeatureParam<bool> kSessionRestoreDelaysBestEffort{
+    &kImprovedStartupBestEffortDelay, "session_restore_delays_best_effort",
+    true};
 
 #if !BUILDFLAG(IS_ANDROID)
 // Whether to allow installed-by-default web apps to be installed or not.
@@ -442,6 +456,12 @@ const base::FeatureParam<bool> kGlicActorPolicyControlExemption{
     &kGlicActor, "glic_actor_policy_control_exemption", false};
 
 BASE_FEATURE(kGlicActorPermissionsBypass, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Enables rejecting actor click and type targets when Blink reports a
+// non-disabled, non-ARIA interaction-disallowed state. Disabled controls are
+// always rejected.
+BASE_FEATURE(kGlicActorRejectInteractionDisallowedTargets,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicActorToctouValidation, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -1037,6 +1057,10 @@ BASE_FEATURE(kActorFormFillingServiceEnableCreditCard,
 
 // Enables the `google-chrome://` URI scheme.
 BASE_FEATURE(kGoogleChromeScheme, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Controls whether the Google Search AI Mode Workspace link (Connected Apps) is
+// shown in AI Settings. Acts as a killswitch.
+BASE_FEATURE(kGoogleSearchAiModeWorkspace, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Force Privacy Guide to be available even if it would be unavailable
 // otherwise. This is meant for development and test purposes only.

@@ -35,9 +35,11 @@ import org.chromium.components.omnibox.AutocompleteRequestType;
 import org.chromium.components.omnibox.OmniboxCapabilities;
 import org.chromium.components.search_engines.TemplateUrlService;
 import org.chromium.components.search_engines.TemplateUrlService.TemplateUrlServiceObserver;
+import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.modelutil.PropertyModelChangeProcessor;
+import org.chromium.url.GURL;
 
 import java.util.function.Supplier;
 
@@ -91,7 +93,9 @@ class SearchBoxMediator implements DestroyObserver {
         mModel.set(SearchBoxProperties.VOICE_SEARCH_CLICK_CALLBACK, this::onVoiceSearchClick);
         mModel.set(SearchBoxProperties.PLUS_BUTTON_CLICK_CALLBACK, this::onPlusButtonClick);
         mModel.set(SearchBoxProperties.LENS_CLICK_CALLBACK, this::onLensClick);
+        mModel.set(SearchBoxProperties.AI_CHIP_CLICK_CALLBACK, this::onAiChipClick);
 
+        updateAiChip();
         updateStartIcon();
     }
 
@@ -99,6 +103,7 @@ class SearchBoxMediator implements DestroyObserver {
     public void onDestroy() {
         mActivityLifecycleDispatcher.unregister(this);
 
+        mModel.set(SearchBoxProperties.AI_CHIP_CLICK_CALLBACK, null);
         mModel.set(SearchBoxProperties.LENS_CLICK_CALLBACK, null);
         mModel.set(SearchBoxProperties.VOICE_SEARCH_CLICK_CALLBACK, null);
         mModel.set(SearchBoxProperties.PLUS_BUTTON_CLICK_CALLBACK, null);
@@ -196,6 +201,7 @@ class SearchBoxMediator implements DestroyObserver {
 
     private void onTemplateURLServiceChanged() {
         updateStartIcon();
+        updateAiChip();
     }
 
     /** Called to set a drag listener for the search box. */
@@ -366,5 +372,19 @@ class SearchBoxMediator implements DestroyObserver {
 
         return !scrollDelegate.isChildVisibleAtPosition(0)
                 || scrollDelegate.getVerticalScrollOffset() > mView.getTop() + mTransitionEndOffset;
+    }
+
+    private void updateAiChip() {
+        boolean shouldShow =
+                OmniboxCapabilities.isDesktopPlatform()
+                        && ComposeplateUtils.isComposeplateEnabled(mProfile);
+        mModel.set(SearchBoxProperties.AI_CHIP_VISIBILITY, shouldShow);
+    }
+
+    private void onAiChipClick(View view) {
+        GURL url = mTemplateUrlService.getComposeplateUrl();
+        if (url != null) {
+            mNewTabPageManager.loadUrl(new LoadUrlParams(url), /* incognito= */ false);
+        }
     }
 }

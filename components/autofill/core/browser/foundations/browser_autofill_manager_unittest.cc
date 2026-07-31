@@ -15,6 +15,7 @@
 #include <variant>
 #include <vector>
 
+#include "base/auto_reset.h"
 #include "base/base64.h"
 #include "base/command_line.h"
 #include "base/compiler_specific.h"
@@ -41,7 +42,6 @@
 #include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "base/time/time.h"
-#include "build/branding_buildflags.h"
 #include "build/build_config.h"
 #include "components/autofill/core/browser/autofill_field.h"
 #include "components/autofill/core/browser/autofill_format_string.h"
@@ -94,7 +94,9 @@
 #include "components/autofill/core/browser/integrators/password_form_classification.h"
 #include "components/autofill/core/browser/integrators/password_manager/mock_password_manager_delegate.h"
 #include "components/autofill/core/browser/integrators/password_manager/password_manager_delegate.h"
+#include "components/autofill/core/browser/integrators/touch_to_fill/touch_to_fill_autofill_delegate.h"
 #include "components/autofill/core/browser/metrics/form_events/form_events.h"
+#include "components/autofill/core/browser/metrics/form_interactions_ukm_logger.h"
 #include "components/autofill/core/browser/metrics/log_event.h"
 #include "components/autofill/core/browser/metrics/loyalty_cards_metrics.h"
 #include "components/autofill/core/browser/metrics/payments/iban_metrics.h"
@@ -143,8 +145,9 @@
 #include "components/autofill/core/common/mojom/autofill_types.mojom-shared.h"
 #include "components/autofill/core/common/signatures.h"
 #include "components/feature_engagement/public/feature_constants.h"
+#include "components/optimization_guide/core/feature_registry/feature_registration.h"
 #include "components/optimization_guide/proto/features/common_quality_data.pb.h"
-#include "components/personal_context/core/mock_personal_context_enablement_service.h"
+#include "components/personal_context/core/mock_personal_context_eligibility_service.h"
 #include "components/personal_context/core/personal_context_prefs.h"
 #include "components/prefs/pref_service.h"
 #include "components/security_interstitials/core/pref_names.h"
@@ -714,6 +717,39 @@ class MockTouchToFillPaymentMethodDelegate
               (override));
 };
 
+class MockTouchToFillAutofillDelegate : public TouchToFillAutofillDelegate {
+ public:
+  static std::unique_ptr<MockTouchToFillAutofillDelegate> Create(
+      BrowserAutofillManager* manager) {
+    auto delegate =
+        std::make_unique<testing::NiceMock<MockTouchToFillAutofillDelegate>>();
+    ON_CALL(*delegate, IsShowingTouchToFill())
+        .WillByDefault(testing::Return(false));
+    return delegate;
+  }
+
+  MockTouchToFillAutofillDelegate() = default;
+  MockTouchToFillAutofillDelegate(const MockTouchToFillAutofillDelegate&) =
+      delete;
+  MockTouchToFillAutofillDelegate& operator=(
+      const MockTouchToFillAutofillDelegate&) = delete;
+  ~MockTouchToFillAutofillDelegate() override = default;
+
+  MOCK_METHOD(bool,
+              IntendsToShowTouchToFill,
+              (FormGlobalId, FieldGlobalId),
+              (override));
+  MOCK_METHOD(bool,
+              TryToShowTouchToFill,
+              (const FormData&, const FormFieldData&),
+              (override));
+  MOCK_METHOD(bool, IsShowingTouchToFill, (), (override));
+  MOCK_METHOD(void, HideTouchToFill, (), (override));
+  MOCK_METHOD(void, OnShow, (), (override));
+  MOCK_METHOD(void, OnNoticeAcknowledged, (), (override));
+  MOCK_METHOD(void, OnDismissed, (), (override));
+};
+
 class MockAutofillDriver : public TestAutofillDriver {
  public:
   using TestAutofillDriver::TestAutofillDriver;
@@ -772,6 +808,8 @@ class TestBrowserAutofillManager : public autofill::TestBrowserAutofillManager {
       : autofill::TestBrowserAutofillManager(driver) {
     set_touch_to_fill_payment_method_delegate(
         MockTouchToFillPaymentMethodDelegate::Create(this));
+    set_touch_to_fill_autofill_delegate(
+        MockTouchToFillAutofillDelegate::Create(this));
     test_api(*this).SetExternalDelegate(
         std::make_unique<TestAutofillExternalDelegate>(this));
     test_api(*this).set_credit_card_access_manager(
@@ -1215,6 +1253,11 @@ class BrowserAutofillManagerTest
         autofill_manager().touch_to_fill_payment_method_delegate());
   }
 
+  MockTouchToFillAutofillDelegate& touch_to_fill_autofill_delegate() {
+    return *static_cast<MockTouchToFillAutofillDelegate*>(
+        autofill_manager().touch_to_fill_autofill_delegate());
+  }
+
   MockCreditCardAccessManager& cc_access_manager() {
     return static_cast<MockCreditCardAccessManager&>(
         *autofill_manager().GetCreditCardAccessManager());
@@ -1321,7 +1364,6 @@ class BrowserAutofillManagerTest
   syncer::TestSyncService sync_service_;
 };
 
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
 class BrowserAutofillManagerAtMemoryTest : public BrowserAutofillManagerTest {
  public:
@@ -1333,20 +1375,22 @@ class BrowserAutofillManagerAtMemoryTest : public BrowserAutofillManagerTest {
                               features::kShowAutocompleteAtMemoryButton},
         /*disabled_features=*/{});
 
-    personal_context::prefs::RegisterProfilePrefs(
-        autofill_client().GetPrefs()->registry());
+    autofill_client().GetPrefs()->registry()->RegisterIntegerPref(
+        optimization_guide::prefs::kGeminiSettings,
+        std::to_underlying(
+            optimization_guide::prefs::GeminiSettingsPolicyState::kEnabled));
     autofill_client().GetPrefs()->SetBoolean(
         personal_context::prefs::kPersonalContextInAutofillSettingsToggleStatus,
         true);
     ON_CALL(mock_personal_context_service_, GetEligibilityState())
         .WillByDefault(Return(
             personal_context::PersonalContextEligibilityState::kEligible));
-    autofill_client().set_personal_context_enablement_service(
+    autofill_client().set_personal_context_eligibility_service(
         &mock_personal_context_service_);
   }
 
  protected:
-  NiceMock<personal_context::MockPersonalContextEnablementService>
+  NiceMock<personal_context::MockPersonalContextEligibilityService>
       mock_personal_context_service_;
   base::test::ScopedFeatureList feature_list_;
 };
@@ -1372,7 +1416,7 @@ TEST_F(BrowserAutofillManagerAtMemoryTest, TriggerDroppedWhenNotEligible) {
       .WillByDefault(Return(personal_context::PersonalContextEligibilityState::
                                 kDisabledNotEligible));
 
-  autofill_client().set_personal_context_enablement_state(
+  autofill_client().set_personal_context_eligibility_state(
       personal_context::PersonalContextEligibilityState::kDisabledNotEligible);
 
   OnAskForValuesToFill(form, form.fields()[0],
@@ -1476,7 +1520,6 @@ TEST_F(BrowserAutofillManagerAtMemoryTest, TriggerDroppedWhenFieldUrlBlocked) {
   // Trigger should be dropped, no suggestions returned.
   EXPECT_FALSE(external_delegate()->on_suggestions_returned_seen());
 }
-#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
 TEST_F(BrowserAutofillManagerTest, IgnoreInactivityQueryIfPopupVisible) {
   FormData form = CreateTestAddressFormData();
@@ -1981,7 +2024,21 @@ TEST_F(BrowserAutofillManagerTest, GetAddressAndCreditCardSuggestionsNonHttps) {
   // Clear the test credit cards and try again -- we shouldn't return a warning.
   personal_data().test_payments_data_manager().ClearCreditCards();
   OnAskForValuesToFill(form, cc_number_field);
+#if BUILDFLAG(IS_IOS)
+  // On iOS, the Scan Card / Save and Fill promo is enabled by default. Even
+  // though the promo itself doesn't check for secure context, its presence
+  // causes the generic secure context check to replace it with a warning.
+  external_delegate()->CheckSuggestions(
+      cc_number_field.global_id(),
+      {Suggestion(
+          l10n_util::GetStringUTF16(IDS_AUTOFILL_WARNING_INSECURE_CONNECTION),
+          u"", Suggestion::Icon::kNoIcon,
+          SuggestionType::kInsecureContextPaymentDisabledMessage)});
+#else
+  // On other platforms, the promo is not enabled by default, so no suggestions
+  // are generated.
   external_delegate()->CheckNoSuggestions(cc_number_field.global_id());
+#endif
 }
 
 TEST_F(BrowserAutofillManagerTest,
@@ -2250,6 +2307,11 @@ TEST_F(BrowserAutofillManagerTest,
       .Times(0);
 #endif
 
+#if BUILDFLAG(IS_IOS)
+  // Set the value of the trigger field to be longer than 3 characters, so that
+  // the "Save and Fill" promo is not shown.
+  test_api(form).field(0).set_value(u"1234");
+#endif
   OnAskForValuesToFill(form, form.fields()[0]);
 
   // Verify that no suggestion is returned.
@@ -2429,6 +2491,13 @@ TEST_P(BrowserAutofillManagerLogAblationTest, TestLogging) {
   // Simulate retrieving autofill suggestions with the first field as a trigger
   // script. This should emit signals that lead to recorded metrics later on.
   FormFieldData& field = test_api(form).field(0);
+#if BUILDFLAG(IS_IOS)
+  if (!params.run_with_data_on_file) {
+    // Set the field value to > 3 characters to suppress the "Save and Fill"
+    // promo on iOS, ensuring that NO suggestions are generated.
+    field.set_value(u"1234");
+  }
+#endif
   OnAskForValuesToFill(form, field);
 
   // Simulate user typing into field (due to the ablation we would not fill).
@@ -2909,13 +2978,6 @@ TEST_F(BrowserAutofillManagerTest, SuggestionGenerationTimingMetric) {
 class BrowserAutofillManagerWithLogEventsTest
     : public BrowserAutofillManagerTest {
  protected:
-  BrowserAutofillManagerWithLogEventsTest() {
-    scoped_features_.InitAndEnableFeatureWithParameters(
-        features::kAutofillLogUKMEventsWithSamplingOnSession,
-        {{features::kAutofillLogUKMEventsWithSamplingOnSessionRate.name,
-          "100"}});
-  }
-
   std::vector<AutofillField::FieldLogEventType> ToFieldTypeEvents(
       const AutofillField& field,
       size_t field_signature_rank = 1) {
@@ -2969,7 +3031,8 @@ class BrowserAutofillManagerWithLogEventsTest
   }
 
  private:
-  base::test::ScopedFeatureList scoped_features_;
+  base::AutoReset<int> sampling_override_ =
+      autofill_metrics::SetUkmSamplingRateForTesting(100);
 };
 
 // Test that we record TriggerFillFieldLogEvent for the field we click to show
@@ -7200,6 +7263,34 @@ TEST_F(BrowserAutofillManagerTest,
       form, form.fields()[0].global_id(), field_ids);
 
   EXPECT_FALSE(form_structure->field(0)->did_trigger_javascript_autofill());
+}
+
+// Tests that Autofill suggestions are not shown if TouchToFillAutofill is
+// eligible.
+TEST_F(BrowserAutofillManagerTest,
+       TouchToFillAutofillSuggestion_ShowsIfEligible) {
+  FormData form = CreateTestAddressFormData();
+  FormsSeen({form});
+
+  EXPECT_CALL(touch_to_fill_autofill_delegate(), TryToShowTouchToFill)
+      .WillOnce(testing::Return(true));
+  TryToShowTouchToFill(form, form.fields()[0],
+                       /*form_element_was_clicked=*/true);
+  EXPECT_FALSE(external_delegate()->on_suggestions_returned_seen());
+}
+
+// Tests that Autofill suggestions are shown if TouchToFillAutofill is not
+// eligible.
+TEST_F(BrowserAutofillManagerTest,
+       TouchToFillAutofillSuggestion_DoesNotShowIfNotEligible) {
+  FormData form = CreateTestAddressFormData();
+  FormsSeen({form});
+
+  EXPECT_CALL(touch_to_fill_autofill_delegate(), TryToShowTouchToFill)
+      .WillOnce(testing::Return(false));
+  TryToShowTouchToFill(form, form.fields()[0],
+                       /*form_element_was_clicked=*/true);
+  EXPECT_TRUE(external_delegate()->on_suggestions_returned_seen());
 }
 
 }  // namespace

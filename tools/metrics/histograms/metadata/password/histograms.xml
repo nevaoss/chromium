@@ -197,7 +197,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="KeyboardAccessory.AccessorySheetTriggered{AccessorySheetType}"
-    enum="AccessorySheetTrigger" expires_after="2026-11-08">
+    enum="AccessorySheetTrigger" expires_after="2027-01-10">
   <owner>friedrichh@chromium.org</owner>
   <owner>ioanap@chromium.org</owner>
   <summary>
@@ -264,7 +264,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="KeyboardAccessory.SuggestionSelected.{AccessorySheetType}"
-    enum="AccessorySuggestionTypeV2" expires_after="2026-11-08">
+    enum="AccessorySuggestionTypeV2" expires_after="2027-01-10">
   <owner>friedrichh@chromium.org</owner>
   <owner>tchudakov@google.com</owner>
   <owner>chrome-autofill-alerts@google.com</owner>
@@ -3817,6 +3817,17 @@ useful for Chirp alerts (go/crca-alerts). -->
     activity is destroyed or the device lock can't be set).
   </summary>
   <token key="UserSyncingType" variants="UserSyncingType"/>
+</histogram>
+
+<histogram
+    name="PasswordManager.SavingBlockedByTrustedVaultErrorOnSuccessfulLogin"
+    enum="Boolean" expires_after="2027-01-01">
+  <owner>ylahodiuk@google.com</owner>
+  <owner>anki-team@google.com</owner>
+  <summary>
+    Records whether saving a password after a successful login is blocked by a
+    trusted vault error. Recorded once per form submission on successful login.
+  </summary>
 </histogram>
 
 <histogram name="PasswordManager.ServerPredictionsWaitDuration" units="ms"

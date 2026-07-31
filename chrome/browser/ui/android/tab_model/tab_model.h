@@ -264,7 +264,8 @@ class TabModel : public TabListInterface {
   TabModel(const TabModel&) = delete;
   TabModel& operator=(const TabModel&) = delete;
 
-  virtual Profile* GetProfile() const;
+  virtual Profile* GetProfile();
+  virtual const Profile* GetProfile() const;
   virtual bool IsOffTheRecord() const;
   virtual sync_sessions::SyncedWindowDelegate* GetSyncedWindowDelegate() const;
   virtual SessionID GetSessionId() const;
@@ -274,6 +275,7 @@ class TabModel : public TabListInterface {
   virtual content::WebContents* GetWebContentsAt(int index) const = 0;
   // This will return NULL if the tab has not yet been initialized.
   virtual TabAndroid* GetTabAt(int index) const = 0;
+  virtual bool HasTab(TabAndroid* tab) const = 0;
   virtual std::vector<tabs::TabHandle> GetOrderedMultiSelectedTabs() const = 0;
   virtual base::android::ScopedJavaLocalRef<jobject> GetJavaObject() const = 0;
 

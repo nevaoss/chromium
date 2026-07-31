@@ -14,7 +14,6 @@
 #include "base/memory/weak_ptr.h"
 #include "base/observer_list.h"
 #include "cc/paint/paint_image.h"
-#include "components/viz/common/gpu/raster_context_provider.h"
 #include "components/viz/common/resources/shared_image_format.h"
 #include "gpu/command_buffer/client/client_shared_image.h"
 #include "gpu/command_buffer/common/shared_image_usage.h"
@@ -22,7 +21,6 @@
 #include "gpu/ipc/client/client_shared_image_interface.h"
 #include "third_party/blink/public/platform/web_graphics_shared_image_interface_provider.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_2d_color_params.h"
-#include "third_party/blink/renderer/platform/graphics/canvas_resource.h"
 #include "third_party/blink/renderer/platform/graphics/image_orientation.h"
 #include "third_party/blink/renderer/platform/graphics/memory_managed_paint_recorder.h"
 #include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
@@ -55,9 +53,7 @@ class CanvasImageProvider;
 
 class PLATFORM_EXPORT WebGpuRecyclableResourceProvider
     : public CanvasMemoryDumpClient,
-      public CanvasResourceSharedImage::Client,
-      public WebGraphicsContext3DProviderWrapper::DestructionObserver,
-      public viz::ContextLostObserver {
+      public WebGraphicsContext3DProviderWrapper::DestructionObserver {
  public:
   static std::unique_ptr<WebGpuRecyclableResourceProvider> Create(
       gfx::Size size,
@@ -75,7 +71,6 @@ class PLATFORM_EXPORT WebGpuRecyclableResourceProvider
   scoped_refptr<gpu::ClientSharedImage> GetSharedImage() const;
   gpu::SyncToken GetSyncToken() const;
 
-  void EndWriteAccess();
 
   // NOTE: Can only be used if this instance is accelerated.
   bool UploadToBackingSharedImage(const SkPixmap& pixmap,
@@ -85,13 +80,12 @@ class PLATFORM_EXPORT WebGpuRecyclableResourceProvider
   void DoExternalOverdraw(
       base::FunctionRef<void(cc::PaintCanvas&)> draw_callback);
 
-  // For WebGpu RecyclableCanvasResource.
-  void OnAcquireRecyclableCanvasResource();
-  void OnDestroyRecyclableCanvasResource(const gpu::SyncToken& sync_token);
-
-  // This is a workaround to ensure WaitSyncToken() is still called even when
-  // copying is effectively skipped due to a dummy WebGPU texture.
-  void PrepareForWebGPUDummyMailbox();
+  const gpu::SyncToken& acquire_sync_token() const {
+    return acquire_sync_token_;
+  }
+  void set_release_sync_token(const gpu::SyncToken& token) {
+    release_sync_token_ = token;
+  }
 
   // Returns the ClientSharedImage backing this
   // WebGpuRecyclableResourceProvider, if one exists, after flushing the
@@ -119,6 +113,7 @@ class PLATFORM_EXPORT WebGpuRecyclableResourceProvider
   // write have completed. Ensures that the next read of this resource (whether
   // via raster or the compositor) waits on this token.
   void EndExternalWrite(const gpu::SyncToken& external_write_sync_token);
+  void WaitSyncToken(const gpu::SyncToken& sync_token);
 
  private:
   WebGpuRecyclableResourceProvider(
@@ -129,45 +124,26 @@ class PLATFORM_EXPORT WebGpuRecyclableResourceProvider
       const gfx::HDRMetadata&,
       base::WeakPtr<WebGraphicsContext3DProviderWrapper>);
 
-  void ClearUnusedResources();
   bool IsGpuContextLost() const;
   CanvasImageProvider* GetOrCreateImageProvider();
 
   // WebGraphicsContext3DProviderWrapper::DestructionObserver implementation.
   void OnContextDestroyed() override;
 
-  // CanvasResourceSharedImage::Client implementation.
-  void OnResourceRefReturned(
-      scoped_refptr<CanvasResourceSharedImage>&& resource) override;
-  void OnDestroyResource() override { --num_inflight_resources_; }
-
   // CanvasMemoryDumpClient implementation.
   base::ByteSize EstimatedSizeInBytes() const;
   void OnMemoryDump(base::trace_event::ProcessMemoryDump* pmd) override;
   size_t GetSize() const override;
 
-  void EnsureWriteAccess();
 
-  bool IsValid() const;
 
   gpu::raster::RasterInterface* RasterInterface() const;
-  base::WeakPtr<WebGpuRecyclableResourceProvider> CreateWeakPtr();
-
-
-  CanvasResourceSharedImage* resource() {
-    return static_cast<CanvasResourceSharedImage*>(resource_.get());
-  }
-  const CanvasResourceSharedImage* resource() const {
-    return static_cast<const CanvasResourceSharedImage*>(resource_.get());
-  }
 
   base::WeakPtr<WebGraphicsContext3DProviderWrapper> ContextProviderWrapper()
       const {
     return context_provider_wrapper_;
   }
 
-  // viz::ContextLostObserver implementation.
-  void OnContextLost() override;
 
 
   std::unique_ptr<gpu::RasterScopedAccess> WillDrawInternal();
@@ -181,28 +157,13 @@ class PLATFORM_EXPORT WebGpuRecyclableResourceProvider
   std::unique_ptr<CanvasImageProvider> canvas_image_provider_;
   std::unique_ptr<MemoryManagedPaintRecorder> recorder_for_external_draws_;
 
-
-  scoped_refptr<CanvasResourceSharedImage> resource_;
-
-  bool current_resource_has_write_access_ = false;
+  scoped_refptr<gpu::ClientSharedImage> shared_image_;
+  gpu::SyncToken acquire_sync_token_;
+  gpu::SyncToken release_sync_token_;
 
   bool is_cleared_ = false;
-  bool notified_context_lost_ = false;
 
   base::WeakPtr<WebGraphicsContext3DProviderWrapper> context_provider_wrapper_;
-
-  // `raster_context_provider_` holds a reference on the shared
-  // `RasterContextProvider`, to keep it alive until it notifies us after the
-  // GPU context is lost. Without this, instances of this class would not get
-  // notified after the shared `WebGraphicsContext3DProviderWrapper` instance is
-  // recreated.
-  scoped_refptr<viz::RasterContextProvider> raster_context_provider_;
-
-  int num_inflight_resources_ = 0;
-  int max_inflight_resources_ = 0;
-
-  base::WeakPtrFactory<WebGpuRecyclableResourceProvider> weak_ptr_factory_{
-      this};
 };
 
 }  // namespace blink

@@ -1022,7 +1022,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             controlContainer.setIsVerticalTabsActiveSupplier(mIsVerticalTabsActiveSupplier);
         }
 
-        if (AndroidSidePanelEnabledFn.isEnabled()) {
+        if (AndroidSidePanelEnabledFn.isEnabled()
+                || VerticalTabUtils.isVerticalTabsEligible(mActivity)) {
             mToolbarManager.setSideUiStateProviderSupplier(mSideUiStateProviderSupplier);
         }
     }
@@ -1121,7 +1122,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                             mActivityTabProvider.asObservable(), omniboxChipManager, mActivity);
         }
 
-        if (AndroidSidePanelEnabledFn.isEnabled()) {
+        if (AndroidSidePanelEnabledFn.isEnabled()
+                || VerticalTabUtils.isVerticalTabsEligible(mActivity)) {
             mCompositorViewHolderSupplier
                     .asNonNull()
                     .get()
@@ -2456,6 +2458,11 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         return VerticalTabUtils.isVerticalTabsEnabled(mActivity);
     }
 
+    @Override
+    protected boolean isBottomSheetAsBrowserControlsEnabled() {
+        return ChromeFeatureList.sBottomSheetAsBrowserControls.isEnabled();
+    }
+
     public @Nullable StatusIndicatorCoordinator getStatusIndicatorCoordinatorForTesting() {
         return mStatusIndicatorCoordinator;
     }
@@ -2890,7 +2897,11 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         }
     }
 
-    /** Returns the {@link OneshotSupplier} for the {@link SideUiStateProvider}. */
+    /**
+     * Returns the {@link OneshotSupplier} for the {@link SideUiStateProvider}. This is non-null in
+     * tabbed mode.
+     */
+    @Override
     public OneshotSupplier<SideUiStateProvider> getSideUiStateProviderSupplier() {
         return mSideUiStateProviderSupplier;
     }

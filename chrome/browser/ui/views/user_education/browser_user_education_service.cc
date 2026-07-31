@@ -58,7 +58,7 @@
 #include "chrome/browser/ui/views/contextual_tasks/contextual_tasks_button.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/contents_web_view.h"
-#include "chrome/browser/ui/views/location_bar/cookie_controls/cookie_controls_icon_view.h"
+#include "chrome/browser/ui/views/frame/toolbar_button_provider.h"
 #include "chrome/browser/ui/views/page_action/page_action_view.h"
 #include "chrome/browser/ui/views/tabs/tab/tab_icon.h"
 #include "chrome/browser/ui/views/toolbar/pinned_action_toolbar_button.h"
@@ -279,7 +279,7 @@ CreateNavigationAction(GURL target) {
       [](GURL url, ContextPtr ctx,
          user_education::FeaturePromoHandle promo_handle) {
         auto* browser = GetBrowser(ctx);
-        NavigateParams params(browser->profile(), url,
+        NavigateParams params(browser->GetProfile(), url,
                               ui::PAGE_TRANSITION_LINK);
         params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
         params.browser = browser;
@@ -665,12 +665,12 @@ void MaybeRegisterChromeFeaturePromos(
                  user_education::FeaturePromoHandle promo_handle) {
                 Browser* const browser = GetBrowser(ctx);
                 if (!search::DefaultSearchProviderIsGoogle(
-                        browser->profile())) {
+                        browser->GetProfile())) {
                   return;
                 }
                 auto* service =
                     UserEducationServiceFactory::GetForBrowserContext(
-                        browser->profile());
+                        browser->GetProfile());
                 user_education::TutorialService* tutorial_service =
                     service ? &service->tutorial_service() : nullptr;
                 if (!tutorial_service) {
@@ -682,7 +682,7 @@ void MaybeRegisterChromeFeaturePromos(
                       tab_strip_model->GetActiveWebContents();
                   if (web_contents &&
                       web_contents->GetURL() != browser->GetNewTabURL()) {
-                    NavigateParams params(browser->profile(),
+                    NavigateParams params(browser->GetProfile(),
                                           chrome::ChromeUINewTabPageURLAsGURL(),
                                           ui::PAGE_TRANSITION_LINK);
                     params.disposition =
@@ -1115,39 +1115,6 @@ void MaybeRegisterChromeFeaturePromos(
                        "Triggered once per-app when is in quiet notification "
                        "mode and a notification is triggered in a PWA.")));
 
-  // kIPHCookieControlsFeature:
-  registry.RegisterFeature(std::move(
-      FeaturePromoSpecification::CreateForCustomAction(
-          feature_engagement::kIPHCookieControlsFeature,
-          kCookieControlsIconElementId, IDS_COOKIE_CONTROLS_PROMO_TEXT,
-          IDS_COOKIE_CONTROLS_PROMO_SEE_HOW_BUTTON_TEXT,
-          base::BindRepeating(
-              [](ContextPtr ctx,
-                 user_education::FeaturePromoHandle promo_handle) {
-                if (IsPageActionMigrated(PageActionIconType::kCookieControls)) {
-                  actions::ActionManager::Get()
-                      .FindAction(
-                          kActionShowCookieControls,
-                          GetBrowser(ctx)->GetActions()->root_action_item())
-                      ->InvokeAction();
-                } else {
-                  auto* cookie_controls_icon_view =
-                      views::ElementTrackerViews::GetInstance()
-                          ->GetFirstMatchingViewAs<CookieControlsIconView>(
-                              kCookieControlsIconElementId,
-                              ctx->GetElementContext());
-                  if (cookie_controls_icon_view != nullptr) {
-                    cookie_controls_icon_view->ShowCookieControlsBubble();
-                  }
-                }
-              }))
-          .SetBubbleTitleText(IDS_COOKIE_CONTROLS_PROMO_TITLE)
-          .SetBubbleArrow(HelpBubbleArrow::kTopRight)
-          .SetBubbleIcon(kLightbulbOutlineIcon)
-          .SetCustomActionIsDefault(true)
-          .SetCustomActionDismissText(
-              IDS_COOKIE_CONTROLS_PROMO_CLOSE_BUTTON_TEXT)));
-
   // kIPHSmartTabSharingFeature:
   auto smart_tab_sharing_iph_first_time_prompt_option =
       contextual_tasks::kSmartTabSharingIphFirstTimePromptOption.Get();
@@ -1181,7 +1148,7 @@ void MaybeRegisterChromeFeaturePromos(
                 Browser* const browser = GetBrowser(ctx);
                 auto* service =
                     contextual_tasks::ContextualTasksUiServiceFactory::
-                        GetForBrowserContext(browser->profile());
+                        GetForBrowserContext(browser->GetProfile());
                 if (service) {
                   service->TurnOnSmartTabSharing(browser);
                 }
@@ -1642,7 +1609,7 @@ void MaybeRegisterChromeFeaturePromos(
                 }
                 base::RecordAction(
                     base::UserMetricsAction("BookmarkBar_Simplified_IPH_Undo"));
-                browser->profile()->GetPrefs()->SetInteger(
+                browser->GetProfile()->GetPrefs()->SetInteger(
                     bookmarks::prefs::kBookmarkBarVisibilityState,
                     static_cast<int>(
                         bookmarks::BookmarkBarVisibilityState::kOnlyShowOnNtp));
@@ -1999,7 +1966,7 @@ void MaybeRegisterChromeFeaturePromos(
                   // corresponding to the Finch arm.
                   SearchPromotionManager* manager =
                       SearchPromotionManagerFactory::GetForProfile(
-                          browser->profile());
+                          browser->GetProfile());
                   if (manager) {
                     manager->OnPromoAccepted();
                   }

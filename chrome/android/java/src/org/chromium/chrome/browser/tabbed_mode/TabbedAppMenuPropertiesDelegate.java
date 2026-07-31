@@ -62,6 +62,7 @@ import org.chromium.chrome.browser.share.ShareUtils;
 import org.chromium.chrome.browser.supervised_user.SupervisedUserServiceBridge;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
+import org.chromium.chrome.browser.task_manager.TaskManager;
 import org.chromium.chrome.browser.toolbar.ToolbarManager;
 import org.chromium.chrome.browser.toolbar.menu_button.MenuItemState;
 import org.chromium.chrome.browser.toolbar.top.ToolbarUtils;
@@ -116,6 +117,18 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
          * It is different from the regular menu item because it contains two separate buttons.
          */
         int NEW_INCOGNITO = AppMenuHandler.AppMenuItemType.NUM_ENTRIES + 2;
+    }
+
+    public static boolean isSubmenusEnabled(Context context) {
+        if (ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU)) {
+            return true;
+        }
+        if (ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU_LFF)
+                && DeviceFormFactor.isNonMultiDisplayContextOnTablet(context)
+                && !DeviceInfo.isFoldable()) {
+            return true;
+        }
+        return false;
     }
 
     AppMenuDelegate mAppMenuDelegate;
@@ -335,7 +348,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                     .registerObserver(mUpdateStateChangeObserver);
         }
 
-        if (ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU)) {
+        if (isSubmenusEnabled(mContext)) {
             populatePageModeMenuWithSubmenus(
                     modelList, currentTab, url, isNativePage, isFileScheme, isContentScheme);
         } else {
@@ -478,7 +491,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
         }
 
         // Readaloud
-        if (!ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU)) {
+        if (!isSubmenusEnabled(mContext)) {
             observeAndMaybeAddReadAloud(modelList, currentTab);
         }
 
@@ -951,7 +964,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
     }
 
     private boolean shouldShowPasswordsAndAutofillParentItem() {
-        return ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU);
+        return isSubmenusEnabled(mContext);
     }
 
     private ListItem buildGooglePasswordManagerItem() {
@@ -1072,7 +1085,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
 
         // The id {@code R.id.extensions_menu_id} is used for both when this flag is enabled and
         // disabled but in different context.
-        assert ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU);
+        assert isSubmenusEnabled(mContext);
 
         return AppMenuItemUtils.createStandardListItem(
                 AppMenuItemUtils.buildModelForStandardMenuItem(
@@ -1104,7 +1117,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
             boolean isFileScheme,
             boolean isContentScheme,
             GURL url) {
-        if (!ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU)) {
+        if (!isSubmenusEnabled(mContext)) {
             return false;
         }
 
@@ -1231,7 +1244,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                     List<ListItem> submenuItems = new ArrayList<>();
 
                     ReadAloudController readAloudController = mReadAloudControllerSupplier.get();
-                    if (ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU)
+                    if (isSubmenusEnabled(mContext)
                             && readAloudController != null
                             && readAloudController.isReadable(currentTab)) {
                         submenuItems.add(
@@ -1268,7 +1281,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                         submenuItems.add(buildPageInfoItem(currentTab, /* showIcon= */ false));
                     }
 
-                    if (mMoreToolsItemBuilder.shouldShowTaskManagerItem()) {
+                    if (TaskManager.isEnabled()) {
                         submenuItems.add(mMoreToolsItemBuilder.buildTaskManagerItem());
                     }
 
@@ -1767,7 +1780,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
     public void onMenuShown() {
         super.onMenuShown();
 
-        if (ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU)) {
+        if (isSubmenusEnabled(mContext)) {
             // TODO(crbug.com/521223427): Implement dynamic updates so that we don't
             // have to rely on timing to load the {@link BookmarkModel} and {@link
             // HeadlessTabModel}.
@@ -1789,7 +1802,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
         // in the "More tools" submenu Supplier. Ideally, we should implement a mechanism to
         // dynamically update the item visibility in the submenu, rather than requiring the user to
         // reopen the App Menu.
-        if (!ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU)) {
+        if (!isSubmenusEnabled(mContext)) {
             super.observeAndMaybeAddReadAloud(modelList, currentTab);
         }
     }

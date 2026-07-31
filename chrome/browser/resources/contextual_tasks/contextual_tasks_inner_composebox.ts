@@ -6,6 +6,8 @@ import '//resources/cr_components/composebox/composebox_dropdown.js';
 import '//resources/cr_components/composebox/composebox_file_inputs.js';
 import '//resources/cr_components/composebox/composebox_input.js';
 import '//resources/cr_components/composebox/composebox_submit.js';
+import '//resources/cr_components/composebox/composebox_tool_chip.js';
+import '//resources/cr_components/composebox/contextual_entrypoint_and_menu.js';
 import '//resources/cr_components/composebox/error_scrim.js';
 import '//resources/cr_components/composebox/file_carousel.js';
 
@@ -64,7 +66,6 @@ export interface ContextualTasksInnerComposeboxInterface {
   searchboxLayoutMode: string;
   showLensButton: boolean;
   showVoiceSearch: boolean;
-  suggestionActivityEnabled: boolean;
   readonly updateComplete: Promise<boolean>;
   usePecApi: boolean;
 
@@ -128,7 +129,6 @@ export class
       lensButtonDisabled: {type: Boolean},
       lensButtonTriggersOverlay: {type: Boolean},
       showLensButton: {type: Boolean},
-      suggestionActivityEnabled: {type: Boolean},
     };
   }
 
@@ -146,7 +146,6 @@ export class
   accessor lensButtonDisabled: boolean = false;
   accessor lensButtonTriggersOverlay: boolean = false;
   accessor showLensButton: boolean = true;
-  accessor suggestionActivityEnabled: boolean = true;
 
   private searchboxCallbackRouter_: SearchboxPageCallbackRouter;
   private pageHandler_: PageHandlerRemote;
@@ -196,13 +195,20 @@ export class
         new DragAndDropHandler(this, this.dragAndDropEnabled);
   }
 
-  override connectedCallback() {
+  override async connectedCallback() {
     super.connectedCallback();
     this.focusInput();
     // firstUpdated() runs only once, so restore the observers on reconnect (
     // the shadow DOM persists); the initial setup happens in firstUpdated().
     if (this.hasUpdated) {
       this.syncResizeObservers_();
+    }
+    if (this.smartTabSharingVisible) {
+      const {active} = await this.pageHandler_.getSmartTabSharingActive();
+      this.smartTabSharingActive = active;
+      if (active) {
+        this.clearContextForSmartTabSharingActive_();
+      }
     }
   }
 
@@ -287,6 +293,28 @@ export class
     super.onAutocompleteResultChanged(result);
     if (isValidResult) {
       this.fire('result-changed', result);
+    }
+  }
+
+  override onSmartTabSharingActiveChanged(e: CustomEvent<{active: boolean}>) {
+    super.onSmartTabSharingActiveChanged(e);
+    if (e.detail.active) {
+      this.clearContextForSmartTabSharingActive_();
+    }
+  }
+
+  private clearContextForSmartTabSharingActive_() {
+    // TODO(crbug.com/486707842): Also clear the automatic active tab once it
+    // is migrated into this fork.
+    this.clearManualTabs_();
+  }
+
+  private clearManualTabs_() {
+    const fileMap = new Map(this.files);
+    for (const [uuid, file] of fileMap.entries()) {
+      if (file.type === 'tab') {
+        this.deleteFile(uuid, /*fromUserAction=*/ false);
+      }
     }
   }
 

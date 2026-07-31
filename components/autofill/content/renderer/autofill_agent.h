@@ -354,9 +354,8 @@ class AutofillAgent : public content::RenderFrameObserver,
   void TextFieldValueChanged(
       const blink::WebFormControlElement& element) override;
   void ContentEditableDidChange(const blink::WebElement& element) override;
-  void TextFieldDidReceiveKeyDown(
-      const blink::WebInputElement& element,
-      const blink::WebKeyboardEvent& event) override;
+  bool DidReceiveKeyDown(const blink::WebElement& element,
+                         const blink::WebKeyboardEvent& event) override;
   void OpenTextDataListChooser(const blink::WebInputElement& element) override;
   void DataListOptionsChanged(const blink::WebInputElement& element) override;
   void UserGestureObserved() override;
@@ -474,8 +473,7 @@ class AutofillAgent : public content::RenderFrameObserver,
   // Called when a custom JavaScript autofill is detected by
   // `JavaScriptAutofillTracker`.
   void OnJavaScriptAutofillDetected(
-      FormRendererId form_id,
-      FieldRendererId trigger_field_id,
+      blink::WebFormControlElement trigger_field,
       const std::vector<FieldRendererId>& field_ids);
 
   // Stores immutable configuration this agent was created with. It contains

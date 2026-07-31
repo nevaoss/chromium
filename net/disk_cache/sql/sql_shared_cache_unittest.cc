@@ -47,7 +47,7 @@ class SqlSharedCacheTest : public testing::TestWithParam<bool> {
          base::TaskShutdownBehavior::BLOCK_SHUTDOWN}));
     store_ = std::make_unique<SqlPersistentStore>(
         temp_dir_.GetPath(), 1024 * 1024, net::DISK_CACHE, task_runners_,
-        async_task_manager_);
+        async_task_manager_, /*cleanup_tracker=*/nullptr);
   }
 
   void TearDown() override {
@@ -162,9 +162,9 @@ TEST_P(SqlSharedCacheTest, DestructionTriggersCleanup) {
                    [&](bool success) { init_success = success; }));
     async_task_manager_.RunUntilAllTasksCompleteForTest();
     EXPECT_TRUE(init_success);
-    // `cache` goes out of scope here. Its destructor calls `Cleanup()`, which
-    // posts a cleanup task to `isolated_database_` and registers an async task
-    // with `SqlAsyncTaskManager`.
+    // `cache` goes out of scope here. Its destruction triggers the destruction
+    // of `isolated_database_` (SqlTrackedSequenceBound), which posts a deletion
+    // task and registers it with `SqlAsyncTaskManager`.
   }
 
   // Verify that `RunUntilAllTasksCompleteForTest()` waits for the cleanup task

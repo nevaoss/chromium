@@ -11,7 +11,6 @@
 #include "base/notreached.h"
 #include "base/values.h"
 #include "chrome/common/chromeos/extensions/api/events.h"
-#include "chromeos/crosapi/mojom/telemetry_event_service.mojom.h"
 #include "content/public/browser/browser_context.h"
 #include "extensions/browser/event_router.h"
 #include "extensions/browser/extension_event_histogram_value.h"
@@ -22,26 +21,27 @@ namespace chromeos {
 
 namespace {
 
-namespace crosapi = ::crosapi::mojom;
-
 class DefaultEventDelegate : public EventObservation::Delegate {
  public:
-  explicit DefaultEventDelegate(content::BrowserContext* context)
-      : browser_context_(context) {}
+  DefaultEventDelegate(content::BrowserContext* context,
+                       api::os_events::EventCategory category)
+      : browser_context_(context), category_(category) {}
   ~DefaultEventDelegate() override = default;
 
   void OnEvent(const extensions::ExtensionId& extension_id,
                EventRouter* event_router,
-               crosapi::TelemetryEventInfoPtr info) override {
+               ash::cros_healthd::mojom::EventInfoPtr info) override {
+    if (!event_router->IsExtensionAllowedForCategory(extension_id, category_)) {
+      return;
+    }
+
     std::unique_ptr<extensions::Event> event;
-    chromeos::api::os_events::EventCategory category;
-    switch (info->which()) {
-      case crosapi::TelemetryEventInfo::Tag::kDefaultType: {
-        LOG(WARNING) << "Got unknown event category";
+    switch (category_) {
+      case api::os_events::EventCategory::kNone: {
         return;
       }
-      case crosapi::TelemetryEventInfo::Tag::kAudioJackEventInfo: {
-        category = chromeos::api::os_events::EventCategory::kAudioJack;
+      case api::os_events::EventCategory::kAudioJack: {
+        CHECK(info->is_audio_jack_event_info());
         event = std::make_unique<extensions::Event>(
             extensions::events::OS_EVENTS_ON_AUDIO_JACK_EVENT,
             api::os_events::OnAudioJackEvent::kEventName,
@@ -52,8 +52,8 @@ class DefaultEventDelegate : public EventObservation::Delegate {
             browser_context_);
         break;
       }
-      case crosapi::TelemetryEventInfo::Tag::kLidEventInfo: {
-        category = chromeos::api::os_events::EventCategory::kLid;
+      case api::os_events::EventCategory::kLid: {
+        CHECK(info->is_lid_event_info());
         event = std::make_unique<extensions::Event>(
             extensions::events::OS_EVENTS_ON_LID_EVENT,
             api::os_events::OnLidEvent::kEventName,
@@ -63,8 +63,8 @@ class DefaultEventDelegate : public EventObservation::Delegate {
             browser_context_);
         break;
       }
-      case crosapi::TelemetryEventInfo::Tag::kUsbEventInfo: {
-        category = chromeos::api::os_events::EventCategory::kUsb;
+      case api::os_events::EventCategory::kUsb: {
+        CHECK(info->is_usb_event_info());
         event = std::make_unique<extensions::Event>(
             extensions::events::OS_EVENTS_ON_USB_EVENT,
             api::os_events::OnUsbEvent::kEventName,
@@ -74,8 +74,8 @@ class DefaultEventDelegate : public EventObservation::Delegate {
             browser_context_);
         break;
       }
-      case crosapi::TelemetryEventInfo::Tag::kExternalDisplayEventInfo: {
-        category = chromeos::api::os_events::EventCategory::kExternalDisplay;
+      case api::os_events::EventCategory::kExternalDisplay: {
+        CHECK(info->is_external_display_event_info());
         event = std::make_unique<extensions::Event>(
             extensions::events::OS_EVENTS_ON_EXTERNAL_DISPLAY_EVENT,
             api::os_events::OnExternalDisplayEvent::kEventName,
@@ -86,8 +86,8 @@ class DefaultEventDelegate : public EventObservation::Delegate {
             browser_context_);
         break;
       }
-      case crosapi::TelemetryEventInfo::Tag::kSdCardEventInfo: {
-        category = chromeos::api::os_events::EventCategory::kSdCard;
+      case api::os_events::EventCategory::kSdCard: {
+        CHECK(info->is_sd_card_event_info());
         event = std::make_unique<extensions::Event>(
             extensions::events::OS_EVENTS_ON_SD_CARD_EVENT,
             api::os_events::OnSdCardEvent::kEventName,
@@ -98,8 +98,8 @@ class DefaultEventDelegate : public EventObservation::Delegate {
             browser_context_);
         break;
       }
-      case crosapi::TelemetryEventInfo::Tag::kPowerEventInfo: {
-        category = chromeos::api::os_events::EventCategory::kPower;
+      case api::os_events::EventCategory::kPower: {
+        CHECK(info->is_power_event_info());
         event = std::make_unique<extensions::Event>(
             extensions::events::OS_EVENTS_ON_POWER_EVENT,
             api::os_events::OnPowerEvent::kEventName,
@@ -110,8 +110,8 @@ class DefaultEventDelegate : public EventObservation::Delegate {
             browser_context_);
         break;
       }
-      case crosapi::TelemetryEventInfo::Tag::kKeyboardDiagnosticEventInfo: {
-        category = chromeos::api::os_events::EventCategory::kKeyboardDiagnostic;
+      case api::os_events::EventCategory::kKeyboardDiagnostic: {
+        CHECK(info->is_keyboard_diagnostic_event_info());
         event = std::make_unique<extensions::Event>(
             extensions::events::OS_EVENTS_ON_KEYBOARD_DIAGNOSTIC_EVENT,
             api::os_events::OnKeyboardDiagnosticEvent::kEventName,
@@ -122,8 +122,8 @@ class DefaultEventDelegate : public EventObservation::Delegate {
             browser_context_);
         break;
       }
-      case crosapi::TelemetryEventInfo::Tag::kStylusGarageEventInfo: {
-        category = chromeos::api::os_events::EventCategory::kStylusGarage;
+      case api::os_events::EventCategory::kStylusGarage: {
+        CHECK(info->is_stylus_garage_event_info());
         event = std::make_unique<extensions::Event>(
             extensions::events::OS_EVENTS_ON_STYLUS_GARAGE_EVENT,
             api::os_events::OnStylusGarageEvent::kEventName,
@@ -134,117 +134,143 @@ class DefaultEventDelegate : public EventObservation::Delegate {
             browser_context_);
         break;
       }
-      case crosapi::TelemetryEventInfo::Tag::kTouchpadButtonEventInfo: {
-        category = chromeos::api::os_events::EventCategory::kTouchpadButton;
+      case api::os_events::EventCategory::kTouchpadButton: {
+        if (!info->is_touchpad_event_info() ||
+            !info->get_touchpad_event_info()->is_button_event()) {
+          return;
+        }
         event = std::make_unique<extensions::Event>(
             extensions::events::OS_EVENTS_ON_TOUCHPAD_BUTTON_EVENT,
             api::os_events::OnTouchpadButtonEvent::kEventName,
             base::ListValue().Append(
                 converters::events::ConvertStructPtr(
-                    std::move(info->get_touchpad_button_event_info()))
+                    std::move(
+                        info->get_touchpad_event_info()->get_button_event()))
                     .ToValue()),
             browser_context_);
         break;
       }
-      case crosapi::TelemetryEventInfo::Tag::kTouchpadTouchEventInfo: {
-        category = chromeos::api::os_events::EventCategory::kTouchpadTouch;
+      case api::os_events::EventCategory::kTouchpadTouch: {
+        if (!info->is_touchpad_event_info() ||
+            !info->get_touchpad_event_info()->is_touch_event()) {
+          return;
+        }
         event = std::make_unique<extensions::Event>(
             extensions::events::OS_EVENTS_ON_TOUCHPAD_TOUCH_EVENT,
             api::os_events::OnTouchpadTouchEvent::kEventName,
             base::ListValue().Append(
                 converters::events::ConvertStructPtr(
-                    std::move(info->get_touchpad_touch_event_info()))
+                    std::move(
+                        info->get_touchpad_event_info()->get_touch_event()))
                     .ToValue()),
             browser_context_);
         break;
       }
-      case crosapi::TelemetryEventInfo::Tag::kTouchpadConnectedEventInfo: {
-        category = chromeos::api::os_events::EventCategory::kTouchpadConnected;
+      case api::os_events::EventCategory::kTouchpadConnected: {
+        if (!info->is_touchpad_event_info() ||
+            !info->get_touchpad_event_info()->is_connected_event()) {
+          return;
+        }
         event = std::make_unique<extensions::Event>(
             extensions::events::OS_EVENTS_ON_TOUCHPAD_CONNECTED_EVENT,
             api::os_events::OnTouchpadConnectedEvent::kEventName,
             base::ListValue().Append(
                 converters::events::ConvertStructPtr(
-                    std::move(info->get_touchpad_connected_event_info()))
+                    std::move(
+                        info->get_touchpad_event_info()->get_connected_event()))
                     .ToValue()),
             browser_context_);
         break;
       }
-      case crosapi::TelemetryEventInfo::Tag::kTouchscreenTouchEventInfo: {
-        category = chromeos::api::os_events::EventCategory::kTouchscreenTouch;
+      case api::os_events::EventCategory::kTouchscreenTouch: {
+        if (!info->is_touchscreen_event_info() ||
+            !info->get_touchscreen_event_info()->is_touch_event()) {
+          return;
+        }
         event = std::make_unique<extensions::Event>(
             extensions::events::OS_EVENTS_ON_TOUCHSCREEN_TOUCH_EVENT,
             api::os_events::OnTouchscreenTouchEvent::kEventName,
             base::ListValue().Append(
                 converters::events::ConvertStructPtr(
-                    std::move(info->get_touchscreen_touch_event_info()))
+                    std::move(
+                        info->get_touchscreen_event_info()->get_touch_event()))
                     .ToValue()),
             browser_context_);
         break;
       }
-      case crosapi::TelemetryEventInfo::Tag::kTouchscreenConnectedEventInfo: {
-        category =
-            chromeos::api::os_events::EventCategory::kTouchscreenConnected;
+      case api::os_events::EventCategory::kTouchscreenConnected: {
+        if (!info->is_touchscreen_event_info() ||
+            !info->get_touchscreen_event_info()->is_connected_event()) {
+          return;
+        }
         event = std::make_unique<extensions::Event>(
             extensions::events::OS_EVENTS_ON_TOUCHSCREEN_CONNECTED_EVENT,
             api::os_events::OnTouchscreenConnectedEvent::kEventName,
             base::ListValue().Append(
                 converters::events::ConvertStructPtr(
-                    std::move(info->get_touchscreen_connected_event_info()))
+                    std::move(info->get_touchscreen_event_info()
+                                  ->get_connected_event()))
                     .ToValue()),
             browser_context_);
         break;
       }
-      case crosapi::TelemetryEventInfo::Tag::kStylusTouchEventInfo: {
-        category = chromeos::api::os_events::EventCategory::kStylusTouch;
+      case api::os_events::EventCategory::kStylusTouch: {
+        if (!info->is_stylus_event_info() ||
+            !info->get_stylus_event_info()->is_touch_event()) {
+          return;
+        }
         event = std::make_unique<extensions::Event>(
             extensions::events::OS_EVENTS_ON_STYLUS_TOUCH_EVENT,
             api::os_events::OnStylusTouchEvent::kEventName,
             base::ListValue().Append(
                 converters::events::ConvertStructPtr(
-                    std::move(info->get_stylus_touch_event_info()))
+                    std::move(info->get_stylus_event_info()->get_touch_event()))
                     .ToValue()),
             browser_context_);
         break;
       }
-      case crosapi::TelemetryEventInfo::Tag::kStylusConnectedEventInfo: {
-        category = chromeos::api::os_events::EventCategory::kStylusConnected;
+      case api::os_events::EventCategory::kStylusConnected: {
+        if (!info->is_stylus_event_info() ||
+            !info->get_stylus_event_info()->is_connected_event()) {
+          return;
+        }
         event = std::make_unique<extensions::Event>(
             extensions::events::OS_EVENTS_ON_STYLUS_CONNECTED_EVENT,
             api::os_events::OnStylusConnectedEvent::kEventName,
             base::ListValue().Append(
                 converters::events::ConvertStructPtr(
-                    std::move(info->get_stylus_connected_event_info()))
+                    std::move(
+                        info->get_stylus_event_info()->get_connected_event()))
                     .ToValue()),
             browser_context_);
         break;
       }
     }
 
-    if (event_router->IsExtensionAllowedForCategory(extension_id, category)) {
-      extensions::EventRouter::Get(browser_context_)
-          ->DispatchEventToExtension(extension_id, std::move(event));
-    }
+    extensions::EventRouter::Get(browser_context_)
+        ->DispatchEventToExtension(extension_id, std::move(event));
   }
 
  private:
-  raw_ptr<content::BrowserContext, DanglingUntriaged> browser_context_;
+  const raw_ptr<content::BrowserContext, DanglingUntriaged> browser_context_;
+  const api::os_events::EventCategory category_;
 };
 
 }  // namespace
 
 EventObservation::EventObservation(const extensions::ExtensionId& extension_id,
+                                   api::os_events::EventCategory category,
                                    EventRouter* event_router,
                                    content::BrowserContext* context)
     : extension_id_(extension_id),
       receiver_(this),
-      delegate_(std::make_unique<DefaultEventDelegate>(context)),
+      delegate_(std::make_unique<DefaultEventDelegate>(context, category)),
       event_router_(event_router),
       browser_context_(context) {}
 
 EventObservation::~EventObservation() = default;
 
-void EventObservation::OnEvent(crosapi::TelemetryEventInfoPtr info) {
+void EventObservation::OnEvent(ash::cros_healthd::mojom::EventInfoPtr info) {
   if (!info) {
     LOG(WARNING) << "Received empty event";
     return;
@@ -253,7 +279,7 @@ void EventObservation::OnEvent(crosapi::TelemetryEventInfoPtr info) {
   delegate_->OnEvent(extension_id_, event_router_, std::move(info));
 }
 
-mojo::PendingRemote<crosapi::TelemetryEventObserver>
+mojo::PendingRemote<ash::cros_healthd::mojom::EventObserver>
 EventObservation::GetRemote() {
   return receiver_.BindNewPipeAndPassRemote();
 }

@@ -512,6 +512,7 @@
 #include "chrome/browser/media/webrtc/system_media_capture_permissions_stats_mac.h"
 #include "chrome/browser/ui/cocoa/apps/quit_with_apps_controller_mac.h"
 #include "chrome/browser/ui/cocoa/confirm_quit.h"
+#include "chrome/browser/ui/views/frame/glass_frame_service.h"
 #include "chrome/browser/web_applications/os_integration/mac/app_shim_registry.h"
 #endif
 
@@ -993,6 +994,18 @@ inline constexpr char kPendingMetricsReportingLevel[] =
 // Deprecated 07/2026.
 inline constexpr char kObsoleteMetricsReportingLevel[] =
     "user_experience_metrics.reporting_level";
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+inline constexpr char kProxyOverrideRulesAffiliation[] =
+    "proxy_override_rules_affiliation";
+#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+// Deprecated 07/2026.
+inline constexpr char kMV2DeprecationWarningAcknowledgedGlobally[] =
+    "mv2_deprecation_warning_ack_globally";
+inline constexpr char kMV2DeprecationDisabledAcknowledgedGlobally[] =
+    "mv2_deprecation_disabled_ack_globally";
+#endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 
 // Register local state used only for migration (clearing or moving to a new
 // key).
@@ -1093,6 +1106,9 @@ void RegisterLocalStatePrefsForMigration(PrefRegistrySimple* registry) {
 
   // Deprecated 07/2026.
   registry->RegisterIntegerPref(kObsoleteMetricsReportingLevel, 0);
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+  registry->RegisterBooleanPref(kProxyOverrideRulesAffiliation, true);
+#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 }
 
 // Register prefs used only for migration (clearing or moving to a new key).
@@ -1340,6 +1356,19 @@ void RegisterProfilePrefsForMigration(
   // Deprecated 06/2026.
   registry->RegisterIntegerPref(kMetricsUserReportingLevel, 0);
 #endif  // BUILDFLAG(IS_CHROMEOS)
+
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+  // Deprecated 07/2026.
+  registry->RegisterBooleanPref(kProxyOverrideRulesAffiliation, true);
+#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+  // Deprecated 07/2026.
+  registry->RegisterBooleanPref(kMV2DeprecationWarningAcknowledgedGlobally,
+                                false);
+  registry->RegisterBooleanPref(kMV2DeprecationDisabledAcknowledgedGlobally,
+                                false);
+#endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 }
 
 }  // namespace
@@ -1571,11 +1600,13 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
   QuitWithAppsController::RegisterPrefs(registry);
   system_media_permissions::RegisterSystemMediaPermissionStatesPrefs(registry);
   AppShimRegistry::Get()->RegisterLocalPrefs(registry);
+  GlassFrameService::RegisterLocalStatePrefs(registry);
 
   // The default value is not signicant as this preference is only consulted if
   // it is explicitly set by an enterprise policy.
   registry->RegisterBooleanPref(prefs::kWebAppsUseAdHocCodeSigningForAppShims,
                                 false);
+  registry->RegisterBooleanPref(prefs::kUpdateOnZeroWindowEnabled, true);
 #endif
 
 #if BUILDFLAG(IS_WIN)
@@ -2358,6 +2389,10 @@ void MigrateObsoleteLocalStatePrefs(PrefService* local_state) {
 
   // Added 07/2026.
   local_state->ClearPref(kObsoleteMetricsReportingLevel);
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+  // Added 07/2026.
+  local_state->ClearPref(kProxyOverrideRulesAffiliation);
+#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
 
   // Please don't delete the following line. It is used by PRESUBMIT.py.
   // END_MIGRATE_OBSOLETE_LOCAL_STATE_PREFS
@@ -2627,6 +2662,22 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
   // Added 06/2026.
   syncer::ClearAccountKeyedPrefValue(
       profile_prefs, autofill::prefs::kAutofillAiOptInStatus, {});
+
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+  // Added 07/2026.
+  profile_prefs->ClearPref(kProxyOverrideRulesAffiliation);
+#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
+
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+  // Added 07/2026.
+  profile_prefs->ClearPref(kMV2DeprecationWarningAcknowledgedGlobally);
+  profile_prefs->ClearPref(kMV2DeprecationDisabledAcknowledgedGlobally);
+#endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+
+#if !BUILDFLAG(IS_ANDROID)
+  // Added 07/2026.
+  tabs::MigrateEverythingMenuPinnedToTabstripPref(profile_prefs);
+#endif
 
   // Please don't delete the following line. It is used by PRESUBMIT.py.
   // END_MIGRATE_OBSOLETE_PROFILE_PREFS

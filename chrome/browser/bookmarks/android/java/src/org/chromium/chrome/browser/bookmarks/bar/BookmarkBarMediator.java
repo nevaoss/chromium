@@ -44,6 +44,7 @@ import org.chromium.chrome.browser.bookmarks.BookmarkUtils;
 import org.chromium.chrome.browser.bookmarks.BookmarkViewUtils;
 import org.chromium.chrome.browser.bookmarks.R;
 import org.chromium.chrome.browser.bookmarks.bar.BookmarkBarUtils.BookmarkBarClickType;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabLaunchType;
@@ -79,7 +80,7 @@ class BookmarkBarMediator implements BookmarkBarItemsProvider.Observer {
     }
 
     private static final int INVALID_INDEX = -1;
-    @VisibleForTesting @Nullable Bitmap mFolderIconBitmap;
+    private @Nullable Bitmap mFolderIconBitmap;
     private final Activity mActivity;
     private final PropertyModel mAllBookmarksButtonModel;
     private final Supplier<Pair<Integer, Integer>> mControlsHeightSupplier;
@@ -90,7 +91,7 @@ class BookmarkBarMediator implements BookmarkBarItemsProvider.Observer {
     private final PropertyModel mModel;
     private final MonotonicObservableSupplier<Profile> mProfileSupplier;
     private final Callback<Profile> mProfileSupplierObserver;
-    private @Nullable final Tab mCurrentTab;
+    private final Supplier<@Nullable Tab> mCurrentTabSupplier;
     private final BookmarkOpener mBookmarkOpener;
     private final MonotonicObservableSupplier<BookmarkManagerOpener> mBookmarkManagerOpenerSupplier;
     private final RecyclerView mItemsRecyclerView;
@@ -130,7 +131,7 @@ class BookmarkBarMediator implements BookmarkBarItemsProvider.Observer {
             BookmarkBarItemsLayoutManager bookmarkBarItemsLayoutManager,
             PropertyModel model,
             MonotonicObservableSupplier<Profile> profileSupplier,
-            @Nullable Tab currentTab,
+            Supplier<@Nullable Tab> currentTabSupplier,
             BookmarkOpener bookmarkOpener,
             MonotonicObservableSupplier<BookmarkManagerOpener> bookmarkManagerOpenerSupplier,
             RecyclerView itemsRecyclerView,
@@ -172,17 +173,22 @@ class BookmarkBarMediator implements BookmarkBarItemsProvider.Observer {
         mProfileSupplierObserver = this::onProfileChange;
         mProfileSupplier.addSyncObserverAndPostIfNonNull(mProfileSupplierObserver);
 
-        mCurrentTab = currentTab;
+        mCurrentTabSupplier = currentTabSupplier;
         mBookmarkOpener = bookmarkOpener;
         mBookmarkManagerOpenerSupplier = bookmarkManagerOpenerSupplier;
         mItemsRecyclerView = itemsRecyclerView;
         mBookmarkBarView = bookmarkBarView;
         mBookmarkBarView.setContentDescription(
                 mActivity.getString(R.string.bookmark_bar_content_description));
+        mBookmarkBarView.setRightClickCallback(this::onBookmarksBarEmptySpaceRightClicked);
+
         mPopupCoordinator =
                 new BookmarkBarPopupCoordinator(
-                        mActivity, mBookmarkBarView, mProfileSupplier, mControlsHeightSupplier);
-        mBookmarkBarView.setRightClickCallback(this::onBookmarksBarBgRightClicked);
+                        mActivity,
+                        mBookmarkBarView,
+                        mProfileSupplier,
+                        mControlsHeightSupplier,
+                        mCurrentTabSupplier);
     }
 
     /** Destroys the bookmark bar mediator. */
@@ -295,18 +301,18 @@ class BookmarkBarMediator implements BookmarkBarItemsProvider.Observer {
                     assumeNonNull(mBookmarkManagerOpenerSupplier.get())
                             .showBookmarkManager(
                                     mActivity,
-                                    mCurrentTab,
+                                    mCurrentTabSupplier.get(),
                                     profileAfterLoading,
                                     modelAfterLoading.getRootFolderId());
                 });
     }
 
-    private void onBookmarksBarBgRightClicked(float x, float y) {
-        runIfStillRelevantAfterFinishLoadingBookmarkModel(
-                (profileAfterLoading, modelAfterLoading) -> {
-                    mPopupCoordinator.showBookmarkBarEmptySpaceContextMenu(
-                            mBookmarkBarView, new Point((int) x, (int) y));
-                });
+    private void onBookmarksBarEmptySpaceRightClicked(float x, float y) {
+        if (!ChromeFeatureList.sBookmarksBarContextMenu.isEnabled()) {
+            return;
+        }
+        mPopupCoordinator.showBookmarkBarEmptySpaceContextMenu(
+                mBookmarkBarView, new Point((int) x, (int) y));
     }
 
     private void onBookmarkItemClick(BookmarkItem item, int metaState, int buttonState) {
@@ -314,12 +320,12 @@ class BookmarkBarMediator implements BookmarkBarItemsProvider.Observer {
 
         final boolean isRightClick = (buttonState & MotionEvent.BUTTON_SECONDARY) != 0;
         if (isRightClick) {
+            if (!ChromeFeatureList.sBookmarksBarContextMenu.isEnabled()) {
+                return;
+            }
             View anchorView = getAnchorViewForBookmark(item);
             if (anchorView == null) return;
-            runIfStillRelevantAfterFinishLoadingBookmarkModel(
-                    (profileAfterLoading, modelAfterLoading) -> {
-                        mPopupCoordinator.showBookmarkItemContextMenu(anchorView, item);
-                    });
+            mPopupCoordinator.showBookmarkItemContextMenu(anchorView, item);
             return;
         }
 
@@ -410,6 +416,8 @@ class BookmarkBarMediator implements BookmarkBarItemsProvider.Observer {
         }
 
         mItemsModel.clear();
+
+        mPopupCoordinator.dismiss();
 
         if (profile == null) {
             return;
@@ -524,6 +532,7 @@ class BookmarkBarMediator implements BookmarkBarItemsProvider.Observer {
                             bookmarkItem.getId(),
                             bookmarkModel,
                             BookmarkRowDisplayPref.VISUAL);
+            // Cache the folder icon bitmap on the mediator instance so we only convert it once.
             mFolderIconBitmap = drawableToBitmap(folderIcon);
         }
 
@@ -920,5 +929,9 @@ class BookmarkBarMediator implements BookmarkBarItemsProvider.Observer {
                 model.set(BookmarkBarButtonProperties.ICON_TINT_LIST_ID, Resources.ID_NULL);
             }
         }
+    }
+
+    @Nullable Bitmap getFolderIconBitmapForTesting() {
+        return mFolderIconBitmap;
     }
 }

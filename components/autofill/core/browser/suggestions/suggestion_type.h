@@ -225,9 +225,15 @@ enum class SuggestionType {
   // inference.
   kAutofillAiPrivateInferenceNotice = 92,
 
-  // Next ID: 93
+  // Suggestion to open the enhanced autofill settings page.
+  kManageEnhancedAutofill = 93,
 
-  kMaxValue = kAutofillAiPrivateInferenceNotice
+  // Suggestion to display the AI disclosure for AtMemory.
+  kAtMemoryAiDisclosure = 94,
+
+  // Next ID: 95
+
+  kMaxValue = kAtMemoryAiDisclosure
 };
 // LINT.ThenChange(/tools/metrics/histograms/metadata/autofill/enums.xml:SuggestionType)
 

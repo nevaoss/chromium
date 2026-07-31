@@ -369,28 +369,11 @@ class Browser : public TabStripModelObserver,
   }
   CreationSource creation_source() const { return creation_source_; }
 
-  // |window()| will return NULL if called before |CreateBrowserWindow()|
-  // is done.
-  BrowserWindow* window() const { return window_.get(); }
-
   // In production code, each instance of Browser will always instantiate an
   // instance of BrowserView in the constructor. Some tests instantiate a
   // Browser without a BrowserView: this is an anti-pattern and should be
   // avoided.
   BrowserView& GetBrowserView();
-
-  // Never nullptr.
-  //
-  // When the last tab is removed, the browser attempts to close, see
-  // TabStripEmpty().
-  // TODO(https://crbug.com/331031753): Several existing Browser::Types never
-  // show a tab strip, yet are forced to work with the tab strip API to deal
-  // with the previous condition. This creates confusing control flow both for
-  // the tab strip and this class. One or both of the following should happen:
-  //  (1) tab_strip_model_ should become an optional member.
-  //  (2) Variations of Browser::Type that never show a tab strip should not use
-  //      this class.
-  TabStripModel* tab_strip_model() const { return tab_strip_model_.get(); }
 
   BrowserActions* browser_actions() { return GetActions(); }
 
@@ -590,17 +573,15 @@ class Browser : public TabStripModelObserver,
   std::vector<tabs::TabInterface*> GetAllTabInterfaces() override;
   Browser* GetBrowserForMigrationOnly() override;
   const Browser* GetBrowserForMigrationOnly() const override;
-  bool IsTabModalPopupDeprecated() const override;
+  bool IsTabModalPopup() const override;
+  void SetIsTabModalPopup(
+      bool is_tab_modal_popup,
+      base::PassKey<internal::ScopedBrowserShower>) override;
   bool CreatedBySessionRestore() const override;
   ui::BaseWindow* GetWindow() override;
   const ui::BaseWindow* GetWindow() const override;
   DesktopBrowserWindowCapabilities* capabilities() override;
   const DesktopBrowserWindowCapabilities* capabilities() const override;
-
-  // Called by BrowserView.
-  void set_is_tab_modal_popup_deprecated(bool is_tab_modal_popup_deprecated) {
-    is_tab_modal_popup_deprecated_ = is_tab_modal_popup_deprecated;
-  }
 
   // Called by BrowserView on active change for the browser.
   void DidBecomeActive();
@@ -707,8 +688,7 @@ class Browser : public TabStripModelObserver,
       const content::StoragePartitionConfig& partition_config,
       content::SessionStorageNamespace* session_storage_namespace) override;
   void WebContentsCreated(content::WebContents* source_contents,
-                          int opener_render_process_id,
-                          int opener_render_frame_id,
+                          const content::GlobalRenderFrameHostId& opener_id,
                           const std::string& frame_name,
                           const GURL& target_url,
                           content::WebContents* new_contents) override;
@@ -1030,11 +1010,8 @@ class Browser : public TabStripModelObserver,
   // shortly (after a PostTask).
   bool is_delete_scheduled_ = false;
 
-  // Do not use this. Instead, create a views::Widget and use helpers like
-  // TabDialogManager.
-  // If true, the browser window was created as a tab modal pop-up. This is
-  // determined by the NavigateParams::is_tab_modal_popup_deprecated.
-  bool is_tab_modal_popup_deprecated_ = false;
+  // If true, the browser window was created as a tab modal pop-up.
+  bool is_tab_modal_popup_ = false;
 
   using BrowserDidCloseCallbackList =
       base::RepeatingCallbackList<void(BrowserWindowInterface*)>;

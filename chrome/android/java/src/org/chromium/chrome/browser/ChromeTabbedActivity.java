@@ -265,6 +265,7 @@ import org.chromium.chrome.browser.tab.TabAttributeKeys;
 import org.chromium.chrome.browser.tab.TabAttributes;
 import org.chromium.chrome.browser.tab.TabCreationState;
 import org.chromium.chrome.browser.tab.TabDelegateFactory;
+import org.chromium.chrome.browser.tab.TabDestroyStatus;
 import org.chromium.chrome.browser.tab.TabLaunchType;
 import org.chromium.chrome.browser.tab.TabObscuringHandler;
 import org.chromium.chrome.browser.tab.TabSelectionType;
@@ -1015,7 +1016,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
 
         return closingSource == TabClosingSource.TABLET_TAB_STRIP
                 || closingSource == TabClosingSource.KEYBOARD_SHORTCUT
-                || closingSource == TabClosingSource.VERTICAL_TAB_STRIP;
+                || closingSource == TabClosingSource.VERTICAL_TAB_STRIP
+                || closingSource == TabClosingSource.OPEN_IN_APP;
     }
 
     private void onNewTabButtonClick(View view) {
@@ -5198,10 +5200,11 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
     }
 
     @Override
-    protected void destroyTabModels() {
+    protected @TabDestroyStatus int destroyTabModels() {
         if (mTabModelOrchestrator != null) {
-            mTabModelOrchestrator.destroy();
+            return mTabModelOrchestrator.destroy();
         }
+        return TabDestroyStatus.NO_SHUTDOWN;
     }
 
     @Override

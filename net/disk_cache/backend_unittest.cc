@@ -41,6 +41,7 @@
 #include "build/build_config.h"
 #include "net/base/cache_type.h"
 #include "net/base/completion_once_callback.h"
+#include "net/base/features.h"
 #include "net/base/io_buffer.h"
 #include "net/base/net_errors.h"
 #include "net/base/request_priority.h"
@@ -517,6 +518,68 @@ void DiskCacheBackendTest::BackendBasics() {
 
 TEST_P(DiskCacheGenericBackendTest, Basics) {
   BackendBasics();
+}
+
+TEST_P(DiskCacheGenericBackendTest, CreateBackendDoubleHttpCache) {
+#if BUILDFLAG(IS_ANDROID)
+  // Android does not support creating blockfile caches via CacheCreator.
+  if (backend_to_test_ == BackendToTest::kBlockfile) {
+    return;
+  }
+#endif
+
+  ASSERT_TRUE(CleanupCacheDir());
+
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(
+      net::features::kEnableBackendCleanupTrackerOnHttpCache);
+
+  ASSERT_EQ(net::DISK_CACHE, type_);
+
+  net::BackendType backend_type = net::CACHE_BACKEND_DEFAULT;
+  switch (backend_to_test_) {
+    case BackendToTest::kBlockfile:
+      backend_type = net::CACHE_BACKEND_BLOCKFILE;
+      break;
+    case BackendToTest::kSimple:
+      backend_type = net::CACHE_BACKEND_SIMPLE;
+      break;
+    case BackendToTest::kMemory:
+      return;
+#if BUILDFLAG(ENABLE_DISK_CACHE_SQL_BACKEND)
+    case BackendToTest::kSql:
+      backend_type = net::CACHE_BACKEND_EXPERIMENTAL_SQL;
+      break;
+#endif
+  }
+
+  TestBackendResultCompletionCallback cb, cb2;
+
+  disk_cache::BackendResult rv = disk_cache::CreateCacheBackend(
+      type_, backend_type, /*file_operations=*/nullptr, cache_path_, 0,
+      disk_cache::ResetHandling::kNeverReset,
+      /*net_log=*/nullptr, /*cache_encryption_delegate=*/nullptr,
+      cb.callback());
+
+  disk_cache::BackendResult rv2 = disk_cache::CreateCacheBackend(
+      type_, backend_type, /*file_operations=*/nullptr, cache_path_, 0,
+      disk_cache::ResetHandling::kNeverReset,
+      /*net_log=*/nullptr, /*cache_encryption_delegate=*/nullptr,
+      cb2.callback());
+
+  rv = cb.GetResult(std::move(rv));
+  EXPECT_THAT(rv.net_error, IsOk());
+  EXPECT_TRUE(rv.backend);
+
+  EXPECT_EQ(net::ERR_IO_PENDING, rv2.net_error);
+  EXPECT_FALSE(rv2.backend);
+  EXPECT_FALSE(cb2.have_result());
+
+  rv.backend.reset();
+
+  rv2 = cb2.GetResult(std::move(rv2));
+  EXPECT_THAT(rv2.net_error, IsOk());
+  EXPECT_TRUE(rv2.backend);
 }
 
 TEST_F(DiskCacheBackendTest, NewEvictionBasics) {
@@ -6061,6 +6124,67 @@ TEST_P(DiskCacheGenericBackendTest, BackendOnlineSetQuotaToZero) {
   }
 
   EXPECT_EQ(cache_->GetMaxBytesForTesting(), base::ByteSize(0));
+}
+
+TEST_P(DiskCacheGenericBackendTest, DeleteBackendWithMassDoom) {
+  if (backend_to_test() == BackendToTest::kMemory) {
+    // Uninteresting w/memory since the delete is synchronous.
+    return;
+  }
+
+  SetCacheType(net::APP_CACHE);  // no optimistic ops.
+
+  InitCache();
+  for (int i = 0; i < 100; ++i) {
+    disk_cache::Entry* entry = nullptr;
+    ASSERT_THAT(CreateEntry(base::NumberToString(i), &entry), IsOk());
+    entry->Close();
+  }
+  // Get closes to actually close.
+  FlushQueueForTest();
+  net::TestCompletionCallback cb;
+
+  // Kick off a doom.
+  int rv = cache_->DoomAllEntries(cb.callback());
+  EXPECT_EQ(net::ERR_IO_PENDING, rv);
+  // We need to go to event loop since DoomAllEntries in Simple has async index
+  // readiness hop, but we don't want to flush all the threads.
+  base::RunLoop().RunUntilIdle();
+
+  base::RunLoop run_loop;
+
+  // Try to open a couple of entries, and delete it in the first callback that
+  // gets invoked. The second open should be safe since we don't go to event
+  // loop between the calls, so the callback can't be delivered yet. Also only
+  // one of the callbacks should be invoked per the cancellation semantics.
+  EntryResult result0 = cache_->OpenEntry(
+      "0", net::HIGHEST, base::BindLambdaForTesting([&](EntryResult result) {
+        EXPECT_EQ(net::ERR_FAILED, result.net_error());
+        TakeCache();
+        run_loop.Quit();
+      }));
+  if (result0.net_error() == net::ERR_FAILED) {
+    // If the delete finished already to the point the open fails synchronously,
+    // we can't really test anything, so don't proceed.
+    return;
+  }
+  EXPECT_EQ(result0.net_error(), net::ERR_IO_PENDING);
+
+  EntryResult result1 = cache_->OpenEntry(
+      "1", net::HIGHEST, base::BindLambdaForTesting([&](EntryResult result) {
+        EXPECT_EQ(net::ERR_FAILED, result.net_error());
+        TakeCache();
+        run_loop.Quit();
+      }));
+  if (result1.net_error() == net::ERR_FAILED) {
+    // If the delete finished already to the point the open fails synchronously,
+    // we can't really test anything, so don't proceed.
+    return;
+  }
+  EXPECT_EQ(result1.net_error(), net::ERR_IO_PENDING);
+
+  EXPECT_EQ(net::OK, cb.GetResult(rv));
+  run_loop.Run();
 }
 
 INSTANTIATE_TEST_SUITE_P(

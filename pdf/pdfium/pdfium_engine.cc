@@ -111,6 +111,7 @@
 #endif
 
 #if BUILDFLAG(ENABLE_PDF_INK2)
+#include "base/debug/crash_logging.h"
 #include "base/rand_util.h"
 #include "pdf/pdf_ink_metrics_handler.h"
 #include "pdf/pdf_ink_transform.h"
@@ -765,13 +766,16 @@ void InitializeSDK(bool enable_v8,
                    bool use_skia,
                    FontMappingMode font_mapping_mode) {
   FPDF_LIBRARY_CONFIG config;
-  config.version = 4;
+  config.version = 6;
   config.m_pUserFontPaths = nullptr;
   config.m_pIsolate = nullptr;
   config.m_pPlatform = nullptr;
   config.m_v8EmbedderSlot = gin::kEmbedderPDFium;
   config.m_RendererType =
       use_skia ? FPDF_RENDERERTYPE_SKIA : FPDF_RENDERERTYPE_AGG;
+  config.m_FontLibraryType = FPDF_FONTBACKENDTYPE_FREETYPE;
+  config.m_BrotliEnabled =
+      base::FeatureList::IsEnabled(features::kPdfBrotliDecode);
 
 #if defined(PDF_ENABLE_V8)
   if (enable_v8) {
@@ -5270,7 +5274,9 @@ std::optional<AccessibilityTextRunInfo> PDFiumEngine::GetFirstVisibleTextRun(
 
 #if BUILDFLAG(ENABLE_PDF_INK2)
 void PDFiumEngine::AddFont(FontId font_id,
+                           const std::string& font_name,
                            base::span<const uint8_t> serialized_typeface) {
+  SCOPED_CRASH_KEY_STRING256("pdf", "font_name", font_name);
   SkMemoryStream serialized_typeface_stream(
       gfx::MakeSkDataFromSpanWithoutCopy(serialized_typeface));
   sk_sp<SkTypeface> typeface = SkTypeface::MakeDeserialize(

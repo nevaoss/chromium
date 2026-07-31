@@ -1197,6 +1197,80 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Navigation.Experimental.FastFetch.EligibilityCheckDuration"
+    units="microseconds" expires_after="2026-10-01">
+  <owner>bashi@chromium.org</owner>
+  <owner>chrome-loading@google.com</owner>
+  <summary>
+    Measures the synchronous CPU execution time of IsEligibleForFastFetch()
+    during BeginNavigationImpl. Recorded unconditionally on all main frame
+    navigations. Note that some clients may not have a high resolution timer
+    that can send metrics with microsecond precision.
+  </summary>
+</histogram>
+
+<histogram name="Navigation.Experimental.FastFetch.EligibilityReason"
+    enum="FastFetchEligibilityReason" expires_after="2026-10-01">
+  <owner>bashi@chromium.org</owner>
+  <owner>chrome-loading@google.com</owner>
+  <summary>
+    Records the specific eligibility check result (success or first failed
+    exclusion condition) at navigation start. Recorded unconditionally on all
+    main frame navigations.
+  </summary>
+</histogram>
+
+<histogram name="Navigation.Experimental.FastFetch.FailedNetError"
+    enum="NetErrorCodes" expires_after="2026-10-01">
+  <owner>bashi@chromium.org</owner>
+  <owner>chrome-loading@google.com</owner>
+  <summary>
+    Records the net error code when an eligible navigation fails. Recorded only
+    when the navigation fails before commit.
+  </summary>
+</histogram>
+
+<histogram name="Navigation.Experimental.FastFetch.NavigationOutcome"
+    enum="FastFetchNavigationOutcome" expires_after="2026-10-01">
+  <owner>bashi@chromium.org</owner>
+  <owner>chrome-loading@google.com</owner>
+  <summary>
+    Records the final lifecycle disposition of navigations marked eligible
+    during Fast Fetch. Committed indicates successful commit to initial URL.
+    Failed indicates abort or error before commit.
+  </summary>
+</histogram>
+
+<histogram name="Navigation.Experimental.FastFetch.OpportunityTime.FetchStart"
+    units="ms" expires_after="2026-10-01">
+  <owner>bashi@chromium.org</owner>
+  <owner>chrome-loading@google.com</owner>
+  <summary>
+    Measures elapsed time from eligibility check in BeginNavigationImpl to the
+    first fetch start time for eligible navigations.
+  </summary>
+</histogram>
+
+<histogram name="Navigation.Experimental.FastFetch.OpportunityTime.LoaderStart"
+    units="ms" expires_after="2026-10-01">
+  <owner>bashi@chromium.org</owner>
+  <owner>chrome-loading@google.com</owner>
+  <summary>
+    Measures elapsed time from eligibility check in BeginNavigationImpl to
+    URLLoader::Start() for eligible navigations.
+  </summary>
+</histogram>
+
+<histogram name="Navigation.Experimental.FastFetch.SkipThrottles"
+    enum="Boolean" expires_after="2026-10-01">
+  <owner>bashi@chromium.org</owner>
+  <owner>chrome-loading@google.com</owner>
+  <summary>
+    Records the skip_throttles value when an eligible navigation fails. Recorded
+    only when the navigation fails before commit.
+  </summary>
+</histogram>
+
 <histogram name="Navigation.FCPFrameSubmissionToSurfaceEmbed" units="ms"
     expires_after="2026-08-09">
   <owner>rakina@chromium.org</owner>
@@ -2054,9 +2128,9 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Navigation.Prerender.ActivationCommitDeferTime{PreloadingTriggerType}"
-    units="ms" expires_after="2026-06-09">
+    units="ms" expires_after="2027-07-08">
   <owner>nhiroki@chromium.org</owner>
-  <owner>chrome-prerendering@chromium.org</owner>
+  <owner>chrome-prerendering@google.com</owner>
   <summary>
     Measures time a PrerenderCommitDeferringCondition defers activation waiting
     to commit an ongoing mainframe prerender navigation. Logged every time a
@@ -2074,7 +2148,7 @@ chromium-metrics-reviews@google.com.
     name="Navigation.Prerender.NoVarySearchCommitDeferTime.{NVSTriggerType}"
     units="ms" expires_after="2027-01-03">
   <owner>lingqi@chromium.org</owner>
-  <owner>chrome-prerendering@chromium.org</owner>
+  <owner>chrome-prerendering@google.com</owner>
   <summary>
     Measures time a PrerenderNoVarySearchCommitDeferringCondition defers
     activation waiting to commit an ongoing mainframe prerender navigation.
@@ -3062,7 +3136,7 @@ chromium-metrics-reviews@google.com.
     units="ms" expires_after="2026-11-29">
   <owner>nhiroki@chromium.org</owner>
   <owner>sreejakshetty@chromium.org</owner>
-  <owner>chrome-prerendering@chromium.org</owner>
+  <owner>chrome-prerendering@google.com</owner>
   <summary>
     The time needed to commit a navigation using prerender activation. This is
     the time from the beginning of NavigationStart to the end of
@@ -3270,16 +3344,6 @@ chromium-metrics-reviews@google.com.
     reduction feature kReduceUserAgentMinorVersion is enabled. This histogram is
     recorded when a NavigationRequest is constructed, prior to sending the
     request to the network stack.
-  </summary>
-</histogram>
-
-<histogram name="Navigation.ViewTransition.PerformsUnload" enum="Boolean"
-    expires_after="2026-11-29">
-  <owner>hitawala@chromium.org</owner>
-  <owner>vasilyt@chromium.org</owner>
-  <summary>
-    Records if RenderFrameHostImpl::Unload is performed for a cross-document
-    navigation where the outgoing document has view transition resources.
   </summary>
 </histogram>
 
@@ -3735,7 +3799,7 @@ chromium-metrics-reviews@google.com.
     name="Prerender.CanceledForInactivePageRestriction.DisallowActivationReason{PreloadingTriggerType}"
     enum="InactiveFrameDisallowActivationReason" expires_after="2026-11-29">
   <owner>lingqi@chromium.org</owner>
-  <owner>chrome-prerendering@chromium.org</owner>
+  <owner>chrome-prerendering@google.com</owner>
   <summary>
     Warning: this histogram was expired from 2024-03-01 to 2025-02-20, and
     2025-08-01 to 2025-09-16; data may be missing.
@@ -3853,7 +3917,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Prerender.Experimental.FoundReusePrerenderHost" enum="Boolean"
-    expires_after="2026-11-08">
+    expires_after="2027-01-10">
   <owner>gjc@google.com</owner>
   <owner>chrome-prerendering@google.com</owner>
   <owner>chrome-loading@google.com</owner>
@@ -4063,7 +4127,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Prerender.Experimental.ReusePrerenderHost.PrerenderHostCount.Failed"
-    units="count" expires_after="2026-11-08">
+    units="count" expires_after="2027-01-10">
   <owner>suzukikeita@google.com</owner>
   <owner>gjc@google.com</owner>
   <owner>chrome-prerendering@google.com</owner>

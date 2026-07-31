@@ -14,6 +14,7 @@
 namespace contextual_tasks {
 
 BASE_DECLARE_FEATURE(kContextualTasks);
+BASE_DECLARE_FEATURE(kContextualTasksPrivateApiNoAnimation);
 BASE_DECLARE_FEATURE(kContextualTasksEphemeralBrandedEntryPoint);
 BASE_DECLARE_FEATURE(kContextualTasksExtraOauthScopes);
 BASE_DECLARE_FEATURE(kEnableContextualTasksPinButtonInToolbar);
@@ -124,6 +125,9 @@ BASE_DECLARE_FEATURE(kContextualTasksUploadChunking);
 // new side panel and ghost loader for contextual tasks.
 BASE_DECLARE_FEATURE(kContextualTasksRearchitecture);
 
+// Enables the side panel changes as part of the rearchitecture.
+BASE_DECLARE_FEATURE(kContextualTasksSidePanelRearchitecture);
+
 // Enables sticky conversation UI that follows the user around.
 BASE_DECLARE_FEATURE(kContextualTasksEnableStickyConversation);
 
@@ -138,6 +142,7 @@ extern const base::FeatureParam<OverflowMenuItems>
     kContextualTasksSpatialModelToolbarLayoutOverflowItems;
 
 bool GetIsContextualTasksPdfCitationsEnabled();
+bool ShouldContextualTasksPrivateApiUseNoAnimation();
 
 bool GetIsContextualTasksLazyFetchClusterInfoEnabled();
 
@@ -436,6 +441,8 @@ extern bool GetIsWebpageApcComparisonEnabled();
 
 namespace flag_descriptions {
 
+extern const char kContextualTasksPrivateApiNoAnimationName[];
+extern const char kContextualTasksPrivateApiNoAnimationDescription[];
 extern const char kContextualTasksName[];
 extern const char kContextualTasksDescription[];
 extern const char kContextualTasksContextLibraryName[];
@@ -461,6 +468,10 @@ extern const char kContextualTasksEnableSpatialModelToolbarLayoutName[];
 extern const char kContextualTasksEnableSpatialModelToolbarLayoutDescription[];
 extern const char kContextualTasksRearchitectureName[];
 extern const char kContextualTasksRearchitectureDescription[];
+extern const char kContextualTasksEphemeralBrandedEntryPointName[];
+extern const char kContextualTasksEphemeralBrandedEntryPointDescription[];
+extern const char kContextualTasksSidePanelRearchitectureName[];
+extern const char kContextualTasksSidePanelRearchitectureDescription[];
 
 }  // namespace flag_descriptions
 

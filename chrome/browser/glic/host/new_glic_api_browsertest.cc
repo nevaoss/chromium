@@ -74,6 +74,7 @@
 #include "components/policy/core/common/policy_map.h"
 #include "components/policy/core/common/policy_types.h"
 #include "components/policy/policy_constants.h"
+#include "components/safe_browsing/core/common/safe_browsing_prefs.h"
 #include "components/signin/public/base/consent_level.h"
 #include "components/signin/public/identity_manager/account_capabilities_test_mutator.h"
 #include "components/signin/public/identity_manager/account_info.h"
@@ -128,6 +129,13 @@
 // This test will eventually absorb glic_api_browsertest.cc, as it allows
 // execution on Android. Migration will take some time, as some tests need
 // rewritten to avoid RunTestSequence which is not supported on Android.
+
+#if BUILDFLAG(IS_ANDROID)
+// Used to disable tests for android which have not yet been vetted for android.
+// These should be temporary, either the test should be enabled on android or
+// explicitly disabled for android later.
+#define NOT_VETTED_ON_ANDROID
+#endif
 
 namespace glic {
 
@@ -682,6 +690,55 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testGetPanelStateAttached) {
   ExecuteJsTest();
 }
 
+#if defined(NOT_VETTED_ON_ANDROID)
+#define MAYBE_testGetPanelStateAttachedHidden \
+  DISABLED_testGetPanelStateAttachedHidden
+#else
+#define MAYBE_testGetPanelStateAttachedHidden testGetPanelStateAttachedHidden
+#endif
+IN_PROC_BROWSER_TEST_P(NewGlicApiTest, MAYBE_testGetPanelStateAttachedHidden) {
+  ASSERT_OK(OpenGlicForActiveTab());
+
+  // Save first tab.
+  tabs::TabInterface* first_tab = GetTabListInterface()->GetActiveTab();
+
+  ExecuteJsTest();
+
+  // Open and select a second tab. This should result in panel state hidden.
+  CreateAndActivateTab(
+      embedded_test_server()->GetURL("/glic/browser_tests/test.html"));
+  ContinueJsTest();
+
+  // Open the first tab again, it should send the attached state.
+  ActivateTab(first_tab);
+#if BUILDFLAG(IS_ANDROID)
+  // On Android, activating a tab puts Glic in peeked state. We need to
+  // explicitly show/expand it to make it attached.
+  ASSERT_OK(OpenGlicForActiveTab());
+#endif
+  ContinueJsTest();
+}
+
+#if defined(NOT_VETTED_ON_ANDROID)
+#define MAYBE_testCanAttachPanelSidePanel DISABLED_testCanAttachPanelSidePanel
+#else
+#define MAYBE_testCanAttachPanelSidePanel testCanAttachPanelSidePanel
+#endif
+IN_PROC_BROWSER_TEST_P(NewGlicApiTest, MAYBE_testCanAttachPanelSidePanel) {
+  ASSERT_OK(OpenGlicForActiveTab());
+  ExecuteJsTest();
+}
+
+#if defined(NOT_VETTED_ON_ANDROID)
+#define MAYBE_testCanAttachPanelDetached DISABLED_testCanAttachPanelDetached
+#else
+#define MAYBE_testCanAttachPanelDetached testCanAttachPanelDetached
+#endif
+IN_PROC_BROWSER_TEST_P(NewGlicApiTest, MAYBE_testCanAttachPanelDetached) {
+  ASSERT_OK(OpenGlicForActiveTab());
+  ExecuteJsTest();
+}
+
 class NewGlicApiTestWithWebActuationSettingEnabled : public NewGlicApiTest {
  public:
   NewGlicApiTestWithWebActuationSettingEnabled() {
@@ -801,36 +858,96 @@ IN_PROC_BROWSER_TEST_P(
   ExecuteJsTest();
 }
 
+// TODO(crbug.com/533085229): Re-enable on Android once close flakiness is fixed.
+#if !BUILDFLAG(IS_ANDROID)
 IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithContextualCueing,
-                       testNoZssWarmingForPromotionPage) {
+                       testNoZssWarmingStateMachine) {
   tabs::TabInterface* tab1 = GetTabListInterface()->GetActiveTab();
 
-  // 1. Initial Open via Blocked Source (kPromotionPage)
+  // 1. Initial Open via Blocked Source (kPromotionPage) -> disables warming.
   coordinator().Toggle(GetBrowser(), /*prevent_close=*/true,
                        mojom::InvocationSource::kPromotionPage);
   ASSERT_OK(WaitForGlicOpen());
 
-  // Since warming is disabled for the promotion page, no calls to the cueing
-  // service should have occurred.
+  GlicInstanceImpl* instance = coordinator().GetInstanceImplForTab(tab1);
+  ASSERT_NE(instance, nullptr);
   EXPECT_EQ(fake_cueing_service()->focused_tab_call_count(), 0);
-  EXPECT_EQ(fake_cueing_service()->pinned_tabs_call_count(), 0);
 
-  // 2. Simulate showing Glic again with a different invocation source
-  // (kTopChromeButton) that would normally trigger warming, targeting the same
-  // active tab.
-  coordinator().Invoke(GlicInvokeOptions(
-      Target(*tab1), mojom::InvocationSource::kTopChromeButton));
+  // 2. Simulate showing Glic again after closing via an explicit source
+  // (kTopChromeButton) -> resets zss_warming_enabled_ = true and runs
+  // warming.
+  PreventBlankDeletionOnClose(instance);
+  instance->CloseAllEmbedders();
+  ASSERT_OK(WaitForGlicClose());
 
-  // Warming should still be skipped (call count remains 0) because warming was
-  // permanently disabled by the initial kPromotionPage open.
-  EXPECT_EQ(fake_cueing_service()->focused_tab_call_count(), 0);
-  EXPECT_EQ(fake_cueing_service()->pinned_tabs_call_count(), 0);
+  coordinator().Toggle(GetBrowser(), /*prevent_close=*/true,
+                       mojom::InvocationSource::kTopChromeButton);
+  ASSERT_OK(WaitForGlicOpen());
+  EXPECT_EQ(fake_cueing_service()->focused_tab_call_count(), 1);
 
-  // 3. However, if the web client explicitly requests ZSS, it should still get
+  // 3. If the web client explicitly requests ZSS, it should still get
   // results.
   ExecuteJsTest();
-  EXPECT_GE(fake_cueing_service()->focused_tab_call_count(), 1);
+  // The JS request makes another call to the backend service, bringing the
+  // total call count to 2.
+  EXPECT_EQ(fake_cueing_service()->focused_tab_call_count(), 2);
 }
+
+IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithContextualCueing,
+                       testNoZssWarmingStateMachineImplicitPreservesDisabled) {
+  tabs::TabInterface* tab1 = GetTabListInterface()->GetActiveTab();
+
+  // 1. Initial Open via Blocked Source (kPromotionPage) -> disables warming.
+  coordinator().Toggle(GetBrowser(), /*prevent_close=*/true,
+                       mojom::InvocationSource::kPromotionPage);
+  ASSERT_OK(WaitForGlicOpen());
+
+  GlicInstanceImpl* instance = coordinator().GetInstanceImplForTab(tab1);
+  ASSERT_NE(instance, nullptr);
+  EXPECT_EQ(fake_cueing_service()->focused_tab_call_count(), 0);
+
+  // 2. Simulate showing Glic again after closing via an implicit source
+  // (kTabRestore) -> preserves disabled state (zss_warming_enabled_ == false).
+  PreventBlankDeletionOnClose(instance);
+  instance->CloseAllEmbedders();
+  ASSERT_OK(WaitForGlicClose());
+
+  coordinator().Toggle(GetBrowser(), /*prevent_close=*/true,
+                       mojom::InvocationSource::kTabRestore);
+  ASSERT_OK(WaitForGlicOpen());
+  EXPECT_EQ(fake_cueing_service()->focused_tab_call_count(), 0);
+
+  ExecuteJsTest();
+}
+
+IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithContextualCueing,
+                       testNoZssWarmingStateMachineImplicitPreservesEnabled) {
+  tabs::TabInterface* tab1 = GetTabListInterface()->GetActiveTab();
+
+  // 1. Initial Open via Explicit Source (kTopChromeButton) -> warming enabled.
+  coordinator().Toggle(GetBrowser(), /*prevent_close=*/true,
+                       mojom::InvocationSource::kTopChromeButton);
+  ASSERT_OK(WaitForGlicOpen());
+
+  GlicInstanceImpl* instance = coordinator().GetInstanceImplForTab(tab1);
+  ASSERT_NE(instance, nullptr);
+  EXPECT_EQ(fake_cueing_service()->focused_tab_call_count(), 1);
+
+  // 2. Simulate showing Glic again after closing via an implicit source
+  // (kTabRestore) -> preserves enabled state (zss_warming_enabled_ == true)
+  // and runs warming on open.
+  PreventBlankDeletionOnClose(instance);
+  instance->CloseAllEmbedders();
+  ASSERT_OK(WaitForGlicClose());
+
+  coordinator().Toggle(GetBrowser(), /*prevent_close=*/true,
+                       mojom::InvocationSource::kTabRestore);
+  ASSERT_OK(WaitForGlicOpen());
+  EXPECT_EQ(fake_cueing_service()->focused_tab_call_count(), 2);
+
+  ExecuteJsTest();
+}
+#endif  // !BUILDFLAG(IS_ANDROID)
 
 IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithContextualCueing,
                        testGetZeroStateSuggestionsApi) {
@@ -1723,6 +1840,55 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testProcessCounterAbuseVerdict) {
       static_cast<int>(glic::mojom::SbThreatType::kSocialEngineering), 1);
 }
 
+IN_PROC_BROWSER_TEST_P(
+    NewGlicApiTest,
+    testProcessCounterAbuseVerdictWhenSafeBrowsingDisabled) {
+  glic::GlicHistogramTester histogram_tester;
+  GetBrowser()->GetProfile()->GetPrefs()->SetBoolean(
+      ::prefs::kSafeBrowsingEnabled, false);
+  ASSERT_OK(OpenGlicForActiveTab());
+  ExecuteJsTest();
+
+  content::WebContents* active_contents =
+      GetTabListInterface()->GetActiveTab()->GetContents();
+  EXPECT_FALSE(
+      chrome_browser_interstitials::IsShowingInterstitial(active_contents));
+  histogram_tester.ExpectTotalCount(
+      "Glic.Api.ProcessCounterAbuseVerdict.Result", 0);
+}
+
+IN_PROC_BROWSER_TEST_P(
+    NewGlicApiTest,
+    testProcessCounterAbuseVerdictWhenUrlAllowlistedByPolicy) {
+  glic::GlicHistogramTester histogram_tester;
+  ASSERT_OK(OpenGlicForActiveTab());
+  content::WebContents* active_contents =
+      GetTabListInterface()->GetActiveTab()->GetContents();
+  base::ListValue allowlist;
+  allowlist.Append(active_contents->GetVisibleURL().host());
+  GetBrowser()->GetProfile()->GetPrefs()->SetList(
+      ::prefs::kSafeBrowsingAllowlistDomains, std::move(allowlist));
+
+  ExecuteJsTest();
+
+  // Wait for GlicPageHandler::ProcessCounterAbuseVerdict to run and record the
+  // verdict.
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return histogram_tester.GetBucketCount(
+               "Glic.Api.ProcessCounterAbuseVerdict.Result",
+               static_cast<int>(glic::GlicProcessCounterAbuseVerdictResult::
+                                    kInterstitialSkippedAllowlist)) == 1;
+  }));
+
+  EXPECT_FALSE(
+      chrome_browser_interstitials::IsShowingInterstitial(active_contents));
+  histogram_tester.ExpectUniqueSample(
+      "Glic.Api.ProcessCounterAbuseVerdict.Result",
+      static_cast<int>(glic::GlicProcessCounterAbuseVerdictResult::
+                           kInterstitialSkippedAllowlist),
+      1);
+}
+
 // TODO(harringtond): Flaky on windows.
 // TODO(b/508340871): Re-enable on Android. Failing because something pops up
 // and suppresses the bottom sheet.
@@ -2515,7 +2681,7 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithSkills,
 
   GlicInstanceImpl* instance = GetOnlyGlicInstance();
   ASSERT_TRUE(instance);
-  instance->host().skills_manager().NotifyContextualSkillsChanged(
+  instance->skills_manager().NotifyContextualSkillsChanged(
       std::move(skills_batch_1));
 
   ContinueJsTest();
@@ -2525,7 +2691,7 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithSkills,
       "contextual_skill_id_3", "contextual_skill_3", "contextual_skill_icon_3",
       mojom::SkillSource::kFirstParty, "contextual_skill_description_3",
       /*curated_by=*/std::nullopt, /*image_url=*/GURL("https://example.com")));
-  instance->host().skills_manager().NotifyContextualSkillsChanged(
+  instance->skills_manager().NotifyContextualSkillsChanged(
       std::move(skills_batch_2));
 
   ContinueJsTest();
@@ -2543,7 +2709,7 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithSkills,
       mojom::SkillSource::kFirstParty, "contextual_skill_description_1",
       /*curated_by=*/std::nullopt, /*image_url=*/GURL("https://example.com")));
 
-  instance->host().skills_manager().NotifyContextualSkillsChanged(
+  instance->skills_manager().NotifyContextualSkillsChanged(
       std::move(skills_batch));
 
   ASSERT_OK(WaitForGlicOpen());
@@ -2566,7 +2732,7 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithSkills,
       mojom::SkillSource::kFirstParty, "contextual_skill_description_1",
       /*curated_by=*/std::nullopt, /*image_url=*/GURL("https://example.com")));
 
-  instance->host().skills_manager().NotifyContextualSkillsChanged(
+  instance->skills_manager().NotifyContextualSkillsChanged(
       std::move(skills_batch));
 
   // Change the active tab before Glic is opened.

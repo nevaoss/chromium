@@ -501,6 +501,8 @@
 #define IDC_DEBUG_TOGGLE_TABLET_MODE 52510
 #define IDC_DEBUG_PRINT_VIEW_TREE 52511
 #define IDC_DEBUG_PRINT_VIEW_TREE_DETAILS 52512
+#define IDC_DEBUG_PRINT_WINDOW_HIERARCHY 52513
+#define IDC_DEBUG_PRINT_LAYER_HIERARCHY 52514
 // Please leave a gap here for new debug commands.
 
 // Autofill feedback.
@@ -535,9 +537,6 @@
 #define IDC_PROJECTS_PANEL_TOGGLE_PIN 53322
 #define IDC_EVERYTHING_MENU_TOGGLE_PIN 53323
 
-// Show contextual tasks side panel.
-#define IDC_SHOW_CONTEXTUAL_TASKS_SIDE_PANEL                  54000
-
 // Omnibox context menu
 #define IDC_OMNIBOX_CONTEXT_ADD_IMAGE                         54010
 #define IDC_OMNIBOX_CONTEXT_ADD_FILE                          54011
@@ -549,6 +548,7 @@
 #define IDC_OMNIBOX_CONTEXT_SET_MODEL_REGULAR                 54017
 #define IDC_OMNIBOX_CONTEXT_SET_MODEL_PRO_NO_GEN_UI           54018
 #define IDC_OMNIBOX_CONTEXT_SHARED_TABS_SUBMENU               54019
+#define IDC_OMNIBOX_CONTEXT_SMART_TAB_SHARING                 54020
 
 // NOTE: The last valid command value is 57343 (0xDFFF)
 // See http://msdn.microsoft.com/en-us/library/t2zechd4(VS.71).aspx

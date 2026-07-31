@@ -284,6 +284,8 @@ COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kEnableAccountPreviewData);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kEnableAccountPreviewEntityPreviews);
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kEnableAccountPreviewPreferredAccount);
 
 #if BUILDFLAG(IS_ANDROID)
 // Whether activityless sign-in should be used for all entry points.
@@ -297,6 +299,10 @@ BASE_DECLARE_FEATURE(kEnableActivitylessSigninAllEntryPoint);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kEnableAddSessionRedirect);
 #endif
+
+// Enables the AI subscription level decorative ring around the user's avatar.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kEnableAiSubscriptionAvatarRing);
 
 #if BUILDFLAG(IS_IOS)
 // Features to enable using the ASWebAuthenticationSession to add accounts to

@@ -50,6 +50,7 @@ class ToolbarUIService : public toolbar_ui_api::mojom::ToolbarUIService {
     virtual void OnPageInitialized() = 0;
     virtual void InvokePinnedToolbarAction(
         toolbar_ui_api::mojom::PinnedToolbarAction action_id) = 0;
+    virtual void OnLocationBarFocusWithinChanged(bool focused) = 0;
     virtual void OnLhsChipMousePressed(
         toolbar_ui_api::mojom::LhsChipIdentifier identifier) = 0;
     virtual void OnLhsChipClicked(
@@ -79,6 +80,11 @@ class ToolbarUIService : public toolbar_ui_api::mojom::ToolbarUIService {
     virtual void ExecuteExtensionAction(const std::string& extension_id) = 0;
     virtual void ShowExtensionContextMenu(const std::string& extension_id,
                                           ui::mojom::MenuSourceType source) = 0;
+    virtual base::expected<
+        toolbar_ui_api::mojom::AdjustOmniboxTextForCopyResultPtr,
+        mojo_base::mojom::ErrorPtr>
+    AdjustOmniboxTextForCopy(const std::u16string& text,
+                             int32_t selection_start) = 0;
   };
 
   ToolbarUIService(
@@ -118,6 +124,7 @@ class ToolbarUIService : public toolbar_ui_api::mojom::ToolbarUIService {
       OnPageActionChipShowingChangedCallback callback) override;
   void InvokePinnedToolbarAction(
       toolbar_ui_api::mojom::PinnedToolbarAction action_id) override;
+  void OnLocationBarFocusWithinChanged(bool focused) override;
   void OnLhsChipMousePressed(
       toolbar_ui_api::mojom::LhsChipIdentifier identifier) override;
   void OnLhsChipClicked(toolbar_ui_api::mojom::LhsChipIdentifier identifier,
@@ -147,6 +154,10 @@ class ToolbarUIService : public toolbar_ui_api::mojom::ToolbarUIService {
   void ExecuteExtensionAction(const std::string& extension_id) override;
   void ShowExtensionContextMenu(const std::string& extension_id,
                                 ui::mojom::MenuSourceType source) override;
+  void AdjustOmniboxTextForCopy(
+      const std::u16string& text,
+      int32_t selection_start,
+      AdjustOmniboxTextForCopyCallback callback) override;
 
  private:
   mojo::Receiver<toolbar_ui_api::mojom::ToolbarUIService> service_;

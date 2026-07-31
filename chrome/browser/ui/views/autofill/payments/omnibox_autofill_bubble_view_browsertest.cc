@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "base/functional/callback_helpers.h"
+#include "base/test/mock_callback.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/uuid.h"
 #include "chrome/browser/autofill/autofill_uitest_util.h"
@@ -93,6 +94,18 @@ IN_PROC_BROWSER_TEST_F(OmniboxAutofillBubbleViewBrowserTest, ShowBubble) {
 
   EXPECT_EQ(controller->GetBubbleView(), nullptr);
 
+  std::vector<Suggestion> suggestions;
+  suggestions.emplace_back(u"Visa •••• 1111", SuggestionType::kCreditCardEntry);
+
+  base::MockRepeatingCallback<void(base::span<const Suggestion>)>
+      on_suggestions_shown_callback;
+
+  controller->Initialize(suggestions, on_suggestions_shown_callback.Get(),
+                         base::DoNothing(), base::DoNothing(),
+                         base::DoNothing(), base::DoNothing());
+
+  EXPECT_CALL(on_suggestions_shown_callback, Run(testing::SizeIs(1)));
+
   controller->QueueOrShowBubble();
 
   EXPECT_NE(controller->GetBubbleView(), nullptr);
@@ -114,6 +127,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxAutofillBubbleViewBrowserTest,
   suggestions.emplace_back(suggestion);
 
   controller->Initialize(suggestions, base::DoNothing(), base::DoNothing(),
+                         base::DoNothing(), base::DoNothing(),
                          base::DoNothing());
 
   controller->QueueOrShowBubble();
@@ -151,6 +165,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxAutofillBubbleViewBrowserTest,
   suggestions.emplace_back(suggestion);
 
   controller->Initialize(suggestions, base::DoNothing(), base::DoNothing(),
+                         base::DoNothing(), base::DoNothing(),
                          base::DoNothing());
 
   controller->QueueOrShowBubble();
@@ -177,6 +192,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxAutofillBubbleViewBrowserTest,
   suggestions.emplace_back(u"Visa •••• 1112", SuggestionType::kCreditCardEntry);
 
   controller->Initialize(suggestions, base::DoNothing(), base::DoNothing(),
+                         base::DoNothing(), base::DoNothing(),
                          base::DoNothing());
 
   controller->QueueOrShowBubble();
@@ -191,6 +207,62 @@ IN_PROC_BROWSER_TEST_F(OmniboxAutofillBubbleViewBrowserTest,
   // Verify the first button has focus.
   EXPECT_TRUE(buttons[0]->HasFocus());
   EXPECT_FALSE(buttons[1]->HasFocus());
+}
+
+IN_PROC_BROWSER_TEST_F(OmniboxAutofillBubbleViewBrowserTest,
+                       CloseBubbleTriggersOnSuggestionsHidden) {
+  OmniboxAutofillBubbleController* controller = GetBubbleController();
+  ASSERT_TRUE(controller);
+
+  std::vector<Suggestion> suggestions;
+  suggestions.emplace_back(u"Visa •••• 1111", SuggestionType::kCreditCardEntry);
+
+  base::MockRepeatingCallback<void(SuggestionHidingReason)>
+      on_suggestions_hidden_callback;
+
+  controller->Initialize(
+      suggestions, base::DoNothing(), on_suggestions_hidden_callback.Get(),
+      base::DoNothing(), base::DoNothing(), base::DoNothing());
+
+  controller->QueueOrShowBubble();
+
+  auto* bubble_view = GetBubbleView();
+  ASSERT_TRUE(bubble_view);
+
+  EXPECT_CALL(on_suggestions_hidden_callback,
+              Run(SuggestionHidingReason::kUserAborted));
+
+  bubble_view->Hide();
+}
+
+IN_PROC_BROWSER_TEST_F(OmniboxAutofillBubbleViewBrowserTest,
+                       DeselectSuggestionTriggersCallback) {
+  auto* controller = GetBubbleController();
+  ASSERT_TRUE(controller);
+
+  // Add one suggestion.
+  std::vector<Suggestion> suggestions;
+  suggestions.emplace_back(u"Visa •••• 1111", SuggestionType::kCreditCardEntry);
+
+  base::MockRepeatingClosure did_deselect_suggestion_callback;
+
+  controller->Initialize(
+      suggestions, base::DoNothing(), base::DoNothing(), base::DoNothing(),
+      did_deselect_suggestion_callback.Get(), base::DoNothing());
+
+  controller->QueueOrShowBubble();
+
+  auto* bubble_view = GetBubbleView();
+  ASSERT_TRUE(bubble_view);
+
+  // Verify one suggestion is shown.
+  std::vector<views::Button*> buttons = GetSuggestions(bubble_view);
+  ASSERT_EQ(buttons.size(), 1u);
+
+  // Expect the callback to run once when the bubble is hidden.
+  EXPECT_CALL(did_deselect_suggestion_callback, Run()).Times(1);
+
+  bubble_view->Hide();
 }
 
 }  // namespace
