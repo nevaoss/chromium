@@ -4719,6 +4719,13 @@ hooks = [
     'action': ['git', '-C', 'src/v8', 'am',
               '../neva/patches/0001-V8-Do-not-exit-function-while-ICU-is-not-initialized-for-webOS.patch']
   },
+  # Apply 'Dawn: Disable warning-suppression-mappings for ICECC builds'
+  {
+    'name': 'Dawn-Disable-warning-suppression-mappings-for-ICECC-builds',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/third_party/dawn', 'am',
+              '../../neva/patches/0001-build-152.0.7950.0-1-Dawn-Disable-warning-suppressio.patch']
+  },
   #@}
   {
     'name': 'apache_win32',
