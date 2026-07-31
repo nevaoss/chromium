@@ -1,0 +1,43 @@
+From d54f75b85cea47be23a114b39facba5e234735d6 Mon Sep 17 00:00:00 2001
+From: Ivan Pavlotsky <ivan.pavlotsky@lge.com>
+Date: Sun, 2 Aug 2026 17:36:47 +0300
+Subject: [PATCH] [build] 152.0.7950.0~1: Dawn: Disable
+ warning-suppression-mappings for ICECC builds
+
+In the upstream CL https://crrev.com/c/8077548 was rolled Dawn CL
+https://dawn-review.googlesource.com/c/dawn/+/322955 which added
+--warning-suppression-mappings to Clang compile options.
+
+It breaks Neva builds with ICECC enabled with error:
+error: no such file or directory: '../../third_party/dawn/src/utils/warning_suppression_mappings.txt'
+
+As a workaround, we disable --warning-suppression-mappings for Dawn when
+ICECC is enabled.
+
+Issue: NEVA-11357
+---
+ src/utils/BUILD.gn | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/src/utils/BUILD.gn b/src/utils/BUILD.gn
+index f39b615f93..2c6107180a 100644
+--- a/src/utils/BUILD.gn
++++ b/src/utils/BUILD.gn
+@@ -177,6 +177,14 @@ config("dawn_warnings") {
+         [ "--warning-suppression-mappings=" +
+           rebase_path("warning_suppression_mappings.txt", root_build_dir) ]
+ 
++    # TODO(neva): Disable warning-suppression-mappings if we are using ICECC
++    # (clang_use_chrome_plugins is set to false for ICECC builds).
++    if (!clang_use_chrome_plugins) {
++    cflags -=
++        [ "--warning-suppression-mappings=" +
++          rebase_path("warning_suppression_mappings.txt", root_build_dir) ]
++    }
++
+     if (!clang_use_unsafe_buffers_plugin) {
+       # If we don't have Chromium's unsafe buffers plugin (e.g. it was
+       # disabled in GN args), disable the warning entirely. The plugin
+-- 
+2.34.1
+
