@@ -35,18 +35,14 @@
 #include "ui/native_theme/native_theme.h"
 #include "ui/native_theme/overlay_scrollbar_constants.h"
 
-<<<<<<< HEAD
-#if BUILDFLAG(IS_NEVA_APPRUNTIME)
-#include "base/neva/base_switches.h"
-#endif
-
-||||||| 4b69fe59a44f9
-=======
 #if BUILDFLAG(IS_ANDROID)
 #include "base/android/device_info.h"
 #endif
 
->>>>>>> 152.0.7950.0~1
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+#include "base/neva/base_switches.h"
+#endif
+
 namespace blink {
 
 namespace {
