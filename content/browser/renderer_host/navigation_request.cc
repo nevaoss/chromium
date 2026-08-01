@@ -3049,7 +3049,14 @@ void NavigationRequest::BeginNavigationImpl() {
   }
 #endif
 
-<<<<<<< HEAD
+  if (base::FeatureList::IsEnabled(features::kNavigationFastFetchDryRun)) {
+    fast_fetch_manager_ = NavigationFastFetchManager::Create(*this);
+    navigation_handle_timing_.fast_fetch_eligibility_check_time =
+        fast_fetch_manager_->eligibility_check_time();
+    navigation_handle_timing_.is_fast_fetch_eligible =
+        (fast_fetch_manager_->eligibility_reason() ==
+         NavigationFastFetchManager::EligibilityReason::kEligible);
+  }
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
   const bool navigation_denied =
       GetURL().SchemeIsFile() &&
@@ -3065,16 +3072,6 @@ void NavigationRequest::BeginNavigationImpl() {
     return;
   }
 #endif
-=======
-  if (base::FeatureList::IsEnabled(features::kNavigationFastFetchDryRun)) {
-    fast_fetch_manager_ = NavigationFastFetchManager::Create(*this);
-    navigation_handle_timing_.fast_fetch_eligibility_check_time =
-        fast_fetch_manager_->eligibility_check_time();
-    navigation_handle_timing_.is_fast_fetch_eligible =
-        (fast_fetch_manager_->eligibility_reason() ==
-         NavigationFastFetchManager::EligibilityReason::kEligible);
-  }
->>>>>>> 152.0.7950.0~1
 
   // Check Content Security Policy before the NavigationThrottles run. This
   // gives CSP a chance to modify requests that NavigationThrottles would

@@ -182,18 +182,14 @@ std::vector<VEAFactoryFunction> CreateVEAFactoryFunctions(
     const gpu::GpuDriverBugWorkarounds& gpu_workarounds,
     const gpu::GPUInfo::GPUDevice& gpu_device) {
   std::vector<VEAFactoryFunction> funcs;
-<<<<<<< HEAD
-
 #if defined(USE_WEBOS_CODEC)
   funcs.push_back(base::BindRepeating(&CreateWebOSVEA));
 #endif
 
-=======
 #if BUILDFLAG(USE_VAAPI) || BUILDFLAG(USE_V4L2_CODEC)
   // Mirror the decoder's runtime selection so encode and decode share a
   // consistent hardware backend.
   switch (ActiveLinuxVideoDecoderType()) {
->>>>>>> 152.0.7950.0~1
 #if BUILDFLAG(USE_VAAPI)
     case VideoDecoderType::kVaapi:
       funcs.push_back(base::BindRepeating(&CreateVaapiVEA));
