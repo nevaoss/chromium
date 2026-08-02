@@ -10,6 +10,7 @@ import android.content.res.Resources;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
@@ -26,7 +27,9 @@ import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.composeplate.ComposeplateUtils;
+import org.chromium.chrome.browser.omnibox.GlifStrokeDrawable;
 import org.chromium.components.browser_ui.widget.RoundedCornerOutlineProvider;
+import org.chromium.ui.widget.ButtonCompat;
 
 /** Provides the additional capabilities needed for the SearchBox container layout. */
 @NullMarked
@@ -36,6 +39,8 @@ public class SearchBoxContainerView extends LinearLayout {
     ImageView mVoiceSearchButton;
     ImageView mLensButton;
     ImageView mPlusButton;
+    ButtonCompat mAiChip;
+    GlifStrokeDrawable mGlifStrokeDrawable;
 
     private @Nullable TouchDelegate mTouchDelegate;
     private @Nullable Rect mLastTouchDelegateRect;
@@ -54,6 +59,7 @@ public class SearchBoxContainerView extends LinearLayout {
         mVoiceSearchButton = findViewById(R.id.voice_search_button);
         mLensButton = findViewById(R.id.lens_camera_button);
         mPlusButton = findViewById(R.id.search_box_plus_button);
+        mAiChip = findViewById(R.id.search_box_ai_chip);
         mPlusButton.addOnLayoutChangeListener(
                 (v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
                     updateTouchDelegate();
@@ -67,6 +73,18 @@ public class SearchBoxContainerView extends LinearLayout {
         mDseIconView.setOutlineProvider(new RoundedCornerOutlineProvider(radius));
         mDseIconView.setClipToOutline(true);
         ImageViewCompat.setImageTintList(mDseIconView, /* tintList= */ null);
+        float cornerRadius = res.getDimension(R.dimen.ai_chip_corner_radius);
+        mGlifStrokeDrawable = new GlifStrokeDrawable(getContext(), cornerRadius);
+
+        LayerDrawable foreground = (LayerDrawable) mAiChip.getForeground();
+        foreground.setDrawableByLayerId(R.id.glif_border_layer, mGlifStrokeDrawable);
+        mAiChip.setOnHoverListener(
+                (v, event) -> {
+                    if (event.getAction() == MotionEvent.ACTION_HOVER_ENTER) {
+                        mGlifStrokeDrawable.start();
+                    }
+                    return false;
+                });
     }
 
     @Override

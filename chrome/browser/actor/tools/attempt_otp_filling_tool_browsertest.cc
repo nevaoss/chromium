@@ -10,11 +10,13 @@
 #include <utility>
 #include <vector>
 
+#include "base/command_line.h"
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
 #include "base/strings/strcat.h"
 #include "base/test/gmock_callback_support.h"
 #include "base/test/gmock_expected_support.h"
+#include "base/test/metrics/histogram_tester.h"
 #include "base/test/test_future.h"
 #include "base/time/time.h"
 #include "base/types/expected_macros.h"
@@ -27,6 +29,7 @@
 #include "chrome/browser/autofill/actor/one_time_tokens/actor_one_time_token_filling_service.h"
 #include "chrome/browser/autofill/one_time_token_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
+#include "components/actor/core/actor_switches.h"
 #include "components/actor/core/aggregated_journal.h"
 #include "components/actor/core/shared_types.h"
 #include "components/affiliations/core/browser/fake_affiliation_service.h"
@@ -190,10 +193,11 @@ class AttemptOtpFillingToolBrowserTest : public ActorToolsTest {
                   base::Time expiration,
                   one_time_tokens::OneTimeTokenService::Callback callback) {
               if (otp) {
-                callback.Run(one_time_tokens::OneTimeTokenSource::kGmail,
-                             one_time_tokens::OneTimeToken(
-                                 one_time_tokens::OneTimeTokenType::kGmail,
-                                 *otp, base::TimeTicks::Now()));
+                callback.Run(
+                    one_time_tokens::OneTimeTokenSource::kGmail,
+                    one_time_tokens::OneTimeToken(
+                        one_time_tokens::OneTimeTokenType::kGmail, *otp,
+                        base::TimeTicks::Now(), "sender@example.com"));
               } else {
                 callback.Run(
                     one_time_tokens::OneTimeTokenSource::kGmail,
@@ -237,6 +241,8 @@ std::optional<DomNode> GetDomNodeOnPage(content::RenderFrameHost& rfh,
 // The tool can be created with one field and the task returns OK.
 IN_PROC_BROWSER_TEST_F(AttemptOtpFillingToolBrowserTest,
                        ToolGetsCreatedWithOneFieldAndTaskReturnsOk) {
+  base::HistogramTester histogram_tester;
+
   const GURL url = embedded_https_test_server().GetURL("example.com",
                                                        "/actor/otp_page.html");
   ASSERT_TRUE(content::NavigateToURL(web_contents(), url));
@@ -269,6 +275,10 @@ IN_PROC_BROWSER_TEST_F(AttemptOtpFillingToolBrowserTest,
       JournalEntries(),
       testing::Contains(testing::ContainsRegex(
           "AttemptOtpFillingTool::OnOtpRetrieved;.*otp_received=true")));
+
+  histogram_tester.ExpectUniqueSample(
+      "OneTimeTokens.Actor.AttemptOtpFilling.PredictedOtpType",
+      AttemptOtpFillingToolRequest::OtpType::kUnknown, 1);
 }
 
 IN_PROC_BROWSER_TEST_F(AttemptOtpFillingToolBrowserTest,
@@ -362,11 +372,11 @@ IN_PROC_BROWSER_TEST_F(AttemptOtpFillingToolBrowserTest,
                    one_time_tokens::OneTimeTokenService::Callback callback) {
         base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
             FROM_HERE,
-            base::BindOnce(callback,
-                           one_time_tokens::OneTimeTokenSource::kGmail,
-                           one_time_tokens::OneTimeToken(
-                               one_time_tokens::OneTimeTokenType::kGmail,
-                               "1234", base::TimeTicks::Now())),
+            base::BindOnce(
+                callback, one_time_tokens::OneTimeTokenSource::kGmail,
+                one_time_tokens::OneTimeToken(
+                    one_time_tokens::OneTimeTokenType::kGmail, "1234",
+                    base::TimeTicks::Now(), "sender@example.com")),
             base::Milliseconds(100));
         return one_time_tokens::ExpiringSubscription();
       });
@@ -442,6 +452,38 @@ IN_PROC_BROWSER_TEST_F(AttemptOtpFillingToolBrowserTest,
               testing::Contains(testing::ContainsRegex(
                   "AttemptOtpFillingTool::Invoke;.*for_signin=false")));
 }
+
+// The tool succeeds when the bypass switch is set, even without login context.
+IN_PROC_BROWSER_TEST_F(
+    AttemptOtpFillingToolBrowserTest,
+    ToolSucceedsWithBypassSwitchEvenWithoutLoginContext) {
+  base::CommandLine::ForCurrentProcess()->AppendSwitch(
+      switches::kAttemptOtpFillingBypassLoginCheck);
+
+  const GURL url = embedded_https_test_server().GetURL("example.com",
+                                                       "/actor/otp_page.html");
+  ASSERT_TRUE(content::NavigateToURL(web_contents(), url));
+  ASSERT_NO_FATAL_FAILURE(WaitForTabObservation());
+  ASSERT_OK_AND_ASSIGN(DomNode otp_field,
+                       GetDomNodeOnPage(*main_frame(), "#otp"));
+  std::unique_ptr<ToolRequest> request =
+      std::make_unique<AttemptOtpFillingToolRequest>(
+          active_tab()->GetHandle(), std::vector<PageTarget>{otp_field},
+          /*for_signin=*/true);
+
+  // Do NOT call OnPasswordFillingStarted to simulate no login context.
+  SetExpectedOtp("1234");
+
+  ActResultFuture result;
+  actor_task().Act(ToRequestList(std::move(request)), result.GetCallback());
+
+  ExpectOkResult(result);
+  EXPECT_THAT(
+      JournalEntries(),
+      testing::Contains(testing::ContainsRegex(
+          "AttemptOtpFillingTool::OnActorLoginFlowChecked;.*bypass_login_check=true")));
+}
+
 
 // The tool fails when the target tab is closed before invocation.
 IN_PROC_BROWSER_TEST_F(AttemptOtpFillingToolBrowserTest,

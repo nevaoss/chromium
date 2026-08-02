@@ -517,6 +517,11 @@ public class StripLayoutTrailingButtonsCoordinatorTest {
                 1.0f,
                 mGlicButton.getOpacity(),
                 MathUtils.EPSILON);
+        assertEquals(
+                "Glic button clickable threshold should be 1.0 when focused.",
+                1.0f,
+                mGlicButton.getClickableOpacityThreshold(),
+                MathUtils.EPSILON);
 
         // Unfocused state
         mCoordinator.updateGlicButtonOpacity(
@@ -525,6 +530,11 @@ public class StripLayoutTrailingButtonsCoordinatorTest {
                 "Glic button opacity should be 0.65 when unfocused in desktop windowing mode.",
                 0.65f,
                 mGlicButton.getOpacity(),
+                MathUtils.EPSILON);
+        assertEquals(
+                "Glic button clickable threshold should be 0.65 when unfocused.",
+                0.65f,
+                mGlicButton.getClickableOpacityThreshold(),
                 MathUtils.EPSILON);
     }
 
@@ -810,8 +820,10 @@ public class StripLayoutTrailingButtonsCoordinatorTest {
         // Verify actor button is still visible and text becomes "Done".
         assertTrue("Actor button should remain visible.", actorButton.isVisible());
         assertEquals(
-                "Actor button text should become 'Done'.",
-                mActivity.getString(R.string.glic_button_status_done),
+                "Actor button text should become 'Task done'.",
+                mActivity
+                        .getResources()
+                        .getQuantityString(R.plurals.actor_task_nudge_task_complete_label, 1),
                 actorButton.getText());
         assertNull(
                 "Primary Glic button text should remain null in done state.", glicButton.getText());

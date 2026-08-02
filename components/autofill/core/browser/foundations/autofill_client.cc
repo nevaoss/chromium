@@ -151,8 +151,8 @@ AutofillClient::GetPersonalContextEligibilityState() const {
       kDisabledNotEligible;
 }
 
-personal_context::PersonalContextEnablementService*
-AutofillClient::GetPersonalContextEnablementService() const {
+personal_context::PersonalContextEligibilityService*
+AutofillClient::GetPersonalContextEligibilityService() const {
   return nullptr;
 }
 
@@ -175,14 +175,15 @@ AutofillAiManager* AutofillClient::GetAutofillAiManager() {
   return nullptr;
 }
 
-PersonalContextAccessManager*
-AutofillClient::GetPersonalContextAccessManager() {
+AutofillAiPersonalContextAccessManager*
+AutofillClient::GetAutofillAiPersonalContextAccessManager() {
   return nullptr;
 }
 
-const PersonalContextAccessManager*
-AutofillClient::GetPersonalContextAccessManager() const {
-  return const_cast<AutofillClient*>(this)->GetPersonalContextAccessManager();
+const AutofillAiPersonalContextAccessManager*
+AutofillClient::GetAutofillAiPersonalContextAccessManager() const {
+  return const_cast<AutofillClient*>(this)
+      ->GetAutofillAiPersonalContextAccessManager();
 }
 
 AutofillAiModelCache* AutofillClient::GetAutofillAiModelCache() {

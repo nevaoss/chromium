@@ -178,18 +178,31 @@ class ScopedCursorHider {
   ScopedCursorHider& operator=(const ScopedCursorHider&) = delete;
 
   ~ScopedCursorHider() {
-    if (!window_->IsRootWindow())
+    // Store the raw window pointer in a local variable and clear the `window_`
+    // raw_ptr to nullptr before carrying out the rest of the destructor. Since
+    // the window can be synchronously destroyed inside display query sink calls
+    // below, clearing the raw_ptr while the window is still alive prevents
+    // Chromium's dangling raw_ptr checks from triggering on destruction.
+    Window* window = window_;
+    window_ = nullptr;
+
+    if (!window->IsRootWindow()) {
       return;
+    }
 
     // Update the device scale factor of the cursor client only when the last
     // mouse location is on this root window.
     if (hid_cursor_) {
-      client::CursorClient* cursor_client = client::GetCursorClient(window_);
-      if (cursor_client) {
-        const display::Display& display =
-            display::Screen::Get()->GetDisplayNearestWindow(window_);
-        cursor_client->SetDisplay(display);
-        cursor_client->ShowCursor();
+      aura::WindowTracker tracker;
+      tracker.Add(window);
+      const display::Display& display =
+          display::Screen::Get()->GetDisplayNearestWindow(window);
+      if (tracker.Contains(window)) {
+        client::CursorClient* cursor_client = client::GetCursorClient(window);
+        if (cursor_client) {
+          cursor_client->SetDisplay(display);
+          cursor_client->ShowCursor();
+        }
       }
     }
   }
@@ -303,7 +316,7 @@ void Window::Init(ui::LayerType layer_type) {
 
   WindowOcclusionTracker::ScopedPause pause_occlusion_tracking;
 
-  SetLayer(std::make_unique<ui::Layer>(layer_type));
+  SetLayer(ui::Layer::Create(layer_type));
   layer()->SetVisible(false);
   layer()->set_delegate(this);
   UpdateLayerName();
@@ -619,6 +632,7 @@ void Window::StackChildBelow(Window* child, Window* target) {
 }
 
 void Window::AddChild(Window* child) {
+  ScopedDeleteBlocker blocker(child);
   WindowOcclusionTracker::ScopedPause pause_occlusion_tracking;
 
   DCHECK(layer()) << "Parent has not been Init()ed yet.";
@@ -1043,7 +1057,8 @@ void Window::UpdateVisualState() {
 void Window::GetDebugInfo(const aura::Window* active_window,
                           const aura::Window* focused_window,
                           const aura::Window* capture_window,
-                          std::ostringstream* out) const {
+                          std::ostringstream* out,
+                          bool scrub_data) const {
   std::string name(GetName());
   if (name.empty())
     name = "\"\"";
@@ -1053,6 +1068,10 @@ void Window::GetDebugInfo(const aura::Window* active_window,
                                 ->VisibleWindowCanOccludeOtherWindows(this);
   bool has_opaque_regions = !opaque_regions_for_occlusion().empty();
   *out << " " << name << "<" << GetId() << ">";
+  std::u16string title(GetTitle());
+  if (!title.empty() && !scrub_data) {
+    *out << " title=\"" << base::UTF16ToUTF8(title) << "\"";
+  }
   *out << " (" << this << ")"
        << " type=" << aura::Window::WindowTypeToString(GetType());
   *out << ((this == active_window) ? " [active]" : "")
@@ -1097,14 +1116,25 @@ void Window::GetDebugInfo(const aura::Window* active_window,
 }
 
 #if DCHECK_IS_ON()
-std::string Window::GetWindowHierarchy(int depth) const {
+std::string Window::GetWindowHierarchy(int depth,
+                                       const Window* active_window) const {
   std::ostringstream out;
   std::string indent_str(depth * 2, ' ');
   out << indent_str;
-  GetDebugInfo(nullptr, nullptr, nullptr, &out);
+
+  const Window* root_window = GetRootWindow();
+  const Window* focused_window = nullptr;
+  const Window* capture_window = nullptr;
+  if (root_window) {
+    Window* mutable_root = const_cast<Window*>(root_window);
+    focused_window = client::GetFocusClient(mutable_root)->GetFocusedWindow();
+    capture_window = client::GetCaptureClient(mutable_root)->GetCaptureWindow();
+  }
+
+  GetDebugInfo(active_window, focused_window, capture_window, &out);
   out << std::endl;
   for (Window* child : children_) {
-    out << child->GetWindowHierarchy(depth + 1);
+    out << child->GetWindowHierarchy(depth + 1, active_window);
   }
   return out.str();
 }
@@ -1112,7 +1142,7 @@ std::string Window::GetWindowHierarchy(int depth) const {
 void Window::PrintWindowHierarchy(int depth) const {
   VLOG(0) << GetWindowHierarchy(depth);
 }
-#endif
+#endif  // DCHECK_IS_ON()
 
 void Window::RemoveOrDestroyChildren() {
   while (!children_.empty()) {
@@ -1318,6 +1348,8 @@ void Window::Paint(const ui::PaintContext& context) {
 }
 
 void Window::RemoveChildImpl(Window* child, Window* new_parent) {
+  ScopedDeleteBlocker blocker(child);
+
   if (layout_manager_)
     layout_manager_->OnWillRemoveWindowFromLayout(child);
   for (WindowObserver& observer : observers_)

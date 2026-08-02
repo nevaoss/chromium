@@ -306,6 +306,7 @@
 #endif  // defined(USE_AURA)
 
 using base::UserMetricsAction;
+using content::GlobalRenderFrameHostId;
 using content::NavigationController;
 using content::NavigationEntry;
 using content::OpenURLParams;
@@ -841,8 +842,13 @@ const Browser* Browser::GetBrowserForMigrationOnly() const {
   return this;
 }
 
-bool Browser::IsTabModalPopupDeprecated() const {
-  return is_tab_modal_popup_deprecated_;
+bool Browser::IsTabModalPopup() const {
+  return is_tab_modal_popup_;
+}
+
+void Browser::SetIsTabModalPopup(bool is_tab_modal_popup,
+                                 base::PassKey<internal::ScopedBrowserShower>) {
+  is_tab_modal_popup_ = is_tab_modal_popup;
 }
 
 bool Browser::CreatedBySessionRestore() const {
@@ -1743,8 +1749,7 @@ WebContents* Browser::CreateCustomWebContents(
 }
 
 void Browser::WebContentsCreated(WebContents* source_contents,
-                                 int opener_render_process_id,
-                                 int opener_render_frame_id,
+                                 const GlobalRenderFrameHostId& opener_id,
                                  const std::string& frame_name,
                                  const GURL& target_url,
                                  WebContents* new_contents) {

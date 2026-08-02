@@ -72,7 +72,8 @@ void SearchEngineChoiceDialog::Show(
       &browser, boundary_dimensions_for_test, zoom_factor_for_test);
 
   SearchEngineChoiceDialogService* dialog_service =
-      SearchEngineChoiceDialogServiceFactory::GetForProfile(browser.profile());
+      SearchEngineChoiceDialogServiceFactory::GetForProfile(
+          browser.GetProfile());
   if (!dialog_service->RegisterDialog(browser,
                                       dialogView->GetCloseViewClosure())) {
     // The dialog was rejected. Abort, don't show anything.
@@ -110,7 +111,7 @@ SearchEngineChoiceDialogView::SearchEngineChoiceDialogView(
 
   // Create the web view in the native dialog.
   web_view_ =
-      AddChildView(std::make_unique<views::WebView>(browser->profile()));
+      AddChildView(std::make_unique<views::WebView>(browser->GetProfile()));
 }
 
 SearchEngineChoiceDialogView::~SearchEngineChoiceDialogView() = default;
@@ -181,7 +182,7 @@ void SearchEngineChoiceDialogView::ShowNativeView() {
   // This solution is inspired by the code in `WebUIBubbleDialogView`, it
   // applies the round corners to the inner web_view to match the view rounded
   // corners.
-  web_view_->holder()->SetCornerRadii(
+  web_view_->holder()->SetNativeViewCornerRadii(
       gfx::RoundedCornersF(GetWebViewCornerRadius()));
 
   widget->Show();

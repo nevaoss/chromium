@@ -123,6 +123,7 @@ class SiteInstance;
 class WebContents;
 struct ContextMenuParams;
 struct DropData;
+struct GlobalRenderFrameHostId;
 struct MediaStreamRequest;
 struct OpenURLParams;
 struct Referrer;
@@ -412,8 +413,7 @@ class CONTENT_EXPORT WebContentsDelegate {
   // Notifies the delegate about the creation of a new WebContents. This
   // typically happens when popups are created.
   virtual void WebContentsCreated(WebContents* source_contents,
-                                  int opener_render_process_id,
-                                  int opener_render_frame_id,
+                                  const GlobalRenderFrameHostId& opener_id,
                                   const std::string& frame_name,
                                   const GURL& target_url,
                                   WebContents* new_contents) {}

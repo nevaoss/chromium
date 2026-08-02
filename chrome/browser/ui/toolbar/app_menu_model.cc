@@ -44,6 +44,7 @@
 #include "chrome/browser/profiles/profiles_state.h"
 #include "chrome/browser/search/background/ntp_custom_background_service_factory.h"
 #include "chrome/browser/search/search.h"
+#include "chrome/browser/send_tab_to_self/send_tab_to_self_util.h"
 #include "chrome/browser/sharing_hub/sharing_hub_features.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/signin/signin_ui_util.h"
@@ -73,6 +74,7 @@
 #include "chrome/browser/ui/safety_hub/safety_hub_constants.h"
 #include "chrome/browser/ui/safety_hub/safety_hub_hats_service.h"
 #include "chrome/browser/ui/safety_hub/safety_hub_hats_service_factory.h"
+#include "chrome/browser/ui/send_tab_to_self/send_tab_to_self_context_menu_delegate.h"
 #include "chrome/browser/ui/startup/default_browser_prompt/default_browser_prompt_manager.h"
 #include "chrome/browser/ui/tabs/features.h"
 #include "chrome/browser/ui/tabs/recent_tabs_sub_menu_model.h"
@@ -124,6 +126,7 @@
 #include "components/prefs/pref_service.h"
 #include "components/profile_metrics/browser_profile_type.h"
 #include "components/saved_tab_groups/public/features.h"
+#include "components/send_tab_to_self/features.h"
 #include "components/signin/public/base/signin_metrics.h"
 #include "components/signin/public/base/signin_pref_names.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
@@ -244,6 +247,11 @@ void AddSubMenuWithStringIdAndVectorIcon(ui::SimpleMenuModel* model,
                                      ui::SimpleMenuModel::kDefaultIconSize));
 }
 
+const gfx::VectorIcon& GetSendTabToSelfIcon() {
+  return features::IsRoundedIconsEnabled() ? kDevicesIcon
+                                           : kDevicesChromeRefreshOldIcon;
+}
+
 // Conditionally return the update app menu item title based on upgrade detector
 // state.
 std::u16string GetUpgradeDialogTitleText() {
@@ -261,7 +269,7 @@ std::u16string GetUpgradeDialogTitleText() {
 
 // Returns the appropriate menu label for the IDC_INSTALL_PWA command if
 // available.
-std::u16string GetInstallPWALabel(const Browser* browser) {
+std::u16string GetInstallPWALabel(Browser* browser) {
   // There may be no active web contents in tests.
   auto* const web_contents = browser->tab_strip_model()->GetActiveWebContents();
   if (!web_contents) {
@@ -281,7 +289,7 @@ std::u16string GetInstallPWALabel(const Browser* browser) {
   const webapps::AppId* app_id =
       web_app::WebAppTabHelper::GetAppId(web_contents);
   web_app::WebAppProvider* const provider =
-      web_app::WebAppProvider::GetForLocalAppsUnchecked(browser->profile());
+      web_app::WebAppProvider::GetForLocalAppsUnchecked(browser->GetProfile());
   if (app_id &&
       provider->registrar_unsafe().GetInstallState(*app_id) ==
           web_app::proto::INSTALLED_WITH_OS_INTEGRATION &&
@@ -396,7 +404,7 @@ ui::ImageModel GetInstallPWAIcon(Browser* browser) {
 
 // Returns the appropriate menu label for the IDC_OPEN_IN_PWA_WINDOW command if
 // available.
-std::u16string GetOpenPWALabel(const Browser* browser) {
+std::u16string GetOpenPWALabel(Browser* browser) {
   std::optional<webapps::AppId> app_id =
       web_app::GetWebAppForActiveTab(browser);
   if (!app_id.has_value()) {
@@ -405,7 +413,7 @@ std::u16string GetOpenPWALabel(const Browser* browser) {
 
   // Only show this menu item for apps that open in an app window.
   const auto* const provider =
-      web_app::WebAppProvider::GetForLocalAppsUnchecked(browser->profile());
+      web_app::WebAppProvider::GetForLocalAppsUnchecked(browser->GetProfile());
   if (provider->registrar_unsafe().GetAppUserDisplayMode(*app_id) ==
       web_app::mojom::UserDisplayMode::kBrowser) {
     return std::u16string();
@@ -909,13 +917,56 @@ class SaveAndShareSubMenuModel : public ui::SimpleMenuModel {
   SaveAndShareSubMenuModel(const SaveAndShareSubMenuModel&) = delete;
   SaveAndShareSubMenuModel& operator=(const SaveAndShareSubMenuModel&) = delete;
   ~SaveAndShareSubMenuModel() override = default;
+
+ private:
+  // Builds Send Tab to Self target device submenu when enhanced desktop UI is
+  // enabled.
+  void BuildSendTabToSelfSubmenu(Browser* browser,
+                                 content::WebContents* web_contents);
+
+  // Fallback helper to add simple Send Tab to Self menu item.
+  void BuildSendTabToSelfSimpleItem();
+
+  std::unique_ptr<send_tab_to_self::SendTabToSelfContextMenuDelegate>
+      send_tab_to_self_submenu_delegate_;
+  std::unique_ptr<ui::SimpleMenuModel> send_tab_to_self_submenu_;
 };
+
+void SaveAndShareSubMenuModel::BuildSendTabToSelfSubmenu(
+    Browser* browser,
+    content::WebContents* web_contents) {
+  CHECK(web_contents);
+
+  send_tab_to_self_submenu_delegate_ =
+      std::make_unique<send_tab_to_self::SendTabToSelfContextMenuDelegate>(
+          web_contents, send_tab_to_self::ShareEntryPoint::kShareMenu);
+  send_tab_to_self_submenu_ = std::make_unique<ui::SimpleMenuModel>(
+      send_tab_to_self_submenu_delegate_.get());
+  send_tab_to_self_submenu_delegate_->PopulateSubmenu(
+      send_tab_to_self_submenu_.get());
+
+  AddSubMenuWithStringIdAndIcon(
+      IDC_SEND_TAB_TO_SELF, IDS_MENU_SEND_TAB_TO_SELF,
+      send_tab_to_self_submenu_.get(),
+      ui::ImageModel::FromVectorIcon(GetSendTabToSelfIcon()));
+
+  SetIsNewFeatureAt(GetItemCount() - 1,
+                    UserEducationService::MaybeShowNewBadge(
+                        browser->profile(),
+                        send_tab_to_self::kSendTabToSelfEnhancedDesktopUIv2));
+}
+
+void SaveAndShareSubMenuModel::BuildSendTabToSelfSimpleItem() {
+  AddItemWithStringIdAndVectorIcon(this, IDC_SEND_TAB_TO_SELF,
+                                   IDS_MENU_SEND_TAB_TO_SELF,
+                                   GetSendTabToSelfIcon());
+}
 
 SaveAndShareSubMenuModel::SaveAndShareSubMenuModel(
     ui::SimpleMenuModel::Delegate* delegate,
     Browser* browser)
     : SimpleMenuModel(delegate) {
-  if (media_router::MediaRouterEnabled(browser->profile())) {
+  if (media_router::MediaRouterEnabled(browser->GetProfile())) {
     AddTitle(l10n_util::GetStringUTF16(IDS_SAVE_AND_SHARE_MENU_CAST));
     SetElementIdentifierAt(GetItemCount() - 1, AppMenuModel::kCastTitleItem);
     AddItemWithStringIdAndVectorIcon(
@@ -948,25 +999,43 @@ SaveAndShareSubMenuModel::SaveAndShareSubMenuModel(
       features::IsRoundedIconsEnabled() ? kDriveShortcutIcon
                                         : kDriveShortcutChromeRefreshOldIcon);
   SetElementIdentifierAt(GetItemCount() - 1, AppMenuModel::kCreateShortcutItem);
-  if (!sharing_hub::SharingIsDisabledByPolicy(browser->profile()) ||
-      sharing_hub::DesktopScreenshotsFeatureEnabled(browser->profile())) {
+  if (!sharing_hub::SharingIsDisabledByPolicy(browser->GetProfile()) ||
+      sharing_hub::DesktopScreenshotsFeatureEnabled(browser->GetProfile())) {
     AddSeparator(ui::NORMAL_SEPARATOR);
     AddTitle(l10n_util::GetStringUTF16(IDS_SAVE_AND_SHARE_MENU_SHARE));
-    if (!sharing_hub::SharingIsDisabledByPolicy(browser->profile())) {
+    if (!sharing_hub::SharingIsDisabledByPolicy(browser->GetProfile())) {
       AddItemWithStringIdAndVectorIcon(
           this, IDC_COPY_URL, IDS_APP_MENU_COPY_LINK,
           features::IsRoundedIconsEnabled() ? kLinkIcon
                                             : kLinkChromeRefreshOldIcon);
-      AddItemWithStringIdAndVectorIcon(
-          this, IDC_SEND_TAB_TO_SELF, IDS_MENU_SEND_TAB_TO_SELF,
-          features::IsRoundedIconsEnabled() ? kDevicesIcon
-                                            : kDevicesChromeRefreshOldIcon);
+
+      // WebContents is required to query target devices and display state for
+      // Send Tab to Self.
+      content::WebContents* web_contents =
+          browser->tab_strip_model()->GetActiveWebContents();
+      std::optional<send_tab_to_self::EntryPointDisplayReason> reason =
+          web_contents
+              ? send_tab_to_self::GetEntryPointDisplayReason(web_contents)
+              : std::nullopt;
+
+      // When enhanced desktop UI v2 feature flag is enabled and feature is
+      // offered, build submenu with available devices. Otherwise, build simple
+      // command item.
+      if (web_contents &&
+          base::FeatureList::IsEnabled(
+              send_tab_to_self::kSendTabToSelfEnhancedDesktopUIv2) &&
+          reason == send_tab_to_self::EntryPointDisplayReason::kOfferFeature) {
+        BuildSendTabToSelfSubmenu(browser, web_contents);
+      } else {
+        BuildSendTabToSelfSimpleItem();
+      }
+
       AddItemWithStringIdAndVectorIcon(
           this, IDC_QRCODE_GENERATOR, IDS_APP_MENU_CREATE_QR_CODE,
           features::IsRoundedIconsEnabled() ? kQrCodeIcon
                                             : kQrCodeChromeRefreshOldIcon);
     }
-    if (sharing_hub::DesktopScreenshotsFeatureEnabled(browser->profile())) {
+    if (sharing_hub::DesktopScreenshotsFeatureEnabled(browser->GetProfile())) {
       AddItemWithStringIdAndVectorIcon(
           this, IDC_SHARING_HUB_SCREENSHOT, IDS_SHARING_HUB_SCREENSHOT_LABEL,
           features::IsRoundedIconsEnabled() ? kScreenshotRegionIcon
@@ -1044,12 +1113,12 @@ void HelpMenuModel::Build(Browser* browser) {
                                                        : kHelpMenuOldIcon);
     }
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-    if (chrome::CanShowFeedback(browser->profile())) {
+    if (chrome::CanShowFeedback(browser->GetProfile())) {
       AddItemWithStringIdAndVectorIcon(
           this, IDC_FEEDBACK, IDS_FEEDBACK,
           features::IsRoundedIconsEnabled() ? kFeedbackIcon : kReportOldIcon);
 
-      if (feedback::ReportUnsafeSiteDialog::IsEnabled(*browser->profile())) {
+      if (feedback::ReportUnsafeSiteDialog::IsEnabled(*browser->GetProfile())) {
         AddItemWithStringIdAndVectorIcon(
             this, IDC_REPORT_UNSAFE_SITE, IDS_REPORT_UNSAFE_SITE,
             features::IsRoundedIconsEnabled() ? vector_icons::kWarningFilledIcon
@@ -1126,8 +1195,9 @@ void ToolsMenuModel::Build(Browser* browser) {
   }
 
   if (CustomizeChromePageHandler::IsSupported(
-          NtpCustomBackgroundServiceFactory::GetForProfile(browser->profile()),
-          browser->profile())) {
+          NtpCustomBackgroundServiceFactory::GetForProfile(
+              browser->GetProfile()),
+          browser->GetProfile())) {
     AddItemWithStringIdAndVectorIcon(
         this, IDC_SHOW_CUSTOMIZE_CHROME_SIDE_PANEL,
         IDS_SHOW_CUSTOMIZE_CHROME_SIDE_PANEL,
@@ -1172,7 +1242,7 @@ void ToolsMenuModel::Build(Browser* browser) {
     AddCheckItemWithStringId(IDC_PROFILING_ENABLED, IDS_PROFILING_ENABLED);
   }
   if (IsChromeLabsEnabled()) {
-    auto* profile = browser->profile();
+    auto* profile = browser->GetProfile();
     UpdateChromeLabsNewBadgePrefs(profile);
     if (ShouldShowChromeLabsUI(profile)) {
       BooleanPrefMember show_chrome_labs_item;
@@ -1285,7 +1355,7 @@ bool AppMenuModel::DoesCommandIdDismissMenu(int command_id) const {
 
 void AppMenuModel::ExecuteCommand(int command_id, int event_flags) {
   GlobalError* error =
-      GlobalErrorServiceFactory::GetForProfile(browser_->profile())
+      GlobalErrorServiceFactory::GetForProfile(browser_->GetProfile())
           ->GetGlobalErrorByMenuItemCommandID(command_id);
   if (error) {
     error->ExecuteMenuItem(browser_);
@@ -1313,7 +1383,7 @@ void AppMenuModel::LogSafetyHubInteractionMetrics(
                                 sh_module);
 
   if (SafetyHubHatsService* hats_service =
-          SafetyHubHatsServiceFactory::GetForProfile(browser_->profile())) {
+          SafetyHubHatsServiceFactory::GetForProfile(browser_->GetProfile())) {
     hats_service->SafetyHubNotificationClicked(sh_module);
   }
 }
@@ -1687,7 +1757,7 @@ void AppMenuModel::LogMenuMetrics(int command_id) {
       LogMenuAction(MENU_ACTION_SHOW_DOWNLOADS);
       base::UmaHistogramEnumeration(
           "Download.OpenDownloadsFromMenu.PerProfileType",
-          profile_metrics::GetBrowserProfileType(browser_->profile()));
+          profile_metrics::GetBrowserProfileType(browser_->GetProfile()));
       break;
     case IDC_OPTIONS:
       if (!uma_action_recorded_) {
@@ -1697,7 +1767,7 @@ void AppMenuModel::LogMenuMetrics(int command_id) {
       LogMenuAction(MENU_ACTION_OPTIONS);
       base::UmaHistogramEnumeration(
           "Settings.OpenSettingsFromMenu.PerProfileType",
-          profile_metrics::GetBrowserProfileType(browser_->profile()));
+          profile_metrics::GetBrowserProfileType(browser_->GetProfile()));
       break;
     case IDC_ABOUT:
       if (!uma_action_recorded_) {
@@ -1980,7 +2050,7 @@ void AppMenuModel::LogMenuMetrics(int command_id) {
 }
 
 bool AppMenuModel::IsCommandIdChecked(int command_id) const {
-  PrefService* prefs = browser_->profile()->GetPrefs();
+  PrefService* prefs = browser_->GetProfile()->GetPrefs();
   if (command_id == IDC_SHOW_BOOKMARK_BAR) {
     return prefs->GetBoolean(bookmarks::prefs::kShowBookmarkBar);
   }
@@ -2009,7 +2079,7 @@ bool AppMenuModel::IsCommandIdChecked(int command_id) const {
 
 bool AppMenuModel::IsCommandIdEnabled(int command_id) const {
   GlobalError* error =
-      GlobalErrorServiceFactory::GetForProfile(browser_->profile())
+      GlobalErrorServiceFactory::GetForProfile(browser_->GetProfile())
           ->GetGlobalErrorByMenuItemCommandID(command_id);
   if (error) {
     return true;
@@ -2017,7 +2087,7 @@ bool AppMenuModel::IsCommandIdEnabled(int command_id) const {
 
   switch (command_id) {
     case IDC_NEW_INCOGNITO_WINDOW:
-      return IncognitoModePrefs::IsIncognitoAllowed(browser_->profile());
+      return IncognitoModePrefs::IsIncognitoAllowed(browser_->GetProfile());
     default:
       return chrome::IsCommandEnabled(browser_, command_id);
   }
@@ -2078,8 +2148,8 @@ void AppMenuModel::Build() {
 
   AddItemWithStringIdAndVectorIcon(
       this, IDC_NEW_TAB,
-      browser_->profile()->IsIncognitoProfile() &&
-              !browser_->profile()->IsGuestSession()
+      browser_->GetProfile()->IsIncognitoProfile() &&
+              !browser_->GetProfile()->IsGuestSession()
           ? IDS_NEW_INCOGNITO_TAB
           : IDS_NEW_TAB,
       features::IsRoundedIconsEnabled() ? kTabIcon : kNewTabRefreshOldIcon);
@@ -2101,7 +2171,7 @@ void AppMenuModel::Build() {
 
   // This menu item is not visible in Guest Mode. If incognito mode is not
   // available, it will be shown in disabled state. (crbug.com/40703208)
-  if (!browser_->profile()->IsGuestSession()) {
+  if (!browser_->GetProfile()->IsGuestSession()) {
     AddItemWithStringIdAndVectorIcon(
         this, IDC_NEW_INCOGNITO_WINDOW, IDS_NEW_INCOGNITO_WINDOW,
         features::IsRoundedIconsEnabled() ? kIncognitoIcon
@@ -2115,7 +2185,7 @@ void AppMenuModel::Build() {
 
 #if !BUILDFLAG(IS_CHROMEOS)
   sub_menus_.push_back(std::make_unique<ProfileSubMenuModel>(
-      this, browser()->profile(),
+      this, browser()->GetProfile(),
       BrowserWindow::FromBrowser(browser())->GetColorProvider()));
   auto* const profile_submenu_model =
       static_cast<ProfileSubMenuModel*>(sub_menus_.back().get());
@@ -2128,7 +2198,7 @@ void AppMenuModel::Build() {
   AddSeparator(ui::SPACING_SEPARATOR);
 #endif
 
-  if (!browser_->profile()->IsGuestSession()) {
+  if (!browser_->GetProfile()->IsGuestSession()) {
     sub_menus_.push_back(
         std::make_unique<PasswordsAndAutofillSubMenuModel>(this));
     AddSubMenuWithStringIdAndVectorIcon(
@@ -2142,7 +2212,7 @@ void AppMenuModel::Build() {
         kPasswordAndAutofillMenuItem);
   }
 
-  if (!browser_->profile()->IsOffTheRecord()) {
+  if (!browser_->GetProfile()->IsOffTheRecord()) {
     auto recent_tabs_sub_menu =
         std::make_unique<RecentTabsSubMenuModel>(provider_, browser_);
     recent_tabs_sub_menu->RegisterLogMenuMetricsCallback(base::BindRepeating(
@@ -2161,7 +2231,7 @@ void AppMenuModel::Build() {
       features::IsRoundedIconsEnabled() ? kDownloadIcon : kDownloadMenuOldIcon);
   SetElementIdentifierAt(GetIndexOfCommandId(IDC_SHOW_DOWNLOADS).value(),
                          kDownloadsMenuItem);
-  if (!browser_->profile()->IsGuestSession()) {
+  if (!browser_->GetProfile()->IsGuestSession()) {
     bookmark_sub_menu_model_ =
         std::make_unique<BookmarkSubMenuModel>(this, browser_);
 
@@ -2175,7 +2245,7 @@ void AppMenuModel::Build() {
         kBookmarksMenuItem);
   }
 
-  if (browser_->profile()->IsRegularProfile()) {
+  if (browser_->GetProfile()->IsRegularProfile()) {
     auto saved_tab_groups_model = std::make_unique<ui::SimpleMenuModel>(this);
     sub_menus_.push_back(std::move(saved_tab_groups_model));
     AddSubMenuWithStringIdAndVectorIcon(
@@ -2191,7 +2261,7 @@ void AppMenuModel::Build() {
   // Extensions sub menu.
   if (ArePromotionsEnabled() &&
       base::FeatureList::IsEnabled(features::kExtensionsCollapseMainMenu) &&
-      !extensions::ui_util::HasManageableExtensions(browser_->profile())) {
+      !extensions::ui_util::HasManageableExtensions(browser_->GetProfile())) {
     AddItemWithStringIdAndVectorIcon(
         this, IDC_FIND_EXTENSIONS, IDS_FIND_EXTENSIONS,
         features::IsRoundedIconsEnabled()
@@ -2227,7 +2297,7 @@ void AppMenuModel::Build() {
       this, IDC_PRINT, IDS_PRINT,
       features::IsRoundedIconsEnabled() ? kPrintIcon : kPrintMenuOldIcon);
 
-  if (glic::GlicEnabling::IsEnabledForProfile(browser_->profile())) {
+  if (glic::GlicEnabling::IsEnabledForProfile(browser_->GetProfile())) {
     AddItemWithStringIdAndVectorIcon(this, IDC_OPEN_GLIC,
                                      IDS_GLIC_THREE_DOT_MENU_ITEM,
                                      glic::GlicVectorIconManager::GetVectorIcon(
@@ -2267,7 +2337,7 @@ void AppMenuModel::Build() {
 
   sub_menus_.push_back(
       std::make_unique<SaveAndShareSubMenuModel>(this, browser_));
-  int string_id = media_router::MediaRouterEnabled(browser()->profile())
+  int string_id = media_router::MediaRouterEnabled(browser()->GetProfile())
                       ? IDS_CAST_SAVE_AND_SHARE_MENU
                       : IDS_SAVE_AND_SHARE_MENU;
   AddSubMenuWithStringIdAndVectorIcon(
@@ -2337,18 +2407,18 @@ void AppMenuModel::Build() {
   // On Chrome OS, similar UI is displayed in the system tray menu, instead of
   // this menu.
 #if !BUILDFLAG(IS_CHROMEOS)
-  if (ShouldDisplayManagedUi(browser_->profile())) {
+  if (ShouldDisplayManagedUi(browser_->GetProfile())) {
     AddSeparator(ui::NORMAL_SEPARATOR);
     AddItemWithIcon(
         IDC_SHOW_MANAGEMENT_PAGE,
-        GetManagedUiMenuItemLabel(browser_->profile()),
-        ui::ImageModel::FromVectorIcon(GetManagedUiIcon(browser_->profile()),
+        GetManagedUiMenuItemLabel(browser_->GetProfile()),
+        ui::ImageModel::FromVectorIcon(GetManagedUiIcon(browser_->GetProfile()),
                                        ui::kColorMenuIcon, kDefaultIconSize));
 
     SetAccessibleNameAt(GetIndexOfCommandId(IDC_SHOW_MANAGEMENT_PAGE).value(),
-                        GetManagedUiMenuItemTooltip(browser_->profile()));
+                        GetManagedUiMenuItemTooltip(browser_->GetProfile()));
 #if BUILDFLAG(IS_LINUX)
-    if (enterprise_util::IsBrowserManaged(browser_->profile()) &&
+    if (enterprise_util::IsBrowserManaged(browser_->GetProfile()) &&
         base::FeatureList::IsEnabled(features::kEnterpriseReleaseNotes)) {
       AddItemWithStringIdAndVectorIcon(
           this, IDC_CHROME_ENTERPRISE_RELEASE_NOTES,
@@ -2398,7 +2468,8 @@ bool AppMenuModel::AddGlobalErrorMenuItems() {
   // it won't show in the existing app menu. To fix this we need to some
   // how update the menu if new errors are added.
   const GlobalErrorService::GlobalErrorList& errors =
-      GlobalErrorServiceFactory::GetForProfile(browser_->profile())->errors();
+      GlobalErrorServiceFactory::GetForProfile(browser_->GetProfile())
+          ->errors();
   bool menu_items_added = false;
   for (GlobalError* error : errors) {
     DCHECK(error);
@@ -2413,8 +2484,8 @@ bool AppMenuModel::AddGlobalErrorMenuItems() {
 
 bool AppMenuModel::AddDefaultBrowserMenuItems() {
 #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS)
-  if (browser_->profile()->IsIncognitoProfile() ||
-      browser_->profile()->IsGuestSession()) {
+  if (browser_->GetProfile()->IsIncognitoProfile() ||
+      browser_->GetProfile()->IsGuestSession()) {
     return false;
   }
 
@@ -2438,7 +2509,7 @@ bool AppMenuModel::AddDefaultBrowserMenuItems() {
 bool AppMenuModel::AddSafetyHubMenuItem() {
   auto* safety_hub_menu_notification_service =
       SafetyHubMenuNotificationServiceFactory::GetForProfile(
-          browser_->profile());
+          browser_->GetProfile());
   if (!safety_hub_menu_notification_service) {
     return false;
   }

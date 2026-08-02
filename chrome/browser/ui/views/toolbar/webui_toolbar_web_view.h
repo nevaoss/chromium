@@ -111,6 +111,9 @@ class WebUIToolbarControlDelegate {
   virtual void OnFocusRequested(
       toolbar_ui_api::mojom::FocusRequestTarget target) = 0;
 
+  virtual std::optional<GURL> ConsumeDroppedUrl(
+      const gfx::PointF& drop_position) = 0;
+
   // Read the latest state.
   virtual const toolbar_ui_api::mojom::NavigationControlsState& GetState()
       const = 0;
@@ -190,6 +193,7 @@ class WebUIToolbarWebView
   void OnPageInitialized() override;
   void InvokePinnedToolbarAction(
       toolbar_ui_api::mojom::PinnedToolbarAction action_id) override;
+  void OnLocationBarFocusWithinChanged(bool focused) override;
   void OnLhsChipMousePressed(
       toolbar_ui_api::mojom::LhsChipIdentifier identifier) override;
   void OnLhsChipClicked(toolbar_ui_api::mojom::LhsChipIdentifier identifier,
@@ -217,6 +221,10 @@ class WebUIToolbarWebView
   void ExecuteExtensionAction(const std::string& extension_id) override;
   void ShowExtensionContextMenu(const std::string& extension_id,
                                 ui::mojom::MenuSourceType source) override;
+  base::expected<toolbar_ui_api::mojom::AdjustOmniboxTextForCopyResultPtr,
+                 mojo_base::mojom::ErrorPtr>
+  AdjustOmniboxTextForCopy(const std::u16string& text,
+                           int32_t selection_start) override;
 
   // BrowserControlsService::BrowserControlsServiceDelegate:
   void PermitLaunchUrl() override;
@@ -340,6 +348,7 @@ class WebUIToolbarWebView
                            BackForwardButtonsModifierClick);
   FRIEND_TEST_ALL_PREFIXES(WebUIToolbarSurfaceSyncBrowserTest,
                            SetsDeadlineOnInit);
+  friend class WebUIToolbarWebViewBrowserTest;
 
   // WebUIToolbarControlDelegate:
   BrowserWindowInterface* GetBrowser() override;
@@ -383,6 +392,8 @@ class WebUIToolbarWebView
       toolbar_ui_api::mojom::AvatarControlStatePtr state) override;
   void OnFocusRequested(
       toolbar_ui_api::mojom::FocusRequestTarget target) override;
+  std::optional<GURL> ConsumeDroppedUrl(
+      const gfx::PointF& drop_position) override;
 
   toolbar_ui_api::mojom::NavigationControlsStatePtr
   GetNavigationControlsState();

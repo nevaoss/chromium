@@ -86,7 +86,9 @@
 #include "third_party/blink/public/web/web_range.h"
 #include "third_party/blink/public/web/web_script_source.h"
 #include "third_party/blink/public/web/web_view.h"
+#include "ui/base/accelerators/accelerator.h"
 #include "ui/base/l10n/l10n_util.h"
+#include "ui/events/blink/blink_event_util.h"
 #include "ui/events/keycodes/keyboard_codes.h"
 
 using blink::WebAutofillClient;
@@ -1104,23 +1106,72 @@ void AutofillAgent::OnSelectControlSelectionChanged(
   }
 }
 
-void AutofillAgent::TextFieldDidReceiveKeyDown(const WebInputElement& element,
-                                               const WebKeyboardEvent& event) {
+bool AutofillAgent::DidReceiveKeyDown(const WebElement& element,
+                                      const WebKeyboardEvent& event) {
   DCHECK(form_util::MaybeWasOwnedByFrame(element, unsafe_render_frame()));
 
-  if (event.windows_key_code == ui::VKEY_DOWN ||
-      event.windows_key_code == ui::VKEY_UP) {
+  if (auto input_element = element.DynamicTo<WebInputElement>();
+      input_element && input_element.IsTextField() &&
+      (event.windows_key_code == ui::VKEY_DOWN ||
+       event.windows_key_code == ui::VKEY_UP)) {
+    // Arrow Down/Up on text-type <input> opens the classical Autofill popup.
     std::optional<PasswordSuggestionRequest> password_request =
         password_autofill_agent_
             ? password_autofill_agent_->CreateRequestForDomain(
-                  element,
+                  input_element,
                   AutofillSuggestionTriggerSource::kTextFieldDidReceiveKeyDown,
                   /*form_cache=*/{})
             : std::nullopt;
     ShowSuggestions(
-        element, AutofillSuggestionTriggerSource::kTextFieldDidReceiveKeyDown,
+        input_element,
+        AutofillSuggestionTriggerSource::kTextFieldDidReceiveKeyDown,
         /*form_cache=*/{}, password_request);
+    return false;  // Do not prevent default.
   }
+
+  if (const blink::RendererPreferences* prefs = GetRendererPreferences();
+      prefs && prefs->autofill_shortcut_key_code != ui::VKEY_UNKNOWN &&
+      base::FeatureList::IsEnabled(
+          features::kAutofillAtMemoryTriggerShortcut)) {
+    // The configured keyboard shortcut opens the Autofill AtMemory popup.
+    const ui::Accelerator expected_accelerator(
+        prefs->autofill_shortcut_key_code, prefs->autofill_shortcut_modifiers);
+    const ui::Accelerator actual_accelerator(
+        static_cast<ui::KeyboardCode>(event.windows_key_code),
+        ui::WebEventModifiersToEventFlags(event.GetModifiers()));
+
+    // Returns true if `event` may produce a character.
+    auto is_printable = [](const WebKeyboardEvent& event) {
+      if (base::IsAsciiControl(event.text[0])) {
+        return false;
+      }
+      if constexpr (BUILDFLAG(IS_MAC)) {
+        // On Mac, Meta+X is not printable but leads to `event.text[0] != 'X'`.
+        return !(event.GetModifiers() & blink::WebInputEvent::kMetaKey);
+      }
+      return true;
+    };
+
+    if (expected_accelerator == actual_accelerator && !is_printable(event)) {
+      if (auto control = element.DynamicTo<WebFormControlElement>();
+          control && form_util::IsTextAreaElementOrTextInput(control) &&
+          control.FormControlTypeForAutofill() !=
+              blink::mojom::FormControlType::kInputPassword) {
+        if (!actual_accelerator.IsRepeat()) {
+          ShowSuggestions(control, AutofillSuggestionTriggerSource::kAtMemory,
+                          SynchronousFormCache(), std::nullopt);
+        }
+        return true;  // Prevent default.
+      } else if (element.IsContentEditable()) {
+        if (!actual_accelerator.IsRepeat()) {
+          ShowSuggestionsForContentEditable(
+              element, AutofillSuggestionTriggerSource::kAtMemory);
+        }
+        return true;  // Prevent default.
+      }
+    }
+  }
+  return false;
 }
 
 void AutofillAgent::OpenTextDataListChooser(const WebInputElement& element) {
@@ -1865,6 +1916,12 @@ void AutofillAgent::UpdateEmailVerificationState(
     case mojom::EmailVerificationState::kVerified:
       blink_state = blink::EmailVerificationState::kVerified;
       break;
+    case mojom::EmailVerificationState::kLoggedOutOrUnsupported:
+      blink_state = blink::EmailVerificationState::kLoggedOutOrUnsupported;
+      break;
+    case mojom::EmailVerificationState::kFailed:
+      blink_state = blink::EmailVerificationState::kFailed;
+      break;
   }
   input_element.SetEmailVerificationState(blink_state);
 }
@@ -2439,25 +2496,16 @@ mojom::AutofillDriver* AutofillAgent::unsafe_autofill_driver() {
 }
 
 void AutofillAgent::OnJavaScriptAutofillDetected(
-    FormRendererId form_id,
-    FieldRendererId trigger_field_id,
+    blink::WebFormControlElement trigger_field,
     const std::vector<FieldRendererId>& field_ids) {
-  if (field_ids.empty()) {
-    return;
-  }
-  blink::WebFormControlElement element =
-      form_util::GetFormControlByRendererId(field_ids.front());
-  if (!element) {
-    return;
-  }
   if (std::optional<FormAndField> form_and_field =
           form_util::FindFormAndFieldForFormControlElement(
-              element, field_data_manager(),
+              trigger_field, field_data_manager(),
               GetCallTimerState(kOnJavaScriptAutofillDetected),
               button_titles_cache(), /*form_cache=*/{})) {
     auto& [form, field] = *form_and_field;
     if (auto* autofill_driver = unsafe_autofill_driver()) {
-      autofill_driver->DidDetectJavaScriptAutofill(form, trigger_field_id,
+      autofill_driver->DidDetectJavaScriptAutofill(form, field->renderer_id(),
                                                    field_ids);
     }
   }

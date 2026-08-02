@@ -103,6 +103,7 @@ FillingProduct GetFillingProductFromSuggestionType(SuggestionType type) {
       return FillingProduct::kCompose;
     case SuggestionType::kDatalistEntry:
       return FillingProduct::kDataList;
+    case SuggestionType::kAtMemoryAiDisclosure:
     case SuggestionType::kAtMemoryGenericError:
     case SuggestionType::kAtMemoryInactivityNudge:
     case SuggestionType::kAtMemoryNoConnection:
@@ -137,6 +138,7 @@ FillingProduct GetFillingProductFromSuggestionType(SuggestionType type) {
     case SuggestionType::kOneTimePasswordEntry:
       return FillingProduct::kOneTimePassword;
     case SuggestionType::kAtMemorySearchResult:
+    case SuggestionType::kManageEnhancedAutofill:
       return FillingProduct::kAtMemory;
     case SuggestionType::kWebauthnCredential:
     case SuggestionType::kWebauthnPasskeyQrCode:

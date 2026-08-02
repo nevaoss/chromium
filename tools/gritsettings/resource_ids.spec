@@ -486,7 +486,7 @@
     "includes": [3769],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/contextual_tasks/resources.grd": {
-    "META": {"sizes": {"includes": [60]}},
+    "META": {"sizes": {"includes": [100]}},
     "includes": [3770],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/data_sharing/resources.grd": {
@@ -932,10 +932,6 @@
     "META": {"sizes": {"includes": [16]}},
     "includes": [5290],
   },
-  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/ai_overlay_dialog/resources.grd": {
-    "META": {"sizes": {"includes": [30]}},
-    "includes": [5300],
-  },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/chromeos/emulator/resources.grd": {
     "META": {"sizes": {"includes": [20]}},
     "includes": [5330],
@@ -943,6 +939,10 @@
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/tab_strip_internals/resources.grd": {
     "META": {"sizes": {"includes": [20]}},
     "includes": [5350],
+  },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/ttc/resources/resources.grd": {
+    "META": {"sizes": {"includes": [30]}},
+    "includes": [5370],
   },
   # END chrome/ WebUI resources section
 

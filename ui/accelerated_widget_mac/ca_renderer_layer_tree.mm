@@ -2,11 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/40285824): Remove this and convert code to safer constructs.
-#pragma allow_unsafe_buffers
-#endif
-
 #include "ui/accelerated_widget_mac/ca_renderer_layer_tree.h"
 
 #import <AVFoundation/AVFoundation.h>
@@ -211,14 +206,12 @@ bool AVSampleBufferDisplayLayerEnqueueIOSurface(
 }
 
 CATransform3D ToCATransform3D(const gfx::Transform& t) {
-  CATransform3D result;
-  auto* dst = &result.m11;
-  for (int col = 0; col < 4; col++) {
-    for (int row = 0; row < 4; row++) {
-      *dst++ = t.rc(row, col);
-    }
-  }
-  return result;
+  return CATransform3D{
+      t.rc(0, 0), t.rc(1, 0), t.rc(2, 0), t.rc(3, 0),  //
+      t.rc(0, 1), t.rc(1, 1), t.rc(2, 1), t.rc(3, 1),  //
+      t.rc(0, 2), t.rc(1, 2), t.rc(2, 2), t.rc(3, 2),  //
+      t.rc(0, 3), t.rc(1, 3), t.rc(2, 3), t.rc(3, 3)   //
+  };
 }
 
 }  // namespace
@@ -416,8 +409,10 @@ void CARendererLayerTree::ContentLayer::UpdateMapAndMatchOldLayers(
   if (matched_content_layer->ca_layer_used_)
     return;
 
-  auto* matched_transform_layer = matched_content_layer->parent_layer_;
-  auto* matched_clip_layer = matched_transform_layer->parent_layer_;
+  TransformLayer* matched_transform_layer =
+      matched_content_layer->parent_layer_;
+  ClipAndSortingLayer* matched_clip_layer =
+      matched_transform_layer->parent_layer_;
 
   // If the parent is different, the superlayer must have changed. It should be
   // removed from its superlayer and inserted back to the new superlayer in

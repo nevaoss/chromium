@@ -243,7 +243,8 @@ suite('SearchboxMixinTest', () => {
     inputElement.inputElement.selectionStart = 3;
     inputElement.inputElement.selectionEnd = 3;
 
-    element.queryAutocomplete('hello', /*preventInlineAutocomplete=*/ false);
+    element.queryAutocomplete(
+        'hello', /*preventInlineAutocomplete=*/ false, /*isOnFocus=*/ false);
 
     const args = await testProxy.handler.whenCalled('queryAutocomplete');
     assertEquals(args.input, 'hello');
@@ -259,7 +260,8 @@ suite('SearchboxMixinTest', () => {
         inputElement.inputElement.selectionEnd = 3;
 
         element.queryAutocomplete(
-            'hello world', /*preventInlineAutocomplete=*/ false);
+            'hello world', /*preventInlineAutocomplete=*/ false,
+            /*isOnFocus=*/ false);
 
         const args = await testProxy.handler.whenCalled('queryAutocomplete');
         assertEquals(args.input, 'hello world');
@@ -282,7 +284,8 @@ suite('SearchboxMixinTest', () => {
   });
 
   test('stale autocomplete response is ignored', async () => {
-    element.queryAutocomplete('he', /*preventInlineAutocomplete=*/ false);
+    element.queryAutocomplete(
+        'he', /*preventInlineAutocomplete=*/ false, /*isOnFocus=*/ false);
     assertEquals(1, testProxy.handler.getCallCount('queryAutocomplete'));
 
     const matches = [createSearchMatchForTesting(), createUrlMatch()];
@@ -378,7 +381,7 @@ suite('SearchboxMixinTest', () => {
   test('pressing Enter in empty input prevents new line', async () => {
     const mockInput = element.getInputElement();
     mockInput.inputElement.value = '';
-    element.queryAutocomplete('', false);
+    element.queryAutocomplete('', false, /*isOnFocus=*/ false);
     element.onAutocompleteResultChanged(createAutocompleteResultForTesting({
       queryId: element.activeQueryId,
       input: '',
@@ -562,6 +565,59 @@ suite('SearchboxMixinTest', () => {
     assertEquals(0, args.line);
     assertEquals(matches[0]!.destinationUrl, args.url);
   });
+
+  test(
+      'clicking remove button after interaction freeze unfreezes and accepts new results',
+      async () => {
+        const mockInput = element.getInputElement();
+        await simulateUserTextInput(mockInput, 'hello');
+        const queryId = element.activeQueryId;
+
+        const matches = [
+          createUrlMatch(
+              {supportsDeletion: true, destinationUrl: 'https://first.com'}),
+          createUrlMatch(
+              {supportsDeletion: true, destinationUrl: 'https://second.com'}),
+        ];
+        element.onAutocompleteResultChanged(createAutocompleteResultForTesting({
+          queryId: queryId,
+          input: 'hello',
+          matches: matches,
+        }));
+        await microtasksFinished();
+        assertEquals(2, element.result!.matches.length);
+
+        // Freeze `activeQueryId` by simulating user interaction. New
+        // autocomplete results for 'hello' will be ignored to avoid clobbering
+        // user actions.
+        const arrowDownEvent = createKeyboardEvent('ArrowDown');
+        mockInput.inputElement.dispatchEvent(arrowDownEvent);
+        await microtasksFinished();
+        assertEquals(-1, element.activeQueryId);
+
+        // Click remove button on the first match.
+        const matchEl = element.getDropdownElement().shadowRoot.querySelector(
+            'cr-searchbox-match')!;
+        matchEl.$.remove.click();
+
+        const args =
+            await testProxy.handler.whenCalled('deleteAutocompleteMatch');
+        assertEquals(0, args.line);
+        assertEquals(matches[0]!.destinationUrl, args.url);
+
+        // Backend sends updated results without the deleted match.
+        element.onAutocompleteResultChanged(createAutocompleteResultForTesting({
+          queryId: queryId,
+          input: 'hello',
+          matches: [matches[1]!],
+        }));
+        await microtasksFinished();
+
+        // The new results should be accepted despite the prior freeze.
+        assertEquals(1, element.result!.matches.length);
+        assertEquals(
+            'https://second.com', element.result!.matches[0]!.destinationUrl);
+      });
 
   // TODO(crbug.com/453570027): Test is flaky.
   test.skip('arrow up/down moves selection / focus', async () => {

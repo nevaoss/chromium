@@ -135,10 +135,13 @@ import java.util.concurrent.TimeUnit;
     ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE,
     "disable-features=IPH_FeedHeaderMenu"
 })
+@EnableFeatures(
+        ChromeFeatureList.HOME_BUTTON_REMOVAL
+                + ":set_default_to_false_on_homepage_on_desktop/false")
 public class NewTabPageTest {
     private static final int ARTICLE_SECTION_HEADER_POSITION = 1;
 
-    private static final int RENDER_TEST_REVISION = 8;
+    private static final int RENDER_TEST_REVISION = 9;
 
     private static final String HISTOGRAM_NTP_MODULE_CLICK = "NewTabPage.Module.Click";
     private static final String HISTOGRAM_NTP_MODULE_LONGCLICK = "NewTabPage.Module.LongClick";

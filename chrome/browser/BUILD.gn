@@ -399,6 +399,7 @@ source_set("startup_data") {
 source_set("chrome_browser_main") {
   public = [ "chrome_browser_main.h" ]
   deps = [
+    ":after_startup_task_utils",
     ":buildflags",
     "//base",
     "//build:buildflag_header_h",
@@ -3512,7 +3513,6 @@ source_set("browser") {
       "//chrome/browser/ash/accessibility/live_caption",
       "//chrome/browser/ash/account_manager",
       "//chrome/browser/ash/ambient",
-      "//chrome/browser/ash/android_sms",
       "//chrome/browser/ash/api/tasks",
       "//chrome/browser/ash/app_list",
       "//chrome/browser/ash/app_list/arc",
@@ -3979,7 +3979,6 @@ source_set("browser") {
       "//chromeos/components/security_token_pin",
       "//chromeos/components/webauthn",
       "//chromeos/constants",
-      "//chromeos/crosapi/cpp:crosapi_constants",
       "//chromeos/crosapi/mojom",
       "//chromeos/dbus/constants",
       "//chromeos/dbus/power",
@@ -4048,10 +4047,6 @@ source_set("browser") {
       "//ui/ozone",
       "//ui/wm/public",
     ]
-
-    if (is_chrome_branded) {
-      deps += [ "//chrome/browser/nearby_sharing/internal/icons:vector_icons" ]
-    }
 
     if (!is_official_build) {
       deps += [
@@ -5392,6 +5387,7 @@ if (!is_android) {
       "chrome_worker_browsertest.cc",
       "crash_recovery_browsertest.cc",
       "fast_shutdown_browsertest.cc",
+      "file_select_helper_browsertest.cc",
       "icon_loader_browsertest.cc",
       "iframe_browsertest.cc",
       "l10n_util_browsertest.cc",
@@ -5411,6 +5407,7 @@ if (!is_android) {
       ":chained_back_navigation_tracker",
       ":chrome_browser_main",
       ":chrome_content_browser_client",
+      ":file_select_helper",
       ":icon_loader",
       ":platform_util_internal",
       "//base",
@@ -5425,6 +5422,7 @@ if (!is_android) {
       "//chrome/browser/login_detection",
       "//chrome/browser/pdf:pdf_extension_test_utils",
       "//chrome/browser/policy:test_support",
+      "//chrome/browser/prefs:util",
       "//chrome/browser/search_engines",
       "//chrome/browser/ui:ui_features",
       "//chrome/browser/ui/login",
@@ -5441,6 +5439,7 @@ if (!is_android) {
       "//pdf:features",
       "//storage/browser:test_support",
       "//testing/gtest",
+      "//ui/shell_dialogs:test_support",
     ]
 
     if (is_win || is_linux || is_chromeos) {

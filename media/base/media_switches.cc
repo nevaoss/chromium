@@ -408,6 +408,9 @@ BASE_FEATURE(kEncryptedMediaOcclusionTracking,
 BASE_FEATURE(kExtendedVideoBitstreamValidation,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+// Enables Rust version of MPEG parser (MP3/ADTS). Remove after M152 stable.
+BASE_FEATURE(kRustMpegAudioDataParser, base::FEATURE_ENABLED_BY_DEFAULT);
+
 // Enables support for >8 audio channel layouts (i.e., 5.1.4 and 7.1.4).
 BASE_FEATURE(kEnableHighChannelLayouts, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -817,6 +820,14 @@ BASE_FEATURE(kAcceleratedVideoEncodeLinux,
 // Intended for manual usage only in order to gague the status of newer driver
 // implementations.
 BASE_FEATURE(kVaapiIgnoreDriverChecks, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// When both USE_VAAPI and USE_V4L2_CODEC are compiled in, selects the active
+// hardware video acceleration backend. Disabled (default) => VA-API; enabled
+// => V4L2. Flip with --enable-features=PreferV4L2VideoAcceleration. Consulted
+// by media::ActiveLinuxVideoDecoderType() in decoder.cc.
+#if BUILDFLAG(USE_VAAPI) && BUILDFLAG(USE_V4L2_CODEC)
+BASE_FEATURE(kPreferV4L2VideoAcceleration, base::FEATURE_DISABLED_BY_DEFAULT);
+#endif
 #endif  // BUILDFLAG(IS_LINUX)
 
 // NVIDIA VA-API drivers do not support Chromium and can sometimes cause

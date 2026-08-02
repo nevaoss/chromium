@@ -137,6 +137,20 @@ NET_EXPORT BASE_DECLARE_FEATURE(kAdjustIPv6FallbackTime);
 // The duration to use for the slow timer if the feature is enabled.
 NET_EXPORT BASE_DECLARE_FEATURE_PARAM(base::TimeDelta, kIPv6FallbackTime);
 
+// Feature to base the Happy Eyeballs slow timer on the network RTT.
+NET_EXPORT BASE_DECLARE_FEATURE(kIPv6FallbackBasedOnRTT);
+
+// The multiplier for the RTT if the RTT based fallback feature is enabled.
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(double, kIPv6FallbackRTTMultiplier);
+
+// The minimum value to use for the fallback time if the RTT based fallback
+// feature is enabled.
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(base::TimeDelta, kIPv6FallbackMin);
+
+// The maximum value to use for the fallback time if the RTT based fallback
+// feature is enabled.
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(base::TimeDelta, kIPv6FallbackMax);
+
 // Allows Cache-Control: immutable to override Pragma: no-cache.
 NET_EXPORT BASE_DECLARE_FEATURE(kCacheControlImmutable);
 
@@ -474,10 +488,10 @@ NET_EXPORT BASE_DECLARE_FEATURE(kDeviceBoundSessions);
 // requests.
 NET_EXPORT BASE_DECLARE_FEATURE(
     kDeviceBoundSessionsBypassDeferralsForRefreshRequests);
-// This feature enables the Device Bound Session Credentials refresh quota.
+// This feature enables the Device Bound Session Credentials signing quota.
 // This behavior is expected by default; disabling it should only be for
 // testing purposes.
-NET_EXPORT BASE_DECLARE_FEATURE_PARAM(bool, kDeviceBoundSessionsRefreshQuota);
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(bool, kDeviceBoundSessionsSigningQuota);
 // This feature controls whether DBSC checks the .well-known for subdomain
 // registration.
 NET_EXPORT BASE_DECLARE_FEATURE_PARAM(
@@ -493,18 +507,6 @@ NET_EXPORT BASE_DECLARE_FEATURE(kDeviceBoundSessionsFederatedRegistration);
 NET_EXPORT BASE_DECLARE_FEATURE_PARAM(
     bool,
     kDeviceBoundSessionsFederatedRegistrationCheckWellKnown);
-
-// This feature controls whether to proactively trigger Device
-// Bound Session refreshes when a cookie is soon to expire.
-NET_EXPORT BASE_DECLARE_FEATURE(kDeviceBoundSessionProactiveRefresh);
-// This controls the threshold for proactive refrehshes.
-NET_EXPORT BASE_DECLARE_FEATURE_PARAM(
-    base::TimeDelta,
-    kDeviceBoundSessionProactiveRefreshThreshold);
-
-// This feature controls whether DBSC has a signing quota instead of a refresh
-// quota, and has associated signing caching for refreshes.
-NET_EXPORT BASE_DECLARE_FEATURE(kDeviceBoundSessionSigningQuotaAndCaching);
 
 // This feature controls whether DBSC is allowed to register sessions on
 // a certain list of sites, as specified in
@@ -948,6 +950,10 @@ NET_EXPORT BASE_DECLARE_FEATURE_PARAM(int, kCacheCertVerificationTtlSecs);
 // TODO(crbug.com/526597789): Clean up this killswitch after successfully
 // deployed.
 NET_EXPORT BASE_DECLARE_FEATURE(kTlsGreaseSigalgs);
+
+// Enables the BackendCleanupTracker for HTTP cache backends (net::DISK_CACHE)
+// to prevent conflicts when multiple backends are created for the same path.
+NET_EXPORT BASE_DECLARE_FEATURE(kEnableBackendCleanupTrackerOnHttpCache);
 
 }  // namespace net::features
 

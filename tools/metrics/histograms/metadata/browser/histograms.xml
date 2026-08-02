@@ -777,7 +777,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Browser.MainThreadsCongestion.Used" units="janks"
-    expires_after="2026-11-08">
+    expires_after="2027-01-10">
   <owner>pmonette@chromium.org</owner>
   <owner>catan-team@chromium.org</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -1237,7 +1237,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Browser.Tabs.TabSwitchResult3{TabSwitchingType}"
-    enum="TabSwitchResult2" expires_after="2026-11-08">
+    enum="TabSwitchResult2" expires_after="2027-01-10">
   <owner>fdoray@chromium.org</owner>
   <owner>joenotcharles@google.com</owner>
   <owner>catan-team@chromium.org</owner>
@@ -1263,7 +1263,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Browser.Tabs.TotalSwitchDuration3{TabSwitchingType}"
-    units="ms" expires_after="2026-11-08">
+    units="ms" expires_after="2027-01-10">
   <owner>jonross@chromium.org</owner>
   <owner>joenotcharles@google.com</owner>
   <owner>catan-team@chromium.org</owner>
@@ -1612,7 +1612,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="BrowserRenderProcessHost.SiteInstanceRenderProcessAssignment"
-    enum="SiteInstanceProcessAssignment" expires_after="2026-11-08">
+    enum="SiteInstanceProcessAssignment" expires_after="2027-01-10">
   <owner>ziadyoussef@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
@@ -2138,6 +2138,30 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="InfoBar.Centralized.{Action}" enum="InfoBarIdentifier"
+    expires_after="2027-07-13">
+  <owner>musalmaan@chromium.org</owner>
+  <owner>top-chrome-desktop-ui@google.com</owner>
+  <summary>
+    Records when a desktop infobar centralized under the new centralization
+    framework triggers a specific {Action}.
+
+    Each bucket in this sparse histogram corresponds to a unique
+    InfoBarIdentifier, and the count reflects the number of times that specific
+    infobar triggered the {Action}.
+
+    Recorded once per event to track user engagement and health of migrated
+    infobars under the centralization framework.
+  </summary>
+  <token key="Action">
+    <variant name="Accept" summary="Accept/OK button click action"/>
+    <variant name="Cancel" summary="Cancel button click action"/>
+    <variant name="Dismiss" summary="Dismissal action"/>
+    <variant name="LinkClicked" summary="Link click action"/>
+    <variant name="Show" summary="Show/display action"/>
+  </token>
+</histogram>
+
 <histogram name="InfoBar.CountAtShow" units="InfoBars" expires_after="never">
 <!-- expires-never: Required as long as infobars exist. -->
 
@@ -2414,7 +2438,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="{SidePanelType}.{SidePanelEntry}.TimeFromEntryTriggerToShown"
-    units="ms" expires_after="2026-11-08">
+    units="ms" expires_after="2027-01-10">
   <owner>corising@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
   <summary>

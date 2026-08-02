@@ -389,6 +389,16 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Tab.Android.GracefulShutdownStatus"
+    enum="GracefulShutdownStatus" expires_after="2027-02-20">
+  <owner>ckitagawa@chromium.org</owner>
+  <owner>clank-tab-dev@chromium.org</owner>
+  <summary>
+    [Android] Records lifecycle milestones and failure states of the
+    GracefulShutdownService during window closure.
+  </summary>
+</histogram>
+
 <histogram name="Tab.Android.MediaState" enum="AndroidTabMediaState"
     expires_after="2027-02-20">
   <owner>polardz@google.com</owner>
@@ -569,6 +579,30 @@ chromium-metrics-reviews@google.com.
   <summary>
     [iOS] Whether a page has a theme-color html tag set, recorded when the page
     is fully loaded.
+  </summary>
+</histogram>
+
+<histogram name="Tab.Icon.UpdateThrobber.Time" units="microseconds"
+    expires_after="2026-10-10">
+  <owner>gjc@google.com</owner>
+  <owner>chrome-loading@google.com</owner>
+  <summary>
+    Records the duration of TabIcon::UpdateThrobber calls. Recorded when the
+    tab's throbber is updated. This captures fast cached cases as well as slow
+    layer creation/destruction cases. This metric is only reported for clients
+    with high-resolution clocks.
+  </summary>
+</histogram>
+
+<histogram name="Tab.Icon.UpdateThrobber.Time.NotCached" units="microseconds"
+    expires_after="2026-10-10">
+  <owner>gjc@google.com</owner>
+  <owner>chrome-loading@google.com</owner>
+  <summary>
+    Records the duration of TabIcon::UpdateThrobber calls that result in actual
+    layer creation or destruction. Recorded when the tab's throbber is updated
+    and results in actual layer creation or destruction. This metric is only
+    reported for clients with high-resolution clocks.
   </summary>
 </histogram>
 
@@ -965,7 +999,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="TabGroups.SavedTabGroupLifespan" units="minutes"
-    expires_after="2026-07-19">
+    expires_after="2026-12-15">
   <owner>dljames@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
   <summary>
@@ -1080,7 +1114,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="TabGroups.SavedTabGroupUnpinnedCount" units="groups"
-    expires_after="2026-07-19">
+    expires_after="2026-12-15">
   <owner>dljames@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
   <summary>
@@ -1452,7 +1486,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="TabGroups.Sync.TabGroup.Closed.Reason"
-    enum="GroupClosingSource" expires_after="2026-10-11">
+    enum="GroupClosingSource" expires_after="2027-01-10">
   <owner>shaktisahu@chromium.org</owner>
   <owner>clank-tab-dev@google.com</owner>
   <summary>
@@ -1881,7 +1915,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="TabRestore.{RestoreType}.TimeBetweenClosedAndRestored"
-    units="ms" expires_after="2026-01-18">
+    units="ms" expires_after="2026-12-18">
   <owner>sreejakshetty@chromium.org</owner>
   <owner>chrome-brapp-loading@google.com</owner>
   <summary>
@@ -2118,7 +2152,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Tabs.FreezeAndAppendPendingNavigationResult"
-    enum="BooleanSuccess" expires_after="2026-11-08">
+    enum="BooleanSuccess" expires_after="2027-01-10">
   <owner>ckitagawa@chromium.org</owner>
   <owner>clank-tab-dev@google.com</owner>
   <summary>
@@ -2771,7 +2805,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Tabs.TabPersistentStore.ActiveTabLoaded.{ActiveTabType}"
-    units="ms" expires_after="2026-08-23">
+    units="ms" expires_after="2027-08-23">
   <owner>mfiaz@google.com</owner>
   <owner>clank-tab-dev@google.com</owner>
   <summary>
@@ -2786,7 +2820,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Tabs.TabPersistentStore.AuthoritativeStoreType"
-    enum="PersistentStoreType" expires_after="2026-08-23">
+    enum="PersistentStoreType" expires_after="2027-08-23">
   <owner>mfiaz@google.com</owner>
   <owner>clank-tab-dev@google.com</owner>
   <summary>
@@ -2796,7 +2830,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Tabs.TabPersistentStore.Initialized" units="ms"
-    expires_after="2026-08-23">
+    expires_after="2027-08-23">
   <owner>mfiaz@google.com</owner>
   <owner>clank-tab-dev@google.com</owner>
   <summary>
@@ -2817,7 +2851,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Tabs.TabPersistentStore.StateLoaded" units="ms"
-    expires_after="2026-08-23">
+    expires_after="2027-08-23">
   <owner>mfiaz@google.com</owner>
   <owner>clank-tab-dev@google.com</owner>
   <summary>
@@ -3079,7 +3113,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Tabs.TabSearch.TimeToClose" units="ms"
-    expires_after="2026-11-08">
+    expires_after="2027-01-10">
   <owner>emshack@chromium.org</owner>
   <owner>shibalik@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>

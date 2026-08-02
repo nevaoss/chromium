@@ -112,7 +112,8 @@ void RenderWidgetHostViewChildFrame::
   if (!selection_controller_client_)
     return;
 
-  auto* root_view = frame_connector_->GetRootRenderWidgetHostView();
+  auto* root_view = view_for_touch_selection_client_manager_.get();
+  view_for_touch_selection_client_manager_.reset();
   if (root_view) {
     auto* manager = root_view->GetTouchSelectionControllerClientManager();
     if (manager) {
@@ -183,6 +184,7 @@ void RenderWidgetHostViewChildFrame::SetFrameConnector(
           std::make_unique<TouchSelectionControllerClientChildFrame>(this,
                                                                      manager);
       manager->AddObserver(this);
+      view_for_touch_selection_client_manager_ = root_view->GetWeakPtr();
 
 #if BUILDFLAG(IS_ANDROID)
       auto* observer = root_view->GetTouchSelectionControllerInputObserver();
@@ -484,18 +486,19 @@ void RenderWidgetHostViewChildFrame::OnStartStylusWriting() {
   if (!root) {
     return;
   }
-  // Register a callback on the root view that handles the TSF
-  // FocusHandwritingTarget response directly in this child frame.
-  root->SetStylusHandwritingFocusCallback(base::BindRepeating(
-      &RenderWidgetHostViewChildFrame::OnFocusHandwritingTarget,
-      weak_factory_.GetWeakPtr()));
-  root->OnStartStylusWriting();
+  root->StartStylusWritingFromChildHostView(
+      this, base::BindRepeating(
+                &RenderWidgetHostViewChildFrame::OnFocusHandwritingTarget,
+                weak_factory_.GetWeakPtr()));
 }
 
 void RenderWidgetHostViewChildFrame::OnEditElementFocusedForStylusWriting(
     blink::mojom::StylusWritingFocusResultPtr focus_result) {
   auto* root = GetRootView();
   if (!root) {
+    if (StylusHandwritingControllerWin::GetInstance()) {
+      StylusHandwritingControllerWin::GetInstance()->OnFocusFailed();
+    }
     return;
   }
   // Transform proximate character bounds from child frame widget space to root
@@ -514,9 +517,6 @@ void RenderWidgetHostViewChildFrame::OnFocusHandwritingTarget(
     const gfx::Size& tolerance_screen_distance_in_dips) {
   // TODO(crbug.com/355578906): Consider `tolerance_screen_distance_in_dips`.
   if (!host()) {
-    if (StylusHandwritingControllerWin::GetInstance()) {
-      StylusHandwritingControllerWin::GetInstance()->OnFocusFailed();
-    }
     return;
   }
 
@@ -773,7 +773,7 @@ void RenderWidgetHostViewChildFrame::TransformPointToRootSurface(
   input_helper_->TransformPointToRootSurface(point);
 }
 
-gfx::Rect RenderWidgetHostViewChildFrame::GetBoundsInRootWindow() {
+gfx::Rect RenderWidgetHostViewChildFrame::GetBoundsInScreen() {
   gfx::Rect rect;
   if (frame_connector_) {
     RenderWidgetHostViewBase* root_view =
@@ -781,7 +781,7 @@ gfx::Rect RenderWidgetHostViewChildFrame::GetBoundsInRootWindow() {
 
     // The root_view can be null in tests when using a TestWebContents.
     if (root_view)
-      rect = root_view->GetBoundsInRootWindow();
+      rect = root_view->GetBoundsInScreen();
   }
   return rect;
 }

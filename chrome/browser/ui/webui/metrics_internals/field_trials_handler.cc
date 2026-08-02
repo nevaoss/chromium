@@ -13,6 +13,8 @@
 #include "components/variations/service/variations_service.h"
 #include "google_apis/gaia/gaia_auth_util.h"
 
+// LINT.IfChange(field_trials_handler)
+
 FieldTrialsHandler::FieldTrialsHandler(Profile* profile)
     : profile_(profile),
       base_handler_(std::make_unique<metrics::FieldTrialsHandlerBase>(
@@ -47,12 +49,17 @@ void FieldTrialsHandler::ResolvePageCallback(const base::ValueView callback_id,
 
 void FieldTrialsHandler::HandleFetchState(const base::ListValue& args) {
   AllowJavascript();
+  // args[0]: Callback ID.
   CHECK_EQ(args.size(), 1U);
   base_handler_->HandleFetchState(args[0], GetShowNames());
 }
 
 void FieldTrialsHandler::HandleSetEnrollState(const base::ListValue& args) {
   AllowJavascript();
+  // args[0]: Callback ID.
+  // args[1]: Trial name hash (string).
+  // args[2]: Group name hash (string).
+  // args[3]: Whether the override is enabled (bool).
   CHECK_EQ(args.size(), 4U);
   base_handler_->HandleSetEnrollState(args[0], args[1].GetString(),
                                       args[2].GetString(), args[3].GetBool());
@@ -65,6 +72,8 @@ void FieldTrialsHandler::HandleRestart(const base::ListValue& args) {
 void FieldTrialsHandler::HandleLookupTrialOrGroupName(
     const base::ListValue& args) {
   AllowJavascript();
+  // args[0]: Callback ID.
+  // args[1]: Trial or group name (string).
   CHECK_EQ(args.size(), 2U);
   base_handler_->HandleLookupTrialOrGroupName(args[0], args[1].GetString());
 }
@@ -83,3 +92,5 @@ bool FieldTrialsHandler::GetShowNames() {
                  ->GetPrimaryAccountInfo(signin::ConsentLevel::kSignin)
                  .email);
 }
+
+// LINT.ThenChange(//ios/chrome/browser/webui/ui_bundled/metrics_internals/field_trials_handler.mm)

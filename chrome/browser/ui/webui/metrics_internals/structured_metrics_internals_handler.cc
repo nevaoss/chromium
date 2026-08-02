@@ -9,6 +9,8 @@
 #include "chrome/browser/browser_process.h"
 #include "components/metrics_services_manager/metrics_services_manager.h"
 
+// LINT.IfChange(structured_metrics_internals_handler)
+
 StructuredMetricsInternalsHandler::StructuredMetricsInternalsHandler()
     : base_handler_(std::make_unique<
                     metrics::structured::StructuredMetricsInternalsHandlerBase>(
@@ -41,11 +43,17 @@ void StructuredMetricsInternalsHandler::ResolvePageCallback(
 void StructuredMetricsInternalsHandler::HandleFetchStructuredMetricsEvents(
     const base::ListValue& args) {
   AllowJavascript();
+  // args[0]: Callback ID.
+  CHECK_EQ(args.size(), 1U);
   base_handler_->HandleFetchStructuredMetricsEvents(args[0]);
 }
 
 void StructuredMetricsInternalsHandler::HandleFetchStructuredMetricsSummary(
     const base::ListValue& args) {
   AllowJavascript();
+  // args[0]: Callback ID.
+  CHECK_EQ(args.size(), 1U);
   base_handler_->HandleFetchStructuredMetricsSummary(args[0]);
 }
+
+// LINT.ThenChange(//ios/chrome/browser/webui/ui_bundled/metrics_internals/structured_metrics_internals_handler.mm)

@@ -345,6 +345,14 @@ public class AwContents implements SmartClipProvider {
     }
 
     /**
+     * Class to support the creation of the content client factory happening externally while still
+     * maintaining 1:1 ownership within AwContents.
+     */
+    public interface AwContentsClientFactory {
+        AwContentsClient create(AwContents awContents);
+    }
+
+    /**
      * Class to facilitate dependency injection. Subclasses by test code to provide mock versions of
      * certain AwContents dependencies.
      */
@@ -356,6 +364,22 @@ public class AwContents implements SmartClipProvider {
         public AwScrollOffsetManager createScrollOffsetManager(
                 AwScrollOffsetManager.Delegate delegate) {
             return new AwScrollOffsetManager(delegate);
+        }
+
+        public AwSettings createAwSettings(
+                AwContents awContents,
+                boolean isAccessFromFileUrlsGrantedByDefault,
+                boolean supportsLegacyQuirks,
+                boolean allowEmptyDocumentPersistence,
+                boolean allowGeolocationOnInsecureOrigins,
+                boolean doNotUpdateSelectionOnMutatingSelectionRange) {
+            return new AwSettings(
+                    awContents,
+                    isAccessFromFileUrlsGrantedByDefault,
+                    supportsLegacyQuirks,
+                    allowEmptyDocumentPersistence,
+                    allowGeolocationOnInsecureOrigins,
+                    doNotUpdateSelectionOnMutatingSelectionRange);
         }
     }
 
@@ -375,6 +399,7 @@ public class AwContents implements SmartClipProvider {
     private long mNativeAwContents;
     private AwBrowserContext mBrowserContext;
     private ViewGroup mContainerView;
+    private volatile ViewGroup mPrimaryContainerView;
     private AwDrawFnImpl mDrawFunctor;
     private Context mContext;
     private final int mAppTargetSdkVersion;
@@ -580,7 +605,6 @@ public class AwContents implements SmartClipProvider {
 
     /** A class that stores the state needed to enter and exit fullscreen. */
     private static class FullScreenTransitionsState {
-        private final ViewGroup mInitialContainerView;
         private final InternalAccessDelegate mInitialInternalAccessAdapter;
         private final AwViewMethods mInitialAwViewMethods;
         private FullScreenView mFullScreenView;
@@ -592,10 +616,8 @@ public class AwContents implements SmartClipProvider {
         private int mScrollY;
 
         private FullScreenTransitionsState(
-                ViewGroup initialContainerView,
                 InternalAccessDelegate initialInternalAccessAdapter,
                 AwViewMethods initialAwViewMethods) {
-            mInitialContainerView = initialContainerView;
             mInitialInternalAccessAdapter = initialInternalAccessAdapter;
             mInitialAwViewMethods = initialAwViewMethods;
         }
@@ -629,10 +651,6 @@ public class AwContents implements SmartClipProvider {
 
         private boolean isFullScreen() {
             return mFullScreenView != null;
-        }
-
-        private ViewGroup getInitialContainerView() {
-            return mInitialContainerView;
         }
 
         private InternalAccessDelegate getInitialInternalAccessDelegate() {
@@ -910,9 +928,7 @@ public class AwContents implements SmartClipProvider {
      * @param context the context to use, usually containerView.getContext().
      * @param internalAccessAdapter to access private methods on containerView.
      * @param drawFnAccess to access the draw functor provided by the WebView.
-     * @param contentsClient will receive API callbacks from this WebView Contents.
-     * @param awSettings AwSettings instance used to configure the AwContents.
-     *     <p>This constructor uses the default view sizing policy.
+     * @param clientFactory will create the AwContentsClient which receives callbacks.
      */
     public AwContents(
             AwBrowserContext browserContext,
@@ -920,16 +936,14 @@ public class AwContents implements SmartClipProvider {
             Context context,
             InternalAccessDelegate internalAccessAdapter,
             AwDrawFnImpl.DrawFnAccess drawFnAccess,
-            AwContentsClient contentsClient,
-            AwSettings awSettings) {
+            AwContentsClientFactory clientFactory) {
         this(
                 browserContext,
                 containerView,
                 context,
                 internalAccessAdapter,
                 drawFnAccess,
-                contentsClient,
-                awSettings,
+                clientFactory,
                 new DependencyFactory());
     }
 
@@ -945,8 +959,7 @@ public class AwContents implements SmartClipProvider {
             Context context,
             InternalAccessDelegate internalAccessAdapter,
             AwDrawFnImpl.DrawFnAccess drawFnAccess,
-            AwContentsClient contentsClient,
-            AwSettings settings,
+            AwContentsClientFactory clientFactory,
             DependencyFactory dependencyFactory) {
         assert browserContext != null;
         long startTime = SystemClock.uptimeMillis();
@@ -1019,35 +1032,72 @@ public class AwContents implements SmartClipProvider {
                             },
                             containerView);
             mRendererPriority = RendererPriority.HIGH;
-            mSettings = settings;
+            mContext = context;
+            mAppTargetSdkVersion = mContext.getApplicationInfo().targetSdkVersion;
+
+            boolean isAccessFromFileUrlsGrantedByDefault =
+                    mAppTargetSdkVersion < Build.VERSION_CODES.JELLY_BEAN;
+            boolean areLegacyQuirksEnabled = mAppTargetSdkVersion < Build.VERSION_CODES.KITKAT;
+            boolean allowEmptyDocumentPersistence = mAppTargetSdkVersion <= Build.VERSION_CODES.M;
+            boolean allowGeolocationOnInsecureOrigins =
+                    mAppTargetSdkVersion <= Build.VERSION_CODES.M;
+            boolean doNotUpdateSelectionOnMutatingSelectionRange =
+                    mAppTargetSdkVersion <= Build.VERSION_CODES.M;
+
+            mSettings =
+                    dependencyFactory.createAwSettings(
+                            this,
+                            isAccessFromFileUrlsGrantedByDefault,
+                            areLegacyQuirksEnabled,
+                            allowEmptyDocumentPersistence,
+                            allowGeolocationOnInsecureOrigins,
+                            doNotUpdateSelectionOnMutatingSelectionRange);
+
+            if (mAppTargetSdkVersion < Build.VERSION_CODES.LOLLIPOP) {
+                // Prior to Lollipop we always allowed third party cookies and mixed content.
+                mSettings.setMixedContentMode(
+                        android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+                mSettings.setAcceptThirdPartyCookies(true);
+                mSettings.setZeroLayoutHeightDisablesViewportQuirk(true);
+            }
+
+            if (mAppTargetSdkVersion >= Build.VERSION_CODES.P) {
+                mSettings.setCssHexAlphaColorEnabled(true);
+                mSettings.setScrollTopLeftInteropEnabled(true);
+            }
+
+            if (mAppTargetSdkVersion >= Build.VERSION_CODES.KITKAT) {
+                // On KK and above, favicons are automatically downloaded as the method
+                // old apps use to enable that behavior is deprecated.
+                AwSettings.setShouldDownloadFaviconsGlobal();
+            }
+
             updateDefaultLocale();
 
             // setWillNotDraw(false) is required since WebView draws its own contents using its
             // container view. If this is ever not the case we should remove this, as it removes
             // Android's gatherTransparentRegion optimization for the view.
             mContainerView = containerView;
+            mPrimaryContainerView = containerView;
             mContainerView.setWillNotDraw(false);
 
-            mContext = context;
-            mAppTargetSdkVersion = mContext.getApplicationInfo().targetSdkVersion;
             mInternalAccessAdapter = internalAccessAdapter;
             mDrawFnAccess = drawFnAccess;
-            mContentsClient = contentsClient;
+            mContentsClient = clientFactory.create(this);
             mContentsClient
                     .getCallbackHelper()
                     .setCancelCallbackPoller(() -> AwContents.this.isDestroyed(NO_WARN));
             mAwViewMethods = new AwViewMethodsImpl();
             mFullScreenTransitionsState =
-                    new FullScreenTransitionsState(
-                            mContainerView, mInternalAccessAdapter, mAwViewMethods);
+                    new FullScreenTransitionsState(mInternalAccessAdapter, mAwViewMethods);
             mLayoutSizer = dependencyFactory.createLayoutSizer();
             mLayoutSizer.setDelegate(new AwLayoutSizerDelegate());
             mWebContentsDelegate =
                     new AwWebContentsDelegateAdapter(
-                            this, contentsClient, settings, mContainerView);
+                            this, mContentsClient, mSettings, mContainerView);
             mContentsClientBridge =
                     new AwContentsClientBridge(
-                            this, contentsClient, AwContentsStatics.getClientCertLookupTable());
+                            this, mContentsClient, AwContentsStatics.getClientCertLookupTable());
             mZoomControls = new AwZoomControls(this);
             mShouldInterceptRequestMediator = new AwContentsShouldInterceptRequestMediator();
             mIoThreadClient =
@@ -1179,6 +1229,10 @@ public class AwContents implements SmartClipProvider {
      */
     public AwBrowserContext getBrowserContextInternal() {
         return mBrowserContext;
+    }
+
+    public AwContentsClient getContentsClient() {
+        return mContentsClient;
     }
 
     /**
@@ -1324,11 +1378,10 @@ public class AwContents implements SmartClipProvider {
                 new NullAwViewMethods(
                         this, fullscreenView.getInternalAccessAdapter(), fullscreenView));
         mAwViewMethods = awViewMethodsImpl;
-        ViewGroup initialContainerView = mFullScreenTransitionsState.getInitialContainerView();
 
         // Re-associate this AwContents with the WebView.
         setInternalAccessAdapter(mFullScreenTransitionsState.getInitialInternalAccessDelegate());
-        setContainerView(initialContainerView);
+        setContainerView(mPrimaryContainerView);
 
         // Return focus to the WebView.
         if (mFullScreenTransitionsState.wasInitialContainerViewFocused()) {
@@ -1363,6 +1416,7 @@ public class AwContents implements SmartClipProvider {
         }
         updateContext(newContainerView.getContext());
         setInternalAccessAdapter(internalAccessAdapter);
+        mPrimaryContainerView = newContainerView;
         setContainerView(newContainerView);
     }
 
@@ -2067,6 +2121,11 @@ public class AwContents implements SmartClipProvider {
 
     ViewGroup getContainerView() {
         return mContainerView;
+    }
+
+    @AnyThread
+    public ViewGroup getPrimaryContainerView() {
+        return mPrimaryContainerView;
     }
 
     public AwPdfExporter getPdfExporter() {

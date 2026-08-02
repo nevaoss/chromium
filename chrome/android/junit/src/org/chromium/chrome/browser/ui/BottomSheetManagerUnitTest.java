@@ -5,7 +5,9 @@
 package org.chromium.chrome.browser.ui;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -30,7 +32,6 @@ import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.chrome.browser.ActivityTabProvider;
 import org.chromium.chrome.browser.browser_controls.BottomControlsLayer;
 import org.chromium.chrome.browser.browser_controls.BottomControlsStacker;
-import org.chromium.chrome.browser.browser_controls.BottomControlsStacker.LayerType;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsVisibilityManager;
 import org.chromium.chrome.browser.compositor.overlay_panel.OverlayPanelManager;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
@@ -81,7 +82,8 @@ public class BottomSheetManagerUnitTest {
                         mOmniboxFocusStateSupplier,
                         mOverlayManager,
                         mLayoutStateProviderSupplier,
-                        mBottomControlsStacker);
+                        mBottomControlsStacker,
+                        /* isBottomSheetAsBrowserControlsEnabled= */ true);
 
         ArgumentCaptor<BottomControlsLayer> captor =
                 ArgumentCaptor.forClass(BottomControlsLayer.class);
@@ -94,6 +96,23 @@ public class BottomSheetManagerUnitTest {
     public void testLayerDeregistration() {
         mBottomSheetManager.onDestroy();
         verify(mBottomControlsStacker).removeLayer(mLayer);
+    }
+
+    @Test
+    public void testLayerRegistration_disabled() {
+        clearInvocations(mBottomControlsStacker);
+        new BottomSheetManager(
+                mSheetController,
+                mTabProvider,
+                mControlsVisibilityManager,
+                mExpandedSheetHelper,
+                mOmniboxFocusStateSupplier,
+                mOverlayManager,
+                mLayoutStateProviderSupplier,
+                mBottomControlsStacker,
+                /* isBottomSheetAsBrowserControlsEnabled= */ false);
+        verify(mBottomControlsStacker, never()).addLayer(any());
+        verify(mControlsVisibilityManager).addObserver(any());
     }
 
     @Test
@@ -237,19 +256,6 @@ public class BottomSheetManagerUnitTest {
         clearInvocations(mBottomControlsStacker);
         mObserver.onSheetContentChanged(mSheetContent);
         verify(mBottomControlsStacker).requestLayerUpdate(false);
-    }
-
-    @Test
-    public void testOnSheetContentChanged_initializesOffset() {
-        when(mSheetController.getCurrentSheetContent()).thenReturn(mSheetContent);
-        when(mSheetContent.actsAsBrowserControls()).thenReturn(true);
-        when(mSheetController.getCurrentPeekHeightPx()).thenReturn(100);
-        when(mSheetController.getSheetState()).thenReturn(BottomSheetController.SheetState.PEEK);
-        when(mBottomControlsStacker.getHeightFromLayerToBottom(LayerType.BOTTOM_SHEET))
-                .thenReturn(100);
-
-        mObserver.onSheetContentChanged(mSheetContent);
-        verify(mSheetController).setBottomControlsOffset(100);
     }
 
     @Test

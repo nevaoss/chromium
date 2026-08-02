@@ -242,6 +242,13 @@
 #include "chrome/browser/web_applications/extensions/launch.h"
 #endif
 
+#if BUILDFLAG(IS_WIN)
+#include <windows.h>
+
+#include "ui/aura/window.h"
+#include "ui/aura/window_tree_host.h"
+#endif
+
 #if BUILDFLAG(ENABLE_LENS_DESKTOP_GOOGLE_BRANDED_FEATURES)
 #include "chrome/browser/lens/region_search/lens_region_search_controller.h"
 #include "chrome/browser/lens/region_search/lens_region_search_helper.h"
@@ -878,7 +885,8 @@ void OpenWindowWithRestoredTabs(Profile* profile) {
 void OpenURLOffTheRecord(Profile* profile, const GURL& url) {
   ScopedTabbedBrowserDisplayer displayer(
       profile->GetPrimaryOTRProfile(/*create_if_needed=*/true));
-  AddSelectedTabWithURL(displayer.browser(), url, ui::PAGE_TRANSITION_LINK);
+  AddSelectedTabWithURL(displayer.browser_window_interface(), url,
+                        ui::PAGE_TRANSITION_LINK);
 }
 
 bool CanGoBack(const BrowserWindowInterface* browser) {
@@ -1217,6 +1225,28 @@ void CloseWindow(BrowserWindowInterface* browser) {
   base::RecordAction(UserMetricsAction("CloseWindow"));
   browser->GetWindow()->Close();
 }
+
+#if BUILDFLAG(IS_WIN)
+void OpenMoveWindow(BrowserWindowInterface* browser) {
+  HWND hwnd = BrowserView::GetBrowserViewForBrowser(
+                  browser->GetBrowserForMigrationOnly())
+                  ->GetWidget()
+                  ->GetNativeWindow()
+                  ->GetHost()
+                  ->GetAcceleratedWidget();
+  PostMessage(hwnd, WM_SYSCOMMAND, SC_MOVE, 0);
+}
+
+void OpenSizeWindow(BrowserWindowInterface* browser) {
+  HWND hwnd = BrowserView::GetBrowserViewForBrowser(
+                  browser->GetBrowserForMigrationOnly())
+                  ->GetWidget()
+                  ->GetNativeWindow()
+                  ->GetHost()
+                  ->GetAcceleratedWidget();
+  PostMessage(hwnd, WM_SYSCOMMAND, SC_SIZE, 0);
+}
+#endif  // BUILDFLAG(IS_WIN)
 
 content::WebContents& NewTab(BrowserWindowInterface* browser,
                              NewTabTypes context) {

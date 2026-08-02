@@ -12,6 +12,7 @@
 #include "ui/views/view.h"
 
 namespace gfx {
+class Rect;
 class RoundedCornersF;
 }
 
@@ -61,7 +62,9 @@ class VIEWS_EXPORT NativeViewHost : public View {
   // Sets the corner radii for clipping gfx::NativeView. Returns true on success
   // or false if the platform doesn't support the operation. This method calls
   // SetCustomMask internally.
-  bool SetCornerRadii(const gfx::RoundedCornersF& corner_radii);
+  bool SetNativeViewCornerRadii(const gfx::RoundedCornersF& corner_radii);
+  gfx::RoundedCornersF GetNativeViewCornerRadii() const;
+
 
   // Sets the height of the top region where the gfx::NativeView shouldn't be
   // targeted. This will be used when another view is covering there
@@ -74,6 +77,11 @@ class VIEWS_EXPORT NativeViewHost : public View {
   // occur. Pass an empty size to revert to the default behavior, where the
   // NatieView's size always equals this View's size.
   void SetNativeViewSize(const gfx::Size& size);
+
+  // Sets the external clip rect of the native view. Returns true if the clip
+  // rect changed.
+  bool SetNativeViewClipRect(const gfx::Rect& clip_rect);
+  gfx::Rect GetNativeViewClipRect() const;
 
   // Returns the container that contains this host's native view. Returns null
   // if there's no attached native view or it has no container.
@@ -117,6 +125,7 @@ class VIEWS_EXPORT NativeViewHost : public View {
   void SetBackgroundColorWhenClipped(std::optional<SkColor> color);
 
   // Returns the ui::Layer backing the attached gfx::NativeView.
+  // DEPRECATED: Use layer() or native_view()->layer() instead.
   ui::Layer* GetUILayer();
 
   // Overridden from View:

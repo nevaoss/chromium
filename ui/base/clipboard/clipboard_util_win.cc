@@ -2,11 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifdef UNSAFE_BUFFERS_BUILD
-// TODO(crbug.com/40285824): Remove this and convert code to safer constructs.
-#pragma allow_unsafe_buffers
-#endif
-
 #include "ui/base/clipboard/clipboard_util_win.h"
 
 #include <shellapi.h>
@@ -20,12 +15,12 @@
 #include <string_view>
 #include <utility>
 
+#include "base/compiler_specific.h"
 #include "base/containers/to_vector.h"
 #include "base/feature_list.h"
 #include "base/files/file_util.h"
 #include "base/json/json_reader.h"
 #include "base/logging.h"
-#include "base/metrics/histogram_functions.h"
 #include "base/numerics/checked_math.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_util.h"
@@ -93,15 +88,6 @@ using VirtualFileResults =
 struct VirtualFileNameWithIndex {
   base::FilePath display_name;
   LONG content_index;
-};
-
-// These values are persisted to logs. Entries should not be renumbered and
-// numeric values should never be reused.
-enum class AsyncVirtualFileExtractionError {
-  kCoGetInterfaceAndReleaseStreamFailed = 0,
-  kCoMarshalInterThreadInterfaceInStreamFailed = 1,
-  kSourceStreamSOKWithZeroBytesRead = 2,
-  kMaxValue = kSourceStreamSOKWithZeroBytesRead,
 };
 
 bool HasData(IDataObject* data_object, const ClipboardFormatType& format) {
@@ -438,10 +424,6 @@ HGLOBAL CopyFileContentsToHGlobal(IDataObject* data_object, LONG index) {
             }
           }
           if (hr == S_OK && bytes_read == 0) {
-            base::UmaHistogramEnumeration(
-                "Clipboard.AsyncVirtualFileExtractionError",
-                AsyncVirtualFileExtractionError::
-                    kSourceStreamSOKWithZeroBytesRead);
             LOG(WARNING) << "Source stream returned S_OK with zero bytes read.";
           }
         } else {
@@ -477,7 +459,8 @@ HGLOBAL CopyFileContentsToHGlobal(IDataObject* data_object, LONG index) {
     hdata = ::GlobalAlloc(GHND, data_source.size());
     if (hdata) {
       base::win::ScopedHGlobal<char*> data_destination(hdata);
-      memcpy(data_destination.data(), data_source.data(), data_source.size());
+      UNSAFE_TODO(memcpy(data_destination.data(), data_source.data(),
+                         data_source.size()));
     }
   }
 
@@ -504,9 +487,6 @@ VirtualFileResults ExtractVirtualFiles(
   marshaled_data_object_stream.Detach();
 
   if (FAILED(hr) || !data_object) {
-    base::UmaHistogramEnumeration(
-        "Clipboard.AsyncVirtualFileExtractionError",
-        AsyncVirtualFileExtractionError::kCoGetInterfaceAndReleaseStreamFailed);
     LOG(WARNING) << "CoGetInterfaceAndReleaseStream failed: "
                  << (FAILED(hr) ? hr : E_UNEXPECTED);
     return {};
@@ -602,16 +582,18 @@ std::optional<std::vector<VirtualFileNameWithIndex>> GetVirtualFilenames(
 
     for (size_t i = 0; i < num_files; i++) {
       // Folder entries not currently supported--skip this item.
-      if ((descriptor->fgd[i].dwFlags & FD_ATTRIBUTES) &&
-          (descriptor->fgd[i].dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+      if ((UNSAFE_TODO(descriptor->fgd[i]).dwFlags & FD_ATTRIBUTES) &&
+          (UNSAFE_TODO(descriptor->fgd[i]).dwFileAttributes &
+           FILE_ATTRIBUTE_DIRECTORY)) {
         DLOG(WARNING) << "GetVirtualFilenames: display name '"
-                      << ConvertString(descriptor->fgd[i].cFileName)
+                      << ConvertString(
+                             UNSAFE_TODO(descriptor->fgd[i]).cFileName)
                       << "' refers to a directory (not supported).";
         continue;
       }
-      base::FilePath display_name =
-          GetUniqueVirtualFilename(ConvertString(descriptor->fgd[i].cFileName),
-                                   unique_names, &uniquifier);
+      base::FilePath display_name = GetUniqueVirtualFilename(
+          ConvertString(UNSAFE_TODO(descriptor->fgd[i]).cFileName),
+          unique_names, &uniquifier);
 
       unique_names.push_back(display_name);
       filenames.push_back({display_name, static_cast<LONG>(i)});
@@ -910,12 +892,13 @@ STGMEDIUM CreateStorageForFileNames(const std::vector<FileInfo>& filenames) {
   drop_files->pFiles = sizeof(DROPFILES);
   drop_files->fWide = TRUE;
 
-  wchar_t* data = reinterpret_cast<wchar_t*>(
-      reinterpret_cast<BYTE*>(drop_files) + kDropFilesHeaderSizeInBytes);
+  wchar_t* data = reinterpret_cast<wchar_t*>(UNSAFE_TODO(
+      reinterpret_cast<BYTE*>(drop_files) + kDropFilesHeaderSizeInBytes));
 
   size_t next_filename_offset = 0;
   for (const auto& filename : filenames) {
-    wcscpy(data + next_filename_offset, filename.path.value().c_str());
+    UNSAFE_TODO(
+        wcscpy(data + next_filename_offset, filename.path.value().c_str()));
     // Skip the terminating null character of the filename.
     next_filename_offset += filename.path.value().length() + 1;
   }
@@ -978,10 +961,6 @@ Microsoft::WRL::ComPtr<IStream> MarshalDataObjectToStream(
   HRESULT hr = ::CoMarshalInterThreadInterfaceInStream(
       IID_IDataObject, data_object, &marshaled_stream);
   if (FAILED(hr) || !marshaled_stream) {
-    base::UmaHistogramEnumeration(
-        "Clipboard.AsyncVirtualFileExtractionError",
-        AsyncVirtualFileExtractionError::
-            kCoMarshalInterThreadInterfaceInStreamFailed);
     LOG(WARNING) << "CoMarshalInterThreadInterfaceInStream failed: " << hr;
     return nullptr;
   }
@@ -1161,7 +1140,7 @@ bool ReadStreamToVector(IStream* stream, std::vector<uint8_t>* out) {
       out->clear();
       return false;
     }
-    ptr += bytes_read;
+    UNSAFE_TODO(ptr += bytes_read);
     bytes_remaining -= bytes_read;
   }
   return true;
@@ -1444,15 +1423,15 @@ void CFHtmlExtractMetadata(std::string_view cf_html,
     static constexpr char kStartFragmentStr[] = "StartFragment:";
     size_t start_fragment_start = cf_html.find(kStartFragmentStr);
     if (start_fragment_start != std::string::npos) {
-      *fragment_start = static_cast<size_t>(atoi(
-          cf_html.data() + start_fragment_start + strlen(kStartFragmentStr)));
+      *fragment_start = static_cast<size_t>(atoi(UNSAFE_TODO(
+          cf_html.data() + start_fragment_start + strlen(kStartFragmentStr))));
     }
 
     static constexpr char kEndFragmentStr[] = "EndFragment:";
     size_t end_fragment_start = cf_html.find(kEndFragmentStr);
     if (end_fragment_start != std::string::npos) {
-      *fragment_end = static_cast<size_t>(
-          atoi(cf_html.data() + end_fragment_start + strlen(kEndFragmentStr)));
+      *fragment_end = static_cast<size_t>(atoi(UNSAFE_TODO(
+          cf_html.data() + end_fragment_start + strlen(kEndFragmentStr))));
     }
   } else {
     *fragment_start = cf_html.find('>', tag_start) + 1;

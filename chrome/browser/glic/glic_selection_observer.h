@@ -32,6 +32,7 @@ class RenderFrameHost;
 }  // namespace content
 
 class BrowserWindowInterface;
+enum class ToastId;
 
 namespace optimization_guide {
 class PageContextEligibilityObserver;
@@ -115,12 +116,12 @@ class GlicSelectionObserver
 
 
   bool ShouldShowSelectionWidget();
-  void OnWidgetPinToggled(bool is_pinned);
   void OnAskGemini();
   void OnCopy();
   void OnCopyLink();
   void OnHideForThisSite();
   void OnSettings();
+  void ShowHiddenToast(ToastId toast_id);
 
   void CopyLinkToHighlight(content::WeakDocumentPtr weak_document_ptr);
 
@@ -135,7 +136,8 @@ class GlicSelectionObserver
 
   void RequestLinkGeneration(content::RenderFrameHost* rfh);
 
-  void OnPageContextEligibilityChanged(std::optional<bool> is_eligible);
+  void OnPageContextEligibilityChanged(
+      optimization_guide::PageContextEligibilityStatus status);
   void CreatePageContextEligibilityAPI(std::string account);
   void OnPageContextEligibilityAPILoaded(
       std::string account,
@@ -161,8 +163,6 @@ class GlicSelectionObserver
   // True if the selection context was sent to the Glic panel, so we know to
   // clear it if the selection becomes empty while the panel remains open.
   bool has_sent_selection_context_ = false;
-  // Preserves the widget's pinned state across subsequent selection updates.
-  bool is_widget_pinned_ = false;
   // True during active user selection (mouse drag or key hold) to defer UI
   // updates until the input event completes.
   bool is_selecting_ = false;
@@ -189,7 +189,7 @@ class GlicSelectionObserver
   friend class GlicSelectionObserverTest;
 
  protected:
-  std::optional<bool> IsPageContextEligible() const;
+  bool IsPageContextEligible() const;
 
   ::optimization_guide::PageContextEligibilityObserver* page_context_tracker() {
     return page_context_tracker_.get();

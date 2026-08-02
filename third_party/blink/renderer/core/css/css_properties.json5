@@ -358,6 +358,7 @@
       valid_type: "list",
       valid_values: [
         "accent-color",
+        "ax-style",
         "background",
         "background-color",
         "blend-mode",
@@ -1404,7 +1405,7 @@
       priority: 1,
       valid_for_marker: true,
       valid_for_page_context: true,
-      invalidate: ["reshape"],
+      invalidate: ["ax-style", "reshape"],
       is_animation_affecting: true,
     },
     {
@@ -1957,7 +1958,7 @@
       // Incremental code does not call DidChangeWritingMode(), which influences
       // the font.
       supports_incremental_style: false,
-      invalidate: ["layout", "paint"],
+      invalidate: ["ax-style", "layout", "paint"],
       highlight_style_comes_from_originating_element: true,
       is_animation_affecting: true,
     },
@@ -2225,7 +2226,7 @@
       supports_incremental_style: true,
       valid_for_permission_element: true,
       valid_for_page_context: true,
-      invalidate: ["background-color"],
+      invalidate: ["ax-style", "background-color"],
     },
     {
       name: "background-image",
@@ -3892,6 +3893,7 @@
       field_group: "*",
       field_template: "multi_keyword",
       keywords: ["none", "first", "last", "allow-end"],
+      include_paths:["third_party/blink/renderer/platform/text/hanging_punctuation.h"],
       typedom_types: ["Keyword"],
       default_value: "none",
       type_name: "HangingPunctuation",
@@ -6140,7 +6142,7 @@
       getter: "GetTextAlign",
       style_builder_custom_functions: ["value"],
       valid_for_page_context: true,
-      invalidate: ["layout", "paint"],
+      invalidate: ["ax-style", "layout", "paint"],
     },
     {
       name: "text-align-last",
@@ -6351,7 +6353,7 @@
       style_builder_custom_functions: ["value"],
       typedom_types: ["Length", "Percentage"],
       valid_for_page_context: true,
-      invalidate: ["layout", "paint"],
+      invalidate: ["ax-style", "layout", "paint"],
       affected_by_zoom: true,
       percentages_depend_on_used_value: true,
     },
@@ -6885,17 +6887,30 @@
     {
       name: "app-region",
       property_methods: ["CSSValueFromComputedStyleInternal"],
-      field_group: "*",
-      field_template: "keyword",
-      keywords: ["none", "drag", "no-drag"],
-      default_value: "none",
-      name_for_methods: "DraggableRegionMode",
-      style_builder_custom_functions: ["initial", "inherit", "value"],
-      invalidate: ["layout"],
+      surrogate_for: "window-drag",
     },
     {
       name: "-webkit-app-region",
       alias_for: "app-region",
+    },
+    {
+      name: "window-drag",
+      property_methods: ["CSSValueFromComputedStyleInternal"],
+      field_group: "*",
+      field_template: "keyword",
+      type_name: "EDraggableRegionMode",
+      default_value: "none",
+      inherited: true,
+      // `window-drag` only exposes `none` and `move`; the parser rejects the
+      // extra `no-drag` keyword (see css_parser_fast_paths.cc). It is listed
+      // here solely so the auto-generated enum includes a `kNoDrag` state for
+      // the `app-region` surrogate. `app-region: drag` maps to the shared
+      // `kMove` state.
+      keywords: ["none", "move", "no-drag"],
+      name_for_methods: "DraggableRegionMode",
+      style_builder_custom_functions: ["value"],
+      invalidate: ["layout"],
+      runtime_flag: "CSSWindowDrag",
     },
     {
       name: "-webkit-border-horizontal-spacing",

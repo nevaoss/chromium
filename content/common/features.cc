@@ -355,6 +355,10 @@ BASE_FEATURE_ENUM_PARAM(FontDataServiceTypefaceType,
 #endif  // BUILDFLAG(IS_LINUX)
 #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
 
+// When enabled, route CSS local() font lookups through FontDataService.
+BASE_FEATURE(kFontDataServiceForCSSLocalFonts,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
 bool IsFontDataServiceEnabled() {
 #if BUILDFLAG(IS_WIN)
@@ -558,6 +562,12 @@ BASE_FEATURE_PARAM(size_t,
                    "count",
                    1u);
 
+// When enabled, performs a dry run of the Navigation Fast Fetch feature.
+// It determines eligibility of navigations and records metrics to measure
+// the potential benefit of fetching document resources early, without
+// actually performing the fetching.
+BASE_FEATURE(kNavigationFastFetchDryRun, base::FEATURE_ENABLED_BY_DEFAULT);
+
 // When enabled, NavigationThrottleRunner2 is used instead of the original
 // NavigationThrottleRunner. See https://crbug.com/422003056.
 BASE_FEATURE(kNavigationThrottleRunner2, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -645,6 +655,13 @@ BASE_FEATURE(kProgressiveAccessibilityPhase2,
 BASE_FEATURE(kReduceMojoURLLoaderFactoryCloning,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Controls whether lazy URLLoaderFactory cloning is used for service worker
+// fallback factory.
+BASE_FEATURE_PARAM(bool,
+                   kUseLazyURLLoaderFactoryForServiceWorkerFallback,
+                   &kReduceMojoURLLoaderFactoryCloning,
+                   false);
+
 // Causes hidden tabs with crashed subframes to be marked for reload, meaning
 // that if a user later switches to that tab, the current page will be
 // reloaded.  This will hide crashed subframes from the user at the cost of
@@ -709,13 +726,13 @@ BASE_FEATURE(kScrollAfterOSKViewportShrinkFix,
 // to only include the origin when cross-origin to the final URL.
 // See https://crbug.com/495463654.
 BASE_FEATURE(kSanitizeLocationHeadersDuringNavigation,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls whether the `original_url` contains the full URL or just the
 // sanitized origin when sent to the renderer on commit.
 // See https://crbug.com/495463654.
 BASE_FEATURE(kSanitizeOriginalUrlDuringNavigation,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kServiceWorkerAvoidMainThreadForInitialization,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -791,6 +808,11 @@ BASE_FEATURE(kServiceWorkerVerifyMainScriptUrl,
 // functional events complete (spec step 8) and on worker start failure
 // (spec step 5), per the "Fire Functional Event" spec algorithm.
 BASE_FEATURE(kServiceWorkerSoftUpdateOnFunctionalEvent,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// When enabled, stricter and aligned context validation is performed for
+// ServiceWorker start checks and message event dispatching.
+BASE_FEATURE(kServiceWorkerStrictContextValidation,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled, the browser process will derive the secure context state of a

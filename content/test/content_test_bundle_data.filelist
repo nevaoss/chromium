@@ -2725,6 +2725,8 @@ data/accessibility/event/button-click-expected-android.txt
 data/accessibility/event/button-click-expected-auralinux.txt
 data/accessibility/event/button-click-expected-uia-win.txt
 data/accessibility/event/button-click.html
+data/accessibility/event/button-haspopup-checked-state-changed-expected-uia-win.txt
+data/accessibility/event/button-haspopup-checked-state-changed.html
 data/accessibility/event/button-remove-children-expected-android.txt
 data/accessibility/event/button-remove-children-expected-auralinux.txt
 data/accessibility/event/button-remove-children-expected-uia-win.txt
@@ -2775,6 +2777,9 @@ data/accessibility/event/children-changed-only-on-ancestor-expected-auralinux.tx
 data/accessibility/event/children-changed-only-on-ancestor-expected-uia-win.txt
 data/accessibility/event/children-changed-only-on-ancestor-expected-win.txt
 data/accessibility/event/children-changed-only-on-ancestor.html
+data/accessibility/event/constant-refresh-expected-android.txt
+data/accessibility/event/constant-refresh-expected-auralinux.txt
+data/accessibility/event/constant-refresh.html
 data/accessibility/event/contenteditable-selection-retargeting-expected-android.txt
 data/accessibility/event/contenteditable-selection-retargeting.html
 data/accessibility/event/css-display-descendants-expected-android.txt
@@ -2864,9 +2869,6 @@ data/accessibility/event/form-required-changed.html
 data/accessibility/event/iframe-src-changed-expected-android.txt
 data/accessibility/event/iframe-src-changed-expected-auralinux.txt
 data/accessibility/event/iframe-src-changed.html
-data/accessibility/event/immediate-refresh-expected-android.txt
-data/accessibility/event/immediate-refresh-expected-auralinux.txt
-data/accessibility/event/immediate-refresh.html
 data/accessibility/event/individual-nodes-become-ignored-but-included-expected-auralinux.txt
 data/accessibility/event/individual-nodes-become-ignored-but-included-expected-mac.txt
 data/accessibility/event/individual-nodes-become-ignored-but-included.html
@@ -3344,6 +3346,9 @@ data/accessibility/hit_testing/simple_rectangles_scrolling_iframe.html
 data/accessibility/hit_testing/simple_rectangles_with_curtain.html
 data/accessibility/hit_testing/text_ranges.html
 data/accessibility/hit_testing/text_ranges_iframe.html
+data/accessibility/html/a-empty-placeholder-expected-android-external.txt
+data/accessibility/html/a-empty-placeholder-expected-android.txt
+data/accessibility/html/a-empty-placeholder.html
 data/accessibility/html/a-expected-android-assist-data.txt
 data/accessibility/html/a-expected-android-external.txt
 data/accessibility/html/a-expected-android.txt
@@ -5182,6 +5187,9 @@ data/accessibility/html/menulist-invoker-haspopup-expected-android.txt
 data/accessibility/html/menulist-invoker-haspopup-expected-auralinux.txt
 data/accessibility/html/menulist-invoker-haspopup-expected-blink.txt
 data/accessibility/html/menulist-invoker-haspopup.html
+data/accessibility/html/menulist-multiple-invokers-2-expected-auralinux.txt
+data/accessibility/html/menulist-multiple-invokers-2-expected-blink.txt
+data/accessibility/html/menulist-multiple-invokers-2.html
 data/accessibility/html/menulist-multiple-invokers-expected-auralinux.txt
 data/accessibility/html/menulist-multiple-invokers-expected-blink.txt
 data/accessibility/html/menulist-multiple-invokers-expected-mac.txt
@@ -6784,6 +6792,7 @@ data/accessibility/scrolling/implicit-root-scroller.html
 data/accessibility/scrolling/link.html
 data/accessibility/scrolling/table.html
 data/accessibility/scrolling/text.html
+data/accessibility/snapshot/aria_owns_in_aria_hidden_crash.html
 data/accessibility/snapshot/hierarchy/a1.html
 data/accessibility/snapshot/hierarchy/a2.html
 data/accessibility/snapshot/hierarchy/a3.html

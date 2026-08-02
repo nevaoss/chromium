@@ -84,7 +84,6 @@ import org.chromium.chrome.browser.feed.FeedServiceBridgeJni;
 import org.chromium.chrome.browser.feedback.FeedbackPolicyManager;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.glic.GlicEnabling;
-import org.chromium.chrome.browser.glic.GlicEnablingJni;
 import org.chromium.chrome.browser.gsa.GSAUtils;
 import org.chromium.chrome.browser.homepage.HomepageManager;
 import org.chromium.chrome.browser.hub.HubManager;
@@ -193,7 +192,8 @@ import java.util.List;
     // TODO(crbug.com/504757384): Add test for three dot menu flag.
     ChromeFeatureList.THREE_DOT_MENU_BACK_BUTTON,
     TabGroupsFeatureMap.UPDATE_TAB_GROUP_COLORS,
-    ChromeFeatureList.IN_APP_WINDOW_MANAGER_DEPRECATION
+    ChromeFeatureList.IN_APP_WINDOW_MANAGER_DEPRECATION,
+    ChromeFeatureList.SUBMENUS_IN_APP_MENU_LFF
 })
 @EnableFeatures({
     ChromeFeatureList.SUBMENUS_IN_APP_MENU,
@@ -244,7 +244,6 @@ public class TabbedAppMenuPropertiesDelegateUnitTest {
     @Mock private View mDecorView;
     @Mock private LayoutStateProvider mLayoutStateProvider;
     @Mock private ManagedBrowserUtils.Natives mManagedBrowserUtilsJniMock;
-    @Mock private GlicEnabling.Natives mGlicEnablingJniMock;
     @Mock private Profile mProfile;
     @Mock private AppMenuDelegate mAppMenuDelegate;
     @Mock private ModalDialogManager mDialogManager;
@@ -342,7 +341,7 @@ public class TabbedAppMenuPropertiesDelegateUnitTest {
         when(mIncognitoTabModel.isIncognito()).thenReturn(true);
         when(mTabModel.getProfile()).thenReturn(mProfile);
         ManagedBrowserUtilsJni.setInstanceForTesting(mManagedBrowserUtilsJniMock);
-        GlicEnablingJni.setInstanceForTesting(mGlicEnablingJniMock);
+        GlicEnabling.setEnabledForTesting(false);
         ProfileManager.setLastUsedProfileForTesting(mProfile);
         WebsitePreferenceBridgeJni.setInstanceForTesting(mWebsitePreferenceBridgeJniMock);
         OfflinePageUtils.setInstanceForTesting(mOfflinePageUtils);
@@ -678,7 +677,10 @@ public class TabbedAppMenuPropertiesDelegateUnitTest {
     }
 
     @Test
-    @DisableFeatures(ChromeFeatureList.SUBMENUS_IN_APP_MENU)
+    @DisableFeatures({
+        ChromeFeatureList.SUBMENUS_IN_APP_MENU,
+        ChromeFeatureList.SUBMENUS_IN_APP_MENU_LFF
+    })
     public void testPageMenuItems_Phone_Ntp_SubmenusDisabled() {
         setUpMocksForPageMenu();
         when(mTab.getUrl()).thenReturn(JUnitTestGURLs.NTP_URL);
@@ -1947,7 +1949,8 @@ public class TabbedAppMenuPropertiesDelegateUnitTest {
                                 R.id.more_tools_menu_id,
                                 item(R.id.reader_mode_menu_id),
                                 item(R.id.divider_line_id),
-                                item(R.id.info_menu_id)),
+                                item(R.id.info_menu_id),
+                                item(R.id.task_manager)),
                         // Request desktop site is hidden.
                         item(R.id.auto_dark_web_contents_id),
                         item(R.id.divider_line_id),
@@ -4257,8 +4260,7 @@ public class TabbedAppMenuPropertiesDelegateUnitTest {
         setUpMocksForPageMenu();
         when(mTab.getUrl()).thenReturn(JUnitTestGURLs.EXAMPLE_URL);
         when(mTab.isIncognito()).thenReturn(false);
-        // TODO (crbug.com/518937617): Use GlicEnabling.setEnabledForTesting
-        when(mGlicEnablingJniMock.isEnabledForProfile(any())).thenReturn(true);
+        GlicEnabling.setEnabledForTesting(true);
 
         ModelList modelList = mTabbedAppMenuPropertiesDelegate.getMenuItems();
 
@@ -4271,7 +4273,8 @@ public class TabbedAppMenuPropertiesDelegateUnitTest {
         setUpMocksForPageMenu();
         when(mTab.getUrl()).thenReturn(JUnitTestGURLs.EXAMPLE_URL);
         when(mTab.isIncognito()).thenReturn(false);
-        when(mGlicEnablingJniMock.isEnabledForProfile(any())).thenReturn(true);
+        GlicEnabling.setEnabledForTesting(true);
+
         when(mSideUiStateProvider.canShowSideUi(eq(SideUiId.SIDE_PANEL))).thenReturn(false);
 
         ModelList modelList = mTabbedAppMenuPropertiesDelegate.getMenuItems();
@@ -4285,7 +4288,7 @@ public class TabbedAppMenuPropertiesDelegateUnitTest {
         setUpMocksForPageMenu();
         when(mTab.getUrl()).thenReturn(JUnitTestGURLs.EXAMPLE_URL);
         when(mTab.isIncognito()).thenReturn(true);
-        when(mGlicEnablingJniMock.isEnabledForProfile(any())).thenReturn(true);
+        GlicEnabling.setEnabledForTesting(true);
 
         ModelList modelList = mTabbedAppMenuPropertiesDelegate.getMenuItems();
 
@@ -4298,7 +4301,7 @@ public class TabbedAppMenuPropertiesDelegateUnitTest {
         setUpMocksForPageMenu();
         when(mTab.getUrl()).thenReturn(JUnitTestGURLs.EXAMPLE_URL);
         when(mTab.isIncognito()).thenReturn(false);
-        when(mGlicEnablingJniMock.isEnabledForProfile(any())).thenReturn(false);
+        GlicEnabling.setEnabledForTesting(false);
 
         ModelList modelList = mTabbedAppMenuPropertiesDelegate.getMenuItems();
 
@@ -4311,7 +4314,7 @@ public class TabbedAppMenuPropertiesDelegateUnitTest {
         setUpMocksForPageMenu();
         when(mTab.getUrl()).thenReturn(JUnitTestGURLs.EXAMPLE_URL);
         when(mTab.isIncognito()).thenReturn(false);
-        when(mGlicEnablingJniMock.isEnabledForProfile(any())).thenReturn(false);
+        GlicEnabling.setEnabledForTesting(false);
 
         ModelList modelList = mTabbedAppMenuPropertiesDelegate.getMenuItems();
 

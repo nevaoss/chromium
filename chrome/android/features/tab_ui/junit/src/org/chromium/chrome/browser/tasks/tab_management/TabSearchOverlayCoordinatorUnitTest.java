@@ -17,6 +17,8 @@ import static org.mockito.Mockito.when;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.os.Build;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
@@ -35,6 +37,7 @@ import org.robolectric.Robolectric;
 import org.robolectric.Shadows;
 import org.robolectric.android.controller.ActivityController;
 import org.robolectric.annotation.Config;
+import org.robolectric.shadows.ShadowLooper;
 
 import org.chromium.base.Callback;
 import org.chromium.base.supplier.ObservableSuppliers;
@@ -48,6 +51,7 @@ import org.chromium.chrome.browser.document.ChromeLauncherActivity;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.omnibox.LocationBarCoordinator;
 import org.chromium.chrome.browser.omnibox.OverrideUrlLoadingDelegate;
+import org.chromium.chrome.browser.omnibox.UrlBarCoordinator;
 import org.chromium.chrome.browser.omnibox.suggestions.OmniboxLoadUrlParams;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.searchwidget.SearchActivityLocationBarLayout;
@@ -59,6 +63,8 @@ import org.chromium.chrome.browser.ui.searchactivityutils.SearchActivityExtras.S
 import org.chromium.ui.base.PageTransition;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.modaldialog.ModalDialogManager;
+
+import java.util.concurrent.TimeUnit;
 
 /** Unit tests for {@link TabSearchOverlayCoordinator}. */
 @RunWith(BaseRobolectricTestRunner.class)
@@ -76,12 +82,16 @@ public class TabSearchOverlayCoordinatorUnitTest {
     @Mock private TabModelSelector mTabModelSelector;
     @Mock private SearchUiCoordinator mSearchUiCoordinator;
     @Mock private LocationBarCoordinator mLocationBarCoordinator;
+    @Mock private UrlBarCoordinator mUrlBarCoordinator;
     @Mock private SearchActivityLocationBarLayout mSearchBox;
     @Mock private Profile mProfile;
+    @Mock private Profile mIncognitoProfile;
     @Mock private SnackbarManager mSnackbarManager;
     @Mock private ActivityLifecycleDispatcher mActivityLifecycleDispatcher;
     @Mock private ModalDialogManager mModalDialogManager;
 
+    private final SettableMonotonicObservableSupplier<Profile> mProfileSupplier =
+            ObservableSuppliers.createMonotonic();
     private final SettableMonotonicObservableSupplier<TabModelSelector> mTabModelSelectorSupplier =
             ObservableSuppliers.createMonotonic();
     @Captor private ArgumentCaptor<OverrideUrlLoadingDelegate> mOverrideUrlLoadingDelegateCaptor;
@@ -97,17 +107,18 @@ public class TabSearchOverlayCoordinatorUnitTest {
         mActivity.setContentView(mParentContainer);
 
         mTabModelSelectorSupplier.set(mTabModelSelector);
+        mProfileSupplier.set(mProfile);
 
         when(mSearchUiCoordinator.getLocationBarCoordinator()).thenReturn(mLocationBarCoordinator);
+        when(mLocationBarCoordinator.getUrlBarCoordinator()).thenReturn(mUrlBarCoordinator);
         when(mSearchUiCoordinator.getSearchBox()).thenReturn(mSearchBox);
 
-        var profileSupplier = ObservableSuppliers.createMonotonic(mProfile);
         mCoordinator =
                 new TabSearchOverlayCoordinator(
                         mActivity,
                         mParentContainer,
                         mWindowAndroid,
-                        profileSupplier,
+                        mProfileSupplier,
                         mSnackbarManager,
                         ObservableSuppliers.createNonNull(mModalDialogManager),
                         mActivityLifecycleDispatcher,
@@ -143,10 +154,17 @@ public class TabSearchOverlayCoordinatorUnitTest {
         showOverlay();
         verifySearchUiCoordinatorInitialized();
         verify(mSearchUiCoordinator)
-                .setDefaultStatusIconOverrideResId(R.drawable.ic_suggestion_magnifier);
-        verify(mSearchUiCoordinator)
                 .beginQuery(
                         eq(IntentOrigin.HUB), eq(SearchType.TEXT), eq(null), eq(mWindowAndroid));
+    }
+
+    @Test
+    public void testSearchUiElementsInitialized() {
+        verify(mSearchUiCoordinator)
+                .setDefaultStatusIconOverrideResId(R.drawable.ic_suggestion_magnifier);
+        verify(mUrlBarCoordinator)
+                .setUrlBarHintText(
+                        mActivity.getResources().getString(R.string.hub_search_empty_hint));
     }
 
     @Test
@@ -154,6 +172,30 @@ public class TabSearchOverlayCoordinatorUnitTest {
         showOverlay();
         mScrim.performClick();
         assertOverlayHidden();
+    }
+
+    @Test
+    public void testPanelEventsConsumed() {
+        showOverlay();
+        View panelView = mPanelContainer.findViewById(R.id.tab_search_overlay_panel);
+
+        // Verify Touch event is consumed
+        MotionEvent touchEvent = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 0f, 0f, 0);
+        assertTrue(panelView.dispatchTouchEvent(touchEvent));
+
+        // Verify Hover event is consumed
+        MotionEvent hoverEvent =
+                MotionEvent.obtain(0, 0, MotionEvent.ACTION_HOVER_ENTER, 0f, 0f, 0);
+        assertTrue(panelView.dispatchGenericMotionEvent(hoverEvent));
+
+        // Verify Generic Motion event is consumed
+        MotionEvent motionEvent = MotionEvent.obtain(0, 0, MotionEvent.ACTION_SCROLL, 0f, 0f, 0);
+        assertTrue(panelView.dispatchGenericMotionEvent(motionEvent));
+
+        // Verify Context Click is consumed (requires API 23+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            assertTrue(panelView.performContextClick());
+        }
     }
 
     @Test
@@ -243,6 +285,9 @@ public class TabSearchOverlayCoordinatorUnitTest {
     }
 
     private void assertOverlayHidden() {
+        // Idle the main looper to ensure all hide transition frame updates and animator listener
+        // callbacks (which toggle visibility to GONE) execute completely before verification.
+        ShadowLooper.idleMainLooper(1, TimeUnit.SECONDS);
         assertFalse(mCoordinator.isVisible());
         assertEquals(View.GONE, mPanelContainer.getVisibility());
         verify(mLocationBarCoordinator).clearOmniboxFocus();
@@ -266,5 +311,25 @@ public class TabSearchOverlayCoordinatorUnitTest {
                         any(),
                         any(),
                         any());
+    }
+
+    @Test
+    public void testProfileChanged_updatesColorScheme() {
+        showOverlay();
+        verifySearchUiCoordinatorInitialized();
+
+        // Switch to an incognito profile.
+        when(mIncognitoProfile.isOffTheRecord()).thenReturn(true);
+        mProfileSupplier.set(mIncognitoProfile);
+
+        // Verify that setColorScheme was called with true.
+        verify(mSearchUiCoordinator).setColorScheme(true);
+
+        // Switch back to non-incognito profile.
+        when(mProfile.isOffTheRecord()).thenReturn(false);
+        mProfileSupplier.set(mProfile);
+
+        // Verify that setColorScheme was called with false.
+        verify(mSearchUiCoordinator).setColorScheme(false);
     }
 }

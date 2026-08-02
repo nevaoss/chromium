@@ -5,9 +5,10 @@
 #include "chrome/browser/ui/webui/metrics_internals/runtime_mutable_features_handler.h"
 
 #include "base/functional/bind.h"
-#include "base/types/pass_key.h"
 #include "chrome/browser/browser_process.h"
 #include "content/public/browser/web_ui.h"
+
+// LINT.IfChange(runtime_mutable_features_handler)
 
 RuntimeMutableFeaturesHandler::RuntimeMutableFeaturesHandler()
     : base_handler_(
@@ -48,6 +49,7 @@ void RuntimeMutableFeaturesHandler::ResolvePageCallback(
 void RuntimeMutableFeaturesHandler::HandleFetchRuntimeMutableFeatures(
     const base::ListValue& args) {
   AllowJavascript();
+  // args[0]: Callback ID.
   CHECK_EQ(args.size(), 1U);
   base_handler_->HandleFetchRuntimeMutableFeatures(args[0]);
 }
@@ -55,6 +57,7 @@ void RuntimeMutableFeaturesHandler::HandleFetchRuntimeMutableFeatures(
 void RuntimeMutableFeaturesHandler::HandleIsSeedFetchingPaused(
     const base::ListValue& args) {
   AllowJavascript();
+  // args[0]: Callback ID.
   CHECK_EQ(args.size(), 1U);
   base_handler_->HandleIsSeedFetchingPaused(args[0]);
 }
@@ -62,6 +65,8 @@ void RuntimeMutableFeaturesHandler::HandleIsSeedFetchingPaused(
 void RuntimeMutableFeaturesHandler::HandleSetSeedFetchingPaused(
     const base::ListValue& args) {
   AllowJavascript();
+  // args[0]: Callback ID.
+  // args[1]: Whether to pause seed fetching (bool).
   CHECK_EQ(args.size(), 2U);
   base_handler_->HandleSetSeedFetchingPaused(args[0], args[1].GetBool());
 }
@@ -69,6 +74,10 @@ void RuntimeMutableFeaturesHandler::HandleSetSeedFetchingPaused(
 void RuntimeMutableFeaturesHandler::HandleUploadSeed(
     const base::ListValue& args) {
   AllowJavascript();
+  // args[0]: Callback ID.
+  // args[1]: The seed bytes (binary blob).
   CHECK_EQ(args.size(), 2U);
   base_handler_->HandleUploadSeed(args[0], args[1]);
 }
+
+// LINT.ThenChange(//ios/chrome/browser/webui/ui_bundled/metrics_internals/runtime_mutable_features_handler.mm)

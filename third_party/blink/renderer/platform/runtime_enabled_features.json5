@@ -229,7 +229,11 @@
       name: "AcceleratedSmallCanvases",
       status: "stable",
     },
-
+    {
+      // crbug.com/409809747
+      name: "AccessibilityCheckIfcInPreviousTextOnLine",
+      status: "stable",
+    },
     {
       name: "AccessibilityCustomElementRoleNone",
       public: true,
@@ -636,7 +640,7 @@
     {
       // crbug.com/445727139
       name: "AnnotationSpaceOnStart",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "AnonymousIframe",
@@ -819,6 +823,12 @@
       // there is no need to collapse the whitespace between them.
       // https://crbug.com/406053617
       name: "AvoidNormalizingVisiblePositionsWhenStartEqualsEnd",
+      status: "stable",
+    },
+    {
+      // Disables the synchronous focus blur behavior when a focused form control
+      // is disabled.
+      name: "AvoidSynchronousBlurOnDisabledAttributeChange",
       status: "stable",
     },
     // When enabled, enforces new interoperable semantics for 3D transforms.
@@ -1333,10 +1343,6 @@
       status: "experimental",
     },
     {
-      name: "ComputeInlineContentsSafeRetarget",
-      status: "stable",
-    },
-    {
       name: "ComputePressure",
       status: {
         "Android": "",
@@ -1485,7 +1491,7 @@
       status: "stable",
     },
     {
-      name: "CreateInlineContentsExcludeOutOfFlow",
+      name: "CreateInlineContentsAnonymousBlock",
       status: "stable",
     },
     {
@@ -2152,6 +2158,10 @@
       // https://chromestatus.com/feature/4850737974345728
       name: "CSSViewTransitionAutoName",
       status: "experimental",
+    },
+    {
+      name: "CSSWindowDrag",
+      status: "stable",
     },
     {
       // CSSWG resolution to make the `zoom` property continuously
@@ -3225,10 +3235,10 @@
       status: {"Android": "", "default": "stable"},
     },
     {
-      name: "FontDataService",
+      name: "FontDataServiceForCSSLocalFonts",
       base_feature: "none",
       // No status, as the web platform runtime enabled feature is controlled by
-      // a Chromium level feature (kFontDataServiceAllWebContents).
+      // a Chromium level feature (kFontDataServiceForCSSLocalFonts).
     },
     {
       name: "FontFallbackForTabSize",
@@ -3537,6 +3547,13 @@
       // attributes are processed but their value doesn't change. See
       // https://crbug.com/41436016.
       name: "HTMLLinkElementAttributeValueChanges",
+      status: "stable",
+    },
+    {
+      // Killswitch for crbug.com/40727112: emit a bogus comment for an
+      // incomplete markup declaration at end of input instead of dropping the
+      // rest of the document.
+      name: "HTMLParserTruncatedMarkupDeclaration",
       status: "stable",
     },
     {
@@ -4324,10 +4341,6 @@
       status: "stable",
     },
     {
-      name: "OffMainThreadCSSPaint",
-      status: "stable",
-    },
-    {
       name: "OffscreenCanvasGetContextAttributes",
       status: "stable",
     },
@@ -4555,10 +4568,6 @@
     },
     {
       name: "PaintHoldingForIframes",
-      status: "stable",
-    },
-    {
-      name: "PaintTimingMixin",
       status: "stable",
     },
     {
@@ -5575,8 +5584,9 @@
       // dispatched mousedown event on WebView, as opposed to a real user
       // click.
       // https://issues.chromium.org/issues/41273490
+      // Enabled in M152, safe to remove in M154
       name: "SelectWebViewUntrustedEventRemoval",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "SendBeaconThrowForBlobWithNonSimpleType",
@@ -5858,10 +5868,13 @@
       status: "stable",
     },
     {
-      // Source-specific multicast support in the Direct Sockets API.
+      // Source-specific multicast support in the Direct Sockets API. Not
+      // depends_on: ["DirectSockets"] — DirectSockets is enabled per-context
+      // (isolated contexts) rather than via the static flag, so a static
+      // dependency would keep this feature off everywhere it matters. Actual
+      // exposure is gated by MulticastController's Exposed() clause.
       name: "SourceSpecificMulticastInDirectSockets",
       status: "test",
-      depends_on: ["DirectSockets"],
     },
     {
       // Whether spatial navigation should use cursor inheritance to exclude
@@ -6152,6 +6165,10 @@
     },
     {
       name: "TabSizeAncestor",
+      status: "stable",
+    },
+    {
+      name: "TabSizeInRubyBase",
       status: "stable",
     },
     {
@@ -7381,7 +7398,7 @@
       // with its responseXML document.
       // https://crbug.com/466303347
       name: "XMLRustForNonXslt",
-      status: "stable",
+      status: "experimental",
     },
     {
       name: "XMLSerializerConsistentDefaultNsDeclMatching",

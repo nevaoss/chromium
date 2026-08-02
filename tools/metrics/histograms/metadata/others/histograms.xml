@@ -4256,7 +4256,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="FirstRun.Stage" enum="FirstRunStageResult"
-    expires_after="2026-11-08">
+    expires_after="2027-01-10">
   <owner>tinazwang@chromium.org</owner>
   <owner>bling-get-started@google.com</owner>
   <summary>
@@ -5544,6 +5544,17 @@ chromium-metrics-reviews@google.com.
   <owner>mark@chromium.org</owner>
   <summary>
     MacOS X NSExceptions seen, common exceptions binned, others in overflow.
+  </summary>
+</histogram>
+
+<histogram name="Ozone.Drm.GbmDeviceCount" units="devices"
+    expires_after="2027-07-02">
+  <owner>hitawala@chromium.org</owner>
+  <owner>chrome-gpu-metric-alerts@chromium.org</owner>
+  <summary>
+    The number of successfully created and cached Gbm Device contexts in
+    GbmSurfaceFactory. Recorded once during the first format texturing support
+    check (lazy initialization).
   </summary>
 </histogram>
 

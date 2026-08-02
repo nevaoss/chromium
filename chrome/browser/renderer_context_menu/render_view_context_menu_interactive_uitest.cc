@@ -513,25 +513,24 @@ class GlicInteractiveContextMenuTestBase
   }
 
   auto PollForAndInstrumentGlic() {
-    return Steps(
-        UninstrumentWebContents(glic::test::kGlicContentsElementId, false),
-        UninstrumentWebContents(glic::test::kGlicHostElementId, false),
-        InAnyContext(
-            Steps(InstrumentNonTabWebView(glic::test::kGlicHostElementId,
-                                          kGlicViewElementId),
-                  InstrumentInnerWebContents(glic::test::kGlicContentsElementId,
-                                             glic::test::kGlicHostElementId, 0),
-                  WaitForWebContentsReady(glic::test::kGlicContentsElementId))),
-        // TODO(b:448604727): State observation is currently unsupported with
-        // multi- instance, so we will poll.
-        PollUntil(
-            [this]() {
-              if (auto* instance = GetGlicInstanceImpl()) {
-                return instance->host().IsWebClientConnected();
-              }
-              return false;
-            },
-            "polling until web client is ready"));
+    return Steps(UninstrumentWebContents(glic::kGlicContentsElementId, false),
+                 UninstrumentWebContents(glic::kGlicHostElementId, false),
+                 InAnyContext(Steps(
+                     InstrumentNonTabWebView(glic::kGlicHostElementId,
+                                             kGlicViewElementId),
+                     InstrumentInnerWebContents(glic::kGlicContentsElementId,
+                                                glic::kGlicHostElementId, 0),
+                     WaitForWebContentsReady(glic::kGlicContentsElementId))),
+                 // TODO(b:448604727): State observation is currently
+                 // unsupported with multi- instance, so we will poll.
+                 PollUntil(
+                     [this]() {
+                       if (auto* instance = GetGlicInstanceImpl()) {
+                         return instance->host().IsWebClientConnected();
+                       }
+                       return false;
+                     },
+                     "polling until web client is ready"));
   }
 
   auto CheckHistograms() {
@@ -577,19 +576,17 @@ class GlicInteractiveContextMenuTestBase
 
   auto WaitForAdditionalContext() {
     return WaitForJsResult(
-        glic::test::kGlicContentsElementId,
+        glic::kGlicContentsElementId,
         "() => { "
         "  let c = document.querySelector('#additionalContextResult');"
-        "  return !!c && c.children.length === 5 && "
-        "      c.children[1].innerText.startsWith('MIME Type: image/png') && "
-        "      c.children[4].innerText.startsWith("
-        "           'Tab Context: present');"
+        "  return !!c && c.children.length === 4 && "
+        "      c.children[1].innerText.startsWith('MIME Type: image/png');"
         "}");
   }
 
   auto CheckAdditionalContextNotPresent() {
     return CheckJsResult(
-        glic::test::kGlicContentsElementId,
+        glic::kGlicContentsElementId,
         "() => { "
         "  let c = document.querySelector('#additionalContextResult');"
         "  return !c || c.children.length === 0;"

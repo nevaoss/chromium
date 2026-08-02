@@ -248,7 +248,7 @@ class ChromePaymentsAutofillClient : public PaymentsAutofillClient,
   void ShowCreditCardSaveAndFillPendingDialog(
       CardSaveAndFillDialogCallback callback) override;
   void HideCreditCardSaveAndFillDialog() override;
-  bool IsTabModalPopupDeprecated() const override;
+  bool IsTabModalPopup() const override;
   BnplStrategy* GetBnplStrategy() override;
   BnplUiDelegate* GetBnplUiDelegate() override;
 #if !BUILDFLAG(IS_ANDROID)
@@ -257,7 +257,10 @@ class ChromePaymentsAutofillClient : public PaymentsAutofillClient,
       std::vector<Suggestion> suggestions,
       base::RepeatingCallback<void(base::span<const Suggestion>)>
           on_suggestions_shown,
+      base::RepeatingCallback<void(SuggestionHidingReason)>
+          on_suggestions_hidden,
       base::RepeatingCallback<void(const Suggestion&)> did_select_suggestion,
+      base::RepeatingClosure did_deselect_suggestion,
       base::RepeatingCallback<
           void(const Suggestion&,
                const AutofillSuggestionDelegate::SuggestionMetadata&)>

@@ -72,6 +72,8 @@ target(link_target_type, "renderer") {
     "gpu_benchmarking_extension.h",
     "in_process_renderer_thread.cc",
     "in_process_renderer_thread.h",
+    "lazy_shared_url_loader_factory.cc",
+    "lazy_shared_url_loader_factory.h",
     "local_resource_url_loader_factory.cc",
     "local_resource_url_loader_factory.h",
     "media/audio_decoder.cc",
@@ -347,6 +349,8 @@ target(link_target_type, "renderer") {
 
   if (enable_screen_ai_service) {
     sources += [
+      "accessibility/annotations/ax_canvas_annotator.cc",
+      "accessibility/annotations/ax_canvas_annotator.h",
       "accessibility/annotations/ax_main_node_annotator.cc",
       "accessibility/annotations/ax_main_node_annotator.h",
     ]

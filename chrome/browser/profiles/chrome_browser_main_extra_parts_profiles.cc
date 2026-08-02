@@ -14,7 +14,6 @@
 #include "chrome/browser/accessibility/accessibility_labels_service_factory.h"
 #include "chrome/browser/accessibility/page_colors_controller_factory.h"
 #include "chrome/browser/accessibility_annotator/accessibility_annotator_backend_factory.h"
-#include "chrome/browser/accessibility_annotator/at_memory_query_service_factory.h"
 #include "chrome/browser/account_settings/account_setting_service_factory.h"
 #include "chrome/browser/actor/actor_keyed_service_factory.h"
 #include "chrome/browser/affiliations/affiliation_service_factory.h"
@@ -27,10 +26,12 @@
 #include "chrome/browser/autocomplete/on_device_tail_model_service_factory.h"
 #include "chrome/browser/autocomplete/provider_state_service_factory.h"
 #include "chrome/browser/autocomplete/shortcuts_backend_factory.h"
+#include "chrome/browser/autofill/at_memory/at_memory_query_service_factory.h"
 #include "chrome/browser/autofill/at_memory_cross_tab_copy_paste_tracker_factory.h"
 #include "chrome/browser/autofill/autocomplete_history_manager_factory.h"
 #include "chrome/browser/autofill/autofill_ai_model_cache_factory.h"
 #include "chrome/browser/autofill/autofill_ai_model_executor_factory.h"
+#include "chrome/browser/autofill/autofill_ai_personal_context_access_manager_factory.h"
 #include "chrome/browser/autofill/autofill_entity_data_manager_factory.h"
 #include "chrome/browser/autofill/autofill_field_classification_model_service_factory.h"
 #include "chrome/browser/autofill/autofill_image_fetcher_factory.h"
@@ -40,7 +41,6 @@
 #include "chrome/browser/autofill/merchant_promo_code_manager_factory.h"
 #include "chrome/browser/autofill/ml_log_router_factory.h"
 #include "chrome/browser/autofill/one_time_token_service_factory.h"
-#include "chrome/browser/autofill/personal_context_access_manager_factory.h"
 #include "chrome/browser/autofill/personal_data_manager_factory.h"
 #include "chrome/browser/autofill/valuables_data_manager_factory.h"
 #include "chrome/browser/autofill/wallet_pass_access_manager_factory.h"
@@ -178,7 +178,7 @@
 #include "chrome/browser/permissions/prediction_service/prediction_service_factory.h"
 #include "chrome/browser/persisted_state_db/session_proto_db_factory.h"
 #include "chrome/browser/personal_context/first_run/personal_context_first_run_service_factory.h"
-#include "chrome/browser/personal_context/personal_context_enablement_service_factory.h"
+#include "chrome/browser/personal_context/personal_context_eligibility_service_factory.h"
 #include "chrome/browser/personal_context/personal_context_service_factory.h"
 #include "chrome/browser/plugins/plugin_prefs_factory.h"
 #include "chrome/browser/plus_addresses/plus_address_service_factory.h"
@@ -734,9 +734,6 @@ void ChromeBrowserMainExtraPartsProfiles::
   AcceptLanguagesServiceFactory::GetInstance();
   AccessibilityAnnotatorBackendFactory::GetInstance();
   AccessibilityLabelsServiceFactory::GetInstance();
-#if !BUILDFLAG(IS_ANDROID)
-  AtMemoryQueryServiceFactory::GetInstance();
-#endif
   AccountBookmarkSyncServiceFactory::GetInstance();
   AccountConsistencyModeManagerFactory::GetInstance();
   AccountInvestigatorFactory::GetInstance();
@@ -744,6 +741,7 @@ void ChromeBrowserMainExtraPartsProfiles::
   AccountPreviewDataServiceFactory::GetInstance();
   AccountReconcilorFactory::GetInstance();
   AccountSettingServiceFactory::GetInstance();
+  AtMemoryQueryServiceFactory::GetInstance();
 #if !BUILDFLAG(IS_ANDROID)
   AutoPictureInPictureHatsServiceFactory::GetInstance();
 #endif
@@ -797,6 +795,7 @@ void ChromeBrowserMainExtraPartsProfiles::
   autofill::AutocompleteHistoryManagerFactory::GetInstance();
   autofill::AutofillAiModelCacheFactory::GetInstance();
   autofill::AutofillAiModelExecutorFactory::GetInstance();
+  autofill::AutofillAiPersonalContextAccessManagerFactory::GetInstance();
   autofill::AutofillClientProviderFactory::GetInstance();
   autofill::AutofillEntityDataManagerFactory::GetInstance();
   autofill::AutofillImageFetcherFactory::GetInstance();
@@ -808,7 +807,6 @@ void ChromeBrowserMainExtraPartsProfiles::
   autofill::MerchantPromoCodeManagerFactory::GetInstance();
   autofill::MlLogRouterFactory::GetInstance();
   autofill::OneTimeTokenServiceFactory::GetInstance();
-  autofill::PersonalContextAccessManagerFactory::GetInstance();
   autofill::PersonalDataManagerFactory::GetInstance();
   autofill::ValuablesDataManagerFactory::GetInstance();
   autofill::WalletPassAccessManagerFactory::GetInstance();
@@ -1315,7 +1313,7 @@ void ChromeBrowserMainExtraPartsProfiles::
 #if !BUILDFLAG(IS_ANDROID)
   PersistentRendererPrefsManagerFactory::GetInstance();
 #endif
-  PersonalContextEnablementServiceFactory::GetInstance();
+  PersonalContextEligibilityServiceFactory::GetInstance();
   PersonalContextFirstRunServiceFactory::GetInstance();
   PersonalContextServiceFactory::GetInstance();
 #if !BUILDFLAG(IS_ANDROID)
@@ -1539,7 +1537,7 @@ void ChromeBrowserMainExtraPartsProfiles::
   subscription_eligibility::SubscriptionEligibilityServiceFactory::
       GetInstance();
   SupervisedUserMetricsServiceFactory::GetInstance();
-  SupervisedUserServiceFactory::GetInstance();
+  supervised_user::SupervisedUserServiceFactory::GetInstance();
   supervised_user::SupervisedUserUrlFilteringServiceFactory::GetInstance();
 #if BUILDFLAG(ENABLE_EXTENSIONS)
   sync_file_system::SyncFileSystemServiceFactory::GetInstance();

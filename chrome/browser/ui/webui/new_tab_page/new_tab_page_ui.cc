@@ -146,6 +146,8 @@
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/browser/ui/webui/new_tab_page/ntp_promo/ntp_promo_handler.h"
+#else
+#include "chrome/browser/flags/android/chrome_feature_list.h"
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 #if !BUILDFLAG(OPTIMIZE_WEBUI)
@@ -316,7 +318,10 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
           ntp_features::kNtpMostRelevantTabResumptionModuleFallbackToHost));
   source->AddBoolean("footerEnabled",
                      base::FeatureList::IsEnabled(ntp_features::kNtpFooter));
-  source->AddBoolean("isAndroid", BUILDFLAG(IS_ANDROID));
+  source->AddBoolean(
+      "showCustomizeButton",
+      base::FeatureList::IsEnabled(ntp_features::kNtpCustomizeWebUiAndroid) ||
+          !BUILDFLAG(IS_ANDROID));
 
   source->AddBoolean("ntpRealboxNextEnabled",
                      ntp_realbox::IsNtpRealboxNextEnabled(profile));
@@ -734,15 +739,17 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
   source->AddBoolean("composeboxSmartComposeEnabled",
                      ntp_composebox::kShowSmartCompose.Get());
 
-  source->AddBoolean("enableThreadsRail",
-                     ntp_composebox::kEnableThreadsRail.Get());
+  source->AddBoolean("enableThreadsRail", base::FeatureList::IsEnabled(
+                                              ntp_features::kNtpThreadsRail));
 
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-  source->AddBoolean("enableThreadsRailLogo",
-                     ntp_composebox::kEnableThreadsRailLogo.Get());
+#if BUILDFLAG(IS_ANDROID)
+  source->AddBoolean(
+      "enableAndroidTheming",
+      base::FeatureList::IsEnabled(chrome::android::kUseWebUiNtpAndroid) &&
+      base::FeatureList::IsEnabled(chrome::android::kWebUiNtpAndroidTheming));
 #else
-  source->AddBoolean("enableThreadsRailLogo", false);
-#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
+  source->AddBoolean("enableAndroidTheming", false);
+#endif
 
   source->AddBoolean("useNtpComposeboxFork",
                      ntp_composebox::kUseNtpComposeboxFork.Get());
@@ -757,6 +764,9 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
     }
     if (aim_eligibility_service->IsCreateImagesEligible()) {
       num_tools_eligible++;
+      if (base::FeatureList::IsEnabled(ntp_features::kNtpStarterChip)) {
+        num_tools_eligible++;
+      }
     }
     if (base::FeatureList::IsEnabled(ntp_features::kNtpNextCanvasChip) &&
         aim_eligibility_service->IsCanvasEligible()) {

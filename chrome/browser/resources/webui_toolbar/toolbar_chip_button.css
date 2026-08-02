@@ -165,17 +165,41 @@
 
 /* If we have a prefix icon then we don't need padding to push the text start
  * away from the rounded corners */
-:host([has-label]:has([slot='prefix-icon'])) #button {
+:host([has-label][has-prefix-icon]) #button {
   padding-inline-start: var(--toolbar-chip-padding-start);
 }
 
 /* If we have a suffix icon then we don't need padding to push the text end
  * away from the rounded corners */
-:host([has-label]:has([slot='suffix-icon'])) #button {
+:host([has-label][has-suffix-icon]) #button {
   padding-inline-end: var(--toolbar-chip-padding-end);
 }
 
 #button:disabled {
   opacity: var(--cr-disabled-opacity, 0.38);
   pointer-events: none;
+}
+
+:host-context(.help-anchor-highlight) #button {
+  background-color: transparent;
+}
+
+:host-context(.help-anchor-highlight) #button::before {
+  animation: pulse 1600ms infinite;
+  background-color: var(--color-button-feature-attention-highlight);
+  opacity: 1;
+}
+
+@keyframes pulse {
+  0% {
+    inset: 0;
+    animation-timing-function: cubic-bezier(0.333, 0.667, 0.667, 1);
+  }
+  50% {
+    inset: 3px;
+    animation-timing-function: cubic-bezier(0.333, 0.667, 0.667, 1);
+  }
+  100% {
+    inset: 0;
+  }
 }

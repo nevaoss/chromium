@@ -13,6 +13,8 @@
 
 class Profile;
 
+// LINT.IfChange(field_trials_handler)
+
 // UI Handler for the Field Trials tab of chrome://metrics-internals.
 class FieldTrialsHandler : public content::WebUIMessageHandler,
                            public metrics::FieldTrialsHandlerBase::Delegate {
@@ -38,5 +40,7 @@ class FieldTrialsHandler : public content::WebUIMessageHandler,
   raw_ptr<Profile> profile_;
   std::unique_ptr<metrics::FieldTrialsHandlerBase> base_handler_;
 };
+
+// LINT.ThenChange(//ios/chrome/browser/webui/ui_bundled/metrics_internals/field_trials_handler.h)
 
 #endif  // CHROME_BROWSER_UI_WEBUI_METRICS_INTERNALS_FIELD_TRIALS_HANDLER_H_

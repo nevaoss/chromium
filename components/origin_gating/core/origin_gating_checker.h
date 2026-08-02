@@ -31,6 +31,11 @@ class OriginGatingChecker {
     struct NoVerdictResult {
       bool is_allowed;
       bool did_prompt_user;
+      // When true, the checker does not persist this allow decision to the
+      // cache. Delegates set this for events whose result should not be
+      // remembered (e.g. a provisional navigation request/redirect
+      // destination). Ignored when `is_allowed` is false.
+      bool bypass_cache = false;
     };
 
     using DoesOriginRequireUserConfirmationCallback =
@@ -40,6 +45,7 @@ class OriginGatingChecker {
     // the result.
     virtual void DoesOriginRequireUserConfirmation(
         GatingDecisionContext* context,
+        GateableEvent event,
         const GURL& source,
         const GURL& destination,
         DoesOriginRequireUserConfirmationCallback callback) const = 0;
@@ -47,6 +53,7 @@ class OriginGatingChecker {
     // Defers the final decision from the OriginGatingChecker to the delegate.
     virtual void OnNoVerdict(
         GatingDecisionContext* context,
+        GateableEvent event,
         const GURL& source,
         const GURL& destination,
         bool requires_user_confirmation,
@@ -60,10 +67,11 @@ class OriginGatingChecker {
   OriginGatingChecker(const OriginGatingChecker&) = delete;
   OriginGatingChecker& operator=(const OriginGatingChecker&) = delete;
 
-  // Evaluates a navigation/actuation.
+  // Evaluates a navigation/actuation. `event` selects which predicates apply.
   // The callback is guaranteed to be invoked asynchronously on the same
   // sequence.
   void ComputeGatingDecision(std::unique_ptr<GatingDecisionContext> context,
+                             GateableEvent event,
                              const GURL& source,
                              const GURL& destination,
                              GatingDecisionCallback callback);
@@ -82,6 +90,7 @@ class OriginGatingChecker {
   // Holds various inputs provided by the delegate (and data derived thereof),
   // to avoid needless recomputations.
   struct DelegateInputs {
+    GateableEvent event;
     GURL source;
     url::Origin source_origin;
     GURL destination;
@@ -91,21 +100,21 @@ class OriginGatingChecker {
 
   void RunNextPredicate(
       std::unique_ptr<GatingDecisionContext> context,
-      base::span<const OriginGatingConfiguration::Predicate> pending_predicates,
+      base::span<const PredicateConfiguration> pending_predicates,
       DelegateInputs input,
       GatingDecisionCallback callback);
 
-  void OnPredicateVerdict(std::unique_ptr<GatingDecisionContext> context,
-                          base::span<const OriginGatingConfiguration::Predicate>
-                              remaining_predicates,
-                          DecisionAttribution attribution,
-                          DelegateInputs input,
-                          GatingDecisionCallback callback,
-                          Decision decision);
+  void OnPredicateVerdict(
+      std::unique_ptr<GatingDecisionContext> context,
+      base::span<const PredicateConfiguration> remaining_predicates,
+      DecisionAttribution attribution,
+      DelegateInputs input,
+      GatingDecisionCallback callback,
+      Decision decision);
 
   void OnUserConfirmationRequiredAnswer(
       std::unique_ptr<GatingDecisionContext> context,
-      base::span<const OriginGatingConfiguration::Predicate> pending_predicates,
+      base::span<const PredicateConfiguration> pending_predicates,
       DelegateInputs input,
       GatingDecisionCallback callback,
       bool requires_user_confirmation);

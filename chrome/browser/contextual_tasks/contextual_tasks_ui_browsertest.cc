@@ -24,6 +24,7 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/signin/identity_test_environment_profile_adaptor.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
@@ -41,6 +42,7 @@
 #include "components/contextual_tasks/public/mock_contextual_tasks_service.h"
 #include "components/contextual_tasks/public/prefs.h"
 #include "components/lens/lens_overlay_invocation_source.h"
+#include "components/omnibox/browser/mock_aim_eligibility_service.h"
 #include "components/omnibox/browser/searchbox.mojom.h"
 #include "components/signin/public/base/consent_level.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
@@ -49,6 +51,7 @@
 #include "components/tabs/public/tab_interface.h"
 #include "components/zoom/zoom_controller.h"
 #include "content/public/browser/navigation_controller.h"
+#include "content/public/browser/storage_partition.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
@@ -199,6 +202,17 @@ class ContextualTasksUIBrowserTest : public InProcessBrowserTest {
                   return std::make_unique<testing::NiceMock<
                       contextual_tasks::MockContextualTasksService>>();
                 }));
+    AimEligibilityServiceFactory::GetInstance()->SetTestingFactory(
+        context, base::BindRepeating([](content::BrowserContext* context)
+                                         -> std::unique_ptr<KeyedService> {
+          Profile* profile = Profile::FromBrowserContext(context);
+          return std::make_unique<testing::NiceMock<MockAimEligibilityService>>(
+              *profile->GetPrefs(),
+              TemplateURLServiceFactory::GetForProfile(profile),
+              profile->GetDefaultStoragePartition()
+                  ->GetURLLoaderFactoryForBrowserProcess(),
+              IdentityManagerFactory::GetForProfile(profile));
+        }));
   }
 
   void SetUpOnMainThread() override {
@@ -248,6 +262,11 @@ class ContextualTasksUIBrowserTest : public InProcessBrowserTest {
       std::unique_ptr<contextual_tasks::ContextualTaskContext> context) {
     controller_->OnContextRetrievedForActiveTab(
         browser, tab_id, last_committed_url, std::move(context));
+  }
+
+  MockAimEligibilityService* GetMockAimEligibilityService() {
+    return static_cast<MockAimEligibilityService*>(
+        AimEligibilityServiceFactory::GetForProfile(browser()->GetProfile()));
   }
 
  protected:
@@ -323,6 +342,29 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksUIBrowserTest,
       });
 
   side_panel_controller->OnSidePanelStateChanged();
+  run_loop.Run();
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksUIBrowserTest,
+                       TransferNavigationToEmbeddedPage_ExitsBasicMode) {
+  testing::NiceMock<MockContextualTasksPage> mock_page;
+
+  mojo::PendingReceiver<contextual_tasks::mojom::PageHandler> handler_receiver;
+  controller_->CreatePageHandler(mock_page.BindAndGetRemote(),
+                                 std::move(handler_receiver));
+  TriggerOnInnerWebContentsCreated(
+      browser()->tab_strip_model()->GetActiveWebContents());
+
+  base::RunLoop run_loop;
+  EXPECT_CALL(mock_page, ExitBasicMode()).WillOnce([&run_loop]() {
+    run_loop.Quit();
+  });
+
+  GURL url("https://www.google.com/search?q=test");
+  content::OpenURLParams params(
+      url, content::Referrer(), WindowOpenDisposition::CURRENT_TAB,
+      ui::PAGE_TRANSITION_LINK, /*is_renderer_initiated=*/false);
+  controller_->TransferNavigationToEmbeddedPage(params);
   run_loop.Run();
 }
 
@@ -603,6 +645,8 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksUIBrowserTest,
   TriggerOnInnerWebContentsCreated(inner_contents.get());
 
   GURL url = embedded_test_server()->GetURL("/title1.html");
+  ON_CALL(*GetMockAimEligibilityService(), IsAimUrl(_, _))
+      .WillByDefault(testing::Return(false));
   inner_contents->GetController().LoadURL(
       url, content::Referrer(), ui::PAGE_TRANSITION_TYPED, std::string());
   EXPECT_TRUE(content::WaitForLoadStop(inner_contents.get()));
@@ -862,6 +906,9 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksUIBrowserTest,
   auto* contextual_search_service =
       ContextualSearchServiceFactory::GetForProfile(browser()->GetProfile());
   ASSERT_TRUE(contextual_search_service);
+
+  ON_CALL(*GetMockAimEligibilityService(), IsAimUrl(_, _))
+      .WillByDefault(testing::Return(false));
 
   auto session_handle = contextual_search_service->CreateSession(
       contextual_tasks::CreateQueryControllerConfigParams(),

@@ -103,6 +103,7 @@ chromium-metrics-reviews@google.com.
   <variant name="BlingPrototyping" summary="Bling Prototyping"/>
   <variant name="Compose" summary="Compose"/>
   <variant name="ContentAnnotation" summary="Content Annotation"/>
+  <variant name="ContextHub" summary="Context Hub"/>
   <variant name="ContextualCueing" summary="Contextual Cueing"/>
   <variant name="EnhancedCalendar" summary="Enhanced Calendar"/>
   <variant name="Finds" summary="Chrome finds"/>
@@ -2541,7 +2542,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="OptimizationGuide.PageContentExtraction.EnablementSourcePerNavigation"
-    enum="PageContentExtractionEnablementSource" expires_after="2026-11-05">
+    enum="PageContentExtractionEnablementSource" expires_after="2027-01-10">
   <owner>alexmt@chromium.org</owner>
   <owner>chrome-intelligence-core@google.com</owner>
   <summary>
@@ -2576,7 +2577,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="OptimizationGuide.PageContentExtraction.NavigationToReadyLatency.{NavigationType}"
-    units="ms" expires_after="2026-11-07">
+    units="ms" expires_after="2027-01-10">
   <owner>linnan@chromium.org</owner>
   <owner>chrome-intelligence-core@google.com</owner>
   <summary>
@@ -2593,7 +2594,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="OptimizationGuide.PageContentExtraction.ObserverCountPerNavigation"
-    units="count" expires_after="2026-11-05">
+    units="count" expires_after="2027-01-10">
   <owner>alexmt@chromium.org</owner>
   <owner>chrome-intelligence-core@google.com</owner>
   <summary>

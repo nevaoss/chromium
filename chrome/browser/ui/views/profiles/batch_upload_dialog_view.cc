@@ -147,7 +147,7 @@ BatchUploadDialogView::BatchUploadDialogView(
 
   // Create the web view in the native bubble.
   std::unique_ptr<views::WebView> web_view =
-      std::make_unique<views::WebView>(browser.profile());
+      std::make_unique<views::WebView>(browser.GetProfile());
   web_view->LoadInitialURL(GURL(chrome::kChromeUIBatchUploadURL));
   web_view_ = web_view.get();
   web_view_->GetWebContents()->SetDelegate(this);
@@ -157,7 +157,7 @@ BatchUploadDialogView::BatchUploadDialogView(
       gfx::Size(kBatchUploadDialogFixedWidth, kBatchUploadDialogMaxHeight));
 
   signin::IdentityManager* identity_manager =
-      IdentityManagerFactory::GetForProfile(browser.profile());
+      IdentityManagerFactory::GetForProfile(browser.GetProfile());
   CHECK(identity_manager);
   primary_account_info_ = GetBatchUploadPrimaryAccountInfo(*identity_manager);
 
@@ -240,7 +240,7 @@ void BatchUploadDialogView::SetHeightAndShowWidget(int height) {
     // Enforce the web view round corners to match the native view. Since we set
     // the view margin to 0 in the constructor, it leads to the webview
     // overlapping on the native view in the corners.
-    web_view_->holder()->SetCornerRadii(
+    web_view_->holder()->SetNativeViewCornerRadii(
         gfx::RoundedCornersF(GetCornerRadius()));
 
     widget->Show();

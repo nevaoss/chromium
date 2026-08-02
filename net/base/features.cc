@@ -114,6 +114,27 @@ BASE_FEATURE_PARAM(base::TimeDelta,
                    "fallback_time",
                    TcpConnectJob::kIPv6FallbackTime);
 
+BASE_FEATURE(kIPv6FallbackBasedOnRTT, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE_PARAM(double,
+                   kIPv6FallbackRTTMultiplier,
+                   &kIPv6FallbackBasedOnRTT,
+                   1.5);
+
+BASE_FEATURE_PARAM(base::TimeDelta,
+                   kIPv6FallbackMin,
+                   &kIPv6FallbackBasedOnRTT,
+                   // Value is based on p25 of
+                   // Net.QuicSession.HostResolution.HandshakeConfirmedTime
+                   base::Milliseconds(50));
+
+BASE_FEATURE_PARAM(base::TimeDelta,
+                   kIPv6FallbackMax,
+                   &kIPv6FallbackBasedOnRTT,
+                   // Value is based on p99 of
+                   // Net.QuicSession.HostResolution.HandshakeConfirmedTime
+                   base::Milliseconds(1500));
+
 BASE_FEATURE(kCacheControlImmutable, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kHttpCacheZstdDecompression, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -403,7 +424,7 @@ BASE_FEATURE(kDeviceBoundSessions, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kDeviceBoundSessionsBypassDeferralsForRefreshRequests,
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE_PARAM(bool,
-                   kDeviceBoundSessionsRefreshQuota,
+                   kDeviceBoundSessionsSigningQuota,
                    &kDeviceBoundSessions,
                    "RefreshQuota",
                    true);
@@ -425,17 +446,6 @@ BASE_FEATURE_PARAM(bool,
                    &kDeviceBoundSessionsFederatedRegistration,
                    "CheckWellKnown",
                    true);
-
-BASE_FEATURE(kDeviceBoundSessionProactiveRefresh,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE_PARAM(base::TimeDelta,
-                   kDeviceBoundSessionProactiveRefreshThreshold,
-                   &kDeviceBoundSessionProactiveRefresh,
-                   "Threshold",
-                   base::Seconds(120));
-
-BASE_FEATURE(kDeviceBoundSessionSigningQuotaAndCaching,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kDeviceBoundSessionsForRestrictedSites,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -647,7 +657,7 @@ BASE_FEATURE(kRestrictAbusePorts, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kRestrictAbusePortsOnLocalhost, base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kTLSTrustAnchorIDs, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kTLSTrustAnchorIDs, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kTlsMldsaSignatures, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -920,5 +930,8 @@ BASE_FEATURE_PARAM(int,
                    1800);
 
 BASE_FEATURE(kTlsGreaseSigalgs, base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kEnableBackendCleanupTrackerOnHttpCache,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 }  // namespace net::features

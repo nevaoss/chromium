@@ -1182,7 +1182,7 @@ are declared in tools/grit/grit_args.gni.
           <message name="IDS_CONTENT_CONTEXT_COPYVIDEOLOCATION" desc="In Title Case: The name of the Copy Video Location command in the content area context menu">
             C&amp;opy Video Address
           </message>
-          <message name="IDS_CONTENT_CONTEXT_COPYVIDEOFRAME" desc="The name of the Copy Video Frame command in the content area context menu">
+          <message name="IDS_CONTENT_CONTEXT_COPYVIDEOFRAME" desc="In Title Case: The name of the Copy Video Frame command in the content area context menu">
             Cop&amp;y Video Frame
           </message>
           <message name="IDS_CONTENT_CONTEXT_SEARCHFORVIDEOFRAME" desc="In Title Case: The name of the Lens Search command in the content area context menu">
@@ -4246,18 +4246,6 @@ are declared in tools/grit/grit_args.gni.
       </message>
       <message name="IDS_COOKIE_CONTROLS_PAGE_ACTION_COOKIES_BLOCKED_LABEL" desc="Label in the Page Action (omnibox) icon indicating that cookies are blocked on the current site.">
         Third-party cookies blocked
-      </message>
-      <message name="IDS_COOKIE_CONTROLS_PROMO_TITLE" desc="Title of the in-product-help bubble shown for the cookie controls bubble. Indicates that cookies are blocked on the current site.">
-        Third-party cookies blocked
-      </message>
-      <message name="IDS_COOKIE_CONTROLS_PROMO_TEXT" desc="Text of the in-product-help bubble shown for the cookie controls bubble. Explains that sites may not work correctly without third-party cookies.">
-        If you visit a site that uses cookies, you may need to temporarily enable cookies to make all site features work.
-      </message>
-      <message name="IDS_COOKIE_CONTROLS_PROMO_CLOSE_BUTTON_TEXT" desc="Text on the button that closes in the in-product-help bubble shown for the cookie controls bubble.">
-        Close
-      </message>
-      <message name="IDS_COOKIE_CONTROLS_PROMO_SEE_HOW_BUTTON_TEXT" desc="Text on the button that opens the cookie controls bubble on the in-product-help bubble shown for the cookie controls bubble. Encourages users to see how to temporarily enable third-party cookies.">
-        See how
       </message>
 
       <!-- JS optimizations bubble -->
@@ -8430,10 +8418,10 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_NTP_COMPOSE_PLACEHOLDER_TEXT" desc="The placeholder for the input in the compose box.">
         Ask AI Mode
       </message>
-      <message name="IDS_NTP_COMPOSE_CANCEL_BUTTON_A11Y_LABEL" desc="The accessibility label for the cancel button on the compose box when there is no input.">
+      <message name="IDS_NTP_COMPOSE_CANCEL_BUTTON_A11Y_LABEL" desc="The accessibility label for the cancel button on the compose box when there is no input." formatter_data="android_java">
         Dismiss
       </message>
-      <message name="IDS_NTP_COMPOSE_CANCEL_BUTTON_A11Y_LABEL_INPUT" desc="The accessibility label for the cancel button on the compose box when there is input.">
+      <message name="IDS_NTP_COMPOSE_CANCEL_BUTTON_A11Y_LABEL_INPUT" desc="The accessibility label for the cancel button on the compose box when there is input." formatter_data="android_java">
         Clear
       </message>
       <message name="IDS_NTP_COMPOSE_IMAGE_UPLOAD_BUTTON_A11Y_LABEL" desc="The accessibility label for the image upload button on the compose box.">
@@ -8442,7 +8430,7 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_NTP_COMPOSE_PDF_UPLOAD_BUTTON_A11Y_LABEL" desc="The accessibility label for the file upload button on the compose box.">
         Upload a PDF
       </message>
-      <message name="IDS_NTP_COMPOSE_SUBMIT_BUTTON_A11Y_LABEL" desc="The accessibility label for the submit button on the compose box.">
+      <message name="IDS_NTP_COMPOSE_SUBMIT_BUTTON_A11Y_LABEL" desc="The accessibility label for the submit button on the compose box." formatter_data="android_java">
         Send
       </message>
       <message name="IDS_NTP_COMPOSE_DELETE_FILE_A11Y_LABEL" desc="The accessibility label for the delete button shown on hover for uploaded files.">
@@ -8519,7 +8507,7 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_NTP_COMPOSE_ADD_CONTEXTS" desc="The text to display to ask user to add context to their search.">
         Add tabs and more
       </message>
-      <message name="IDS_NTP_COMPOSE_ADD_CONTEXT_TITLE" desc="The a11y title for a button that allows users to add context to their search e.g. pdf or image.">
+      <message name="IDS_NTP_COMPOSE_ADD_CONTEXT_TITLE" desc="The a11y title for a button that allows users to add context to their search e.g. pdf or image." formatter_data="android_java">
         Enhance your search with tabs, files, or an AI tool
       </message>
       <message name="IDS_NTP_COMPOSE_SUGGESTIONS_INFO" desc="The text underneath the composebox that explains to users how suggestions are generated.">
@@ -8627,6 +8615,12 @@ Keep your key file in a safe place. You will need it to create new versions of y
       </message>
       <message name="IDS_NTP_ACTION_CHIP_CANVAS_BODY" desc="Body text in the canvas action chip describing the use of the chip.">
         Write, plan, code, and more
+      </message>
+      <message name="IDS_NTP_ACTION_CHIP_STARTER_HEADING" desc="Heading of the conversation starter action chip on the NTP." translateable="false">
+        Do more with AI Mode
+      </message>
+      <message name="IDS_NTP_ACTION_CHIP_STARTER_BODY" desc="Body text in the conversation starter action chip describing the use of the chip." translateable="false">
+        Create, plan, summarize
       </message>
       <message name="IDS_NTP_ACTION_CHIP_DISABLE_TEXT" desc="Text for menu option to disable action chip feature.">
         Disable suggestions
@@ -9599,6 +9593,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_READING_MODE_ENABLE_PIN_BUTTON_LABEL" desc="Accessibility label for the button that pins reading mode to the toolbar.">
         Unpin reading mode
       </message>
+      <message name="IDS_READING_MODE_APPEARANCE_LABEL" desc="Accessibility label for the appearance combobox of the reading mode feature.">
+        Appearance
+      </message>
       <message name="IDS_READING_MODE_COLORS_COMBOBOX_LABEL" desc="Accessibility label for the colors combobox of the reading mode feature.">
         Color theme
       </message>
@@ -10034,7 +10031,7 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_TOOLTIP_TAB_SCROLL_TRAILING" desc="The tooltip for the trailing scroll button">
         Scroll to last tab
       </message>
-      <message name="IDS_TOOLTIP_MIC_SEARCH" desc="The tooltip for search-by-voice button">
+      <message name="IDS_TOOLTIP_MIC_SEARCH" desc="The tooltip for search-by-voice button" formatter_data="android_java">
         Search by voice
       </message>
       <message name="IDS_TOOLTIP_LENS_SEARCH" desc="The tooltip for search-by-image button">
@@ -11953,7 +11950,7 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
         <message name="IDS_TAB_CXMENU_NEWTABTOLEFT" desc="In Title Case: The label of the 'New Tab to the Left' Tab context menu item. Translate this verbatim, do not localize for RTL languages (we have separate strings for RTL).">
           New Tab to the Left
         </message>
-        <message name="IDS_TAB_CXMENU_NEWTABBELOW" desc="The label of the 'New Tab Below' Tab context menu item.">
+        <message name="IDS_TAB_CXMENU_NEWTABBELOW" desc="In Title Case: The label of the 'New Tab Below' Tab context menu item.">
           New Tab Below
         </message>
         <message name="IDS_TAB_CXMENU_RELOAD" desc="In Title Case: The label of the 'Reload' Tab context menu item.">
@@ -13707,17 +13704,17 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
       <if expr="use_titlecase">
         <then>
           <message name="IDS_MENU_SEND_TAB_TO_SELF" desc="In Title Case: The label of a menu entry to share the current tab to other devices">
-            Send to Your &amp;Devices
+            Send to Your &amp;Device
           </message>
         </then>
         <else>
           <message name="IDS_MENU_SEND_TAB_TO_SELF" desc="The label of a menu entry to share the current tab to other devices">
-            Send to your &amp;devices
+            Send to your &amp;device
           </message>
         </else>
       </if>
       <message name="IDS_SEND_TAB_TO_SELF" desc="The title of an action or bubble letting the user share the current tab to other devices">
-        Send to your devices
+        Send to your device
       </message>
       <message name="IDS_SEND_TAB_TO_SELF_DEVICE_LABEL" desc="The label for a target device in the Send Tab to Self context menu, which includes the device name and its last active time.">
         <ph name="DEVICE_NAME">$1<ex>Pixel 9 Pro</ex></ph> (<ph name="LAST_ACTIVE_TIME">$2<ex>Active 5 mins ago</ex></ph>)
@@ -13739,6 +13736,12 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
       </message>
       <message name="IDS_SEND_TAB_TO_SELF_SIGN_IN_PROMO_BODY" desc="Body label text of the send-tab-to-self sign-in promo bubble.">
         To send links between devices, ensure both are signed in to the same Google account.
+      </message>
+      <message name="IDS_SEND_TAB_TO_SELF_VERIFY_ITS_YOU_PROMO_TITLE" desc="Title of the send-tab-to-self sign-in promo bubble when the user needs to verify their identity (reauthenticate).">
+        Send a link to another device
+      </message>
+      <message name="IDS_SEND_TAB_TO_SELF_VERIFY_ITS_YOU_PROMO_LABEL" desc="Text when a user in the verify it's you (signin pending) state attempts to use send-tab-to-self.">
+        To send links, verify it’s you. You can send links when you’re signed in to the same Google Account on both devices.
       </message>
 
       <!-- Share via QR Code strings -->
@@ -19076,6 +19079,16 @@ Please help our engineers fix this problem. Tell us what happened right before y
       <message name="IDS_TAB_STRIP_SWITCH_DELAYED_EXIT_FULLSCREEN_ACTION" desc="Action button on a toast notification that exits immersive fullscreen mode.">
         Exit full screen
       </message>
+      <!-- Dictation strings -->
+      <message name="IDS_DICTATION_ONBOARDING_BULLET_DATA_SHARING" desc="The second paragraph in the onboarding dialog describing data sharing with Google servers." translateable="false">
+        Your spoken audio, the transcribed text, and the content and URL of the page you're interacting with will be sent to Google.
+      </message>
+      <message name="IDS_DICTATION_ONBOARDING_BUTTON_ACCEPT" desc="Button label on the onboarding dialog to confirm the provided information and use the feature." translateable="false">
+        Ok, got it
+      </message>
+      <message name="IDS_DICTATION_BUTTON_START" desc="Button label on the dictation UI that turns on the microphone to start dictating text." translateable="false">
+        Start
+      </message>
     </if>
 
     <if expr="is_android">
@@ -19342,7 +19355,7 @@ Please help our engineers fix this problem. Tell us what happened right before y
     Add freehand drawings, signatures, and highlights with the new Draw tool
     </message>
     <message name="IDS_PDF_TEXT_ANNOTATIONS_IPH_BODY" desc="Content of in-product help to introduce the PDF Text Annotations feature.">
-    Add text with the new "Add text" tool
+    Add text annotations with the new "Add text annotations" tool
     </message>
 
     <!-- PDF Searchify elements. -->

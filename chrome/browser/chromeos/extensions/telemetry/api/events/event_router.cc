@@ -8,25 +8,18 @@
 #include <utility>
 
 #include "chrome/browser/chromeos/extensions/telemetry/api/events/event_observation.h"
-#include "chromeos/crosapi/mojom/telemetry_event_service.mojom.h"
 #include "content/public/browser/browser_context.h"
 #include "extensions/common/extension_id.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 
 namespace chromeos {
 
-namespace {
-
-namespace crosapi = ::crosapi::mojom;
-
-}  // namespace
-
 EventRouter::EventRouter(content::BrowserContext* context)
     : browser_context_(context) {}
 
 EventRouter::~EventRouter() = default;
 
-mojo::PendingRemote<crosapi::TelemetryEventObserver>
+mojo::PendingRemote<ash::cros_healthd::mojom::EventObserver>
 EventRouter::GetPendingRemoteForCategoryAndExtension(
     chromeos::api::os_events::EventCategory category,
     extensions::ExtensionId extension_id) {
@@ -43,7 +36,7 @@ EventRouter::GetPendingRemoteForCategoryAndExtension(
         iter_category, std::piecewise_construct,
         std::forward_as_tuple(category),
         std::forward_as_tuple(std::make_unique<EventObservation>(
-            extension_id, this, browser_context_)));
+            extension_id, category, this, browser_context_)));
   }
 
   return iter_category->second->GetRemote();

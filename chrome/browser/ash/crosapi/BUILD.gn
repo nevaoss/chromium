@@ -120,9 +120,6 @@ static_library("crosapi") {
     "//chromeos/ash/components/settings",
     "//chromeos/ash/components/system",
     "//chromeos/ash/components/system_web_apps:system_web_app_type",
-    "//chromeos/ash/components/telemetry_extension/diagnostics",
-    "//chromeos/ash/components/telemetry_extension/events",
-    "//chromeos/ash/components/telemetry_extension/routines",
     "//chromeos/ash/experiences/arc",
     "//chromeos/ash/experiences/arc:arc_base_utils",
     "//chromeos/ash/experiences/arc/intent_helper",
@@ -138,7 +135,6 @@ static_library("crosapi") {
     "//chromeos/components/quick_answers/public/cpp:prefs",
     "//chromeos/components/remote_apps/mojom",
     "//chromeos/components/sensors",
-    "//chromeos/crosapi/cpp:crosapi_constants",
     "//chromeos/crosapi/mojom",
     "//chromeos/printing",
     "//chromeos/services/chromebox_for_meetings/public/cpp",
@@ -218,42 +214,5 @@ static_library("crosapi") {
     "//chrome/browser/ui/ash/shelf/app_service",
     "//chrome/browser/ui/webui/signin/ash",
     "//chrome/browser/web_applications/app_service",
-  ]
-}
-
-source_set("browser_tests") {
-  testonly = true
-
-  defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
-
-  sources = [ "power_ash_apitest.cc" ]
-
-  deps = [
-    ":crosapi",
-    "//ash/constants",
-    "//ash/public/cpp",
-    "//base",
-    "//base/test:test_support",
-    "//chrome/browser",
-    "//chrome/browser:browser_process",
-    "//chrome/browser/apps/app_service",
-    "//chrome/browser/apps/app_service:app_registry_cache_waiter",
-    "//chrome/browser/ash/fileapi",
-    "//chrome/browser/ash/system_web_apps/test_support:test_support_ui",
-    "//chrome/browser/ui",
-    "//chrome/common",
-    "//chrome/test:test_support",
-    "//chrome/test/base/ash/util:test_support",
-    "//chromeos/ash/components/dbus/shill",
-    "//chromeos/crosapi/mojom",
-    "//components/account_id",
-    "//components/exo",
-    "//components/global_media_controls:test_support",
-    "//components/user_manager",
-    "//components/webapps/common",
-    "//content/test:test_support",
-    "//mojo/public/cpp/bindings",
-    "//testing/gtest",
-    "//ui/base/idle:test_support",
   ]
 }

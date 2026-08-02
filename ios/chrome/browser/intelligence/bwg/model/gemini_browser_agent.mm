@@ -11,6 +11,7 @@
 #import "base/functional/bind.h"
 #import "base/functional/callback.h"
 #import "base/functional/callback_helpers.h"
+#import "base/memory/weak_ptr.h"
 #import "base/metrics/histogram_functions.h"
 #import "base/strings/sys_string_conversions.h"
 #import "base/strings/utf_string_conversions.h"
@@ -207,6 +208,51 @@ void ShowMicrophoneSettingsAlert(UIViewController* base_view_controller,
                                    completion:nil];
 }
 
+// Helper function to show the in-app Gemini microphone permission alert.
+void ShowGeminiMicrophonePermissionAlert(UIViewController* base_view_controller,
+                                         base::WeakPtr<ProfileIOS> weak_profile,
+                                         void (^completion)(BOOL granted)) {
+  UIAlertController* alert = [UIAlertController
+      alertControllerWithTitle:
+          l10n_util::GetNSString(
+              IDS_IOS_GEMINI_PERMISSION_MICROPHONE_PROMPT_TITLE)
+                       message:
+                           l10n_util::GetNSString(
+                               IDS_IOS_GEMINI_PERMISSION_MICROPHONE_PROMPT_BODY)
+                preferredStyle:UIAlertControllerStyleAlert];
+
+  UIAlertAction* acceptAction = [UIAlertAction
+      actionWithTitle:l10n_util::GetNSString(
+                          IDS_IOS_PERMISSIONS_ALERT_DIALOG_BUTTON_TEXT_GRANT)
+                style:UIAlertActionStyleDefault
+              handler:^(UIAlertAction* action) {
+                if (weak_profile) {
+                  weak_profile->GetPrefs()->SetBoolean(
+                      prefs::kIOSGeminiLiveMicrophoneSetting, true);
+                }
+                if (completion) {
+                  completion(YES);
+                }
+              }];
+
+  UIAlertAction* denyAction = [UIAlertAction
+      actionWithTitle:l10n_util::GetNSString(
+                          IDS_IOS_PERMISSIONS_ALERT_DIALOG_BUTTON_TEXT_DENY)
+                style:UIAlertActionStyleCancel
+              handler:^(UIAlertAction* action) {
+                if (completion) {
+                  completion(NO);
+                }
+              }];
+
+  [alert addAction:acceptAction];
+  [alert addAction:denyAction];
+
+  [base_view_controller presentViewController:alert
+                                     animated:YES
+                                   completion:nil];
+}
+
 // Returns true if the page context is eligible to be listed in the tab picker.
 // A context is eligible if it is explicitly attached and its computation state
 // is either success or pending (meaning it is not blocked or protected).
@@ -285,6 +331,10 @@ GeminiBrowserAgent::GeminiBrowserAgent(Browser* browser)
   pref_change_registrar_.Add(
       prefs::kIOSBWGPageContentSetting,
       base::BindRepeating(&GeminiBrowserAgent::OnPageContentPrefChanged,
+                          base::Unretained(this)));
+  pref_change_registrar_.Add(
+      prefs::kIOSGeminiLiveMicrophoneSetting,
+      base::BindRepeating(&GeminiBrowserAgent::OnMicrophonePrefChanged,
                           base::Unretained(this)));
 
   bwg_gateway_ = ios::provider::CreateGeminiGateway();
@@ -433,6 +483,7 @@ GeminiBrowserAgent::GeminiBrowserAgent(Browser* browser)
 }
 
 GeminiBrowserAgent::~GeminiBrowserAgent() {
+  LogLiveSessionMetrics(/*floaty_dismissed=*/true);
   if (identity_manager_) {
     identity_manager_->RemoveObserver(this);
     identity_manager_ = nullptr;
@@ -782,6 +833,12 @@ void GeminiBrowserAgent::ShowGeminiLiveMicrophoneAlert(
                                completionHandler:^(BOOL granted) {
                                  dispatch_async(dispatch_get_main_queue(), ^{
                                    if (granted) {
+                                     browser_->GetProfile()
+                                         ->GetPrefs()
+                                         ->SetBoolean(
+                                             prefs::
+                                                 kIOSGeminiLiveMicrophoneSetting,
+                                             true);
                                      if (completion) {
                                        completion(YES);
                                      }
@@ -794,6 +851,13 @@ void GeminiBrowserAgent::ShowGeminiLiveMicrophoneAlert(
       break;
     }
     case AVAuthorizationStatusAuthorized:
+      if (!browser_->GetProfile()->GetPrefs()->GetBoolean(
+              prefs::kIOSGeminiLiveMicrophoneSetting)) {
+        ShowGeminiMicrophonePermissionAlert(base_view_controller,
+                                            browser_->GetProfile()->AsWeakPtr(),
+                                            completion);
+        break;
+      }
       if (completion) {
         completion(YES);
       }
@@ -1083,19 +1147,34 @@ void GeminiBrowserAgent::OnProcessingStatusChanged(
     return;
   }
 
+  LogLiveStatusTransition(processing_status_, processing_status);
+
   processing_status_ = processing_status;
   switch (processing_status) {
     case ios::provider::GeminiClientMode::kTranscribing:
       RequestPageContextGeneration();
       break;
+    case ios::provider::GeminiClientMode::kThinking:
+      live_thinking_start_time_ = base::TimeTicks::Now();
+      break;
     case ios::provider::GeminiClientMode::kResponding: {
+      live_turn_count_++;
+      live_response_start_time_ = base::TimeTicks::Now();
+      if (!live_thinking_start_time_.is_null()) {
+        base::TimeDelta latency =
+            live_response_start_time_ - live_thinking_start_time_;
+        RecordGeminiLiveResponseLatency(latency);
+        live_thinking_start_time_ = base::TimeTicks();
+      }
       // Update partial page context (i.e., live sharing context label) when
       // transitioning out of the transcribing (i.e., speaking) state.
       UpdateFloatyWithPartialPageContext();
       break;
     }
     case ios::provider::GeminiClientMode::kDormant:
+      RecordGeminiLiveDormantReason(dormant_reason);
       HandleDormantStatus(dormant_reason);
+      LogLiveSessionMetrics();
       break;
     default:
       // No-op.
@@ -1136,6 +1215,46 @@ void GeminiBrowserAgent::HandleDormantStatus(
     is_showing_live_session_dormant_snackbar_ = true;
     ShowLiveSessionDormantSnackbar(
         IDS_IOS_GEMINI_LIVE_GENERAL_DORMANT_SNACKBAR);
+  }
+}
+
+void GeminiBrowserAgent::LogLiveStatusTransition(
+    ios::provider::GeminiClientMode old_status,
+    ios::provider::GeminiClientMode new_status) {
+  if (old_status == ios::provider::GeminiClientMode::kResponding &&
+      new_status != ios::provider::GeminiClientMode::kResponding) {
+    if (!live_response_start_time_.is_null()) {
+      base::TimeDelta duration =
+          base::TimeTicks::Now() - live_response_start_time_;
+      RecordGeminiLiveResponseDuration(duration);
+      live_response_start_time_ = base::TimeTicks();
+    }
+  }
+
+  if (old_status == ios::provider::GeminiClientMode::kThinking &&
+      new_status != ios::provider::GeminiClientMode::kResponding) {
+    live_thinking_start_time_ = base::TimeTicks();
+  }
+}
+
+void GeminiBrowserAgent::LogLiveSessionMetrics(bool floaty_dismissed) {
+  if (!live_session_start_time_.is_null() &&
+      (floaty_dismissed || !IsInGeminiLiveMode())) {
+    live_session_accumulated_duration_ +=
+        base::TimeTicks::Now() - live_session_start_time_;
+    live_session_start_time_ = base::TimeTicks();
+
+    RecordGeminiLiveTurnCount(live_turn_count_);
+    live_turn_count_ = 0;
+    live_response_start_time_ = base::TimeTicks();
+    live_thinking_start_time_ = base::TimeTicks();
+  }
+
+  if (floaty_dismissed) {
+    if (!live_session_accumulated_duration_.is_zero()) {
+      RecordGeminiLiveAccumulatedDuration(live_session_accumulated_duration_);
+      live_session_accumulated_duration_ = base::TimeDelta();
+    }
   }
 }
 
@@ -1185,7 +1304,14 @@ void GeminiBrowserAgent::OnGeminiLiveUserDidPressStopButton() {
 }
 
 void GeminiBrowserAgent::OnModeChanged(ios::provider::GeminiViewMode mode) {
-  // TODO(crbug.com/513271981): Record metrics for mode changes.
+  if (mode == ios::provider::GeminiViewMode::kLive) {
+    if (live_session_start_time_.is_null()) {
+      live_session_start_time_ = base::TimeTicks::Now();
+      live_turn_count_ = 0;
+    }
+  } else {
+    LogLiveSessionMetrics();
+  }
 }
 
 void GeminiBrowserAgent::DismissGeminiFromOtherWindows(
@@ -1236,6 +1362,8 @@ void GeminiBrowserAgent::DismissFloaty() {
   if (is_floaty_temporarily_hidden_) {
     return;
   }
+
+  LogLiveSessionMetrics(/*force=*/true);
 
   feature_engagement::Tracker* tracker =
       feature_engagement::TrackerFactory::GetForProfile(browser_->GetProfile());
@@ -2007,6 +2135,14 @@ void GeminiBrowserAgent::OnPageContentPrefChanged() {
   // Trigger UI update for the attachment chip.
   ios::provider::RequestUIChange(
       ios::provider::GeminiUIElementType::kContextAttachment);
+}
+
+void GeminiBrowserAgent::OnMicrophonePrefChanged() {
+  if (!browser_->GetProfile()->GetPrefs()->GetBoolean(
+          prefs::kIOSGeminiLiveMicrophoneSetting) &&
+      IsInGeminiLiveMode()) {
+    SwitchToChatModeOrDismiss(/*animated=*/true);
+  }
 }
 
 void GeminiBrowserAgent::OnPageContextGenerated(

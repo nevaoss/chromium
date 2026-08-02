@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-
 #include "media/renderers/paint_canvas_video_renderer.h"
 
 #include <GLES3/gl3.h>
@@ -50,10 +49,12 @@
 #include "media/base/data_buffer.h"
 #include "media/base/format_utils.h"
 #include "media/base/video_frame.h"
+#include "media/base/video_transformation.h"
 #include "media/base/video_util.h"
 #include "media/base/wait_and_replace_sync_token_client.h"
 #include "third_party/fp16/src/include/fp16.h"
 #include "third_party/libyuv/include/libyuv.h"
+#include "third_party/skia/include/core/SkBitmap.h"
 #include "third_party/skia/include/core/SkColorSpace.h"
 #include "third_party/skia/include/core/SkImage.h"
 #include "third_party/skia/include/core/SkImageGenerator.h"
@@ -592,9 +593,12 @@ SkImageInfo GetVideoImageGeneratorSkImageInfo(
   const auto color_type = frame->format() == PIXEL_FORMAT_RGBAF16
                               ? kRGBA_F16_SkColorType
                               : kN32_SkColorType;
-  return SkImageInfo::Make(
-      frame->visible_rect().width(), frame->visible_rect().height(), color_type,
-      kPremul_SkAlphaType, frame_color_space.ToSkColorSpace());
+  const auto alpha_type = media::IsOpaque(frame->format())
+                              ? kOpaque_SkAlphaType
+                              : kPremul_SkAlphaType;
+  return SkImageInfo::Make(frame->visible_rect().width(),
+                           frame->visible_rect().height(), color_type,
+                           alpha_type, frame_color_space.ToSkColorSpace());
 }
 
 }  // anonymous namespace
@@ -623,6 +627,21 @@ class VideoImageGenerator : public cc::PaintImageGenerator {
                  cc::PaintImage::GeneratorClientId client_id,
                  uint32_t lazy_pixel_ref) override {
     DCHECK_EQ(frame_index, 0u);
+
+    if (IsYuvPlanar(frame_->format()) &&
+        dst_pixmap.colorType() != kN32_SkColorType) {
+      SkBitmap temp_bitmap;
+      if (!temp_bitmap.tryAllocPixels(
+              dst_pixmap.info()
+                  .makeColorType(kN32_SkColorType)
+                  .makeColorSpace(GetSkImageInfo().refColorSpace()))) {
+        return false;
+      }
+      PaintCanvasVideoRenderer::ConvertVideoFrameToRGBPixels(
+          frame_.get(), UNSAFE_SKBITMAP_TO_BYTES_SPAN(temp_bitmap),
+          temp_bitmap.rowBytes(), kN32_SkColorType);
+      return temp_bitmap.pixmap().readPixels(dst_pixmap);
+    }
 
     // If skia couldn't do the YUV conversion on GPU, we will on CPU.
     PaintCanvasVideoRenderer::ConvertVideoFrameToRGBPixels(
@@ -966,9 +985,7 @@ void PaintCanvasVideoRenderer::Paint(
 
     gfx::SizeF rotated_dest_size = dest_rect.size();
 
-    const bool has_flipped_size =
-        params.transformation.rotation == VIDEO_ROTATION_90 ||
-        params.transformation.rotation == VIDEO_ROTATION_270;
+    const bool has_flipped_size = params.transformation.IsOrthogonal();
     if (has_flipped_size) {
       rotated_dest_size =
           gfx::SizeF(rotated_dest_size.height(), rotated_dest_size.width());
@@ -998,14 +1015,21 @@ void PaintCanvasVideoRenderer::Paint(
   // This if is a special handling of video for SkiaPaintcanvas backend, where
   // the video does not need any transform and it is enough to draw the frame
   // directly into the skia canvas
+  const SkColorType canvas_color_type = info.colorType();
+  const bool is_yuv = media::IsYuvPlanar(video_frame->format());
+  const bool color_type_compatible =
+      is_yuv ? (canvas_color_type == kN32_SkColorType)
+             : (canvas_color_type == kBGRA_8888_SkColorType ||
+                canvas_color_type == kRGBA_8888_SkColorType);
+
   if (!need_transform && !params.reinterpret_as_srgb &&
       video_frame->HasDirectCpuAccess() && flags.isOpaque() &&
       flags.getBlendMode() == SkBlendMode::kSrc &&
       flags.getFilterQuality() == cc::PaintFlags::FilterQuality::kLow &&
-      !pixels.empty() && info.colorType() == kBGRA_8888_SkColorType) {
+      !pixels.empty() && color_type_compatible) {
     const size_t offset = info.computeOffset(origin.x(), origin.y(), row_bytes);
     ConvertVideoFrameToRGBPixels(video_frame.get(), pixels.subspan(offset),
-                                 row_bytes, kBGRA_8888_SkColorType);
+                                 row_bytes, canvas_color_type);
   } else if (video_frame->HasSharedImage()) {
     DCHECK_EQ(video_frame->coded_size(),
               gfx::Size(image.width(), image.height()));

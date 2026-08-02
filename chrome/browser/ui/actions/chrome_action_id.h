@@ -108,6 +108,7 @@
   E(kActionCloseProfile, IDC_CLOSE_PROFILE) \
   E(kActionManageGoogleAccount, IDC_MANAGE_GOOGLE_ACCOUNT) \
   E(kActionShowSyncSettings, IDC_SHOW_SYNC_SETTINGS) \
+  E(kActionShowSyncPassphraseDialog, IDC_SHOW_SYNC_PASSPHRASE_DIALOG) \
   E(kActionTurnOnSync, IDC_TURN_ON_SYNC) \
   E(kActionShowSigninWhenPaused, IDC_SHOW_SIGNIN_WHEN_PAUSED) \
   E(kActionOpenGuestProfile, IDC_OPEN_GUEST_PROFILE) \
@@ -135,7 +136,14 @@
   E(kActionDevToolsConsole, IDC_DEV_TOOLS_CONSOLE) \
   E(kActionDevToolsDevices, IDC_DEV_TOOLS_DEVICES) \
   E(kActionFeedback, IDC_FEEDBACK) \
+  E(kActionReportUnsafeSite, IDC_REPORT_UNSAFE_SITE) \
   E(kActionShowBookmarkBar, IDC_SHOW_BOOKMARK_BAR) \
+  E(kActionBookmarkBarSubmenuAlwaysShow, \
+    IDC_BOOKMARK_BAR_SUBMENU_ALWAYS_SHOW) \
+  E(kActionBookmarkBarSubmenuAlwaysHide, \
+    IDC_BOOKMARK_BAR_SUBMENU_ALWAYS_HIDE) \
+  E(kActionBookmarkBarSubmenuOnlyOnNtp, \
+    IDC_BOOKMARK_BAR_SUBMENU_ONLY_ON_NTP) \
   E(kActionShowHistory, IDC_SHOW_HISTORY) \
   E(kActionShowBookmarkManager, IDC_SHOW_BOOKMARK_MANAGER) \
   E(kActionImportSettings, IDC_IMPORT_SETTINGS) \
@@ -147,6 +155,11 @@
   E(kActionHelpPageViaMenu, IDC_HELP_PAGE_VIA_MENU) \
   E(kActionShowAppMenu, IDC_SHOW_APP_MENU) \
   E(kActionManageExtensions, IDC_MANAGE_EXTENSIONS) \
+  E(kActionSafetyHubManageExtensions, IDC_SAFETY_HUB_MANAGE_EXTENSIONS) \
+  E(kActionFindExtensions, IDC_FIND_EXTENSIONS) \
+  E(kActionOpenSafetyHub, IDC_OPEN_SAFETY_HUB) \
+  E(kActionChromeEnterpriseReleaseNotes, \
+    IDC_CHROME_ENTERPRISE_RELEASE_NOTES) \
   E(kActionDevToolsInspect, IDC_DEV_TOOLS_INSPECT) \
   E(kActionUpgradeDialog, IDC_UPGRADE_DIALOG) \
   E(kActionSetBrowserAsDefault, IDC_SET_BROWSER_AS_DEFAULT) \
@@ -170,6 +183,11 @@
   E(kActionShowAiModeOmniboxButton, IDC_SHOW_AI_MODE_OMNIBOX_BUTTON) \
   E(kActionRecordReplay) \
   E(kActionShowSearchTools, IDC_SHOW_SEARCH_TOOLS) \
+  E(kActionSafetyHubShowPasswordCheckup, \
+    IDC_SAFETY_HUB_SHOW_PASSWORD_CHECKUP) \
+  E(kActionShowContactInfo, IDC_SHOW_CONTACT_INFO) \
+  E(kActionShowIdentityDocs, IDC_SHOW_IDENTITY_DOCS) \
+  E(kActionShowTravel, IDC_SHOW_TRAVEL) \
   E(kActionCaretBrowsingToggle, IDC_CARET_BROWSING_TOGGLE) \
   E(kActionChromeTips, IDC_CHROME_TIPS) \
   E(kActionChromeWhatsNew, IDC_CHROME_WHATS_NEW) \
@@ -363,10 +381,13 @@
     IDC_CONTENT_CONTEXT_ACCESSIBILITY_LABELS_TOGGLE_ONCE) \
   /* Tab Search */ \
   E(kActionTabSearchClose, IDC_TAB_SEARCH_CLOSE) \
+  E(kActionTabSearchTogglePin, IDC_TAB_SEARCH_TOGGLE_PIN) \
   /* Views debug commands. */ \
   E(kActionDebugToggleTabletMode, IDC_DEBUG_TOGGLE_TABLET_MODE) \
   E(kActionDebugPrintViewTree, IDC_DEBUG_PRINT_VIEW_TREE) \
   E(kActionDebugPrintViewTreeDetails, IDC_DEBUG_PRINT_VIEW_TREE_DETAILS) \
+  E(kActionDebugPrintWindowHierarchy, IDC_DEBUG_PRINT_WINDOW_HIERARCHY) \
+  E(kActionDebugPrintLayerHierarchy, IDC_DEBUG_PRINT_LAYER_HIERARCHY) \
   /* Autofill feedback. */ \
   E(kActionContentContextAutofillFeedback, \
     IDC_CONTENT_CONTEXT_AUTOFILL_FEEDBACK) \
@@ -395,7 +416,11 @@
   E(kActionCommercePriceInsights) \
   E(kActionCommerceDiscounts) \
   /*Vertical Tabs*/ \
+  E(kActionToggleVerticalTabs, IDC_TOGGLE_VERTICAL_TABS) \
   E(kActionToggleCollapseVertical, IDC_TOGGLE_VERTICAL_TABS_COLLAPSE) \
+  E(kActionToggleVerticalTabsExpandOnHover, \
+    IDC_TOGGLE_VERTICAL_TABS_EXPAND_ON_HOVER) \
+  E(kActionVerticalTabsSendFeedback, IDC_VERTICAL_TABS_SEND_FEEDBACK) \
   /*Projects Panel*/ \
   E(kActionToggleProjectsPanel) \
   /*Omnibox Context Menu*/       \
@@ -411,14 +436,20 @@
 
 #if BUILDFLAG(IS_CHROMEOS)
 #define CHROME_PLATFORM_SPECIFIC_ACTION_IDS \
-  E(kToggleMultitaskMenu, IDC_TOGGLE_MULTITASK_MENU)
+  E(kToggleMultitaskMenu, IDC_TOGGLE_MULTITASK_MENU) \
+  E(kActionVisitDesktopOfLruUser2, IDC_VISIT_DESKTOP_OF_LRU_USER_2) \
+  E(kActionVisitDesktopOfLruUser3, IDC_VISIT_DESKTOP_OF_LRU_USER_3) \
+  E(kActionVisitDesktopOfLruUser4, IDC_VISIT_DESKTOP_OF_LRU_USER_4) \
+  E(kActionVisitDesktopOfLruUser5, IDC_VISIT_DESKTOP_OF_LRU_USER_5)
 #elif BUILDFLAG(IS_LINUX)
 #define CHROME_PLATFORM_SPECIFIC_ACTION_IDS \
   E(kUseSystemTitleBar, IDC_USE_SYSTEM_TITLE_BAR) \
   E(kRestoreWindow, IDC_RESTORE_WINDOW)
 #elif BUILDFLAG(IS_WIN)
 #define CHROME_PLATFORM_SPECIFIC_ACTION_IDS \
-  E(kRestoreWindow, IDC_RESTORE_WINDOW)
+  E(kRestoreWindow, IDC_RESTORE_WINDOW) \
+  E(kActionMoveWindow, IDC_MOVE_WINDOW) \
+  E(kActionSizeWindow, IDC_SIZE_WINDOW)
 #else
 #define CHROME_PLATFORM_SPECIFIC_ACTION_IDS
 #endif  // BUILDFLAG(IS_CHROMEOS)
@@ -452,6 +483,7 @@
   E(kActionSidePanelShowLens) \
   E(kActionSidePanelShowLensOverlayResults, IDC_CONTENT_CONTEXT_LENS_OVERLAY) \
   E(kActionSidePanelShowReadAnything, IDC_SHOW_READING_MODE_SIDE_PANEL) \
+  E(kActionShowReadingModeKeyboard, IDC_SHOW_READING_MODE_KEYBOARD) \
   E(kActionSidePanelShowReadingList, IDC_READING_LIST_MENU_SHOW_UI) \
   E(kActionSidePanelShowSearchCompanion) \
   E(kActionSidePanelShowShoppingInsights) \
@@ -477,6 +509,10 @@
   E(kActionQrCodeGenerator, IDC_QRCODE_GENERATOR) \
   E(kActionRouteMedia, IDC_ROUTE_MEDIA) \
   E(kActionTaskManager, IDC_TASK_MANAGER) \
+  E(kActionTaskManagerAppMenu, IDC_TASK_MANAGER_APP_MENU) \
+  E(kActionTaskManagerShortcut, IDC_TASK_MANAGER_SHORTCUT) \
+  E(kActionTaskManagerContextMenu, IDC_TASK_MANAGER_CONTEXT_MENU) \
+  E(kActionTaskManagerMainMenu, IDC_TASK_MANAGER_MAIN_MENU) \
   E(kActionDevTools, IDC_DEV_TOOLS) \
   E(kActionShowChromeLabs, IDC_SHOW_CHROME_LABS) \
   E(kActionSaveCreditCardForPage, IDC_SAVE_CREDIT_CARD_FOR_PAGE) \
@@ -490,6 +526,8 @@
   E(kActionSplitTab, IDC_NEW_SPLIT_TAB) \
   E(kActionFederation) \
   E(kActionGlicContextualCueing) \
+  E(kActionGlicTogglePin, IDC_GLIC_TOGGLE_PIN) \
+  E(kActionOpenGlic, IDC_OPEN_GLIC) \
   E(kActionShowAiOverlayDialog) \
   E(kActionWebAuthnAmbientSignin) \
   E(kActionAutofillPayment) \

@@ -82,17 +82,20 @@ class AtMemoryBottomSheetProperties {
             NOTICE_SETTINGS_CLICK_LISTENER
         };
 
-        @IntDef({ItemType.SEARCH_TILE, ItemType.SUGGESTION, ItemType.ZERO_STATE})
+        @IntDef({ItemType.SUGGESTION, ItemType.ZERO_STATE})
         @Retention(RetentionPolicy.SOURCE)
         @interface ItemType {
-            /** A search tile (used to start a new search). */
-            int SEARCH_TILE = 0;
-
             /** A section containing suggestions. */
-            int SUGGESTION = 1;
+            int SUGGESTION = 0;
 
             /** A section containing no results. */
-            int ZERO_STATE = 2;
+            int ZERO_STATE = 1;
+        }
+
+        /** Delegate to request search UI actions (e.g. hiding keyboard or clearing focus). */
+        public interface SearchDelegate {
+            /** Hides the keyboard and clears focus from the search area. */
+            void hideKeyboardAndClearFocus();
         }
 
         private HomeProperties() {}
@@ -109,15 +112,12 @@ class AtMemoryBottomSheetProperties {
         // Invoked when the back button is clicked in the flyout screen.
         static final ReadableObjectPropertyKey<Runnable> ON_BACK_CLICKED =
                 new ReadableObjectPropertyKey<>();
-        // Invoked when the manage button is clicked in the flyout screen.
-        static final ReadableObjectPropertyKey<Runnable> ON_MANAGE_CLICKED =
-                new ReadableObjectPropertyKey<>();
         // Invoked when an autofill suggestion is clicked in the flyout screen.
         static final WritableObjectPropertyKey<Callback<Integer>> ON_SUGGESTION_CLICKED =
                 new WritableObjectPropertyKey<>();
 
         static final PropertyKey[] ALL_KEYS = {
-            TITLE, SUGGESTIONS, ON_BACK_CLICKED, ON_MANAGE_CLICKED, ON_SUGGESTION_CLICKED
+            TITLE, SUGGESTIONS, ON_BACK_CLICKED, ON_SUGGESTION_CLICKED
         };
 
         private FlyoutProperties() {}
@@ -138,39 +138,15 @@ class AtMemoryBottomSheetProperties {
         // Invoked when the flyout button is clicked on the suggestion item.
         static final ReadableObjectPropertyKey<Runnable> ON_FLYOUT_CLICKED =
                 new ReadableObjectPropertyKey<>();
+        // Indicates whether the flyout arrow and divider should be visible.
+        static final WritableBooleanPropertyKey IS_FLYOUT_VISIBLE =
+                new WritableBooleanPropertyKey();
 
         static final PropertyKey[] ALL_KEYS = {
-            ICON, TITLE, DETAILS, ON_SUGGESTION_CLICKED, ON_FLYOUT_CLICKED,
+            ICON, TITLE, DETAILS, ON_SUGGESTION_CLICKED, ON_FLYOUT_CLICKED, IS_FLYOUT_VISIBLE
         };
 
         private SuggestionItemProperties() {}
-    }
-
-    /** Properties for the search tile displayed within the bottom sheet. */
-    static class SearchItemProperties {
-        // Icon to be displayed in the search tile.
-        static final ReadableIntPropertyKey TILE_ICON = new ReadableIntPropertyKey();
-        // Title to be displayed in the search tile.
-        static final WritableObjectPropertyKey<@Nullable String> TILE_TITLE =
-                new WritableObjectPropertyKey<>();
-        // Details to be displayed in the search tile.
-        static final ReadableObjectPropertyKey<String> TILE_DETAILS =
-                new ReadableObjectPropertyKey<>();
-        // Invoked when the search tile is clicked.
-        static final ReadableObjectPropertyKey<Runnable> ON_TILE_CLICKED =
-                new ReadableObjectPropertyKey<>();
-
-        /** Delegate for the search tile to request UI actions. */
-        interface Delegate {
-            /** Hides the keyboard and clears focus from the search area. */
-            void hideKeyboardAndClearFocus();
-        }
-
-        static final PropertyKey[] ALL_KEYS = {
-            TILE_ICON, TILE_TITLE, TILE_DETAILS, ON_TILE_CLICKED
-        };
-
-        private SearchItemProperties() {}
     }
 
     private AtMemoryBottomSheetProperties() {}

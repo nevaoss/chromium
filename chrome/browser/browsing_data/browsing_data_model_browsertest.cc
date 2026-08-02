@@ -53,7 +53,6 @@
 #include "components/services/storage/public/mojom/storage_usage_info.mojom.h"
 #include "components/services/storage/shared_storage/shared_storage_manager.h"
 #include "components/unexportable_keys/features.h"
-#include "content/public/browser/attribution_data_model.h"
 #include "content/public/browser/dom_storage_context.h"
 #include "content/public/browser/network_service_instance.h"
 #include "content/public/browser/private_aggregation_data_model.h"
@@ -215,33 +214,6 @@ void RunAdAuction(const content::ToRenderFrameHost& adapter,
       https_server->GetURL(seller_host, "/interest_group/decision_logic.js"),
       https_server->GetURL(buyer_host, "/"));
   EXPECT_EQ("Success", EvalJs(adapter, command));
-}
-
-void ExecuteScriptInSharedStorageWorklet(
-    const content::ToRenderFrameHost& execution_target,
-    const std::string& script,
-    GURL* out_module_script_url,
-    net::EmbeddedTestServer* https_server) {
-  CHECK(out_module_script_url);
-
-  base::StringPairs run_function_body_replacement;
-  run_function_body_replacement.emplace_back("{{RUN_FUNCTION_BODY}}", script);
-
-  std::string host =
-      execution_target.render_frame_host()->GetLastCommittedOrigin().host();
-
-  *out_module_script_url =
-      https_server->GetURL(host, net::test_server::GetFilePathWithReplacements(
-                                     "/shared_storage/customizable_module.js",
-                                     run_function_body_replacement));
-
-  EXPECT_TRUE(ExecJs(execution_target,
-                     content::JsReplace("sharedStorage.worklet.addModule($1)",
-                                        *out_module_script_url)));
-
-  testing::AssertionResult result =
-      ExecJs(execution_target,
-             "sharedStorage.run('test-operation', {keepAlive: true});");
 }
 
 void AccessTopics(const content::ToRenderFrameHost& adapter) {
@@ -677,41 +649,6 @@ IN_PROC_BROWSER_TEST_F(BrowsingDataModelBrowserTest,
   ValidateBrowsingDataEntries(browsing_data_model.get(), {});
 }
 
-IN_PROC_BROWSER_TEST_F(BrowsingDataModelBrowserTest,
-                       SharedStorageAccessReportedCorrectly) {
-  // Navigate to test page.
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url()));
-  auto* content_settings =
-      content_settings::PageSpecificContentSettings::GetForFrame(
-          web_contents()->GetPrimaryMainFrame());
-
-  // Validate that the allowed browsing data model is empty.
-  ValidateBrowsingDataEntries(content_settings->allowed_browsing_data_model(),
-                              {});
-
-  // Create a SharedStorage entry.
-  std::string command = R"(
-  (async () => {
-    try {
-      await window.sharedStorage.set('age-group', 1);
-      return true;
-    } catch {
-      return false;
-    }
-  })();)";
-  EXPECT_EQ(true, EvalJs(web_contents(), command));
-
-  // Validate that the allowed browsing data model is populated with
-  // SharedStorage entry for `kTestHost`.
-  url::Origin testOrigin = https_test_server()->GetOrigin(kTestHost);
-  ValidateBrowsingDataEntries(
-      content_settings->allowed_browsing_data_model(),
-      {{kTestHost,
-        blink::StorageKey::CreateFirstParty(testOrigin),
-        {{BrowsingDataModel::StorageType::kSharedStorage},
-         /*storage_size=*/0,
-         /*cookie_count=*/0}}});
-}
 
 IN_PROC_BROWSER_TEST_F(BrowsingDataModelBrowserTest, TrustTokenIssuance) {
   // Setup the test server to be able to issue trust tokens, and have it issue
@@ -871,88 +808,8 @@ IN_PROC_BROWSER_TEST_F(BrowsingDataModelBrowserTest,
          /*cookie_count=*/0}}});
 }
 
-IN_PROC_BROWSER_TEST_F(BrowsingDataModelBrowserTest,
-                       AttributionReportingAccessReportedCorrectly) {
-  const GURL kTestCases[] = {
-      https_test_server()->GetURL(
-          "a.test", "/attribution_reporting/register_source_headers.html"),
-      https_test_server()->GetURL(
-          "a.test", "/attribution_reporting/register_trigger_headers.html")};
 
-  for (const auto& register_url : kTestCases) {
-    // Navigate to test page.
-    ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url()));
-    auto* content_settings =
-        content_settings::PageSpecificContentSettings::GetForFrame(
-            web_contents()->GetPrimaryMainFrame());
 
-    // Validate that the allowed browsing data model is empty.
-    auto* allowed_browsing_data_model =
-        content_settings->allowed_browsing_data_model();
-    ValidateBrowsingDataEntries(allowed_browsing_data_model, {});
-    ASSERT_EQ(allowed_browsing_data_model->size(), 0u);
-
-    // Register a source.
-    ASSERT_TRUE(ExecJs(web_contents(), content::JsReplace(R"(
-      const img = document.createElement('img');
-      img.attributionSrc = $1;)",
-                                                          register_url)));
-
-    WaitForModelUpdate(allowed_browsing_data_model, 1);
-
-    // Validate that an attribution reporting datakey is reported to the
-    // browsing data model.
-    url::Origin testOrigin = https_test_server()->GetOrigin(kTestHost);
-    content::AttributionDataModel::DataKey data_key{testOrigin};
-    ValidateBrowsingDataEntries(
-        allowed_browsing_data_model,
-        {{kTestHost,
-          data_key,
-          {{BrowsingDataModel::StorageType::kAttributionReporting},
-           /*storage_size=*/0,
-           /*cookie_count=*/0}}});
-  }
-}
-
-IN_PROC_BROWSER_TEST_F(BrowsingDataModelBrowserTest,
-                       PrivateAggregationHandledCorrectly) {
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url()));
-
-  // Validate that there are no entries in the browsing data model.
-  std::unique_ptr<BrowsingDataModel> browsing_data_model =
-      BuildBrowsingDataModel();
-  ValidateBrowsingDataEntries(browsing_data_model.get(), {});
-
-  GURL out_script_url;
-  ExecuteScriptInSharedStorageWorklet(web_contents(), R"(
-      privateAggregation.contributeToHistogram({bucket: 1n, value: 2});
-    )",
-                                      &out_script_url, https_test_server());
-
-  do {
-    browsing_data_model = BuildBrowsingDataModel();
-    base::PlatformThread::Sleep(TestTimeouts::tiny_timeout());
-  } while (browsing_data_model->size() < 1);
-
-  // Validate that a private aggregation data key is added.
-  url::Origin test_origin = https_test_server()->GetOrigin(kTestHost);
-  content::PrivateAggregationDataModel::DataKey data_key{test_origin};
-
-  ValidateBrowsingDataEntries(
-      browsing_data_model.get(),
-      {{kTestHost,
-        data_key,
-        {{BrowsingDataModel::StorageType::kPrivateAggregation},
-         /*storage_size=*/100,
-         /*cookie_count=*/0}}});
-
-  // Remove datakey from aggregation service and private budgeter.
-  RemoveBrowsingDataForDataOwner(browsing_data_model.get(), kTestHost);
-
-  // Rebuild Browsing Data Model and verify entries are empty.
-  browsing_data_model = BuildBrowsingDataModel();
-  ValidateBrowsingDataEntries(browsing_data_model.get(), {});
-}
 
 IN_PROC_BROWSER_TEST_F(BrowsingDataModelBrowserTest,
                        TopicsAccessReportedCorrectly) {

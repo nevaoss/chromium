@@ -40,6 +40,7 @@
 #include "components/autofill/core/browser/integrators/one_time_tokens/metrics/otp_form_event_logger.h"
 #include "components/autofill/core/browser/integrators/one_time_tokens/otp_manager.h"
 #include "components/autofill/core/browser/integrators/password_manager/password_manager_delegate.h"
+#include "components/autofill/core/browser/integrators/touch_to_fill/touch_to_fill_autofill_delegate.h"
 #include "components/autofill/core/browser/integrators/touch_to_fill/touch_to_fill_payment_method_delegate.h"
 #include "components/autofill/core/browser/metrics/autofill_metrics.h"
 #include "components/autofill/core/browser/metrics/form_events/address_form_event_logger.h"
@@ -344,6 +345,17 @@ class BrowserAutofillManager : public AutofillManager {
         std::move(touch_to_fill_payment_method_delegate);
   }
 
+  TouchToFillAutofillDelegate* touch_to_fill_autofill_delegate() {
+    return touch_to_fill_autofill_delegate_.get();
+  }
+
+  void set_touch_to_fill_autofill_delegate(
+      std::unique_ptr<TouchToFillAutofillDelegate>
+          touch_to_fill_autofill_delegate) {
+    touch_to_fill_autofill_delegate_ =
+        std::move(touch_to_fill_autofill_delegate);
+  }
+
   // This reference is not stable over the lifetime of BrowserAutofillManager.
   virtual autofill_metrics::CreditCardFormEventLogger&
   GetCreditCardFormEventLogger();
@@ -394,20 +406,9 @@ class BrowserAutofillManager : public AutofillManager {
  private:
   friend class BrowserAutofillManagerTestApi;
 
-  struct FormAndField {
-    STACK_ALLOCATED();
-
-   public:
-    FormStructure* form_structure = nullptr;
-    AutofillField* autofill_field = nullptr;
-  };
-
-  // Returns the cached form and field corresponding to `form_id` and
-  // `field_id`. This might have the side-effect of updating the cache. The
-  // returned `FormAndField` may not contain form or field, if the form is not
-  // autofillable, or if either the form or the field cannot be found.
-  FormAndField GetCachedFormAndField(const FormGlobalId& form_id,
-                                     const FieldGlobalId& field_id);
+  // Mutable version of `FindFormAndField`.
+  MutableFormAndField FindMutableFormAndField(const FormGlobalId& form_id,
+                                              const FieldGlobalId& field_id);
 
   // Emits all metrics that should be recorded at submission time.
   void LogSubmissionMetrics(const FormStructure* submitted_form,
@@ -660,6 +661,7 @@ class BrowserAutofillManager : public AutofillManager {
       std::make_unique<AutofillExternalDelegate>(this);
   std::unique_ptr<TouchToFillPaymentMethodDelegate>
       touch_to_fill_payment_method_delegate_;
+  std::unique_ptr<TouchToFillAutofillDelegate> touch_to_fill_autofill_delegate_;
 
   // This is always non-nullopt except very briefly during Reset().
   std::optional<MetricsState> metrics_ = std::make_optional<MetricsState>(this);

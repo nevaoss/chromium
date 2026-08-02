@@ -17,6 +17,7 @@
 #include "base/memory/ptr_util.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/user_metrics.h"
+#include "base/numerics/safe_conversions.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
@@ -651,7 +652,8 @@ GlicEnabling::ProfileEnablement GlicEnabling::EnablementForProfile(
 
   if (profile->GetPrefs()->GetInteger(
           optimization_guide::prefs::kGeminiSettings) !=
-      std::to_underlying(glic::prefs::SettingsPolicyState::kEnabled)) {
+      std::to_underlying(
+          optimization_guide::prefs::GeminiSettingsPolicyState::kEnabled)) {
     result.allowed_by_chrome_policy = false;
   }
 
@@ -687,16 +689,16 @@ GlicGlobalEnabling::~GlicGlobalEnabling() = default;
 
 bool GlicGlobalEnabling::IsSystemRequirementMet() const {
   static const bool supported_system_requirements = [] {
-    if (base::SysInfo::AmountOfTotalPhysicalMemory().AsDeprecatedByteCount() <
-        base::MiB(features::kGlicMinRequiredRamMb.Get())) {
+    if (base::SysInfo::AmountOfTotalPhysicalMemory() <
+        base::MiBU(base::saturated_cast<uint64_t>(
+            features::kGlicMinRequiredRamMb.Get()))) {
       return false;
     }
 #if BUILDFLAG(IS_CHROMEOS)
-    constexpr base::ByteCount kMinimumMemoryThreshold = base::GiB(7);
+    constexpr base::ByteSize kMinimumMemoryThreshold = base::GiBU(7);
     const bool bypass_cbx_requirement =
         GlicEnabling::IsLikelyDogfoodClient() &&
-        base::SysInfo::AmountOfTotalPhysicalMemory().AsDeprecatedByteCount() >=
-            kMinimumMemoryThreshold;
+        base::SysInfo::AmountOfTotalPhysicalMemory() >= kMinimumMemoryThreshold;
 
     return (bypass_cbx_requirement ||
             base::FeatureList::IsEnabled(

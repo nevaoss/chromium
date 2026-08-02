@@ -1219,6 +1219,7 @@ ci.builder(
         short_name = "size",
     ),
     contact_team_email = "clank-engprod@google.com",
+    siso_output_local_strategy = "full",
     siso_remote_jobs = siso.remote_jobs.DEFAULT,
 )
 
@@ -3046,10 +3047,6 @@ ci.builder(
         ],
         per_test_modifications = {
             "android_browsertests": targets.mixin(
-                args = [
-                    # https://crbug.com/1414886
-                    "--gtest_filter=-OfferNotificationControllerAndroidBrowserTestForMessagesUi.MessageShown",
-                ],
                 swarming = targets.swarming(
                     shards = 12,
                 ),

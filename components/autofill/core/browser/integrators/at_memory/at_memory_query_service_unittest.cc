@@ -46,15 +46,6 @@ using ::testing::_;
 using ::testing::Field;
 using ::testing::UnorderedElementsAre;
 
-class MockAtMemoryQueryServiceDelegate : public AtMemoryQueryServiceDelegate {
- public:
-  MOCK_METHOD(void,
-              RetrieveLiveTabContext,
-              (LiveTabContextQuery query,
-               base::OnceCallback<void(LiveTabContextResponse)> callback),
-              (override));
-};
-
 class FakeMemoryDataProvider : public AutofillDataProvider {
  public:
   FakeMemoryDataProvider() : AutofillDataProvider(nullptr, nullptr) {}
@@ -106,7 +97,8 @@ class AtMemoryQueryServiceTest : public testing::Test {
       personal_context::proto::AtMemoryQueryResponse response) {
     personal_context::proto::Any serialized_response;
     serialized_response.set_value(response.SerializeAsString());
-    personal_context::FetchContextResult result(std::move(serialized_response));
+    personal_context::FetchContextResult result(std::move(serialized_response),
+                                                "server request id");
 
     EXPECT_CALL(
         mock_service_,
@@ -175,7 +167,7 @@ class AtMemoryQueryServiceTest : public testing::Test {
 // shutdown.
 TEST_F(AtMemoryQueryServiceTest, Query_AfterShutdown) {
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::make_unique<FakeMemoryDataProvider>(), &mock_service_, "en-US");
 
   service->Shutdown();
@@ -197,7 +189,7 @@ TEST_F(AtMemoryQueryServiceTest, Query_Offline) {
       net::NetworkChangeNotifier::CONNECTION_NONE);
 
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::make_unique<FakeMemoryDataProvider>(), &mock_service_, "en-US");
 
   base::test::TestFuture<MemorySearchResults> future;
@@ -225,7 +217,7 @@ TEST_F(AtMemoryQueryServiceTest, Query_NoLocalProviderButHasRemote) {
   StubFetchContextResponse(std::move(response));
 
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       /*data_provider=*/nullptr, &mock_service_, "en-US");
 
   base::test::TestFuture<MemorySearchResults> future;
@@ -237,6 +229,7 @@ TEST_F(AtMemoryQueryServiceTest, Query_NoLocalProviderButHasRemote) {
   ASSERT_EQ(result.entries.size(), 1u);
   EXPECT_EQ(result.entries[0].value, u"Alice");
   EXPECT_EQ(result.entries[0].remote_response_index, 0);
+  EXPECT_EQ(result.server_request_id, "server request id");
 }
 
 // Tests that the query service fetches correct local data types based on the
@@ -255,7 +248,7 @@ TEST_F(AtMemoryQueryServiceTest, Query_FetchesAutofillFetchPlanTypes) {
   FakeMemoryDataProvider* fake_data_provider = data_provider.get();
 
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::move(data_provider), &mock_service_, "en-US");
 
   MemorySearchResult local_phone(MemoryDataType::kPhone, u"Phone", u"123-456");
@@ -274,6 +267,7 @@ TEST_F(AtMemoryQueryServiceTest, Query_FetchesAutofillFetchPlanTypes) {
   ASSERT_EQ(result.entries.size(), 2u);
   EXPECT_EQ(result.entries[0].value, u"123-456");
   EXPECT_EQ(result.entries[1].value, u"John Doe");
+  EXPECT_EQ(result.server_request_id, "server request id");
 }
 
 // Tests that the query service rationalizes AutofillFetchPlan types by removing
@@ -295,7 +289,7 @@ TEST_F(AtMemoryQueryServiceTest,
   FakeMemoryDataProvider* fake_data_provider = data_provider.get();
 
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::move(data_provider), &mock_service_, "en-US");
 
   base::test::TestFuture<MemorySearchResults> future;
@@ -323,7 +317,7 @@ TEST_F(AtMemoryQueryServiceTest,
   FakeMemoryDataProvider* fake_data_provider = data_provider.get();
 
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::move(data_provider), &mock_service_, "en-US");
 
   base::test::TestFuture<MemorySearchResults> future;
@@ -353,7 +347,7 @@ TEST_F(
   FakeMemoryDataProvider* fake_data_provider = data_provider.get();
 
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::move(data_provider), &mock_service_, "en-US");
 
   base::test::TestFuture<MemorySearchResults> future;
@@ -386,7 +380,7 @@ TEST_F(AtMemoryQueryServiceTest,
   FakeMemoryDataProvider* fake_data_provider = data_provider.get();
 
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::move(data_provider), &mock_service_, "en-US");
 
   base::test::TestFuture<MemorySearchResults> future;
@@ -416,7 +410,7 @@ TEST_F(AtMemoryQueryServiceTest,
   FakeMemoryDataProvider* fake_data_provider = data_provider.get();
 
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::move(data_provider), &mock_service_, "en-US");
 
   base::test::TestFuture<MemorySearchResults> future;
@@ -449,7 +443,7 @@ TEST_F(
   FakeMemoryDataProvider* fake_data_provider = data_provider.get();
 
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::move(data_provider), &mock_service_, "en-US");
 
   base::test::TestFuture<MemorySearchResults> future;
@@ -478,7 +472,7 @@ TEST_F(
   FakeMemoryDataProvider* fake_data_provider = data_provider.get();
 
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::move(data_provider), &mock_service_, "en-US");
 
   base::test::TestFuture<MemorySearchResults> future;
@@ -505,7 +499,7 @@ TEST_F(AtMemoryQueryServiceTest, Query_FiltersLocalDataUsingFetchPlanKeywords) {
   FakeMemoryDataProvider* fake_data_provider = data_provider.get();
 
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::move(data_provider), &mock_service_, "en-US");
 
   MemorySearchResult home_address(MemoryDataType::kAddressFull, u"Address",
@@ -547,7 +541,7 @@ TEST_F(AtMemoryQueryServiceTest, Query_LocalResultsPrecedeRemoteResults) {
   FakeMemoryDataProvider* fake_data_provider = data_provider.get();
 
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::move(data_provider), &mock_service_, "en-US");
 
   MemorySearchResult local_name(MemoryDataType::kNameFull, u"Name",
@@ -611,7 +605,7 @@ TEST_F(AtMemoryQueryServiceTest,
   fake_data_provider->SetResults({entry_a, entry_b, entry_c, entry_d});
 
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::move(data_provider), &mock_service_, "de-DE");
   base::test::TestFuture<MemorySearchResults> future;
   service->Query(u"Karl Adresse in MÜNCHEN", future.GetRepeatingCallback());
@@ -649,7 +643,7 @@ TEST_F(AtMemoryQueryServiceTest, Query_WithFilterWords_NoMatch_ReturnsAll) {
   fake_data_provider->SetResults({entry});
 
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::move(data_provider), &mock_service_, "en-US");
 
   base::test::TestFuture<MemorySearchResults> future;
@@ -668,7 +662,7 @@ TEST_F(AtMemoryQueryServiceTest, Query_WithFilterWords_NoMatch_ReturnsAll) {
 // personal context resolver fails.
 TEST_F(AtMemoryQueryServiceTest, Query_PersonalContextResolverError) {
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::make_unique<FakeMemoryDataProvider>(), &mock_service_, "en-US");
 
   StubFetchContextError(
@@ -732,7 +726,7 @@ TEST_F(AtMemoryQueryServiceTest, StaleResultsAreNotSent) {
   auto data_provider = std::make_unique<DelayedMemoryDataProvider>();
   DelayedMemoryDataProvider* fake_data_provider = data_provider.get();
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::move(data_provider), &mock_service_, "en-US");
 
   base::test::TestFuture<MemorySearchResults> future1;
@@ -769,7 +763,7 @@ TEST_F(AtMemoryQueryServiceTest, Query_DeduplicatesResults_PreservesOrder) {
   auto* fake_data_provider = data_provider.get();
 
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::move(data_provider), &mock_service_, "en-US");
 
   MemorySearchResult result1(MemoryDataType::kNameFull, u"Name", u"Alice");
@@ -808,7 +802,7 @@ TEST_F(AtMemoryQueryServiceTest,
   auto* fake_data_provider = data_provider.get();
 
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::move(data_provider), &mock_service_, "en-US");
 
   EntryMetadata metadata(MemoryDataType::kAddressCity, u"City", u"San Diego");
@@ -858,7 +852,7 @@ TEST_F(AtMemoryQueryServiceTest,
   auto* fake_data_provider = data_provider.get();
 
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::move(data_provider), &mock_service_, "en-US");
 
   EntryMetadata metadata_sd(MemoryDataType::kAddressCity, u"City",
@@ -925,7 +919,7 @@ TEST_F(AtMemoryQueryServiceTest, RecordsProviderResultCountMetric) {
   FakeMemoryDataProvider* fake_data_provider = data_provider.get();
 
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::move(data_provider), &mock_service_, "en-US");
 
   MemorySearchResult result1(MemoryDataType::kNameFull, u"Name", u"John Doe");
@@ -957,7 +951,7 @@ TEST_F(AtMemoryQueryServiceTest,
   auto data_provider = std::make_unique<FakeMemoryDataProvider>();
   FakeMemoryDataProvider* fake_data_provider = data_provider.get();
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::move(data_provider), &mock_service_, "en-US");
 
   MemorySearchResult name_entry(MemoryDataType::kNameFull, u"Name",
@@ -985,7 +979,7 @@ TEST_F(AtMemoryQueryServiceTest,
   auto data_provider = std::make_unique<FakeMemoryDataProvider>();
   auto* fake_data_provider = data_provider.get();
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::move(data_provider), /*personal_context_service=*/nullptr,
       /*locale=*/"");
 
@@ -1033,7 +1027,7 @@ TEST_F(AtMemoryQueryServiceTest, Query_SetsIsObfuscated) {
   StubFetchContextResponse(std::move(response));
 
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::make_unique<FakeMemoryDataProvider>(), &mock_service_, "en-US");
 
   base::test::TestFuture<MemorySearchResults> future;
@@ -1073,7 +1067,7 @@ TEST_F(AtMemoryQueryServiceTest,
   fake_data_provider->SetResults({local_b, local_a});
 
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::move(data_provider), &mock_service_, "en-US");
 
   base::test::TestFuture<MemorySearchResults> future;
@@ -1111,7 +1105,7 @@ TEST_F(AtMemoryQueryServiceTest,
   fake_data_provider->SetResults({local_shipment});
 
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::move(data_provider), &mock_service_, "en-US");
 
   base::test::TestFuture<MemorySearchResults> future;
@@ -1147,7 +1141,7 @@ TEST_F(AtMemoryQueryServiceTest,
   fake_data_provider->SetResults({local_address});
 
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::move(data_provider), &mock_service_, "en-US");
 
   base::test::TestFuture<MemorySearchResults> future;
@@ -1176,7 +1170,7 @@ class AtMemoryQueryServiceClassificationTest
 // status.
 TEST_P(AtMemoryQueryServiceClassificationTest, MapQueryClassificationToStatus) {
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::make_unique<FakeMemoryDataProvider>(), &mock_service_, "en-US");
 
   personal_context::proto::AtMemoryQueryResponse response;
@@ -1226,7 +1220,7 @@ TEST_F(AtMemoryQueryServiceTest, Query_UsesTimeoutFeatureParam) {
           _));
 
   auto service = std::make_unique<AtMemoryQueryService>(
-      std::make_unique<MockAtMemoryQueryServiceDelegate>(),
+      std::make_unique<AtMemoryQueryServiceDelegate>(),
       std::make_unique<FakeMemoryDataProvider>(), &mock_service_, "en-US");
   service->Query(u"what is my name", base::DoNothing());
 }

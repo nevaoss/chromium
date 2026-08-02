@@ -53,6 +53,7 @@
 
 #if BUILDFLAG(IS_ANDROID)
 #include "base/android/android_info.h"
+#include "base/android/device_info.h"
 #endif
 
 #if BUILDFLAG(ENABLE_VR)
@@ -326,11 +327,13 @@ void SetRuntimeFeaturesFromChromiumFeatures() {
           {"FledgeBiddingAndAuctionServerAPI",
            raw_ref(blink::features::kFledgeBiddingAndAuctionServer), kDefault},
 #if BUILDFLAG(IS_WIN)
-          {"FontDataService",
-           raw_ref(features::kFontDataServiceAllWebContents)},
+          {"FontDataServiceForCSSLocalFonts",
+           raw_ref(features::kFontDataServiceForCSSLocalFonts)},
 #endif
           {"HstsTopLevelNavigationsOnly",
            raw_ref(net::features::kHstsTopLevelNavigationsOnly)},
+          {"KeyboardAccessibleTooltip",
+           raw_ref(features::kKeyboardAccessibleTooltip)},
           {"MachineLearningNeuralNetwork",
            raw_ref(webnn::mojom::features::kWebMachineLearningNeuralNetwork),
            kSetOnlyIfOverridden},
@@ -483,13 +486,17 @@ void SetCustomizedRuntimeFeaturesFromCombinedArgs(
 
   // These checks are custom wrappers around base::FeatureList::IsEnabled
   // They're moved here to distinguish them from actual base checks
-#if !BUILDFLAG(IS_CHROMEOS)
   WebRuntimeFeatures::EnableOverlayScrollbars(
       ui::NativeTheme::GetInstanceForWeb()->use_overlay_scrollbar());
-#endif
   WebRuntimeFeatures::EnableFluentScrollbars(ui::IsFluentScrollbarEnabled());
+#if BUILDFLAG(IS_ANDROID)
   WebRuntimeFeatures::EnableDesktopAndroidScrollbars(
-      command_line.HasSwitch(blink::switches::kEnableDesktopAndroidScrollbars));
+      command_line.HasSwitch(
+          blink::switches::kEnableDesktopAndroidScrollbars) &&
+      // This feature is not ready for non-desktop devices. See
+      // crbug.com/522529331.
+      base::android::device_info::is_desktop());
+#endif
 
   // TODO(rodneyding): This is a rare case for a stable feature
   // Need to investigate more to determine whether to refactor it.

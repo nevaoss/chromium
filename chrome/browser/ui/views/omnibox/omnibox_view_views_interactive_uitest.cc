@@ -568,7 +568,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxViewViewsTest, CloseOmniboxPopupOnTextDrag) {
                           TestSchemeClassifier());
   results.AppendMatches(matches);
   results.SortAndCull(
-      input, TemplateURLServiceFactory::GetForProfile(browser()->profile()),
+      input, TemplateURLServiceFactory::GetForProfile(browser()->GetProfile()),
       triggered_feature_service(), /*is_lens_active=*/false,
       /*can_show_contextual_suggestions=*/false, /*mia_enabled=*/false,
       /*is_incognito=*/false);
@@ -630,7 +630,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxViewViewsTest, MaintainCursorAfterFocusCycle) {
   input.set_current_url(GURL("http://autocomplete-result/"));
   results.AppendMatches(matches);
   results.SortAndCull(
-      input, TemplateURLServiceFactory::GetForProfile(browser()->profile()),
+      input, TemplateURLServiceFactory::GetForProfile(browser()->GetProfile()),
       triggered_feature_service(), /*is_lens_active=*/false,
       /*can_show_contextual_suggestions=*/false, /*mia_enabled=*/false,
       /*is_incognito=*/false);
@@ -747,7 +747,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxViewViewsTest, FriendlyAccessibleLabel) {
                           TestSchemeClassifier());
   results.AppendMatches(matches);
   results.SortAndCull(
-      input, TemplateURLServiceFactory::GetForProfile(browser()->profile()),
+      input, TemplateURLServiceFactory::GetForProfile(browser()->GetProfile()),
       triggered_feature_service(), /*is_lens_active=*/false,
       /*can_show_contextual_suggestions=*/false, /*mia_enabled=*/false,
       /*is_incognito=*/false);
@@ -858,7 +858,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxViewViewsTest, AccessiblePopup) {
                           TestSchemeClassifier());
   results.AppendMatches(matches);
   results.SortAndCull(
-      input, TemplateURLServiceFactory::GetForProfile(browser()->profile()),
+      input, TemplateURLServiceFactory::GetForProfile(browser()->GetProfile()),
       triggered_feature_service(), /*is_lens_active=*/false,
       /*can_show_contextual_suggestions=*/false, /*mia_enabled=*/false,
       /*is_incognito=*/false);
@@ -1029,7 +1029,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxViewViewsUIATest, AccessibleOmnibox) {
                           TestSchemeClassifier());
   results.AppendMatches(matches);
   results.SortAndCull(
-      input, TemplateURLServiceFactory::GetForProfile(browser()->profile()),
+      input, TemplateURLServiceFactory::GetForProfile(browser()->GetProfile()),
       triggered_feature_service(), /*is_lens_active=*/false,
       /*can_show_contextual_suggestions=*/false, /*mia_enabled=*/false,
       /*is_incognito=*/false);
@@ -1204,7 +1204,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxViewViewsIMETest, TextInputTypeInitRespectsIME) {
   OmniboxMockInputMethod* input_method = new OmniboxMockInputMethod();
   ui::SetUpInputMethodForTesting(input_method);
   input_method->SetInputLocaleCJK(/*is_cjk=*/true);
-  Browser* browser_2 = CreateBrowser(browser()->profile());
+  Browser* browser_2 = CreateBrowser(browser()->GetProfile());
   OmniboxView* view = nullptr;
   ASSERT_NO_FATAL_FAILURE(GetOmniboxViewForBrowser(browser_2, &view));
   OmniboxViewViews* omnibox_view_views = static_cast<OmniboxViewViews*>(view);
@@ -1256,7 +1256,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxViewViewsTest, MAYBE_HandleExternalProtocolURLs) {
 
     EXPECT_NE(ExternalProtocolHandler::BLOCK,
               ExternalProtocolHandler::GetBlockState(fake_protocol, nullptr,
-                                                     browser()->profile()));
+                                                     browser()->GetProfile()));
 
     // Check SWYT and UWYT suggestions
     const AutocompleteResult& result = controller->result();
@@ -1278,7 +1278,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxViewViewsTest, MAYBE_HandleExternalProtocolURLs) {
 
     EXPECT_EQ(ExternalProtocolHandler::BLOCK,
               ExternalProtocolHandler::GetBlockState(fake_protocol, nullptr,
-                                                     browser()->profile()));
+                                                     browser()->GetProfile()));
   };
 
   set_text_and_perform_navigation();
@@ -1357,7 +1357,7 @@ IN_PROC_BROWSER_TEST_F(
 
   histograms.ExpectTotalCount(
       security_interstitials::omnibox_https_upgrades::kEventHistogram, 0);
-  ui_test_utils::HistoryEnumerator enumerator(browser()->profile());
+  ui_test_utils::HistoryEnumerator enumerator(browser()->GetProfile());
   EXPECT_TRUE(std::ranges::contains(enumerator.urls(), url));
 
   // Now click the omnibox. This should trigger a zero suggest request with the
@@ -1404,7 +1404,8 @@ class OmniboxViewViewsOnFocusZpsTest : public OmniboxViewViewsTest {
     OmniboxViewViewsTest::SetUpOnMainThread();
     mock_hats_service_ = static_cast<MockHatsService*>(
         HatsServiceFactory::GetInstance()->SetTestingFactoryAndUse(
-            browser()->profile(), base::BindRepeating(&BuildMockHatsService)));
+            browser()->GetProfile(),
+            base::BindRepeating(&BuildMockHatsService)));
     ON_CALL(*mock_hats_service_, CanShowAnySurvey(_))
         .WillByDefault(Return(true));
     browser()->profile()->GetPrefs()->SetBoolean(
@@ -1680,9 +1681,7 @@ class OmniboxViewViewsAIMButtonPreferenceTest
     : public OmniboxViewViewsAIMBrowserTest {
  public:
   OmniboxViewViewsAIMButtonPreferenceTest() {
-    scoped_feature_list_.InitWithFeaturesAndParameters(
-        {{features::kPageActionsMigration, {}}},
-        {lens::features::kLensOverlay});
+    scoped_feature_list_.InitAndDisableFeature(lens::features::kLensOverlay);
   }
 
  protected:
@@ -1721,8 +1720,7 @@ class OmniboxViewViewsAIMButtonDynamicTest
  public:
   OmniboxViewViewsAIMButtonDynamicTest() {
     scoped_feature_list_.InitWithFeaturesAndParameters(
-        {{features::kPageActionsMigration, {{"ai_mode", "true"}}},
-         {omnibox::kWebUIOmniboxDynamicAiModeButton, {}}},
+        {{omnibox::kWebUIOmniboxDynamicAiModeButton, {}}},
         {lens::features::kLensOverlay});
   }
 
@@ -1988,7 +1986,7 @@ class OmniboxViewViewsDumpAccessibilityEventsTest
     omnibox_controller()->edit_model()->SetUserText(u"example");
     AutocompleteInput input(
         u"example", metrics::OmniboxEventProto::BLANK,
-        ChromeAutocompleteSchemeClassifier(browser()->profile()));
+        ChromeAutocompleteSchemeClassifier(browser()->GetProfile()));
     input.set_omit_asynchronous_matches(true);
     omnibox_controller()->StartAutocomplete(input);
   }
@@ -2090,8 +2088,10 @@ IN_PROC_BROWSER_TEST_F(OmniboxViewViewsSendTabToSelfSubmenuEnabledTest,
   sync_service->GetFakeSendTabToSelfModel()->SetTargetDeviceInfoSortedList(
       devices);
 
-  OmniboxViewViews* omnibox = static_cast<OmniboxViewViews*>(
-      browser()->window()->GetLocationBar()->GetOmniboxView());
+  OmniboxViewViews* omnibox =
+      static_cast<OmniboxViewViews*>(BrowserWindow::FromBrowser(browser())
+                                         ->GetLocationBar()
+                                         ->GetOmniboxView());
   ui::SimpleMenuModel menu_model(nullptr);
   menu_model.AddItem(views::Textfield::kUndo, u"Undo");
   menu_model.AddItem(
@@ -2122,8 +2122,10 @@ IN_PROC_BROWSER_TEST_F(OmniboxViewViewsSendTabToSelfSubmenuDisabledTest,
   sync_service->GetFakeSendTabToSelfModel()->SetTargetDeviceInfoSortedList(
       devices);
 
-  OmniboxViewViews* omnibox = static_cast<OmniboxViewViews*>(
-      browser()->window()->GetLocationBar()->GetOmniboxView());
+  OmniboxViewViews* omnibox =
+      static_cast<OmniboxViewViews*>(BrowserWindow::FromBrowser(browser())
+                                         ->GetLocationBar()
+                                         ->GetOmniboxView());
   ui::SimpleMenuModel menu_model(nullptr);
   menu_model.AddItem(views::Textfield::kUndo, u"Undo");
   menu_model.AddItem(
@@ -2149,8 +2151,10 @@ IN_PROC_BROWSER_TEST_F(OmniboxViewViewsSendTabToSelfSubmenuEnabledTest,
           SendTabToSelfSyncServiceFactory::GetForProfile(browser()->profile()));
   sync_service->SetEntryPointDisplayReason(std::nullopt);
 
-  OmniboxViewViews* omnibox = static_cast<OmniboxViewViews*>(
-      browser()->window()->GetLocationBar()->GetOmniboxView());
+  OmniboxViewViews* omnibox =
+      static_cast<OmniboxViewViews*>(BrowserWindow::FromBrowser(browser())
+                                         ->GetLocationBar()
+                                         ->GetOmniboxView());
   ui::SimpleMenuModel menu_model(nullptr);
   menu_model.AddItem(views::Textfield::kUndo, u"Undo");
   menu_model.AddItem(

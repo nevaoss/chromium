@@ -116,7 +116,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
 // FEATURE_EXPORT_LIST_START
 // go/keep-sorted start
     &autofill::features::kAutofillAiAvailableByDefault,
-    &autofill::features::kAutofillAiCreateEntityDataManager,
     &autofill::features::kAutofillAiEditEntitiesFromSaveUpdatePrompt,
     &autofill::features::kAutofillAiReauthRequired,
     &autofill::features::kAutofillAiShowDialogInSettingsWhenUpstreamingFails,
@@ -128,12 +127,12 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &autofill::features::kAutofillAndroidDesktopSuppressAccessoryOnEmpty,
     &autofill::features::kAutofillAndroidKeyboardAccessoryDynamicPositioning,
     &autofill::features::kAutofillAtMemory,
-    &autofill::features::kAutofillDeepLinkAutofillOptions,
     &autofill::features::kAutofillEnableAiBasedAmountExtraction,
     &autofill::features::kAutofillEnableBuyNowPayLater,
     &autofill::features::kAutofillEnableGradientGoogleLogos,
     &autofill::features::kAutofillEnableNewCardBenefitsToggleText,
     &autofill::features::kAutofillEnableNewFopDisplayAndroid,
+    &autofill::features::kAutofillEnablePayNowPayLaterTabs,
     &autofill::features::kAutofillEnableSecurityTouchEventFilteringAndroid,
     &autofill::features::kAutofillEnableSeparatePixPreferenceItem,
     &autofill::features::kAutofillEnableVirtualCardJavaPaymentsDataManager,
@@ -141,8 +140,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &autofill::features::kAutofillEnableWalletBrandingV2,
     &autofill::features::kAutofillRetryImageFetchOnFailure,
     &autofill::features::kAutofillSyncEwalletAccounts,
-    &autofill::features::kAutofillThirdPartyModeContentProvider,
-    &autofill::features::kAutofillThirdPartyModeRestoredOnStart,
     &autofill::features::kResetNativePointerInCreditCardAuthDialog,
     &base::features::kBackgroundThreadPoolFieldTrial,
     &base::features::kLowEndMemoryExperiment,
@@ -192,6 +189,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &features::kGenericSensorExtraClasses,
     &features::kGlic,
     &features::kGlicBackgroundActuation,
+    &features::kGlicBackgroundTriggering,
     &features::kHttpsFirstBalancedMode,
     &features::kLoadingPredictorLimitPreconnectSocketCount,
     &features::kNetworkServiceInProcess,
@@ -231,6 +229,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kAndroidBricksNativePage,
     &kAndroidContextMenuDisabledMenuItems,
     &kAndroidContextMenuNewActions,
+    &kAndroidDesktopBookmarkPopup,
     &kAndroidDeviceSignalsDisclaimer,
     &kAndroidElegantTextHeight,
     &kAndroidFirstRunLaunchBounds,
@@ -278,6 +277,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kAvoidDoubleMultiwindowChanges,
     &kBlockIntentsWhileLocked,
     &kBookmarkPaneAndroid,
+    &kBookmarksBarContextMenu,
     &kBookmarksBarNTP,
     &kBottomSheetAsBrowserControls,
     &kBottomSheetOnDesktopWindowing,
@@ -299,6 +299,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kCCTGoogleBottomBarVariantLayouts,
     &kCCTIncognitoAvailableToThirdParty,
     &kCCTMinimizedEnabledByDefault,
+    &kCCTNavigationInfoScreenshot,
     &kCCTNavigationMetrics,
     &kCCTNavigationalPrefetch,
     &kCCTNestedSecurityIcon,
@@ -310,13 +311,13 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kCCTReportParallelRequestStatus,
     &kCCTReportPrerenderEvents,
     &kCCTResetTimeoutAllowed,
-    &kCCTResetTimeoutEnabled,
     &kCCTResizableForThirdParties,
     &kCCTTabModalDialog,
     &kCacheDeprecatedSystemLocationSetting,
     &kCacheIsGoogleSigned,
     &kCacheIsMultiInstanceApi31Enabled,
     &kCastDeviceFilter,
+    &kCctTabResumption,
     &kChangeUnfocusedPriority,
     &kChromeItemPickerUi,
     &kChromeSurveyNextAndroid,
@@ -369,7 +370,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kFullscreenInsetsApiMigration,
     &kFullscreenInsetsApiMigrationOnAutomotive,
     &kGestureUserEducationBackSwipe,
-    &kGlicExperimentalLocation,
     &kGmsCoreBindServiceOptimization,
     &kGridTabSwitcherSurfaceColorUpdate,
     &kHistoryPaneAndroid,
@@ -446,6 +446,8 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kSmallerTabStripTitleLimit,
     &kStartSurfaceReturnTime,
     &kSubmenusInAppMenu,
+    &kSubmenusInAppMenuLff,
+    &kTabAndroidGracefulShutdown,
     &kTabBottomSheet,
     &kTabBottomSheetResizeWebview,
     &kTabClosureMethodRefactor,
@@ -461,6 +463,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kTabWindowManagerReportIndicesMismatch,
     &kTestDefaultDisabled,
     &kTestDefaultEnabled,
+    &kTextHighlightFullLink,
     &kThreeDotMenuBackButton,
     &kTipsSelfService,
     &kToolbarCaptureFixForSPAs,
@@ -486,6 +489,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kWebApkMinShellVersion,
     &kWebAppShortEdgesCutoutMode,
     &kWebOtpCrossDeviceSimpleString,
+    &kWebUiNtpAndroidTheming,
     &kXplatSyncedSetup,
     &kYourSavedInfoSettingsPageAndroid,
     &language::kCctAutoTranslate,
@@ -596,6 +600,7 @@ BASE_FEATURE(kAndroidBottomBar, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidBricksNativePage, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidContextMenuDisabledMenuItems, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidContextMenuNewActions, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kAndroidDesktopBookmarkPopup, base::FEATURE_ENABLED_BY_DEFAULT);
 // Enables additional text shown during profile creation for managed users,
 // informing them about device signal collection for security purposes.
 BASE_FEATURE(kAndroidDeviceSignalsDisclaimer, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -611,7 +616,7 @@ BASE_FEATURE(kAndroidProgressBarVisualUpdate, base::FEATURE_DISABLED_BY_DEFAULT)
 BASE_FEATURE(kAndroidSaveCardNonBlockingDialog, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidSettingsContainment, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidSettingsUrl, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kAndroidSetupList, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAndroidSetupList, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidSurfaceColorUpdate, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidTabDeclutterDedupeTabIdsKillSwitch, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidTabSkipSaveTabsKillswitch,"AndroidTabSkipSaveTabsTaskKillswitch", base::FEATURE_ENABLED_BY_DEFAULT);
@@ -645,6 +650,7 @@ BASE_FEATURE(kAuxiliarySearchHistoryDonation, base::FEATURE_DISABLED_BY_DEFAULT)
 BASE_FEATURE(kAvoidDoubleMultiwindowChanges, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kBlockIntentsWhileLocked, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kBookmarkPaneAndroid, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kBookmarksBarContextMenu, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kBookmarksBarNTP, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kBottomSheetAsBrowserControls, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kBottomSheetOnDesktopWindowing, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -666,6 +672,7 @@ BASE_FEATURE(kCCTGoogleBottomBar, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTGoogleBottomBarVariantLayouts, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTIncognitoAvailableToThirdParty, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTMinimizedEnabledByDefault, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kCCTNavigationInfoScreenshot, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTNavigationMetrics, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTNavigationalPrefetch, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTNestedSecurityIcon, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -677,7 +684,6 @@ BASE_FEATURE(kCCTRealtimeEngagementEventsInBackground, base::FEATURE_ENABLED_BY_
 BASE_FEATURE(kCCTReportParallelRequestStatus, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTReportPrerenderEvents, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTResetTimeoutAllowed, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kCCTResetTimeoutEnabled, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTResizableForThirdParties, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTTabModalDialog, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCacheDeprecatedSystemLocationSetting, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -686,6 +692,7 @@ BASE_FEATURE(kCacheIsGoogleSigned, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kCacheIsMultiInstanceApi31Enabled, base::FEATURE_ENABLED_BY_DEFAULT);
 // Used in downstream code.
 BASE_FEATURE(kCastDeviceFilter, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kCctTabResumption, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kChangeUnfocusedPriority, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kChromeItemPickerUi, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kChromeSurveyNextAndroid, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -739,7 +746,6 @@ BASE_FEATURE(kForceTranslucentNotificationTrampoline, base::FEATURE_DISABLED_BY_
 BASE_FEATURE(kFullscreenInsetsApiMigration, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kFullscreenInsetsApiMigrationOnAutomotive, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kGestureUserEducationBackSwipe, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kGlicExperimentalLocation, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kGmsCoreBindServiceOptimization, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGridTabSwitcherSurfaceColorUpdate, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kHistoryPaneAndroid, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -761,7 +767,7 @@ BASE_FEATURE(kLoadAllTabsAtStartup, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kLoadNativeEarly, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kLockTopControlsOnLargeTabletsV2, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kLogoViewRefactor, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kLongScreenshotsLenientMemoryCheck, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kLongScreenshotsLenientMemoryCheck, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kLongScreenshotsNoMemoryCheck, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables an experimental feature which forces mayLaunchUrl to use a different
 // storage partition. This may reduce performance. This should not be enabled by
@@ -823,6 +829,8 @@ BASE_FEATURE(kShowTabListAnimations, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kSmallerTabStripTitleLimit, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kStartSurfaceReturnTime, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kSubmenusInAppMenu, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kSubmenusInAppMenuLff, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kTabAndroidGracefulShutdown, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kTabBottomSheet, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kTabBottomSheetResizeWebview, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kTabClosureMethodRefactor, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -838,6 +846,7 @@ BASE_FEATURE(kTabSwitcherGroupSuggestionsTestModeAndroid, base::FEATURE_DISABLED
 BASE_FEATURE(kTabWindowManagerReportIndicesMismatch, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kTestDefaultDisabled, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kTestDefaultEnabled, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kTextHighlightFullLink, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kThreeDotMenuBackButton, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kTipsSelfService, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kToolbarCaptureFixForSPAs, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -874,6 +883,7 @@ BASE_FEATURE(kWebAppShortEdgesCutoutMode, base::FEATURE_DISABLED_BY_DEFAULT);
 // Shows only the remote device name on the Android notification instead of
 // a descriptive text.
 BASE_FEATURE(kWebOtpCrossDeviceSimpleString, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kWebUiNtpAndroidTheming, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kXplatSyncedSetup, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kYourSavedInfoSettingsPageAndroid, base::FEATURE_DISABLED_BY_DEFAULT);
 // go/keep-sorted end

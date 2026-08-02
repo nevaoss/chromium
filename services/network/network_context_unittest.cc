@@ -1163,7 +1163,8 @@ TEST_F(NetworkContextTest, AddVariationsHeadersToReportingRequest) {
   // The variations header is only added for Google origins.
   GURL google_url("https://www.google.com");
   auto request = network_context->url_request_context()->CreateRequest(
-      google_url, net::DEFAULT_PRIORITY, nullptr, TRAFFIC_ANNOTATION_FOR_TESTS);
+      google_url, net::DEFAULT_PRIORITY, nullptr, TRAFFIC_ANNOTATION_FOR_TESTS,
+      net::handles::kInvalidNetworkHandle);
 
   network_context->AddVariationsHeadersToReportingRequest(request.get());
 
@@ -1196,7 +1197,8 @@ TEST_F(NetworkContextTest, AddVariationsHeadersToReportingRequestIncognito) {
 
   GURL google_url("https://www.google.com");
   auto request = network_context->url_request_context()->CreateRequest(
-      google_url, net::DEFAULT_PRIORITY, nullptr, TRAFFIC_ANNOTATION_FOR_TESTS);
+      google_url, net::DEFAULT_PRIORITY, nullptr, TRAFFIC_ANNOTATION_FOR_TESTS,
+      net::handles::kInvalidNetworkHandle);
 
   network_context->AddVariationsHeadersToReportingRequest(request.get());
 
@@ -4283,6 +4285,142 @@ TEST_F(NetworkContextTest, CreateRestrictedUDPSocket) {
   }
 }
 
+struct SendUdpToMulticastParams {
+  bool flag_enabled;
+  bool allow_multicast;
+  bool connected_else_bound_socket;
+};
+
+class RestrictedUDPSocketMulticastTest
+    : public NetworkContextTest,
+      public testing::WithParamInterface<SendUdpToMulticastParams> {
+ public:
+  RestrictedUDPSocketMulticastTest() {
+    if (GetParam().flag_enabled) {
+      feature_list_.InitAndEnableFeature(
+          features::kDirectSocketsUdpSendRequireMulticastPermissionPolicy);
+    } else {
+      feature_list_.InitAndDisableFeature(
+          features::kDirectSocketsUdpSendRequireMulticastPermissionPolicy);
+    }
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    RestrictedUDPSocketMulticastTest,
+    testing::Values(
+        SendUdpToMulticastParams{/*flag_enabled=*/false,
+                                 /*allow_multicast=*/false,
+                                 /*connected_else_bound_socket=*/false},
+        SendUdpToMulticastParams{/*flag_enabled=*/false,
+                                 /*allow_multicast=*/false,
+                                 /*connected_else_bound_socket=*/true},
+        SendUdpToMulticastParams{/*flag_enabled=*/false,
+                                 /*allow_multicast=*/true,
+                                 /*connected_else_bound_socket=*/false},
+        SendUdpToMulticastParams{/*flag_enabled=*/false,
+                                 /*allow_multicast=*/true,
+                                 /*connected_else_bound_socket=*/true},
+        SendUdpToMulticastParams{/*flag_enabled=*/true,
+                                 /*allow_multicast=*/false,
+                                 /*connected_else_bound_socket=*/false},
+        SendUdpToMulticastParams{/*flag_enabled=*/true,
+                                 /*allow_multicast=*/false,
+                                 /*connected_else_bound_socket=*/true},
+        SendUdpToMulticastParams{/*flag_enabled=*/true,
+                                 /*allow_multicast=*/true,
+                                 /*connected_else_bound_socket=*/false},
+        SendUdpToMulticastParams{/*flag_enabled=*/true,
+                                 /*allow_multicast=*/true,
+                                 /*connected_else_bound_socket=*/true}),
+    [](const testing::TestParamInfo<SendUdpToMulticastParams>& info) {
+      return base::StringPrintf(
+          "%s_%s_%s", info.param.flag_enabled ? "FlagEnabled" : "FlagDisabled",
+          info.param.allow_multicast ? "MulticastAllowed" : "MulticastDenied",
+          info.param.connected_else_bound_socket ? "Connected" : "Bound");
+    });
+
+TEST_P(RestrictedUDPSocketMulticastTest, MulticastSendOrConnect) {
+  auto resolver = std::make_unique<net::MockHostResolver>();
+  resolver->rules()->AddRule("mcast.test", "224.0.0.251");
+  network_service_->set_host_resolver_factory_for_testing(
+      std::make_unique<HostResolverFactory>(std::move(resolver)));
+
+  std::unique_ptr<NetworkContext> network_context =
+      CreateContextWithParams(CreateNetworkContextParamsForTesting());
+
+  mojo::Remote<mojom::RestrictedUDPSocket> socket;
+  const SendUdpToMulticastParams& params = GetParam();
+
+  if (params.connected_else_bound_socket) {
+    base::test::TestFuture<int32_t, const std::optional<net::IPEndPoint>&>
+        create_future;
+    if (params.flag_enabled && !params.allow_multicast) {
+      EXPECT_CHECK_DEATH(network_context->CreateRestrictedUDPSocket(
+          net::IPEndPoint(net::IPAddress(224, 0, 0, 251), 5353),
+          mojom::RestrictedUDPSocketMode::CONNECTED,
+          net::MutableNetworkTrafficAnnotationTag(TRAFFIC_ANNOTATION_FOR_TESTS),
+          /*params=*/nullptr, socket.BindNewPipeAndPassReceiver(),
+          /*listener=*/mojo::NullRemote(),
+          /*allow_multicast=*/params.allow_multicast,
+          /*allow_source_specific_multicast=*/false,
+          create_future.GetCallback()));
+    } else {
+      network_context->CreateRestrictedUDPSocket(
+          net::IPEndPoint(net::IPAddress(224, 0, 0, 251), 5353),
+          mojom::RestrictedUDPSocketMode::CONNECTED,
+          net::MutableNetworkTrafficAnnotationTag(TRAFFIC_ANNOTATION_FOR_TESTS),
+          /*params=*/nullptr, socket.BindNewPipeAndPassReceiver(),
+          /*listener=*/mojo::NullRemote(),
+          /*allow_multicast=*/params.allow_multicast,
+          /*allow_source_specific_multicast=*/false,
+          create_future.GetCallback());
+      EXPECT_NE(create_future.Get<0>(), net::ERR_MULTICAST_NOT_ALLOWED);
+    }
+  } else {
+    base::test::TestFuture<int32_t, const std::optional<net::IPEndPoint>&>
+        create_future;
+    network_context->CreateRestrictedUDPSocket(
+        GetLocalHostWithAnyPort(), mojom::RestrictedUDPSocketMode::BOUND,
+        net::MutableNetworkTrafficAnnotationTag(TRAFFIC_ANNOTATION_FOR_TESTS),
+        /*params=*/nullptr, socket.BindNewPipeAndPassReceiver(),
+        /*listener=*/mojo::NullRemote(),
+        /*allow_multicast=*/params.allow_multicast,
+        /*allow_source_specific_multicast=*/false, create_future.GetCallback());
+    ASSERT_EQ(create_future.Get<0>(), net::OK);
+
+    const std::vector<uint8_t> test_msg{1, 2, 3};
+
+    // SendTo() with a multicast IP literal.
+    {
+      base::test::TestFuture<int32_t> send_future;
+      socket->SendTo(test_msg, net::HostPortPair("224.0.0.251", 5353),
+                     net::DnsQueryType::UNSPECIFIED, send_future.GetCallback());
+      if (params.flag_enabled && !params.allow_multicast) {
+        EXPECT_EQ(send_future.Get(), net::ERR_MULTICAST_NOT_ALLOWED);
+      } else {
+        EXPECT_NE(send_future.Get(), net::ERR_MULTICAST_NOT_ALLOWED);
+      }
+    }
+
+    // SendTo() with a hostname that resolves to a multicast address.
+    {
+      base::test::TestFuture<int32_t> send_future;
+      socket->SendTo(test_msg, net::HostPortPair("mcast.test", 5353),
+                     net::DnsQueryType::UNSPECIFIED, send_future.GetCallback());
+      if (params.flag_enabled && !params.allow_multicast) {
+        EXPECT_EQ(send_future.Get(), net::ERR_MULTICAST_NOT_ALLOWED);
+      } else {
+        EXPECT_NE(send_future.Get(), net::ERR_MULTICAST_NOT_ALLOWED);
+      }
+    }
+  }
+}
+
 TEST_F(NetworkContextTest, CreateNetLogExporter) {
   // Basic flow around start/stop.
   std::unique_ptr<NetworkContext> network_context =
@@ -5880,7 +6018,7 @@ TEST_F(NetworkContextTest, PrivacyModeDisabledByDefault) {
       CreateTestURLRequestContextBuilder()->Build();
   std::unique_ptr<net::URLRequest> request = request_context->CreateRequest(
       kURL, net::DEFAULT_PRIORITY, /*delegate=*/nullptr,
-      TRAFFIC_ANNOTATION_FOR_TESTS);
+      TRAFFIC_ANNOTATION_FOR_TESTS, net::handles::kInvalidNetworkHandle);
 
   std::unique_ptr<NetworkContext> network_context =
       CreateContextWithParams(CreateNetworkContextParamsForTesting());
@@ -5906,7 +6044,7 @@ TEST_F(NetworkContextTest, PrivacyModeEnabledIfCookiesBlocked) {
   {
     std::unique_ptr<net::URLRequest> request = request_context->CreateRequest(
         kURL, net::DEFAULT_PRIORITY, /*delegate=*/nullptr,
-        TRAFFIC_ANNOTATION_FOR_TESTS);
+        TRAFFIC_ANNOTATION_FOR_TESTS, net::handles::kInvalidNetworkHandle);
     request->set_site_for_cookies(net::SiteForCookies::FromUrl(kOtherURL));
     EXPECT_EQ(net::NetworkDelegate::PrivacySetting::kStateDisallowed,
               network_context->url_request_context()
@@ -5916,8 +6054,8 @@ TEST_F(NetworkContextTest, PrivacyModeEnabledIfCookiesBlocked) {
 
   {
     std::unique_ptr<net::URLRequest> request = request_context->CreateRequest(
-        kOtherURL, net::DEFAULT_PRIORITY,
-        /*delegate=*/nullptr, TRAFFIC_ANNOTATION_FOR_TESTS);
+        kOtherURL, net::DEFAULT_PRIORITY, /*delegate=*/nullptr,
+        TRAFFIC_ANNOTATION_FOR_TESTS, net::handles::kInvalidNetworkHandle);
     request->set_site_for_cookies(net::SiteForCookies::FromUrl(kURL));
     EXPECT_EQ(net::NetworkDelegate::PrivacySetting::kStateAllowed,
               network_context->url_request_context()
@@ -5940,7 +6078,7 @@ TEST_F(NetworkContextTest, PrivacyModeDisabledIfCookiesAllowed) {
 
   std::unique_ptr<net::URLRequest> request = request_context->CreateRequest(
       kURL, net::DEFAULT_PRIORITY, /*delegate=*/nullptr,
-      TRAFFIC_ANNOTATION_FOR_TESTS);
+      TRAFFIC_ANNOTATION_FOR_TESTS, net::handles::kInvalidNetworkHandle);
   request->set_site_for_cookies(net::SiteForCookies::FromUrl(kOtherURL));
   EXPECT_EQ(net::NetworkDelegate::PrivacySetting::kStateAllowed,
             network_context->url_request_context()
@@ -5963,7 +6101,7 @@ TEST_F(NetworkContextTest, PrivacyModeDisabledIfCookiesSettingForOtherURL) {
 
   std::unique_ptr<net::URLRequest> request = request_context->CreateRequest(
       kURL, net::DEFAULT_PRIORITY, /*delegate=*/nullptr,
-      TRAFFIC_ANNOTATION_FOR_TESTS);
+      TRAFFIC_ANNOTATION_FOR_TESTS, net::handles::kInvalidNetworkHandle);
   request->set_site_for_cookies(net::SiteForCookies::FromUrl(kOtherURL));
   EXPECT_EQ(net::NetworkDelegate::PrivacySetting::kStateAllowed,
             network_context->url_request_context()
@@ -5987,7 +6125,7 @@ TEST_F(NetworkContextTest, PrivacyModeEnabledIfThirdPartyCookiesBlocked) {
   {
     std::unique_ptr<net::URLRequest> request = request_context->CreateRequest(
         kURL, net::DEFAULT_PRIORITY, /*delegate=*/nullptr,
-        TRAFFIC_ANNOTATION_FOR_TESTS);
+        TRAFFIC_ANNOTATION_FOR_TESTS, net::handles::kInvalidNetworkHandle);
     request->set_site_for_cookies(net::SiteForCookies::FromUrl(kOtherURL));
     EXPECT_EQ(
         net::NetworkDelegate::PrivacySetting::kPartitionedStateAllowedOnly,
@@ -5997,7 +6135,7 @@ TEST_F(NetworkContextTest, PrivacyModeEnabledIfThirdPartyCookiesBlocked) {
   {
     std::unique_ptr<net::URLRequest> request = request_context->CreateRequest(
         kURL, net::DEFAULT_PRIORITY, /*delegate=*/nullptr,
-        TRAFFIC_ANNOTATION_FOR_TESTS);
+        TRAFFIC_ANNOTATION_FOR_TESTS, net::handles::kInvalidNetworkHandle);
     request->set_site_for_cookies(net::SiteForCookies::FromUrl(kURL));
     EXPECT_EQ(net::NetworkDelegate::PrivacySetting::kStateAllowed,
               delegate->ForcePrivacyMode(*request));
@@ -6007,7 +6145,7 @@ TEST_F(NetworkContextTest, PrivacyModeEnabledIfThirdPartyCookiesBlocked) {
   {
     std::unique_ptr<net::URLRequest> request = request_context->CreateRequest(
         kURL, net::DEFAULT_PRIORITY, /*delegate=*/nullptr,
-        TRAFFIC_ANNOTATION_FOR_TESTS);
+        TRAFFIC_ANNOTATION_FOR_TESTS, net::handles::kInvalidNetworkHandle);
     request->set_site_for_cookies(net::SiteForCookies::FromUrl(kOtherURL));
     EXPECT_EQ(net::NetworkDelegate::PrivacySetting::kStateAllowed,
               delegate->ForcePrivacyMode(*request));
@@ -6016,7 +6154,7 @@ TEST_F(NetworkContextTest, PrivacyModeEnabledIfThirdPartyCookiesBlocked) {
   {
     std::unique_ptr<net::URLRequest> request = request_context->CreateRequest(
         kURL, net::DEFAULT_PRIORITY, /*delegate=*/nullptr,
-        TRAFFIC_ANNOTATION_FOR_TESTS);
+        TRAFFIC_ANNOTATION_FOR_TESTS, net::handles::kInvalidNetworkHandle);
     request->set_site_for_cookies(net::SiteForCookies::FromUrl(kURL));
     EXPECT_EQ(net::NetworkDelegate::PrivacySetting::kStateAllowed,
               delegate->ForcePrivacyMode(*request));
@@ -6029,8 +6167,8 @@ TEST_F(NetworkContextTest, CanSetCookieFalseIfCookiesBlocked) {
   std::unique_ptr<net::URLRequestContext> context =
       CreateTestURLRequestContextBuilder()->Build();
   std::unique_ptr<net::URLRequest> request = context->CreateRequest(
-      GURL("http://foo.com"), net::DEFAULT_PRIORITY,
-      /*delegate=*/nullptr, TRAFFIC_ANNOTATION_FOR_TESTS);
+      GURL("http://foo.com"), net::DEFAULT_PRIORITY, /*delegate=*/nullptr,
+      TRAFFIC_ANNOTATION_FOR_TESTS, net::handles::kInvalidNetworkHandle);
   auto cookie = net::CanonicalCookie::CreateUnsafeCookieForTesting(
       "TestCookie", "1", "www.test.com", "/", base::Time(), base::Time(),
       base::Time(), base::Time(), false, false, net::CookieSameSite::LAX_MODE,
@@ -6056,8 +6194,8 @@ TEST_F(NetworkContextTest, CanSetCookieTrueIfCookiesAllowed) {
   std::unique_ptr<net::URLRequestContext> context =
       CreateTestURLRequestContextBuilder()->Build();
   std::unique_ptr<net::URLRequest> request = context->CreateRequest(
-      GURL("http://foo.com"), net::DEFAULT_PRIORITY,
-      /*delegate=*/nullptr, TRAFFIC_ANNOTATION_FOR_TESTS);
+      GURL("http://foo.com"), net::DEFAULT_PRIORITY, /*delegate=*/nullptr,
+      TRAFFIC_ANNOTATION_FOR_TESTS, net::handles::kInvalidNetworkHandle);
   auto cookie = net::CanonicalCookie::CreateUnsafeCookieForTesting(
       "TestCookie", "1", "www.test.com", "/", base::Time(), base::Time(),
       base::Time(), base::Time(), false, false,
@@ -6084,8 +6222,8 @@ TEST_F(NetworkContextAnnotateAndMoveUserBlockedCookiesTest,
   std::unique_ptr<net::URLRequestContext> context =
       CreateTestURLRequestContextBuilder()->Build();
   std::unique_ptr<net::URLRequest> request = context->CreateRequest(
-      GURL("http://foo.com"), net::DEFAULT_PRIORITY,
-      /*delegate=*/nullptr, TRAFFIC_ANNOTATION_FOR_TESTS);
+      GURL("http://foo.com"), net::DEFAULT_PRIORITY, /*delegate=*/nullptr,
+      TRAFFIC_ANNOTATION_FOR_TESTS, net::handles::kInvalidNetworkHandle);
 
   net::CookieAccessResultList included;
   net::CookieAccessResultList excluded;
@@ -6123,8 +6261,8 @@ TEST_F(NetworkContextAnnotateAndMoveUserBlockedCookiesTest,
   std::unique_ptr<net::URLRequestContext> context =
       CreateTestURLRequestContextBuilder()->Build();
   std::unique_ptr<net::URLRequest> request = context->CreateRequest(
-      GURL("http://foo.com"), net::DEFAULT_PRIORITY,
-      /*delegate=*/nullptr, TRAFFIC_ANNOTATION_FOR_TESTS);
+      GURL("http://foo.com"), net::DEFAULT_PRIORITY, /*delegate=*/nullptr,
+      TRAFFIC_ANNOTATION_FOR_TESTS, net::handles::kInvalidNetworkHandle);
   net::CookieAccessResultList included;
   net::CookieAccessResultList excluded;
 
@@ -6551,7 +6689,7 @@ TEST_F(NetworkContextTest, CloseConnections) {
     std::unique_ptr<net::URLRequest> request1 =
         network_context->url_request_context()->CreateRequest(
             test_server.GetURL(kPath1), net::DEFAULT_PRIORITY, &delegate1,
-            TRAFFIC_ANNOTATION_FOR_TESTS);
+            TRAFFIC_ANNOTATION_FOR_TESTS, net::handles::kInvalidNetworkHandle);
     request1->Start();
     controllable_response1.WaitForRequest();
     EXPECT_EQ(
@@ -6563,7 +6701,7 @@ TEST_F(NetworkContextTest, CloseConnections) {
     std::unique_ptr<net::URLRequest> request2 =
         network_context->url_request_context()->CreateRequest(
             test_server.GetURL(kPath2), net::DEFAULT_PRIORITY, &delegate2,
-            TRAFFIC_ANNOTATION_FOR_TESTS);
+            TRAFFIC_ANNOTATION_FOR_TESTS, net::handles::kInvalidNetworkHandle);
     request2->Start();
     controllable_response2.WaitForRequest();
     EXPECT_EQ(
@@ -6575,7 +6713,7 @@ TEST_F(NetworkContextTest, CloseConnections) {
     std::unique_ptr<net::URLRequest> request3 =
         network_context->url_request_context()->CreateRequest(
             test_server.GetURL(kPath3), net::DEFAULT_PRIORITY, &delegate3,
-            TRAFFIC_ANNOTATION_FOR_TESTS);
+            TRAFFIC_ANNOTATION_FOR_TESTS, net::handles::kInvalidNetworkHandle);
     request3->Start();
     controllable_response3.WaitForRequest();
     EXPECT_EQ(

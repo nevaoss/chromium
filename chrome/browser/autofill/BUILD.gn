@@ -12,6 +12,10 @@ static_library("autofill") {
   sources = [
     "address_normalizer_factory.cc",
     "address_normalizer_factory.h",
+    "at_memory/at_memory_query_service_delegate_impl.cc",
+    "at_memory/at_memory_query_service_delegate_impl.h",
+    "at_memory/at_memory_query_service_factory.cc",
+    "at_memory/at_memory_query_service_factory.h",
     "at_memory_cross_tab_copy_paste_tracker_factory.cc",
     "at_memory_cross_tab_copy_paste_tracker_factory.h",
     "autocomplete_history_manager_factory.cc",
@@ -20,6 +24,8 @@ static_library("autofill") {
     "autofill_ai_model_cache_factory.h",
     "autofill_ai_model_executor_factory.cc",
     "autofill_ai_model_executor_factory.h",
+    "autofill_ai_personal_context_access_manager_factory.cc",
+    "autofill_ai_personal_context_access_manager_factory.h",
     "autofill_entity_data_manager_factory.cc",
     "autofill_entity_data_manager_factory.h",
     "autofill_field_classification_model_service_factory.cc",
@@ -40,8 +46,6 @@ static_library("autofill") {
     "ml_log_router_factory.h",
     "one_time_token_service_factory.cc",
     "one_time_token_service_factory.h",
-    "personal_context_access_manager_factory.cc",
-    "personal_context_access_manager_factory.h",
     "personal_data_manager_factory.cc",
     "personal_data_manager_factory.h",
     "subkey_requester_factory.cc",
@@ -74,7 +78,6 @@ static_library("autofill") {
   ]
   deps = [
     "//chrome/browser:browser_process",
-    "//chrome/browser/accessibility_annotator",
     "//chrome/browser/account_settings",
     "//chrome/browser/history",
     "//chrome/browser/metrics",
@@ -409,13 +412,18 @@ source_set("unit_tests") {
   ]
 
   if (!is_android) {
-    sources += [ "personal_context_access_manager_factory_unittest.cc" ]
+    sources += [
+      "autofill_ai_personal_context_access_manager_factory_unittest.cc",
+      "ui/autofill_image_fetcher_impl_unittest.cc",
+    ]
     deps += [
       ":autofill",
       "//chrome/browser/personal_context",
       "//components/autofill/core/browser",
       "//components/autofill/core/common",
       "//components/personal_context/core",
+      "//ui/base",
+      "//ui/gfx:test_support",
     ]
   }
 }

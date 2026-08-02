@@ -10,14 +10,15 @@ import android.app.Activity;
 import android.graphics.Rect;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.FrameLayout;
 
 import androidx.annotation.Px;
 import androidx.annotation.VisibleForTesting;
 
-import org.chromium.base.ResettersForTesting;
 import org.chromium.base.ThreadUtils;
+import org.chromium.build.BuildConfig;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.ui.side_panel.SidePanelCoordinatorAndroid;
@@ -28,6 +29,7 @@ import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.AnchorSide;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiId;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.UiUpdateRequest;
+import org.chromium.components.thinwebview.ThinWebView;
 import org.chromium.ui.base.ViewUtils;
 
 /** Implementation of {@link SidePanelContainerCoordinator}. */
@@ -38,9 +40,6 @@ final class SidePanelContainerCoordinatorImpl
 
     private static final @AnchorSide int SIDE_PANEL_DEFAULT_ANCHOR_SIDE = AnchorSide.RIGHT;
 
-    /** Used to override the return value of {@link #hasContentToShow()} for tests. */
-    private static @Nullable Boolean sHasContentToShowForTesting;
-
     private final Activity mParentActivity;
     private final FrameLayout mContainerView;
     private final SideUiCoordinator mSideUiCoordinator;
@@ -48,29 +47,12 @@ final class SidePanelContainerCoordinatorImpl
     /** JNI bridge to read/write C++ side panel states. */
     private @Nullable SidePanelCoordinatorAndroid mSidePanelCoordinatorAndroid;
 
-    /**
-     * See {@link #startOpeningPanel}.
-     *
-     * <p>TODO(crbug.com/530328329): Use {@link #mSidePanelCoordinatorAndroid} to update C++ side
-     * panel states, then delete this field. The C++ side is the source of truth for all mutable
-     * states, but this state is essentially a duplicate of the C++ {@code
-     * SidePanelCoordinatorAndroid::state_}.
-     */
-    private @Nullable Runnable mOnPanelOpenedRunnable;
-
-    /**
-     * See {@link #startClosingPanel}.
-     *
-     * <p>TODO(crbug.com/530328329): Use {@link #mSidePanelCoordinatorAndroid} to update C++ side
-     * panel states, then delete this field. The C++ side is the source of truth for all mutable
-     * states, but this state is essentially a duplicate of the C++ {@code
-     * SidePanelCoordinatorAndroid::state_}.
-     */
-    private @Nullable Runnable mOnPanelClosedRunnable;
-
     private @Nullable SidePanelDevFeatureImpl mSidePanelPureJavaDevFeature;
 
     private @Nullable SidePanelContent mCurrentContent;
+
+    /** {@link Runnable} for {@link #startReplacingPanelContent} to remove the old content View. */
+    private @Nullable Runnable mPendingReplaceRunnable;
 
     /**
      * Whether {@link #onWillAutoClose} is running.
@@ -141,10 +123,7 @@ final class SidePanelContainerCoordinatorImpl
 
     @Override
     public void startOpeningPanel(
-            SidePanelContent content,
-            Runnable onPanelOpened,
-            @Nullable Rect startingBounds,
-            boolean suppressAnimations) {
+            SidePanelContent content, @Nullable Rect startingBounds, boolean suppressAnimations) {
         log(TAG, "startOpeningPanel", content, startingBounds, suppressAnimations);
         ThreadUtils.assertOnUiThread();
 
@@ -154,11 +133,6 @@ final class SidePanelContainerCoordinatorImpl
         mContainerView.removeAllViews();
         mContainerView.addView(content.mView);
 
-        // TODO(crbug.com/530328329): Delete this assert after directly calling into
-        // mSidePanelCoordinatorAndroid. The C++ side already ensures this state consistency.
-        assert mOnPanelClosedRunnable == null : "side panel hasn't finished closing";
-        mOnPanelOpenedRunnable = onPanelOpened;
-
         assert !mIsPreparingForAutoClose;
         if (!mIsPreparingForAutoRestore) {
             mSideUiCoordinator.updateUi(
@@ -167,14 +141,9 @@ final class SidePanelContainerCoordinatorImpl
     }
 
     @Override
-    public void startClosingPanel(Runnable onPanelClosed, boolean suppressAnimations) {
+    public void startClosingPanel(boolean suppressAnimations) {
         log(TAG, "startClosingPanel", suppressAnimations);
         ThreadUtils.assertOnUiThread();
-
-        // TODO(crbug.com/530328329): Delete this assert after directly calling into
-        // mSidePanelCoordinatorAndroid. The C++ side already ensures this state consistency.
-        assert mOnPanelOpenedRunnable == null : "side panel hasn't finished opening";
-        mOnPanelClosedRunnable = onPanelClosed;
 
         assert !mIsPreparingForAutoRestore;
         if (!mIsPreparingForAutoClose) {
@@ -184,20 +153,72 @@ final class SidePanelContainerCoordinatorImpl
     }
 
     @Override
-    public void startReplacingPanelContent(
-            SidePanelContent newContent, Runnable onPanelContentReplaced) {
+    public void startReplacingPanelContent(SidePanelContent newContent) {
         log(TAG, "startReplacingPanelContent", newContent);
         ThreadUtils.assertOnUiThread();
 
         // TODO(crbug.com/513302000): assert the side panel is currently open.
         // TODO(crbug.com/513302000): assert the side panel isn't preparing for auto-restore/close.
 
+        if (mPendingReplaceRunnable != null) {
+            mPendingReplaceRunnable.run();
+            // Explicitly set to null for readability, though it is also handled
+            // internally by the runnable's run() method.
+            mPendingReplaceRunnable = null;
+        }
+
+        assert mCurrentContent != null : "no content to replace";
+        View oldView = mCurrentContent.mView;
         mCurrentContent = newContent;
 
-        // TODO(crbug.com/505895733): Delay removing the old View to prevent UI flickers.
-        mContainerView.removeAllViews();
-        mContainerView.addView(newContent.mView);
-        onPanelContentReplaced.run();
+        mContainerView.addView(newContent.mView, /* index= */ 0);
+
+        // We use a custom Runnable class with a `mRan` flag because ThinWebView's runOnNextFrame()
+        // does not support cancellation.
+        //
+        // If a new content replacement happens before the next frame renders, we must immediately
+        // run the pending runnable to clean up the old state. When the next frame eventually fires
+        // for that older replacement, its local `removeOldViewRunnable` will run again. The `mRan`
+        // guard flag prevents running the cleanup logic (and JNI callbacks) a second time.
+        //
+        // We also check `mPendingReplaceRunnable == this` before clearing the member variable. This
+        // is because `mPendingReplaceRunnable` always tracks the *latest* replacement request. If
+        // an older runnable runs (either immediately because it was superseded, or late because of
+        // the frame callback), it must not clear `mPendingReplaceRunnable` if a newer replacement
+        // is now pending.
+        Runnable removeOldViewRunnable =
+                new Runnable() {
+                    private boolean mRan;
+
+                    @Override
+                    public void run() {
+                        if (mRan) return;
+
+                        // Immediately set mRan to true to prevent re-entrancy.
+                        mRan = true;
+
+                        mContainerView.removeView(oldView);
+                        if (mSidePanelCoordinatorAndroid != null) {
+                            mSidePanelCoordinatorAndroid.onPanelContentReplaced();
+                        }
+
+                        // If the work is for the current runnable, clear the runnable.
+                        if (mPendingReplaceRunnable == this) {
+                            mPendingReplaceRunnable = null;
+                        }
+                    }
+                };
+
+        mPendingReplaceRunnable = removeOldViewRunnable;
+        ThinWebView thinWebView = findThinWebView(newContent.mView);
+        if (thinWebView == null || BuildConfig.IS_FOR_TEST) {
+            mPendingReplaceRunnable.run();
+            // Explicitly set to null for readability, though it is also handled
+            // internally by the runnable's run() method.
+            mPendingReplaceRunnable = null;
+        } else {
+            thinWebView.runOnNextFrame(removeOldViewRunnable);
+        }
     }
 
     @Override
@@ -284,9 +305,6 @@ final class SidePanelContainerCoordinatorImpl
     @Override
     public boolean hasContentToShow() {
         ThreadUtils.assertOnUiThread();
-        if (sHasContentToShowForTesting != null) {
-            return sHasContentToShowForTesting;
-        }
 
         // The pure-Java dev feature doesn't use SidePanelCoordinatorAndroid since
         // SidePanelCoordinatorAndroid is a bridge to the C++ side panel state management.
@@ -329,18 +347,14 @@ final class SidePanelContainerCoordinatorImpl
     @Override
     public void onUiUpdateCompleted(@Px int oldWidth, @Px int newWidth) {
         // The side panel is fully opened.
-        if (mOnPanelOpenedRunnable != null) {
-            assert oldWidth == 0 && newWidth > 0;
-            mOnPanelOpenedRunnable.run();
-            mOnPanelOpenedRunnable = null;
+        if (oldWidth == 0 && newWidth > 0 && mSidePanelCoordinatorAndroid != null) {
+            mSidePanelCoordinatorAndroid.onPanelOpened();
             return;
         }
 
         // The side panel is fully closed.
-        if (mOnPanelClosedRunnable != null) {
-            assert oldWidth > 0 && newWidth == 0;
-            mOnPanelClosedRunnable.run();
-            mOnPanelClosedRunnable = null;
+        if (oldWidth > 0 && newWidth == 0 && mSidePanelCoordinatorAndroid != null) {
+            mSidePanelCoordinatorAndroid.onPanelClosed();
         }
     }
 
@@ -407,8 +421,19 @@ final class SidePanelContainerCoordinatorImpl
         return 0;
     }
 
-    static void setHasContentToShowForTesting(boolean hasContentToShow) {
-        sHasContentToShowForTesting = hasContentToShow;
-        ResettersForTesting.register(() -> sHasContentToShowForTesting = null);
+    private @Nullable ThinWebView findThinWebView(View view) {
+        if (view instanceof ThinWebView) {
+            return (ThinWebView) view;
+        }
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                ThinWebView child = findThinWebView(group.getChildAt(i));
+                if (child != null) {
+                    return child;
+                }
+            }
+        }
+        return null;
     }
 }

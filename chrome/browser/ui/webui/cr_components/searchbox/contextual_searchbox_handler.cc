@@ -468,7 +468,8 @@ ContextualSearchboxHandler::ContextualSearchboxHandler(
           base::BindRepeating(
               &ContextualSearchboxHandler::CreateImageEncodingOptions),
           contextual_tasks_context_service_,
-          webui::GetBrowserWindowInterface(web_contents_));
+          base::BindRepeating(&webui::GetBrowserWindowInterface,
+                              web_contents_.get()));
   query_contextualizer_ =
       std::make_unique<contextual_tasks::QueryContextualizer>(
           contextual_tasks_service_, desktop_delegate_.get());
@@ -616,8 +617,11 @@ bool ContextualSearchboxHandler::IsSmartTabSharingActive() const {
   if (!IsContextualSearchTabSharingEligible()) {
     return false;
   }
-  if (smart_tab_sharing_active_for_thread_.has_value()) {
-    return *smart_tab_sharing_active_for_thread_;
+  auto* session_handle =
+      get_session_callback_ ? get_session_callback_.Run() : nullptr;
+  if (session_handle &&
+      session_handle->smart_tab_sharing_active().has_value()) {
+    return *session_handle->smart_tab_sharing_active();
   }
   if (profile_ &&
       base::FeatureList::IsEnabled(
@@ -629,14 +633,18 @@ bool ContextualSearchboxHandler::IsSmartTabSharingActive() const {
   return false;
 }
 
+#if !BUILDFLAG(IS_ANDROID)
 void ContextualSearchboxHandler::SetSmartTabSharingActive(bool active) {
   if (!contextual_tasks::ContextualTasksContextService::
           GetIsSmartTabSharingEnabled(profile_)) {
     return;
   }
-  smart_tab_sharing_active_for_thread_ = active;
+  auto* session_handle = GetContextualSessionHandle();
+  if (session_handle) {
+    session_handle->set_smart_tab_sharing_active(active);
+  }
+  page()->UpdateSmartTabSharingActive(active);
 
-#if !BUILDFLAG(IS_ANDROID)
   if (active && profile_ && !has_incremented_sts_activation_count_) {
     has_incremented_sts_activation_count_ = true;
     auto* tracker =
@@ -665,13 +673,13 @@ void ContextualSearchboxHandler::SetSmartTabSharingActive(bool active) {
       }
     }
   }
-#endif
 }
 
 void ContextualSearchboxHandler::GetSmartTabSharingActive(
-    composebox::mojom::PageHandler::GetSmartTabSharingActiveCallback callback) {
+    searchbox::mojom::PageHandler::GetSmartTabSharingActiveCallback callback) {
   std::move(callback).Run(IsSmartTabSharingActive());
 }
+#endif
 
 std::vector<int32_t> ContextualSearchboxHandler::GetSelectedTabIds() const {
   std::vector<int32_t> ids;
@@ -918,6 +926,10 @@ void ContextualSearchboxHandler::AddTabContext(int32_t tab_id,
     std::move(callback).Run(base::unexpected(
         contextual_search::ContextUploadErrorType::kBrowserProcessingError));
     return;
+  }
+  if (omnibox::IsTabDeselectionInComposeboxEnabled()) {
+    contextual_session_handle->RemoveDeselectedTab(
+        SessionID::FromSerializedValue(tab_id));
   }
   auto context_token = contextual_session_handle->CreateContextToken();
 
@@ -1410,6 +1422,59 @@ void ContextualSearchboxHandler::DeleteContext(
   if (input_state_model_) {
     input_state_model_->OnContextChanged();
   }
+
+  if (base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox)) {
+    if (auto* active_task_context_provider = GetActiveTaskContextProvider()) {
+      // Trigger a refresh of the active task context provider to ensure that
+      // the tab strip underlines are updated immediately to reflect the
+      // deletion (e.g. removing the underline of the deselected tab).
+      active_task_context_provider->RefreshContext();
+    }
+  }
+}
+
+void ContextualSearchboxHandler::DeleteTabContext(int32_t tab_id) {
+  if (!omnibox::IsTabDeselectionInComposeboxEnabled()) {
+    return;
+  }
+
+  SessionID session_id = SessionID::InvalidValue();
+
+  // Try to resolve tab_id as a TabHandle first.
+  auto* browser_window = webui::GetBrowserWindowInterface(web_contents_);
+  auto* tab_list =
+      browser_window ? TabListInterface::From(browser_window) : nullptr;
+  if (tab_list) {
+    for (int i = 0; i < tab_list->GetTabCount(); ++i) {
+      tabs::TabInterface* tab = tab_list->GetTab(i);
+      if (tab && tab->GetHandle() == tabs::TabHandle(tab_id)) {
+        session_id = sessions::SessionTabHelper::IdForTab(tab->GetContents());
+        break;
+      }
+    }
+  }
+
+  // Fallback to treating tab_id as SessionID directly.
+  if (!session_id.is_valid()) {
+    session_id = SessionID::FromSerializedValue(tab_id);
+  }
+
+  // TODO(crbug.com/528416084): Consider standardizing on SessionID instead of
+  // TabHandle to avoid translation.
+
+  if (!session_id.is_valid()) {
+    mojo::ReportBadMessage("Invalid tab ID in DeleteTabContext.");
+    return;
+  }
+
+  auto* contextual_session_handle = GetContextualSessionHandle();
+  if (contextual_session_handle) {
+    base::UnguessableToken token =
+        contextual_session_handle->GetTokenForTab(session_id);
+    if (!token.is_empty()) {
+      DeleteContext(token, /*from_automatic_chip=*/false);
+    }
+  }
 }
 
 void ContextualSearchboxHandler::DeleteContextFromBrowser(
@@ -1578,10 +1643,11 @@ void ContextualSearchboxHandler::QueryAutocomplete(
     int32_t query_id,
     const std::u16string& input,
     bool prevent_inline_autocomplete,
-    uint32_t cursor_position) {
+    uint32_t cursor_position,
+    bool is_on_focus) {
   QueryAutocompleteWithSuggestInventory(
       query_id, input, prevent_inline_autocomplete, cursor_position,
-      omnibox::SuggestInventory::SUGGEST_INVENTORY_DEFAULT);
+      omnibox::SuggestInventory::SUGGEST_INVENTORY_DEFAULT, is_on_focus);
 }
 
 void ContextualSearchboxHandler::QueryAutocompleteWithSuggestInventory(
@@ -1589,14 +1655,15 @@ void ContextualSearchboxHandler::QueryAutocompleteWithSuggestInventory(
     const std::u16string& input,
     bool prevent_inline_autocomplete,
     uint32_t cursor_position,
-    omnibox::SuggestInventory suggest_inventory) {
+    omnibox::SuggestInventory suggest_inventory,
+    bool is_on_focus) {
   if (contextual_tasks_context_service_) {
     contextual_tasks_context_service_->OnTypedQuery();
   }
 
   SearchboxHandler::QueryAutocompleteWithSuggestInventory(
       query_id, input, prevent_inline_autocomplete, cursor_position,
-      suggest_inventory);
+      suggest_inventory, is_on_focus);
 }
 
 void ContextualSearchboxHandler::OnContextUploadStatusChanged(
@@ -1894,6 +1961,10 @@ void ContextualSearchboxHandler::OpenUrl(
       contextual_session_handle->GetSubmittedContextTokens());
   new_contextual_session_handle->set_submitted_tabs(
       contextual_session_handle->submitted_tabs());
+  new_contextual_session_handle->set_deselected_tabs_urls(
+      contextual_session_handle->deselected_tabs_urls());
+  new_contextual_session_handle->set_smart_tab_sharing_active(
+      contextual_session_handle->smart_tab_sharing_active());
 
   // TODO(crbug.com/470404040): Determine what to do with the return
   // value of this call, or move this call to a different location.

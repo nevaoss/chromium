@@ -12,6 +12,7 @@
 
 #include "base/check.h"
 #include "base/containers/fixed_flat_set.h"
+#include "base/containers/flat_set.h"
 #include "base/feature.h"
 #include "base/feature_list.h"
 #include "base/functional/function_ref.h"
@@ -19,7 +20,9 @@
 #include "base/notreached.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
+#include "base/system/sys_info.h"
 #include "base/values.h"
+#include "build/build_config.h"
 #include "build/buildflag.h"
 #include "components/autofill/core/browser/country_type.h"
 #include "components/autofill/core/browser/data_manager/autofill_ai/entity_data_manager.h"
@@ -95,6 +98,18 @@ base::flat_set<int32_t> GetAutofillAmbientAutofillEligibleTiers() {
     }
   }
   return eligible_tiers;
+}
+
+[[nodiscard]] bool IsAndroidDeviceEligibleForAmbientAutofill() {
+#if BUILDFLAG(IS_ANDROID)
+  const std::string model_name = base::SysInfo::HardwareModelName();
+  const base::flat_set<std::string> enabled_devices =
+      base::SplitString(features::kAutofillAmbientAutofillEnabledDevices.Get(),
+                        ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  return enabled_devices.contains(model_name);
+#else
+  return false;
+#endif
 }
 
 // Checks whether `country_code` belongs to a country where Wallet is
@@ -546,14 +561,16 @@ base::flat_set<int32_t> GetAutofillAmbientAutofillEligibleTiers() {
                           "Subscription eligibility service not available.");
         return false;
       }
-
       const int32_t tier = subscription_service->GetAiSubscriptionTier();
-      if (!GetAutofillAmbientAutofillEligibleTiers().contains(tier)) {
-        MaybeOutputReason(debug_message,
-                          "User subscription tier is not eligible.");
-        return false;
+      if (GetAutofillAmbientAutofillEligibleTiers().contains(tier) ||
+          IsAndroidDeviceEligibleForAmbientAutofill()) {
+        break;
       }
-      break;
+
+      MaybeOutputReason(debug_message,
+                        "User subscription tier is not eligible and device is "
+                        "not eligible.");
+      return false;
     }
     case AutofillAiAction::kOptIn: {
       if (!GetAccountGaiaIdHash(identity_manager).has_value()) {
@@ -586,7 +603,7 @@ base::flat_set<int32_t> GetAutofillAmbientAutofillEligibleTiers() {
     bool has_entity_data_saved,
     const GeoIpCountryCode& country_code,
     personal_context::PersonalContextEligibilityState
-        personal_context_enablement_state,
+        personal_context_eligibility_state,
     AutofillAiAction action,
     std::optional<EntityType> entity_type,
     std::string* debug_message) {
@@ -669,7 +686,7 @@ base::flat_set<int32_t> GetAutofillAmbientAutofillEligibleTiers() {
               features::debug::kAutofillAmbientAutofillSkipEligibilityChecks)) {
         return true;
       }
-      if (!IsPersonalContextEligible(personal_context_enablement_state)) {
+      if (!IsPersonalContextEligible(personal_context_eligibility_state)) {
         return false;
       }
       break;
@@ -766,7 +783,7 @@ bool MayPerformAutofillAiAction(
     const subscription_eligibility::SubscriptionEligibilityService*
         subscription_service,
     personal_context::PersonalContextEligibilityState
-        personal_context_enablement_state,
+        personal_context_eligibility_state,
     AutofillAiAction action,
     std::optional<EntityType> entity_type,
     std::string* debug_message) {
@@ -813,7 +830,7 @@ bool MayPerformAutofillAiAction(
   // If the re-auth availability is unknown, error on the side of caution.
   return SatisfiesMiscellaneousRequirements(
       is_off_the_record, edm->GetReauthAvailability().value_or(false),
-      has_entity_data_saved, country_code, personal_context_enablement_state,
+      has_entity_data_saved, country_code, personal_context_eligibility_state,
       action, entity_type, debug_message);
 }
 
@@ -878,7 +895,7 @@ bool SetAutofillAiOptInStatus(
     const subscription_eligibility::SubscriptionEligibilityService*
         subscription_service,
     personal_context::PersonalContextEligibilityState
-        personal_context_enablement_state,
+        personal_context_eligibility_state,
     AutofillAiOptInStatus opt_in_status) {
   if (!MayPerformAutofillAiAction(
 #if !BUILDFLAG(IS_FUCHSIA)
@@ -886,8 +903,8 @@ bool SetAutofillAiOptInStatus(
 #endif
           prefs, edm, identity_manager, sync_service,
           is_wallet_public_pass_storage_enabled, is_off_the_record,
-          country_code, subscription_service, personal_context_enablement_state,
-          AutofillAiAction::kOptIn)) {
+          country_code, subscription_service,
+          personal_context_eligibility_state, AutofillAiAction::kOptIn)) {
     return false;
   }
 

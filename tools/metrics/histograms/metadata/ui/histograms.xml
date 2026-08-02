@@ -110,7 +110,7 @@ chromium-metrics-reviews@google.com.
 </variants>
 
 <variants name="NewWindowMetricVersion">
-  <variant name="" summary=""/>
+  <variant name="" summary="(DEPRECATED in M152. Replaced by V2)"/>
   <variant name="2" summary="(V2 with fixed metric start times)"/>
 </variants>
 
@@ -521,7 +521,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="InitialWebUI.NewWindow.AllSources.BrowserWindow.FirstPaint.FromConstructor"
-    units="ms" expires_after="2026-11-08">
+    units="ms" expires_after="2027-01-10">
   <owner>mych@chromium.org</owner>
   <owner>chrome-webium-product-eng@google.com</owner>
   <summary>
@@ -534,7 +534,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="InitialWebUI.NewWindow.AllSources.ReloadButton.FirstPaint.FromConstructor"
-    units="ms" expires_after="2026-11-08">
+    units="ms" expires_after="2027-01-10">
   <owner>mych@chromium.org</owner>
   <owner>chrome-webium-product-eng@google.com</owner>
   <summary>
@@ -552,7 +552,7 @@ chromium-metrics-reviews@google.com.
   <owner>chrome-webium-product-eng@google.com</owner>
   <summary>
     Records the duration from window creation to closing the browser window for
-    new windows {CreationSource} {ExistingWindow}{Version}.
+    new windows {CreationSource} {ExistingWindow} {Version}.
 
     This is only recorded for desktop platforms when the InitialWebUIMetrics is
     enabled, and when the initial paint has not been recorded.
@@ -564,12 +564,12 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="InitialWebUI.NewWindow{CreationSource}.{ExistingWindow}.BrowserWindow.FirstPaint.{StartPoint}{Version}"
-    units="ms" expires_after="2026-11-08">
+    units="ms" expires_after="2027-01-10">
   <owner>mych@chromium.org</owner>
   <owner>chrome-webium-product-eng@google.com</owner>
   <summary>
     Records the time from {StartPoint} to 'First Paint' of the new browser
-    window. {CreationSource} {ExistingWindow}.
+    window. {CreationSource} {ExistingWindow} {Version}.
 
     This is only recorded for desktop platforms when the InitialWebUIMetrics is
     enabled.
@@ -612,7 +612,7 @@ chromium-metrics-reviews@google.com.
   <summary>
     Records the delay between the native browser window's first presentation
     (paint) and the Reload Button first paint in a new window. {CreationSource}
-    {ExistingWindow}{Version}.
+    {ExistingWindow} {Version}.
 
     This is a direct, session-linked measurement of the delta, unlike the
     separately logged `.FirstPaint` metrics. Used to quantify the rendering lag.
@@ -627,12 +627,12 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="InitialWebUI.NewWindow{CreationSource}.{ExistingWindow}.ReloadButton.{PaintType}.{StartPoint}{Version}"
-    units="ms" expires_after="2026-11-08">
+    units="ms" expires_after="2027-01-10">
   <owner>mych@chromium.org</owner>
   <owner>chrome-webium-product-eng@google.com</owner>
   <summary>
     Records the time from {StartPoint} to first {PaintType} of the Reload Button
-    in the new browser window. {CreationSource} {ExistingWindow}{Version}.
+    in the new browser window. {CreationSource} {ExistingWindow} {Version}.
 
     This is only recorded for desktop platforms when the InitialWebUIMetrics is
     enabled.
@@ -697,7 +697,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="InitialWebUI.ReloadButton.InputToReload{InputType}" units="ms"
-    expires_after="2026-11-08">
+    expires_after="2027-01-10">
   <owner>mych@chromium.org</owner>
   <owner>chrome-webium-product-eng@google.com</owner>
   <summary>
@@ -760,7 +760,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="InitialWebUI.ReloadButton.MouseHoverToNextPaint" units="ms"
-    expires_after="2026-11-08">
+    expires_after="2027-01-10">
   <owner>mych@chromium.org</owner>
   <owner>chrome-webium-product-eng@google.com</owner>
   <summary>
@@ -1267,6 +1267,30 @@ features through Chrome Labs. -->
   </summary>
 </histogram>
 
+<histogram name="Views.FocusRing.RefreshLayer.Time" units="microseconds"
+    expires_after="2026-10-10">
+  <owner>gjc@google.com</owner>
+  <owner>chrome-loading@google.com</owner>
+  <summary>
+    Records the duration of all FocusRing::RefreshLayer calls. Recorded when the
+    focus ring's layer is refreshed. This captures fast cached cases as well as
+    slow layer creation/destruction cases. This metric is only reported for
+    clients with high-resolution clocks.
+  </summary>
+</histogram>
+
+<histogram name="Views.FocusRing.RefreshLayer.Time.NotCached"
+    units="microseconds" expires_after="2026-10-10">
+  <owner>gjc@google.com</owner>
+  <owner>chrome-loading@google.com</owner>
+  <summary>
+    Records the duration of FocusRing::RefreshLayer calls that result in actual
+    layer creation or destruction. Recorded when the focus ring's layer is
+    refreshed and results in actual layer creation or destruction. This metric
+    is only reported for clients with high-resolution clocks.
+  </summary>
+</histogram>
+
 <histogram name="Views.InvalidatesDuringLayout" units="count"
     expires_after="2026-11-22">
   <owner>dpranke@chromium.org</owner>
@@ -1491,7 +1515,7 @@ features through Chrome Labs. -->
 </histogram>
 
 <histogram name="WrenchMenu.TimeToAction{Action}" units="ms"
-    expires_after="2026-11-08">
+    expires_after="2027-01-10">
   <owner>ainslie@chromium.org</owner>
   <owner>edwardjung@chromium.org</owner>
   <summary>

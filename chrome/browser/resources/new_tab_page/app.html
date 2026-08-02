@@ -197,7 +197,7 @@ import {SubmitButtonIconType} from '//resources/cr_components/composebox/compose
           ${this.backgroundImageAttribution2_}
         </div>
       </a>
-      ${!this.isAndroid_ ? html`
+      ${this.showCustomizeButton_ ? html`
         <ntp-customize-buttons id="customizeButtons"
             ?modules-shown-to-user="${this.modulesShownToUser}"
             ?show-background-image="${this.showBackgroundImage_}"
@@ -239,6 +239,7 @@ ${this.voiceSearchCoherenceAnySearchboxExperimentEnabled_ &&
       <!-- Pass metricSource synchronously to avoid microtask race in unit tests. -->
       <cr-composebox-voice-search id="voiceSearch"
           in-voice-search-mode
+          @voice-permission-changed="${this.onVoicePermissionChanged_}"
           @voice-search-cancel="${this.onVoiceSearchCancel_}"
           @voice-search-final-result="${this.onVoiceSearchFinalResult_}"
           @voice-search-error="${this.onVoiceSearchError}"

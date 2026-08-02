@@ -307,6 +307,10 @@ BASE_FEATURE(kEnableAccountPreviewData, base::FEATURE_DISABLED_BY_DEFAULT);
 // enabled.
 BASE_FEATURE(kEnableAccountPreviewEntityPreviews,
              base::FEATURE_DISABLED_BY_DEFAULT);
+// Controls whether computing and storing the preferred account is enabled.
+// This flag has no effect if `kEnableAccountPreviewData` is not enabled.
+BASE_FEATURE(kEnableAccountPreviewPreferredAccount,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_ANDROID)
 // Whether activityless sign-in should be used for all entry points.
@@ -325,6 +329,10 @@ BASE_FEATURE(kEnableActivitylessSigninAllEntryPoint,
 #if BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kEnableAddSessionRedirect, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
+
+// Enables the AI subscription level decorative ring around the user's avatar.
+BASE_FEATURE(kEnableAiSubscriptionAvatarRing,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_IOS)
 BASE_FEATURE(kEnableASWebAuthenticationSession,

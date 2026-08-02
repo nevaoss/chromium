@@ -153,6 +153,7 @@ Regular profiles start at bucket 1. Incognito profiles count towards the origina
   <token key="FeatureName">
     <variant name="Compare"/>
     <variant name="Compose"/>
+    <variant name="GoogleSearchAiModeWorkspace"/>
     <variant name="HistorySearch"/>
     <variant name="Indigo"/>
     <variant name="PasswordChange"/>
@@ -1745,7 +1746,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="Settings.TrackingProtection.Enabled" enum="BooleanEnabled"
-    expires_after="2026-11-08">
+    expires_after="2027-01-10">
   <owner>fmacintosh@google.com</owner>
   <owner>koilos@google.com</owner>
   <summary>

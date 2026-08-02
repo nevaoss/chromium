@@ -34,20 +34,14 @@ BASE_FEATURE(kGlicSelectionPrompt, base::FEATURE_DISABLED_BY_DEFAULT);
 
 const base::FeatureParam<bool> kGlicSelectionPromptUpdatesOnly{
     &kGlicSelectionPrompt, "updates_only", false};
-const base::FeatureParam<bool> kGlicSelectionPromptUseWidget{
-    &kGlicSelectionPrompt, "use_widget", true};
-const base::FeatureParam<bool> kGlicSelectionPromptEnablePinning{
-    &kGlicSelectionPrompt, "enable_pinning", false};
 const base::FeatureParam<std::string> kGlicSelectionTopCueOnlyList{
     &kGlicSelectionPrompt, "top_cue_only_list", ""};
-const base::FeatureParam<bool> kGlicSelectionEnableSiteSettings{
-    &kGlicSelectionPrompt, "enable_site_settings", false};
 const base::FeatureParam<bool> kGlicSelectionShowCopyButtons{
     &kGlicSelectionPrompt, "show_copy_buttons", false};
 const base::FeatureParam<bool> kGlicSelectionAutoSendPrompt{
-    &kGlicSelectionPrompt, "auto_send_prompt", false};
+    &kGlicSelectionPrompt, "auto_send_prompt", true};
 const base::FeatureParam<std::string> kGlicSelectionPromptCta{
-    &kGlicSelectionPrompt, "cta", ""};
+    &kGlicSelectionPrompt, "cta", kGlicSelectionPromptCtaExplain};
 
 BASE_FEATURE(kGlicClearTurnIdOnPanelWillOpen,
              base::FEATURE_DISABLED_BY_DEFAULT);

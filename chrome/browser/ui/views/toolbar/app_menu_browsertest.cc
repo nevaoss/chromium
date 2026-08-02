@@ -57,6 +57,7 @@
 #include "components/password_manager/core/common/password_manager_features.h"
 #include "components/prefs/pref_service.h"
 #include "components/signin/public/base/signin_pref_names.h"
+#include "components/signin/public/base/signin_switches.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/signin/public/identity_manager/identity_test_utils.h"
 #include "components/subscription_eligibility/subscription_eligibility_prefs.h"
@@ -218,11 +219,11 @@ IN_PROC_BROWSER_TEST_F(AppMenuBrowserTest, ShowWithRecentlyClosedWindow) {
   // Create an additional browser, close it, and ensure it is added to the
   // TabRestoreService.
   sessions::TabRestoreService* tab_restore_service =
-      TabRestoreServiceFactory::GetForProfile(browser()->profile());
+      TabRestoreServiceFactory::GetForProfile(browser()->GetProfile());
   TabRestoreServiceLoadWaiter tab_restore_service_load_waiter(
       tab_restore_service);
   tab_restore_service_load_waiter.Wait();
-  Browser* second_browser = CreateBrowser(browser()->profile());
+  Browser* second_browser = CreateBrowser(browser()->GetProfile());
   content::WebContents* new_contents = chrome::AddSelectedTabWithURL(
       second_browser,
       chrome_test_utils::GetTestUrl(
@@ -424,7 +425,7 @@ IN_PROC_BROWSER_TEST_F(AppMenuBrowserTest, InvokeUi_save_and_share) {
 IN_PROC_BROWSER_TEST_F(AppMenuBrowserTest,
                        DISABLED_InvokeUi_main_profile_signed_in) {
   signin::IdentityManager* identity_manager =
-      IdentityManagerFactory::GetForProfile(browser()->profile());
+      IdentityManagerFactory::GetForProfile(browser()->GetProfile());
   signin::MakePrimaryAccountAvailable(identity_manager, "user@example.com",
                                       signin::ConsentLevel::kSignin);
   ShowAndVerifyUi();
@@ -442,7 +443,7 @@ IN_PROC_BROWSER_TEST_F(AppMenuBrowserTest,
 IN_PROC_BROWSER_TEST_F(AppMenuBrowserTest,
                        InvokeUi_profile_menu_in_app_menu_signed_in) {
   signin::IdentityManager* identity_manager =
-      IdentityManagerFactory::GetForProfile(browser()->profile());
+      IdentityManagerFactory::GetForProfile(browser()->GetProfile());
   signin::MakePrimaryAccountAvailable(identity_manager, "user@example.com",
                                       signin::ConsentLevel::kSignin);
   ShowAndVerifyUi();
@@ -461,10 +462,11 @@ IN_PROC_BROWSER_TEST_F(AppMenuBrowserTest, Safety_Hub_shown_notification) {
   auto* mock_sentiment_service = static_cast<MockTrustSafetySentimentService*>(
       TrustSafetySentimentServiceFactory::GetInstance()
           ->SetTestingFactoryAndUse(
-              browser()->profile(),
+              browser()->GetProfile(),
               base::BindRepeating(&BuildMockTrustSafetySentimentService)));
-  safety_hub_test_util::RunUntilPasswordCheckCompleted(browser()->profile());
-  safety_hub_test_util::GenerateSafetyHubMenuNotification(browser()->profile());
+  safety_hub_test_util::RunUntilPasswordCheckCompleted(browser()->GetProfile());
+  safety_hub_test_util::GenerateSafetyHubMenuNotification(
+      browser()->GetProfile());
   menu_button()->ShowMenu(views::MenuRunner::SHOULD_SHOW_MNEMONICS);
   // Set the elapsed timer of the menu to start 10 seconds ago.
   {
@@ -492,7 +494,7 @@ class AppMenuProfileAiRingBrowserTest : public AppMenuBrowserTest {
  public:
   AppMenuProfileAiRingBrowserTest() {
     scoped_feature_list_.InitAndEnableFeature(
-        features::kEnableAiSubscriptionAvatarRing);
+        switches::kEnableAiSubscriptionAvatarRing);
   }
 
   void SetAiSubscriptionTierForProfile(int32_t subscription_tier) {
@@ -538,7 +540,7 @@ IN_PROC_BROWSER_TEST_F(AppMenuProfileAiRingBrowserTest,
                        ProfileMenuIconHasAiRing) {
   // Sign in with an image to get a non-placeholder avatar.
   signin::IdentityManager* identity_manager =
-      IdentityManagerFactory::GetForProfile(browser()->profile());
+      IdentityManagerFactory::GetForProfile(browser()->GetProfile());
   AccountInfo account_info = signin::MakePrimaryAccountAvailable(
       identity_manager, "user@example.com", signin::ConsentLevel::kSignin);
 

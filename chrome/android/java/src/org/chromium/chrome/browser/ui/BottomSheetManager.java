@@ -14,13 +14,11 @@ import org.chromium.chrome.browser.ActivityTabProvider;
 import org.chromium.chrome.browser.browser_controls.BottomControlsLayer;
 import org.chromium.chrome.browser.browser_controls.BottomControlsStacker;
 import org.chromium.chrome.browser.browser_controls.BottomControlsStacker.LayerScrollBehavior;
-import org.chromium.chrome.browser.browser_controls.BottomControlsStacker.LayerType;
 import org.chromium.chrome.browser.browser_controls.BottomControlsStacker.LayerVisibility;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsVisibilityManager;
 import org.chromium.chrome.browser.compositor.overlay_panel.OverlayPanel;
 import org.chromium.chrome.browser.compositor.overlay_panel.OverlayPanelManager;
-import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.layouts.LayoutStateProvider;
 import org.chromium.chrome.browser.layouts.LayoutStateProvider.LayoutStateObserver;
 import org.chromium.chrome.browser.layouts.LayoutType;
@@ -97,6 +95,8 @@ class BottomSheetManager extends EmptyBottomSheetObserver implements DestroyObse
     /** The token used to enable browser controls persistence. */
     private int mPersistentControlsToken;
 
+    private final boolean mIsBottomSheetAsBrowserControlsEnabled;
+
     /**
      * Creates a new instance of {@link BottomSheetManager}.
      *
@@ -109,6 +109,8 @@ class BottomSheetManager extends EmptyBottomSheetObserver implements DestroyObse
      * @param overlayManager The supplier for {@link OverlayPanelManager}.
      * @param layoutStateProviderSupplier The supplier for {@link LayoutStateProvider}.
      * @param bottomControlsStacker The {@link BottomControlsStacker} to register this layer with.
+     * @param isBottomSheetAsBrowserControlsEnabled Whether bottom sheet acting as browser controls
+     *     is enabled for the current context.
      */
     public BottomSheetManager(
             ManagedBottomSheetController controller,
@@ -118,7 +120,8 @@ class BottomSheetManager extends EmptyBottomSheetObserver implements DestroyObse
             MonotonicObservableSupplier<Boolean> omniboxFocusStateSupplier,
             Supplier<@Nullable OverlayPanelManager> overlayManager,
             OneshotSupplier<LayoutStateProvider> layoutStateProviderSupplier,
-            BottomControlsStacker bottomControlsStacker) {
+            BottomControlsStacker bottomControlsStacker,
+            boolean isBottomSheetAsBrowserControlsEnabled) {
         mSheetController = controller;
         mTabProvider = tabProvider;
         mBrowserControlsVisibilityManager = controlsVisibilityManager;
@@ -127,6 +130,7 @@ class BottomSheetManager extends EmptyBottomSheetObserver implements DestroyObse
         mCallbackController = new CallbackController();
         mExpandedSheetHelper = expandedSheetHelper;
         mBottomControlsStacker = bottomControlsStacker;
+        mIsBottomSheetAsBrowserControlsEnabled = isBottomSheetAsBrowserControlsEnabled;
 
         mLayoutStateObserver =
                 new LayoutStateObserver() {
@@ -199,7 +203,7 @@ class BottomSheetManager extends EmptyBottomSheetObserver implements DestroyObse
                 };
 
         mBottomSheetLayer = new BottomSheetLayer();
-        if (ChromeFeatureList.sBottomSheetAsBrowserControls.isEnabled()) {
+        if (mIsBottomSheetAsBrowserControlsEnabled) {
             mSheetController.addObserver(mBottomSheetLayer);
             mBottomControlsStacker.addLayer(mBottomSheetLayer);
         } else {
@@ -223,7 +227,7 @@ class BottomSheetManager extends EmptyBottomSheetObserver implements DestroyObse
                     }
                 };
         mOmniboxFocusStateSupplier.addSyncObserverAndPostIfNonNull(mOmniboxFocusObserver);
-        if (ChromeFeatureList.sBottomSheetAsBrowserControls.isEnabled()) {
+        if (mIsBottomSheetAsBrowserControlsEnabled) {
             mBottomSheetLayer.maybeUpdateLayerHeight();
         }
     }
@@ -302,7 +306,7 @@ class BottomSheetManager extends EmptyBottomSheetObserver implements DestroyObse
 
     @Override
     public void onDestroy() {
-        if (ChromeFeatureList.sBottomSheetAsBrowserControls.isEnabled()) {
+        if (mIsBottomSheetAsBrowserControlsEnabled) {
             mBottomControlsStacker.removeLayer(mBottomSheetLayer);
             mSheetController.removeObserver(mBottomSheetLayer);
         } else {
@@ -341,17 +345,6 @@ class BottomSheetManager extends EmptyBottomSheetObserver implements DestroyObse
 
         @Override
         public void onSheetContentChanged(@Nullable BottomSheetContent newContent) {
-            if (newContent != null) {
-                // Query the stacker for the height of the layers below the bottom sheet
-                // to initialize the offset before the sheet is drawn. This prevents the
-                // sheet from initially drawing at a stale offset (0) and jumping once the
-                // stacker finishes its asynchronous layout.
-                int height =
-                        mBottomControlsStacker.getHeightFromLayerToBottom(LayerType.BOTTOM_SHEET);
-                if (height != BottomControlsStacker.INVALID_HEIGHT) {
-                    mSheetController.setBottomControlsOffset(height);
-                }
-            }
             maybeUpdateLayerHeight();
         }
 
@@ -364,7 +357,7 @@ class BottomSheetManager extends EmptyBottomSheetObserver implements DestroyObse
 
         @Override
         public int getType() {
-            return LayerType.BOTTOM_SHEET;
+            return BottomControlsStacker.LayerType.BOTTOM_SHEET;
         }
 
         @Override
@@ -393,7 +386,8 @@ class BottomSheetManager extends EmptyBottomSheetObserver implements DestroyObse
 
         @Override
         public @Nullable Integer getBackgroundColor() {
-            return BottomSheetUtils.isContentActingAsBrowserControls(mSheetController)
+            return BottomSheetUtils.isContentActingAsBrowserControls(
+                            mSheetController, mIsBottomSheetAsBrowserControlsEnabled)
                     ? mSheetController.getSheetBackgroundColor()
                     : null;
         }
@@ -424,7 +418,7 @@ class BottomSheetManager extends EmptyBottomSheetObserver implements DestroyObse
         }
 
         private int calculateContributedHeight() {
-            if (!ChromeFeatureList.sBottomSheetAsBrowserControls.isEnabled()) {
+            if (!mIsBottomSheetAsBrowserControlsEnabled) {
                 return 0;
             }
             if (mSheetController.getSheetState() == BottomSheetController.SheetState.HIDDEN
@@ -434,7 +428,8 @@ class BottomSheetManager extends EmptyBottomSheetObserver implements DestroyObse
             if (!mSheetController.isFullWidth()) {
                 return 0;
             }
-            return BottomSheetUtils.isContentActingAsBrowserControls(mSheetController)
+            return BottomSheetUtils.isContentActingAsBrowserControls(
+                            mSheetController, mIsBottomSheetAsBrowserControlsEnabled)
                     ? mSheetController.getCurrentPeekHeightPx()
                     : 0;
         }

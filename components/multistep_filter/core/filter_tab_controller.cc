@@ -78,6 +78,7 @@ void LogSuggestionGenerationStarted(MultistepFilterLogRouter* log_router,
 }
 void LogSuggestionApplicationOutcome(
     MultistepFilterLogRouter* log_router,
+    MultistepFilterMetricsTracker& metrics_tracker,
     const FilterNavigationMetadata& metadata,
     const std::optional<UrlFilterSuggestion>& suggested_filters,
     const std::optional<FilterAnnotation>& extracted_annotation) {
@@ -95,6 +96,8 @@ void LogSuggestionApplicationOutcome(
         << LogDetail{"is_error_page", metadata.is_error_page_navigation}
         << LogDetail{"net_error_code", metadata.net_error_code}
         << LogDetail{"http_response_code", metadata.http_response_code};
+    metrics_tracker.OnSuggestionApplicationAnnotationExtractionFinished(
+        /*was_applied_successfully=*/false);
     return;
   }
 
@@ -103,12 +106,13 @@ void LogSuggestionApplicationOutcome(
                          LogEventType::kSuggestionApplied,
                          metadata.url.GetHost())
         << LogDetail{"application_outcome", "error_no_extracted_annotations"};
+    metrics_tracker.OnSuggestionApplicationAnnotationExtractionFinished(
+        /*was_applied_successfully=*/false);
     return;
   }
   const FilterApplicationVerifier::Result result =
       FilterApplicationVerifier::Verify(*suggested_filters,
                                         *extracted_annotation);
-
   switch (result.outcome) {
     case FilterApplicationVerifier::Result::Outcome::kNoExtractedAnnotations:
       MULTISTEP_FILTER_LOG(log_router, metadata.navigation_id,
@@ -137,6 +141,8 @@ void LogSuggestionApplicationOutcome(
                        base::JoinString(result.missing_keys, ", ")};
       break;
   }
+  metrics_tracker.OnSuggestionApplicationAnnotationExtractionFinished(
+      result.is_success());
 }
 }  // namespace
 
@@ -159,9 +165,14 @@ FilterTabController::FilterTabController(
 
 FilterTabController::~FilterTabController() = default;
 
+base::WeakPtr<FilterTabController> FilterTabController::GetWeakPtr() {
+  return weak_ptr_factory_.GetWeakPtr();
+}
+
 void FilterTabController::OnNavigationFinished(
     const FilterNavigationMetadata& metadata) {
-  per_navigation_weak_ptr_factory.InvalidateWeakPtrs();
+  metrics_tracker_.OnNavigationFinished(metadata);
+  weak_ptr_factory_.InvalidateWeakPtrs();
   // Set up ScopedClosureRunners to ensure that the test observer is always
   // notified of pipeline completion (with std::nullopt results) even if the
   // navigation is determined to be ineligible and returns early. This is an
@@ -170,12 +181,11 @@ void FilterTabController::OnNavigationFinished(
   // Exception: For same-url reloads (same_url_non_same_document), we explicitly
   // release these runners because we want to preserve any existing suggestion
   // rather than triggering the fallback cleanups.
-  base::ScopedClosureRunner extraction_runner_fallback(base::BindOnce(
-      &FilterTabController::OnExtractionFinished,
-      per_navigation_weak_ptr_factory.GetWeakPtr(), metadata, std::nullopt));
+  base::ScopedClosureRunner extraction_runner_fallback(
+      base::BindOnce(&FilterTabController::OnExtractionFinished, GetWeakPtr(),
+                     metadata, std::nullopt));
   base::ScopedClosureRunner generation_runner_fallback(base::BindOnce(
-      &FilterTabController::OnSuggestionGenerated,
-      per_navigation_weak_ptr_factory.GetWeakPtr(), std::nullopt));
+      &FilterTabController::OnSuggestionGenerated, GetWeakPtr(), std::nullopt));
 
   bool is_same_page =
       metadata.is_same_document_navigation || metadata.url == metadata.prev_url;
@@ -223,10 +233,28 @@ void FilterTabController::OnNavigationFinished(
   annotation_client_->GetSupportedTasks(
       metadata.url,
       base::BindOnce(&FilterTabController::OnSupportedTasksFetched,
-                     per_navigation_weak_ptr_factory.GetWeakPtr(), metadata,
+                     GetWeakPtr(), metadata,
                      std::move(extraction_runner_fallback),
                      std::move(generation_runner_fallback)),
       metadata.navigation_id);
+}
+
+void FilterTabController::OnSuggestionShown(
+    const UrlFilterSuggestion& suggestion) {
+  service_->RecordSuggestionImpression();
+  service_->DeleteAnnotationsForTask(suggestion.task_type,
+                                     suggestion.triggering_navigation_id,
+                                     suggestion.triggering_host);
+  metrics_tracker_.OnSuggestionShown(suggestion);
+}
+
+void FilterTabController::OnSuggestionReopened() {
+  metrics_tracker_.OnSuggestionReopened();
+}
+
+void FilterTabController::OnUserDecision(SuggestionUserDecision decision) {
+  service_->RecordUserInteractionWithSuggestion(decision);
+  metrics_tracker_.OnSuggestionUserInteraction(decision);
 }
 
 void FilterTabController::OnSupportedTasksFetched(
@@ -243,8 +271,8 @@ void FilterTabController::OnSupportedTasksFetched(
   LogAnnotationExtractionStarted(log_router_, metadata);
   filter_extractor_->ExtractAnnotationFromUrl(
       metadata.url,
-      base::BindOnce(&FilterTabController::OnExtractionFinished,
-                     per_navigation_weak_ptr_factory.GetWeakPtr(), metadata),
+      base::BindOnce(&FilterTabController::OnExtractionFinished, GetWeakPtr(),
+                     metadata),
       metadata.navigation_id);
   std::ignore = extraction_runner_fallback.Release();
 
@@ -257,15 +285,28 @@ void FilterTabController::OnSupportedTasksFetched(
   LogSuggestionGenerationStarted(log_router_, metadata);
   filter_suggestion_generator_->GenerateSuggestion(
       metadata.url, supported_task_types,
-      base::BindOnce(&FilterTabController::OnSuggestionGenerated,
-                     per_navigation_weak_ptr_factory.GetWeakPtr()),
+      base::BindOnce(&FilterTabController::OnSuggestionGenerated, GetWeakPtr()),
       metadata.navigation_id);
   std::ignore = generation_runner_fallback.Release();
 }
 
 void FilterTabController::OnSuggestionGenerated(
     std::optional<UrlFilterSuggestion> suggestion) {
-  delegate_->OnSuggestionGenerated(suggestion);
+  if (suggestion) {
+    delegate_->OnSuggestionGenerated(
+        suggestion,
+        MultistepFilterUiDelegate::SuggestionUiCallbacks{
+            .on_suggestion_shown =
+                base::BindOnce(&FilterTabController::OnSuggestionShown,
+                               GetWeakPtr(), *suggestion),
+            .on_suggestion_reopened = base::BindOnce(
+                &FilterTabController::OnSuggestionReopened, GetWeakPtr()),
+            .on_user_interaction = base::BindOnce(
+                &FilterTabController::OnUserDecision, GetWeakPtr()),
+        });
+  } else {
+    delegate_->OnSuggestionGenerated(std::nullopt, {});
+  }
   if (observer_for_test_) {
     observer_for_test_->OnSuggestionGeneratedForTest(suggestion);  // IN-TEST
   }
@@ -274,7 +315,7 @@ void FilterTabController::OnSuggestionGenerated(
 void FilterTabController::OnExtractionFinished(
     const FilterNavigationMetadata& metadata,
     std::optional<FilterAnnotation> annotation) {
-  LogSuggestionApplicationOutcome(log_router_, metadata,
+  LogSuggestionApplicationOutcome(log_router_, metrics_tracker_, metadata,
                                   metadata.applied_suggestion, annotation);
   if (observer_for_test_) {
     observer_for_test_->OnExtractionFinishedForTest(  // IN-TEST

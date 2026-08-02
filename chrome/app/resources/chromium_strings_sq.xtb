@@ -96,6 +96,7 @@ Disa funksione mund të mos ofrohen dhe ndryshimet në preferenca nuk do të ruh
 <translation id="2018879682492276940">Instalimi nuk u krye. Provo përsëri.</translation>
 <translation id="2039417478970545937">Cilësimet.</translation>
 <translation id="2049376729098081731">Zgjidh nëse do ta përfshish historikun e Chromium për përvoja më të personalizuara në shërbimet e Google</translation>
+<translation id="2050698962207788467">I integruar në Chromium për të të ndihmuar të krijosh, ruash dhe plotësosh automatikisht fjalëkalime të forta. Shto shkurtoren për qasje të lehtë.</translation>
 <translation id="2064856577282482477">Kliko te butoni "Personalizo Chromium" në faqen e skedës së re për t'i dhënë Chromium një pamje të re</translation>
 <translation id="2066690553719545730">Shfaq gjithmonë "Modalitetin e IA-së"</translation>
 <translation id="2086476982681781442">Chromium e bllokoi këtë shkarkim sepse skedari është mashtrues dhe mund të bëjë ndryshime të papritura në pajisjen tënde</translation>
@@ -231,7 +232,6 @@ Disa funksione mund të mos ofrohen dhe ndryshimet në preferenca nuk do të ruh
 <translation id="3387527074123400161">ChromiumOS</translation>
 <translation id="3406848076815591792">Të kalohet te profili ekzistues i Chromium?</translation>
 <translation id="3412460710772753638">Në "Menaxherin e fjalëkalimeve" në këtë pajisje</translation>
-<translation id="3423442168617177595">I integruar në Chromium për të të ndihmuar të krijosh, ruash dhe plotësosh automatikisht fjalëkalime të forta. Shto shkurtoren për qasje të lehtë</translation>
 <translation id="3455907671758333080">Zgjero "Shfletimin e sigurt të përmirësuar" me Chromium në telefonin tënd</translation>
 <translation id="3461644266919055473">Chromium po personalizohet...</translation>
 <translation id="3474745554856756813">Kjo do të fshijë <ph name="ITEMS_COUNT" /> artikuj nga kjo pajisje. Për t'i marrë më vonë të dhënat, identifikohu te Chromium si <ph name="USER_EMAIL" />.</translation>
@@ -425,6 +425,7 @@ Nëse kjo faqe nuk funksionon siç pritet, provo të lejosh optimizimin.</transl
 <translation id="5768371961535086509">Chromium liron memorien nga skedat joaktive. Kjo u jep më shumë burime kompjuterike skedave aktive dhe aplikacioneve të tjera dhe bën që Chromium të jetë i shpejtë. Skedat e tua joaktive bëhen përsëri aktive në mënyrë automatike kur kthehesh tek ato. <ph name="BEGIN_LINK" />Mëso më shumë për "Kursyesin e memories"<ph name="END_LINK" /></translation>
 <translation id="5775198138441669627">Nëse ke harruar frazën tënde të kalimit apo dëshiron ta ndryshosh këtë cilësim, <ph name="SETTINGS_LINK" /> të dhënat e Chromium në llogarinë tënde</translation>
 <translation id="5800158606660203929">Personalizo dhe kontrollo Chromium. Cakto Chromium si parazgjedhje.</translation>
+<translation id="5802618941556161431">Mbaji fjalëkalimet, faqeshënuesit dhe historikun të sinkronizuar në mënyrë të përsosur në pajisje duke caktuar Chromium si shfletuesin tënd të parazgjedhur.</translation>
 <translation id="5809516625706423866">Lidhja me internetin nuk mund të kryhej. HTTP 401 (E paautorizuar). Kontrollo konfigurimin e proxy-t.</translation>
 <translation id="5817952762723416573">Shpejton sajtet me motorin V8 të Chromium, por e bën Chromium disi më pak rezistent ndaj sulmeve. Ky cilësim është joaktiv.</translation>
 <translation id="5821520528363214608">Për të përdorur dhe ruajtur të dhënat e Chromium te "Llogaria jote e Google", përditëso Chromium</translation>

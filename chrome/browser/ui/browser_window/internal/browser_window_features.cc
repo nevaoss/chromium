@@ -15,6 +15,7 @@
 #include "chrome/browser/actor/ui/actor_ui_window_controller.h"
 #include "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble_controller.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
+#include "chrome/browser/bookmarks/bookmark_merged_surface_service_factory.h"
 #include "chrome/browser/bookmarks/bookmark_model_factory.h"
 #include "chrome/browser/bookmarks/managed_bookmark_service_factory.h"
 #include "chrome/browser/browser_process.h"
@@ -35,7 +36,6 @@
 #include "chrome/browser/glic/browser_ui/glic_button_controller.h"
 #include "chrome/browser/glic/browser_ui/glic_iph_controller.h"
 #include "chrome/browser/glic/browser_ui/glic_nudge_controller.h"
-#include "chrome/browser/glic/browser_ui/glic_nudge_controller_desktop.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
@@ -269,10 +269,13 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
       GetUserDataFactory().CreateInstanceWithFactoryMethod(
           *browser, &web_app::MaybeCreateAppBrowserController, browser);
 
-  if (auto* model = BookmarkModelFactory::GetForBrowserContext(profile)) {
-    auto* managed = ManagedBookmarkServiceFactory::GetForProfile(profile);
-    bookmarks_service_feature_ =
-        std::make_unique<BookmarksServiceFeature>(model, managed);
+  {
+    auto* merged_bookmarks_service =
+        BookmarkMergedSurfaceServiceFactory::GetForProfile(profile);
+    if (merged_bookmarks_service != nullptr) {
+      bookmarks_service_feature_ =
+          std::make_unique<BookmarksServiceFeature>(merged_bookmarks_service);
+    }
   }
 
   bookmarks_side_panel_coordinator_ =
@@ -556,9 +559,7 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
     if (glic::GlicEnabling::IsProfileEligible(profile)) {
       glic_iph_controller_ = std::make_unique<glic::GlicIphController>(
           browser, *glic::GlicKeyedService::Get(profile));
-      glic_nudge_controller_ =
-          std::make_unique<glic::GlicNudgeControllerDesktop>(
-              browser, tab_list_bridge_.get());
+      glic_nudge_controller_ = glic::GlicNudgeController::CreateFor(browser);
     }
 
     initial_web_ui_manager_ = std::make_unique<InitialWebUIManager>(browser);
@@ -908,13 +909,12 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
 
     if (browser_view && IsPageActionMigrated(PageActionIconType::kAiMode) &&
         AiModeButtonServiceFactory::GetForProfile(profile)) {
-      LocationBarView* location_bar_view = browser_view->GetLocationBarView();
-      // TODO(crbug.com/491707187): Make it work with any LocationBar
-      if (location_bar_view) {
+      LocationBar* location_bar = browser_view->GetLocationBar();
+      if (location_bar) {
         ai_mode_page_action_controller_ =
             GetUserDataFactory()
                 .CreateInstance<omnibox::AiModePageActionController>(
-                    *browser, *browser, *profile, *location_bar_view);
+                    *browser, *browser, *profile, *location_bar);
       }
     }
 

@@ -594,6 +594,41 @@ static constexpr char kMakeCredentialConditionalCreate[] = R"((() => {
           e => window.domAutomationController.send('error ' + e));
 })())";
 
+static constexpr char kMakeCredentialConditionalCreateWithCmtg[] = R"(
+  window.cmtgPromise = new Promise(async (resolve) => {
+    try {
+      let c = await navigator.credentials.create({
+        mediation: "conditional",
+        publicKey: {
+          rp: { name: "www.example.com" },
+          user: {
+            id: new Uint8Array([1]),
+            name: "user1@gmail.com",
+            displayName: "Foo Bar"
+          },
+          pubKeyCredParams: [{type: "public-key", alg: -7}],
+          challenge: new Uint8Array([0]),
+          extensions: {
+            cmtgKey: true,
+          },
+        }
+      });
+      const ext = c.getClientExtensionResults();
+      if (ext?.cmtgKey?.cmtgKey) {
+        const hex = Array.from(new Uint8Array(ext.cmtgKey.cmtgKey))
+                        .map(b => b.toString(16).padStart(2, '0'))
+                        .join('');
+        resolve('cmtg OK: ' + hex);
+      } else {
+        resolve('cmtg NONE');
+      }
+    } catch (e) {
+      resolve('error ' + e.toString());
+    }
+  });
+  "this string avoids having the expression evaluate into a promise";
+)";
+
 static constexpr char kMakeCredentialConditionalCreateWithExcludeList[] =
     R"((() => {
   const base64ToArrayBuffer = (base64) => {
@@ -925,7 +960,7 @@ class EnclaveAuthenticatorBrowserTest : public EnclaveAuthenticatorTestBase {
         std::make_unique<webauthn::FakeCmtgDeviceKeyProvider>();
     fake_cmtg_provider_ = fake_cmtg_provider.get();
     CmtgDeviceKeyProviderFactory::GetInstance()->SetTestingFactory(
-        browser()->profile(),
+        browser()->GetProfile(),
         base::BindOnce(
             [](std::unique_ptr<KeyedService> fake_service,
                content::BrowserContext* context)
@@ -1965,7 +2000,7 @@ IN_PROC_BROWSER_TEST_F(
     OpportunisticKeyRetrievalEnclaveAuthenticatorBrowserTest,
     UnlockedViaOpportunisticFlowWithConcurrentSyncConsentChange) {
   auto* const identity_manager =
-      IdentityManagerFactory::GetForProfile(browser()->profile());
+      IdentityManagerFactory::GetForProfile(browser()->GetProfile());
   SetTrustedVaultRecoverable();
   EnableUVKeySupport();
 
@@ -2324,7 +2359,7 @@ IN_PROC_BROWSER_TEST_F(EnclaveAuthenticatorBrowserTest,
   dialog_model()->OnGPMCreationConfirmed();
   model_observer()->WaitForStep();
 
-  EXPECT_EQ(browser()->profile()->GetPrefs()->GetInteger(
+  EXPECT_EQ(browser()->GetProfile()->GetPrefs()->GetInteger(
                 webauthn::pref_names::kEnclaveFailedPINAttemptsCount),
             0);
   model_observer()->ObserveNextStep();
@@ -2333,7 +2368,7 @@ IN_PROC_BROWSER_TEST_F(EnclaveAuthenticatorBrowserTest,
 
   EXPECT_EQ(dialog_model()->step(),
             AuthenticatorRequestDialogModel::Step::kGPMEnterPin);
-  EXPECT_EQ(browser()->profile()->GetPrefs()->GetInteger(
+  EXPECT_EQ(browser()->GetProfile()->GetPrefs()->GetInteger(
                 webauthn::pref_names::kEnclaveFailedPINAttemptsCount),
             1);
   dialog_model()->OnGPMPinEntered(u"123456");
@@ -2353,7 +2388,7 @@ IN_PROC_BROWSER_TEST_F(EnclaveAuthenticatorBrowserTest,
   dialog_model()->OnUserConfirmedPriorityMechanism();
   model_observer()->WaitForStep();
 
-  EXPECT_EQ(browser()->profile()->GetPrefs()->GetInteger(
+  EXPECT_EQ(browser()->GetProfile()->GetPrefs()->GetInteger(
                 webauthn::pref_names::kEnclaveFailedPINAttemptsCount),
             0);
   model_observer()->ObserveNextStep();
@@ -2362,7 +2397,7 @@ IN_PROC_BROWSER_TEST_F(EnclaveAuthenticatorBrowserTest,
 
   EXPECT_EQ(dialog_model()->step(),
             AuthenticatorRequestDialogModel::Step::kGPMEnterPin);
-  EXPECT_EQ(browser()->profile()->GetPrefs()->GetInteger(
+  EXPECT_EQ(browser()->GetProfile()->GetPrefs()->GetInteger(
                 webauthn::pref_names::kEnclaveFailedPINAttemptsCount),
             1);
   dialog_model()->OnGPMPinEntered(u"123456");
@@ -2370,7 +2405,7 @@ IN_PROC_BROWSER_TEST_F(EnclaveAuthenticatorBrowserTest,
   ASSERT_TRUE(message_queue.WaitForMessage(&script_result));
   EXPECT_EQ(script_result, "\"webauthn: OK\"");
 
-  EXPECT_EQ(browser()->profile()->GetPrefs()->GetInteger(
+  EXPECT_EQ(browser()->GetProfile()->GetPrefs()->GetInteger(
                 webauthn::pref_names::kEnclaveFailedPINAttemptsCount),
             0);
 }
@@ -2584,7 +2619,7 @@ IN_PROC_BROWSER_TEST_F(EnclaveAuthenticatorBrowserTest,
 IN_PROC_BROWSER_TEST_F(EnclaveAuthenticatorBrowserTest, GpmEnclaveNeedsReauth) {
   // Set the account state to a recoverable signin error.
   auto* const identity_manager =
-      IdentityManagerFactory::GetForProfile(browser()->profile());
+      IdentityManagerFactory::GetForProfile(browser()->GetProfile());
   CoreAccountId account =
       identity_manager->GetPrimaryAccountId(signin::ConsentLevel::kSignin);
   signin::UpdatePersistentErrorOfRefreshTokenForAccount(
@@ -2637,7 +2672,7 @@ IN_PROC_BROWSER_TEST_F(EnclaveAuthenticatorBrowserTest,
                        NoReauthButtonForSecurityKeyRequests) {
   // Set the account state to a recoverable signin error.
   auto* const identity_manager =
-      IdentityManagerFactory::GetForProfile(browser()->profile());
+      IdentityManagerFactory::GetForProfile(browser()->GetProfile());
   CoreAccountId account =
       identity_manager->GetPrimaryAccountId(signin::ConsentLevel::kSignin);
   signin::UpdatePersistentErrorOfRefreshTokenForAccount(
@@ -2710,7 +2745,7 @@ IN_PROC_BROWSER_TEST_F(EnclaveAuthenticatorBrowserTest,
                        GpmEnclaveNeedsReauthOnGoogleCom) {
   // Set the account state to a recoverable signin error.
   auto* const identity_manager =
-      IdentityManagerFactory::GetForProfile(browser()->profile());
+      IdentityManagerFactory::GetForProfile(browser()->GetProfile());
   CoreAccountId account =
       identity_manager->GetPrimaryAccountId(signin::ConsentLevel::kSignin);
   signin::UpdatePersistentErrorOfRefreshTokenForAccount(
@@ -3183,7 +3218,7 @@ IN_PROC_BROWSER_TEST_F(EnclaveAuthenticatorBrowserTest,
 IN_PROC_BROWSER_TEST_F(EnclaveAuthenticatorBrowserTest,
                        IncognitoModeMakeCredential) {
   Browser* otr_browser = OpenURLOffTheRecord(
-      browser()->profile(),
+      browser()->GetProfile(),
       https_server_.GetURL("www.example.com", "/title1.html"));
   SetTrustedVaultRecoverable(kSecretVersion, otr_browser->tab_strip_model()
                                                  ->GetActiveWebContents()
@@ -3243,7 +3278,7 @@ IN_PROC_BROWSER_TEST_F(EnclaveAuthenticatorBrowserTest,
 IN_PROC_BROWSER_TEST_F(EnclaveAuthenticatorBrowserTest,
                        IncognitoModeGetAssertion) {
   Browser* otr_browser = OpenURLOffTheRecord(
-      browser()->profile(),
+      browser()->GetProfile(),
       https_server_.GetURL("www.example.com", "/title1.html"));
   SetTrustedVaultRecoverable(kSecretVersion, otr_browser->tab_strip_model()
                                                  ->GetActiveWebContents()
@@ -3654,7 +3689,7 @@ IN_PROC_BROWSER_TEST_F(EnclaveAuthenticatorBrowserTest,
   dialog_model()->CancelAuthenticatorRequest();
   delegate_observer()->WaitForDelegateDestruction();
   EXPECT_EQ(
-      browser()->profile()->GetPrefs()->GetInteger(
+      browser()->GetProfile()->GetPrefs()->GetInteger(
           webauthn::pref_names::kEnclaveDeclinedGPMCredentialCreationCount),
       1);
 
@@ -3671,7 +3706,7 @@ IN_PROC_BROWSER_TEST_F(EnclaveAuthenticatorBrowserTest,
   dialog_model()->CancelAuthenticatorRequest();
   delegate_observer()->WaitForDelegateDestruction();
   EXPECT_EQ(
-      browser()->profile()->GetPrefs()->GetInteger(
+      browser()->GetProfile()->GetPrefs()->GetInteger(
           webauthn::pref_names::kEnclaveDeclinedGPMCredentialCreationCount),
       2);
 
@@ -3698,7 +3733,7 @@ IN_PROC_BROWSER_TEST_F(EnclaveAuthenticatorBrowserTest,
 
   // The decline count should be reset.
   EXPECT_EQ(
-      browser()->profile()->GetPrefs()->GetInteger(
+      browser()->GetProfile()->GetPrefs()->GetInteger(
           webauthn::pref_names::kEnclaveDeclinedGPMCredentialCreationCount),
       0);
 
@@ -3724,7 +3759,7 @@ IN_PROC_BROWSER_TEST_P(EnclaveAuthenticatorIncognitoBrowserTest,
   content::WebContents* web_contents;
   if (GetParam()) {
     Browser* otr_browser = OpenURLOffTheRecord(
-        browser()->profile(),
+        browser()->GetProfile(),
         https_server_.GetURL("www.example.com", "/title1.html"));
     web_contents = otr_browser->tab_strip_model()->GetActiveWebContents();
   } else {
@@ -4373,10 +4408,12 @@ class EnclaveAuthenticatorConditionalCreateBrowserTest
   password_manager::PasswordStoreInterface* password_store() {
     return use_account_password_store()
                ? AccountPasswordStoreFactory::GetForProfile(
-                     browser()->profile(), ServiceAccessType::IMPLICIT_ACCESS)
+                     browser()->GetProfile(),
+                     ServiceAccessType::IMPLICIT_ACCESS)
                      .get()
                : ProfilePasswordStoreFactory::GetForProfile(
-                     browser()->profile(), ServiceAccessType::IMPLICIT_ACCESS)
+                     browser()->GetProfile(),
+                     ServiceAccessType::IMPLICIT_ACCESS)
                      .get();
   }
 
@@ -4467,6 +4504,32 @@ IN_PROC_BROWSER_TEST_P(EnclaveAuthenticatorConditionalCreateBrowserTest,
   ASSERT_TRUE(
       delegate_observer()->on_transport_availability_enumerated_called());
   EXPECT_TRUE(delegate_observer()->transports_observed()->empty());
+}
+
+IN_PROC_BROWSER_TEST_P(EnclaveAuthenticatorConditionalCreateBrowserTest,
+                       ConditionalCreateWithCmtg) {
+  BootstrapEnclave();
+  InjectPassword(base::Time::Now());
+
+  fake_cmtg_provider_->SetNextKeys(
+      {std::vector<uint8_t>(kTestCmtgKey.begin(), kTestCmtgKey.end())});
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(), https_server_.GetURL("www.example.com", "/title1.html")));
+  content::WebContents* web_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  ASSERT_TRUE(
+      content::ExecJs(web_contents, kMakeCredentialConditionalCreateWithCmtg));
+  delegate_observer()->WaitForUI();
+
+  std::string script_result =
+      content::EvalJs(web_contents, "window.cmtgPromise").ExtractString();
+  EXPECT_TRUE(base::StartsWith(script_result, "cmtg OK:"));
+
+  histogram_tester_.ExpectUniqueSample(
+      "WebAuthentication.AutomaticPasskeyUpgrade.Result",
+      /*sample=*/PasskeyUpgradeResult::kSuccess,
+      /*expected_bucket_count=*/1);
 }
 
 IN_PROC_BROWSER_TEST_P(EnclaveAuthenticatorConditionalCreateBrowserTest,

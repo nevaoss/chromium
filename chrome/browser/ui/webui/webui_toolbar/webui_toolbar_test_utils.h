@@ -94,6 +94,7 @@ class MockToolbarUIServiceDelegate
               InvokePinnedToolbarAction,
               (toolbar_ui_api::mojom::PinnedToolbarAction action_id),
               (override));
+  MOCK_METHOD(void, OnLocationBarFocusWithinChanged, (bool), (override));
   MOCK_METHOD(void,
               OnLhsChipMousePressed,
               (toolbar_ui_api::mojom::LhsChipIdentifier),
@@ -141,6 +142,12 @@ class MockToolbarUIServiceDelegate
               ShowExtensionContextMenu,
               (const std::string&, ui::mojom::MenuSourceType),
               (override));
+  MOCK_METHOD(
+      (base::expected<toolbar_ui_api::mojom::AdjustOmniboxTextForCopyResultPtr,
+                      mojo_base::mojom::ErrorPtr>),
+      AdjustOmniboxTextForCopy,
+      (const std::u16string&, int32_t),
+      (override));
 };
 
 class MockBrowserControlsServiceDelegate

@@ -67,6 +67,8 @@ class TestToolbarUiHandler extends TestBrowserProxy implements
   executeExtensionAction(_extensionId: string) {}
   showExtensionContextMenu(_extensionId: string, _source: MenuSourceType) {}
 
+  onLocationBarFocusWithinChanged(_focusInside: boolean) {}
+
   onLhsChipMousePressed(id: LhsChipIdentifier) {
     this.methodCalled('onLhsChipMousePressed', id);
   }
@@ -93,6 +95,13 @@ class TestToolbarUiHandler extends TestBrowserProxy implements
 
   onLhsChipDrag(id: LhsChipIdentifier, source: DragEventSource) {
     this.methodCalled('onLhsChipDrag', [id, source]);
+  }
+
+  adjustOmniboxTextForCopy(text: string, _selectionStart: number) {
+    return Promise.resolve({
+      adjustedText: text,
+      adjustedUrl: null,
+    });
   }
 }
 

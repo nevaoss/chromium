@@ -2106,7 +2106,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.FilePicker.Drive.SearchOutcome"
-    enum="IOSFilePickerDriveSearchOutcome" expires_after="2026-11-08">
+    enum="IOSFilePickerDriveSearchOutcome" expires_after="2027-01-10">
   <owner>qpubert@google.com</owner>
   <owner>erahmaoui@google.com</owner>
   <owner>bling-team@google.com</owner>
@@ -2896,6 +2896,59 @@ chromium-metrics-reviews@google.com.
   <summary>
     Records the type of page or WebState when Gemini is invoked. Recorded
     whenever the user initiates a Gemini flow.
+  </summary>
+</histogram>
+
+<histogram name="IOS.Gemini.Live.AccumulatedDuration" units="ms"
+    expires_after="2027-02-22">
+  <owner>tarekmakkouk@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <summary>
+    Tracks the total active voice time spent across all Live segments within a
+    single overall Gemini interaction (until the Gemini is dismissed). Recorded
+    when the Gemini floaty/interaction is dismissed.
+  </summary>
+</histogram>
+
+<histogram name="IOS.Gemini.Live.DormantReason" enum="IOSGeminiDormantReason"
+    expires_after="2027-02-22">
+  <owner>tarekmakkouk@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <summary>
+    The reason why a Gemini Live session transitioned to the dormant state
+    (e.g., timeout, low volume, backgrounding). Recorded when the session ends
+    prematurely due to dormancy.
+  </summary>
+</histogram>
+
+<histogram name="IOS.Gemini.Live.ResponseDuration" units="ms"
+    expires_after="2027-02-22">
+  <owner>tarekmakkouk@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <summary>
+    The duration of Gemini's spoken response. Recorded only when a spoken
+    response ends naturally (without being interrupted by the user).
+  </summary>
+</histogram>
+
+<histogram name="IOS.Gemini.Live.ResponseLatency" units="ms"
+    expires_after="2027-02-22">
+  <owner>tarekmakkouk@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <summary>
+    The latency between when the user finishes speaking (thinking state starts)
+    and when Gemini starts speaking its response (responding state starts).
+    Recorded each time Gemini responds.
+  </summary>
+</histogram>
+
+<histogram name="IOS.Gemini.Live.TurnCount" units="count"
+    expires_after="2027-02-22">
+  <owner>tarekmakkouk@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <summary>
+    The total number of speech turns (exchanges) in a Gemini Live session.
+    Recorded once per Gemini Live session when the session ends.
   </summary>
 </histogram>
 
@@ -5464,7 +5517,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.PaymentsBottomSheet.ExitReason"
-    enum="PaymentsSuggestionBottomSheetExitReason" expires_after="2026-11-08">
+    enum="PaymentsSuggestionBottomSheetExitReason" expires_after="2027-01-10">
   <owner>sugoi@chromium.org</owner>
   <owner>tmartino@chromium.org</owner>
   <summary>
@@ -5543,7 +5596,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.PersistTabContext.DeleteDirectoryResult"
-    enum="IOSPersistTabContextDeleteDirectoryResult" expires_after="2026-11-08">
+    enum="IOSPersistTabContextDeleteDirectoryResult" expires_after="2027-01-10">
   <owner>cloutierc@google.com</owner>
   <owner>nicolasmacbeth@google.com</owner>
   <owner>bling-alchemy-eng@google.com</owner>
@@ -5625,7 +5678,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.PersistTabContext.StorageDifference" units="difference"
-    expires_after="2026-11-08">
+    expires_after="2027-01-10">
   <owner>cloutierc@google.com</owner>
   <owner>nicolasmacbeth@google.com</owner>
   <owner>bling-alchemy-eng@google.com</owner>
@@ -5962,7 +6015,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.PushNotification.EnabledPermisisons"
-    enum="PushNotificationPermissionPromptStatus" expires_after="2026-11-01">
+    enum="PushNotificationPermissionPromptStatus" expires_after="2027-01-10">
   <owner>danieltwhite@google.com</owner>
   <owner>scottyoder@google.com</owner>
   <summary>
@@ -7620,7 +7673,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.SyncedSetUp.Interstitial.Shown" enum="Boolean"
-    expires_after="2026-11-05">
+    expires_after="2027-01-10">
   <owner>ericekey@google.com</owner>
   <owner>bwwilliams@google.com</owner>
   <owner>scottyoder@google.com</owner>
@@ -7631,7 +7684,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.SyncedSetUp.PrefApplied" enum="SyncedSetUpAppliedPref"
-    expires_after="2026-11-05">
+    expires_after="2027-01-10">
   <owner>bwwilliams@google.com</owner>
   <owner>scottyoder@google.com</owner>
   <owner>ericekey@google.com</owner>
@@ -7667,7 +7720,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.SyncedSetUp.TriggerSource" enum="SyncedSetUpTriggerSource"
-    expires_after="2026-11-05">
+    expires_after="2027-01-10">
   <owner>ericekey@google.com</owner>
   <owner>bwwilliams@google.com</owner>
   <owner>scottyoder@google.com</owner>
@@ -8142,7 +8195,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.Variations.FirstRun.SeedFetchResult"
-    enum="VariationsSeedFetchResult" expires_after="2026-11-08">
+    enum="VariationsSeedFetchResult" expires_after="2027-01-10">
   <owner>ginnyhuang@chromium.org</owner>
   <owner>bling-pandamonium@google.com</owner>
   <summary>
@@ -8305,6 +8358,26 @@ chromium-metrics-reviews@google.com.
     <variant name="Copy"/>
     <variant name="Cut"/>
     <variant name="Paste"/>
+  </token>
+</histogram>
+
+<histogram name="IOS.WebUI.{Action}" enum="WebUIMojoActions"
+    expires_after="2027-06-15">
+  <owner>alexandrasp@google.com</owner>
+  <owner>bling-fundamentals@google.com</owner>
+  <summary>
+    Records the outcome of interactions with Mojo through Mojo Facade on iOS.
+  </summary>
+  <token key="Action">
+    <variant name="Mojo.bindInterface"/>
+    <variant name="Mojo.createMessagePipe"/>
+    <variant name="MojoHandle.close"/>
+    <variant name="MojoHandle.readMessage"/>
+    <variant name="MojoHandle.watch"/>
+    <variant name="MojoHandle.writeMessage"/>
+    <variant name="MojoWatcher.cancel"/>
+    <variant name="Unknown"
+        summary="An unrecognized or malformed Mojo message"/>
   </token>
 </histogram>
 

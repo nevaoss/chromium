@@ -8,6 +8,8 @@
 #include "base/values.h"
 #include "chrome/browser/browser_process.h"
 
+// LINT.IfChange(metrics_internals_handler)
+
 MetricsInternalsHandler::MetricsInternalsHandler()
     : base_handler_(std::make_unique<metrics::MetricsInternalsHandlerBase>(
           this,
@@ -78,6 +80,8 @@ void MetricsInternalsHandler::FireWebUIListener(std::string_view event_name,
 void MetricsInternalsHandler::HandleFetchVariationsSummary(
     const base::ListValue& args) {
   AllowJavascript();
+  // args[0]: Callback ID.
+  CHECK_EQ(args.size(), 1U);
   base_handler_->HandleFetchVariationsSummary(args[0]);
 }
 
@@ -85,30 +89,42 @@ void MetricsInternalsHandler::HandleFetchStoredSeedInfo(
     variations::VariationsSeedStore::SeedType seed_type,
     const base::ListValue& args) {
   AllowJavascript();
+  // args[0]: Callback ID.
+  CHECK_EQ(args.size(), 1U);
   base_handler_->HandleFetchStoredSeedInfo(seed_type, args[0]);
 }
 
 void MetricsInternalsHandler::HandleFetchUmaSummary(
     const base::ListValue& args) {
   AllowJavascript();
+  // args[0]: Callback ID.
+  CHECK_EQ(args.size(), 1U);
   base_handler_->HandleFetchUmaSummary(args[0]);
 }
 
 void MetricsInternalsHandler::HandleFetchUmaLogsData(
     const base::ListValue& args) {
   AllowJavascript();
-  DCHECK_EQ(args.size(), 2U);
+  // args[0]: Callback ID.
+  // args[1]: Whether to include log proto data (bool).
+  CHECK_EQ(args.size(), 2U);
   base_handler_->HandleFetchUmaLogsData(args[0], args[1].GetBool());
 }
 
 void MetricsInternalsHandler::HandleFetchEncryptionPublicKey(
     const base::ListValue& args) {
   AllowJavascript();
+  // args[0]: Callback ID.
+  CHECK_EQ(args.size(), 1U);
   base_handler_->HandleFetchEncryptionPublicKey(args[0]);
 }
 
 void MetricsInternalsHandler::HandleIsUsingMetricsServiceObserver(
     const base::ListValue& args) {
   AllowJavascript();
+  // args[0]: Callback ID.
+  CHECK_EQ(args.size(), 1U);
   base_handler_->HandleIsUsingMetricsServiceObserver(args[0]);
 }
+
+// LINT.ThenChange(//ios/chrome/browser/webui/ui_bundled/metrics_internals/metrics_internals_handler.mm)

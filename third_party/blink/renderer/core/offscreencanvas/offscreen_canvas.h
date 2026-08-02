@@ -144,7 +144,7 @@ class CORE_EXPORT OffscreenCanvas final
   void ClearRenderedText() override;
 
   bool PushFrameIfNeeded();
-  bool PushFrame(scoped_refptr<CanvasResource>&& frame) override;
+  bool PushFrame(scoped_refptr<CanvasResource>&& frame);
   void DidDraw(const gfx::Rect&) override;
   using CanvasRenderingContextHost::DidDraw;
   bool ShouldAccelerate2dContext() const override;
@@ -218,7 +218,6 @@ class CORE_EXPORT OffscreenCanvas final
         : abort_raf_(false), begin_frame_args_(args) {}
 
     bool AddOffscreenCanvas(OffscreenCanvas* canvas) {
-      CHECK(canvas->HasPlaceholderCanvas());
       DCHECK(!abort_raf_);
       DCHECK(!canvas->inside_worker_raf_);
       if (canvas->GetOrCreateResourceDispatcher()) {
@@ -242,7 +241,6 @@ class CORE_EXPORT OffscreenCanvas final
         // If we have skipped raf, don't push frames.
         if (abort_raf_)
           continue;
-        CHECK(canvas->HasPlaceholderCanvas());
         if (canvas->GetOrCreateResourceDispatcher()) {
           canvas->GetOrCreateResourceDispatcher()->ReplaceBeginFrameAck(
               begin_frame_args_);

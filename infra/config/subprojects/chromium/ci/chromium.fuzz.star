@@ -268,6 +268,7 @@ def fuzz_target_builder(
         clusterfuzz_ios_targets_only = None,
         clusterfuzz_v8_targets_only = None,
         use_ssd_for_test_builder = False,
+        free_space_for_test_builder = None,
         contact_team_email = "chrome-fuzzing-core@google.com",
         **kwargs):
     if not name and not test_builder_name:
@@ -350,6 +351,9 @@ def fuzz_target_builder(
 
     if "ssd" in kwargs:
         kwargs["ssd"] = use_ssd_for_test_builder
+
+    if free_space_for_test_builder != None:
+        kwargs["free_space"] = free_space_for_test_builder
 
     ci_builder(
         name = test_builder_name,
@@ -457,6 +461,28 @@ browser_asan_builder(
         "v8_heap",
         "chromeos_codecs",
     ],
+    siso_remote_jobs = 250,
+)
+
+# TODO(crbug.com/531402315): After verifying BRPV2 is as good as BRPV1, make
+# it the default and clean up this builder.
+browser_asan_builder(
+    name = "ASAN Release BrpV2",
+    description_html = "This builder produces an ASAN Chromium build with AsanBackupRefPtrV2.",
+    # TODO(crbug.com/531402315): Add to gardener rotation after verifying
+    gardener_rotations = args.ignore_default(None),
+    build_config = builder_config.build_config.RELEASE,
+    target_bits = 64,
+    target_platform = builder_config.target_platform.LINUX,
+    clusterfuzz_archive_name_prefix = "asan-brp-v2",
+    contact_team_email = "chrome-sanitizer-builder-owners@google.com",
+    gn_extra_configs = [
+        "lsan",
+        "fuzzer",
+        "v8_heap",
+        "enable_asan_backup_ref_ptr_v2",
+    ],
+    max_concurrent_invocations = 1,
     siso_remote_jobs = 250,
 )
 
@@ -581,9 +607,11 @@ def centipede_linux_asan_builder(
 centipede_linux_asan_builder(
     name = "Centipede Upload Linux ASan",
     branch_selector = branches.selector.LINUX_BRANCHES,
+    free_space = builders.free_space.high,
     clusterfuzz_archive_name_prefix = "centipede",
     console_short_name = "cent",
     execution_timeout = 6 * time.hour,
+    free_space_for_test_builder = builders.free_space.standard,
     gn_extra_configs = [
         "chromeos_codecs",
         "pdf_xfa",

@@ -327,6 +327,7 @@ NSString* const kWaveformSymbol = @"waveform.mid";
 NSString* const kPhotoOnRectangleSymbol = @"photo.on.rectangle";
 NSString* const kSystemCameraSymbol = @"camera";
 NSString* const kRightArrowCircleFillSymbol = @"arrow.right.circle.fill";
+NSString* const kArrowUpCircleFillSymbol = @"arrow.up.circle.fill";
 NSString* const kArrowDownToLineSymbol = @"arrow.down.to.line";
 NSString* const kPhotoOnRectangleAngled = @"photo.on.rectangle.angled";
 NSString* const kSparklesSymbol = @"sparkles";
@@ -335,6 +336,10 @@ NSString* const kEnvelopeSymbol = @"envelope";
 NSString* const kSquareAndPencilSymbol = @"square.and.pencil";
 NSString* const kCreditCardFinderActionSymbol = @"creditcard.viewfinder";
 NSString* const kPuzzlePieceExtensionSymbol = @"puzzlepiece.extension";
+NSString* const kCursorArrowRaysSymbol = @"cursorarrow.rays";
+NSString* const kCursorArrowSymbol = @"cursorarrow";
+NSString* const kCursorArrowMotionLinesSymbol = @"cursorarrow.motionlines";
+NSString* const kHourglassSymbol = @"hourglass";
 
 // Names of the default symbol being non-monochrome by default. When using them,
 // you probably want to set their color to monochrome.

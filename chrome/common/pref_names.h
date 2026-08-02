@@ -1233,6 +1233,13 @@ inline constexpr char kProjectsPanelPinnedToTabstrip[] =
 inline constexpr char kEverythingMenuPinnedToTabstrip[] =
     "everything_menu.pinned_to_tabstrip";
 
+// Boolean indicating whether the one-time migration for
+// kEverythingMenuPinnedToTabstrip has been completed. This sets the pinned
+// state for the button to true for users who have used vertical tab strip
+// before the migration happened.
+inline constexpr char kEverythingMenuPinnedToTabstripMigrationComplete[] =
+    "everything_menu.pinned_to_tabstrip_migration_complete";
+
 // Boolean determining whether vertical tabs are enabled.
 inline constexpr char kVerticalTabsEnabled[] = "vertical_tabs.enabled";
 
@@ -1583,6 +1590,12 @@ static_assert(std::string_view(kWasRestarted) ==
 // Dictionary containing the number of tabs and windows before a restart.
 inline constexpr char kPreSmartRestartSessionState[] =
     "session.pre_smart_restart_session_state";
+
+#if BUILDFLAG(IS_MAC)
+// Boolean preference controlling zero window relaunch per enterprise policy.
+inline constexpr char kUpdateOnZeroWindowEnabled[] =
+    "policy.update_on_zero_window_enabled";
+#endif  //  BUILDFLAG(IS_MAC)
 
 #endif  // !BUILDFLAG(IS_ANDROID)
 
@@ -2319,6 +2332,9 @@ inline constexpr char kRelaunchHeadsUpPeriod[] =
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
 #if BUILDFLAG(IS_MAC)
+// Boolean determining whether the glass frame is enabled.
+inline constexpr char kGlassFrameEnabled[] = "glass_frame.enabled";
+
 // Counts how many times prominent call-to-actions have occurred as part of the
 // Mac restore permissions experiment. https://crbug.com/1211052
 inline constexpr char kMacRestoreLocationPermissionsExperimentCount[] =

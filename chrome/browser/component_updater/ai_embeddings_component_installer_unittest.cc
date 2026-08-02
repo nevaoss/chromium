@@ -7,18 +7,30 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
+#include "base/run_loop.h"
+#include "base/task/thread_pool/thread_pool_instance.h"
+#include "base/test/scoped_feature_list.h"
 #include "base/values.h"
 #include "base/version.h"
 #include "chrome/browser/ai/ai_semantic_embedder_service_launcher.h"
 #include "components/component_updater/component_installer.h"
+#include "components/component_updater/component_updater_service.h"
+#include "components/component_updater/mock_component_updater_service.h"
+#include "components/optimization_guide/core/model_execution/model_execution_prefs.h"
 #include "components/passage_embeddings/core/passage_embeddings_service_controller.h"
+#include "components/prefs/pref_registry_simple.h"
+#include "components/prefs/testing_pref_service.h"
 #include "components/update_client/update_client.h"
+#include "content/public/test/browser_task_environment.h"
+#include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/blink/public/common/features_generated.h"
 
 namespace component_updater {
 namespace {
@@ -26,7 +38,10 @@ namespace {
 class AIEmbeddingsComponentInstallerTest : public testing::Test {
  public:
   AIEmbeddingsComponentInstallerTest() {
+    feature_list_.InitAndEnableFeature(blink::features::kAIEmbeddingsAPI);
     policy_ = GetAIEmbeddingsComponentInstallerPolicyForTesting();
+    optimization_guide::model_execution::prefs::RegisterLocalStatePrefs(
+        pref_service_.registry());
   }
 
   void SetUp() override { ASSERT_TRUE(temp_dir_.CreateUniqueTempDir()); }
@@ -47,8 +62,13 @@ class AIEmbeddingsComponentInstallerTest : public testing::Test {
   }
 
  protected:
+  content::BrowserTaskEnvironment task_environment_;
+  TestingPrefServiceSimple pref_service_;
+  testing::NiceMock<MockComponentUpdateService> mock_cus_;
+
   base::ScopedTempDir temp_dir_;
   std::unique_ptr<ComponentInstallerPolicy> policy_;
+  base::test::ScopedFeatureList feature_list_;
 };
 
 TEST_F(AIEmbeddingsComponentInstallerTest, VerifyInstallation) {
@@ -100,6 +120,103 @@ TEST_F(AIEmbeddingsComponentInstallerTest, PolicyAttributes) {
   base::DictValue manifest;
   EXPECT_EQ(policy_->OnCustomInstall(manifest, GetInstallDir()).result.code, 0);
   policy_->OnCustomUninstall();
+}
+
+TEST_F(AIEmbeddingsComponentInstallerTest, RegistersWhenUnset) {
+  // Do not set the preference, simulating an unmanaged device.
+  base::RunLoop run_loop;
+  EXPECT_CALL(mock_cus_, RegisterComponent(testing::_))
+      .WillOnce([&](const component_updater::ComponentRegistration&) {
+        run_loop.Quit();
+        return true;
+      });
+  RegisterAIEmbeddingsComponent(&mock_cus_, &pref_service_);
+  run_loop.Run();
+}
+
+TEST_F(AIEmbeddingsComponentInstallerTest, RegistersWhenAllowed) {
+  pref_service_.SetInteger(
+      optimization_guide::model_execution::prefs::localstate::
+          kGenAILocalFoundationalModelEnterprisePolicySettings,
+      static_cast<int>(
+          optimization_guide::model_execution::prefs::
+              GenAILocalFoundationalModelEnterprisePolicySettings::kAllowed));
+
+  base::RunLoop run_loop;
+  EXPECT_CALL(mock_cus_, RegisterComponent(testing::_))
+      .WillOnce([&](const component_updater::ComponentRegistration&) {
+        run_loop.Quit();
+        return true;
+      });
+  RegisterAIEmbeddingsComponent(&mock_cus_, &pref_service_);
+  run_loop.Run();
+}
+
+TEST_F(AIEmbeddingsComponentInstallerTest, DoesNotRegisterWhenDisallowed) {
+  pref_service_.SetInteger(
+      optimization_guide::model_execution::prefs::localstate::
+          kGenAILocalFoundationalModelEnterprisePolicySettings,
+      static_cast<int>(optimization_guide::model_execution::prefs::
+                           GenAILocalFoundationalModelEnterprisePolicySettings::
+                               kDisallowed));
+
+  EXPECT_CALL(mock_cus_, RegisterComponent(testing::_)).Times(0);
+  RegisterAIEmbeddingsComponent(&mock_cus_, &pref_service_);
+}
+
+TEST_F(AIEmbeddingsComponentInstallerTest,
+       DoesNotRegisterWhenFeaturesDisabled) {
+  feature_list_.Reset();
+  feature_list_.InitWithFeatures({},
+                                 {blink::features::kAIEmbeddingsAPI,
+                                  blink::features::kAIEmbeddingsAPIForWorkers});
+
+  EXPECT_CALL(mock_cus_, RegisterComponent(testing::_)).Times(0);
+  RegisterAIEmbeddingsComponent(&mock_cus_, &pref_service_);
+}
+
+TEST_F(AIEmbeddingsComponentInstallerTest, RegistersWhenWorkerFeatureEnabled) {
+  feature_list_.Reset();
+  feature_list_.InitWithFeatures({blink::features::kAIEmbeddingsAPIForWorkers},
+                                 {blink::features::kAIEmbeddingsAPI});
+
+  base::RunLoop run_loop;
+  EXPECT_CALL(mock_cus_, RegisterComponent(testing::_))
+      .WillOnce([&](const component_updater::ComponentRegistration&) {
+        run_loop.Quit();
+        return true;
+      });
+  RegisterAIEmbeddingsComponent(&mock_cus_, &pref_service_);
+  run_loop.Run();
+}
+
+TEST_F(AIEmbeddingsComponentInstallerTest, RegistersWhenBothFeaturesEnabled) {
+  feature_list_.Reset();
+  feature_list_.InitWithFeatures({blink::features::kAIEmbeddingsAPI,
+                                  blink::features::kAIEmbeddingsAPIForWorkers},
+                                 {});
+
+  base::RunLoop run_loop;
+  EXPECT_CALL(mock_cus_, RegisterComponent(testing::_))
+      .WillOnce([&](const component_updater::ComponentRegistration&) {
+        run_loop.Quit();
+        return true;
+      });
+  RegisterAIEmbeddingsComponent(&mock_cus_, &pref_service_);
+  run_loop.Run();
+}
+
+TEST_F(AIEmbeddingsComponentInstallerTest, DeleteComponent) {
+  base::FilePath component_dir =
+      GetInstallDir().Append(FILE_PATH_LITERAL("AIEmbeddings"));
+  ASSERT_TRUE(base::CreateDirectory(component_dir));
+  ASSERT_TRUE(base::WriteFile(component_dir.AppendASCII("test_file"), "data"));
+
+  EXPECT_TRUE(base::PathExists(component_dir));
+
+  DeleteAIEmbeddingsComponent(GetInstallDir());
+  base::ThreadPoolInstance::Get()->FlushForTesting();
+  EXPECT_FALSE(base::PathExists(component_dir));
 }
 
 }  // namespace

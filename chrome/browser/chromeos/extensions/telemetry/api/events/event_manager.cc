@@ -13,7 +13,6 @@
 #include "chrome/browser/chromeos/extensions/telemetry/api/common/util.h"
 #include "chrome/browser/chromeos/extensions/telemetry/api/events/event_router.h"
 #include "chrome/common/chromeos/extensions/api/events.h"
-#include "chromeos/ash/components/telemetry_extension/events/telemetry_event_service_ash.h"
 #include "chromeos/ash/services/cros_healthd/public/cpp/service_connection.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/web_contents.h"
@@ -98,10 +97,11 @@ EventManager::RegisterEventResult EventManager::RegisterExtensionForEvent(
     }
   }
 
-  auto crosapi_category = converters::events::ConvertCrosapi(category);
-  GetEventService().AddEventObserver(
-      crosapi_category, event_router_.GetPendingRemoteForCategoryAndExtension(
-                            category, extension_id));
+  ash::cros_healthd::ServiceConnection::GetInstance()
+      ->GetEventService()
+      ->AddEventObserver(converters::events::Convert(category),
+                         event_router_.GetPendingRemoteForCategoryAndExtension(
+                             category, extension_id));
   return kSuccess;
 }
 
@@ -122,13 +122,6 @@ void EventManager::IsEventSupported(
       ->GetEventService()
       ->IsEventSupported(converters::events::Convert(category),
                          std::move(callback));
-}
-
-ash::TelemetryEventServiceAsh& EventManager::GetEventService() {
-  if (!event_service_) {
-    event_service_ = std::make_unique<ash::TelemetryEventServiceAsh>();
-  }
-  return *event_service_;
 }
 
 void EventManager::OnAppUiClosed(extensions::ExtensionId extension_id) {

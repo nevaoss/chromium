@@ -35,6 +35,7 @@ import static org.chromium.chrome.browser.preferences.ChromePreferenceKeys.NTP_C
 import static org.chromium.chrome.browser.preferences.ChromePreferenceKeys.NTP_CUSTOMIZATION_THEME_COLOR_ID;
 import static org.chromium.chrome.browser.preferences.ChromePreferenceKeys.NTP_CUSTOMIZATION_THEME_IS_SNACKBAR_SHOWN;
 import static org.chromium.chrome.browser.preferences.ChromePreferenceKeys.NTP_CUSTOMIZATION_THEME_TIP_BOTTOM_SHEET_SHOWN_TIMESTAMP_MS;
+import static org.chromium.chrome.browser.url_constants.UrlOverrideUtils.isWebUiNtpOverrideEnabled;
 import static org.chromium.components.browser_ui.styles.SemanticColorUtils.getDefaultIconColor;
 
 import android.app.Activity;
@@ -113,6 +114,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.nio.file.Paths;
 import java.util.concurrent.Executor;
 
 /** Utility class of the NTP customization. */
@@ -323,6 +325,10 @@ public class NtpCustomizationUtils {
     public static boolean isNtpThemeCustomizationEnabled(
             WindowAndroid windowAndroid, boolean isLff) {
         if (!isNtpThemeCustomizationEnabled()) {
+            return false;
+        }
+
+        if (isWebUiNtpOverrideEnabled()) {
             return false;
         }
 
@@ -634,6 +640,21 @@ public class NtpCustomizationUtils {
         }
 
         return new File(themeImageDir, fileName);
+    }
+
+    /**
+     * Gets the original file ID hash from the path of the image file.
+     *
+     * @param filePath The absolute file path of the image file.
+     */
+    public static @Nullable String getFileIdHashFromFilePath(@Nullable String filePath) {
+        if (filePath == null
+                || filePath.isEmpty()
+                || filePath.endsWith(NTP_BACKGROUND_IMAGE_FILE)) {
+            return null;
+        }
+
+        return Paths.get(filePath).getFileName().toString();
     }
 
     /** Returns the file to save the NTP's daily refresh background image. */
@@ -1706,8 +1727,9 @@ public class NtpCustomizationUtils {
         ntpCustomizationButton.setLayoutParams(layoutParams);
 
         ntpCustomizationButton.setOnClickListener(onClickListener);
-        ntpCustomizationButton.setContentDescription(
-                context.getString(R.string.ntp_customization_title));
+        String contentDescription = context.getString(R.string.ntp_customization_title);
+        ntpCustomizationButton.setContentDescription(contentDescription);
+        ntpCustomizationButton.setTooltipText(contentDescription);
 
         return ntpCustomizationButton;
     }

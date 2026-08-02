@@ -190,6 +190,16 @@
         "version": "1.5.0-SNAPSHOT"
     },
     {
+        "name": "material3-ripple",
+        "group": "androidx.compose.material3",
+        "version": "1.5.0-SNAPSHOT"
+    },
+    {
+        "name": "material3-ripple-android",
+        "group": "androidx.compose.material3",
+        "version": "1.5.0-SNAPSHOT"
+    },
+    {
         "name": "material-ripple",
         "group": "androidx.compose.material",
         "version": "1.13.0-SNAPSHOT"
@@ -542,7 +552,7 @@
     {
         "name": "graphics-core",
         "group": "androidx.graphics",
-        "version": "1.1.0-SNAPSHOT"
+        "version": "1.0.4"
     },
     {
         "name": "graphics-path",
@@ -567,12 +577,12 @@
     {
         "name": "ink-authoring",
         "group": "androidx.ink",
-        "version": "1.1.0-SNAPSHOT"
+        "version": "1.1.0-alpha03"
     },
     {
         "name": "ink-authoring-android",
         "group": "androidx.ink",
-        "version": "1.1.0-SNAPSHOT"
+        "version": "1.1.0-alpha03"
     },
     {
         "name": "ink-brush",
@@ -607,7 +617,7 @@
     {
         "name": "ink-rendering",
         "group": "androidx.ink",
-        "version": "1.1.0-SNAPSHOT"
+        "version": "1.1.0-alpha03"
     },
     {
         "name": "ink-rendering-android",
@@ -787,47 +797,47 @@
     {
         "name": "media3-common",
         "group": "androidx.media3",
-        "version": "1.9.0-beta01"
+        "version": "1.2.0"
     },
     {
         "name": "media3-container",
         "group": "androidx.media3",
-        "version": "1.9.0-beta01"
+        "version": "1.2.0"
     },
     {
         "name": "media3-database",
         "group": "androidx.media3",
-        "version": "1.9.0-beta01"
+        "version": "1.2.0"
     },
     {
         "name": "media3-datasource",
         "group": "androidx.media3",
-        "version": "1.9.0-beta01"
+        "version": "1.2.0"
     },
     {
         "name": "media3-decoder",
         "group": "androidx.media3",
-        "version": "1.9.0-beta01"
+        "version": "1.2.0"
     },
     {
         "name": "media3-exoplayer",
         "group": "androidx.media3",
-        "version": "1.9.0-beta01"
+        "version": "1.2.0"
     },
     {
         "name": "media3-extractor",
         "group": "androidx.media3",
-        "version": "1.9.0-beta01"
+        "version": "1.2.0"
     },
     {
         "name": "media3-session",
         "group": "androidx.media3",
-        "version": "1.9.0-beta01"
+        "version": "1.2.0"
     },
     {
         "name": "media3-ui",
         "group": "androidx.media3",
-        "version": "1.9.0-beta01"
+        "version": "1.2.0"
     },
     {
         "name": "media",
@@ -1257,77 +1267,77 @@
     {
         "name": "arcore",
         "group": "androidx.xr.arcore",
-        "version": "1.0.0-alpha13"
+        "version": "1.0.0-alpha12"
     },
     {
         "name": "arcore-openxr",
         "group": "androidx.xr.arcore",
-        "version": "1.0.0-alpha13"
+        "version": "1.0.0-alpha12"
     },
     {
         "name": "arcore-projected",
         "group": "androidx.xr.arcore",
-        "version": "1.0.0-alpha13"
+        "version": "1.0.0-alpha12"
     },
     {
         "name": "arcore-runtime",
         "group": "androidx.xr.arcore",
-        "version": "1.0.0-alpha13"
+        "version": "1.0.0-alpha12"
     },
     {
         "name": "arcore-testing",
         "group": "androidx.xr.arcore",
-        "version": "1.0.0-alpha13"
+        "version": "1.0.0-alpha12"
     },
     {
         "name": "runtime",
         "group": "androidx.xr.runtime",
-        "version": "1.0.0-alpha13"
+        "version": "1.0.0-alpha12"
     },
     {
         "name": "runtime-interfaces",
         "group": "androidx.xr.runtime",
-        "version": "1.0.0-alpha13"
+        "version": "1.0.0-alpha12"
     },
     {
         "name": "runtime-manifest",
         "group": "androidx.xr.runtime",
-        "version": "1.0.0-alpha13"
+        "version": "1.0.0-alpha12"
     },
     {
         "name": "runtime-openxr",
         "group": "androidx.xr.runtime",
-        "version": "1.0.0-alpha13"
+        "version": "1.0.0-alpha12"
     },
     {
         "name": "runtime-testing",
         "group": "androidx.xr.runtime",
-        "version": "1.0.0-alpha13"
+        "version": "1.0.0-alpha12"
     },
     {
         "name": "scenecore",
         "group": "androidx.xr.scenecore",
-        "version": "1.0.0-alpha14"
+        "version": "1.0.0-alpha13"
     },
     {
         "name": "scenecore-runtime",
         "group": "androidx.xr.scenecore",
-        "version": "1.0.0-alpha14"
+        "version": "1.0.0-alpha13"
     },
     {
         "name": "scenecore-spatial-core",
         "group": "androidx.xr.scenecore",
-        "version": "1.0.0-alpha14"
+        "version": "1.0.0-alpha13"
     },
     {
         "name": "scenecore-spatial-rendering",
         "group": "androidx.xr.scenecore",
-        "version": "1.0.0-alpha14"
+        "version": "1.0.0-alpha13"
     },
     {
         "name": "scenecore-testing",
         "group": "androidx.xr.scenecore",
-        "version": "1.0.0-alpha14"
+        "version": "1.0.0-alpha13"
     },
     {
         "name": "lottie",
@@ -1532,7 +1542,7 @@
     {
         "name": "impress",
         "group": "com.google.ar",
-        "version": "0.0.13"
+        "version": "0.0.12"
     },
     {
         "name": "auto-service-annotations",
@@ -1617,7 +1627,7 @@
     {
         "name": "firebase-installations",
         "group": "com.google.firebase",
-        "version": "19.1.0"
+        "version": "19.1.1"
     },
     {
         "name": "firebase-installations-interop",
@@ -1632,7 +1642,7 @@
     {
         "name": "firebase-messaging",
         "group": "com.google.firebase",
-        "version": "25.1.0"
+        "version": "25.1.1"
     },
     {
         "name": "google-java-format",
@@ -1682,7 +1692,7 @@
     {
         "name": "protobuf-javalite",
         "group": "com.google.protobuf",
-        "version": "4.35.1"
+        "version": "4.36.0-RC1"
     },
     {
         "name": "protobuf-lite",
@@ -1867,12 +1877,12 @@
     {
         "name": "grpc-api",
         "group": "io.grpc",
-        "version": "1.82.1"
+        "version": "1.82.2"
     },
     {
         "name": "grpc-stub",
         "group": "io.grpc",
-        "version": "1.82.1"
+        "version": "1.82.2"
     },
     {
         "name": "rxandroid",
