@@ -501,20 +501,13 @@ CdmWrapper* CdmWrapper::Create(CreateCdmFunc create_cdm_func,
                 "Mismatch between CdmWrapper::Create() and "
                 "IsSupportedCdmInterfaceVersion()");
 
-<<<<<<< HEAD
 #if defined(USE_NEVA_CDM)
-  return CreateWithVersions<12, 11, 10, 8>(create_cdm_func, key_system,
-                                           key_system_size, get_cdm_host_func,
-                                           user_data);
+  return CreateWithVersions<12, 11, 10, 8>(create_cdm_func, cdm_config,
+                                           get_cdm_host_func, user_data);
 #else   // defined(USE_NEVA_CDM)
-  return CreateWithVersions<12, 11, 10>(create_cdm_func, key_system,
-                                        key_system_size, get_cdm_host_func,
-                                        user_data);
-#endif  // !defined(USE_NEVA_CDM)
-=======
   return CreateWithVersions<12, 11, 10>(create_cdm_func, cdm_config,
                                         get_cdm_host_func, user_data);
->>>>>>> 152.0.7957.0~1
+#endif  // !defined(USE_NEVA_CDM)
 }
 
 }  // namespace media
