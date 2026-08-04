@@ -531,6 +531,8 @@ Called by update_bad_message_reasons.py.-->
       label="BIBI_BIND_GAMEPAD_MONITOR_BLOCKED_BY_PERMISSIONS_POLICY"/>
   <int value="357"
       label="BIBI_BIND_GAMEPAD_HAPTICS_MANAGER_BLOCKED_BY_PERMISSIONS_POLICY"/>
+  <int value="358" label="RFH_CREATE_NEW_WINDOW_INVALID_PIP_OPTIONS"/>
+  <int value="359" label="RFPH_POST_MESSAGE_INVALID_DELEGATED_CAPABILITY"/>
 </enum>
 
 <enum name="BadMessageReasonExtensions">
@@ -579,6 +581,7 @@ Called by update_bad_message_reasons.py.-->
   <int value="37" label="SWH_INVALID_SERVICE_WORKER_SCOPE"/>
   <int value="38" label="EMF_INVALID_MESSAGE_FROM_SANDBOXED_PROCESS"/>
   <int value="39" label="WRA_INVALID_EXTENSION_ID_FOR_PROCESS"/>
+  <int value="40" label="WRA_INVALID_LISTENER_REGISTRATION"/>
 </enum>
 
 <enum name="BadMessageReasonGuestView">

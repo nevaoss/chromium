@@ -111,6 +111,22 @@ public class TabbedCrashRecoveryDelegate {
         // Reset state before processing a new crash recovery request to avoid using stale state.
         resetState();
 
+        // Avoid showing the dialog on an incognito host window. We will clean up crash recovery
+        // data because of the uncertainty surrounding when the next regular window will be opened,
+        // which could happen after several incognito windows are opened, at which point recovering
+        // these crashed windows may be confusing.
+        if (hostActivity.isIncognitoWindow()) {
+            Map<Integer, AppTask> appTasks = MultiWindowUtils.getAppTasksById(hostActivity);
+            for (CrashRecoveryWindowInfo windowInfo : crashedWindows) {
+                int windowId = windowInfo.windowId;
+                if (windowId == hostActivity.getWindowId()) continue;
+                // Since recovery is cancelled, mark all windows as non-recoverable. Additionally,
+                // finish tasks for windows without any normal tabs to avoid keeping unusable tasks.
+                cleanUpWindow(windowId, appTasks, hasNoNormalTabs(windowId));
+            }
+            return false;
+        }
+
         // If the only crashed window is the host activity itself, do not show the dialog.
         if (crashedWindows.size() == 1
                 && crashedWindows.get(0).windowId == hostActivity.getWindowId()) {
@@ -124,6 +140,16 @@ public class TabbedCrashRecoveryDelegate {
             int windowId = windowInfo.windowId;
             // Exclude host activity from crash recovery task.
             if (hostActivity.getWindowId() == windowInfo.windowId) continue;
+
+            // Windows with no regular tabs (e.g. empty or windows with incognito-only tabs) should
+            // not be usable after a crash. Clean them up (e.g. finish their live tasks and mark
+            // them as non-recoverable) so we don't restore them or leave orphaned, unusable tasks
+            // in Android Recents.
+            if (hasNoNormalTabs(windowId)) {
+                cleanUpWindow(windowId, mPreRecoveryAppTasks, /* shouldFinishTask= */ true);
+                continue;
+            }
+
             nonHostCrashedWindowCount++;
             int persistedTaskId = ChromeMultiInstancePersistentStore.readTaskId(windowId);
             if (mPreRecoveryAppTasks.containsKey(persistedTaskId)) {
@@ -133,6 +159,12 @@ public class TabbedCrashRecoveryDelegate {
             mWindowIdsPendingRecovery.add(windowId);
             if (!windowInfo.isVisible) mNonVisibleWindows.add(windowInfo);
             else mVisibleWindows.add(windowInfo);
+        }
+
+        // If there are no recoverable windows pending recovery (e.g. they were all empty or
+        // incognito windows that got cleaned up above), skip showing the dialog.
+        if (mWindowIdsPendingRecovery.isEmpty()) {
+            return false;
         }
 
         if (crashedWindowTaskCount == nonHostCrashedWindowCount
@@ -146,8 +178,7 @@ public class TabbedCrashRecoveryDelegate {
             for (CrashRecoveryWindowInfo windowInfo : crashedWindows) {
                 int windowId = windowInfo.windowId;
                 if (windowId == hostActivity.getWindowId()) continue;
-                ChromeMultiInstancePersistentStore.writeIsRecoverable(
-                        windowId, /* isRecoverable= */ false);
+                cleanUpWindow(windowId, /* appTasks= */ null, /* shouldFinishTask= */ false);
             }
             return false;
         }
@@ -156,7 +187,7 @@ public class TabbedCrashRecoveryDelegate {
                 new Callback<>() {
                     @Override
                     public void onResult(ModalDialogManager modalDialogManager) {
-                        showRecoveryDialog(modalDialogManager, hostActivity, crashedWindows);
+                        showRecoveryDialog(modalDialogManager, hostActivity);
                         modalDialogManagerSupplier.removeObserver(this);
                     }
                 });
@@ -255,7 +286,7 @@ public class TabbedCrashRecoveryDelegate {
             // Do not clear the state if there is already a pending recovery from a prior session.
             if (!ChromeMultiInstancePersistentStore.readIsCrashRecoveryPending()) {
                 for (int windowId : ChromeMultiInstancePersistentStore.readAllInstanceIds()) {
-                    ChromeMultiInstancePersistentStore.writeIsRecoverable(windowId, false);
+                    cleanUpWindow(windowId, /* appTasks= */ null, /* shouldFinishTask= */ false);
                 }
             }
             return false;
@@ -268,9 +299,7 @@ public class TabbedCrashRecoveryDelegate {
     }
 
     private void showRecoveryDialog(
-            ModalDialogManager modalDialogManager,
-            ChromeTabbedActivity hostActivity,
-            List<CrashRecoveryWindowInfo> crashedWindows) {
+            ModalDialogManager modalDialogManager, ChromeTabbedActivity hostActivity) {
         ModalDialogProperties.Controller controller =
                 new ModalDialogProperties.Controller() {
                     @Override
@@ -279,16 +308,11 @@ public class TabbedCrashRecoveryDelegate {
                         if (dismissalCause != DialogDismissalCause.POSITIVE_BUTTON_CLICKED) {
                             // When the recovery dialog is dismissed, cleanup recovery state for
                             // non-recovered windows since this data will now be stale.
-                            for (CrashRecoveryWindowInfo windowInfo : crashedWindows) {
-                                int windowId = windowInfo.windowId;
-                                if (windowId == hostActivity.getWindowId()) continue;
-                                ChromeMultiInstancePersistentStore.writeIsRecoverable(
-                                        windowId, /* isRecoverable= */ false);
-                                int persistedTaskId =
-                                        ChromeMultiInstancePersistentStore.readTaskId(windowId);
-                                if (mPreRecoveryAppTasks.containsKey(persistedTaskId)) {
-                                    mPreRecoveryAppTasks.get(persistedTaskId).finishAndRemoveTask();
-                                }
+                            for (int windowId : mWindowIdsPendingRecovery) {
+                                cleanUpWindow(
+                                        windowId,
+                                        mPreRecoveryAppTasks,
+                                        /* shouldFinishTask= */ true);
                             }
                         }
                     }
@@ -399,6 +423,27 @@ public class TabbedCrashRecoveryDelegate {
                         isInMultiWindowMode,
                         NewWindowAppSource.CRASH_RECOVERY);
         hostActivity.startActivity(intent);
+    }
+
+    /** Cleans up a crashed window's state, and optionally finishes its associated task. */
+    private void cleanUpWindow(
+            int windowId, @Nullable Map<Integer, AppTask> appTasks, boolean shouldFinishTask) {
+        ChromeMultiInstancePersistentStore.writeIsRecoverable(windowId, /* isRecoverable= */ false);
+        if (shouldFinishTask && appTasks != null) {
+            int persistedTaskId = ChromeMultiInstancePersistentStore.readTaskId(windowId);
+            AppTask task = appTasks.get(persistedTaskId);
+            if (task != null) {
+                task.finishAndRemoveTask();
+                appTasks.remove(persistedTaskId);
+            }
+        }
+    }
+
+    /**
+     * @return {@code true} if the window has no regular/normal tabs.
+     */
+    private boolean hasNoNormalTabs(int windowId) {
+        return ChromeMultiInstancePersistentStore.readNormalTabCount(windowId) == 0;
     }
 
     @VisibleForTesting

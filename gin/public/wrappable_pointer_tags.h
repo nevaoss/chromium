@@ -87,6 +87,7 @@ enum WrappablePointerTag : uint16_t {
   kTextInputControllerBindings,  // content::TextInputControllerBindings
   kWebAXObjectProxy,             // content::WebAXObjectProxy
   kWrappedExceptionHandler,      // extensions::WrappedExceptionHandler
+<<<<<<< HEAD
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
   kBrowserControlInjection,
   kBrowserShellCookieManager,
@@ -114,6 +115,9 @@ enum WrappablePointerTag : uint16_t {
   kWebOSSystemInjection,
   kWindowInjection,
 #endif   // BUILDFLAG(IS_NEVA_APPRUNTIME)
+=======
+  kWrappedHandlerFunction,       // extensions::WrappedHandlerFunction
+>>>>>>> 152.0.7957.0~1
   // keep-sorted end
   kLastPointerTag,
 };

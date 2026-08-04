@@ -49,20 +49,6 @@ constexpr char kQueryText[] = "query";
 constexpr char kComposeboxFileDeleted[] =
     "ContextualSearch.Session.File.DeletedCount";
 
-class MockPage : public composebox::mojom::Page {
- public:
-  MockPage() = default;
-  ~MockPage() override = default;
-
-  mojo::PendingRemote<composebox::mojom::Page> BindAndGetRemote() {
-    DCHECK(!receiver_.is_bound());
-    return receiver_.BindNewPipeAndPassRemote();
-  }
-
-  void FlushForTesting() { receiver_.FlushForTesting(); }
-
-  mojo::Receiver<composebox::mojom::Page> receiver_{this};
-};
 
 }  // namespace
 
@@ -102,7 +88,6 @@ class ComposeboxHandlerTest : public ContextualSearchboxHandlerTestHarness {
     web_contents()->SetDelegate(&delegate_);
     handler_ = std::make_unique<ComposeboxHandler>(
         mojo::PendingReceiver<composebox::mojom::PageHandler>(),
-        mock_page_.BindAndGetRemote(),
         mojo::PendingReceiver<searchbox::mojom::PageHandler>(),
         mock_searchbox_page_.BindAndGetRemote(), profile(), web_contents(),
         base::BindLambdaForTesting(
@@ -165,7 +150,6 @@ class ComposeboxHandlerTest : public ContextualSearchboxHandlerTestHarness {
   }
 
  protected:
-  testing::NiceMock<MockPage> mock_page_;
   testing::NiceMock<MockSearchboxPage> mock_searchbox_page_;
 
  private:
@@ -191,7 +175,6 @@ TEST_F(ComposeboxHandlerTest, DeleteFileAndSubmitQuery) {
   base::UnguessableToken delete_file_token = base::UnguessableToken::Create();
   base::UnguessableToken token_arg;
   EXPECT_CALL(query_controller(), GetFileInfo(delete_file_token))
-      .Times(1)
       .WillRepeatedly(testing::Return(file_info.get()));
   EXPECT_CALL(query_controller(), DeleteFile(delete_file_token))
       .WillOnce([&token_arg](const base::UnguessableToken& token) {

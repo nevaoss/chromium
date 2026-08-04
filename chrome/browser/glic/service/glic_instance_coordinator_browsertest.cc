@@ -26,6 +26,7 @@
 #include "chrome/browser/glic/host/webui_contents_container.h"
 #include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
+#include "chrome/browser/glic/public/glic_keyed_service_factory.h"
 #include "chrome/browser/glic/public/glic_side_panel_coordinator.h"
 #include "chrome/browser/glic/service/glic_instance_coordinator_impl.h"
 #include "chrome/browser/glic/service/glic_instance_impl.h"
@@ -462,7 +463,7 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorUnbindOnCloseTest,
   // DidCloseFor() -> UnbindEmbedder() in a re-entrant frame, deleting
   // the instance. The outer frame will safely return early via the
   // base::WeakPtr guard.
-  instance->UnbindEmbedder(EmbedderKey(tab1));
+  instance->UnbindEmbedder(SidePanelEmbedderKey(tab1));
 
   ASSERT_OK(RunUntilEqual<GlicInstanceImpl*>(
       [&]() { return weak_instance.get(); }, nullptr));
@@ -1080,7 +1081,7 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
 
   // Close the side panel for this tab.
   auto original_instance_id = instance->id();
-  instance->Close(EmbedderKey(tab), CloseOptions());
+  instance->Close(SidePanelEmbedderKey(tab), CloseOptions());
   ASSERT_OK(
       WaitForSidePanelState(tab, GlicSidePanelCoordinator::State::kClosed));
 
@@ -1183,7 +1184,7 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorActorTaskTest,
   tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
 
   PreventDeletionOnClose(instance);
-  instance->Close(EmbedderKey(tab), CloseOptions());
+  instance->Close(SidePanelEmbedderKey(tab), CloseOptions());
   ASSERT_OK(
       WaitForSidePanelState(tab, GlicSidePanelCoordinator::State::kClosed));
 
@@ -1705,6 +1706,8 @@ class GlicInstanceCoordinatorLocalHotkeyScopeTest
     GlicInstanceCoordinatorBrowserTest::SetUpOnMainThread();
     g_browser_process->local_state()->SetBoolean(prefs::kGlicLauncherEnabled,
                                                  true);
+    g_browser_process->local_state()->SetBoolean(
+        prefs::kGlicHotkeyGlobalScopeEnabled, false);
   }
 
  private:
@@ -1790,7 +1793,7 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
   PreventDeletionOnClose(instance);
 
   // Close the embedder.
-  instance->Close(EmbedderKey(tab), CloseOptions());
+  instance->Close(SidePanelEmbedderKey(tab), CloseOptions());
   ASSERT_OK(WaitForGlicClose(instance));
 
   // 2. Verify fallback case (no active embedder).
@@ -1813,7 +1816,7 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
 
   base::WeakPtr<GlicInstanceImpl> weak_instance = instance->GetWeakPtr();
   // Close the side panel (unbind the embedder).
-  instance->UnbindEmbedder(EmbedderKey(tab));
+  instance->UnbindEmbedder(SidePanelEmbedderKey(tab));
 
   ASSERT_OK(
       WaitForSidePanelState(tab, GlicSidePanelCoordinator::State::kClosed));
@@ -2017,6 +2020,117 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorRemoveBlankInstancesTest,
 
   // Wait for the blank instance to be deleted asynchronously.
   ASSERT_OK(WaitForInstanceDeletion(weak_instance));
+}
+
+class GlicInstanceCoordinatorTabGroupsBrowserTest
+    : public GlicInstanceCoordinatorBrowserTest {
+ public:
+  GlicInstanceCoordinatorTabGroupsBrowserTest() {
+    feature_list_.InitAndEnableFeature(features::kGlicTabGroups);
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorTabGroupsBrowserTest,
+                       BindAndObserveTabGroup) {
+  TabListInterface* tab_list = GetTabListInterface();
+  ASSERT_TRUE(tab_list);
+
+  // Ensure we have at least 2 tabs.
+  tabs::TabInterface* tab1 = CreateAndActivateTab(GURL("about:blank"));
+  tabs::TabInterface* tab2 = CreateAndActivateTab(GURL("about:blank"));
+  ASSERT_TRUE(tab1);
+  ASSERT_TRUE(tab2);
+
+  std::optional<tab_groups::TabGroupId> group_id =
+      tab_list->CreateTabGroup({tab1->GetHandle(), tab2->GetHandle()});
+  ASSERT_TRUE(group_id.has_value());
+
+  ASSERT_TRUE(coordinator().ShowInstanceForTabGroup(group_id.value()));
+  GlicInstanceImpl* instance = GetInstanceForTab(tab1);
+  ASSERT_TRUE(instance);
+  ASSERT_OK(WaitForGlicClient(instance));
+  EXPECT_EQ(instance->GetTabGroup(), group_id.value());
+
+  // Tab strip should now have 4 tabs: 1 default tab, Glic Tab, and the two
+  // blank tabs.
+  EXPECT_EQ(tab_list->GetTabCount(), 4);
+
+  tabs::TabInterface* glic_tab = instance->GetGlicTab();
+  ASSERT_TRUE(glic_tab);
+  EXPECT_EQ(glic_tab->GetGroup(), group_id.value());
+  EXPECT_EQ(coordinator().GetInstanceForTab(glic_tab), instance);
+
+  GlicSharingManagerInternal& sharing_manager =
+      instance->GetSharingManagerInternal();
+  EXPECT_FALSE(sharing_manager.IsTabPinned(glic_tab->GetHandle()));
+  EXPECT_TRUE(sharing_manager.IsTabPinned(tab1->GetHandle()));
+  EXPECT_TRUE(sharing_manager.IsTabPinned(tab2->GetHandle()));
+
+  // Add a third tab and group it.
+  tabs::TabInterface* tab3 = CreateAndActivateTab(GURL("about:blank"));
+  ASSERT_TRUE(tab3);
+  tab_list->AddTabsToGroup(group_id.value(), {tab3->GetHandle()});
+
+  EXPECT_EQ(coordinator().GetInstanceForTab(tab3), instance);
+
+  // Ungroup it.
+  tab_list->Ungroup({tab3->GetHandle()});
+  EXPECT_EQ(coordinator().GetInstanceForTab(tab3), nullptr);
+
+  // Close Glic tab to ensure clean teardown.
+  tab_list->CloseTab(glic_tab->GetHandle());
+}
+
+IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorTabGroupsBrowserTest,
+                       DefaultToLastActiveInstanceForTabGroup) {
+  TabListInterface* tab_list = GetTabListInterface();
+  ASSERT_TRUE(tab_list);
+
+  tabs::TabInterface* tab1 = CreateAndActivateTab(GURL("about:blank"));
+  tabs::TabInterface* tab2 = CreateAndActivateTab(GURL("about:blank"));
+  ASSERT_TRUE(tab1);
+  ASSERT_TRUE(tab2);
+
+  std::optional<tab_groups::TabGroupId> group_id =
+      tab_list->CreateTabGroup({tab1->GetHandle(), tab2->GetHandle()});
+  ASSERT_TRUE(group_id.has_value());
+
+  // 1. First invocation creates Instance A.
+  ASSERT_TRUE(coordinator().ShowInstanceForTabGroup(group_id.value()));
+  GlicInstanceImpl* instance_a = GetInstanceForTab(tab1);
+  ASSERT_TRUE(instance_a);
+  ASSERT_OK(WaitForGlicClient(instance_a));
+  EXPECT_EQ(instance_a->GetTabGroup(), group_id.value());
+
+  // Find the Glic tab.
+  tabs::TabInterface* glic_tab = instance_a->GetGlicTab();
+  ASSERT_TRUE(glic_tab);
+
+  // 2. Close the Glic tab.
+  tab_list->CloseTab(glic_tab->GetHandle());
+
+  // The Glic tab is gone.
+  EXPECT_EQ(instance_a->GetGlicTab(), nullptr);
+
+  // But the instance should stay alive and still be bound to the group.
+  EXPECT_EQ(instance_a->GetTabGroup(), group_id.value());
+  EXPECT_EQ(coordinator().GetInstanceForTabGroup(group_id.value()), instance_a);
+
+  // 3. Showing Glic for the tab group again should reuse Instance A.
+  GlicInstance* instance_reused =
+      coordinator().ShowInstanceForTabGroup(group_id.value());
+  EXPECT_EQ(instance_reused, instance_a);
+  ASSERT_OK(WaitForGlicClient(instance_a));
+
+  glic_tab = instance_a->GetGlicTab();
+  ASSERT_TRUE(glic_tab);
+  EXPECT_EQ(glic_tab->GetGroup(), group_id.value());
+
+  // Close Glic tab to ensure clean teardown.
+  tab_list->CloseTab(glic_tab->GetHandle());
 }
 
 }  // namespace glic

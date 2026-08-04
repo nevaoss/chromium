@@ -162,7 +162,7 @@ const base::FeatureParam<int> kGlicReloadMaxLoadingTimeMs{
     &kGlicWebClientLoadTimes, "glic-reload-max-loading-time-ms", 30000};
 
 BASE_FEATURE(kGlicContextualCueingV2AutoSubmit,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicWebDragAndDropFileUpload, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -205,6 +205,9 @@ BASE_FEATURE(kGlicNoWebUiLoader, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicGeminiEnterpriseSettingsEnabled,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kGlicGeminiEnterpriseConsentEnabled,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kGlicHotkeyLocalScope,
 #if BUILDFLAG(IS_ANDROID)
              base::FEATURE_ENABLED_BY_DEFAULT
@@ -212,4 +215,14 @@ BASE_FEATURE(kGlicHotkeyLocalScope,
              base::FEATURE_DISABLED_BY_DEFAULT
 #endif
 );
+
+BASE_FEATURE(kGlicPasteEligibilityCheck,
+             "GlicPasteEligibilityCheck",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kGlicWebPasteEligibilityCheck,
+             "GlicWebPasteEligibilityCheck",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kGlicTabGroups, base::FEATURE_DISABLED_BY_DEFAULT);
 }  // namespace features

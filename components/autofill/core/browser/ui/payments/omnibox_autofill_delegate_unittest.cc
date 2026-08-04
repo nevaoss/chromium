@@ -469,6 +469,9 @@ TEST_F(OmniboxAutofillDelegateTest,
 
 TEST_F(OmniboxAutofillDelegateTest,
        OnAutofillManagerStateChanged_WasActive_HideChip) {
+  FormData form = CreateTestCreditCardFormData();
+  FormsSeen({form});
+
   payments_autofill_client().ShowOmniboxAutofillChip(
       /*suggestions=*/{},
       /*on_suggestions_shown=*/base::DoNothing(),
@@ -526,6 +529,9 @@ TEST_F(OmniboxAutofillDelegateTest,
 
 TEST_F(OmniboxAutofillDelegateTest,
        OnAutofillManagerStateChanged_WasNotActive_DoesNotHideChip) {
+  FormData form = CreateTestCreditCardFormData();
+  FormsSeen({form});
+
   payments_autofill_client().ShowOmniboxAutofillChip(
       /*suggestions=*/{},
       /*on_suggestions_shown=*/base::DoNothing(),
@@ -637,21 +643,7 @@ TEST_F(OmniboxAutofillDelegateTest,
 }
 
 TEST_F(OmniboxAutofillDelegateTest,
-       OnGetIntersectionObserverInfo_NotVisible_ReturnsEarly) {
-  FormData form = CreateTestCreditCardFormData();
-  FormsSeen({form});
-
-  OmniboxAutofillDelegate* delegate =
-      payments_autofill_client().GetOmniboxAutofillDelegate();
-  ASSERT_TRUE(delegate);
-
-  delegate->OnGetIntersectionObserverInfo(/*is_visible=*/false);
-
-  EXPECT_FALSE(payments_autofill_client().omnibox_autofill_chip_shown());
-}
-
-TEST_F(OmniboxAutofillDelegateTest,
-       OnGetIntersectionObserverInfo_NoAutofillManager_ReturnsEarly) {
+       OnFieldBecameVisible_NoAutofillManager_ReturnsEarly) {
   FormData form = CreateTestCreditCardFormData();
   FormsSeen({form});
 
@@ -663,26 +655,26 @@ TEST_F(OmniboxAutofillDelegateTest,
   EXPECT_CALL(autofill_client(), GetAutofillManagerForPrimaryMainFrame)
       .WillOnce(::testing::Return(nullptr));
 
-  delegate->OnGetIntersectionObserverInfo(/*is_visible=*/true);
+  delegate->OnFieldBecameVisible();
 
   EXPECT_FALSE(payments_autofill_client().omnibox_autofill_chip_shown());
 }
 
 TEST_F(OmniboxAutofillDelegateTest,
-       OnGetIntersectionObserverInfo_FormNotFound_ReturnsEarly) {
+       OnFieldBecameVisible_FormNotFound_ReturnsEarly) {
   // Do not call `FormsSeen` to simulate form not found.
 
   OmniboxAutofillDelegate* delegate =
       payments_autofill_client().GetOmniboxAutofillDelegate();
   ASSERT_TRUE(delegate);
 
-  delegate->OnGetIntersectionObserverInfo(/*is_visible=*/true);
+  delegate->OnFieldBecameVisible();
 
   EXPECT_FALSE(payments_autofill_client().omnibox_autofill_chip_shown());
 }
 
 TEST_F(OmniboxAutofillDelegateTest,
-       OnGetIntersectionObserverInfo_FieldNotFound_ReturnsEarly) {
+       OnFieldBecameVisible_FieldNotFound_ReturnsEarly) {
   FormData form = CreateTestCreditCardFormData();
   FormsSeen({form});
 
@@ -697,13 +689,12 @@ TEST_F(OmniboxAutofillDelegateTest,
   test_api(updated_form).Remove(1);
   FormsSeen({updated_form});
 
-  delegate->OnGetIntersectionObserverInfo(/*is_visible=*/true);
+  delegate->OnFieldBecameVisible();
 
   EXPECT_FALSE(payments_autofill_client().omnibox_autofill_chip_shown());
 }
 
-TEST_F(OmniboxAutofillDelegateTest,
-       OnGetIntersectionObserverInfo_IsVisible_ShowsChip) {
+TEST_F(OmniboxAutofillDelegateTest, OnFieldBecameVisible_ShowsChip) {
   FormData form = CreateTestCreditCardFormData();
   FormsSeen({form});
 
@@ -711,13 +702,12 @@ TEST_F(OmniboxAutofillDelegateTest,
       payments_autofill_client().GetOmniboxAutofillDelegate();
   ASSERT_TRUE(delegate);
 
-  delegate->OnGetIntersectionObserverInfo(/*is_visible=*/true);
+  delegate->OnFieldBecameVisible();
 
   EXPECT_TRUE(payments_autofill_client().omnibox_autofill_chip_shown());
 }
 
-TEST_F(OmniboxAutofillDelegateTest,
-       OnGetIntersectionObserverInfo_IsVisible_LogsMetrics) {
+TEST_F(OmniboxAutofillDelegateTest, OnFieldBecameVisible_LogsMetrics) {
   base::HistogramTester histogram_tester;
 
   FormData form = CreateTestCreditCardFormData();
@@ -727,7 +717,7 @@ TEST_F(OmniboxAutofillDelegateTest,
       payments_autofill_client().GetOmniboxAutofillDelegate();
   ASSERT_TRUE(delegate);
 
-  delegate->OnGetIntersectionObserverInfo(/*is_visible=*/true);
+  delegate->OnFieldBecameVisible();
 
   // Verify that suggestions count and secure form are logged. `SetUp()` adds 1
   // credit card, so count should be 1.

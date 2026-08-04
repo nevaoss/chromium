@@ -96,7 +96,6 @@ mojom::ResourceType RequestContextToResourceType(
       return mojom::ResourceType::kObject;
 
     // Ping
-    case mojom::blink::RequestContextType::ATTRIBUTION_SRC:
     case mojom::blink::RequestContextType::BEACON:
     case mojom::blink::RequestContextType::PING:
       return mojom::ResourceType::kPing;
@@ -421,13 +420,6 @@ void PopulateResourceRequest(const ResourceRequestHead& src,
   }
 
   dest->storage_access_api_status = src.GetStorageAccessApiStatus();
-
-  dest->attribution_reporting_support = src.GetAttributionReportingSupport();
-
-  dest->attribution_reporting_eligibility =
-      src.GetAttributionReportingEligibility();
-
-  dest->attribution_reporting_src_token = src.GetAttributionSrcToken();
 
   dest->keepalive_token = src.GetKeepaliveToken();
 

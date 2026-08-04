@@ -329,6 +329,7 @@ class AppMenu implements OnKeyListener {
             boolean isMenuIconAtStart,
             @ControlsPosition int controlsPosition,
             boolean addTopPaddingBeforeFirstRow,
+            boolean isFromBottomBar,
             FlyoutHandler<AppMenuPopup> flyoutHandler) {
         mContext = context;
         PopupWindow popup = new PopupWindow(context);
@@ -376,7 +377,6 @@ class AppMenu implements OnKeyListener {
         // Make sure that the popup window will be closed when touch outside of it.
         popup.setOutsideTouchable(true);
 
-        boolean isFromBottomBar = isAnchorFromBottomBar(anchorView);
         if (!isByPermanentButton) {
             popup.setAnimationStyle(
                     isMenuIconAtStart
@@ -424,6 +424,17 @@ class AppMenu implements OnKeyListener {
             padding.top = originalPadding.top;
             padding.bottom = originalPadding.bottom;
         }
+
+        View innerContainer = contentView.findViewById(R.id.app_menu_content_container);
+        if (footer != null) {
+            innerContainer.setPadding(
+                    innerContainer.getPaddingLeft(),
+                    innerContainer.getPaddingTop(),
+                    innerContainer.getPaddingRight(),
+                    0);
+        }
+        padding.top += innerContainer.getPaddingTop();
+        padding.bottom += innerContainer.getPaddingBottom();
 
         mListView = contentView.findViewById(R.id.app_menu_list);
         if (mDisableVerticalScrollbar) {
@@ -501,6 +512,10 @@ class AppMenu implements OnKeyListener {
         mHierarchicalMenuController.setupFlyoutController(
                 /* flyoutHandler= */ flyoutHandler,
                 new AppMenuPopup(popup),
+                (listener) -> {
+                    assert mListView != null;
+                    mListView.setOnScrollChangeListener(listener);
+                },
                 /* drillDownOverrideValue= */ null);
 
         mHierarchicalMenuController.setupBackPressBehaviorForPopupWindow(
@@ -556,9 +571,13 @@ class AppMenu implements OnKeyListener {
      * @param adapter The {@link ListAdapter} containing the items to display in the new flyout.
      * @param view The menu item {@link View} that is triggering this flyout (used as the anchor).
      * @param dismissRunnable The runnable to run after the window is dismissed.
+     * @param scrollListener The scroll listener to attach to the flyout popup.
      */
     public AppMenuPopup createAndShowFlyoutPopup(
-            ListAdapter adapter, View view, Runnable dismissRunnable) {
+            ListAdapter adapter,
+            View view,
+            Runnable dismissRunnable,
+            View.OnScrollChangeListener scrollListener) {
         assert mContext != null;
         View contentView =
                 createAppMenuContentView(mContext, /* addTopPaddingBeforeFirstRow= */ true);
@@ -566,6 +585,7 @@ class AppMenu implements OnKeyListener {
         ListView listView = contentView.findViewById(R.id.app_menu_list);
         listView.setAdapter(adapter);
         listView.setItemsCanFocus(true);
+        listView.setOnScrollChangeListener(scrollListener);
 
         final int lateralPadding = contentView.getPaddingLeft() + contentView.getPaddingRight();
         int maxWidth =
@@ -941,13 +961,9 @@ class AppMenu implements OnKeyListener {
 
         // Ensure the inner shape has standard padding, and conditionally add visual menu top
         // padding.
-        int topPadding =
-                addTopPaddingBeforeFirstRow
-                        ? context.getResources().getDimensionPixelSize(R.dimen.app_menu_padding)
-                        : 0;
-        int bottomPadding = context.getResources().getDimensionPixelSize(R.dimen.app_menu_padding);
-
-        innerContainer.setPadding(0, topPadding, 0, bottomPadding);
+        int padding = context.getResources().getDimensionPixelSize(R.dimen.app_menu_padding);
+        int topPadding = addTopPaddingBeforeFirstRow ? padding : 0;
+        innerContainer.setPadding(0, topPadding, 0, padding);
 
         return contentView;
     }
@@ -960,8 +976,10 @@ class AppMenu implements OnKeyListener {
 
         mFooterView = footer;
         mFooterView.setId(R.id.app_menu_footer);
-        contentView.addView(
-                footer, contentView.indexOfChild(contentView.findViewById(R.id.app_menu_list)) + 1);
+        ViewGroup innerContainer = contentView.findViewById(R.id.app_menu_content_container);
+        innerContainer.addView(
+                footer,
+                innerContainer.indexOfChild(innerContainer.findViewById(R.id.app_menu_list)) + 1);
 
         int widthMeasureSpec = MeasureSpec.makeMeasureSpec(menuWidth, MeasureSpec.EXACTLY);
         int heightMeasureSpec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
@@ -1019,15 +1037,5 @@ class AppMenu implements OnKeyListener {
             // http://crbug.com/41379062 & https://crbug.com/40706027.
             return;
         }
-    }
-
-    // TODO(crbug.com/516522346): Pass this value down in the call stack.
-    private static boolean isAnchorFromBottomBar(@Nullable View anchorView) {
-        if (anchorView != null
-                && anchorView.getTag(R.id.is_bottom_bar_menu_anchor)
-                        instanceof Boolean isBottomBarMenuAnchor) {
-            return isBottomBarMenuAnchor;
-        }
-        return false;
     }
 }

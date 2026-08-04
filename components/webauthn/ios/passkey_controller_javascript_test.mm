@@ -6,6 +6,7 @@
 #import "base/test/scoped_feature_list.h"
 #import "components/webauthn/ios/features.h"
 #import "components/webauthn/ios/passkey_java_script_feature.h"
+#import "components/webauthn/ios/passkey_types.h"
 #import "ios/web/public/test/javascript_test.h"
 #import "ios/web/public/test/js_test_util.h"
 #import "net/test/embedded_test_server/embedded_test_server.h"
@@ -38,6 +39,9 @@ namespace {
 
 const char kNavigatorCredentialsCreateUrl[] = "/credentialsCreate";
 const char kNavigatorCredentialsGetUrl[] = "/credentialsGet";
+const char kNavigatorCredentialsConditionalGetUrl[] =
+    "/credentialsConditionalGet";
+const char kAnotherPageUrl[] = "/anotherPage";
 
 const char kNavigatorCredentialsCreatePageHtml[] =
     "<html><body><script>"
@@ -51,6 +55,14 @@ const char kNavigatorCredentialsGetPageHtml[] =
     "navigator.credentials.get({ publicKey: { "
     "challenge: new ArrayBuffer(0) } });"
     "</script></body></html>";
+const char kNavigatorCredentialsConditionalGetPageHtml[] =
+    "<html><body><script>"
+    "navigator.credentials.get({ "
+    "mediation: 'conditional', "
+    "publicKey: { challenge: new ArrayBuffer(0) } "
+    "});"
+    "</script></body></html>";
+const char kAnotherPageHtml[] = "<html><body>Another Page</body></html>";
 
 // Provides responses for initial page and destination URLs.
 std::unique_ptr<net::test_server::HttpResponse> StandardResponse(
@@ -63,6 +75,10 @@ std::unique_ptr<net::test_server::HttpResponse> StandardResponse(
     http_response->set_content(kNavigatorCredentialsCreatePageHtml);
   } else if (request.relative_url == kNavigatorCredentialsGetUrl) {
     http_response->set_content(kNavigatorCredentialsGetPageHtml);
+  } else if (request.relative_url == kNavigatorCredentialsConditionalGetUrl) {
+    http_response->set_content(kNavigatorCredentialsConditionalGetPageHtml);
+  } else if (request.relative_url == kAnotherPageUrl) {
+    http_response->set_content(kAnotherPageHtml);
   } else {
     return nullptr;
   }
@@ -88,15 +104,26 @@ class PasskeyControllerJavaScriptTest : public web::JavascriptTest {
   void SetUp() override {
     JavascriptTest::SetUp();
 
-    // Get current test name to distinguish "Modal" tests.
+    // Get current test name to distinguish which feature flags to enable.
     const std::string test_name =
         testing::UnitTest::GetInstance()->current_test_info()->name();
 
+    std::vector<base::test::FeatureRef> enabled_features;
+    std::vector<base::test::FeatureRef> disabled_features;
+
     if (test_name.find("Modal") != std::string::npos) {
-      feature_list_.InitAndEnableFeature(kIOSPasskeyModalLoginWithShim);
+      enabled_features.push_back(kIOSPasskeyModalLoginWithShim);
     } else {
-      feature_list_.InitAndDisableFeature(kIOSPasskeyModalLoginWithShim);
+      disabled_features.push_back(kIOSPasskeyModalLoginWithShim);
     }
+
+    if (test_name.find("Conditional") != std::string::npos) {
+      enabled_features.push_back(kIOSPasskeyConditionalLoginWithShim);
+    } else {
+      disabled_features.push_back(kIOSPasskeyConditionalLoginWithShim);
+    }
+
+    feature_list_.InitWithFeatures(enabled_features, disabled_features);
 
     // Get the script string directly from PasskeyJavaScriptFeature so that
     // it contains the feature based placeholder replacements.
@@ -208,6 +235,225 @@ TEST_F(PasskeyControllerJavaScriptTest,
   EXPECT_TRUE([allKeys containsObject:@"extensions"]);
 
   EXPECT_NSEQ(@"handleGetRequest", body[@"event"]);
+}
+
+TEST_F(PasskeyControllerJavaScriptTest,
+       NavigatorCredentialsCreateNoReloadOnFinishedPassthrough) {
+  GURL create_url = server().GetURL(kNavigatorCredentialsCreateUrl);
+  GURL another_url = server().GetURL(kAnotherPageUrl);
+
+  ASSERT_TRUE(LoadUrl(create_url));
+
+  EXPECT_TRUE(base::test::ios::WaitUntilConditionOrTimeout(
+      base::test::ios::kWaitForPageLoadTimeout, ^{
+        return message_handler().lastReceivedMessage != nil;
+      }));
+  NSDictionary* body = message_handler().lastReceivedMessage.body;
+  EXPECT_NSEQ(@"logCreateRequest", body[@"event"]);
+
+  message_handler().lastReceivedMessage = nil;
+
+  ASSERT_TRUE(LoadUrl(another_url));
+
+  [web_view() goBack];
+
+  // Since it is a passthrough request, it finishes immediately (rejects) in the
+  // test environment, so it shouldn't trigger reload on back navigation.
+  base::test::ios::SpinRunLoopWithMinDelay(base::Seconds(1));
+  EXPECT_TRUE(message_handler().lastReceivedMessage == nil);
+}
+
+TEST_F(PasskeyControllerJavaScriptTest,
+       NavigatorCredentialsModalCreateReloadsOnBackNavigation) {
+  GURL create_url = server().GetURL(kNavigatorCredentialsCreateUrl);
+  GURL another_url = server().GetURL(kAnotherPageUrl);
+
+  ASSERT_TRUE(LoadUrl(create_url));
+
+  EXPECT_TRUE(base::test::ios::WaitUntilConditionOrTimeout(
+      base::test::ios::kWaitForPageLoadTimeout, ^{
+        return message_handler().lastReceivedMessage != nil;
+      }));
+  NSDictionary* body = message_handler().lastReceivedMessage.body;
+  EXPECT_NSEQ(@"handleCreateRequest", body[@"event"]);
+
+  message_handler().lastReceivedMessage = nil;
+
+  ASSERT_TRUE(LoadUrl(another_url));
+
+  [web_view() goBack];
+
+  EXPECT_TRUE(base::test::ios::WaitUntilConditionOrTimeout(
+      base::test::ios::kWaitForPageLoadTimeout, ^{
+        return message_handler().lastReceivedMessage != nil;
+      }));
+
+  body = message_handler().lastReceivedMessage.body;
+  EXPECT_NSEQ(@"handleCreateRequest", body[@"event"]);
+}
+
+TEST_F(PasskeyControllerJavaScriptTest,
+       NavigatorCredentialsGetNoReloadOnFinishedPassthrough) {
+  GURL get_url = server().GetURL(kNavigatorCredentialsGetUrl);
+  GURL another_url = server().GetURL(kAnotherPageUrl);
+
+  ASSERT_TRUE(LoadUrl(get_url));
+
+  EXPECT_TRUE(base::test::ios::WaitUntilConditionOrTimeout(
+      base::test::ios::kWaitForPageLoadTimeout, ^{
+        return message_handler().lastReceivedMessage != nil;
+      }));
+  NSDictionary* body = message_handler().lastReceivedMessage.body;
+  EXPECT_NSEQ(@"logGetRequest", body[@"event"]);
+
+  message_handler().lastReceivedMessage = nil;
+
+  ASSERT_TRUE(LoadUrl(another_url));
+
+  [web_view() goBack];
+
+  // Since it is a passthrough request, it finishes immediately (rejects) in the
+  // test environment, so it shouldn't trigger reload on back navigation.
+  base::test::ios::SpinRunLoopWithMinDelay(base::Seconds(1));
+  EXPECT_TRUE(message_handler().lastReceivedMessage == nil);
+}
+
+TEST_F(PasskeyControllerJavaScriptTest,
+       NavigatorCredentialsModalGetReloadsOnBackNavigation) {
+  GURL get_url = server().GetURL(kNavigatorCredentialsGetUrl);
+  GURL another_url = server().GetURL(kAnotherPageUrl);
+
+  ASSERT_TRUE(LoadUrl(get_url));
+
+  EXPECT_TRUE(base::test::ios::WaitUntilConditionOrTimeout(
+      base::test::ios::kWaitForPageLoadTimeout, ^{
+        return message_handler().lastReceivedMessage != nil;
+      }));
+  NSDictionary* body = message_handler().lastReceivedMessage.body;
+  EXPECT_NSEQ(@"handleGetRequest", body[@"event"]);
+
+  message_handler().lastReceivedMessage = nil;
+
+  ASSERT_TRUE(LoadUrl(another_url));
+
+  [web_view() goBack];
+
+  EXPECT_TRUE(base::test::ios::WaitUntilConditionOrTimeout(
+      base::test::ios::kWaitForPageLoadTimeout, ^{
+        return message_handler().lastReceivedMessage != nil;
+      }));
+
+  body = message_handler().lastReceivedMessage.body;
+  EXPECT_NSEQ(@"handleGetRequest", body[@"event"]);
+}
+
+TEST_F(PasskeyControllerJavaScriptTest,
+       NavigatorCredentialsModalCreateNoReloadOnFinished) {
+  GURL create_url = server().GetURL(kNavigatorCredentialsCreateUrl);
+  GURL another_url = server().GetURL(kAnotherPageUrl);
+
+  ASSERT_TRUE(LoadUrl(create_url));
+
+  EXPECT_TRUE(base::test::ios::WaitUntilConditionOrTimeout(
+      base::test::ios::kWaitForPageLoadTimeout, ^{
+        return message_handler().lastReceivedMessage != nil;
+      }));
+  NSDictionary* body = message_handler().lastReceivedMessage.body;
+  EXPECT_NSEQ(@"handleCreateRequest", body[@"event"]);
+
+  NSString* requestId = body[@"requestId"];
+  ASSERT_TRUE(requestId != nil);
+
+  // Reject the request to simulate finishing it.
+  NSString* rejectJs = [NSString
+      stringWithFormat:@"__gCrWeb.getRegisteredApi('passkey')."
+                       @"getFunction('rejectPasskeyRequest')('%@', '%s', '%s')",
+                       requestId, kNotAllowedErrorName,
+                       kNotAllowedErrorMessage];
+  web::test::ExecuteJavaScriptInWebView(web_view(), rejectJs);
+
+  message_handler().lastReceivedMessage = nil;
+
+  ASSERT_TRUE(LoadUrl(another_url));
+
+  [web_view() goBack];
+
+  // Since it finished, it should NOT reload.
+  base::test::ios::SpinRunLoopWithMinDelay(base::Seconds(1));
+  EXPECT_TRUE(message_handler().lastReceivedMessage == nil);
+}
+
+TEST_F(PasskeyControllerJavaScriptTest,
+       NavigatorCredentialsConditionalGetNoReloadOnSuccess) {
+  GURL get_url = server().GetURL(kNavigatorCredentialsConditionalGetUrl);
+  GURL another_url = server().GetURL(kAnotherPageUrl);
+
+  ASSERT_TRUE(LoadUrl(get_url));
+
+  EXPECT_TRUE(base::test::ios::WaitUntilConditionOrTimeout(
+      base::test::ios::kWaitForPageLoadTimeout, ^{
+        return message_handler().lastReceivedMessage != nil;
+      }));
+  NSDictionary* body = message_handler().lastReceivedMessage.body;
+  EXPECT_NSEQ(@"handleGetRequest", body[@"event"]);
+
+  NSString* requestId = body[@"requestId"];
+  ASSERT_TRUE(requestId != nil);
+
+  // Resolve the request to simulate a successful request.
+  // Note: we pass "AQ" as the id64 so that it has rawId.byteLength > 0 and
+  // counts as a valid credential.
+  NSString* resolveJs = [NSString
+      stringWithFormat:
+          @"__gCrWeb.getRegisteredApi('passkey').getFunction('"
+          @"resolveAssertionRequest')('%@', 'AQ', '', '', '', '', {})",
+          requestId];
+  web::test::ExecuteJavaScriptInWebView(web_view(), resolveJs);
+
+  message_handler().lastReceivedMessage = nil;
+
+  ASSERT_TRUE(LoadUrl(another_url));
+
+  [web_view() goBack];
+
+  // Since it succeeded, it should NOT reload.
+  base::test::ios::SpinRunLoopWithMinDelay(base::Seconds(1));
+  EXPECT_TRUE(message_handler().lastReceivedMessage == nil);
+}
+
+TEST_F(PasskeyControllerJavaScriptTest,
+       NavigatorCredentialsConditionalGetNoReloadOnFailure) {
+  GURL get_url = server().GetURL(kNavigatorCredentialsConditionalGetUrl);
+  GURL another_url = server().GetURL(kAnotherPageUrl);
+
+  ASSERT_TRUE(LoadUrl(get_url));
+
+  EXPECT_TRUE(base::test::ios::WaitUntilConditionOrTimeout(
+      base::test::ios::kWaitForPageLoadTimeout, ^{
+        return message_handler().lastReceivedMessage != nil;
+      }));
+  NSDictionary* body = message_handler().lastReceivedMessage.body;
+  EXPECT_NSEQ(@"handleGetRequest", body[@"event"]);
+
+  NSString* requestId = body[@"requestId"];
+  ASSERT_TRUE(requestId != nil);
+
+  NSString* rejectJs = [NSString
+      stringWithFormat:@"__gCrWeb.getRegisteredApi('passkey')."
+                       @"getFunction('rejectPasskeyRequest')('%@', '%s', '%s')",
+                       requestId, kNotAllowedErrorName,
+                       kNotAllowedErrorMessage];
+  web::test::ExecuteJavaScriptInWebView(web_view(), rejectJs);
+
+  message_handler().lastReceivedMessage = nil;
+
+  ASSERT_TRUE(LoadUrl(another_url));
+
+  [web_view() goBack];
+
+  // Since it finished (rejected), it should NOT reload.
+  base::test::ios::SpinRunLoopWithMinDelay(base::Seconds(1));
+  EXPECT_TRUE(message_handler().lastReceivedMessage == nil);
 }
 
 }  // namespace webauthn

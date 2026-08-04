@@ -9,6 +9,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -39,7 +41,7 @@ import org.chromium.base.test.util.HistogramWatcher;
 import org.chromium.base.test.util.UserActionTester;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.chrome.browser.autofill.settings.options.AutofillOptionsFragment;
-import org.chromium.chrome.browser.autofill.settings.options.AutofillOptionsFragment.AutofillOptionsReferrer;
+import org.chromium.chrome.browser.autofill.settings.options.AutofillOptionsReferrer;
 import org.chromium.chrome.browser.autofill.settings.personal_context.AutofillPersonalContextFragment;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.personal_context.first_run.PersonalContextFirstRunService;
@@ -99,11 +101,13 @@ public class AtMemoryBottomSheetMediatorTest {
                                 .setIconId(R.drawable.flight)
                                 .setLabel("KLM204")
                                 .setSubLabel("Flight ⋅ 15 May ⋅ SEA - MUC")
+                                .setIsAcceptable(true)
                                 .build(),
                         new AutofillSuggestion.Builder()
                                 .setIconId(R.drawable.travel_trip)
                                 .setLabel("Hotel Booking")
                                 .setSubLabel("Hilton ⋅ 16 May")
+                                .setIsAcceptable(true)
                                 .build());
 
         mMediator.show(suggestions);
@@ -118,6 +122,26 @@ public class AtMemoryBottomSheetMediatorTest {
         itemModel1.get(ON_SUGGESTION_CLICKED).run();
 
         verify(mDelegate).onSuggestionClicked(/* position= */ 0);
+    }
+
+    @Test
+    public void testOnSuggestionClicked_unacceptable() {
+        List<AutofillSuggestion> suggestions =
+                List.of(
+                        new AutofillSuggestion.Builder()
+                                .setIconId(R.drawable.sad_tab)
+                                .setLabel("No Connection")
+                                .setSubLabel("No connection")
+                                .setSuggestionType(SuggestionType.AT_MEMORY_NO_CONNECTION)
+                                .setIsAcceptable(false)
+                                .build());
+
+        mMediator.show(suggestions);
+
+        PropertyModel itemModel1 = mModelList.get(0).model;
+        itemModel1.get(ON_SUGGESTION_CLICKED).run();
+
+        verify(mDelegate, never()).onSuggestionClicked(/* position= */ 0);
     }
 
     @Test
@@ -153,12 +177,18 @@ public class AtMemoryBottomSheetMediatorTest {
 
     @Test
     public void testFlyoutVisible() {
+        AutofillSuggestion childSuggestion =
+                new AutofillSuggestion.Builder()
+                        .setLabel("Hilton Check-in")
+                        .setSubLabel("May 16")
+                        .build();
         AutofillSuggestion suggestion =
                 new AutofillSuggestion.Builder()
                         .setIconId(R.drawable.flight)
                         .setLabel("KLM204")
                         .setSubLabel("Flight ⋅ 15 May ⋅ SEA - MUC")
                         .setSuggestionType(SuggestionType.AT_MEMORY_SEARCH_RESULT)
+                        .setChildren(List.of(childSuggestion))
                         .build();
         List<AutofillSuggestion> suggestions = List.of(suggestion);
         mMediator.show(suggestions);
@@ -173,6 +203,7 @@ public class AtMemoryBottomSheetMediatorTest {
                         .setLabel("Recent")
                         .setSubLabel("No connection")
                         .setSuggestionType(SuggestionType.AT_MEMORY_NO_CONNECTION)
+                        .setIsAcceptable(false)
                         .build();
         List<AutofillSuggestion> suggestions = List.of(suggestion);
         mMediator.show(suggestions);
@@ -325,6 +356,7 @@ public class AtMemoryBottomSheetMediatorTest {
                 .setSubLabel("test details")
                 .setIconId(R.drawable.flight)
                 .setSuggestionType(SuggestionType.AT_MEMORY_SEARCH_AFFORDANCE)
+                .setIsAcceptable(true)
                 .build();
     }
 
@@ -388,8 +420,10 @@ public class AtMemoryBottomSheetMediatorTest {
                         .contains("PersonalContext.AtMemory.Notice.SettingsLinkClick"));
         verify(mSettingsNavigation)
                 .startSettings(
-                        ApplicationProvider.getApplicationContext(),
-                        AutofillPersonalContextFragment.class);
+                        eq(ApplicationProvider.getApplicationContext()),
+                        eq(AutofillPersonalContextFragment.class),
+                        isNull(),
+                        eq(true));
     }
 
     @Test
@@ -412,7 +446,8 @@ public class AtMemoryBottomSheetMediatorTest {
                 .startSettings(
                         eq(ApplicationProvider.getApplicationContext()),
                         eq(AutofillOptionsFragment.class),
-                        bundleCaptor.capture());
+                        bundleCaptor.capture(),
+                        eq(true));
         assertEquals(
                 AutofillOptionsReferrer.PERSONAL_CONTEXT_ATMEMORY_NOTICE,
                 bundleCaptor.getValue().getInt(AutofillOptionsFragment.AUTOFILL_OPTIONS_REFERRER));
@@ -459,6 +494,6 @@ public class AtMemoryBottomSheetMediatorTest {
     @Test
     public void testOnSearchFocus() {
         mHomeModel.get(HomeProperties.SEARCH_BAR_DELEGATE).onSearchFocus(true);
-        verify(mDelegate).onSearchFocus(true);
+        verify(mDelegate).requestExpandSheet();
     }
 }

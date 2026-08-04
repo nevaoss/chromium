@@ -1391,9 +1391,9 @@ TEST_F(RenderWidgetHostViewAuraTest, SetCompositionText) {
   MockWidgetInputHandler::DispatchedIMEMessage* ime_message =
       events[0]->ToIME();
   EXPECT_TRUE(ime_message);
-  EXPECT_TRUE(ime_message->Matches(composition_text.text, ime_text_spans,
-                                   gfx::Range::InvalidRange(), 4, 4,
-                                   blink::mojom::ImeState::kNone));
+  EXPECT_TRUE(ime_message->Matches(
+      composition_text.text, ime_text_spans, gfx::Range::InvalidRange(), 4, 4,
+      blink::mojom::ImeState::kNone, blink::DOMNodeIdType()));
 
   view_->ImeCancelComposition();
   EXPECT_FALSE(view_->has_composition_text_);
@@ -6412,7 +6412,8 @@ TEST_F(InputMethodResultAuraTest, CommitTextBeforeCursor) {
         events[0]->ToIME();
     EXPECT_TRUE(ime_message);
     EXPECT_TRUE(ime_message->Matches(u"hello", {}, gfx::Range::InvalidRange(),
-                                     -5, -5, blink::mojom::ImeState::kNone));
+                                     -5, -5, blink::mojom::ImeState::kNone,
+                                     blink::DOMNodeIdType()));
   }
 }
 
@@ -6670,6 +6671,44 @@ TEST_F(InputMethodStateAuraTest, GetTextFromRange) {
   }
 }
 
+// This test verifies that the autocorrect range is taken from the active view
+// only and that stale spans from other registered views are ignored.
+TEST_F(InputMethodStateAuraTest, GetAutocorrectRangeFromActiveView) {
+  TextInputManager* manager = GetTextInputManager(tab_view());
+  ASSERT_TRUE(manager);
+
+  // Send an autocorrect span from a child view, making it the active view.
+  ui::mojom::TextInputState child_state;
+  child_state.type = ui::TEXT_INPUT_TYPE_TEXT;
+  child_state.ime_text_spans_info.push_back(ui::mojom::ImeTextSpanInfo::New(
+      ui::ImeTextSpan(ui::ImeTextSpan::Type::kAutocorrect, 0, 1000),
+      gfx::Rect()));
+  views_[1]->TextInputStateChanged(child_state);
+  ASSERT_EQ(views_[1], manager->active_view_for_testing());
+  EXPECT_EQ(gfx::Range(0, 1000), manager->GetAutocorrectRange());
+
+  // Activate the tab view with no autocorrect span. The child view's span is
+  // still stored in the manager, but it must not be returned for the now
+  // active tab view.
+  ui::mojom::TextInputState tab_state;
+  tab_state.type = ui::TEXT_INPUT_TYPE_TEXT;
+  views_[0]->TextInputStateChanged(tab_state);
+  ASSERT_EQ(views_[0], manager->active_view_for_testing());
+  EXPECT_EQ(gfx::Range(), manager->GetAutocorrectRange());
+
+  // Activate the tab view with its own autocorrect span and verify that the
+  // returned range comes from the tab view.
+  ui::mojom::TextInputState tab_state_with_span;
+  tab_state_with_span.type = ui::TEXT_INPUT_TYPE_TEXT;
+  tab_state_with_span.ime_text_spans_info.push_back(
+      ui::mojom::ImeTextSpanInfo::New(
+          ui::ImeTextSpan(ui::ImeTextSpan::Type::kAutocorrect, 3, 6),
+          gfx::Rect()));
+  views_[0]->TextInputStateChanged(tab_state_with_span);
+  ASSERT_EQ(views_[0], manager->active_view_for_testing());
+  EXPECT_EQ(gfx::Range(3, 6), manager->GetAutocorrectRange());
+}
+
 // This test will verify that after selection, the selected text is written to
 // the clipboard from the focused widget.
 TEST_F(InputMethodStateAuraTest, SelectedTextCopiedToClipboard) {
@@ -6809,15 +6848,16 @@ TEST_F(RenderWidgetHostViewAuraTest, FocusReasonMultipleEventsOnSameNode) {
 }
 
 // Pen input on Aura can be delivered as MouseEvents with pointer type kPen.
-// kMouseEventPenPointerType feature ensures that the RenderWidgetHostViewAura's
-// LastPointerType is correctly set to kPen for these scenarios as opposed to
-// unconditionally reporting kMouse.
+// kMouseEventPreservePointerType feature ensures that the
+// RenderWidgetHostViewAura's LastPointerType is correctly set to kPen for these
+// scenarios as opposed to unconditionally reporting kMouse.
 // This is particularly important for virtual keyboard on Windows which
 // references the last pointer type in its Show/Hide logic.
 // http://crbug.com/525093257
 TEST_F(RenderWidgetHostViewAuraTest, PenMouseEventsSetPointerType) {
   base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitAndEnableFeature(features::kMouseEventPenPointerType);
+  scoped_feature_list.InitAndEnableFeature(
+      features::kMouseEventPreservePointerType);
 
   for (ui::EventPointerType pointer_type :
        {ui::EventPointerType::kPen, ui::EventPointerType::kMouse}) {
@@ -6836,6 +6876,30 @@ TEST_F(RenderWidgetHostViewAuraTest, PenMouseEventsSetPointerType) {
       EXPECT_EQ(parent_view_->GetLastPointerType(), pointer_type);
     }
   }
+}
+
+// Touch and pen down triggers
+// WindowEventDispatcher::SynthesizeMouseMoveEvent. These mouse moves are
+// synthesized at the ui::Event level and have no OS analog. They exist to
+// update hover state and cursor visibility after mouse events are re-enabled.
+// Therefore they should not overwrite |last_pointer_type_|.
+TEST_F(RenderWidgetHostViewAuraTest,
+       SynthesizedMouseDoesNotClobberPenPointerType) {
+  // Simulate a pen gesture setting last_pointer_type_ to kPen.
+  ui::GestureEventDetails tap_details(ui::EventType::kGestureTapDown);
+  tap_details.set_device_type(ui::GestureDeviceType::DEVICE_TOUCHSCREEN);
+  tap_details.set_primary_pointer_type(ui::EventPointerType::kPen);
+  ui::GestureEvent pen_gesture(0, 0, 0, base::TimeTicks(), tap_details);
+  parent_view_->OnGestureEvent(&pen_gesture);
+  EXPECT_EQ(parent_view_->GetLastPointerType(), ui::EventPointerType::kPen);
+
+  // A synthesized mouse-move arrives (as aura does when re-enabling mouse
+  // events after a touch/pen interaction). It must not clobber kPen.
+  ui::MouseEvent synth_mouse(ui::EventType::kMouseMoved, gfx::Point(),
+                             gfx::Point(), ui::EventTimeForNow(),
+                             ui::EF_IS_SYNTHESIZED, 0);
+  parent_view_->OnMouseEvent(&synth_mouse);
+  EXPECT_EQ(parent_view_->GetLastPointerType(), ui::EventPointerType::kPen);
 }
 
 class RenderWidgetHostViewAuraInputMethodTest

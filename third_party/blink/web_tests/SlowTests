@@ -135,7 +135,6 @@ crbug.com/40839871 http/tests/inspector-protocol/network/cookies-protocol-test.j
 crbug.com/1280882 http/tests/inspector-protocol/network/cors-errors.js [ Slow ]
 crbug.com/1289238 http/tests/inspector-protocol/network/same-site-issue-warn-cookie-navigation-context-downgrade.js [ Slow ]
 crbug.com/1300352 http/tests/inspector-protocol/network/blocked-cookie-not-on-path.js [ Slow ]
-crbug.com/1498414 http/tests/inspector-protocol/network/auction-network-events-handler.js [ Slow ]
 crbug.com/1318449 http/tests/inspector-protocol/window-open-effective-opener.js [ Slow ]
 crbug.com/1412923 [ Win ] http/tests/inspector-protocol/network/load-network-resource-errors.js [ Slow ]
 crbug.com/1412923 [ Win ] http/tests/inspector-protocol/network/load-network-resource-different-frame.js [ Slow ]
@@ -522,6 +521,7 @@ crbug.com/874695 virtual/android/fullscreen/video-specified-size.html [ Slow ]
 crbug.com/874695 virtual/gpu/fast/canvas/canvas-blending-image-over-color.html [ Slow ]
 crbug.com/874695 [ Linux ] virtual/gpu/fast/canvas/canvas-composite-transformclip.html [ Slow ]
 crbug.com/874695 [ Mac13 ] virtual/gpu/fast/canvas/canvas-composite-transformclip.html [ Slow ]
+crbug.com/874695 [ Mac14 ] virtual/gpu/fast/canvas/canvas-composite-transformclip.html [ Slow ]
 crbug.com/874695 [ Release Win11-arm64 ] virtual/gpu/fast/canvas/canvas-composite-transformclip.html [ Slow ]
 crbug.com/874695 [ Linux ] virtual/gpu/fast/canvas/canvas-composite-video.html [ Slow ]
 crbug.com/874695 virtual/gpu/fast/canvas/canvas-createImageBitmap-svg-image.html [ Slow ]
@@ -956,9 +956,6 @@ crbug.com/1453708 [ Win ] http/tests/inspector-protocol/network/blocked-setcooki
 crbug.com/1453303 [ Win ] http/tests/inspector-protocol/network/blocked-setcookie-overwrite-secure.js [ Slow ]
 
 crbug.com/1459575 webexposed/global-interface-listing-dedicated-worker.html [ Slow ]
-
-crbug.com/1456739 [ Linux Release ] virtual/private-aggregation-developer-mode/wpt_internal/private-aggregation/protected-audience-sends-report.https.html [ Slow ]
-crbug.com/1456739 [ Linux Release ] virtual/private-aggregation-developer-mode/wpt_internal/private-aggregation/shared-storage-context-id-sends-report.https.html [ Slow ]
 
 # Slow because of multiple subtests and many cycles spent doing garbage collection.
 crbug.com/1473373 wpt_internal/dom/abort/abort-signal-memory-tests.https.any.html [ Slow ]

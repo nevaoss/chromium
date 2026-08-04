@@ -1128,6 +1128,24 @@ constexpr std::array<DataTypeInfo, syncer::GetNumDataTypes()>
             .local_sync_support_policy = LocalSyncSupportPolicy::kUnsupported,
         },
         {
+            .type = ENCRYPTED_TAB_CONTEXT_ITEM,
+            .specifics_field_number =
+                sync_pb::EntitySpecifics::kEncryptedTabContextItemFieldNumber,
+            .debug_string = "Encrypted Tab Context Item",
+            .histogram_suffix = "ENCRYPTED_TAB_CONTEXT_ITEM",
+            .stable_lowercase_string = "encrypted_tab_context_item",
+            // Not encrypted by sync infra because it relies on
+            // custom feature-specific encryption logic.
+            .encryption_policy = EncryptionPolicy::kNeverEncrypted,
+            .priority = DataTypePriority::kRegular,
+            .communication_direction = CommunicationDirection::kCommitOnly,
+            .apply_updates_batch_policy = ApplyUpdatesBatchPolicy::kStandard,
+            .unsynced_data_check_on_signout_policy =
+                UnsyncedDataCheckOnSignoutPolicy::kNone,
+            .cross_user_sharing_policy = CrossUserSharingPolicy::kNone,
+            .local_sync_support_policy = LocalSyncSupportPolicy::kUnsupported,
+        },
+        {
             .type = THEMES_IOS,
             .specifics_field_number =
                 sync_pb::EntitySpecifics::kThemeIosFieldNumber,
@@ -1182,7 +1200,7 @@ constexpr std::array<DataTypeInfo, syncer::GetNumDataTypes()>
     }};
 
 // LINT.IfChange(DataTypeHistogramSuffix)
-static_assert(GetNumDataTypes() == 64,
+static_assert(GetNumDataTypes() == 65,
               "When adding a new type, update kDataTypeInfoTable, update "
               "histograms.xml and follow the integration checklist in "
               "https://www.chromium.org/developers/design-documents/sync/"
@@ -1248,6 +1266,9 @@ void AddDefaultFieldValue(DataType type, sync_pb::EntitySpecifics* specifics) {
       break;
     case ENCRYPTED_TAB_CONTEXT_CONTAINER:
       specifics->mutable_encrypted_tab_context_container();
+      break;
+    case ENCRYPTED_TAB_CONTEXT_ITEM:
+      specifics->mutable_encrypted_tab_context_item();
       break;
     case THEMES_IOS:
       specifics->mutable_theme_ios();
@@ -1637,6 +1658,8 @@ DataTypeForHistograms DataTypeHistogramValue(DataType data_type) {
       return DataTypeForHistograms::kThemes;
     case ENCRYPTED_TAB_CONTEXT_CONTAINER:
       return DataTypeForHistograms::kEncryptedTabContextContainer;
+    case ENCRYPTED_TAB_CONTEXT_ITEM:
+      return DataTypeForHistograms::kEncryptedTabContextItem;
     case THEMES_IOS:
       return DataTypeForHistograms::kThemesIos;
     case EXTENSIONS:
@@ -1746,6 +1769,18 @@ DataTypeForHistograms DataTypeHistogramValue(DataType data_type) {
 int DataTypeToStableIdentifier(DataType data_type) {
   // Make sure the value is stable and positive.
   return static_cast<int>(DataTypeHistogramValue(data_type)) + 1;
+}
+
+DataType GetDataTypeFromStableIdentifier(int stable_identifier) {
+  if (stable_identifier <= 0) {
+    return UNSPECIFIED;
+  }
+  for (DataType data_type : DataTypeSet::All()) {
+    if (DataTypeToStableIdentifier(data_type) == stable_identifier) {
+      return data_type;
+    }
+  }
+  return UNSPECIFIED;
 }
 
 std::string DataTypeSetToDebugString(DataTypeSet data_types) {

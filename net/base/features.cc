@@ -423,6 +423,8 @@ BASE_FEATURE(kDeviceBoundSessions, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
 BASE_FEATURE(kDeviceBoundSessionsBypassDeferralsForRefreshRequests,
              base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kDeviceBoundSessionsRetryTransientRefreshErrors,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE_PARAM(bool,
                    kDeviceBoundSessionsSigningQuota,
                    &kDeviceBoundSessions,
@@ -596,6 +598,10 @@ BASE_FEATURE_PARAM(int,
                    &kDiskCacheBackendExperiment,
                    "SqlDiskCacheIncrementalVacuumPageCount",
                    100);
+BASE_FEATURE_PARAM(bool,
+                   kSqlDiskCacheReduceUma,
+                   &kDiskCacheBackendExperiment,
+                   false);
 #endif  // ENABLE_DISK_CACHE_SQL_BACKEND
 
 BASE_FEATURE(kIgnoreHSTSForLocalhost, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -932,6 +938,19 @@ BASE_FEATURE_PARAM(int,
 BASE_FEATURE(kTlsGreaseSigalgs, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kEnableBackendCleanupTrackerOnHttpCache,
+#if BUILDFLAG(CRONET_BUILD)
+             // Disable for Cronet because when a CronetContext is shut down,
+             // its dedicated network thread (base::Thread) is destroyed. On
+             // shutdown, PostTaskAndReply leaks the reply task (and bound
+             // BackendCleanupTracker) if the network thread stops before reply
+             // completion, causing subsequent engines on the same cache path to
+             // hang waiting for cleanup. See crbug.com/534571671.
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#else   // BUILDFLAG(CRONET_BUILD)
+             base::FEATURE_ENABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(CRONET_BUILD)
+
+BASE_FEATURE(kPartitionWebSocketEndpointLocksByNetworkAnonymizationKey,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 }  // namespace net::features

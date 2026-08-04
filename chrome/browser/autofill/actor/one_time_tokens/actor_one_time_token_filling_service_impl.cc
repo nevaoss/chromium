@@ -17,12 +17,12 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/types/expected.h"
-#include "chrome/browser/autofill/actor/actor_filling_observer.h"
 #include "chrome/browser/autofill/one_time_token_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/autofill/autofill_client_provider.h"
 #include "chrome/browser/ui/autofill/autofill_client_provider_factory.h"
 #include "components/autofill/content/browser/content_autofill_client.h"
+#include "components/autofill/core/browser/actor/actor_filling_observer.h"
 #include "components/autofill/core/browser/autofill_browser_util.h"
 #include "components/autofill/core/browser/autofill_field.h"
 #include "components/autofill/core/browser/autofill_trigger_source.h"
@@ -30,10 +30,11 @@
 #include "components/autofill/core/browser/foundations/browser_autofill_manager.h"
 #include "components/autofill/core/browser/integrators/actor/actor_form_filling_types.h"
 #include "components/autofill/core/browser/integrators/one_time_tokens/otp_suggestion.h"
+#include "base/command_line.h"
+#include "components/actor/core/actor_switches.h"
 #include "components/autofill/core/common/form_data.h"
 #include "components/one_time_tokens/core/browser/one_time_token.h"
 #include "components/one_time_tokens/core/browser/one_time_token_service.h"
-#include "components/one_time_tokens/core/common/one_time_token_features.h"
 #include "components/security_state/content/security_state_tab_helper.h"
 #include "components/security_state/core/security_state.h"
 #include "components/tabs/public/tab_interface.h"
@@ -154,9 +155,10 @@ void ActorOneTimeTokenFillingServiceImpl::RetrieveOtp(
     return;
   }
 
-  if (std::string mock_otp =
-          one_time_tokens::features::kMockGmailOtpValue.Get();
-      !mock_otp.empty()) {
+  std::string mock_otp =
+      base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
+          ::actor::switches::kAttemptOtpFillingMockGmailOtpValue);
+  if (!mock_otp.empty()) {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(std::move(callback), std::move(mock_otp)));
     return;
@@ -193,24 +195,6 @@ void ActorOneTimeTokenFillingServiceImpl::RetrieveOtp(
     }
   }
 
-  if (most_recent_token) {
-    subscription_ = {};
-    // If there is a pending request, its callback is superseded. We run the
-    // previous callback with a default error so the old caller can gracefully
-    // time out rather than hanging indefinitely.
-    if (retrieve_otp_callback_) {
-      base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-          FROM_HERE,
-          base::BindOnce(
-              std::move(retrieve_otp_callback_),
-              base::unexpected(OneTimeTokenRetrievalError::kGmailOtpUnknown)));
-    }
-    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE,
-        base::BindOnce(std::move(callback), most_recent_token->value()));
-    return;
-  }
-
   // If there is a pending request, its callback is superseded. We run the
   // previous callback with a default error so the old caller can gracefully
   // time out rather than hanging indefinitely.
@@ -221,6 +205,15 @@ void ActorOneTimeTokenFillingServiceImpl::RetrieveOtp(
             std::move(retrieve_otp_callback_),
             base::unexpected(OneTimeTokenRetrievalError::kGmailOtpUnknown)));
   }
+
+  if (most_recent_token) {
+    subscription_ = {};
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE,
+        base::BindOnce(std::move(callback), most_recent_token->value()));
+    return;
+  }
+
   retrieve_otp_callback_ = std::move(callback);
 
   // Subscribe to OneTimeTokenService with 1-minute timeout.

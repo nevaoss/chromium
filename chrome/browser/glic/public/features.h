@@ -119,8 +119,14 @@ BASE_DECLARE_FEATURE(kGlicAnchorEntryPointForOnboardedUsers);
 BASE_DECLARE_FEATURE(kGlicProcessCounterAbuseVerdict);
 BASE_DECLARE_FEATURE(kGlicNoWebUiLoader);
 BASE_DECLARE_FEATURE(kGlicGeminiEnterpriseSettingsEnabled);
+BASE_DECLARE_FEATURE(kGlicGeminiEnterpriseConsentEnabled);
 
 BASE_DECLARE_FEATURE(kGlicHotkeyLocalScope);
+
+BASE_DECLARE_FEATURE(kGlicPasteEligibilityCheck);
+BASE_DECLARE_FEATURE(kGlicWebPasteEligibilityCheck);
+
+BASE_DECLARE_FEATURE(kGlicTabGroups);
 }  // namespace features
 
 #endif  // CHROME_BROWSER_GLIC_PUBLIC_FEATURES_H_

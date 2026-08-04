@@ -67,6 +67,7 @@ chromium-metrics-reviews@google.com.
 </variants>
 
 <variants name="LogAiDataRequestFeature">
+  <variant name="AtMemory" summary="At Memory"/>
   <variant name="BlingPrototyping" summary="Bling Prototyping"/>
   <variant name="Compose" summary="Compose"/>
   <variant name="ContextualTasksContext" summary="Contextual Tasks Context"/>
@@ -88,6 +89,8 @@ chromium-metrics-reviews@google.com.
       summary="Password Change Submission"/>
   <variant name="PermissionsAi" summary="Permissions AI"/>
   <variant name="ProductSpecifications" summary="Product Specifications"/>
+  <variant name="ReadAloudGenerateText" summary="Read Aloud Generate Text"/>
+  <variant name="ReadAloudSynthesize" summary="Read Aloud Synthesize"/>
   <variant name="ScamDetection" summary="Scam Detection"/>
   <variant name="TabOrganization" summary="Tab Organization"/>
   <variant name="WalletablePassExtraction" summary="Extract walletable pass"/>
@@ -119,6 +122,8 @@ chromium-metrics-reviews@google.com.
   <variant name="PermissionsAi" summary="Permissions AI"/>
   <variant name="PromptApi" summary="Prompt API"/>
   <variant name="ProofreaderApi" summary="Proofreader API"/>
+  <variant name="ReadAloudGenerateText" summary="Read Aloud Generate Text"/>
+  <variant name="ReadAloudSynthesize" summary="Read Aloud Synthesize"/>
   <variant name="ScamDetection" summary="Scam Detection"/>
   <variant name="Skills" summary="Skills"/>
   <variant name="SpeechRecognitionSmallExpertModel"

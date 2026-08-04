@@ -167,14 +167,8 @@ component("webnn_service") {
     sources += [
       "tflite/buffer_content_tflite.cc",
       "tflite/buffer_content_tflite.h",
-      "tflite/context_impl_tflite.cc",
-      "tflite/context_impl_tflite.h",
       "tflite/graph_builder_tflite.cc",
       "tflite/graph_builder_tflite.h",
-      "tflite/graph_impl_tflite.cc",
-      "tflite/graph_impl_tflite.h",
-      "tflite/op_resolver.cc",
-      "tflite/op_resolver.h",
       "tflite/tensor_impl_tflite.cc",
       "tflite/tensor_impl_tflite.h",
     ]
@@ -243,6 +237,7 @@ component("webnn_service") {
       "ort/scoped_ort_types.h",
       "ort/tensor_impl_ort.cc",
       "ort/tensor_impl_ort.h",
+      "ort/trivial_model.h",
       "webnn_compiler_service_impl.cc",
       "webnn_compiler_service_impl.h",
     ]

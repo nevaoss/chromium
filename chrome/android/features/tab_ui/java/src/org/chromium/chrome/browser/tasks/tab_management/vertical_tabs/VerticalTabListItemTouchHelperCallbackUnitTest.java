@@ -9,6 +9,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
@@ -137,7 +138,11 @@ public class VerticalTabListItemTouchHelperCallbackUnitTest {
         mPropertyModel.set(TabProperties.IS_PINNED, false);
 
         int flags = mCallback.getMovementFlags(mRecyclerView, mViewHolder);
-        int dragFlags = ItemTouchHelper.UP | ItemTouchHelper.DOWN;
+        int dragFlags =
+                ItemTouchHelper.UP
+                        | ItemTouchHelper.DOWN
+                        | ItemTouchHelper.LEFT
+                        | ItemTouchHelper.RIGHT;
         assertEquals(ItemTouchHelper2.Callback.makeMovementFlags(dragFlags, 0), flags);
     }
 
@@ -789,6 +794,10 @@ public class VerticalTabListItemTouchHelperCallbackUnitTest {
 
     @Test
     public void testOnSelectedChanged_DragGroupHeader_HighlightsChildren() {
+        testOnSelectedChanged_DragGroupHeader_HighlightsChildrenImpl();
+    }
+
+    private void testOnSelectedChanged_DragGroupHeader_HighlightsChildrenImpl() {
         when(mViewHolder.getBindingAdapterPosition()).thenReturn(0);
         when(mViewHolder.getItemViewType()).thenReturn(TabProperties.UiType.TAB_GROUP);
         mPropertyModel.set(TabProperties.TAB_ID, 1);
@@ -850,7 +859,7 @@ public class VerticalTabListItemTouchHelperCallbackUnitTest {
     @Test
     public void testOnSelectedChanged_Idle_ClearsHighlight() {
         // Setup state to DRAG first
-        testOnSelectedChanged_DragGroupHeader_HighlightsChildren();
+        testOnSelectedChanged_DragGroupHeader_HighlightsChildrenImpl();
 
         // Transition to IDLE
         mCallback.onSelectedChanged(null, ItemTouchHelper.ACTION_STATE_IDLE);
@@ -907,12 +916,11 @@ public class VerticalTabListItemTouchHelperCallbackUnitTest {
                 true);
 
         // Child 1 inside group should move
-        verify(childView1).setTranslationX(10f);
         verify(childView1).setTranslationY(20f);
         verify(childView1).setTranslationZ(5f);
 
         // Child 2 outside group should NOT move
-        verify(childView2, never()).setTranslationX(anyInt());
+        verify(childView2, never()).setTranslationY(anyFloat());
     }
 
     @Test
@@ -957,7 +965,6 @@ public class VerticalTabListItemTouchHelperCallbackUnitTest {
         mCallback.clearView(mRecyclerView, mViewHolder);
 
         // Restores to 0
-        verify(childView1).setTranslationX(0f);
         verify(childView1).setTranslationY(0f);
         verify(childView1).setTranslationZ(0f);
     }
@@ -1291,5 +1298,54 @@ public class VerticalTabListItemTouchHelperCallbackUnitTest {
         assertFalse(mCallback.hasDragEscapedBounds(mRecyclerView, mViewHolder, 0, 0, 0, -50)); // up
         assertFalse(
                 mCallback.hasDragEscapedBounds(mRecyclerView, mViewHolder, 0, 1000, 0, 50)); // down
+    }
+
+    @Test
+    public void testOnChildDraw_TriggersOnDragOutListener() {
+        VerticalTabListItemTouchHelperCallback.OnDragOutListener mockListener =
+                mock(VerticalTabListItemTouchHelperCallback.OnDragOutListener.class);
+        mCallback.setOnDragOutListener(mockListener);
+
+        Canvas canvas = mock(Canvas.class);
+        when(mRecyclerView.getWidth()).thenReturn(200);
+
+        mCallback.setDragStartX(100f);
+
+        // Dragged outside bounds (left)
+        // cursorX = 100 + (-110) = -10 < 0
+        mCallback.onChildDraw(
+                canvas,
+                mRecyclerView,
+                mViewHolder,
+                -110f,
+                0f,
+                ItemTouchHelper.ACTION_STATE_DRAG,
+                true);
+        verify(mockListener).onDragOut(mViewHolder, -110f, 0f);
+
+        // Dragged outside bounds (right)
+        // cursorX = 100 + 110 = 210 > 200
+        mCallback.onChildDraw(
+                canvas,
+                mRecyclerView,
+                mViewHolder,
+                110f,
+                0f,
+                ItemTouchHelper.ACTION_STATE_DRAG,
+                true);
+        verify(mockListener).onDragOut(mViewHolder, 110f, 0f);
+
+        // Dragged within bounds (no additional trigger)
+        // cursorX = 100 + 50 = 150 (between 0 and 200)
+        mCallback.onChildDraw(
+                canvas,
+                mRecyclerView,
+                mViewHolder,
+                50f,
+                0f,
+                ItemTouchHelper.ACTION_STATE_DRAG,
+                true);
+        verify(mockListener, Mockito.times(2))
+                .onDragOut(Mockito.any(), Mockito.anyFloat(), Mockito.anyFloat());
     }
 }

@@ -6,6 +6,7 @@
 #define COMPONENTS_WEBAUTHN_IOS_PASSKEY_TAB_HELPER_H_
 
 #import <optional>
+#import <string_view>
 #import <variant>
 
 #import "base/memory/weak_ptr.h"
@@ -58,7 +59,10 @@ class PasskeyTabHelper : public web::WebStateObserver,
     kCreateResolvedNonGpm,
     kIncognitoInterstitialShown,
     kCancelRequested,
-    kMaxValue = kCancelRequested,
+    kSignalUnknownCredentialRequested,
+    kSignalCurrentUserDetailsRequested,
+    kSignalAllAcceptedCredentialsRequested,
+    kMaxValue = kSignalAllAcceptedCredentialsRequested,
   };
   // LINT.ThenChange(//tools/metrics/histograms/metadata/webauthn/enums.xml)
 
@@ -79,6 +83,20 @@ class PasskeyTabHelper : public web::WebStateObserver,
 
   // Handles passkey registration requests. Yields if the request ID is missing.
   void HandleCreateRequestedEvent(RegistrationRequestParams params);
+
+  // Handles PublicKeyCredential.signalUnknownCredential request.
+  void HandleSignalUnknownCredentialEvent(const url::Origin& origin,
+                                          SignalUnknownCredentialParams params);
+
+  // Handles PublicKeyCredential.signalCurrentUserDetails request.
+  void HandleSignalCurrentUserDetailsEvent(
+      const url::Origin& origin,
+      SignalCurrentUserDetailsParams params);
+
+  // Handles PublicKeyCredential.signalAllAcceptedCredentials request.
+  void HandleSignalAllAcceptedCredentialsEvent(
+      const url::Origin& origin,
+      SignalAllAcceptedCredentialsParams params);
 
   // Returns whether the tab helper's passkey model contains a passkey matching
   // the provided rp id and credential id.
@@ -240,7 +258,8 @@ class PasskeyTabHelper : public web::WebStateObserver,
 
   // Utility function to reject a passkey request.
   void RejectPasskeyRequest(web::WebFrame* web_frame,
-                            const std::string& request_id);
+                            const std::string& request_id,
+                            WebAuthnError error);
 
   // Utility function to defer the passkey request back to the renderer.
   void DeferToRenderer(web::WebFrame* web_frame,

@@ -11,6 +11,9 @@ export const SKILLS_HANDSHAKE_ACK = 'SKILLS_HANDSHAKE_ACK';
 /** Message type used by the guest to request showing a toast. */
 export const SKILLS_SHOW_TOAST = 'show-toast';
 
+/** Message type used by the guest to request invoking a skill. */
+export const SKILLS_INVOKE_SKILL = 'invoke-skill';
+
 /**
  * Interval in milliseconds between successive handshake pings sent by the
  * host.
@@ -34,3 +37,7 @@ export const SKILLS_API_ALLOWED_ORIGINS = [
 
 /** The host URL that the guest webview loads. */
 export const SKILLS_HOST_URL = `${PRIMARY_SKILLS_ORIGIN}/chromeskills/browse`;
+
+/** The dialog URL that the guest webview loads. */
+export const SKILLS_DIALOG_HOST_URL =
+    `${PRIMARY_SKILLS_ORIGIN}/chromeskills/create-skill-form`;

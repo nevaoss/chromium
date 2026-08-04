@@ -208,6 +208,10 @@ public class IntentHandler {
     public static final String EXTRA_OPEN_ADDITIONAL_URLS_IN_TAB_GROUP =
             "org.chromium.chrome.browser.open_additional_urls_in_tab_group";
 
+    /** Extra specifying the title of the tab group to be created. */
+    public static final String EXTRA_TAB_GROUP_TITLE =
+            "org.chromium.chrome.browser.tab_group_title";
+
     /** Extra specifying to show regular overview mode. */
     public static final String EXTRA_OPEN_REGULAR_OVERVIEW_MODE =
             "org.chromium.chrome.browser.open_regular_overview_mode";
@@ -1021,8 +1025,8 @@ public class IntentHandler {
 
                 for (int i = urls.size() - 1; i >= 0; i--) {
                     if (shouldIgnoreIntentUrl(intent, context, urls.get(i), isCustomTab)) {
-                        urls.remove(i);
-                        tabIds.remove(i);
+                        urls.remove(/* index */ i);
+                        tabIds.remove(/* index */ i);
                     }
                 }
                 setMultiTabMetadata(intent, multiTabMetadata);

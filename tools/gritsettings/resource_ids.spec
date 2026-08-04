@@ -597,6 +597,10 @@
     "META": {"sizes": {"includes": [80],}},
     "includes": [4110],
   },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/iwa_dev/resources.grd": {
+    "META": {"sizes": {"includes": [10]}},
+    "includes": [4150],
+  },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/key_value_pair_viewer_shared/resources.grd": {
    "META": {"sizes": {"includes": [10]}},
     "includes": [4160],
@@ -1542,10 +1546,6 @@
   },
 
   # These files are generated during the build.
-  "<(SHARED_INTERMEDIATE_DIR)/content/browser/resources/private_aggregation/resources.grd": {
-    "META": {"sizes": {"includes": [20]}},
-    "includes": [8060],
-  },
   "<(SHARED_INTERMEDIATE_DIR)/content/browser/resources/gpu/resources.grd": {
     "META": {"sizes": {"includes": [20]}},
     "includes": [8080],
@@ -1585,10 +1585,6 @@
   "<(SHARED_INTERMEDIATE_DIR)/content/browser/resources/webxr_internals/resources.grd": {
     "META": {"sizes": {"includes": [20,],}},
     "includes": [8260],
-  },
-  "<(SHARED_INTERMEDIATE_DIR)/content/browser/resources/attribution_reporting/resources.grd": {
-    "META": {"sizes": {"includes": [20]}},
-    "includes": [8280],
   },
   "<(SHARED_INTERMEDIATE_DIR)/content/browser/tracing/tracing_resources.grd": {
     "META": {"sizes": {"includes": [20],}},

@@ -53,6 +53,11 @@ IN_PROC_BROWSER_TEST_F(ReadAnythingMochaTest, Speech) {
   RunSidePanelTest("side_panel/read_anything/speech_test.js", "mocha.run()");
 }
 
+IN_PROC_BROWSER_TEST_F(ReadAnythingMochaTest, PlayOnOpen) {
+  RunSidePanelTest("side_panel/read_anything/play_on_open_test.js",
+                   "mocha.run()");
+}
+
 IN_PROC_BROWSER_TEST_F(ReadAnythingMochaTest, SpeechPresentationRules) {
   RunSidePanelTest("side_panel/read_anything/speech_presentation_rules_test.js",
                    "mocha.run()");
@@ -194,6 +199,10 @@ IN_PROC_BROWSER_TEST_F(ReadAnythingMochaTest, FontSize) {
 
 IN_PROC_BROWSER_TEST_F(ReadAnythingMochaTest, FontMenu) {
   RunSidePanelTest("side_panel/read_anything/font_menu_test.js", "mocha.run()");
+}
+
+IN_PROC_BROWSER_TEST_F(ReadAnythingMochaTest, TextMenu) {
+  RunSidePanelTest("side_panel/read_anything/text_menu_test.js", "mocha.run()");
 }
 
 IN_PROC_BROWSER_TEST_F(ReadAnythingMochaTest, SimpleActionMenu) {

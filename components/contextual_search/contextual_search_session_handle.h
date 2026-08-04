@@ -97,8 +97,13 @@ class ContextualSearchSessionHandle {
   std::optional<bool> smart_tab_sharing_active() const {
     return smart_tab_sharing_active_;
   }
-  void set_smart_tab_sharing_active(std::optional<bool> active) {
-    smart_tab_sharing_active_ = active;
+  void set_smart_tab_sharing_active(std::optional<bool> active);
+
+  bool smart_tab_sharing_toggled_off_in_thread() const {
+    return smart_tab_sharing_toggled_off_in_thread_;
+  }
+  void set_smart_tab_sharing_toggled_off_in_thread(bool toggled_off) {
+    smart_tab_sharing_toggled_off_in_thread_ = toggled_off;
   }
 
   std::optional<lens::LensOverlayInvocationSource> invocation_source() const {
@@ -211,6 +216,12 @@ class ContextualSearchSessionHandle {
                        const GURL& current_url,
                        const std::string& current_title) const;
 
+  // Returns true if the two URLs are equivalent using the session's validator.
+  bool AreUrlsEquivalent(const GURL& url1,
+                         const std::string& title1,
+                         const GURL& url2,
+                         const std::string& title2) const;
+
   // Removes a tab from the deselected list (e.g. when it is re-selected).
   void RemoveDeselectedTab(SessionID tab_session_id);
 
@@ -253,6 +264,12 @@ class ContextualSearchSessionHandle {
   // Returns true if the token corresponds to a tab context, for testing.
   bool IsTabTokenForTesting(const base::UnguessableToken& token) const {
     return IsTabToken(token);
+  }
+
+  // Returns the active token for a tab, for testing.
+  base::UnguessableToken GetActiveTokenForTabForTesting(
+      SessionID tab_session_id) const {
+    return GetActiveTokenForTab(tab_session_id);
   }
 
   // Returns the list of submitted context tokens for this particular instance
@@ -317,6 +334,9 @@ class ContextualSearchSessionHandle {
   // or an empty token if not found.
   base::UnguessableToken GetActiveTokenForTab(SessionID tab_session_id) const;
 
+  // Tracks a submitted tab if it is not superceded, deduplicating history.
+  void MaybeAddTabToSubmittedTabs(const base::UnguessableToken& token);
+
   // Returns true if the token corresponds to a tab context.
   bool IsTabToken(const base::UnguessableToken& token) const;
 
@@ -370,6 +390,11 @@ class ContextualSearchSessionHandle {
 
   // Whether smart tab sharing is active for this session.
   std::optional<bool> smart_tab_sharing_active_;
+
+  // Whether smart tab sharing was explicitly toggled off since the last
+  // query submission and we need to clear the context on next query submission.
+  // This is reset after the next query submission.
+  bool smart_tab_sharing_toggled_off_in_thread_ = false;
 
   // This needs to be the last member to ensure all outstanding WeakPtrs are
   // invalidated before the rest of the members.

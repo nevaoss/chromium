@@ -283,6 +283,7 @@ FillDataType GetEventTypeFromSingleFieldSuggestionType(SuggestionType type) {
     case SuggestionType::kAtMemorySearchResult:
     case SuggestionType::kAutocompleteAtMemoryButton:
     case SuggestionType::kAutofillAiOtherOrders:
+    case SuggestionType::kAutofillAiOtherShipments:
     case SuggestionType::kAutofillAiPrivateInferenceNotice:
     case SuggestionType::kBackupPasswordEntry:
     case SuggestionType::kBnplEntry:
@@ -721,6 +722,7 @@ bool IsManagementFooterOption(const Suggestion& suggestion) {
     case SuggestionType::kAutocompleteAtMemoryButton:
     case SuggestionType::kAutocompleteEntry:
     case SuggestionType::kAutofillAiOtherOrders:
+    case SuggestionType::kAutofillAiOtherShipments:
     case SuggestionType::kAutofillAiPrivateInferenceNotice:
     case SuggestionType::kBackupPasswordEntry:
     case SuggestionType::kBnplEntry:
@@ -1206,7 +1208,7 @@ void BrowserAutofillManager::OnAskForValuesToFillImpl(
     AutofillMetrics::LogParsedFormUntilInteractionTiming(
         base::TimeTicks::Now() - form_structure->form_parsed_timestamp());
     if (AutofillAiManager* ai_manager = client().GetAutofillAiManager()) {
-      ai_manager->OnFormInteracted(*form_structure,
+      ai_manager->OnFormInteracted(*form_structure, *autofill_field,
                                    driver().GetPageUkmSourceId());
     }
     if (autofill_metrics::FormEventLoggerBase* logger =
@@ -1570,6 +1572,12 @@ void BrowserAutofillManager::GenerateSuggestionsAndMaybeShowUIPhase2(
     return;
   }
 
+  if (TryToShowTouchToFillSuggestions(form, field, autofill_field, suggestions,
+                                      trigger_source)) {
+    std::move(callback).Run(/*show_suggestions=*/false, std::move(suggestions));
+    return;
+  }
+
   AutofillAiManager* ai_manager = client().GetAutofillAiManager();
   if (form_structure && autofill_field && ai_manager &&
       !context.do_not_generate_autofill_suggestions &&
@@ -1584,12 +1592,6 @@ void BrowserAutofillManager::GenerateSuggestionsAndMaybeShowUIPhase2(
              client().ShowAutofillFieldIphForFeature(
                  field, AutofillClient::IphFeature::kAutofillAi)) {
     std::move(callback).Run(/*show_suggestions=*/false, /*suggestions=*/{});
-    return;
-  }
-
-  if (TryToShowTouchToFillSuggestions(form, field, autofill_field, suggestions,
-                                      trigger_source)) {
-    std::move(callback).Run(/*show_suggestions=*/false, std::move(suggestions));
     return;
   }
 
@@ -1803,7 +1805,13 @@ void BrowserAutofillManager::OnGenerateSuggestionsComplete(
           // AI-based amount extraction is enabled, this should not be
           // triggered.
           if (ai_amount_extraction_disabled) {
-            GetAmountExtractionManager().TriggerCheckoutAmountExtraction();
+            if (payments::BnplManager* bnpl_manager =
+                    GetPaymentsBnplManager()) {
+              GetAmountExtractionManager().TriggerCheckoutAmountExtraction(
+                  base::BindOnce(
+                      &payments::BnplManager::OnAmountExtractionReturned,
+                      bnpl_manager->GetWeakPtr()));
+            }
           }
       }
     }
@@ -2415,13 +2423,9 @@ void BrowserAutofillManager::OnSingleFieldSuggestionSelected(
   client().GetSingleFieldFillRouter().OnSingleFieldSuggestionSelected(
       suggestion);
 
-  FormStructure* form_structure = FindCachedFormById(form_id, /*pass_key=*/{});
-  if (!form_structure) {
-    return;
-  }
-  AutofillField* autofill_trigger_field =
-      form_structure->GetFieldById(field_id);
-  if (!autofill_trigger_field) {
+  auto [form_structure, autofill_trigger_field] =
+      FindMutableFormAndField(form_id, field_id);
+  if (!form_structure || !autofill_trigger_field) {
     return;
   }
   if (IsSingleFieldFillerFillingProduct(
@@ -2442,14 +2446,14 @@ bool BrowserAutofillManager::ShouldClearPreviewedForm() {
 void BrowserAutofillManager::OnSelectFieldOptionsDidChangeImpl(
     const FormData& form,
     const FieldGlobalId& field_id) {
-  const FormStructure* form_structure = FindCachedFormById(form.global_id());
+  auto [form_structure, autofill_field] =
+      FindFormAndField(form.global_id(), field_id);
   if (!form_structure) {
     return;
   }
   form_filler_->MaybeScheduleAutomaticRefill(
       *form_structure, RefillTriggerReason::kSelectOptionsChanged,
-      AutofillTriggerSource::kSelectOptionsChanged,
-      form_structure->GetFieldById(field_id));
+      AutofillTriggerSource::kSelectOptionsChanged, autofill_field);
 }
 
 void BrowserAutofillManager::OnJavaScriptChangedAutofilledValueImpl(
@@ -2664,11 +2668,11 @@ void BrowserAutofillManager::AddCachedAutofillAiPredictions(
       continue;
     }
     const ModelFieldPrediction& prediction = it->second;
-    if (prediction.field_type != NO_SERVER_DATA) {
+    for (FieldType type : prediction.field_types) {
       using ServerPrediction = AutofillQueryResponse::FormSuggestion::
           FieldSuggestion::FieldPrediction;
       ServerPrediction server_prediction;
-      server_prediction.set_type(prediction.field_type);
+      server_prediction.set_type(type);
       server_prediction.set_source(ServerPrediction::SOURCE_AUTOFILL_AI);
       field->MaybeAddServerPrediction(std::move(server_prediction));
     }

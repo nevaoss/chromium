@@ -8,6 +8,7 @@
 #include <optional>
 
 #include "build/build_config.h"
+#include "components/glic/glic_pref_names.h"
 
 class PrefRegistrySimple;
 class PrefService;
@@ -30,6 +31,11 @@ inline constexpr char kGlicLauncherEnabled[] = "glic.launcher_enabled";
 // TODO(b/517917926): Migrate handling of the launcher to
 // local_hotkey_manager.cc.
 inline constexpr char kGlicLauncherHotkey[] = "glic.launcher_hotkey";
+
+// Boolean pref that determines if the Glic hotkey scope is global (true) or
+// local (false).
+inline constexpr char kGlicHotkeyGlobalScopeEnabled[] =
+    "glic.hotkey_global_scope_enabled";
 
 // String pref that keeps track of the non-localized version of the registered
 // selection hotkey for Glic.
@@ -56,18 +62,6 @@ inline constexpr char kGlicWebContinuityOriginatingHostUrlPreset[] =
 
 // ************* PROFILE PREFS ***************
 // Prefs below are tied to a user profile.
-
-
-// Values for the glic.completed_fre pref.
-enum class FreStatus {
-  kMinValue = 0,
-
-  kNotStarted = kMinValue,
-  kCompleted = 1,
-  kIncomplete = 2,
-
-  kMaxValue = kIncomplete
-};
 
 // Values for the "glic.actuation_on_web" pref.
 enum class GlicActuationOnWebPolicyState {

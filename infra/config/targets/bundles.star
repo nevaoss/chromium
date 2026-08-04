@@ -4743,7 +4743,7 @@ targets.bundle(
         targets.bundle(
             targets = "ios_common_tests",
             variants = [
-                "SIM_IPAD_AIR_6TH_GEN_27_0",
+                "SIM_IPAD_A16_27_0",
                 "SIM_IPHONE_16_27_0",
             ],
         ),
@@ -4753,7 +4753,7 @@ targets.bundle(
                 "xcodebuild_sim_runner",
             ],
             variants = [
-                "SIM_IPAD_AIR_6TH_GEN_27_0",
+                "SIM_IPAD_A16_27_0",
                 "SIM_IPHONE_16_27_0",
             ],
         ),
@@ -4764,7 +4764,7 @@ targets.bundle(
                 "record_failed_tests",
             ],
             variants = [
-                "SIM_IPAD_AIR_6TH_GEN_27_0",
+                "SIM_IPAD_A16_27_0",
                 "SIM_IPHONE_16_27_0",
             ],
         ),
@@ -4775,14 +4775,14 @@ targets.bundle(
                 "record_failed_tests",
             ],
             variants = [
-                "SIM_IPAD_AIR_6TH_GEN_27_0",
+                "SIM_IPAD_A16_27_0",
                 "SIM_IPHONE_16_27_0",
             ],
         ),
         targets.bundle(
             targets = "ios_screen_size_dependent_tests",
             variants = [
-                "SIM_IPAD_AIR_6TH_GEN_27_0",
+                "SIM_IPAD_A16_27_0",
                 "SIM_IPHONE_16_27_0",
                 "SIM_IPHONE_SE_3RD_GEN_27_0",
             ],
@@ -4799,7 +4799,7 @@ targets.bundle(
                 "use-ios-simulator-cache",
             ],
             variants = [
-                "SIM_IPAD_AIR_6TH_GEN_27_0",
+                "SIM_IPAD_A16_27_0",
                 "SIM_IPHONE_16_27_0",
             ],
         ),
@@ -4810,7 +4810,7 @@ targets.bundle(
                 "use-ios-simulator-cache",
             ],
             variants = [
-                "SIM_IPAD_AIR_6TH_GEN_27_0",
+                "SIM_IPAD_A16_27_0",
                 "SIM_IPHONE_16_27_0",
             ],
         ),
@@ -4821,7 +4821,7 @@ targets.bundle(
                 "use-ios-simulator-cache",
             ],
             variants = [
-                "SIM_IPAD_AIR_6TH_GEN_27_0",
+                "SIM_IPAD_A16_27_0",
                 "SIM_IPHONE_16_27_0",
             ],
         ),
@@ -4831,7 +4831,7 @@ targets.bundle(
                 "use-ios-simulator-cache",
             ],
             variants = [
-                "SIM_IPAD_AIR_6TH_GEN_27_0",
+                "SIM_IPAD_A16_27_0",
                 "SIM_IPHONE_16_27_0",
                 "SIM_IPHONE_SE_3RD_GEN_27_0",
             ],
@@ -6062,7 +6062,6 @@ targets.bundle(
         "base_unittests",
         "rust_gtest_interop_unittests",
         "test_cpp_including_rust_unittests",
-        "test_serde_json_lenient",
     ],
 )
 

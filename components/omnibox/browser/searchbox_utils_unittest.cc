@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "base/memory/scoped_refptr.h"
+#include "base/test/metrics/histogram_tester.h"
 #include "base/test/task_environment.h"
 #include "base/time/time.h"
 #include "components/omnibox/browser/actions/omnibox_action.h"
@@ -29,11 +30,11 @@ namespace searchbox {
 
 class SearchboxUtilsTest : public testing::Test {
  protected:
-  SearchboxUtilsTest() : controller_(&task_environment_) {}
+  SearchboxUtilsTest() : autocomplete_controller_(&task_environment_) {}
 
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
-  FakeAutocompleteController controller_;
+  FakeAutocompleteController autocomplete_controller_;
   TestOmniboxClient client_;
 };
 
@@ -53,12 +54,13 @@ TEST_F(SearchboxUtilsTest, OpenMatchNormal) {
                           AutocompleteMatchType::URL_WHAT_YOU_TYPED);
   match.destination_url = GURL("https://example.com");
 
-  controller_.internal_result_.AppendMatches({match});
+  autocomplete_controller_.internal_result_.AppendMatches({match});
 
   // Set timestamps to satisfy DCHECK:
   // first_modification_timestamp <= last_time_default_match_changed_
   base::TimeTicks now = base::TimeTicks::Now();
-  controller_.last_time_default_match_changed_ = now - base::Seconds(1);
+  autocomplete_controller_.last_time_default_match_changed_ =
+      now - base::Seconds(1);
   base::TimeTicks first_modification_timestamp = now - base::Seconds(2);
   base::TimeTicks searchbox_focused_timestamp = now - base::Seconds(3);
   base::TimeTicks match_selection_timestamp = now;
@@ -68,10 +70,11 @@ TEST_F(SearchboxUtilsTest, OpenMatchNormal) {
                                             _, _, _, _, _, _, _, _))
       .Times(1);
 
-  OpenMatch(&controller_, &client_, OmniboxPopupSelection(0), match,
+  OpenMatch(&autocomplete_controller_, &client_,
+            autocomplete_controller_.input(), OmniboxPopupSelection(0), match,
             WindowOpenDisposition::CURRENT_TAB, searchbox_focused_timestamp,
             first_modification_timestamp, match_selection_timestamp,
-            metrics::OmniboxEventProto::INVALID);
+            metrics::OmniboxEventProto::INVALID, u"");
 }
 
 TEST_F(SearchboxUtilsTest, OpenMatchWithAction) {
@@ -82,12 +85,13 @@ TEST_F(SearchboxUtilsTest, OpenMatchWithAction) {
       base::MakeRefCounted<MockOmniboxAction>(GURL("chrome://settings"));
   match.actions.push_back(action);
 
-  controller_.internal_result_.AppendMatches({match});
+  autocomplete_controller_.internal_result_.AppendMatches({match});
 
   // Set timestamps to satisfy DCHECK:
   // first_modification_timestamp <= last_time_default_match_changed_
   base::TimeTicks now = base::TimeTicks::Now();
-  controller_.last_time_default_match_changed_ = now - base::Seconds(1);
+  autocomplete_controller_.last_time_default_match_changed_ =
+      now - base::Seconds(1);
   base::TimeTicks first_modification_timestamp = now - base::Seconds(2);
   base::TimeTicks searchbox_focused_timestamp = now - base::Seconds(3);
   base::TimeTicks match_selection_timestamp = now;
@@ -99,10 +103,55 @@ TEST_F(SearchboxUtilsTest, OpenMatchWithAction) {
   OmniboxPopupSelection selection(
       0, OmniboxPopupSelection::FOCUSED_BUTTON_ACTION, 0);
 
-  OpenMatch(&controller_, &client_, selection, match,
+  OpenMatch(&autocomplete_controller_, &client_,
+            autocomplete_controller_.input(), selection, match,
             WindowOpenDisposition::CURRENT_TAB, searchbox_focused_timestamp,
             first_modification_timestamp, match_selection_timestamp,
-            metrics::OmniboxEventProto::INVALID);
+            metrics::OmniboxEventProto::INVALID, u"");
+}
+
+TEST_F(SearchboxUtilsTest, ComputeOpenDispositionFromModifiers) {
+  struct TestCase {
+    bool shift;
+    bool control;
+    bool alt;
+    bool command;
+    WindowOpenDisposition expected_disposition;
+    int expected_metric_value;
+  } test_cases[] = {
+      // {shift, control, alt, command, expected_disposition,
+      // expected_metric_value}
+      {false, false, false, false, WindowOpenDisposition::CURRENT_TAB, 0},
+      {false, true, false, false, WindowOpenDisposition::CURRENT_TAB, 1},
+      {false, false, true, false, WindowOpenDisposition::NEW_FOREGROUND_TAB, 2},
+      {false, true, true, false, WindowOpenDisposition::NEW_FOREGROUND_TAB, 3},
+      {true, false, false, true, WindowOpenDisposition::NEW_FOREGROUND_TAB, 4},
+      {true, true, false, true, WindowOpenDisposition::NEW_FOREGROUND_TAB, 5},
+      {true, false, true, false, WindowOpenDisposition::NEW_BACKGROUND_TAB, 6},
+      {true, true, true, false, WindowOpenDisposition::NEW_BACKGROUND_TAB, 7},
+      {false, false, false, true, WindowOpenDisposition::NEW_BACKGROUND_TAB, 8},
+      {false, true, false, true, WindowOpenDisposition::NEW_BACKGROUND_TAB, 9},
+      {true, false, false, false, WindowOpenDisposition::NEW_WINDOW, 10},
+      {true, true, false, false, WindowOpenDisposition::NEW_WINDOW, 11},
+  };
+
+  for (const auto& test_case : test_cases) {
+    base::HistogramTester histogram_tester;
+    WindowOpenDisposition disposition =
+        ComputeOpenDispositionFromModifiersAndLogToUma(
+            test_case.shift, test_case.control, test_case.alt,
+            test_case.command);
+
+    EXPECT_EQ(disposition, test_case.expected_disposition);
+    histogram_tester.ExpectUniqueSample(
+        "Omnibox.OpenMatchWithKeyboardModifiers",
+        test_case.expected_metric_value, 1);
+  }
+}
+
+TEST_F(SearchboxUtilsTest, CanPasteAndGo) {
+  EXPECT_TRUE(CanPasteAndGo(&client_, u"https://example.com"));
+  EXPECT_FALSE(CanPasteAndGo(&client_, u""));
 }
 
 }  // namespace searchbox

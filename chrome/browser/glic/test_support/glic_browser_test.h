@@ -397,7 +397,7 @@ class GlicBrowserTestMixin : public T {
       return base::ok();
     }
     base::WeakPtr<GlicInstanceImpl> weak_instance = instance->GetWeakPtr();
-    instance->Close(EmbedderKey(tab), CloseOptions());
+    instance->Close(SidePanelEmbedderKey(tab), CloseOptions());
     RETURN_IF_ERROR(
         WaitForSidePanelState(tab, GlicSidePanelCoordinator::State::kClosed));
 
@@ -499,6 +499,7 @@ class GlicBrowserTestMixin : public T {
         tab_model->CreateTab(nullptr, std::move(web_contents), -1,
                              TabModel::TabLaunchType::FROM_CHROME_UI, false);
     tab_model->ActivateTab(new_tab->GetHandle());
+    CHECK(content::WaitForLoadStop(new_tab->GetContents()));
     return new_tab;
 #else
     return CreateAndActivateTab(url);

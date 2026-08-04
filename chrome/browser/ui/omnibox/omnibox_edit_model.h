@@ -97,9 +97,6 @@ class OmniboxEditModel {
     // opened, or closed.
     virtual void OnContentsChanged() = 0;
 
-    // The keyword state has changed.
-    virtual void OnKeywordStateChanged(bool is_keyword_selected) = 0;
-
     // Time when a character is inserted into the model.
     virtual void OnCharTyped(base::TimeTicks timestamp) = 0;
 
@@ -277,6 +274,9 @@ class OmniboxEditModel {
   // will occur. It also affects metrics.
   // Virtual for testing.
   virtual void OpenAiMode(AimActivation activation);
+
+  // Opens the composebox for the AskG flow by setting the popup state.
+  virtual void OpenComposeboxForAskG();
 
   // Returns true if the popup is open and is in in AI-Mode.
   bool PopupInAiMode() const;

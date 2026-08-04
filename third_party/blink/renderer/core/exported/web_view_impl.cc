@@ -4426,11 +4426,4 @@ void WebViewImpl::UpdatePageBrowsingContextGroup(
   page->UpdateBrowsingContextGroup(browsing_context_group_token);
 }
 
-void WebViewImpl::SetPageAttributionSupport(
-    network::mojom::AttributionSupport support) {
-  Page* page = GetPage();
-  CHECK(page);
-
-  page->SetAttributionSupport(support);
-}
 }  // namespace blink

@@ -57,6 +57,7 @@ bool IsValidOmniboxAutofillSuggestion(SuggestionType type) {
     case SuggestionType::kAutocompleteAtMemoryButton:
     case SuggestionType::kAutocompleteEntry:
     case SuggestionType::kAutofillAiOtherOrders:
+    case SuggestionType::kAutofillAiOtherShipments:
     case SuggestionType::kAutofillAiPrivateInferenceNotice:
     case SuggestionType::kBackupPasswordEntry:
     case SuggestionType::kBnplEntry:
@@ -201,7 +202,7 @@ void OmniboxAutofillDelegate::OnFieldTypesDetermined(
       }
       found_credit_card_number_field = true;
     }
-    if (!FieldIsInMainFrame(manager, *field)) {
+    if (!IsFieldInMainFrame(manager, *field)) {
       iframe_origins.insert(field->origin());
     }
   }
@@ -237,18 +238,28 @@ void OmniboxAutofillDelegate::OnFieldTypesDetermined(
   }
   candidate_form_found_ = true;
 
-  // TODO: crbug.com/490214534 - Initiate GetIntersectionObserverInfo(~).
+  // TODO: crbug.com/490214534 - Initiate ObserveFieldVisibility(~).
 }
 
 void OmniboxAutofillDelegate::OnAutofillManagerStateChanged(
     AutofillManager& manager,
     AutofillManager::LifecycleState previous,
     AutofillManager::LifecycleState current) {
+  if (!candidate_form_found_) {
+    // Candidate form has not yet been found, so the chip is not being shown.
+    return;
+  }
   switch (previous) {
     case AutofillManager::LifecycleState::kActive:
-      HideOmniboxAutofillChip();
+      // Hide the chip only when the specific frame containing the trigger field
+      // transitions away from active.
+      if (IsTriggerFieldGlobalIdInFrame(manager.driver())) {
+        HideOmniboxAutofillChip();
+      }
       break;
-    default:
+    case AutofillManager::LifecycleState::kInactive:
+    case AutofillManager::LifecycleState::kPendingReset:
+    case AutofillManager::LifecycleState::kPendingDeletion:
       break;
   }
 }
@@ -299,15 +310,9 @@ void OmniboxAutofillDelegate::OnSuggestionsShown(
     return;
   }
 
-  const FormStructure* form =
-      manager->FindCachedFormById(trigger_form_global_id_);
-  if (!form) {
-    return;
-  }
-
-  const AutofillField* trigger_field =
-      form->GetFieldById(trigger_field_global_id_);
-  if (!trigger_field) {
+  auto [form, trigger_field] = manager->FindFormAndField(
+      trigger_form_global_id_, trigger_field_global_id_);
+  if (!form || !trigger_field) {
     return;
   }
 
@@ -384,26 +389,16 @@ void OmniboxAutofillDelegate::OnTabSelected(TabbedPaneTabType tab_type) {
   NOTREACHED();
 }
 
-void OmniboxAutofillDelegate::OnGetIntersectionObserverInfo(bool is_visible) {
-  if (!is_visible) {
-    return;
-  }
-
+void OmniboxAutofillDelegate::OnFieldBecameVisible() {
   auto* manager = static_cast<BrowserAutofillManager*>(
       client_->GetAutofillManagerForPrimaryMainFrame());
   if (!manager) {
     return;
   }
 
-  const FormStructure* form =
-      manager->FindCachedFormById(trigger_form_global_id_);
-  if (!form) {
-    return;
-  }
-
-  const AutofillField* trigger_field =
-      form->GetFieldById(trigger_field_global_id_);
-  if (!trigger_field) {
+  auto [form, trigger_field] = manager->FindFormAndField(
+      trigger_form_global_id_, trigger_field_global_id_);
+  if (!form || !trigger_field) {
     return;
   }
 
@@ -467,11 +462,21 @@ bool OmniboxAutofillDelegate::IsOutermostMainFrameActiveAutofillManager(
          !manager.driver().IsEmbedded() && manager.driver().IsActive();
 }
 
-bool OmniboxAutofillDelegate::FieldIsInMainFrame(
+bool OmniboxAutofillDelegate::IsFieldInMainFrame(
     AutofillManager& manager,
     const AutofillField& field) const {
   return field.host_frame() == manager.driver().GetFrameToken() &&
          !manager.driver().GetParent();
+}
+
+bool OmniboxAutofillDelegate::IsTriggerFieldGlobalIdInFrame(
+    AutofillDriver& driver) const {
+  if (!candidate_form_found_) {
+    // Candidate form has not yet been found, so the trigger field has not been
+    // found.
+    return false;
+  }
+  return trigger_field_global_id_.frame_token == driver.GetFrameToken();
 }
 
 void OmniboxAutofillDelegate::Reset() {

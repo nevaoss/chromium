@@ -456,7 +456,7 @@ export class SettingsGlicSubpageElement extends SettingsGlicSubpageElementBase {
     const enabled = (event.target as SettingsToggleButtonElement).checked;
     this.browserProxy_.setGlicOsLauncherEnabled(enabled);
     this.metricsBrowserProxy_.recordAction(
-        'Glic.OsEntrypoint.Settings.Toggle' +
+        'GlicOsEntrypoint.Settings.Toggle' +
         (enabled ? '.Enabled' : '.Disabled'));
     this.hideHelpBubble(OS_WIDGET_TOGGLE_ELEMENT_ID);
   }
@@ -777,7 +777,11 @@ export class SettingsGlicSubpageElement extends SettingsGlicSubpageElementBase {
   }
 
   private computeWebActuationSubLabel_(): string {
-    return this.i18nAdvanced('glicWebActuationToggleSublabel').toString();
+    return this
+        .i18nAdvanced('glicWebActuationToggleSublabel', {
+          attrs: ['aria-label', 'aria-description', 'target'],
+        })
+        .toString();
   }
 
   private computeWebActuationLearnMoreUrl_(): string {
@@ -805,6 +809,12 @@ export class SettingsGlicSubpageElement extends SettingsGlicSubpageElementBase {
     // URL for "some websites" link.
     OpenWindowProxyImpl.getInstance().openUrl(
         'https://support.google.com/gemini/answer/16283624');
+  }
+
+  protected getCookieIcon_(): string {
+    return loadTimeData.getBoolean('webuiRoundedIconsEnabled') ?
+        'privacy:cookie' :
+        'privacy:cookie-old';
   }
 }
 

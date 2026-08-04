@@ -49,11 +49,15 @@ class FakeTaskRunner : public base::SequencedTaskRunner {
   FakeTaskRunner() = default;
 
   void set_runs_tasks_in_current_sequence(bool runs) { runs_ = runs; }
+  void set_accepts_tasks(bool accepts) { accepts_tasks_ = accepts; }
 
   // SequencedTaskRunner implementation:
   bool PostDelayedTask(const base::Location& from_here,
                        base::OnceClosure task,
                        base::TimeDelta delay) override {
+    if (!accepts_tasks_) {
+      return false;
+    }
     pending_tasks_.push_back(std::move(task));
     return true;
   }
@@ -78,12 +82,40 @@ class FakeTaskRunner : public base::SequencedTaskRunner {
     }
   }
 
- private:
-  friend class base::RefCountedThreadSafe<FakeTaskRunner>;
+  void CleanUpLeakedObjectsOnMainThread() {
+    bool old_runs = runs_;
+    // Fake running on the main thread so sequence checkers pass during
+    // destruction.
+    runs_ = true;
+    std::vector<base::OnceClosure> tasks;
+    tasks.swap(leaked_deleters_);
+    for (auto& task : tasks) {
+      std::move(task).Run();
+    }
+    runs_ = old_runs;
+  }
+
+ protected:
+  bool DeleteOrReleaseSoonInternal(const base::Location& from_here,
+                                   void (*deleter)(const void*),
+                                   const void* object) override {
+    if (!accepts_tasks_) {
+      leaked_deleters_.push_back(base::BindOnce(deleter, object));
+      return false;
+    }
+    return base::SequencedTaskRunner::DeleteOrReleaseSoonInternal(
+        from_here, deleter, object);
+  }
+
   ~FakeTaskRunner() override = default;
 
+ private:
+  friend class base::RefCountedThreadSafe<FakeTaskRunner>;
+
   bool runs_ = false;
+  bool accepts_tasks_ = true;
   std::vector<base::OnceClosure> pending_tasks_;
+  std::vector<base::OnceClosure> leaked_deleters_;
 };
 
 // A fake SharedURLLoaderFactory that records calls to CreateLoaderAndStart and
@@ -166,6 +198,11 @@ class LazySharedURLLoaderFactoryTest : public testing::Test {
         fake_target_factory_(base::MakeRefCounted<FakeURLLoaderFactory>()) {}
 
   void SetUp() override { clone_callback_called_ = false; }
+
+  void TearDown() override {
+    main_thread_task_runner_->set_runs_tasks_in_current_sequence(true);
+    main_thread_task_runner_->RunPendingTasks();
+  }
 
   // The callback that will run on the "main" thread to perform the clone.
   std::unique_ptr<network::PendingSharedURLLoaderFactory> PerformClone() {
@@ -497,6 +534,63 @@ TEST_F(LazySharedURLLoaderFactoryTest, BindFailureFailsBufferedRequests) {
   client.RunUntilComplete();
   EXPECT_TRUE(client.has_received_completion());
   EXPECT_EQ(client.completion_status().error_code, net::ERR_FAILED);
+}
+
+TEST_F(LazySharedURLLoaderFactoryTest, ShutdownThreadSafety) {
+  // Simulate being on a background thread.
+  main_thread_task_runner_->set_runs_tasks_in_current_sequence(false);
+
+  bool callback_destroyed = false;
+  bool callback_destroyed_on_correct_sequence = false;
+
+  auto tracker = base::MakeRefCounted<DestructionTracker>(
+      main_thread_task_runner_, &callback_destroyed,
+      &callback_destroyed_on_correct_sequence);
+
+  auto pending_lazy = std::make_unique<LazyPendingSharedURLLoaderFactory>(
+      main_thread_task_runner_,
+      base::BindRepeating(
+          [](scoped_refptr<DestructionTracker> tracker)
+              -> std::unique_ptr<network::PendingSharedURLLoaderFactory> {
+            return nullptr;
+          },
+          tracker));
+
+  scoped_refptr<network::SharedURLLoaderFactory> lazy_factory =
+      network::SharedURLLoaderFactory::Create(std::move(pending_lazy));
+
+  // The destruction of pending_lazy posts a cleanup task for its
+  // clone_callback_. We must run it now before simulating shutdown so it
+  // doesn't artificially keep the callback attached.
+  main_thread_task_runner_->RunPendingTasks();
+
+  // Now, simulate the main thread task runner shutting down (refusing tasks).
+  main_thread_task_runner_->set_accepts_tasks(false);
+
+  // Trigger a clone operation, which will attempt to PostTask to the main
+  // thread. Because the task runner refuses the task, the task should be
+  // dropped. We need to ensure that the callback is NOT destroyed on the
+  // current (background) thread. It should be safely leaked.
+  lazy_factory->CreateLoaderAndStart(
+      mojo::NullReceiver(), 101, 0, network::ResourceRequest(),
+      mojo::NullRemote(), net::MutableNetworkTrafficAnnotationTag());
+
+  // Also destroy the factory, which triggers ReleaseCallbackOnMainThread.
+  // It also attempts to post to the main thread and should be safely leaked.
+  lazy_factory = nullptr;
+  tracker = nullptr;
+
+  // Verify that the callback was NOT destroyed at all (it was leaked).
+  // We use DeleteSoon and it intentionally leaks objects on shutdown to avoid
+  // incorrect sequence usage.
+  EXPECT_FALSE(callback_destroyed);
+
+  // Clean up leaked objects to prevent LSan failures in the test, simulating
+  // that they are eventually destroyed safely or process exit cleans them up.
+  main_thread_task_runner_->CleanUpLeakedObjectsOnMainThread();
+
+  EXPECT_TRUE(callback_destroyed);
+  EXPECT_TRUE(callback_destroyed_on_correct_sequence);
 }
 
 }  // namespace content

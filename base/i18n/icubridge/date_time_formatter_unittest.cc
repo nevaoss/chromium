@@ -11,7 +11,6 @@
 #include "base/i18n/icubridge/icu_bridge.h"
 #include "base/i18n/language_tag.h"
 #include "base/i18n/tag_converters.h"
-#include "base/i18n/tags.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/icu_test_util.h"
 #include "base/time/time.h"
@@ -1629,7 +1628,7 @@ TEST_F(DateTimeFormatterTest, MD_AllChromiumPlatformLocales) {
       {"sw", {u"07/01", u"7 Jan", u"7 Januari"}},
       {"ta", {u"7/1", u"ஜன. 7", u"7 ஜனவரி"}},
       {"te", {u"07-01", u"7 జన", u"7 జనవరి"}},
-#if BUILDFLAG(IS_IOS)
+#if !BUILDFLAG(USE_BLINK)
       {"th", {u"1 ├วัน: 7┤", u"7 ├เดือน: ม.ค.┤", u"7 ├เดือน: มกราคม┤"}},
 #else
       {"th", {u"7/1", u"7 ม.ค.", u"7 มกราคม"}},

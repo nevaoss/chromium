@@ -137,6 +137,9 @@ class PageActionView : public IconLabelBubbleView,
   gfx::SlideAnimation& GetSlideAnimationForTesting();
   AnchoredMessageBubbleView* GetAnchoredMessageForTesting();
 
+  // IconLabelBubbleView:
+  SkColor GetBackgroundColor() const override;
+
   static PageActionPassKey PassKeyForTesting() { return PageActionPassKey(); }
 
  protected:
@@ -147,6 +150,7 @@ class PageActionView : public IconLabelBubbleView,
   // size needed for the location bar page action icon. Therefore, we should to
   // update the image size if needed.
   void UpdateIconImage();
+  void UpdateTooltipText();
 
   void AnimateImage(const page_actions::PageActionAnimationParams& params,
                     SkColor icon_color);

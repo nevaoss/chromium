@@ -80,6 +80,7 @@ import org.chromium.chrome.browser.multiwindow.MultiInstanceOrchestratorFactory;
 import org.chromium.chrome.browser.omnibox.LocationBarDataProvider.Observer;
 import org.chromium.chrome.browser.omnibox.LocationBarSelectionController.SelectableView;
 import org.chromium.chrome.browser.omnibox.UrlBar.UrlBarDelegate;
+import org.chromium.chrome.browser.omnibox.fusebox.ComposeboxQueryControllerBridge;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxAttachmentModelList;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxAttachmentModelList.FuseboxAttachmentChangeListener;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator;
@@ -811,6 +812,7 @@ class LocationBarMediator
             // Programmatic reselection of user text on UrlBar does not propagate the change to
             // TextChange listeners.
             mCurrentInput
+                    .setRequestType(AutocompleteRequestType.SEARCH)
                     .setAutocompleteState(AutocompleteState.STANDBY)
                     .setUserText(mCurrentInput.getInitialUserText());
             mUrlCoordinator.setUrlBarData(
@@ -827,12 +829,8 @@ class LocationBarMediator
     /* package */ void onUrlTextRichChanged(UrlBarTextChangeInfo info) {
         if (mCurrentInput == null) return;
 
-        if (shouldTriggerSiteSearch(info)) {
-            if (mAutocompleteCoordinator != null
-                    && mAutocompleteCoordinator.triggerSiteSearch(
-                            SiteSearchActivationSource.SPACE)) {
-                return;
-            }
+        if (shouldTriggerSiteSearch(info) && mAutocompleteCoordinator != null) {
+            mAutocompleteCoordinator.triggerSiteSearch(SiteSearchActivationSource.SPACE);
         }
     }
 
@@ -1939,23 +1937,24 @@ class LocationBarMediator
         boolean isSuggestionsPopover =
                 mFuseboxCoordinator.getFuseboxLayoutModeSupplier().get()
                         == FuseboxLayoutMode.SUGGESTIONS_POPOVER;
-        boolean isInAiMode =
-                mCurrentInput != null
-                        && mCurrentInput.getRequestType() == AutocompleteRequestType.AI_MODE;
+        boolean isInAimRequest =
+                mCurrentInput != null && ToolModeUtils.isAimRequest(mCurrentInput.getRequestType());
 
-        if (isSuggestionsPopover && !isInAiMode) {
-            boolean currentPrefValue =
-                    UserPrefs.get(profile).getBoolean(Pref.SHOW_AI_MODE_OMNIBOX_BUTTON);
-            mUrlCoordinator.setShowAiMode(currentPrefValue);
-            mUrlCoordinator.setShowAiModeCallback(
-                    (newValue) -> {
-                        UserPrefs.get(profile)
-                                .setBoolean(Pref.SHOW_AI_MODE_OMNIBOX_BUTTON, newValue);
-                        mUrlCoordinator.setShowAiMode(newValue);
-                    });
-        } else {
+        if (!isSuggestionsPopover
+                || isInAimRequest
+                || !ComposeboxQueryControllerBridge.isFuseboxEligibleForProfile(profile)) {
             mUrlCoordinator.setShowAiModeCallback(null);
+            return;
         }
+
+        boolean currentPrefValue =
+                UserPrefs.get(profile).getBoolean(Pref.SHOW_AI_MODE_OMNIBOX_BUTTON);
+        mUrlCoordinator.setShowAiMode(currentPrefValue);
+        mUrlCoordinator.setShowAiModeCallback(
+                (newValue) -> {
+                    UserPrefs.get(profile).setBoolean(Pref.SHOW_AI_MODE_OMNIBOX_BUTTON, newValue);
+                    mUrlCoordinator.setShowAiMode(newValue);
+                });
     }
 
     /**
@@ -2382,7 +2381,11 @@ class LocationBarMediator
                             && ToolModeUtils.isConventionalRequest(mCurrentInput.getRequestType());
             // With any AI request, desktop also wants to avoid the early return from focus+user
             // input that's handled in the else if below.
-            if (isConventionalRequest) return false;
+            if (isConventionalRequest
+                    || mFuseboxCoordinator.getFuseboxStateSupplier().get()
+                            != FuseboxState.EXPANDED) {
+                return false;
+            }
         } else if (isUrlBarFocusedWithUserInput()) {
             return false;
         }
@@ -2569,6 +2572,13 @@ class LocationBarMediator
             return false;
         }
 
+        if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN
+                && mCurrentInput != null
+                && mCurrentInput.getAutocompleteState() == AutocompleteState.STANDBY) {
+            mCurrentInput.setAutocompleteState(AutocompleteState.ENABLED);
+            return true;
+        }
+
         boolean isBackwardsTab = KeyNavigationUtil.isTabBackward(event);
         boolean isForwardTab = KeyNavigationUtil.isTabForward(event);
         boolean isActivation = KeyNavigationUtil.isButtonActivate(event);
@@ -2667,7 +2677,9 @@ class LocationBarMediator
             if (mCurrentInput.hasPreviewText()) {
                 mCurrentInput.commitPreviewText();
             }
-            mCurrentInput.setAutocompleteState(AutocompleteState.STANDBY);
+            mCurrentInput
+                    .setRequestType(AutocompleteRequestType.SEARCH)
+                    .setAutocompleteState(AutocompleteState.STANDBY);
             // TODO(https://crbug.com/534359434): Remove bespoke update calls.
             updateButtonVisibility();
         } else if (!TextUtils.equals(

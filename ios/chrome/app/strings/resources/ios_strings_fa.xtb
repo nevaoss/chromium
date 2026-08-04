@@ -74,7 +74,7 @@
 <translation id="1238794841176717085">هم‌رسانی کردن این صفحه</translation>
 <translation id="1253032109800629289">پنهان کردن «اعلان‌های دریافت پیگیری قیمت»</translation>
 <translation id="1254424942107648268">یافتن قبلی</translation>
-<translation id="1258491128795710625">ویژگی‌های جدید</translation>
+<translation id="1258491128795710625">تازه‌ها</translation>
 <translation id="126093867734601535">ارتفاع برگ را مجدداً تنظیم می‌کند.</translation>
 <translation id="1262724000444746916">پنهان کردن «افزودن به نشانک‌ها»</translation>
 <translation id="1263231323834454256">فهرست خواندن</translation>
@@ -245,6 +245,7 @@
 <translation id="1752547299766512813">ذخیره گذرواژه‌ها</translation>
 <translation id="1764070164487214210">مسیرها</translation>
 <translation id="1764511703783285459">«مدیر گذرواژه» دیگر هیچ گذرواژه یا گذرکلیدی را هم‌رسانی نکرد</translation>
+<translation id="1765555082983153259">‏‫«Chrome» می‌خواهد به میکروفون شما دسترسی داشته باشد</translation>
 <translation id="1767766085187034454">‏ترجمه Google</translation>
 <translation id="1771016937398045251">منو ابزارها</translation>
 <translation id="1772468122139624049">مجدد بار کردن زبانه‌ها ممکن نیست</translation>
@@ -285,6 +286,7 @@
 <translation id="188177382966899059">Deep Search</translation>
 <translation id="188237709236611317">مرتب کردن هوشمند نوار منو</translation>
 <translation id="1883255238294161206">کوچک کردن فهرست</translation>
+<translation id="1883898928879467646">زبانه برداشته شد</translation>
 <translation id="1888854257756214946">انتخاب کردن گذرواژه…</translation>
 <translation id="1890237935065108104">این تنظیم دردسترس نیست.</translation>
 <translation id="1894023287452300670">قیمت را در اینجا پیگیری کنید</translation>
@@ -1620,6 +1622,7 @@ Handoff باید در بخش عمومی تنظیمات نیز فعال شود و
 <translation id="6406506848690869874">همگام‌سازی</translation>
 <translation id="6410390304316730527">«مرور ایمن» از شما دربرابر مهاجمانی محافظت می‌کند که ممکن است فریبتان دهند تا کارهای خطرناکی انجام دهید؛ ازجمله نصب نرم‌افزار مخرب یا افشای اطلاعات شخصی مثل گذرواژه‌ها، شماره‌های تماس، یا کارت‌های اعتباری. اگر «مرور ایمن» را خاموش می‌کنید، هنگام مرور کردن در سایت‌های ناآشنا یا نامعتبر احتیاط کنید.</translation>
 <translation id="6410883413783534063">برای بازدید هم‌زمان از صفحه‌های مختلف، چند زبانه باز کنید</translation>
+<translation id="6412195388778525440">برداشتن زبانه</translation>
 <translation id="6418346271604475326">‏آماده‌سازی PDF</translation>
 <translation id="6420292512900923139">مشکل در وارد کردن داده‌ها</translation>
 <translation id="6421038304268477484">نوشتار ترجمه‌شده</translation>
@@ -2463,6 +2466,7 @@ Handoff باید در بخش عمومی تنظیمات نیز فعال شود و
 <translation id="9149866541089851383">ویرایش...</translation>
 <translation id="9152637745605628097">از بین زمینه‌ها و رنگ‌ها انتخاب کنید یا تصویری بارگذاری کنید.</translation>
 <translation id="9159628751968616911">ارسال صفحه وب</translation>
+<translation id="9162412286847966593">‏داده‌ها و صداهای ضبط‌شده سازمان شما برای بهبود مدل‌های هوشواره‌ای زایا استفاده نخواهد شد. <ph name="BEGIN_LINK" />حریم خصوصی شما و Gemini<ph name="END_LINK" /></translation>
 <translation id="9162432979321511934">روشن کردن تکمیل خودکار گذرواژه‌ها</translation>
 <translation id="9165320910061267720">‏برای دریافت اعلان‌های هشدار کاهش قیمت، باید اعلان‌ها را در تنظیمات iOS روشن کنید.</translation>
 <translation id="9179151630575358778">این مورد پنهان می‌شود</translation>

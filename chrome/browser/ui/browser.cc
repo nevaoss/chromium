@@ -100,6 +100,7 @@
 #include "chrome/browser/ui/bookmarks/bookmark_utils.h"
 #include "chrome/browser/ui/browser_command_controller.h"
 #include "chrome/browser/ui/browser_commands.h"
+#include "chrome/browser/ui/browser_init_state.h"
 #include "chrome/browser/ui/browser_live_tab_context.h"
 #include "chrome/browser/ui/browser_manager_service.h"
 #include "chrome/browser/ui/browser_manager_service_factory.h"
@@ -489,8 +490,7 @@ std::unique_ptr<Browser> Browser::DeprecatedCreateOwnedForTesting(
 }
 
 Browser::Browser(const CreateParams& params)
-    : create_params_(params),
-      type_(params.type),
+    : type_(params.type),
       profile_(params.profile),
       window_(nullptr),
       tab_strip_model_delegate_(
@@ -504,22 +504,16 @@ Browser::Browser(const CreateParams& params)
               : TabGroupModelFactory::GetInstance())),
       app_name_(params.app_name),
       session_id_(SessionID::NewUnique()),
-      omit_from_session_restore_(params.omit_from_session_restore),
-      should_trigger_session_restore_(params.should_trigger_session_restore),
-      override_bounds_(params.initial_bounds),
-      initial_show_state_(params.initial_show_state),
-      initial_workspace_(params.initial_workspace),
-      initial_visible_on_all_workspaces_state_(
-          params.initial_visible_on_all_workspaces_state),
-      creation_source_(params.creation_source),
       window_has_shown_(false),
-      initial_vertical_tab_strip_collapsed_(
-          params.vertical_tab_strip_collapsed),
-      initial_vertical_tab_strip_uncollapsed_width_(
-          params.vertical_tab_strip_uncollapsed_width),
       keep_alive_(
           std::make_unique<ScopedKeepAlive>(KeepAliveOrigin::BROWSER,
                                             KeepAliveRestartOption::DISABLED)) {
+  // Constructed first so that downstream features and window setup (e.g.
+  // BrowserWindowFeatures and the window sizer) can query the creation and
+  // initial parameters of this window.
+  init_state_ =
+      std::make_unique<BrowserInitState>(params, unowned_user_data_host_);
+
   if (!profile_->IsOffTheRecord()) {
     profile_keep_alive_ = std::make_unique<ScopedProfileKeepAlive>(
         params.profile->GetOriginalProfile(),
@@ -655,6 +649,9 @@ base::WeakPtr<Browser> Browser::AsWeakPtr() {
 base::WeakPtr<const Browser> Browser::AsWeakPtr() const {
   return weak_factory_.GetWeakPtr();
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// Browser, Creation and initial parameters (forwarded to BrowserInitState):
 
 ///////////////////////////////////////////////////////////////////////////////
 // Browser, State Storage and Retrieval for UI:
@@ -852,7 +849,7 @@ void Browser::SetIsTabModalPopup(bool is_tab_modal_popup,
 }
 
 bool Browser::CreatedBySessionRestore() const {
-  return creation_source() == CreationSource::kSessionRestore;
+  return BrowserInitState::From(this)->is_session_restore();
 }
 
 ui::BaseWindow* Browser::GetWindow() {

@@ -329,6 +329,8 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
       settings_api::PrefType::kBoolean;
   (*s_allowlist)[::prefs::kConfirmToQuitEnabled] =
       settings_api::PrefType::kBoolean;
+  (*s_allowlist)[::prefs::kGlassFrameEnabled] =
+      settings_api::PrefType::kBoolean;
 #endif
   (*s_allowlist)[prefs::kHoverCardImagesEnabled] =
       settings_api::PrefType::kBoolean;
@@ -1385,6 +1387,8 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
   (*s_allowlist)[optimization_guide::prefs::kGeminiSettings] =
       settings_api::PrefType::kNumber;
   (*s_allowlist)[glic::prefs::kGlicKeepSidepanelOpenOnNewTabsEnabled] =
+      settings_api::PrefType::kBoolean;
+  (*s_allowlist)[glic::prefs::kGlicHotkeyGlobalScopeEnabled] =
       settings_api::PrefType::kBoolean;
 
   return *s_allowlist;

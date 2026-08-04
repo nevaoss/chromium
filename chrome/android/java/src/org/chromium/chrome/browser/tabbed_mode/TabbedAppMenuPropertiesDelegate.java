@@ -37,7 +37,6 @@ import org.chromium.chrome.browser.bookmarks.BookmarkModel;
 import org.chromium.chrome.browser.device.DeviceConditions;
 import org.chromium.chrome.browser.enterprise.util.ManagedBrowserUtils;
 import org.chromium.chrome.browser.feed.FeedFeatures;
-import org.chromium.chrome.browser.feedback.FeedbackPolicyManager;
 import org.chromium.chrome.browser.feedback.HelpAndFeedbackLauncher;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.glic.GlicEnabling;
@@ -100,6 +99,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiFunction;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
 /** An {@link AppMenuPropertiesDelegateImpl} for ChromeTabbedActivity. */
@@ -179,7 +179,8 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
             @Nullable OpenInAppMenuItemProvider openInAppMenuItemProvider,
             Supplier<RecentlyClosedEntriesManager> recentlyClosedEntriesManagerSupplier,
             Supplier<SideUiStateProvider> sideUiStateProviderSupplier,
-            Supplier<Boolean> isXrFullSpaceModeSupplier) {
+            Supplier<Boolean> isXrFullSpaceModeSupplier,
+            BooleanSupplier canActivateTabLayoutToggleMenu) {
         super(
                 context,
                 activityTabProvider,
@@ -251,7 +252,8 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                         isMenuIconAtStart(),
                         tabModelSelector,
                         readAloudControllerSupplier,
-                        this::shouldShowPageInfoItem);
+                        this::shouldShowPageInfoItem,
+                        canActivateTabLayoutToggleMenu);
     }
 
     @Override
@@ -376,7 +378,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
 
         // Add to Group
         boolean shouldShowIconBeforeItem = shouldShowIconBeforeItem();
-        if (mTabGroupItemBuilder.shouldShowAddToGroup()) {
+        if (mTabGroupItemBuilder.shouldShowAddToGroup(currentTab)) {
             modelList.add(
                     mTabGroupItemBuilder.buildAddToGroupItem(currentTab, shouldShowIconBeforeItem));
         }
@@ -664,10 +666,10 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
         }
 
         // Save and share
-        if (shouldShowSaveAndPrintParentItem(
+        if (shouldShowSaveAndShareItem(
                 currentTab, isNativePage, isFileScheme, isContentScheme, url)) {
             modelList.add(
-                    buildSaveAndPrintParentItem(
+                    buildSaveAndShareItem(
                             currentTab, isNativePage, isFileScheme, isContentScheme, url));
         }
 
@@ -1111,7 +1113,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                 /* showIcon= */ false);
     }
 
-    private boolean shouldShowSaveAndPrintParentItem(
+    private boolean shouldShowSaveAndShareItem(
             @Nullable Tab currentTab,
             boolean isNativePage,
             boolean isFileScheme,
@@ -1141,13 +1143,13 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
         return false;
     }
 
-    private ListItem buildSaveAndPrintParentItem(
+    private ListItem buildSaveAndShareItem(
             @Nullable Tab currentTab,
             boolean isNativePage,
             boolean isFileScheme,
             boolean isContentScheme,
             GURL url) {
-        assert shouldShowSaveAndPrintParentItem(
+        assert shouldShowSaveAndShareItem(
                 currentTab, isNativePage, isFileScheme, isContentScheme, url);
 
         List<ListItem> submenuItems = new ArrayList<>();
@@ -1155,7 +1157,9 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
         if (ShareUtils.shouldEnableShare(currentTab)) {
             submenuItems.add(buildShareListItem(/* showIcon= */ false));
             submenuItems.add(mSaveAndShareItemBuilder.buildCopyLinkItem());
-            submenuItems.add(mSaveAndShareItemBuilder.buildSendToDevicesItem());
+            if (currentTab != null && !currentTab.isIncognito()) {
+                submenuItems.add(mSaveAndShareItemBuilder.buildSendToDevicesItem());
+            }
             submenuItems.add(mSaveAndShareItemBuilder.buildShareQrCodeItem());
         }
 
@@ -1470,9 +1474,6 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
         List<ListItem> submenuItems = new ArrayList<>();
         submenuItems.add(buildAboutChromeItem());
         submenuItems.add(buildHelpCenterItem());
-        if (FeedbackPolicyManager.getInstance().isUserFeedbackAllowed()) {
-            submenuItems.add(buildReportIssueItem());
-        }
 
         int helpString = HelpAndFeedbackLauncher.getHelpMenuStringRes();
         return new ListItem(
@@ -1494,18 +1495,6 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                         getAppMenuItemTheme(),
                         R.id.help_id,
                         R.string.menu_help_center,
-                        Resources.ID_NULL,
-                        isMenuIconAtStart()),
-                /* showIcon= */ false);
-    }
-
-    private ListItem buildReportIssueItem() {
-        return AppMenuItemUtils.createStandardListItem(
-                AppMenuItemUtils.buildModelForStandardMenuItem(
-                        mContext,
-                        getAppMenuItemTheme(),
-                        R.id.report_issue_menu_id,
-                        R.string.menu_report_issue,
                         Resources.ID_NULL,
                         isMenuIconAtStart()),
                 /* showIcon= */ false);

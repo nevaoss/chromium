@@ -240,11 +240,32 @@ class Extension final : public base::RefCountedThreadSafe<Extension> {
   // Can only be called after Init is finished.
   const ManifestData* GetManifestData(std::string_view key) const;
 
+  template <class T>
+  const T* GetManifestData() const {
+    static_assert(std::is_base_of_v<ManifestData, T>,
+                  "T must derive from Extension::ManifestData");
+    return static_cast<const T*>(GetManifestData(T::kManifestDataKey));
+  }
+
+  template <class T>
+  const T* GetManifestData(std::string_view key) const {
+    static_assert(std::is_base_of_v<ManifestData, T>,
+                  "T must derive from Extension::ManifestData");
+    return static_cast<const T*>(GetManifestData(key));
+  }
+
   // Sets `data` to be associated with the key.
   // Can only be called before Init is finished. Not thread-safe;
   // all SetManifestData calls should be on only one thread.
   void SetManifestData(std::string_view key,
                        std::unique_ptr<ManifestData> data);
+
+  template <class T>
+  void SetManifestData(std::unique_ptr<T> data) {
+    static_assert(std::is_base_of_v<ManifestData, T>,
+                  "T must derive from Extension::ManifestData");
+    SetManifestData(T::kManifestDataKey, std::move(data));
+  }
 
   // Sets the GUID for this extension. Note: this should *only* be used when
   // duplicating an existing extension; otherwise, the GUID will be

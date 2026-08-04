@@ -416,6 +416,11 @@ class ContextualSearchboxHandler
 
   void OnActiveTabNavigated();
 
+  class AllTabNavigationObserver;
+  std::vector<std::unique_ptr<AllTabNavigationObserver>> all_tab_nav_observers_;
+  void UpdateAllTabNavigationObservers();
+  void OnAnyTabNavigated(content::WebContents* web_contents);
+
   raw_ptr<contextual_tasks::ContextualTasksContextService>
       contextual_tasks_context_service_;
 
@@ -435,6 +440,8 @@ class ContextualSearchboxHandler
   std::unique_ptr<ContextualSearchboxTabFaviconHelper> tab_favicon_helper_;
 
  protected:
+  std::optional<bool> smart_tab_sharing_active_for_thread_;
+  std::optional<bool> last_sent_smart_tab_sharing_active_;
   bool has_incremented_sts_activation_count_ = false;
 
   // Gets the `ActiveTaskContextProvider` to update tab underlines.

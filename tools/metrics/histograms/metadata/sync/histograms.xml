@@ -59,6 +59,8 @@ chromium-metrics-reviews@google.com.
   <variant name=".DICTIONARY" summary="DICTIONARY"/>
   <variant name=".ENCRYPTED_TAB_CONTEXT_CONTAINER"
       summary="ENCRYPTED_TAB_CONTEXT_CONTAINER"/>
+  <variant name=".ENCRYPTED_TAB_CONTEXT_ITEM"
+      summary="ENCRYPTED_TAB_CONTEXT_ITEM"/>
   <variant name=".EXTENSION" summary="EXTENSION"/>
   <variant name=".EXTENSION_SETTING" summary="EXTENSION_SETTING"/>
   <variant name=".GEMINI_THREAD" summary="GEMINI_THREAD"/>
@@ -1818,7 +1820,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.Local.Enabled2" enum="BooleanEnabled"
-    expires_after="2026-08-23">
+    expires_after="2027-08-23">
   <owner>igorruvinov@chromium.org</owner>
   <owner>pastarmovj@chromium.org</owner>
   <summary>

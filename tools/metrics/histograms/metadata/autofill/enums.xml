@@ -294,6 +294,29 @@ Called by update_autofill_enums.py.-->
 
 <!-- LINT.ThenChange(/components/autofill/core/browser/permissions/autofill_ai/autofill_ai_permission_utils.h:AutofillAiOptInStatus) -->
 
+<!-- LINT.IfChange(AutofillAiPersonalContextCacheReadinessOnFirstInteraction) -->
+
+<enum name="AutofillAiPersonalContextCacheReadinessOnFirstInteraction">
+  <int value="0" label="Prefetch completed with data in cache"/>
+  <int value="1" label="Prefetch completed with no data in cache"/>
+  <int value="2" label="Prefetch is in-flight"/>
+  <int value="3" label="Prefetch failed"/>
+  <int value="4" label="Prefetch was not initiated"/>
+</enum>
+
+<!-- LINT.ThenChange(/components/autofill/core/browser/integrators/autofill_ai/metrics/autofill_ai_metrics.h:PersonalContextCacheReadinessOnFirstInteraction) -->
+
+<!-- LINT.IfChange(AutofillAiPersonalContextPrefetchTriggerResult) -->
+
+<enum name="AutofillAiPersonalContextPrefetchTriggerResult">
+  <int value="0" label="Initiated network requests"/>
+  <int value="1" label="Skipped due to fresh cached data"/>
+  <int value="2" label="Skipped due to active backoff throttling"/>
+  <int value="3" label="Skipped due to active request in-flight"/>
+</enum>
+
+<!-- LINT.ThenChange(/components/autofill/core/browser/network/autofill_ai/autofill_ai_personal_context_access_manager_impl.h:AutofillAiPersonalContextPrefetchTriggerResult) -->
+
 <!-- LINT.IfChange(AutofillAiPrefMigrationStatus) -->
 
 <enum name="AutofillAiPrefMigrationStatus">
@@ -591,11 +614,50 @@ Called by update_autofill_enums.py.-->
   <int value="861" label="SHIPMENT_TRACKING_NUMBER: Failure"/>
 </enum>
 
+<!-- LINT.IfChange(AutofillAiUnmaskResult) -->
+
+<enum name="AutofillAiUnmaskResult">
+  <int value="0" label="Success"/>
+  <int value="1" label="Cache Hit"/>
+  <int value="2" label="Reauth Failed"/>
+  <int value="3" label="Network Error"/>
+  <int value="4" label="Empty Response"/>
+  <int value="5" label="Parsing Error"/>
+</enum>
+
+<!-- LINT.ThenChange(/components/autofill/core/browser/integrators/autofill_ai/metrics/autofill_ai_metrics.h:AutofillAiUnmaskResult) -->
+
 <enum name="AutofillAlternativeNameFieldValueCharacterSet">
   <int value="0" label="Katakana"/>
   <int value="1" label="Hiragana"/>
   <int value="2" label="Other"/>
 </enum>
+
+<!-- LINT.IfChange(AutofillAtMemoryAcceptedSuggestionDataSourcesBitmask) -->
+
+<enum name="AutofillAtMemoryAcceptedSuggestionDataSourcesBitmask">
+  <summary>
+    A bitmask indicating which data sources provided an accepted AtMemory
+    suggestion.
+  </summary>
+  <int value="1" label="Autofill"/>
+  <int value="2" label="Gmail"/>
+  <int value="3" label="Autofill, Gmail"/>
+  <int value="4" label="Calendar"/>
+  <int value="5" label="Autofill, Calendar"/>
+  <int value="6" label="Gmail, Calendar"/>
+  <int value="7" label="Autofill, Gmail, Calendar"/>
+  <int value="8" label="Photos"/>
+  <int value="9" label="Autofill, Photos"/>
+  <int value="10" label="Gmail, Photos"/>
+  <int value="11" label="Autofill, Gmail, Photos"/>
+  <int value="12" label="Calendar, Photos"/>
+  <int value="13" label="Autofill, Calendar, Photos"/>
+  <int value="14" label="Gmail, Calendar, Photos"/>
+  <int value="15" label="Autofill, Gmail, Calendar, Photos"/>
+</enum>
+
+<!-- LINT.ThenChange(//components/accessibility_annotator/core/annotation_reducer/memory_search_result.h:MemoryEntrySourceType) -->
 
 <enum name="AutofillAtMemoryQueryCompletedStatus">
   <int value="0" label="Query returned data"/>
@@ -2992,7 +3054,7 @@ Called by update_autofill_enums.py.-->
              notice."/>
 </enum>
 
-<!-- LINT.ThenChange(//chrome/browser/autofill/android/java/src/org/chromium/chrome/browser/autofill/settings/options/AutofillOptionsFragment.java:AutofillOptionsReferrer) -->
+<!-- LINT.ThenChange(//chrome/browser/android/preferences/autofill/settings_navigation_helper.h:AutofillOptionsReferrer) -->
 
 <enum name="AutofillOtpAuthEvent">
   <int value="0" label="Unknown result"/>
@@ -4158,7 +4220,7 @@ Called by update_autofill_enums.py.-->
   <int value="3" label="FillingFlowDropdown"/>
 </enum>
 
-<!-- LINT.ThenChange(/components/autofill/core/browser/metrics/autofill_settings_metrics.h:AutofillSettingsReferrer, /chrome/browser/resources/settings/metrics_browser_proxy.ts:AutofillSettingsReferrer, /chrome/android/java/src/org/chromium/chrome/browser/autofill/settings/HomeOfTransactionsFragment.java:AutofillSettingsReferrer) -->
+<!-- LINT.ThenChange(/components/autofill/core/browser/metrics/autofill_settings_metrics.h:AutofillSettingsReferrer, /chrome/browser/resources/settings/metrics_browser_proxy.ts:AutofillSettingsReferrer, /chrome/android/java/src/org/chromium/chrome/browser/autofill/settings/AutofillAndPasswordsFragment.java:AutofillSettingsReferrer) -->
 
 <enum name="AutofillSettingsVisibleTypes">
   <int value="0" label="Undefined"/>
@@ -5557,9 +5619,10 @@ Called by update_autofill_enums.py.-->
   <int value="5" label="Not opted in to context"/>
   <int value="6" label="Photos and Workspace context unavailable"/>
   <int value="7" label="Personal Intelligence preferences disabled"/>
-  <int value="8" label="Not G1 subscriber"/>
-  <int value="9" label="Not Android premium device"/>
-  <int value="10" label="Eligible"/>
+  <int value="8" label="Glic first run not complete"/>
+  <int value="9" label="Not G1 subscriber"/>
+  <int value="10" label="Not Android premium device"/>
+  <int value="11" label="Eligible"/>
 </enum>
 
 <!-- LINT.ThenChange(//components/personal_context/core/personal_context_types.h:PersonalContextNonEligibilityReason) -->
@@ -5893,6 +5956,7 @@ Called by update_autofill_enums.py.-->
   <int value="92" label="Autofill AI private inference notice"/>
   <int value="93" label="Manage enhanced autofill"/>
   <int value="94" label="AtMemory AI disclosure"/>
+  <int value="95" label="Autofill AI other shipments"/>
 </enum>
 
 <!-- LINT.ThenChange(/components/autofill/core/browser/suggestions/suggestion_type.h:SuggestionType) -->
@@ -6017,7 +6081,7 @@ Called by update_autofill_enums.py.-->
   <int value="5" label="Shopping"/>
 </enum>
 
-<!-- LINT.ThenChange(/chrome/browser/resources/settings/metrics_browser_proxy.ts:YourSavedInfoDataCategory, /chrome/android/java/src/org/chromium/chrome/browser/autofill/settings/HomeOfTransactionsFragment.java:YourSavedInfoDataCategory, /ios/chrome/browser/settings/autofill/autofill_and_passwords/coordinator/autofill_and_passwords_coordinator.mm:YourSavedInfoDataCategory) -->
+<!-- LINT.ThenChange(/chrome/browser/resources/settings/metrics_browser_proxy.ts:YourSavedInfoDataCategory, /chrome/android/java/src/org/chromium/chrome/browser/autofill/settings/AutofillAndPasswordsFragment.java:YourSavedInfoDataCategory, /ios/chrome/browser/settings/autofill/autofill_and_passwords/coordinator/autofill_and_passwords_coordinator.mm:YourSavedInfoDataCategory) -->
 
 <!-- LINT.IfChange(YourSavedInfoDataChip) -->
 

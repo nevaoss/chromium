@@ -53,6 +53,7 @@
 #include "components/lens/lens_overlay_invocation_source.h"
 #include "components/navigation_metrics/navigation_metrics.h"
 #include "components/omnibox/browser/actions/omnibox_action.h"
+#include "components/omnibox/browser/actions/omnibox_action_client_delegator.h"
 #include "components/omnibox/browser/actions/omnibox_pedal.h"
 #include "components/omnibox/browser/actions/omnibox_pedal_concepts.h"
 #include "components/omnibox/browser/autocomplete_classifier.h"
@@ -207,6 +208,23 @@ const ai_mode_button_config::AiModeButtonConfig* GetAiModeButtonConfig(
   CHECK(config);
   return config;
 }
+
+class OmniboxEditModelActionClient : public OmniboxActionClientDelegator {
+ public:
+  OmniboxEditModelActionClient(
+      AutocompleteProviderClient& autocomplete_provider_client,
+      OmniboxEditModel& edit_model)
+      : OmniboxActionClientDelegator(autocomplete_provider_client),
+        edit_model_(&edit_model) {}
+  ~OmniboxEditModelActionClient() override = default;
+
+  void OpenComposeboxForAskG() override {
+    edit_model_->OpenComposeboxForAskG();
+  }
+
+ private:
+  const raw_ptr<OmniboxEditModel> edit_model_;
+};
 
 }  // namespace
 
@@ -706,44 +724,18 @@ void OmniboxEditModel::StartAutocomplete(bool prevent_inline_autocomplete) {
 }
 
 bool OmniboxEditModel::CanPasteAndGo(const std::u16string& text) const {
-  if (!controller_->client()->IsPasteAndGoEnabled()) {
-    return false;
-  }
-
-  AutocompleteMatch match;
-  ClassifyString(text, &match, nullptr);
-  return match.destination_url.is_valid();
+  return searchbox::CanPasteAndGo(controller_->client(), text);
 }
 
 void OmniboxEditModel::PasteAndGo(const std::u16string& text,
                                   base::TimeTicks match_selection_timestamp) {
-  DCHECK(CanPasteAndGo(text));
-
   if (view_) {
     view_->RevertAll();
   }
-  AutocompleteMatch match;
-  GURL alternate_nav_url;
-  ClassifyString(text, &match, &alternate_nav_url);
 
-  GURL upgraded_url;
-  if (match.type == AutocompleteMatchType::URL_WHAT_YOU_TYPED &&
-      controller_->client()->ShouldDefaultTypedNavigationsToHttps() &&
-      AutocompleteInput::ShouldUpgradeToHttps(
-          text, match.destination_url,
-          controller_->client()->GetHttpsPortForTesting(),
-          controller_->client()->IsUsingFakeHttpsForHttpsUpgradeTesting(),
-          &upgraded_url)) {
-    input_.set_added_default_scheme_to_typed_url(true);
-    DCHECK(upgraded_url.is_valid());
-    match.destination_url = upgraded_url;
-  } else {
-    input_.set_added_default_scheme_to_typed_url(false);
-  }
-
-  OpenMatch(OmniboxPopupSelection(OmniboxPopupSelection::kNoMatch), match,
-            WindowOpenDisposition::CURRENT_TAB, alternate_nav_url, text,
-            match_selection_timestamp);
+  searchbox::PasteAndGo(autocomplete_controller(), controller_->client(), text,
+                        last_omnibox_focus_, time_user_first_modified_omnibox_,
+                        match_selection_timestamp);
 }
 
 void OmniboxEditModel::EnterKeywordMode(
@@ -789,6 +781,12 @@ void OmniboxEditModel::EnterKeywordModeForDefaultSearchProvider(
                        ->GetTemplateURLService()
                        ->GetDefaultSearchProvider(),
                    u"");
+}
+
+void OmniboxEditModel::OpenComposeboxForAskG() {
+  // TODO (crbug.com/532597302): Potential wiring to get autotab and suggestions
+  // to work.
+  controller_->popup_state_manager()->SetPopupState(OmniboxPopupState::kAim);
 }
 
 void OmniboxEditModel::OpenAiMode(AimActivation activation) {
@@ -1466,14 +1464,6 @@ void OmniboxEditModel::OnPopupDataChanged(
       view_->OnKeywordPlaceholderTextChange();
     }
   }
-
-  // This updates the web UI state and affects presence/absence of the '+'
-  // context menu button. This should reflect whether keyword mode is actually
-  // entered, not simply match selection state (a match with keyword may be
-  // selected but the keyword mode still not entered yet).
-  // Note, this doesn't do edge detection because keyword state can be changed
-  // elsewhere, not only from here.
-  observers_.Notify(&Observer::OnKeywordStateChanged, is_keyword_selected());
 
   // Handle changes to temporary text.
   if (is_temporary_text) {
@@ -2870,9 +2860,10 @@ void OmniboxEditModel::OpenMatch(OmniboxPopupSelection selection,
   }
 
   if (action) {
+    OmniboxEditModelActionClient action_client(
+        *(autocomplete_controller()->autocomplete_provider_client()), *this);
     controller_->client()->ExecuteAction(
-        action, disposition, match_selection_timestamp,
-        *(autocomplete_controller()->autocomplete_provider_client()));
+        action, disposition, match_selection_timestamp, action_client);
   }
 
   if (disposition != WindowOpenDisposition::NEW_BACKGROUND_TAB && view_) {

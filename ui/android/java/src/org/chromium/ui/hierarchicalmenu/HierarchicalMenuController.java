@@ -25,6 +25,7 @@ import androidx.annotation.StringRes;
 import androidx.annotation.VisibleForTesting;
 import androidx.core.view.ViewCompat;
 
+import org.chromium.base.Callback;
 import org.chromium.base.ObserverList;
 import org.chromium.base.ResettersForTesting;
 import org.chromium.base.metrics.RecordHistogram;
@@ -163,12 +164,18 @@ public class HierarchicalMenuController<T> {
      * @param flyoutHandler The {@link FlyoutHandler} for the controller to use for displaying
      *     flyout popups.
      * @param mainPopup The main popup window for flyout popups to fly out of.
+     * @param scrollListenerAttacher Callback to attach the scroll listener to the main popup.
      * @param drillDownOverrideValue If not null, forces the menu behavior to be drill-down ({@code
      *     true}) or flyout ({@code false}), overriding the default.
      */
     public void setupFlyoutController(
-            FlyoutHandler<T> flyoutHandler, T mainPopup, @Nullable Boolean drillDownOverrideValue) {
-        mFlyoutController = new FlyoutController<T>(flyoutHandler, mKeyProvider, mainPopup, this);
+            FlyoutHandler<T> flyoutHandler,
+            T mainPopup,
+            Callback<View.OnScrollChangeListener> scrollListenerAttacher,
+            @Nullable Boolean drillDownOverrideValue) {
+        mFlyoutController =
+                new FlyoutController<T>(
+                        flyoutHandler, mKeyProvider, mainPopup, this, scrollListenerAttacher);
         mDrillDownOverrideValue = drillDownOverrideValue;
     }
 
@@ -772,7 +779,7 @@ public class HierarchicalMenuController<T> {
             Runnable backRunnable) {
         builder.with(keyProvider.getTitleKey(), title)
                 .with(keyProvider.getEnabledKey(), true)
-                .with(keyProvider.getClickListenerKey(), (unusedView) -> backRunnable.run())
+                .with(keyProvider.getClickListenerKey(), _ -> backRunnable.run())
                 .with(
                         keyProvider.getKeyListenerKey(),
                         (view, keyCode, keyEvent) -> {

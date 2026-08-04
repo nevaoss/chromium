@@ -420,6 +420,8 @@ should be able to be added at any place in this file.
   <variant name="_ExtensionsManageToolbarFeature"
       summary="For managing your extension feature in the toolbar."/>
   <variant name="_ExtensionsMenu" summary="For Extensions menu opening."/>
+  <variant name="_ExtensionsPinnedByDefault"
+      summary="For the Extensions pinned by default feature."/>
   <variant name="_ExtensionsRequestAccessButton"
       summary="For Extensions request access button feature."/>
   <variant name="_ExtensionsZeroStatePromo"
@@ -776,6 +778,7 @@ should be able to be added at any place in this file.
       summary="For ReadLaterBottomSheet feature."/>
   <variant name="_ReadLaterContextMenu"
       summary="For ReadLaterContextMenu feature."/>
+  <variant name="_RecentTabs" summary="For Recent tabs feature."/>
   <variant name="_ReopenTab" summary="For ReopenTab feature."/>
   <variant name="_RequestDesktopSiteAppMenu"
       summary="For the RequestDesktopSiteAppMenu feature. (obsolete)"/>
@@ -5137,6 +5140,14 @@ should be able to be added at any place in this file.
     User tapped 'Save' on the dialog opened via the tab strip context menu to
     successfully save (with or without changing) the name of a Chrome window and
     dismiss the dialog.
+  </description>
+</action>
+
+<action name="Android.TabStripMenu.SendFeedback">
+  <owner>mwoj@google.com</owner>
+  <owner>cros-ui-foundations@google.com</owner>
+  <description>
+    User tapped 'Send feedback' on the tab strip context menu to send feedback.
   </description>
 </action>
 
@@ -11052,36 +11063,6 @@ should be able to be added at any place in this file.
     From a context menu on Android, the user clicked an item which was
     registered by an extension.
   </description>
-</action>
-
-<action name="ContextualSearch.AddTabsButton.Clicked.{ContextualSearchSource}">
-  <owner>samiraarabgol@google.com</owner>
-  <owner>chrome-desktop-search@google.com</owner>
-  <description>
-    Recorded when the user clicks the Add tabs (AI Mode) entrypoint button in a
-    WebUI searchbox on {ContextualSearchSource}.
-  </description>
-  <token key="ContextualSearchSource" variants="ContextualSearchSource"/>
-</action>
-
-<action name="ContextualSearch.AddTabsButton.Hovered.{ContextualSearchSource}">
-  <owner>samiraarabgol@google.com</owner>
-  <owner>chrome-desktop-search@google.com</owner>
-  <description>
-    Recorded when the user hovers over the Add tabs (AI Mode) entrypoint button
-    in a WebUI searchbox on {ContextualSearchSource}.
-  </description>
-  <token key="ContextualSearchSource" variants="ContextualSearchSource"/>
-</action>
-
-<action name="ContextualSearch.AddTabsButton.Shown.{ContextualSearchSource}">
-  <owner>samiraarabgol@google.com</owner>
-  <owner>chrome-desktop-search@google.com</owner>
-  <description>
-    Recorded when the Add tabs (AI Mode) entrypoint button is shown to the user
-    in a WebUI searchbox on {ContextualSearchSource}.
-  </description>
-  <token key="ContextualSearchSource" variants="ContextualSearchSource"/>
 </action>
 
 <action
@@ -26679,6 +26660,16 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Mobile.Signout.SnackbarUndoTapped">
+  <owner>jlebel@chromium.org</owner>
+  <owner>chrome-signin-mobile-team@google.com</owner>
+  <description>
+    User tapped on 'Undo' button on a snackbar shown right after sign-out. This
+    undo button is available only when signing out from the account menu. (iOS
+    only).
+  </description>
+</action>
+
 <action name="Mobile.SystemNotification.Content.Click.Downloads_Files">
   <owner>chrome-analysis-team@google.com</owner>
   <description>
@@ -28295,6 +28286,15 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="MobileGeminiFloatyTabSwitched">
+  <owner>hamzamoh@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    The user switched active tabs while the Gemini floaty session was active.
+    iOS only.
+  </description>
+</action>
+
 <action name="MobileGeminiFREConsentAccept">
   <owner>kanouche@google.com</owner>
   <owner>bling-alchemy@google.com</owner>
@@ -28462,6 +28462,22 @@ should be able to be added at any place in this file.
   <owner>bling-alchemy@google.com</owner>
   <description>
     Reported when the Gemini Settings UI is opened. iOS only.
+  </description>
+</action>
+
+<action name="MobileGeminiTabPickerDismissed">
+  <owner>joepeplowski@google.com</owner>
+  <owner>bling-alchemy@google.com</owner>
+  <description>
+    Reported when the Tab Picker UI is dismissed in a Gemini session. iOS only.
+  </description>
+</action>
+
+<action name="MobileGeminiTabPickerOpened">
+  <owner>joepeplowski@google.com</owner>
+  <owner>bling-alchemy@google.com</owner>
+  <description>
+    Reported when the Tab Picker UI is opened in a Gemini session. iOS only.
   </description>
 </action>
 
@@ -33331,6 +33347,14 @@ should be able to be added at any place in this file.
   <description>
     User pressed 'New Tab' on the toolbar from a NTP page. Logged in addition to
     the general metric.
+  </description>
+</action>
+
+<action name="MobileToolbarNTPEntrypointShowMenu">
+  <owner>gambard@chromium.org</owner>
+  <description>
+    User pressed the overflow tools menu button directly from the New Tab Page
+    header entrypoint. iOS only.
   </description>
 </action>
 
@@ -47759,6 +47783,15 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Signin_Signin_FromSignoutUndoSnackbar">
+  <owner>jlebel@chromium.org</owner>
+  <owner>chrome-signin-mobile-team@google.com</owner>
+  <description>
+    Recorded on sign in start from access point
+    signin_metrics::AccessPoint::kSignoutUndoSnackbar. iOS only.
+  </description>
+</action>
+
 <action name="Signin_Signin_FromStartPage">
   <owner>gogerald@chromium.org</owner>
   <description>
@@ -55225,6 +55258,15 @@ should be able to be added at any place in this file.
   <owner>pwa-team@google.com</owner>
   <description>
     The user cancelled an installation of a web app in the installation dialog.
+  </description>
+</action>
+
+<action name="WebAppInstallDialogShowInFinderClicked">
+  <owner>ksukh@chromium.org</owner>
+  <owner>pwa-team@google.com</owner>
+  <description>
+    The user clicks the &quot;Show in Finder&quot; button in the PWA install
+    success dialog on macOS.
   </description>
 </action>
 

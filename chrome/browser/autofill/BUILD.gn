@@ -12,8 +12,6 @@ static_library("autofill") {
   sources = [
     "address_normalizer_factory.cc",
     "address_normalizer_factory.h",
-    "at_memory/at_memory_query_service_delegate_impl.cc",
-    "at_memory/at_memory_query_service_delegate_impl.h",
     "at_memory/at_memory_query_service_factory.cc",
     "at_memory/at_memory_query_service_factory.h",
     "at_memory_cross_tab_copy_paste_tracker_factory.cc",
@@ -424,6 +422,23 @@ source_set("unit_tests") {
       "//components/personal_context/core",
       "//ui/base",
       "//ui/gfx:test_support",
+    ]
+  }
+
+  if (is_android) {
+    sources += [
+      "android/attribute_instance_android_unittest.cc",
+      "android/autofill_ai_save_update_entity_prompt_controller_unittest.cc",
+      "android/entity_data_manager_android_unittest.cc",
+      "android/entity_instance_android_unittest.cc",
+      "android/mock_autofill_ai_save_update_entity_prompt_view.cc",
+      "android/mock_autofill_ai_save_update_entity_prompt_view.h",
+      "android/save_update_address_profile_prompt_controller_unittest.cc",
+    ]
+    deps += [
+      "//chrome/browser/autofill",
+      "//chrome/browser/sync",
+      "//chrome/browser/ui/autofill",
     ]
   }
 }

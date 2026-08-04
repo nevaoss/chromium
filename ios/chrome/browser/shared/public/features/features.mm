@@ -92,8 +92,6 @@ BASE_FEATURE(kTCRexKillSwitch,
              "kTCRexKillSwitch",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kTabSwitcherOverflowMenu, base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kContextualPanelForceShowEntrypoint,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -466,12 +464,6 @@ BASE_FEATURE(kFRESignInSecondaryActionLabelUpdate,
 
 bool FRESignInSecondaryActionLabelUpdate() {
   return base::FeatureList::IsEnabled(kFRESignInSecondaryActionLabelUpdate);
-}
-
-BASE_FEATURE(kConfirmationButtonSwapOrder, base::FEATURE_DISABLED_BY_DEFAULT);
-
-bool IsConfirmationButtonSwapOrderEnabled() {
-  return base::FeatureList::IsEnabled(kConfirmationButtonSwapOrder);
 }
 
 BASE_FEATURE(kIOSPushNotificationMultiProfile,
@@ -883,7 +875,7 @@ bool IsAIMEligibilityServiceStartWithProfileEnabled() {
   return base::FeatureList::IsEnabled(kAIMEligibilityServiceStartWithProfile);
 }
 
-BASE_FEATURE(kAIMNTPEntrypointTablet, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAIMNTPEntrypointTablet, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsAIMNTPEntrypointTabletEnabled() {
   return base::FeatureList::IsEnabled(kAIMNTPEntrypointTablet);
@@ -933,7 +925,7 @@ NSInteger GetAssistantMediumDetentPercentage() {
       kAssistantContainer, kAssistantContainerMediumDetentPercentParam, 0);
 }
 
-BASE_FEATURE(kComposeboxIpad, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kComposeboxIpad, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsComposeboxIpadEnabled() {
   return base::FeatureList::IsEnabled(kComposeboxIpad);
@@ -1090,7 +1082,8 @@ bool IsDisableFeedbackForIneligibleUsersEnabled() {
 BASE_FEATURE(kFullscreenRefactoring, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsFullscreenRefactoringEnabled() {
-  return base::FeatureList::IsEnabled(kFullscreenRefactoring);
+  return IsChromeNextIaEnabled() ||
+         base::FeatureList::IsEnabled(kFullscreenRefactoring);
 }
 
 BASE_FEATURE(kPageToolsFeatureUnavailability, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1261,8 +1254,10 @@ bool IsAppBarHiddenInFullscreen() {
   return base::FeatureList::IsEnabled(kAppBarHideInFullscreen);
 }
 
-BASE_FEATURE(kToolbarGlassPrototype, base::FEATURE_DISABLED_BY_DEFAULT);
+// Feature flag for SearchEngineChoiceScreenSnackbar.
+BASE_FEATURE(kSearchEngineChoiceScreenSnackbar,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
-bool IsToolbarGlassPrototypeEnabled() {
-  return base::FeatureList::IsEnabled(kToolbarGlassPrototype);
+bool IsSearchEngineChoiceScreenSnackbarEnabled() {
+  return base::FeatureList::IsEnabled(kSearchEngineChoiceScreenSnackbar);
 }

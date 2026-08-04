@@ -12,26 +12,31 @@
 #include "base/functional/callback.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/test/gmock_expected_support.h"
-#include "base/test/scoped_feature_list.h"
+#include "base/test/scoped_command_line.h"
 #include "base/test/test_future.h"
 #include "base/time/time.h"
 #include "base/types/expected.h"
-#include "chrome/browser/autofill/actor/actor_test_utils.h"
 #include "chrome/browser/autofill/actor/one_time_tokens/actor_login_context.h"
 #include "chrome/browser/autofill/one_time_token_service_factory.h"
+#include "chrome/test/base/chrome_render_view_host_test_harness.h"
 #include "chrome/test/base/testing_profile.h"
+#include "components/actor/core/actor_switches.h"
+#include "components/autofill/content/browser/test_autofill_client_injector.h"
+#include "components/autofill/content/browser/test_autofill_driver_injector.h"
+#include "components/autofill/content/browser/test_content_autofill_client.h"
+#include "components/autofill/content/browser/test_content_autofill_driver.h"
 #include "components/autofill/core/browser/field_types.h"
 #include "components/autofill/core/browser/foundations/test_browser_autofill_manager.h"
 #include "components/autofill/core/browser/integrators/one_time_tokens/otp_suggestion.h"
-#include "components/autofill/core/browser/test_utils/autofill_test_utils.h"
+#include "components/autofill/core/browser/test_utils/autofill_form_test_utils.h"
 #include "components/autofill/core/common/autofill_test_utils.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "components/one_time_tokens/core/browser/one_time_token.h"
 #include "components/one_time_tokens/core/browser/one_time_token_retrieval_error.h"
 #include "components/one_time_tokens/core/browser/one_time_token_service.h"
-#include "components/one_time_tokens/core/common/one_time_token_features.h"
 #include "components/security_state/content/security_state_tab_helper.h"
 #include "components/security_state/core/security_state.h"
+#include "components/tabs/public/mock_tab_interface.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/ssl_status.h"
@@ -79,10 +84,77 @@ class MockOneTimeTokenService : public one_time_tokens::OneTimeTokenService {
       (override));
 };
 
-class ActorOneTimeTokenFillingServiceImplTest : public ActorTestBase {
+class TestActorContentAutofillDriver : public TestContentAutofillDriver {
  public:
+  TestActorContentAutofillDriver(content::RenderFrameHost* rfh,
+                                 ContentAutofillDriverFactory* factory)
+      : TestContentAutofillDriver(rfh, factory) {}
+  ~TestActorContentAutofillDriver() override = default;
+
+  MOCK_METHOD(
+      base::flat_set<FieldGlobalId>,
+      ApplyFormAction,
+      (mojom::FormActionType action_type,
+       mojom::ActionPersistence action_persistence,
+       base::span<const FormFieldData> fields,
+       const FillId& fill_id,
+       bool supports_refill,
+       const url::Origin& triggered_origin,
+       (const absl::flat_hash_map<FieldGlobalId, FieldType>& field_type_map),
+       const Section& section_for_clear_form_on_ios),
+      (override));
+};
+
+class TestActorChromeAutofillClient : public TestContentAutofillClient {
+ public:
+  explicit TestActorChromeAutofillClient(content::WebContents* web_contents)
+      : TestContentAutofillClient(web_contents) {}
+  ~TestActorChromeAutofillClient() override = default;
+
+  std::unique_ptr<AutofillManager> CreateManager(
+      base::PassKey<ContentAutofillDriver> pass_key,
+      ContentAutofillDriver& driver) override {
+    return std::make_unique<TestBrowserAutofillManager>(&driver);
+  }
+};
+
+class ActorOneTimeTokenFillingServiceImplTest
+    : public ChromeRenderViewHostTestHarness {
+ public:
+  ActorOneTimeTokenFillingServiceImplTest()
+      : ChromeRenderViewHostTestHarness(
+            base::test::TaskEnvironment::TimeSource::MOCK_TIME) {}
+  ~ActorOneTimeTokenFillingServiceImplTest() override = default;
+
   void SetUp() override {
-    ActorTestBase::SetUp();
+    ChromeRenderViewHostTestHarness::SetUp();
+
+    ON_CALL(mock_tab, GetContents())
+        .WillByDefault(testing::Return(web_contents()));
+    NavigateAndCommit(GURL("about:blank"));
+
+    ON_CALL(driver(), ApplyFormAction)
+        .WillByDefault([&](mojom::FormActionType action_type,
+                           mojom::ActionPersistence action_persistence,
+                           base::span<const FormFieldData> fields,
+                           const FillId& fill_id, bool supports_refill,
+                           const url::Origin& triggered_origin,
+                           const absl::flat_hash_map<FieldGlobalId, FieldType>&
+                               field_type_map,
+                           const Section& section_for_clear_form_on_ios) {
+          base::flat_set<FieldGlobalId> filled_fields =
+              driver().TestContentAutofillDriver::ApplyFormAction(
+                  action_type, action_persistence, fields, fill_id,
+                  supports_refill, triggered_origin, field_type_map,
+                  section_for_clear_form_on_ios);
+          for (const FormFieldData& field : fields) {
+            if (filled_fields.contains(field.global_id())) {
+              last_filled_values_[field.global_id()] = field.value();
+            }
+          }
+          return filled_fields;
+        });
+
     OneTimeTokenServiceFactory::GetInstance()->SetTestingFactory(
         profile(), base::BindRepeating([](content::BrowserContext* context)
                                            -> std::unique_ptr<KeyedService> {
@@ -94,7 +166,7 @@ class ActorOneTimeTokenFillingServiceImplTest : public ActorTestBase {
 
   void TearDown() override {
     service_.reset();
-    ActorTestBase::TearDown();
+    ChromeRenderViewHostTestHarness::TearDown();
   }
 
   MockOneTimeTokenService& otp_service() {
@@ -104,18 +176,52 @@ class ActorOneTimeTokenFillingServiceImplTest : public ActorTestBase {
 
   ActorOneTimeTokenFillingServiceImpl& service() { return *service_; }
 
+  TestActorChromeAutofillClient& client() {
+    return *static_cast<TestActorChromeAutofillClient*>(
+        autofill_client_injector_[web_contents()]);
+  }
+
+  TestActorContentAutofillDriver& driver() {
+    return CHECK_DEREF(autofill_driver_injector_[web_contents()]);
+  }
+
+  TestBrowserAutofillManager& manager() {
+    return static_cast<TestBrowserAutofillManager&>(
+        driver().GetAutofillManager());
+  }
+
+  FormData SeeForm(test::FormDescription form_description) {
+    FormData form = test::GetFormData(form_description);
+    manager().AddSeenForm(form, test::GetHeuristicTypes(form_description),
+                          test::GetServerTypes(form_description));
+    return form;
+  }
+
+  const absl::flat_hash_map<FieldGlobalId, std::u16string>& last_filled_values()
+      const {
+    return last_filled_values_;
+  }
+
+  tabs::TabInterface& tab() { return mock_tab; }
+
  private:
+  test::AutofillUnitTestEnvironment autofill_test_environment_;
+  tabs::MockTabInterface mock_tab;
+  TestAutofillClientInjector<TestActorChromeAutofillClient>
+      autofill_client_injector_;
+  TestAutofillDriverInjector<TestActorContentAutofillDriver>
+      autofill_driver_injector_;
   std::unique_ptr<ActorOneTimeTokenFillingServiceImpl> service_;
+  absl::flat_hash_map<FieldGlobalId, std::u16string> last_filled_values_;
 };
 
-// Tests that `RetrieveOtp` returns the mock OTP immediately from the feature
-// parameter when the parameter is set.
-TEST_F(ActorOneTimeTokenFillingServiceImplTest, RetrieveOtp_MockOtpFeatureSet) {
+// Tests that `RetrieveOtp` returns the mock OTP immediately from the command line
+// switch when the switch is set.
+TEST_F(ActorOneTimeTokenFillingServiceImplTest, RetrieveOtp_MockOtpSwitchSet) {
   const std::string kMockOtp = "987654";
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeatureWithParameters(
-      one_time_tokens::features::kGmailOtpRetrievalService,
-      {{"mock-gmail-otp-value", kMockOtp}});
+  base::test::ScopedCommandLine scoped_command_line;
+  scoped_command_line.GetProcessCommandLine()->AppendSwitchASCII(
+      ::actor::switches::kAttemptOtpFillingMockGmailOtpValue, kMockOtp);
 
   // The OTP service is not expected to be queried for cached tokens or
   // subscription since RetrieveOtp returns early.
@@ -246,6 +352,33 @@ TEST_F(ActorOneTimeTokenFillingServiceImplTest, RetrieveOtp_Superseded) {
 
   EXPECT_EQ(future1.Get().error(),
             OneTimeTokenRetrievalError::kGmailOtpUnknown);
+}
+
+// Tests that multiple sequential `RetrieveOtp` calls supersede previous ones,
+// running previous callbacks with an error when the second call has a cached
+// token.
+TEST_F(ActorOneTimeTokenFillingServiceImplTest,
+       RetrieveOtp_SupersededByCachedToken) {
+  const std::string kOtp = "123456";
+  EXPECT_CALL(otp_service(), GetCachedOneTimeTokens())
+      .WillOnce(Return(std::vector<one_time_tokens::OneTimeToken>{}))
+      .WillOnce(Return(std::vector<one_time_tokens::OneTimeToken>{
+          {one_time_tokens::OneTimeTokenType::kGmail, kOtp,
+           base::TimeTicks::Now(), "sender@example.com"}}));
+
+  base::test::TestFuture<
+      base::expected<std::string, OneTimeTokenRetrievalError>>
+      future1;
+  base::test::TestFuture<
+      base::expected<std::string, OneTimeTokenRetrievalError>>
+      future2;
+
+  service().RetrieveOtp(tab().GetHandle(), {}, future1.GetCallback());
+  service().RetrieveOtp(tab().GetHandle(), {}, future2.GetCallback());
+
+  EXPECT_EQ(future1.Get().error(),
+            OneTimeTokenRetrievalError::kGmailOtpUnknown);
+  EXPECT_EQ(future2.Get().value(), kOtp);
 }
 
 // Tests that `FillOtp` fails gracefully when the tab is null.

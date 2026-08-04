@@ -1551,6 +1551,9 @@ void LayoutObject::MarkContainerChainForLayout(bool schedule_relayout) {
   // called while iterating LocalFrameView::layout_subtree_root_list_.
   schedule_relayout &= !GetFrameView()->IsInPerformLayout();
 
+  const bool allow_subtree_layout_root =
+      schedule_relayout && !View()->NeedsLayout();
+
   LayoutObject* object = Container();
   LayoutObject* last = this;
 
@@ -1603,15 +1606,17 @@ void LayoutObject::MarkContainerChainForLayout(bool schedule_relayout) {
     object->MarkSelfPaintingLayerForVisualOverflowRecalc();
 
     last = object;
-    if (schedule_relayout && ObjectIsRelayoutBoundary(last) &&
+    if (allow_subtree_layout_root && ObjectIsRelayoutBoundary(last) &&
         last->IsRooted()) {
-      break;
+      GetFrameView()->ScheduleRelayoutOfSubtree(*last);
+      return;
     }
     object = container;
   }
 
-  if (schedule_relayout)
-    last->ScheduleRelayout();
+  if (schedule_relayout && IsA<LayoutView>(last)) {
+    GetFrameView()->ScheduleRelayout();
+  }
 }
 
 // LayoutNG has different OOF-positioned handling compared to the existing
@@ -1819,6 +1824,28 @@ const PaintLayer* LayoutObject::ContainingScrollContainerLayer(
   return nullptr;
 }
 
+const PaintLayer* LayoutObject::ContainingScrollContainerLayer(
+    PhysicalAxis axis,
+    bool ignore_layout_view_for_fixed_pos) const {
+  NOT_DESTROYED();
+  // Walk the chain of nearest scroll containers, skipping those not
+  // scrollable in the `axis`.
+  const PaintLayer* container =
+      ContainingScrollContainerLayer(ignore_layout_view_for_fixed_pos);
+  while (container) {
+    const auto& style = container->GetLayoutObject().StyleRef();
+    if ((axis == PhysicalAxis::kVertical &&
+         style.IsOverflowValueScrollableY()) ||
+        ((axis == PhysicalAxis::kHorizontal &&
+          style.IsOverflowValueScrollableX()))) {
+      return container;
+    }
+    container = container->GetLayoutObject().ContainingScrollContainerLayer(
+        ignore_layout_view_for_fixed_pos);
+  }
+  return nullptr;
+}
+
 const LayoutBox* LayoutObject::ContainingScrollContainer(
     bool ignore_layout_view_for_fixed_pos) const {
   NOT_DESTROYED();
@@ -1832,15 +1859,9 @@ const LayoutBox* LayoutObject::ContainingScrollContainer(
 const LayoutBox* LayoutObject::ContainingScrollContainer(
     PhysicalAxis axis) const {
   NOT_DESTROYED();
-  const LayoutObject* current = this;
-  while (const LayoutBox* container = current->ContainingScrollContainer()) {
-    const ComputedStyle& style = container->StyleRef();
-    if (axis == PhysicalAxis::kHorizontal
-            ? style.IsOverflowValueScrollableX()
-            : style.IsOverflowValueScrollableY()) {
-      return container;
-    }
-    current = container;
+  if (const PaintLayer* scroll_container_layer =
+          ContainingScrollContainerLayer(axis)) {
+    return scroll_container_layer->GetLayoutBox();
   }
   return nullptr;
 }
@@ -4316,22 +4337,6 @@ bool LayoutObject::NodeAtPoint(HitTestResult&,
                                HitTestPhase) {
   NOT_DESTROYED();
   return false;
-}
-
-void LayoutObject::ScheduleRelayout() {
-  NOT_DESTROYED();
-  if (auto* layout_view = DynamicTo<LayoutView>(this)) {
-    if (LocalFrameView* view = layout_view->GetFrameView())
-      view->ScheduleRelayout();
-  } else {
-    if (IsRooted()) {
-      layout_view = View();
-      if (layout_view) {
-        if (LocalFrameView* frame_view = layout_view->GetFrameView())
-          frame_view->ScheduleRelayoutOfSubtree(*this);
-      }
-    }
-  }
 }
 
 const ComputedStyle* LayoutObject::FirstLineStyleWithoutFallback() const {

@@ -25,8 +25,10 @@ void ReleaseCallbackOnMainThread(
     scoped_refptr<base::SequencedTaskRunner> main_thread_task_runner,
     LazyPendingSharedURLLoaderFactory::CloneCallback callback) {
   if (callback && !main_thread_task_runner->RunsTasksInCurrentSequence()) {
-    main_thread_task_runner->PostTask(
-        FROM_HERE, base::DoNothingWithBoundArgs(std::move(callback)));
+    main_thread_task_runner->DeleteSoon(
+        FROM_HERE,
+        std::make_unique<LazyPendingSharedURLLoaderFactory::CloneCallback>(
+            std::move(callback)));
   }
 }
 
@@ -124,10 +126,25 @@ void LazySharedURLLoaderFactory::TriggerMainThreadClone() {
 
   // Hop to the main thread to perform the clone (which must happen on the main
   // thread because Mojo remotes are thread-bound to the main thread).
+  using SafeCloneCallbackPtr =
+      std::unique_ptr<LazyPendingSharedURLLoaderFactory::CloneCallback,
+                      base::OnTaskRunnerDeleter>;
+
   main_thread_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&LazySharedURLLoaderFactory::CloneOnMainThread,
-                                worker_task_runner_, weak_factory_.GetWeakPtr(),
-                                clone_callback_));
+      FROM_HERE,
+      base::BindOnce(
+          [](scoped_refptr<base::SequencedTaskRunner> worker_task_runner,
+             base::WeakPtr<LazySharedURLLoaderFactory> self,
+             SafeCloneCallbackPtr callback_ptr) {
+            CloneOnMainThread(std::move(worker_task_runner), std::move(self),
+                              std::move(*callback_ptr));
+            delete callback_ptr.release();
+          },
+          worker_task_runner_, weak_factory_.GetWeakPtr(),
+          SafeCloneCallbackPtr(
+              new LazyPendingSharedURLLoaderFactory::CloneCallback(
+                  clone_callback_),
+              base::OnTaskRunnerDeleter(main_thread_task_runner_))));
 }
 
 // static

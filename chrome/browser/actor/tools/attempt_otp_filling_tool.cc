@@ -10,6 +10,7 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+
 #include "base/command_line.h"
 #include "base/functional/bind.h"
 #include "base/logging.h"
@@ -20,6 +21,7 @@
 #include "base/task/sequenced_task_runner.h"
 #include "base/time/time.h"
 #include "chrome/browser/actor/actor_task.h"
+#include "chrome/browser/actor/tools/attempt_otp_filling_tool_metrics.h"
 #include "chrome/browser/actor/tools/page_target_util.h"
 #include "chrome/browser/affiliations/affiliation_service_factory.h"
 #include "chrome/browser/autofill/actor/one_time_tokens/actor_login_context.h"
@@ -32,11 +34,13 @@
 #include "components/actor/core/shared_types.h"
 #include "components/affiliations/core/browser/domain_matching/domain_relation_checker.h"
 #include "components/affiliations/core/browser/match_type.h"
+#include "components/autofill/content/browser/renderer_forms_from_browser_form.h"
 #include "components/autofill/core/common/autofill_prefs.h"
 #include "components/one_time_tokens/core/browser/one_time_token_retrieval_error.h"
 #include "components/prefs/pref_service.h"
 #include "content/public/browser/frame_tree_node_id.h"
 #include "content/public/browser/render_frame_host.h"
+#include "services/metrics/public/cpp/ukm_source_id.h"
 
 namespace actor {
 
@@ -115,11 +119,17 @@ void VerifyOtpFrameOriginMatch(affiliations::DomainRelationChecker* checker,
 // Returns the `RenderFrameHost` containing the OTP fields.
 content::RenderFrameHost* GetOtpFrame(
     tabs::TabHandle tab_handle,
-    base::span<const PageTarget> trigger_fields) {
-  if (trigger_fields.empty()) {
+    base::span<const autofill::FieldGlobalId> trigger_field_ids) {
+  if (trigger_field_ids.empty()) {
     return nullptr;
   }
-  return FindTargetLocalRootFrame(tab_handle, trigger_fields[0]);
+  tabs::TabInterface* tab = tab_handle.Get();
+  content::WebContents* web_contents = tab ? tab->GetContents() : nullptr;
+  if (!web_contents) {
+    return nullptr;
+  }
+  return autofill::FindRenderFrameHostByToken(
+      *web_contents, trigger_field_ids.front().frame_token);
 }
 
 // Checks if the tool execution corresponds to an actor login's sign in flow.
@@ -176,8 +186,7 @@ void IsActorLoginFlow(affiliations::DomainRelationChecker* checker,
       context.should_use_strong_matching, std::move(callback));
 }
 
-// Returns the `mojom::ActionResultPtr` for a given
-// `FormFillingContextStatus`.
+// Returns the `mojom::ActionResultPtr` for a given `FormFillingContextStatus`.
 mojom::ActionResultPtr GetResultFromFormFillingStatus(
     autofill::FormFillingContextStatus status) {
   switch (status) {
@@ -189,6 +198,21 @@ mojom::ActionResultPtr GetResultFromFormFillingStatus(
       return MakeResult(mojom::ActionResultCode::kFormFillingFieldNotFound);
     case autofill::FormFillingContextStatus::kTabNotAvailable:
       return MakeResult(mojom::ActionResultCode::kTabWentAway);
+  }
+}
+
+// Returns the metrics event for a given `FormFillingContextStatus`.
+AttemptOtpFillingToolEvent GetMetricsEventFromFormFillingStatus(
+    autofill::FormFillingContextStatus status) {
+  switch (status) {
+    case autofill::FormFillingContextStatus::kSecure:
+      NOTREACHED();
+    case autofill::FormFillingContextStatus::kInsecureContext:
+      return AttemptOtpFillingToolEvent::kFormFillingStatusInsecureContext;
+    case autofill::FormFillingContextStatus::kFormNotFound:
+      return AttemptOtpFillingToolEvent::kFormFillingStatusFormNotFound;
+    case autofill::FormFillingContextStatus::kTabNotAvailable:
+      return AttemptOtpFillingToolEvent::kFormFillingStatusTabNotAvailable;
   }
 }
 
@@ -222,6 +246,9 @@ AttemptOtpFillingTool::AttemptOtpFillingTool(
 AttemptOtpFillingTool::~AttemptOtpFillingTool() = default;
 
 void AttemptOtpFillingTool::Validate(ToolCallback callback) {
+  RecordAttemptOtpFillingEvent(
+      AttemptOtpFillingToolEvent::kStartFillingAttempt);
+
   PrefService* prefs = tool_delegate().GetProfile().GetPrefs();
   bool gmail_otp_filling_enabled =
       autofill::prefs::IsAutofillGmailOtpFillingEnabled(prefs);
@@ -250,8 +277,10 @@ void AttemptOtpFillingTool::Validate(ToolCallback callback) {
   }
 
   if (within_cool_off_period) {
+    RecordAttemptOtpFillingEvent(
+        AttemptOtpFillingToolEvent::kWithinOptInCoolOffPeriod);
     std::move(callback).Run(
-        MakeResult(mojom::ActionResultCode::kFormFillingAutofillUnavailable,
+        MakeResult(mojom::ActionResultCode::kOtpUnableToFill,
                    /*requires_page_stabilization=*/false,
                    "Gmail OTP disabled and within cool-off period for Gmail "
                    "OTP opt-in dialog."));
@@ -266,20 +295,24 @@ void AttemptOtpFillingTool::OnGmailOtpOptInResponse(
     ToolCallback callback,
     webui::mojom::GmailOtpOptInResultPtr response) {
   if (!response || response.is_null()) {
+    RecordAttemptOtpFillingEvent(
+        AttemptOtpFillingToolEvent::kOptInNullResponse);
     std::move(callback).Run(
-        MakeResult(mojom::ActionResultCode::kFormFillingDialogError,
+        MakeResult(mojom::ActionResultCode::kOtpUnableToFill,
                    /*requires_page_stabilization=*/false,
                    "Gmail OTP opt-in dialog response is null"));
     return;
   }
 
   if (response->is_error_reason()) {
+    RecordAttemptOtpFillingEvent(
+        AttemptOtpFillingToolEvent::kOptInErrorResponse);
     LogJournalEvent("AttemptOtpFillingTool::OnGmailOtpOptInResponse",
                     JournalDetailsBuilder()
                         .Add("error_reason", response->get_error_reason())
                         .Build());
     std::move(callback).Run(
-        MakeResult(mojom::ActionResultCode::kFormFillingDialogError,
+        MakeResult(mojom::ActionResultCode::kOtpUnableToFill,
                    /*requires_page_stabilization=*/false,
                    "Error in Gmail OTP opt-in dialog response"));
     return;
@@ -289,10 +322,12 @@ void AttemptOtpFillingTool::OnGmailOtpOptInResponse(
 
   PrefService* prefs = tool_delegate().GetProfile().GetPrefs();
   if (!opt_in_permission_granted) {
+    RecordAttemptOtpFillingEvent(
+        AttemptOtpFillingToolEvent::kOptInPermissionDenied);
     autofill::prefs::SetAutofillGmailOtpFillingActivationDismissalTimestamp(
         prefs, base::Time::Now());
     std::move(callback).Run(
-        MakeResult(mojom::ActionResultCode::kFormFillingAutofillUnavailable,
+        MakeResult(mojom::ActionResultCode::kOtpUserDeclinedOptingIntoFilling,
                    /*requires_page_stabilization=*/false,
                    "User declined Gmail OTP opt-in."));
     return;
@@ -316,12 +351,16 @@ mojom::ActionResultPtr AttemptOtpFillingTool::TimeOfUseValidation(
                       .Build());
 
   if (!tab) {
+    RecordAttemptOtpFillingEvent(
+        AttemptOtpFillingToolEvent::kTabWentAwayBeforeInvocation);
     return MakeResult(mojom::ActionResultCode::kTabWentAway,
                       /*requires_page_stabilization=*/false,
                       "Target tab was destroyed before invocation.");
   }
 
   if (!last_observation) {
+    RecordAttemptOtpFillingEvent(
+        AttemptOtpFillingToolEvent::kNoLastTabObservation);
     return MakeResult(mojom::ActionResultCode::kFormFillingNoLastTabObservation,
                       /*requires_page_stabilization=*/false,
                       "Last tab observation is null.");
@@ -333,6 +372,8 @@ mojom::ActionResultPtr AttemptOtpFillingTool::TimeOfUseValidation(
     autofill::FieldGlobalId field_id =
         GetFieldIdFromPageTarget(last_observation, tab, trigger_field);
     if (!field_id) {
+      RecordAttemptOtpFillingEvent(
+          AttemptOtpFillingToolEvent::kTriggerFieldNotFound);
       return MakeResult(mojom::ActionResultCode::kFormFillingFieldNotFound,
                         /*requires_page_stabilization=*/false,
                         "Trigger field not found.");
@@ -340,10 +381,20 @@ mojom::ActionResultPtr AttemptOtpFillingTool::TimeOfUseValidation(
     trigger_field_ids_.push_back(field_id);
   }
 
-  return GetResultFromFormFillingStatus(
+  autofill::FormFillingContextStatus status =
       tool_delegate()
           .GetActorOneTimeTokenFillingService()
-          .ValidateFormFillingContext(GetTargetTab(), trigger_field_ids_));
+          .ValidateFormFillingContext(GetTargetTab(), trigger_field_ids_);
+  LogJournalEvent("AttemptOtpFillingTool::Validate",
+                  JournalDetailsBuilder()
+                      .Add("form filling context status", status)
+                      .Build());
+  mojom::ActionResultPtr action_result = GetResultFromFormFillingStatus(status);
+
+  if (!IsOk(*action_result)) {
+    RecordAttemptOtpFillingEvent(GetMetricsEventFromFormFillingStatus(status));
+  }
+  return action_result;
 }
 
 void AttemptOtpFillingTool::Invoke(ToolCallback callback) {
@@ -356,13 +407,19 @@ void AttemptOtpFillingTool::Invoke(ToolCallback callback) {
                PredictedOtpTypeToString(predicted_otp_type_))
           .Build());
 
-  base::UmaHistogramEnumeration(
-      "OneTimeTokens.Actor.AttemptOtpFilling.PredictedOtpType",
-      predicted_otp_type_);
+  ukm::SourceId source_id = ukm::kInvalidSourceId;
+  if (tabs::TabInterface* tab = GetTargetTab().Get()) {
+    if (content::WebContents* web_contents = tab->GetContents()) {
+      source_id = web_contents->GetPrimaryMainFrame()->GetPageUkmSourceId();
+    }
+  }
+  RecordPredictedOtpTypeMetrics(predicted_otp_type_, source_id);
 
   content::RenderFrameHost* otp_frame =
-      GetOtpFrame(GetTargetTab(), trigger_fields_);
+      GetOtpFrame(GetTargetTab(), trigger_field_ids_);
   if (!otp_frame) {
+    RecordAttemptOtpFillingEvent(
+        AttemptOtpFillingToolEvent::kNoTargetFrameWithOtpFound);
     LogJournalEvent("AttemptOtpFillingTool::Invoke",
                     JournalDetailsBuilder()
                         .Add("error", "No frame containing an OTP")
@@ -418,6 +475,7 @@ void AttemptOtpFillingTool::OnActorLoginFlowChecked(ToolCallback callback,
         base::BindOnce(&AttemptOtpFillingTool::OnOtpRetrieved,
                        weak_factory_.GetWeakPtr(), std::move(callback)));
   } else {
+    RecordAttemptOtpFillingEvent(AttemptOtpFillingToolEvent::kNoActorLogin);
     LogJournalEvent("AttemptOtpFillingTool::OnActorLoginFlowChecked",
                     JournalDetailsBuilder()
                         .Add("error", "Not an Actor Login flow")
@@ -442,6 +500,8 @@ void AttemptOtpFillingTool::OnOtpRetrieved(
       JournalDetailsBuilder().Add("otp_received", result.has_value()).Build());
 
   if (!result.has_value()) {
+    RecordAttemptOtpFillingEvent(
+        AttemptOtpFillingToolEvent::kOtpRetrievalError);
     mojom::ActionResultCode code = mojom::ActionResultCode::kOtpRetrievalError;
     std::string message =
         base::StringPrintf("An error occurred during OTP retrieval: %d",
@@ -493,6 +553,8 @@ void AttemptOtpFillingTool::OnOtpRetrieved(
           .GetActorOneTimeTokenFillingService()
           .ValidateFormFillingContext(GetTargetTab(), trigger_field_ids_));
   if (!IsOk(*validation_result)) {
+    RecordAttemptOtpFillingEvent(
+        AttemptOtpFillingToolEvent::kFormFillingNotSecureBeforeFilling);
     std::move(callback).Run(std::move(validation_result));
     return;
   }
@@ -508,8 +570,11 @@ void AttemptOtpFillingTool::OnOtpFilled(ToolCallback callback, bool success) {
                   JournalDetailsBuilder().Add("success", success).Build());
 
   if (success) {
+    RecordAttemptOtpFillingEvent(
+        AttemptOtpFillingToolEvent::kFillingOtpSuccess);
     std::move(callback).Run(MakeOkResult());
   } else {
+    RecordAttemptOtpFillingEvent(AttemptOtpFillingToolEvent::kFillingOtpError);
     std::move(callback).Run(MakeResult(mojom::ActionResultCode::kOtpFillFailure,
                                        /*requires_page_stabilization=*/false,
                                        "Failed to fill OTP."));

@@ -273,24 +273,33 @@ void ContextualSearchboxHandler::GetRecentTabs(GetRecentTabsCallback callback) {
 
   // Now that tabs have been culled, extract data for only this most recent
   // selection, which is a small subset of all tabs.
+  const bool tab_deselection_enabled =
+      omnibox::IsTabDeselectionInComposeboxEnabled();
+  const GURL active_tab_url =
+      active_web_contents ? (tab_deselection_enabled
+                                 ? active_web_contents->GetVisibleURL()
+                                 : active_web_contents->GetLastCommittedURL())
+                          : GURL();
+
   std::vector<searchbox::mojom::TabInfoPtr> tabs;
   for (const TabTime& tab_time : tab_times) {
     content::WebContents* web_contents = tab_time.tab->GetContents();
-    const GURL& last_committed_url = web_contents->GetLastCommittedURL();
+    const GURL& url = tab_deselection_enabled
+                          ? web_contents->GetVisibleURL()
+                          : web_contents->GetLastCommittedURL();
 
     auto tab_data = searchbox::mojom::TabInfo::New();
     tab_data->tab_id = tab_time.tab->GetHandle().raw_value();
     tab_data->title = base::UTF16ToUTF8(web_contents->GetTitle());
-    tab_data->url = last_committed_url;
+    tab_data->url = url;
     const bool show_in_current_tab_chip =
-        active_web_contents &&
-        active_web_contents->GetLastCommittedURL() == last_committed_url;
+        active_web_contents && active_tab_url == url;
     tab_data->show_in_current_tab_chip = show_in_current_tab_chip;
 
     lens::TabContextualizationController* tab_context_controller =
         lens::TabContextualizationController::From(tab_time.tab);
     tab_data->show_in_previous_tab_chip =
-        !google_util::IsGoogleSearchUrl(last_committed_url) &&
+        !google_util::IsGoogleSearchUrl(url) &&
         tab_context_controller->GetInitialPageContextEligibility() &&
         active_web_contents &&
         active_web_contents->GetLastCommittedURL() ==
@@ -416,6 +425,33 @@ class ContextualSearchboxHandler::ActiveTabNavigationObserver
   base::RepeatingClosure on_navigation_cb_;
 };
 
+class ContextualSearchboxHandler::AllTabNavigationObserver
+    : public content::WebContentsObserver {
+ public:
+  AllTabNavigationObserver(
+      content::WebContents* web_contents,
+      base::RepeatingCallback<void(content::WebContents*)> on_navigation_cb)
+      : content::WebContentsObserver(web_contents),
+        on_navigation_cb_(on_navigation_cb) {}
+  ~AllTabNavigationObserver() override = default;
+
+  void DidFinishNavigation(
+      content::NavigationHandle* navigation_handle) override {
+    if (navigation_handle->IsInPrimaryMainFrame() &&
+        navigation_handle->HasCommitted() &&
+        !navigation_handle->IsSameDocument()) {
+      on_navigation_cb_.Run(web_contents());
+    }
+  }
+
+  void TitleWasSet(content::NavigationEntry* entry) override {
+    on_navigation_cb_.Run(web_contents());
+  }
+
+ private:
+  base::RepeatingCallback<void(content::WebContents*)> on_navigation_cb_;
+};
+
 ContextualSearchboxHandler::ContextualSearchboxHandler(
     mojo::PendingReceiver<searchbox::mojom::PageHandler>
         pending_searchbox_handler,
@@ -449,6 +485,7 @@ ContextualSearchboxHandler::ContextualSearchboxHandler(
       // supported API for external users.
       tab_list_observation_.Observe(tab_list);
       active_tab_nav_observer_->ObserveTab(tab_list->GetActiveTab());
+      UpdateAllTabNavigationObservers();
     }
   }
 
@@ -486,6 +523,7 @@ void ContextualSearchboxHandler::UpdateTabListObservation(
 void ContextualSearchboxHandler::OnTabAdded(TabListInterface& tab_list,
                                             tabs::TabInterface* tab,
                                             int index) {
+  UpdateAllTabNavigationObservers();
   page_->OnTabStripChanged();
 }
 
@@ -502,12 +540,14 @@ void ContextualSearchboxHandler::OnActiveTabNavigated() {
 void ContextualSearchboxHandler::OnTabRemoved(TabListInterface& tab_list,
                                               tabs::TabInterface* tab,
                                               TabRemovedReason removed_reason) {
+  UpdateAllTabNavigationObservers();
   page_->OnTabStripChanged();
 }
 
 void ContextualSearchboxHandler::OnTabListDestroyed(
     TabListInterface& tab_list) {
   tab_list_observation_.Reset();
+  all_tab_nav_observers_.clear();
 }
 
 void ContextualSearchboxHandler::OnAllTabsAreClosing(
@@ -564,6 +604,37 @@ ContextualSearchboxHandler::~ContextualSearchboxHandler() {
   }
 }
 
+void ContextualSearchboxHandler::UpdateAllTabNavigationObservers() {
+  all_tab_nav_observers_.clear();
+  if (!omnibox::IsTabDeselectionInComposeboxEnabled()) {
+    return;
+  }
+  auto* browser_window_interface =
+      webui::GetBrowserWindowInterface(web_contents_);
+  if (!browser_window_interface) {
+    return;
+  }
+  auto* tab_list = TabListInterface::From(browser_window_interface);
+  if (!tab_list) {
+    return;
+  }
+  for (tabs::TabInterface* tab : tab_list->GetAllTabs()) {
+    if (tab && tab->GetContents()) {
+      all_tab_nav_observers_.push_back(
+          std::make_unique<AllTabNavigationObserver>(
+              tab->GetContents(),
+              base::BindRepeating(
+                  &ContextualSearchboxHandler::OnAnyTabNavigated,
+                  base::Unretained(this))));
+    }
+  }
+}
+
+void ContextualSearchboxHandler::OnAnyTabNavigated(
+    content::WebContents* web_contents) {
+  page_->OnTabStripChanged();
+}
+
 void ContextualSearchboxHandler::ResetInputStateModel() {
   input_state_model_.reset();
 }
@@ -617,6 +688,16 @@ bool ContextualSearchboxHandler::IsSmartTabSharingActive() const {
   if (!IsContextualSearchTabSharingEligible()) {
     return false;
   }
+  if (input_state_model_) {
+    const auto& state = input_state_model_->GetInputState();
+    if (std::ranges::contains(state.disabled_input_types,
+                              omnibox::InputType::INPUT_TYPE_BROWSER_TAB)) {
+      return false;
+    }
+  }
+  if (smart_tab_sharing_active_for_thread_.has_value()) {
+    return *smart_tab_sharing_active_for_thread_;
+  }
   auto* session_handle =
       get_session_callback_ ? get_session_callback_.Run() : nullptr;
   if (session_handle &&
@@ -639,11 +720,24 @@ void ContextualSearchboxHandler::SetSmartTabSharingActive(bool active) {
           GetIsSmartTabSharingEnabled(profile_)) {
     return;
   }
+  if (smart_tab_sharing_active_for_thread_.has_value() &&
+      *smart_tab_sharing_active_for_thread_ == active) {
+    return;
+  }
+  smart_tab_sharing_active_for_thread_ = active;
   auto* session_handle = GetContextualSessionHandle();
   if (session_handle) {
     session_handle->set_smart_tab_sharing_active(active);
   }
-  page()->UpdateSmartTabSharingActive(active);
+  if (input_state_model_) {
+    input_state_model_->SetSmartTabSharingActive(active);
+  }
+  bool computed_active = IsSmartTabSharingActive();
+  if (!last_sent_smart_tab_sharing_active_.has_value() ||
+      *last_sent_smart_tab_sharing_active_ != computed_active) {
+    last_sent_smart_tab_sharing_active_ = computed_active;
+    page()->UpdateSmartTabSharingActive(computed_active);
+  }
 
   if (active && profile_ && !has_incremented_sts_activation_count_) {
     has_incremented_sts_activation_count_ = true;
@@ -1193,6 +1287,14 @@ void ContextualSearchboxHandler::GetInputState(GetInputStateCallback callback) {
 void ContextualSearchboxHandler::OnInputStateChanged(
     const contextual_search::InputState& state) {
   page_->OnInputStateChanged(state);
+#if !BUILDFLAG(IS_ANDROID)
+  bool active = IsSmartTabSharingActive();
+  if (!last_sent_smart_tab_sharing_active_.has_value() ||
+      *last_sent_smart_tab_sharing_active_ != active) {
+    last_sent_smart_tab_sharing_active_ = active;
+    page_->UpdateSmartTabSharingActive(active);
+  }
+#endif
 }
 
 base::WeakPtr<contextual_search::InputStateModel>
@@ -1230,6 +1332,7 @@ void ContextualSearchboxHandler::InitializeInputStateModel() {
   if (!input_state_model_) {
     return;
   }
+  input_state_model_->SetSmartTabSharingActive(IsSmartTabSharingActive());
 
   if (profile_) {
     input_state_model_->SetPrefService(profile_->GetPrefs());
@@ -1264,10 +1367,14 @@ void ContextualSearchboxHandler::InitializeInputStateModel() {
 }
 
 bool ContextualSearchboxHandler::IsContextualSearchTabSharingEligible() const {
-  // The default implementation returns true. Inheritors (such as the side
-  // panel composebox) can override this to enforce custom or dynamic
+  // The default implementation returns true on non-Android. Inheritors (such as
+  // the side panel composebox) can override this to enforce custom or dynamic
   // eligibility.
+#if BUILDFLAG(IS_ANDROID)
+  return false;
+#else
   return true;
+#endif
 }
 
 void ContextualSearchboxHandler::RecordTabAddedMetric(
@@ -1675,7 +1782,21 @@ void ContextualSearchboxHandler::OnContextUploadStatusChanged(
   page_->OnContextualInputStatusChanged(context_token, context_upload_status,
                                         error_type);
 
-  // Ensure `input_state_model_` is updated when file is uploaded.
+  if (base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox) &&
+      contextual_search::IsTerminalContextStatus(context_upload_status) &&
+      context_upload_status !=
+          contextual_search::ContextUploadStatus::kUploadSuccessful) {
+    if (auto node = selected_tabs.extract(context_token)) {
+      int32_t tab_id = node.mapped();
+      if (auto* active_task_context_provider = GetActiveTaskContextProvider();
+          active_task_context_provider != nullptr) {
+        active_task_context_provider->RemoveLocalTabUnderline(
+            tabs::TabHandle(tab_id));
+      }
+    }
+  }
+
+  // Ensure `input_state_model_` is updated when context status changes.
   if (input_state_model_) {
     input_state_model_->OnContextChanged();
   }
@@ -1965,6 +2086,8 @@ void ContextualSearchboxHandler::OpenUrl(
       contextual_session_handle->deselected_tabs_urls());
   new_contextual_session_handle->set_smart_tab_sharing_active(
       contextual_session_handle->smart_tab_sharing_active());
+  new_contextual_session_handle->set_smart_tab_sharing_toggled_off_in_thread(
+      contextual_session_handle->smart_tab_sharing_toggled_off_in_thread());
 
   // TODO(crbug.com/470404040): Determine what to do with the return
   // value of this call, or move this call to a different location.
