@@ -29,6 +29,7 @@
 #include "neva/app_runtime/renderer/app_runtime_localized_error.h"
 #include "neva/app_runtime/renderer/app_runtime_page_load_timing_render_frame_observer.h"
 #include "neva/app_runtime/renderer/app_runtime_render_frame_observer.h"
+#include "neva/app_runtime/renderer/app_runtime_webview_observer.h"
 #include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom.h"
 #include "third_party/blink/public/platform/web_url_error.h"
 #include "third_party/blink/public/web/web_console_message.h"
@@ -198,14 +199,18 @@ void AppRuntimeContentRendererClient::GetSupportedKeySystems(
 }
 #endif
 
-#if defined(USE_NEVA_CHROME_EXTENSIONS)
 void AppRuntimeContentRendererClient::WebViewCreated(
     blink::WebView* web_view,
     bool was_created_by_renderer,
     const url::Origin* outermost_origin) {
+  // Owns itself; deleted through OnDestruct() when the WebView goes away.
+  new AppRuntimeWebViewObserver(web_view);
+#if defined(USE_NEVA_CHROME_EXTENSIONS)
   extensions_renderer_client_->WebViewCreated(web_view, outermost_origin);
+#endif  // defined(USE_NEVA_CHROME_EXTENSIONS)
 }
 
+#if defined(USE_NEVA_CHROME_EXTENSIONS)
 void AppRuntimeContentRendererClient::RenderThreadStarted() {
   extensions_client_.reset(new neva::NevaExtensionsClient);
   extensions::ExtensionsClient::Set(extensions_client_.get());
