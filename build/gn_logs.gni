@@ -58,7 +58,15 @@ if (target_os == "fuchsia") {
 
 build_gn_logs += [ "#### get_concurrent_links.py ####" ] + concurrent_links_logs
 
-<<<<<<< HEAD
+if (defined(build_with_chromium) && build_with_chromium) {
+  import("//third_party/blink/renderer/config.gni")
+  build_gn_logs += [
+    "### blink ###",
+    "blink_enable_generated_code_formatting=$blink_enable_generated_code_formatting",
+    "",
+  ]
+}
+
 # NOTE(neva): Changes for Yocto build support
 declare_args() {
   yocto_target_sys = "arm-linux-gnueabi"
@@ -71,13 +79,3 @@ build_gn_logs += [ "#### yocto ####" ]
 build_gn_logs += ["yocto_target_sys=${yocto_target_sys}"]
 build_gn_logs += ["yocto_target_cc=${yocto_target_cc}"]
 build_gn_logs += ["yocto_target_cxx=${yocto_target_cxx}"]
-=======
-if (defined(build_with_chromium) && build_with_chromium) {
-  import("//third_party/blink/renderer/config.gni")
-  build_gn_logs += [
-    "### blink ###",
-    "blink_enable_generated_code_formatting=$blink_enable_generated_code_formatting",
-    "",
-  ]
-}
->>>>>>> 152.0.7968.0~1
