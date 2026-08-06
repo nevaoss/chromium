@@ -26,8 +26,6 @@ import org.chromium.build.BuildConfig;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.ui.side_panel.SidePanelCoordinatorAndroid;
-import org.chromium.chrome.browser.ui.side_panel_container.dev.SidePanelDevFeature;
-import org.chromium.chrome.browser.ui.side_panel_container.dev.SidePanelDevFeatureImpl;
 import org.chromium.chrome.browser.ui.side_ui.SideUiContainer;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.AnchorSide;
@@ -53,8 +51,6 @@ final class SidePanelContainerCoordinatorImpl
 
     /** JNI bridge to read/write C++ side panel states. */
     private @Nullable SidePanelCoordinatorAndroid mSidePanelCoordinatorAndroid;
-
-    private @Nullable SidePanelDevFeatureImpl mSidePanelPureJavaDevFeature;
 
     private @Nullable SidePanelContent mCurrentContent;
 
@@ -88,6 +84,8 @@ final class SidePanelContainerCoordinatorImpl
      */
     private boolean mIsPreparingForAutoRestore;
 
+    private boolean mEnableDeferredViewReplacementForTesting;
+
     /**
      * Constructs a concrete implementation of the SidePanelContainerCoordinator interface.
      *
@@ -110,22 +108,12 @@ final class SidePanelContainerCoordinatorImpl
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
     @Override
-    public void init(
-            SidePanelCoordinatorAndroid sidePanelCoordinatorAndroid,
-            @Nullable SidePanelDevFeature sidePanelDevFeature) {
+    public void init(SidePanelCoordinatorAndroid sidePanelCoordinatorAndroid) {
         log(TAG, "init");
         ThreadUtils.assertOnUiThread();
         mSideUiCoordinator.registerSideUiContainer(this);
-
-        // SidePanelCoordinatorAndroid connects the Java UI with the state management logic in C++.
-        // We should _not_ initialize SidePanelCoordinatorAndroid for the pure-Java dev feature,
-        // otherwise the pure-Java dev feature will drive the C++ side into invalid states.
-        if (sidePanelDevFeature instanceof SidePanelDevFeatureImpl) {
-            mSidePanelPureJavaDevFeature = (SidePanelDevFeatureImpl) sidePanelDevFeature;
-        } else {
-            mSidePanelCoordinatorAndroid = sidePanelCoordinatorAndroid;
-            mSidePanelCoordinatorAndroid.init();
-        }
+        mSidePanelCoordinatorAndroid = sidePanelCoordinatorAndroid;
+        mSidePanelCoordinatorAndroid.init();
     }
 
     @Override
@@ -169,12 +157,7 @@ final class SidePanelContainerCoordinatorImpl
         // TODO(crbug.com/513302000): assert the side panel is currently open.
         // TODO(crbug.com/513302000): assert the side panel isn't preparing for auto-restore/close.
 
-        if (mPendingReplaceRunnable != null) {
-            mPendingReplaceRunnable.run();
-            // Explicitly set to null for readability, though it is also handled
-            // internally by the runnable's run() method.
-            mPendingReplaceRunnable = null;
-        }
+        completePendingContentReplacementInternal();
 
         assert mCurrentContent != null : "no content to replace";
         View oldContentView = mCurrentContent.mView;
@@ -227,26 +210,36 @@ final class SidePanelContainerCoordinatorImpl
 
         mPendingReplaceRunnable = removeOldViewRunnable;
         ThinWebView thinWebView = findThinWebView(newContent.mView);
-        if (thinWebView == null || BuildConfig.IS_FOR_TEST) {
-            mPendingReplaceRunnable.run();
-            // Explicitly set to null for readability, though it is also handled
-            // internally by the runnable's run() method.
-            mPendingReplaceRunnable = null;
-        } else {
-            thinWebView.runOnNextFrame(removeOldViewRunnable);
+
+        // If there is no ThinWebView, immediately complete the content View replacement since this
+        // won't cause UI flickers.
+        if (thinWebView == null) {
+            completePendingContentReplacementInternal();
+            return;
         }
+
+        // If there is a ThinWebView, but we are in a test that doesn't explicitly enable the
+        // deferred View removal, also complete the View replacement immediately.
+        if (BuildConfig.IS_FOR_TEST && !mEnableDeferredViewReplacementForTesting) {
+            completePendingContentReplacementInternal();
+            return;
+        }
+
+        // Otherwise, remove the old content View when ThinWebView has rendered the first frame.
+        // This is to prevent UI flickers.
+        thinWebView.runOnNextFrame(removeOldViewRunnable);
+    }
+
+    @Override
+    public void completePendingContentReplacement() {
+        log(TAG, "completePendingContentReplacement");
+        ThreadUtils.assertOnUiThread();
+        completePendingContentReplacementInternal();
     }
 
     @Override
     public void endAnimations() {
         mSideUiCoordinator.endAnimations();
-    }
-
-    @Override
-    public boolean isShowing(SidePanelContent sidePanelContent) {
-        log(TAG, "isShowing", sidePanelContent);
-        ThreadUtils.assertOnUiThread();
-        return sidePanelContent == mCurrentContent;
     }
 
     @Override
@@ -274,6 +267,11 @@ final class SidePanelContainerCoordinatorImpl
         // (2) a crash when the content View is added to another container instance.
         getContentContainer().removeAllViews();
         mCurrentContent = null;
+    }
+
+    @Override
+    public void configDeferredViewReplacementForTesting(boolean enable) {
+        mEnableDeferredViewReplacementForTesting = enable;
     }
 
     @Override
@@ -335,17 +333,9 @@ final class SidePanelContainerCoordinatorImpl
     @Override
     public boolean hasContentToShow() {
         ThreadUtils.assertOnUiThread();
-
-        // The pure-Java dev feature doesn't use SidePanelCoordinatorAndroid since
-        // SidePanelCoordinatorAndroid is a bridge to the C++ side panel state management.
-        if (mSidePanelPureJavaDevFeature != null) {
-            return mSidePanelPureJavaDevFeature.hasDevContentToShow();
-        }
-
         if (mSidePanelCoordinatorAndroid != null) {
             return mSidePanelCoordinatorAndroid.hasContentToShow();
         }
-
         return false;
     }
 
@@ -437,12 +427,6 @@ final class SidePanelContainerCoordinatorImpl
 
     @Override
     public void onWillAutoClose() {
-        // The pure-Java dev feature doesn't need onWillAutoClose() or SidePanelCoordinatorAndroid.
-        // SidePanelCoordinatorAndroid is a bridge to the C++ side panel state management.
-        if (mSidePanelPureJavaDevFeature != null) {
-            return;
-        }
-
         if (mSidePanelCoordinatorAndroid != null) {
             mIsPreparingForAutoClose = true;
             mSidePanelCoordinatorAndroid.onWillAutoClose();
@@ -452,13 +436,6 @@ final class SidePanelContainerCoordinatorImpl
 
     @Override
     public void onWillAutoRestore() {
-        // The pure-Java dev feature doesn't need onWillAutoRestore() or
-        // SidePanelCoordinatorAndroid.
-        // SidePanelCoordinatorAndroid is a bridge to the C++ side panel state management.
-        if (mSidePanelPureJavaDevFeature != null) {
-            return;
-        }
-
         if (mSidePanelCoordinatorAndroid != null) {
             mIsPreparingForAutoRestore = true;
             mSidePanelCoordinatorAndroid.onWillAutoRestore();
@@ -515,9 +492,7 @@ final class SidePanelContainerCoordinatorImpl
     }
 
     private void onCloseButtonClicked() {
-        if (mSidePanelPureJavaDevFeature != null) {
-            mSidePanelPureJavaDevFeature.toggle();
-        } else if (mSidePanelCoordinatorAndroid != null) {
+        if (mSidePanelCoordinatorAndroid != null) {
             mSidePanelCoordinatorAndroid.close();
         }
     }
@@ -537,6 +512,16 @@ final class SidePanelContainerCoordinatorImpl
         }
         View headerView = mContainerView.findViewById(R.id.side_panel_header);
         headerView.setVisibility(vis);
+    }
+
+    private void completePendingContentReplacementInternal() {
+        if (mPendingReplaceRunnable != null) {
+            mPendingReplaceRunnable.run();
+
+            // Explicitly set to null for readability, though it is also handled
+            // internally by the runnable's run() method.
+            mPendingReplaceRunnable = null;
+        }
     }
 
     private ViewGroup getContentContainer() {

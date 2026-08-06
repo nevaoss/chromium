@@ -1150,6 +1150,11 @@ void NetworkContext::SetClient(
   client_.Bind(std::move(client));
 }
 
+void NetworkContext::CreateSocketFactory(
+    mojo::PendingReceiver<mojom::SocketFactory> receiver) {
+  socket_factory_receivers_.Add(socket_factory_.get(), std::move(receiver));
+}
+
 void NetworkContext::CreateURLLoaderFactory(
     mojo::PendingReceiver<mojom::URLLoaderFactory> receiver,
     mojom::URLLoaderFactoryParamsPtr params) {
@@ -2062,8 +2067,8 @@ void NetworkContext::CreateTCPConnectedSocket(
     CreateTCPConnectedSocketCallback callback) {
   socket_factory_->CreateTCPConnectedSocket(
       local_addr, remote_addr_list, std::move(tcp_connected_socket_options),
-      static_cast<net::NetworkTrafficAnnotationTag>(traffic_annotation),
-      std::move(receiver), std::move(observer), std::move(callback));
+      traffic_annotation, std::move(receiver), std::move(observer),
+      std::move(callback));
 }
 
 void NetworkContext::CreateTCPBoundSocket(

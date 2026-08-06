@@ -22,6 +22,7 @@
 #include "components/autofill/core/browser/foundations/scoped_autofill_managers_observation.h"
 #include "components/autofill/core/browser/integrators/optimization_guide/autofill_optimization_guide_decider.h"
 #include "components/autofill/core/browser/metrics/autofill_metrics.h"
+#include "components/autofill/core/browser/metrics/form_events/credit_card_form_event_logger.h"
 #include "components/autofill/core/browser/metrics/form_events/form_event_logger_base.h"
 #include "components/autofill/core/browser/metrics/payments/omnibox_autofill_metrics.h"
 #include "components/autofill/core/browser/metrics/suggestions_list_metrics.h"
@@ -230,15 +231,20 @@ void OmniboxAutofillDelegate::OnFieldTypesDetermined(
   LogOmniboxAutofillShowChipDecisionPart1(
       OmniboxAutofillShowChipDecisionPart1::kSuccess);
   trigger_form_global_id_ = form_structure->global_id();
+  trigger_field_global_id_ = {};
   for (const std::unique_ptr<AutofillField>& field : form_structure->fields()) {
     if (field->Type().GetCreditCardType() == CREDIT_CARD_NUMBER) {
       trigger_field_global_id_ = field->global_id();
       break;
     }
   }
+  CHECK(trigger_field_global_id_);
   candidate_form_found_ = true;
 
-  // TODO: crbug.com/490214534 - Initiate ObserveFieldVisibility(~).
+  visibility_receiver_.reset();
+  manager.driver().ObserveFieldVisibility(
+      trigger_field_global_id_,
+      visibility_receiver_.BindNewPipeAndPassRemote());
 }
 
 void OmniboxAutofillDelegate::OnAutofillManagerStateChanged(
@@ -344,6 +350,8 @@ void OmniboxAutofillDelegate::OnSuggestionsShown(
       suggestions, parent_suggestion_metadata, trigger_form_global_id_,
       trigger_field_global_id_,
       AutofillExternalDelegate::UpdateSuggestionsCallback());
+
+  manager->GetCreditCardFormEventLogger().OnOmniboxAutofillChipClicked();
 }
 
 void OmniboxAutofillDelegate::OnSuggestionsHidden(
@@ -364,9 +372,15 @@ void OmniboxAutofillDelegate::DidSelectSuggestion(
 void OmniboxAutofillDelegate::DidAcceptSuggestion(
     const Suggestion& suggestion,
     const SuggestionMetadata& metadata) {
-  // TODO(crbug.com/490214497): Implement when payment method suggestion list is
-  // clicked.
-  NOTIMPLEMENTED();
+  // TODO(crbug.com/490213796): Fill the form with the accepted suggestion.
+  // Also, replace `GetAutofillManagerForPrimaryMainFrame` call with WeakPtr to
+  // the autofill manager containing the trigger form and field.
+  auto* manager = static_cast<BrowserAutofillManager*>(
+      client_->GetAutofillManagerForPrimaryMainFrame());
+  if (!manager) {
+    return;
+  }
+  manager->GetCreditCardFormEventLogger().OnOmniboxAutofillSuggestionAccepted();
 }
 
 bool OmniboxAutofillDelegate::RemoveSuggestion(const Suggestion& suggestion) {
@@ -390,6 +404,7 @@ void OmniboxAutofillDelegate::OnTabSelected(TabbedPaneTabType tab_type) {
 }
 
 void OmniboxAutofillDelegate::OnFieldBecameVisible() {
+  visibility_receiver_.reset();
   auto* manager = static_cast<BrowserAutofillManager*>(
       client_->GetAutofillManagerForPrimaryMainFrame());
   if (!manager) {
@@ -430,7 +445,7 @@ void OmniboxAutofillDelegate::OnFieldBecameVisible() {
   AutofillMetrics::LogIsQueriedCreditCardFormSecure(client_->IsContextSecure());
 
   // Shows the "Autofill payment" chip and initializes the bubble.
-  client_->GetPaymentsAutofillClient()->ShowOmniboxAutofillChip(
+  client_->GetPaymentsAutofillClient()->ShowExpandedOmniboxAutofillChip(
       std::move(suggestions),
       base::BindRepeating(
           [](base::WeakPtr<OmniboxAutofillDelegate> delegate,
@@ -454,6 +469,8 @@ void OmniboxAutofillDelegate::OnFieldBecameVisible() {
                           weak_ptr_factory_.GetWeakPtr()),
       base::BindRepeating(&OmniboxAutofillDelegate::DidAcceptSuggestion,
                           weak_ptr_factory_.GetWeakPtr()));
+
+  manager->GetCreditCardFormEventLogger().OnOmniboxAutofillChipShown();
 }
 
 bool OmniboxAutofillDelegate::IsOutermostMainFrameActiveAutofillManager(

@@ -41,6 +41,12 @@ enum GlicExperimentalTriggeringState {
   kReady = 2,
 };
 
+// @generate glic_api
+enum FileUploadPolicyState {
+  kEnabled = 0,
+  kDisabled = 1,
+};
+
 // Struct containing data about eligibility for GLIC.
 struct ProfileEnablement {
   // Whether the GLIC feature is enabled.
@@ -622,6 +628,10 @@ struct WebClientInitialState {
   GeminiEnterpriseSettings? gemini_enterprise_settings;
   // Whether features::kGlicActorAutofillOneTimePassword is enabled.
   bool enable_gmail_otp_opt_in;
+  // Whether the Gmail OTP confirmation dialog is enabled.
+  bool enable_gmail_otp_confirmation;
+  // Whether file upload is allowed by the enterprise policy.
+  FileUploadPolicyState file_upload_policy_state;
 };
 
 // @generate glic_api
@@ -1147,8 +1157,15 @@ interface ActorClient {
   NotifyActorTaskStateChanged(int32 task_id, ActorTaskState state);
 
   // Requests the web client to show the Gmail OTP opt-in dialog to the user.
-  RequestToShowGmailOtpOptInDialog(int32 task_id)
+  RequestToShowGmailOtpOptInDialog(
+      actor.webui.mojom.GmailOtpOptInRequest request)
       => (actor.webui.mojom.GmailOtpOptInResult result);
+
+  // Requests the web client to show the Gmail OTP confirmation dialog to the
+  // user.
+  RequestToShowGmailOtpConfirmationDialog(
+      actor.webui.mojom.GmailOtpConfirmationRequest request)
+      => (actor.webui.mojom.GmailOtpConfirmationResult result);
 };
 
 // @generate glic_api
@@ -2190,6 +2207,8 @@ enum ExperimentalTriggeringUpdateType {
   kTerminalFailed = 5,
   // The interaction yielded to the user.
   [MinVersion=1] kYieldToUser = 6,
+  // The interaction has resumed after a pause or wait state.
+  [MinVersion=2] kResumed = 7,
 };
 
 // Types of subscriber observations that may be observed.
@@ -2211,6 +2230,9 @@ struct ExperimentalTriggeringUpdate {
   // The human-readable text associated with the update, such as response text
   // or status message.
   string data;
+  // Optional structured metadata associated with the update (e.g., choice
+  // options for interactive yields).
+  map<string, string>? metadata;
 };
 
 // Interface for receiving updates during web client interactions.
@@ -2260,6 +2282,10 @@ interface WebClient {
   // The Microphone permission has changed either by action within the web
   // client or by user action in the glic settings.
   NotifyMicrophonePermissionStateChanged(bool enabled);
+
+  // Informs the web client that the enterprise policy for file upload has
+  // changed.
+  NotifyFileUploadStateChanged(FileUploadPolicyState state);
 
   // Requests the web client to stop microphone recording.
   StopMicrophone() => ();

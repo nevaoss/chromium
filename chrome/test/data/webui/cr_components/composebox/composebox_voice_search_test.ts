@@ -3,10 +3,9 @@
 // found in the LICENSE file.
 
 import 'chrome://contextual-tasks/strings.m.js';
-import 'chrome://resources/cr_components/composebox/composebox.js';
+import './test_composebox_mixin.js';
 import 'chrome://resources/cr_components/composebox/composebox_voice_search.js';
 
-import type {ComposeboxElement} from 'chrome://resources/cr_components/composebox/composebox.js';
 import {PageHandlerRemote} from 'chrome://resources/cr_components/composebox/composebox.mojom-webui.js';
 import {ComposeboxProxyImpl, createAutocompleteMatch} from 'chrome://resources/cr_components/composebox/composebox_proxy.js';
 import type {ComposeboxVoiceSearchElement} from 'chrome://resources/cr_components/composebox/composebox_voice_search.js';
@@ -24,6 +23,7 @@ import {$$, isVisible, microtasksFinished} from 'chrome://webui-test/test_util.j
 
 import {assertStyle, disableTransitionsRecursively, installMock, MockSpeechRecognition, mockSpeechRecognition} from './composebox_test_utils.js';
 import type {MockComposebox, MockComposeboxVoiceSearch} from './composebox_test_utils.js';
+import type {TestComposeboxMixinElement} from './test_composebox_mixin.js';
 
 // Returns a promise that resolves when CSS style has transitioned.
 function getTransitionEndPromise(
@@ -51,7 +51,7 @@ function createResults(n: number): SpeechRecognitionEvent {
 
 
 suite('ComposeboxVoiceSearch', () => {
-  let composeboxElement: ComposeboxElement;
+  let composeboxElement: TestComposeboxMixinElement;
   let handler: TestMock<PageHandlerRemote>;
   let searchboxHandler: TestMock<SearchboxPageHandlerRemote>;
   let windowProxy: TestMock<WindowProxy>;
@@ -134,21 +134,21 @@ suite('ComposeboxVoiceSearch', () => {
     if (composeboxElement && composeboxElement.parentNode) {
       composeboxElement.remove();
     }
-    composeboxElement = document.createElement('cr-composebox');
+    composeboxElement = document.createElement('test-composebox-mixin');
     composeboxElement.showVoiceSearch = showVoiceSearch;
     document.body.appendChild(composeboxElement);
     await microtasksFinished();
     disableTransitionsRecursively(composeboxElement);
   }
 
-  function getVoiceSearchButton(composeboxElement: ComposeboxElement):
+  function getVoiceSearchButton(composeboxElement: TestComposeboxMixinElement):
       HTMLElement|null {
     return composeboxElement?.shadowRoot?.querySelector<HTMLElement>(
                '#voiceSearchButton') ??
         null;
   }
 
-  function getVoiceSearchElement(composeboxElement: ComposeboxElement):
+  function getVoiceSearchElement(composeboxElement: TestComposeboxMixinElement):
       ComposeboxVoiceSearchElement {
     const voiceSearchElement = $$<ComposeboxVoiceSearchElement>(
         composeboxElement, 'cr-composebox-voice-search');
@@ -769,7 +769,7 @@ suite('ComposeboxVoiceSearch', () => {
       voiceSearchCoherenceComposeboxesEnabled: true,
     });
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
-    composeboxElement = document.createElement('cr-composebox');
+    composeboxElement = document.createElement('test-composebox-mixin');
     composeboxElement.showVoiceSearch = true;
     document.body.appendChild(composeboxElement);
     await microtasksFinished();
@@ -928,7 +928,7 @@ suite('ComposeboxVoiceSearch', () => {
         // Simulate Mojo notification: prompt is showing with size 0,0
         const pageCallbackRouter =
             (composeboxElement as unknown as MockComposebox)
-                .searchboxCallbackRouter_;
+                .searchboxCallbackRouter;
         assertTrue(!!pageCallbackRouter);
         const pageRemote = pageCallbackRouter.$.bindNewPipeAndPassRemote();
         pageRemote.onPermissionPromptChanged(true, {width: 0, height: 0});
@@ -1226,11 +1226,10 @@ suite('ComposeboxVoiceSearch', () => {
         assertEquals(100, permissionEventDetail.width);
         assertEquals(200, permissionEventDetail.height);
 
-        const textarea =
-            voiceSearchElement.shadowRoot.querySelector<HTMLTextAreaElement>(
-                '#input');
-        assertTrue(!!textarea, 'Textarea #input should be rendered');
-        assertEquals('Waiting for permission...', textarea.placeholder);
+        const inputDiv =
+            voiceSearchElement.shadowRoot.querySelector<HTMLElement>('#input');
+        assertTrue(!!inputDiv, 'Input #input should be rendered');
+        assertEquals('Waiting for permission...', inputDiv.textContent?.trim());
 
         // Fire `onPermissionPromptChanged(false, promptSize)`.
         searchboxCallbackRouterRemote.onPermissionPromptChanged(
@@ -1384,6 +1383,8 @@ suite('ComposeboxVoiceSearch', () => {
       async () => {
         // Open voice search via UI.
         const voiceSearchElement = await openVoiceSearchUI();
+        voiceSearchElement.liveTranscriptEnabled = false;
+        await voiceSearchElement.updateComplete;
         const container =
             voiceSearchElement.shadowRoot.querySelector('#container');
         assertTrue(!!container);
@@ -1438,4 +1439,33 @@ suite('ComposeboxVoiceSearch', () => {
         voiceSearchElement.shadowRoot.querySelector<HTMLElement>('#input')!;
     assertEquals('16px', window.getComputedStyle(input).fontSize);
   });
+
+  test(
+      'input ends above bottom action buttons and spans full width',
+      async () => {
+        await createComposeboxElement();
+        const voiceSearchElement = getVoiceSearchElement(composeboxElement);
+        voiceSearchElement.submitStopButtonsEnabled = true;
+        voiceSearchElement.liveTranscriptEnabled = true;
+        await voiceSearchElement.updateComplete;
+
+        const container =
+            voiceSearchElement.shadowRoot.querySelector<HTMLElement>(
+                '#container')!;
+        const input =
+            voiceSearchElement.shadowRoot.querySelector<HTMLElement>('#input')!;
+        const buttonSpacer =
+            voiceSearchElement.shadowRoot.querySelector<HTMLElement>(
+                '#button-spacer');
+        const bottomActions =
+            voiceSearchElement.shadowRoot.querySelector<HTMLElement>(
+                '#bottomActions')!;
+
+        assertFalse(!!buttonSpacer);
+        assertEquals(
+            'column', window.getComputedStyle(container).flexDirection);
+        assertEquals('20px', window.getComputedStyle(input).paddingInlineEnd);
+        assertEquals('0px', window.getComputedStyle(input).paddingBottom);
+        assertEquals('static', window.getComputedStyle(bottomActions).position);
+      });
 });

@@ -814,15 +814,13 @@ void VariationsService::SimulateAndApplyRuntimeMutableChanges(
   std::unique_ptr<ClientFilterableState> client_state =
       field_trial_creator_.GetClientFilterableStateForVersion(current_version);
   VariationsLayers layers(seed, *entropy_providers_);
-  auto filtered_studies = FilterAndValidateStudies(seed, *client_state, layers);
+  // Filter for studies that are explicitly declared as runtime mutable, as it
+  // is an opt-in functionality.
+  auto filtered_studies = FilterAndValidateStudies(
+      seed, *client_state, layers,
+      [](const Study& study) { return study.runtime_mutable(); });
 
   for (const ProcessedStudy& study : filtered_studies) {
-    // Only consider studies that are explicitly declared as runtime mutable, as
-    // it is an opt-in functionality.
-    if (!study.study()->runtime_mutable()) {
-      continue;
-    }
-
     // Simulate group assignment for the study, and apply it if necessary.
     scoped_refptr<base::FieldTrial> simulated_trial =
         VariationsSeedProcessor(field_trial_creator_.sticky_activation_manager(
@@ -1130,34 +1128,11 @@ ApplyRuntimeMutableChangesResult VariationsService::ApplyRuntimeMutableChanges(
   // TODO(crbug.com/482450632): Technically the outlined scenario is safe and
   // could be supported as it results in a valid state that is fully contained
   // in the killswitch seed. But for now, prevent these cases for simplicity.
-  using ControllingTrialInfo =
-      std::tuple</*trial_name=*/std::string, /*is_runtime_override=*/bool>;
-  base::flat_set<ControllingTrialInfo> controlling_trial_infos;
+  base::flat_set<base::FeatureList::ControllingTrialInfo>
+      controlling_trial_infos;
   for (const std::string& feature_name : feature_names) {
-    // Get the trial that is currently controlling the feature. If the feature
-    // is not being controlled by any trial, this will be an empty string.
-    std::string controlling_trial_name;
-    bool is_runtime_override;
-
-    // Check if the feature is being controlled by a runtime FieldTrial
-    // override.
-    controlling_trial_name =
-        feature_list->GetAssociatedRuntimeFieldTrialOverrideByFeatureName(
-            feature_name);
-    if (!controlling_trial_name.empty()) {
-      is_runtime_override = true;
-    } else {
-      // Otherwise, find the associated FieldTrial for the feature (if any).
-      is_runtime_override = false;
-      base::FieldTrial* trial =
-          feature_list->GetAssociatedFieldTrialByFeatureName(feature_name);
-      if (trial) {
-        controlling_trial_name = trial->trial_name();
-      }
-    }
-
     controlling_trial_infos.insert(
-        std::make_tuple(controlling_trial_name, is_runtime_override));
+        feature_list->GetControllingTrialInfoByFeatureName(feature_name));
   }
   if (controlling_trial_infos.size() != 1) {
     return kFeaturesNotControlledBySameTrial;
@@ -1168,12 +1143,11 @@ ApplyRuntimeMutableChangesResult VariationsService::ApplyRuntimeMutableChanges(
   // but the new runtime mutable experiment only killswitches FeatureA, this
   // would create an invalid state that does not exist in any individual seed
   // (FeatureA disabled, FeatureB enabled).
-  const ControllingTrialInfo& controlling_trial_info =
+  const base::FeatureList::ControllingTrialInfo& controlling_trial_info =
       *controlling_trial_infos.begin();
-  const std::string& controlling_trial_name =
-      std::get<0>(controlling_trial_info);
+  const std::string& controlling_trial_name = controlling_trial_info.trial_name;
   bool controlling_trial_is_runtime_override =
-      std::get<1>(controlling_trial_info);
+      controlling_trial_info.is_runtime_override;
   // It's possible that no trial is currently controlling the features. E.g.,
   // say FeatureA and FeatureB are both ENABLED_BY_DEFAULT and are not
   // controlled by any trial. If a runtime mutable killswitch is deployed to
@@ -1183,27 +1157,8 @@ ApplyRuntimeMutableChangesResult VariationsService::ApplyRuntimeMutableChanges(
   // will not be empty anymore, and will only apply if the new killswitch
   // specifies the same set of features as the original killswitch.
   if (!controlling_trial_name.empty()) {
-    base::flat_set<std::string> associated_features;
-    // TODO(crbug.com/482450632): Implement this more efficiently by maintaining
-    // a map of trials to associated features.
-    if (controlling_trial_is_runtime_override) {
-      // Hacky DCHECK required to access `runtime_mutable_overrides_` for now...
-      DCHECK_CALLED_ON_VALID_SEQUENCE(feature_list->sequence_checker_);
-      for (const auto& [feature_name, runtime_override_info] :
-           feature_list->runtime_mutable_overrides_) {
-        if (runtime_override_info.field_trial_name == controlling_trial_name) {
-          associated_features.insert(feature_name);
-        }
-      }
-    } else {
-      for (const auto& [feature_name, override_info] :
-           feature_list->overrides_) {
-        if (override_info.field_trial &&
-            override_info.field_trial->trial_name() == controlling_trial_name) {
-          associated_features.insert(feature_name);
-        }
-      }
-    }
+    base::flat_set<std::string> associated_features =
+        feature_list->GetFeaturesAssociatedWithTrial(controlling_trial_info);
 
     if (feature_names != associated_features) {
       return kControllingTrialHasOtherFeatures;

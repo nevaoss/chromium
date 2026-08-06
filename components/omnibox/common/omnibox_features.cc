@@ -420,7 +420,6 @@ const base::FeatureParam<std::string> kComposeboxDriveConsentEntrypointId{
 // only used for testing purposes since dasher accounts are not allowed to
 // consent via pContext.
 BASE_FEATURE(kForceDriveDisclaimerAccepted,
-             "ForceDriveDisclaimerAccepted",
              DISABLED);
 
 // Whether the composebox should show a verbatim match for context in
@@ -572,6 +571,20 @@ const base::FeatureParam<InlineLocationSignalingWording>
         InlineLocationSignalingWording::kUseApproximateLocation,
         &kInlineLocationSignalingWordingOptions};
 
+// If enabled, the "Ask Google about this page" action will route to cobrowse.
+BASE_FEATURE(kWebUIOmniboxAskGAboutThisPage, DISABLED);
+
+const base::FeatureParam<bool> kAskGCoBrowse{
+    &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGCoBrowse", false};
+const base::FeatureParam<bool> kAskGCoBrowseWithVisualSelection{
+    &kWebUIOmniboxAskGAboutThisPage,
+    "Omnibox_AskGCoBrowseWithVisualSelection", false};
+const base::FeatureParam<bool> kAskGComposeBox{
+    &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGComposeBox", false};
+const base::FeatureParam<bool> kAskGLensChipRoute{
+    &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGLensChipRoute", false};
+const base::FeatureParam<bool> kAskGSwapIcon{
+    &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGSwapIcon", false};
 // Note: no new flags beyond this point.
 
 namespace flag_descriptions {

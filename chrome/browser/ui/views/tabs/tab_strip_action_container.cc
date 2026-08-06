@@ -15,6 +15,7 @@
 #include "chrome/browser/glic/browser_ui/glic_actor_task_icon_manager_factory.h"
 #include "chrome/browser/glic/browser_ui/glic_button_controller.h"
 #include "chrome/browser/glic/browser_ui/glic_nudge_controller.h"
+#include "chrome/browser/glic/browser_ui/glic_split_button_controller.h"
 #include "chrome/browser/glic/glic_profile_manager.h"
 #include "chrome/browser/glic/host/glic.mojom.h"
 #include "chrome/browser/glic/host/host.h"
@@ -222,13 +223,9 @@ void TabStripActionContainer::TabStripNudgeAnimationSession::Show() {
 }
 
 TabStripActionContainer::TabStripActionContainer(
-    BrowserWindowInterface* browser_window_interface,
-    glic::GlicNudgeController* glic_nudge_controller)
+    BrowserWindowInterface* browser_window_interface)
     : AnimationDelegateViews(this),
       locked_expansion_view_(this),
-      glic_nudge_controller_(glic_nudge_controller),
-      glic_button_controller_(
-          glic::GlicButtonController::From(browser_window_interface)),
       browser_window_interface_(browser_window_interface) {
   SetProperty(views::kElementIdentifierKey, kTabStripActionContainerElementId);
 
@@ -236,11 +233,6 @@ TabStripActionContainer::TabStripActionContainer(
       std::make_unique<views::MouseWatcherViewHost>(locked_expansion_view_,
                                                     gfx::Insets()),
       this);
-
-  // `glic_nudge_controller_` will be null if feature is not enabled.
-  if (glic_nudge_controller_) {
-    glic_nudge_controller_->SetHorizontalTabsDelegate(this);
-  }
 
   if (glic::GlicEnabling::IsProfileEligible(
           browser_window_interface_->GetProfile())) {
@@ -284,22 +276,29 @@ TabStripActionContainer::TabStripActionContainer(
       .SetMainAxisAlignment(views::LayoutAlignment::kStart)
       .SetCrossAxisAlignment(views::LayoutAlignment::kCenter)
       .SetCollapseMargins(false);
+
+  if (auto* glic_split_button_controller =
+          glic::GlicSplitButtonController::From(browser_window_interface)) {
+    glic_split_button_controller_ = glic_split_button_controller->GetWeakPtr();
+    glic_split_button_controller_->SetHorizontalTabsDelegate(this);
+  }
 }
 
 TabStripActionContainer::~TabStripActionContainer() {
   if (scoped_tab_strip_modal_ui_) {
     scoped_tab_strip_modal_ui_.reset();
   }
-  if (glic_nudge_controller_) {
-    glic_nudge_controller_->SetHorizontalTabsDelegate(nullptr);
+  if (glic_split_button_controller_) {
+    glic_split_button_controller_->SetHorizontalTabsDelegate(nullptr);
   }
 }
 
 void TabStripActionContainer::AddedToWidget() {
   views::View::AddedToWidget();
-  if (auto* controller =
-          glic::GlicActorNudgeController::From(browser_window_interface_)) {
-    controller->UpdateCurrentActorNudgeState();
+  if (glic_split_button_controller_ &&
+      glic_split_button_controller_->actor_nudge_controller()) {
+    glic_split_button_controller_->actor_nudge_controller()
+        ->UpdateCurrentActorNudgeState();
   }
 }
 
@@ -553,6 +552,8 @@ TabStripActionContainer::CreateGlicButton() {
 }
 
 void TabStripActionContainer::OnGlicButtonClicked() {
+  CHECK(glic_split_button_controller_);
+
   // Indicate that the glic button was pressed so that we can either close the
   // IPH promo (if present) or note that it has already been used to prevent
   // unnecessarily displaying the promo.
@@ -562,20 +563,18 @@ void TabStripActionContainer::OnGlicButtonClicked() {
           FeaturePromoFeatureUsedAction::kClosePromoIfPresent);
 
   std::optional<std::string> prompt_suggestion;
-  if (glic_nudge_controller_) {
-    prompt_suggestion = glic_nudge_controller_->GetPromptSuggestion();
-    glic_nudge_controller_->ClearPromptSuggestion();
-  }
+  glic::GlicNudgeController* nudge_controller =
+      glic_split_button_controller_->nudge_controller();
+  CHECK(nudge_controller);
+  prompt_suggestion = nudge_controller->GetPromptSuggestion();
+  nudge_controller->ClearPromptSuggestion();
 
   glic::mojom::InvocationSource source;
-  if (glic_button_controller_) {
-    source = glic_button_controller_->GetInvocationSource(
-        glic_button_->GetIsShowingNudge(), /*is_toolbar=*/false);
-  } else {
-    source = glic_button_->GetIsShowingNudge()
-                 ? glic::mojom::InvocationSource::kNudge
-                 : glic::mojom::InvocationSource::kTopChromeButton;
-  }
+  glic::GlicButtonController* button_controller =
+      glic_split_button_controller_->button_controller();
+  CHECK(button_controller);
+  source = button_controller->GetInvocationSource(
+      glic_button_->GetIsShowingNudge(), /*is_toolbar=*/false);
 
   auto* glic_service = glic::GlicKeyedServiceFactory::GetGlicKeyedService(
       browser_window_interface_->GetProfile());
@@ -596,8 +595,7 @@ void TabStripActionContainer::OnGlicButtonClicked() {
   }
 
   if (glic_button_->GetIsShowingNudge()) {
-    glic_nudge_controller_->OnNudgeActivity(
-        glic::GlicNudgeActivity::kNudgeClicked);
+    nudge_controller->OnNudgeActivity(glic::GlicNudgeActivity::kNudgeClicked);
   }
 
   ExecuteHideTabStripNudge(glic_button_);
@@ -607,8 +605,11 @@ void TabStripActionContainer::OnGlicButtonClicked() {
 }
 
 void TabStripActionContainer::OnGlicButtonDismissed() {
-  glic_nudge_controller_->OnNudgeActivity(
-      glic::GlicNudgeActivity::kNudgeDismissed);
+  CHECK(glic_split_button_controller_);
+  glic::GlicNudgeController* nudge_controller =
+      glic_split_button_controller_->nudge_controller();
+  CHECK(nudge_controller);
+  nudge_controller->OnNudgeActivity(glic::GlicNudgeActivity::kNudgeDismissed);
 
   // Force hide the button when pressed, bypassing locked expansion mode.
   ExecuteHideTabStripNudge(glic_button_);

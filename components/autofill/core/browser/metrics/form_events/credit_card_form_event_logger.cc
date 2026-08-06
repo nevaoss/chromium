@@ -53,6 +53,10 @@
 #include "components/autofill/core/common/signatures.h"
 #include "components/autofill/core/common/unique_ids.h"
 
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+#include "components/autofill/core/browser/metrics/payments/omnibox_autofill_metrics.h"
+#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+
 namespace autofill::autofill_metrics {
 
 CreditCardFormEventLogger::CreditCardFormEventLogger(
@@ -657,6 +661,34 @@ void CreditCardFormEventLogger::OnDidAcceptSaveAndFillSuggestion() {
     has_logged_save_and_fill_suggestion_accepted_ = true;
   }
 }
+
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+
+void CreditCardFormEventLogger::OnOmniboxAutofillChipShown() {
+  if (!has_logged_omnibox_autofill_chip_shown_) {
+    LogOmniboxAutofillEvents(OmniboxAutofillEvents::kChipShownOnce);
+    has_logged_omnibox_autofill_chip_shown_ = true;
+  }
+  LogOmniboxAutofillEvents(OmniboxAutofillEvents::kChipShown);
+}
+
+void CreditCardFormEventLogger::OnOmniboxAutofillChipClicked() {
+  if (!has_logged_omnibox_autofill_chip_clicked_) {
+    LogOmniboxAutofillEvents(OmniboxAutofillEvents::kChipClickedOnce);
+    has_logged_omnibox_autofill_chip_clicked_ = true;
+  }
+  LogOmniboxAutofillEvents(OmniboxAutofillEvents::kChipClicked);
+}
+
+void CreditCardFormEventLogger::OnOmniboxAutofillSuggestionAccepted() {
+  if (!has_logged_omnibox_autofill_suggestion_accepted_) {
+    LogOmniboxAutofillEvents(OmniboxAutofillEvents::kSuggestionAcceptedOnce);
+    has_logged_omnibox_autofill_suggestion_accepted_ = true;
+  }
+  LogOmniboxAutofillEvents(OmniboxAutofillEvents::kSuggestionAccepted);
+}
+
+#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 
 std::optional<CreditCard>
 CreditCardFormEventLogger::GetFilledCreditCardForTesting() {

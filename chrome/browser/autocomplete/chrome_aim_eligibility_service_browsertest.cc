@@ -316,8 +316,8 @@ class ChromeAimEligibilityServiceBrowserTest
         country);
 
     // Set up the AIM policy pref; 0 = allowed, 1 = disallowed.
-    browser()->profile()->GetPrefs()->SetInteger(omnibox::kAIModeSettings,
-                                                 allowed_by_policy ? 0 : 1);
+    browser()->GetProfile()->GetPrefs()->SetInteger(omnibox::kAIModeSettings,
+                                                    allowed_by_policy ? 0 : 1);
 
     SetUpDefaultSearchEngine(browser()->GetProfile(), is_google_dse);
 
@@ -906,7 +906,7 @@ IN_PROC_BROWSER_TEST_F(ChromeAimEligibilityServicePecApiEnabledBrowserTest,
 
   auto* config = response.mutable_searchbox_config();
   // Set a specific value to verify that we retrieved the correct object later.
-  config->set_initial_tool_mode(omnibox::ToolMode::TOOL_MODE_DEEP_SEARCH);
+  config->set_hint_text("test_hint_text");
 
   base::test::TestFuture<bool> request_handled_future;
   auto url_loader_interceptor = std::make_unique<content::URLLoaderInterceptor>(
@@ -928,8 +928,7 @@ IN_PROC_BROWSER_TEST_F(ChromeAimEligibilityServicePecApiEnabledBrowserTest,
   // Verify the config was correctly parsed and matches the input.
   const auto* actual_config = service->GetSearchboxConfig();
   ASSERT_NE(actual_config, nullptr);
-  EXPECT_EQ(actual_config->initial_tool_mode(),
-            omnibox::ToolMode::TOOL_MODE_DEEP_SEARCH);
+  EXPECT_EQ(actual_config->hint_text(), "test_hint_text");
 }
 
 IN_PROC_BROWSER_TEST_F(ChromeAimEligibilityServicePecApiEnabledBrowserTest,
@@ -1213,7 +1212,7 @@ IN_PROC_BROWSER_TEST_F(ChromeAimEligibilityServiceOffTheRecordBrowserTest,
   EXPECT_TRUE(service->IsCreateImagesEligible());
 
   // Check off-the-record profile.
-  Profile* otr_profile = browser()->profile()->GetPrimaryOTRProfile(
+  Profile* otr_profile = browser()->GetProfile()->GetPrimaryOTRProfile(
       /*create_if_needed=*/true);
   auto* otr_service = GetAimEligibilityService(otr_profile);
   ASSERT_TRUE(otr_service);
@@ -1313,7 +1312,7 @@ IN_PROC_BROWSER_TEST_F(ChromeAimEligibilityServiceOAuthBrowserTest,
 
   // Trigger the request.
   // Check off-the-record profile.
-  Profile* otr_profile = browser()->profile()->GetPrimaryOTRProfile(
+  Profile* otr_profile = browser()->GetProfile()->GetPrimaryOTRProfile(
       /*create_if_needed=*/true);
   auto* service = GetAimEligibilityService(otr_profile);
   base::test::TestFuture<void> eligibility_changed_future;

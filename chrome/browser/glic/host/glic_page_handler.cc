@@ -112,6 +112,7 @@
 #include "components/optimization_guide/content/browser/page_content_metadata_observer.h"
 #include "components/optimization_guide/core/model_quality/model_quality_util.h"
 #include "components/password_manager/core/browser/actor_login/actor_login_types.h"
+#include "components/prefs/pref_change_registrar.h"
 #include "components/prefs/pref_service.h"
 #include "components/safe_browsing/content/browser/ui_manager.h"
 #include "components/safe_browsing/core/common/safe_browsing_prefs.h"
@@ -519,6 +520,10 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
                             base::Unretained(this)));
     pref_change_registrar_.Add(
         prefs::kGlicClosedCaptioningEnabled,
+        base::BindRepeating(&GlicWebClientHandler::OnPrefChanged,
+                            base::Unretained(this)));
+    pref_change_registrar_.Add(
+        glic::prefs::kGlicFileUploadAllowed,
         base::BindRepeating(&GlicWebClientHandler::OnPrefChanged,
                             base::Unretained(this)));
     pref_change_registrar_.Add(
@@ -1674,6 +1679,9 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     } else if (pref_name == glic::prefs::kGlicGeminiEnterpriseSettings) {
       web_client_->NotifyGeminiEnterpriseSettingsChanged(
           GetGeminiEnterpriseSettingsPtr());
+    } else if (pref_name == glic::prefs::kGlicFileUploadAllowed) {
+      web_client_->NotifyFileUploadStateChanged(
+          glic::prefs::GetFileUploadAllowedCapability(profile_->GetPrefs()));
     } else {
       DCHECK(false) << "Unknown Glic permission pref changed: " << pref_name;
     }
@@ -1837,6 +1845,7 @@ void GlicPageHandler::WebviewCommitted(const GURL& url) {
 }
 
 void GlicPageHandler::OnZoomLevelChange(double zoom_factor) {
+  // LINT.IfChange(GlicZoomFactors)
   // Ignore values outside of the supported range (defined in glic/webview.ts).
   if (zoom_factor < 1.0 || zoom_factor > 2.0) {
     LOG(ERROR) << "Glic [PageHandler] Invalid zoom level: " << zoom_factor;
@@ -1852,6 +1861,7 @@ void GlicPageHandler::OnZoomLevelChange(double zoom_factor) {
     pref_service->SetInteger(prefs::kGlicZoomLevel, zoom_percent);
     host().instance_metrics().OnZoomLevelChange();
   }
+  // LINT.ThenChange(//chrome/browser/resources/glic/webview.ts:GlicZoomFactors,//chrome/browser/glic/host/guest_util.cc:GlicZoomFactors)
 }
 
 void GlicPageHandler::NotifyWindowIntentToShow() {

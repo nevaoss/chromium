@@ -52,6 +52,7 @@ import org.robolectric.shadows.ShadowPausedSystemClock;
 
 import org.chromium.base.Callback;
 import org.chromium.base.ContextUtils;
+import org.chromium.base.TimeUtils;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
@@ -178,6 +179,7 @@ public class AutocompleteMediatorUnitTest {
     private @Mock TemplateUrl mTemplateUrl;
     private @Mock PropertyObserver<PropertyKey> mPropertyObserver;
     private PropertyModel mListModel;
+    private OmniboxResourceProvider mResourceProvider;
     private AutocompleteMediator mMediator;
     private List<AutocompleteMatch> mSuggestionsList;
     private AutocompleteResult mAutocompleteResult;
@@ -193,6 +195,8 @@ public class AutocompleteMediatorUnitTest {
         mContext =
                 new ContextThemeWrapper(
                         ContextUtils.getApplicationContext(), R.style.Theme_BrowserUI_DayNight);
+        mResourceProvider =
+                new OmniboxResourceProvider(mContext, BrandedColorScheme.LIGHT_BRANDED_THEME);
 
         CachedZeroSuggestionsManager.setOverridesForTesting(mMockCachedZeroSuggestionsManager);
         UserPrefs.setPrefServiceForTesting(mPrefService);
@@ -234,6 +238,7 @@ public class AutocompleteMediatorUnitTest {
         mMediator =
                 new AutocompleteMediator(
                         mContext,
+                        mResourceProvider,
                         mAutocompleteDelegate,
                         mTextStateProvider,
                         mListModel,
@@ -1456,6 +1461,28 @@ public class AutocompleteMediatorUnitTest {
 
     @Test
     @SmallTest
+    public void touchDownForPrefetch_TouchDownDelayRecorded() {
+        int delay = 100;
+        long eventTime = TimeUtils.uptimeMillis() - delay;
+
+        var histogramWatcher =
+                HistogramWatcher.newBuilder()
+                        .expectIntRecord(
+                                OmniboxMetrics
+                                        .HISTOGRAM_SEARCH_PREFETCH_SUGGESTION_TOUCH_DOWN_DELAY,
+                                delay)
+                        .build();
+
+        mMediator.beginInput(createEmptySession());
+        mMediator.onSuggestionsReceived(mAutocompleteResult, /* isFinal= */ true);
+
+        mMediator.onSuggestionTouchDown(mSuggestionsList.get(0), /* matchIndex= */ 0, eventTime);
+
+        histogramWatcher.assertExpected();
+    }
+
+    @Test
+    @SmallTest
     public void touchDownForPrefetch_PrefetchHit() {
         var histogramWatcher =
                 HistogramWatcher.newBuilder()
@@ -1473,7 +1500,8 @@ public class AutocompleteMediatorUnitTest {
         mMediator.onSuggestionsReceived(mAutocompleteResult, /* isFinal= */ true);
 
         // Simulate a suggestion being touched down.
-        mMediator.onSuggestionTouchDown(mSuggestionsList.get(0), /* matchIndex= */ 0);
+        mMediator.onSuggestionTouchDown(
+                mSuggestionsList.get(0), /* matchIndex= */ 0, /* eventTime= */ 0);
 
         // Ensure that no extra signals are sent to native.
         verify(mAutocompleteController, times(1))
@@ -1509,7 +1537,8 @@ public class AutocompleteMediatorUnitTest {
         mMediator.onSuggestionsReceived(mAutocompleteResult, /* isFinal= */ true);
 
         // Simulate a suggestion being touched down.
-        mMediator.onSuggestionTouchDown(mSuggestionsList.get(0), /* matchIndex= */ 0);
+        mMediator.onSuggestionTouchDown(
+                mSuggestionsList.get(0), /* matchIndex= */ 0, /* eventTime= */ 0);
 
         // Ensure that no extra signals are sent to native.
         verify(mAutocompleteController, times(1))
@@ -1549,7 +1578,8 @@ public class AutocompleteMediatorUnitTest {
                 .thenReturn(false);
 
         // Simulate a suggestion being touched down.
-        mMediator.onSuggestionTouchDown(mSuggestionsList.get(0), /* matchIndex= */ 0);
+        mMediator.onSuggestionTouchDown(
+                mSuggestionsList.get(0), /* matchIndex= */ 0, /* eventTime= */ 0);
 
         // Ensure that no extra signals are sent to native.
         verify(mAutocompleteController, times(1))
@@ -1589,7 +1619,7 @@ public class AutocompleteMediatorUnitTest {
         int numTouchDownEvents = OmniboxFeatures.DEFAULT_MAX_PREFETCHES_PER_OMNIBOX_SESSION + 1;
         assertTrue(numTouchDownEvents < mSuggestionsList.size());
         for (int i = 0; i < numTouchDownEvents; i++) {
-            mMediator.onSuggestionTouchDown(mSuggestionsList.get(i), i);
+            mMediator.onSuggestionTouchDown(mSuggestionsList.get(i), i, /* eventTime= */ 0);
         }
 
         // Ensure that no extra signals are sent to native.
@@ -1604,7 +1634,7 @@ public class AutocompleteMediatorUnitTest {
         // Since the state is reset, new prefetches are allowed.
         // Simulate a new omnibox session start.
         mMediator.beginInput(createEmptySession());
-        mMediator.onSuggestionTouchDown(mSuggestionsList.get(0), 0);
+        mMediator.onSuggestionTouchDown(mSuggestionsList.get(0), 0, /* eventTime= */ 0);
         verify(
                         mAutocompleteController,
                         times(OmniboxFeatures.DEFAULT_MAX_PREFETCHES_PER_OMNIBOX_SESSION + 1))
@@ -2005,7 +2035,8 @@ public class AutocompleteMediatorUnitTest {
     @Test
     @SmallTest
     public void fuseboxStateChanges() {
-        doReturn(true).when(mEmbedder).isTablet();
+        doReturn(true).when(mEmbedder).isWideWindow();
+        doReturn(false).when(mEmbedder).isPhoneStyleWindow();
         mMediator.beginInput(createEmptySession());
         mFuseboxStateSupplier.set(FuseboxState.EXPANDED);
         RobolectricUtil.runAllBackgroundAndUi();
@@ -2025,7 +2056,8 @@ public class AutocompleteMediatorUnitTest {
     @Test
     @SmallTest
     public void fuseboxStateChanges_phone() {
-        doReturn(false).when(mEmbedder).isTablet();
+        doReturn(false).when(mEmbedder).isWideWindow();
+        doReturn(true).when(mEmbedder).isPhoneStyleWindow();
         mMediator.beginInput(createEmptySession());
         mFuseboxStateSupplier.set(FuseboxState.EXPANDED);
         RobolectricUtil.runAllBackgroundAndUi();
@@ -2036,19 +2068,34 @@ public class AutocompleteMediatorUnitTest {
 
     @Test
     @SmallTest
+    public void fuseboxStateChanges_phone_popover() {
+        doReturn(false).when(mEmbedder).isWideWindow();
+        doReturn(false).when(mEmbedder).isPhoneStyleWindow();
+        mFuseboxLayoutModeSupplier.set(FuseboxLayoutMode.SUGGESTIONS_POPOVER);
+        mMediator.beginInput(createEmptySession());
+        mFuseboxStateSupplier.set(FuseboxState.EXPANDED);
+        RobolectricUtil.runAllBackgroundAndUi();
+
+        assertTrue(mListModel.get(SuggestionListProperties.ROUND_TOP_CORNERS));
+        assertTrue(mListModel.get(SuggestionListProperties.DRAW_OVER_ANCHOR));
+    }
+
+    @Test
+    @SmallTest
     public void roundSidesPropagatedToModels_popoverLayoutModeTransitions() {
+        OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
         mFuseboxLayoutModeSupplier.set(FuseboxLayoutMode.SUGGESTIONS_POPOVER);
         mFuseboxStateSupplier.set(FuseboxState.COMPACT);
         mMediator.beginInput(createEmptySession());
         mMediator.onSuggestionsReceived(AutocompleteResult.fromCache(mSuggestionsList, null), true);
 
-        verifySuggestionModelsRoundSides(RoundSides.BOTTOM_ONLY);
+        verifySuggestionModelsRoundSides(RoundSides.NONE);
 
         mFuseboxStateSupplier.set(FuseboxState.EXPANDED);
         verifySuggestionModelsRoundSides(RoundSides.NONE);
 
         mFuseboxStateSupplier.set(FuseboxState.COMPACT);
-        verifySuggestionModelsRoundSides(RoundSides.BOTTOM_ONLY);
+        verifySuggestionModelsRoundSides(RoundSides.NONE);
     }
 
     @Test
@@ -2232,7 +2279,7 @@ public class AutocompleteMediatorUnitTest {
     @Test
     @SmallTest
     public void testExternallyDrivenFadeAnimation() {
-        doReturn(true).when(mEmbedder).isTablet();
+        doReturn(true).when(mEmbedder).isWideWindow();
         var session = createEmptySession();
         mMediator.beginInput(session);
         mFuseboxStateSupplier.set(FuseboxState.COMPACT);
@@ -2245,7 +2292,7 @@ public class AutocompleteMediatorUnitTest {
     @Test
     @SmallTest
     public void testUnsyncedAnimation_doesNotShowKeyboardInStandbyNoFocus() {
-        doReturn(false).when(mEmbedder).isTablet();
+        doReturn(false).when(mEmbedder).isWideWindow();
         var session = createSession(AutocompleteRequestType.SEARCH);
         session.getAutocompleteInput()
                 .setAutocompleteState(AutocompleteInput.AutocompleteState.STANDBY_NO_FOCUS);
@@ -2262,7 +2309,7 @@ public class AutocompleteMediatorUnitTest {
     @Test
     @SmallTest
     public void testUnsyncedAnimation_showsKeyboardInEnabledState() {
-        doReturn(false).when(mEmbedder).isTablet();
+        doReturn(false).when(mEmbedder).isWideWindow();
         var session = createSession(AutocompleteRequestType.SEARCH);
         session.getAutocompleteInput()
                 .setAutocompleteState(AutocompleteInput.AutocompleteState.ENABLED);
@@ -2584,6 +2631,7 @@ public class AutocompleteMediatorUnitTest {
         AutocompleteMediator mediator =
                 new AutocompleteMediator(
                         mContext,
+                        mResourceProvider,
                         mAutocompleteDelegate,
                         mTextStateProvider,
                         mListModel,

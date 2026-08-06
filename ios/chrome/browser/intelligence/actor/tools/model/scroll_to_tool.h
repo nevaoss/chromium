@@ -23,25 +23,24 @@ namespace actor {
 
 class ScrollToolJavaScriptFeature;
 
-class ProfileContextResolver;
-
 // Tool to scroll an element into view on a page.
 class ScrollToTool : public WebActorTool {
  public:
   ~ScrollToTool() override;
 
-  static base::expected<std::unique_ptr<ScrollToTool>, ToolExecutionResult>
-  Create(const optimization_guide::proto::ScrollToAction& action,
-         const ProfileContextResolver& profile_context_resolver);
+  static std::unique_ptr<ScrollToTool> Create(
+      base::WeakPtr<web::WebState> web_state,
+      const optimization_guide::proto::ScrollToAction& action);
 
   // ActorTool:
+  void Validate(ToolExecutionCallback callback) override;
   void Execute(ToolExecutionCallback callback) override;
   base::WeakPtr<web::WebState> GetTargetWebState() const override;
   ToolType GetToolType() const override;
 
  private:
-  ScrollToTool(const optimization_guide::proto::ScrollToAction& action,
-               base::WeakPtr<web::WebState> web_state);
+  ScrollToTool(base::WeakPtr<web::WebState> web_state,
+               const optimization_guide::proto::ScrollToAction& action);
 
   void OnTargetFrameResolved(
       optimization_guide::proto::ScrollToAction action,

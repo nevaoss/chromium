@@ -47,6 +47,7 @@
 <translation id="22623456902492423">{TABS_COUNT,plural, =1{Κατάργηση ομαδοπ. καρτέλας}other{Κατάργηση ομαδοπ. καρτελών}}</translation>
 <translation id="2271452184061378400">Οι ομάδες καρτελών αποθηκεύονται εδώ</translation>
 <translation id="2277224997687551299">Επεξεργασία ονόματος ομάδας</translation>
+<translation id="2289567621059034186">Νέα καρτέλα από κάτω</translation>
 <translation id="2330212241471632770">{TABS_COUNT,plural, =1{Δημιουργία σελιδ. καρτέλας}other{Δημιουργία σελιδ. καρτελών}}</translation>
 <translation id="2359808026110333948">Συνέχεια</translation>
 <translation id="2371084566192454134">Καρτέλες και ομάδες καρτελών</translation>
@@ -81,6 +82,7 @@
 <translation id="3152596030350326139">Εμφάνιση καρτελών οριζόντια</translation>
 <translation id="31806439105337256">Εμφάνιση καρτελών κατακόρυφα</translation>
 <translation id="3194464645767632461">αξιολόγηση</translation>
+<translation id="3228962656492373217">Κλείσιμο των καρτελών από κάτω</translation>
 <translation id="3269930881809501915">{TABS_COUNT,plural, =1{Προσθήκη <ph name="TABS_COUNT_ONE" /> καρτέλας σε ομάδα}other{Προσθήκη <ph name="TABS_COUNT_MANY" /> καρτελών σε ομάδα}}</translation>
 <translation id="3328308545011660196">Πρόταση: <ph name="NUMBER_OF_TABS" /> καρτέλες φαίνονται σχετικές. Να γίνει ομαδοποίηση;</translation>
 <translation id="3330595302841061275">{DAY_COUNT,plural, =1{Μετά από 1 ημέρα αδράνειας}other{Μετά από <ph name="DAY_COUNT_MANY" /> ημέρες αδράνειας}}</translation>
@@ -127,6 +129,7 @@
 <translation id="5042769431350623987">{WINDOW_COUNT,plural, =1{Μετακίνηση καρτελών σε νέο παράθυρο}other{Μετακίνηση καρτελών σε άλλο παράθυρο}}</translation>
 <translation id="5073204694187207510">Απόκρυψη πλέγματος πλήρους οθόνης</translation>
 <translation id="5076161749301278626">Εμφάνιση αξιολογήσεων καταστήματος;</translation>
+<translation id="5093447877601682598">Αποστολή σχολίων σχετικά με τη γραμμή καρτελών</translation>
 <translation id="5161254044473106830">Απαιτείται τίτλος</translation>
 <translation id="5204584298075822291">Σύμπτυξη καρτελών</translation>
 <translation id="524477996738997490">{AUTO_DELETE_DELAY,plural, =1{Το Chrome κλείνει αυτόματα τις ανενεργές καρτέλες και τις ομάδες καρτελών μετά από <ph name="AUTO_DELETE_DELAY_ONE" /> μήνα. Μπορείτε να αλλάξετε αυτή την επιλογή στις ρυθμίσεις.}other{Το Chrome κλείνει αυτόματα τις ανενεργές καρτέλες και τις ομάδες καρτελών μετά από <ph name="AUTO_DELETE_DELAY_MANY" /> μήνες. Μπορείτε να αλλάξετε αυτή την επιλογή στις ρυθμίσεις.}}</translation>

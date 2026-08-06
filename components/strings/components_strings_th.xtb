@@ -260,6 +260,7 @@
 <translation id="1393071644879491291">ผู้โจมตีเว็บไซต์ที่คุณพยายามเข้าชมอาจหลอกล่อให้คุณติดตั้งซอฟต์แวร์หรือเปิดเผยข้อมูล เช่น รหัสผ่าน หมายเลขบัตรเครดิต หรือหมายเลขโทรศัพท์ Chrome ขอแนะนำเป็นอย่างยิ่งให้กลับสู่ความปลอดภัย <ph name="BEGIN_LEARN_MORE_LINK" />ดูข้อมูลเพิ่มเติมเกี่ยวกับคำเตือนนี้<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="1398743098754840707">ระบบจะไม่นำเว็บไซต์ที่คุณเพิ่มไว้ที่นี่มาอ้างอิงสำหรับคำตอบ แม้ว่าแท็บจะเปิดอยู่ก็ตาม หากเว็บไซต์ที่คุณเพิ่มมีการใช้งานอยู่ในชุดข้อความ ระบบอาจใช้เวลาสูงสุด 30 นาทีในการหยุดอ้างอิงเว็บไซต์ดังกล่าวในชุดข้อความ</translation>
 <translation id="1402151528875251561">แสดงประวัติการเข้าชมในแผงด้านข้าง</translation>
+<translation id="1404026649028693342">แสดงโหมด AI เสมอ</translation>
 <translation id="1405567553485452995">เขียวอ่อน</translation>
 <translation id="1406370515365284486">ระบบจะยังคงบันทึกวิธีการชำระเงินของคุณไว้</translation>
 <translation id="1406500794671479665">กำลังยืนยันความถูกต้อง...</translation>
@@ -565,6 +566,7 @@
 <translation id="1855370856221982654">มวย</translation>
 <translation id="1862788842908766795">งานบริหารและจัดการ</translation>
 <translation id="1863257867908022953">ถาด 12</translation>
+<translation id="1863374797460198869">แชทถูกซ่อน</translation>
 <translation id="186539747722034544">ผู้ให้บริการเคเบิลและดาวเทียม</translation>
 <translation id="1870473978371099486">บริการติวส่วนตัว</translation>
 <translation id="1871208020102129563">พร็อกซีถูกตั้งค่าให้ใช้พร็อกซีเซิร์ฟเวอร์แบบคงที่ ไม่ใช่ URL สคริปต์ .pac</translation>
@@ -654,7 +656,6 @@
 <translation id="2027465737841872819">พลาสติก</translation>
 <translation id="2027707238798802149">บัตรใช้งานไม่ได้</translation>
 <translation id="2029735183873159415">เชื้อสายและพันธุศาสตร์</translation>
-<translation id="2031095660415483845">ค้นหาและกรอกได้จากทุกอุปกรณ์...</translation>
 <translation id="2032962459168915086"><ph name="BEGIN_LINK" />ตรวจสอบพร็อกซีและไฟร์วอลล์<ph name="END_LINK" /></translation>
 <translation id="2033900728810589426">ทางลัดต้องไม่เหมือนกับคีย์เวิร์ดของผู้ให้บริการการค้นหาเริ่มต้นที่กำหนดโดย <ph name="DEFAULT_SEARCH_PROVIDER_KEYWORD_POLICY_NAME" />: <ph name="SHORTCUT_NAME" /></translation>
 <translation id="2034971124472263449">บันทึกเลย</translation>
@@ -672,6 +673,7 @@
 <translation id="2059202684901022309">22 x 34 นิ้ว</translation>
 <translation id="2064568741209980952">สินเชื่อและการกู้ยืม</translation>
 <translation id="2064691555167957331">{COUNT,plural, =1{1 คำแนะนำ}other{# คำแนะนำ}}</translation>
+<translation id="2066690553719545730">แสดงโหมด AI เสมอ</translation>
 <translation id="2066969741541525119">องค์กรของคุณได้บล็อกเว็บไซต์ที่คุณกำลังจะเข้าชม</translation>
 <translation id="2069913043427250781">ยานพาหนะและความปลอดภัยด้านจราจร</translation>
 <translation id="2071156619270205202">บัตรนี้ไม่มีสิทธิ์ใช้หมายเลขบัตรเสมือน</translation>
@@ -1426,7 +1428,6 @@
 <translation id="3202497928925179914"><ph name="MANAGE_SYNC_FOCUSED_FRIENDLY_MATCH_TEXT" /> กด Tab ตามด้วย Enter เพื่อจัดการข้อมูลที่คุณซิงค์ในการตั้งค่า Chrome</translation>
 <translation id="3203025201812691413">ต้องระบุ URL</translation>
 <translation id="320323717674993345">ยกเลิกการชำระเงิน</translation>
-<translation id="3204534477198689393">ระบบจะประมวลผลเนื้อหาและ URL ของหน้าเว็บที่คุณเข้าชมในพื้นที่ส่วนตัวในระบบคลาวด์เพื่อปรับปรุงคำแนะนำและกรอกแบบฟอร์มได้เร็วขึ้น</translation>
 <translation id="3207830513221832868"><ph name="BLOCKED_URL" /> อาจมีเนื้อหาสำหรับผู้ใหญ่</translation>
 <translation id="3207960819495026254">บุ๊กมาร์กแล้ว</translation>
 <translation id="3208701679386778924">โปรดส่งรายงานเพื่อให้เราปรับปรุงการอัปเดต ChromeOS เพิ่มเติมได้</translation>
@@ -2247,7 +2248,6 @@
 <translation id="4445964943162061557">ฟีเจอร์นี้อยู่ในขั้นทดลองและอาจไม่ได้ทำงานถูกต้องเสมอไป</translation>
 <translation id="4449116177348980384">ปุ่มจัดการการตั้งค่าเว็บไซต์ เปิดใช้งานเพื่อจัดการสิทธิ์และข้อมูลที่จัดเก็บในเว็บไซต์ต่างๆ ในการตั้งค่า Chrome</translation>
 <translation id="4451135742916150903">สามารถขอเชื่อมต่อกับอุปกรณ์ HID ได้</translation>
-<translation id="4451684391620232683">ข้อความที่แสดงต่อผู้ใช้:</translation>
 <translation id="4452328064229197696">ระบบพบว่ารหัสผ่านที่คุณเพิ่งใช้มีการรั่วไหลในการละเมิดข้อมูลครั้งหนึ่ง เพื่อรักษาความปลอดภัยของบัญชี เครื่องมือจัดการรหัสผ่านบน Google แนะนำให้ตรวจสอบรหัสผ่านที่บันทึกไว้</translation>
 <translation id="4454620051637646665">ปิดแบนเนอร์</translation>
 <translation id="4456937135469235202">การท่องเที่ยวแบบผจญภัย</translation>
@@ -2422,7 +2422,6 @@
 <translation id="4749924365937394956">การตรวจสอบสิทธิ์เซิร์ฟเวอร์</translation>
 <translation id="4750671009706599284">โทรศัพท์เครื่องนี้</translation>
 <translation id="4750917950439032686">ข้อมูลของคุณ (ตัวอย่างเช่น รหัสผ่านหรือหมายเลขบัตรเครดิต) จะเป็นส่วนตัวเมื่อส่งมายังเว็บไซต์นี้</translation>
-<translation id="4751249061288707459">อัปเดตความยินยอมครั้งล่าสุด:</translation>
 <translation id="4754461935447132332">ไม่อนุญาตสำหรับเว็บไซต์ที่ไม่ปลอดภัย</translation>
 <translation id="4756501505996488486">PRC 16K</translation>
 <translation id="4757740693289347881">รหัสไม่ถูกต้อง</translation>
@@ -2452,6 +2451,7 @@
 <translation id="4786804728079074733">วอลเลย์บอล</translation>
 <translation id="4787182171088676626">ซอง (ละเอียด)</translation>
 <translation id="4791134497475588553">แอป Linux ที่ติดตั้งไว้และเวลาที่ใช้งานครั้งล่าสุด</translation>
+<translation id="4791602164422809437">ขับเคลื่อนโดย Personal Intelligence จาก Gemini ระบบจะส่งชื่อหน้าและ URL ไปยัง Google และเจ้าหน้าที่อาจตรวจสอบข้อมูลดังกล่าว <ph name="BEGIN_LINK" />จัดการการตั้งค่า<ph name="END_LINK" /></translation>
 <translation id="4792686369684665359">ข้อมูลที่คุณกำลังจะส่งไม่ปลอดภัย</translation>
 <translation id="4793219378458250238">11 x 12 นิ้ว</translation>
 <translation id="4796594887379589189">รหัสบัญชีงาน</translation>
@@ -3028,6 +3028,7 @@
 <translation id="5675809467256309336">เพลงแดนซ์และอิเล็กทรอนิก</translation>
 <translation id="5675959228867414813">แสดงตามวันที่</translation>
 <translation id="567604591393105935">Bottom Sheet ของ Commerce เปิดแบบครึ่งหน้า</translation>
+<translation id="5676124785522323481">จัดการแอปที่เชื่อมต่อ</translation>
 <translation id="5676641328629468296">Google Pay, Pix</translation>
 <translation id="5678007133659493065">ฟอยล์</translation>
 <translation id="5679086391497468752">ที่อยู่บ้าน</translation>
@@ -3179,7 +3180,6 @@
 <translation id="5921952831792678223">รถปิคอัพ</translation>
 <translation id="5923492272538889093">ใช้การปลดล็อกอุปกรณ์แทน CVC ใช่ไหม</translation>
 <translation id="5924510104057992926">ต้องตรวจสอบก่อนเปิด</translation>
-<translation id="5924782825030413055">แหล่งที่มาของการอัปเดตความยินยอมครั้งล่าสุด:</translation>
 <translation id="5925040402342933574">แผ่นออปติคัลดิสก์ (กึ่งเงา)</translation>
 <translation id="5925147183566400388">ตัวชี้ไปยังคำชี้แจงเกี่ยวกับแนวทางปฏิบัติสำหรับใบรับรอง</translation>
 <translation id="5926982310317673627">ยิมและคลับเพื่อสุขภาพ</translation>
@@ -3389,6 +3389,7 @@
 <translation id="6240553182907836376">อัปเดตบัตรประจำตัว</translation>
 <translation id="6240601837375010619">บันทึกหนังสือเดินทาง</translation>
 <translation id="6240964651812394252">หากต้องการใช้เครื่องมือจัดการรหัสผ่านบน Google กับระบบปฏิบัติการ ให้เปิด Chrome อีกครั้งและอนุญาตการเข้าถึงเครื่องมือจัดการรหัสผ่านของคอมพิวเตอร์ แท็บจะเปิดขึ้นมาใหม่หลังจากที่เปิดอีกครั้ง</translation>
+<translation id="6244366663267187541">เลือกแอปที่จะให้ Gemini เชื่อมต่อ</translation>
 <translation id="624499991300733384">บริการจัดวางองค์ประกอบการพิมพ์</translation>
 <translation id="6246316216123107851"><ph name="NUM_DAYS" /> วันที่ผ่านมา</translation>
 <translation id="6246382863801034910">ยานพาหนะ</translation>
@@ -4202,6 +4203,7 @@
 <translation id="7489255442002627311"><ph name="BNPL_ISSUER_NAME" /> จะตรวจสอบสิทธิ์ของคุณ (การดำเนินการนี้จะไม่ส่งผลต่อคะแนนเครดิต) หากได้รับอนุมัติ <ph name="BNPL_ISSUER_NAME" /> จะมีแพ็กเกจการชำระเงินให้คุณเลือกและดำเนินการซื้อให้เสร็จสมบูรณ์</translation>
 <translation id="7489392576326061356">แชมพูและครีมนวด</translation>
 <translation id="7489919936111034362">พื้นที่เก็บข้อมูล Google ไดรฟ์เต็มแล้ว</translation>
+<translation id="7490622939531327327">ทำความเข้าใจแบบฟอร์มได้ดียิ่งขึ้น</translation>
 <translation id="7495528107193238112">เนื้อหานี้ถูกบล็อก โปรดติดต่อเจ้าของเว็บไซต์เพื่อให้แก้ปัญหา</translation>
 <translation id="749865518782565832">ซ่อมประปา</translation>
 <translation id="7499188644237027195">เมื่อทำการซื้อใน Chrome คุณจะเห็นอีวอลเล็ตและ Pix เป็นตัวเลือก</translation>
@@ -4301,7 +4303,6 @@
 <translation id="762844065391966283">ทีละรายการ</translation>
 <translation id="7629058630148860366">ที่อยู่ที่ทำงาน</translation>
 <translation id="763042426047865637">บริการด้านอัคคีภัยและความปลอดภัย</translation>
-<translation id="7630470133768862132">สถานะความยินยอม:</translation>
 <translation id="7631072086707140121">URL ต้องเป็น HTTPS</translation>
 <translation id="7631527008834753063">เกมโชว์ทางทีวี</translation>
 <translation id="7633909222644580952">ข้อมูลประสิทธิภาพและรายงานข้อขัดข้อง</translation>
@@ -4442,7 +4443,6 @@
 <translation id="7840103971441592723">เริ่มจับภาพหน้าจอแล้ว</translation>
 <translation id="784137052867620416">ข้อมูลเชิงลึกเกี่ยวกับ Shopping</translation>
 <translation id="7841633276323004751">วิธีการชำระเงินที่พร้อมให้เลือกเพื่อดำเนินการชำระเงิน แป้นพิมพ์ซ่อนอยู่</translation>
-<translation id="784189052219692670">ตอนนี้ Gemini สามารถดึงข้อมูลส่วนบุคคลของคุณจากแอป Google ต่างๆ และป้อนข้อมูลดังกล่าวในหน้าเว็บที่คุณกำลังดูโดยอัตโนมัติได้แล้ว</translation>
 <translation id="7844689747373518809">{COUNT,plural, =0{ไม่มี}=1{1 แอป (<ph name="EXAMPLE_APP_1" />)}=2{2 แอป (<ph name="EXAMPLE_APP_1" />, <ph name="EXAMPLE_APP_2" />)}other{# แอป (<ph name="EXAMPLE_APP_1" />, <ph name="EXAMPLE_APP_2" />, <ph name="AND_MORE" />)}}</translation>
 <translation id="7846161022626028328">เกิดข้อผิดพลาด โปรดลองอีกครั้ง</translation>
 <translation id="784623644169604270">ไม่มีกิจกรรมล่าสุด</translation>
@@ -4529,6 +4529,7 @@
 <translation id="7972714317346275248">PKCS #1 SHA-384 พร้อมการเข้ารหัส RSA</translation>
 <translation id="7976053965094442846">ผู้ออกบริการ "ซื้อก่อน จ่ายทีหลัง" ที่พร้อมให้ผ่อนชำระ แป้นพิมพ์ซ่อนอยู่</translation>
 <translation id="7976214039405368314">มีคำขอมากเกินไป</translation>
+<translation id="7977029776654598145">เมื่อใช้</translation>
 <translation id="7977538094055660992">อุปกรณ์กระดาษออก</translation>
 <translation id="7979463492896063081">{TIME_DIMENSION,plural, =0{<ph name="TIME_COUNT" /> นาทีที่ผ่านมา}=1{<ph name="TIME_COUNT" /> ชม. ที่ผ่านมา}other{<ph name="TIME_COUNT" /> วันที่ผ่านมา}}</translation>
 <translation id="7979595116210197019">บริการด้านอาหาร</translation>
@@ -4623,7 +4624,6 @@
 <translation id="8134058435519644366">การรับสมัครงาน</translation>
 <translation id="8135546115396015134">ปุ่มซ้าย</translation>
 <translation id="8137456439814903304">พลังงานและสาธารณูปโภค</translation>
-<translation id="8138591088112729119">ขับเคลื่อนโดย Personal Intelligence</translation>
 <translation id="814432316791813431">{NUM_MONTHS,plural, =1{สร้างเมื่อ 1 เดือนที่ผ่านมา}other{สร้างเมื่อ {NUM_MONTHS} เดือนที่ผ่านมา}}</translation>
 <translation id="8147389370274164212">เครื่องมือค้นหาเริ่มต้นปัจจุบันคือ <ph name="SEARCH_ENGINE_NAME" /> <ph name="MARKETING_SNIPPET" /></translation>
 <translation id="8148608574971654810">เวอร์ชัน PDF:</translation>
@@ -4844,7 +4844,6 @@
 <translation id="8488350697529856933">ใช้กับ</translation>
 <translation id="8490137692873530638">สแต็กเกอร์ 10</translation>
 <translation id="8493948351860045254">เพิ่มพื้นที่ว่าง</translation>
-<translation id="8495170825732897952">พิมพ์ @@ ในแบบฟอร์มใดก็ได้เพื่อเรียกคืนและป้อนข้อมูลโดยไม่ต้องสลับแท็บ</translation>
 <translation id="8498870489552322848">กรอกข้อมูลที่ละเอียดอ่อนใน <ph name="APP_NAME" /></translation>
 <translation id="8498891568109133222"><ph name="HOST_NAME" /> ใช้เวลาตอบกลับนานเกินไป</translation>
 <translation id="8502023382441452707">วันเกิดและวันตั้งชื่อ</translation>
@@ -4957,6 +4956,7 @@
 <translation id="8688672835843460752">มีอยู่</translation>
 <translation id="868922510921656628">จำนวนหน้าต่อชุด</translation>
 <translation id="8694684557210599098">เพิ่มยานพาหนะ</translation>
+<translation id="8696297579102085705">ส่งไปที่อุปกรณ์</translation>
 <translation id="8698428283892912525">Chrome มีฟีเจอร์ความปลอดภัยในตัวเพื่อปกป้องคุณขณะท่องเว็บ เช่น Google Safe Browsing ที่<ph name="BEGIN_LINK" />พบซอฟต์แวร์ที่เป็นอันตราย<ph name="END_LINK" />ในเว็บไซต์ที่คุณพยายามเข้าชมเมื่อเร็วๆ นี้</translation>
 <translation id="869891660844655955">วันหมดอายุ</translation>
 <translation id="8699041776323235191">อุปกรณ์ HID</translation>
@@ -5168,7 +5168,7 @@
 <translation id="9045525010788763347"><ph name="RESULT_MODIFIED_DATE" /> - <ph name="RESULT_PRODUCT_SOURCE" /></translation>
 <translation id="9046864189129893978">ไมโครโฟน (<ph name="MICS_COUNT" /> ตัว)</translation>
 <translation id="9046865906192819796">หน้าจอข้อกำหนดในการให้บริการของ "ซื้อก่อน จ่ายทีหลัง" เปิดอยู่ครึ่งหน้าจอ</translation>
-<translation id="9047528041803621289">ค่าเริ่มต้นช่วยให้คุณค้นหาในเว็บได้ โดยคุณเปลี่ยนได้ในการตั้งค่า</translation>
+<translation id="9047528041803621289">เครื่องมือค้นหาเริ่มต้นจะช่วยให้คุณค้นหาในเว็บได้ โดยสามารถเปลี่ยนได้ในการตั้งค่า</translation>
 <translation id="9048035366624198823">การดำเนินการเหล่านี้กำหนดให้ตั้งค่านโยบาย <ph name="POLICY_NAME" /> เป็น <ph name="POLICY_VALUE" />: <ph name="ACTION_LIST" /></translation>
 <translation id="9048662076076074925">24 x 36 นิ้ว</translation>
 <translation id="9049981332609050619">คุณพยายามเข้าถึง <ph name="DOMAIN" /> แต่เซิร์ฟเวอร์แสดงใบรับรองที่ไม่ถูกต้อง</translation>
@@ -5193,6 +5193,7 @@
 <translation id="9078912659001679888">เครื่องปั่นและเครื่องคั้นน้ำผลไม้แบบแยกกาก</translation>
 <translation id="9078964945751709336">ต้องระบุข้อมูลเพิ่มเติม</translation>
 <translation id="9080712759204168376">สรุปการสั่งซื้อ</translation>
+<translation id="908365381820697818">ตอนนี้คุณสามารถค้นหาและป้อนข้อมูลจาก Gmail และอื่นๆ ได้แล้ว</translation>
 <translation id="9084304544887760521">ต้องการให้ส่งอีเมลไปที่ <ph name="EMAIL" /> เมื่อรายการที่คุณติดตามในเว็บไซต์ใดก็ตามมีราคาต่ำลง</translation>
 <translation id="9089260154716455634">นโยบายสำหรับช่วงที่ไม่ค่อยมีการใช้งาน:</translation>
 <translation id="9090218457905363312">เพลงเรกเก้และแคริบเบียน</translation>

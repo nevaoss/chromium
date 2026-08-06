@@ -285,8 +285,22 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
         removeInvalidInstanceData();
         List<InstanceInfo> result = new ArrayList<>();
         SparseBooleanArray visibleTasks = MultiWindowUtils.getVisibleTasks();
+
+        Profile profile = null;
+        TabModelOrchestrator orchestrator = mTabModelOrchestratorSupplier.get();
+        if (orchestrator != null) {
+            TabModelSelector selector = orchestrator.getTabModelSelector();
+            if (selector != null) {
+                profile = selector.getCurrentModel().getProfile();
+            }
+        }
+        boolean isIncognitoForced = profile != null && IncognitoUtils.isIncognitoModeForced(profile);
+
         for (int i : MultiWindowUtils.getPersistedInstanceIds(persistedInstanceType)) {
             if (!includeDeleted && ChromeMultiInstancePersistentStore.readMarkedForDeletion(i)) {
+                continue;
+            }
+            if (isIncognitoForced && ChromeMultiInstancePersistentStore.readNormalTabCount(i) > 0) {
                 continue;
             }
             @InstanceInfo.Type int type = InstanceInfo.Type.OTHER;
@@ -1266,7 +1280,7 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
     public void showInstanceCreationLimitMessage() {
         // TODO(crbug.com/535331238): Move this to MultiWindowUtils.java and merge with the
         //  duplicated toast.
-        if (ChromeFeatureList.isEnabled(ChromeFeatureList.IN_APP_WINDOW_MANAGER_DEPRECATION)) {
+        if (MultiWindowUtils.isWindowManagerDeprecated()) {
             Toast.makeText(
                             mActivity,
                             mActivity.getString(

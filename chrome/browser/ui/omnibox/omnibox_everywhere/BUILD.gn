@@ -28,6 +28,7 @@ source_set("omnibox_everywhere") {
     "//chrome/browser:file_select_helper",
     "//chrome/browser/profiles:profile_manager",
     "//chrome/browser/ui/omnibox",
+    "//chrome/browser/ui/webui:webui_util",
     "//chrome/browser/ui/webui/omnibox_everywhere",
     "//chrome/browser/ui/webui/omnibox_popup",
     "//components/omnibox/common:features",
@@ -42,6 +43,7 @@ source_set("omnibox_everywhere") {
       "omnibox_everywhere_mac_utils.mm",
     ]
     public += [ "omnibox_everywhere_mac_utils.h" ]
+    deps += [ "//components/remote_cocoa/app_shim" ]
   }
 }
 
@@ -61,6 +63,7 @@ source_set("unit_tests") {
     "//chrome/test/views",
     "//content/test:test_support",
     "//testing/gtest",
+    "//ui/display:test_support",
     "//ui/views",
   ]
 }

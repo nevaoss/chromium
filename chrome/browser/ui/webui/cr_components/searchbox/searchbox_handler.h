@@ -24,6 +24,7 @@
 #include "components/omnibox/browser/omnibox_client.h"
 #include "components/omnibox/browser/omnibox_popup_selection.h"
 #include "components/omnibox/browser/searchbox.mojom.h"
+#include "components/omnibox/browser/searchbox_utils.h"
 #include "components/omnibox/common/input_state.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/receiver.h"
@@ -134,10 +135,7 @@ class SearchboxHandler : public searchbox::mojom::PageHandler,
                              const GURL& url,
                              bool are_matches_showing,
                              uint8_t mouse_button,
-                             bool alt_key,
-                             bool ctrl_key,
-                             bool meta_key,
-                             bool shift_key,
+                             searchbox::mojom::ActionModifiersPtr modifiers,
                              bool via_keyboard) override;
   void SetSmartComposeStats(
       searchbox::mojom::SmartComposeStatsPtr smart_compose_stats) override {}
@@ -264,6 +262,8 @@ class SearchboxHandler : public searchbox::mojom::PageHandler,
   std::unique_ptr<OmniboxController> owned_controller_;
   std::unique_ptr<OmniboxClient> client_;
   std::unique_ptr<AutocompleteController> autocomplete_controller_;
+
+  searchbox::InteractionMetricsTracker metrics_tracker_;
 
   base::ScopedObservation<AutocompleteController,
                           AutocompleteController::Observer>

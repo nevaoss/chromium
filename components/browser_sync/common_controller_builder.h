@@ -25,7 +25,6 @@ class PrefService;
 class SharingMessageBridge;
 class TemplateURLService;
 
-
 namespace account_settings {
 class AccountSettingService;
 }  // namespace account_settings
@@ -66,6 +65,10 @@ class FaviconService;
 namespace history {
 class HistoryService;
 }  // namespace history
+
+namespace notebooks {
+class NotebooksService;
+}  // namespace notebooks
 
 namespace password_manager {
 class PasswordReceiverService;
@@ -184,6 +187,7 @@ class CommonControllerBuilder {
   void SetDataTypeStoreService(
       syncer::DataTypeStoreService* data_type_store_service);
   void SetSkillsService(skills::SkillsService* skills_service);
+  void SetNotebooksService(notebooks::NotebooksService* notebooks_service);
 
 #if !BUILDFLAG(IS_ANDROID)
   void SetPasskeyModel(webauthn::PasskeyModel* passkey_model);
@@ -326,6 +330,8 @@ class CommonControllerBuilder {
   CreateGeminiThreadDataTypeController();
   std::unique_ptr<syncer::DataTypeController>
   CreateContextualTaskDataTypeController();
+  std::unique_ptr<syncer::DataTypeController>
+  CreateNotebookDataTypeController();
 #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
   std::unique_ptr<syncer::DataTypeController> CreateSkillDataTypeController(
       syncer::SyncService* sync_service);
@@ -446,6 +452,7 @@ class CommonControllerBuilder {
       tab_context_sync_service_;
   SafeOptional<raw_ptr<TemplateURLService>> template_url_service_;
   SafeOptional<raw_ptr<skills::SkillsService>> skills_service_;
+  SafeOptional<raw_ptr<notebooks::NotebooksService>> notebooks_service_;
 };
 
 }  // namespace browser_sync

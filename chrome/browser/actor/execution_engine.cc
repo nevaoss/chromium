@@ -26,6 +26,7 @@
 #include "base/notimplemented.h"
 #include "base/state_transitions.h"
 #include "base/strings/string_split.h"
+#include "base/task/sequenced_task_runner.h"
 #include "base/time/time.h"
 #include "base/trace_event/trace_event.h"
 #include "base/types/expected.h"
@@ -60,6 +61,7 @@
 #include "components/actor/core/actor_logging.h"
 #include "components/actor/core/actor_metrics.h"
 #include "components/actor/core/actor_util.h"
+#include "components/actor/core/aggregated_journal.h"
 #include "components/actor/core/journal_details_builder.h"
 #include "components/actor/core/safety_list_manager.h"
 #include "components/actor/core/task_id.h"
@@ -126,6 +128,46 @@ constexpr char kTabErrorDocumentPredicateName[] =
 constexpr char kTabSafeBrowsingObserverPredicateName[] =
     "actor_tab_safe_browsing_observer_check";
 
+class DecisionWrapper {
+ public:
+  DecisionWrapper(AggregatedJournal& journal,
+                  const GURL& url,
+                  TaskId task_id,
+                  std::string_view event_name,
+                  DecisionCallbackWithReason callback)
+      : callback_(std::move(callback)),
+        journal_entry_(
+            journal.CreatePendingAsyncEntry(url,
+                                            task_id,
+                                            MakeBrowserTrackUUID(task_id),
+                                            event_name,
+                                            {})) {}
+
+  void Reject(std::string_view reason, MayActOnUrlBlockReason block_reason) {
+    journal_entry_->EndEntry(JournalDetailsBuilder().AddError(reason).Build());
+
+    // Some decisions are made asynchronously, so always invoke the callback
+    // asynchronously for consistency.
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, base::BindOnce(std::move(callback_), block_reason));
+  }
+
+  void Accept() {
+    journal_entry_->EndEntry(
+        JournalDetailsBuilder().Add("result", "Allow").Build());
+
+    // Some decisions are made asynchronously, so always invoke the callback
+    // asynchronously for consistency.
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE,
+        base::BindOnce(std::move(callback_), MayActOnUrlBlockReason::kAllowed));
+  }
+
+ private:
+  DecisionCallbackWithReason callback_;
+  std::unique_ptr<AggregatedJournal::PendingAsyncEntry> journal_entry_;
+};
+
 struct ActorGatingContext : public origin_gating::GatingDecisionContext {
   ActorGatingContext(ukm::SourceId ukm_id,
                      bool skip,
@@ -155,7 +197,6 @@ struct PageActionGatingContext : public origin_gating::GatingDecisionContext {
 // Blocks acting on a tab whose primary main frame is showing an error document.
 origin_gating::Decision EvaluateTabErrorDocument(
     const origin_gating::GatingDecisionContext* context,
-    origin_gating::GateableEvent event,
     const GURL& source,
     const GURL& destination) {
   content::WebContents* web_contents =
@@ -171,7 +212,6 @@ origin_gating::Decision EvaluateTabErrorDocument(
 // until user interaction; such a page has a user interaction observer attached.
 origin_gating::Decision EvaluateTabSafeBrowsingObserver(
     const origin_gating::GatingDecisionContext* context,
-    origin_gating::GateableEvent event,
     const GURL& source,
     const GURL& destination) {
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
@@ -190,10 +230,11 @@ origin_gating::Decision EvaluateTabSafeBrowsingObserver(
 origin_gating::CustomPredicate CreateSafetyListPredicate() {
   return origin_gating::CustomPredicate(
       base::BindRepeating([](const origin_gating::GatingDecisionContext*,
-                             origin_gating::GateableEvent,
                              const GURL& source_url,
                              const GURL& destination_url) {
-        switch (SafetyListManager::GetInstance()->Find(source_url,
+        const GURL& effective_source =
+            source_url.is_empty() ? destination_url : source_url;
+        switch (SafetyListManager::GetInstance()->Find(effective_source,
                                                        destination_url)) {
           case SafetyListManager::Decision::kNone:
             return origin_gating::Decision::kNoDecision;
@@ -206,19 +247,12 @@ origin_gating::CustomPredicate CreateSafetyListPredicate() {
       kSafetyListPredicateName);
 }
 
-void EvaluateSensitiveUrl(
+void BlockSensitiveUrl(
     Profile* profile,
     const origin_gating::GatingDecisionContext* context,
-    origin_gating::GateableEvent event,
     const GURL& source,
     const GURL& destination,
     base::OnceCallback<void(origin_gating::Decision)> callback) {
-  if (event == origin_gating::GateableEvent::kNavigationRequest &&
-      IsNavigationGatingEnabled()) {
-    std::move(callback).Run(origin_gating::Decision::kNoDecision);
-    return;
-  }
-
   base::expected<void, base::OnceCallback<void(bool)>> sensitive_check_result =
       MaybeCheckOptimizationGuideForSensitiveUrl(
           destination, profile,
@@ -233,10 +267,23 @@ void EvaluateSensitiveUrl(
   }
 }
 
+void BlockSensitiveUrlWhenNavigationGatingDisabled(
+    Profile* profile,
+    const origin_gating::GatingDecisionContext* context,
+    const GURL& source,
+    const GURL& destination,
+    base::OnceCallback<void(origin_gating::Decision)> callback) {
+  if (IsNavigationGatingEnabled()) {
+    std::move(callback).Run(origin_gating::Decision::kNoDecision);
+    return;
+  }
+
+  BlockSensitiveUrl(profile, context, source, destination, std::move(callback));
+}
+
 origin_gating::Decision EvaluateLookalikeUrl(
     Profile* profile,
     const origin_gating::GatingDecisionContext* context,
-    origin_gating::GateableEvent event,
     const GURL& source,
     const GURL& destination) {
   auto* lookalike_service = LookalikeUrlServiceFactory::GetForProfile(profile);
@@ -262,7 +309,6 @@ origin_gating::Decision EvaluateLookalikeUrl(
 origin_gating::Decision EvaluateSafeBrowsingEnabled(
     Profile* profile,
     const origin_gating::GatingDecisionContext* context,
-    origin_gating::GateableEvent event,
     const GURL& source,
     const GURL& destination) {
   bool is_safe_browsing_enabled = false;
@@ -278,7 +324,6 @@ origin_gating::Decision EvaluateSafeBrowsingEnabled(
 
 origin_gating::Decision EvaluateSafetyChecksDisabled(
     const origin_gating::GatingDecisionContext* context,
-    origin_gating::GateableEvent event,
     const GURL& source,
     const GURL& destination) {
   return IsActorSafetyCheckDisabled() ? origin_gating::Decision::kAllowed
@@ -306,7 +351,6 @@ bool IsHostInAllowList(const std::vector<std::string_view>& allowlist,
 
 origin_gating::Decision EvaluateActionAllowlist(
     const origin_gating::GatingDecisionContext* context,
-    origin_gating::GateableEvent event,
     const GURL& source,
     const GURL& destination) {
   if (!base::FeatureList::IsEnabled(kGlicActionAllowlist)) {
@@ -392,6 +436,10 @@ ExecutionEngine::GatingDecision MapGatingDecisionToEngineDecision(
       switch (decision.attribution.Source()) {
         case origin_gating::DecisionSource::kAllowSameOrigin:
           return ExecutionEngine::GatingDecision::kAllowSameOrigin;
+        case origin_gating::DecisionSource::kActorContainerConfig:
+          return decision.is_allowed
+                     ? ExecutionEngine::GatingDecision::kAllowByContainerConfig
+                     : ExecutionEngine::GatingDecision::kBlockByContainerConfig;
         case origin_gating::DecisionSource::kCacheWithUserConfirmation:
         case origin_gating::DecisionSource::kCacheWithoutUserConfirmation:
         case origin_gating::DecisionSource::kNoVerdict:
@@ -415,6 +463,13 @@ ExecutionEngine::GatingDecision MapGatingDecisionToEngineDecision(
   }
 }
 
+// The block reason and human-readable description produced when a gating
+// decision denies an action or navigation.
+struct MayActOnUrlBlockResult {
+  std::string reason;
+  MayActOnUrlBlockReason reason_code;
+};
+
 MayActOnUrlBlockResult MapGatingDecisionToBlockResult(
     const origin_gating::GatingDecision& decision,
     const GURL& url) {
@@ -432,11 +487,18 @@ MayActOnUrlBlockResult MapGatingDecisionToBlockResult(
                   ProfileIOData::IsHandledURL(url)
                       ? MayActOnUrlBlockReason::kWrongScheme
                       : MayActOnUrlBlockReason::kExternalProtocol};
+        case origin_gating::DecisionSource::kActorContainerConfig:
+          return {"Blocked by actor container config",
+                  MayActOnUrlBlockReason::kBlockedByContainerConfig};
         default:
           NOTREACHED() << "Unexpected decision source: "
                        << static_cast<int>(decision.attribution.Source());
       }
     case origin_gating::DecisionAttribution::Type::kCustomPredicate:
+      if (decision.attribution == kSafetyListPredicateName) {
+        return {"Blocked by static safety list",
+                MayActOnUrlBlockReason::kBlockedByStaticList};
+      }
       if (decision.attribution == kSensitiveUrlPredicateName) {
         return {kSensitiveUrlPredicateName,
                 MayActOnUrlBlockReason::kOptimizationGuideBlock};
@@ -464,6 +526,22 @@ MayActOnUrlBlockResult MapGatingDecisionToBlockResult(
       NOTREACHED() << "Unrecognized custom predicate attribution: "
                    << decision.attribution.CustomPredicateName();
   }
+}
+
+// Resolves the pending `decision_wrapper` from the gating checker's `decision`.
+void ResolveGatingDecision(
+    std::unique_ptr<DecisionWrapper> decision_wrapper,
+    const GURL& url,
+    std::unique_ptr<origin_gating::GatingDecisionContext> context,
+    origin_gating::GatingDecision decision) {
+  if (decision.is_allowed) {
+    decision_wrapper->Accept();
+    return;
+  }
+
+  MayActOnUrlBlockResult block_info =
+      MapGatingDecisionToBlockResult(decision, url);
+  decision_wrapper->Reject(block_info.reason, block_info.reason_code);
 }
 
 void OnNavigationConfirmationDecisionInBackground(
@@ -550,6 +628,10 @@ ExecutionEngine::ExecutionEngine(
           *this,
           origin_gating::OriginGatingConfiguration(
               {
+                  {origin_gating::DecisionSource::kActorContainerConfig,
+                   {origin_gating::GateableEvent::kPageAction}},
+                  {CreateSafetyListPredicate(),
+                   {origin_gating::GateableEvent::kPageAction}},
                   {origin_gating::CustomPredicate(
                        base::BindRepeating(&EvaluateTabErrorDocument),
                        kTabErrorDocumentPredicateName),
@@ -600,6 +682,8 @@ ExecutionEngine::ExecutionEngine(
                        kLookalikeUrlPredicateName),
                    {origin_gating::GateableEvent::kNavigationRequest,
                     origin_gating::GateableEvent::kPageAction}},
+                  {origin_gating::DecisionSource::kActorContainerConfig,
+                   {origin_gating::GateableEvent::kNavigationResponse}},
                   {CreateSafetyListPredicate(),
                    {origin_gating::GateableEvent::kNavigationResponse}},
                   {origin_gating::DecisionSource::kCacheWithUserConfirmation,
@@ -607,11 +691,16 @@ ExecutionEngine::ExecutionEngine(
                   {origin_gating::DecisionSource::kAllowSameOrigin,
                    {origin_gating::GateableEvent::kNavigationResponse}},
                   {origin_gating::CustomPredicate(
-                       base::BindRepeating(&EvaluateSensitiveUrl,
+                       base::BindRepeating(
+                           &BlockSensitiveUrlWhenNavigationGatingDisabled,
+                           task_->GetProfile()),
+                       kSensitiveUrlPredicateName),
+                   {origin_gating::GateableEvent::kNavigationRequest}},
+                  {origin_gating::CustomPredicate(
+                       base::BindRepeating(&BlockSensitiveUrl,
                                            task_->GetProfile()),
                        kSensitiveUrlPredicateName),
-                   {origin_gating::GateableEvent::kNavigationRequest,
-                    origin_gating::GateableEvent::kPageAction}},
+                   {origin_gating::GateableEvent::kPageAction}},
                   {origin_gating::DecisionSource::kCacheWithoutUserConfirmation,
                    {origin_gating::GateableEvent::kNavigationResponse}},
               },
@@ -821,14 +910,6 @@ ExecutionEngine::GatingDecision ExecutionEngine::DetermineGatingDecision(
       return GatingDecision::kBlockByStaticList;
   }
 
-  if (actor_container_config_slot_.has_value()) {
-    return actor_container_config_slot_.value().IsNavigationAllowed(
-               url::Origin::Create(source_url),
-               url::Origin::Create(destination_url))
-               ? GatingDecision::kAllowByContainerConfig
-               : GatingDecision::kBlockByContainerConfig;
-  }
-
   return GatingDecision::kNeedsAsyncCheck;
 }
 
@@ -916,53 +997,20 @@ void ExecutionEngine::OnNoVerdict(
                                     std::move(callback));
 }
 
+// TODO(mcnee): Add UMA for the outcomes.
 void ExecutionEngine::MayActOnTab(const tabs::TabInterface& tab,
                                   AggregatedJournal& journal,
                                   TaskId task_id,
                                   DecisionCallbackWithReason callback) {
-  actor::MayActOnTab(
-      tab, journal, task_id,
-      base::BindOnce(&ExecutionEngine::ShouldAllowPageAction, GetWeakPtr(),
-                     tab.GetContents()->GetWeakPtr()),
-      std::move(callback));
-}
-
-void ExecutionEngine::ShouldAllowNavigationDestination(
-    const GURL& url,
-    NoVerdictResultCallback result_callback) {
+  content::WebContents& web_contents = *tab.GetContents();
+  const GURL& url = web_contents.GetPrimaryMainFrame()->GetLastCommittedURL();
+  auto decision_wrapper = std::make_unique<DecisionWrapper>(
+      journal, url, task_id, "MayActOnTab", std::move(callback));
   origin_gating_checker_.ComputeGatingDecision(
-      /*context=*/nullptr, origin_gating::GateableEvent::kNavigationRequest,
-      /*source=*/GURL(), url,
-      base::BindOnce(&ExecutionEngine::OnShouldAllowUrlDecision, GetWeakPtr(),
-                     std::move(result_callback), url));
-}
-
-void ExecutionEngine::ShouldAllowPageAction(
-    base::WeakPtr<content::WebContents> web_contents,
-    const GURL& url,
-    NoVerdictResultCallback result_callback) {
-  origin_gating_checker_.ComputeGatingDecision(
-      std::make_unique<PageActionGatingContext>(std::move(web_contents)),
+      std::make_unique<PageActionGatingContext>(web_contents.GetWeakPtr()),
       origin_gating::GateableEvent::kPageAction,
       /*source=*/GURL(), url,
-      base::BindOnce(&ExecutionEngine::OnShouldAllowUrlDecision,
-                     GetActionSequenceWeakPtr(), std::move(result_callback),
-                     url));
-}
-
-void ExecutionEngine::OnShouldAllowUrlDecision(
-    NoVerdictResultCallback result_callback,
-    const GURL& url,
-    std::unique_ptr<origin_gating::GatingDecisionContext> context,
-    origin_gating::GatingDecision decision) {
-  if (decision.is_allowed) {
-    std::move(result_callback).Run(base::ok());
-    return;
-  }
-
-  MayActOnUrlBlockResult block_info =
-      MapGatingDecisionToBlockResult(decision, url);
-  std::move(result_callback).Run(base::unexpected(block_info));
+      base::BindOnce(&ResolveGatingDecision, std::move(decision_wrapper), url));
 }
 
 void ExecutionEngine::HandleNavigationToNewOrigin(
@@ -1295,40 +1343,13 @@ void ExecutionEngine::SafetyChecksForNextAction() {
     return;
   }
 
-  const GURL& url =
-      tab->GetContents()->GetPrimaryMainFrame()->GetLastCommittedURL();
-
-  if (actor_container_config_slot_.has_value()) {
-    bool navigation_allowed =
-        actor_container_config_slot_.value().IsActuationAllowed(
-            url::Origin::Create(url));
-    OnMayActOnTabDecision(
-        tab->GetContents()->GetPrimaryMainFrame()->GetLastCommittedOrigin(),
-        navigation_allowed ? MayActOnUrlBlockReason::kAllowed
-                           : MayActOnUrlBlockReason::kBlockedByContainerConfig);
-    return;
-  }
-
-  const SafetyListManager& safety_list_manager =
-      *SafetyListManager::GetInstance();
-  if (safety_list_manager.Find(url, url) ==
-      SafetyListManager::Decision::kBlock) {
-    OnMayActOnTabDecision(
-        tab->GetContents()->GetPrimaryMainFrame()->GetLastCommittedOrigin(),
-        MayActOnUrlBlockReason::kBlockedByStaticList);
-    return;
-  }
-
   // Asynchronously check if we can act on the tab. NOTE that the MayActOnTab
   // check uses `GetLastCommittedURL()` from the tab. For opaque origins, this
   // means that we'll get the precursor URL. For this reason, we previously
   // added the precursor to `origin_gating_cache()` to ensure the optimization
   // guide sensitive origin check would be skipped as expected.
-  actor::MayActOnTab(
+  MayActOnTab(
       *tab, *journal_, task_->id(),
-      base::BindOnce(&ExecutionEngine::ShouldAllowPageAction,
-                     GetActionSequenceWeakPtr(),
-                     tab->GetContents()->GetWeakPtr()),
       base::BindOnce(
           &ExecutionEngine::OnMayActOnTabDecision, GetActionSequenceWeakPtr(),
           tab->GetContents()->GetPrimaryMainFrame()->GetLastCommittedOrigin()));
@@ -1652,11 +1673,12 @@ const EnterprisePolicyChecker& ExecutionEngine::GetEnterprisePolicyChecker()
 void ExecutionEngine::IsAcceptableNavigationDestination(
     const GURL& url,
     DecisionCallbackWithReason callback) {
-  actor::MayActOnUrl(
-      url, *journal_, task_->id(),
-      base::BindOnce(&ExecutionEngine::ShouldAllowNavigationDestination,
-                     GetWeakPtr()),
-      std::move(callback));
+  auto decision_wrapper = std::make_unique<DecisionWrapper>(
+      *journal_, url, task_->id(), "MayActOnUrl", std::move(callback));
+  origin_gating_checker_.ComputeGatingDecision(
+      /*context=*/nullptr, origin_gating::GateableEvent::kNavigationRequest,
+      /*source=*/GURL(), url,
+      base::BindOnce(&ResolveGatingDecision, std::move(decision_wrapper), url));
 }
 
 Profile& ExecutionEngine::GetProfile() {
@@ -1794,12 +1816,28 @@ void ExecutionEngine::RequestToShowGmailOtpOptInDialog(
   TRACE_EVENT0("actor", "ExecutionEngine::RequestToShowGmailOtpOptInDialog");
   if (!task_->delegate()) {
     auto result = webui::mojom::GmailOtpOptInResult::NewErrorReason(
-        webui::mojom::GmailOtpOptInErrorReason::kRequestPromiseNoSubscriber);
+        webui::mojom::GmailOtpErrorReason::kRequestPromiseNoSubscriber);
     std::move(callback).Run(std::move(result));
     return;
   }
   task_->delegate()->RequestToShowGmailOtpOptInDialog(task_->id(),
                                                       std::move(callback));
+}
+
+void ExecutionEngine::RequestToShowGmailOtpConfirmationDialog(
+    const std::string& verification_code,
+    GmailOtpConfirmationCallback callback) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  TRACE_EVENT0("actor",
+               "ExecutionEngine::RequestToShowGmailOtpConfirmationDialog");
+  if (!task_->delegate()) {
+    auto result = webui::mojom::GmailOtpConfirmationResult::NewErrorReason(
+        webui::mojom::GmailOtpErrorReason::kRequestPromiseNoSubscriber);
+    std::move(callback).Run(std::move(result));
+    return;
+  }
+  task_->delegate()->RequestToShowGmailOtpConfirmationDialog(
+      task_->id(), verification_code, std::move(callback));
 }
 
 void ExecutionEngine::InterruptFromTool() {

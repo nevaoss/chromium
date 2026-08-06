@@ -343,7 +343,8 @@ class EgtestsAppTest(test_runner_test.TestCase):
     expected_cmd = [
         'arch', '-arch', 'arm64', 'xcodebuild', 'test-without-building',
         '-xctestrun', 'xctestrun', '-destination', 'id=UUID',
-        '-resultBundlePath', 'outdir', '-test-iterations', '2'
+        '-resultBundlePath', 'outdir', '-collect-test-diagnostics', 'never',
+        '-test-iterations', '2'
     ]
     self.assertEqual(cmd, expected_cmd)
 
@@ -467,7 +468,13 @@ class EgtestsAppTest(test_runner_test.TestCase):
         env['DYLD_FRAMEWORK_PATH'], '/path/to:/path/to/test_app.app/Frameworks:'
         '__PLATFORMS__/iPhoneSimulator.platform/Developer/Library/Frameworks')
 
-
+  def test_get_all_tests_fallback_when_all_eg_test_names_empty(self):
+    egtest = test_apps.EgtestsApp(
+        _TEST_APP_PATH, [],
+        constants.IOSPlatformType.IPHONEOS,
+        included_tests=['TestCase1/testMethod1', 'TestCase2/testMethod2'])
+    self.assertEqual(['TestCase1/testMethod1', 'TestCase2/testMethod2'],
+                     egtest.get_all_tests())
 
 
 if __name__ == '__main__':

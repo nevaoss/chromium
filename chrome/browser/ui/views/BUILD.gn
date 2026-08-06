@@ -118,6 +118,56 @@ source_set("file_system_access_test_support") {
     "//url",
   ]
 }
+source_set("confirm_bubble") {
+  sources = [
+    "confirm_bubble_views.cc",
+    "confirm_bubble_views.h",
+  ]
+  deps = [
+    "//chrome/browser/ui:confirm_bubble",
+    ":layout_provider",
+    "//components/constrained_window",
+    "//components/strings:components_strings",
+    "//components/vector_icons",
+    "//ui/accessibility",
+    "//ui/base",
+    "//ui/base/mojom",
+    "//ui/views",
+  ]
+}
+
+source_set("status_bubble") {
+  public = [ "status_bubble_views.h" ]
+  sources = [ "status_bubble_views.cc" ]
+  deps = [
+    "//base",
+    "//cc/paint",
+    "//chrome/browser/ui:status_bubble",
+    "//chrome/browser/ui/color:color_headers",
+    ":views",
+    "//components/url_formatter",
+    "//skia",
+    "//ui/base",
+    "//ui/display",
+    "//ui/gfx",
+    "//ui/gfx/geometry",
+    "//ui/views",
+  ]
+}
+
+if (is_linux || is_chromeos) {
+  source_set("process_singleton_dialog_linux") {
+    sources = [ "process_singleton_dialog_linux.cc" ]
+    deps = [
+      "//base",
+      "//chrome/app:branded_strings",
+      "//chrome/app:generated_resources",
+      "//chrome/browser/ui:process_singleton_dialog_linux",
+      "//chrome/browser/ui:simple_message_box_headers",
+      "//ui/base",
+    ]
+  }
+}
 
 if (is_win) {
   source_set("uninstall_browser_prompt") {
@@ -138,4 +188,3 @@ if (is_win) {
     ]
   }
 }
-

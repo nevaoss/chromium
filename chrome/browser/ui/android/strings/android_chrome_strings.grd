@@ -679,6 +679,9 @@ For more settings that use data to improve your Chrome experience, go to <ph nam
       <message name="IDS_AUTOFILL_CREDIT_CARD_EDITOR_NICKNAME" desc="Label for text input field containing the nickname on a credit card. [CHAR_LIMIT=25]">
         Card nickname
       </message>
+      <message name="IDS_AUTOFILL_CREDIT_CARD_EDITOR_NICKNAME_CONTENT_DESCRIPTION" desc="Accessible content description and label for text input field containing a credit card nickname, mentioning the character limit. [CHAR_LIMIT=64]">
+        Card nickname, maximum 25 characters
+      </message>
       <message name="IDS_AUTOFILL_CREDIT_CARD_EDITOR_EXPIRATION_DATE_HINT" desc="Hint for text input field containing the expiration date on a credit card. [CHAR_LIMIT=25]">
         MM / YY
       </message>
@@ -3006,8 +3009,14 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_CONTEXTMENU_SAVE_LINK" desc="Context sensitive menu item for saving the target of a link [CHAR_LIMIT=30]">
         Download link
       </message>
+      <message name="IDS_CONTEXTMENU_SAVE_LINK_AS" desc="Context sensitive menu item for saving the target of a link [CHAR_LIMIT=30]">
+        Save link as…
+      </message>
       <message name="IDS_CONTEXTMENU_SAVE_IMAGE" desc="Context sensitive menu item for saving the selected image. [CHAR_LIMIT=30]">
         Download image
+      </message>
+      <message name="IDS_CONTEXTMENU_SAVE_IMAGE_AS" desc="Context sensitive menu item for saving the selected image. [CHAR_LIMIT=30]">
+        Save image as…
       </message>
       <message name="IDS_CONTEXTMENU_OPEN_IMAGE" desc="Context sensitive menu item for opening/viewing the selected image. [CHAR_LIMIT=30]">
         Open image
@@ -3036,6 +3045,9 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_CONTEXTMENU_SEARCH_WEB_FOR_IMAGE" desc="Context sensitive menu item for search-for-Image command in a new tab. [CHAR_LIMIT=30]">
         Search <ph name="SEARCH_ENGINE">%1$s<ex>Google</ex></ph> for this image
       </message>
+      <message name="IDS_CONTEXTMENU_SEARCH_WEB_FOR_TEXT" desc="Context sensitive menu item for web search command on selected text. [CHAR_LIMIT=30]">
+        <ph name="SEARCH_ENGINE">%1$s<ex>Search Google</ex></ph> for "<ph name="SEARCH_TERMS">%2$s<ex>Weather</ex></ph>"
+      </message>
       <message name="IDS_CONTEXTMENU_SHARE_IMAGE" desc="Context sensitive menu item for sharing an image via the Android system share action. [CHAR_LIMIT=30]">
         Share image
       </message>
@@ -3045,11 +3057,17 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_CONTEXTMENU_SAVE_VIDEO" desc="Context sensitive menu item for saving the selected video. [CHAR_LIMIT=30]">
         Download video
       </message>
+      <message name="IDS_CONTEXTMENU_SAVE_VIDEO_AS" desc="Context sensitive menu item for saving the selected video. [CHAR_LIMIT=30]">
+        Save video as…
+      </message>
       <message name="IDS_CONTEXTMENU_COPY_VIDEO_FRAME" desc="The context menu item to copy the current video frame as an image. [CHAR_LIMIT=30]">
         Copy video frame
       </message>
       <message name="IDS_CONTEXTMENU_DOWNLOAD_VIDEO_FRAME" desc="The context menu item to download the current video frame as an image. [CHAR_LIMIT=30]">
         Download video frame
+      </message>
+      <message name="IDS_CONTEXTMENU_SAVE_VIDEO_FRAME_AS" desc="The context menu item to save the current video frame as an image. [CHAR_LIMIT=30]">
+        Save video frame as…
       </message>
       <message name="IDS_CONTEXTMENU_PICTURE_IN_PICTURE" desc="The context menu item to enter picture-in-picture mode for a video. [CHAR_LIMIT=30]">
         Picture in Picture

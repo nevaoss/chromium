@@ -82,10 +82,6 @@
   return self;
 }
 
-- (instancetype)initWithAppState:(AppState*)appState {
-  return [self init];
-}
-
 #pragma mark - public
 
 - (void)addObserver:(id<SceneStateObserver>)observer {
@@ -140,10 +136,6 @@
 
 - (std::string_view)sceneSessionID {
   return _sceneStateOptions.identifier;
-}
-
-- (void)setScene:(UIWindowScene*)scene {
-  _scene = scene;
 }
 
 - (void)setActivationLevel:(SceneActivationLevel)newLevel {

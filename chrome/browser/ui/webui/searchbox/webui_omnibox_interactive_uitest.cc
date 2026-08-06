@@ -308,7 +308,7 @@ class OmniboxAimWebUiInteractiveTestBase
  protected:
   auto SetAimEligibleResponse() {
     return Do([this]() {
-      auto* profile = browser()->profile();
+      auto* profile = browser()->GetProfile();
       auto* service = AimEligibilityServiceFactory::GetForProfile(profile);
       omnibox::AimEligibilityResponse response;
       response.set_is_eligible(true);
@@ -546,7 +546,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxAimWebUiInteractiveTest,
   // Force a larger window size to give the popup room to grow.
   browser()->GetWindow()->SetBounds(gfx::Rect(0, 0, 1280, 1024));
 
-  browser()->profile()->GetPrefs()->SetInteger(
+  browser()->GetProfile()->GetPrefs()->SetInteger(
       contextual_search::kSearchContentSharingSettings,
       static_cast<int>(
           contextual_search::SearchContentSharingSettingsValue::kEnabled));
@@ -700,8 +700,14 @@ IN_PROC_BROWSER_TEST_F(OmniboxAimWebUiInteractiveTest,
       WaitForGoogleSearch(kNewTab, {{"q", "suggestion-1"}}));
 }
 
+// TODO(crbug.com/535715456): Flaky/failing on ASan and ChromeOS.
+#if defined(ADDRESS_SANITIZER) || BUILDFLAG(IS_CHROMEOS)
+#define MAYBE_RecordsEarlyExitMetrics DISABLED_RecordsEarlyExitMetrics
+#else
+#define MAYBE_RecordsEarlyExitMetrics RecordsEarlyExitMetrics
+#endif
 IN_PROC_BROWSER_TEST_F(OmniboxAimWebUiInteractiveTest,
-                       RecordsEarlyExitMetrics) {
+                       MAYBE_RecordsEarlyExitMetrics) {
   base::HistogramTester histogram_tester;
   RunTestSequence(
       OpenAimPopupInNewTab(), Do([&]() {
@@ -872,7 +878,7 @@ IN_PROC_BROWSER_TEST_P(OmniboxAimUploadInteractiveTest,
 
   RunTestSequence(
       Do([this]() {
-        browser()->profile()->GetPrefs()->SetInteger(
+        browser()->GetProfile()->GetPrefs()->SetInteger(
             contextual_search::kSearchContentSharingSettings,
             static_cast<int>(contextual_search::
                                  SearchContentSharingSettingsValue::kEnabled));

@@ -285,6 +285,7 @@ void AttemptOtpFillingTool::Validate(ToolCallback callback) {
                    "Gmail OTP disabled and within cool-off period for Gmail "
                    "OTP opt-in dialog."));
   } else {
+    RecordGmailOtpOptInCardInteraction(GmailOtpOptInCardInteraction::kShowCard);
     tool_delegate().RequestToShowGmailOtpOptInDialog(
         base::BindOnce(&AttemptOtpFillingTool::OnGmailOtpOptInResponse,
                        weak_factory_.GetWeakPtr(), std::move(callback)));
@@ -297,6 +298,8 @@ void AttemptOtpFillingTool::OnGmailOtpOptInResponse(
   if (!response || response.is_null()) {
     RecordAttemptOtpFillingEvent(
         AttemptOtpFillingToolEvent::kOptInNullResponse);
+    RecordGmailOtpOptInCardInteraction(
+        GmailOtpOptInCardInteraction::kErrorResponse);
     std::move(callback).Run(
         MakeResult(mojom::ActionResultCode::kOtpUnableToFill,
                    /*requires_page_stabilization=*/false,
@@ -307,6 +310,8 @@ void AttemptOtpFillingTool::OnGmailOtpOptInResponse(
   if (response->is_error_reason()) {
     RecordAttemptOtpFillingEvent(
         AttemptOtpFillingToolEvent::kOptInErrorResponse);
+    RecordGmailOtpOptInCardInteraction(
+        GmailOtpOptInCardInteraction::kErrorResponse);
     LogJournalEvent("AttemptOtpFillingTool::OnGmailOtpOptInResponse",
                     JournalDetailsBuilder()
                         .Add("error_reason", response->get_error_reason())
@@ -318,12 +323,14 @@ void AttemptOtpFillingTool::OnGmailOtpOptInResponse(
     return;
   }
 
-  bool opt_in_permission_granted = response->get_permission_granted();
+  bool opt_in_permission_granted = response->get_response()->permission_granted;
 
   PrefService* prefs = tool_delegate().GetProfile().GetPrefs();
   if (!opt_in_permission_granted) {
     RecordAttemptOtpFillingEvent(
         AttemptOtpFillingToolEvent::kOptInPermissionDenied);
+    RecordGmailOtpOptInCardInteraction(
+        GmailOtpOptInCardInteraction::kPermissionDenied);
     autofill::prefs::SetAutofillGmailOtpFillingActivationDismissalTimestamp(
         prefs, base::Time::Now());
     std::move(callback).Run(
@@ -333,6 +340,8 @@ void AttemptOtpFillingTool::OnGmailOtpOptInResponse(
     return;
   }
 
+  RecordGmailOtpOptInCardInteraction(
+      GmailOtpOptInCardInteraction::kPermissionGranted);
   autofill::prefs::SetAutofillGmailOtpFillingEnabled(prefs, true);
   autofill::prefs::ClearAutofillGmailOtpFillingActivationDismissalTimestamp(
       prefs);
@@ -361,7 +370,7 @@ mojom::ActionResultPtr AttemptOtpFillingTool::TimeOfUseValidation(
   if (!last_observation) {
     RecordAttemptOtpFillingEvent(
         AttemptOtpFillingToolEvent::kNoLastTabObservation);
-    return MakeResult(mojom::ActionResultCode::kFormFillingNoLastTabObservation,
+    return MakeResult(mojom::ActionResultCode::kOtpNoLastTabObservation,
                       /*requires_page_stabilization=*/false,
                       "Last tab observation is null.");
   }
@@ -374,7 +383,7 @@ mojom::ActionResultPtr AttemptOtpFillingTool::TimeOfUseValidation(
     if (!field_id) {
       RecordAttemptOtpFillingEvent(
           AttemptOtpFillingToolEvent::kTriggerFieldNotFound);
-      return MakeResult(mojom::ActionResultCode::kFormFillingFieldNotFound,
+      return MakeResult(mojom::ActionResultCode::kOtpFieldNotFound,
                         /*requires_page_stabilization=*/false,
                         "Trigger field not found.");
     }
@@ -428,9 +437,7 @@ void AttemptOtpFillingTool::Invoke(ToolCallback callback) {
         FROM_HERE,
         base::BindOnce(
             std::move(callback),
-            // TODO(crbug.com/502908360): Consider using a more specific error
-            // code.
-            MakeResult(mojom::ActionResultCode::kFormFillingFieldNotFound,
+            MakeResult(mojom::ActionResultCode::kOtpTargetFrameNotFound,
                        /*requires_page_stabilization=*/false,
                        "Target frame containing OTP fields not found.")));
     return;
@@ -471,7 +478,10 @@ void AttemptOtpFillingTool::OnActorLoginFlowChecked(ToolCallback callback,
   if (is_actor_login || bypass_login_check) {
     // Verified sign-in journey: proceed with silent OTP filling.
     tool_delegate().GetActorOneTimeTokenFillingService().RetrieveOtp(
-        GetTargetTab(), trigger_field_ids_,
+        GetTargetTab(),
+        GetOtpFrame(GetTargetTab(), trigger_field_ids_)
+            ->GetLastCommittedOrigin(),
+        trigger_field_ids_,
         base::BindOnce(&AttemptOtpFillingTool::OnOtpRetrieved,
                        weak_factory_.GetWeakPtr(), std::move(callback)));
   } else {

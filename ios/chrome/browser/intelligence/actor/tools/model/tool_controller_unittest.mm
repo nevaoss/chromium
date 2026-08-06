@@ -27,6 +27,9 @@ namespace {
 // A test tool that never completes, added to test ToolController::Cancel.
 class AsyncActorTool : public ActorTool {
  public:
+  void Validate(ToolExecutionCallback callback) override {
+    std::move(callback).Run(ToolExecutionResult::Ok());
+  }
   void Execute(ToolExecutionCallback callback) override {
     // Do not run the callback, simulating an async operation that gets
     // cancelled.
@@ -42,7 +45,7 @@ class AsyncActorToolFactory : public ActorToolFactory {
   explicit AsyncActorToolFactory(ProfileIOS* profile)
       : ActorToolFactory(profile) {}
   base::expected<std::unique_ptr<ActorTool>, ToolExecutionResult> CreateTool(
-      const optimization_guide::proto::Action& action,
+      const ActorToolRequest& request,
       ToolDelegate* tool_delegate) override {
     return std::make_unique<AsyncActorTool>();
   }
@@ -51,6 +54,9 @@ class AsyncActorToolFactory : public ActorToolFactory {
 // A test tool that completes by requiring page stabilization.
 class StabilizingActorTool : public ActorTool {
  public:
+  void Validate(ToolExecutionCallback callback) override {
+    std::move(callback).Run(ToolExecutionResult::Ok());
+  }
   void Execute(ToolExecutionCallback callback) override {
     std::move(callback).Run(ToolExecutionResult(
         mojom::ActionResultCode::kOk, /*requires_page_stabilization=*/true));
@@ -75,7 +81,7 @@ class StabilizingActorToolFactory : public ActorToolFactory {
       : ActorToolFactory(profile), web_state_(web_state) {}
 
   base::expected<std::unique_ptr<ActorTool>, ToolExecutionResult> CreateTool(
-      const optimization_guide::proto::Action& action,
+      const ActorToolRequest& request,
       ToolDelegate* tool_delegate) override {
     auto tool = std::make_unique<StabilizingActorTool>();
     tool->SetWebState(web_state_);
@@ -227,8 +233,9 @@ TEST_F(ToolControllerTest, CancelMidExecution) {
 
   std::unique_ptr<ActorToolRequest> request = MakeSuccessfulActorToolRequest();
 
-  controller_->CreateToolAndValidate(
-      *request, base::BindOnce([](ToolExecutionResult result) {}));
+  base::test::TestFuture<ToolExecutionResult> validation_future;
+  controller_->CreateToolAndValidate(*request, validation_future.GetCallback());
+  EXPECT_TRUE(validation_future.Get().IsOk());
 
   controller_->Invoke(base::BindOnce([](ToolExecutionResult result) {
     FAIL() << "Callback should not be called when cancelled.";

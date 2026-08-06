@@ -597,13 +597,18 @@ void ActorKeyedService::PerformActions(
       task_metadata.added_writable_mainframe_origins());
   if (task_metadata.agent_container_config().has_value()) {
     JournalDetailsBuilder builder;
-    if (task->GetExecutionEngine().actor_container_config_slot().Assign(
-            task_metadata.agent_container_config().value())) {
+    if (!task->GetExecutionEngine()
+             .origin_gating_checker()
+             .actor_container_config_slot()
+             .has_value()) {
+      origin_gating::ActorContainerConfig config = ConvertAgentContainerConfig(
+          task_metadata.agent_container_config().value());
       builder.Add("status", "assigned")
-          .Add("active config", task->GetExecutionEngine()
-                                    .actor_container_config_slot()
-                                    .value()
-                                    .ToDebugValue());
+          .Add("active config", config.ToDebugValue());
+      task->GetExecutionEngine()
+          .origin_gating_checker()
+          .actor_container_config_slot()
+          .Assign(std::move(config));
     } else {
       builder.Add("status", "ignored config");
     }
@@ -723,16 +728,16 @@ void ActorKeyedService::RemoveObserver(BackgroundActuationObserver* observer) {
 
 void ActorKeyedService::NotifyBackgroundTabReady(
     tabs::TabInterface* tab,
-    const std::string& context_id) {
+    const std::string& glic_trigger_message_id) {
   for (auto& observer : observers_) {
-    observer.OnBackgroundTabPrepared(tab, context_id);
+    observer.OnBackgroundTabPrepared(tab, glic_trigger_message_id);
   }
 }
 
 void ActorKeyedService::NotifyBackgroundSetupFailed(
-    const std::string& context_id) {
+    const std::string& glic_trigger_message_id) {
   for (auto& observer : observers_) {
-    observer.OnBackgroundSetupFailed(context_id);
+    observer.OnBackgroundSetupFailed(glic_trigger_message_id);
   }
 }
 
@@ -743,8 +748,8 @@ ActorKeyedService::AddForegroundServiceStartedCallback(
 }
 
 void ActorKeyedService::EnsureForegroundServiceStarted(
-    const std::string& context_id) {
-  ensure_foreground_service_started_callbacks_.Notify(context_id);
+    const std::string& glic_trigger_message_id) {
+  ensure_foreground_service_started_callbacks_.Notify(glic_trigger_message_id);
 }
 #endif
 

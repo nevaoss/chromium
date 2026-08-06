@@ -35,6 +35,7 @@
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/browser/ui/tabs/tab_model.h"
 #include "chrome/browser/ui/toolbar/toolbar_action_view_model.h"
+#include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/extensions/extensions_toolbar_button.h"
 #include "chrome/browser/ui/views/extensions/extensions_toolbar_desktop.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
@@ -1332,8 +1333,9 @@ class ExtensionOpenSidePanelBrowserTest : public ExtensionSidePanelBrowserTest {
  public:
   ExtensionOpenSidePanelBrowserTest() {
     scoped_feature_list_.InitWithFeatures(
-        {metrics::kCriticalUserJourneyService, metrics::kPinExtensionJourney},
-        {});
+        /*enabled_features=*/{metrics::kCriticalUserJourneyService,
+                              metrics::kPinExtensionJourney},
+        /*disabled_features=*/{features::kExtensionsPinnedByDefault});
   }
   ~ExtensionOpenSidePanelBrowserTest() override = default;
 
@@ -2197,7 +2199,7 @@ IN_PROC_BROWSER_TEST_F(ExtensionSidePanelBrowserTest, GetLayout) {
   const Extension* ext = LoadExtension(dir.UnpackedPath());
   ASSERT_TRUE(ext);
 
-  auto* prefs = browser()->profile()->GetPrefs();
+  auto* prefs = browser()->GetProfile()->GetPrefs();
 
   // Helper that sets the side panel alignment preference and
   // then verifies that getLayout() returns the expected side.

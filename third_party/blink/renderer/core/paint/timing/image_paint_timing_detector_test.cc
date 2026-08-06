@@ -23,6 +23,7 @@
 #include "third_party/blink/renderer/core/loader/resource/image_resource.h"
 #include "third_party/blink/renderer/core/loader/resource/video_timing.h"
 #include "third_party/blink/renderer/core/paint/timing/largest_contentful_paint_calculator.h"
+#include "third_party/blink/renderer/core/paint/timing/largest_contentful_paint_manager.h"
 #include "third_party/blink/renderer/core/paint/timing/mock_paint_timing_callback_manager.h"
 #include "third_party/blink/renderer/core/paint/timing/paint_timing.h"
 #include "third_party/blink/renderer/core/paint/timing/paint_timing_detector.h"
@@ -121,20 +122,24 @@ class ImagePaintTimingDetectorTest : public testing::Test,
   }
 
   ImageRecord* LargestImage() {
-    return GetPaintTimingDetector()
-        .GetLargestContentfulPaintCalculator()
+    return PaintTiming::From(GetDocument())
+        .GetLargestContentfulPaintManager()
+        ->LargestContentfulPaintCalculatorForTest()
         ->LargestPaintedOrPendingImageForTest();
   }
 
   ImageRecord* LargestPaintedImage() {
-    return GetPaintTimingDetector()
-        .GetLargestContentfulPaintCalculator()
+    return PaintTiming::From(GetDocument())
+        .GetLargestContentfulPaintManager()
+        ->LargestContentfulPaintCalculatorForTest()
         ->LargestPaintedImageForTest();
   }
 
   ImageRecord* ChildFrameLargestImage() {
     return GetChildPaintTimingDetector()
-        .GetLargestContentfulPaintCalculator()
+        .GetPaintTiming()
+        .GetLargestContentfulPaintManager()
+        ->LargestContentfulPaintCalculatorForTest()
         ->LargestPaintedOrPendingImageForTest();
   }
 
@@ -168,23 +173,25 @@ class ImagePaintTimingDetectorTest : public testing::Test,
   }
 
   base::TimeTicks LargestPaintTime() {
-    return GetPaintTimingDetector()
-        .GetLargestContentfulPaintCalculator()
+    return PaintTiming::From(GetDocument())
+        .GetLargestContentfulPaintManager()
+        ->LargestContentfulPaintCalculatorForTest()
         ->LatestLcpDetails()
         .largest_image_paint_time;
   }
 
   uint64_t LargestPaintSize() {
-    return GetPaintTimingDetector()
-        .GetLargestContentfulPaintCalculator()
+    return PaintTiming::From(GetDocument())
+        .GetLargestContentfulPaintManager()
+        ->LargestContentfulPaintCalculatorForTest()
         ->LatestLcpDetails()
         .largest_image_paint_size;
   }
 
   bool HasLargestIgnoredImage() {
-    return !!GetPaintTimingDetector()
-                 .GetImagePaintTimingDetector()
-                 .records_manager_.LargestIgnoredImage();
+    return PaintTiming::From(GetDocument())
+        .GetLargestContentfulPaintManager()
+        ->HasLargestIgnoredImageForTest();
   }
 
   static constexpr base::TimeDelta kQuantumOfTime = base::Milliseconds(10);
@@ -1037,9 +1044,8 @@ TEST_P(ImagePaintTimingDetectorTest, DeactivateAfterUserInput) {
   SimulateScroll();
   SetImageAndPaint("target", 5, 5);
   SimulateRenderingAndPresentationTime();
-  EXPECT_FALSE(GetPaintTimingDetector()
-                   .GetImagePaintTimingDetector()
-                   .IsRecordingLargestImagePaint());
+  EXPECT_FALSE(
+      PaintTiming::From(GetDocument()).GetLargestContentfulPaintManager());
 }
 
 TEST_P(ImagePaintTimingDetectorTest, ContinueAfterKeyUp) {
@@ -1051,9 +1057,8 @@ TEST_P(ImagePaintTimingDetectorTest, ContinueAfterKeyUp) {
   SimulateKeyUp();
   SetImageAndPaint("target", 5, 5);
   SimulateRenderingAndPresentationTime();
-  EXPECT_TRUE(GetPaintTimingDetector()
-                  .GetImagePaintTimingDetector()
-                  .IsRecordingLargestImagePaint());
+  EXPECT_TRUE(
+      PaintTiming::From(GetDocument()).GetLargestContentfulPaintManager());
 }
 
 TEST_P(ImagePaintTimingDetectorTest, NullTimeNoCrash) {
@@ -1280,18 +1285,18 @@ TEST_P(ImagePaintTimingDetectorTest, OpacityZeroHTMLWithInput) {
   EXPECT_EQ(largest_contentful_paint_details.image_paint_time, 0u);
 
   PaintTiming& paint_timing = PaintTiming::From(GetDocument());
-  // FCP and first image paint, however, should be marked, because that does not
-  // stop on input.
+  // FCP and first image paint should not be marked, since this feature is tied
+  // to hard LCP.
   //
   // Note: `PaintTiming` doesn't support `MockPaintTimingCallbackManager`, so
   // check the paint time instead of presentation time.
   base::TimeTicks fcp_timestamp =
       paint_timing.FirstContentfulPaintRenderedButNotPresentedAsMonotonicTime();
-  EXPECT_FALSE(fcp_timestamp.is_null());
+  EXPECT_TRUE(fcp_timestamp.is_null());
 
   base::TimeTicks image_timestamp =
       paint_timing.FirstImagePaintRenderedButNotPresentedAsMonotonicTime();
-  EXPECT_FALSE(image_timestamp.is_null());
+  EXPECT_TRUE(image_timestamp.is_null());
 }
 
 TEST_P(ImagePaintTimingDetectorTest, OpacityZeroHTMLRemoveElement) {

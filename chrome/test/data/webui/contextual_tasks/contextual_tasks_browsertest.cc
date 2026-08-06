@@ -86,7 +86,34 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, DISABLED_Composebox) {
 }
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, Composebox_Files) {
-  RunTest("contextual_tasks/composebox_files_test.js", "mocha.run();");
+  RunTest("contextual_tasks/composebox_files_test.js",
+          "runMochaSuite('ContextualTasksComposeboxFilesTest')");
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, Composebox_Files_ForkTrue) {
+  RunTest("contextual_tasks/composebox_files_test.js",
+          "runMochaSuite('ContextualTasksComposeboxForkFilesTest "
+          "\\\\(useContextualTasksComposeboxFork = true\\\\)')");
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, Composebox_Files_ForkFalse) {
+  RunTest("contextual_tasks/composebox_files_test.js",
+          "runMochaSuite('ContextualTasksComposeboxForkFilesTest "
+          "\\\\(useContextualTasksComposeboxFork = false\\\\)')");
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
+                       Composebox_AutoTab_ForkTrue) {
+  RunTest("contextual_tasks/composebox_files_test.js",
+          "runMochaSuite('ContextualTasksComposeboxForkAutoTabTest "
+          "\\\\(useContextualTasksComposeboxFork = true\\\\)')");
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
+                       Composebox_AutoTab_ForkFalse) {
+  RunTest("contextual_tasks/composebox_files_test.js",
+          "runMochaSuite('ContextualTasksComposeboxForkAutoTabTest "
+          "\\\\(useContextualTasksComposeboxFork = false\\\\)')");
 }
 
 // TODO(crbug.com/480689282): Flaky on ChromeOS debug.
@@ -98,7 +125,7 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
 }
 
 // TODO(crbug.com/487147580): Re-enable the test
-#if BUILDFLAG(IS_LINUX)
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
 #define MAYBE_Composebox_Submit DISABLED_Composebox_Submit
 #else
 #define MAYBE_Composebox_Submit Composebox_Submit
@@ -134,6 +161,9 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, OverflowMenu) {
   RunTest("contextual_tasks/overflow_menu_test.js", "mocha.run();");
 }
 
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, Toolbar) {
+  RunTest("contextual_tasks/toolbar_test.js", "mocha.run();");
+}
 IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, OnboardingTooltip) {
   RunTest("contextual_tasks/onboarding_tooltip_test.js", "mocha.run();");
 }

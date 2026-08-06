@@ -7,19 +7,26 @@
 #include <algorithm>
 #include <array>
 #include <string>
+#include <string_view>
 
 #include "base/check_deref.h"
+#include "base/containers/adapters.h"
 #include "base/containers/flat_map.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
+#include "base/functional/callback_helpers.h"
 #include "base/logging.h"
 #include "base/rand_util.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/task/sequenced_task_runner.h"
+#include "base/time/time.h"
 #include "build/build_config.h"
 #include "chrome/browser/context_hub/features.h"
 #include "chrome/browser/context_hub/memory_bank/memory_bank.h"
+#include "chrome/browser/context_hub/storage/context_hub_backend.h"
+#include "chrome/browser/context_hub/tab_group_store/tab_group_entry.h"
+#include "chrome/browser/context_hub/tab_group_store/tab_group_store.h"
 #include "components/optimization_guide/core/model_execution/feature_keys.h"
 #include "components/optimization_guide/core/model_execution/optimization_guide_model_execution_error.h"
 #include "components/optimization_guide/core/model_execution/remote_model_executor.h"
@@ -35,11 +42,17 @@ ContextHubService::ContextHubService(
     personal_context::PersonalContextService* personal_context_service,
     optimization_guide::RemoteModelExecutor*
         optimization_guide_remote_model_executor,
-    std::unique_ptr<MemoryBank> memory_bank)
+    std::unique_ptr<MemoryBank> memory_bank,
+    std::unique_ptr<TabGroupStore> tab_group_store,
+    std::unique_ptr<ContextHubBackend> context_hub_backend)
     : personal_context_service_(CHECK_DEREF(personal_context_service)),
       optimization_guide_remote_model_executor_(
           CHECK_DEREF(optimization_guide_remote_model_executor)),
-      memory_bank_(std::move(memory_bank)) {
+      tab_group_chat_history_cache_(
+          features::kMaxTabGroupChatHistoryTurns.Get()),
+      context_hub_backend_(std::move(context_hub_backend)),
+      memory_bank_(std::move(memory_bank)),
+      tab_group_store_(std::move(tab_group_store)) {
   CHECK(memory_bank_);
 }
 
@@ -74,6 +87,32 @@ void ContextHubService::OnAutoTodosFetched(
   std::move(callback).Run(std::move(response));
 }
 
+void ContextHubService::AddTabGroupChatHistoryTurn(
+    optimization_guide::proto::ChatHistoryTurn::Role role,
+    std::string_view message_content) {
+  optimization_guide::proto::ChatHistoryTurn turn;
+  turn.set_role(role);
+  turn.set_message_content(message_content);
+  turn.set_timestamp_ms(base::Time::Now().InMillisecondsSinceUnixEpoch());
+  TabGroupChatHistoryTurnId id =
+      TabGroupChatHistoryTurnId::FromUnsafeValue(turn.timestamp_ms());
+  tab_group_chat_history_cache_.Put(id, std::move(turn));
+}
+
+std::vector<optimization_guide::proto::ChatHistoryTurn>
+ContextHubService::GetTabGroupChatHistory() const {
+  std::vector<optimization_guide::proto::ChatHistoryTurn> history;
+  history.reserve(tab_group_chat_history_cache_.size());
+  for (const auto& [id, turn] : base::Reversed(tab_group_chat_history_cache_)) {
+    history.push_back(turn);
+  }
+  return history;
+}
+
+void ContextHubService::ClearTabGroupChatHistory() {
+  tab_group_chat_history_cache_.Clear();
+}
+
 void ContextHubService::SaveTab(
     const GURL& url,
     const std::string& tab_title,
@@ -102,11 +141,18 @@ void ContextHubService::GetAllEntries(
   memory_bank_->GetAllEntries(std::move(callback));
 }
 
+void ContextHubService::GetTabGroups(GetTabGroupsCallback callback) const {
+  if (tab_group_store_) {
+    tab_group_store_->GetAllGroups(std::move(callback));
+  } else {
+    std::move(callback).Run({});
+  }
+}
+
 // TODO(crbug.com/531938478): Update to handle APC ingestion.
-void ContextHubService::GenerateTabGroups(
-    std::vector<TabData> tabs,
-    const std::string& user_command,
-    GroupTabsCallback callback) {
+void ContextHubService::GenerateTabGroups(std::vector<TabData> tabs,
+                                          const std::string& user_command,
+                                          GroupTabsCallback callback) {
   optimization_guide::proto::ContextHubRequest request;
   request.set_request_type(
       optimization_guide::proto::CONTEXT_HUB_REQUEST_TYPE_GROUPING);
@@ -119,7 +165,10 @@ void ContextHubService::GenerateTabGroups(
     tab_proto->set_url(tab.url.spec());
   }
 
-  // TODO(b/534492009): Add support for user command once the proto is synced.
+  if (!user_command.empty()) {
+    request.set_user_command(user_command);
+  }
+
   optimization_guide_remote_model_executor_->ExecuteModel(
       optimization_guide::ModelBasedCapabilityKey::kContextHub, request,
       optimization_guide::ModelExecutionOptions(),
@@ -143,7 +192,10 @@ void ContextHubService::HandleModelExecutionResult(
     return;
   }
 
-  std::vector<TabGroupData> groups;
+  // TODO:(crbug.com/537060449) Consolidate `store_groups` and `ui_groups` so we don't have two
+  // vectors storing similar data
+  std::vector<TabGroupEntry> store_groups;
+  std::vector<TabGroupData> ui_groups;
   std::vector<TabData> ungrouped_tabs;
 
   base::flat_map<int32_t, size_t> tab_index_map;
@@ -151,11 +203,12 @@ void ContextHubService::HandleModelExecutionResult(
     tab_index_map.emplace(tabs[i].id, i);
   }
 
-  for (const optimization_guide::proto::TabGroup& group_proto :
-       response->group_response().tab_groups()) {
+  for (const optimization_guide::proto::TabGroupMinimal& group_proto :
+       response->group_response().minimal_tab_groups()) {
     std::vector<int32_t> valid_tab_ids;
-    for (const optimization_guide::proto::Tab& tab_proto : group_proto.tabs()) {
-      int32_t tab_id = static_cast<int32_t>(tab_proto.tab_id());
+    for (int64_t tab_id_64 : group_proto.tab_ids()) {
+      // TODO(b/533453094): Update tab ID struct member type to int64.
+      int32_t tab_id = static_cast<int32_t>(tab_id_64);
       if (tab_index_map.contains(tab_id) &&
           std::ranges::find(valid_tab_ids, tab_id) == valid_tab_ids.end()) {
         valid_tab_ids.push_back(tab_id);
@@ -163,14 +216,33 @@ void ContextHubService::HandleModelExecutionResult(
     }
 
     if (valid_tab_ids.size() >= 2) {
-      TabGroupData group_data;
-      group_data.label = group_proto.label();
+      TabGroupEntry entry;
+      entry.label = group_proto.label();
+
+      TabGroupData data;
+      data.label = group_proto.label();
+
       for (int32_t tab_id : valid_tab_ids) {
-        group_data.tabs.push_back(std::move(tabs[tab_index_map[tab_id]]));
+        entry.tab_ids.push_back(tab_id);
+        size_t index = tab_index_map.at(tab_id);
+        data.tabs.push_back(std::move(tabs[index]));
         tab_index_map.erase(tab_id);
       }
-      groups.push_back(std::move(group_data));
+      store_groups.push_back(std::move(entry));
+      ui_groups.push_back(std::move(data));
     }
+  }
+
+  if (tab_group_store_) {
+    tab_group_store_->DeleteAllGroups(base::BindOnce(
+        [](base::WeakPtr<ContextHubService> self,
+           std::vector<TabGroupEntry> groups) {
+          if (self && self->tab_group_store_) {
+            self->tab_group_store_->AddAllGroups(std::move(groups),
+                                                 base::DoNothing());
+          }
+        },
+        weak_factory_.GetWeakPtr(), std::move(store_groups)));
   }
 
   for (context_hub::TabData& tab : tabs) {
@@ -179,13 +251,12 @@ void ContextHubService::HandleModelExecutionResult(
     }
   }
 
-  std::move(callback).Run(std::move(groups), std::move(ungrouped_tabs));
+  std::move(callback).Run(std::move(ui_groups), std::move(ungrouped_tabs));
 }
 
-void ContextHubService::GroupTabs(
-    std::vector<TabData> tabs,
-    const std::string& user_command,
-    GroupTabsCallback callback) {
+void ContextHubService::GroupTabs(std::vector<TabData> tabs,
+                                  const std::string& user_command,
+                                  GroupTabsCallback callback) {
   if (tabs.size() < 2) {
     std::move(callback).Run({}, std::move(tabs));
     return;

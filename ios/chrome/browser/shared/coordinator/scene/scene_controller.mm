@@ -1331,6 +1331,7 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
     reason = ChangeProfileReason::kSwitchAccountsFromWidget;
   }
 
+  // TODO(crbug.com/462018636): Refactor to use AuthenticationFlow.
   [changeProfileHandler
       changeProfile:*profileName
            forScene:self.sceneState
@@ -2626,8 +2627,6 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
     [geminiHandler
         startGeminiEntryFlowWithStartupState:startupState
                           baseViewController:self.activeViewController
-                                 accessPoint:signin_metrics::AccessPoint::
-                                                 kDeepLinkDefault
                     showSnackbarOnCompletion:YES
                                   completion:nil];
   } else {
@@ -2662,8 +2661,6 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
   [geminiHandler
       startGeminiEntryFlowWithStartupState:startupState
                         baseViewController:self.activeViewController
-                               accessPoint:signin_metrics::AccessPoint::
-                                               kDeepLinkDefault
                   showSnackbarOnCompletion:YES
                                 completion:nil];
 }

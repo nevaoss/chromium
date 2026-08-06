@@ -9,12 +9,19 @@ enabling C++ to call Rust.
 `cpp_api_from_rust` is fully supported by the Rust in Chrome team, with the
 following caveats:
 
-*   **Some directories cannot use Crubit:** The Android project's build system
+*   **Some directories cannot use Crubit:** The Android project's
+    Soong/bp build system
     does not support Crubit at this point. Consequently, Crubit cannot be
     used in `//base`, `//net`, or
     [other directories](https://source.chromium.org/chromium/chromium/src/+/main:components/cronet/android/dependencies.txt)
     that [Cronet](../../components/cronet/README.md) depends on.
-    See also https://crbug.com/535682335
+    This is tracked in https://crbug.com/535682335.
+    (Quick clarification:
+    Chromium's GN/ninja build system supports Crubit on all Chromium target
+    platforms, including Android.  For example, QR code generator in
+    Chromium [uses Crubit](https://crrev.com/c/7749970)
+    and ships to mobile and desktop targets.)
+
 *   **2nd-party project limitations:** Projects like PDFium or V8 currently
     support non-Chromium clients and alternative toolchains that may lack
     Crubit support. Adopting Crubit in these projects requires either helping
@@ -42,8 +49,15 @@ Other notes:
     * This is mostly the same content as above, but is mentioned here because it
       includes a few extra things like document freshness and owner metadata,
       link to a Google-internal chatroom, etc.)
+* Crubit's Discord server can be joined using the following invite link:
+  https://discord.gg/nHq5fdADKV
 * TODO: Cover Crubit in
   [Chromium/FFI chapter of Comprehensive Rust course](https://google.github.io/comprehensive-rust/chromium/interoperability-with-cpp.html)
+
+## Known issues
+
+* https://crbug.com/536539387:
+  Crubit support libraries may trigger `-Wnullability-completeness`
 
 ## Using `cpp_api_from_rust` in Chromium
 

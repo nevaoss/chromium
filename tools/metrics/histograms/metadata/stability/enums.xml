@@ -131,6 +131,7 @@ Called by update_bad_message_reasons.py.-->
   <int value="11" label="RFH_INVALID_WEB_FRAME_URL"/>
   <int value="12" label="PVM_PRINT_FENCED_FRAME"/>
   <int value="13" label="SAGPC_INVALID_PERMISSION_REQUEST_CONTEXT"/>
+  <int value="14" label="TLSAPC_INVALID_PERMISSION_REQUEST_CONTEXT"/>
 </enum>
 
 <enum name="BadMessageReasonContent">
@@ -533,6 +534,8 @@ Called by update_bad_message_reasons.py.-->
       label="BIBI_BIND_GAMEPAD_HAPTICS_MANAGER_BLOCKED_BY_PERMISSIONS_POLICY"/>
   <int value="358" label="RFH_CREATE_NEW_WINDOW_INVALID_PIP_OPTIONS"/>
   <int value="359" label="RFPH_POST_MESSAGE_INVALID_DELEGATED_CAPABILITY"/>
+  <int value="360" label="RFHI_WEBMCP_OPAQUE_TARGET_ORIGIN"/>
+  <int value="361" label="WCV_REENTRANT_DRAG"/>
 </enum>
 
 <enum name="BadMessageReasonExtensions">

@@ -238,6 +238,18 @@ AutoselectFirstSuggestion ShouldAutofillPopupAutoselectFirstSuggestion(
       source == AutofillSuggestionTriggerSource::kTextFieldDidReceiveKeyDown);
 }
 
+// Returns a string representation of `saved_entities` (comma separated). Used
+// to include in product data to hats surveys.
+std::string GetStringRepresentatioOfSavedEntitiesTypes(
+    const base::flat_set<EntityTypeName>& saved_entities) {
+  return base::JoinString(
+      base::ToVector(saved_entities,
+                     [](EntityTypeName name) {
+                       return std::string(EntityType(name).name_as_string());
+                     }),
+      ",");
+}
+
 #if !BUILDFLAG(IS_ANDROID)
 const base::Feature& GetFeature(AutofillClient::IphFeature iph_feature) {
   switch (iph_feature) {
@@ -251,35 +263,6 @@ ui::ElementIdentifier GetElementId(AutofillClient::IphFeature iph_feature) {
   switch (iph_feature) {
     case AutofillClient::IphFeature::kAutofillAi:
       return PopupViewViews::kAutofillAiOptInIphElementId;
-  }
-  NOTREACHED();
-}
-
-// Returns a string representation of `saved_entities` (comma separated). Used
-// to include in product data to hats surveys.
-std::string GetStringRepresentatioOfSavedEntitiesTypes(
-    const base::flat_set<EntityTypeName>& saved_entities) {
-  return base::JoinString(
-      base::ToVector(saved_entities,
-                     [](EntityTypeName name) {
-                       return std::string(EntityType(name).name_as_string());
-                     }),
-      ",");
-}
-
-bool CanTriggerAutofillAiFillingSurveyForEntityType(EntityType type) {
-  switch (type.name()) {
-    case EntityTypeName::kVehicle:
-    case EntityTypeName::kFlightReservation:
-      return true;
-    case EntityTypeName::kKnownTravelerNumber:
-    case EntityTypeName::kRedressNumber:
-    case EntityTypeName::kPassport:
-    case EntityTypeName::kNationalIdCard:
-    case EntityTypeName::kDriversLicense:
-    case EntityTypeName::kOrder:
-    case EntityTypeName::kShipment:
-      return false;
   }
   NOTREACHED();
 }
@@ -795,7 +778,9 @@ void ChromeAutofillClient::ShowAutofillSettings(
     case SuggestionType::kManageAutofillAi:
     case SuggestionType::kManageEnhancedAutofill:
       if (base::FeatureList::IsEnabled(features::kYourSavedInfoSettingsPage)) {
-        ShowAutofillPersonalContextSettings(web_contents());
+        ShowAutofillPersonalContextSettings(
+            web_contents(),
+            AutofillOptionsReferrer::kPersonalContextAtmemoryNotice);
       } else {
         autofill::ShowAutofillSettings(web_contents());
       }
@@ -1017,10 +1002,6 @@ void ChromeAutofillClient::TriggerAutofillAiFillingJourneySurvey(
     EntityType entity_type,
     const base::flat_set<EntityTypeName>& saved_entities,
     const FieldTypeSet& triggering_field_types) {
-#if !BUILDFLAG(IS_ANDROID)
-  if (!CanTriggerAutofillAiFillingSurveyForEntityType(entity_type)) {
-    return;
-  }
   Profile* profile =
       Profile::FromBrowserContext(web_contents()->GetBrowserContext());
   auto* hats_service =
@@ -1034,7 +1015,6 @@ void ChromeAutofillClient::TriggerAutofillAiFillingJourneySurvey(
        {"Triggering field types", FieldTypeSetToString(triggering_field_types)},
        {"Saved entities",
         GetStringRepresentatioOfSavedEntitiesTypes(saved_entities)}});
-#endif
 }
 
 void ChromeAutofillClient::TriggerAutofillAiSavePromptSurvey(
@@ -1616,14 +1596,13 @@ void ChromeAutofillClient::ShowAutofillAiSaveToWalletFailureNotification() {
 #endif  // BUILDFLAG(IS_ANDROID)
 }
 
-void ChromeAutofillClient::ShowAutofillAiFetchFromWalletFailureNotification() {
+void ChromeAutofillClient::ShowAutofillAiFetchEntityFailureNotification() {
 #if BUILDFLAG(IS_ANDROID)
   GetAutofillSnackbarController()->Show(
-      AutofillSnackbarType::kAutofillAiFetchFromWalletFailure,
-      base::DoNothing());
+      AutofillSnackbarType::kAutofillAiFetchEntityFailure, base::DoNothing());
 #else
   if (ToastController* toast_controller = GetToastController()) {
-    ToastParams params(ToastId::kAutofillAiFetchFromWalletErrorMessage);
+    ToastParams params(ToastId::kAutofillAiFetchEntityErrorMessage);
     toast_controller->MaybeShowToast(std::move(params));
   }
 #endif  // BUILDFLAG(IS_ANDROID)

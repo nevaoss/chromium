@@ -1362,7 +1362,9 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         super.initProfileDependentFeatures(currentlySelectedProfile);
         Profile originalProfile = currentlySelectedProfile.getOriginalProfile();
 
-        ExtensionsUrlOverrideRegistryManagerFactory.getForProfile(originalProfile);
+        if (ChromeFeatureList.sChromeNativeUrlOverriding.isEnabled()) {
+            ExtensionsUrlOverrideRegistryManagerFactory.getForProfile(originalProfile);
+        }
 
         if (TabGroupSyncFeatures.isTabGroupSyncEnabled(originalProfile)) {
             var tabGroupSyncService = TabGroupSyncServiceFactory.getForProfile(originalProfile);
@@ -2280,12 +2282,12 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             // TODO(crbug.com/489548570): Remove SidePanelDevFeature when it's not needed.
             mSidePanelDevFeature =
                     SidePanelDevFeatureFactory.create(
-                            mProfileSupplier,
-                            mSidePanelContainerCoordinator,
+                            chromeAndroidTask,
+                            currentlySelectedProfile,
                             mWindowAndroid,
                             mActivityTabProvider);
 
-            mSidePanelContainerCoordinator.init(sidePanelCoordinatorAndroid, mSidePanelDevFeature);
+            mSidePanelContainerCoordinator.init(sidePanelCoordinatorAndroid);
         }
 
         if (VerticalTabUtils.isVerticalTabsEligible(mActivity)) {
@@ -2430,10 +2432,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         assert mCompositorViewHolderSupplier.get() == null;
 
         // TODO(crbug.com/489548570): Remove SidePanelDevFeature when it's not needed.
-        if (mSidePanelDevFeature != null) {
-            mSidePanelDevFeature.destroy();
-            mSidePanelDevFeature = null;
-        }
+        mSidePanelDevFeature = null;
 
         if (mSidePanelContainerCoordinator != null) {
             mSidePanelContainerCoordinator.destroy();

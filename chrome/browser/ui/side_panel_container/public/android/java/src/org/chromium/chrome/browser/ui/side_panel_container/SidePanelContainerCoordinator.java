@@ -10,7 +10,6 @@ import android.view.View;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.ui.side_panel.SidePanelCoordinatorAndroid;
-import org.chromium.chrome.browser.ui.side_panel_container.dev.SidePanelDevFeature;
 
 /** Coordinator of the side panel container UI. */
 @NullMarked
@@ -61,12 +60,8 @@ public interface SidePanelContainerCoordinator {
      *
      * @param sidePanelCoordinatorAndroid For communicating with the native {@code
      *     SidePanelCoordinatorAndroid}, which manages states for all side panel features.
-     * @param sidePanelDevFeature For communicating with the dev feature. This should always be null
-     *     in production.
      */
-    void init(
-            SidePanelCoordinatorAndroid sidePanelCoordinatorAndroid,
-            @Nullable SidePanelDevFeature sidePanelDevFeature);
+    void init(SidePanelCoordinatorAndroid sidePanelCoordinatorAndroid);
 
     /**
      * Starts opening this side panel container with the given {@link SidePanelContent}.
@@ -104,11 +99,11 @@ public interface SidePanelContainerCoordinator {
      */
     void startReplacingPanelContent(SidePanelContent newContent);
 
+    /** Immediately completes any pending content replacement. */
+    void completePendingContentReplacement();
+
     /** Immediately ends all ongoing animations. */
     void endAnimations();
-
-    /** Returns whether the given {@link SidePanelContent} is shown in this side panel container. */
-    boolean isShowing(SidePanelContent sidePanelContent);
 
     /** Returns the content View currently shown in the side panel container, or null. */
     @Nullable View getContentView();
@@ -118,4 +113,22 @@ public interface SidePanelContainerCoordinator {
 
     /** Returns the main {@link View} for testing. */
     View getViewForTesting();
+
+    /**
+     * Enables or disables deferred content View replacement for testing.
+     *
+     * <p>When (1) this is enabled and (2) the new active tab during a tab switch requires replacing
+     * the side panel content View with a {@code ThinWebView}, the old content View won't be removed
+     * until the {@code ThinWebView} has rendered the first frame.
+     *
+     * <p>(2) is <i>always</i> enabled in production to prevent UI flickers during tab switches.
+     *
+     * <p>In tests, (2) needs to be explicitly enabled since tests covering the deferred content
+     * View replacement need to wait for the replacement to complete. Not all tests have the "wait"
+     * logic, and it's hard to add it since there are many existing cross-platform side panel
+     * browser tests that assume synchronous replacement.
+     *
+     * @param enable Whether deferred View replacement is enabled.
+     */
+    void configDeferredViewReplacementForTesting(boolean enable); // IN-TEST
 }

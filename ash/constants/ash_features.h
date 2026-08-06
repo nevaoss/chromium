@@ -76,8 +76,7 @@ extern const base::FeatureParam<base::TimeDelta>
 COMPONENT_EXPORT(ASH_CONSTANTS)
 extern const base::FeatureParam<base::TimeDelta>
     kBocaInSessionPeriodicJobIntervalInSeconds;
-COMPONENT_EXPORT(ASH_CONSTANTS)
-BASE_DECLARE_FEATURE(kBocaOnTaskLockedQuizMigration);
+
 COMPONENT_EXPORT(ASH_CONSTANTS) BASE_DECLARE_FEATURE(kBocaOnTaskPod);
 COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kBocaOnTaskUnmuteBrowserTabsOnUnlock);
@@ -512,6 +511,8 @@ COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kInstantHotspotOnNearby);
 COMPONENT_EXPORT(ASH_CONSTANTS)
 COMPONENT_EXPORT(ASH_CONSTANTS) BASE_DECLARE_FEATURE(kInstantTethering);
+COMPONENT_EXPORT(ASH_CONSTANTS)
+BASE_DECLARE_FEATURE(kIsolatedWebAppInlineUpdate);
 // TODO(b/288273641): Clean up the server speech recognition related flags.
 COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kInternalServerSideSpeechRecognitionByFinch);
@@ -994,7 +995,7 @@ COMPONENT_EXPORT(ASH_CONSTANTS) bool IsBocaUberEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsBocaConsumerEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsBocaCustomPollingEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsOnTaskStatusCheckEnabled();
-COMPONENT_EXPORT(ASH_CONSTANTS) bool IsBocaOnTaskLockedQuizMigrationEnabled();
+
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsBocaOnTaskPodEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS)
 bool IsBocaOnTaskUnmuteBrowserTabsOnUnlockEnabled();

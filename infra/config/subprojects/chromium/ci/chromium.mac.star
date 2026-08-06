@@ -565,10 +565,6 @@ ci.thin_tester(
                 ],
                 remove_mixins = "mac_15_vm_optional",
             ),
-            # TODO(crbug.com/526983048): Can restore after fixing python crashes.
-            "chrome_wpt_tests": targets.mixin(
-                ci_only = True,
-            ),
             "telemetry_perf_unittests": targets.mixin(
                 ci_only = True,
             ),
@@ -610,6 +606,7 @@ ci.thin_tester(
         ],
         mixins = [
             "mac_26_vm_optional",
+            "isolate_profile_data",
         ],
         per_test_modifications = {
             # TODO(crbug.com/436628295): test fails on VM
@@ -670,10 +667,6 @@ ci.thin_tester(
                     "ci_only",
                 ],
                 remove_mixins = "mac_26_vm_optional",
-            ),
-            # TODO(crbug.com/526983048): Can restore after fixing python crashes.
-            "chrome_wpt_tests": targets.mixin(
-                ci_only = True,
             ),
             "telemetry_perf_unittests": targets.mixin(
                 ci_only = True,

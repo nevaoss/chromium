@@ -533,9 +533,10 @@ if (!is_win && !is_android) {
       "//content/public/browser",
       "//ui/base",
     ]
+    if (is_linux || is_chromeos) {
+      deps += [ "//chrome/browser/ui:process_singleton_dialog_linux" ]
+    }
 
-    # process_singleton_posix.cc includes process_singleton_dialog_linux.h,
-    # still owned by //chrome/browser/ui (the ui target adds the back-edge).
     public_deps = [ "//chrome/browser:browser_public_dependencies" ]
   }
 }
@@ -795,6 +796,7 @@ if (is_chromeos) {
       "//components/session_manager/core",
       "//components/sync/base",
       "//components/user_manager",
+      "//components/user_manager:multi_user",
       "//services/network/public/cpp",
       "//services/service_manager/public/cpp",
       "//ui/base",
@@ -1066,7 +1068,6 @@ source_set("core") {
     "//chrome/browser/ui/webui/actor_internals",
     "//chrome/browser/ui/webui/bluetooth_internals",
     "//chrome/browser/ui/webui/bluetooth_internals:mojo_bindings",
-    "//chrome/browser/ui/webui/browsing_topics",
     "//chrome/browser/ui/webui/chrome_finds_internals",
     "//chrome/browser/ui/webui/chrome_finds_internals:mojo_bindings",
     "//chrome/browser/ui/webui/chrome_urls",
@@ -1109,7 +1110,6 @@ source_set("core") {
     "//components/browser_apis/tab_drag/sessions:impl",
     "//components/browser_sync:switches",
     "//components/browsing_topics",
-    "//components/browsing_topics/mojom:mojo_bindings",
     "//components/captive_portal/content",
     "//components/collaboration/public:features",
     "//components/color",
@@ -2545,7 +2545,6 @@ source_set("browser") {
     "//components/browsing_data/content",
     "//components/browsing_data/core",
     "//components/browsing_topics",
-    "//components/browsing_topics/mojom:mojo_bindings",
     "//components/captive_portal/content",
     "//components/certificate_matching",
     "//components/certificate_transparency",
@@ -3984,7 +3983,6 @@ source_set("browser") {
       "//chromeos/components/security_token_pin",
       "//chromeos/components/webauthn",
       "//chromeos/constants",
-      "//chromeos/crosapi/mojom",
       "//chromeos/dbus/constants",
       "//chromeos/dbus/power",
       "//chromeos/dbus/regmon",
@@ -4030,6 +4028,7 @@ source_set("browser") {
       "//components/sync/base",
       "//components/trusted_vault",
       "//components/user_manager",
+      "//components/user_manager:multi_user",
       "//components/webapk:proto",
       "//components/webauthn/core/browser:passkey_model",
       "//device/fido",
@@ -5123,6 +5122,7 @@ static_library("test_support") {
     "//chrome/browser/autofill:test_support_ui",
     "//chrome/browser/bookmarks:browser_tests",
     "//chrome/browser/browsing_data:browser_tests",
+    "//chrome/browser/chromeos/enterprise/cloud_storage:browser_tests",
     "//chrome/browser/extensions:test_support",
     "//chrome/browser/media/webrtc:browser_tests",
     "//chrome/browser/printing:test_support",

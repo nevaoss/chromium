@@ -43,7 +43,6 @@
 #include "components/omnibox/browser/page_classification_functions.h"
 #include "components/omnibox/browser/vector_icons.h"
 #include "components/omnibox/common/omnibox_features.h"
-#include "components/search_engines/ai_mode_button_config.h"
 #include "components/search_engines/ai_mode_button_service.h"
 #include "components/search_engines/search_engine_type.h"
 #include "components/tabs/public/tab_interface.h"
@@ -118,7 +117,7 @@ AiModePageActionController::AiModePageActionController(
   CHECK(ai_mode_button_service);
   ai_mode_config_subscription_ =
       ai_mode_button_service->RegisterOnConfigChanged(
-          base::IgnoreArgs<const ai_mode_button_config::AiModeButtonConfig*>(
+          base::IgnoreArgs<const AiModeButtonUiConfig*>(
               base::BindRepeating(&AiModePageActionController::UpdatePageAction,
                                   weak_factory_.GetWeakPtr())));
 }

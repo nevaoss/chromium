@@ -6,6 +6,7 @@ import './icons.html.js';
 import '../read_aloud/voice_selection_menu.js';
 import '../menus/simple_action_menu.js';
 import '../menus/appearance_menu.js';
+import '../menus/media_menu.js';
 import '../menus/color_menu.js';
 import '../menus/font_menu.js';
 import '../menus/line_focus_menu.js';
@@ -35,8 +36,8 @@ import {loadTimeData} from '//resources/js/load_time_data.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
 import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
 
-import {DEFAULT_SETTINGS, SettingsOption, ToolbarEvent} from '../content/read_anything_types.js';
-import type {LineFocusMovement, LineFocusStyle, SettingsPrefs} from '../content/read_anything_types.js';
+import type {LineFocusMovement, SettingsPrefs} from '../content/read_anything_types.js';
+import {DEFAULT_SETTINGS, LineFocusStyle, SettingsOption, ToolbarEvent} from '../content/read_anything_types.js';
 import type {AppearanceMenuElement} from '../menus/appearance_menu.js';
 import type {ColorMenuElement} from '../menus/color_menu.js';
 import type {FontMenuElement} from '../menus/font_menu.js';
@@ -44,6 +45,7 @@ import type {HighlightMenuElement} from '../menus/highlight_menu.js';
 import type {LetterSpacingMenuElement} from '../menus/letter_spacing_menu.js';
 import type {LineFocusMenuElement} from '../menus/line_focus_menu.js';
 import type {LineSpacingMenuElement} from '../menus/line_spacing_menu.js';
+import type {MediaMenuElement} from '../menus/media_menu.js';
 import type {ToolbarMenu} from '../menus/menu_util.js';
 import type {PresentationMenuElement} from '../menus/presentation_menu.js';
 import type {RateMenuElement} from '../menus/rate_menu.js';
@@ -63,6 +65,7 @@ export interface ReadAnythingToolbarElement {
   $: {
     rateMenu: RateMenuElement,
     appearanceMenu: AppearanceMenuElement,
+    mediaMenu: MediaMenuElement,
     colorMenu: ColorMenuElement,
     lineSpacingMenu: LineSpacingMenuElement,
     letterSpacingMenu: LetterSpacingMenuElement,
@@ -170,6 +173,7 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
       isImmersiveMode: {type: Boolean},
       isReadAnythingPinned: {type: Boolean},
       isImmersiveEnabled_: {type: Boolean},
+      isLineFocusShowing: {type: Boolean},
       lineFocusStyle: {type: Object},
       lineFocusMovement: {type: Number},
       webuiRoundedIconsEnabled_: {type: Boolean},
@@ -198,6 +202,7 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
   accessor selectedVoice: SpeechSynthesisVoice|null = null;
   accessor pageLanguage: string = '';
   accessor isImmersiveMode: boolean = false;
+  accessor isLineFocusShowing: boolean = false;
   accessor lineFocusStyle: LineFocusStyle|null = null;
   accessor lineFocusMovement: LineFocusMovement|null = null;
   protected accessor hideSpinner_: boolean = true;
@@ -799,6 +804,10 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
     this.fire(ToolbarEvent.PLAY_PAUSE);
   }
 
+  protected onLineFocusOffClick_() {
+    this.fire(ToolbarEvent.LINE_FOCUS_STYLE, {data: LineFocusStyle.OFF});
+  }
+
   protected onToolbarKeydown_(e: KeyboardEvent) {
     const toolbar = this.$.toolbarContainer;
     const buttons = Array.from(
@@ -909,6 +918,7 @@ export class ReadAnythingToolbarElement extends ReadAnythingToolbarElementBase {
   get settingsMenu_(): Partial<Record<SettingsOption, ToolbarMenu>> {
     return {
       [SettingsOption.APPEARANCE]: this.$.appearanceMenu,
+      [SettingsOption.MEDIA]: this.$.mediaMenu,
       [SettingsOption.COLOR]: this.$.colorMenu,
       [SettingsOption.VOICE_HIGHLIGHT]: this.$.highlightMenu,
       [SettingsOption.TEXT]: this.$.textMenu,

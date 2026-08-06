@@ -136,7 +136,7 @@ void OnEntityInstanceFetched(
                                /*blocked_fields=*/{});
   } else if (result.error() ==
              AutofillAiAccessManager::FailureReason::kFetchFailed) {
-    manager->client().ShowAutofillAiFetchFromWalletFailureNotification();
+    manager->client().ShowAutofillAiFetchEntityFailureNotification();
   }
 
   manager->client().HideSuggestions(SuggestionHidingReason::kAcceptSuggestion,
@@ -177,20 +177,6 @@ void PossiblyRemoveAutofillWarnings(std::vector<Suggestion>& suggestions) {
 // the field announcement to notify users about available autofill options,
 // e.g. VoiceOver adds "with autofill menu.".
 bool HasAutofillSuggestionsForA11y(SuggestionType type) {
-  if (!base::FeatureList::IsEnabled(
-          features::kAutofillDoNotUpdateAutofillAvailabilityOnFocusEvents)) {
-    switch (type) {
-      // TODO(crbug.com/374918460): Consider adding other types that can be
-      // classified as "providing autofill capabilities".
-      case SuggestionType::kFillAutofillAi:
-      case SuggestionType::kLoyaltyCardEntry:
-        return true;
-      default:
-        return AutofillExternalDelegate::IsAutofillAndFirstLayerSuggestionId(
-            type);
-    }
-  }
-
   switch (type) {
     case SuggestionType::kAddressEntry:
     case SuggestionType::kAddressEntryOnTyping:
@@ -449,6 +435,8 @@ void AutofillExternalDelegate::AttemptToDisplayAutofillSuggestions(
 
   if ((!is_update && !trigger_field->is_focusable()) ||
       !manager_->driver().CanShowAutofillUi()) {
+    manager_->client().HideSuggestions(SuggestionHidingReason::kStaleData,
+                                       /*product=*/std::nullopt);
     return;
   }
 
@@ -875,7 +863,7 @@ void AutofillExternalDelegate::DidAcceptSuggestion(
           AutofillMetrics::AutocompleteEvent::AUTOCOMPLETE_SUGGESTION_SELECTED);
       autofill_metrics::LogSuggestionAcceptedIndex(
           metadata.row(), FillingProduct::kAutocomplete,
-          manager_->client().IsOffTheRecord());
+          manager_->client().IsOffTheRecord(), shown_suggestion_types_);
       manager_->FillOrPreviewField(
           mojom::ActionPersistence::kFill, mojom::FieldActionType::kReplaceAll,
           last_query_.form_id, last_query_.field_id, suggestion.main_text.value,
@@ -914,6 +902,9 @@ void AutofillExternalDelegate::DidAcceptSuggestion(
       }
       break;
     case SuggestionType::kFillAutofillAi: {
+      autofill_metrics::LogSuggestionAcceptedIndex(
+          metadata.row(), FillingProduct::kAutofillAi,
+          manager_->client().IsOffTheRecord(), shown_suggestion_types_);
       const base::optional_ref<const EntityInstance> entity =
           GetEntityInstance(suggestion);
       if (!entity || !autofill_field || !form_structure) {
@@ -1127,12 +1118,24 @@ bool AutofillExternalDelegate::RemoveSuggestion(const Suggestion& suggestion) {
       return false;
     }
     case SuggestionType::kAutocompleteEntry: {
-      const AutocompleteEntry& entry =
-          CHECK_DEREF(std::get_if<AutocompleteEntry>(&suggestion.payload));
-      manager_->client()
-          .GetSingleFieldFillRouter()
-          .OnRemoveCurrentSingleFieldSuggestion(
-              entry.key().name(), entry.key().value(), suggestion.type);
+      if (base::FeatureList::IsEnabled(
+              features::kAutofillLabelSensitiveAutocomplete)) {
+        const AutocompleteSearchResultLabelSensitive& entry =
+            CHECK_DEREF(std::get_if<AutocompleteSearchResultLabelSensitive>(
+                &suggestion.payload));
+        manager_->client()
+            .GetSingleFieldFillRouter()
+            .OnRemoveCurrentSingleFieldSuggestion(
+                entry.query_name(), entry.query_label(), entry.value(),
+                suggestion.type);
+      } else {
+        const AutocompleteEntry& entry =
+            CHECK_DEREF(std::get_if<AutocompleteEntry>(&suggestion.payload));
+        manager_->client()
+            .GetSingleFieldFillRouter()
+            .OnRemoveCurrentSingleFieldSuggestion(
+                entry.key().name(), u"", entry.key().value(), suggestion.type);
+      }
       return true;
     }
     // This suggestion type represents a notice about the usage of personal
@@ -1418,7 +1421,7 @@ void AutofillExternalDelegate::DidAcceptAddressSuggestion(
       trigger_field->value().size());
   autofill_metrics::LogSuggestionAcceptedIndex(
       metadata.row(), FillingProduct::kAddress,
-      manager_->client().IsOffTheRecord());
+      manager_->client().IsOffTheRecord(), shown_suggestion_types_);
   switch (suggestion.type) {
     case SuggestionType::kAddressEntry: {
       const AutofillField* autofill_trigger_field = GetQueriedField();
@@ -1487,7 +1490,7 @@ void AutofillExternalDelegate::DidAcceptPaymentsSuggestion(
     case SuggestionType::kCreditCardEntry:
       autofill_metrics::LogSuggestionAcceptedIndex(
           metadata.row(), FillingProduct::kCreditCard,
-          manager_->client().IsOffTheRecord());
+          manager_->client().IsOffTheRecord(), shown_suggestion_types_);
       AutofillForm(suggestion.type, suggestion.payload, metadata,
                    /*is_preview=*/false, GetTriggerSource());
       break;
@@ -1509,12 +1512,13 @@ void AutofillExternalDelegate::DidAcceptPaymentsSuggestion(
               base::BindOnce(
                   [](base::WeakPtr<BrowserAutofillManager> manager,
                      const FormGlobalId& form_id, const FieldGlobalId& field_id,
-                     const std::u16string& value) {
-                    if (manager) {
+                     base::expected<std::u16string,
+                                    IbanAccessManager::FailureReason> result) {
+                    if (manager && result.has_value()) {
                       manager->FillOrPreviewField(
                           mojom::ActionPersistence::kFill,
                           mojom::FieldActionType::kReplaceAll, form_id,
-                          field_id, value, FillingProduct::kIban, IBAN_VALUE);
+                          field_id, *result, FillingProduct::kIban, IBAN_VALUE);
                     }
                   },
                   manager_->GetBrowserAutofillManagerWeakPtr(),

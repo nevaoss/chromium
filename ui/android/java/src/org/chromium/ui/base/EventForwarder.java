@@ -223,13 +223,17 @@ public class EventForwarder {
      * @see View#onTouchEvent(MotionEvent)
      */
     public boolean onTouchEvent(MotionEvent event) {
+        boolean requiresSpecialHandling = touchEventRequiresSpecialHandling(event);
+
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
             mLastToolType = event.getToolType(0);
             logActionDown(event);
-            cancelPendingHoverExit();
+            if (!requiresSpecialHandling) {
+                sendPendingHoverExit();
+            }
         }
 
-        if (touchEventRequiresSpecialHandling(event)) {
+        if (requiresSpecialHandling) {
             return true;
         }
 
@@ -479,12 +483,13 @@ public class EventForwarder {
 
                 if (mPendingHoverExitEvent != null) {
                     cancelPendingHoverExit();
-                    return false;
+                    return true;
                 } else if (!mIsHovering) {
                     mIsHovering = true;
-                    return sendNativeMouseEventInternal(event, /* forceSend= */ true);
+                    sendNativeMouseEventInternal(event, /* forceSend= */ true);
+                    return true;
                 }
-                return false;
+                return true;
             }
 
             if (eventAction == MotionEvent.ACTION_HOVER_EXIT) {
@@ -494,7 +499,7 @@ public class EventForwarder {
                     PostTask.postDelayedTask(
                             TaskTraits.UI_DEFAULT, mPendingHoverExitRunnable, HOVER_EXIT_DELAY_MS);
                 }
-                return false;
+                return true;
             }
 
             if (eventAction == MotionEvent.ACTION_HOVER_MOVE) {
@@ -605,6 +610,7 @@ public class EventForwarder {
             mLastTrackpadScrollStartY = event.getY() + mCurrentTouchOffsetY;
             mLastTrackpadScrollStartRawX = event.getRawX() + mCurrentTouchOffsetX;
             mLastTrackpadScrollStartRawY = event.getRawY() + mCurrentTouchOffsetY;
+            cancelPendingHoverExit();
         } else {
             deltaX = event.getX() + mCurrentTouchOffsetX - mLastTrackpadScrollX;
             deltaY = event.getY() + mCurrentTouchOffsetY - mLastTrackpadScrollY;

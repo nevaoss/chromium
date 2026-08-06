@@ -66,6 +66,7 @@
 #import "ios/chrome/browser/authentication/ui_bundled/signin_presenter.h"
 #import "ios/chrome/browser/autocomplete/model/autocomplete_browser_agent.h"
 #import "ios/chrome/browser/autofill/authentication/coordinator/card_unmask_authentication_coordinator.h"
+#import "ios/chrome/browser/autofill/autofill_ai/coordinator/ambient_autofill_notice_coordinator.h"
 #import "ios/chrome/browser/autofill/autofill_ai/coordinator/autofill_ai_save_entity_coordinator.h"
 #import "ios/chrome/browser/autofill/autofill_ai/error_dialog/coordinator/autofill_ai_error_dialog_coordinator.h"
 #import "ios/chrome/browser/autofill/autofill_ai/error_dialog/model/autofill_ai_error_dialog_context.h"
@@ -740,6 +741,10 @@ const char kChromeAppStoreUrl[] =
 
 // Coordinator for the composebox.
 @property(nonatomic, strong) ComposeboxCoordinator* composeboxCoordinator;
+
+// Coordinator to show the Ambient Autofill notice.
+@property(nonatomic, strong)
+    AmbientAutofillNoticeCoordinator* ambientAutofillNoticeCoordinator;
 
 @end
 
@@ -1993,6 +1998,9 @@ const char kChromeAppStoreUrl[] =
   [_passkeyCreationBottomSheetCoordinator stop];
   _passkeyCreationBottomSheetCoordinator = nil;
 
+  [self.ambientAutofillNoticeCoordinator stop];
+  self.ambientAutofillNoticeCoordinator = nil;
+
   [_passkeyIncognitoCoordinator stop];
   _passkeyIncognitoCoordinator = nil;
 
@@ -2547,12 +2555,22 @@ const char kChromeAppStoreUrl[] =
   _autofillAISaveEntityCoordinator = nil;
 }
 
-- (void)showAmbientAutofillNotice {
-  // TODO(crbug.com/533502803): Implement presenting the notice bottom sheet.
+- (void)showAmbientAutofillNotice:(const autofill::FormActivityParams&)params {
+  if (self.ambientAutofillNoticeCoordinator) {
+    [self.ambientAutofillNoticeCoordinator stop];
+  }
+  self.ambientAutofillNoticeCoordinator =
+      [[AmbientAutofillNoticeCoordinator alloc]
+          initWithBaseViewController:self.viewController
+                             browser:self.browser
+                              params:params];
+  [self.ambientAutofillNoticeCoordinator start];
 }
 
 - (void)dismissAmbientAutofillNotice {
-  // TODO(crbug.com/533502803): Implement dismissing the notice bottom sheet.
+  [self.ambientAutofillNoticeCoordinator markNoticeShown];
+  [self.ambientAutofillNoticeCoordinator stop];
+  self.ambientAutofillNoticeCoordinator = nil;
 }
 
 #pragma mark - IOSPasskeyClientCommands
@@ -3259,6 +3277,9 @@ const char kChromeAppStoreUrl[] =
 
   [_passkeyCreationBottomSheetCoordinator stop];
   _passkeyCreationBottomSheetCoordinator = nil;
+
+  [self.ambientAutofillNoticeCoordinator stop];
+  self.ambientAutofillNoticeCoordinator = nil;
 
   [_passkeyWelcomeScreenCoordinator stop];
   _passkeyWelcomeScreenCoordinator = nil;
@@ -5016,12 +5037,12 @@ const char kChromeAppStoreUrl[] =
     return lensOverlayTabHelper->GetSnapshotInsets();
   }
 
-  UIEdgeInsets maxViewportInsets;
+  UIEdgeInsets viewportInsets;
   if (IsFullscreenRefactoringEnabled()) {
-    maxViewportInsets =
-        FullscreenBrowserAgent::FromBrowser(self.browser)->max_insets();
+    viewportInsets =
+        FullscreenBrowserAgent::FromBrowser(self.browser)->insets();
   } else {
-    maxViewportInsets = _fullscreenController->GetMaxViewportInsets();
+    viewportInsets = _fullscreenController->GetCurrentViewportInsets();
   }
 
   if (IsVisibleURLNewTabPage(webState)) {
@@ -5038,11 +5059,11 @@ const char kChromeAppStoreUrl[] =
     // For the regular NTP without tab strip, it sits above the bottom toolbar
     // but, since it is displayed as full-screen at the top, it requires maximum
     // viewport insets.
-    maxViewportInsets.bottom = 0;
+    viewportInsets.bottom = 0;
     // In this case as well, the top toolbar is also not showing, so just factor
     // in the top safe area inset.
-    maxViewportInsets.top = _safeAreaProvider.safeArea.top;
-    return maxViewportInsets;
+    viewportInsets.top = _safeAreaProvider.safeArea.top;
+    return viewportInsets;
   } else {
     // If the NTP is inactive, the WebState's view is used as the base view for
     // snapshotting.  If fullscreen is implemented by resizing the scroll view,
@@ -5051,10 +5072,10 @@ const char kChromeAppStoreUrl[] =
     // the WebState view is laid out fullscreen and should be inset by the
     // viewport insets.
     if (IsFullscreenRefactoringEnabled()) {
-      return maxViewportInsets;
+      return viewportInsets;
     } else {
       return _fullscreenController->ResizesScrollView() ? UIEdgeInsetsZero
-                                                        : maxViewportInsets;
+                                                        : viewportInsets;
     }
   }
 }

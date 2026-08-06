@@ -105,7 +105,8 @@ void WebUILocationBar::Init(WebUIToolbarControlDelegate* delegate) {
 
   omnibox_controller_ =
       std::make_unique<OmniboxController>(std::make_unique<ChromeOmniboxClient>(
-          /*location_bar=*/this, browser_, browser_->GetProfile()));
+          /*location_bar=*/this, browser_->GetBrowserForMigrationOnly(),
+          browser_->GetProfile()));
   omnibox_view_ = std::make_unique<WebUIReadOnlyOmnibox>(
       /*location_bar=*/this, toolbar_delegate_, omnibox_controller_.get(),
       /*update_propagator=*/*this);
@@ -120,7 +121,9 @@ void WebUILocationBar::Init(WebUIToolbarControlDelegate* delegate) {
   // be shown.
   const bool is_web_app =
       browser_ && web_app::AppBrowserController::IsWebApp(browser_);
-  const bool is_devtools = browser_ && browser_->is_type_devtools();
+  const bool is_devtools =
+      browser_ &&
+      browser_->GetType() == BrowserWindowInterface::Type::TYPE_DEVTOOLS;
   DCHECK(!is_web_app);
   DCHECK(!is_devtools);
 
@@ -159,15 +162,20 @@ void WebUILocationBar::Init(WebUIToolbarControlDelegate* delegate) {
 
 void WebUILocationBar::PropagateOmniboxUpdate(
     toolbar_ui_api::mojom::OmniboxViewStatePtr omnibox_state) {
-  toolbar_delegate_->OnOmniboxViewStateChanged(std::move(omnibox_state));
+  // `toolbar_delegate_` is null in some tests.
+  if (toolbar_delegate_) {
+    toolbar_delegate_->OnOmniboxViewStateChanged(std::move(omnibox_state));
+  }
 }
 
 void WebUILocationBar::PropagateFocusRequest(
     toolbar_ui_api::mojom::FocusRequestTarget target) {
   // TODO(crbug.com/503784990): Handle immersive lock; this is tricky since
   // our focus request is async. Compare OmniboxViewViews::SetFocus.
-
-  toolbar_delegate_->OnFocusRequested(target);
+  // `toolbar_delegate_` is null in some tests.
+  if (toolbar_delegate_) {
+    toolbar_delegate_->OnFocusRequested(target);
+  }
 }
 
 std::optional<GURL> WebUILocationBar::ConsumeDroppedUrl(
@@ -340,7 +348,7 @@ ui::TrackedElement* WebUILocationBar::GetAnchorOrNull() {
   return BrowserElements::From(browser_)->GetElement(kLocationBarElementId);
 }
 
-Browser* WebUILocationBar::GetBrowser() {
+BrowserWindowInterface* WebUILocationBar::GetBrowser() {
   return browser_.get();
 }
 
@@ -396,6 +404,9 @@ void WebUILocationBar::InvalidateLayout() {
 }
 
 gfx::Rect WebUILocationBar::Bounds() const {
+  if (!toolbar_delegate_) {
+    return gfx::Rect();
+  }
   gfx::Rect screen_rect = BoundsInScreen();
   if (!screen_rect.IsEmpty()) {
     return views::View::ConvertRectFromScreen(toolbar_delegate_->GetView(),
@@ -405,6 +416,9 @@ gfx::Rect WebUILocationBar::Bounds() const {
 }
 
 gfx::Rect WebUILocationBar::BoundsInScreen() const {
+  if (!toolbar_delegate_) {
+    return gfx::Rect();
+  }
   ui::TrackedElement* anchor =
       BrowserElements::From(browser_)->GetElement(kLocationBarElementId);
   // Fallback to our parent container's bounds if we haven't gotten ours
@@ -445,6 +459,9 @@ void WebUILocationBar::Update(content::WebContents* contents) {
 }
 
 void WebUILocationBar::UpdateLhsChipsState(bool icon_known) {
+  if (!toolbar_delegate_) {
+    return;
+  }
   if (GetLocationBarWidget() && GetLocationBarWidget()->IsClosed()) {
     return;
   }
@@ -579,11 +596,9 @@ void WebUILocationBar::OnLhsChipMousePressed(
     // Note: If the user mouses down and drags out without releasing, this
     // flag remains true. This is safe because it will be unconditionally
     // overwritten by the next OnLhsChipMousePressed IPC when they click again.
-    suppress_lhs_chip_clicked_ =
-        (PageInfoBubbleView::GetShownBubbleType() !=
-         PageInfoBubbleView::BUBBLE_NONE) ||
-        (base::TimeTicks::Now() - last_page_info_bubble_close_time_ <
-         suppression_threshold_);
+    suppress_lhs_chip_clicked_ = (PageInfoBubbleView::GetShownBubbleType() !=
+                                  PageInfoBubbleView::BUBBLE_NONE) ||
+                                 page_info_reopen_suppressor_.ShouldSuppress();
   } else if (identifier ==
              toolbar_ui_api::mojom::LhsChipIdentifier::kPermissionRequest) {
     permission_dashboard_->request_chip()->OnMousePressed();
@@ -591,18 +606,6 @@ void WebUILocationBar::OnLhsChipMousePressed(
              toolbar_ui_api::mojom::LhsChipIdentifier::kPermissionIndicator) {
     permission_dashboard_->indicator_chip()->OnMousePressed();
   }
-}
-
-void WebUILocationBar::OnPageInfoBubbleClosed(
-    views::Widget::ClosedReason closed_reason,
-    bool reload_prompt) {
-  last_page_info_bubble_close_time_ = base::TimeTicks::Now();
-
-  // TODO(crbug.com/495419742): If `reload_prompt` is true, and the user closed
-  // the bubble by pressing ESC or clicking the Close button, we should
-  // refocus the location bar so the user can tab into the "You should reload
-  // this page" infobar rather than being dumped back out into a stale webpage.
-  // See `LocationBarView::OnPageInfoBubbleClosed` for the implementation.
 }
 
 void WebUILocationBar::OnLhsChipClicked(
@@ -655,20 +658,24 @@ void WebUILocationBar::ShowPageInfoBubble() {
               : views::BubbleAnchor(toolbar_delegate_->GetView()),
           toolbar_delegate_->GetView()->GetWidget()->GetNativeWindow(),
           contents, entry->GetVirtualURL())
-
-          .AddPageInfoClosingCallback(
-              base::BindOnce(&WebUILocationBar::OnPageInfoBubbleClosed,
-                             weak_ptr_factory_.GetWeakPtr()))
+          // TODO(crbug.com/495419742): We currently don't handle refocusing the
+          // location bar after the WebUI page info bubble closes. If a page
+          // reload is required (e.g. after changing permissions), and the user
+          // closed the bubble by pressing ESC or clicking the Close button, we
+          // should refocus the location bar to allow the user to easily tab
+          // into the "You should reload this page" infobar.
           .Build();
   views::BubbleDialogDelegateView* const bubble =
       PageInfoBubbleView::CreatePageInfoBubble(std::move(specification));
   bubble->SetHighlightedElement(kLocationIconElementId);
   bubble->GetWidget()->Show();
+  page_info_reopen_suppressor_.Observe(bubble->GetWidget());
 }
 
 void WebUILocationBar::SetSuppressionThresholdForTesting(
     base::TimeDelta threshold) {
-  suppression_threshold_ = threshold;
+  page_info_reopen_suppressor_.SetSuppressionThresholdForTesting(  // IN-TEST
+      threshold);
 }
 
 void WebUILocationBar::OnLhsChipPointerEntered(
@@ -772,7 +779,8 @@ WebUILocationBar::GetContentSettingBubbleModelDelegate() {
 }
 
 views::Widget* WebUILocationBar::GetLocationBarWidget() {
-  return toolbar_delegate_->GetView()->GetWidget();
+  return toolbar_delegate_ ? toolbar_delegate_->GetView()->GetWidget()
+                           : nullptr;
 }
 
 OmniboxPopupFileSelector* WebUILocationBar::GetOmniboxPopupFileSelector()
@@ -858,8 +866,28 @@ void WebUILocationBar::OnPopupStateChanged(OmniboxPopupState old_state,
   UpdateWithoutTabRestore();
 }
 
+// If omnibox is open, notify Omnibox presenter that a permission prompt is
+// starting right before constructing the prompt view widget. This is the
+// notification point that is before and closest to when the view is rendered,
+// which ensures the omnibox knows as soon as possible and ignores focus-loss
+// events during the whole time that the embedded permission prompt is showing.
+void WebUILocationBar::SetPermissionPromptShowing(bool showing) {
+  OmniboxPopupPresenterBase* presenter = nullptr;
+  // Get Omnibox popup presenter for AIM or normal omnibox, depending
+  // on which is showing.
+  if (omnibox_popup_aim_presenter_ && omnibox_popup_aim_presenter_->IsShown()) {
+    presenter = omnibox_popup_aim_presenter_.get();
+  } else if (GetOmniboxPopupView() && GetOmniboxPopupView()->presenter() &&
+             GetOmniboxPopupView()->presenter()->IsShown()) {
+    presenter = GetOmniboxPopupView()->presenter();
+  }
+  if (presenter) {
+    presenter->SetPermissionPromptShowing(showing);
+  }
+}
+
 void WebUILocationBar::UpdateLocationBarFlagsState() {
-  if (!omnibox_controller_) {  // null in some tests.
+  if (!toolbar_delegate_ || !omnibox_controller_) {  // null in some tests.
     return;
   }
 
@@ -871,7 +899,7 @@ void WebUILocationBar::UpdateLocationBarFlagsState() {
 }
 
 void WebUILocationBar::UpdateSelectedKeywordState() {
-  if (!omnibox_controller_) {  // null in some tests.
+  if (!toolbar_delegate_ || !omnibox_controller_) {  // null in some tests.
     return;
   }
 

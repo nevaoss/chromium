@@ -68,6 +68,9 @@ export class ReadonlyOmniboxElement extends CrLitElement {
 
       // Current state on this side.
       omniboxViewState: {type: Object},
+
+      // True if the IME is currently active.
+      isComposing: {type: Boolean},
     };
   }
 
@@ -76,6 +79,7 @@ export class ReadonlyOmniboxElement extends CrLitElement {
     uiVersion: 0,
     formattedFullUrl: '',
     textPieces: [],
+    placeholder: null,
     inlineAutocompletion: '',
     additionalText: '',
     // This follows the semantics of gfx::Range, where backwards
@@ -87,6 +91,8 @@ export class ReadonlyOmniboxElement extends CrLitElement {
 
   accessor omniboxViewState: OmniboxViewState =
       Object.assign(this.browserOmniboxState);
+
+  accessor isComposing: boolean = false;
 
   private focusRequestHandle_: FocusRequestHandle =
       INVALID_FOCUS_REQUEST_HANDLE;
@@ -192,6 +198,11 @@ export class ReadonlyOmniboxElement extends CrLitElement {
     textInput.addEventListener('keydown', this.onInputKeyDown.bind(this));
     textInput.addEventListener('keyup', this.onInputKeyUp.bind(this));
     textInput.addEventListener('copy', this.onInputCopy_.bind(this));
+    textInput.addEventListener('cut', this.onInputCut_.bind(this));
+    textInput.addEventListener(
+        'compositionstart', this.onInputCompositionstart_.bind(this));
+    textInput.addEventListener(
+        'compositionend', this.onInputCompositionend_.bind(this));
 
     this.addEventListener('contextmenu', this.onContextMenu_.bind(this));
     this.addEventListener('dragstart', this.onDragStart_.bind(this));
@@ -213,9 +224,8 @@ export class ReadonlyOmniboxElement extends CrLitElement {
 
       // If there is an inline autocompletion, render it as selected text
       // after the input.
-      // TODO(crbug.com/500653057): We will likely need to do something
-      // different when IME is popped up.
-      if (this.omniboxViewState.inlineAutocompletion.length > 0) {
+      if (this.omniboxViewState.inlineAutocompletion.length > 0 &&
+          !this.isComposing) {
         selection = {
           start: this.userText.length,
           end: this.userText.length +
@@ -223,8 +233,8 @@ export class ReadonlyOmniboxElement extends CrLitElement {
         };
       }
 
-      const allText =
-          this.userText + this.omniboxViewState.inlineAutocompletion;
+      const allText = this.userText +
+          (this.isComposing ? '' : this.omniboxViewState.inlineAutocompletion);
       if (this.$.textInput.value !== allText) {
         this.$.textInput.value = allText;
       }
@@ -239,7 +249,13 @@ export class ReadonlyOmniboxElement extends CrLitElement {
         this.setSelection(selection.start, selection.end, selectionDirection);
       }
 
-      if (!this.hasFocus()) {
+      // Make sure we set the right view visible. Normally we want the <input>
+      // when we have focus, but it's also responsible for drawing the
+      // placeholder if it's enabled.
+      const hasFocus = this.hasFocus();
+
+      this.switchView_(hasFocus);
+      if (!hasFocus) {
         // Make sure we make the beginning of the line visible when we're not
         // focused.
         this.$.textContainer.scrollLeft = 0;
@@ -287,13 +303,11 @@ export class ReadonlyOmniboxElement extends CrLitElement {
       // as well to avoid flicker.
       this.$.textInput.value = '';
       this.updateStateFromTextInput();
-      this.sendInputToBrowser();
     } else if (isUserInitiated) {
       this.unelide();
-      this.sendInputToBrowser();
     }
     this.$.textInput.focus();
-    this.switchEditable_();
+    this.switchView_(/*hasFocus=*/ true);
 
     // The following comments are from OmniboxViewViews::SetFocus:
     // If the user initiated the focus, then we always select-all, even if the
@@ -318,6 +332,9 @@ export class ReadonlyOmniboxElement extends CrLitElement {
         this.selectAllBackwards();
       }
     }
+    // It's important this is done after updating the selection since that
+    // prevents inline completion, which isn't desired for these shortcuts.
+    this.sendInputToBrowser();
 
     this.browserProxy_.toolbarUIHandler.onOmniboxAction({
       focusChange: {
@@ -347,8 +364,8 @@ export class ReadonlyOmniboxElement extends CrLitElement {
       document.getSelection()!.removeAllRanges();
       this.$.textInput.blur();
     }
+    this.switchView_(/*hasFocus=*/ false);
     this.lastFocusAcquisition_ = null;
-    this.switchReadOnly_();
 
     this.browserProxy_.toolbarUIHandler.onOmniboxAction({
       focusChange: {
@@ -363,7 +380,7 @@ export class ReadonlyOmniboxElement extends CrLitElement {
 
   private onInputFocus(): void {
     this.lastFocusAcquisition_ = performance.now();
-    this.switchEditable_();
+    this.switchView_(/*hasFocus=*/ true);
 
     this.browserProxy_.toolbarUIHandler.onOmniboxAction({
       focusChange: {
@@ -533,7 +550,7 @@ export class ReadonlyOmniboxElement extends CrLitElement {
 
 
     const inlineAutocompletion = this.omniboxViewState.inlineAutocompletion;
-    if (inlineAutocompletion.length > 0) {
+    if (inlineAutocompletion.length > 0 && !this.isComposing) {
       // If the current input state (its value and selection) matches its last
       // state (text and inline autocompletion) and the user types the next
       // character in the inline autocompletion, stop the keydown event. Just
@@ -687,6 +704,23 @@ export class ReadonlyOmniboxElement extends CrLitElement {
     if (e.clipboardData && this.populateDataTransfer_(e.clipboardData)) {
       e.preventDefault();
     }
+  }
+
+  private onInputCut_(e: ClipboardEvent): void {
+    if (e.clipboardData && this.populateDataTransfer_(e.clipboardData)) {
+      e.preventDefault();
+      // Go via execCommand to keep Ctrl-Z happy.
+      document.execCommand('delete');
+      this.onInputInput();
+    }
+  }
+
+  private onInputCompositionstart_(): void {
+    this.isComposing = true;
+  }
+
+  private onInputCompositionend_(): void {
+    this.isComposing = false;
   }
 
   private onSelectionChange_(): void {
@@ -969,16 +1003,18 @@ export class ReadonlyOmniboxElement extends CrLitElement {
     this.omniboxViewState.selection = this.getMojoSelection();
   }
 
-  // Sets the read only view active.
-  private switchReadOnly_(): void {
-    this.$.textInput.style.opacity = '0';
-    this.$.textContainer.style.opacity = '1';
-  }
-
-  // Sets the editable view active.
-  private switchEditable_(): void {
-    this.$.textInput.style.opacity = '1';
-    this.$.textContainer.style.opacity = '0';
+  // Selects the proper view (<input> or our syntax highlighting one
+  // active.
+  private switchView_(hasFocus: boolean): void {
+    const useInputElement = hasFocus ||
+        this.omniboxViewState.placeholder && this.userText.length === 0;
+    if (useInputElement) {
+      this.$.textInput.style.opacity = '1';
+      this.$.textContainer.style.opacity = '0';
+    } else {
+      this.$.textInput.style.opacity = '0';
+      this.$.textContainer.style.opacity = '1';
+    }
   }
 
   // Returns the CSS classes for rendering the given text piece.
@@ -1007,6 +1043,19 @@ export class ReadonlyOmniboxElement extends CrLitElement {
       classes.push('strikethrough');
     }
     return classes.join(' ');
+  }
+
+  protected getInputPlaceholder_(): string|undefined {
+    return this.omniboxViewState.placeholder?.text;
+  }
+
+  protected getInputClasses_(): string|undefined {
+    const placeholder = this.omniboxViewState.placeholder;
+    if (placeholder) {
+      return ReadonlyOmniboxElement.getTextPieceClasses(placeholder);
+    } else {
+      return undefined;
+    }
   }
 }
 

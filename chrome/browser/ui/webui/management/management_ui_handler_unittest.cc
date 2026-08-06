@@ -70,6 +70,7 @@
 #include "chrome/browser/ash/crostini/crostini_pref_names.h"
 #include "chrome/browser/ash/crostini/fake_crostini_features.h"
 #include "chrome/browser/ash/net/secure_dns_manager.h"
+#include "chrome/browser/ash/policy/core/device_attributes_fake.h"
 #include "chrome/browser/ash/policy/core/device_cloud_policy_manager_ash.h"
 #include "chrome/browser/ash/policy/core/device_cloud_policy_store_ash.h"
 #include "chrome/browser/ash/policy/core/user_cloud_policy_manager_ash.h"
@@ -84,6 +85,7 @@
 #include "chrome/browser/ash/policy/uploading/system_log_uploader_delegate.h"
 #include "chrome/browser/ash/settings/device_settings_test_helper.h"
 #include "chrome/browser/ash/settings/scoped_testing_cros_settings.h"
+#include "chrome/browser/ash/settings/stub_cros_settings_provider.h"
 #include "chrome/browser/chromeos/policy/dlp/dlp_rules_manager.h"
 #include "chrome/browser/chromeos/policy/dlp/test/mock_dlp_rules_manager.h"
 #include "chrome/browser/net/secure_dns_config.h"
@@ -310,7 +312,8 @@ class TestManagementUIHandler : public ManagementUIHandlerBase {
   void CreateSecureDnsManagerForTesting(PrefService* local_state,
                                         user_manager::User& user) {
     secure_dns_manager_ = std::make_unique<ash::SecureDnsManager>(
-        local_state, user, /*is_profile_managed=*/true);
+        local_state, std::make_unique<policy::FakeDeviceAttributes>(), user,
+        /*is_profile_managed=*/true);
   }
   void DestroySecureDnsManagerForTesting() { secure_dns_manager_.reset(); }
 #endif  // BUILDFLAG(IS_CHROMEOS)

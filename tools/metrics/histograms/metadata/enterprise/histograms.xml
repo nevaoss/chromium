@@ -767,6 +767,54 @@ chromium-metrics-reviews@google.com.
   </token>
 </histogram>
 
+<histogram name="Enterprise.ClientCertificate.Ash.CertificateImportError"
+    enum="KcerError" expires_after="2028-01-02">
+  <owner>seblalancette@chromium.org</owner>
+  <owner>cbe-device-trust-eng@google.com</owner>
+  <summary>
+    Captures the Kcer error returned when importing a managed client certificate
+    into the ChromeOS (Kcer) user token fails. Recorded on ChromeOS each time a
+    certificate commit fails during client certificate provisioning.
+  </summary>
+</histogram>
+
+<histogram name="Enterprise.ClientCertificate.Ash.HardwareKeyGenerationError"
+    enum="KcerError" expires_after="2028-01-02">
+  <owner>seblalancette@chromium.org</owner>
+  <owner>cbe-device-trust-eng@google.com</owner>
+  <summary>
+    Captures the Kcer error returned when hardware-backed (TPM) key generation
+    fails and the ChromeOS client certificate provisioning flow falls back to a
+    software key. Recorded on ChromeOS each time the hardware-backed generation
+    attempt fails.
+  </summary>
+</histogram>
+
+<histogram name="Enterprise.ClientCertificate.Ash.KeyRemovalError"
+    enum="KcerError" expires_after="2028-01-02">
+  <owner>seblalancette@chromium.org</owner>
+  <owner>cbe-device-trust-eng@google.com</owner>
+  <summary>
+    Captures the Kcer error returned when removing a managed client certificate
+    key (and its certificates) from the ChromeOS (Kcer) user token fails. Covers
+    both the SPKI-targeted deletion and the browser enterprise client
+    certificate key sweep. Recorded on ChromeOS each time a removal fails.
+  </summary>
+</histogram>
+
+<histogram name="Enterprise.ClientCertificate.Ash.KeyTaggingError"
+    enum="KcerError" expires_after="2028-01-02">
+  <owner>seblalancette@chromium.org</owner>
+  <owner>cbe-device-trust-eng@google.com</owner>
+  <summary>
+    Captures the Kcer error returned when tagging a freshly generated key as a
+    browser enterprise client certificate key fails. Tagging is best-effort and
+    does not abort provisioning, so this tracks how often the ownership metadata
+    used for later cleanup/auditing ends up missing. Recorded on ChromeOS each
+    time a tag write fails.
+  </summary>
+</histogram>
+
 <histogram
     name="Enterprise.ClientCertificate.{Level}.CreateCertificate.Success.HasCert"
     enum="BooleanSuccess" expires_after="2027-01-02">
@@ -892,7 +940,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Enterprise.ClientCertificates.ClankKeySecurityLevel"
     enum="ClankClientCertificatesBrowserKeySecurityLevel"
-    expires_after="2026-11-15">
+    expires_after="2027-01-17">
   <owner>eliashomsi@google.com</owner>
   <owner>cbe-device-trust-eng@google.com</owner>
   <summary>
@@ -1176,6 +1224,16 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Enterprise.DataCopied.DataSize" units="bytes"
+    expires_after="2027-07-15">
+  <owner>eliashomsi@google.com</owner>
+  <owner>cbe-data-protection-eng@google.com</owner>
+  <summary>
+    Records the size (in bytes) of data that might have been scanned by the Copy
+    Enterprise Connector. It is logged once per user action.
+  </summary>
+</histogram>
+
 <histogram name="Enterprise.DataProtection.URLVerdictSource"
     enum="DataProtectionURLVerdictSource" expires_after="2026-11-22">
   <owner>alshawwa@chromium.org</owner>
@@ -1389,6 +1447,18 @@ chromium-metrics-reviews@google.com.
     Compared to Enterprise.DeviceSettings.UpdatedStatus contains the information
     about missing key on managed devices. Used to compare rate of
     Enterprise.DeviceSettings.MissingPolicyMitigated event.
+  </summary>
+</histogram>
+
+<histogram name="Enterprise.DeviceSignals.Collection.Certificates.Error"
+    enum="DeviceSignalsCertificateCollectionError" expires_after="2027-07-14">
+  <owner>hmare@chromium.org</owner>
+  <owner>cbe-eng@google.com</owner>
+  <summary>
+    Captures specific errors encountered when collecting certificates during the
+    device signals collection flow. Recorded for each matched certificate that
+    fails at a specific step. Successful collection events are not recorded in
+    this histogram.
   </summary>
 </histogram>
 
@@ -3179,7 +3249,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.KeySignatureVerification"
-    enum="EnterpriseKeySignatureVerification" expires_after="2026-11-15">
+    enum="EnterpriseKeySignatureVerification" expires_after="2027-01-17">
   <owner>igorcov@chromium.org</owner>
   <owner>emaxx@chromium.org</owner>
   <owner>chromeos-commercial-remote-management@google.com</owner>
@@ -3485,7 +3555,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.OnBulkDataEntry.DataSize" units="bytes"
-    expires_after="2026-11-15">
+    expires_after="2027-01-17">
   <owner>domfc@chromium.org</owner>
   <owner>webprotect-team@google.com</owner>
   <summary>
@@ -3781,6 +3851,15 @@ chromium-metrics-reviews@google.com.
 
     Warning: this histogram was expired from 2025-07-01 to 2026-04-15; data may
     be missing.
+  </summary>
+</histogram>
+
+<histogram name="Enterprise.ProvisioningDomain.FetchResult"
+    enum="EnterpriseProvisioningDomainFetchResult" expires_after="2027-07-01">
+  <owner>xzonghan@google.com</owner>
+  <owner>chrome-enterprise-networking-core@google.com</owner>
+  <summary>
+    Recorded when a Provisioning Domain configuration fetch finishes or fails.
   </summary>
 </histogram>
 
@@ -4567,7 +4646,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.UserPolicy.Count" units="policies"
-    expires_after="2026-11-15">
+    expires_after="2027-01-17">
   <owner>vincb@google.com</owner>
   <owner>ftirelo@chromium.org</owner>
   <summary>

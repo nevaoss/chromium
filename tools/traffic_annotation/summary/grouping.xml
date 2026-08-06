@@ -357,7 +357,6 @@ after discussions on the right group.
       <annotation id="chromeos_walrus_provider"/>
       <annotation id="forms_classifications_model_execution"/>
       <annotation id="gemini_user_status"/>
-      <annotation id="notification_telemetry"/>
       <annotation id="corp_register_support_host_request"/>
       <annotation id="zero_state_suggestions_model_execution"/>
       <annotation id="certificate_verifier_2qwac_loader"/>
@@ -409,6 +408,7 @@ after discussions on the right group.
       <annotation id="doodle_impression_android"/>
       <annotation id="read_aloud_generate_text"/>
       <annotation id="read_aloud_synthesize"/>
+      <annotation id="tab_context_ephemeral_key_fetch"/>
     </sender>
   </group>
   <group name="Admin Features">
@@ -484,13 +484,6 @@ after discussions on the right group.
     <sender name="Aggregation Service">
       <annotation id="aggregation_service_helper_keys"/>
       <annotation id="aggregation_service_report"/>
-    </sender>
-    <sender name="Protected Audiences">
-      <annotation id="auction_downloader"/>
-      <annotation id="auction_report_sender"/>
-      <annotation id="bidding_and_auction_server_key_fetch"/>
-      <annotation id="interest_group_update_fetcher"/>
-      <annotation id="interest_group_well_known_fetcher"/>
     </sender>
   </group>
   <group name="Identity and Security">

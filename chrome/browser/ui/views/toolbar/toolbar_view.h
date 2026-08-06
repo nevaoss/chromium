@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "base/memory/raw_ptr.h"
+#include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
 #include "chrome/browser/command_observer.h"
 #include "chrome/browser/glic/browser_ui/glic_split_button_delegate.h"
@@ -53,7 +54,6 @@ class Browser;
 class ExtensionsToolbarButton;
 class ExtensionsToolbarDesktop;
 class HomeButton;
-class IntentChipButton;
 class ExtensionsToolbarCoordinator;
 class MediaToolbarButtonView;
 class ReloadButton;
@@ -75,7 +75,7 @@ namespace glic {
 class ToolbarGlicButton;
 class ToolbarGlicActorTaskIcon;
 class GlicButtonInterface;
-class GlicButtonController;
+class GlicSplitButtonController;
 }  // namespace glic
 
 class GlicAndActorButtonsContainer;
@@ -302,7 +302,6 @@ class ToolbarView : public views::AccessiblePaneView,
   AvatarToolbarButtonInterface* GetAvatarToolbarButtonInterface() override;
   ToolbarButton* GetBackButton() override;
   ReloadControl* GetReloadButton() override;
-  IntentChipButton* GetIntentChipButton() override;
   ToolbarButton* GetDownloadButton() override;
 
   // BrowserRootView::DropTarget
@@ -399,7 +398,6 @@ class ToolbarView : public views::AccessiblePaneView,
   raw_ptr<glic::ToolbarGlicButton> glic_button_ = nullptr;
   raw_ptr<glic::ToolbarGlicActorTaskIcon> glic_actor_task_icon_ = nullptr;
   raw_ptr<ToolbarDivider> glic_button_divider_ = nullptr;
-  raw_ptr<glic::GlicButtonController> glic_button_controller_ = nullptr;
 
   // When locked, the container is unable to change its expanded state.
   // Changes will be staged until after this is unlocked.
@@ -413,6 +411,7 @@ class ToolbarView : public views::AccessiblePaneView,
 
   const raw_ptr<Browser> browser_;
   const raw_ptr<BrowserView> browser_view_;
+  base::WeakPtr<glic::GlicSplitButtonController> glic_split_button_controller_;
 
   // ToolbarView may or may not serve as the `ToolbarButtonProvider` for a given
   // browser instance depending on the browser type (e.g. WebApp browsers set

@@ -220,7 +220,8 @@ class BrowserView : public BrowserWindow,
   views::View* GetSidePanelAnimationContent();
 
   // Returns all the ContentsContainerViews that belong to this browser.
-  std::vector<ContentsContainerView*> GetContentsContainerViews();
+  std::vector<raw_ptr<ContentsContainerView, DanglingUntriaged>>
+  GetContentsContainerViews();
 
   // Returns the ContentsContainerView for the active tab.
   ContentsContainerView* GetActiveContentsContainerView();
@@ -1362,7 +1363,9 @@ class BrowserView : public BrowserWindow,
 
   base::CallbackListSubscription projects_panel_subscription_;
 
+#if BUILDFLAG(IS_CHROMEOS)
   base::CallbackListSubscription on_locked_task_subscription_;
+#endif
 
   base::CallbackListSubscription theme_changed_subscription_;
 

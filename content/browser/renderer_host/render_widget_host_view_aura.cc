@@ -860,6 +860,10 @@ gfx::Rect RenderWidgetHostViewAura::GetViewBounds() {
   return window_->GetBoundsInScreen();
 }
 
+gfx::Rect RenderWidgetHostViewAura::GetViewBoundsWithoutTransform() {
+  return window_->GetBoundsInScreenWithoutTransform();
+}
+
 void RenderWidgetHostViewAura::UpdateBackgroundColor() {
   CHECK(GetBackgroundColor());
 
@@ -1293,6 +1297,18 @@ gfx::Rect RenderWidgetHostViewAura::GetBoundsInScreen() {
 #endif
 
   return bounds;
+}
+
+gfx::Rect RenderWidgetHostViewAura::GetBoundsInScreenWithoutTransform() {
+#if BUILDFLAG(IS_WIN)
+  if (legacy_render_widget_host_HWND_) {
+    return GetBoundsInScreen();
+  }
+#endif
+
+  aura::Window* top_level = window_->GetToplevelWindow();
+  CHECK(top_level);
+  return top_level->GetBoundsInScreenWithoutTransform();
 }
 
 void RenderWidgetHostViewAura::WheelEventAck(
@@ -2402,6 +2418,8 @@ void RenderWidgetHostViewAura::OnDeviceScaleFactorChanged(
 }
 
 void RenderWidgetHostViewAura::OnWindowDestroying(aura::Window* window) {
+  event_handler_->set_window(nullptr);
+
   // Make sure that the input method no longer references to this object before
   // this object is removed from the root window (i.e. this object loses access
   // to the input method).
@@ -3742,9 +3760,12 @@ void RenderWidgetHostViewAura::CreateUnboundedSurface(
     mojo::PendingAssociatedRemote<blink::mojom::UnboundedSurfaceClient> client,
     const gfx::Rect& bounds_in_dips,
     base::WeakPtr<RenderWidgetHostViewBase> subframe_view) {
+  // `bounds_in_screen` must be computed before std::moving `subframe_view`
+  // below, as it requires accessing `subframe_view`'s raw pointer.
+  gfx::Rect bounds_in_screen =
+      ConvertSubframeBoundsToScreen(bounds_in_dips, subframe_view.get());
   unbounded_surface_window_ = UnboundedSurfaceWindowAura::Create(
-      this, std::move(host), std::move(client),
-      ConvertSubframeBoundsToScreen(bounds_in_dips, subframe_view.get()),
+      this, std::move(host), std::move(client), bounds_in_screen,
       std::move(subframe_view));
 }
 

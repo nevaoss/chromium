@@ -16,7 +16,8 @@
 #include "base/timer/elapsed_timer.h"
 #include "base/token.h"
 #include "base/types/optional_ref.h"
-#include "components/accessibility_annotator/core/annotation_reducer/memory_search_result.h"
+#include "components/autofill/core/browser/integrators/at_memory/at_memory_query_service.h"
+#include "components/autofill/core/browser/integrators/at_memory/memory_search_result.h"
 #include "components/autofill/core/browser/metrics/autofill_metrics.h"
 #include "components/autofill/core/browser/ui/autofill_suggestion_delegate.h"
 #include "components/autofill/core/common/aliases.h"
@@ -24,10 +25,6 @@
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
 #include "url/gurl.h"
-
-namespace accessibility_annotator {
-struct MemorySearchResults;
-}  // namespace accessibility_annotator
 
 namespace optimization_guide {
 class ModelQualityLogEntry;
@@ -93,12 +90,10 @@ class AtMemoryMetricsRecorder {
   void OnQuerySubmitted(std::u16string_view query);
 
   // Records that a response for the pending query was received.
-  void OnQueryResponseReceived(
-      const accessibility_annotator::MemorySearchResults& result);
+  void OnQueryResponseReceived(const MemorySearchResults& result);
 
   // Records that a suggestion was accepted during this session.
-  using MemorySourcesBitmask =
-      std::underlying_type_t<accessibility_annotator::MemoryEntrySourceType>;
+  using MemorySourcesBitmask = std::underlying_type_t<MemoryEntrySourceType>;
   void OnSuggestionAccepted(
       accessibility_annotator::MemoryDataType memory_data_type,
       MemorySourcesBitmask sources_bitmask = 0,
@@ -108,11 +103,27 @@ class AtMemoryMetricsRecorder {
   // Records that the suggestion was successfully filled.
   void MarkFilled();
 
+  // LINT.IfChange(FetchPiiSource)
+  // The source of PII data fetched during filling.
+  enum class FetchPiiSource {
+    kAutofillAi = 0,
+    kCreditCard = 1,
+    kIban = 2,
+    kPersonalContext = 3,
+    kMaxValue = kPersonalContext,
+  };
+  // LINT.ThenChange(//tools/metrics/histograms/metadata/autofill/histograms.xml:Autofill.AtMemory.Latency.FetchPii)
+
   // Records the start time of the asynchronous PII fetching process.
-  void OnFetchPiiStarted();
+  void OnFetchPiiStarted(FetchPiiSource source);
 
   // Records the completion of the asynchronous PII fetching process.
   void OnFetchPiiCompleted();
+
+  // Records the failure reason of the asynchronous PII fetching process using
+  // `PersonalContextService`.
+  void OnFetchPersonalContextPiiDataFailed(
+      AtMemoryQueryService::SpiiRetrievalFailureReason reason);
 
  private:
   friend class AtMemoryMetricsRecorderTestApi;
@@ -172,11 +183,16 @@ class AtMemoryMetricsRecorder {
     std::optional<MemorySourcesBitmask> accepted_sources_bitmask;
   } suggestion_acceptance_;
 
-  // The start time of the asynchronous fetch/unmask process.
-  std::optional<base::TimeTicks> fetch_pii_start_time_;
+  // Information about the asynchronous fetch/unmask process of PII.
+  struct {
+    std::optional<FetchPiiSource> source;
 
-  // The duration of the successful asynchronous fetch/unmask process.
-  std::optional<base::TimeDelta> fetch_pii_duration_;
+    // The start time of the asynchronous fetch/unmask process.
+    std::optional<base::TimeTicks> start_time;
+
+    // The duration of the successful asynchronous fetch/unmask process.
+    std::optional<base::TimeDelta> duration;
+  } fetch_pii_;
 
   // Members related to UKM:
 

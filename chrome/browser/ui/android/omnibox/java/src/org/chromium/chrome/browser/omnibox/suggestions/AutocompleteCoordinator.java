@@ -36,6 +36,7 @@ import org.chromium.chrome.browser.omnibox.OmniboxMetrics;
 import org.chromium.chrome.browser.omnibox.R;
 import org.chromium.chrome.browser.omnibox.UrlBarEditingTextStateProvider;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator;
+import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
 import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteController.OnSuggestionsReceivedListener;
 import org.chromium.chrome.browser.omnibox.suggestions.SuggestionListViewBinder.SuggestionListViewHolder;
 import org.chromium.chrome.browser.omnibox.suggestions.action.OmniboxActionDelegateImpl;
@@ -95,6 +96,7 @@ public class AutocompleteCoordinator implements OmniboxSuggestionsVisualState {
     public AutocompleteCoordinator(
             ViewGroup parent,
             AutocompleteDelegate delegate,
+            OmniboxResourceProvider resourceProvider,
             OmniboxSuggestionsDropdownEmbedder dropdownEmbedder,
             UrlBarEditingTextStateProvider urlBarEditingTextProvider,
             Supplier<@Nullable ModalDialogManager> modalDialogManagerSupplier,
@@ -133,6 +135,7 @@ public class AutocompleteCoordinator implements OmniboxSuggestionsVisualState {
         mMediator =
                 new AutocompleteMediator(
                         context,
+                        resourceProvider,
                         delegate,
                         urlBarEditingTextProvider,
                         listModel,
@@ -150,6 +153,7 @@ public class AutocompleteCoordinator implements OmniboxSuggestionsVisualState {
                         deferredIMEWindowInsetApplicationCallback,
                         fuseboxCoordinator,
                         uiOverrides);
+
         mMediator.initDefaultProcessors();
 
         if (scrollListener != null) {
@@ -181,7 +185,7 @@ public class AutocompleteCoordinator implements OmniboxSuggestionsVisualState {
                 listModel,
                 SuggestionListProperties.OMNIBOX_SESSION_ACTIVE,
                 mViewProvider,
-                SuggestionListViewBinder::bind);
+                new SuggestionListViewBinder(resourceProvider));
 
         BaseSuggestionViewBinder.resetCachedResources();
 
@@ -194,7 +198,7 @@ public class AutocompleteCoordinator implements OmniboxSuggestionsVisualState {
         // the pool is moved to the AutocompleteCoordinator so AutocompleteCoordinator can
         // tell the pool to start prewarming and then pass it to the dropdown.
         if (!OmniboxFeatures.sAsyncViewInflation.isEnabled()) {
-            mViewHolderFactory = new OmniboxViewHolderFactory();
+            mViewHolderFactory = new OmniboxViewHolderFactory(resourceProvider);
             mRecycledViewPool = new PreWarmingRecycledViewPool(mViewHolderFactory, context);
         } else {
             mViewHolderFactory = null;
@@ -212,7 +216,8 @@ public class AutocompleteCoordinator implements OmniboxSuggestionsVisualState {
             AutocompleteMediator mediator,
             MonotonicObservableSupplier<Profile> profileObservableSupplier,
             LocationBarEmbedder locationBarEmbedder,
-            Supplier<@Nullable ModalDialogManager> modalDialogManagerSupplier) {
+            Supplier<@Nullable ModalDialogManager> modalDialogManagerSupplier,
+            OmniboxResourceProvider resourceProvider) {
         mParent = parent;
         mMediator = mediator;
         mProfileSupplier = profileObservableSupplier;

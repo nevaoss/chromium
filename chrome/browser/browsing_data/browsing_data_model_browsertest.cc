@@ -155,20 +155,6 @@ void ProvideRequestHandlerKeyCommitmentsToNetworkService(
   run_loop.Run();
 }
 
-void AccessTopics(const content::ToRenderFrameHost& adapter) {
-  std::string command =
-      R"(
-    (async () => {
-      try {
-        document.browsingTopics();
-      } catch (e) {
-        return e.toString();
-      }
-      return "Success";
-    })())";
-  EXPECT_EQ("Success", EvalJs(adapter, command));
-}
-
 class IdpTestServer {
  public:
   struct ConfigDetails {
@@ -400,9 +386,6 @@ class BrowsingDataModelBrowserTest
         {features::kIsolatedWebApps, {}},
         {features::kIsolatedWebAppDevMode, {}},
         {network::features::kSharedStorageAPI, {}},
-        {network::features::kInterestGroupStorage, {}},
-        {blink::features::kAdInterestGroupAPI, {}},
-        {blink::features::kFledge, {}},
         {blink::features::kFencedFrames, {}},
         {network::features::kBrowsingTopics, {}},
         {net::features::kThirdPartyStoragePartitioning, {}},
@@ -501,7 +484,7 @@ class BrowsingDataModelBrowserTest
   }
 
   content::StoragePartition* default_storage_partition() {
-    return browser()->profile()->GetDefaultStoragePartition();
+    return browser()->GetProfile()->GetDefaultStoragePartition();
   }
 
   content::WebContents* web_contents() {
@@ -572,7 +555,7 @@ IN_PROC_BROWSER_TEST_F(BrowsingDataModelBrowserTest, TrustTokenIssuance) {
   EXPECT_EQ(true, EvalJs(web_contents(), command));
 
   browser()
-      ->profile()
+      ->GetProfile()
       ->GetDefaultStoragePartition()
       ->FlushNetworkInterfaceForTesting();
 
@@ -597,46 +580,6 @@ IN_PROC_BROWSER_TEST_F(BrowsingDataModelBrowserTest, TrustTokenIssuance) {
 }
 
 IN_PROC_BROWSER_TEST_F(BrowsingDataModelBrowserTest,
-                       TopicsAccessReportedCorrectly) {
-  // Navigate to test page.
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), test_url()));
-
-  auto* content_settings =
-      content_settings::PageSpecificContentSettings::GetForFrame(
-          web_contents()->GetPrimaryMainFrame());
-
-  // Validate that the allowed browsing data model is empty.
-  auto* allowed_browsing_data_model =
-      content_settings->allowed_browsing_data_model();
-  ValidateBrowsingDataEntries(allowed_browsing_data_model, {});
-  ASSERT_EQ(allowed_browsing_data_model->size(), 0u);
-
-  // Get Topics
-  AccessTopics(web_contents());
-
-  WaitForModelUpdate(allowed_browsing_data_model, 1);
-
-  // Validate Topics are reported correctly
-  url::Origin testOrigin = https_test_server()->GetOrigin(kTestHost);
-  ValidateBrowsingDataEntries(
-      allowed_browsing_data_model,
-      {{kTestHost,
-        testOrigin,
-        {{static_cast<BrowsingDataModel::StorageType>(
-             ChromeBrowsingDataModelDelegate::StorageType::kTopics)},
-         /*storage_size=*/0,
-         /*cookie_count=*/0}}});
-  ASSERT_EQ(allowed_browsing_data_model->size(), 1u);
-
-  // Clear Topic via BDM
-  RemoveBrowsingDataForDataOwner(allowed_browsing_data_model, kTestHost);
-
-  // Validate that the allowed browsing data model is cleared.
-  ValidateBrowsingDataEntries(allowed_browsing_data_model, {});
-  ASSERT_EQ(allowed_browsing_data_model->size(), 0u);
-}
-
-IN_PROC_BROWSER_TEST_F(BrowsingDataModelBrowserTest,
                        IsolatedWebAppUsageInDefaultStoragePartitionModel) {
   // Check that no IWAs are installed at the beginning of the test.
   std::unique_ptr<BrowsingDataModel> browsing_data_model =
@@ -644,7 +587,7 @@ IN_PROC_BROWSER_TEST_F(BrowsingDataModelBrowserTest,
   ValidateBrowsingDataEntries(browsing_data_model.get(), {});
   ASSERT_EQ(browsing_data_model->size(), 0u);
 
-  Profile* profile = browser()->profile();
+  Profile* profile = browser()->GetProfile();
 
   std::unique_ptr<web_app::ScopedBundledIsolatedWebApp> app1 =
       web_app::IsolatedWebAppBuilder(web_app::ManifestBuilder()).BuildBundle();
@@ -738,7 +681,8 @@ IN_PROC_BROWSER_TEST_F(BrowsingDataModelBrowserTest,
   SetDataForType("LocalStorage", web_contents());
 
   //  Flush storage size to disk.
-  auto* storage_partition = browser()->profile()->GetDefaultStoragePartition();
+  auto* storage_partition =
+      browser()->GetProfile()->GetDefaultStoragePartition();
   storage_partition->Flush();
 
   // To ensure that flushing is completed.
@@ -998,7 +942,8 @@ IN_PROC_BROWSER_TEST_F(BrowsingDataModelBrowserTest,
   SetDataForType("LocalStorage", content::ChildFrameAt(web_contents(), 0));
 
   //  Flush storage size to disk.
-  auto* storage_partition = browser()->profile()->GetDefaultStoragePartition();
+  auto* storage_partition =
+      browser()->GetProfile()->GetDefaultStoragePartition();
   storage_partition->Flush();
 
   // To ensure that flushing is completed.

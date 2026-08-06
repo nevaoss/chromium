@@ -45,6 +45,7 @@
 #include "components/data_sharing/public/personal_collaboration_data/personal_collaboration_data_service.h"
 #include "components/history/core/browser/sync/history_data_type_controller.h"
 #include "components/history/core/browser/sync/history_delete_directives_data_type_controller.h"
+#include "components/notebooks/public/notebooks_service.h"
 #include "components/password_manager/core/browser/password_store/password_store_interface.h"
 #include "components/password_manager/core/browser/sharing/incoming_password_sharing_invitation_data_type_controller.h"
 #include "components/password_manager/core/browser/sharing/outgoing_password_sharing_invitation_data_type_controller.h"
@@ -318,6 +319,11 @@ void CommonControllerBuilder::SetSkillsService(
   skills_service_.Set(skills_service);
 }
 
+void CommonControllerBuilder::SetNotebooksService(
+    notebooks::NotebooksService* notebooks_service) {
+  notebooks_service_.Set(notebooks_service);
+}
+
 #if !BUILDFLAG(IS_ANDROID)
 void CommonControllerBuilder::SetPasskeyModel(
     webauthn::PasskeyModel* passkey_model) {
@@ -585,6 +591,10 @@ CommonControllerBuilder::Build(syncer::DataTypeSet disabled_types,
     add_controller(CreateGeminiThreadDataTypeController());
   }
 
+  if (!disabled_types.Has(syncer::NOTEBOOK)) {
+    add_controller(CreateNotebookDataTypeController());
+  }
+
   if (!disabled_types.Has(syncer::CONTEXTUAL_TASK)) {
     add_controller(CreateContextualTaskDataTypeController());
   }
@@ -675,7 +685,7 @@ CommonControllerBuilder::CreateContactInfoDataTypeController(
           base::BindRepeating(
               &ContactInfoDelegateFromDataService,
               base::RetainedRef(profile_autofill_web_data_service_.value()))),
-      sync_service, identity_manager_.value(),
+      sync_service,
       std::make_unique<autofill::ContactInfoLocalDataBatchUploader>(
           address_data_manager_getter_));
 }
@@ -859,7 +869,7 @@ CommonControllerBuilder::CreatePlusAddressDataTypeController() {
 
 std::unique_ptr<syncer::DataTypeController>
 CommonControllerBuilder::CreatePlusAddressSettingDataTypeController() {
-    // `plus_address_setting_service_` is null on iOS WebView.
+  // `plus_address_setting_service_` is null on iOS WebView.
   if (!plus_address_setting_service_.value() ||
       !google_groups_manager_.value()) {
     return nullptr;
@@ -1243,6 +1253,24 @@ CommonControllerBuilder::CreateContextualTaskDataTypeController() {
   //   on it to create the DataTypeController.
   // In CLs #5, #6, ..., implement the bridge and keep adding unit tests.
   return nullptr;
+}
+
+std::unique_ptr<syncer::DataTypeController>
+CommonControllerBuilder::CreateNotebookDataTypeController() {
+  if (!base::FeatureList::IsEnabled(syncer::kSyncNotebook) ||
+      !notebooks_service_.value()) {
+    return nullptr;
+  }
+
+  syncer::DataTypeControllerDelegate* delegate =
+      notebooks_service_.value()->GetSyncControllerDelegate().get();
+  CHECK(delegate);
+  return std::make_unique<syncer::DataTypeController>(
+      syncer::NOTEBOOK,
+      /*delegate_for_full_sync_mode=*/
+      std::make_unique<syncer::ForwardingDataTypeControllerDelegate>(delegate),
+      /*delegate_for_transport_mode=*/
+      std::make_unique<syncer::ForwardingDataTypeControllerDelegate>(delegate));
 }
 
 #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)

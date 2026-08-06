@@ -6,10 +6,12 @@ source_set("public") {
   sources = [
     "features.cc",
     "features.h",
+    "notebooks_network_service.cc",
+    "notebooks_network_service.h",
     "notebooks_service.h",
   ]
 
-  deps = [
+  public_deps = [
     "//base",
     "//components/keyed_service/core",
   ]

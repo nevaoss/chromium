@@ -32,8 +32,8 @@
 
 namespace blink {
 struct DOMPaintTimingInfo;
+class LargestContentfulPaintManager;
 class Image;
-class LargestContentfulPaintCalculator;
 class LayoutObject;
 class PaintTimingDetector;
 class PropertyTreeStateOrAlias;
@@ -68,9 +68,6 @@ class CORE_EXPORT ImageRecordsManager {
     auto it = pending_images_.find(record_id_hash);
     if (it != pending_images_.end()) {
       ImageRecord* record = it->value;
-      if (largest_ignored_image_ == record) {
-        largest_ignored_image_ = nullptr;
-      }
       pending_images_.erase(it);
       // Leave out |images_queued_for_paint_time_| intentionally because the
       // null record can be removed in
@@ -109,17 +106,8 @@ class CORE_EXPORT ImageRecordsManager {
                      uint32_t current_frame_index,
                      const StyleImage*);
 
-  // Receives a candidate image painted under opacity 0 but without nested
-  // opacity. May update |largest_ignored_image_| if the new candidate has a
-  // larger size.
-  void MaybeUpdateLargestIgnoredImage(ImageRecord*);
-  // If `largest_ignored_image_` is non-null and the corresponding node is still
-  // attached to the DOM, this marks first image paint (always) and reports the
-  // image as an LCP candidate (if `is_recording_lcp` is true). Returns the
-  // relevant `ImageRecord` if the image is considered an LCP candidate, or
-  // nullptr otherwise.
-  ImageRecord* ReportLargestIgnoredImage(uint32_t current_frame_index,
-                                         bool is_recording_lcp);
+  // Marks first image paint and reports the image as an LCP candidate.
+  void ReportLargestIgnoredImage(ImageRecord*, uint32_t current_frame_index);
 
   void AssignPaintTimeToRegisteredQueuedRecords(
       uint32_t last_queued_frame_index,
@@ -138,13 +126,6 @@ class CORE_EXPORT ImageRecordsManager {
     CHECK(record);
     record->SetFrameIndex(current_frame_index);
     images_queued_for_paint_time_.push_back(record);
-  }
-
-  ImageRecord* TakeLargestIgnoredImage() {
-    return std::exchange(largest_ignored_image_, nullptr);
-  }
-  const ImageRecord* LargestIgnoredImage() const {
-    return largest_ignored_image_;
   }
 
   void OnImageLoadedInternal(ImageRecord*, uint32_t current_frame_index);
@@ -168,14 +149,6 @@ class CORE_EXPORT ImageRecordsManager {
   HashMap<MediaRecordIdHash, base::TimeTicks> image_finished_times_;
 
   Member<Document> document_;
-
-  // Image paints are ignored when they (or an ancestor) have opacity 0. This
-  // can be a problem later on if the opacity changes to nonzero but this change
-  // is composited. We solve this for the special case of documentElement by
-  // storing a record for the largest ignored image without nested opacity. We
-  // consider this an LCP candidate when the documentElement's opacity changes
-  // from zero to nonzero.
-  Member<ImageRecord> largest_ignored_image_;
 };
 
 // ImagePaintTimingDetector contains Largest Image Paint.
@@ -239,12 +212,6 @@ class CORE_EXPORT ImagePaintTimingDetector final
   // is attributable to an interaction.
   void NotifyInteractionTriggeredVideoSrcChange(const LayoutObject&);
 
-  bool IsRecordingLargestImagePaint() const {
-    return recording_largest_image_paint_;
-  }
-  void StopRecordingLargestImagePaint() {
-    recording_largest_image_paint_ = false;
-  }
   void Trace(Visitor*) const;
 
  private:
@@ -257,22 +224,16 @@ class CORE_EXPORT ImagePaintTimingDetector final
   // needed.
   uint64_t ViewportSize();
 
-  LargestContentfulPaintCalculator* GetLargestContentfulPaintCalculator() const;
+  LargestContentfulPaintManager* GetLargestContentfulPaintManager() const;
 
   // Used to decide which frame a record belongs to, monotonically increasing.
   uint32_t frame_index_ = 1;
   bool added_entry_in_latest_frame_ = false;
 
-  bool contains_full_viewport_image_ = false;
-
   // We cache the viewport size computation to avoid performing it on every
   // image. This value is reset when paint is finished and is computed if unset
   // when needed. 0 means that the size has not been computed.
   std::optional<uint64_t> viewport_size_;
-
-  // Are we recording an LCP candidate? True after a hard navigation until the
-  // next user interaction.
-  bool recording_largest_image_paint_ = true;
 
   ImageRecordsManager records_manager_;
   Member<PaintTimingDetector> paint_timing_detector_;

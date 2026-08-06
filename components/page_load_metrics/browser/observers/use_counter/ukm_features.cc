@@ -150,7 +150,6 @@ UseCounterMetricsRecorder::GetAllowedUkmFeatures() {
           WebFeature::kV8Document_HasPrivateToken_Method,
           WebFeature::kV8HTMLVideoElement_RequestVideoFrameCallback_Method,
           WebFeature::kV8HTMLVideoElement_CancelVideoFrameCallback_Method,
-          WebFeature::kSchemefulSameSiteContextDowngrade,
           WebFeature::kIdleDetectionStart,
           WebFeature::kPerformanceObserverEntryTypesAndBuffered,
           WebFeature::kStorageAccessAPI_HasStorageAccess_Method,
@@ -495,6 +494,7 @@ UseCounterMetricsRecorder::GetAllowedUkmFeatures() {
           WebFeature::kWebSpeechTtsSynthesize,
           WebFeature::kWebSpeechTtsSuccess,
           WebFeature::kWebSpeechTtsError,
+          WebFeature::kViewportFitCover,
           // NOTE: before adding new use counters here, verify in UMA that
           // their emissions are very rare, e.g. <1% of page loads.
       }));

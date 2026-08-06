@@ -6,20 +6,24 @@
 
 #include <memory>
 #include <optional>
+#include <utility>
 #include <vector>
 
 #include "base/base64.h"
+#include "base/functional/callback.h"
 #include "base/functional/callback_helpers.h"
 #include "base/run_loop.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/mock_callback.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/test_future.h"
+#include "base/time/time.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
 #include "chrome/browser/actor/actor_task.h"
 #include "chrome/browser/enterprise/browser_management/management_service_factory.h"
 #include "chrome/browser/glic/experimental_opt_in/glic_experimental_opt_in_controller.h"
 #include "chrome/browser/glic/glic_pref_names.h"
+#include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/test_support/glic_test_util.h"
@@ -242,6 +246,146 @@ IN_PROC_BROWSER_TEST_F(GlicExperimentalTriggeringMessageHandlerBrowserTest,
             101);
 }
 
+class GlicExperimentalTriggeringMetadataEnabledBrowserTest
+    : public GlicExperimentalTriggeringMessageHandlerBrowserTest {
+ public:
+  GlicExperimentalTriggeringMetadataEnabledBrowserTest() {
+    metadata_feature_list_.InitAndEnableFeature(
+        features::kGlicStructuredYieldMetadata);
+  }
+
+ private:
+  base::test::ScopedFeatureList metadata_feature_list_;
+};
+
+class GlicExperimentalTriggeringMetadataDisabledBrowserTest
+    : public GlicExperimentalTriggeringMessageHandlerBrowserTest {
+ public:
+  GlicExperimentalTriggeringMetadataDisabledBrowserTest() {
+    metadata_feature_list_.InitAndDisableFeature(
+        features::kGlicStructuredYieldMetadata);
+  }
+
+ private:
+  base::test::ScopedFeatureList metadata_feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(GlicExperimentalTriggeringMetadataEnabledBrowserTest,
+                       testRelaysUpdatesWithMetadataEnabled) {
+  OptIn();
+
+  auto message = CreateTriggeringMessage(101);
+  message.mutable_glic_experimental_triggering()
+      ->mutable_request()
+      ->mutable_trigger_actuation_request();
+
+  base::test::TestFuture<components_sharing_message::ServerChannelConfiguration,
+                         components_sharing_message::SharingMessage>
+      future;
+  SetupMessageSenderMock(&future);
+
+  SendMessageAndWait(std::move(message));
+
+  ExecuteJsTest();
+
+  auto [server_channel, received_message] = future.Take();
+  EXPECT_TRUE(received_message.has_glic_experimental_triggering());
+  EXPECT_TRUE(received_message.glic_experimental_triggering().has_response());
+  EXPECT_TRUE(received_message.glic_experimental_triggering()
+                  .response()
+                  .has_task_update());
+  const auto& task_update =
+      received_message.glic_experimental_triggering().response().task_update();
+  EXPECT_EQ(task_update.state(),
+            components_sharing_message::GlicExperimentalTriggering::
+                ExperimentalTriggeringResponse::TaskUpdate::RUNNING);
+  EXPECT_EQ(task_update.data(), "test_update_with_metadata");
+
+  // Verify that metadata is populated.
+  EXPECT_EQ(task_update.metadata_size(), 2);
+  EXPECT_EQ(task_update.metadata().at("key1"), "value1");
+  EXPECT_EQ(task_update.metadata().at("key2"), "value2");
+}
+
+IN_PROC_BROWSER_TEST_F(GlicExperimentalTriggeringMetadataDisabledBrowserTest,
+                       testRelaysUpdatesWithMetadataDisabled) {
+  OptIn();
+
+  auto message = CreateTriggeringMessage(101);
+  message.mutable_glic_experimental_triggering()
+      ->mutable_request()
+      ->mutable_trigger_actuation_request();
+
+  base::test::TestFuture<components_sharing_message::ServerChannelConfiguration,
+                         components_sharing_message::SharingMessage>
+      future;
+  SetupMessageSenderMock(&future);
+
+  SendMessageAndWait(std::move(message));
+
+  ExecuteJsTest();
+
+  auto [server_channel, received_message] = future.Take();
+  EXPECT_TRUE(received_message.has_glic_experimental_triggering());
+  EXPECT_TRUE(received_message.glic_experimental_triggering().has_response());
+  EXPECT_TRUE(received_message.glic_experimental_triggering()
+                  .response()
+                  .has_task_update());
+  const auto& task_update =
+      received_message.glic_experimental_triggering().response().task_update();
+  EXPECT_EQ(task_update.state(),
+            components_sharing_message::GlicExperimentalTriggering::
+                ExperimentalTriggeringResponse::TaskUpdate::RUNNING);
+  EXPECT_EQ(task_update.data(), "test_update_with_metadata");
+
+  // Verify that metadata is empty.
+  EXPECT_EQ(task_update.metadata_size(), 0);
+}
+
+#if !BUILDFLAG(IS_ANDROID)
+IN_PROC_BROWSER_TEST_F(GlicExperimentalTriggeringMessageHandlerBrowserTest,
+                       testLatestServerChannelConfigurationWinsForUpdates) {
+  OptIn();
+
+  auto message1 = CreateTriggeringMessage(42, "config_1");
+  auto* triggering1 = message1.mutable_glic_experimental_triggering();
+  triggering1->set_context_id("test-context-id");
+  triggering1->mutable_request()->mutable_device_opt_in_request();
+
+  base::test::TestFuture<components_sharing_message::ServerChannelConfiguration,
+                         components_sharing_message::SharingMessage>
+      update_future;
+
+  EXPECT_CALL(mock_sharing_message_sender_,
+              SendMessageToServerTarget(_, _, _, _))
+      .WillRepeatedly(
+          [&](const components_sharing_message::ServerChannelConfiguration&
+                  server_channel,
+              base::TimeDelta,
+              components_sharing_message::SharingMessage message,
+              SharingMessageSender::ResponseCallback) {
+            update_future.SetValue(server_channel, std::move(message));
+            return base::OnceClosure();
+          });
+
+  handler_->OnMessage(std::move(message1), base::DoNothing());
+
+  auto message2 = CreateTriggeringMessage(43, "config_2");
+  auto* triggering2 = message2.mutable_glic_experimental_triggering();
+  triggering2->set_context_id("test-context-id");
+  triggering2->mutable_request()->mutable_device_opt_in_request();
+
+  handler_->OnMessage(std::move(message2), base::DoNothing());
+
+  // Close the active tab to trigger dialog teardown/rejection.
+  browser()->tab_strip_model()->CloseWebContentsAt(
+      0, TabCloseTypes::CLOSE_USER_GESTURE);
+
+  auto [server_channel, received_message] = update_future.Take();
+  EXPECT_EQ(server_channel.configuration(), "config_2");
+}
+#endif
+
 IN_PROC_BROWSER_TEST_F(GlicExperimentalTriggeringMessageHandlerBrowserTest,
                        testRelaysUpdatesWithSequenceNumbers) {
   OptIn();
@@ -295,6 +439,43 @@ IN_PROC_BROWSER_TEST_F(GlicExperimentalTriggeringMessageHandlerBrowserTest,
                 .task_metadata()
                 .last_seen_sequence_number(),
             42);
+}
+
+IN_PROC_BROWSER_TEST_F(GlicExperimentalTriggeringMessageHandlerBrowserTest,
+                       testRelaysResumedUpdate) {
+  OptIn();
+  auto message = CreateTriggeringMessage();
+  message.mutable_glic_experimental_triggering()
+      ->mutable_request()
+      ->mutable_trigger_actuation_request();
+
+  base::test::TestFuture<components_sharing_message::SharingMessage> future;
+  EXPECT_CALL(mock_sharing_message_sender_,
+              SendMessageToServerTarget(_, _, _, _))
+      .WillOnce(
+          [&](const components_sharing_message::ServerChannelConfiguration&,
+              base::TimeDelta,
+              components_sharing_message::SharingMessage message,
+              SharingMessageSender::ResponseCallback) {
+            future.SetValue(std::move(message));
+            return base::OnceClosure();
+          });
+
+  SendMessageAndWait(std::move(message));
+
+  ExecuteJsTest();
+
+  auto received_message = future.Take();
+  ASSERT_TRUE(received_message.glic_experimental_triggering().has_response());
+  const auto& response =
+      received_message.glic_experimental_triggering().response();
+  ASSERT_TRUE(response.has_task_update());
+  const auto& task_update = response.task_update();
+  EXPECT_EQ(task_update.state(),
+            components_sharing_message::GlicExperimentalTriggering::
+                ExperimentalTriggeringResponse::TaskUpdate::RESUMED);
+  EXPECT_FALSE(task_update.has_data_type());
+  EXPECT_EQ(task_update.data(), "");
 }
 
 IN_PROC_BROWSER_TEST_F(GlicExperimentalTriggeringMessageHandlerBrowserTest,
@@ -382,6 +563,77 @@ IN_PROC_BROWSER_TEST_F(GlicExperimentalTriggeringMessageHandlerBrowserTest,
                 .task_metadata()
                 .last_seen_sequence_number(),
             kDefaultSequenceNumber);
+}
+
+IN_PROC_BROWSER_TEST_F(GlicExperimentalTriggeringMessageHandlerBrowserTest,
+                       testDuplicateTriggerMessageReturnsErrorWithoutUaf) {
+  OptIn();
+  const std::string context_id = "test_duplicate_trigger_context";
+  const std::string conversation_id = "test_conv_id";
+
+  auto message1 = CreateTriggeringMessage(101);
+  message1.mutable_glic_experimental_triggering()->set_context_id(context_id);
+  message1.mutable_glic_experimental_triggering()
+      ->mutable_task_metadata()
+      ->set_conversation_id(conversation_id);
+  message1.mutable_glic_experimental_triggering()
+      ->mutable_request()
+      ->mutable_trigger_actuation_request();
+
+  base::test::TestFuture<components_sharing_message::SharingMessage> future;
+  EXPECT_CALL(mock_sharing_message_sender_,
+              SendMessageToServerTarget(_, _, _, _))
+      .WillOnce(
+          [&](const components_sharing_message::ServerChannelConfiguration&,
+              base::TimeDelta,
+              components_sharing_message::SharingMessage message,
+              SharingMessageSender::ResponseCallback) {
+            future.SetValue(std::move(message));
+            return base::OnceClosure();
+          });
+
+  auto response1 = SendMessageAndWait(std::move(message1));
+  ASSERT_TRUE(response1);
+  EXPECT_TRUE(response1->has_glic_experimental_triggering());
+  EXPECT_EQ(response1->glic_experimental_triggering()
+                .response()
+                .task_update()
+                .state(),
+            components_sharing_message::GlicExperimentalTriggering::
+                ExperimentalTriggeringResponse::TaskUpdate::STARTING);
+
+  // Send a second trigger message with the same context_id and conversation_id
+  // while the first invocation is still in progress. This targets the existing
+  // active invocation and drives the synchronous kInvokeInProgress error path
+  // in InvokeWithAutoSubmit.
+  auto message2 = CreateTriggeringMessage(102);
+  message2.mutable_glic_experimental_triggering()->set_context_id(context_id);
+  message2.mutable_glic_experimental_triggering()
+      ->mutable_task_metadata()
+      ->set_conversation_id(conversation_id);
+  message2.mutable_glic_experimental_triggering()
+      ->mutable_request()
+      ->mutable_trigger_actuation_request();
+
+  auto response2 = SendMessageAndWait(std::move(message2));
+  ASSERT_TRUE(response2);
+  EXPECT_TRUE(response2->has_glic_experimental_triggering());
+  EXPECT_EQ(response2->glic_experimental_triggering()
+                .response()
+                .task_update()
+                .state(),
+            components_sharing_message::GlicExperimentalTriggering::
+                ExperimentalTriggeringResponse::TaskUpdate::STARTING);
+
+  // Verify that an outgoing message with state FAILED was emitted synchronously
+  // by options.on_error due to kInvokeInProgress without UAF.
+  auto update_message = future.Take();
+  EXPECT_EQ(update_message.glic_experimental_triggering()
+                .response()
+                .task_update()
+                .state(),
+            components_sharing_message::GlicExperimentalTriggering::
+                ExperimentalTriggeringResponse::TaskUpdate::FAILED);
 }
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -670,6 +922,141 @@ IN_PROC_BROWSER_TEST_F(GlicExperimentalTriggeringMessageHandlerBrowserTest,
                 .task_metadata()
                 .last_seen_sequence_number(),
             kDefaultSequenceNumber + 1);
+}
+
+IN_PROC_BROWSER_TEST_F(GlicExperimentalTriggeringMessageHandlerBrowserTest,
+                       testHandlesContinueActuationRequestSuccessfully) {
+  OptIn();
+  // --- Step 1: Start Actuation ---
+  auto start_message = CreateTriggeringMessage(kDefaultSequenceNumber);
+  auto* start_triggering = start_message.mutable_glic_experimental_triggering();
+  start_triggering->set_context_id("test-context-id");
+  start_triggering->mutable_request()->mutable_trigger_actuation_request();
+
+  int initial_tab_count = GetTabListInterface()->GetTabCount();
+
+  base::test::TestFuture<components_sharing_message::SharingMessage> future;
+  EXPECT_CALL(mock_sharing_message_sender_,
+              SendMessageToServerTarget(_, _, _, _))
+      .WillRepeatedly(
+          [&](const components_sharing_message::ServerChannelConfiguration&,
+              base::TimeDelta,
+              components_sharing_message::SharingMessage message,
+              SharingMessageSender::ResponseCallback) {
+            future.SetValue(std::move(message));
+            return base::OnceClosure();
+          });
+
+  auto start_response = SendMessageAndWait(std::move(start_message));
+  ASSERT_TRUE(start_response);
+  EXPECT_TRUE(start_response->has_glic_experimental_triggering());
+  EXPECT_EQ(start_response->glic_experimental_triggering()
+                .response()
+                .task_update()
+                .state(),
+            components_sharing_message::GlicExperimentalTriggering::
+                ExperimentalTriggeringResponse::TaskUpdate::STARTING);
+
+  // Verify that the instance is bound to the newly created tab.
+  auto* new_tab = GetTabListInterface()->GetTab(initial_tab_count);
+  ASSERT_TRUE(new_tab);
+  ASSERT_OK(WaitForGlicInstanceBoundToTab(new_tab));
+
+  ExecuteJsTest();
+
+  // --- Step 2: Continue Actuation ---
+  auto continue_message = CreateTriggeringMessage(kDefaultSequenceNumber + 1);
+  auto* continue_triggering =
+      continue_message.mutable_glic_experimental_triggering();
+  continue_triggering->set_context_id("test-context-id");
+  continue_triggering->mutable_request()
+      ->mutable_continue_actuation_request()
+      ->set_continuation_prompt("continuation prompt");
+
+  auto response = SendMessageAndWait(std::move(continue_message));
+  ASSERT_TRUE(response);
+  EXPECT_TRUE(response->has_glic_experimental_triggering());
+  EXPECT_EQ(response->glic_experimental_triggering().context_id(),
+            "test-context-id");
+  EXPECT_EQ(
+      response->glic_experimental_triggering().response().task_update().state(),
+      components_sharing_message::GlicExperimentalTriggering::
+          ExperimentalTriggeringResponse::TaskUpdate::STARTING);
+  EXPECT_EQ(response->glic_experimental_triggering()
+                .task_metadata()
+                .sender_sequence_number(),
+            1);
+  EXPECT_EQ(response->glic_experimental_triggering()
+                .task_metadata()
+                .last_seen_sequence_number(),
+            kDefaultSequenceNumber + 1);
+}
+
+IN_PROC_BROWSER_TEST_F(GlicExperimentalTriggeringMessageHandlerBrowserTest,
+                       testContinueActuationTargetsCorrectTab) {
+  OptIn();
+  // --- Step 1: Start Actuation ---
+  auto start_message = CreateTriggeringMessage(kDefaultSequenceNumber);
+  auto* start_triggering = start_message.mutable_glic_experimental_triggering();
+  start_triggering->set_context_id("test-context-id");
+  start_triggering->mutable_request()->mutable_trigger_actuation_request();
+
+  int initial_tab_count = GetTabListInterface()->GetTabCount();
+
+  base::test::TestFuture<components_sharing_message::SharingMessage> future;
+  EXPECT_CALL(mock_sharing_message_sender_,
+              SendMessageToServerTarget(_, _, _, _))
+      .WillRepeatedly(
+          [&](const components_sharing_message::ServerChannelConfiguration&,
+              base::TimeDelta,
+              components_sharing_message::SharingMessage message,
+              SharingMessageSender::ResponseCallback) {
+            future.SetValue(std::move(message));
+            return base::OnceClosure();
+          });
+
+  auto start_response = SendMessageAndWait(std::move(start_message));
+  ASSERT_TRUE(start_response);
+
+  auto* tab2 = GetTabListInterface()->GetTab(initial_tab_count);
+  ASSERT_TRUE(tab2);
+  ASSERT_OK(WaitForGlicInstanceBoundToTab(tab2));
+
+  ExecuteJsTest();
+
+  auto response_msg = future.Take();
+  std::string conversation_id = response_msg.glic_experimental_triggering()
+                                    .task_metadata()
+                                    .conversation_id();
+  ASSERT_FALSE(conversation_id.empty());
+
+  // Switch back to Tab 1 (making it active)
+  GetTabListInterface()->ActivateTab(
+      GetTabListInterface()->GetTab(0)->GetHandle());
+
+  // --- Step 2: Continue Actuation ---
+  auto continue_message = CreateTriggeringMessage(kDefaultSequenceNumber + 1);
+  auto* continue_triggering =
+      continue_message.mutable_glic_experimental_triggering();
+  continue_triggering->set_context_id("test-context-id");
+  continue_triggering->mutable_task_metadata()->set_conversation_id(
+      conversation_id);
+  auto* continue_req = continue_triggering->mutable_request()
+                           ->mutable_continue_actuation_request();
+  continue_req->set_continuation_prompt("continuation prompt");
+
+  auto response = SendMessageAndWait(std::move(continue_message));
+  ASSERT_TRUE(response);
+
+  // Verify that no new tab was created (we still only have Tab 1 and Tab 2)
+  EXPECT_EQ(GetTabListInterface()->GetTabCount(), initial_tab_count + 1);
+
+  EXPECT_EQ(response->glic_experimental_triggering().context_id(),
+            "test-context-id");
+  EXPECT_EQ(response->glic_experimental_triggering()
+                .task_metadata()
+                .sender_sequence_number(),
+            2);
 }
 
 IN_PROC_BROWSER_TEST_F(GlicExperimentalTriggeringMessageHandlerBrowserTest,

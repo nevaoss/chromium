@@ -124,7 +124,7 @@ GlicInstanceCoordinatorImpl::GlicInstanceCoordinatorImpl(
       profile_, base::BindRepeating(&GlicInstanceCoordinatorImpl::OnTabEvent,
                                     weak_ptr_factory_.GetWeakPtr()));
   hotkey_manager_ =
-      std::make_unique<InstanceIndependentHotkeyManager>(this, profile_);
+      std::make_unique<InstanceIndependentHotkeyManager>(this, profile_, enabling);
   onboarding_tracker_ =
       std::make_unique<GlicOnboardingTracker>(profile_, enabling);
   metrics_.StartPeriodicMemoryMetricsRecording();
@@ -659,14 +659,24 @@ base::WeakPtr<GlicInstance> GlicInstanceCoordinatorImpl::InvokeInternal(
     }
   }
 
-  if (invoke_handlers_.contains(instance)) {
-    RecordInvokeError(options.GetInvocationSource(),
-                      GlicInvokeError::kInvokeInProgress);
-    if (options.on_error) {
-      std::move(options.on_error).Run(GlicInvokeError::kInvokeInProgress);
+  if (auto it = invoke_handlers_.find(instance); it != invoke_handlers_.end()) {
+    if (options.supersede_if_in_progress) {
+      // If requested by `options.supersede_if_in_progress` (e.g. for a
+      // continuation prompt from the server during actuation), cancel the
+      // previous handler so this invocation can proceed without being rejected
+      // with kInvokeInProgress.
+      std::unique_ptr<GlicInvokeHandler> old_handler = std::move(it->second);
+      invoke_handlers_.erase(it);
+      old_handler->Cancel(GlicInvokeError::kSuperseded);
+    } else {
+      RecordInvokeError(options.GetInvocationSource(),
+                        GlicInvokeError::kInvokeInProgress);
+      if (options.on_error) {
+        std::move(options.on_error).Run(GlicInvokeError::kInvokeInProgress);
+      }
+      // TODO(crbug.com/483387751): Show default toast here once implemented.
+      return nullptr;
     }
-    // TODO(crbug.com/483387751): Show default toast here once implemented.
-    return nullptr;
   }
 
   invoke_handlers_[instance] = std::make_unique<GlicInvokeHandler>(
@@ -1027,14 +1037,8 @@ void GlicInstanceCoordinatorImpl::ToggleSidePanel(
     return;
   }
 
-  GlicInstanceImpl* instance = nullptr;
+  GlicInstanceImpl* instance = GetOrCreateGlicInstanceImplForTab(tab);
 
-  if (source == glic::mojom::InvocationSource::kSharedImage) {
-    // kSharedImage currently requires a new instance.
-    instance = CreateGlicInstance();
-  } else {
-    instance = GetOrCreateGlicInstanceImplForTab(tab);
-  }
   // If the tab is already bound, then it already has a pin trigger and this pin
   // trigger will not be used. If it's not already bound, then we know it's a
   // newly created instance, so we provide the instance creation trigger.

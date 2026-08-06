@@ -104,10 +104,16 @@ void OpenXrViewProperties::CalculateViewportScaledProperties() {
   // We absolutely cannot go over the current scale_factor due to hardware
   // limitations, but if there's a value set from the command line, don't use
   // our default logic for determining the scale factor to apply.
-  auto* command_line = base::CommandLine::ForCurrentProcess();
-  if (command_line->HasSwitch(switches::kWebXrMaxFramebufferScale)) {
+  // In android_browsertests, OpenXrViewProperties is included in the standalone
+  // mock OpenXR shared library where the command line singleton is not
+  // initialized. Verify that the command line is initialized before attempting
+  // to query switches.
+  if (base::CommandLine::InitializedForCurrentProcess() &&
+      base::CommandLine::ForCurrentProcess()->HasSwitch(
+          switches::kWebXrMaxFramebufferScale)) {
     std::string switch_value =
-        command_line->GetSwitchValueASCII(switches::kWebXrMaxFramebufferScale);
+        base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
+            switches::kWebXrMaxFramebufferScale);
     double command_line_scale_limit;
     if (base::StringToDouble(switch_value, &command_line_scale_limit) &&
         command_line_scale_limit > 0.0) {
@@ -119,7 +125,10 @@ void OpenXrViewProperties::CalculateViewportScaledProperties() {
     }
   } else {
     // Limit max framebuffer scale on low-memory devices.
-    if (base::SysInfo::AmountOfTotalPhysicalMemory() <= kLowMemoryThreshold) {
+    // Note that `AmountOfTotalPhysicalMemory` also tries to query the command
+    // line and can crash on some configurations.
+    if (base::CommandLine::InitializedForCurrentProcess() &&
+        base::SysInfo::AmountOfTotalPhysicalMemory() <= kLowMemoryThreshold) {
       scale_factor = std::min(scale_factor, kLowMemoryDefaultMaxScaleFactor);
     }
   }

@@ -9,7 +9,6 @@
 #import "components/actor/public/mojom/actor_types.mojom.h"
 #import "components/optimization_guide/proto/features/actions_data.pb.h"
 #import "ios/chrome/browser/intelligence/actor/tools/public/actor_tool_types.h"
-#import "ios/chrome/browser/intelligence/actor/tools/utils/profile_context_resolver.h"
 #import "ios/chrome/browser/shared/model/browser/browser.h"
 #import "ios/chrome/browser/url_loading/model/url_loading_browser_agent.h"
 #import "ios/chrome/browser/url_loading/model/url_loading_params.h"
@@ -19,30 +18,29 @@
 namespace actor {
 
 // static
-base::expected<std::unique_ptr<NavigateTool>, ToolExecutionResult>
-NavigateTool::Create(const optimization_guide::proto::NavigateAction& action,
-                     const ProfileContextResolver& profile_context_resolver) {
-  if (!action.has_tab_id() || !action.has_url()) {
-    return base::unexpected(ToolExecutionResult(
-        InternalToolErrorCode::kCreationMissingRequiredFields));
+std::unique_ptr<NavigateTool> NavigateTool::Create(
+    base::WeakPtr<web::WebState> web_state,
+    const optimization_guide::proto::NavigateAction& action,
+    base::WeakPtr<UrlLoadingBrowserAgent> url_loader) {
+  std::optional<std::string> url = std::nullopt;
+  if (action.has_url()) {
+    url = action.url();
   }
-
-  base::expected<ProfileContextResolver::TabResolutionResult,
-                 ToolExecutionResult>
-      resolution_result = profile_context_resolver.ResolveTab(action.tab_id());
-  if (!resolution_result.has_value()) {
-    return base::unexpected(resolution_result.error());
-  }
-
-  ProfileContextResolver::TabResolutionResult result =
-      resolution_result.value();
-
   return std::unique_ptr<NavigateTool>(
-      new NavigateTool(action.url(), result.web_state, result.url_loader));
+      new NavigateTool(web_state, url, url_loader));
 }
 
-NavigateTool::NavigateTool(const std::string& url,
-                           base::WeakPtr<web::WebState> web_state,
+void NavigateTool::Validate(ToolExecutionCallback callback) {
+  if (!url_.has_value()) {
+    std::move(callback).Run(ToolExecutionResult(
+        InternalToolErrorCode::kCreationMissingRequiredFields));
+    return;
+  }
+  std::move(callback).Run(ToolExecutionResult::Ok());
+}
+
+NavigateTool::NavigateTool(base::WeakPtr<web::WebState> web_state,
+                           std::optional<std::string> url,
                            base::WeakPtr<UrlLoadingBrowserAgent> url_loader)
     : url_(url), web_state_(web_state), url_loader_(url_loader) {}
 
@@ -57,7 +55,7 @@ void NavigateTool::Execute(ToolExecutionCallback callback) {
     return;
   }
 
-  GURL url(url_);
+  GURL url(url_.value_or(""));
   if (!url.is_valid()) {
     std::move(callback).Run(
         ToolExecutionResult(InternalToolErrorCode::kNavigationInvalidURL));

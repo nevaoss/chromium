@@ -47,6 +47,7 @@
 <translation id="22623456902492423">{TABS_COUNT,plural, =1{បំបែក​ក្រុម​ផ្ទាំង}other{បំបែក​ក្រុម​ផ្ទាំង}}</translation>
 <translation id="2271452184061378400">ក្រុមផ្ទាំងរបស់អ្នកត្រូវបានរក្សាទុកនៅទីនេះ</translation>
 <translation id="2277224997687551299">កែ​ឈ្មោះក្រុម</translation>
+<translation id="2289567621059034186">ផ្ទាំងថ្មី​ខាងក្រោម</translation>
 <translation id="2330212241471632770">{TABS_COUNT,plural, =1{ចំណាំ​ផ្ទាំង}other{ចំណាំ​ផ្ទាំង}}</translation>
 <translation id="2359808026110333948">បន្ត</translation>
 <translation id="2371084566192454134">ផ្ទាំង និង​ក្រុមផ្ទាំង</translation>
@@ -81,6 +82,7 @@
 <translation id="3152596030350326139">បង្ហាញផ្ទាំងផ្ដេក</translation>
 <translation id="31806439105337256">បង្ហាញផ្ទាំងបញ្ឈរ</translation>
 <translation id="3194464645767632461">ការវាយតម្លៃដោយដាក់ផ្កាយ</translation>
+<translation id="3228962656492373217">បិទផ្ទាំង​ខាងក្រោម</translation>
 <translation id="3269930881809501915">{TABS_COUNT,plural, =1{បញ្ចូល <ph name="TABS_COUNT_ONE" /> ផ្ទាំងទៅក្រុម}other{បញ្ចូល <ph name="TABS_COUNT_MANY" /> ផ្ទាំងទៅក្រុម}}</translation>
 <translation id="3328308545011660196">ការណែនាំ៖ ផ្ទាំង <ph name="NUMBER_OF_TABS" /> ហាក់ដូចជាពាក់ព័ន្ធគ្នា។ បញ្ចូលផ្ទាំងទាំងនេះទៅក្នុងក្រុមឬ?</translation>
 <translation id="3330595302841061275">{DAY_COUNT,plural, =1{បន្ទាប់ពី​អសកម្ម​រយៈពេល 1 ថ្ងៃ}other{បន្ទាប់ពី​អសកម្ម​រយៈពេល <ph name="DAY_COUNT_MANY" /> ថ្ងៃ}}</translation>
@@ -127,6 +129,7 @@
 <translation id="5042769431350623987">{WINDOW_COUNT,plural, =1{ផ្លាស់ទី​ផ្ទាំងទៅ​វិនដូថ្មី}other{ផ្លាស់ទី​ផ្ទាំងទៅ​វិនដូ​ផ្សេងទៀត}}</translation>
 <translation id="5073204694187207510">លាក់ក្រឡា​ពេញ​អេក្រង់</translation>
 <translation id="5076161749301278626">មើលការវាយតម្លៃហាងឬ?</translation>
+<translation id="5093447877601682598">ផ្ញើមតិកែលម្អអំពីរបារផ្ទាំង</translation>
 <translation id="5161254044473106830">ត្រូវមានចំណងជើង</translation>
 <translation id="5204584298075822291">បង្រួមផ្ទាំង</translation>
 <translation id="524477996738997490">{AUTO_DELETE_DELAY,plural, =1{Chrome បិទ​ក្រុមផ្ទាំង និងផ្ទាំង​អសកម្ម​ដោយ​ស្វ័យប្រវត្តិ​ក្រោយ​រយៈពេល <ph name="AUTO_DELETE_DELAY_ONE" /> ខែ។ អ្នកអាច​ប្ដូរលក្ខណៈនេះ​នៅក្នុង​ការកំណត់។}other{Chrome បិទ​ក្រុមផ្ទាំង និងផ្ទាំង​អសកម្ម​ដោយ​ស្វ័យប្រវត្តិ​ក្រោយ​រយៈពេល <ph name="AUTO_DELETE_DELAY_MANY" /> ខែ។ អ្នកអាច​ប្ដូរលក្ខណៈនេះ​នៅក្នុង​ការកំណត់។}}</translation>

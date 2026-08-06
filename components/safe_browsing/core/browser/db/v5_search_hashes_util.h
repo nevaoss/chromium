@@ -10,7 +10,6 @@
 #include <string>
 #include <vector>
 
-#include "base/functional/function_ref.h"
 #include "base/types/expected.h"
 #include "components/safe_browsing/core/browser/db/util.h"
 #include "components/safe_browsing/core/common/proto/safebrowsingv5.pb.h"
@@ -26,6 +25,9 @@ inline constexpr int kLeastSeverity = std::numeric_limits<int>::max();
 
 // Failures encountered when parsing and validating the V5 SearchHashes
 // response.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+// LINT.IfChange(V5GetHashParseFailureReason)
 enum class ParseFailure {
   // A connection-level network error occurred.
   kNetworkError = 1,
@@ -39,7 +41,9 @@ enum class ParseFailure {
   kNoCacheDurationError = 5,
   // One or more full hashes in the response have an incorrect length.
   kIncorrectFullHashLengthError = 6,
+  kMaxValue = kIncorrectFullHashLengthError,
 };
+// LINT.ThenChange(//tools/metrics/histograms/metadata/safe_browsing/enums.xml:SafeBrowsingV5GetHashParseFailureReason)
 
 // Holds the successfully parsed and sanitized V5 SearchHashes response.
 struct ParseResultSuccess {
@@ -67,6 +71,8 @@ struct ThreatResult {
 
   // The determined threat type.
   SBThreatType threat_type = SBThreatType::SB_THREAT_TYPE_SAFE;
+  // Metadata associated with the threat.
+  ThreatMetadata metadata;
   // The severity level of the threat (lower is more severe).
   int threat_severity = kLeastSeverity;
 };

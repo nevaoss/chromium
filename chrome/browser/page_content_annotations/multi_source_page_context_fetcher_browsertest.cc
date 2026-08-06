@@ -165,9 +165,16 @@ INSTANTIATE_TEST_SUITE_P(
         // Don't use Paint Preview (use CopyFromSurface instead).
         std::nullopt));
 
+#if BUILDFLAG(IS_WIN)
+// TODO(crbug.com/526023956): Re-enable this test on Windows.
+#define MAYBE_TakesScreenshot DISABLED_TakesScreenshot
+#else
+#define MAYBE_TakesScreenshot TakesScreenshot
+#endif
+
 IN_PROC_BROWSER_TEST_P(
     ScreenshotBackendMultiSourcePageContextFetcherBrowserTest,
-    TakesScreenshot) {
+    MAYBE_TakesScreenshot) {
   base::HistogramTester histograms;
   GURL url = embedded_https_test_server().GetURL("/empty.html");
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
@@ -1333,12 +1340,24 @@ IN_PROC_BROWSER_TEST_F(IframeInfoMultiSourcePageContextFetcherBrowserTest,
   ASSERT_TRUE(result);
   ASSERT_TRUE(result->annotated_page_content_result.has_value());
 
-  const auto& iframe_info = result->annotated_page_content_result->proto
-                                .gemini_in_chrome_page_metadata()
-                                .screenshot_info()
-                                .iframe_info();
+  content::RenderWidgetHostView* view =
+      web_contents()->GetRenderWidgetHostView();
+  ASSERT_TRUE(view);
+  gfx::Size expected_screenshot_size = gfx::ScaleToRoundedSize(
+      view->GetViewBounds().size(), view->GetDeviceScaleFactor());
+
+  const optimization_guide::proto::ScreenshotInfo& screenshot_info =
+      result->annotated_page_content_result->proto
+          .gemini_in_chrome_page_metadata()
+          .screenshot_info();
+  EXPECT_TRUE(screenshot_info.has_screenshot_size());
+  EXPECT_EQ(screenshot_info.screenshot_size().width(),
+            expected_screenshot_size.width());
+  EXPECT_EQ(screenshot_info.screenshot_size().height(),
+            expected_screenshot_size.height());
 
   // Verify that the iframe info has url, origin, and bounding box data.
+  const auto& iframe_info = screenshot_info.iframe_info();
   ASSERT_EQ(iframe_info.size(), 1);
   EXPECT_EQ(iframe_info[0].url(), iframe_url.spec());
   EXPECT_EQ(iframe_info[0].security_origin().value(),
@@ -1348,6 +1367,7 @@ IN_PROC_BROWSER_TEST_F(IframeInfoMultiSourcePageContextFetcherBrowserTest,
   // The iframe is 300x200, but the bounding box is 304x204 due to the border.
   EXPECT_EQ(iframe_info[0].bounding_box().width(), 304);
   EXPECT_EQ(iframe_info[0].bounding_box().height(), 204);
+  EXPECT_TRUE(iframe_info[0].bounding_box().is_screenshot_relative());
 
   ASSERT_TRUE(result->screenshot_info.has_value());
   EXPECT_THAT(

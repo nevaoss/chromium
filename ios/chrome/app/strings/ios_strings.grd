@@ -4452,6 +4452,9 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       <message name="IDS_IOS_LEVEL_UP_MAXIMUM_LEVEL" desc="Progress message displaying that all tasks have been completed and the user is all set. [iOS only]">
         You’re all set! Get notified when new tasks arrive.
       </message>
+      <message name="IDS_IOS_LEVEL_UP_PIN_TABS_IPH" desc="IPH bubble message highlighting how to pin a tab in the Tab Grid. [iOS only]">
+        Press and hold to pin this tab
+      </message>
       <message name="IDS_IOS_LEVEL_UP_SEE_ALL" desc="Link button to open all available level-up tasks. [iOS only]">
         See All
       </message>
@@ -4542,6 +4545,9 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       </message>
       <message name="IDS_IOS_LEVEL_UP_TURN_ON_PROGRESS_UPDATES" desc="The context menu item to turn on Level Up progress updates. [iOS only]">
         Turn on progress updates
+      </message>
+      <message name="IDS_IOS_LEVEL_UP_WALKTHROUGH_DELETE_BROWSING_DATA" desc="Text of the bubble for the Level Up walkthrough prompting the user to select Delete Browsing Data. [iOS only]">
+        Select Delete Browsing Data
       </message>
       <message name="IDS_IOS_LEVEL_UP_WALKTHROUGH_OPEN_PASSWORD_CHECKUP" desc="Text of the bubble for the Level Up walkthrough prompting the user to open Password Checkup. [iOS only]">
         Open Password Checkup
@@ -5646,6 +5652,12 @@ Handoff must also be enabled in the General section of Settings, and your device
       </message>
       <message name="IDS_IOS_PASSWORD_MOVE_CONFLICT_ACTION_SHEET_TITLE" desc="Action sheet title to inform the user that the password they want to move to their google account store already exists. [iOS only]">
         Password already exists
+      </message>
+      <message name="IDS_IOS_PASSWORD_SAVED_INFOBAR_TITLE" desc="Title for the password saved confirmation infobar banner. [iOS only]">
+        Password saved
+      </message>
+      <message name="IDS_IOS_PASSWORD_SAVED_INFOBAR_VIEW_BUTTON" desc="Label for the action button on the password saved confirmation infobar to view the details of the saved password. [iOS only]">
+        View
       </message>
       <message name="IDS_IOS_PASSWORD_SAVED_TO_ACCOUNT_SNACKBAR_MESSAGE" desc="Message briefly displayed at the bottom of the screen to inform the user that the password had successfully been moved to their google account store. [iOS only]">
         Password saved in your Google Account, <ph name="EMAIL">$1<ex>johndoe@gmail.com</ex></ph>

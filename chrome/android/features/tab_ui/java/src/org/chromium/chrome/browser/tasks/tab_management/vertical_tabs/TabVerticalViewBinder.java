@@ -12,8 +12,10 @@ import android.content.Context;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.view.MotionEvent;
+import android.view.TouchDelegate;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityNodeInfo;
@@ -29,6 +31,7 @@ import androidx.core.widget.ImageViewCompat;
 
 import com.google.android.material.progressindicator.CircularProgressIndicator;
 
+import org.chromium.base.DeviceInfo;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R.string;
@@ -41,9 +44,11 @@ import org.chromium.chrome.browser.tasks.tab_management.TabListViewBinderUtils;
 import org.chromium.chrome.browser.tasks.tab_management.TabProperties;
 import org.chromium.chrome.browser.tasks.tab_management.TabUiThemeUtil;
 import org.chromium.chrome.browser.tasks.tab_management.vertical_tabs.VerticalTabListProperties.RailCollapseState;
+import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils;
 import org.chromium.chrome.tab_ui.R;
 import org.chromium.components.browser_ui.styles.SemanticColorUtils;
 import org.chromium.components.tab_groups.TabGroupColorPickerUtils;
+import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.base.ViewUtils;
 import org.chromium.ui.modelutil.PropertyKey;
 import org.chromium.ui.modelutil.PropertyModel;
@@ -288,6 +293,9 @@ class TabVerticalViewBinder {
                     /* marginStartDimenId= */ 0,
                     /* marginEndDimenId= */ 0);
             actionButton.setVisibility(actionWanted ? View.VISIBLE : View.INVISIBLE);
+            if (DeviceFormFactor.isTablet() && !DeviceInfo.isDesktop()) {
+                setActionButtonTouchDelegate(view, actionButton, actionWanted);
+            }
         }
 
         // AI Indicator
@@ -345,6 +353,44 @@ class TabVerticalViewBinder {
         if (faviconView != null) {
             faviconView.setVisibility(faviconWanted ? View.VISIBLE : View.GONE);
         }
+    }
+
+    private static void setActionButtonTouchDelegate(
+            ViewGroup view, View actionButton, boolean actionWanted) {
+        if (!actionWanted) {
+            view.setTouchDelegate(null);
+            return;
+        }
+
+        view.post(
+                () -> {
+                    if (!actionButton.isAttachedToWindow()
+                            || actionButton.getVisibility() != View.VISIBLE) {
+                        view.setTouchDelegate(null);
+                        return;
+                    }
+
+                    Rect rect = new Rect();
+                    actionButton.getHitRect(rect);
+                    Resources res = view.getResources();
+                    int minTouchTargetWidthPx =
+                            res.getDimensionPixelSize(R.dimen.min_touch_target_size);
+                    int minTouchTargetHeightPx =
+                            res.getDimensionPixelSize(
+                                    R.dimen.vertical_tab_action_button_touch_target_height);
+
+                    if (rect.width() < minTouchTargetWidthPx) {
+                        int deltaX = (minTouchTargetWidthPx - rect.width()) / 2;
+                        rect.left -= deltaX;
+                        rect.right += deltaX;
+                    }
+                    if (rect.height() < minTouchTargetHeightPx) {
+                        int deltaY = (minTouchTargetHeightPx - rect.height()) / 2;
+                        rect.top -= deltaY;
+                        rect.bottom += deltaY;
+                    }
+                    view.setTouchDelegate(new TouchDelegate(rect, actionButton));
+                });
     }
 
     private static void updateAiAnimations(
@@ -620,14 +666,12 @@ class TabVerticalViewBinder {
                 model.get(TabProperties.RAIL_COLLAPSE_STATE) == RailCollapseState.COLLAPSED;
 
         int marginStart = 0;
-        Resources resources = view.getResources();
         if (isRailCollapsed) {
-            marginStart =
-                    resources.getDimensionPixelSize(
-                            R.dimen.vertical_tab_child_collapsed_margin_start);
+            marginStart = getCollapsedChildMarginStart(view.getContext());
         } else if (isInGroup) {
             marginStart =
-                    resources.getDimensionPixelSize(R.dimen.vertical_tab_child_nesting_margin);
+                    view.getResources()
+                            .getDimensionPixelSize(R.dimen.vertical_tab_child_nesting_margin);
         }
 
         if (view.getLayoutParams() instanceof ViewGroup.MarginLayoutParams params) {
@@ -636,6 +680,25 @@ class TabVerticalViewBinder {
                 view.setLayoutParams(params);
             }
         }
+    }
+
+    /**
+     * Calculates the start margin in pixels for a tab item when the rail is collapsed.
+     *
+     * <p>Horizontally centers the tab item within the collapsed rail container. Because the parent
+     * RecyclerView is asymmetric due to the scrollbar end margin, the child item's start margin is
+     * explicitly computed as: (rail_collapsed_width - tab_item_collapsed_size) / 2 -
+     * rail_horizontal_margin.
+     */
+    @VisibleForTesting
+    static int getCollapsedChildMarginStart(Context context) {
+        Resources resources = context.getResources();
+        int railWidth =
+                ViewUtils.dpToPx(context, VerticalTabUtils.SIDE_UI_CONTAINER_COLLAPSED_WIDTH_DP);
+        int itemSize = resources.getDimensionPixelSize(R.dimen.vertical_tab_item_collapsed_size);
+        int railStartMargin =
+                resources.getDimensionPixelSize(R.dimen.vertical_tabs_rail_horizontal_margin);
+        return (railWidth - itemSize) / 2 - railStartMargin;
     }
 
     private static void updateParentPadding(PropertyModel model, ViewGroup view) {
@@ -686,10 +749,10 @@ class TabVerticalViewBinder {
                     boolean isSelected = model.get(TabProperties.IS_SELECTED);
                     switch (motionEvent.getAction()) {
                         case MotionEvent.ACTION_HOVER_ENTER:
+                            // TODO(crbug.com/533531896): Handle clearing all backgrounds before
+                            // showing tab background.
                             // TODO(crbug.com/527641177): Maybe show a darker background color for
                             // action button when it's being hovered?
-                            // TODO(crbug.com/533531896): Action button hovering is not stable when
-                            // there are pinned tabs.
                             if (!isSelected) {
                                 ViewCompat.setBackgroundTintList(
                                         view,
@@ -699,22 +762,17 @@ class TabVerticalViewBinder {
                                                         /* isIncognito= */ false)));
                             }
                             updateIcons(model, view, /* isHovered= */ true);
-                            break;
+                            return true;
                         case MotionEvent.ACTION_HOVER_EXIT:
-                            if (actionButton != null
-                                    && (actionButton.isHovered()
-                                            || isPointWithinChild(
-                                                    actionButton,
-                                                    motionEvent.getX(),
-                                                    motionEvent.getY()))) {
-                                break;
+                            float x = motionEvent.getX();
+                            float y = motionEvent.getY();
+                            if (x < 0 || x >= view.getWidth() || y < 0 || y >= view.getHeight()) {
+                                if (!isSelected) {
+                                    ViewCompat.setBackgroundTintList(view, defaultBackgroundColor);
+                                }
+                                updateIcons(model, view, /* isHovered= */ false);
                             }
-
-                            if (!isSelected) {
-                                ViewCompat.setBackgroundTintList(view, defaultBackgroundColor);
-                            }
-                            updateIcons(model, view, /* isHovered= */ false);
-                            break;
+                            return true;
                     }
                     return false;
                 });
@@ -722,7 +780,21 @@ class TabVerticalViewBinder {
         if (actionButton != null) {
             actionButton.setOnHoverListener(
                     (v, motionEvent) -> {
-                        if (motionEvent.getAction() == MotionEvent.ACTION_HOVER_EXIT) {
+                        int action = motionEvent.getAction();
+                        if (action == MotionEvent.ACTION_HOVER_ENTER) {
+                            v.setHovered(true);
+                            if (!model.get(TabProperties.IS_SELECTED)) {
+                                ViewCompat.setBackgroundTintList(
+                                        view,
+                                        ColorStateList.valueOf(
+                                                TabUiThemeUtil.getHoveredTabContainerColor(
+                                                        view.getContext(),
+                                                        /* isIncognito= */ false)));
+                            }
+                            updateIcons(model, view, /* isHovered= */ true);
+                            return true;
+                        } else if (action == MotionEvent.ACTION_HOVER_EXIT) {
+                            v.setHovered(false);
                             float xInView = v.getLeft() + motionEvent.getX();
                             float yInView = v.getTop() + motionEvent.getY();
                             if (xInView < 0
@@ -734,19 +806,10 @@ class TabVerticalViewBinder {
                                 }
                                 updateIcons(model, view, /* isHovered= */ false);
                             }
+                            return true;
                         }
                         return false;
                     });
         }
-    }
-
-    private static boolean isPointWithinChild(
-            @Nullable View child, float xInParent, float yInParent) {
-        return child != null
-                && child.getVisibility() == View.VISIBLE
-                && xInParent >= child.getLeft()
-                && xInParent < child.getRight()
-                && yInParent >= child.getTop()
-                && yInParent < child.getBottom();
     }
 }

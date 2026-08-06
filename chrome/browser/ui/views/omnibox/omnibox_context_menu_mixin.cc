@@ -16,7 +16,6 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search_engines/ai_mode_button_service_factory.h"
 #include "chrome/browser/send_tab_to_self/send_tab_to_self_util.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/lens/lens_overlay_entry_point_controller.h"
 #include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/omnibox/clipboard_utils.h"
@@ -33,7 +32,6 @@
 #include "components/omnibox/browser/autocomplete_match.h"
 #include "components/omnibox/browser/omnibox_pref_names.h"
 #include "components/prefs/pref_service.h"
-#include "components/search_engines/ai_mode_button_config.h"
 #include "components/search_engines/ai_mode_button_service.h"
 #include "components/search_engines/search_engines_switches.h"
 #include "components/send_tab_to_self/features.h"
@@ -354,6 +352,18 @@ bool OmniboxContextMenuMixinBase::HandleIsContextMenuTextEditingCommandEnabled(
   }
 }
 
+bool OmniboxContextMenuMixinBase::HandleGetAcceleratorForCommandId(
+    int command_id,
+    ui::Accelerator* accelerator) const {
+  if (views::Textfield::GetStandardAcceleratorForCommandId(command_id,
+                                                           accelerator)) {
+    return true;
+  }
+  return text_services_context_menu_ &&
+         text_services_context_menu_->GetAcceleratorForCommandId(command_id,
+                                                                 accelerator);
+}
+
 void OmniboxContextMenuMixinBase::PrepareToShowContextMenu(
     base::OnceClosure closure) {
   GetClipboardText(
@@ -447,7 +457,7 @@ void OmniboxContextMenuMixinBase::AddOmniboxSpecificItems(
   }
 
   if (omnibox::ShouldShowAimContextMenuOption(location_bar_->GetProfile())) {
-    auto* config = GetAiModeConfig();
+    auto* config = GetAiModeUiConfig();
     if (config) {
       menu_contents->AddCheckItem(IDC_SHOW_AI_MODE_OMNIBOX_BUTTON,
                                   config->context_menu_label);
@@ -485,8 +495,8 @@ bool OmniboxContextMenuMixinBase::HandleIsCommandIdChecked(int id) const {
   return false;
 }
 
-const ai_mode_button_config::AiModeButtonConfig*
-OmniboxContextMenuMixinBase::GetAiModeConfig() const {
+const AiModeButtonUiConfig* OmniboxContextMenuMixinBase::GetAiModeUiConfig()
+    const {
   if (!location_bar_) {
     return nullptr;
   }

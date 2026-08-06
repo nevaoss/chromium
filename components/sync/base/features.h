@@ -48,6 +48,9 @@ BASE_DECLARE_FEATURE(kNewTabPageCustomizationThemeSync);
 // Enables syncing of usage metadata for loyalty cards.
 BASE_DECLARE_FEATURE(kSyncLoyaltyCardMetadata);
 
+// Enables syncing Notebooks.
+BASE_DECLARE_FEATURE(kSyncNotebook);
+
 #if !BUILDFLAG(IS_CHROMEOS)
 // Flag that controls Uno fast-follow features which are:
 // On Android:
@@ -194,10 +197,6 @@ BASE_DECLARE_FEATURE(kSyncTrustedVaultInfobarMessageImprovements);
 // determine whether the pref values should be set in the account storage.
 BASE_DECLARE_FEATURE(kSyncPreferencesUseSelectedTypes);
 
-BASE_DECLARE_FEATURE(kSyncDetermineAccountManagedStatus);
-BASE_DECLARE_FEATURE_PARAM(base::TimeDelta,
-                           kSyncDetermineAccountManagedStatusTimeout);
-
 // If enabled, the new sync dashboard URL will be opened when the user clicks
 // on the "Review your synced data" (or equivalent) entrypoint in settings.
 BASE_DECLARE_FEATURE(kSyncEnableNewSyncDashboardUrl);
@@ -267,6 +266,9 @@ BASE_DECLARE_FEATURE(kSyncUseServerDeterminedDeviceName);
 // to account-keyed preferences upon a DISABLE_SYNC_ON_CLIENT protocol error
 // before entering transport mode.
 BASE_DECLARE_FEATURE(kSyncCopyPreferencesToTransportModeOnServerForcedDisable);
+
+// Authenticate the Initialization Vector (IV) in Nigori encryption.
+BASE_DECLARE_FEATURE(kSyncNigoriAuthenticateIV);
 
 }  // namespace syncer
 

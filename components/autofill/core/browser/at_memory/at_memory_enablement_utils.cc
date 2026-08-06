@@ -17,6 +17,7 @@
 #include "components/autofill/core/common/autofill_debug_features.h"
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/optimization_guide/core/feature_registry/feature_registration.h"
+#include "components/optimization_guide/core/model_execution/model_execution_prefs.h"
 #include "components/personal_context/core/personal_context_eligibility_service.h"
 #include "components/personal_context/core/personal_context_prefs.h"
 #include "components/personal_context/core/personal_context_types.h"
@@ -146,32 +147,6 @@ base::flat_set<int32_t> GetAutofillAtMemoryEligibleTiers() {
   return true;
 }
 
-// Returns whether enterprise policies allow AtMemory trigger.
-//
-// AtMemory is disabled for the Enterprise accounts and these are blocked in the
-// `PersonalContextService`. Additional checks are performed here to ensure
-// correct behavior for consumer accounts on enterprise devices.
-[[nodiscard]] bool SatisfiesEnterprisePolicies(const PrefService* pref_service,
-                                               std::string* debug_message) {
-  if (!pref_service) {
-    MaybeOutputReason(debug_message, "Prefs are not available.");
-    return false;
-  }
-
-  // TODO(crbug.com/521270638) Add a check for the AtMemory specific policy on
-  // top of the enterprise policy for Gemini.
-
-  const bool gemini_settings_allowed =
-      pref_service->GetInteger(optimization_guide::prefs::kGeminiSettings) ==
-      std::to_underlying(
-          optimization_guide::prefs::GeminiSettingsPolicyState::kEnabled);
-  if (!gemini_settings_allowed) {
-    MaybeOutputReason(debug_message,
-                      "Disallowed by GeminiSettings enterprise policy.");
-  }
-  return gemini_settings_allowed;
-}
-
 // Returns true if AtMemory is supported for the user.
 //
 // Checks that AtMemory feature flags are enabled, At-Memory eligibility
@@ -277,10 +252,6 @@ bool MayPerformAtMemoryAction(
   }
   if (!IsAtMemorySupported(personal_context_service,
                            subscription_eligibility_service, debug_message)) {
-    return false;
-  }
-
-  if (!SatisfiesEnterprisePolicies(pref_service, debug_message)) {
     return false;
   }
 

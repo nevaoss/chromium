@@ -73,6 +73,7 @@
 #include "chrome/browser/printing/print_view_manager.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/test/base/ui_test_utils.h"
+#include "ui/views/test/widget_activation_waiter.h"
 #endif
 
 namespace glic {
@@ -2022,115 +2023,45 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorRemoveBlankInstancesTest,
   ASSERT_OK(WaitForInstanceDeletion(weak_instance));
 }
 
-class GlicInstanceCoordinatorTabGroupsBrowserTest
-    : public GlicInstanceCoordinatorBrowserTest {
- public:
-  GlicInstanceCoordinatorTabGroupsBrowserTest() {
-    feature_list_.InitAndEnableFeature(features::kGlicTabGroups);
-  }
+#if !BUILDFLAG(IS_ANDROID)
+IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
+                       DetachedPanelActivationWithMultipleInstances) {
+  // 1. Open glic detached and activate live mode
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * floaty_instance,
+                       OpenGlicForActiveTabAndDetach());
+  ASSERT_TRUE(floaty_instance->IsDetached());
+  ASSERT_OK(WaitForGlicClient(floaty_instance));
 
- private:
-  base::test::ScopedFeatureList feature_list_;
-};
+  floaty_instance->OnInteractionModeChange(mojom::WebClientMode::kAudio);
+  floaty_instance->host().SetContextAccessIndicator(true);
+  ASSERT_TRUE(floaty_instance->IsLiveMode());
 
-IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorTabGroupsBrowserTest,
-                       BindAndObserveTabGroup) {
-  TabListInterface* tab_list = GetTabListInterface();
-  ASSERT_TRUE(tab_list);
+  views::View* floaty_view =
+      floaty_instance->GetActiveEmbedderGlicViewForTesting();
+  ASSERT_TRUE(floaty_view);
+  views::Widget* floaty_widget = floaty_view->GetWidget();
+  ASSERT_TRUE(floaty_widget);
 
-  // Ensure we have at least 2 tabs.
-  tabs::TabInterface* tab1 = CreateAndActivateTab(GURL("about:blank"));
-  tabs::TabInterface* tab2 = CreateAndActivateTab(GURL("about:blank"));
-  ASSERT_TRUE(tab1);
-  ASSERT_TRUE(tab2);
+  // 2. Open glic in side panel in a different tab
+  tabs::TabInterface* tab2 =
+      GetTabListInterface()->OpenTab(GURL("about:blank"), -1);
+  GetTabListInterface()->ActivateTab(tab2->GetHandle());
 
-  std::optional<tab_groups::TabGroupId> group_id =
-      tab_list->CreateTabGroup({tab1->GetHandle(), tab2->GetHandle()});
-  ASSERT_TRUE(group_id.has_value());
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * side_panel_instance,
+                       OpenGlicForActiveTab());
+  ASSERT_OK(WaitForGlicClient(side_panel_instance));
 
-  ASSERT_TRUE(coordinator().ShowInstanceForTabGroup(group_id.value()));
-  GlicInstanceImpl* instance = GetInstanceForTab(tab1);
-  ASSERT_TRUE(instance);
-  ASSERT_OK(WaitForGlicClient(instance));
-  EXPECT_EQ(instance->GetTabGroup(), group_id.value());
+  // 3. Move focus back to the floating instance
+  floaty_widget->Activate();
+  views::test::WaitForWidgetActive(floaty_widget, true);
 
-  // Tab strip should now have 4 tabs: 1 default tab, Glic Tab, and the two
-  // blank tabs.
-  EXPECT_EQ(tab_list->GetTabCount(), 4);
-
-  tabs::TabInterface* glic_tab = instance->GetGlicTab();
-  ASSERT_TRUE(glic_tab);
-  EXPECT_EQ(glic_tab->GetGroup(), group_id.value());
-  EXPECT_EQ(coordinator().GetInstanceForTab(glic_tab), instance);
-
-  GlicSharingManagerInternal& sharing_manager =
-      instance->GetSharingManagerInternal();
-  EXPECT_FALSE(sharing_manager.IsTabPinned(glic_tab->GetHandle()));
-  EXPECT_TRUE(sharing_manager.IsTabPinned(tab1->GetHandle()));
-  EXPECT_TRUE(sharing_manager.IsTabPinned(tab2->GetHandle()));
-
-  // Add a third tab and group it.
-  tabs::TabInterface* tab3 = CreateAndActivateTab(GURL("about:blank"));
-  ASSERT_TRUE(tab3);
-  tab_list->AddTabsToGroup(group_id.value(), {tab3->GetHandle()});
-
-  EXPECT_EQ(coordinator().GetInstanceForTab(tab3), instance);
-
-  // Ungroup it.
-  tab_list->Ungroup({tab3->GetHandle()});
-  EXPECT_EQ(coordinator().GetInstanceForTab(tab3), nullptr);
-
-  // Close Glic tab to ensure clean teardown.
-  tab_list->CloseTab(glic_tab->GetHandle());
+  // Verify that the floaty widget remains open, visible, and registered in the
+  // coordinator.
+  EXPECT_FALSE(floaty_widget->IsClosed());
+  EXPECT_TRUE(floaty_widget->IsVisible());
+  EXPECT_EQ(coordinator().GetInstanceWithFloaty(), floaty_instance);
+  EXPECT_EQ(coordinator().GetActiveInstance(), floaty_instance);
 }
-
-IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorTabGroupsBrowserTest,
-                       DefaultToLastActiveInstanceForTabGroup) {
-  TabListInterface* tab_list = GetTabListInterface();
-  ASSERT_TRUE(tab_list);
-
-  tabs::TabInterface* tab1 = CreateAndActivateTab(GURL("about:blank"));
-  tabs::TabInterface* tab2 = CreateAndActivateTab(GURL("about:blank"));
-  ASSERT_TRUE(tab1);
-  ASSERT_TRUE(tab2);
-
-  std::optional<tab_groups::TabGroupId> group_id =
-      tab_list->CreateTabGroup({tab1->GetHandle(), tab2->GetHandle()});
-  ASSERT_TRUE(group_id.has_value());
-
-  // 1. First invocation creates Instance A.
-  ASSERT_TRUE(coordinator().ShowInstanceForTabGroup(group_id.value()));
-  GlicInstanceImpl* instance_a = GetInstanceForTab(tab1);
-  ASSERT_TRUE(instance_a);
-  ASSERT_OK(WaitForGlicClient(instance_a));
-  EXPECT_EQ(instance_a->GetTabGroup(), group_id.value());
-
-  // Find the Glic tab.
-  tabs::TabInterface* glic_tab = instance_a->GetGlicTab();
-  ASSERT_TRUE(glic_tab);
-
-  // 2. Close the Glic tab.
-  tab_list->CloseTab(glic_tab->GetHandle());
-
-  // The Glic tab is gone.
-  EXPECT_EQ(instance_a->GetGlicTab(), nullptr);
-
-  // But the instance should stay alive and still be bound to the group.
-  EXPECT_EQ(instance_a->GetTabGroup(), group_id.value());
-  EXPECT_EQ(coordinator().GetInstanceForTabGroup(group_id.value()), instance_a);
-
-  // 3. Showing Glic for the tab group again should reuse Instance A.
-  GlicInstance* instance_reused =
-      coordinator().ShowInstanceForTabGroup(group_id.value());
-  EXPECT_EQ(instance_reused, instance_a);
-  ASSERT_OK(WaitForGlicClient(instance_a));
-
-  glic_tab = instance_a->GetGlicTab();
-  ASSERT_TRUE(glic_tab);
-  EXPECT_EQ(glic_tab->GetGroup(), group_id.value());
-
-  // Close Glic tab to ensure clean teardown.
-  tab_list->CloseTab(glic_tab->GetHandle());
-}
+#endif
 
 }  // namespace glic

@@ -11,7 +11,6 @@
 #import "components/actor/public/mojom/actor_types.mojom.h"
 #import "components/optimization_guide/proto/features/actions_data.pb.h"
 #import "ios/chrome/browser/intelligence/actor/tools/public/actor_tool_types.h"
-#import "ios/chrome/browser/intelligence/actor/tools/utils/profile_context_resolver.h"
 #import "ios/web/public/navigation/navigation_manager.h"
 #import "ios/web/public/web_state.h"
 
@@ -20,18 +19,23 @@ namespace actor {
 HistoryTool::~HistoryTool() = default;
 
 // static
-base::expected<std::unique_ptr<HistoryTool>, ToolExecutionResult>
-HistoryTool::Create(const optimization_guide::proto::HistoryBackAction& action,
-                    const ProfileContextResolver& profile_context_resolver) {
-  return CreateInternal(action, profile_context_resolver);
+std::unique_ptr<HistoryTool> HistoryTool::Create(
+    base::WeakPtr<web::WebState> web_state,
+    const optimization_guide::proto::HistoryBackAction& action) {
+  return std::unique_ptr<HistoryTool>(
+      new HistoryTool(web_state, /*is_back_action=*/true));
 }
 
 // static
-base::expected<std::unique_ptr<HistoryTool>, ToolExecutionResult>
-HistoryTool::Create(
-    const optimization_guide::proto::HistoryForwardAction& action,
-    const ProfileContextResolver& profile_context_resolver) {
-  return CreateInternal(action, profile_context_resolver);
+std::unique_ptr<HistoryTool> HistoryTool::Create(
+    base::WeakPtr<web::WebState> web_state,
+    const optimization_guide::proto::HistoryForwardAction& action) {
+  return std::unique_ptr<HistoryTool>(
+      new HistoryTool(web_state, /*is_back_action=*/false));
+}
+
+void HistoryTool::Validate(ToolExecutionCallback callback) {
+  std::move(callback).Run(ToolExecutionResult::Ok());
 }
 
 void HistoryTool::Execute(ToolExecutionCallback callback) {
@@ -71,31 +75,8 @@ ToolType HistoryTool::GetToolType() const {
   return is_back_action_ ? ToolType::kBack : ToolType::kForward;
 }
 
-// static
-template <typename HistoryAction>
-base::expected<std::unique_ptr<HistoryTool>, ToolExecutionResult>
-HistoryTool::CreateInternal(
-    const HistoryAction& action,
-    const ProfileContextResolver& profile_context_resolver) {
-  if (!action.has_tab_id()) {
-    return base::unexpected(ToolExecutionResult(
-        InternalToolErrorCode::kCreationMissingRequiredFields));
-  }
-  base::expected<ProfileContextResolver::TabResolutionResult,
-                 ToolExecutionResult>
-      resolution_result = profile_context_resolver.ResolveTab(action.tab_id());
-  if (!resolution_result.has_value()) {
-    return base::unexpected(resolution_result.error());
-  }
-  constexpr bool is_back_action =
-      std::is_same_v<HistoryAction,
-                     optimization_guide::proto::HistoryBackAction>;
-  return std::unique_ptr<HistoryTool>(
-      new HistoryTool(is_back_action, resolution_result.value().web_state));
-}
-
-HistoryTool::HistoryTool(bool is_back_action,
-                         base::WeakPtr<web::WebState> web_state)
+HistoryTool::HistoryTool(base::WeakPtr<web::WebState> web_state,
+                         bool is_back_action)
     : is_back_action_(is_back_action), web_state_(web_state) {}
 
 }  // namespace actor

@@ -4060,16 +4060,6 @@ targets.bundle(
     ],
 )
 
-targets.bundle(
-    name = "gpu_fyi_android_shieldtv_gtests",
-    targets = [
-        "gpu_angle_unit_gtests",
-        "gpu_common_gtests_passthrough",
-        "gpu_common_gtests_validating",
-        "gpu_fyi_and_optional_non_linux_gtests",
-    ],
-)
-
 # TODO(crbug.com/40130073): Merge with an existing set of tests such as
 # gpu_fyi_linux_release_gtests once all CrOS tests have been enabled.
 targets.bundle(
@@ -5797,12 +5787,12 @@ targets.bundle(
     name = "mac_vm_tests",
     targets = [
         "base_unittests",
-        "interactive_ui_tests",
+        "browser_tests",
     ],
     per_test_modifications = {
-        "interactive_ui_tests": targets.mixin(
+        "browser_tests": targets.mixin(
             swarming = targets.swarming(
-                shards = 7,
+                shards = 25,
             ),
         ),
     },

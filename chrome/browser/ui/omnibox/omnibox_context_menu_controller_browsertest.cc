@@ -39,6 +39,7 @@
 #include "chrome/grit/generated_resources.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
+#include "components/contextual_tasks/public/features.h"
 #include "components/omnibox/browser/aim_eligibility_service_features.h"
 #include "components/omnibox/browser/autocomplete_input.h"
 #include "components/omnibox/common/composebox_features.h"
@@ -127,7 +128,8 @@ class OmniboxContextMenuControllerBrowserTest : public InProcessBrowserTest {
            {omnibox::kShowToolsAndModels.name, "true"}}},
          {omnibox::internal::kWebUIOmniboxPopup, {}},
          {omnibox::kContextManagementInComposebox, {}},
-         {omnibox::kContextManagementInOmnibox, {}}},
+         {omnibox::kContextManagementInOmnibox, {}},
+         {contextual_tasks::kContextualTasks, {}}},
         /*disabled_features=*/{omnibox::kAimServerEligibilityEnabled,
                                omnibox::kAimFuseboxEligibilityCheckEnabled,
                                omnibox::kAimUsePecApi});
@@ -1762,8 +1764,9 @@ IN_PROC_BROWSER_TEST_F(OmniboxContextMenuControllerBrowserTest,
   EXPECT_FALSE(controller.IsCommandIdEnabled(33001));
 }
 
-// TODO(crbug.com/530351886): Times out flakily on Linux and Win.
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
+// TODO(crbug.com/530351886): Times out flakily on Linux, Win, Mac and ChromeOS.
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || \
+    BUILDFLAG(IS_CHROMEOS)
 #define MAYBE_VerifyTabEnablementWhenMaxInputsReached \
   DISABLED_VerifyTabEnablementWhenMaxInputsReached
 #else

@@ -205,7 +205,6 @@ public class StripLayoutHelperTest {
     @Mock private LayoutManagerHost mManagerHost;
     @Mock private LayoutUpdateHost mUpdateHost;
     @Mock private LayoutRenderHost mRenderHost;
-    @Mock private CompositorButton mModelSelectorBtn;
     @Mock private TabUngrouper mTabUngrouper;
     @Mock private View mControlContainer;
     @Mock private StripTabHoverCardView mTabHoverCardView;
@@ -1552,8 +1551,8 @@ public class StripLayoutHelperTest {
                 mStripLayoutHelper.getNewTabButton().getDrawX(),
                 EPSILON);
         assertEquals(
-                "TouchableRect does not match. Strip is full, touch size should match the strip.",
-                new RectF(PADDING_LEFT, 0, STRIP_WIDTH - PADDING_RIGHT, STRIP_HEIGHT),
+                "TouchableRect does not match. Strip is full, touch size should match tab bounds.",
+                new RectF(PADDING_LEFT, 0, 740.f, STRIP_HEIGHT),
                 mStripLayoutHelper.getTouchableRect());
     }
 
@@ -1597,9 +1596,10 @@ public class StripLayoutHelperTest {
                 18.f,
                 mStripLayoutHelper.getNewTabButton().getDrawX(),
                 EPSILON);
+        // ntbX(18) + ntbWidth(32) = 50. TouchableRect excludes the New Tab Button.
         assertEquals(
-                "TouchableRect does not match. Strip is full, touch size should match the strip.",
-                new RectF(PADDING_LEFT, 0, STRIP_WIDTH - PADDING_RIGHT, STRIP_HEIGHT),
+                "TouchableRect does not match. Strip is full, touch size should match tab bounds.",
+                new RectF(50.f, 0, STRIP_WIDTH - PADDING_RIGHT, STRIP_HEIGHT),
                 mStripLayoutHelper.getTouchableRect());
     }
 
@@ -1729,9 +1729,9 @@ public class StripLayoutHelperTest {
         assertNotNull("Tab Search button should be initialized", button);
         assertTrue("Tab Search button should be visible", button.isVisible());
         assertEquals(
-                "Tab Search button width should be 32dp",
-                32.f,
-                mStripLayoutHelper.getTabSearchButtonWidthForTesting(),
+                "Tab Search button width should be 48dp",
+                48.f,
+                mStripLayoutHelper.getTabSearchButtonWidth(),
                 EPSILON);
     }
 
@@ -1749,7 +1749,7 @@ public class StripLayoutHelperTest {
         assertEquals(
                 "Tab Search button width should be 0dp",
                 0.f,
-                mStripLayoutHelper.getTabSearchButtonWidthForTesting(),
+                mStripLayoutHelper.getTabSearchButtonWidth(),
                 EPSILON);
     }
 
@@ -4462,6 +4462,25 @@ public class StripLayoutHelperTest {
     }
 
     @Test
+    public void testSelectedTabClose_PrioritizesParentTab() {
+        // Initialize and select the tab at index 1.
+        initializeTest(1);
+
+        // Set tab 0 as the parent tab of tab 1.
+        Tab parentTab = mModel.getTabAt(0);
+        Tab childTab = mModel.getTabAt(1);
+        int parentId = parentTab.getId();
+        when(childTab.getParentId()).thenReturn(parentId);
+
+        // Fake a close button click on the selected child tab at index 1.
+        closeTabAt(/* index= */ 1);
+
+        // Verify that the parent tab (index 0) was selected instead of positional fallback (index
+        // 1/2).
+        verify(mModel).setIndex(eq(0), anyInt());
+    }
+
+    @Test
     public void testChangingModelClearsTabHoverState() {
         // Initialize hover card, then hover on a tab.
         initializeTabHoverTest();
@@ -4995,7 +5014,6 @@ public class StripLayoutHelperTest {
                         mUpdateHost,
                         mRenderHost,
                         incognito,
-                        mModelSelectorBtn,
                         mTabStripDragHandler,
                         mControlContainer,
                         mWindowAndroid,

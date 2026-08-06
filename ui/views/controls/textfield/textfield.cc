@@ -1648,8 +1648,10 @@ bool Textfield::IsCommandIdEnabled(int command_id) const {
       GetTextEditCommandFromMenuCommand(command_id, HasSelection()));
 }
 
-bool Textfield::GetAcceleratorForCommandId(int command_id,
-                                           ui::Accelerator* accelerator) const {
+// static
+bool Textfield::GetStandardAcceleratorForCommandId(
+    int command_id,
+    ui::Accelerator* accelerator) {
   switch (command_id) {
     case kUndo:
       *accelerator = ui::Accelerator(ui::VKEY_Z, ui::EF_PLATFORM_ACCELERATOR);
@@ -1672,9 +1674,17 @@ bool Textfield::GetAcceleratorForCommandId(int command_id,
       return true;
 
     default:
-      return text_services_context_menu_->GetAcceleratorForCommandId(
-          command_id, accelerator);
+      return false;
   }
+}
+
+bool Textfield::GetAcceleratorForCommandId(int command_id,
+                                           ui::Accelerator* accelerator) const {
+  if (GetStandardAcceleratorForCommandId(command_id, accelerator)) {
+    return true;
+  }
+  return text_services_context_menu_->GetAcceleratorForCommandId(command_id,
+                                                                 accelerator);
 }
 
 void Textfield::ExecuteCommand(int command_id, int event_flags) {
@@ -3538,7 +3548,7 @@ void Textfield::UpdateAccessibleDefaultActionVerb() {
 
 BEGIN_METADATA(Textfield)
 ADD_PROPERTY_METADATA(bool, ReadOnly)
-ADD_PROPERTY_METADATA(std::u16string_view, Text)
+ADD_PROPERTY_METADATA(std::u16string, Text)
 ADD_PROPERTY_METADATA(ui::TextInputType, TextInputType)
 ADD_PROPERTY_METADATA(int, TextInputFlags)
 ADD_READONLY_PROPERTY_METADATA(SkColor,
@@ -3553,7 +3563,7 @@ ADD_READONLY_PROPERTY_METADATA(SkColor,
                                SelectionBackgroundColor,
                                ui::metadata::SkColorConverter)
 ADD_PROPERTY_METADATA(bool, CursorEnabled)
-ADD_PROPERTY_METADATA(std::u16string_view, PlaceholderText)
+ADD_PROPERTY_METADATA(std::u16string, PlaceholderText)
 ADD_READONLY_PROPERTY_METADATA(SkColor,
                                PlaceholderTextColor,
                                ui::metadata::SkColorConverter)

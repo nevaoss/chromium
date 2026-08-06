@@ -6,6 +6,7 @@
 #define CHROME_BROWSER_UI_AUTOFILL_PAYMENTS_OMNIBOX_AUTOFILL_PAGE_ACTION_CONTROLLER_H_
 
 #include "base/memory/raw_ref.h"
+#include "chrome/browser/ui/page_action/page_action_observer.h"
 #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
 
 namespace page_actions {
@@ -18,14 +19,15 @@ class TabInterface;
 
 namespace autofill {
 
-class OmniboxAutofillPageActionController {
+class OmniboxAutofillPageActionController final
+    : public page_actions::PageActionObserver {
  public:
   DECLARE_USER_DATA(OmniboxAutofillPageActionController);
 
   OmniboxAutofillPageActionController(
       tabs::TabInterface& tab_interface,
       page_actions::PageActionController& page_action_controller);
-  ~OmniboxAutofillPageActionController();
+  ~OmniboxAutofillPageActionController() override;
 
   OmniboxAutofillPageActionController(
       const OmniboxAutofillPageActionController&) = delete;
@@ -34,11 +36,18 @@ class OmniboxAutofillPageActionController {
 
   static OmniboxAutofillPageActionController* From(tabs::TabInterface& tab);
 
-  // Shows the omnibox autofill page action icon.
-  void Show();
+  // page_actions::PageActionObserver:
+  void OnPageActionChipShown(
+      const page_actions::PageActionState& page_action) override;
 
-  // Hides the omnibox autofill page action icon.
-  void Hide();
+  // Shows the expanded omnibox autofill page action chip with icon and label.
+  void ShowExpandedChip();
+
+  // Shows the collapsed omnibox autofill page action chip with icon only.
+  void ShowCollapsedChip();
+
+  // Hides the entire omnibox autofill page action chip.
+  void HideChip();
 
  private:
   const raw_ref<tabs::TabInterface> tab_interface_;

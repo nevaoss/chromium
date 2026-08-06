@@ -1384,7 +1384,6 @@ bool GpuInit::InitializeDawn() {
 #endif  // BUILDFLAG(IS_ANDROID)
 
   static BASE_FEATURE(kGraphiteDawnReportWorkerTaskProgressToWatchdog,
-                      "GraphiteDawnReportWorkerTaskProgressToWatchdog",
                       base::FEATURE_ENABLED_BY_DEFAULT);
 
   gl::ProgressReporter* progress_reporter = nullptr;

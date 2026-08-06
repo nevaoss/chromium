@@ -14,9 +14,11 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.RecyclerView;
 
+import org.chromium.base.MathUtils;
 import org.chromium.base.Token;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
@@ -113,6 +115,13 @@ public class VerticalTabListItemTouchHelperCallback extends TabListItemTouchHelp
     @Override
     public int getMovementFlags(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder) {
         if (!hasTabPropertiesModel(viewHolder)) return 0;
+        // Pinned tab hidden placeholders in the main vertical list (LinearLayoutManager) are
+        // non-draggable.
+        // Pinned tab cards in the top strip (GridLayoutManager) remain draggable in 2D.
+        if (viewHolder.getItemViewType() == TabProperties.UiType.PINNED_TAB
+                && !(recyclerView.getLayoutManager() instanceof GridLayoutManager)) {
+            return 0;
+        }
 
         // All tabs visually move vertically unless pinned, but we universally enable
         // horizontal flags so that ItemTouchHelper provides us with horizontal cursor tracking.
@@ -590,14 +599,32 @@ public class VerticalTabListItemTouchHelperCallback extends TabListItemTouchHelp
             boolean isCurrentlyActive) {
 
         float renderDx = dX;
-        // Suppress visual horizontal movement for tabs that shouldn't move horizontally.
-        // We only enabled the flags to track the cursor position.
-        if (actionState == ItemTouchHelper.ACTION_STATE_DRAG && !isPinnedRegularTab(viewHolder)) {
-            renderDx = 0f;
+        float renderDy = dY;
+
+        if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) {
+            float topLimitDy = recyclerView.getPaddingTop() - viewHolder.itemView.getTop();
+            float bottomLimitDy =
+                    recyclerView.getHeight()
+                            - recyclerView.getPaddingBottom()
+                            - viewHolder.itemView.getBottom();
+            renderDy = MathUtils.clamp(dY, topLimitDy, bottomLimitDy);
+
+            if (isPinnedRegularTab(viewHolder)) {
+                // Clamp horizontal movement to the left and right edges for pinned tabs.
+                float leftLimitDx = recyclerView.getPaddingLeft() - viewHolder.itemView.getLeft();
+                float rightLimitDx =
+                        recyclerView.getWidth()
+                                - recyclerView.getPaddingRight()
+                                - viewHolder.itemView.getRight();
+                renderDx = MathUtils.clamp(dX, leftLimitDx, rightLimitDx);
+            } else {
+                // Suppress visual horizontal movement for regular tabs.
+                renderDx = 0f;
+            }
         }
 
         super.onChildDraw(
-                c, recyclerView, viewHolder, renderDx, dY, actionState, isCurrentlyActive);
+                c, recyclerView, viewHolder, renderDx, renderDy, actionState, isCurrentlyActive);
         if (mTabGridItemLongPressOrchestrator != null && !mIsMouseInputSource) {
             float displacementSquared = calcMagnitudeSquared(dX, dY);
             mTabGridItemLongPressOrchestrator.processChildDisplacement(displacementSquared);
@@ -621,7 +648,7 @@ public class VerticalTabListItemTouchHelperCallback extends TabListItemTouchHelp
             }
 
             if (!hasTabPropertiesModel(viewHolder)) return;
-            setDraggingY(viewHolder, isCurrentlyActive ? dY : null);
+            setDraggingY(viewHolder, isCurrentlyActive ? renderDy : null);
 
             if (viewHolder.getItemViewType() != TabProperties.UiType.TAB_GROUP
                     && !isSolitaryChild(viewHolder)) return;
@@ -652,7 +679,7 @@ public class VerticalTabListItemTouchHelperCallback extends TabListItemTouchHelp
                             childViewHolder.setIsRecyclable(false);
                             mDraggedChildViewHolders.add(childViewHolder);
                         }
-                        childView.setTranslationY(dY);
+                        childView.setTranslationY(renderDy);
 
                         mDraggedChildTabIds.add(childTabId);
                         if (isCurrentlyActive) {
@@ -670,7 +697,7 @@ public class VerticalTabListItemTouchHelperCallback extends TabListItemTouchHelp
                 if (childView.getParent() != recyclerView) {
                     // Ensure it is in the overlay when explicitly detached
                     recyclerView.getOverlay().add(childView);
-                    childView.setTranslationY(dY);
+                    childView.setTranslationY(renderDy);
                     if (isCurrentlyActive) {
                         childView.setTranslationZ(viewHolder.itemView.getElevation());
                     } else {

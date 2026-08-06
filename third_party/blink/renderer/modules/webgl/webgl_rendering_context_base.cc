@@ -557,20 +557,17 @@ void WebGLRenderingContextBase::RestoreEvictedContext(
 
 namespace {
 
-void DrawImageToCanvas(StaticBitmapImage* image,
-                       cc::PaintCanvas& canvas,
-                       const gfx::Rect& dest_rect) {
+void DrawImageToCanvas(StaticBitmapImage* image, cc::PaintCanvas& canvas) {
   CHECK(image);
   CHECK(image->PaintImageForCurrentFrame());
-  gfx::Rect src_rect(image->Size());
+  gfx::Rect rect(image->Size());
   cc::PaintFlags flags;
   flags.setBlendMode(SkBlendMode::kSrc);
   // We use this draw helper as we need to take into account the
   // ImageOrientation of the UnacceleratedStaticBitmapImage.
   ImageDrawOptions draw_options;
   draw_options.clamping_mode = Image::kDoNotClampImageToSourceRect;
-  image->Draw(&canvas, flags, gfx::RectF(dest_rect), gfx::RectF(src_rect),
-              draw_options);
+  image->Draw(&canvas, flags, gfx::RectF(rect), gfx::RectF(rect), draw_options);
 }
 
 GLint Clamp(GLint value, GLint min, GLint max) {
@@ -1775,6 +1772,23 @@ WebGLRenderingContextBase::ClearIfComposited(
   if (isContextLost())
     return kSkipped;
 
+  if (!framebuffer_binding_ ||
+      (caller != kClearCallerDrawOrClear &&
+       base::FeatureList::IsEnabled(features::kWebGLDiscardBackBuffer))) {
+    // EnsureBackColorBuffer() must be called before checking
+    // BufferClearNeeded() and returning early below. If the back buffer was
+    // discarded when the page was hidden, it must be recreated even if no
+    // implicit clear is needed (BufferClearNeeded() is false).
+    //
+    // If a custom framebuffer is currently bound for a draw/clear operation,
+    // the back buffer isn't active for drawing, but it is still needed for
+    // copy/read operations (caller != kClearCallerDrawOrClear).
+    //
+    // Note: we don't call MarkContentsChanged(), because it hasn't (there is
+    // no new content to present yet).
+    GetDrawingBuffer()->EnsureBackColorBuffer();
+  }
+
   if (!GetDrawingBuffer()->BufferClearNeeded() ||
       (mask && framebuffer_binding_) ||
       (rasterizer_discard_enabled_ && caller == kClearCallerDrawOrClear))
@@ -1783,21 +1797,6 @@ WebGLRenderingContextBase::ClearIfComposited(
   if (isContextLost()) {
     // Unlikely, but context was lost.
     return kSkipped;
-  }
-
-  if (!framebuffer_binding_ ||
-      (caller != kClearCallerDrawOrClear &&
-       base::FeatureList::IsEnabled(features::kWebGLDiscardBackBuffer))) {
-    // If the back buffer was discarded when the page was hidden, it must be
-    // recreated before we can read or copy from it (which corresponds to
-    // kClearCallerOther). If a custom framebuffer is currently bound, the back
-    // buffer isn't active for drawing, but it is still needed for the
-    // copy/read.
-    //
-    // DrawingBuffer may have discarded the back buffer, and we are about to use
-    // it, recreate it. Note: we don't call MarkContentsChanged(), because it
-    // hasn't (there is no new content to present).
-    GetDrawingBuffer()->EnsureBackColorBuffer();
   }
 
   ScopedPixelLocalStorageInterrupt scoped_pls_interrupt(this);
@@ -2124,10 +2123,9 @@ WebGLRenderingContextBase::PaintRenderingResultsToSnapshot(
             kBackBuffer, viz::SharedImageFormat::N32Format(),
             kPremul_SkAlphaType, kBottomLeft_GrSurfaceOrigin);
     if (image && image->PaintImageForCurrentFrame()) {
-      gfx::Rect dest_rect(resource_provider->Size());
       snapshot = resource_provider->DoExternalOverdrawAndSnapshot(
-          [&image, dest_rect](cc::PaintCanvas& canvas) {
-            DrawImageToCanvas(image.get(), canvas, dest_rect);
+          [&image](cc::PaintCanvas& canvas) {
+            DrawImageToCanvas(image.get(), canvas);
           },
           ImageOrientationEnum::kDefault);
       copy_succeeded = true;
@@ -2277,10 +2275,9 @@ WebGLRenderingContextBase::CopyRenderingResultsFromDrawingBufferToResource(
             kBackBuffer, viz::SharedImageFormat::N32Format(),
             kPremul_SkAlphaType, kBottomLeft_GrSurfaceOrigin);
     if (image && image->PaintImageForCurrentFrame()) {
-      gfx::Rect dest_rect(resource_provider->Size());
       resource = resource_provider->DoExternalOverdrawAndProduceResource(
-          [&image, dest_rect](cc::PaintCanvas& canvas) {
-            DrawImageToCanvas(image.get(), canvas, dest_rect);
+          [&image](cc::PaintCanvas& canvas) {
+            DrawImageToCanvas(image.get(), canvas);
           });
       copy_succeeded = true;
     }

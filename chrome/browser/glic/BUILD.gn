@@ -17,6 +17,8 @@ import("//mojo/public/tools/bindings/mojom.gni")
 source_set("glic") {
   sources = [
     "common/local_hotkey_manager.h",
+    "experimental_triggering/glic_experimental_triggering_coordinator.h",
+    "experimental_triggering/glic_experimental_triggering_types.h",
     "gemini_act_on_web_settings_policy_handler.h",
     "glic_hotkey.h",
     "glic_metrics.h",
@@ -66,6 +68,8 @@ source_set("glic") {
     "public/glic_passkeys.h",
     "public/glic_side_panel_coordinator.cc",
     "public/glic_side_panel_coordinator.h",
+    "public/glic_submit_query_cui_tracker.cc",
+    "public/glic_submit_query_cui_tracker.h",
     "public/glic_window_invocation_tracker.cc",
     "public/glic_window_invocation_tracker.h",
     "public/service/glic_instance_coordinator.h",
@@ -301,6 +305,8 @@ source_set("impl") {
     "common/panel_focus_dependent_hotkey_manager.h",
     "common/panel_visibility_dependent_hotkey_manager.cc",
     "common/panel_visibility_dependent_hotkey_manager.h",
+    "common/view_scoped_registration_delegate.h",
+    "experimental_triggering/glic_experimental_triggering_coordinator.cc",
     "experimental_triggering/glic_experimental_triggering_manager.cc",
     "experimental_triggering/glic_experimental_triggering_manager.h",
     "gemini_act_on_web_settings_policy_handler.cc",
@@ -504,6 +510,7 @@ source_set("impl") {
     # TODO(b/470059315): Make these work on Android, or move them to the
     # desktop-only section.
     sources += [
+      "common/view_scoped_registration_delegate_impl.cc",
       "experimental_opt_in/glic_experimental_opt_in_controller.cc",
       "experimental_opt_in/glic_experimental_opt_in_controller.h",
       "experimental_opt_in/glic_experimental_opt_in_dialog_view.cc",
@@ -599,6 +606,10 @@ source_set("impl") {
       "//components/password_manager/core/browser/features:password_features",
       "//ui/android",
     ]
+  }
+
+  if (!is_android || enable_extensions_core) {
+    deps += [ "//chrome/browser/ui/webui:theme_source" ]
   }
 
   if (enable_guest_view) {
@@ -707,6 +718,7 @@ source_set("unit_tests") {
     "//chrome/browser:global_features",
     "//chrome/browser/background/glic",
     "//chrome/browser/glic/test_support",
+    "//chrome/browser/sync",
     "//chrome/browser/ui:ui_features",
     "//components/tabs:test_support",
     "//testing/gmock",
@@ -716,7 +728,6 @@ source_set("unit_tests") {
   if (!is_android) {
     sources += [
       "common/local_hotkey_manager_unittest.cc",
-      "common/panel_focus_dependent_hotkey_manager_unittest.cc",
       "glic_metrics_provider_unittest.cc",
       "glic_metrics_unittest.cc",
       "glic_selection_observer_unittest.cc",
@@ -782,6 +793,7 @@ source_set("browser_tests") {
     "host/new_glic_api_browsertest.cc",
     "service/glic_instance_coordinator_browsertest.cc",
     "service/glic_invoke_browsertest.cc",
+    "service/glic_tab_group_browsertest.cc",
     "service/metrics/glic_instance_coordinator_metrics_browsertest.cc",
     "suggestions/contextual_cueing_helper_browsertest.cc",
   ]
@@ -829,6 +841,8 @@ source_set("browser_tests") {
     sources += [
       "actor/glic_actor_policy_checker_browsertest.cc",
       "common/instance_independent_hotkey_manager_browsertest.cc",
+      "common/panel_focus_dependent_hotkey_manager_browsertest.cc",
+      "common/panel_visibility_dependent_hotkey_manager_browsertest.cc",
       "experimental_opt_in/glic_experimental_opt_in_dialog_browsertest.cc",
       "glic_browsertest.cc",
       "glic_context_menu_browsertest.cc",
@@ -852,7 +866,6 @@ source_set("browser_tests") {
       "suggestions/glic_cue_target_browsertest.cc",
       "suggestions/zero_state_suggestions_browsertest.cc",
       "widget/glic_side_panel_coordinator_browsertest.cc",
-      "widget/panel_visibility_dependent_hotkey_manager_browsertest.cc",
     ]
 
     if (!is_mac && enterprise_cloud_content_analysis) {

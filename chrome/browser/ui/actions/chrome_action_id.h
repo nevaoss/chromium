@@ -35,6 +35,8 @@
   E(kActionCloseTab, IDC_CLOSE_TAB) \
   E(kActionSelectNextTab, IDC_SELECT_NEXT_TAB) \
   E(kActionSelectPreviousTab, IDC_SELECT_PREVIOUS_TAB) \
+  E(kActionCycleToNextTab, IDC_CYCLE_TO_NEXT_TAB) \
+  E(kActionCycleToPrevTab, IDC_CYCLE_TO_PREV_TAB) \
   E(kActionSelectTab0, IDC_SELECT_TAB_0) \
   E(kActionSelectTab1, IDC_SELECT_TAB_1) \
   E(kActionSelectTab2, IDC_SELECT_TAB_2) \
@@ -352,10 +354,6 @@
   E(kActionBookmarkBarRemoveFromBookmarksBar, \
     IDC_BOOKMARK_BAR_REMOVE_FROM_BOOKMARKS_BAR) \
   /* Context menu items for Sharing */ \
-  E(kActionContentContextSharingSharedClipboardSingleDevice, \
-    IDC_CONTENT_CONTEXT_SHARING_SHARED_CLIPBOARD_SINGLE_DEVICE) \
-  E(kActionContentContextSharingSharedClipboardMultipleDevices, \
-    IDC_CONTENT_CONTEXT_SHARING_SHARED_CLIPBOARD_MULTIPLE_DEVICES) \
   E(kActionContentContextGenerateQrCode, IDC_CONTENT_CONTEXT_GENERATE_QR_CODE) \
   E(kActionContentContextSharingSubmenu, IDC_CONTENT_CONTEXT_SHARING_SUBMENU) \
   /* Context menu item to show the clipboard history menu */ \
@@ -535,6 +533,19 @@
   E(kActionWebAuthnAmbientSignin) \
   E(kActionAutofillPayment) \
 
+#define SUBMENU_ACTION_IDS                                                     \
+  E(kActionMenuBookmarksSubmenu, kBookmarksMenuId)                             \
+  E(kActionMenuPasswordsAndAutofillSubmenu, kPasswordsAndAutofillMenuId)       \
+  E(kActionMenuReadingListSubmenu, kReadingListMenuId)                         \
+  E(kActionMenuZoomSubmenu, kZoomMenuId)                                       \
+  E(kActionMenuProfileSubmenu, kProfileMenuId)                                 \
+  E(kActionMenuFindAndEditSubmenu, kFindAndEditMenuId)                         \
+  E(kActionMenuSaveAndShareSubmenu, kSaveAndShareMenuId)                       \
+  E(kActionMenuHelpSubmenu, kHelpMenuId)                                       \
+  E(kActionMenuSavedTabGroupsSubmenu, kSavedTabGroupsMenuId)                   \
+  E(kActionMenuRecentTabsSubmenu, kRecentTabsMenuId)                           \
+  E(kActionMenuDeveloperSubmenu, kDeveloperMenuId)
+
 #define CHROME_ACTION_IDS \
     CHROME_COMMON_ACTION_IDS \
     CHROME_PLATFORM_SPECIFIC_ACTION_IDS \
@@ -548,6 +559,7 @@ enum ChromeActionIds : actions::ActionId {
   CHROME_ACTION_IDS
   SIDE_PANEL_ACTION_IDS
   TOOLBAR_PINNABLE_ACTION_IDS
+  SUBMENU_ACTION_IDS
 
   kChromeActionsEnd,
 };

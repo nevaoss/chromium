@@ -104,6 +104,7 @@ found in the LICENSE file.
 
     <!-- Omnibox suggestions -->
     <dimen name="omnibox_suggestion_header_padding_start">24dp</dimen>
+    <dimen name="omnibox_suggestion_header_padding_start_desktop">20dp</dimen>
     <dimen name="omnibox_suggestion_header_height">40dp</dimen>
     <dimen name="omnibox_suggestion_content_height">56dp</dimen>
     <dimen name="omnibox_suggestion_content_height_desktop">40dp</dimen>
@@ -223,6 +224,9 @@ found in the LICENSE file.
     <dimen name="omnibox_chip_padding_horizontal_collapsed">12dp</dimen>
     <dimen name="omnibox_chip_padding_horizontal_expanded_start">8dp</dimen>
     <dimen name="omnibox_chip_padding_horizontal_expanded_end">12dp</dimen>
+
+    <!-- Fake Search Box -->
+    <dimen name="fake_search_box_elevation">3dp</dimen>
 
     <!-- AI Mode chip. -->
     <dimen name="ai_chip_corner_radius">36dp</dimen>

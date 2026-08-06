@@ -6,6 +6,8 @@
 
 #include "base/functional/function_ref.h"
 #include "base/metrics/histogram_functions.h"
+#include "base/notreached.h"
+#include "base/rand_util.h"
 #include "base/strings/strcat.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
@@ -19,6 +21,26 @@
 namespace multistep_filter {
 
 namespace {
+
+bool IsSameEtldPlusOne(const UrlFilterSuggestion& suggestion) {
+  return GetEtldPlusOneForHost(base::UTF16ToUTF8(suggestion.source_host)) ==
+         GetEtldPlusOneForHost(suggestion.triggering_host);
+}
+
+base::TimeDelta GetClampedDifference(base::TimeTicks end,
+                                     base::TimeTicks start) {
+  if (end.is_null() || start.is_null() || end < start) {
+    return base::TimeDelta();
+  }
+  return end - start;
+}
+
+base::TimeDelta GetClampedDifference(base::Time end, base::Time start) {
+  if (end.is_null() || start.is_null() || end < start) {
+    return base::TimeDelta();
+  }
+  return end - start;
+}
 
 // A struct containing the retention slices that should be logged for a given
 // snapshot.
@@ -100,23 +122,22 @@ void LogAcceptanceHistogram(std::string_view base_histogram,
 // - There was a mismatch in the keys or values of the filters (e.g. a
 //   different brand or price range was applied than what was suggested).
 void LogApplicationOutcome(
-    const MultistepFilterMetricsTracker::SuggestionApplicationSession&
-        application_session,
-    const MultistepFilterMetricsTracker::NavigationSession& navigation_session,
-    bool is_success) {
-  MultistepFilterApplicationOutcome outcome =
-      is_success ? MultistepFilterApplicationOutcome::kAllFiltersApplied
-                 : MultistepFilterApplicationOutcome::kNotAllFiltersApplied;
+    MultistepFilterMetricsTracker::SuggestionApplicationSession& session,
+    MultistepFilterApplicationOutcome outcome) {
+  if (session.outcome_logged) {
+    return;
+  }
+
   base::UmaHistogramEnumeration(kMultistepFilterApplicationOutcomeHistogram,
                                 outcome);
   base::UmaHistogramEnumeration(
       base::StrCat({kMultistepFilterApplicationOutcomeHistogram,
                     kMultistepFilterByTaskHistogramPrefix,
-                    application_session.suggestion.task_type}),
+                    session.suggestion.task_type}),
       outcome);
 
   // Log by retention state:
-  GetRetentionSlices(application_session.retention_snapshot)
+  GetRetentionSlices(session.retention_snapshot)
       .ForEachActive([&](std::string_view slice) {
         base::UmaHistogramEnumeration(
             base::StrCat({kMultistepFilterApplicationOutcomeHistogram,
@@ -124,37 +145,61 @@ void LogApplicationOutcome(
             outcome);
       });
 
+  const bool is_success =
+      outcome == MultistepFilterApplicationOutcome::kAllFiltersApplied;
+
   if (is_success) {
-    size_t count = application_session.suggestion.attribute_ui_labels.size();
+    size_t count = session.suggestion.attribute_ui_labels.size();
     base::UmaHistogramCounts100(
         kMultistepFilterNumberOfFacetsSuccessfullyAppliedHistogram, count);
     base::UmaHistogramCounts100(
         base::StrCat(
             {kMultistepFilterNumberOfFacetsSuccessfullyAppliedHistogram,
              kMultistepFilterByTaskHistogramPrefix,
-             application_session.suggestion.task_type}),
+             session.suggestion.task_type}),
         count);
     base::UmaHistogramMediumTimes(
         kMultistepFilterTimeSuggestionAcceptanceToAppliedHistogram,
-        navigation_session.navigation_finish_time -
-            application_session.suggestion_accepted_time);
+        GetClampedDifference(session.application_navigation_finish_time,
+                             session.suggestion_accepted_time));
   }
 
   for (const FilterAttributeUiLabel& suggested_label :
-       application_session.suggestion.attribute_ui_labels) {
+       session.suggestion.attribute_ui_labels) {
     base::UmaHistogramBoolean(
         base::StrCat({kMultistepFilterApplicationOutcomeHistogram,
                       kMultistepFilterByTaskHistogramPrefix,
-                      application_session.suggestion.task_type,
+                      session.suggestion.task_type,
                       kMultistepFilterByFacetHistogramPrefix,
                       suggested_label.key}),
         is_success);
   }
+  session.outcome_logged = true;
+}
+
+void LogApplicationOutcomeWhenSessionIsFlushed(
+    MultistepFilterMetricsTracker::SuggestionApplicationSession& session,
+    MultistepFilterMetricsTracker::SuggestionApplicationSessionFlushTrigger
+        trigger) {
+  using enum MultistepFilterMetricsTracker::
+      SuggestionApplicationSessionFlushTrigger;
+  using enum MultistepFilterApplicationOutcome;
+  switch (trigger) {
+    case kApplicationFailure:
+      LogApplicationOutcome(session, kNotAllFiltersApplied);
+      break;
+    case kTabClosed:
+    case kSessionOverride:
+    case kNavigationBack:
+    case kNavigationFromBrowserContext:
+    case kNavigationFromPageContext:
+      LogApplicationOutcome(session, kAbandonedBeforeVerification);
+      break;
+  }
 }
 
 void LogSuggestionUiShown(
-    const MultistepFilterMetricsTracker::SuggestionUiSession& ui_session,
-    const MultistepFilterMetricsTracker::NavigationSession& nav_session) {
+    const MultistepFilterMetricsTracker::SuggestionUiSession& ui_session) {
   size_t count = ui_session.suggestion.attribute_ui_labels.size();
   std::string_view task_type = ui_session.suggestion.task_type;
   if (count > 0) {
@@ -166,20 +211,18 @@ void LogSuggestionUiShown(
         count);
   }
 
-  CHECK(!nav_session.navigation_finish_time.is_null());
+  CHECK(!ui_session.triggering_navigation_finish_time.is_null());
   base::UmaHistogramTimes(
       kMultistepFilterTimeNavigationToSuggestionShownHistogram,
-      ui_session.suggestion_shown_time - nav_session.navigation_finish_time);
+      GetClampedDifference(ui_session.suggestion_shown_time,
+                           ui_session.triggering_navigation_finish_time));
 
-  base::TimeDelta suggestion_age =
-      base::Time::Now() - ui_session.suggestion.extraction_timestamp;
+  base::TimeDelta suggestion_age = ui_session.suggestion_shown_age;
   int suggestion_age_minutes = suggestion_age.InMinutes();
   int max_age_bucket = kMultistepFilterSessionDuration.Get().InMinutes() + 1;
   base::UmaHistogramExactLinear(kMultistepFilterSuggestionAgeShownHistogram,
                                 suggestion_age_minutes, max_age_bucket);
-  if (GetEtldPlusOneForHost(
-          base::UTF16ToUTF8(ui_session.suggestion.source_host)) ==
-      GetEtldPlusOneForHost(ui_session.suggestion.triggering_host)) {
+  if (IsSameEtldPlusOne(ui_session.suggestion)) {
     base::UmaHistogramExactLinear(
         kMultistepFilterSuggestionAgeShownOnSameDomainHistogram,
         suggestion_age_minutes, max_age_bucket);
@@ -187,60 +230,40 @@ void LogSuggestionUiShown(
 }
 
 void LogSuggestionAcceptanceLatencyAndAgeMetrics(
-    const MultistepFilterMetricsTracker::SuggestionUiSession& ui_session,
-    const MultistepFilterMetricsTracker::NavigationSession& nav_session) {
-  CHECK(!nav_session.navigation_finish_time.is_null());
+    const MultistepFilterMetricsTracker::SuggestionUiSession& ui_session) {
+  CHECK(!ui_session.triggering_navigation_finish_time.is_null());
   base::UmaHistogramMediumTimes(
       kMultistepFilterTimeNavigationToSuggestionAcceptedHistogram,
-      ui_session.suggestion_accepted_time - nav_session.navigation_finish_time);
+      GetClampedDifference(ui_session.suggestion_accepted_time,
+                           ui_session.triggering_navigation_finish_time));
 
   base::UmaHistogramMediumTimes(
       kMultistepFilterTimeSuggestionShownToAcceptedHistogram,
-      ui_session.suggestion_accepted_time - ui_session.suggestion_shown_time);
+      GetClampedDifference(ui_session.suggestion_accepted_time,
+                           ui_session.suggestion_shown_time));
 
-  base::TimeDelta suggestion_age =
-      base::Time::Now() - ui_session.suggestion.extraction_timestamp;
+  base::TimeDelta suggestion_age = GetClampedDifference(
+      base::Time::Now(), ui_session.suggestion.extraction_timestamp);
   int suggestion_age_minutes = suggestion_age.InMinutes();
   int max_age_bucket = kMultistepFilterSessionDuration.Get().InMinutes() + 1;
   base::UmaHistogramExactLinear(kMultistepFilterSuggestionAgeAcceptedHistogram,
                                 suggestion_age_minutes, max_age_bucket);
-  if (GetEtldPlusOneForHost(
-          base::UTF16ToUTF8(ui_session.suggestion.source_host)) ==
-      GetEtldPlusOneForHost(ui_session.suggestion.triggering_host)) {
+  if (IsSameEtldPlusOne(ui_session.suggestion)) {
     base::UmaHistogramExactLinear(
         kMultistepFilterSuggestionAgeAcceptedOnSameDomainHistogram,
         suggestion_age_minutes, max_age_bucket);
   }
 }
 
-MultistepFilterPostSuggestionApplicationFirstNavigation
-CalculatePostSuggestionApplicationFirstNavigationAction(
-    const MultistepFilterMetricsTracker::PostSuggestionApplicationSession&
-        session,
+// Helper to determine if a navigation should be ignored for engagement metrics.
+bool ShouldIgnoreNavigationForEngagementMetrics(
     const FilterNavigationMetadata& metadata) {
-  if (metadata.is_back_navigation) {
-    // Use the navigation start time (when the user initiated the back action)
-    // rather than the current time (when the navigation finished) to measure
-    // the user's actual dwell time on the page, excluding loading latency.
-    base::TimeDelta time_since_landing =
-        metadata.navigation_start_time -
-        session.post_suggestion_window_start_time;
-    bool within_window = time_since_landing <
-                         kMultistepFilterPostApplicationSessionDuration.Get();
-    return within_window
-               ? MultistepFilterPostSuggestionApplicationFirstNavigation::
-                     kBackNavigationWithinSessionWindow
-               : MultistepFilterPostSuggestionApplicationFirstNavigation::
-                     kBackNavigationAfterSessionWindow;
+  // Ignore filter-initiated navigations (they are handled as overrides if a new
+  // suggestion is applied, and shouldn't count as engagement for the current
+  // session).
+  if (metadata.was_filter_initiated_navigation) {
+    return true;
   }
-  return MultistepFilterPostSuggestionApplicationFirstNavigation::
-      kForwardOrOtherNavigation;
-}
-
-// Helper to determine if a navigation should be ignored for post-application
-// metrics.
-bool ShouldIgnoreNavigationForPostApplicationMetrics(
-    const FilterNavigationMetadata& metadata) {
   // Ignore same-document navigations unless they are back navigations or have
   // user gesture.
   if (metadata.is_same_document_navigation && !metadata.is_back_navigation &&
@@ -248,11 +271,63 @@ bool ShouldIgnoreNavigationForPostApplicationMetrics(
     return true;
   }
   // Ignore same-url reloads.
-  if (metadata.url == metadata.prev_url &&
+  if (!metadata.url.is_empty() && metadata.url == metadata.prev_url &&
       !metadata.is_same_document_navigation) {
     return true;
   }
   return false;
+}
+
+void LogPostApplicationUserEngagement(
+    const MultistepFilterMetricsTracker::SuggestionApplicationSession& session,
+    MultistepFilterMetricsTracker::SuggestionApplicationSessionFlushTrigger
+        trigger,
+    base::TimeTicks event_time) {
+  using enum MultistepFilterMetricsTracker::
+      SuggestionApplicationSessionFlushTrigger;
+  using enum MultistepFilterPostSuggestionApplicationUserEngagement;
+
+  const base::TimeDelta time_since_suggestion_application_finish =
+      GetClampedDifference(event_time,
+                           session.application_navigation_finish_time);
+  const bool within_window =
+      time_since_suggestion_application_finish <
+      kMultistepFilterPostApplicationSessionDuration.Get();
+
+  MultistepFilterPostSuggestionApplicationUserEngagement user_engagement_action;
+  switch (trigger) {
+    case kApplicationFailure:
+      return;
+    case kNavigationFromPageContext:
+      user_engagement_action =
+          within_window ? kEngagedWithFurtherNavigationWithinSessionWindow
+                        : kEngagedWithFurtherNavigationAfterSessionWindow;
+      break;
+    case kTabClosed:
+      user_engagement_action = within_window
+                                   ? kAbandonedWithinSessionWindowTabClosed
+                                   : kAbandonedAfterSessionWindowTabClosed;
+      break;
+    case kNavigationFromBrowserContext:
+      user_engagement_action =
+          within_window ? kAbandonedWithinSessionWindowOmniboxOrBookmark
+                        : kAbandonedAfterSessionWindowOmniboxOrBookmark;
+      break;
+    case kNavigationBack:
+      user_engagement_action = within_window
+                                   ? kAbandonedWithinSessionWindowBackNavigation
+                                   : kAbandonedAfterSessionWindowBackNavigation;
+      break;
+    case kSessionOverride:
+      user_engagement_action =
+          within_window ? kAbandonedWithinSessionWindowSessionOverride
+                        : kAbandonedAfterSessionWindowSessionOverride;
+      break;
+  }
+
+  base::UmaHistogramEnumeration(
+      kMultistepFilterPostSuggestionApplicationUserEngagementHistogram,
+      user_engagement_action);
 }
 
 }  // namespace
@@ -263,11 +338,10 @@ MultistepFilterMetricsTracker::~MultistepFilterMetricsTracker() {
   if (current_ui_session_.has_value()) {
     FlushSuggestionUiSession(SuggestionUserDecision::kIgnored);
   }
-  if (current_suggestion_application_session_.has_value()) {
-    FlushSuggestionApplicationSession(/*was_applied_successfully=*/false);
-  }
-  if (current_post_suggestion_application_session_.has_value()) {
-    FlushPostSuggestionApplicationSession();
+  if (current_application_session_.has_value()) {
+    FlushSuggestionApplicationSession(
+        SuggestionApplicationSessionFlushTrigger::kTabClosed,
+        base::TimeTicks::Now());
   }
 }
 
@@ -277,32 +351,35 @@ void MultistepFilterMetricsTracker::OnNavigationFinished(
   CHECK(!metadata.navigation_finish_time.is_null());
   current_navigation_ = NavigationSession();
   current_navigation_.navigation_finish_time = metadata.navigation_finish_time;
+  current_navigation_.ukm_source_id = metadata.ukm_source_id;
 
-  // If a new navigation finished while we were still waiting for extraction
-  // of a previously applied suggestion, that application session is considered
-  // failed.
-  if (current_suggestion_application_session_.has_value()) {
-    FlushSuggestionApplicationSession(/*was_applied_successfully=*/false);
-  }
-
-  // If a post-acceptance session is active, track this navigation.
-  if (current_post_suggestion_application_session_.has_value()) {
-    TrackPostSuggestionApplicationNavigation(metadata);
-  }
+  MaybeFlushSessionOnNavigation(metadata);
 
   // If this navigation is applying the suggestion, start the application
   // session.
   if (metadata.applied_suggestion.has_value()) {
-    current_suggestion_application_session_ = SuggestionApplicationSession{
+    PendingSuggestionApplicationMetrics pending_metrics =
+        pending_suggestion_application_metrics_.value_or(
+            PendingSuggestionApplicationMetrics());
+    current_application_session_ = SuggestionApplicationSession{
+        .ukm_source_id = metadata.ukm_source_id,
+        .session_id = pending_metrics.session_id,
         .suggestion = metadata.applied_suggestion.value(),
+        .retention_snapshot = pending_metrics.retention_snapshot,
+        .suggestion_accepted_time =
+            pending_metrics.suggestion_accepted_time.is_null()
+                ? metadata.navigation_start_time
+                : pending_metrics.suggestion_accepted_time,
         .is_error_page = metadata.is_error_page_navigation,
-        .suggestion_accepted_time = metadata.navigation_start_time,
-        .retention_snapshot =
-            last_accepted_suggestion_retention_snapshot_.value_or(
-                RetentionStateSnapshot()),
+        .application_navigation_finish_time = metadata.navigation_finish_time,
     };
+    if (current_application_session_->is_error_page) {
+      FlushSuggestionApplicationSession(
+          SuggestionApplicationSessionFlushTrigger::kApplicationFailure,
+          metadata.navigation_finish_time);
+    }
   }
-  last_accepted_suggestion_retention_snapshot_.reset();
+  pending_suggestion_application_metrics_.reset();
 
   // If a UI session has been started but not concluded yet, the finishing
   // of the navigation indicates that the user ignored the UI.
@@ -324,12 +401,18 @@ void MultistepFilterMetricsTracker::OnSuggestionShown(
     FlushSuggestionUiSession(SuggestionUserDecision::kIgnored);
   }
   current_ui_session_ = SuggestionUiSession{
+      .triggering_navigation_finish_time =
+          current_navigation_.navigation_finish_time,
+      .ukm_source_id = current_navigation_.ukm_source_id,
+      .session_id = static_cast<int64_t>(base::RandUint64()),
       .suggestion = suggestion,
-      .user_decision = SuggestionUserDecision::kIgnored,
       .suggestion_shown_time = base::TimeTicks::Now(),
+      .suggestion_shown_age = GetClampedDifference(
+          base::Time::Now(), suggestion.extraction_timestamp),
       .retention_snapshot = retention_snapshot,
+      .user_decision = SuggestionUserDecision::kIgnored,
   };
-  LogSuggestionUiShown(*current_ui_session_, current_navigation_);
+  LogSuggestionUiShown(*current_ui_session_);
 }
 
 void MultistepFilterMetricsTracker::OnSuggestionReopened() {
@@ -347,8 +430,13 @@ void MultistepFilterMetricsTracker::OnSuggestionUserInteraction(
   switch (decision) {
     case SuggestionUserDecision::kAccepted:
       current_ui_session_->suggestion_accepted_time = base::TimeTicks::Now();
-      last_accepted_suggestion_retention_snapshot_ =
-          current_ui_session_->retention_snapshot;
+      pending_suggestion_application_metrics_ =
+          PendingSuggestionApplicationMetrics{
+              .retention_snapshot = current_ui_session_->retention_snapshot,
+              .session_id = current_ui_session_->session_id,
+              .suggestion_accepted_time =
+                  current_ui_session_->suggestion_accepted_time,
+          };
       break;
     case SuggestionUserDecision::kDismissed:
     case SuggestionUserDecision::kSettingsOpened:
@@ -369,21 +457,19 @@ void MultistepFilterMetricsTracker::OnPreservedSuggestionCleared() {
 void MultistepFilterMetricsTracker::
     OnSuggestionApplicationAnnotationExtractionFinished(
         bool was_applied_successfully) {
-  if (!current_suggestion_application_session_.has_value()) {
+  if (!current_application_session_.has_value()) {
     return;
   }
-  if (was_applied_successfully &&
-      !current_suggestion_application_session_->is_error_page) {
-    if (current_post_suggestion_application_session_.has_value()) {
-      FlushPostSuggestionApplicationSession();
-    }
-    current_post_suggestion_application_session_ =
-        PostSuggestionApplicationSession{
-            .post_suggestion_window_start_time =
-                current_navigation_.navigation_finish_time,
-        };
+  if (was_applied_successfully) {
+    current_application_session_->is_applied = true;
+    LogApplicationOutcome(
+        *current_application_session_,
+        MultistepFilterApplicationOutcome::kAllFiltersApplied);
+  } else {
+    FlushSuggestionApplicationSession(
+        SuggestionApplicationSessionFlushTrigger::kApplicationFailure,
+        base::TimeTicks::Now());
   }
-  FlushSuggestionApplicationSession(was_applied_successfully);
 }
 
 void MultistepFilterMetricsTracker::FlushSuggestionUiSession(
@@ -410,61 +496,52 @@ void MultistepFilterMetricsTracker::FlushSuggestionUiSession(
   LogAcceptanceHistogram(kMultistepFilterAcceptanceHistogram, task_type,
                          final_decision, snapshot);
   if (final_decision == SuggestionUserDecision::kAccepted) {
-    LogSuggestionAcceptanceLatencyAndAgeMetrics(*current_ui_session_,
-                                                current_navigation_);
+    LogSuggestionAcceptanceLatencyAndAgeMetrics(*current_ui_session_);
   }
   current_ui_session_ = std::nullopt;
 }
 
 void MultistepFilterMetricsTracker::FlushSuggestionApplicationSession(
-    bool was_applied_successfully) {
-  CHECK(current_suggestion_application_session_.has_value());
-  bool is_success = was_applied_successfully &&
-                    !current_suggestion_application_session_->is_error_page;
-  LogApplicationOutcome(*current_suggestion_application_session_,
-                        current_navigation_, is_success);
-  current_suggestion_application_session_ = std::nullopt;
+    SuggestionApplicationSessionFlushTrigger trigger,
+    base::TimeTicks event_time) {
+  CHECK(current_application_session_.has_value());
+  LogApplicationOutcomeWhenSessionIsFlushed(*current_application_session_,
+                                            trigger);
+
+  LogPostApplicationUserEngagement(*current_application_session_, trigger,
+                                   event_time);
+  current_application_session_ = std::nullopt;
 }
 
-void MultistepFilterMetricsTracker::TrackPostSuggestionApplicationNavigation(
+void MultistepFilterMetricsTracker::MaybeFlushSessionOnNavigation(
     const FilterNavigationMetadata& metadata) {
-  CHECK(current_post_suggestion_application_session_.has_value());
-  if (ShouldIgnoreNavigationForPostApplicationMetrics(metadata) ||
-      current_post_suggestion_application_session_
-          ->has_logged_first_navigation) {
+  if (!current_application_session_.has_value()) {
     return;
   }
-  base::UmaHistogramEnumeration(
-      kMultistepFilterPostSuggestionApplicationFirstNavigationHistogram,
-      CalculatePostSuggestionApplicationFirstNavigationAction(
-          *current_post_suggestion_application_session_, metadata));
-  current_post_suggestion_application_session_->has_logged_first_navigation =
-      true;
-}
+  using enum SuggestionApplicationSessionFlushTrigger;
 
-void MultistepFilterMetricsTracker::FlushPostSuggestionApplicationSession() {
-  CHECK(current_post_suggestion_application_session_.has_value());
-  MultistepFilterPostSuggestionApplicationTabClose close_action;
-
-  if (current_post_suggestion_application_session_
-          ->has_logged_first_navigation) {
-    close_action = MultistepFilterPostSuggestionApplicationTabClose::
-        kTabClosedWithFurtherNavigation;
-  } else {
-    base::TimeDelta time_since_suggestion_application_finish =
-        base::TimeTicks::Now() - current_post_suggestion_application_session_
-                                     ->post_suggestion_window_start_time;
-    bool within_window = time_since_suggestion_application_finish <
-                         kMultistepFilterPostApplicationSessionDuration.Get();
-    close_action = within_window
-                       ? MultistepFilterPostSuggestionApplicationTabClose::
-                             kTabClosedWithinSessionWindow
-                       : MultistepFilterPostSuggestionApplicationTabClose::
-                             kTabClosedAfterSessionWindow;
+  // If this navigation is applying a new suggestion, it overrides the active
+  // one.
+  if (metadata.applied_suggestion.has_value()) {
+    FlushSuggestionApplicationSession(kSessionOverride,
+                                      metadata.navigation_start_time);
+    return;
   }
-  base::UmaHistogramEnumeration(
-      kMultistepFilterPostSuggestionApplicationTabCloseHistogram, close_action);
-  current_post_suggestion_application_session_ = std::nullopt;
+
+  // Ignore same-document navigations or reloads in all phases.
+  if (ShouldIgnoreNavigationForEngagementMetrics(metadata)) {
+    return;
+  }
+
+  SuggestionApplicationSessionFlushTrigger trigger;
+  if (metadata.is_navigation_from_omnibox_or_bookmarks) {
+    trigger = kNavigationFromBrowserContext;
+  } else if (metadata.is_back_navigation) {
+    trigger = kNavigationBack;
+  } else {
+    trigger = kNavigationFromPageContext;
+  }
+  FlushSuggestionApplicationSession(trigger, metadata.navigation_start_time);
 }
 
 }  // namespace multistep_filter

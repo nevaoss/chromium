@@ -21,6 +21,7 @@
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_type.h"
 #include "components/autofill/core/browser/data_model/payments/iban.h"
 #include "components/autofill/core/browser/filling/autofill_ai/autofill_ai_access_manager.h"
+#include "components/autofill/core/browser/integrators/at_memory/at_memory_query_service.h"
 #include "components/autofill/core/browser/suggestions/suggestion.h"
 #include "components/autofill/core/browser/ui/autofill_suggestion_delegate.h"
 #include "components/autofill/core/common/aliases.h"
@@ -28,12 +29,9 @@
 #include "components/autofill/core/common/unique_ids.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
 
-namespace accessibility_annotator {
-struct MemorySearchResults;
-}
-
 namespace autofill {
 
+struct MemorySearchResults;
 class BrowserAutofillManager;
 
 // Manager for the AtMemory feature. It handles queries to the
@@ -122,9 +120,8 @@ class AtMemoryManager {
 
   // Callback handler for the search query. `query` is the original search
   // string. `result` contains the search results.
-  void OnSearchResultsReceived(
-      const std::u16string& query,
-      accessibility_annotator::MemorySearchResults result);
+  void OnSearchResultsReceived(const std::u16string& query,
+                               MemorySearchResults result);
 
   // Creates a suggestion to display when the query is not supported.
   Suggestion CreateUnsupportedQuerySuggestion(const std::u16string& query);
@@ -157,6 +154,22 @@ class AtMemoryManager {
                       const FieldGlobalId& field_id,
                       const Suggestion& suggestion,
                       std::unique_ptr<AtMemoryMetricsRecorder> metrics);
+
+  // Triggers reauthentication and fetching of the unmasked Personal Context
+  // value, which fills the field upon completion.
+  void FillSensitivePersonalContextData(
+      const FormGlobalId& form_id,
+      const FieldGlobalId& field_id,
+      const Suggestion& suggestion,
+      std::unique_ptr<AtMemoryMetricsRecorder> metrics);
+
+  // Fills the field with the unmasked sensitive SPII Personal Context value if
+  // fetching succeeded, or records failure metrics if it failed.
+  void OnSensitivePersonalContextDataFetched(
+      const FormGlobalId& form_id,
+      const FieldGlobalId& field_id,
+      std::unique_ptr<AtMemoryMetricsRecorder> metrics,
+      AtMemoryQueryService::SpiiRetrievalResult result);
 
   // Fills sensitive identity data by selecting the appropriate filling path
   // depending on whether the data is sourced from Autofill AI or Personal

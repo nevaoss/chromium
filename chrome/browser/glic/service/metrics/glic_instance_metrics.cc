@@ -24,7 +24,9 @@
 #include "chrome/browser/glic/glic_pref_names.h"
 #include "chrome/browser/glic/public/context/glic_sharing_manager.h"
 #include "chrome/browser/glic/public/features.h"
+#include "chrome/browser/glic/public/glic_cui_tracker.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
+#include "chrome/browser/glic/public/glic_submit_query_cui_tracker.h"
 #include "chrome/browser/glic/service/glic_instance_helper.h"
 #include "chrome/browser/glic/service/glic_state_tracker.h"
 #include "chrome/browser/glic/service/metrics/glic_instance_helper_metrics.h"
@@ -455,6 +457,13 @@ void GlicInstanceMetrics::OnShowInSidePanel(tabs::TabInterface* tab) {
   }
 }
 
+void GlicInstanceMetrics::OnShowInactiveSidePanel(
+    mojom::InvocationSource invocation_source) {
+  if (!initial_invocation_source_.has_value()) {
+    initial_invocation_source_ = invocation_source;
+  }
+}
+
 void GlicInstanceMetrics::OnShowInFloaty(const ShowOptions& options) {
   if (!floaty_open_time_.is_null()) {
     base::UmaHistogramEnumeration(
@@ -699,10 +708,15 @@ void GlicInstanceMetrics::OnOpen(glic::mojom::InvocationSource source,
   LogEvent(GlicInstanceEvent::kOpen);
 
   // 2. Log Initial Invocation Source
-  if (!initial_invocation_source_.has_value()) {
-    initial_invocation_source_ = source;
+  if (!did_open_) {
+    did_open_ = true;
+    // Don't overwrite initial invocation source if it was set due to being
+    // invoked in the background.
+    if (!initial_invocation_source_.has_value()) {
+      initial_invocation_source_ = source;
+    }
     base::UmaHistogramEnumeration("Glic.Instance.InitialInvocationSource",
-                                  source);
+                                  *initial_invocation_source_);
   }
 
   // 3. Record Actions
@@ -735,7 +749,7 @@ void GlicInstanceMetrics::OnToggle(
     bool is_showing,
     std::unique_ptr<GlicWindowInvocationTracker> invocation_tracker) {
   if (invocation_tracker) {
-    invocation_tracker_ = std::move(invocation_tracker);
+    cui_trackers_.push_back(std::move(invocation_tracker));
   }
   base::RecordAction(base::UserMetricsAction("Glic.Instance.Toggle"));
   if (std::holds_alternative<FloatingShowOptions>(options.embedder_options)) {
@@ -933,9 +947,11 @@ void GlicInstanceMetrics::OnClientReady(EmbedderType type) {
 }
 
 void GlicInstanceMetrics::LogEvent(GlicInstanceEvent event) {
-  if (invocation_tracker_) {
-    if (invocation_tracker_->OnEvent(event)) {
-      invocation_tracker_.reset();
+  for (auto it = cui_trackers_.begin(); it != cui_trackers_.end();) {
+    if ((*it)->OnEvent(event)) {
+      it = cui_trackers_.erase(it);
+    } else {
+      ++it;
     }
   }
   base::UmaHistogramEnumeration("Glic.Instance.EventCounts", event);
@@ -995,6 +1011,8 @@ void GlicInstanceMetrics::OnUserInputSubmitted(mojom::WebClientMode mode) {
   }
   session_manager_.OnUserInputSubmitted(mode);
   LogEvent(GlicInstanceEvent::kUserInputSubmitted);
+  cui_trackers_.push_back(std::make_unique<GlicSubmitQueryCuiTracker>());
+
   base::RecordAction(base::UserMetricsAction("GlicResponseInputSubmit"));
 
   if (sharing_manager_) {

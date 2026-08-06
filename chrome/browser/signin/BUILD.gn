@@ -175,10 +175,6 @@ source_set("signin") {
       ]
     }
   }
-
-  if (is_mac || is_linux) {
-    public += [ "before_fre_refresh_hats_field_trial.h" ]
-  }
 }
 
 source_set("impl") {
@@ -227,6 +223,7 @@ source_set("impl") {
     "//chrome/browser/ui/dialogs:browser_dialogs",
     "//chrome/browser/webdata_services",
     "//components/application_locale_storage",
+    "//components/browser_actuator/public:feature_list",
     "//components/contextual_tasks/public:feature_list",
     "//components/embedder_support:user_agent",
     "//components/plus_addresses/core/common:features",
@@ -430,10 +427,6 @@ source_set("impl") {
       ]
     }
   }
-
-  if (is_mac || is_linux) {
-    sources += [ "before_fre_refresh_hats_field_trial.cc" ]
-  }
 }
 
 source_set("signin_promo") {
@@ -486,6 +479,23 @@ source_set("test_support") {
       "//chrome/browser:browser_process",
       "//chrome/browser/net",
       "//content/test:test_support",
+    ]
+  }
+
+  if (enable_bound_session_credentials) {
+    public += [
+      "bound_session_credentials/fake_bound_session_cookie_refresh_service.h",
+      "bound_session_credentials/fake_bound_session_refresh_cookie_fetcher.h",
+      "bound_session_credentials/mock_bound_session_cookie_refresh_service.h",
+    ]
+    sources += [
+      "bound_session_credentials/fake_bound_session_cookie_refresh_service.cc",
+      "bound_session_credentials/fake_bound_session_refresh_cookie_fetcher.cc",
+      "bound_session_credentials/mock_bound_session_cookie_refresh_service.cc",
+    ]
+    deps += [
+      "//chrome/common",
+      "//testing/gmock",
     ]
   }
 }
@@ -729,6 +739,7 @@ if (!is_android) {
         "//chrome/browser/ui:ui_features",
         "//chrome/browser/ui/hats:test_support",
         "//chrome/browser/ui/signin",
+        "//chrome/browser/ui/webui/settings",
         "//chrome/browser/ui/webui/signin",
         "//chrome/browser/ui/webui/signin:login_ui_service",
         "//chrome/browser/ui/webui/signin:signin_ui_error",

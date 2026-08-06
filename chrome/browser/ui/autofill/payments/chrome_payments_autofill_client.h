@@ -253,7 +253,7 @@ class ChromePaymentsAutofillClient : public PaymentsAutofillClient,
   BnplUiDelegate* GetBnplUiDelegate() override;
 #if !BUILDFLAG(IS_ANDROID)
   OmniboxAutofillDelegate* GetOmniboxAutofillDelegate() override;
-  void ShowOmniboxAutofillChip(
+  void ShowExpandedOmniboxAutofillChip(
       std::vector<Suggestion> suggestions,
       base::RepeatingCallback<void(base::span<const Suggestion>)>
           on_suggestions_shown,
@@ -267,7 +267,9 @@ class ChromePaymentsAutofillClient : public PaymentsAutofillClient,
           did_accept_suggestion) override;
   void HideOmniboxAutofillChip() override;
 #endif
-  void ShowPaymentsChurnedUsersUI() final;
+  void ShowPaymentsChurnedUsersUI(base::OnceClosure accept_callback,
+                                  base::OnceClosure cancel_callback,
+                                  base::OnceClosure closed_callback) final;
 
   // Begin ChromePaymentsAutofillClient-specific section.
 

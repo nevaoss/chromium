@@ -17,6 +17,7 @@
 #include "chrome/browser/enterprise/data_protection/data_protection_url_lookup_service_factory.h"
 #include "chrome/browser/interstitials/enterprise_util.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/common/url_constants.h"
 #include "chrome/common/webui_url_constants.h"
 #include "components/enterprise/data_protection/data_protection_url_lookup_service.h"
 #include "components/enterprise/data_protection/utils.h"
@@ -136,7 +137,8 @@ void OnDoLookupComplete(
 
 bool SkipUrl(const GURL& url) {
   return !url.is_valid() || url.SchemeIs(content::kChromeUIScheme) ||
-         url.SchemeIs(extensions::kExtensionScheme);
+         url.SchemeIs(extensions::kExtensionScheme) ||
+         url.SchemeIs(chrome::kChromeNativeScheme);
 }
 
 bool IsEnterpriseLookupEnabled(Profile* profile) {
@@ -444,8 +446,16 @@ void DataProtectionNavigationObserver::DidFinishNavigation(
   // `pending_navigation_callback_` being null implies `DidFinishNavigation`
   // has already been called, so further lookups/metrics code need to run.
   if (!navigation_handle->IsInPrimaryMainFrame() ||
-      !navigation_handle->HasCommitted() || !pending_navigation_callback_ ||
-      !is_verdict_received_) {
+      !navigation_handle->HasCommitted() || !pending_navigation_callback_) {
+    return;
+  }
+
+  if (!is_verdict_received_) {
+    // If we don't have verdict yet, write DC state to page data so that it is
+    // considered when the verdict is received.
+    DataProtectionPageUserData::UpdateDataControlsScreenshotState(
+        GetPageFromWebContents(navigation_handle->GetWebContents()),
+        identifier_, allow_screenshot_);
     return;
   }
 
@@ -458,35 +468,37 @@ void DataProtectionNavigationObserver::DidFinishNavigation(
   // the navigation happens from the bfcache, the page itself is located in
   // the browser's cache, and the lookup service's cache TTL has expired.
   // Will need to see if in practice this is a problem.
-  auto* ud = GetUserData(web_contents());
-  if (ud) {
-    LogVerdictSource(URLVerdictSource::kPageUserData);
-    RunPendingNavigationCallback(web_contents(),
-                                 std::move(pending_navigation_callback_));
-    return;
+  if (is_from_cache_) {
+    auto* ud = GetUserData(web_contents());
+    if (ud) {
+      LogVerdictSource(URLVerdictSource::kPageUserData);
+      RunPendingNavigationCallback(web_contents(),
+                                   std::move(pending_navigation_callback_));
+      return;
+    }
   }
 
   DataProtectionPageUserData::UpdateDataControlsScreenshotState(
       GetPageFromWebContents(navigation_handle->GetWebContents()), identifier_,
       allow_screenshot_);
 
-  if (rt_lookup_response_.get()) {
-    LogVerdictSource(URLVerdictSource::kCachedLookupResult);
-    OnDoLookupComplete(web_contents()->GetWeakPtr(),
-                       std::move(pending_navigation_callback_), identifier_,
-                       std::move(rt_lookup_response_));
-  } else if (ShouldPerformRealTimeUrlCheck(
-                 web_contents()->GetBrowserContext())) {
+  if (is_from_cache_ &&
+      ShouldPerformRealTimeUrlCheck(web_contents()->GetBrowserContext())) {
     LogVerdictSource(URLVerdictSource::kPostNavigationLookup);
     DoLookup(
         lookup_service_, navigation_handle->GetURL(),
         base::BindOnce(&OnDoLookupComplete, web_contents()->GetWeakPtr(),
                        std::move(pending_navigation_callback_), identifier_),
         web_contents());
-  } else if (web_contents()) {
-    RunPendingNavigationCallback(web_contents(),
-                                 std::move(pending_navigation_callback_));
+    return;
   }
+
+  if (rt_lookup_response_.get()) {
+    LogVerdictSource(URLVerdictSource::kCachedLookupResult);
+  }
+  OnDoLookupComplete(web_contents()->GetWeakPtr(),
+                     std::move(pending_navigation_callback_), identifier_,
+                     std::move(rt_lookup_response_));
 
   DCHECK(pending_navigation_callback_.is_null());
 }

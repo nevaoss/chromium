@@ -1563,6 +1563,23 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Accel_CycleToNextTab">
+  <owner>markchang@chromium.org</owner>
+  <owner>top-chrome-desktop-ui@google.com</owner>
+  <description>
+    Logged when the user activates the accelerator for cycling to the next tab.
+  </description>
+</action>
+
+<action name="Accel_CycleToPrevTab">
+  <owner>markchang@chromium.org</owner>
+  <owner>top-chrome-desktop-ui@google.com</owner>
+  <description>
+    Logged when the user activates the accelerator for cycling to the previous
+    tab.
+  </description>
+</action>
+
 <action name="Accel_Desks_ActivateLeft">
   <owner>afakhry@chromium.org</owner>
   <description>
@@ -9383,6 +9400,13 @@ should be able to be added at any place in this file.
   <description>Time period in CBD was changed to OlderThan30Days.</description>
 </action>
 
+<action name="ClearBrowsingData_UserDeletedCookieOrCache">
+  <owner>pabouchard@google.com</owner>
+  <description>
+    Logged when the user clears browsing data and deletes cookies or cache.
+  </description>
+</action>
+
 <action name="ClearSelection">
   <owner>Please list the metric's owners. Add more owner tags as needed.</owner>
   <description>Please enter the description of this user action.</description>
@@ -16103,6 +16127,24 @@ should be able to be added at any place in this file.
   <owner>erikchen@chromium.org</owner>
   <description>
     Logged if the user enables geolocation in glic settings.
+  </description>
+</action>
+
+<action name="Glic.Settings.HotkeyScope.Chrome">
+  <owner>andreaxg@google.com</owner>
+  <owner>iwells@chromium.org</owner>
+  <description>
+    Logged when the user changes the Glic hotkey scope setting to 'In Chrome'
+    (local scope) on the Glic settings page.
+  </description>
+</action>
+
+<action name="Glic.Settings.HotkeyScope.Global">
+  <owner>andreaxg@google.com</owner>
+  <owner>iwells@chromium.org</owner>
+  <description>
+    Logged when the user changes the Glic hotkey scope setting to 'Global' on
+    the Glic settings page.
   </description>
 </action>
 
@@ -29141,6 +29183,13 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="MobileMenuAboutChrome">
+  <owner>massan@google.com</owner>
+  <description>
+    User pressed 'About Chrome' in the help submenu in the app menu.
+  </description>
+</action>
+
 <action name="MobileMenuAddAnyGroup.BeforeTabRestore">
   <owner>skym@chromium.org</owner>
   <owner>clank-tab-dev@google.com</owner>
@@ -29160,6 +29209,14 @@ should be able to be added at any place in this file.
   <description>
     User pressed the star icon in the app menu to add or remove a bookmark for
     the current page.
+  </description>
+</action>
+
+<action name="MobileMenuAddToExistingGroup">
+  <owner>massan@google.com</owner>
+  <description>
+    User pressed a tab group name in the 'Add to group' submenu in the app menu
+    to add the current tab to that group.
   </description>
 </action>
 
@@ -29598,6 +29655,11 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="MobileMenuOpenBookmark">
+  <owner>massan@google.com</owner>
+  <description>User pressed a bookmark in the app menu to open it.</description>
+</action>
+
 <action name="MobileMenuOpenTabs">
   <obsolete>This action was renamed to MobileMenuRecentTabs.</obsolete>
   <owner>aurimas@chromium.org</owner>
@@ -29609,6 +29671,13 @@ should be able to be added at any place in this file.
   <owner>pkotwicz@chromium.org</owner>
   <description>
     User successfully opened a WebAPK by pressing 'Open WebAPK' in the app menu.
+  </description>
+</action>
+
+<action name="MobileMenuPaintPreview">
+  <owner>massan@google.com</owner>
+  <description>
+    User pressed 'Paint preview' in the save and share submenu in the app menu.
   </description>
 </action>
 
@@ -29768,6 +29837,13 @@ should be able to be added at any place in this file.
   <obsolete>Deprecated as of 3/2023</obsolete>
   <owner>rkgibson@google.com</owner>
   <description>User pressed 'Search Copied Image' in the app menu.</description>
+</action>
+
+<action name="MobileMenuSelectTabFromGroup">
+  <owner>massan@google.com</owner>
+  <description>
+    User pressed a tab in the tab group submenu in the app menu to switch to it.
+  </description>
 </action>
 
 <action name="MobileMenuSelectTabs">
@@ -31698,6 +31774,14 @@ should be able to be added at any place in this file.
   <description>
     Reported when user opens the Password Manager page from the Search Passwords
     widget. iOS only.
+  </description>
+</action>
+
+<action name="MobileSelectionDropdown.Print">
+  <owner>oka@google.com</owner>
+  <description>
+    User tapped the Print item in the Android text selection dropdown menu to
+    print the selected text.
   </description>
 </action>
 

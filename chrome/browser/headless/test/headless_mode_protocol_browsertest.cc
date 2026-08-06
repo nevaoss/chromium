@@ -202,18 +202,10 @@ void HeadlessModeProtocolBrowserTest::ProcessTestResult(
 HEADLESS_MODE_PROTOCOL_TEST(DomFocus, "input/dom-focus.js")
 HEADLESS_MODE_PROTOCOL_TEST(FocusEvent, "input/focus-event.js")
 
-// Flaky crbug.com/40902570
-HEADLESS_MODE_PROTOCOL_TEST(DISABLED_FocusBlurNotifications,
-                            "input/focus-blur-notifications.js")
+HEADLESS_MODE_PROTOCOL_TEST(FocusBlurNotifications,
+                            "shared/focus-blur-notifications.js")
 
-// TODO(crbug.com/40257054): Re-enable this test
-#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
-#define MAYBE_InputClipboardOps DISABLED_InputClipboardOps
-#else
-#define MAYBE_InputClipboardOps InputClipboardOps
-#endif
-HEADLESS_MODE_PROTOCOL_TEST(MAYBE_InputClipboardOps,
-                            "input/input-clipboard-ops.js")
+HEADLESS_MODE_PROTOCOL_TEST(InputClipboardOps, "shared/input-clipboard-ops.js")
 
 HEADLESS_MODE_PROTOCOL_TEST(DocumentFocusOnLoad,
                             "input/document-focus-on-load.js")
@@ -421,22 +413,21 @@ HEADLESS_MODE_PROTOCOL_TEST(StartFullscreenSwitch,
 HEADLESS_MODE_PROTOCOL_TEST(StartFullscreenSwitchScaled,
                             "sanity/start-fullscreen-switch-scaled.js")
 
-// TODO(crbug.com/430156442): These fail on Mac 13
+// TODO(crbug.com/430156442): This fails on macOS where fullscreen uses display
+// bounds rather than work area
 #if BUILDFLAG(IS_MAC)
 #define MAYBE_WindowStateTransitions DISABLED_WindowStateTransitions
-#define MAYBE_WindowZoomOnSecondaryScreen DISABLED_WindowZoomOnSecondaryScreen
 #define MAYBE_WindowZoomSizeMatchesWorkArea \
   DISABLED_WindowZoomSizeMatchesWorkArea
 #else
 #define MAYBE_WindowStateTransitions WindowStateTransitions
-#define MAYBE_WindowZoomOnSecondaryScreen WindowZoomOnSecondaryScreen
 #define MAYBE_WindowZoomSizeMatchesWorkArea WindowZoomSizeMatchesWorkArea
 #endif
 
 HEADLESS_MODE_PROTOCOL_TEST(MAYBE_WindowStateTransitions,
                             "shared/window-state-transitions.js")
 
-HEADLESS_MODE_PROTOCOL_TEST(MAYBE_WindowZoomOnSecondaryScreen,
+HEADLESS_MODE_PROTOCOL_TEST(WindowZoomOnSecondaryScreen,
                             "shared/window-zoom-on-secondary-screen.js")
 
 HEADLESS_MODE_PROTOCOL_TEST(MAYBE_WindowZoomSizeMatchesWorkArea,

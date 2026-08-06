@@ -4,6 +4,8 @@
 
 import type {SearchAnimatedGlowElement} from '//resources/cr_components/search/animated_glow.js';
 import {ComposeboxContextAddedMethod, GlowAnimationState} from '//resources/cr_components/search/constants.js';
+import {DragAndDropHandler} from '//resources/cr_components/search/drag_drop_handler.js';
+import type {DragAndDropHost} from '//resources/cr_components/search/drag_drop_host.js';
 import {getInstance as getAnnouncerInstance} from '//resources/cr_elements/cr_a11y_announcer/cr_a11y_announcer.js';
 import {I18nMixinLit} from '//resources/cr_elements/i18n_mixin_lit.js';
 import type {I18nMixinLitInterface} from '//resources/cr_elements/i18n_mixin_lit.js';
@@ -60,7 +62,8 @@ export const ComposeboxEmbedderMixin =
     Constructor<I18nMixinLitInterface>&
     Constructor<ComposeboxEmbedderMixinInterface> => {
       class ComposeboxEmbedderMixin extends I18nMixinLit
-      (superClass) implements ComposeboxEmbedderMixinInterface {
+      (superClass) implements ComposeboxEmbedderMixinInterface,
+                              DragAndDropHost {
         static get properties() {
           return {
             addedTabsIds: {type: Object},
@@ -343,6 +346,14 @@ export const ComposeboxEmbedderMixin =
         // Lifecycle Hooks
         // =====================================================================
 
+        dragAndDropHandler: DragAndDropHandler;
+
+        constructor(...args: any[]) {
+          super(...args);
+          this.dragAndDropHandler =
+              new DragAndDropHandler(this, this.dragAndDropEnabled);
+        }
+
         override connectedCallback() {
           super.connectedCallback();
 
@@ -434,6 +445,11 @@ export const ComposeboxEmbedderMixin =
           }
         }
 
+        computeVoiceSearchCoherenceEnabled(): boolean {
+          return loadTimeData.getBoolean(
+              'voiceSearchCoherenceComposeboxesEnabled');
+        }
+
         override willUpdate(changedProperties: PropertyValues<this>) {
           super.willUpdate(changedProperties);
 
@@ -517,8 +533,8 @@ export const ComposeboxEmbedderMixin =
           }
 
           if (!this.hasUpdated) {
-            this.voiceSearchCoherenceEnabled = loadTimeData.getBoolean(
-                'voiceSearchCoherenceComposeboxesEnabled');
+            this.voiceSearchCoherenceEnabled =
+                this.computeVoiceSearchCoherenceEnabled();
           }
         }
 
@@ -1886,8 +1902,14 @@ export const ComposeboxEmbedderMixin =
             const viaKeyboard = !!e && e instanceof KeyboardEvent;
             this.getSearchboxHandler().openAutocompleteMatch(
                 this.selectedMatchIndex, match.destinationUrl,
-                /* are_matches_showing */ true, mouseButton, altKey, ctrlKey,
-                metaKey, shiftKey, viaKeyboard);
+                /*areMatchesShowing=*/ true,
+                /*mouseButton=*/ mouseButton, {
+                  altKey: altKey,
+                  ctrlKey: ctrlKey,
+                  metaKey: metaKey,
+                  shiftKey: shiftKey,
+                },
+                /*viaKeyboard=*/ viaKeyboard);
           } else {
             this.getSearchboxHandler().submitQuery(
                 this.input.trim(), mouseButton, altKey, ctrlKey, metaKey,
@@ -2121,6 +2143,11 @@ export const ComposeboxEmbedderMixin =
           };
 
           this.onFileContextAdded(attachment);
+        }
+
+        getDropTarget(): {addDroppedFiles(files: FileList): void}&HTMLElement {
+          return this as unknown as {addDroppedFiles(files: FileList): void} &
+              HTMLElement;
         }
 
         addDroppedFiles(files: FileList|null) {
@@ -2660,8 +2687,10 @@ export const ComposeboxEmbedderMixin =
       return ComposeboxEmbedderMixin;
     };
 
-export interface ComposeboxEmbedderMixinInterface extends
-    I18nMixinLitInterface {
+export interface ComposeboxEmbedderMixinInterface extends I18nMixinLitInterface,
+                                                          DragAndDropHost {
+  dragAndDropHandler: DragAndDropHandler;
+  getDropTarget(): {addDroppedFiles(files: FileList): void}&HTMLElement;
   suggestInventory: SuggestInventory|null;
   submitting: boolean;
   addedTabsIds: Map<number, UnguessableToken>;
@@ -2900,4 +2929,5 @@ export interface ComposeboxEmbedderMixinInterface extends
   computeShowDropdown(): boolean;
   shouldDisableFileInputs(): boolean;
   computeCancelButtonTitle(): string;
+  computeVoiceSearchCoherenceEnabled(): boolean;
 }

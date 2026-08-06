@@ -13,11 +13,13 @@
 #include "base/strings/strcat.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
+#include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/views/location_bar/location_bar_view.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_presenter_delegate.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_webui_content.h"
 #include "chrome/browser/ui/views/omnibox/rounded_omnibox_results_frame.h"
 #include "chrome/browser/ui/views/theme_copying_widget.h"
+#include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_ui.h"
 #include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_web_contents_helper.h"
 #include "components/omnibox/common/omnibox_features.h"
 #include "components/omnibox/common/omnibox_metrics_utils.h"
@@ -53,6 +55,15 @@ OmniboxPopupPresenterBase::~OmniboxPopupPresenterBase() {
 void OmniboxPopupPresenterBase::Show() {
   if (IsShown()) {
     return;
+  }
+
+  if (GetWebUIContent()) {
+    auto* permission_manager =
+        permissions::PermissionRequestManager::FromWebContents(
+            GetWebUIContent()->GetWebContents());
+    if (permission_manager && !permission_observation_.IsObserving()) {
+      permission_observation_.Observe(permission_manager);
+    }
   }
 
   if (ShouldPreserveRequestedFocus()) {
@@ -236,6 +247,10 @@ void OmniboxPopupPresenterBase::OnVisualStateReadyForMetrics(
 }
 
 void OmniboxPopupPresenterBase::Hide() {
+  permission_observation_.Reset();
+  is_prompt_showing_ = false;
+  is_handling_prompt_dismissal_ = false;
+
   if (ShouldPreserveRequestedFocus()) {
     focus_requested_ = false;
   }
@@ -430,10 +445,6 @@ RoundedOmniboxResultsFrame* OmniboxPopupPresenterBase::GetResultsFrame() const {
       widget_->GetContentsView());
 }
 
-OmniboxController* OmniboxPopupPresenterBase::controller() const {
-  return controller_;
-}
-
 // Avoid initialization order 'race conditions' by only interacting with WebUI
 // controller once it is connected (which is when the web contents updates/is
 // created).
@@ -519,3 +530,46 @@ void OmniboxPopupPresenterBase::UnregisterBlocker() {
 }
 
 void OmniboxPopupPresenterBase::OnFileSelectionClosed() {}
+
+void OmniboxPopupPresenterBase::SetPermissionPromptShowing(bool showing) {
+  is_prompt_showing_ = showing;
+}
+
+void OmniboxPopupPresenterBase::OnPromptAdded() {
+  SetPermissionPromptShowing(true);
+}
+
+void OmniboxPopupPresenterBase::OnPromptRemoved() {
+  SetPermissionPromptShowing(false);
+  is_handling_prompt_dismissal_ = true;
+  if (location_bar()) {
+    location_bar()->FocusLocation(/*is_user_initiated=*/false,
+                                  /*clear_focus_if_failed=*/false);
+  }
+}
+
+void OmniboxPopupPresenterBase::OnPromptRecreateViewFailed() {
+  SetPermissionPromptShowing(false);
+}
+
+void OmniboxPopupPresenterBase::OnPromptCreationFailedHiddenTab() {
+  SetPermissionPromptShowing(false);
+}
+
+void OmniboxPopupPresenterBase::OnRequestsFinalized() {
+  SetPermissionPromptShowing(false);
+}
+
+void OmniboxPopupPresenterBase::OnPermissionRequestManagerDestructed() {
+  permission_observation_.Reset();
+  is_prompt_showing_ = false;
+  is_handling_prompt_dismissal_ = false;
+}
+
+void OmniboxPopupPresenterBase::OnWidgetActivated() {
+  is_handling_prompt_dismissal_ = false;
+}
+
+bool OmniboxPopupPresenterBase::IsPermissionPromptPreventingClose() const {
+  return is_prompt_showing_ || is_handling_prompt_dismissal_;
+}

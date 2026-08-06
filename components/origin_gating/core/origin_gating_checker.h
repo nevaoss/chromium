@@ -14,6 +14,7 @@
 #include "base/memory/weak_ptr.h"
 #include "base/sequence_checker.h"
 #include "base/thread_annotations.h"
+#include "components/origin_gating/core/actor_container_config_slot.h"
 #include "components/origin_gating/core/origin_gating_cache.h"
 #include "components/origin_gating/core/origin_gating_configuration.h"
 #include "components/origin_gating/core/types.h"
@@ -105,6 +106,16 @@ class OriginGatingChecker {
 
   const OriginGatingCache& cache() const { return cache_; }
 
+  // Returns references to the container config slot.
+  const ActorContainerConfigSlot& actor_container_config_slot() const {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+    return actor_container_config_slot_;
+  }
+  ActorContainerConfigSlot& actor_container_config_slot() {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+    return actor_container_config_slot_;
+  }
+
  private:
   // Holds various inputs provided by the delegate (and data derived thereof),
   // to avoid needless recomputations.
@@ -117,15 +128,15 @@ class OriginGatingChecker {
     std::optional<bool> requires_user_confirmation;
   };
 
-  void RunNextPredicate(
+  void EvaluatePredicates(
       std::unique_ptr<GatingDecisionContext> context,
       base::span<const PredicateConfiguration> pending_predicates,
       DelegateInputs input,
       GatingDecisionCallback callback);
 
-  void OnPredicateVerdict(
+  void OnEvaluatedAsyncPredicate(
       std::unique_ptr<GatingDecisionContext> context,
-      base::span<const PredicateConfiguration> remaining_predicates,
+      base::span<const PredicateConfiguration> pending_predicates,
       DecisionAttribution attribution,
       DelegateInputs input,
       GatingDecisionCallback callback,
@@ -133,7 +144,7 @@ class OriginGatingChecker {
 
   void OnEnterprisePolicyVerdict(
       std::unique_ptr<GatingDecisionContext> context,
-      base::span<const PredicateConfiguration> remaining_predicates,
+      base::span<const PredicateConfiguration> pending_predicates,
       DecisionAttribution attribution,
       DelegateInputs input,
       GatingDecisionCallback callback,
@@ -147,31 +158,40 @@ class OriginGatingChecker {
       bool requires_user_confirmation);
 
   void OnNoVerdictAnswer(std::unique_ptr<GatingDecisionContext> context,
-                         const GURL& destination,
+                         DelegateInputs input,
                          GatingDecisionCallback callback,
                          Delegate::NoVerdictResult result);
 
   // Runs the given FunctionRef if the `input.requires_user_confirmation` field
   // is non-nullopt; otherwise queries the delegate and resumes via
-  // `RunNextPredicate`
-  void RunActionOrGetUserConfirmationInfo(
-      std::unique_ptr<GatingDecisionContext> context,
+  // `EvaluatePredicates`.
+  // `action` must return true if it moves-from `context`, `input`, and
+  // `callback`; false otherwise.
+  bool RunActionOrGetUserConfirmationInfo(
+      std::unique_ptr<GatingDecisionContext>& context,
       base::span<const PredicateConfiguration> pending_predicates,
-      DelegateInputs input,
-      GatingDecisionCallback callback,
-      base::FunctionRef<void(std::unique_ptr<GatingDecisionContext> context,
-                             DelegateInputs input,
-                             GatingDecisionCallback callback)> action);
+      DelegateInputs& input,
+      GatingDecisionCallback& callback,
+      base::FunctionRef<bool(std::unique_ptr<GatingDecisionContext>& context,
+                             DelegateInputs& input,
+                             GatingDecisionCallback& callback)> action);
 
   // Predicate that returns `kAllowed` if `destination` is in the cache with
   // user confirmation; `kNoDecision` otherwise.
   Decision IsCachedWithUserConfirmation(const url::Origin& origin) const
       VALID_CONTEXT_REQUIRED(sequence_checker_);
 
+  Decision EvaluateActorContainerConfig(GateableEvent event,
+                                        const url::Origin& source,
+                                        const url::Origin& destination) const
+      VALID_CONTEXT_REQUIRED(sequence_checker_);
+
   SEQUENCE_CHECKER(sequence_checker_);
   const raw_ref<Delegate> delegate_ GUARDED_BY_CONTEXT(sequence_checker_);
   OriginGatingConfiguration config_ GUARDED_BY_CONTEXT(sequence_checker_);
   OriginGatingCache cache_ GUARDED_BY_CONTEXT(sequence_checker_);
+  ActorContainerConfigSlot actor_container_config_slot_
+      GUARDED_BY_CONTEXT(sequence_checker_);
   base::WeakPtrFactory<OriginGatingChecker> weak_ptr_factory_
       GUARDED_BY_CONTEXT(sequence_checker_){this};
 };

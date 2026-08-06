@@ -47,6 +47,7 @@
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 
 #if !BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere_service.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere_service_factory.h"
 #endif
@@ -93,16 +94,21 @@
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/signin/identity_manager_factory.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/lens/lens_overlay_entry_point_controller.h"
 #include "chrome/browser/ui/lens/lens_search_controller.h"
 #include "chrome/browser/ui/lens/lens_search_feature_flag_utils.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/views/drive_picker_host/drive_picker_host_controller.h"
 #include "chrome/browser/ui/views/drive_picker_host/drive_picker_sanitizer.h"
+#include "chrome/browser/ui/views/location_bar/location_bar_view.h"
+#include "chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.h"
+#include "chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.h"
 #include "chrome/browser/ui/webui/drive_picker_host/drive_picker_host_request.h"
 #include "components/contextual_search/footprints/public/drive_disclaimer_controller.h"
 #include "components/contextual_search/footprints/public/fpop_service.h"
 #include "content/public/browser/storage_partition.h"
+#include "ui/views/widget/widget.h"
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 namespace {
@@ -1153,6 +1159,7 @@ void ContextualSearchboxHandler::CleanupDrivePicker() {
   drive_picker_result_handler_receiver_.reset();
   drive_picker_controller_.reset();
   drive_disclaimer_controller_.reset();
+  drive_picker_deactivation_blocker_.reset();
 #endif
 }
 
@@ -1178,16 +1185,50 @@ void ContextualSearchboxHandler::OnDriveUploadClicked(
 
   auto* browser_window_interface =
       webui::GetBrowserWindowInterface(web_contents_);
-  if (!browser_window_interface) {
+  if (!browser_window_interface &&
+      base::FeatureList::IsEnabled(omnibox::kOmniboxEverywhere)) {
+    ProfileBrowserCollection* profile_collection =
+        ProfileBrowserCollection::GetForProfile(profile_);
+    if (profile_collection) {
+      browser_window_interface = profile_collection->GetLastActiveBrowser();
+    }
+  }
+  // Standalone parentless WebContents (like OmniboxEverywhereUI) lack
+  // a standard parent browser window interface (BWI). To allow the Drive picker
+  // to function even when there is no active browser window (or when Chrome is
+  // in the background), we allow `browser_window_interface` to be null, gated
+  // behind the Loomnibox feature flag.
+  if (!browser_window_interface &&
+      !base::FeatureList::IsEnabled(omnibox::kOmniboxEverywhere)) {
     std::move(callback).Run(searchbox::mojom::DriveUploadResponse::New());
     return;
   }
 
   drive_upload_click_callback_ = std::move(callback);
 
+  bool is_standalone_popup =
+      base::FeatureList::IsEnabled(omnibox::kOmniboxEverywhere) &&
+      (web_contents_->GetVisibleURL().host() ==
+       chrome::kChromeUIOmniboxEverywhereHost);
+
+  views::Widget* anchor_widget =
+      is_standalone_popup ? views::Widget::GetTopLevelWidgetForNativeView(
+                                web_contents_->GetContentNativeView())
+                          : nullptr;
+
+  // Block deactivation while the Drive picker dialog is active.
+  if (auto* location_bar =
+          browser_window_interface->GetFeatures().location_bar()) {
+    auto* location_bar_view = static_cast<LocationBarView*>(location_bar);
+    if (auto* presenter = location_bar_view->GetOmniboxPopupAimPresenter()) {
+      drive_picker_deactivation_blocker_ =
+          presenter->CreateDeactivationBlocker();
+    }
+  }
+
   if (!drive_picker_controller_) {
-    drive_picker_controller_ =
-        std::make_unique<DrivePickerHostController>(browser_window_interface);
+    drive_picker_controller_ = std::make_unique<DrivePickerHostController>(
+        profile_, browser_window_interface, anchor_widget);
   }
   // Binds the controller's close callback to OnCancel to ensure that if the
   // user closes the widget (e.g. by pressing Escape), the entire session
@@ -1367,14 +1408,10 @@ void ContextualSearchboxHandler::InitializeInputStateModel() {
 }
 
 bool ContextualSearchboxHandler::IsContextualSearchTabSharingEligible() const {
-  // The default implementation returns true on non-Android. Inheritors (such as
-  // the side panel composebox) can override this to enforce custom or dynamic
+  // The default implementation returns true. Inheritors (such as the side
+  // panel composebox) can override this to enforce custom or dynamic
   // eligibility.
-#if BUILDFLAG(IS_ANDROID)
-  return false;
-#else
   return true;
-#endif
 }
 
 void ContextualSearchboxHandler::RecordTabAddedMetric(
@@ -1640,15 +1677,13 @@ void ContextualSearchboxHandler::ClearFiles(
   }
 }
 
-void ContextualSearchboxHandler::OpenAutocompleteMatch(uint8_t line,
-                                                       const GURL& url,
-                                                       bool are_matches_showing,
-                                                       uint8_t mouse_button,
-                                                       bool alt_key,
-                                                       bool ctrl_key,
-                                                       bool meta_key,
-                                                       bool shift_key,
-                                                       bool via_keyboard) {
+void ContextualSearchboxHandler::OpenAutocompleteMatch(
+    uint8_t line,
+    const GURL& url,
+    bool are_matches_showing,
+    uint8_t mouse_button,
+    searchbox::mojom::ActionModifiersPtr modifiers,
+    bool via_keyboard) {
   const AutocompleteMatch* match = GetMatchWithUrl(line, url);
 
   // Record match navigations for composebox matches.
@@ -1673,8 +1708,8 @@ void ContextualSearchboxHandler::OpenAutocompleteMatch(uint8_t line,
   }
 
   SearchboxHandler::OpenAutocompleteMatch(line, url, are_matches_showing,
-                                          mouse_button, alt_key, ctrl_key,
-                                          meta_key, shift_key, via_keyboard);
+                                          mouse_button, std::move(modifiers),
+                                          via_keyboard);
 }
 
 void ContextualSearchboxHandler::SetSmartComposeStats(
@@ -2063,7 +2098,14 @@ void ContextualSearchboxHandler::OpenUrl(
         chrome::kChromeUIOmniboxEverywhereHost) {
       if (auto* service =
               OmniboxEverywhereServiceFactory::GetForProfile(profile_)) {
-        service->OpenUrl(url, disposition);
+        base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+            FROM_HERE,
+            base::BindOnce(
+                [](OmniboxEverywhereService* service, const GURL& url,
+                   WindowOpenDisposition disposition) {
+                  service->OpenUrl(url, disposition);
+                },
+                base::Unretained(service), url, disposition));
         return;
       }
     }

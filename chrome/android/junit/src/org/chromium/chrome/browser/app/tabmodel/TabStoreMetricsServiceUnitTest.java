@@ -20,6 +20,7 @@ import org.mockito.junit.MockitoRule;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.HistogramWatcher;
+import org.chromium.chrome.browser.app.tabmodel.TabStoreMetricsService.MetricsBucket;
 import org.chromium.chrome.browser.app.tabmodel.TabStoreMetricsService.WindowMetricsTracker;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tab.TabState;
@@ -48,30 +49,39 @@ public class TabStoreMetricsServiceUnitTest {
     }
 
     @Test
-    public void testGetForProfileAndWindowTag() {
-        WindowMetricsTracker tracker1 =
-                TabStoreMetricsService.getForProfileAndWindowTag(mProfile1, "Tag1");
+    public void testGetForBucket() {
+        MetricsBucket bucket1 = new MetricsBucket(mProfile1, "WinTag1", "OrchTag1");
+        WindowMetricsTracker tracker1 = TabStoreMetricsService.getForBucket(bucket1);
         assertNotNull("Tracker should not be null", tracker1);
 
-        WindowMetricsTracker tracker1_copy =
-                TabStoreMetricsService.getForProfileAndWindowTag(mProfile1, "Tag1");
-        assertSame("Should return same tracker for same profile and tag", tracker1, tracker1_copy);
+        MetricsBucket bucket1Copy = new MetricsBucket(mProfile1, "WinTag1", "OrchTag1");
+        WindowMetricsTracker tracker1Copy = TabStoreMetricsService.getForBucket(bucket1Copy);
+        assertSame("Should return same tracker for same bucket", tracker1, tracker1Copy);
 
-        WindowMetricsTracker tracker2 =
-                TabStoreMetricsService.getForProfileAndWindowTag(mProfile1, "Tag2");
-        assertNotNull("Tracker for different tag should not be null", tracker2);
-        assertNotSame("Should return different tracker for different tag", tracker1, tracker2);
+        MetricsBucket bucket2 = new MetricsBucket(mProfile1, "WinTag2", "OrchTag1");
+        WindowMetricsTracker tracker2 = TabStoreMetricsService.getForBucket(bucket2);
+        assertNotNull("Tracker for different window tag should not be null", tracker2);
+        assertNotSame(
+                "Should return different tracker for different window tag", tracker1, tracker2);
 
-        WindowMetricsTracker tracker3 =
-                TabStoreMetricsService.getForProfileAndWindowTag(mProfile2, "Tag1");
-        assertNotNull("Tracker for different profile should not be null", tracker3);
-        assertNotSame("Should return different tracker for different profile", tracker1, tracker3);
+        MetricsBucket bucket3 = new MetricsBucket(mProfile1, "WinTag1", "OrchTag2");
+        WindowMetricsTracker tracker3 = TabStoreMetricsService.getForBucket(bucket3);
+        assertNotNull("Tracker for different orchestrator tag should not be null", tracker3);
+        assertNotSame(
+                "Should return different tracker for different orchestrator tag",
+                tracker1,
+                tracker3);
+
+        MetricsBucket bucket4 = new MetricsBucket(mProfile2, "WinTag1", "OrchTag1");
+        WindowMetricsTracker tracker4 = TabStoreMetricsService.getForBucket(bucket4);
+        assertNotNull("Tracker for different profile should not be null", tracker4);
+        assertNotSame("Should return different tracker for different profile", tracker1, tracker4);
     }
 
     @Test
     public void testRecordDiffMetrics_Equal() {
         WindowMetricsTracker tracker =
-                TabStoreMetricsService.getForProfileAndWindowTag(mProfile1, "Tag");
+                TabStoreMetricsService.getForBucket(new MetricsBucket(mProfile1, "WinTag", "Tag"));
 
         List<TabCreationData> authFrozen = new ArrayList<>();
         List<TabCreationData> authNew = new ArrayList<>();
@@ -83,14 +93,14 @@ public class TabStoreMetricsServiceUnitTest {
                         .expectBooleanRecord("Tabs.TabStateStore.TabCountDelta.Equal.Tag", true)
                         .build();
 
-        tracker.recordDiffMetrics(authFrozen, authNew, shadowFrozen, shadowNew, true);
+        tracker.recordDiffMetrics(authFrozen, authNew, shadowFrozen, shadowNew, true, 0);
         histogramWatcher.assertExpected();
     }
 
     @Test
     public void testRecordDiffMetrics_AuthoritativeHigher() {
         WindowMetricsTracker tracker =
-                TabStoreMetricsService.getForProfileAndWindowTag(mProfile1, "Tag");
+                TabStoreMetricsService.getForBucket(new MetricsBucket(mProfile1, "WinTag", "Tag"));
 
         List<TabCreationData> authFrozen = new ArrayList<>();
         authFrozen.add(new TabCreationData(1, "http://url1.com", 1000));
@@ -102,16 +112,17 @@ public class TabStoreMetricsServiceUnitTest {
                 HistogramWatcher.newBuilder()
                         .expectIntRecord(
                                 "Tabs.TabStateStore.TabCountDelta.AuthoritativeHigher.Tag", 1)
+                        .expectIntRecord("Tabs.TabStateStore.RegularFallbackTabCount", 5)
                         .build();
 
-        tracker.recordDiffMetrics(authFrozen, authNew, shadowFrozen, shadowNew, true);
+        tracker.recordDiffMetrics(authFrozen, authNew, shadowFrozen, shadowNew, true, 5);
         histogramWatcher.assertExpected();
     }
 
     @Test
     public void testRecordDiffMetrics_ShadowHigher() {
         WindowMetricsTracker tracker =
-                TabStoreMetricsService.getForProfileAndWindowTag(mProfile1, "Tag");
+                TabStoreMetricsService.getForBucket(new MetricsBucket(mProfile1, "WinTag", "Tag"));
 
         List<TabCreationData> authFrozen = new ArrayList<>();
         List<TabCreationData> authNew = new ArrayList<>();
@@ -126,14 +137,14 @@ public class TabStoreMetricsServiceUnitTest {
                         .expectIntRecord("Tabs.TabStateStore.TabCountDelta.ShadowHigher.Tag", 1)
                         .build();
 
-        tracker.recordDiffMetrics(authFrozen, authNew, shadowFrozen, shadowNew, true);
+        tracker.recordDiffMetrics(authFrozen, authNew, shadowFrozen, shadowNew, true, 0);
         histogramWatcher.assertExpected();
     }
 
     @Test
     public void testRecordDiffMetrics_UrlMismatch_AuthoritativeNewer() {
         WindowMetricsTracker tracker =
-                TabStoreMetricsService.getForProfileAndWindowTag(mProfile1, "Tag");
+                TabStoreMetricsService.getForBucket(new MetricsBucket(mProfile1, "WinTag", "Tag"));
 
         List<TabCreationData> authFrozen = new ArrayList<>();
         authFrozen.add(new TabCreationData(1, "http://url-auth.com", 2000));
@@ -155,7 +166,7 @@ public class TabStoreMetricsServiceUnitTest {
                                 1000)
                         .build();
 
-        tracker.recordDiffMetrics(authFrozen, authNew, shadowFrozen, shadowNew, true);
+        tracker.recordDiffMetrics(authFrozen, authNew, shadowFrozen, shadowNew, true, 0);
         histogramWatcher.assertExpected();
     }
 }

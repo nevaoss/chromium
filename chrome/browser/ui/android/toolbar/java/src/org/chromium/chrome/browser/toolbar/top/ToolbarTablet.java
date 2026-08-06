@@ -590,6 +590,9 @@ public class ToolbarTablet extends ToolbarLayout {
         if (buttonSpec.getHoverTooltipTextId() != ButtonSpec.INVALID_TOOLTIP_TEXT_ID) {
             super.setTooltipText(
                     mOptionalButton, getContext().getString(buttonSpec.getHoverTooltipTextId()));
+        } else if (buttonSpec.getContentDescription() != null) {
+            // Fallback to the content description if a static tooltip string ID is not provided.
+            super.setTooltipText(mOptionalButton, buttonSpec.getContentDescription());
         } else {
             super.setTooltipText(mOptionalButton, null);
         }
@@ -690,6 +693,13 @@ public class ToolbarTablet extends ToolbarLayout {
                 mGlicActionChip.setVisibility(GONE);
             }
         }
+    }
+
+    /**
+     * @return The {@link View} representing the Glic action chip.
+     */
+    public @Nullable View getGlicActionChipView() {
+        return mGlicActionChip;
     }
 
     private class ToolbarPaddingWidthConsumer implements ToolbarWidthConsumer {

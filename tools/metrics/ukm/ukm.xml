@@ -571,6 +571,64 @@ be describing additional metrics about the same event.
   </metric>
 </event>
 
+<event name="Accessibility.ReadAnything.OmniboxEntryPoint">
+  <owner>lwinston@google.com</owner>
+  <owner>kristislee@google.com</owner>
+  <owner>komo-eng@google.com</owner>
+  <summary>
+    Recorded when the user interacts with or is shown the Read Anything omnibox
+    entry point.
+  </summary>
+  <metric name="Shown" enum="Boolean">
+    <summary>
+      Whether the omnibox chip is shown.
+    </summary>
+    <aggregation>
+      <history>
+        <statistics>
+          <enumeration/>
+        </statistics>
+      </history>
+    </aggregation>
+  </metric>
+  <metric name="Triggered" enum="Boolean">
+    <summary>
+      Whether the chip was triggered (via mouse or keyboard) to open Reading
+      mode.
+    </summary>
+    <aggregation>
+      <history>
+        <statistics>
+          <enumeration/>
+        </statistics>
+      </history>
+    </aggregation>
+  </metric>
+</event>
+
+<event name="Accessibility.ReadAnything.OmniboxEntryPointDistillation">
+  <owner>lwinston@google.com</owner>
+  <owner>kristislee@google.com</owner>
+  <owner>komo-eng@google.com</owner>
+  <summary>
+    Recorded when distillation completes after the Read Anything omnibox entry
+    point was used to open reading mode.
+  </summary>
+  <metric name="DistillationStatus" enum="ReadAnythingDistillationStatus">
+    <summary>
+      The distillation status in reading mode after the omnibox entry point was
+      used to open reading mode.
+    </summary>
+    <aggregation>
+      <history>
+        <statistics>
+          <enumeration/>
+        </statistics>
+      </history>
+    </aggregation>
+  </metric>
+</event>
+
 <event name="Accessibility.ReadAnything.SidePanel">
   <owner>gusmartin@google.com</owner>
   <owner>lwinston@google.com</owner>
@@ -21631,32 +21689,6 @@ be describing additional metrics about the same event.
   </metric>
 </event>
 
-<event name="SchemefulSameSiteContextDowngrade">
-  <owner>bingler@chromium.org</owner>
-  <metric name="RequestPerCookie"
-      enum="SameSiteCookieContextBreakingDowngradeWithSecureness">
-    <summary>
-      An enum which records the type of schemeful same-site downgrade applied to
-      a cookie which is being sent on a request along with the secureness of the
-      origin the cookie is attempting to be sent to. This is recorded once per
-      cookie when the cookie is included in the request or if the cookie
-      excluded due to insufficient same-site context only. Cookies that meet the
-      above conditions but without a downgrade warning are not recorded.
-    </summary>
-  </metric>
-  <metric name="ResponsePerCookie"
-      enum="SameSiteCookieContextBreakingDowngradeWithSecureness">
-    <summary>
-      An enum which records the type of schemeful same-site downgrade applied to
-      a cookie which is being set by a response along with the secureness of the
-      origin that is attempting to set the cookie. This is recorded once per
-      cookie when the cookie is allowed to be set or if the cookie is ignored
-      due to insufficient same-site context only. Cookies that meet the above
-      conditions but without a downgrade warning are not recorded.
-    </summary>
-  </metric>
-</event>
-
 <event name="ScreenBrightness">
   <owner>pdyson@chromium.org</owner>
   <summary>
@@ -22378,6 +22410,40 @@ be describing additional metrics about the same event.
       The OptimizationTarget of the last selected segment before UKM is
       recorded. Some features might have several ML models with them. This
       metric records which model is currently selected for the feature.
+    </summary>
+  </metric>
+</event>
+
+<event name="ServiceWorker.MainResource.FetchHandlerError">
+  <owner>yyanagisawa@chromium.org</owner>
+  <owner>chrome-worker@google.com</owner>
+  <summary>
+    Recorded when a Service Worker fetch handler fails to load a main resource
+    due to a network error (such as &quot;failed to fetch&quot; errors occurring
+    in fetch() inside the fetch handler) or timing out during
+    race-network-and-fetch or normal fetch handler execution.
+  </summary>
+  <metric name="InitiatorType" enum="ServiceWorkerFetchHandlerInitiatorType">
+    <summary>
+      Indicates how the fetch handler was invoked.
+    </summary>
+  </metric>
+  <metric name="RaceFetchNetworkErrorCode">
+    <summary>
+      The specific net::ERR_ code indicating the reason for the failure.
+      (possible values are listed in net_error_list.h). Records the network
+      error that occurred when the Service Worker static routing API's
+      'race-network-and-fetch' handler deduplicates the network fetch with the
+      fetch() API call to the navigation URL. This metric is only populated when
+      this static routing strategy is active.
+    </summary>
+  </metric>
+  <metric name="RegularFetchNetworkErrorCode">
+    <summary>
+      The specific net::ERR_ code indicating the reason for the failure.
+      (possible values are listed in net_error_list.h). Records the network
+      error of the initial fetch() API call in cases where the deduplication
+      mentioned above does not apply.
     </summary>
   </metric>
 </event>

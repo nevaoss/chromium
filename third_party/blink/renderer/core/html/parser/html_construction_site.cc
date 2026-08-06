@@ -293,6 +293,21 @@ static inline void ExecuteInsertAlreadyParsedChildTask(
   DCHECK_EQ(task.operation,
             HTMLConstructionSiteTask::kInsertAlreadyParsedChild);
 
+  // See https://github.com/whatwg/html/pull/12709
+  if (Document* parentDoc = DynamicTo<Document>(task.parent.Get())) {
+    if (parentDoc->documentElement()) {
+      if (task.child->parentNode()) {
+        task.child->parentNode()->ParserRemoveChild(*task.child);
+      }
+      return;
+    }
+  } else if (task.child->ContainsIncludingHostElements(*task.parent)) {
+    if (task.child->parentNode()) {
+      task.child->parentNode()->ParserRemoveChild(*task.child);
+    }
+    return;
+  }
+
   Insert(task);
 }
 
@@ -1074,15 +1089,17 @@ void HTMLConstructionSite::InsertHTMLTemplateElement(
     return;
   }
 
-  if (!patch_target.IsNull()) {
-    if (auto* patch =
-            Patch::Prepare(current_insertion_location.parent, patch_target)) {
-      CHECK(RuntimeEnabledFeatures::DocumentPatchingEnabled());
-      UseCounter::Count(OwnerDocumentForCurrentNode(),
-                        WebFeature::kHTMLPatching);
-      template_element->SetPatch(patch);
+  if (Patch* patch = Patch::Prepare(current_insertion_location.parent,
+                                    patch_target, template_element)) {
+    CHECK(RuntimeEnabledFeatures::DocumentPatchingEnabled());
+    UseCounter::Count(OwnerDocumentForCurrentNode(), WebFeature::kHTMLPatching);
+    template_element->SetPatch(patch);
+    if (!patch_target.empty()) {
       return;
     }
+
+    // empty patch_target attaches the template while streaming content.
+    CHECK(RuntimeEnabledFeatures::DeclarativeFragmentEnabled());
   }
 
   AttachLater(current_insertion_location, template_element);
@@ -1224,7 +1241,7 @@ void HTMLConstructionSite::Reparent(HTMLStackItem* new_parent,
 void HTMLConstructionSite::InsertAlreadyParsedChild(HTMLStackItem* new_parent,
                                                     HTMLStackItem* child) {
   if (new_parent->CausesFosterParenting()) {
-    FosterParent(child->GetNode());
+    FosterParentAlreadyParsedChild(child->GetNode());
     return;
   }
 
@@ -1609,6 +1626,15 @@ void HTMLConstructionSite::FosterParent(Node* node) {
   HTMLConstructionSiteTask task(HTMLConstructionSiteTask::kInsert);
   FindFosterSite(task);
   task.child = node;
+  DCHECK(task.parent);
+  QueueTask(task, true);
+}
+
+void HTMLConstructionSite::FosterParentAlreadyParsedChild(Node* child) {
+  HTMLConstructionSiteTask task(
+      HTMLConstructionSiteTask::kInsertAlreadyParsedChild);
+  FindFosterSite(task);
+  task.child = child;
   DCHECK(task.parent);
   QueueTask(task, true);
 }

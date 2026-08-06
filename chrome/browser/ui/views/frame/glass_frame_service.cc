@@ -9,13 +9,19 @@
 
 #include "base/check.h"
 #include "base/functional/bind.h"
+#include "base/metrics/histogram_functions.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/global_features.h"
+#include "chrome/browser/performance_manager/public/user_tuning/battery_saver_mode_manager.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/common/pref_names.h"
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/pref_service.h"
+
+#if BUILDFLAG(IS_MAC)
+#include "base/mac/mac_util.h"
+#endif
 
 namespace {
 // The maximum number of windows tracked by this service that can be eligible
@@ -50,6 +56,12 @@ GlassFrameService::GlassFrameService(BrowserProcess& process)
       prefs::kGlassFrameEnabled,
       base::BindRepeating(&GlassFrameService::OnGlassFrameEnabledPrefChanged,
                           base::Unretained(this)));
+  CHECK(
+      performance_manager::user_tuning::BatterySaverModeManager::HasInstance());
+  auto* const bsm_manager =
+      performance_manager::user_tuning::BatterySaverModeManager::GetInstance();
+  is_battery_saver_mode_active_ = bsm_manager->IsBatterySaverActive();
+  battery_saver_observation_.Observe(bsm_manager);
 
   // Pre-populate the deque with the most recently activated browsers.
   browser_collection->ForEach(
@@ -67,6 +79,8 @@ GlassFrameService::GlassFrameService(BrowserProcess& process)
         return true;
       },
       BrowserCollection::Order::kActivation);
+
+  LogGlassFramePreferredLook();
 }
 
 GlassFrameService::~GlassFrameService() = default;
@@ -127,6 +141,21 @@ void GlassFrameService::OnBrowserClosed(BrowserWindowInterface* browser) {
   }
 }
 
+void GlassFrameService::OnBatterySaverActiveChanged(bool is_active) {
+  if (is_battery_saver_mode_active_ == is_active) {
+    return;
+  }
+  is_battery_saver_mode_active_ = is_active;
+  callbacks_.Notify(GetEligibleBrowserWindowInterfaces());
+}
+
+void GlassFrameService::OnBatterySaverModeManagerDestroyed() {
+  // Reset the BatterySaverModeManager observation to prevent having
+  // a dangling pointer to the BatterySaverModeManager on destruction.
+  battery_saver_observation_.Reset();
+  is_battery_saver_mode_active_ = false;
+}
+
 base::flat_set<BrowserWindowInterface*>
 GlassFrameService::MostRecentActivatedBrowsers() {
   base::flat_set<BrowserWindowInterface*> eligible;
@@ -144,9 +173,24 @@ GlassFrameService::GetEligibleBrowserWindowInterfaces() {
           prefs::kGlassFrameEnabled)) {
     return {};
   }
+
+  if (is_battery_saver_mode_active_) {
+    return {};
+  }
+
   return MostRecentActivatedBrowsers();
 }
 
 void GlassFrameService::OnGlassFrameEnabledPrefChanged() {
   callbacks_.Notify(GetEligibleBrowserWindowInterfaces());
+}
+
+void GlassFrameService::LogGlassFramePreferredLook() {
+#if BUILDFLAG(IS_MAC)
+  if (base::mac::MacOSMajorVersion() == 26) {
+    base::UmaHistogramEnumeration(
+        "Mac.GlassFrame.MacOS26LiquidGlassPreferredLook",
+        base::mac::GetMacOS26LiquidGlassPreferredLook());
+  }
+#endif  // BUILDFLAG(IS_MAC)
 }

@@ -72,6 +72,7 @@
 #import "ios/chrome/browser/shared/public/commands/tab_groups_commands.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/browser/signin/model/authentication_service.h"
+#import "ios/chrome/browser/signin/model/authentication_service_observer_bridge.h"
 #import "ios/chrome/browser/signin/model/avatar/avatar_provider.h"
 #import "ios/chrome/browser/signin/model/constants.h"
 #import "ios/chrome/browser/toolbar/ui/buttons/toolbar_button_menu_factory.h"
@@ -99,9 +100,10 @@ inline LayoutStateAssistantPassKey PassKey() {
 }
 }  // namespace
 
-@interface AppBarMediator () <GeminiBrowserAgentObserving,
+@interface AppBarMediator () <AuthenticationServiceObserving,
+                              GeminiBrowserAgentObserving,
                               GeminiServiceObserving,
-                              IdentityManagerObserverBridgeDelegate,
+                              IdentityManagerObserving,
                               IncognitoStateObserver,
                               LensOverlayStateNotifierObserver,
                               PrefObserverDelegate,
@@ -137,6 +139,8 @@ inline LayoutStateAssistantPassKey PassKey() {
       _incognitoFullscreenObserver;
   raw_ptr<PrefService> _prefService;
   raw_ptr<AuthenticationService> _authenticationService;
+  std::unique_ptr<AuthenticationServiceObserverBridge>
+      _authServiceObserverBridge;
   raw_ptr<signin::IdentityManager> _identityManager;
   std::unique_ptr<signin::IdentityManagerObserverBridge>
       _identityManagerObserver;
@@ -206,7 +210,11 @@ inline LayoutStateAssistantPassKey PassKey() {
     _searchEngineObserver =
         std::make_unique<SearchEngineObserverBridge>(self, _templateURLService);
 
+    CHECK(authenticationService);
     _authenticationService = authenticationService;
+    _authServiceObserverBridge =
+        std::make_unique<AuthenticationServiceObserverBridge>(
+            _authenticationService, self);
     _identityManager = identityManager;
     if (_identityManager) {
       _identityManagerObserver =
@@ -381,6 +389,7 @@ inline LayoutStateAssistantPassKey PassKey() {
   _prefObserverBridge.reset();
   _searchEngineObserver.reset();
   _templateURLService = nullptr;
+  _authServiceObserverBridge.reset();
   _authenticationService = nullptr;
   _geminiService = nullptr;
   _geminiServiceObserver.reset();
@@ -587,19 +596,22 @@ inline LayoutStateAssistantPassKey PassKey() {
   UmaHistogramEnumeration(kAppBarAssistantButtonTappedHistogram, state);
   switch (state) {
     case AppBarAssistantButtonState::kAsk: {
-      __weak __typeof(self) weakSelf = self;
-      [self.geminiHandler
-          startGeminiEntryFlowWithStartupState:
-              [[GeminiStartupState alloc]
-                  initWithEntryPoint:gemini::EntryPoint::AppBar]
-                            baseViewController:self.baseViewController
-                                   accessPoint:signin_metrics::AccessPoint::
-                                                   kIosAppBar
-                      showSnackbarOnCompletion:YES
-                                    completion:^(GeminiEntryFlowResult result) {
-                                      [weakSelf
-                                          handleGeminiEntryFlowResult:result];
-                                    }];
+      if (_geminiBrowserAgent && _geminiBrowserAgent->is_floaty_invoked()) {
+        [self.geminiHandler dismissGeminiFlowWithCompletion:nil];
+      } else {
+        __weak __typeof(self) weakSelf = self;
+        [self.geminiHandler
+            startGeminiEntryFlowWithStartupState:
+                [[GeminiStartupState alloc]
+                    initWithEntryPoint:gemini::EntryPoint::AppBar]
+                              baseViewController:self.baseViewController
+                        showSnackbarOnCompletion:YES
+                                      completion:^(
+                                          GeminiEntryFlowResult result) {
+                                        [weakSelf
+                                            handleGeminiEntryFlowResult:result];
+                                      }];
+      }
       break;
     }
     case AppBarAssistantButtonState::kAIM: {
@@ -617,7 +629,7 @@ inline LayoutStateAssistantPassKey PassKey() {
     case AppBarAssistantButtonState::kAccount:
       if (_authenticationService->HasPrimaryIdentity()) {
         [self.delegate showAccountMenu:sender];
-      } else {
+      } else if (_authenticationService->SigninEnabled()) {
         [self.delegate showSignin:sender];
       }
       break;
@@ -641,6 +653,12 @@ inline LayoutStateAssistantPassKey PassKey() {
 - (void)navigateToPageForItem:(web::NavigationItem*)item {
   // App bar does not have web navigation functionality in its button menus.
   NOTREACHED();
+}
+
+#pragma mark - AuthenticationServiceObserving
+
+- (void)onServiceStatusChanged {
+  [self updateAssistantButton];
 }
 
 #pragma mark - GeminiBrowserAgentObserverBridge
@@ -937,6 +955,9 @@ inline LayoutStateAssistantPassKey PassKey() {
   }
 
   BOOL signedIn = _authenticationService->HasPrimaryIdentity();
+  if (state == AppBarAssistantButtonState::kAccount) {
+    enabled = signedIn || _authenticationService->SigninEnabled();
+  }
   [self.consumer setAssistantButtonState:state
                              highlighted:highlighted
                                  enabled:enabled
@@ -1127,14 +1148,14 @@ inline LayoutStateAssistantPassKey PassKey() {
   }
 }
 
-#pragma mark - IdentityManagerObserverBridgeDelegate
+#pragma mark - IdentityManagerObserving
 
-- (void)onPrimaryAccountChanged:
+- (void)primaryAccountDidChange:
     (const signin::PrimaryAccountChangeEvent&)event {
   [self updateAssistantButton];
 }
 
-- (void)onExtendedAccountInfoUpdated:(const AccountInfo&)info {
+- (void)extendedAccountInfoDidUpdate:(const AccountInfo&)info {
   [self updateAssistantButton];
 }
 

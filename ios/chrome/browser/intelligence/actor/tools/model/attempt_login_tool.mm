@@ -14,7 +14,6 @@
 #import "components/password_manager/core/browser/actor_login/actor_login_service.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/tool_delegate.h"
 #import "ios/chrome/browser/intelligence/actor/tools/public/actor_tool_types.h"
-#import "ios/chrome/browser/intelligence/actor/tools/utils/profile_context_resolver.h"
 #import "ios/chrome/browser/passwords/model/actor_login/ios_chrome_actor_login_delegate_client.h"
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
 #import "ios/web/public/navigation/navigation_item.h"
@@ -24,25 +23,12 @@
 namespace actor {
 
 // static
-base::expected<std::unique_ptr<AttemptLoginTool>, ToolExecutionResult>
-AttemptLoginTool::Create(
+std::unique_ptr<AttemptLoginTool> AttemptLoginTool::Create(
+    base::WeakPtr<web::WebState> web_state,
     const optimization_guide::proto::AttemptLoginAction& action,
-    ToolDelegate* tool_delegate,
-    const ProfileContextResolver& profile_context_resolver) {
-  if (!action.has_tab_id()) {
-    return base::unexpected(ToolExecutionResult(
-        InternalToolErrorCode::kCreationMissingRequiredFields));
-  }
-
-  base::expected<ProfileContextResolver::TabResolutionResult,
-                 ToolExecutionResult>
-      resolution_result = profile_context_resolver.ResolveTab(action.tab_id());
-  if (!resolution_result.has_value()) {
-    return base::unexpected(resolution_result.error());
-  }
-
+    ToolDelegate* tool_delegate) {
   return std::unique_ptr<AttemptLoginTool>(
-      new AttemptLoginTool(resolution_result.value().web_state, tool_delegate));
+      new AttemptLoginTool(web_state, tool_delegate));
 }
 
 AttemptLoginTool::AttemptLoginTool(base::WeakPtr<web::WebState> web_state,
@@ -63,6 +49,10 @@ void AttemptLoginTool::Cancel() {
   selected_credential_.reset();
   ActorTool::Cancel();
   weak_ptr_factory_.InvalidateWeakPtrs();
+}
+
+void AttemptLoginTool::Validate(ToolExecutionCallback callback) {
+  std::move(callback).Run(ToolExecutionResult::Ok());
 }
 
 void AttemptLoginTool::Execute(ToolExecutionCallback callback) {

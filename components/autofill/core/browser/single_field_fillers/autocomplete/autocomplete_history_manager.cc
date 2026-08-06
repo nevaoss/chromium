@@ -195,6 +195,8 @@ bool IsFieldTypeSaveable(const FormStructure* form, FieldGlobalId field_id) {
       case FLIGHT_RESERVATION_FLIGHT_NUMBER:
       case FLIGHT_RESERVATION_CONFIRMATION_CODE:
       case FLIGHT_RESERVATION_TICKET_NUMBER:
+      case FLIGHT_RESERVATION_DEPARTURE_AIRPORT:
+      case FLIGHT_RESERVATION_ARRIVAL_AIRPORT:
       case FLIGHT_RESERVATION_DEPARTURE_DATE:
       case ADDRESS_HOME_ZIP_AND_CITY:
       case ORDER_ID:
@@ -367,10 +369,12 @@ void AutocompleteHistoryManager::CancelPendingQuery() {
 
 void AutocompleteHistoryManager::OnRemoveCurrentSingleFieldSuggestion(
     const std::u16string& field_name,
+    const std::u16string& field_label,
     const std::u16string& value,
     SuggestionType type) {
   if (profile_database_) {
-    profile_database_->RemoveFormValueForElementName(field_name, value);
+    profile_database_->RemoveFormValueForElementNameAndLabel(
+        field_name, field_label, value);
   }
 }
 

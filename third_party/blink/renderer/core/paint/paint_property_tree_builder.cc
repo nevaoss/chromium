@@ -17,6 +17,7 @@
 #include "third_party/blink/renderer/core/css/clip_path_paint_image_generator.h"
 #include "third_party/blink/renderer/core/css/properties/css_bitset.h"
 #include "third_party/blink/renderer/core/dom/dom_node_ids.h"
+#include "third_party/blink/renderer/core/dom/flat_tree_traversal.h"
 #include "third_party/blink/renderer/core/dom/pseudo_element.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
@@ -583,6 +584,16 @@ static bool NeedsAnchorPositionScrollTranslation(const LayoutObject& object) {
   return false;
 }
 
+static HTMLCanvasElement* FindCanvasParent(const LayoutObject& object) {
+  const Element* element = DynamicTo<Element>(object.GetNode());
+  if (!element) {
+    return nullptr;
+  }
+  const Element* parent =
+      FlatTreeTraversal::ParentElementSkippingSlots(*element);
+  return DynamicTo<HTMLCanvasElement>(const_cast<Element*>(parent));
+}
+
 static bool NeedsPaintOffsetTranslation(
     const LayoutObject& object,
     CompositingReasons direct_compositing_reasons,
@@ -610,7 +621,7 @@ static bool NeedsPaintOffsetTranslation(
 
   // TODO(crbug.com/349835587): Should Element or LayoutObject have a public
   // IsCanvasDrawElementImage() function?
-  if (object.Parent() && object.Parent()->IsCanvas()) {
+  if (FindCanvasParent(object)) {
     // The object may be drawn with drawElementImage and should ignore the paint
     // offset.
     return true;
@@ -1034,8 +1045,7 @@ void FragmentPaintPropertyTreeBuilder::UpdateAnchorPositionScrollTranslation() {
       DCHECK(object_.GetDocument().Printing() ||
              (RuntimeEnabledFeatures::CanvasDrawElementEnabled(
                   object_.GetDocument().GetExecutionContext()) &&
-              IsA<Element>(object_.GetNode()) &&
-              To<Element>(object_.GetNode())->IsInCanvasSubtree()) ||
+              object_.IsInCanvasSubtree()) ||
              (full_context_.direct_compositing_reasons &
               CompositingReason::kAnchorPosition));
       state.direct_compositing_reasons =
@@ -1930,10 +1940,14 @@ static void PopulateCanvasChildPaintState(HTMLCanvasElement* canvas,
   paint_state.animated_image_frame_index_map =
       canvas->GetDocument().View()->GetAnimatedImageFrameIndexes();
 }
+
 static void PopulateCanvasChildState(const LayoutObject& object,
                                      EffectPaintPropertyNode::State& state) {
   CHECK(IsA<LayoutBox>(object));
-  auto& canvas_fragment = object.Parent()->FirstFragment();
+  HTMLCanvasElement* canvas = FindCanvasParent(object);
+  CHECK(canvas && canvas->GetLayoutObject());
+  auto& canvas_fragment = canvas->GetLayoutObject()->FirstFragment();
+
   gfx::RectF reference_box(To<LayoutBox>(object).PhysicalBorderBoxRect());
   gfx::Point3F transform_origin(
       FloatValueForLength(object.StyleRef().GetTransformOrigin().X(),
@@ -1950,9 +1964,7 @@ static void PopulateCanvasChildState(const LayoutObject& object,
       transform_origin, 1.0f / object.StyleRef().EffectiveZoom());
   state.canvas_child_state->paint_state.box_size =
       gfx::SizeF(To<LayoutBox>(object).StitchedSize());
-  PopulateCanvasChildPaintState(
-      To<HTMLCanvasElement>(object.Parent()->GetNode()),
-      state.canvas_child_state->paint_state);
+  PopulateCanvasChildPaintState(canvas, state.canvas_child_state->paint_state);
   state.canvas_child_state->content_effect = canvas_fragment.ContentsEffect();
   state.canvas_child_state->content_clip = canvas_fragment.ContentsClip();
 }
@@ -2070,18 +2082,30 @@ void FragmentPaintPropertyTreeBuilder::UpdateEffect() {
       if (EffectCanUseCurrentClipAsOutputClip())
         state.output_clip = context_.current.clip;
       state.opacity = style.Opacity();
+      // Wait for all mask-image layers to load before rendering so we don't
+      // reveal partially-masked content while some layers are still loading.
+      // This only hides the element while requests are actually in flight:
+      // a failed load (e.g. server error) is a terminal state, and the
+      // resulting ImageChanged() notification triggers a paint property
+      // update that restores the opacity, with the errored layer treated as
+      // transparent black.
+      if (style.HasMask() &&
+          RuntimeEnabledFeatures::MaskWaitForAllImagesEnabled() &&
+          style.MaskLayers().AnyImageIsLoading()) {
+        state.opacity = 0.f;
+      }
       // If the mask image is not valid, it must be treated as a transparent
       // black image layer. See
       // https://drafts.fxtf.org/css-masking-1/#the-mask-image.
-      // MaskBoundingBox() returns nullopt for all invalid mask image layers.
+      // MaskBoundingBox() may return nullopt for invalid mask image layers.
+      // Note that AllImagesAreInvalid() also treats not-yet-loaded images as
+      // invalid, so this also hides the element while its only mask image is
+      // still loading.
       if (style.HasMask() && !style.BackdropFilter().IsEmpty() &&
           RuntimeEnabledFeatures::
-              HandleInvalidMaskImageWithBackdropFilterEnabled()) {
-        // TODO(crbug.com/473987435): Consider waiting for all mask-image layers
-        // to load before rendering, instead of rendering after the first one.
-        if (style.MaskLayers().AllImagesAreInvalid()) {
-          state.opacity = 0.f;
-        }
+              HandleInvalidMaskImageWithBackdropFilterEnabled() &&
+          style.MaskLayers().AllImagesAreInvalid()) {
+        state.opacity = 0.f;
       }
       if (object_.IsBlendingAllowed()) {
         state.blend_mode = ToSkBlendMode(style.GetBlendMode());
@@ -2503,9 +2527,7 @@ void FragmentPaintPropertyTreeBuilder::UpdateFilter() {
       bool is_filter_disallowed =
           RuntimeEnabledFeatures::CanvasDrawElementEnabled(
               object_.GetDocument().GetExecutionContext()) &&
-          IsA<Element>(object_.GetNode()) &&
-          To<Element>(object_.GetNode())->IsInCanvasSubtree() &&
-          filter_info.operations.OriginTainted();
+          object_.IsInCanvasSubtree() && filter_info.operations.OriginTainted();
       if (!(filter_info.operations.IsEmpty() || is_filter_disallowed)) {
         state.filter_info =
             std::make_unique<EffectPaintPropertyNode::FilterInfo>(
@@ -4262,9 +4284,7 @@ void FragmentPaintPropertyTreeBuilder::PopulateBackdropFilterIfNeeded(
     bool is_filter_disallowed =
         RuntimeEnabledFeatures::CanvasDrawElementEnabled(
             object_.GetDocument().GetExecutionContext()) &&
-        IsA<Element>(object_.GetNode()) &&
-        To<Element>(object_.GetNode())->IsInCanvasSubtree() &&
-        operations.OriginTainted();
+        object_.IsInCanvasSubtree() && operations.OriginTainted();
     if (!is_filter_disallowed) {
       state.backdrop_filter_info =
           base::WrapUnique(new EffectPaintPropertyNode::BackdropFilterInfo{
@@ -4779,8 +4799,7 @@ void PaintPropertyTreeBuilder::IssueInvalidationsAfterUpdate() {
     // invalidations.
     if (RuntimeEnabledFeatures::CanvasDrawElementEnabled(
             object_.GetDocument().GetExecutionContext()) &&
-        IsA<Element>(object_.GetNode()) &&
-        To<Element>(object_.GetNode())->IsInCanvasSubtree()) {
+        object_.IsInCanvasSubtree()) {
       context_.painting_layer->SetNeedsRepaint();
     }
     object_.GetFrameView()->SetPaintArtifactCompositorNeedsUpdate();
@@ -4834,8 +4853,7 @@ bool PaintPropertyTreeBuilder::CanDoDeferredTransformNodeUpdate(
   // invalidations.
   if (RuntimeEnabledFeatures::CanvasDrawElementEnabled(
           object.GetDocument().GetExecutionContext()) &&
-      IsA<Element>(object.GetNode()) &&
-      To<Element>(object.GetNode())->IsInCanvasSubtree()) {
+      object.IsInCanvasSubtree()) {
     return false;
   }
   return true;
@@ -4887,8 +4905,7 @@ bool PaintPropertyTreeBuilder::CanDoDeferredOpacityNodeUpdate(
   // invalidations.
   if (RuntimeEnabledFeatures::CanvasDrawElementEnabled(
           object.GetDocument().GetExecutionContext()) &&
-      IsA<Element>(object.GetNode()) &&
-      To<Element>(object.GetNode())->IsInCanvasSubtree()) {
+      object.IsInCanvasSubtree()) {
     return false;
   }
 

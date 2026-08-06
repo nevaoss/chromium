@@ -121,9 +121,11 @@ class DiceResponseHandlerTest : public testing::Test,
  public:
   // Called after the refresh token was fetched and added in the token service.
   void HandleTokenExchangeSuccess(CoreAccountId account_id,
-                                  bool is_new_account) {
+                                  bool is_new_account,
+                                  signin::Tribool primary_is_connected) {
     token_exchange_account_id_ = account_id;
     token_exchange_is_new_account_ = is_new_account;
+    token_exchange_primary_is_connected_ = primary_is_connected;
   }
 
   // Called after the refresh token was fetched and added in the token service.
@@ -178,6 +180,7 @@ class DiceResponseHandlerTest : public testing::Test,
   }
 
   ~DiceResponseHandlerTest() override {
+    dice_response_handler_.reset();
     account_reconcilor_->RemoveObserver(this);
     account_reconcilor_->Shutdown();
     about_signin_internals_->Shutdown();
@@ -277,11 +280,12 @@ class DiceResponseHandlerTest : public testing::Test,
   SigninErrorController signin_error_controller_;
   std::unique_ptr<AboutSigninInternals> about_signin_internals_;
   std::unique_ptr<AccountReconcilor> account_reconcilor_;
-  std::unique_ptr<DiceResponseHandler> dice_response_handler_;
   int reconcilor_blocked_count_ = 0;
   int reconcilor_unblocked_count_ = 0;
   CoreAccountId token_exchange_account_id_;
   bool token_exchange_is_new_account_ = false;
+  signin::Tribool token_exchange_primary_is_connected_ =
+      signin::Tribool::kUnknown;
   CoreAccountInfo complete_profile_signin_account_info_;
   GoogleServiceAuthError auth_error_;
   std::string auth_error_email_;
@@ -290,6 +294,7 @@ class DiceResponseHandlerTest : public testing::Test,
   base::HistogramTester histogram_tester_;
   bool session_complete_called_ = false;
   std::vector<CoreAccountId> completed_secondary_accounts_;
+  std::unique_ptr<DiceResponseHandler> dice_response_handler_;
 };
 
 class TestProcessDiceHeaderDelegate : public ProcessDiceHeaderDelegate {
@@ -300,9 +305,12 @@ class TestProcessDiceHeaderDelegate : public ProcessDiceHeaderDelegate {
   ~TestProcessDiceHeaderDelegate() override = default;
 
   // Called after the refresh token was fetched and added in the token service.
-  void HandleTokenExchangeSuccess(CoreAccountId account_id,
-                                  bool is_new_account) override {
-    owner_->HandleTokenExchangeSuccess(account_id, is_new_account);
+  void HandleTokenExchangeSuccess(
+      CoreAccountId account_id,
+      bool is_new_account,
+      signin::Tribool primary_is_connected) override {
+    owner_->HandleTokenExchangeSuccess(account_id, is_new_account,
+                                       primary_is_connected);
   }
 
   // Called after the refresh token was fetched and added in the token service.
@@ -450,6 +458,7 @@ TEST_P(DiceResponseHandlerParamTest, Signin_PrimaryConnected) {
   // The implementation only calls it for the initiator.
   EXPECT_EQ(token_exchange_account_id_, account_ids[initiator_index]);
   EXPECT_TRUE(token_exchange_is_new_account_);
+  EXPECT_EQ(token_exchange_primary_is_connected_, signin::Tribool::kTrue);
 
   // Check that the reconcilor was blocked and unblocked exactly once.
   EXPECT_EQ(1, reconcilor_blocked_count_);
@@ -532,6 +541,7 @@ TEST_P(DiceResponseHandlerParamTest, Signin_PrimaryNotConnected_Success) {
 
   // Check HandleTokenExchangeSuccess parameters.
   EXPECT_EQ(token_exchange_account_id_, account_ids[initiator_index]);
+  EXPECT_EQ(token_exchange_primary_is_connected_, signin::Tribool::kFalse);
 }
 
 TEST_P(DiceResponseHandlerParamTest,
@@ -640,6 +650,10 @@ TEST_P(DiceResponseHandlerParamTest,
   for (size_t i = 2; i < account_count; ++i) {
     EXPECT_TRUE(identity_manager()->HasAccountWithRefreshToken(account_ids[i]));
   }
+
+  // Check HandleTokenExchangeSuccess parameters for initiator.
+  EXPECT_EQ(token_exchange_account_id_, account_ids[initiator_index]);
+  EXPECT_EQ(token_exchange_primary_is_connected_, signin::Tribool::kFalse);
 
   // Session should be deleted.
   EXPECT_EQ(
@@ -1225,6 +1239,7 @@ TEST_F(DiceResponseHandlerTest, CheckSigninAfterOutageInDice) {
   // Check HandleTokenExchangeSuccess parameters.
   EXPECT_EQ(token_exchange_account_id_, account_id_2);
   EXPECT_TRUE(token_exchange_is_new_account_);
+  EXPECT_EQ(token_exchange_primary_is_connected_, signin::Tribool::kTrue);
   EXPECT_EQ(1, reconcilor_blocked_count_);
   EXPECT_EQ(0, reconcilor_unblocked_count_);
   // Check that the AccountInfo::is_under_advanced_protection is set.
@@ -1588,6 +1603,7 @@ TEST_F(DiceResponseHandlerTest, MultipleAccounts_NoAuthCode_Mixed) {
 
   EXPECT_TRUE(identity_manager()->HasAccountWithRefreshToken(account_id1));
   EXPECT_FALSE(identity_manager()->HasAccountWithRefreshToken(account_id2));
+  EXPECT_EQ(token_exchange_primary_is_connected_, signin::Tribool::kTrue);
 
   // Reconcilor should still be blocked because of Account 2!
   EXPECT_EQ(1, reconcilor_blocked_count_);
@@ -1855,6 +1871,7 @@ TEST_F(DiceResponseHandlerTest,
   // Check HandleTokenExchangeSuccess parameters.
   EXPECT_EQ(token_exchange_account_id_, account_id);
   EXPECT_TRUE(token_exchange_is_new_account_);
+  EXPECT_EQ(token_exchange_primary_is_connected_, signin::Tribool::kTrue);
   // Check that delegate was not called to enable sync.
   EXPECT_TRUE(complete_profile_signin_account_info_.IsEmpty());
 
@@ -1902,6 +1919,7 @@ TEST_F(DiceResponseHandlerTest,
   // Check HandleTokenExchangeSuccess parameters.
   EXPECT_EQ(token_exchange_account_id_, account_id);
   EXPECT_TRUE(token_exchange_is_new_account_);
+  EXPECT_EQ(token_exchange_primary_is_connected_, signin::Tribool::kTrue);
   // Check that delegate was called to enable sync.
   EXPECT_EQ(gaia_id, complete_profile_signin_account_info_.gaia);
   EXPECT_EQ(email, complete_profile_signin_account_info_.email);

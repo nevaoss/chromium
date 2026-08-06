@@ -4,8 +4,11 @@
 
 package org.chromium.chrome.browser.tasks.tab_management.vertical_tabs;
 
+import static java.util.Collections.emptySet;
+
 import android.app.Activity;
 import android.transition.ChangeBounds;
+import android.transition.Fade;
 import android.transition.Transition;
 import android.transition.TransitionSet;
 import android.view.View;
@@ -170,14 +173,17 @@ public class VerticalTabsSideUiCoordinator
         int oldWidth = mSideUiCoordinator.getCurrentSideUiSpecs().getWidth(side);
 
         if (oldWidth > 0 && newWidth > 0 && oldWidth != newWidth) {
-            TransitionSet transitionSet = new TransitionSet();
-            List<View> views = new ArrayList<>(mTabListCoordinator.getViewsForResizeAnimation());
-            views.add(getView());
-            Transition changeBounds = new ChangeBounds();
+            TransitionSet transitionSet =
+                    new TransitionSet()
+                            .setOrdering(TransitionSet.ORDERING_TOGETHER)
+                            .addTransition(new ChangeBounds())
+                            .addTransition(new Fade());
+            List<View> views = new ArrayList<>();
+            views.add(mRootView);
+            ViewUtils.getAllDescendants(mRootView, views, emptySet());
             for (View view : views) {
-                changeBounds.addTarget(view);
+                transitionSet.addTarget(view);
             }
-            transitionSet.addTransition(changeBounds);
             return transitionSet;
         }
         return null;
@@ -213,10 +219,23 @@ public class VerticalTabsSideUiCoordinator
     // 3. onSideUiSpecsChanged: fired post-specs change (only if width/specs changed) to sync button
     // and rail model state.
     private void onRailCollapseStateChangeRequested(@RailCollapseState int newState) {
+        @RailCollapseState int oldState = mRailCollapseStateByUser;
         if (mRailCollapseStateByUser == newState) return;
+
         mRailCollapseStateByUser = newState;
-        mSideUiCoordinator.updateUi(
-                new UiUpdateRequest(getSideUiId(), /* suppressAnimations= */ false));
+
+        // TODO(crbug.com/527641177): Remove this if check after expand on hovering UI is done.
+        if (isExpanded(oldState) && isExpanded(newState)) {
+            updateCollapseButtonAndRailState(isCurrentWindowNarrow());
+        } else {
+            mSideUiCoordinator.updateUi(
+                    new UiUpdateRequest(getSideUiId(), /* suppressAnimations= */ false));
+        }
+    }
+
+    private boolean isExpanded(@RailCollapseState int state) {
+        return state == RailCollapseState.EXPANDED
+                || state == RailCollapseState.EXPANDED_FOR_HOVERING;
     }
 
     private void updateCollapseButtonAndRailState(boolean isNarrow) {
@@ -237,5 +256,10 @@ public class VerticalTabsSideUiCoordinator
     @RailCollapseState
     int getRailCollapseStateByUserForTesting() {
         return mRailCollapseStateByUser;
+    }
+
+    @RailCollapseState
+    int getRailCollapseStateForTesting() {
+        return getRailCollapseState(isCurrentWindowNarrow());
     }
 }

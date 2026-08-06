@@ -743,8 +743,9 @@ static bool ForceStackingAndContainingBlockForCanvasLayoutSubtree(
   if (element && element->IsCanvasOrInCanvasSubtree() &&
       RuntimeEnabledFeatures::CanvasDrawElementEnabled(
           element->GetExecutionContext())) {
-    if (const auto* canvas =
-            DynamicTo<HTMLCanvasElement>(element->parentElement())) {
+    const Element* parent =
+        FlatTreeTraversal::ParentElementSkippingSlots(*element);
+    if (const auto* canvas = DynamicTo<HTMLCanvasElement>(parent)) {
       return canvas->layoutSubtree();
     }
   }
@@ -1828,6 +1829,8 @@ StyleAdjuster::ElementTypeForCache StyleAdjuster::GetElementTypeCacheKey(
     case ElementType::kHTMLUListElement:
     case ElementType::kHTMLUnknownElement:
     case ElementType::kHTMLUserMediaElement:
+    case ElementType::kHTMLCameraElement:
+    case ElementType::kHTMLMicrophoneElement:
       return {ElementType::kHTMLDivElement};
 
       // Don't add a default here; new SVG/MathML elements need to be different

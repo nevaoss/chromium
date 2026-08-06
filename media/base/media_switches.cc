@@ -928,6 +928,10 @@ BASE_FEATURE(kWebRTCColorAccuracy,
 #endif  // BUILDFLAG(IS_CHROMEOS)
 );
 
+// Enables verbose logging of color space.
+// TODO: Delete this after testing is done.
+BASE_FEATURE(kWebRTCLogColorSpace, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Enables support for External Clear Key (ECK) key system for testing on
 // supported platforms. On platforms that do not support ECK, this feature has
 // no effect.
@@ -1062,13 +1066,6 @@ BASE_FEATURE(kHardwareSecureDecryptionAv1, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables hardware secure VP9 decoding if supported by the hardware
 // and the OS Content Decryption Module (CDM).
 BASE_FEATURE(kHardwareSecureDecryptionVp9, base::FEATURE_DISABLED_BY_DEFAULT);
-
-#if BUILDFLAG(ENABLE_PLATFORM_ENCRYPTED_DOLBY_VISION)
-// Enables hardware secure Dolby Vision decoding always with HDR display check
-// if supported by the hardware and the OS Content Decryption Module (CDM).
-BASE_FEATURE(kHardwareSecureDecryptionDolbyVisionWithHdrCheck,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-#endif  // ENABLE_PLATFORM_ENCRYPTED_DOLBY_VISION
 
 #if BUILDFLAG(IS_WIN)
 // Enables showing permission indicator in the omnibox when a site is allowed or
@@ -1291,7 +1288,7 @@ BASE_FEATURE(kNdkVideoEncodeAcceleratorBitrateLayering,
 
 // Enables skipping MediaCodec reallocation if input buffer requirements
 // are already met.
-BASE_FEATURE(kSkipMediaCodecReallocation, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kSkipMediaCodecReallocation, base::FEATURE_ENABLED_BY_DEFAULT);
 
 #endif  // BUILDFLAG(IS_ANDROID)
 

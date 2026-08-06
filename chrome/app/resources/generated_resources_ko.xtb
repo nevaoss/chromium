@@ -358,7 +358,6 @@
 <translation id="1254034280040157728">그랜드캐니언</translation>
 <translation id="1254593899333212300">인터넷에 바로 연결</translation>
 <translation id="1254767904958485584">분할 뷰가 생성됨</translation>
-<translation id="1255095393630332248">탭이 공유되면 탭의 페이지 콘텐츠, 미디어, URL이 Google로 전송됩니다.</translation>
 <translation id="1256143630373008432">자동 테스트 실패</translation>
 <translation id="1257336506558170607">선택한 인증서 내보내기</translation>
 <translation id="1258491128795710625">새로운 기능</translation>
@@ -699,6 +698,7 @@
 <translation id="1542137295869176367">로그인 데이터를 업데이트할 수 없습니다.</translation>
 <translation id="1543284117603151572">Edge에서 가져옴</translation>
 <translation id="1543538514740974167">여기로 더 빠르게 이동하기</translation>
+<translation id="1544026754762189866">조직에서 이 콘텐츠 복사를 권장하지 않습니다</translation>
 <translation id="1544588554445317666">파일 이름을 짧게 줄이거나 다른 폴더에 저장해 보세요</translation>
 <translation id="1545749641540134597">QR 코드 스캔</translation>
 <translation id="1545775234664667895">테마('<ph name="THEME_NAME" />')를 설치했습니다.</translation>
@@ -725,7 +725,6 @@
 <translation id="1561331397460162942">이렇게 하면 앱, 위치 정보 액세스 권한이 있는 웹사이트, 시스템 서비스에 대한 위치 액세스가 허용됩니다.</translation>
 <translation id="1562119309884184621">이 연락처를 추가하면 다음번 공유 시 연락처에 내 기기가 표시됩니다.</translation>
 <translation id="1562585387501039294">조직(<ph name="ACCOUNT_MANAGER" />)에서 관리 프로필을 요구하며, 다음과 같은 일부 정보를 볼 수 있습니다</translation>
-<translation id="156345786953026804">Gemini가 작업을 수행하는 동안 사용하는 페이지 콘텐츠와 URL은 Google과 공유됩니다.</translation>
 <translation id="1566049601598938765">웹사이트</translation>
 <translation id="15662109988763471">선택한 프린터가 사용 불가능하거나 올바르게 설치되어 있지 않습니다. 프린터를 확인하거나 다른 프린터를 선택해 보세요.</translation>
 <translation id="1566329594234563241">비활성 상태이며 전원에 연결되어 있는 동안</translation>
@@ -1187,7 +1186,6 @@
 <translation id="1910721550319506122">반갑습니다!</translation>
 <translation id="1910736334623230603">여러 이미지를 검색할 수 없습니다. 한 번에 이미지 하나씩 추가하세요.</translation>
 <translation id="1910908536872421421">테스트용 Chrome v<ph name="BROWSER_VERSION" />은(는) 자동 테스트 전용입니다. 정기적인 탐색을 하려면 자동으로 업데이트되는 표준 버전의 Chrome을 사용하세요.</translation>
-<translation id="1912867150686509584">Calendar에서 더 많은 회의 보기</translation>
 <translation id="1913734973620799732">{NUM_TABS,plural, =1{브라우저 속도를 저하시키는 탭 일시중지}other{브라우저 속도를 저하시키는 탭 일시중지}}</translation>
 <translation id="1913749768968678106">전송, 저장, 공유</translation>
 <translation id="19147273405311768">툴바를 기본 설정으로 재설정</translation>
@@ -1512,6 +1510,7 @@
 <translation id="2166369534954157698">재빠른 갈색 여우가 게으른 개를 뛰어넘습니다.</translation>
 <translation id="2168036794078614559">신고 완료됨</translation>
 <translation id="2169062631698640254">로그인</translation>
+<translation id="217120844667431680">AI 모드로 더 많은 작업 수행</translation>
 <translation id="2173302385160625112">인터넷 연결 상태 확인</translation>
 <translation id="2175384018164129879">검색엔진 및 사이트 검색 관리</translation>
 <translation id="2175526076681939329">기본 키 사용</translation>
@@ -1779,7 +1778,6 @@
 <translation id="2378602615417849384">{NUM_EXTENSIONS,plural, =1{이 확장 프로그램은 곧 지원 중단될 수 있습니다}other{이 확장 프로그램은 곧 지원 중단될 수 있습니다}}</translation>
 <translation id="2378982052244864789">확장 프로그램 디렉터리를 선택합니다.</translation>
 <translation id="2379111564446699251">툴바에서 버튼을 다시 정렬하려면 드래그하세요</translation>
-<translation id="2379184471043414645">미디어 이해 사용 설정하기</translation>
 <translation id="2379281330731083556">시스템 대화상자를 사용하여 인쇄... <ph name="SHORTCUT_KEY" /></translation>
 <translation id="2381461748765773292">이로 인해 모바일 네트워크의 연결이 몇 분간 해제될 수 있습니다.</translation>
 <translation id="2381499968174336913">공유 탭 미리보기</translation>
@@ -1827,6 +1825,7 @@
 <translation id="2424424966051154874">{0,plural, =1{게스트}other{게스트(#)}}</translation>
 <translation id="2426805022920575512">다른 계정 선택</translation>
 <translation id="2427507373259914951">왼쪽 클릭</translation>
+<translation id="2428120669821109648">탭 스타일 지정</translation>
 <translation id="2428245692671442472">{NUM_PASSWORDS,plural, =1{<ph name="DOMAIN_LINK" /> 계정 1개, 비밀번호는 이 기기에만 저장됩니다. 세부정보 더보기}other{<ph name="DOMAIN_LINK" /> 계정 {NUM_PASSWORDS}개, 비밀번호는 이 기기에만 저장됩니다. 세부정보 더보기}}</translation>
 <translation id="2428510569851653187">탭이 다운되었을 때 무엇을 하고 계셨는지 설명해 주세요.</translation>
 <translation id="2428939361789119025">Wi-Fi 사용 중지</translation>
@@ -3513,6 +3512,7 @@
 <translation id="3700993174159313525">사이트에서 카메라 위치를 추적하도록 허용하지 않음</translation>
 <translation id="3701167022068948696">지금 해결하기</translation>
 <translation id="3701515417135397388">정보 유출로 인해 비밀번호가 유출된 경우 경고</translation>
+<translation id="3701778844313851487">확장 프로그램으로 이동</translation>
 <translation id="3703166520839776970">이 문제가 계속 발생하는 경우 아래의 '세부정보 더보기'를 선택하여 <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" />에서 자세히 알아보세요.</translation>
 <translation id="3703699162703116302">티켓 새로고침됨</translation>
 <translation id="370415077757856453">자바스크립트가 차단됨</translation>
@@ -4271,6 +4271,7 @@
 <translation id="4274673989874969668">사이트에서 나간 후에도 사이트가 동기화를 계속하여 사진 업로드나 채팅 메시지 전송과 같은 작업을 마무리합니다.</translation>
 <translation id="4275291496240508082">시작 알림음</translation>
 <translation id="4275397969489577657">이벤트 스트림 로깅 사용</translation>
+<translation id="4275663329226226506">미디어</translation>
 <translation id="4275788652681621337">측면 패널 닫기</translation>
 <translation id="4275830172053184480">기기 다시 시작</translation>
 <translation id="4276390967705106170">새 브라우저 탭에서 열기</translation>
@@ -4317,7 +4318,6 @@
 <translation id="4303079906735388947">보안 키의 새로운 PIN을 설정하세요.</translation>
 <translation id="430351398235329166">주소 표시줄 위치를 전환하여 탐색 환경을 맞춤설정하세요</translation>
 <translation id="4304713468139749426">비밀번호 관리자</translation>
-<translation id="4305402730127028764"><ph name="DEVICE_NAME" />(으)로 복사</translation>
 <translation id="4305817255990598646">전환</translation>
 <translation id="4306489587293957491">입력</translation>
 <translation id="4306810703452026910">Chrome에서 더 이상 이 사이트의 알림을 스팸으로 표시하지 않습니다.</translation>
@@ -4589,6 +4589,7 @@
 <translation id="4523876148417776526">XML 사이트 목록을 아직 가져오지 않았습니다.</translation>
 <translation id="4526051299161934899">숨겨진 저장된 탭 그룹</translation>
 <translation id="452750746583162491">동기화된 데이터 검토</translation>
+<translation id="4528216716764031072">모던(투명)</translation>
 <translation id="4528494169189661126">번역 제안</translation>
 <translation id="4529455689802245339">Chrome 실시간 자막이 작동하지 않을 수 있음</translation>
 <translation id="4531451811601110068">다시 시도하거나 관리자에게 문의하여 도움을 요청하세요</translation>
@@ -4742,6 +4743,7 @@
 <translation id="4645575059429386691">부모님이 관리합니다.</translation>
 <translation id="4645676300727003670">계속(&amp;K)</translation>
 <translation id="4646675363240786305">포트</translation>
+<translation id="4646859937978908916">새로 추가된 확장 프로그램은 자동으로 고정됩니다. 확장 프로그램 페이지에서 변경할 수 있습니다.</translation>
 <translation id="4647025838970719122">조직에서 관리하는 설정입니다</translation>
 <translation id="4647090755847581616">탭 닫기(&amp;C)</translation>
 <translation id="4647283074445570750">총 <ph name="TOTAL_STEPS" />단계 중 <ph name="CURRENT_STEP" />단계</translation>
@@ -7280,7 +7282,6 @@
 <translation id="6657180931610302174">사용자 이름을 추가하시겠습니까?</translation>
 <translation id="6657240842932274095">시스템 서비스에서 내 위치를 사용하도록 허용하시겠습니까?</translation>
 <translation id="6657585470893396449">비밀번호</translation>
-<translation id="6658957691413122395">Gemini 크기 조절 중...</translation>
 <translation id="6659213950629089752">이 페이지는 '<ph name="NAME" />' 확장 프로그램으로 확대/축소되었습니다.</translation>
 <translation id="6659594942844771486">탭</translation>
 <translation id="6660099350750552197"><ph name="WINDOW_TITLE" /> - 카메라 녹화 중</translation>
@@ -8315,6 +8316,7 @@
 <translation id="7446716846072322308"><ph name="SITE_NAME" /> 및 관련 사이트에서 저장한 <ph name="TOTAL_USAGE" />의 데이터가 삭제됩니다.</translation>
 <translation id="7448430327655618736">앱 자동 설치</translation>
 <translation id="7448664748118305024">창을 전부 닫으면 사이트에서 기기에 저장한 데이터 삭제</translation>
+<translation id="7449806939046594699">조직에서 이 콘텐츠의 복사를 차단했습니다</translation>
 <translation id="7450761244949417357">지금 <ph name="ALTERNATIVE_BROWSER_NAME" />에서 여는 중</translation>
 <translation id="7450926666485653189">IP 주소를 숨기는 개인 정보 보호 서버를 통해 URL의 난독화된 부분을 Google로 전송합니다.</translation>
 <translation id="7453008956351770337">이 프린터를 선택하면 다음 확장 프로그램에 내 프린터에 액세스할 수 있는 권한을 부여하게 됩니다.</translation>
@@ -8822,6 +8824,7 @@
 <translation id="7849264908733290972">새 탭에서 이미지 열기(&amp;I)</translation>
 <translation id="784934925303690534">기간</translation>
 <translation id="7850320739366109486">알림 일시중지</translation>
+<translation id="7851303446278533774">생성하고 계획하고 요약하세요.</translation>
 <translation id="7851716364080026749">카메라 및 마이크 액세스 항상 차단</translation>
 <translation id="78526636422538552">Google 계정 추가가 사용 중지되었습니다.</translation>
 <translation id="7853747251428735">도구 더보기(&amp;L)</translation>
@@ -9515,7 +9518,6 @@
 <translation id="8376532149031784008"><ph name="DOMAIN" /> 도메인 새로고침 중...</translation>
 <translation id="8376610503048439696">관리자가 설치한 확장 프로그램에서 계속 이 사이트를 읽고 변경할 수 있습니다.</translation>
 <translation id="8376752431516546391">Google 검색 측면 패널</translation>
-<translation id="8376812682111060348">성능 문제 알림</translation>
 <translation id="8377625247046155446">이 패스키는 이 기기에만 저장되며 시크릿 창을 모두 닫은 후에도 이 기기에 남아 있습니다.</translation>
 <translation id="837790003026572432">이 기기에서는 탭 오디오 전송이 지원되지 않습니다</translation>
 <translation id="8378714024927312812">조직에서 관리</translation>
@@ -9921,7 +9923,6 @@
 <translation id="8693862390730570097">'작성 지원 기능'이 자동으로 열리도록 허용하지 않음</translation>
 <translation id="8694596275649352090">절전 모드일 때 또는 덮개가 닫힌 경우 잠금</translation>
 <translation id="8695825812785969222">위치 열기(&amp;L)...</translation>
-<translation id="8696297579102085705">기기로 보내기</translation>
 <translation id="869884720829132584">애플리케이션 메뉴</translation>
 <translation id="869891660844655955">유효기간</translation>
 <translation id="8699296325072357994">비밀번호 페이지의 콘텐츠 및 관련 정보가 Google로 전송되어 인적 검토자의 검토를 거칩니다. 비밀번호는 암호화되며, 누구에게도 공개되지 않습니다. <ph name="PASSWORD_CHANGE" /></translation>

@@ -305,8 +305,10 @@ NSMenuItem* BuildViewMenu(NSApplication* nsapp,
                   .command_id(IDC_SHOW_FULL_URLS),
               Item(IDS_CONTEXT_MENU_SHOW_GOOGLE_LENS_SHORTCUT)
                   .command_id(IDC_SHOW_GOOGLE_LENS_SHORTCUT),
-              Item(IDS_CONTEXT_MENU_SHOW_AI_MODE_OMNIBOX_BUTTON)
-                  .command_id(IDC_SHOW_AI_MODE_OMNIBOX_BUTTON),
+               Item(IDS_AI_MODE_ENTRYPOINT_CONTEXT_MENU_SHOW)
+                   .string_format_1(
+                       l10n_util::GetStringUTF16(IDS_AI_MODE_ENTRYPOINT_LABEL))
+                   .command_id(IDC_SHOW_AI_MODE_OMNIBOX_BUTTON),
               Item(IDS_CONTEXT_MENU_SHOW_SEARCH_TOOLS)
                   .command_id(IDC_SHOW_SEARCH_TOOLS),
               Item(IDS_SWITCH_TO_VERTICAL_TAB)
@@ -551,9 +553,9 @@ NSMenuItem* BuildTabMenu(NSApplication* nsapp,
                           : IDS_TAB_CXMENU_NEWTABTORIGHT)
                   .command_id(IDC_NEW_TAB_TO_RIGHT),
               Item(IDS_NEXT_TAB_MAC)
-                  .command_id(IDC_SELECT_NEXT_TAB),
+                  .command_id(IDC_CYCLE_TO_NEXT_TAB),
               Item(IDS_PREV_TAB_MAC)
-                  .command_id(IDC_SELECT_PREVIOUS_TAB),
+                  .command_id(IDC_CYCLE_TO_PREV_TAB),
               Item(IDS_DUPLICATE_TAB_MAC)
                   .command_id(IDC_DUPLICATE_TAB),
               Item(IDS_DUPLICATE_TARGET_TAB_MAC)

@@ -1371,7 +1371,6 @@ android_library("chrome_test_java_org.chromium.chrome.browser.suggestions") {
     "src/org/chromium/chrome/browser/suggestions/tile/MostVisitedTilesLayoutTest.java",
     "src/org/chromium/chrome/browser/suggestions/tile/MostVisitedTilesViewBinderUnitTest.java",
     "src/org/chromium/chrome/browser/suggestions/tile/TileGroupTest.java",
-    "src/org/chromium/chrome/browser/suggestions/tile/TileGroupUnitTest.java",
   ]
 
   deps = [
@@ -1578,6 +1577,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.tasks") {
     "//chrome/browser/actor/android:java",
     "//chrome/browser/educational_tip:java",
     "//chrome/browser/hub/internal:java",
+    "//chrome/browser/ui/vertical_tabs:java",
   ]
 }
 
@@ -1709,7 +1709,6 @@ android_library("chrome_test_java_various") {
     "src/org/chromium/chrome/browser/net/connectivitydetector/ConnectivityDetectorTest.java",
     "src/org/chromium/chrome/browser/omaha/UpdateMenuItemHelperTest.java",
     "src/org/chromium/chrome/browser/paint_preview/StartupPaintPreviewHelperTest.java",
-    "src/org/chromium/chrome/browser/personal_context/first_run/PersonalContextFirstRunBottomSheetTest.java",
     "src/org/chromium/chrome/browser/personal_context/first_run/PersonalContextFirstRunServiceBridgeTest.java",
     "src/org/chromium/chrome/browser/policy/CombinedPolicyProviderTest.java",
     "src/org/chromium/chrome/browser/policy/PolicyAuditorBridgeTest.java",

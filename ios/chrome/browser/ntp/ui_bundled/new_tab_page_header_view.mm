@@ -95,6 +95,7 @@ constexpr CGFloat kFakeboxMinimumFontScaleFactor = 0.57;
 // The constants for the constraints affecting the end button; either Lens or
 // Voice Search, depending on if Lens is enabled.
 constexpr CGFloat kEndButtonFakeboxTrailingSpace = 13.0;
+constexpr CGFloat kEndButtonFakeboxWithPlusTrailingSpace = 18.0;
 constexpr CGFloat kEndButtonNormalSizeFakeboxWithBadgeTrailingSpace = 7.0;
 constexpr CGFloat kEndButtonOmniboxTrailingSpace = 7.0;
 
@@ -1039,8 +1040,8 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
   UIButtonConfiguration* configuration =
       [UIButtonConfiguration plainButtonConfiguration];
 
-  UIImage* icon = DefaultSymbolTemplateWithPointSize(
-      kPencilSymbol, ntp_home::kNTPMenuButtonIconSize);
+  UIImage* icon = SymbolTemplateWithPointSize(SymbolPencil,
+                                              ntp_home::kNTPMenuButtonIconSize);
   configuration.image = icon;
   configuration.background.cornerRadius = ntp_home::kNTPMenuButtonCornerRadius;
   customizationMenuButton.configuration = configuration;
@@ -1357,7 +1358,7 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
   self.plusButton.accessibilityLabel = l10n_util::GetNSString(
       IDS_IOS_COMPOSEBOX_ADD_ATTACHMENT_BUTTON_ACCESSIBILITY_LABEL);
   [self.plusButton
-      setImage:DefaultSymbolWithPointSize(kPlusSymbol, kSymbolActionPointSize)
+      setImage:SymbolWithPointSize(SymbolPlus, kSymbolActionPointSize)
       forState:UIControlStateNormal];
   [self.plusButton addTarget:self.NTPShortcutsHandler
                       action:@selector(openMultimodalActionsMenu)
@@ -1642,6 +1643,13 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
   // If normal sized fakebox and new bade is showing, reduce trailing space.
   if (_useNewBadgeForLensButton && !IsAimEnabledInNtp()) {
     return kEndButtonNormalSizeFakeboxWithBadgeTrailingSpace;
+  }
+
+  // Adjust the iPad voice button spacing to mirror the leading padding when no
+  // other buttons are present.
+  BOOL isSplitToolbarMode = IsSplitToolbarMode(self);
+  if ([self shouldShowPlusButton] && !isSplitToolbarMode) {
+    return kEndButtonFakeboxWithPlusTrailingSpace;
   }
   // Common trailing space.
   return kEndButtonFakeboxTrailingSpace;

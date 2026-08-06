@@ -8,6 +8,8 @@
 #include "base/functional/bind.h"
 #include "chrome/browser/actor/ui/actor_overlay_ui.h"
 #include "chrome/browser/chrome_browser_interface_binders_webui_parts.h"
+#include "chrome/browser/contextual_cueing/internals/contextual_cueing_internals.mojom.h"
+#include "chrome/browser/contextual_cueing/internals/contextual_cueing_internals_ui.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks.mojom.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_internals.mojom.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui.h"
@@ -50,6 +52,8 @@
 #include "chrome/browser/ui/webui/history/history_ui.h"
 #include "chrome/browser/ui/webui/infobar_internals/infobar_internals.mojom.h"
 #include "chrome/browser/ui/webui/infobar_internals/infobar_internals_ui.h"
+#include "chrome/browser/ui/webui/iwa_dev/iwa_dev.mojom.h"
+#include "chrome/browser/ui/webui/iwa_dev/iwa_dev_ui.h"
 #include "chrome/browser/ui/webui/metrics_reporter/metrics_reporter_service.h"
 #include "chrome/browser/ui/webui/multistep_filter_internals/multistep_filter_internals.mojom.h"
 #include "chrome/browser/ui/webui/multistep_filter_internals/multistep_filter_internals_ui.h"
@@ -208,6 +212,7 @@
 #include "chrome/browser/ui/webui/feature_showcase/default_browser.mojom.h"
 #include "chrome/browser/ui/webui/feature_showcase/feature_showcase.mojom.h"
 #include "chrome/browser/ui/webui/feature_showcase/feature_showcase_ui.h"
+#include "chrome/browser/ui/webui/feature_showcase/gemini.mojom.h"
 #include "chrome/browser/ui/webui/feature_showcase/google_lens.mojom.h"
 #include "chrome/browser/ui/webui/feature_showcase/password_manager.mojom.h"
 #include "chrome/browser/ui/webui/signin/signout_confirmation/signout_confirmation_ui.h"
@@ -376,6 +381,9 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
   RegisterWebUIControllerInterfaceBinder<
       feature_showcase::mojom::ThemesAndCustomizationPageHandlerFactory,
       FeatureShowcaseUI>(map);
+  RegisterWebUIControllerInterfaceBinder<
+      feature_showcase::mojom::GeminiPageHandlerFactory, FeatureShowcaseUI>(
+      map);
   RegisterWebUIControllerInterfaceBinder<
       feature_showcase::mojom::GoogleLensPageHandlerFactory, FeatureShowcaseUI>(
       map);
@@ -546,8 +554,10 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
         }));
   }
 
-  RegisterWebUIControllerInterfaceBinder<::mojom::WebAppInternalsHandler,
+  RegisterWebUIControllerInterfaceBinder<::mojom::PageHandlerFactory,
                                          WebAppInternalsUI>(map);
+  RegisterWebUIControllerInterfaceBinder<::iwa_dev::mojom::PageHandlerFactory,
+                                         IwaDevUI>(map);
   if (base::FeatureList::IsEnabled(multistep_filter::kMultistepFilter)) {
     RegisterWebUIControllerInterfaceBinder<
         multistep_filter_internals::mojom::PageHandlerFactory,
@@ -567,7 +577,7 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
           render_frame_host->GetProcess()->GetBrowserContext()));
   const bool is_omnibox_aim_popup_enabled = omnibox::IsAimPopupFeatureEnabled();
   const bool is_contextual_tasks_enabled =
-      base::FeatureList::IsEnabled(contextual_tasks::kContextualTasks);
+      contextual_tasks::IsContextualTasksUIEnabled();
 
   if (is_contextual_tasks_enabled) {
     RegisterWebUIControllerInterfaceBinder<
@@ -654,6 +664,10 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
 
   RegisterWebUIControllerInterfaceBinder<
       feedback::report_unsafe_site::mojom::PageHandlerFactory, FeedbackUI>(map);
+
+  RegisterWebUIControllerInterfaceBinder<
+      contextual_cueing_internals::mojom::PageHandler,
+      contextual_cueing_internals::ContextualCueingInternalsUI>(map);
 }
 
 void PopulateChromeWebUIFrameInterfaceBrokersTrustedPartsDesktop(

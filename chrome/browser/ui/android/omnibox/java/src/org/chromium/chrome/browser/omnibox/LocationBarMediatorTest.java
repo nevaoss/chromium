@@ -18,7 +18,6 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.inOrder;
@@ -29,6 +28,8 @@ import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import static org.chromium.ui.test.util.MockitoHelper.clearInvocations;
 
 import android.animation.ObjectAnimator;
 import android.app.Activity;
@@ -247,6 +248,7 @@ public class LocationBarMediatorTest {
     @Mock private View mMicButton;
     @Mock private View mNavigateButton;
     @Mock private View mPlusButton;
+    @Mock private Callback<Integer> mAutocompleteStateObserverMock;
 
     @Captor private ArgumentCaptor<Runnable> mRunnableCaptor;
     @Captor private ArgumentCaptor<LoadUrlParams> mLoadUrlParamsCaptor;
@@ -524,6 +526,21 @@ public class LocationBarMediatorTest {
         mMediator.destroy();
         assertFalse(mSessionState.isSessionActive());
         assertFalse(input.getRequestTypeSupplier().hasObservers());
+    }
+
+    @Test
+    public void testSuspendInput_stopObservingAutocompleteStates() {
+        mMediator.setAutocompleteStateObserverForTesting(mAutocompleteStateObserverMock);
+
+        AutocompleteInput input = mSessionState.getAutocompleteInput();
+        mMediator.beginInput(input);
+        verify(mAutocompleteStateObserverMock, atLeastOnce()).onResult(any());
+
+        mMediator.suspendInput();
+        clearInvocations(mAutocompleteStateObserverMock);
+
+        input.setAutocompleteState(AutocompleteState.ENABLED);
+        verify(mAutocompleteStateObserverMock, never()).onResult(any());
     }
 
     @Test
@@ -1357,6 +1374,26 @@ public class LocationBarMediatorTest {
             // Step 4: no other actions can be taken: bail
             assertFalse(mMediator.handleEscPress());
         }
+    }
+
+    @Test
+    public void testEscapePress_noTab() {
+        mMediator.onFinishNativeInitialization();
+        mProfileSupplier.set(mProfile);
+        mMediator.onUrlFocusChange(true);
+
+        doReturn(false).when(mLocationBarDataProvider).hasTab();
+        doReturn(true).when(mOverrideBackKeyBehaviorDelegate).handleBackKeyPressed();
+
+        var input = mSessionState.getAutocompleteInput();
+        input.setUserText("some text");
+        input.setInitialUserText("some text");
+        input.setAutocompleteState(AutocompleteState.STANDBY);
+
+        doReturn(false).when(mAutocompleteCoordinator).isServingSuggestions();
+
+        assertTrue(mMediator.handleEscPress());
+        verify(mOverrideBackKeyBehaviorDelegate).handleBackKeyPressed();
     }
 
     @Test
@@ -3150,6 +3187,14 @@ public class LocationBarMediatorTest {
     }
 
     @Test
+    public void testBackButtonClicked_nullTab() {
+        doReturn(null).when(mLocationBarDataProvider).getTab();
+        doReturn(true).when(mOverrideBackKeyBehaviorDelegate).handleBackKeyPressed();
+        mMediator.onBackButtonClicked();
+        verify(mOverrideBackKeyBehaviorDelegate).handleBackKeyPressed();
+    }
+
+    @Test
     @EnableFeatures(ChromeFeatureList.ANDROID_BOTTOM_BAR)
     public void testUpdateBackButtonVisibility_visible() {
         clearInvocations(mLocationBarLayout);
@@ -3613,14 +3658,14 @@ public class LocationBarMediatorTest {
         assertEquals(2, selectionController.getPosition().intValue());
         verify(mAutocompleteCoordinator).selectFirstItem();
         verify(mAutocompleteCoordinator).handleKeyEvent(KeyEvent.KEYCODE_TAB, mKeyEvent);
-        assertTrue(selectionController.isAutocompleteSelected());
+        assertTrue(selectionController.isAutocompleteListSelected());
 
         doReturn(true)
                 .when(mAutocompleteCoordinator)
                 .handleKeyEvent(KeyEvent.KEYCODE_TAB, mKeyEvent);
         assertTrue(mMediator.handleKeyNavigationEvent(KeyEvent.KEYCODE_TAB, mKeyEvent));
         assertEquals(2, selectionController.getPosition().intValue());
-        assertTrue(selectionController.isAutocompleteSelected());
+        assertTrue(selectionController.isAutocompleteListSelected());
 
         doReturn(KeyEvent.KEYCODE_ENTER).when(mKeyEvent).getKeyCode();
         doReturn(true)
@@ -3638,7 +3683,7 @@ public class LocationBarMediatorTest {
         when(mAutocompleteCoordinator.getSelectedIndex()).thenReturn(1, 2);
         assertTrue(mMediator.handleKeyNavigationEvent(KeyEvent.KEYCODE_TAB, mKeyEvent));
         assertEquals(3, selectionController.getPosition().intValue());
-        assertFalse(selectionController.isAutocompleteSelected());
+        assertFalse(selectionController.isAutocompleteListSelected());
         verify(mAutocompleteCoordinator).resetSelection();
 
         doReturn(false).when(mKeyEvent).hasNoModifiers();
@@ -3646,12 +3691,12 @@ public class LocationBarMediatorTest {
         assertTrue(mMediator.handleKeyNavigationEvent(KeyEvent.KEYCODE_TAB, mKeyEvent));
         assertEquals(2, selectionController.getPosition().intValue());
         verify(mAutocompleteCoordinator).selectFirstItem();
-        assertTrue(selectionController.isAutocompleteSelected());
+        assertTrue(selectionController.isAutocompleteListSelected());
 
         doReturn(true).when(mAutocompleteCoordinator).isFirstItemSelected();
         when(mAutocompleteCoordinator.getSelectedIndex()).thenReturn(2, 1);
         assertTrue(mMediator.handleKeyNavigationEvent(KeyEvent.KEYCODE_TAB, mKeyEvent));
-        assertFalse(selectionController.isAutocompleteSelected());
+        assertFalse(selectionController.isAutocompleteListSelected());
         verify(mAutocompleteCoordinator, times(2)).resetSelection();
         assertEquals(1, selectionController.getPosition().intValue());
     }
@@ -3694,7 +3739,7 @@ public class LocationBarMediatorTest {
     }
 
     @Test
-    public void testHandleKeyNavigationEvent_notDpadDown_standby_doesNotToggle() {
+    public void testHandleKeyNavigationEvent_dpadUp_standby_togglesEnabled() {
         doReturn(KeyEvent.KEYCODE_DPAD_UP).when(mKeyEvent).getKeyCode();
         doReturn(KeyEvent.ACTION_DOWN).when(mKeyEvent).getAction();
 
@@ -3702,8 +3747,21 @@ public class LocationBarMediatorTest {
         input.setAutocompleteState(AutocompleteState.STANDBY);
         mMediator.beginInput(input);
 
+        assertTrue(mMediator.handleKeyNavigationEvent(KeyEvent.KEYCODE_DPAD_UP, mKeyEvent));
+        assertEquals(AutocompleteState.ENABLED, input.getAutocompleteState());
+    }
+
+    @Test
+    public void testHandleKeyNavigationEvent_dpadUp_notStandby_doesNotToggle() {
+        doReturn(KeyEvent.KEYCODE_DPAD_UP).when(mKeyEvent).getKeyCode();
+        doReturn(KeyEvent.ACTION_DOWN).when(mKeyEvent).getAction();
+
+        var input = mSessionState.getAutocompleteInput();
+        input.setAutocompleteState(AutocompleteState.ENABLED);
+        mMediator.beginInput(input);
+
         mMediator.handleKeyNavigationEvent(KeyEvent.KEYCODE_DPAD_UP, mKeyEvent);
-        assertEquals(AutocompleteState.STANDBY, input.getAutocompleteState());
+        assertEquals(AutocompleteState.ENABLED, input.getAutocompleteState());
     }
 
     @Test
@@ -3749,20 +3807,70 @@ public class LocationBarMediatorTest {
                 mMediator.getSelectionControllerForTesting();
         verify(mAutocompleteCoordinator).selectFirstItem();
         verify(mAutocompleteCoordinator).handleKeyEvent(KeyEvent.KEYCODE_TAB, mKeyEvent);
-        assertTrue(selectionController.isAutocompleteSelected());
+        assertTrue(selectionController.isAutocompleteListSelected());
 
         doReturn(true)
                 .when(mAutocompleteCoordinator)
                 .handleKeyEvent(KeyEvent.KEYCODE_TAB, mKeyEvent);
         assertTrue(mMediator.handleKeyNavigationEvent(KeyEvent.KEYCODE_TAB, mKeyEvent));
         assertEquals(2, selectionController.getPosition().intValue());
-        assertTrue(selectionController.isAutocompleteSelected());
+        assertTrue(selectionController.isAutocompleteListSelected());
 
         doReturn(false).when(mKeyEvent).hasNoModifiers();
         doReturn(true).when(mKeyEvent).hasModifiers(KeyEvent.META_SHIFT_ON);
         when(mAutocompleteCoordinator.getSelectedIndex()).thenReturn(1, 0);
         assertTrue(mMediator.handleKeyNavigationEvent(KeyEvent.KEYCODE_TAB, mKeyEvent));
-        assertFalse(selectionController.isAutocompleteSelected());
+        assertFalse(selectionController.isAutocompleteListSelected());
+    }
+
+    @Test
+    public void testHandleKeyNavigationEvent_downKeySelectsAutocomplete() {
+        doReturn(KeyEvent.KEYCODE_DPAD_DOWN).when(mKeyEvent).getKeyCode();
+        doReturn(KeyEvent.ACTION_DOWN).when(mKeyEvent).getAction();
+
+        doReturn(View.VISIBLE).when(mUrlBar).getVisibility();
+        doReturn(View.VISIBLE).when(mPlusButton).getVisibility();
+        doReturn(View.VISIBLE).when(mDeleteButton).getVisibility();
+        doReturn(View.VISIBLE).when(mActivationChip).getVisibility();
+        doReturn(true).when(mAutocompleteCoordinator).isServingSuggestions();
+
+        var input = mSessionState.getAutocompleteInput();
+        input.setRequestType(AutocompleteRequestType.SEARCH).setUserText("user text");
+        mMediator.beginInput(input);
+
+        LocationBarSelectionController selectionController =
+                mMediator.getSelectionControllerForTesting();
+        assertEquals(0, selectionController.getPosition().intValue());
+
+        assertTrue(mMediator.handleKeyNavigationEvent(KeyEvent.KEYCODE_DPAD_DOWN, mKeyEvent));
+        assertEquals(3, selectionController.getPosition().intValue());
+        assertTrue(selectionController.isAutocompleteListSelected());
+        verify(mAutocompleteCoordinator).handleKeyEvent(KeyEvent.KEYCODE_DPAD_DOWN, mKeyEvent);
+    }
+
+    @Test
+    public void testHandleKeyNavigationEvent_upKeySelectsAutocomplete() {
+        doReturn(KeyEvent.KEYCODE_DPAD_UP).when(mKeyEvent).getKeyCode();
+        doReturn(KeyEvent.ACTION_DOWN).when(mKeyEvent).getAction();
+
+        doReturn(View.VISIBLE).when(mUrlBar).getVisibility();
+        doReturn(View.VISIBLE).when(mPlusButton).getVisibility();
+        doReturn(View.VISIBLE).when(mDeleteButton).getVisibility();
+        doReturn(View.VISIBLE).when(mActivationChip).getVisibility();
+        doReturn(true).when(mAutocompleteCoordinator).isServingSuggestions();
+
+        var input = mSessionState.getAutocompleteInput();
+        input.setRequestType(AutocompleteRequestType.SEARCH).setUserText("user text");
+        mMediator.beginInput(input);
+
+        LocationBarSelectionController selectionController =
+                mMediator.getSelectionControllerForTesting();
+        assertEquals(0, selectionController.getPosition().intValue());
+
+        assertTrue(mMediator.handleKeyNavigationEvent(KeyEvent.KEYCODE_DPAD_UP, mKeyEvent));
+        assertEquals(3, selectionController.getPosition().intValue());
+        assertTrue(selectionController.isAutocompleteListSelected());
+        verify(mAutocompleteCoordinator).handleKeyEvent(KeyEvent.KEYCODE_DPAD_UP, mKeyEvent);
     }
 
     @Test

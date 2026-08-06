@@ -69,3 +69,19 @@
     </cr-link-row>
   </div>
 </settings-section>
+<if expr="_google_chrome">
+  <settings-section page-title="$i18n{onDeviceAiEnabledLabel}"
+      show-send-feedback-button
+      on-send-feedback="onOnDeviceAiSendFeedback_">
+    <template is="dom-if" if="[[showOnDeviceAiSettings_]]">
+      <settings-toggle-button id="onDeviceAiToggle" class="hr"
+          pref="[[onDeviceAiPref_]]"
+          label="$i18n{onDeviceAiEnabledLabel}"
+          sub-label-with-link="$i18n{onDeviceAiEnabledSubLabel}"
+          on-sub-label-link-clicked="onOnDeviceAiSubLabelLinkClicked_"
+          on-settings-boolean-control-change=
+              "onOnDeviceAiSettingsBooleanControlChange_">
+      </settings-toggle-button>
+    </template>
+  </settings-section>
+</if>

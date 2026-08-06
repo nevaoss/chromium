@@ -7,11 +7,14 @@
 #include <memory>
 
 #include "base/functional/callback_helpers.h"
+#include "base/run_loop.h"
+#include "base/test/gmock_callback_support.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "components/autofill/core/browser/form_structure.h"
 #include "components/autofill/core/browser/form_structure_test_api.h"
+#include "components/autofill/core/browser/foundations/autofill_manager_test_api.h"
 #include "components/autofill/core/browser/foundations/mock_autofill_manager_observer.h"
 #include "components/autofill/core/browser/foundations/with_test_autofill_client_driver_manager.h"
 #include "components/autofill/core/browser/metrics/form_events/form_events.h"
@@ -21,6 +24,8 @@
 #include "components/autofill/core/common/autofill_prefs.h"
 #include "components/autofill/core/common/form_data.h"
 #include "components/autofill/core/common/form_data_test_api.h"
+#include "mojo/public/cpp/bindings/pending_remote.h"
+#include "mojo/public/cpp/bindings/remote.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -28,6 +33,7 @@ namespace autofill {
 
 namespace {
 
+using autofill_metrics::OmniboxAutofillEvents;
 using autofill_metrics::OmniboxAutofillShowChipDecisionPart1;
 using test::CreateFormDataForFrame;
 using test::CreateTestFormField;
@@ -35,7 +41,16 @@ using test::CreateTestFormField;
 class MockAutofillDriver : public TestAutofillDriver {
  public:
   using TestAutofillDriver::TestAutofillDriver;
+  MockAutofillDriver(const MockAutofillDriver&) = delete;
+  MockAutofillDriver& operator=(const MockAutofillDriver&) = delete;
+  ~MockAutofillDriver() override = default;
+
   MOCK_METHOD(void, RendererShouldClearPreviewedForm, (), (override));
+  MOCK_METHOD(void,
+              ObserveFieldVisibility,
+              (const FieldGlobalId&,
+               mojo::PendingRemote<mojom::AutofillVisibilityObserver>),
+              (override));
 };
 
 class MockAutofillClient : public TestAutofillClient {
@@ -93,7 +108,8 @@ class OmniboxAutofillDelegateTest
 
   void FormsSeen(const std::vector<FormData>& forms) {
     autofill_manager().OnFormsSeen(/*updated_forms=*/forms,
-                                   /*removed_forms=*/{});
+                                   /*removed_forms=*/{},
+                                   AutofillManagerTestApi::pass_key());
   }
 
   FormData CreateTestCreditCardFormData() {
@@ -132,6 +148,8 @@ class OmniboxAutofillDelegateTest
 TEST_F(OmniboxAutofillDelegateTest, OnFieldTypesDetermined_SuccessPath) {
   base::HistogramTester histogram_tester;
 
+  EXPECT_CALL(autofill_driver(), ObserveFieldVisibility);
+
   FormData form = CreateTestCreditCardFormData();
   FormsSeen({form});
 
@@ -148,6 +166,8 @@ TEST_F(OmniboxAutofillDelegateTest,
   // BrowserAutofillManager to run OmniboxAutofillDelegate logic.
   CreateAutofillDriver();
   autofill_driver(0).SetParent(&autofill_driver(1));
+
+  EXPECT_CALL(autofill_driver(), ObserveFieldVisibility).Times(0);
 
   FormData form = CreateTestCreditCardFormData();
   FormsSeen({form});
@@ -167,6 +187,8 @@ TEST_F(OmniboxAutofillDelegateTest,
   // BrowserAutofillManager to run OmniboxAutofillDelegate logic.
   autofill_driver().SetIsEmbedded(true);
 
+  EXPECT_CALL(autofill_driver(), ObserveFieldVisibility).Times(0);
+
   FormData form = CreateTestCreditCardFormData();
   FormsSeen({form});
 
@@ -183,6 +205,8 @@ TEST_F(OmniboxAutofillDelegateTest,
   // BrowserAutofillManager to run OmniboxAutofillDelegate logic.
   autofill_driver().SetIsActive(false);
 
+  EXPECT_CALL(autofill_driver(), ObserveFieldVisibility).Times(0);
+
   FormData form = CreateTestCreditCardFormData();
   FormsSeen({form});
 
@@ -198,6 +222,8 @@ TEST_F(OmniboxAutofillDelegateTest,
   // Do not run Omnibox functionality if payment method Autofill is disabled.
   autofill_client().GetPrefs()->SetBoolean(prefs::kAutofillCreditCardEnabled,
                                            false);
+
+  EXPECT_CALL(autofill_driver(), ObserveFieldVisibility).Times(0);
 
   FormData form = CreateTestCreditCardFormData();
   FormsSeen({form});
@@ -218,6 +244,8 @@ TEST_F(OmniboxAutofillDelegateTest,
       .GetPersonalDataManager()
       .test_payments_data_manager()
       .ClearCreditCards();
+
+  EXPECT_CALL(autofill_driver(), ObserveFieldVisibility).Times(0);
 
   FormData form = CreateTestCreditCardFormData();
   FormsSeen({form});
@@ -241,6 +269,8 @@ TEST_F(OmniboxAutofillDelegateTest,
       .test_payments_data_manager()
       .AddCreditCard(test::GetCreditCard());
 
+  EXPECT_CALL(autofill_driver(), ObserveFieldVisibility);
+
   FormData form = CreateTestCreditCardFormData();
   FormsSeen({form});
 
@@ -263,6 +293,8 @@ TEST_F(OmniboxAutofillDelegateTest,
       .test_payments_data_manager()
       .AddCreditCard(test::GetMaskedServerCard());
 
+  EXPECT_CALL(autofill_driver(), ObserveFieldVisibility);
+
   FormData form = CreateTestCreditCardFormData();
   FormsSeen({form});
 
@@ -274,6 +306,8 @@ TEST_F(OmniboxAutofillDelegateTest,
 TEST_F(OmniboxAutofillDelegateTest,
        OnFieldTypesDetermined_MissingCreditCardNumberField_Aborts) {
   base::HistogramTester histogram_tester;
+
+  EXPECT_CALL(autofill_driver(), ObserveFieldVisibility).Times(0);
 
   // Create a credit card form, but don't include a card number field.
   FormData form;
@@ -302,6 +336,8 @@ TEST_F(OmniboxAutofillDelegateTest,
        OnFieldTypesDetermined_MissingCreditCardExpiration_Aborts) {
   base::HistogramTester histogram_tester;
 
+  EXPECT_CALL(autofill_driver(), ObserveFieldVisibility).Times(0);
+
   // Create a credit card form, but don't include a expiration date fields.
   FormData form;
   form.set_name(u"MyForm");
@@ -326,6 +362,8 @@ TEST_F(OmniboxAutofillDelegateTest,
 TEST_F(OmniboxAutofillDelegateTest,
        OnFieldTypesDetermined_AcceptsMinimalCreditCardForm) {
   base::HistogramTester histogram_tester;
+
+  EXPECT_CALL(autofill_driver(), ObserveFieldVisibility);
 
   // Create a credit card form, including only card number and expiration.
   FormData form;
@@ -352,6 +390,8 @@ TEST_F(OmniboxAutofillDelegateTest,
        OnFieldTypesDetermined_FormNotSecure_Aborts) {
   base::HistogramTester histogram_tester;
 
+  EXPECT_CALL(autofill_driver(), ObserveFieldVisibility).Times(0);
+
   // Create a credit card form, specifically using http:// instead of https://.
   FormData form;
   form.set_name(u"MyForm");
@@ -376,6 +416,8 @@ TEST_F(OmniboxAutofillDelegateTest,
 TEST_F(OmniboxAutofillDelegateTest,
        OnFieldTypesDetermined_MultipleCreditCardNumberFields_Aborts) {
   base::HistogramTester histogram_tester;
+
+  EXPECT_CALL(autofill_driver(), ObserveFieldVisibility).Times(0);
 
   // Create a credit card form, but include multiple card number fields.
   FormData form;
@@ -409,6 +451,8 @@ TEST_F(OmniboxAutofillDelegateTest,
 TEST_F(OmniboxAutofillDelegateTest,
        OnFieldTypesDetermined_OptimizationGuideDeciderMissing_Aborts) {
   base::HistogramTester histogram_tester;
+
+  EXPECT_CALL(autofill_driver(), ObserveFieldVisibility).Times(0);
 
   // Create a credit card form with card number and expiration, but put the
   // fields in iframes so dealing with the OptimizationGuideDeicder is required.
@@ -450,6 +494,7 @@ TEST_F(OmniboxAutofillDelegateTest,
   // mark `form` as the candidate form to trigger Omnibox Autofill.
   {
     base::HistogramTester histogram_tester;
+    EXPECT_CALL(autofill_driver(), ObserveFieldVisibility);
     FormsSeen({form});
     histogram_tester.ExpectUniqueSample(
         "Autofill.OmniboxAutofill.ShowChipDecisionPart1",
@@ -461,6 +506,7 @@ TEST_F(OmniboxAutofillDelegateTest,
   // `OnFieldTypesDetermined(~)`.
   {
     base::HistogramTester histogram_tester;
+    EXPECT_CALL(autofill_driver(), ObserveFieldVisibility).Times(0);
     FormsSeen({form});
     histogram_tester.ExpectTotalCount(
         "Autofill.OmniboxAutofill.ShowChipDecisionPart1", 0);
@@ -468,11 +514,31 @@ TEST_F(OmniboxAutofillDelegateTest,
 }
 
 TEST_F(OmniboxAutofillDelegateTest,
+       OnFieldTypesDetermined_IntersectionObserverVisible_ShowsChip) {
+  FormData form = CreateTestCreditCardFormData();
+
+  EXPECT_CALL(autofill_driver(), ObserveFieldVisibility)
+      .WillOnce(
+          [](const FieldGlobalId&,
+             mojo::PendingRemote<mojom::AutofillVisibilityObserver> observer) {
+            mojo::Remote<mojom::AutofillVisibilityObserver> remote(
+                std::move(observer));
+            remote->OnFieldBecameVisible();
+            remote.FlushForTesting();
+          });
+
+  FormsSeen({form});
+
+  EXPECT_TRUE(payments_autofill_client().omnibox_autofill_chip_shown());
+  EXPECT_FALSE(payments_autofill_client().omnibox_autofill_chip_hidden());
+}
+
+TEST_F(OmniboxAutofillDelegateTest,
        OnAutofillManagerStateChanged_WasActive_HideChip) {
   FormData form = CreateTestCreditCardFormData();
   FormsSeen({form});
 
-  payments_autofill_client().ShowOmniboxAutofillChip(
+  payments_autofill_client().ShowExpandedOmniboxAutofillChip(
       /*suggestions=*/{},
       /*on_suggestions_shown=*/base::DoNothing(),
       /*on_suggestions_hidden=*/base::DoNothing(),
@@ -532,7 +598,7 @@ TEST_F(OmniboxAutofillDelegateTest,
   FormData form = CreateTestCreditCardFormData();
   FormsSeen({form});
 
-  payments_autofill_client().ShowOmniboxAutofillChip(
+  payments_autofill_client().ShowExpandedOmniboxAutofillChip(
       /*suggestions=*/{},
       /*on_suggestions_shown=*/base::DoNothing(),
       /*on_suggestions_hidden=*/base::DoNothing(),
@@ -560,7 +626,7 @@ TEST_F(OmniboxAutofillDelegateTest, OnAfterFormsSeen_FormRemoved_HidesChip) {
   FormData form = CreateTestCreditCardFormData();
   FormsSeen({form});
 
-  payments_autofill_client().ShowOmniboxAutofillChip(
+  payments_autofill_client().ShowExpandedOmniboxAutofillChip(
       /*suggestions=*/{},
       /*on_suggestions_shown=*/base::DoNothing(),
       /*on_suggestions_hidden=*/base::DoNothing(),
@@ -572,7 +638,8 @@ TEST_F(OmniboxAutofillDelegateTest, OnAfterFormsSeen_FormRemoved_HidesChip) {
   EXPECT_FALSE(payments_autofill_client().omnibox_autofill_chip_hidden());
 
   autofill_manager().OnFormsSeen(/*updated_forms=*/{},
-                                 /*removed_forms=*/{form.global_id()});
+                                 /*removed_forms=*/{form.global_id()},
+                                 AutofillManagerTestApi::pass_key());
 
   EXPECT_TRUE(payments_autofill_client().omnibox_autofill_chip_hidden());
   EXPECT_FALSE(payments_autofill_client().omnibox_autofill_chip_shown());
@@ -592,7 +659,8 @@ TEST_F(OmniboxAutofillDelegateTest, OnAfterFormsSeen_FormRemoved_ResetsState) {
 
   // Remove the form. This should trigger `OnAfterFormsSeen` and `Reset()`.
   autofill_manager().OnFormsSeen(/*updated_forms=*/{},
-                                 /*removed_forms=*/{form.global_id()});
+                                 /*removed_forms=*/{form.global_id()},
+                                 AutofillManagerTestApi::pass_key());
 
   // Verify that the state was reset. If it was reset, we can find the candidate
   // form again.
@@ -610,7 +678,7 @@ TEST_F(OmniboxAutofillDelegateTest,
   FormData form = CreateTestCreditCardFormData();
   FormsSeen({form});
 
-  payments_autofill_client().ShowOmniboxAutofillChip(
+  payments_autofill_client().ShowExpandedOmniboxAutofillChip(
       /*suggestions=*/{},
       /*on_suggestions_shown=*/base::DoNothing(),
       /*on_suggestions_hidden=*/base::DoNothing(),
@@ -624,7 +692,8 @@ TEST_F(OmniboxAutofillDelegateTest,
   FormGlobalId different_form_id = test::MakeFormGlobalId();
   ASSERT_NE(different_form_id, form.global_id());
   autofill_manager().OnFormsSeen(/*updated_forms=*/{},
-                                 /*removed_forms=*/{different_form_id});
+                                 /*removed_forms=*/{different_form_id},
+                                 AutofillManagerTestApi::pass_key());
 
   EXPECT_FALSE(payments_autofill_client().omnibox_autofill_chip_hidden());
   EXPECT_TRUE(payments_autofill_client().omnibox_autofill_chip_shown());
@@ -634,7 +703,8 @@ TEST_F(OmniboxAutofillDelegateTest,
        OnAfterFormsSeen_CandidateFormNotFound_ReturnsEarly) {
   FormGlobalId form_id = test::MakeFormGlobalId();
   autofill_manager().OnFormsSeen(/*updated_forms=*/{},
-                                 /*removed_forms=*/{form_id});
+                                 /*removed_forms=*/{form_id},
+                                 AutofillManagerTestApi::pass_key());
 
   // Since a candidate form has not been found yet (`candidate_form_found_` is
   // false), checking `form_id` against the uninitialized
@@ -719,12 +789,16 @@ TEST_F(OmniboxAutofillDelegateTest, OnFieldBecameVisible_LogsMetrics) {
 
   delegate->OnFieldBecameVisible();
 
-  // Verify that suggestions count and secure form are logged. `SetUp()` adds 1
-  // credit card, so count should be 1.
+  // Verify that suggestions count, secure form, and chip shown are logged.
+  // `SetUp()` adds 1 credit card, so count should be 1.
   histogram_tester.ExpectUniqueSample("Autofill.SuggestionsCount.CreditCard", 1,
                                       1);
   histogram_tester.ExpectUniqueSample("Autofill.QueriedCreditCardFormIsSecure",
                                       true, 1);
+  histogram_tester.ExpectBucketCount("Autofill.OmniboxAutofill.Events",
+                                     OmniboxAutofillEvents::kChipShown, 1);
+  histogram_tester.ExpectBucketCount("Autofill.OmniboxAutofill.Events",
+                                     OmniboxAutofillEvents::kChipShownOnce, 1);
 }
 
 TEST_F(OmniboxAutofillDelegateTest, OnSuggestionsShown_ForwardToObserver) {
@@ -823,7 +897,7 @@ TEST_F(OmniboxAutofillDelegateTest, OnSuggestionsShown_LogFunnelMetrics) {
   delegate->OnSuggestionsShown(suggestions, std::nullopt);
 
   // Reset the manager to trigger logger destruction and metrics logging.
-  autofill_manager().Reset();
+  test_api(autofill_manager()).Reset();
 
   histogram_tester.ExpectUniqueSample("Autofill.Funnel.ParsedAsType.CreditCard",
                                       true, 1);
@@ -853,7 +927,7 @@ TEST_F(OmniboxAutofillDelegateTest, OnSuggestionsShown_DoesNotLogKeyMetrics) {
   delegate->OnSuggestionsShown(suggestions, std::nullopt);
 
   // Reset the manager to trigger logger destruction and metrics logging.
-  autofill_manager().Reset();
+  test_api(autofill_manager()).Reset();
 
   // Key metrics are only logged upon submission. Since there was no submission,
   // they should not be logged.
@@ -865,6 +939,29 @@ TEST_F(OmniboxAutofillDelegateTest, OnSuggestionsShown_DoesNotLogKeyMetrics) {
       "Autofill.KeyMetrics.FillingCorrectness.CreditCard", 0);
   histogram_tester.ExpectTotalCount(
       "Autofill.KeyMetrics.FillingAssistance.CreditCard", 0);
+}
+
+TEST_F(OmniboxAutofillDelegateTest,
+       OnSuggestionsShown_LogOmniboxAutofillEventMetrics) {
+  base::HistogramTester histogram_tester;
+
+  FormData form = CreateTestCreditCardFormData();
+  FormsSeen({form});
+
+  OmniboxAutofillDelegate* delegate =
+      payments_autofill_client().GetOmniboxAutofillDelegate();
+  ASSERT_TRUE(delegate);
+
+  std::vector<Suggestion> suggestions = {
+      Suggestion(SuggestionType::kCreditCardEntry)};
+
+  delegate->OnSuggestionsShown(suggestions, std::nullopt);
+
+  histogram_tester.ExpectBucketCount("Autofill.OmniboxAutofill.Events",
+                                     OmniboxAutofillEvents::kChipClicked, 1);
+  histogram_tester.ExpectBucketCount("Autofill.OmniboxAutofill.Events",
+                                     OmniboxAutofillEvents::kChipClickedOnce,
+                                     1);
 }
 
 TEST_F(OmniboxAutofillDelegateTest, OnSuggestionsHidden_ForwardToObserver) {
@@ -892,6 +989,28 @@ TEST_F(OmniboxAutofillDelegateTest, ClearPreviewedForm) {
   delegate->ClearPreviewedForm();
 }
 
-}  // namespace
+TEST_F(OmniboxAutofillDelegateTest,
+       DidAcceptSuggestion_LogOmniboxAutofillEventMetrics) {
+  base::HistogramTester histogram_tester;
 
+  FormData form = CreateTestCreditCardFormData();
+  FormsSeen({form});
+
+  OmniboxAutofillDelegate* delegate =
+      payments_autofill_client().GetOmniboxAutofillDelegate();
+  ASSERT_TRUE(delegate);
+
+  Suggestion suggestion(SuggestionType::kCreditCardEntry);
+
+  delegate->DidAcceptSuggestion(suggestion, /*metadata=*/{});
+
+  histogram_tester.ExpectBucketCount("Autofill.OmniboxAutofill.Events",
+                                     OmniboxAutofillEvents::kSuggestionAccepted,
+                                     1);
+  histogram_tester.ExpectBucketCount(
+      "Autofill.OmniboxAutofill.Events",
+      OmniboxAutofillEvents::kSuggestionAcceptedOnce, 1);
+}
+
+}  // namespace
 }  // namespace autofill

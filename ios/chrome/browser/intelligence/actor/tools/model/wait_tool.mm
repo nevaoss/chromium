@@ -12,7 +12,6 @@
 #import "components/actor/public/mojom/actor_types.mojom.h"
 #import "components/optimization_guide/proto/features/actions_data.pb.h"
 #import "ios/chrome/browser/intelligence/actor/tools/public/actor_tool_types.h"
-#import "ios/chrome/browser/intelligence/actor/tools/utils/profile_context_resolver.h"
 #import "ios/web/public/web_state.h"
 
 namespace actor {
@@ -27,26 +26,19 @@ constexpr base::TimeDelta kDefaultWaitDuration = base::Seconds(3);
 WaitTool::~WaitTool() = default;
 
 // static
-base::expected<std::unique_ptr<WaitTool>, ToolExecutionResult> WaitTool::Create(
-    const optimization_guide::proto::WaitAction& action,
-    const ProfileContextResolver& profile_context_resolver) {
+std::unique_ptr<WaitTool> WaitTool::Create(
+    base::WeakPtr<web::WebState> web_state,
+    const optimization_guide::proto::WaitAction& action) {
   base::TimeDelta wait_duration = kDefaultWaitDuration;
   if (action.has_wait_time_ms()) {
     wait_duration = base::Milliseconds(action.wait_time_ms());
   }
-
-  base::WeakPtr<web::WebState> observe_web_state;
-  if (action.has_observe_tab_id()) {
-    base::expected<ProfileContextResolver::TabResolutionResult,
-                   ToolExecutionResult>
-        resolution_result =
-            profile_context_resolver.ResolveTab(action.observe_tab_id());
-    if (resolution_result.has_value()) {
-      observe_web_state = resolution_result.value().web_state;
-    }
-  }
   return std::unique_ptr<WaitTool>(
-      new WaitTool(wait_duration, observe_web_state));
+      new WaitTool(wait_duration, /*observe_web_state=*/web_state));
+}
+
+void WaitTool::Validate(ToolExecutionCallback callback) {
+  std::move(callback).Run(ToolExecutionResult::Ok());
 }
 
 void WaitTool::Execute(ToolExecutionCallback callback) {

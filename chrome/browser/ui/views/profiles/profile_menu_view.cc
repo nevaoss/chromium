@@ -1042,7 +1042,7 @@ void ProfileMenuView::MaybeBuildChromeAccountSettingsButtonWithSync() {
       signin_util::SignedInState::kSyncing) {
     // Indicates clearly that Sync is ON.
     message_id = IDS_PROFILES_OPEN_SYNC_SETTINGS_BUTTON;
-    icon = &(features::IsRoundedIconsEnabled()   ? kSyncIcon
+    icon = &(features::IsRoundedIconsEnabled()   ? vector_icons::kSyncIcon
              : features::IsRoundedIconsEnabled() ? vector_icons::kSyncIcon
                                                  : kSyncChromeRefreshOldIcon);
   }
@@ -1222,14 +1222,10 @@ void ProfileMenuView::MaybeBuildCrossDeviceSigninButton() {
   if (ShouldShowCrossDeviceSigninPromo(
           CrossDeviceSigninPromoEntryPoint::kProfileMenu, &profile())) {
     bool is_new = false;
-    auto* user_education_service =
-        UserEducationServiceFactory::GetForBrowserContext(&profile());
-    if (user_education_service &&
-        switches::kCrossDeviceSigninFromDesktopNewBadge.Get()) {
-      if (user_education_service->new_badge_controller()->MaybeShowNewBadge(
-              switches::kCrossDeviceSigninFromDesktop)) {
-        is_new = true;
-      }
+    if (switches::kCrossDeviceSigninFromDesktopNewBadge.Get() &&
+        UserEducationService::MaybeShowNewBadge(
+            &profile(), switches::kCrossDeviceSigninFromDesktop)) {
+      is_new = true;
     }
 
     AddFeatureButton(
@@ -1243,11 +1239,8 @@ void ProfileMenuView::MaybeBuildCrossDeviceSigninButton() {
 }
 
 void ProfileMenuView::OnCrossDeviceSigninButtonClicked() {
-  if (auto* user_education_service =
-          UserEducationServiceFactory::GetForBrowserContext(&profile())) {
-    user_education_service->new_badge_controller()->NotifyFeatureUsedIfValid(
-        switches::kCrossDeviceSigninFromDesktop);
-  }
+  UserEducationService::MaybeNotifyNewBadgeFeatureUsed(
+      &profile(), switches::kCrossDeviceSigninFromDesktop);
 
   OnActionableItemClicked(ActionableItem::kSigninOnPhoneButton);
   if (!perform_menu_actions()) {

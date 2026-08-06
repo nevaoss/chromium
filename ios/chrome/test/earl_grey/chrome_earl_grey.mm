@@ -259,6 +259,10 @@ id<GREYAction> grey_longPressWithDuration(base::TimeDelta duration) {
   [self waitForPageToFinishLoading];
 }
 
+- (void)startGoingForward {
+  [ChromeEarlGreyAppInterface startGoingForward];
+}
+
 - (void)goForward {
   [ChromeEarlGreyAppInterface startGoingForward];
   [self waitForPageToFinishLoading];
@@ -455,14 +459,6 @@ id<GREYAction> grey_longPressWithDuration(base::TimeDelta duration) {
                                             : webStateAppearanceTimeout];
   if (webStateError) {
     return webStateError;
-  }
-
-  // TODO(crbug.com/530841942): On iOS 27, tests frequently fail without this
-  // wait. This is a temporary fix until we find a better solution. It's
-  // possible this is a iOS 27 beta bug, or that we need a new wait for the
-  // compositor state, but so far the wait is the best approach we've found.
-  if (@available(iOS 27, *)) {
-    base::test::ios::SpinRunLoopWithMinDelay(base::Seconds(2));
   }
   NSError* pageLoadError =
       [self waitForPageToFinishLoadingWithTimeout:pageLoadTimeout.is_zero()
@@ -1589,6 +1585,11 @@ id<GREYAction> grey_longPressWithDuration(base::TimeDelta duration) {
   return [ChromeEarlGreyAppInterface isTestFeatureEnabled];
 }
 
+- (BOOL)isOverflowMenuHomeCustomizationEntrypointEnabled {
+  return [ChromeEarlGreyAppInterface
+      isOverflowMenuHomeCustomizationEntrypointEnabled];
+}
+
 - (BOOL)isFullscreenSmoothScrollingSupported {
   return [ChromeEarlGreyAppInterface isFullscreenSmoothScrollingSupported];
 }
@@ -2019,6 +2020,8 @@ id<GREYAction> grey_longPressWithDuration(base::TimeDelta duration) {
   // Dismiss the Activity View by tapping outside its bounds.
   [[EarlGrey selectElementWithMatcher:grey_keyWindow()]
       performAction:grey_tap()];
+
+  [self verifyActivitySheetNotVisible];
 }
 
 #pragma mark - Unified consent utilities

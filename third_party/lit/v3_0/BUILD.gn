@@ -116,6 +116,7 @@ ts_library("build_ts") {
     "//chrome/browser/resources/updater:build_ts",
     "//chrome/browser/resources/user_education_internals:build_ts",
     "//chrome/browser/resources/watermark:build_ts",
+    "//chrome/browser/resources/web_app_internals:build_ts",
     "//chrome/browser/resources/webnn_internals:build_ts",
     "//chrome/browser/resources/webui_browser:build_ts",
     "//chrome/browser/resources/webui_browser/internal:build_ts",
@@ -176,8 +177,9 @@ ts_library("build_ts") {
   tsconfig_base = "tsconfig_base.json"
   composite = true
   in_files = [
-    "lit.ts",
     "cr_lit_element.ts",
+    "deduping_mixin.ts",
+    "lit.ts",
   ]
 
   node_modules = "//third_party/node/node_modules"

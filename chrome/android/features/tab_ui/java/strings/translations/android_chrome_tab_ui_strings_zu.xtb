@@ -47,6 +47,7 @@
 <translation id="22623456902492423">{TABS_COUNT,plural, =1{Hlukanisa ithebhu}one{Hlukanisa amathebhu}other{Hlukanisa amathebhu}}</translation>
 <translation id="2271452184061378400">Amaqembu wakho amathebhu alondolozwe lapha</translation>
 <translation id="2277224997687551299">Hlela igama leqembu</translation>
+<translation id="2289567621059034186">Ithebhu entsha ngezansi</translation>
 <translation id="2330212241471632770">{TABS_COUNT,plural, =1{Faka ibhukhimakhi kuthebhu}one{Faka ibhukhimakhi kumathebhu}other{Faka ibhukhimakhi kumathebhu}}</translation>
 <translation id="2359808026110333948">Qhubeka</translation>
 <translation id="2371084566192454134">Amathebhu namaqembu amathebhu</translation>
@@ -81,6 +82,7 @@
 <translation id="3152596030350326139">Bonisa amathebhu avundlile</translation>
 <translation id="31806439105337256">Bonisa amathebhu aqondile</translation>
 <translation id="3194464645767632461">isilinganisela</translation>
+<translation id="3228962656492373217">Vala amathebhu angezansi</translation>
 <translation id="3269930881809501915">{TABS_COUNT,plural, =1{Faka ithebhu engu-<ph name="TABS_COUNT_ONE" /> eqenjini}one{Faka amathebhu angu-<ph name="TABS_COUNT_MANY" /> eqenjini}other{Faka amathebhu angu-<ph name="TABS_COUNT_MANY" /> eqenjini}}</translation>
 <translation id="3328308545011660196">Isiphakamiso: amathebhu a-<ph name="NUMBER_OF_TABS" /> abonakala ahlobene. Wenze iqembu?</translation>
 <translation id="3330595302841061275">{DAY_COUNT,plural, =1{Ngemuva kosuku olu-1 lokungasebenzi}one{Ngemva kwezinsuku ezingu-<ph name="DAY_COUNT_MANY" /> kungasebenzi}other{Ngemva kwezinsuku ezingu-<ph name="DAY_COUNT_MANY" /> kungasebenzi}}</translation>
@@ -127,6 +129,7 @@
 <translation id="5042769431350623987">{WINDOW_COUNT,plural, =1{Hambisa amathebhu ewindini elisha}one{Hambisa amathebhu kwelinye iwindi}other{Hambisa amathebhu kwelinye iwindi}}</translation>
 <translation id="5073204694187207510">Fihla igridi yesikrini esigcwele</translation>
 <translation id="5076161749301278626">Bona izibuyekezo zesitoreji?</translation>
+<translation id="5093447877601682598">Thumela impendulo emayelana nomugqa wamathebhu</translation>
 <translation id="5161254044473106830">Isihloko siyadingeka</translation>
 <translation id="5204584298075822291">Nciphisa Amathebhu</translation>
 <translation id="524477996738997490">{AUTO_DELETE_DELAY,plural, =1{IChrome ivala ngokuzenzakalelayo amathebhu angasebenzi namaqembu amathebhu ngemva kwenyanga e-<ph name="AUTO_DELETE_DELAY_ONE" />. Ungakushintsha lokhu kumasethingi.}one{IChrome ivala ngokuzenzakalelayo amathebhu angasebenzi namaqembu amathebhu ngemva kwezinyanga ezi-<ph name="AUTO_DELETE_DELAY_MANY" />. Ungakushintsha lokhu kumasethingi.}other{IChrome ivala ngokuzenzakalelayo amathebhu angasebenzi namaqembu amathebhu ngemva kwezinyanga ezi-<ph name="AUTO_DELETE_DELAY_MANY" />. Ungakushintsha lokhu kumasethingi.}}</translation>

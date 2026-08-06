@@ -35,6 +35,7 @@
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/tab_list/mock_tab_list_interface.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/test/mock_browser_window_interface.h"
 #include "chrome/browser/ui/contextual_search/tab_contextualization_controller.h"
@@ -227,9 +228,10 @@ class FakeContextualSearchboxHandler : public ContextualSearchboxHandler {
 
 class MockDrivePickerHostController : public DrivePickerHostController {
  public:
-  explicit MockDrivePickerHostController(
+  MockDrivePickerHostController(
+      Profile* profile,
       BrowserWindowInterface* browser_window_interface)
-      : DrivePickerHostController(browser_window_interface) {}
+      : DrivePickerHostController(profile, browser_window_interface) {}
   ~MockDrivePickerHostController() override = default;
   MOCK_METHOD(void,
               ShowDrivePickerHost,
@@ -256,6 +258,16 @@ class MockFpopService : public contextual_search::FpopService {
            bool success,
            const footprints::oneplatform::
                UpdateActivityControlsSettingsResponse& response)> callback),
+      (override));
+  MOCK_METHOD(
+      void,
+      ShouldShowMobileConsentFlow,
+      (const footprints::oneplatform::ShouldShowMobileConsentFlowRequest&
+           request,
+       base::OnceCallback<void(
+           bool success,
+           const footprints::oneplatform::ShouldShowMobileConsentFlowResponse&
+               response)> callback),
       (override));
 };
 
@@ -359,6 +371,8 @@ class ContextualSearchboxHandlerTest
         .WillByDefault(testing::ReturnRef(unowned_user_data_host_));
     ON_CALL(mock_browser_window_interface_, GetWindow())
         .WillByDefault(testing::Return(&mock_base_window_));
+    ON_CALL(mock_browser_window_interface_, GetFeatures())
+        .WillByDefault(testing::ReturnRef(browser_window_features_));
     ON_CALL(mock_base_window_, GetNativeWindow())
         .WillByDefault(
             testing::Return(web_contents()->GetTopLevelNativeWindow()));
@@ -373,7 +387,7 @@ class ContextualSearchboxHandlerTest
 
     auto mock_drive_picker_controller =
         std::make_unique<MockDrivePickerHostController>(
-            &mock_browser_window_interface_);
+            profile(), &mock_browser_window_interface_);
     handler().SetDrivePickerController(std::move(mock_drive_picker_controller));
 
     // Drain the Mojo pipe and clear setup-related calls to searchbox page.
@@ -421,14 +435,18 @@ class ContextualSearchboxHandlerTest
 
   void SetUpMockFpopService(bool accepted) {
     auto mock_fpop_service = std::make_unique<MockFpopService>();
-    EXPECT_CALL(*mock_fpop_service, GetFacs(testing::_, testing::_))
+    EXPECT_CALL(*mock_fpop_service,
+                ShouldShowMobileConsentFlow(testing::_, testing::_))
         .WillOnce([accepted](const auto& request, auto callback) {
-          footprints::oneplatform::GetFacsResponse response;
+          footprints::oneplatform::ShouldShowMobileConsentFlowResponse response;
           if (accepted) {
-            auto* setting = response.add_facs_setting();
-            setting->set_setting(
-                contextual_search::kPersonalContextSearchUsingWorkspace);
-            setting->set_data_recording_enabled(true);
+            response.mutable_should_show_flow_result()
+                ->mutable_eligibility()
+                ->set_status(3);  // ALREADY_CONSENTED
+          } else {
+            response.mutable_should_show_flow_result()
+                ->mutable_eligibility()
+                ->set_status(1);  // ELIGIBLE / CAN_CONSENT
           }
           std::move(callback).Run(true, response);
         });
@@ -464,6 +482,7 @@ class ContextualSearchboxHandlerTest
   std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
       contextual_session_handle_;
   testing::NiceMock<MockBrowserWindowInterface> mock_browser_window_interface_;
+  BrowserWindowFeatures browser_window_features_;
   testing::NiceMock<ui::MockBaseWindow> mock_base_window_;
   ui::UnownedUserDataHost unowned_user_data_host_;
 #if BUILDFLAG(IS_CHROMEOS)
@@ -1682,7 +1701,7 @@ TEST_F(ContextualSearchboxHandlerTest, OnDriveUploadClicked_DoubleClick) {
 
   auto mock_drive_picker_controller =
       std::make_unique<MockDrivePickerHostController>(
-          &mock_browser_window_interface_);
+          profile(), &mock_browser_window_interface_);
   auto* mock_ptr = mock_drive_picker_controller.get();
   handler().SetDrivePickerController(std::move(mock_drive_picker_controller));
 
@@ -1845,7 +1864,7 @@ TEST_F(ContextualSearchboxHandlerTest, OnDriveUploadClicked) {
 
   auto mock_drive_picker_controller =
       std::make_unique<MockDrivePickerHostController>(
-          &mock_browser_window_interface_);
+          profile(), &mock_browser_window_interface_);
   auto* mock_ptr = mock_drive_picker_controller.get();
   handler().SetDrivePickerController(std::move(mock_drive_picker_controller));
 
@@ -1897,6 +1916,7 @@ TEST_F(ContextualSearchboxHandlerTest, OnDriveUploadClicked) {
   EXPECT_FALSE(response->error.has_value());
 
   EXPECT_FALSE(handler().IsDrivePickerReceiverBound());
+  EXPECT_FALSE(handler().has_drive_picker_deactivation_blocker_for_testing());
 }
 
 TEST_F(ContextualSearchboxHandlerTest,
@@ -1947,7 +1967,7 @@ TEST_F(ContextualSearchboxHandlerTest, OnDriveUploadClicked_SizeLimitExceeded) {
 
   auto mock_drive_picker_controller =
       std::make_unique<MockDrivePickerHostController>(
-          &mock_browser_window_interface_);
+          profile(), &mock_browser_window_interface_);
   auto* mock_ptr = mock_drive_picker_controller.get();
   handler().SetDrivePickerController(std::move(mock_drive_picker_controller));
 
@@ -1996,7 +2016,7 @@ TEST_F(ContextualSearchboxHandlerTest, OnDriveUploadClicked_MaxFilesExceeded) {
 
   auto mock_drive_picker_controller =
       std::make_unique<MockDrivePickerHostController>(
-          &mock_browser_window_interface_);
+          profile(), &mock_browser_window_interface_);
   auto* mock_ptr = mock_drive_picker_controller.get();
   handler().SetDrivePickerController(std::move(mock_drive_picker_controller));
 
@@ -2067,9 +2087,10 @@ TEST_F(ContextualSearchboxHandlerTest, OpenAutocompleteMatch_ZeroSuggestClick) {
             GetMetricsRecorderPtr(),
             &MockContextualSearchMetricsRecorder::RecordZeroSuggestClickBase));
 
+    auto modifiers = searchbox::mojom::ActionModifiers::New();
     handler().OpenAutocompleteMatch(0, GURL("https://www.google.com"),
-                                    /*are_matches_showing=*/true, 0, false,
-                                    false, false, false,
+                                    /*are_matches_showing=*/true,
+                                    /*mouse_button=*/0, std::move(modifiers),
                                     /*via_keyboard=*/false);
 
     histogram_tester().ExpectBucketCount(
@@ -2102,9 +2123,10 @@ TEST_F(ContextualSearchboxHandlerTest, OpenAutocompleteMatch_ZeroSuggestClick) {
             GetMetricsRecorderPtr(),
             &MockContextualSearchMetricsRecorder::RecordZeroSuggestClickBase));
 
+    auto modifiers = searchbox::mojom::ActionModifiers::New();
     handler().OpenAutocompleteMatch(0, GURL("https://www.contextual.com"),
-                                    /*are_matches_showing=*/true, 0, false,
-                                    false, false, false,
+                                    /*are_matches_showing=*/true,
+                                    /*mouse_button=*/0, std::move(modifiers),
                                     /*via_keyboard=*/false);
 
     histogram_tester().ExpectBucketCount(
@@ -2150,9 +2172,10 @@ TEST_F(ContextualSearchboxHandlerTest,
                                   &MockContextualSearchMetricsRecorder::
                                       RecordTypedSuggestNavigationBase));
 
+    auto modifiers = searchbox::mojom::ActionModifiers::New();
     handler().OpenAutocompleteMatch(0, GURL("https://www.google.com"),
-                                    /*are_matches_showing=*/true, 0, false,
-                                    false, false, false,
+                                    /*are_matches_showing=*/true,
+                                    /*mouse_button=*/0, std::move(modifiers),
                                     /*via_keyboard=*/false);
 
     histogram_tester().ExpectBucketCount(
@@ -2189,9 +2212,10 @@ TEST_F(ContextualSearchboxHandlerTest,
                                   &MockContextualSearchMetricsRecorder::
                                       RecordTypedSuggestNavigationBase));
 
+    auto modifiers = searchbox::mojom::ActionModifiers::New();
     handler().OpenAutocompleteMatch(
         1, GURL("https://www.google.com/search?q=suggestion"),
-        /*are_matches_showing=*/true, 0, false, false, false, false,
+        /*are_matches_showing=*/true, /*mouse_button=*/0, std::move(modifiers),
         /*via_keyboard=*/false);
 
     histogram_tester().ExpectBucketCount(

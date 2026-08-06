@@ -47,6 +47,7 @@ import org.chromium.chrome.browser.browser_controls.TopControlLayer;
 import org.chromium.chrome.browser.browser_controls.TopControlsStacker;
 import org.chromium.chrome.browser.browser_controls.TopControlsStacker.TopControlType;
 import org.chromium.chrome.browser.browser_controls.TopControlsStacker.TopControlVisibility;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.fullscreen.FullscreenManager;
 import org.chromium.chrome.browser.fullscreen.FullscreenOptions;
 import org.chromium.chrome.browser.layouts.CompositorModelChangeProcessor;
@@ -190,7 +191,10 @@ public class BookmarkBarCoordinator
         mContentHeight =
                 mContext.getResources().getDimensionPixelSize(R.dimen.bookmark_bar_min_height);
         mHairlineHeight =
-                mContext.getResources().getDimensionPixelSize(R.dimen.toolbar_hairline_height);
+                ChromeFeatureList.sToolbarProgressBarRefactor.isEnabled()
+                        ? 0
+                        : mContext.getResources()
+                                .getDimensionPixelSize(R.dimen.toolbar_hairline_height);
 
         // The Bookmark Bar may first be turned on in fullscreen mode, in which case we want its
         // initial state to be hidden, which is tracked by this member variable.
@@ -199,12 +203,21 @@ public class BookmarkBarCoordinator
         // Inflate the Bookmark Bar. The bar is a ViewStub which contains a container to hold all
         // the content of the Bookmark Bar, and a hairline footer.
         mView = (BookmarkBar) viewStub.inflate();
+        if (ChromeFeatureList.sToolbarProgressBarRefactor.isEnabled()) {
+            View hairline = mView.findViewById(R.id.bookmark_bar_hairline);
+            if (hairline != null) hairline.setVisibility(View.GONE);
+        }
         mContentContainer = mView.findViewById(R.id.bookmark_bar_content_container);
         mSideUiObserver = new BookmarkBarAdjusterForSideUi(mView);
         sideUiStateProviderSupplier.onAvailable(
                 (sideUiStateProvider) -> {
                     mSideUiStateProvider = sideUiStateProvider;
                     mSideUiStateProvider.addObserver(mSideUiObserver);
+
+                    // BookmarkBarCoordinator is created lazily, therefore may miss the latest
+                    // SideUi changes. Update the bar UI with the current SideUiSpecs.
+                    mSideUiObserver.onSideUiSpecsChanged(
+                            sideUiStateProvider.getCurrentSideUiSpecs());
                 });
 
         // The content container contains the tightly-wrapper ViewResourceFrameLayout for snapshots.
@@ -417,6 +430,9 @@ public class BookmarkBarCoordinator
         mShouldBookmarkBarBeShown = isVisible;
         updateSceneLayerVisibility();
         updateAndroidWidgetVisibility();
+        if (mTopControlsStacker != null) {
+            mTopControlsStacker.requestLayerUpdateSync(false);
+        }
 
         if (!isVisible) {
             unregisterResource();
@@ -655,6 +671,9 @@ public class BookmarkBarCoordinator
             mIsInFullscreenMode = true;
             updateSceneLayerVisibility();
             updateAndroidWidgetVisibility();
+            if (mTopControlsStacker != null) {
+                mTopControlsStacker.requestLayerUpdateSync(false);
+            }
         }
     }
 
@@ -676,6 +695,9 @@ public class BookmarkBarCoordinator
         mIsInFullscreenMode = false;
         updateSceneLayerVisibility();
         updateAndroidWidgetVisibility();
+        if (mTopControlsStacker != null) {
+            mTopControlsStacker.requestLayerUpdateSync(false);
+        }
     }
 
     // TopResumedActivityChangedObserver implementation:
@@ -727,7 +749,9 @@ public class BookmarkBarCoordinator
 
         // Match the hairline color with the divider color.
         mModel.set(BookmarkBarProperties.DIVIDER_COLOR, hairlineColor);
-        mModel.set(BookmarkBarProperties.HAIRLINE_COLOR, hairlineColor);
+        if (!ChromeFeatureList.sToolbarProgressBarRefactor.isEnabled()) {
+            mModel.set(BookmarkBarProperties.HAIRLINE_COLOR, hairlineColor);
+        }
 
         @BrandedColorScheme
         int brandedColorScheme = ThemeUtils.getBrandedColorScheme(mContext, color, isIncognito);
@@ -752,6 +776,14 @@ public class BookmarkBarCoordinator
 
         // The SceneLayer should never be visible when in full screen mode.
         if (mIsInFullscreenMode) {
+            mBookmarkBarSceneLayer.setVisibility(false);
+            return;
+        }
+
+        // If the Android controls are fully invisible (e.g. completely scrolled off screen), we do
+        // not need the SceneLayer to be visible. Hiding it here prevents single-frame flashes when
+        // height recalculations mismatch the CC offset.
+        if (mBrowserControlsStateProvider.getAndroidControlsVisibility() == INVISIBLE) {
             mBookmarkBarSceneLayer.setVisibility(false);
             return;
         }

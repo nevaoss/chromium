@@ -71,6 +71,7 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
             "glic_permissions_default_tab_access";
     private static final String PERMISSION_AUTO_BROWSE = "glic_permissions_auto_browse";
     private static final String PERMISSION_ACTOR_LOGIN = "glic_actor_login_permissions";
+
     // TODO(b/498717684): Replace answer number urls with a p= identifier instead.
     private static final String LEARN_MORE_AI_URL = "https://support.google.com/a/answer/15706919";
     private static final String LEARN_MORE_MANAGED_AI_URL =
@@ -97,7 +98,6 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
             ChromeSharedPreferences.getInstance();
     private final SettableMonotonicObservableSupplier<String> mPageTitle =
             ObservableSuppliers.createMonotonic();
-
     private @Nullable PrefChangeRegistrar mPrefChangeRegistrar;
     private @Nullable ChromeSwitchPreference mLauncherEnabledPref;
     private @Nullable Preference mLauncherHotkeyPref;
@@ -114,40 +114,36 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
                         ? getArguments().getString(GlicNavigationUtils.EXTRA_HIGHLIGHT_FIELD)
                         : null;
         if (GlicNavigationUtils.FIELD_LOCATION_PERMISSION.equals(highlightField)) {
-            view.post(() -> {
-                if (!isAdded() || getView() == null) return;
-                scrollAndHighlightPreference(PERMISSION_LOCATION);
-            });
+            view.post(
+                    () -> {
+                        if (!isAdded() || getView() == null) return;
+                        scrollAndHighlightPreference(PERMISSION_LOCATION);
+                    });
         }
     }
 
     private void scrollAndHighlightPreference(String key) {
         RecyclerView listView = getListView();
         if (listView == null) return;
-
         RecyclerView.Adapter adapter = listView.getAdapter();
         if (!(adapter instanceof PreferencePositionCallback)) return;
         PreferencePositionCallback callback = (PreferencePositionCallback) adapter;
-
         int position = callback.getPreferenceAdapterPosition(key);
         if (position == RecyclerView.NO_POSITION) return;
-
         scrollToPreference(key);
-
-        listView.post(() -> {
-            if (!isAdded() || getView() == null) return;
-            highlightPreferenceAtPosition(listView, position);
-        });
+        listView.post(
+                () -> {
+                    if (!isAdded() || getView() == null) return;
+                    highlightPreferenceAtPosition(listView, position);
+                });
     }
 
     private void highlightPreferenceAtPosition(RecyclerView listView, int position) {
         RecyclerView.ViewHolder viewHolder = listView.findViewHolderForAdapterPosition(position);
         if (viewHolder == null) return;
-
         View prefView = viewHolder.itemView;
         HighlightParams params = new HighlightParams(HighlightShape.RECTANGLE);
         params.setNumPulses(1);
-
         // Copy rounded corners from ContainmentItemDecoration if present.
         for (int i = 0; i < listView.getItemDecorationCount(); i++) {
             RecyclerView.ItemDecoration decoration = listView.getItemDecorationAt(i);
@@ -161,7 +157,6 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
                 break;
             }
         }
-
         ViewHighlighter.turnOnHighlight(prefView, params);
     }
 
@@ -169,20 +164,22 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
     public void onCreatePreferences(@Nullable Bundle savedInstanceState, @Nullable String rootKey) {
         SettingsUtils.addPreferencesFromResource(this, R.xml.glic_settings);
         mPageTitle.set(getString(R.string.glic_setting_label));
+
         SettingsCustomTabLauncher customTabLauncher = getCustomTabLauncher();
 
         PrefService prefService = UserPrefs.get(getProfile());
         mPrefChangeRegistrar = new PrefChangeRegistrar(prefService);
+
         GlicKeyedService glicService = GlicKeyedServiceFactory.getForProfile(getProfile());
 
         // Links to Adaptive Toolbar settings for Phone.
         Preference buttonPref = assertNonNull(findPreference(PREFERENCE_BUTTON));
-
         // Toggle for LFF.
         ChromeSwitchPreference buttonTogglePref =
                 assertNonNull(findPreference(PREFERENCE_BUTTON_TOGGLE));
 
         Context context = getContext();
+
         // TODO(crbug.com/503082430): Change to tab strip visibility check once toolbar Glic
         // supported on LFF
         if (AndroidSidePanelEnabledFn.isEnabled()) {
@@ -200,6 +197,7 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
                         GlicUtils.setButtonPinnedToTabStrip(getProfile(), enabled);
                         return true;
                     });
+
             if (mPrefChangeRegistrar != null) {
                 mPrefChangeRegistrar.addObserver(
                         GlicPrefNames.GLIC_PINNED_TO_TABSTRIP,
@@ -246,7 +244,6 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
                             return true;
                         });
             }
-
             updateHotkeyVisibility(enabled);
         } else {
             if (mLauncherEnabledPref != null) mLauncherEnabledPref.setVisible(false);
@@ -276,7 +273,6 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
                         ChromePreferenceKeys.GLIC_SHARE_CURRENT_TAB_DEFAULT_ACCESS_ENABLED,
                         GlicPrefNames.GLIC_DEFAULT_TAB_CONTEXT_ENABLED,
                         /* extraListener= */ null);
-
         String summary =
                 getString(
                         R.string
@@ -318,8 +314,7 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
         autoBrowsePref.setSummary(
                 SpanApplier.applySpans(
                         autoBrowseSummary,
-                        getAutoBrowseLearnMoreSpanInfo(
-                                AUTO_BROWSE_LEARN_MORE_URL, autoBrowsePref)));
+                        getLearnMoreSpanInfo(AUTO_BROWSE_LEARN_MORE_URL, autoBrowsePref)));
         autoBrowsePref.setOnBindExpandedAreaListener(this::setupAutoBrowseExpandedArea);
 
         Preference actorLoginPref = findPreference(PERMISSION_ACTOR_LOGIN);
@@ -389,14 +384,14 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
                         tabAccessPref,
                         R.string
                                 .settings_glic_permissions_default_tab_access_toggle_sublabel_data_protected,
-                        getLearnMoreSpanInfo(LEARN_MORE_AI_URL, tabAccessPref));
+                        LEARN_MORE_AI_URL);
             }
 
             if (autoBrowsePref != null) {
                 setupDisabledPreference(
                         autoBrowsePref,
                         R.string.settings_glic_permissions_chrome_web_actuation_toggle_sublabel,
-                        getAutoBrowseLearnMoreSpanInfo(AUTO_BROWSE_LEARN_MORE_URL, autoBrowsePref));
+                        AUTO_BROWSE_LEARN_MORE_URL);
             }
         }
     }
@@ -454,6 +449,7 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
             mPrefChangeRegistrar.destroy();
             mPrefChangeRegistrar = null;
         }
+
         if (mUserEnabledActuationOnWebObserver != null) {
             GlicKeyedService glicService = GlicKeyedServiceFactory.getForProfile(getProfile());
             if (glicService != null) {
@@ -498,7 +494,6 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
             String sharedPreferenceKey,
             String profilePreferenceKey,
             @Nullable OnPreferenceChangeListener extraListener) {
-
         T preference = assertNonNull(findPreference(preferenceKey));
         // Note: We are always using the profile preference over the java shared preference manager.
         // This could be changed if the conflict handling is decided later.
@@ -515,7 +510,6 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
                     if (extraListener != null) {
                         return extraListener.onPreferenceChange(pref, newValue);
                     }
-
                     return true;
                 });
 
@@ -530,7 +524,6 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
                         }
                     });
         }
-
         return preference;
     }
 
@@ -538,7 +531,6 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
     public void onRequestPermissionsResult(
             int requestCode, String[] permissions, int[] grantResults) {
         if (requestCode != 1) return;
-
         boolean granted =
                 grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
         if (granted) return;
@@ -551,16 +543,15 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
     }
 
     private void setupDisabledPreference(
-            ChromeExpandableSwitchPreference pref,
-            int summaryResId,
-            SpanApplier.SpanInfo spanInfo) {
+            ChromeExpandableSwitchPreference pref, int summaryResId, String url) {
         pref.setChecked(false);
         pref.setEnabled(false);
         pref.setSelectable(false);
         pref.setExpanded(true);
 
         String summary = getString(summaryResId);
-        SpannableString spannable = SpanApplier.applySpans(summary, spanInfo);
+        SpannableString spannable =
+                SpanApplier.applySpans(summary, getLearnMoreSpanInfo(url, pref));
         spannable.setSpan(
                 new ForegroundColorSpan(pref.getDisabledColor()),
                 0,
@@ -581,16 +572,10 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
             consider2.setText(
                     SpanApplier.applySpans(
                             text,
-                            createAutoBrowseConsiderLinkSpanInfo(
-                                    "$1",
-                                    "$3",
-                                    "$5",
-                                    AUTO_BROWSE_CONSIDER_SAFELY_URL,
-                                    autoBrowsePref),
-                            createAutoBrowseConsiderLinkSpanInfo(
+                            createLinkSpanInfo(
+                                    "$1", AUTO_BROWSE_CONSIDER_SAFELY_URL, autoBrowsePref),
+                            createLinkSpanInfo(
                                     "$2",
-                                    "$4",
-                                    "$5",
                                     AUTO_BROWSE_CONSIDER_UNEXPECTED_RESULTS_URL,
                                     autoBrowsePref)));
             consider2.setMovementMethod(LinkMovementMethod.getInstance());
@@ -625,35 +610,14 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
                         }));
     }
 
+    private SpanApplier.SpanInfo createLinkSpanInfo(
+            String placeholderIndex, String url, ChromeExpandableSwitchPreference pref) {
+        return createSpanInfo("<a href=\"" + placeholderIndex + "\" target=\"_blank\">", url, pref);
+    }
+
     private SpanApplier.SpanInfo getLearnMoreSpanInfo(
             String url, ChromeExpandableSwitchPreference pref) {
         return createSpanInfo("<a href=\"#\">", url, pref);
-    }
-
-    private SpanApplier.SpanInfo getAutoBrowseLearnMoreSpanInfo(
-            String url, ChromeExpandableSwitchPreference pref) {
-        return createSpanInfo(
-                "<a href=\"#\" target=\"_blank\" aria-label=\"$1\" aria-description=\"$2\">",
-                url,
-                pref);
-    }
-
-    private SpanApplier.SpanInfo createAutoBrowseConsiderLinkSpanInfo(
-            String placeholderIndex,
-            String ariaLabelIndex,
-            String ariaDescriptionIndex,
-            String url,
-            ChromeExpandableSwitchPreference pref) {
-        return createSpanInfo(
-                "<a href=\""
-                        + placeholderIndex
-                        + "\" target=\"_blank\" aria-label=\""
-                        + ariaLabelIndex
-                        + "\" aria-description=\""
-                        + ariaDescriptionIndex
-                        + "\">",
-                url,
-                pref);
     }
 
     private void updateHotkeyVisibility(boolean enabled) {

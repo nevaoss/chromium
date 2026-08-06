@@ -8,6 +8,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -26,6 +27,7 @@ import android.app.Activity;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.os.SystemClock;
+import android.view.InputDevice;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -48,7 +50,9 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.robolectric.Robolectric;
 import org.robolectric.shadows.ShadowLooper;
+import org.robolectric.util.ReflectionHelpers;
 
+import org.chromium.base.FeatureOverrides;
 import org.chromium.base.Token;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
@@ -276,6 +280,21 @@ public class VerticalTabListCoordinatorUnitTest {
         return spy(realRecyclerView);
     }
 
+    private void assertContextClickDoesNotLaunchEmptySpaceContextMenu(View targetView) {
+        assertNotNull("Target view must not be null.", targetView);
+        assertNull(
+                "Context menu coordinator should start as null.",
+                mCoordinator.getTabStripContextMenuCoordinatorForTesting());
+
+        // Simulate a right-click context interaction.
+        targetView.performContextClick();
+
+        // The listener must consume the event, meaning the menu coordinator stays null.
+        assertNull(
+                "Right-clicking this view should not instantiate the context menu coordinator.",
+                mCoordinator.getTabStripContextMenuCoordinatorForTesting());
+    }
+
     private void assertEmptySpaceContextMenuRightClick(View targetView) {
         assertNotNull("Target view for context click must not be null.", targetView);
         assertNull(
@@ -287,6 +306,28 @@ public class VerticalTabListCoordinatorUnitTest {
 
         assertNotNull(
                 "Right click should instantiate the context menu coordinator.",
+                mCoordinator.getTabStripContextMenuCoordinatorForTesting());
+    }
+
+    private void assertStandardViewLongPressLaunchesMenu(View targetView) {
+        // Ensure the context menu coordinator reference starts fresh as null.
+        assertNotNull("Target view for long press must not be null.", targetView);
+        assertNull(
+                "Context menu coordinator should start as null.",
+                mCoordinator.getTabStripContextMenuCoordinatorForTesting());
+
+        // Simulate touch down at coordinates (10, 10) inside the header container.
+        MotionEvent downEvent = obtainMotionEvent(MotionEvent.ACTION_DOWN, 10f, 10f);
+
+        // To simulate a touch on a normal view (not recycler view) so that its OnTouchListener
+        // triggers, we call dispatchTouchEvent(downEvent).
+        targetView.dispatchTouchEvent(downEvent);
+
+        // Advance Robolectric's clock by 500ms to trigger the long-press gesture.
+        ShadowLooper.idleMainLooper(500, TimeUnit.MILLISECONDS);
+
+        assertNotNull(
+                "Long press should instantiate the empty space context menu coordinator.",
                 mCoordinator.getTabStripContextMenuCoordinatorForTesting());
     }
 
@@ -309,6 +350,26 @@ public class VerticalTabListCoordinatorUnitTest {
         assertNotNull(
                 "Long press on empty space should instantiate the context menu coordinator.",
                 mCoordinator.getTabStripContextMenuCoordinatorForTesting());
+    }
+
+    private void assertViewTouchUpdatesLastTouchPoint(
+            View targetView, int expectedX, int expectedY) {
+        assertNotNull("Target view must not be null.", targetView);
+
+        // Reset tracking coordinates to a baseline (0, 0).
+        mCoordinator.getLastTouchPointForTesting().set(0, 0);
+
+        // Simulate a touch down at local button coordinates (15, 25).
+        MotionEvent downEvent =
+                obtainMotionEvent(MotionEvent.ACTION_DOWN, (float) expectedX, (float) expectedY);
+        targetView.dispatchTouchEvent(downEvent);
+
+        // Verify that mLastTouchPoint successfully captured the localized touch matrix.
+        Point savedPoint = mCoordinator.getLastTouchPointForTesting();
+        assertEquals("X touch point should map local to the view bounds.", expectedX, savedPoint.x);
+        assertEquals("Y touch point should map local to the view bounds.", expectedY, savedPoint.y);
+
+        downEvent.recycle();
     }
 
     @Test
@@ -479,24 +540,7 @@ public class VerticalTabListCoordinatorUnitTest {
         // vertical_tab_rail_container.
         ViewGroup container = (ViewGroup) mCoordinator.getView();
         View headerContainer = container.findViewById(R.id.vertical_tab_header_container);
-
-        assertNotNull("Header container should exist in the layout.", headerContainer);
-
-        // Ensure the context menu coordinator reference starts fresh as null.
-        assertNull(mCoordinator.getTabStripContextMenuCoordinatorForTesting());
-
-        // Simulate touch down at coordinates (50, 20) inside the header container.
-        MotionEvent downEvent = obtainMotionEvent(MotionEvent.ACTION_DOWN, 50f, 20f);
-        // To simulate a touch on a normal view (not recycler view) so that its OnTouchListener
-        // triggers, we call dispatchTouchEvent(downEvent).
-        headerContainer.dispatchTouchEvent(downEvent);
-
-        // Advance Robolectric's clock by 500ms to trigger the long-press gesture.
-        ShadowLooper.idleMainLooper(500, TimeUnit.MILLISECONDS);
-
-        assertNotNull(
-                "Long press on header container should instantiate the context menu coordinator.",
-                mCoordinator.getTabStripContextMenuCoordinatorForTesting());
+        assertStandardViewLongPressLaunchesMenu(headerContainer);
     }
 
     @Test
@@ -527,6 +571,54 @@ public class VerticalTabListCoordinatorUnitTest {
                 mCoordinator.getView().findViewById(R.id.pinned_tabs_recycler_view);
 
         assertEmptySpaceContextMenuRightClick(pinnedRecyclerView);
+    }
+
+    @Test
+    @SmallTest
+    public void testVTRootContainerLongPress_LaunchesEmptySpaceContextMenu() {
+        createCoordinator();
+        ViewGroup container = (ViewGroup) mCoordinator.getView();
+        assertStandardViewLongPressLaunchesMenu(container);
+    }
+
+    @Test
+    @SmallTest
+    public void testVTRootContainerRightClick_LaunchesContextMenu() {
+        createCoordinator();
+        ViewGroup container = (ViewGroup) mCoordinator.getView();
+        assertEmptySpaceContextMenuRightClick(container);
+    }
+
+    @Test
+    @SmallTest
+    public void testNewTabButtonRightClick_DoesNotLaunchEmptySpaceContextMenu() {
+        createCoordinator();
+        View newTabButton = mCoordinator.getView().findViewById(R.id.new_tab_button);
+        assertContextClickDoesNotLaunchEmptySpaceContextMenu(newTabButton);
+    }
+
+    @Test
+    @SmallTest
+    public void testVTGridButtonTouch_UpdatesLastTouchPointToLocalCoordinates() {
+        createCoordinator();
+        View gridButton = mCoordinator.getView().findViewById(R.id.grid_button);
+        assertViewTouchUpdatesLastTouchPoint(gridButton, 15, 25);
+    }
+
+    @Test
+    @SmallTest
+    public void testVTTabSearchButtonTouch_UpdatesLastTouchPointToLocalCoordinates() {
+        createCoordinator();
+        View tabSearchButton = mCoordinator.getView().findViewById(R.id.tab_search_button);
+        assertViewTouchUpdatesLastTouchPoint(tabSearchButton, 30, 35);
+    }
+
+    @Test
+    @SmallTest
+    public void testCollapseButtonRightClick_DoesNotLaunchEmptySpaceContextMenu() {
+        createCoordinator();
+        View collapseButton = mCoordinator.getView().findViewById(R.id.collapse_button);
+        assertContextClickDoesNotLaunchEmptySpaceContextMenu(collapseButton);
     }
 
     @Test
@@ -929,7 +1021,7 @@ public class VerticalTabListCoordinatorUnitTest {
         ImageButton tabSearchButton = mCoordinator.getView().findViewById(R.id.tab_search_button);
         assertNotNull(tabSearchButton);
         tabSearchButton.performClick();
-        verify(mVerticalTabsActionDelegate).openHubPane(PaneId.TAB_SWITCHER);
+        verify(mVerticalTabsActionDelegate).openHubSearch();
     }
 
     @Test
@@ -1172,5 +1264,67 @@ public class VerticalTabListCoordinatorUnitTest {
                         .get(VerticalTabListProperties.IS_COLLAPSE_BUTTON_ENABLED));
         assertTrue(collapseButton.isEnabled());
         assertEquals(1.0f, collapseButton.getAlpha(), 0.01f);
+    }
+
+    @Test
+    @SmallTest
+    public void testExpandOrCollapseOnHover() {
+        FeatureOverrides.overrideParam(
+                ChromeFeatureList.ANDROID_VERTICAL_TABS, "expand_on_hover", true);
+        createCoordinator();
+        mCoordinator.setCollapseListener(mMockRailCollapseListener);
+        mCoordinator.setRailCollapseState(RailCollapseState.COLLAPSED);
+
+        View containerView = mCoordinator.getView();
+        containerView.layout(0, 0, 200, 500);
+
+        // 1. Mouse hover inside -> requests EXPANDED_FOR_HOVERING
+        MotionEvent hoverEnter =
+                MotionEvent.obtain(0, 0, MotionEvent.ACTION_HOVER_ENTER, 50f, 50f, 0);
+        hoverEnter.setSource(InputDevice.SOURCE_MOUSE);
+        containerView.dispatchGenericMotionEvent(hoverEnter);
+        verify(mMockRailCollapseListener)
+                .onRailCollapseStateChangeRequested(RailCollapseState.EXPANDED_FOR_HOVERING);
+
+        // 2. Mouse hover exit (outside container bounds) -> requests COLLAPSED
+        mCoordinator.setRailCollapseState(RailCollapseState.EXPANDED_FOR_HOVERING);
+        MotionEvent hoverExit =
+                MotionEvent.obtain(0, 0, MotionEvent.ACTION_HOVER_EXIT, 500f, 50f, 0);
+        hoverExit.setSource(InputDevice.SOURCE_MOUSE);
+        containerView.dispatchGenericMotionEvent(hoverExit);
+        verify(mMockRailCollapseListener)
+                .onRailCollapseStateChangeRequested(RailCollapseState.COLLAPSED);
+    }
+
+    @Test
+    @SmallTest
+    public void testDragListenerRegisteredForBothRecyclerViews() {
+        createCoordinator();
+        View container = mCoordinator.getView();
+        TabListRecyclerView mainRecyclerView = container.findViewById(R.id.tab_list_recycler_view);
+        TabListRecyclerView pinnedRecyclerView =
+                container.findViewById(R.id.pinned_tabs_recycler_view);
+
+        assertNotNull("Main RecyclerView must not be null.", mainRecyclerView);
+        assertNotNull("Pinned RecyclerView must not be null.", pinnedRecyclerView);
+
+        Object mainListenerInfo = ReflectionHelpers.getField(mainRecyclerView, "mListenerInfo");
+        Object pinnedListenerInfo = ReflectionHelpers.getField(pinnedRecyclerView, "mListenerInfo");
+
+        assertNotNull("Main ListenerInfo must not be null.", mainListenerInfo);
+        assertNotNull("Pinned ListenerInfo must not be null.", pinnedListenerInfo);
+
+        View.OnDragListener mainDragListener =
+                ReflectionHelpers.getField(mainListenerInfo, "mOnDragListener");
+        View.OnDragListener pinnedDragListener =
+                ReflectionHelpers.getField(pinnedListenerInfo, "mOnDragListener");
+
+        assertNotNull("Main RecyclerView must have OnDragListener registered.", mainDragListener);
+        assertNotNull(
+                "Pinned RecyclerView must have OnDragListener registered.", pinnedDragListener);
+        assertSame(
+                "Both RecyclerViews must share the same TabSwitcherDragHandler instance.",
+                mainDragListener,
+                pinnedDragListener);
     }
 }

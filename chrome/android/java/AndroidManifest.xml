@@ -121,6 +121,9 @@ by a child template that "extends" this file.
     <!-- Needed for allowing cross-app and cross-profile communication over the loopback interface. -->
     <uses-permission android:name="android.permission.USE_LOOPBACK_INTERFACE"/>
 
+    <!-- Needed for checking local network connections. -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK"/>
+
     {% set enable_vr = enable_vr|default(0) %}
     {% if enable_vr == "true" %}
     <!-- Indicates use of Android's VR-mode, available only on Android N+. -->
@@ -608,7 +611,7 @@ by a child template that "extends" this file.
             {% endblock %}
             {% block chrome_activity_common %}
             android:windowSoftInputMode="adjustResize"
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|mcc|mnc|screenLayout|smallestScreenSize|uiMode|navigation|density|touchscreen|colorMode"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|mcc|mnc|screenLayout|smallestScreenSize|uiMode|navigation|density|touchscreen|colorMode|fontScale"
             android:hardwareAccelerated="false"
             {% endblock %}
         >
@@ -862,6 +865,14 @@ by a child template that "extends" this file.
             android:noHistory="true"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|mcc|mnc|screenLayout|smallestScreenSize"
             android:excludeFromRecents="true">
+        </activity>
+
+        <activity android:name="org.chromium.chrome.browser.share.send_tab_to_self.SendTabToSelfShareTargetActivity"
+            android:theme="@style/Theme.BrowserUI.Translucent.NoTitleBar"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|mcc|mnc|screenLayout|smallestScreenSize">
         </activity>
 
         <!-- This activity is used to restart the main Chrome process.  Should never be exported. -->

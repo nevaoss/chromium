@@ -617,6 +617,11 @@ are declared in tools/grit/grit_args.gni.
       <message name="IDS_INSPECT_ELEMENT_ANDROID" desc="The name of the Inspect Element command in the context menu for Android.">
         Inspect
       </message>
+      <if expr="is_android">
+        <message name="IDS_CONTEXTMENU_PRINT_SELECTION_DROPDOWN" desc="The name of the Print command in the text selection dropdown menu on Android. Prints the currently selected text.">
+          Print
+        </message>
+      </if>
 
        <!-- content area context menus. Android does not use it -->
       <if expr="not is_android">
@@ -975,8 +980,8 @@ are declared in tools/grit/grit_args.gni.
             Help improve autofill
           </message>
           <!-- TODO(481979475): remove non translateable flag  -->
-          <message name="IDS_CONTENT_CONTEXT_AUTOFILL_FALLBACK_AT_MEMORY" desc="In Title Case: The name of Search and Fill From Anywhere command in the content area context menu" translateable="false">
-            Search and fill from anywhere
+          <message name="IDS_CONTENT_CONTEXT_AUTOFILL_FALLBACK_AT_MEMORY" desc="Main action pattern for enhanced autofill. It functions as a concise command in the content area context menu explaining that Chrome will locate relevant information and insert it into a form." translateable="false">
+            Find and fill
           </message>
           <message name="IDS_CONTENT_CONTEXT_AUTOFILL_FALLBACK_PASSWORDS_SELECT_PASSWORD" desc="This is a context menu entry in the passwords submenu. It triggers the password selection bubble.">
             Select password
@@ -1328,8 +1333,8 @@ are declared in tools/grit/grit_args.gni.
             Help Improve Autofill
           </message>
           <!-- TODO(481979475): remove non translateable flag  -->
-          <message name="IDS_CONTENT_CONTEXT_AUTOFILL_FALLBACK_AT_MEMORY" desc="In Title Case: The name of Search and Fill From Anywhere command in the content area context menu" translateable="false">
-            Search and Fill From Anywhere
+          <message name="IDS_CONTENT_CONTEXT_AUTOFILL_FALLBACK_AT_MEMORY" desc="In Title Case: Main action pattern for enhanced autofill. It functions as a concise command in the content area context menu explaining that Chrome will locate relevant information and insert it into a form." translateable="false">
+            Find and Fill
           </message>
           <!-- TODO(359570730): remove non translateable flag  -->
           <message name="IDS_CONTENT_CONTEXT_AUTOFILL_PREDICTION_IMPROVEMENTS" desc="In Title Case: The name of the Autofill manual fallback for payment methods attribute command in the content area context menu." translateable="false">
@@ -8576,6 +8581,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_COMPOSE_SHARING_TABS_WITH_GOOGLE" desc="Text for the tooltip above the favicons that show a user is sharing tabs as context.">
         Sharing tabs with Google
       </message>
+      <message name="IDS_COMPOSE_ADD_OPEN_TABS_TO_ASK_ANYTHING" desc="Label for the action to add open tabs to ask anything in composebox.">
+        Add open tabs to ask anything
+      </message>
       <message name="IDS_COMPOSE_ADD_TABS" desc="Label for the row in the Composebox context menu that opens a flyout listing all open tabs to share.">
         Add tabs
       </message>
@@ -9713,6 +9721,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_READING_MODE_LINE_FOCUS_OFF_LABEL" desc="Dropdown option for turning off line focus.">
         Off
       </message>
+      <message name="IDS_READING_MODE_LINE_FOCUS_ON_LABEL" desc="Dropdown option for turning on line focus.">
+        On
+      </message>
       <message name="IDS_READING_MODE_LINE_FOCUS_SMALL_FOCUS_LABEL_SCREENREADER" desc="Screen reader label for the dropdown option for the small height window line focus option.">
         Small focus style
       </message>
@@ -9732,7 +9743,10 @@ Keep your key file in a safe place. You will need it to create new versions of y
         Follow cursor movement
       </message>
       <message name="IDS_READING_MODE_LINE_FOCUS_OFF_LABEL_SCREENREADER" desc="Screen reader label for the dropdown option for turning off line focus.">
-        Off (no line focus)
+        Off (disable line focus)
+      </message>
+      <message name="IDS_READING_MODE_LINE_FOCUS_ON_LABEL_SCREENREADER" desc="Screen reader label for the dropdown option for turning on line focus.">
+        On (enable line focus)
       </message>
       <if expr="is_macosx">
         <message name="IDS_READING_MODE_KEYBOARD_SHORTCUT_IPH_BODY" desc="Text for the help bubble describing the keyboard shortcut used to open and close reading mode.">
@@ -9913,6 +9927,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
       </message>
       <message name="IDS_READING_MODE_LINE_FOCUS_LABEL" desc="Accessibility label for the line focus menu item in reading mode.">
         Line focus
+      </message>
+      <message name="IDS_READING_MODE_TURN_LINE_FOCUS_OFF_LABEL" desc="Text for the toolbar button in reading mode that turns off line focus. Displays only when line focus is on.">
+        Turn off focus
       </message>
       <message name="IDS_READING_MODE_SIDE_PANEL_LABEL" desc="Accessibility label for the Side panel option in view menu for reading mode.">
         Side panel
@@ -13895,12 +13912,6 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
         <message name="IDS_CONTENT_CONTEXT_SHARING_CLICK_TO_CALL_SINGLE_DEVICE" desc="The label of item for click to call in context menu for showing device name when one device is available.">
           Call from <ph name="DEVICE_NAME">$1<ex>Jimmy's Pixel</ex></ph>
         </message>
-        <message name="IDS_CONTENT_CONTEXT_SHARING_SHARED_CLIPBOARD_MULTIPLE_DEVICES" desc="The label of item for shared clipboard in context menu when multiple devices are available.">
-          Copy to your device
-        </message>
-        <message name="IDS_CONTENT_CONTEXT_SHARING_SHARED_CLIPBOARD_SINGLE_DEVICE" desc="The label of item for shared clipboard in context menu for showing device name when one device is available.">
-          Copy to <ph name="DEVICE_NAME">$1<ex>Jimmy's Pixel</ex></ph>
-        </message>
         <message name="IDS_CONTENT_CONTEXT_SHARING_SHARED_CLIPBOARD_NOTIFICATION_TITLE_UNKNOWN_DEVICE" desc="Title text displayed in a shared clipboard notification when the source device name is unknown.">
           Text shared from other device
         </message>
@@ -13921,12 +13932,6 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
         </message>
         <message name="IDS_CONTENT_CONTEXT_SHARING_CLICK_TO_CALL_SINGLE_DEVICE" desc="In Title Case: The label of item for click to call in context menu when single device is available.">
           Call from <ph name="DEVICE_NAME">$1<ex>Jimmy's Pixel</ex></ph>
-        </message>
-        <message name="IDS_CONTENT_CONTEXT_SHARING_SHARED_CLIPBOARD_MULTIPLE_DEVICES" desc="In Title Case: The label of item for shared clipboard in context menu when multiple devices are available.">
-          Copy to Your Device
-        </message>
-        <message name="IDS_CONTENT_CONTEXT_SHARING_SHARED_CLIPBOARD_SINGLE_DEVICE" desc="In Title Case: The label of item for shared clipboard in context menu when single device is available.">
-          Copy to <ph name="DEVICE_NAME">$1<ex>Jimmy's Pixel</ex></ph>
         </message>
         <message name="IDS_CONTENT_CONTEXT_SHARING_SHARED_CLIPBOARD_NOTIFICATION_TITLE_UNKNOWN_DEVICE" desc="Title text displayed in a shared clipboard notification when the source device name is unknown.">
           Text shared from Other Device
@@ -16530,6 +16535,18 @@ Please help our engineers fix this problem. Tell us what happened right before y
       <message name="IDS_DISPLAY_MEDIA_PICKER_TEXT" desc="Text for the window picker dialog shown when a getDisplayMedia capture is requested by an app to be used by the app itself.">
         The site will be able to see the contents of your screen
       </message>
+      <message name="IDS_DISPLAY_MEDIA_PICKER_AUDIO_RECOMMENDED" desc="Warning text for the window picker dialog shown when getDisplayMedia requested audio preference is high.">
+        This site recommends sharing audio for full functionality
+      </message>
+      <message name="IDS_DISPLAY_MEDIA_PICKER_SHARE_SYSTEM_AUDIO_CHECKBOX" desc="Simplified checkbox label for sharing system audio.">
+        Share with system audio
+      </message>
+      <message name="IDS_DISPLAY_MEDIA_PICKER_SHARE_TAB_AUDIO_CHECKBOX" desc="Simplified checkbox label for sharing tab audio.">
+        Share with tab audio
+      </message>
+      <message name="IDS_DISPLAY_MEDIA_PICKER_CONFIRM_BUTTON_SHARE_WITH_AUDIO" desc="Confirmation button label when audio sharing is selected.">
+        Share with Audio
+      </message>
       <message name="IDS_DESKTOP_MEDIA_PICKER_TEXT_DELEGATED" desc="Text for the window picker dialog shown when desktop capture is requested by an app to be used by a tab.">
         <ph name="APP_NAME">$1<ex>Google Hangouts</ex></ph> wants to share the contents of your screen with <ph name="TARGET_NAME">$2<ex>https://google.com</ex></ph>.
       </message>
@@ -16602,11 +16619,17 @@ Please help our engineers fix this problem. Tell us what happened right before y
       <message name="IDS_DESKTOP_MEDIA_PICKER_DELEGATED_SOURCE_LIST_WINDOW_BUTTON" desc="Select window button text." >
         Choose a window
       </message>
+      <message name="IDS_DESKTOP_MEDIA_PICKER_DELEGATED_SOURCE_LIST_WINDOW_BUTTON_WITH_AUDIO" desc="Select window with audio button text." >
+        Choose a window with audio
+      </message>
       <message name="IDS_DESKTOP_MEDIA_PICKER_DELEGATED_SOURCE_LIST_SCREEN_TEXT" desc="Select screen label text." >
         To share your screen, use your system's screen picker
       </message>
       <message name="IDS_DESKTOP_MEDIA_PICKER_DELEGATED_SOURCE_LIST_SCREEN_BUTTON" desc="Select screen button text." >
         Choose a screen
+      </message>
+      <message name="IDS_DESKTOP_MEDIA_PICKER_DELEGATED_SOURCE_LIST_SCREEN_BUTTON_WITH_AUDIO" desc="Select screen with audio button text." >
+        Choose a screen with audio
       </message>
 
       <message name="IDS_SHARE_THIS_TAB_DIALOG_TITLE" desc="Title for the tab-sharing dialog shown when a getDisplayMedia capture is constrained to share only the current tab.">
@@ -17359,8 +17382,8 @@ Please help our engineers fix this problem. Tell us what happened right before y
       Open Anyway
     </message>
 
-    <if expr="is_win or is_macosx or is_linux">
-      <message name="IDS_UTILITY_PROCESS_SYSTEM_SIGNALS_NAME" desc="The name of the utility process used to collect system signals. Only spawned on Windows, Mac or Linux.">
+    <if expr="is_win or is_macosx or is_linux or is_chromeos">
+      <message name="IDS_UTILITY_PROCESS_SYSTEM_SIGNALS_NAME" desc="The name of the utility process used to collect system signals. Only spawned on Windows, Mac, Linux or ChromeOS.">
         System Signals Utilities
       </message>
     </if>
@@ -18336,6 +18359,9 @@ Please help our engineers fix this problem. Tell us what happened right before y
     <message name="IDS_DEEP_SCANNING_DIALOG_PASTE_BYPASS_JUSTIFICATION_LABEL" desc="Text displayed in the label above the bypass justification text area, explaining to the user that they have to enter a justification for pasting data even though there was a data loss prevention warning.">
       Please enter a reason for pasting this data:
     </message>
+    <message name="IDS_DEEP_SCANNING_DIALOG_COPY_BYPASS_JUSTIFICATION_LABEL" desc="Text displayed in the label above the bypass justification text area, explaining to the user that they have to enter a justification for copying data even though there was a data loss prevention warning.">
+      Please enter a reason for copying this data:
+    </message>
     <message name="IDS_DEEP_SCANNING_DIALOG_PRINT_BYPASS_JUSTIFICATION_LABEL" desc="Text displayed in the label above the bypass justification text area, explaining to the user that they have to enter a justification for printing a document or page even though there was a data loss prevention warning.">
       Please enter a reason for printing this data:
     </message>
@@ -18513,7 +18539,7 @@ Please help our engineers fix this problem. Tell us what happened right before y
     </message>
 
     <!-- Extension request -->
-    <if expr="not is_android">
+    <if expr="not is_android or enable_extensions_core">
       <message name="IDS_ENTERPRISE_EXTENSION_REQUEST_APPROVED_TITLE" desc="The notification title when there are some extension requests approved.">
         {NUM_EXTENSIONS, plural,
           =1 {An extension has been approved}
@@ -19009,7 +19035,7 @@ Please help our engineers fix this problem. Tell us what happened right before y
         Dismiss
       </message>
       <message name="IDS_PERFORMANCE_INTERVENTION_BUTTON_TOOLTIP" desc="The tooltip for the performance intervention toolbar button">
-        Perfomance issue alert
+        Performance issue alert
       </message>
       <message name="IDS_PERFORMANCE_INTERVENTION_BUTTON_ACCNAME" desc="The accessibility text for the performance intervention toolbar button">
         Performance issue alert
@@ -19390,7 +19416,7 @@ Please help our engineers fix this problem. Tell us what happened right before y
     Add freehand drawings, signatures, and highlights with the new Draw tool
     </message>
     <message name="IDS_PDF_TEXT_ANNOTATIONS_IPH_BODY" desc="Content of in-product help to introduce the PDF Text Annotations feature.">
-    Add text annotations with the new "Add text annotations" tool
+    Add text, comments, and notes with the new Text Annotations tool
     </message>
 
     <!-- PDF Searchify elements. -->

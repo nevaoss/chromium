@@ -9,6 +9,7 @@ import 'chrome://resources/cr_components/cr_shortcut_input/cr_shortcut_input.js'
 import '../controls/settings_toggle_button.js';
 import 'chrome://resources/cr_elements/cr_expand_button/cr_expand_button.js';
 import 'chrome://resources/cr_elements/cr_icon/cr_icon.js';
+import 'chrome://resources/cr_elements/md_select.css.js';
 import '../icons.html.js';
 import '../privacy_icons.html.js';
 import '../settings_page/settings_subpage.js';
@@ -27,6 +28,7 @@ import {WebUiListenerMixin} from 'chrome://resources/cr_elements/web_ui_listener
 import {assert} from 'chrome://resources/js/assert.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {OpenWindowProxyImpl} from 'chrome://resources/js/open_window_proxy.js';
+import {sanitizeInnerHtml} from 'chrome://resources/js/parse_html_subset.js';
 import {PolymerElement} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
 import {AiPageActions} from '../ai_page/constants.js';
@@ -56,6 +58,7 @@ export enum SettingsGlicPageFeaturePrefName {
   EXPERIMENTAL_TRIGGERING_ENABLED = 'glic.experimental_triggering_enabled',
   KEEP_SIDEPANEL_OPEN_ON_NEW_TABS_ENABLED =
       'glic.keep_sidepanel_open_on_new_tabs_enabled',
+  HOTKEY_GLOBAL_SCOPE_ENABLED = 'glic.hotkey_global_scope_enabled',
 }
 
 // browser_element_identifiers constants
@@ -85,6 +88,12 @@ export class SettingsGlicSubpageElement extends SettingsGlicSubpageElementBase {
       disallowedByAdmin_: {
         type: Boolean,
         value: false,
+      },
+
+      selectedScope_: {
+        type: String,
+        computed: 'computeSelectedScope_(' +
+            'prefs.glic.hotkey_global_scope_enabled.value)',
       },
 
       registeredShortcut_: {
@@ -147,6 +156,11 @@ export class SettingsGlicSubpageElement extends SettingsGlicSubpageElementBase {
       glicSelectionFeatureEnabled_: {
         type: Boolean,
         value: () => loadTimeData.getBoolean('glicSelectionFeatureEnabled'),
+      },
+
+      glicHotkeyLocalScopeEnabled_: {
+        type: Boolean,
+        value: () => loadTimeData.getBoolean('glicHotkeyLocalScopeEnabled'),
       },
 
       showGlicDefaultTabContextSetting_: {
@@ -319,6 +333,11 @@ export class SettingsGlicSubpageElement extends SettingsGlicSubpageElementBase {
         value: () =>
             loadTimeData.getBoolean('actorLoginFederatedLoginSupportEnabled'),
       },
+
+      webActuationToggleConsider2_: {
+        type: Object,
+        computed: 'computeWebActuationToggleConsider2_()',
+      },
     };
   }
 
@@ -341,6 +360,7 @@ export class SettingsGlicSubpageElement extends SettingsGlicSubpageElementBase {
   private selectionShortcutInput_: string;
   private removedShortcut_: string|null = null;
   declare private disallowedByAdmin_: boolean;
+  declare private selectedScope_: string;
   declare private registeredShortcut_: string;
   declare private registeredFocusToggleShortcut_: string;
   declare private registeredSelectionShortcut_: string;
@@ -355,6 +375,7 @@ export class SettingsGlicSubpageElement extends SettingsGlicSubpageElementBase {
   declare private glicExtensionsFeatureEnabled_: boolean;
   declare private glicUserStatusCheckFeatureEnabled_: boolean;
   declare private glicSelectionFeatureEnabled_: boolean;
+  declare private glicHotkeyLocalScopeEnabled_: boolean;
   declare private showGlicDefaultTabContextSetting_: boolean;
   declare private showGlicExperimentalTriggering_: boolean;
   declare private showGlicPersonalContextLink_: boolean;
@@ -379,6 +400,7 @@ export class SettingsGlicSubpageElement extends SettingsGlicSubpageElementBase {
       chrome.settingsPrivate.PrefObject<boolean>;
   declare private experimentalTriggeringSubLabel_: string;
   declare private experimentalTriggeringExpanded_: boolean;
+  declare private webActuationToggleConsider2_: TrustedHTML;
   declare private isWebActuationDisabledForEnterprise_: boolean;
   declare private webActuationDisabledForEnterprisePref_:
       chrome.settingsPrivate.PrefObject<boolean>;
@@ -459,6 +481,24 @@ export class SettingsGlicSubpageElement extends SettingsGlicSubpageElementBase {
         'GlicOsEntrypoint.Settings.Toggle' +
         (enabled ? '.Enabled' : '.Disabled'));
     this.hideHelpBubble(OS_WIDGET_TOGGLE_ELEMENT_ID);
+  }
+
+  private computeSelectedScope_(globalEnabled: boolean): string {
+    return globalEnabled ? 'GLOBAL' : 'CHROME';
+  }
+
+  private computeMainShortcutOpened_(
+      launcherEnabled: boolean, localScopeEnabled: boolean): boolean {
+    return launcherEnabled || localScopeEnabled;
+  }
+
+  private onScopeChanged_(event: Event) {
+    const select = event.target as HTMLSelectElement;
+    const isGlobal = select.value === 'GLOBAL';
+    this.setPrefValue(
+        SettingsGlicPageFeaturePrefName.HOTKEY_GLOBAL_SCOPE_ENABLED, isGlobal);
+    this.metricsBrowserProxy_.recordAction(
+        'Glic.Settings.HotkeyScope.' + (isGlobal ? 'Global' : 'Chrome'));
   }
 
   private onGeolocationToggleChange_(event: Event) {
@@ -763,7 +803,11 @@ export class SettingsGlicSubpageElement extends SettingsGlicSubpageElementBase {
   }
 
   private computeExperimentalTriggeringSubLabel_(): string {
-    return this.i18nAdvanced('glicExperimentalTriggeringSublabel').toString();
+    return this
+        .i18nAdvanced('glicExperimentalTriggeringSublabel', {
+          attrs: ['aria-label', 'aria-description'],
+        })
+        .toString();
   }
 
   private onWebActuationExpand_() {
@@ -777,11 +821,64 @@ export class SettingsGlicSubpageElement extends SettingsGlicSubpageElementBase {
   }
 
   private computeWebActuationSubLabel_(): string {
-    return this
-        .i18nAdvanced('glicWebActuationToggleSublabel', {
-          attrs: ['aria-label', 'aria-description', 'target'],
-        })
-        .toString();
+    const html = this.i18nAdvanced('glicWebActuationToggleSublabelV2', {
+                       attrs: ['aria-label', 'aria-description', 'target'],
+                     })
+                     .toString();
+    let result = html;
+    if (loadTimeData.getBoolean('glicSettingsA11yContextFixEnabled')) {
+      const learnMoreLabel =
+          this.i18n('glicWebActuationToggleLearnMoreAriaLabel');
+      const opensInNewTab = this.i18n('opensInNewTab');
+      const escapedLearnMoreLabel = escapeAttr(learnMoreLabel);
+      const escapedOpensInNewTab = escapeAttr(opensInNewTab);
+      result = html.replace(/<a ([^>]*)>/g, (match: string) => {
+        return match.replace(
+            '<a ',
+            `<a aria-label="${escapedLearnMoreLabel}" aria-description="${
+                escapedOpensInNewTab}" `);
+      });
+    }
+    return result;
+  }
+
+  private computeWebActuationToggleConsider2_(): TrustedHTML {
+    const html = this.i18nAdvanced('glicWebActuationToggleConsider2V2', {
+                       attrs: ['aria-label', 'aria-description', 'target'],
+                     })
+                     .toString();
+    let result = html;
+    if (loadTimeData.getBoolean('glicSettingsA11yContextFixEnabled')) {
+      const safelyLabel =
+          this.i18n('glicWebActuationToggleConsiderSafelyAriaLabel');
+      const unexpectedLabel =
+          this.i18n('glicWebActuationToggleConsiderUnexpectedResultsAriaLabel');
+      const opensInNewTab = this.i18n('opensInNewTab');
+      const escapedSafelyLabel = escapeAttr(safelyLabel);
+      const escapedUnexpectedLabel = escapeAttr(unexpectedLabel);
+      const escapedOpensInNewTab = escapeAttr(opensInNewTab);
+      // Match links by URL substring because URLs are server-configurable and
+      // may change, but typically keep their characteristic keywords.
+      result = html.replace(/<a [^>]*>/g, (match: string) => {
+        let label = '';
+        if (match.includes('use-policy')) {
+          label = escapedSafelyLabel;
+        } else if (match.includes('unexpected_results')) {
+          label = escapedUnexpectedLabel;
+        }
+
+        if (label) {
+          return match.replace(
+              '<a ',
+              `<a aria-label="${label}" aria-description="${
+                  escapedOpensInNewTab}" `);
+        }
+        return match;
+      });
+    }
+    return sanitizeInnerHtml(result, {
+      attrs: ['aria-label', 'aria-description', 'target'],
+    });
   }
 
   private computeWebActuationLearnMoreUrl_(): string {
@@ -816,6 +913,10 @@ export class SettingsGlicSubpageElement extends SettingsGlicSubpageElementBase {
         'privacy:cookie' :
         'privacy:cookie-old';
   }
+}
+
+function escapeAttr(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 }
 
 declare global {

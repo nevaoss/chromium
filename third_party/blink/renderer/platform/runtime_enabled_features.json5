@@ -385,6 +385,12 @@
       name: "AIPageContentPaidContentAnnotation",
       status: "stable"
     },
+    // Let fixed wrappers with pointer-events: none use normal APC container
+    // skipping instead of preserving them automatically.
+    {
+      name: "AIPageContentSkipUnclickableFixedOverlays",
+      status: "stable",
+    },
     // When enabled, iframe element coordinates will be tracked using the
     // Element::SetTrackedElementSubRect() method.
     {
@@ -1026,6 +1032,12 @@
       status: "stable",
     },
     {
+      // Enables the <camera> and <microphone> HTML elements, allowing sites to
+      // embed camera and microphone permission request controls directly in the page.
+      // https://chromestatus.com/feature/5153829504024576
+      name: "CameraAndMicrophoneElements",
+    },
+    {
       name: "Canvas2dCanvasFilter",
       status: "experimental",
     },
@@ -1134,6 +1146,24 @@
       // Signals. See https://crrev.com/c/4544201 and https://crbug.com/1458640.
       name: "CCTNewRFMPushBehavior",
       base_feature_status: "enabled",
+    },
+    {
+      // Compression Dictionary Transport: Align handling of crossorigin
+      // attribute on the spec.
+      name: "CDTNewCrossOriginHandling",
+      status: "test",
+    },
+    {
+      // Compression Dictionary Transport: Use "compression-dictionary" as the
+      // destination string.
+      name: "CDTNewDestination",
+      status: "test",
+    },
+    {
+      // Compression Dictionary Transport: Align handling of referrerpolicy
+      // attribute and referrer on the spec.
+      name: "CDTNewReferrerAndReferrerPolicyHandling",
+      status: "test",
     },
     {
       name: "CheckableInputTypeLayoutInline",
@@ -1343,10 +1373,6 @@
       public: true,
     },
     {
-      name: "CompressionDictionaryTransportNewCrossOriginHandling",
-      status: "test",
-    },
-    {
       name: "ComputedAccessibilityInfo",
       status: "experimental",
     },
@@ -1395,6 +1421,26 @@
       settable_from_internals: true,
     },
     {
+      // Enables Connection-Allowlist embedded enforcement: the
+      // `connectionallowlist` iframe content attribute (and its
+      // `connectionAllowlist` IDL reflection), by which an embedder requires a
+      // Connection-Allowlist of the document it frames. Kept separate from the
+      // `ConnectionAllowlist` feature so this in-development piece can iterate
+      // independently. See
+      // https://github.com/WICG/connection-allowlists/issues/1.
+      //
+      // Has its own `origin_trial_feature_name` so the `connectionAllowlist` IDL
+      // reflection can gate on this feature directly: that makes the Web IDL
+      // bindings generator treat it as context-dependent and emit the
+      // context-aware accessor, so the property is exposed only when embedded
+      // enforcement is actually available -- not merely when the base
+      // `ConnectionAllowlist` origin trial is enabled.
+      name: "ConnectionAllowlistEmbeddedEnforcement",
+      origin_trial_feature_name: "ConnectionAllowlistEmbeddedEnforcement",
+      status: "experimental",
+      depends_on: ["ConnectionAllowlist"],
+    },
+    {
       // Fix for https://crbug.com/40659076. When enabled, queryCommandState for
       // 'subscript' or 'superscript' with a caret selection will consider
       // ancestor <sub> or <sup> elements, matching the behavior for range
@@ -1419,6 +1465,10 @@
       origin_trial_feature_name: "ContainerTiming",
       origin_trial_allows_third_party: true,
       status: "experimental",
+    },
+    {
+      name: "ContainerTimingPrepaintTraversal",
+      depends_on: ["ContainerTiming"],
     },
     {
       name: "ContentIndex",
@@ -1538,10 +1588,11 @@
       status: "stable",
     },
     {
+      // Ship in M152, should be removed in M154.
       // https://drafts.csswg.org/css-color-5/#relative-alpha
       // https://chromestatus.com/feature/5070160203481088
       name: "CSSAlphaColorFunction",
-      status: "experimental",
+      status: "stable",
     },
     {
       // Allows using counter() and counters() in alt text (after / in content property).
@@ -2224,6 +2275,11 @@
       status: "experimental",
     },
     {
+      name: "DeclarativeFragment",
+      status: "experimental",
+      depends_on: ["DocumentPatching"],
+    },
+    {
       name: "DeclarativePerformanceObserver",
       origin_trial_feature_name: "DeclarativePerformanceObserver",
       status: "experimental",
@@ -2280,6 +2336,11 @@
     {
       name: "DesktopPWAsAdditionalWindowingControls",
       status: "experimental",
+      origin_trial_feature_name: "DesktopPWAsAdditionalWindowingControls",
+      origin_trial_os: ["win", "mac", "linux", "chromeos"],
+      origin_trial_allows_third_party: true,
+      base_feature_status: "enabled",
+      copied_from_base_feature_if: "overridden",
     },
     {
       name: "DesktopPWAsAdditionalWindowingControlsOnMove",
@@ -2294,7 +2355,7 @@
     },
     {
       name: "DeviceOrientationRequestPermission",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "DevicePosture",
@@ -2687,6 +2748,17 @@
       name: "EmailVerificationStatusIndicator",
       status: "experimental",
       depends_on: ["EmailVerificationProtocol"],
+      origin_trial_feature_name: "EmailVerificationProtocol",
+      origin_trial_allows_third_party: true,
+      origin_trial_os: ["win", "mac", "linux", "chromeos"],
+      status: {
+        "Win": "experimental",
+        "Mac": "experimental",
+        "Linux": "experimental",
+        "ChromeOS": "experimental",
+        "default": "",
+      },
+      base_feature: "none",
     },
     {
       // This was added in M151 and can be removed after M153.
@@ -3133,7 +3205,6 @@
     {
       name: "Fledge",
       status: "stable",
-      base_feature: "none",
       public: true,
     },
     {
@@ -4023,6 +4094,10 @@
       status: "stable",
     },
     {
+      name: "MaskWaitForAllImages",
+      status: "stable",
+    },
+    {
       // Enables MathMLAnchorElement
       name: "MathMLAnchorElement",
       status: "test",
@@ -4177,7 +4252,7 @@
       status: "stable",
     },
     {
-      // Killswitch M149.
+      // Killswitch M149. Functionality changed in M151.
       name: "MergeStickyLayers",
       status: "stable",
     },
@@ -4281,6 +4356,18 @@
         "default": "experimental",
       },
       base_feature: "none",
+    },
+    {
+      // See crbug.com/521921832
+      // Any potential behavioral changes excepting bugfixes from the V2 implementation (including
+      // changes to when the histogram is reported, like early-outs in Animation::PreCommit) are behind
+      // this flag, for safety and consistent reporting on the V1 enum while it is still supported.
+      name: "NewAnimationCompositingChecking",
+      status: "test"
+    },
+    {
+      // Enhanced reporting to dev-tools of the composited/non-composited state of animations.
+      name: "NewAnimationDispositionReporting"
     },
     {
       // https://chromestatus.com/feature/5054329641893888
@@ -4679,10 +4766,6 @@
       status: "experimental"
     },
     {
-      name: "PerformanceNavigationTimingConfidence",
-      status: "stable",
-    },
-    {
       name: "PeriodicBackgroundSync",
       public: true,
       status: "stable",
@@ -4714,10 +4797,6 @@
       base_feature: "none",
       origin_trial_feature_name: "PNaCl",
       public: true,
-    },
-    {
-      name: "PointerEventDeviceId",
-      status: "stable",
     },
     {
       // Flag for enabling the pointer lock API on Android
@@ -5426,6 +5505,7 @@
     {
       // Killswitch M151.
       name: "ScrollingContentsCullRectOnScrollNode",
+      implied_by: ["MergeStickyLayers"],
       status: "stable",
     },
     {
@@ -5849,6 +5929,11 @@
       // outside their containing block.
       // See https://crbug.com/41024699.
       name: "SkipParagraphSplitForInlineInsertHTML",
+      status: "stable",
+    },
+    {
+      // crbug.com/517761566
+      name: "SkipStaleUndoStepsInIdleSpellCheck",
       status: "stable",
     },
     {
@@ -6306,10 +6391,6 @@
     },
     {
       name: "TextAreaEmptyPlaceholderBreak",
-      status: "stable",
-    },
-    {
-      name: "TextAreaScrollTopPreview",
       status: "stable",
     },
     {
@@ -7491,6 +7572,7 @@
       origin_trial_feature_name: "XSLT",
       origin_trial_type: "deprecation",
       origin_trial_allows_insecure: true,
+      origin_trial_allows_third_party: true,
     },
     {
       // A feature flag that will be used for a "special trial" of disabling

@@ -356,9 +356,16 @@ class GTestsApp(object):
     if is_running_rosetta():
       cmd.extend(['arch', '-arch', 'arm64'])
     cmd.extend([
-        'xcodebuild', 'test-without-building', '-xctestrun',
-        self.fill_xctest_run(out_dir), '-destination', destination,
-        '-resultBundlePath', out_dir
+        'xcodebuild',
+        'test-without-building',
+        '-xctestrun',
+        self.fill_xctest_run(out_dir),
+        '-destination',
+        destination,
+        '-resultBundlePath',
+        out_dir,
+        '-collect-test-diagnostics',
+        'never',
     ])
     if clones > 1:
       cmd.extend([
@@ -415,6 +422,8 @@ class EgtestsApp(GTestsApp):
 
   def get_all_tests(self):
     """Gets all tests to run in this object."""
+    if not self.all_eg_test_names and self.initial_included_tests:
+      return list(self.initial_included_tests)
     all_tests = []
     for test_class, test_method in self.all_eg_test_names:
       test_name = '%s/%s' % (test_class, test_method)

@@ -112,7 +112,6 @@ constexpr base::TimeDelta kTemporaryResourceDeletionDelay = base::Seconds(3);
 
 // If enabled, VideoTiming is held as a strong member of HTMLVideoElement.
 BASE_FEATURE(kKeepVideoTimingAlive,
-             "KeepVideoTimingAlive",
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 // These values are persisted to logs. Entries should not be renumbered and
@@ -839,9 +838,10 @@ unsigned HTMLVideoElement::webkitDecodedFrameCount() const {
   return 0;
 }
 
-void HTMLVideoElement::DidChangeIsCanvasOrInCanvasSubtree() {
-  HTMLMediaElement::DidChangeIsCanvasOrInCanvasSubtree();
-  if (IsCanvasOrInCanvasSubtree()) {
+void HTMLVideoElement::DidChangeIsCanvasOrInCanvasSubtree(
+    bool is_in_canvas_subtree) {
+  HTMLMediaElement::DidChangeIsCanvasOrInCanvasSubtree(is_in_canvas_subtree);
+  if (is_in_canvas_subtree) {
     UpdateLayoutObject();
     if (auto* wmp = GetWebMediaPlayer()) {
       wmp->RequestVideoFrameCallback();

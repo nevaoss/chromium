@@ -68,6 +68,8 @@ enum class GeminiPageContextComputationState {
   kBlocked,
   // The page context is still being created.
   kPending,
+  // The page context computation failed because the user account is mismatched.
+  kMismatchedAccount,
 };
 
 // Enum representing the page context attachment state of the Gemini experience.
@@ -254,6 +256,9 @@ bool IsLiveStopButtonHidden();
 // Sets and gets the number of caption lines in Gemini Live mode.
 void SetLiveCaptionsNumberOfLines(int number_of_lines);
 int GetLiveCaptionsNumberOfLines();
+
+// Sets whether the suggestion chips should be shown on the floaty.
+void SetShouldShowSuggestionChips(bool should_show);
 
 // Returns the view controller for the Gemini floaty.
 UIViewController* GetFloatyViewControllerWithConfiguration(

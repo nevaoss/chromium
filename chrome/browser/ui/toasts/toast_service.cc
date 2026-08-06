@@ -63,6 +63,10 @@
 #include "components/plus_addresses/core/browser/resources/vector_icons.h"
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
+#if BUILDFLAG(ENTERPRISE_CONTENT_ANALYSIS)
+#include "chrome/browser/enterprise/connectors/analysis/copy_warning_delegate_tracker.h"
+#endif  // BUILDFLAG(ENTERPRISE_CONTENT_ANALYSIS)
+
 namespace {
 const gfx::VectorIcon& GetTaskInProgressIcon() {
   return glic::GlicVectorIconManager::GetVectorIcon(IDR_ACTOR_AUTO_BROWSE_ICON);
@@ -86,7 +90,7 @@ void ToastService::RegisterToasts(
   toast_registry_->RegisterToast(
       ToastId::kLinkCopied,
       ToastSpecification::Builder(features::IsRoundedIconsEnabled()
-                                      ? kLinkIcon
+                                      ? vector_icons::kLinkIcon
                                       : kLinkChromeRefreshOldIcon,
                                   IDS_LINK_COPIED_TOAST_BODY)
           .Build());
@@ -94,14 +98,14 @@ void ToastService::RegisterToasts(
   toast_registry_->RegisterToast(
       ToastId::kImageCopied,
       ToastSpecification::Builder(features::IsRoundedIconsEnabled()
-                                      ? kContentCopyIcon
+                                      ? vector_icons::kContentCopyIcon
                                       : kCopyMenuOldIcon,
                                   IDS_IMAGE_COPIED_TOAST_BODY)
           .Build());
   toast_registry_->RegisterToast(
       ToastId::kVideoFrameCopied,
       ToastSpecification::Builder(features::IsRoundedIconsEnabled()
-                                      ? kContentCopyIcon
+                                      ? vector_icons::kContentCopyIcon
                                       : kCopyMenuOldIcon,
                                   IDS_VIDEO_FRAME_COPIED_TOAST_BODY)
           .Build());
@@ -109,7 +113,7 @@ void ToastService::RegisterToasts(
   toast_registry_->RegisterToast(
       ToastId::kLinkToHighlightCopied,
       ToastSpecification::Builder(features::IsRoundedIconsEnabled()
-                                      ? kLinkIcon
+                                      ? vector_icons::kLinkIcon
                                       : kLinkChromeRefreshOldIcon,
                                   IDS_LINK_COPIED_TO_HIGHLIGHT_TOAST_BODY)
           .Build());
@@ -438,16 +442,21 @@ void ToastService::RegisterToasts(
           .Build());
 
   if (base::FeatureList::IsEnabled(
-          autofill::features::kAutofillAiWalletPrivatePasses)) {
+          autofill::features::kAutofillAiWalletPrivatePasses) ||
+      base::FeatureList::IsEnabled(
+          autofill::features::kAutofillAmbientAutofill)) {
     toast_registry_->RegisterToast(
-        ToastId::kAutofillAiFetchFromWalletErrorMessage,
+        ToastId::kAutofillAiFetchEntityErrorMessage,
         ToastSpecification::Builder(
             features::IsRoundedIconsEnabled()
                 ? vector_icons::kPersonTextIcon
                 : vector_icons::kPersonTextOldIcon,
-            IDS_AUTOFILL_AI_WALLET_FETCH_FAILURE_NOTIFICATION)
+            IDS_AUTOFILL_AI_FETCH_ENTITY_FAILURE_NOTIFICATION)
             .AddGlobalScoped()
             .Build());
+  }
+  if (base::FeatureList::IsEnabled(
+          autofill::features::kAutofillAiWalletPrivatePasses)) {
     toast_registry_->RegisterToast(
         ToastId::kAutofillAiSaveToWalletErrorMessage,
         ToastSpecification::Builder(
@@ -665,14 +674,24 @@ void ToastService::RegisterToasts(
       ToastSpecification::Builder(vector_icons::kDomainIcon,
                                   IDS_ENTERPRISE_COPY_MONITORED_TOAST_BODY)
           .Build());
-  // TODO(b/325455508): Add callback functions for the buttons.
+
   toast_registry_->RegisterToast(
       ToastId::kEnterpriseCopyWarning,
       ToastSpecification::Builder(vector_icons::kDomainIcon,
                                   IDS_ENTERPRISE_COPY_WARNING_TOAST_BODY)
           .AddCloseButton()
-          .AddActionButton(IDS_ENTERPRISE_COPY_WARNING_TOAST_BUTTON,
-                           base::DoNothing())
+          .AddActionButton(
+              IDS_ENTERPRISE_COPY_WARNING_TOAST_BUTTON,
+              base::BindRepeating(
+                  [](BrowserWindowInterface* window) {
+                    if (auto* tab = window->GetActiveTabInterface()) {
+                      if (auto* web_contents = tab->GetContents()) {
+                        enterprise_connectors::CopyWarningDelegateTracker::
+                            BypassAndClear(web_contents);
+                      }
+                    }
+                  },
+                  base::Unretained(browser_window_interface)))
           .Build());
   toast_registry_->RegisterToast(
       ToastId::kEnterpriseCopyBlocked,

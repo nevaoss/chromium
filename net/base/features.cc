@@ -63,6 +63,10 @@ const base::FeatureParam<base::TimeDelta> kDnsMinTransactionTimeout{
     &kDnsTransactionDynamicTimeouts, "DnsMinTransactionTimeout",
     base::Seconds(12)};
 
+BASE_FEATURE(kDnsPlatformFailFastAndRetry, base::FEATURE_DISABLED_BY_DEFAULT);
+const base::FeatureParam<bool> kDnsPlatformCancelPreviousAttemptOnRetry{
+    &kDnsPlatformFailFastAndRetry, "cancel_previous_attempt_on_retry", false};
+
 BASE_FEATURE(kUseDnsHttpsSvcb, base::FEATURE_ENABLED_BY_DEFAULT);
 
 const base::FeatureParam<bool> kUseDnsHttpsSvcbEnforceSecureResponse{
@@ -105,6 +109,8 @@ BASE_FEATURE(kHappyEyeballsV2,
 );
 
 BASE_FEATURE(kHappyEyeballsV3, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kEnableIntermediateDnsResults, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kAdjustIPv6FallbackTime, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -458,6 +464,9 @@ BASE_FEATURE(kDeviceBoundSessionsClientCertSelection,
 BASE_FEATURE(kDeviceBoundSessionsForSingleSignOn,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+BASE_FEATURE(kDeviceBoundSessionsPersistExpiryOnRefresh,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 BASE_FEATURE(kSpdySessionForProxyAdditionalChecks,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -558,6 +567,14 @@ BASE_FEATURE_PARAM(int,
                    &kDiskCacheBackendExperiment,
                    "SqlDiskCacheMaxReadBufferTotalSize",
                    32 * 1024 * 1024);
+BASE_FEATURE_PARAM(int,
+                   kSqlDiskCacheMaxSharedCacheCopyEntrySize,
+                   &kDiskCacheBackendExperiment,
+                   1024 * 1024);
+BASE_FEATURE_PARAM(int,
+                   kSqlDiskCacheSharedCacheReadBufferSize,
+                   &kDiskCacheBackendExperiment,
+                   512 * 1024);
 BASE_FEATURE_PARAM(bool,
                    kSqlDiskCacheSerialCheckpoint,
                    &kDiskCacheBackendExperiment,
@@ -664,6 +681,8 @@ BASE_FEATURE(kRestrictAbusePorts, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kRestrictAbusePortsOnLocalhost, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kTLSTrustAnchorIDs, base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kNonMtcTrustAnchorIDs, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kTlsMldsaSignatures, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -781,7 +800,6 @@ BASE_FEATURE_PARAM(base::TimeDelta,
                    base::Seconds(quic::kInitialIdleTimeoutSecs));
 
 BASE_FEATURE(kQuicIgnoreRedundantOnNetworkMadeDefault,
-             "QuicIgnoreRedundantOnNetworkMadeDefault",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kQuicLongerIdleConnectionTimeout,

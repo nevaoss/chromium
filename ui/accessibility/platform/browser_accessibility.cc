@@ -64,9 +64,10 @@ bool BrowserAccessibility::ignore_hovered_state_for_testing_ = false;
 // static
 BrowserAccessibility* BrowserAccessibility::FromAXPlatformNodeDelegate(
     AXPlatformNodeDelegate* delegate) {
-  if (!delegate || !delegate->IsWebContent())
+  if (!delegate) {
     return nullptr;
-  return static_cast<BrowserAccessibility*>(delegate);
+  }
+  return delegate->ToBrowserAccessibility();
 }
 
 BrowserAccessibility::BrowserAccessibility(BrowserAccessibilityManager* manager,
@@ -926,12 +927,13 @@ bool BrowserAccessibility::IsWebContent() const {
 }
 
 bool BrowserAccessibility::HasVisibleCaretOrSelection() const {
-  // The caret should be visible if Caret Browsing is enabled.
+  // The caret should be visible if Caret Browsing is enabled, but only in the
+  // node which contains it.
   //
   // TODO(crbug.com/40674120): Caret Browsing should be looking at leaf text
   // nodes so it might not return expected results in this method.
   if (AXPlatform::GetInstance().IsCaretBrowsingEnabled()) {
-    return true;
+    return node()->HasSelectionFocusInSubtree();
   }
   return node()->HasVisibleCaretOrSelection();
 }
@@ -985,6 +987,10 @@ std::string BrowserAccessibility::SubtreeToStringHelper(size_t level) {
   }
 
   return result;
+}
+
+BrowserAccessibility* BrowserAccessibility::ToBrowserAccessibility() {
+  return this;
 }
 
 const std::vector<gfx::NativeViewAccessible>

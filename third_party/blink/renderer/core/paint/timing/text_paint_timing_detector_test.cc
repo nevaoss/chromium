@@ -13,6 +13,7 @@
 #include "third_party/blink/renderer/core/frame/frame_test_helpers.h"
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
 #include "third_party/blink/renderer/core/html/html_element.h"
+#include "third_party/blink/renderer/core/paint/timing/largest_contentful_paint_manager.h"
 #include "third_party/blink/renderer/core/paint/timing/mock_paint_timing_callback_manager.h"
 #include "third_party/blink/renderer/core/paint/timing/paint_timing.h"
 #include "third_party/blink/renderer/core/paint/timing/paint_timing_detector.h"
@@ -69,10 +70,6 @@ class TextPaintTimingDetectorTest : public testing::Test {
         .GetTextPaintTimingDetector();
   }
 
-  LargestTextPaintManager& GetLargestTextPaintManager() {
-    return GetTextPaintTimingDetector().ltp_manager_;
-  }
-
   gfx::Rect GetViewportRect(LocalFrameView& view) {
     ScrollableArea* scrollable_area = view.GetScrollableArea();
     DCHECK(scrollable_area);
@@ -105,7 +102,9 @@ class TextPaintTimingDetectorTest : public testing::Test {
   }
 
   bool HasLargestIgnoredText() {
-    return !!GetLargestTextPaintManager().GetLargestIgnoredTextIfNotRemoved();
+    return PaintTiming::From(GetDocument())
+        .GetLargestContentfulPaintManager()
+        ->HasLargestIgnoredTextForTest();
   }
 
   void SimulateInputEvent() {
@@ -121,16 +120,12 @@ class TextPaintTimingDetectorTest : public testing::Test {
   }
 
   base::TimeTicks LargestPaintTime() {
-    return GetPaintTimingDetector()
-        .GetLargestContentfulPaintCalculator()
-        ->LatestLcpDetails()
+    return main_frame_lcp_calculator_->LatestLcpDetails()
         .largest_text_paint_time;
   }
 
   uint64_t LargestPaintSize() {
-    return GetPaintTimingDetector()
-        .GetLargestContentfulPaintCalculator()
-        ->LatestLcpDetails()
+    return main_frame_lcp_calculator_->LatestLcpDetails()
         .largest_text_paint_size;
   }
 
@@ -143,7 +138,9 @@ class TextPaintTimingDetectorTest : public testing::Test {
     PaintTiming::From(GetDocument())
         .SetCallbackManagerForTest(mock_callback_manager_);
     main_frame_lcp_calculator_ =
-        GetPaintTimingDetector().GetLargestContentfulPaintCalculator();
+        PaintTiming::From(GetDocument())
+            .GetLargestContentfulPaintManager()
+            ->LargestContentfulPaintCalculatorForTest();
     // Set this so presentation time callbacks aren't coarsened, which would
     // result in the callback running in a separate task.
     DOMWindowPerformance::performance(*GetDocument().domWindow())
@@ -157,7 +154,8 @@ class TextPaintTimingDetectorTest : public testing::Test {
     PaintTiming& timing = PaintTiming::From(*GetChildDocument());
     timing.SetCallbackManagerForTest(mock_callback_manager_);
     child_frame_lcp_calculator_ =
-        timing.GetPaintTimingDetector().GetLargestContentfulPaintCalculator();
+        timing.GetLargestContentfulPaintManager()
+            ->LargestContentfulPaintCalculatorForTest();
     // Set this so presentation time callbacks aren't coarsened, which would
     // result in the callback running in a separate task.
     DOMWindowPerformance::performance(*GetChildDocument()->domWindow())
@@ -897,14 +895,14 @@ TEST_F(TextPaintTimingDetectorTest, OpacityZeroHTMLWithInput) {
   SimulateRenderingAndPresentationTime();
   EXPECT_FALSE(TextRecordOfLargestTextPaint());
 
-  // FCP, however, should be marked, because that does not stop on input.
+  // FCP should not be marked, since this feature is tied to hard LCP.
   //
   // Note: `PaintTiming` doesn't support `MockPaintTimingCallbackManager`, so
   // check the paint time instead of presentation time.
   base::TimeTicks fcp_timestamp =
       PaintTiming::From(GetDocument())
           .FirstContentfulPaintRenderedButNotPresentedAsMonotonicTime();
-  EXPECT_FALSE(fcp_timestamp.is_null());
+  EXPECT_TRUE(fcp_timestamp.is_null());
 }
 
 TEST_F(TextPaintTimingDetectorTest, OpacityZeroHTMLRemoveElement) {

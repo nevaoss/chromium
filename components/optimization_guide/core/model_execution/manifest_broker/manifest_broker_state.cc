@@ -287,6 +287,7 @@ void ManifestBrokerState::OnServiceDisconnected(
 void ManifestBrokerState::GetStateInfo(
     mojom::ModelBrokerDebug::GetStateInfoCallback callback) {
   auto result = mojom::BrokerStateInfo::New();
+  result->is_asset_manager_initialized = asset_manager_ != nullptr;
   result->properties.push_back(
       mojom::BrokerPropertyInfo::New("Broker Type", "ManifestBrokerState"));
   base::Extend(result->properties,
@@ -331,7 +332,10 @@ void ManifestBrokerState::SetUseCaseRequested(const std::string& use_case,
 }
 
 void ManifestBrokerState::UninstallModels() {
-  asset_manager_->UninstallModels();
+  if (asset_manager_) {
+    asset_manager_->UninstallModels();
+    OnManifestUpdated();
+  }
 }
 
 void ManifestBrokerState::ResetModelCrashCount() {

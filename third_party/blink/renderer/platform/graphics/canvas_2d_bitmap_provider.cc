@@ -62,10 +62,6 @@ Canvas2DBitmapProvider::~Canvas2DBitmapProvider() {
   }
 }
 
-bool Canvas2DBitmapProvider::IsPrinting() const {
-  return delegate_ && delegate_->IsPrinting();
-}
-
 SkSurface* Canvas2DBitmapProvider::GetSkSurface() const {
   if (!surface_) {
     surface_ = CreateSkSurface();
@@ -204,25 +200,9 @@ scoped_refptr<StaticBitmapImage> Canvas2DBitmapProvider::Snapshot(
                                                 orientation);
 }
 
-std::optional<cc::PaintRecord> Canvas2DBitmapProvider::Flush(
-    FlushReason reason) {
-  if (!Recorder().HasReleasableDrawOps()) {
-    return std::nullopt;
-  }
-  ScopedRasterTimer timer(nullptr, *this, false);
-  bool want_to_print = IsPrinting() || reason == FlushReason::kPrinting ||
-                       reason == FlushReason::kCanvasPushFrameWhilePrinting;
-  bool preserve_recording = want_to_print && clear_frame_;
-
+void Canvas2DBitmapProvider::Flush(cc::PaintRecord recording) {
   clear_frame_ = false;
-  cc::PaintRecord recording;
-  recording = Recorder().ReleaseMainRecording();
   RasterRecord(recording);
-
-  last_recording_ =
-      preserve_recording ? std::optional(recording) : std::nullopt;
-
-  return recording;
 }
 
 void Canvas2DBitmapProvider::ReleaseImageProviderImages() {

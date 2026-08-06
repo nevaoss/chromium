@@ -68,7 +68,7 @@
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/ui/lens/lens_overlay_controller.h"
 #include "chrome/browser/ui/lens/lens_search_controller.h"
-#include "chrome/browser/ui/omnibox/omnibox_next_features.h"
+#include "components/omnibox/common/omnibox_features.h"
 #else
 #include "base/android/content_uri_utils.h"
 #endif
@@ -574,6 +574,10 @@ void ContextualTasksComposeboxHandler::InitializeInputStateModel() {
             tab_id = tabs::SessionMappedTabHandleFactory::GetInstance()
                          .GetHandleForSessionId(
                              file_info.tab_session_id.value().id());
+            // In case the tab is not mapped.
+            if (tab_id == tabs::TabHandle::NullValue) {
+              tab_id = file_info.tab_session_id.value().id();
+            }
           }
           tab_info->tab_id = tab_id;
           tab_info->title = file_info.tab_title.value_or("");

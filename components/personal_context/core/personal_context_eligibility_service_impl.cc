@@ -17,6 +17,8 @@
 #include "base/strings/string_util.h"
 #include "components/account_settings/account_setting_service.h"
 #include "components/glic/glic_pref_names.h"
+#include "components/optimization_guide/core/feature_registry/feature_registration.h"
+#include "components/optimization_guide/core/model_execution/model_execution_prefs.h"
 #include "components/personal_context/core/personal_context_debug_features.h"
 #include "components/personal_context/core/personal_context_features.h"
 #include "components/personal_context/core/personal_context_prefs.h"
@@ -103,10 +105,10 @@ SatisfiesAccountRequirements(const signin::IdentityManager* identity_manager,
   return std::pair{true, std::nullopt};
 }
 
-// Checks whether all opt-in for `AccountSettingService` state are met.
+// Checks whether all requirements for `AccountSettingService` state are met.
 [[nodiscard]] std::pair<bool,
                         std::optional<PersonalContextNonEligibilityReason>>
-SatisfiesOptInRequirements(
+SatisfiesAccountSettingRequirements(
     account_settings::AccountSettingService* account_settings,
     std::string* debug_message = nullptr) {
   if (!account_settings) {
@@ -151,6 +153,18 @@ SatisfiesPrefsRequirements(const PrefService* pref_service,
     MaybeOutputReason(debug_message, "GLIC FRE not completed.");
     return std::pair{false,
                      PersonalContextNonEligibilityReason::kNotGlicFirstRun};
+  }
+
+  const int policy_value = pref_service->GetInteger(
+      optimization_guide::prefs::kFindAndFillWithGeminiSettings);
+  if (policy_value ==
+      std::to_underlying(optimization_guide::model_execution::prefs::
+                             ModelExecutionEnterprisePolicyValue::kDisable)) {
+    MaybeOutputReason(
+        debug_message,
+        "Disallowed by FindAndFillWithGeminiSettings enterprise policy.");
+    // TODO(crbug.com/524157152): Add policy-related non-eligibility reason.
+    return std::pair{false, std::nullopt};
   }
 
   return std::pair{true, std::nullopt};
@@ -199,6 +213,11 @@ PersonalContextEligibilityServiceImpl::PersonalContextEligibilityServiceImpl(
     pref_registrar_.Init(pref_service_);
     pref_registrar_.Add(
         ::glic::prefs::kGlicCompletedFre,
+        base::BindRepeating(
+            &PersonalContextEligibilityServiceImpl::UpdateEligibilityState,
+            base::Unretained(this)));
+    pref_registrar_.Add(
+        optimization_guide::prefs::kFindAndFillWithGeminiSettings,
         base::BindRepeating(
             &PersonalContextEligibilityServiceImpl::UpdateEligibilityState,
             base::Unretained(this)));
@@ -251,7 +270,7 @@ PersonalContextEligibilityServiceImpl::ComputeEligibilityState() {
   }
 
   if (auto [satisfied, reason] =
-          SatisfiesOptInRequirements(account_settings_service_.get());
+          SatisfiesAccountSettingRequirements(account_settings_service_.get());
       !satisfied) {
     return std::pair{kDisabledNotEligible, reason};
   }
@@ -299,6 +318,10 @@ void PersonalContextEligibilityServiceImpl::OnExtendedAccountInfoUpdated(
 
 void PersonalContextEligibilityServiceImpl::OnAccountSettingDataUpdated(
     const std::string& setting_name) {
+  UpdateEligibilityState();
+}
+
+void PersonalContextEligibilityServiceImpl::OnAccountSettingsLoaded() {
   UpdateEligibilityState();
 }
 

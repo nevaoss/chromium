@@ -5,7 +5,11 @@
 #ifndef CHROME_BROWSER_WEB_APPLICATIONS_ISOLATED_WEB_APPS_WEB_APP_ISOLATION_DELEGATE_IMPL_H_
 #define CHROME_BROWSER_WEB_APPLICATIONS_ISOLATED_WEB_APPS_WEB_APP_ISOLATION_DELEGATE_IMPL_H_
 
+#include <unordered_set>
+
+#include "base/files/file_path.h"
 #include "base/memory/raw_ref.h"
+#include "base/values.h"
 #include "chrome/browser/web_applications/web_app_isolation_delegate.h"
 
 class Profile;
@@ -21,6 +25,10 @@ class WebAppIsolationDelegateImpl : public WebAppIsolationDelegate {
   // WebAppIsolationDelegate:
   void ClearAppResourcesOnUninstall(const webapps::AppId& app_id,
                                     base::OnceClosure callback) override;
+  std::unique_ptr<ComputeAppSizeJob> CreateComputeAppSizeJob(
+      const webapps::AppId& app_id,
+      base::DictValue& debug_value) override;
+  std::unordered_set<base::FilePath> GetIsolatedStoragePaths() override;
 
  private:
   explicit WebAppIsolationDelegateImpl(Profile* profile);

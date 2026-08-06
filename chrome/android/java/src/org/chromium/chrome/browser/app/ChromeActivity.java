@@ -181,6 +181,7 @@ import org.chromium.chrome.browser.provider.PageContentProviderMetrics;
 import org.chromium.chrome.browser.readaloud.ReadAloudController;
 import org.chromium.chrome.browser.screenshot_protection.ScreenshotProtectionController;
 import org.chromium.chrome.browser.selection.SelectionPopupBackPressHandler;
+import org.chromium.chrome.browser.settings.SettingsInTab;
 import org.chromium.chrome.browser.settings.SettingsNavigationFactory;
 import org.chromium.chrome.browser.share.ShareDelegate;
 import org.chromium.chrome.browser.share.ShareDelegateImpl;
@@ -2221,7 +2222,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
             mScreenshotProtectionControllerSupplier.set(
                     new ScreenshotProtectionController(
                             this,
-                            getLifecycleDispatcher(),
+                            mActivityTabProvider.asObservable(),
                             getTabModelSelector(),
                             isCustomTab(),
                             SupplierUtils.upcast(
@@ -2661,6 +2662,11 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                 }
             }
 
+            if (newConfig.fontScale != mConfig.fontScale) {
+                doRecreateActivity();
+                return;
+            }
+
             // Maintain tab state by re-parenting tabs when a Chrome window is moved between
             // displays.
             if (newConfig.touchscreen != mConfig.touchscreen
@@ -2858,7 +2864,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         int type = Profile.getBrowserProfileTypeFromProfile(getCurrentTabModel().getProfile());
 
         if (id == R.id.preferences_id) {
-            if (ChromeFeatureList.isEnabled(ChromeFeatureList.SETTINGS_IN_TAB)) {
+            if (SettingsInTab.isEnabled()) {
                 LoadUrlParams params =
                         new LoadUrlParams(UrlConstants.SETTINGS_URL, PageTransition.LINK);
                 // Settings are associated with the on-the-record profile, never incognito.
@@ -2919,6 +2925,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         if (id == R.id.about_chrome_menu_id) {
             SettingsNavigationFactory.createSettingsNavigation()
                     .startSettings(this, AboutChromeSettings.class);
+            RecordUserAction.record("MobileMenuAboutChrome");
             return true;
         }
 
@@ -2995,6 +3002,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
             BookmarkOpener opener =
                     new BookmarkOpenerImpl(mBookmarkModelSupplier, this, getComponentName());
             opener.openBookmarkInCurrentTab(bookmarkId, currentTab.isIncognito());
+            RecordUserAction.record("MobileMenuOpenBookmark");
             return true;
         }
 
@@ -3005,6 +3013,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                     getTabModelSelector(),
                     menuItemData.getInt(AppMenuPropertiesDelegateImpl.TAB_ID_BUNDLE_KEY),
                     TabSelectionType.FROM_USER);
+            RecordUserAction.record("MobileMenuSelectTabFromGroup");
             return true;
         }
 
@@ -3030,15 +3039,21 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         }
 
         if (id == R.id.offline_page_id) {
-            DownloadUtils.downloadOfflinePage(this, currentTab, /* fromAppMenu= */ true);
             RecordUserAction.record("MobileMenuDownloadPage");
-            return true;
+            if (DownloadUtils.isAllowedToDownloadPage(currentTab)) {
+                DownloadUtils.downloadOfflinePage(this, currentTab, /* fromAppMenu= */ true);
+                return true;
+            }
+            return false;
         }
 
         if (id == R.id.download_page_id) {
-            DownloadUtils.downloadOfflinePage(this, currentTab, /* fromAppMenu= */ true);
             RecordUserAction.record("MobileMenuItemDownloadPage");
-            return true;
+            if (DownloadUtils.isAllowedToDownloadPage(currentTab)) {
+                DownloadUtils.downloadOfflinePage(this, currentTab, /* fromAppMenu= */ true);
+                return true;
+            }
+            return false;
         }
 
         if (id == R.id.reload_menu_id) {

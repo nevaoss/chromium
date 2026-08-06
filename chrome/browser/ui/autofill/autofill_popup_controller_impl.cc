@@ -31,7 +31,6 @@
 #include "chrome/browser/ui/autofill/autofill_suggestion_controller_utils.h"
 #include "chrome/browser/ui/autofill/next_idle_barrier.h"
 #include "chrome/browser/ui/autofill/popup_controller_common.h"
-#include "components/accessibility_annotator/core/annotation_reducer/memory_search_result.h"
 #include "components/autofill/content/browser/content_autofill_client.h"
 #include "components/autofill/content/browser/renderer_forms_from_browser_form.h"
 #include "components/autofill/core/browser/at_memory/at_memory_data_type.h"
@@ -216,6 +215,35 @@ void MaybeRecordAddressDeletedMetric(content::WebContents* web_contents,
   }
 }
 
+std::optional<AutofillPopupView::SubPopupConfig> GetSubPopupConfig(
+    AutofillSuggestionTriggerSource trigger_source) {
+  switch (trigger_source) {
+    case AutofillSuggestionTriggerSource::kAtMemory:
+    case AutofillSuggestionTriggerSource::kAtMemoryContextMenu:
+    case AutofillSuggestionTriggerSource::kAtMemoryInactivityNudge:
+      return AutofillPopupView::SubPopupConfig{.no_selection_hide_delay =
+                                                   base::Seconds(1)};
+    case AutofillSuggestionTriggerSource::kManualFallbackPasswords:
+    case AutofillSuggestionTriggerSource::kFormControlElementClicked:
+    case AutofillSuggestionTriggerSource::kTextareaFocusedWithoutClick:
+    case AutofillSuggestionTriggerSource::kContentEditableClicked:
+    case AutofillSuggestionTriggerSource::kTextFieldValueChanged:
+    case AutofillSuggestionTriggerSource::kTextFieldDidReceiveKeyDown:
+    case AutofillSuggestionTriggerSource::kOpenTextDataListChooser:
+    case AutofillSuggestionTriggerSource::kPasswordManager:
+    case AutofillSuggestionTriggerSource::kiOS:
+    case AutofillSuggestionTriggerSource::kComposeDialogLostFocus:
+    case AutofillSuggestionTriggerSource::kComposeDelayedProactiveNudge:
+    case AutofillSuggestionTriggerSource::kPasswordManagerProcessedFocusedField:
+    case AutofillSuggestionTriggerSource::kPlusAddressUpdatedInBrowserProcess:
+    case AutofillSuggestionTriggerSource::kProactivePasswordRecovery:
+    case AutofillSuggestionTriggerSource::kGlic:
+    case AutofillSuggestionTriggerSource::kUnspecified:
+      return std::nullopt;
+  }
+  NOTREACHED();
+}
+
 }  // namespace
 
 
@@ -381,7 +409,8 @@ void AutofillPopupControllerImpl::Show(
                 ? parent_controller_->get()->CreateSubPopupView(GetWeakPtr())
                 : AutofillPopupView::Create(GetWeakPtr(),
                                             GetSearchBarConfig(trigger_source),
-                                            std::move(tabbed_pane_config));
+                                            std::move(tabbed_pane_config),
+                                            GetSubPopupConfig(trigger_source));
 
     // It is possible to fail to create the popup, in this case
     // treat the popup as hiding right away.
@@ -444,10 +473,10 @@ void AutofillPopupControllerImpl::UpdateDataListValues(
   non_filtered_suggestions_ = UpdateSuggestionsFromDataList(
       options, std::move(non_filtered_suggestions_));
   UpdateFilteredSuggestions();
-  if (HasSuggestions()) {
-    OnSuggestionsChanged();
-  } else {
+  if (HasEmptySuggestionContent()) {
     Hide(SuggestionHidingReason::kNoSuggestions);
+  } else {
+    OnSuggestionsChanged();
   }
 }
 
@@ -745,13 +774,13 @@ bool AutofillPopupControllerImpl::RemoveSuggestion(
                                     list_index);
   }
 
-  if (HasSuggestions()) {
+  if (HasEmptySuggestionContent()) {
+    Hide(SuggestionHidingReason::kNoSuggestions);
+  } else {
     delegate_->ClearPreviewedForm();
     should_ignore_mouse_observed_outside_item_bounds_check_ =
         suggestion_type == SuggestionType::kAutocompleteEntry;
     OnSuggestionsChanged();
-  } else {
-    Hide(SuggestionHidingReason::kNoSuggestions);
   }
 
   return true;
@@ -766,9 +795,10 @@ AutofillPopupControllerImpl::GetSuggestionTriggerSource() const {
   return trigger_source_;
 }
 
-bool AutofillPopupControllerImpl::HasSuggestions() const {
-  return std::ranges::any_of(GetSuggestions(), &IsStandaloneSuggestionType,
-                             &Suggestion::type);
+bool AutofillPopupControllerImpl::HasEmptySuggestionContent() const {
+  return std::ranges::none_of(GetSuggestions(), &IsStandaloneSuggestionType,
+                              &Suggestion::type) &&
+         !IsAtMemoryTriggerSource(trigger_source_);
 }
 
 void AutofillPopupControllerImpl::SetSuggestions(

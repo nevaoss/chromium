@@ -735,7 +735,7 @@ inline LayoutStateScenePassKey PassKey() {
 }
 
 - (void)showAssistantInMinimizedState:(BOOL)minimized {
-  if (!IsAssistantContainerEnabled()) {
+  if (!IsAssistantContainerEnabled() || !IsAimCobrowseEnabled()) {
     return;
   }
   if (_assistantAIMCoordinator) {
@@ -1391,6 +1391,13 @@ inline LayoutStateScenePassKey PassKey() {
   }];
 }
 
+- (void)showAutofillSettings {
+  __weak SceneCoordinator* weakSelf = self;
+  [self dismissModalDialogsWithCompletion:^{
+    [weakSelf showAutofillSettingsAfterModalDismiss];
+  }];
+}
+
 - (void)showPasswordManagerForCredentialImport:(NSUUID*)UUID
     API_AVAILABLE(ios(26.0)) {
   if (!_settingsNavigationController) {
@@ -1986,6 +1993,23 @@ inline LayoutStateScenePassKey PassKey() {
                                         completion:nil];
 }
 
+// Shows the Autofill settings in the settings UI.
+- (void)showAutofillSettingsAfterModalDismiss {
+  DCHECK(!self.isSigninInProgress);
+
+  if (_settingsNavigationController) {
+    [_settingsNavigationController showAutofillSettings];
+    return;
+  }
+  _settingsNavigationController = [SettingsNavigationController
+      autofillAndPasswordsControllerForBrowser:_regularBrowser.get()
+                                      delegate:self];
+  [_settingsNavigationController showAutofillSettings];
+  [self.activeViewController presentViewController:_settingsNavigationController
+                                          animated:YES
+                                        completion:nil];
+}
+
 // Stops the Incognito interstitial coordinator.
 - (void)stopIncognitoInterstitialCoordinator {
   [_incognitoInterstitialCoordinator stop];
@@ -2384,8 +2408,6 @@ inline LayoutStateScenePassKey PassKey() {
 - (void)
     startGeminiEntryFlowWithStartupState:(GeminiStartupState*)startupState
                       baseViewController:(UIViewController*)baseViewController
-                             accessPoint:
-                                 (signin_metrics::AccessPoint)accessPoint
                 showSnackbarOnCompletion:(BOOL)showSnackbar
                               completion:(GeminiEntryFlowCompletion)completion {
   if (!IsGeneralizedGeminiEntryFlowEnabled()) {
@@ -2407,7 +2429,6 @@ inline LayoutStateScenePassKey PassKey() {
       initWithBaseViewController:presenter
                          browser:_regularBrowser.get()
                     startupState:startupState
-                     accessPoint:accessPoint
         showSnackbarOnCompletion:showSnackbar
                       completion:^(GeminiEntryFlowResult result) {
                         [weakSelf

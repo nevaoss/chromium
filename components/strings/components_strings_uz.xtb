@@ -61,6 +61,7 @@
 <translation id="1090629319939036170">VR menyu</translation>
 <translation id="1091463901118115503">Oʻqishda davom etish</translation>
 <translation id="1091779689406092804">skrinshotlar</translation>
+<translation id="1095093219235104018">Gemini yordamida toping va kiriting</translation>
 <translation id="1096545575934602868">Bu maydonchadagi elementlar soni <ph name="MAX_ITEMS_LIMIT" /> yozuvdan oshmasligi kerak. Barcha ortiqchasi rad etiladi.</translation>
 <translation id="1097803577928227769">Hududiy parklar va bogʻlar</translation>
 <translation id="1099928364755383720">avtomatik tasvir ustida tasvir</translation>
@@ -260,6 +261,7 @@ Aks holda bu maxfiylik sozlamalaringiz tomonidan bloklanadi. Bunda siz ochgan sa
 <translation id="1393071644879491291">Siz ochayotgan saytda firibgarlar sizni aldab, parollaringiz, telefon yoki kredit karta raqamlaringizni oʻgʻirlashi yoki oʻchirishi mumkin zararli dasurni oʻrnatishi mumkin. Chrome xavfsizlik maqsadida zudlik bilan joriy sahifadan ortga qaytishni tavsiya qiladi. <ph name="BEGIN_LEARN_MORE_LINK" />Bu ogohlantirish haqida batafsil<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="1398743098754840707">Varaq ochiq boʻlsa ham, bu yerga kiritilgan saytlar javoblar uchun havola qilinmaydi. Kiritilgan sayt ayni damda yozishmada ishlatilayotgan boʻlsa, tizim undan foydalanishni toʻxtatishi uchun 30 daqiqagacha vaqt ketishi mumkin.</translation>
 <translation id="1402151528875251561">Tarixni yon panelda chiqarish</translation>
+<translation id="1404026649028693342">AI rejimi doim chiqarilsin</translation>
 <translation id="1405567553485452995">Och yashil</translation>
 <translation id="1406370515365284486">Toʻlov usulingiz baribir saqlanadi</translation>
 <translation id="1406500794671479665">Tekshirilmoqda...</translation>
@@ -321,6 +323,7 @@ Aks holda bu maxfiylik sozlamalaringiz tomonidan bloklanadi. Bunda siz ochgan sa
 <translation id="147358896496811705">2A0</translation>
 <translation id="1474576429883213321">Tozalash xizmatlari</translation>
 <translation id="1476595624592550506">Parolingizni almashtiring</translation>
+<translation id="1481450969185702334">Topish va kiritish</translation>
 <translation id="1482372785911828880">Juda ingichka</translation>
 <translation id="1482879811280872320">Velosiped haydash</translation>
 <translation id="1483493594462132177">Yuborish</translation>
@@ -364,6 +367,7 @@ Aks holda bu maxfiylik sozlamalaringiz tomonidan bloklanadi. Bunda siz ochgan sa
 <translation id="1559572115229829303">&lt;p&gt;Qurilmadagi sana va vaqt sozlamalari (<ph name="DATE_AND_TIME" />) noto‘g‘ri bo‘lganligi sababli <ph name="BEGIN_BOLD" /><ph name="DOMAIN" /><ph name="END_BOLD" /> domeni bilan xavfsiz aloqa o‘rnatib bo‘lmadi.&lt;/p&gt;
           &lt;p&gt;Aniq sana va vaqt sozlamalarini &lt;strong&gt;Sozlamalar&lt;/strong&gt; ilovasidagi &lt;strong&gt;Umumiy&lt;/strong&gt; bo‘limida belgilang.</translation>
 <translation id="1559839503761818503">Administrator qurilmani <ph name="DATE" /> kuni <ph name="TIME" /> da qayta ishga tushiradi</translation>
+<translation id="1562601408588733317">Gemini yordamida axborot topish va kiritishni boshqaring</translation>
 <translation id="1562805467275776390">Avtopoyga</translation>
 <translation id="1563755205047885671">Jangari oʻyinlar</translation>
 <translation id="1564634006476980707">Qidiruv URL manzili uchun tavsiya etilgan HTTPS andozasi: <ph name="SEARCH_URL" /></translation>
@@ -564,6 +568,7 @@ Aks holda bu maxfiylik sozlamalaringiz tomonidan bloklanadi. Bunda siz ochgan sa
 <translation id="1855370856221982654">Boks</translation>
 <translation id="1862788842908766795">Boshliq va menejerlik vakansiyalari</translation>
 <translation id="1863257867908022953">Tarnov 12</translation>
+<translation id="1863374797460198869">Chat berkitildi</translation>
 <translation id="186539747722034544">Kabel va sputnik provayderlari</translation>
 <translation id="1870473978371099486">Xususiy repetitorlik xizmatlari</translation>
 <translation id="1871208020102129563">Proksi-serverlar PAC fayli manzil orqali emas, o‘zgarmas manzil orqali sozlangan.</translation>
@@ -653,7 +658,6 @@ Aks holda bu maxfiylik sozlamalaringiz tomonidan bloklanadi. Bunda siz ochgan sa
 <translation id="2027465737841872819">Plastik</translation>
 <translation id="2027707238798802149">Karta ishlamayapti</translation>
 <translation id="2029735183873159415">Ajdodlar va genealogiya</translation>
-<translation id="2031095660415483845">Istalgan joydan qidiring va toʻldiring...</translation>
 <translation id="2032962459168915086"><ph name="BEGIN_LINK" />Proksi-server va himoya devori sozlamalarini tekshiring<ph name="END_LINK" /></translation>
 <translation id="2033900728810589426">Buyruq <ph name="DEFAULT_SEARCH_PROVIDER_KEYWORD_POLICY_NAME" /> belgilagan standart qidiruv provayderi kalit soʻzi bilan bir xil boʻlishi mumkin emas: <ph name="SHORTCUT_NAME" /></translation>
 <translation id="2034971124472263449">Baribir saqlansin</translation>
@@ -671,6 +675,7 @@ Aks holda bu maxfiylik sozlamalaringiz tomonidan bloklanadi. Bunda siz ochgan sa
 <translation id="2059202684901022309">22 x 34 in</translation>
 <translation id="2064568741209980952">Kredit va ssuda</translation>
 <translation id="2064691555167957331">{COUNT,plural, =1{1 ta tavsiya}other{# ta tavsiya}}</translation>
+<translation id="2066690553719545730">AI rejimi doim chiqarilsin</translation>
 <translation id="2066969741541525119">Oldindagi sayt tashkilotingiz tomonidan bloklandi</translation>
 <translation id="2069913043427250781">Avtomobil va yoʻl harakati xavfsizligi</translation>
 <translation id="2071156619270205202">Koʻrsatilgan raqamdan virtual karta raqami sifatida foydalanib boʻlmaydi.</translation>
@@ -829,6 +834,7 @@ Aks holda bu maxfiylik sozlamalaringiz tomonidan bloklanadi. Bunda siz ochgan sa
 <translation id="2268044343513325586">Aniqlashtirish</translation>
 <translation id="2268966938956566076"><ph name="MINUTES" /> daqadan keyin yuklanadi</translation>
 <translation id="2270484714375784793">Telefon raqami</translation>
+<translation id="2274179746480077483">Gmail va Photos kabi ilovalardan axborotni avtomatik kiritish. Personal Intelligence asosida ishlaydi.</translation>
 <translation id="2276057643614339130">Bosma asosi</translation>
 <translation id="2277103315734023688">Oldinga o‘tkazish</translation>
 <translation id="2277753418458118549">Ulanish tafsilotlarini ochish</translation>
@@ -1169,6 +1175,7 @@ Aks holda bu maxfiylik sozlamalaringiz tomonidan bloklanadi. Bunda siz ochgan sa
 <translation id="2784949926578158345">Aloqa qayta o‘rnatildi.</translation>
 <translation id="2786008859124691917">Velosiped va aksessuarlar</translation>
 <translation id="2792012897584536778">Qurilmaga administratorlar tomonidan xavfsizlik sertifikatlari oʻrnatilgan va ular ochiladigan saytlardagi kontentni koʻrishi mumkin.</translation>
+<translation id="2793425367785017642">Shakllarni yaxshiroq tushunish va kiritish uchun siz tashrif buyurgan sahifalar kontenti va URL manzillari bulutdagi maxfiy makonda qayta ishlanishi mumkin.</translation>
 <translation id="2794233252405721443">Sayt bloklangan</translation>
 <translation id="2794629552137076216">Shisha (jilo berilgan)</translation>
 <translation id="2799223571221894425">Qaytadan ishga tushirish</translation>
@@ -1423,7 +1430,6 @@ Keyinroq toʻlash usullarini berkitish uchun <ph name="BEGIN_LINK" />toʻlov soz
 <translation id="3202497928925179914"><ph name="MANAGE_SYNC_FOCUSED_FRIENDLY_MATCH_TEXT" />, Chrome sozlamalari orqali sinxronlanadigan maʼlumotlarni boshqarish uchun avval Tab, keyin Enter tugmasini bosing</translation>
 <translation id="3203025201812691413">URL boʻsh boʻlmaydi</translation>
 <translation id="320323717674993345">To‘lovni bekor qilish</translation>
-<translation id="3204534477198689393">Takliflarni yaxshilash va shakllarni tezroq toʻldirish uchun siz ochgan sahifalar kontenti va URL manzillari bulutdagi maxfiy makonda qayta ishlanishi mumkin.</translation>
 <translation id="3207830513221832868"><ph name="BLOCKED_URL" /> tarkibida kattalash uchun kontent boʻlishi mumkin</translation>
 <translation id="3207960819495026254">Xatcho‘plarga qo‘shildi</translation>
 <translation id="3208701679386778924">Keyingi ChromeOS yangilanishlarini yaxshilashimiz uchun bizga hisobot yuboring</translation>
@@ -1540,6 +1546,7 @@ Keyinroq toʻlash usullarini berkitish uchun <ph name="BEGIN_LINK" />toʻlov soz
 <translation id="3391482648489541560">fayllarni tahrirlash</translation>
 <translation id="3392028486601120379">“<ph name="URL_PATTERN" />” URL namunasi belgilangan yoʻlga ega. Bu kalit uchun yoʻllar qoʻllab-quvvatlanmaydi, yoʻlni olib tashlang va qaytadan urinib koʻring. masalan. *://example.com/ =&gt; *://example.com»,</translation>
 <translation id="3395827396354264108">Olib ketish usuli</translation>
+<translation id="3397968074427155329">Suhbatni davom ettirish uchun oyna oʻlchamini oʻzgartiring</translation>
 <translation id="3399161914051569225">Taqiladigan qurilmalar</translation>
 <translation id="3399952811970034796">Yetkazib berish manzili</translation>
 <translation id="3402261774528610252">Bu sayt eskirgan TLS 1.0 yoki TLS 1.1 ishlatadi, shuning uchun keyingi versiyalarda faolsizlantiriladi. Faolsizlantirilsa, foydalanuvchilar bu saytni ocha olmaydi. Serverda TLS 1.2 yoki yuqoriroq versiya yoqilishi lozim.</translation>
@@ -1877,6 +1884,7 @@ Keyinroq toʻlash usullarini berkitish uchun <ph name="BEGIN_LINK" />toʻlov soz
 <translation id="390391808978419508">Ochish vaqti tugadi</translation>
 <translation id="3905894480064208252">{0,plural, =1{Faylni uzatish taqiqlangan}other{<ph name="FILE_COUNT" /> ta faylni uzatish taqiqlangan}}</translation>
 <translation id="3906022360148923497">Toʻlov vositasi belgisi</translation>
+<translation id="3906234161316839040">Boshqa buyurtmalar</translation>
 <translation id="3906954721959377182">Planshet</translation>
 <translation id="3909695131102177774"><ph name="LABEL" /> <ph name="ERROR" /></translation>
 <translation id="3910231615117880630">Joylashtirilgan kontent haqida batafsil</translation>
@@ -2243,7 +2251,6 @@ Keyinroq toʻlash usullarini berkitish uchun <ph name="BEGIN_LINK" />toʻlov soz
 <translation id="4445964943162061557">Bu tajribaviy funksiya va ishlashida xatolar chiqishi mumkin.</translation>
 <translation id="4449116177348980384">Sayt sozlamalarini boshqarish tugmasi, Chrome sozlamalari orqali ruxsatlar va saytlarda saqlanadigan maʼlumotlarni boshqarish uchun faollashtiring</translation>
 <translation id="4451135742916150903">HID qurilmalarga ulanish uchun ruxsat soʻrashi mumkin</translation>
-<translation id="4451684391620232683">Ochilgan matn:</translation>
 <translation id="4452328064229197696">Hozirgina siz foydalangan parol oshkor qilingan. Hisoblaringizni himoyalash maqsadida Google Parollar menejeri saqlangan parollaringizni tekshirishni tavsiya etadi.</translation>
 <translation id="4454620051637646665">Bannerni yopish</translation>
 <translation id="4456937135469235202">Sarguzashtli sayohatlar</translation>
@@ -2418,7 +2425,6 @@ Keyinroq toʻlash usullarini berkitish uchun <ph name="BEGIN_LINK" />toʻlov soz
 <translation id="4749924365937394956">Server autentifikatsiyasi</translation>
 <translation id="4750671009706599284">shu telefon</translation>
 <translation id="4750917950439032686">Bu saytga shaxsiy ma’lumotlaringiz (parollar yoki bank kartalar kabi) xavfsiz uzatiladi.</translation>
-<translation id="4751249061288707459">Oxirgi rozilik yangilanishi:</translation>
 <translation id="4754461935447132332">Himoyalanmagan saytlarda ruxsat etilmaydi</translation>
 <translation id="4756501505996488486">PRC 16K</translation>
 <translation id="4757740693289347881">Kod yaroqsiz</translation>
@@ -2448,6 +2454,7 @@ Keyinroq toʻlash usullarini berkitish uchun <ph name="BEGIN_LINK" />toʻlov soz
 <translation id="4786804728079074733">Voleybol</translation>
 <translation id="4787182171088676626">Konvert (nozik)</translation>
 <translation id="4791134497475588553">Oʻrnatilgan Linux ilovalari va ulardan oxirgi foydalanilgan sana</translation>
+<translation id="4791602164422809437">Gemini bilan Personal Intelligence texnologiyasi asosida ishlaydi. Sahifa nomlari va URL manzillari Googlega yuboriladi va xodimlar tomonidan tekshirilishi mumkin <ph name="BEGIN_LINK" />Sozlamalarni boshqarish<ph name="END_LINK" /></translation>
 <translation id="4792686369684665359">Siz yubormoqchi boʻlgan axborot himoyalanmagan</translation>
 <translation id="4793219378458250238">11 x 12 in</translation>
 <translation id="4796594887379589189">Vazifalar hisobi identifikatori</translation>
@@ -2579,6 +2586,7 @@ Keyinroq toʻlash usullarini berkitish uchun <ph name="BEGIN_LINK" />toʻlov soz
 <translation id="5001526427543320409">Tashqi cookie fayllar</translation>
 <translation id="5007344584818503324">Umumiy varaqlar guruhi faolligi</translation>
 <translation id="5007392906805964215">Tekshirish</translation>
+<translation id="5008767248670679254">Barcha joʻnatmalaringiz</translation>
 <translation id="5011561501798487822">Til aniqlandi</translation>
 <translation id="5015510746216210676">Kompyuter nomi:</translation>
 <translation id="5016205925109358554">Serif</translation>
@@ -2624,6 +2632,7 @@ Keyinroq toʻlash usullarini berkitish uchun <ph name="BEGIN_LINK" />toʻlov soz
 <translation id="5074134429918579056">Shim va kalta shimlar</translation>
 <translation id="5077767274537436092">Boshqa kirish kalitidan foydalaning</translation>
 <translation id="5078060223219502807">Hozirgina siz foydalangan parol oshkor qilingan. Hisoblaringizni himoyalash maqsadida Parollar menejeri uni hoziroq almashtirishni va saqlangan parollaringizni tekshirishni tavsiya etadi.</translation>
+<translation id="5082949343606863311">Kelgusi takliflarni yaxshilash uchun tizim maʼlumotlari, jumladan, shakl maydonlari va funksiya unumdorligi tahlil qilinadi</translation>
 <translation id="5087286274860437796">Server sertifikati ayni paytda yaroqsiz.</translation>
 <translation id="5087580092889165836">Yangi karta qo‘shish</translation>
 <translation id="5088142053160410913">Operatorga xabar yuborish</translation>
@@ -3024,6 +3033,7 @@ Keyinroq toʻlash usullarini berkitish uchun <ph name="BEGIN_LINK" />toʻlov soz
 <translation id="5675809467256309336">Raqs va elektron musiqa</translation>
 <translation id="5675959228867414813">Sana asosida saralash</translation>
 <translation id="567604591393105935">Mahsulot haqidagi quyi ekran butun yarim ochildi</translation>
+<translation id="5676124785522323481">Ulangan ilovalarni boshqarish</translation>
 <translation id="5676641328629468296">Google Pay, Pix</translation>
 <translation id="5678007133659493065">Folga</translation>
 <translation id="5679086391497468752">Uy manzili</translation>
@@ -3060,6 +3070,7 @@ Keyinroq toʻlash usullarini berkitish uchun <ph name="BEGIN_LINK" />toʻlov soz
 <translation id="5728246486828755318">Printer qoʻshimcha imkoniyatlaridan foydalanish uchun ruxsat soʻrashi mumkin</translation>
 <translation id="5729442113829771034">Maktabgacha taʼlim</translation>
 <translation id="5730040223043577876">Parolingizni tashkilot domenidan tashqaridagi saytda kiritgan bo‘lsangiz, uni zudlik bilan o‘zgartirishingizni tavsiya etamiz.</translation>
+<translation id="5731983613206445054">Yaxshilangan avtomatik kiritish sifatini oshirishga hissa qoʻshyapsiz</translation>
 <translation id="5735174108294025227">Tasdiqlangan email manzillar shu yerda chiqadi</translation>
 <translation id="573555826359077410">Shakl yaratish tugmasi, Google Formsʼda yangi shaklni tez yaratish uchun faollashtiring</translation>
 <translation id="5738385766833540397">Siz kuzatayotgan mahsulotlar uchun narxlarning tushishi haqida ogohlantirishlarni qanday qabul qilishingizni boshqaring</translation>
@@ -3175,7 +3186,6 @@ Keyinroq toʻlash usullarini berkitish uchun <ph name="BEGIN_LINK" />toʻlov soz
 <translation id="5921952831792678223">Pikaplar</translation>
 <translation id="5923492272538889093">CVC oʻrniga qurilma kaliti ishlatilsinmi?</translation>
 <translation id="5924510104057992926">Ochishdan oldin tekshirilishi lozim</translation>
-<translation id="5924782825030413055">Oxirgi rozilik yangilanishi manbasi:</translation>
 <translation id="5925040402342933574">Optik disk (yarim yaltiroq)</translation>
 <translation id="5925147183566400388">Tasdiqlash markazi reglamenti ko‘rsatkichi</translation>
 <translation id="5926982310317673627">Sportzal va salomatlik klublari</translation>
@@ -3384,6 +3394,7 @@ Keyinroq toʻlash usullarini berkitish uchun <ph name="BEGIN_LINK" />toʻlov soz
 <translation id="6240553182907836376">ID kartani yangilash</translation>
 <translation id="6240601837375010619">Pasportni saqlash</translation>
 <translation id="6240964651812394252">Parollar menejeridan operatsion tizimda foydalanish uchun Chromeni qaytadan oching va kompyuterdagi parollar menejeridan foydalanishga ruxsat bering. Qayta ishga tushirilgandan keyin varaqlar qayta ochiladi.</translation>
+<translation id="6244366663267187541">Gemini qaysi ilovalarga ulanishini tanlang</translation>
 <translation id="624499991300733384">Bosmani nashrlash xizmati</translation>
 <translation id="6246316216123107851"><ph name="NUM_DAYS" /> kun oldin</translation>
 <translation id="6246382863801034910">Transport</translation>
@@ -3887,6 +3898,7 @@ Keyinroq toʻlash usullarini berkitish uchun <ph name="BEGIN_LINK" />toʻlov soz
 <translation id="7011763495818914549">ID karta</translation>
 <translation id="7012363358306927923">China UnionPay</translation>
 <translation id="7013835112918108252">Sichqonchadan foydalanish yoki uni qulflashga ruxsat soʻrashi mumkin</translation>
+<translation id="7013844825046560088">Chrome ushbu funksiyadan qanday ishlatishingizni, jumladan, yuborgan soʻrovlaringiz va takliflarni qabul qilish yoki rad etishdagi harakatlaringizni qayd qilib boradi</translation>
 <translation id="7014042602717177828">Avtomobil audio jihozlari</translation>
 <translation id="7014741021609395734">Masshtab</translation>
 <translation id="7016992613359344582">To‘lov bir martalik, qayta bo‘lishi yoki umuman bo‘lmasligi ham mumkin.</translation>
@@ -4115,6 +4127,7 @@ Batafsil axborot:
 <translation id="7393161616326137353">Sarguzasht oʻyinlar</translation>
 <translation id="7393475648162498734">Hisob-kitob sahifasida kartalaringiz uchun mavjud bonus va imtiyozlarni chiqarish</translation>
 <translation id="7393971683644170444">Karta provayderiga ulanilmoqda...</translation>
+<translation id="7394497897677511168">Boshqa joʻnatmalar</translation>
 <translation id="739728382607845710">Toʻlov tizimi belgisi</translation>
 <translation id="7399616692258236448">Joylashuv soʻrovlari siz ruxsat bergan saytlardan tashqari barcha saytlar uchun taqiqlanadi</translation>
 <translation id="7400418766976504921">URL</translation>
@@ -4196,6 +4209,7 @@ Batafsil axborot:
 <translation id="7489255442002627311"><ph name="BNPL_ISSUER_NAME" /> muvofiqligingizni tekshiradi (bu kredit balliga taʼsir qilmaydi). Tasdiqlansa, <ph name="BNPL_ISSUER_NAME" /> tanlash va xaridni yakunlash uchun toʻlov rejalarini taqdim etadi.</translation>
 <translation id="7489392576326061356">Shampun va konditsionerlar</translation>
 <translation id="7489919936111034362">Google Drive xotira omboringizda joy qolmadi</translation>
+<translation id="7490622939531327327">Shakllarni aqlliroq anglash</translation>
 <translation id="7495528107193238112">Bu kontent bloklandi. Muammoni yechish uchun sayt egasiga murojaat qiling.</translation>
 <translation id="749865518782565832">Santexnik xizmatlari</translation>
 <translation id="7499188644237027195">Chrome orqali xarid qilish vaqtida eWallet va Pix tanlovlari chiqsin</translation>
@@ -4295,7 +4309,6 @@ Batafsil axborot:
 <translation id="762844065391966283">Bir obyektdan</translation>
 <translation id="7629058630148860366">Ishxona manzili</translation>
 <translation id="763042426047865637">Yongʻin xavfsizligi xizmatlari</translation>
-<translation id="7630470133768862132">Rozilik holati:</translation>
 <translation id="7631072086707140121">URL https bilan boshlanishi lozim.</translation>
 <translation id="7631527008834753063">TV oʻyin shoulari</translation>
 <translation id="7633909222644580952">Foydalanish statistikasi va ishdan chiqishlar hisoboti</translation>
@@ -4436,7 +4449,6 @@ Batafsil axborot:
 <translation id="7840103971441592723">Ekranni tasvirga olish boshlandi</translation>
 <translation id="784137052867620416">Shopping statistikasi</translation>
 <translation id="7841633276323004751">Tanlab ishlatiladigan toʻlov usullari roʻyxati. Klaviatura yashirildi.</translation>
-<translation id="784189052219692670">Gemini endi Google ilovalaridagi shaxsiy axborotingizni eslab qolishi va uni siz ochgan sahifaga avtomatik kiritishi mumkin.</translation>
 <translation id="7844689747373518809">{COUNT,plural, =0{Hech qanday}=1{1 ta ilova (<ph name="EXAMPLE_APP_1" />)}=2{2 ta ilova (<ph name="EXAMPLE_APP_1" />, <ph name="EXAMPLE_APP_2" />)}other{# ta ilova (<ph name="EXAMPLE_APP_1" />, <ph name="EXAMPLE_APP_2" />, <ph name="AND_MORE" />)}}</translation>
 <translation id="7846161022626028328">Xatolik yuz berdi. Qayta urining.</translation>
 <translation id="784623644169604270">Hech qanday harakat yoʻq</translation>
@@ -4523,6 +4535,7 @@ Batafsil axborot:
 <translation id="7972714317346275248">PKCS #1 SHA-384 RSA shifri bilan</translation>
 <translation id="7976053965094442846">Muddatli toʻlov taklif qiladigan hozir olib, keyin toʻlash emitentlari. Klaviatura yashirildi.</translation>
 <translation id="7976214039405368314">Limitdan oshib ketdi</translation>
+<translation id="7977029776654598145">Qachon ishlatiladi</translation>
 <translation id="7977538094055660992">Chiqarish qurilmasi</translation>
 <translation id="7979463492896063081">{TIME_DIMENSION,plural, =0{<ph name="TIME_COUNT" /> dq oldin}=1{<ph name="TIME_COUNT" /> st oldin}other{<ph name="TIME_COUNT" /> kun oldin}}</translation>
 <translation id="7979595116210197019">Taom xizmati</translation>
@@ -4562,6 +4575,7 @@ Batafsil axborot:
 <translation id="803771048473350947">Fayl</translation>
 <translation id="8038182528865038593">Qizil 2</translation>
 <translation id="8041089156583427627">Fikr-mulohaza</translation>
+<translation id="8042898384266617514">Soʻrovlaringiz, sahifa sarlavhalari va URL manzillar Googlega yuboriladi hamda xodimlar tomonidan koʻrib chiqilishi mumkin</translation>
 <translation id="8043255123207491407">Sotuvchining foydalanish shartlari</translation>
 <translation id="8044986521421349135">Eng oxirgi varaq</translation>
 <translation id="8046360364391076336">Sanoat materiallari va jihozlari</translation>
@@ -4617,7 +4631,6 @@ Batafsil axborot:
 <translation id="8134058435519644366">Ishga yonlash va xodimlar boshqaruvi</translation>
 <translation id="8135546115396015134">chap tugma</translation>
 <translation id="8137456439814903304">Energiya va vositalar</translation>
-<translation id="8138591088112729119">Personal Intelligence asosida ishlaydi</translation>
 <translation id="814432316791813431">{NUM_MONTHS,plural, =1{1 oy oldin yaratilgan}other{{NUM_MONTHS} oy oldin yaratilgan}}</translation>
 <translation id="8147389370274164212"><ph name="SEARCH_ENGINE_NAME" />, hozirda asosiy. <ph name="MARKETING_SNIPPET" /></translation>
 <translation id="8148608574971654810">PDF versiyasi:</translation>
@@ -4838,7 +4851,6 @@ Batafsil axborot:
 <translation id="8488350697529856933">Tatbiq etish obyekti</translation>
 <translation id="8490137692873530638">Taxlovchi 10</translation>
 <translation id="8493948351860045254">Joy ochish</translation>
-<translation id="8495170825732897952">Varaqlarni almashtirmasdan axborotni eslash va kiritish uchun ixtiyoriy shaklda @@ deb yozing</translation>
 <translation id="8498870489552322848"><ph name="APP_NAME" /> saytida maxfiy axborotni kiritish</translation>
 <translation id="8498891568109133222"><ph name="HOST_NAME" /> saytidan javobni kutish vaqti tugadi.</translation>
 <translation id="8502023382441452707">Tavallud va ism berish kunlari</translation>
@@ -4950,6 +4962,7 @@ Batafsil axborot:
 <translation id="8688672835843460752">Bo‘sh</translation>
 <translation id="868922510921656628">Majmuadagi sahifalar soni</translation>
 <translation id="8694684557210599098">Transport qoʻshish</translation>
+<translation id="8696297579102085705">Qurilmangizga yuborish</translation>
 <translation id="8698428283892912525">Chrome tarkibida Google Saytlarni xavfsiz kezish kabi himoya funksiyalari mavjud va bu funksiya siz ochayotgan saytda yaqinda <ph name="BEGIN_LINK" />zararli dasturni aniqlagan<ph name="END_LINK" />.</translation>
 <translation id="869891660844655955">Tugash muddati</translation>
 <translation id="8699041776323235191">HID qurilmasi</translation>
@@ -5005,7 +5018,9 @@ Batafsil axborot:
 <translation id="877348612833018844">{0,plural, =1{Maxfiy fayl koʻchirilsinmi?}other{Maxfiy fayllar koʻchirilsinmi?}}</translation>
 <translation id="8775347646940100151">Qogʻoz (blanka)</translation>
 <translation id="8775863327608679820">Muddatli toʻlov taklif qiladigan hozir olib, keyin toʻlash emitentlari yarim hajmda ochildi.</translation>
+<translation id="8776789089819232268">Barcha buyurtmalaringiz</translation>
 <translation id="877985182522063539">A4</translation>
+<translation id="8781233757384402598">Yaxshilangan avtomatik kiritish uchun soʻrov yuborganingizda, avtomatik kiritish sifatini oshirish maqsadida foydalanish maʼlumotlaringiz, soʻrovlaringiz va sahifa tafsilotlari Googlega yuboriladi</translation>
 <translation id="8781278378794969337">Sahifani tarjima qilish tugmasi, bu sahifani Google Tarjima orqali tarjima qilish uchun faollashtiring</translation>
 <translation id="8785658048882205566">Mototsikllar</translation>
 <translation id="8790007591277257123">&amp;Qayta o‘chirish</translation>
@@ -5186,6 +5201,7 @@ Batafsil axborot:
 <translation id="9078912659001679888">Blender va sharbat mashinalari</translation>
 <translation id="9078964945751709336">Axborot yetarli emas</translation>
 <translation id="9080712759204168376">Buyurtma axboroti</translation>
+<translation id="908365381820697818">Endi Gmail va boshqa ilovalardan ma’lumotlarni topishingiz va toʻldirishingiz mumkin</translation>
 <translation id="9084304544887760521">Har qaysi saytda siz kuzatayotgan mahsulotlar narxi tushganda <ph name="EMAIL" /> manziliga xabar qilinsin.</translation>
 <translation id="9089260154716455634">Qoidalar amal qilmaydigan vaqt:</translation>
 <translation id="9090218457905363312">Reggi va Karib musiqasi</translation>

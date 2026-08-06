@@ -13,10 +13,12 @@
 #include "chrome/browser/ui/webui/omnibox_everywhere/omnibox_everywhere_ui.h"
 #include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_web_contents_helper.h"
 #include "chrome/browser/ui/webui/top_chrome/webui_contents_wrapper.h"
+#include "chrome/browser/ui/webui/webui_embedding_context.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/generated_resources.h"
 #include "content/public/browser/file_select_listener.h"
 #include "content/public/browser/render_widget_host_view.h"
+#include "ui/display/display.h"
 #include "ui/display/screen.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/size.h"
@@ -106,12 +108,12 @@ void OmniboxEverywhereUIManager::ShowForProfile(Profile* profile,
     CleanUpWidget();
   }
 
+  // Ensure any previous browser collection observation is cleanly reset if the
+  // active profile is changing.
+  if (profile_ != profile) {
+    browser_collection_observation_.Reset();
+  }
   profile_ = profile;
-#if BUILDFLAG(IS_MAC)
-  was_active_before_popup_ = IsAppActiveOnMac();
-#else
-  was_active_before_popup_ = true;
-#endif
   is_navigating_ = false;
 
   if (!contents_wrapper_) {
@@ -123,6 +125,21 @@ void OmniboxEverywhereUIManager::ShowForProfile(Profile* profile,
     }
 
     contents_wrapper_->SetHost(weak_factory_.GetWeakPtr());
+
+    // Since the Omnibox Everywhere widget is a standalone popup without a
+    // native browser window, in order to support Google Drive picker
+    // integration, we need to manually set the BrowserWindowInterface for the
+    // WebContents.
+    ProfileBrowserCollection* profile_collection =
+        ProfileBrowserCollection::GetForProfile(profile_);
+    CHECK(profile_collection);
+    BrowserWindowInterface* active_bwi =
+        profile_collection->GetLastActiveBrowser();
+    if (active_bwi) {
+      webui::SetBrowserWindowInterface(contents_wrapper_->web_contents(),
+                                       active_bwi);
+    }
+    browser_collection_observation_.Observe(profile_collection);
   }
   if (!widget_) {
     widget_ = std::make_unique<views::Widget>();
@@ -142,8 +159,10 @@ void OmniboxEverywhereUIManager::ShowForProfile(Profile* profile,
       params.context = context;
     }
 
-    gfx::Rect screen_bounds =
-        display::Screen::Get()->GetPrimaryDisplay().bounds();
+    display::Display target_display =
+        display::Screen::Get()->GetDisplayNearestPoint(
+            display::Screen::Get()->GetCursorScreenPoint());
+    gfx::Rect screen_bounds = target_display.bounds();
     gfx::Size popup_size(864, 632);
     params.bounds = gfx::Rect(
         screen_bounds.x() + (screen_bounds.width() - popup_size.width()) / 2,
@@ -194,27 +213,31 @@ void OmniboxEverywhereUIManager::Close() {
 
 void OmniboxEverywhereUIManager::CleanUpWidget() {
   if (widget_) {
-#if BUILDFLAG(IS_MAC)
-    if (!is_navigating_ && !was_active_before_popup_) {
-      HideAppOnMac();
-    }
-#endif
     widget_observation_.Reset();
     if (auto* contents_view = widget_->GetContentsView()) {
       if (auto* web_view = views::AsViewClass<views::WebView>(contents_view)) {
         web_view->SetWebContents(nullptr);
       }
     }
-    widget_.reset();
-    widget_delegate_.reset();
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE,
+        base::BindOnce(
+            [](std::unique_ptr<views::Widget> widget,
+               std::unique_ptr<OmniboxEverywhereWidgetDelegate> delegate) {
+              widget.reset();
+              delegate.reset();
+            },
+            std::move(widget_), std::move(widget_delegate_)));
   }
   contents_wrapper_.reset();
   is_file_chooser_open_ = false;
+  is_drive_picker_open_ = false;
   is_navigating_ = false;
-  was_active_before_popup_ = false;
+  browser_collection_observation_.Reset();
 }
 
 void OmniboxEverywhereUIManager::Shutdown() {
+  browser_collection_observation_.Reset();
   CleanUpWidget();
   profile_ = nullptr;
 }
@@ -226,7 +249,7 @@ bool OmniboxEverywhereUIManager::IsVisible() const {
 void OmniboxEverywhereUIManager::OnWidgetActivationChanged(
     views::Widget* widget,
     bool active) {
-  if (!active && !is_file_chooser_open_) {
+  if (!active && !is_file_chooser_open_ && !is_drive_picker_open_) {
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(&OmniboxEverywhereUIManager::Close,
                                   weak_factory_.GetWeakPtr()));
@@ -279,6 +302,42 @@ void OmniboxEverywhereUIManager::OnFileChooserOpened() {
 
 void OmniboxEverywhereUIManager::OnFileChooserClosed() {
   is_file_chooser_open_ = false;
+}
+
+void OmniboxEverywhereUIManager::OnDrivePickerOpened() {
+  is_drive_picker_open_ = true;
+}
+
+void OmniboxEverywhereUIManager::OnDrivePickerClosed() {
+  is_drive_picker_open_ = false;
+}
+
+void OmniboxEverywhereUIManager::OnBrowserActivated(
+    BrowserWindowInterface* browser) {
+  if (contents_wrapper_ && contents_wrapper_->web_contents()) {
+    webui::SetBrowserWindowInterface(contents_wrapper_->web_contents(),
+                                     browser);
+  }
+}
+
+void OmniboxEverywhereUIManager::OnBrowserClosed(
+    BrowserWindowInterface* browser) {
+  if (contents_wrapper_ && contents_wrapper_->web_contents()) {
+    if (webui::GetBrowserWindowInterface(contents_wrapper_->web_contents()) ==
+        browser) {
+      BrowserWindowInterface* active_bwi = nullptr;
+      // Get the profile collection from the scoped observation object directly
+      // rather than performing a manual lookup on the profile pointer.
+      if (browser_collection_observation_.IsObserving()) {
+        ProfileBrowserCollection* profile_collection =
+            browser_collection_observation_.GetSource();
+        CHECK(profile_collection);
+        active_bwi = profile_collection->GetLastActiveBrowser();
+      }
+      webui::SetBrowserWindowInterface(contents_wrapper_->web_contents(),
+                                       active_bwi);
+    }
+  }
 }
 
 void OmniboxEverywhereUIManager::RunFileChooser(

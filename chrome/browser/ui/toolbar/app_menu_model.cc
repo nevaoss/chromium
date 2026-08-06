@@ -360,7 +360,7 @@ std::u16string GetInstallPWALabel(Browser* browser) {
 // TODO(b/328077967): Implement async updates of menu for app icon.
 ui::ImageModel GetInstallPWAIcon(Browser* browser) {
   ui::ImageModel app_icon_to_use = ui::ImageModel::FromVectorIcon(
-      features::IsRoundedIconsEnabled() ? kInstallDesktopIcon
+      features::IsRoundedIconsEnabled() ? vector_icons::kInstallDesktopIcon
                                         : kInstallDesktopChromeRefreshOldIcon,
       ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize);
 
@@ -761,7 +761,7 @@ bool ProfileSubMenuModel::BuildSyncSection() {
     AddItemWithStringIdAndVectorIcon(
         this, IDC_SHOW_SYNC_SETTINGS, IDS_PROFILE_ROW_SYNC_IS_ON,
         features::IsRoundedIconsEnabled()
-            ? kSyncIcon
+            ? vector_icons::kSyncIcon
             : vector_icons::kSyncChromeRefreshOldIcon);
   } else {
     if (syncer::IsReplaceSyncPromosWithSignInPromosEnabled()) {
@@ -917,9 +917,10 @@ FindAndEditSubMenuModel::FindAndEditSubMenuModel(
   AddItemWithStringIdAndVectorIcon(
       this, IDC_CUT, IDS_CUT,
       features::IsRoundedIconsEnabled() ? kContentCutIcon : kCutMenuOldIcon);
-  AddItemWithStringIdAndVectorIcon(
-      this, IDC_COPY, IDS_COPY,
-      features::IsRoundedIconsEnabled() ? kContentCopyIcon : kCopyMenuOldIcon);
+  AddItemWithStringIdAndVectorIcon(this, IDC_COPY, IDS_COPY,
+                                   features::IsRoundedIconsEnabled()
+                                       ? vector_icons::kContentCopyIcon
+                                       : kCopyMenuOldIcon);
   AddItemWithStringIdAndVectorIcon(this, IDC_PASTE, IDS_PASTE,
                                    features::IsRoundedIconsEnabled()
                                        ? kContentPasteIcon
@@ -968,7 +969,7 @@ void SaveAndShareSubMenuModel::BuildSendTabToSelfSubmenu(
 
   SetIsNewFeatureAt(GetItemCount() - 1,
                     UserEducationService::MaybeShowNewBadge(
-                        browser->profile(),
+                        browser->GetProfile(),
                         send_tab_to_self::kSendTabToSelfEnhancedDesktopUIv2));
 }
 
@@ -1022,7 +1023,7 @@ SaveAndShareSubMenuModel::SaveAndShareSubMenuModel(
     if (!sharing_hub::SharingIsDisabledByPolicy(browser->GetProfile())) {
       AddItemWithStringIdAndVectorIcon(
           this, IDC_COPY_URL, IDS_APP_MENU_COPY_LINK,
-          features::IsRoundedIconsEnabled() ? kLinkIcon
+          features::IsRoundedIconsEnabled() ? vector_icons::kLinkIcon
                                             : kLinkChromeRefreshOldIcon);
 
       // WebContents is required to query target devices and display state for
@@ -1269,8 +1270,8 @@ void ToolsMenuModel::Build(Browser* browser) {
         AddSeparator(ui::NORMAL_SEPARATOR);
         AddItemWithStringIdAndVectorIcon(
             this, IDC_SHOW_CHROME_LABS, IDS_CHROMELABS,
-            features::IsRoundedIconsEnabled()   ? kScienceIcon
-                                                : kScienceOldIcon);
+            features::IsRoundedIconsEnabled() ? vector_icons::kScienceIcon
+                                              : vector_icons::kScienceOldIcon);
         SetElementIdentifierAt(
             GetIndexOfCommandId(IDC_SHOW_CHROME_LABS).value(),
             kChromeLabsMenuItem);
@@ -1379,7 +1380,7 @@ void AppMenuModel::ExecuteCommand(int command_id, int event_flags) {
   }
 
   if (command_id == IDC_VIEW_PASSWORDS) {
-    browser()->profile()->GetPrefs()->SetBoolean(
+    browser()->GetProfile()->GetPrefs()->SetBoolean(
         password_manager::prefs::kPasswordsPrefWithNewLabelUsed, true);
   }
 

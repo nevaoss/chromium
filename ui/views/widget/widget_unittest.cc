@@ -3148,6 +3148,49 @@ TEST_F(WidgetTest, WheelEventsFromScrollEventTarget) {
   EXPECT_EQ(0, cursor_view->GetEventCount(ui::EventType::kMousewheel));
 }
 
+TEST_F(DesktopWidgetTest, ShowSurvivesWidgetDestructionInVisibilityChange) {
+  // Observer that synchronously destroys the owning unique_ptr when the widget
+  // becomes visible.
+  class DestroyOnVisibleObserver : public WidgetObserver {
+   public:
+    explicit DestroyOnVisibleObserver(std::unique_ptr<Widget> widget)
+        : widget_(std::move(widget)) {
+      widget_->AddObserver(this);
+    }
+    ~DestroyOnVisibleObserver() override {
+      if (widget_) {
+        widget_->RemoveObserver(this);
+      }
+    }
+
+    void OnWidgetVisibilityChanged(Widget* widget, bool visible) override {
+      if (visible) {
+        widget->RemoveObserver(this);
+        widget_.reset();
+      }
+    }
+
+    Widget* widget() { return widget_.get(); }
+
+   private:
+    std::unique_ptr<Widget> widget_;
+  };
+
+  {
+    DestroyOnVisibleObserver observer(
+        CreateTestWidget(Widget::InitParams::CLIENT_OWNS_WIDGET,
+                         Widget::InitParams::TYPE_WINDOW));
+    EXPECT_CHECK_DEATH(observer.widget()->Show());
+  }
+
+  {
+    DestroyOnVisibleObserver observer(
+        CreateTestWidget(Widget::InitParams::CLIENT_OWNS_WIDGET,
+                         Widget::InitParams::TYPE_WINDOW));
+    EXPECT_CHECK_DEATH(observer.widget()->ShowInactive());
+  }
+}
+
 // Tests that if a scroll-begin gesture is not handled, then subsequent scroll
 // events are not dispatched to any view.
 TEST_F(WidgetTest, GestureScrollEventDispatching) {
@@ -6658,5 +6701,82 @@ TEST_F(WidgetTest, GetNonDecoratedClientAreaBoundsInScreenNoNonClientView) {
   EXPECT_EQ(widget->GetRootView()->GetBoundsInScreen(),
             widget->GetNonDecoratedClientAreaBoundsInScreen());
 }
+
+#if defined(USE_AURA)
+TEST_F(WidgetTest, ShouldDescendIntoChildForEventHandling) {
+  Widget* toplevel = CreateTopLevelPlatformWidget();
+  toplevel->SetBounds(gfx::Rect(0, 0, 200, 200));
+  toplevel->Show();
+
+  // Create a target view that has a layer.
+  View* target_view =
+      toplevel->GetRootView()->AddChildView(std::make_unique<View>());
+  target_view->SetBounds(0, 0, 100, 100);
+  target_view->SetPaintToLayer();
+  ui::Layer* target_layer = target_view->layer();
+  ASSERT_NE(nullptr, target_layer);
+
+  ui::Layer* root_layer = toplevel->GetLayer();
+  ASSERT_NE(nullptr, root_layer);
+
+  // location inside target_view.
+  gfx::Point location(50, 50);
+  ASSERT_EQ(target_view,
+            toplevel->GetRootView()->GetEventHandlerForPoint(location));
+
+  // 1. No child layer -> returns true.
+  EXPECT_TRUE(toplevel->ShouldDescendIntoChildForEventHandling(
+      root_layer, nullptr, nullptr, location));
+
+  auto child_layer = ui::Layer::Create(ui::LAYER_NOT_DRAWN);
+
+  // 2. Disjoint child layer -> returns true.
+  EXPECT_TRUE(toplevel->ShouldDescendIntoChildForEventHandling(
+      root_layer, nullptr, child_layer.get(), location));
+
+  // 3. Target layer is child of child layer (kFirstIsChildOfSecond) -> returns
+  // false.
+  // Move target_layer under child_layer, and child_layer under root_layer.
+  root_layer->Add(child_layer.get());
+  child_layer->Add(target_layer);
+  EXPECT_FALSE(toplevel->ShouldDescendIntoChildForEventHandling(
+      root_layer, nullptr, child_layer.get(), location));
+
+  // Cleanup layer tree structure before next test case.
+  root_layer->Add(target_layer);
+  root_layer->Remove(child_layer.get());
+
+  // 4. Child layer is child of target layer (kSecondIsChildOfFirst) -> returns
+  // true.
+  target_layer->Add(child_layer.get());
+  EXPECT_TRUE(toplevel->ShouldDescendIntoChildForEventHandling(
+      root_layer, nullptr, child_layer.get(), location));
+  target_layer->Remove(child_layer.get());
+
+  // 5. Siblings.
+  // Case A: child_layer is above target_layer in Z-order.
+  root_layer->Add(target_layer);
+  root_layer->Add(child_layer.get());
+  // children order: [target_layer, child_layer], so child is on top.
+  EXPECT_TRUE(toplevel->ShouldDescendIntoChildForEventHandling(
+      root_layer, nullptr, child_layer.get(), location));
+
+  // Case B: target_layer is above child_layer in Z-order.
+  root_layer->StackBelow(child_layer.get(), target_layer);
+  // children order: [child_layer, target_layer], so views are on top.
+  EXPECT_FALSE(toplevel->ShouldDescendIntoChildForEventHandling(
+      root_layer, nullptr, child_layer.get(), location));
+
+  // Cleanup child_layer.
+  root_layer->Remove(child_layer.get());
+
+  // 6. Target view has no layer -> target_layer is root_layer -> returns true.
+  target_view->DestroyLayer();
+  EXPECT_TRUE(toplevel->ShouldDescendIntoChildForEventHandling(
+      root_layer, nullptr, child_layer.get(), location));
+
+  toplevel->CloseNow();
+}
+#endif  // defined(USE_AURA)
 
 }  // namespace views::test

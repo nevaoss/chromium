@@ -387,6 +387,14 @@
     "expires": "Dec 1, 2026"
   },
   {
+    "prefix": "container-timing-pre-paint-traversal",
+    "owners": [ "jdapena@igalia.com" ],
+    "platforms": ["Linux", "Mac", "Win"],
+    "bases": [ "external/wpt/container-timing/" ],
+    "args": [ "--enable-features=ContainerTimingPrepaintTraversal" ],
+    "expires": "Nov 1, 2026"
+  },
+  {
     "prefix": "controls-refresh-hc",
     "owners": [
       "masonf@chromium.org",
@@ -1408,7 +1416,7 @@
       "--enable-blink-features=ForcedColors",
       "--enable-blink-features=CSSGapDecoration"
     ],
-    "expires": "Jul 1, 2026"
+    "expires": "Jul 1, 2027"
   },
   {
     "prefix": "fractional-scroll-offsets",
@@ -3022,6 +3030,27 @@
       "yoichio@chromium.org"
     ],
     "expires": "Apr 1, 2027"
+  },
+  {
+    "prefix": "speculation-rules-renderer-side-heuristics",
+    "platforms": [
+      "Linux",
+      "Mac",
+      "Win"
+    ],
+    "bases": [
+      "external/wpt/speculation-rules/prefetch",
+      "external/wpt/speculation-rules/speculation-tags"
+    ],
+    "exclusive_tests": [],
+    "args": [
+      "--enable-features=SpeculationRulesRendererSideHeuristics"
+    ],
+    "owners": [
+      "yoavweiss@chromium.org",
+      "chrome-prerendering@google.com"
+    ],
+    "expires": "Jul 1, 2027"
   },
   {
     "prefix": "prerender-cross-origin-iframe-scroll",

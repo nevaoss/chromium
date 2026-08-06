@@ -127,6 +127,11 @@ inline constexpr char kAssistantSidePanelName[] = "AssistantSidePanel";
 inline constexpr char kAssistantSidePanelDescription[] =
     "Enables the AssistantSidePanel feature.";
 
+inline constexpr char kAtMemoryContextMenuEntryPointName[] =
+    "AtMemory context menu entry point";
+inline constexpr char kAtMemoryContextMenuEntryPointDescription[] =
+    "Enables an entry point in the edit context menu for the AtMemory feature.";
+
 inline constexpr char kAutofillAcrossIframesName[] =
     "Enables Autofill across iframes";
 inline constexpr char kAutofillAcrossIframesDescription[] =
@@ -475,6 +480,10 @@ inline constexpr char kContentPushNotificationsName[] =
 inline constexpr char kContentPushNotificationsDescription[] =
     "Enables the content push notifications.";
 
+inline constexpr char kContextualTasksName[] = "Enables the contextual tasks";
+inline constexpr char kContextualTasksDescription[] =
+    "Enables the contextual tasks infrastructure";
+
 inline constexpr char kCredentialProviderExtensionPromoName[] =
     "Enable the Credential Provider Extension promo.";
 inline constexpr char kCredentialProviderExtensionPromoDescription[] =
@@ -526,6 +535,11 @@ inline constexpr char kDataSharingVersioningStatesName[] =
     "Data Sharing Versioning Test Scenarios";
 inline constexpr char kDataSharingVersioningStatesDescription[] =
     "Testing multiple scenarios for versioning.";
+
+inline constexpr char kDefaultBottomOmniboxOnIOSName[] =
+    "Default Bottom Omnibox on iOS";
+inline constexpr char kDefaultBottomOmniboxOnIOSDescription[] =
+    "When enabled, the omnibox position defaults to bottom on iOS.";
 
 inline constexpr char kDefaultBrowserOffCyclePromoName[] =
     "Default Browser off-cycle promo";
@@ -911,6 +925,10 @@ inline constexpr char kGeneralizedGeminiEntryFlowName[] =
 inline constexpr char kGeneralizedGeminiEntryFlowDescription[] =
     "Generalizes the Gemini entry flow to handle auth and eligibility outside "
     "of the Page Action Menu.";
+
+inline constexpr char kGlassToolbarName[] = "GlassToolbar";
+inline constexpr char kGlassToolbarDescription[] =
+    "Enables the GlassToolbar feature.";
 
 inline constexpr char kHandleMdmErrorsForDasherAccountsName[] =
     "Mdm error handling for dasher accounts";
@@ -1444,11 +1462,6 @@ inline constexpr char kOmniboxCrashFixKillSwitchName[] =
 inline constexpr char kOmniboxCrashFixKillSwitchDescription[] =
     "Enables the OmniboxCrashFixKillSwitch feature.";
 
-inline constexpr char kOmniboxDRSPrototypeName[] =
-    "Enable the Omnibox DRS prototype";
-inline constexpr char kOmniboxDRSPrototypeDescription[] =
-    "Enables the omnibox dynamic response system prototype";
-
 inline constexpr char kOmniboxGroupingFrameworkForTypedSuggestionsName[] =
     "Omnibox Grouping Framework for Typed Suggestions";
 inline constexpr char
@@ -1619,10 +1632,6 @@ inline constexpr char kPageContextIPCOptimizationName[] =
     "PageContextIPCOptimization";
 inline constexpr char kPageContextIPCOptimizationDescription[] =
     "Enables the PageContextIPCOptimization feature.";
-
-inline constexpr char kPageStabilityMetricsName[] = "Page Stability Metrics";
-inline constexpr char kPageStabilityMetricsDescription[] =
-    "Enables metrics to track DOM mutation frequency after user interactions.";
 
 inline constexpr char kPageToolsFeatureUnavailabilityName[] =
     "PageToolsFeatureUnavailability";

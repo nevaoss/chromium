@@ -83,6 +83,12 @@ const MENU_ITEM_DATA: Record<SettingsOption, SettingsItem> = {
     itemType: SettingsItemType.TOGGLE,
     showSeparator: true,
   },
+  [SettingsOption.MEDIA]: {
+    id: SettingsOption.MEDIA,
+    icon: 'read-anything:animated-images',
+    title: 'mediaTitle',
+    itemType: SettingsItemType.MENU,
+  },
   [SettingsOption.LINE_SPACING]: {
     id: SettingsOption.LINE_SPACING,
     icon: loadTimeData.getBoolean('webuiRoundedIconsEnabled') ?
@@ -275,6 +281,7 @@ export class SettingsMenuElement extends SettingsMenuElementBase {
   private initializeMenuOptionsForImprovedReadAloud_(): SettingsOption[] {
     const optionIDs: SettingsOption[] = [
       SettingsOption.APPEARANCE,
+      SettingsOption.MEDIA,
       SettingsOption.TEXT,
       SettingsOption.VOICE_SELECTION,
       SettingsOption.VOICE_HIGHLIGHT,
@@ -286,11 +293,6 @@ export class SettingsMenuElement extends SettingsMenuElementBase {
 
     if (chrome.readingMode.isReadAnythingTranslateEntryPointEnabled) {
       optionIDs.push(SettingsOption.TRANSLATION_REQUESTED);
-    }
-    optionIDs.push(SettingsOption.LINKS);
-
-    if (chrome.readingMode.imagesFeatureEnabled) {
-      optionIDs.push(SettingsOption.IMAGES);
     }
 
     if (this.isImmersiveMode) {

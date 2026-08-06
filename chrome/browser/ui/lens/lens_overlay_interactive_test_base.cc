@@ -116,6 +116,7 @@ void LensOverlayInteractiveTestBase::SetUpFeatureList() {
                              {{"use-pdfs-as-context", "true"},
                               {"auto-focus-searchbox", "false"}}}},
       /*disabled_features=*/{contextual_tasks::kContextualTasks,
+                             contextual_tasks::kContextualTasksSidePanel,
                              features::kNonBlockingOsClipboardReads});
 }
 
@@ -130,7 +131,7 @@ void LensOverlayInteractiveTestBase::SetUpOnMainThread() {
   embedded_test_server()->StartAcceptingConnections();
 
   // Permits sharing the page screenshot by default.
-  PrefService* prefs = browser()->profile()->GetPrefs();
+  PrefService* prefs = browser()->GetProfile()->GetPrefs();
   prefs->SetBoolean(lens::prefs::kLensSharingPageScreenshotEnabled, true);
   prefs->SetBoolean(lens::prefs::kLensSharingPageContentEnabled, true);
 }
@@ -140,7 +141,7 @@ void LensOverlayInteractiveTestBase::TearDownOnMainThread() {
   InteractiveFeaturePromoTest::TearDownOnMainThread();
 
   // Disallow sharing the page screenshot by default.
-  PrefService* prefs = browser()->profile()->GetPrefs();
+  PrefService* prefs = browser()->GetProfile()->GetPrefs();
   prefs->SetBoolean(lens::prefs::kLensSharingPageScreenshotEnabled, false);
 }
 

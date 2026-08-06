@@ -7,12 +7,16 @@
 #include <optional>
 #include <tuple>
 
+#include "base/strings/string_number_conversions.h"
 #include "base/test/gmock_callback_support.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "base/test/test_future.h"
+#include "chrome/browser/context_hub/features.h"
 #include "chrome/browser/context_hub/memory_bank/in_memory_memory_bank.h"
 #include "chrome/browser/context_hub/memory_bank/noop_memory_bank.h"
+#include "chrome/browser/context_hub/storage/context_hub_backend.h"
+#include "chrome/browser/context_hub/tab_group_store/in_memory_tab_group_store.h"
 #include "chrome/browser/ui/webui/context_hub/context_hub.mojom-features.h"
 #include "components/optimization_guide/core/model_execution/test/mock_remote_model_executor.h"
 #include "components/optimization_guide/proto/features/context_hub.pb.h"
@@ -29,13 +33,17 @@ namespace {
 
 using ::base::test::RunOnceCallback;
 using ::testing::_;
+using ::testing::ElementsAre;
+using ::testing::FieldsAre;
 
 class ContextHubServiceTest : public testing::Test {
  public:
   ContextHubServiceTest()
       : service_(&mock_personal_context_service_,
                  &mock_remote_model_executor_,
-                 std::make_unique<InMemoryMemoryBank>()) {
+                 std::make_unique<InMemoryMemoryBank>(),
+                 std::make_unique<InMemoryTabGroupStore>(),
+                 /*context_hub_backend=*/nullptr) {
     scoped_feature_list_.InitWithFeatures(
         /*enabled_features=*/
         {
@@ -48,7 +56,8 @@ class ContextHubServiceTest : public testing::Test {
 
  protected:
   base::test::ScopedFeatureList scoped_feature_list_;
-  base::test::TaskEnvironment task_environment_;
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   personal_context::MockPersonalContextService mock_personal_context_service_;
   optimization_guide::MockRemoteModelExecutor mock_remote_model_executor_;
   ContextHubService service_;
@@ -203,21 +212,17 @@ TEST_F(ContextHubServiceTest, GroupTabs_WithTabs) {
         optimization_guide::proto::ContextHubResponse response;
         optimization_guide::proto::GroupResponse* group_response =
             response.mutable_group_response();
-        optimization_guide::proto::TabGroup* group1 =
-            group_response->add_tab_groups();
+        optimization_guide::proto::TabGroupMinimal* group1 =
+            group_response->add_minimal_tab_groups();
         group1->set_label("Group 1");
-        optimization_guide::proto::Tab* tab1 = group1->add_tabs();
-        tab1->set_tab_id(1);
-        optimization_guide::proto::Tab* tab2 = group1->add_tabs();
-        tab2->set_tab_id(2);
+        group1->add_tab_ids(1);
+        group1->add_tab_ids(2);
 
-        optimization_guide::proto::TabGroup* group2 =
-            group_response->add_tab_groups();
+        optimization_guide::proto::TabGroupMinimal* group2 =
+            group_response->add_minimal_tab_groups();
         group2->set_label("Group 2");
-        optimization_guide::proto::Tab* tab3 = group2->add_tabs();
-        tab3->set_tab_id(3);
-        optimization_guide::proto::Tab* tab4 = group2->add_tabs();
-        tab4->set_tab_id(4);
+        group2->add_tab_ids(3);
+        group2->add_tab_ids(4);
 
         optimization_guide::proto::Any any_response;
         any_response.set_type_url(
@@ -253,6 +258,14 @@ TEST_F(ContextHubServiceTest, GroupTabs_WithTabs) {
 
   ASSERT_EQ(ungrouped_tabs.size(), 1u);
   EXPECT_EQ(ungrouped_tabs[0].id, 5);
+
+  base::test::TestFuture<std::vector<TabGroupEntry>> stored_groups_future;
+  service_.GetTabGroups(
+      stored_groups_future.GetCallback());
+  EXPECT_THAT(
+      stored_groups_future.Get(),
+      ElementsAre(FieldsAre("group_1", "Group 1", ElementsAre(1, 2)),
+                  FieldsAre("group_2", "Group 2", ElementsAre(3, 4))));
 }
 
 TEST_F(ContextHubServiceTest, GroupTabs_MESError) {
@@ -289,6 +302,58 @@ TEST_F(ContextHubServiceTest, GroupTabs_MESError) {
   ASSERT_EQ(ungrouped_tabs.size(), 2u);
   EXPECT_EQ(ungrouped_tabs[0].id, 1);
   EXPECT_EQ(ungrouped_tabs[1].id, 2);
+}
+
+TEST_F(ContextHubServiceTest, AddAndGetTabGroupChatHistory) {
+  service_.AddTabGroupChatHistoryTurn(
+      optimization_guide::proto::ChatHistoryTurn::ROLE_USER, "User message");
+  task_environment_.FastForwardBy(base::Milliseconds(1));
+  service_.AddTabGroupChatHistoryTurn(
+      optimization_guide::proto::ChatHistoryTurn::ROLE_ASSISTANT,
+      "Assistant reply");
+
+  auto history = service_.GetTabGroupChatHistory();
+  ASSERT_EQ(history.size(), 2u);
+  EXPECT_EQ(history[0].role(),
+            optimization_guide::proto::ChatHistoryTurn::ROLE_USER);
+  EXPECT_EQ(history[0].message_content(), "User message");
+  EXPECT_EQ(history[1].role(),
+            optimization_guide::proto::ChatHistoryTurn::ROLE_ASSISTANT);
+  EXPECT_EQ(history[1].message_content(), "Assistant reply");
+}
+
+TEST_F(ContextHubServiceTest, ChatHistory_LRUEviction) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeatureWithParameters(
+      browser::context_hub::mojom::kAutoTabGroups,
+      {{features::kMaxTabGroupChatHistoryTurns.name, "3"}});
+  ContextHubService service(&mock_personal_context_service_,
+                            &mock_remote_model_executor_,
+                            std::make_unique<InMemoryMemoryBank>(),
+                            std::make_unique<InMemoryTabGroupStore>(),
+                            /*context_hub_backend=*/nullptr);
+
+  for (size_t i = 0; i < 4; ++i) {
+    service.AddTabGroupChatHistoryTurn(
+        optimization_guide::proto::ChatHistoryTurn::ROLE_USER,
+        "Message " + base::NumberToString(i));
+    task_environment_.FastForwardBy(base::Milliseconds(1));
+  }
+
+  auto history = service.GetTabGroupChatHistory();
+  ASSERT_EQ(history.size(), 3u);
+  // Oldest turn (Message 0) should be evicted.
+  EXPECT_EQ(history.front().message_content(), "Message 1");
+  EXPECT_EQ(history.back().message_content(), "Message 3");
+}
+
+TEST_F(ContextHubServiceTest, ChatHistory_Clear) {
+  service_.AddTabGroupChatHistoryTurn(
+      optimization_guide::proto::ChatHistoryTurn::ROLE_USER, "Message");
+  EXPECT_EQ(service_.GetTabGroupChatHistory().size(), 1u);
+
+  service_.ClearTabGroupChatHistory();
+  EXPECT_TRUE(service_.GetTabGroupChatHistory().empty());
 }
 
 }  // namespace

@@ -276,13 +276,13 @@ static_library("browser") {
     "data_model/valuables/loyalty_card.h",
     "data_model/valuables/valuable_types.cc",
     "data_model/valuables/valuable_types.h",
+    "data_quality/addresses/address_import_requirement_utils.cc",
+    "data_quality/addresses/address_import_requirement_utils.h",
     "data_quality/addresses/address_normalization_manager.cc",
     "data_quality/addresses/address_normalization_manager.h",
     "data_quality/addresses/address_normalizer.h",
     "data_quality/addresses/address_normalizer_impl.cc",
     "data_quality/addresses/address_normalizer_impl.h",
-    "data_quality/addresses/profile_requirement_utils.cc",
-    "data_quality/addresses/profile_requirement_utils.h",
     "data_quality/addresses/profile_token_quality.cc",
     "data_quality/addresses/profile_token_quality.h",
     "data_quality/autofill_data_util.cc",
@@ -436,6 +436,10 @@ static_library("browser") {
     "integrators/address_on_typing/address_on_typing_manager.h",
     "integrators/at_memory/at_memory_query_service.cc",
     "integrators/at_memory/at_memory_query_service.h",
+    "integrators/at_memory/memory_data_type_util.cc",
+    "integrators/at_memory/memory_data_type_util.h",
+    "integrators/at_memory/memory_search_result.cc",
+    "integrators/at_memory/memory_search_result.h",
     "integrators/autofill_ai/autofill_ai_import_utils.cc",
     "integrators/autofill_ai/autofill_ai_import_utils.h",
     "integrators/autofill_ai/autofill_ai_labels.cc",
@@ -756,6 +760,8 @@ static_library("browser") {
     "strike_databases/payments/cvc_storage_strike_database.cc",
     "strike_databases/payments/cvc_storage_strike_database.h",
     "strike_databases/payments/iban_save_strike_database.h",
+    "strike_databases/payments/payments_churned_users_strike_database.cc",
+    "strike_databases/payments/payments_churned_users_strike_database.h",
     "strike_databases/payments/save_and_fill_strike_database.cc",
     "strike_databases/payments/save_and_fill_strike_database.h",
     "strike_databases/payments/virtual_card_enrollment_strike_database.cc",
@@ -877,8 +883,6 @@ static_library("browser") {
     "webdata/addresses/contact_info_data_type_controller.h",
     "webdata/addresses/contact_info_local_data_batch_uploader.cc",
     "webdata/addresses/contact_info_local_data_batch_uploader.h",
-    "webdata/addresses/contact_info_precondition_checker.cc",
-    "webdata/addresses/contact_info_precondition_checker.h",
     "webdata/addresses/contact_info_sync_bridge.cc",
     "webdata/addresses/contact_info_sync_bridge.h",
     "webdata/addresses/contact_info_sync_util.cc",
@@ -975,6 +979,8 @@ static_library("browser") {
       "ui/addresses/android/autofill_address_ui_component_android.h",
       "ui/addresses/android/dropdown_key_value_android.cc",
       "ui/addresses/android/dropdown_key_value_android.h",
+      "ui/addresses/android/supported_countries_cache.cc",
+      "ui/addresses/android/supported_countries_cache.h",
     ]
   }
 
@@ -1294,6 +1300,7 @@ static_library("test_support") {
     "foundations/test_autofill_driver.h",
     "foundations/test_autofill_driver_factory.cc",
     "foundations/test_autofill_driver_factory.h",
+    "foundations/test_autofill_manager.h",
     "foundations/test_autofill_manager_waiter.cc",
     "foundations/test_autofill_manager_waiter.h",
     "foundations/test_browser_autofill_manager.cc",
@@ -1626,9 +1633,9 @@ source_set("unit_tests") {
     "data_model/usage_history_information_unittest.cc",
     "data_model/valuables/loyalty_card_unittest.cc",
     "data_model/valuables/valuable_types_unittest.cc",
+    "data_quality/addresses/address_import_requirement_utils_unittest.cc",
     "data_quality/addresses/address_normalization_manager_unittest.cc",
     "data_quality/addresses/address_normalizer_impl_unittest.cc",
-    "data_quality/addresses/profile_requirement_utils_unittest.cc",
     "data_quality/addresses/profile_token_quality_unittest.cc",
     "data_quality/autofill_data_util_unittest.cc",
     "data_quality/validation_unittest.cc",
@@ -1696,6 +1703,8 @@ source_set("unit_tests") {
     "heuristic_source_unittest.cc",
     "integrators/address_on_typing/address_on_typing_manager_unittest.cc",
     "integrators/at_memory/at_memory_query_service_unittest.cc",
+    "integrators/at_memory/memory_data_type_util_unittest.cc",
+    "integrators/at_memory/memory_search_result_unittest.cc",
     "integrators/autofill_ai/autofill_ai_import_utils_unittest.cc",
     "integrators/autofill_ai/autofill_ai_labels_unittest.cc",
     "integrators/autofill_ai/autofill_ai_manager_unittest.cc",
@@ -1796,6 +1805,7 @@ source_set("unit_tests") {
     "single_field_fillers/single_field_fill_router_unittest.cc",
     "strike_databases/autofill_ai/autofill_ai_save_strike_database_by_host_unittest.cc",
     "strike_databases/email_verification_strike_database_unittest.cc",
+    "strike_databases/payments/payments_churned_users_strike_database_unittest.cc",
     "strike_databases/payments/virtual_card_enrollment_strike_database_unittest.cc",
     "studies/autofill_ablation_study_unittest.cc",
     "studies/autofill_experiments_unittest.cc",
@@ -1858,6 +1868,7 @@ source_set("unit_tests") {
     sources += [
       "payments/android_bnpl_strategy_unittest.cc",
       "payments/autofill_save_iban_ui_info_unittest.cc",
+      "ui/addresses/android/supported_countries_cache_unittest.cc",
     ]
   }
 
@@ -2028,6 +2039,10 @@ source_set("unit_tests") {
 
   if (!is_fuchsia) {
     deps += [ "//components/variations/service" ]
+  }
+
+  if (!is_ios && !is_fuchsia) {
+    deps += [ "//components/autofill/core/browser/at_memory/policy:unit_tests" ]
   }
 
   if (is_win || is_mac || is_linux || is_chromeos || is_android) {

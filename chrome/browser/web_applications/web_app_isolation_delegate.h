@@ -6,9 +6,13 @@
 #define CHROME_BROWSER_WEB_APPLICATIONS_WEB_APP_ISOLATION_DELEGATE_H_
 
 #include <memory>
+#include <unordered_set>
 
+#include "base/containers/flat_map.h"
+#include "base/files/file_path.h"
 #include "base/functional/callback.h"
 #include "base/types/pass_key.h"
+#include "base/values.h"
 #include "components/webapps/common/web_app_id.h"
 
 class BrowserProcessImpl;
@@ -17,6 +21,8 @@ class TestingBrowserProcess;
 
 namespace web_app {
 
+class ComputeAppSizeJob;
+class ComputedAppSizeWithOrigin;
 class WebAppProvider;
 
 // A delegate used by the WebAppProvider and command system to execute
@@ -42,6 +48,15 @@ class WebAppIsolationDelegate {
   // uninstalled (e.g. storage partitions and bundle caches).
   virtual void ClearAppResourcesOnUninstall(const webapps::AppId& app_id,
                                             base::OnceClosure callback) = 0;
+
+  virtual std::unique_ptr<ComputeAppSizeJob> CreateComputeAppSizeJob(
+      const webapps::AppId& app_id,
+      base::DictValue& debug_value) = 0;
+
+  // Returns a set of storage partition paths that are currently used by any
+  // Isolated Web Apps installed in this profile; these paths are exempt from
+  // garbage collection.
+  virtual std::unordered_set<base::FilePath> GetIsolatedStoragePaths() = 0;
 };
 
 }  // namespace web_app

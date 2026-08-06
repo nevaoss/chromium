@@ -58,6 +58,8 @@ class TestToolbarUiHandler extends TestBrowserProxy implements
   onLhsChipDrag() {}
   movePinnedToolbarAction(_actionId: any, _targetIndex: any) {}
   movePinnedToolbarActionBy(_actionId: any, _delta: any) {}
+  moveExtensionAction(_extensionId: string, _targetIndex: number) {}
+  moveExtensionActionBy(_extensionId: string, _delta: number) {}
 
   onPageActionClick(actionId: PageActionId, trigger: PageActionTrigger) {
     this.methodCalled('onPageActionClick', [actionId, trigger]);
@@ -110,6 +112,7 @@ suite('PageActionIconTest', function() {
       pageActionId: PageActionId.kActionShowTranslate,
       accessibleName: 'Translate',
       tooltipText: 'Translate this page',
+      icon: {handleId: 0n},
     };
   }
 

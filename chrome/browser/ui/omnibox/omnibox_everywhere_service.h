@@ -14,6 +14,10 @@
 
 class Profile;
 
+namespace omnibox_everywhere {
+class OmniboxEverywhereController;
+}
+
 class OmniboxEverywhereService : public KeyedService {
  public:
   explicit OmniboxEverywhereService(Profile* profile);
@@ -31,9 +35,13 @@ class OmniboxEverywhereService : public KeyedService {
   void Shutdown() override;
 
   void SetIsNavigating(bool is_navigating);
-  void SetWasActiveBeforePopup(bool was_active);
+
+  void OnDrivePickerOpened();
+  void OnDrivePickerClosed();
 
  private:
+  omnibox_everywhere::OmniboxEverywhereController* controller() const;
+
   raw_ptr<Profile> profile_;
 
   base::WeakPtrFactory<OmniboxEverywhereService> weak_factory_{this};

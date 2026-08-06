@@ -38,7 +38,7 @@
 #include "chrome/browser/ui/lens/lens_query_flow_router.h"
 #include "chrome/browser/ui/lens/lens_search_controller.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
-#include "chrome/browser/ui/omnibox/omnibox_next_features.h"
+#include "components/omnibox/common/omnibox_features.h"
 #include "chrome/browser/ui/webui/searchbox/searchbox_test_utils.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
 #include "chrome/test/base/in_process_browser_test.h"
@@ -124,7 +124,7 @@ class LocalContextualSearchboxHandlerTestHarness : public InProcessBrowserTest {
 
   // Helper methods to access protected members
   content::WebContents* web_contents() { return web_contents_; }
-  Profile* profile() { return browser()->profile(); }
+  Profile* profile() { return browser()->GetProfile(); }
   scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory() {
     return profile()
         ->GetDefaultStoragePartition()
@@ -3843,6 +3843,43 @@ IN_PROC_BROWSER_TEST_F(
   ASSERT_NE(handler_, nullptr);
 
   // Clean up session handle from mock UI.
+  mock_ui_->SetSessionHandle(nullptr);
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ContextualTasksComposeboxHandlerTestWithContextManagementEnabled,
+    CacheSubmittedTabsOnInit_UnmappedClosedTab) {
+  auto mock_session = std::make_unique<testing::NiceMock<
+      contextual_search::MockContextualSearchSessionHandle>>();
+
+  std::vector<contextual_search::FileInfo> submitted_file_infos;
+  const SessionID closed_tab_session_id = SessionID::FromSerializedValue(9999);
+
+  contextual_search::FileInfo closed_tab_info;
+  closed_tab_info.tab_url = GURL("https://example.com/closed");
+  closed_tab_info.tab_title = "Closed Tab";
+  closed_tab_info.tab_session_id = closed_tab_session_id;
+  closed_tab_info.mime_type = lens::MimeType::kHtml;
+  closed_tab_info.selection_time = base::Time::Now();
+  submitted_file_infos.push_back(closed_tab_info);
+
+  EXPECT_CALL(*mock_session, GetSubmittedContextFileInfos())
+      .WillRepeatedly(testing::Return(submitted_file_infos));
+
+  mock_ui_->SetSessionHandle(mock_session.get());
+
+  EXPECT_CALL(mock_searchbox_page_, SetAimThreadRestoredTabs(testing::_))
+      .WillOnce([&](const std::vector<searchbox::mojom::TabInfoPtr>& tabs) {
+        ASSERT_EQ(tabs.size(), 1u);
+        EXPECT_EQ(tabs[0]->url, GURL("https://example.com/closed"));
+        EXPECT_EQ(tabs[0]->title, "Closed Tab");
+        // Verify fallback to raw SessionID integer when tab is unmapped.
+        EXPECT_EQ(tabs[0]->tab_id, 9999);
+      });
+
+  SetUpHandler();
+  ASSERT_NE(handler_, nullptr);
+
   mock_ui_->SetSessionHandle(nullptr);
 }
 

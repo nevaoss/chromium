@@ -1991,13 +1991,6 @@ URI 템플릿에 <ph name="HTTP_VARIABLE_DNS" /> 변수가 포함된 경우 리�
       사용자는 이 설정을 변경하거나 재정의할 수 없습니다.
 
       참고: 정책을 사용하면 https://support.google.com/a/answer/1668854에서 설명된 바와 같이 X-GoogApps-Allowed-Domains 헤더가 모든 google.com 도메인에 대한 HTTP 및 HTTPS 요청에 첨부됩니다.</translation>
-<translation id="2287414160388710497">관리자가 데이터 손실 방지(DLP) 규칙에 따라 적용된 워터마크의 모양을 맞춤설정할 수 있습니다. 여기에는 채우기/윤곽선 불투명도 설정 및 글꼴 크기 정의가 포함됩니다.
-정책 또는 일부 값을 설정하지 않으면 Chrome에서 기본 워터마크 동작을 사용합니다.
-기본값은 채우기 불투명도 4, 윤곽선 불투명도 6, 글꼴 크기 24입니다.
-
-'채우기 불투명도'는 0(완전 투명)에서 100(완전 불투명) 사이의 백분율입니다.
-'윤곽선 불투명도'는 0(완전 투명)에서 100(완전 불투명) 사이의 백분율입니다.
-'글꼴 크기'는 포인트 단위로 지정됩니다.</translation>
 <translation id="2288506601233091655">인쇄 작업 내역 삭제 허용 안함</translation>
 <translation id="2289688405312849186">사용자 주 구성원 'user@realm'입니다. <ph name="LOGIN_ID_PLACEHOLDER" /> 자리표시자가 사용자 이름 'user'로 교체됩니다. <ph name="LOGIN_EMAIL_PLACEHOLDER" /> 자리표시자가 전체 주 구성원 'user@realm'으로 교체됩니다.</translation>
 <translation id="2290270645214705008">정책을 사용 안함으로 설정하면 수신되는 연결을 허용하도록 원격 액세스 호스트 서비스를 시작하거나 구성할 수 없습니다.  이 정책은 원격 지원 시나리오에 영향을 주지 않습니다.
@@ -2255,31 +2248,11 @@ ServiceWorkerAutoPreload 기능은 ServiceWorker 부트스트랩 프로세스를
 이 정책은 이 기능을 제어하기 위한 일시적인 조치이며 M154에서 삭제될 예정입니다.</translation>
 <translation id="2467181864598429837">기본 브라우저 동작</translation>
 <translation id="2467896267442150508">최대 1주일 기간의 시간 간격입니다. 시작 시간이 종료 시간 이후인 경우 간격이 범위를 둘러싼 값으로 설정됩니다.</translation>
-<translation id="2475594733565572760">이 정책은 적용 범위 내의 모든 생성형 AI 기능에 대한 기본 설정을 정의합니다. 예를 들어 정책이 값 1로 설정되면 모든 적용되는 생성형 AI 기능의 기본 설정이 1이 됩니다. 수동으로 설정된 정책 값에는 영향을 미치지 않습니다. 이 설정은 Chrome의 적용 범위에 해당하는 생성형 AI 기능의 기본값을 정의합니다. 적용되는 기능 목록은 https://support.google.com/chrome/a?p=generative_ai_settings를 참고하세요.
-
-<ph name="GEMINI_SETTINGS_POLICY_NAME" /> 정책과 같은 일부 정책은 '허용' 및 '허용 안함' 상태만 지원합니다. 이 경우 <ph name="GEN_AI_DEFAULT_SETTINGS_POLICY_NAME" /> 정책을 0 또는 1로 설정하면 이 기능이 사용 설정됩니다. <ph name="GEN_AI_DEFAULT_SETTINGS_POLICY_NAME" /> 정책을 2로 설정하면 이 기능이 사용 중지됩니다. 각 기능의 문서에는 이 정책의 값과 상호작용하는 방식에 관한 자세한 내용이 포함되어 있습니다(예: Chrome의 Gemini - https://support.google.com/chrome/a/?p=gemini_in_chrome). 이러한 기능에는 자체 보증 또는 서비스 약관 (https://support.google.com/chrome/a/?p=genai_features_chrome)이 적용되므로 Chrome의 Gemini, Google 렌즈, AI 모드 기능에 적용됩니다.
-
-0 = 이 기능을 사용하도록 허용하면서 Google에서 관련 데이터를 사용하여 AI 모델을 개선하도록 허용합니다. 관련 데이터에는 기능에 따라 프롬프트나 입력, 출력, 소스 자료, 서면 의견이 포함될 수 있습니다. AI 모델을 개선하기 위해 사람이 데이터를 검토할 수도 있습니다. 아래에 명시된 경우를 제외하고 0이 기본값입니다.
-
-1 = 기능을 사용하도록 허용하되 Google에서 사용자 콘텐츠(프롬프트, 입력, 출력, 소스 자료, 서면 의견 등)를 사용하여 모델을 개선하도록 허용하지 않습니다. 1은 <ph name="GOOGLE_ADMIN_CONSOLE_PRODUCT_NAME" />에서 관리되는 기업 사용자 및 <ph name="GOOGLE_WORKSPACE_PRODUCT_NAME" />에서 관리되는 Education 계정의 기본값입니다.
-
-2 = 기능을 허용하지 않습니다.
-
-생성형 AI 기능의 데이터 처리에 관한 자세한 내용은 https://support.google.com/chrome/a?p=generative_ai_settings 페이지를 참고하세요.</translation>
 <translation id="2476249479201711962">기본 검색 제공업체 컨텍스트 메뉴에 대한 액세스 허용</translation>
 <translation id="2478756867046106663">악의적 사용자 환경이 포함된 사이트에서 새 창 또는 탭 열기 허용</translation>
 <translation id="2479760962196319822">이 정책은 <ph name="PRODUCT_OS_NAME" /> 사용자가 데이터를 로컬로 저장할 수 있는지 제어합니다.
       정책을 False로 설정하면 <ph name="PRODUCT_OS_NAME" />에 로컬로 저장이 차단됩니다. 사용자는 데이터를 로컬로 저장할 수 없으며 로컬 디렉터리에 액세스할 수 없습니다.
       정책을 True로 설정하거나 설정하지 않으면 <ph name="PRODUCT_OS_NAME" />에서 로컬 저장이 허용됩니다. 사용자가 데이터를 저장할 수 있는 위치나 액세스할 수 있는 디렉터리에는 제한이 없습니다.</translation>
-<translation id="2480971699591919564">사용자가 로그인되어 있으면 Chrome 데스크톱에서 Android 기기로 전화번호를 전송하도록 허용하는 클릭 투 콜 기능을 사용 설정합니다. 자세한 내용은 고객센터 도움말을 참고하세요. https://support.google.com/chrome/answer/9430554?hl=ko
-
-      이 정책이 사용 설정된 경우 Chrome 사용자가 Android 기기로 전화번호를 전송할 수 있습니다.
-
-      사용 중지된 경우 Chrome 사용자가 Android 기기로 전화번호를 전송할 수 없습니다.
-
-      정책이 설정되면 사용자가 이를 변경하거나 재정의할 수 없습니다.
-
-      정책을 설정하지 않으면 클릭 투 콜 기능이 기본적으로 사용 설정됩니다.</translation>
 <translation id="2482676533225429905">기본 메시지</translation>
 <translation id="2483146640187052324">모든 네트워크 연결의 네트워크 활동 예측</translation>
 <translation id="2487495476672607707"><ph name="PRODUCT_OS_NAME" /> 파일 동기화를 사용하면 자동으로 사용자의 내 드라이브에 있는 <ph name="GOOGLE_DRIVE_NAME" /> 파일을 <ph name="CHROMEBOOK_PLUS_NAME" /> 기기에서 오프라인(공간 허용)으로 사용할 수 있습니다.
@@ -12970,6 +12943,13 @@ https://chromeenterprise.google/policies/url-patterns 페이지를 참고하세�
 <translation id="9087652369391570821">OnFileTransfer Chrome Enterprise 커넥터 설정 정책</translation>
 <translation id="9088433379343318874">관리 대상 사용자 콘텐츠 제공업체 사용</translation>
 <translation id="9088444059179765143">자동 시간대 감지 방법 설정</translation>
+<translation id="9094681501120769194"><ph name="PRODUCT_NAME" />의 PDF 뷰어에서 프로세스 외부 iframe(OOPIF)을 사용할지 여부를 제어합니다. 더 간단해지고 새로운 기능을 더 쉽게 추가할 수 있으므로 향후 새로운 PDF 뷰어 아키텍처가 될 것입니다. 기존 GuestView PDF 뷰어는 오래되고 복잡한 아키텍처로서 지원이 중단됩니다.
+
+정책을 '사용'으로 설정하거나 설정하지 않으면 <ph name="PRODUCT_NAME" />에서 OOPIF PDF 뷰어 아키텍처를 사용할 수 있습니다. 사용 설정하거나 설정하지 않으면 <ph name="PRODUCT_NAME" />에서 기본 동작을 결정합니다.
+
+정책을 '사용 안함'으로 설정하면 <ph name="PRODUCT_NAME" />에서 기존 GuestView PDF 뷰어를 엄격하게 사용합니다. 별도의 프레임 트리가 있는 웹페이지를 다른 웹페이지에 삽입합니다.
+
+이 정책은 M152에서 지원 중단되며 M155에서 삭제될 예정입니다. GuestView PDF 뷰어가 삭제되고 프로세스 외부 iframe(OOPIF) PDF 뷰어 아키텍처가 항상 사용됩니다.</translation>
 <translation id="9095599826504830315">탭 비교를 허용하지 않습니다.</translation>
 <translation id="9096772739225230999">네트워크 구성 보고 안함</translation>
 <translation id="9098409326885953506">가려진 창을 감지하여 색상 설정 정지</translation>

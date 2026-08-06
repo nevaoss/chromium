@@ -323,18 +323,6 @@
       },
     },
   },
-  'gpu_nvidia_shield_tv_stable': {
-    'fail_if_unused': False,
-    'swarming': {
-      'dimensions': {
-        'os': 'Android',
-        'device_type': 'mdarcy',
-        'device_os': 'PPR1.180610.011',
-        'device_os_type': 'userdebug',
-        'pool': 'chromium.tests.gpu',
-      },
-    },
-  },
   'gpu_pixel_10_stable': {
     'fail_if_unused': False,
     'swarming': {
@@ -608,6 +596,14 @@
       },
     },
   },
+  'mac_15_x64': {
+    'swarming': {
+      'dimensions': {
+        'cpu': 'x86-64',
+        'os': 'Mac-15',
+      },
+    },
+  },
   'mac_arm64_apple_m1_gpu_experimental': {
     'fail_if_unused': False,
     'swarming': {
@@ -680,14 +676,6 @@
     'swarming': {
       'dimensions': {
         'cpu': 'arm64',
-        'os': 'Mac-15|Mac-26',
-      },
-    },
-  },
-  'mac_default_x64': {
-    'swarming': {
-      'dimensions': {
-        'cpu': 'x86-64',
         'os': 'Mac-15|Mac-26',
       },
     },
@@ -989,8 +977,8 @@
     'swarming': {
       'dimensions': {
         'display_attached': '1',
-        'gpu': '10de:2184-32.0.15.8180',
-        'os': 'Windows-11-26100',
+        'gpu': '10de:2184-32.0.16.1074',
+        'os': 'Windows-11-26200',
         'pool': 'chromium.tests.gpu',
       },
     },

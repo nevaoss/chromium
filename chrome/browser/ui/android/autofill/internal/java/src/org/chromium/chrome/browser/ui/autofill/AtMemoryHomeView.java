@@ -31,8 +31,6 @@ import org.chromium.ui.modelutil.SimpleRecyclerViewAdapter;
 public class AtMemoryHomeView extends LinearLayout {
     private AtMemorySearchBarView mSearchBarView;
     private RecyclerView mRecyclerView;
-    private View mNoticeContainer;
-    private View mNoticeOkButton;
 
     public AtMemoryHomeView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
@@ -45,8 +43,9 @@ public class AtMemoryHomeView extends LinearLayout {
         mSearchBarView = findViewById(R.id.search_query_input_container);
         mRecyclerView = findViewById(R.id.suggestions_view);
         mRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        mNoticeContainer = findViewById(R.id.notice_container);
-        mNoticeOkButton = findViewById(R.id.notice_ok_button);
+        // Disable animations to prevent view flickering during frequent updates (e.g. search
+        // affordance).
+        mRecyclerView.setItemAnimator(null);
     }
 
     public void setUpSheetItems(ModelList items) {
@@ -61,6 +60,11 @@ public class AtMemoryHomeView extends LinearLayout {
                 ItemType.ZERO_STATE,
                 new LayoutViewBuilder<>(R.layout.at_memory_bottom_sheet_zero_state_item),
                 (model, view, propertyKey) -> {});
+
+        adapter.registerType(
+                ItemType.NOTICE,
+                new LayoutViewBuilder<>(R.layout.at_memory_bottom_sheet_notice_item),
+                AtMemoryBottomSheetViewBinder::bindNoticeItemView);
 
         mRecyclerView.setAdapter(adapter);
         mRecyclerView.addItemDecoration(new AtMemoryDividerItemDecoration(getContext()));
@@ -78,32 +82,6 @@ public class AtMemoryHomeView extends LinearLayout {
         mSearchBarView.hideKeyboardAndClearFocus();
     }
 
-    public void setNoticeVisible(boolean visible) {
-        mNoticeContainer.setVisibility(visible ? View.VISIBLE : View.GONE);
-    }
-
-    public void setNoticeOkClickListener(Runnable listener) {
-        mNoticeOkButton.setOnClickListener(v -> listener.run());
-    }
-
-    public void setNoticeSettingsClickListener(Runnable listener) {
-        android.widget.TextView noticeTextView = findViewById(R.id.notice_text);
-        android.content.Context context = getContext();
-        String rawText = context.getString(R.string.at_memory_notice_text);
-
-        org.chromium.ui.text.ChromeClickableSpan settingsSpan =
-                new org.chromium.ui.text.ChromeClickableSpan(context, (widget) -> listener.run());
-
-        android.text.SpannableString formattedText =
-                org.chromium.ui.text.SpanApplier.applySpans(
-                        rawText,
-                        new org.chromium.ui.text.SpanApplier.SpanInfo(
-                                "<link>", "</link>", settingsSpan));
-
-        noticeTextView.setText(formattedText);
-        noticeTextView.setMovementMethod(android.text.method.LinkMovementMethod.getInstance());
-    }
-
     public void setSearchBarDelegate(AtMemorySearchBarView.Delegate delegate) {
         mSearchBarView.setDelegate(delegate);
     }
@@ -116,6 +94,7 @@ public class AtMemoryHomeView extends LinearLayout {
         mSearchBarView.setIsLoading(isLoading);
     }
 
+    // TODO(crbug.com/536749145): Remove background logic.
     public void setShowSuggestionsBackground(boolean showBackground) {
         if (showBackground) {
             mRecyclerView.setBackgroundResource(R.drawable.at_memory_suggestions_bg);
@@ -184,6 +163,7 @@ public class AtMemoryHomeView extends LinearLayout {
         private boolean shouldSkipItemType(@ItemType int type) {
             switch (type) {
                 case ItemType.ZERO_STATE:
+                case ItemType.NOTICE:
                     return true;
                 case ItemType.SUGGESTION:
                     return false;

@@ -22,7 +22,6 @@
 #include "base/time/time.h"
 #include "base/types/optional_ref.h"
 #include "components/accessibility_annotator/core/annotation_reducer/memory_data_type.h"
-#include "components/accessibility_annotator/core/annotation_reducer/memory_search_result.h"
 #include "components/autofill/core/browser/at_memory/at_memory_data_type.h"
 #include "components/autofill/core/browser/at_memory/at_memory_utils.h"
 #include "components/autofill/core/browser/data_manager/addresses/address_data_manager.h"
@@ -39,6 +38,7 @@
 #include "components/autofill/core/browser/data_model/usage_history_information.h"
 #include "components/autofill/core/browser/field_types.h"
 #include "components/autofill/core/browser/filling/field_filling_util.h"
+#include "components/autofill/core/browser/integrators/at_memory/memory_search_result.h"
 #include "components/autofill/core/browser/suggestions/payments/payments_suggestion_generator_util.h"
 #include "components/autofill/core/browser/ui/addresses/autofill_address_util.h"
 #include "components/strings/grit/components_strings.h"
@@ -49,11 +49,7 @@ namespace autofill {
 
 namespace {
 
-using ::accessibility_annotator::EntryMetadata;
 using ::accessibility_annotator::MemoryDataType;
-using ::accessibility_annotator::MemoryEntrySource;
-using ::accessibility_annotator::MemoryEntrySourceType;
-using ::accessibility_annotator::MemorySearchResult;
 
 constexpr size_t kVisibleSuffixLength = 4;
 
@@ -120,22 +116,33 @@ std::vector<EntryMetadata> GetMetadataFromEntityAttributes(
 
 MemorySearchResult CreateMemorySearchResultForEntity(
     const EntityInstance& entity,
-    MemoryDataType memory_data_type,
+    AttributeType primary_attribute_type,
     std::u16string value,
-    AttributeType attribute_type,
     std::string_view app_locale) {
-  if (attribute_type.is_obfuscated()) {
+  if (primary_attribute_type.is_obfuscated()) {
     value = GetObfuscatedValue(value, kVisibleSuffixLength);
   }
 
+  MemoryDataType memory_data_type =
+      AttributeTypeToMemoryDataType(primary_attribute_type);
   MemorySearchResult entry(
       memory_data_type, GetMemoryDataTypeNameForI18n(memory_data_type),
       std::move(value),
       CalculateRankingScore(entity.use_count(), entity.use_date()));
-  entry.is_obfuscated = attribute_type.is_obfuscated();
+  entry.is_obfuscated = primary_attribute_type.is_obfuscated();
   entry.identifier = *entity.guid();
-  entry.metadata_list =
-      GetMetadataFromEntityAttributes(entity, app_locale, attribute_type);
+  entry.metadata_list = GetMetadataFromEntityAttributes(entity, app_locale,
+                                                        primary_attribute_type);
+  entry.is_local = [&] {
+    switch (entity.record_type()) {
+      case EntityInstance::RecordType::kLocal:
+        return true;
+      case EntityInstance::RecordType::kServerWallet:
+      case EntityInstance::RecordType::kPersonalContext:
+        return false;
+    }
+    NOTREACHED();
+  }();
   return entry;
 }
 
@@ -151,6 +158,18 @@ MemorySearchResult CreateResultFromAddressProfile(
       std::move(value), profile.GetRankingScore(base::Time::Now()));
 
   entry.identifier = profile.guid();
+  entry.is_local = [&] {
+    switch (profile.record_type()) {
+      case AutofillProfile::RecordType::kLocalOrSyncable:
+      case AutofillProfile::RecordType::kAccount:
+        return true;
+      case AutofillProfile::RecordType::kAccountHome:
+      case AutofillProfile::RecordType::kAccountWork:
+      case AutofillProfile::RecordType::kAccountNameEmail:
+        return false;
+    }
+    NOTREACHED();
+  }();
 
   // Add other address fields as metadata.
   AddMetadataToResult(entry, profile, MemoryDataType::kNameFull, field_type,
@@ -228,7 +247,6 @@ std::vector<MemorySearchResult> FetchFullAddressData(
 // Fetches data from EntityDataManager (Autofill AI) for the requested entity.
 std::vector<MemorySearchResult> FetchAutofillAiEntityData(
     const EntityDataManager* entity_data_manager,
-    MemoryDataType memory_data_type,
     EntityType entity_type,
     std::string_view app_locale) {
   std::vector<MemorySearchResult> entries;
@@ -252,8 +270,8 @@ std::vector<MemorySearchResult> FetchAutofillAiEntityData(
         entity.attribute(*primary_attribute_type);
     CHECK(attr);
     entries.push_back(CreateMemorySearchResultForEntity(
-        entity, memory_data_type, attr->GetCompleteInfo(app_locale),
-        *primary_attribute_type, app_locale));
+        entity, *primary_attribute_type, attr->GetCompleteInfo(app_locale),
+        app_locale));
   }
   return entries;
 }
@@ -262,7 +280,6 @@ std::vector<MemorySearchResult> FetchAutofillAiEntityData(
 // attribute.
 std::vector<MemorySearchResult> FetchAutofillAiAttributeData(
     const EntityDataManager* entity_data_manager,
-    MemoryDataType memory_data_type,
     AttributeType attribute_type,
     std::string_view app_locale) {
   std::vector<MemorySearchResult> entries;
@@ -287,8 +304,7 @@ std::vector<MemorySearchResult> FetchAutofillAiAttributeData(
     }
 
     entries.push_back(CreateMemorySearchResultForEntity(
-        entity, memory_data_type, std::move(attr_value), attr->type(),
-        app_locale));
+        entity, attr->type(), std::move(attr_value), app_locale));
   }
   return entries;
 }
@@ -342,16 +358,15 @@ std::vector<MemorySearchResult> AutofillDataProvider::GetAutofillData(
             return FetchDataFromAddressProfiles(*personal_data_manager_,
                                                 field_type, memory_data_type);
           },
-          [this, memory_data_type](
-              EntityType entity_type) -> std::vector<MemorySearchResult> {
+          [this](EntityType entity_type) -> std::vector<MemorySearchResult> {
             return FetchAutofillAiEntityData(
-                entity_data_manager_, memory_data_type, entity_type,
+                entity_data_manager_, entity_type,
                 personal_data_manager_->address_data_manager().app_locale());
           },
-          [this, memory_data_type](
+          [this](
               AttributeType attribute_type) -> std::vector<MemorySearchResult> {
             return FetchAutofillAiAttributeData(
-                entity_data_manager_, memory_data_type, attribute_type,
+                entity_data_manager_, attribute_type,
                 personal_data_manager_->address_data_manager().app_locale());
           },
       },
@@ -380,6 +395,16 @@ std::vector<MemorySearchResult> AutofillDataProvider::FetchIbanData() {
         GetMemoryDataTypeNameForI18n(MemoryDataType::kIban), obfuscated_value,
         iban->usage_history().GetRankingScore(base::Time::Now()));
     entry.is_obfuscated = true;
+    entry.is_local = [&] {
+      switch (iban->record_type()) {
+        case Iban::kLocalIban:
+          return true;
+        case Iban::kServerIban:
+        case Iban::kUnknown:
+          return false;
+      }
+      NOTREACHED();
+    }();
     switch (iban->record_type()) {
       case Iban::kLocalIban:
         entry.identifier = iban->guid();
@@ -427,6 +452,17 @@ std::vector<MemorySearchResult> AutofillDataProvider::FetchCreditCardData(
     entry.is_obfuscated = (field_type == CREDIT_CARD_NUMBER ||
                            field_type == CREDIT_CARD_VERIFICATION_CODE);
     entry.identifier = credit_card->guid();
+    entry.is_local = [&] {
+      switch (credit_card->record_type()) {
+        case CreditCard::RecordType::kLocalCard:
+          return true;
+        case CreditCard::RecordType::kMaskedServerCard:
+        case CreditCard::RecordType::kFullServerCard:
+        case CreditCard::RecordType::kVirtualCard:
+          return false;
+      }
+      NOTREACHED();
+    }();
 
     std::string app_locale =
         personal_data_manager_->address_data_manager().app_locale();

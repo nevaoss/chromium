@@ -31,6 +31,8 @@ BASE_FEATURE(kNewTabPageCustomizationThemeSync,
 
 BASE_FEATURE(kSyncLoyaltyCardMetadata, base::FEATURE_DISABLED_BY_DEFAULT);
 
+BASE_FEATURE(kSyncNotebook, base::FEATURE_DISABLED_BY_DEFAULT);
+
 #if !BUILDFLAG(IS_CHROMEOS)
 BASE_FEATURE(kUnoPhase2FollowUp,
 #if BUILDFLAG(IS_ANDROID)
@@ -170,14 +172,6 @@ BASE_FEATURE(kSyncTrustedVaultInfobarMessageImprovements,
 BASE_FEATURE(kSyncPreferencesUseSelectedTypes,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kSyncDetermineAccountManagedStatus,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE_PARAM(base::TimeDelta,
-                   kSyncDetermineAccountManagedStatusTimeout,
-                   &kSyncDetermineAccountManagedStatus,
-                   "account_managed_status_timeout",
-                   base::Seconds(5));
-
 BASE_FEATURE(kSyncEnableNewSyncDashboardUrl, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kSyncRecordDeviceStatisticsMetrics,
@@ -224,5 +218,7 @@ BASE_FEATURE(kSyncUseServerDeterminedDeviceName,
 
 BASE_FEATURE(kSyncCopyPreferencesToTransportModeOnServerForcedDisable,
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kSyncNigoriAuthenticateIV, base::FEATURE_DISABLED_BY_DEFAULT);
 
 }  // namespace syncer

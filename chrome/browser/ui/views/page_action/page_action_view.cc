@@ -20,6 +20,7 @@
 #include "chrome/browser/ui/page_action/page_action_triggers.h"
 #include "chrome/browser/ui/side_panel/side_panel_action_callback.h"
 #include "chrome/browser/ui/side_panel/side_panel_enums.h"
+#include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/location_bar/icon_label_bubble_view.h"
 #include "chrome/browser/ui/views/page_action/page_action_view_params.h"
 #include "chrome/browser/ui/views/page_action/page_action_view_util.h"
@@ -574,12 +575,26 @@ void PageActionView::CreateAndShowAnchoredMessage(
 }
 void PageActionView::OnAnchoredMessageWidgetClose(
     views::Widget::ClosedReason closed_reason) {
-  CHECK(anchored_message_);
+  // If `anchored_message_` is already null, it means we are in the middle of
+  // programmatically destroying the widget (e.g. from
+  // OnPageActionModelChanged). In this case, early return to avoid re-entrancy
+  // crashes.
+  if (!anchored_message_) {
+    return;
+  }
   CHECK(anchored_message_widget_);
   anchored_message_ = nullptr;
-  anchored_message_widget_.reset();
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, base::BindOnce(&PageActionView::CloseWidgetDeferred,
+                                weak_factory_.GetWeakPtr(),
+                                anchored_message_widget_->GetWeakPtr()));
   UpdateTooltipText();
   anchored_message_visibility_changed_callbacks_.Notify(this);
+
+  if (observation_.IsObserving() &&
+      observation_.GetSource()->ShouldShowAnchoredMessage()) {
+    CloseAnchoredMessage();
+  }
 }
 
 void PageActionView::UpdateTooltipText() {
@@ -595,6 +610,14 @@ void PageActionView::UpdateTooltipText() {
         IDS_PAGE_ACTION_ANCHORED_MESSAGE_SHOWING, tooltip_text);
   }
   SetTooltipText(tooltip_text);
+}
+
+void PageActionView::CloseWidgetDeferred(
+    base::WeakPtr<views::Widget> widget_to_close) {
+  if (anchored_message_widget_ &&
+      anchored_message_widget_.get() == widget_to_close.get()) {
+    anchored_message_widget_.reset();
+  }
 }
 
 void PageActionView::AnchoredMessageChipClick() {

@@ -241,7 +241,7 @@ FlatlandSysmemBufferCollection::FlatlandSysmemBufferCollection()
 
 bool FlatlandSysmemBufferCollection::Initialize(
     fuchsia::sysmem2::Allocator_Sync* sysmem_allocator,
-    fuchsia::ui::composition::Allocator* flatland_allocator,
+    RegisterBufferCollectionCallback register_buffer_collection,
     FlatlandSurfaceFactory* flatland_surface_factory,
     zx::eventpair handle,
     zx::channel sysmem_token,
@@ -249,8 +249,7 @@ bool FlatlandSysmemBufferCollection::Initialize(
     viz::SharedImageFormat format,
     NativePixmapUsageSet usage,
     VkDevice vk_device,
-    size_t min_buffer_count,
-    bool register_with_flatland_allocator) {
+    size_t min_buffer_count) {
   DCHECK(IsNativePixmapConfigSupported(format, usage));
   DCHECK(!collection_);
   DCHECK(!vk_buffer_collection_);
@@ -300,9 +299,9 @@ bool FlatlandSysmemBufferCollection::Initialize(
     }
   }
 
-  return InitializeInternal(sysmem_allocator, flatland_allocator,
-                            std::move(collection_token),
-                            register_with_flatland_allocator, min_buffer_count);
+  return InitializeInternal(sysmem_allocator,
+                            std::move(register_buffer_collection),
+                            std::move(collection_token), min_buffer_count);
 }
 
 void FlatlandSysmemBufferCollection::InitializeForTesting(
@@ -511,9 +510,8 @@ FlatlandSysmemBufferCollection::~FlatlandSysmemBufferCollection() {
 
 bool FlatlandSysmemBufferCollection::InitializeInternal(
     fuchsia::sysmem2::Allocator_Sync* sysmem_allocator,
-    fuchsia::ui::composition::Allocator* flatland_allocator,
+    RegisterBufferCollectionCallback register_buffer_collection,
     fuchsia::sysmem2::BufferCollectionTokenSyncPtr collection_token,
-    bool register_with_flatland_allocator,
     size_t min_buffer_count) {
   fidl::InterfaceHandle<fuchsia::sysmem2::BufferCollectionToken>
       collection_token_for_vulkan;
@@ -524,7 +522,7 @@ bool FlatlandSysmemBufferCollection::InitializeInternal(
 
   fidl::InterfaceHandle<fuchsia::sysmem2::BufferCollectionToken>
       collection_token_for_flatland;
-  if (register_with_flatland_allocator) {
+  if (register_buffer_collection) {
     collection_token->Duplicate(std::move(
         fuchsia::sysmem2::BufferCollectionTokenDuplicateRequest{}
             .set_rights_attenuation_mask(ZX_RIGHT_SAME_RIGHTS)
@@ -572,8 +570,7 @@ bool FlatlandSysmemBufferCollection::InitializeInternal(
   }
 
   // Set Flatland allocator constraints.
-  if (register_with_flatland_allocator) {
-    DCHECK(flatland_allocator);
+  if (register_buffer_collection) {
     fuchsia::ui::composition::BufferCollectionExportToken export_token;
     status = zx::eventpair::create(0, &export_token.value,
                                    &flatland_import_token_.value);
@@ -583,14 +580,7 @@ bool FlatlandSysmemBufferCollection::InitializeInternal(
     args.set_buffer_collection_token2(std::move(collection_token_for_flatland));
     args.set_usage(
         fuchsia::ui::composition::RegisterBufferCollectionUsage::DEFAULT);
-    flatland_allocator->RegisterBufferCollection(
-        std::move(args),
-        [](fuchsia::ui::composition::Allocator_RegisterBufferCollection_Result
-               result) {
-          if (result.is_err()) {
-            LOG(FATAL) << "RegisterBufferCollection failed";
-          }
-        });
+    std::move(register_buffer_collection).Run(std::move(args));
   }
 
   // Set Vulkan constraints.
@@ -706,14 +696,12 @@ void FlatlandSysmemBufferCollection::OnZxHandleSignalled(zx_handle_t handle,
   DCHECK_EQ(handle, handle_.get());
   DCHECK_EQ(signals, ZX_EVENTPAIR_PEER_CLOSED);
 
-  // Keep a reference to `this` to ensure it's not destroyed while calling the
-  // callbacks.
-  scoped_refptr<FlatlandSysmemBufferCollection> self(this);
-
-  for (auto& callback : on_released_) {
+  // Move the callbacks to the stack since running them may release the last
+  // reference to `this`.
+  std::vector<base::OnceClosure> callbacks = std::move(on_released_);
+  for (auto& callback : callbacks) {
     std::move(callback).Run();
   }
-  on_released_.clear();
 }
 
 }  // namespace ui

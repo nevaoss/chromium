@@ -20,7 +20,7 @@ public class VerticalTabUtils {
     public static final int SIDE_UI_CONTAINER_WIDTH_DP = 240;
 
     /** The width of the collapsed vertical tabs SideUiContainer in dp. */
-    public static final int SIDE_UI_CONTAINER_COLLAPSED_WIDTH_DP = 74;
+    public static final int SIDE_UI_CONTAINER_COLLAPSED_WIDTH_DP = 76;
 
     /**
      * Minimum window width threshold in dp required to allow expanding vertical tabs rail and
@@ -51,5 +51,11 @@ public class VerticalTabUtils {
         TypedValue outValue = new TypedValue();
         context.getResources().getValue(resId, outValue, true);
         return outValue.getFloat();
+    }
+
+    /** Returns whether expand-on-hover behavior is enabled for Vertical Tabs. */
+    public static boolean isExpandOnHoverEnabled() {
+        return ChromeFeatureList.getFieldTrialParamByFeatureAsBoolean(
+                ChromeFeatureList.ANDROID_VERTICAL_TABS, "expand_on_hover", false);
     }
 }

@@ -47,6 +47,7 @@
 <translation id="22623456902492423">{TABS_COUNT,plural, =1{ჩანართის დაჯგუფების გაუქმება}other{ჩანართების დაჯგუფების გაუქმება}}</translation>
 <translation id="2271452184061378400">თქვენი ჩანართების ჯგუფები აქ ინახება</translation>
 <translation id="2277224997687551299">ჯგუფის სახელის რედაქტირება</translation>
+<translation id="2289567621059034186">ახალი ქვედა ჩანართი</translation>
 <translation id="2330212241471632770">{TABS_COUNT,plural, =1{ჩანართის დამატება სანიშნეებში}other{ჩანართების დამატება სანიშნეებში}}</translation>
 <translation id="2359808026110333948">გაგრძელება</translation>
 <translation id="2371084566192454134">ჩანართები და ჩანართების ჯგუფები</translation>
@@ -81,6 +82,7 @@
 <translation id="3152596030350326139">ჩანართების ჰორიზონტალურად ჩვენება</translation>
 <translation id="31806439105337256">ჩანართების ვერტიკალურად ჩვენება</translation>
 <translation id="3194464645767632461">შეფასება</translation>
+<translation id="3228962656492373217">ქვედა ჩანართების დახურვა</translation>
 <translation id="3269930881809501915">{TABS_COUNT,plural, =1{<ph name="TABS_COUNT_ONE" /> ჩანართის დამატება ჯგუფში}other{<ph name="TABS_COUNT_MANY" /> ჩანართის დამატება ჯგუფში}}</translation>
 <translation id="3328308545011660196">შემოთავაზება: როგორც ჩანს, <ph name="NUMBER_OF_TABS" /> ჩანართი დაკავშირებულია. გსურთ მათი დაჯგუფება?</translation>
 <translation id="3330595302841061275">{DAY_COUNT,plural, =1{1-დღიანი არააქტიურობის შემდეგ}other{<ph name="DAY_COUNT_MANY" />-დღიანი არააქტიურობის შემდეგ}}</translation>
@@ -127,6 +129,7 @@
 <translation id="5042769431350623987">{WINDOW_COUNT,plural, =1{გადაიტანეთ ჩანართები ახალ ფანჯარაში}other{გადაიტანეთ ჩანართები ახალ ფანჯარაში}}</translation>
 <translation id="5073204694187207510">სრულეკრანიანი ბადის დამალვა</translation>
 <translation id="5076161749301278626">გსურთ, ნახოთ მიმოხილვები მაღაზიიდან?</translation>
+<translation id="5093447877601682598">ჩანართების ზოლის შესახებ გამოხმაურება</translation>
 <translation id="5161254044473106830">საჭიროა სათაური</translation>
 <translation id="5204584298075822291">ჩანართების ჩაკეცვა</translation>
 <translation id="524477996738997490">{AUTO_DELETE_DELAY,plural, =1{Chrome ავტომატურად ხურავს არააქტიურ ჩანართებსა და ჩანართების ჯგუფებს <ph name="AUTO_DELETE_DELAY_ONE" /> თვის შემდეგ. ამის შეცვლა პარამეტრებში შეგიძლიათ.}other{Chrome ავტომატურად ხურავს არააქტიურ ჩანართებს და ჩანართების ჯგუფებს <ph name="AUTO_DELETE_DELAY_MANY" /> თვის შემდეგ. ამის შეცვლა პარამეტრებში შეგიძლიათ.}}</translation>

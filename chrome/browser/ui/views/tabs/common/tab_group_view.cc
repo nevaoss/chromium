@@ -54,15 +54,23 @@ const TabGroup* GetTabGroupFromNode(TabCollectionNode* node) {
 }  // namespace
 
 TabGroupView::TabGroupView(TabCollectionNode* collection_node)
-    : DraggedTabsContainer(static_cast<views::View&>(*this),
-                           collection_node,
-                           DragAxes::kVerticalOnly,
-                           DragLayout::kVertical),
+    : DraggedTabsContainer(
+          static_cast<views::View&>(*this),
+          collection_node,
+          collection_node && collection_node->orientation() ==
+                                 TabStripOrientation::kHorizontal
+              ? DragAxes::kHorizontalOnly
+              : DragAxes::kVerticalOnly,
+          collection_node && collection_node->orientation() ==
+                                 TabStripOrientation::kHorizontal
+              ? DragLayout::kHorizontal
+              : DragLayout::kVertical),
       collection_node_(collection_node),
       tab_group_visual_data_(
           *GetTabGroupFromNode(collection_node_)->visual_data()),
       group_header_(AddChildView(std::make_unique<TabGroupHeaderView>(
           *this,
+          collection_node_->orientation(),
           collection_node_->GetController()->GetStateController(),
           &tab_group_visual_data_))),
       group_line_(AddChildView(std::make_unique<views::View>())),
@@ -133,8 +141,9 @@ std::unique_ptr<views::Widget> TabGroupView::ShowGroupEditorBubble(
   // When the tab strip is collapsed, anchor to the group header, otherwise
   // anchor to the editor bubble button.
   views::View* anchor_view =
-      GetTabStripCollapseState() !=
-              tabs::VerticalTabStripCollapseState::kExpanded
+      (GetTabStripCollapseState() !=
+           tabs::VerticalTabStripCollapseState::kExpanded ||
+       !group_header_->editor_bubble_button())
           ? views::AsViewClass<views::View>(group_header_)
           : views::AsViewClass<views::View>(
                 group_header_->editor_bubble_button());

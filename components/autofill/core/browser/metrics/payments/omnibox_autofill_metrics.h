@@ -59,8 +59,25 @@ enum class OmniboxAutofillShowChipDecisionPart1 {
 };
 // LINT.ThenChange(/tools/metrics/histograms/metadata/autofill/enums.xml:OmniboxAutofillShowChipDecisionPart1)
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+//
+// LINT.IfChange(OmniboxAutofillEvents)
+enum class OmniboxAutofillEvents {
+  kChipShown = 0,
+  kChipShownOnce = 1,
+  kChipClicked = 2,
+  kChipClickedOnce = 3,
+  kSuggestionAccepted = 4,
+  kSuggestionAcceptedOnce = 5,
+  kMaxValue = kSuggestionAcceptedOnce,
+};
+// LINT.ThenChange(/tools/metrics/histograms/metadata/autofill/enums.xml:OmniboxAutofillEvents)
+
 void LogOmniboxAutofillShowChipDecisionPart1(
     OmniboxAutofillShowChipDecisionPart1 metric);
+
+void LogOmniboxAutofillEvents(OmniboxAutofillEvents metric);
 
 }  // namespace autofill::autofill_metrics
 

@@ -58,6 +58,14 @@ void CobrowseTabHelper::WasShown(web::WebState* web_state) {
   }
 }
 
+void CobrowseTabHelper::WasHidden(web::WebState* web_state) {
+  if (!scene_handler_) {
+    return;
+  }
+
+  [scene_handler_ hideAssistant];
+}
+
 void CobrowseTabHelper::DidStartNavigation(
     web::WebState* web_state,
     web::NavigationContext* navigation_context) {
@@ -74,6 +82,13 @@ void CobrowseTabHelper::DidStartNavigation(
   // Do not trigger the assistant on reloads.
   if (ui::PageTransitionCoreTypeIs(navigation_context->GetPageTransition(),
                                    ui::PAGE_TRANSITION_RELOAD)) {
+    return;
+  }
+
+  // Do not trigger the assistant when the web state is not currently visible.
+  // This could happen e.g. for navigations indirectly caused by the APC
+  // extraction process in the tab picker.
+  if (!web_state->IsVisible()) {
     return;
   }
 

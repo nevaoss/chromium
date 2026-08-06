@@ -423,6 +423,9 @@ struct PageActionState {
   // Mouseover tooltip to display.
   mojo_base.mojom.String16 tooltip_text;
 
+  // The icon to display.
+  IconHandle icon;
+
   // TODO: crbug.com/501449027 - Add remaining fields.
 };
 
@@ -440,7 +443,7 @@ enum OmniboxTextColor {
 };
 
 struct OmniboxTextPortion {
-  string text;
+  mojo_base.mojom.String16 text;
   bool strikethrough = false;
   OmniboxTextColor color;
 };
@@ -463,6 +466,9 @@ struct OmniboxViewState {
 
   // Text to display in the omnibox view.
   array<OmniboxTextPortion> text_pieces;
+
+  // Text to display when not focused and empty.
+  OmniboxTextPortion? placeholder;
 
   // Inline autocompletion to display. If not empty, this may override
   // `selection`.

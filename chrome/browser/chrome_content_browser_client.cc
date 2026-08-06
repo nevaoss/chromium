@@ -625,6 +625,7 @@
 #if BUILDFLAG(IS_ANDROID)
 #include "base/android/device_info.h"
 #include "components/crash/content/browser/crash_handler_host_linux.h"
+#include "components/permissions/android/permissions_reprompt_controller_android.h"
 #endif
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
@@ -1994,7 +1995,7 @@ bool ChromeContentBrowserClient::ShouldUseProcessPerSite(
   // NTP should use process-per-site.  This is a performance optimization to
   // reduce process count associated with NTP tabs.
   if (security_principal.SchemeIs(content::kChromeUIScheme)) {
-    const std::string host = security_principal.GetHost();
+    const std::string_view host = security_principal.GetHost();
     if (host == chrome::kChromeUINewTabHost ||
         host == chrome::kChromeUINewTabPageHost) {
       return true;
@@ -2592,12 +2593,6 @@ bool ChromeContentBrowserClient::ShouldSwapBrowsingInstancesForNavigation(
 #else
   return false;
 #endif
-}
-
-bool ChromeContentBrowserClient::ShouldIsolateErrorPage(bool in_main_frame) {
-  // TODO(nasko): Consider supporting error page isolation in subframes if
-  // Site Isolation is enabled.
-  return in_main_frame;
 }
 
 std::vector<url::Origin>
@@ -3492,6 +3487,23 @@ void ChromeContentBrowserClient::RequestFilesAccess(
 #endif
 }
 
+void ChromeContentBrowserClient::RequestPlatformLocalNetworkPermission(
+    content::WebContents& web_contents,
+    base::OnceCallback<void(bool)> callback) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+#if BUILDFLAG(IS_ANDROID)
+  permissions::PermissionsRepromptControllerAndroid::CreateForWebContents(
+      &web_contents);
+  permissions::PermissionsRepromptControllerAndroid::FromWebContents(
+      &web_contents)
+      ->RepromptPermissionRequest({ContentSettingsType::LOCAL_NETWORK_ACCESS},
+                                  ContentSettingsType::LOCAL_NETWORK_ACCESS,
+                                  std::move(callback));
+#else
+  std::move(callback).Run(/*granted=*/false);
+#endif
+}
+
 void ChromeContentBrowserClient::AllowWorkerFileSystem(
     const GURL& url,
     content::BrowserContext* browser_context,
@@ -3610,32 +3622,7 @@ bool ChromeContentBrowserClient::AllowWorkerWebLocks(
                                                storage_key);
 }
 
-bool ChromeContentBrowserClient::IsInterestGroupAPIAllowed(
-    content::BrowserContext* browser_context,
-    content::RenderFrameHost* render_frame_host,
-    InterestGroupApiOperation operation,
-    const url::Origin& top_frame_origin,
-    const url::Origin& api_origin) {
-  Profile* profile = Profile::FromBrowserContext(browser_context);
-  auto* privacy_sandbox_settings =
-      PrivacySandboxSettingsFactory::GetForProfile(profile);
-  DCHECK(privacy_sandbox_settings);
 
-  bool allowed = privacy_sandbox_settings->IsFledgeAllowed(
-      top_frame_origin, api_origin, operation, render_frame_host);
-
-  if (operation == InterestGroupApiOperation::kJoin) {
-    content_settings::PageSpecificContentSettings::InterestGroupJoined(
-        render_frame_host, api_origin, !allowed);
-    content_settings::PageSpecificContentSettings::BrowsingDataAccessed(
-        render_frame_host,
-        content::InterestGroupManager::InterestGroupDataKey{api_origin,
-                                                            top_frame_origin},
-        BrowsingDataModel::StorageType::kInterestGroup, !allowed);
-  }
-
-  return allowed;
-}
 
 bool ChromeContentBrowserClient::IsPrivacySandboxReportingDestinationAttested(
     content::BrowserContext* browser_context,
@@ -3662,27 +3649,6 @@ bool ChromeContentBrowserClient::IsPrivacySandboxReportingDestinationAttested(
 
   return privacy_sandbox_settings->IsEventReportingDestinationAttested(
       destination_origin, gated_api);
-}
-
-void ChromeContentBrowserClient::OnAuctionComplete(
-    content::RenderFrameHost* render_frame_host,
-    std::optional<content::InterestGroupManager::InterestGroupDataKey>
-        winner_data_key,
-    bool is_server_auction,
-    bool is_on_device_auction,
-    content::AuctionResult result) {
-  if (winner_data_key) {
-    content_settings::PageSpecificContentSettings::BrowsingDataAccessed(
-        render_frame_host, winner_data_key.value(),
-        BrowsingDataModel::StorageType::kInterestGroup,
-        /*blocked=*/false);
-  }
-  if (auto* observer =
-          page_load_metrics::MetricsWebContentsObserver::FromWebContents(
-              WebContents::FromRenderFrameHost(render_frame_host))) {
-    observer->OnAdAuctionComplete(render_frame_host, is_server_auction,
-                                  is_on_device_auction, result);
-  }
 }
 
 bool ChromeContentBrowserClient::IsSharedStorageAllowed(
@@ -8287,7 +8253,7 @@ bool ChromeContentBrowserClient::AreV8OptimizationsEnabledForSite(
 
   if (default_javascript_optimizer_setting !=
           JavascriptOptimizerSetting::kBlockedForUnfamiliarSites ||
-      site_protection::IsV8OptimizerMigrationDryRun(profile)) {
+      site_protection::IsV8OptimizerBlockingDryRun(profile)) {
     // If site familiarity is turned off or we are in dry-run mode, use content
     // settings to set v8 optimization. Use `site_content_setting` to honor
     // exceptions for specific sites over a default policy that applies to all

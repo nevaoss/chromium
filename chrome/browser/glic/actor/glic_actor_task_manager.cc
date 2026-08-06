@@ -401,6 +401,15 @@ void GlicActorClientSession::OnPerformActionsComplete(
 
   actor::CopyScriptToolResults(response, action_results);
 
+  for (const auto& action_result : action_results) {
+    if (actor::IsOk(*action_result.result)) {
+      response.add_extra_information(action_result.result->message);
+    } else {
+      // In case of an error, the message is copied to `error_message` instead.
+      response.add_extra_information(std::string());
+    }
+  }
+
   auto* latency_info = response.mutable_latency_information();
   for (size_t i = 0; i < action_results.size(); ++i) {
     auto& action_result = action_results.at(i);
@@ -1135,8 +1144,20 @@ void GlicActorClientSession::RequestToShowCredentialSelectionDialog(
 void GlicActorClientSession::RequestToShowGmailOtpOptInDialog(
     actor::TaskId task_id,
     actor::ActorTaskDelegate::GmailOtpOptInCallback callback) {
-  actor_client_->RequestToShowGmailOtpOptInDialog(task_id.value(),
+  auto request =
+      actor::webui::mojom::GmailOtpOptInRequest::New(task_id.value());
+  actor_client_->RequestToShowGmailOtpOptInDialog(std::move(request),
                                                   std::move(callback));
+}
+
+void GlicActorClientSession::RequestToShowGmailOtpConfirmationDialog(
+    actor::TaskId task_id,
+    const std::string& verification_code,
+    actor::ActorTaskDelegate::GmailOtpConfirmationCallback callback) {
+  auto dialog_request = actor::webui::mojom::GmailOtpConfirmationRequest::New(
+      task_id.value(), verification_code);
+  actor_client_->RequestToShowGmailOtpConfirmationDialog(
+      std::move(dialog_request), std::move(callback));
 }
 
 void GlicActorClientSession::RequestToShowUserConfirmationDialog(

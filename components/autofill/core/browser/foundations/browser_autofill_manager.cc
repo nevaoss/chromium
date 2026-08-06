@@ -21,7 +21,6 @@
 #include <variant>
 #include <vector>
 
-#include "autofill_client.h"
 #include "base/barrier_callback.h"
 #include "base/check.h"
 #include "base/check_deref.h"
@@ -868,17 +867,6 @@ AtMemoryManager& BrowserAutofillManager::GetAtMemoryManager() {
 
 AutofillAiAccessManager& BrowserAutofillManager::GetAutofillAiAccessManager() {
   return *autofill_ai_access_manager_;
-}
-
-void BrowserAutofillManager::TriggerAtMemorySuggestions(
-    const FieldGlobalId& field_id) {
-  const FormStructure* form_structure = FindCachedFormById(field_id);
-  if (!form_structure) {
-    return;
-  }
-  OnAskForValuesToFill(form_structure->ToFormData(), field_id, gfx::Rect(),
-                       AutofillSuggestionTriggerSource::kAtMemory,
-                       std::nullopt);
 }
 
 payments::AmountExtractionManager&
@@ -1998,6 +1986,7 @@ void BrowserAutofillManager::FillOrPreviewCreditCardForm(
       case AutofillTriggerSource::kPopup:
       case AutofillTriggerSource::kKeyboardAccessoryOrBottomSheet:
       case AutofillTriggerSource::kGlic:
+      case AutofillTriggerSource::kOmniboxAutofill:
         return ShouldFetchCreditCard(form, trigger_field, credit_card,
                                      trigger_source,
                                      GetAcUnrecognizedBehavior(client()));
@@ -2169,36 +2158,6 @@ void BrowserAutofillManager::OnFocusOnFormFieldImpl(
         base::StrCat(
             {kMetricName, ".", same_origin ? "Same" : "Cross", "Origin"}),
         type, MAX_VALID_FIELD_TYPE);
-  }
-
-  // This code path checks if suggestions to be announced to a screen reader are
-  // available when the focus on a form field changes. This cannot happen in
-  // `OnAskForValuesToFillImpl()`, since the `AutofillSuggestionAvailability` is
-  // a sticky flag and needs to be reset when a non-autofillable field is
-  // focused. The suggestion trigger source doesn't influence the set of
-  // suggestions generated, but only the way suggestions behave when they are
-  // accepted. For this reason, checking whether suggestions are available can
-  // be done with the `kUnspecified` suggestion trigger source.
-  if (external_delegate_->HasActiveScreenReader() &&
-      !base::FeatureList::IsEnabled(
-          features::kAutofillDoNotUpdateAutofillAvailabilityOnFocusEvents)) {
-    const FormFieldData& field =
-        CHECK_DEREF(form.FindFieldByGlobalId(field_id));
-    SuggestionsContext context =
-        BuildSuggestionsContext(form, form_structure, field, autofill_field,
-                                AutofillSuggestionTriggerSource::kUnspecified,
-                                GetAcUnrecognizedBehavior(client()));
-    std::vector<Suggestion> suggestions =
-        GetAvailableSuggestions(form, form_structure, field, autofill_field,
-                                AutofillSuggestionTriggerSource::kUnspecified,
-                                /*one_time_passwords=*/{}, context);
-    // Notify installed screen readers if the focus is on a field for which
-    // there are suggestions to present.
-    external_delegate_->OnAutofillAvailabilityEvent(
-        (context.suppress_reason == SuppressReason::kNotSuppressed &&
-         !suggestions.empty())
-            ? mojom::AutofillSuggestionAvailability::kAutofillAvailable
-            : mojom::AutofillSuggestionAvailability::kNoSuggestions);
   }
 }
 

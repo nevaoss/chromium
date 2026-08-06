@@ -60,6 +60,14 @@ class TriggeringUpdatesTest extends ApiTestFixtureBase {
     });
   }
 
+  async testRelaysResumedUpdate(): Promise<void> {
+    await runUntil(() => client.isSubscribed);
+    client.triggeringUpdatesSubject.next({
+      type: ExperimentalTriggeringUpdateType.RESUMED,
+      data: '',
+    });
+  }
+
   async testRelaysConversationId() {
     await runUntil(() => client.isSubscribed);
     assertDefined(this.host.registerConversation);
@@ -75,6 +83,25 @@ class TriggeringUpdatesTest extends ApiTestFixtureBase {
 
   async testHandlesStartAndStopActuationRequestsSuccessfully() {
     await runUntil(() => client.isSubscribed);
+  }
+
+  async testHandlesContinueActuationRequestSuccessfully() {
+    await runUntil(() => client.isSubscribed);
+  }
+
+  async testContinueActuationTargetsCorrectTab() {
+    await runUntil(() => client.isSubscribed);
+    assertDefined(this.host.registerConversation);
+    await this.host.registerConversation({
+      conversationId: 'test_conv_id',
+      conversationTitle: 'test',
+    });
+    assertDefined(this.host.createTask);
+    await this.host.createTask();
+    client.triggeringUpdatesSubject.next({
+      type: ExperimentalTriggeringUpdateType.WORKLOG,
+      data: 'test_update',
+    });
   }
 
   async testHandlesStopActuationRequestNoMatchingUpdatesHandler() {
@@ -116,6 +143,30 @@ class TriggeringUpdatesTest extends ApiTestFixtureBase {
     client.triggeringUpdatesSubject.next({
       type: ExperimentalTriggeringUpdateType.WORKLOG,
       data: 'ready_for_screenshot',
+    });
+  }
+
+  async testRelaysUpdatesWithMetadataEnabled() {
+    await runUntil(() => client.isSubscribed);
+    client.triggeringUpdatesSubject.next({
+      type: ExperimentalTriggeringUpdateType.WORKLOG,
+      data: 'test_update_with_metadata',
+      metadata: {
+        'key1': 'value1',
+        'key2': 'value2',
+      },
+    });
+  }
+
+  async testRelaysUpdatesWithMetadataDisabled() {
+    await runUntil(() => client.isSubscribed);
+    client.triggeringUpdatesSubject.next({
+      type: ExperimentalTriggeringUpdateType.WORKLOG,
+      data: 'test_update_with_metadata',
+      metadata: {
+        'key1': 'value1',
+        'key2': 'value2',
+      },
     });
   }
 }

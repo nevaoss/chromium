@@ -22,7 +22,7 @@
 #import "components/autofill/core/browser/data_model/autofill_ai/entity_instance.h"
 #import "components/autofill/core/browser/data_model/autofill_ai/entity_type.h"
 #import "components/autofill/core/browser/data_model/autofill_ai/entity_type_names.h"
-#import "components/autofill/core/browser/data_quality/addresses/profile_requirement_utils.h"
+#import "components/autofill/core/browser/data_quality/addresses/address_import_requirement_utils.h"
 #import "components/autofill/core/browser/integrators/autofill_ai/autofill_ai_labels.h"
 #import "components/autofill/core/browser/integrators/autofill_ai/management_utils.h"
 #import "components/autofill/core/browser/integrators/autofill_ai/metrics/autofill_ai_metrics.h"
@@ -636,8 +636,8 @@ ItemType ItemTypeForEntitySectionHeader(SectionIdentifier section_identifier) {
         if ([self shouldShowCloudOffIconForProfile:autofillProfile]) {
           item.showMigrateToAccountButton = YES;
           item.localProfileIconShown = YES;
-          item.image = CustomSymbolTemplateWithPointSize(
-              kCloudSlashSymbol, kCloudSlashSymbolPointSize);
+          item.image = SymbolTemplateWithPointSize(SymbolCloudSlash,
+                                                   kCloudSlashSymbolPointSize);
         }
       }
       break;

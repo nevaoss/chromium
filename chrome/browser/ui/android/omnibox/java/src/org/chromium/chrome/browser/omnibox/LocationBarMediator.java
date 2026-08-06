@@ -252,7 +252,7 @@ class LocationBarMediator
     private final FuseboxCoordinator mFuseboxCoordinator;
     private final Callback<@AutocompleteRequestType Integer> mAutocompleteRequestTypeObserver =
             this::onAutocompleteRequestTypeChanged;
-    private final Callback<@AutocompleteState Integer> mAutocompleteStateObserver =
+    private Callback<@AutocompleteState Integer> mAutocompleteStateObserver =
             this::onAutocompleteStateChanged;
     private final SettableMonotonicObservableSupplier<SearchEngineService>
             mSearchEngineServiceSupplier = ObservableSuppliers.createMonotonic();
@@ -645,9 +645,6 @@ class LocationBarMediator
                         });
             }
             hintZeroSuggestRefresh();
-        } // Focus change caused by a closed tab may result in there not being an active tab.
-        if (!hasFocus && mLocationBarDataProvider.hasTab()) {
-            updateUrl();
         }
     }
 
@@ -1408,12 +1405,7 @@ class LocationBarMediator
                     setAttachmentModelList(session.getFuseboxAttachmentModelList());
                 });
 
-        mCurrentInput
-                .getRequestTypeSupplier()
-                .addSyncObserverAndCallIfNonNull(mAutocompleteRequestTypeObserver);
-        mCurrentInput
-                .getAutocompleteStateSupplier()
-                .addSyncObserverAndCallIfNonNull(mAutocompleteStateObserver);
+        connectObservers();
 
         UrlBarData data = getUrlBarDataForCurrentInput(mCurrentInput);
         mUrlCoordinator.setUrlBarData(
@@ -2163,8 +2155,13 @@ class LocationBarMediator
 
     /* package */ void onBackButtonClicked() {
         Tab tab = mLocationBarDataProvider.getTab();
-        if (tab != null && tab.canGoBack()) {
-            tab.goBack();
+        if (tab != null) {
+            if (tab.canGoBack()) {
+                tab.goBack();
+            }
+        } else {
+            // Tab-less environments should treat the esc press as a back press.
+            backKeyPressed();
         }
     }
 
@@ -2563,25 +2560,35 @@ class LocationBarMediator
 
     @VisibleForTesting
     boolean handleKeyNavigationEvent(int keyCode, KeyEvent event) {
+        boolean isBackwardsTab = KeyNavigationUtil.isTabBackward(event);
+        boolean isForwardTab = KeyNavigationUtil.isTabForward(event);
+        boolean isUpKey = KeyNavigationUtil.isGoUp(event);
+        boolean isDownKey = KeyNavigationUtil.isGoDown(event);
+        boolean isActivation = KeyNavigationUtil.isButtonActivate(event);
+
+        boolean isHandledKey =
+                isBackwardsTab || isForwardTab || isUpKey || isDownKey || isActivation;
+
         if (mAutocompleteCoordinator == null
                 || !KeyNavigationUtil.isActionDown(event)
-                || (keyCode != KeyEvent.KEYCODE_DPAD_UP
-                        && keyCode != KeyEvent.KEYCODE_DPAD_DOWN
-                        && !KeyNavigationUtil.isTabNavigation(event)
-                        && !KeyNavigationUtil.isButtonActivate(event))) {
+                || !isHandledKey) {
             return false;
         }
 
-        if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN
-                && mCurrentInput != null
-                && mCurrentInput.getAutocompleteState() == AutocompleteState.STANDBY) {
-            mCurrentInput.setAutocompleteState(AutocompleteState.ENABLED);
-            return true;
-        }
+        if (isDownKey || isUpKey) {
+            if (mCurrentInput != null
+                    && mCurrentInput.getAutocompleteState() == AutocompleteState.STANDBY) {
+                mCurrentInput.setAutocompleteState(AutocompleteState.ENABLED);
+                return true;
+            }
 
-        boolean isBackwardsTab = KeyNavigationUtil.isTabBackward(event);
-        boolean isForwardTab = KeyNavigationUtil.isTabForward(event);
-        boolean isActivation = KeyNavigationUtil.isButtonActivate(event);
+            // Move selection focus to the autocomplete list so the delegated handling logic below
+            // will route to suggestions, avoiding intermediate toolbar components (e.g. action
+            // chips or buttons).
+            if (!mSelectionController.isAutocompleteListSelected()) {
+                mSelectionController.selectAutocompleteList();
+            }
+        }
 
         if (isForwardTab
                 && mSelectionController.getSelectedView() == mUrlBarSelectableView
@@ -2593,7 +2600,7 @@ class LocationBarMediator
                 mCurrentInput != null
                         && !mCurrentInput.isInZeroPrefixContext()
                         && mCurrentInput.isConventionalRequestType();
-        if (mSelectionController.isAutocompleteSelected()) {
+        if (mSelectionController.isAutocompleteListSelected()) {
             if (isActivation) {
                 return mAutocompleteCoordinator.handleKeyEvent(keyCode, event);
             }
@@ -2636,14 +2643,14 @@ class LocationBarMediator
 
         if (isBackwardsTab) {
             mSelectionController.selectPreviousItem();
-            if (mSelectionController.isAutocompleteSelected()) {
+            if (mSelectionController.isAutocompleteListSelected()) {
                 // We just moved backwards to the autocomplete list. The last item of that list
                 // should be selected.
                 mAutocompleteCoordinator.selectLastItem();
             }
-        } else {
+        } else if (isForwardTab) {
             mSelectionController.selectNextItem();
-            if (mSelectionController.isAutocompleteSelected()) {
+            if (mSelectionController.isAutocompleteListSelected()) {
                 // We just moved forwards to the autocomplete list. The first item of that list
                 // should be selected.
                 mAutocompleteCoordinator.selectFirstItem();
@@ -2687,7 +2694,12 @@ class LocationBarMediator
             revertChanges();
             updateButtonVisibility();
         } else {
-            endInputAndFocusCurrentTab();
+            if (mLocationBarDataProvider.hasTab()) {
+                endInputAndFocusCurrentTab();
+            } else {
+                // Tab-less environments should treat the esc press as a back press.
+                backKeyPressed();
+            }
         }
         return true;
     }
@@ -2881,7 +2893,7 @@ class LocationBarMediator
         mUrlCoordinator.endInput();
 
         if (mScrimHandler != null) mScrimHandler.setVisibility(false);
-        input.getRequestTypeSupplier().removeObserver(mAutocompleteRequestTypeObserver);
+        disconnectObservers(input);
         FuseboxSessionState state = FuseboxSessionState.from(mLocationBarDataProvider);
         if (state != null) {
             // Only for Contextual Tasks, we skip ending the Fusebox input to allow it to stay warm
@@ -2913,6 +2925,22 @@ class LocationBarMediator
         if (mUrlHasFocus) {
             mUrlCoordinator.clearFocus();
         }
+    }
+
+    private void connectObservers() {
+        if (mCurrentInput == null) return;
+
+        mCurrentInput
+                .getRequestTypeSupplier()
+                .addSyncObserverAndCallIfNonNull(mAutocompleteRequestTypeObserver);
+        mCurrentInput
+                .getAutocompleteStateSupplier()
+                .addSyncObserverAndCallIfNonNull(mAutocompleteStateObserver);
+    }
+
+    private void disconnectObservers(AutocompleteInput input) {
+        input.getRequestTypeSupplier().removeObserver(mAutocompleteRequestTypeObserver);
+        input.getAutocompleteStateSupplier().removeObserver(mAutocompleteStateObserver);
     }
 
     @Override
@@ -3364,5 +3392,10 @@ class LocationBarMediator
     @Override
     public @Nullable AutocompleteInput getAutocompleteInputForTesting() {
         return mCurrentInput;
+    }
+
+    /* package */ void setAutocompleteStateObserverForTesting(
+            Callback<@AutocompleteState Integer> observer) {
+        mAutocompleteStateObserver = observer;
     }
 }
