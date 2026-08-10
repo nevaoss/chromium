@@ -138,9 +138,17 @@ class PendingApprovalsShutdownNotifierFactory
     // same set of functionality.
     auto* delegate =
         ExtensionsAPIClient::Get()->GetWebstorePrivateAPIDelegate();
-    for (auto* factory : delegate->GetWebStoreAPIFactoryDependencies()) {
-      DependsOn(factory);
+// TODO(neva): Remove this when Neva has GetWebstorePrivateAPIDelegate()
+// implementation.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+    if (delegate) {
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
+      for (auto* factory : delegate->GetWebStoreAPIFactoryDependencies()) {
+        DependsOn(factory);
+      }
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
     }
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 
     for (auto* factory : GetAdditionalWebstorePrivateAPIFactoryDependencies()) {
       DependsOn(factory);
