@@ -1571,6 +1571,7 @@ test("content_browsertests") {
     "../browser/form_controls_browsertest.cc",
     "../browser/framebusting_browsertest.cc",
     "../browser/generic_sensor/generic_sensor_browsertest.cc",
+    "../browser/global_privacy_control_browsertest.cc",
     "../browser/gpu/gpu_host_impl_persistent_cache_browsertest.cc",
     "../browser/gpu/gpu_ipc_browsertest.cc",
     "../browser/gpu/in_process_gpu_thread_browsertest.cc",
@@ -2617,8 +2618,6 @@ test("content_unittests") {
     "../browser/browsing_instance_id_unittest.cc",
     "../browser/browsing_topics/browsing_topics_site_data_manager_impl_unittest.cc",
     "../browser/browsing_topics/browsing_topics_site_data_storage_unittest.cc",
-    "../browser/browsing_topics/browsing_topics_url_loader_unittest.cc",
-    "../browser/browsing_topics/header_util_unittest.cc",
     "../browser/btm/btm_bounce_detector_unittest.cc",
     "../browser/btm/btm_database_migrator_unittest.cc",
     "../browser/btm/btm_database_unittest.cc",
@@ -2699,7 +2698,7 @@ test("content_unittests") {
     "../browser/idle/idle_manager_unittest.cc",
     "../browser/image_capture/image_capture_impl_unittest.cc",
     "../browser/installedapp/installed_app_provider_impl_unittest.cc",
-    "../browser/loader/connection_allowlist_origin_trial_unittest.cc",
+    "../browser/loader/connection_allowlist_unittest.cc",
     "../browser/loader/cors_origin_pattern_setter_unittest.cc",
     "../browser/loader/file_url_loader_factory_unittest.cc",
     "../browser/loader/keep_alive_url_loader_service_unittest.cc",
@@ -3202,6 +3201,10 @@ test("content_unittests") {
 
   if (is_linux || is_chromeos) {
     sources += [ "../child/sandboxed_process_thread_type_handler_unittest.cc" ]
+  }
+
+  if (is_linux) {
+    sources += [ "../browser/accessibility/browser_accessibility_state_impl_auralinux_unittest.cc" ]
   }
 
   if (is_android || is_linux || is_chromeos || is_mac || is_win || is_fuchsia) {

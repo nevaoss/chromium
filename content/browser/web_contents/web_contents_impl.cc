@@ -5294,6 +5294,12 @@ blink::mojom::DisplayMode WebContentsImpl::GetDisplayMode() const {
                    : blink::mojom::DisplayMode::kBrowser;
 }
 
+blink::mojom::ApplicationContext WebContentsImpl::GetApplicationContext()
+    const {
+  return delegate_ ? delegate_->GetApplicationContext(this)
+                   : blink::mojom::ApplicationContext::kNone;
+}
+
 void WebContentsImpl::RequestToLockPointer(
     RenderWidgetHostImpl* render_widget_host,
     bool user_gesture,
@@ -8025,9 +8031,18 @@ void WebContentsImpl::DraggableRegionsChanged(
   GetDelegate()->DraggableRegionsChanged(regions, this);
 }
 
-void WebContentsImpl::OnFirstContentfulPaintInPrimaryMainFrame() {
+void WebContentsImpl::OnFirstContentfulPaintInPrimaryMainFrame(
+    base::TimeTicks presentation_time) {
   observers_.NotifyObservers(
-      &WebContentsObserver::OnFirstContentfulPaintInPrimaryMainFrame);
+      &WebContentsObserver::OnFirstContentfulPaintInPrimaryMainFrame,
+      presentation_time);
+}
+
+void WebContentsImpl::OnLargestContentfulPaintInPrimaryMainFrame(
+    base::TimeTicks presentation_time) {
+  observers_.NotifyObservers(
+      &WebContentsObserver::OnLargestContentfulPaintInPrimaryMainFrame,
+      presentation_time);
 }
 
 gfx::NativeWindow WebContentsImpl::GetOwnerNativeWindow() {
@@ -10846,7 +10861,7 @@ void WebContentsImpl::OnFocusedElementChangedInFrame(
 
   GlobalDOMNodeId global_dom_node_id{frame->GetWeakDocumentPtr(),
                                      editable_dom_node_id};
-  FocusedNodeDetails details = {frame->has_focused_editable_element(),
+  FocusedNodeDetails details = {frame->focused_editable_level(),
                                 bounds_in_screen, focus_type,
                                 global_dom_node_id};
   BrowserAccessibilityStateImpl::GetInstance()->OnFocusChangedInPage(details);

@@ -96,10 +96,15 @@ class SyncedBookmarkTrackerEntity {
   void RecordLocalUpdate(const sync_pb::EntitySpecifics& specifics,
                          base::Time modification_time);
 
-  void IncrementSequenceNumber();
+  void RecordAcceptedRemoteUpdate(const syncer::UpdateResponseData& update);
+  void RecordForcedRemoteUpdate(const syncer::UpdateResponseData& update);
+  void RecordIgnoredRemoteUpdate(const syncer::UpdateResponseData& update);
+  void OverrideServerMetadata(const std::string& server_id,
+                              int64_t server_version);
 
-  void UpdateServerVersion(int64_t server_version);
-  void AckSequenceNumber();
+  void RecordCommitResponse(const syncer::CommitResponseData& ack);
+
+  void IncrementSequenceNumber();
 
   // Returns the estimate of dynamically allocated memory in bytes.
   size_t EstimateMemoryUsage() const;
@@ -115,21 +120,15 @@ class SyncedBookmarkTrackerEntity {
     bookmark_node_ = bookmark_node;
   }
 
-  sync_pb::EntityMetadata* MutableMetadata(PassKey) {
-    return metadata_.mutable_proto();
-  }
-
   void RecordLocalDeletion(PassKey, const syncer::DeletionOrigin& origin);
-
-  void RecordAcceptedRemoteUpdate(PassKey,
-                                  const syncer::UpdateResponseData& update);
-
-  void RecordCommitResponse(PassKey, const syncer::CommitResponseData& ack);
 
   // Re-associates a placeholder tombstone with a real bookmark node (e.g. undo
   // deletion).
-  void UndeleteTombstoneForBookmarkNode(PassKey,
-                                        const bookmarks::BookmarkNode* node);
+  void UndeleteTombstoneForBookmarkNode(
+      PassKey,
+      const bookmarks::BookmarkNode* node,
+      const sync_pb::EntitySpecifics& specifics,
+      base::Time modification_time);
 
  private:
   // Null for tombstones.

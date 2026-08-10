@@ -1532,17 +1532,6 @@ IN_PROC_BROWSER_TEST_F(SettingsPrivacyGuideTest, CookiesCardNavigations) {
           "runMochaSuite('CookiesCardNavigations')");
 }
 
-IN_PROC_BROWSER_TEST_F(SettingsPrivacyGuideTest, AdTopicsCardNavigations) {
-  RunTest("settings/privacy_guide_page_test.js",
-          "runMochaSuite('AdTopicsCardNavigations')");
-}
-
-IN_PROC_BROWSER_TEST_F(SettingsPrivacyGuideTest,
-                       AdTopicsCardHiddenAdPrivacyDeprecationEnabled) {
-  RunTest("settings/privacy_guide_page_test.js",
-          "runMochaSuite('AdTopicsCardHiddenAdPrivacyDeprecationEnabled')");
-}
-
 IN_PROC_BROWSER_TEST_F(SettingsPrivacyGuideTest, PrivacyGuideDialog) {
   RunTest("settings/privacy_guide_page_test.js",
           "runMochaSuite('PrivacyGuideDialog')");
@@ -1584,94 +1573,6 @@ IN_PROC_BROWSER_TEST_F(SettingsPrivacyGuideTest, CompletionFragment) {
           "runMochaSuite('CompletionFragment')");
 }
 
-IN_PROC_BROWSER_TEST_F(SettingsPrivacyGuideTest,
-                       CompletionFragmentPrivacySandboxRestricted) {
-  RunTest("settings/privacy_guide_completion_fragment_test.js",
-          "runMochaSuite('CompletionFragmentPrivacySandboxRestricted')");
-}
-
-IN_PROC_BROWSER_TEST_F(
-    SettingsPrivacyGuideTest,
-    CompletionFragmentPrivacySandboxRestrictedWithNoticeEnabled) {
-  RunTest("settings/privacy_guide_completion_fragment_test.js",
-          "runMochaSuite('"
-          "CompletionFragmentPrivacySandboxRestrictedWithNoticeEnabled')");
-}
-
-// TODO(crbug.com/410848707): Re-enable this test
-#if BUILDFLAG(IS_MAC)
-#define MAYBE_AdTopicsFragment DISABLED_AdTopicsFragment
-#else
-#define MAYBE_AdTopicsFragment AdTopicsFragment
-#endif
-IN_PROC_BROWSER_TEST_F(SettingsPrivacyGuideTest, MAYBE_AdTopicsFragment) {
-  RunTest("settings/privacy_guide_ad_topics_fragment_test.js",
-          "runMochaSuite('AdTopicsFragment')");
-}
-
-class SettingsPrivacyPagePrivacySandboxRestrictedTest
-    : public SettingsBrowserTest {
- protected:
-  SettingsPrivacyPagePrivacySandboxRestrictedTest() {
-    scoped_feature_list_.InitAndEnableFeatureWithParameters(
-        privacy_sandbox::kPrivacySandboxSettings4,
-        {
-            {"force-restricted-user", "true"},
-        });
-  }
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_;
-};
-
-IN_PROC_BROWSER_TEST_F(SettingsPrivacyPagePrivacySandboxRestrictedTest,
-                       Restricted) {
-  RunTest("settings/privacy_page_test.js",
-          "runMochaSuite('PrivacySandbox4EnabledButRestricted')");
-}
-
-class SettingsPrivacyPagePrivacySandboxRestrictedWithNoticeTest
-    : public SettingsBrowserTest {
- protected:
-  SettingsPrivacyPagePrivacySandboxRestrictedWithNoticeTest() {
-    scoped_feature_list_.InitAndEnableFeatureWithParameters(
-        privacy_sandbox::kPrivacySandboxSettings4,
-        {
-            {"force-restricted-user", "true"},
-            {"restricted-notice", "true"},
-        });
-  }
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_;
-};
-
-IN_PROC_BROWSER_TEST_F(
-    SettingsPrivacyPagePrivacySandboxRestrictedWithNoticeTest,
-    RestrictedWithNotice) {
-  RunTest("settings/privacy_page_test.js",
-          "runMochaSuite('PrivacySandbox4EnabledButRestrictedWithNotice')");
-}
-
-class SettingsPrivacyPagePrivacySandboxAdPrivacyUxDeprecationEnabledTest
-    : public SettingsBrowserTest {
- protected:
-  SettingsPrivacyPagePrivacySandboxAdPrivacyUxDeprecationEnabledTest() {
-    scoped_feature_list_.InitAndEnableFeature(
-        privacy_sandbox::kPrivacySandboxAdPrivacyUxDeprecation);
-  }
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_;
-};
-
-IN_PROC_BROWSER_TEST_F(
-    SettingsPrivacyPagePrivacySandboxAdPrivacyUxDeprecationEnabledTest,
-    PrivacySandboxAdPrivacyUxDeprecationEnabled) {
-  RunTest("settings/privacy_page_test.js",
-          "runMochaSuite('PrivacySandboxAdPrivacyUxDeprecationEnabled')");
-}
-
 class SettingsPrivacyPageTest : public SettingsBrowserTest {
  protected:
   SettingsPrivacyPageTest() {
@@ -1698,9 +1599,6 @@ IN_PROC_BROWSER_TEST_F(SettingsPrivacyPageTest, PrivacyPage) {
   RunTest("settings/privacy_page_test.js", "runMochaSuite('PrivacyPage')");
 }
 
-IN_PROC_BROWSER_TEST_F(SettingsPrivacyPageTest, PrivacySandbox) {
-  RunTest("settings/privacy_page_test.js", "runMochaSuite('PrivacySandbox')");
-}
 
 IN_PROC_BROWSER_TEST_F(SettingsPrivacyPageTest,
                        CookiesSubpageRedesignDisabled) {
@@ -1747,84 +1645,6 @@ class JavascriptOptimizerPageTest : public SettingsBrowserTest {};
 
 IN_PROC_BROWSER_TEST_F(JavascriptOptimizerPageTest, JavascriptOptimizerPage) {
   RunTest("settings/v8_page_test.js", "runMochaSuite('V8Page')");
-}
-
-class SettingsPrivacySandboxPageTest : public SettingsBrowserTest {
- protected:
-  SettingsPrivacySandboxPageTest() {
-    scoped_feature_list_.InitAndDisableFeature(
-        privacy_sandbox::kPrivacySandboxAdPrivacyUxDeprecation);
-  }
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_;
-};
-
-IN_PROC_BROWSER_TEST_F(SettingsPrivacySandboxPageTest, PrivacySandboxPage) {
-  RunTest("settings/privacy_sandbox_page_test.js",
-          "runMochaSuite('PrivacySandboxPage')");
-}
-
-IN_PROC_BROWSER_TEST_F(SettingsPrivacySandboxPageTest, RestrictedEnabled) {
-  RunTest("settings/privacy_sandbox_page_test.js",
-          "runMochaSuite('RestrictedEnabled')");
-}
-
-// TODO(crbug.com/437872601, crbug.com/40866505): Flaky everywhere.
-IN_PROC_BROWSER_TEST_F(SettingsPrivacySandboxPageTest, DISABLED_TopicsSubpage) {
-  RunTest("settings/privacy_sandbox_page_test.js",
-          "runMochaSuite('TopicsSubpage')");
-}
-
-IN_PROC_BROWSER_TEST_F(SettingsPrivacySandboxPageTest,
-                       TopicsSubpageAdsApiUxEnhancements) {
-  RunTest("settings/privacy_sandbox_page_test.js",
-          "runMochaSuite('TopicsSubpageAdsApiUxEnhancements')");
-}
-
-IN_PROC_BROWSER_TEST_F(SettingsPrivacySandboxPageTest, FledgeSubpageEmpty) {
-  RunTest("settings/privacy_sandbox_page_test.js",
-          "runMochaSuite('FledgeSubpageEmpty')");
-}
-
-IN_PROC_BROWSER_TEST_F(SettingsPrivacySandboxPageTest,
-                       FledgeSubpageSeeAllSites) {
-  RunTest("settings/privacy_sandbox_page_test.js",
-          "runMochaSuite('FledgeSubpageSeeAllSites')");
-}
-
-IN_PROC_BROWSER_TEST_F(SettingsPrivacySandboxPageTest, AdMeasurementSubpage) {
-  RunTest("settings/privacy_sandbox_page_test.js",
-          "runMochaSuite('AdMeasurementSubpage')");
-}
-
-IN_PROC_BROWSER_TEST_F(SettingsPrivacySandboxPageTest,
-                       AdMeasurementSubpageAdsApiUxEnhancements) {
-  RunTest("settings/privacy_sandbox_page_test.js",
-          "runMochaSuite('AdMeasurementSubpageAdsApiUxEnhancements')");
-}
-
-IN_PROC_BROWSER_TEST_F(SettingsPrivacySandboxPageTest, ManageTopics) {
-  RunTest("settings/privacy_sandbox_page_test.js",
-          "runMochaSuite('ManageTopics')");
-}
-
-IN_PROC_BROWSER_TEST_F(SettingsPrivacySandboxPageTest,
-                       SiteSuggestedAdsSubpageAdsApiUxEnhancement) {
-  RunTest("settings/privacy_sandbox_page_test.js",
-          "runMochaSuite('SiteSuggestedAdsSubpageAdsApiUxEnhancement')");
-}
-
-IN_PROC_BROWSER_TEST_F(SettingsPrivacySandboxPageTest,
-                       ManageTopicsAndAdTopicsPageState) {
-  RunTest("settings/privacy_sandbox_page_test.js",
-          "runMochaSuite('ManageTopicsAndAdTopicsPageState')");
-}
-
-IN_PROC_BROWSER_TEST_F(SettingsPrivacySandboxPageTest,
-                       TopicsSubpageAdTopicsContentParity) {
-  RunTest("settings/privacy_sandbox_page_test.js",
-          "runMochaSuite('TopicsSubpageAdTopicsContentParity')");
 }
 
 using SettingsRouteTest = SettingsBrowserTest;

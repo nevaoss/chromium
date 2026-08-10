@@ -27,7 +27,6 @@
 #include "base/values.h"
 #include "build/build_config.h"
 #include "build/buildflag.h"
-#include "components/browsing_topics/common/common_types.h"
 #include "components/download/public/common/quarantine_connection.h"
 #include "components/file_access/scoped_file_access.h"
 #include "components/language_detection/content/common/language_detection.mojom-forward.h"
@@ -86,7 +85,6 @@
 #include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/public/common/user_agent/user_agent_metadata.h"
 #include "third_party/blink/public/mojom/ai/ai_manager.mojom-forward.h"
-#include "third_party/blink/public/mojom/browsing_topics/browsing_topics.mojom-forward.h"
 #include "third_party/blink/public/mojom/file_system_access/file_system_access_cloud_identifier.mojom-forward.h"
 #include "third_party/blink/public/mojom/file_system_access/file_system_access_error.mojom-forward.h"
 #include "third_party/blink/public/mojom/manifest/manifest.mojom-forward.h"
@@ -864,6 +862,12 @@ class CONTENT_EXPORT ContentBrowserClient {
   virtual bool IsMultiCaptureAllowed(
       content::RenderFrameHost* render_frame_host);
 
+  // Returns whether video capture is allowed for the given `origin` while the
+  // screen is locked (e.g. for SAML authentication on ChromeOS lock screen).
+  // This is called on the UI thread.
+  virtual bool IsVideoCaptureAllowedWhileScreenLocked(
+      const url::Origin& origin);
+
   // Returns the WebContents associated with the given window if it is allowed
   // to expose a capture handle. Returns nullptr otherwise.
   virtual content::WebContents* GetWebContentsFromWindowIfCaptureHandleAllowed(
@@ -1119,25 +1123,6 @@ class CONTENT_EXPORT ContentBrowserClient {
       const url::Origin& accessing_origin,
       std::string* out_debug_message,
       bool* out_block_is_site_setting_specific);
-
-  // Allows the embedder to control if Private Aggregation API operations can
-  // happen in a given context.
-  //
-  // If non-null, the embedder can use `out_block_is_site_setting_specific` to
-  // relay whether or not a failure to be allowed is due to a site-specific
-  // reason.
-  virtual bool IsPrivateAggregationAllowed(
-      content::BrowserContext* browser_context,
-      const url::Origin& top_frame_origin,
-      const url::Origin& reporting_origin,
-      bool* out_block_is_site_setting_specific);
-
-  // Allows the embedder to control if Private Aggregation API debug mode
-  // operations can happen in a given context.
-  virtual bool IsPrivateAggregationDebugModeAllowed(
-      content::BrowserContext* browser_context,
-      const url::Origin& top_frame_origin,
-      const url::Origin& reporting_origin);
 
   // Returns whether cookies should be allowed for requests to `url`, fetched
   // from contexts whose storage is keyed on `storage_key`.
@@ -2594,28 +2579,6 @@ class CONTENT_EXPORT ContentBrowserClient {
       bool user_gesture,
       blink::NavigationDownloadPolicy* download_policy);
 
-  // Writes the browsing topics for a particular requesting context into the
-  // output parameter `topics` and returns whether the access permission is
-  // allowed. `context_origin` and `main_frame` will potentially be used for the
-  // access permission check, for calculating the topics, and/or for the
-  // `BrowsingTopicsPageLoadDataTracker` to track the API usage. If `get_topics`
-  // is true, topics calculation result will be stored to `topics`. If `observe`
-  // is true, record the observation (i.e. the <calling context site,
-  // top level site> pair) to the `BrowsingTopicsSiteDataStorage` database.
-  virtual bool HandleTopicsWebApi(
-      const url::Origin& context_origin,
-      content::RenderFrameHost* main_frame,
-      browsing_topics::ApiCallerSource caller_source,
-      bool get_topics,
-      bool observe,
-      std::vector<blink::mojom::EpochTopicPtr>& topics);
-
-  // Returns the number of distinct topics epochs versions for `main_frame`.
-  // Must be called when topics are eligible (i.e. `HandleTopicsWebApi` would
-  // return true for the same main frame context).
-  virtual int NumVersionsInTopicsEpochs(
-      content::RenderFrameHost* main_frame) const;
-
   // Returns via callback:
   //  1. A boolean indicating whether persistent device IDs are allowed.
   //  2. A salt for hashing media device IDs for the given storage key.
@@ -3140,11 +3103,13 @@ class CONTENT_EXPORT ContentBrowserClient {
   enum class MultiCaptureChanged { kStarted, kStopped };
 
   // Notifies embedders that a the `state` of a multi capture with `label`
-  // changed for a certain `capturer_rfh_id`.
+  // changed for a certain `capturer_rfh_id`. `stop_callback` can be used by
+  // the embedder to terminate the newly started capture.
   virtual void NotifyMultiCaptureStateChanged(
       GlobalRenderFrameHostId capturer_rfh_id,
       const std::string& label,
-      MultiCaptureChanged state);
+      MultiCaptureChanged state,
+      base::OnceClosure stop_callback);
 
   // BTM will be enabled in browser contexts for which this returns true. The
   // default implementation returns true for all contexts.

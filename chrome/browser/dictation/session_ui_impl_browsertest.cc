@@ -96,7 +96,7 @@ class DictationSessionUiImplBrowserTest
   auto StartDictationStream(DictationStreamStartTrigger trigger) {
     return Do([this, trigger]() {
       dictation_service().session_controller()->StartDictationStream(
-          DefaultInPageTargetId(web_contents()), trigger);
+          DefaultInPageTarget(web_contents()), trigger);
     });
   }
 
@@ -144,6 +144,20 @@ IN_PROC_BROWSER_TEST_F(DictationSessionUiImplBrowserTest,
                       &views::LabelButton::GetText, u"Start"),
     CheckViewProperty(DictationBubbleUi::kToggleButtonElementIdForTesting,
                       &views::View::GetEnabled, true)
+  );
+  // clang-format on
+}
+
+IN_PROC_BROWSER_TEST_F(DictationSessionUiImplBrowserTest, UpdateAudioLevel) {
+  // clang-format off
+  RunTestSequence(
+    StartSession(),
+    WaitForShow(DictationBubbleUi::kViewElementIdForTesting),
+    Do([this]{
+      SessionUi* ui = session_ui();
+      ASSERT_TRUE(ui);
+      ui->UpdateAudioLevel(0.5f);
+    })
   );
   // clang-format on
 }

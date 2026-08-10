@@ -380,7 +380,7 @@ CGFloat CompactButtonHorizontalPadding() {
                       image:nil
              targetSelector:@selector(doneButtonTapped:)];
   _doneButton.role = UIButtonRolePrimary;
-  _doneButton.accessibilityIdentifier = kTabGridDoneButtonIdentifier;
+  _doneButton.accessibilityIdentifier = kTabGridExitTabGridButtonIdentifier;
   _doneButton.titleLabel.font = [UIFont boldSystemFontOfSize:kButtonFontSize];
   [_containerToolbar addSubview:_doneButton];
 
@@ -594,7 +594,7 @@ CGFloat CompactButtonHorizontalPadding() {
   _largeNewTabButton.hidden = YES;
 }
 
-#pragma mark - Public
+#pragma mark - ResponderChaining
 
 - (void)respondBeforeResponder:(UIResponder*)nextResponder {
   _followingNextResponder = nextResponder;
@@ -634,7 +634,7 @@ CGFloat CompactButtonHorizontalPadding() {
 
 - (void)doneButtonTapped:(id)sender {
   if (_doneButton.enabled) {
-    [self.buttonsDelegate doneButtonTapped:sender];
+    [self.buttonsDelegate exitTabGridButtonTapped:sender];
   }
 }
 

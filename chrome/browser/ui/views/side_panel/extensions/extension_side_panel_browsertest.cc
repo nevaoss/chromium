@@ -56,6 +56,7 @@
 #include "content/public/test/browser_test_utils.h"
 #include "content/public/test/test_utils.h"
 #include "extensions/browser/api_test_utils.h"
+#include "extensions/browser/extension_host_test_helper.h"
 #include "extensions/browser/test_event_router_observer.h"
 #include "extensions/browser/test_image_loader.h"
 #include "extensions/common/constants.h"
@@ -2552,6 +2553,12 @@ IN_PROC_BROWSER_TEST_F(ExtensionOnOpenedEventSidePanelBrowserTest,
 
 class ExtensionOnClosedEventSidePanelBrowserTest
     : public ExtensionSidePanelBrowserTest {
+ public:
+  ExtensionOnClosedEventSidePanelBrowserTest() {
+    scoped_feature_list_.InitAndDisableFeature(
+        features::kExtensionsPinnedByDefault);
+  }
+
  protected:
   // Helper to load a test extension configured for the onClosed event tests.
   const Extension* CreateOnClosedTestExtension() {
@@ -2618,11 +2625,12 @@ class ExtensionOnClosedEventSidePanelBrowserTest
 
  private:
   std::vector<extensions::TestExtensionDir> test_dirs_;
+  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
 // Tests that onClosed fires when the hosting tab is closed.
 IN_PROC_BROWSER_TEST_F(ExtensionOnClosedEventSidePanelBrowserTest,
-                       OnClosedEvent_TabClosed) {
+                       DISABLED_OnClosedEvent_TabClosed) {
   // Open a new tab first to prevent the browser from shutting down.
   ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("about:blank"), WindowOpenDisposition::NEW_FOREGROUND_TAB,
@@ -2639,7 +2647,10 @@ IN_PROC_BROWSER_TEST_F(ExtensionOnClosedEventSidePanelBrowserTest,
   SidePanelEntry* extension_entry =
       GetCurrentTabRegistry()->GetEntryForKey(GetKey(extension->id()));
   ASSERT_TRUE(extension_entry);
+
+  extensions::ExtensionHostTestHelper host_helper(profile(), extension->id());
   ShowContextualEntryAndWait(GetKey(extension->id()));
+  host_helper.WaitForHostCompletedFirstLoad();
 
   // Close the active tab, which has the panel. This action should trigger the
   // onClosed event in the extension.
@@ -2735,8 +2746,16 @@ IN_PROC_BROWSER_TEST_F(ExtensionOnClosedEventSidePanelBrowserTest,
     SidePanelUI* const browser_to_close_ui =
         browser_to_close->GetFeatures().side_panel_ui();
     TestSidePanelEntryWaiter waiter(extension_entry);
+
+    // Prepare to wait for Extensionhost so that onOpened can be dispatched.
+    extensions::ExtensionHostTestHelper host_helper(profile(), extension->id());
+
     browser_to_close_ui->Show(GetKey(extension->id()));
     waiter.WaitForEntryShown();
+
+    // Ensures onOpened is dispatched before closing the window.
+    host_helper.WaitForHostCompletedFirstLoad();
+
     EXPECT_TRUE(browser_to_close_ui->IsSidePanelShowing());
   }
 

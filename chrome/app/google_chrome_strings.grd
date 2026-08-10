@@ -2648,17 +2648,8 @@ Google Chrome is unable to recover your settings.
         </message>
 
         <!-- Feature Showcase - Gemini -->
-        <message name="IDS_FEATURE_SHOWCASE_GEMINI_TITLE" desc="" translateable="false">
-          Get help with your tabs and tasks with Gemini in Chrome
-        </message>
-        <message name="IDS_FEATURE_SHOWCASE_GEMINI_DISCLOSURE_1" desc="" translateable="false">
-          Google uses the content and URL of shared tabs. Your current tab is shared in new chats. You can change this setting anytime.
-        </message>
-        <message name="IDS_FEATURE_SHOWCASE_GEMINI_DISCLOSURE_2" desc="" translateable="false">
-          Neither your conversations with Gemini nor your Google Workspace data will be reviewed or used to improve generative AI models. Gemini is AI and can make mistakes. Some content may not be suitable for everyone.
-        </message>
-        <message name="IDS_FEATURE_SHOWCASE_GEMINI_DISCLOSURE_3" desc="" translateable="false">
-          Google Terms and the Gemini Apps Privacy Notice apply
+        <message name="IDS_FEATURE_SHOWCASE_GEMINI_TITLE" desc="This is the headline for the Gemini (AI assistant) opt-in screen. It introduces the benefit of AI assistance for productivity. (CHAR LIMIT = 60)">
+          Ask anything, right where you are, with Gemini in Chrome
         </message>
 
         <!-- Feature Showcase - Themes -->
@@ -3440,7 +3431,7 @@ If this page isn’t working as expected, try allowing optimization.
         Your work secured on Chrome
       </message>
       <message name="IDS_ENTERPRISE_DEVICE_SIGNALS_DISCLAIMER_SUBTITLE" desc="Subtitle of an enterprise device signals collection disclaimer modal dialog. The dialog is shown on Chrome startup to managed Chrome users who have not previously acknowledged device signals collection.">
-        To secure your work on Chrome, your organization will be able to view or manage certain information
+        To secure your work on Chrome, your organization will be able to view or manage certain information when you’re signed-in to Chrome.
       </message>
     </messages>
   </release>

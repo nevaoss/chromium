@@ -138,6 +138,19 @@ bool IsMimeTypeAllowed(const std::string& mime_type,
   return false;
 }
 
+base::TimeTicks GetTabLastActiveTimeTicks(tabs::TabInterface* tab) {
+  if (content::WebContents* web_contents = tab->GetContents()) {
+    return std::max(web_contents->GetLastActiveTimeTicks(),
+                    web_contents->GetLastInteractionTimeTicks());
+  }
+  // For unloaded tabs on Android where WebContents is nullptr, convert
+  // wall-clock time (base::Time) to monotonic time (base::TimeTicks) so recency
+  // sorting remains consistent across all tabs.
+  const base::TimeDelta time_since_active =
+      base::Time::Now() - tab->GetLastActiveTime();
+  return base::TimeTicks::Now() - time_since_active;
+}
+
 omnibox::InputType GetInputType(const std::string& type,
                                 const std::string& image_file_types) {
   if (type == "tab") {
@@ -244,11 +257,10 @@ void ContextualSearchboxHandler::GetRecentTabs(GetRecentTabsCallback callback) {
   content::WebContents* active_web_contents =
       active_tab_interface ? active_tab_interface->GetContents() : nullptr;
   for (tabs::TabInterface* tab : tab_list->GetAllTabs()) {
-    content::WebContents* web_contents = tab->GetContents();
-    if (!web_contents) {
+    if (!tab) {
       continue;
     }
-    const GURL& url = web_contents->GetLastCommittedURL();
+    const GURL& url = tab->GetURL();
     if (!url.is_valid()) {
       continue;
     }
@@ -258,8 +270,7 @@ void ContextualSearchboxHandler::GetRecentTabs(GetRecentTabsCallback callback) {
     if (!is_internal_page) {
       tab_times.push_back({
           .tab = tab,
-          .time = std::max(web_contents->GetLastActiveTimeTicks(),
-                           web_contents->GetLastInteractionTimeTicks()),
+          .time = GetTabLastActiveTimeTicks(tab),
       });
     }
   }
@@ -290,13 +301,15 @@ void ContextualSearchboxHandler::GetRecentTabs(GetRecentTabsCallback callback) {
   std::vector<searchbox::mojom::TabInfoPtr> tabs;
   for (const TabTime& tab_time : tab_times) {
     content::WebContents* web_contents = tab_time.tab->GetContents();
-    const GURL& url = tab_deselection_enabled
-                          ? web_contents->GetVisibleURL()
-                          : web_contents->GetLastCommittedURL();
+    const GURL url = web_contents ? (tab_deselection_enabled
+                                         ? web_contents->GetVisibleURL()
+                                         : web_contents->GetLastCommittedURL())
+                                  : tab_time.tab->GetURL();
 
     auto tab_data = searchbox::mojom::TabInfo::New();
     tab_data->tab_id = tab_time.tab->GetHandle().raw_value();
-    tab_data->title = base::UTF16ToUTF8(web_contents->GetTitle());
+    tab_data->title = base::UTF16ToUTF8(
+        web_contents ? web_contents->GetTitle() : tab_time.tab->GetTitle());
     tab_data->url = url;
     const bool show_in_current_tab_chip =
         active_web_contents && active_tab_url == url;
@@ -306,7 +319,9 @@ void ContextualSearchboxHandler::GetRecentTabs(GetRecentTabsCallback callback) {
         lens::TabContextualizationController::From(tab_time.tab);
     tab_data->show_in_previous_tab_chip =
         !google_util::IsGoogleSearchUrl(url) &&
-        tab_context_controller->GetInitialPageContextEligibility() &&
+        (tab_context_controller
+             ? tab_context_controller->GetInitialPageContextEligibility()
+             : false) &&
         active_web_contents &&
         active_web_contents->GetLastCommittedURL() ==
             chrome::ChromeUINewTabURLAsGURL() &&
@@ -389,7 +404,8 @@ ContextualSearchboxHandler::CreateTabPreviewEncodingOptions(
 void ContextualSearchboxHandler::WaitForTabFaviconLoad(
     int32_t tab_id,
     WaitForTabFaviconLoadCallback callback) {
-  tab_favicon_helper_->WaitForTabFaviconLoad(tab_id, std::move(callback));
+  tab_favicon_helper_->WaitForTabFaviconLoad(tab_id, profile_,
+                                             std::move(callback));
 }
 
 // Helper class that observes the WebContents of the active tab for navigation.
@@ -1379,10 +1395,9 @@ void ContextualSearchboxHandler::InitializeInputStateModel() {
     input_state_model_->SetPrefService(profile_->GetPrefs());
   }
 
-  if (!IsContextualSearchTabSharingEligible()) {
-    input_state_model_->SetPermanentlyDisabledInputTypes(
-        {omnibox::InputType::INPUT_TYPE_BROWSER_TAB});
-  }
+  input_state_model_->TogglePermanentlyDisabledInputType(
+      omnibox::InputType::INPUT_TYPE_BROWSER_TAB,
+      !IsContextualSearchTabSharingEligible());
 
   input_state_subscription_ = input_state_model_->subscribe(
       base::BindRepeating(&ContextualSearchboxHandler::OnInputStateChanged,
@@ -1786,24 +1801,13 @@ void ContextualSearchboxHandler::QueryAutocomplete(
     const std::u16string& input,
     bool prevent_inline_autocomplete,
     uint32_t cursor_position,
-    bool is_on_focus) {
-  QueryAutocompleteWithSuggestInventory(
-      query_id, input, prevent_inline_autocomplete, cursor_position,
-      omnibox::SuggestInventory::SUGGEST_INVENTORY_DEFAULT, is_on_focus);
-}
-
-void ContextualSearchboxHandler::QueryAutocompleteWithSuggestInventory(
-    int32_t query_id,
-    const std::u16string& input,
-    bool prevent_inline_autocomplete,
-    uint32_t cursor_position,
     omnibox::SuggestInventory suggest_inventory,
     bool is_on_focus) {
   if (contextual_tasks_context_service_) {
     contextual_tasks_context_service_->OnTypedQuery();
   }
 
-  SearchboxHandler::QueryAutocompleteWithSuggestInventory(
+  SearchboxHandler::QueryAutocomplete(
       query_id, input, prevent_inline_autocomplete, cursor_position,
       suggest_inventory, is_on_focus);
 }
@@ -2122,8 +2126,8 @@ void ContextualSearchboxHandler::OpenUrl(
           contextual_session_handle->invocation_source());
   new_contextual_session_handle->set_submitted_context_tokens(
       contextual_session_handle->GetSubmittedContextTokens());
-  new_contextual_session_handle->set_submitted_tabs(
-      contextual_session_handle->submitted_tabs());
+  new_contextual_session_handle->set_persisted_tabs(
+      contextual_session_handle->persisted_tabs());
   new_contextual_session_handle->set_deselected_tabs_urls(
       contextual_session_handle->deselected_tabs_urls());
   new_contextual_session_handle->set_smart_tab_sharing_active(

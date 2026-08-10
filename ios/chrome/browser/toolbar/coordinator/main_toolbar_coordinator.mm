@@ -1055,7 +1055,7 @@ inline LayoutStateToolbarPassKey PassKey() {
 
 - (void)focusLocationBarForVoiceOver {
   if (IsChromeNextIaEnabled()) {
-    if (_topToolbarViewController.visible) {
+    if (_topToolbarViewController.hasOmnibox) {
       [_topLocationBarCoordinator focusOmniboxForVoiceOver];
     } else {
       [_bottomLocationBarCoordinator focusOmniboxForVoiceOver];
@@ -1256,8 +1256,13 @@ inline LayoutStateToolbarPassKey PassKey() {
   toolbarViewController.layoutGuideCenter =
       LayoutGuideCenterForBrowser(browser);
   toolbarViewController.layoutState = _layoutState;
-  toolbarViewController.buttonFactory =
+  ToolbarButtonFactory* toolbarButtonFactory =
       [[ToolbarButtonFactory alloc] initWithIncognito:incognito];
+  if (!incognito) {
+    toolbarButtonFactory.geminiHandler =
+        HandlerForProtocol(browser->GetCommandDispatcher(), GeminiCommands);
+  }
+  toolbarViewController.buttonFactory = toolbarButtonFactory;
   toolbarViewController.mutator = mediator;
   toolbarViewController.browserCoordinatorHandler =
       HandlerForProtocol(dispatcher, BrowserCoordinatorCommands);

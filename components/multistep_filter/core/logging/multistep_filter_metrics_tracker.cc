@@ -4,90 +4,50 @@
 
 #include "components/multistep_filter/core/logging/multistep_filter_metrics_tracker.h"
 
+#include <algorithm>
+#include <utility>
+
 #include "base/functional/function_ref.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/notreached.h"
 #include "base/rand_util.h"
 #include "base/strings/strcat.h"
-#include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
 #include "components/multistep_filter/core/data_models/filter_navigation_metadata.h"
 #include "components/multistep_filter/core/data_models/suggestion_user_decision.h"
 #include "components/multistep_filter/core/features.h"
 #include "components/multistep_filter/core/logging/multistep_filter_metrics.h"
+#include "components/multistep_filter/core/logging/multistep_filter_metrics_util.h"
 #include "components/multistep_filter/core/multistep_filter_util.h"
 #include "components/multistep_filter/core/prefs/multistep_filter_retention_prefs.h"
+#include "services/metrics/public/cpp/metrics_utils.h"
+#include "services/metrics/public/cpp/ukm_builders.h"
+#include "services/metrics/public/cpp/ukm_recorder.h"
 
 namespace multistep_filter {
 
 namespace {
 
-bool IsSameEtldPlusOne(const UrlFilterSuggestion& suggestion) {
-  return GetEtldPlusOneForHost(base::UTF16ToUTF8(suggestion.source_host)) ==
-         GetEtldPlusOneForHost(suggestion.triggering_host);
-}
+using SuggestionUiSession = MultistepFilterMetricsTracker::SuggestionUiSession;
+using SuggestionApplicationSession = MultistepFilterMetricsTracker::SuggestionApplicationSession;
+using SuggestionApplicationSessionFlushTrigger =
+    MultistepFilterMetricsTracker::SuggestionApplicationSessionFlushTrigger;
+using enum SuggestionApplicationSessionFlushTrigger;
+using enum MultistepFilterPostSuggestionApplicationUserEngagement;
 
-base::TimeDelta GetClampedDifference(base::TimeTicks end,
-                                     base::TimeTicks start) {
-  if (end.is_null() || start.is_null() || end < start) {
-    return base::TimeDelta();
-  }
-  return end - start;
-}
+static_assert(static_cast<int>(MultistepFilterFacetType::kMaxValue) < 64,
+              "MultistepFilterFacetType::kMaxValue must be less than 64 to fit "
+              "in a 64-bit bitmask.");
 
-base::TimeDelta GetClampedDifference(base::Time end, base::Time start) {
-  if (end.is_null() || start.is_null() || end < start) {
-    return base::TimeDelta();
-  }
-  return end - start;
-}
-
-// A struct containing the retention slices that should be logged for a given
-// snapshot.
-struct RetentionSlices {
-  bool first_impression = false;
-  bool accepted_last_time = false;
-  bool rejected_last_time = false;
-  bool accepted_at_least_once = false;
-  bool saw_cues_but_never_accepted = false;
-
-  // Calls the given callback for each retention slice that should be logged.
-  void ForEachActive(base::FunctionRef<void(std::string_view)> callback) const {
-    if (first_impression) {
-      callback(kRetentionSliceFirstImpression);
-    }
-    if (accepted_last_time) {
-      callback(kRetentionSliceAcceptedLastTime);
-    }
-    if (rejected_last_time) {
-      callback(kRetentionSliceRejectedLastTime);
-    }
-    if (accepted_at_least_once) {
-      callback(kRetentionSliceAcceptedAtLeastOnce);
-    }
-    if (saw_cues_but_never_accepted) {
-      callback(kRetentionSliceSawCuesButNeverAccepted);
+uint64_t GetAppliedFacetTypesBitmask(const UrlFilterSuggestion& suggestion) {
+  uint64_t bitmask = 0;
+  for (const FilterAttributeUiLabel& label : suggestion.attribute_ui_labels) {
+    MultistepFilterFacetType facet_type = MapStringToFacetType(label.key);
+    if (facet_type != MultistepFilterFacetType::kUnknown) {
+      bitmask |= 1ULL << std::to_underlying(facet_type);
     }
   }
-};
-
-RetentionSlices GetRetentionSlices(const RetentionStateSnapshot& snapshot) {
-  RetentionSlices slices;
-  if (snapshot.suggestion_impressions == 0) {
-    slices.first_impression = true;
-    return slices;
-  }
-  if (snapshot.is_last_suggestion_accepted) {
-    slices.accepted_last_time = true;
-  } else {
-    slices.rejected_last_time = true;
-  }
-  if (snapshot.suggestion_acceptances > 0) {
-    slices.accepted_at_least_once = true;
-  } else {
-    slices.saw_cues_but_never_accepted = true;
-  }
-  return slices;
+  return bitmask;
 }
 
 void LogAcceptanceHistogram(std::string_view base_histogram,
@@ -99,12 +59,13 @@ void LogAcceptanceHistogram(std::string_view base_histogram,
       base::StrCat(
           {base_histogram, kMultistepFilterByTaskHistogramPrefix, task_type}),
       decision);
-  GetRetentionSlices(snapshot).ForEachActive([&](std::string_view slice) {
-    base::UmaHistogramEnumeration(
-        base::StrCat({base_histogram,
-                      kMultistepFilterByRetentionHistogramPrefix, slice}),
-        decision);
-  });
+  EnumerateActiveRetentionSlices(
+      GetRetentionState(snapshot), [&](std::string_view slice) {
+        base::UmaHistogramEnumeration(
+            base::StrCat({base_histogram,
+                          kMultistepFilterByRetentionHistogramPrefix, slice}),
+            decision);
+      });
 }
 
 // Logs the overall technical filter application outcome after a user accepts
@@ -122,31 +83,31 @@ void LogAcceptanceHistogram(std::string_view base_histogram,
 // - There was a mismatch in the keys or values of the filters (e.g. a
 //   different brand or price range was applied than what was suggested).
 void LogApplicationOutcome(
-    MultistepFilterMetricsTracker::SuggestionApplicationSession& session,
-    MultistepFilterApplicationOutcome outcome) {
+    SuggestionApplicationSession& session) {
   if (session.outcome_logged) {
     return;
   }
 
   base::UmaHistogramEnumeration(kMultistepFilterApplicationOutcomeHistogram,
-                                outcome);
+                                session.outcome);
   base::UmaHistogramEnumeration(
       base::StrCat({kMultistepFilterApplicationOutcomeHistogram,
                     kMultistepFilterByTaskHistogramPrefix,
                     session.suggestion.task_type}),
-      outcome);
+      session.outcome);
 
   // Log by retention state:
-  GetRetentionSlices(session.retention_snapshot)
-      .ForEachActive([&](std::string_view slice) {
+  EnumerateActiveRetentionSlices(
+      GetRetentionState(session.retention_snapshot),
+      [&](std::string_view slice) {
         base::UmaHistogramEnumeration(
             base::StrCat({kMultistepFilterApplicationOutcomeHistogram,
                           kMultistepFilterByRetentionHistogramPrefix, slice}),
-            outcome);
+            session.outcome);
       });
 
   const bool is_success =
-      outcome == MultistepFilterApplicationOutcome::kAllFiltersApplied;
+      session.outcome == MultistepFilterApplicationOutcome::kAllFiltersApplied;
 
   if (is_success) {
     size_t count = session.suggestion.attribute_ui_labels.size();
@@ -160,8 +121,7 @@ void LogApplicationOutcome(
         count);
     base::UmaHistogramMediumTimes(
         kMultistepFilterTimeSuggestionAcceptanceToAppliedHistogram,
-        GetClampedDifference(session.application_navigation_finish_time,
-                             session.suggestion_accepted_time));
+        session.suggestion_accepted_to_applied_latency);
   }
 
   for (const FilterAttributeUiLabel& suggested_label :
@@ -178,28 +138,31 @@ void LogApplicationOutcome(
 }
 
 void LogApplicationOutcomeWhenSessionIsFlushed(
-    MultistepFilterMetricsTracker::SuggestionApplicationSession& session,
-    MultistepFilterMetricsTracker::SuggestionApplicationSessionFlushTrigger
-        trigger) {
-  using enum MultistepFilterMetricsTracker::
-      SuggestionApplicationSessionFlushTrigger;
-  using enum MultistepFilterApplicationOutcome;
+    SuggestionApplicationSession& session,
+    SuggestionApplicationSessionFlushTrigger trigger) {
+  if (session.outcome_logged) {
+    return;
+  }
+
   switch (trigger) {
     case kApplicationFailure:
-      LogApplicationOutcome(session, kNotAllFiltersApplied);
-      break;
+      session.outcome = MultistepFilterApplicationOutcome::kNotAllFiltersApplied;
+      LogApplicationOutcome(session);
+      return;
     case kTabClosed:
     case kSessionOverride:
     case kNavigationBack:
     case kNavigationFromBrowserContext:
     case kNavigationFromPageContext:
-      LogApplicationOutcome(session, kAbandonedBeforeVerification);
-      break;
+      session.outcome = MultistepFilterApplicationOutcome::kAbandonedBeforeVerification;
+      LogApplicationOutcome(session);
+      return;
   }
+  NOTREACHED();
 }
 
 void LogSuggestionUiShown(
-    const MultistepFilterMetricsTracker::SuggestionUiSession& ui_session) {
+    const SuggestionUiSession& ui_session) {
   size_t count = ui_session.suggestion.attribute_ui_labels.size();
   std::string_view task_type = ui_session.suggestion.task_type;
   if (count > 0) {
@@ -214,15 +177,15 @@ void LogSuggestionUiShown(
   CHECK(!ui_session.triggering_navigation_finish_time.is_null());
   base::UmaHistogramTimes(
       kMultistepFilterTimeNavigationToSuggestionShownHistogram,
-      GetClampedDifference(ui_session.suggestion_shown_time,
-                           ui_session.triggering_navigation_finish_time));
+      ui_session.navigation_to_suggestion_shown_latency);
 
-  base::TimeDelta suggestion_age = ui_session.suggestion_shown_age;
-  int suggestion_age_minutes = suggestion_age.InMinutes();
-  int max_age_bucket = kMultistepFilterSessionDuration.Get().InMinutes() + 1;
+  const int suggestion_age_minutes =
+      ui_session.extraction_to_suggestion_shown_time_delta.InMinutes();
+  const int max_age_bucket =
+      kMultistepFilterSessionDuration.Get().InMinutes() + 1;
   base::UmaHistogramExactLinear(kMultistepFilterSuggestionAgeShownHistogram,
                                 suggestion_age_minutes, max_age_bucket);
-  if (IsSameEtldPlusOne(ui_session.suggestion)) {
+  if (ui_session.is_same_domain) {
     base::UmaHistogramExactLinear(
         kMultistepFilterSuggestionAgeShownOnSameDomainHistogram,
         suggestion_age_minutes, max_age_bucket);
@@ -234,21 +197,19 @@ void LogSuggestionAcceptanceLatencyAndAgeMetrics(
   CHECK(!ui_session.triggering_navigation_finish_time.is_null());
   base::UmaHistogramMediumTimes(
       kMultistepFilterTimeNavigationToSuggestionAcceptedHistogram,
-      GetClampedDifference(ui_session.suggestion_accepted_time,
-                           ui_session.triggering_navigation_finish_time));
+      ui_session.navigation_to_suggestion_accepted_time_delta);
 
   base::UmaHistogramMediumTimes(
       kMultistepFilterTimeSuggestionShownToAcceptedHistogram,
-      GetClampedDifference(ui_session.suggestion_accepted_time,
-                           ui_session.suggestion_shown_time));
+      ui_session.suggestion_shown_to_accepted_time_delta);
 
-  base::TimeDelta suggestion_age = GetClampedDifference(
-      base::Time::Now(), ui_session.suggestion.extraction_timestamp);
-  int suggestion_age_minutes = suggestion_age.InMinutes();
-  int max_age_bucket = kMultistepFilterSessionDuration.Get().InMinutes() + 1;
+  const int suggestion_age_minutes =
+      ui_session.extraction_to_suggestion_accepted_time_delta.InMinutes();
+  const int max_age_bucket =
+      kMultistepFilterSessionDuration.Get().InMinutes() + 1;
   base::UmaHistogramExactLinear(kMultistepFilterSuggestionAgeAcceptedHistogram,
                                 suggestion_age_minutes, max_age_bucket);
-  if (IsSameEtldPlusOne(ui_session.suggestion)) {
+  if (ui_session.is_same_domain) {
     base::UmaHistogramExactLinear(
         kMultistepFilterSuggestionAgeAcceptedOnSameDomainHistogram,
         suggestion_age_minutes, max_age_bucket);
@@ -278,14 +239,18 @@ bool ShouldIgnoreNavigationForEngagementMetrics(
   return false;
 }
 
-void LogPostApplicationUserEngagement(
-    const MultistepFilterMetricsTracker::SuggestionApplicationSession& session,
-    MultistepFilterMetricsTracker::SuggestionApplicationSessionFlushTrigger
-        trigger,
+
+// Returns the post-application user engagement metric for a session.
+// `trigger` must not be `kApplicationFailure` because post-application
+// engagement is only tracked for successful applications.
+MultistepFilterPostSuggestionApplicationUserEngagement
+GetPostApplicationUserEngagement(
+    const SuggestionApplicationSession& session,
+    SuggestionApplicationSessionFlushTrigger trigger,
     base::TimeTicks event_time) {
-  using enum MultistepFilterMetricsTracker::
-      SuggestionApplicationSessionFlushTrigger;
-  using enum MultistepFilterPostSuggestionApplicationUserEngagement;
+
+
+  CHECK_NE(trigger, kApplicationFailure);
 
   const base::TimeDelta time_since_suggestion_application_finish =
       GetClampedDifference(event_time,
@@ -294,40 +259,129 @@ void LogPostApplicationUserEngagement(
       time_since_suggestion_application_finish <
       kMultistepFilterPostApplicationSessionDuration.Get();
 
-  MultistepFilterPostSuggestionApplicationUserEngagement user_engagement_action;
   switch (trigger) {
     case kApplicationFailure:
-      return;
+      NOTREACHED();
     case kNavigationFromPageContext:
-      user_engagement_action =
-          within_window ? kEngagedWithFurtherNavigationWithinSessionWindow
-                        : kEngagedWithFurtherNavigationAfterSessionWindow;
-      break;
+      return within_window ? kEngagedWithFurtherNavigationWithinSessionWindow
+                           : kEngagedWithFurtherNavigationAfterSessionWindow;
     case kTabClosed:
-      user_engagement_action = within_window
-                                   ? kAbandonedWithinSessionWindowTabClosed
-                                   : kAbandonedAfterSessionWindowTabClosed;
-      break;
+      return within_window ? kAbandonedWithinSessionWindowTabClosed
+                           : kAbandonedAfterSessionWindowTabClosed;
     case kNavigationFromBrowserContext:
-      user_engagement_action =
-          within_window ? kAbandonedWithinSessionWindowOmniboxOrBookmark
-                        : kAbandonedAfterSessionWindowOmniboxOrBookmark;
-      break;
+      return within_window ? kAbandonedWithinSessionWindowOmniboxOrBookmark
+                           : kAbandonedAfterSessionWindowOmniboxOrBookmark;
     case kNavigationBack:
-      user_engagement_action = within_window
-                                   ? kAbandonedWithinSessionWindowBackNavigation
-                                   : kAbandonedAfterSessionWindowBackNavigation;
-      break;
+      return within_window ? kAbandonedWithinSessionWindowBackNavigation
+                           : kAbandonedAfterSessionWindowBackNavigation;
     case kSessionOverride:
-      user_engagement_action =
-          within_window ? kAbandonedWithinSessionWindowSessionOverride
-                        : kAbandonedAfterSessionWindowSessionOverride;
-      break;
+      return within_window ? kAbandonedWithinSessionWindowSessionOverride
+                           : kAbandonedAfterSessionWindowSessionOverride;
   }
+  NOTREACHED();
+}
 
+void LogPostApplicationUserEngagement(
+    const SuggestionApplicationSession& session,
+    SuggestionApplicationSessionFlushTrigger trigger,
+    base::TimeTicks event_time) {
+  if (trigger == kApplicationFailure) {
+    return;
+  }
   base::UmaHistogramEnumeration(
       kMultistepFilterPostSuggestionApplicationUserEngagementHistogram,
-      user_engagement_action);
+      GetPostApplicationUserEngagement(session, trigger, event_time));
+}
+
+void LogSuggestionUiSessionUkm(
+    const SuggestionUiSession& ui_session,
+    SuggestionUserDecision final_decision) {
+  if (ui_session.ukm_source_id == ukm::kInvalidSourceId) {
+    return;
+  }
+
+  ukm::builders::MultistepFilter_UiSession builder(ui_session.ukm_source_id);
+
+  int max_session_duration_minutes =
+      kMultistepFilterSessionDuration.Get().InMinutes();
+
+  builder.SetSessionId(ui_session.session_id)
+      .SetTaskType(std::to_underlying(
+          MapStringToTaskType(ui_session.suggestion.task_type)))
+      .SetUserDecision(std::to_underlying(final_decision))
+      .SetRetentionState(
+          std::to_underlying(GetRetentionState(ui_session.retention_snapshot)))
+      .SetShownAgeInMinutes(std::min<int64_t>(
+          ui_session.extraction_to_suggestion_shown_time_delta.InMinutes(),
+          max_session_duration_minutes))
+      .SetNumOfFilterFacetsShown(std::min<int64_t>(
+          ui_session.suggestion.attribute_ui_labels.size(),
+          kMultistepFilterMaxFacetsShownUkmClampingLimit.Get()))
+      .SetReopenedCueShown(ui_session.reopened_cue_shown)
+      .SetIsSameDomain(ui_session.is_same_domain)
+      .SetSuggestedFilterFacetTypes(
+          GetAppliedFacetTypesBitmask(ui_session.suggestion));
+
+  builder.SetNavigationToSuggestionShownTimeInMs(
+      ukm::GetSemanticBucketMinForDurationTiming(
+          ui_session.navigation_to_suggestion_shown_latency.InMilliseconds()));
+
+  if (final_decision == SuggestionUserDecision::kAccepted) {
+    builder.SetAcceptedAgeInMinutes(std::min<int64_t>(
+        ui_session.extraction_to_suggestion_accepted_time_delta.InMinutes(),
+        max_session_duration_minutes));
+
+    builder.SetNavigationToSuggestionAcceptedTimeInMs(
+        ukm::GetSemanticBucketMinForDurationTiming(
+            ui_session.navigation_to_suggestion_accepted_time_delta
+                .InMilliseconds()));
+
+    builder.SetSuggestionShownToAcceptedTimeInMs(
+        ukm::GetSemanticBucketMinForDurationTiming(
+            ui_session.suggestion_shown_to_accepted_time_delta
+                .InMilliseconds()));
+  }
+
+  builder.Record(ukm::UkmRecorder::Get());
+}
+
+void LogSuggestionApplicationSessionUkm(
+    const SuggestionApplicationSession& session,
+    SuggestionApplicationSessionFlushTrigger trigger,
+    base::TimeTicks event_time) {
+  if (session.ukm_source_id == ukm::kInvalidSourceId) {
+    return;
+  }
+
+  ukm::builders::MultistepFilter_ApplicationSession builder(
+      session.ukm_source_id);
+
+  builder.SetSessionId(session.session_id)
+      .SetTaskType(
+          std::to_underlying(MapStringToTaskType(session.suggestion.task_type)))
+      .SetRetentionState(
+          std::to_underlying(GetRetentionState(session.retention_snapshot)))
+      .SetApplicationOutcome(std::to_underlying(session.outcome));
+
+  if (session.outcome == MultistepFilterApplicationOutcome::kAllFiltersApplied) {
+    builder.SetNumOfFilterFacetsAppliedSuccessfully(std::min<int64_t>(
+        session.suggestion.attribute_ui_labels.size(),
+        kMultistepFilterMaxFacetsShownUkmClampingLimit.Get()));
+
+    builder.SetSuggestionAcceptedToAppliedTimeInMs(
+        ukm::GetSemanticBucketMinForDurationTiming(
+            session.suggestion_accepted_to_applied_latency.InMilliseconds()));
+
+    builder.SetSuggestedFilterFacetTypes(
+        GetAppliedFacetTypesBitmask(session.suggestion));
+  }
+
+  if (trigger != kApplicationFailure) {
+    builder.SetPostApplicationUserEngagement(std::to_underlying(
+        GetPostApplicationUserEngagement(session, trigger, event_time)));
+  }
+
+  builder.Record(ukm::UkmRecorder::Get());
 }
 
 }  // namespace
@@ -361,17 +415,20 @@ void MultistepFilterMetricsTracker::OnNavigationFinished(
     PendingSuggestionApplicationMetrics pending_metrics =
         pending_suggestion_application_metrics_.value_or(
             PendingSuggestionApplicationMetrics());
+    const base::TimeTicks suggestion_accepted_time =
+        pending_metrics.suggestion_accepted_time.is_null()
+            ? metadata.navigation_start_time
+            : pending_metrics.suggestion_accepted_time;
     current_application_session_ = SuggestionApplicationSession{
         .ukm_source_id = metadata.ukm_source_id,
         .session_id = pending_metrics.session_id,
         .suggestion = metadata.applied_suggestion.value(),
         .retention_snapshot = pending_metrics.retention_snapshot,
-        .suggestion_accepted_time =
-            pending_metrics.suggestion_accepted_time.is_null()
-                ? metadata.navigation_start_time
-                : pending_metrics.suggestion_accepted_time,
+        .suggestion_accepted_time = suggestion_accepted_time,
         .is_error_page = metadata.is_error_page_navigation,
         .application_navigation_finish_time = metadata.navigation_finish_time,
+        .suggestion_accepted_to_applied_latency = GetClampedDifference(
+            metadata.navigation_finish_time, suggestion_accepted_time),
     };
     if (current_application_session_->is_error_page) {
       FlushSuggestionApplicationSession(
@@ -400,16 +457,20 @@ void MultistepFilterMetricsTracker::OnSuggestionShown(
   if (current_ui_session_.has_value()) {
     FlushSuggestionUiSession(SuggestionUserDecision::kIgnored);
   }
+  const base::TimeTicks suggestion_shown_time = base::TimeTicks::Now();
   current_ui_session_ = SuggestionUiSession{
       .triggering_navigation_finish_time =
           current_navigation_.navigation_finish_time,
       .ukm_source_id = current_navigation_.ukm_source_id,
       .session_id = static_cast<int64_t>(base::RandUint64()),
       .suggestion = suggestion,
-      .suggestion_shown_time = base::TimeTicks::Now(),
-      .suggestion_shown_age = GetClampedDifference(
-          base::Time::Now(), suggestion.extraction_timestamp),
       .retention_snapshot = retention_snapshot,
+      .suggestion_shown_time = suggestion_shown_time,
+      .extraction_to_suggestion_shown_time_delta = GetClampedDifference(
+          base::Time::Now(), suggestion.extraction_timestamp),
+      .navigation_to_suggestion_shown_latency = GetClampedDifference(
+          suggestion_shown_time, current_navigation_.navigation_finish_time),
+      .is_same_domain = IsSameEtldPlusOne(suggestion),
       .user_decision = SuggestionUserDecision::kIgnored,
   };
   LogSuggestionUiShown(*current_ui_session_);
@@ -430,6 +491,17 @@ void MultistepFilterMetricsTracker::OnSuggestionUserInteraction(
   switch (decision) {
     case SuggestionUserDecision::kAccepted:
       current_ui_session_->suggestion_accepted_time = base::TimeTicks::Now();
+      current_ui_session_->navigation_to_suggestion_accepted_time_delta =
+          GetClampedDifference(
+              current_ui_session_->suggestion_accepted_time,
+              current_ui_session_->triggering_navigation_finish_time);
+      current_ui_session_->suggestion_shown_to_accepted_time_delta =
+          GetClampedDifference(current_ui_session_->suggestion_accepted_time,
+                               current_ui_session_->suggestion_shown_time);
+      current_ui_session_->extraction_to_suggestion_accepted_time_delta =
+          GetClampedDifference(
+              base::Time::Now(),
+              current_ui_session_->suggestion.extraction_timestamp);
       pending_suggestion_application_metrics_ =
           PendingSuggestionApplicationMetrics{
               .retention_snapshot = current_ui_session_->retention_snapshot,
@@ -462,9 +534,9 @@ void MultistepFilterMetricsTracker::
   }
   if (was_applied_successfully) {
     current_application_session_->is_applied = true;
-    LogApplicationOutcome(
-        *current_application_session_,
-        MultistepFilterApplicationOutcome::kAllFiltersApplied);
+    current_application_session_->outcome =
+        MultistepFilterApplicationOutcome::kAllFiltersApplied;
+    LogApplicationOutcome(*current_application_session_);
   } else {
     FlushSuggestionApplicationSession(
         SuggestionApplicationSessionFlushTrigger::kApplicationFailure,
@@ -498,6 +570,7 @@ void MultistepFilterMetricsTracker::FlushSuggestionUiSession(
   if (final_decision == SuggestionUserDecision::kAccepted) {
     LogSuggestionAcceptanceLatencyAndAgeMetrics(*current_ui_session_);
   }
+  LogSuggestionUiSessionUkm(*current_ui_session_, final_decision);
   current_ui_session_ = std::nullopt;
 }
 
@@ -510,6 +583,8 @@ void MultistepFilterMetricsTracker::FlushSuggestionApplicationSession(
 
   LogPostApplicationUserEngagement(*current_application_session_, trigger,
                                    event_time);
+  LogSuggestionApplicationSessionUkm(*current_application_session_, trigger,
+                                     event_time);
   current_application_session_ = std::nullopt;
 }
 
@@ -518,7 +593,6 @@ void MultistepFilterMetricsTracker::MaybeFlushSessionOnNavigation(
   if (!current_application_session_.has_value()) {
     return;
   }
-  using enum SuggestionApplicationSessionFlushTrigger;
 
   // If this navigation is applying a new suggestion, it overrides the active
   // one.

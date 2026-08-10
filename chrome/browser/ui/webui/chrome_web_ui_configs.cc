@@ -36,6 +36,7 @@
 #include "chrome/browser/ui/webui/interstitials/interstitial_ui.h"
 #include "chrome/browser/ui/webui/local_state/local_state_ui.h"
 #include "chrome/browser/ui/webui/location_internals/location_internals_ui.h"
+#include "chrome/browser/ui/webui/management/management_ui.h"
 #include "chrome/browser/ui/webui/media/media_engagement_ui.h"
 #include "chrome/browser/ui/webui/media/webrtc_logs_ui.h"
 #include "chrome/browser/ui/webui/memory_internals_ui.h"
@@ -57,6 +58,7 @@
 #include "chrome/browser/ui/webui/usb_internals/usb_internals_ui.h"
 #include "chrome/browser/ui/webui/version/version_ui.h"
 #include "components/enterprise/buildflags/buildflags.h"
+#include "components/notebooks/internals/webui/notebooks_internals_ui.h"
 #include "components/safe_browsing/buildflags.h"
 #include "components/security_interstitials/content/connection_help_ui.h"
 #include "components/security_interstitials/content/known_interception_disclosure_ui.h"
@@ -189,9 +191,7 @@
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_DESKTOP_ANDROID)
 #include "chrome/browser/ui/webui/discards/discards_ui.h"
-#include "chrome/browser/ui/webui/management/management_ui.h"
-#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
-        // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_DESKTOP_ANDROID)
+#endif
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT) || BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/ui/webui/signin/batch_upload_ui.h"
@@ -283,11 +283,13 @@ void RegisterChromeWebUIConfigs() {
   map.AddWebUIConfig(std::make_unique<InterstitialUIConfig>());
   map.AddWebUIConfig(std::make_unique<LocalStateUIConfig>());
   map.AddWebUIConfig(std::make_unique<LocationInternalsUIConfig>());
+  map.AddWebUIConfig(std::make_unique<ManagementUIConfig>());
   map.AddWebUIConfig(std::make_unique<MediaEngagementUIConfig>());
   map.AddWebUIConfig(std::make_unique<MemoryInternalsUIConfig>());
   map.AddWebUIConfig(std::make_unique<MetricsInternalsUIConfig>());
   map.AddWebUIConfig(std::make_unique<NetExportUIConfig>());
   map.AddWebUIConfig(std::make_unique<NetInternalsUIConfig>());
+  map.AddWebUIConfig(std::make_unique<notebooks::NotebooksInternalsUIConfig>());
   map.AddWebUIConfig(std::make_unique<NTPTilesInternalsUIConfig>());
   map.AddWebUIConfig(std::make_unique<OmniboxUIConfig>());
   map.AddWebUIConfig(std::make_unique<OptimizationGuideInternalsUIConfig>());
@@ -450,9 +452,7 @@ void RegisterChromeWebUIConfigs() {
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_DESKTOP_ANDROID)
   map.AddWebUIConfig(std::make_unique<DiscardsUIConfig>());
-  map.AddWebUIConfig(std::make_unique<ManagementUIConfig>());
-#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
-        // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_DESKTOP_ANDROID)
+#endif
 
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
   map.AddWebUIConfig(std::make_unique<UpdaterUIConfig>());

@@ -1939,6 +1939,19 @@ Called by update_autofill_enums.py. This is a manual comment.-->
   </summary>
 </histogram>
 
+<histogram name="Autofill.Ai.PersonalContext.NonEligibilityReason"
+    enum="PersonalContextNonEligibilityReason" expires_after="2027-03-09">
+  <owner>picarella@google.com</owner>
+  <owner>chrome-autofill-alerts@google.com</owner>
+  <summary>
+    Tracks the reason why a user is not eligible for Personal Context. Emitted
+    on browser startup (profile initialization) and on any relevant eligibility
+    reason change. Emitted with a short delay on browser startup and on any
+    relevant eligibility state change. Note that this metric stacks on top of
+    Autofill.PersonalContext.NonEligibilityReason.
+  </summary>
+</histogram>
+
 <histogram name="Autofill.Ai.PersonalContext.Prefetch.TotalLatency{EntityType}"
     units="ms" expires_after="2026-12-12">
   <owner>vidhanj@google.com</owner>
@@ -2369,6 +2382,39 @@ Called by update_autofill_enums.py. This is a manual comment.-->
     and associated suggestions associated with the query are shown to the user,
     irrespective of whether the suggestions are empty or not.
   </summary>
+</histogram>
+
+<histogram name="Autofill.AtMemory.Latency.Query.{category}" units="ms"
+    expires_after="2027-03-09">
+  <owner>ireneuszszulc@google.com</owner>
+  <owner>sophiechang@google.com</owner>
+  <owner>chrome-autofill-alerts@google.com</owner>
+  <summary>
+    Records the time between the search query submission and when a server
+    response is received for results {category}. The metric only includes
+    results provided by personal context. The category &quot;MultipleTypes&quot;
+    indicates that a query returned multiple types. The category
+    &quot;Empty&quot; indicates that the response was empty. Emitted whenever a
+    query response is received.
+  </summary>
+  <token key="category">
+    <variant name="Address" summary="with address type"/>
+    <variant name="CreditCard" summary="with credit card type"/>
+    <variant name="DriversLicense" summary="with driver's license type"/>
+    <variant name="Empty" summary="that were empty"/>
+    <variant name="FlightReservation" summary="with flight reservation type"/>
+    <variant name="Iban" summary="with IBAN type"/>
+    <variant name="KnownTravelerNumber"
+        summary="with Known Traveler Number type"/>
+    <variant name="MultipleTypes" summary="with multiple data types"/>
+    <variant name="NationalIdCard" summary="with national id card type"/>
+    <variant name="Order" summary="with order type"/>
+    <variant name="Passport" summary="with passport type"/>
+    <variant name="RedressNumber" summary="with redress number type"/>
+    <variant name="Shipment" summary="with shipment type"/>
+    <variant name="Unknown" summary="with unknown data type"/>
+    <variant name="Vehicle" summary="with vehicle type"/>
+  </token>
 </histogram>
 
 <histogram name="Autofill.AtMemory.QueryCompleted"
@@ -6007,6 +6053,24 @@ Called by update_autofill_enums.py. This is a manual comment.-->
     form, *not* once per page load or once per Omnibox Autofill flow, so using
     these values to analyze opportunity size is not recommended. It is highly
     affected by the number of forms detected on a page.
+  </summary>
+</histogram>
+
+<histogram name="Autofill.OmniboxAutofill.ShowChipDecisionPart2"
+    enum="OmniboxShowChipDecisionPart2" expires_after="2027-04-30">
+  <owner>ferny@google.com</owner>
+  <owner>osaul@google.com</owner>
+  <owner>payments-autofill-team@google.com</owner>
+  <summary>
+    Logs the outcome of the second chunk of the decision of whether to show the
+    omnibox chip or not.
+
+    Note that this histogram is recorded once per Omnibox Autofill flow (either
+    when OnFieldBecameVisible() or Reset() is called), *not* necessarily once
+    per page load. The difference between
+    Autofill.OmniboxAutofill.ShowChipDecisionPart1's final bucket (kSuccess) and
+    this histogram's final bucket (kSuccess) represents the total dropoff from
+    starting the IntersectionObserver to showing the omnibox chip.
   </summary>
 </histogram>
 
@@ -10381,6 +10445,31 @@ Called by update_autofill_enums.py. This is a manual comment.-->
     Records clicks on Related Services links in the 'Your saved info' settings
     page. Emitted on every click on such a Related Service link. Recorded on
     Desktop only.
+  </summary>
+</histogram>
+
+<histogram
+    name="Autofill.YourSavedInfoSettingsPage.SuggestionsFromGeminiAction"
+    enum="SuggestionsFromGeminiAction" expires_after="2026-12-21">
+  <owner>hkamila@google.com</owner>
+  <owner>chrome-browser-privacy-team@google.com</owner>
+  <summary>
+    Records actions performed on the 'Suggestions from Gemini' subpage inside
+    the 'Your saved info' settings page. Emitted on every click on tracked
+    actions such as 'Manage connected apps'. Recorded on Desktop only.
+  </summary>
+</histogram>
+
+<histogram
+    name="Autofill.YourSavedInfoSettingsPage.SuggestionsFromGeminiLinkClick"
+    enum="SuggestionsFromGeminiEntryPoint" expires_after="2026-12-21">
+  <owner>hkamila@google.com</owner>
+  <owner>chrome-browser-privacy-team@google.com</owner>
+  <summary>
+    Records clicks on the 'Suggestions from Gemini' subpage link row across
+    'Your saved info' and its category settings subpages (Travel, Shopping,
+    Identity docs). Emitted on every click of this row from these entry points.
+    Recorded on Desktop only.
   </summary>
 </histogram>
 

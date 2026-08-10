@@ -39,17 +39,6 @@ namespace context_hub {
 class TabGroupStore;
 class ContextHubBackend;
 
-struct TabData {
-  int32_t id;
-  std::string title;
-  GURL url;
-};
-
-struct TabGroupData {
-  std::string label;
-  std::vector<TabData> tabs;
-};
-
 class ContextHubService : public KeyedService {
  public:
   ContextHubService(
@@ -72,7 +61,7 @@ class ContextHubService : public KeyedService {
   void GenerateAutoTodos(AutoTodosCallback callback);
 
   using GroupTabsCallback =
-      base::OnceCallback<void(std::vector<TabGroupData> groups,
+      base::OnceCallback<void(std::vector<TabGroupEntry> groups,
                               std::vector<TabData> ungrouped_tabs)>;
   // Groups tabs based on the provided `tabs` list.
   void GroupTabs(std::vector<TabData> tabs,
@@ -94,13 +83,13 @@ class ContextHubService : public KeyedService {
   // backend.
   // Saves a tab to the memory bank.
   void SaveTab(const GURL& url,
-               const std::string& tab_title,
-               const std::string& page_text,
+               std::string_view tab_title,
+               std::string_view page_text,
                MemoryBank::OperationCompleteCallback callback);
   // Saves a text selection to the memory bank.
   void SaveTextSelection(const GURL& url,
-                         const std::string& tab_title,
-                         const std::string& selected_text,
+                         std::string_view tab_title,
+                         std::string_view selected_text,
                          MemoryBank::OperationCompleteCallback callback);
   // Deletes an entry from the memory bank.
   void DeleteEntries(base::span<const int64_t> ids,
@@ -112,6 +101,8 @@ class ContextHubService : public KeyedService {
       base::OnceCallback<void(std::vector<TabGroupEntry>)>;
   // Returns all stored tab groups.
   void GetTabGroups(GetTabGroupsCallback callback) const;
+  // Deletes all stored tab groups.
+  void DeleteAllTabGroups(base::OnceClosure callback);
 
   base::WeakPtr<ContextHubService> GetWeakPtr() {
     return weak_factory_.GetWeakPtr();

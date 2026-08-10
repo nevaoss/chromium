@@ -304,6 +304,7 @@ public abstract class ChromeFeatureList {
     public static final String BLOCK_INTENTS_WHILE_LOCKED = "BlockIntentsWhileLocked";
     public static final String BOOKMARKS_BAR_CONTEXT_MENU = "BookmarksBarContextMenu";
     public static final String BOOKMARKS_BAR_NTP = "BookmarksBarNTP";
+    public static final String BOOKMARKS_DESKTOP_LAYOUT = "BookmarksDesktopLayout";
     public static final String BOOKMARK_PANE_ANDROID = "BookmarkPaneAndroid";
     public static final String BOTTOM_SHEET_AS_BROWSER_CONTROLS = "BottomSheetAsBrowserControls";
     public static final String BOTTOM_SHEET_ON_DESKTOP_WINDOWING = "BottomSheetOnDesktopWindowing";
@@ -373,6 +374,8 @@ public abstract class ChromeFeatureList {
     public static final String CONTEXTUAL_PAGE_ACTIONS = "ContextualPageActions";
     public static final String CONTEXTUAL_PAGE_ACTION_TAB_GROUPING =
             "ContextualPageActionTabGrouping";
+    public static final String CONTEXTUAL_PANEL_CLOSE_BUTTON_ON_TABLETS =
+            "ContextualPanelCloseButtonOnTablets";
     public static final String CONTEXTUAL_SEARCH_DISABLE_ONLINE_DETECTION =
             "ContextualSearchDisableOnlineDetection";
     public static final String CONTEXTUAL_SEARCH_SUPPRESS_SHORT_VIEW =
@@ -386,6 +389,7 @@ public abstract class ChromeFeatureList {
             "ContextMenuPictureInPictureAndroid";
     public static final String CONTROLS_VISIBILITY_FROM_NAVIGATIONS =
             "ControlsVisibilityFromNavigations";
+    public static final String COPY_LINK_TO_HIGHLIGHT = "CopyLinkToHighlight";
     public static final String CROSS_DEVICE_PREF_TRACKER_EXTRA_LOGS =
             "CrossDevicePrefTrackerExtraLogs";
     public static final String CROSS_DEVICE_TAB_PANE_ANDROID = "CrossDeviceTabPaneAndroid";
@@ -520,6 +524,8 @@ public abstract class ChromeFeatureList {
     public static final String MALICIOUS_APK_DOWNLOAD_CHECK = "MaliciousApkDownloadCheck";
     public static final String MAYLAUNCHURL_USES_SEPARATE_STORAGE_PARTITION =
             "MayLaunchUrlUsesSeparateStoragePartition";
+    public static final String MIGRATE_MANAGEMENT_TO_WEBUI_ON_MOBILE =
+            "MigrateManagementPageToWebUIOnMobile";
     public static final String MOST_VISITED_TILES_CUSTOMIZATION = "MostVisitedTilesCustomization";
     public static final String MOST_VISITED_TILES_RESELECT = "MostVisitedTilesReselect";
     public static final String MOVE_TO_FRONT_IN_LAUNCH_INTENT_DISPATCHER =
@@ -917,6 +923,8 @@ public abstract class ChromeFeatureList {
             newCachedFlag(CONTEXT_MENU_COPY_VIDEO_FRAME_ANDROID, true);
     public static final CachedFlag sContextMenuDownloadVideoFrame =
             newCachedFlag(CONTEXT_MENU_DOWNLOAD_VIDEO_FRAME_ANDROID, true);
+    public static final CachedFlag sContextualPanelCloseButtonOnTablets =
+            newCachedFlag(CONTEXTUAL_PANEL_CLOSE_BUTTON_ON_TABLETS, true);
     public static final CachedFlag sContextualTasks = newCachedFlag(CONTEXTUAL_TASKS, false);
     public static final CachedFlag sCpaTabGroupingButton =
             newCachedFlag(
@@ -1068,6 +1076,11 @@ public abstract class ChromeFeatureList {
     public static final CachedFlag sMaliciousApkDownloadCheck =
             newCachedFlag(
                     MALICIOUS_APK_DOWNLOAD_CHECK,
+                    /* defaultValue= */ false,
+                    /* defaultValueInTests= */ true);
+    public static final CachedFlag sMigrateManagementToWebUIOnMobile =
+            newCachedFlag(
+                    MIGRATE_MANAGEMENT_TO_WEBUI_ON_MOBILE,
                     /* defaultValue= */ false,
                     /* defaultValueInTests= */ true);
     public static final CachedFlag sMostVisitedTilesCustomization =
@@ -1330,6 +1343,7 @@ public abstract class ChromeFeatureList {
                     sCompositorViewRemeasureFix,
                     sContextMenuCopyVideoFrame,
                     sContextMenuDownloadVideoFrame,
+                    sContextualPanelCloseButtonOnTablets,
                     sContextualTasks,
                     sCpaTabGroupingButton,
                     sCrossDeviceTabPaneAndroid,
@@ -1376,6 +1390,7 @@ public abstract class ChromeFeatureList {
                     sLockTopControlsOnLargeTabletsV2,
                     sLogoViewRefactor,
                     sMaliciousApkDownloadCheck,
+                    sMigrateManagementToWebUIOnMobile,
                     sMostVisitedTilesCustomization,
                     sMostVisitedTilesReselect,
                     sMoveToFrontInLaunchIntentDispatcher,

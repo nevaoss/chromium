@@ -41,6 +41,7 @@
 <translation id="1140317858355046628">삭제하면 모든 사용자가 '<ph name="GROUP_NAME" />' 탭 그룹의 액세스 권한을 즉시 잃게 되며 탭 그룹이 모든 기기에서 삭제됩니다.</translation>
 <translation id="1142732900304639782">이 사이트 번역 옵션 제공 안 함</translation>
 <translation id="1143193470214071120">창을 닫거나 열려있는 창을 관리하세요.</translation>
+<translation id="1143486892058798649">다른 이름으로 링크 저장…</translation>
 <translation id="1149725087019908252"><ph name="FILE_NAME" /> 검사 중</translation>
 <translation id="1150263420752757504"><ph name="APP_NAME" /> 앱이 Chrome에서 열립니다. 계속하면 <ph name="BEGIN_LINK1" />Google 서비스 약관<ph name="END_LINK1" /> 및 <ph name="BEGIN_LINK2" />Chrome 및 ChromeOS 추가 서비스 약관<ph name="END_LINK2" />에 동의하는 것으로 간주됩니다.</translation>
 <translation id="1154555449933432029">Google 비밀번호 관리자에 저장된 비밀번호가 없습니다.</translation>
@@ -142,6 +143,7 @@ Chrome 환경을 개선하는 데 데이터를 사용하는 설정을 더 보려
 <translation id="1544826120773021464">Google 계정을 관리하려면 '계정 관리' 버튼을 탭하세요.</translation>
 <translation id="1549000191223877751">다른 창으로 이동</translation>
 <translation id="1553358976309200471">Chrome 업데이트</translation>
+<translation id="1554352084785952638">"<ph name="SEARCH_TERMS" />"의 <ph name="SEARCH_ENGINE" /></translation>
 <translation id="1554532453982918912">더 나은 사용자 환경을 위한 Chrome 개선에 동참할 수 있습니다.</translation>
 <translation id="1568636008098739136">이 페이지의 내용을 듣습니다. 바로가기를 수정하려면 길게 터치하세요.</translation>
 <translation id="1571041387761170095">취약하거나 재사용된 비밀번호 없음</translation>
@@ -615,6 +617,7 @@ Chrome 환경을 개선하는 데 데이터를 사용하는 설정을 더 보려
 <translation id="3577473026931028326">문제가 발생했습니다. 다시 시도하세요.</translation>
 <translation id="3577558748185201054">관심분야 및 환경설정을 관리합니다</translation>
 <translation id="3587482841069643663">전체</translation>
+<translation id="3598421953808879451">동영상을 다른 이름으로 저장…</translation>
 <translation id="3602290021589620013">미리보기</translation>
 <translation id="3614126103057878858">가격 정보</translation>
 <translation id="3616113530831147358">오디오</translation>
@@ -725,6 +728,7 @@ Chrome 환경을 개선하는 데 데이터를 사용하는 설정을 더 보려
 <translation id="4044708993631234325">하단 시트</translation>
 <translation id="4045441967987592849">다시 열기</translation>
 <translation id="4049920046559074950"><ph name="INSTANCE_TITLE" /> 옵션 더보기</translation>
+<translation id="4051548576872472315">여기에서 최근에 닫은 탭과 창을 찾아보세요.</translation>
 <translation id="4051569243832293689">{NUM_BOOKMARKS,plural, =1{시크릿 창에서 열기}other{시크릿 창에서 모두 열기(#개)}}</translation>
 <translation id="4052419222954753986">{NUMBER_OF_TABS,plural, =1{공유 탭 그룹에 새로운 활동이 있는 일반 탭 <ph name="TABS_COUNT_ONE" />개}other{공유 탭 그룹에 새로운 활동이 있는 일반 탭 <ph name="TABS_COUNT_MANY" />개}}</translation>
 <translation id="405365679581583349">Google Play 서비스 업데이트</translation>
@@ -1525,6 +1529,7 @@ Chrome 환경을 개선하는 데 데이터를 사용하는 설정을 더 보려
 <translation id="71503698506017927">Google Pay 결제 수단 및 주소는 암호로 암호화되지 않습니다.
 
 이 설정을 변경하려면 <ph name="BEGIN_LINK" />계정의 Chrome 데이터를 삭제<ph name="END_LINK" />하세요.</translation>
+<translation id="7159399361248977424">이미지를 다른 이름으로 저장…</translation>
 <translation id="7165972437814027679">Chrome에서 일부 파일을 차단하는 이유 자세히 알아보기</translation>
 <translation id="7168323970702333693"><ph name="USER_NAME" /> 계정으로 로그인되었습니다. 설정을 엽니다.</translation>
 <translation id="7170930892977483182">기기 및 Google 월렛에 저장된 모든 보안 코드가 삭제됩니다.</translation>
@@ -1580,6 +1585,7 @@ Chrome 환경을 개선하는 데 데이터를 사용하는 설정을 더 보려
 <translation id="7359002509206457351">결제 수단 액세스</translation>
 <translation id="7363349185727752629">개인 정보 보호 선택 가이드</translation>
 <translation id="7364103838544876661">인터넷 사용 기록 삭제 옵션 더보기</translation>
+<translation id="736435710397109878">카드 별칭(최대 25자)</translation>
 <translation id="7365073365123878797">Google 비밀번호 관리자로 비밀번호를 저장하고 사용하려면 Google Play 서비스를 업데이트하세요.</translation>
 <translation id="7368009310682364976">최근에 연 탭 보기</translation>
 <translation id="7368927539449986686">사이트 검색 편집</translation>
@@ -1698,6 +1704,7 @@ Chrome 환경을 개선하는 데 데이터를 사용하는 설정을 더 보려
 <translation id="7824665136384946951">조직에서 세이프 브라우징을 사용 중지했습니다.</translation>
 <translation id="7825973332242257878">탭 그룹</translation>
 <translation id="7826342993930002256">어디에서나 나만의 Chrome을 사용하세요</translation>
+<translation id="7845155831233417403">최대 <ph name="MAX_INSTANCE_COUNT" />개의 창을 열 수 있습니다. 계속하려면 창을 닫으세요.</translation>
 <translation id="7846161022626028328">오류가 발생했습니다. 다시 시도하세요.</translation>
 <translation id="7846296061357476882">Google 서비스</translation>
 <translation id="784652447248278262">현재 창</translation>
@@ -1821,6 +1828,7 @@ Chrome 환경을 개선하는 데 데이터를 사용하는 설정을 더 보려
 <translation id="8282297628636750033">가능하면 사이트에 어두운 테마를 적용합니다</translation>
 <translation id="8282950411412455249">보안 설정으로 이동</translation>
 <translation id="8288688997999490824">{NUM_WINDOWS,plural, =1{시크릿 창 1개 닫기}other{시크릿 창 #개 닫기}}</translation>
+<translation id="8289602658021943461">동영상 프레임을 다른 이름으로 저장…</translation>
 <translation id="8313599942510782709">작업이 아직 진행 중입니다.</translation>
 <translation id="8317318757008452355">인쇄 옵션 열기</translation>
 <translation id="8320212361750431956">최근 활동</translation>

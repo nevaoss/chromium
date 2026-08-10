@@ -103,6 +103,12 @@ void InitSkiaGraphiteFeatureParams(const base::Feature* feature) {
           feature, "dawn_d3d11_delay_flush",
           g_skia_graphite_feature_params.dawn_d3d11_delay_flush)
           .Get();
+  g_skia_graphite_feature_params.flush_d3d11_tile_raster_commands_to_driver =
+      base::FeatureParam<bool>(
+          feature, "flush_d3d11_tile_raster_commands_to_driver",
+          g_skia_graphite_feature_params
+              .flush_d3d11_tile_raster_commands_to_driver)
+          .Get();
 #endif
 
   GetGraphiteParamsInitFlag().Set();
@@ -170,7 +176,8 @@ const base::FeatureParam<std::string>
 const base::FeatureParam<std::string>
     kRelaxLimitAImageReaderMaxSizeToOneDeviceBlocklist{
         &kRelaxLimitAImageReaderMaxSizeToOne,
-        "RelaxLimitAImageReaderMaxSizeToOneDeviceBlocklist", ""};
+        "RelaxLimitAImageReaderMaxSizeToOneDeviceBlocklist",
+        "G08|G10|G17|BRAVIA_CT1"};
 const base::FeatureParam<std::string>
     kRelaxLimitAImageReaderMaxSizeToOneModelBlocklist{
         &kRelaxLimitAImageReaderMaxSizeToOne,

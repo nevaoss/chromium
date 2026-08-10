@@ -26,6 +26,7 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_web_contents_user_data.h"
+#include "chrome/browser/contextual_tasks/entry_point_eligibility_manager.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
@@ -339,6 +340,32 @@ void ContextualTasksComposeboxHandler::StartPlatformVoiceRecognition() {
   web_ui_interface_->StartPlatformVoiceRecognition();
 }
 
+void ContextualTasksComposeboxHandler::SetActiveToolMode(
+    omnibox::ToolMode tool) {
+  omnibox::ToolMode previous_tool =
+      input_state_model_ ? input_state_model_->GetInputState().active_tool
+                         : omnibox::ToolMode::TOOL_MODE_UNSPECIFIED;
+
+  ContextualSearchboxHandler::SetActiveToolMode(tool);
+
+  // Send an AIM query to notify AIM webpage (client side) of previous
+  // tool (`tool_mode`) and the newly changed tool (`new_tool_mode`).
+  // This path runs when a tool is added (or swapped), or removed.
+  // This causes side effects on AIM webpage; e.g., Canvas chip
+  // removed in Chrome -> Canvas popup is removed in AIM webpage.
+  auto request_info =
+      std::make_unique<contextual_search::ContextualSearchContextController::
+                           CreateClientToAimRequestInfo>();
+  request_info->exit_tool_info =
+      contextual_search::ContextualSearchContextController::
+          CreateClientToAimRequestInfo::ExitToolInfo{
+              .tool_mode = previous_tool,
+              .new_tool_mode = tool,
+          };
+  contextual_tasks::FinalizeAndSendAimQuery(
+      std::move(request_info), GetContextualSessionHandle(), web_ui_interface_);
+}
+
 void ContextualTasksComposeboxHandler::SubmitQuery(
     const std::string& query_text,
     uint8_t mouse_button,
@@ -610,8 +637,10 @@ void ContextualTasksComposeboxHandler::InitializeInputStateModel() {
 
 bool ContextualTasksComposeboxHandler::IsContextualSearchTabSharingEligible()
     const {
-  return web_ui_interface_ &&
-         web_ui_interface_->IsContextualTasksEligibleOnInit();
+  if (!profile_ || profile_->IsOffTheRecord()) {
+    return false;
+  }
+  return contextual_tasks::EntryPointEligibilityManager::IsEligible(profile_);
 }
 
 void ContextualTasksComposeboxHandler::SetAimThreadRestoredTabs(

@@ -37,8 +37,6 @@
 #include "chrome/browser/performance_manager/public/user_tuning/user_tuning_utils.h"
 #include "chrome/browser/personal_context/personal_context_eligibility_service_factory.h"
 #include "chrome/browser/preloading/preloading_features.h"
-#include "chrome/browser/privacy_sandbox/privacy_sandbox_service.h"
-#include "chrome/browser/privacy_sandbox/privacy_sandbox_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/regional_capabilities/regional_capabilities_service_factory.h"
@@ -75,7 +73,6 @@
 #include "chrome/browser/ui/webui/settings/password_manager_handler.h"
 #include "chrome/browser/ui/webui/settings/people_handler.h"
 #include "chrome/browser/ui/webui/settings/performance_handler.h"
-#include "chrome/browser/ui/webui/settings/privacy_sandbox_handler.h"
 #include "chrome/browser/ui/webui/settings/profile_info_handler.h"
 #include "chrome/browser/ui/webui/settings/protocol_handlers_handler.h"
 #include "chrome/browser/ui/webui/settings/reset_settings_handler.h"
@@ -276,7 +273,6 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
   AddSettingsPageUIHandler(std::make_unique<PeopleHandler>(profile));
   AddSettingsPageUIHandler(std::make_unique<ProfileInfoHandler>(profile));
   AddSettingsPageUIHandler(std::make_unique<ProtocolHandlersHandler>(profile));
-  AddSettingsPageUIHandler(std::make_unique<PrivacySandboxHandler>());
   AddSettingsPageUIHandler(std::make_unique<SearchEnginesHandler>(profile));
   AddSettingsPageUIHandler(std::make_unique<SecureDnsHandler>());
   AddSettingsPageUIHandler(std::make_unique<SiteSettingsHandler>(profile));
@@ -491,33 +487,9 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
                               std::make_unique<SanitizedImageSource>(profile));
   content::URLDataSource::Add(profile, std::make_unique<ThemeSource>(profile));
 
-  // Privacy Sandbox
-  PrivacySandboxService* privacy_sandbox_service =
-      PrivacySandboxServiceFactory::GetForProfile(profile);
-  bool is_privacy_sandbox_restricted =
-      privacy_sandbox_service->IsPrivacySandboxRestricted();
-  bool is_restricted_notice_enabled =
-      privacy_sandbox_service->IsRestrictedNoticeEnabled();
-  bool is_ad_privacy_ux_deprecation_enabled = base::FeatureList::IsEnabled(
-      privacy_sandbox::kPrivacySandboxAdPrivacyUxDeprecation);
-  bool is_ad_privacy_available = true;
-  if (is_ad_privacy_ux_deprecation_enabled) {
-    is_ad_privacy_available = false;
-  } else if (is_privacy_sandbox_restricted) {
-    is_ad_privacy_available = is_restricted_notice_enabled;
-  }
-
-  html_source->AddBoolean("isPrivacySandboxRestricted",
-                          is_privacy_sandbox_restricted);
-  html_source->AddBoolean("isPrivacySandboxRestrictedNoticeEnabled",
-                          is_restricted_notice_enabled);
   html_source->AddBoolean(
       "isRelatedWebsiteSetsUiEnabled",
       base::FeatureList::IsEnabled(privacy_sandbox::kRelatedWebsiteSetsUi));
-  html_source->AddBoolean("isPrivacySandboxAdPrivacyUxDeprecationEnabled",
-                          is_ad_privacy_ux_deprecation_enabled);
-  html_source->AddBoolean("isAdPrivacyAvailable", is_ad_privacy_available);
-
   // Performance
   AddSettingsPageUIHandler(std::make_unique<PerformanceHandler>());
   html_source->AddBoolean(

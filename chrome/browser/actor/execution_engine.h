@@ -312,12 +312,6 @@ class ExecutionEngine : public ToolDelegate,
     return origin_gating_checker_;
   }
 
-  // Evaluates whether the actor may act on `tab`.
-  void MayActOnTab(const tabs::TabInterface& tab,
-                   AggregatedJournal& journal,
-                   TaskId task_id,
-                   DecisionCallbackWithReason callback);
-
   // Currently, navigations are generally forced to happen in the same tab (see
   // https://crbug.com/420669167 ). In some cases we need to drop this
   // restriction for certain tools to function.
@@ -407,16 +401,13 @@ class ExecutionEngine : public ToolDelegate,
                            const url::Origin& destination,
                            bool applied_gate) const;
 
-  // Returns the highest-priority navigation gating decision. Prioritizes
-  // blocking navigations over allowing (except on same origin navigations).
-  GatingDecision DetermineGatingDecision(const GURL& source_url,
-                                         const GURL& destination_url) const;
   void OnComputedGatingDecision(
       NavigationDecisionCallback callback,
       const url::Origin& source_origin,
       const url::Origin& destination_origin,
       State initial_state,
       std::optional<url::Origin> initiator,
+      origin_gating::GateableEvent event,
       std::unique_ptr<origin_gating::GatingDecisionContext> context,
       origin_gating::GatingDecision decision);
 

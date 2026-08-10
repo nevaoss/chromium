@@ -40,6 +40,15 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
+#if !BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/ui/views/frame/browser_view.h"
+#include "chrome/browser/ui/views/page_info/page_info_bubble_specification.h"
+#include "chrome/browser/ui/views/page_info/page_info_bubble_view.h"
+#include "ui/base/interaction/element_tracker.h"
+#include "ui/views/bubble/bubble_anchor.h"
+#include "ui/webui/tracked_element/tracked_element_handler.h"
+#include "ui/webui/tracked_element/tracked_element_handler_document_singleton.h"
+#endif
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
@@ -69,6 +78,7 @@
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/page.h"
 #include "content/public/browser/web_contents.h"
+#include "content/public/browser/web_ui.h"
 #include "ui/base/page_transition_types.h"
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -527,6 +537,11 @@ ContextualTasksSidePanelCoordinator::GetActiveWebContents() const {
   return contextual_tasks_panel_host_->GetWebContents();
 }
 
+content::WebContents*
+ContextualTasksSidePanelCoordinator::GetToolbarWebContents() const {
+  return contextual_tasks_panel_host_->GetToolbarWebContents();
+}
+
 std::unique_ptr<content::WebContents>
 ContextualTasksSidePanelCoordinator::DetachWebContentsForTask(
     const base::Uuid& task_id) {
@@ -559,7 +574,7 @@ void ContextualTasksSidePanelCoordinator::OnTaskChanged(
     content::WebContents* web_contents,
     base::Uuid new_task_id) {
   content::WebContents* target_web_contents = web_contents;
-  if (base::FeatureList::IsEnabled(kContextualTasksSidePanelRearchitecture)) {
+  if (IsContextualTasksSidePanelRearchitectureEnabled()) {
     target_web_contents = GetActiveWebContents();
   }
 
@@ -940,7 +955,7 @@ void ContextualTasksSidePanelCoordinator::MaybeCreateCachedWebContents(
   if (auto* ui_service = GetUiService()) {
     ui_service->SetInitialEntryPointForTask(task_id, entry_point);
     GURL url;
-    if (base::FeatureList::IsEnabled(kContextualTasksSidePanelRearchitecture)) {
+    if (IsContextualTasksSidePanelRearchitectureEnabled()) {
       url = ui_service->GetInitialUrlForTask(task_id).value_or(
           GURL("about:blank"));
     } else {
@@ -948,7 +963,7 @@ void ContextualTasksSidePanelCoordinator::MaybeCreateCachedWebContents(
     }
     std::unique_ptr<content::WebContents> wc =
         CreateWebContents(browser_window_, url);
-    if (base::FeatureList::IsEnabled(kContextualTasksSidePanelRearchitecture)) {
+    if (IsContextualTasksSidePanelRearchitectureEnabled()) {
       UpdateContextualSearchWebContentsHelperForTask(
           contextual_search_service_, browser_window_,
           contextual_tasks_service_, this, wc.get(), task_id);
@@ -1274,6 +1289,67 @@ bool ContextualTasksSidePanelCoordinator::CanExpandToFullTab() const {
   }
   auto* web_ui_interface = GetWebUiInterface(web_contents);
   return web_ui_interface ? web_ui_interface->CanExpandToFullTab() : false;
+}
+
+void ContextualTasksSidePanelCoordinator::ShowPageInfoBubble() {
+#if !BUILDFLAG(IS_ANDROID)
+  if (page_info_bubble_suppressor_.ShouldSuppress()) {
+    return;
+  }
+
+  content::WebContents* contents = GetActiveWebContents();
+  if (!contents) {
+    return;
+  }
+
+  content::WebContents* webui_contents =
+      contextual_tasks_panel_host_
+          ? contextual_tasks_panel_host_->GetToolbarWebContents()
+          : nullptr;
+  if (!webui_contents || !webui_contents->GetWebUI()) {
+    // TODO(crbug.com/534863502): Remove temporary workaround once toolbar WebUI
+    // is setup.
+    webui_contents = contents;
+  }
+
+  BrowserView* browser_view =
+      BrowserView::GetBrowserViewForBrowser(browser_window_);
+  if (!browser_view) {
+    return;
+  }
+
+  auto handler = ui::TrackedElementHandlerDocumentSingleton::GetOrCreate(
+      webui_contents->GetPrimaryMainFrame());
+  if (!handler) {
+    return;
+  }
+
+  ui::TrackedElement* anchor_element =
+      ui::ElementTracker::GetElementTracker()->GetFirstMatchingElement(
+          kContextualTasksSuperGButtonElementId, handler->context());
+  if (!anchor_element) {
+    return;
+  }
+
+  views::BubbleAnchor specification_anchor =
+      views::BubbleAnchor(anchor_element);
+
+  std::unique_ptr<PageInfoBubbleSpecification> specification =
+      PageInfoBubbleSpecification::Builder(
+          specification_anchor, browser_view->GetWidget()->GetNativeWindow(),
+          contents, contents->GetVisibleURL())
+          .Build();
+
+  views::BubbleDialogDelegateView* const bubble =
+      PageInfoBubbleView::CreatePageInfoBubble(std::move(specification));
+
+  page_info_bubble_suppressor_.Observe(bubble->GetWidget());
+
+  bubble->GetWidget()->Show();
+#else
+  // TODO(crbug.com/536100150): Add support to trigger this menu on Android
+  // Desktop
+#endif
 }
 
 }  // namespace contextual_tasks

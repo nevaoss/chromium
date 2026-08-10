@@ -36,6 +36,7 @@
 #include "content/public/browser/service_worker_context.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/browser/web_contents.h"
+#include "content/public/common/child_process_id.h"
 #include "content/public/common/url_constants.h"
 #include "extensions/browser/api/declarative_net_request/utils.h"
 #include "extensions/browser/api/web_request/extension_web_request_event_router.h"
@@ -389,12 +390,13 @@ void WebRequestAPI::ProxySet::OnDNRExtensionUnloaded(
 WebRequestAPI::RequestIDGenerator::RequestIDGenerator() = default;
 WebRequestAPI::RequestIDGenerator::~RequestIDGenerator() = default;
 
-int64_t WebRequestAPI::RequestIDGenerator::Generate(int32_t routing_id,
-                                                    int32_t client_request_id) {
+uint64_t WebRequestAPI::RequestIDGenerator::Generate(
+    int32_t routing_id,
+    int32_t request_id_from_client) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-  auto it = saved_id_map_.find({routing_id, client_request_id});
+  auto it = saved_id_map_.find({routing_id, request_id_from_client});
   if (it != saved_id_map_.end()) {
-    int64_t id = it->second;
+    uint64_t id = it->second;
     saved_id_map_.erase(it);
     return id;
   }
@@ -402,12 +404,12 @@ int64_t WebRequestAPI::RequestIDGenerator::Generate(int32_t routing_id,
 }
 
 void WebRequestAPI::RequestIDGenerator::SaveID(int32_t routing_id,
-                                               int32_t client_request_id,
+                                               int32_t request_id_from_client,
                                                uint64_t request_id) {
-  // If `client_request_id` is 0, we cannot reliably match the generated ID to a
-  // restarted request, so ignore it.
-  if (client_request_id != 0) {
-    saved_id_map_.insert({{routing_id, client_request_id}, request_id});
+  // If `request_id_from_client` is 0, we cannot reliably match the generated
+  // ID to a restarted request, so ignore it.
+  if (request_id_from_client != 0) {
+    saved_id_map_.insert({{routing_id, request_id_from_client}, request_id});
   }
 }
 
@@ -1451,10 +1453,12 @@ void WebRequestInternalEventHandledFunction::RouteEventResponse(
     // Append this listener's response to the pending dispatch target without
     // resolving it; the target is resolved by a separate `eventHandlingDone`
     // signal.
+    // TODO(crbug.com/379869738): Remove FromUnsafeValue.
     router->OnEventHandledForTarget(
         browser_context(), extension_id_safe(), event_name, request_id,
-        render_process_id, web_view_instance_id, worker_thread_id(),
-        service_worker_version_id(), extra_info_spec, std::move(response));
+        content::ChildProcessId::FromUnsafeValue(render_process_id),
+        web_view_instance_id, worker_thread_id(), service_worker_version_id(),
+        extra_info_spec, std::move(response));
     return;
   }
 
@@ -1652,11 +1656,13 @@ WebRequestInternalEventHandlingDoneFunction::Run() {
   EXTENSION_FUNCTION_VALIDATE(
       base::StringToUint64(request_id_str, &request_id));
 
+  // TODO(crbug.com/379869738): Remove FromUnsafeValue.
   WebRequestEventRouter::Get(browser_context())
-      ->OnEventHandlingDone(browser_context(), extension_id_safe(), event_name,
-                            request_id, source_process_id(),
-                            web_view_instance_id, worker_thread_id(),
-                            service_worker_version_id());
+      ->OnEventHandlingDone(
+          browser_context(), extension_id_safe(), event_name, request_id,
+          content::ChildProcessId::FromUnsafeValue(source_process_id()),
+          web_view_instance_id, worker_thread_id(),
+          service_worker_version_id());
 
   return RespondNow(NoArguments());
 }

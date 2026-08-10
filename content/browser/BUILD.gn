@@ -63,13 +63,20 @@ rust_static_library("browser_id_types") {
 
 rust_static_library("child_process_security_policy_impl") {
   # allow_unsafe is needed for FFI that underpins the `cxx` crate. While this
-  # allows allow_unsafe for the entire crate, the Rust file also implements
+  # allows allow_unsafe for the entire crate, the Rust code also implements
   # finer-grained controls that allow unsafe code only for FFI code while
   # disallowing it by default for other code.
   allow_unsafe = true
-  crate_root = "security/cpsp/child_process_security_policy_impl.rs"
-  sources = [ "security/cpsp/child_process_security_policy_impl.rs" ]
-  cxx_bindings = [ "security/cpsp/child_process_security_policy_impl.rs" ]
+  crate_root = "security/cpsp/lib.rs"
+  sources = [
+    "security/cpsp/child_process_security_policy_impl.rs",
+    "security/cpsp/lib.rs",
+    "security/cpsp/process_state.rs",
+  ]
+  cxx_bindings = [
+    "security/cpsp/child_process_security_policy_impl.rs",
+    "security/cpsp/process_state.rs",
+  ]
   visibility = [ ":browser" ]
   configs += [ "//content:content_implementation" ]
   deps = [
@@ -675,16 +682,10 @@ source_set("browser") {
     "browsing_data/storage_partition_code_cache_data_remover.h",
     "browsing_instance.cc",
     "browsing_instance.h",
-    "browsing_topics/browsing_topics_document_host.cc",
-    "browsing_topics/browsing_topics_document_host.h",
     "browsing_topics/browsing_topics_site_data_manager_impl.cc",
     "browsing_topics/browsing_topics_site_data_manager_impl.h",
     "browsing_topics/browsing_topics_site_data_storage.cc",
     "browsing_topics/browsing_topics_site_data_storage.h",
-    "browsing_topics/browsing_topics_url_loader_interceptor.cc",
-    "browsing_topics/browsing_topics_url_loader_interceptor.h",
-    "browsing_topics/header_util.cc",
-    "browsing_topics/header_util.h",
     "btm/btm_bounce_detector.cc",
     "btm/btm_bounce_detector.h",
     "btm/btm_database.cc",
@@ -1423,8 +1424,6 @@ source_set("browser") {
     "payments/payment_app_context_impl.h",
     "payments/payment_app_database.cc",
     "payments/payment_app_database.h",
-    "payments/payment_app_info_fetcher.cc",
-    "payments/payment_app_info_fetcher.h",
     "payments/payment_app_installer.cc",
     "payments/payment_app_installer.h",
     "payments/payment_app_provider_impl.cc",
@@ -1434,8 +1433,6 @@ source_set("browser") {
     "payments/payment_event_dispatcher.h",
     "payments/payment_handler_web_contents_observer.cc",
     "payments/payment_handler_web_contents_observer.h",
-    "payments/payment_instrument_icon_fetcher.cc",
-    "payments/payment_instrument_icon_fetcher.h",
     "payments/payment_manager.cc",
     "payments/payment_manager.h",
     "payments/respond_with_callback.cc",
@@ -2857,7 +2854,10 @@ source_set("browser") {
   }
 
   if (is_linux) {
-    sources += [ "accessibility/browser_accessibility_state_impl_auralinux.cc" ]
+    sources += [
+      "accessibility/browser_accessibility_state_impl_auralinux.cc",
+      "accessibility/browser_accessibility_state_impl_auralinux.h",
+    ]
   }
 
   if (is_chromeos) {

@@ -139,12 +139,17 @@ class BookmarkModelObserverImplTest
   void SimulateCommitResponseForAllLocalChanges() {
     for (const SyncedBookmarkTrackerEntity* entity :
          bookmark_tracker()->GetEntitiesWithLocalChanges()) {
-      const std::string id = entity->metadata().server_id();
-      // Don't simulate change in id for simplicity.
-      bookmark_tracker()->UpdateUponCommitResponse(
-          entity, id, /*server_version=*/1,
-          /*acked_sequence_number=*/entity->metadata().sequence_number(),
-          /*specifics_hash=*/entity->metadata().specifics_hash());
+      syncer::CommitResponseData response;
+      response.id = entity->metadata().server_id();
+      response.client_tag_hash = entity->GetClientTagHash();
+      response.response_version = 1;
+      response.sequence_number = entity->metadata().sequence_number();
+      response.specifics_hash = entity->metadata().specifics_hash();
+
+      SyncedBookmarkTrackerEntity* mutable_entity =
+          bookmark_tracker()->GetEntityForClientTagHash(
+              entity->GetClientTagHash());
+      mutable_entity->RecordCommitResponse(response);
     }
   }
 
@@ -751,69 +756,32 @@ TEST_P(BookmarkModelObserverImplTest,
 
   // folder2, bookmark2, and bookmark3 should be marked deleted.
   EXPECT_TRUE(bookmark_tracker()
-                  ->GetEntityForSyncId(folder2_entity_id)
+                  ->GetEntityForSyncIdExhaustively(folder2_entity_id)
                   ->metadata()
                   .is_deleted());
   EXPECT_TRUE(bookmark_tracker()
-                  ->GetEntityForSyncId(bookmark2_entity_id)
+                  ->GetEntityForSyncIdExhaustively(bookmark2_entity_id)
                   ->metadata()
                   .is_deleted());
   EXPECT_TRUE(bookmark_tracker()
-                  ->GetEntityForSyncId(bookmark3_entity_id)
+                  ->GetEntityForSyncIdExhaustively(bookmark3_entity_id)
                   ->metadata()
                   .is_deleted());
 
   // folder2, bookmark2, and bookmark3 should be in the local changes to be
   // committed and folder2 deletion should be the last one (after all children
   // deletions).
-  EXPECT_THAT(
-      bookmark_tracker()->GetEntitiesWithLocalChanges(),
-      ElementsAre(bookmark_tracker()->GetEntityForSyncId(bookmark2_entity_id),
-                  bookmark_tracker()->GetEntityForSyncId(bookmark3_entity_id),
-                  bookmark_tracker()->GetEntityForSyncId(folder2_entity_id)));
+  EXPECT_THAT(bookmark_tracker()->GetEntitiesWithLocalChanges(),
+              ElementsAre(bookmark_tracker()->GetEntityForSyncIdExhaustively(
+                              bookmark2_entity_id),
+                          bookmark_tracker()->GetEntityForSyncIdExhaustively(
+                              bookmark3_entity_id),
+                          bookmark_tracker()->GetEntityForSyncIdExhaustively(
+                              folder2_entity_id)));
 
   // folder1 and bookmark1 are still tracked.
   EXPECT_TRUE(bookmark_tracker()->GetEntityForBookmarkNode(folder1_node));
   EXPECT_TRUE(bookmark_tracker()->GetEntityForBookmarkNode(bookmark1_node));
-}
-
-TEST_P(BookmarkModelObserverImplTest,
-       BookmarkCreationAndRemovalShouldRequireTwoCommitResponsesBeforeRemoval) {
-  const bookmarks::BookmarkNode* bookmark_bar_node =
-      bookmark_model()->bookmark_bar_node();
-  const bookmarks::BookmarkNode* folder_node = bookmark_model()->AddFolder(
-      /*parent=*/bookmark_bar_node, /*index=*/0, u"folder");
-
-  // Node should be tracked now.
-  ASSERT_THAT(bookmark_tracker()->TrackedEntitiesCountForTest(), 4U);
-  SyncedBookmarkTrackerEntity* entity =
-      bookmark_tracker()->GetEntityForBookmarkNode(folder_node);
-  const std::string id = entity->metadata().server_id();
-  ASSERT_THAT(bookmark_tracker()->GetEntitiesWithLocalChanges().size(), 1U);
-
-  entity->MarkCommitMayHaveStarted();
-
-  // Remove the folder.
-  bookmark_model()->Remove(folder_node, FROM_HERE);
-
-  // Simulate a commit response for the first commit request (the creation).
-  // Don't simulate change in id for simplicity.
-  bookmark_tracker()->UpdateUponCommitResponse(
-      entity, id, /*server_version=*/1, /*acked_sequence_number=*/1,
-      entity->metadata().specifics_hash());
-
-  // There should still be one local change (the deletion).
-  EXPECT_THAT(bookmark_tracker()->GetEntitiesWithLocalChanges().size(), 1U);
-
-  // Entity is still tracked.
-  EXPECT_THAT(bookmark_tracker()->TrackedEntitiesCountForTest(), 4U);
-
-  // Commit the deletion.
-  bookmark_tracker()->UpdateUponCommitResponse(
-      entity, id, /*server_version=*/2, /*acked_sequence_number=*/2,
-      entity->metadata().specifics_hash());
-  // Entity should have been dropped.
-  EXPECT_THAT(bookmark_tracker()->TrackedEntitiesCountForTest(), 3U);
 }
 
 TEST_P(BookmarkModelObserverImplTest,
@@ -1010,10 +978,19 @@ TEST_P(BookmarkModelObserverImplTest, ShouldNotIssueCommitUponFaviconLoad) {
   const uint32_t initial_favicon_hash =
       entity->metadata().bookmark_favicon_hash();
 
-  // Clear the specifics hash (as if the proto definition would have changed).
-  // This is needed because otherwise the commit is trivially optimized away
-  // (i.e. literally nothing changed).
-  bookmark_tracker()->ClearSpecificsHashForTest(entity);
+  // Simulate a remote update with a different title but matching favicon to
+  // change specifics_hash while keeping the entity synced. This demonstrates
+  // that MatchesFaviconHash() short-circuits before ProcessUpdate() is called.
+  syncer::UpdateResponseData update;
+  update.entity.id = entity->metadata().server_id();
+  update.response_version = entity->metadata().server_version() + 1;
+  update.entity.modification_time = base::Time::Now();
+  update.entity.specifics.mutable_bookmark()->set_full_title("different title");
+  scoped_refptr<base::RefCountedMemory> favicon_bytes =
+      CreateTestImage(kColor).As1xPNGBytes();
+  update.entity.specifics.mutable_bookmark()->set_favicon(
+      favicon_bytes->front(), favicon_bytes->size());
+  entity->RecordAcceptedRemoteUpdate(update);
 
   // Mimic the very same favicon being loaded again (similar to a startup
   // scenario). Note that OnFaviconsChanged() needs no icon URL to invalidate

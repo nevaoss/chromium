@@ -15,23 +15,58 @@ namespace viz {
 
 FrameDeadlineDecider::FrameDeadlineDecider(
     bool use_platform_preferred_deadlines)
-    : use_platform_preferred_deadlines_(use_platform_preferred_deadlines) {}
+    : max_non_interactive_idle_duration_(
+#if BUILDFLAG(IS_ANDROID)
+          features::kAndroidCustomFrameDeadlineMaxNonInteractiveIdleDuration
+              .Get()
+#else
+          base::Milliseconds(50)
+#endif
+              ),
+      max_interactive_idle_duration_(
+#if BUILDFLAG(IS_ANDROID)
+          features::kAndroidCustomFrameDeadlineMaxInteractionIdleDuration.Get()
+#else
+          base::Seconds(3)
+#endif
+              ),
+      use_platform_preferred_deadlines_(use_platform_preferred_deadlines) {
+}
 
 FrameDeadlineDecider::~FrameDeadlineDecider() = default;
+
+bool FrameDeadlineDecider::IsPartOfOngoingFrameSequence(
+    base::TimeTicks frame_time,
+    bool is_handling_interaction) const {
+  if (!frame_sequence_state_.has_value()) {
+    return false;
+  }
+  // The first frame in an interaction sequence uses non-interactive idle time
+  // to ensure any preceding idle gap resets the sequence state.
+  const bool is_ongoing_interaction =
+      is_handling_interaction && frame_sequence_state_->is_interaction_active;
+  const base::TimeDelta timeout = is_ongoing_interaction
+                                      ? max_interactive_idle_duration_
+                                      : max_non_interactive_idle_duration_;
+  const base::TimeDelta time_since_last_frame =
+      frame_time - frame_sequence_state_->last_frame_time;
+  return time_since_last_frame <= timeout;
+}
 
 size_t FrameDeadlineDecider::QueryDeadline(
     const PossibleDeadlines& possible_deadlines,
     base::TimeDelta vsync_interval,
     int max_allowed_buffers,
     base::TimeTicks frame_time,
-    std::optional<base::TimeTicks> earliest_input_time) const {
+    std::optional<base::TimeTicks> earliest_input_time,
+    bool is_handling_interaction) const {
   CHECK(!possible_deadlines.deadlines.empty());
 
   if (use_platform_preferred_deadlines_) {
     return possible_deadlines.os_preferred_index;
   }
 
-  if (frame_sequence_state_.has_value()) {
+  if (IsPartOfOngoingFrameSequence(frame_time, is_handling_interaction)) {
     return FindClosestDeadlineByPresentation(possible_deadlines);
   }
 
@@ -102,19 +137,21 @@ size_t FrameDeadlineDecider::SelectDeadline(
     base::TimeDelta vsync_interval,
     int max_allowed_buffers,
     base::TimeTicks frame_time,
-    std::optional<base::TimeTicks> earliest_input_time) {
+    std::optional<base::TimeTicks> earliest_input_time,
+    bool is_handling_interaction) {
   TRACE_EVENT_BEGIN("toplevel,graphics.pipeline,viz",
                     "FrameDeadlineDecider::SelectDeadline");
 
   size_t result_index =
       QueryDeadline(possible_deadlines, vsync_interval, max_allowed_buffers,
-                    frame_time, earliest_input_time);
+                    frame_time, earliest_input_time, is_handling_interaction);
 
   frame_sequence_state_ = FrameSequenceState{
       .present_delta = possible_deadlines.deadlines[result_index].present_delta,
       .deadline_index = result_index,
+      .last_frame_time = frame_time,
+      .is_interaction_active = is_handling_interaction,
   };
-
   TRACE_EVENT_END(
       "toplevel,graphics.pipeline,viz", [&](perfetto::EventContext ctx) {
         auto* data = ctx.event<perfetto::protos::pbzero::ChromeTrackEvent>()
@@ -130,9 +167,7 @@ size_t FrameDeadlineDecider::SelectDeadline(
   return result_index;
 }
 
-void FrameDeadlineDecider::OnGoIdle() {
-  // TODO(crbug.com/500826814): Handle cases where scheduler goes to idle and
-  // then immediately kicks off again, so we don't break the frame sequence.
+void FrameDeadlineDecider::OnDisplayInvisible() {
   frame_sequence_state_.reset();
 }
 

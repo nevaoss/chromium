@@ -1844,6 +1844,12 @@
     "module_scheme": "single",
     "skip_usage_check": True,
   },
+  "rlz_unittests": {
+    "label": "//rlz:rlz_unittests",
+    "type": "console_test_launcher",
+    "module_scheme": "gtest",
+    "skip_usage_check": True,
+  },
   "rust_build_tests": {
     "label": "//build/rust/tests",
     "type": "additional_compile_target",
@@ -2372,7 +2378,7 @@
   "webdriver_bidi_unittests": {
     "label": "//third_party/chromium-bidi:webdriver_bidi_unittests",
     "type": "generated_script",
-    "module_scheme": "single",
+    "module_scheme": "mocha",
     "skip_usage_check": True,
   },
   "webgpu_blink_web_tests": {

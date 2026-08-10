@@ -318,6 +318,8 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
   bool IsTopChromeWebUIURL(const GURL& url) override;
   bool IsMultiCaptureAllowed(
       content::RenderFrameHost* render_frame_host) override;
+  bool IsVideoCaptureAllowedWhileScreenLocked(
+      const url::Origin& origin) override;
   content::WebContents* GetWebContentsFromWindowIfCaptureHandleAllowed(
       gfx::NativeWindow window) override;
   bool IsFileAccessAllowed(const base::FilePath& path,
@@ -419,15 +421,6 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
       const url::Origin& accessing_origin,
       std::string* out_debug_message = nullptr,
       bool* out_block_is_site_setting_specific = nullptr) override;
-  bool IsPrivateAggregationAllowed(
-      content::BrowserContext* browser_context,
-      const url::Origin& top_frame_origin,
-      const url::Origin& reporting_origin,
-      bool* out_block_is_site_setting_specific = nullptr) override;
-  bool IsPrivateAggregationDebugModeAllowed(
-      content::BrowserContext* browser_context,
-      const url::Origin& top_frame_origin,
-      const url::Origin& reporting_origin) override;
   bool IsFullCookieAccessAllowed(
       content::BrowserContext* browser_context,
       content::WebContents* web_contents,
@@ -899,17 +892,6 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
       bool user_gesture,
       blink::NavigationDownloadPolicy* download_policy) override;
 
-  bool HandleTopicsWebApi(
-      const url::Origin& context_origin,
-      content::RenderFrameHost* main_frame,
-      browsing_topics::ApiCallerSource caller_source,
-      bool get_topics,
-      bool observe,
-      std::vector<blink::mojom::EpochTopicPtr>& topics) override;
-
-  int NumVersionsInTopicsEpochs(
-      content::RenderFrameHost* main_frame) const override;
-
   void GetMediaDeviceIDSalt(
       content::RenderFrameHost* rfh,
       const net::SiteForCookies& site_for_cookies,
@@ -1122,7 +1104,8 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
   void NotifyMultiCaptureStateChanged(
       content::GlobalRenderFrameHostId capturer_rfh_id,
       const std::string& label,
-      MultiCaptureChanged state) override;
+      MultiCaptureChanged state,
+      base::OnceClosure stop_callback) override;
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
   bool ShouldEnableBtm(content::BrowserContext* browser_context) override;

@@ -46,6 +46,7 @@
 #include "net/dns/public/dns_config_overrides.h"
 #include "net/first_party_sets/first_party_set_metadata.h"
 #include "net/http/http_auth_preferences.h"
+#include "net/http/http_cache.h"
 #include "net/net_buildflags.h"
 #include "net/reporting/reporting_target_type.h"
 #include "net/storage_access_api/status.h"
@@ -54,6 +55,7 @@
 #include "services/network/first_party_sets/first_party_sets_access_delegate.h"
 #include "services/network/http_cache_data_counter.h"
 #include "services/network/http_cache_data_remover.h"
+#include "services/network/logical_invalidation_store.h"
 #include "services/network/network_qualities_pref_delegate.h"
 #include "services/network/oblivious_http_request_handler.h"
 #include "services/network/public/cpp/cors/origin_access_list.h"
@@ -152,6 +154,7 @@ class SharedResourceChecker;
 class WebSocketFactory;
 class WebTransport;
 class DeviceBoundSessionManager;
+class LogicalInvalidationStore;
 
 struct ResourceRequest;
 
@@ -366,6 +369,10 @@ class COMPONENT_EXPORT(NETWORK_SERVICE) NetworkContext
   void CanSendSCTAuditingReport(base::OnceCallback<void(bool)> callback);
   void OnNewSCTAuditingReportSent();
 #endif  // BUILDFLAG(IS_CT_SUPPORTED)
+  LogicalInvalidationStore* logical_invalidation_store() {
+    return logical_invalidation_store_.get();
+  }
+
   void CreateUDPSocket(
       mojo::PendingReceiver<mojom::UDPSocket> receiver,
       mojo::PendingRemote<mojom::UDPSocketListener> listener) override;
@@ -600,11 +607,12 @@ class COMPONENT_EXPORT(NETWORK_SERVICE) NetworkContext
       RestrictNetworkForIdsCallback callback) override;
   void ClearNetworkRestrictions(const std::vector<base::UnguessableToken>&
                                     network_restrictions_ids) override;
-  void Prefetch(int32_t request_id,
-                uint32_t options,
-                const ResourceRequest& request,
-                const net::MutableNetworkTrafficAnnotationTag&
-                    traffic_annotation) override;
+  void Prefetch(
+      int32_t request_id,
+      uint32_t options,
+      const ResourceRequest& request,
+      const net::MutableNetworkTrafficAnnotationTag& traffic_annotation,
+      const base::UnguessableToken& network_restrictions_id) override;
 
   void GetBoundNetworkForTesting(
       GetBoundNetworkForTestingCallback callback) override;
@@ -622,6 +630,10 @@ class COMPONENT_EXPORT(NETWORK_SERVICE) NetworkContext
 
   bool HasCookieAccessForDeviceBoundSession(
       const net::device_bound_sessions::CookieAccessCheckParams& params);
+
+  void OnLogicalFilterAdded(const net::HttpCache::InvalidationFilter& filter,
+                            base::OnceClosure callback = base::OnceClosure());
+  void OnLogicalFilterRemoved(const net::HttpCache::InvalidationFilter& filter);
 
   void SetTLS13EarlyDataEnabled(bool enabled);
 
@@ -837,6 +849,18 @@ class COMPONENT_EXPORT(NETWORK_SERVICE) NetworkContext
   // Invoked when the HTTP cache was cleared. Invokes |callback|.
   void OnHttpCacheCleared(base::OnceClosure callback,
                           HttpCacheDataRemover* remover);
+
+  void OnInvalidationFiltersLoaded(
+      LogicalInvalidationStore::LoadResult result,
+      std::vector<net::HttpCache::InvalidationFilter> filters);
+  void StartHttpCacheDataRemover(mojom::ClearDataFilterPtr filter,
+                                 base::Time start_time,
+                                 base::Time end_time,
+                                 base::OnceClosure done_callback);
+  void UpdatePersistenceQueueOrSave(
+      const net::HttpCache::InvalidationFilter& filter,
+      std::vector<net::HttpCache::InvalidationFilter>* pending_queue,
+      base::OnceClosure callback = base::OnceClosure());
 
   void OnHostResolverShutdown(HostResolver* resolver);
 
@@ -1178,6 +1202,12 @@ class COMPONENT_EXPORT(NETWORK_SERVICE) NetworkContext
 
   // Manager for device bound sessions.
   std::unique_ptr<DeviceBoundSessionManager> device_bound_session_manager_;
+
+  std::unique_ptr<LogicalInvalidationStore> logical_invalidation_store_;
+
+  bool initial_filters_loaded_ = false;
+  std::vector<net::HttpCache::InvalidationFilter> pending_additions_;
+  std::vector<net::HttpCache::InvalidationFilter> pending_removals_;
 
   // Used only when network::features::kCacheSharingForPervasiveResources is
   // enabled to determine if a given request is for a well-known

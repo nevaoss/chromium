@@ -7,11 +7,13 @@
 #include <string_view>
 
 #include "base/containers/fixed_flat_set.h"
+#include "base/i18n/language_tag_value_converters.h"
 #include "base/i18n/tag_converters.h"
 #include "base/test/gmock_expected_support.h"
 #include "base/values.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/icu/source/common/unicode/locid.h"
 
 namespace base::i18n {
 namespace {
@@ -37,7 +39,7 @@ TEST(LanguageTagTest, CompileTimeTags) {
   static_assert(ja_jp.tag_string() == "ja-JP");
 }
 
-TEST(LanguageTagTest, ParseAndToString) {
+TEST(LanguageTagTest, ParseAndSubtagsString) {
   EXPECT_THAT(GetKnownLanguageTag("en-US"), GetKnownLanguageTag("en-US"));
 
   EXPECT_THAT(LanguageTagConverter::GetInstance().FromString("EN-us"),
@@ -289,13 +291,13 @@ TEST(LanguageTagTest, MultipleExtensions) {
                            "en-US-a-foo-u-ca-gregory-x-private"))
   EXPECT_EQ(lc.tag_string(), "en-US-a-foo-u-ca-gregory-x-private");
   EXPECT_THAT(lc.GetExtension(bcp47_extensions::ext<'a'>()),
-              Optional(Property(&Extension::subtags_string, Eq("foo"))));
+              Optional(Property(&Extension::SubtagsString, Eq("foo"))));
   EXPECT_THAT(
       lc.GetExtension(bcp47_extensions::unicode()),
-      Optional(Property(&UnicodeExtension::ToString, Eq("ca-gregory"))));
+      Optional(Property(&UnicodeExtension::SubtagsString, Eq("ca-gregory"))));
   EXPECT_THAT(
       lc.GetExtension(bcp47_extensions::priv()),
-      Optional(Property(&PrivateUseSubtags::subtags_string, Eq("private"))));
+      Optional(Property(&PrivateUseSubtags::SubtagsString, Eq("private"))));
 }
 
 TEST(LanguageTagTest, PrivateUseSubtags) {
@@ -307,7 +309,7 @@ TEST(LanguageTagTest, PrivateUseSubtags) {
     EXPECT_EQ(lc.tag_string(), "und-u-ca-gregory-x-private");
     EXPECT_THAT(
         lc.GetExtension(bcp47_extensions::priv()),
-        Optional(Property(&PrivateUseSubtags::subtags_string, Eq("private"))));
+        Optional(Property(&PrivateUseSubtags::SubtagsString, Eq("private"))));
   }
   {
     // Single-char private use subtags.
@@ -315,9 +317,8 @@ TEST(LanguageTagTest, PrivateUseSubtags) {
         LanguageTag lc,
         LanguageTagConverter::GetInstance().FromString("en-US-x-a"))
     EXPECT_EQ(lc.tag_string(), "en-US-x-a");
-    EXPECT_THAT(
-        lc.GetExtension(bcp47_extensions::priv()),
-        Optional(Property(&PrivateUseSubtags::subtags_string, Eq("a"))));
+    EXPECT_THAT(lc.GetExtension(bcp47_extensions::priv()),
+                Optional(Property(&PrivateUseSubtags::SubtagsString, Eq("a"))));
   }
   {
     // Long private use subtags.
@@ -331,7 +332,7 @@ TEST(LanguageTagTest, PrivateUseSubtags) {
         LanguageTagConverter::GetInstance().FromString("en-US-x-12345678"))
     EXPECT_THAT(
         lc.GetExtension(bcp47_extensions::priv()),
-        Optional(Property(&PrivateUseSubtags::subtags_string, Eq("12345678"))));
+        Optional(Property(&PrivateUseSubtags::SubtagsString, Eq("12345678"))));
   }
 }
 
@@ -688,6 +689,72 @@ TEST(LanguageTagTest, GetParentWithPrivateUseSubtags) {
   EXPECT_THAT(lt.GetParentTag(), OptionalToString("en-US"));
 }
 
+TEST(LanguageTagTest, ExtensionMutation) {
+  // 1. GetExtension (Unicode) - returning std::nullopt when not present, and
+  // WithExtension.
+  {
+    ASSERT_OK_AND_ASSIGN(
+        LanguageTag lc,
+        LanguageTagConverter::GetInstance().FromString("en-US"));
+    std::optional<UnicodeExtension> u_ext =
+        lc.GetExtension(bcp47_extensions::unicode());
+    EXPECT_FALSE(u_ext.has_value());
+
+    std::optional<UnicodeExtension> new_u_ext =
+        UnicodeExtension::FromString("u-ca-gregory");
+    ASSERT_TRUE(new_u_ext.has_value());
+    LanguageTag mutated = lc.WithExtension(*new_u_ext);
+    EXPECT_EQ(mutated.tag_string(), "en-US-u-ca-gregory");
+  }
+
+  // 2. GetExtension (Unicode) - modifying existing.
+  {
+    ASSERT_OK_AND_ASSIGN(
+        LanguageTag lc,
+        LanguageTagConverter::GetInstance().FromString("en-US-u-ca-gregory"));
+    std::optional<UnicodeExtension> u_ext =
+        lc.GetExtension(bcp47_extensions::unicode());
+    ASSERT_TRUE(u_ext.has_value());
+    EXPECT_THAT(u_ext->GetKeywordValue("ca"), Optional(Eq("gregory")));
+    EXPECT_TRUE(u_ext->SetKeyword("ca", "buddhist"));
+    LanguageTag mutated = lc.WithExtension(*u_ext);
+    EXPECT_EQ(mutated.tag_string(), "en-US-u-ca-buddhist");
+  }
+
+  // 3. PrivateUseSubtags mutation.
+  {
+    ASSERT_OK_AND_ASSIGN(
+        LanguageTag lc,
+        LanguageTagConverter::GetInstance().FromString("en-US"));
+    std::optional<PrivateUseSubtags> x_ext =
+        lc.GetExtension(bcp47_extensions::priv());
+    EXPECT_FALSE(x_ext.has_value());
+
+    std::optional<PrivateUseSubtags> new_x_ext =
+        PrivateUseSubtags::FromString("x-private");
+    ASSERT_TRUE(new_x_ext.has_value());
+    EXPECT_TRUE(new_x_ext->AddSubtag("stuff"));
+    LanguageTag mutated = lc.WithExtension(*new_x_ext);
+    EXPECT_EQ(mutated.tag_string(), "en-US-x-private-stuff");
+  }
+
+  // 4. Generic Extension mutation.
+  {
+    ASSERT_OK_AND_ASSIGN(
+        LanguageTag lc,
+        LanguageTagConverter::GetInstance().FromString("en-US"));
+    std::optional<Extension> a_ext =
+        lc.GetExtension(bcp47_extensions::ext<'a'>());
+    EXPECT_FALSE(a_ext.has_value());
+
+    std::optional<Extension> new_a_ext = Extension::FromString("a-myext");
+    ASSERT_TRUE(new_a_ext.has_value());
+    EXPECT_TRUE(new_a_ext->AddSubtag("other"));
+    LanguageTag mutated = lc.WithExtension(*new_a_ext);
+    EXPECT_EQ(mutated.tag_string(), "en-US-a-myext-other");
+  }
+}
+
 struct LanguageTestData {
   std::string_view tag;
   std::string_view name;
@@ -726,6 +793,77 @@ INSTANTIATE_TEST_SUITE_P(
     [](const testing::TestParamInfo<LanguageTestData>& info) {
       return std::string(info.param.name);
     });
+
+TEST(IcuLocaleConverterTest, FromLanguageTag) {
+  const IcuLocaleConverter& converter = IcuLocaleConverter::GetInstance();
+
+  // Test simple locale conversion
+  std::optional<LanguageTag> en_us =
+      LanguageTagConverter::GetInstance().FromString("en-US");
+  ASSERT_TRUE(en_us.has_value());
+  icu::Locale locale_en_us = converter.FromLanguageTag(*en_us);
+  EXPECT_STREQ("en_US", locale_en_us.getName());
+  EXPECT_STREQ("en", locale_en_us.getLanguage());
+  EXPECT_STREQ("US", locale_en_us.getCountry());
+
+  // Test ja-JP locale conversion
+  std::optional<LanguageTag> ja_jp =
+      LanguageTagConverter::GetInstance().FromString("ja-JP");
+  ASSERT_TRUE(ja_jp.has_value());
+  icu::Locale locale_ja_jp = converter.FromLanguageTag(*ja_jp);
+  EXPECT_STREQ("ja_JP", locale_ja_jp.getName());
+  EXPECT_STREQ("ja", locale_ja_jp.getLanguage());
+  EXPECT_STREQ("JP", locale_ja_jp.getCountry());
+
+  // Test language tag with script: zh-Hans-CN
+  std::optional<LanguageTag> zh_hans_cn =
+      LanguageTagConverter::GetInstance().FromString("zh-Hans-CN");
+  ASSERT_TRUE(zh_hans_cn.has_value());
+  icu::Locale locale_zh_hans_cn = converter.FromLanguageTag(*zh_hans_cn);
+  EXPECT_STREQ("zh_Hans_CN", locale_zh_hans_cn.getName());
+  EXPECT_STREQ("zh", locale_zh_hans_cn.getLanguage());
+  EXPECT_STREQ("Hans", locale_zh_hans_cn.getScript());
+  EXPECT_STREQ("CN", locale_zh_hans_cn.getCountry());
+
+  // Test undefined language tag: und
+  std::optional<LanguageTag> und =
+      LanguageTagConverter::GetInstance().FromString("und");
+  ASSERT_TRUE(und.has_value());
+  icu::Locale locale_und = converter.FromLanguageTag(*und);
+  EXPECT_STREQ("", locale_und.getName());
+
+  // Test custom/dynamic language tag (not in the cache) fallback path:
+  // en-US-u-ca-gregory
+  std::optional<LanguageTag> dynamic_tag =
+      LanguageTagConverter::GetInstance().FromString("en-US-u-ca-gregory");
+  ASSERT_TRUE(dynamic_tag.has_value());
+  icu::Locale locale_dynamic = converter.FromLanguageTag(*dynamic_tag);
+  EXPECT_STREQ("en_US@calendar=gregorian", locale_dynamic.getName());
+}
+
+TEST(LanguageTagConverterTest, FromIcuLocale) {
+  const LanguageTagConverter& converter = LanguageTagConverter::GetInstance();
+
+  // Test simple locale conversion
+  UErrorCode status = U_ZERO_ERROR;
+  icu::Locale locale_en_us = icu::Locale::forLanguageTag("en-US", status);
+  ASSERT_TRUE(U_SUCCESS(status));
+  LanguageTag en_us = converter.FromIcuLocale(locale_en_us);
+  EXPECT_EQ("en-US", en_us.tag_string());
+
+  // Test custom/dynamic locale conversion
+  status = U_ZERO_ERROR;
+  icu::Locale locale_dynamic =
+      icu::Locale::forLanguageTag("en-US-u-ca-gregory", status);
+  ASSERT_TRUE(U_SUCCESS(status));
+  LanguageTag dynamic_tag = converter.FromIcuLocale(locale_dynamic);
+  EXPECT_EQ("en-US-u-ca-gregory", dynamic_tag.tag_string());
+
+  // Test fallback/failure or undefined
+  icu::Locale locale_und = icu::Locale::getRoot();
+  LanguageTag und = converter.FromIcuLocale(locale_und);
+  EXPECT_EQ("und", und.tag_string());
+}
 
 }  // namespace
 }  // namespace base::i18n

@@ -37,6 +37,13 @@ BASE_FEATURE(kSafetyCheckModuleHiddenIfNoIssuesKillswitch,
 BASE_FEATURE(kOmahaServiceRefactor, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kHideToolbarsInOverflowMenu, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsHideToolbarEnabled() {
+  if (IsChromeNextIaEnabled()) {
+    return false;
+  }
+  return base::FeatureList::IsEnabled(kHideToolbarsInOverflowMenu);
+}
 BASE_FEATURE(kHideFuseboxVoiceLensActions, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kSharedHighlightingIOS, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -125,9 +132,6 @@ BASE_FEATURE(kIOSChooseFromDrive, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIOSChooseFromDriveSignedOut, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kIOSDateToCalendarSignedOut, base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kIOSDownloadNoUIUpdateInBackground,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kIOSSaveToDriveSignedOut, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -852,6 +856,12 @@ bool IsOmniboxCrashFixKillSwitchEnabled() {
   return base::FeatureList::IsEnabled(kOmniboxCrashFixKillSwitch);
 }
 
+BASE_FEATURE(kAlertCrashFixKillSwitch, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsAlertCrashFixKillSwitchEnabled() {
+  return base::FeatureList::IsEnabled(kAlertCrashFixKillSwitch);
+}
+
 BASE_FEATURE(kAIMEligibilityServiceStartWithProfile,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -1070,6 +1080,12 @@ BASE_FEATURE(kDisableFeedbackForIneligibleUsers,
 
 bool IsDisableFeedbackForIneligibleUsersEnabled() {
   return base::FeatureList::IsEnabled(kDisableFeedbackForIneligibleUsers);
+}
+
+BASE_FEATURE(kIncludeSystemLogInFeedback, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsIncludeSystemLogInFeedbackEnabled() {
+  return base::FeatureList::IsEnabled(kIncludeSystemLogInFeedback);
 }
 
 BASE_FEATURE(kFullscreenRefactoring, base::FEATURE_DISABLED_BY_DEFAULT);

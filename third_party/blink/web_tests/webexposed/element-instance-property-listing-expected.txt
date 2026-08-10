@@ -796,7 +796,6 @@ html element iframe
     property referrerPolicy
     property sandbox
     property scrolling
-    property sharedStorageWritable
     property src
     property srcdoc
     property width
@@ -821,7 +820,6 @@ html element img
     property naturalHeight
     property naturalWidth
     property referrerPolicy
-    property sharedStorageWritable
     property sizes
     property src
     property srcset
@@ -1200,6 +1198,7 @@ html element td
     property vAlign
     property width
 html element template
+    property buffer
     property content
     property htmlFor
     property shadowRootAdoptedStyleSheets

@@ -50,6 +50,7 @@
 #import "ios/chrome/browser/intelligence/bwg/utils/gemini_constants.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/intelligence/page_action_menu/coordinator/page_action_menu_coordinator.h"
+#import "ios/chrome/browser/keyboard/ui_bundled/responder_chaining.h"
 #import "ios/chrome/browser/main/ui/browser_layout_view_controller.h"
 #import "ios/chrome/browser/menu/ui_bundled/tab_context_menu_delegate.h"
 #import "ios/chrome/browser/metrics/model/activity_reporter.h"
@@ -556,6 +557,12 @@ bool FindNavigatorShouldBePresentedInBrowser(Browser* browser) {
       // beginning of the animation. See crbug.com/432227955 for more details.
       [weakSelf hideTabGroupsViews];
     }
+
+    // If the Inactive Tabs view is presented when displaying an active tab,
+    // hide it so returning to the tab grid targets the regular grid instead of
+    // the inactive tabs view.
+    [weakSelf.inactiveTabsCoordinator hide];
+
     if (completion) {
       completion();
     }

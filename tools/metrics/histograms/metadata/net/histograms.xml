@@ -1934,18 +1934,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Net.CertificateManager.PageVisits"
-    enum="CertificateManagerPage" expires_after="M145">
-  <owner>dadrian@chromium.org</owner>
-  <owner>hchao@chromium.org</owner>
-  <owner>chrome-secure-web-and-net@chromium.org</owner>
-  <summary>
-    This histogram is recorded every time a user visits the Chrome Certificate
-    Manager. The value recorded represents the page visited in the Chrome
-    Certificate Manager.
-  </summary>
-</histogram>
-
 <histogram name="Net.CertificateTransparency.SCTOrigin" enum="SCTOrigin"
     expires_after="2026-11-29">
   <owner>estark@chromium.org</owner>
@@ -3562,28 +3550,23 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Net.Dns.ResolveTimeDiff2.AddressRecordBeforeHTTPS" units="ms"
-    expires_after="2026-12-27">
-  <owner>bashi@chromium.org</owner>
-  <owner>chrome-network-stack@google.com</owner>
-  <summary>
-    Time difference between the first address record (A or AAAA) and HTTPS
-    record were resolved. Recorded when an address record was resolved before
-    HTTPS record.
-  </summary>
-</histogram>
-
 <histogram name="Net.Dns.ResolveTimeDiff2.{Variant}" units="ms"
-    expires_after="2026-12-16">
+    expires_after="2027-07-20">
   <owner>bashi@chromium.org</owner>
   <owner>chrome-network-stack@google.com</owner>
   <summary>
-    Time difference between A and AAAA records were resolved. Recorded when
+    Time difference between when DNS records were resolved. Recorded when
     {Variant}.
   </summary>
   <token key="Variant">
     <variant name="AAAABeforeA" summary="AAAA resolved before A"/>
     <variant name="ABeforeAAAA" summary="A resolved before AAAA"/>
+    <variant name="AddressRecordBeforeHTTPS"
+        summary="the first address record (A or AAAA) resolved before HTTPS"/>
+    <variant name="HTTPSBeforeFirstAddress"
+        summary="HTTPS resolved before the first address record (A or AAAA)"/>
+    <variant name="HTTPSBeforeLastAddress"
+        summary="HTTPS resolved before the last address record (A or AAAA)"/>
   </token>
 </histogram>
 
@@ -9904,6 +9887,32 @@ chromium-metrics-reviews@google.com.
     running TrustTokenRequestHelperFactory to initialize Trust Tokens handling
     logic. This might help debug a surfeit of failed Trust Tokens issuance
     operations observed in live testing. {TrustTokenOperationType}
+  </summary>
+</histogram>
+
+<histogram name="Net.UDPSocketPosix.GroPacketsRead" units="packets"
+    expires_after="2027-07-17">
+  <owner>aymanm@google.com</owner>
+  <owner>ricea@chromium.org</owner>
+  <owner>src/net/OWNERS</owner>
+  <summary>
+    Records the number of UDP datagrams read and sliced from a UDP_GRO
+    superpacket (or un-coalesced datagram) per read operation when UDP Generic
+    Receive Offload (UDP_GRO) is enabled on a UDPSocketPosix. This metric is
+    sampled at 1% of successful GRO read operations. This metric is only emitted
+    if `ReadMultiple()` is called.
+  </summary>
+</histogram>
+
+<histogram name="Net.UDPSocketPosix.SetSocketOptionGroResult"
+    enum="SetSocketOptionGroResult" expires_after="2027-07-17">
+  <owner>aymanm@google.com</owner>
+  <owner>ricea@chromium.org</owner>
+  <owner>src/net/OWNERS</owner>
+  <summary>
+    Records the result of enabling UDP Generic Receive Offload (UDP_GRO) via
+    setsockopt on a UDPSocketPosix. This metric is sampled at 1% of socket
+    creations.
   </summary>
 </histogram>
 

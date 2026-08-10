@@ -291,6 +291,9 @@ BASE_FEATURE(kUrlScoringModel, enable_if(!IS_ANDROID));
 // are enabled.
 BASE_FEATURE(kOmniboxTouchDownTriggerForPrefetch, enable_if(IS_ANDROID));
 
+// Enables simultaneous prefetch and navigation on Enter KeyDown in Omnibox.
+BASE_FEATURE(kOmniboxSearchPrefetchOnEnterKeyDown, DISABLED);
+
 // Enables keyword-based site search functionality on Android devices.
 BASE_FEATURE(kOmniboxSiteSearch, DISABLED);
 
@@ -336,9 +339,6 @@ BASE_FEATURE(kOmniboxMobileParityUpdateV2, ENABLED);
 
 // If enabled, the X-Geo header will include permission granularity.
 BASE_FEATURE(kOmniboxXGeoPermissionGranularity, ENABLED);
-
-// If enabled, omnibox group separators and headers will use item decorations.
-BASE_FEATURE(kOmniboxItemDecoration, DISABLED);
 
 // When the first suggestion is a url, the favicon is shown in the status view.
 BASE_FEATURE(kExactMatchFavicons, DISABLED);
@@ -526,9 +526,9 @@ static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
       &kAIMSuppressVerbatimMatch,
       &kResetSuggestionsScroll,
       &kOmniboxListMenuContextMenu,
-      &kOmniboxItemDecoration,
       &kExactMatchFavicons,
       &kStarterPackExpansion,
+      &kOmniboxSearchPrefetchOnEnterKeyDown,
       &kOmniboxAimImageDownscaling};
   static base::NoDestructor<base::android::FeatureMap> kFeatureMap(
       kFeaturesExposedToJava);
@@ -585,6 +585,8 @@ const base::FeatureParam<bool> kAskGLensChipRoute{
     &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGLensChipRoute", false};
 const base::FeatureParam<bool> kAskGSwapIcon{
     &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGSwapIcon", false};
+const base::FeatureParam<bool> kAskGCurrentTabChip{
+    &kWebUIOmniboxAskGAboutThisPage, "Omnibox_AskGCurrentTabChip", false};
 // Note: no new flags beyond this point.
 
 namespace flag_descriptions {

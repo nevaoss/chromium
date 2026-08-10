@@ -595,6 +595,15 @@ NET_EXPORT BASE_DECLARE_FEATURE(kDiskCacheBackendExperiment);
 NET_EXPORT extern const base::FeatureParam<DiskCacheBackend>
     kDiskCacheBackendParam;
 
+// When true, the disk cache backend experiment group name is included in cache
+// reset logic (GetHttpCacheBackendResetParam() and
+// CheckFakeIndexFileInternal()) so that changing experiment groups resets the
+// HTTP cache for clean A/B comparison. When false (default), cache resets on
+// group changes are bypassed to prevent widespread cache clearing during
+// gradual feature rollouts.
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(bool,
+                                      kDiskCacheBackendResetCacheOnGroupChange);
+
 #if BUILDFLAG(ENABLE_DISK_CACHE_SQL_BACKEND)
 // If the number of pages recorded in the WAL file of the SQL disk cache's DB
 // exceeds this value, a checkpoint is executed on committing data.
@@ -835,6 +844,9 @@ NET_EXPORT BASE_DECLARE_FEATURE_PARAM(size_t, kQuicMaxPacketSize);
 // If enabled, QuicChromiumPacketReader will use ReadMultiple API.
 NET_EXPORT BASE_DECLARE_FEATURE(kQuicUseReadMultiple);
 
+// If enabled, UDPSocketPosix will enable UDP Generic Receive Offload (UDP_GRO).
+NET_EXPORT BASE_DECLARE_FEATURE(kEnableUdpGro);
+
 // When enabled, races QUIC connection attempts for the specified hostnames
 // even when there is no available ALPN information.
 NET_EXPORT BASE_DECLARE_FEATURE(kConfigureQuicHints);
@@ -896,6 +908,8 @@ NET_EXPORT BASE_DECLARE_FEATURE(kUseNSURLDataForGURLConversion);
 // to immediately treat entries as invalid, while they are physically deleted
 // in the background.
 NET_EXPORT BASE_DECLARE_FEATURE(kLogicalClearHttpCache);
+NET_EXPORT extern const base::FeatureParam<bool>
+    kLogicalClearHttpCacheUserVisiblePriority;
 
 // If enabled, SPDY sessions will be synchronously drained when the underlying
 // transport socket is detected to be disconnected in GetRemoteEndpoint().

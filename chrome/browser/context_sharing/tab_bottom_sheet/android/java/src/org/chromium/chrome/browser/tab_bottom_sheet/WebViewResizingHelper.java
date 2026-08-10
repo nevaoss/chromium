@@ -9,6 +9,7 @@ import static org.chromium.ui.animation.AnimationListeners.onAnimationEnd;
 
 import android.animation.ValueAnimator;
 import android.content.Context;
+import android.content.res.Resources;
 import android.graphics.drawable.ColorDrawable;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -31,6 +32,7 @@ import org.chromium.content_public.browser.WebContents;
 import org.chromium.ui.animation.AnimationHandler;
 import org.chromium.ui.base.ViewUtils;
 import org.chromium.ui.base.WindowAndroid;
+import org.chromium.ui.base.WindowAndroid.ActivityStateObserver;
 import org.chromium.ui.insets.InsetObserver;
 import org.chromium.ui.insets.InsetObserver.WindowInsetsAnimationListener;
 import org.chromium.ui.util.CommonOnLayoutChangeListeners;
@@ -49,6 +51,7 @@ public class WebViewResizingHelper {
     private static final int RESIZING_ANIMATION_DURATION_MS = 150;
 
     private final AnimationHandler mAnimationHandler = new AnimationHandler();
+
     private final WindowInsetsAnimationListener mInsetAnimationListener =
             new WindowInsetsAnimationListener() {
                 @Override
@@ -72,16 +75,27 @@ public class WebViewResizingHelper {
                 }
             };
 
+    private final ActivityStateObserver mActivityStateObserver =
+            new ActivityStateObserver() {
+                @Override
+                public void onActivityResumed() {
+                    updateBounds(/* ignoreCache= */ true);
+                }
+            };
+
     private final Context mContext;
     private final FrameLayout mResizingContainer;
     private final View mResizingPlaceholder;
-    private @Nullable ThinWebView mThinWebView;
-    private @Nullable WebContents mWebContents;
     private final View mExpandedContentGroup;
     private final WindowAndroid mWindowAndroid;
     private final @Nullable InsetObserver mInsetObserver;
     private final boolean mIsSidePanel;
+    private final View mResizingContent;
+    private final @Px int mResizingFadeOffset;
+    private final @Px int mMinHeight;
 
+    private @Nullable ThinWebView mThinWebView;
+    private @Nullable WebContents mWebContents;
     private boolean mIsViewportSizeFixed;
     private boolean mPauseInsetUpdates;
 
@@ -120,6 +134,12 @@ public class WebViewResizingHelper {
         mResizingPlaceholder =
                 LayoutInflater.from(mContext)
                         .inflate(R.layout.tab_bottom_sheet_resizing_view, null);
+        mResizingContent =
+                mResizingPlaceholder.findViewById(R.id.tab_bottom_sheet_resizing_content);
+        Resources res = mContext.getResources();
+        mResizingFadeOffset =
+                res.getDimensionPixelSize(R.dimen.tab_bottom_sheet_resizing_fade_offset);
+        mMinHeight = res.getDimensionPixelSize(R.dimen.tab_bottom_sheet_peek_height_total);
         mResizingContainer.addView(mResizingPlaceholder);
         mResizingPlaceholder.setVisibility(View.GONE);
 
@@ -130,6 +150,36 @@ public class WebViewResizingHelper {
         if (mInsetObserver != null) {
             mInsetObserver.addWindowInsetsAnimationListener(mInsetAnimationListener);
         }
+        mWindowAndroid.addActivityStateObserver(mActivityStateObserver);
+    }
+
+    /**
+     * Updates the height of the resizing placeholder to match the visible height of the sheet.
+     *
+     * @param visibleHeight The visible height of the sheet in pixels.
+     */
+    public void updatePlaceholderHeight(@Px int visibleHeight) {
+        ViewGroup.LayoutParams params = mResizingPlaceholder.getLayoutParams();
+        if (params != null && params.height != visibleHeight) {
+            params.height = visibleHeight;
+            mResizingPlaceholder.setLayoutParams(params);
+        }
+
+        float minHeight = mMinHeight;
+        int contentHeight = mResizingContent.getMeasuredHeight();
+        float maxHeight = contentHeight + mResizingFadeOffset;
+
+        float alpha;
+        if (visibleHeight <= minHeight) {
+            alpha = 0.0f;
+        } else if (maxHeight <= minHeight || visibleHeight >= maxHeight) {
+            alpha = 1.0f;
+        } else {
+            alpha = (visibleHeight - minHeight) / (maxHeight - minHeight);
+        }
+        if (mResizingContent.getAlpha() != alpha) {
+            mResizingContent.setAlpha(alpha);
+        }
     }
 
     /** Destroys the helper and releases the WebContents. */
@@ -139,6 +189,7 @@ public class WebViewResizingHelper {
         if (mInsetObserver != null) {
             mInsetObserver.removeWindowInsetsAnimationListener(mInsetAnimationListener);
         }
+        mWindowAndroid.removeActivityStateObserver(mActivityStateObserver);
     }
 
     /** Resets the helper to its initial state without resetting the WebContents. */
@@ -278,6 +329,10 @@ public class WebViewResizingHelper {
     }
 
     private void updateBounds() {
+        updateBounds(/* ignoreCache= */ false);
+    }
+
+    private void updateBounds(boolean ignoreCache) {
         if (mPauseInsetUpdates || isActivityInactive(mWindowAndroid)) {
             return;
         }
@@ -317,7 +372,8 @@ public class WebViewResizingHelper {
             return;
         }
 
-        if (resizingContainerWidth == webContentsWidth
+        if (!ignoreCache
+                && resizingContainerWidth == webContentsWidth
                 && resizingContainerHeight == webContentsHeight) {
             return;
         }

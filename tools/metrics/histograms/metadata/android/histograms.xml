@@ -2549,7 +2549,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.GridTabSwitcher.ThumbnailFetchingResult"
-    enum="GridTabSwitcherThumbnailFetchingResult" expires_after="2026-08-30">
+    enum="GridTabSwitcherThumbnailFetchingResult" expires_after="2027-08-30">
   <owner>ckitagawa@chromium.org</owner>
   <owner>clank-isochron-team@google.com</owner>
   <summary>
@@ -6930,6 +6930,38 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Android.VerticalTabs.DragDropResult"
+    enum="AndroidVerticalTabsDragDropResult" expires_after="2027-07-22">
+  <owner>agazal@google.com</owner>
+  <owner>kije@chromium.org</owner>
+  <summary>
+    Tracks the outcome of a drag-and-drop interaction session in Vertical Tabs.
+    Recorded when the drag interaction ends (finger is lifted).
+  </summary>
+</histogram>
+
+<histogram name="Android.VerticalTabs.DurationEnabled" units="ms"
+    expires_after="2027-07-22">
+  <owner>agazal@google.com</owner>
+  <owner>jinsukkim@chromium.org</owner>
+  <summary>
+    Records the duration (wall-clock time) for which Vertical Tabs remained
+    enabled. Recorded when the user toggles Vertical Tabs off (reverting to
+    Horizontal Tabs).
+  </summary>
+</histogram>
+
+<histogram name="Android.VerticalTabs.TabGroupCollapsed" enum="Boolean"
+    expires_after="2027-07-22">
+  <owner>agazal@google.com</owner>
+  <owner>jinsukkim@chromium.org</owner>
+  <summary>
+    Recorded when the user clicks on the tab group header to collapse or expand
+    it in Vertical Tabs. True if the user is collapsing a group and false if a
+    user is expanding it.
+  </summary>
+</histogram>
+
 <histogram name="Android.Wallet.BoardingPass.Detected" enum="BooleanDetected"
     expires_after="2024-12-31">
   <owner>hanfeng@google.com</owner>
@@ -8459,16 +8491,6 @@ chromium-metrics-reviews@google.com.
     triggered by the browser or renderer.
 
     Navigations that do not commit (interrupted, HTTP 204, etc) are not counted.
-  </summary>
-</histogram>
-
-<histogram name="Android.WebView.NestedScrollingEnabled" enum="BooleanEnabled"
-    expires_after="2026-09-01">
-  <owner>bewise@google.com</owner>
-  <owner>src/android_webview/OWNERS</owner>
-  <summary>
-    Records whether nested scrolling is enabled on WebView when a touch event
-    starts. Recorded upon ACTION_DOWN in onTouchEvent.
   </summary>
 </histogram>
 

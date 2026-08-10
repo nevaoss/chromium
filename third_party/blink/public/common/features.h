@@ -566,6 +566,10 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
     kFrequencyCappingForOverlayPopupDetection);
 
+// If enabled, disables subsampling of GlobalPrivacyControl histogram entries.
+// Used in tests that verifies sampling in Renderer thread.
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kGlobalPrivacyControlAlwaysSample);
+
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kGMSCoreEmoji);
 
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
@@ -1470,14 +1474,6 @@ BLINK_COMMON_EXPORT extern const char
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
     kPrerender2EarlyDocumentLifecycleUpdate);
 
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kPrivateAggregationApi);
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
-    bool,
-    kPrivateAggregationApiEnabledInSharedStorage);
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
-    bool,
-    kPrivateAggregationApiDebugModeEnabledAtAll);
-
 // If set, HTMLDocumentParser processes data immediately rather than after a
 // delay. This is further controlled by the feature params starting with the
 // same name. Also note that this only applies to uses that are normally
@@ -1643,6 +1639,8 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
     kSendCnameAliasesToSubresourceFilterFromRenderer);
 
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kSetIntervalWithoutClamp);
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
+    kSetSelectionForAccessibilityHandlingInputEvent);
 
 // If enabled, the shared storage worklet threads (on the same renderer process)
 // will share the same backing thread; otherwise, each will own a dedicated
@@ -1698,6 +1696,9 @@ BLINK_COMMON_EXPORT extern const base::FeatureParam<bool>
     kSpeculativeServiceWorkerWarmUpOnPointerover;
 BLINK_COMMON_EXPORT extern const base::FeatureParam<bool>
     kSpeculativeServiceWorkerWarmUpOnPointerdown;
+
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
+    kServiceWorkerRaceNetworkRequestFallbackOnDisconnect);
 
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kServiceWorkerSyntheticResponse);
 

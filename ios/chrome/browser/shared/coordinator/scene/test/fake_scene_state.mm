@@ -29,10 +29,7 @@
   BOOL _shutdown;
 }
 
-@synthesize window = _window;
-
-- (instancetype)initWithProfile:(ProfileIOS*)profile
-                 sceneSessionID:(std::string)sceneSessionID {
+- (instancetype)initWithProfile:(ProfileIOS*)profile {
   if ((self = [super init])) {
     DCHECK(profile);
     DCHECK(!profile->IsOffTheRecord());
@@ -46,16 +43,8 @@
     _browserProviderInterface = [[StubBrowserProviderInterface alloc]
          initWithBrowser:_browser.get()
         incognitoBrowser:_incognito_browser.get()];
-
-    if (!sceneSessionID.empty()) {
-      [self connectWithOptions:{.identifier = std::move(sceneSessionID)}];
-    }
   }
   return self;
-}
-
-- (instancetype)initWithProfile:(ProfileIOS*)profile {
-  return [self initWithProfile:profile sceneSessionID:{}];
 }
 
 - (id<BrowserProviderInterface>)browserProviderInterface {

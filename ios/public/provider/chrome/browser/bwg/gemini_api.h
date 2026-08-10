@@ -68,8 +68,6 @@ enum class GeminiPageContextComputationState {
   kBlocked,
   // The page context is still being created.
   kPending,
-  // The page context computation failed because the user account is mismatched.
-  kMismatchedAccount,
 };
 
 // Enum representing the page context attachment state of the Gemini experience.
@@ -220,6 +218,11 @@ GeminiSettingsAction* ActionForSettingsContext(GeminiSettingsContext context);
 // viewport.
 void UpdateOverlayOffsetWithOpacity(CGFloat offset, CGFloat opacity);
 
+// Updates Gemini detent heights. `collapsed_height` corresponds to the
+// minimized detent height, and `extended_height` corresponds to the medium
+// detent height.
+void UpdateDetentHeights(CGFloat collapsed_height, CGFloat extended_height);
+
 // TODO(crbug.com/475205334): Remove this method after function below is
 // implemented.
 // Updates Gemini floaty view state.
@@ -259,6 +262,9 @@ int GetLiveCaptionsNumberOfLines();
 
 // Sets whether the suggestion chips should be shown on the floaty.
 void SetShouldShowSuggestionChips(bool should_show);
+
+// Shows the account snackbar on the Gemini floaty.
+void ShowAccountSnackbar();
 
 // Returns the view controller for the Gemini floaty.
 UIViewController* GetFloatyViewControllerWithConfiguration(

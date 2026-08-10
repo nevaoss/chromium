@@ -87,6 +87,7 @@
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/content_browser_client.h"
 #include "content/public/browser/cookie_access_details.h"
+#include "content/public/browser/editable_level.h"
 #include "content/public/browser/frame_tree_node_id.h"
 #include "content/public/browser/frame_type.h"
 #include "content/public/browser/global_request_id.h"
@@ -1743,12 +1744,16 @@ class CONTENT_EXPORT RenderFrameHostImpl
 
   void ClearFocusedElement();
 
+  EditableLevel focused_editable_level() const {
+    return focused_editable_level_;
+  }
+
   bool has_focused_editable_element() const {
-    return has_focused_editable_element_;
+    return focused_editable_level_ != EditableLevel::kNotEditable;
   }
 
   bool has_focused_richly_editable_element() const {
-    return has_focused_richly_editable_element_;
+    return focused_editable_level_ == EditableLevel::kRichlyEditable;
   }
 
   // Binds a DevToolsAgent interface for debugging.
@@ -2715,13 +2720,22 @@ class CONTENT_EXPORT RenderFrameHostImpl
   void DraggableRegionsChanged(
       std::vector<blink::mojom::DraggableRegionPtr> regions) override;
   void NotifyDocumentInteractive() override;
-  void OnFirstContentfulPaint(base::TimeDelta duration) override;
-  void NotifyFirstContentfulPaint();
+  void OnFirstContentfulPaint(base::TimeTicks presentation_time) override;
+  void OnLargestContentfulPaint(base::TimeTicks presentation_time) override;
   void SetStorageAccessApiStatus(net::StorageAccessApiStatus status) override;
   std::unique_ptr<download::DownloadUrlParameters> CreateDownloadUrlParameters(
       const GURL& url,
       const net::NetworkTrafficAnnotationTag& traffic_annotation)
       const override;
+
+  // Dispatches the first contentful paint notification to the delegate when
+  // this is the primary main frame. Split from the OnFirstContentfulPaint()
+  // mojo handler because it is also invoked when a prerendered page is
+  // activated (see PageImpl::MaybeDispatchLoadEventsOnPrerenderActivation()) to
+  // re-dispatch the FCP that was observed while prerendering.
+  // |presentation_time| is the renderer-side presentation timestamp of the
+  // paint.
+  void NotifyFirstContentfulPaint(base::TimeTicks presentation_time);
 
   void ReportNoBinderForInterface(const std::string& error);
 
@@ -5031,12 +5045,8 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // navigation requests should be queued.
   bool waiting_for_init_;
 
-  // If true then this frame's document has a focused element which is editable.
-  bool has_focused_editable_element_ = false;
-
-  // If true then this frame's document has a focused element which is richly
-  // editable.
-  bool has_focused_richly_editable_element_ = false;
+  // The editability level of the focused element in this frame's document.
+  EditableLevel focused_editable_level_ = EditableLevel::kNotEditable;
 
   std::unique_ptr<PendingNavigation> pending_navigate_;
 

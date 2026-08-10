@@ -398,14 +398,8 @@
   <message name="IDS_AUTOFILL_HOME_WORK_ADDRESS_EDIT_A11Y_LABEL" desc="The a11y label for the edit button for the home/work address in Settings.">
     Edit, opens new window
   </message>
-  <message name="IDS_AUTOFILL_SYNC_TOGGLE_LABEL" desc="The Sync Autofill toggle label on the Autofill Settings page.">
-    Use and save Addresses from your Google Account
-  </message>
   <message name="IDS_AUTOFILL_ADDRESSES_SETTINGS_TITLE" desc="Title for the Autofill settings page that allows user to manage their list of saved addresses and Autofill preferences for addresses. Sentence-Cased." formatter_data="android_java">
     Addresses and more
-  </message>
-  <message name="IDS_AUTOFILL_ADDRESSES_SETTINGS_SUBLABEL" desc="Description shown below the link to the Autofill settings page for managing addresses and more." translateable="false">
-    Phone numbers, email addresses, shipping addresses, and plus addresses
   </message>
   <message name="IDS_AUTOFILL_SETTINGS_EMAIL_VERIFICATION_LABEL" desc="Label for a toggle that allows users to control whether email addresses should be automatically confirmed on supported sites.">
     Automatically confirm your emails
@@ -857,7 +851,7 @@
       Now you can find and fill info from Gmail and more
     </message>
     <message name="IDS_AT_MEMORY_NOTICE_TEXT" desc="Text for the notice shown in the @memory bottom sheet." formatter_data="android_java">
-      Powered by Personal Intelligence with Gemini. Page titles and URLs are sent to Google and may be reviewed by humans. <ph name="BEGIN_LINK">&lt;link&gt;</ph>Manage settings<ph name="END_LINK">&lt;/link&gt;</ph>
+      Powered by Personal Intelligence with Gemini. Your requests, page titles, and URLs may be reviewed to improve enhanced autofill. <ph name="BEGIN_LINK">&lt;link&gt;</ph>Manage settings<ph name="END_LINK">&lt;/link&gt;</ph>
     </message>
     <message name="IDS_AT_MEMORY_NOTICE_OK_BUTTON" desc="Button text to acknowledge the notice in the @memory bottom sheet." formatter_data="android_java">
       OK
@@ -1537,6 +1531,10 @@
       Stored in Google Wallet
     </message>
 
+    <message name="IDS_AUTOFILL_AI_LOADING_DIALOG_LABEL" desc="The string shown in the loading dialog that is opened after successful user authentication. It's is informing the user about an ongoing request to fetch their data from the server.">
+      Filling your info
+    </message>
+
     <message name="IDS_AUTOFILL_AI_SUGGESTION_LONG_PRESS_DIALOG_DESCRIPTION" desc="The description text shown in the dialog after the user long presses a suggestion in the keyboard accessory." formatter_data="android_java">
       Suggested by Gemini. Manage enhanced autofill in settings.
     </message>
@@ -1664,14 +1662,17 @@
   <message name="IDS_SETTINGS_SUGGESTIONS_FROM_GEMINI_QUALITY_LOGGING_TITLE" desc="Title of the collapsible quality logging section in enhanced autofill settings.">
     You're helping improve enhanced autofill by sharing data with Google
   </message>
+  <message name="IDS_SETTINGS_SUGGESTIONS_FROM_GEMINI_QUALITY_LOGGING_SUBTITLE" desc="Subtitle of the collapsible quality logging section in enhanced autofill settings.">
+    When you make a request for enhanced autofill, your usage data, requests, and page details are shared with Google to improve the autofill experience
+  </message>
   <message name="IDS_SETTINGS_SUGGESTIONS_FROM_GEMINI_WHEN_USED_1" desc="Bullet point 1 under When used in the quality logging section.">
-    When you type a request for enhanced autofill, Chrome logs how you use the feature, such as whether you accept, edit, or ignore autofill suggestions
+    Chrome logs how you use the feature, such as your requests and behavior when you accept or ignore suggestions
   </message>
   <message name="IDS_SETTINGS_SUGGESTIONS_FROM_GEMINI_WHEN_USED_2" desc="Bullet point 2 under When used in the quality logging section.">
-    The requests sent to Personal Intelligence with Gemini are analyzed to improve autofill
+    System data, including form fields and feature performance, is analyzed to improve future suggestions
   </message>
   <message name="IDS_SETTINGS_SUGGESTIONS_FROM_GEMINI_CONSIDER_1" desc="Bullet point 1 under Things to consider in the quality logging section.">
-    Page titles and URLs are sent to Google and may be reviewed by humans
+    Your requests, page titles, and URLs are sent to Google and may be reviewed to improve enhanced autofill
   </message>
   <message name="IDS_SETTINGS_SUGGESTIONS_FROM_GEMINI_CONSIDER_2" desc="Bullet point 2 under Things to consider in the quality logging section.">
     The info you autofill is never seen by anyone
@@ -1680,33 +1681,24 @@
     Your content will not be used to improve AI. Your organization may change these settings at any time.
   </message>
 
-  <!-- Personal Context Notice in Autofill Popup -->
-  <message name="IDS_AUTOFILL_POPUP_PERSONAL_CONTEXT_NOTICE_TITLE" translateable="false" desc="Title for the personal context notice in Autofill popup.">
-    Now autofill info from Gmail and more.
-  </message>
-  <message name="IDS_AUTOFILL_POPUP_PERSONAL_CONTEXT_NOTICE_CONTEXT" translateable="false" desc="Context text for the personal context notice in Autofill popup.">
-    Powered by Gemini with Personal Intelligence.
-  </message>
-  <message name="IDS_AUTOFILL_POPUP_PERSONAL_CONTEXT_NOTICE_LINK_TEXT" translateable="false" desc="Link text for the personal context notice in Autofill popup.">
-    Manage settings
-  </message>
-  <message name="IDS_AUTOFILL_POPUP_PERSONAL_CONTEXT_NOTICE_OK_BUTTON" translateable="false" desc="Got it button text in Autofill popup personal context notice.">
-    OK
-  </message>
-
-  <!-- Personal Context Notice in AtMemory Popup -->
-  <message name="IDS_AT_MEMORY_POPUP_PERSONAL_CONTEXT_NOTICE_TITLE" translateable="false" desc="Title for the personal context notice in AtMemory popup.">
-    Now you can find and fill info from Gmail and more.
-  </message>
-  <message name="IDS_AT_MEMORY_POPUP_PERSONAL_CONTEXT_NOTICE_CONTEXT" translateable="false" desc="Context text for the personal context notice in AtMemory popup.">
-    Powered by Personal Intelligence with Gemini. Page titles and URLs are sent to Google and may be reviewed by humans.
-  </message>
-  <message name="IDS_AT_MEMORY_POPUP_PERSONAL_CONTEXT_NOTICE_LINK_TEXT" translateable="false" desc="Link text for the personal context notice in AtMemory popup.">
-    Manage settings
-  </message>
-  <message name="IDS_AT_MEMORY_POPUP_PERSONAL_CONTEXT_NOTICE_OK_BUTTON" translateable="false" desc="Got it button text in AtMemory popup personal context notice.">
-    OK
-  </message>
+  <!-- Personal Context Notice in Ambient Autofill/AtMemory Popup on Desktop -->
+  <if expr="not is_android and not is_ios">
+    <message name="IDS_AUTOFILL_POPUP_PERSONAL_CONTEXT_NOTICE_TITLE" translateable="false" desc="Title for the personal context notice in Ambient Autofill/AtMemory popup.">
+      Now you can find and fill info from Gmail and more.
+    </message>
+    <message name="IDS_AUTOFILL_POPUP_PERSONAL_CONTEXT_NOTICE_CONTEXT" translateable="false" desc="Context text for the default personal context notice in AmbientAutofill popup or in AtMemory popup when the logging is disabled by policy.">
+      Powered by Personal Intelligence with Gemini.
+    </message>
+    <message name="IDS_AUTOFILL_POPUP_PERSONAL_CONTEXT_NOTICE_CONTEXT_WITH_LOGGING" translateable="false" desc="Context text for the personal context notice in AtMemory popup when the logging is enabled.">
+      Powered by Personal Intelligence with Gemini. Your requests, page titles, and URLs may be reviewed to improve enhanced autofill.
+    </message>
+    <message name="IDS_AUTOFILL_POPUP_PERSONAL_CONTEXT_NOTICE_LINK_TEXT" translateable="false" desc="Link text for the personal context notice in Ambient Autofill/AtMemory popup.">
+      Manage settings
+    </message>
+    <message name="IDS_AUTOFILL_POPUP_PERSONAL_CONTEXT_NOTICE_OK_BUTTON" translateable="false" desc="Got it button text for the personal context notice in Ambient Autofill/AtMemory popup.">
+      OK
+    </message>
+  </if>
 
   <!-- Personal Context Notice in Autofill Bottomsheet -->
   <message name="IDS_AUTOFILL_PERSONAL_CONTEXT_NOTICE_SHEET_CONTENT_DESCRIPTION" desc="Accessibility string read when the autofill personal context notice sheet is opened." formatter_data="android_java">

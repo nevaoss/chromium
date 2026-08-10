@@ -41,6 +41,7 @@ chromium-metrics-reviews@google.com.
 
 <variants name="InvocationSources">
   <variant name="AIHub"/>
+  <variant name="AppBarAimButton"/>
   <variant name="AppMenu"/>
   <variant name="CobrowsePinnedToolbarButton"/>
   <variant name="CobrowseToolbarButton"/>
@@ -55,6 +56,7 @@ chromium-metrics-reviews@google.com.
   <variant name="HomeworkActionChip"/>
   <variant name="LVFGallery"/>
   <variant name="LVFShutterButton"/>
+  <variant name="NtpActionChips"/>
   <variant name="NtpContextualQuery"/>
   <variant name="Omnibox"/>
   <variant name="OmniboxContextualQuery"/>

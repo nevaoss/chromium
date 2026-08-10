@@ -222,7 +222,7 @@ void MediaControlPlaybackSpeedListElement::RefreshPlaybackSpeedListMenu() {
   }
   RequestAnimationFrameCallback* callback =
       MakeGarbageCollected<RequestAnimationFrameCallback>(this);
-  GetDocument().RequestAnimationFrame(callback);
+  GetDocument().RequestAnimationFrame(callback, FrameCallbackType::kInternal);
 }
 
 void MediaControlPlaybackSpeedListElement::CenterCheckedItem() {

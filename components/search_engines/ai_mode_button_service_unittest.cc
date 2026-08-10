@@ -218,7 +218,7 @@ TEST_F(AiModeButtonServiceTest, IsValidConfig) {
 TEST(AiModeButtonConfigTest, AllCompiledThirdPartyConfigsAreValid) {
   // Verify that every single 3p config defined in ai_mode_button_config.json is
   // valid.
-  for (const auto* config : ai_mode_button_config::kAiModeButtonConfigs) {
+  for (const auto& config : ai_mode_button_config::kAiModeButtonConfigs) {
     SCOPED_TRACE(
         base::StringPrintf("Testing ID %d", static_cast<int>(config->id)));
     EXPECT_TRUE(TestAiModeButtonService::IsValidConfig(*config));
@@ -229,7 +229,7 @@ TEST(AiModeButtonConfigTest, CompiledThirdPartyConfigsContainNoDuplicateIds) {
   // Verify that every single 3p config defined in ai_mode_button_config.json
   // has a unique `id`.
   std::set<SearchEngineType> seen;
-  for (const auto* config : ai_mode_button_config::kAiModeButtonConfigs) {
+  for (const auto& config : ai_mode_button_config::kAiModeButtonConfigs) {
     SCOPED_TRACE(
         base::StringPrintf("Testing ID %d", static_cast<int>(config->id)));
     EXPECT_TRUE(seen.insert(config->id).second);
@@ -276,6 +276,13 @@ TEST_F(AiModeButtonServiceTest, DebugConfig) {
     ASSERT_TRUE(config);
     EXPECT_EQ(config->id, SearchEngineType::SEARCH_ENGINE_BING);
     EXPECT_EQ(std::u16string_view(config->text), u"DEBÜG");
+    EXPECT_EQ(std::u16string_view(config->tooltip), u"Ask DEBÜG");
+    EXPECT_EQ(std::u16string_view(config->a11y_label),
+              u"DEBÜG button, press Enter to ask DEBÜG");
+    EXPECT_THAT(std::u16string_view(config->context_menu_label),
+                testing::AnyOf(u"Always Show DEBÜG", u"Always show DEBÜG"));
+    EXPECT_EQ(std::u16string_view(config->placeholder_text),
+              u"Press tab then enter to ask DEBÜG");
   }
 }
 

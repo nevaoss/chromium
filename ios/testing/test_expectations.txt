@@ -58,9 +58,12 @@ crbug.com/523267238 SmokeTestCase/testFlakyCrashPassingMethod [ Pass Crash ]
 crbug.com/533057223 [ iPad Simulator ] SigninCoordinatorTestCase/testSyncOnWhenPassphraseIntroducedAfterSignIn [ Pass Failure ]
 crbug.com/533075931 [ iPad Simulator ] GeminiCopresenceTestCase/testConversationPersistenceOnSignOut [ Pass Failure ]
 
+# Gardening suppression 2026-07-24
+crbug.com/536840723 [ iPad Simulator ] TabGridTestCase/testEmptyStateAfterNoResultsSearchForIncognitoTabGrid [ Pass Failure ]
+
 # Multi-window iPad iOS 27 issues
-crbug.com/508127830 [ iOS27 Device ] MultitaskingWindowTestCase/testResizeToCompactAndReturnToFullscreen [ Skip ]
-crbug.com/508127830 [ iOS27 Device ] MultitaskingWindowTestCase/testStatusBarTapToWindowedModeAndMultipleResizes [ Skip ]
-crbug.com/508127830 [ iOS27 Device ] MultitaskingWindowTestCase/testStatusBarTapToWindowedModeAndResize [ Skip ]
-crbug.com/508127830 [ iOS27 Device ] MultitaskingWindowTestCase/testStatusBarTapToWindowedModeAndReturnToFullscreen [ Skip ]
-crbug.com/508127830 [ iOS27 Device ] SearchEngineTestCase/testOpenSecondWindow [ Skip ]
+crbug.com/508127830 [ iOS27 Device ] MultitaskingWindowTestCase/testResizeToCompactAndReturnToFullscreen [ Pass Failure ]
+crbug.com/508127830 [ iOS27 Device ] MultitaskingWindowTestCase/testStatusBarTapToWindowedModeAndMultipleResizes [ Pass Failure ]
+crbug.com/508127830 [ iOS27 Device ] MultitaskingWindowTestCase/testStatusBarTapToWindowedModeAndResize [ Pass Failure ]
+crbug.com/508127830 [ iOS27 Device ] MultitaskingWindowTestCase/testStatusBarTapToWindowedModeAndReturnToFullscreen [ Pass Failure ]
+crbug.com/508127830 [ iOS27 Device ] SearchEngineTestCase/testOpenSecondWindow [ Pass Failure ]

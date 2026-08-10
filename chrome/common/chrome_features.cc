@@ -591,6 +591,9 @@ const base::FeatureParam<int> kGlicMinRequiredRamMb{
 const base::FeatureParam<bool> kGlicAdaptiveToolbarAutoPin{
     &kGlic, "adaptive-toolbar-auto-pin", true};
 
+const base::FeatureParam<bool> kGlicBottomSheetPromo{
+    &kGlic, "glic-bottom-sheet-promo", true};
+
 // Controls whether the Glic feature uses multiple instances or not.
 BASE_FEATURE(kGlicMultiInstance, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -1914,6 +1917,11 @@ BASE_FEATURE(kWebUIToolbarProcessOverheadExperiment,
 // Switches location bar over to a WebUI implementation.
 // See crbug.com/470042732
 BASE_FEATURE(kWebUILocationBar, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// When this is enabled, all the checks for enabled individual WebUI toolbar
+// controls in chrome/browser/ui/ui_features.h will return true.
+BASE_FEATURE(kWebUIToolbar, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // The following feature params control the crash recovery behavior of the Web
 // UI reload button. If the renderer crashes, we will try to recover it by
 // reloading the contents until the number of crashes reaches

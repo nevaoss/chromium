@@ -74,8 +74,9 @@ class AtMemoryManager {
   // Called when suggestions are hidden.
   void OnPopupHidden();
 
-  // Fills or previews the selected search result.
-  void FillOrPreviewSearchResult(
+  // Fills or previews the selected search result. Returns `IsAsync(true)` if
+  // the operation involves reauthentication or server communication.
+  IsAsync FillOrPreviewSearchResult(
       mojom::ActionPersistence action_persistence,
       const FormGlobalId& form_id,
       const FieldGlobalId& field_id,
@@ -83,8 +84,9 @@ class AtMemoryManager {
       base::optional_ref<const AutofillSuggestionDelegate::SuggestionMetadata>
           metadata = std::nullopt);
 
-  // Fills the selected search result.
-  void FillSearchResult(
+  // Fills the selected search result. Returns `IsAsync(true)` if the operation
+  // involves reauthentication or server communication.
+  IsAsync FillSearchResult(
       const FormGlobalId& form_id,
       const FieldGlobalId& field_id,
       const Suggestion& suggestion,
@@ -141,12 +143,14 @@ class AtMemoryManager {
   // Clears all currently shown suggestions in the UI.
   void ClearSuggestions();
 
-  // Fills the unmasked IBAN value after fetching it.
-  void FillIban(const std::variant<Iban::Guid, Iban::InstrumentId>& identifier,
-                const FormGlobalId& form_id,
-                const FieldGlobalId& field_id,
-                const Suggestion& suggestion,
-                std::unique_ptr<AtMemoryMetricsRecorder> metrics);
+  // Fills the unmasked IBAN value after fetching it. Returns `IsAsync(true)` if
+  // the operation involves reauthentication or server communication.
+  IsAsync FillIban(
+      const std::variant<Iban::Guid, Iban::InstrumentId>& identifier,
+      const FormGlobalId& form_id,
+      const FieldGlobalId& field_id,
+      const Suggestion& suggestion,
+      std::unique_ptr<AtMemoryMetricsRecorder> metrics);
 
   // Fills the unmasked credit card value after fetching it.
   void FillCreditCard(const std::string& credit_card_guid,
@@ -156,8 +160,9 @@ class AtMemoryManager {
                       std::unique_ptr<AtMemoryMetricsRecorder> metrics);
 
   // Triggers reauthentication and fetching of the unmasked Personal Context
-  // value, which fills the field upon completion.
-  void FillSensitivePersonalContextData(
+  // value, which fills the field upon completion. Returns `IsAsync(true)` if
+  // the operation involves reauthentication or server communication.
+  IsAsync FillSensitivePersonalContextData(
       const FormGlobalId& form_id,
       const FieldGlobalId& field_id,
       const Suggestion& suggestion,
@@ -173,15 +178,18 @@ class AtMemoryManager {
 
   // Fills sensitive identity data by selecting the appropriate filling path
   // depending on whether the data is sourced from Autofill AI or Personal
-  // Context.
-  void FillSensitiveAutofillAiOrPersonalContextData(
+  // Context. Returns `IsAsync(true)` if the operation involves reauthentication
+  // or server communication.
+  IsAsync FillSensitiveAutofillAiOrPersonalContextData(
       const FormGlobalId& form_id,
       const FieldGlobalId& field_id,
       const Suggestion& suggestion,
       std::unique_ptr<AtMemoryMetricsRecorder> metrics);
 
-  // Fills the unmasked AutofillAI value after fetching it.
-  void FillSensitiveAutofillAiData(
+  // Fills the unmasked AutofillAI value after fetching it. Returns
+  // `IsAsync(true)` if the operation involves reauthentication or server
+  // communication.
+  IsAsync FillSensitiveAutofillAiData(
       const EntityInstance::EntityId& entity_id,
       const FormGlobalId& form_id,
       const FieldGlobalId& field_id,

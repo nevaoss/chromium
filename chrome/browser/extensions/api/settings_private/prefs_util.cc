@@ -66,6 +66,7 @@
 #include "components/safe_browsing/core/common/safe_browsing_prefs.h"
 #include "components/saved_tab_groups/public/pref_names.h"
 #include "components/search_engines/default_search_manager.h"
+#include "components/search_engines/search_engines_pref_names.h"
 #include "components/signin/public/base/signin_pref_names.h"
 #include "components/skills/public/skills_prefs.h"
 #include "components/spellcheck/browser/pref_names.h"
@@ -286,7 +287,7 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
       settings_api::PrefType::kBoolean;
   (*s_allowlist)[::prefs::kTabSearchPinnedToTabstrip] =
       settings_api::PrefType::kBoolean;
-  (*s_allowlist)[::prefs::kProjectsPanelPinnedToTabstrip] =
+  (*s_allowlist)[::prefs::kOrganizerPanelPinnedToTabstrip] =
       settings_api::PrefType::kBoolean;
   (*s_allowlist)[::prefs::kEverythingMenuPinnedToTabstrip] =
       settings_api::PrefType::kBoolean;
@@ -570,6 +571,8 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
   // Search page.
   (*s_allowlist)[DefaultSearchManager::kDefaultSearchProviderDataPrefName] =
       settings_api::PrefType::kDictionary;
+  (*s_allowlist)[::prefs::kDefaultSearchProviderEnabled] =
+      settings_api::PrefType::kBoolean;
   (*s_allowlist)[::omnibox::kKeywordSpaceTriggeringEnabled] =
       settings_api::PrefType::kBoolean;
 

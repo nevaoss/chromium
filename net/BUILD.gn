@@ -1554,6 +1554,7 @@ component("net") {
       "disk_cache/cache_util_posix.cc",
       "disk_cache/simple/simple_util_posix.cc",
       "http/url_security_manager_posix.cc",
+      "socket/extra_socket_defines.h",
       "socket/socket_posix.cc",
       "socket/socket_posix.h",
       "socket/tcp_socket_posix.cc",
@@ -2413,6 +2414,10 @@ static_library("test_support") {
   ]
 
   if (chrome_root_store_supported) {
+    sources += [
+      "test/chrome_root_store_test_util.cc",
+      "test/chrome_root_store_test_util.h",
+    ]
     deps += [ "//net/cert:root_store_proto_lite" ]
   }
 

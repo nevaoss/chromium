@@ -37,6 +37,7 @@
 #include "components/autofill/core/browser/foundations/with_test_autofill_client_driver_manager.h"
 #include "components/autofill/core/browser/integrators/autofill_ai/autofill_ai_manager_test_api.h"
 #include "components/autofill/core/browser/integrators/autofill_ai/metrics/autofill_ai_metrics.h"
+#include "components/autofill/core/browser/integrators/autofill_ai/metrics/personal_context_metrics.h"
 #include "components/autofill/core/browser/network/autofill_ai/autofill_ai_personal_context_access_manager.h"
 #include "components/autofill/core/browser/network/autofill_ai/mock_autofill_ai_personal_context_access_manager.h"
 #include "components/autofill/core/browser/proto/server.pb.h"
@@ -186,12 +187,7 @@ class MockAutofillClient : public TestAutofillClient {
   MOCK_METHOD(void, CloseEntityImportBubble, (), (override));
   MOCK_METHOD(void, ShowAutofillAiLocalSaveNotification, (), (override));
   MOCK_METHOD(void, ShowAutofillAiPreFetchFailureNotification, (), (override));
-  MOCK_METHOD(void,
-              TriggerAutofillAiSavePromptSurvey,
-              (bool prompt_accepted,
-               EntityType entity_type,
-               const base::flat_set<EntityTypeName>& saved_entities),
-              (override));
+
   MOCK_METHOD(void,
               TriggerAutofillAiFillingJourneySurvey,
               (bool suggestion_accepted,
@@ -1377,7 +1373,7 @@ TEST_F(AutofillAiManagerImportFormTest,
   EXPECT_CALL(autofill_client(), ShowEntityImportBubble)
       .WillOnce(DoAll(SaveArg<0>(&new_entity), SaveArg<1>(&old_entity),
                       MoveArg<3>(&save_callback)));
-  EXPECT_CALL(autofill_client(), TriggerAutofillAiSavePromptSurvey).Times(0);
+
   EXPECT_TRUE(manager().OnFormSubmitted(*form, /*ukm_source_id=*/{}));
   // This is a save bubble, `old_entity` should not exist.
   EXPECT_FALSE(old_entity.has_value());
@@ -1412,7 +1408,7 @@ TEST_F(AutofillAiManagerImportFormTest,
   AutofillClient::EntityImportPromptResultCallback save_callback;
   EXPECT_CALL(autofill_client(), ShowEntityImportBubble)
       .WillOnce(MoveArg<3>(&save_callback));
-  EXPECT_CALL(autofill_client(), TriggerAutofillAiSavePromptSurvey).Times(0);
+
   EXPECT_TRUE(manager().OnFormSubmitted(*form, /*ukm_source_id=*/{}));
 
   // Decline the bubble.
@@ -2457,8 +2453,8 @@ TEST_F(AutofillAiManagerTest,
                                       EntityType(EntityTypeName::kPassport)))
       .WillRepeatedly(Return(
           AutofillAiPersonalContextAccessManager::RequestStatus::kSuccess));
-  EXPECT_CALL(pcontext_manager(),
-              ServerHasDataAvailable(EntityType(EntityTypeName::kPassport)))
+  EXPECT_CALL(pcontext_manager(), ServerHasSpiiPresenceSignal(
+                                      EntityType(EntityTypeName::kPassport)))
       .WillRepeatedly(Return(true));
 
   ukm::SourceId ukm_source_id =
@@ -2630,8 +2626,8 @@ TEST_P(AutofillAiManagerCacheReadinessTest,
   EXPECT_CALL(pcontext_manager(), GetPrefetchStatusByEntityType(
                                       EntityType(EntityTypeName::kPassport)))
       .WillRepeatedly(Return(test_case.prefetch_status));
-  EXPECT_CALL(pcontext_manager(),
-              ServerHasDataAvailable(EntityType(EntityTypeName::kPassport)))
+  EXPECT_CALL(pcontext_manager(), ServerHasSpiiPresenceSignal(
+                                      EntityType(EntityTypeName::kPassport)))
       .WillRepeatedly(Return(test_case.server_has_spii_data));
 
   if (test_case.has_entity_data) {

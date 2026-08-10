@@ -5,18 +5,27 @@
 #ifndef COMPONENTS_AUTOFILL_CORE_BROWSER_INTEGRATORS_AT_MEMORY_MEMORY_DATA_TYPE_UTIL_H_
 #define COMPONENTS_AUTOFILL_CORE_BROWSER_INTEGRATORS_AT_MEMORY_MEMORY_DATA_TYPE_UTIL_H_
 
+#include <string>
 #include <string_view>
+#include <vector>
 
 #include "base/containers/span.h"
-#include "components/accessibility_annotator/core/annotation_reducer/memory_data_type.h"
+#include "components/autofill/core/browser/data_model/autofill_ai/entity_type.h"
+#include "components/autofill/core/browser/integrators/at_memory/memory_data_type.h"
 #include "components/autofill/core/browser/integrators/at_memory/memory_search_result.h"
-#include "components/personal_context/proto/features/common_data.pb.h"
+
+namespace personal_context::proto {
+class AtMemoryQueryResponse;
+class AtMemorySearchResult;
+class Entity;
+enum MemoryDataType : int;
+}  // namespace personal_context::proto
 
 namespace autofill {
 
 // Returns true if the given `type` is considered sensitive personal
 // information.
-bool IsSpiiMemoryDataType(accessibility_annotator::MemoryDataType type);
+bool IsSpiiMemoryDataType(MemoryDataType type);
 
 // Converts a set of memory entry values into `personal_context::proto::Entity`.
 // `value` is the primary value of the memory entry corresponding to the
@@ -25,8 +34,42 @@ bool IsSpiiMemoryDataType(accessibility_annotator::MemoryDataType type);
 // expiration date, issuing country) for the memory entry.
 personal_context::proto::Entity ToPersonalContextEntity(
     std::u16string_view value,
-    accessibility_annotator::MemoryDataType memory_data_type,
+    MemoryDataType memory_data_type,
     base::span<const EntryMetadata> metadata_list);
+
+// Translates Autofill attribute names to entry types.
+MemoryDataType AttributeTypeToMemoryDataType(AttributeType type);
+
+// Returns the localized name of the entry type.
+std::u16string GetMemoryDataTypeNameForI18n(MemoryDataType type);
+
+// Converts an `AtMemoryQueryResponse` proto into a list of
+// `MemorySearchResult.`
+std::vector<MemorySearchResult> ExtractRemoteResults(
+    const personal_context::proto::AtMemoryQueryResponse& response,
+    std::string_view app_locale);
+
+// The following functions are exposed in the header for testing purposes only:
+
+// Converts a `proto::MemoryDataType` to a local `MemoryDataType`.
+MemoryDataType ToMemoryDataType(
+    personal_context::proto::MemoryDataType data_type);
+
+// Extracts data sources (e.g. Gmail, Photos) from an `AtMemorySearchResult`
+// proto.
+std::vector<MemoryEntrySource> ExtractSources(
+    const personal_context::proto::AtMemorySearchResult& proto_result);
+
+// Extracts secondary metadata attributes from an `AtMemorySearchResult` proto.
+std::vector<EntryMetadata> ExtractMetadata(
+    const personal_context::proto::AtMemorySearchResult& proto_result,
+    std::string_view app_locale);
+
+// Converts a single `AtMemorySearchResult` proto into a `MemorySearchResult`
+// struct.
+MemorySearchResult ConvertToMemorySearchResult(
+    const personal_context::proto::AtMemorySearchResult& proto_result,
+    std::string_view app_locale);
 
 }  // namespace autofill
 

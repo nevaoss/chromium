@@ -9,6 +9,7 @@
 #include "services/metrics/public/cpp/ukm_recorder.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
+#include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/layout/layout_object.h"
 #include "third_party/blink/renderer/core/paint/timing/paint_timing.h"
 #include "third_party/blink/renderer/core/paint/timing/paint_timing_utils.h"
@@ -52,14 +53,36 @@ void LargestContentfulPaintManager::OnLcpMetricsForReportingChanged() {
   if (!largest_contentful_paint_calculator_) {
     return;
   }
+  const LargestContentfulPaintDetails& lcp_details =
+      largest_contentful_paint_calculator_->LatestLcpDetails();
   DOMWindowPerformance::performance(*window_.Get())
       ->timingForReporting()
-      ->SetLargestContentfulPaintDetailsForMetrics(
-          largest_contentful_paint_calculator_->LatestLcpDetails());
+      ->SetLargestContentfulPaintDetailsForMetrics(lcp_details);
   paint_timing::NotifyLoaderPerformanceTimingChanged(window_);
+
+  // Notify the browser of the updated largest contentful paint candidate so
+  // that startup profiling can observe it (mirrors the FCP notification), and
+  // pass the candidate's renderer-side presentation timestamp so the browser
+  // does not have to approximate the timing on IPC arrival. The candidate is
+  // the larger of the image and text records, with ties broken by the earlier
+  // paint time, matching LargestContentfulPaintCalculator's own selection in
+  // UpdateLatestLcpDetailsTypeIfNeeded().
+  const bool text_is_larger = lcp_details.largest_text_paint_size >
+                                  lcp_details.largest_image_paint_size ||
+                              (lcp_details.largest_text_paint_size ==
+                                   lcp_details.largest_image_paint_size &&
+                               lcp_details.largest_text_paint_time <
+                                   lcp_details.largest_image_paint_time);
+  const base::TimeTicks presentation_time =
+      text_is_larger ? lcp_details.largest_text_paint_time
+                     : lcp_details.largest_image_paint_time;
+  // LocalFrame::OnLargestContentfulPaint() filters to the outermost main frame.
+  if (LocalFrame* frame = window_->GetFrame()) {
+    frame->OnLargestContentfulPaint(presentation_time);
+  }
 }
 
-void LargestContentfulPaintManager::OnFirstInputOrScroll() {
+void LargestContentfulPaintManager::OnInputOrScroll() {
   // `PaintTiming` is only expected to call this once.
   CHECK(largest_contentful_paint_calculator_);
 
@@ -83,29 +106,45 @@ void LargestContentfulPaintManager::Trace(Visitor* visitor) const {
   visitor->Trace(largest_ignored_image_);
 }
 
-void LargestContentfulPaintManager::InitializePaintTracking(
+void LargestContentfulPaintManager::OnElementFirstContentfulPaint(
     ImageRecord* record) {
   CHECK(largest_contentful_paint_calculator_);
-  contains_full_viewport_image_ |=
-      record->GetEffectiveVisualSizeResult().is_viewport_covered;
-  if (largest_contentful_paint_calculator_->ShouldTrackForPaintTiming(
+  if (!largest_contentful_paint_calculator_->ShouldTrackForPaintTiming(
           *record)) {
-    record->SetIsNeededForLargestContentfulPaint(true);
-    if (IgnorePaintTimingScope::IgnoreDepth() == 0) {
-      largest_contentful_paint_calculator_->OnImageFirstPaint(record);
-    }
+    return;
   }
+  // Inform the `largest_contentful_paint_calculator_` so it can update the
+  // largest pending image if needed.
+  largest_contentful_paint_calculator_->OnImageFirstPaint(record);
 }
 
-void LargestContentfulPaintManager::InitializePaintTracking(
-    TextRecord* record) {
+void LargestContentfulPaintManager::OnElementFirstAnimatedFramePaint(
+    ImageRecord* record) {
+  // Treat this the same as the sufficiently loaded contentful paint, setting
+  // the LCP bit if needed so the record is considered for LCP (for metrics)
+  // after this frame is presented.
+  OnElementLastContentfulPaint(record);
+}
+
+void LargestContentfulPaintManager::OnElementLastContentfulPaint(
+    ImageRecord* record) {
+  contains_full_viewport_image_ |=
+      record->GetEffectiveVisualSizeResult().is_viewport_covered;
+  CHECK(largest_contentful_paint_calculator_);
+  record->SetIsNeededForLargestContentfulPaint(
+      largest_contentful_paint_calculator_->ShouldTrackForPaintTiming(*record));
+}
+
+void LargestContentfulPaintManager::OnElementLastContentfulPaint(
+    TextRecord* record,
+    ElementPaintStatus status) {
   CHECK(largest_contentful_paint_calculator_);
   // Note: unlike images, this tracks any records that are eligible for LCP,
   // even if they're not larger than the current candidate. This affects the
   // HUD, but doesn't affect LCP.
-  if (largest_contentful_paint_calculator_->IsEligibleForLcp(*record)) {
-    record->SetIsNeededForLargestContentfulPaint(true);
-  }
+  record->SetIsNeededForLargestContentfulPaint(
+      status == ElementPaintStatus::kFirstPaint &&
+      largest_contentful_paint_calculator_->IsEligibleForLcp(*record));
 }
 
 void LargestContentfulPaintManager::OnImageRemoved(ImageRecord* record,
@@ -115,7 +154,7 @@ void LargestContentfulPaintManager::OnImageRemoved(ImageRecord* record,
   // `record` is non-null if the image was removed while pending. In that case,
   // notify the lcp calculator so it can clear the largest pending image, if
   // that was removed.
-  if (record && record->IsNeededForLargestContentfulPaint()) {
+  if (record) {
     largest_contentful_paint_calculator_->OnPendingImageRemoved(record);
   }
   // Also check if the `largest_ignored_image_` was removed. Compare
@@ -187,9 +226,7 @@ void LargestContentfulPaintManager::MaybeUpdateLargestIgnoredText(
     return;
   }
 
-  InitializePaintTracking(record);
-
-  if (record->IsNeededForLargestContentfulPaint() &&
+  if (largest_contentful_paint_calculator_->IsEligibleForLcp(*record) &&
       record->IsEffectiveSizeLargerThan(GetLargestIgnoredTextIfNotRemoved())) {
     largest_ignored_text_.key = &object;
     largest_ignored_text_.value = record;
@@ -216,10 +253,9 @@ void LargestContentfulPaintManager::MaybeUpdateLargestIgnoredImage(
   // TODO(crbug.com/503691215): Can we use the actual image load time here
   // rather instead? It's not clear why this inconsistency exists.
   record->SetLoadTime(base::TimeTicks::Now());
+  record->MarkLoaded();
 
-  InitializePaintTracking(record);
-
-  if (record->IsNeededForLargestContentfulPaint() &&
+  if (largest_contentful_paint_calculator_->IsEligibleForLcp(*record) &&
       record->IsEffectiveSizeLargerThan(largest_ignored_image_)) {
     largest_ignored_image_ = record;
   }

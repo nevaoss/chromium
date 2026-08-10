@@ -45,6 +45,7 @@
 #include "chrome/browser/ui/views/profiles/profile_picker_feature_promo_controller.h"
 #include "chrome/browser/ui/views/profiles/profile_picker_flow_controller.h"
 #include "chrome/browser/ui/views/profiles/profile_picker_glic_flow_controller.h"
+#include "chrome/browser/ui/views/profiles/profile_picker_omnibox_everywhere_flow_controller.h"
 #include "chrome/browser/ui/views/profiles/profile_picker_toolbar.h"
 #include "chrome/browser/ui/views/profiles/profile_picker_utils.h"
 #include "chrome/browser/ui/views/profiles/profile_picker_widget.h"
@@ -130,6 +131,7 @@ bool IsClassicProfilePickerFlow(const ProfilePicker::Params& params) {
       return true;
     case ProfilePicker::EntryPoint::kFirstRun:
     case ProfilePicker::EntryPoint::kGlicManager:
+    case ProfilePicker::EntryPoint::kOmniboxEverywhere:
       return false;
   }
 }
@@ -494,6 +496,10 @@ SkColor ProfilePickerView::GetPreferredBackgroundColor() const {
   return GetColorProvider()->GetColor(kColorToolbar);
 }
 
+bool ProfilePickerView::CanNavigateBack() const {
+  return flow_controller_ && flow_controller_->CanNavigateBack();
+}
+
 bool ProfilePickerView::HandleKeyboardEvent(
     content::WebContents* source,
     const input::NativeWebKeyboardEvent& event) {
@@ -711,6 +717,15 @@ ProfilePickerView::CreateFlowController(Profile* picker_profile,
         std::move(profile_picked_callback));
   }
 
+  if (params_.entry_point() == ProfilePicker::EntryPoint::kOmniboxEverywhere) {
+    auto profile_picked_callback =
+        base::BindOnce(&ProfilePicker::Params::NotifyProfilePicked,
+                       base::Unretained(&params_));
+    return std::make_unique<ProfilePickerOmniboxEverywhereFlowController>(
+        /*host=*/this, std::move(clear_host_callback),
+        std::move(profile_picked_callback));
+  }
+
   DCHECK(IsClassicProfilePickerFlow(params_));
   return std::make_unique<ProfilePickerFlowController>(
       /*host=*/this, std::move(clear_host_callback), params_.entry_point(),
@@ -823,7 +838,9 @@ bool ProfilePickerView::AcceleratorPressed(const ui::Accelerator& accelerator) {
       GetWidget()->Minimize();
       break;
     case IDC_BACK: {
-      flow_controller_->OnNavigateBackRequested();
+      if (CanNavigateBack()) {
+        flow_controller_->OnNavigateBackRequested();
+      }
       break;
     }
     // Always reload bypassing cache.

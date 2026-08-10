@@ -5,6 +5,7 @@
 #include "components/multistep_filter/core/logging/multistep_filter_metrics_tracker.h"
 
 #include <algorithm>
+#include <utility>
 
 #include "base/containers/span.h"
 #include "base/strings/strcat.h"
@@ -17,6 +18,8 @@
 #include "components/multistep_filter/core/data_models/suggestion_user_decision.h"
 #include "components/multistep_filter/core/logging/multistep_filter_metrics.h"
 #include "components/multistep_filter/core/prefs/retention_state_snapshot.h"
+#include "components/ukm/test_ukm_recorder.h"
+#include "services/metrics/public/cpp/ukm_builders.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -37,6 +40,7 @@ FilterNavigationMetadata CreateDefaultMetadata() {
   base::TimeTicks now = base::TimeTicks::Now();
   metadata.navigation_start_time = now;
   metadata.navigation_finish_time = now;
+  metadata.ukm_source_id = ukm::UkmRecorder::GetNewSourceID();
   return metadata;
 }
 
@@ -73,6 +77,7 @@ UrlFilterSuggestion CreateSuggestionWithAttributes(
   params.source_host = u"source.com";
   params.triggering_host = "trigger.com";
   params.task_type = std::move(task_type);
+  params.extraction_timestamp = base::Time::Now();
   for (const auto& [key, val] : attrs) {
     params.attribute_ui_labels.emplace_back(
         FilterSuggestionCandidateAttribute(key, base::UTF8ToUTF16(key)),
@@ -275,6 +280,7 @@ TEST_F(MultistepFilterMetricsTrackerTest,
 TEST_F(MultistepFilterMetricsTrackerTest,
        ReopenedCueAcceptedOnSameDomainAgeLogged) {
   base::HistogramTester histogram_tester;
+  ukm::TestAutoSetUkmRecorder ukm_recorder;
 
   // Suggestion created with matching hosts.
   UrlFilterSuggestion::Params params;
@@ -286,9 +292,12 @@ TEST_F(MultistepFilterMetricsTrackerTest,
   UrlFilterSuggestion suggestion(std::move(params));
   task_environment_.FastForwardBy(base::Minutes(10) -
                                   base::Milliseconds(300));  // T0 + 9m 59.7s
+  ukm::SourceId expected_source_id = ukm::kInvalidSourceId;
   {
     MultistepFilterMetricsTracker tracker;
-    TriggerInitialNavigation(tracker);
+    FilterNavigationMetadata metadata = CreateDefaultMetadata();
+    expected_source_id = metadata.ukm_source_id;
+    tracker.OnNavigationFinished(metadata);
     task_environment_.FastForwardBy(base::Milliseconds(300));  // T0 + 10m
     tracker.OnSuggestionShown(suggestion, RetentionStateSnapshot());
     tracker.OnSuggestionReopened();
@@ -303,6 +312,54 @@ TEST_F(MultistepFilterMetricsTrackerTest,
       kMultistepFilterSuggestionAgeAcceptedHistogram, 15, 1);
   histogram_tester.ExpectUniqueSample(
       kMultistepFilterSuggestionAgeAcceptedOnSameDomainHistogram, 15, 1);
+
+  // Verify UKM.
+  std::vector<raw_ptr<const ukm::mojom::UkmEntry, VectorExperimental>> entries =
+      ukm_recorder.GetEntriesByName(
+          ukm::builders::MultistepFilter_UiSession::kEntryName);
+  ASSERT_EQ(1u, entries.size());
+  const ukm::mojom::UkmEntry* entry = entries[0];
+  EXPECT_EQ(expected_source_id, entry->source_id);
+  const int64_t* session_id_metric = ukm_recorder.GetEntryMetric(
+      entry, ukm::builders::MultistepFilter_UiSession::kSessionIdName);
+  ASSERT_NE(nullptr, session_id_metric);
+  EXPECT_NE(0, *session_id_metric);
+  ukm_recorder.ExpectEntryMetric(
+      entry, ukm::builders::MultistepFilter_UiSession::kTaskTypeName,
+      std::to_underlying(MultistepFilterTaskType::kSearchFlights));
+  ukm_recorder.ExpectEntryMetric(
+      entry, ukm::builders::MultistepFilter_UiSession::kUserDecisionName,
+      std::to_underlying(SuggestionUserDecision::kAccepted));
+  ukm_recorder.ExpectEntryMetric(
+      entry, ukm::builders::MultistepFilter_UiSession::kRetentionStateName,
+      std::to_underlying(MultistepFilterRetentionState::kFirstImpression));
+  ukm_recorder.ExpectEntryMetric(
+      entry, ukm::builders::MultistepFilter_UiSession::kShownAgeInMinutesName,
+      10);
+  ukm_recorder.ExpectEntryMetric(
+      entry,
+      ukm::builders::MultistepFilter_UiSession::kAcceptedAgeInMinutesName, 15);
+  ukm_recorder.ExpectEntryMetric(
+      entry,
+      ukm::builders::MultistepFilter_UiSession::kNumOfFilterFacetsShownName, 0);
+  ukm_recorder.ExpectEntryMetric(
+      entry, ukm::builders::MultistepFilter_UiSession::kReopenedCueShownName,
+      1);
+  ukm_recorder.ExpectEntryMetric(
+      entry, ukm::builders::MultistepFilter_UiSession::kIsSameDomainName, 1);
+  ukm_recorder.ExpectEntryMetric(entry,
+                                 ukm::builders::MultistepFilter_UiSession::
+                                     kNavigationToSuggestionShownTimeInMsName,
+                                 300);
+  ukm_recorder.ExpectEntryMetric(
+      entry,
+      ukm::builders::MultistepFilter_UiSession::
+          kNavigationToSuggestionAcceptedTimeInMsName,
+      300000);
+  ukm_recorder.ExpectEntryMetric(entry,
+                                 ukm::builders::MultistepFilter_UiSession::
+                                     kSuggestionShownToAcceptedTimeInMsName,
+                                 300000);
 }
 
 // Verifies that opening multiple surfaces and toggling the reopened cue
@@ -615,17 +672,75 @@ TEST_F(MultistepFilterMetricsTrackerTest,
 // Tests that showing a suggestion logs the number of facets shown.
 TEST_F(MultistepFilterMetricsTrackerTest, FacetsShownLogged) {
   base::HistogramTester histogram_tester;
+  ukm::TestAutoSetUkmRecorder ukm_recorder;
   UrlFilterSuggestion suggestion = CreateSuggestionWithAttributes(
-      "SEARCH_ACCOMMODATIONS", {{"color", "blue"}, {"size", "large"}});
+      kMultistepFilterTaskTypeSearchAccommodations,
+      {{kMultistepFilterFacetTypeDateCheckin, "2026-07-22"},
+       {kMultistepFilterFacetTypeLocationDestination, "Paris"}});
+  ukm::SourceId expected_source_id = ukm::kInvalidSourceId;
   {
     MultistepFilterMetricsTracker tracker;
-    TriggerInitialNavigation(tracker);
+    FilterNavigationMetadata metadata = CreateDefaultMetadata();
+    expected_source_id = metadata.ukm_source_id;
+    tracker.OnNavigationFinished(metadata);
     tracker.OnSuggestionShown(suggestion, RetentionStateSnapshot());
   }
   histogram_tester.ExpectUniqueSample(
       kMultistepFilterNumberOfFacetsShownHistogram, 2, 1);
   histogram_tester.ExpectUniqueSample(
       "MultistepFilter.NumberOfFacetsShown.ByTask.SEARCH_ACCOMMODATIONS", 2, 1);
+
+  // Verify UKM.
+  std::vector<raw_ptr<const ukm::mojom::UkmEntry, VectorExperimental>> entries =
+      ukm_recorder.GetEntriesByName(
+          ukm::builders::MultistepFilter_UiSession::kEntryName);
+  ASSERT_EQ(1u, entries.size());
+  const ukm::mojom::UkmEntry* entry = entries[0];
+  EXPECT_EQ(expected_source_id, entry->source_id);
+  const int64_t* session_id_metric = ukm_recorder.GetEntryMetric(
+      entry, ukm::builders::MultistepFilter_UiSession::kSessionIdName);
+  ASSERT_NE(nullptr, session_id_metric);
+  EXPECT_NE(0, *session_id_metric);
+  ukm_recorder.ExpectEntryMetric(
+      entry, ukm::builders::MultistepFilter_UiSession::kTaskTypeName,
+      std::to_underlying(MultistepFilterTaskType::kSearchAccommodations));
+  ukm_recorder.ExpectEntryMetric(
+      entry, ukm::builders::MultistepFilter_UiSession::kUserDecisionName,
+      std::to_underlying(SuggestionUserDecision::kIgnored));
+  ukm_recorder.ExpectEntryMetric(
+      entry, ukm::builders::MultistepFilter_UiSession::kRetentionStateName,
+      std::to_underlying(MultistepFilterRetentionState::kFirstImpression));
+  ukm_recorder.ExpectEntryMetric(
+      entry, ukm::builders::MultistepFilter_UiSession::kShownAgeInMinutesName,
+      0);
+  EXPECT_EQ(
+      nullptr,
+      ukm_recorder.GetEntryMetric(
+          entry,
+          ukm::builders::MultistepFilter_UiSession::kAcceptedAgeInMinutesName));
+  ukm_recorder.ExpectEntryMetric(
+      entry,
+      ukm::builders::MultistepFilter_UiSession::kNumOfFilterFacetsShownName, 2);
+  ukm_recorder.ExpectEntryMetric(
+      entry, ukm::builders::MultistepFilter_UiSession::kReopenedCueShownName,
+      0);
+  ukm_recorder.ExpectEntryMetric(
+      entry, ukm::builders::MultistepFilter_UiSession::kIsSameDomainName, 0);
+  ukm_recorder.ExpectEntryMetric(
+      entry,
+      ukm::builders::MultistepFilter_UiSession::kSuggestedFilterFacetTypesName,
+      34816);  // (1ULL << 11) | (1ULL << 15)
+  ukm_recorder.ExpectEntryMetric(entry,
+                                 ukm::builders::MultistepFilter_UiSession::
+                                     kNavigationToSuggestionShownTimeInMsName,
+                                 0);
+  EXPECT_EQ(nullptr,
+            ukm_recorder.GetEntryMetric(
+                entry, ukm::builders::MultistepFilter_UiSession::
+                           kNavigationToSuggestionAcceptedTimeInMsName));
+  EXPECT_EQ(nullptr, ukm_recorder.GetEntryMetric(
+                         entry, ukm::builders::MultistepFilter_UiSession::
+                                    kSuggestionShownToAcceptedTimeInMsName));
 }
 
 // Tests that successful suggestion application logs the count of successfully
@@ -633,10 +748,13 @@ TEST_F(MultistepFilterMetricsTrackerTest, FacetsShownLogged) {
 TEST_F(MultistepFilterMetricsTrackerTest,
        SuggestionApplicationSuccessLogsFacetCountAndOutcomes) {
   base::HistogramTester histogram_tester;
+  ukm::TestAutoSetUkmRecorder ukm_recorder;
   UrlFilterSuggestion suggestion = CreateSuggestionWithAttributes(
-      "SEARCH_ACCOMMODATIONS", {{"color", "blue"}, {"size", "large"}});
+      "SEARCH_ACCOMMODATIONS",
+      {{"DATE_CHECKIN", "2026-07-20"}, {"LOCATION_DESTINATION", "Paris"}});
   FilterNavigationMetadata metadata = CreateDefaultMetadata();
   metadata.applied_suggestion = suggestion;
+  ukm::SourceId expected_source_id = metadata.ukm_source_id;
 
   {
     MultistepFilterMetricsTracker tracker;
@@ -654,12 +772,60 @@ TEST_F(MultistepFilterMetricsTrackerTest,
 
   histogram_tester.ExpectUniqueSample(
       "MultistepFilter.ApplicationOutcome.ByTask.SEARCH_ACCOMMODATIONS.ByFacet."
-      "color",
+      "DATE_CHECKIN",
       true, 1);
   histogram_tester.ExpectUniqueSample(
       "MultistepFilter.ApplicationOutcome.ByTask.SEARCH_ACCOMMODATIONS.ByFacet."
-      "size",
+      "LOCATION_DESTINATION",
       true, 1);
+
+  // Verify UKM.
+  std::vector<raw_ptr<const ukm::mojom::UkmEntry, VectorExperimental>> entries =
+      ukm_recorder.GetEntriesByName(
+          ukm::builders::MultistepFilter_ApplicationSession::kEntryName);
+  ASSERT_EQ(1u, entries.size());
+  const ukm::mojom::UkmEntry* entry = entries[0];
+  EXPECT_EQ(expected_source_id, entry->source_id);
+  EXPECT_NE(
+      nullptr,
+      ukm_recorder.GetEntryMetric(
+          entry,
+          ukm::builders::MultistepFilter_ApplicationSession::kSessionIdName));
+  ukm_recorder.ExpectEntryMetric(
+      entry, ukm::builders::MultistepFilter_ApplicationSession::kTaskTypeName,
+      std::to_underlying(MultistepFilterTaskType::kSearchAccommodations));
+  ukm_recorder.ExpectEntryMetric(
+      entry,
+      ukm::builders::MultistepFilter_ApplicationSession::kRetentionStateName,
+      std::to_underlying(MultistepFilterRetentionState::kFirstImpression));
+  ukm_recorder.ExpectEntryMetric(
+      entry,
+      ukm::builders::MultistepFilter_ApplicationSession::
+          kApplicationOutcomeName,
+      std::to_underlying(
+          MultistepFilterApplicationOutcome::kAllFiltersApplied));
+  ukm_recorder.ExpectEntryMetric(
+      entry,
+      ukm::builders::MultistepFilter_ApplicationSession::
+          kNumOfFilterFacetsAppliedSuccessfullyName,
+      2);
+  ukm_recorder.ExpectEntryMetric(
+      entry,
+      ukm::builders::MultistepFilter_ApplicationSession::
+          kSuggestionAcceptedToAppliedTimeInMsName,
+      0);
+  ukm_recorder.ExpectEntryMetric(
+      entry,
+      ukm::builders::MultistepFilter_ApplicationSession::
+          kSuggestedFilterFacetTypesName,
+      34816);  // (1ULL << 11) | (1ULL << 15)
+  ukm_recorder.ExpectEntryMetric(
+      entry,
+      ukm::builders::MultistepFilter_ApplicationSession::
+          kPostApplicationUserEngagementName,
+      std::to_underlying(
+          MultistepFilterPostSuggestionApplicationUserEngagement::
+              kAbandonedWithinSessionWindowTabClosed));
 }
 
 // Tests that failed suggestion application logs per-facet failure and no
@@ -667,27 +833,74 @@ TEST_F(MultistepFilterMetricsTrackerTest,
 TEST_F(MultistepFilterMetricsTrackerTest,
        SuggestionApplicationFailureLogsPerFacetOutcomes) {
   base::HistogramTester histogram_tester;
+  ukm::TestAutoSetUkmRecorder ukm_recorder;
   UrlFilterSuggestion suggestion = CreateSuggestionWithAttributes(
-      "SEARCH_ACCOMMODATIONS", {{"color", "blue"}, {"size", "large"}});
+      "SEARCH_ACCOMMODATIONS",
+      {{"DATE_CHECKIN", "2026-07-20"}, {"LOCATION_DESTINATION", "Paris"}});
   FilterNavigationMetadata metadata = CreateDefaultMetadata();
   metadata.applied_suggestion = suggestion;
+  ukm::SourceId expected_source_id = metadata.ukm_source_id;
 
-  MultistepFilterMetricsTracker tracker;
-  tracker.OnNavigationFinished(metadata);
-  tracker.OnSuggestionApplicationAnnotationExtractionFinished(
-      /*was_applied_successfully=*/false);
+  {
+    MultistepFilterMetricsTracker tracker;
+    tracker.OnNavigationFinished(metadata);
+    tracker.OnSuggestionApplicationAnnotationExtractionFinished(
+        /*was_applied_successfully=*/false);
+  }
 
   histogram_tester.ExpectTotalCount(
       kMultistepFilterNumberOfFacetsSuccessfullyAppliedHistogram, 0);
 
   histogram_tester.ExpectUniqueSample(
       "MultistepFilter.ApplicationOutcome.ByTask.SEARCH_ACCOMMODATIONS.ByFacet."
-      "color",
+      "DATE_CHECKIN",
       false, 1);
   histogram_tester.ExpectUniqueSample(
       "MultistepFilter.ApplicationOutcome.ByTask.SEARCH_ACCOMMODATIONS.ByFacet."
-      "size",
+      "LOCATION_DESTINATION",
       false, 1);
+
+  // Verify UKM.
+  std::vector<raw_ptr<const ukm::mojom::UkmEntry, VectorExperimental>> entries =
+      ukm_recorder.GetEntriesByName(
+          ukm::builders::MultistepFilter_ApplicationSession::kEntryName);
+  ASSERT_EQ(1u, entries.size());
+  const ukm::mojom::UkmEntry* entry = entries[0];
+  EXPECT_EQ(expected_source_id, entry->source_id);
+  EXPECT_NE(
+      nullptr,
+      ukm_recorder.GetEntryMetric(
+          entry,
+          ukm::builders::MultistepFilter_ApplicationSession::kSessionIdName));
+  ukm_recorder.ExpectEntryMetric(
+      entry, ukm::builders::MultistepFilter_ApplicationSession::kTaskTypeName,
+      std::to_underlying(MultistepFilterTaskType::kSearchAccommodations));
+  ukm_recorder.ExpectEntryMetric(
+      entry,
+      ukm::builders::MultistepFilter_ApplicationSession::kRetentionStateName,
+      std::to_underlying(MultistepFilterRetentionState::kFirstImpression));
+  ukm_recorder.ExpectEntryMetric(
+      entry,
+      ukm::builders::MultistepFilter_ApplicationSession::
+          kApplicationOutcomeName,
+      std::to_underlying(
+          MultistepFilterApplicationOutcome::kNotAllFiltersApplied));
+  EXPECT_EQ(nullptr,
+            ukm_recorder.GetEntryMetric(
+                entry, ukm::builders::MultistepFilter_ApplicationSession::
+                           kNumOfFilterFacetsAppliedSuccessfullyName));
+  EXPECT_EQ(nullptr,
+            ukm_recorder.GetEntryMetric(
+                entry, ukm::builders::MultistepFilter_ApplicationSession::
+                           kSuggestionAcceptedToAppliedTimeInMsName));
+  EXPECT_EQ(nullptr,
+            ukm_recorder.GetEntryMetric(
+                entry, ukm::builders::MultistepFilter_ApplicationSession::
+                           kSuggestedFilterFacetTypesName));
+  EXPECT_EQ(nullptr,
+            ukm_recorder.GetEntryMetric(
+                entry, ukm::builders::MultistepFilter_ApplicationSession::
+                           kPostApplicationUserEngagementName));
 }
 
 TEST_F(MultistepFilterMetricsTrackerTest, RetentionSlicedAcceptanceLogged) {
@@ -1282,5 +1495,37 @@ TEST_F(MultistepFilterMetricsTrackerTest,
                         1)));
 }
 
+// Tests that the session ID logged in MultistepFilter_UiSession matches the
+// session ID logged in MultistepFilter_ApplicationSession for the same session.
+TEST_F(MultistepFilterMetricsTrackerTest, SessionIdsMatch) {
+  ukm::TestAutoSetUkmRecorder ukm_recorder;
+  UrlFilterSuggestion suggestion = CreateSuggestion("SEARCH_ACCOMMODATIONS");
+  {
+    MultistepFilterMetricsTracker tracker;
+    SetupPostSuggestionApplicationSession(tracker, suggestion);
+  }
+
+  std::vector<raw_ptr<const ukm::mojom::UkmEntry, VectorExperimental>> ui_entries =
+      ukm_recorder.GetEntriesByName(
+          ukm::builders::MultistepFilter_UiSession::kEntryName);
+  ASSERT_EQ(1u, ui_entries.size());
+  const int64_t* ui_session_id = ukm_recorder.GetEntryMetric(
+      ui_entries[0], ukm::builders::MultistepFilter_UiSession::kSessionIdName);
+  ASSERT_NE(nullptr, ui_session_id);
+  EXPECT_NE(0, *ui_session_id);
+
+  std::vector<raw_ptr<const ukm::mojom::UkmEntry, VectorExperimental>> app_entries =
+      ukm_recorder.GetEntriesByName(
+          ukm::builders::MultistepFilter_ApplicationSession::kEntryName);
+  ASSERT_EQ(1u, app_entries.size());
+  const int64_t* app_session_id = ukm_recorder.GetEntryMetric(
+      app_entries[0],
+      ukm::builders::MultistepFilter_ApplicationSession::kSessionIdName);
+  ASSERT_NE(nullptr, app_session_id);
+
+  EXPECT_EQ(*ui_session_id, *app_session_id);
+}
+
 }  // namespace
 }  // namespace multistep_filter
+

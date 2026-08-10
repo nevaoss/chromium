@@ -72,6 +72,7 @@ namespace autofill {
 class AutofillAiSaveUpdateEntityFlowManager;
 class SaveUpdateAddressProfileFlowManager;
 class AutofillMessageController;
+class AutofillDialogController;
 class AtMemoryBottomSheetBridge;
 class TouchToFillAutofillController;
 #endif
@@ -226,10 +227,6 @@ class ChromeAutofillClient : public ContentAutofillClient {
       EntityType entity_type,
       const base::flat_set<EntityTypeName>& saved_entities,
       const FieldTypeSet& triggering_field_types) final;
-  void TriggerAutofillAiSavePromptSurvey(
-      bool prompt_accepted,
-      EntityType entity_type,
-      const base::flat_set<EntityTypeName>& saved_entities) final;
   bool IsTabInActorMode() const final;
   ActorKeyMetricsRecorder* GetActorKeyMetricsRecorder() final;
   bool IsAutofillEnabled() const final;
@@ -270,6 +267,9 @@ class ChromeAutofillClient : public ContentAutofillClient {
   // The AutofillMessageController is used to show native Android messages via
   // the messages API.
   AutofillMessageController* GetAutofillMessageController();
+
+  // The AutofillDialogController is used to show Android modal dialogs.
+  AutofillDialogController* GetAutofillDialogController();
 
   void SetTouchToFillAutofillControllerForTesting(
       std::unique_ptr<TouchToFillAutofillController>
@@ -424,6 +424,7 @@ class ChromeAutofillClient : public ContentAutofillClient {
   bool keep_popup_open_for_testing_ = false;
 #if BUILDFLAG(IS_ANDROID)
   std::unique_ptr<AutofillMessageController> autofill_message_controller_;
+  std::unique_ptr<AutofillDialogController> autofill_dialog_controller_impl_;
   std::unique_ptr<AutofillAiSaveUpdateEntityFlowManager>
       autofill_ai_save_update_entity_flow_manager_;
   std::unique_ptr<SaveUpdateAddressProfileFlowManager>

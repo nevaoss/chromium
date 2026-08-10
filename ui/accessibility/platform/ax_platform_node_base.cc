@@ -987,6 +987,19 @@ bool AXPlatformNodeBase::HasVisibleCaretOrSelection() const {
   return GetDelegate()->HasVisibleCaretOrSelection();
 }
 
+bool AXPlatformNodeBase::HasSelectionFocusInSubtree() {
+  const AXSelection selection = GetDelegate()->GetUnignoredSelection();
+  return HasSelectionFocusInSubtree(&selection);
+}
+
+bool AXPlatformNodeBase::HasSelectionFocusInSubtree(
+    const AXSelection* selection) {
+  DCHECK(selection);
+  auto* focus_object = static_cast<AXPlatformNodeBase*>(
+      GetDelegate()->GetFromNodeID(selection->focus_object_id));
+  return focus_object && focus_object->IsDescendantOf(this);
+}
+
 bool AXPlatformNodeBase::IsLeaf() const {
   return GetDelegate()->IsLeaf();
 }
@@ -2019,6 +2032,11 @@ void AXPlatformNodeBase::GetSelectionOffsets(const AXSelection* selection,
 }
 
 int AXPlatformNodeBase::GetCaretOffset() {
+  // TODO(crbug.com/537461426): Windows IA2's caretOffset and setCaretOffset
+  // use this method. Unlike the AuraLinux override, it does not return -1 for
+  // an object that lacks the selection focus, so a fully selected descendant
+  // still reports a caret offset. It is unknown whether returning -1 here,
+  // as AuraLinux does, would be a fix or a regression for Windows ATs.
   if (IsAtomicTextField()) {
     return GetIntAttribute(ax::mojom::IntAttribute::kTextSelEnd);
   }
@@ -2056,7 +2074,10 @@ void AXPlatformNodeBase::GetSelectionOffsetsFromTree(
   // outside this object in their entirety.
   // Selections that span more than one character are by definition inside
   // this object, so checking them is not necessary.
-  if (*selection_start == *selection_end && !HasVisibleCaretOrSelection()) {
+  // A collapsed selection, i.e. a caret, is inside this object if this object
+  // contains the selection focus, whether or not the caret is rendered.
+  if (*selection_start == *selection_end && !HasVisibleCaretOrSelection() &&
+      !HasSelectionFocusInSubtree(selection)) {
     *selection_start = -1;
     *selection_end = -1;
     return;
@@ -2254,7 +2275,12 @@ int AXPlatformNodeBase::FindTextBoundary(
       position->CreatePositionAtTextBoundary(boundary, direction, options);
   if (boundary_position->IsNullPosition())
     return -1;
-  DCHECK_EQ(boundary_position->GetAnchor(), position->GetAnchor());
+  DCHECK_EQ(boundary_position->GetAnchor(), position->GetAnchor())
+      << "The text boundary search moved to a different object."
+      << "\n  start position:    " << *position
+      << "\n  start anchor:      " << position->GetAnchor()
+      << "\n  boundary position: " << *boundary_position
+      << "\n  boundary anchor:   " << boundary_position->GetAnchor();
   DCHECK_GE(boundary_position->text_offset(), 0);
   return boundary_position->text_offset();
 }

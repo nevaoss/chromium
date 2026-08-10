@@ -516,6 +516,11 @@ const base::FeatureParam<DiskCacheBackend> kDiskCacheBackendParam{
 #endif  // ENABLE_DISK_CACHE_SQL_BACKEND
     &kDiskCacheBackendOptions};
 
+BASE_FEATURE_PARAM(bool,
+                   kDiskCacheBackendResetCacheOnGroupChange,
+                   &kDiskCacheBackendExperiment,
+                   false);
+
 #if BUILDFLAG(ENABLE_DISK_CACHE_SQL_BACKEND)
 BASE_FEATURE_PARAM(int,
                    kSqlDiskCacheForceCheckpointThreshold,
@@ -814,6 +819,8 @@ BASE_FEATURE_PARAM(size_t,
 
 BASE_FEATURE(kQuicUseReadMultiple, base::FEATURE_DISABLED_BY_DEFAULT);
 
+BASE_FEATURE(kEnableUdpGro, base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kConfigureQuicHints, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE_PARAM(std::string,
                    kQuicHintHostPortPairs,
@@ -837,7 +844,13 @@ BASE_FEATURE_PARAM(size_t,
 
 BASE_FEATURE(kTryQuicByDefault, base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kCloseQuicSessionsOnPreFreeze, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kCloseQuicSessionsOnPreFreeze,
+#if BUILDFLAG(CRONET_BUILD)
+             base::FEATURE_DISABLED_BY_DEFAULT
+#else
+             base::FEATURE_ENABLED_BY_DEFAULT
+#endif
+);
 
 BASE_FEATURE_PARAM(std::string,
                    kQuicOptions,
@@ -877,6 +890,8 @@ BASE_FEATURE(kDrainSpdySessionSynchronouslyOnRemoteEndpointDisconnect,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kLogicalClearHttpCache, base::FEATURE_DISABLED_BY_DEFAULT);
+const base::FeatureParam<bool> kLogicalClearHttpCacheUserVisiblePriority{
+    &kLogicalClearHttpCache, "UserVisiblePriority", true};
 
 BASE_FEATURE(kSQLitePersistentCookieStoreEarlyInit,
              base::FEATURE_DISABLED_BY_DEFAULT);

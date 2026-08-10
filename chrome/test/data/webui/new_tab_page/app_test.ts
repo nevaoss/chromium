@@ -1646,7 +1646,139 @@ suite('NewTabPageAppTest', () => {
                   ' voice search again',
           );
         });
+
+    suite('invariant checks', () => {
+      suiteSetup(() => {
+        loadTimeData.overrideValues({
+          ntpRealboxNextEnabled: true,
+          contextManagementInComposeboxEnabled: true,
+          contextualMenuUsePecApi: false,
+        });
+      });
+
+      test('initial height matches searchbox height before expanding', async () => {
+        const searchbox = $$(app, '#searchbox');
+        assertTrue(!!searchbox);
+
+        // Arrange: dispatch open-composebox event.
+        (searchbox.dispatchEvent(new CustomEvent('open-composebox', {
+          detail: {text: '', files: []},
+        })));
+        await app.updateComplete;
+
+        const composeboxElement =
+            app.shadowRoot.querySelector<NtpComposeboxElement>('#composebox');
+        assertTrue(!!composeboxElement);
+
+        // Force/ensure the composebox is in the folded state for
+        // style measurement.
+        composeboxElement.setAttribute('should-remain-folded_', '');
+        await composeboxElement.updateComplete;
+
+        const composeboxContainer =
+            composeboxElement.shadowRoot.querySelector('#composebox');
+        assertTrue(!!composeboxContainer);
+
+        const searchboxHeight = window.getComputedStyle(searchbox).height;
+        assertEquals(
+            searchboxHeight,
+            window.getComputedStyle(composeboxContainer).height,
+            'Initial composebox height should match searchbox height to prevent layout jump');
+      });
+
+      function getCenter(element: Element): {x: number, y: number} {
+        const rect = element.getBoundingClientRect();
+        return {
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+        };
+      }
+
+      [false, true].forEach(energyEffectEnabled => {
+        [false, true].forEach(energyEffectAnimationEnabled => {
+          test(
+              `+ button alignment matches when energyEffectEnabled is ${
+                  energyEffectEnabled} and energyEffectAnimationEnabled is ${
+                  energyEffectAnimationEnabled}`,
+              async () => {
+                // Set the border color variable, which is normally dynamically
+                // injected into the document root style by the C++
+                // ColorProvider pipeline in a running browser. This ensures the
+                // 1px solid border resolves and participates in test computed
+                // style checks.
+                document.body.style.setProperty(
+                    '--color-searchbox-border', 'black');
+                loadTimeData.overrideValues({
+                  energyEffectEnabled,
+                  energyEffectAnimationEnabled,
+                });
+                await recreateApp();
+                await microtasksFinished();
+
+                const searchbox = $$(app, '#searchbox');
+                assertTrue(!!searchbox, 'Searchbox should exist');
+
+                // Get searchbox + button.
+                const searchboxEntrypointMenu =
+                    searchbox.shadowRoot!.querySelector('#context');
+                assertTrue(
+                    !!searchboxEntrypointMenu,
+                    `Searchbox entrypoint menu should exist when energyEffectEnabled=${
+                        energyEffectEnabled} and energyEffectAnimationEnabled=${
+                        energyEffectAnimationEnabled}`);
+                const searchboxEntrypointButton =
+                    searchboxEntrypointMenu.shadowRoot!.querySelector(
+                        '#entrypointButton')!;
+                const searchboxIcon =
+                    searchboxEntrypointButton.shadowRoot!.querySelector(
+                        '#entrypoint')!;
+
+                // Open composebox.
+                searchbox.dispatchEvent(new CustomEvent('open-composebox', {
+                  detail: {text: '', files: []},
+                }));
+                await microtasksFinished();
+
+                const composebox =
+                    app.shadowRoot.querySelector<NtpComposeboxElement>(
+                        '#composebox');
+                assertTrue(!!composebox, 'Composebox should exist');
+
+                // Get composebox + button.
+                const composeboxEntrypointMenu =
+                    composebox.shadowRoot.querySelector('#contextEntrypoint');
+                assertTrue(
+                    !!composeboxEntrypointMenu,
+                    `Composebox entrypoint menu should exist when energyEffectEnabled=${
+                        energyEffectEnabled} and energyEffectAnimationEnabled=${
+                        energyEffectAnimationEnabled}`);
+                const composeboxEntrypointButton =
+                    composeboxEntrypointMenu.shadowRoot!.querySelector(
+                        '#entrypointButton')!;
+                const composeboxIcon =
+                    composeboxEntrypointButton.shadowRoot!.querySelector(
+                        '#entrypoint')!;
+
+                // Measure centers.
+                const searchboxCenter = getCenter(searchboxIcon);
+                const composeboxCenter = getCenter(composeboxIcon);
+
+                // Assert centers match exactly.
+                assertDeepEquals(
+                    searchboxCenter, composeboxCenter,
+                    `Center position mismatch when energyEffectEnabled=${
+                        energyEffectEnabled} and energyEffectAnimationEnabled=${
+                        energyEffectAnimationEnabled}. ` +
+                        `Searchbox: (${searchboxCenter.x}, ${
+                            searchboxCenter.y}), ` +
+                        `Composebox: (${composeboxCenter.x}, ${
+                            composeboxCenter.y})`);
+              });
+        });
+      });
+    });
   });
+
 
   suite('WallpaperSearch', () => {
     setup(async () => {
@@ -2406,6 +2538,7 @@ suite('NewTabPageAppTest', () => {
               secondaryText: {text: 'tab-subtitle', a11yText: null},
               preselectedTool: ToolMode.kUnspecified,
               preferredInventory: null,
+              clickAction: null,
             },
             tab: fakeTab,
           },
@@ -2417,6 +2550,7 @@ suite('NewTabPageAppTest', () => {
               secondaryText: {text: 'image-subtitle', a11yText: null},
               preselectedTool: ToolMode.kImageGen,
               preferredInventory: null,
+              clickAction: null,
             },
             tab: null,
           },
@@ -2428,6 +2562,7 @@ suite('NewTabPageAppTest', () => {
               secondaryText: {text: 'ds-subtitle', a11yText: null},
               preselectedTool: ToolMode.kDeepSearch,
               preferredInventory: null,
+              clickAction: null,
             },
             tab: null,
           },
@@ -2591,6 +2726,7 @@ suite('NewTabPageAppTest', () => {
               secondaryText: {text: subtitle, a11yText: null},
               preselectedTool: ToolMode.kUnspecified,
               preferredInventory: null,
+              clickAction: null,
             },
             tab: {
               tabId: 1,
@@ -4026,6 +4162,7 @@ suite('NewTabPageAppReducedMotionTest', () => {
       searchboxShowComposebox: true,
       searchboxShowComposeEntrypoint: true,
       actionChipsEnabled: true,
+      energyEffectAnimationEnabled: false,
     });
   });
 
@@ -4210,8 +4347,6 @@ suite('NewTabPageAppReducedMotionTest', () => {
           });
     });
   });
-
-
 });
 
 suite('NewTabPageAppContextMenuAnimationTest', () => {

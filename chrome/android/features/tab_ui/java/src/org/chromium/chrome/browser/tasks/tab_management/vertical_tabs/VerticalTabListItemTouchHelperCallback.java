@@ -14,12 +14,14 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 
+import androidx.annotation.IntDef;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.chromium.base.MathUtils;
 import org.chromium.base.Token;
+import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.tab.Tab;
@@ -36,6 +38,8 @@ import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.modelutil.SimpleRecyclerViewAdapter.ViewHolder;
 import org.chromium.ui.recyclerview.widget.ItemTouchHelper2;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -50,11 +54,32 @@ import java.util.function.Supplier;
  */
 @NullMarked
 public class VerticalTabListItemTouchHelperCallback extends TabListItemTouchHelperCallback {
+    // LINT.IfChange(AndroidVerticalTabsDragDropResult)
+    @IntDef({
+        DragDropResult.REORDERED,
+        DragDropResult.GROUPED,
+        DragDropResult.UNGROUPED,
+        DragDropResult.ABORTED_NO_CHANGE,
+        DragDropResult.DRAGGED_OUT
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface DragDropResult {
+        int REORDERED = 0;
+        int GROUPED = 1;
+        int UNGROUPED = 2;
+        int ABORTED_NO_CHANGE = 3;
+        int DRAGGED_OUT = 4;
+        int COUNT = 5;
+    }
+
+    // LINT.ThenChange(//tools/metrics/histograms/metadata/android/enums.xml:AndroidVerticalTabsDragDropResult)
+
     private static final long CONTEXT_MENU_ORCHESTRATOR_DELAY_MS = 10L;
     private final int mMouseDragThresholdSquared;
     private final Set<Integer> mDraggedChildTabIds = new HashSet<>();
     private final List<Integer> mSelectedGroupTabIds = new ArrayList<>();
     private final List<RecyclerView.ViewHolder> mDraggedChildViewHolders = new ArrayList<>();
+    private @DragDropResult int mDragResult = DragDropResult.ABORTED_NO_CHANGE;
     private RecyclerView.@Nullable ViewHolder mSelectedViewHolder;
 
     private float mDragStartX;
@@ -377,7 +402,7 @@ public class VerticalTabListItemTouchHelperCallback extends TabListItemTouchHelp
                 boolean trailing = distance > 0;
                 Tab currentTab = tabModel.getTabById(currentTabId);
                 if (currentTab != null) {
-                    tabModel.getTabUngrouper().ungroupTabs(List.of(currentTab), trailing, false);
+                    ungroupTab(tabModel, currentTab, trailing);
                 }
                 return true;
             }
@@ -425,6 +450,7 @@ public class VerticalTabListItemTouchHelperCallback extends TabListItemTouchHelp
                                 destinationTab,
                                 indexInGroup,
                                 TabGroupMergeNotificationType.NOTIFY_ALWAYS);
+                        mDragResult = DragDropResult.GROUPED;
                         return true;
                     }
                 }
@@ -473,6 +499,9 @@ public class VerticalTabListItemTouchHelperCallback extends TabListItemTouchHelp
         } else {
             tabModel.moveTab(currentTabId, destinationIndex);
         }
+        if (mDragResult == DragDropResult.ABORTED_NO_CHANGE) {
+            mDragResult = DragDropResult.REORDERED;
+        }
         return true;
     }
 
@@ -514,6 +543,7 @@ public class VerticalTabListItemTouchHelperCallback extends TabListItemTouchHelp
         }
 
         if (actionState == ItemTouchHelper.ACTION_STATE_DRAG) {
+            mDragResult = DragDropResult.ABORTED_NO_CHANGE;
             mSelectedViewHolder = viewHolder;
             mSelectedGroupTabIds.clear();
             if (!hasTabPropertiesModel(viewHolder)) return;
@@ -784,6 +814,12 @@ public class VerticalTabListItemTouchHelperCallback extends TabListItemTouchHelp
                 }
             }
         }
+        if (viewHolder.getBindingAdapterPosition() == RecyclerView.NO_POSITION) {
+            mDragResult = DragDropResult.DRAGGED_OUT;
+        }
+        RecordHistogram.recordEnumeratedHistogram(
+                "Android.VerticalTabs.DragDropResult", mDragResult, DragDropResult.COUNT);
+        mDragResult = DragDropResult.ABORTED_NO_CHANGE;
         mDraggedChildTabIds.clear();
     }
 
@@ -846,7 +882,7 @@ public class VerticalTabListItemTouchHelperCallback extends TabListItemTouchHelp
                     }
                 }
 
-                tabModel.getTabUngrouper().ungroupTabs(List.of(currentTab), true, false);
+                ungroupTab(tabModel, currentTab, true);
 
                 // If ungrouping pushes the new standalone tab off-screen at the bottom,
                 // instruct RecyclerView to scroll to it, keeping it pinned under the user's finger.
@@ -883,7 +919,7 @@ public class VerticalTabListItemTouchHelperCallback extends TabListItemTouchHelp
                     }
                 }
 
-                tabModel.getTabUngrouper().ungroupTabs(List.of(currentTab), false, false);
+                ungroupTab(tabModel, currentTab, false);
 
                 // If ungrouping prepends the new tab natively off-screen at the top,
                 // manually scroll to the new tab. This forces the group header to visually shift
@@ -899,6 +935,11 @@ public class VerticalTabListItemTouchHelperCallback extends TabListItemTouchHelp
         }
 
         return false;
+    }
+
+    private void ungroupTab(TabModel tabModel, Tab tab, boolean trailing) {
+        tabModel.getTabUngrouper().ungroupTabs(List.of(tab), trailing, false);
+        mDragResult = DragDropResult.UNGROUPED;
     }
 
     /**
