@@ -2400,6 +2400,23 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Media.Audio.Win.CoreAudioUtil.SharedModeInitializeTime"
+    units="ms" expires_after="2027-01-10">
+  <owner>henrika@chromium.org</owner>
+  <owner>olka@chromium.org</owner>
+  <owner>media-audio@chromium.org</owner>
+  <summary>
+    Measures the execution time of CoreAudioUtil::SharedModeInitialize. Recorded
+    when Chrome attempts to initialize the audio stream between the client and
+    the device in shared mode. This captures the synchronous time spent waiting
+    for the Windows WASAPI driver to initialize a shared-mode audio endpoint.
+
+    Note: Although this function is currently only used for output (render)
+    streams, we intentionally omit &quot;Output.Win&quot; from the metric name
+    to maintain a 1:1 mapping with the underlying C++ CoreAudioUtil method name.
+  </summary>
+</histogram>
+
 <histogram name="Media.Audio.{Direction}DeviceEnumerationOutcome"
     enum="AudioDeviceEnumerationOutcome" expires_after="2027-05-01">
   <owner>frederikh@google.com</owner>
@@ -3313,6 +3330,17 @@ chromium-metrics-reviews@google.com.
     decide to not show the prompt at all. When the prompt is shown, this records
     their selection (or &quot;Ignored&quot; if they did not select an option).
     When the prompt is not shown, records why it was not shown.
+  </summary>
+</histogram>
+
+<histogram name="Media.AutoPictureInPicture.SafeBrowsingCheckResult"
+    enum="AutoPictureInPictureSafeBrowsingCheckResult"
+    expires_after="2026-11-22">
+  <owner>thefrog@chromium.org</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    Records the result of the Safe Browsing blocklist check for Auto
+    Picture-in-Picture URL safety. Logged when the check completes or times out.
   </summary>
 </histogram>
 

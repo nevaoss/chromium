@@ -117,13 +117,8 @@ public abstract class BaseSuggestionViewBinder<T extends View>
         } else if (BaseSuggestionViewProperties.ON_FOCUS_VIA_SELECTION == propertyKey) {
             view.setOnFocusViaSelectionListener(
                     model.get(BaseSuggestionViewProperties.ON_FOCUS_VIA_SELECTION));
-        } else if (BaseSuggestionViewProperties.ON_CLICK == propertyKey) {
-            Runnable listener = model.get(BaseSuggestionViewProperties.ON_CLICK);
-            if (listener == null) {
-                view.setOnClickListener(null);
-            } else {
-                view.setOnClickListener(v -> listener.run());
-            }
+        } else if (BaseSuggestionViewProperties.ON_ACTIVATE == propertyKey) {
+            view.setOnActivateListener(model.get(BaseSuggestionViewProperties.ON_ACTIVATE));
         } else if (BaseSuggestionViewProperties.ON_LONG_CLICK == propertyKey) {
             Runnable listener = model.get(BaseSuggestionViewProperties.ON_LONG_CLICK);
             if (listener == null) {
@@ -294,9 +289,11 @@ public abstract class BaseSuggestionViewBinder<T extends View>
         Drawable background;
 
         if (sFocusableDrawableState == null) {
-            background =
-                    resourceProvider.getStatefulSuggestionBackground(
-                            resourceProvider.getStandardSuggestionBackgroundColor());
+            int suggestionBgColor =
+                    resourceProvider.getSuggestionBackgroundColor(
+                            model.get(SuggestionCommonProperties.FUSEBOX_LAYOUT_MODE),
+                            /* isDropdownContainer= */ false);
+            background = resourceProvider.getStatefulSuggestionBackground(suggestionBgColor);
             sFocusableDrawableState = background.getConstantState();
         } else {
             if (sFocusableDrawableState == metadata.backgroundConstantState) return;

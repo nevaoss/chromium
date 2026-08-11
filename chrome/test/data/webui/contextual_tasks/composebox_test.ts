@@ -6,6 +6,7 @@ import 'chrome://contextual-tasks/app.js';
 
 import type {ContextualTasksAppElement} from 'chrome://contextual-tasks/app.js';
 import {BrowserProxyImpl} from 'chrome://contextual-tasks/contextual_tasks_browser_proxy.js';
+import type {ComposeboxFile} from 'chrome://resources/cr_components/composebox/common.js';
 import {GlifAnimationState, TabUploadOrigin} from 'chrome://resources/cr_components/composebox/common.js';
 import {PageHandlerRemote as ComposeboxPageHandlerRemote} from 'chrome://resources/cr_components/composebox/composebox.mojom-webui.js';
 import {SubmitButtonIconType} from 'chrome://resources/cr_components/composebox/composebox_mixin.js';
@@ -568,10 +569,7 @@ suite('ContextualTasksComposeboxTest', () => {
     testProxy.callbackRouterRemote.onZeroStateChange(true);
     await testProxy.callbackRouterRemote.$.flushForTesting();
 
-    assertEquals(
-        1,
-        mockSearchboxPageHandler.getCallCount(
-            'queryAutocompleteWithSuggestInventory'));
+    assertEquals(1, mockSearchboxPageHandler.getCallCount('queryAutocomplete'));
   });
 
   test(
@@ -616,9 +614,7 @@ suite('ContextualTasksComposeboxTest', () => {
         testProxy.callbackRouterRemote.onZeroStateChange(false);
 
         assertEquals(
-            0,
-            mockSearchboxPageHandler.getCallCount(
-                'queryAutocompleteWithSuggestInventory'));
+            0, mockSearchboxPageHandler.getCallCount('queryAutocomplete'));
       });
 
   test('typing clears suggestInventory', async () => {
@@ -637,10 +633,8 @@ suite('ContextualTasksComposeboxTest', () => {
     assertEquals(null, innerComposebox.suggestInventory);
 
     // Verify that the query call passed the default inventory.
-    await mockSearchboxPageHandler.whenCalled(
-        'queryAutocompleteWithSuggestInventory');
-    const calls = mockSearchboxPageHandler.getArgs(
-        'queryAutocompleteWithSuggestInventory');
+    await mockSearchboxPageHandler.whenCalled('queryAutocomplete');
+    const calls = mockSearchboxPageHandler.getArgs('queryAutocomplete');
     const lastCall = calls[calls.length - 1];
     assertEquals('new query', lastCall[1]);
     assertEquals(SuggestInventory.kDefault, lastCall[4]);
@@ -790,10 +784,7 @@ suite('ContextualTasksComposeboxTest', () => {
     assertFalse(
         contextualTasksApp.isLoadErrorForTesting, 'Should be online initially');
     assertTrue(isVisible(composebox), 'Composebox should be visible initially');
-    assertEquals(
-        1,
-        mockSearchboxPageHandler.getCallCount(
-            'queryAutocompleteWithSuggestInventory'));
+    assertEquals(1, mockSearchboxPageHandler.getCallCount('queryAutocomplete'));
 
     // 2. Go offline.
     Object.defineProperty(window.navigator, 'onLine', {
@@ -1005,9 +996,9 @@ suite('ContextualTasksComposeboxTest', () => {
 
     // Wait for files to populate
     await innerComposebox.updateComplete;
-    let files = Array.from(innerComposebox.files.values()) as any[];
+    let files: ComposeboxFile[] = Array.from(innerComposebox.files.values());
     assertEquals(1, files.length);
-    const initialFile = files[0];
+    const initialFile = files[0]!;
     assertEquals('Initial Title', initialFile.name);
     assertEquals(1, initialFile.tabId);
     assertEquals('https://example.com', initialFile.url);
@@ -1023,9 +1014,9 @@ suite('ContextualTasksComposeboxTest', () => {
     await microtasksFinished();
     await innerComposebox.updateComplete;
 
-    files = Array.from(innerComposebox.files.values()) as any[];
+    files = Array.from(innerComposebox.files.values());
     assertEquals(1, files.length);
-    const updatedFile = files[0];
+    const updatedFile = files[0]!;
     assertEquals('Updated Title', updatedFile.name);
     assertEquals(initialFile.uuid, updatedFile.uuid);
     assertEquals(initialFile.tabId, updatedFile.tabId);
@@ -1046,7 +1037,7 @@ suite('ContextualTasksComposeboxTest', () => {
     await microtasksFinished();
     await innerComposebox.updateComplete;
 
-    files = Array.from(innerComposebox.files.values()) as any[];
+    files = Array.from(innerComposebox.files.values());
     assertEquals(1, files.length);
     // Reference should be exactly the same (no re-allocation or modification)
     assertEquals(updatedFile, files[0]);
@@ -1282,9 +1273,7 @@ suite('ContextualTasksComposeboxTest', () => {
           // mount in setup() must not blindly query zps in connectedCallback.
           assertFalse(innerComposebox.queryZpsOnLoad);
           assertEquals(
-              0,
-              mockSearchboxPageHandler.getCallCount(
-                  'queryAutocompleteWithSuggestInventory'));
+              0, mockSearchboxPageHandler.getCallCount('queryAutocomplete'));
         });
 
         test('wrapper tracks focus state from inner composebox events',
@@ -1696,8 +1685,7 @@ suite('ContextualTasksComposeboxTest', () => {
 
               simulateUserInput(inputElement, testQuery);
               mockTimer.tick(300);
-              await mockSearchboxPageHandler.whenCalled(
-                  'queryAutocompleteWithSuggestInventory');
+              await mockSearchboxPageHandler.whenCalled('queryAutocomplete');
 
               const whenResultChanged =
                   eventToPromise<CustomEvent<AutocompleteResult>>(
@@ -1724,8 +1712,7 @@ suite('ContextualTasksComposeboxTest', () => {
 
               simulateUserInput(inputElement, 'test');
               mockTimer.tick(300);
-              await mockSearchboxPageHandler.whenCalled(
-                  'queryAutocompleteWithSuggestInventory');
+              await mockSearchboxPageHandler.whenCalled('queryAutocomplete');
 
               let fired = false;
               innerComposebox.addEventListener(
@@ -1864,8 +1851,7 @@ suite('ContextualTasksComposeboxTest', () => {
 
               simulateUserInput(inputElement, TEST_QUERY);
               mockTimer.tick(300);
-              await mockSearchboxPageHandler.whenCalled(
-                  'queryAutocompleteWithSuggestInventory');
+              await mockSearchboxPageHandler.whenCalled('queryAutocomplete');
 
               await setupAutocompleteResults(
                   searchboxCallbackRouterRemote, innerComposebox.activeQueryId,
@@ -2205,7 +2191,7 @@ suite('ContextualTasksComposeboxTest', () => {
                       title: 'Shared tab',
                       url: {url: 'https://example.com/'},
                       delayUpload: false,
-                      origin: TabUploadOrigin.RECENT_TAB_CHIP,
+                      origin: TabUploadOrigin.CURRENT_TAB_CHIP,
                     },
                     bubbles: true,
                     composed: true,
@@ -3438,9 +3424,9 @@ function createVoiceResults(transcripts: string[]): SpeechRecognitionEvent {
                   assertEquals(
                       1,
                       mockSearchboxPageHandler.getCallCount(
-                          'queryAutocompleteWithSuggestInventory'));
-                  const queryArgs = mockSearchboxPageHandler.getArgs(
-                      'queryAutocompleteWithSuggestInventory')[0];
+                          'queryAutocomplete'));
+                  const queryArgs =
+                      mockSearchboxPageHandler.getArgs('queryAutocomplete')[0];
                   assertEquals('helloworld', queryArgs[1]);
                   assertEquals(
                       0, mockSearchboxPageHandler.getCallCount('submitQuery'));

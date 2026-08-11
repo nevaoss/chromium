@@ -51,11 +51,45 @@ class BrowserWebContentsDelegate : public content::WebContentsDelegate {
   void RequestKeyboardLock(content::WebContents* web_contents,
                            bool esc_key_locked) override;
   void CancelKeyboardLockRequest(content::WebContents* web_contents) override;
+  void SetTopControlsShownRatio(content::WebContents* web_contents,
+                                float ratio) override;
+  int GetTopControlsHeight() override;
+  bool DoBrowserControlsShrinkRendererSize(
+      content::WebContents* contents) override;
+  int GetVirtualKeyboardHeight(content::WebContents* contents) override;
+  void SetTopControlsGestureScrollInProgress(bool in_progress) override;
+  bool CanOverscrollContent() override;
+  bool ShouldPreserveAbortedURLs(content::WebContents* source) override;
+  void SetFocusToLocationBar() override;
+  void PreHandleDragUpdate(const content::DropData& drop_data,
+                           const gfx::PointF& client_pt) override;
+  void PreHandleDragExit() override;
+  void HandleDragEnded() override;
+  bool CanDragEnter(content::WebContents* source,
+                    const content::DropData& data,
+                    blink::DragOperationsMask operations_allowed) override;
+  void CreateSmsPrompt(content::RenderFrameHost*,
+                       const std::vector<url::Origin>&,
+                       const std::string& one_time_code,
+                       base::OnceClosure on_confirm,
+                       base::OnceClosure on_cancel) override;
+  bool ShouldAllowRunningInsecureContent(content::WebContents* web_contents,
+                                         bool allowed_per_prefs,
+                                         const url::Origin& origin,
+                                         const GURL& resource_url) override;
+  void OnDidBlockNavigation(
+      content::WebContents* web_contents,
+      const GURL& blocked_url,
+      const GURL& initiator_url,
+      const url::Origin& initiator_origin,
+      blink::mojom::NavigationBlockedReason reason) override;
+  bool IsBackForwardCacheSupported(content::WebContents& web_contents) override;
 
  private:
   const raw_ref<ExclusiveAccessManager> exclusive_access_manager_;
   const raw_ref<BrowserWindow> window_;
   const raw_ref<DesktopBrowserWindowCapabilities> capabilities_;
+  const raw_ref<BrowserWindowInterface> browser_;
   ui::ScopedUnownedUserData<BrowserWebContentsDelegate> scoped_data_holder_;
 };
 

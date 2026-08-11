@@ -54,9 +54,6 @@ class AtMemoryBottomSheetViewBinder {
             view.setSearchBarDelegate(model.get(HomeProperties.SEARCH_BAR_DELEGATE));
         } else if (propertyKey == HomeProperties.IS_LOADING) {
             view.setIsLoading(model.get(HomeProperties.IS_LOADING));
-        } else if (propertyKey == HomeProperties.SHOW_SUGGESTIONS_BACKGROUND) {
-            view.setShowSuggestionsBackground(
-                    model.get(HomeProperties.SHOW_SUGGESTIONS_BACKGROUND));
         } else if (propertyKey == HomeProperties.SHEET_ITEMS) {
             view.setUpSheetItems(model.get(HomeProperties.SHEET_ITEMS));
         } else {
@@ -129,6 +126,8 @@ class AtMemoryBottomSheetViewBinder {
             view.setFlyoutClickListener(model.get(SuggestionItemProperties.ON_FLYOUT_CLICKED));
         } else if (propertyKey == SuggestionItemProperties.IS_FLYOUT_VISIBLE) {
             view.setFlyoutVisible(model.get(SuggestionItemProperties.IS_FLYOUT_VISIBLE));
+        } else if (propertyKey == SuggestionItemProperties.TRAILING_ICON_ID) {
+            view.setTrailingIcon(model.get(SuggestionItemProperties.TRAILING_ICON_ID));
         } else if (propertyKey == SuggestionItemProperties.APPLY_DEACTIVATED_STYLE) {
             view.applyDeactivatedStyle(model.get(SuggestionItemProperties.APPLY_DEACTIVATED_STYLE));
         } else {

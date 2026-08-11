@@ -13,6 +13,7 @@
 #include "net/disk_cache/sql/entry_write_buffer.h"
 #include "net/disk_cache/sql/eviction_candidate_aggregator.h"
 #include "net/disk_cache/sql/sql_persistent_store.h"
+#include "net/disk_cache/sql/sql_persistent_store_queries.h"
 #include "sql/database.h"
 #include "sql/meta_table.h"
 
@@ -107,6 +108,11 @@ class NET_EXPORT_PRIVATE SqlPersistentStore::Backend {
                                   int64_t body_end,
                                   bool sparse_reading,
                                   base::TimeTicks start_time);
+  ErrorAndStoreStatus MoveBlobsToSharedCache(
+      const CacheEntryKey& key,
+      ResId res_id,
+      SqlSharedCacheResourceId shared_cache_resource_id,
+      base::TimeTicks start_time);
   RangeResult GetEntryAvailableRange(ResId res_id,
                                      int64_t offset,
                                      int len,
@@ -465,7 +471,15 @@ class NET_EXPORT_PRIVATE SqlPersistentStore::Backend {
       scoped_refptr<base::RefCountedData<std::atomic_bool>> abort_flag,
       int& pages_vacuumed);
 
+  Error MoveBlobsToSharedCacheInternal(
+      ResId res_id,
+      SqlSharedCacheResourceId shared_cache_resource_id);
+
   base::FilePath GetDatabaseFilePath() const;
+
+  base::cstring_view GetQuery(disk_cache_sql_queries::Query query) const {
+    return disk_cache_sql_queries::GetQuery(query, shared_cache_enabled_);
+  }
 
   const ShardId shard_id_;
   const base::FilePath path_;

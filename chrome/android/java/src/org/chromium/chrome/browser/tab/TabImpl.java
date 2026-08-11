@@ -1923,8 +1923,7 @@ class TabImpl implements Tab, TabInternal {
         if (ChromeFeatureList.isEnabled(ChromeFeatureList.SETTINGS_IN_TAB)) return false;
 
         // TODO(crbug.com/456164910): Use the URL path to open deeplinks into Settings.
-        SettingsNavigationFactory.createSettingsNavigation()
-                .startSettings(assumeNonNull(getActivity()));
+        SettingsNavigationFactory.createSettingsNavigation().startSettings(getContext());
         goBack(); // Keep showing the previous contents in the tab.
         return true;
     }
@@ -2581,7 +2580,9 @@ class TabImpl implements Tab, TabInternal {
 
             View compositorView =
                     assumeNonNull(getActivity()).getCompositorViewHolderSupplier().get();
-            setWebContentsSize(webContents, compositorView);
+            if (compositorView != null) {
+                webContents.setSize(compositorView.getWidth(), compositorView.getHeight());
+            }
             mWebContentsState.destroy();
             mWebContentsState = null;
             initWebContents(webContents);
@@ -2593,17 +2594,6 @@ class TabImpl implements Tab, TabInternal {
             TraceEvent.end("Tab.unfreezeContents");
         }
         return restored;
-    }
-
-    private void setWebContentsSize(WebContents webContents, @Nullable View compositorView) {
-        if (ChromeFeatureList.sCctTabResumption.isEnabled()) {
-            if (compositorView != null) {
-                webContents.setSize(compositorView.getWidth(), compositorView.getHeight());
-            }
-        } else {
-            assumeNonNull(compositorView);
-            webContents.setSize(compositorView.getWidth(), compositorView.getHeight());
-        }
     }
 
     /**

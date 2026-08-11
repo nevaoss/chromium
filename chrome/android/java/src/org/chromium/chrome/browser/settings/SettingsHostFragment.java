@@ -220,6 +220,13 @@ public class SettingsHostFragment extends Fragment
     }
 
     @Override
+    public LayoutInflater onGetLayoutInflater(@Nullable Bundle savedInstanceState) {
+        LayoutInflater inflater = super.onGetLayoutInflater(savedInstanceState);
+        // Ensure we use the themed context if available.
+        return inflater.cloneInContext(getContext());
+    }
+
+    @Override
     public View onCreateView(
             LayoutInflater inflater,
             @Nullable ViewGroup container,
@@ -318,12 +325,12 @@ public class SettingsHostFragment extends Fragment
             if (fragment == null || fragment instanceof MainSettings) {
                 if (multiColumnSettings.getSlidingPaneLayout().isSlideable()) {
                     multiColumnSettings.getSlidingPaneLayout().closePane();
-                } else {
-                    Fragment initialFragment = multiColumnSettings.onCreateInitialDetailFragment();
-                    if (initialFragment != null) {
-                        multiColumnSettings.showDetailFragment(
-                                initialFragment, /* addToBackStack= */ false, /* tag= */ null);
-                    }
+                }
+                // Show the default detail fragment.
+                Fragment initialFragment = multiColumnSettings.onCreateInitialDetailFragment();
+                if (initialFragment != null) {
+                    multiColumnSettings.showDetailFragment(
+                            initialFragment, /* addToBackStack= */ false, /* tag= */ null);
                 }
                 return true;
             }

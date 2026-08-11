@@ -61,14 +61,16 @@ suite('ContextualTasksComposeboxSubmitTest', () => {
   let contextualTasksApp: ContextualTasksAppElement;
   let composebox: any;
   let testProxy: TestContextualTasksBrowserProxy;
-  let mockComposeboxPageHandler: TestMock<ComposeboxPageHandlerRemote>;
-  let mockSearchboxPageHandler: TestMock<SearchboxPageHandlerRemote>;
+  let mockComposeboxPageHandler: TestMock<ComposeboxPageHandlerRemote>&
+      ComposeboxPageHandlerRemote;
+  let mockSearchboxPageHandler: TestMock<SearchboxPageHandlerRemote>&
+      SearchboxPageHandlerRemote;
   let searchboxCallbackRouterRemote: SearchboxPageRemote;
   let windowProxy: TestMock<WindowProxy>;
   let mockTimer: MockTimer;
 
   setup(async () => {
-    const win = window as any;
+    const win = window as unknown as {chrome: any, trustedTypes: any};
 
     if (!win.chrome) {
       win.chrome = {};
@@ -116,7 +118,7 @@ suite('ContextualTasksComposeboxSubmitTest', () => {
     searchboxCallbackRouterRemote =
         searchboxCallbackRouter.$.bindNewPipeAndPassRemote();
     ComposeboxProxyImpl.setInstance(new ComposeboxProxyImpl(
-        mockComposeboxPageHandler as any, mockSearchboxPageHandler as any,
+        mockComposeboxPageHandler, mockSearchboxPageHandler,
         searchboxCallbackRouter));
 
     contextualTasksApp = document.createElement('contextual-tasks-app');
@@ -1036,17 +1038,19 @@ suite('ContextualTasksComposeboxSubmitTest', () => {
         ${useFork})`,
       () => {
         let testProxy: TestContextualTasksBrowserProxy;
-        let mockComposeboxPageHandler: TestMock<ComposeboxPageHandlerRemote>;
-        let mockSearchboxPageHandler: TestMock<SearchboxPageHandlerRemote>;
+        let mockComposeboxPageHandler: TestMock<ComposeboxPageHandlerRemote>&
+            ComposeboxPageHandlerRemote;
+        let mockSearchboxPageHandler: TestMock<SearchboxPageHandlerRemote>&
+            SearchboxPageHandlerRemote;
         let searchboxCallbackRouterRemote: SearchboxPageRemote;
         let parts: CtComposeboxAppParts;
         let mockTimer: MockTimer;
 
         setup(async () => {
-          const win = window as any;
+          const win = window as unknown as {chrome: any, trustedTypes: any};
 
           if (!win.chrome) {
-            Object.assign(window, {chrome: {}});
+            win.chrome = {};
           }
 
           if (!win.chrome.histograms) {
@@ -1096,8 +1100,8 @@ suite('ContextualTasksComposeboxSubmitTest', () => {
           searchboxCallbackRouterRemote =
               searchboxCallbackRouter.$.bindNewPipeAndPassRemote();
           ComposeboxProxyImpl.setInstance(new ComposeboxProxyImpl(
-              mockComposeboxPageHandler as any,
-              mockSearchboxPageHandler as any, searchboxCallbackRouter));
+              mockComposeboxPageHandler, mockSearchboxPageHandler,
+              searchboxCallbackRouter));
 
           parts = await createCtComposeboxApp(useFork);
         });
@@ -1150,8 +1154,7 @@ suite('ContextualTasksComposeboxSubmitTest', () => {
           simulateUserInput(inputElement, TEST_QUERY);
           mockTimer.tick(300);
 
-          await mockSearchboxPageHandler.whenCalled(
-              'queryAutocompleteWithSuggestInventory');
+          await mockSearchboxPageHandler.whenCalled('queryAutocomplete');
 
           await setupAutocompleteResults(
               searchboxCallbackRouterRemote, innerComposebox.activeQueryId,
@@ -1327,18 +1330,20 @@ suite('ContextualTasksComposeboxSubmitTest', () => {
       `ContextualTasksComposeboxForkInjectInputTest ` +
           `(useContextualTasksComposeboxFork = ${useFork})`,
       () => {
-        const QUERY_AUTOCOMPLETE_FN = 'queryAutocompleteWithSuggestInventory';
+        const QUERY_AUTOCOMPLETE_FN = 'queryAutocomplete';
         let testProxy: TestContextualTasksBrowserProxy;
-        let mockComposeboxPageHandler: TestMock<ComposeboxPageHandlerRemote>;
-        let mockSearchboxPageHandler: TestMock<SearchboxPageHandlerRemote>;
+        let mockComposeboxPageHandler: TestMock<ComposeboxPageHandlerRemote>&
+            ComposeboxPageHandlerRemote;
+        let mockSearchboxPageHandler: TestMock<SearchboxPageHandlerRemote>&
+            SearchboxPageHandlerRemote;
         let searchboxCallbackRouterRemote: SearchboxPageRemote;
         let parts: CtComposeboxAppParts;
 
         setup(async () => {
-          const win = window as any;
+          const win = window as unknown as {chrome: any, trustedTypes: any};
 
           if (!win.chrome) {
-            Object.assign(window, {chrome: {}});
+            win.chrome = {};
           }
 
           if (!win.chrome.histograms) {
@@ -1386,7 +1391,7 @@ suite('ContextualTasksComposeboxSubmitTest', () => {
           searchboxCallbackRouterRemote =
               searchboxCallbackRouter.$.bindNewPipeAndPassRemote();
           ComposeboxProxyImpl.setInstance(new ComposeboxProxyImpl(
-              mockComposeboxPageHandler as any, mockSearchboxPageHandler as any,
+              mockComposeboxPageHandler, mockSearchboxPageHandler,
               searchboxCallbackRouter));
 
           parts = await createCtComposeboxApp(useFork);

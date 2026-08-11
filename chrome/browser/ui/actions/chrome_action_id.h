@@ -94,7 +94,6 @@
   E(kActionFocusPrevTabGroup, IDC_FOCUS_PREV_TAB_GROUP) \
   E(kActionCloseTabGroup, IDC_CLOSE_TAB_GROUP) \
   E(kActionGroupUngroupedTabs, IDC_GROUP_UNGROUPED_TABS) \
-  E(kActionCreateNewTabGroupTopLevel, IDC_CREATE_NEW_TAB_GROUP_TOP_LEVEL) \
   E(kActionAddNewTabRecentGroup, IDC_ADD_NEW_TAB_RECENT_GROUP) \
   E(kActionFakePageActionForDebug, IDC_FAKE_PAGE_ACTION_FOR_DEBUG) \
   /* Page-manipulation commands that target a specified tab, which may not */ \
@@ -421,8 +420,8 @@
   E(kActionToggleVerticalTabsExpandOnHover, \
     IDC_TOGGLE_VERTICAL_TABS_EXPAND_ON_HOVER) \
   E(kActionVerticalTabsSendFeedback, IDC_VERTICAL_TABS_SEND_FEEDBACK) \
-  /*Projects Panel*/ \
-  E(kActionToggleProjectsPanel) \
+  /*Organizer Panel*/ \
+  E(kActionToggleOrganizerPanel) \
   /*Omnibox Context Menu*/       \
   E(kActionOmniboxContextAddImage, IDC_OMNIBOX_CONTEXT_ADD_IMAGE)\
   E(kActionOmniboxContextAddFile, IDC_OMNIBOX_CONTEXT_ADD_FILE)  \

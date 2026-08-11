@@ -33,6 +33,7 @@ import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.HeightType;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiId;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiSpecs.SideUiSize;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.UiUpdateRequest;
+import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils;
 import org.chromium.components.thinwebview.ThinWebView;
 import org.chromium.ui.accessibility.AccessibilityState;
 import org.chromium.ui.base.ViewUtils;
@@ -156,8 +157,6 @@ final class SidePanelContainerCoordinatorImpl
 
         // TODO(crbug.com/513302000): assert the side panel is currently open.
         // TODO(crbug.com/513302000): assert the side panel isn't preparing for auto-restore/close.
-
-        completePendingContentReplacementInternal();
 
         assert mCurrentContent != null : "no content to replace";
         View oldContentView = mCurrentContent.mView;
@@ -326,8 +325,12 @@ final class SidePanelContainerCoordinatorImpl
         int showableWidthDp =
                 determineShowableWidthDp(
                         availableWidthDp, windowWidthDp, minSidePanelContainerWidthDp);
-        return new SideUiSize(
-                ViewUtils.dpToPx(mParentActivity, showableWidthDp), HeightType.TOOLBAR);
+        @HeightType
+        int heightType =
+                VerticalTabUtils.isVerticalTabsEnabled(mParentActivity)
+                        ? HeightType.WEB_CONTENTS
+                        : HeightType.TOOLBAR;
+        return new SideUiSize(ViewUtils.dpToPx(mParentActivity, showableWidthDp), heightType);
     }
 
     @Override
@@ -370,22 +373,18 @@ final class SidePanelContainerCoordinatorImpl
             @Px int newWidth,
             @HeightType int oldHeightType,
             @HeightType int newHeightType) {
-        // The side panel is fully opened.
-        if (oldWidth == 0 && newWidth > 0 && mSidePanelCoordinatorAndroid != null) {
-            mSidePanelCoordinatorAndroid.onPanelOpened();
+        if (mSidePanelCoordinatorAndroid != null) {
+            mSidePanelCoordinatorAndroid.onPanelContainerUpdated(oldWidth, newWidth);
+        }
 
+        // Accessibility support for opening/closing the panel.
+        if (oldWidth == 0 && newWidth > 0) {
             CharSequence paneTitle = mCurrentContent != null ? mCurrentContent.mTitle : null;
             notifyAccessibilityStateChanged(
                     AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_APPEARED,
                     paneTitle,
                     /* requestFocus= */ true);
-            return;
-        }
-
-        // The side panel is fully closed.
-        if (oldWidth > 0 && newWidth == 0 && mSidePanelCoordinatorAndroid != null) {
-            mSidePanelCoordinatorAndroid.onPanelClosed();
-
+        } else if (oldWidth > 0 && newWidth == 0) {
             notifyAccessibilityStateChanged(
                     AccessibilityEvent.CONTENT_CHANGE_TYPE_PANE_DISAPPEARED,
                     /* title= */ null,

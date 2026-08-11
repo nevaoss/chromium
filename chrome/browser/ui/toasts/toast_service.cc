@@ -232,8 +232,6 @@ void ToastService::RegisterToasts(
         ToastId::kTabGroupSyncTabRemoved,
         ToastSpecification::Builder(features::IsRoundedIconsEnabled()
                                         ? kAccountCircleIcon
-                                    : features::IsRoundedIconsEnabled()
-                                        ? vector_icons::kAccountCircleIcon
                                         : kAccountCircleChromeRefreshOldIcon,
                                     IDS_DATA_SHARING_TOAST_TAB_REMOVED)
             .AddCloseButton()
@@ -259,8 +257,6 @@ void ToastService::RegisterToasts(
         ToastId::kTabGroupSyncUserJoined,
         ToastSpecification::Builder(features::IsRoundedIconsEnabled()
                                         ? kAccountCircleIcon
-                                    : features::IsRoundedIconsEnabled()
-                                        ? vector_icons::kAccountCircleIcon
                                         : kAccountCircleChromeRefreshOldIcon,
                                     IDS_DATA_SHARING_TOAST_NEW_MEMBER)
             .AddCloseButton()
@@ -501,9 +497,8 @@ void ToastService::RegisterToasts(
       ToastId::kSendTabToSelfTabOpened,
       // TODO(crbug.com/488072250): Update the strings.
       ToastSpecification::Builder(
-          features::IsRoundedIconsEnabled()   ? kDevicesIcon
-          : features::IsRoundedIconsEnabled() ? vector_icons::kDevicesIcon
-                                              : vector_icons::kDevicesOldIcon,
+          features::IsRoundedIconsEnabled() ? kDevicesIcon
+                                            : vector_icons::kDevicesOldIcon,
           IDS_SEND_TAB_PUSH_NOTIFICATION_TITLE_USER_GIVEN_DEVICE_NAME)
           .AddGlobalScoped()
           .Build());
@@ -512,9 +507,8 @@ void ToastService::RegisterToasts(
       ToastId::kSendTabToSelfTabsOpenedInBackground,
       // TODO(crbug.com/488072250): Update the strings.
       ToastSpecification::Builder(
-          features::IsRoundedIconsEnabled()   ? kDevicesIcon
-          : features::IsRoundedIconsEnabled() ? vector_icons::kDevicesIcon
-                                              : vector_icons::kDevicesOldIcon,
+          features::IsRoundedIconsEnabled() ? kDevicesIcon
+                                            : vector_icons::kDevicesOldIcon,
           IDS_SEND_TAB_PUSH_NOTIFICATION_TITLE_USER_GIVEN_DEVICE_NAME)
           .AddCloseButton()
           .AddActionButton(
@@ -538,20 +532,18 @@ void ToastService::RegisterToasts(
   // the target device's form factor.
   toast_registry_->RegisterToast(
       ToastId::kSendTabToSelfSuccess,
-      ToastSpecification::Builder(
-          features::IsRoundedIconsEnabled()   ? kDevicesIcon
-          : features::IsRoundedIconsEnabled() ? vector_icons::kDevicesIcon
-                                              : vector_icons::kDevicesOldIcon,
-          IDS_SEND_TAB_TO_SELF_POST_SEND_SUCCESS_TOAST)
+      ToastSpecification::Builder(features::IsRoundedIconsEnabled()
+                                      ? kDevicesIcon
+                                      : vector_icons::kDevicesOldIcon,
+                                  IDS_SEND_TAB_TO_SELF_POST_SEND_SUCCESS_TOAST)
           .AddCloseButton()
           .Build());
 
   toast_registry_->RegisterToast(
       ToastId::kSendTabToSelfSuccessThrottled,
       ToastSpecification::Builder(
-          features::IsRoundedIconsEnabled()   ? kDevicesIcon
-          : features::IsRoundedIconsEnabled() ? vector_icons::kDevicesIcon
-                                              : vector_icons::kDevicesOldIcon,
+          features::IsRoundedIconsEnabled() ? kDevicesIcon
+                                            : vector_icons::kDevicesOldIcon,
           IDS_SEND_TAB_TO_SELF_POST_SEND_THROTTLED_TOAST)
           .AddCloseButton()
           .Build());
@@ -613,6 +605,33 @@ void ToastService::RegisterToasts(
                     },
                     base::Unretained(browser_window_interface)))
             .AddCloseButton()
+            .Build());
+    toast_registry_->RegisterToast(
+        ToastId::kIndigoDeleteError,
+        ToastSpecification::Builder(features::IsRoundedIconsEnabled()
+                                        ? vector_icons::kErrorIcon
+                                        : vector_icons::kErrorOutlineOldIcon,
+                                    IDS_INDIGO_DELETE_ERROR_TOAST_BODY)
+            .AddActionButton(
+                IDS_INDIGO_DELETE_ERROR_TOAST_TRY_AGAIN_BUTTON,
+                base::BindRepeating(
+                    [](BrowserWindowInterface* window) {
+                      if (tabs::TabInterface* tab =
+                              window->GetActiveTabInterface()) {
+                        if (auto* controller =
+                                indigo::IndigoPageActionController::From(tab)) {
+                          controller->DeleteOriginalPhoto();
+                        }
+                      }
+                    },
+                    base::Unretained(browser_window_interface)))
+            .AddCloseButton()
+            .Build());
+    toast_registry_->RegisterToast(
+        ToastId::kIndigoDeleteSuccess,
+        ToastSpecification::Builder(
+            features::IsRoundedIconsEnabled() ? kCheckSmallIcon : kCheckOldIcon,
+            IDS_INDIGO_DELETE_SUCCESS_TOAST_BODY)
             .Build());
   }
 

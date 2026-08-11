@@ -27,9 +27,13 @@ AiModeButtonUiConfig::AiModeButtonUiConfig(
     std::string_view navigation_url_empty)
     : id(id),
       text(name),
-      tooltip(l10n_util::GetStringFUTF16(IDS_AI_MODE_ENTRYPOINT_TOOLTIP,
-                                         name,
-                                         dse_name)),
+      tooltip(
+          id == SearchEngineType::SEARCH_ENGINE_GOOGLE
+              ? l10n_util::GetStringFUTF16(IDS_AI_MODE_ENTRYPOINT_TOOLTIP_1P,
+                                           name,
+                                           dse_name)
+              : l10n_util::GetStringFUTF16(IDS_AI_MODE_ENTRYPOINT_TOOLTIP_3P,
+                                           name)),
       a11y_label(
           l10n_util::GetStringFUTF16(IDS_AI_MODE_ENTRYPOINT_ACC_FOCUSED, name)),
       context_menu_label(
@@ -108,7 +112,7 @@ std::optional<AiModeButtonUiConfig> AiModeButtonService::BuildCurrentUiConfig()
   }
 
   const ai_mode_button_config::AiModeButtonConfig* found_config = nullptr;
-  for (const auto* config : ai_mode_button_config::kAiModeButtonConfigs) {
+  for (const auto& config : ai_mode_button_config::kAiModeButtonConfigs) {
     if (config->id == type) {
       // `kAiModeButtonConfigs` contains a debug config to allow for manual
       // testing. Skip it if the debug param is false.

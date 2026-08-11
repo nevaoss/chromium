@@ -377,8 +377,6 @@ source_set("extensions") {
     "launch_util.cc",
     "launch_util.h",
     "managed_toolbar_pin_mode.h",
-    "management/management_util.cc",
-    "management/management_util.h",
     "menu_icon_loader.h",
     "menu_manager.cc",
     "menu_manager.h",
@@ -738,6 +736,15 @@ source_set("extensions") {
       "//chrome/browser/guest_view",
       "//components/guest_view/browser",
       "//components/guest_view/common:mojom",
+    ]
+  }
+
+  if (is_win || is_mac) {
+    sources += [
+      "management/management_util.cc",
+      "management/management_util.h",
+      "policy_dse_ntp_override_metrics_reporter.cc",
+      "policy_dse_ntp_override_metrics_reporter.h",
     ]
   }
 
@@ -1668,6 +1675,7 @@ static_library("test_support") {
     "//chrome/browser/notifications:test_support",
     "//chrome/browser/prefs",
     "//chrome/browser/preloading:test_support",
+    "//chrome/browser/signin:identity_test_support",
     "//chrome/browser/sync",
     "//chrome/browser/tab_group_sync:factories",
     "//chrome/browser/tab_list",
@@ -1762,6 +1770,7 @@ static_library("test_support") {
         "//chrome/browser/ash/printing:test_support",
         "//chrome/browser/ash/printing/history:print_job_info_proto",
         "//chrome/browser/printing",
+        "//chrome/browser/printing:browser_printing_context_factory_for_test",
       ]
     }  # enable_printing && use_cups
   }  # is_chromeos
@@ -2200,6 +2209,10 @@ source_set("unit_tests") {
 
     if (is_win) {
       sources += [ "external_registry_loader_win_unittest.cc" ]
+    }
+
+    if (is_win || is_mac) {
+      sources += [ "policy_dse_ntp_override_metrics_reporter_unittest.cc" ]
     }
 
     if (is_win || is_mac || is_linux) {
@@ -2856,6 +2869,7 @@ source_set("browser_tests") {
       ]
       deps += [
         "//chrome/browser/enterprise/connectors/test:test_support",
+        "//chrome/browser/ui/webui:chrome_web_contents_handler",
         "//components/enterprise/buildflags",
         "//components/enterprise/connectors/core",
       ]
@@ -3165,6 +3179,10 @@ source_set("browser_tests") {
       "//third_party/wpt_tools/wpt/resources/testdriver.js",
     ]
   }  # enable_extensions
+
+  if (enable_pdf) {
+    deps += [ "//chrome/browser/pdf:pdf_extension_test_base" ]
+  }
 }
 
 source_set("interactive_ui_tests") {

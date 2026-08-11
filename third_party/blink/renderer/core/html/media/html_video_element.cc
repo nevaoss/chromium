@@ -398,6 +398,20 @@ void HTMLVideoElement::UpdatePictureInPictureAvailability() {
     observer->OnPictureInPictureAvailabilityChanged(SupportsPictureInPicture());
 }
 
+void HTMLVideoElement::UpdateVideoFrameAvailability() {
+  bool available = !IsEncrypted() && web_media_player_ &&
+                   HasAvailableVideoFrame() && HasReadableVideoFrame();
+
+  if (available == last_reported_video_frame_availability_) {
+    return;
+  }
+  last_reported_video_frame_availability_ = available;
+
+  for (auto& observer : GetMediaPlayerObserverRemoteSet()) {
+    observer->OnVideoFrameAvailabilityChanged(available);
+  }
+}
+
 // TODO(zqzhang): this callback could be used to hide native controls instead of
 // using a settings. See `HTMLMediaElement::onMediaControlsEnabledChange`.
 void HTMLVideoElement::SetPersistentState(bool persistent) {
@@ -744,6 +758,8 @@ bool HTMLVideoElement::HasReadableVideoFrame() const {
 void HTMLVideoElement::OnFirstFrame(base::TimeTicks frame_time,
                                     size_t bytes_to_first_frame) {
   DCHECK(GetWebMediaPlayer());
+  has_received_first_frame_ = true;
+
   LayoutObject* layout_object = GetLayoutObject();
   // HasLocalBorderBoxProperties will be false in some cases, specifically
   // picture-in-picture video may return false here.
@@ -766,6 +782,9 @@ void HTMLVideoElement::OnFirstFrame(base::TimeTicks frame_time,
       video_timing_ = video_timing;
     }
   }
+
+  MaybeEnterImmersivePictureInPicture();
+  UpdateVideoFrameAvailability();
 }
 
 void HTMLVideoElement::EnterFullscreen() {
@@ -838,10 +857,9 @@ unsigned HTMLVideoElement::webkitDecodedFrameCount() const {
   return 0;
 }
 
-void HTMLVideoElement::DidChangeIsCanvasOrInCanvasSubtree(
-    bool is_in_canvas_subtree) {
-  HTMLMediaElement::DidChangeIsCanvasOrInCanvasSubtree(is_in_canvas_subtree);
-  if (is_in_canvas_subtree) {
+void HTMLVideoElement::DidChangeIsInCanvasSubtree() {
+  HTMLMediaElement::DidChangeIsInCanvasSubtree();
+  if (IsInCanvasSubtree()) {
     UpdateLayoutObject();
     if (auto* wmp = GetWebMediaPlayer()) {
       wmp->RequestVideoFrameCallback();
@@ -1135,12 +1153,19 @@ void HTMLVideoElement::SetIsEffectivelyFullscreen(
   // If the video becomes effectively fullscreen, enter an immersive
   // Picture-in-Picture session if enabled.
   if (is_effectively_fullscreen_ && !was_effectively_fullscreen) {
-    if (GetDocument().GetSettings() &&
-        GetDocument().GetSettings()->GetImmersiveVideoPlaybackEnabled()) {
-      if (!PictureInPictureController::IsElementInPictureInPicture(this)) {
-        PictureInPictureController::From(GetDocument())
-            .EnterPictureInPictureImmersive(*this);
-      }
+    MaybeEnterImmersivePictureInPicture();
+  }
+}
+
+void HTMLVideoElement::MaybeEnterImmersivePictureInPicture() {
+  if (!is_effectively_fullscreen_ || !has_received_first_frame_) {
+    return;
+  }
+  if (GetDocument().GetSettings() &&
+      GetDocument().GetSettings()->GetImmersiveVideoPlaybackEnabled()) {
+    if (!PictureInPictureController::IsElementInPictureInPicture(this)) {
+      PictureInPictureController::From(GetDocument())
+          .EnterPictureInPictureImmersive(*this);
     }
   }
 }
@@ -1207,10 +1232,13 @@ void HTMLVideoElement::OnWebMediaPlayerCreated() {
 }
 
 void HTMLVideoElement::OnWebMediaPlayerCleared() {
+  has_received_first_frame_ = false;
   if (auto* vfc_requester = VideoFrameCallbackRequester::From(*this))
     vfc_requester->OnWebMediaPlayerCleared();
 
   UpdateVideoVisibilityTracker();
+
+  UpdateVideoFrameAvailability();
 }
 
 void HTMLVideoElement::RecordVideoOcclusionState(

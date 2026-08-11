@@ -9,6 +9,7 @@ import static org.chromium.chrome.browser.ui.autofill.AtMemoryBottomSheetPropert
 
 import android.content.Context;
 
+import androidx.annotation.DrawableRes;
 import androidx.annotation.IntDef;
 
 import org.chromium.base.metrics.RecordHistogram;
@@ -21,6 +22,7 @@ import org.chromium.chrome.browser.ui.autofill.AtMemoryBottomSheetProperties.Hom
 import org.chromium.chrome.browser.ui.autofill.AtMemoryBottomSheetProperties.NoticeItemProperties;
 import org.chromium.chrome.browser.ui.autofill.AtMemoryBottomSheetProperties.ScreenId;
 import org.chromium.chrome.browser.ui.autofill.AtMemoryBottomSheetProperties.SuggestionItemProperties;
+import org.chromium.chrome.browser.ui.autofill.internal.R;
 import org.chromium.components.autofill.AutofillSuggestion;
 import org.chromium.components.autofill.SuggestionType;
 import org.chromium.ui.modelutil.MVCListAdapter.ListItem;
@@ -107,8 +109,6 @@ class AtMemoryBottomSheetMediator implements AtMemorySearchBarView.Delegate {
     private void applyScreenState(
             AtMemoryScreenState screenState, List<AutofillSuggestion> suggestions) {
         mHomeModel.set(HomeProperties.IS_LOADING, screenState.isLoading);
-        mHomeModel.set(
-                HomeProperties.SHOW_SUGGESTIONS_BACKGROUND, screenState.showSuggestionsBackground);
 
         ModelList sheetItems = mHomeModel.get(HomeProperties.SHEET_ITEMS);
         sheetItems.clear();
@@ -136,6 +136,11 @@ class AtMemoryBottomSheetMediator implements AtMemorySearchBarView.Delegate {
         if (suggestion.getSuggestionType() == SuggestionType.PERSONAL_CONTEXT_NOTICE) {
             recordNoticeShown();
             return new ListItem(HomeProperties.ItemType.NOTICE, createNoticeModel(position));
+        }
+        if (suggestion.getSuggestionType() == SuggestionType.AT_MEMORY_SEARCH_AFFORDANCE) {
+            return new ListItem(
+                    HomeProperties.ItemType.SUGGESTION_WITH_NO_BACKGROUND,
+                    createSuggestionModel(suggestion, position));
         }
         return new ListItem(
                 HomeProperties.ItemType.SUGGESTION, createSuggestionModel(suggestion, position));
@@ -191,12 +196,12 @@ class AtMemoryBottomSheetMediator implements AtMemorySearchBarView.Delegate {
 
         mModel.set(CURRENT_SCREEN, ScreenId.FLYOUT_SCREEN);
         mDelegate.onChildSuggestionsShown(position);
-        mDelegate.requestExpandSheet();
+        mDelegate.requestExpandSheet(/* expandInFullHeight= */ false);
     }
 
     private void onFlyoutBackClicked() {
         mModel.set(CURRENT_SCREEN, ScreenId.HOME_SCREEN);
-        mDelegate.requestExpandSheet();
+        mDelegate.requestExpandSheet(/* expandInFullHeight= */ false);
     }
 
     private void onFlyoutSuggestionClicked(int parentPosition, int childPosition) {
@@ -207,6 +212,7 @@ class AtMemoryBottomSheetMediator implements AtMemorySearchBarView.Delegate {
     public void onQuerySubmitted(String query) {
         mHomeModel.set(HomeProperties.IS_LOADING, true);
         mDelegate.onQuerySubmitted(query);
+        mDelegate.requestExpandSheet(/* expandInFullHeight= */ true);
     }
 
     @Override
@@ -217,7 +223,7 @@ class AtMemoryBottomSheetMediator implements AtMemorySearchBarView.Delegate {
     @Override
     public void onSearchFocus(boolean hasFocus) {
         if (hasFocus) {
-            mDelegate.requestExpandSheet();
+            mDelegate.requestExpandSheet(/* expandInFullHeight= */ true);
         }
     }
 
@@ -236,6 +242,9 @@ class AtMemoryBottomSheetMediator implements AtMemorySearchBarView.Delegate {
                 .with(
                         SuggestionItemProperties.IS_FLYOUT_VISIBLE,
                         !suggestion.getChildren().isEmpty())
+                .with(
+                        SuggestionItemProperties.TRAILING_ICON_ID,
+                        getResIdForSuggestionType(suggestion.getSuggestionType()))
                 .with(
                         SuggestionItemProperties.APPLY_DEACTIVATED_STYLE,
                         suggestion.applyDeactivatedStyle())
@@ -258,7 +267,6 @@ class AtMemoryBottomSheetMediator implements AtMemorySearchBarView.Delegate {
     private PropertyModel createHomeModel() {
         return new PropertyModel.Builder(HomeProperties.ALL_KEYS)
                 .with(HomeProperties.IS_LOADING, false)
-                .with(HomeProperties.SHOW_SUGGESTIONS_BACKGROUND, false)
                 .with(HomeProperties.SHEET_ITEMS, new ModelList())
                 .with(HomeProperties.SEARCH_BAR_DELEGATE, this)
                 .build();
@@ -271,5 +279,18 @@ class AtMemoryBottomSheetMediator implements AtMemorySearchBarView.Delegate {
                 .with(FlyoutProperties.ON_BACK_CLICKED, this::onFlyoutBackClicked)
                 .with(FlyoutProperties.ON_SUGGESTION_CLICKED, childPos -> {})
                 .build();
+    }
+
+    private @DrawableRes int getResIdForSuggestionType(int suggestionType) {
+        switch (suggestionType) {
+            case SuggestionType.OPEN_GEMINI:
+                return R.drawable.open_in_new;
+            case SuggestionType.AT_MEMORY_NO_CONNECTION:
+                return R.drawable.ic_north_west_24dp;
+            case SuggestionType.AT_MEMORY_SEARCH_AFFORDANCE:
+                return R.drawable.ic_north_west_24dp;
+            default:
+                return 0;
+        }
     }
 }

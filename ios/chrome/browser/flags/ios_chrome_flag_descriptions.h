@@ -65,6 +65,11 @@ inline constexpr char kAimUrlNavigationFetchEnabledName[] =
 inline constexpr char kAimUrlNavigationFetchEnabledDescription[] =
     "Enables the AimUrlNavigationFetchEnabled feature.";
 
+inline constexpr char kAlertCrashFixKillSwitchName[] =
+    "AlertCrashFixKillSwitch";
+inline constexpr char kAlertCrashFixKillSwitchDescription[] =
+    "Enables the AlertCrashFixKillSwitch feature.";
+
 inline constexpr char kAnimatedDefaultBrowserPromoInFREName[] =
     "Enable the animated Default Browser Promo in the FRE";
 inline constexpr char kAnimatedDefaultBrowserPromoInFREDescription[] =
@@ -960,6 +965,11 @@ inline constexpr char kIOSBackendPromoServiceIntegrationName[] =
 inline constexpr char kIOSBackendPromoServiceIntegrationDescription[] =
     "Enables Backend Promo Service integration.";
 
+inline constexpr char kIOSBackgroundMetricsName[] = "iOS Background Metrics";
+inline constexpr char kIOSBackgroundMetricsDescription[] =
+    "Enables periodic UMA metrics log rotation and uploading in the "
+    "background.";
+
 inline constexpr char kIOSBrowserEditMenuMetricsName[] =
     "Browser edit menu metrics";
 inline constexpr char kIOSBrowserEditMenuMetricsDescription[] =
@@ -1175,6 +1185,11 @@ inline constexpr char kInProductHelpDemoModeDescription[] =
     "an individual promotion causes that promotion but no other promotions to "
     "occur.";
 
+inline constexpr char kIncludeSystemLogInFeedbackName[] =
+    "Include system log in feedback";
+inline constexpr char kIncludeSystemLogInFeedbackDescription[] =
+    "When enabled, system log will be included in user feedback reports.";
+
 inline constexpr char kIndicateIdentityErrorInOverflowMenuName[] =
     "Indicate Identity Error in Overflow Menu";
 inline constexpr char kIndicateIdentityErrorInOverflowMenuDescription[] =
@@ -1247,6 +1262,11 @@ inline constexpr char kLensFiltersAblationModeEnabledName[] =
     "Lens filters ablation mode enabled";
 inline constexpr char kLensFiltersAblationModeEnabledDescription[] =
     "Enables the filters ablation mode.";
+
+inline constexpr char kLensFollowupsFullHeightEnabledName[] =
+    "Lens followups full height enabled";
+inline constexpr char kLensFollowupsFullHeightEnabledDescription[] =
+    "Enables followups full height in the Lens overlay.";
 
 inline constexpr char kLensGestureTextSelectionDisabledName[] =
     "Disable Lens gesture text selection";
@@ -1461,6 +1481,11 @@ inline constexpr char kOmniboxCrashFixKillSwitchName[] =
     "OmniboxCrashFixKillSwitch";
 inline constexpr char kOmniboxCrashFixKillSwitchDescription[] =
     "Enables the OmniboxCrashFixKillSwitch feature.";
+
+inline constexpr char kOmniboxCrossDeviceTabZeroSuggestName[] =
+    "Omnibox Cross-Device Tab Zero Suggest";
+inline constexpr char kOmniboxCrossDeviceTabZeroSuggestDescription[] =
+    "Enables showing cross-device tabs in the omnibox zero-state.";
 
 inline constexpr char kOmniboxGroupingFrameworkForTypedSuggestionsName[] =
     "Omnibox Grouping Framework for Typed Suggestions";
@@ -1760,6 +1785,12 @@ inline constexpr char kSafeBrowsingAvailableName[] =
 inline constexpr char kSafeBrowsingAvailableDescription[] =
     "When enabled, navigation URLs are compared to Safe Browsing blocklists, "
     "subject to an opt-out preference.";
+
+inline constexpr char kSafeBrowsingLocalListsUseSBv5Name[] =
+    "Safe Browsing Local Lists use v5 API";
+inline constexpr char kSafeBrowsingLocalListsUseSBv5Description[] =
+    "Fetch and check local lists using the Safe Browsing v5 API instead of the "
+    "v4 Update API.";
 
 inline constexpr char kSafeBrowsingRealTimeLookupName[] =
     "Enable real-time Safe Browsing";

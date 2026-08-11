@@ -777,6 +777,15 @@ suite('GlicSubpage', function() {
       assertTrue(isVisible(webActuationToggle));
     });
 
+    test('WebActuationSublabelAriaAttributes', () => {
+      const webActuationToggle =
+          $<SettingsToggleButtonElement>('webActuationToggle')!;
+      const sublabelLink = webActuationToggle.shadowRoot!.querySelector('a');
+      assertTrue(!!sublabelLink);
+      assertTrue(sublabelLink.hasAttribute('aria-label'));
+      assertTrue(sublabelLink.hasAttribute('aria-description'));
+    });
+
     test('ToggleEnabled', async () => {
       page.set('webActuationEnabledPref_.value', true);
       await flushTasks();
@@ -1221,7 +1230,7 @@ suite('GlicSubpage', function() {
       assertTrue(!!link);
       link.click();
       const url = await openWindowProxy.whenCalled('openUrl');
-      assertEquals('https://support.google.com/gemini/answer/16283624', url);
+      assertEquals('https://support.google.com/chrome?p=gic_media_questions', url);
     });
   });
 

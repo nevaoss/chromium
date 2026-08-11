@@ -132,7 +132,6 @@
 <translation id="1411386976162024013">„Lens“ vaizdinė paieška</translation>
 <translation id="1417474386970818917">Atsijungti ir ištrinti</translation>
 <translation id="1426410128494586442">Taip</translation>
-<translation id="1429187656584513419">Atidarykite „Slaptažodžiai“</translation>
 <translation id="1430915738399379752">Spausdinti</translation>
 <translation id="1433478348197382180">Skaitymo režimas</translation>
 <translation id="1435271730600332883">Atidarykite skiltį „Automatinis pildymas ir slaptažodžiai“</translation>
@@ -663,6 +662,7 @@
 <translation id="3183362380688692618">Nauja skirtukų grupė...</translation>
 <translation id="3185760469172949183">Paieška naudojant fotoaparatą baigta!</translation>
 <translation id="3186796054637504691">Išvalyti istoriją ir svetainės duomenis</translation>
+<translation id="3190558889382726167">Slaptažodis išsaugotas</translation>
 <translation id="3190736958609431397">Nebestebėti</translation>
 <translation id="3208260410153224535">Organizacija išjungė prisijungimą. Nauji slaptažodžiai, žymės ir kt. bus išsaugoti tik šiame įrenginyje.</translation>
 <translation id="3211969308836412674">Atsegti svetainę</translation>
@@ -1197,6 +1197,7 @@
 <translation id="5017529052065664584">Pastarosios penkiolika minučių</translation>
 <translation id="5020732097997376541">Palieskite „Lens“ piktogramą</translation>
 <translation id="5021500396464456616">Susisiekite su asmeniu, kuris atsiuntė šią nuorodą</translation>
+<translation id="503173149952522259">Paspauskite ir palaikykite, kad prisegtumėte šį skirtuką</translation>
 <translation id="5039804452771397117">Leisti</translation>
 <translation id="5050042263972837708">Grupės pavadinimas</translation>
 <translation id="5050810143224996149">Slaptažodžio bendrinimas</translation>

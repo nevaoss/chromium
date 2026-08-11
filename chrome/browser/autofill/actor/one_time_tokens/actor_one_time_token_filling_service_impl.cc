@@ -11,6 +11,7 @@
 
 #include "base/check_deref.h"
 #include "base/command_line.h"
+#include "base/containers/flat_map.h"
 #include "base/containers/span.h"
 #include "base/containers/to_vector.h"
 #include "base/functional/bind.h"
@@ -168,11 +169,13 @@ void ActorOneTimeTokenFillingServiceImpl::RetrieveOtp(
     const tabs::TabHandle tab_handle,
     const url::Origin& otp_frame_origin,
     const std::vector<FieldGlobalId>& trigger_field_ids,
+    bool is_login_flow,
     base::OnceCallback<void(
         base::expected<std::string, OneTimeTokenRetrievalError>)> callback) {
   using enum ActorOneTimeTokenFillingServiceRetrieveOtp;
   RecordActorOneTimeTokenFillingServiceRetrieveOtp(kStart);
   otp_frame_origin_ = otp_frame_origin;
+  is_login_flow_ = is_login_flow;
 
   tabs::TabInterface* tab = tab_handle.Get();
   if (!tab || !tab->GetContents()) {
@@ -279,7 +282,8 @@ void ActorOneTimeTokenFillingServiceImpl::SubscribeForOneTimeToken() {
       base::Time::Now() + base::Minutes(1),
       base::BindRepeating(
           &ActorOneTimeTokenFillingServiceImpl::OnOneTimeTokenReceived,
-          retrieve_otp_weak_ptr_factory_.GetWeakPtr()));
+          retrieve_otp_weak_ptr_factory_.GetWeakPtr()),
+      /*expiration_callback=*/base::DoNothing());
 }
 
 void ActorOneTimeTokenFillingServiceImpl::CheckSenderDomainMatchesFrameToFill(
@@ -316,10 +320,19 @@ void ActorOneTimeTokenFillingServiceImpl::CheckCachedTokenMatch(
 
 bool ActorOneTimeTokenFillingServiceImpl::IsMatchTypeAllowed(
     std::optional<affiliations::MatchType> match_type) const {
-  return match_type.has_value() &&
-         ((*match_type == affiliations::MatchType::kExact) ||
-          (static_cast<int>(*match_type) &
-           static_cast<int>(affiliations::MatchType::kAffiliated)));
+  if (!match_type.has_value()) {
+    return false;
+  }
+  bool is_exact_or_affiliated =
+      (*match_type == affiliations::MatchType::kExact) ||
+      (static_cast<int>(*match_type) &
+       static_cast<int>(affiliations::MatchType::kAffiliated));
+  if (is_exact_or_affiliated) {
+    return true;
+  }
+  bool is_psl = static_cast<int>(*match_type) &
+                static_cast<int>(affiliations::MatchType::kPSL);
+  return is_psl && is_login_flow_;
 }
 
 void ActorOneTimeTokenFillingServiceImpl::OnCachedTokenMatchChecked(
@@ -497,7 +510,8 @@ void ActorOneTimeTokenFillingServiceImpl::FillOtp(
   filling_observer_->Activate(base::BindOnce(
       [](base::WeakPtr<ActorOneTimeTokenFillingServiceImpl> service,
          base::OnceCallback<void(bool)> callback,
-         base::expected<void, ActorFormFillingError> result) {
+         base::expected<base::flat_map<FieldGlobalId, std::string>,
+                        ActorFormFillingError> result) {
         using enum ActorOneTimeTokenFillingServiceFillOtp;
         if (result.has_value()) {
           RecordActorOneTimeTokenFillingServiceFillOtp(kSuccess);

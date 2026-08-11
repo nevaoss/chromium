@@ -1281,7 +1281,7 @@ chromium-metrics-reviews@google.com.
   <owner>chrome-a11y-core@google.com</owner>
   <summary>
     Whether enhanced network TTS voices were enabled when Select-to-Speak was
-    activated.
+    activated. Enhanced network voices were forced off in M152.
   </summary>
 </histogram>
 
@@ -2175,7 +2175,7 @@ even if they fit the naming pattern. -->
 </histogram>
 
 <histogram name="Accessibility.LiveTranslate.Ash.Boca.Babelorca.TargetLanguage"
-    enum="LocaleCodeBCP47" expires_after="2026-12-01">
+    enum="LocaleCodeBCP47" expires_after="2027-01-27">
   <owner>caott@google.com</owner>
   <owner>cros-edu-eng@google.com</owner>
   <summary>
@@ -3009,6 +3009,26 @@ even if they fit the naming pattern. -->
     failures, as well as final evaluation successes. Recorded once for every
     evaluation attempt.
   </summary>
+</histogram>
+
+<histogram name="Accessibility.ReadAnything.DistillationQuality.{Metric}"
+    units="%" expires_after="2027-01-01">
+  <owner>alfredohiguera@google.com</owner>
+  <owner>chrome-irm-devs@google.com</owner>
+  <summary>
+    Records the {Metric} metric for Reading Mode distillation quality. Recorded
+    as a percentage after multiplying the original 0.0-1.0 value by 100.
+    Recorded after a successful distillation quality evaluation on a page.
+  </summary>
+  <token key="Metric">
+    <variant name="FormatScore" summary="Format Score"/>
+    <variant name="LinkDensityRatio" summary="Link Density Ratio"/>
+    <variant name="RougeLF1" summary="ROUGE-L F1 Score"/>
+    <variant name="RougeLF2" summary="ROUGE-L F2 Score"/>
+    <variant name="RougeLPrecision" summary="ROUGE-L Precision"/>
+    <variant name="RougeLRecall" summary="ROUGE-L Recall"/>
+    <variant name="StructScore" summary="Struct Score"/>
+  </token>
 </histogram>
 
 <histogram name="Accessibility.ReadAnything.DistillationScheme"
@@ -4068,6 +4088,19 @@ even if they fit the naming pattern. -->
   <summary>
     Records when ScreenAI service does not get a reply from the library in one
     minute after a request. Records if the request was for OCR or not.
+  </summary>
+</histogram>
+
+<histogram name="Accessibility.ScreenAI.VulnerableToTlsDtvCrash" enum="Boolean"
+    expires_after="2027-06-01">
+  <owner>rhalavati@chromium.org</owner>
+  <owner>chrome-a11y-core@google.com</owner>
+  <summary>
+    Records true if the system environment is vulnerable to glibc DTV TLS
+    allocation races (glibc &lt; 2.35 with Static TLS pool exhausted) when
+    Screen AI OCR initialization is attempted, or false otherwise. This metric
+    is recorded during Screen AI OCR initialization, only on Linux and when
+    glibc is used.
   </summary>
 </histogram>
 

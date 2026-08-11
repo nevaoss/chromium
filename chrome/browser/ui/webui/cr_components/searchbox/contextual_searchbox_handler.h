@@ -126,6 +126,8 @@ class ContextualSearchboxHandler
 
   ~ContextualSearchboxHandler() override;
 
+  virtual void SetAimButtonVisible(bool visible) {}
+
   // searchbox::mojom::PageHandler:
   void NotifySessionStarted() override;
   void NotifySessionAbandoned() override;
@@ -175,14 +177,8 @@ class ContextualSearchboxHandler
                          const std::u16string& input,
                          bool prevent_inline_autocomplete,
                          uint32_t cursor_position,
+                         omnibox::SuggestInventory suggest_inventory,
                          bool is_on_focus) override;
-  void QueryAutocompleteWithSuggestInventory(
-      int32_t query_id,
-      const std::u16string& input,
-      bool prevent_inline_autocomplete,
-      uint32_t cursor_position,
-      omnibox::SuggestInventory suggest_inventory,
-      bool is_on_focus) override;
 
 #if !BUILDFLAG(IS_ANDROID)
   // drive_picker_host::mojom::DrivePickerResultHandler:

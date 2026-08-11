@@ -2067,6 +2067,13 @@ targets.binaries.generated_script(
 )
 
 targets.binaries.console_test_launcher(
+    name = "rlz_unittests",
+    label = "//rlz:rlz_unittests",
+    module_scheme = "gtest",
+    skip_usage_check = True,
+)
+
+targets.binaries.console_test_launcher(
     name = "rust_gtest_interop_unittests",
     label = "//testing/rust_gtest_interop:rust_gtest_interop_unittests",
     module_scheme = "gtest",
@@ -2688,7 +2695,7 @@ targets.binaries.generated_script(
     name = "webdriver_bidi_unittests",
     label = "//third_party/chromium-bidi:webdriver_bidi_unittests",
     skip_usage_check = True,
-    module_scheme = "single",
+    module_scheme = "mocha",
 )
 
 targets.binaries.generated_script(

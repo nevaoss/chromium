@@ -132,7 +132,6 @@
 <translation id="1411386976162024013">Visuel søgning med Lens</translation>
 <translation id="1417474386970818917">Log ud og slet</translation>
 <translation id="1426410128494586442">Ja</translation>
-<translation id="1429187656584513419">Åbn Adgangskoder</translation>
 <translation id="1430915738399379752">Udskriv</translation>
 <translation id="1433478348197382180">Læsetilstand</translation>
 <translation id="1435271730600332883">Åbn Autofyld og adgangskoder</translation>
@@ -663,6 +662,7 @@
 <translation id="3183362380688692618">Ny fanegruppe…</translation>
 <translation id="3185760469172949183">Søgning med kameraet er fuldført.</translation>
 <translation id="3186796054637504691">Ryd historik og websitedata</translation>
+<translation id="3190558889382726167">Adgangskoden er blevet gemt</translation>
 <translation id="3190736958609431397">Hold ikke længere øje</translation>
 <translation id="3208260410153224535">Din organisation har deaktiveret login. Nye bogmærker, adgangskoder m.m. gemmes kun på denne enhed.</translation>
 <translation id="3211969308836412674">Frigør website</translation>
@@ -1197,6 +1197,7 @@
 <translation id="5017529052065664584">De seneste 15 minutter</translation>
 <translation id="5020732097997376541">Tryk på Lens-ikonet</translation>
 <translation id="5021500396464456616">Kontakt den person, der har sendt dette link</translation>
+<translation id="503173149952522259">Hold fingeren på fanen for at fastgøre den</translation>
 <translation id="5039804452771397117">Tillad</translation>
 <translation id="5050042263972837708">Gruppenavn</translation>
 <translation id="5050810143224996149">Del adgangskode</translation>

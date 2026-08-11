@@ -24,10 +24,6 @@ class BookmarkModelMetadata;
 class EntitySpecifics;
 }  // namespace sync_pb
 
-namespace syncer {
-struct UpdateResponseData;
-}  // namespace syncer
-
 namespace bookmarks {
 class BookmarkNode;
 }  // namespace bookmarks
@@ -68,9 +64,13 @@ class SyncedBookmarkTracker {
   // is no need to reupload them again after next browser startup.
   void SetBookmarksReuploaded();
 
-  // Returns null if no entity is found.
-  SyncedBookmarkTrackerEntity* GetEntityForSyncId(const std::string& sync_id);
-  const SyncedBookmarkTrackerEntity* GetEntityForSyncId(
+  // Performs a linear scan over all tracked entities to find the entity
+  // matching `sync_id`. Prefer using GetEntityForUuid(),
+  // GetEntityForClientTagHash(), or GetEntityForBookmarkNode() whenever
+  // possible. Returns null if no entity is found.
+  SyncedBookmarkTrackerEntity* GetEntityForSyncIdExhaustively(
+      const std::string& sync_id);
+  const SyncedBookmarkTrackerEntity* GetEntityForSyncIdExhaustively(
       const std::string& sync_id) const;
 
   // Returns null if no entity is found.
@@ -151,34 +151,14 @@ class SyncedBookmarkTracker {
       const;
   std::vector<SyncedBookmarkTrackerEntity*>
   GetMutableEntitiesWithLocalChanges();
-
-  // Updates the tracker after receiving a remote update. `entity` must be owned
-  // by this tracker.
-  void RecordAcceptedRemoteUpdate(const SyncedBookmarkTrackerEntity* entity,
-                                  const syncer::UpdateResponseData& update);
-
-  // Updates the tracker after receiving the commit response. `sync_id` should
-  // match the already tracked sync ID for `entity`, with the exception of the
-  // initial commit, where the temporary client-generated ID will be overridden
-  // by the server-provided final ID. `entity` must be owned by this tracker.
-  void UpdateUponCommitResponse(const SyncedBookmarkTrackerEntity* entity,
-                                const std::string& sync_id,
-                                int64_t server_version,
-                                int64_t acked_sequence_number,
-                                const std::string& specifics_hash);
-
-  // Informs the tracker that the sync ID for `entity` has changed. It updates
-  // the internal state of the tracker accordingly. `entity` must be owned by
-  // this tracker.
-  void UpdateSyncIdIfNeeded(const SyncedBookmarkTrackerEntity* entity,
-                            const std::string& sync_id);
-
   // Used to start tracking an entity that overwrites a previous local tombstone
   // (e.g. user-initiated bookmark deletion undo). `entity` must be owned by
   // this tracker.
   void UndeleteTombstoneForBookmarkNode(
       const SyncedBookmarkTrackerEntity* entity,
-      const bookmarks::BookmarkNode* node);
+      const bookmarks::BookmarkNode* node,
+      const sync_pb::EntitySpecifics& specifics,
+      base::Time modification_time);
 
   // Whether the tracker is empty or not.
   bool IsEmpty() const;
@@ -195,9 +175,6 @@ class SyncedBookmarkTracker {
 
   // Returns number of tracked entities. Used only in test.
   size_t TrackedEntitiesCountForTest() const;
-
-  // Clears the specifics hash for `entity`, useful for testing.
-  void ClearSpecificsHashForTest(const SyncedBookmarkTrackerEntity* entity);
 
   // Checks whether all nodes in `bookmark_model` that *should* be tracked as
   // per IsNodeSyncable() are tracked.
@@ -262,8 +239,7 @@ class SyncedBookmarkTracker {
       const bookmarks::BookmarkNode* bookmark_node,
       const std::string& sync_id,
       int64_t server_version,
-      base::Time creation_time,
-      const sync_pb::EntitySpecifics& specifics);
+      base::Time creation_time);
 
   // Add entities to `this` tracker based on the content of `*model` and
   // `model_metadata`. Validates the integrity of `*model` and `model_metadata`
@@ -290,16 +266,10 @@ class SyncedBookmarkTracker {
       const bookmarks::BookmarkNode* node,
       std::vector<const SyncedBookmarkTrackerEntity*>* ordered_entities) const;
 
-  // A map of sync server ids to sync entities. This should contain entries and
-  // metadata for almost everything.
-  std::unordered_map<std::string, std::unique_ptr<SyncedBookmarkTrackerEntity>>
-      sync_id_to_entities_map_;
-
-  // Index for efficient lookups by client tag hash.
-  std::unordered_map<
-      syncer::ClientTagHash,
-      raw_ptr<const SyncedBookmarkTrackerEntity, CtnExperimental>,
-      syncer::ClientTagHash::Hash>
+  // Map of client tag hashes to sync entities. This owns all entity instances.
+  std::unordered_map<syncer::ClientTagHash,
+                     std::unique_ptr<SyncedBookmarkTrackerEntity>,
+                     syncer::ClientTagHash::Hash>
       client_tag_hash_to_entities_map_;
 
   // A map of bookmark nodes to sync entities. It's keyed by the bookmark node

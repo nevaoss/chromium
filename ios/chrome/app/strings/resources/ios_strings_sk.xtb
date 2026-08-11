@@ -132,7 +132,6 @@
 <translation id="1411386976162024013">Vizuálne vyhľadávanie pomocou funkcie Lens</translation>
 <translation id="1417474386970818917">Odhlásiť a odstrániť</translation>
 <translation id="1426410128494586442">Áno</translation>
-<translation id="1429187656584513419">Otvorte heslá</translation>
 <translation id="1430915738399379752">Tlačiť</translation>
 <translation id="1433478348197382180">Režim čítania</translation>
 <translation id="1435271730600332883">Otvorte Automatické dopĺňanie a heslá</translation>
@@ -663,6 +662,7 @@
 <translation id="3183362380688692618">Nová skupina kariet…</translation>
 <translation id="3185760469172949183">Vyhľadávanie kamerou je dokončené.</translation>
 <translation id="3186796054637504691">Vymazať históriu a údaje webov</translation>
+<translation id="3190558889382726167">Heslo bolo uložené</translation>
 <translation id="3190736958609431397">Prestať sledovať</translation>
 <translation id="3208260410153224535">Vaša organizácia vypla prihlasovanie. Nové záložky, heslá a ďalšie položky sa budú ukladať iba do tohto zariadenia.</translation>
 <translation id="3211969308836412674">Odopni web</translation>
@@ -1197,6 +1197,7 @@
 <translation id="5017529052065664584">Posledných 15 minút</translation>
 <translation id="5020732097997376541">Klepnite na ikonu Lens</translation>
 <translation id="5021500396464456616">Kontaktujte osobu, ktorá poslala tento odkaz</translation>
+<translation id="503173149952522259">Pridržaním túto kartu pripnete</translation>
 <translation id="5039804452771397117">Povoliť</translation>
 <translation id="5050042263972837708">Názov skupiny</translation>
 <translation id="5050810143224996149">Zdieľanie hesla</translation>

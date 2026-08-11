@@ -10,7 +10,10 @@
 #include "base/scoped_observation.h"
 #include "base/test/run_until.h"
 #include "base/test/test_future.h"
+#include "chrome/browser/android/tab_android.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/ui/android/tab_model/tab_model.h"
+#include "chrome/browser/ui/android/tab_model/tab_model_observer.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/browser/ui/browser_window/public/create_browser_window.h"
@@ -40,6 +43,29 @@ namespace {
 using jni_zero::AttachCurrentThread;
 using jni_zero::ScopedJavaGlobalRef;
 using jni_zero::ScopedJavaLocalRef;
+
+// We add a direct `TabModelObserver` to guarantee that the TabModel triggers
+// `DidSelectTab` (active tab change) BEFORE `TabRemoved` (tab removal) during
+// the reparenting. If this order were reversed, `OnTabReparented` would
+// fail to flush the async view detachment (because the replacement hasn't
+// started yet), leaving it pending and causing a race condition.
+class SequenceEnforcingTabModelObserver : public TabModelObserver {
+ public:
+  SequenceEnforcingTabModelObserver() = default;
+  ~SequenceEnforcingTabModelObserver() override = default;
+
+  void DidSelectTab(TabAndroid* tab, TabModel::TabSelectionType type) override {
+    did_select_tab_called_ = true;
+  }
+
+  void TabRemoved(TabAndroid* tab) override {
+    EXPECT_TRUE(did_select_tab_called_);
+    tab_removed_called_ = true;
+  }
+
+  bool did_select_tab_called_ = false;
+  bool tab_removed_called_ = false;
+};
 
 class TestSidePanelEntryObserver final : public SidePanelEntryObserver {
  public:
@@ -145,6 +171,30 @@ std::unique_ptr<SidePanelEntry> CreateSidePanelEntry(
   return entry;
 }
 
+class AutoOpenSidePanelTabModelObserver : public TabModelObserver {
+ public:
+  AutoOpenSidePanelTabModelObserver(BrowserWindowInterface* browser,
+                                    SidePanelCoordinatorAndroid* coordinator)
+      : browser_(browser), coordinator_(coordinator) {}
+  ~AutoOpenSidePanelTabModelObserver() override = default;
+
+  void DidSelectTab(TabAndroid* tab, TabModel::TabSelectionType type) override {
+    auto key = SidePanelEntryKey(SidePanelEntryId::kGlic);
+    auto* registry = SidePanelRegistry::From(tab);
+    if (!registry->GetEntryForKey(key)) {
+      registry->Register(
+          CreateSidePanelEntry(key, browser_, /*use_thin_web_view=*/true));
+    }
+    coordinator_->SidePanelUIBase::Show(key,
+                                        SidePanelOpenTrigger::kToolbarButton,
+                                        /*suppress_animations=*/true);
+  }
+
+ private:
+  raw_ptr<BrowserWindowInterface> browser_;
+  raw_ptr<SidePanelCoordinatorAndroid> coordinator_;
+};
+
 BrowserWindowInterface* CreateBrowserWindowAsync(Profile* profile) {
   BrowserWindowCreateParams create_params = BrowserWindowCreateParams(
       BrowserWindowInterface::Type::TYPE_NORMAL, *profile,
@@ -209,7 +259,8 @@ class SidePanelCoordinatorAndroidBrowserTest
       BrowserWindowInterface* window,
       std::optional<SidePanelEntryId> window_scoped_entry_id,
       std::vector<std::optional<SidePanelEntryId>> tab_scoped_entry_ids,
-      int active_tab_index) {
+      int active_tab_index,
+      bool use_thin_web_view = false) {
     CHECK(window);
     if (!tab_scoped_entry_ids.empty()) {
       CHECK_GE(active_tab_index, 0);
@@ -230,7 +281,7 @@ class SidePanelCoordinatorAndroidBrowserTest
     if (window_scoped_entry_id.has_value()) {
       auto key = SidePanelEntryKey(window_scoped_entry_id.value());
       SidePanelRegistry::From(window)->Register(
-          CreateSidePanelEntry(key, window));
+          CreateSidePanelEntry(key, window, use_thin_web_view));
       coordinator->SidePanelUIBase::Show(key,
                                          SidePanelOpenTrigger::kToolbarButton,
                                          /*suppress_animations=*/true);
@@ -254,7 +305,7 @@ class SidePanelCoordinatorAndroidBrowserTest
 
         auto key = SidePanelEntryKey(tab_scoped_entry_ids[i].value());
         SidePanelRegistry::From(tab)->Register(
-            CreateSidePanelEntry(key, window));
+            CreateSidePanelEntry(key, window, use_thin_web_view));
         coordinator->SidePanelUIBase::Show(key,
                                            SidePanelOpenTrigger::kToolbarButton,
                                            /*suppress_animations=*/true);
@@ -1994,7 +2045,7 @@ IN_PROC_BROWSER_TEST_F(
   SetUpSidePanelEntriesForWindow(
       src_window, /*window_scoped_entry_id=*/std::nullopt,
       {SidePanelEntryId::kAboutThisSite, SidePanelEntryId::kGlic},
-      /*active_tab_index=*/1);
+      /*active_tab_index=*/1, /*use_thin_web_view=*/true);
   auto* src_coordinator = SidePanelCoordinatorAndroid::From(src_window);
   auto* src_tab_list = TabListInterface::From(src_window);
 
@@ -2005,9 +2056,31 @@ IN_PROC_BROWSER_TEST_F(
                                  {std::nullopt}, /*active_tab_index=*/0);
   auto* dst_coordinator = SidePanelCoordinatorAndroid::From(dst_window);
 
+  SequenceEnforcingTabModelObserver observer;
+
+  auto* src_tab_model = static_cast<TabModel*>(src_tab_list);
+  src_tab_model->AddObserver(&observer);
+
   src_tab_list->MoveTabToWindow(src_tab_list->GetTab(1)->GetHandle(),
                                 dst_window->GetSessionID(),
                                 /*destination_index=*/0);
+
+  src_tab_model->RemoveObserver(&observer);
+
+  // Ensure that the TabModel actually fired the expected removal callback
+  // during reparenting, which validates the sequence tested above.
+  EXPECT_TRUE(observer.tab_removed_called_);
+
+  // This check enforces two critical requirements:
+  // 1. Reparenting a tab synchronously flushes any async view detachments
+  //    (preventing the source window from maliciously freezing the
+  //    reparented tab's WebContents).
+  // 2. The `TabModel` must fire the active tab change (`DidSelectTab`)
+  //    *before* firing tab removal (`TabRemoved`). If this sequence is ever
+  //    inverted by future TabModel changes, this test will fail because
+  //    `TabRemoved` would skip the flush (as the replacement hasn't started),
+  //    and the replacement would be left pending here.
+  EXPECT_FALSE(src_coordinator->HasPendingReplacedEntryForTesting());
   WaitUntilOpened(src_coordinator);
   WaitUntilOpened(dst_coordinator);
 
@@ -2951,4 +3024,33 @@ IN_PROC_BROWSER_TEST_F(
 
   // Assert: Tab_1's tab-scoped entry should re-appear.
   EXPECT_EQ(tab_1_scoped_entry_key.id(), coordinator_->GetCurrentEntryId());
+}
+
+IN_PROC_BROWSER_TEST_F(SidePanelCoordinatorAndroidBrowserTest,
+                       RapidTabSwitch_AutoOpenSidePanel) {
+  // Simulate GLiC's "automatically open side panel for a new tab" behavior.
+  AutoOpenSidePanelTabModelObserver observer(browser_, coordinator_);
+  auto* tab_model = static_cast<TabModel*>(tab_list_);
+  tab_model->AddObserver(&observer);
+
+  // Switch tabs rapidly to trigger side panel creation and show.
+  // We open three new tabs here:
+  // - Tab 2: Opens the side panel initially.
+  // - Tab 3: Replaces Tab 2's panel (1st replacement).
+  // - Tab 4: Replaces Tab 3's panel (2nd replacement, forces the 1st
+  // replacement to complete synchronously).
+  tab_list_->OpenTab(GURL("about:blank"), tab_list_->GetTabCount());
+  tab_list_->OpenTab(GURL("about:blank"), tab_list_->GetTabCount());
+  tab_list_->OpenTab(GURL("about:blank"), tab_list_->GetTabCount());
+
+  // Wait for the final tab's panel to open.
+  WaitUntilOpened(coordinator_);
+  EXPECT_EQ(SidePanelEntryId::kGlic, coordinator_->GetCurrentEntryId());
+
+  // Wait for the background delayed detachment of the intermediate tab's side
+  // panel to finish successfully.
+  ASSERT_TRUE(base::test::RunUntil(
+      [this]() { return !coordinator_->HasPendingReplacedEntryForTesting(); }));
+
+  tab_model->RemoveObserver(&observer);
 }

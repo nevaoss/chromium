@@ -52,29 +52,31 @@ class AtMemoryBottomSheetProperties {
         static final ReadableObjectPropertyKey<AtMemorySearchBarView.Delegate> SEARCH_BAR_DELEGATE =
                 new ReadableObjectPropertyKey<>();
 
-        // Indicates whether the bottom sheet dialog should display the suggestions background.
-        static final WritableBooleanPropertyKey SHOW_SUGGESTIONS_BACKGROUND =
-                new WritableBooleanPropertyKey();
-
         // Items to be displayed in the bottom sheet (only for home screen).
         static final ReadableObjectPropertyKey<ModelList> SHEET_ITEMS =
                 new ReadableObjectPropertyKey<>();
 
-        static final PropertyKey[] ALL_KEYS = {
-            IS_LOADING, SEARCH_BAR_DELEGATE, SHOW_SUGGESTIONS_BACKGROUND, SHEET_ITEMS
-        };
+        static final PropertyKey[] ALL_KEYS = {IS_LOADING, SEARCH_BAR_DELEGATE, SHEET_ITEMS};
 
-        @IntDef({ItemType.SUGGESTION, ItemType.ZERO_STATE, ItemType.NOTICE})
+        @IntDef({
+            ItemType.SUGGESTION,
+            ItemType.SUGGESTION_WITH_NO_BACKGROUND,
+            ItemType.ZERO_STATE,
+            ItemType.NOTICE
+        })
         @Retention(RetentionPolicy.SOURCE)
         @interface ItemType {
             /** A section containing suggestions. */
             int SUGGESTION = 0;
 
+            /** A section containing suggestions with no background card. */
+            int SUGGESTION_WITH_NO_BACKGROUND = 1;
+
             /** A section containing no results. */
-            int ZERO_STATE = 1;
+            int ZERO_STATE = 2;
 
             /** A section containing onboarding notice. */
-            int NOTICE = 2;
+            int NOTICE = 3;
         }
 
         /** Delegate to request search UI actions (e.g. hiding keyboard or clearing focus). */
@@ -140,12 +142,15 @@ class AtMemoryBottomSheetProperties {
         // Indicates whether the flyout arrow and divider should be visible.
         static final WritableBooleanPropertyKey IS_FLYOUT_VISIBLE =
                 new WritableBooleanPropertyKey();
+        // Resource ID for trailing icon in the suggestion item (0 if hidden).
+        static final ReadableIntPropertyKey TRAILING_ICON_ID = new ReadableIntPropertyKey();
         // Indicates whether the suggestion item should be deactivated.
         static final WritableBooleanPropertyKey APPLY_DEACTIVATED_STYLE =
                 new WritableBooleanPropertyKey();
 
         static final PropertyKey[] ALL_KEYS = {
             ICON,
+            TRAILING_ICON_ID,
             TITLE,
             DETAILS,
             ON_SUGGESTION_CLICKED,

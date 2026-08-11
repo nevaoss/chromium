@@ -102,18 +102,86 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, Composebox_Files_ForkFalse) {
           "\\\\(useContextualTasksComposeboxFork = false\\\\)')");
 }
 
+// Run each AutoTab arm's nested suites as separate browser tests so each group
+// has its own per-test time budget.
 IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
-                       Composebox_AutoTab_ForkTrue) {
+                       Composebox_AutoTab_ForkTrue_ChipCreationAndMismatch) {
   RunTest("contextual_tasks/composebox_files_test.js",
           "runMochaSuite('ContextualTasksComposeboxForkAutoTabTest "
-          "\\\\(useContextualTasksComposeboxFork = true\\\\)')");
+          "\\\\(useContextualTasksComposeboxFork = true\\\\) "
+          "ChipCreationAndMismatch')");
 }
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
-                       Composebox_AutoTab_ForkFalse) {
+                       Composebox_AutoTab_ForkTrue_DeletionSemantics) {
   RunTest("contextual_tasks/composebox_files_test.js",
           "runMochaSuite('ContextualTasksComposeboxForkAutoTabTest "
-          "\\\\(useContextualTasksComposeboxFork = false\\\\)')");
+          "\\\\(useContextualTasksComposeboxFork = true\\\\) "
+          "DeletionSemantics')");
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
+                       Composebox_AutoTab_ForkTrue_SourcesAndUploadTiming) {
+  RunTest("contextual_tasks/composebox_files_test.js",
+          "runMochaSuite('ContextualTasksComposeboxForkAutoTabTest "
+          "\\\\(useContextualTasksComposeboxFork = true\\\\) "
+          "SourcesAndUploadTiming')");
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
+                       Composebox_AutoTab_ForkTrue_UserActionsAndLifecycle) {
+  RunTest("contextual_tasks/composebox_files_test.js",
+          "runMochaSuite('ContextualTasksComposeboxForkAutoTabTest "
+          "\\\\(useContextualTasksComposeboxFork = true\\\\) "
+          "UserActionsAndLifecycle')");
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
+                       Composebox_AutoTab_ForkTrue_SmartTabSharing) {
+  RunTest("contextual_tasks/composebox_files_test.js",
+          "runMochaSuite('ContextualTasksComposeboxForkAutoTabTest "
+          "\\\\(useContextualTasksComposeboxFork = true\\\\) "
+          "SmartTabSharing')");
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
+                       Composebox_AutoTab_ForkFalse_ChipCreationAndMismatch) {
+  RunTest("contextual_tasks/composebox_files_test.js",
+          "runMochaSuite('ContextualTasksComposeboxForkAutoTabTest "
+          "\\\\(useContextualTasksComposeboxFork = false\\\\) "
+          "ChipCreationAndMismatch')");
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
+                       Composebox_AutoTab_ForkFalse_DeletionSemantics) {
+  RunTest("contextual_tasks/composebox_files_test.js",
+          "runMochaSuite('ContextualTasksComposeboxForkAutoTabTest "
+          "\\\\(useContextualTasksComposeboxFork = false\\\\) "
+          "DeletionSemantics')");
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
+                       Composebox_AutoTab_ForkFalse_SourcesAndUploadTiming) {
+  RunTest("contextual_tasks/composebox_files_test.js",
+          "runMochaSuite('ContextualTasksComposeboxForkAutoTabTest "
+          "\\\\(useContextualTasksComposeboxFork = false\\\\) "
+          "SourcesAndUploadTiming')");
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
+                       Composebox_AutoTab_ForkFalse_UserActionsAndLifecycle) {
+  RunTest("contextual_tasks/composebox_files_test.js",
+          "runMochaSuite('ContextualTasksComposeboxForkAutoTabTest "
+          "\\\\(useContextualTasksComposeboxFork = false\\\\) "
+          "UserActionsAndLifecycle')");
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
+                       Composebox_AutoTab_ForkFalse_SmartTabSharing) {
+  RunTest("contextual_tasks/composebox_files_test.js",
+          "runMochaSuite('ContextualTasksComposeboxForkAutoTabTest "
+          "\\\\(useContextualTasksComposeboxFork = false\\\\) "
+          "SmartTabSharing')");
 }
 
 // TODO(crbug.com/480689282): Flaky on ChromeOS debug.

@@ -1751,9 +1751,8 @@
 }
 
 - (void)showAccountMenu:(UIView*)identityDisc {
-  UIViewController* baseVC = [self activeViewController];
   _accountMenuCoordinator = [[AccountMenuCoordinator alloc]
-      initWithBaseViewController:baseVC
+      initWithBaseViewController:self.baseViewController
                          browser:self.browser
                       anchorView:identityDisc
                      accessPoint:AccountMenuAccessPoint::kNewTabPage
@@ -1981,7 +1980,11 @@
 // Restores the saved scroll position of the NTP associated with `self.webState`
 // if necessary.
 - (void)restoreNTPScrollPosition {
-  [self.NTPMediator restoreNTPScrollPositionForWebState:self.webState];
+  if ([self isStartSurface]) {
+    [self.NTPMediator.consumer restoreScrollPosition:-CGFLOAT_MAX];
+  } else {
+    [self.NTPMediator restoreNTPScrollPositionForWebState:self.webState];
+  }
 }
 
 // Opens the Home customization menu at a specific `page`.

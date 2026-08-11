@@ -41,10 +41,6 @@ BASE_FEATURE(kAdSamplerTriggerFeature,
 BASE_FEATURE(kAddWarningShownTSToClientSafeBrowsingReport,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kAllowSafeBrowsingV4StoreDiskMigrationChanges,
-             "SafeBrowsingAllowV4StoreDiskMigrationChanges",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 BASE_FEATURE(kAntivirusTelemetryForDownloads,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -78,41 +74,44 @@ constexpr base::FeatureParam<std::string> kClientSideDetectionBypassTiersList{
     /*default_value=*/""};
 
 BASE_FEATURE(kClientSideDetectionClipboardCopyApi,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 constexpr base::FeatureParam<double> kCsdClipboardCopyApiHCAcceptanceRate{
     &kClientSideDetectionClipboardCopyApi, "HCAcceptanceRate",
-    /*default_value=*/0.0};
+    /*default_value=*/1.0};
 constexpr base::FeatureParam<double> kCsdClipboardCopyApiSampleRate{
     &kClientSideDetectionClipboardCopyApi, "SampleRate",
-    /*default_value=*/0.0};
+    /*default_value=*/1.0};
 constexpr base::FeatureParam<int> kCsdClipboardCopyApiMaxLength{
     &kClientSideDetectionClipboardCopyApi, "MaxLength",
     /*default_value=*/1000};
 constexpr base::FeatureParam<int> kCsdClipboardCopyApiMinLength{
     &kClientSideDetectionClipboardCopyApi, "MinLength",
-    /*default_value=*/0};
+    /*default_value=*/10};
 const base::FeatureParam<bool> kCSDClipboardCopyApiProcessPayload{
     &kClientSideDetectionClipboardCopyApi, "ProcessPayload",
-    /*default_value=*/false};
+    /*default_value=*/true};
 const base::FeatureParam<bool> kCSDClipboardCopyApiIncludeFullPayload{
     &kClientSideDetectionClipboardCopyApi, "IncludeFullPayload",
-    /*default_value=*/false};
+    /*default_value=*/true};
 const base::FeatureParam<std::string> kCsdClipboardCopyApiLoaders{
     &kClientSideDetectionClipboardCopyApi, "Loaders",
-    /*default_value=*/"curl,wget,invoke-webrequest,iwr"};
+    /*default_value=*/
+    "curl,wget,invoke-webrequest,iwr,invoke-restmethod,irm,certutil,"
+    "bitsadmin,echo,cat,finger"};
 const base::FeatureParam<std::string> kCsdClipboardCopyApiRunners{
     &kClientSideDetectionClipboardCopyApi, "Runners",
     /*default_value=*/
-    "bash,cmd,conhost,iex,invoke-expression,zsh"};
+    "powershell,cmd,invoke-expression,iex,bash,python,python3,perl,php,"
+    "conhost,ssh,sftp,wt,zsh,%comspec%,[scriptblock]"};
 const base::FeatureParam<std::string> kCsdClipboardCopyApiRemoteRunners{
     &kClientSideDetectionClipboardCopyApi, "RemoteRunners",
-    /*default_value=*/"mshta"};
+    /*default_value=*/"mshta,[scriptblock]"};
 const base::FeatureParam<std::string> kCsdClipboardCopyApiDecoders{
     &kClientSideDetectionClipboardCopyApi, "Decoders",
-    /*default_value=*/"base32,base64"};
+    /*default_value=*/"base64,base32,[convert]"};
 const base::FeatureParam<bool> kCSDClipboardCopyApiSuspiciousTokenFilter{
     &kClientSideDetectionClipboardCopyApi, "SuspiciousTokenFilter",
-    /*default_value=*/false};
+    /*default_value=*/true};
 
 BASE_FEATURE(kClientSideDetectionCreditCardForm,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -148,10 +147,14 @@ BASE_FEATURE(kClientSideDetectionForcedLlamaRedirectChainKillswitch,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kClientSideDetectionImageEmbeddingMatch,
+#if BUILDFLAG(IS_ANDROID)
+             base::FEATURE_ENABLED_BY_DEFAULT);
+#else
              base::FEATURE_DISABLED_BY_DEFAULT);
+#endif
 const base::FeatureParam<bool> kCsdImageEmbeddingMatchWithIntelligentScan{
     &kClientSideDetectionImageEmbeddingMatch,
-    "CsdImageEmbeddingMatchWithIntelligentScan", /*default_value=*/false};
+    "CsdImageEmbeddingMatchWithIntelligentScan", /*default_value=*/true};
 
 BASE_FEATURE(kClientSideDetectionKillswitch, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -491,7 +494,6 @@ base::ListValue GetFeatureStatusList() {
   // chrome://safe-browsing. Features should be listed in alphabetical order.
   const base::Feature* kExperimentalFeatures[] = {
       // keep-sorted start
-      &kAllowSafeBrowsingV4StoreDiskMigrationChanges,
       &kAutoRevokeSuspiciousNotification,
       &kBundledSecuritySettings,
       &kBundledSecuritySettingsAskBeforeHttp,

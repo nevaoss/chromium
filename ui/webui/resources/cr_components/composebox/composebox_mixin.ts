@@ -1145,9 +1145,12 @@ export const ComposeboxEmbedderMixin =
           }
           this.handleToolModeUpdate(newToolMode);
         }
-
         handleToolModeUpdate(newTool: ToolMode) {
+          // If it is canvas added/removed, browser process will notify
+          // AIM webpage (client side) so it can respond to these changes.
+          // Server is not notified of these changes; side effects are local.
           this.getSearchboxHandler().setActiveToolMode(newTool);
+
           this.queryAutocomplete(/* clearMatches= */ true);
           this.updateInputPlaceholder();
         }
@@ -2019,7 +2022,7 @@ export const ComposeboxEmbedderMixin =
               this.getInputElement().inputElement.value === this.input ?
               this.getInputElement().inputElement.selectionStart || 0 :
               this.input.length;
-          this.getSearchboxHandler().queryAutocompleteWithSuggestInventory(
+          this.getSearchboxHandler().queryAutocomplete(
               this.activeQueryId, this.input,
               /*preventInlineAutocomplete=*/ false, cursorPosition,
               this.suggestInventory ?? SuggestInventory.kDefault,
@@ -2091,6 +2094,7 @@ export const ComposeboxEmbedderMixin =
                     mimeType: file.type,
                     isDeletable: true,
                     selectionTime: new Date(),
+                    thumbnailUrl: null,
                   },
                   bigBuffer);
             } catch (e) {
@@ -2128,6 +2132,7 @@ export const ComposeboxEmbedderMixin =
             uuid: uuid,
             name: fileInfo.fileName,
             dataUrl: fileInfo.imageDataUrl ?? null,
+            thumbnailUrl: fileInfo.thumbnailUrl ?? null,
             objectUrl: null,
             type: fileInfo.mimeType || (fileInfo.imageDataUrl ? 'image' : ''),
             inputType: fileInfo.imageDataUrl ? InputType.kLensImage :
@@ -2408,15 +2413,19 @@ export const ComposeboxEmbedderMixin =
             const {tabs} = await this.getSearchboxHandler().getRecentTabs();
             this.recentTabId = tabs[0]?.tabId ?? null;
 
-            const openTabIds = new Set(tabs.map(t => t.tabId));
+            const openTabsMap = new Map(tabs.map(t => [t.tabId, t]));
+
             // Gather UUIDs in a temporary array to prevent modifying
             // `this.files` mid-iteration, since `deleteFile()` replaces the Map
             // reference.
             const uuidsToDelete: UnguessableToken[] = [];
 
             this.files.forEach((file, uuid) => {
-              if (file.tabId && !openTabIds.has(file.tabId)) {
-                uuidsToDelete.push(uuid);
+              if (file.tabId) {
+                const freshTab = openTabsMap.get(file.tabId);
+                if (!freshTab || (file.url && file.url !== freshTab.url)) {
+                  uuidsToDelete.push(uuid);
+                }
               }
             });
             uuidsToDelete.forEach(uuid => {
@@ -2424,19 +2433,18 @@ export const ComposeboxEmbedderMixin =
             });
 
             if (this.tabDeselectionEnabled) {
-              const openTabUrls = new Map(tabs.map(t => [t.tabId, t.url]));
               const closedOrNavigatedRestoredTabs =
                   this.aimThreadRestoredTabs.filter(tab => {
-                    const currentUrl = openTabUrls.get(tab.tabId);
-                    return !currentUrl || currentUrl !== tab.url;
+                    const currentTab = openTabsMap.get(tab.tabId);
+                    return !currentTab || currentTab.url !== tab.url;
                   });
               closedOrNavigatedRestoredTabs.forEach(tab => {
                 this.getSearchboxHandler().deleteTabContext(tab.tabId);
               });
               this.aimThreadRestoredTabs =
                   this.aimThreadRestoredTabs.filter(tab => {
-                    const currentUrl = openTabUrls.get(tab.tabId);
-                    return currentUrl && currentUrl === tab.url;
+                    const currentTab = openTabsMap.get(tab.tabId);
+                    return currentTab && currentTab.url === tab.url;
                   });
             }
 

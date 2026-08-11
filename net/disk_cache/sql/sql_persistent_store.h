@@ -155,6 +155,9 @@ class NET_EXPORT_PRIVATE SqlPersistentStore {
     int64_t body_end = 0;
     // The entry's header data (stream 0).
     scoped_refptr<net::GrowableIOBuffer> head;
+    // The resource ID of the shared cache database where the blobs are stored.
+    std::optional<SqlSharedCacheResourceId> shared_cache_resource_id;
+
     // True if the entry was opened, false if it was newly created.
     bool opened = false;
   };
@@ -537,6 +540,15 @@ class NET_EXPORT_PRIVATE SqlPersistentStore {
                      int64_t body_end,
                      bool sparse_reading,
                      ReadResultOrErrorCallback callback);
+
+  // Moves the entry's blob data to the shared cache.
+  // Deletes all blobs associated with `res_id` from the `blobs` table and
+  // updates the `resources` table entry with `shared_cache_resource_id`.
+  // `callback` will be invoked with `Error::kOk` on success, or an error code.
+  void MoveBlobsToSharedCache(const CacheEntryKey& key,
+                              ResId res_id,
+                              SqlSharedCacheResourceId shared_cache_resource_id,
+                              ErrorCallback callback);
 
   // Finds the available contiguous range of data for a given entry.
   // `res_id` identifies the entry.

@@ -883,6 +883,17 @@ prefs when the profile is loaded.  -->
   </summary>
 </histogram>
 
+<histogram name="Signin.Android.AccountManagementAcceptedBeforeUserPolicyFetch"
+    enum="Boolean" expires_after="2027-01-13">
+  <owner>shadmehr@google.com</owner>
+  <owner>chrome-signin-mobile-team@google.com</owner>
+  <summary>
+    Indicates whether the user had accepted account management when attempting
+    to sign in to a managed account on Android, recorded before the policy
+    registration request is dispatched.
+  </summary>
+</histogram>
+
 <histogram name="Signin.Android.FRESigninEvents" enum="FRESigninEvents"
     expires_after="2026-11-29">
   <owner>mthiesse@chromium.org</owner>
@@ -1823,6 +1834,17 @@ prefs when the profile is loaded.  -->
   <token key="PartitionSuffix" variants="PartitionSuffix"/>
 </histogram>
 
+<histogram name="Signin.Dice.InvalidPrimaryConnectedInUnsignedProfile"
+    enum="Boolean" expires_after="2027-04-01">
+  <owner>msalama@chromium.org</owner>
+  <owner>chrome-signin-team@google.com</owner>
+  <summary>
+    Records whether Gaia sends primary_is_connected=true in the linked accounts
+    metadata when the profile has no primary account (unsigned profile). Emitted
+    whenever primary_is_connected=true is processed in a DICE signin response.
+  </summary>
+</histogram>
+
 <histogram name="Signin.DiceAuthorizationCode" enum="BooleanPresent"
     expires_after="never">
 <!-- expires-never: used to monitor OAuth outages in Dice.  -->
@@ -1927,6 +1949,21 @@ prefs when the profile is loaded.  -->
     user accepts or refuses to create a new profile when shown the enterprise
     profile confirmation dialog and enterprise profile separation is not
     enforced by policy.
+  </summary>
+</histogram>
+
+<histogram name="Signin.ExplicitSigninDatatypeMigration"
+    enum="ExplicitSigninDatatypeMigrationState" expires_after="2027-01-01">
+  <owner>droger@chromium.org</owner>
+  <owner>chrome-signin-team@google.com</owner>
+  <summary>
+    Recorded on every startup (towards the end of primary account manager
+    initialization) for users who are signed in but not syncing.
+
+    It records 3 buckets: signed in users, signed in users with explicit
+    bookmarks enabled, and signed in users with explicit extensions enabled.
+    This helps track the migration of users to the explicit bookmarks and
+    extensions prefs.
   </summary>
 </histogram>
 

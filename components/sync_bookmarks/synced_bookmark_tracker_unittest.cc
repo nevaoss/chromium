@@ -165,7 +165,7 @@ TEST(SyncedBookmarkTrackerTest, ShouldAddEntity) {
       syncer::UniquePosition::FromProto(entity->metadata().unique_position())
           .Equals(syncer::UniquePosition::FromProto(
               specifics.bookmark().unique_position())));
-  EXPECT_THAT(tracker->GetEntityForSyncId(kSyncId), Eq(entity));
+  EXPECT_THAT(tracker->GetEntityForSyncIdExhaustively(kSyncId), Eq(entity));
   EXPECT_THAT(tracker->GetEntityForBookmarkNode(&node), Eq(entity));
   EXPECT_THAT(
       tracker->GetEntityForClientTagHash(syncer::ClientTagHash::FromUnhashed(
@@ -176,7 +176,7 @@ TEST(SyncedBookmarkTrackerTest, ShouldAddEntity) {
   *data.specifics.mutable_bookmark() = specifics.bookmark();
   EXPECT_TRUE(entity->MatchesData(data));
 
-  EXPECT_THAT(tracker->GetEntityForSyncId("unknown id"), IsNull());
+  EXPECT_THAT(tracker->GetEntityForSyncIdExhaustively("unknown id"), IsNull());
 }
 
 TEST(SyncedBookmarkTrackerTest, ShouldRemoveEntity) {
@@ -194,7 +194,7 @@ TEST(SyncedBookmarkTrackerTest, ShouldRemoveEntity) {
   SyncedBookmarkTrackerEntity* entity = tracker->AddRemote(
       &node, kSyncId, kServerVersion, kModificationTime, specifics);
   ASSERT_THAT(entity, NotNull());
-  ASSERT_THAT(tracker->GetEntityForSyncId(kSyncId), Eq(entity));
+  ASSERT_THAT(tracker->GetEntityForSyncIdExhaustively(kSyncId), Eq(entity));
   ASSERT_THAT(tracker->GetEntityForBookmarkNode(&node), Eq(entity));
   ASSERT_THAT(
       tracker->GetEntityForClientTagHash(syncer::ClientTagHash::FromUnhashed(
@@ -203,7 +203,7 @@ TEST(SyncedBookmarkTrackerTest, ShouldRemoveEntity) {
 
   tracker->Remove(entity);
 
-  EXPECT_THAT(tracker->GetEntityForSyncId(kSyncId), IsNull());
+  EXPECT_THAT(tracker->GetEntityForSyncIdExhaustively(kSyncId), IsNull());
   EXPECT_THAT(tracker->GetEntityForBookmarkNode(&node), IsNull());
   EXPECT_THAT(
       tracker->GetEntityForClientTagHash(syncer::ClientTagHash::FromUnhashed(
@@ -254,37 +254,6 @@ TEST(SyncedBookmarkTrackerTest,
   EXPECT_THAT(tracker->HasLocalChanges(), Eq(false));
   entity->IncrementSequenceNumber();
   EXPECT_THAT(tracker->HasLocalChanges(), Eq(true));
-}
-
-TEST(SyncedBookmarkTrackerTest, ShouldAckSequenceNumber) {
-  std::unique_ptr<SyncedBookmarkTracker> tracker =
-      SyncedBookmarkTracker::CreateEmpty(sync_pb::DataTypeState());
-
-  const std::string kSyncId = "SYNC_ID";
-  const int64_t kId = 1;
-  const int64_t kServerVersion = 1000;
-  const base::Time kModificationTime(base::Time::Now() - base::Seconds(1));
-  const sync_pb::EntitySpecifics specifics =
-      GenerateSpecifics(/*title=*/std::string(), /*url=*/std::string());
-  bookmarks::BookmarkNode node(kId, base::Uuid::GenerateRandomV4(), GURL());
-  SyncedBookmarkTrackerEntity* entity = tracker->AddRemote(
-      &node, kSyncId, kServerVersion, kModificationTime, specifics);
-
-  // Test simple scenario of ack'ing an incrememented sequence number.
-  EXPECT_THAT(tracker->HasLocalChanges(), Eq(false));
-  entity->IncrementSequenceNumber();
-  EXPECT_THAT(tracker->HasLocalChanges(), Eq(true));
-  entity->AckSequenceNumber();
-  EXPECT_THAT(tracker->HasLocalChanges(), Eq(false));
-
-  // Test ack'ing of a multiple times incremented sequence number.
-  entity->IncrementSequenceNumber();
-  EXPECT_THAT(tracker->HasLocalChanges(), Eq(true));
-  entity->IncrementSequenceNumber();
-  entity->IncrementSequenceNumber();
-  EXPECT_THAT(tracker->HasLocalChanges(), Eq(true));
-  entity->AckSequenceNumber();
-  EXPECT_THAT(tracker->HasLocalChanges(), Eq(false));
 }
 
 TEST(SyncedBookmarkTrackerTest,
@@ -364,48 +333,14 @@ TEST(SyncedBookmarkTrackerTest, ShouldVerifyIsVersionAlreadyKnown) {
   EXPECT_FALSE(entity->IsVersionAlreadyKnown(kServerVersion + 1));
 }
 
-TEST(SyncedBookmarkTrackerTest, ShouldUpdateUponCommitResponseWithNewId) {
+TEST(SyncedBookmarkTrackerTest, ShouldRecordIgnoredRemoteUpdate) {
   std::unique_ptr<SyncedBookmarkTracker> tracker =
       SyncedBookmarkTracker::CreateEmpty(sync_pb::DataTypeState());
 
   const std::string kSyncId = "SYNC_ID";
   const std::string kNewSyncId = "NEW_SYNC_ID";
-  const int64_t kId = 1;
   const int64_t kServerVersion = 1000;
   const int64_t kNewServerVersion = 1001;
-  const base::Time kModificationTime(base::Time::Now() - base::Seconds(1));
-  const sync_pb::EntitySpecifics specifics =
-      GenerateSpecifics(/*title=*/std::string(), /*url=*/std::string());
-  bookmarks::BookmarkNode node(kId, base::Uuid::GenerateRandomV4(), GURL());
-  SyncedBookmarkTrackerEntity* entity = tracker->AddRemote(
-      &node, kSyncId, kServerVersion, kModificationTime, specifics);
-  ASSERT_THAT(entity, NotNull());
-
-  // Initially only the old ID should be tracked.
-  ASSERT_THAT(tracker->GetEntityForSyncId(kSyncId), Eq(entity));
-  ASSERT_THAT(tracker->GetEntityForSyncId(kNewSyncId), IsNull());
-
-  // Receive a commit response with a changed id.
-  tracker->UpdateUponCommitResponse(entity, kNewSyncId, kNewServerVersion,
-                                    /*acked_sequence_number=*/1,
-                                    /*specifics_hash=*/"");
-
-  // Old id shouldn't be there, but the new one should.
-  EXPECT_THAT(tracker->GetEntityForSyncId(kSyncId), IsNull());
-  EXPECT_THAT(tracker->GetEntityForSyncId(kNewSyncId), Eq(entity));
-
-  EXPECT_THAT(entity->metadata().server_id(), Eq(kNewSyncId));
-  EXPECT_THAT(entity->bookmark_node(), Eq(&node));
-  EXPECT_THAT(entity->metadata().server_version(), Eq(kNewServerVersion));
-}
-
-TEST(SyncedBookmarkTrackerTest, ShouldUpdateId) {
-  std::unique_ptr<SyncedBookmarkTracker> tracker =
-      SyncedBookmarkTracker::CreateEmpty(sync_pb::DataTypeState());
-
-  const std::string kSyncId = "SYNC_ID";
-  const std::string kNewSyncId = "NEW_SYNC_ID";
-  const int64_t kServerVersion = 1000;
   const base::Time kModificationTime(base::Time::Now() - base::Seconds(1));
   const sync_pb::EntitySpecifics specifics =
       GenerateSpecifics(/*title=*/std::string(), /*url=*/std::string());
@@ -416,16 +351,21 @@ TEST(SyncedBookmarkTrackerTest, ShouldUpdateId) {
       &node, kSyncId, kServerVersion, kModificationTime, specifics);
 
   ASSERT_THAT(entity, NotNull());
-  // Update the sync id.
-  tracker->UpdateSyncIdIfNeeded(entity, kNewSyncId);
 
-  // Old id shouldn't be there, but the new one should.
-  EXPECT_THAT(tracker->GetEntityForSyncId(kSyncId), IsNull());
-  EXPECT_THAT(tracker->GetEntityForSyncId(kNewSyncId), Eq(entity));
+  syncer::UpdateResponseData update;
+  update.response_version = kNewServerVersion;
+  update.entity.id = kNewSyncId;
+  update.entity.client_tag_hash = entity->GetClientTagHash();
+
+  entity->RecordIgnoredRemoteUpdate(update);
+
+  // Old id shouldn't be found, but the new one should.
+  EXPECT_THAT(tracker->GetEntityForSyncIdExhaustively(kSyncId), IsNull());
+  EXPECT_THAT(tracker->GetEntityForSyncIdExhaustively(kNewSyncId), Eq(entity));
 
   EXPECT_THAT(entity->metadata().server_id(), Eq(kNewSyncId));
   EXPECT_THAT(entity->bookmark_node(), Eq(&node));
-  EXPECT_THAT(entity->metadata().server_version(), Eq(kServerVersion));
+  EXPECT_THAT(entity->metadata().server_version(), Eq(kNewServerVersion));
 }
 
 TEST(SyncedBookmarkTrackerTest,
@@ -531,9 +471,12 @@ TEST(SyncedBookmarkTrackerTest,
   ASSERT_THAT(tracker, NotNull());
 
   // Mark entities deleted in that order kId2, kId4, kId1
-  tracker->MarkDeleted(tracker->GetEntityForSyncId(kId2), FROM_HERE);
-  tracker->MarkDeleted(tracker->GetEntityForSyncId(kId4), FROM_HERE);
-  tracker->MarkDeleted(tracker->GetEntityForSyncId(kId1), FROM_HERE);
+  tracker->MarkDeleted(tracker->GetEntityForSyncIdExhaustively(kId2),
+                       FROM_HERE);
+  tracker->MarkDeleted(tracker->GetEntityForSyncIdExhaustively(kId4),
+                       FROM_HERE);
+  tracker->MarkDeleted(tracker->GetEntityForSyncIdExhaustively(kId1),
+                       FROM_HERE);
 
   const sync_pb::BookmarkModelMetadata output_model_metadata =
       tracker->BuildBookmarkModelMetadata();
@@ -573,7 +516,7 @@ TEST(SyncedBookmarkTrackerTest, ShouldMarkDeleted) {
   const base::Location kLocation = FROM_HERE;
 
   ASSERT_THAT(tracker->TrackedUncommittedTombstonesCount(), Eq(0U));
-  ASSERT_THAT(tracker->GetEntityForSyncId(kSyncId), Eq(entity));
+  ASSERT_THAT(tracker->GetEntityForSyncIdExhaustively(kSyncId), Eq(entity));
   ASSERT_THAT(tracker->GetEntityForBookmarkNode(&node), Eq(entity));
   ASSERT_THAT(
       tracker->GetEntityForClientTagHash(syncer::ClientTagHash::FromUnhashed(
@@ -586,7 +529,7 @@ TEST(SyncedBookmarkTrackerTest, ShouldMarkDeleted) {
   tracker->MarkDeleted(entity, kLocation);
 
   EXPECT_THAT(tracker->TrackedUncommittedTombstonesCount(), Eq(1U));
-  EXPECT_THAT(tracker->GetEntityForSyncId(kSyncId), Eq(entity));
+  EXPECT_THAT(tracker->GetEntityForSyncIdExhaustively(kSyncId), Eq(entity));
   EXPECT_THAT(tracker->GetEntityForBookmarkNode(&node), IsNull());
   EXPECT_THAT(
       tracker->GetEntityForClientTagHash(syncer::ClientTagHash::FromUnhashed(
@@ -619,7 +562,7 @@ TEST(SyncedBookmarkTrackerTest, ShouldUndeleteTombstone) {
       &node, kSyncId, kServerVersion, kModificationTime, specifics);
 
   ASSERT_THAT(tracker->TrackedUncommittedTombstonesCount(), Eq(0U));
-  ASSERT_THAT(tracker->GetEntityForSyncId(kSyncId), Eq(entity));
+  ASSERT_THAT(tracker->GetEntityForSyncIdExhaustively(kSyncId), Eq(entity));
 
   // Delete the bookmark, leading to a pending deletion (local tombstone).
   tracker->MarkDeleted(entity, FROM_HERE);
@@ -633,7 +576,8 @@ TEST(SyncedBookmarkTrackerTest, ShouldUndeleteTombstone) {
       Eq(entity));
 
   // Undelete it.
-  tracker->UndeleteTombstoneForBookmarkNode(entity, &node);
+  tracker->UndeleteTombstoneForBookmarkNode(entity, &node, specifics,
+                                            base::Time::Now());
 
   EXPECT_THAT(entity->bookmark_node(), NotNull());
   EXPECT_FALSE(entity->metadata().is_deleted());
@@ -691,10 +635,10 @@ TEST(SyncedBookmarkTrackerTest,
   // Mark the entities that they have local changes. (in shuffled order just to
   // verify the tracker doesn't simply maintain the order of updates similar to
   // with deletions).
-  tracker->GetEntityForSyncId(kId3)->IncrementSequenceNumber();
-  tracker->GetEntityForSyncId(kId1)->IncrementSequenceNumber();
-  tracker->GetEntityForSyncId(kId2)->IncrementSequenceNumber();
-  tracker->GetEntityForSyncId(kId0)->IncrementSequenceNumber();
+  tracker->GetEntityForSyncIdExhaustively(kId3)->IncrementSequenceNumber();
+  tracker->GetEntityForSyncIdExhaustively(kId1)->IncrementSequenceNumber();
+  tracker->GetEntityForSyncIdExhaustively(kId2)->IncrementSequenceNumber();
+  tracker->GetEntityForSyncIdExhaustively(kId0)->IncrementSequenceNumber();
 
   const std::vector<const SyncedBookmarkTrackerEntity*>
       entities_with_local_change = tracker->GetEntitiesWithLocalChanges();
@@ -1161,7 +1105,8 @@ TEST(SyncedBookmarkTrackerTest, ShouldPopulateFaviconHashUponUpdate) {
                                                                 model_metadata);
   ASSERT_THAT(tracker, NotNull());
 
-  SyncedBookmarkTrackerEntity* entity = tracker->GetEntityForSyncId(kSyncId);
+  SyncedBookmarkTrackerEntity* entity =
+      tracker->GetEntityForSyncIdExhaustively(kSyncId);
   ASSERT_THAT(entity, NotNull());
   ASSERT_FALSE(entity->MatchesFaviconHash(kFaviconPngBytes));
 
@@ -1173,7 +1118,7 @@ TEST(SyncedBookmarkTrackerTest, ShouldPopulateFaviconHashUponUpdate) {
   update.entity.id = kSyncId;
   update.entity.modification_time = kModificationTime;
   update.entity.specifics = specifics;
-  tracker->RecordAcceptedRemoteUpdate(entity, update);
+  entity->RecordAcceptedRemoteUpdate(update);
 
   EXPECT_TRUE(entity->metadata().has_bookmark_favicon_hash());
   EXPECT_TRUE(entity->MatchesFaviconHash(kFaviconPngBytes));

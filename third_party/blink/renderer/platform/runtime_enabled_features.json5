@@ -741,13 +741,6 @@
       status: "stable",
     },
     {
-      // AudioContext.playoutStats interface.
-      // https://chromestatus.com/feature/5172818344148992
-      name: "AudioContextPlayoutStats",
-      origin_trial_feature_name: "AudioContextPlayoutStats",
-      status: "experimental",
-    },
-    {
       name: "AudioContextSetSinkId",
       status: "stable",
     },
@@ -1028,10 +1021,6 @@
       status: "stable",
     },
     {
-      name: "CallExitNodeWithoutLayoutObject",
-      status: "stable",
-    },
-    {
       // Enables the <camera> and <microphone> HTML elements, allowing sites to
       // embed camera and microphone permission request controls directly in the page.
       // https://chromestatus.com/feature/5153829504024576
@@ -1151,19 +1140,19 @@
       // Compression Dictionary Transport: Align handling of crossorigin
       // attribute on the spec.
       name: "CDTNewCrossOriginHandling",
-      status: "test",
+      status: "experimental",
     },
     {
       // Compression Dictionary Transport: Use "compression-dictionary" as the
       // destination string.
       name: "CDTNewDestination",
-      status: "test",
+      status: "experimental",
     },
     {
       // Compression Dictionary Transport: Align handling of referrerpolicy
       // attribute and referrer on the spec.
       name: "CDTNewReferrerAndReferrerPolicyHandling",
-      status: "test",
+      status: "experimental",
     },
     {
       name: "CheckableInputTypeLayoutInline",
@@ -1224,25 +1213,12 @@
       name: "ClickFocusDoesntPersistStatusBubble",
       status: "stable",
     },
-    // This ensures that clipboard event fires on a target node which is
-    // focused in case no visible selection is present.
-    // crbug.com/40735783
-    {
-      name: "ClipboardEventTargetCanBeFocusedElement",
-      status: "stable",
-    },
     {
       // Uses ComputeContainerNode() instead of AnchorNode() for clipboard event
       // targeting so that kBeforeAnchor/kAfterAnchor selections correctly target
       // the containing parent element rather than the element itself.
       // See https://crbug.com/40684204
       name: "ClipboardEventTargetUsesContainerNode",
-      status: "stable",
-    },
-    {
-      // Support ClipboardItemData of Promise<DOMString> type according to spec
-      // https://w3c.github.io/clipboard-apis/#typedefdef-clipboarditemdata
-      name: "ClipboardItemWithDOMStringSupport",
       status: "stable",
     },
     {
@@ -1394,33 +1370,6 @@
       status: "experimental",
     },
     {
-      // When enabled, providing developers control over the resources loaded
-      // into their pages' contexts and the endpoints to which their pages can
-      // make requests.
-      // Note: To enable this feature, developers MUST include the origin trial
-      // token within the HTTP headers. Including the origin trial token via the
-      // <meta> tag in the head of any page does NOT enable the feature.
-      // See https://wicg.github.io/connection-allowlists/.
-      name: "ConnectionAllowlist",
-      origin_trial_feature_name: "ConnectionAllowlist",
-      // This feature flag is used for overriding origin trial requirements for
-      // testing purpose. See the comment below for `status` field for why this
-      // is required even though there already exists a
-      // `network::features::kConnectionAllowlists` for connection allowlist.
-      // Kill switch is `network::features::kConnectionAllowlists`.
-      base_feature: "OverrideConnectionAllowlistOriginTrial",
-      base_feature_status: "disabled",
-      // For the connection allowlist, its implementation is entirely within the
-      // browser processes. It does not involve any changes in the renderer
-      // process. The `status` field does not behave in the same manner for
-      // other web platform features. For example, setting it to "stable" does
-      // not enable the feature -- the renderer's internal state is updated, but
-      // does not get propagated to the browser process. So connection allowlist
-      // cannot know the status of the RuntimeEnabledFeature.
-      status: "experimental",
-      settable_from_internals: true,
-    },
-    {
       // Enables Connection-Allowlist embedded enforcement: the
       // `connectionallowlist` iframe content attribute (and its
       // `connectionAllowlist` IDL reflection), by which an embedder requires a
@@ -1438,7 +1387,6 @@
       name: "ConnectionAllowlistEmbeddedEnforcement",
       origin_trial_feature_name: "ConnectionAllowlistEmbeddedEnforcement",
       status: "experimental",
-      depends_on: ["ConnectionAllowlist"],
     },
     {
       // Fix for https://crbug.com/40659076. When enabled, queryCommandState for
@@ -1524,15 +1472,13 @@
       name: "CorsRFC1918",
     },
     {
-      // CPU Performance API, work in progress.
+      // CPU Performance API
       // https://chromestatus.com/feature/5189864286978048
-      // https://github.com/explainers-by-googlers/cpu-performance
+      // https://github.com/WICG/cpu-performance/
       name: "CpuPerformance",
-      status: "experimental",
+      status: "stable",
       origin_trial_feature_name: "CpuPerformance",
       origin_trial_allows_third_party: true,
-      base_feature_status: "enabled",
-      copied_from_base_feature_if: "overridden",
     },
     {
       name: "CrashReportingStorageAPI",
@@ -2703,10 +2649,6 @@
       status: {"Android": "experimental", "iOS": "", "default": "stable"},
     },
     {
-      name: "ElementInnerTextHandleFirstLineStyle",
-      status: "stable",
-    },
-    {
       // ElementInternals.behaviors allows web authors to attach
       // platform-provided behaviors to custom elements, enabling
       // them to adopt native behaviors without extending native
@@ -3310,6 +3252,12 @@
       status: "experimental",
     },
     {
+      // Respects explicit outline colors for focus rings in dark mode and uses
+      // an off-white default. https://issues.chromium.org/issues/480978106
+      name: "FocusRingRespectExplicitOutlineColorInDarkMode",
+      status: "stable",
+    },
+    {
       name: "FontAccess",
       status: {"Android": "", "default": "stable"},
     },
@@ -3391,6 +3339,10 @@
       status: "experimental",
     },
     {
+      name: "GamepadButtonTypes",
+      status: "experimental",
+    },
+    {
       name: "GamepadMultitouch",
       status: "experimental",
       public: true,
@@ -3405,6 +3357,14 @@
     {
       name: "GamepadWindowEventHandlers",
       status: "stable",
+    },
+    {
+      // When enabled, the drag image overlay for an element will be created
+      // before the "dragstart" event is fired. This fixes a bug that made
+      // drags not start if the "dragstart" event caused a layout shift that
+      // made the mouse hit test miss the drag source.
+      name: "GenerateDragOverlayBeforeDragStart",
+      status: "experimental",
     },
     {
       // Tracking bug for the implementation: https://crbug.com/430204832
@@ -3462,7 +3422,7 @@
     {
       name: "GetDisplayMediaAudioSelection",
       depends_on: ["GetDisplayMedia"],
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "GetDisplayMediaRequiresUserActivation",
@@ -3493,6 +3453,14 @@
       status: "stable",
     },
     {
+      name: "GlobalPrivacyControl",
+      implied_by: ["GlobalPrivacyControlForce"],
+      base_feature: "none",
+    },
+    {
+      name: "GlobalPrivacyControlForce",
+    },
+    {
       name: "GraphemeClusterBoundsCheck",
       status: "stable",
     },
@@ -3508,11 +3476,6 @@
     },
     {
       name: "HandleDisconnectedSelectionDuringDOMChanges",
-      status: "stable",
-    },
-    {
-      // Killswitch for https://crbug.com/441547032.
-      name: "HandleInvalidMaskImageWithBackdropFilter",
       status: "stable",
     },
     {
@@ -4919,12 +4882,6 @@
       base_feature: "none",
     },
     {
-      // When enabled, preserves dropEffect in drag event set during dragover
-      // events. See https://crbug.com/434151262
-      name: "PreserveDropEffect",
-      status: "stable",
-    },
-    {
       name: "PreserveHtmlEquivalentTagsInTypingStyle",
       status: "stable",
     },
@@ -4934,12 +4891,6 @@
       // See https://crbug.com/41340914
       name: "PreventTextSelectionJump",
       status: "stable",
-    },
-    {
-      // When enabled, prevents undo to be applied if the enclosing block
-      // is not editable
-      name: "PreventUndoIfNotEditable",
-      status: "stable"
     },
     {
       // Controls the aggregate error reporting feature, which allows for
@@ -5316,7 +5267,7 @@
       name: "RootScrollbarFollowsBrowserTheme",
       status: {"Linux": "test", "Win": "test"},
     },
-    // Route matching, @route CSS rule, script type="routemap".
+    // Route matching, @route CSS rule.
     // https://chromestatus.com/feature/4771962874363904
     {
       name: "RouteMatching",
@@ -5444,6 +5395,10 @@
       // https://github.com/whatwg/html/pull/10869
       // https://github.com/whatwg/dom/pull/1341
       name: "ScopedCustomElementRegistry",
+      status: "stable",
+    },
+    {
+      name: "ScopedViewTransitionSizeContainment",
       status: "stable",
     },
     {
@@ -5793,12 +5748,6 @@
     },
     {
       name: "ServiceWorkerStaticRouterTimingInfo",
-      status: "stable",
-    },
-    {
-      // When enabled, sets the default drop effect as according to spec for
-      // events like dragOver, dragLeave, etc. See https://crbug.com/434151262
-      name: "SetDefaultDropEffect",
       status: "stable",
     },
     {
@@ -6170,7 +6119,7 @@
     },
     {
       name: "SubApps",
-      status: "test",
+      status: "stable",
     },
     // 'pointercancel' and boundary leave ('pointerout' and 'pointerleave')
     // events would now fire after a mouse drag start, matching the spec's
@@ -6296,6 +6245,16 @@
       // Don't trigger table border rendering with only bordercolor attribute.
       // This shipped in M146 and can be removed in M148.
       name: "TableBorderColorNoImplicitBorder",
+      status: "stable",
+    },
+    {
+      // When enabled (the legacy behavior), interior cell borders from the
+      // `border`/`rules` attributes inherit the table's border-color. Disable
+      // to launch the spec-compliant behavior, where they resolve to
+      // `currentColor` instead (border-color is not inherited). The
+      // `bordercolor` attribute always propagates. Matches Gecko when disabled.
+      // See crbug.com/40745409.
+      name: "TableCellBorderColorInherit",
       status: "stable",
     },
     {
@@ -7102,6 +7061,13 @@
       base_feature: "none",
     },
     {
+      // Restricts the sharing of BluetoothDevice instances across different V8
+      // worlds (e.g., main world and isolated worlds) to prevent cross-world
+      // leaks.
+      name: "WebBluetoothWorldIsolatedCache",
+      status: "stable",
+    },
+    {
       name: "WebCodecsVideoEncoderBuffers",
       status: "experimental",
     },
@@ -7162,6 +7128,13 @@
       // eventually land in the WebGPU spec.
       name: "WebGPUExperimentalFeatures",
       status: "experimental",
+      public: true,
+    },
+    {
+      // Enables "chromium-experimental-sampling-resource-table".
+      name: "WebGPUExperimentalResourceTable",
+      status: "experimental",
+      implied_by: ["WebGPUExperimentalFeatures"],
       public: true,
     },
     {

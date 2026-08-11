@@ -771,6 +771,14 @@ BASE_FEATURE(kForceSoftwareForRtcLowResolutions,
 // Auto-dismiss global media controls.
 BASE_FEATURE(kGlobalMediaControlsAutoDismiss, base::FEATURE_ENABLED_BY_DEFAULT);
 
+// Enables the "Save Video Frame" button in Global Media Controls.
+BASE_FEATURE(kGlobalMediaControlsSaveVideoFrame,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Enable selection of audio output device in Global Media Controls.
+BASE_FEATURE(kGlobalMediaControlsSeamlessTransfer,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 #if BUILDFLAG(IS_ANDROID)
 // Kill switch for removing idiosyncratic use of MediaCodec color APIs.
 BASE_FEATURE(kMediaCodecColorSpaceCleanup, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -786,10 +794,6 @@ BASE_FEATURE(kMediaRemotingWithoutFullscreen,
 #endif
 );
 #endif
-
-// Enable selection of audio output device in Global Media Controls.
-BASE_FEATURE(kGlobalMediaControlsSeamlessTransfer,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // CanPlayThrough issued according to standard.
 BASE_FEATURE(kSpecCompliantCanPlayThrough, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -958,6 +962,14 @@ BASE_FEATURE(kOnDeviceWebSpeechGeminiNano, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables on-device speech recognition using on-device TinyGemma.
 BASE_FEATURE(kOnDeviceWebSpeechSmallExpertModel,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Enables multi-language support for on-device speech recognition using
+// on-device TinyGemma.
+BASE_FEATURE(kOnDeviceWebSpeechSmallExpertModelMultiLanguage,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+const base::FeatureParam<std::string>
+    kOnDeviceWebSpeechSmallExpertModelLanguages{
+        &kOnDeviceWebSpeechSmallExpertModelMultiLanguage, "languages", ""};
 
 // Enables the Live Caption feature on supported devices.
 BASE_FEATURE(kLiveCaption, base::FEATURE_ENABLED_BY_DEFAULT);

@@ -447,31 +447,6 @@ NSMenuItem* BuildBookmarksMenu(NSApplication* nsapp,
   return item;
 }
 
-NSMenuItem* BuildGroupsMenu(NSApplication* nsapp,
-                            id app_delegate,
-                            const std::u16string& product_name,
-                            bool is_pwa,
-                            bool is_rtl) {
-  if (!features::IsShowTabGroupsMacSystemMenuEnabled()) {
-    return nil;
-  }
-
-  if (is_pwa) {
-    return nil;
-  }
-
-  // clang-format off
-  NSMenuItem* item =
-      Item(IDS_SAVED_TAB_GROUPS_MENU)
-          .tag(AppMenuModel::kSavedTabGroupsMenuPlaceholder)
-          .submenu({
-              Item(IDS_CREATE_NEW_TAB_GROUP)
-                  .command_id(IDC_CREATE_NEW_TAB_GROUP),
-          })
-          .Build();
-  // clang-format on
-  return item;
-}
 
 NSMenuItem* BuildPeopleMenu(NSApplication* nsapp,
                             id app_delegate,
@@ -552,6 +527,9 @@ NSMenuItem* BuildTabMenu(NSApplication* nsapp,
               Item(is_rtl ? IDS_TAB_CXMENU_NEWTABTOLEFT
                           : IDS_TAB_CXMENU_NEWTABTORIGHT)
                   .command_id(IDC_NEW_TAB_TO_RIGHT),
+              Item(IDS_TAB_CXMENU_NEWTABBELOW)
+                  .command_id(IDC_NEW_TAB_TO_RIGHT)
+                  .set_hidden(true),
               Item(IDS_NEXT_TAB_MAC)
                   .command_id(IDC_CYCLE_TO_NEXT_TAB),
               Item(IDS_PREV_TAB_MAC)
@@ -585,6 +563,9 @@ NSMenuItem* BuildTabMenu(NSApplication* nsapp,
               Item(is_rtl ? IDS_TAB_CXMENU_CLOSETABSTOLEFT
                           : IDS_TAB_CXMENU_CLOSETABSTORIGHT)
                   .command_id(IDC_WINDOW_CLOSE_TABS_TO_RIGHT),
+              Item(IDS_TAB_CXMENU_CLOSETABSBELOW)
+                  .command_id(IDC_WINDOW_CLOSE_TABS_TO_RIGHT)
+                  .set_hidden(true),
               Item(IDS_MOVE_TAB_TO_NEW_WINDOW)
                   .command_id(IDC_MOVE_TAB_TO_NEW_WINDOW),
               Item(IDS_SEARCH_TABS)
@@ -649,7 +630,6 @@ NSMenu* BuildMainMenu(NSApplication* nsapp,
            &BuildViewMenu,
            &BuildHistoryMenu,
            &BuildBookmarksMenu,
-           &BuildGroupsMenu,
            &BuildPeopleMenu,
            &BuildTabMenu,
            &BuildWindowMenu,

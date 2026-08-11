@@ -26,7 +26,6 @@
 #include "components/send_tab_to_self/send_tab_to_self_entry.h"
 #include "components/send_tab_to_self/send_tab_to_self_model.h"
 #include "components/shared_highlighting/core/common/text_fragment.h"
-#include "content/public/browser/browser_thread.h"
 #include "content/public/browser/visibility.h"
 #include "content/public/browser/web_contents.h"
 #include "ui/base/window_open_disposition.h"
@@ -43,21 +42,6 @@ using jni_zero::AttachCurrentThread;
 namespace send_tab_to_self {
 
 namespace {
-
-std::optional<std::string> GetScrollToTextFragmentFromEntry(
-    const SendTabToSelfEntry& entry) {
-  if (!base::FeatureList::IsEnabled(kSendTabToSelfPropagateScrollPosition) ||
-      entry.GetPageContext().scroll_position.IsEmpty()) {
-    return std::nullopt;
-  }
-
-  shared_highlighting::TextFragment tf =
-      entry.GetPageContext()
-          .scroll_position.text_fragment.ToSharedHighlightingTextFragment();
-
-  return tf.ToEscapedString(shared_highlighting::TextFragment::
-                                EscapedStringFormat::kWithoutTextDirective);
-}
 
 bool IsTabModelViable(TabModel* tab_model) {
   return !tab_model->IsOffTheRecord() &&
@@ -179,20 +163,6 @@ void AndroidNotificationHandler::DisplayNewEntries(
     return;
   }
 
-  std::vector<std::string> guids;
-  guids.reserve(new_entries.size());
-  for (const SendTabToSelfEntry* entry : new_entries) {
-    guids.push_back(entry->GetGUID());
-  }
-
-  content::GetUIThreadTaskRunner({})->PostTask(
-      FROM_HERE,
-      base::BindOnce(&AndroidNotificationHandler::DisplayNewEntriesOnUIThread,
-                     weak_factory_.GetWeakPtr(), std::move(guids)));
-}
-
-void AndroidNotificationHandler::DisplayNewEntriesOnUIThread(
-    const std::vector<std::string>& guids) {
   // Called when new entries are received from sync.
   content::WebContents* const target_web_contents =
       base::FeatureList::IsEnabled(kSendTabToSelfAutoOpen)
@@ -205,10 +175,8 @@ void AndroidNotificationHandler::DisplayNewEntriesOnUIThread(
   // opened directly as new background tabs.
   if (target_web_contents) {
     std::vector<const SendTabToSelfEntry*> entries;
-    entries.reserve(guids.size());
-    for (const std::string& guid : guids) {
-      const SendTabToSelfEntry* entry =
-          send_tab_to_self_model_->GetEntryByGUID(guid);
+    entries.reserve(new_entries.size());
+    for (const SendTabToSelfEntry* entry : new_entries) {
       if (entry && !entry->IsOpened()) {
         entries.push_back(entry);
       }
@@ -218,9 +186,7 @@ void AndroidNotificationHandler::DisplayNewEntriesOnUIThread(
         AutoOpenOutcome::kTabsOpenedImmediatelyInBackground);
   } else {
     // Otherwise, show a standard system notification.
-    for (const std::string& guid : guids) {
-      const SendTabToSelfEntry* entry =
-          send_tab_to_self_model_->GetEntryByGUID(guid);
+    for (const SendTabToSelfEntry* entry : new_entries) {
       if (!entry || entry->IsOpened()) {
         continue;
       }
@@ -242,7 +208,7 @@ void AndroidNotificationHandler::ShowNotification(
           env);
 
   std::optional<std::string> internal_scroll_to_text_fragment =
-      GetScrollToTextFragmentFromEntry(entry);
+      GetScrollPositionAsTextFragment(&entry);
 
   Java_NotificationManager_showNotification(
       env, ConvertUTF8ToJavaString(env, entry.GetGUID()),
@@ -359,6 +325,8 @@ void AndroidNotificationHandler::OpenEntryInBackgroundTab(
     const SendTabToSelfEntry& entry,
     content::WebContents& target_web_contents,
     int tabstrip_index) {
+  send_tab_to_self_model_->MarkEntryOpened(entry.GetGUID());
+
   auto nav_params = std::make_unique<NavigateParams>(
       Profile::FromBrowserContext(target_web_contents.GetBrowserContext()),
       entry.GetURL(), ui::PAGE_TRANSITION_AUTO_TOPLEVEL);
@@ -367,7 +335,7 @@ void AndroidNotificationHandler::OpenEntryInBackgroundTab(
   nav_params->window_action = NavigateParams::WindowAction::kNoAction;
   nav_params->tabstrip_index = tabstrip_index;
   nav_params->internal_scroll_to_text_fragment =
-      GetScrollToTextFragmentFromEntry(entry);
+      GetScrollPositionAsTextFragment(&entry);
 
   // Keep a raw pointer to the NavigateParams aside since the unique_ptr will
   // be moved into the Navigate() call.
@@ -392,6 +360,7 @@ void AndroidNotificationHandler::OnNavigationStarted(
     if (base::FeatureList::IsEnabled(kSendTabToSelfPropagateFormFields)) {
       FillWebContents(new_contents, url::Origin::Create(url), page_context);
     }
+    RecordHasScrollPositionOnOpened(!page_context.scroll_position.IsEmpty());
 
     // Attach a visual label indicating the sender device name to the newly
     // opened background tab.
@@ -399,8 +368,6 @@ void AndroidNotificationHandler::OnNavigationStarted(
       send_tab_to_self::AttachTabLabel(tab, guid, device_name);
     }
   }
-
-  send_tab_to_self_model_->MarkEntryOpened(guid);
 }
 
 void AndroidNotificationHandler::ShowMessageBanner(

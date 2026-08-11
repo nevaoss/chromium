@@ -606,7 +606,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SafeBrowsing.CheckUrl.UrlScheme" enum="SafeBrowsingUrlScheme"
-    expires_after="2026-09-06">
+    expires_after="2027-03-06">
   <owner>thefrog@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -2756,7 +2756,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SafeBrowsing.RT.CacheManager.CleanupReachedThreshold"
-    units="entries" expires_after="2026-08-02">
+    units="entries" expires_after="2027-02-02">
   <owner>thefrog@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -3432,6 +3432,30 @@ useful for Chirp alerts (go/crca-alerts). -->
   </summary>
 </histogram>
 
+<histogram name="SafeBrowsing.SuspiciousSiteWarning.VerdictReceived"
+    enum="Boolean" expires_after="2027-02-01">
+  <owner>awado@google.com</owner>
+  <owner>richche@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    Records whether a suspicious site warning threat type was received as a
+    verdict during a real-time URL lookup. Logged even if the warning itself is
+    disabled.
+  </summary>
+</histogram>
+
+<histogram name="SafeBrowsing.SuspiciousSiteWarning.WarningOutcome"
+    enum="SuspiciousSiteWarningOutcome" expires_after="2027-02-01">
+  <owner>awado@google.com</owner>
+  <owner>richche@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    Records whether the user adhered to the suspicious site warning or bypassed
+    it. Logged when the suspicious site dialog is closed by the user interaction
+    or navigating back.
+  </summary>
+</histogram>
+
 <histogram name="SafeBrowsing.SyncedEsbDialogDisabledMessageOutcome"
     enum="SyncedEsbOutcome" expires_after="2026-11-22">
   <owner>zackhan@chromium.org</owner>
@@ -3798,7 +3822,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SafeBrowsing.V4GetHash.CountOfPrefixes" units="prefixes"
-    expires_after="2026-07-27">
+    expires_after="2027-01-27">
   <owner>thefrog@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
