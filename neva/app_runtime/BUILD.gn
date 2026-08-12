@@ -205,6 +205,8 @@ static_library("app_runtime") {
     "renderer/app_runtime_page_load_timing_render_frame_observer.h",
     "renderer/app_runtime_render_frame_observer.cc",
     "renderer/app_runtime_render_frame_observer.h",
+    "renderer/app_runtime_webview_observer.cc",
+    "renderer/app_runtime_webview_observer.h",
     "ui/app_runtime_input_device_event_pre_handler.cc",
     "ui/app_runtime_input_device_event_pre_handler.h",
     "ui/app_runtime_touch_menu_runner.cc",

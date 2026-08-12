@@ -62,10 +62,10 @@ class AppRuntimeContentRendererClient : public content::ContentRendererClient {
   void GetSupportedKeySystems(media::GetSupportedKeySystemsCB cb) override;
 #endif
 
-#if defined(USE_NEVA_CHROME_EXTENSIONS)
   void WebViewCreated(blink::WebView* web_view,
                       bool was_created_by_renderer,
                       const url::Origin* outermost_origin) override;
+#if defined(USE_NEVA_CHROME_EXTENSIONS)
   void RenderThreadStarted() override;
   void RunScriptsAtDocumentStart(content::RenderFrame* render_frame) override;
   void RunScriptsAtDocumentEnd(content::RenderFrame* render_frame) override;
