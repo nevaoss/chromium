@@ -35,36 +35,6 @@ namespace mojo::core {
 
 namespace {
 
-<<<<<<< HEAD
-#if BUILDFLAG(MOJO_SUPPORT_LEGACY_CORE)
-// TODO(neva): Remove BUILDFLAG(IS_WEBOS) if mojoipcz is better when considering
-// memory and performance perspective.
-#if BUILDFLAG(IS_CHROMEOS) && !defined(ENABLE_IPCZ_ON_CHROMEOS) || \
-    BUILDFLAG(IS_WEBOS)
-std::atomic<bool> g_mojo_ipcz_enabled{false};
-#else
-// Default to enabled even if InitFeatures() is never called.
-std::atomic<bool> g_mojo_ipcz_enabled{true};
-#endif
-
-bool g_mojo_ipcz_force_disabled = false;
-
-std::optional<std::string> GetMojoIpczEnvVar() {
-  auto env = base::Environment::Create();
-  return env->GetVar("MOJO_IPCZ");
-}
-
-// Allows MojoIpcz to be forcibly enabled if and only if MOJO_IPCZ=1 in the
-// environment. Note that any other value (or absence) has no influence on
-// whether or not MojoIpcz is enabled.
-bool IsMojoIpczForceEnabledByEnvironment() {
-  static bool force_enabled = GetMojoIpczEnvVar() == "1";
-  return force_enabled;
-}
-#endif  // BUILDFLAG(MOJO_SUPPORT_LEGACY_CORE)
-
-=======
->>>>>>> 153.0.7981.0~1
 bool g_enable_memv2 = false;
 
 }  // namespace
