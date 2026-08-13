@@ -23,19 +23,6 @@ const char kSuppressEventfdUpgradeForWebview[] =
 #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) ||
         // BUILDFLAG(IS_ANDROID)
 
-<<<<<<< HEAD
-#if BUILDFLAG(MOJO_SUPPORT_LEGACY_CORE)
-// TODO(neva): Remove BUILDFLAG(IS_WEBOS) if mojoipcz is better when considering
-// memory and performance perspective.
-#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_WEBOS)
-BASE_FEATURE(kMojoIpcz, base::FEATURE_DISABLED_BY_DEFAULT);
-#else
-BASE_FEATURE(kMojoIpcz, base::FEATURE_ENABLED_BY_DEFAULT);
-#endif
-#endif  // BUILDFLAG(MOJO_SUPPORT_LEGACY_CORE)
-
-=======
->>>>>>> 153.0.7981.0~1
 BASE_FEATURE(kMojoIpczMemV2, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kMojoFixGeometricBufferGrowth, base::FEATURE_DISABLED_BY_DEFAULT);
