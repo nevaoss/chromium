@@ -29,6 +29,10 @@ if (is_ios) {
   import("//build/config/ios/bundle_data_from_filelist.gni")
 }
 
+# NOTE(neva): Needed for Neva logic in
+# //third_party/blink/renderer/platform/fonts/linux/font_cache_linux.cc.
+import("//neva/neva.gni")
+
 # Most targets in this file are private actions so use that as the default.
 visibility = [
   ":*",
@@ -1707,6 +1711,15 @@ component("platform") {
     "widget/widget_base_client.h",
     "windows_keyboard_codes.h",
   ]
+
+  # NOTE(neva): Needed for Neva logic in
+  # //third_party/blink/renderer/platform/fonts/linux/font_cache_linux.cc.
+  if (use_neva_appruntime) {
+    sources += [
+      "text/neva/unicode_range.cc",
+      "text/neva/unicode_range.h",
+    ]
+  }
 
   sources -= blink_platform_avx_files
 
